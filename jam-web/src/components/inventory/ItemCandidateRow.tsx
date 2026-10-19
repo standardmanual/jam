@@ -5,7 +5,7 @@ import ListRowCard from '@/components/ui/ListRowCard'
 import LocalDate from '@/components/LocalDate'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
 // 20260908_0040: 장착 개체 선택 시트(20260907_2221)의 행을 공용 컴포넌트로 추출 —
@@ -50,6 +50,13 @@ export interface ItemCandidate {
   serial_prefix: string | null
   /** 만료 임박 칩("곧 만료")을 선택 시트에 띄우기 위한 값. 만료 없는 개체는 null. */
   expires_at: string | null
+  /**
+   * 잠긴 개체(티켓 20261018_1817). true이면 일련번호와 만료 칩을 그리지 않고 «잼 N 필요»를 구분 값으로 보인다 —
+   * 잠긴 개체는 어떤 아이템 배지인지 알 수 있는 값을 화면에 두지 않는다(운영 로직 7.3절). 이때 `serial_number`·`serial_prefix`는 쓰지 않는다.
+   */
+  locked?: boolean
+  /** 잠긴 개체가 열리는 데 필요한 잼. 필요한 양이 없는 비정상 응답이면 구분 줄을 생략한다 */
+  unlock_required?: number | null
 }
 
 interface ItemCandidateRowProps {
@@ -74,7 +81,9 @@ export default function ItemCandidateRow({
   trailing,
   onClick,
 }: ItemCandidateRowProps) {
-  const expiring = isExpiringSoon(candidate.expires_at)
+  const locked = candidate.locked === true
+  const expiring = !locked && isExpiringSoon(candidate.expires_at)
+  const hasRequired = Number.isFinite(candidate.unlock_required) && (candidate.unlock_required ?? 0) > 0
 
   return (
     <ListRowCard
@@ -97,13 +106,21 @@ export default function ItemCandidateRow({
     >
       <div className="flex flex-col items-start gap-1">
         <RarityBadge rarity={rarity ?? undefined} />
-        <ItemSerialCode
-          code={formatSerial(candidate)}
-          height={SELECT_SERIAL_HEIGHT_PX}
-          // 릴(슬롯머신) 연출은 끈다 — 이 화면은 "이미 가진 번호들을 읽고 비교해서 고르는"
-          // 자리라, "번호가 지금 확정되는 순간"을 연출하는 릴과 목적이 반대다(20260907_2059).
-          animate={false}
-        />
+        {locked ? (
+          hasRequired && (
+            <p className="m-0 text-base font-bold text-foreground break-keep wrap-break-word">
+              {t(d.lockedItem.card.requiredChip, { n: candidate.unlock_required as number })}
+            </p>
+          )
+        ) : (
+          <ItemSerialCode
+            code={formatSerial(candidate)}
+            height={SELECT_SERIAL_HEIGHT_PX}
+            // 릴(슬롯머신) 연출은 끈다 — 이 화면은 "이미 가진 번호들을 읽고 비교해서 고르는"
+            // 자리라, "번호가 지금 확정되는 순간"을 연출하는 릴과 목적이 반대다(20260907_2059).
+            animate={false}
+          />
+        )}
         {expiring && candidate.expires_at && (
           <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted">
             <LocalDate

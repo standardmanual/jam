@@ -6,6 +6,9 @@ import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { LabelChip } from '@ds/components/cards/LabelChip'
+import { LockedTile } from '@ds/components/cards/LockedTile'
+import InlineNotice from '@/components/ui/InlineNotice'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
@@ -33,6 +36,13 @@ export interface PickupDrop {
   serial_prefix: string | null
   serial_number: number | null
   expires_at: string | null
+  /**
+   * 잠긴 개체(티켓 20261018_1817, 운영 로직 7.3절). 서버가 이름·그림·일련번호를 비우고 이 값과 등급, 필요한 양만 싣는다.
+   * 열린 개체에는 이 키가 없다(옛 응답 모양과 같다). 잠긴 개체는 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그린다.
+   */
+  locked?: boolean
+  /** 잠긴 개체가 열리는 데 필요한 잼. 필요한 양이 없는 비정상 응답이면 필요한 양 줄을 생략한다 */
+  unlock_required?: number | null
 }
 
 interface BadgeDetailSheetProps {
@@ -41,6 +51,13 @@ interface BadgeDetailSheetProps {
   pickingUp: boolean
   onPickup: () => void
   onCancel: () => void
+  /**
+   * 버튼 위에 놓는 인라인 안내 문구(티켓 20261018_1817) — 인벤토리 가득 참·장소 차단처럼 픽업이 막힌 까닭이다. 없으면 블록을 그리지 않는다.
+   * 서버가 완성한 문구를 그대로 받는다(ADR 0001).
+   */
+  notice?: string | null
+  /** true면 [픽업]을 비활성으로 둔다 — 장소 차단처럼 다시 눌러도 같은 결과일 때. [취소]는 항상 눌린다 */
+  pickupDisabled?: boolean
 }
 
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
@@ -50,7 +67,17 @@ const ACTION_BOTTOM_GAP_PX = 16 + 64 + 12
 
 // 기존 /badges/[id] 페이지의 상세 레이아웃을 오버레이(시트) 형태로 재사용.
 // 페이지 이동이 아니라 /drops 위에 겹쳐 뜨므로 지도 상태가 보존된다.
-export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, onCancel }: BadgeDetailSheetProps) {
+export default function BadgeDetailSheet({
+  drop,
+  poiName,
+  pickingUp,
+  onPickup,
+  onCancel,
+  notice = null,
+  pickupDisabled = false,
+}: BadgeDetailSheetProps) {
+  const locked = drop.locked === true
+  const hasRequired = Number.isFinite(drop.unlock_required) && (drop.unlock_required ?? 0) > 0
   const rarity = (KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
     ? (drop.badge_rarity as BadgeRarity)
     : 'common')
@@ -148,21 +175,34 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
           &larr; {d.common.back}
         </button>
 
-        {/* 배지 이미지 (대형) */}
+        {/* 배지 이미지 (대형). 잠긴 개체는 이름·그림을 DOM 어디에도 두지 않고 잠금 타일과 고정 문구만 그린다(7.3절). */}
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="w-44 h-44 rounded-2xl bg-background-secondary flex items-center justify-center overflow-hidden">
-            <SafeImage
-              src={drop.badge_image_url}
-              alt={drop.badge_name}
-              width={176}
-              height={176}
-              className="w-full h-full object-contain p-4"
-              fallback={<MedalIcon className="w-16 h-16 text-muted" />}
-            />
-          </div>
+          {locked ? (
+            <LockedTile size={176} />
+          ) : (
+            <div className="w-44 h-44 rounded-2xl bg-background-secondary flex items-center justify-center overflow-hidden">
+              <SafeImage
+                src={drop.badge_image_url}
+                alt={drop.badge_name}
+                width={176}
+                height={176}
+                className="w-full h-full object-contain p-4"
+                fallback={<MedalIcon className="w-16 h-16 text-muted" />}
+              />
+            </div>
+          )}
           <div className="text-center">
-            <h1 className="text-3xl mb-2 text-foreground">{drop.badge_name}</h1>
-            <RarityBadge rarity={rarity} />
+            <h1 className="text-3xl mb-2 text-foreground break-keep wrap-break-word text-balance">
+              {locked ? d.lockedItem.card.name : drop.badge_name}
+            </h1>
+            {locked ? (
+              <div className="flex items-center justify-center gap-2">
+                <RarityBadge rarity={rarity} />
+                <LabelChip>{d.lockedItem.detail.chip}</LabelChip>
+              </div>
+            ) : (
+              <RarityBadge rarity={rarity} />
+            )}
           </div>
         </div>
 
@@ -179,21 +219,35 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
               이미 확정된 일련번호가 존재한다. 20260903_1423 — ItemSerialCode로 교체(타이틀 텍스트
               없이 컴포넌트만 배치, 다른 두 화면과 동일 원칙). 이 시트는 좁은 카드라 배지 상세
               페이지(height=50)보다 작게, 컴포넌트가 지원하는 최소값(height=40)을 쓴다. */}
-          {drop.serial && (
+          {!locked && drop.serial && (
             <div className="flex justify-center mt-3 pt-3 border-t border-foreground/10">
               <ItemSerialCode code={drop.serial} height={40} />
             </div>
           )}
+          {/* 잠긴 개체: 일련번호 대신 필요한 양 한 줄과 픽업한 뒤의 일 한 줄. 필요한 양이 없는 비정상 응답이면 첫 줄을 생략한다. */}
+          {locked && (
+            <div className="mt-3 pt-3 border-t border-foreground/10 flex flex-col gap-1">
+              {hasRequired && (
+                <p className="m-0 text-base text-foreground break-keep wrap-break-word text-pretty">
+                  {t(d.lockedItem.card.description, { n: drop.unlock_required as number })}
+                </p>
+              )}
+              <p className="m-0 text-sm text-muted break-keep wrap-break-word text-pretty">{d.drops.pickupLockedHint}</p>
+            </div>
+          )}
         </Card>
+
+        {/* 막힘 안내 — 가득 참·장소 차단일 때만 버튼 바로 위에 놓는다. 높이가 늘면 content의 ResizeObserver가 하단 점유 신고를 다시 잰다. */}
+        {notice && <InlineNotice className="mt-auto">{notice}</InlineNotice>}
 
         {/* 액션 버튼 — 콘텐츠와 같은 스크롤 영역 안, 페이지 맨 끝에 위치.
             부모의 padding-bottom(탭바 높이만큼)이 이미 확보돼 있어
             스크롤 끝까지 내리면 탭바 위에서 항상 보이고 눌린다. */}
-        <div ref={setActionsEl} className="mt-auto flex gap-4">
+        <div ref={setActionsEl} className={notice ? 'flex gap-4' : 'mt-auto flex gap-4'}>
           <Button fullWidth variant="secondary" surface="main" onClick={onCancel} disabled={pickingUp}>
             {d.drops.cancel}
           </Button>
-          <Button fullWidth surface="main" loading={pickingUp} onClick={onPickup}>
+          <Button fullWidth surface="main" loading={pickingUp} disabled={pickupDisabled} onClick={onPickup}>
             {d.drops.pickupButton}
           </Button>
         </div>

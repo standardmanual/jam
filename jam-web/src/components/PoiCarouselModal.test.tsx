@@ -14,8 +14,9 @@ vi.mock('@/components/ui/Toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }))
 
-import PoiCarouselModal, { toDemoDroppedPickup } from './PoiCarouselModal'
+import PoiCarouselModal, { PoiCard, toDemoDroppedPickup } from './PoiCarouselModal'
 import { d } from '@/lib/i18n'
+import type { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { DEMO_PICKUP_POI, DEMO_PICKUP_DROP, DEMO_DROP_ITEM } from '@/lib/onboarding-quest/demo-data'
 
 describe('PoiCarouselModal demoMode 초기 렌더', () => {
@@ -110,5 +111,137 @@ describe('toDemoDroppedPickup', () => {
     expect(result.badge_rarity).toBe(DEMO_DROP_ITEM.badge_rarity)
     expect(result.serial).toBeNull()
     expect(result.dropper_name).toBeNull()
+  })
+})
+
+describe('잠긴 개체 행과 드랍 확인 단계 (티켓 20261018_1817, 운영 로직 7.3·7.2절)', () => {
+  // 서버는 잠긴 개체의 이름·그림·일련번호를 비워 내려 주지만, 화면이 그 값을 읽지 않는다는 것을 고정하려고 일부러 값이 남은 응답을 넣는다.
+  const SECRET_NAME = '들키면안되는배지이름'
+  const SECRET_SERIAL = 'ZZZZ000777'
+  const SECRET_IMAGE = 'https://example.com/secret-image.png'
+  const openDrop: PickupDrop = {
+    ...DEMO_PICKUP_DROP,
+    id: 'open-1',
+    badge_id: 'badge-open',
+    badge_name: '열린 배지 이름',
+    badge_rarity: 'common',
+    serial: null,
+  }
+  function lockedDrop(id: string, rarity: string, required: number | null): PickupDrop {
+    return {
+      ...DEMO_PICKUP_DROP,
+      id,
+      badge_id: `locked:${rarity}`,
+      badge_name: SECRET_NAME,
+      badge_rarity: rarity,
+      badge_image_url: SECRET_IMAGE,
+      serial: SECRET_SERIAL,
+      serial_prefix: 'ZZZZ',
+      serial_number: 777,
+      expires_at: '2099-01-01T00:00:00.000Z',
+      locked: true,
+      unlock_required: required,
+    }
+  }
+
+  function renderList(drops: PickupDrop[]) {
+    return renderToStaticMarkup(
+      <PoiCarouselModal
+        pois={[DEMO_PICKUP_POI]}
+        initialPoiId={DEMO_PICKUP_POI.id}
+        userLat={0}
+        userLng={0}
+        onClose={vi.fn()}
+        onCenterChange={vi.fn()}
+        onDropOrPickupSuccess={vi.fn()}
+        demoMode
+        initialDropsCache={{ [DEMO_PICKUP_POI.id]: drops }}
+      />
+    )
+  }
+
+  it('잠긴 개체는 «잠긴 아이템 배지»와 등급만 보이고 이름·그림·일련번호가 DOM 어디에도 없다', () => {
+    const html = renderList([lockedDrop('l1', 'rare', 5), lockedDrop('l2', 'rare', 8)])
+    expect(html).toContain(d.lockedItem.card.name)
+    expect(html).not.toContain(SECRET_NAME)
+    expect(html).not.toContain(SECRET_SERIAL)
+    expect(html).not.toContain('secret-image')
+    expect(html).not.toContain('ZZZZ')
+  })
+
+  it('같은 등급의 잠긴 개체는 한 행으로 묶이고 등급이 다르면 다른 행이다', () => {
+    const one = renderList([lockedDrop('l1', 'rare', 5), lockedDrop('l2', 'rare', 8)])
+    expect(one.split(d.lockedItem.card.name).length - 1).toBe(1)
+    const two = renderList([lockedDrop('l1', 'rare', 5), lockedDrop('l2', 'epic', 8)])
+    expect(two.split(d.lockedItem.card.name).length - 1).toBe(2)
+  })
+
+  it('잠긴 개체의 만료일이 있어도 만료 칩을 그리지 않는다', () => {
+    const html = renderList([{ ...lockedDrop('l1', 'rare', 5), expires_at: new Date(Date.now() + 86_400_000).toISOString() }])
+    expect(html).not.toContain(d.inventory.expiringSuffix)
+  })
+
+  it('잠긴 행은 열린 행 뒤에 둔다 — 서버 순서가 잠긴 개체가 먼저여도 같다', () => {
+    const html = renderList([lockedDrop('l1', 'rare', 5), openDrop])
+    expect(html.indexOf(openDrop.badge_name)).toBeGreaterThan(-1)
+    expect(html.indexOf(openDrop.badge_name)).toBeLessThan(html.indexOf(d.lockedItem.card.name))
+  })
+})
+
+describe('잠긴 개체 드랍 확인 단계의 사라질 양 블록 (티켓 20261018_1817)', () => {
+  function renderConfirm(dropLoss: { status: 'loading' | 'error' | 'ready'; lostFill: number } | null, locked = true) {
+    return renderToStaticMarkup(
+      <PoiCard
+        poi={DEMO_PICKUP_POI}
+        isActive
+        drops={[]}
+        loading={false}
+        showInventory
+        inventoryLoading={false}
+        pendingDropItem={{ id: 'item-1', badgeName: locked ? d.lockedItem.card.name : '열린 배지', badgeImageUrl: null, badgeRarity: 'epic', locked }}
+        dropLoss={dropLoss}
+        dropping={false}
+        dropGridItems={[]}
+        onClose={vi.fn()}
+      />
+    )
+  }
+  const dropButtonDisabled = (html: string) => new RegExp(`<button[^>]*disabled[^>]*>(?:(?!</button>).)*${d.drops.dropButton}`).test(html)
+
+  it('조회 중에는 Skeleton이 보이고 [드랍]이 비활성이다', () => {
+    const html = renderConfirm({ status: 'loading', lostFill: 0 })
+    expect(html).toContain(d.drops.dropLossChecking)
+    expect(html).not.toContain('사라져요')
+    expect(dropButtonDisabled(html)).toBe(true)
+  })
+
+  it('읽지 못하면 안내와 [다시 확인]이 보이고 [드랍]이 비활성이다', () => {
+    const html = renderConfirm({ status: 'error', lostFill: 0 })
+    expect(html).toContain(d.drops.dropLossFailed)
+    expect(html).toContain(d.drops.dropLossRetry)
+    expect(dropButtonDisabled(html)).toBe(true)
+  })
+
+  it('채운 양이 있으면 «사라져요» 블록이 보이고 [드랍]을 누를 수 있다', () => {
+    const html = renderConfirm({ status: 'ready', lostFill: 3 })
+    expect(html).toContain('채운 잼 3은 사라져요. 돌려받을 수 없어요.')
+    expect(dropButtonDisabled(html)).toBe(false)
+  })
+
+  it('채운 양이 0이면 블록이 없다', () => {
+    const html = renderConfirm({ status: 'ready', lostFill: 0 })
+    expect(html).not.toContain('사라져요')
+    expect(dropButtonDisabled(html)).toBe(false)
+  })
+
+  it('열린 개체의 확인 단계에는 사라질 양 상태가 없고 [드랍]을 누를 수 있다', () => {
+    const html = renderConfirm(null, false)
+    expect(html).not.toContain(d.drops.dropLossChecking)
+    expect(dropButtonDisabled(html)).toBe(false)
+  })
+
+  it('잠긴 개체의 확인 단계에는 이름 자리에 «잠긴 아이템 배지»뿐이다', () => {
+    const html = renderConfirm({ status: 'ready', lostFill: 1 })
+    expect(html).toContain(d.lockedItem.card.name)
   })
 })

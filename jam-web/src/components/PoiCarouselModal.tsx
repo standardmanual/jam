@@ -9,9 +9,13 @@ import { IconButton } from '@ds/components/buttons/IconButton'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Card } from '@ds/components/cards/Card'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { LockedTile } from '@ds/components/cards/LockedTile'
+import { Skeleton } from '@ds/components/feedback/Skeleton'
 import { Carousel } from '@ds/components/navigation/Carousel'
 import type { InventoryGridItem } from '@/components/inventory/InventoryGrid'
+import type { ItemCandidate } from '@/components/inventory/ItemCandidateRow'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
+import InlineNotice from '@/components/ui/InlineNotice'
 import LocalDate from '@/components/LocalDate'
 import BadgeDetailSheet, { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { useRevealOnMount } from '@/components/transitions-pages'
@@ -21,6 +25,10 @@ import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { isLockedItemBody } from '@/lib/inventory/locked-item-block'
+import { isSuspendedBody } from '@/lib/suspension/suspended-block'
+import { pickupBlockKind } from '@/lib/drop/pickup-block-contract'
+import type { DropLossPayload } from '@/lib/drop/drop-loss-contract'
+import { dropLossText } from '@/lib/drop/drop-loss-text'
 
 // 20260820_018: 드랍(지도) POI 모달 캐러셀 개편
 // 기존 하단 고정 바텀시트를 대체하는 화면 중앙 모달 — 캐러셀 아이템 자체가
@@ -38,25 +46,56 @@ export interface InventoryItem {
   serial_prefix: string | null
   serial_number: number
   expires_at: string | null
+  /**
+   * 잠긴 개체(티켓 20261018_1817). 서버(`/api/inventory/items`)가 이름·그림·일련번호 접두사를 비우고 이 값과 등급, 필요한 양만 싣는다.
+   * 열린 개체에는 이 키가 없다. 화면은 잠긴 개체의 이름·그림·일련번호를 어떤 props에도 넣지 않는다.
+   */
+  locked?: boolean
+  /** 잠긴 개체가 열리는 데 필요한 잼 */
+  unlock_required?: number | null
 }
 
-/** 같은 badge_id를 가진 드랍 후보 개체 묶음 — 20260908_0040. */
+/** 같은 badge_id를 가진 드랍 후보 개체 묶음 — 20260908_0040. 잠긴 개체는 서버 합성 키 `locked:{등급}`로 등급별 한 묶음이 된다. */
 interface DropGroup {
   badgeId: string
   badgeName: string
   badgeRarity: string
   badgeImageUrl: string | null
+  /** 잠긴 개체 묶음인가 — 행이 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그린다 */
+  locked: boolean
   items: InventoryItem[]
 }
 
-/** 개체 하나를 드랍 확인 단계(`pendingDropItem`)가 쓰는 정규화 형태로 변환한다. */
-function toGridItem(item: InventoryItem): InventoryGridItem {
+/** 드랍 확인 단계가 쓰는 개체 — 잠긴 개체는 `locked`로 사라질 양 블록과 [드랍] 비활성 조건을 가른다. */
+type PendingDropItem = InventoryGridItem & { locked?: boolean }
+
+/** 드랍 목록 행이 쓰는 묶음 항목 */
+type DropGridItem = InventoryGridItem & { locked?: boolean }
+
+/**
+ * 개체 하나를 드랍 확인 단계(`pendingDropItem`)가 쓰는 정규화 형태로 변환한다.
+ * 잠긴 개체는 서버가 비운 값을 읽지 않고 고정 이름만 쓴다 — 이름·그림·일련번호를 확인 단계 props에 넣지 않는다(운영 로직 7.3절).
+ */
+function toGridItem(item: InventoryItem): PendingDropItem {
+  if (item.locked === true) {
+    return { id: item.id, badgeName: d.lockedItem.card.name, badgeImageUrl: null, badgeRarity: item.badge_rarity, locked: true }
+  }
   return {
     id: item.id,
     badgeName: item.badge_name,
     badgeImageUrl: item.badge_image_url,
     badgeRarity: item.badge_rarity,
   }
+}
+
+/** 개체 선택 시트 행의 입력으로 변환한다. 잠긴 개체는 일련번호·만료일을 넘기지 않고 필요한 양만 넘긴다. */
+function toCandidate(item: { id: string; serial_number: number | null; serial_prefix: string | null; expires_at: string | null; locked?: boolean; unlock_required?: number | null }): ItemCandidate {
+  if (item.locked === true) {
+    return { id: item.id, serial_number: 0, serial_prefix: null, expires_at: null, locked: true, unlock_required: item.unlock_required ?? null }
+  }
+  // 마이그레이션 이전 완료된 과거 드랍 등 원본 개체 연결이 소급되지 않은 극히 드문 레거시 데이터만 serial_number가 null일 수 있다.
+  // ItemCandidate 셰이프는 number를 요구하므로 0으로 안전하게 폴백한다.
+  return { id: item.id, serial_number: item.serial_number ?? 0, serial_prefix: item.serial_prefix, expires_at: item.expires_at }
 }
 
 /**
@@ -102,6 +141,8 @@ interface PickupGroup {
   badgeName: string
   badgeRarity: string
   badgeImageUrl: string | null
+  /** 잠긴 개체 묶음인가 — 행이 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그리고 만료 칩은 없다 */
+  locked: boolean
   items: PickupDrop[]
 }
 
@@ -119,17 +160,20 @@ function groupPickupDrops(drops: PickupDrop[]): PickupGroup[] {
       existing.items.push(drop)
       continue
     }
+    const locked = drop.locked === true
     const group: PickupGroup = {
       badgeId: drop.badge_id,
-      badgeName: drop.badge_name,
+      badgeName: locked ? d.lockedItem.card.name : drop.badge_name,
       badgeRarity: drop.badge_rarity,
-      badgeImageUrl: drop.badge_image_url,
+      badgeImageUrl: locked ? null : drop.badge_image_url,
+      locked,
       items: [drop],
     }
     byBadgeId.set(drop.badge_id, group)
     groups.push(group)
   }
-  return groups
+  // 잠긴 묶음은 열린 묶음 뒤에 둔다(티켓 20261018_1817). 각 쪽의 서로 간 순서는 그대로다.
+  return [...groups.filter((g) => !g.locked), ...groups.filter((g) => g.locked)]
 }
 
 /**
@@ -154,6 +198,12 @@ const INITIAL_WINDOW_SIZE = 3
 const WINDOW_STEP = 3
 
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/** 잠긴 개체 드랍 확인 단계가 그리는 사라질 양 상태 — 값은 서버(`drop-loss`)가 정하고 화면은 다시 계산하지 않는다 */
+interface DropLossView {
+  status: 'loading' | 'error' | 'ready'
+  lostFill: number
+}
 
 interface PoiCarouselModalProps {
   /** 반경 내 전체 POI 목록(정렬 순서는 무관 — 내부에서 거리순으로 재정렬한다) */
@@ -371,12 +421,58 @@ export default function PoiCarouselModal({
   const [showInventory, setShowInventory] = useState(false)
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [inventoryLoading, setInventoryLoading] = useState(false)
-  const [pendingDropItem, setPendingDropItem] = useState<InventoryGridItem | null>(null)
+  const [pendingDropItem, setPendingDropItem] = useState<PendingDropItem | null>(null)
+  /**
+   * 잠긴 개체 드랍 확인 단계가 서버에서 읽은 사라질 양(티켓 20261018_1817). 어느 개체의 값인지 `id`를 함께 들고, 지금 확인 중인 개체와
+   * 다르면 «조회 중»으로 본다 — 개체를 바꿀 때 effect에서 상태를 비우지 않고 파생한다. 화면은 이 값을 다시 계산하지 않는다.
+   */
+  const [lossResult, setLossResult] = useState<{ id: string; status: 'ready' | 'error'; lostFill: number } | null>(null)
+  /** [다시 확인]을 누를 때마다 올려 조회 effect를 다시 돌린다 */
+  const [lossRetry, setLossRetry] = useState(0)
   const [dropping, setDropping] = useState(false)
   /** 그룹(같은 배지)의 개체가 2개 이상일 때 여는 개체 선택 시트의 대상 — 20260908_0040. */
   const [dropCandidateGroup, setDropCandidateGroup] = useState<DropGroup | null>(null)
   /** 픽업 목록 그룹(같은 배지를 여러 명이 드랍)의 개체 선택 시트 대상 — 20260908_0223. */
   const [pickupCandidateGroup, setPickupCandidateGroup] = useState<PickupGroup | null>(null)
+
+  // 잠긴 개체를 드랍 확인 단계로 가져오면 사라질 양을 읽는다. 열린 개체와 demoMode(잠긴 개체가 없다)는 읽지 않는다.
+  // setState는 응답 뒤 콜백에서만 부른다(react-hooks/set-state-in-effect). 개체를 바꾸거나 닫으면 늦게 온 응답은 버린다.
+  const pendingLockedId = pendingDropItem?.locked === true ? pendingDropItem.id : null
+  useEffect(() => {
+    if (!pendingLockedId || demoMode) return
+    let cancelled = false
+    const id = pendingLockedId
+    fetch(`/api/inventory/items/${id}/drop-loss`)
+      .then(async (res) => {
+        const json = (await res.json()) as Partial<DropLossPayload>
+        if (!res.ok || typeof json.lostFill !== 'number' || !Number.isFinite(json.lostFill)) throw new Error('drop-loss')
+        return json.lostFill
+      })
+      .then((lostFill) => {
+        if (!cancelled) setLossResult({ id, status: 'ready', lostFill })
+      })
+      .catch(() => {
+        if (!cancelled) setLossResult({ id, status: 'error', lostFill: 0 })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [pendingLockedId, demoMode, lossRetry])
+
+  /** 카드에 보일 사라질 양 상태 — 잠긴 개체가 아니면 null이다. 읽기 전·읽는 중은 `loading`이다. */
+  const dropLoss: DropLossView | null =
+    pendingDropItem?.locked !== true
+      ? null
+      : demoMode
+        ? { status: 'ready', lostFill: 0 }
+        : lossResult && lossResult.id === pendingDropItem.id
+          ? lossResult
+          : { status: 'loading', lostFill: 0 }
+
+  function retryDropLoss() {
+    setLossResult(null)
+    setLossRetry((n) => n + 1)
+  }
 
   // 카드가 바뀌면 이전 카드에서 진행 중이던 드랍 플로우를 초기화한다.
   // react.dev의 "prop 변경 시 렌더 중 state 조정" 패턴 — effect 없이 렌더 중
@@ -419,6 +515,7 @@ export default function PoiCarouselModal({
    */
   function handleSelectDropGroup(group: DropGroup) {
     if (group.items.length === 1) {
+      setLossResult(null)
       setPendingDropItem(toGridItem(group.items[0]))
       return
     }
@@ -427,12 +524,15 @@ export default function PoiCarouselModal({
 
   /** 개체 선택 시트에서 하나를 골랐을 때 — 기존 드랍 확인 단계로 넘기고 시트를 닫는다. */
   function handleSelectDropCandidate(item: InventoryItem) {
+    setLossResult(null)
     setPendingDropItem(toGridItem(item))
     setDropCandidateGroup(null)
   }
 
   async function executeDrop() {
     if (!activePoi || !pendingDropItem) return
+    // 잠긴 개체는 사라질 양을 읽어 보여 주기 전에는 드랍하지 않는다. 읽지 못했으면 막는다(티켓 20261018_1817).
+    if (dropLoss && dropLoss.status !== 'ready') return
     setDropping(true)
     // 20260927_2128: drop 연출은 실제 /api/drops POST·GA·재조회·onDropOrPickupSuccess를
     // 건너뛰고 onDropOverride만 호출한다. 실패(false)면 확인 단계를 그대로 유지한다(콜백이
@@ -476,7 +576,8 @@ export default function PoiCarouselModal({
         const err = await res.json()
         // 잠긴 개체는 «지금은 드랍할 수 없다»는 안내다 — 사용자가 잘못한 것이 아니라 error 톤으로 내지 않는다(티켓 20261018_0056).
         // 그 밖의 실패는 기존대로 error다.
-        toast(err.error ?? d.drops.dropFailed, isLockedItemBody(res.status, err) ? 'info' : 'error')
+        // 이용 정지도 «지금은 안 되는 까닭»이라 info 토스트만 낸다(티켓 20261018_1817).
+        toast(err.error ?? d.drops.dropFailed, isLockedItemBody(res.status, err) || isSuspendedBody(res.status, err) ? 'info' : 'error')
         return
       }
       toast(d.drops.dropSuccess, 'success')
@@ -505,6 +606,21 @@ export default function PoiCarouselModal({
   // ── 픽업 플로우 ──
   const [selectedDrop, setSelectedDrop] = useState<PickupDrop | null>(null)
   const [pickingUp, setPickingUp] = useState(false)
+  /**
+   * 픽업이 막힌 까닭의 인라인 안내(티켓 20261018_1817). 가득 참은 안내만 보이고 [픽업]은 다시 누를 수 있다(칸을 비운 뒤 다시 시도).
+   * 장소 차단은 안내와 함께 [픽업]을 비활성으로 둔다. 시트를 열거나 닫을 때 비운다.
+   */
+  const [pickupNotice, setPickupNotice] = useState<{ kind: 'inventory_full' | 'poi_blocked'; message: string } | null>(null)
+
+  function openPickupSheet(drop: PickupDrop) {
+    setPickupNotice(null)
+    setSelectedDrop(drop)
+  }
+
+  function closePickupSheet() {
+    setPickupNotice(null)
+    setSelectedDrop(null)
+  }
 
   /**
    * 픽업 목록에서 배지 종류(그룹) 행을 골랐을 때 — 20260908_0223. 개체가 1개면 지금까지와
@@ -514,7 +630,7 @@ export default function PoiCarouselModal({
    */
   function handleSelectPickupGroup(group: PickupGroup) {
     if (group.items.length === 1) {
-      setSelectedDrop(group.items[0])
+      openPickupSheet(group.items[0])
       return
     }
     setPickupCandidateGroup(group)
@@ -522,7 +638,7 @@ export default function PoiCarouselModal({
 
   /** 픽업 개체 선택 시트에서 하나를 골랐을 때 — 기존 픽업 상세 바텀시트로 넘기고 시트를 닫는다. */
   function handleSelectPickupCandidate(drop: PickupDrop) {
-    setSelectedDrop(drop)
+    openPickupSheet(drop)
     setPickupCandidateGroup(null)
   }
 
@@ -551,14 +667,36 @@ export default function PoiCarouselModal({
         // ADR 0001(티켓 20260915_2241): 서버(api/drops/[dropId]/pickup)가 이미 완성된
         // 사용자 문구를 돌려준다 — 여기서 코드를 문구로 재매핑하지 않고 그대로 신뢰해 노출한다.
         const err = await res.json()
-        toast(err.error ?? d.drops.pickupFailed, 'error')
-        return
+        // 사용자가 잘못한 것이 아니라 «지금은 안 되는 까닭»인 막힘은 error가 아니라 안내로 낸다(티켓 20261018_1817).
+        // 가득 참·장소 차단은 시트 안 인라인 안내, 이용 정지·이미 누가 픽업함은 info 토스트, 사라진 드랍(꺼진 장소 포함)은 info 토스트 뒤 카드를 닫는다.
+        switch (pickupBlockKind(res.status, err)) {
+          case 'inventory_full':
+            setPickupNotice({ kind: 'inventory_full', message: err.error ?? d.drops.pickupInventoryFull })
+            return
+          case 'poi_blocked':
+            setPickupNotice({ kind: 'poi_blocked', message: err.error ?? d.drops.pickupPoiBlocked })
+            return
+          case 'suspended':
+            toast(err.error ?? d.suspension.pickupBlocked, 'info')
+            return
+          case 'already_picked_up':
+            toast(err.error ?? d.drops.pickupAlreadyDone, 'info')
+            return
+          case 'drop_gone':
+            toast(err.error ?? d.drops.pickupDropNotFound, 'info')
+            closePickupSheet()
+            onClose()
+            return
+          default:
+            toast(err.error ?? d.drops.pickupFailed, 'error')
+            return
+        }
       }
       toast(d.drops.pickupSuccess, 'success')
       trackEvent('item_pickup', { poi_id: activePoi.id, drop_id: selectedDrop.id, badge_id: selectedDrop.badge_id })
       const pickedId = selectedDrop.id
       const poiId = activePoi.id
-      setSelectedDrop(null)
+      closePickupSheet()
       setDropsCache((prev) => ({
         ...prev,
         [poiId]: (prev[poiId] ?? []).filter((dr) => dr.id !== pickedId),
@@ -583,25 +721,32 @@ export default function PoiCarouselModal({
       existing.items.push(it)
       continue
     }
+    const locked = it.locked === true
     const group: DropGroup = {
       badgeId: it.badge_id,
-      badgeName: it.badge_name,
+      badgeName: locked ? d.lockedItem.card.name : it.badge_name,
       badgeRarity: it.badge_rarity,
-      badgeImageUrl: it.badge_image_url,
+      badgeImageUrl: locked ? null : it.badge_image_url,
+      locked,
       items: [it],
     }
     dropGroupByBadgeId.set(it.badge_id, group)
     dropGroups.push(group)
   }
 
-  const dropGridItems: InventoryGridItem[] = dropGroups.map((group) => ({
+  // 잠긴 묶음은 열린 묶음 뒤에 둔다(티켓 20261018_1817). 각 쪽의 서로 간 순서는 그대로다.
+  const orderedDropGroups = [...dropGroups.filter((g) => !g.locked), ...dropGroups.filter((g) => g.locked)]
+
+  const dropGridItems: DropGridItem[] = orderedDropGroups.map((group) => ({
     id: group.badgeId,
     badgeName: group.badgeName,
     badgeImageUrl: group.badgeImageUrl,
     badgeRarity: group.badgeRarity,
-    expiresAt: earliestExpiry(group.items),
+    // 잠긴 묶음에는 만료 칩이 없다(운영 로직 7.3절) — 만료일을 행으로 넘기지 않는다.
+    expiresAt: group.locked ? null : earliestExpiry(group.items),
     count: group.items.length,
     countAriaText: t(d.drops.dropOwnedCountAria, { count: String(group.items.length) }),
+    locked: group.locked,
   }))
 
   function handleSelectDropGridItem(item: InventoryGridItem) {
@@ -660,6 +805,8 @@ export default function PoiCarouselModal({
                 showInventory={isActive && showInventory}
                 inventoryLoading={inventoryLoading}
                 pendingDropItem={isActive ? pendingDropItem : null}
+                dropLoss={isActive ? dropLoss : null}
+                onRetryDropLoss={isActive ? retryDropLoss : undefined}
                 dropping={dropping}
                 dropGridItems={dropGridItems}
                 onOpenInventory={isActive ? openInventory : undefined}
@@ -682,7 +829,9 @@ export default function PoiCarouselModal({
           poiName={activePoi.name}
           pickingUp={pickingUp}
           onPickup={executePickup}
-          onCancel={() => setSelectedDrop(null)}
+          onCancel={closePickupSheet}
+          notice={pickupNotice?.message ?? null}
+          pickupDisabled={pickupNotice?.kind === 'poi_blocked'}
         />
       )}
 
@@ -702,10 +851,12 @@ export default function PoiCarouselModal({
         }
         bodyText={
           dropCandidateGroup
-            ? t(d.drops.selectDropItemBody, { count: String(dropCandidateGroup.items.length) })
+            ? t(dropCandidateGroup.locked ? d.drops.selectDropLockedBody : d.drops.selectDropItemBody, {
+                count: String(dropCandidateGroup.items.length),
+              })
             : ''
         }
-        candidates={dropCandidateGroup?.items ?? []}
+        candidates={(dropCandidateGroup?.items ?? []).map(toCandidate)}
         onSelect={(candidate) => {
           const item = dropCandidateGroup?.items.find((it) => it.id === candidate.id)
           if (item) handleSelectDropCandidate(item)
@@ -727,18 +878,12 @@ export default function PoiCarouselModal({
         }
         bodyText={
           pickupCandidateGroup
-            ? t(d.drops.selectPickupItemBody, { count: String(pickupCandidateGroup.items.length) })
+            ? t(pickupCandidateGroup.locked ? d.drops.selectPickupLockedBody : d.drops.selectPickupItemBody, {
+                count: String(pickupCandidateGroup.items.length),
+              })
             : ''
         }
-        candidates={(pickupCandidateGroup?.items ?? []).map((drop) => ({
-          id: drop.id,
-          // 마이그레이션 이전 완료된 과거 드랍 등 원본 개체 연결이 소급되지 않은 극히 드문
-          // 레거시 데이터만 null일 수 있다(`drop.serial`도 이미 null). ItemCandidate 셰이프는
-          // number를 요구하므로 0으로 안전하게 폴백한다.
-          serial_number: drop.serial_number ?? 0,
-          serial_prefix: drop.serial_prefix,
-          expires_at: drop.expires_at,
-        }))}
+        candidates={(pickupCandidateGroup?.items ?? []).map(toCandidate)}
         onSelect={(candidate) => {
           const drop = pickupCandidateGroup?.items.find((d) => d.id === candidate.id)
           if (drop) handleSelectPickupCandidate(drop)
@@ -757,9 +902,13 @@ interface PoiCardProps {
   loading: boolean
   showInventory: boolean
   inventoryLoading: boolean
-  pendingDropItem: InventoryGridItem | null
+  pendingDropItem: PendingDropItem | null
+  /** 잠긴 개체 드랍 확인 단계의 사라질 양 상태. 잠긴 개체가 아니면 null이다 */
+  dropLoss: DropLossView | null
+  /** 사라질 양을 읽지 못했을 때 [다시 확인] */
+  onRetryDropLoss?: () => void
   dropping: boolean
-  dropGridItems: InventoryGridItem[]
+  dropGridItems: DropGridItem[]
   onOpenInventory?: () => void
   onSelectDropItem?: (item: InventoryGridItem) => void
   onCancelPending?: () => void
@@ -776,7 +925,8 @@ interface PoiCardProps {
   onClose: () => void
 }
 
-function PoiCard({
+/** 캐러셀 카드 한 장 — 잠긴 개체 드랍 확인 단계의 마크업을 서버 렌더로 고정하는 테스트가 직접 가져온다(티켓 20261018_1817). */
+export function PoiCard({
   poi,
   isActive,
   drops,
@@ -784,6 +934,8 @@ function PoiCard({
   showInventory,
   inventoryLoading,
   pendingDropItem,
+  dropLoss,
+  onRetryDropLoss,
   dropping,
   dropGridItems,
   onOpenInventory,
@@ -836,19 +988,54 @@ function PoiCard({
         /* ===== 드랍: 인벤토리 그리드(활성 카드에서만 열림) ===== */
         pendingDropItem ? (
           <div className="flex flex-col items-center gap-4 py-4">
-            <div className="w-20 h-20 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center">
-              <SafeImage
-                src={pendingDropItem.badgeImageUrl}
-                alt={pendingDropItem.badgeName}
-                width={80}
-                height={80}
-                className="w-full h-full object-contain p-1"
-                fallback={<MedalIcon className="w-8 h-8 text-muted" />}
-              />
-            </div>
+            {pendingDropItem.locked ? (
+              // 잠긴 개체는 이름·그림 없이 잠금 타일과 등급 칩만 보인다(운영 로직 7.3절, 티켓 20261018_1817).
+              <div className="flex flex-col items-center gap-2">
+                <LockedTile size={80} />
+                <RarityBadge
+                  rarity={
+                    KNOWN_RARITIES.includes(pendingDropItem.badgeRarity as BadgeRarity)
+                      ? (pendingDropItem.badgeRarity as BadgeRarity)
+                      : 'common'
+                  }
+                />
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center">
+                <SafeImage
+                  src={pendingDropItem.badgeImageUrl}
+                  alt={pendingDropItem.badgeName}
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-contain p-1"
+                  fallback={<MedalIcon className="w-8 h-8 text-muted" />}
+                />
+              </div>
+            )}
             <p className="text-base text-center whitespace-pre-line">
               {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
             </p>
+            {/* 사라질 양 — 잠긴 개체만. 읽는 중에는 한 줄 Skeleton, 읽지 못하면 안내와 [다시 확인], 채운 양이 있을 때만 «사라져요» 블록. */}
+            {dropLoss?.status === 'loading' && (
+              <div role="status" aria-label={d.drops.dropLossChecking} className="w-full">
+                <Skeleton height={24} borderRadius="var(--radius-full)" />
+              </div>
+            )}
+            {dropLoss?.status === 'error' && (
+              <InlineNotice
+                className="w-full"
+                action={
+                  <Button variant="secondary" surface="main" fullWidth onClick={onRetryDropLoss}>
+                    {d.drops.dropLossRetry}
+                  </Button>
+                }
+              >
+                {d.drops.dropLossFailed}
+              </InlineNotice>
+            )}
+            {dropLoss?.status === 'ready' && dropLoss.lostFill > 0 && (
+              <InlineNotice className="w-full">{dropLossText(dropLoss.lostFill)}</InlineNotice>
+            )}
             <div className="flex gap-2 w-full">
               <Button fullWidth variant="secondary" surface="main" onClick={onCancelPending} disabled={dropping}>
                 {d.drops.cancel}
@@ -858,12 +1045,12 @@ function PoiCard({
                   실제 버튼 반경과 일치한다. */}
               {questPulseStep === 'drop' ? (
                 <div className="w-full rounded-full jam-quest-pulse">
-                  <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
+                  <Button fullWidth surface="main" loading={dropping} disabled={dropLoss != null && dropLoss.status !== 'ready'} onClick={onConfirmDrop}>
                     {d.drops.dropButton}
                   </Button>
                 </div>
               ) : (
-                <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
+                <Button fullWidth surface="main" loading={dropping} disabled={dropLoss != null && dropLoss.status !== 'ready'} onClick={onConfirmDrop}>
                   {d.drops.dropButton}
                 </Button>
               )}
@@ -894,6 +1081,7 @@ function PoiCard({
                 count={item.count}
                 countAriaText={item.countAriaText}
                 expiresAt={item.expiresAt}
+                locked={item.locked}
                 onClick={() => onSelectDropItem?.(item)}
                 pulse={questPulseStep === 'drop'}
               />
@@ -919,7 +1107,8 @@ function PoiCard({
                   rarity={group.badgeRarity}
                   count={group.items.length}
                   countAriaText={t(d.drops.pickupAvailableCountAria, { count: String(group.items.length) })}
-                  expiresAt={earliestExpiry(group.items)}
+                  expiresAt={group.locked ? null : earliestExpiry(group.items)}
+                  locked={group.locked}
                   onClick={() => onSelectPickupGroup?.(group)}
                   disabled={!isActive}
                   pulse={questPulseStep === 'pickup'}
@@ -977,6 +1166,11 @@ interface ItemRowProps {
    */
   expiresAt?: string | null
   /**
+   * 잠긴 개체 행(티켓 20261018_1817, 운영 로직 7.3절) — 썸네일은 `LockedTile`(44), 이름 줄은 «잠긴 아이템 배지», 둘째 줄은 등급 칩뿐이다.
+   * 이름·그림·일련번호·만료 칩을 그리지 않는다(`name`·`imageUrl`·`expiresAt`을 읽지 않는다). 칩 «잠김»은 이름에 이미 있어 더하지 않는다.
+   */
+  locked?: boolean
+  /**
    * 온보딩 퀘스트 3·6단계 「지금 눌러야 할 곳」 펄스(티켓 20260928_1754) — true면 기존
    * `rounded-2xl` 버튼 className에 `.jam-quest-pulse`를 병합한다(별도
    * 래퍼 없음, 반경 불일치 없음). 평소 픽업·드랍 목록에서는 전달되지 않는다.
@@ -992,10 +1186,10 @@ interface ItemRowProps {
  * badge_id 그룹핑돼 count·expiresAt을 함께 받는다 — 두 목록의 행 시각·규칙(개체 1개=서클
  * 없음, 2개 이상=서클)이 완전히 동일하다.
  */
-function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaText, expiresAt, pulse = false }: ItemRowProps) {
+function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaText, expiresAt, locked = false, pulse = false }: ItemRowProps) {
   const rarityValue = KNOWN_RARITIES.includes(rarity as BadgeRarity) ? (rarity as BadgeRarity) : 'common'
   const showCount = typeof count === 'number' && count > 1
-  const expiring = isRowExpiringSoon(expiresAt)
+  const expiring = !locked && isRowExpiringSoon(expiresAt)
 
   return (
     <button
@@ -1007,16 +1201,22 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
           overflow-hidden 밖(아이콘 wrapper)에 둔다: 아이콘 자체에 relative를 걸면
           overflow-hidden이 모서리에 걸치는 서클을 잘라낸다. */}
       <div className="relative flex-shrink-0">
-        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
-          <SafeImage
-            src={imageUrl}
-            alt={name}
-            width={44}
-            height={44}
-            className="w-full h-full object-contain p-0.5"
-            fallback={<MedalIcon className="w-5 h-5 text-muted" />}
-          />
-        </div>
+        {locked ? (
+          <div className="w-11 h-11">
+            <LockedTile size={44} />
+          </div>
+        ) : (
+          <div className="w-11 h-11 rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
+            <SafeImage
+              src={imageUrl}
+              alt={name}
+              width={44}
+              height={44}
+              className="w-full h-full object-contain p-0.5"
+              fallback={<MedalIcon className="w-5 h-5 text-muted" />}
+            />
+          </div>
+        )}
         {showCount && (
           // BadgeGridCard의 ×N 카운터 필과 같은 색 토큰(bg-surface + border)이지만
           // 모양은 완전한 원(rounded-full)이고 접두어 없이 숫자만, 위치도 반대 코너
@@ -1037,7 +1237,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
         {showCount && countAriaText && <span className="sr-only">{countAriaText}</span>}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-base truncate">{name}</p>
+        <p className="text-base truncate">{locked ? d.lockedItem.card.name : name}</p>
         {expiring && expiresAt ? (
           <div className="flex items-center gap-2 mt-1">
             <RarityBadge rarity={rarityValue} />
