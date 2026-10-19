@@ -84,6 +84,18 @@ const stub = vi.hoisted(() => ({
   poiCategoryRows: [] as { linked_badge_id: string; category: string }[],
   /** `checkin_badge_count`의 이름→id 해석에 쓰이는 `type='checkin'` 배지 카탈로그 */
   checkinBadgesByName: [] as { id: string; name: string }[],
+
+  // ── 특성 시험용 관측·오류 주입 (티켓 20261019_1445 2회) ────────────────────
+  /** `user_activity_badges`에 insert된 전체 페이로드 — `triggered_by` 문자열을 고정하려고 모은다 */
+  insertedPayloads: [] as { user_id: string; badge_id: string; triggered_by: string }[],
+  /** 읽은 표 — `badges`는 용도별로 `badges:candidates`·`badges:category`·`badges:names`로 나눠 적는다 */
+  queryLog: [] as string[],
+  /** true면 획득 배지 카테고리 조회(`badges` id,category)가 DB 오류를 돌려준다 */
+  badgeCategoryQueryFails: false,
+  /** true면 연결 지점 카테고리 조회(`poi`)가 DB 오류를 돌려준다 */
+  poiCategoryQueryFails: false,
+  /** true면 이름→id 해석 조회(`badges` type=checkin)가 DB 오류를 돌려준다 */
+  checkinNamesQueryFails: false,
 }))
 
 const getUserBanLevelMock = vi.hoisted(() =>
@@ -105,6 +117,11 @@ function resetStub() {
   stub.badgeCategoryRows = []
   stub.poiCategoryRows = []
   stub.checkinBadgesByName = []
+  stub.insertedPayloads = []
+  stub.queryLog = []
+  stub.badgeCategoryQueryFails = false
+  stub.poiCategoryQueryFails = false
+  stub.checkinNamesQueryFails = false
   getUserBanLevelMock.mockReset()
   getUserBanLevelMock.mockResolvedValue('none')
 }
@@ -146,12 +163,14 @@ function mockSupabase() {
         return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key' } })
       }
       stub.insertedBadgeIds.push(payload.badge_id)
+      stub.insertedPayloads.push(payload)
       stub.ownedBadgeIds.push(payload.badge_id)
       return Promise.resolve({ data: null, error: null })
     }
     builder.then = (resolve: (v: unknown) => void) => {
       if (table === 'badges') {
         if (state.select === '*') {
+          stub.queryLog.push('badges:candidates')
           // evaluateUsageBadges/evaluateCheckinUsageBadges의 후보 조회
           if (stub.badgesQueryFails) {
             return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
@@ -159,12 +178,20 @@ function mockSupabase() {
           return Promise.resolve({ data: stub.badges, error: null }).then(resolve)
         }
         if (state.eq.type === 'checkin') {
+          stub.queryLog.push('badges:names')
+          if (stub.checkinNamesQueryFails) {
+            return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
+          }
           // checkin_badge_count 이름→id 해석 — type='checkin' + name in (...)
           const names = (state.in.name ?? []) as string[]
           const rows = stub.checkinBadgesByName.filter((r) => names.includes(r.name))
           return Promise.resolve({ data: rows, error: null }).then(resolve)
         }
         // checkin_category_count의 획득 배지 카테고리 조회 — id in (...)
+        stub.queryLog.push('badges:category')
+        if (stub.badgeCategoryQueryFails) {
+          return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
+        }
         const ids = (state.in.id ?? []) as string[]
         const rows = stub.badgeCategoryRows.filter((r) => ids.includes(r.id))
         return Promise.resolve({ data: rows, error: null }).then(resolve)
@@ -175,6 +202,7 @@ function mockSupabase() {
         )
       }
       if (table === 'user_checkin_badge_earns') {
+        stub.queryLog.push('user_checkin_badge_earns')
         if (stub.checkinEarnsQueryFails) {
           return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
         }
@@ -184,6 +212,10 @@ function mockSupabase() {
         }).then(resolve)
       }
       if (table === 'poi') {
+        stub.queryLog.push('poi')
+        if (stub.poiCategoryQueryFails) {
+          return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
+        }
         const ids = (state.in.linked_badge_id ?? []) as string[]
         const rows = stub.poiCategoryRows.filter((r) => ids.includes(r.linked_badge_id))
         return Promise.resolve({ data: rows, error: null }).then(resolve)
@@ -697,5 +729,303 @@ describe('evaluateCheckinUsageBadges — 조회 실패·후보 없음은 예외�
     const earned = await evaluateCheckinUsageBadges('user-1')
     expect(earned).toEqual([])
     expect(stub.insertedBadgeIds).toEqual([])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// ⑥ 특성 시험 — 계산을 순수 함수로 분리하기 전의 현재 동작을 고정한다 (티켓 20261019_1445 2회)
+//
+// `evaluateCheckinUsageBadges`의 장소 종류·체크인 배지 목록 계산이 `checkinHoldings.ts`의 순수 함수로 옮겨 가도
+// 배지 발급 동작은 같아야 한다. 이 블록은 분리 전에 먼저 쓰고, 분리 뒤에도 고치지 않은 채 통과해야 한다.
+// 위 ⑤ 블록이 정상 경로를 고정하고, 이 블록은 «경계·중복·오류·값 모양·조회 범위»를 고정한다.
+// ═══════════════════════════════════════════════════════════════════════
+
+const CATEGORY_CONDITION = (category: string, count: number): BadgeCondition => ({
+  checkin_category_count: { category, count },
+})
+const LIST_CONDITION = (names: string[], count: number): BadgeCondition => ({
+  checkin_badge_count: { checkin_badge_names: names, count },
+})
+
+describe('evaluateCheckinUsageBadges 특성 시험 — checkin_category_count 계산', () => {
+  it('같은 배지의 방문 기록이 여러 줄이어도 1개로 센다 (distinct)', async () => {
+    stub.badges = [makeBadge({ id: 'cat-2', condition_json: CATEGORY_CONDITION('train_subway', 2) })]
+    stub.checkinEarnedBadgeIds = ['station-a', 'station-a', 'station-a']
+    stub.badgeCategoryRows = [{ id: 'station-a', category: 'train_subway' }]
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+    expect(stub.insertedBadgeIds).toEqual([])
+  })
+
+  it('현재값이 조건값과 같으면 발급한다 (≥, 경계)', async () => {
+    stub.badges = [makeBadge({ id: 'cat-2', condition_json: CATEGORY_CONDITION('train_subway', 2) })]
+    stub.checkinEarnedBadgeIds = ['station-a', 'station-b']
+    stub.badgeCategoryRows = [
+      { id: 'station-a', category: 'train_subway' },
+      { id: 'station-b', category: 'train_subway' },
+    ]
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['cat-2'])
+  })
+
+  it('badges.category가 있으면 연결 지점의 카테고리는 쓰지 않는다 (badges.category 우선)', async () => {
+    stub.badges = [makeBadge({ id: 'cat-poi', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = ['x']
+    stub.badgeCategoryRows = [{ id: 'x', category: 'michelin' }]
+    stub.poiCategoryRows = [{ linked_badge_id: 'x', category: 'train_subway' }]
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+  })
+
+  it('연결 지점이 여럿이면 먼저 읽은 줄의 카테고리만 쓴다', async () => {
+    stub.badges = [
+      makeBadge({ id: 'cat-first', condition_json: CATEGORY_CONDITION('michelin', 1) }),
+      makeBadge({ id: 'cat-second', name: 'Second', condition_json: CATEGORY_CONDITION('train_subway', 1) }),
+    ]
+    stub.checkinEarnedBadgeIds = ['x']
+    stub.badgeCategoryRows = [{ id: 'x', category: null }]
+    stub.poiCategoryRows = [
+      { linked_badge_id: 'x', category: 'michelin' },
+      { linked_badge_id: 'x', category: 'train_subway' },
+    ]
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['cat-first'])
+  })
+
+  it('카테고리가 badges에도 연결 지점에도 없는 배지는 어느 카테고리에도 세지 않는다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-1', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = ['x']
+    stub.badgeCategoryRows = [{ id: 'x', category: null }]
+    stub.poiCategoryRows = []
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+  })
+
+  it('방문 기록에는 있어도 badges 표에 행이 없는 배지는 세지 않는다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-2', condition_json: CATEGORY_CONDITION('train_subway', 2) })]
+    stub.checkinEarnedBadgeIds = ['ghost', 'station-a']
+    stub.badgeCategoryRows = [{ id: 'station-a', category: 'train_subway' }]
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+  })
+
+  it('다른 카테고리의 배지는 세지 않는다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-2', condition_json: CATEGORY_CONDITION('train_subway', 2) })]
+    stub.checkinEarnedBadgeIds = ['station-a', 'restaurant-a']
+    stub.badgeCategoryRows = [
+      { id: 'station-a', category: 'train_subway' },
+      { id: 'restaurant-a', category: 'michelin' },
+    ]
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+  })
+
+  it('서로 다른 카테고리를 요구하는 후보는 각자의 카테고리 개수로 판정한다', async () => {
+    stub.badges = [
+      makeBadge({ id: 'cat-subway', name: 'A', condition_json: CATEGORY_CONDITION('train_subway', 2) }),
+      makeBadge({ id: 'cat-michelin', name: 'B', condition_json: CATEGORY_CONDITION('michelin', 2) }),
+    ]
+    stub.checkinEarnedBadgeIds = ['s1', 's2', 'm1']
+    stub.badgeCategoryRows = [
+      { id: 's1', category: 'train_subway' },
+      { id: 's2', category: 'train_subway' },
+      { id: 'm1', category: 'michelin' },
+    ]
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['cat-subway'])
+  })
+
+  it('조건값이 0이면 방문 기록이 없어도 발급된다 (현재 동작 — 0 ≥ 0)', async () => {
+    stub.badges = [makeBadge({ id: 'cat-0', condition_json: CATEGORY_CONDITION('train_subway', 0) })]
+    stub.checkinEarnedBadgeIds = []
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['cat-0'])
+  })
+
+  it('방문 기록이 하나도 없으면 카테고리·연결 지점을 조회하지 않는다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-1', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = []
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+    expect(stub.queryLog).toContain('user_checkin_badge_earns')
+    expect(stub.queryLog).not.toContain('badges:category')
+    expect(stub.queryLog).not.toContain('poi')
+  })
+
+  it('획득 배지 카테고리 조회가 오류면 던지지 않고 카테고리를 0개로 보아 발급하지 않는다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-1', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = ['station-a']
+    stub.badgeCategoryRows = [{ id: 'station-a', category: 'train_subway' }]
+    stub.poiCategoryRows = [{ linked_badge_id: 'station-a', category: 'train_subway' }]
+    stub.badgeCategoryQueryFails = true
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+    expect(stub.insertedBadgeIds).toEqual([])
+  })
+
+  it('연결 지점 조회만 오류면 badges.category만으로 센다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-1', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = ['station-a', 'station-b']
+    stub.badgeCategoryRows = [
+      { id: 'station-a', category: 'train_subway' },
+      { id: 'station-b', category: null },
+    ]
+    stub.poiCategoryRows = [{ linked_badge_id: 'station-b', category: 'train_subway' }]
+    stub.poiCategoryQueryFails = true
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['cat-1'])
+  })
+
+  it('triggered_by는 «checkin_category_count:<카테고리>»다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-1', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = ['station-a']
+    stub.badgeCategoryRows = [{ id: 'station-a', category: 'train_subway' }]
+
+    await evaluateCheckinUsageBadges('user-1')
+    expect(stub.insertedPayloads).toEqual([
+      { user_id: 'user-1', badge_id: 'cat-1', triggered_by: 'checkin_category_count:train_subway' },
+    ])
+  })
+})
+
+describe('evaluateCheckinUsageBadges 특성 시험 — checkin_badge_count 계산', () => {
+  it('같은 이름의 체크인 배지가 둘이면 어느 쪽을 방문해도 그 이름 1개로 센다', async () => {
+    stub.badges = [makeBadge({ id: 'list-1', condition_json: LIST_CONDITION(['성수역'], 1) })]
+    stub.checkinBadgesByName = [
+      { id: 'seongsu-a', name: '성수역' },
+      { id: 'seongsu-b', name: '성수역' },
+    ]
+    stub.checkinEarnedBadgeIds = ['seongsu-b']
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['list-1'])
+  })
+
+  it('같은 이름의 배지를 둘 다 방문해도 그 이름은 1개다', async () => {
+    stub.badges = [makeBadge({ id: 'list-2', condition_json: LIST_CONDITION(['성수역', '왕십리역'], 2) })]
+    stub.checkinBadgesByName = [
+      { id: 'seongsu-a', name: '성수역' },
+      { id: 'seongsu-b', name: '성수역' },
+      { id: 'wangsimni', name: '왕십리역' },
+    ]
+    stub.checkinEarnedBadgeIds = ['seongsu-a', 'seongsu-b']
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+  })
+
+  it('목록에 같은 이름이 두 번 들어 있으면 두 번 센다 (현재 동작)', async () => {
+    stub.badges = [makeBadge({ id: 'list-dup', condition_json: LIST_CONDITION(['성수역', '성수역'], 2) })]
+    stub.checkinBadgesByName = [{ id: 'seongsu', name: '성수역' }]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['list-dup'])
+  })
+
+  it('현재값이 조건값과 같으면 발급한다 (≥, 경계)', async () => {
+    stub.badges = [makeBadge({ id: 'list-2', condition_json: LIST_CONDITION(['성수역', '왕십리역', '건대입구역'], 2) })]
+    stub.checkinBadgesByName = [
+      { id: 'seongsu', name: '성수역' },
+      { id: 'wangsimni', name: '왕십리역' },
+      { id: 'konkuk', name: '건대입구역' },
+    ]
+    stub.checkinEarnedBadgeIds = ['wangsimni', 'konkuk']
+
+    expect((await evaluateCheckinUsageBadges('user-1')).map((e) => e.id)).toEqual(['list-2'])
+  })
+
+  it('이름 조회가 오류면 던지지 않고 보유 이름을 0개로 보아 발급하지 않는다', async () => {
+    stub.badges = [makeBadge({ id: 'list-1', condition_json: LIST_CONDITION(['성수역'], 1) })]
+    stub.checkinBadgesByName = [{ id: 'seongsu', name: '성수역' }]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+    stub.checkinNamesQueryFails = true
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+    expect(stub.insertedBadgeIds).toEqual([])
+  })
+
+  it('목록 후보만 있으면 이름만 조회하고, 카테고리 후보만 있으면 카테고리·연결 지점만 조회한다', async () => {
+    stub.badges = [makeBadge({ id: 'list-1', condition_json: LIST_CONDITION(['성수역'], 1) })]
+    stub.checkinBadgesByName = [{ id: 'seongsu', name: '성수역' }]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+    await evaluateCheckinUsageBadges('user-1')
+    expect(stub.queryLog).toContain('badges:names')
+    expect(stub.queryLog).not.toContain('badges:category')
+    expect(stub.queryLog).not.toContain('poi')
+
+    stub.queryLog = []
+    stub.badges = [makeBadge({ id: 'cat-1', name: 'Cat', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.badgeCategoryRows = [{ id: 'seongsu', category: 'train_subway' }]
+    await evaluateCheckinUsageBadges('user-1')
+    expect(stub.queryLog).toContain('badges:category')
+    expect(stub.queryLog).toContain('poi')
+    expect(stub.queryLog).not.toContain('badges:names')
+  })
+
+  it('triggered_by는 «checkin_badge_count»다 (접두어 옵션이 있으면 «접두어:checkin_badge_count»)', async () => {
+    stub.badges = [makeBadge({ id: 'list-1', name: 'A', condition_json: LIST_CONDITION(['성수역'], 1) })]
+    stub.checkinBadgesByName = [{ id: 'seongsu', name: '성수역' }]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+
+    await evaluateCheckinUsageBadges('user-1')
+    expect(stub.insertedPayloads.map((p) => p.triggered_by)).toEqual(['checkin_badge_count'])
+
+    stub.insertedPayloads = []
+    stub.insertedBadgeIds = []
+    stub.ownedBadgeIds = []
+    await evaluateCheckinUsageBadges('user-1', undefined, { triggeredByPrefix: 'reeval' })
+    expect(stub.insertedPayloads.map((p) => p.triggered_by)).toEqual(['reeval:checkin_badge_count'])
+  })
+})
+
+describe('evaluateCheckinUsageBadges 특성 시험 — 두 지표 함께·값 모양·dryRun', () => {
+  it('한 호출에 카테고리 후보와 목록 후보가 함께 있으면 둘 다 판정해 발급한다', async () => {
+    stub.badges = [
+      makeBadge({ id: 'cat-1', name: 'Cat', condition_json: CATEGORY_CONDITION('train_subway', 1) }),
+      makeBadge({ id: 'list-1', name: 'List', condition_json: LIST_CONDITION(['성수역'], 1) }),
+    ]
+    stub.checkinBadgesByName = [{ id: 'seongsu', name: '성수역' }]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+    stub.badgeCategoryRows = [{ id: 'seongsu', category: 'train_subway' }]
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(new Set(earned.map((e) => e.id))).toEqual(new Set(['cat-1', 'list-1']))
+    expect(stub.insertedPayloads.map((p) => p.triggered_by).sort()).toEqual([
+      'checkin_badge_count',
+      'checkin_category_count:train_subway',
+    ])
+  })
+
+  it('값 모양이 틀린 조건은 후보에서 빠지고 방문 기록도 읽지 않는다', async () => {
+    const malformed = (value: unknown): BadgeCondition => value as BadgeCondition
+    stub.badges = [
+      makeBadge({ id: 'bad-1', name: 'A', condition_json: malformed({ checkin_category_count: { category: 'train_subway' } }) }),
+      makeBadge({ id: 'bad-2', name: 'B', condition_json: malformed({ checkin_category_count: { count: 1 } }) }),
+      makeBadge({ id: 'bad-3', name: 'C', condition_json: malformed({ checkin_badge_count: { checkin_badge_names: '성수역', count: 1 } }) }),
+      makeBadge({ id: 'bad-4', name: 'D', condition_json: malformed({ checkin_badge_count: { checkin_badge_names: ['성수역'], count: '1' } }) }),
+      makeBadge({ id: 'bad-5', name: 'E', condition_json: malformed({ checkin_category_count: null }) }),
+    ]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+    expect(stub.queryLog).toEqual(['badges:candidates'])
+  })
+
+  it('dryRun이면 insert 없이 받게 될 배지만 돌려준다', async () => {
+    stub.badges = [makeBadge({ id: 'cat-1', name: 'Cat', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = ['station-a']
+    stub.badgeCategoryRows = [{ id: 'station-a', category: 'train_subway' }]
+
+    const earned = await evaluateCheckinUsageBadges('user-1', undefined, { dryRun: true })
+    expect(earned).toEqual([{ id: 'cat-1', name: 'Cat' }])
+    expect(stub.insertedPayloads).toEqual([])
+  })
+
+  it('이미 보유한 배지는 다시 발급하지 않는다 (멱등)', async () => {
+    stub.badges = [makeBadge({ id: 'cat-1', condition_json: CATEGORY_CONDITION('train_subway', 1) })]
+    stub.checkinEarnedBadgeIds = ['station-a']
+    stub.badgeCategoryRows = [{ id: 'station-a', category: 'train_subway' }]
+    stub.ownedBadgeIds = ['cat-1']
+
+    expect(await evaluateCheckinUsageBadges('user-1')).toEqual([])
+    expect(stub.insertedPayloads).toEqual([])
   })
 })
