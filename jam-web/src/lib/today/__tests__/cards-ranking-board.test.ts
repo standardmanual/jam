@@ -5,6 +5,7 @@
  * 1. 트라이브 제한 미션을 가리키는 랭킹 보드 카드는 대상 트라이브가 아닌 유저에게 내려가지 않는다. 대상 트라이브 유저·허용 트라이브가 없는
  *    공통 미션·수동 지정 유저 카드는 그대로다. 접근을 읽지 못하면 미션 랭킹 보드 카드를 내린다(fail-closed).
  * 2. 보는 사람 id가 순위 계산(`computeRankingModeResult`)까지 내려간다 — 이용 정지 중인 본인을 본인 화면에 남기는 데 쓴다.
+ * 3. `ranking_modes`는 홈 한 번 로드에서 한 번만 읽는다 — 트라이브 거름과 순위 계산이 같은 행을 나눠 쓴다 (티켓 20261019_1445 4회).
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cards-ranking-board.test.ts
  */
@@ -23,6 +24,8 @@ const fx = vi.hoisted(() => ({
   tribeError: null as Error | null,
   /** `computeRankingModeResult` 호출 기록: [랭킹 모드 id, 옵션] */
   rankingCalls: [] as [string, { viewerUserId?: string } | undefined][],
+  /** 읽은 표 이름(조회 순서대로, 중복 포함) */
+  reads: [] as string[],
 }))
 
 function fakeSupabase() {
@@ -34,11 +37,13 @@ function fakeSupabase() {
       filters.push((row) => values.includes(row[column]))
       return builder
     }
-    builder.then = (resolve: (v: unknown) => void) =>
-      Promise.resolve({
+    builder.then = (resolve: (v: unknown) => void) => {
+      fx.reads.push(table)
+      return Promise.resolve({
         data: (fx.tables[table] ?? []).filter((row) => filters.every((f) => f(row))),
         error: fx.errors[table] ?? null,
       }).then(resolve)
+    }
     return builder
   }
   return { from }
@@ -69,7 +74,7 @@ vi.mock('@/lib/ranking/rankingDataSource', () => ({
   },
 }))
 
-import { getTodayCards } from '../cards'
+import { fetchRankingBoardData, getTodayCards } from '../cards'
 
 function cardRow(overrides: Row): Row {
   return {
@@ -114,6 +119,7 @@ beforeEach(() => {
   fx.allowedByMission = {}
   fx.tribeError = null
   fx.rankingCalls = []
+  fx.reads = []
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -218,5 +224,74 @@ describe('getTodayCards — 보는 사람 id를 순위 계산까지 내려보낸
 
     expect(fx.rankingCalls).toHaveLength(3)
     for (const [, options] of fx.rankingCalls) expect(options).toEqual({ viewerUserId: 'viewer' })
+  })
+})
+
+describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 20261019_1445 4회)', () => {
+  const rankingModeReads = () => fx.reads.filter((table) => table === 'ranking_modes').length
+
+  it('트라이브 거름과 순위 계산이 함께 쓰는데도 ranking_modes를 한 번만 읽는다', async () => {
+    seedBoards()
+    fx.userTribeId = 't-allowed'
+
+    await getTodayCards('viewer', null, NOW)
+
+    expect(rankingModeReads()).toBe(1)
+  })
+
+  it('거름 뒤 남은 카드의 순위만 계산한다 — 읽는 횟수를 줄여도 결과는 같다', async () => {
+    seedBoards()
+    fx.userTribeId = 't-other'
+
+    const cards = await getTodayCards('viewer', null, NOW)
+
+    expect(rankingModeReads()).toBe(1)
+    expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual'])
+    expect(fx.rankingCalls.map(([modeId]) => modeId).sort()).toEqual(['mode-common', 'mode-manual'])
+    expect(cards.find((c) => c.id === 'card-common')?.resolved_href).toContain('m-common')
+  })
+
+  it('랭킹 보드 카드가 없으면 ranking_modes를 읽지 않는다', async () => {
+    fx.tables.today_cards = [cardRow({ id: 'other', template_type: 'badge_spotlight', layout_type: 'other' })]
+
+    await getTodayCards('viewer', null, NOW)
+
+    expect(rankingModeReads()).toBe(0)
+  })
+
+  it('랭킹모드를 읽지 못하면 한 번만 시도하고, 카드는 그대로 두며 순위는 계산하지 않는다', async () => {
+    seedBoards()
+    fx.errors.ranking_modes = { message: 'connection reset' }
+    fx.userTribeId = 't-other'
+
+    const cards = await getTodayCards('viewer', null, NOW)
+
+    expect(rankingModeReads()).toBe(1)
+    expect(cards.map((c) => c.id)).toEqual(['card-tribe', 'card-common', 'card-manual'])
+    expect(fx.rankingCalls).toEqual([])
+    expect(fx.tribeCalls).toEqual([])
+    expect(cards.every((c) => c.resolved_ranking === null)).toBe(true)
+  })
+
+  it('어드민 미리보기처럼 읽은 모드를 넘기지 않으면 fetchRankingBoardData가 직접 읽는다', async () => {
+    seedBoards()
+    const cards = (fx.tables.today_cards as never[]).map((row) => row as never)
+
+    const byModeId = await fetchRankingBoardData(fakeSupabase(), cards)
+
+    expect(rankingModeReads()).toBe(1)
+    expect([...byModeId.keys()].sort()).toEqual(['mode-common', 'mode-manual', 'mode-tribe'])
+  })
+
+  it('읽은 모드를 넘기면 fetchRankingBoardData는 ranking_modes를 읽지 않고, 맵에 없는 모드는 순위 없이 둔다', async () => {
+    seedBoards()
+    const cards = (fx.tables.today_cards as never[]).map((row) => row as never)
+    const preloaded = new Map([['mode-common', fx.tables.ranking_modes[1] as never]])
+
+    const byModeId = await fetchRankingBoardData(fakeSupabase(), cards, 'viewer', preloaded)
+
+    expect(rankingModeReads()).toBe(0)
+    expect([...byModeId.keys()]).toEqual(['mode-common'])
+    expect(fx.rankingCalls).toEqual([['mode-common', { viewerUserId: 'viewer' }]])
   })
 })

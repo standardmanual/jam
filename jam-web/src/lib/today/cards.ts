@@ -168,15 +168,17 @@ export async function getTodayCards(
   // 20260825_028: 미션 소개 카드도 미션 목록과 같은 노출 규칙을 따른다 —
   // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
   const spotlightFiltered = await filterMissionSpotlightCards(userId, allCards, missionsById)
+  // 랭킹모드는 아래 트라이브 거름과 순위 계산이 함께 쓰므로 한 번만 읽어 둘에 나눠 준다(티켓 20261019_1445 4회, 예전에는 같은 행을 두 번 읽었다).
+  const rankingModes = await fetchRankingModesById(supabase, rankingModeIdsOf(spotlightFiltered))
   // 티켓 20261019_1400: 트라이브 제한 미션의 랭킹 보드 카드는 대상이 아닌 트라이브 유저에게 내리지 않는다(5-1 규칙과 같다).
-  const cards = await filterRankingBoardCardsByTribe(supabase, userId, spotlightFiltered)
+  const cards = await filterRankingBoardCardsByTribe(userId, spotlightFiltered, rankingModes)
   // 레시피 공개 카드의 레시피는 공개 뒤 재료 타일의 후보 배지 id를 알아야 배지 조회에 합칠 수 있어서 배지 조회보다 먼저 읽는다.
   // 레시피 공개 카드가 없으면 아무것도 읽지 않는다.
   const recipesById = await fetchRecipesById(supabase, recipeIdsToResolve(cards), now)
   const [badgesById, rankingByModeId, collectionsById] = await Promise.all([
     fetchBadgesById(supabase, [...cards.flatMap((c) => c.badge_ids ?? []), ...recipeCandidateBadgeIds(recipesById)], userId),
     // 보는 사람 id를 내려 이용 정지 중인 본인을 본인 화면의 순위에는 남긴다(티켓 20261019_1400).
-    fetchRankingBoardData(supabase, cards, userId),
+    fetchRankingBoardData(supabase, cards, userId, rankingModes),
     fetchCollectionsById(supabase, collectionIdsToResolve(cards), nowIso),
   ])
 
@@ -201,6 +203,35 @@ export async function getTodayCards(
   })
 }
 
+/** ranking_board 카드가 가리키는 랭킹모드 id (중복 제거) */
+function rankingModeIdsOf(cards: TodayCardRow[]): string[] {
+  return [
+    ...new Set(
+      cards
+        .filter((c) => c.template_type === 'ranking_board' && c.ranking_mode_id)
+        .map((c) => c.ranking_mode_id as string)
+    ),
+  ]
+}
+
+/**
+ * 랭킹모드를 id로 한 번에 읽는다 (티켓 20261019_1445 4회). 홈 한 번 로드에서 트라이브 거름(`filterRankingBoardCardsByTribe`)과
+ * 순위 계산(`fetchRankingBoardData`)이 같은 `ranking_modes` 행을 두 번 읽던 것을 한 번으로 합친다.
+ * 읽지 못하면 로그만 남기고 빈 맵을 돌려준다 — 두 쓰는 쪽이 읽기 오류를 받던 방식과 같다(트라이브 거름은 카드를 그대로 두고,
+ * 순위 계산은 순위 없이 돌려준다). 없는 id는 맵에 없다.
+ */
+async function fetchRankingModesById(supabase: ServiceClient, modeIds: string[]): Promise<Map<string, RankingModeRow>> {
+  const modesById = new Map<string, RankingModeRow>()
+  if (modeIds.length === 0) return modesById
+  const { data, error } = await supabase.from('ranking_modes').select('*').in('id', modeIds)
+  if (error) {
+    console.error('[fetchRankingModesById] 랭킹모드 조회 오류:', error.message)
+    return modesById
+  }
+  for (const mode of (data ?? []) as RankingModeRow[]) modesById.set(mode.id, mode)
+  return modesById
+}
+
 /**
  * ranking_board 카드가 참조하는 랭킹모드를 배치 조회해 순위를 계산한다(`fetchBadgesById`와
  * 같은 이유 — 카드마다 개별 조회하면 홈 피드 1회 로드에 N번 왕복한다). id → { mode, result } 맵.
@@ -211,30 +242,23 @@ export async function getTodayCards(
  *
  * `viewerUserId`: 보는 사람 id. 미션 참가자 순위에서 이용 정지 중인 유저는 빠지지만 보는 사람 본인은 남는다(티켓 20261019_1400).
  * 어드민 미리보기는 넘기지 않는다 — 어느 유저의 화면도 아니므로 정지 유저를 모두 뺀다.
+ *
+ * `preloadedModes`: 호출자가 이미 읽은 랭킹모드(id → 행). 주면 `ranking_modes`를 다시 읽지 않는다(홈 조회가 트라이브 거름과 한 번에 읽어 나눠 준다,
+ * 티켓 20261019_1445 4회). 이 카드들이 가리키는 모드 중 맵에 없는 것은 순위 없이 둔다. 어드민 미리보기는 넘기지 않아 예전처럼 직접 읽는다.
  */
 export async function fetchRankingBoardData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   cards: TodayCardRow[],
   viewerUserId?: string,
+  preloadedModes?: ReadonlyMap<string, RankingModeRow>,
 ): Promise<Map<string, { mode: RankingModeRow; result: RankingBoardResult }>> {
-  const modeIds = [
-    ...new Set(
-      cards
-        .filter((c) => c.template_type === 'ranking_board' && c.ranking_mode_id)
-        .map((c) => c.ranking_mode_id as string)
-    ),
-  ]
+  const modeIds = rankingModeIdsOf(cards)
   const map = new Map<string, { mode: RankingModeRow; result: RankingBoardResult }>()
   if (modeIds.length === 0) return map
 
-  const { data, error } = await supabase.from('ranking_modes').select('*').in('id', modeIds)
-  if (error) {
-    console.error('[fetchRankingBoardData] 랭킹모드 조회 오류:', error.message)
-    return map
-  }
-
-  const modes = (data ?? []) as RankingModeRow[]
+  const modesById = preloadedModes ?? (await fetchRankingModesById(supabase, modeIds))
+  const modes = modeIds.map((id) => modesById.get(id)).filter((mode): mode is RankingModeRow => mode !== undefined)
   await Promise.all(
     modes.map(async (mode) => {
       const result = await computeRankingModeResult(mode, supabase, { viewerUserId })
@@ -252,34 +276,20 @@ export async function fetchRankingBoardData(
  * 허용 트라이브가 없는 공통 미션과 미션 참가자 순위가 아닌 카드(수동 지정 유저 등)는 그대로 둔다.
  *
  * 접근 정보를 읽지 못하면 «제한 없음»으로 보지 않는다(fail-closed): 미션을 가리키는 랭킹 보드 카드를 이 유저에게는 내린다.
- * 랭킹 모드 자체를 읽지 못하면 순위 조회(`fetchRankingBoardData`)도 같은 이유로 비어 미션 링크·순위가 실리지 않으므로 카드를 그대로 둔다.
+ * 랭킹 모드 자체를 읽지 못하면(`modesById`가 비어 온다) 순위 조회(`fetchRankingBoardData`)도 같은 맵을 받아 비므로 미션 링크·순위가 실리지 않아 카드를 그대로 둔다.
  */
 async function filterRankingBoardCardsByTribe(
-  supabase: ServiceClient,
   userId: string,
   cards: TodayCardRow[],
+  modesById: ReadonlyMap<string, RankingModeRow>,
 ): Promise<TodayCardRow[]> {
-  const modeIds = [
-    ...new Set(
-      cards
-        .filter((c) => c.template_type === 'ranking_board' && c.ranking_mode_id)
-        .map((c) => c.ranking_mode_id as string)
-    ),
-  ]
+  const modeIds = rankingModeIdsOf(cards)
   if (modeIds.length === 0) return cards
 
-  const { data, error } = await supabase
-    .from('ranking_modes')
-    .select('id, target_type, target_mission_id')
-    .in('id', modeIds)
-  if (error) {
-    console.error('[filterRankingBoardCardsByTribe] 랭킹모드 조회 오류:', error.message)
-    return cards
-  }
-
   const missionIdByModeId = new Map<string, string>()
-  for (const mode of (data ?? []) as Pick<RankingModeRow, 'id' | 'target_type' | 'target_mission_id'>[]) {
-    if (mode.target_type === 'mission_participants' && mode.target_mission_id) {
+  for (const modeId of modeIds) {
+    const mode = modesById.get(modeId)
+    if (mode && mode.target_type === 'mission_participants' && mode.target_mission_id) {
       missionIdByModeId.set(mode.id, mode.target_mission_id)
     }
   }
