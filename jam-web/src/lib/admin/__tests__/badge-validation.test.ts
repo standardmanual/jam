@@ -215,7 +215,10 @@ describe('findBadgeConditionSaveError — 믹스 행동 지표 4종', () => {
   it('CONDITION_META_KEYS에서 mission_reward와 보조 키를 뺀 모든 키가 repeat_count 가드에 걸린다 — 지표를 더하면 가드가 자동으로 붙는다', () => {
     // 보조 키(signup_recent_active_days, 티켓 20261001_0633)는 지표가 아니라 `days_since_signup`의 짝이다.
     // 혼자 저장되는 조합은 짝 필드 가드가 다른 문구로 막는다(아래 0633 describe에서 확인한다).
-    const usageKeys = CONDITION_META_KEYS.filter((k) => k !== 'mission_reward' && k !== 'signup_recent_active_days')
+    // `active_week_min_days`(티켓 20261019_0542)도 같은 보조 키다 — 짝은 `active_week_streak`.
+    const usageKeys = CONDITION_META_KEYS.filter(
+      (k) => k !== 'mission_reward' && k !== 'signup_recent_active_days' && k !== 'active_week_min_days'
+    )
     expect(usageKeys.length).toBeGreaterThanOrEqual(10)
     for (const key of usageKeys) {
       const cond = { [key]: 1, repeat_count: 3 } as unknown as BadgeCondition

@@ -16,7 +16,7 @@
  * 5. 호출 지점: 라우트는 `runJamActionEvaluation(userId, [키…])`(jamActionRoute.ts) — 믹스 `/api/combine`,
  *    드랍·픽업 라우트, 컬렉션 장착 `/api/itembooks/[id]/slot`(③의 `after()`), 캡슐 열기 `/api/capsule/open`·
  *    잠긴 개체 열기 `/api/inventory/items/[itemId]/open`(티켓 20261018_1815의 `after()`). 동기화는 `sync.ts`의
- *    `evaluateJamActionSafely`가 새 활동이 있을 때 8키(`JAM_SYNC_TRIGGERS`), 없을 때 가입 경과일
+ *    `evaluateJamActionSafely`가 새 활동이 있을 때 `JAM_SYNC_TRIGGERS`, 없을 때 가입 경과일
  *    (`JAM_EMPTY_SYNC_TRIGGERS`)을 판정하고 획득 id를 결산에 합친다. 어느 호출 지점에 어떤 키를 넘기는지는
  *    `jamActionDropTriggers.ts`·`jamActionProgressTriggers.ts`가 정한다. 기존 유저 재평가 배치
  *    (`reevaluateCatalog.ts`, 티켓 20261001_0634)도 호출 지점이다 — 키 전부(`JAM_ACTION_CONDITION_KEYS`)를
@@ -27,7 +27,7 @@
  * `days_since_signup`은 보조 키(`signup_recent_active_days`, 선택)가 붙을 수 있어 «유저 단위로 한 번 계산한 숫자
  * 하나»를 모든 후보에 비교하는 `METRIC_COMPUTERS` 흐름에 맞지 않는다(`recipe_first_success`처럼 전용 분기).
  * 보조 키는 트리거가 아니라 후보를 거르는 조건이라 `JAM_ACTION_CONDITION_KEYS`가 아닌
- * `JAM_ACTION_MODIFIER_KEYS`에 둔다.
+ * `JAM_ACTION_MODIFIER_KEYS`에 둔다. `active_week_streak`도 보조 키(`active_week_min_days`)에 따라 후보마다 값이 달라 전용 분기다.
  *
  * ⚠️ 이 파일은 `@/lib/strava/sync`도, `sync.ts`를 import하는 `jamActionRoute.ts`도 import하지 않는다 —
  * `sync.ts`가 이 파일을 import하므로 순환을 막기 위해서다. 알림 생성은 호출부(`jamActionRoute.ts`와 `sync.ts`)가 맡는다.
@@ -64,6 +64,16 @@ import {
   countSameSpotCheckinDays,
   countWeeklyActiveDays,
 } from './jamActionDayMetrics'
+import {
+  activeWeekStreak,
+  countDistinctActivityTypeCount,
+  countFullSeasonYearCount,
+  countFullWeekCount,
+  countReturnStreakWeeks,
+  dayKeysOf,
+  DEFAULT_ACTIVE_WEEK_MIN_DAYS,
+  fetchRecognizedActivities,
+} from './jamActionActivityMetrics'
 
 // 이 파일이 판정하는 JAM! 행동 지표 키와 보조 키. 서버 모듈 없이 키만 필요한 순수 모듈(운영툴 예약 등록 핸들러)이 쓰도록
 // 순수 파일 `jamActionKeys.ts`로 옮겼고(티켓 20261004_1756), 기존 호출부가 그대로 쓰도록 여기서 다시 내보낸다.
@@ -72,9 +82,12 @@ export type { JamActionConditionKey }
 
 /**
  * 「유저 단위로 한 번 계산한 숫자 하나」를 모든 후보에 비교하는 수치형 지표.
- * `recipe_first_success`(후보마다 레시피가 다르다)와 `days_since_signup`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
+ * `recipe_first_success`(후보마다 레시피가 다르다)와 `days_since_signup`·`active_week_streak`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
  */
-export type JamActionMetric = Exclude<JamActionConditionKey, 'recipe_first_success' | 'days_since_signup'>
+export type JamActionMetric = Exclude<
+  JamActionConditionKey,
+  'recipe_first_success' | 'days_since_signup' | 'active_week_streak'
+>
 
 /** 호출부가 「이번 행동으로 다시 볼 지표」로 넘기는 키 */
 export type JamActionTrigger = JamActionConditionKey
@@ -105,6 +118,10 @@ const METRIC_COMPUTERS: Record<JamActionMetric, MetricComputer> = {
   jam_total_earned: readJamTotalEarned,
   jam_weekly_earned: readJamWeeklyEarned,
   chapter_reached: readChapterReached,
+  return_streak_weeks: countReturnStreakWeeks,
+  full_week_count: countFullWeekCount,
+  full_season_year_count: countFullSeasonYearCount,
+  distinct_activity_type_count: countDistinctActivityTypeCount,
 }
 
 function isRecipeFirstSuccessValue(v: unknown): v is { recipe_id: string } {
@@ -243,6 +260,36 @@ export async function evaluateJamActionBadges(
           },
           () => 'jam_action:days_since_signup',
           'evaluateJamActionBadges(days_since_signup)',
+          options
+        )
+        earned.push(...issued)
+        continue
+      }
+
+      if (trigger === 'active_week_streak') {
+        // 후보마다 «채운 주»의 기준(보조 키 `active_week_min_days`)이 다르므로 지표 하나로 비교할 수 없다 — 활동한 날은 한 번만 읽고
+        // 기준값별로 연속 주 수를 한 번씩 계산한다
+        const candidates = allBadges.filter((b) => typeof b.condition_json?.active_week_streak === 'number')
+        if (candidates.length === 0) continue
+
+        const minDaysOf = (b: BadgeRow): number => {
+          const minDays = b.condition_json?.active_week_min_days
+          return typeof minDays === 'number' ? minDays : DEFAULT_ACTIVE_WEEK_MIN_DAYS
+        }
+        const dayKeys = dayKeysOf(await fetchRecognizedActivities(supabase, userId))
+        const streakByMinDays = new Map<number, number>()
+        for (const b of candidates) {
+          const minDays = minDaysOf(b)
+          if (!streakByMinDays.has(minDays)) streakByMinDays.set(minDays, activeWeekStreak(dayKeys, minDays))
+        }
+        const issued = await issueQualifyingBadges(
+          supabase,
+          userId,
+          candidates,
+          (b) => b.condition_json?.active_week_streak as number,
+          (b) => streakByMinDays.get(minDaysOf(b)) ?? 0,
+          () => 'jam_action:active_week_streak',
+          'evaluateJamActionBadges(active_week_streak)',
           options
         )
         earned.push(...issued)

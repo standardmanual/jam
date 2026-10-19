@@ -210,12 +210,12 @@ export function isCountableActivity(normalized: unknown, vehicleMaxKmh: number):
 // ── 조회 ──────────────────────────────────────────────────────────────────
 
 /** 가입한 날(KST) 0시의 UTC 시각(ISO) — 「가입한 날 이후」 조회의 하한 */
-function kstDayStartIso(dayKey: string): string {
+export function kstDayStartIso(dayKey: string): string {
   return new Date(`${dayKey}T00:00:00+09:00`).toISOString()
 }
 
 /** 가입 시각(`users.created_at`)에서 가입한 날(KST)을 읽는다. 못 읽으면 던진다(fail-closed) */
-async function readSignupDay(supabase: SupabaseClient, userId: string): Promise<string> {
+export async function readSignupDay(supabase: SupabaseClient, userId: string): Promise<string> {
   const createdAt = await getSignupAnchorDate(supabase, userId)
   const signupDay = toKstDayKey(createdAt)
   if (signupDay === null) throw new Error(`[${TAG}] 가입 시각을 읽지 못했다 (userId: ${userId})`)

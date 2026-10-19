@@ -2335,6 +2335,134 @@ export const CONDITION_FIELDS = [
       help: '유저가 도달한 챕터 번호예요. 챕터를 시작하기 전에는 0으로 봐요.',
     }),
   }),
+
+  // ── JAM! 카테고리 — 활동 기반 새 지표 6종 (티켓 20261019_0542 1회, 마이그레이션 246) ──
+  //
+  // 위 지표들과 같은 `role: 'meta'` + `evaluation: 'external'`이다(측정 키 트리거 140에는 넣지 않는다). 판정·발급은 `jamActionBadges.ts`,
+  // 값 계산은 `jamActionActivityMetrics.ts`가 전담한다. 「활동한 날」은 인정된 활동(`strava_activities`의 `filter_reason IS NULL`, JAM! 종목,
+  // 걷기 게이트 통과)이 있는 KST 날짜이고 「주」는 월~일(KST)이다. 체크인만 한 날은 세지 않는다.
+  // `active_week_min_days`는 `active_week_streak`의 **보조 키**(선택)다 — `USAGE_METRIC_CONDITION_KEYS`에서 뺀다(아래).
+  field({
+    key: 'active_week_streak',
+    label: '연속으로 채운 주',
+    unit: '주',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `채운 주 ${c.active_week_streak}주↑ 연속`,
+    detail: (c) => `한 주(월~일, 한국 시간)에 활동한 날이 ${c.active_week_min_days ?? 1}일 이상인 주가 ${c.active_week_streak}주 이상 연속`,
+    form: integerForm('activeWeekStreak', {
+      section: 'meta',
+      label: '연속으로 채운 주',
+      placeholder: '2',
+      help: '한 주(월~일)에 활동한 날이 «한 주 최소 활동일» 이상이면 그 주를 채운 주로 보고, 가장 길게 이어진 주 수로 판정해요.',
+    }),
+  }),
+  field({
+    key: 'active_week_min_days',
+    label: '한 주 최소 활동일',
+    unit: '일',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 7,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    pairedWith: ['active_week_streak'],
+    chip: (c) => `주 ${c.active_week_min_days}일↑`,
+    detail: (c) => `한 주(월~일, 한국 시간)에 활동한 날 ${c.active_week_min_days}일 이상을 채운 주로 침`,
+    form: integerForm('activeWeekMinDays', {
+      section: 'meta',
+      label: '한 주 최소 활동일',
+      placeholder: '3',
+      help: '연속으로 채운 주와 함께 써요. 비워 두면 1일로 봐요.',
+    }),
+  }),
+  field({
+    key: 'return_streak_weeks',
+    label: '복귀 뒤 이어간 주',
+    unit: '주',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `복귀 뒤 ${c.return_streak_weeks}주↑ 연속`,
+    detail: (c) => `7일 이상 쉬었다가 돌아온 뒤, 돌아온 주부터 ${c.return_streak_weeks}주 이상 연속 활동`,
+    form: integerForm('returnStreakWeeks', {
+      section: 'meta',
+      label: '복귀 뒤 이어간 주',
+      placeholder: '2',
+      help: '7일 이상 활동하지 않다가 다시 활동한 주를 1주로 세고, 그 주부터 이어진 연속 주 수로 판정해요. 여러 번 돌아왔다면 가장 긴 기록을 봐요.',
+    }),
+  }),
+  field({
+    key: 'full_week_count',
+    label: '일곱 요일을 모두 채운 주',
+    unit: '주',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `7일 모두 활동한 주 ${c.full_week_count}주↑`,
+    detail: (c) => `한 주(월~일, 한국 시간) 7일을 모두 활동한 주 ${c.full_week_count}주 이상`,
+    form: integerForm('fullWeekCount', {
+      section: 'meta',
+      label: '일곱 요일을 모두 채운 주',
+      placeholder: '3',
+      help: '월요일부터 일요일까지 매일 활동한 주의 수예요.',
+    }),
+  }),
+  field({
+    key: 'full_season_year_count',
+    label: '네 계절을 모두 채운 해',
+    unit: '해',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 100,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `네 계절 모두 활동한 해 ${c.full_season_year_count}해↑`,
+    detail: (c) => `한 해(달력 연도, 한국 시간) 안에 봄·여름·가을·겨울에 모두 활동한 해 ${c.full_season_year_count}해 이상`,
+    form: integerForm('fullSeasonYearCount', {
+      section: 'meta',
+      label: '네 계절을 모두 채운 해',
+      placeholder: '1',
+      help: '봄(3~5월)·여름(6~8월)·가을(9~11월)·겨울(12~2월)에 한 번씩이라도 활동한 해의 수예요. 1월·2월과 12월은 같은 해의 겨울이에요.',
+    }),
+  }),
+  field({
+    key: 'distinct_activity_type_count',
+    label: '해 본 종목 수',
+    unit: '종목',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 100,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `해 본 종목 ${c.distinct_activity_type_count}종목↑`,
+    detail: (c) => `인정된 활동으로 해 본 서로 다른 종목 ${c.distinct_activity_type_count}종목 이상`,
+    form: integerForm('distinctActivityTypeCount', {
+      section: 'meta',
+      label: '해 본 종목 수',
+      placeholder: '3',
+      help: '같은 종목을 여러 번 해도 1종목이에요.',
+    }),
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────
@@ -2370,12 +2498,13 @@ export const CONDITION_META_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.fil
  * (`badge-families.ts`). **사용량 지표의 단일 정의**다 — 메타 키가 늘면 가드·표시가 자동으로 따라온다.
  *
  * `signup_recent_active_days`도 뺀다(티켓 20261001_0633): 이 키는 `days_since_signup`의 **보조 키**라
- * 혼자서는 지표가 아니고 `pairedWith`로 짝(`days_since_signup`)과 함께 저장된다. 빼지 않으면 「한 배지에
+ * 혼자서는 지표가 아니고 `pairedWith`로 짝(`days_since_signup`)과 함께 저장된다. `active_week_min_days`(티켓 20261019_0542)도
+ * 같은 이유로 뺀다(짝은 `active_week_streak`). 빼지 않으면 「한 배지에
  * 사용량 지표 하나」 가드(티켓 20261001_0712)가 `days_since_signup` + 보조 키 조합을 두 지표로 보고 막는다.
  * `mission_reward`와 같은 이유로 지표 목록에서 빠지는 메타 키다.
  */
 export const USAGE_METRIC_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_META_KEYS.filter(
-  (k) => k !== 'mission_reward' && k !== 'signup_recent_active_days'
+  (k) => k !== 'mission_reward' && k !== 'signup_recent_active_days' && k !== 'active_week_min_days'
 )
 
 /** 발급 판정에 실제로 관여하는 «조건 필드» 전체 — 수치 검사 필드 + 필터 전용 필드 */
@@ -2517,6 +2646,9 @@ export const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
   // 혼자 저장되면 「무엇의 최근 활동 조건인가」가 정의되지 않고 발급 경로(`jamActionBadges.ts`)도
   // 후보로 보지 않아 영원히 발급되지 않으므로 저장 시점에 막는다(`findUnpairedConditionError`).
   'signup_recent_active_days',
+  // 티켓 20261019_0542 — 연속으로 채운 주(`active_week_streak`)의 보조 키. 신규 키라 실적이 0건이다. 짝 없이 저장되면 발급 경로가
+  // 후보로 보지 않아 영원히 발급되지 않으므로 저장 시점에 막는다.
+  'active_week_min_days',
 ]
 
 /**

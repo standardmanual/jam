@@ -1621,6 +1621,24 @@ export interface BadgeCondition {
   jam_weekly_earned?: number
   /** [JAM!] 도달한 챕터 번호 ≥ 값. `user_chapters.chapter_no`(퀘스트 전은 0). */
   chapter_reached?: number
+
+  // ── JAM! 카테고리 — 활동 기반 새 지표 6종 (티켓 20261019_0542 1회, 마이그레이션 246) ──
+  //
+  // 위 조건들과 같은 `evaluation: 'external'`이다. 판정·발급은 `jamActionBadges.ts`, 값 계산은 `jamActionActivityMetrics.ts`가 전담한다.
+  // 「활동한 날」은 인정된 활동(`strava_activities`, `filter_reason IS NULL`)이 있는 KST 날짜, 「주」는 월~일(KST)이다.
+
+  /** [JAM!] 한 주에 활동한 날이 `active_week_min_days` 이상인 주가 이어진 최장 주 수 ≥ 값. */
+  active_week_streak?: number
+  /** [JAM!] `active_week_streak`의 보조 키(선택, 단독 저장 불가, 1~7). 채운 주의 최소 활동일. 없으면 1. */
+  active_week_min_days?: number
+  /** [JAM!] 7일 이상 쉬었다가 돌아온 뒤 돌아온 주부터 이어진 연속 활동 주 수의 최댓값 ≥ 값. */
+  return_streak_weeks?: number
+  /** [JAM!] 월~일 7일을 모두 활동한 주의 수 ≥ 값. */
+  full_week_count?: number
+  /** [JAM!] 달력 연도(KST) 안에 네 계절(1·2월과 12월은 겨울)에 모두 활동한 해의 수 ≥ 값. */
+  full_season_year_count?: number
+  /** [JAM!] 인정된 활동의 서로 다른 종목 수 ≥ 값. */
+  distinct_activity_type_count?: number
 }
 
 // =========================================

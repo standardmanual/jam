@@ -18,8 +18,8 @@
 import type { JamActionTrigger } from './jamActionBadges'
 
 /**
- * 새 활동이 있는 동기화가 끝날 때 다시 볼 지표 — 주 키 8개.
- * 보조 키(`signup_recent_active_days`)는 트리거가 아니라 `days_since_signup` 배지를 거르는 조건이라 넣지 않는다.
+ * 새 활동이 있는 동기화가 끝날 때 다시 볼 지표 — 주 키 13개.
+ * 보조 키(`signup_recent_active_days`·`active_week_min_days`)는 트리거가 아니라 짝 지표 배지를 거르거나 정하는 조건이라 넣지 않는다.
  *
  * 잼 2종(`jam_total_earned`·`jam_weekly_earned`)은 잼 정산(`settleActivities`)이 동기화 안에서 일어나므로 정산 뒤 여기서 본다.
  * 챕터(`chapter_reached`)는 챕터를 올리는 호출부(`chapter_add_score`·`chapter_start`를 부르는 앱 코드)가 아직 없어(묶음 5)
@@ -34,6 +34,12 @@ export const JAM_SYNC_TRIGGERS: readonly JamActionTrigger[] = [
   'jam_total_earned',
   'jam_weekly_earned',
   'chapter_reached',
+  // 활동 기반 새 지표 5종 (티켓 20261019_0542) — 인정된 활동 기록이 값을 정하므로 동기화 끝에서 한 번에 본다(활동 기록 저장 뒤)
+  'active_week_streak',
+  'return_streak_weeks',
+  'full_week_count',
+  'full_season_year_count',
+  'distinct_activity_type_count',
 ]
 
 /**

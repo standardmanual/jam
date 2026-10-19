@@ -170,6 +170,13 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     jam_total_earned: 1000,
     jam_weekly_earned: 300,
     chapter_reached: 3,
+    // JAM! 카테고리 — 활동 기반 새 지표 6종 (티켓 20261019_0542)
+    active_week_streak: 2,
+    active_week_min_days: 3,
+    return_streak_weeks: 2,
+    full_week_count: 3,
+    full_season_year_count: 1,
+    distinct_activity_type_count: 3,
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {
@@ -455,6 +462,8 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
         'weekly_active_days', 'same_spot_checkin_days',
         'capsule_open_count', 'locked_item_open_count', 'locked_item_pickup_count', 'other_tribe_item_kinds_count',
         'cross_tribe_combine_success_count', 'jam_total_earned', 'jam_weekly_earned', 'chapter_reached',
+        'active_week_streak', 'active_week_min_days', 'return_streak_weeks', 'full_week_count',
+        'full_season_year_count', 'distinct_activity_type_count',
       ])
     )
   })
@@ -558,6 +567,34 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
       signup_recent_active_days: 4,
       weekly_active_days: 3,
       same_spot_checkin_days: 10,
+    })
+  })
+
+  it('활동 기반 새 지표 6종(티켓 20261019_0542)이 폼 입력에서 condition_json으로 조립되고 되돌아온다', () => {
+    const fields = emptyFields({
+      activeWeekStreak: '2',
+      activeWeekMinDays: '3',
+      returnStreakWeeks: '4',
+      fullWeekCount: '10',
+      fullSeasonYearCount: '3',
+      distinctActivityTypeCount: '5',
+    })
+    const cond = {
+      active_week_streak: 2,
+      active_week_min_days: 3,
+      return_streak_weeks: 4,
+      full_week_count: 10,
+      full_season_year_count: 3,
+      distinct_activity_type_count: 5,
+    }
+    expect(buildConditionJsonFromFields(fields)).toEqual(cond)
+    expect(conditionFormFieldsFrom(cond)).toMatchObject({
+      activeWeekStreak: '2',
+      activeWeekMinDays: '3',
+      returnStreakWeeks: '4',
+      fullWeekCount: '10',
+      fullSeasonYearCount: '3',
+      distinctActivityTypeCount: '5',
     })
   })
 

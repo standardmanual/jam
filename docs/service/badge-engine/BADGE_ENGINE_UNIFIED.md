@@ -34,6 +34,9 @@ code:
 > `days_since_signup`(가입 경과일)·`signup_recent_active_days`(가입 경과일의 보조 키, 최근 30일
 > 활동일)·`weekly_active_days`(주간 활동일)·`same_spot_checkin_days`(같은 지점 체크인 일수).
 > 2026-10-18(티켓 20261018_1815)에 새 JAM 조건 5종과 잼·챕터 3종 8키를 더했다(아래 «새 JAM 조건 5종과 잼·챕터 3종» 절).
+> 2026-10-19(티켓 20261019_0542 1회)에 활동 기반 새 지표 6키(`active_week_streak`·`active_week_min_days`·`return_streak_weeks`·
+> `full_week_count`·`full_season_year_count`·`distinct_activity_type_count`)를 더했고, 등급형 묶음 기준을 이름에서 계열(`family_key`)로
+> 바꿨다(아래 «활동 기반 새 지표 6종» 절과 §2.4).
 > 활동일은 «활동한 날»(가입한 날 이후, 종목·걷기 게이트·차량 속도 필터를 통과한 활동 날짜 ∪ 체크인한
 > 날)을 KST 날짜로 세고, 동기화만 한 날은 세지 않는다. 판정은 `sync.ts`가 동기화 끝에서 한 번,
 > 컬렉션 장착 라우트가 `after()`로 한다. 공용 틀(`jamActionBadges.ts`)에 키와 계산 모듈
@@ -310,7 +313,7 @@ badge-engine 밖의 세 번째 평가 경로.
 
   | 호출 지점 | 판정하는 지표 | 방식 |
   |---|---|---|
-  | 새 활동이 있는 동기화의 끝(`processFetchedActivities`) | 주 키 8개(`JAM_SYNC_TRIGGERS`, 티켓 20261018_1815에서 잼 2종·챕터가 늘었다) | 활동 기록 저장·`recordDailySyncAndEvaluate` 뒤, 결산 앞에서 1회. 획득 id는 결산(`notifyActivityBadgesEarned`)과 `earnedBadgeIds`에 합치고 반환의 `badges` 수에는 넣지 않는다 |
+  | 새 활동이 있는 동기화의 끝(`processFetchedActivities`) | 주 키 13개(`JAM_SYNC_TRIGGERS`, 티켓 20261018_1815에서 잼 2종·챕터가, 티켓 20261019_0542에서 활동 기반 5종이 늘었다) | 활동 기록 저장·`recordDailySyncAndEvaluate` 뒤, 결산 앞에서 1회. 획득 id는 결산(`notifyActivityBadgesEarned`)과 `earnedBadgeIds`에 합치고 반환의 `badges` 수에는 넣지 않는다 |
   | 새 활동이 없는 동기화(빈 배치 이른 반환) | 가입 경과일(`JAM_EMPTY_SYNC_TRIGGERS`) | `evaluateBadges` 뒤 1회. 날짜가 지나면 값이 바뀌는 지표는 이것뿐이다. 오래 쉰 계정은 보조 키가 막는다(R4) |
   | 컬렉션 장착 `POST /api/itembooks/[id]/slot` 성공 | `collection_complete_count`(`jamTriggersForSlot`) | `after()` 예약 1회 안에서 컬렉션 보상 배지 발급(`runSlotRewardIssue`) 뒤에 판정(`runJamActionEvaluation`). 해제(DELETE)·교체(PATCH)·실패 분기에서는 예약하지 않는다. 장착 RPC가 완성 여부를 돌려주지 않아 장착이 성공할 때마다 판정하며, 완성이 아닌 장착이면 값이 그대로라 발급되지 않는다(R6) |
   | 기존 유저 재평가 배치 `POST /api/admin/badges/reevaluate-all`(`reevaluateUsersForCatalog`) | `JAM_ACTION_CONDITION_KEYS` 전체 + 사용량 지표 6종 | 유저마다 메인 엔진(`evaluateBadgesDetailed`) 뒤 JAM! → 사용량(`reevaluateUsageMetricBadges`) 순으로 각 1회, 각각 별도 `try/catch`. `dryRun`·`silent: true`·`triggeredByPrefix: 'catalog_reevaluation'`을 넘겨 dry-run은 아무것도 쓰지 않고 피드는 만들지 않으며 포인트는 정상 지급한다. 알림은 부르지 않는다. 절차·응답 필드는 §2.17 |
@@ -352,10 +355,31 @@ badge-engine 밖의 세 번째 평가 경로.
 | `jam_weekly_earned` | 정수 ≥1 | 월~일(KST) 한 주에 모은 잼의 역대 최고 주 값. `jam_daily_earned`를 주별로 합산(`kstWeekStartKey`) | 동기화 끝 |
 | `chapter_reached` | 정수 ≥1 | 도달한 챕터 번호. `user_chapters.chapter_no`(없거나 NULL이면 0) | 동기화 끝. 챕터를 올리는 호출부가 아직 앱 코드에 없어(묶음 5) 그 전까지는 동기화 끝에서 읽고, 챕터 오름 직후 판정은 묶음 5가 연결한다 |
 
-- 트리거 규칙은 `jamActionProgressTriggers.ts`(`JAM_SYNC_TRIGGERS` 8키, `jamTriggersForCapsuleOpen`, `jamTriggersForLockedItemOpen`),
+- 트리거 규칙은 `jamActionProgressTriggers.ts`(`JAM_SYNC_TRIGGERS` 13키, `jamTriggersForCapsuleOpen`, `jamTriggersForLockedItemOpen`),
   `jamActionDropTriggers.ts`(`jamTriggersForPickup`의 줍는 사람에 2키), `lib/combine/index.ts`의 `jamTriggersForCombineResult`(성공에 2키)가 정한다.
 - 잼 정산(`settleActivities`)이 동기화 안에서 `JAM_SYNC_TRIGGERS` 판정보다 앞서 일어나므로 같은 동기화의 잼이 바로 보인다.
 - 행을 끌어와 세는 지표(잠긴 픽업·다른 트라이브 종류·트라이브를 넘는 믹스·주간 잼)도 `selectAllPages`의 30,000행 상한을 쓴다.
+**활동 기반 새 지표 6종도 같은 틀 위에서 판정한다** — 티켓 20261019_0542 1회(JAM 2.0 액티비티 배지 조건 엔진 보강, 새 계열 1-4·2-2·3-4·3-5·5-2).
+`jamActionKeys.ts`·`jamActionBadges.ts`의 `METRIC_COMPUTERS`에 키와 계산 함수를 더했고 값은 정수 ≥1(`active_week_min_days`만 1~7)이다. 허용 키는
+마이그레이션 246이 CHECK에 넓혔다(80 → 86). 계산은 `jamActionActivityMetrics.ts`가 맡는다. **새 SQL 없이 supabase-js 읽기만 쓴다.**
+「활동한 날」은 인정된 활동(`strava_activities`의 `filter_reason IS NULL`, 가입한 날(KST) 0시 이후, JAM! 종목이 있고 걷기는 축1 게이트를 통과)이 있는
+KST 날짜다(`timeBands.ts`의 `kstDateKeyOfStart`). **체크인만 한 날은 세지 않는다**(`weekly_active_days`와 다르다). 같은 날 여러 활동은 1일이고 주는
+월~일(KST)이다.
+
+| 키 | 값 | 세는 것 | 판정 시점 |
+|---|---|---|---|
+| `active_week_streak` | 정수 ≥1 | 한 주(월~일)에 활동한 날이 `active_week_min_days` 이상인 주가 이어진 최장 주 수(1-4는 `active_week_min_days: 3`) | 동기화 끝 |
+| `active_week_min_days` | 정수 1~7 | **보조 키**(선택, 기본 1, 단독 저장 불가). «채운 주»의 최소 활동일. 지표가 아니라 `USAGE_METRIC_CONDITION_KEYS`에서 빠지고 `JAM_ACTION_MODIFIER_KEYS`에 든다 | — |
+| `return_streak_weeks` | 정수 ≥1 | 7일 이상 쉬었다가(`RETURN_REST_DAYS`, 두 활동일 사이 활동 없는 날 ≥ 7) 돌아온 뒤, **돌아온 날이 속한 주를 1주로** 바로 다음 주들에 활동이 이어지는 만큼의 최댓값(2-2). 첫 활동은 복귀가 아니다 | 동기화 끝 |
+| `full_week_count` | 정수 ≥1 | 월~일 7일을 모두 활동한 주의 수(3-4) | 동기화 끝 |
+| `full_season_year_count` | 정수 ≥1 | 달력 연도(KST) 안에 봄(3~5월)·여름(6~8월)·가을(9~11월)·겨울(12·1·2월)에 모두 활동한 해의 수(3-5). 1·2월과 12월은 모두 겨울이라 2025년 12월은 2026년의 겨울을 채우지 않는다 | 동기화 끝 |
+| `distinct_activity_type_count` | 정수 ≥1 | 인정된 활동의 서로 다른 종목 수(5-2) | 동기화 끝 |
+
+- `active_week_streak`는 후보마다 보조 키가 달라 `days_since_signup`처럼 **전용 분기**다: 활동을 한 번만 읽고 `active_week_min_days` 값별로
+  연속 주 수를 한 번씩 계산해 후보에 비교한다. 나머지 4키는 `METRIC_COMPUTERS`의 수치형 지표다.
+- 동기화 끝에서 5키가 모두 활동 기록을 따로 읽는다(후보 배지가 있는 키만 계산). 활동 행은 `selectAllPages`의 30,000행 상한을 쓴다.
+- 이 키들은 아직 입력된 배지가 없다 — 계열 입력은 같은 티켓의 3회(마이그레이션 248 시드)다.
+
 - 이용 조건(`daily_sync_count`)은 새 활동을 1개 이상 가져온 동기화만 센다 — 코드(`sync.ts`가 `evaluateWithoutNewActivities` 이른 반환 뒤에서만
   `recordDailySyncAndEvaluate`를 부른다)와 시험(`sync-usage-badge-hook.test.ts`의 «synced=0(빈 배치)에서는 훅이 호출되지 않는다»)이 같다.
 
@@ -397,9 +421,9 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 
 | | ① 액티비티배지 엔진 | ③ 서비스 사용량 배지 |
 |---|---|---|
-| 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) · `user_checkin_badge_earns` insert 성공 직후(체크인 배지 발급 직후) · `POST /api/combine`(믹스 결과가 나온 직후) · `POST /api/drops`(드랍 성공 직후, `after()`) · `POST /api/drops/[dropId]/pickup`(픽업 성공 직후, `after()`) · `syncStravaActivities()`의 동기화 끝(새 활동이 있으면 주 키 8개, 새 활동이 없으면 `days_since_signup`) · `POST /api/itembooks/[id]/slot`(장착 성공 직후, `after()`) · `POST /api/capsule/open`·`POST /api/inventory/items/[itemId]/open`(열기 성공 직후, `after()`, 티켓 20261018_1815) |
-| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`/`checkin_category_count`/`checkin_badge_count`/`combine_attempt_count`/`combine_success_count`/`combine_fail_count`/`recipe_first_success`/`drop_item_count`/`pickup_item_count`/`pickup_from_user_count`/`picked_up_by_user_count`/`mission_complete_count`/`collection_complete_count`/`days_since_signup`/`weekly_active_days`/`same_spot_checkin_days`/`capsule_open_count`/`locked_item_open_count`/`locked_item_pickup_count`/`other_tribe_item_kinds_count`/`cross_tribe_combine_success_count`/`jam_total_earned`/`jam_weekly_earned`/`chapter_reached`(+ 보조 키 `signup_recent_active_days`), `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
-| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`(4종)·`evaluateCheckinUsageBadges()`(체크인 2종) · `src/lib/badge-engine/jamActionBadges.ts`의 `evaluateJamActionBadges()`(믹스·드랍·픽업·미션·컬렉션·가입 경과일·활동일·체크인 일수·캡슐·잠긴 개체·다른 트라이브·잼·챕터 행동 21종, 보조 키 1개 별도) — 모두 §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 `issueQualifyingBadges()`로 공유 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719·20260914_1725) |
+| 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) · `user_checkin_badge_earns` insert 성공 직후(체크인 배지 발급 직후) · `POST /api/combine`(믹스 결과가 나온 직후) · `POST /api/drops`(드랍 성공 직후, `after()`) · `POST /api/drops/[dropId]/pickup`(픽업 성공 직후, `after()`) · `syncStravaActivities()`의 동기화 끝(새 활동이 있으면 주 키 13개, 새 활동이 없으면 `days_since_signup`) · `POST /api/itembooks/[id]/slot`(장착 성공 직후, `after()`) · `POST /api/capsule/open`·`POST /api/inventory/items/[itemId]/open`(열기 성공 직후, `after()`, 티켓 20261018_1815) |
+| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`/`checkin_category_count`/`checkin_badge_count`/`combine_attempt_count`/`combine_success_count`/`combine_fail_count`/`recipe_first_success`/`drop_item_count`/`pickup_item_count`/`pickup_from_user_count`/`picked_up_by_user_count`/`mission_complete_count`/`collection_complete_count`/`days_since_signup`/`weekly_active_days`/`same_spot_checkin_days`/`capsule_open_count`/`locked_item_open_count`/`locked_item_pickup_count`/`other_tribe_item_kinds_count`/`cross_tribe_combine_success_count`/`jam_total_earned`/`jam_weekly_earned`/`chapter_reached`/`active_week_streak`/`return_streak_weeks`/`full_week_count`/`full_season_year_count`/`distinct_activity_type_count`(+ 보조 키 `signup_recent_active_days`·`active_week_min_days`), `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
+| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`(4종)·`evaluateCheckinUsageBadges()`(체크인 2종) · `src/lib/badge-engine/jamActionBadges.ts`의 `evaluateJamActionBadges()`(믹스·드랍·픽업·미션·컬렉션·가입 경과일·활동일·체크인 일수·캡슐·잠긴 개체·다른 트라이브·잼·챕터·활동 기반 행동 26종, 보조 키 2개 별도) — 모두 §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 `issueQualifyingBadges()`로 공유 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719·20260914_1725) |
 | 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(`increment_daily_sync_count()` RPC로 원자 증가 — `daily_sync_count`·`daily_sync_streak_days` 파생) · `user_checkin_badge_earns` × effective category(카테고리 지표) · `user_checkin_badge_earns` × 이름→id 해석(목록 지표) · `user_combine_success_logs`(성공 기록 행 수·최초 표시 행) · `user_combine_fail_logs`(`fail_reason='no_recipe_match'` 수) · `poi_drops`(`inventory_item_id`가 있는 행의 서로 다른 개체·유저 수) · `user_mission_completions`·`user_item_book_completions`(행 수) · `strava_activities`(`start_date`·`normalized`)와 `user_checkin_badge_earns`(`poi_id`·`triggered_by_activity_date`)의 가입한 날 이후 행(활동한 날·같은 지점 일수), `users.created_at`(가입 경과일) |
 
 필드 스펙은 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §3(메타데이터 필드) 참고.
@@ -535,9 +559,9 @@ Step 0.5. [가입 앵커] 이력 조회 창을 users.created_at 이후로 자른
 Step 1. type='activity' 배지 전체 조회 (유효기간 필터)
 Step 2. 유저 보유 배지 조회 (오류 시 즉시 종료)
 Step 2.5. [보유 컨텍스트] 보유 배지 «정의»를 조회해 세 가지를 만든다 —
-          ownedBadgeNames(**등급형 이름만**, §2.15) · highestOwnedTierByName ·
+          ownedBadgeNames(**등급형 이름만**, §2.15) · highestOwnedTierByGroup(계열 단위, §2.4) ·
           highestOwnedLevelByFamily · ownedBadgeDefs(계열·등급·종목, 교차 게이트용)
-Step 3-A. [등급형] 이름 그룹 단위 평가:
+Step 3-A. [등급형] 계열(`family_key`, 없으면 이름) 그룹 단위 평가:
   A. 이미 보유 → 스킵
   B. 보유보다 낮은 tier → 스킵 (성장 티어)
   C-1. evaluateBadgeGates() — ① prerequisite_badge_names OR 매칭 ② 2단 교차 게이트 (§2.15)
@@ -718,7 +742,13 @@ badge-engine에 `condition.route` 참조가 **0건**이라(실측 2026-09-05) `p
 
 ### 2.4 성장 티어 정책
 
-같은 이름 그룹 내 common → rare → epic → mystic 순서로만 성장. 상위 달성 시 하위를 건너뛰고 **최상위 1개만** 발급.
+같은 계열 그룹 내 common → rare → epic → mystic 순서로만 성장. 상위 달성 시 하위를 건너뛰고 **최상위 1개만** 발급.
+
+**묶음 기준은 계열(`family_key`)이다**(티켓 20261019_0542, 사용자 결정 1). 이름이 아니다 — 이름 하나에 종목마다 계열을 따로 두는 배지(3-2·3-3)에서
+한 종목의 상위 등급이 다른 종목의 하위 등급을 막거나 한 번에 1개만 발급되는 일이 없다. `family_key`가 없는 행은 이름(`familyKeyOf`의 `#name:` 폴백)으로
+묶어 예전과 같다. 같은 이름이라도 `family_key`가 있는 행과 없는 행은 서로 묶이지 않는다. 단계마다 이름이 다른 구간 계열(6-x)은 같은 `family_key`라
+**한 번에 가장 높은 단계 하나만** 발급된다(스펙대로). 구현은 `index.ts`의 `badgesByGradedGroup`·`highestOwnedTierByGroup`과 `usageBadges.ts`의
+`gradedByGroup`(JAM! 행동 지표·사용량 지표 발급)이다.
 
 ```
 예시: "첫 숨결" 그룹

@@ -220,6 +220,17 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   jam_total_earned: (c) => `잼 ${c.jam_total_earned} 이상 모으기`,
   jam_weekly_earned: (c) => `한 주(월~일)에 잼 ${c.jam_weekly_earned} 이상 모으기`,
   chapter_reached: (c) => `챕터 ${c.chapter_reached} 도달`,
+
+  // ── 활동 기반 새 지표 6종 (티켓 20261019_0542) ─
+  // 명사구로 끝나 「… 조건을 채우면 획득할 수 있어요.」와 이어진다. 「주」에는 (월~일)을 붙인다. 보조 키(한 주 최소 활동일)는 선언 순서상
+  // 주 키보다 뒤라 「활동한 날이 3일 이상인 주 2주 연속」처럼 주 키 문구 안에서 같이 읽는다(보조 키는 따로 문구를 만들지 않는다).
+  active_week_min_days: () => null, // 보조 키 — `active_week_streak` 문구가 값을 함께 말한다
+  active_week_streak: (c) =>
+    `한 주(월~일)에 ${c.active_week_min_days ?? 1}일 이상 활동한 주 ${c.active_week_streak}주 연속`,
+  return_streak_weeks: (c) => `7일 이상 쉬었다 돌아온 뒤 ${c.return_streak_weeks}주 연속 활동`,
+  full_week_count: (c) => `한 주(월~일) 7일 모두 활동한 주 ${c.full_week_count}주 이상`,
+  full_season_year_count: (c) => `네 계절 모두 활동한 해 ${c.full_season_year_count}해 이상`,
+  distinct_activity_type_count: (c) => `서로 다른 종목 ${c.distinct_activity_type_count}종목 이상 활동`,
 }
 
 /**

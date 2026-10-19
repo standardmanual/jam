@@ -19,7 +19,7 @@ import {
 import { JAM_ACTION_CONDITION_KEYS, JAM_ACTION_MODIFIER_KEYS } from '../jamActionBadges'
 
 describe('JAM_SYNC_TRIGGERS — 새 활동이 있는 동기화가 끝날 때', () => {
-  it('주 키 8개를 한 번에 판정한다 — 잼 2종·챕터는 챕터 호출부가 생기기 전까지 동기화 끝에서 읽는다(티켓 20261018_1815 결정 10)', () => {
+  it('주 키 13개를 한 번에 판정한다 — 잼 2종·챕터는 챕터 호출부가 생기기 전까지 동기화 끝에서 읽고(티켓 20261018_1815 결정 10), 활동 기반 5종은 동기화 끝에서 읽는다(티켓 20261019_0542)', () => {
     expect([...JAM_SYNC_TRIGGERS].sort()).toEqual(
       [
         'chapter_reached',
@@ -30,6 +30,11 @@ describe('JAM_SYNC_TRIGGERS — 새 활동이 있는 동기화가 끝날 때', (
         'mission_complete_count',
         'same_spot_checkin_days',
         'weekly_active_days',
+        'active_week_streak',
+        'return_streak_weeks',
+        'full_week_count',
+        'full_season_year_count',
+        'distinct_activity_type_count',
       ].sort()
     )
   })

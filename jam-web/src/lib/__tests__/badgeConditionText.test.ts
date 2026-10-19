@@ -26,6 +26,8 @@ const INTENTIONALLY_SILENT: ConditionKey[] = [
   'cross_in_axis',
   'cross_between_axis',
   'gate_mission_badge',
+  // 보조 키 — `active_week_streak` 문구가 값을 함께 말한다(`USER_PHRASE`에 이유가 있다)
+  'active_week_min_days',
 ]
 
 /** 필드 하나만 든 조건을 만든다 — 타입별로 «말이 되는 최소값» */

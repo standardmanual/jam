@@ -137,6 +137,13 @@ export type ConditionFormFields = {
   jamTotalEarned: string
   jamWeeklyEarned: string
   chapterReached: string
+  // JAM! 카테고리 — 활동 기반 새 지표 6종 (티켓 20261019_0542)
+  activeWeekStreak: string
+  activeWeekMinDays: string
+  returnStreakWeeks: string
+  fullWeekCount: string
+  fullSeasonYearCount: string
+  distinctActivityTypeCount: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -229,6 +236,12 @@ export function emptyConditionFormFields(): ConditionFormFields {
     jamTotalEarned: '',
     jamWeeklyEarned: '',
     chapterReached: '',
+    activeWeekStreak: '',
+    activeWeekMinDays: '',
+    returnStreakWeeks: '',
+    fullWeekCount: '',
+    fullSeasonYearCount: '',
+    distinctActivityTypeCount: '',
   }
 }
 

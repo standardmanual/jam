@@ -200,7 +200,7 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('80종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4 + 미션·컬렉션·가입·활동일·체크인 일수 지표 6 + 새 JAM 조건 5 + 잼·챕터 3)을 선언한다', () => {
+  it('86종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4 + 미션·컬렉션·가입·활동일·체크인 일수 지표 6 + 새 JAM 조건 5 + 잼·챕터 3 + 활동 기반 새 지표 6)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
     // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
     // follower_count · following_count · daily_sync_count. 연속 동기화 일수 1종
@@ -214,10 +214,12 @@ describe('레지스트리 — 필드 구성', () => {
     // weekly_active_days · same_spot_checkin_days. 새 JAM 조건 5종과 잼·챕터 3종(티켓 20261018_1815,
     // 마이그레이션 242) — capsule_open_count · locked_item_open_count · locked_item_pickup_count ·
     // other_tribe_item_kinds_count · cross_tribe_combine_success_count · jam_total_earned ·
-    // jam_weekly_earned · chapter_reached.
-    expect(CONDITION_FIELDS.length).toBe(80)
-    expect(ALL_CONDITION_KEYS.length).toBe(80)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(80) // 중복 키 없음
+    // jam_weekly_earned · chapter_reached. 활동 기반 새 지표 6종(티켓 20261019_0542, 마이그레이션 246) —
+    // active_week_streak · active_week_min_days(보조 키) · return_streak_weeks · full_week_count ·
+    // full_season_year_count · distinct_activity_type_count.
+    expect(CONDITION_FIELDS.length).toBe(86)
+    expect(ALL_CONDITION_KEYS.length).toBe(86)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(86) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -245,6 +247,8 @@ describe('레지스트리 — 필드 구성', () => {
     // 직접 수치·필터 검사」를 뜻하는 값이라, 유저 보유 배지를 봐야 하는 이 넷은 external이다
     // (티켓 20260905_0030 B2). 실질 효과는 동일 — fail-closed를 통과하고 엔진이 실제로 본다.
     expect(byEval('external').sort()).toEqual([
+      'active_week_min_days',
+      'active_week_streak',
       'capsule_open_count',
       'chapter_reached',
       'checkin_badge_count',
@@ -259,9 +263,12 @@ describe('레지스트리 — 필드 구성', () => {
       'daily_sync_count',
       'daily_sync_streak_days',
       'days_since_signup',
+      'distinct_activity_type_count',
       'drop_item_count',
       'follower_count',
       'following_count',
+      'full_season_year_count',
+      'full_week_count',
       'gate_mission_badge',
       'jam_total_earned',
       'jam_weekly_earned',
@@ -276,6 +283,7 @@ describe('레지스트리 — 필드 구성', () => {
       'poi_id',
       'prerequisite_badge_names',
       'recipe_first_success',
+      'return_streak_weeks',
       'same_spot_checkin_days',
       'signup_recent_active_days',
       'weekly_active_days',
@@ -1115,6 +1123,65 @@ describe('새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815)', () =>
 
   it('메인 엔진은 이 지표만 든 조건을 항상 fail 처리한다 — 실제 판정은 jamActionBadges.ts 몫', () => {
     for (const key of NEW_KEYS) {
+      const r = evaluateConditionDetailed({ [key]: 1 } as BadgeCondition, activities)
+      expect(r.pass, key).toBe(false)
+    }
+  })
+})
+
+// 활동 기반 새 지표 6종 (티켓 20261019_0542 1회, 마이그레이션 246)
+describe('활동 기반 새 지표 6종 — 레지스트리 선언', () => {
+  const MAIN_KEYS = [
+    'active_week_streak',
+    'return_streak_weeks',
+    'full_week_count',
+    'full_season_year_count',
+    'distinct_activity_type_count',
+  ] as const
+
+  it('주 키 5개는 role: meta + evaluation: external + 정수 ≥ 1 입력이고 어드민 폼에서 입력할 수 있다', () => {
+    for (const key of MAIN_KEYS) {
+      const field = getConditionField(key)
+      expect(field, key).toBeDefined()
+      expect(field?.role, key).toBe('meta')
+      expect(field?.evaluation, key).toBe('external')
+      expect(field?.input, key).toBe('integer')
+      expect(field?.min, key).toBe(1)
+      expect(field?.direction, key).toBe('higher')
+      expect(field?.form?.section, key).toBe('meta')
+    }
+  })
+
+  it('보조 키 active_week_min_days는 1~7 정수이고 active_week_streak과 짝이다 — 사용량 지표가 아니고 짝 없이는 저장할 수 없다', () => {
+    const field = getConditionField('active_week_min_days')
+    expect(field?.role).toBe('meta')
+    expect(field?.evaluation).toBe('external')
+    expect(field?.min).toBe(1)
+    expect(field?.max).toBe(7)
+    expect(field?.pairedWith).toEqual(['active_week_streak'])
+    expect(USAGE_METRIC_CONDITION_KEYS).not.toContain('active_week_min_days')
+    expect(findBlockingConditionKeys({ active_week_min_days: 3 }).unpaired).toEqual(['active_week_min_days'])
+    expect(findBlockingConditionKeys({ active_week_streak: 2, active_week_min_days: 3 }).unpaired).toEqual([])
+  })
+
+  it('주 키 5개는 사용량 지표 목록에 있다 — 한 배지에 사용량 지표 하나 가드가 따라온다', () => {
+    for (const key of MAIN_KEYS) expect(USAGE_METRIC_CONDITION_KEYS, key).toContain(key)
+  })
+
+  it('칩·상세 문구가 값을 넣어 나온다', () => {
+    expect(formatConditionChips({ active_week_streak: 2, active_week_min_days: 3 })).toEqual(['채운 주 2주↑ 연속', '주 3일↑'])
+    expect(formatConditionDetail({ active_week_streak: 2, active_week_min_days: 3 })).toEqual([
+      '한 주(월~일, 한국 시간)에 활동한 날이 3일 이상인 주가 2주 이상 연속',
+      '한 주(월~일, 한국 시간)에 활동한 날 3일 이상을 채운 주로 침',
+    ])
+    expect(formatConditionChips({ return_streak_weeks: 2 })).toEqual(['복귀 뒤 2주↑ 연속'])
+    expect(formatConditionChips({ full_week_count: 3 })).toEqual(['7일 모두 활동한 주 3주↑'])
+    expect(formatConditionChips({ full_season_year_count: 1 })).toEqual(['네 계절 모두 활동한 해 1해↑'])
+    expect(formatConditionChips({ distinct_activity_type_count: 3 })).toEqual(['해 본 종목 3종목↑'])
+  })
+
+  it('메인 엔진은 이 지표만 든 조건을 항상 fail 처리한다 — 실제 판정은 jamActionBadges.ts 몫', () => {
+    for (const key of MAIN_KEYS) {
       const r = evaluateConditionDetailed({ [key]: 1 } as BadgeCondition, activities)
       expect(r.pass, key).toBe(false)
     }
