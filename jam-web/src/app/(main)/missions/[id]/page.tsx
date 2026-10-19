@@ -5,7 +5,7 @@ import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { isMissionExposed, resolveMissionVisibility } from '@/lib/missions/visibility'
 import { isMissionOpenToUser } from '@/lib/missions/tribe-access'
 import { withoutHiddenRewardBadgeIds } from '@/lib/missions/reward-badges'
-import MissionDetailClient from './MissionDetailClient'
+import MissionDetailClient, { type PendingRewardInfo } from './MissionDetailClient'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -18,10 +18,12 @@ export default async function MissionDetailPage({ params }: Props) {
 
   const service = createServiceClient()
 
-  const [{ data: missionRaw }, { data: participationRaw }, { data: completionRaw }] = await Promise.all([
+  const [{ data: missionRaw }, { data: participationRaw }, { data: completionRaw }, { data: pendingRowsRaw, error: pendingRowsError }] = await Promise.all([
     service.from('missions').select('*').eq('id', missionId).single(),
     service.from('user_mission_participations').select('*').eq('user_id', user.id).eq('mission_id', missionId).maybeSingle(),
     service.from('user_mission_completions').select('id').eq('user_id', user.id).eq('mission_id', missionId).maybeSingle(),
+    // 내가 아직 받지 않은 아이템 보상(티켓 20261019_1313 3회) — 인벤토리 빈칸이 모자라 보류된 것
+    service.from('mission_item_rewards').select('badge_id, locked').eq('user_id', user.id).eq('mission_id', missionId).eq('status', 'pending').order('created_at', { ascending: true }),
   ])
 
   if (!missionRaw) notFound()
@@ -54,6 +56,30 @@ export default async function MissionDetailPage({ params }: Props) {
     .map(({ id, name, image_url, rarity }) => ({ id, name, image_url, rarity }))
   const clientMission = withoutHiddenRewardBadgeIds(mission, hiddenRewardBadgeIds)
 
+  // 받지 않은 아이템 보상 — 잠긴 보상은 받기 전에 어떤 배지인지 알 수 있는 값을 내리지 않는다(운영 로직 7.3절).
+  // 잠김은 보상을 기록할 때 고정한 값(`mission_item_rewards.locked`)을 따른다. 잠긴 보상에는 등급과 locked만 싣고
+  // 이름·그림·설명·배지 id는 싣지 않는다. 열린 보상은 이름·그림을 싣는다.
+  // 소프트 삭제 배지(deleted_at)도 거르지 않는다 — 받기 함수(`mission_claim_item_rewards`)가 삭제 여부를 보지 않고 모두 주고
+  // 필요한 칸 수에도 세므로, 목록도 같은 보상을 보여 줘야 «받을 보상 N개»와 «필요한 칸»이 어긋나지 않는다.
+  if (pendingRowsError) console.error('[missions/[id]/page] 받지 않은 보상 조회 실패', pendingRowsError)
+  const pendingRows = (pendingRowsRaw ?? []) as { badge_id: string; locked: boolean }[]
+  const pendingBadgeIds = [...new Set(pendingRows.map((row) => row.badge_id))]
+  const { data: pendingBadgesRaw, error: pendingBadgesError } = pendingBadgeIds.length > 0
+    ? await service.from('badges').select('id, name, image_url, rarity').in('id', pendingBadgeIds)
+    : { data: [], error: null }
+  if (pendingBadgesError) console.error('[missions/[id]/page] 받지 않은 보상 배지 조회 실패', pendingBadgesError)
+  // 배지를 읽지 못하면 맵이 비어 열린 보상은 빠지고(이름을 모른다) 잠긴 보상은 등급 없이 남는다
+  const pendingBadgeById = new Map(
+    ((pendingBadgesError ? [] : pendingBadgesRaw ?? []) as { id: string; name: string; image_url: string | null; rarity: import('@/types/database').BadgeRarity | null }[])
+      .map((badge) => [badge.id, badge])
+  )
+  const pendingRewards: PendingRewardInfo[] = pendingRows.flatMap((row): PendingRewardInfo[] => {
+    const badge = pendingBadgeById.get(row.badge_id)
+    if (row.locked) return [{ locked: true, rarity: badge?.rarity ?? null }]
+    if (!badge) return []
+    return [{ locked: false, id: badge.id, name: badge.name, image_url: badge.image_url, rarity: badge.rarity ?? null }]
+  })
+
   // 20260825_028: 목록에서 숨기더라도 URL 직접 진입은 막지 못하므로 상세에서도 같은 규칙으로
   // 잠금 여부를 판정한다(locked·hidden 모두 참가 불가 상태로 렌더).
   const visibilityContext = await loadMissionVisibilityContext(user.id, [mission], {
@@ -78,6 +104,7 @@ export default async function MissionDetailPage({ params }: Props) {
       isCompleted={!!completion}
       progressValue={participation?.progress_value ?? 0}
       rewardBadges={rewardBadges}
+      pendingRewards={pendingRewards}
       locked={locked}
       requiredBadge={visibilityResult.requiredBadge}
     />

@@ -28,12 +28,26 @@ export interface RewardBadgeInfo {
   rarity: BadgeRarity
 }
 
+/**
+ * 받지 않은 아이템 보상 한 건(티켓 20261019_1313 3회, 운영 로직 7.3절).
+ * 열린 보상은 이름·그림을 싣는다. **잠긴 보상은 이름·그림·설명·배지 id 없이 등급과 `locked`만 싣는다** —
+ * 받기 전에 어떤 아이템 배지인지 알 수 있는 값이 클라이언트로 내려가면 안 된다. 등급은 배지에 등급이 없으면 null이다.
+ */
+export type PendingRewardInfo =
+  | { locked: false; id: string; name: string; image_url: string | null; rarity: BadgeRarity | null }
+  | { locked: true; rarity: BadgeRarity | null }
+
 interface Props {
   mission: MissionRow
   isParticipating: boolean
   isCompleted: boolean
   progressValue: number
   rewardBadges: RewardBadgeInfo[]
+  /**
+   * 내가 아직 받지 않은 아이템 보상(인벤토리 빈칸이 모자라 보류된 것). 서버가 내려주기만 하고 이 화면은 아직 그리지 않는다 —
+   * «받기» 버튼과 안내는 5-7이다(티켓 20261019_1313 3회).
+   */
+  pendingRewards?: PendingRewardInfo[]
   /** 20260825_028: 아직 열리지 않은 레벨업 미션 — 참가 불가 안내만 노출 */
   locked?: boolean
   /** 잠금 해제에 필요한 본 배지 (locked일 때만) */
