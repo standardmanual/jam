@@ -11,7 +11,7 @@
  * 실행: `npx tsx src/lib/missions/__tests__/checker-logic.test.ts` (테스트 러너 불필요 — node assert 사용)
  */
 import assert from 'node:assert'
-import { evaluateMission, getTarget, isMissionActive, activeMissionsQueryFilter, type OwnershipContext } from '../checker'
+import { evaluateMission, getTarget, isMissionActive, activeMissionsQueryFilter, MISSION_PROGRESS_UNIT, type OwnershipContext } from '../checker'
 import { evaluateConditionDetailed } from '@/lib/badge-engine'
 import { MISSION_CONDITION_VALUE_RULE } from '../condition-keys'
 import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
@@ -295,6 +295,56 @@ const cases: Array<[string, () => void]> = [
     }
   }],
 ]
+
+// ── engine_condition 진행값·목표 (티켓 20261019_1445 3-A회) ───────────────────────────────
+// 기간 동안 모은 잼(jam_period_earned)이 든 미션만 진행값이 모은 잼, 목표가 조건의 임계값이다. 새 키가 없는 미션은 0/1·target 1 그대로.
+// getTarget과 MISSION_PROGRESS_UNIT.engine_condition은 바꾸지 않는다 — 마감 임박·마일스톤 소식과 활동 피드로 모은 양이 새지 않게 막는 장치다.
+cases.push(
+  ['engine_condition + jam_period_earned: 진행값은 모은 잼, 목표는 조건의 임계값이다', () => {
+    const m = mission('engine_condition', { jam_period_earned: 100 })
+    const partial = evaluateMission(m, [], emptyOwnership, true, { jam_period_earned: 60 })
+    assert.deepStrictEqual(partial, { isParticipating: true, progressValue: 60, target: 100, achieved: false })
+    const exact = evaluateMission(m, [], emptyOwnership, true, { jam_period_earned: 100 })
+    assert.deepStrictEqual(exact, { isParticipating: true, progressValue: 100, target: 100, achieved: true })
+    // 임계값을 넘겨 모은 양은 그대로 돌려준다(순위 비교가 모은 양을 쓴다)
+    const over = evaluateMission(m, [], emptyOwnership, true, { jam_period_earned: 130 })
+    assert.deepStrictEqual(over, { isParticipating: true, progressValue: 130, target: 100, achieved: true })
+  }],
+  ['engine_condition + jam_period_earned: 읽은 값이 없으면 진행값 0이고 완료하지 않는다 (fail-closed)', () => {
+    const m = mission('engine_condition', { jam_period_earned: 100 })
+    assert.deepStrictEqual(evaluateMission(m, [], emptyOwnership, true), { isParticipating: true, progressValue: 0, target: 100, achieved: false })
+    assert.deepStrictEqual(evaluateMission(m, [], emptyOwnership, true, {}), { isParticipating: true, progressValue: 0, target: 100, achieved: false })
+    assert.strictEqual(evaluateMission(m, [], emptyOwnership, true, { jam_period_earned: Number.NaN }).progressValue, 0)
+  }],
+  ['engine_condition + jam_period_earned: 완료는 조건 전체의 AND다 — 잼을 채워도 다른 조건이 모자라면 완료하지 않고 진행값은 모은 잼이다', () => {
+    const m = mission('engine_condition', { jam_period_earned: 100, distance_km: 50 })
+    const result = evaluateMission(m, [makeActivity({ distanceKm: 10 })], emptyOwnership, true, { jam_period_earned: 150 })
+    assert.deepStrictEqual(result, { isParticipating: true, progressValue: 150, target: 100, achieved: false })
+    const done = evaluateMission(m, [makeActivity({ distanceKm: 60 })], emptyOwnership, true, { jam_period_earned: 150 })
+    assert.deepStrictEqual(done, { isParticipating: true, progressValue: 150, target: 100, achieved: true })
+  }],
+  ['engine_condition + jam_period_earned: 조건 값이 숫자가 아니면 예전처럼 0/1·target 1로 돌려준다', () => {
+    const bad = mission('engine_condition', { jam_period_earned: '100' } as unknown as MissionCondition)
+    assert.deepStrictEqual(evaluateMission(bad, [], emptyOwnership, true, { jam_period_earned: 999 }), { isParticipating: true, progressValue: 0, target: 1, achieved: false })
+  }],
+  ['engine_condition + 새 키 없음: 0/1·target 1을 유지한다 (활동 조건이든 다른 DB 키든 양을 싣지 않는다)', () => {
+    const plain = mission('engine_condition', { distance_km: 5 })
+    assert.deepStrictEqual(evaluateMission(plain, [makeActivity({ distanceKm: 10 })], emptyOwnership, true), { isParticipating: true, progressValue: 1, target: 1, achieved: true })
+    assert.deepStrictEqual(evaluateMission(plain, [makeActivity({ distanceKm: 1 })], emptyOwnership, true), { isParticipating: true, progressValue: 0, target: 1, achieved: false })
+    const db = mission('engine_condition', { combine_success_count: 5 })
+    assert.deepStrictEqual(evaluateMission(db, [], emptyOwnership, true, { combine_success_count: 3 }), { isParticipating: true, progressValue: 0, target: 1, achieved: false })
+    assert.deepStrictEqual(evaluateMission(db, [], emptyOwnership, true, { combine_success_count: 9 }), { isParticipating: true, progressValue: 1, target: 1, achieved: true })
+  }],
+  ['engine_condition + jam_period_earned: 미참가 유저는 0/0/false다', () => {
+    const m = mission('engine_condition', { jam_period_earned: 100 })
+    assert.deepStrictEqual(evaluateMission(m, [], emptyOwnership, false, { jam_period_earned: 500 }), { isParticipating: false, progressValue: 0, target: 0, achieved: false })
+  }],
+  ['getTarget·MISSION_PROGRESS_UNIT은 engine_condition에서 양을 내보내지 않는다 (소식·피드로 모은 잼이 새지 않게 고정)', () => {
+    assert.strictEqual(getTarget('engine_condition', { jam_period_earned: 100 }), 0)
+    assert.strictEqual(getTarget('engine_condition', { distance_km: 5 }), 0)
+    assert.strictEqual(MISSION_PROGRESS_UNIT.engine_condition, '')
+  }]
+)
 
 let passed = 0
 for (const [name, fn] of cases) {

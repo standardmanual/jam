@@ -6,6 +6,8 @@
  *  ② 로더가 던지면 그 미션만 건너뛰고(완료도 0 폴백도 아님) 나머지 미션은 계속 판정하는지
  *  ③ 같은 동기화에서 먼저 완료된 미션이 뒤 미션의 `mission_complete_count`에 잡히는지
  *  ④ DB 키가 없는 미션은 DB 지표를 읽지 않는지
+ *  ⑤ 기간 동안 모은 잼(`jam_period_earned`, 3-A회): 활동 시각이 참가 뒤인 정산 잼만 세고, 진행값이 모은 잼으로 기록되며,
+ *     활동 피드·소식으로는 그 양이 나가지 않는지
  * 를 한 번에 고정한다. DB는 메모리 모조(`fakeSupabase.ts`)이고 `mission_complete` RPC는 완료 기록을 실제로 쌓는다.
  *
  * 위치: `__tests__/`는 vitest에서 제외돼 있어(node assert 시험 전용) 모킹이 필요한 이 파일은 옆에 둔다
@@ -40,6 +42,8 @@ vi.mock('@/lib/strava/activity-history', () => ({
 }))
 
 import { checkMissions } from '@/lib/missions/checker'
+import { recordFeedEvent } from '@/lib/activity-feed'
+import { createNotification } from '@/lib/notifications'
 import { makeFakeDb } from '@/lib/badge-engine/__tests__/fakeSupabase'
 
 const STARTS = '2026-10-01T00:00:00.000Z'
@@ -385,5 +389,152 @@ describe('checkMissions — 날짜·체크인 키도 참가한 뒤, 기간 안�
     const result = await checkMissions(USER, [activity(AFTER_JOIN)])
     expect(result.completedMissionIds).toEqual(['m-plain'])
     expect(rpcCalls.map((c) => c.args.p_mission_id)).toEqual(['m-plain'])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// 기간 동안 모은 잼 (티켓 20261019_1445 3-A회)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('checkMissions — 기간 동안 모은 잼(jam_period_earned)', () => {
+  const SYNCED_AT = '2026-10-13T00:00:00.000Z' // 정산(동기화) 시각 — 모든 줄이 참가 뒤다. 활동 시각과 상관없다
+  const jamActivity = (id: string, startDate: string): FakeRow => ({ id, user_id: USER, start_date: startDate })
+  const settlement = (activityId: string, amount: number): FakeRow => ({
+    id: `tx-${activityId}`,
+    user_id: USER,
+    amount,
+    reason: 'activity_settlement',
+    source_activity_id: activityId,
+    created_at: SYNCED_AT,
+  })
+  const jamMission = (condition: Record<string, unknown>, overrides: Record<string, unknown> = {}) =>
+    engineMission('m-jam', condition, { status_display_type: 'ranking', ...overrides })
+
+  /** `user_mission_participations.update(...)`에 실린 값을 모은다 — 진행값이 어떻게 기록되는지 본다 */
+  function captureProgressWrites(): { progress_value: number }[] {
+    const writes: { progress_value: number }[] = []
+    const client = holder.db.client
+    const originalFrom = client.from.bind(client)
+    client.from = ((table: string) => {
+      const builder = originalFrom(table) as unknown as Record<string, (...args: unknown[]) => unknown>
+      if (table === 'user_mission_participations') {
+        const originalUpdate = builder.update
+        builder.update = (payload: unknown) => {
+          if (payload && typeof payload === 'object' && 'progress_value' in payload) writes.push(payload as { progress_value: number })
+          return originalUpdate(payload)
+        }
+      }
+      return builder
+    }) as unknown as typeof client.from
+    return writes
+  }
+
+  beforeEach(() => {
+    vi.mocked(recordFeedEvent).mockClear()
+    vi.mocked(createNotification).mockClear()
+  })
+
+  it('참가 전 활동의 잼은 늦게 정산돼도 세지 않는다 — 참가 뒤 활동의 잼이 모자라면 완료되지 않는다', async () => {
+    const { rpcCalls } = setup([jamMission({ jam_period_earned: 100 })], {
+      strava_activities: [jamActivity('a-before', BEFORE_JOIN), jamActivity('a-after', AFTER_JOIN)],
+      jam_transactions: [settlement('a-before', 100), settlement('a-after', 30)],
+    })
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+    expect(rpcCalls).toEqual([])
+  })
+
+  it('참가 뒤 활동의 잼이 조건만큼 쌓이면 완료한다', async () => {
+    const { rpcCalls } = setup([jamMission({ jam_period_earned: 100 })], {
+      strava_activities: [jamActivity('a-before', BEFORE_JOIN), jamActivity('a-after1', AFTER_JOIN), jamActivity('a-after2', AFTER_JOIN)],
+      jam_transactions: [settlement('a-before', 1000), settlement('a-after1', 30), settlement('a-after2', 70)],
+    })
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual(['m-jam'])
+    expect(rpcCalls).toHaveLength(1)
+  })
+
+  it('종료 뒤 활동의 잼은 세지 않는다', async () => {
+    setup([jamMission({ jam_period_earned: 100 }, { ends_at: ENDS })], {
+      strava_activities: [jamActivity('a-in', AFTER_JOIN), jamActivity('a-late', AFTER_END)],
+      jam_transactions: [settlement('a-in', 60), settlement('a-late', 500)],
+    })
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+  })
+
+  it('못 채운 동안의 진행값은 모은 잼이다 (순위형이 모은 양 순으로 세울 수 있다)', async () => {
+    setup([jamMission({ jam_period_earned: 100 })], {
+      strava_activities: [jamActivity('a1', AFTER_JOIN)],
+      jam_transactions: [settlement('a1', 60)],
+    })
+    const writes = captureProgressWrites()
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+    expect(writes).toEqual([{ progress_value: 60 }])
+  })
+
+  it('활동 조건이 함께 있으면 잼을 채워도 활동 조건을 못 채우면 완료하지 않는다 (진행값은 모은 잼 그대로)', async () => {
+    setup([jamMission({ jam_period_earned: 100, distance_km: 50 })], {
+      strava_activities: [jamActivity('a1', AFTER_JOIN)],
+      jam_transactions: [settlement('a1', 150)],
+    })
+    const writes = captureProgressWrites()
+    expect((await checkMissions(USER, [activity(AFTER_JOIN)])).completedMissionIds).toEqual([])
+    expect(writes).toEqual([{ progress_value: 150 }])
+  })
+
+  it('완료한 활동 피드에는 모은 잼이 실리지 않는다 — final_progress_value는 1, target_value는 0', async () => {
+    setup([jamMission({ jam_period_earned: 100 })], {
+      strava_activities: [jamActivity('a1', AFTER_JOIN)],
+      jam_transactions: [settlement('a1', 137)],
+    })
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual(['m-jam'])
+    const feedCalls = vi.mocked(recordFeedEvent).mock.calls.filter(([, type]) => type === 'mission_completed')
+    expect(feedCalls).toHaveLength(1)
+    const payload = feedCalls[0][2] as Record<string, unknown>
+    expect(payload.final_progress_value).toBe(1)
+    expect(payload.target_value).toBe(0)
+    expect(JSON.stringify(payload)).not.toContain('137')
+  })
+
+  it('새 키가 없는 engine_condition 미션의 피드도 final_progress_value는 1이다 (예전과 같다)', async () => {
+    setup([engineMission('m-plain', { distance_km: 5 })])
+    expect((await checkMissions(USER, [activity(AFTER_JOIN)])).completedMissionIds).toEqual(['m-plain'])
+    const feedCalls = vi.mocked(recordFeedEvent).mock.calls.filter(([, type]) => type === 'mission_completed')
+    expect((feedCalls[0][2] as Record<string, unknown>).final_progress_value).toBe(1)
+  })
+
+  it('다른 미션 타입의 피드는 진행값을 그대로 싣는다 (distance 미션: 10km)', async () => {
+    setup([engineMission('m-distance', { distance_km: 5 }, { mission_type: 'distance' })])
+    expect((await checkMissions(USER, [activity(AFTER_JOIN)])).completedMissionIds).toEqual(['m-distance'])
+    const feedCalls = vi.mocked(recordFeedEvent).mock.calls.filter(([, type]) => type === 'mission_completed')
+    expect((feedCalls[0][2] as Record<string, unknown>).final_progress_value).toBe(10)
+  })
+
+  it('절반을 넘게 모아도 마일스톤 소식이 나가지 않는다 (양이 소식으로 새지 않는다)', async () => {
+    setup([jamMission({ jam_period_earned: 100 })], {
+      strava_activities: [jamActivity('a1', AFTER_JOIN)],
+      jam_transactions: [settlement('a1', 85)], // 85/100 — 단위가 있는 미션이면 80% 마일스톤이 나갔을 양이다
+    })
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+    expect(vi.mocked(createNotification)).not.toHaveBeenCalled()
+  })
+
+  it('잼 원장을 읽지 못하면 그 미션만 건너뛴다 (완료도 0 폴백도 아니다)', async () => {
+    const { rpcCalls } = setup(
+      [
+        jamMission({ jam_period_earned: 0 }), // 0 이상이면 항상 충족 — 폴백(0)으로 읽었다면 완료됐을 조건
+        engineMission('m-plain', { distance_km: 5 }),
+      ],
+      { strava_activities: [jamActivity('a1', AFTER_JOIN)] },
+      { jam_transactions: '원장 장애' }
+    )
+    const result = await checkMissions(USER, [activity(AFTER_JOIN)])
+    expect(result.completedMissionIds).toEqual(['m-plain'])
+    expect(rpcCalls.map((c) => c.args.p_mission_id)).toEqual(['m-plain'])
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('이 미션만 건너뛰었어요'), expect.any(Error))
+  })
+
+  it('새 키가 없는 미션은 잼 원장을 읽지 않는다', async () => {
+    setup([engineMission('m-plain', { distance_km: 5 })])
+    await checkMissions(USER, [activity(AFTER_JOIN)])
+    expect(holder.db.queried).not.toContain('jam_transactions')
   })
 })

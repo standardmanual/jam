@@ -284,7 +284,9 @@ export async function checkMissions(
       awarded_badge_ids: reward.awardedBadgeIds,
       awarded_badge_names: reward.awardedBadgeNames,
       ...(openPendingItemBadgeIds.length > 0 ? { pending_item_badge_ids: openPendingItemBadgeIds } : {}),
-      final_progress_value: progressValue,
+      // 활동 피드는 팔로워·프로필 방문자에게 나간다. `engine_condition`의 진행값은 모은 잼 같은 양일 수 있어(티켓 20261019_1445 3-A)
+      // 양을 싣지 않고 달성 여부(완료했으니 1)만 기록한다. `target_value`도 이 타입은 0이라 양이 드러나지 않는다(`getTarget` 변경 없음).
+      final_progress_value: mission.mission_type === 'engine_condition' ? (achieved ? 1 : 0) : progressValue,
       target_value: getTarget(mission.mission_type, mission.condition_json as MissionCondition),
     })
 
@@ -319,6 +321,9 @@ export const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
   elevation_gain_m: 'm',
   // 달성형(0/1) — checkin/item_collect와 같은 취급. 진행률 마일스톤·마감임박 배치가
   // unit==='' 가드로 이 타입을 자동으로 건너뛴다(missionMilestoneHit·selectMissionDeadlineDrafts).
+  // ⚠️ 티켓 20261019_1445 3-A: «기간 동안 모은 잼»(jam_period_earned)이 든 engine_condition 미션은 진행값이 모은 잼 양이다.
+  // 이 단위를 ''로 두고 `getTarget`도 0을 돌려주는 것이 마일스톤·마감 임박 소식으로 그 양이 새지 않게 막는 장치다 —
+  // 단위나 `getTarget`을 채우면 모은 잼이 소식 문구로 나간다. 시험(`checker-logic.test.ts`)이 둘을 고정한다.
   engine_condition: '',
 }
 
@@ -476,6 +481,21 @@ export function evaluateMission(
   if (mission.mission_type === 'engine_condition') {
     // DB 기록 조건의 값(dbMetrics)은 checkMissions가 미션 기간 기준으로 미리 읽어 넘긴다(순수 함수라 여기서 DB를 읽지 않는다)
     const achieved = evaluateEngineMissionCondition(condition, activities, dbMetrics)
+
+    // 티켓 20261019_1445 3-A — «기간 동안 모은 잼»(jam_period_earned)이 든 미션만 진행값이 모은 잼, 목표가 조건의 임계값이다.
+    // 순위형 미션이 목표를 못 채운 사람을 모은 양 순으로 세우려면(`compareMissionRank`, 변경 없음) 진행값이 양이어야 하기 때문이다.
+    // 완료 여부는 위 `achieved`(조건 전체의 AND)이지 이 값이 아니다 — 다른 조건이 함께 있으면 잼을 채워도 완료되지 않을 수 있다.
+    // 이 키가 없는 미션은 예전처럼 0/1·target 1이다.
+    const periodTarget = condition.jam_period_earned
+    if (typeof periodTarget === 'number' && Number.isFinite(periodTarget)) {
+      const earned = dbMetrics?.jam_period_earned
+      return {
+        isParticipating: true,
+        progressValue: typeof earned === 'number' && Number.isFinite(earned) ? earned : 0,
+        target: periodTarget,
+        achieved,
+      }
+    }
     return { isParticipating: true, progressValue: achieved ? 1 : 0, target: 1, achieved }
   }
 
@@ -540,6 +560,8 @@ async function loadOwnership(userId: string): Promise<OwnershipContext> {
  * 배치가 자체 계산을 두면 진행바(#20)와 소식(#21)의 목표치가 갈라진다.
  */
 export function getTarget(missionType: string, condition: MissionCondition): number {
+  // engine_condition은 default(0) 그대로다 — `evaluateMission`이 돌려주는 target(기간 동안 모은 잼의 임계값 등)과 다르다. 이 함수는
+  // 마감 임박 소식(#21)과 활동 피드(`target_value`)가 쓰므로, 여기서 임계값을 돌려주면 모은 잼의 양이 소식·피드로 나간다(티켓 20261019_1445 3-A).
   switch (missionType) {
     case 'distance': return condition.distance_km ?? 0
     case 'activity_count': return condition.count ?? 0
