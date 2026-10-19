@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { rankMissionParticipants, type RankableParticipant } from '@/lib/missions/ranking'
+import { hasPeriodEarnedKey } from '@/lib/missions/condition-keys'
 import { rankByMetricValue, type RankableValueEntry } from './rankingCalculator'
 import { computeActivityMetricValue, isRankingActivityMetric, isRankingUsageMetric } from './metricValues'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
@@ -52,6 +53,11 @@ export interface RankingBoardResult {
 export type RankingModeIntegrityIssue =
   | { code: 'mission_deleted' }
   | { code: 'mission_not_ranking_type'; missionStatusDisplayType: MissionStatusDisplayType }
+  /**
+   * 연결된 미션의 조건에 «기간 동안 모은 잼»(`jam_period_earned`)이 들어 있다 — 홈 보드와 이 화면의 미리보기가 순위를 빈 결과로 돌려준다
+   * (티켓 20261019_1445 3-B). 랭킹 모드를 저장한 뒤에 미션 조건이 바뀐 경우에도 이유를 알린다.
+   */
+  | { code: 'mission_period_earned_hidden' }
   | { code: 'no_target_users' }
 
 interface UserProfile {
@@ -89,10 +95,18 @@ async function computeMissionParticipantsResult(
 ): Promise<RankingBoardResult> {
   const { data: missionRaw } = await supabase
     .from('missions')
-    .select('mission_type')
+    .select('mission_type, condition_json')
     .eq('id', missionId)
     .maybeSingle()
-  const missionType = (missionRaw as { mission_type: MissionType } | null)?.mission_type ?? null
+  const mission = missionRaw as { mission_type: MissionType; condition_json: unknown } | null
+  const missionType = mission?.mission_type ?? null
+
+  // 기간 동안 모은 잼(`jam_period_earned`)이 든 미션은 순위의 진행값이 모은 잼의 양이다. 홈 보드는 홈 방문자 전원에게 보이므로
+  // 그 양이 드러나지 않게 순위를 빈 결과로 돌려준다(그 양은 미션 상세·현황 화면에서만 보인다). 화면은 빈 순위 문구를 이미 그린다
+  // (`d.todayCard.rankingEmpty`). 티켓 20261019_1445 3-B 사용자 결정 8.
+  if (mission && hasPeriodEarnedKey(mission.condition_json)) {
+    return { entries: [], totalParticipants: 0, metricType: 'mission_progress', missionType, conditionFieldKey: null }
+  }
 
   const [{ data: participationsRaw }, { data: completionsRaw }] = await Promise.all([
     supabase.from('user_mission_participations').select('user_id, progress_value').eq('mission_id', missionId),
@@ -317,16 +331,18 @@ export async function checkRankingModeIntegrity(
     if (!mode.target_mission_id) return { code: 'mission_deleted' }
     const { data, error } = await supabase
       .from('missions')
-      .select('status_display_type')
+      .select('status_display_type, condition_json')
       .eq('id', mode.target_mission_id)
       .maybeSingle()
     // 조회 실패는 로그만 남긴다(티켓 20260925_2004) — 실패와 「미션 없음」이 화면에서는 같은 경고로 보이므로 로그로 구분한다.
     logQueryError(error, 'ranking-modes/integrity')
-    const mission = data as { status_display_type: MissionStatusDisplayType } | null
+    const mission = data as { status_display_type: MissionStatusDisplayType; condition_json?: unknown } | null
     if (!mission) return { code: 'mission_deleted' }
     if (mission.status_display_type !== 'ranking') {
       return { code: 'mission_not_ranking_type', missionStatusDisplayType: mission.status_display_type }
     }
+    // 티켓 20261019_1445 3-B — 순위는 `computeMissionParticipantsResult`가 빈 결과로 돌려준다(위 함수 주석).
+    if (hasPeriodEarnedKey(mission.condition_json)) return { code: 'mission_period_earned_hidden' }
     return null
   }
 

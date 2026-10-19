@@ -19,6 +19,9 @@ function integrityMessage(issue: NonNullable<Awaited<ReturnType<typeof checkRank
       return '연결된 미션을 찾을 수 없어요'
     case 'mission_not_ranking_type':
       return '연결된 미션이 더 이상 랭킹형이 아니에요'
+    case 'mission_period_earned_hidden':
+      // 티켓 20261019_1445 3-B — 모은 잼의 양이 홈 방문자 전원에게 드러나지 않도록 홈 보드와 미리보기가 순위를 비워 둔다.
+      return '연결된 미션이 «기간 동안 모은 잼» 조건이라 홈 순위가 비어 보여요'
     case 'no_target_users':
       return '지정된 유저가 없어요'
   }

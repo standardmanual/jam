@@ -214,6 +214,17 @@ export function dbConditionKeysIn(condition: unknown): MissionDbConditionKey[] {
   return MISSION_DB_CONDITION_KEY_LIST.filter((key) => record[key] !== undefined)
 }
 
+/**
+ * 조건에 «기간 동안 모은 잼»(`jam_period_earned`)이 들어 있는가 (티켓 20261019_1445 3-B).
+ *
+ * 이 키가 든 미션은 모은 양이 순위의 진행값이 되므로 홈 투데이 랭킹 보드(홈 방문자 전원)에 양이 드러나지 않게
+ * 순위를 가리고, 랭킹 모드에 연결하는 저장도 거절한다. 키가 «값이 있는가»로 보는 기준은 `dbConditionKeysIn`과 같다
+ * (조건이 없거나 객체가 아니면 false). 미션 타입은 따지지 않는다 — 키가 들어 있으면 가린다(안전한 쪽).
+ */
+export function hasPeriodEarnedKey(condition: unknown): boolean {
+  return dbConditionKeysIn(condition).includes('jam_period_earned')
+}
+
 /** 키가 DB 기록으로 세는 키(`MISSION_DB_CONDITION_KEY_LIST`)인가 */
 export function isDbConditionKey(key: string): key is MissionDbConditionKey {
   return MISSION_DB_CONDITION_KEY_SET.has(key)

@@ -57,3 +57,32 @@ describe('checkRankingModeIntegrity — 미션 조회 오류 로그(티켓 20260
     expect(errorSpy).not.toHaveBeenCalled()
   })
 })
+
+describe('checkRankingModeIntegrity — 기간 동안 모은 잼 미션 (티켓 20261019_1445 3-B)', () => {
+  it('연결된 미션 조건에 jam_period_earned가 있으면 홈 순위가 비는 이유를 알린다', async () => {
+    const hidden = clientReturning({
+      data: { status_display_type: 'ranking', condition_json: { jam_period_earned: 500 } },
+      error: null,
+    })
+    expect(await checkRankingModeIntegrity(missionMode(), hidden)).toEqual({ code: 'mission_period_earned_hidden' })
+  })
+
+  it('다른 조건 키만 있으면 문제 없음으로 본다', async () => {
+    const ok = clientReturning({
+      data: { status_display_type: 'ranking', condition_json: { distance_km: 5 } },
+      error: null,
+    })
+    expect(await checkRankingModeIntegrity(missionMode(), ok)).toBeNull()
+  })
+
+  it('랭킹형이 아닌 미션은 기존 경고가 먼저다', async () => {
+    const individual = clientReturning({
+      data: { status_display_type: 'individual', condition_json: { jam_period_earned: 500 } },
+      error: null,
+    })
+    expect(await checkRankingModeIntegrity(missionMode(), individual)).toEqual({
+      code: 'mission_not_ranking_type',
+      missionStatusDisplayType: 'individual',
+    })
+  })
+})
