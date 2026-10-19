@@ -149,11 +149,29 @@ describe('PATCH /api/admin/missions/[id] — 기온 키·경고', () => {
 
   it('판정하지 않는 조건이 있으면 저장하고 응답에 경고를 싣는다', async () => {
     existing({ mission_type: 'engine_condition', condition_json: { distance_km: 5 }, status_display_type: 'achievement' })
-    const res = await patch({ condition_json: { distance_km: 5, jam_total_earned: 100 } })
+    const res = await patch({ condition_json: { distance_km: 5, active_week_streak: 4 } })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.warning).toContain('jam_total_earned')
+    expect(body.warning).toContain('active_week_streak')
     expect(state.updates).toHaveLength(1)
     expect(state.updates[0]).not.toHaveProperty('warning')
+  })
+
+  it('기간을 걸 수 없는 키(티켓 20261019_1445)는 400이고 저장하지 않는다', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { distance_km: 5 }, status_display_type: 'achievement' })
+    const res = await patch({ condition_json: { distance_km: 5, jam_total_earned: 100 } })
+    expect(res.status).toBe(400)
+    const error = (await res.json()).error as string
+    expect(error).toContain('jam_total_earned')
+    expect(error).toContain('셀 수 없는 조건')
+    expect(state.updates).toHaveLength(0)
+  })
+
+  it('DB 기록 키는 경고 없이 저장한다', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { distance_km: 5 }, status_display_type: 'achievement' })
+    const res = await patch({ condition_json: { distance_km: 5, combine_success_count: 3 } })
+    expect(res.status).toBe(200)
+    expect(await res.json()).not.toHaveProperty('warning')
+    expect(state.updates).toHaveLength(1)
   })
 })

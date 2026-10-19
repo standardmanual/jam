@@ -137,21 +137,71 @@ export const ENGINE_DELEGATED_CONDITION_KEY_LIST = [
 export type EngineDelegatedConditionKey = (typeof ENGINE_DELEGATED_CONDITION_KEY_LIST)[number]
 
 /**
+ * DB 기록으로 세는 키 14개 — `engine_condition` 전용 (티켓 20261019_1445 1회).
+ *
+ * 배지엔진 위임 키(위)와 다르게 `evaluateConditionDetailed`에 넘기지 않는다. 활동 기록이 아니라 DB 행(믹스 기록·드랍 기록 등)을
+ * 세는 값이라 `lib/missions/dbMetrics.ts`의 `loadMissionDbMetrics`가 «참가한 뒤, 미션 기간 안»의 값으로 읽고,
+ * `engineCondition.ts`가 그 값을 조건의 숫자와 비교한다. 그래서 `ENGINE_DELEGATED_CONDITION_KEY_LIST`(= 배지엔진 위임)에 섞지 않는다.
+ *
+ * 이 키들은 배지 조건 레지스트리에도 있다(같은 이름·의미) — 아래 컴파일 장치가 레지스트리에 없는 키가 섞이는 것을 막는다.
+ * 키를 더하려면 읽기 함수·`dbMetrics.ts` 읽기 표·시험을 같은 회차에 만든다. 판정 구현 없이 이 목록에만 더하면
+ * 그 키만 든 미션이 참가하자마자 완료된다(`ENGINE_CONDITION_JUDGED_KEYS`가 이 목록을 포함하기 때문이다).
+ */
+export const ENGINE_DELEGATED_DB_CONDITION_KEY_LIST = [
+  // 믹스 4
+  'combine_attempt_count',
+  'combine_success_count',
+  'combine_fail_count',
+  'recipe_first_success',
+  // 드랍·픽업 4
+  'drop_item_count',
+  'pickup_item_count',
+  'pickup_from_user_count',
+  'picked_up_by_user_count',
+  // 완료 수 2
+  'mission_complete_count',
+  'collection_complete_count',
+  // 새 키 4
+  'capsule_open_count',
+  'locked_item_open_count',
+  'locked_item_pickup_count',
+  'cross_tribe_combine_success_count',
+] as const satisfies readonly (keyof MissionCondition)[]
+
+export type EngineDelegatedDbConditionKey = (typeof ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)[number]
+
+const ENGINE_DELEGATED_DB_CONDITION_KEY_SET: ReadonlySet<string> = new Set<string>(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)
+
+/** 조건에 값이 들어 있는 DB 기록 키들. 객체가 아니면 빈 배열 */
+export function dbConditionKeysIn(condition: unknown): EngineDelegatedDbConditionKey[] {
+  if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return []
+  const record = condition as Record<string, unknown>
+  return ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.filter((key) => record[key] !== undefined)
+}
+
+/** 키가 DB 기록으로 세는 키(`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`)인가 */
+export function isDbConditionKey(key: string): key is EngineDelegatedDbConditionKey {
+  return ENGINE_DELEGATED_DB_CONDITION_KEY_SET.has(key)
+}
+
+/**
  * 미션 전용 키 가운데 `engine_condition`이 쓰지 않는 둘 — 다른 타입(`activity_count`·`item_collect`)의 목표 값이다.
  * `engine_condition`에 들어 있어도 판정에 쓰이지 않는다.
  */
 const NON_ENGINE_MISSION_ONLY_KEYS: ReadonlySet<string> = new Set(['count', 'badge_id'])
 
 /**
- * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개).
+ * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개) + DB 기록 키(14개).
  * 이 밖의 키는 저장은 되지만 판정에 쓰이지 않는다 — `checkMissionCondition`이 경고로 알린다.
  * `evaluateEngineMissionCondition`의 「알려진 필드가 하나라도 있는가」 검사(fail-closed)도 이 집합을 쓴다 —
  * 두 곳이 갈리면 «경고는 없는데 판정은 안 하는» 조건이 생긴다.
- * 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 여기에 더하면 경고 대상에서 빠진다.
+ * 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 여기에 더하면 경고 대상에서 빠진다. **판정 구현과 같은 변경에서** 더한다 —
+ * 판정 없이 키만 옮기면 그 키만 든 미션이 알려진 키가 있다고 보고 참가 즉시 완료된다.
  */
 export const ENGINE_CONDITION_JUDGED_KEYS: ReadonlySet<string> = new Set<string>([
   ...ENGINE_DELEGATED_CONDITION_KEY_LIST,
   ...MISSION_ONLY_CONDITION_KEY_LIST.filter((key) => !NON_ENGINE_MISSION_ONLY_KEYS.has(key)),
+  ...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST,
 ])
 
 /**
@@ -161,6 +211,21 @@ export const ENGINE_CONDITION_JUDGED_KEYS: ReadonlySet<string> = new Set<string>
  * 실제로 검사하고, `engine_condition`은 기온을 조용히 무시해 미션이 더 쉬워진다.
  */
 export const MISSION_FORBIDDEN_CONDITION_KEYS = ['temperature_min_c', 'temperature_max_c'] as const
+
+/**
+ * 미션 기간 안의 값으로 셀 수 없어서 미션 조건으로 저장하지 못하는 키 5개 (티켓 20261019_1445 사용자 결정 1).
+ *
+ * 값이 «지금 상태» 하나이거나 평생 누계라서 «참가한 뒤 기간 안에 얼마나 늘었는가»를 가릴 수 없다. 조용히 지금 값을 쓰면
+ * 참가 전에 쌓은 값이 섞여 참가 즉시 완료되는 미션이 생기므로, 경고가 아니라 저장 단계에서 거절한다.
+ * 값은 오류 문구의 [원인]에 들어가는 이유다.
+ */
+export const MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS: Readonly<Record<string, string>> = {
+  jam_total_earned: '지갑에 평생 쌓인 누계 하나라서 참가한 뒤 얼마나 모았는지 나눌 수 없어요.',
+  chapter_reached: '지금 도달한 챕터 하나라서 참가한 뒤 기간 안의 값으로 나눌 수 없어요.',
+  days_since_signup: '가입한 날부터 지난 날짜라서 미션 기간과 상관없이 늘어나요.',
+  other_tribe_item_kinds_count: '지금 가진 개체를 센 스냅샷이라서 참가 전에 모은 것과 참가 뒤에 모은 것을 나눌 수 없어요.',
+  signup_recent_active_days: '오늘 기준 최근 30일을 도는 창이라서 미션 기간과 다른 기간을 세요.',
+}
 
 /** `checker.ts`가 `evaluateConditionDetailed`에 넘기는 `extraAllowedKeys` */
 export const MISSION_ONLY_CONDITION_KEYS: ReadonlySet<string> = new Set<string>(
@@ -335,6 +400,8 @@ export function rankingConditionError(
  * - 객체가 아니면 거부 — 자유 textarea라 `JSON.parse('[1,2]')`가 그대로 들어올 수 있다
  * - 허용 키 밖의 키는 거부 (fail-closed에 걸려 영구 미달성이 되는 것을 저장 단계에서 막는다)
  * - 기온 키는 어떤 타입에서도 거부한다 (날씨와 기온은 미션 조건으로 쓰지 않는다, 티켓 20261019_1312)
+ * - 기간 안의 값으로 셀 수 없는 키 5개(`MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS`)는 어떤 타입에서도 거부한다
+ *   (티켓 20261019_1445). 기온 키와 다른 사유라서 문구를 따로 둔다
  * - 틀(`frame`)이 순위형이면 밤 조건과 캡슐 연 횟수를 거부한다. 틀을 넘기지 않으면(어드민 폼 미리보기 등)
  *   이 검사는 건너뛴다 — 저장 라우트는 항상 «갱신 후 틀»을 넘긴다
  * - 평가 구현이 없는 키(`pending`)는 **엔진 위임 타입에서만 거부**한다. 그 타입만
@@ -394,6 +461,17 @@ export function checkMissionCondition(
   if (forbidden.length > 0) {
     return {
       error: `조건 JSON을 저장하지 못했어요. 미션에는 쓰지 않는 조건이 있어요 — ${labelKeys(forbidden)}. 날씨와 기온은 미션 조건으로 쓰지 않아요. 이 필드를 빼고 다시 저장해주세요.`,
+      warning: null,
+    }
+  }
+
+  const periodUnsupported = Object.keys(MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS).filter(
+    (k) => (condition as Record<string, unknown>)[k] !== undefined
+  )
+  if (periodUnsupported.length > 0) {
+    const reasons = periodUnsupported.map((k) => `${k}: ${MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS[k]}`).join(' ')
+    return {
+      error: `조건 JSON을 저장하지 못했어요. 미션 기간 안의 값으로 셀 수 없는 조건이 있어요 — ${labelKeys(periodUnsupported)}. ${reasons} 이 필드를 빼고, 기간 안에 쌓이는 조건(믹스 성공 횟수·캡슐 연 횟수·드랍한 아이템 수 등)으로 바꿔 다시 저장해주세요.`,
       warning: null,
     }
   }
@@ -580,6 +658,16 @@ export type AssertAllMissionConditionKeysCovered = AssertNever<MissingFromMissio
 type MissionOnlyKeyAlreadyInRegistry = Extract<MissionOnlyConditionKey, ConditionKey>
 /** 미션 고유 키 목록에 배지 레지스트리와 겹치는 키가 있으면 컴파일 에러가 난다 */
 export type AssertMissionOnlyKeysAreNotInRegistry = AssertNever<MissionOnlyKeyAlreadyInRegistry>
+
+// DB 기록 키도 전부 배지 레지스트리의 키여야 한다 — 같은 이름·의미로 `BadgeCondition`과 값 모양을 공유한다.
+type DbKeyNotInRegistry = Exclude<EngineDelegatedDbConditionKey, ConditionKey>
+/** DB 기록 키 목록에 배지 레지스트리에 없는 키가 있으면 컴파일 에러가 난다 */
+export type AssertDbKeysAreInRegistry = AssertNever<DbKeyNotInRegistry>
+
+// DB 기록 키는 배지엔진 위임 키와 겹치면 안 된다 — 겹치면 같은 키를 배지엔진(활동 기록)과 DB 읽기가 둘 다 판정한다.
+type DbKeyAlsoDelegated = Extract<EngineDelegatedDbConditionKey, EngineDelegatedConditionKey>
+/** DB 기록 키 목록과 배지엔진 위임 키 목록이 겹치면 컴파일 에러가 난다 */
+export type AssertDbKeysAreNotDelegated = AssertNever<DbKeyAlsoDelegated>
 
 // 위임 키는 전부 배지 레지스트리의 키여야 한다 — 레지스트리에 없는 키를 위임하면 배지엔진이
 // 「알 수 없는 필드」로 판정을 막는다(fail-closed). 어긋나면 여기서 컴파일 에러가 난다.

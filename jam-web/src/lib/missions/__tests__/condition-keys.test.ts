@@ -9,6 +9,7 @@
  *   - 프로덕션 45건(2026-09-05 실측)의 9개 조건 조합이 전부 통과하는지
  *   - 저장 허용 목록 ↔ checker.ts의 fail-closed 통과 목록이 같은 값인지
  *   - 순위형 금지(밤 조건·캡슐 연 횟수)·기온 키 거부·판정하지 않는 키 경고 (티켓 20261019_1312)
+ *   - DB 기록 키 14개의 판정 가능 집합 편입, 기간을 걸 수 없는 키 5개의 저장 거절 (티켓 20261019_1445)
  *
  * `MissionCondition`에 필드를 추가했을 때 허용 키 누락이 «컴파일 에러»로 드러나는지는
  * 런타임에서 확인할 수 없다(타입은 런타임에 없다). `condition-keys.ts` 끝의
@@ -23,11 +24,14 @@ import {
   DEFAULT_MISSION_STATUS_DISPLAY_TYPE,
   ENGINE_CONDITION_JUDGED_KEYS,
   ENGINE_DELEGATED_CONDITION_KEY_LIST,
+  ENGINE_DELEGATED_DB_CONDITION_KEY_LIST,
   ENGINE_DELEGATED_MISSION_TYPES,
   MISSION_ALLOWED_CONDITION_KEYS,
   MISSION_FORBIDDEN_CONDITION_KEYS,
   MISSION_ONLY_CONDITION_KEYS,
+  MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS,
   checkMissionCondition,
+  dbConditionKeysIn,
   rankingConditionError,
   suggestMissionConditionKey,
   usesNightCondition,
@@ -239,6 +243,21 @@ const cases: Array<[string, () => void]> = [
       distinct_months_metric: 'distance_km',
       distinct_months_threshold: 1,
       time_band_counts: [{ start: '05:00', end: '08:00', count: 1 }],
+      // 티켓 20261019_1445 — engine_condition 전용 DB 기록 키 14종
+      combine_attempt_count: 1,
+      combine_success_count: 1,
+      combine_fail_count: 1,
+      recipe_first_success: { recipe_id: 'recipe' },
+      drop_item_count: 1,
+      pickup_item_count: 1,
+      pickup_from_user_count: 1,
+      picked_up_by_user_count: 1,
+      mission_complete_count: 1,
+      collection_complete_count: 1,
+      capsule_open_count: 1,
+      locked_item_open_count: 1,
+      locked_item_pickup_count: 1,
+      cross_tribe_combine_success_count: 1,
     }
     for (const key of Object.keys(everyField)) {
       assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has(key), `허용 키에 없다: ${key}`)
@@ -260,15 +279,39 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `기온 키가 위임된다: ${key}`)
     }
   }],
-  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 9개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
+  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 9개 + DB 기록 키 14개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
     for (const key of ENGINE_DELEGATED_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
+    for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     const engineOnly = [...MISSION_ONLY_CONDITION_KEYS].filter((key) => key !== 'count' && key !== 'badge_id')
     assert.strictEqual(engineOnly.length, 9)
     for (const key of engineOnly) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('count'))
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('badge_id'))
     assert.strictEqual(ENGINE_DELEGATED_CONDITION_KEY_LIST.length, 26)
-    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 9, '위임 키와 복합 조건 전용 키가 겹치거나 빠졌다')
+    assert.strictEqual(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.length, 14)
+    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 9 + 14, '위임 키·복합 조건 전용 키·DB 기록 키가 겹치거나 빠졌다')
+  }],
+  ['DB 기록 키 14개: 믹스 4·드랍·픽업 4·완료 수 2·새 키 4이고 위임 키·기간 불가 키와 겹치지 않는다', () => {
+    assert.deepStrictEqual([...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST].sort(), [
+      'capsule_open_count', 'collection_complete_count', 'combine_attempt_count', 'combine_fail_count', 'combine_success_count',
+      'cross_tribe_combine_success_count', 'drop_item_count', 'locked_item_open_count', 'locked_item_pickup_count',
+      'mission_complete_count', 'picked_up_by_user_count', 'pickup_from_user_count', 'pickup_item_count', 'recipe_first_success',
+    ])
+    for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
+      assert.ok(ALL_CONDITION_KEYS.includes(key as never), `배지 레지스트리에 없다: ${key}`)
+      assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `배지엔진 위임 키와 겹친다: ${key}`)
+      assert.ok(!(key in MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS), `기간 불가 키와 겹친다: ${key}`)
+    }
+  }],
+  ['dbConditionKeysIn: 값이 있는 DB 키만 돌려주고 객체가 아니면 빈 배열', () => {
+    assert.deepStrictEqual(
+      dbConditionKeysIn({ distance_km: 10, combine_success_count: 3, capsule_open_count: 0, jam_total_earned: 5 }),
+      ['combine_success_count', 'capsule_open_count']
+    )
+    assert.deepStrictEqual(dbConditionKeysIn({ combine_success_count: undefined }), [])
+    assert.deepStrictEqual(dbConditionKeysIn(null), [])
+    assert.deepStrictEqual(dbConditionKeysIn([1]), [])
+    assert.deepStrictEqual(dbConditionKeysIn('x'), [])
   }],
 
   // ── 기온 키 ──────────────────────────────────────────────────
@@ -433,8 +476,10 @@ const cases: Array<[string, () => void]> = [
   }],
 
   // ── 판정하지 않는 키 경고 ─────────────────────────────────────
+  // 5-2b 1회(티켓 20261019_1445)로 DB 기록 키 14개가 판정 가능해졌고 기간 불가 키 5개는 저장 거절이 됐다. 지금 경고 대상은
+  // 이번 범위 밖 키(`active_week_streak`·`jam_week_count` 등)와 `total_count`·`count`·`badge_id`다.
   ['engine_condition + 판정하지 않는 키 → 저장은 허용하고 경고한다', () => {
-    for (const key of ['jam_total_earned', 'capsule_open_count', 'total_count', 'count', 'badge_id']) {
+    for (const key of ['active_week_streak', 'jam_week_count', 'dropped_item_picked_up_count', 'total_count', 'count', 'badge_id']) {
       const { error, warning } = checkMissionCondition('engine_condition', { distance_km: 10, [key]: 3 } as unknown as MissionCondition)
       assert.strictEqual(error, null, `${key}: 저장이 막혔다 — ${error}`)
       assert.ok(warning, `${key}: 경고가 없다`)
@@ -451,9 +496,55 @@ const cases: Array<[string, () => void]> = [
     assert.deepStrictEqual(checkMissionCondition('engine_condition', condition, 'achievement'), { error: null, warning: null })
   }],
   ['판정하지 않는 키 경고는 engine_condition에서만 낸다', () => {
-    const { error, warning } = checkMissionCondition('distance', { distance_km: 10, jam_total_earned: 3 } as unknown as MissionCondition)
+    const { error, warning } = checkMissionCondition('distance', { distance_km: 10, active_week_streak: 3 } as unknown as MissionCondition)
     assert.strictEqual(error, null)
     assert.strictEqual(warning, null)
+  }],
+  ['engine_condition + DB 기록 키 14개 → 경고도 오류도 없다 (판정하는 키가 됐다)', () => {
+    for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
+      const value = key === 'recipe_first_success' ? { recipe_id: 'recipe' } : 3
+      const result = checkMissionCondition('engine_condition', { distance_km: 10, [key]: value } as unknown as MissionCondition, 'achievement')
+      assert.deepStrictEqual(result, { error: null, warning: null }, `${key}: ${JSON.stringify(result)}`)
+    }
+  }],
+
+  // ── 기간을 걸 수 없는 키 (티켓 20261019_1445 사용자 결정 1) ──────────────
+  ['기간을 걸 수 없는 키 5개는 어떤 미션 타입에서도 저장하지 못한다', () => {
+    assert.deepStrictEqual(Object.keys(MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS).sort(), [
+      'chapter_reached', 'days_since_signup', 'jam_total_earned', 'other_tribe_item_kinds_count', 'signup_recent_active_days',
+    ])
+    const types: MissionType[] = ['engine_condition', 'distance', 'streak_days', 'item_collect']
+    for (const key of Object.keys(MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS)) {
+      for (const type of types) {
+        const { error, warning } = checkMissionCondition(type, { distance_km: 10, [key]: 3 } as unknown as MissionCondition, 'achievement')
+        assert.ok(error, `${type}/${key}: 저장이 막히지 않았다`)
+        assert.strictEqual(warning, null)
+        assert.ok(error!.includes(key), `문제 키가 문구에 없다: ${error}`)
+      }
+    }
+  }],
+  ['기간 불가 키 오류 문구는 [현상] → [원인] → [해결책] 순서이고 기온 키 문구와 다르다', () => {
+    const { error } = checkMissionCondition('engine_condition', { jam_total_earned: 100 } as unknown as MissionCondition, 'achievement')
+    assert.ok(error)
+    const symptom = error!.indexOf('저장하지 못했어요')
+    const cause = error!.indexOf('평생 쌓인 누계')
+    const fix = error!.indexOf('다시 저장해주세요')
+    assert.ok(symptom >= 0 && cause > symptom && fix > cause, `3단계 순서가 아니다: ${error}`)
+    assert.ok(error!.includes('기간 안에 쌓이는 조건'), `대안 안내가 없다: ${error}`)
+    assert.ok(!error!.includes('날씨와 기온'), `기온 키 문구가 섞였다: ${error}`)
+    // 키마다 자기 이유를 말한다
+    const chapter = checkMissionCondition('engine_condition', { chapter_reached: 2 } as unknown as MissionCondition, 'achievement').error
+    assert.ok(chapter!.includes('지금 도달한 챕터'), chapter!)
+  }],
+  ['기간 불가 키와 같이 쓴 판정 가능 키도 저장은 막힌다 (한 키라도 있으면 거절)', () => {
+    const { error } = checkMissionCondition(
+      'engine_condition',
+      { combine_success_count: 3, days_since_signup: 30, signup_recent_active_days: 10 } as unknown as MissionCondition,
+      'achievement'
+    )
+    assert.ok(error)
+    assert.ok(error!.includes('days_since_signup') && error!.includes('signup_recent_active_days'))
+    assert.ok(!error!.includes('combine_success_count'), `판정하는 키까지 문제로 적었다: ${error}`)
   }],
   ['pending 키는 engine_condition에서 여전히 거부한다 (경고로 낮추지 않는다)', () => {
     const { error } = checkMissionCondition('engine_condition', { distance_km: 10, [PENDING_KEY]: 'x' } as unknown as MissionCondition)

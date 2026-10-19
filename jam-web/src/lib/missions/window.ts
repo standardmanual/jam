@@ -13,6 +13,9 @@
  *
  * 순수 모듈이다 — DB·서버 의존이 없다. 체크인·아이템 수집처럼 보유 현황으로 판정하는 유형은 활동 배열을
  * 쓰지 않으므로 이 함수를 거치지 않는다(`checker.ts`).
+ *
+ * DB 기록으로 세는 조건(믹스·드랍·캡슐 등, 티켓 20261019_1445)은 활동 배열이 아니라 DB 행의 시각을 거르므로
+ * 같은 경계를 `missionWindowIsoBounds`로 ISO 시각 문자열로 돌려받아 쓴다 — 활동 선택과 같은 계산을 공유한다.
  */
 import type { NormalizedActivity } from '@/types/strava'
 
@@ -32,23 +35,43 @@ function toMs(value: string | null | undefined): number | null {
   return Number.isNaN(ms) ? null : ms
 }
 
-/** 기간 안의 활동만 남긴다. 하한·상한이 해석되지 않으면 그 쪽은 걸러내지 않는다(가입 이력을 통째로 버리지 않는다) */
-export function activitiesWithinMissionWindow(
-  activities: NormalizedActivity[],
-  window: MissionWindow
-): NormalizedActivity[] {
+/** 기간 경계를 밀리초로 — 하한(참가·시작 가운데 늦은 시각)과 상한(종료). 해석되지 않는 쪽은 null */
+function missionWindowBoundsMs(window: MissionWindow): { lower: number | null; upper: number | null } {
   const joined = toMs(window.joinedAt)
   const started = toMs(window.startsAt)
   const ended = toMs(window.endsAt)
 
   const lowerBounds = [joined, started].filter((ms): ms is number => ms !== null)
   const lower = lowerBounds.length > 0 ? Math.max(...lowerBounds) : null
+  return { lower, upper: ended }
+}
+
+/**
+ * 기간 경계를 ISO 시각 문자열로 — DB 지표를 «참가한 뒤, 기간 안»으로 거를 때 쓴다(티켓 20261019_1445).
+ * 활동 선택(`activitiesWithinMissionWindow`)과 같은 경계 계산을 쓰므로 두 판정이 서로 다른 기간을 보지 않는다.
+ * 하한·상한 모두 포함이다. 해석되지 않는 쪽은 null — 하한이 null이면 호출자가 «기간을 정할 수 없음»으로 다뤄야 한다
+ * (활동 선택은 하한이 없어도 가입 이력을 버리지 않지만, DB 지표는 하한이 없으면 평생값이 섞인다).
+ */
+export function missionWindowIsoBounds(window: MissionWindow): { fromIso: string | null; toIso: string | null } {
+  const { lower, upper } = missionWindowBoundsMs(window)
+  return {
+    fromIso: lower === null ? null : new Date(lower).toISOString(),
+    toIso: upper === null ? null : new Date(upper).toISOString(),
+  }
+}
+
+/** 기간 안의 활동만 남긴다. 하한·상한이 해석되지 않으면 그 쪽은 걸러내지 않는다(가입 이력을 통째로 버리지 않는다) */
+export function activitiesWithinMissionWindow(
+  activities: NormalizedActivity[],
+  window: MissionWindow
+): NormalizedActivity[] {
+  const { lower, upper } = missionWindowBoundsMs(window)
 
   return activities.filter((a) => {
     const at = Date.parse(a.startDate)
     if (Number.isNaN(at)) return false
     if (lower !== null && at < lower) return false
-    if (ended !== null && at > ended) return false
+    if (upper !== null && at > upper) return false
     return true
   })
 }

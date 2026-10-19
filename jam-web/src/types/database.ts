@@ -837,6 +837,43 @@ export interface MissionCondition {
   /** 각 시간대별 최소 활동 횟수(독립 카운터, 배열의 각 항목이 각자 min_count를 만족해야
    * 함) — day_of_week 배열+total_count의 시간대 버전(배지엔진에 없는 신규 어휘) */
   time_band_counts?: { start: string; end: string; count: number }[]
+
+  // ── engine_condition 전용: DB 기록으로 세는 조건 14종 (티켓 20261019_1445 1회) ──────────
+  //
+  // 타입·의미는 BadgeCondition의 같은 키와 같다. 다만 미션에서는 «참가한 뒤, 미션 기간 안»에 쌓인 기록만 센다
+  // (`src/lib/missions/dbMetrics.ts`가 읽고 `engineCondition.ts`가 비교한다). 활동 기록으로 판정하는 위의 키들과
+  // AND로 묶인다. 판정 시점은 활동 동기화 때뿐이다 — 믹스·캡슐·드랍·픽업을 한 순간이 아니라 다음 동기화에서 완료된다.
+  // 기간을 걸 수 없는 키(`jam_total_earned`·`chapter_reached`·`days_since_signup`·`other_tribe_item_kinds_count`·
+  // `signup_recent_active_days`)는 일부러 없다 — 저장 단계에서 거절한다(`condition-keys.ts`).
+
+  /** 믹스 시도 횟수 — 성공 기록 수 + 재료가 소각된 실패 수 */
+  combine_attempt_count?: BadgeCondition['combine_attempt_count']
+  /** 믹스 성공 횟수 */
+  combine_success_count?: BadgeCondition['combine_success_count']
+  /** 믹스 실패 횟수 — 재료가 소각된 실패만 */
+  combine_fail_count?: BadgeCondition['combine_fail_count']
+  /** 지정한 레시피를 기간 안에 전체 유저 중 처음 성공했는가 */
+  recipe_first_success?: BadgeCondition['recipe_first_success']
+  /** 놓은 서로 다른 아이템 개체 수 (놓은 때 기준) */
+  drop_item_count?: BadgeCondition['drop_item_count']
+  /** 주운 서로 다른 아이템 개체 수 (주운 때 기준) */
+  pickup_item_count?: BadgeCondition['pickup_item_count']
+  /** 내가 주운 드랍을 놓은 서로 다른 유저 수 (주운 때 기준) */
+  pickup_from_user_count?: BadgeCondition['pickup_from_user_count']
+  /** 내가 놓은 드랍을 주운 서로 다른 유저 수 (주워진 때 기준) */
+  picked_up_by_user_count?: BadgeCondition['picked_up_by_user_count']
+  /** 완료한 미션 수 (완료한 때 기준) */
+  mission_complete_count?: BadgeCondition['mission_complete_count']
+  /** 완성한 컬렉션 수 (완성한 때 기준) */
+  collection_complete_count?: BadgeCondition['collection_complete_count']
+  /** 캡슐을 연 횟수 */
+  capsule_open_count?: BadgeCondition['capsule_open_count']
+  /** 잠긴 아이템 배지를 연 횟수 */
+  locked_item_open_count?: BadgeCondition['locked_item_open_count']
+  /** 픽업 당시 잠겨 있던 서로 다른 개체 수 */
+  locked_item_pickup_count?: BadgeCondition['locked_item_pickup_count']
+  /** 재료가 트라이브 2개 이상에 걸친 믹스 성공 횟수 */
+  cross_tribe_combine_success_count?: BadgeCondition['cross_tribe_combine_success_count']
 }
 
 /** 게이트 미션의 단계 — 마스터 티켓 20260905_0026의 2단 게이트 표를 그대로 옮긴 두 값 */

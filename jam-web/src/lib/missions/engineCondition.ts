@@ -33,7 +33,13 @@ import { kstDayOfWeekOfStart, kstMondayKeyOfStart, kstYearMonthKeyOfStart } from
 // 클라이언트 컴포넌트가 이 파일의 `@/lib/badge-engine`(→ `next/headers`) 전이 의존까지
 // 끌고 가 빌드가 깨진다(티켓 20260904_0631과 같은 실패 모드) — 이 파일은 이미 서버 전용이라
 // (`checker.ts`에서만 쓴다) 반대 방향(정본 참조)은 안전하다.
-import { ENGINE_CONDITION_JUDGED_KEYS, ENGINE_DELEGATED_CONDITION_KEY_LIST } from '@/lib/missions/condition-keys'
+import {
+  ENGINE_CONDITION_JUDGED_KEYS,
+  ENGINE_DELEGATED_CONDITION_KEY_LIST,
+  dbConditionKeysIn,
+  type EngineDelegatedDbConditionKey,
+} from '@/lib/missions/condition-keys'
+import type { MissionDbMetrics } from '@/lib/missions/dbMetrics'
 
 const WEEK_MS = 7 * 86_400_000
 
@@ -162,16 +168,46 @@ function extractDelegatedCondition(condition: MissionCondition): Record<string, 
 }
 
 /**
+ * DB 기록 키 하나가 충족됐는가 (티켓 20261019_1445). `dbMetrics`에 그 키의 값이 없으면 충족하지 못한 것으로 본다(fail-closed) —
+ * 호출자가 값을 읽지 않았는데 «조건 없음»처럼 통과해 미션이 즉시 완료되는 일을 막는다.
+ * 조건 값이 숫자가 아니거나(문자열·NaN) 레시피를 가리키지 않는 `recipe_first_success`도 충족하지 못한다.
+ */
+function dbConditionMet(key: EngineDelegatedDbConditionKey, condition: MissionCondition, dbMetrics: MissionDbMetrics | undefined): boolean {
+  const actual = dbMetrics?.[key]
+  if (actual === undefined || !Number.isFinite(actual)) return false
+
+  if (key === 'recipe_first_success') {
+    const recipeId = condition.recipe_first_success?.recipe_id
+    return typeof recipeId === 'string' && recipeId !== '' && actual >= 1
+  }
+
+  const required = condition[key]
+  return typeof required === 'number' && Number.isFinite(required) && actual >= required
+}
+
+/**
  * `engine_condition` 미션의 달성 판정. 순수 함수 — `checker.ts`가 미션 기간(참가·시작 이후, 종료 이전)으로
  * 이미 필터링한 활동 배열을 넘긴다(다른 위임 타입과 같은 규약, `window.ts`).
+ *
+ * `dbMetrics`(티켓 20261019_1445)는 DB 기록으로 세는 키 14개(`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`)의 «참가한 뒤, 기간 안» 값이다.
+ * `checker.ts`가 `loadMissionDbMetrics`로 읽어 넘기고, 조건에 든 DB 키는 모두 충족해야 한다(활동 기록 조건과 AND).
+ * 조건에 DB 키가 있는데 값이 없으면 충족하지 못한 것이다 — 읽기에 실패한 미션은 호출자가 이 함수를 부르지 않고 건너뛴다.
  *
  * ⚠️ `rest_after_long`(휴식) 판정은 `activities` 배열 자체의 첫 활동 이전 공백을 보지
  * 않는다(가입 앵커를 별도로 받지 않는다) — `checker.ts`가 이미 `joinedAt` 하한으로 잘라
  * 넘기므로 배열 밖(가입 이전) 공백이 애초에 섞이지 않는다. 이 함수를 다른 곳에서 재사용할
  * 때는 호출자가 반드시 참가 시점 이후로 걸러서 넘겨야 한다(`evaluateMission`의 같은 주석 참고).
  */
-export function evaluateEngineMissionCondition(condition: MissionCondition, activities: NormalizedActivity[]): boolean {
+export function evaluateEngineMissionCondition(
+  condition: MissionCondition,
+  activities: NormalizedActivity[],
+  dbMetrics?: MissionDbMetrics
+): boolean {
   const filtered = typeFiltered(condition, activities)
+
+  for (const key of dbConditionKeysIn(condition)) {
+    if (!dbConditionMet(key, condition, dbMetrics)) return false
+  }
 
   if (condition.weekly_streak !== undefined && condition.weekly_streak_min_count !== undefined) {
     const streak = maxPeriodStreak(filtered, weekOrdinal, condition.weekly_streak_min_count, condition.streak_subset)

@@ -7,7 +7,7 @@
  * 실행: `npx tsx src/lib/missions/__tests__/window.test.ts` (node assert — 러너 불필요)
  */
 import assert from 'node:assert'
-import { activitiesWithinMissionWindow } from '../window'
+import { activitiesWithinMissionWindow, missionWindowIsoBounds } from '../window'
 import type { NormalizedActivity } from '@/types/strava'
 
 let seq = 0
@@ -107,6 +107,33 @@ const cases: Array<[string, () => void]> = [
     activitiesWithinMissionWindow(all, { joinedAt: STARTS_AT, startsAt: STARTS_AT, endsAt: ENDS_AT })
     assert.deepStrictEqual(all, copy)
     assert.deepStrictEqual(activitiesWithinMissionWindow([], { joinedAt: STARTS_AT, startsAt: STARTS_AT, endsAt: null }), [])
+  }],
+
+  // ── DB 지표용 ISO 경계 (티켓 20261019_1445) — 활동 선택과 같은 경계를 써야 한다 ──
+  ['missionWindowIsoBounds: 하한은 참가·시작 중 늦은 쪽, 상한은 종료', () => {
+    assert.deepStrictEqual(
+      missionWindowIsoBounds({ joinedAt: '2026-10-05T00:00:00+00:00', startsAt: STARTS_AT, endsAt: ENDS_AT }),
+      { fromIso: STARTS_AT, toIso: ENDS_AT }
+    )
+    assert.deepStrictEqual(
+      missionWindowIsoBounds({ joinedAt: '2026-10-14T00:00:00+00:00', startsAt: STARTS_AT, endsAt: ENDS_AT }),
+      { fromIso: '2026-10-14T00:00:00.000Z', toIso: ENDS_AT }
+    )
+  }],
+  ['missionWindowIsoBounds: 종료가 없으면 상한 없음, 참가 시각을 모르면 시작이 하한', () => {
+    assert.deepStrictEqual(missionWindowIsoBounds({ joinedAt: undefined, startsAt: STARTS_AT, endsAt: null }), { fromIso: STARTS_AT, toIso: null })
+  }],
+  ['missionWindowIsoBounds: 해석되지 않는 시각은 null — 하한이 null이면 호출자가 기간을 정할 수 없다', () => {
+    assert.deepStrictEqual(missionWindowIsoBounds({ joinedAt: null, startsAt: '깨진 값', endsAt: '깨진 값' }), { fromIso: null, toIso: null })
+  }],
+  ['missionWindowIsoBounds는 활동 선택과 같은 경계를 쓴다 (경계 시각 포함 여부까지)', () => {
+    const window = { joinedAt: '2026-10-12T12:00:00+00:00', startsAt: STARTS_AT, endsAt: ENDS_AT }
+    const { fromIso, toIso } = missionWindowIsoBounds(window)
+    const atFrom = act(fromIso as string)
+    const atTo = act(toIso as string)
+    const justBefore = act('2026-10-12T11:59:59.999Z')
+    const justAfter = act('2026-10-20T00:00:00.001Z')
+    assert.deepStrictEqual(ids(activitiesWithinMissionWindow([justBefore, atFrom, atTo, justAfter], window)), [atFrom.startDate, atTo.startDate])
   }],
 ]
 

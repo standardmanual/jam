@@ -9,6 +9,7 @@
  */
 import assert from 'node:assert'
 import { evaluateEngineMissionCondition } from '../engineCondition'
+import { ENGINE_DELEGATED_DB_CONDITION_KEY_LIST } from '../condition-keys'
 import type { MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 import { kstIso } from '@/lib/badge-engine/__tests__/kstFixture'
@@ -395,6 +396,57 @@ const cases: Array<[string, () => void]> = [
       assert.strictEqual(evaluateEngineMissionCondition(cond, korean), expected, `${name}: startDateLocal 있음`)
       assert.strictEqual(evaluateEngineMissionCondition(cond, withoutLocal), expected, `${name}: startDateLocal 없음`)
     }
+  }],
+
+  // ── DB 기록 키 (티켓 20261019_1445) — dbMetrics는 checker가 «참가한 뒤, 기간 안» 값으로 읽어 넘긴다 ──
+  ['DB 기록 키: 값이 조건 이상이면 통과하고 미만이면 통과하지 않는다 (경계 포함)', () => {
+    const cond: MissionCondition = { combine_success_count: 3 }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { combine_success_count: 2 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { combine_success_count: 3 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { combine_success_count: 9 }), true)
+  }],
+  ['DB 기록 키만 든 조건은 활동이 없어도 값만으로 판정한다 (알려진 키가 있다고 보되 값이 모자라면 미완료)', () => {
+    assert.strictEqual(evaluateEngineMissionCondition({ capsule_open_count: 1 }, [], { capsule_open_count: 0 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition({ capsule_open_count: 1 }, [], { capsule_open_count: 1 }), true)
+  }],
+  ['DB 기록 키 값을 주지 않으면 통과하지 않는다 (fail-closed — 참가 즉시 완료 방지)', () => {
+    for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
+      const value = key === 'recipe_first_success' ? { recipe_id: 'r1' } : 1
+      const cond = { [key]: value } as MissionCondition
+      assert.strictEqual(evaluateEngineMissionCondition(cond, []), false, `${key}: dbMetrics 없이 통과했다`)
+      assert.strictEqual(evaluateEngineMissionCondition(cond, [], {}), false, `${key}: 값 없이 통과했다`)
+    }
+  }],
+  ['DB 기록 키 14개 전부 값이 있으면 통과한다', () => {
+    const cond: MissionCondition = {}
+    const metrics: Record<string, number> = {}
+    for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
+      ;(cond as Record<string, unknown>)[key] = key === 'recipe_first_success' ? { recipe_id: 'r1' } : 2
+      metrics[key] = key === 'recipe_first_success' ? 1 : 2
+    }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], metrics), true)
+  }],
+  ['recipe_first_success: 기간 안에 처음 성공했으면(1) 통과, 아니면(0) 통과하지 않는다', () => {
+    const cond: MissionCondition = { recipe_first_success: { recipe_id: 'r1' } }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { recipe_first_success: 1 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { recipe_first_success: 0 }), false)
+    // 레시피를 가리키지 않으면 물을 수 없다
+    assert.strictEqual(evaluateEngineMissionCondition({ recipe_first_success: {} } as MissionCondition, [], { recipe_first_success: 1 }), false)
+  }],
+  ['DB 기록 키: 조건 값이 숫자가 아니면(문자열·null) 통과하지 않는다', () => {
+    assert.strictEqual(evaluateEngineMissionCondition({ combine_success_count: '3' } as unknown as MissionCondition, [], { combine_success_count: 99 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition({ combine_success_count: null } as unknown as MissionCondition, [], { combine_success_count: 99 }), false)
+  }],
+  ['DB 기록 키는 활동 기록 조건과 AND로 묶인다', () => {
+    const cond: MissionCondition = { distance_km: 5, combine_success_count: 2 }
+    const acts = [act('2026-07-02T08:00:00')] // 10km
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { combine_success_count: 1 }), false, 'DB 조건이 모자란데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { combine_success_count: 5 }), false, '활동 조건이 모자란데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { combine_success_count: 2 }), true)
+  }],
+  ['DB 기록 키는 배지엔진에 위임하지 않는다 — 활동이 없어도 값이 충분하면 통과한다', () => {
+    // 위임했다면 evaluateConditionDetailed가 «외부 판정 키»로 막았을 것이다
+    assert.strictEqual(evaluateEngineMissionCondition({ mission_complete_count: 2, drop_item_count: 1 }, [], { mission_complete_count: 2, drop_item_count: 1 }), true)
   }],
 ]
 

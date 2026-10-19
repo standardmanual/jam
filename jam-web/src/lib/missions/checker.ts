@@ -13,8 +13,10 @@ import { evaluateConditionDetailed, calcMaxStreak, passesWalkingGate } from '@/l
 import {
   ENGINE_DELEGATED_MISSION_TYPES,
   MISSION_ONLY_CONDITION_KEYS,
+  dbConditionKeysIn,
 } from '@/lib/missions/condition-keys'
 import { evaluateEngineMissionCondition } from '@/lib/missions/engineCondition'
+import { loadMissionDbMetrics, type MissionDbMetrics } from '@/lib/missions/dbMetrics'
 import { activitiesWithinMissionWindow } from '@/lib/missions/window'
 import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
@@ -193,7 +195,29 @@ export async function checkMissions(
       ? activitiesWithinMissionWindow(fullHistory, { joinedAt, startsAt: mission.starts_at, endsAt: mission.ends_at })
       : activities
 
-    const { progressValue, target, achieved } = evaluateMission(mission, missionActivities, ownership, isParticipating)
+    // DB 기록 조건(믹스·드랍·캡슐 등, 티켓 20261019_1445)이 든 engine_condition 미션만 «참가한 뒤, 미션 기간 안»의 값을 읽는다.
+    // 루프 앞에서 한꺼번에 읽지 않고 미션마다 읽는다 — 기간이 미션마다 다르고, 같은 동기화에서 먼저 완료된 미션이
+    // 뒤 미션의 mission_complete_count에 잡혀야 하기 때문이다. 읽지 못하면 그 미션만 건너뛴다(0으로 폴백해 판정하지 않는다).
+    let dbMetrics: MissionDbMetrics | undefined
+    if (mission.mission_type === 'engine_condition' && dbConditionKeysIn(mission.condition_json).length > 0) {
+      try {
+        dbMetrics = await loadMissionDbMetrics(supabase, userId, mission.condition_json as MissionCondition, {
+          joinedAt,
+          startsAt: mission.starts_at,
+          endsAt: mission.ends_at,
+        })
+      } catch (err) {
+        console.error(
+          `[checkMissions] 미션의 DB 기록 조건을 읽지 못해 이 미션만 건너뛰었어요 (userId: ${userId}, mission: ${mission.id}). ` +
+            '원인: 믹스·드랍·캡슐 등의 기록 조회가 실패했어요. ' +
+            '해결: 다음 동기화 때 다시 판정해요. 같은 오류가 이어지면 아래 오류의 표·컬럼을 확인해 주세요.',
+          err
+        )
+        continue
+      }
+    }
+
+    const { progressValue, target, achieved } = evaluateMission(mission, missionActivities, ownership, isParticipating, dbMetrics)
 
     // progress_value 업데이트
     if (progressValue > 0) {
@@ -436,7 +460,8 @@ export function evaluateMission(
   mission: Pick<MissionRow, 'mission_type' | 'condition_json'>,
   activities: NormalizedActivity[],
   ownership: OwnershipContext,
-  isParticipating: boolean
+  isParticipating: boolean,
+  dbMetrics?: MissionDbMetrics
 ): MissionEvaluation {
   if (!isParticipating) {
     return { isParticipating: false, progressValue: 0, target: 0, achieved: false }
@@ -449,7 +474,8 @@ export function evaluateMission(
   // (그 두 함수의 default 0/0 폴백을 그대로 타면 "안 걸러진 타입은 즉시 달성"이 되므로
   // 이 분기가 반드시 먼저 와야 한다).
   if (mission.mission_type === 'engine_condition') {
-    const achieved = evaluateEngineMissionCondition(condition, activities)
+    // DB 기록 조건의 값(dbMetrics)은 checkMissions가 미션 기간 기준으로 미리 읽어 넘긴다(순수 함수라 여기서 DB를 읽지 않는다)
+    const achieved = evaluateEngineMissionCondition(condition, activities, dbMetrics)
     return { isParticipating: true, progressValue: achieved ? 1 : 0, target: 1, achieved }
   }
 
