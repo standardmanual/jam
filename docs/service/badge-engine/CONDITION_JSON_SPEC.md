@@ -589,5 +589,50 @@ interface BadgeGateRequirement {
 | `negative_split` (`splits_metric`) | ❌ **v5 1차 범위 밖** (티켓 20260905_0029 확정) — 상세 엔드포인트에만 있어 활동 1건당 호출 1회가 든다(백필 697회). 상한을 두면 배지가 비결정적이 되므로 별도 티켓으로 분리했다. `StravaDetailedActivity` 타입은 신설됐지만 **수집하지 않는다** |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조. 온보딩 퀘스트 완료 배지도 이 플래그를 쓴다(지급 경로는 온보딩 완료 판정, 티켓 20260927_2130 T7b) |
-| `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존 |
+| `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존. 미션 조건으로는 쓰지 않는다(저장 거절, §7.2) |
 | UTC vs KST 경계 | ✅ 시간대(`time_range`·`distinct_time_bands`)·요일·월·계절·`day_of_month`와 횟수 5종(`total_count`·`weekly_count`·`monthly_count`·`season_count`·`season_count_all`)은 KST 날짜 기준이다(티켓 20261018_1815 1회). ⚠️ `streak_days`·`weekly_streak`·`active_days_count`는 아직 현지 날짜(`startDateLocal`) 기준 |
+
+---
+
+## 7. 미션 조건으로 쓰는 키 (JAM 2.0, 티켓 20261019_1312)
+
+미션(`missions.condition_json`)은 이 문서의 배지 조건 어휘 가운데 **활동 기록만으로 판정되는 키**를 `mission_type='engine_condition'`에서 쓴다.
+미션 쪽 정본은 `jam-web/src/lib/missions/condition-keys.ts`다 — 위임 키 목록(`ENGINE_DELEGATED_CONDITION_KEY_LIST`), 판정 가능 키 집합(`ENGINE_CONDITION_JUDGED_KEYS`),
+저장 검증(`checkMissionCondition`)이 거기 있다. 판정 함수는 `engineCondition.ts`의 `evaluateEngineMissionCondition`이다(배지 엔진 `evaluateConditionDetailed`에 위임하는 부분과 미션 전용 부분을 AND로 결합).
+
+### 7.1 판정 가능 키
+
+| 구분 | 키 | 판정 |
+|---|---|---|
+| 배지 엔진 위임 (26개) | 기존 14개: `activity_type`, `distance_km`, `elevation_gain_m`(참가 뒤 누적 합계), `single_distance_km`, `single_elevation_m`, `max_elevation_m`, `max_pace_sec_per_km`, `min_speed_kmh`, `duration_minutes`(활동 1건), `same_activity`, `repeat_count`, `rest_after_long`, `streak_days`, `weekly_streak` | 이 문서 §2의 같은 키와 같은 이름·의미 |
+| | 시간대: `time_range`, `distinct_time_bands` | `time_range`는 §2.7, `distinct_time_bands`는 §2.10 — KST 시각 기준 |
+| | 요일: `day_of_week` | §2.1 — KST 요일 기준. 단일 값은 거르는 조건이다. 배열은 `weekly_streak`와 함께 쓸 때만 반영된다(`total_count`는 미션에 없다) |
+| | 계절: `season`, `season_count`, `season_count_all` | §2.5 — KST 월 기준, 활동한 날의 수. `season_count`는 `season`과 함께 쓴다 |
+| | 운동 속성: `max_speed_kmh`, `avg_heartrate_bpm`, `avg_watts`, `avg_cadence`, `cumulative_duration_hours`, `weekend_duration_hours` | `cumulative_duration_hours`는 §2.2(전체 이력 합계), `weekend_duration_hours`는 §2.4(주말 활동 1건), 나머지 넷은 §2.10(활동 1건의 값) |
+| 미션 전용 (9개) | `weekly_streak_min_count`, `monthly_streak`, `monthly_streak_min_count`, `streak_subset`, `distinct_weekday_count`, `distinct_months_required`, `distinct_months_metric`, `distinct_months_threshold`, `time_band_counts` | `engineCondition.ts`가 직접 판정 |
+
+`day_of_week`·`season`은 «거르는 조건»(`role: 'filter'`)이라 혼자서는 판정할 값이 없다. 거리·`season_count` 같은 판정할 값과 함께 써야 하고, 미션 전용 키하고만 짝지으면 배지 엔진이 「평가 가능한 조건 없음」으로 막는다(영구 미달성, 필터를 조용히 무시하지 않는다).
+
+### 7.2 쓰지 않는 키와 판정하지 않는 키
+
+| 구분 | 키 | 저장 | 이유 |
+|---|---|---|---|
+| 쓰지 않음 | `temperature_min_c`, `temperature_max_c` | **거절(error)** — 모든 미션 타입 | 날씨와 기온은 배지와 미션의 조건으로 쓰지 않는다(운영 로직 13.2절). 위임하지 않으므로 저장하면 기온이 조용히 무시되어 미션이 더 쉬워진다 |
+| 판정하지 않음 | 위 표에 없는 나머지 배지 조건 키 — DB 기록으로 판정하는 `external` 키(JAM 조건, 체크인, 장소 종류 등)와 `total_count` 같은 비위임 키, 다른 미션 타입의 목표 값(`count`, `badge_id`) | **허용 + 경고(warning)** — `engine_condition`만 | 판정이 없어 달성 판정에 쓰이지 않는다. 판정하는 다른 조건이 없으면 미션이 완료되지 않을 수 있고, 있으면 이 조건 없이 완료된다. 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 경고 대상에서 뺀다 |
+| 아직 평가 구현이 없음 | `evaluation: 'pending'` 키 | **거절(error)** — 엔진 위임 타입 / 그 밖의 타입은 경고 | 기존 동작 그대로 (§6 참조) |
+
+경고는 어드민 API의 저장 응답(POST·PATCH)에 `warning`으로 담긴다(저장된 행과 함께, 행에는 저장하지 않는다). 경고할 것이 없으면 응답 모양은 그대로다.
+복합 조건에 판정 가능한 키가 하나도 없으면(`activity_type`만 있거나 `count`·`badge_id`만 있는 경우 포함) 그 미션은 완료되지 않는다(fail-closed). 판정 가능 키 집합(`ENGINE_CONDITION_JUDGED_KEYS`)을 저장 경고와 이 판정이 함께 쓴다.
+
+### 7.3 순위형 금지
+
+미션의 틀(`status_display_type`)이 `ranking`이면 아래 조건을 저장하지 못한다(오류 문구는 현상·원인·해결책 순서). 달성형·개인형은 저장된다.
+
+- 밤 조건: `time_range`, `time_band_counts`의 구간, 주기 안 부분집합의 시간대(`streak_subset.time_range`)가 22:00~05:00(KST)과 겹치는 것. 구간은 «시작 포함·끝 미포함»으로 읽어 밤과 한 점에서 맞닿기만 하는 `18:00~22:00`, `05:00~08:00`은 밤이 아니다. `distinct_time_bands`는 서로 다른 시간대의 수만 세므로 밤 조건이 아니다.
+- 캡슐 연 횟수: `capsule_open_count`.
+- 모은 잼은 순위 기준으로 쓸 수 있다(운영 로직 13.2절).
+- 틀을 비워 만들면 DB 기본값이 순위형(마이그레이션 046 `DEFAULT 'ranking'`)이라 같은 값으로 검사한다. PATCH는 조건이나 틀 하나만 바뀌어도 기존 행과 합친 «갱신 후 상태»로 검사한다(틀만 바뀔 때는 순위형 금지만 본다).
+
+### 7.4 기간 경계
+
+미션 판정에 넘기는 활동은 **참가 시각(`joined_at`)과 미션 시작(`starts_at`) 가운데 늦은 시각 이후**, **종료(`ends_at`, 없으면 상한 없음) 이전**의 것이다. 시각으로 비교하며(`Z`와 `+00:00` 표기가 달라도 같은 시각) 경계 시각은 포함한다. 선택은 `jam-web/src/lib/missions/window.ts`의 `activitiesWithinMissionWindow` 한 곳이 맡고, `checkMissions`가 거리·활동 횟수·엔진 위임 타입(`streak_days`, `duration_minutes`, `elevation_gain_m`, `engine_condition`)에 적용한다. 체크인·아이템 수집처럼 보유 현황으로 판정하는 유형은 활동 배열을 쓰지 않는다.
