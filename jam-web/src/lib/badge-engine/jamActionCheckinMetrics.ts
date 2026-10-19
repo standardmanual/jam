@@ -165,9 +165,18 @@ function earnedBadgeIdsOf(rows: readonly CheckinEarnRow[], window?: MetricWindow
 /**
  * 새로 받은 체크인 배지 수 — `new_checkin_badge_count`.
  * `window`를 주면 처음 받은 시각이 기간 안인 배지만 센다(전체 이력으로 처음 받은 시각을 정한 뒤 좁힌다).
+ *
+ * `earnRows`(이 파일의 세 지표 함수 공통): 호출자가 `fetchCheckinEarnRows`로 이미 읽은 **전체 이력**. 주면 다시 읽지 않는다 — 미션 로더가 체크인 키를
+ * 여럿 쓰는 미션과 여러 미션에서 방문 기록 전체를 한 번만 읽어 나눠 준다(티켓 20261019_1445 4회). 기간으로 거른 행을 넘기면 안 된다
+ * («처음 받은» 시각이 어긋난다). 배지 엔진 호출처는 주지 않아 예전처럼 직접 읽는다.
  */
-export async function countNewCheckinBadgeCount(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
-  const rows = await fetchCheckinEarnRows(supabase, userId)
+export async function countNewCheckinBadgeCount(
+  supabase: SupabaseClient,
+  userId: string,
+  window?: MetricWindow,
+  earnRows?: readonly CheckinEarnRow[]
+): Promise<number> {
+  const rows = earnRows ?? (await fetchCheckinEarnRows(supabase, userId))
   return window ? badgeIdsFirstEarnedWithin(rows, window).size : countNewCheckinBadges(rows)
 }
 
@@ -180,9 +189,10 @@ export async function countCheckinCategoryBadges(
   supabase: SupabaseClient,
   userId: string,
   category: string,
-  window?: MetricWindow
+  window?: MetricWindow,
+  earnRows?: readonly CheckinEarnRow[]
 ): Promise<number> {
-  const earned = earnedBadgeIdsOf(await fetchCheckinEarnRows(supabase, userId), window)
+  const earned = earnedBadgeIdsOf(earnRows ?? (await fetchCheckinEarnRows(supabase, userId)), window)
   if (earned.size === 0) return 0
 
   // `badges.deleted_at` 필터를 걸지 않는다 — 노출·지급 판정이 아니라 «이미 받은 배지의 카테고리»를 읽는 이력성 조회이고,
@@ -211,9 +221,10 @@ export async function countCheckinListedBadges(
   supabase: SupabaseClient,
   userId: string,
   names: readonly string[],
-  window?: MetricWindow
+  window?: MetricWindow,
+  earnRows?: readonly CheckinEarnRow[]
 ): Promise<number> {
-  const earned = earnedBadgeIdsOf(await fetchCheckinEarnRows(supabase, userId), window)
+  const earned = earnedBadgeIdsOf(earnRows ?? (await fetchCheckinEarnRows(supabase, userId)), window)
   const uniqueNames = [...new Set(names)]
   if (earned.size === 0 || uniqueNames.length === 0) return 0
 

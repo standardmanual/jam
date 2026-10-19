@@ -16,7 +16,7 @@ import {
   dbConditionKeysIn,
 } from '@/lib/missions/condition-keys'
 import { evaluateEngineMissionCondition } from '@/lib/missions/engineCondition'
-import { loadMissionDbMetrics, type MissionDbMetrics } from '@/lib/missions/dbMetrics'
+import { createDbReadMemo, loadMissionDbMetrics, type MissionDbMetrics } from '@/lib/missions/dbMetrics'
 import { activitiesWithinMissionWindow } from '@/lib/missions/window'
 import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
@@ -179,6 +179,10 @@ export async function checkMissions(
   )
   const ownership = needsOwnership ? await loadOwnership(userId) : { ownedBadgeIds: new Set<string>(), visitedPoiIds: new Set<string>() }
 
+  // DB 기록 조건 미션들이 같은 원천(체크인 방문 기록 전체 등)을 다시 읽지 않게 한 번 읽은 결과를 이 호출 안에서 나눠 쓴다(티켓 20261019_1445 4회).
+  // 이 호출이 끝나면 버려진다. 값이 루프 안에서 바뀌는 mission_complete_count 같은 읽기는 나누지 않는다(dbMetrics.ts의 SharedReads 참고).
+  const dbReadMemo = createDbReadMemo()
+
   for (const mission of pendingMissions) {
     // 참가 게이트 — 참가한 유저만 진행상황 추적·완료·보상 대상 (Phase13 버그 수정)
     const isParticipating = participationSet.has(mission.id)
@@ -201,11 +205,13 @@ export async function checkMissions(
     let dbMetrics: MissionDbMetrics | undefined
     if (mission.mission_type === 'engine_condition' && dbConditionKeysIn(mission.condition_json).length > 0) {
       try {
-        dbMetrics = await loadMissionDbMetrics(supabase, userId, mission.condition_json as MissionCondition, {
-          joinedAt,
-          startsAt: mission.starts_at,
-          endsAt: mission.ends_at,
-        })
+        dbMetrics = await loadMissionDbMetrics(
+          supabase,
+          userId,
+          mission.condition_json as MissionCondition,
+          { joinedAt, startsAt: mission.starts_at, endsAt: mission.ends_at },
+          dbReadMemo
+        )
       } catch (err) {
         console.error(
           `[checkMissions] 미션의 DB 기록 조건을 읽지 못해 이 미션만 건너뛰었어요 (userId: ${userId}, mission: ${mission.id}). ` +

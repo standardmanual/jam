@@ -18,7 +18,13 @@ import {
   countCombineSuccess,
   fetchFirstSuccessRecipeIds,
 } from '../jamActionMetrics'
-import { countDroppedItems, countPickedUpByUsers, countPickedUpItems, countPickupFromUsers } from '../jamActionDropMetrics'
+import {
+  countDroppedItems,
+  countPickedUpByUsers,
+  countPickedUpItems,
+  countPickupFromUsers,
+  fetchMyPickupRows,
+} from '../jamActionDropMetrics'
 import { countCollectionCompletions, countMissionCompletions } from '../jamActionCompletionMetrics'
 import {
   countCapsuleOpens,
@@ -154,6 +160,25 @@ describe('드랍·픽업 지표', () => {
     expect(await countPickedUpByUsers(client, U, WINDOW)).toBe(1)
     // 인자가 없으면 예전처럼 평생값 — 주운 사람이 둘
     expect(await countPickedUpByUsers(client, U)).toBe(2)
+  })
+
+  it('미리 읽은 픽업 행(pickupRows)을 주면 poi_drops를 다시 읽지 않고 같은 값을 돌려준다 (조회 공유, 4회)', async () => {
+    const tables = () => ({
+      poi_drops: [
+        poi({ id: 'a', dropper_user_id: OTHER, picked_up_by: U, dropped_at: INSIDE, picked_up_at: INSIDE }),
+        poi({ id: 'b', dropper_user_id: THIRD, picked_up_by: U, dropped_at: INSIDE, picked_up_at: INSIDE }),
+        poi({ id: 'c', dropper_user_id: OTHER, picked_up_by: U, dropped_at: BEFORE, picked_up_at: BEFORE }),
+      ],
+    })
+    const direct = makeFakeDb(tables())
+    const expected = [await countPickedUpItems(direct.client, U, WINDOW), await countPickupFromUsers(direct.client, U, WINDOW)]
+    expect(direct.queried).toEqual(['poi_drops', 'poi_drops'])
+
+    const shared = makeFakeDb(tables())
+    const rows = await fetchMyPickupRows(shared.client, U, WINDOW)
+    expect([await countPickedUpItems(shared.client, U, WINDOW, rows), await countPickupFromUsers(shared.client, U, WINDOW, rows)]).toEqual(expected)
+    expect(shared.queried).toEqual(['poi_drops'])
+    expect(expected).toEqual([2, 2])
   })
 
   it('옛 행(inventory_item_id 없음)은 기간 안이어도 세지 않는다', async () => {

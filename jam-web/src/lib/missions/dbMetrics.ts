@@ -50,12 +50,16 @@ import {
   countPickedUpByUsers,
   countPickedUpItems,
   countPickupFromUsers,
+  fetchMyPickupRows,
+  type MyPickupRow,
 } from '@/lib/badge-engine/jamActionDropMetrics'
 import { countCollectionCompletions, countMissionCompletions } from '@/lib/badge-engine/jamActionCompletionMetrics'
 import {
   countCheckinCategoryBadges,
   countCheckinListedBadges,
   countNewCheckinBadgeCount,
+  fetchCheckinEarnRows,
+  type CheckinEarnRow,
 } from '@/lib/badge-engine/jamActionCheckinMetrics'
 import { countSameSpotCheckinDays, countWeeklyActiveDays } from '@/lib/badge-engine/jamActionDayMetrics'
 import { readJamEarnedWithin } from '@/lib/badge-engine/jamActionJamMetrics'
@@ -73,11 +77,46 @@ import { missionWindowIsoBounds, type MissionWindow } from '@/lib/missions/windo
 /** 조건에 든 DB 키의 현재값. 조건에 없는 키는 들어 있지 않다 */
 export type MissionDbMetrics = Partial<Record<MissionDbConditionKey, number>>
 
+/**
+ * 같은 원천을 읽는 키들이 한 번 읽은 결과를 나눠 쓰게 하는 메모 (티켓 20261019_1445 4회, 조회 비용 완화).
+ * 값은 읽기 약속(`Promise`)이라 같은 시점에 둘이 요청해도 한 번만 읽는다. `checkMissions`가 한 번 부를 때마다 하나 만들어 미션 루프 전체에 넘긴다 —
+ * 호출이 끝나면 버려지므로 요청 사이에 낡은 값이 남지 않는다. 읽기가 실패하면 메모에서 지워 같은 호출 안의 다음 미션이 다시 시도하게 한다.
+ * 키에 유저와 기간을 담아 서로 다른 기간·유저의 읽기가 섞이지 않는다.
+ */
+export type DbReadMemo = Map<string, Promise<unknown>>
+
+export function createDbReadMemo(): DbReadMemo {
+  return new Map()
+}
+
+function memoized<T>(memo: DbReadMemo, key: string, load: () => Promise<T>): Promise<T> {
+  const hit = memo.get(key)
+  if (hit !== undefined) return hit as Promise<T>
+  const pending = load()
+  memo.set(key, pending)
+  pending.catch(() => {
+    if (memo.get(key) === pending) memo.delete(key)
+  })
+  return pending
+}
+
+/**
+ * 키 사이에서 나눠 쓰는 읽기 — 같은 표를 같은 조건으로 두 번 이상 읽던 곳만 담는다.
+ *  - 체크인 방문 기록 **전체 이력**(`user_checkin_badge_earns`): 체크인 키 3개가 함께 쓴다. 유저만 정해지면 기간과 상관없으므로 미션 사이에도 나눈다.
+ *  - 기간 안 픽업 행(`poi_drops` 주운 쪽): `pickup_item_count`·`pickup_from_user_count`가 같은 기간으로 읽는다.
+ * 계수(count)만 세는 가벼운 읽기, 키마다 읽는 표가 다른 읽기, `mission_complete_count`처럼 같은 동기화 루프 안에서 값이 바뀌는 읽기는 나누지 않는다.
+ */
+interface SharedReads {
+  checkinEarnRows(): Promise<CheckinEarnRow[]>
+  pickupRows(): Promise<MyPickupRow[]>
+}
+
 type MetricReader = (
   supabase: SupabaseClient,
   userId: string,
   window: MetricWindow,
-  condition: MissionCondition
+  condition: MissionCondition,
+  shared: SharedReads
 ) => Promise<number>
 
 /**
@@ -96,8 +135,8 @@ const READERS: Record<MissionDbConditionKey, MetricReader> = {
     return firstIds.has(recipeId) ? 1 : 0
   },
   drop_item_count: (s, u, w) => countDroppedItems(s, u, w),
-  pickup_item_count: (s, u, w) => countPickedUpItems(s, u, w),
-  pickup_from_user_count: (s, u, w) => countPickupFromUsers(s, u, w),
+  pickup_item_count: async (s, u, w, _condition, shared) => countPickedUpItems(s, u, w, await shared.pickupRows()),
+  pickup_from_user_count: async (s, u, w, _condition, shared) => countPickupFromUsers(s, u, w, await shared.pickupRows()),
   picked_up_by_user_count: (s, u, w) => countPickedUpByUsers(s, u, w),
   mission_complete_count: (s, u, w) => countMissionCompletions(s, u, w),
   collection_complete_count: (s, u, w) => countCollectionCompletions(s, u, w),
@@ -108,19 +147,19 @@ const READERS: Record<MissionDbConditionKey, MetricReader> = {
   // ── 날짜·체크인 5개 (2회) ──
   weekly_active_days: (s, u, w) => countWeeklyActiveDays(s, u, w),
   same_spot_checkin_days: (s, u, w) => countSameSpotCheckinDays(s, u, w),
-  new_checkin_badge_count: (s, u, w) => countNewCheckinBadgeCount(s, u, w),
-  checkin_category_count: async (s, u, w, condition) => {
+  new_checkin_badge_count: async (s, u, w, _condition, shared) => countNewCheckinBadgeCount(s, u, w, await shared.checkinEarnRows()),
+  checkin_category_count: async (s, u, w, condition, shared) => {
     const value = condition.checkin_category_count
     // 장소 종류를 가리키지 않는 값은 «그 종류의 배지가 몇 개인가»를 물을 수 없다 — 0이면 비교 쪽에서도 충족하지 못한다
     if (!isCheckinCategoryCountValue(value)) return 0
-    return countCheckinCategoryBadges(s, u, value.category, w)
+    return countCheckinCategoryBadges(s, u, value.category, w, await shared.checkinEarnRows())
   },
-  checkin_badge_count: async (s, u, w, condition) => {
+  checkin_badge_count: async (s, u, w, condition, shared) => {
     const value = condition.checkin_badge_count
     if (!isCheckinBadgeCountValue(value)) return 0
     // 문자열이 아닌 이름은 어떤 배지와도 맞지 않는다 — 이름 조회에 섞여 조회가 깨지지 않게 먼저 거른다
     const names = value.checkin_badge_names.filter((name): name is string => typeof name === 'string')
-    return countCheckinListedBadges(s, u, names, w)
+    return countCheckinListedBadges(s, u, names, w, await shared.checkinEarnRows())
   },
   // ── 미션 전용 DB 키 (3-A회) ──
   jam_period_earned: (s, u, w) => readJamEarnedWithin(s, u, w),
@@ -129,12 +168,16 @@ const READERS: Record<MissionDbConditionKey, MetricReader> = {
 /**
  * 조건에 든 DB 키만 «참가한 뒤, 미션 기간 안»의 값으로 읽는다. DB 키가 없으면 아무것도 읽지 않고 빈 객체를 돌려준다.
  * 읽지 못하면 던진다 — 호출자(`checkMissions`)가 그 미션만 건너뛴다.
+ *
+ * `memo`(선택, 티켓 20261019_1445 4회): 같은 원천을 읽는 키·미션이 한 번 읽은 결과를 나눠 쓴다(`DbReadMemo`). 주지 않으면 이 호출 안의 키들끼리만 나눈다.
+ * 값은 메모가 있든 없든 같다 — 읽는 횟수만 다르다.
  */
 export async function loadMissionDbMetrics(
   supabase: SupabaseClient,
   userId: string,
   condition: MissionCondition,
-  window: MissionWindow
+  window: MissionWindow,
+  memo: DbReadMemo = createDbReadMemo()
 ): Promise<MissionDbMetrics> {
   const keys = dbConditionKeysIn(condition)
   const metrics: MissionDbMetrics = {}
@@ -149,8 +192,13 @@ export async function loadMissionDbMetrics(
     )
   }
   const metricWindow: MetricWindow = { fromIso, toIso }
+  const shared: SharedReads = {
+    checkinEarnRows: () => memoized(memo, `checkin-earns|${userId}`, () => fetchCheckinEarnRows(supabase, userId)),
+    pickupRows: () =>
+      memoized(memo, `pickups|${userId}|${fromIso}|${toIso ?? ''}`, () => fetchMyPickupRows(supabase, userId, metricWindow)),
+  }
 
-  const values = await Promise.all(keys.map((key) => READERS[key](supabase, userId, metricWindow, condition)))
+  const values = await Promise.all(keys.map((key) => READERS[key](supabase, userId, metricWindow, condition, shared)))
   keys.forEach((key, i) => {
     metrics[key] = values[i]
   })

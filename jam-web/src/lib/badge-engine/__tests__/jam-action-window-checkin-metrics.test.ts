@@ -10,6 +10,7 @@
  *  ③ 처음 받은 시각은 활동 시각(`triggered_by_activity_date`)이 우선이고, 없으면 기록 시각(`earned_at`)을 쓴다
  *  ④ 인자를 주지 않으면 받은 모든 배지로 센다(예전 동작 — 배지 엔진 회귀 방지)
  *  ⑤ 읽기 오류와 읽을 수 없는 기간은 0으로 폴백하지 않고 던진다
+ *  ⑥ 호출자가 이미 읽은 방문 기록 전체(`earnRows`)를 주면 그 표를 다시 읽지 않고 같은 값을 돌려준다 (티켓 20261019_1445 4회, 조회 공유)
  *
  * 모조 DB는 `eq`·`in`을 실제로 적용한다(`fakeSupabase.ts`).
  *
@@ -22,6 +23,7 @@ import {
   countCheckinCategoryBadges,
   countCheckinListedBadges,
   countNewCheckinBadgeCount,
+  fetchCheckinEarnRows,
   firstEarnDayByBadge,
   firstEarnMsByBadge,
   type CheckinEarnRow,
@@ -308,5 +310,51 @@ describe('checkin_badge_count — 기간 안에 처음 받은 배지 가운데 �
   it('이름 조회 오류는 던진다', async () => {
     const { client } = makeFakeDb({ user_checkin_badge_earns: [earn('seongsu', INSIDE)] }, { errors: { badges: '이름 장애' } })
     await expect(countCheckinListedBadges(client, U, NAMES, WINDOW)).rejects.toThrow(/이름 장애/)
+  })
+})
+
+describe('미리 읽은 방문 기록 전체를 주면 다시 읽지 않는다 (조회 공유, 4회)', () => {
+  const tables = () => ({
+    user_checkin_badge_earns: [earn('s1', BEFORE), earn('s1', INSIDE), earn('s2', INSIDE), earn('s3', AFTER)],
+    badges: [
+      { id: 's1', type: 'checkin', name: '성수역', category: 'train_subway' },
+      { id: 's2', type: 'checkin', name: '왕십리역', category: 'train_subway' },
+      { id: 's3', type: 'checkin', name: '건대입구역', category: 'train_subway' },
+    ],
+  })
+  const reads = (db: { queried: string[] }) => db.queried.filter((table) => table === 'user_checkin_badge_earns').length
+
+  it('세 지표 모두 방문 기록 표를 읽지 않고 직접 읽을 때와 같은 값을 돌려준다', async () => {
+    const direct = makeFakeDb(tables())
+    const expected = {
+      newBadges: await countNewCheckinBadgeCount(direct.client, U, WINDOW),
+      category: await countCheckinCategoryBadges(direct.client, U, 'train_subway', WINDOW),
+      listed: await countCheckinListedBadges(direct.client, U, ['성수역', '왕십리역', '건대입구역'], WINDOW),
+    }
+    expect(reads(direct)).toBe(3)
+
+    const shared = makeFakeDb(tables())
+    const rows = await fetchCheckinEarnRows(shared.client, U)
+    expect(reads(shared)).toBe(1)
+    expect({
+      newBadges: await countNewCheckinBadgeCount(shared.client, U, WINDOW, rows),
+      category: await countCheckinCategoryBadges(shared.client, U, 'train_subway', WINDOW, rows),
+      listed: await countCheckinListedBadges(shared.client, U, ['성수역', '왕십리역', '건대입구역'], WINDOW, rows),
+    }).toEqual(expected)
+    expect(reads(shared)).toBe(1)
+    expect(expected).toEqual({ newBadges: 1, category: 1, listed: 1 }) // s2만 기간 안에 처음 받았다
+  })
+
+  it('기간을 주지 않아도(배지 엔진과 같은 평생값) 같다', async () => {
+    const direct = makeFakeDb(tables())
+    const shared = makeFakeDb(tables())
+    const rows = await fetchCheckinEarnRows(shared.client, U)
+    expect(await countNewCheckinBadgeCount(shared.client, U, undefined, rows)).toBe(await countNewCheckinBadgeCount(direct.client, U))
+  })
+
+  it('빈 방문 기록을 줘도 다시 읽지 않는다 (빈 배열은 «읽지 않았다»가 아니다)', async () => {
+    const db = makeFakeDb(tables())
+    expect(await countNewCheckinBadgeCount(db.client, U, WINDOW, [])).toBe(0)
+    expect(reads(db)).toBe(0)
   })
 })

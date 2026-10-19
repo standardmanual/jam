@@ -178,15 +178,29 @@ export async function countDroppedItems(supabase: SupabaseClient, userId: string
   return computeDropPickupMetrics(userId, drops, []).dropItemCount
 }
 
-/** 픽업한 아이템 수 — 내가 주운 서로 다른 개체 수(자기 드랍 제외) */
-export async function countPickedUpItems(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
-  const pickups = await fetchMyPickupRows(supabase, userId, window)
+/**
+ * 픽업한 아이템 수 — 내가 주운 서로 다른 개체 수(자기 드랍 제외)
+ * `pickupRows`: 호출자가 같은 `window`로 이미 읽은 `fetchMyPickupRows` 결과. 주면 다시 읽지 않는다(미션 로더가 픽업 두 지표에 한 번 읽은 행을 나눠 준다,
+ * 티켓 20261019_1445 4회). 배지 엔진 호출처는 주지 않아 예전처럼 직접 읽는다.
+ */
+export async function countPickedUpItems(
+  supabase: SupabaseClient,
+  userId: string,
+  window?: MetricWindow,
+  pickupRows?: readonly MyPickupRow[]
+): Promise<number> {
+  const pickups = pickupRows ?? (await fetchMyPickupRows(supabase, userId, window))
   return computeDropPickupMetrics(userId, [], pickups).pickupItemCount
 }
 
-/** 함께 줍기 — 내가 주운 드랍을 놓은 서로 다른 유저 수(자기·시스템·탈퇴 제외) */
-export async function countPickupFromUsers(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
-  const pickups = await fetchMyPickupRows(supabase, userId, window)
+/** 함께 줍기 — 내가 주운 드랍을 놓은 서로 다른 유저 수(자기·시스템·탈퇴 제외). `pickupRows`는 위 `countPickedUpItems`와 같다 */
+export async function countPickupFromUsers(
+  supabase: SupabaseClient,
+  userId: string,
+  window?: MetricWindow,
+  pickupRows?: readonly MyPickupRow[]
+): Promise<number> {
+  const pickups = pickupRows ?? (await fetchMyPickupRows(supabase, userId, window))
   return computeDropPickupMetrics(userId, [], pickups).pickupFromUserCount
 }
 

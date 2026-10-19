@@ -538,3 +538,55 @@ describe('checkMissions — 기간 동안 모은 잼(jam_period_earned)', () => 
     expect(holder.db.queried).not.toContain('jam_transactions')
   })
 })
+
+describe('checkMissions — 같은 원천을 읽는 DB 키 미션은 한 번만 읽는다 (티켓 20261019_1445 4회)', () => {
+  const earn = (id: string, badgeId: string, at: string): FakeRow => ({
+    id,
+    user_id: USER,
+    badge_id: badgeId,
+    poi_id: `poi-${badgeId}`,
+    triggered_by_activity_date: at,
+    earned_at: at,
+  })
+  const earnReads = () => holder.db.queried.filter((table) => table === 'user_checkin_badge_earns').length
+
+  it('체크인 키 미션이 여럿이어도 방문 기록 전체는 이 호출에서 한 번만 읽는다', async () => {
+    const { rpcCalls } = setup(
+      [
+        engineMission('m-new', { new_checkin_badge_count: 1 }),
+        engineMission('m-two', { new_checkin_badge_count: 2 }),
+        engineMission('m-none', { new_checkin_badge_count: 5 }),
+      ],
+      { user_checkin_badge_earns: [earn('e1', 'b1', AFTER_JOIN), earn('e2', 'b2', AFTER_JOIN)] }
+    )
+    const result = await checkMissions(USER, [])
+
+    expect(result.completedMissionIds.sort()).toEqual(['m-new', 'm-two'])
+    expect(rpcCalls).toHaveLength(2)
+    expect(earnReads()).toBe(1)
+  })
+
+  it('원천을 읽지 못하면 그 미션들만 건너뛴다 — 실패한 읽기는 메모에 남지 않아 다음 미션이 다시 시도한다 (완료도 0 폴백도 아니다)', async () => {
+    const { rpcCalls } = setup(
+      [
+        engineMission('m-a', { new_checkin_badge_count: 1 }),
+        engineMission('m-b', { new_checkin_badge_count: 1 }),
+        engineMission('m-plain', { distance_km: 5 }),
+      ],
+      {},
+      { user_checkin_badge_earns: '체크인 장애' }
+    )
+    const result = await checkMissions(USER, [activity(AFTER_JOIN)])
+
+    expect(result.completedMissionIds).toEqual(['m-plain'])
+    expect(rpcCalls.map((c) => c.args.p_mission_id)).toEqual(['m-plain'])
+    expect(earnReads()).toBe(2)
+  })
+
+  it('호출이 끝나면 메모는 버려진다 — 다음 checkMissions는 다시 읽는다', async () => {
+    setup([engineMission('m-new', { new_checkin_badge_count: 9 })], { user_checkin_badge_earns: [earn('e1', 'b1', AFTER_JOIN)] })
+    await checkMissions(USER, [])
+    await checkMissions(USER, [])
+    expect(earnReads()).toBe(2)
+  })
+})

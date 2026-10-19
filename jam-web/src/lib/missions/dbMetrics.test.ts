@@ -7,6 +7,7 @@
  *  - 14개 키(1회)와 날짜·체크인 5개 키(2회)가 각자 알맞은 값을 돌려준다(recipe_first_success는 1/0)
  *  - 읽지 못하면 던진다(0으로 폴백하지 않는다) — 하한을 정할 수 없을 때도 마찬가지
  *  - 미션 전용 DB 키 `jam_period_earned`(3-A회): 정산된 활동의 시작 시각이 기간 안인 활동의 잼만 센다(정산 시각이 아니다)
+ *  - 조회 공유(4회): 같은 원천을 읽는 키·미션은 한 번만 읽고, 값은 공유하든 안 하든 같다. 같은 동기화 안에서 값이 바뀌는 읽기는 공유하지 않는다
  *
  * 위치: `__tests__/`는 vitest에서 제외돼 있어(node assert 시험 전용) 모조 DB를 쓰는 이 파일은 옆에 둔다.
  * 실행: cd jam-web && npx vitest run src/lib/missions/dbMetrics.test.ts
@@ -14,7 +15,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { MissionCondition } from '@/types/database'
 import { ENGINE_DELEGATED_DB_CONDITION_KEY_LIST } from '@/lib/missions/condition-keys'
-import { loadMissionDbMetrics } from '@/lib/missions/dbMetrics'
+import { createDbReadMemo, loadMissionDbMetrics } from '@/lib/missions/dbMetrics'
 import { makeFakeDb } from '@/lib/badge-engine/__tests__/fakeSupabase'
 
 // 활동일 지표가 차량 속도 상한을 정책 표에서 읽는다 — 이 시험은 정책 값이 아니라 «어떤 활동을 세는가»를 보므로 기본 정책으로 고정한다
@@ -463,5 +464,170 @@ describe('loadMissionDbMetrics — jam_period_earned (기간 동안 모은 잼)'
       loadMissionDbMetrics(noLower.client, U, { jam_period_earned: 1 }, { joinedAt: null, startsAt: '깨진 값', endsAt: null })
     ).rejects.toThrow('시작 시각을 정하지 못해')
     expect(noLower.queried).toEqual([])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// 조회 공유 (4회) — 같은 원천을 읽는 키·미션은 한 번만 읽는다
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('loadMissionDbMetrics — 같은 원천은 한 번만 읽는다 (티켓 20261019_1445 4회)', () => {
+  const window = { joinedAt: JOINED_EARLY, startsAt: STARTS, endsAt: ENDS }
+  const otherWindow = { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: ENDS }
+  const readsOf = (db: { queried: string[] }, table: string) => db.queried.filter((t) => t === table).length
+
+  const earn = (id: string, badgeId: string, at: string, userId = U) => ({
+    id,
+    user_id: userId,
+    badge_id: badgeId,
+    poi_id: `poi-${badgeId}`,
+    triggered_by_activity_date: at,
+    earned_at: at,
+  })
+  const checkinTables = () => ({
+    user_checkin_badge_earns: [
+      earn('e1', 'fresh', T_INSIDE),
+      earn('e2', 'old', T_BEFORE_START), // 기간 전에 처음 받음 — 세지 않는다
+      earn('e3', 'old', T_INSIDE), // 기간 안에 다시 받음 — 새 배지가 아니다
+    ],
+    badges: [
+      { id: 'fresh', type: 'checkin', name: '성수역', category: 'train_subway' },
+      { id: 'old', type: 'checkin', name: '왕십리역', category: 'train_subway' },
+    ],
+  })
+  const checkinCondition: MissionCondition = {
+    new_checkin_badge_count: 1,
+    checkin_category_count: { category: 'train_subway', count: 1 },
+    checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
+  }
+
+  const pickup = (id: string, itemId: string, at: string) => ({
+    id,
+    inventory_item_id: itemId,
+    dropper_user_id: OTHER,
+    picked_up_by: U,
+    dropped_at: at,
+    picked_up_at: at,
+  })
+  const dropTables = () => ({
+    poi_drops: [
+      pickup('d1', 'i1', T_INSIDE),
+      pickup('d2', 'i2', T_BEFORE_START),
+      { id: 'd3', inventory_item_id: 'i3', dropper_user_id: U, picked_up_by: OTHER, dropped_at: T_INSIDE, picked_up_at: T_INSIDE },
+    ],
+  })
+
+  it('체크인 키 3개를 함께 쓰는 미션은 방문 기록 전체를 한 번만 읽고, 값은 키를 따로 읽을 때와 같다', async () => {
+    const together = makeFakeDb(checkinTables())
+    const result = await loadMissionDbMetrics(together.client, U, checkinCondition, window)
+
+    expect(readsOf(together, 'user_checkin_badge_earns')).toBe(1)
+    expect(result).toEqual({ new_checkin_badge_count: 1, checkin_category_count: 1, checkin_badge_count: 1 })
+    for (const [key, value] of Object.entries(checkinCondition)) {
+      const alone = makeFakeDb(checkinTables())
+      const single = await loadMissionDbMetrics(alone.client, U, { [key]: value } as MissionCondition, window)
+      expect(single[key as keyof typeof single], key).toBe(result[key as keyof typeof result])
+    }
+  })
+
+  it('픽업 두 키는 주운 기록을 한 번만 읽는다 — 놓은 쪽 두 키는 다른 기록이라 각자 읽는다', async () => {
+    const pair = makeFakeDb(dropTables())
+    const pairResult = await loadMissionDbMetrics(pair.client, U, { pickup_item_count: 1, pickup_from_user_count: 1 }, window)
+    expect(readsOf(pair, 'poi_drops')).toBe(1)
+    expect(pairResult).toEqual({ pickup_item_count: 1, pickup_from_user_count: 1 })
+
+    const all = makeFakeDb(dropTables())
+    const allResult = await loadMissionDbMetrics(
+      all.client,
+      U,
+      { pickup_item_count: 1, pickup_from_user_count: 1, drop_item_count: 1, picked_up_by_user_count: 1 },
+      window
+    )
+    expect(readsOf(all, 'poi_drops')).toBe(3) // 주운 쪽 1 + 놓은 쪽 둘(놓은 때 기준, 주워진 때 기준) 2
+    expect(allResult).toEqual({ pickup_item_count: 1, pickup_from_user_count: 1, drop_item_count: 1, picked_up_by_user_count: 1 })
+  })
+
+  it('같은 메모를 넘긴 여러 미션은 방문 기록 전체를 한 번만 읽는다 — 기간이 달라도 전체 이력은 같고 값은 기간을 따른다', async () => {
+    const db = makeFakeDb(checkinTables())
+    const memo = createDbReadMemo()
+    const first = await loadMissionDbMetrics(db.client, U, { new_checkin_badge_count: 1 }, window, memo)
+    const second = await loadMissionDbMetrics(db.client, U, { new_checkin_badge_count: 1 }, otherWindow, memo)
+    // 참가가 fresh를 받은 뒤라면 기간 안에 새 배지가 없다
+    const afterAll = await loadMissionDbMetrics(
+      db.client,
+      U,
+      { new_checkin_badge_count: 1 },
+      { joinedAt: '2026-10-18T00:00:00.000Z', startsAt: STARTS, endsAt: ENDS },
+      memo
+    )
+
+    expect(readsOf(db, 'user_checkin_badge_earns')).toBe(1)
+    expect(first.new_checkin_badge_count).toBe(1) // fresh(기간 안에 처음 받음)
+    expect(second.new_checkin_badge_count).toBe(1) // 늦은 참가(10-14)에도 fresh(10-16)는 기간 안이다
+    expect(afterAll.new_checkin_badge_count).toBe(0)
+  })
+
+  it('주운 기록은 같은 기간으로 읽을 때만 나눠 쓴다 — 기간이 다르면 다시 읽고 값도 기간을 따른다', async () => {
+    const db = makeFakeDb(dropTables())
+    const memo = createDbReadMemo()
+    const a = await loadMissionDbMetrics(db.client, U, { pickup_item_count: 1 }, window, memo)
+    const sameWindow = await loadMissionDbMetrics(db.client, U, { pickup_from_user_count: 1 }, window, memo)
+    expect(readsOf(db, 'poi_drops')).toBe(1)
+    const lateWindow = await loadMissionDbMetrics(db.client, U, { pickup_item_count: 1 }, otherWindow, memo)
+    expect(readsOf(db, 'poi_drops')).toBe(2)
+    expect(a.pickup_item_count).toBe(1)
+    expect(sameWindow.pickup_from_user_count).toBe(1)
+    expect(lateWindow.pickup_item_count).toBe(1) // d1(10-16)은 늦은 참가(10-14) 뒤라 센다
+  })
+
+  it('메모를 넘기지 않은 두 호출은 각자 읽는다', async () => {
+    const db = makeFakeDb(checkinTables())
+    await loadMissionDbMetrics(db.client, U, { new_checkin_badge_count: 1 }, window)
+    await loadMissionDbMetrics(db.client, U, { new_checkin_badge_count: 1 }, window)
+    expect(readsOf(db, 'user_checkin_badge_earns')).toBe(2)
+  })
+
+  it('유저가 다르면 나눠 쓰지 않는다', async () => {
+    const db = makeFakeDb({
+      user_checkin_badge_earns: [earn('e1', 'fresh', T_INSIDE), earn('e9', 'x', T_INSIDE, OTHER), earn('e10', 'y', T_INSIDE, OTHER)],
+    })
+    const memo = createDbReadMemo()
+    const mine = await loadMissionDbMetrics(db.client, U, { new_checkin_badge_count: 1 }, window, memo)
+    const theirs = await loadMissionDbMetrics(db.client, OTHER, { new_checkin_badge_count: 1 }, window, memo)
+    expect(readsOf(db, 'user_checkin_badge_earns')).toBe(2)
+    expect(mine.new_checkin_badge_count).toBe(1)
+    expect(theirs.new_checkin_badge_count).toBe(2)
+  })
+
+  it('같은 동기화 안에서 값이 바뀌는 mission_complete_count는 나누지 않는다 — 메모를 써도 먼저 완료된 미션이 보인다', async () => {
+    const tables = { user_mission_completions: [] as Record<string, unknown>[] }
+    const db = makeFakeDb(tables)
+    const memo = createDbReadMemo()
+    const before = await loadMissionDbMetrics(db.client, U, { mission_complete_count: 1 }, window, memo)
+    tables.user_mission_completions.push({ id: 'c1', user_id: U, mission_id: 'm-first', completed_at: T_INSIDE })
+    const after = await loadMissionDbMetrics(db.client, U, { mission_complete_count: 1 }, window, memo)
+
+    expect(before.mission_complete_count).toBe(0)
+    expect(after.mission_complete_count).toBe(1)
+    expect(readsOf(db, 'user_mission_completions')).toBe(2)
+  })
+
+  it('읽기가 실패하면 메모에 남기지 않는다 — 같은 메모로 다음에 부르면 다시 읽는다', async () => {
+    const memo = createDbReadMemo()
+    const broken = makeFakeDb(checkinTables(), { errors: { user_checkin_badge_earns: '체크인 장애' } })
+    await expect(loadMissionDbMetrics(broken.client, U, { new_checkin_badge_count: 1 }, window, memo)).rejects.toThrow('체크인 장애')
+
+    const healthy = makeFakeDb(checkinTables())
+    const result = await loadMissionDbMetrics(healthy.client, U, { new_checkin_badge_count: 1 }, window, memo)
+    expect(result.new_checkin_badge_count).toBe(1)
+    expect(readsOf(healthy, 'user_checkin_badge_earns')).toBe(1)
+  })
+
+  it('메모 유무와 상관없이 값은 같다 (공유하는 읽기와 공유하지 않는 읽기를 섞은 조건)', async () => {
+    const tablesFor = () => ({ ...checkinTables(), ...dropTables(), user_combine_success_logs: successLogs([T_INSIDE]) })
+    const condition: MissionCondition = { ...checkinCondition, pickup_item_count: 1, pickup_from_user_count: 1, combine_success_count: 1 }
+    const plain = await loadMissionDbMetrics(makeFakeDb(tablesFor()).client, U, condition, window)
+    const memoed = await loadMissionDbMetrics(makeFakeDb(tablesFor()).client, U, condition, window, createDbReadMemo())
+    expect(memoed).toEqual(plain)
   })
 })
