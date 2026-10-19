@@ -243,7 +243,7 @@ const cases: Array<[string, () => void]> = [
       distinct_months_metric: 'distance_km',
       distinct_months_threshold: 1,
       time_band_counts: [{ start: '05:00', end: '08:00', count: 1 }],
-      // 티켓 20261019_1445 — engine_condition 전용 DB 기록 키 14종
+      // 티켓 20261019_1445 — engine_condition 전용 DB 기록 키 19종(1회 14종 + 2회 날짜·체크인 5종)
       combine_attempt_count: 1,
       combine_success_count: 1,
       combine_fail_count: 1,
@@ -258,6 +258,11 @@ const cases: Array<[string, () => void]> = [
       locked_item_open_count: 1,
       locked_item_pickup_count: 1,
       cross_tribe_combine_success_count: 1,
+      weekly_active_days: 1,
+      same_spot_checkin_days: 1,
+      new_checkin_badge_count: 1,
+      checkin_category_count: { category: 'train_subway', count: 1 },
+      checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 },
     }
     for (const key of Object.keys(everyField)) {
       assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has(key), `허용 키에 없다: ${key}`)
@@ -279,7 +284,7 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `기온 키가 위임된다: ${key}`)
     }
   }],
-  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 9개 + DB 기록 키 14개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
+  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 9개 + DB 기록 키 19개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
     for (const key of ENGINE_DELEGATED_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     const engineOnly = [...MISSION_ONLY_CONDITION_KEYS].filter((key) => key !== 'count' && key !== 'badge_id')
@@ -288,14 +293,15 @@ const cases: Array<[string, () => void]> = [
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('count'))
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('badge_id'))
     assert.strictEqual(ENGINE_DELEGATED_CONDITION_KEY_LIST.length, 26)
-    assert.strictEqual(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.length, 14)
-    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 9 + 14, '위임 키·복합 조건 전용 키·DB 기록 키가 겹치거나 빠졌다')
+    assert.strictEqual(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.length, 19)
+    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 9 + 19, '위임 키·복합 조건 전용 키·DB 기록 키가 겹치거나 빠졌다')
   }],
-  ['DB 기록 키 14개: 믹스 4·드랍·픽업 4·완료 수 2·새 키 4이고 위임 키·기간 불가 키와 겹치지 않는다', () => {
+  ['DB 기록 키 19개: 믹스 4·드랍·픽업 4·완료 수 2·새 키 4·날짜·체크인 5이고 위임 키·기간 불가 키와 겹치지 않는다', () => {
     assert.deepStrictEqual([...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST].sort(), [
-      'capsule_open_count', 'collection_complete_count', 'combine_attempt_count', 'combine_fail_count', 'combine_success_count',
-      'cross_tribe_combine_success_count', 'drop_item_count', 'locked_item_open_count', 'locked_item_pickup_count',
-      'mission_complete_count', 'picked_up_by_user_count', 'pickup_from_user_count', 'pickup_item_count', 'recipe_first_success',
+      'capsule_open_count', 'checkin_badge_count', 'checkin_category_count', 'collection_complete_count', 'combine_attempt_count',
+      'combine_fail_count', 'combine_success_count', 'cross_tribe_combine_success_count', 'drop_item_count', 'locked_item_open_count',
+      'locked_item_pickup_count', 'mission_complete_count', 'new_checkin_badge_count', 'picked_up_by_user_count',
+      'pickup_from_user_count', 'pickup_item_count', 'recipe_first_success', 'same_spot_checkin_days', 'weekly_active_days',
     ])
     for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
       assert.ok(ALL_CONDITION_KEYS.includes(key as never), `배지 레지스트리에 없다: ${key}`)
@@ -500,12 +506,31 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(error, null)
     assert.strictEqual(warning, null)
   }],
-  ['engine_condition + DB 기록 키 14개 → 경고도 오류도 없다 (판정하는 키가 됐다)', () => {
+  ['engine_condition + DB 기록 키 19개 → 경고도 오류도 없다 (판정하는 키가 됐다)', () => {
+    const valueOf = (key: string): unknown => {
+      if (key === 'recipe_first_success') return { recipe_id: 'recipe' }
+      if (key === 'checkin_category_count') return { category: 'train_subway', count: 3 }
+      if (key === 'checkin_badge_count') return { checkin_badge_names: ['성수역'], count: 1 }
+      return 3
+    }
     for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
-      const value = key === 'recipe_first_success' ? { recipe_id: 'recipe' } : 3
-      const result = checkMissionCondition('engine_condition', { distance_km: 10, [key]: value } as unknown as MissionCondition, 'achievement')
+      const result = checkMissionCondition('engine_condition', { distance_km: 10, [key]: valueOf(key) } as unknown as MissionCondition, 'achievement')
       assert.deepStrictEqual(result, { error: null, warning: null }, `${key}: ${JSON.stringify(result)}`)
     }
+  }],
+  ['2회로 판정하게 된 날짜·체크인 5개는 더 이상 «판정하지 않는 조건» 경고에 나오지 않는다', () => {
+    const condition = {
+      weekly_active_days: 3,
+      same_spot_checkin_days: 2,
+      new_checkin_badge_count: 4,
+      checkin_category_count: { category: 'train_subway', count: 2 },
+      checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
+    } as unknown as MissionCondition
+    assert.deepStrictEqual(checkMissionCondition('engine_condition', condition, 'achievement'), { error: null, warning: null })
+    // 아직 판정하지 않는 키 9개는 계속 경고한다
+    const stillUnjudged = checkMissionCondition('engine_condition', { weekly_active_days: 3, active_week_streak: 3 } as unknown as MissionCondition, 'achievement')
+    assert.ok(stillUnjudged.warning?.includes('active_week_streak'), String(stillUnjudged.warning))
+    assert.ok(!stillUnjudged.warning?.includes('weekly_active_days'), String(stillUnjudged.warning))
   }],
 
   // ── 기간을 걸 수 없는 키 (티켓 20261019_1445 사용자 결정 1) ──────────────

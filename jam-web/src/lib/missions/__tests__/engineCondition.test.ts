@@ -10,6 +10,14 @@
 import assert from 'node:assert'
 import { evaluateEngineMissionCondition } from '../engineCondition'
 import { ENGINE_DELEGATED_DB_CONDITION_KEY_LIST } from '../condition-keys'
+
+/** DB 기록 키의 조건 값 — 객체 값을 가진 키는 `count`가 `n`인 올바른 모양으로, 나머지는 숫자 `n`으로 만든다 */
+function dbKeyConditionValue(key: string, n: number): unknown {
+  if (key === 'recipe_first_success') return { recipe_id: 'r1' }
+  if (key === 'checkin_category_count') return { category: 'train_subway', count: n }
+  if (key === 'checkin_badge_count') return { checkin_badge_names: ['성수역'], count: n }
+  return n
+}
 import type { MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 import { kstIso } from '@/lib/badge-engine/__tests__/kstFixture'
@@ -411,20 +419,66 @@ const cases: Array<[string, () => void]> = [
   }],
   ['DB 기록 키 값을 주지 않으면 통과하지 않는다 (fail-closed — 참가 즉시 완료 방지)', () => {
     for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
-      const value = key === 'recipe_first_success' ? { recipe_id: 'r1' } : 1
-      const cond = { [key]: value } as MissionCondition
+      const cond = { [key]: dbKeyConditionValue(key, 1) } as MissionCondition
       assert.strictEqual(evaluateEngineMissionCondition(cond, []), false, `${key}: dbMetrics 없이 통과했다`)
       assert.strictEqual(evaluateEngineMissionCondition(cond, [], {}), false, `${key}: 값 없이 통과했다`)
     }
   }],
-  ['DB 기록 키 14개 전부 값이 있으면 통과한다', () => {
+  ['DB 기록 키 19개 전부 값이 있으면 통과한다', () => {
     const cond: MissionCondition = {}
     const metrics: Record<string, number> = {}
     for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) {
-      ;(cond as Record<string, unknown>)[key] = key === 'recipe_first_success' ? { recipe_id: 'r1' } : 2
+      ;(cond as Record<string, unknown>)[key] = dbKeyConditionValue(key, 2)
       metrics[key] = key === 'recipe_first_success' ? 1 : 2
     }
     assert.strictEqual(evaluateEngineMissionCondition(cond, [], metrics), true)
+  }],
+  // ── 날짜·체크인 키 (티켓 20261019_1445 2회) ──
+  ['날짜 키(weekly_active_days·same_spot_checkin_days)와 new_checkin_badge_count: 값이 조건 이상이면 통과한다 (경계 포함)', () => {
+    for (const key of ['weekly_active_days', 'same_spot_checkin_days', 'new_checkin_badge_count'] as const) {
+      const cond = { [key]: 3 } as MissionCondition
+      assert.strictEqual(evaluateEngineMissionCondition(cond, [], { [key]: 2 }), false, `${key}: 2 < 3`)
+      assert.strictEqual(evaluateEngineMissionCondition(cond, [], { [key]: 3 }), true, `${key}: 3 ≥ 3`)
+      assert.strictEqual(evaluateEngineMissionCondition(cond, [], { [key]: 0 }), false, `${key}: 0`)
+    }
+  }],
+  ['checkin_category_count: 읽은 값(그 장소 종류의 배지 수)이 count 이상이면 통과한다 (경계 포함)', () => {
+    const cond: MissionCondition = { checkin_category_count: { category: 'train_subway', count: 2 } }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { checkin_category_count: 1 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { checkin_category_count: 2 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { checkin_category_count: 9 }), true)
+  }],
+  ['checkin_badge_count: 읽은 값(지정 이름 중 받은 수)이 count 이상이면 통과한다 (경계 포함)', () => {
+    const cond: MissionCondition = { checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 2 } }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { checkin_badge_count: 1 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { checkin_badge_count: 2 }), true)
+  }],
+  ['checkin_category_count·checkin_badge_count: 값 모양이 틀리면 읽은 값이 커도 통과하지 않는다 (fail-closed)', () => {
+    const malformed: unknown[] = [
+      { checkin_category_count: { category: 'train_subway' } }, // count 없음
+      { checkin_category_count: { count: 1 } }, // category 없음
+      { checkin_category_count: { category: 'train_subway', count: '1' } }, // count가 문자열
+      { checkin_category_count: 3 }, // 객체가 아님
+      { checkin_category_count: { category: 'train_subway', count: Number.NaN } },
+      { checkin_badge_count: { checkin_badge_names: '성수역', count: 1 } }, // 이름이 배열이 아님
+      { checkin_badge_count: { count: 1 } },
+      { checkin_badge_count: { checkin_badge_names: ['성수역'], count: null } },
+    ]
+    for (const cond of malformed) {
+      assert.strictEqual(
+        evaluateEngineMissionCondition(cond as MissionCondition, [], { checkin_category_count: 99, checkin_badge_count: 99 }),
+        false,
+        JSON.stringify(cond)
+      )
+    }
+  }],
+  ['날짜·체크인 키는 활동 기록 조건과 AND로 묶이고 DB 키 사이도 모두 충족해야 한다', () => {
+    const cond: MissionCondition = { distance_km: 5, weekly_active_days: 3, new_checkin_badge_count: 2 }
+    const acts = [act('2026-07-02T08:00:00')] // 10km
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { weekly_active_days: 3, new_checkin_badge_count: 1 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { weekly_active_days: 2, new_checkin_badge_count: 2 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { weekly_active_days: 3, new_checkin_badge_count: 2 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { weekly_active_days: 3, new_checkin_badge_count: 2 }), true)
   }],
   ['recipe_first_success: 기간 안에 처음 성공했으면(1) 통과, 아니면(0) 통과하지 않는다', () => {
     const cond: MissionCondition = { recipe_first_success: { recipe_id: 'r1' } }

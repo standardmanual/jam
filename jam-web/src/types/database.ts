@@ -838,7 +838,7 @@ export interface MissionCondition {
    * 함) — day_of_week 배열+total_count의 시간대 버전(배지엔진에 없는 신규 어휘) */
   time_band_counts?: { start: string; end: string; count: number }[]
 
-  // ── engine_condition 전용: DB 기록으로 세는 조건 14종 (티켓 20261019_1445 1회) ──────────
+  // ── engine_condition 전용: DB 기록으로 세는 조건 19종 (티켓 20261019_1445 1·2회) ──────────
   //
   // 타입·의미는 BadgeCondition의 같은 키와 같다. 다만 미션에서는 «참가한 뒤, 미션 기간 안»에 쌓인 기록만 센다
   // (`src/lib/missions/dbMetrics.ts`가 읽고 `engineCondition.ts`가 비교한다). 활동 기록으로 판정하는 위의 키들과
@@ -874,6 +874,20 @@ export interface MissionCondition {
   locked_item_pickup_count?: BadgeCondition['locked_item_pickup_count']
   /** 재료가 트라이브 2개 이상에 걸친 믹스 성공 횟수 */
   cross_tribe_combine_success_count?: BadgeCondition['cross_tribe_combine_success_count']
+
+  // 2회(티켓 20261019_1445): 날짜·체크인 키 5종. 날짜 지표는 기간 밖 활동을 세지 않고, «처음 받은» 체크인 키는 전체 이력으로
+  // 배지별 처음 받은 시각을 정한 뒤 그 시각이 기간 안인 배지만 센다(기간 전에 받은 배지를 기간 안에 다시 받아도 새 배지가 아니다).
+
+  /** 한 주(월~일, KST) 안의 활동한 날 수 — 기간 안의 활동일이 가장 많은 주의 값 */
+  weekly_active_days?: BadgeCondition['weekly_active_days']
+  /** 같은 지점에 서로 다른 날(KST) 체크인한 수의 최댓값 (기간 안의 체크인만) */
+  same_spot_checkin_days?: BadgeCondition['same_spot_checkin_days']
+  /** 기간 안에 처음 받은 체크인 배지의 서로 다른 종류 수 */
+  new_checkin_badge_count?: BadgeCondition['new_checkin_badge_count']
+  /** 기간 안에 처음 받은 체크인 배지 가운데 지정한 장소 종류의 배지 수 ≥ count */
+  checkin_category_count?: BadgeCondition['checkin_category_count']
+  /** 기간 안에 처음 받은 체크인 배지 가운데 지정한 이름 목록에 든 이름의 수 ≥ count */
+  checkin_badge_count?: BadgeCondition['checkin_badge_count']
 }
 
 /** 게이트 미션의 단계 — 마스터 티켓 20260905_0026의 2단 게이트 표를 그대로 옮긴 두 값 */

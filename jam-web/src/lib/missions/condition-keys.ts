@@ -137,7 +137,7 @@ export const ENGINE_DELEGATED_CONDITION_KEY_LIST = [
 export type EngineDelegatedConditionKey = (typeof ENGINE_DELEGATED_CONDITION_KEY_LIST)[number]
 
 /**
- * DB 기록으로 세는 키 14개 — `engine_condition` 전용 (티켓 20261019_1445 1회).
+ * DB 기록으로 세는 키 19개 — `engine_condition` 전용 (티켓 20261019_1445 1회 14개 + 2회 5개).
  *
  * 배지엔진 위임 키(위)와 다르게 `evaluateConditionDetailed`에 넘기지 않는다. 활동 기록이 아니라 DB 행(믹스 기록·드랍 기록 등)을
  * 세는 값이라 `lib/missions/dbMetrics.ts`의 `loadMissionDbMetrics`가 «참가한 뒤, 미션 기간 안»의 값으로 읽고,
@@ -166,6 +166,12 @@ export const ENGINE_DELEGATED_DB_CONDITION_KEY_LIST = [
   'locked_item_open_count',
   'locked_item_pickup_count',
   'cross_tribe_combine_success_count',
+  // 날짜·체크인 5 (2회) — 날짜 지표는 기간 밖 활동을 세지 않고, «처음 받은» 체크인 키는 전체 이력으로 처음 받은 시각을 정한 뒤 기간으로 좁힌다
+  'weekly_active_days',
+  'same_spot_checkin_days',
+  'new_checkin_badge_count',
+  'checkin_category_count',
+  'checkin_badge_count',
 ] as const satisfies readonly (keyof MissionCondition)[]
 
 export type EngineDelegatedDbConditionKey = (typeof ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)[number]
@@ -191,7 +197,7 @@ export function isDbConditionKey(key: string): key is EngineDelegatedDbCondition
 const NON_ENGINE_MISSION_ONLY_KEYS: ReadonlySet<string> = new Set(['count', 'badge_id'])
 
 /**
- * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개) + DB 기록 키(14개).
+ * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개) + DB 기록 키(19개).
  * 이 밖의 키는 저장은 되지만 판정에 쓰이지 않는다 — `checkMissionCondition`이 경고로 알린다.
  * `evaluateEngineMissionCondition`의 「알려진 필드가 하나라도 있는가」 검사(fail-closed)도 이 집합을 쓴다 —
  * 두 곳이 갈리면 «경고는 없는데 판정은 안 하는» 조건이 생긴다.

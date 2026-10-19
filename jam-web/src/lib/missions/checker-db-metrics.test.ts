@@ -1,5 +1,5 @@
 /**
- * checkMissions — DB 기록 조건(믹스·드랍·캡슐 등) 연결 시험 (티켓 20261019_1445 1회)
+ * checkMissions — DB 기록 조건(믹스·드랍·캡슐 등, 2회: 날짜·체크인) 연결 시험 (티켓 20261019_1445 1·2회)
  *
  * 로더·지표 함수·판정 함수는 각자 시험이 있다. 이 파일은 `checkMissions`가 그 조각을 실제로 이어 붙여
  *  ① 참가 전·미션 시작 전·종료 뒤 기록을 세지 않고 기간 안 기록으로 판정하는지
@@ -18,7 +18,11 @@ import type { FakeDb, FakeRow } from '@/lib/badge-engine/__tests__/fakeSupabase'
 
 const USER = 'user-1'
 
-const holder = vi.hoisted(() => ({ db: null as unknown as FakeDb }))
+const holder = vi.hoisted(() => ({
+  db: null as unknown as FakeDb,
+  /** 날짜 지표가 읽는 가입 시각 — 기본은 못 읽는 상태(null)이고, 날짜 지표 시험이 필요할 때 채운다 */
+  signupAt: null as string | null,
+}))
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => holder.db.client }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
@@ -30,7 +34,7 @@ vi.mock('@/lib/missions/rewards', () => ({
   grantMissionRewards: vi.fn(async () => ({ awardedBadgeIds: [], awardedBadgeNames: [], totalAwardedPoints: 0, pendingItemBadgeIds: [], pendingLockedBadgeIds: [] })),
 }))
 vi.mock('@/lib/strava/activity-history', () => ({
-  getSignupAnchorDate: async () => null,
+  getSignupAnchorDate: async () => holder.signupAt,
   getActivityHistory: async () => [],
   mergeActivityHistory: (_history: unknown, activities: unknown) => activities,
 }))
@@ -118,6 +122,7 @@ function setup(
 }
 
 beforeEach(() => {
+  holder.signupAt = null
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'info').mockImplementation(() => {})
 })
@@ -244,5 +249,141 @@ describe('checkMissions — DB 키가 없는 미션은 DB 지표를 읽지 않�
     expect(result.completedMissionIds).toEqual(['m-engine', 'm-distance'])
     const metricTables = ['user_combine_success_logs', 'user_combine_fail_logs', 'poi_drops', 'capsule_opens', 'inventory_item_events', 'user_item_book_completions']
     for (const table of metricTables) expect(holder.db.queried).not.toContain(table)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// 날짜·체크인 키 (티켓 20261019_1445 2회)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('checkMissions — 날짜·체크인 키도 참가한 뒤, 기간 안의 값으로 판정한다', () => {
+  const RUN = { jamActivityType: 'running', distanceKm: 5, movingTimeSec: 1800, averageSpeedKmh: 10 }
+  const day = (d: string) => `2026-10-${d}T03:00:00.000Z` // KST 낮 12시
+  // JOINED = 10-10 00:00Z. 월요일은 10-05·10-12
+  const act = (id: string, d: string): FakeRow => ({ id, user_id: USER, start_date: day(d), normalized: RUN, filter_reason: null })
+  const earn = (id: string, badgeId: string, d: string): FakeRow => ({
+    id,
+    user_id: USER,
+    badge_id: badgeId,
+    poi_id: `poi-${badgeId}`,
+    triggered_by_activity_date: day(d),
+    earned_at: '2026-10-31T00:00:00Z',
+  })
+
+  beforeEach(() => {
+    holder.signupAt = '2026-09-01T00:00:00.000Z'
+  })
+
+  it('weekly_active_days: 참가 전 활동일은 세지 않는다 — 참가 뒤 같은 주의 날이 모자라면 완료되지 않는다', async () => {
+    // 참가 전(10-06·07·08) 3일 + 참가 뒤 1일(10-12). 세는 날은 참가 뒤 1일뿐이다
+    const { rpcCalls } = setup(
+      [engineMission('m1', { weekly_active_days: 3 })],
+      { strava_activities: [act('a1', '06'), act('a2', '07'), act('a3', '08'), act('a4', '12')] }
+    )
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+    expect(rpcCalls).toEqual([])
+  })
+
+  it('weekly_active_days: 참가 뒤 같은 주에 조건만큼 활동하면 완료한다', async () => {
+    const { rpcCalls } = setup(
+      [engineMission('m1', { weekly_active_days: 3 })],
+      { strava_activities: [act('a1', '06'), act('a2', '12'), act('a3', '13'), act('a4', '14')] }
+    )
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual(['m1'])
+    expect(rpcCalls).toHaveLength(1)
+  })
+
+  it('same_spot_checkin_days: 참가 전 체크인 날은 합치지 않는다', async () => {
+    const sameSpot = (id: string, d: string): FakeRow => ({ ...earn(id, 'b', d), poi_id: 'p1' })
+    setup(
+      [engineMission('m1', { same_spot_checkin_days: 2 })],
+      { user_checkin_badge_earns: [sameSpot('c1', '06'), sameSpot('c2', '07'), sameSpot('c3', '12')] }
+    )
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+
+    setup(
+      [engineMission('m1', { same_spot_checkin_days: 2 })],
+      { user_checkin_badge_earns: [sameSpot('c1', '06'), sameSpot('c3', '12'), sameSpot('c4', '13')] }
+    )
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual(['m1'])
+  })
+
+  it('new_checkin_badge_count: 참가 전에 처음 받은 배지는 참가 뒤에 다시 받아도 새 배지로 세지 않는다', async () => {
+    setup(
+      [engineMission('m1', { new_checkin_badge_count: 1 })],
+      { user_checkin_badge_earns: [earn('c1', 'old', '06'), earn('c2', 'old', '12')] }
+    )
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+
+    // 참가 뒤에 처음 받은 배지가 하나 있으면 완료한다
+    setup(
+      [engineMission('m1', { new_checkin_badge_count: 1 })],
+      { user_checkin_badge_earns: [earn('c1', 'old', '06'), earn('c2', 'old', '12'), earn('c3', 'fresh', '13')] }
+    )
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual(['m1'])
+  })
+
+  it('checkin_category_count: 참가 뒤 처음 받은 배지의 장소 종류 수로 판정한다', async () => {
+    const badges: FakeRow[] = [
+      { id: 'old', type: 'checkin', name: 'O', category: 'train_subway' },
+      { id: 'fresh', type: 'checkin', name: 'F', category: 'train_subway' },
+    ]
+    const condition = { checkin_category_count: { category: 'train_subway', count: 2 } }
+    setup([engineMission('m1', condition)], {
+      user_checkin_badge_earns: [earn('c1', 'old', '06'), earn('c2', 'old', '12'), earn('c3', 'fresh', '13')],
+      badges,
+    })
+    // old는 참가 전에 처음 받았으니 fresh 하나뿐이다
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual([])
+
+    // 조건이 1개면 fresh 하나로 충족한다
+    setup([engineMission('m1', { checkin_category_count: { category: 'train_subway', count: 1 } })], {
+      user_checkin_badge_earns: [earn('c1', 'old', '06'), earn('c2', 'old', '12'), earn('c3', 'fresh', '13')],
+      badges,
+    })
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual(['m1'])
+  })
+
+  it('checkin_badge_count: 참가 뒤 처음 받은 배지 가운데 지정 이름의 수로 판정한다', async () => {
+    const badges: FakeRow[] = [
+      { id: 'old', type: 'checkin', name: '왕십리역' },
+      { id: 'fresh', type: 'checkin', name: '성수역' },
+    ]
+    const condition = { checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 } }
+    const { rpcCalls } = setup([engineMission('m1', condition)], {
+      user_checkin_badge_earns: [earn('c1', 'old', '06'), earn('c2', 'fresh', '13')],
+      badges,
+    })
+    expect((await checkMissions(USER, [])).completedMissionIds).toEqual(['m1'])
+    expect(rpcCalls).toHaveLength(1)
+  })
+
+  it('체크인 표를 읽지 못하면 그 미션만 건너뛴다 (완료도 0 폴백도 아니다)', async () => {
+    const { rpcCalls } = setup(
+      [
+        engineMission('m-db-fail', { new_checkin_badge_count: 0 }), // 0 이상이면 항상 충족 — 폴백(0)이었다면 완료됐을 조건
+        engineMission('m-plain', { distance_km: 5 }),
+      ],
+      {},
+      { user_checkin_badge_earns: 'DB 장애' }
+    )
+    const result = await checkMissions(USER, [activity(AFTER_JOIN)])
+    expect(result.completedMissionIds).toEqual(['m-plain'])
+    expect(rpcCalls.map((c) => c.args.p_mission_id)).toEqual(['m-plain'])
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('이 미션만 건너뛰었어요'), expect.any(Error))
+  })
+
+  it('가입 시각을 읽지 못하면 날짜 지표 미션만 건너뛴다', async () => {
+    holder.signupAt = null
+    const { rpcCalls } = setup(
+      [
+        engineMission('m-date', { weekly_active_days: 0 }), // 0 이상이면 항상 충족
+        engineMission('m-plain', { distance_km: 5 }),
+      ],
+      { strava_activities: [act('a1', '12')] }
+    )
+    const result = await checkMissions(USER, [activity(AFTER_JOIN)])
+    expect(result.completedMissionIds).toEqual(['m-plain'])
+    expect(rpcCalls.map((c) => c.args.p_mission_id)).toEqual(['m-plain'])
   })
 })

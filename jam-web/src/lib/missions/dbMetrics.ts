@@ -1,9 +1,9 @@
 /**
- * 미션 DB 기록 조건의 지표 읽기 (서버 사이드 전용, 티켓 20261019_1445 1회)
+ * 미션 DB 기록 조건의 지표 읽기 (서버 사이드 전용, 티켓 20261019_1445 1·2회)
  *
- * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 14개
- * (`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`: 믹스·드랍·픽업·미션/컬렉션 완료·캡슐 열기·잠긴 개체·트라이브를 넘는 믹스)를
- * «참가한 뒤, 미션 기간 안»의 값으로 읽어 `{ 키: 값 }`을 돌려준다. 비교는 순수 함수 `evaluateEngineMissionCondition`이
+ * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 19개
+ * (`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`: 믹스·드랍·픽업·미션/컬렉션 완료·캡슐 열기·잠긴 개체·트라이브를 넘는 믹스 +
+ * 2회의 날짜·체크인 5개)를 «참가한 뒤, 미션 기간 안»의 값으로 읽어 `{ 키: 값 }`을 돌려준다. 비교는 순수 함수 `evaluateEngineMissionCondition`이
  * 한다 — 이 파일은 읽기만 한다.
  *
  * ## 기간
@@ -19,6 +19,14 @@
  * ## 값 모양
  * 모든 값은 숫자다. `recipe_first_success`만 «지정한 레시피를 기간 안에 처음 성공했는가»를 1/0으로 돌려준다
  * (배지 엔진이 같은 키를 1/0로 비교하는 것과 같다, `jamActionBadges.ts`).
+ * 객체 값을 가진 `checkin_category_count`(`{ category, count }`)·`checkin_badge_count`(`{ checkin_badge_names, count }`)는
+ * «지정한 장소 종류·이름 목록에 든 배지가 몇 개인가»를 숫자로 돌려주고, `count`와의 비교는 `engineCondition.ts`가 한다.
+ * 값 모양이 틀린 조건은 읽지 않고 0을 돌려준다 — 비교 쪽도 모양이 틀리면 충족하지 못하므로 결과가 같다.
+ *
+ * ## 날짜·체크인 키 (2회)
+ *  - `weekly_active_days`·`same_spot_checkin_days`: 기간 밖 활동·체크인은 세지 않는다. 기간 경계의 주는 잘린 대로 센다.
+ *  - `new_checkin_badge_count`·`checkin_category_count`·`checkin_badge_count`: 전체 이력으로 배지별 처음 받은 시각을 정한 뒤
+ *    그 시각이 기간 안인 배지만 센다 — 기간 전에 받은 배지를 기간 안에 다시 받아도 새 배지로 세지 않는다.
  *
  * ## 미션별 지연 조회
  * 루프 앞에서 한꺼번에 읽지 않고 미션마다 그 미션의 기간으로 읽는다 — 기간이 미션마다 다르고, 같은 동기화에서 먼저 완료된 미션이
@@ -39,6 +47,13 @@ import {
   countPickupFromUsers,
 } from '@/lib/badge-engine/jamActionDropMetrics'
 import { countCollectionCompletions, countMissionCompletions } from '@/lib/badge-engine/jamActionCompletionMetrics'
+import {
+  countCheckinCategoryBadges,
+  countCheckinListedBadges,
+  countNewCheckinBadgeCount,
+} from '@/lib/badge-engine/jamActionCheckinMetrics'
+import { countSameSpotCheckinDays, countWeeklyActiveDays } from '@/lib/badge-engine/jamActionDayMetrics'
+import { isCheckinBadgeCountValue, isCheckinCategoryCountValue } from '@/lib/badge-engine/checkinHoldings'
 import {
   countCapsuleOpens,
   countCrossTribeCombineSuccess,
@@ -84,6 +99,23 @@ const READERS: Record<EngineDelegatedDbConditionKey, MetricReader> = {
   locked_item_open_count: (s, u, w) => countLockedItemOpens(s, u, w),
   locked_item_pickup_count: (s, u, w) => countLockedItemPickups(s, u, w),
   cross_tribe_combine_success_count: (s, u, w) => countCrossTribeCombineSuccess(s, u, w),
+  // ── 날짜·체크인 5개 (2회) ──
+  weekly_active_days: (s, u, w) => countWeeklyActiveDays(s, u, w),
+  same_spot_checkin_days: (s, u, w) => countSameSpotCheckinDays(s, u, w),
+  new_checkin_badge_count: (s, u, w) => countNewCheckinBadgeCount(s, u, w),
+  checkin_category_count: async (s, u, w, condition) => {
+    const value = condition.checkin_category_count
+    // 장소 종류를 가리키지 않는 값은 «그 종류의 배지가 몇 개인가»를 물을 수 없다 — 0이면 비교 쪽에서도 충족하지 못한다
+    if (!isCheckinCategoryCountValue(value)) return 0
+    return countCheckinCategoryBadges(s, u, value.category, w)
+  },
+  checkin_badge_count: async (s, u, w, condition) => {
+    const value = condition.checkin_badge_count
+    if (!isCheckinBadgeCountValue(value)) return 0
+    // 문자열이 아닌 이름은 어떤 배지와도 맞지 않는다 — 이름 조회에 섞여 조회가 깨지지 않게 먼저 거른다
+    const names = value.checkin_badge_names.filter((name): name is string => typeof name === 'string')
+    return countCheckinListedBadges(s, u, names, w)
+  },
 }
 
 /**

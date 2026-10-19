@@ -2,7 +2,8 @@
  * 메모리 표를 읽는 Supabase 클라이언트 모조 — 기간 필터(`gte`/`lte`)까지 실제로 적용한다 (티켓 20261019_1445)
  *
  * 지표 읽기 함수와 미션 판정 시험이 «어떤 행을 세는가»를 고정하려면 필터를 무시하는 모조로는 부족하다.
- * 이 모조는 `eq`·`in`·`not(col,'is',null)`·`gte`·`lte`를 행에 적용하고, `select(..., {head:true})`는 개수만 돌려준다.
+ * 이 모조는 `eq`·`in`·`is(col,null)`·`not(col,'is',null)`·`gte`·`lte`를 행에 적용하고, `select(..., {head:true})`는 개수만 돌려준다.
+ * `maybeSingle()`·`single()`을 부르면 첫 행(없으면 null)만 돌려준다.
  * 시각 비교는 문자열이 아니라 `Date.parse`다(`...Z`와 `...+00:00` 표기가 달라도 같은 시각).
  * 시험 파일이 아니라 도우미라 `.test.` 이름을 쓰지 않는다.
  */
@@ -38,6 +39,7 @@ export function makeFakeDb(tables: Record<string, FakeRow[]> = {}, options: Fake
   const from = (table: string) => {
     const filters: ((row: FakeRow) => boolean)[] = []
     let head = false
+    let single = false
     let range: [number, number] | null = null
     const builder: Record<string, unknown> = {}
     const add = (filter: (row: FakeRow) => boolean) => {
@@ -51,6 +53,13 @@ export function makeFakeDb(tables: Record<string, FakeRow[]> = {}, options: Fake
     }
     builder.eq = (col: string, value: unknown) => add((row) => row[col] === value)
     builder.in = (col: string, values: unknown[]) => add((row) => values.includes(row[col]))
+    builder.is = (col: string, value: unknown) =>
+      add((row) => (value === null ? isNil(row[col]) : row[col] === value))
+    builder.maybeSingle = () => {
+      single = true
+      return builder
+    }
+    builder.single = builder.maybeSingle
     builder.not = (col: string, op: string, value: unknown) =>
       op === 'is' && value === null ? add((row) => !isNil(row[col])) : builder
     builder.gte = (col: string, value: string) =>
@@ -75,7 +84,11 @@ export function makeFakeDb(tables: Record<string, FakeRow[]> = {}, options: Fake
       let rows = tables[table] ?? []
       if (!options.passthroughTables?.includes(table)) rows = rows.filter((row) => filters.every((f) => f(row)))
       if (range) rows = rows.slice(range[0], range[1] + 1)
-      const result = head ? { data: null, count: rows.length, error: null } : { data: rows, error: null }
+      const result = head
+        ? { data: null, count: rows.length, error: null }
+        : single
+          ? { data: rows[0] ?? null, error: null }
+          : { data: rows, error: null }
       return Promise.resolve(result).then(resolve, reject)
     }
     return builder

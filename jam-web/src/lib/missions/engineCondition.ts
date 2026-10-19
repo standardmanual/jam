@@ -40,6 +40,7 @@ import {
   type EngineDelegatedDbConditionKey,
 } from '@/lib/missions/condition-keys'
 import type { MissionDbMetrics } from '@/lib/missions/dbMetrics'
+import { isCheckinBadgeCountValue, isCheckinCategoryCountValue } from '@/lib/badge-engine/checkinHoldings'
 
 const WEEK_MS = 7 * 86_400_000
 
@@ -171,6 +172,8 @@ function extractDelegatedCondition(condition: MissionCondition): Record<string, 
  * DB 기록 키 하나가 충족됐는가 (티켓 20261019_1445). `dbMetrics`에 그 키의 값이 없으면 충족하지 못한 것으로 본다(fail-closed) —
  * 호출자가 값을 읽지 않았는데 «조건 없음»처럼 통과해 미션이 즉시 완료되는 일을 막는다.
  * 조건 값이 숫자가 아니거나(문자열·NaN) 레시피를 가리키지 않는 `recipe_first_success`도 충족하지 못한다.
+ * 객체 값을 가진 `checkin_category_count`·`checkin_badge_count`는 모양이 맞아야(장소 종류·이름 목록과 숫자 `count`) 하고
+ * 읽은 값(그 종류·그 목록에 든 배지 수)이 `count` 이상이어야 충족한다 — 배지 발급(`usageBadges.ts`)과 같은 비교다.
  */
 function dbConditionMet(key: EngineDelegatedDbConditionKey, condition: MissionCondition, dbMetrics: MissionDbMetrics | undefined): boolean {
   const actual = dbMetrics?.[key]
@@ -181,6 +184,16 @@ function dbConditionMet(key: EngineDelegatedDbConditionKey, condition: MissionCo
     return typeof recipeId === 'string' && recipeId !== '' && actual >= 1
   }
 
+  if (key === 'checkin_category_count') {
+    const required = condition.checkin_category_count
+    return isCheckinCategoryCountValue(required) && Number.isFinite(required.count) && actual >= required.count
+  }
+
+  if (key === 'checkin_badge_count') {
+    const required = condition.checkin_badge_count
+    return isCheckinBadgeCountValue(required) && Number.isFinite(required.count) && actual >= required.count
+  }
+
   const required = condition[key]
   return typeof required === 'number' && Number.isFinite(required) && actual >= required
 }
@@ -189,7 +202,7 @@ function dbConditionMet(key: EngineDelegatedDbConditionKey, condition: MissionCo
  * `engine_condition` 미션의 달성 판정. 순수 함수 — `checker.ts`가 미션 기간(참가·시작 이후, 종료 이전)으로
  * 이미 필터링한 활동 배열을 넘긴다(다른 위임 타입과 같은 규약, `window.ts`).
  *
- * `dbMetrics`(티켓 20261019_1445)는 DB 기록으로 세는 키 14개(`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`)의 «참가한 뒤, 기간 안» 값이다.
+ * `dbMetrics`(티켓 20261019_1445)는 DB 기록으로 세는 키 19개(`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`)의 «참가한 뒤, 기간 안» 값이다.
  * `checker.ts`가 `loadMissionDbMetrics`로 읽어 넘기고, 조건에 든 DB 키는 모두 충족해야 한다(활동 기록 조건과 AND).
  * 조건에 DB 키가 있는데 값이 없으면 충족하지 못한 것이다 — 읽기에 실패한 미션은 호출자가 이 함수를 부르지 않고 건너뛴다.
  *
