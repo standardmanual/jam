@@ -156,7 +156,7 @@ export default function MissionConditionSection({
         )}
         {missionType === 'elevation_gain_m' && (
           <div className="flex min-w-0 flex-col gap-1.5">
-            <FieldLabel htmlFor="mc-elevation">목표 단일 활동 고도</FieldLabel>
+            <FieldLabel htmlFor="mc-elevation">목표 누적 고도</FieldLabel>
             <SuffixInput
               id="mc-elevation"
               type="number"

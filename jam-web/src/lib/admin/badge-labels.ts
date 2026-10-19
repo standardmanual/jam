@@ -43,7 +43,7 @@ export const MISSION_TYPE_LABEL: Record<MissionType, string> = {
   item_collect: '아이템 픽업',
   streak_days: '연속 일수',
   duration_minutes: '단일 활동 시간',
-  elevation_gain_m: '단일 활동 고도',
+  elevation_gain_m: '누적 고도',
   // 티켓 20260906_2231 — 배지엔진 위임 + 미션 전용 어휘 결합 복합 조건(게이트 미션 40종)
   engine_condition: '복합 조건',
 }
