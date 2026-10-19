@@ -122,52 +122,16 @@
       "sourcePath": "components/patterns/ItemSerialCode.jsx"
     },
     {
-      "name": "BadgeStageRail",
-      "sourcePath": "components/patterns/BadgeStageRail.jsx"
-    },
-    {
-      "name": "BadgeTreeSummaryHeader",
-      "sourcePath": "components/patterns/BadgeTreeSummaryHeader.jsx"
-    },
-    {
       "name": "RecentSyncBanner",
       "sourcePath": "components/patterns/RecentSyncBanner.jsx"
-    },
-    {
-      "name": "UnlockConditionSheetContent",
-      "sourcePath": "components/patterns/UnlockConditionSheetContent.jsx"
-    },
-    {
-      "name": "DualAxisGauge",
-      "sourcePath": "components/patterns/DualAxisGauge.jsx"
     },
     {
       "name": "BadgeLevelChip",
       "sourcePath": "components/cards/BadgeLevelChip.jsx"
     },
     {
-      "name": "BadgeLevelGauge",
-      "sourcePath": "components/patterns/BadgeLevelGauge.jsx"
-    },
-    {
-      "name": "BadgeStampRow",
-      "sourcePath": "components/patterns/BadgeStampRow.jsx"
-    },
-    {
-      "name": "BadgeStatusSection",
-      "sourcePath": "components/patterns/BadgeStatusSection.jsx"
-    },
-    {
-      "name": "BadgeProgressRingCard",
-      "sourcePath": "components/patterns/BadgeProgressRingCard.jsx"
-    },
-    {
       "name": "BadgeStatusGlyphs",
       "sourcePath": "components/icons/BadgeStatusGlyphs.jsx"
-    },
-    {
-      "name": "BadgeFamilyCardHeader",
-      "sourcePath": "components/patterns/BadgeFamilyCardHeader.jsx"
     },
     {
       "name": "LabelChip",

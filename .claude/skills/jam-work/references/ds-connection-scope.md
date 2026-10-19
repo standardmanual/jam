@@ -42,10 +42,10 @@ cd jam-web && npm run storybook   # http://localhost:6006
   서비스 45개 파일이 `@ds/components/*`를 **86건** import한다. 실사용 목록:
   `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `EmptyState` ·
   `ProgressBar` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` ·
-  `BadgeFamilyCardHeader` · `BadgeLevelGauge` · `BadgeProgressRingCard` ·
-  `BadgeRevealCarousel` · `BadgeStageRail` · `BadgeStampRow` · `BadgeStatusSection` ·
-  `BadgeTreeSummaryHeader` · `DualAxisGauge` · `ItemSerialCode` · `UnlockConditionSheetContent` ·
-  `Select` · `MixerSlot`
+  `BadgeRevealCarousel` · `ItemSerialCode` · `Select` · `MixerSlot`
+  (배지 트리 전용 9종 `BadgeFamilyCardHeader` · `BadgeLevelGauge` · `BadgeProgressRingCard` · `BadgeStageRail` ·
+  `BadgeStampRow` · `BadgeStatusSection` · `BadgeTreeSummaryHeader` · `DualAxisGauge` · `UnlockConditionSheetContent`는
+  화면 제거와 함께 2026-10-19 티켓 20261018_1817 2회에서 삭제했다. 위 수치 24종·86건은 삭제 전 값이다.)
   (`Accordion`은 이전 조사에서 "미도입"으로 분류됐으나 이후 연결됨을 확인해 이동했다. `Select`와
   `MixerSlot`은 2026-10-16 티켓 20261015_2134 3회 실측으로 추가했다 — `Select`는 `BadgesClient`·
   `MissionsListClient`, `MixerSlot`은 `CombineClient`가 import한다. 위 수치 21종·86건은 2026-09-14

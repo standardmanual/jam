@@ -104,7 +104,7 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox
 * `components/patterns/` — BadgeGridCard(`locked` 잠김 카드 포함), ListRowCard, CollectionGridCard, BadgeRevealCarousel(선택 모드·위아래 슬롯·closeDisabled 포함), ItemSerialCode, MixerSlot (서비스 공통 UI 패턴)
-* `components/patterns/` 배지 트리 — **BadgeFamilyCardHeader(계열 카드 공유 헤더 — 새 계열 카드를 만들면 헤더는 반드시 이걸 쓴다)**, BadgeStageRail(등급형 4눈금 레일), BadgeProgressRingCard(등급형 눈금 1개 · 진행을 라운드 사각 테두리로), BadgeLevelGauge(무한레벨형 · 레벨 수와 무관하게 높이 고정), BadgeStampRow(반복형 · 누적을 ×N 칩 하나로), BadgeStatusSection(「다음 목표」·「받은 배지」 · `collapsible={false}`로 접지 않는 모드), BadgeTreeSummaryHeader, UnlockConditionSheetContent, DualAxisGauge(레일 카드 안의 구획), RecentSyncBanner
+* `components/patterns/` 직전 동기화 비교 — RecentSyncBanner (서비스 호출부 없음: 배지 트리 화면 제거, 티켓 20261018_1817)
 * `components/icons/` — IconCatalog (라인 아이콘 세트 + 전체 카탈로그 그리드. 서비스
   `src/components/ui/icons.tsx`를 이식한 Storybook 전용 사본 — 서비스는 계속 원본을 단일
   소스로 쓴다, 20260828_2043), **BadgeStatusGlyphs**(배지 화면의 자물쇠·체크·별·chevron 단일

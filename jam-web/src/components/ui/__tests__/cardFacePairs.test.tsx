@@ -32,10 +32,6 @@ import ServiceCollectionGridCard from '../CollectionGridCard'
 import { CollectionGridCard as DsCollectionGridCard } from '@ds/components/patterns/CollectionGridCard'
 import ServiceSlidingTabs from '../SlidingTabs'
 import { SlidingTabs as DsSlidingTabs } from '@ds/components/navigation/SlidingTabs'
-import { BadgeTreeSummaryHeader } from '@ds/components/patterns/BadgeTreeSummaryHeader'
-import { BadgeLevelGauge } from '@ds/components/patterns/BadgeLevelGauge'
-import { BadgeStampRow } from '@ds/components/patterns/BadgeStampRow'
-import { BadgeStageRail } from '@ds/components/patterns/BadgeStageRail'
 import { RecentSyncBanner } from '@ds/components/patterns/RecentSyncBanner'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import UserSearchBar from '@/app/(main)/UserSearchBar'
@@ -168,44 +164,6 @@ describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
 
 describe('흰 면 위 흰 그라디언트·inset 흰 하이라이트는 걷고 면 + 테두리를 둔다', () => {
   const NO_WHITE_HIGHLIGHT = ['linear-gradient(160deg', 'rgba(255,255,255', 'inset 0 1px 0']
-
-  function expectFlatCard(html: string) {
-    expect(html).toContain(SURFACE)
-    expect(html).toContain(BORDER)
-    for (const needle of NO_WHITE_HIGHLIGHT) expect(html).not.toContain(needle)
-  }
-
-  it('BadgeTreeSummaryHeader', () => {
-    expectFlatCard(renderToStaticMarkup(<BadgeTreeSummaryHeader earnedCount={1} totalCount={4} byRarity={{}} />))
-  })
-
-  it('BadgeLevelGauge', () => {
-    expectFlatCard(
-      renderToStaticMarkup(
-        <BadgeLevelGauge name="걸어온 거리" level={1} current="10km" next="20km" left="10km 남음" fraction={0.5} />,
-      ),
-    )
-  })
-
-  it('BadgeStampRow', () => {
-    expectFlatCard(renderToStaticMarkup(<BadgeStampRow name="산책" count={3} fraction={0.4} />))
-  })
-
-  it('BadgeStageRail — 카드 면과 게이트 점선(흰색이 아니라 --border)', () => {
-    const html = renderToStaticMarkup(
-      <BadgeStageRail
-        familyName="한강"
-        stops={[]}
-        nextRarityLabel={null}
-        frontierProgress={null}
-        progressStopId={null}
-        regretLine={null}
-        onLockClick={() => {}}
-      />,
-    )
-    expectFlatCard(html.replace(/\.ds-rail-gate-link\{[^}]*\}/, ''))
-    expect(html).toMatch(/\.ds-rail-gate-link\{background:repeating-linear-gradient\(90deg, var\(--border\) 0 4px/)
-  })
 
   it('RecentSyncBanner — 상태 신호는 8px 점이 맡고 면은 표준 테두리다', () => {
     const html = renderToStaticMarkup(<RecentSyncBanner visible comparisonMessage={null} />)

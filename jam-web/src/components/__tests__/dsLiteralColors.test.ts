@@ -14,7 +14,6 @@
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
-import { progressRampColor } from '@ds/components/patterns/BadgeFamilyCardHeader'
 
 const COMPONENTS_DIR = path.resolve(__dirname, '../../../design-system/components')
 
@@ -127,7 +126,7 @@ function enclosingBlock(text: string, pos: number): string {
 describe('MODULAR 컴포넌트 직접 색 잔존', () => {
   it('jsx 파일을 하나 이상 찾았다(경로가 틀려 빈 목록으로 통과하지 않는다)', () => {
     expect(FILES.length).toBeGreaterThan(30)
-    expect(FILES).toContain('patterns/BadgeFamilyCardHeader.jsx')
+    expect(FILES).toContain('patterns/ItemSerialCode.jsx')
     expect(FILES).toContain('cards/RarityBadge.jsx')
   })
 
@@ -184,30 +183,5 @@ describe('MODULAR 컴포넌트 직접 색 잔존', () => {
         expect(hits).toEqual([])
       })
     }
-  })
-})
-
-describe('progressRampColor — 진행 상태 글자색의 단일 원천', () => {
-  it('계산 불가(null·undefined)와 0%는 muted', () => {
-    expect(progressRampColor(null)).toBe('var(--muted)')
-    expect(progressRampColor(undefined)).toBe('var(--muted)')
-    expect(progressRampColor(0)).toBe('var(--muted)')
-  })
-
-  it('진행 중과 거의 다(0 초과 1 미만)는 모두 foreground — 앰버(--progress-short)를 글자로 쓰지 않는다', () => {
-    expect(progressRampColor(0.42)).toBe('var(--foreground)')
-    expect(progressRampColor(0.8)).toBe('var(--foreground)')
-    expect(progressRampColor(0.99)).toBe('var(--foreground)')
-  })
-
-  it('다 채움(1 이상 또는 done)은 link — 라임(--progress-done)을 글자로 쓰지 않는다', () => {
-    expect(progressRampColor(1)).toBe('var(--link)')
-    expect(progressRampColor(1.4)).toBe('var(--link)')
-    expect(progressRampColor(0.1, true)).toBe('var(--link)')
-    expect(progressRampColor(null, true)).toBe('var(--link)')
-  })
-
-  it('범위를 벗어난 값은 0과 1로 잘라서 판정한다', () => {
-    expect(progressRampColor(-0.5)).toBe('var(--muted)')
   })
 })
