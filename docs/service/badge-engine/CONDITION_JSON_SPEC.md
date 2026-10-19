@@ -596,7 +596,7 @@ interface BadgeGateRequirement {
 
 ## 7. 미션 조건으로 쓰는 키 (JAM 2.0, 티켓 20261019_1312)
 
-미션(`missions.condition_json`)은 이 문서의 배지 조건 어휘 가운데 **활동 기록만으로 판정되는 키**를 `mission_type='engine_condition'`에서 쓴다.
+미션(`missions.condition_json`)은 이 문서의 배지 조건 어휘 가운데 **활동 기록만으로 판정되는 키**와, **참가한 뒤 기간 안의 DB 기록으로 판정되는 키**(§7.1의 «DB 기록» 행, 티켓 20261019_1445)를 `mission_type='engine_condition'`에서 쓴다.
 미션 쪽 정본은 `jam-web/src/lib/missions/condition-keys.ts`다 — 위임 키 목록(`ENGINE_DELEGATED_CONDITION_KEY_LIST`), 판정 가능 키 집합(`ENGINE_CONDITION_JUDGED_KEYS`),
 저장 검증(`checkMissionCondition`)이 거기 있다. 판정 함수는 `engineCondition.ts`의 `evaluateEngineMissionCondition`이다(배지 엔진 `evaluateConditionDetailed`에 위임하는 부분과 미션 전용 부분을 AND로 결합).
 
@@ -609,6 +609,7 @@ interface BadgeGateRequirement {
 | | 요일: `day_of_week` | §2.1 — KST 요일 기준. 단일 값은 거르는 조건이다. 배열은 `weekly_streak`와 함께 쓸 때만 반영된다(`total_count`는 미션에 없다) |
 | | 계절: `season`, `season_count`, `season_count_all` | §2.5 — KST 월 기준, 활동한 날의 수. `season_count`는 `season`과 함께 쓴다 |
 | | 운동 속성: `max_speed_kmh`, `avg_heartrate_bpm`, `avg_watts`, `avg_cadence`, `cumulative_duration_hours`, `weekend_duration_hours` | `cumulative_duration_hours`는 §2.2(전체 이력 합계), `weekend_duration_hours`는 §2.4(주말 활동 1건), 나머지 넷은 §2.10(활동 1건의 값) |
+| DB 기록 (14개) | 믹스: `combine_attempt_count`, `combine_success_count`, `combine_fail_count`, `recipe_first_success` / 드랍·픽업: `drop_item_count`, `pickup_item_count`, `pickup_from_user_count`, `picked_up_by_user_count` / 완료 수: `mission_complete_count`, `collection_complete_count` / 새 조건: `capsule_open_count`, `locked_item_open_count`, `locked_item_pickup_count`, `cross_tribe_combine_success_count` | 배지 엔진에 위임하지 않는다. `lib/missions/dbMetrics.ts`의 `loadMissionDbMetrics`가 **참가한 뒤 미션 기간 안**의 값으로 읽고(§7.4), `evaluateEngineMissionCondition`이 값 ≥ 조건 값으로 비교해 활동 기록 조건과 AND로 묶는다(`recipe_first_success`는 기간 안에 그 레시피를 처음 성공했으면 1). 의미는 이 문서의 같은 키와 같다. 키 목록 정본은 `ENGINE_DELEGATED_DB_CONDITION_KEY_LIST` |
 | 미션 전용 (9개) | `weekly_streak_min_count`, `monthly_streak`, `monthly_streak_min_count`, `streak_subset`, `distinct_weekday_count`, `distinct_months_required`, `distinct_months_metric`, `distinct_months_threshold`, `time_band_counts` | `engineCondition.ts`가 직접 판정. 주(월~일)·달·요일 개수는 KST 날짜 기준이다(해외 활동도 한국 시각의 날, 티켓 20261019_1312 2회) |
 
 `day_of_week`·`season`은 «거르는 조건»(`role: 'filter'`)이라 혼자서는 판정할 값이 없다. 거리·`season_count` 같은 판정할 값과 함께 써야 하고, 미션 전용 키하고만 짝지으면 배지 엔진이 「평가 가능한 조건 없음」으로 막는다(영구 미달성, 필터를 조용히 무시하지 않는다).
@@ -618,7 +619,8 @@ interface BadgeGateRequirement {
 | 구분 | 키 | 저장 | 이유 |
 |---|---|---|---|
 | 쓰지 않음 | `temperature_min_c`, `temperature_max_c` | **거절(error)** — 모든 미션 타입 | 날씨와 기온은 배지와 미션의 조건으로 쓰지 않는다(운영 로직 13.2절). 위임하지 않으므로 저장하면 기온이 조용히 무시되어 미션이 더 쉬워진다 |
-| 판정하지 않음 | 위 표에 없는 나머지 배지 조건 키 — DB 기록으로 판정하는 `external` 키(JAM 조건, 체크인, 장소 종류 등)와 `total_count` 같은 비위임 키, 다른 미션 타입의 목표 값(`count`, `badge_id`) | **허용 + 경고(warning)** — `engine_condition`만 | 판정이 없어 달성 판정에 쓰이지 않는다. 판정하는 다른 조건이 없으면 미션이 완료되지 않을 수 있고, 있으면 이 조건 없이 완료된다. 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 경고 대상에서 뺀다 |
+| 기간을 걸 수 없음 | `jam_total_earned`(지갑 평생 누계), `chapter_reached`(지금 챕터 하나), `days_since_signup`(가입 후 경과일), `other_tribe_item_kinds_count`(지금 가진 개체의 스냅샷), `signup_recent_active_days`(오늘 기준 최근 30일 창) | **거절(error)** — 모든 미션 타입 | 값이 «지금 상태»이거나 평생 누계라서 참가한 뒤 기간 안의 값으로 나눌 수 없다. 지금 값을 그대로 쓰면 참가 전에 쌓은 값이 섞여 참가 즉시 완료되는 미션이 생기므로 경고가 아니라 거절한다(티켓 20261019_1445, 오류 문구는 기온 키와 따로 현상·원인·해결책 순서) |
+| 판정하지 않음 | 위 표에 없는 나머지 배지 조건 키 — 아직 판정하지 않는 `external` 키(주간 활동일, 같은 곳 체크인 일수, 체크인·장소 종류 등 5-2b의 다음 회차와 범위 밖 키)와 `total_count` 같은 비위임 키, 다른 미션 타입의 목표 값(`count`, `badge_id`) | **허용 + 경고(warning)** — `engine_condition`만 | 판정이 없어 달성 판정에 쓰이지 않는다. 판정하는 다른 조건이 없으면 미션이 완료되지 않을 수 있고, 있으면 이 조건 없이 완료된다. 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 경고 대상에서 뺀다. 판정 구현 없이 키만 판정 가능 집합에 옮기면 그 키만 든 미션이 참가 즉시 완료되므로 같은 변경에서 한다 |
 | 아직 평가 구현이 없음 | `evaluation: 'pending'` 키 | **거절(error)** — 엔진 위임 타입 / 그 밖의 타입은 경고 | 기존 동작 그대로 (§6 참조) |
 
 경고는 어드민 API의 저장 응답(POST·PATCH)에 `warning`으로 담긴다(저장된 행과 함께, 행에는 저장하지 않는다). 경고할 것이 없으면 응답 모양은 그대로다.
@@ -636,3 +638,17 @@ interface BadgeGateRequirement {
 ### 7.4 기간 경계
 
 미션 판정에 넘기는 활동은 **참가 시각(`joined_at`)과 미션 시작(`starts_at`) 가운데 늦은 시각 이후**, **종료(`ends_at`, 없으면 상한 없음) 이전**의 것이다. 시각으로 비교하며(`Z`와 `+00:00` 표기가 달라도 같은 시각) 경계 시각은 포함한다. 선택은 `jam-web/src/lib/missions/window.ts`의 `activitiesWithinMissionWindow` 한 곳이 맡고, `checkMissions`가 거리·활동 횟수·엔진 위임 타입(`streak_days`, `duration_minutes`, `elevation_gain_m`, `engine_condition`)에 적용한다. 체크인·아이템 수집처럼 보유 현황으로 판정하는 유형은 활동 배열을 쓰지 않는다.
+
+**DB 기록 키(§7.1)도 같은 경계를 쓴다.** `window.ts`의 `missionWindowIsoBounds`가 활동 선택과 같은 계산으로 하한·상한을 ISO 시각으로 돌려주고(둘 다 포함), 지표 읽기 함수(`jamActionMetrics.ts`·`jamActionDropMetrics.ts`·`jamActionCompletionMetrics.ts`·`jamActionItemMetrics.ts`)가 선택 인자 `window`로 받아 DB가 시각으로 거른다. 인자를 주지 않으면 평생값이라 배지 엔진 호출처는 그대로다. 기준 시각은 키마다 다르다.
+
+| 키 | 기준 시각 |
+|---|---|
+| 믹스 4가지, `cross_tribe_combine_success_count` | 믹스 기록의 `attempted_at` |
+| `drop_item_count` | 놓은 때 `poi_drops.dropped_at` |
+| `pickup_item_count`, `pickup_from_user_count`, `locked_item_pickup_count` | 주운 때 `poi_drops.picked_up_at` |
+| `picked_up_by_user_count` | 놓은 때가 아니라 **주워진 때** `poi_drops.picked_up_at` (참가 전에 놓은 아이템도 참가 뒤에 주워 가면 센다) |
+| `mission_complete_count`, `collection_complete_count` | 완료·완성한 때 `completed_at` |
+| `capsule_open_count` | `capsule_opens.opened_at` |
+| `locked_item_open_count` | 개체 이력 `inventory_item_events.created_at` |
+
+`checkMissions`는 DB 기록 키가 든 `engine_condition` 미션에만, 그 미션의 기간으로 **미션마다** 읽는다(루프 앞에서 한꺼번에 읽지 않는다 — 기간이 미션마다 다르고, 같은 동기화에서 먼저 완료된 미션이 뒤 미션의 `mission_complete_count`에 잡혀야 한다). 읽기에서 오류가 나거나 기간의 하한을 정할 수 없으면 던지고, 그 미션만 건너뛴다(0으로 폴백하지 않는다). **판정 시점은 활동 동기화 때뿐이다** — `checkMissions` 호출처가 `strava/sync.ts` 한 곳이고 믹스·캡슐 열기·드랍·픽업 API는 배지만 판정하므로, 이 키들로 만든 미션은 그 행동을 한 순간이 아니라 다음 동기화 때 완료된다. 어드민 양식에는 이 키들의 입력 칸이 없어(5-8) 열어서 저장해도 값이 사라지지 않게 원본을 보존하고, 판정 시뮬레이션은 이 키를 평가하지 못해 응답의 `missionDbKeysPresent`로 알린다.
