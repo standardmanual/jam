@@ -384,6 +384,12 @@ interface BadgeGateRequirement {
 | `full_week_count` | `number`(정수 ≥1) | [JAM! 카테고리] 월~일 7일을 모두 활동한 주의 수 ≥ 조건값. 같은 날 여러 활동은 1일이다 | 위와 동일 |
 | `full_season_year_count` | `number`(정수 ≥1) | [JAM! 카테고리] 달력 연도(KST) 안에 봄(3~5월)·여름(6~8월)·가을(9~11월)·겨울(12·1·2월)에 모두 활동한 해의 수 ≥ 조건값. 1·2월과 12월은 모두 겨울이라 2025년 12월은 2026년의 겨울을 채우지 않는다 | 위와 동일 |
 | `distinct_activity_type_count` | `number`(정수 ≥1) | [JAM! 카테고리] 인정된 활동의 서로 다른 종목 수 ≥ 조건값 | 위와 동일 |
+| `new_checkin_badge_count` | `number`(정수 ≥1) | [JAM! 카테고리] 새로 받은 체크인 배지의 서로 다른 종류 수 ≥ 조건값. `user_checkin_badge_earns`의 서로 다른 `badge_id`라 같은 배지를 다시 받아도 1종류다 | badge-engine 내 **항상 fail** — `evaluateJamActionBadges()`가 동기화 끝(`JAM_SYNC_TRIGGERS`)에서 판정(티켓 20261019_0542 2회) |
+| `checkin_season_year_count` | `number`(정수 ≥1) | [JAM! 카테고리] 달력 연도(KST) 안에 봄(3~5월)·여름(6~8월)·가을(9~11월)·겨울(12·1·2월) 네 계절 모두에서 **새 체크인 배지**(배지별 처음 받은 줄)를 받은 해의 수 ≥ 조건값. 1·2월과 12월은 모두 겨울이라 2025년 12월은 2026년의 겨울을 채우지 않는다 | 위와 동일 — 동기화 끝에서 판정 |
+| `dropped_item_picked_up_count` | `number`(정수 ≥1) | [JAM! 카테고리] 내가 드랍한 **서로 다른 아이템**(`poi_drops.inventory_item_id`) 가운데 다른 유저가 픽업한 수 ≥ 조건값. 같은 아이템이 왕복해도 1이고 내가 주운 것은 뺀다 | 위와 동일 — 다른 유저가 픽업한 직후 놓은 사람에게 판정(`jamTriggersForPickup`) |
+| `jam_week_count` | `number`(정수 ≥1) | [JAM! 카테고리] 월~일(KST) 한 주에 모은 잼이 `jam_week_min_earned`(없으면 1) 이상인 주의 수 ≥ 조건값. `jam_daily_earned`를 주별로 합산한다. 연속하지 않아도 된다 | 위와 동일 — 동기화 끝에서 판정 |
+| `jam_week_streak` | `number`(정수 ≥1) | [JAM! 카테고리] 한 주에 `jam_week_min_earned` 이상 잼을 모은 주가 이어진 **최장 주 수** ≥ 조건값. 잼을 못 모은 주가 끼면 끊긴다 | 위와 동일 |
+| `jam_week_min_earned` | `number`(정수 ≥1) | [JAM! 카테고리] `jam_week_count`·`jam_week_streak`의 **보조 키**(선택). «채운 주»로 치는 한 주의 최소 모은 잼. 없으면 1 | 지표가 아니라 두 배지의 기준이다 — 단독으로 저장할 수 없다(짝 필드 `jam_week_count` 또는 `jam_week_streak`) |
 
 > ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
 > 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
@@ -459,6 +465,11 @@ interface BadgeGateRequirement {
 > **활동 기반 새 지표 6종** (2026-10-19, 티켓 20261019_0542 1회): 같은 틀에 키 6개(주 키 5개 + 보조 키 `active_week_min_days`)와 계산 모듈
 > `jamActionActivityMetrics.ts`를 더한 정수형이다. 허용 키는 마이그레이션 246이 DB CHECK에 넓혔다(80 → 86, 기존 `condition_json`은 바뀌지 않는다).
 > 값의 정의는 위 표와 계산 파일의 머리 주석이 단일 원천이다. 새 SQL 없이 supabase-js 읽기만 쓴다.
+>
+> **체크인·드랍·잼 새 지표 6종** (2026-10-19, 티켓 20261019_0542 2회): 같은 틀에 키 6개(주 키 5개 + 보조 키 `jam_week_min_earned`)와 계산 모듈
+> `jamActionCheckinMetrics.ts`를 더한 정수형이다(드랍은 `jamActionDropMetrics.ts`, 잼은 `jamActionJamMetrics.ts`에 계산 함수를 더했다). 허용 키는
+> 마이그레이션 247이 DB CHECK에 넓혔다(86 → 92, 기존 `condition_json`은 바뀌지 않는다). 값의 정의는 위 표와 계산 파일의 머리 주석이 단일 원천이다.
+> 새 SQL 없이 supabase-js 읽기만 쓴다.
 
 ---
 
@@ -493,7 +504,7 @@ interface BadgeGateRequirement {
 - 휴식 4종(§2.13)은 **`repeat_count`와 휴식 키 1개까지 조합 가능하다**(2026-09-06, 티켓
   20260906_2056) — 전용 술어가 "휴식 조건을 만족한 복귀 사건"만 센다. 휴식 키 2개 이상은
   사건 경계가 정의되지 않아 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다
-- **사용량 지표 32종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
+- **사용량 지표 37종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
   `daily_sync_streak_days`·`checkin_category_count`·`checkin_badge_count`·
   `combine_attempt_count`·`combine_success_count`·`combine_fail_count`·`recipe_first_success`·
   `drop_item_count`·`pickup_item_count`·`pickup_from_user_count`·`picked_up_by_user_count`·
@@ -501,14 +512,15 @@ interface BadgeGateRequirement {
   `same_spot_checkin_days`·`capsule_open_count`·`locked_item_open_count`·`locked_item_pickup_count`·
   `other_tribe_item_kinds_count`·`cross_tribe_combine_success_count`·`jam_total_earned`·`jam_weekly_earned`·
   `chapter_reached`·`active_week_streak`·`return_streak_weeks`·`full_week_count`·`full_season_year_count`·
-  `distinct_activity_type_count`. 단일 출처는 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS` —
-  메타 키에서 `mission_reward`와 보조 키 `signup_recent_active_days`·`active_week_min_days`를 뺀 목록이라 지표를 더하면 이 규칙이
+  `distinct_activity_type_count`·`new_checkin_badge_count`·`checkin_season_year_count`·`dropped_item_picked_up_count`·
+  `jam_week_count`·`jam_week_streak`. 단일 출처는 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS` —
+  메타 키에서 `mission_reward`와 보조 키 `signup_recent_active_days`·`active_week_min_days`·`jam_week_min_earned`를 뺀 목록이라 지표를 더하면 이 규칙이
   자동으로 붙는다. 보조 키는 사용량 지표가 아니다)은 `repeat_count`와
   함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719; 20260911_2304에서 4번째 키로 확장;
   20260914_1725에서 체크인 배지 보유 2종 추가; 20261001_0631에서 믹스 행동 지표 4종 추가;
   20261001_0632에서 드랍·픽업 행동 지표 4종 추가; 20261001_0633에서 미션·컬렉션·가입 경과일·활동일·체크인 일수
   지표 5종 추가; 20261018_1815에서 새 JAM 조건 5종과 잼·챕터 3종 추가, 마이그레이션 242;
-  20261019_0542에서 활동 기반 5종 추가, 마이그레이션 246) —
+  20261019_0542에서 활동 기반 5종 추가, 마이그레이션 246; 같은 티켓 2회에서 체크인·드랍·잼 5종 추가, 마이그레이션 247) —
   `usageBadges.ts`·`jamActionBadges.ts`의
   발급 경로는 등급형(계열 그룹 내 최상위 tier 1개만, `family_key`가 없으면 이름 그룹)·레벨형(family_key 연속 발급)만
   구현돼 있다. `badgeKindOf()`가 아니라 `isLeveledBadge()`(rarity==null 이진 판정)로만
