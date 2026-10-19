@@ -31,10 +31,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = (await req.json()) as RankingModeSavePayload
   const supabase = createServiceClient()
 
-  // 기간 동안 모은 잼 미션은 연결하지 못한다(티켓 20261019_1445 3-B). 본문에 미션이 없는 수정은 읽지 않는다.
+  // 기간 동안 모은 잼 미션은 연결하지 못한다(티켓 20261019_1445 3-B). 본문에 미션이 없는 수정은 수정 뒤에도 남는 기존 연결을 본다(4회).
   // 조건을 읽지 못하면 저장하지 않는다(fail-closed).
   try {
-    const rejection = await rankingModeMissionRejection(supabase, body)
+    const rejection = await rankingModeMissionRejection(supabase, body, id)
     if (rejection) return NextResponse.json({ error: rejection }, { status: 400 })
   } catch (err) {
     console.error('[ranking-modes PATCH] 연결할 미션 조건 조회 실패 — 저장을 차단합니다:', err)
