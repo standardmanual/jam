@@ -635,6 +635,10 @@ interface BadgeGateRequirement {
 - 캡슐 연 횟수: `capsule_open_count`.
 - 모은 잼은 순위 기준으로 쓸 수 있다(운영 로직 13.2절). `jam_period_earned`는 순위형을 포함한 어느 틀로든 저장된다(3-A회, `rankingConditionError`는 바꾸지 않았다).
   순위형에서는 목표를 먼저 채운 순서가 앞서고, 못 채운 사람은 모은 양 순이다(`compareMissionRank` 그대로).
+- 홈 투데이 랭킹 보드와 랭킹 모드(3-B회): `jam_period_earned`가 든 미션은 랭킹 모드(`ranking_modes`)에 연결하지 못한다. 순위의 값이 모은 잼의 양이라, 홈 보드에 올리면 양이 홈을 보는 모두에게 드러나기 때문이다.
+  읽는 쪽은 `computeMissionParticipantsResult`가 이 키가 든 미션의 순위를 빈 결과로 돌려준다(`hasPeriodEarnedKey`: 미션 타입은 따지지 않고 조건에 키가 있으면 가린다. 화면은 「아직 랭킹이 없어요」). 어드민 미리보기도 같은 함수라 비어 보인다.
+  쓰는 쪽은 랭킹 모드 생성·수정(POST·PATCH)이 연결할 미션의 조건을 읽어 400으로 거절하고(현상·원인·해결책 순서, 본문에 미션 id가 있을 때만 읽는다. 읽지 못하면 500으로 저장을 멈춘다), 생성·수정 화면의 미션 선택 목록에서도 뺀다.
+  이미 저장된 랭킹 모드의 미션 조건이 나중에 바뀐 경우는 어드민 랭킹 모드 목록의 경고 칩(`mission_period_earned_hidden`)이 이유를 알린다.
 - 틀을 비워 만들면 DB 기본값이 순위형(마이그레이션 046 `DEFAULT 'ranking'`)이라 같은 값으로 검사한다. PATCH는 조건이나 틀 하나만 바뀌어도 기존 행과 합친 «갱신 후 상태»로 검사한다(틀만 바뀔 때는 순위형 금지만 본다).
 
 ### 7.4 기간 경계
@@ -662,7 +666,7 @@ interface BadgeGateRequirement {
 `same_spot_checkin_days`는 «기간 안의 체크인만 보고 지점(`poi_id`)별 서로 다른 날(KST) 수의 최댓값»이다(지점을 합치지 않는다).
 
 **모은 잼(`jam_period_earned`, 3-A회)**: ① `strava_activities`에서 시작 시각이 기간 안(하한·상한 포함)인 활동 id를 끝까지 읽고(`selectAllPages`, 30,000행을 넘으면 던진다), ② `jam_transactions`에서 `reason='activity_settlement'`이고 `source_activity_id`가 그 id(200개씩 나눠)인 줄의 `amount`를 더한다(`readJamEarnedWithin`, `lib/badge-engine/jamActionJamMetrics.ts`). 정산 시각이 아니라 활동 시각을 따라가므로 참가 전에 한 활동을 늦게 동기화해도 세지 않는다. 채움(`capsule_fill`·`locked_item_badge_fill`, 음수)과 운영자 지급·회수(`admin_grant`·`admin_deduct`)는 `reason`이 달라 합계에 들지 않고, 정산되지 않은 활동은 줄이 없어 0이다. 읽지 못하면 던지고 그 미션만 건너뛴다. 이 읽기 함수는 기간 인자가 필수이고 배지 엔진은 부르지 않는다.
-진행값과 목표: `evaluateMission`이 `jam_period_earned`가 든 `engine_condition` 미션에서만 `progressValue`를 모은 잼, `target`을 조건의 값으로 돌려준다. 완료는 조건 전체의 AND 판정(`achieved`)이다(잼을 채워도 다른 조건이 모자라면 완료되지 않는다). 이 키가 없는 `engine_condition`은 예전처럼 0/1·target 1이다. `getTarget`과 `MISSION_PROGRESS_UNIT.engine_condition`(`''`)은 바꾸지 않았다 — 마일스톤(50%·80%)·마감 임박 소식이 이 둘로 양을 만들기 때문에, 채우면 모은 잼이 소식 문구로 나간다. 활동 피드(`mission_completed`)의 `final_progress_value`는 `engine_condition`이면 달성 여부(1/0)만 기록하고 `target_value`는 0이라 양이 나가지 않는다.
+진행값과 목표: `evaluateMission`이 `jam_period_earned`가 든 `engine_condition` 미션에서만 `progressValue`를 모은 잼, `target`을 조건의 값으로 돌려준다. 완료는 조건 전체의 AND 판정(`achieved`)이다(잼을 채워도 다른 조건이 모자라면 완료되지 않는다). 이 키가 없는 `engine_condition`은 예전처럼 0/1·target 1이다. `getTarget`과 `MISSION_PROGRESS_UNIT.engine_condition`(`''`)은 바꾸지 않았다 — 마일스톤(50%·80%)·마감 임박 소식이 이 둘로 양을 만들기 때문에, 채우면 모은 잼이 소식 문구로 나간다. 활동 피드(`mission_completed`)의 `final_progress_value`는 `engine_condition`이면 달성 여부(1/0)만 기록하고 `target_value`는 0이라 양이 나가지 않는다. 미션 상세 화면의 «달성» 표시는 완료 기록(`isCompleted`)으로만 판정한다(3-B회) — 진행값이 모은 잼의 양이라 `progressValue >= 1`로 보면 1잼만 모아도 달성으로 그려진다.
 
 **«처음 받은» 규칙(사용자 결정 3)**: 체크인 키 3가지는 행부터 기간으로 거르지 않는다. ① 방문 기록 **전체 이력**으로 배지마다 처음 받은 시각을 정한다(체크인을 만든 활동의 시각 `triggered_by_activity_date`을 우선하고, 없으면 기록한 시각 `earned_at`; 한 배지의 여러 줄 가운데 가장 이른 시각). ② 그 시각이 기간 안(하한·상한 포함)인 배지만 «기간 안에 새로 받은 배지»로 센다. 그래서 기간 전에 받은 배지를 기간 안에 다시 받아도 새 배지로 세지 않고, 참가 전에 한 활동을 기간 안에 늦게 동기화해도 활동 시각이 기간 전이면 세지 않는다. 처음 받은 시각을 읽을 수 없는 배지(두 시각이 모두 없거나 깨진 배지)는 뺀다. `checkin_category_count`·`checkin_badge_count`는 이렇게 좁힌 배지 집합에 배지 발급과 같은 계산(`lib/badge-engine/checkinHoldings.ts`의 순수 함수)을 적용한다 — 장소 종류는 `badges.category` 우선·없으면 연결 지점의 카테고리, 이름은 `type='checkin'` 배지로만 풀고 카탈로그에 없는 이름은 무시한다.
 
