@@ -470,7 +470,7 @@ function ignoredDbKeysWarning(missionType: MissionType, condition: unknown): str
  *   (선례 20260904_1426은 「저장은 막지 않고 고지」였다 — 그 건은 발급 자체는 되는 경우였고,
  *   엔진 위임 타입은 저장하면 그 미션이 영원히 달성되지 않으므로 막는 쪽이 맞다)
  * - `engine_condition`에 판정하지 않는 키(`ENGINE_CONDITION_JUDGED_KEYS` 밖)가 있으면 저장은 허용하고
- *   고지한다 — 5-2b 4회 뒤 이 경로를 타는 키는 판정 범위 밖으로 둔 9개(`active_week_streak` 등)뿐이다
+ *   고지한다 — 5-2b가 판정을 만들지 않은 키(`active_week_streak`·`jam_week_count`·`total_count` 등)가 이 경로를 탄다
  * - `engine_condition`이 아닌 타입에 DB 기록 키(`MISSION_DB_CONDITION_KEY_LIST` 20개)가 있으면 저장은 허용하고
  *   고지한다 — 그 타입은 DB 기록을 읽지 않아 키가 판정에 쓰이지 않는다(티켓 20261019_1445 4회)
  */
