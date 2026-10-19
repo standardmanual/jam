@@ -33,6 +33,8 @@ import {
   usesNightCondition,
 } from '../condition-keys'
 import { ALL_CONDITION_KEYS, findBlockingConditionKeys } from '@/lib/badge-engine/conditionRegistry'
+import { inTimeRange } from '@/lib/badge-engine/activityFilters'
+import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, MissionCondition, MissionType } from '@/types/database'
 
 /**
@@ -292,9 +294,11 @@ const cases: Array<[string, () => void]> = [
     assert.ok(night('04:00', '08:00'), '새벽 4시대를 포함하는 구간')
     assert.ok(night('00:00', '03:00'), '자정 이후')
     assert.ok(night('22:00', '22:00'), '시작과 끝이 같은 밤의 한 분')
-    // 밤과 한 점에서 맞닿기만 하는 구간은 밤이 아니다 — 시작 포함·끝 미포함
+    // 엔진(inTimeRange)처럼 양 끝을 포함한다 — 22:00에 시작한 활동도 `18:00~22:00`에 센다
+    assert.ok(night('18:00', '22:00'), '끝이 22:00인 저녁 구간은 22:00 한 분을 센다')
+    // 밤 시각(22:00 이후, 05:00 전)을 하나도 건드리지 않는 구간은 밤이 아니다
+    assert.ok(!night('18:00', '21:59'), '저녁 구간(22:00 전에 끝남)')
     assert.ok(!night('05:00', '08:00'), '새벽~오전')
-    assert.ok(!night('18:00', '22:00'), '저녁 구간')
     assert.ok(!night('07:00', '11:00'), '오전')
     assert.ok(!night('11:00', '14:00'), '점심')
     assert.ok(usesNightCondition({ time_band_counts: [{ start: '05:00', end: '08:00', count: 1 }, { start: '22:00', end: '03:00', count: 1 }] }))
@@ -306,6 +310,55 @@ const cases: Array<[string, () => void]> = [
     assert.ok(!usesNightCondition({ time_range: { start: 'abc', end: '??' } }))
     assert.ok(!usesNightCondition(null))
     assert.ok(!usesNightCondition([]))
+  }],
+  // 티켓 20261019_1312 2회 — 시각 해석은 엔진 `inTimeRange`와 같은 함수다(1회 게이트 우려 1·2)
+  ['usesNightCondition: 24:00·HH:MM:SS 형식과 22:00 끝도 밤 조건으로 읽는다 (엔진과 같은 시각 해석)', () => {
+    const night = (start: string, end: string) => usesNightCondition({ time_range: { start, end } })
+    assert.ok(night('20:00', '24:00'), '끝이 24:00 — 엔진은 23:00 활동을 센다')
+    assert.ok(night('22:00:00', '05:00:00'), 'HH:MM:SS 형식')
+    assert.ok(night('18:00', '22:00'), '끝이 22:00 — 엔진은 22:00 활동을 센다')
+    assert.ok(night('18:00:00', '22:00:00'), 'HH:MM:SS 형식의 저녁~22:00')
+    assert.ok(night('00:00', '24:00'), '하루 전체')
+    assert.ok(night('24:00', '03:00'), '시작이 24:00이면 자정 이후까지 넘어가는 구간')
+    // 밤 시각을 하나도 건드리지 않는 형식은 그대로 밤이 아니다
+    assert.ok(!night('18:00:00', '21:59:59'), '초 단위로 쓴 저녁 구간(22:00 전에 끝남)')
+    assert.ok(!night('05:00:00', '08:00:00'), '초 단위로 쓴 새벽~오전')
+    assert.ok(!night('24:00', '24:00'), '24:00 한 점은 하루 중 어떤 분에도 맞지 않는다')
+    assert.ok(usesNightCondition({ time_band_counts: [{ start: '20:00', end: '24:00', count: 1 }] }))
+    assert.ok(usesNightCondition({ weekly_streak: 2, streak_subset: { time_range: { start: '22:00:00', end: '05:00:00' }, min_count: 1 } }))
+  }],
+  ['usesNightCondition은 엔진 inTimeRange와 같은 판정을 한다 — 밤 22:00~04:59의 어느 분이든 세는 구간이면 밤 조건이다', () => {
+    const activityAtKstMinute = (minute: number): NormalizedActivity => ({
+      // 2026-01-05(월) 00:00 KST = 2026-01-04T15:00:00Z 부터 `minute`분 뒤
+      startDate: new Date(Date.UTC(2026, 0, 4, 15, 0) + minute * 60_000).toISOString(),
+    }) as NormalizedActivity
+    const nightMinutes = Array.from({ length: 24 * 60 }, (_, m) => m).filter((m) => m >= 22 * 60 || m < 5 * 60)
+    const ranges: Array<[string, string]> = [
+      ['22:00', '05:00'], ['20:00', '24:00'], ['22:00:00', '05:00:00'], ['18:00', '22:00'], ['18:00', '21:59'],
+      ['05:00', '08:00'], ['04:59', '05:00'], ['05:00', '05:00'], ['00:00', '24:00'], ['24:00', '03:00'],
+      ['24:00', '24:00'], ['23:59', '00:00'], ['07:00', '11:00'], ['14:00', '18:00'], ['abc', '??'], ['22', '23'],
+    ]
+    for (const [start, end] of ranges) {
+      const engineCounts = nightMinutes.some((m) => inTimeRange(activityAtKstMinute(m), { start, end }))
+      assert.strictEqual(usesNightCondition({ time_range: { start, end } }), engineCounts, `${start}~${end}: 엔진과 판정이 다르다`)
+    }
+  }],
+  ['순위형 + 24:00·HH:MM:SS 밤 조건 → 거절 (직접 입력한 형식으로 우회하지 못한다)', () => {
+    const conditions: Array<[string, MissionCondition]> = [
+      ['time_range', { time_range: { start: '20:00', end: '24:00' } }],
+      ['time_range', { time_range: { start: '22:00:00', end: '05:00:00' } }],
+      ['time_range', { time_range: { start: '18:00', end: '22:00' } }],
+      ['time_band_counts', { activity_type: 'running', time_band_counts: [{ start: '20:00', end: '24:00', count: 2 }] }],
+    ]
+    for (const [name, condition] of conditions) {
+      const { error } = checkMissionCondition('engine_condition', condition, 'ranking')
+      assert.ok(error, `${name}: ${JSON.stringify(condition)}가 통과됐다`)
+      assert.ok(error!.includes(name), `문제 키가 문구에 없다: ${error}`)
+    }
+    // 같은 조건을 달성형·개인형에는 저장할 수 있다
+    for (const frame of ['achievement', 'individual']) {
+      assert.strictEqual(checkMissionCondition('engine_condition', conditions[0][1], frame).error, null)
+    }
   }],
   ['순위형 + 밤 조건 → 거절(현상·원인·해결책)', () => {
     const conditions: Array<[string, MissionCondition]> = [
@@ -357,7 +410,7 @@ const cases: Array<[string, () => void]> = [
     const ok: MissionCondition[] = [
       { time_range: { start: '05:00', end: '08:00' }, distance_km: 10 },
       { distinct_time_bands: 3 },
-      { time_band_counts: [{ start: '18:00', end: '22:00', count: 2 }] },
+      { time_band_counts: [{ start: '18:00', end: '21:59', count: 2 }] },
     ]
     for (const condition of ok) {
       const { error } = checkMissionCondition('engine_condition', condition, 'ranking')

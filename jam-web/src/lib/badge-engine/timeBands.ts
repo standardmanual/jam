@@ -46,6 +46,29 @@ export function timeBandOfHour(hour: number): TimeBand {
   return '밤'
 }
 
+/**
+ * `HH:MM` 문자열 → 하루 중 분. `:`로 나눠 앞 두 칸(시·분)만 읽는다 — `HH:MM:SS`(초는 버림)와
+ * `24:00`(= 1440분)도 받는다. 읽을 수 없는 값은 NaN이라 어떤 분과도 맞지 않는다.
+ *
+ * 시간대 조건 `{start,end}`를 해석하는 곳은 이 함수 하나다 — 배지 엔진의 `inTimeRange`와 순위형
+ * 미션의 밤 조건 검사(`missions/condition-keys.ts`)가 따로 읽으면 «저장 검사는 통과시켰는데 엔진은
+ * 그 시각을 센다»가 생긴다(티켓 20261019_1312 2회).
+ */
+export function clockToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+/**
+ * 하루 중 분(0~1439)이 `{start,end}` 시간대 범위에 드는가 — 자정 걸침 지원(`start > end`면 다음 날까지),
+ * **양 끝 포함**. 활동이 «22:00»에 시작하면 `18:00~22:00`에도 든다.
+ */
+export function isMinuteInTimeRange(minuteOfDay: number, range: { start: string; end: string }): boolean {
+  const s = clockToMinutes(range.start)
+  const e = clockToMinutes(range.end)
+  return s > e ? (minuteOfDay >= s || minuteOfDay <= e) : (minuteOfDay >= s && minuteOfDay <= e)
+}
+
 /** UTC 시각 문자열을 KST 벽시계로 옮긴 Date — UTC 게터로 읽어야 KST 값이 나온다 */
 function shiftToKst(startDate: string): Date {
   return new Date(new Date(startDate).getTime() + KST_OFFSET_MS)

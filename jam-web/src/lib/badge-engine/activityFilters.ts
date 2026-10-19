@@ -25,6 +25,7 @@ import {
   kstDateKeyOfStart,
   kstHourOfStart,
   kstMinuteOfDayOfStart,
+  isMinuteInTimeRange,
   kstDayOfWeekOfStart,
   kstMonthOfStart,
   kstYearMonthKeyOfStart,
@@ -134,14 +135,8 @@ export function dedupeOnePerDay(activities: NormalizedActivity[]): NormalizedAct
 
 /** 활동 시작시각(KST)이 {start,end} 시간대 범위 내인지 (자정 걸침 지원, 끝 시각 포함) */
 export function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {
-  const toMin = (hhmm: string) => {
-    const [h, m] = hhmm.split(':').map(Number)
-    return h * 60 + m
-  }
-  const t = kstMinuteOfDayOfStart(activity.startDate)
-  const s = toMin(range.start)
-  const e = toMin(range.end)
-  return s > e ? (t >= s || t <= e) : (t >= s && t <= e)
+  // 시각 해석(HH:MM·HH:MM:SS·24:00, 양 끝 포함)은 `timeBands.ts` 한 곳이다 — 순위형 밤 조건 검사도 같은 함수를 쓴다.
+  return isMinuteInTimeRange(kstMinuteOfDayOfStart(activity.startDate), range)
 }
 
 /** 주어진 날짜가 속한 주의 월요일 날짜(YYYY-MM-DD)를 키로 반환. */

@@ -34,6 +34,7 @@ import {
   findBlockingConditionKeys,
 } from '@/lib/badge-engine/conditionRegistry'
 import type { ConditionKey } from '@/lib/badge-engine/conditionRegistry'
+import { isMinuteInTimeRange } from '@/lib/badge-engine/timeBands'
 import { missionTypeLabel } from '@/lib/admin/badge-labels'
 import type { BadgeCondition, MissionCondition, MissionStatusDisplayType, MissionType } from '@/types/database'
 
@@ -253,32 +254,20 @@ export const DEFAULT_MISSION_STATUS_DISPLAY_TYPE: MissionStatusDisplayType = 'ra
 const NIGHT_START_MIN = 22 * 60
 const NIGHT_END_MIN = 5 * 60
 
-/** `HH:MM` → 하루 중 분. 형태가 맞지 않으면 null */
-function clockToMinutes(value: unknown): number | null {
-  if (typeof value !== 'string') return null
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim())
-  if (!m) return null
-  const h = Number(m[1])
-  const min = Number(m[2])
-  if (h > 23 || min > 59) return null
-  return h * 60 + min
-}
-
 /**
- * 시간대 `{start,end}`가 밤(22:00~05:00)과 겹치는지. 끝이 시작보다 이르면 자정을 넘기는 구간이다.
- * 구간은 «시작 포함·끝 미포함»으로 읽는다 — `18:00~22:00`(저녁)이나 `05:00~08:00`(새벽 이후)처럼 밤과
- * 한 점에서 맞닿기만 하는 구간은 밤 조건으로 보지 않는다. 시작과 끝이 같으면 그 한 분만 본다.
+ * 시간대 `{start,end}`가 밤(22:00~05:00)과 겹치는지. 시각 해석은 배지 엔진 `inTimeRange`와 **같은 함수**
+ * (`timeBands.ts`의 `isMinuteInTimeRange`)다 — `HH:MM`뿐 아니라 `HH:MM:SS`·`24:00`도 읽고, 끝이 시작보다 이르면
+ * 자정을 넘기는 구간이며, **양 끝을 포함**한다. 그래서 `18:00~22:00`은 22:00에 시작한 활동을 세므로 밤 조건이다.
+ * 읽을 수 없는 시각은 엔진에서도 어떤 활동과도 맞지 않으므로 밤 조건으로 보지 않는다.
  */
 function timeRangeTouchesNight(range: unknown): boolean {
   if (typeof range !== 'object' || range === null) return false
-  const s = clockToMinutes((range as Record<string, unknown>).start)
-  const e = clockToMinutes((range as Record<string, unknown>).end)
-  if (s === null || e === null) return false
+  const { start, end } = range as Record<string, unknown>
+  if (typeof start !== 'string' || typeof end !== 'string') return false
+  const timeRange = { start, end }
   for (let minute = 0; minute < 24 * 60; minute++) {
     const inNight = minute >= NIGHT_START_MIN || minute < NIGHT_END_MIN
-    if (!inNight) continue
-    const inRange = s === e ? minute === s : s < e ? minute >= s && minute < e : minute >= s || minute < e
-    if (inRange) return true
+    if (inNight && isMinuteInTimeRange(minute, timeRange)) return true
   }
   return false
 }
