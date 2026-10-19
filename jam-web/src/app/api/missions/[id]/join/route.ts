@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
-import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
+import {
+  isMissionExposed,
+  resolveMissionVisibility,
+  type MissionVisibilityContext,
+  type MissionVisibilityInput,
+} from '@/lib/missions/visibility'
+import { isMissionOpenToUser } from '@/lib/missions/tribe-access'
+import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { d, t } from '@/lib/i18n'
 
@@ -16,6 +24,19 @@ export async function POST(_req: Request, { params }: Params) {
   if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const service = createServiceClient()
+
+  // 이용 정지 중이면 참가하지 않는다(티켓 20261019_1311, 운영 로직 13.2절). 미션 조회보다 앞서 막는다.
+  // 정지 여부를 읽지 못하면 던져 참가시키지 않는다 — 정지 중인 유저가 조회 실패 틈에 참가하면 안 된다.
+  try {
+    await assertNotSuspended(service, user.id)
+  } catch (err) {
+    if (err instanceof UserSuspendedError) {
+      const suspended: UserSuspendedResponse = { error: d.suspension.missionJoinBlocked, code: USER_SUSPENDED_CODE }
+      return NextResponse.json(suspended, { status: 403 })
+    }
+    console.error('[missions/join] 이용 정지 조회 오류:', err)
+    return NextResponse.json({ error: d.missions.joinProcessError }, { status: 500 })
+  }
 
   // 미션 존재 + 아직 진행 중인지 확인.
   // 게이팅 컬럼을 이름으로 명시하지 않고 select('*')를 쓰는 이유: 마이그레이션 101(그리고
@@ -52,7 +73,25 @@ export async function POST(_req: Request, { params }: Params) {
 
   // 20260825_028 서버 가드 — UI에서 숨기더라도 URL 직접 호출을 막지 못하므로
   // 완료·잠금 여부를 목록/상세와 같은 규칙(visibility.ts)으로 여기서도 검사한다.
-  const visibilityContext = await loadMissionVisibilityContext(user.id, [mission])
+  let visibilityContext: MissionVisibilityContext
+  try {
+    visibilityContext = await loadMissionVisibilityContext(user.id, [mission])
+  } catch (err) {
+    // 트라이브 접근을 읽지 못하면 제한 미션이 새지 않도록 참가시키지 않는다(fail-closed)
+    console.error('[missions/join] 노출 판정 조회 오류:', err)
+    return NextResponse.json({ error: d.missions.joinProcessError }, { status: 500 })
+  }
+
+  // 참가할 수 있는 트라이브가 아니면 «없는 미션»과 같은 404다(티켓 20261019_1311) — 존재를 알리지 않는다.
+  // 잠금(403) 판정보다 먼저 처리한다. 이미 완료한 미션은 아래 completed 분기(409)로 간다.
+  if (
+    visibilityContext.tribeAccess &&
+    !visibilityContext.completedMissionIds.has(mission.id) &&
+    !isMissionOpenToUser(visibilityContext.tribeAccess, mission.id)
+  ) {
+    return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
+  }
+
   const { visibility, requiredBadge } = resolveMissionVisibility(mission, visibilityContext)
 
   if (visibility === 'completed') {
