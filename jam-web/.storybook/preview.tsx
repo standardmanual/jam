@@ -21,11 +21,11 @@ const preview: Preview = {
       test: 'todo',
     },
 
-    // JAM 2.0은 라이트 전용이다. 기본 배경은 크림 (#fafaf0 = --background). 라이트/다크 전환은 없다.
+    // JAM 2.0은 라이트 전용이다. 기본 배경은 크림 (#f1f0eb = --background). 라이트/다크 전환은 없다.
     backgrounds: {
       default: 'background',
       values: [
-        { name: 'background', value: '#fafaf0' },
+        { name: 'background', value: '#f1f0eb' },
       ],
     },
 

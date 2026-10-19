@@ -35,25 +35,25 @@
   --base-neutral-950: #0a0a0a;   /* 회색 단계를 끊지 않으려고 남긴다. 역할 토큰은 가리키지 않는다 */
 
   /* ── 배경·표면 ────────────────────────────────────────────── */
-  --background: #fafaf0;
-  --background-secondary: #f2f2f2;
+  --background: #f1f0eb;
+  --background-secondary: #e9e7e0;
   --background-inverse: var(--base-neutral-900);
   --surface: #ffffff;                           /* 카드. 크림 바탕 위에서는 1px --border와 함께 쓴다 (결정 7) */
-  --surface-transparent: rgba(250, 250, 240, 0); /* 결정 3: 완전 투명 */
+  --surface-transparent: rgba(241, 240, 235, 0); /* 결정 3: 완전 투명 */
 
   /* ── 글자 ─────────────────────────────────────────────────── */
   --foreground: var(--base-neutral-900);
   --muted: #666666;
-  --link: #0e7a38;                              /* 크림 바탕 5.18:1 — 강조 글자·아이콘·선·포커스 링 */
+  --link: #0e7a38;                              /* 크림 바탕 4.77:1 — 강조 글자·아이콘·선·포커스 링 */
   --snow: var(--base-snow);                     /* 반전 면(--background-inverse) 위 글자 */
 
   /* ── 강조 ─────────────────────────────────────────────────── */
-  --accent: #19b551;                            /* 면 채우기 전용. 크림 바탕 글자 대비 2.57:1 */
+  --accent: #19b551;                            /* 면 채우기 전용. 크림 바탕 글자 대비 2.37:1 */
   --accent-foreground: var(--base-neutral-900); /* accent 면 위 글자 6.63:1 */
   --accent-soft: rgba(25, 181, 81, 0.15);       /* 결정 2: accent 15% */
   --accent-soft-hover: rgba(20, 147, 71, 0.2);  /* #149347 20% */
 
-  /* accent-content: 면 채우기에만 쓴다. 크림 바탕 대비 1.1~1.3:1이라 선·점으로 쓰지 않는다 (5.2절) */
+  /* accent-content: 면 채우기에만 쓴다. 크림 바탕 대비 1.04~3.03:1(lightblue·green·yellow는 1.04~1.17:1)이라 선·점으로 쓰지 않는다 (5.2절) */
   --accent-content-lightblue: #4bfcf9;
   --accent-content-green: #4cff56;
   --accent-content-yellow: #fff002;
@@ -71,8 +71,8 @@
   --success: #17c964;
   --warning: #f5a300;
   --danger: #ff383c;
-  --default: #f2f2f2;
-  --default-soft: #f2f2f2;
+  --default: #e9e7e0;
+  --default-soft: #e9e7e0;
 
   /* ── 확장: 희귀도 ─────────────────────────────────────────── */
   --rarity-common: #666666;

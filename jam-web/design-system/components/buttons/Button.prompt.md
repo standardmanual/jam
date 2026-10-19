@@ -8,7 +8,7 @@ Pill-shaped button in five variants — primary (`--accent`), secondary (`--defa
 <Button variant="ghost">더보기 →</Button>
 ```
 
-One primary per area, everything else secondary. A primary + secondary pair sits in a footer as two equal-width buttons with a gap of 8. `danger` keeps `--foreground` text (white text is 3.57:1, below 4.5:1). Do not put a `secondary` button on a `Card tone="tint"` (`--background-secondary`) — it is the same #f2f2f2 as `--default`, so the pill disappears.
+One primary per area, everything else secondary. A primary + secondary pair sits in a footer as two equal-width buttons with a gap of 8. `danger` keeps `--foreground` text (white text is 3.57:1, below 4.5:1). Do not put a `secondary` button on a `Card tone="tint"` (`--background-secondary`) — it is the same #e9e7e0 as `--default`, so the pill disappears.
 
 Use `surface="dark"` only when placed on a `--background-inverse` (black) section — primary is a `--snow` fill with `--foreground` text, secondary is a transparent pill with a 1px `--snow` border and `--snow` text, ghost text is `--snow`. `danger` and `outline` have no dark value and fall back to the light one. On a light surface (`--background`, `--surface`) keep the default `surface="light"`; `dark` there makes the text near-white and unreadable. `fullWidth` stretches to container width. Minimum touch target 44px per iOS HIG.
 

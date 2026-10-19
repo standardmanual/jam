@@ -13,7 +13,7 @@ import TodayCard from './TodayCard'
  * - 카드 높이 실측(Chromium, 2026-10-01 — 확정 설계의 450~570px 추정치 대신 이 값을 쓴다): 값이 가득 찬 미션 카드(요약·필수 정보 2줄) 328px 폭 523.2px · 398px 폭 593.2px,
  *   배지 카드(제목 2줄·요약·필수 정보 1줄) 328px 폭 534.4px, 드랍 카드 503.2px, titleInImage 카드(제목·요약 없음, 필수 정보 2줄) 452px.
  *   최악 조합(긴 제목·요약·필수 정보) 288px 폭 558.4px · 328px 폭 578.4px · 398px 폭 648.4px.
- * - 캔버스는 크림(`--background`, #fafaf0)이다. 흰 카드의 경계는 1px `--border`가 맡고 그림자는 없다.
+ * - 캔버스는 크림(`--background`, #f1f0eb)이다. 흰 카드의 경계는 1px `--border`가 맡고 그림자는 없다.
  * - 이미지 로딩 중 모습(`--background` 단색 판)은 Story로 만들기 어렵다(로컬·data 이미지는 즉시 뜬다). 칸의 클래스(`aspect-square bg-background`)가
  *   이미지와 무관하게 늘 있다는 것은 `__tests__/SquareCard.test.tsx`·`CardImageSlot.test.tsx`가 보증한다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서

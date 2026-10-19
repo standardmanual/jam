@@ -12,7 +12,7 @@ import TodayCard from './TodayCard'
  *   4:5 카드의 높이는 328px 폭에서 410px, 398px에서 497.5px, 288px에서 360px이다(막이 `absolute`라 글자 수가 높이를 바꾸지 않는다).
  * - 막(글자 블록 뒤 그라디언트)은 위 32px가 램프이고, 램프가 끝나면 `--base-black` 60%(`PosterCard.tsx`의 `SCRIM_CLASS`, `--backdrop`이 아니다)로 일정하다. 칩 줄 윗변은 늘 램프가 끝난 뒤에서 시작한다.
  *   막이 카드에서 차지하는 높이는 글자 수에 따라 다르다 — 328px 폭 실측은 「막 높이 실측」 Story의 캡션에 있다.
- * - 캔버스는 크림(`--background`, #fafaf0)이다. 카드는 1px `--border`로 경계가 보이고, 이미지 칸의 판(`--background`)과 막은 그 위에서 실제 모습이 나온다.
+ * - 캔버스는 크림(`--background`, #f1f0eb)이다. 카드는 1px `--border`로 경계가 보이고, 이미지 칸의 판(`--background`)과 막은 그 위에서 실제 모습이 나온다.
  * - 이미지 로딩 중 모습(`--background` 단색 판 + 막·글자는 그대로)은 Story로 만들기 어렵다(로컬·data 이미지는 즉시 뜬다). 칸의 클래스(`aspect-[4/5] bg-background`)가
  *   이미지와 무관하게 늘 있다는 것은 `__tests__/PosterCard.test.tsx`·`CardImageSlot.test.tsx`가 보증한다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서

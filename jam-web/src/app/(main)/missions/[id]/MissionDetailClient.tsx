@@ -437,7 +437,7 @@ export default function MissionDetailClient({
                   {d.missions.joinConfirmBody}
                 </p>
                 <div className="flex gap-2">
-                  {/* 흰 Card 위 취소는 secondary(--default #f2f2f2), 확인은 primary다. 인라인 색 덮어쓰기는 없다 */}
+                  {/* 흰 Card 위 취소는 secondary(--default #e9e7e0), 확인은 primary다. 인라인 색 덮어쓰기는 없다 */}
                   <Button
                     fullWidth
                     variant="secondary"

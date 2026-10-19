@@ -50,7 +50,7 @@ export interface SlidingTabsProps<K extends string = string> {
 }
 
 const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
-  // 크림 바탕 위 — 트랙 --default(#f2f2f2), 비활성 라벨 --muted(트랙 위 약 5.1:1), 활성 pill은 반전 면 + --snow 글자
+  // 크림 바탕 위 — 트랙 --default(#e9e7e0), 비활성 라벨 --muted(트랙 위 4.64:1), 활성 pill은 반전 면 + --snow 글자
   onSurface: {
     '--tabs-bar-bg': 'var(--default)',
     '--tabs-pill-bg': 'var(--background-inverse)',
@@ -58,7 +58,7 @@ const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
     '--tabs-text-active': 'var(--snow)',
     '--tabs-text-hover': 'var(--foreground)',
   } as CSSProperties,
-  // 흰 카드(--surface) 위 — 트랙 --background-secondary(#f2f2f2), 비활성 라벨 --muted(트랙 위 5.13:1), 활성 pill은 accent 면 + --accent-foreground 글자
+  // 흰 카드(--surface) 위 — 트랙 --background-secondary(#e9e7e0), 비활성 라벨 --muted(트랙 위 4.64:1), 활성 pill은 accent 면 + --accent-foreground 글자
   onCard: {
     '--tabs-bar-bg': 'var(--background-secondary)',
     '--tabs-pill-bg': 'var(--accent)',
