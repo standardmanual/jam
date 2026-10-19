@@ -611,6 +611,7 @@ interface BadgeGateRequirement {
 | | 운동 속성: `max_speed_kmh`, `avg_heartrate_bpm`, `avg_watts`, `avg_cadence`, `cumulative_duration_hours`, `weekend_duration_hours` | `cumulative_duration_hours`는 §2.2(전체 이력 합계), `weekend_duration_hours`는 §2.4(주말 활동 1건), 나머지 넷은 §2.10(활동 1건의 값) |
 | DB 기록 (19개) | 믹스: `combine_attempt_count`, `combine_success_count`, `combine_fail_count`, `recipe_first_success` / 드랍·픽업: `drop_item_count`, `pickup_item_count`, `pickup_from_user_count`, `picked_up_by_user_count` / 완료 수: `mission_complete_count`, `collection_complete_count` / 새 조건: `capsule_open_count`, `locked_item_open_count`, `locked_item_pickup_count`, `cross_tribe_combine_success_count` / 날짜·체크인(2회): `weekly_active_days`, `same_spot_checkin_days`, `new_checkin_badge_count`, `checkin_category_count`, `checkin_badge_count` | 배지 엔진에 위임하지 않는다. `lib/missions/dbMetrics.ts`의 `loadMissionDbMetrics`가 **참가한 뒤 미션 기간 안**의 값으로 읽고(§7.4), `evaluateEngineMissionCondition`이 값 ≥ 조건 값으로 비교해 활동 기록 조건과 AND로 묶는다(`recipe_first_success`는 기간 안에 그 레시피를 처음 성공했으면 1). 객체 값을 가진 `checkin_category_count`(`{category, count}`)·`checkin_badge_count`(`{checkin_badge_names, count}`)는 읽은 배지 수(그 장소 종류에 든 배지 수, 지정한 이름 중 받은 이름 수)를 `count`와 비교하고, 값 모양이 틀리면 충족하지 못한다(배지 발급과 같은 비교). 의미는 이 문서의 같은 키와 같다. 다만 «기간 안»의 뜻이 키마다 다르다(§7.4). 키 목록 정본은 `ENGINE_DELEGATED_DB_CONDITION_KEY_LIST` |
 | 미션 전용 (9개) | `weekly_streak_min_count`, `monthly_streak`, `monthly_streak_min_count`, `streak_subset`, `distinct_weekday_count`, `distinct_months_required`, `distinct_months_metric`, `distinct_months_threshold`, `time_band_counts` | `engineCondition.ts`가 직접 판정. 주(월~일)·달·요일 개수는 KST 날짜 기준이다(해외 활동도 한국 시각의 날, 티켓 20261019_1312 2회) |
+| 미션 전용 DB 기록 (1개, 3-A회) | `jam_period_earned` — 참가한 뒤 미션 기간 안에 모은 잼 ≥ 조건 값 | **배지 레지스트리에 없는 미션 전용 키**다. 위 «DB 기록 (19개)»와 똑같이 `loadMissionDbMetrics`가 읽고 `evaluateEngineMissionCondition`이 값 ≥ 조건 값으로 비교해 AND로 묶는다. 다만 읽기 목록이 따로다 — `MISSION_ONLY_CONDITION_KEY_LIST`(미션 전용 어휘)와 `MISSION_ONLY_DB_CONDITION_KEY_LIST`(읽는 방식)에 있고, 로더·판정이 쓰는 합집합이 `MISSION_DB_CONDITION_KEY_LIST`(20개)다. `ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`(19개)에는 넣지 않는다 — 그 목록은 «전부 배지 조건 레지스트리의 키»임을 컴파일로 지킨다(`AssertDbKeysAreInRegistry`). 기준 시각은 §7.4 |
 
 `day_of_week`·`season`은 «거르는 조건»(`role: 'filter'`)이라 혼자서는 판정할 값이 없다. 거리·`season_count` 같은 판정할 값과 함께 써야 하고, 미션 전용 키하고만 짝지으면 배지 엔진이 「평가 가능한 조건 없음」으로 막는다(영구 미달성, 필터를 조용히 무시하지 않는다).
 
@@ -620,7 +621,7 @@ interface BadgeGateRequirement {
 |---|---|---|---|
 | 쓰지 않음 | `temperature_min_c`, `temperature_max_c` | **거절(error)** — 모든 미션 타입 | 날씨와 기온은 배지와 미션의 조건으로 쓰지 않는다(운영 로직 13.2절). 위임하지 않으므로 저장하면 기온이 조용히 무시되어 미션이 더 쉬워진다 |
 | 기간을 걸 수 없음 | `jam_total_earned`(지갑 평생 누계), `chapter_reached`(지금 챕터 하나), `days_since_signup`(가입 후 경과일), `other_tribe_item_kinds_count`(지금 가진 개체의 스냅샷), `signup_recent_active_days`(오늘 기준 최근 30일 창) | **거절(error)** — 모든 미션 타입 | 값이 «지금 상태»이거나 평생 누계라서 참가한 뒤 기간 안의 값으로 나눌 수 없다. 지금 값을 그대로 쓰면 참가 전에 쌓은 값이 섞여 참가 즉시 완료되는 미션이 생기므로 경고가 아니라 거절한다(티켓 20261019_1445, 오류 문구는 기온 키와 따로 현상·원인·해결책 순서) |
-| 판정하지 않음 | 위 표에 없는 나머지 배지 조건 키 — 아직 판정하지 않는 `external` 키(기간 동안 모은 잼처럼 5-2b의 다음 회차에서 판정할 키와 범위 밖 키 9개)와 `total_count` 같은 비위임 키, 다른 미션 타입의 목표 값(`count`, `badge_id`) | **허용 + 경고(warning)** — `engine_condition`만 | 판정이 없어 달성 판정에 쓰이지 않는다. 판정하는 다른 조건이 없으면 미션이 완료되지 않을 수 있고, 있으면 이 조건 없이 완료된다. 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 경고 대상에서 뺀다. 판정 구현 없이 키만 판정 가능 집합에 옮기면 그 키만 든 미션이 참가 즉시 완료되므로 같은 변경에서 한다 |
+| 판정하지 않음 | 위 표에 없는 나머지 배지 조건 키 — 아직 판정하지 않는 `external` 키(범위 밖 키 9개)와 `total_count` 같은 비위임 키, 다른 미션 타입의 목표 값(`count`, `badge_id`) | **허용 + 경고(warning)** — `engine_condition`만 | 판정이 없어 달성 판정에 쓰이지 않는다. 판정하는 다른 조건이 없으면 미션이 완료되지 않을 수 있고, 있으면 이 조건 없이 완료된다. 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 경고 대상에서 뺀다. 판정 구현 없이 키만 판정 가능 집합에 옮기면 그 키만 든 미션이 참가 즉시 완료되므로 같은 변경에서 한다 |
 | 아직 평가 구현이 없음 | `evaluation: 'pending'` 키 | **거절(error)** — 엔진 위임 타입 / 그 밖의 타입은 경고 | 기존 동작 그대로 (§6 참조) |
 
 경고는 어드민 API의 저장 응답(POST·PATCH)에 `warning`으로 담긴다(저장된 행과 함께, 행에는 저장하지 않는다). 경고할 것이 없으면 응답 모양은 그대로다.
@@ -632,7 +633,8 @@ interface BadgeGateRequirement {
 
 - 밤 조건: `time_range`, `time_band_counts`의 구간, 주기 안 부분집합의 시간대(`streak_subset.time_range`)가 22:00~05:00(KST)과 겹치는 것. 시각은 배지 엔진 `inTimeRange`와 같은 함수(`timeBands.ts`의 `isMinuteInTimeRange`)로 읽는다 — `HH:MM` 외에 `HH:MM:SS`·`24:00`도 받고, 양 끝을 포함하며, 끝이 시작보다 이르면 자정을 넘기는 구간이다(티켓 20261019_1312 2회). 그래서 22:00에 시작한 활동을 세는 `18:00~22:00`과 `20:00~24:00`, `22:00:00~05:00:00`은 밤 조건이고, 밤 시각을 하나도 건드리지 않는 `18:00~21:59`, `05:00~08:00`은 밤이 아니다. `distinct_time_bands`는 서로 다른 시간대의 수만 세므로 밤 조건이 아니다.
 - 캡슐 연 횟수: `capsule_open_count`.
-- 모은 잼은 순위 기준으로 쓸 수 있다(운영 로직 13.2절).
+- 모은 잼은 순위 기준으로 쓸 수 있다(운영 로직 13.2절). `jam_period_earned`는 순위형을 포함한 어느 틀로든 저장된다(3-A회, `rankingConditionError`는 바꾸지 않았다).
+  순위형에서는 목표를 먼저 채운 순서가 앞서고, 못 채운 사람은 모은 양 순이다(`compareMissionRank` 그대로).
 - 틀을 비워 만들면 DB 기본값이 순위형(마이그레이션 046 `DEFAULT 'ranking'`)이라 같은 값으로 검사한다. PATCH는 조건이나 틀 하나만 바뀌어도 기존 행과 합친 «갱신 후 상태»로 검사한다(틀만 바뀔 때는 순위형 금지만 본다).
 
 ### 7.4 기간 경계
@@ -649,6 +651,7 @@ interface BadgeGateRequirement {
 | `picked_up_by_user_count` | 놓은 때가 아니라 **주워진 때** `poi_drops.picked_up_at` (참가 전에 놓은 아이템도 참가 뒤에 주워 가면 센다) |
 | `mission_complete_count`, `collection_complete_count` | 완료·완성한 때 `completed_at` |
 | `capsule_open_count` | `capsule_opens.opened_at` |
+| `jam_period_earned` | 잼이 정산된 활동의 **시작 시각** `strava_activities.start_date`. 잼 원장의 정산(동기화) 시각 `jam_transactions.created_at`이 아니다 — 아래 «모은 잼» |
 | `locked_item_open_count` | 개체 이력 `inventory_item_events.created_at` |
 | `weekly_active_days` | 활동의 시작 시각 `strava_activities.start_date`와 체크인을 만든 활동의 시각 `user_checkin_badge_earns.triggered_by_activity_date`로 정한 «활동한 날»(KST) |
 | `same_spot_checkin_days` | 체크인을 만든 활동의 시각 `triggered_by_activity_date` (이 값이 없는 체크인은 세지 않는다) |
@@ -658,6 +661,9 @@ interface BadgeGateRequirement {
 `weekly_active_days`는 «기간 안의 활동한 날(활동 ∪ 체크인한 날)이 가장 많은 한 주(월~일, KST)의 날 수»이고 이어진 주를 합치지 않는다(배지의 «역대 최고 주»를 기간 안으로 한정한 값). 활동은 종목이 있고 걷기 게이트·차량 속도 필터를 통과한 것만 센다(위 배지 조건 표의 `weekly_active_days` 행과 같은 «활동한 날» 정의).
 `same_spot_checkin_days`는 «기간 안의 체크인만 보고 지점(`poi_id`)별 서로 다른 날(KST) 수의 최댓값»이다(지점을 합치지 않는다).
 
+**모은 잼(`jam_period_earned`, 3-A회)**: ① `strava_activities`에서 시작 시각이 기간 안(하한·상한 포함)인 활동 id를 끝까지 읽고(`selectAllPages`, 30,000행을 넘으면 던진다), ② `jam_transactions`에서 `reason='activity_settlement'`이고 `source_activity_id`가 그 id(200개씩 나눠)인 줄의 `amount`를 더한다(`readJamEarnedWithin`, `lib/badge-engine/jamActionJamMetrics.ts`). 정산 시각이 아니라 활동 시각을 따라가므로 참가 전에 한 활동을 늦게 동기화해도 세지 않는다. 채움(`capsule_fill`·`locked_item_badge_fill`, 음수)과 운영자 지급·회수(`admin_grant`·`admin_deduct`)는 `reason`이 달라 합계에 들지 않고, 정산되지 않은 활동은 줄이 없어 0이다. 읽지 못하면 던지고 그 미션만 건너뛴다. 이 읽기 함수는 기간 인자가 필수이고 배지 엔진은 부르지 않는다.
+진행값과 목표: `evaluateMission`이 `jam_period_earned`가 든 `engine_condition` 미션에서만 `progressValue`를 모은 잼, `target`을 조건의 값으로 돌려준다. 완료는 조건 전체의 AND 판정(`achieved`)이다(잼을 채워도 다른 조건이 모자라면 완료되지 않는다). 이 키가 없는 `engine_condition`은 예전처럼 0/1·target 1이다. `getTarget`과 `MISSION_PROGRESS_UNIT.engine_condition`(`''`)은 바꾸지 않았다 — 마일스톤(50%·80%)·마감 임박 소식이 이 둘로 양을 만들기 때문에, 채우면 모은 잼이 소식 문구로 나간다. 활동 피드(`mission_completed`)의 `final_progress_value`는 `engine_condition`이면 달성 여부(1/0)만 기록하고 `target_value`는 0이라 양이 나가지 않는다.
+
 **«처음 받은» 규칙(사용자 결정 3)**: 체크인 키 3가지는 행부터 기간으로 거르지 않는다. ① 방문 기록 **전체 이력**으로 배지마다 처음 받은 시각을 정한다(체크인을 만든 활동의 시각 `triggered_by_activity_date`을 우선하고, 없으면 기록한 시각 `earned_at`; 한 배지의 여러 줄 가운데 가장 이른 시각). ② 그 시각이 기간 안(하한·상한 포함)인 배지만 «기간 안에 새로 받은 배지»로 센다. 그래서 기간 전에 받은 배지를 기간 안에 다시 받아도 새 배지로 세지 않고, 참가 전에 한 활동을 기간 안에 늦게 동기화해도 활동 시각이 기간 전이면 세지 않는다. 처음 받은 시각을 읽을 수 없는 배지(두 시각이 모두 없거나 깨진 배지)는 뺀다. `checkin_category_count`·`checkin_badge_count`는 이렇게 좁힌 배지 집합에 배지 발급과 같은 계산(`lib/badge-engine/checkinHoldings.ts`의 순수 함수)을 적용한다 — 장소 종류는 `badges.category` 우선·없으면 연결 지점의 카테고리, 이름은 `type='checkin'` 배지로만 풀고 카탈로그에 없는 이름은 무시한다.
 
-`checkMissions`는 DB 기록 키가 든 `engine_condition` 미션에만, 그 미션의 기간으로 **미션마다** 읽는다(루프 앞에서 한꺼번에 읽지 않는다 — 기간이 미션마다 다르고, 같은 동기화에서 먼저 완료된 미션이 뒤 미션의 `mission_complete_count`에 잡혀야 한다). 읽기에서 오류가 나거나 기간의 하한을 정할 수 없으면 던지고, 그 미션만 건너뛴다(0으로 폴백하지 않는다). **판정 시점은 활동 동기화 때뿐이다** — `checkMissions` 호출처가 `strava/sync.ts` 한 곳이고 믹스·캡슐 열기·드랍·픽업 API는 배지만 판정하므로, 이 키들로 만든 미션은 그 행동을 한 순간이 아니라 다음 동기화 때 완료된다. 어드민 양식에는 이 키들의 입력 칸이 없어(5-8) 열어서 저장해도 값이 사라지지 않게 원본을 보존하고, 판정 시뮬레이션은 이 키를 평가하지 못해 응답의 `missionDbKeysPresent`로 알린다.
+`checkMissions`는 DB 기록 키가 든 `engine_condition` 미션에만, 그 미션의 기간으로 **미션마다** 읽는다(루프 앞에서 한꺼번에 읽지 않는다 — 기간이 미션마다 다르고, 같은 동기화에서 먼저 완료된 미션이 뒤 미션의 `mission_complete_count`에 잡혀야 한다). 읽기에서 오류가 나거나 기간의 하한을 정할 수 없으면 던지고, 그 미션만 건너뛴다(0으로 폴백하지 않는다). **판정 시점은 활동 동기화 때뿐이다** — `checkMissions` 호출처가 `strava/sync.ts` 한 곳이고 믹스·캡슐 열기·드랍·픽업 API는 배지만 판정하므로, 이 키들로 만든 미션은 그 행동을 한 순간이 아니라 다음 동기화 때 완료된다. 어드민 양식에는 이 키들의 입력 칸이 없어(5-8) 열어서 저장해도 값이 사라지지 않게 원본을 보존하고(`MISSION_ENGINE_DB_PRESERVED_KEYS` = 합집합 20개, 3-A회부터 `jam_period_earned` 포함), 판정 시뮬레이션은 이 키를 평가하지 못해 응답의 `missionDbKeysPresent`로 알린다.
