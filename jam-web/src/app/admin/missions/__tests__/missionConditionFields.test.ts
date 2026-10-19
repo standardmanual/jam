@@ -15,12 +15,14 @@ import {
   emptyMissionConditionFields,
   missionConditionFieldsFrom,
   unsupportedMissionConditionKeys,
+  MISSION_ENGINE_DB_PRESERVED_KEYS,
   MISSION_ENGINE_DELEGATED_KEYS,
   MISSION_ENGINE_PRESERVED_KEYS,
   type MissionConditionFormFields,
 } from '../missionConditionFields'
 import {
   ENGINE_DELEGATED_CONDITION_KEY_LIST,
+  ENGINE_DELEGATED_DB_CONDITION_KEY_LIST,
   MISSION_FORBIDDEN_CONDITION_KEYS,
   checkMissionCondition,
   checkMissionConditionValue,
@@ -227,6 +229,50 @@ const cases: Array<[string, () => void]> = [
   ['engine_condition: 원본이 없으면(새 미션) 보존 키를 만들지 않는다', () => {
     const cond = buildMissionConditionJson('engine_condition', fields({ distanceKm: '10' }))
     assert.deepStrictEqual(cond, { distance_km: 10 })
+  }],
+
+  // ── DB 기록 키 14개 보존 (티켓 20261019_1445) ────────────────────────────
+  ['DB 기록 보존 키 = 정본(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) 14개이고 배지엔진 위임 키와 겹치지 않는다', () => {
+    assert.deepStrictEqual([...MISSION_ENGINE_DB_PRESERVED_KEYS].sort(), [...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST].sort())
+    assert.strictEqual(MISSION_ENGINE_DB_PRESERVED_KEYS.length, 14)
+    for (const key of MISSION_ENGINE_DB_PRESERVED_KEYS) {
+      assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `위임 키와 겹친다: ${key}`)
+      assert.ok(!(MISSION_ENGINE_DELEGATED_KEYS as readonly string[]).includes(key as never), `폼 입력 칸 키와 겹친다: ${key}`)
+    }
+  }],
+  ['engine_condition: DB 기록 키 14개도 열었다 저장하면 그대로 남고 저장 검증을 통과한다', () => {
+    const init: MissionCondition = {
+      activity_type: 'running',
+      distance_km: 20,
+      combine_attempt_count: 5,
+      combine_success_count: 3,
+      combine_fail_count: 2,
+      recipe_first_success: { recipe_id: '00000000-0000-0000-0000-0000000000aa' },
+      drop_item_count: 4,
+      pickup_item_count: 4,
+      pickup_from_user_count: 2,
+      picked_up_by_user_count: 2,
+      mission_complete_count: 3,
+      collection_complete_count: 1,
+      capsule_open_count: 6,
+      locked_item_open_count: 1,
+      locked_item_pickup_count: 1,
+      cross_tribe_combine_success_count: 2,
+    }
+    const f = missionConditionFieldsFrom(init)
+    const rebuilt = buildMissionConditionJson('engine_condition', f, init)
+    assert.deepStrictEqual(rebuilt, init, 'DB 기록 키가 저장 중에 사라졌다')
+    assert.deepStrictEqual(checkMissionCondition('engine_condition', rebuilt, 'achievement'), { error: null, warning: null })
+    assert.deepStrictEqual(unsupportedMissionConditionKeys(init).sort(), [...MISSION_ENGINE_DB_PRESERVED_KEYS].sort())
+  }],
+  ['engine_condition: DB 기록 키만 든 미션을 열어 다른 칸을 고쳐도 DB 키는 남는다', () => {
+    const init: MissionCondition = { combine_success_count: 3, mission_complete_count: 1 }
+    const f = { ...missionConditionFieldsFrom(init), distanceKm: '15' }
+    assert.deepStrictEqual(buildMissionConditionJson('engine_condition', f, init), { distance_km: 15, combine_success_count: 3, mission_complete_count: 1 })
+  }],
+  ['engine_condition: 원본이 없으면(새 미션) DB 기록 키를 만들지 않는다', () => {
+    assert.deepStrictEqual(buildMissionConditionJson('engine_condition', fields({ distanceKm: '10' }), null), { distance_km: 10 })
+    assert.deepStrictEqual(buildMissionConditionJson('engine_condition', fields()), null)
   }],
 
   // ── 이 폼이 만드는 값은 전부 저장 검증을 통과해야 한다 ─────────────────────

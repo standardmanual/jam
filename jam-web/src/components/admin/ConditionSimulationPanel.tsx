@@ -27,6 +27,9 @@ interface SimulateConditionResult {
   /** 미션 라우트 전용 — 이 조건에 미션 전용 어휘(주간/월간 연속 등)가 섞여 있으면 그 키 목록.
    *  있으면 이 시뮬레이션이 그 부분을 평가하지 않았다는 뜻이라 결과가 실제 판정과 다를 수 있다. */
   missionOnlyKeysPresent?: string[]
+  /** 미션 라우트 전용 — 이 조건에 DB 기록으로 세는 키(믹스·드랍·캡슐 등)가 있으면 그 키 목록.
+   *  미션에서는 «참가한 뒤, 기간 안»의 DB 기록을 따로 읽어 판정하므로 이 시뮬레이션이 그 부분을 평가하지 못한다. */
+  missionDbKeysPresent?: string[]
 }
 
 interface ConditionSimulationPanelProps {
@@ -274,6 +277,12 @@ export default function ConditionSimulationPanel({
                 <p className="text-xs text-amber-800">
                   이 조건에는 미션 전용 어휘({simResult.missionOnlyKeysPresent.join(', ')})가 포함돼 있어
                   이 시뮬레이션이 그 부분을 평가하지 못해요 — 실제 미션 판정 결과와 다를 수 있어요.
+                </p>
+              )}
+              {simResult.missionDbKeysPresent && simResult.missionDbKeysPresent.length > 0 && (
+                <p className="text-xs text-amber-800 break-keep wrap-break-word text-pretty">
+                  이 조건에는 참가한 뒤 쌓인 기록으로 세는 조건({simResult.missionDbKeysPresent.join(', ')})이 포함돼 있어
+                  이 시뮬레이션으로는 판정할 수 없어요. 실제 미션에서는 활동을 동기화할 때 판정해요.
                 </p>
               )}
             </div>

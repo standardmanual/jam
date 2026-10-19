@@ -15,11 +15,15 @@
  * 그 키들이 "알 수 없는 필드"로 오탐되지 않게만 열어 두고, 조건에 그런 키가 있으면
  * `missionOnlyKeysPresent`로 알려 화면이 고지하게 한다 — 이 경우 판정 결과(pass/blocked/unmet)가
  * 실제 미션 판정과 다를 수 있다.
+ *
+ * DB 기록으로 세는 키 14개(`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`, 티켓 20261019_1445)도 이 시뮬레이션이
+ * 평가하지 못한다 — 미션에서는 «참가한 뒤, 미션 기간 안»의 DB 기록을 따로 읽어 판정하기 때문이다. 조건에 그런 키가 있으면
+ * `missionDbKeysPresent`로 알려 화면이 «시뮬레이션하지 못한다»고 고지하게 한다.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { simulateCondition } from '@/lib/admin/conditionSimulation'
-import { MISSION_ONLY_CONDITION_KEYS } from '@/lib/missions/condition-keys'
+import { MISSION_ONLY_CONDITION_KEYS, dbConditionKeysIn } from '@/lib/missions/condition-keys'
 import type { MissionCondition } from '@/types/database'
 
 export const maxDuration = 30
@@ -45,5 +49,7 @@ export async function POST(req: NextRequest) {
       )
     : []
 
-  return NextResponse.json({ ...outcome.data, missionOnlyKeysPresent })
+  const missionDbKeysPresent = dbConditionKeysIn(condition)
+
+  return NextResponse.json({ ...outcome.data, missionOnlyKeysPresent, missionDbKeysPresent })
 }
