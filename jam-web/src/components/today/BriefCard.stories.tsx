@@ -9,7 +9,7 @@ import TodayCard from './TodayCard'
  * 짧은 소식(`brief`) 상태 행렬 (티켓 20261001_1458, 상위 20260930_1453 b2) — 서비스 Story의 첫 파일이다.
  *
  * - 카드 폭은 뷰포트 에뮬레이션이 아니라 고정 폭 래퍼다: 360 기기 = 328px, 430 기기 = 398px, 320 기기 = 288px(최악 조합만).
- * - 캔버스는 크림(`--background`, #fafaf0)이다. 흰 카드의 경계는 1px `--border`가 맡고 그림자는 없다.
+ * - 캔버스는 크림(`--background`, #f1f0eb)이다. 흰 카드의 경계는 1px `--border`가 맡고 그림자는 없다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서
  *   윤곽선이 보인다는 것은 서비스 증거가 아니다 — 클래스 단언(`__tests__/CardFrame.test.tsx`)이 보증한다. 아래 `play`는 높이·가로 넘침 같은
  *   계산 스타일을 눈으로 확인할 때 쓰는 보조 단언이고 CI에서 실행되지 않는다(vitest의 addon-vitest 연동 제거, `vitest.config.ts` 머리말).

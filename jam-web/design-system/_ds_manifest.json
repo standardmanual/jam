@@ -492,13 +492,13 @@
     },
     {
       "name": "--background",
-      "value": "#fafaf0",
+      "value": "#f1f0eb",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--background-secondary",
-      "value": "#f2f2f2",
+      "value": "#e9e7e0",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -516,7 +516,7 @@
     },
     {
       "name": "--surface-transparent",
-      "value": "rgba(250, 250, 240, 0)",
+      "value": "rgba(241, 240, 235, 0)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -648,13 +648,13 @@
     },
     {
       "name": "--default",
-      "value": "#f2f2f2",
+      "value": "#e9e7e0",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--default-soft",
-      "value": "#f2f2f2",
+      "value": "#e9e7e0",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
