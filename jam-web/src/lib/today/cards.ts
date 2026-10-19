@@ -255,8 +255,7 @@ export async function fetchRankingBoardData(
  * 랭킹 모드 자체를 읽지 못하면 순위 조회(`fetchRankingBoardData`)도 같은 이유로 비어 미션 링크·순위가 실리지 않으므로 카드를 그대로 둔다.
  */
 async function filterRankingBoardCardsByTribe(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  supabase: ServiceClient,
   userId: string,
   cards: TodayCardRow[],
 ): Promise<TodayCardRow[]> {
