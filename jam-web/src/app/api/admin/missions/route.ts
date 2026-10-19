@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin, requireAdminRead } from '@/lib/admin/auth'
-import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
+import {
+  DEFAULT_MISSION_STATUS_DISPLAY_TYPE,
+  checkMissionCondition,
+  checkMissionConditionValue,
+} from '@/lib/missions/condition-keys'
 import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
 import type { MissionType } from '@/types/database'
 
@@ -27,9 +31,13 @@ export async function POST(req: NextRequest) {
 
   // condition_json 키 검증 (티켓 20260905_1141) — 어드민 폼이 자유 JSON textarea라
   // 오타 키가 그대로 저장되면 그 미션은 fail-closed에 걸려 «영구 미달성»이 된다.
-  const { error: conditionError } = checkMissionCondition(
+  //
+  // 티켓 20261019_1312 — 틀(status_display_type)을 함께 검사한다: 순위형에는 밤 조건과 캡슐 연 횟수를 저장할 수
+  // 없다. 틀을 비워 보내면 DB 기본값(순위형)이 들어가므로 같은 값으로 검사한다.
+  const { error: conditionError, warning: conditionWarning } = checkMissionCondition(
     body.mission_type as MissionType,
-    body.condition_json
+    body.condition_json,
+    body.status_display_type ?? DEFAULT_MISSION_STATUS_DISPLAY_TYPE
   )
   if (conditionError) {
     return NextResponse.json({ error: conditionError }, { status: 400 })
@@ -66,5 +74,6 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  // 저장은 됐지만 판정하지 않는 조건이 있으면 경고를 응답에 함께 싣는다(티켓 20261019_1312).
+  return NextResponse.json(conditionWarning ? { ...data, warning: conditionWarning } : data)
 }

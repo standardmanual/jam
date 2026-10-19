@@ -8,6 +8,7 @@
  *   - condition_json 부재(PATCH 부분 갱신) 통과, 배열·스칼라·null 거부(터지지 않음)
  *   - 프로덕션 45건(2026-09-05 실측)의 9개 조건 조합이 전부 통과하는지
  *   - 저장 허용 목록 ↔ checker.ts의 fail-closed 통과 목록이 같은 값인지
+ *   - 순위형 금지(밤 조건·캡슐 연 횟수)·기온 키 거부·판정하지 않는 키 경고 (티켓 20261019_1312)
  *
  * `MissionCondition`에 필드를 추가했을 때 허용 키 누락이 «컴파일 에러»로 드러나는지는
  * 런타임에서 확인할 수 없다(타입은 런타임에 없다). `condition-keys.ts` 끝의
@@ -19,11 +20,17 @@
  */
 import assert from 'node:assert'
 import {
+  DEFAULT_MISSION_STATUS_DISPLAY_TYPE,
+  ENGINE_CONDITION_JUDGED_KEYS,
+  ENGINE_DELEGATED_CONDITION_KEY_LIST,
   ENGINE_DELEGATED_MISSION_TYPES,
   MISSION_ALLOWED_CONDITION_KEYS,
+  MISSION_FORBIDDEN_CONDITION_KEYS,
   MISSION_ONLY_CONDITION_KEYS,
   checkMissionCondition,
+  rankingConditionError,
   suggestMissionConditionKey,
+  usesNightCondition,
 } from '../condition-keys'
 import { ALL_CONDITION_KEYS, findBlockingConditionKeys } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition, MissionCondition, MissionType } from '@/types/database'
@@ -207,6 +214,19 @@ const cases: Array<[string, () => void]> = [
       repeat_count: 1,
       rest_after_long: 1,
       weekly_streak: 1,
+      // 티켓 20261019_1312 — engine_condition 전용 위임 필드(시간대·요일·계절·운동 속성)
+      time_range: { start: '05:00', end: '08:00' },
+      distinct_time_bands: 1,
+      day_of_week: 'monday',
+      season: 'summer',
+      season_count: 1,
+      season_count_all: 1,
+      max_speed_kmh: 1,
+      avg_heartrate_bpm: 1,
+      avg_watts: 1,
+      avg_cadence: 1,
+      cumulative_duration_hours: 1,
+      weekend_duration_hours: 1,
       // 티켓 20260906_2231 — engine_condition 전용 미션 고유 어휘
       weekly_streak_min_count: 1,
       monthly_streak: 1,
@@ -222,6 +242,170 @@ const cases: Array<[string, () => void]> = [
       assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has(key), `허용 키에 없다: ${key}`)
     }
     assert.deepStrictEqual(checkMissionCondition('distance', everyField), { error: null, warning: null })
+  }],
+
+  // ── 위임 키 정본 (티켓 20261019_1312) ─────────────────────────────────
+  ['위임 키 정본: 시간대·요일·계절·운동 속성 12개를 포함하고 기온 키는 없다', () => {
+    const added = [
+      'time_range', 'distinct_time_bands', 'day_of_week', 'season', 'season_count', 'season_count_all',
+      'max_speed_kmh', 'avg_heartrate_bpm', 'avg_watts', 'avg_cadence', 'cumulative_duration_hours', 'weekend_duration_hours',
+    ]
+    for (const key of added) {
+      assert.ok((ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `위임 키에 없다: ${key}`)
+    }
+    assert.strictEqual(ENGINE_DELEGATED_CONDITION_KEY_LIST.length, 14 + added.length)
+    for (const key of MISSION_FORBIDDEN_CONDITION_KEYS) {
+      assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `기온 키가 위임된다: ${key}`)
+    }
+  }],
+  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 9개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
+    for (const key of ENGINE_DELEGATED_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
+    const engineOnly = [...MISSION_ONLY_CONDITION_KEYS].filter((key) => key !== 'count' && key !== 'badge_id')
+    assert.strictEqual(engineOnly.length, 9)
+    for (const key of engineOnly) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
+    assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('count'))
+    assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('badge_id'))
+    assert.strictEqual(ENGINE_DELEGATED_CONDITION_KEY_LIST.length, 26)
+    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 9, '위임 키와 복합 조건 전용 키가 겹치거나 빠졌다')
+  }],
+
+  // ── 기온 키 ──────────────────────────────────────────────────
+  ['기온 키는 어떤 미션 타입에서도 저장하지 못한다', () => {
+    for (const type of ['engine_condition', 'distance', 'streak_days'] as MissionType[]) {
+      for (const key of MISSION_FORBIDDEN_CONDITION_KEYS) {
+        const { error, warning } = checkMissionCondition(type, { distance_km: 10, [key]: 30 })
+        assert.ok(error, `${type}에서 ${key}가 통과됐다`)
+        assert.strictEqual(warning, null)
+        assert.ok(error!.includes(key), `문제 키가 문구에 없다: ${error}`)
+        assert.ok(error!.includes('날씨와 기온'), `원인이 없다: ${error}`)
+        assert.ok(error!.includes('빼고 다시 저장'), `해결책이 없다: ${error}`)
+      }
+    }
+  }],
+
+  // ── 순위형 금지 ──────────────────────────────────────────────
+  ['usesNightCondition: 22:00~05:00과 겹치는 time_range·time_band_counts·부분집합 시간대만 밤이다', () => {
+    const night = (start: string, end: string) => usesNightCondition({ time_range: { start, end } })
+    assert.ok(night('22:00', '05:00'), '22~05')
+    assert.ok(night('23:00', '02:00'), '자정을 넘기는 구간')
+    assert.ok(night('20:00', '23:00'), '저녁에서 밤으로 걸치는 구간')
+    assert.ok(night('04:00', '08:00'), '새벽 4시대를 포함하는 구간')
+    assert.ok(night('00:00', '03:00'), '자정 이후')
+    assert.ok(night('22:00', '22:00'), '시작과 끝이 같은 밤의 한 분')
+    // 밤과 한 점에서 맞닿기만 하는 구간은 밤이 아니다 — 시작 포함·끝 미포함
+    assert.ok(!night('05:00', '08:00'), '새벽~오전')
+    assert.ok(!night('18:00', '22:00'), '저녁 구간')
+    assert.ok(!night('07:00', '11:00'), '오전')
+    assert.ok(!night('11:00', '14:00'), '점심')
+    assert.ok(usesNightCondition({ time_band_counts: [{ start: '05:00', end: '08:00', count: 1 }, { start: '22:00', end: '03:00', count: 1 }] }))
+    assert.ok(!usesNightCondition({ time_band_counts: [{ start: '05:00', end: '08:00', count: 1 }] }))
+    assert.ok(usesNightCondition({ weekly_streak: 2, streak_subset: { time_range: { start: '23:00', end: '04:00' }, min_count: 1 } }))
+    assert.ok(!usesNightCondition({ weekly_streak: 2, streak_subset: { time_range: { start: '06:00', end: '09:00' }, min_count: 1 } }))
+    // 서로 다른 시간대 «수»만 세는 조건, 형태가 깨진 값, 객체가 아닌 값은 밤 조건이 아니다
+    assert.ok(!usesNightCondition({ distinct_time_bands: 6 }))
+    assert.ok(!usesNightCondition({ time_range: { start: 'abc', end: '??' } }))
+    assert.ok(!usesNightCondition(null))
+    assert.ok(!usesNightCondition([]))
+  }],
+  ['순위형 + 밤 조건 → 거절(현상·원인·해결책)', () => {
+    const conditions: Array<[string, MissionCondition]> = [
+      ['time_range', { time_range: { start: '22:00', end: '05:00' } }],
+      ['time_band_counts', { activity_type: 'running', time_band_counts: [{ start: '20:00', end: '05:00', count: 2 }] }],
+      ['streak_subset.time_range', { weekly_streak: 2, weekly_streak_min_count: 1, streak_subset: { time_range: { start: '23:00', end: '03:00' }, min_count: 1 } }],
+    ]
+    for (const [name, condition] of conditions) {
+      const { error, warning } = checkMissionCondition('engine_condition', condition, 'ranking')
+      assert.ok(error, `${name}: 순위형 밤 조건이 통과됐다`)
+      assert.strictEqual(warning, null)
+      assert.ok(error!.startsWith('조건 JSON을 저장하지 못했어요.'), `현상이 없다: ${error}`)
+      assert.ok(error!.includes('늦은 밤'), `원인이 없다: ${error}`)
+      assert.ok(error!.includes('달성형이나 개인형'), `해결책이 없다: ${error}`)
+      assert.ok(error!.includes(name), `문제 키가 문구에 없다: ${error}`)
+    }
+  }],
+  ['순위형 + capsule_open_count → 거절', () => {
+    const { error } = checkMissionCondition('engine_condition', { capsule_open_count: 3 } as unknown as MissionCondition, 'ranking')
+    assert.ok(error, '순위형 캡슐 횟수가 통과됐다')
+    assert.ok(error!.includes('capsule_open_count'), `문제 키가 문구에 없다: ${error}`)
+    assert.ok(error!.includes('순위에서 유리'), `원인이 없다: ${error}`)
+    assert.ok(error!.includes('달성형이나 개인형'), `해결책이 없다: ${error}`)
+  }],
+  ['순위형 + 밤 조건과 캡슐 횟수가 함께 있으면 두 이유를 모두 알린다', () => {
+    const { error } = checkMissionCondition(
+      'engine_condition',
+      { time_range: { start: '23:00', end: '04:00' }, capsule_open_count: 1 } as unknown as MissionCondition,
+      'ranking'
+    )
+    assert.ok(error!.includes('늦은 밤') && error!.includes('순위에서 유리'), error!)
+  }],
+  ['달성형·개인형은 밤 조건과 캡슐 횟수를 저장할 수 있다', () => {
+    const condition = {
+      time_range: { start: '22:00', end: '05:00' },
+      time_band_counts: [{ start: '20:00', end: '05:00', count: 2 }],
+      capsule_open_count: 3,
+    } as unknown as MissionCondition
+    for (const frame of ['achievement', 'individual']) {
+      const { error } = checkMissionCondition('engine_condition', condition, frame)
+      assert.strictEqual(error, null, `${frame}에서 막혔다: ${error}`)
+    }
+  }],
+  ['틀을 넘기지 않으면 순위형 검사를 건너뛴다 (어드민 폼 미리보기)', () => {
+    const { error } = checkMissionCondition('engine_condition', { time_range: { start: '22:00', end: '05:00' } })
+    assert.strictEqual(error, null)
+  }],
+  ['순위형이어도 밤이 아닌 시간대·잼 조건·시간대 수 조건은 저장된다', () => {
+    const ok: MissionCondition[] = [
+      { time_range: { start: '05:00', end: '08:00' }, distance_km: 10 },
+      { distinct_time_bands: 3 },
+      { time_band_counts: [{ start: '18:00', end: '22:00', count: 2 }] },
+    ]
+    for (const condition of ok) {
+      const { error } = checkMissionCondition('engine_condition', condition, 'ranking')
+      assert.strictEqual(error, null, `막혔다: ${JSON.stringify(condition)} → ${error}`)
+    }
+    // 모은 잼은 순위 기준으로 쓸 수 있다 — 잼 조건 키는 순위형 금지 대상이 아니다
+    assert.strictEqual(rankingConditionError({ jam_total_earned: 100 }, 'ranking'), null)
+  }],
+  ['틀을 비워 만들면 DB 기본값(순위형)과 같다', () => {
+    assert.strictEqual(DEFAULT_MISSION_STATUS_DISPLAY_TYPE, 'ranking')
+  }],
+  ['rankingConditionError: 순위형이 아니거나 객체가 아니면 항상 null', () => {
+    const night = { time_range: { start: '22:00', end: '05:00' } }
+    assert.strictEqual(rankingConditionError(night, 'achievement'), null)
+    assert.strictEqual(rankingConditionError(night, null), null)
+    assert.strictEqual(rankingConditionError(night, undefined), null)
+    assert.strictEqual(rankingConditionError(null, 'ranking'), null)
+    assert.strictEqual(rankingConditionError([night], 'ranking'), null)
+    assert.ok(rankingConditionError(night, 'ranking'))
+  }],
+
+  // ── 판정하지 않는 키 경고 ─────────────────────────────────────
+  ['engine_condition + 판정하지 않는 키 → 저장은 허용하고 경고한다', () => {
+    for (const key of ['jam_total_earned', 'capsule_open_count', 'total_count', 'count', 'badge_id']) {
+      const { error, warning } = checkMissionCondition('engine_condition', { distance_km: 10, [key]: 3 } as unknown as MissionCondition)
+      assert.strictEqual(error, null, `${key}: 저장이 막혔다 — ${error}`)
+      assert.ok(warning, `${key}: 경고가 없다`)
+      assert.ok(warning!.includes(key), `문제 키가 경고에 없다: ${warning}`)
+      assert.ok(warning!.includes('판정하지 않는'), `경고 취지가 없다: ${warning}`)
+      assert.ok(warning!.includes('완료되지 않을 수'), `결과 고지가 없다: ${warning}`)
+    }
+  }],
+  ['engine_condition + 판정 가능한 키만 → 경고 없음', () => {
+    const condition: MissionCondition = {
+      activity_type: 'running', distance_km: 10, time_range: { start: '05:00', end: '08:00' }, day_of_week: 'sunday',
+      season: 'summer', season_count: 3, max_speed_kmh: 20, distinct_weekday_count: 3, weekly_streak: 2, weekly_streak_min_count: 2,
+    }
+    assert.deepStrictEqual(checkMissionCondition('engine_condition', condition, 'achievement'), { error: null, warning: null })
+  }],
+  ['판정하지 않는 키 경고는 engine_condition에서만 낸다', () => {
+    const { error, warning } = checkMissionCondition('distance', { distance_km: 10, jam_total_earned: 3 } as unknown as MissionCondition)
+    assert.strictEqual(error, null)
+    assert.strictEqual(warning, null)
+  }],
+  ['pending 키는 engine_condition에서 여전히 거부한다 (경고로 낮추지 않는다)', () => {
+    const { error } = checkMissionCondition('engine_condition', { distance_km: 10, [PENDING_KEY]: 'x' } as unknown as MissionCondition)
+    assert.ok(error, 'pending 키가 통과됐다')
+    assert.ok(error!.includes(PENDING_KEY))
   }],
 ]
 

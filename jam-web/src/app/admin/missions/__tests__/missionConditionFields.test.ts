@@ -16,9 +16,16 @@ import {
   missionConditionFieldsFrom,
   unsupportedMissionConditionKeys,
   MISSION_ENGINE_DELEGATED_KEYS,
+  MISSION_ENGINE_PRESERVED_KEYS,
   type MissionConditionFormFields,
 } from '../missionConditionFields'
-import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
+import {
+  ENGINE_DELEGATED_CONDITION_KEY_LIST,
+  MISSION_FORBIDDEN_CONDITION_KEYS,
+  checkMissionCondition,
+  checkMissionConditionValue,
+} from '@/lib/missions/condition-keys'
+import { getConditionField } from '@/lib/badge-engine/conditionRegistry'
 import type { MissionCondition, MissionType } from '@/types/database'
 
 function fields(overrides: Partial<MissionConditionFormFields> = {}): MissionConditionFormFields {
@@ -58,7 +65,7 @@ const cases: Array<[string, () => void]> = [
     const cond = buildMissionConditionJson('duration_minutes', fields({ durationMinutes: '60' }))
     assert.deepStrictEqual(cond, { duration_minutes: 60 })
   }],
-  ['elevation_gain_m: 단일 활동 고도', () => {
+  ['elevation_gain_m: 누적 고도', () => {
     const cond = buildMissionConditionJson('elevation_gain_m', fields({ elevationM: '500' }))
     assert.deepStrictEqual(cond, { elevation_gain_m: 500 })
   }],
@@ -167,6 +174,59 @@ const cases: Array<[string, () => void]> = [
     const f = missionConditionFieldsFrom(cond)
     const rebuilt = buildMissionConditionJson('engine_condition', f, cond)
     assert.deepStrictEqual(rebuilt, cond)
+  }],
+
+  // ── 거울 목록 ↔ 정본 (티켓 20261019_1312) ────────────────────────────────
+  ['폼 위임 키 + 보존 키 = 정본(ENGINE_DELEGATED_CONDITION_KEY_LIST)', () => {
+    const canonical = [...ENGINE_DELEGATED_CONDITION_KEY_LIST].sort()
+    const mirrored = [...MISSION_ENGINE_DELEGATED_KEYS, ...MISSION_ENGINE_PRESERVED_KEYS].sort()
+    assert.deepStrictEqual(mirrored, canonical, '폼이 다루는 키와 판정에 위임되는 키가 어긋났다')
+    // 두 목록은 겹치지 않는다
+    assert.strictEqual(
+      new Set([...MISSION_ENGINE_DELEGATED_KEYS, ...MISSION_ENGINE_PRESERVED_KEYS]).size,
+      MISSION_ENGINE_DELEGATED_KEYS.length + MISSION_ENGINE_PRESERVED_KEYS.length
+    )
+  }],
+  ['폼이 입력 칸을 그리는 위임 키는 전부 레지스트리에 폼 정의가 있다', () => {
+    for (const key of MISSION_ENGINE_DELEGATED_KEYS) {
+      assert.ok(getConditionField(key)?.form, `레지스트리에 폼 정의가 없다: ${key}`)
+    }
+  }],
+  ['보존 키는 시간대·요일·계절·운동 속성 12개이고 기온 키는 없다', () => {
+    assert.deepStrictEqual([...MISSION_ENGINE_PRESERVED_KEYS].sort(), [
+      'avg_cadence', 'avg_heartrate_bpm', 'avg_watts', 'cumulative_duration_hours', 'day_of_week',
+      'distinct_time_bands', 'max_speed_kmh', 'season', 'season_count', 'season_count_all',
+      'time_range', 'weekend_duration_hours',
+    ])
+    for (const key of MISSION_FORBIDDEN_CONDITION_KEYS) {
+      assert.ok(!(MISSION_ENGINE_PRESERVED_KEYS as readonly string[]).includes(key), `기온 키가 보존 목록에 있다: ${key}`)
+    }
+  }],
+  ['engine_condition: 입력 칸이 없는 위임 키(시간대·요일·계절·운동 속성)도 열었다 저장하면 그대로 남는다', () => {
+    const init: MissionCondition = {
+      activity_type: 'running',
+      distance_km: 20,
+      time_range: { start: '05:00', end: '08:00' },
+      distinct_time_bands: 2,
+      day_of_week: 'sunday',
+      season: 'summer',
+      season_count: 3,
+      season_count_all: 2,
+      max_speed_kmh: 30,
+      avg_heartrate_bpm: 150,
+      avg_watts: 200,
+      avg_cadence: 80,
+      cumulative_duration_hours: 10,
+      weekend_duration_hours: 2,
+    }
+    const f = missionConditionFieldsFrom(init)
+    const rebuilt = buildMissionConditionJson('engine_condition', f, init)
+    assert.deepStrictEqual(rebuilt, init, '입력 칸이 없는 위임 키가 저장 중에 사라졌다')
+    assert.deepStrictEqual(unsupportedMissionConditionKeys(init).sort(), [...MISSION_ENGINE_PRESERVED_KEYS].sort())
+  }],
+  ['engine_condition: 원본이 없으면(새 미션) 보존 키를 만들지 않는다', () => {
+    const cond = buildMissionConditionJson('engine_condition', fields({ distanceKm: '10' }))
+    assert.deepStrictEqual(cond, { distance_km: 10 })
   }],
 
   // ── 이 폼이 만드는 값은 전부 저장 검증을 통과해야 한다 ─────────────────────

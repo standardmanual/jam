@@ -35,7 +35,7 @@ import {
 } from '@/lib/badge-engine/conditionRegistry'
 import type { ConditionKey } from '@/lib/badge-engine/conditionRegistry'
 import { missionTypeLabel } from '@/lib/admin/badge-labels'
-import type { BadgeCondition, MissionCondition, MissionType } from '@/types/database'
+import type { BadgeCondition, MissionCondition, MissionStatusDisplayType, MissionType } from '@/types/database'
 
 /**
  * 티켓 20260813_001: 배지엔진 `evaluateConditionDetailed`를 재사용해 판정하는 미션 타입.
@@ -90,6 +90,76 @@ const MISSION_ONLY_CONDITION_KEY_LIST = [
 ] as const satisfies readonly (keyof MissionCondition)[]
 
 export type MissionOnlyConditionKey = (typeof MISSION_ONLY_CONDITION_KEY_LIST)[number]
+
+/**
+ * 배지엔진(`evaluateConditionDetailed`)에 그대로 위임하는 키 — `engine_condition` 전용 (티켓 20261019_1312).
+ *
+ * 이름·의미가 `BadgeCondition`의 같은 키와 같아서 새 판정 로직 없이 배지엔진이 판정한다.
+ * `engineCondition.ts`의 `DELEGATED_KEYS`가 이 목록을 그대로 가져다 쓰고, 어드민 폼의 거울 목록
+ * (`missionConditionFields.ts`)도 이 목록과 어긋나지 않는지 시험이 대조한다. 정본이 여기인 이유는
+ * `MISSION_ONLY_CONDITION_KEY_LIST`와 같다 — `engineCondition.ts`는 서버 전용 의존(`next/headers`)을 끌고
+ * 있어 이 파일(저장 검증, 클라이언트에서도 쓴다)이 그쪽을 import할 수 없다.
+ *
+ * 기온 키(`temperature_min_c`/`temperature_max_c`)는 일부러 없다 — 날씨와 기온은 미션 조건으로 쓰지 않는다
+ * (JAM 2.0 운영 로직 13.2절). 저장 검증이 따로 막는다(`MISSION_FORBIDDEN_CONDITION_KEYS`).
+ */
+export const ENGINE_DELEGATED_CONDITION_KEY_LIST = [
+  'activity_type',
+  'distance_km',
+  'elevation_gain_m',
+  'single_distance_km',
+  'single_elevation_m',
+  'max_elevation_m',
+  'max_pace_sec_per_km',
+  'min_speed_kmh',
+  'duration_minutes',
+  'same_activity',
+  'repeat_count',
+  'rest_after_long',
+  'streak_days',
+  'weekly_streak',
+  // 티켓 20261019_1312 — 활동 기록만으로 판정되는 배지 조건(시간대·요일·계절·운동 속성)
+  'time_range',
+  'distinct_time_bands',
+  'day_of_week',
+  'season',
+  'season_count',
+  'season_count_all',
+  'max_speed_kmh',
+  'avg_heartrate_bpm',
+  'avg_watts',
+  'avg_cadence',
+  'cumulative_duration_hours',
+  'weekend_duration_hours',
+] as const satisfies readonly (keyof MissionCondition)[]
+
+export type EngineDelegatedConditionKey = (typeof ENGINE_DELEGATED_CONDITION_KEY_LIST)[number]
+
+/**
+ * 미션 전용 키 가운데 `engine_condition`이 쓰지 않는 둘 — 다른 타입(`activity_count`·`item_collect`)의 목표 값이다.
+ * `engine_condition`에 들어 있어도 판정에 쓰이지 않는다.
+ */
+const NON_ENGINE_MISSION_ONLY_KEYS: ReadonlySet<string> = new Set(['count', 'badge_id'])
+
+/**
+ * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개).
+ * 이 밖의 키는 저장은 되지만 판정에 쓰이지 않는다 — `checkMissionCondition`이 경고로 알린다.
+ * `evaluateEngineMissionCondition`의 「알려진 필드가 하나라도 있는가」 검사(fail-closed)도 이 집합을 쓴다 —
+ * 두 곳이 갈리면 «경고는 없는데 판정은 안 하는» 조건이 생긴다.
+ * 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 여기에 더하면 경고 대상에서 빠진다.
+ */
+export const ENGINE_CONDITION_JUDGED_KEYS: ReadonlySet<string> = new Set<string>([
+  ...ENGINE_DELEGATED_CONDITION_KEY_LIST,
+  ...MISSION_ONLY_CONDITION_KEY_LIST.filter((key) => !NON_ENGINE_MISSION_ONLY_KEYS.has(key)),
+])
+
+/**
+ * 미션 조건으로 쓰지 않기로 한 키 — 어떤 미션 타입에서도 저장하지 못한다.
+ * 날씨와 기온은 배지와 미션의 조건으로 쓰지 않는다(JAM 2.0 운영 로직 13.2절). 배지 레지스트리에는 있는 키라
+ * 허용 키 검사는 통과하므로 따로 막는다 — 엔진 위임 타입(streak_days 등)은 조건을 그대로 판정해 기온까지
+ * 실제로 검사하고, `engine_condition`은 기온을 조용히 무시해 미션이 더 쉬워진다.
+ */
+export const MISSION_FORBIDDEN_CONDITION_KEYS = ['temperature_min_c', 'temperature_max_c'] as const
 
 /** `checker.ts`가 `evaluateConditionDetailed`에 넘기는 `extraAllowedKeys` */
 export const MISSION_ONLY_CONDITION_KEYS: ReadonlySet<string> = new Set<string>(
@@ -170,6 +240,104 @@ function labelKeys(keys: string[]): string {
   return keys.map((k) => `${getConditionField(k)?.label ?? k}(${k})`).join(', ')
 }
 
+// ── 순위형 금지 (티켓 20261019_1312) ─────────────────────────────────────
+//
+// 밤 조건과 캡슐 연 횟수는 순위형 미션의 기준으로 쓰지 않는다(JAM 2.0 운영 로직 13.2절). 밤 조건은
+// 순위를 올리려고 늦은 밤에 무리해서 움직이게 만들 수 있고, 캡슐 연 횟수는 나중에 캡슐을 빨리 채워 주는
+// 유료 상품이 생기면 돈을 낸 유저가 순위에서 유리해진다. 달성형과 개인형은 허용한다.
+
+/** 미션 틀을 비워서 만들 때 DB가 채우는 값(마이그레이션 046 `DEFAULT 'ranking'`) — 라우트와 등록 검사가 같은 값을 쓴다 */
+export const DEFAULT_MISSION_STATUS_DISPLAY_TYPE: MissionStatusDisplayType = 'ranking'
+
+/** 밤: 22:00(포함) ~ 05:00(미포함), 하루 중 분 — `timeBands.ts`의 «밤» 구간(22~5시)과 같다 */
+const NIGHT_START_MIN = 22 * 60
+const NIGHT_END_MIN = 5 * 60
+
+/** `HH:MM` → 하루 중 분. 형태가 맞지 않으면 null */
+function clockToMinutes(value: unknown): number | null {
+  if (typeof value !== 'string') return null
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim())
+  if (!m) return null
+  const h = Number(m[1])
+  const min = Number(m[2])
+  if (h > 23 || min > 59) return null
+  return h * 60 + min
+}
+
+/**
+ * 시간대 `{start,end}`가 밤(22:00~05:00)과 겹치는지. 끝이 시작보다 이르면 자정을 넘기는 구간이다.
+ * 구간은 «시작 포함·끝 미포함»으로 읽는다 — `18:00~22:00`(저녁)이나 `05:00~08:00`(새벽 이후)처럼 밤과
+ * 한 점에서 맞닿기만 하는 구간은 밤 조건으로 보지 않는다. 시작과 끝이 같으면 그 한 분만 본다.
+ */
+function timeRangeTouchesNight(range: unknown): boolean {
+  if (typeof range !== 'object' || range === null) return false
+  const s = clockToMinutes((range as Record<string, unknown>).start)
+  const e = clockToMinutes((range as Record<string, unknown>).end)
+  if (s === null || e === null) return false
+  for (let minute = 0; minute < 24 * 60; minute++) {
+    const inNight = minute >= NIGHT_START_MIN || minute < NIGHT_END_MIN
+    if (!inNight) continue
+    const inRange = s === e ? minute === s : s < e ? minute >= s && minute < e : minute >= s || minute < e
+    if (inRange) return true
+  }
+  return false
+}
+
+/**
+ * 밤 조건이 들어 있는 키 이름들 — `time_range`, `time_band_counts`의 구간, 그리고 주기 안 부분집합의
+ * 시간대(`streak_subset.time_range`)가 22:00~05:00(KST)과 겹치면 밤 조건이다. 부분집합 시간대를 포함하는 이유는
+ * 거기에 밤을 넣으면 «밤에 한 활동을 매주 세는» 같은 순위 기준이 되어 규칙을 우회하기 때문이다.
+ * `distinct_time_bands`는 서로 다른 시간대의 수만 세므로 밤 조건으로 보지 않는다.
+ */
+function nightConditionKeys(condition: unknown): string[] {
+  if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return []
+  const c = condition as Record<string, unknown>
+  const keys: string[] = []
+  if (timeRangeTouchesNight(c.time_range)) keys.push('time_range')
+  if (Array.isArray(c.time_band_counts) && c.time_band_counts.some(timeRangeTouchesNight)) keys.push('time_band_counts')
+  const subset = c.streak_subset
+  if (typeof subset === 'object' && subset !== null && timeRangeTouchesNight((subset as Record<string, unknown>).time_range)) {
+    keys.push('streak_subset.time_range')
+  }
+  return keys
+}
+
+/** 밤 조건(22:00~05:00 KST와 겹치는 시간대 조건)이 들어 있는가 */
+export function usesNightCondition(condition: unknown): boolean {
+  return nightConditionKeys(condition).length > 0
+}
+
+/**
+ * 순위형 미션에 쓸 수 없는 조건(밤 조건, 캡슐 연 횟수)이 있으면 오류 문장을, 없으면 null을 돌려준다.
+ * 틀이 순위형이 아니면(달성형·개인형·정해지지 않음) 항상 null이다.
+ *
+ * `checkMissionCondition`이 이 함수를 부르고, PATCH가 틀만 바뀔 때(조건은 기존 행 그대로)는 다른 검사 없이
+ * 이 함수만 직접 부른다 — 기존 행의 다른 문제(옛 키 등)가 틀을 바꾸는 수정까지 막지 않게 한다.
+ */
+export function rankingConditionError(
+  condition: unknown,
+  frame: MissionStatusDisplayType | string | null | undefined
+): string | null {
+  if (frame !== 'ranking') return null
+  if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return null
+
+  const usedKeys: string[] = []
+  const reasons: string[] = []
+
+  const nightKeys = nightConditionKeys(condition)
+  if (nightKeys.length > 0) {
+    usedKeys.push(`밤 시간대 조건(${nightKeys.join(', ')})`)
+    reasons.push('밤 조건은 순위를 올리려고 늦은 밤에 무리해서 움직이게 만들 수 있어요.')
+  }
+  if ((condition as Record<string, unknown>).capsule_open_count !== undefined) {
+    usedKeys.push('캡슐 연 횟수(capsule_open_count)')
+    reasons.push('캡슐 연 횟수는 나중에 캡슐을 빨리 채워 주는 상품이 생기면 돈을 낸 유저가 순위에서 유리해져요.')
+  }
+  if (usedKeys.length === 0) return null
+
+  return `조건 JSON을 저장하지 못했어요. 순위형 미션에는 쓸 수 없는 조건이 있어요 — ${usedKeys.join(', ')}. ${reasons.join(' ')} 미션 틀을 달성형이나 개인형으로 바꾸거나, 이 조건을 빼고 다시 저장해주세요.`
+}
+
 /**
  * 미션 저장 전 `condition_json` 검증. 순수 함수 — API 라우트(POST/PATCH)와 어드민 폼이
  * 같은 판정을 공유한다(`badge-validation.ts`의 `findUnknownConditionKeyError`와 같은 패턴).
@@ -177,14 +345,20 @@ function labelKeys(keys: string[]): string {
  * - `condition`이 `undefined`이면 검사하지 않는다(PATCH 부분 갱신에서 조건을 건드리지 않는 경우)
  * - 객체가 아니면 거부 — 자유 textarea라 `JSON.parse('[1,2]')`가 그대로 들어올 수 있다
  * - 허용 키 밖의 키는 거부 (fail-closed에 걸려 영구 미달성이 되는 것을 저장 단계에서 막는다)
+ * - 기온 키는 어떤 타입에서도 거부한다 (날씨와 기온은 미션 조건으로 쓰지 않는다, 티켓 20261019_1312)
+ * - 틀(`frame`)이 순위형이면 밤 조건과 캡슐 연 횟수를 거부한다. 틀을 넘기지 않으면(어드민 폼 미리보기 등)
+ *   이 검사는 건너뛴다 — 저장 라우트는 항상 «갱신 후 틀»을 넘긴다
  * - 평가 구현이 없는 키(`pending`)는 **엔진 위임 타입에서만 거부**한다. 그 타입만
  *   fail-closed 경로를 타기 때문이다. 나머지 타입은 저장을 막지 않고 「효과 없음」을 고지한다
  *   (선례 20260904_1426은 「저장은 막지 않고 고지」였다 — 그 건은 발급 자체는 되는 경우였고,
  *   엔진 위임 타입은 저장하면 그 미션이 영원히 달성되지 않으므로 막는 쪽이 맞다)
+ * - `engine_condition`에 판정하지 않는 키(`ENGINE_CONDITION_JUDGED_KEYS` 밖)가 있으면 저장은 허용하고
+ *   고지한다 — 5-2b가 키를 판정 가능하게 만들 때까지 JAM 조건 같은 키는 이 경로를 탄다
  */
 export function checkMissionCondition(
   missionType: MissionType,
-  condition: unknown
+  condition: unknown,
+  frame?: MissionStatusDisplayType | string | null
 ): MissionConditionCheck {
   if (condition === undefined) return OK
 
@@ -225,20 +399,47 @@ export function checkMissionCondition(
     }
   }
 
-  if (blocking.pending.length === 0) return OK
-
-  const typeLabel = missionTypeLabel(missionType)
-  if (ENGINE_DELEGATED_MISSION_TYPES.has(missionType)) {
+  const forbidden = MISSION_FORBIDDEN_CONDITION_KEYS.filter(
+    (k) => (condition as Record<string, unknown>)[k] !== undefined
+  )
+  if (forbidden.length > 0) {
     return {
-      error: `조건 JSON을 저장하지 못했어요. 아직 판정이 준비되지 않은 필드가 있어요 — ${labelKeys(blocking.pending)}. 「${typeLabel}」 타입은 조건을 그대로 판정하기 때문에, 이대로 저장하면 참가자가 무엇을 해도 이 미션은 달성되지 않아요. 이 필드를 빼고 다시 저장해주세요.`,
+      error: `조건 JSON을 저장하지 못했어요. 미션에는 쓰지 않는 조건이 있어요 — ${labelKeys(forbidden)}. 날씨와 기온은 미션 조건으로 쓰지 않아요. 이 필드를 빼고 다시 저장해주세요.`,
       warning: null,
     }
   }
 
-  return {
-    error: null,
-    warning: `아직 판정이 준비되지 않은 필드가 있어요 — ${labelKeys(blocking.pending)}. 「${typeLabel}」 타입은 진행값으로 달성을 판정하기 때문에 저장은 되지만, 이 필드는 달성 판정에 아무 영향도 주지 않아요. 조건에서 빼도 결과는 같아요.`,
+  const rankingError = rankingConditionError(condition, frame)
+  if (rankingError) return { error: rankingError, warning: null }
+
+  const typeLabel = missionTypeLabel(missionType)
+  if (blocking.pending.length > 0) {
+    if (ENGINE_DELEGATED_MISSION_TYPES.has(missionType)) {
+      return {
+        error: `조건 JSON을 저장하지 못했어요. 아직 판정이 준비되지 않은 필드가 있어요 — ${labelKeys(blocking.pending)}. 「${typeLabel}」 타입은 조건을 그대로 판정하기 때문에, 이대로 저장하면 참가자가 무엇을 해도 이 미션은 달성되지 않아요. 이 필드를 빼고 다시 저장해주세요.`,
+        warning: null,
+      }
+    }
+
+    return {
+      error: null,
+      warning: `아직 판정이 준비되지 않은 필드가 있어요 — ${labelKeys(blocking.pending)}. 「${typeLabel}」 타입은 진행값으로 달성을 판정하기 때문에 저장은 되지만, 이 필드는 달성 판정에 아무 영향도 주지 않아요. 조건에서 빼도 결과는 같아요.`,
+    }
   }
+
+  if (missionType === 'engine_condition') {
+    const unjudged = Object.entries(condition as Record<string, unknown>)
+      .filter(([key, value]) => value !== undefined && !ENGINE_CONDITION_JUDGED_KEYS.has(key))
+      .map(([key]) => key)
+    if (unjudged.length > 0) {
+      return {
+        error: null,
+        warning: `아직 판정하지 않는 조건이 있어요 — ${labelKeys(unjudged)}. 저장은 되지만 이 조건은 달성 판정에 쓰이지 않아요. 판정하는 다른 조건이 없으면 이 미션은 완료되지 않을 수 있고, 다른 조건이 있으면 이 조건 없이 완료돼요.`,
+      }
+    }
+  }
+
+  return OK
 }
 
 // ── 저장 검증: 조건 «값» (티켓 20260905_1327) ────────────────────────────
@@ -390,3 +591,9 @@ export type AssertAllMissionConditionKeysCovered = AssertNever<MissingFromMissio
 type MissionOnlyKeyAlreadyInRegistry = Extract<MissionOnlyConditionKey, ConditionKey>
 /** 미션 고유 키 목록에 배지 레지스트리와 겹치는 키가 있으면 컴파일 에러가 난다 */
 export type AssertMissionOnlyKeysAreNotInRegistry = AssertNever<MissionOnlyKeyAlreadyInRegistry>
+
+// 위임 키는 전부 배지 레지스트리의 키여야 한다 — 레지스트리에 없는 키를 위임하면 배지엔진이
+// 「알 수 없는 필드」로 판정을 막는다(fail-closed). 어긋나면 여기서 컴파일 에러가 난다.
+type DelegatedKeyNotInRegistry = Exclude<EngineDelegatedConditionKey, ConditionKey>
+/** 위임 키 목록에 배지 레지스트리에 없는 키가 있으면 컴파일 에러가 난다 */
+export type AssertDelegatedKeysAreInRegistry = AssertNever<DelegatedKeyNotInRegistry>

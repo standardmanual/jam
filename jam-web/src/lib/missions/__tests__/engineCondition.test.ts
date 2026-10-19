@@ -227,7 +227,118 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(evaluateEngineMissionCondition(cond, bothBands), true, '새벽·밤 각 2회씩이면 통과해야 한다')
   }],
 
+  // ── 활동 기록 조건 위임 — 시간대·요일·계절·운동 속성 (티켓 20261019_1312) ──
+  ['time_range — 그 시간대(KST)에 시작한 활동이 있어야 한다', () => {
+    const cond: MissionCondition = { activity_type: 'running', time_range: { start: '05:00', end: '08:00' } }
+    const noonOnly = [act('2026-07-02T12:00:00'), act('2026-07-03T20:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, noonOnly), false, '그 시간대 활동이 없는데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [...noonOnly, act('2026-07-04T06:30:00')]), true, '새벽 활동이 있으면 통과해야 한다')
+  }],
+
+  ['distinct_time_bands — 서로 다른 시간대의 수를 센다', () => {
+    const cond: MissionCondition = { distinct_time_bands: 3 }
+    // 같은 시간대(오전)에 3번 해도 시간대는 1개뿐이다
+    const sameBand = [act('2026-07-01T08:00:00'), act('2026-07-02T08:30:00'), act('2026-07-03T09:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, sameBand), false, '같은 시간대 3번이 서로 다른 시간대 3개로 셌다')
+    const threeBands = [act('2026-07-01T06:00:00'), act('2026-07-02T12:00:00'), act('2026-07-03T19:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, threeBands), true, '새벽·점심·저녁이면 통과해야 한다')
+  }],
+
+  ['day_of_week + distance_km — 그 요일의 활동만 거리에 합친다', () => {
+    const cond: MissionCondition = { day_of_week: 'sunday', distance_km: 15 }
+    // 2026-01-05 월요일 20km는 일요일이 아니라 합치지 않는다 / 2026-01-11 일요일 10km뿐이면 15km 미달
+    const mondayAndShortSunday = [act('2026-01-05T08:00:00', { distanceKm: 20 }), act('2026-01-11T08:00:00', { distanceKm: 10 })]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, mondayAndShortSunday), false, '월요일 거리가 일요일 조건에 합쳐졌다')
+    const withLongSunday = [...mondayAndShortSunday, act('2026-01-18T08:00:00', { distanceKm: 10 })]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, withLongSunday), true, '일요일 거리 합계가 15km 이상이면 통과해야 한다')
+  }],
+
+  ['season + season_count — 그 계절에 활동한 날만 센다', () => {
+    const cond: MissionCondition = { season: 'summer', season_count: 2 }
+    const oneSummerDay = [act('2026-06-10T08:00:00'), act('2026-12-10T08:00:00'), act('2026-12-11T08:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, oneSummerDay), false, '겨울 활동이 여름 횟수로 셌다')
+    const twoSummerDays = [...oneSummerDay, act('2026-07-15T08:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, twoSummerDays), true, '여름에 활동한 날이 2일이면 통과해야 한다')
+  }],
+
+  ['season_count_all — 네 계절 모두 채워야 한다', () => {
+    const cond: MissionCondition = { season_count_all: 1 }
+    const threeSeasons = [act('2026-04-10T08:00:00'), act('2026-07-10T08:00:00'), act('2026-10-10T08:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, threeSeasons), false, '겨울 활동이 없는데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [...threeSeasons, act('2026-01-10T08:00:00')]), true, '네 계절 모두 있으면 통과해야 한다')
+  }],
+
+  ['max_speed_kmh — 속도 기록이 없는 활동은 채우지 못한다', () => {
+    const cond: MissionCondition = { activity_type: 'running', max_speed_kmh: 30 }
+    const slow = act('2026-07-02T08:00:00', { maxSpeedKmh: 25 })
+    const noData = act('2026-07-03T08:00:00') // 값이 없으면 키 자체가 없다(데이터 없음 = 세지 않음)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [slow, noData]), false, '최고 속도 30km/h 미달인데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [slow, noData, act('2026-07-04T08:00:00', { maxSpeedKmh: 35 })]), true, '최고 속도 35km/h면 통과해야 한다')
+  }],
+
+  ['avg_heartrate_bpm — 심박 기록이 있는 활동만 센다', () => {
+    const cond: MissionCondition = { avg_heartrate_bpm: 150 }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [act('2026-07-02T08:00:00'), act('2026-07-03T08:00:00', { avgHeartrateBpm: 140 })]), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [act('2026-07-04T08:00:00', { avgHeartrateBpm: 160 })]), true)
+  }],
+
+  ['avg_watts·avg_cadence — 각자 기록이 있는 활동에서 판정한다', () => {
+    const cond: MissionCondition = { activity_type: 'cycling', avg_watts: 200, avg_cadence: 80 }
+    const lowWatts = act('2026-07-02T08:00:00', { jamActivityType: 'cycling', avgWatts: 150, avgCadence: 90 })
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [lowWatts]), false, '평균 파워 200W 미달인데 통과했다')
+    const both = act('2026-07-03T08:00:00', { jamActivityType: 'cycling', avgWatts: 220, avgCadence: 85 })
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [lowWatts, both]), true, '파워와 케이던스를 채우면 통과해야 한다')
+  }],
+
+  ['cumulative_duration_hours — 활동 시간을 모두 합친다', () => {
+    const cond: MissionCondition = { cumulative_duration_hours: 2 }
+    const oneHour = act('2026-07-02T08:00:00') // movingTimeSec 3600
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [oneHour]), false, '1시간뿐인데 누적 2시간을 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [oneHour, act('2026-07-03T08:00:00')]), true, '1시간씩 두 번이면 통과해야 한다')
+  }],
+
+  ['weekend_duration_hours — 주말에 한 활동 하나의 시간을 본다', () => {
+    const cond: MissionCondition = { weekend_duration_hours: 2 }
+    // 2026-01-05 월요일 3시간은 주말이 아니다 / 2026-01-10 토요일 1시간은 2시간 미달
+    const weekdayLongAndShortSaturday = [act('2026-01-05T08:00:00', { movingTimeSec: 10800 }), act('2026-01-10T08:00:00', { movingTimeSec: 3600 })]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, weekdayLongAndShortSaturday), false, '평일 활동 시간이 주말로 셌다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [...weekdayLongAndShortSaturday, act('2026-01-17T08:00:00', { movingTimeSec: 7200 })]), true, '주말에 2시간 활동하면 통과해야 한다')
+  }],
+
+  ['새 위임 키와 미션 전용 키를 함께 쓰면 둘 다 만족해야 한다 (AND)', () => {
+    const cond: MissionCondition = { distinct_weekday_count: 2, distinct_time_bands: 2 }
+    // 요일은 2개지만 시간대는 하나(오전)뿐
+    const twoWeekdaysOneBand = [act('2026-01-05T08:00:00'), act('2026-01-06T08:30:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, twoWeekdaysOneBand), false, '시간대 조건을 못 채웠는데 통과했다')
+    const both = [act('2026-01-05T08:00:00'), act('2026-01-06T19:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, both), true, '요일 2개·시간대 2개면 통과해야 한다')
+  }],
+
+  ['day_of_week만 위임분에 남으면 판정을 막는다 — 거르는 조건이 조용히 무시되지 않는다', () => {
+    // 미션 전용 키(distinct_weekday_count)는 요일 필터를 보지 않는다. 수치 검사 필드 없이 필터만 위임되면
+    // 배지엔진이 「평가 가능한 조건 없음」으로 막는다 — 통과시키면 일요일 조건이 사라진 채 완료된다.
+    const cond: MissionCondition = { day_of_week: 'sunday', distinct_weekday_count: 1 }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [act('2026-01-11T08:00:00')]), false)
+  }],
+
+  ['기온 키는 위임되지 않는다 — 저장 단계가 막으므로 판정은 기온을 보지 않는다', () => {
+    const cond = { distance_km: 5, temperature_min_c: 30 } as MissionCondition
+    // 기온 30°C 이상 조건을 위임했다면 10°C 활동은 실패해야 한다. 위임하지 않으므로 거리 조건만 본다.
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [act('2026-07-02T08:00:00', { weatherTempC: 10 })]), true)
+  }],
+
   // ── fail-closed ──────────────────────────────────────────────────────
+  ['count·badge_id만 있는 복합 조건은 판정하는 조건이 없으므로 통과시키지 않는다', () => {
+    // 그 둘은 activity_count·item_collect 타입의 목표 값이다. 예전에는 «알려진 필드»로 셌고, 그것만 든 조건이
+    // 참가하자마자 완료됐다(티켓 20261019_1312).
+    const a = [act('2026-01-05T06:00:00')]
+    assert.strictEqual(evaluateEngineMissionCondition({ count: 5 } as MissionCondition, a), false)
+    assert.strictEqual(evaluateEngineMissionCondition({ badge_id: '00000000-0000-0000-0000-000000000001' } as MissionCondition, a), false)
+    assert.strictEqual(evaluateEngineMissionCondition({ activity_type: 'running', count: 5 } as MissionCondition, a), false)
+    // 판정하는 다른 조건이 있으면 그 조건으로 판정한다
+    assert.strictEqual(evaluateEngineMissionCondition({ count: 5, distance_km: 5 } as MissionCondition, a), true)
+  }],
+
   ['알려진 필드가 하나도 없으면(형태 오류) 통과시키지 않는다', () => {
     const cond = { activity_type: 'running' } as MissionCondition
     assert.strictEqual(evaluateEngineMissionCondition(cond, [act('2026-01-05T06:00:00')]), false)

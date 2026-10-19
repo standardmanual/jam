@@ -20,7 +20,11 @@
 import type { Json } from '@/types/database.generated'
 import type { MissionType } from '@/types/database'
 import { MISSION_TYPES } from '@/lib/admin/badge-labels'
-import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
+import {
+  DEFAULT_MISSION_STATUS_DISPLAY_TYPE,
+  checkMissionCondition,
+  checkMissionConditionValue,
+} from '@/lib/missions/condition-keys'
 import type { MissionConditionCheck } from '@/lib/missions/condition-keys'
 import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
 import {
@@ -109,7 +113,10 @@ export function validateMission(errors: string[], warnings: string[], input: unk
     errors.push('mission.condition_json: 객체여야 해요.')
   } else if (missionType !== null && isPresent(condition_json)) {
     try {
-      const keyCheck = checkMissionCondition(missionType, condition_json)
+      // 틀을 비우면 insert 페이로드가 순위형으로 채우므로(`buildMissionInsertPayload`) 같은 값으로 검사한다 —
+      // 순위형에는 밤 조건과 캡슐 연 횟수를 쓸 수 없다(티켓 20261019_1312).
+      const frame = isPresent(mission.status_display_type) ? mission.status_display_type : DEFAULT_MISSION_STATUS_DISPLAY_TYPE
+      const keyCheck = checkMissionCondition(missionType, condition_json, typeof frame === 'string' ? frame : undefined)
       collectCheck(errors, warnings, 'mission.condition_json: ', keyCheck)
       if (!keyCheck.error) {
         collectCheck(errors, warnings, 'mission.condition_json: ', checkMissionConditionValue(missionType, condition_json))

@@ -32,7 +32,7 @@ import { passesWalkingGate, inTimeRange, matchesDayOfWeekFilter, getMondayKey } 
 // 클라이언트 컴포넌트가 이 파일의 `@/lib/badge-engine`(→ `next/headers`) 전이 의존까지
 // 끌고 가 빌드가 깨진다(티켓 20260904_0631과 같은 실패 모드) — 이 파일은 이미 서버 전용이라
 // (`checker.ts`에서만 쓴다) 반대 방향(정본 참조)은 안전하다.
-import { MISSION_ONLY_CONDITION_KEYS } from '@/lib/missions/condition-keys'
+import { ENGINE_CONDITION_JUDGED_KEYS, ENGINE_DELEGATED_CONDITION_KEY_LIST } from '@/lib/missions/condition-keys'
 
 const WEEK_MS = 7 * 86_400_000
 
@@ -137,23 +137,12 @@ function countQualifyingMonths(
   return count
 }
 
-/** 배지엔진(`evaluateConditionDetailed`)에 그대로 위임 가능한 필드 — BadgeCondition과 같은 이름·의미 */
-const DELEGATED_KEYS = [
-  'activity_type',
-  'distance_km',
-  'elevation_gain_m',
-  'single_distance_km',
-  'single_elevation_m',
-  'max_elevation_m',
-  'max_pace_sec_per_km',
-  'min_speed_kmh',
-  'duration_minutes',
-  'same_activity',
-  'repeat_count',
-  'rest_after_long',
-  'streak_days',
-  'weekly_streak',
-] as const satisfies readonly (keyof MissionCondition)[]
+/**
+ * 배지엔진(`evaluateConditionDetailed`)에 그대로 위임 가능한 필드 — BadgeCondition과 같은 이름·의미.
+ * 목록의 정본은 `condition-keys.ts`다(저장 검증의 «판정 가능 키»와 같은 목록을 써야 하고, 그 파일은
+ * 서버 전용 의존이 없어 클라이언트에서도 쓴다). 기온 키는 목록에 없다 — 날씨와 기온은 미션 조건이 아니다.
+ */
+const DELEGATED_KEYS = ENGINE_DELEGATED_CONDITION_KEY_LIST
 
 /**
  * 위임 대상 필드만 뽑아 배지엔진에 넘길 부분 조건을 만든다.
@@ -173,8 +162,8 @@ function extractDelegatedCondition(condition: MissionCondition): Record<string, 
 }
 
 /**
- * `engine_condition` 미션의 달성 판정. 순수 함수 — `checker.ts`가 참가 시점 이후로 이미
- * 필터링한 활동 배열을 넘긴다(다른 위임 타입과 같은 규약).
+ * `engine_condition` 미션의 달성 판정. 순수 함수 — `checker.ts`가 미션 기간(참가·시작 이후, 종료 이전)으로
+ * 이미 필터링한 활동 배열을 넘긴다(다른 위임 타입과 같은 규약, `window.ts`).
  *
  * ⚠️ `rest_after_long`(휴식) 판정은 `activities` 배열 자체의 첫 활동 이전 공백을 보지
  * 않는다(가입 앵커를 별도로 받지 않는다) — `checker.ts`가 이미 `joinedAt` 하한으로 잘라
@@ -215,6 +204,11 @@ export function evaluateEngineMissionCondition(condition: MissionCondition, acti
   // 하나도 없는 조건"을 fail-closed로 막는데(MEASURABLE_CONDITION_KEYS 가드), activity_type만
   // 있는 조건(= 이 미션의 나머지가 전부 미션 전용 어휘인 경우, 예: M2)을 여기서 걸러버리면
   // 위 미션 전용 어휘 검사를 이미 통과한 조건이 이 지점에서 잘못 fail된다.
+  //
+  // 티켓 20261019_1312 — 시간대·요일·계절·운동 속성 키도 이 경로로 위임된다. `day_of_week`·`season`은
+  // «거르는 조건»(role: 'filter')이라 혼자서는 수치 검사 필드가 아니다 — 이 둘만 위임분에 남으면
+  // 배지엔진이 「평가 가능한 조건 없음」으로 fail-closed 한다(미션 전용 어휘 판정은 이 필터를 보지 않으므로
+  // 통과시키면 필터가 조용히 무시된다). 판정할 값(거리·`season_count` 등)과 함께 써야 한다.
   const delegated = extractDelegatedCondition(condition)
   const hasMeasurableDelegatedField = Object.keys(delegated).some((k) => k !== 'activity_type')
   if (hasMeasurableDelegatedField) {
@@ -223,11 +217,14 @@ export function evaluateEngineMissionCondition(condition: MissionCondition, acti
 
   // 알려진 필드가 하나도 없는 조건(형태 오류·오타, `activity_type`만 있는 경우 포함)은
   // 통과시키지 않는다 — fail-closed. 저장 단계(`checkMissionCondition`)가 이미 허용 키 밖의
-  // 필드를 막으므로, 여기서는 "측정 가능한 값이 하나라도 있는가"만 다시 확인한다(저장 검증과
-  // 같은 목록, MISSION_ONLY_CONDITION_KEYS 재사용 — `count`·`badge_id`처럼 이 타입에 안 쓰이는
-  // 키가 섞여 있어도 OR 판정이라 무해하다).
+  // 필드를 막으므로, 여기서는 "측정 가능한 값이 하나라도 있는가"만 다시 확인한다(저장 검증의
+  // 판정 가능 키 경고와 같은 목록, ENGINE_CONDITION_JUDGED_KEYS 재사용).
+  //
+  // 티켓 20261019_1312 — 예전에는 `MISSION_ONLY_CONDITION_KEYS`(`count`·`badge_id` 포함)를 썼다. 그 둘은
+  // 다른 미션 타입의 목표 값이라 이 타입에서는 판정되지 않는데, 그것만 든 조건이 «알려진 필드가 있다»고
+  // 판단돼 참가하자마자 완료됐다. 판정 가능 키 집합으로 바꿔 그런 조건은 완료되지 않는다(저장 때 경고한다).
   const hasAnyKnownKey =
     hasMeasurableDelegatedField ||
-    Object.keys(condition).some((k) => k !== 'activity_type' && MISSION_ONLY_CONDITION_KEYS.has(k))
+    Object.keys(condition).some((k) => k !== 'activity_type' && ENGINE_CONDITION_JUDGED_KEYS.has(k))
   return hasAnyKnownKey
 }

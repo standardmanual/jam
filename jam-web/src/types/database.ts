@@ -767,6 +767,41 @@ export interface MissionCondition {
    * 없이 단독으로 쓰면 배지엔진과 같은 "매주 1회 이상" 의미(위임) */
   weekly_streak?: number
 
+  // ── engine_condition 전용: 활동 기록만으로 판정되는 배지 조건을 미션에 위임 (티켓 20261019_1312) ──
+  // 타입·의미는 BadgeCondition의 같은 키와 같다(`BadgeCondition[...]`을 그대로 쓴다). 기온 키
+  // (`temperature_min_c`/`temperature_max_c`)는 일부러 없다 — 날씨와 기온은 미션 조건으로 쓰지 않는다
+  // (JAM 2.0 운영 로직 13.2절).
+  //
+  // ⚠️ `day_of_week`·`season`은 «거르는 조건»이라 혼자서는 달성 판정이 없다(엔진이 수치 검사 필드가
+  // 없는 조건을 막는다) — 판정할 값(거리·`season_count` 등)과 함께 써야 한다. 미션 전용 조건과만 짝지으면
+  // 판정은 전부 막힌다(fail-closed). `day_of_week` 배열은 `weekly_streak`와 함께 쓸 때만 반영된다
+  // (`total_count`는 미션에 없다).
+
+  /** 활동 시작 시간대(KST) 안에 든 활동 — badge-engine BadgeCondition.time_range 재사용 */
+  time_range?: BadgeCondition['time_range']
+  /** 서로 다른 시간대(새벽·오전·점심·오후·저녁·밤)의 수 — badge-engine BadgeCondition.distinct_time_bands 재사용 */
+  distinct_time_bands?: BadgeCondition['distinct_time_bands']
+  /** 활동 시작 요일(KST) — badge-engine BadgeCondition.day_of_week 재사용 */
+  day_of_week?: BadgeCondition['day_of_week']
+  /** 계절 구분 — `season_count`와 함께 쓴다. badge-engine BadgeCondition.season 재사용 */
+  season?: BadgeCondition['season']
+  /** 그 계절에 활동한 날의 수 — badge-engine BadgeCondition.season_count 재사용 */
+  season_count?: BadgeCondition['season_count']
+  /** 사계절 각각 이 횟수 이상 — badge-engine BadgeCondition.season_count_all 재사용 */
+  season_count_all?: BadgeCondition['season_count_all']
+  /** 활동 1건의 최고 속도(km/h) — badge-engine BadgeCondition.max_speed_kmh 재사용 */
+  max_speed_kmh?: BadgeCondition['max_speed_kmh']
+  /** 활동 1건의 평균 심박수(bpm) — badge-engine BadgeCondition.avg_heartrate_bpm 재사용 */
+  avg_heartrate_bpm?: BadgeCondition['avg_heartrate_bpm']
+  /** 활동 1건의 평균 파워(W) — badge-engine BadgeCondition.avg_watts 재사용 */
+  avg_watts?: BadgeCondition['avg_watts']
+  /** 활동 1건의 평균 케이던스 — badge-engine BadgeCondition.avg_cadence 재사용 */
+  avg_cadence?: BadgeCondition['avg_cadence']
+  /** 누적 이동시간(시간) — badge-engine BadgeCondition.cumulative_duration_hours 재사용 */
+  cumulative_duration_hours?: BadgeCondition['cumulative_duration_hours']
+  /** 주말 활동 1건의 이동시간(시간) — badge-engine BadgeCondition.weekend_duration_hours 재사용 */
+  weekend_duration_hours?: BadgeCondition['weekend_duration_hours']
+
   // ── engine_condition 전용: 배지엔진에 없는 미션 고유 어휘 (티켓 20260906_2231 신설) ──
   //
   // v5_mission_axis_groups.json·v5_mission_badges.json 32건 전수 대조 결과 배지엔진

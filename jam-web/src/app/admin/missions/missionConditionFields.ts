@@ -15,22 +15,26 @@
  *   안 된다 — 이 파일이 만드는 키는 전부 `MISSION_ALLOWED_CONDITION_KEYS`에 있다).
  *
  * ## `time_band_counts`는 입력 UI가 없다
- * `MissionCondition`의 26개 필드 중 이 하나만 전용 UI가 없다(배열의 배열이라 그리기 비용이
- * 크고, 실제 카탈로그에 쓰는 미션이 드물다). 값이 있으면 배지 폼의 `FORM_UNSUPPORTED_CONDITION_KEYS`
- * 보존 패턴과 같은 방식으로 **원본 그대로 보존**한다 — 열어서 저장해도 사라지지 않는다.
+ * 이 키는 배열의 배열이라 그리기 비용이 크고, 실제 카탈로그에 쓰는 미션이 드물어 전용 UI가 없다.
+ * 시간대·요일·계절·운동 속성 위임 키(티켓 20261019_1312)도 아직 입력 칸이 없다.
+ * 값이 있으면 배지 폼의 `FORM_UNSUPPORTED_CONDITION_KEYS` 보존 패턴과 같은 방식으로
+ * **원본 그대로 보존**한다 — 열어서 저장해도 사라지지 않는다.
  *
- * ⚠️ `MISSION_ENGINE_DELEGATED_KEYS`는 `src/lib/missions/engineCondition.ts`의 `DELEGATED_KEYS`를
- * 거울처럼 복제한 목록이다. 그 파일은 `@/lib/badge-engine`(→ 서버 전용) 의존이 있어 이 폼(클라이언트
- * 컴포넌트)이 직접 import할 수 없다 — 두 목록이 어긋나면 "폼에 보이는 필드"와 "실제 판정에
- * 위임되는 필드"가 달라진다. 이 파일의 회귀 테스트가 두 목록이 같은 길이·같은 원소인지 배지
- * 레지스트리 기준으로 대조한다(완전한 값 동일성 보장은 `engineCondition.test.ts`가 진다).
+ * ⚠️ `MISSION_ENGINE_DELEGATED_KEYS`는 폼이 입력 칸을 그리는 위임 키 목록이다. 실제 판정에 위임되는 키의 정본은
+ * `src/lib/missions/condition-keys.ts`의 `ENGINE_DELEGATED_CONDITION_KEY_LIST`다(`engineCondition.ts`도 그것을
+ * 쓴다 — 그 파일은 `@/lib/badge-engine`(→ 서버 전용) 의존이 있어 이 폼이 직접 import할 수 없다). 정본에는 있는데
+ * 폼에는 입력 칸이 아직 없는 키는 `MISSION_ENGINE_PRESERVED_KEYS`로 나눠 두고, 저장할 때 원본 값을 그대로
+ * 보존한다(`time_band_counts`와 같은 방식) — 안 그러면 이 화면에서 미션을 열어 저장하는 순간 그 키가 사라진다.
+ * 이 파일의 회귀 테스트가 두 목록이 정본과 어긋나지 않는지 대조한다. 입력 칸을 추가할 때는 키를 보존 목록에서
+ * 폼 목록으로 옮긴다(티켓 20261019_1312).
  */
 import type { ActivityType, DayOfWeek, MissionCondition, MissionType, MissionStreakSubset } from '@/types/database'
 import { getConditionField, type ConditionFormValues } from '@/lib/badge-engine/conditionRegistry'
+import { ENGINE_DELEGATED_CONDITION_KEY_LIST } from '@/lib/missions/condition-keys'
 
 /**
- * `evaluateEngineMissionCondition`(engineCondition.ts) `DELEGATED_KEYS`의 거울 목록.
- * 파일 상단 주석 참고 — 어긋나면 폼과 판정이 다른 키 집합을 본다.
+ * 폼이 입력 칸을 그리는 엔진 위임 키. 정본(`ENGINE_DELEGATED_CONDITION_KEY_LIST`)의 부분집합이어야 한다 —
+ * 파일 상단 주석과 회귀 테스트 참고.
  */
 export const MISSION_ENGINE_DELEGATED_KEYS = [
   'activity_type',
@@ -50,6 +54,16 @@ export const MISSION_ENGINE_DELEGATED_KEYS = [
 ] as const satisfies readonly (keyof MissionCondition)[]
 
 export type MissionEngineDelegatedKey = (typeof MISSION_ENGINE_DELEGATED_KEYS)[number]
+
+/**
+ * 판정에는 위임되지만(정본 `ENGINE_DELEGATED_CONDITION_KEY_LIST`) 이 폼에 입력 칸이 아직 없는 위임 키 —
+ * 시간대·요일·계절·운동 속성. 폼을 열어 저장해도 값이 사라지지 않게 원본(`initCondition`)을 그대로 보존한다.
+ * 정본에서 폼 목록을 뺀 나머지라, 정본에 키가 늘어나면 자동으로 여기 들어와 보존된다.
+ */
+export const MISSION_ENGINE_PRESERVED_KEYS: readonly (typeof ENGINE_DELEGATED_CONDITION_KEY_LIST)[number][] =
+  ENGINE_DELEGATED_CONDITION_KEY_LIST.filter(
+    (key) => !(MISSION_ENGINE_DELEGATED_KEYS as readonly string[]).includes(key)
+  )
 
 const VALID_DAY_OF_WEEK: readonly DayOfWeek[] = [
   'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
@@ -256,8 +270,8 @@ function buildSimpleConditionJson(missionType: MissionType, fields: MissionCondi
 /**
  * `engine_condition` 타입 — 배지엔진 위임 14종은 레지스트리의 `form.read`를 그대로 쓰고,
  * 미션 전용 9종(`time_band_counts` 제외)은 이 함수가 직접 조립한다. `initCondition`을 넘기면
- * 이 폼이 다루지 않는 `time_band_counts`를 원본 그대로 보존한다(배지 폼의
- * `FORM_UNSUPPORTED_CONDITION_KEYS` 보존과 같은 패턴).
+ * 이 폼이 다루지 않는 `time_band_counts`와 보존 목록의 위임 키(`MISSION_ENGINE_PRESERVED_KEYS`)를
+ * 원본 그대로 보존한다(배지 폼의 `FORM_UNSUPPORTED_CONDITION_KEYS` 보존과 같은 패턴).
  */
 function buildEngineConditionJson(
   fields: MissionConditionFormFields,
@@ -313,6 +327,10 @@ function buildEngineConditionJson(
   if (initCondition?.time_band_counts !== undefined) {
     cond.time_band_counts = initCondition.time_band_counts
   }
+  for (const key of MISSION_ENGINE_PRESERVED_KEYS) {
+    const value = initCondition?.[key]
+    if (value !== undefined) cond[key] = value
+  }
 
   return Object.keys(cond).length > 0 ? (cond as MissionCondition) : null
 }
@@ -332,10 +350,14 @@ export function buildMissionConditionJson(
 }
 
 /**
- * `engine_condition` 조건 중 이 폼이 입력 UI를 주지 않는 키(`time_band_counts`)를 안내하려고
- * 돌려준다. 값이 있어도 저장 시 사라지지 않지만(위 보존 로직), 이 화면에서 보거나 고칠 수는 없다.
+ * `engine_condition` 조건 중 이 폼이 입력 UI를 주지 않는 키(`time_band_counts`와 보존 목록의 위임 키)를
+ * 안내하려고 돌려준다. 값이 있어도 저장 시 사라지지 않지만(위 보존 로직), 이 화면에서 보거나 고칠 수는 없다.
  */
 export function unsupportedMissionConditionKeys(condition: MissionCondition | null | undefined): string[] {
   if (!condition) return []
-  return condition.time_band_counts !== undefined ? ['time_band_counts'] : []
+  const keys: string[] = condition.time_band_counts !== undefined ? ['time_band_counts'] : []
+  for (const key of MISSION_ENGINE_PRESERVED_KEYS) {
+    if (condition[key] !== undefined) keys.push(key)
+  }
+  return keys
 }
