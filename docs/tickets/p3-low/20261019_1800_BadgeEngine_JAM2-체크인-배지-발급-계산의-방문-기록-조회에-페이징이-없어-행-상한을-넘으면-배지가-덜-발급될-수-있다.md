@@ -13,7 +13,7 @@ specs:
 
 ## 핵심 요약
 
-- 요구사항: `jam-web/src/lib/badge-engine/usageBadges.ts`의 `evaluateCheckinUsageBadges`(332~336줄 근처)는 `user_checkin_badge_earns`에서 `badge_id`를 조회할 때 페이징 없이 한 번에 읽는다. 한 유저의 체크인 배지 방문 기록이 응답 행 상한(5-2b 2회 게이트는 1,000행으로 보고, 시작 때 프로젝트의 실제 Max Rows 설정을 확인한다)을 넘으면 받은 배지 집합이 잘려서 «장소 종류를 채운 배지»와 «지정한 이름 목록의 배지»가 덜 발급될 수 있다.
+- 요구사항: `jam-web/src/lib/badge-engine/usageBadges.ts`의 `evaluateCheckinUsageBadges`(332~336줄 근처)는 `user_checkin_badge_earns`에서 `badge_id`를 조회할 때 페이징 없이 한 번에 읽는다. 한 유저의 체크인 배지 방문 기록이 응답 행 상한(공용 DB에서 `badges` 3,366행에 5,000행을 요청해도 1,000행만 돌아오는 것을 2026-10-20에 읽기 전용으로 확인했다. 응답 상한은 1,000행이다)을 넘으면 받은 배지 집합이 잘려서 «장소 종류를 채운 배지»와 «지정한 이름 목록의 배지»가 덜 발급될 수 있다.
 - 확인한 사실(2026-10-19, 5-2b 2회 게이트와 아현이 같은 지적): 같은 이력을 읽는 미션 쪽 조회(`lib/badge-engine/jamActionCheckinMetrics.ts`)는 `selectAllPages`로 끝까지 읽는다. 발급 쪽만 페이징이 없다. 5-2b 2회는 이 조회의 계산만 순수 함수(`checkinHoldings.ts`)로 분리했고 읽기와 오류 처리는 그대로 두었다.
 - 구현 계획: 시작 때 공용 DB에서 유저별 `user_checkin_badge_earns` 행 수의 최댓값을 읽기 전용으로 확인해 지금 영향이 있는지 기록한다. 영향이 없더라도 `selectAllPages`로 바꾸는 작은 수정이다(특성 시험 `usage-badges.test.ts`가 동작을 고정하고 있다).
 - 관련 파일: `jam-web/src/lib/badge-engine/usageBadges.ts`, `jam-web/src/lib/badge-engine/jamActionCheckinMetrics.ts`(`selectAllPages` 사용 선례).
