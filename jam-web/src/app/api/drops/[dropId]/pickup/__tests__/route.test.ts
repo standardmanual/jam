@@ -56,7 +56,7 @@ const state = vi.hoisted(() => ({
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
 const createNotificationMock = vi.hoisted(() =>
-  vi.fn(async (_input: { payload?: Record<string, unknown>; appendKeys?: string[] } & Record<string, unknown>) => {}),
+  vi.fn<(input: { payload?: Record<string, unknown>; appendKeys?: string[] } & Record<string, unknown>) => Promise<void>>(async () => {}),
 )
 const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
 
