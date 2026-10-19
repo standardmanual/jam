@@ -52,7 +52,7 @@ export const HELD_MIGRATION_FILE_NAME = '248_seed_held_activity_badge_families.s
  * @property {Record<string, unknown>} [extra] 모든 단계에 같이 들어가는 고정 조건(3-2의 시간대)
  * @property {RegExp} [pattern] parse가 'pattern'일 때 11절 조건 표기를 읽는 식. 이름 붙은 묶음 `value`(단계 값)와 `aux`(보조 값)를 쓴다
  * @property {{key: string|null, expected: number, note?: string}} [aux] 11절 조건 표기에 함께 적힌 보조 값. key가 있으면 모든 단계의 condition_json에 같이 넣고,
- *   null이면 조건에 넣지 않고 원고 값이 expected와 같은지만 대조한다(2-2의 «14일 이상 휴식»)
+ *   null이면 조건에 넣지 않고 원고 값이 expected와 같은지만 대조한다(2-2의 «7일 이상 휴식»)
  * @property {number} [fixed] 단일 계열처럼 11절에 값이 없을 때 쓰는 고정 값
  * @property {string | Record<string, string>} image 이미지를 복사할 기존 family_key(종목별이면 종목마다)
  *
@@ -163,8 +163,8 @@ export const FAMILY_DEFS = {
   '2-2': {
     key: 'return_streak_weeks', parse: 'pattern', scope: 'all', branch: 'recovery', image: 'walking:R4',
     pattern: /^(?<aux>\d+)일 이상 휴식 후 매주 활동 (?<value>\d+)주 연속$/,
-    // 원고 조건 표기는 «14일 이상 휴식»인데 엔진 상수는 7일이다(사용자 결정 3, RETURN_REST_DAYS). 조건에는 넣지 않고 원고 값만 대조한다
-    aux: { key: null, expected: 14, note: '원고 11절은 14일 이상 휴식, 엔진 상수 RETURN_REST_DAYS는 7일(사용자 결정 3)' },
+    // 원고 조건 표기는 «7일 이상 휴식»이고 엔진 상수도 7일이다(사용자 결정 3, RETURN_REST_DAYS, 원고를 2026-10-19에 14일에서 7일로 고침). 조건에는 넣지 않고 원고 값만 대조한다
+    aux: { key: null, expected: 7, note: '원고 11절과 엔진 상수 RETURN_REST_DAYS가 모두 7일(사용자 결정 3)' },
   },
   '3-4': { key: 'full_week_count', parse: 'int', scope: 'all', branch: 'time_season', image: 'walking:S2' },
   '3-5': { key: 'full_season_year_count', parse: 'int', scope: 'all', branch: 'time_season', image: 'walking:A6' },
@@ -619,8 +619,7 @@ function pushHeldHeader({ push, rows, fams, numbersUsed, imageTable, fileName })
   push('--   a. 체크인 «처음 받은 줄»: 5-1·5-4·5-5의 판정(jamActionCheckinMetrics.ts)은 한 유저·한 체크인 배지의 줄 가운데 «활동 시각이 가장 이른 줄»을 새로 받은 배지로 센다.')
   push('--      `record_checkin_earn`(241)이 돌려주는 is_first는 «저장 순서로 처음 들어온 줄»이다. 늦게 동기화된 옛 활동이 나중에 기록되면 두 기준이 갈린다(활동 시각으로는 그 줄이 처음인데 is_first는 false).')
   push('--      그러면 체크인 배지 첫 획득 포인트(is_first 기준)와 이 파일의 5-x 배지 달성(활동 시각 기준)이 서로 다른 줄을 «처음»으로 본다. 이 파일이 넣는 행은 같고 판정할 때 세는 숫자만 갈린다.')
-  push('--   b. 2-2: 원고 11절 조건 표기는 «14일 이상 휴식 후 매주 활동»인데 엔진 상수는 7일이다(사용자 결정 3, RETURN_REST_DAYS=7). condition_json에는 일수를 넣지 않으므로 DB 값은 같고,')
-  push('--      화면의 조건 설명(conditionRegistry)은 7일로 나온다. 원고 문구를 7일로 고칠지 상수를 14일로 올릴지는 따로 정한다.')
+  push('--   b. 2-2: 원고 11절 조건 표기와 엔진 상수(RETURN_REST_DAYS=7)가 모두 «7일 이상 휴식»이다(사용자 결정 3, 원고를 2026-10-19에 14일에서 7일로 고쳤다). condition_json에는 일수를 넣지 않는다.')
   push('--   c. 8-4·8-5: 설명 문구는 «픽업 N회»지만 세는 방식은 서로 다른 아이템 수다(사용자 결정 2, 왕복 부풀림 방지).')
   push('--')
   push('-- 이미지 대응표 (새 family_key → 이미지를 복사할 기존 family_key)')
