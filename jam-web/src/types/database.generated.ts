@@ -4836,6 +4836,7 @@ export type Database = {
         | "activity_recap"
         | "inventory_slots_low"
         | "mission_participation_cancelled"
+        | "chapter_up"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -5006,6 +5007,7 @@ export const Constants = {
         "activity_recap",
         "inventory_slots_low",
         "mission_participation_cancelled",
+        "chapter_up",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },
