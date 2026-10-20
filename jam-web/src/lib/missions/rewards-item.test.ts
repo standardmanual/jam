@@ -8,6 +8,9 @@
  *  - 숨김 배지와 체크인 배지는 지급하지 않고 경고를 남긴다
  *  - RPC 오류·계약 밖 응답·`inventory_not_found`는 던지지 않고 기록한 뒤 나머지 보상을 이어 준다
  *  - 활동 배지는 지금처럼 `user_activity_badges`에 넣고 이미 가졌으면 건너뛴다
+ *  - 활동 배지를 **새로 넣은 경우에만** 챕터 점수 «배지 받기»(`awardBadgeReceiveScore`, 티켓 20261019_1315 2a회)를 부른다. 이미 보유·`23505`·아이템 배지(RPC 경로)·숨김 배지는 부르지 않고,
+ *    점수 쪽이 실패해도 보상 결과는 그대로다. 보상 배지 조회는 숨김·제외 조건 판별에 쓰는 `condition_json`을 함께 읽는다.
+ *    숨김·팔로워·팔로잉·챕터 조건을 거르는 규칙은 `lib/chapter/__tests__/badge-receive.test.ts`가 고정한다 — 여기서는 모킹한다
  *
  * 위치: `__tests__/`는 vitest에서 제외돼 있어(node assert 시험 전용) 모킹이 필요한 이 파일은 옆에 둔다.
  * 실행: cd jam-web && npx vitest run src/lib/missions/rewards-item.test.ts
@@ -33,12 +36,17 @@ const state = vi.hoisted(() => ({
   rpcResult: { data: null, error: null } as { data: unknown; error: unknown },
   rpcCalls: [] as { fn: string; args: Record<string, unknown> }[],
   activityInserts: [] as Record<string, unknown>[],
+  /** 설정하면 user_activity_badges insert가 이 오류로 실패한다 */
+  activityInsertError: null as { code: string; message: string } | null,
+  /** 읽은 표와 컬럼 선택 기록 */
+  selects: [] as { table: string; columns: string }[],
   itemUpdates: [] as { values: Record<string, unknown>; id: unknown }[],
 }))
 
 const awardPointsMock = vi.hoisted(() => vi.fn(async () => ({ id: 'tx' })))
 const logEngineMock = vi.hoisted(() => vi.fn(async () => {}))
 const slotAlertMock = vi.hoisted(() => vi.fn(async () => {}))
+const scoreMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
@@ -47,7 +55,10 @@ vi.mock('@/lib/supabase/server', () => ({
       let updateValues: Record<string, unknown> | null = null
       let insertValues: Record<string, unknown> | null = null
       const builder: Record<string, unknown> = {}
-      builder.select = () => builder
+      builder.select = (columns: string) => {
+        state.selects.push({ table, columns })
+        return builder
+      }
       builder.is = () => builder
       builder.in = (_col: string, ids: string[]) => {
         inIds = ids
@@ -67,7 +78,7 @@ vi.mock('@/lib/supabase/server', () => ({
         return builder
       }
       builder.then = (resolve: (v: unknown) => unknown) => {
-        if (insertValues || updateValues) return resolve({ error: null })
+        if (insertValues || updateValues) return resolve({ error: insertValues && table === 'user_activity_badges' ? state.activityInsertError : null })
         const data =
           table === 'badges'
             ? state.badges.filter((b) => inIds.includes(b.id as string))
@@ -89,6 +100,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/points', () => ({ awardPoints: awardPointsMock }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
+vi.mock('@/lib/chapter/badgeReceive', () => ({ awardBadgeReceiveScore: (...args: unknown[]) => scoreMock(...args) }))
 vi.mock('@/lib/inventory/slotAlert', () => ({ notifyInventorySlotsLow: slotAlertMock }))
 
 import { grantMissionRewards } from '@/lib/missions/rewards'
@@ -119,10 +131,14 @@ beforeEach(() => {
   state.rpcResult = { data: null, error: null }
   state.rpcCalls = []
   state.activityInserts = []
+  state.activityInsertError = null
+  state.selects = []
   state.itemUpdates = []
   awardPointsMock.mockClear()
   logEngineMock.mockClear()
   slotAlertMock.mockClear()
+  scoreMock.mockReset()
+  scoreMock.mockResolvedValue({ status: 'scored' })
   warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -332,5 +348,89 @@ describe('grantMissionRewards — 활동 배지', () => {
     expect(result.awardedBadgeIds).toEqual(['act-1'])
     expect(awardPointsMock).toHaveBeenCalledTimes(1)
     expect(awardPointsMock).toHaveBeenCalledWith(USER, 20, 'badge_point_reward', { sourceBadgeId: 'act-1', sourceMissionId: MISSION })
+  })
+})
+
+describe('grantMissionRewards — 활동 배지의 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회)', () => {
+  it('보상 배지 조회가 숨김·제외 조건 판별에 쓰는 condition_json을 함께 읽는다', async () => {
+    setBadges(badge('act-1', { type: 'activity' }))
+
+    await grantMissionRewards(USER, mission(['act-1']))
+
+    const badgeSelect = state.selects.find((q) => q.table === 'badges')
+    expect(badgeSelect?.columns).toContain('condition_json')
+    expect(badgeSelect?.columns).toContain('is_hidden')
+  })
+
+  it('활동 배지를 새로 넣으면 그 배지의 id·유형·숨김·조건과 출처를 넘겨 점수 함수를 한 번 부른다', async () => {
+    setBadges({ ...badge('act-1', { type: 'activity', point_reward: 20 }), condition_json: { total_count: 3 } } as BadgeFixture)
+
+    await grantMissionRewards(USER, mission(['act-1']))
+
+    expect(scoreMock).toHaveBeenCalledTimes(1)
+    expect(scoreMock).toHaveBeenCalledWith(expect.anything(), {
+      userId: USER,
+      badge: expect.objectContaining({ id: 'act-1', type: 'activity', is_hidden: false, condition_json: { total_count: 3 } }),
+      origin: { triggeredBy: `mission_reward:${MISSION}` },
+    })
+  })
+
+  it('제외 조건(팔로워)이 있는 배지도 판별 입력을 그대로 넘긴다 — 거르는 일은 공용 함수가 한다', async () => {
+    setBadges({ ...badge('act-1', { type: 'activity' }), condition_json: { follower_count: 10 } } as BadgeFixture)
+
+    await grantMissionRewards(USER, mission(['act-1']))
+
+    expect(scoreMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ badge: expect.objectContaining({ condition_json: { follower_count: 10 } }) })
+    )
+  })
+
+  it('이미 보유한 활동 배지는 점수를 부르지 않는다', async () => {
+    setBadges(badge('act-owned', { type: 'activity' }))
+    state.ownedActivity = [{ badge_id: 'act-owned' }]
+
+    await grantMissionRewards(USER, mission(['act-owned']))
+
+    expect(scoreMock).not.toHaveBeenCalled()
+  })
+
+  it('동시 발급 경합(23505)이면 점수를 부르지 않는다', async () => {
+    setBadges(badge('act-1', { type: 'activity' }))
+    state.activityInsertError = { code: '23505', message: 'duplicate key' }
+
+    const result = await grantMissionRewards(USER, mission(['act-1']))
+
+    expect(result.awardedBadgeIds).toEqual([])
+    expect(scoreMock).not.toHaveBeenCalled()
+  })
+
+  it('아이템 배지(RPC 경로)와 숨김 배지는 점수를 부르지 않는다', async () => {
+    setBadges(badge('item-1', { type: 'item' }), badge('hidden-1', { type: 'activity', is_hidden: true }))
+    rpcReturns({ ok: true, status: 'granted', itemIds: ['ii-1'], pendingCount: 0 })
+    state.items = [{ id: 'ii-1', badge_id: 'item-1', locked: false, point_awarded_at: null }]
+
+    await grantMissionRewards(USER, mission(['item-1', 'hidden-1']))
+
+    expect(scoreMock).not.toHaveBeenCalled()
+  })
+
+  it('활동 배지 여러 개를 받으면 배지마다 한 번씩 센다', async () => {
+    setBadges(badge('act-1', { type: 'activity' }), badge('act-2', { type: 'activity' }))
+
+    await grantMissionRewards(USER, mission(['act-1', 'act-2']))
+
+    expect(scoreMock.mock.calls.map(([, input]) => (input as { badge: { id: string } }).badge.id)).toEqual(['act-1', 'act-2'])
+  })
+
+  it('점수 호출이 실패(failed)여도 보상 결과와 포인트 지급은 그대로다', async () => {
+    setBadges(badge('act-1', { type: 'activity', point_reward: 20 }))
+    scoreMock.mockResolvedValue({ status: 'failed' })
+
+    const result = await grantMissionRewards(USER, mission(['act-1'], 50))
+
+    expect(result.awardedBadgeIds).toEqual(['act-1'])
+    expect(state.activityInserts).toHaveLength(1)
+    expect(result.totalAwardedPoints).toBe(70)
   })
 })

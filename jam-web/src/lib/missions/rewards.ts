@@ -12,6 +12,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
+import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { logEngineDecision } from '@/lib/engine-log'
 import { parseGrantItemRewardsResult } from '@/lib/missions/claim-contract'
 import { followUpItemRewards } from '@/lib/missions/itemRewardFollowUp'
@@ -39,6 +40,8 @@ interface RewardBadge {
   point_reward: number
   is_hidden: boolean
   always_locked: boolean
+  /** «배지 받기» 챕터 점수의 제외 조건(팔로워·팔로잉·챕터) 판별에만 쓴다 — 티켓 20261019_1315 */
+  condition_json: object | null
 }
 
 /**
@@ -64,7 +67,7 @@ export async function grantMissionRewards(
     // 1. 보상 배지 정보 조회
     const { data: badgesRaw, error: badgesRawError } = await supabase
       .from('badges')
-      .select('id, name, type, point_reward, is_hidden, always_locked')
+      .select('id, name, type, point_reward, is_hidden, always_locked, condition_json')
       .in('id', badgeIds)
       .is('deleted_at', null) // 티켓 20260825_016: 소프트 삭제된 배지는 미션 보상 지급 대상에서 제외(조용히 skip)
     if (badgesRawError) console.error(`[grantMissionRewards] 보상 배지 조회 실패 (mission: ${mission.id}):`, badgesRawError)
@@ -128,6 +131,9 @@ export async function grantMissionRewards(
       ownedActivityBadgeIds.add(badge.id)
       awardedBadgeIds.push(badge.id)
       awardedBadgeNames.push(badge.name)
+      // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 새 행을 실제로 넣은 보상만 여기 온다(이미 보유·23505는 위에서 건너뛰었다).
+      // 숨김 배지는 보상으로 줄 수 없어 이미 걸러졌고, 팔로워·팔로잉·챕터 조건 배지는 공용 함수가 거른다. 던지지 않아 보상 결과를 바꾸지 않는다.
+      await awardBadgeReceiveScore(supabase, { userId, badge, origin: { triggeredBy: `mission_reward:${mission.id}` } })
       // 배지 자체 포인트 지급 (badge-engine/drop-engine과 동일하게 코드에서 명시적 재현)
       const pr = badge.point_reward ?? 0
       if (pr > 0) {
