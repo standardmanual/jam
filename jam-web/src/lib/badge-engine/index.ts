@@ -23,6 +23,7 @@ import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import { logEngineDecision } from '@/lib/engine-log'
+import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { getActivityHistory, getSignupAnchorDate, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
@@ -1501,6 +1502,11 @@ export async function evaluateBadgesDetailed(
     earned.push({ id: toIssue.id, name: toIssue.name, rarity: toIssue.rarity, reason: '조건 충족' })
 
     if (!dryRun) {
+      // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 새 행을 실제로 넣은 발급만 여기 온다 — 23505·이미 보유는 위에서 `continue`했다.
+      // 레벨형은 레벨마다 새 행이라 레벨마다 센다. 반복형의 «첫 획득»도 새 행이라 여기서 센다(이미 보유한 반복형의 새 회차는 위 increment 경로이고 2b회 몫이다).
+      // 숨김·제외 조건·재평가 배치(`catalog_reevaluation`)·어드민 시뮬레이터(`admin_simulate`)·이용 정지는 이 함수가 거른다. 던지지 않아 발급 결과를 바꾸지 않는다.
+      await awardBadgeReceiveScore(supabase, { userId, badge: toIssue, origin: { triggeredBy, dryRun } })
+
       // 잼 포인트 지급 — 배지에 point_reward가 붙어 있으면 발급 직후 1회 지급.
       // (배지 발급 성공을 전제로 지급. 0이면 awardPoints가 스킵.)
       // 실패 시 로깅은 awardPoints() 내부에서 일괄 처리한다(호출부에서 중복 기록 안 함).

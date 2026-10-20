@@ -182,6 +182,9 @@ function mockSupabase(): SupabaseClient {
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
+// «배지 받기» 챕터 점수(티켓 20261019_1315)는 badge-receive-score-*.test.ts가 고정한다. 이 파일은 «지표마다 어느 표를 읽는가»를 고정하므로
+// 점수 함수의 이용 정지 조회(`user_suspensions`)가 읽기 목록에 섞이지 않게 막는다
+vi.mock('@/lib/chapter/badgeReceive', () => ({ awardBadgeReceiveScore: vi.fn(async () => ({ status: 'skipped', reason: 'origin' })) }))
 vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
   return { ...actual, getUserBanLevel: (userId: string) => getUserBanLevelMock(userId) }
