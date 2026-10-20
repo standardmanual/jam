@@ -1004,7 +1004,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - `p_occurred_on`은 값이 없으면 키째 생략한다(null을 보내지 않는다). 수량이 1 미만이면 부르지 않는다.
 - 챕터 오름 처리(소식·챕터 배지)는 하지 않고 `reachedChapters`를 돌려주기만 한다(티켓 20261019_1316).
 - `service_role`만 실행하므로 service 클라이언트로 부른다. 동기화 안에서는 주입된 클라이언트를 그대로 넘긴다.
-- `src/lib/chapter/source-id.ts`의 `deterministicSourceId(namespace, ...parts)`는 같은 입력에서 같은 UUID(SHA-256 앞 16바이트, 버전 8)를 만든다. 기록 표에 id가 없는 컬렉션 완성과 배지 받기가 쓴다(2a·3회).
+- `src/lib/chapter/source-id.ts`의 `deterministicSourceId(namespace, ...parts)`는 같은 입력에서 같은 UUID(SHA-256 앞 16바이트, 버전 8)를 만든다. 기록 표에 id가 없는 컬렉션 완성과 배지 받기가 쓴다(배지 받기는 2a회에 연결, 컬렉션 완성은 3회).
 
 | 활동 종류 | 호출 지점 | 원천 id | 날짜 | 상태 |
 |---|---|---|---|---|
@@ -1013,10 +1013,21 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `locked_item_badge_open` | `lib/inventory/lockedItemFill.ts` `openLockedItem`(`locked_item_open` RPC 직후) | 개체 id(`inventory_items.id`) | 생략 | 연결됨(1회) |
 | `drop` | `app/api/drops/route.ts` POST(성공 뒤 `after()` 콜백) | `poi_drops.id`(`drop_id`) | 생략 | 연결됨(1회). 유저 드랍만(시스템 드랍은 앰비언트 배치라 이 라우트를 거치지 않는다) |
 | `pickup` | `app/api/drops/[dropId]/pickup/route.ts`(성공 뒤 `after()` 콜백) | 경로의 `dropId` | 생략 | 연결됨(1회). `isSelfPickup`이면 세지 않고, 시스템 드랍과 잠긴 채 받은 픽업은 센다. 드랍과 픽업은 활동 종류가 달라 같은 드랍 id로도 키가 겹치지 않는다 |
-| `badge_receive` | 발급 7곳(엔진 새 발급·반복형·`usageBadges`·미션 보상·컬렉션 보상·온보딩 완료·체크인 첫 획득) | (유저, 배지) 결정적 id, 반복형은 (유저, 배지, 활동 id) | 생략 | 예정(2a·2b회) |
+| `badge_receive` | 새 발급 6곳(엔진 새 발급 `lib/badge-engine/index.ts`·`usageBadges.ts` `issueQualifyingBadges`·미션 보상 `lib/missions/rewards.ts`·컬렉션 보상 `lib/itembook/checker.ts`·온보딩 완료 `lib/onboarding-quest/completion.ts`·체크인 첫 획득 `lib/strava/sync.ts`) → 공용 함수 `lib/chapter/badgeReceive.ts` | (유저, 배지) 결정적 id. 반복형의 새 회차는 (유저, 배지, 활동 id) | 생략 | 새 발급 6곳은 연결됨(2a회). 반복형의 새 회차(`increment` 경로)는 예정(2b회) |
 | `collection_complete_<등급>` | 컬렉션 장착 라우트·`lib/itembook/checker.ts` | (유저, 컬렉션, 등급) 결정적 id | 생략 | 예정(3회) |
 | `mix_success` | `lib/combine/index.ts` | `user_combine_success_logs.id`(새 DB 함수 필요) | 생략 | 예정(3회) |
 | `mission_complete` | `lib/missions/checker.ts` | `user_mission_completions.id` | 생략 | 예정(3회) |
+
+#### 배지 받기 점수의 규칙 (티켓 20261019_1315 2a회, 운영 로직 12.2절)
+새 발급 6곳은 `user_activity_badges`에 **새 행을 실제로 넣은 뒤에만** `lib/chapter/badgeReceive.ts`의 `awardBadgeReceiveScore(supabase, { userId, badge: { id, type, is_hidden, condition_json }, origin: { triggeredBy, dryRun } })`를 부른다. 23505·이미 보유·dryRun은 점수 대상이 아니다. 제외 규칙은 이 함수 한 곳에 있고, 아래에 걸리면 `chapter_add_score`를 부르지 않는다(위에서부터 검사, 이용 정지 확인이 마지막 DB 조회).
+- **발급 출처**: `origin.dryRun`이 true이거나 `origin.triggeredBy`가 `BADGE_RECEIVE_EXCLUDED_TRIGGERS`(`catalog_reevaluation`, `admin_simulate`, `admin_test`, `catalog_reevaluation:...` 접두 형태 포함)이면 뺀다. 카탈로그 재평가 배치(`reevaluateCatalog.ts`)가 기존 유저에게 수십 개씩 소급 발급하는 배지, 어드민 시뮬레이터와 시험 발급이 챕터를 올리지 않게 한다(사용자 결정 3). 재평가 모듈이 엔진을 가져와 순환이 생기므로 문자열을 이 파일에 두고 시험이 `CATALOG_REEVALUATION_TRIGGER`와 같은 값인지 고정한다.
+- **배지 유형**: `activity`·`checkin`만 센다. 아이템 배지는 뺀다(12.2절 «배지 받기»는 액티비티·체크인만 말한다).
+- **숨김**: `is_hidden === true`(243)면 뺀다. 체크인 배지는 DB 제약(`badges_hidden_activity_only`)상 숨김일 수 없어 체크인 첫 획득 지점은 `is_hidden`·`condition_json`을 읽지 않고 `{ id, type }`만 넘긴다.
+- **제외 조건 키**: `condition_json`의 키가 `BADGE_RECEIVE_EXCLUDED_CONDITION_KEYS` = `follower_count`·`following_count`·`chapter_reached`와 하나라도 겹치면 뺀다. 포인트를 가리키는 조건 키는 지금 0개(티켓 20261019_1314)라 집합에 없다 — 나중에 생기면 이 상수만 고친다(DB의 허용 키 CHECK와 `conditionRegistry.ts`도 함께). `jam_total_earned` 같은 잼 키는 포인트가 아니라 제외하지 않는다.
+- **이용 정지**: `getActiveSuspension`으로 정지 중이면 뺀다. 동기화 입구에서 막히지 않는 경로, 곧 정지된 드랍 주인이 다른 유저가 줍는 순간 받는 배지(`picked_up_by_user_count` 등)를 위한 가드다. 확인 조회가 실패하면 «정지 아님»으로 보지 않고 점수를 세지 않은 채 `chapter_score_failed`로 남긴다(같은 원천 id로 다시 보낼 수 있다).
+- **원천 id**: `deterministicSourceId('badge_receive', userId, badge.id)`. 같은 배지를 어드민 초기화·삭제 뒤 다시 받아도 같은 키라 한 번만 센다(사용자 결정 2). 레벨형은 레벨마다 배지 행이 달라 레벨마다 센다. 반복형의 «첫 획득»은 새 행이라 이 키로 센다. 이미 보유한 반복형의 새 회차(`incrementRepeatEarnCount` 경로)는 2b회 몫이라 아직 세지 않는다.
+- **체크인**: `record_checkin_earn`의 `is_first`일 때만 센다(다시 지나가기·같은 활동 재동기화(`duplicate`)는 세지 않음).
+- 던지지 않는다. 점수 쪽 실패는 배지 발급·포인트·피드·응답을 바꾸지 않고 `chapter_score_failed`로 남는다. 아이템 배지 수령 점수와 드랍 점수 남용 방지는 이 티켓의 범위 밖이다.
 
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
