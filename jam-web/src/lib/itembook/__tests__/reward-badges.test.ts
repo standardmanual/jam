@@ -26,6 +26,10 @@
  *    `reward_badge_id` 없음은 부르지 않고, 같은 보정을 두 번 돌려도 한 번만 부른다. 점수 쪽이 실패해도 발급 결과는 그대로다.
  *    숨김·팔로워·팔로잉·챕터 조건·아이템 유형을 거르는 규칙은 공용 함수 시험(`lib/chapter/__tests__/badge-receive.test.ts`)이 고정한다 — 여기서는 모킹한다
  *
+ *  - 컬렉션 완성의 챕터 점수(티켓 20261019_1315 3회, 사용자 결정 4): 동기화 보정이 «이번에 새로» 완성한 옛 컬렉션(`completedIds`)마다 등급 common으로
+ *    `awardCollectionCompleteScore`를 완성 기록 upsert 뒤에 한 번 부른다. 이미 완성 기록이 있는 컬렉션·등급형·미완성은 부르지 않고, 점수 실패는 반환값을 바꾸지 않는다.
+ *    키(원천 id)와 등급 판정은 `lib/chapter/__tests__/collection.test.ts`가 고정한다 — 여기서는 모킹한다
+ *
  * Supabase는 메모리 테이블로 흉내 낸다(필터 `eq`·`in`만 해석, 컬럼 선택은 무시).
  *
  * 실행: cd jam-web && npx vitest run src/lib/itembook/__tests__/reward-badges.test.ts
@@ -53,6 +57,7 @@ const db = vi.hoisted(() => ({
 const notifyMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>())
 const awardPointsMock = vi.hoisted(() => vi.fn())
 const awardBadgeReceiveScoreMock = vi.hoisted(() => vi.fn())
+const awardCollectionCompleteScoreMock = vi.hoisted(() => vi.fn())
 
 interface FakeBuilder extends PromiseLike<{ data: Row[]; error: null }> {
   select: (columns?: string) => FakeBuilder
@@ -117,6 +122,10 @@ vi.mock('@/lib/points', () => ({
 vi.mock('@/lib/chapter/badgeReceive', () => ({
   awardBadgeReceiveScore: (...args: unknown[]) => awardBadgeReceiveScoreMock(...args),
 }))
+vi.mock('@/lib/chapter/collection', () => ({
+  LEGACY_COLLECTION_TIER: 'common',
+  awardCollectionCompleteScore: (...args: unknown[]) => awardCollectionCompleteScoreMock(...args),
+}))
 vi.mock('@/lib/strava/sync', () => ({
   notifyActivityBadgesEarned: (...args: unknown[]) => notifyMock(...args),
 }))
@@ -175,6 +184,8 @@ beforeEach(() => {
   awardPointsMock.mockResolvedValue({ id: 'tx-1' })
   awardBadgeReceiveScoreMock.mockReset()
   awardBadgeReceiveScoreMock.mockResolvedValue({ status: 'scored' })
+  awardCollectionCompleteScoreMock.mockReset()
+  awardCollectionCompleteScoreMock.mockResolvedValue({ ok: true })
   vi.spyOn(console, 'info').mockImplementation(() => {})
   consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -795,5 +806,84 @@ describe('컬렉션 보상 배지의 챕터 점수 «배지 받기» (티켓 202
       expect.anything(),
       expect.objectContaining({ badge: { id: TIER_REWARD, type: 'activity', is_hidden: false, condition_json: null } })
     )
+  })
+})
+
+describe('동기화 보정의 챕터 점수 «컬렉션 완성» (티켓 20261019_1315 3회, 사용자 결정 4)', () => {
+  it('새로 완성한 옛 컬렉션은 등급 common으로 컬렉션 완성 점수를 한 번 부른다', async () => {
+    seed()
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.completedIds).toEqual([BOOK_ID])
+    expect(awardCollectionCompleteScoreMock).toHaveBeenCalledTimes(1)
+    expect(awardCollectionCompleteScoreMock).toHaveBeenCalledWith(expect.anything(), { userId: USER_ID, itemBookId: BOOK_ID, tier: 'common' })
+  })
+
+  it('점수는 완성 기록을 남긴 뒤에 부른다', async () => {
+    seed()
+    awardCollectionCompleteScoreMock.mockImplementation(async () => {
+      // 이 시점에 완성 기록 upsert가 끝나 있어야 한다
+      expect(db.upserts).toEqual([[{ user_id: USER_ID, item_book_id: BOOK_ID }]])
+      return { ok: true }
+    })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardCollectionCompleteScoreMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('완성 기록이 이미 있는 컬렉션(장착으로 완성하고 보상 배지만 따라잡는 경우)은 부르지 않는다 — 장착 라우트가 이미 셌다', async () => {
+    seed({ completionRecorded: true })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardCollectionCompleteScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('같은 보정을 두 번 돌려도 한 번만 부른다(두 번째는 완성 기록이 있어 새 완성이 아니다)', async () => {
+    seed()
+
+    await checkItemBookCompletion(USER_ID)
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardCollectionCompleteScoreMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('컬렉션이 아직 완성되지 않았으면 부르지 않는다', async () => {
+    seed()
+    db.tables.user_item_book_slots = [{ user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'b1' }]
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardCollectionCompleteScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('등급별(tier_mode) 컬렉션은 보정이 완성을 만들지 않으므로 부르지 않는다 — 등급 완성은 장착 라우트가 센다', async () => {
+    db.tables = {
+      item_books: [{ id: BOOK_ID, name: '등급 컬렉션', reward_badge_id: null, is_active: true, tier_mode: true }],
+      badges: [{ id: 'c1', item_book_id: BOOK_ID, type: 'item', drop_excluded: false, name: 'A', rarity: 'common', deleted_at: null }],
+      user_item_book_slots: [{ user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'c1' }],
+      user_item_book_completions: [],
+      user_item_book_tier_completions: [{ user_id: USER_ID, item_book_id: BOOK_ID, tier: 'common' }],
+      item_book_tier_rewards: [],
+      user_activity_badges: [],
+    }
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.completedIds).toEqual([])
+    expect(awardCollectionCompleteScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('점수가 실패(ok: false)해도 완성 기록·보상 배지 발급·반환값은 그대로다', async () => {
+    seed({ rewardBadgeExtra: { is_hidden: false, condition_json: null } })
+    awardCollectionCompleteScoreMock.mockResolvedValue({ ok: false })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [BOOK_ID], rewardBadgesIssued: 1, rewardBadgeIds: [REWARD_BADGE_ID] })
+    expect(db.upserts).toEqual([[{ user_id: USER_ID, item_book_id: BOOK_ID }]])
+    expect(db.inserts).toHaveLength(1)
   })
 })

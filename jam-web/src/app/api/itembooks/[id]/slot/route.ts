@@ -7,6 +7,9 @@ import { isItemBookLaunched, type ItemBookVisibilityFields } from '@/lib/itemboo
 import { d } from '@/lib/i18n'
 import { findLockedItemIds, isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import { INVENTORY_FULL_CODE } from '@/lib/inventory/locked-item-block'
+import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
+import { awardSlotCollectionScore, hasLegacyCollectionCompletion } from '@/lib/chapter/collection'
 
 // 티켓 20260830_0057: 장착/해제는 각각 원자적 RPC(slot_item_into_book/
 // unslot_item_from_book, SELECT ... FOR UPDATE 기반) 한 번 호출로 처리한다.
@@ -80,6 +83,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
+  // 이용 정지 중이면 장착하지 않는다(티켓 20261019_1315 3회, 운영 로직 12.2절). 장착으로 컬렉션을 완성하면 챕터 점수가 생기는데, 장착 RPC(179·222)는 정지를
+  // 보지 않아 정지 중에도 점수가 생길 수 있었다. 해제·교체는 완성을 만들지 않아 막지 않는다. 정지 여부를 읽지 못하면 던져 장착시키지 않는다(조회 실패 틈 방지).
+  try {
+    await assertNotSuspended(supabase, user.id)
+  } catch (err) {
+    if (err instanceof UserSuspendedError) {
+      const suspended: UserSuspendedResponse = { error: d.suspension.itemBookSlotBlocked, code: USER_SUSPENDED_CODE }
+      return NextResponse.json(suspended, { status: 403 })
+    }
+    console.error('[itembooks/slot] 이용 정지 조회 오류:', err)
+    return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
+  }
+
   const body = await req.json()
   const { inventory_item_id } = body
 
@@ -111,6 +127,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     console.error('[itembooks/slot] 잠긴 개체 조회 오류:', lockCheckError)
     return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
   }
+
+  // 챕터 점수 «컬렉션 완성»(티켓 20261019_1315 3회, 사용자 결정 4): 옛 컬렉션(tier_mode 꺼짐)의 장착 RPC는 «이번에 새로 완성했는가»를 돌려주지 않는다.
+  // 이미 완성한 유저의 재장착에 점수가 소급 가산되지 않도록 장착 전에 완성 기록이 있었는지 읽어 둔다(읽지 못하면 null — 아래 점수 함수가 세지 않고 기록한다).
+  // 등급형은 RPC의 `completed_tier`가 새로 완성한 등급이라 읽을 필요가 없다. 이 읽기가 장착 응답을 막지 않는다(실패해도 null이고 장착은 그대로 진행한다).
+  const completedBefore = book.tier_mode ? null : await hasLegacyCollectionCompletion(supabase, user.id, itemBookId)
 
   const rpcArgs = {
     p_user_id: user.id,
@@ -148,12 +169,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // 순서: 보상 배지를 먼저 발급해 두 결과를 따로 알린다(한 장착이 둘 다 내면 결산이 두 행일 수 있다 — 드문 경우라 합치지 않는다).
   // 등급별 컬렉션은 이번 장착으로 새로 완성한 등급(`completed_tier`)을 돌려준다. 그 등급을 세 번째 인자로 넘겨 등급
   // 보상 배지를 발급하고, 새로 완성한 등급이 없으면 발급할 것이 없어 부르지 않는다. 옛 컬렉션은 인자 없이 이전과 같이 부른다.
+  // 3) 챕터 점수 «컬렉션 완성»(티켓 20261019_1315 3회, 운영 로직 12.2절)도 같은 자리에서 센다. 등급형은 `completed_tier`, 옛 컬렉션은 장착 전후 완성 기록으로
+  //    «이번에 새로 완성했는가»를 가려(`awardSlotCollectionScore`) 새로 완성했을 때만 센다. 원천 id가 (유저, 컬렉션, 등급)이라 같은 완성을 다시 보내거나
+  //    등급형으로 바뀐 뒤에도 한 번만 센다. 점수 함수는 던지지 않고, 보상 배지 발급·판정과 서로 영향을 주지 않게 `allSettled`로 함께 돌린다. 점수 실패는 응답을 바꾸지 않는다.
   const tierMode = Boolean(book.tier_mode)
   const completedTier = result.completed_tier ?? null
   after(async () => {
-    if (!tierMode) await runSlotRewardIssue(user.id, itemBookId)
-    else if (completedTier) await runSlotRewardIssue(user.id, itemBookId, completedTier)
-    await runJamActionEvaluation(user.id, jamTriggersForSlot())
+    await Promise.allSettled([
+      awardSlotCollectionScore(supabase, { userId: user.id, itemBookId, tierMode, completedTier, completedBefore }),
+      (async () => {
+        if (!tierMode) await runSlotRewardIssue(user.id, itemBookId)
+        else if (completedTier) await runSlotRewardIssue(user.id, itemBookId, completedTier)
+        await runJamActionEvaluation(user.id, jamTriggersForSlot())
+      })(),
+    ])
   })
 
   return NextResponse.json({ slot: result.slot }, { status: 201 })

@@ -20,6 +20,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { awardBadgeReceiveScore, type BadgeReceiveBadge } from '@/lib/chapter/badgeReceive'
+import { awardCollectionCompleteScore, LEGACY_COLLECTION_TIER } from '@/lib/chapter/collection'
 import type { ItemBookRow, BadgeType } from '@/types/database'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
@@ -203,6 +204,13 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     const completionRows = completedIds.map((id) => ({ user_id: userId, item_book_id: id }))
     const completionsTable = supabase.from('user_item_book_completions')
     await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
+
+    // 챕터 점수 «컬렉션 완성»(티켓 20261019_1315 3회, 사용자 결정 4) — `completedIds`는 이번에 «새로» 완성한 옛 컬렉션(tier_mode 꺼짐)만 담는다(등급형은 위 반복문이 건너뛴다.
+    // 등급형의 등급 완성은 장착 RPC가 기록하고 장착 라우트가 센다). 옛 컬렉션은 등급 `common`으로 센다. 원천 id가 (유저, 컬렉션, common)이라 장착 라우트가 이미 센 완성이거나
+    // 이 보정이 다시 돌아도 한 번만 세어진다. 점수 함수는 던지지 않고 실패는 기록만 남아 완성 기록·보상 배지 발급·반환값을 바꾸지 않는다.
+    for (const itemBookId of completedIds) {
+      await awardCollectionCompleteScore(supabase, { userId, itemBookId, tier: LEGACY_COLLECTION_TIER })
+    }
   }
 
   // 7. reward_badge_id 발급 — 새 완성분과 보정분(완성 기록은 있으나 배지가 없는 북)을 함께 넘긴다

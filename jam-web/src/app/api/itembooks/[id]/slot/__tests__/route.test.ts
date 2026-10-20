@@ -15,6 +15,10 @@
  *    RPC가 트리거 오류(`locked_item_cannot_be_slotted`)를 올려도 같은 코드로 바꾼다
  *  - 공개되지 않은 컬렉션(없음·비활성·시작 전)에는 404이고 장착 RPC를 부르지 않는다(티켓 20260930_1516).
  *    기간이 끝난 컬렉션은 보유자가 계속 쓸 수 있어 막지 않는다(결정 E1)
+ *  - 이용 정지 중이면 장착(POST)은 RPC 전에 403 `user_suspended`이고(`d.suspension.itemBookSlotBlocked`) 정지 조회가 실패하면 500이다. 해제·교체는 막지 않는다(티켓 20261019_1315 3회)
+ *  - 챕터 점수 «컬렉션 완성»(티켓 20261019_1315 3회, 사용자 결정 4): 응답 뒤 `after()`에서 센다. 옛 컬렉션은 장착 전후 완성 기록으로 «이번에 새로 완성했는가»를 가려
+ *    common으로 세고(이미 완성한 유저의 재장착은 세지 않음), 등급형은 `completed_tier`로 센다. 등급형으로 바뀐 뒤에도 같은 (kind, 원천 id)라 이중 가산이 없다.
+ *    점수 실패는 응답·보상 배지 발급·JAM! 판정을 바꾸지 않는다
  *
  * `after()`는 요청 범위 밖에서 부를 수 없다. 콜백을 모아 두었다가 테스트가 「응답이 끝난 뒤」를 직접 흉내 낸다
  * (선례: `src/app/api/drops/__tests__/route.test.ts`).
@@ -24,6 +28,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { d } from '@/lib/i18n'
+import { deterministicSourceId } from '@/lib/chapter/source-id'
 
 const USER_ID = 'user-1'
 const ITEM_BOOK_ID = 'book-1'
@@ -41,12 +46,28 @@ const state = vi.hoisted(() => ({
   /** `inventory_items`에서 locked = true로 조회되는 행 */
   lockedRows: [] as { id: string }[],
   lockedError: null as { message: string } | null,
+  /** `user_suspensions`에서 진행 중인 정지로 읽히는 행. null이면 정지 아님 */
+  suspension: null as { id: string; reason: string; suspended_at: string } | null,
+  suspensionError: null as { message: string } | null,
+  /** `user_item_book_completions`에 (유저, 컬렉션) 완성 기록이 있는지 — 장착 RPC가 완성을 만들면 true로 바뀐다 */
+  completionExists: false,
+  /** 장착 RPC(옛 함수)가 호출되면 완성 기록을 만든다 — 이번 장착으로 새로 완성한 경우를 흉내낸다 */
+  completeOnSlot: false,
+  completionReadError: null as { message: string } | null,
+  /** 완성 기록 조회 횟수(등급형은 읽지 않는다) */
+  completionReads: 0,
 }))
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
 const runSlotRewardMock = vi.hoisted(() => vi.fn<(userId: string, itemBookId: string, completedTier?: string | null) => Promise<void>>())
 /** `after` 콜백 안에서 두 함수가 불린 순서 */
 const callOrder = vi.hoisted(() => [] as string[])
+/** 챕터 점수 연결 — 호출 인자를 본다. 실제 RPC는 부르지 않는다 */
+const awardScoreMock = vi.hoisted(() =>
+  vi.fn<(supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => Promise<{ ok: boolean }>>(),
+)
+/** 점수를 세지 못한 기록 — `engine_decision_log` 쓰기를 가로챈다 */
+const logMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>())
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
@@ -58,9 +79,31 @@ vi.mock('@/lib/supabase/server', () => ({
     },
     rpc: async (name: string, args: unknown) => {
       state.rpcCalls.push({ name, args })
+      if (name === 'slot_item_into_book' && state.completeOnSlot && state.rpc[name]?.data) state.completionExists = true
       return state.rpc[name] ?? { data: null, error: { message: `예상하지 못한 RPC: ${name}` } }
     },
     from: (table: string) => {
+      if (table === 'user_suspensions') {
+        const suspensionBuilder = {
+          select: () => suspensionBuilder,
+          eq: () => suspensionBuilder,
+          is: () => suspensionBuilder,
+          maybeSingle: async () => ({ data: state.suspensionError ? null : state.suspension, error: state.suspensionError }),
+        }
+        return suspensionBuilder
+      }
+      if (table === 'user_item_book_completions') {
+        const completionBuilder = {
+          select: () => completionBuilder,
+          eq: () => completionBuilder,
+          maybeSingle: async () => {
+            state.completionReads += 1
+            if (state.completionReadError) return { data: null, error: state.completionReadError }
+            return { data: state.completionExists ? { item_book_id: ITEM_BOOK_ID } : null, error: null }
+          },
+        }
+        return completionBuilder
+      }
       if (table === 'inventory_items') {
         const lockedBuilder: Record<string, unknown> = {}
         lockedBuilder.select = () => lockedBuilder
@@ -80,6 +123,10 @@ vi.mock('@/lib/supabase/server', () => ({
     },
   }),
 }))
+vi.mock('@/lib/chapter/score', () => ({
+  awardChapterScore: (supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => awardScoreMock(supabase, input),
+}))
+vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
   runJamActionEvaluation: (userId: string, triggers: readonly string[]) => runJamActionMock(userId, triggers),
 }))
@@ -125,7 +172,17 @@ beforeEach(() => {
   state.bookError = null
   state.lockedRows = []
   state.lockedError = null
+  state.suspension = null
+  state.suspensionError = null
+  state.completionExists = false
+  state.completeOnSlot = false
+  state.completionReadError = null
+  state.completionReads = 0
   callOrder.length = 0
+  awardScoreMock.mockReset()
+  awardScoreMock.mockResolvedValue({ ok: true })
+  logMock.mockReset()
+  logMock.mockResolvedValue(undefined)
   runJamActionMock.mockImplementation(async () => {
     callOrder.push('runJamActionEvaluation')
   })
@@ -548,5 +605,282 @@ describe('잠긴 개체는 장착·교체할 수 없다 (티켓 20261018_0051)',
     expect(slotRes.status).toBe(201)
     const swapRes = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
     expect(swapRes.status).toBe(200)
+  })
+})
+
+describe('이용 정지 — 컬렉션 장착은 정지 중에 막힌다 (티켓 20261019_1315 3회)', () => {
+  const SUSPENSION = { id: 'suspension-1', reason: '운영 정책 위반', suspended_at: '2026-10-01T00:00:00.000Z' }
+
+  it('정지 중이면 403 user_suspended이고 장착 RPC·보상·점수를 부르지 않는다', async () => {
+    state.suspension = SUSPENSION
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.suspension.itemBookSlotBlocked, code: 'user_suspended' })
+    expect(state.rpcCalls).toEqual([])
+    expect(state.afterCallbacks).toHaveLength(0)
+    expect(state.completionReads).toBe(0)
+    expect(awardScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('정지 문구는 현상·원인·해결책 순의 해요체이고 «슬롯»이라는 내부 용어를 쓰지 않는다', () => {
+    const message = d.suspension.itemBookSlotBlocked
+    expect(message).toContain('장착할 수 없어요')
+    expect(message).toContain('이용이 정지된 계정')
+    expect(message).toContain('문의')
+    expect(message).not.toContain('슬롯')
+  })
+
+  it('정지 조회가 실패하면 500이고 장착시키지 않는다(조회 실패 틈에 장착하면 안 된다)', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.suspensionError = { message: 'db 장애' }
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: d.itembooks.slotFailed })
+    expect(state.rpcCalls).toEqual([])
+    expect(state.afterCallbacks).toHaveLength(0)
+    consoleError.mockRestore()
+  })
+
+  it('정지 중에도 해제(DELETE)와 교체(PATCH)는 막지 않는다 — 완성을 만들지 않는다', async () => {
+    state.suspension = SUSPENSION
+
+    const unslot = await DELETE(request('DELETE', { slot_id: 'slot-1' }), PARAMS)
+    const swap = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(unslot.status).toBe(200)
+    expect(swap.status).toBe(200)
+  })
+
+  it('정지가 아니면 이전과 같이 장착한다', async () => {
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+  })
+})
+
+describe('챕터 점수 «컬렉션 완성» — 옛 컬렉션(tier_mode 꺼짐) (티켓 20261019_1315 3회, 사용자 결정 4)', () => {
+  const COMMON_SOURCE = deterministicSourceId('collection_complete', USER_ID, ITEM_BOOK_ID, 'common')
+
+  it('장착 전에는 완성 기록이 없고 이번 장착으로 완성하면 응답 뒤에 common으로 한 번 센다', async () => {
+    state.completeOnSlot = true
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(201)
+    // 응답을 보내기 전에는 세지 않는다
+    expect(awardScoreMock).not.toHaveBeenCalled()
+    // 예약은 한 번이다 — 점수용 예약을 따로 만들지 않는다
+    expect(state.afterCallbacks).toHaveLength(1)
+
+    await flushAfter()
+    expect(awardScoreMock).toHaveBeenCalledTimes(1)
+    const [, input] = awardScoreMock.mock.calls[0]
+    expect(input).toEqual({ userId: USER_ID, kind: 'collection_complete_common', sourceId: COMMON_SOURCE })
+    expect(input).not.toHaveProperty('occurredOn')
+    expect(input).not.toHaveProperty('amount')
+  })
+
+  it('이미 완성한 유저가 다시 장착해도 소급 가산하지 않는다', async () => {
+    state.completionExists = true // 장착 전부터 완성 기록이 있다
+
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(awardScoreMock).not.toHaveBeenCalled()
+    // 장착 전에 한 번만 읽고 장착 후에는 다시 읽지 않는다
+    expect(state.completionReads).toBe(1)
+  })
+
+  it('완성하지 못한 장착(아직 덜 채움)은 세지 않는다', async () => {
+    state.completeOnSlot = false
+
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(awardScoreMock).not.toHaveBeenCalled()
+    expect(state.completionReads).toBe(2) // 장착 전후 한 번씩
+  })
+
+  it('장착 전 완성 기록을 읽지 못하면 소급 가산을 피하려고 세지 않고 chapter_score_failed를 남긴다 — 장착 응답은 그대로다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.completionReadError = { message: 'db 장애' }
+    state.completeOnSlot = true
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ slot: SLOT })
+
+    await flushAfter()
+    expect(awardScoreMock).not.toHaveBeenCalled()
+    expect(logMock).toHaveBeenCalledTimes(1)
+    expect(logMock).toHaveBeenCalledWith(
+      'points',
+      'chapter_score_failed',
+      USER_ID,
+      expect.objectContaining({ kind: 'collection_complete_common', sourceId: COMMON_SOURCE })
+    )
+    // 보상 배지 발급과 JAM! 판정은 그대로 이어진다
+    expect(runSlotRewardMock).toHaveBeenCalledTimes(1)
+    expect(runJamActionMock).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
+  })
+
+  it('같은 완성을 다시 보내도 같은 (kind, 원천 id)다 — 다시 «새로 완성»해도 키가 하나', async () => {
+    state.completeOnSlot = true
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    // 완성 기록이 지워진 것처럼 다시 «새로 완성»해도(예: 관리자 초기화 뒤) 키는 같다
+    state.completionExists = false
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    const keys = awardScoreMock.mock.calls.map(([, input]) => `${input.kind}:${input.sourceId}`)
+    expect(keys).toHaveLength(2)
+    expect(new Set(keys).size).toBe(1)
+  })
+
+  it('다른 컬렉션이면 키가 다르다', async () => {
+    state.completeOnSlot = true
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+    state.completionExists = false
+    await POST(request('POST', { inventory_item_id: 'item-1' }), { params: Promise.resolve({ id: 'book-2' }) })
+    await flushAfter()
+
+    const sources = awardScoreMock.mock.calls.map(([, input]) => input.sourceId)
+    expect(new Set(sources).size).toBe(2)
+  })
+
+  it('점수가 실패(ok: false)해도 응답·보상 배지 발급·JAM! 판정은 그대로다', async () => {
+    awardScoreMock.mockResolvedValue({ ok: false })
+    state.completeOnSlot = true
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ slot: SLOT })
+
+    await flushAfter()
+    expect(runSlotRewardMock.mock.calls).toEqual([[USER_ID, ITEM_BOOK_ID]])
+    expect(callOrder).toEqual(['runSlotRewardIssue', 'runJamActionEvaluation'])
+  })
+
+  it('점수가 거부돼도(던지는 구현 오류) 보상 배지 발급과 JAM! 판정은 그대로 이어진다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    awardScoreMock.mockRejectedValue(new Error('점수 장애'))
+    state.completeOnSlot = true
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+
+    await flushAfter()
+    expect(runSlotRewardMock).toHaveBeenCalledTimes(1)
+    expect(runJamActionMock).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
+  })
+
+  it('실패 분기(RPC 오류·ok:false)와 해제·교체에서는 세지 않는다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.completeOnSlot = true
+    state.rpc.slot_item_into_book = { data: { ok: false, error: 'already_slotted' }, error: null }
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    state.rpc.slot_item_into_book = { data: null, error: { message: 'rpc 장애' } }
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await DELETE(request('DELETE', { slot_id: 'slot-1' }), PARAMS)
+    await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+    await flushAfter()
+
+    expect(awardScoreMock).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+})
+
+describe('챕터 점수 «컬렉션 완성» — 등급형(tier_mode 켜짐) (티켓 20261019_1315 3회, 사용자 결정 4)', () => {
+  const TIER_BOOK = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+
+  function tierResult(completedTier: string | null) {
+    return { data: { ok: true, slot: SLOT, tier: 'rare', completed_tier: completedTier }, error: null }
+  }
+
+  it.each(['common', 'rare', 'epic', 'mystic'])('이번 장착으로 %s 등급을 새로 완성하면 그 등급 종류로 한 번 센다', async (tier) => {
+    state.book = TIER_BOOK
+    state.rpc.slot_item_into_book_tiered = tierResult(tier)
+
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(awardScoreMock).toHaveBeenCalledTimes(1)
+    expect(awardScoreMock.mock.calls[0][1]).toEqual({
+      userId: USER_ID,
+      kind: `collection_complete_${tier}`,
+      sourceId: deterministicSourceId('collection_complete', USER_ID, ITEM_BOOK_ID, tier),
+    })
+  })
+
+  it('새로 완성한 등급이 없으면(completed_tier null) 세지 않는다', async () => {
+    state.book = TIER_BOOK
+    state.rpc.slot_item_into_book_tiered = tierResult(null)
+
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(awardScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('등급형은 옛 완성 기록을 읽지 않는다(completed_tier가 새로 완성한 등급이다)', async () => {
+    state.book = TIER_BOOK
+    state.rpc.slot_item_into_book_tiered = tierResult('rare')
+
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(state.completionReads).toBe(0)
+  })
+
+  it('알 수 없는 등급 값이면 세지 않고 chapter_score_failed를 남긴다 — 응답은 그대로다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.book = TIER_BOOK
+    state.rpc.slot_item_into_book_tiered = tierResult('legendary')
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+
+    await flushAfter()
+    expect(awardScoreMock).not.toHaveBeenCalled()
+    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER_ID, expect.objectContaining({ sourceId: null }))
+    consoleError.mockRestore()
+  })
+
+  it('옛 컬렉션으로 센 common과 등급형으로 바뀐 뒤 센 common은 같은 (kind, 원천 id)라 이중 가산이 없다', async () => {
+    // 1) 등급형을 켜기 전 — 옛 컬렉션이 이번 장착으로 완성
+    state.completeOnSlot = true
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    // 2) 같은 컬렉션이 등급형으로 전환된 뒤 — common 등급을 완성
+    state.book = TIER_BOOK
+    state.rpc.slot_item_into_book_tiered = tierResult('common')
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    const keys = awardScoreMock.mock.calls.map(([, input]) => `${input.kind}:${input.sourceId}`)
+    expect(keys).toHaveLength(2)
+    expect(new Set(keys).size).toBe(1) // 같은 키 → DB가 한 번만 센다
+  })
+
+  it('점수가 실패해도 등급 보상 배지 발급과 JAM! 판정은 그대로다', async () => {
+    awardScoreMock.mockResolvedValue({ ok: false })
+    state.book = TIER_BOOK
+    state.rpc.slot_item_into_book_tiered = tierResult('epic')
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+
+    await flushAfter()
+    expect(runSlotRewardMock.mock.calls).toEqual([[USER_ID, ITEM_BOOK_ID, 'epic']])
+    expect(callOrder).toEqual(['runSlotRewardIssue', 'runJamActionEvaluation'])
   })
 })
