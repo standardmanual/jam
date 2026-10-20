@@ -4433,6 +4433,15 @@ export type Database = {
         Args: { p_preset_id: string }
         Returns: undefined
       }
+      admin_deduct_points: {
+        Args: {
+          p_admin_reason_label?: string
+          p_admin_reason_note?: string
+          p_amount: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       admin_destroy_orphaned_item: {
         Args: { p_admin_id: string; p_item_id: string }
         Returns: Json
