@@ -73,6 +73,9 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/strava/sync', () => ({
   notifyActivityBadgesEarned: (...args: unknown[]) => notifyMock(...args),
 }))
+// «배지 받기» 챕터 점수(티켓 20261019_1315 2a회)는 reward-badges.test.ts와 lib/chapter/__tests__/badge-receive.test.ts가 고정한다.
+// 이 파일은 «어느 보상 배지를 발급하는가»를 고정하므로 점수 함수의 이용 정지 조회·점수 호출이 `db.inserts`·`db.reads`에 섞이지 않게 막는다
+vi.mock('@/lib/chapter/badgeReceive', () => ({ awardBadgeReceiveScore: vi.fn(async () => ({ status: 'scored' })) }))
 
 import { runSlotRewardIssue } from '../slotReward'
 

@@ -19,6 +19,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
+import { awardBadgeReceiveScore, type BadgeReceiveBadge } from '@/lib/chapter/badgeReceive'
 import type { ItemBookRow, BadgeType } from '@/types/database'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
@@ -296,9 +297,11 @@ export async function issueItemBookRewardBadges(
   // 삭제 필터(`deleted_at`)는 걸지 않는다: 발급 자체가 지금도 삭제 여부를 보지 않으므로 포인트도 발급과 같은 조건을 따른다.
   const rewardBadgeTypeById = new Map<string, BadgeType>()
   const rewardBadgePointById = new Map<string, number>()
+  // «배지 받기» 챕터 점수(티켓 20261019_1315 2a회)가 숨김·제외 조건(팔로워·팔로잉·챕터)·유형을 판별하는 데 쓴다. 조회가 실패하면 비어 있고, 그러면 점수를 세지 않는다
+  const rewardBadgeScoreInfoById = new Map<string, BadgeReceiveBadge>()
   const { data: rewardBadgeTypesRaw, error: rewardBadgeTypesError } = await supabase
     .from('badges')
-    .select('id, type, point_reward')
+    .select('id, type, point_reward, is_hidden, condition_json')
     .in('id', rewardBadgeIdCandidates)
 
   if (rewardBadgeTypesError) {
@@ -307,9 +310,16 @@ export async function issueItemBookRewardBadges(
       rewardBadgeTypesError
     )
   } else {
-    for (const b of (rewardBadgeTypesRaw ?? []) as { id: string; type: BadgeType; point_reward: number | null }[]) {
+    for (const b of (rewardBadgeTypesRaw ?? []) as {
+      id: string
+      type: BadgeType
+      point_reward: number | null
+      is_hidden: boolean | null
+      condition_json: object | null
+    }[]) {
       rewardBadgeTypeById.set(b.id, b.type)
       rewardBadgePointById.set(b.id, b.point_reward ?? 0)
+      rewardBadgeScoreInfoById.set(b.id, { id: b.id, type: b.type, is_hidden: b.is_hidden, condition_json: b.condition_json })
     }
   }
 
@@ -351,6 +361,12 @@ export async function issueItemBookRewardBadges(
 
     // 새로 넣은 경우에만 여기까지 온다(이미 보유·23505는 위에서 건너뛰었다). 배지 포인트가 있으면 한 번 준다.
     await awardRewardBadgePoints(userId, book.reward_badge_id, rewardBadgePointById.get(book.reward_badge_id) ?? 0)
+
+    // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 숨김·팔로워·팔로잉·챕터 조건·아이템 유형은 공용 함수가 거른다. 던지지 않아 발급 결과를 바꾸지 않는다.
+    const scoreInfo = rewardBadgeScoreInfoById.get(book.reward_badge_id)
+    if (scoreInfo) {
+      await awardBadgeReceiveScore(supabase, { userId, badge: scoreInfo, origin: { triggeredBy: `itembook_complete:${book.id}` } })
+    }
   }
 
   return rewardBadgeIds

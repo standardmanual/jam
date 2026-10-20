@@ -21,6 +21,11 @@
  *    `badge_point_reward`로 한 번 준다(`sourceBadgeId`). 이미 보유·`23505`·다른 insert 오류·포인트 0·`reward_badge_id` 없음은 지급 호출이 없고,
  *    보정분(완성 기록은 있으나 배지가 없던 북)·장착 직후 발급·등급별 보상 배지도 새로 넣을 때 준다. 지급이 실패하거나 던져도 발급 결과는 그대로다
  *
+ *  - 보상 배지의 챕터 점수 «배지 받기»(티켓 20261019_1315 2a회, 운영 로직 12.2절): `user_activity_badges`에 **새로 넣은 경우에만** 공용 함수
+ *    `awardBadgeReceiveScore`를 (보상 배지의 id·유형·숨김·조건, 출처 `itembook_complete:<컬렉션 id>`)로 한 번 부른다. 이미 보유·`23505`·다른 insert 오류·
+ *    `reward_badge_id` 없음은 부르지 않고, 같은 보정을 두 번 돌려도 한 번만 부른다. 점수 쪽이 실패해도 발급 결과는 그대로다.
+ *    숨김·팔로워·팔로잉·챕터 조건·아이템 유형을 거르는 규칙은 공용 함수 시험(`lib/chapter/__tests__/badge-receive.test.ts`)이 고정한다 — 여기서는 모킹한다
+ *
  * Supabase는 메모리 테이블로 흉내 낸다(필터 `eq`·`in`만 해석, 컬럼 선택은 무시).
  *
  * 실행: cd jam-web && npx vitest run src/lib/itembook/__tests__/reward-badges.test.ts
@@ -47,6 +52,7 @@ const db = vi.hoisted(() => ({
 
 const notifyMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>())
 const awardPointsMock = vi.hoisted(() => vi.fn())
+const awardBadgeReceiveScoreMock = vi.hoisted(() => vi.fn())
 
 interface FakeBuilder extends PromiseLike<{ data: Row[]; error: null }> {
   select: (columns?: string) => FakeBuilder
@@ -108,6 +114,9 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/points', () => ({
   awardPoints: (...args: unknown[]) => awardPointsMock(...args),
 }))
+vi.mock('@/lib/chapter/badgeReceive', () => ({
+  awardBadgeReceiveScore: (...args: unknown[]) => awardBadgeReceiveScoreMock(...args),
+}))
 vi.mock('@/lib/strava/sync', () => ({
   notifyActivityBadgesEarned: (...args: unknown[]) => notifyMock(...args),
 }))
@@ -118,7 +127,14 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 /** 컬렉션 1개(배지 2종)를 둔다. 유저는 두 배지를 모두 장착했다 = 완성 조건 충족 */
 function seed(
-  opts: { rewardBadgeId?: string | null; completionRecorded?: boolean; alreadyHeld?: boolean; pointReward?: number | null } = {}
+  opts: {
+    rewardBadgeId?: string | null
+    completionRecorded?: boolean
+    alreadyHeld?: boolean
+    pointReward?: number | null
+    /** 보상 배지 행에 더 얹는 칸 — 챕터 점수의 유형·숨김·조건 판별 입력(`is_hidden`·`condition_json`) */
+    rewardBadgeExtra?: Row
+  } = {}
 ) {
   const rewardBadgeId = opts.rewardBadgeId === undefined ? REWARD_BADGE_ID : opts.rewardBadgeId
   db.tables = {
@@ -133,6 +149,7 @@ function seed(
         type: 'activity',
         drop_excluded: false,
         ...(opts.pointReward !== undefined ? { point_reward: opts.pointReward } : {}),
+        ...(opts.rewardBadgeExtra ?? {}),
       },
     ],
     user_item_book_slots: [
@@ -156,6 +173,8 @@ beforeEach(() => {
   notifyMock.mockResolvedValue(undefined)
   awardPointsMock.mockReset()
   awardPointsMock.mockResolvedValue({ id: 'tx-1' })
+  awardBadgeReceiveScoreMock.mockReset()
+  awardBadgeReceiveScoreMock.mockResolvedValue({ status: 'scored' })
   vi.spyOn(console, 'info').mockImplementation(() => {})
   consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -648,5 +667,133 @@ describe('컬렉션 보상 배지의 배지 포인트 (티켓 20261019_1314 2회
     expect(second.rewardBadgeIds).toEqual([])
     expect(awardPointsMock).toHaveBeenCalledTimes(1)
     expect(awardPointsMock).toHaveBeenCalledWith(USER_ID, 20, 'badge_point_reward', { sourceBadgeId: TIER_REWARD })
+  })
+})
+
+describe('컬렉션 보상 배지의 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절)', () => {
+  const REWARD_BADGE_FIELDS = { is_hidden: false, condition_json: { total_count: 3 } }
+
+  it('보상 배지를 새로 넣으면 그 배지의 id·유형·숨김·조건과 출처를 넘겨 점수 함수를 한 번 부른다', async () => {
+    seed({ completionRecorded: true, rewardBadgeExtra: REWARD_BADGE_FIELDS })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledTimes(1)
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledWith(expect.anything(), {
+      userId: USER_ID,
+      badge: { id: REWARD_BADGE_ID, type: 'activity', is_hidden: false, condition_json: { total_count: 3 } },
+      origin: { triggeredBy: `itembook_complete:${BOOK_ID}` },
+    })
+  })
+
+  it('숨김·제외 조건 배지의 판별 입력을 그대로 넘긴다(거르는 일은 공용 함수가 한다)', async () => {
+    seed({ completionRecorded: true, rewardBadgeExtra: { is_hidden: true, condition_json: { follower_count: 10 } } })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ badge: expect.objectContaining({ is_hidden: true, condition_json: { follower_count: 10 } }) })
+    )
+  })
+
+  it('새로 완성한 컬렉션의 보상 배지도 센다 (완성 기록과 함께 만든 경우)', async () => {
+    seed({ rewardBadgeExtra: REWARD_BADGE_FIELDS })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('이미 보유한 보상 배지는 점수를 부르지 않는다', async () => {
+    seed({ completionRecorded: true, alreadyHeld: true, rewardBadgeExtra: REWARD_BADGE_FIELDS })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('동시 발급 경합(23505)이면 점수를 부르지 않는다', async () => {
+    seed({ completionRecorded: true, rewardBadgeExtra: REWARD_BADGE_FIELDS })
+    db.insertError = { code: '23505', message: 'duplicate key value violates unique constraint' }
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('23505가 아닌 insert 오류로 배지를 못 넣었으면 점수를 부르지 않는다', async () => {
+    seed({ completionRecorded: true, rewardBadgeExtra: REWARD_BADGE_FIELDS })
+    db.insertError = { code: '08006', message: '연결 오류' }
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('reward_badge_id가 비면 점수를 부르지 않는다', async () => {
+    seed({ rewardBadgeId: null })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).not.toHaveBeenCalled()
+  })
+
+  it('같은 보정을 두 번 돌려도 점수는 한 번만 부른다', async () => {
+    seed({ completionRecorded: true, rewardBadgeExtra: REWARD_BADGE_FIELDS })
+
+    await checkItemBookCompletion(USER_ID)
+    await checkItemBookCompletion(USER_ID)
+
+    expect(db.inserts).toHaveLength(1)
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('점수 호출이 실패(failed)여도 보상 배지 발급 결과와 포인트 지급은 그대로다', async () => {
+    seed({ completionRecorded: true, pointReward: 30, rewardBadgeExtra: REWARD_BADGE_FIELDS })
+    awardBadgeReceiveScoreMock.mockResolvedValue({ status: 'failed' })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 1, rewardBadgeIds: [REWARD_BADGE_ID] })
+    expect(db.inserts).toHaveLength(1)
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('장착 직후 발급(runSlotRewardIssue)도 새로 넣으면 센다', async () => {
+    seed({ completionRecorded: true, rewardBadgeExtra: REWARD_BADGE_FIELDS })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledTimes(1)
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ badge: expect.objectContaining({ id: REWARD_BADGE_ID }) })
+    )
+  })
+
+  it('등급별(tier_mode) 컬렉션의 등급 보상 배지도 새로 넣을 때 센다', async () => {
+    const TIER_REWARD = 'tier-reward-common'
+    db.tables = {
+      item_books: [{ id: BOOK_ID, name: '등급 컬렉션', reward_badge_id: null, is_active: true, tier_mode: true }],
+      badges: [
+        { id: 'c1', item_book_id: BOOK_ID, type: 'item', drop_excluded: false, name: 'A', rarity: 'common', deleted_at: null },
+        { id: TIER_REWARD, item_book_id: null, type: 'activity', drop_excluded: false, is_hidden: false, condition_json: null },
+      ],
+      user_item_book_slots: [{ user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'c1' }],
+      user_item_book_completions: [],
+      user_item_book_tier_completions: [{ user_id: USER_ID, item_book_id: BOOK_ID, tier: 'common' }],
+      item_book_tier_rewards: [{ item_book_id: BOOK_ID, tier: 'common', reward_badge_id: TIER_REWARD }],
+      user_activity_badges: [],
+    }
+
+    await checkItemBookCompletion(USER_ID)
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledTimes(1)
+    expect(awardBadgeReceiveScoreMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ badge: { id: TIER_REWARD, type: 'activity', is_hidden: false, condition_json: null } })
+    )
   })
 })
