@@ -50,12 +50,16 @@
  *  - 결과 지급은 `combine_grant_results` 한 번이다. 빈칸이 모자라면 DB가 결과 전부를 받지 않은 결과로 남기고(재료는 소모됨)
  *    `resultStatus: 'pending'`으로 알린다. 결과에는 기한이 없고 잠김은 레시피(`reward_locked`)와 배지(`always_locked`)가 정한다.
  *    앱은 빈칸을 세지 않는다.
+ *  - 결과 아이템 배지의 배지 포인트(티켓 20261019_1314 2회, 운영 로직 14.1절): 결과를 바로 지급했으면 열린 개체에 한해 일련번호마다
+ *    한 번 준다(`resultPointFollowUp.ts`). 잠긴 개체는 열 때, 받지 않은 결과는 받을 때(`/api/combine/pending`) 준다.
+ *    레시피 보상 포인트(`pointsAwarded`)와 실패 보상은 그대로다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
 import { getPendingCount } from '@/lib/combine/pending'
+import { followUpCombineResultPoints } from '@/lib/combine/resultPointFollowUp'
 import { hasEndedResultBadge, recipeReleaseState } from '@/lib/combine/visibility'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
@@ -331,7 +335,13 @@ export async function combineRecipeAttempt(
     // 앱은 빈칸을 세지 않는다 — 소각으로 칸이 반환된 뒤의 값은 DB가 인벤토리 행을 잠그고 읽는다.
     const grant = await grantResults(supabase, userId, matched, rewardBadgeIds, rewardBadges)
     // 결과를 바로 지급했으면 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
-    if (grant.status === 'granted') await notifyInventorySlotsLow(userId, supabase)
+    if (grant.status === 'granted') {
+      await notifyInventorySlotsLow(userId, supabase)
+      // 열린 채 받은 결과 개체의 배지 포인트를 일련번호마다 한 번 준다(티켓 20261019_1314 2회, 운영 로직 14.1절).
+      // 잠긴 개체는 열 때 주고, 받지 않은 결과(`pending`)는 받을 때 준다(`/api/combine/pending`). 던지지 않는다.
+      // 응답의 `pointsAwarded`는 레시피 보상 포인트 그대로다(배지 포인트를 더하지 않는다).
+      await followUpCombineResultPoints(supabase, userId, grant.itemIds)
+    }
 
     let pointsAwarded = 0
     if (matched.reward_points > 0) {
@@ -471,6 +481,8 @@ interface GrantResultsOutcome {
   resultBadges: CombineResultBadge[]
   /** 성공 기록(`record_combine_success`)에 남길 결과 배지 id — 받지 않은 결과도 이번 믹스의 결과이므로 포함한다 */
   recordedBadgeIds: string[]
+  /** 이번에 새로 지급한 개체 id(`granted`일 때만, `combine_grant_results`가 입력 순서대로 준다) — 열린 개체의 배지 포인트 후속에 쓴다 */
+  itemIds: string[]
   pendingCount: number
   freeSlots: number
 }
@@ -507,7 +519,14 @@ async function grantResults(
   rewardBadgeIds: string[],
   rewardBadges: RewardBadgeInfo[]
 ): Promise<GrantResultsOutcome> {
-  const empty: GrantResultsOutcome = { status: 'none', resultBadges: [], recordedBadgeIds: [], pendingCount: 0, freeSlots: 0 }
+  const empty: GrantResultsOutcome = {
+    status: 'none',
+    resultBadges: [],
+    recordedBadgeIds: [],
+    itemIds: [],
+    pendingCount: 0,
+    freeSlots: 0,
+  }
   if (rewardBadgeIds.length === 0) return empty
 
   const { data, error } = await supabase.rpc('combine_grant_results', {
@@ -542,6 +561,7 @@ async function grantResults(
       status: 'pending',
       resultBadges: [],
       recordedBadgeIds: grantable.map((b) => b.id),
+      itemIds: [],
       pendingCount: Number(result.pendingCount ?? grantable.length),
       freeSlots: Number(result.free ?? 0),
     }
@@ -549,9 +569,8 @@ async function grantResults(
 
   if (result.status === 'granted') {
     const isLocked = (b: RewardBadgeInfo) => recipe.reward_locked === true || b.always_locked === true
-    const unlockRequiredByIndex = grantable.some(isLocked)
-      ? await readUnlockRequired(supabase, Array.isArray(result.itemIds) ? result.itemIds : [])
-      : []
+    const itemIds = Array.isArray(result.itemIds) ? result.itemIds : []
+    const unlockRequiredByIndex = grantable.some(isLocked) ? await readUnlockRequired(supabase, itemIds) : []
     return {
       status: 'granted',
       resultBadges: grantable.map((b, index): CombineResultBadge => {
@@ -566,6 +585,7 @@ async function grantResults(
         }
       }),
       recordedBadgeIds: grantable.map((b) => b.id),
+      itemIds,
       pendingCount: 0,
       freeSlots: 0,
     }

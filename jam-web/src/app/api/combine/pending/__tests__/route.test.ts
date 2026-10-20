@@ -8,6 +8,8 @@
  * - POST는 세션 유저만 대상으로 서비스 클라이언트로 `claimPendingResults`를 한 번 부른다. 본문은 쓰지 않는다.
  * - DB 함수의 거절 코드를 상태 코드와 `d.combine.claim.*` 문구로 바꾼다(`no_pending` 409, `insufficient_slots` 409+free·needed,
  *   `inventory_not_found` 404). 그 밖의 오류는 500(`d.combine.claim.failed`).
+ * - POST 받기에 성공하면 받은 개체 id로 배지 포인트 후속(`followUpCombineResultPoints`)을 한 번 부른다(티켓 20261019_1314 2회). 거절·예외·
+ *   이용 정지에서는 부르지 않는다. 후속 본체(열린 개체·잠긴 개체·중복 방지)는 `lib/combine/__tests__/result-point-follow-up.test.ts`가 고정한다.
  * - POST는 이용 정지 중이면 403(`code: 'user_suspended'`, `d.suspension.combineClaimBlocked`)이고 받기를 부르지 않는다.
  *   정지 여부를 읽지 못하면 500이고 받기를 부르지 않는다. DB 함수가 `user_suspended`를 돌려줘도 403이다.
  *
@@ -24,6 +26,7 @@ const state = vi.hoisted(() => ({ authenticated: true }))
 const listMock = vi.hoisted(() => vi.fn())
 const claimMock = vi.hoisted(() => vi.fn())
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
+const followUpMock = vi.hoisted(() => vi.fn())
 const serviceClient = vi.hoisted(() => ({ marker: 'service-role-client' }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -41,6 +44,9 @@ vi.mock('@/lib/combine/pending', () => ({
   listPendingResults: (...args: unknown[]) => listMock(...args),
   claimPendingResults: (...args: unknown[]) => claimMock(...args),
 }))
+vi.mock('@/lib/combine/resultPointFollowUp', () => ({
+  followUpCombineResultPoints: (...args: unknown[]) => followUpMock(...args),
+}))
 vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/suspension/suspension')>()
   return { ...actual, assertNotSuspended: (...args: unknown[]) => assertNotSuspendedMock(...args) }
@@ -52,6 +58,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   state.authenticated = true
   assertNotSuspendedMock.mockResolvedValue(undefined)
+  followUpMock.mockResolvedValue(undefined)
 })
 
 describe('GET — 목록', () => {
@@ -113,6 +120,39 @@ describe('POST — 받기', () => {
     expect(claimMock).toHaveBeenCalledTimes(1)
     expect(claimMock).toHaveBeenCalledWith(serviceClient, USER_ID)
     expect(assertNotSuspendedMock).toHaveBeenCalledWith(serviceClient, USER_ID)
+  })
+
+  it('성공하면 받은 개체 id로 배지 포인트 후속을 한 번 부른다(잠긴 개체를 거르는 것은 후속의 몫이다)', async () => {
+    claimMock.mockResolvedValue({ ok: true, granted: 2, itemIds: ['i1', 'i2'] })
+
+    await POST()
+
+    expect(followUpMock).toHaveBeenCalledTimes(1)
+    expect(followUpMock).toHaveBeenCalledWith(serviceClient, USER_ID, ['i1', 'i2'])
+  })
+
+  it('거절(빈칸 모자람·받을 결과 없음·인벤토리 없음·이용 정지)에서는 후속을 부르지 않는다', async () => {
+    claimMock.mockResolvedValueOnce({ ok: false, error: 'insufficient_slots', free: 0, needed: 2 })
+    await POST()
+    claimMock.mockResolvedValueOnce({ ok: false, error: 'no_pending' })
+    await POST()
+    claimMock.mockResolvedValueOnce({ ok: false, error: 'inventory_not_found' })
+    await POST()
+    claimMock.mockResolvedValueOnce({ ok: false, error: 'user_suspended' })
+    await POST()
+
+    expect(followUpMock).not.toHaveBeenCalled()
+  })
+
+  it('받기 예외나 이용 정지 검사 단계에서는 후속을 부르지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    claimMock.mockRejectedValueOnce(new Error('combine_claim_pending RPC 오류'))
+    await POST()
+    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: 'x', suspendedAt: '2026-10-01T00:00:00.000Z' }))
+    await POST()
+
+    expect(followUpMock).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 
   it('빈칸이 모자라면 409와 free·needed를 내린다', async () => {

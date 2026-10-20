@@ -20,6 +20,10 @@
  *     결과 지급은 `combine_grant_results` 한 번(기한 없음·잠김은 레시피가 정함), 빈칸이 모자라면 받지 않은 결과로 남김,
  *     결과 배지의 공개 기간이 끝난 레시피는 소각 전 거절
  *
+ * 10) 결과 아이템 배지의 배지 포인트(티켓 20261019_1314 2회) — 결과를 바로 지급(`granted`)했을 때만 지급된 개체 id로 후속
+ *     (`followUpCombineResultPoints`)을 한 번 부른다. 받지 않은 결과·지급 실패·미매칭·거절에서는 부르지 않고, 응답의 `pointsAwarded`는
+ *     레시피 보상 포인트 그대로다. 후속 본체(열린 개체·잠긴 개체·중복 방지)는 `result-point-follow-up.test.ts`가 고정한다
+ *
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/combine-engine.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -107,6 +111,12 @@ vi.mock('@/lib/points', () => ({
     stub.callOrder.push('award_points')
     return awardPointsMock(userId, amount, reason)
   },
+}))
+
+const followUpMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/combine/resultPointFollowUp', () => ({
+  followUpCombineResultPoints: (...args: unknown[]) => followUpMock(...args),
 }))
 
 vi.mock('@/lib/combine/policy', () => ({
@@ -349,6 +359,8 @@ beforeEach(() => {
   stub.callOrder = []
   awardPointsMock.mockReset()
   awardPointsMock.mockResolvedValue({ id: 'tx-1' })
+  followUpMock.mockReset()
+  followUpMock.mockResolvedValue(undefined)
 })
 
 describe('슬롯 전체 충족 → 확정 보상', () => {
@@ -1305,5 +1317,99 @@ describe('JAM 2.0 믹스 고치기 — 결과 배지의 공개 기간이 끝난 
     stub.usedSlots = 5
     stub.badgeValidUntil = null
     expect((await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])).success).toBe(true)
+  })
+})
+
+describe('결과 아이템 배지의 배지 포인트 (티켓 20261019_1314 2회, 운영 로직 14.1절)', () => {
+  it('결과를 바로 지급하면 지급된 개체 id로 후속을 한 번 부른다', async () => {
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD] })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success && result.resultStatus).toBe('granted')
+    expect(followUpMock).toHaveBeenCalledTimes(1)
+    expect(followUpMock).toHaveBeenCalledWith(expect.anything(), USER, ['generated-item-1'])
+  })
+
+  it('결과 배지가 둘이면 개체 id를 지급 순서대로 넘긴다', async () => {
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD, 'badge-reward-2'] })]
+    stub.slots = itemSlots()
+
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(followUpMock).toHaveBeenCalledTimes(1)
+    expect(followUpMock).toHaveBeenCalledWith(expect.anything(), USER, ['generated-item-1', 'generated-item-2'])
+  })
+
+  it('잠긴 채 나오는 결과도 같은 후속에 넘긴다 — 잠긴 개체를 거르는 것은 후속의 몫이다', async () => {
+    stub.recipes = [recipe({ reward_locked: true })]
+    stub.slots = itemSlots()
+
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(followUpMock).toHaveBeenCalledWith(expect.anything(), USER, ['generated-item-1'])
+  })
+
+  it('빈칸이 모자라 받지 않은 결과로 남으면 후속을 부르지 않는다(받을 때 준다)', async () => {
+    stub.usedSlots = 10
+    stub.maxSlots = 9
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD, 'badge-reward-2'] })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success && result.resultStatus).toBe('pending')
+    expect(followUpMock).not.toHaveBeenCalled()
+  })
+
+  it('결과 지급이 실패하거나 지급할 결과가 없으면 후속을 부르지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    stub.slots = itemSlots()
+
+    stub.grantRpcError = { message: 'boom' }
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD] })]
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    stub.grantRpcError = null
+    stub.recipes = [recipe({ reward_points: 30, reward_badge_ids: [] })]
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    errorSpy.mockRestore()
+
+    expect(followUpMock).not.toHaveBeenCalled()
+  })
+
+  it('레시피 미매칭(고정 포인트만)이나 소각 전 거절에서는 후속을 부르지 않는다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = [] // 어떤 투입도 충족될 수 없다
+    stub.failRewardPoints = 5
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    await combineRecipeAttempt(USER, 'no-such-recipe', [ITEM_1, ITEM_2])
+
+    expect(followUpMock).not.toHaveBeenCalled()
+  })
+
+  it('응답의 pointsAwarded는 레시피 보상 포인트 그대로이고 레시피 보상 지급은 한 번이다', async () => {
+    stub.recipes = [recipe({ reward_points: 40, reward_badge_ids: [REWARD] })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success && result.pointsAwarded).toBe(40)
+    // 배지 포인트는 후속(모킹)이 맡는다 — 이 파일의 awardPoints 모킹에는 레시피 보상만 들어온다
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+    expect(awardPointsMock).toHaveBeenCalledWith(USER, 40, 'combine_recipe_reward')
+  })
+
+  it('운영자 시험 믹스도 개체는 실제로 지급되므로 같은 후속을 부른다', async () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    stub.recipes = [recipe({ valid_from: future })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], { allowUnreleased: true })
+
+    expect(result.testMix).toBe(true)
+    expect(followUpMock).toHaveBeenCalledWith(expect.anything(), USER, ['generated-item-1'])
   })
 })

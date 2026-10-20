@@ -6,6 +6,9 @@
  * POST /api/combine/pending — 받지 않은 결과를 모두 받는다. 모두 들어갈 빈칸이 있어야 한다(없으면 409 `insufficient_slots`와
  *      `free`·`needed`). 지급·받음 표시는 `combine_claim_pending` 한 번이라 같은 결과를 두 번 지급하지 않는다.
  *
+ * 받기에 성공하면 받은 개체 가운데 열린 것의 배지 포인트를 일련번호마다 한 번 준다(`resultPointFollowUp.ts`, 티켓 20261019_1314 2회).
+ * 잠긴 개체는 주지 않는다 — 열 때 준다(`locked_item_open`).
+ *
  * POST(받기)만 이용 정지를 검사한다(403 `user_suspended`). GET은 정지 중에도 허용한다 — 내 기록 보기는 막지 않는다.
  *
  * `combine_claim_pending`은 service_role만 실행할 수 있다. 세션으로 유저를 확인한 뒤 서버 클라이언트(service role)로
@@ -16,6 +19,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { claimPendingResults, listPendingResults, type ClaimPendingErrorCode } from '@/lib/combine/pending'
+import { followUpCombineResultPoints } from '@/lib/combine/resultPointFollowUp'
 import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 
@@ -74,6 +78,9 @@ export async function POST() {
         { status }
       )
     }
+    // 받은 개체 가운데 열린 것의 배지 포인트를 일련번호마다 한 번 준다(티켓 20261019_1314 2회, 운영 로직 14.1절).
+    // 잠긴 개체는 열 때 준다. 포인트 처리가 실패해도 받기 응답은 그대로다. 던지지 않는다.
+    await followUpCombineResultPoints(service, user.id, result.itemIds)
     // 받은 만큼 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
     if (result.granted > 0) await notifyInventorySlotsLow(user.id, service)
     return NextResponse.json({ granted: result.granted, itemIds: result.itemIds })
