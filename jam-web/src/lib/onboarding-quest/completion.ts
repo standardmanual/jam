@@ -19,6 +19,7 @@ import type { UserOnboardingQuestRow } from '@/types/database'
 import { ONBOARDING_QUEST_ENABLED, ONBOARDING_COMPLETION_BADGE_ID } from './config'
 import { nextStepOf } from './progress'
 import { awardPoints } from '@/lib/points'
+import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { recordFeedEvent } from '@/lib/activity-feed'
 
 type QuestCompletionRow = Pick<UserOnboardingQuestRow, 'step_progress' | 'skipped_at' | 'completed_at'>
@@ -123,7 +124,7 @@ async function grantOnboardingQuestReward(
 
     const { data: badge, error: badgeError } = await supabase
       .from('badges')
-      .select('name, image_url, rarity, point_reward')
+      .select('name, image_url, rarity, point_reward, type, is_hidden, condition_json')
       .eq('id', ONBOARDING_COMPLETION_BADGE_ID)
       .is('deleted_at', null)
       .maybeSingle()
@@ -133,6 +134,14 @@ async function grantOnboardingQuestReward(
       console.error('[grantOnboardingQuestReward] 배지 정보 조회 실패:', badgeError?.message ?? '행 없음')
       return ONBOARDING_COMPLETION_BADGE_ID
     }
+
+    // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 새 행을 실제로 넣은 경우만 여기 온다(23505는 위에서 null 반환).
+    // 위 배지 정보 조회가 실패하면 유형·숨김·조건을 알 수 없어 점수를 세지 않는다(발급은 그대로다). 던지지 않아 완료 보상 결과를 바꾸지 않는다.
+    await awardBadgeReceiveScore(supabase, {
+      userId,
+      badge: { id: ONBOARDING_COMPLETION_BADGE_ID, type: badge.type, is_hidden: badge.is_hidden, condition_json: badge.condition_json },
+      origin: { triggeredBy: 'onboarding_quest' },
+    })
 
     const pointReward = badge.point_reward ?? 0
     if (pointReward > 0) {
