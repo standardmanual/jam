@@ -721,6 +721,10 @@ service_role만 접근한다.
   호출이 그 레시피의 최초 성공인가」이며, 두 유저가 동시에 같은 레시피를 성공해도 최초 표시는
   정확히 1행이다. 호출은 `combineRecipeAttempt()`가 보상·포인트 지급이 끝난 뒤 한다
   (`src/lib/combine/index.ts`).
+- RPC `record_combine_success_with_id`(같은 인자 5개 → `JSONB { id, is_recipe_first }`, 마이그레이션 254,
+  티켓 20261019_1315 3회) — 위 함수와 같은 동작에 방금 넣은 행의 id를 함께 돌려준다. 챕터 점수 «믹스 성공»의
+  원천 id가 이 행의 id라서 더했고, **앱은 지금 이 함수를 부른다**(9-3절). 위 함수는 바꾸지 않았다 — 옛
+  프로덕션 코드가 계속 부르므로 남겨 두고, 그 코드가 사라지는 묶음에서 지운다.
 - 유저 초기화(`resetUserData`)는 이 기록도 함께 지운다.
 
 > 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [docs/service/content/COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 참고.
@@ -1004,7 +1008,8 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - `p_occurred_on`은 값이 없으면 키째 생략한다(null을 보내지 않는다). 수량이 1 미만이면 부르지 않는다.
 - 챕터 오름 처리(소식·챕터 배지)는 하지 않고 `reachedChapters`를 돌려주기만 한다(티켓 20261019_1316).
 - `service_role`만 실행하므로 service 클라이언트로 부른다. 동기화 안에서는 주입된 클라이언트를 그대로 넘긴다.
-- `src/lib/chapter/source-id.ts`의 `deterministicSourceId(namespace, ...parts)`는 같은 입력에서 같은 UUID(SHA-256 앞 16바이트, 버전 8)를 만든다. 기록 표에 id가 없는 컬렉션 완성과 배지 받기가 쓴다(배지 받기는 2a회에 연결, 컬렉션 완성은 3회).
+- `src/lib/chapter/source-id.ts`의 `deterministicSourceId(namespace, ...parts)`는 같은 입력에서 같은 UUID(SHA-256 앞 16바이트, 버전 8)를 만든다. 기록 표에 id가 없는 컬렉션 완성과 배지 받기가 쓴다(배지 받기는 2a·2b회, 컬렉션 완성은 3회에 연결).
+- 호출 지점의 목록과 활동 종류별 한 모듈 규칙은 `src/lib/chapter/__tests__/score-wiring.test.ts`가 소스 검색으로 고정한다(점수 함수를 부르는 파일·횟수가 어긋나면 깨진다). 같은 시험이 221 규칙을 옮긴 가짜 DB 위에서 8종 활동의 중복 없음·키 충돌 없음·제외 규칙·모은 잼 주 경계·점수 실패 뒤 복구를 확인한다.
 
 | 활동 종류 | 호출 지점 | 원천 id | 날짜 | 상태 |
 |---|---|---|---|---|
@@ -1014,9 +1019,9 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `drop` | `app/api/drops/route.ts` POST(성공 뒤 `after()` 콜백) | `poi_drops.id`(`drop_id`) | 생략 | 연결됨(1회). 유저 드랍만(시스템 드랍은 앰비언트 배치라 이 라우트를 거치지 않는다) |
 | `pickup` | `app/api/drops/[dropId]/pickup/route.ts`(성공 뒤 `after()` 콜백) | 경로의 `dropId` | 생략 | 연결됨(1회). `isSelfPickup`이면 세지 않고, 시스템 드랍과 잠긴 채 받은 픽업은 센다. 드랍과 픽업은 활동 종류가 달라 같은 드랍 id로도 키가 겹치지 않는다 |
 | `badge_receive` | 새 발급 6곳(엔진 새 발급 `lib/badge-engine/index.ts`·`usageBadges.ts` `issueQualifyingBadges`·미션 보상 `lib/missions/rewards.ts`·컬렉션 보상 `lib/itembook/checker.ts`·온보딩 완료 `lib/onboarding-quest/completion.ts`·체크인 첫 획득 `lib/strava/sync.ts`) → 공용 함수 `lib/chapter/badgeReceive.ts` | (유저, 배지) 결정적 id. 반복형의 새 회차는 (유저, 배지, 활동 id) | 생략 | 새 발급 6곳은 연결됨(2a회). 반복형의 새 회차는 엔진의 `increment` 경로와 첫 발급 경로(같은 평가의 나머지 새 회차)에 연결됨(2b회, `awardBadgeReceiveOccurrenceScores`) |
-| `collection_complete_<등급>` | 컬렉션 장착 라우트·`lib/itembook/checker.ts` | (유저, 컬렉션, 등급) 결정적 id | 생략 | 예정(3회) |
-| `mix_success` | `lib/combine/index.ts` | `user_combine_success_logs.id`(새 DB 함수 필요) | 생략 | 예정(3회) |
-| `mission_complete` | `lib/missions/checker.ts` | `user_mission_completions.id` | 생략 | 예정(3회) |
+| `collection_complete_<등급>` | 컬렉션 장착 라우트 `app/api/itembooks/[id]/slot/route.ts` POST(성공 뒤 `after()` 콜백)와 동기화 보정 `lib/itembook/checker.ts`(`completedIds`마다, 완성 기록 upsert 뒤) → 공용 `lib/chapter/collection.ts` | (유저, 컬렉션, 등급) 결정적 id. 등급형이 아닌 컬렉션은 등급 `common` | 생략 | 연결됨(3회). 아래 «컬렉션 완성·믹스 성공·미션 완료 점수» |
+| `mix_success` | `lib/combine/index.ts` `recordCombineSuccess`(성공 기록 RPC 직후) → `lib/chapter/mix.ts` | `user_combine_success_logs.id`(`record_combine_success_with_id`가 돌려준 id) | 생략 | 연결됨(3회). 시험 믹스는 기록이 없어 세지 않고 빈손 성공은 센다 |
+| `mission_complete` | `lib/missions/checker.ts`(`mission_complete` RPC가 `completed`를 돌려준 직후, 보상 지급 앞) | `user_mission_completions.id`(`completionId`) | 생략 | 연결됨(3회). `already_completed`·거절·계약 밖 응답은 세지 않는다 |
 
 #### 배지 받기 점수의 규칙 (티켓 20261019_1315 2a회, 운영 로직 12.2절)
 새 발급 6곳은 `user_activity_badges`에 **새 행을 실제로 넣은 뒤에만** `lib/chapter/badgeReceive.ts`의 `awardBadgeReceiveScore(supabase, { userId, badge: { id, type, is_hidden, condition_json }, origin: { triggeredBy, dryRun } })`를 부른다. 23505·이미 보유·dryRun은 점수 대상이 아니다. 제외 규칙은 이 함수 한 곳에 있고, 아래에 걸리면 `chapter_add_score`를 부르지 않는다(위에서부터 검사, 이용 정지 확인이 마지막 DB 조회).
@@ -1035,6 +1040,28 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - **미보유 반복형의 첫 발급 경로**(`action === 'issue'`): 한 번의 평가에서 같은 반복형의 새 회차가 여러 건이면(첫 동기화 등) 첫 발급 행이 그 회차를 모두 `earn_count`·`earn_history`에 담는다. 첫 획득의 (유저, 배지) 키가 계기 활동(`triggerActivity`) 하나를 대신하므로, 이번 배치의 나머지 새 회차만 활동 id 키로 센다. 계기 활동은 두 번 세어지지 않는다. 이번 배치 밖에서 이미 쌓여 있던 과거 회차는 «새 회차»가 아니라 세지 않는다(예: 카탈로그에 새로 더한 반복형 배지, 사다리 배지의 임계값을 처음 넘는 평가에서 저장된 이력에만 있던 회차).
 - **한계**: RPC가 거절한 과거 회차가 소급 가산될 수 있는 작은 틈이 있다. `added > 0`인 배치에 RPC가 «이미 `earn_history`에 있다»며 세지 않은 회차가 섞여 있으면(`earn_history` 상한 200 밖으로 밀렸다가 다시 들어온 회차 등) 그 회차가 처음 세어지는 것이면 소급 가산되고, 첫 획득 때 (유저, 배지) 키로 센 계기 활동이 다시 들어오면 한 번 더 세어진다. 동기화가 이미 처리한 활동 id를 걸러내므로(`getProcessedStravaIds`) 드문 틈이다. 어드민이 보유 기록을 초기화한 뒤 계기 활동이 달라져도 같은 식으로 한 번 더 세어질 수 있다. 늘어난 활동 id 목록을 돌려주는 새 DB 함수를 두면 정확해지나 이번에는 더하지 않았다.
 - 회차 점수는 회차마다 `chapter_add_score` 호출이 한 번씩 나간다(5건씩 나눠 동시에 보낸다). 한 번에 회차가 많은 첫 동기화는 응답이 조금 늘 수 있다. 한 번의 평가에서 회차가 200건을 넘으면 오래된 회차는 `earn_count`에는 들어가지만 점수는 세지 않는다(점수는 `earn_history`에 심는 최근 200건에 맞춰 보낸다).
+
+#### 컬렉션 완성·믹스 성공·미션 완료 점수 (티켓 20261019_1315 3회, 운영 로직 12.2절)
+위 표의 마지막 세 줄이다. 셋 다 던지지 않고, 점수 쪽 실패는 본 동작의 결과를 바꾸지 않고 `chapter_score_failed`로만 남는다.
+
+**컬렉션 완성** (`lib/chapter/collection.ts`)
+- **원천 id**: 완성 기록 표(`user_item_book_completions`, `user_item_book_tier_completions`)에 id가 없어 `deterministicSourceId('collection_complete', userId, itemBookId, tier)`로 만든다. 활동 종류는 등급에 따라 `collection_complete_common|rare|epic|mystic`(`kinds.ts`의 변환). 등급이 네 값 밖이면 다른 등급으로 대신 세지 않고 점수 없이 기록한다.
+- **등급형이 아닌 컬렉션(`tier_mode` 꺼짐, 공용 DB 100개 전부)은 `common`(100)으로 센다**(사용자 결정 4). 나중에 같은 컬렉션이 등급형이 되어 common 등급을 완성해도 (유저, 컬렉션, common)이 같은 키라 같은 완성이 두 번 세어지지 않는다. rare 이상은 새 완성이라 따로 센다.
+- **«이번에 새로 완성했는가»**: 등급형은 장착 RPC `slot_item_into_book_tiered`가 돌려주는 `completed_tier`(그 등급을 처음 완성했을 때만 값이 있음)이다. 옛 컬렉션의 장착 RPC는 완성 여부를 돌려주지 않아서, 장착 **전에** `user_item_book_completions`에 기록이 있었는지 읽어 두고(`hasLegacyCollectionCompletion`) 장착 **후**에 기록이 생겼을 때만 센다. 이미 완성한 유저가 다시 장착해도 소급 가산하지 않는다(완성 기록은 장착을 풀어도 남는다). 장착 전·후 기록을 읽지 못하면 소급 가산을 피하려고 세지 않고 기록한다.
+- **호출 지점 둘**: 장착 라우트의 응답 뒤 `after()` 콜백(`awardSlotCollectionScore`, 보상 배지 발급·JAM! 판정과 `allSettled`로 함께)과 동기화 보정(`checkItemBookCompletion`의 `completedIds`, 이미 «이번에 새로 완성한 옛 컬렉션»만 담는다. 등급형은 건너뛰고 등급 완성은 장착 RPC만 기록한다). 같은 완성을 두 지점이 모두 보내도 같은 키라 한 번만 센다.
+- **이용 정지**: 컬렉션 장착(POST)은 이용 정지 중이면 RPC 전에 403 `user_suspended`(문구 `d.suspension.itemBookSlotBlocked`)이다. 장착 RPC(179·222)가 정지를 보지 않아 정지 중에도 완성 점수가 생길 수 있었기 때문이다(12.2절 전제). 정지 조회가 실패하면 500으로 장착시키지 않는다. 완성을 만들지 않는 해제(DELETE)·교체(PATCH)는 막지 않는다.
+
+**믹스 성공** (`lib/chapter/mix.ts`)
+- 성공 기록 RPC를 `record_combine_success_with_id`(마이그레이션 254, 위 `user_combine_success_logs`)로 바꿨다. 돌려받은 `{ id, is_recipe_first }`가 알려진 모양(`id`가 UUID 문자열, `is_recipe_first`가 boolean)일 때만 그 `id`를 원천 id로 센다. 모양이 어긋나거나 RPC가 오류·예외를 내면 점수를 세지 않고 `chapter_score_failed`(원천 id null)로 남긴다 — 그 믹스의 성공 행이 없거나 id를 알 수 없어 같은 원천 id로 다시 보낼 수도 없다.
+- 시험 믹스(`testMix`, 운영자의 공개 전 레시피 믹스)는 성공 기록을 남기지 않는 경로라 이 함수를 부르지 않아 점수에서 빠진다. 빈손 성공(결과 배지가 비어도 성공)과 받지 않은 결과로 남은 성공은 성공 행이 있어 센다. 점수는 재료 소각·보상 지급·후속 처리(`followUpCombineResultPoints`) 뒤에 나가므로 그 결과를 바꾸지 않는다.
+
+**미션 완료** (`lib/missions/checker.ts`)
+- `mission_complete` RPC(249)가 `completed`와 `completion_id`를 돌려준 직후, `grantMissionRewards` **앞**에서 센다(보상 지급이 던져 `continue`해도 점수를 건너뛰지 않도록). `already_completed`·거절·계약 밖 응답은 완료 기록이 새로 생기지 않아 세지 않는다.
+
+**한계와 알려진 틈**
+- 점수 호출이 실패하면 그 일의 점수는 비어 있고(`chapter_score_failed` 기록만 남음) 같은 원천 id로 다시 보낼 수 있다. 자동 보정은 후속 티켓 `20261020_1010`이 다룬다.
+- 같은 컬렉션을 두 요청이 동시에 장착하면 둘 다 «새로 완성»으로 읽을 수 있으나 같은 키라 한 번만 센다.
+- 드랍 5점에는 상한이 없어 «드랍 → 자기 줍기(0점) → 다시 드랍»을 반복하면 점수가 계속 쌓일 수 있다. 점수 설계의 문제라 이 연결의 범위 밖이다(밸런스 설정 묶음 7과 운영 로직 12.2절 재검토).
 
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052

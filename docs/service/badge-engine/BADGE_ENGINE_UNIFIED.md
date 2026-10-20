@@ -1882,7 +1882,9 @@ POST /api/admin/badges/reevaluate-all
   `recipe_not_found`로 거절된다(티켓 20261001_1157). 운영자만 예외로 통과하며 이는 기록에 남지 않는
   시험 믹스다(티켓 20261001_1159).
   **성공도 `user_combine_success_logs`에 1건 적재된다**(티켓 20261001_0631, 마이그레이션 200) —
-  ①의 보상·포인트 지급이 끝난 뒤 `record_combine_success()` RPC를 한 번 부르며, 보상이 전부
+  ①의 보상·포인트 지급이 끝난 뒤 `record_combine_success_with_id()` RPC(마이그레이션 254, 옛
+  `record_combine_success()`(200)와 같은 동작에 방금 넣은 성공 행의 id를 함께 돌려준다. 챕터 점수
+  «믹스 성공»의 원천 id, 티켓 20261019_1315 3회)를 한 번 부르며, 보상이 전부
   비어 재료만 소각된 빈손 성공도 성공 1건이다. RPC는 그 레시피의 **최초 성공자 표시**
   (`is_recipe_first`)를 같은 호출 안에서 원자적으로 정한다 — `(recipe_id) WHERE is_recipe_first`
   부분 유니크 인덱스가 레시피마다 최초 표시 1행만 허용하므로 두 유저가 동시에 같은 레시피를
