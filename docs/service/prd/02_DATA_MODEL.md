@@ -855,6 +855,24 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 
 **한계.** 음수 방지는 이 함수를 거치는 새 경로에서만 유효하다. `award_points()`와 `point_wallets`는 바꾸지 않았고 옛 프로덕션 코드는 이 함수를 모른 채 계속 `award_points()`로 회수하므로, 새 앱이 배포되고 옛 코드가 사라질 때까지 그 경로는 막히지 않는다. 모든 경로를 막는 `point_wallets.balance >= 0` CHECK는 옛 코드를 정리하는 묶음 6에서 더한다(사용자 결정, 2026-10-20). 일괄 미리보기의 `negativeBalanceCount`와 그 안내 문구는 5-8에서 고친다.
 
+### 배지 포인트(`badge_point_reward`)를 주는 곳 (JAM 2.0, 티켓 20261019_1314, 운영 로직 14.1절)
+금액은 모두 `badges.point_reward`다(원장 `source_badge_id`에 그 배지가 남는다). 지급은 `awardPoints`로 하고 실패해도 배지 발급·믹스 결과를 되돌리지 않는다(로그와 `engine_decision_log`만). 앱 코드의 지급 호출은 아래가 전부다.
+
+| 경로 | 주는 때 | 코드 |
+|---|---|---|
+| 액티비티 배지 | 받을 때 한 번(반복형을 다시 받을 때는 없음) | `lib/badge-engine/index.ts`, `lib/badge-engine/usageBadges.ts` |
+| 체크인 배지 | 처음 받을 때 한 번 | `lib/strava/sync.ts` |
+| 아이템 배지: 시스템 드랍 | 받을 때 | `lib/drop-engine/index.ts`(`tryItemDrop`) |
+| 아이템 배지: 동기화 지급·보류 고르기 | 열린 채 받을 때(잠긴 채 받으면 없음) | `lib/drop-engine/issueFollowUp.ts`(`recordIssuedRewards`) |
+| 아이템 배지: 미션 보상 | 열린 채 받을 때, `point_awarded_at`으로 중복 방지 | `lib/missions/itemRewardFollowUp.ts` |
+| 아이템 배지: **믹스 결과**(2회) | 열린 채 받을 때, `point_awarded_at`으로 중복 방지. 빈칸이 모자라 받지 않은 결과로 남으면 받을 때 | `lib/combine/resultPointFollowUp.ts` |
+| 아이템 배지: 잠긴 채 받은 개체 | 열 때 일련번호마다 한 번, `point_awarded_at`으로 중복 방지 | DB `locked_item_open`(마이그레이션 235) |
+| 컬렉션 보상 배지(`item_books.reward_badge_id`, 등급 보상 배지 포함) | `user_activity_badges`에 **새로 넣을 때만**. 이미 보유·23505는 지급 없음, 보정분도 새로 넣을 때는 준다 | `lib/itembook/checker.ts`(`issueItemBookRewardBadges`, 동기화 보정과 장착 직후 발급이 함께 쓴다) |
+| 미션 보상 배지 | 미션 완료 때 | `lib/missions/rewards.ts` |
+| 퀘스트 완료 배지 | 완료 때 | `lib/onboarding-quest/completion.ts` |
+
+포인트가 0인 배지는 지급을 부르지 않는다. 믹스의 레시피 보상(`combine_recipe_reward`)과 실패 보상(`combine_fail_reward`), 컬렉션 완성 포인트(`item_book_completion_point_reward`), 미션 포인트(`mission_point_reward`)는 이 표의 배지 포인트가 아니다. 공개 전 레시피의 운영자 시험 믹스도 개체를 실제로 주므로 같은 후속이 배지 포인트를 준다(시험 믹스의 레시피 보상 포인트 지급 변경은 이번 범위가 아니다).
+
 ### 9-2. 잼 (JAM 2.0) — 마이그레이션 220, 티켓 20261016_2338
 포인트 원장 구조를 본떴다. 운영 로직 4.2절 "원장과 기록"이 근거다. 2026-10-17 공용 DB에 적용했다.
 
@@ -934,7 +952,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `inventory_item_id` | 받아서 생긴 개체(받은 뒤에만) |
 | `created_at`·`resolved_at` | 생긴 때, 받은 때(8.5절) |
 
-함수: `combine_grant_results(p_user_id, p_recipe_id, p_badge_ids, p_locked)`는 결과 지급의 단일 경로다. 결과 개수 이상의 빈칸이 있으면 모두 기한 없이(`expires_at` NULL) 지급하고 `{status: 'granted', itemIds}`, 모자라면 일부만 주지 않고 전부 이 표에 남기며 `{status: 'pending', pendingCount, free, needed}`, 지급할 결과가 없으면 `{status: 'none'}`을 돌려준다. 삭제된 배지는 건너뛴다. `combine_claim_pending(p_user_id)`는 받지 않은 결과를 모두 받는다 — 모두 들어갈 빈칸이 있어야 하고(`insufficient_slots`, free·needed), 이용 정지 중이면 `user_suspended`, 받을 것이 없으면 `no_pending`이다. 인벤토리 행과 결과 행을 잠그고 `pending → claimed`로 바꾸므로 같은 결과를 두 번 지급하지 않는다. 앱은 두 함수를 한 번씩 부르기만 하고 빈칸을 나눠 세지 않는다(`lib/combine/index.ts`·`lib/combine/pending.ts`, API `GET·POST /api/combine/pending`). 받지 않은 결과가 있는 동안 새 믹스를 막는 것은 앱 코드의 몫이다(`/api/combine` 409 `pending_results_exist`). `/api/combine` 성공 응답에서 잠긴 채 지급된 결과(`resultBadges[].locked`)는 지급된 개체의 `inventory_items.unlock_required`를 읽어 선택 칸 `unlockRequired`로 싣는다(읽지 못하면 칸을 뺀다).
+함수: `combine_grant_results(p_user_id, p_recipe_id, p_badge_ids, p_locked)`는 결과 지급의 단일 경로다. 결과 개수 이상의 빈칸이 있으면 모두 기한 없이(`expires_at` NULL) 지급하고 `{status: 'granted', itemIds}`, 모자라면 일부만 주지 않고 전부 이 표에 남기며 `{status: 'pending', pendingCount, free, needed}`, 지급할 결과가 없으면 `{status: 'none'}`을 돌려준다. 삭제된 배지는 건너뛴다. `combine_claim_pending(p_user_id)`는 받지 않은 결과를 모두 받는다 — 모두 들어갈 빈칸이 있어야 하고(`insufficient_slots`, free·needed), 이용 정지 중이면 `user_suspended`, 받을 것이 없으면 `no_pending`이다. 인벤토리 행과 결과 행을 잠그고 `pending → claimed`로 바꾸므로 같은 결과를 두 번 지급하지 않는다. 앱은 두 함수를 한 번씩 부르기만 하고 빈칸을 나눠 세지 않는다(`lib/combine/index.ts`·`lib/combine/pending.ts`, API `GET·POST /api/combine/pending`). 받지 않은 결과가 있는 동안 새 믹스를 막는 것은 앱 코드의 몫이다(`/api/combine` 409 `pending_results_exist`). `/api/combine` 성공 응답에서 잠긴 채 지급된 결과(`resultBadges[].locked`)는 지급된 개체의 `inventory_items.unlock_required`를 읽어 선택 칸 `unlockRequired`로 싣는다(읽지 못하면 칸을 뺀다). **두 함수는 포인트를 주지 않는다.** 아이템 배지의 포인트는 열린 개체를 받을 때 한 번, 잠긴 개체는 열 때(`locked_item_open`) 준다. 앱이 새 개체를 준 뒤 `lib/combine/resultPointFollowUp.ts`의 `followUpCombineResultPoints`가 지급된 개체 id로 `inventory_items.locked`·`point_awarded_at`을 읽어 열린 개체에만 배지의 `point_reward`를 `badge_point_reward`로 주고 `point_awarded_at`을 적는다(믹스 성공은 `granted`일 때 `lib/combine/index.ts`가, 받지 않은 결과는 받을 때 `POST /api/combine/pending`이 부른다, 티켓 20261019_1314 2회). 응답의 `pointsAwarded`는 레시피 보상 포인트(`combine_recipe_reward`) 그대로이고 배지 포인트를 더하지 않는다.
 
 #### sync_pending_items — 마이그레이션 229, 티켓 20261017_1425
 동기화로 받을 아이템 배지 전체가 인벤토리 빈칸보다 많을 때 지급하지 않고 모두 담아 두는 보류 목록(운영 로직 6.4절). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다. 동기화(`syncIssueRun.ts`)가 쓰고, 고르기(`resolve_sync_pending_items`)가 닫는다. 동기화 보류만 위한 작은 테이블이며 미션 보상·프로모션·믹스 결과의 «받지 않은 보상»은 그 기능을 만드는 묶음 3·5에서 같은 패턴으로 잇는다.

@@ -643,6 +643,8 @@ POST /api/combine { recipe_id: string, item_ids: string[] }  (item_ids 1~10개, 
 6-a. 매칭 성공
    reward_badge_ids를 전부 지급한다(만료값은 7-1 「만료값」 표의 믹스 보상 행, 인벤토리에 칸이 없으면 그 배지는 건너뛴다).
    reward_points가 0보다 크면 지급한다(사유 combine_recipe_reward).
+   결과 아이템 배지가 열린 채 지급되면 그 배지의 point_reward도 일련번호마다 한 번 지급한다(사유 badge_point_reward,
+   inventory_items.point_awarded_at으로 중복 방지, 잠긴 개체는 열 때, 받지 않은 결과는 받을 때 — 티켓 20261019_1314 2회).
 6-b. 미매칭(no_recipe_match)
    combine_policy.fail_reward_points가 0보다 크면 지급한다(사유 combine_fail_reward).
    실패 이력을 기록한다.

@@ -1766,7 +1766,7 @@ POST /api/admin/badges/reevaluate-all
 | 채우기 | `locked_item_fill`. 판정은 `jam_fill_decide`(기본값 남은 양, 가진 잼이 모자라면 가진 만큼, 줄인 양, 남은 양 초과 거부)이고 `capsule_fill`과 같은 규칙이다. 한 번에 개체 하나, 나눠 채울 수 있고 채운 잼은 되돌리지 않는다. `jam_apply(locked_item_badge_fill, 음수)` 한 줄, 개체의 `unlock_filled` 갱신, 이력(`filled`) 한 줄이 한 트랜잭션이다 |
 | 열기 | `locked_item_open`. 다 채웠으면 같은 개체를 열린 상태로 바꾼다(`locked = false`, `unlocked_at` 기록, 일련번호 그대로). 이미 인벤토리 칸을 차지하므로 **빈칸이 필요 없다**(캡슐과 다른 점). 개체 행 잠금으로 동시에 두 번 열어도 한 번만 열리고, 다시 잠기지 않는다 |
 | 필요한 양 | 배정 때 개체에 고정된 `unlock_required`다(§3.0 «잠김 배정»). 열 때 배지 값을 다시 읽지 않는다 |
-| 포인트 | 배지의 `point_reward`는 열린 상태가 될 때 **연 유저에게 한 번만** 준다(`award_points`, 사유 `badge_point_reward`). `inventory_items.point_awarded_at`이 «이미 줬다» 기록이고 열기와 같은 트랜잭션에서 채운다. 잠긴 채 받은 개체는 연 때 주고, 열린 채 받은 개체는 받을 때 준다(`recordIssuedRewards`). 포인트 지급이 실패하면 열기 전체가 되돌려진다. DB 안에서 주므로 포인트 알림은 나가지 않는다 |
+| 포인트 | 배지의 `point_reward`는 열린 상태가 될 때 **연 유저에게 한 번만** 준다(`award_points`, 사유 `badge_point_reward`). `inventory_items.point_awarded_at`이 «이미 줬다» 기록이고 열기와 같은 트랜잭션에서 채운다. 잠긴 채 받은 개체는 연 때 주고, 열린 채 받은 개체는 받을 때 준다(`recordIssuedRewards`, 믹스 결과는 `followUpCombineResultPoints` — 티켓 20261019_1314 2회). 포인트 지급이 실패하면 열기 전체가 되돌려진다. DB 안에서 주므로 포인트 알림은 나가지 않는다 |
 | 이용 정지 | 앱이 `assertNotSuspended`로 RPC보다 먼저 막고 DB 함수가 한 번 더 막는다(403 `user_suspended`). 채운 양은 그대로 남는다. 상태 조회는 정지 중에도 허용한다 |
 | 이력 | `inventory_item_events`에 `filled`(그 번에 채운 양, 채운 뒤 누적)와 `unlocked`(준 포인트)를 남긴다. 잠긴 아이템 배지를 연 횟수(액티비티 배지 조건)는 `unlocked` 행을 센다 |
 | 응답 | 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다(조회·채우기·거절 응답). 열기 성공 응답에만 개체 정보를 싣는다 |
@@ -2410,7 +2410,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 | 분자 | `s.item_book_id = 대상 북` 슬롯 중 `b.item_book_id = 대상 북`인 배지 (중복 제거) | 북별 채운 집합(`filledByBook`)과 분모의 교집합. 슬롯은 `s.item_book_id`의 북에만, checkin 획득 이력은 배지가 속한 북에만 넣는다 |
 | 배지 컬렉션이 A→B로 바뀐 뒤 | A에 장착된 X는 B 분자에 들지 않는다 | 같음 (이 티켓 이전에는 X가 B 분자에 들어 B가 잘못 완성될 수 있었다) |
 | checkin 배지 | 슬롯 대상 아님 | 획득 이력이 1회 이상이면 채움 |
-| 완성 기록 | 최초 삽입 때만 잼 포인트 지급. 보상 배지는 주지 않는다(장착 라우트가 응답 뒤 `runSlotRewardIssue`로 발급) | 새 완성은 기록만 upsert하고, 완성 기록이 이미 있는 컬렉션도 보상 배지가 없으면 `issueItemBookRewardBadges`로 따라잡아 발급한다. 잼 포인트는 주지 않는다 |
+| 완성 기록 | 최초 삽입 때만 잼 포인트 지급. 보상 배지는 주지 않는다(장착 라우트가 응답 뒤 `runSlotRewardIssue`로 발급) | 새 완성은 기록만 upsert하고, 완성 기록이 이미 있는 컬렉션도 보상 배지가 없으면 `issueItemBookRewardBadges`로 따라잡아 발급한다. 잼 포인트는 주지 않는다. 보상 배지를 새로 넣을 때만 그 배지의 `point_reward`를 `badge_point_reward`로 준다(이미 보유·23505는 없음, 티켓 20261019_1314 2회) |
 | 소프트 삭제 배지 | 분모·분자에서 제외 | 분모·분자에서 제외 (2026-10-17 통일, 티켓 20261016_2340 2회가 티켓 20260921_1114를 닫는다) |
 
 `computeBookCompletion`의 `filledByBook` 옵션이 북별 분자 계산을 맡는다. 북별 집합은 순수 함수 `buildFilledByBook`
