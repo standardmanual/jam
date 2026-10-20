@@ -9,6 +9,10 @@
  *  - 포인트 지급이 실패해도 방문 기록·피드는 그대로 진행하는지 고정한다.
  * `record_checkin_earn` 자체의 규칙(잠금·중복)은 마이그레이션 241의 롤백 실측이 확인했다 — 여기서는 앱이 응답을 어떻게 쓰는지만 본다.
  *
+ * 챕터 점수 «배지 받기»(티켓 20261019_1315 2a회, 운영 로직 12.2절): 체크인 배지는 반복 획득되지만 점수는 **처음 받을 때만** 센다 —
+ * `is_first`일 때만 공용 함수 `awardBadgeReceiveScore`를 부른다(다시 지나가기·같은 활동 재동기화(duplicate)·공개 기간 밖·방문 기록 오류는 부르지 않는다).
+ * 점수 쪽이 실패해도 방문 기록·포인트·피드는 그대로다. 거르는 규칙(유형·숨김·정지 등)은 `lib/chapter/__tests__/badge-receive.test.ts`가 고정한다 — 여기서는 모킹한다.
+ *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-checkin-earn.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -23,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   recordFeedEvent: vi.fn<(userId: string, type: string, metadata: Record<string, unknown>, at: string, activityId: number) => Promise<void>>(
     async () => {}
   ),
+  awardBadgeReceiveScore: vi.fn<(supabase: unknown, input: unknown) => Promise<unknown>>(async () => ({ status: 'scored' })),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -51,6 +56,9 @@ vi.mock('@/lib/activity-feed', () => ({
 vi.mock('@/lib/points', () => ({
   awardPoints: (userId: string, amount: number, reason: string, options?: unknown) =>
     mocks.awardPoints(userId, amount, reason, options),
+}))
+vi.mock('@/lib/chapter/badgeReceive', () => ({
+  awardBadgeReceiveScore: (supabase: unknown, input: unknown) => mocks.awardBadgeReceiveScore(supabase, input),
 }))
 vi.mock('@/lib/notifications', () => ({
   createNotification: vi.fn(async () => {}),
@@ -197,6 +205,7 @@ const earnRows = (inserts: Inserts) => inserts.filter((i) => i.table === 'user_c
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.awardPoints.mockResolvedValue({ id: 'tx-1' })
+  mocks.awardBadgeReceiveScore.mockResolvedValue({ status: 'scored' })
   matchedPoisFixture = [{ id: 'poi-1', name: '북한산', linked_badge_id: 'badge-1' }]
 })
 
@@ -327,5 +336,115 @@ describe('체크인 — 공개 기간은 활동 시작 시각 기준이고 기�
     )
 
     expect(earnRows(inserts).map((i) => i.payload.triggered_by_strava_id)).toEqual([1])
+  })
+})
+
+describe('체크인 — 챕터 점수 «배지 받기»는 처음 받을 때만 센다 (티켓 20261019_1315 2a회)', () => {
+  it('처음 받으면 배지의 id·유형과 출처를 넘겨 점수 함수를 한 번 부른다', async () => {
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge()], inserts })
+
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(mocks.awardBadgeReceiveScore).toHaveBeenCalledTimes(1)
+    expect(mocks.awardBadgeReceiveScore).toHaveBeenCalledWith(supabase, {
+      userId: 'user-1',
+      badge: { id: 'badge-1', type: 'checkin' },
+      origin: { triggeredBy: 'strava_sync' },
+    })
+  })
+
+  it('포인트가 0인 배지도 처음 받으면 센다 (점수는 포인트와 별개다)', async () => {
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge({ point_reward: 0 })], inserts })
+
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(mocks.awardBadgeReceiveScore).toHaveBeenCalledTimes(1)
+  })
+
+  it('다시 지나가면(이미 방문 기록이 있으면) 점수를 부르지 않는다', async () => {
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge()], priorCounts: { 'badge-1': 1 }, inserts })
+
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(earnRows(inserts)).toHaveLength(1)
+    expect(mocks.awardBadgeReceiveScore).not.toHaveBeenCalled()
+  })
+
+  it('같은 동기화의 두 번째 활동은 방문 기록만 늘고 점수는 첫 활동에서만 센다', async () => {
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge()], inserts })
+
+    await processFetchedActivities(
+      supabase,
+      'user-1',
+      'token',
+      [makeRawActivity(1, '2026-09-10T00:00:00Z'), makeRawActivity(2, '2026-09-11T00:00:00Z')],
+      false,
+      'sync'
+    )
+
+    expect(earnRows(inserts)).toHaveLength(2)
+    expect(mocks.awardBadgeReceiveScore).toHaveBeenCalledTimes(1)
+  })
+
+  it('같은 활동을 다시 동기화(duplicate)해도 점수 호출이 늘지 않는다', async () => {
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge()], inserts })
+
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(mocks.awardBadgeReceiveScore).toHaveBeenCalledTimes(1)
+  })
+
+  it('서로 다른 체크인 배지를 처음 받으면 배지마다 한 번씩 센다', async () => {
+    matchedPoisFixture = [
+      { id: 'poi-1', name: '북한산', linked_badge_id: 'badge-1' },
+      { id: 'poi-2', name: '관악산', linked_badge_id: 'badge-2' },
+    ]
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge(), makeBadge({ id: 'badge-2', name: '관악산 체크인' })], inserts })
+
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(mocks.awardBadgeReceiveScore.mock.calls.map(([, input]) => (input as { badge: { id: string } }).badge.id)).toEqual(['badge-1', 'badge-2'])
+  })
+
+  it('공개 기간 밖 활동은 없던 일이라 점수를 부르지 않는다', async () => {
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge({ valid_from: '2026-10-01T00:00:00Z' })], inserts })
+
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(mocks.awardBadgeReceiveScore).not.toHaveBeenCalled()
+  })
+
+  it('방문 기록 함수가 오류를 돌려주면 점수를 부르지 않는다', async () => {
+    const inserts: Inserts = []
+    const base = makeFakeSupabase({ badges: [makeBadge()], inserts })
+    const supabase = {
+      from: (t: string) => (base as unknown as { from: (t: string) => unknown }).from(t),
+      rpc: async () => ({ data: null, error: { message: 'db down' } }),
+    } as unknown as SupabaseClient
+
+    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(mocks.awardBadgeReceiveScore).not.toHaveBeenCalled()
+  })
+
+  it('점수 호출이 실패(failed)여도 방문 기록·포인트·피드는 그대로 진행한다', async () => {
+    mocks.awardBadgeReceiveScore.mockResolvedValue({ status: 'failed' })
+    const inserts: Inserts = []
+    const supabase = makeFakeSupabase({ badges: [makeBadge({ point_reward: 50 })], inserts })
+
+    const result = await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+
+    expect(earnRows(inserts)).toHaveLength(1)
+    expect(mocks.awardPoints).toHaveBeenCalledTimes(1)
+    expect(mocks.recordFeedEvent).toHaveBeenCalledTimes(1)
+    expect(result.earnedBadgeIds).toContain('badge-1')
   })
 })

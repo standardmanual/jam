@@ -28,6 +28,7 @@ import { issueSyncItemBadges } from '@/lib/drop-engine/syncIssueRun'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { isActivityWithinBadgeWindow } from '@/lib/poi/checkin-window'
 import { awardPoints } from '@/lib/points'
+import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { findCompletableItemBooks } from '@/lib/itembook/completable'
 import { checkMissions } from '@/lib/missions/checker'
@@ -1041,6 +1042,10 @@ export async function processFetchedActivities(
       // (awardPoints가 실패를 기록하고 null을 돌려준다 — 수동 재처리 대상).
       if (isFirstEarn) {
         await awardPoints(userId, badge.point_reward, 'badge_point_reward', { sourceBadgeId: badge.id })
+        // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 체크인 배지는 반복 획득되지만 점수는 **처음 받을 때만** 센다 —
+        // 두 번째부터는 `is_first`가 false라 여기 오지 않는다(같은 활동 재동기화는 위 `duplicate`에서 이미 건너뛴다). 체크인 배지는 숨김일 수 없고(DB 제약 243)
+        // 조건이 없어 `is_hidden`·`condition_json`을 읽지 않는다. 던지지 않아 방문 기록·피드·응답을 바꾸지 않는다.
+        await awardBadgeReceiveScore(supabase, { userId, badge: { id: badge.id, type: badge.type }, origin: { triggeredBy: 'strava_sync' } })
       }
 
       poiBadgesEarned++
