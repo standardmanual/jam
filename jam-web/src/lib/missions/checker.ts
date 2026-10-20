@@ -4,6 +4,7 @@
  * Strava 동기화 직후 활성 미션 순회 → 참가 중인 미션 progress 업데이트 → 달성 시 완료 처리
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { awardChapterScore } from '@/lib/chapter/score'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { createNotification, groupedTargetsKey, scopedGroupKey } from '@/lib/notifications'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
@@ -267,6 +268,11 @@ export async function checkMissions(
     completedMissionIds.push(mission.id)
     completedMissions.push({ missionId: mission.id, completionId: outcome.completionId })
     console.info(`[checkMissions] 미션 달성 — userId: ${userId}, mission: ${mission.title}`)
+
+    // 챕터 점수 «미션 완료»(티켓 20261019_1315 3회, 운영 로직 12.2절) — 원천 id는 완료 기록 id(`user_mission_completions.id`)라 같은 완료를 다시 보내도 한 번만 센다.
+    // 이미 완료한 미션(`already_completed`)은 위에서 건너뛰어 여기에 오지 않는다. 보상 지급이 던져 아래에서 `continue`해도 점수를 건너뛰지 않도록 보상 지급 앞에서 센다.
+    // `awardChapterScore`는 던지지 않고 실패를 기록만 남기므로 완료 기록·보상 지급·피드는 그대로다.
+    await awardChapterScore(supabase, { userId, kind: 'mission_complete', sourceId: outcome.completionId })
 
     // 보상 지급 (Phase13) — 설정된 배지 전부(활동 배지는 중복 스킵, 아이템 배지는 새 개체로 지급 또는 받지 않은 보상으로 기록) + 배지 포인트 + 미션 포인트.
     // 완료 기록은 위에서 이미 남았다. 지급이 던져도 이 미션만 기록하고 다음 미션을 이어 판정한다(티켓 20261019_1313).
