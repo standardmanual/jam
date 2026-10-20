@@ -1530,6 +1530,8 @@ export const ko = {
     /** R3 — 유저 노출 문구의 화폐 단위는 「포인트」다(「JAM 포인트」·「P」 금지) */
     slotPoints: '{amount} 포인트',
     slotRank: '{rank}위',
+    /** 챕터 오름 소식 — 「챕터 3에 올랐어요」 */
+    slotChapter: '챕터 {chapterNo}',
     slotDaysOrdinal: '{days}일째',
     slotFirstBadge: '첫 배지',
     slotDay1: '하루',
@@ -1607,6 +1609,10 @@ export const ko = {
     /** 트라이브 변경에 따른 참가 취소(운영 로직 13.2절 문구). 이미 받은 보상은 그대로라 보상은 말하지 않는다. 착지는 목록이다(상세는 대상이 아니면 404) */
     msgMissionParticipationCancelled: '트라이브가 바뀌어 「{missionTitle}」 미션 참가가 취소됐어요',
     msgMissionParticipationCancelledGrouped: '트라이브가 바뀌어 미션 {count} 참가가 취소됐어요',
+    /** 챕터 오름(티켓 20261019_1316, 운영 로직 12.3절). 챕터 이름은 이름 표가 비어 있어 싣지 않는다. 착지는 내 프로필이다 */
+    msgChapterUp: '축하해요! {chapter}에 올랐어요',
+    /** payload의 챕터 번호가 비었거나 손상됐을 때 — 「챕터 0에」 같은 문장을 만들지 않는다 */
+    msgChapterUpNoNumber: '축하해요! 챕터가 올랐어요',
 
     // ── ⑤ 소셜 — 나에게 ──
     /** R14 — 내 알림함이라 대상은 나로 확정돼 있다. 「시현님을」을 부르지 않는다 */

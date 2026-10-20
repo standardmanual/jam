@@ -513,6 +513,44 @@ describe('④ 미션', () => {
       expect(isWarningNotification('mission_participation_cancelled', one, {})).toBe(false)
     })
   })
+
+  describe('챕터 오름 (티켓 20261019_1316)', () => {
+    it('「챕터 N에 올랐어요」를 말한다 — 챕터 이름은 싣지 않는다', () => {
+      expect(text(view('chapter_up', { chapter_no: 3 }))).toBe('축하해요! 챕터 3에 올랐어요')
+      expect(text(view('chapter_up', { chapter_no: 10 }))).toBe('축하해요! 챕터 10에 올랐어요')
+    })
+
+    it('챕터 번호는 payload 슬롯이라 볼드, 고정 문구는 일반이다', () => {
+      const bold = notificationTokens(view('chapter_up', { chapter_no: 3 }))
+        .filter((token) => token.bold)
+        .map((token) => token.text)
+      expect(bold).toEqual(['챕터 3'])
+    })
+
+    it('번호가 비었거나 손상돼도 「챕터 0에」 같은 문장을 만들지 않는다', () => {
+      for (const payload of [{}, { chapter_no: 0 }, { chapter_no: -1 }, { chapter_no: 'x' }, { chapter_no: null }]) {
+        expect(text(view('chapter_up', payload))).toBe('축하해요! 챕터가 올랐어요')
+      }
+    })
+
+    it('채워진 슬롯만 있어 빈 슬롯으로 보고되지 않는다', () => {
+      expect(missingMessageSlots(view('chapter_up', { chapter_no: 2 }))).toEqual([])
+      expect(missingMessageSlots(view('chapter_up', {}))).toEqual([])
+    })
+
+    it('착지는 내 프로필이다 — 아이디가 없으면 /profile이다', () => {
+      expect(notificationTarget(view('chapter_up', { chapter_no: 2 }))).toEqual({ href: '/시현', avatarHref: null })
+      const noName = { id: 'me', username: null, avatarUrl: null }
+      expect(notificationTarget(view('chapter_up', { chapter_no: 2 }, { me: noName }))).toEqual({
+        href: '/profile',
+        avatarHref: null,
+      })
+    })
+
+    it('경고 후보가 아니다', () => {
+      expect(isWarningNotification('chapter_up', { chapter_no: 2 }, {})).toBe(false)
+    })
+  })
 })
 
 describe('⑤⑥ 소셜', () => {

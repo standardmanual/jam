@@ -242,6 +242,12 @@ export interface NotificationPayloadMap {
     missions: { mission_id: string; title: string }[]
   }
   /**
+   * 챕터 오름(티켓 20261019_1316, 운영 로직 12.3절). 챕터 2 이상으로 오를 때만 보낸다(챕터 1 시작은 퀘스트 완료 보상이 알린다).
+   * 한 번에 여러 챕터를 넘어도 한 건이고 `chapter_no`는 가장 높은 챕터다. 챕터 이름은 싣지 않는다(이름 표가 비어 있다).
+   * 묶음 키는 `chapter_up:{chapter_no}` + `once`라 같은 챕터 소식은 다시 만들어지지 않는다.
+   */
+  chapter_up: { chapter_no: number }
+  /**
    * 29 팔로잉 희귀 배지 — Epic·Mystic **또는** 무한레벨형 Lv.6 이상
    * (`FOLLOWING_LEVEL_THRESHOLD`, 티켓 20260905_0038).
    * `more_count`는 R15(사람 단위 묶음) — 「소식이 N건 더 있어요」

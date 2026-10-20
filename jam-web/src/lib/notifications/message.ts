@@ -667,6 +667,14 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       }
     }
 
+    // ── 챕터 오름 (티켓 20261019_1316) ────────────────────────────────────
+    case 'chapter_up': {
+      // 챕터는 1부터다. 번호가 비었거나 손상됐으면 「챕터 0에」 대신 번호 없는 문장을 쓴다
+      const chapterNo = Math.floor(num(p, 'chapter_no'))
+      if (chapterNo < 1) return { template: n.msgChapterUpNoNumber, vars: {} }
+      return { template: n.msgChapterUp, vars: { chapter: t(n.slotChapter, { chapterNo }) } }
+    }
+
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       // R14 — 내 알림함이라 대상은 나로 확정돼 있다. 본인 닉네임을 부르지 않는다

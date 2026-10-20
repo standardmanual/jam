@@ -148,6 +148,10 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     case 'mission_participation_cancelled':
       return single('/missions')
 
+    // ── 챕터 오름 — 챕터는 내 프로필에서 본다(운영 로직 12.1절). 프로필은 아이디 경로이고, 아이디가 없으면 `/profile`로 보낸다(TopNav·SyncButton과 같은 대체) ──
+    case 'chapter_up':
+      return single(meHref ?? '/profile')
+
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       const count = Math.max(view.actorCount, idList(p, 'actor_ids').length, 1)

@@ -47,6 +47,8 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     // ① 활동 결산 — 배지가 결산의 대부분이라 메달을 쓴다(20260827_014)
     case 'activity_recap':
     case 'following_rare_badge':
+    // 챕터 오름도 달성 소식이라 같은 메달을 쓴다(티켓 20261019_1316, 새 아이콘을 고르지 않았다)
+    case 'chapter_up':
       return <MedalIcon className={className} />
     case 'inventory_full':
     case 'inventory_slots_low':
