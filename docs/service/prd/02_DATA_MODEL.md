@@ -1013,7 +1013,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `locked_item_badge_open` | `lib/inventory/lockedItemFill.ts` `openLockedItem`(`locked_item_open` RPC 직후) | 개체 id(`inventory_items.id`) | 생략 | 연결됨(1회) |
 | `drop` | `app/api/drops/route.ts` POST(성공 뒤 `after()` 콜백) | `poi_drops.id`(`drop_id`) | 생략 | 연결됨(1회). 유저 드랍만(시스템 드랍은 앰비언트 배치라 이 라우트를 거치지 않는다) |
 | `pickup` | `app/api/drops/[dropId]/pickup/route.ts`(성공 뒤 `after()` 콜백) | 경로의 `dropId` | 생략 | 연결됨(1회). `isSelfPickup`이면 세지 않고, 시스템 드랍과 잠긴 채 받은 픽업은 센다. 드랍과 픽업은 활동 종류가 달라 같은 드랍 id로도 키가 겹치지 않는다 |
-| `badge_receive` | 새 발급 6곳(엔진 새 발급 `lib/badge-engine/index.ts`·`usageBadges.ts` `issueQualifyingBadges`·미션 보상 `lib/missions/rewards.ts`·컬렉션 보상 `lib/itembook/checker.ts`·온보딩 완료 `lib/onboarding-quest/completion.ts`·체크인 첫 획득 `lib/strava/sync.ts`) → 공용 함수 `lib/chapter/badgeReceive.ts` | (유저, 배지) 결정적 id. 반복형의 새 회차는 (유저, 배지, 활동 id) | 생략 | 새 발급 6곳은 연결됨(2a회). 반복형의 새 회차(`increment` 경로)는 예정(2b회) |
+| `badge_receive` | 새 발급 6곳(엔진 새 발급 `lib/badge-engine/index.ts`·`usageBadges.ts` `issueQualifyingBadges`·미션 보상 `lib/missions/rewards.ts`·컬렉션 보상 `lib/itembook/checker.ts`·온보딩 완료 `lib/onboarding-quest/completion.ts`·체크인 첫 획득 `lib/strava/sync.ts`) → 공용 함수 `lib/chapter/badgeReceive.ts` | (유저, 배지) 결정적 id. 반복형의 새 회차는 (유저, 배지, 활동 id) | 생략 | 새 발급 6곳은 연결됨(2a회). 반복형의 새 회차는 엔진의 `increment` 경로와 첫 발급 경로(같은 평가의 나머지 새 회차)에 연결됨(2b회, `awardBadgeReceiveOccurrenceScores`) |
 | `collection_complete_<등급>` | 컬렉션 장착 라우트·`lib/itembook/checker.ts` | (유저, 컬렉션, 등급) 결정적 id | 생략 | 예정(3회) |
 | `mix_success` | `lib/combine/index.ts` | `user_combine_success_logs.id`(새 DB 함수 필요) | 생략 | 예정(3회) |
 | `mission_complete` | `lib/missions/checker.ts` | `user_mission_completions.id` | 생략 | 예정(3회) |
@@ -1025,9 +1025,16 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - **숨김**: `is_hidden === true`(243)면 뺀다. 체크인 배지는 DB 제약(`badges_hidden_activity_only`)상 숨김일 수 없어 체크인 첫 획득 지점은 `is_hidden`·`condition_json`을 읽지 않고 `{ id, type }`만 넘긴다.
 - **제외 조건 키**: `condition_json`의 키가 `BADGE_RECEIVE_EXCLUDED_CONDITION_KEYS` = `follower_count`·`following_count`·`chapter_reached`와 하나라도 겹치면 뺀다. 포인트를 가리키는 조건 키는 지금 0개(티켓 20261019_1314)라 집합에 없다 — 나중에 생기면 이 상수만 고친다(DB의 허용 키 CHECK와 `conditionRegistry.ts`도 함께). `jam_total_earned` 같은 잼 키는 포인트가 아니라 제외하지 않는다.
 - **이용 정지**: `getActiveSuspension`으로 정지 중이면 뺀다. 동기화 입구에서 막히지 않는 경로, 곧 정지된 드랍 주인이 다른 유저가 줍는 순간 받는 배지(`picked_up_by_user_count` 등)를 위한 가드다. 확인 조회가 실패하면 «정지 아님»으로 보지 않고 점수를 세지 않은 채 `chapter_score_failed`로 남긴다(같은 원천 id로 다시 보낼 수 있다).
-- **원천 id**: `deterministicSourceId('badge_receive', userId, badge.id)`. 같은 배지를 어드민 초기화·삭제 뒤 다시 받아도 같은 키라 한 번만 센다(사용자 결정 2). 레벨형은 레벨마다 배지 행이 달라 레벨마다 센다. 반복형의 «첫 획득»은 새 행이라 이 키로 센다. 이미 보유한 반복형의 새 회차(`incrementRepeatEarnCount` 경로)는 2b회 몫이라 아직 세지 않는다.
+- **원천 id**: `deterministicSourceId('badge_receive', userId, badge.id)`. 같은 배지를 어드민 초기화·삭제 뒤 다시 받아도 같은 키라 한 번만 센다(사용자 결정 2). 레벨형은 레벨마다 배지 행이 달라 레벨마다 센다. 반복형의 «첫 획득»은 새 행이라 이 키로 센다. 반복형의 새 회차는 아래 소절의 키로 따로 센다.
 - **체크인**: `record_checkin_earn`의 `is_first`일 때만 센다(다시 지나가기·같은 활동 재동기화(`duplicate`)는 세지 않음).
 - 던지지 않는다. 점수 쪽 실패는 배지 발급·포인트·피드·응답을 바꾸지 않고 `chapter_score_failed`로 남는다. 아이템 배지 수령 점수와 드랍 점수 남용 방지는 이 티켓의 범위 밖이다.
+
+#### 반복형의 새 회차 점수 (티켓 20261019_1315 2b회)
+반복형은 새 회차마다 `badge_receive` 10점을 따로 센다(사용자 결정 2). 회차를 가리는 값은 `earn_history[].strava_activity_id`(Strava 활동 id, 양의 정수)이고, 원천 id는 `deterministicSourceId('badge_receive', userId, badge.id, String(활동 id))`다. 첫 획득의 `(badge_receive, 유저·배지)` 키와는 JSON 배열의 길이가 달라 겹치지 않는다. 구현은 `awardBadgeReceiveScore`의 선택 입력 `occurrenceActivityId`와 여러 회차를 한 번에 세는 `awardBadgeReceiveOccurrenceScores`(`lib/chapter/badgeReceive.ts`)다. 제외 규칙(발급 출처·유형·숨김·제외 조건 키·이용 정지)과 «던지지 않는다»는 첫 획득과 같다. 첫 회차가 제외 대상이면 나머지도 같은 이유라 부르지 않는다. 활동 id가 비었거나 올바르지 않은 회차는 세지 않고 `chapter_score_failed`로 남긴다.
+- **이미 가진 반복형의 새 회차**(`lib/badge-engine/index.ts`의 `action === 'increment'` 경로): RPC `increment_activity_badge_earn`이 **늘어난 개수만** 돌려주고 어느 회차가 늘었는지는 알려주지 않는다. 그래서 `added > 0`일 때 RPC에 보낸 회차 전체(`newOccurrences`, 최근 200건)에 대해 부르고, 키가 멱등이라 이미 센 회차는 DB가 같은 결과를 돌려줘 이중 가산이 없다. `added === 0`이면 부르지 않는다. `dryRun` 분기는 점수를 부르지 않는다. 점수 실패는 카운터 증가·`counted` 기록·반환값을 바꾸지 않는다.
+- **미보유 반복형의 첫 발급 경로**(`action === 'issue'`): 한 번의 평가에서 같은 반복형의 새 회차가 여러 건이면(첫 동기화 등) 첫 발급 행이 그 회차를 모두 `earn_count`·`earn_history`에 담는다. 첫 획득의 (유저, 배지) 키가 계기 활동(`triggerActivity`) 하나를 대신하므로, 이번 배치의 나머지 새 회차만 활동 id 키로 센다. 계기 활동은 두 번 세어지지 않는다. 이번 배치 밖에서 이미 쌓여 있던 과거 회차는 «새 회차»가 아니라 세지 않는다(예: 카탈로그에 새로 더한 반복형 배지, 사다리 배지의 임계값을 처음 넘는 평가에서 저장된 이력에만 있던 회차).
+- **한계**: RPC가 거절한 과거 회차가 소급 가산될 수 있는 작은 틈이 있다. `added > 0`인 배치에 RPC가 «이미 `earn_history`에 있다»며 세지 않은 회차가 섞여 있으면(`earn_history` 상한 200 밖으로 밀렸다가 다시 들어온 회차 등) 그 회차가 처음 세어지는 것이면 소급 가산되고, 첫 획득 때 (유저, 배지) 키로 센 계기 활동이 다시 들어오면 한 번 더 세어진다. 동기화가 이미 처리한 활동 id를 걸러내므로(`getProcessedStravaIds`) 드문 틈이다. 어드민이 보유 기록을 초기화한 뒤 계기 활동이 달라져도 같은 식으로 한 번 더 세어질 수 있다. 늘어난 활동 id 목록을 돌려주는 새 DB 함수를 두면 정확해지나 이번에는 더하지 않았다.
+- 회차 점수는 회차마다 `chapter_add_score` 호출이 한 번씩 나간다(5건씩 나눠 동시에 보낸다). 한 번에 회차가 많은 첫 동기화는 응답이 조금 늘 수 있다.
 
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
