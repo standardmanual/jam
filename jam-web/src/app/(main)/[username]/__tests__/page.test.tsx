@@ -12,6 +12,8 @@
  *  - 본인 프로필도 같은 prop 모양이다
  *  - 캡슐(티켓 20261018_0054): 내 프로필에서만 조회해 `capsuleInitial` prop을 내리고, 타인이 보는 프로필에는 조회도 prop 자체도 없다
  *    (직렬화한 prop·RSC 페이로드에 캡슐 값이 실리지 않는다 — 클라이언트에서 숨기는 방식이 아니다)
+ *  - 챕터 줄(티켓 20261019_1317): 내 프로필은 `getMyChapter`로 읽어 `chapterInitial`을 내리고, 타인이 보는 프로필은 `getPublicChapter`만 불러 `publicChapter`를 내린다
+ *    (내 진행·다음 챕터는 조회도 prop도 없어 RSC 페이로드에 실리지 않는다). 퀘스트 전과 읽지 못함은 null로 접는다
  *
  * 모킹한 DB 가짜는 select에서 고른 열을 무시하고 행 전체를 돌려준다 — 조회가 넓어졌을 때
  * prop에서 새는지까지 잡으려는 최악의 경우 흉내다.
@@ -74,6 +76,8 @@ const state = vi.hoisted(() => ({
 
 const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>>())
 const getCapsuleStatusMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
+const getMyChapterMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
+const getPublicChapterMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
 
 // 테이블별 응답 — 모르는 테이블은 빈 결과. strava_connections는 읽히면 토큰 행을 돌려준다.
 function singleResponse(table: string) {
@@ -132,6 +136,11 @@ vi.mock('@/lib/capsule/capsule', () => ({
   getCapsuleStatus: (client: unknown, userId: string) => getCapsuleStatusMock(client, userId),
 }))
 
+vi.mock('@/lib/chapter/read', () => ({
+  getMyChapter: (client: unknown, userId: string) => getMyChapterMock(client, userId),
+  getPublicChapter: (client: unknown, userId: string) => getPublicChapterMock(client, userId),
+}))
+
 vi.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND')
@@ -187,6 +196,10 @@ const CAPSULE_STATUS = {
   notOpenableReason: 'not_full',
 }
 
+// 내 챕터 진행 값에서만 나오는 글자 — 타인 프로필의 직렬화에 이 값이 있으면 내 진행이 새는 것이다
+const MY_CHAPTER = { ok: true, chapterNo: 7, name: '베테랑', nextChapterNo: 8, progress: 0.4242 }
+const PUBLIC_CHAPTER = { ok: true, tribe: { id: 'tribe-1', name: '새벽러너스' }, chapterNo: 3, name: '단골' }
+
 beforeEach(() => {
   state.loginUserId = LOGIN_USER_ID
   state.targetRow = userRow(TARGET_USER_ID)
@@ -198,6 +211,10 @@ beforeEach(() => {
   getWalletMock.mockResolvedValue(1234)
   getCapsuleStatusMock.mockReset()
   getCapsuleStatusMock.mockResolvedValue(CAPSULE_STATUS)
+  getMyChapterMock.mockReset()
+  getMyChapterMock.mockResolvedValue(MY_CHAPTER)
+  getPublicChapterMock.mockReset()
+  getPublicChapterMock.mockResolvedValue(PUBLIC_CHAPTER)
 })
 
 describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지', () => {
@@ -434,5 +451,92 @@ describe('/{username} 프로필 페이지 — 잠긴 채 드랍·픽업된 개�
       expect(call.select).toContain('inventory_item_id')
       expect(call.select).toMatch(/inventory_items!poi_drops_inventory_item_id_fkey\s*\(\s*locked\s*\)/)
     }
+  })
+})
+
+/**
+ * 챕터 줄 (티켓 20261019_1317 1회, 사용자 결정 4, 완료 조건 «타인 프로필의 RSC 페이로드에 내 챕터 진행(게이지) 값이 실리지 않는다»)
+ *
+ * 내 프로필은 `getMyChapter`(진행 포함)로 읽어 `chapterInitial`을 내리고, 타인이 보는 프로필은 `getPublicChapter`(진행 없음)만 불러
+ * `publicChapter`를 내린다. 타인에게는 내 진행을 조회도 전달도 하지 않는다. 퀘스트 전(chapterNo null)과 읽지 못함(ok:false)은 null로 접는다.
+ */
+describe('/{username} 프로필 페이지 — 챕터 줄', () => {
+  it('(k) 타인이 보는 프로필: getPublicChapter만 대상 유저 id로 부르고, 내 진행은 조회도 prop도 없다', async () => {
+    const props = await renderPage('target')
+
+    expect(getPublicChapterMock).toHaveBeenCalledTimes(1)
+    expect(getPublicChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+    expect(getMyChapterMock).not.toHaveBeenCalled()
+    expect(props.publicChapter).toEqual({ tribeName: '새벽러너스', chapterNo: 3, name: '단골' })
+    expect('chapterInitial' in props).toBe(false)
+  })
+
+  it('(k) 타인이 보는 프로필: 직렬화(RSC 페이로드)에 내 진행·다음 챕터·점수 값이 없다', async () => {
+    const props = await renderPage('target')
+    const serialized = JSON.stringify(props)
+
+    for (const secret of ['0.4242', '베테랑', 'progress', 'nextChapterNo', 'chapterInitial', 'score', 'total_score']) {
+      expect(serialized, `타인 프로필의 직렬화된 prop에 "${secret}"가 있다`).not.toContain(secret)
+    }
+    expect(Object.keys(props.publicChapter as object).sort()).toEqual(['chapterNo', 'name', 'tribeName'])
+  })
+
+  it('(k) 타인이 보는 프로필: 트라이브가 없으면 tribeName이 null이고 챕터가 없으면 chapterNo가 null이다', async () => {
+    getPublicChapterMock.mockResolvedValue({ ok: true, tribe: null, chapterNo: null, name: null })
+
+    const props = await renderPage('target')
+
+    expect(props.publicChapter).toEqual({ tribeName: null, chapterNo: null, name: null })
+  })
+
+  it('(k) 타인이 보는 프로필: 읽지 못하면(ok:false) publicChapter를 null로 접고 화면은 그대로 그려진다', async () => {
+    getPublicChapterMock.mockResolvedValue({ ok: false })
+
+    const props = await renderPage('target')
+
+    expect(props.publicChapter).toBeNull()
+    expect(props.isOwnProfile).toBe(false)
+  })
+
+  it('(l) 내 프로필: getMyChapter를 내 계정으로 읽어 chapterInitial로 내리고 타인용 prop은 없다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    const props = await renderPage('target')
+
+    expect(getMyChapterMock).toHaveBeenCalledTimes(1)
+    expect(getMyChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+    expect(getPublicChapterMock).not.toHaveBeenCalled()
+    expect(props.chapterInitial).toEqual({ chapterNo: 7, name: '베테랑', nextChapterNo: 8, progress: 0.4242 })
+    expect('publicChapter' in props).toBe(false)
+    // 응답의 ok 표지 같은 내부 모양은 화면으로 넘기지 않는다
+    expect('ok' in (props.chapterInitial as object)).toBe(false)
+  })
+
+  it('(l) 내 프로필: 마지막 챕터는 다음 챕터와 진행이 null로 내려간다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: 50, name: null, nextChapterNo: null, progress: null })
+
+    const props = await renderPage('target')
+
+    expect(props.chapterInitial).toEqual({ chapterNo: 50, name: null, nextChapterNo: null, progress: null })
+  })
+
+  it('(l) 내 프로필: 퀘스트 전(chapterNo null)은 chapterInitial이 null이다 — 줄을 그리지 않는다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, name: null, nextChapterNo: null, progress: null })
+
+    const props = await renderPage('target')
+
+    expect('chapterInitial' in props).toBe(true)
+    expect(props.chapterInitial).toBeNull()
+  })
+
+  it('(l) 내 프로필: 읽지 못하면(ok:false) chapterInitial이 null이다 — 줄을 그리지 않고 화면은 그대로 그려진다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    getMyChapterMock.mockResolvedValue({ ok: false })
+
+    const props = await renderPage('target')
+
+    expect(props.chapterInitial).toBeNull()
+    expect(props.isOwnProfile).toBe(true)
   })
 })

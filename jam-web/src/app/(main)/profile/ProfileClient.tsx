@@ -30,6 +30,7 @@ import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOv
 import { useToast } from '@/components/ui/Toast'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
 import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
+import ChapterLine, { type MyChapterLineData, type PublicChapterLineData } from '@/components/chapter/ChapterLine'
 
 /** `POST /api/follows` 응답 중 배지 리빌 연출에 필요한 조각(sync.ts EarnedBadgePayload와 동일 계약) */
 interface FollowResponse {
@@ -111,6 +112,17 @@ interface Props {
    * `null`은 «내 프로필인데 서버 조회가 실패했다»이고 위젯이 클라이언트에서 다시 가져온다.
    */
   capsuleInitial?: CapsuleStatus | null
+  /**
+   * 내 챕터 줄의 서버 값(티켓 20261019_1317). **내 프로필에서만 내려온다 — 타인이 보는 프로필에는 prop 자체가 없다(`undefined`).**
+   * 다음 챕터까지의 진행(게이지)이 들어 있어 `capsuleInitial`과 같은 방식으로 DOM과 RSC 페이로드에서 막는다.
+   * `null`은 «챕터가 없다(퀘스트 전)» 또는 «서버가 읽지 못했다»이고 둘 다 줄을 그리지 않는다(사용자 결정 4).
+   */
+  chapterInitial?: MyChapterLineData | null
+  /**
+   * 다른 유저 프로필의 트라이브·챕터·이름 한 줄(티켓 20261019_1317). **다른 유저 프로필에서만 내려온다.** 진행은 담지 않는다.
+   * `null`은 읽지 못함이고 줄을 그리지 않는다. 보일 조각이 없으면 `ChapterLine`이 아무것도 그리지 않는다.
+   */
+  publicChapter?: PublicChapterLineData | null
 }
 
 export default function ProfileClient({
@@ -128,6 +140,8 @@ export default function ProfileClient({
   pointBalance,
   activityNames,
   capsuleInitial,
+  chapterInitial,
+  publicChapter,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -659,9 +673,20 @@ export default function ProfileClient({
           )}
         </div>
 
-        {/* 캡슐 위젯 (티켓 20261018_0054) — 내 프로필에서만. 프로필 헤더와 통계 탭 사이다.
-            렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
-        {isOwnProfile && capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} />}
+        {/* 다른 유저의 챕터 줄 (티켓 20261019_1317) — 헤더 아래 전폭 한 줄 «트라이브 · 챕터 3 · 단골». 게이지 없음.
+            다른 유저 프로필에서만 서버가 `publicChapter`를 내려주고, 읽지 못함(null)이거나 보일 조각이 없으면 줄이 없다. */}
+        {!isOwnProfile && publicChapter && <ChapterLine variant="public" chapter={publicChapter} />}
+
+        {/* 챕터 줄 + 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 통계 탭 사이이고 «챕터 줄, 게이지, 캡슐»을 간격 8로 묶는다
+            (티켓 20261019_1317 사용자 결정 3: 캡슐 바로 위. 챕터에서 필요량으로 이어진다).
+            챕터 줄은 `chapterInitial`이 값일 때만 — 퀘스트 전과 읽지 못함(null)은 줄을 그리지 않는다(사용자 결정 4).
+            캡슐 위젯(티켓 20261018_0054)의 렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
+        {isOwnProfile && (chapterInitial || capsuleInitial !== undefined) && (
+          <div className="flex flex-col gap-2">
+            {chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
+            {capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} />}
+          </div>
+        )}
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨

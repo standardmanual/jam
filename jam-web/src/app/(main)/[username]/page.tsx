@@ -6,6 +6,8 @@ import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
 import { isDropRowLocked, lockedDropFeedMeta, type DropRowLockInfo } from '@/lib/activity-feed/lockedDrop'
 import { getWallet } from '@/lib/points'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
+import { getMyChapter, getPublicChapter } from '@/lib/chapter/read'
+import type { MyChapterLineData, PublicChapterLineData } from '@/components/chapter/ChapterLine'
 import { d, t } from '@/lib/i18n'
 
 interface Props {
@@ -70,6 +72,13 @@ export default async function UserProfilePage({ params }: Props) {
       })
     : Promise.resolve(undefined)
 
+  // 챕터 줄 값 — 티켓 20261019_1317. 내 프로필은 진행(게이지)까지 읽는 `getMyChapter`, 다른 유저 프로필은 진행을 읽지도 않는
+  // `getPublicChapter`만 부른다. 두 함수는 던지지 않고 읽지 못하면 `{ ok: false }`를 돌려준다.
+  // `target`이 위에서 `users`에서 확인된 뒤라 «존재하지 않는 유저가 챕터 없음으로 보이는» 문제는 없다.
+  // 내 진행은 `capsuleInitial`처럼 내 프로필에서만 조회·전달한다(타인에게는 조회도 prop도 없어 RSC 페이로드에 실리지 않는다).
+  const myChapterPromise = isOwnProfile ? getMyChapter(service, user.id) : Promise.resolve(undefined)
+  const publicChapterPromise = isOwnProfile ? Promise.resolve(undefined) : getPublicChapter(service, subjectId)
+
   // ─── 통계 (팔로워/팔로잉/뱃지 + isFollowing) ──────────────────
   const [
     followerCountResult,
@@ -77,6 +86,8 @@ export default async function UserProfilePage({ params }: Props) {
     badgeCountResult,
     isFollowingResult,
     capsuleInitial,
+    myChapter,
+    publicChapterResult,
   ] = await Promise.all([
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', subjectId),
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
@@ -90,6 +101,8 @@ export default async function UserProfilePage({ params }: Props) {
       ? Promise.resolve({ data: null, error: null })
       : service.from('user_follows').select('id').eq('follower_id', user.id).eq('following_id', subjectId).maybeSingle(),
     capsulePromise,
+    myChapterPromise,
+    publicChapterPromise,
   ])
 
   if (followerCountResult.error) console.error('[[username]/page] 팔로워 카운트 조회 실패', followerCountResult.error)
@@ -100,6 +113,16 @@ export default async function UserProfilePage({ params }: Props) {
   const followerCount = followerCountResult.count ?? 0
   const followingCount = followingCountResult.count ?? 0
   const isFollowing = !!isFollowingResult.data
+
+  // 퀘스트 전(chapterNo null)과 읽지 못함(ok: false)은 줄을 그리지 않는다 — null로 접는다(사용자 결정 4, 티켓 20261019_1317).
+  // 점수는 응답에 없고, 다른 유저에게는 진행·다음 챕터 필드 자체를 만들지 않는다.
+  const chapterInitial: MyChapterLineData | null =
+    myChapter?.ok && myChapter.chapterNo !== null
+      ? { chapterNo: myChapter.chapterNo, name: myChapter.name, nextChapterNo: myChapter.nextChapterNo, progress: myChapter.progress }
+      : null
+  const publicChapter: PublicChapterLineData | null = publicChapterResult?.ok
+    ? { tribeName: publicChapterResult.tribe?.name ?? null, chapterNo: publicChapterResult.chapterNo, name: publicChapterResult.name }
+    : null
 
   // ─── 피드 / 인벤토리 (대상 유저 기준) ──────────────────────────
   const [feedResult, invResult] = await Promise.all([
@@ -405,7 +428,7 @@ export default async function UserProfilePage({ params }: Props) {
       currentUserId={user.id}
       pointBalance={pointBalance}
       activityNames={activityNames}
-      {...(isOwnProfile ? { capsuleInitial: capsuleInitial ?? null } : {})}
+      {...(isOwnProfile ? { capsuleInitial: capsuleInitial ?? null, chapterInitial } : { publicChapter })}
     />
   )
 }
