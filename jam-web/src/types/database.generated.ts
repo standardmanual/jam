@@ -4733,6 +4733,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_combine_success_with_id: {
+        Args: {
+          p_ingredient_badge_ids: string[]
+          p_points_awarded: number
+          p_recipe_id: string
+          p_result_badge_ids: string[]
+          p_user_id: string
+        }
+        Returns: Json
+      }
       release_inventory_slots: {
         Args: { p_count: number; p_inventory_id: string }
         Returns: Json
