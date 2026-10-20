@@ -998,6 +998,26 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 > - 챕터는 내려가지 않는다. 퀘스트 전 점수는 버리지 않고 쌓았다가 챕터 1 때 함께 계산한다(가정, SQL 실행 승인 전 재확인).
 > - 점수 가산을 부를지 말지(챕터 배지·포인트 조건 배지 제외, 자기 드랍 줍기 제외, 이용 정지 중 차단)는 부르는 쪽 책임이다.
 
+#### 점수 호출 지점과 원천 id (티켓 20261019_1315)
+앱은 `src/lib/chapter/score.ts`의 `awardChapterScore(supabase, { userId, kind, sourceId, amount, occurredOn })` 하나로 `chapter_add_score`를 부른다. 활동 종류 12종은 `src/lib/chapter/kinds.ts`(221의 초기값과 같은지 시험이 고정), 점수 값은 코드에 두지 않고 `chapter_score_rules`가 갖는다.
+- **던지지 않는다.** RPC 오류·계약 밖 응답·예외는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='chapter_score_failed'`, 페이로드에 종류·원천 id·수량·날짜·오류)에 남기고 `{ ok: false }`를 돌려준다. 본 동작(정산·열기·드랍·픽업)과 응답은 점수 실패로 바뀌지 않는다. 같은 원천 id로 다시 보낼 수 있다(자동 보정은 티켓 20261020_1010).
+- `p_occurred_on`은 값이 없으면 키째 생략한다(null을 보내지 않는다). 수량이 1 미만이면 부르지 않는다.
+- 챕터 오름 처리(소식·챕터 배지)는 하지 않고 `reachedChapters`를 돌려주기만 한다(티켓 20261019_1316).
+- `service_role`만 실행하므로 service 클라이언트로 부른다. 동기화 안에서는 주입된 클라이언트를 그대로 넘긴다.
+- `src/lib/chapter/source-id.ts`의 `deterministicSourceId(namespace, ...parts)`는 같은 입력에서 같은 UUID(SHA-256 앞 16바이트, 버전 8)를 만든다. 기록 표에 id가 없는 컬렉션 완성과 배지 받기가 쓴다(2a·3회).
+
+| 활동 종류 | 호출 지점 | 원천 id | 날짜 | 상태 |
+|---|---|---|---|---|
+| `jam_earned` | `lib/jam/settlement.ts` `settleActivities`(정산 항목을 쌓은 직후, 오래된 활동부터) | `strava_activities.id`(`JamSettlementItem.activityId`) | 활동한 날(KST, `earnedOn`) | 연결됨(1회). 수량은 원장에 기록된 양이라 재정산도 같은 키다 |
+| `capsule_open` | `lib/capsule/open.ts` `openCapsule`(`capsule_open` RPC 직후, 후속 처리 앞) | `capsule_opens.id`(`openId`) | 생략(오늘) | 연결됨(1회) |
+| `locked_item_badge_open` | `lib/inventory/lockedItemFill.ts` `openLockedItem`(`locked_item_open` RPC 직후) | 개체 id(`inventory_items.id`) | 생략 | 연결됨(1회) |
+| `drop` | `app/api/drops/route.ts` POST(성공 뒤 `after()` 콜백) | `poi_drops.id`(`drop_id`) | 생략 | 연결됨(1회). 유저 드랍만(시스템 드랍은 앰비언트 배치라 이 라우트를 거치지 않는다) |
+| `pickup` | `app/api/drops/[dropId]/pickup/route.ts`(성공 뒤 `after()` 콜백) | 경로의 `dropId` | 생략 | 연결됨(1회). `isSelfPickup`이면 세지 않고, 시스템 드랍과 잠긴 채 받은 픽업은 센다. 드랍과 픽업은 활동 종류가 달라 같은 드랍 id로도 키가 겹치지 않는다 |
+| `badge_receive` | 발급 7곳(엔진 새 발급·반복형·`usageBadges`·미션 보상·컬렉션 보상·온보딩 완료·체크인 첫 획득) | (유저, 배지) 결정적 id, 반복형은 (유저, 배지, 활동 id) | 생략 | 예정(2a·2b회) |
+| `collection_complete_<등급>` | 컬렉션 장착 라우트·`lib/itembook/checker.ts` | (유저, 컬렉션, 등급) 결정적 id | 생략 | 예정(3회) |
+| `mix_success` | `lib/combine/index.ts` | `user_combine_success_logs.id`(새 DB 함수 필요) | 생략 | 예정(3회) |
+| `mission_complete` | `lib/missions/checker.ts` | `user_mission_completions.id` | 생략 | 예정(3회) |
+
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
 운영 로직 5.2·5.4절이 근거다. 2026-10-18 공용 DB에 적용했다(232: 저장·설정·채우기, 233: 열기). 전부 덧붙이기이고 옛 객체의 뜻은 바꾸지 않았다. 새 표는 모두 RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
