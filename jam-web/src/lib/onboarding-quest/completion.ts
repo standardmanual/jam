@@ -10,6 +10,11 @@
  * 완료가 이번 호출에서 실제로 확정됐고(건너뛰지 않았으면) T7a가 등록한 완료 배지 1개와
  * 그 `point_reward`를 `grantOnboardingQuestReward`가 이어서 지급한다(T7b).
  *
+ * 챕터 1 시작(티켓 20261019_1316, 운영 로직 2.2절·12.1절): 완료가 확정되면 보상 지급 판정 **앞에서** `chapter_start`를 부른다.
+ * 건너뛴 유저도 받는다 — 건너뛰기는 연출 단계만 건너뛰고 챕터는 퀘스트를 마친 유저의 몫이다. 시작이 일시 오류로 실패하면 `completed_at`이 이미 있어 이 함수가
+ * 다음 호출에서 일찍 끝나므로, 완료 기록이 있는 유저가 들어올 때마다(보상 재시도 분기 포함) 챕터가 비어 있는지 보고 비어 있을 때만 다시 시작한다
+ * (`ensureChapterStarted`). 옛 퀘스트 완료자도 다음 호출에서 챕터 1을 받는다.
+ *
  * DB 조회(`recordOnboardingQuestCompletion`)와 순수 판정(`shouldRecordQuestCompletion`,
  * `shouldGrantQuestReward`)을 분리해 후자만 단위 테스트로 고정한다 —
  * `status.ts`/`screen-gate.ts`와 같은 패턴.
@@ -20,6 +25,7 @@ import { ONBOARDING_QUEST_ENABLED, ONBOARDING_COMPLETION_BADGE_ID } from './conf
 import { nextStepOf } from './progress'
 import { awardPoints } from '@/lib/points'
 import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
+import { ensureChapterStarted, startChapter } from '@/lib/chapter/start'
 import { recordFeedEvent } from '@/lib/activity-feed'
 
 type QuestCompletionRow = Pick<UserOnboardingQuestRow, 'step_progress' | 'skipped_at' | 'completed_at'>
@@ -200,6 +206,9 @@ export async function recordOnboardingQuestCompletion(
 
     // 활동 조회 전에 다른 조건부터 걸러 — 불필요한 조회를 줄인다.
     if (nextStepOf(progressRow.step_progress) !== null && !progressRow.skipped_at) return null
+    // 완료 기록이 이미 있는 유저 — 챕터 1이 비어 있으면(이전 시작이 실패했거나 옛 완료자) 다시 시작한다. 챕터가 있으면 RPC를 부르지 않는다.
+    // 아래 보상 재시도·완료 있음 분기보다 앞이라 둘 다 지난다. 던지지 않아 두 분기의 결과를 바꾸지 않는다(티켓 20261019_1316 사용자 결정 4).
+    if (progressRow.completed_at) await ensureChapterStarted(supabase, userId)
     // 완료는 기록됐는데 보상이 안 나간 상태(이전 호출의 지급 실패·롤백) — 활동 조회 없이 지급만 다시 시도한다.
     if (shouldRetryQuestReward(progressRow.completed_at, progressRow.skipped_at, row.reward_granted_at)) {
       return await grantOnboardingQuestReward(supabase, userId)
@@ -234,6 +243,9 @@ export async function recordOnboardingQuestCompletion(
     }
 
     const completionUpdated = (updatedRows?.length ?? 0) > 0
+    // 이번 호출에서 완료가 확정됐다 — 챕터 1 시작. 보상 지급 판정 앞에 두어 건너뛴 유저(보상 없음)도 받는다. 던지지 않는다.
+    // 동시 호출에 져서 바뀐 행이 없으면(completionUpdated false) 이긴 호출이 시작한다. 그 호출이 실패해도 위 재시도 경로가 다음 호출에서 채운다.
+    if (completionUpdated) await startChapter(supabase, userId)
     if (!shouldGrantQuestReward(completionUpdated, progressRow.skipped_at)) return null
 
     return await grantOnboardingQuestReward(supabase, userId)

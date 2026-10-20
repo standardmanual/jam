@@ -10,6 +10,8 @@
  * 23505(이미 보유)·건너뛴 유저·`reward_granted_at` 선점 실패·배지 정보 조회 실패는 부르지 않는다. 배지 정보 조회는 유형·숨김·제외 조건 판별에 쓰는
  * `type`·`is_hidden`·`condition_json`을 함께 읽는다. 점수 쪽이 실패해도 완료 보상(포인트·피드)은 그대로다. 거르는 규칙은 `lib/chapter/__tests__/badge-receive.test.ts`가 고정한다.
  *
+ * 챕터 1 시작(티켓 20261019_1316)은 이 파일의 관심사가 아니라 가짜로 막는다(`@/lib/chapter/start`). 시작 호출의 분기·순서는 `completion-chapter-start.test.ts`가 고정한다.
+ *
  * 실행: cd jam-web && npx vitest run src/lib/onboarding-quest/__tests__/completion-reward.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -25,6 +27,7 @@ const { awardPointsMock, recordFeedEventMock, awardBadgeReceiveScoreMock, badgeS
 
 vi.mock('@/lib/points', () => ({ awardPoints: awardPointsMock }))
 vi.mock('@/lib/chapter/badgeReceive', () => ({ awardBadgeReceiveScore: awardBadgeReceiveScoreMock }))
+vi.mock('@/lib/chapter/start', () => ({ startChapter: vi.fn(async () => ({ ok: true })), ensureChapterStarted: vi.fn(async () => {}) }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: recordFeedEventMock }))
 // 기능 스위치가 꺼져 있으면(config.ts 기본값) recordOnboardingQuestCompletion이 조회 없이
 // 즉시 null을 반환한다 — 이 파일은 그 뒤 지급 로직을 보므로 스위치를 켠 채로 고정한다.
