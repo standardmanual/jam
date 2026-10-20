@@ -28,6 +28,8 @@ export type EngineDecisionEvent =
   | 'sync_result'
   | 'drop_attempt'
   | 'point_award_failed'
+  /** 챕터 점수(`chapter_add_score`) 연결 실패 (engine='points', 티켓 20261019_1315). 같은 원천 id로 다시 보낼 수 있다 */
+  | 'chapter_score_failed'
   | 'tribe_constant_missing'
   | 'drop_state_last_activity_mismatch'
   | 'reward_badge_skipped'
