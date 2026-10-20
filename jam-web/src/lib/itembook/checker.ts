@@ -4,7 +4,8 @@
  * Phase 8 슬롯 기반 완성 모델:
  * - 완성 분모 = 소속 배지 − drop_excluded 배지, 분자 = 그 북에 장착·획득한 배지 id ∩ 분모 (completion-basis.ts)
  * - 완성 기록: user_item_book_completions (upsert, 최초 1회)
- * - reward_badge_id가 있는 경우 user_activity_badges에 보상 배지 발급
+ * - reward_badge_id가 있는 경우 user_activity_badges에 보상 배지 발급. 새로 넣은 경우에만 그 배지의 point_reward를 배지 포인트로 지급
+ *   (이미 보유·23505는 지급 없음, 티켓 20261019_1314 2회, 운영 로직 14.1절)
  * - 등급별(tier_mode) 컬렉션은 등급 완성 기록이 있는 등급의 보상 배지(item_book_tier_rewards)만 보정한다(티켓 20261016_2340)
  *
  * 주의: 슬롯 기반 완성은 /api/itembooks/[id]/slot POST 핸들러에서 실시간으로 처리됨.
@@ -17,6 +18,7 @@
  * service_role 클라이언트 사용 (RLS 우회)
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { awardPoints } from '@/lib/points'
 import type { ItemBookRow, BadgeType } from '@/types/database'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
@@ -267,6 +269,12 @@ export type ItemBookRewardFields = Pick<ItemBookRow, 'id' | 'name' | 'reward_bad
  * (티켓 20261001_0635). 완성 여부는 부르는 쪽이 판정한다 — 이 함수는 받은 북이 모두 완성됐다고 보고
  * 보유 확인 → insert만 한다. 이미 보유했거나(`user_activity_badges`에 있음) 동시 발급 경합으로 `23505`가
  * 나면 건너뛰므로 같은 배지는 한 번만 발급된다. `reward_badge_id`가 빈 북은 건너뛴다.
+ *
+ * 배지 포인트(티켓 20261019_1314 2회, 운영 로직 14.1절): 보상 배지를 `user_activity_badges`에 **새로 넣은 경우에만** 그 배지의
+ * `point_reward`를 `badge_point_reward`로 한 번 준다(`sourceBadgeId`). 이미 보유했거나 23505면 지급이 없고, 보정분(완성 기록은
+ * 있으나 배지가 없던 북)도 새로 넣을 때는 준다. 포인트가 0이면 호출하지 않는다. 포인트 지급이 실패하거나 던져도 발급 결과는 되돌리지 않는다
+ * (`awardPoints`가 로그와 `engine_decision_log`에 남기고, 예외는 여기서 삼킨다). 장착 라우트(`slotReward.ts`)와 동기화 보정이 이 함수를 같이
+ * 쓰므로 두 경로가 함께 맞는다.
  */
 export async function issueItemBookRewardBadges(
   supabase: ReturnType<typeof createServiceClient>,
@@ -284,17 +292,24 @@ export async function issueItemBookRewardBadges(
     .filter((id): id is string => Boolean(id))
   if (rewardBadgeIdCandidates.length === 0) return rewardBadgeIds
 
+  // 같은 조회에서 배지 포인트(`point_reward`)도 함께 읽는다 — 새로 발급한 경우에만 아래에서 지급한다.
+  // 삭제 필터(`deleted_at`)는 걸지 않는다: 발급 자체가 지금도 삭제 여부를 보지 않으므로 포인트도 발급과 같은 조건을 따른다.
   const rewardBadgeTypeById = new Map<string, BadgeType>()
+  const rewardBadgePointById = new Map<string, number>()
   const { data: rewardBadgeTypesRaw, error: rewardBadgeTypesError } = await supabase
     .from('badges')
-    .select('id, type')
+    .select('id, type, point_reward')
     .in('id', rewardBadgeIdCandidates)
 
   if (rewardBadgeTypesError) {
-    console.error('[issueItemBookRewardBadges] reward_badge type 조회 오류:', rewardBadgeTypesError)
+    console.error(
+      '[issueItemBookRewardBadges] reward_badge type·point_reward 조회 오류 — 이 호출에서 새로 발급하는 보상 배지의 포인트는 지급되지 않는다:',
+      rewardBadgeTypesError
+    )
   } else {
-    for (const b of (rewardBadgeTypesRaw ?? []) as { id: string; type: BadgeType }[]) {
+    for (const b of (rewardBadgeTypesRaw ?? []) as { id: string; type: BadgeType; point_reward: number | null }[]) {
       rewardBadgeTypeById.set(b.id, b.type)
+      rewardBadgePointById.set(b.id, b.point_reward ?? 0)
     }
   }
 
@@ -333,7 +348,23 @@ export async function issueItemBookRewardBadges(
 
     rewardBadgeIds.push(book.reward_badge_id)
     console.info(`[issueItemBookRewardBadges] 보상 배지 발급 완료 — userId: ${userId}, book: ${book.name}, reward_badge_id: ${book.reward_badge_id}`)
+
+    // 새로 넣은 경우에만 여기까지 온다(이미 보유·23505는 위에서 건너뛰었다). 배지 포인트가 있으면 한 번 준다.
+    await awardRewardBadgePoints(userId, book.reward_badge_id, rewardBadgePointById.get(book.reward_badge_id) ?? 0)
   }
 
   return rewardBadgeIds
+}
+
+/**
+ * 새로 발급한 컬렉션 보상 배지의 배지 포인트를 준다(티켓 20261019_1314 2회). 포인트가 0이면 호출하지 않는다.
+ * 실패는 `awardPoints`가 로그와 `engine_decision_log`에 남기고, 예외도 삼켜 보상 배지 발급 결과를 되돌리지 않는다.
+ */
+async function awardRewardBadgePoints(userId: string, badgeId: string, pointReward: number): Promise<void> {
+  if (pointReward <= 0) return
+  try {
+    await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: badgeId })
+  } catch (error) {
+    console.error(`[issueItemBookRewardBadges] 보상 배지 포인트 지급 예외 (badge_id: ${badgeId}):`, error)
+  }
 }

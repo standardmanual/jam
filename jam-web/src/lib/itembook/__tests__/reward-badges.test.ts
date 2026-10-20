@@ -17,6 +17,10 @@
  *    발급하고 `completedIds`·옛 완성 기록 upsert에는 넣지 않는다. 같은 보정을 두 번 돌려도 한 번만 나가며, 등급 완성 기록이 없는 등급·
  *    보상 배지가 빈 등급은 주지 않는다. `tier_mode`가 꺼진 컬렉션의 결과는 달라지지 않고 새 테이블을 읽지도 않는다
  *
+ *  - 보상 배지의 배지 포인트(티켓 20261019_1314 2회, 운영 로직 14.1절): `user_activity_badges`에 **새로 넣은 경우에만** 그 배지의 `point_reward`를
+ *    `badge_point_reward`로 한 번 준다(`sourceBadgeId`). 이미 보유·`23505`·다른 insert 오류·포인트 0·`reward_badge_id` 없음은 지급 호출이 없고,
+ *    보정분(완성 기록은 있으나 배지가 없던 북)·장착 직후 발급·등급별 보상 배지도 새로 넣을 때 준다. 지급이 실패하거나 던져도 발급 결과는 그대로다
+ *
  * Supabase는 메모리 테이블로 흉내 낸다(필터 `eq`·`in`만 해석, 컬럼 선택은 무시).
  *
  * 실행: cd jam-web && npx vitest run src/lib/itembook/__tests__/reward-badges.test.ts
@@ -42,6 +46,7 @@ const db = vi.hoisted(() => ({
 }))
 
 const notifyMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>())
+const awardPointsMock = vi.hoisted(() => vi.fn())
 
 interface FakeBuilder extends PromiseLike<{ data: Row[]; error: null }> {
   select: (columns?: string) => FakeBuilder
@@ -100,6 +105,9 @@ vi.mock('@/lib/supabase/server', () => ({
     },
   }),
 }))
+vi.mock('@/lib/points', () => ({
+  awardPoints: (...args: unknown[]) => awardPointsMock(...args),
+}))
 vi.mock('@/lib/strava/sync', () => ({
   notifyActivityBadgesEarned: (...args: unknown[]) => notifyMock(...args),
 }))
@@ -109,7 +117,9 @@ import { runSlotRewardIssue } from '../slotReward'
 import { createServiceClient } from '@/lib/supabase/server'
 
 /** 컬렉션 1개(배지 2종)를 둔다. 유저는 두 배지를 모두 장착했다 = 완성 조건 충족 */
-function seed(opts: { rewardBadgeId?: string | null; completionRecorded?: boolean; alreadyHeld?: boolean } = {}) {
+function seed(
+  opts: { rewardBadgeId?: string | null; completionRecorded?: boolean; alreadyHeld?: boolean; pointReward?: number | null } = {}
+) {
   const rewardBadgeId = opts.rewardBadgeId === undefined ? REWARD_BADGE_ID : opts.rewardBadgeId
   db.tables = {
     item_books: [{ id: BOOK_ID, name: '테스트 컬렉션', reward_badge_id: rewardBadgeId, is_active: true }],
@@ -117,7 +127,13 @@ function seed(opts: { rewardBadgeId?: string | null; completionRecorded?: boolea
       { id: 'b1', item_book_id: BOOK_ID, type: 'item', drop_excluded: false },
       { id: 'b2', item_book_id: BOOK_ID, type: 'item', drop_excluded: false },
       // 보상 배지 자신은 컬렉션 소속이 아니다(item_book_id 없음)
-      { id: REWARD_BADGE_ID, item_book_id: null, type: 'activity', drop_excluded: false },
+      {
+        id: REWARD_BADGE_ID,
+        item_book_id: null,
+        type: 'activity',
+        drop_excluded: false,
+        ...(opts.pointReward !== undefined ? { point_reward: opts.pointReward } : {}),
+      },
     ],
     user_item_book_slots: [
       { user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'b1' },
@@ -138,6 +154,8 @@ beforeEach(() => {
   db.reads = []
   db.insertError = null
   notifyMock.mockResolvedValue(undefined)
+  awardPointsMock.mockReset()
+  awardPointsMock.mockResolvedValue({ id: 'tx-1' })
   vi.spyOn(console, 'info').mockImplementation(() => {})
   consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -453,5 +471,182 @@ describe('동기화 보정 — 등급별 구조(tier_mode) 컬렉션의 등급 �
 
     expect(result.rewardBadgeIds).toEqual([REWARD_BADGE_ID, 'tier-reward-rare'])
     expect(result.completedIds).toEqual([])
+  })
+})
+
+describe('컬렉션 보상 배지의 배지 포인트 (티켓 20261019_1314 2회, 운영 로직 14.1절)', () => {
+  const POINT = 10
+
+  it('동기화 보정으로 보상 배지를 새로 넣으면 그 배지의 point_reward를 badge_point_reward로 한 번 준다', async () => {
+    seed({ pointReward: POINT })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.rewardBadgeIds).toEqual([REWARD_BADGE_ID])
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+    expect(awardPointsMock).toHaveBeenCalledWith(USER_ID, POINT, 'badge_point_reward', { sourceBadgeId: REWARD_BADGE_ID })
+  })
+
+  it('보정분(완성 기록은 있으나 배지가 없던 북)도 새로 넣을 때는 준다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.completedIds).toEqual([])
+    expect(result.rewardBadgeIds).toEqual([REWARD_BADGE_ID])
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+    expect(awardPointsMock).toHaveBeenCalledWith(USER_ID, POINT, 'badge_point_reward', { sourceBadgeId: REWARD_BADGE_ID })
+  })
+
+  it('이미 보유한 보상 배지는 지급이 없다', async () => {
+    seed({ completionRecorded: true, alreadyHeld: true, pointReward: POINT })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(db.inserts).toEqual([])
+    expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+
+  it('동시 발급 경합(23505)이면 지급이 없다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+    db.insertError = { code: '23505', message: 'duplicate key value violates unique constraint' }
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(db.inserts).toHaveLength(1)
+    expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+
+  it('23505가 아닌 insert 오류로 배지를 못 넣었으면 지급이 없다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+    db.insertError = { code: '08006', message: '연결 오류' }
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+
+  it('포인트가 0이거나 비어 있는 배지는 지급을 부르지 않고 배지는 그대로 발급한다', async () => {
+    seed({ completionRecorded: true, pointReward: 0 })
+    const zero = await checkItemBookCompletion(USER_ID)
+
+    seed({ completionRecorded: true })
+    const unset = await checkItemBookCompletion(USER_ID)
+
+    seed({ completionRecorded: true, pointReward: null })
+    const empty = await checkItemBookCompletion(USER_ID)
+
+    expect([zero.rewardBadgeIds, unset.rewardBadgeIds, empty.rewardBadgeIds]).toEqual([
+      [REWARD_BADGE_ID],
+      [REWARD_BADGE_ID],
+      [REWARD_BADGE_ID],
+    ])
+    expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+
+  it('reward_badge_id가 비면 지급이 없다', async () => {
+    seed({ rewardBadgeId: null, pointReward: POINT })
+
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+
+  it('같은 보정을 두 번 돌려도 포인트는 한 번만 나간다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+
+    await checkItemBookCompletion(USER_ID)
+    await checkItemBookCompletion(USER_ID)
+
+    expect(db.inserts).toHaveLength(1)
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('포인트 지급이 실패해도(null) 보상 배지 발급 결과는 그대로다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+    awardPointsMock.mockResolvedValue(null)
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 1, rewardBadgeIds: [REWARD_BADGE_ID] })
+    expect(db.inserts).toHaveLength(1)
+  })
+
+  it('포인트 지급이 던져도 삼키고 로그만 남기며 보상 배지 발급 결과는 그대로다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+    awardPointsMock.mockRejectedValue(new Error('포인트 장애'))
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.rewardBadgeIds).toEqual([REWARD_BADGE_ID])
+    expect(consoleError).toHaveBeenCalledTimes(1)
+  })
+
+  it('장착 직후 발급(runSlotRewardIssue)도 새로 넣으면 포인트를 주고 알림도 그대로 보낸다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+    expect(awardPointsMock).toHaveBeenCalledWith(USER_ID, POINT, 'badge_point_reward', { sourceBadgeId: REWARD_BADGE_ID })
+    expect(notifyMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('장착 직후 발급이 이미 준 뒤의 동기화 보정은 포인트를 다시 주지 않는다', async () => {
+    seed({ completionRecorded: true, pointReward: POINT })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+    await checkItemBookCompletion(USER_ID)
+
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('이미 보유했거나 완성이 아닌 장착 직후 발급은 포인트를 주지 않는다', async () => {
+    seed({ completionRecorded: true, alreadyHeld: true, pointReward: POINT })
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    seed({ completionRecorded: false, pointReward: POINT })
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+
+  it('issueItemBookRewardBadges를 직접 불러도 새로 넣은 컬렉션의 배지 포인트만 준다', async () => {
+    seed({ pointReward: POINT })
+
+    const issued = await issueItemBookRewardBadges(createServiceClient(), USER_ID, [
+      { id: BOOK_ID, name: '테스트 컬렉션', reward_badge_id: REWARD_BADGE_ID },
+    ])
+    const again = await issueItemBookRewardBadges(createServiceClient(), USER_ID, [
+      { id: BOOK_ID, name: '테스트 컬렉션', reward_badge_id: REWARD_BADGE_ID },
+    ])
+
+    expect(issued).toEqual([REWARD_BADGE_ID])
+    expect(again).toEqual([])
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('등급별(tier_mode) 컬렉션의 등급 보상 배지도 새로 넣을 때 그 배지의 포인트를 준다', async () => {
+    const TIER_REWARD = 'tier-reward-common'
+    db.tables = {
+      item_books: [{ id: BOOK_ID, name: '등급 컬렉션', reward_badge_id: null, is_active: true, tier_mode: true }],
+      badges: [
+        { id: 'c1', item_book_id: BOOK_ID, type: 'item', drop_excluded: false, name: 'A', rarity: 'common', deleted_at: null },
+        { id: TIER_REWARD, item_book_id: null, type: 'activity', drop_excluded: false, point_reward: 20 },
+      ],
+      user_item_book_slots: [{ user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'c1' }],
+      user_item_book_completions: [],
+      user_item_book_tier_completions: [{ user_id: USER_ID, item_book_id: BOOK_ID, tier: 'common' }],
+      item_book_tier_rewards: [{ item_book_id: BOOK_ID, tier: 'common', reward_badge_id: TIER_REWARD }],
+      user_activity_badges: [],
+    }
+
+    const first = await checkItemBookCompletion(USER_ID)
+    const second = await checkItemBookCompletion(USER_ID)
+
+    expect(first.rewardBadgeIds).toEqual([TIER_REWARD])
+    expect(second.rewardBadgeIds).toEqual([])
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+    expect(awardPointsMock).toHaveBeenCalledWith(USER_ID, 20, 'badge_point_reward', { sourceBadgeId: TIER_REWARD })
   })
 })
