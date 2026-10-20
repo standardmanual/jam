@@ -23,7 +23,7 @@ import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import { logEngineDecision } from '@/lib/engine-log'
-import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
+import { awardBadgeReceiveOccurrenceScores, awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { getActivityHistory, getSignupAnchorDate, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
@@ -1424,6 +1424,19 @@ export async function evaluateBadgesDetailed(
         console.info(
           `[evaluateBadgesDetailed] 반복 회차 누적 — userId: ${userId}, badge: ${toIssue.name}, +${added}회 (발급 아님)`
         )
+        // 챕터 점수 «배지 받기» — 이미 가진 반복형의 새 회차 (티켓 20261019_1315 2b회, 운영 로직 12.2절).
+        // 카운터가 실제로 올랐을 때(added > 0)만 부른다. RPC는 늘어난 개수만 돌려줘 어느 회차가 늘었는지 모르므로 RPC에 보낸 회차 전체를 보내되,
+        // 원천 id가 (유저, 배지, 활동 id)라 이미 센 회차는 DB가 같은 결과를 돌려주고 이중 가산은 없다.
+        // 한계: RPC가 «이미 earn_history에 있다»고 거절한 과거 회차(발급 때 심은 회차, 상한 200 밖으로 밀려난 뒤 다시 들어온 회차)도 같은 배치에 섞여 있으면
+        //   처음 세는 것이면 소급 가산되고, 첫 획득 때 (유저, 배지) 키로 센 계기 활동이 다시 들어오면 한 번 더 세어진다.
+        //   싱크가 이미 처리한 활동 id를 걸러내므로(`getProcessedStravaIds`) 드문 틈이다. 늘어난 활동 id 목록을 돌려주는 새 DB 함수를 두면 정확해지나 이번에는 더하지 않는다.
+        // 던지지 않는다 — 점수 실패가 카운터·counted·반환값을 바꾸지 않는다. 제외 규칙(숨김·제외 조건·재평가 배치·시뮬레이터·이용 정지)은 이 함수가 거른다.
+        await awardBadgeReceiveOccurrenceScores(supabase, {
+          userId,
+          badge: toIssue,
+          origin: { triggeredBy, dryRun },
+          activityIds: toEarnHistoryEntries(newOccurrences).map((entry) => entry.strava_activity_id),
+        })
       }
       continue
     }
@@ -1503,9 +1516,25 @@ export async function evaluateBadgesDetailed(
 
     if (!dryRun) {
       // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 새 행을 실제로 넣은 발급만 여기 온다 — 23505·이미 보유는 위에서 `continue`했다.
-      // 레벨형은 레벨마다 새 행이라 레벨마다 센다. 반복형의 «첫 획득»도 새 행이라 여기서 센다(이미 보유한 반복형의 새 회차는 위 increment 경로이고 2b회 몫이다).
+      // 레벨형은 레벨마다 새 행이라 레벨마다 센다. 반복형의 «첫 획득»도 새 행이라 여기서 센다(이미 보유한 반복형의 새 회차는 위 increment 경로다).
       // 숨김·제외 조건·재평가 배치(`catalog_reevaluation`)·어드민 시뮬레이터(`admin_simulate`)·이용 정지는 이 함수가 거른다. 던지지 않아 발급 결과를 바꾸지 않는다.
-      await awardBadgeReceiveScore(supabase, { userId, badge: toIssue, origin: { triggeredBy, dryRun } })
+      const receipt = await awardBadgeReceiveScore(supabase, { userId, badge: toIssue, origin: { triggeredBy, dryRun } })
+
+      // 한 번의 평가에서 반복형의 «새 회차»가 여러 건이면(첫 동기화 등) 첫 발급 행이 그 회차를 모두 `earn_history`에 심는다. 첫 획득의 (유저, 배지) 키는 그 가운데 계기 활동
+      // 하나를 대신하므로, 이번 배치의 나머지 새 회차(`newOccurrences`)는 활동 id 키로 따로 센다 — increment 경로와 같은 «새 회차» 기준이고(이미 가진 반복형이었다면 같은 회차가
+      // 같은 키로 세어진다), 이번 배치의 회차는 모두 정확히 한 번 세어지고 계기 활동은 두 번 세어지지 않는다(티켓 20261019_1315 2b회).
+      // 배치 밖에서 이미 쌓여 있던 과거 회차(저장된 이력)는 «새 회차»가 아니라 세지 않는다. 첫 획득이 제외(skipped)였다면 회차도 같은 이유로 제외라 부르지 않는다.
+      if (receipt.status !== 'skipped' && newOccurrences.length > 0) {
+        const triggerStravaId = triggerActivity?.stravaId
+        await awardBadgeReceiveOccurrenceScores(supabase, {
+          userId,
+          badge: toIssue,
+          origin: { triggeredBy, dryRun },
+          activityIds: toEarnHistoryEntries(newOccurrences)
+            .map((entry) => entry.strava_activity_id)
+            .filter((id) => id == null || id !== triggerStravaId),
+        })
+      }
 
       // 잼 포인트 지급 — 배지에 point_reward가 붙어 있으면 발급 직후 1회 지급.
       // (배지 발급 성공을 전제로 지급. 0이면 awardPoints가 스킵.)
