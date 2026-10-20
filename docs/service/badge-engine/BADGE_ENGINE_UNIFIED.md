@@ -317,7 +317,7 @@ badge-engine 밖의 세 번째 평가 경로.
   |---|---|---|
   | 새 활동이 있는 동기화의 끝(`processFetchedActivities`) | 주 키 17개(`JAM_SYNC_TRIGGERS`, 티켓 20261018_1815에서 잼 2종·챕터가, 티켓 20261019_0542에서 활동 기반 5종과 체크인·잼 4종이 늘었다) | 활동 기록 저장·`recordDailySyncAndEvaluate` 뒤, 결산 앞에서 1회. 획득 id는 결산(`notifyActivityBadgesEarned`)과 `earnedBadgeIds`에 합치고 반환의 `badges` 수에는 넣지 않는다 |
   | 새 활동이 없는 동기화(빈 배치 이른 반환) | 가입 경과일(`JAM_EMPTY_SYNC_TRIGGERS`) | `evaluateBadges` 뒤 1회. 날짜가 지나면 값이 바뀌는 지표는 이것뿐이다. 오래 쉰 계정은 보조 키가 막는다(R4) |
-  | 컬렉션 장착 `POST /api/itembooks/[id]/slot` 성공 | `collection_complete_count`(`jamTriggersForSlot`) | `after()` 예약 1회 안에서 컬렉션 보상 배지 발급(`runSlotRewardIssue`) 뒤에 판정(`runJamActionEvaluation`). 해제(DELETE)·교체(PATCH)·실패 분기에서는 예약하지 않는다. 장착 RPC가 완성 여부를 돌려주지 않아 장착이 성공할 때마다 판정하며, 완성이 아닌 장착이면 값이 그대로라 발급되지 않는다(R6) |
+  | 컬렉션 장착 `POST /api/itembooks/[id]/slot` 성공 | `collection_complete_count`(`jamTriggersForSlot`) | `after()` 예약 1회 안에서 챕터 점수 «컬렉션 완성»(`awardSlotCollectionScore`)과 «컬렉션 보상 배지 발급(`runSlotRewardIssue`) 뒤 판정(`runJamActionEvaluation`)»을 `Promise.allSettled`로 함께 돌린다. 이용 정지 중이면 장착 자체를 403으로 막는다(티켓 20261019_1315 3회). 해제(DELETE)·교체(PATCH)·실패 분기에서는 예약하지 않는다. 장착 RPC가 완성 여부를 돌려주지 않아 장착이 성공할 때마다 판정하며, 완성이 아닌 장착이면 값이 그대로라 발급되지 않는다(R6) |
   | 기존 유저 재평가 배치 `POST /api/admin/badges/reevaluate-all`(`reevaluateUsersForCatalog`) | `JAM_ACTION_CONDITION_KEYS` 전체 + 사용량 지표 6종 | 유저마다 메인 엔진(`evaluateBadgesDetailed`) 뒤 JAM! → 사용량(`reevaluateUsageMetricBadges`) 순으로 각 1회, 각각 별도 `try/catch`. `dryRun`·`silent: true`·`triggeredByPrefix: 'catalog_reevaluation'`을 넘겨 dry-run은 아무것도 쓰지 않고 피드는 만들지 않으며 포인트는 정상 지급한다. 알림은 부르지 않는다. 절차·응답 필드는 §2.17 |
 
   동기화 끝에서 한 번에 판정하는 이유: 활동 기록 저장(`recordProcessedActivities`)이 판정보다 앞서야 주간 활동일이
