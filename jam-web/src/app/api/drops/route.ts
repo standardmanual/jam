@@ -12,6 +12,7 @@ import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 import { isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
+import { awardChapterScore } from '@/lib/chapter/score'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForDrop } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
@@ -409,7 +410,17 @@ export async function POST(req: NextRequest) {
 
   // JAM! 행동 지표(드랍한 아이템 수) — 응답을 보낸 뒤에 놓은 사람의 배지를 판정한다(티켓 20261001_0632).
   // 성공 분기에서만 예약한다. `runJamActionEvaluation`은 예외를 던지지 않아 드랍 응답은 그대로다.
-  after(() => runJamActionEvaluation(user.id, jamTriggersForDrop()))
+  // 챕터 점수 «드랍» (티켓 20261019_1315, 운영 로직 12.2절)도 같은 자리에서 센다. 이 라우트는 유저 드랍만 만들어서(시스템 드랍은 앰비언트 배치가 따로 놓는다)
+  // 드랍 점수 대상이 곧 이 라우트의 성공이다. 원천 id는 드랍 id(`poi_drops.id`)라 같은 드랍을 다시 보내도 한 번만 센다.
+  // `awardChapterScore`는 던지지 않고, 판정과 서로 영향을 주지 않게 `allSettled`로 함께 돌린다. 점수 실패는 응답을 바꾸지 않는다.
+  const dropId = result.drop_id
+  if (typeof dropId !== 'string') console.error(`[drops] 드랍 id가 없어 챕터 점수를 건너뜀 (userId: ${user.id})`)
+  after(async () => {
+    await Promise.allSettled([
+      typeof dropId === 'string' ? awardChapterScore(service, { userId: user.id, kind: 'drop', sourceId: dropId }) : Promise.resolve(),
+      runJamActionEvaluation(user.id, jamTriggersForDrop()),
+    ])
+  })
 
   // `lostFill`: 잠긴 개체를 드랍하며 사라진 채운 양. 열린 개체이거나 채운 양이 없었으면 0이다.
   return NextResponse.json({ drop_id: result.drop_id, lostFill: result.lost_fill ?? 0 })
