@@ -21,7 +21,7 @@ const { createNotificationMock, runEvaluationMock, logMock } = vi.hoisted(() => 
 }))
 
 vi.mock('@/lib/notifications', async () => {
-  // 묶음 키 빌더는 진짜를 쓴다 — 키 모양까지 고정하려는 것이다
+  // 묶음 키 빌더는 실제 구현을 쓴다 — 키 모양까지 고정하려는 것이다
   const groupKey = await vi.importActual<typeof import('@/lib/notifications/groupKey')>('@/lib/notifications/groupKey')
   return {
     createNotification: (...args: unknown[]) => createNotificationMock(...args),
