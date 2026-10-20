@@ -53,6 +53,8 @@
  *  - 결과 아이템 배지의 배지 포인트(티켓 20261019_1314 2회, 운영 로직 14.1절): 결과를 바로 지급했으면 열린 개체에 한해 일련번호마다
  *    한 번 준다(`resultPointFollowUp.ts`). 잠긴 개체는 열 때, 받지 않은 결과는 받을 때(`/api/combine/pending`) 준다.
  *    레시피 보상 포인트(`pointsAwarded`)와 실패 보상은 그대로다.
+ *  - 챕터 점수 «믹스 성공»(티켓 20261019_1315 3회, 운영 로직 12.2절): 성공 기록 RPC(`record_combine_success_with_id`)가 돌려주는 성공 행 id로 센다.
+ *    시험 믹스는 기록을 남기지 않아 세지 않고, 빈손 성공은 센다. 점수 실패는 믹스 응답·소각·보상·후속 처리를 바꾸지 않는다(`recordCombineSuccess` 참고).
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
@@ -62,6 +64,7 @@ import { getPendingCount } from '@/lib/combine/pending'
 import { followUpCombineResultPoints } from '@/lib/combine/resultPointFollowUp'
 import { hasEndedResultBadge, recipeReleaseState } from '@/lib/combine/visibility'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
+import { awardMixSuccessScore, recordMixScoreFailure } from '@/lib/chapter/mix'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
 import type { ReleaseInventorySlotsResult } from '@/lib/inventory/slots'
 import type {
@@ -619,10 +622,14 @@ async function logFailure(
 }
 
 /**
- * 성공 이력 적재 — `record_combine_success` RPC(마이그레이션 200)가 성공 1행과 «레시피 최초 성공»
- * 표시를 원자적으로 만든다. 믹스 시도·성공 횟수와 `recipe_first_success` 배지 조건의 원천이다.
+ * 성공 이력 적재 — `record_combine_success_with_id` RPC(마이그레이션 254, 옛 `record_combine_success`(200)와 같은 동작에 방금 넣은 행의 id를 함께 돌려줌)가
+ * 성공 1행과 «레시피 최초 성공» 표시를 원자적으로 만든다. 믹스 시도·성공 횟수와 `recipe_first_success` 배지 조건의 원천이다.
  * 오류·예외는 `console.error`로만 남기고 삼킨다 — 이미 재료가 소각되고 보상이 지급된 뒤라 기록
  * 실패가 믹스 응답을 바꾸면 안 된다.
+ *
+ * 챕터 점수 «믹스 성공»(티켓 20261019_1315 3회, 운영 로직 12.2절): 돌려받은 성공 행의 id를 원천 id로 센다(`lib/chapter/mix.ts`). 호출부가 시험 믹스(`testMix`)에서는
+ * 이 함수를 부르지 않으므로(기록 자체를 하지 않는다) 시험 믹스는 점수에서 빠지고, 빈손 성공은 성공 행이 있으니 센다. RPC가 오류를 내거나 응답이 알려진 모양이 아니면
+ * 점수를 세지 않고 `chapter_score_failed`로 기록만 남긴다(원천 id를 알 수 없어 null). 점수 쪽 실패는 믹스 응답·재료 소각·보상 지급·후속 처리를 바꾸지 않는다.
  */
 async function recordCombineSuccess(
   supabase: ServiceClient,
@@ -633,16 +640,22 @@ async function recordCombineSuccess(
   pointsAwarded: number
 ): Promise<void> {
   try {
-    const { error } = await supabase.rpc('record_combine_success', {
+    const { data, error } = await supabase.rpc('record_combine_success_with_id', {
       p_user_id: userId,
       p_recipe_id: recipeId,
       p_ingredient_badge_ids: ingredientBadgeIds,
       p_result_badge_ids: resultBadgeIds,
       p_points_awarded: pointsAwarded,
     })
-    if (error) console.error('[combineRecipeAttempt] 성공 이력 기록 오류:', error)
+    if (error) {
+      console.error('[combineRecipeAttempt] 성공 이력 기록 오류:', error)
+      await recordMixScoreFailure(userId, `record_combine_success_with_id RPC 오류: ${error.message ?? String(error)}`)
+      return
+    }
+    await awardMixSuccessScore(supabase, userId, data)
   } catch (error) {
     console.error('[combineRecipeAttempt] 성공 이력 기록 예외:', error)
+    await recordMixScoreFailure(userId, `record_combine_success_with_id 예외: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 

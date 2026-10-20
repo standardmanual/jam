@@ -90,8 +90,20 @@ const stub = vi.hoisted(() => ({
   usedSlots: 5,
   maxSlots: 10,
   usedSlotsHistory: [] as number[],
-  // ── 성공 기록(record_combine_success, 티켓 20261001_0631) ────────────────
+  // ── 성공 기록(record_combine_success_with_id, 티켓 20261001_0631·20261019_1315) ────────────────
   successRpcCalls: [] as Record<string, unknown>[],
+  /** RPC가 돌려준 성공 행 id 모음(호출마다 새 UUID) */
+  successLogIds: [] as string[],
+  /** 설정하면 RPC가 오류 없이 이 값을 그대로 돌려준다(계약 밖 응답 흉내). undefined면 `{ id, is_recipe_first }` */
+  successRpcData: undefined as unknown,
+  // ── 챕터 점수(chapter_add_score, 티켓 20261019_1315 3회) ────────────────
+  chapterScoreCalls: [] as Record<string, unknown>[],
+  /** `chapter_add_score`가 돌려줄 RPC 오류. null이면 정상 */
+  chapterScoreError: null as { message: string } | null,
+  /** true면 `chapter_add_score` 호출이 예외로 거부된다 */
+  chapterScoreThrows: false,
+  /** `engine_decision_log`에 insert된 행 — 점수 실패 기록을 본다 */
+  engineLogs: [] as Record<string, unknown>[],
   /** RPC가 돌려줄 오류. null이면 정상 */
   successRpcError: null as { message: string } | null,
   /** true면 RPC 호출이 예외로 거부된다 */
@@ -131,7 +143,7 @@ vi.mock('@/lib/combine/policy', () => ({
  */
 async function rpcStub(fnName: string, args: Record<string, unknown>): Promise<{ data: unknown; error: unknown }> {
   stub.callOrder.push(fnName)
-  if (fnName === 'record_combine_success') {
+  if (fnName === 'record_combine_success_with_id') {
     stub.successRpcCalls.push(args)
     if (stub.successRpcThrows) throw new Error('RPC 예외')
     if (stub.successRpcError) return { data: null, error: stub.successRpcError }
@@ -140,7 +152,17 @@ async function rpcStub(fnName: string, args: Record<string, unknown>): Promise<{
     const isFirst = !stub.firstSuccessRecipeIds.includes(recipeId)
     if (isFirst) stub.firstSuccessRecipeIds.push(recipeId)
     stub.successRpcResults.push(isFirst)
-    return { data: isFirst, error: null }
+    // 호출마다 새 성공 행이 생기므로 id도 새로 받는다(마이그레이션 254)
+    const id = `00000000-0000-4000-8000-${String(stub.successLogIds.length + 1).padStart(12, '0')}`
+    stub.successLogIds.push(id)
+    if (stub.successRpcData !== undefined) return { data: stub.successRpcData, error: null }
+    return { data: { id, is_recipe_first: isFirst }, error: null }
+  }
+  if (fnName === 'chapter_add_score') {
+    stub.chapterScoreCalls.push(args)
+    if (stub.chapterScoreThrows) throw new Error('점수 RPC 예외')
+    if (stub.chapterScoreError) return { data: null, error: stub.chapterScoreError }
+    return { data: [{ score_added: 20, current_chapter: null, reached_chapters: [] }], error: null }
   }
   if (fnName === 'combine_grant_results') {
     // 마이그레이션 236의 함수를 흉내낸다 — 빈칸이 결과 개수 이상이면 모두 지급하고, 모자라면 일부만 주지 않고 전부 받지 않은 결과로 남긴다.
@@ -202,6 +224,9 @@ function makeBuilder(table: string) {
     if (state.op === 'insert') {
       if (table === 'user_combine_fail_logs') {
         stub.failLogs.push(state.payload as Record<string, unknown>)
+      }
+      if (table === 'engine_decision_log') {
+        stub.engineLogs.push(state.payload as Record<string, unknown>)
       }
       return { data: null, error: null }
     }
@@ -352,6 +377,12 @@ beforeEach(() => {
   stub.maxSlots = 10
   stub.usedSlotsHistory = []
   stub.successRpcCalls = []
+  stub.successLogIds = []
+  stub.successRpcData = undefined
+  stub.chapterScoreCalls = []
+  stub.chapterScoreError = null
+  stub.chapterScoreThrows = false
+  stub.engineLogs = []
   stub.successRpcError = null
   stub.successRpcThrows = false
   stub.firstSuccessRecipeIds = []
@@ -767,7 +798,7 @@ describe('인벤토리 used_slots 카운터 (티켓 20260912_2101)', () => {
   })
 })
 
-describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () => {
+describe('성공 기록 — record_combine_success_with_id (티켓 20261001_0631·20261019_1315)', () => {
   it('레시피가 일치하면 성공 기록 RPC를 1회 부르고 인자에 유저·레시피·재료·결과·포인트를 담는다', async () => {
     stub.recipes = [recipe({ reward_points: 120, reward_badge_ids: [REWARD] })]
     stub.slots = itemSlots()
@@ -792,7 +823,7 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
 
     await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
 
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points', 'record_combine_success'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points', 'record_combine_success_with_id', 'chapter_add_score'])
   })
 
   it('빈손 성공(보상 배지·포인트가 없는 레시피)도 성공 1건으로 기록한다', async () => {
@@ -856,7 +887,7 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
   })
 
   it('성공 기록 RPC가 오류를 돌려줘도 success: true와 보상은 그대로다', async () => {
-    stub.successRpcError = { message: 'function record_combine_success does not exist' }
+    stub.successRpcError = { message: 'function record_combine_success_with_id does not exist' }
     stub.recipes = [recipe({ reward_points: 120, reward_badge_ids: [REWARD] })]
     stub.slots = itemSlots()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -903,6 +934,208 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
   })
 })
 
+describe('챕터 점수 «믹스 성공» — chapter_add_score (티켓 20261019_1315 3회)', () => {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  /** 성공하는 레시피 1개를 준비한다 */
+  function givenSuccessRecipe(overrides: Partial<RecipeStub> = {}) {
+    stub.recipes = [recipe({ reward_points: 120, reward_badge_ids: [REWARD], ...overrides })]
+    stub.slots = itemSlots()
+  }
+
+  it('성공하면 돌려받은 성공 행 id를 원천 id로 mix_success를 1회 센다 — 날짜는 생략한다', async () => {
+    givenSuccessRecipe()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    expect(stub.successLogIds).toHaveLength(1)
+    expect(stub.chapterScoreCalls).toEqual([
+      { p_user_id: USER, p_activity_kind: 'mix_success', p_source_id: stub.successLogIds[0], p_amount: 1 },
+    ])
+    expect(stub.chapterScoreCalls[0]).not.toHaveProperty('p_occurred_on')
+    expect(stub.chapterScoreCalls[0].p_source_id).toMatch(UUID_RE)
+  })
+
+  it('점수는 성공 기록 RPC 바로 뒤에 한 번 나간다 — 소각·보상·포인트 지급 순서는 그대로다', async () => {
+    givenSuccessRecipe()
+
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(stub.callOrder).toEqual([
+      'release_inventory_slots',
+      'combine_grant_results',
+      'inventory_slot_alert_step',
+      'award_points',
+      'record_combine_success_with_id',
+      'chapter_add_score',
+    ])
+    expect(followUpMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('빈손 성공(보상 배지·포인트가 없는 레시피)도 센다', async () => {
+    givenSuccessRecipe({ reward_points: 0, reward_badge_ids: [] })
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.noReward).toBe(true)
+    expect(stub.chapterScoreCalls).toHaveLength(1)
+    expect(stub.chapterScoreCalls[0]).toMatchObject({ p_activity_kind: 'mix_success', p_source_id: stub.successLogIds[0] })
+  })
+
+  it('결과가 받지 않은 상태로 남은 성공도 센다', async () => {
+    stub.usedSlots = 10
+    stub.maxSlots = 2
+    givenSuccessRecipe()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.resultStatus).toBe('pending')
+    expect(stub.chapterScoreCalls).toHaveLength(1)
+  })
+
+  it('믹스를 두 번 성공하면 성공 행이 둘이라 원천 id도 서로 다르다 — 같은 믹스를 두 번 세지 않고 서로 다른 믹스를 하나로 합치지도 않는다', async () => {
+    givenSuccessRecipe()
+
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    const sources = stub.chapterScoreCalls.map((c) => c.p_source_id)
+    expect(sources).toHaveLength(2)
+    expect(new Set(sources).size).toBe(2)
+    expect(sources).toEqual(stub.successLogIds)
+  })
+
+  it('시험 믹스(testMix)는 성공 기록이 없어 점수도 세지 않는다', async () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    givenSuccessRecipe({ valid_from: future })
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], { allowUnreleased: true })
+
+    expect(result.success).toBe(true)
+    expect(result.testMix).toBe(true)
+    expect(stub.successRpcCalls).toHaveLength(0)
+    expect(stub.chapterScoreCalls).toHaveLength(0)
+  })
+
+  it('실패 갈래(no_recipe_match·소각 전 실패·이용 정지)는 점수를 세지 않는다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = [] // 어떤 투입도 충족될 수 없다
+    const noMatch = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    expect(noMatch.success).toBe(false)
+
+    stub.recipes = []
+    const notFound = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    expect(notFound.success).toBe(false)
+
+    stub.suspended = true
+    await expect(combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])).rejects.toBeInstanceOf(UserSuspendedError)
+
+    expect(stub.chapterScoreCalls).toHaveLength(0)
+  })
+
+  describe('성공 기록 응답이 알려진 모양이 아니면 점수를 세지 않고 기록한다', () => {
+    const BAD_RESPONSES: [string, unknown][] = [
+      ['null', null],
+      ['boolean(옛 함수의 응답)', true],
+      ['배열', [{ id: '00000000-0000-4000-8000-000000000001', is_recipe_first: true }]],
+      ['id 없음', { is_recipe_first: true }],
+      ['id가 UUID 문자열이 아님', { id: 'not-a-uuid', is_recipe_first: true }],
+      ['id가 숫자', { id: 123, is_recipe_first: true }],
+      ['is_recipe_first 없음', { id: '00000000-0000-4000-8000-000000000001' }],
+      ['is_recipe_first가 boolean이 아님', { id: '00000000-0000-4000-8000-000000000001', is_recipe_first: 'true' }],
+    ]
+
+    it.each(BAD_RESPONSES)('%s', async (_label, data) => {
+      stub.successRpcData = data
+      givenSuccessRecipe()
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+      // 믹스 응답과 보상은 그대로다
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.resultBadges.map((b) => b.id)).toEqual([REWARD])
+        expect(result.pointsAwarded).toBe(120)
+      }
+      expect(stub.grantedBadgeIds).toEqual([REWARD])
+      // 점수는 세지 않고, console.error와 chapter_score_failed(sourceId null)만 남는다
+      expect(stub.chapterScoreCalls).toHaveLength(0)
+      expect(consoleError).toHaveBeenCalled()
+      expect(stub.engineLogs).toHaveLength(1)
+      expect(stub.engineLogs[0]).toMatchObject({
+        user_id: USER,
+        engine: 'points',
+        event: 'chapter_score_failed',
+        payload: { kind: 'mix_success', sourceId: null },
+      })
+      consoleError.mockRestore()
+    })
+  })
+
+  it('성공 기록 RPC가 오류를 내면 점수를 세지 않고 chapter_score_failed(sourceId null)를 남긴다 — 믹스 응답은 그대로다', async () => {
+    stub.successRpcError = { message: 'function record_combine_success_with_id does not exist' }
+    givenSuccessRecipe()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.pointsAwarded).toBe(120)
+    expect(stub.chapterScoreCalls).toHaveLength(0)
+    expect(stub.engineLogs).toHaveLength(1)
+    expect(stub.engineLogs[0]).toMatchObject({ event: 'chapter_score_failed', payload: { kind: 'mix_success', sourceId: null } })
+    expect(String((stub.engineLogs[0].payload as { error: string }).error)).toContain('record_combine_success_with_id')
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('성공 기록 RPC 호출이 예외로 거부돼도 점수를 세지 않고 기록하며 믹스 응답은 그대로다', async () => {
+    stub.successRpcThrows = true
+    givenSuccessRecipe()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.pointsAwarded).toBe(120)
+    expect(stub.chapterScoreCalls).toHaveLength(0)
+    expect(stub.engineLogs).toHaveLength(1)
+    expect(stub.engineLogs[0]).toMatchObject({ event: 'chapter_score_failed', payload: { kind: 'mix_success', sourceId: null } })
+    consoleError.mockRestore()
+  })
+
+  it.each([
+    ['점수 RPC가 오류를 돌려줌', { chapterScoreError: { message: '점수 장애' }, chapterScoreThrows: false }],
+    ['점수 RPC 호출이 예외로 거부됨', { chapterScoreError: null, chapterScoreThrows: true }],
+  ])('%s — 믹스 응답·재료 소각·보상 지급·후속 처리는 그대로고 실패만 기록한다', async (_label, failure) => {
+    stub.chapterScoreError = failure.chapterScoreError
+    stub.chapterScoreThrows = failure.chapterScoreThrows
+    givenSuccessRecipe()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toMatchObject({ success: true, path: 'recipe', pointsAwarded: 120, resultStatus: 'granted' })
+    expect(stub.destroyedItemIds).toEqual([ITEM_1, ITEM_2])
+    expect(stub.grantedBadgeIds).toEqual([REWARD])
+    expect(awardPointsMock).toHaveBeenCalledWith(USER, 120, 'combine_recipe_reward')
+    expect(followUpMock).toHaveBeenCalledTimes(1)
+    // 성공 기록은 정상으로 남았고, 점수 실패는 원천 id(성공 행 id)를 갖고 기록된다 — 같은 id로 다시 보낼 수 있다
+    expect(stub.successRpcCalls).toHaveLength(1)
+    expect(stub.engineLogs).toHaveLength(1)
+    expect(stub.engineLogs[0]).toMatchObject({
+      event: 'chapter_score_failed',
+      payload: { kind: 'mix_success', sourceId: stub.successLogIds[0] },
+    })
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+})
+
 describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159)', () => {
   const futureAt = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   const pastAt = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -925,7 +1158,7 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
     expect(stub.grantedBadgeIds).toEqual([REWARD])
     expect(awardPointsMock).toHaveBeenCalledWith(USER, 120, 'combine_recipe_reward')
     expect(stub.usedSlotsHistory).toEqual([3, 4])
-    // 기록에서 빠진다 — record_combine_success 0회, 실패 로그 0건
+    // 기록에서 빠진다 — record_combine_success_with_id 0회, 실패 로그 0건
     expect(stub.successRpcCalls).toHaveLength(0)
     expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points'])
     expect(stub.failLogs).toHaveLength(0)
@@ -984,7 +1217,7 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
     expect(result.success).toBe(true)
     expect('testMix' in result).toBe(false)
     expect(stub.successRpcCalls).toHaveLength(1)
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points', 'record_combine_success'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points', 'record_combine_success_with_id', 'chapter_add_score'])
   })
 
   it('공개 시각이 없는 레시피(처음부터 공개)도 운영자 믹스는 일반 믹스다 — 실패 로그가 정상으로 남는다', async () => {
