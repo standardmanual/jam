@@ -616,8 +616,11 @@ Step 4.9. [섀도우밴 게이트 — 2026-10-17 티켓 20261017_1426에서 없�
 Step 5. [홍수 방지] ❌ **제거됨** — 30일 롤링 캡은 더 이상 없다 (§2.6 참조, 코드에도 캡 없음)
 Step 6. [DB 반영] action='issue' → user_activity_badges INSERT (earn_count·earn_history 포함)
                   action='increment' → increment_activity_badge_earn() RPC (회차 카운터만)
-Step 7. [부수효과] **DB 반영에 성공한 'issue'만** — earned 배열 · 잼 포인트 · 피드 이벤트 ·
-        결산 · 획득 연출. 'increment'는 여기 오지 않는다 (§2.14)
+Step 7. [부수효과] **DB 반영에 성공한 'issue'만** — earned 배열 · 챕터 점수(배지 받기) · 잼 포인트 ·
+        피드 이벤트 · 결산 · 획득 연출. 'increment'는 여기 오지 않는다 (§2.14)
+        ※ 챕터 점수 «배지 받기»는 `awardBadgeReceiveScore`가 거른다: 숨김 배지, 팔로워·팔로잉·챕터 조건 배지,
+          카탈로그 재평가 배치(`catalog_reevaluation`), 이용 정지 중인 유저는 세지 않는다
+          (규칙은 `02_DATA_MODEL.md` 9-3절, 티켓 20261019_1315 2a회)
   ※ 계기 활동(`selectTriggerActivity`)은 4분기다 — ① 반복형의 그 회차 ② **휴식의 복귀 활동**
     (§2.16) ③ 종목 지정 배지의 첫 적격 활동 ④ 이력의 첫 활동
 Step 8. initial_sync_done 갱신
@@ -1609,6 +1612,7 @@ POST /api/admin/badges/reevaluate-all
 |---|---|---|
 | 피드 기록(`recordFeedEvent`) | 억제 (`silent: true`) | 재평가로 유저당 수십 종이 한 번에 나올 수 있어, 그대로 실으면 「달리지도 않았는데 배지가 쏟아진다」가 피드·알림 폭발이 된다 |
 | 포인트 지급(`awardPoints`) | **정상 지급** — `silent`와 무관하게 동작하는 기존 경로를 그대로 둔다 | 재평가로 뒤늦게 발견됐을 뿐 실제 활동 이력으로 정당하게 획득한 배지다. 자연 발급과 동일하게 보상하는 것이 맞다 |
+| 챕터 점수 «배지 받기»(`awardBadgeReceiveScore`) | **세지 않음** — 호출부가 `triggeredBy`가 `catalog_reevaluation`(접두 형태 포함)이면 점수를 부르지 않는다 | 배지가 기존 유저에게 한꺼번에 수십 개씩 소급 발급되어 챕터가 한꺼번에 오르는 것을 막는다. 포인트는 정상 지급하는 위 행과 다르게 정했다(사용자 결정 3, 오픈 준비 때 다시 정할 수 있다. 티켓 20261019_1315) |
 | 가입 앵커(`users.created_at`) 이후 이력만 대상 | 유지 (변경 없음) | `evaluateBadgesDetailed`가 이미 강제한다 — §5 |
 
 #### `triggeredBy` — `strava_sync`와 구분
