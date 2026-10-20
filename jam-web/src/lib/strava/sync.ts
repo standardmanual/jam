@@ -1164,7 +1164,7 @@ export async function processFetchedActivities(
   )
 
   // 정산 대상은 인정 필터와 어뷰징 필터를 모두 통과한 활동(passedEntries)뿐이다. 첫 동기화는 위에서 이미 최근 1건만
-  // 남겼다. 이용 정지 중 정산 차단은 2-6, 챕터 점수 가산은 묶음 5의 몫이라 여기서 하지 않는다.
+  // 남겼다. 이용 정지 중 정산 차단은 2-6의 몫이라 여기서 하지 않는다. 모은 잼의 챕터 점수는 `settleActivities` 안에서 센다(티켓 20261019_1315).
   const jamSettlement = await settleActivities(
     supabase,
     userId,

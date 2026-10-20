@@ -22,8 +22,8 @@ import type { JamActionTrigger } from './jamActionBadges'
  * 보조 키(`signup_recent_active_days`·`active_week_min_days`·`jam_week_min_earned`)는 트리거가 아니라 짝 지표 배지를 거르거나 정하는 조건이라 넣지 않는다.
  *
  * 잼 2종(`jam_total_earned`·`jam_weekly_earned`)은 잼 정산(`settleActivities`)이 동기화 안에서 일어나므로 정산 뒤 여기서 본다.
- * 챕터(`chapter_reached`)는 챕터를 올리는 호출부(`chapter_add_score`·`chapter_start`를 부르는 앱 코드)가 아직 없어(묶음 5)
- * 그 전까지 동기화 끝에서 읽는다 — 챕터 오름 직후 판정은 묶음 5가 그 호출부에 연결한다(티켓 20261018_1815 결정 10).
+ * 챕터(`chapter_reached`)는 챕터 점수를 쌓는 호출부(`chapter_add_score`, 티켓 20261019_1315)는 있지만 챕터를 시작하는 호출부(`chapter_start`를 부르는 앱 코드)가
+ * 아직 없고 챕터 오름 직후 판정도 연결되지 않아(묶음 5) 그 전까지 동기화 끝에서 읽는다 — 챕터 오름 직후 판정은 묶음 5가 그 호출부에 연결한다(티켓 20261018_1815 결정 10).
  */
 export const JAM_SYNC_TRIGGERS: readonly JamActionTrigger[] = [
   'mission_complete_count',
