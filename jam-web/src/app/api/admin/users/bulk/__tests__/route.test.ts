@@ -159,6 +159,84 @@ describe('실행', () => {
     expect(mocks.executeAdminGrant).toHaveBeenCalledWith(USER_A, { amount: 300, reasonLabel: 'cs_compensation', note: null })
   })
 
+  it('회수에서 잔액이 모자란 유저는 건너뛴 목록의 사유(현재 잔액·요청 금액)로 알리고, 나머지 유저는 계속 처리하며 응답은 200이다', async () => {
+    mocks.executeAdminGrant.mockImplementation(async (id: string) =>
+      id === USER_A
+        ? { rejected: true, code: 'insufficient_balance', balance: 40, requested: 300 }
+        : { transaction: { id: 'tx' }, balance: 700 }
+    )
+    const res = await POST(
+      post({
+        ids: [USER_A, USER_B],
+        action: 'grant_points',
+        confirm_phrase: '회수 2',
+        payload: { amount: -300, reasonLabel: 'error_correction' },
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    // 거절된 유저가 있어도 두 유저 모두 실행을 시도한다
+    expect(mocks.executeAdminGrant).toHaveBeenCalledTimes(2)
+    expect(mocks.executeAdminGrant).toHaveBeenCalledWith(USER_A, { amount: -300, reasonLabel: 'error_correction', note: null })
+    expect(data.processed).toEqual([USER_B])
+    const rejectedReason =
+      '회수하지 못했어요. 이 유저의 잔액이 40 포인트라 300 포인트는 회수할 수 없어요. 40 포인트 이하로 줄여서 다시 회수해 주세요.'
+    expect(data.skipped).toEqual(
+      expect.arrayContaining([{ id: USER_A, reason: rejectedReason, label: 'a@x.com' }])
+    )
+    expect(data.results).toEqual(
+      expect.arrayContaining([
+        { id: USER_A, ok: false, error: rejectedReason },
+        { id: USER_B, ok: true },
+      ])
+    )
+  })
+
+  it('회수가 모두 거절돼도 응답은 200이고 처리된 유저만 비어 있다', async () => {
+    mocks.executeAdminGrant.mockResolvedValue({
+      rejected: true,
+      code: 'insufficient_balance',
+      balance: 0,
+      requested: 50,
+    })
+    const res = await POST(
+      post({
+        ids: [USER_A, USER_B],
+        action: 'grant_points',
+        confirm_phrase: '회수 2',
+        payload: { amount: -50, reasonLabel: 'error_correction' },
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.processed).toEqual([])
+    expect(data.skipped).toHaveLength(2)
+    expect(data.skipped.every((s: { reason: string }) => s.reason.includes('회수하지 못했어요.'))).toBe(true)
+  })
+
+  it('회수 처리 자체가 실패(null)하면 지금처럼 일반 실패 사유로 건너뛴다', async () => {
+    mocks.executeAdminGrant.mockImplementation(async (id: string) =>
+      id === USER_A ? null : { transaction: { id: 'tx' }, balance: 700 }
+    )
+    const res = await POST(
+      post({
+        ids: [USER_A, USER_B],
+        action: 'grant_points',
+        confirm_phrase: '회수 2',
+        payload: { amount: -300, reasonLabel: 'error_correction' },
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.processed).toEqual([USER_B])
+    expect(data.skipped).toEqual(
+      expect.arrayContaining([{ id: USER_A, reason: '지급/회수 처리에 실패했습니다.', label: 'a@x.com' }])
+    )
+  })
+
   it('1,000P 이상 지급은 실행 요청에 confirmed가 없으면 422다', async () => {
     const res = await POST(
       post({

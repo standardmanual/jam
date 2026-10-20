@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { validateAdminGrantInput, executeAdminGrant } from '@/lib/points/admin-grant'
+import {
+  validateAdminGrantInput,
+  executeAdminGrant,
+  isAdminGrantRejected,
+  buildDeductRejectionMessage,
+} from '@/lib/points/admin-grant'
 
 /**
  * 어드민 포인트 지급/회수 실행.
@@ -8,6 +13,10 @@ import { validateAdminGrantInput, executeAdminGrant } from '@/lib/points/admin-g
  *
  * 검증(사유 목록·기타 메모·고액 확인)과 실행은 `lib/points/admin-grant.ts`가 갖는다 —
  * 유저 일괄 지급(`api/admin/users/bulk`)과 같은 함수를 써서 규칙이 갈라지지 않게 한다.
+ *
+ * 회수(음수)는 잔액이 0 아래로 내려가지 않게 `admin_deduct_points`를 쓴다(티켓 20261019_1314).
+ * 잔액보다 큰 회수는 HTTP 409 + { error, code: 'insufficient_balance', balance, requested }다.
+ * 고액 확인창의 422 + requiresConfirmation(`UserGrantForm`이 가로챈다)과 상태 코드가 겹치지 않는다.
  */
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
@@ -41,6 +50,17 @@ export async function POST(req: NextRequest) {
   const executed = await executeAdminGrant(userId, validated.grant)
   if (!executed) {
     return NextResponse.json({ error: '지급/회수 처리에 실패했습니다.' }, { status: 500 })
+  }
+  if (isAdminGrantRejected(executed)) {
+    return NextResponse.json(
+      {
+        error: buildDeductRejectionMessage(executed),
+        code: executed.code,
+        balance: executed.balance,
+        requested: executed.requested,
+      },
+      { status: 409 }
+    )
   }
 
   return NextResponse.json({ transaction: executed.transaction, balance: executed.balance })

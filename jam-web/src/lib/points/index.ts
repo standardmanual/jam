@@ -9,6 +9,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { logEngineDecision } from '@/lib/engine-log'
 import { createNotification } from '@/lib/notifications'
 import { recordActivityRecap } from '@/lib/notifications/recap'
+import { parseAdminDeductResult } from '@/lib/points/deduct-contract'
 import type { PointReason, PointTransactionRow } from '@/types/database'
 import type { Database } from '@/types/database.generated'
 
@@ -87,6 +88,86 @@ export async function awardPoints(
   await notifyPointChange(userId, amount, reason, options)
 
   return data as PointTransactionRow
+}
+
+export interface DeductPointsByAdminOptions {
+  /** 사유 라벨(ADMIN_REASONS 값) — 검증은 호출부(`validateAdminGrantInput`) 몫이다 */
+  label?: string | null
+  note?: string | null
+}
+
+/** 어드민 회수의 결과. 성공이거나 잔액 부족 거절이다(그 밖의 실패는 null). */
+export type DeductPointsByAdminOutcome =
+  | { ok: true; transactionId: string; balance: number }
+  | { ok: false; error: 'insufficient_balance'; balance: number; requested: number }
+
+/**
+ * 어드민 포인트 회수 — 잔액이 0 아래로 내려가지 않게 `admin_deduct_points` RPC를 부른다.
+ * (티켓 20261019_1314, 운영 로직 14.2절, 마이그레이션 252)
+ *
+ * `amount`는 회수할 양(양수)이다. 부호가 붙은 지급/회수 금액이 아니다.
+ * RPC가 지갑 행을 잠그고 잔액을 검사해 모자라면 아무것도 바꾸지 않고 거절을 돌려준다.
+ *
+ * - 성공: `admin_points_changed` 알림을 `awardPoints`와 같은 방식으로 보내고 결과를 돌려준다.
+ * - 거절(`insufficient_balance`): 알림 없이 결과로 돌려준다. 오류가 아니라 정상 응답이다.
+ * - 그 밖의 실패(RPC 오류, 계약 밖 응답, `invalid_amount`): null. 성공으로 보지 않으며
+ *   `engine_decision_log`(`point_award_failed`)에 남긴다.
+ *
+ * 지급(양수)은 이 함수가 아니라 `awardPoints`를 쓴다.
+ */
+export async function deductPointsByAdmin(
+  userId: string,
+  amount: number,
+  options: DeductPointsByAdminOptions = {}
+): Promise<DeductPointsByAdminOutcome | null> {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    console.error(`[points] deductPointsByAdmin: amount는 양의 정수여야 합니다 (받은 값: ${amount})`)
+    return null
+  }
+
+  const supabase = createServiceClient()
+  const { data, error } = await supabase.rpc('admin_deduct_points', {
+    p_user_id: userId,
+    p_amount: amount,
+    p_admin_reason_label: options.label ?? undefined,
+    p_admin_reason_note: options.note ?? undefined,
+  })
+
+  const logFailure = async (detail: Record<string, unknown>) => {
+    await logEngineDecision('points', 'point_award_failed', userId, {
+      amount: -amount,
+      reason: 'admin_deduct',
+      ...detail,
+    })
+  }
+
+  if (error) {
+    console.error(`[points] deductPointsByAdmin 실패 — userId: ${userId}, amount: ${amount}:`, error)
+    await logFailure({ dbError: error.message ?? String(error) })
+    return null
+  }
+
+  const result = parseAdminDeductResult(data)
+  if (!result) {
+    console.error(`[points] deductPointsByAdmin: 계약 밖 응답 — userId: ${userId}, amount: ${amount}:`, data)
+    await logFailure({ contractViolation: true })
+    return null
+  }
+
+  if (!result.ok) {
+    if (result.error === 'insufficient_balance') return result
+    // invalid_amount — 위 가드를 통과한 금액에 대해 나오면 안 되는 응답이다
+    console.error(`[points] deductPointsByAdmin: invalid_amount — userId: ${userId}, amount: ${amount}`)
+    await logFailure({ rpcError: result.error })
+    return null
+  }
+
+  await notifyPointChange(userId, -amount, 'admin_deduct', {
+    adminReasonLabel: options.label ?? null,
+    adminReasonNote: options.note ?? null,
+  })
+
+  return result
 }
 
 /**

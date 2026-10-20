@@ -12,7 +12,13 @@ import {
 } from '@/lib/admin/user-bulk'
 import { computeUserBulkImpact, fetchUserTargets } from '@/lib/admin/user-bulk-impact'
 import { resetUserData, hardDeleteUser } from '@/lib/admin/user-actions'
-import { validateAdminGrantInput, executeAdminGrant, type ValidAdminGrant } from '@/lib/points/admin-grant'
+import {
+  validateAdminGrantInput,
+  executeAdminGrant,
+  isAdminGrantRejected,
+  buildDeductRejectionMessage,
+  type ValidAdminGrant,
+} from '@/lib/points/admin-grant'
 
 /**
  * 유저 일괄 처리(티켓 20260924_0951, 상위 티켓 §4.4·결정 3) — 포인트 지급·회수, 초기화, 완전
@@ -22,6 +28,8 @@ import { validateAdminGrantInput, executeAdminGrant, type ValidAdminGrant } from
  * - 어드민 계정과 실행 어드민 본인은 대상에서 자동으로 뺀다(`partitionUserTargets`).
  * - 유저 단위 작업은 하나로 묶을 수 없어 유저별로 실행하고 `results[{ id, ok, error }]`를 돌려준다.
  *   표준 응답(`processed`·`skipped`)에도 같은 내용을 담아 화면의 공용 토스트가 그대로 쓴다.
+ * - 잔액보다 큰 회수는 그 유저만 `skipped`의 사유(현재 잔액·요청 금액)로 알리고 응답은 200이다
+ *   (티켓 20261019_1314). 일괄 `dryRun`의 `negativeBalanceCount` 문구는 5-8에서 고친다.
  */
 export const maxDuration = 60
 
@@ -128,7 +136,11 @@ export async function POST(req: NextRequest) {
     results = await mapWithConcurrency(eligible, GRANT_CONCURRENCY, (id) =>
       safely(id, async () => {
         const executed = await executeAdminGrant(id, validGrant)
-        return executed ? { ok: true } : { ok: false, error: '지급/회수 처리에 실패했습니다.' }
+        if (!executed) return { ok: false, error: '지급/회수 처리에 실패했습니다.' }
+        // 잔액보다 큰 회수는 오류가 아니라 거절이다 — 이 유저만 건너뛴 목록에 사유(현재 잔액, 요청 금액)로 담고
+        // 나머지 유저는 계속 처리한다(티켓 20261019_1314). 응답은 그대로 200이다.
+        if (isAdminGrantRejected(executed)) return { ok: false, error: buildDeductRejectionMessage(executed) }
+        return { ok: true }
       })
     )
   } else if (action === 'reset') {
