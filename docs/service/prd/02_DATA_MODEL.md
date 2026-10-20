@@ -1071,7 +1071,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 드랍 5점에는 상한이 없어 «드랍 → 자기 줍기(0점) → 다시 드랍»을 반복하면 점수가 계속 쌓일 수 있다. 점수 설계의 문제라 이 연결의 범위 밖이다(밸런스 설정 묶음 7과 운영 로직 12.2절 재검토).
 
 #### 챕터 1 시작과 오름 처리 (티켓 20261019_1316 1회, 운영 로직 12.1~12.3절)
-읽기 함수(내 챕터·이름·다음 챕터까지 비율, 다른 유저용)와 이름 조회는 2회에서 더한다. 이 소절은 1회(챕터 1 시작·오름 처리·소식·챕터 배지 즉시 판정)다.
+이 소절은 1회(챕터 1 시작·오름 처리·소식·챕터 배지 즉시 판정)다. 읽기 함수(내 챕터·이름·다음 챕터까지 비율, 다른 유저용)와 이름 조회는 아래 «챕터 읽기»(2회)다. 챕터 전체의 기능 정의는 [챕터 PRD](chapter/PRD.md)다.
 
 **챕터 1 시작** (`src/lib/chapter/start.ts`)
 - 호출 지점은 `lib/onboarding-quest/completion.ts`의 `recordOnboardingQuestCompletion` 한 곳이다. 호출처 3곳(`lib/strava/sync.ts`의 `syncStravaActivities`·`app/api/onboarding-quest/step/route.ts`·`skip/route.ts`)은 시그니처가 그대로이고 모두 service 클라이언트를 넘긴다. 동기화는 처리한 인정 활동이 1건 이상일 때만 부르고, 그 호출은 동기화 끝 판정(`processFetchedActivities` 안) **뒤**에 일어난다.
@@ -1090,6 +1090,19 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - **순환 import**: `score.ts → rise.ts → jamActionRoute → strava/sync.ts → jam/settlement.ts → score.ts`가 정적으로 이어지면 순환이 되므로, `rise.ts`가 `jamActionRoute`를 호출 시점에 `await import()`로 불러 모듈 평가 시점의 순환을 없앴다(`rise-import-cycle.test.ts`가 두 불러오기 순서를 고정).
 - 챕터 배지가 다시 챕터 점수를 올리지 않는다: `chapter_reached` 조건 배지는 «배지 받기» 점수에서 뺀다(위 «배지 받기 점수의 규칙», `rise.test.ts`가 확인).
 - 점수 함수와 챕터 1 시작은 오름 처리가 끝나기를 기다린 뒤 돌려준다. 오름이 있는 요청에서만 소식·판정 시간이 더해진다.
+
+#### 챕터 읽기 (티켓 20261019_1316 2회, 운영 로직 12.3절)
+프로필(5-7)이 쓸 서버 읽기 함수다. 이 소절은 **무엇을 어느 표에서 읽는가**만 적는다. 응답 모양과 동작(점수 숫자 비노출, 챕터 없음과 읽지 못함의 구분, 이름이 비었을 때)은 [챕터 PRD](chapter/PRD.md) 5·6절이다. DB 변경은 없다.
+
+| 함수 (`src/lib/chapter/`) | 읽는 표와 열 |
+|---|---|
+| `getMyChapter` (`read.ts`) | `user_chapters`(이 유저 한 행의 `chapter_no`, `total_score`), 챕터가 있을 때만 `chapter_definitions`(전체, `chapter_no`·`required_score`), `users`(`tribe:tribes(id, name)`), `chapter_names`(`name`) |
+| `getPublicChapter` (`read.ts`) | `user_chapters`(`chapter_no`만), `users`(`tribe:tribes(id, name)`), 챕터와 트라이브가 있을 때만 `chapter_names`(`name`). `total_score`와 `chapter_definitions`는 읽지 않는다 |
+| `getChapterName` (`name.ts`) | `chapter_names`(`tribe_id`, `chapter_no`로 한 행의 `name`) |
+
+- `total_score`와 `required_score`는 비율 계산(`progress.ts`)에만 쓰이고 응답에 실리지 않는다.
+- `user_chapters`는 본인 행만 읽는 정책이라 읽기 함수는 service 클라이언트를 받는다. `chapter_definitions`·`chapter_names`는 로그인 유저 모두 읽을 수 있다.
+- 이름을 읽는 트라이브는 `users.tribe_id`가 가리키는 지금 트라이브다. `chapter_names`는 (트라이브, 챕터)가 키이고 `name`이 비어도 된다.
 
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052

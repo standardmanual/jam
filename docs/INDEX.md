@@ -28,6 +28,7 @@ status: active
 - [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
 - [REGISTRATION_BUNDLE.md](service/prd/asset-generator/REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 배지 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/badge-share/PRD.md) — 배지 상세 페이지에서 배지를 이미지로 만들어 공유하거나 기기에 저장하는 기능의 플로우와 플랫폼별 동작을 정의한 PRD다.
+- [PRD.md](service/prd/chapter/PRD.md) — 챕터가 생기는 흐름, 오름 처리, 프로필이 쓸 읽기 함수와 응답 모양(점수 숫자 비노출)을 코드 기준으로 정의한 PRD다.
 - [PRD.md](service/prd/content-automation/PRD.md) — 정식 오픈 후 홈피드·배지·미션 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·제안승인·전략변경안·유형리뷰)의 스펙 정본이다.
 - [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 
@@ -319,6 +320,7 @@ status: active
 
 **현재 서비스 (service)**
 
+- [PRD.md](service/prd/chapter/PRD.md) — 챕터가 생기는 흐름, 오름 처리, 프로필이 쓸 읽기 함수와 응답 모양(점수 숫자 비노출)을 코드 기준으로 정의한 PRD다.
 - [DATA_MODEL.md](service/prd/notification/DATA_MODEL.md) — 알림의 `notifications` 테이블과 `notification_type`, 읽음·묶음 모델, `group_key`, `payload` 스키마를 정의한 데이터 모델이다.
 - [PRD.md](service/prd/notification/PRD.md) — 앱 안 알림(소식) 히스토리의 정체성, 설계 원칙, 소식 종류, 생성 트리거, 문구 강조 규칙, 화면을 정의한 PRD다.
 - [RECAP_CASEBOOK.md](service/prd/notification/RECAP_CASEBOOK.md) — 한 번의 활동에서 나올 수 있는 보상 유형별 문구 사례와 문구 규칙을 모은 활동 결산 케이스북이다.
@@ -344,6 +346,10 @@ status: active
 - [06 트라이브, 온보딩, 계정, 소셜.md](plan/jam2/service-redesign/current-service-map/06%20트라이브,%20온보딩,%20계정,%20소셜.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 트라이브와 유저의 트라이브 선택, 로그인과 온보딩, 퀘스트 7단계, 프로필, 탈퇴와 계정 삭제, 어드민 유저 관리, 팔로우, 피드, 검색, 알림, 문의.
 
 ### 프로필
+
+**현재 서비스 (service)**
+
+- [PRD.md](service/prd/chapter/PRD.md) — 챕터가 생기는 흐름, 오름 처리, 프로필이 쓸 읽기 함수와 응답 모양(점수 숫자 비노출)을 코드 기준으로 정의한 PRD다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -830,6 +836,10 @@ status: active
 ### docs/service/prd/badge-share/
 
 - [PRD.md](service/prd/badge-share/PRD.md) — 배지 상세 페이지에서 배지를 이미지로 만들어 공유하거나 기기에 저장하는 기능의 플로우와 플랫폼별 동작을 정의한 PRD다.
+
+### docs/service/prd/chapter/
+
+- [PRD.md](service/prd/chapter/PRD.md) — 챕터가 생기는 흐름, 오름 처리, 프로필이 쓸 읽기 함수와 응답 모양(점수 숫자 비노출)을 코드 기준으로 정의한 PRD다.
 
 ### docs/service/prd/content-automation/
 
