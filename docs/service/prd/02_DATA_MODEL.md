@@ -192,7 +192,7 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
 | valid_from / valid_until | 노출 기간 |
-| point_reward | 발급 시 지급 포인트. 잠긴 채 받은 아이템 배지는 주지 않는다(열린 상태가 될 때 한 번 준다, 연 때 주는 것은 3-3) |
+| point_reward | 발급 시 지급 포인트. 잠긴 채 받은 아이템 배지는 주지 않는다(열린 상태가 될 때 한 번 준다, 연 때 주는 것은 3-3). 아이템·체크인 배지 값은 마이그레이션 253으로 규칙 값이 되었다(현황은 포인트 객체 모델 1.7) |
 | always_locked | **잠김으로 만든 아이템 배지**(boolean, 기본 false, 마이그레이션 231). true면 어느 경로로 얻어도 늘 잠긴 채 나온다(`lock_reason = badge_locked`). 어드민 양식 입력은 2회 |
 | unlock_required | 여는 데 필요한 잼의 양(integer, nullable, 양수, 마이그레이션 231). NULL이면 그 등급의 최소값(`jam_policy.locked_min_*`)을 쓴다. 최소값보다 적게는 저장하지 않는다(앱 코드가 막는다, 2회). 개체에는 배정될 때 이 값이 고정된다 |
 | deleted_at | 소프트 삭제 |
@@ -837,7 +837,23 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 ### point_treasury
 전체 발행/회수 총량 싱글톤 장부 — 어드민에서 유통량·월렛합·원장합 정합성 검사에 사용.
 
-> 잔액 변경은 전부 `award_points()` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리.
+> 잔액 변경은 전부 `award_points()` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리. 어드민 회수만 앞에 `admin_deduct_points()`가 서서 잔액을 먼저 검사하고, 통과하면 `award_points()`를 부른다(아래).
+
+### admin_deduct_points — 어드민 회수 (마이그레이션 252, 티켓 20261019_1314, 운영 로직 14.2절)
+`admin_deduct_points(p_user_id, p_amount, p_admin_reason_label, p_admin_reason_note) → jsonb`. SECURITY DEFINER, `service_role`만 실행한다(`anon`·`authenticated`·PUBLIC 권한 없음). `p_amount`는 회수할 양(양수)이다.
+지갑 행을 `FOR UPDATE`로 잠그고 잔액을 읽어(같은 지갑에 동시에 들어온 회수·지급을 직렬화한다) 잔액이 모자라면 아무것도 바꾸지 않고 거절을 돌려준다. 통과하면 `award_points(-양, 'admin_deduct')`로 원장·지갑·금고를 기존 방식 그대로 처리한다. 지갑이 없는 유저는 잔액 0으로 보고 거절하며 빈 지갑 행을 만들지 않는다. 사유 라벨은 검증하지 않고 원장에 그대로 남긴다(검증은 앱 몫, `lib/points/reasons.ts`).
+
+반환 계약(앱 파서 `lib/points/deduct-contract.ts`의 `parseAdminDeductResult`가 이 세 모양만 인정하고, 그 밖의 응답은 `null`이라 호출부가 성공으로 보지 않는다):
+
+| 응답 | 뜻 |
+|---|---|
+| `{ok:true, transactionId, balance}` | 회수 완료. `balance`는 회수 뒤 잔액 |
+| `{ok:false, error:'insufficient_balance', balance, requested}` | 잔액이 요청 금액보다 적다. 지갑·원장·금고는 바뀌지 않는다 |
+| `{ok:false, error:'invalid_amount'}` | 금액이 비었거나 0 이하 |
+
+앱의 호출 경로: `lib/points/index.ts`의 `deductPointsByAdmin`이 RPC를 부르고, 성공이면 `admin_points_changed` 알림을 지금처럼 보낸다. 거절은 알림 없이 결과로 돌려주고, RPC 오류·계약 밖 응답·`invalid_amount`는 `engine_decision_log`(`point_award_failed`)에 남기고 `null`이다. `lib/points/admin-grant.ts`의 `executeAdminGrant`가 음수 금액에서 이 함수를 쓴다(양수 지급은 `awardPoints` 그대로). 단건 `POST /api/admin/points/grant`는 거절을 HTTP 409 `{error, code:'insufficient_balance', balance, requested}`로, 일괄 `POST /api/admin/users/bulk`(`grant_points`)는 거절된 유저를 `skipped`의 사유로 알리고 응답 200으로 나머지 유저를 계속 처리한다.
+
+**한계.** 음수 방지는 이 함수를 거치는 새 경로에서만 유효하다. `award_points()`와 `point_wallets`는 바꾸지 않았고 옛 프로덕션 코드는 이 함수를 모른 채 계속 `award_points()`로 회수하므로, 새 앱이 배포되고 옛 코드가 사라질 때까지 그 경로는 막히지 않는다. 모든 경로를 막는 `point_wallets.balance >= 0` CHECK는 옛 코드를 정리하는 묶음 6에서 더한다(사용자 결정, 2026-10-20). 일괄 미리보기의 `negativeBalanceCount`와 그 안내 문구는 5-8에서 고친다.
 
 ### 9-2. 잼 (JAM 2.0) — 마이그레이션 220, 티켓 20261016_2338
 포인트 원장 구조를 본떴다. 운영 로직 4.2절 "원장과 기록"이 근거다. 2026-10-17 공용 DB에 적용했다.
