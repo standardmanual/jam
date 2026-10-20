@@ -6,7 +6,8 @@
  *   `p_occurred_on`은 값이 없으면 키째 생략한다(null을 보내지 않는다 — DB 기본값 «오늘(KST)»을 쓰려면 생략이어야 한다).
  * - 수량 기본값은 1. 1 미만이면 DB를 부르지 않고 기록도 남기지 않는다. 정수가 아니면 부르지 않고 실패로 기록한다.
  * - 절대 던지지 않는다: RPC 오류·계약 밖 응답·예외는 `console.error`와 `engine_decision_log`(points, chapter_score_failed)에 남기고 `{ ok: false }`다.
- * - 챕터 오름 처리는 하지 않는다 — `reachedChapters`를 돌려주기만 한다.
+ * - 오른 챕터가 있으면 오름 처리(`processChapterRise`, 티켓 20261019_1316)를 이어서 부른다. 오름 처리의 내용은 `rise.test.ts`가 고정한다 — 여기서는 가짜다.
+ *   오름 처리가 실패하거나 던져도 점수 결과는 그대로다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/chapter/__tests__/score.test.ts
@@ -14,9 +15,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const logMock = vi.hoisted(() => vi.fn())
+const { logMock, riseMock } = vi.hoisted(() => ({ logMock: vi.fn(), riseMock: vi.fn() }))
 
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+vi.mock('../rise', () => ({ processChapterRise: (...args: unknown[]) => riseMock(...args) }))
 
 import { awardChapterScore } from '../score'
 
@@ -35,7 +37,10 @@ const OK_ROW = { score_added: 20, current_chapter: 2, reached_chapters: [2] }
 beforeEach(() => {
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  riseMock.mockReset()
+  riseMock.mockResolvedValue(undefined)
+  // 시험 사이에 호출 기록이 이어지지 않게 비운다(오름 처리 시험이 console.error를 부른다)
+  vi.spyOn(console, 'error').mockImplementation(() => {}).mockClear()
 })
 
 describe('awardChapterScore — 성공', () => {
@@ -83,14 +88,78 @@ describe('awardChapterScore — 성공', () => {
     expect(result).toEqual({ ok: true, scoreAdded: 0, currentChapter: null, reachedChapters: [] })
   })
 
-  it('챕터가 여러 단계 오르면 오른 챕터 번호를 모두 돌려준다(오름 처리는 하지 않는다)', async () => {
+  it('챕터가 여러 단계 오르면 오른 챕터 번호를 모두 돌려준다(오름 처리는 이어서 부른다)', async () => {
     const { client, rpc } = fakeClient({ data: [{ score_added: 800, current_chapter: 4, reached_chapters: [3, 4] }], error: null })
 
     const result = await awardChapterScore(client, { userId: USER, kind: 'collection_complete_mystic', sourceId: SOURCE })
 
     expect(result).toEqual({ ok: true, scoreAdded: 800, currentChapter: 4, reachedChapters: [3, 4] })
-    // 챕터 오름 처리(소식·챕터 배지)는 다른 RPC·표를 건드릴 수 있지만 여기서는 점수 RPC 한 번뿐이다
+    // 챕터 오름 처리(소식·챕터 배지)는 다른 RPC·표를 건드릴 수 있지만 점수 함수가 부르는 RPC는 점수 RPC 한 번뿐이다
     expect(rpc).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('awardChapterScore — 오름 처리 연결 (티켓 20261019_1316)', () => {
+  it('오른 챕터가 있으면 오름 처리를 (유저, 오른 챕터 목록)으로 부른다 — 기본은 챕터 배지를 바로 판정한다', async () => {
+    const { client } = fakeClient({ data: [{ score_added: 800, current_chapter: 4, reached_chapters: [3, 4] }], error: null })
+
+    await awardChapterScore(client, { userId: USER, kind: 'collection_complete_mystic', sourceId: SOURCE })
+
+    expect(riseMock).toHaveBeenCalledTimes(1)
+    expect(riseMock).toHaveBeenCalledWith({ userId: USER, reachedChapters: [3, 4] }, { skipBadgeEvaluation: false })
+  })
+
+  it('오른 챕터가 없으면 부르지 않는다 — 챕터 전(null)도 마찬가지다', async () => {
+    const none = fakeClient({ data: [{ score_added: 20, current_chapter: 2, reached_chapters: [] }], error: null })
+    const beforeStart = fakeClient({ data: [{ score_added: 20, current_chapter: null, reached_chapters: [] }], error: null })
+
+    await awardChapterScore(none.client, { userId: USER, kind: 'capsule_open', sourceId: SOURCE })
+    await awardChapterScore(beforeStart.client, { userId: USER, kind: 'capsule_open', sourceId: SOURCE })
+
+    expect(riseMock).not.toHaveBeenCalled()
+  })
+
+  it('skipRiseBadgeEvaluation을 켠 호출부(잼 정산)는 챕터 배지 판정을 건너뛰라고 알린다', async () => {
+    const { client } = fakeClient({ data: [OK_ROW], error: null })
+
+    await awardChapterScore(client, { userId: USER, kind: 'jam_earned', sourceId: SOURCE, amount: 90, skipRiseBadgeEvaluation: true })
+
+    expect(riseMock).toHaveBeenCalledWith({ userId: USER, reachedChapters: [2] }, { skipBadgeEvaluation: true })
+  })
+
+  it('점수가 실패하면 오름 처리를 부르지 않는다', async () => {
+    const rpcError = fakeClient({ data: null, error: { message: 'boom' } })
+    const broken = fakeClient({ data: [{ score_added: 20, current_chapter: 2, reached_chapters: ['x'] }], error: null })
+
+    await awardChapterScore(rpcError.client, { userId: USER, kind: 'drop', sourceId: SOURCE })
+    await awardChapterScore(broken.client, { userId: USER, kind: 'drop', sourceId: SOURCE })
+
+    expect(riseMock).not.toHaveBeenCalled()
+  })
+
+  it('오름 처리가 던져도 점수 결과는 그대로이고 점수 실패로 기록하지 않는다', async () => {
+    riseMock.mockRejectedValue(new Error('오름 처리 장애'))
+    const { client } = fakeClient({ data: [OK_ROW], error: null })
+
+    const result = await awardChapterScore(client, { userId: USER, kind: 'capsule_open', sourceId: SOURCE })
+
+    expect(result).toEqual({ ok: true, scoreAdded: 20, currentChapter: 2, reachedChapters: [2] })
+    expect(console.error).toHaveBeenCalled()
+    expect(logMock).not.toHaveBeenCalled()
+  })
+
+  it('오름 처리가 끝나기를 기다린 뒤 결과를 돌려준다(서버리스에서 끝나기 전에 끊기지 않게)', async () => {
+    const order: string[] = []
+    riseMock.mockImplementation(async () => {
+      await Promise.resolve()
+      order.push('rise')
+    })
+    const { client } = fakeClient({ data: [OK_ROW], error: null })
+
+    await awardChapterScore(client, { userId: USER, kind: 'capsule_open', sourceId: SOURCE })
+    order.push('returned')
+
+    expect(order).toEqual(['rise', 'returned'])
   })
 })
 

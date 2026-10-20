@@ -199,12 +199,15 @@ export async function settleActivities(
         // 오래된 활동부터(`ordered`) 한 건씩 부른다: 주 300점 상한을 넘는 분을 절반으로 세는 일을 DB가 호출 순서대로 처리한다.
         // 원천 id는 활동 id, 날짜는 활동한 날(KST)이다. 재정산 때도 `jam_apply`가 같은 양을 돌려줘 같은 (종류, 원천)이라 한 번만 센다.
         // 던지지 않는다(실패는 기록만 남는다).
+        // 정산은 동기화(`processFetchedActivities`)만 부르고 그 뒤에 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이 반드시 이어진다. 여기서 난 오름의 챕터 배지는
+        // 그 판정이 읽으므로 바로 판정하지 않는다(`skipRiseBadgeEvaluation`, 티켓 20261019_1316 — 이중 판정 규칙은 `rise.ts` 머리말). 소식은 그대로 보낸다.
         await awardChapterScore(supabase, {
           userId,
           kind: 'jam_earned',
           sourceId: item.activityId,
           amount: item.amount,
           occurredOn: item.earnedOn,
+          skipRiseBadgeEvaluation: true,
         })
       } catch (e) {
         console.error(`[jam-settlement] jam_apply 예외 — userId: ${userId}, stravaId: ${target.stravaId}:`, e)

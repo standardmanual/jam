@@ -12,7 +12,8 @@
  * `engine_decision_log`(`points` 엔진, 이벤트 `chapter_score_failed`)에 남기고 `{ ok: false }`를 돌려준다.
  * 같은 원천 id로 다시 보낼 수 있어서 기록만 있으면 나중에 채울 수 있다(자동 보정은 티켓 20261020_1010).
  *
- * 챕터 오름 처리(소식·챕터 배지)는 이 함수가 하지 않는다. `reachedChapters`를 돌려주기만 하고 이어받는 쪽(티켓 20261019_1316)이 처리한다.
+ * 챕터 오름 처리(소식·챕터 배지 판정)는 `rise.ts`의 `processChapterRise`가 한다(티켓 20261019_1316). 점수가 성공하고 오른 챕터가 있으면 여기서 이어서 부른다.
+ * 오름 처리가 던지거나 실패해도 점수 결과(`ok`, `scoreAdded`, `reachedChapters`)는 바뀌지 않는다. `rise.ts`는 `jamActionRoute`를 호출 시점에 불러 순환을 피한다.
  *
  * 서버 전용이다.
  */
@@ -20,6 +21,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { logEngineDecision } from '@/lib/engine-log'
 import type { Database } from '@/types/database.generated'
 import type { ChapterScoreKind } from './kinds'
+import { processChapterRise } from './rise'
 
 type ChapterAddScoreArgs = Database['public']['Functions']['chapter_add_score']['Args']
 
@@ -32,6 +34,11 @@ export interface AwardChapterScoreInput {
   amount?: number
   /** 활동한 날(KST, `YYYY-MM-DD`). 값이 없으면 `p_occurred_on`을 보내지 않는다(DB가 오늘로 센다). 미래 날짜는 DB가 거절한다 */
   occurredOn?: string | null
+  /**
+   * 참이면 오름이 있어도 챕터 배지 판정을 하지 않는다(소식은 보낸다). 호출한 동기화의 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이 이어서 읽는 호출부만 켠다
+   * (`lib/jam/settlement.ts`). 기본은 거짓 — 바로 판정한다. 이중 판정을 피하는 규칙의 근거는 `rise.ts` 머리말에 있다
+   */
+  skipRiseBadgeEvaluation?: boolean
 }
 
 export type AwardChapterScoreResult =
@@ -46,13 +53,14 @@ export type AwardChapterScoreResult =
     }
   | { ok: false }
 
-interface ChapterScoreRow {
+/** `chapter_add_score`와 `chapter_start`가 같은 표 모양을 돌려준다(`start.ts`도 이 읽기를 쓴다) */
+export interface ChapterScoreRow {
   score_added: number
   current_chapter: number | null
   reached_chapters: number[]
 }
 
-function toScoreRow(data: unknown): ChapterScoreRow | null {
+export function toScoreRow(data: unknown): ChapterScoreRow | null {
   const row: unknown = Array.isArray(data) ? data[0] : null
   if (typeof row !== 'object' || row === null) return null
   const r = row as Record<string, unknown>
@@ -74,6 +82,22 @@ async function recordFailure(input: AwardChapterScoreInput, amount: number, erro
     occurredOn,
     error,
   })
+}
+
+/**
+ * 오른 챕터가 있으면 오름 처리를 부른다. 점수는 이미 센 뒤라 오름 처리가 어떻게 되든 점수 결과를 바꾸지 않는다 — 던져도 여기서 삼킨다
+ * (`processChapterRise`는 스스로 던지지 않지만 이 함수의 약속이 «점수 결과 불변»이다).
+ */
+async function handleRise(input: AwardChapterScoreInput, reachedChapters: number[]): Promise<void> {
+  if (reachedChapters.length === 0) return
+  try {
+    await processChapterRise(
+      { userId: input.userId, reachedChapters },
+      { skipBadgeEvaluation: input.skipRiseBadgeEvaluation === true }
+    )
+  } catch (e) {
+    console.error(`[chapter-score] 오름 처리 예외 — userId: ${input.userId}, sourceId: ${input.sourceId}:`, e)
+  }
 }
 
 /** 챕터 점수를 센다. 던지지 않는다 — 실패하면 기록만 남기고 `{ ok: false }`다. */
@@ -105,7 +129,14 @@ export async function awardChapterScore(supabase: SupabaseClient, input: AwardCh
       await recordFailure(input, amount, 'chapter_add_score가 해석할 수 없는 응답을 돌려줬다')
       return { ok: false }
     }
-    return { ok: true, scoreAdded: row.score_added, currentChapter: row.current_chapter, reachedChapters: row.reached_chapters }
+    const result: AwardChapterScoreResult = {
+      ok: true,
+      scoreAdded: row.score_added,
+      currentChapter: row.current_chapter,
+      reachedChapters: row.reached_chapters,
+    }
+    await handleRise(input, result.reachedChapters)
+    return result
   } catch (e) {
     // 기록하다 다시 던지는 일이 없도록 한 번 더 감싼다(logEngineDecision은 스스로 던지지 않지만 이 함수의 약속이 «절대 던지지 않음»이다)
     try {
