@@ -14,6 +14,8 @@ import { hasUnread, latestBumpingNotificationAt } from '@/lib/notifications/feed
 import { getAdminQuestPreview } from '@/lib/onboarding-quest/preview'
 import QuestPreviewBanner from '@/components/QuestPreviewBanner'
 import { PAGE_GRADIENT_BACKGROUND } from '@/lib/pageBackground'
+import ChapterRiseWatcher from '@/components/chapter/ChapterRiseWatcher'
+import { parseChapterNo } from '@/lib/chapter/celebrate'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -30,7 +32,14 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   // 레이아웃에서 한 번만 조회해 컨텍스트로 내려준다(호출부 각각 조회하지 않음).
   // 20260824_021: 알림 종의 빨간 버블 판정도 여기서 함께 내려준다. seen_at은 위 users
   // 조회에 컬럼 하나만 더 붙이고, 최신 소식 시각은 병렬로 읽어 왕복 지연을 더하지 않는다.
-  const [{ data: profileRaw }, { data: stravaConnRaw, error: stravaConnError }, latestBumpingAt, questPreview, pendingItemsCount] = await Promise.all([
+  const [
+    { data: profileRaw },
+    { data: stravaConnRaw, error: stravaConnError },
+    latestBumpingAt,
+    questPreview,
+    pendingItemsCount,
+    { data: chapterRaw, error: chapterError },
+  ] = await Promise.all([
     service
       .from('users')
       .select('username, avatar_url, notifications_seen_at')
@@ -53,6 +62,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       console.error('[(main)/layout] 동기화 보류 개수 조회 실패', err)
       return 0
     }),
+    // 챕터 오름 축하 연출용 지금 챕터 번호(티켓 20261019_1317). 이 레이아웃은 화면을 열 때마다 돌아 **번호 한 칸만** 읽는다 —
+    // 이름·진행 비율은 읽지 않는다(이름은 연출을 띄울 때 `/api/chapter/me`가 읽는다). 챕터가 없으면(행 없음·NULL) 연출 대상이 아니다.
+    service.from('user_chapters').select('chapter_no').eq('user_id', user.id).maybeSingle(),
   ])
   const profile = profileRaw as {
     username: string | null
@@ -66,6 +78,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   if (stravaConnError) console.error('[(main)/layout] strava_connections 조회 실패', stravaConnError)
   const stravaState = stravaConnError ? 'none' : resolveStravaUiState(stravaConnRaw)
   const hasUnreadNotifications = hasUnread(latestBumpingAt, profile?.notifications_seen_at ?? null)
+  // 읽지 못하면 로그만 남기고 연출하지 않는다(레이아웃이 깨지지 않는다). 챕터가 없거나 값이 손상됐으면 null이다.
+  if (chapterError) console.error('[(main)/layout] user_chapters 조회 실패 — 챕터 오름 연출을 건너뛴다', chapterError)
+  const chapterNo = chapterError ? null : parseChapterNo((chapterRaw as { chapter_no?: unknown } | null)?.chapter_no)
 
   return (
     <ToastProvider>
@@ -112,6 +127,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             {/* 중복 연결 안내(?strava=duplicate, 티켓 20261017_1422) — 이미 다른 JAM! 계정에 동기화된
                 Strava 계정이라 저장하지 않았음을 알린다. 목적지가 어디든 열리도록 레이아웃에 둔다 */}
             <StravaDuplicateSheet />
+
+            {/* 챕터 오름 축하 카드(티켓 20261019_1317) — 챕터가 있을 때만. 기기에 저장된 «마지막으로 축하한 챕터»보다
+                높으면 다음에 앱을 열 때 한 번 띄운다. 목적지가 어디든 열리도록 레이아웃에 둔다 */}
+            {chapterNo !== null && <ChapterRiseWatcher chapterNo={chapterNo} userId={user.id} />}
           </div>
         </PendingItemsPickerProvider>
       </TopNavDataProvider>
