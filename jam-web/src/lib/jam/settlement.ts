@@ -14,8 +14,10 @@
  * - `p_earned_on`에는 **활동한 날의 KST 날짜**(활동 시작 시각을 KST로 바꾼 날짜)를 넘긴다. 늦게 동기화한 활동이
  *   동기화한 날로 잡히면 주간 양이 틀어진다(마이그레이션 220의 사용자 결정, 2026-10-17).
  * - 정산이 실패해도 던지지 않는다 — 로그만 남기고 동기화를 막지 않는다.
+ * - 정산한 활동마다 챕터 점수 «모은 잼»을 센다(`lib/chapter/score.ts`, 티켓 20261019_1315). 점수 쪽 실패는 정산 결과에 영향을 주지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { awardChapterScore } from '@/lib/chapter/score'
 import { kstDateString } from '@/lib/notifications/kst'
 import type { JamPolicy } from './policy'
 
@@ -186,11 +188,23 @@ export async function settleActivities(
         }
         // 이미 정산된 활동이면 jam_apply가 기존 줄을 돌려준다 — 원장에 기록된 양을 그대로 쓴다
         const recorded = (tx as { amount?: unknown } | null)?.amount
-        items.push({
+        const item: JamSettlementItem = {
           stravaId: target.stravaId,
           activityId,
           amount: typeof recorded === 'number' ? recorded : amount,
           earnedOn,
+        }
+        items.push(item)
+        // 챕터 점수 «모은 잼» (티켓 20261019_1315, 운영 로직 12.2절). 정산 항목을 쌓은 **뒤에** 부른다 — 점수 쪽이 어떻게 되든 정산 결과는 그대로다.
+        // 오래된 활동부터(`ordered`) 한 건씩 부른다: 주 300점 상한을 넘는 분을 절반으로 세는 일을 DB가 호출 순서대로 처리한다.
+        // 원천 id는 활동 id, 날짜는 활동한 날(KST)이다. 재정산 때도 `jam_apply`가 같은 양을 돌려줘 같은 (종류, 원천)이라 한 번만 센다.
+        // 던지지 않는다(실패는 기록만 남는다).
+        await awardChapterScore(supabase, {
+          userId,
+          kind: 'jam_earned',
+          sourceId: item.activityId,
+          amount: item.amount,
+          occurredOn: item.earnedOn,
         })
       } catch (e) {
         console.error(`[jam-settlement] jam_apply 예외 — userId: ${userId}, stravaId: ${target.stravaId}:`, e)
