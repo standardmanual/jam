@@ -828,6 +828,13 @@ JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득
 - 키: `once`. 미션 1개면 `mission_participation_cancelled:{mission_id}:{KST 날짜}`, 2개 이상이면 `mission_participation_cancelled:group:{KST 날짜}:{지문}`이다. 같은 날 같은 묶음은 한 번만, 날이 다르면 새로 만든다.
 - 알림함: 문구 «트라이브가 바뀌어 「○○」 미션 참가가 취소됐어요», 여러 개면 «트라이브가 바뀌어 미션 N개 참가가 취소됐어요». 이동 위치는 단건도 `/missions`다(대상이 아닌 트라이브의 미션 상세는 404). 자세한 문구는 `notification/PRD.md` §3 ④(#47)다.
 
+### notification_type `chapter_up` — 마이그레이션 255, 티켓 20261019_1316
+알림 종류 enum `notification_type`에 `chapter_up`을 더했다(챕터 오름 소식, 운영 로직 12.3절). 옛 알림 종류는 바꾸지 않았다. 새 enum 값은 같은 트랜잭션에서 쓸 수 없어(55P04) 값을 쓰는 코드와 나눈 별도 파일이다. 2026-10-20 공용 DB에 적용했다. 되돌림은 enum 값을 지울 수 없어 앱이 값을 만들지 않게 하고 값은 쓰지 않은 채로 두는 방식이다(파일 끝에 적음).
+- 만드는 곳: `processChapterRise`(`src/lib/chapter/rise.ts`)가 `createNotification`을 부른다. 아래 «챕터 1 시작과 오름 처리».
+- payload: `{ chapter_no }` — 오른 챕터 가운데 가장 높은 번호(2 이상). 챕터 이름은 이름 표가 비어 있어 싣지 않는다.
+- 키: `chapter_up:{chapter_no}` + `once`. 같은 챕터 소식은 다시 만들어지지 않는다.
+- 알림함: 문구 «축하해요! 챕터 N에 올랐어요», 이동 위치는 내 프로필(`/{username}`, 아이디가 없으면 `/profile`), 아이콘은 메달이다. 자세한 문구는 `notification/PRD.md` §3 챕터(#48)다.
+
 ---
 
 ## 9. 포인트 (JAM 포인트) — 신규 도메인
@@ -976,7 +983,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 **`resolve_sync_pending_items(p_user_id uuid, p_chosen_ids uuid[]) → jsonb`** (`SECURITY DEFINER`, `service_role`만 실행): 인벤토리 행을 잠그고 → 고른 개수가 `LEAST(빈칸, 보류 수)`와 정확히 같은지 확인하고 → 고른 것을 `grant_inventory_item_locked`로 지급하며 보류의 잠김을 개체로 옮기고(`claimed`, 마이그레이션 231 이후. 229는 `grant_inventory_item`을 직접 불렀다) → 나머지 보류를 `discarded`로 닫고 → 지급마다 `item_issue_log`에 한 줄(경로 `sync`, `locked`는 보류의 값)을 남긴다. 한 단계라도 실패하면 전체가 되돌려진다. 성공은 `{ok: true, granted, discarded, itemIds}`, 거절은 `{ok: false, error}`(`inventory_not_found`·`no_pending`·`invalid_selection`·`wrong_count`+`expected`)다. 앱은 `lib/strava/pending-items.ts`가 호출하고 `/api/strava/pending-items`가 세션 유저에게만 연다.
 
 ### 9-3. 챕터 (JAM 2.0) — 마이그레이션 221, 티켓 20261016_2339
-운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다. 점수를 주는 연결·연출·소식·챕터 배지·프로필 표시는 묶음 5.
+운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다. 점수를 주는 연결은 «점수 호출 지점과 원천 id», 챕터 1 시작·오름 처리·소식·챕터 배지 판정은 «챕터 1 시작과 오름 처리»(티켓 20261019_1316)다. 연출·프로필 표시는 묶음 5(5-7).
 
 #### chapter_definitions
 `chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지).
@@ -1006,7 +1013,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 앱은 `src/lib/chapter/score.ts`의 `awardChapterScore(supabase, { userId, kind, sourceId, amount, occurredOn })` 하나로 `chapter_add_score`를 부른다. 활동 종류 12종은 `src/lib/chapter/kinds.ts`(221의 초기값과 같은지 시험이 고정), 점수 값은 코드에 두지 않고 `chapter_score_rules`가 갖는다.
 - **던지지 않는다.** RPC 오류·계약 밖 응답·예외는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='chapter_score_failed'`, 페이로드에 종류·원천 id·수량·날짜·오류)에 남기고 `{ ok: false }`를 돌려준다. 본 동작(정산·열기·드랍·픽업)과 응답은 점수 실패로 바뀌지 않는다. 같은 원천 id로 다시 보낼 수 있다(자동 보정은 티켓 20261020_1010).
 - `p_occurred_on`은 값이 없으면 키째 생략한다(null을 보내지 않는다). 수량이 1 미만이면 부르지 않는다.
-- 챕터 오름 처리(소식·챕터 배지)는 하지 않고 `reachedChapters`를 돌려주기만 한다(티켓 20261019_1316).
+- 점수가 성공하고 `reachedChapters`가 비어 있지 않으면 오름 처리(`processChapterRise`, 소식·챕터 배지 판정)를 이어서 부른다. 오름 처리가 실패하거나 던져도 점수 결과는 바뀌지 않는다(티켓 20261019_1316, 아래 «챕터 1 시작과 오름 처리»).
 - `service_role`만 실행하므로 service 클라이언트로 부른다. 동기화 안에서는 주입된 클라이언트를 그대로 넘긴다.
 - `src/lib/chapter/source-id.ts`의 `deterministicSourceId(namespace, ...parts)`는 같은 입력에서 같은 UUID(SHA-256 앞 16바이트, 버전 8)를 만든다. 기록 표에 id가 없는 컬렉션 완성과 배지 받기가 쓴다(배지 받기는 2a·2b회, 컬렉션 완성은 3회에 연결).
 - 호출 지점의 목록과 활동 종류별 한 모듈 규칙은 `src/lib/chapter/__tests__/score-wiring.test.ts`가 소스 검색으로 고정한다(점수 함수를 부르는 파일·횟수가 어긋나면 깨진다). 같은 시험이 221 규칙을 옮긴 가짜 DB 위에서 8종 활동의 중복 없음·키 충돌 없음·제외 규칙·모은 잼 주 경계·점수 실패 뒤 복구를 확인한다.
@@ -1062,6 +1069,27 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 점수 호출이 실패하면 그 일의 점수는 비어 있고(`chapter_score_failed` 기록만 남음) 같은 원천 id로 다시 보낼 수 있다. 자동 보정은 후속 티켓 `20261020_1010`이 다룬다.
 - 같은 컬렉션을 두 요청이 동시에 장착하면 둘 다 «새로 완성»으로 읽을 수 있으나 같은 키라 한 번만 센다.
 - 드랍 5점에는 상한이 없어 «드랍 → 자기 줍기(0점) → 다시 드랍»을 반복하면 점수가 계속 쌓일 수 있다. 점수 설계의 문제라 이 연결의 범위 밖이다(밸런스 설정 묶음 7과 운영 로직 12.2절 재검토).
+
+#### 챕터 1 시작과 오름 처리 (티켓 20261019_1316 1회, 운영 로직 12.1~12.3절)
+읽기 함수(내 챕터·이름·다음 챕터까지 비율, 다른 유저용)와 이름 조회는 2회에서 더한다. 이 소절은 1회(챕터 1 시작·오름 처리·소식·챕터 배지 즉시 판정)다.
+
+**챕터 1 시작** (`src/lib/chapter/start.ts`)
+- 호출 지점은 `lib/onboarding-quest/completion.ts`의 `recordOnboardingQuestCompletion` 한 곳이다. 호출처 3곳(`lib/strava/sync.ts`의 `syncStravaActivities`·`app/api/onboarding-quest/step/route.ts`·`skip/route.ts`)은 시그니처가 그대로이고 모두 service 클라이언트를 넘긴다. 동기화는 처리한 인정 활동이 1건 이상일 때만 부르고, 그 호출은 동기화 끝 판정(`processFetchedActivities` 안) **뒤**에 일어난다.
+- 완료가 이번 호출에서 확정되면(`completed_at` 조건부 갱신이 행을 바꿨을 때) **보상 지급 판정 앞에서** `startChapter`가 `chapter_start(p_user_id)`를 부른다. 건너뛴 유저(`skipped_at`)도 부른다 — 건너뛰기는 연출 단계만 건너뛰고, 보상만 받지 않는다. 동시 호출에 져서 바뀐 행이 없으면 부르지 않는다(이긴 호출이 시작한다).
+- 응답 `{score_added, current_chapter, reached_chapters}`는 `chapter_add_score`와 같은 계약 검사(`toScoreRow`)로 읽는다. 시작한 뒤에도 챕터가 비어 있는 응답은 계약 밖이다. `reached_chapters`는 챕터 1과, 퀘스트 전에 쌓인 점수로 한 번에 오른 챕터를 모두 담고, 비어 있지 않으면 오름 처리로 넘긴다.
+- **재시도 경로** (사용자 결정 4): `chapter_start`가 실패하면 `completed_at`이 이미 있어 이 함수가 다음 호출에서 일찍 끝난다. 그래서 완료 기록이 있는 유저가 들어오면(보상 재시도 분기와 완료 있음 분기 포함) `ensureChapterStarted`가 `user_chapters.chapter_no`를 읽어 **비어 있을 때(행 없음·NULL)만** `chapter_start`를 다시 부른다. 챕터가 있으면 RPC를 부르지 않는다(조회 한 번만 늘어난다). 옛 퀘스트를 마친 유저도 다음 호출에서 챕터 1을 받는다.
+- 부르지 않는 경우: 퀘스트 행 없음, 연출 도중(7단계를 안 마쳤고 건너뛰지도 않음), 처리된 활동 없음, `ONBOARDING_QUEST_ENABLED`가 꺼짐.
+- 던지지 않는다. RPC 오류·예외·계약 밖 응답·챕터 조회 실패는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='chapter_start_failed'`)에 남기고, 반환값(지급한 완료 배지 id)과 기존 분기 동작은 그대로다.
+
+**오름 처리** (`src/lib/chapter/rise.ts` `processChapterRise({ userId, reachedChapters }, { skipBadgeEvaluation })`)
+- 부르는 곳: `awardChapterScore`(점수가 성공하고 `reachedChapters`가 비어 있지 않을 때)와 `startChapter`(챕터 1 포함). 비어 있으면 아무것도 하지 않는다.
+- **소식**: 오른 챕터 가운데 가장 높은 챕터가 **2 이상**이면 `chapter_up` 한 건만 보낸다(여러 챕터를 한 번에 넘어도 한 건, 챕터 1만 오르면 퀘스트 완료 보상이 알리므로 없음). 묶음 키 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다(`once`는 이미 있으면 기존 행을 돌려준다).
+- **챕터 배지 판정**: 오름이 있으면(챕터 1 시작 포함) `runJamActionEvaluation(userId, ['chapter_reached'])`로 챕터 조건 배지를 바로 판정해 받게 한다. 챕터 도달값은 지금 챕터 하나라서 넘은 챕터가 여럿이어도 한 번의 판정으로 `chapter_reached >= N` 배지를 모두 받는다. 배지 소식은 기존 방식(`activity_recap` 결산)이다.
+- 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 던지지 않고, 실패는 `console.error`와 `engine_decision_log`(`event='chapter_rise_failed'`, 페이로드 `step`=`notification`·`badge_evaluation`·`unexpected`)에 남긴다. `runJamActionEvaluation`은 자기 안의 실패를 스스로 삼키고 `console.error`만 남기므로 `badge_evaluation`은 그 함수를 불러오거나 부르다 던진 경우에만 기록된다.
+- **이중 판정 규칙**: 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)은 DB의 지금 챕터를 읽는다. 동기화가 **직접** 부르는 점수(잼 정산 `settleActivities`, 뒤에 동기화 끝 판정이 반드시 이어짐)만 `skipRiseBadgeEvaluation`을 켜서 오름의 소식은 보내고 챕터 배지 판정은 건너뛴다. 나머지 호출(라우트, 동기화 안의 배지 받기·미션 점수, 동기화 뒤의 챕터 1 시작)은 바로 판정한다. 켜지 않은 호출이 동기화 안에서 겹쳐도 발급은 `user_activity_badges`의 `UNIQUE(user_id, badge_id)`로 한 번뿐이다(`issueQualifyingBadges`가 이미 가진 배지를 건너뛰고 동시 호출의 23505는 부수효과 없이 넘김). 겹치면 판정이 한 번 더 돌고 결과 카드 대신 결산 소식으로 먼저 알려질 뿐이다.
+- **순환 import**: `score.ts → rise.ts → jamActionRoute → strava/sync.ts → jam/settlement.ts → score.ts`가 정적으로 이어지면 순환이 되므로, `rise.ts`가 `jamActionRoute`를 호출 시점에 `await import()`로 불러 모듈 평가 시점의 순환을 없앴다(`rise-import-cycle.test.ts`가 두 불러오기 순서를 고정).
+- 챕터 배지가 다시 챕터 점수를 올리지 않는다: `chapter_reached` 조건 배지는 «배지 받기» 점수에서 뺀다(위 «배지 받기 점수의 규칙», `rise.test.ts`가 확인).
+- 점수 함수와 챕터 1 시작은 오름 처리가 끝나기를 기다린 뒤 돌려준다. 오름이 있는 요청에서만 소식·판정 시간이 더해진다.
 
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052

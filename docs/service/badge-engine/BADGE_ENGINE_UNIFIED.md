@@ -355,7 +355,7 @@ badge-engine 밖의 세 번째 평가 경로.
 | `cross_tribe_combine_success_count` | 정수 ≥1 | 믹스 성공 기록 중 재료가 `badges.tribe_id` 기준 2개 이상 트라이브에 걸친 행 수 | `POST /api/combine` 성공 뒤 |
 | `jam_total_earned` | 정수 ≥1 | 지금까지 모은 잼. `jam_wallets.total_earned`(가진 양이 아니다) | 동기화 끝 |
 | `jam_weekly_earned` | 정수 ≥1 | 월~일(KST) 한 주에 모은 잼의 역대 최고 주 값. `jam_daily_earned`를 주별로 합산(`kstWeekStartKey`) | 동기화 끝 |
-| `chapter_reached` | 정수 ≥1 | 도달한 챕터 번호. `user_chapters.chapter_no`(없거나 NULL이면 0) | 동기화 끝. 챕터를 올리는 호출부가 아직 앱 코드에 없어(묶음 5) 그 전까지는 동기화 끝에서 읽고, 챕터 오름 직후 판정은 묶음 5가 연결한다 |
+| `chapter_reached` | 정수 ≥1 | 도달한 챕터 번호. `user_chapters.chapter_no`(없거나 NULL이면 0) | 동기화 끝 + 챕터 오름 직후. 챕터가 오르면 오름 처리(`lib/chapter/rise.ts`, 티켓 20261019_1316)가 `runJamActionEvaluation(userId, ['chapter_reached'])`로 바로 판정한다(챕터 1 시작 포함). 동기화 안의 잼 정산에서 난 오름만 동기화 끝 판정이 이어서 읽어 오름 직후 판정을 건너뛴다 |
 
 - 트리거 규칙은 `jamActionProgressTriggers.ts`(`JAM_SYNC_TRIGGERS` 17키, `jamTriggersForCapsuleOpen`, `jamTriggersForLockedItemOpen`),
   `jamActionDropTriggers.ts`(`jamTriggersForPickup`의 줍는 사람에 2키, 놓은 사람에 `dropped_item_picked_up_count`), `lib/combine/index.ts`의 `jamTriggersForCombineResult`(성공에 2키)가 정한다.

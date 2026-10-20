@@ -17,9 +17,9 @@
  *    `jam_week_min_earned`(보조 키, 없으면 1) 이상인 주를 «채운 주»로 본다. `jam_week_count`는 채운 주의 수, `jam_week_streak`는 채운 주가
  *    바로 다음 주끼리 이어진 최장 주 수다. 잼을 못 모은 주(행 없음)가 끼면 연속이 끊긴다.
  *  - `chapter_reached`: 도달한 챕터 번호. 원천은 `user_chapters.chapter_no`(마이그레이션 221)다. 행이 없거나 `chapter_no`가 NULL이면(퀘스트 전) 0이다.
- *    판정 시점: 챕터 점수를 쌓는 호출부(`chapter_add_score`, `lib/chapter/score.ts`, 티켓 20261019_1315)는 있지만 챕터를 시작하는 호출부
- *    (`chapter_start`)는 아직 앱 코드에 없고 챕터 오름 직후 판정도 연결되지 않았다(JAM 2.0 묶음 5). 그 전에는 동기화 끝
- *    판정(`JAM_SYNC_TRIGGERS`)에서 읽고, 챕터 오름 직후 판정은 묶음 5가 연결한다.
+ *    판정 시점(티켓 20261019_1316): 챕터가 오르면 오름 처리(`lib/chapter/rise.ts`)가 `runJamActionEvaluation`으로 이 지표만 바로 판정한다. 챕터 점수를 쌓는
+ *    호출부(`chapter_add_score`, `lib/chapter/score.ts`)와 챕터를 시작하는 호출부(`chapter_start`, `lib/chapter/start.ts` — 퀘스트 완료 처리가 부른다)가
+ *    모두 오름 처리를 부른다. 동기화 안의 잼 정산에서 난 오름은 동기화 끝 판정(`JAM_SYNC_TRIGGERS`)이 이어서 읽으므로 거기서만 바로 판정을 건너뛴다.
  *
  * ## SQL 등가식 (읽기 전용 기준값)
  * ```
