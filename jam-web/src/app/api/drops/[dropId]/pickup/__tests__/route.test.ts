@@ -9,6 +9,9 @@
  *  - (티켓 20261018_1812) 이용 정지 중이면 403 `user_suspended`이고 GPS 판정·RPC를 부르지 않는다. 꺼진 장소는 드랍이 없을 때와 같은 404이고,
  *    장소를 다시 켜면 줍는다. 자기 드랍 줍기는 허용이다. 잠긴 채 받은 개체는 이름·그림을 피드·소식에 싣지 않는다
  *  - 줍는 사람 판정이 거부돼도 놓은 사람 판정은 돈다
+ *  - 챕터 점수 «픽업»(티켓 20261019_1315): 성공 뒤 같은 `after()` 콜백이 `chapter_add_score`를 (pickup, 경로의 드랍 id, 1)로 부른다. 자기 드랍을 자기가 주운 것은 세지 않고
+ *    (예약하는 콜백도 없다), 시스템 드랍과 잠긴 채 받은 픽업은 센다. 응답 전에는 부르지 않고 실패 분기에서는 부르지 않으며 같은 픽업을 다시 보내도 같은 키다.
+ *    점수 실패(RPC 오류·예외)와 판정 실패는 서로의 실행과 응답을 바꾸지 않는다.
  *
  * `after()`는 요청 범위 밖에서 부를 수 없다. 콜백을 모아 두었다가 테스트가 「응답이 끝난 뒤」를 직접 흉내 낸다
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
@@ -49,7 +52,14 @@ const state = vi.hoisted(() => ({
   /** 잠긴 개체 조회가 실패하는가 */
   lockLookupFails: false,
   gpsCalls: 0,
+  /** `pickup_drop` 호출 횟수 (챕터 점수 RPC는 세지 않는다) */
   rpcCalls: 0,
+  /** `chapter_add_score` 호출 인자 */
+  scoreCalls: [] as Record<string, unknown>[],
+  /** 챕터 점수 RPC의 결과. `'throw'`면 예외를 던진다 */
+  scoreResult: { data: [{ score_added: 5, current_chapter: null, reached_chapters: [] }] as unknown, error: null as unknown } as
+    | { data: unknown; error: unknown }
+    | 'throw',
   badgeReads: 0,
   afterCallbacks: [] as (() => unknown)[],
 }))
@@ -59,6 +69,10 @@ const createNotificationMock = vi.hoisted(() =>
   vi.fn<(input: { payload?: Record<string, unknown>; appendKeys?: string[] } & Record<string, unknown>) => Promise<void>>(async () => {}),
 )
 const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
+const logMock = vi.hoisted(() => vi.fn())
+
+// 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
+vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -89,7 +103,12 @@ vi.mock('@/lib/supabase/server', () => ({
       }
       return builder
     },
-    rpc: async (fn: string) => {
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      if (fn === 'chapter_add_score') {
+        state.scoreCalls.push(args)
+        if (state.scoreResult === 'throw') throw new Error('score network down')
+        return state.scoreResult
+      }
       if (fn === 'pickup_drop') state.rpcCalls += 1
       return state.rpcResult
     },
@@ -179,9 +198,12 @@ beforeEach(() => {
   state.lockLookupFails = false
   state.gpsCalls = 0
   state.rpcCalls = 0
+  state.scoreCalls = []
+  state.scoreResult = { data: [{ score_added: 5, current_chapter: null, reached_chapters: [] }], error: null }
   state.badgeReads = 0
   state.afterCallbacks = []
   runJamActionMock.mockResolvedValue(undefined)
+  logMock.mockResolvedValue(undefined)
 })
 
 describe('성공 — 드랍 출처별로 판정할 지표', () => {
@@ -510,5 +532,119 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
     expect(await res.json()).toEqual(blockCode ? { error: message, code: blockCode } : { error: message })
     expect(state.afterCallbacks).toHaveLength(0)
     expect(createNotificationMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
+  const SCORE_ARGS = { p_user_id: PICKER, p_activity_kind: 'pickup', p_source_id: 'drop-1', p_amount: 1 }
+
+  it('다른 유저의 드랍을 주우면 응답을 보낸 뒤 드랍 id를 원천으로 한 번 센다(날짜는 보내지 않는다)', async () => {
+    const res = await POST(request(), params())
+
+    expect(res.status).toBe(200)
+    expect(state.afterCallbacks).toHaveLength(1)
+    expect(state.scoreCalls).toEqual([]) // 응답 전에는 세지 않는다
+
+    await flushAfter()
+    expect(state.scoreCalls).toEqual([SCORE_ARGS])
+    expect(Object.keys(state.scoreCalls[0])).not.toContain('p_occurred_on')
+    // 놓은 사람이 아니라 줍는 사람의 점수다
+    expect(state.scoreCalls.every((c) => c.p_user_id === PICKER)).toBe(true)
+  })
+
+  it('시스템 드랍(놓은 사람 없음)을 주워도 센다', async () => {
+    state.drop = dropOf(null)
+
+    await POST(request(), params())
+    await flushAfter()
+
+    expect(state.scoreCalls).toEqual([SCORE_ARGS])
+  })
+
+  it('잠긴 채 받은 개체를 주워도 센다', async () => {
+    state.pickedLocked = true
+
+    await POST(request(), params())
+    await flushAfter()
+
+    expect(state.scoreCalls).toEqual([SCORE_ARGS])
+  })
+
+  it('자기 드랍을 자기가 주우면 세지 않는다(줍기는 허용이고 응답은 그대로다)', async () => {
+    state.drop = dropOf(PICKER)
+
+    const res = await POST(request(), params())
+    await flushAfter()
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ inventory_item_id: 'item-1' })
+    expect(state.rpcCalls).toBe(1)
+    expect(state.scoreCalls).toEqual([])
+  })
+
+  it('같은 픽업을 다시 보내도 같은 (활동 종류, 원천 id)다', async () => {
+    await POST(request(), params())
+    await POST(request(), params())
+    await flushAfter()
+
+    expect(state.scoreCalls).toHaveLength(2)
+    expect(state.scoreCalls[1]).toEqual(state.scoreCalls[0])
+  })
+
+  it('실패 분기(정지·이미 주워짐·인벤토리 가득·반경 밖 등)에서는 세지 않는다', async () => {
+    state.suspended = true
+    await POST(request(), params())
+    state.suspended = false
+
+    state.near = false
+    await POST(request(), params())
+    state.near = true
+
+    state.rpcResult = { data: { ok: false, error: 'already_picked_up' }, error: null }
+    await POST(request(), params())
+    state.rpcResult = { data: { ok: false, error: 'inventory_full' }, error: null }
+    await POST(request(), params())
+    state.rpcResult = { data: { ok: true, inventory_item_id: 'item-1' }, error: null }
+
+    state.drop = dropOf(DROPPER, { is_available: false })
+    await POST(request(), params())
+
+    await flushAfter()
+    expect(state.scoreCalls).toEqual([])
+  })
+
+  it('점수 RPC가 오류를 돌려줘도 응답은 같고 판정은 돌며 실패를 기록한다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.scoreResult = { data: null, error: { message: 'score rpc failed' } }
+
+    const res = await POST(request(), params())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ inventory_item_id: 'item-1' })
+
+    await flushAfter()
+    expect(runJamActionMock).toHaveBeenCalledTimes(2)
+    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', PICKER, expect.objectContaining({ kind: 'pickup', sourceId: 'drop-1' }))
+    consoleError.mockRestore()
+  })
+
+  it('점수 RPC가 예외를 던져도 응답은 같고 판정은 돈다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.scoreResult = 'throw'
+
+    const res = await POST(request(), params())
+    expect(res.status).toBe(200)
+
+    await flushAfter()
+    expect(runJamActionMock).toHaveBeenCalledTimes(2)
+    consoleError.mockRestore()
+  })
+
+  it('판정이 거부돼도 점수는 센다', async () => {
+    runJamActionMock.mockRejectedValue(new Error('판정 장애'))
+
+    await POST(request(), params())
+    await flushAfter()
+
+    expect(state.scoreCalls).toEqual([SCORE_ARGS])
   })
 })
