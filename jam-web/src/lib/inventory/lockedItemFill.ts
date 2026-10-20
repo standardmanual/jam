@@ -11,6 +11,7 @@
  * 클라이언트가 쓸 타입·상수는 `lockedItemFill-contract.ts`에 있다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { awardChapterScore } from '@/lib/chapter/score'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import {
   LOCKED_ITEM_FILL_ERROR_CODES,
@@ -175,6 +176,10 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
   }
 
   // 여기부터는 열기가 확정됐다. 정보를 읽지 못해도 열기를 실패로 돌려주지 않는다.
+  // 챕터 점수 «잠긴 아이템 배지 열기» (티켓 20261019_1315, 운영 로직 12.2절). 원천 id는 개체 id다 — 개체는 한 번만 열리고(두 번째는 `not_locked`)
+  // 같은 개체를 다시 보내도 한 번만 센다. 던지지 않는다(실패는 기록만 남는다).
+  await awardChapterScore(supabase, { userId, kind: 'locked_item_badge_open', sourceId: itemId })
+
   let info: LockedItemOpenedInfo | null = null
   try {
     info = await loadOpenedInfo(supabase, result.badgeId)

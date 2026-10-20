@@ -9,6 +9,8 @@
  * - 열기: 정지 확인이 RPC보다 먼저다. 성공하면 같은 개체의 일련번호와 포인트, 열린 뒤의 개체 정보(이름·그림·설명·컬렉션·트라이브)를 싣는다.
  *   `not_full`은 채운 양·필요한 양을 싣는다. 열기가 확정된 뒤 정보 조회가 실패해도 열기를 실패로 돌려주지 않는다(`item: null`).
  *   열기 거절 응답에는 개체 정보를 읽는 조회가 아예 나가지 않는다.
+ * - 열기 점수(티켓 20261019_1315): 열기가 확정되면 `chapter_add_score`를 (locked_item_badge_open, 개체 id, 1)로 한 번 부른다. 거절·정지·해석 불가 응답에는 부르지 않고,
+ *   같은 개체를 다시 보내도 같은 키다. 점수 실패(RPC 오류·예외)는 열기와 응답을 바꾸지 않는다. 채우기는 점수와 무관하다.
  * - 조회: 채운 양·필요량·남은 양·잔액·열 수 있는지만 싣고 `badges` 등 개체 정보 표는 읽지 않는다. 내 것이 아니거나 버려지거나 드랍된 개체는
  *   `item_not_found`다. 이용 정지 중에도 막지 않는다. 지갑 행이 없으면 잔액 0이다.
  * - 경계: 계약 파일은 아무것도 가져오지 않고, 서버 전용 모듈은 클라이언트 파일의 import 사슬에 없다.
@@ -25,7 +27,10 @@ import { UserSuspendedError } from '@/lib/suspension/suspension'
 
 const calls = vi.hoisted(() => ({ order: [] as string[] }))
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
+const logMock = vi.hoisted(() => vi.fn())
 
+// 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
+vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => {
     throw new Error('createServiceClient가 호출됨 — 주입된 클라이언트가 쓰이지 않았다')
@@ -55,11 +60,19 @@ type Result = { data: unknown; error: unknown }
 interface FakeOptions {
   rpc?: Record<string, Result>
   tables?: Record<string, Result>
+  /** 챕터 점수 RPC의 결과. 생략하면 정상 응답이다 */
+  score?: Result
+  /** 챕터 점수 RPC가 예외를 던진다 */
+  scoreThrows?: boolean
 }
 
 function fakeClient(options: FakeOptions) {
   const rpc = vi.fn(async (name: string) => {
     calls.order.push(`rpc:${name}`)
+    if (name === 'chapter_add_score') {
+      if (options.scoreThrows) throw new Error('score network down')
+      return options.score ?? { data: [{ score_added: 10, current_chapter: null, reached_chapters: [] }], error: null }
+    }
     return options.rpc?.[name] ?? { data: null, error: { message: `unexpected rpc ${name}` } }
   })
   const reads: string[] = []
@@ -83,6 +96,8 @@ beforeEach(() => {
   calls.order = []
   assertNotSuspendedMock.mockReset()
   assertNotSuspendedMock.mockResolvedValue(undefined)
+  logMock.mockReset()
+  logMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -292,6 +307,89 @@ describe('openLockedItem', () => {
     await expect(openLockedItem(reject(null, { message: 'boom' }), USER_ID, ITEM_ID)).rejects.toThrow('locked_item_open RPC 오류')
     await expect(openLockedItem(reject(null), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
     await expect(openLockedItem(reject({ ok: true }), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
+  })
+})
+
+describe('openLockedItem — 챕터 점수 «잠긴 아이템 배지 열기» (티켓 20261019_1315)', () => {
+  const SCORE_ARGS = { p_user_id: USER_ID, p_activity_kind: 'locked_item_badge_open', p_source_id: ITEM_ID, p_amount: 1 }
+
+  it('열기가 확정되면 개체 id를 원천으로 한 번 센다(날짜는 보내지 않고, 열기 RPC 다음이다)', async () => {
+    const { client, rpc } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open', 'rpc:chapter_add_score'])
+    const scoreCalls = rpc.mock.calls.filter(([name]) => name === 'chapter_add_score')
+    expect(scoreCalls).toEqual([['chapter_add_score', SCORE_ARGS]])
+  })
+
+  it('같은 개체를 다시 보내도 같은 (활동 종류, 원천 id)다', async () => {
+    const { client, rpc } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    const scoreCalls = rpc.mock.calls.filter(([name]) => name === 'chapter_add_score')
+    expect(scoreCalls).toHaveLength(2)
+    expect(scoreCalls[1]).toEqual(scoreCalls[0])
+  })
+
+  it('정지·DB 거절·해석할 수 없는 응답은 점수를 세지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
+    const suspended = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+    await openLockedItem(suspended.client, USER_ID, ITEM_ID).catch(() => {})
+
+    const notFull = fakeClient({ rpc: { locked_item_open: { data: { ok: false, error: 'not_full', required: 100, filled: 60 }, error: null } } })
+    await openLockedItem(notFull.client, USER_ID, ITEM_ID).catch(() => {})
+
+    const broken = fakeClient({ rpc: { locked_item_open: { data: { ok: true }, error: null } } })
+    await openLockedItem(broken.client, USER_ID, ITEM_ID).catch(() => {})
+
+    for (const { rpc } of [suspended, notFull, broken]) {
+      expect(rpc.mock.calls.map(([name]) => name)).not.toContain('chapter_add_score')
+    }
+  })
+
+  it('채우기는 점수와 무관하다', async () => {
+    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
+
+    await fillLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(['locked_item_fill'])
+  })
+
+  it('개체 정보 조회가 실패해도 점수는 센다(열기가 확정된 뒤의 일이다)', async () => {
+    const { client, rpc } = fakeClient({
+      rpc: { locked_item_open: { data: OPEN_OK, error: null } },
+      tables: { badges: { data: null, error: { message: 'down' } } },
+    })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload.item).toBeNull()
+    expect(rpc).toHaveBeenCalledWith('chapter_add_score', SCORE_ARGS)
+  })
+
+  it('점수 RPC가 오류를 돌려줘도 열기와 응답은 그대로이고 실패를 기록한다', async () => {
+    const { client } = fakeClient({
+      rpc: { locked_item_open: { data: OPEN_OK, error: null } },
+      tables: INFO_TABLES,
+      score: { data: null, error: { message: 'score rpc failed' } },
+    })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
+    expect(payload.item).not.toBeNull()
+    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER_ID, expect.objectContaining({ kind: 'locked_item_badge_open', sourceId: ITEM_ID }))
+  })
+
+  it('점수 RPC가 예외를 던져도 열기와 응답은 그대로다', async () => {
+    const { client } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES, scoreThrows: true })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, pointsAwarded: 50 })
   })
 })
 
