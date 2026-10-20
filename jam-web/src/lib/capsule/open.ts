@@ -10,11 +10,13 @@
  *  - 모든 등급에 후보가 없어 나올 개체가 하나도 없으면 열지 않고 던진다(일반 오류) — 채운 잼이 개체 없이 사라지지 않게 한다.
  *  - 후속 처리(포인트·피드, `recordIssuedRewards`)는 열기가 확정된 뒤에 한다. 잠긴 개체는 포인트와 피드에서 빠진다(7.3절, 티켓 20261018_0051).
  *    캡슐에는 대상 활동이 없어 활동 결산 알림은 보내지 않는다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다.
+ *  - 열기가 확정되면 챕터 점수 «캡슐 열기»를 센다(`lib/chapter/score.ts`, 원천 id = 열기 기록 id, 티켓 20261019_1315). 점수 실패는 기록만 남고 열기와 응답을 바꾸지 않는다.
  *  - 응답의 잠긴 개체는 이름·그림·일련번호 없이 등급과 여는 데 필요한 양만 싣는다.
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { awardChapterScore } from '@/lib/chapter/score'
 import { fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import { recordIssuedRewards } from '@/lib/drop-engine/issueFollowUp'
 import type { IssueBadge, IssueBook, Rand } from '@/lib/drop-engine/syncIssue'
@@ -215,6 +217,10 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
   }
 
   // 여기부터는 열기가 확정됐다. 어떤 실패도 열기를 되돌리지 않는다.
+  // 챕터 점수 «캡슐 열기» (티켓 20261019_1315, 운영 로직 12.2절). 후속 처리(`recordIssuedRewards`) 결과와 무관하게 먼저 센다.
+  // 원천 id는 열기 기록 id(`capsule_opens.id`)라 같은 열기를 다시 보내도 한 번만 센다. 던지지 않는다(실패는 기록만 남는다).
+  await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
+
   const tribeNameOf = new Map(data.tribes.map((t) => [t.id, t.name]))
   const items: CapsuleOpenedItem[] = []
   for (const [index, planned] of rolled.items.entries()) {

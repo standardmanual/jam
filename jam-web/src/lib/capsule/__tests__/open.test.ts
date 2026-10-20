@@ -9,6 +9,9 @@
  * - DB 거절(`not_full`·`insufficient_slots`(지금 빈칸·필요한 빈칸 포함)·`user_suspended`·`invalid_items`·`inventory_not_found`)은 `CapsuleError`,
  *   모르는 코드·RPC 오류·해석할 수 없는 응답은 일반 오류.
  * - 후속 처리: 개체마다 `recordIssuedRewards`(활동 없음, 잠김 여부 전달). 잠긴 개체는 포인트·피드에서 빠진다. 후속 처리가 던져도 열기는 유지된다.
+ * - 챕터 점수 «캡슐 열기»(티켓 20261019_1315): 열기가 확정된 직후(`capsule_open` 다음, 후속 처리 앞) `chapter_add_score`를
+ *   (capsule_open, 열기 기록 id, 1)로 한 번 부른다. 거절·추첨 전에 막힌 경우에는 부르지 않고, 같은 열기를 다시 보내도 같은 키다.
+ *   점수 실패(RPC 오류·예외)와 후속 처리 실패는 열기·응답을 바꾸지 않는다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트·가짜 RPC·결정적 난수만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/open.test.ts
@@ -96,6 +99,10 @@ function chain(result: Result) {
 
 interface FakeOptions {
   rpc?: Result
+  /** 챕터 점수 RPC의 결과. 생략하면 정상 응답이다 */
+  score?: Result
+  /** 챕터 점수 RPC가 예외를 던진다 */
+  scoreThrows?: boolean
   tribeId?: string | null
   tribes?: string[]
   userError?: unknown
@@ -105,6 +112,10 @@ interface FakeOptions {
 function fakeClient(options: FakeOptions = {}) {
   const rpc = vi.fn(async (name: string, args: unknown) => {
     order.calls.push(`rpc:${name}`)
+    if (name === 'chapter_add_score') {
+      if (options.scoreThrows) throw new Error('score network down')
+      return options.score ?? { data: [{ score_added: 20, current_chapter: null, reached_chapters: [] }], error: null }
+    }
     return options.rpc ?? { data: null, error: { message: `unexpected rpc ${name} ${JSON.stringify(args)}` } }
   })
   const reads: string[] = []
@@ -221,7 +232,15 @@ describe('openCapsule — 성공', () => {
     const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
 
     // 열기가 확정된 직후 남은 칸 알림을 검사한다(티켓 20261018_0056)
-    expect(order.calls).toEqual(['assertNotSuspended', 'getCapsuleState', 'badges', 'rpc:capsule_open', 'rpc:inventory_slot_alert_step'])
+    // 챕터 점수는 열기 확정 직후, 후속 처리 앞이다(티켓 20261019_1315)
+    expect(order.calls).toEqual([
+      'assertNotSuspended',
+      'getCapsuleState',
+      'badges',
+      'rpc:capsule_open',
+      'rpc:chapter_add_score',
+      'rpc:inventory_slot_alert_step',
+    ])
     expect(rpc).toHaveBeenCalledWith('inventory_slot_alert_step', { p_user_id: USER_ID })
     expect(rpc).toHaveBeenCalledWith('capsule_open', {
       p_user_id: USER_ID,
@@ -417,6 +436,8 @@ describe('openCapsule — DB 응답 변환', () => {
     expect(feedMock).not.toHaveBeenCalled()
     // 열리지 않았으니 남은 칸 알림도 검사하지 않는다(티켓 20261018_0056)
     expect(order.calls).not.toContain('rpc:inventory_slot_alert_step')
+    // 챕터 점수도 세지 않는다(티켓 20261019_1315)
+    expect(order.calls).not.toContain('rpc:chapter_add_score')
   })
 })
 
@@ -456,5 +477,79 @@ describe('openCapsule — 후속 처리', () => {
     const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
 
     expect(payload.openId).toBe('open-1')
+  })
+})
+
+describe('openCapsule — 챕터 점수 «캡슐 열기» (티켓 20261019_1315)', () => {
+  const SCORE_CALL = ['chapter_add_score', { p_user_id: USER_ID, p_activity_kind: 'capsule_open', p_source_id: 'open-1', p_amount: 1 }] as const
+
+  it('열기가 확정되면 열기 기록 id를 원천으로 한 번 센다(날짜는 보내지 않는다)', async () => {
+    const { client, rpc } = fakeClient({ rpc: OK_RPC })
+
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    const scoreCalls = rpc.mock.calls.filter(([name]) => name === 'chapter_add_score')
+    expect(scoreCalls).toHaveLength(1)
+    expect(scoreCalls[0]).toEqual(SCORE_CALL)
+    expect(Object.keys(scoreCalls[0][1] as object)).not.toContain('p_occurred_on')
+  })
+
+  it('점수는 후속 처리(recordIssuedRewards)보다 먼저 센다 — 후속 처리가 던져도 점수는 이미 들어갔다', async () => {
+    followUpMock.mockImplementation(async () => {
+      order.calls.push('followUp')
+      throw new Error('포인트 서버 다운')
+    })
+    const { client } = fakeClient({ rpc: OK_RPC })
+
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(order.calls.indexOf('rpc:chapter_add_score')).toBeGreaterThan(order.calls.indexOf('rpc:capsule_open'))
+    expect(order.calls.indexOf('rpc:chapter_add_score')).toBeLessThan(order.calls.indexOf('followUp'))
+  })
+
+  it('같은 열기(같은 열기 기록 id)를 다시 보내도 같은 (활동 종류, 원천 id)다', async () => {
+    const { client, rpc } = fakeClient({ rpc: OK_RPC })
+
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    const scoreCalls = rpc.mock.calls.filter(([name]) => name === 'chapter_add_score')
+    expect(scoreCalls).toHaveLength(2)
+    expect(scoreCalls[1]).toEqual(scoreCalls[0])
+  })
+
+  it('추첨 전에 막히거나 DB가 거절한 열기는 점수를 세지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
+    const suspended = fakeClient({ rpc: OK_RPC })
+    await openCapsule(suspended.client, USER_ID, { rand: seq() }).catch(() => {})
+
+    const rejected = fakeClient({ rpc: { data: { ok: false, error: 'not_full' }, error: null } })
+    await openCapsule(rejected.client, USER_ID, { rand: seq(...TWO_ITEMS) }).catch(() => {})
+
+    for (const { rpc } of [suspended, rejected]) {
+      expect(rpc.mock.calls.map(([name]) => name)).not.toContain('chapter_add_score')
+    }
+  })
+
+  it('점수 RPC가 오류를 돌려줘도 열기와 응답은 그대로이고 실패를 기록한다', async () => {
+    const { client } = fakeClient({ rpc: OK_RPC, score: { data: null, error: { message: 'score rpc failed' } } })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(payload.openId).toBe('open-1')
+    expect(payload.items).toHaveLength(2)
+    expect(payload.next).toEqual({ required: 120, filled: 0 })
+    expect(followUpMock).toHaveBeenCalledTimes(2)
+    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER_ID, expect.objectContaining({ kind: 'capsule_open', sourceId: 'open-1' }))
+  })
+
+  it('점수 RPC가 예외를 던져도 열기와 응답은 그대로다', async () => {
+    const { client } = fakeClient({ rpc: OK_RPC, scoreThrows: true })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(payload.openId).toBe('open-1')
+    expect(payload.items).toHaveLength(2)
+    expect(followUpMock).toHaveBeenCalledTimes(2)
   })
 })
