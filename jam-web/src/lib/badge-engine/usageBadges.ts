@@ -29,6 +29,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
+import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { kstDateString } from '@/lib/notifications/kst'
 import { isLeveledBadge, familyKeyOf } from './badgeKind'
@@ -251,6 +252,11 @@ export async function issueQualifyingBadges(
       `[issueQualifyingBadges] 배지 발급 — userId: ${userId}, badge: ${badge.name} (${logContext})`
     )
     earned.push({ id: badge.id, name: badge.name })
+
+    // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 새 행을 실제로 넣은 발급만 여기 온다 — 23505·dryRun은 위에서 `continue`했다.
+    // 레벨형은 레벨마다 새 행이라 레벨마다 센다. 팔로워·팔로잉 조건 배지는 공용 함수가 제외 키로 거르고, 재평가 배치(`triggeredBy`가 `catalog_reevaluation:` 접두)는
+    // 소급 발급이라 센다고 하지 않는다. `triggered_by`와 같은 값을 넘긴다. 던지지 않아 발급 결과를 바꾸지 않는다.
+    await awardBadgeReceiveScore(supabase, { userId, badge, origin: { triggeredBy } })
 
     // 잼 포인트 지급 — 배지에 point_reward가 붙어 있으면 발급 직후 1회 지급 (기존 배지
     // 발급과 동일한 사유 코드. 0이면 awardPoints가 스킵)
