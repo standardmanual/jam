@@ -12,8 +12,11 @@
  *  - 소급·시험 발급 — 카탈로그 재평가 배치, 어드민 시뮬레이터(`admin_simulate`, `admin_test`), `dryRun`(`BADGE_RECEIVE_EXCLUDED_TRIGGERS`)
  *  - 이용 정지 중인 유저 — 정지된 드랍 주인이 다른 유저가 줍는 순간 받는 배지(`picked_up_by_user_count` 등)가 정지 중에도 발급되기 때문이다
  *
- * 원천 id는 (유저, 배지) 기준 결정적 id 하나다. 같은 배지를 초기화·삭제 뒤 다시 받아도 같은 키라 점수는 한 번만 센다(사용자 결정 2).
- * 반복형의 새 회차 점수(회차마다 따로 센다)는 2b회 몫이다.
+ * 첫 획득의 원천 id는 (유저, 배지) 기준 결정적 id 하나다. 같은 배지를 초기화·삭제 뒤 다시 받아도 같은 키라 점수는 한 번만 센다(사용자 결정 2).
+ *
+ * 반복형은 회차마다 따로 센다(2b회, 티켓 20261019_1315 14번). `occurrenceActivityId`를 주면 원천 id가 (유저, 배지, 활동 id)로 달라져 첫 획득의
+ * (유저, 배지) id와 구분된다(JSON 배열 길이가 달라 우연히도 겹치지 않는다). 회차 여러 건은 `awardBadgeReceiveOccurrenceScores`가 한 번에 센다.
+ * 제외 규칙(출처·유형·숨김·제외 조건 키·이용 정지)은 회차에도 그대로 적용된다.
  *
  * **절대 던지지 않는다.** 점수 쪽이 어떻게 되든 배지 발급과 응답은 그대로다. 점수 호출 실패는 `awardChapterScore`가 기록하고,
  * 이 함수가 하는 이용 정지 확인이 실패하면 «정지 아님»으로 보지 않고(정지 중인 유저가 조회 실패 틈에 점수를 얻으면 안 된다) 점수를 세지 않은 채
@@ -64,6 +67,11 @@ export interface AwardBadgeReceiveScoreInput {
   userId: string
   badge: BadgeReceiveBadge
   origin: BadgeReceiveOrigin
+  /**
+   * 반복형의 «새 회차» 점수일 때 그 회차의 근거 활동 id(Strava 활동 id). 생략하면 첫 획득(원천 id = 유저·배지)이다.
+   * 값을 주면 비었거나(null·빈 문자열) 올바른 활동 id가 아닌 경우(정수가 아니거나 0 이하)를 세지 않고 기록한다 — 회차를 구분할 수 없는 키를 만들지 않는다.
+   */
+  occurrenceActivityId?: number | string | null
 }
 
 export type BadgeReceiveSkipReason = 'origin' | 'badge_type' | 'hidden' | 'excluded_condition' | 'suspended'
@@ -88,6 +96,13 @@ function hasExcludedConditionKey(condition: object | null | undefined): boolean 
   return Object.keys(condition).some((key) => BADGE_RECEIVE_EXCLUDED_CONDITION_KEYS.has(key))
 }
 
+/** 회차 활동 id → 원천 id 조각. Strava 활동 id는 양의 정수다. 구분할 수 없는 값이면 null */
+function occurrenceKeyPart(activityId: number | string | null): string | null {
+  if (typeof activityId === 'number') return Number.isSafeInteger(activityId) && activityId > 0 ? String(activityId) : null
+  if (typeof activityId === 'string') return activityId.trim() === '' ? null : activityId
+  return null
+}
+
 async function recordBadgeReceiveFailure(userId: string, sourceId: string | null, error: string): Promise<void> {
   console.error(`[chapter-score] 배지 받기 점수 미반영 — userId: ${userId}, sourceId: ${sourceId ?? '미정'}: ${error}`)
   await logEngineDecision('points', 'chapter_score_failed', userId, {
@@ -109,7 +124,21 @@ export async function awardBadgeReceiveScore(supabase: SupabaseClient, input: Aw
     if (badge.is_hidden === true) return { status: 'skipped', reason: 'hidden' }
     if (hasExcludedConditionKey(badge.condition_json)) return { status: 'skipped', reason: 'excluded_condition' }
 
-    sourceId = deterministicSourceId('badge_receive', userId, badge.id)
+    // 회차 점수는 활동 id를 키 조각으로 더한다. 활동 id가 비면 이 회차는 세지 않는다(위 제외 규칙에 걸린 경우는 조용히 건너뛰므로 기록하지 않는다)
+    if (input.occurrenceActivityId === undefined) {
+      sourceId = deterministicSourceId('badge_receive', userId, badge.id)
+    } else {
+      const part = occurrenceKeyPart(input.occurrenceActivityId)
+      if (part === null) {
+        await recordBadgeReceiveFailure(
+          userId,
+          null,
+          `회차 활동 id를 알 수 없어 회차 점수를 세지 않았다 (badgeId: ${badge.id}, activityId: ${String(input.occurrenceActivityId)})`
+        )
+        return { status: 'failed' }
+      }
+      sourceId = deterministicSourceId('badge_receive', userId, badge.id, part)
+    }
 
     // 이용 정지 확인은 가장 비싼 검사(DB 조회)라 마지막에 한다. 조회가 실패하면 «정지 아님»으로 보지 않는다
     let suspended: boolean
@@ -131,5 +160,76 @@ export async function awardBadgeReceiveScore(supabase: SupabaseClient, input: Aw
       console.error('[chapter-score] 배지 받기 실패 기록 중 예외:', recordError)
     }
     return { status: 'failed' }
+  }
+}
+
+/** 회차 점수를 동시에 보내는 상한. 첫 동기화처럼 회차가 많을 때 점수 호출이 줄줄이 직렬로 이어지지 않게 한다 */
+const OCCURRENCE_SCORE_CONCURRENCY = 5
+
+export interface AwardBadgeReceiveOccurrenceScoresInput {
+  userId: string
+  badge: BadgeReceiveBadge
+  origin: BadgeReceiveOrigin
+  /**
+   * 센 회차의 근거 활동 id 목록(`earn_history[].strava_activity_id`). 같은 id가 여러 번 있어도 한 번만 센다.
+   * 비었거나 올바르지 않은 id는 세지 않고 기록한다(`occurrenceActivityId` 설명 참고).
+   */
+  activityIds: ReadonlyArray<number | string | null | undefined>
+}
+
+export interface AwardBadgeReceiveOccurrenceScoresResult {
+  /** 점수 호출이 성공한 회차 수(같은 키를 다시 보내 이미 센 것도 성공으로 센다) */
+  scored: number
+  /** 점수를 세지 못하고 기록만 남긴 회차 수 */
+  failed: number
+}
+
+/**
+ * 반복형 한 배지의 여러 회차 점수를 센다 (티켓 20261019_1315 2b회). 던지지 않는다.
+ *
+ * 회차마다 `awardBadgeReceiveScore(occurrenceActivityId)`를 부르므로 제외 규칙과 «던지지 않는다»는 약속이 그대로 적용된다.
+ * 첫 회차의 결과가 «제외»이면 나머지도 같은 이유로 제외다(출처·유형·숨김·제외 조건 키·이용 정지는 회차와 무관하다) — 남은 회차를 부르지 않는다.
+ * 그 밖에는 회차마다 따로 시도하고 실패는 회차마다 기록한다.
+ */
+export async function awardBadgeReceiveOccurrenceScores(
+  supabase: SupabaseClient,
+  input: AwardBadgeReceiveOccurrenceScoresInput
+): Promise<AwardBadgeReceiveOccurrenceScoresResult> {
+  const result: AwardBadgeReceiveOccurrenceScoresResult = { scored: 0, failed: 0 }
+  try {
+    const { userId, badge, origin } = input
+
+    // 같은 활동 id는 한 번만. 비었거나 올바르지 않은 값은 합치지 않고 그대로 넘겨 회차마다 기록하게 한다
+    const seen = new Set<string>()
+    const activityIds: (number | string | null)[] = []
+    for (const id of input.activityIds) {
+      const part = id == null ? null : occurrenceKeyPart(id)
+      if (part !== null) {
+        if (seen.has(part)) continue
+        seen.add(part)
+      }
+      activityIds.push(id ?? null)
+    }
+    if (activityIds.length === 0) return result
+
+    const award = async (occurrenceActivityId: number | string | null) => {
+      const outcome = await awardBadgeReceiveScore(supabase, { userId, badge, origin, occurrenceActivityId })
+      if (outcome.status === 'scored') result.scored += 1
+      else if (outcome.status === 'failed') result.failed += 1
+      return outcome
+    }
+
+    const [head, ...rest] = activityIds
+    const first = await award(head)
+    if (first.status === 'skipped') return result
+
+    for (let i = 0; i < rest.length; i += OCCURRENCE_SCORE_CONCURRENCY) {
+      await Promise.all(rest.slice(i, i + OCCURRENCE_SCORE_CONCURRENCY).map(award))
+    }
+    return result
+  } catch (e) {
+    // awardBadgeReceiveScore는 스스로 던지지 않지만 이 함수의 약속도 «절대 던지지 않음»이다
+    console.error('[chapter-score] 배지 받기 회차 점수 처리 중 예외:', e)
+    return result
   }
 }
