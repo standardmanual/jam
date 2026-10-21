@@ -50,8 +50,29 @@ export const Tint: Story = {
 };
 
 export const Inverse: Story = {
-  args: { tone: 'inverse', children: 'Inverse 배경 (어두운 반전 면 + --snow 글자)' },
+  args: { tone: 'inverse', children: 'Inverse 배경 (어두운 반전 면 + --snow 글자 + 같은 색 1px 테두리)' },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
+};
+
+/**
+ * 선택 표시로 쓸 때의 크기 확인 (티켓 20261021_1247).
+ * default는 1px --border라서, inverse에 테두리가 없으면 선택으로 바뀔 때 카드가 가로·세로 2px씩 줄어
+ * 안쪽 내용이 1px씩 움직였다. inverse에 면과 같은 색 1px 테두리를 더해 두 카드의 박스가 같다.
+ */
+export const SelectionSameSize: Story = {
+  name: '선택 표시 — 같은 크기',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 320 }}>
+      <Card tone="default" onClick={() => {}} role="radio" aria-checked={false}>
+        <p style={{ margin: 0, fontWeight: 700 }}>고르지 않은 카드</p>
+        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>흰 면 + 1px --border</p>
+      </Card>
+      <Card tone="inverse" onClick={() => {}} role="radio" aria-checked>
+        <p style={{ margin: 0, fontWeight: 700 }}>고른 카드</p>
+        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)' }}>반전 면 + 같은 색 1px 테두리</p>
+      </Card>
+    </div>
+  ),
 };
 
 export const Interactive: Story = {
@@ -78,7 +99,7 @@ export const AllTones: Story = {
       </Card>
       <Card tone="inverse">
         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--snow)' }}>inverse</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--snow)' }}>배경: --background-inverse (어두운 반전 면)</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--snow)' }}>배경: --background-inverse (어두운 반전 면) + 같은 색 1px 테두리</p>
       </Card>
     </div>
   ),
