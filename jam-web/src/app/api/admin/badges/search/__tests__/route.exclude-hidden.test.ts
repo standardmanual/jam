@@ -79,6 +79,14 @@ describe('GET /api/admin/badges/search — excludeHidden', () => {
     expect(state.filters).toContainEqual(['eq', 'is_hidden', false])
   })
 
+  it('응답에 always_locked를 싣는다(미션 양식이 잠김으로 만든 아이템 배지를 읽기 전용으로 표시한다, 티켓 20261019_1318)', async () => {
+    state.rows = [{ id: 'b2', name: '비밀 장갑', is_hidden: false, always_locked: true }]
+    const res = await search('query=장갑')
+
+    expect(state.selected).toContain('always_locked')
+    expect((await res.json()).badges).toEqual([{ id: 'b2', name: '비밀 장갑', is_hidden: false, always_locked: true }])
+  })
+
   it('응답에 is_hidden을 싣는다', async () => {
     const res = await search('query=러너')
 

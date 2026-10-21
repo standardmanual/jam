@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { convertBadgeImageToWebp } from '../../../src/lib/admin/badgeImageWebp';
+import { MISSION_UNDO_OPERATING_SETTING_TABLES } from '../../../src/lib/admin/registerChecks/references';
 import { parseRegisterArgs } from '../registerArgs.mjs';
 import { readBundleFile, validateMissionBundle } from '../registerMissionBundle.mjs';
 import {
@@ -566,7 +567,7 @@ describe('runMissionRegister — 실제 등록', () => {
 });
 
 describe('UNDO_REFERENCE_TABLES', () => {
-  it('missions를 참조하는 외래 키 9곳과 같다(생성 타입 대조)', () => {
+  it('missions를 참조하는 외래 키 9곳과 같다(생성 타입 대조) — 읽는 8곳과 되돌림을 막지 않는 운영 설정 1곳을 합친다', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'types', 'database.generated.ts'), 'utf8');
     // 표별로 잘라서 referencedRelation: "missions"인 FK의 표·컬럼을 뽑는다.
     const found: string[] = [];
@@ -578,7 +579,9 @@ describe('UNDO_REFERENCE_TABLES', () => {
         found.push(`${start.name}.${fk[1]}`);
       }
     });
-    const declared = UNDO_REFERENCE_TABLES.map((r: { table: string; column: string }) => `${r.table}.${r.column}`);
+    const declared = [...UNDO_REFERENCE_TABLES, ...MISSION_UNDO_OPERATING_SETTING_TABLES].map(
+      (r: { table: string; column: string }) => `${r.table}.${r.column}`
+    );
     expect(declared.sort()).toEqual(found.sort());
     expect(found).toHaveLength(9);
   });

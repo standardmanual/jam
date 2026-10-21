@@ -18,6 +18,9 @@ import type { MissionRow } from '@/types/database'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20261019_1318). 현상 → 원인 → 해결책 순서.
+const READ_ERROR_MESSAGE = '미리보기 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 export async function POST(req: NextRequest) {
   const authError = await requireAdmin()
   if (authError) return authError
@@ -44,7 +47,10 @@ export async function POST(req: NextRequest) {
   // 컬럼명을 정렬 키로 쓰지 않는다 — 마이그레이션 135가 아직 실행되지 않은 환경에서
   // `.order('gate_axis')`는 쿼리 자체를 실패시킨다. 정렬은 아래에서 앱이 한다.
   const { data: missionsRaw, error } = await supabase.from('missions').select('*')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[gate-missions preview 미션 조회 오류]', error)
+    return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+  }
 
   const missions = (missionsRaw ?? []) as MissionRow[]
   // 게이트 미션 + 폐기 대상(레거시)만 본다 — 기간형 미션은 게이팅이 없어 항상 open이라
@@ -56,7 +62,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ userLabel, results: [], ownedFamilies: [] })
   }
 
-  const ctx = await loadMissionVisibilityContext(user.id, targets)
+  // 노출 판정에 쓰는 컨텍스트(보유 배지·트라이브 등)를 읽지 못하면 던진다 — 트라이브 조회 실패도 fail-closed로 던지게 바뀌었다
+  // (티켓 20261019_1311). 잡지 않으면 Next가 HTML 오류 화면을 내려 미리보기 화면이 JSON을 읽다 깨진다.
+  let ctx: Awaited<ReturnType<typeof loadMissionVisibilityContext>>
+  try {
+    ctx = await loadMissionVisibilityContext(user.id, targets)
+  } catch (err) {
+    console.error('[gate-missions preview 노출 판정 컨텍스트 조회 오류]', err)
+    return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+  }
   const map = resolveMissionVisibilityMap(targets, ctx)
 
   // 「왜 그렇게 판정됐나」를 함께 보여주려면 규칙이 가리키는 계열의 보유 상태가 필요하다.

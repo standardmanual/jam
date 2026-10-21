@@ -358,7 +358,6 @@ describe('undo — 참조를 확인한 뒤 ID로 지운다', () => {
     ['user_mission_completions', { mission_id: MISSION_ID }],
     ['mission_rank_snapshots', { mission_id: MISSION_ID }],
     ['mission_participation_cancellations', { mission_id: MISSION_ID }],
-    ['mission_allowed_tribes', { mission_id: MISSION_ID }],
     ['mission_item_rewards', { mission_id: MISSION_ID }],
     ['point_transactions', { source_mission_id: MISSION_ID }],
     ['today_cards', { id: CARD_ID, mission_id: MISSION_ID }],
@@ -374,6 +373,16 @@ describe('undo — 참조를 확인한 뒤 ID로 지운다', () => {
     expect(failure?.detail).toContain(table)
     expect(deletes(db)).toEqual([])
     expect(db.tables.missions).toHaveLength(2)
+  })
+
+  it('참가할 수 있는 트라이브는 운영 설정이라 붙어 있어도 되돌림을 막지 않는다(티켓 20261019_1318)', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.tables.mission_allowed_tribes = [{ mission_id: MISSION_ID, tribe_id: 'tribe-1' }]
+    expect(await handler.undo(db.service, MISSION_ID)).toBeNull()
+
+    expect(deletes(db)).toHaveLength(1)
+    expect((db.tables.missions as Row[]).map((row) => row.id)).toEqual([EXISTING_MISSION_ID])
   })
 
   it('참조를 읽지 못하면 확인 없이 지우지 않고 원문은 detail에만 있다', async () => {

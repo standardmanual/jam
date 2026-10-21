@@ -4,13 +4,15 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { MissionRow, MissionType } from '@/types/database'
-import { checkMissionCondition } from '@/lib/missions/condition-keys'
+import { checkMissionCondition, usesNightCondition } from '@/lib/missions/condition-keys'
+import { MISSION_SCOPE_LABEL, type MissionScope } from '@/lib/admin/mission-tribes'
 import { MISSION_TYPES, MISSION_TYPE_LABEL } from '@/lib/admin/badge-labels'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import BadgeSearchSelect, { type BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
 import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
+import { Checkbox } from '@/components/admin/ui/checkbox'
 // 판정 시뮬레이션 패널 — 배지 폼과 공용 컴포넌트(티켓 20260908_1554, 20260908_1632).
 // mission_type='engine_condition'일 때만 붙인다 — 나머지 5종은 checker.ts의 boolean-only
 // 판정 경로라 사유·실제값 대 필요값 표시가 불가능하다.
@@ -23,6 +25,19 @@ import {
   unsupportedMissionConditionKeys,
   type MissionConditionFormFields,
 } from './missionConditionFields'
+import {
+  NIGHT_SAFETY_NOTICE,
+  buildMissionTribePayload,
+  findMissionFormSaveError,
+  lockedRewardBadgeNames,
+  lockedRewardNotice,
+  missionFormTribeLabel,
+  missionScopeFrom,
+  rankingBlockReason,
+  rankingFrameNotice,
+  sortMissionFormTribes,
+  type MissionFormTribe,
+} from './missionFormRules'
 
 interface Props {
   /** 수정 대상 — 없으면 생성 모드 */
@@ -34,6 +49,10 @@ interface Props {
   /** 체크인 타입(condition_json.poi_id)의 표시용 지점 이름 — 없으면 미지정(생성 모드 등)
    *  (티켓 20260911_2118) */
   poiLabel?: string
+  /** 참가할 수 있는 트라이브 체크 목록 — DB의 트라이브 전체(비활성 포함, 티켓 20261019_1318) */
+  tribes: MissionFormTribe[]
+  /** 수정 대상이 지금 참가를 허용하는 트라이브 id. 없거나 비어 있으면 공통 미션 */
+  allowedTribeIds?: string[]
 }
 
 function formatBadgeLabel(b?: BadgeSearchResult): string {
@@ -72,7 +91,15 @@ const emptyForm = {
   image_url: '',
   exposure_mode: 'start_date' as string, // 티켓 20260912_0139: 미션 노출 옵션 (기본값: 시작일 노출)
   exposure_at: '',
+  scope: 'common' as MissionScope, // 티켓 20261019_1318: 공통 미션 / 트라이브 미션
+  allowed_tribe_ids: [] as string[], // scope='tribe'일 때 참가할 수 있는 트라이브
 }
+
+// 종류 선택지 — 라벨은 서버 모듈(`mission-tribes.ts`)과 같은 사전을 쓴다
+const scopeOptions: { value: MissionScope; label: string }[] = [
+  { value: 'common', label: `${MISSION_SCOPE_LABEL.common} (모든 유저)` },
+  { value: 'tribe', label: `${MISSION_SCOPE_LABEL.tribe} (고른 트라이브만)` },
+]
 
 // datetime-local input은 `YYYY-MM-DDTHH:mm` 형식을 요구 — ISO 문자열에서 초/타임존 부분 제거
 function toDatetimeLocalValue(iso: string): string {
@@ -81,7 +108,7 @@ function toDatetimeLocalValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function formFromMission(m: MissionRow): typeof emptyForm {
+function formFromMission(m: MissionRow, allowedTribeIds: string[]): typeof emptyForm {
   return {
     title: m.title,
     description: m.description ?? '',
@@ -99,6 +126,8 @@ function formFromMission(m: MissionRow): typeof emptyForm {
     image_url: m.image_url ?? '',
     exposure_mode: m.exposure_mode ?? 'start_date',
     exposure_at: m.exposure_at ? toDatetimeLocalValue(m.exposure_at) : '',
+    scope: missionScopeFrom(allowedTribeIds),
+    allowed_tribe_ids: allowedTribeIds,
   }
 }
 
@@ -107,11 +136,13 @@ function formFromMission(m: MissionRow): typeof emptyForm {
  * `/admin/missions/new`, `/admin/missions/[id]` 별도 페이지로 이동해 연다. 폼 자체(입력
  * 필드·검증 로직)는 예전 목록 컴포넌트(현재는 삭제됨)에서 그대로 옮겨왔다.
  */
-export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
+export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, allowedTribeIds = [] }: Props) {
   const editingId = mission?.id ?? null
-  const [form, setForm] = useState(mission ? formFromMission(mission) : emptyForm)
+  const [form, setForm] = useState(mission ? formFromMission(mission, allowedTribeIds) : emptyForm)
   const [saving, setSaving] = useState(false)
   const [conditionError, setConditionError] = useState('')
+  // 저장 버튼 옆에 보이는 오류 — 저장 전 검사와 서버의 충돌(409) 안내. 달성 조건 구역은 화면 중간이라 저장을 누른 자리에서 보이지 않는다.
+  const [saveError, setSaveError] = useState('')
   const [badgeLabelCache, setBadgeLabelCache] = useState(
     () => new Map(badgeLabels.map((b) => [b.id, b]))
   )
@@ -140,9 +171,27 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
     ? checkMissionCondition(form.mission_type as MissionType, missionConditionPreview).warning
     : null
 
+  // 순위형 제한 안내와 밤 조건 안전 안내 (티켓 20261019_1318) — 판정은 서버 저장 검사와 같은 함수다.
+  const rankingBlocked = rankingBlockReason(missionConditionPreview) !== null
+  const frameNotice = rankingFrameNotice(form.status_display_type, missionConditionPreview)
+  const showNightNotice = usesNightCondition(missionConditionPreview)
+  const sortedTribes = sortMissionFormTribes(tribes)
+
+  function toggleTribe(id: string, checked: boolean) {
+    setForm((f) => ({
+      ...f,
+      allowed_tribe_ids: checked
+        ? f.allowed_tribe_ids.includes(id)
+          ? f.allowed_tribe_ids
+          : [...f.allowed_tribe_ids, id]
+        : f.allowed_tribe_ids.filter((x) => x !== id),
+    }))
+  }
+
   const rewardBadgeChips = form.reward_badge_ids
     .map((id) => badgeLabelCache.get(id))
     .filter((b): b is BadgeSearchResult => !!b)
+  const lockedNotice = lockedRewardNotice(lockedRewardBadgeNames(rewardBadgeChips))
   const badgePointsSum = rewardBadgeChips.reduce((sum, b) => sum + (b.point_reward ?? 0), 0)
   const missionPoints = Number(form.reward_points) || 0
   const totalPoints = badgePointsSum + missionPoints
@@ -163,6 +212,19 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
 
   async function handleSave() {
     setConditionError('')
+    setSaveError('')
+
+    // 종류·틀 저장 전 검사 — 서버가 같은 검사를 하지만, 서버 거절은 무엇을 고칠지 늦게 알려 준다(티켓 20261019_1318).
+    const formError = findMissionFormSaveError({
+      scope: form.scope,
+      allowedTribeIds: form.allowed_tribe_ids,
+      statusDisplayType: form.status_display_type,
+      condition: missionConditionPreview,
+    })
+    if (formError) {
+      setSaveError(formError)
+      return
+    }
 
     // '노출일 지정'은 노출 시각이 없으면 fail-closed로 항상 숨겨진다(lib/missions/visibility.ts)
     // — 저장 전에 막아 관리자가 의도치 않게 미션을 영구히 숨기지 않도록 한다.
@@ -191,6 +253,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
       image_url: form.image_url || null,
       exposure_mode: form.exposure_mode,
       exposure_at: form.exposure_mode === 'scheduled' ? new Date(form.exposure_at).toISOString() : null,
+      ...buildMissionTribePayload(form.scope, form.allowed_tribe_ids),
     }
 
     const res = await fetch(editingId ? `/api/admin/missions/${editingId}` : '/api/admin/missions', {
@@ -205,6 +268,11 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
     if (!res.ok) {
       const payload = await res.json().catch(() => null)
       const message = typeof payload?.error === 'string' ? payload.error : null
+      // 409는 «이미 참가한 유저가 있어서 트라이브를 줄일 수 없다» 같은 충돌 안내라 저장 버튼 옆에 보인다.
+      if (res.status === 409 && message) {
+        setSaveError(message)
+        return
+      }
       setConditionError(message ?? '미션을 저장하지 못했어요. 잠시 후 다시 시도해주세요.')
       return
     }
@@ -246,6 +314,53 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
           <p className="text-xs text-muted-foreground mt-1">미션 상세의 달성 조건 카드 첫 줄에 보여요. 비우면 목표 유형에 맞는 기본 문구가 나와요.</p>
         </div>
 
+        {/* 참가 대상 — 공통 미션 / 트라이브 미션 (티켓 20261019_1318, 운영 로직 13.2절) */}
+        <div className="col-span-2 border border-border rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold text-foreground break-keep wrap-break-word">참가 대상</p>
+          <Select
+            value={form.scope}
+            onValueChange={(v) => setForm((f) => ({ ...f, scope: v as MissionScope }))}
+          >
+            <SelectTrigger className="w-full" aria-label="미션 종류">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {scopeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs break-keep wrap-break-word text-pretty">
+            {form.scope === 'common'
+              ? '모든 유저가 보고 참가해요.'
+              : '고른 트라이브의 유저만 미션을 보고 참가해요. 트라이브를 정하지 않은 유저에게는 보이지 않아요.'}
+          </p>
+          {form.scope === 'tribe' && (
+            <div role="group" aria-label="참가할 수 있는 트라이브" className="grid grid-cols-2 gap-x-4 gap-y-2">
+              {sortedTribes.map((t) => (
+                <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={form.allowed_tribe_ids.includes(t.id)}
+                    onCheckedChange={(v) => toggleTribe(t.id, v === true)}
+                    aria-label={`${missionFormTribeLabel(t)} 참가 허용`}
+                  />
+                  <span className={`break-keep wrap-break-word ${t.isActive ? '' : 'text-muted-foreground'}`}>
+                    {missionFormTribeLabel(t)}
+                  </span>
+                </label>
+              ))}
+              {sortedTribes.length === 0 && (
+                <p className="col-span-2 text-xs text-muted-foreground break-keep wrap-break-word">
+                  등록된 트라이브가 없어요. 트라이브를 먼저 만들어 주세요.
+                </p>
+              )}
+            </div>
+          )}
+          {editingId && (
+            <p className="text-muted-foreground text-xs break-keep wrap-break-word text-pretty">
+              이미 참가하거나 완료한 유저가 있으면 참가할 수 있는 트라이브를 줄일 수 없어요. 더하는 변경만 저장돼요.
+            </p>
+          )}
+        </div>
+
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">미션 타입</label>
           <Select value={form.mission_type} onValueChange={(v) => setForm((f) => ({ ...f, mission_type: v }))}>
@@ -265,12 +380,25 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {statusDisplayTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              {statusDisplayTypes.map((t) => (
+                // 밤 조건·캡슐 연 횟수가 있으면 랭킹형을 고를 수 없다(서버 저장 검사와 같은 판정, 티켓 20261019_1318)
+                <SelectItem key={t.value} value={t.value} disabled={t.value === 'ranking' && rankingBlocked}>
+                  {t.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <p className="text-muted-foreground text-xs mt-1">
-            {form.mission_type === 'checkin' || form.mission_type === 'item_collect' ? '추천: 달성형' : '추천: 랭킹형'}
-          </p>
+          {frameNotice ? (
+            <p
+              className={`text-xs mt-1 break-keep wrap-break-word text-pretty ${form.status_display_type === 'ranking' ? 'text-red-600' : 'text-amber-600'}`}
+            >
+              {frameNotice}
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-xs mt-1">
+              {form.mission_type === 'checkin' || form.mission_type === 'item_collect' ? '추천: 달성형' : '추천: 랭킹형'}
+            </p>
+          )}
         </div>
 
         <div>
@@ -290,6 +418,11 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
             badgeIdInitialLabel={formatBadgeLabel(badgeLabelCache.get(conditionFields.badgeId))}
             poiIdInitialLabel={poiLabel}
           />
+          {showNightNotice && (
+            <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs break-keep wrap-break-word text-pretty">
+              {NIGHT_SAFETY_NOTICE}
+            </p>
+          )}
           {conditionError && <p className="text-red-600 text-xs mt-1">{conditionError}</p>}
           {!conditionError && conditionWarning && <p className="text-amber-600 text-xs mt-1">{conditionWarning}</p>}
         </div>
@@ -323,8 +456,13 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
               onSelect={addRewardBadge}
               onRemove={removeRewardBadge}
               excludeHidden
+              markAlwaysLocked
               placeholder="배지 이름 검색..."
             />
+            {/* 읽기 전용 — 잠금은 배지 양식에서 정하고, 이 미션에서만 일반 배지를 잠가서 주는 지정은 지원하지 않는다(5-3 결정 2) */}
+            {lockedNotice && (
+              <p className="text-amber-700 text-xs mt-1.5 break-keep wrap-break-word text-pretty">{lockedNotice}</p>
+            )}
           </div>
 
           {/* 총 지급 포인트 미리보기 */}
@@ -410,6 +548,12 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
           />
         </div>
       </div>
+
+      {saveError && (
+        <p role="alert" className="text-red-600 text-sm break-keep wrap-break-word text-pretty">
+          {saveError}
+        </p>
+      )}
 
       <div className="flex items-center gap-3">
         <button onClick={handleSave} disabled={saving}

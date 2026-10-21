@@ -6,13 +6,20 @@ import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
 import { validateGatedBadge, validateMissionRewardBadges } from '@/lib/missions/reward-badges'
 import { collectMissionReferences, MISSION_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 고정 문구는 POST와 함께 쓰려고 옮겼다(티켓 20261019_1318).
+import { DELETE_ERROR_MESSAGE, READ_ERROR_MESSAGE, SAVE_ERROR_MESSAGE } from '@/lib/admin/mission-save-messages'
+import {
+  TRIBE_NARROWING_BLOCKED_MESSAGE,
+  TRIBE_NOT_FOUND_MESSAGE,
+  TRIBE_SAVE_PARTIAL_MESSAGE,
+  findMissingTribeIds,
+  parseMissionTribeSelection,
+  planTribeChange,
+  replaceAllowedTribes,
+  type TribeChangePlan,
+} from '@/lib/admin/mission-tribes'
 import type { MissionRow } from '@/types/database'
 import type { MissionType } from '@/types/database'
-
-// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
-const READ_ERROR_MESSAGE = '미션 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
-const SAVE_ERROR_MESSAGE = '미션을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
-const DELETE_ERROR_MESSAGE = '미션을 삭제하지 못했어요. 서버에서 삭제 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
 
 // PATCH /api/admin/missions/[id] — 기존 미션 수정.
 // 티켓 20260813_001: status_display_type을 'individual'로 전환하는 등 이미 활성화된
@@ -26,6 +33,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const imageUrlError = imageUrlTypeError(body.image_url)
   if (imageUrlError) return NextResponse.json({ error: imageUrlError }, { status: 400 })
+
+  // 참가할 수 있는 트라이브(티켓 20261019_1318). PATCH는 부분 갱신이라 `scope`가 있을 때만 건드린다.
+  // 형식 검사만 먼저 하고, 트라이브 존재와 줄이는 변경 확인은 아래에서 DB로 한다.
+  const tribeParse = parseMissionTribeSelection(body)
+  if (!tribeParse.ok) return NextResponse.json({ error: tribeParse.error }, { status: 400 })
+  const tribeSelection = tribeParse.selection
 
   const supabase = createServiceClient()
 
@@ -119,6 +132,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const gatedCheck = await validateGatedBadge(supabase, body.gated_badge_id)
   if (!gatedCheck.ok) return NextResponse.json({ error: gatedCheck.error }, { status: gatedCheck.status })
 
+  // 트라이브 검사: 없는 트라이브는 400, 참가·완료 기록이 있는 미션의 접근을 줄이는 변경은 409다. 이 검사는 미션 내용을
+  // 저장하기 전에 끝낸다 — 거절하면서 일부만 저장된 상태를 만들지 않으려는 것이다. 읽지 못하면 확인 없이 진행하지 않는다.
+  let tribePlan: TribeChangePlan | null = null
+  if (tribeSelection) {
+    try {
+      if ((await findMissingTribeIds(supabase, tribeSelection.tribeIds)).length > 0) {
+        return NextResponse.json({ error: TRIBE_NOT_FOUND_MESSAGE }, { status: 400 })
+      }
+      tribePlan = await planTribeChange(supabase, id, tribeSelection)
+    } catch (err) {
+      console.error('[missions PATCH 트라이브 조회 오류]', err)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+    }
+    if (tribePlan.blocked) {
+      return NextResponse.json({ error: TRIBE_NARROWING_BLOCKED_MESSAGE }, { status: 409 })
+    }
+  }
+
   // 이미지(썸네일)가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940
   // 방침 A). 폼은 매번 전체 필드를 보내므로 기존 값과 비교하고, 본문에 image_url이 없으면
   // 기존 행을 조회하지 않는다.
@@ -143,19 +174,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 스크립트로만 바뀐다(티켓 20260925_2003 방침 A). 배지·컬렉션·홈피드 저장 라우트와 같은 규칙이다.
   const safeBody = { ...body }
   delete safeBody.image_source
+  // 트라이브 필드는 missions 칸이 아니라 별도 표에 저장한다(티켓 20261019_1318).
+  delete safeBody.scope
+  delete safeBody.allowed_tribe_ids
   // 중복을 없앤 보상 배지 목록을 저장한다(보내지 않았으면 본문 그대로).
   if (rewardCheck.ids !== null) safeBody.reward_badge_ids = rewardCheck.ids
 
-  const { data, error } = await supabase
-    .from('missions')
-    .update({ ...safeBody, ...imageSourcePatch } as never)
-    .eq('id', id)
-    .select()
-    .single()
+  // 트라이브만 바꾸는 요청은 미션 칸이 하나도 없다 — 빈 갱신을 보내지 않고 행을 읽어 응답한다.
+  const updatePayload = { ...safeBody, ...imageSourcePatch }
+  const { data, error } =
+    Object.keys(updatePayload).length > 0
+      ? await supabase
+          .from('missions')
+          .update(updatePayload as never)
+          .eq('id', id)
+          .select()
+          .single()
+      : await supabase.from('missions').select('*').eq('id', id).single()
 
   if (error) {
     console.error('[missions PATCH 저장 오류]', error)
     return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
+  }
+
+  // 미션 칸을 저장한 뒤 허용 트라이브를 맞춘다. 여기서 실패하면 미션 내용만 저장된 상태라 그 사실을 알린다 —
+  // 같은 내용으로 다시 저장하면 이어서 맞춘다(없는 것을 넣고 남는 것을 지우는 작업이라 반복해도 같은 결과다).
+  if (tribeSelection && tribePlan) {
+    try {
+      await replaceAllowedTribes(supabase, id, tribeSelection.tribeIds, tribePlan.before)
+    } catch (err) {
+      console.error('[missions PATCH 트라이브 저장 오류]', err)
+      return NextResponse.json({ error: TRIBE_SAVE_PARTIAL_MESSAGE }, { status: 500 })
+    }
   }
   // 저장은 됐지만 판정하지 않는 조건이 있으면 경고를 응답에 함께 싣는다(티켓 20261019_1312).
   return NextResponse.json(conditionWarning ? { ...data, warning: conditionWarning } : data)

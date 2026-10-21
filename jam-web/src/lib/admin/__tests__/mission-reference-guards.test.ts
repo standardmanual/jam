@@ -86,3 +86,68 @@ describe('미션 삭제 가드 — 랭킹 규칙 연결 (티켓 20260925_2105)',
     expect(skipped).toEqual([])
   })
 })
+
+describe('미션 삭제 가드 — 5-1·5-3 새 표 세 개 (티켓 20261019_1318 1회)', () => {
+  const find = (key: string) => MISSION_REFERENCE_SOURCES.find((s) => s.key === key)
+
+  it('받지 않은 보상과 참가 취소 이력은 삭제를 막는 참조(CASCADE로 유저 기록이 사라진다)다', () => {
+    expect(find('mission_item_rewards')).toMatchObject({ location: 'mission_item_rewards.mission_id', blocks: true })
+    expect(find('mission_participation_cancellations')).toMatchObject({
+      location: 'mission_participation_cancellations.mission_id',
+      blocks: true,
+    })
+  })
+
+  it('참가 트라이브 제한은 운영 설정이라 삭제를 막지 않고 안내만 한다', () => {
+    expect(find('mission_allowed_tribes')).toMatchObject({ location: 'mission_allowed_tribes.mission_id', blocks: false })
+  })
+
+  it('세 표를 미션별로 세고, 막는 참조와 안내가 나뉜다', async () => {
+    const supabase = createStubSupabase({
+      mission_item_rewards: [{ mission_id: 'm1' }, { mission_id: 'm1' }, { mission_id: 'm2' }],
+      mission_participation_cancellations: [{ mission_id: 'm1' }],
+      mission_allowed_tribes: [{ mission_id: 'm1' }, { mission_id: 'm1' }, { mission_id: 'm3' }],
+    })
+    const { counts, error } = await collectMissionReferences(supabase, ['m1', 'm2', 'm3'])
+    expect(error).toBeNull()
+    expect(counts.get('m1')).toMatchObject({
+      mission_item_rewards: 2,
+      mission_participation_cancellations: 1,
+      mission_allowed_tribes: 2,
+    })
+
+    const summary = summarizeReference(MISSION_REFERENCE_SOURCES, counts.get('m1')!)
+    expect(summary.blockingTotal).toBe(3)
+    expect(summary.blockingLabels).toBe('아이템 배지 보상 기록 2건, 참가 취소 기록 1건')
+    expect(summary.noticeLabels).toBe('참가 트라이브 제한 2곳')
+  })
+
+  it('트라이브 제한만 있는 미션은 막히지 않고, 일괄 삭제도 건너뛰지 않는다', async () => {
+    const supabase = createStubSupabase({ mission_allowed_tribes: [{ mission_id: 'm1' }] })
+    const { counts } = await collectMissionReferences(supabase, ['m1'])
+    const summary = summarizeReference(MISSION_REFERENCE_SOURCES, counts.get('m1')!)
+    expect(summary.blockingTotal).toBe(0)
+    expect(summary.noticeLabels).toBe('참가 트라이브 제한 1곳')
+
+    const rows = [{ id: 'm1', title: '미션 1' }] as unknown as MissionBulkRow[]
+    expect(classifyMissionDeletion(['m1'], rows, counts)).toEqual({ targets: ['m1'], skipped: [] })
+  })
+
+  it('받지 않은 보상이 붙은 미션은 일괄 삭제에서 건너뛴다', async () => {
+    const supabase = createStubSupabase({ mission_item_rewards: [{ mission_id: 'm1' }] })
+    const { counts } = await collectMissionReferences(supabase, ['m1'])
+    const rows = [{ id: 'm1', title: '미션 1' }] as unknown as MissionBulkRow[]
+    const { targets, skipped } = classifyMissionDeletion(['m1'], rows, counts)
+    expect(targets).toEqual([])
+    expect(skipped).toHaveLength(1)
+    expect(skipped[0].reason).toContain('아이템 배지 보상 기록 1건')
+  })
+
+  it.each(['mission_item_rewards', 'mission_participation_cancellations', 'mission_allowed_tribes'])(
+    '%s 조회가 실패하면 error를 채운다(fail-closed)',
+    async (table) => {
+      const { error } = await collectMissionReferences(createStubSupabase({}, table), ['m1'])
+      expect(error).toContain(table)
+    }
+  )
+})

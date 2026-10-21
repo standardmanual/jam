@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
     // image_url: 투데이 카드 폼의 레일 실시간 미리보기가 배지 썸네일을 그리는 데 쓴다
     // (티켓 20260911_1454). 나머지 호출부는 무시하면 그만이라 부작용 없음.
     // is_hidden: 숨김 배지를 구분하는 데 쓴다(티켓 20261019_1313 2회). 나머지 호출부는 무시하면 그만이다.
-    .select('id, name, rarity, type, point_reward, admin_category, image_url, is_hidden')
+    // always_locked: «잠김으로 만든 아이템 배지»를 구분하는 데 쓴다(티켓 20261019_1318). 미션 양식의 보상 배지 칩이 읽기 전용으로 표시한다.
+    .select('id, name, rarity, type, point_reward, admin_category, image_url, is_hidden, always_locked')
     .is('deleted_at', null)
     .order('name', { ascending: true })
     .limit(MAX_RESULTS + 1)

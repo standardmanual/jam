@@ -20,6 +20,7 @@ import {
   ITEM_BOOK_UNDO_ARRAY_REFERENCE_COLUMNS,
   ITEM_BOOK_UNDO_REFERENCES,
   ITEM_BOOK_UNDO_REFERENCE_TABLES,
+  MISSION_UNDO_OPERATING_SETTING_TABLES,
   MISSION_UNDO_REFERENCE_TABLES,
   findBadgeUndoReferences,
   findHomeFeedUndoReferences,
@@ -460,6 +461,22 @@ describe('되돌림 참조 확인', () => {
     await expect(findMissionUndoReferences(failing.client, ID_A)).rejects.toThrow(
       'user_mission_completions 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): boom'
     )
+  })
+
+  it('미션: 운영 설정 표(참가할 수 있는 트라이브)는 읽지 않고, 붙어 있어도 되돌림을 막지 않는다(티켓 20261019_1318)', async () => {
+    expect(MISSION_UNDO_OPERATING_SETTING_TABLES).toEqual([{ table: 'mission_allowed_tribes', column: 'mission_id' }])
+    // 사용자 기록 목록과 겹치지 않는다
+    for (const setting of MISSION_UNDO_OPERATING_SETTING_TABLES) {
+      expect(MISSION_UNDO_REFERENCE_TABLES.map((r) => r.table)).not.toContain(setting.table)
+    }
+
+    const withSetting = createStub((e) => ({ count: e.table === 'mission_allowed_tribes' ? 3 : 0, error: null }))
+    expect(await findMissionUndoReferences(withSetting.client, ID_A)).toEqual([])
+    expect(withSetting.entries.map((e) => e.table)).not.toContain('mission_allowed_tribes')
+
+    // 트라이브 제한이 있어도 사용자 기록이 붙었으면 여전히 막는다
+    const withRecord = createStub((e) => ({ count: e.table === 'mission_allowed_tribes' || e.table === 'mission_item_rewards' ? 2 : 0, error: null }))
+    await expect(findMissionUndoReferences(withRecord.client, ID_A)).rejects.toThrow('mission_item_rewards 2건')
   })
 
   it('홈피드: today_card_events만 읽고, 붙었으면 노출·열람 기록 문장으로 던진다', async () => {
