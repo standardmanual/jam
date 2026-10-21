@@ -170,7 +170,8 @@ describe('탈퇴 문구 — 용어와 톤(가이드 1.3, 2.3, 7절)', () => {
   })
 
   it('이별 인사, 붙잡기, 상투 표현과 지킬 수 없는 약속이 없다', () => {
-    const banned = ['아쉬워', '소중한', '정말로', '떠나', '안녕', '그동안', '언제든', '앱 목록', '그대로예요']
+    // 강도어(슬롭 사전 1절)는 `scripts/check-slop.mjs`가 새 문구에서 따로 거르므로 여기서는 이별·붙잡기 표현과 지킬 수 없는 약속만 본다
+    const banned = ['아쉬워', '소중한', '떠나', '안녕', '그동안', '언제든', '앱 목록', '그대로예요']
     for (const [key, text] of entries) {
       for (const word of banned) expect(text, `${key}: ${word}`).not.toContain(word)
     }
