@@ -144,9 +144,19 @@ RLS는 켜고 본인 행 SELECT만 허용, INSERT·UPDATE·DELETE 정책은 없�
 끊김 행은 동기화하지 않는다 — 수동 동기화 API(`POST /api/strava/sync`)는 500이 아니라 409(`code: strava_disconnected`, `connectionState: disconnected`)로 알린다. 토큰 갱신이 **인증 오류**(Strava 응답 400·401·403)로 실패하거나 활동 조회가 401이면 끊김으로 저장하고 `strava_disconnected` 소식을 하루 한 번 보낸다. 5xx·네트워크 오류·시간 초과 같은 **일시 실패**는 끊김으로 저장하지 않는다(실패 기록과 소식만 남기고 다음 동기화에서 다시 시도). 끊긴 행의 기록·배지·잼·포인트는 다른 테이블에 있어 그대로 남는다.
 
 **연결 규칙**(`GET /api/strava/callback`): 한 JAM 계정에는 연결이 하나뿐이다. 토큰 교환 뒤 `strava_athlete_id`로 기존 연결을 먼저 찾는다.
-- 다른 JAM 계정에 이미 연결된 Strava 계정(끊김 포함)이면 방금 받은 토큰을 저장하지 않고 `/profile?strava=duplicate`로 보낸다. 기존 행의 `user_id`는 덮어쓰이지 않는다(옛 upsert는 덮어썼다).
+- 다른 JAM 계정에 이미 연결된 Strava 계정(끊김 포함)이면 콜백은 아무것도 저장하지 않는다. 기존 행의 `user_id`는 덮어쓰이지 않는다(옛 upsert는 덮어썼다). 기존 계정(`users`)을 읽어 둘로 나눠 보낸다(티켓 20261021_1249 4회, 운영 로직 3.2절).
+  - 일반·정상 계정이면 방금 받은 토큰을 쿠키 `strava_replace_offer`에 담아 `/profile?strava=duplicate`로 보낸다(아래 «그래도 연결하기»).
+  - 어드민(`is_admin` 또는 화이트리스트 이메일)이거나 이용 정지 중(`user_suspensions`에 진행 중인 행)이거나 유저 행이 없으면 쿠키 없이 `/profile?strava=duplicate_blocked`로 보낸다. 읽지 못하면 «지워도 된다»로 보지 않고 `/profile?strava=error&reason=db_error`로 닫는다.
 - 같은 유저의 같은 Strava 계정이면 토큰만 갱신하고 끊김 칸을 지운다. `first_sync_pending`과 `last_synced_at`은 그대로라 마지막 동기화 뒤부터 이어서 가져온다.
 - 같은 유저가 다른 Strava 계정을 연결하면 새 행을 `first_sync_pending=true`로 만들고 이 유저의 이전 연결 행을 지운다. 이전 행 삭제가 실패하면 방금 넣은 새 행을 되돌려 같은 `user_id`의 행이 둘 남지 않게 한다.
+- 위 두 저장은 `lib/strava/connection-save.ts`의 `saveStravaConnection`이 맡고 콜백과 `POST /api/strava/replace`가 같이 쓴다. 기존 계정 판정(`assessDuplicateOwner`)과 연결 직후 즉시 동기화(`syncAfterConnect`)도 같은 파일이다.
+
+**«그래도 연결하기»**(티켓 20261021_1249 4회, 운영 로직 3.2절). DB 표를 더하지 않고 인증으로 받은 토큰을 10분짜리 쿠키에 담는다.
+- 쿠키 `strava_replace_offer`(`lib/strava/replace-offer.ts`): httpOnly, `sameSite=lax`, `path=/api/strava`, `maxAge=600`, `secure`는 운영에서만. 값은 `{iv}:{암호문}.{서명}`이다. 내용(JSON: 로그인한 유저 id, Strava athlete id, 방금 받은 access·refresh 토큰, 토큰 만료 시각, 제안이 닫히는 시각)을 기존 `encrypt`(AES-256-CBC)로 암호화한 뒤 암호문에 HMAC-SHA256을 붙인다. 서명 키는 `ENCRYPTION_KEY`에서 용도 문자열로 파생한다(새 환경변수 없음). 개봉은 서명을 상수 시간으로 비교한 뒤 복호화하고 만료를 확인한다.
+- `POST /api/strava/replace`(본문 없음, 쿠키와 세션이 입력): 로그인 확인(401) → 쿠키 개봉(없음·변조·만료·다른 유저의 것은 400, `next: 'restart'`) → 이 Strava 계정을 가진 기존 계정을 **다시** 찾아 판정(어드민·이용 정지·유저 행 없음은 403 `next: 'blocked'`, 읽기 실패는 500 `next: 'retry'`) → `deleteAccount(기존 계정, { skipStravaDeauthorize: true })`(실패는 500 `retry`, 그사이 이미 지워졌으면 그대로 이어감) → 새 연결 저장(`first_sync_pending=true`) → 이 유저의 이전 연결 정리 → 첫 동기화(실패해도 성공) → `200 { success: true }`. 기존 계정이 로그인한 유저 자신이면 지우지 않고 토큰만 갱신한다. 기존 계정을 지운 뒤 저장이 실패하면 500 `restart`와 고정 문구(`d.stravaConnection.replaceResult.afterDeleteFailed`)다. 성공·`restart`·`blocked`에서는 쿠키를 지우고 `retry`에서는 남긴다. 실패 응답은 `{ error, next }`이고 `error`는 `d.stravaConnection.replaceResult.*`의 완성 문장이다. DB·Auth·Strava 오류 원문과 토큰·쿠키 값은 응답과 로그에 싣지 않는다.
+- 화면은 `components/strava/StravaDuplicateSheet.tsx`다. `?strava=duplicate`는 «취소»와 «그래도 연결하기», `?strava=duplicate_blocked`는 «닫기»와 «문의하기»(`/voc`)를 보인다. 성공하면 `window.location.replace('/profile?strava=connected&reveal=1')`로 이동한다.
+
+**연결 끊기와 좌표 파기**(`POST /api/strava/disconnect`, 마이그레이션 265, 운영 로직 3.2·18.5절): 끊김을 저장한 뒤 `scrub_user_location(p_user_id) → jsonb`를 부른다(`service_role` 전용, `SECURITY DEFINER`). 지우는 것은 `users.last_location_lat/lng/at`(NULL로)과 `strava_activities.normalized`의 `startLatLng`·`endLatLng` 키뿐이다. 값이 이미 비어 있는 행은 건드리지 않아 다시 불러도 안전하고 반환은 `{ user_location_cleared, activities_cleared }`다. 좌표 없는 확인자료와 `abusing_logs`는 지우지 않는다. 실패하면 한 번 더 부르고 두 번 모두 실패해도 끊기는 200이다(서버 로그만). 이미 끊긴 연결과 끊김 저장 실패에는 부르지 않는다. 끊긴 연결을 하루 한 번 쓸어 담는 파기는 후속 티켓 `20261022_0500`이다.
 
 **연결 끊기**(`POST /api/strava/disconnect`): Strava 앱 연결을 해제(`POST /oauth/deauthorize`)하고 — 실패해도 계속한다 — 저장된 토큰을 지운 뒤 `user_disconnected`로 끊김을 저장한다. 행은 지우지 않는다. 연결 행이 없으면 404이고, 이미 끊긴 연결에 다시 부르면 앱 해제를 부르지 않고 200으로 돌려주며 `disconnected_at`·`disconnect_reason`을 덮어쓰지 않는다(멱등). 프로필 수정 화면의 «동기화 끊기» 확인 시트가 이 API를 부르고, 200과 404를 모두 성공으로 처리한다.
 
@@ -176,7 +186,8 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 
 ### 계정 삭제: retained_records · prepare_account_deletion · purge_expired_retained_records — 마이그레이션 262·263·264, 티켓 20261021_1249 1·2·3회
 운영 로직 17장. 유저 탈퇴, 어드민 삭제(단건·일괄), «그래도 연결하기»의 기존 계정 지우기가 **같은 규칙**으로 지운다. 규칙은 앱의 `deleteAccount`(`lib/account/delete-account.ts`)가 갖고,
-어드민 삭제(`hardDeleteUser`)와 유저 탈퇴(`POST /api/account/delete`)가 이 함수를 부른다. «그래도 연결하기»는 같은 묶음의 뒤 회차가 같은 함수를 부른다. 공용 DB 적용 여부는 티켓 완료 기록을 따른다.
+어드민 삭제(`hardDeleteUser`)와 유저 탈퇴(`POST /api/account/delete`), «그래도 연결하기»(`POST /api/strava/replace`)가 이 함수를 부른다. 공용 DB 적용 여부는 티켓 완료 기록을 따른다.
+«그래도 연결하기»만 옵션 `skipStravaDeauthorize`를 켠다: 지우는 계정과 새로 연결하는 계정이 같은 Strava 계정이라 앱 승인 해제가 방금 받은 새 토큰까지 무효로 만들 수 있다(추정). 켜면 아래 2번(토큰 읽기)과 6번(해제)을 모두 건너뛰고 나머지 순서와 실패 처리는 그대로다.
 
 **지우는 순서** (`deleteAccount`):
 1. 어드민 계정은 거절한다(`admin_account`). 호출부의 거절과 별개인 이중 안전장치다.
