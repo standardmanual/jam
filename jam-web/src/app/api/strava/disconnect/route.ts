@@ -12,8 +12,7 @@
  */
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { decrypt } from '@/lib/utils'
-import { deauthorizeStrava, refreshStravaToken } from '@/lib/strava/api'
+import { deauthorizeStoredConnection } from '@/lib/strava/deauthorize-connection'
 import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { d } from '@/lib/i18n'
 
@@ -50,23 +49,8 @@ export async function POST() {
     }
 
     // Strava 앱 연결 해제 — 실패해도 이쪽 연결은 끊는다(이미 철회됐거나 토큰이 무효인 경우).
-    // 만료 직전이면 먼저 갱신해 해제가 통하게 한다. 갱신 실패도 같은 방식으로 흘려보낸다.
-    let deauthorized = false
-    try {
-      let accessToken = await decrypt(connection.access_token)
-      if (Date.now() >= new Date(connection.token_expires_at).getTime() - 60_000) {
-        const refreshed = await refreshStravaToken(await decrypt(connection.refresh_token))
-        accessToken = refreshed.access_token
-      }
-      await deauthorizeStrava(accessToken)
-      deauthorized = true
-    } catch (err) {
-      // 토큰·응답 본문은 남기지 않고 오류 종류만 남긴다
-      const status = (err as { status?: unknown } | null)?.status
-      console.warn(
-        `[/api/strava/disconnect] Strava 앱 해제 실패 — 연결 끊기는 계속 진행 (userId: ${user.id}, status: ${typeof status === 'number' ? status : 'n/a'})`
-      )
-    }
+    // 갱신·해제·로그는 계정 삭제와 같이 쓰는 공용 함수가 맡는다(던지지 않는다).
+    const deauthorized = await deauthorizeStoredConnection(connection, { userId: user.id })
 
     const saved = await markStravaDisconnected(user.id, 'user_disconnected', {
       supabase,
