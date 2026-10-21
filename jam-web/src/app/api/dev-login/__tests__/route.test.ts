@@ -6,6 +6,8 @@
  *  - 허용 환경에서는 세션을 만든 뒤 테스트 계정(`DEV_LOGIN_USER_ID`)에 대해서만 트라이브 지정을 부르고 `/`로 보낸다.
  *  - 세션을 만들지 못한 경로(계정 생성 실패·링크 실패·세션 발급 실패)는 트라이브 지정을 부르지 않는다.
  *  - 트라이브 지정이 `skipped`여도 로그인은 `/`로 끝난다.
+ *  - 세션을 만든 뒤 테스트 계정의 퀘스트 행(`user_onboarding_quests`)을 «없을 때만» 만든다(티켓 20261021_1248) — `/api/onboarding/complete`와 같은 upsert(`ignoreDuplicates`)다.
+ *    프로덕션 404와 세션을 만들지 못한 경로에서는 만들지 않고, 행 생성이 실패하거나 던져도 로그인은 `/`로 끝난다.
  *
  * 비어 있을 때만 지정·이미 있으면 그대로 같은 지정 규칙 자체는 `lib/tribe/__tests__/dev-login-tribe.test.ts`가 맡는다.
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
@@ -23,6 +25,10 @@ const state = vi.hoisted(() => ({
   verifyError: null as null | { message: string },
   serviceClient: { marker: 'service-client' },
   supabaseCalls: 0,
+  /** `user_onboarding_quests` upsert 호출 기록 */
+  questUpserts: [] as Array<{ table: string; row: unknown; options: unknown }>,
+  questUpsertError: null as null | { message: string },
+  questUpsertThrows: false,
 }))
 const ensureMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<string>>())
 
@@ -35,6 +41,13 @@ vi.mock('@/lib/supabase/server', () => ({
     state.supabaseCalls += 1
     return {
       ...state.serviceClient,
+      from: (table: string) => ({
+        upsert: async (row: unknown, options: unknown) => {
+          state.questUpserts.push({ table, row, options })
+          if (state.questUpsertThrows) throw new Error('upsert network down')
+          return { error: state.questUpsertError }
+        },
+      }),
       auth: {
         admin: {
           createUser: async () => ({ error: state.createUserError }),
@@ -62,6 +75,9 @@ beforeEach(() => {
   state.linkError = null
   state.verifyError = null
   state.supabaseCalls = 0
+  state.questUpserts = []
+  state.questUpsertError = null
+  state.questUpsertThrows = false
   ensureMock.mockReset().mockResolvedValue('assigned')
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.stubEnv('NODE_ENV', 'test')
@@ -81,6 +97,7 @@ describe('GET /api/dev-login — 환경 게이트', () => {
     expect(res.status).toBe(404)
     expect(state.supabaseCalls).toBe(0)
     expect(ensureMock).not.toHaveBeenCalled()
+    expect(state.questUpserts).toEqual([])
   })
 
   it('STAGING_MODE가 true가 아니면 NODE_ENV가 production이 아니어도 404다', async () => {
@@ -90,6 +107,7 @@ describe('GET /api/dev-login — 환경 게이트', () => {
 
     expect(res.status).toBe(404)
     expect(ensureMock).not.toHaveBeenCalled()
+    expect(state.questUpserts).toEqual([])
   })
 })
 
@@ -139,6 +157,7 @@ describe('GET /api/dev-login — 허용 환경', () => {
     expect(location(await GET(request()))).toBe(`${ORIGIN}/login?error=auth_failed`)
 
     expect(ensureMock).not.toHaveBeenCalled()
+    expect(state.questUpserts).toEqual([])
   })
 
   it('이미 등록된 이메일이라는 계정 생성 오류는 무시하고 계속한다', async () => {
@@ -147,5 +166,61 @@ describe('GET /api/dev-login — 허용 환경', () => {
 
     expect(location(await GET(request()))).toBe(`${ORIGIN}/`)
     expect(ensureMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('GET /api/dev-login — 테스트 계정의 퀘스트 행 (티켓 20261021_1248)', () => {
+  it('세션을 만든 뒤 테스트 계정의 퀘스트 행을 «없을 때만» 만든다 — 있으면 건드리지 않는 upsert(ignoreDuplicates)다', async () => {
+    vi.stubEnv('STAGING_MODE', 'true')
+
+    const res = await GET(request())
+
+    expect(location(res)).toBe(`${ORIGIN}/`)
+    expect(state.questUpserts).toEqual([
+      { table: 'user_onboarding_quests', row: { user_id: DEV_LOGIN_USER_ID }, options: { onConflict: 'user_id', ignoreDuplicates: true } },
+    ])
+  })
+
+  it('로컬 개발(NODE_ENV=development)에서도 만든다', async () => {
+    vi.stubEnv('NODE_ENV', 'development')
+
+    await GET(request())
+
+    expect(state.questUpserts).toHaveLength(1)
+    expect(state.questUpserts[0].row).toEqual({ user_id: DEV_LOGIN_USER_ID })
+  })
+
+  it('행 생성이 오류를 돌려줘도 로그인은 막지 않는다', async () => {
+    vi.stubEnv('STAGING_MODE', 'true')
+    state.questUpsertError = { message: 'insert or update on table violates foreign key constraint' }
+
+    const res = await GET(request())
+
+    expect(location(res)).toBe(`${ORIGIN}/`)
+    expect(console.error).toHaveBeenCalledWith('[JAM!][dev-login] 테스트 계정 퀘스트 행 생성 실패:', expect.any(String))
+  })
+
+  it('행 생성이 예외를 던져도 로그인은 막지 않는다', async () => {
+    vi.stubEnv('STAGING_MODE', 'true')
+    state.questUpsertThrows = true
+
+    const res = await GET(request())
+
+    expect(location(res)).toBe(`${ORIGIN}/`)
+    expect(console.error).toHaveBeenCalledWith('[JAM!][dev-login] 테스트 계정 퀘스트 행 처리 중 오류:', expect.any(Error))
+  })
+
+  it('트라이브 지정이 끝난 뒤에 만든다(트라이브 지정 → 퀘스트 행)', async () => {
+    vi.stubEnv('STAGING_MODE', 'true')
+    const seen: string[] = []
+    ensureMock.mockImplementation(async () => {
+      seen.push(`ensure-tribe(upserts=${state.questUpserts.length})`)
+      return 'assigned'
+    })
+
+    await GET(request())
+
+    expect(seen).toEqual(['ensure-tribe(upserts=0)'])
+    expect(state.questUpserts).toHaveLength(1)
   })
 })
