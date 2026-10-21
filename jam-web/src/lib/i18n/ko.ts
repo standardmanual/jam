@@ -1293,15 +1293,20 @@ export const ko = {
     networkError: '네트워크 오류가 발생했어요.',
     ageConfirmLabel: '만 14세 이상이에요',
 
-    // 2단계 — 트라이브 선택
+    // 2단계 — 트라이브 선택 (티켓 20261021_1247, 운영 로직 2.2절)
     step2Title: '당신의 트라이브를\n선택해 주세요',
-    step2Subtitle: '한 번 고른 트라이브는 탈퇴하기 전까지 바꿀 수 없어요',
+    /** 제목 아래 첫 안내(foreground, text-base). 바꾸는 방법(운영자가 바꿔 주는 길)은 화면에 알리지 않는다 */
+    step2Subtitle: '한 번 고르면 바꿀 수 없어요',
+    /** 제목 아래 둘째 안내(muted, text-sm) */
+    step2ItemBadgeNotice: '동기화로 받는 아이템 배지는 고른 트라이브의 것이에요',
+    /** 아이디를 이미 정해 곧장 이 단계로 온 유저(트라이브 게이트로 돌아온 유저)에게만 제목 아래에 한 줄(muted) */
+    step2GateHint: '트라이브를 고르면 JAM!을 시작할 수 있어요',
     tribesLoadError: '트라이브 목록을 불러오지 못했어요. 다시 시도해 주세요.',
     tribesEmptyError: '지금은 고를 수 있는 트라이브가 없어요. 잠시 후 다시 시도해 주세요.',
     retryButton: '다시 시도',
     invalidTribeError: '이 트라이브는 지금 선택할 수 없어요. 다른 트라이브를 선택해 주세요.',
-    finishButton: '시작하기',
-    finishing: '가입하는 중',
+    finishButton: '이 트라이브로 시작하기',
+    finishing: '시작하는 중',
   },
 
   /** 프로필 편집 */

@@ -61,7 +61,8 @@ vi.mock('@/lib/supabase/server', () => ({
         },
         maybeSingle: async () => {
           if (table === 'user_chapters') return state.chapter
-          if (table === 'users') return { data: { username: 'runner', avatar_url: null, notifications_seen_at: null }, error: null }
+          // tribe_id가 있어야 트라이브 게이트(티켓 20261021_1247)를 지나 본문까지 그려진다 — 게이트 자체는 layout.tribe-gate.test.tsx가 맡는다
+          if (table === 'users') return { data: { username: 'runner', avatar_url: null, notifications_seen_at: null, tribe_id: 'tribe-1' }, error: null }
           return { data: null, error: null }
         },
       }

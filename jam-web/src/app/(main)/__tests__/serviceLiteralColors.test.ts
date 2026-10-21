@@ -3,7 +3,7 @@
  *
  * JAM 2.0 라이트 전환 뒤에도 코드에 직접 적은 흰 글자·흰/검정 반투명 면·옛 빨강·노랑 Tailwind 색·
  * 불투명도 글자 단계(`text-foreground/60`)는 토큰을 따라 바뀌지 않아 크림·흰 면 위에서 사라지거나
- * 대비가 무너진다(실측 1.0x~3.4:1). 아래 25개 파일에서 이 패턴이 다시 생기면 실패한다.
+ * 대비가 무너진다(실측 1.0x~3.4:1). 아래 26개 파일에서 이 패턴이 다시 생기면 실패한다.
  *
  * 허용 목록은 사유가 있는 것만 둔다. 어두운 이미지·영상·블롭·막 위 글자는 리터럴 흰색이 아니라
  * `--snow` 토큰을 쓰므로 이 패턴에 걸리지 않는다.
@@ -31,7 +31,8 @@ const FILES = [
   '(main)/missions/[id]/MissionDetailClient.tsx',
   '(main)/missions/[id]/status/MissionStatusClient.tsx',
   '(main)/notifications/NotificationsClient.tsx',
-  '(main)/onboarding/page.tsx',
+  '(onboarding)/onboarding/page.tsx', // 티켓 20261021_1247: (main) 밖 라우트 그룹으로 옮겼다
+  '(onboarding)/onboarding/TribeStep.tsx',
   '(main)/points/page.tsx',
   '(main)/profile/ProfileClient.tsx',
   '(main)/profile/edit/page.tsx',
@@ -47,13 +48,8 @@ const LITERAL_COLOR =
   /text-white|bg-black|bg-white|border-white|white\/|black\/|rgba\(\s*(255|0,\s*0|232)|#fff|#FFF|#000|#e8461f|#E8461F|yellow-[0-9]|text-foreground\/[0-9]|text-\[var\(--muted\)\]\/[0-9]|placeholder:text-foreground\/|shadow-lg/
 
 /** 사유가 있는 예외 — 파일 경로와 줄 내용으로 가린다(줄 번호는 바뀌므로 쓰지 않는다) */
-const ALLOWED: { file: string; line: RegExp; reason: string }[] = [
-  {
-    file: '(main)/onboarding/page.tsx',
-    line: /bg-black\/10/,
-    reason: '트라이브 선택 카드 안 대체 썸네일 — 카드째 JAM 2.0 때 바꾼다(사용자 지시, 티켓 20261015_2134)',
-  },
-]
+// 비어 있다 — 옛 예외(트라이브 카드 안 대체 썸네일 `bg-black/10`)는 카드를 다시 만들며 사람 모양 폴백째 없앴다(티켓 20261021_1247).
+const ALLOWED: { file: string; line: RegExp; reason: string }[] = []
 
 describe('서비스 화면 직접 색 잔존', () => {
   for (const file of FILES) {

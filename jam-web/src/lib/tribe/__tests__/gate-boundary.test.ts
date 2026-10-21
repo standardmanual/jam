@@ -73,8 +73,15 @@ describe('gate-contract.ts는 import가 없는 순수 파일이다', () => {
 })
 
 describe('서버 전용 gate.ts는 서버 쪽에서만 가져온다', () => {
-  // 클라이언트 컴포넌트가 가져오는 진입점들 — 동기화 버튼과 동기화 흐름
-  const CLIENT_ENTRIES = ['components/SyncButton.tsx', 'lib/strava/sync-flow.ts', CONTRACT]
+  // 클라이언트 컴포넌트가 가져오는 진입점들 — 동기화 버튼과 동기화 흐름, 트라이브 고르기 화면
+  const CLIENT_ENTRIES = [
+    'components/SyncButton.tsx',
+    'lib/strava/sync-flow.ts',
+    'app/(onboarding)/onboarding/page.tsx',
+    'app/(onboarding)/onboarding/TribeStep.tsx',
+    'app/(onboarding)/onboarding/onboarding-entry.ts',
+    CONTRACT,
+  ]
 
   it.each(CLIENT_ENTRIES)('%s의 import 사슬에 서버 전용 모듈이 없다', (entry) => {
     const { files, packages } = crawl(join(srcRoot, entry))
