@@ -64,7 +64,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       return 0
     }),
     // 챕터 오름 축하 연출용 지금 챕터 번호(티켓 20261019_1317). 이 레이아웃은 화면을 열 때마다 돌아 **번호 한 칸만** 읽는다 —
-    // 이름·진행 비율은 읽지 않는다(이름은 연출을 띄울 때 `/api/chapter/me`가 읽는다). 챕터가 없으면(행 없음·NULL) 연출 대상이 아니다.
+    // 진행 비율은 읽지 않는다(챕터는 숫자로만 표기해 연출은 번호만 있으면 된다, 2026-10-21 결정). 챕터가 없으면(행 없음·NULL) 연출 대상이 아니다.
     service.from('user_chapters').select('chapter_no').eq('user_id', user.id).maybeSingle(),
   ])
   const profile = profileRaw as {

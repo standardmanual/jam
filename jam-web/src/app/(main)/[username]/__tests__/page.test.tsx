@@ -197,8 +197,8 @@ const CAPSULE_STATUS = {
 }
 
 // 내 챕터 진행 값에서만 나오는 글자 — 타인 프로필의 직렬화에 이 값이 있으면 내 진행이 새는 것이다
-const MY_CHAPTER = { ok: true, chapterNo: 7, name: '베테랑', nextChapterNo: 8, progress: 0.4242 }
-const PUBLIC_CHAPTER = { ok: true, tribe: { id: 'tribe-1', name: '새벽러너스' }, chapterNo: 3, name: '단골' }
+const MY_CHAPTER = { ok: true, chapterNo: 7, nextChapterNo: 8, progress: 0.4242 }
+const PUBLIC_CHAPTER = { ok: true, tribe: { id: 'tribe-1', name: '새벽러너스' }, chapterNo: 3 }
 
 beforeEach(() => {
   state.loginUserId = LOGIN_USER_ID
@@ -467,7 +467,7 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     expect(getPublicChapterMock).toHaveBeenCalledTimes(1)
     expect(getPublicChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
     expect(getMyChapterMock).not.toHaveBeenCalled()
-    expect(props.publicChapter).toEqual({ tribeName: '새벽러너스', chapterNo: 3, name: '단골' })
+    expect(props.publicChapter).toEqual({ tribeName: '새벽러너스', chapterNo: 3 })
     expect('chapterInitial' in props).toBe(false)
   })
 
@@ -475,18 +475,18 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     const props = await renderPage('target')
     const serialized = JSON.stringify(props)
 
-    for (const secret of ['0.4242', '베테랑', 'progress', 'nextChapterNo', 'chapterInitial', 'score', 'total_score']) {
+    for (const secret of ['0.4242', 'progress', 'nextChapterNo', 'chapterInitial', 'score', 'total_score']) {
       expect(serialized, `타인 프로필의 직렬화된 prop에 "${secret}"가 있다`).not.toContain(secret)
     }
-    expect(Object.keys(props.publicChapter as object).sort()).toEqual(['chapterNo', 'name', 'tribeName'])
+    expect(Object.keys(props.publicChapter as object).sort()).toEqual(['chapterNo', 'tribeName'])
   })
 
   it('(k) 타인이 보는 프로필: 트라이브가 없으면 tribeName이 null이고 챕터가 없으면 chapterNo가 null이다', async () => {
-    getPublicChapterMock.mockResolvedValue({ ok: true, tribe: null, chapterNo: null, name: null })
+    getPublicChapterMock.mockResolvedValue({ ok: true, tribe: null, chapterNo: null })
 
     const props = await renderPage('target')
 
-    expect(props.publicChapter).toEqual({ tribeName: null, chapterNo: null, name: null })
+    expect(props.publicChapter).toEqual({ tribeName: null, chapterNo: null })
   })
 
   it('(k) 타인이 보는 프로필: 읽지 못하면(ok:false) publicChapter를 null로 접고 화면은 그대로 그려진다', async () => {
@@ -505,7 +505,7 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     expect(getMyChapterMock).toHaveBeenCalledTimes(1)
     expect(getMyChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
     expect(getPublicChapterMock).not.toHaveBeenCalled()
-    expect(props.chapterInitial).toEqual({ chapterNo: 7, name: '베테랑', nextChapterNo: 8, progress: 0.4242 })
+    expect(props.chapterInitial).toEqual({ chapterNo: 7, nextChapterNo: 8, progress: 0.4242 })
     expect('publicChapter' in props).toBe(false)
     // 응답의 ok 표지 같은 내부 모양은 화면으로 넘기지 않는다
     expect('ok' in (props.chapterInitial as object)).toBe(false)
@@ -513,16 +513,16 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
 
   it('(l) 내 프로필: 마지막 챕터는 다음 챕터와 진행이 null로 내려간다', async () => {
     state.loginUserId = TARGET_USER_ID
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: 50, name: null, nextChapterNo: null, progress: null })
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: 50, nextChapterNo: null, progress: null })
 
     const props = await renderPage('target')
 
-    expect(props.chapterInitial).toEqual({ chapterNo: 50, name: null, nextChapterNo: null, progress: null })
+    expect(props.chapterInitial).toEqual({ chapterNo: 50, nextChapterNo: null, progress: null })
   })
 
   it('(l) 내 프로필: 퀘스트 전(chapterNo null)은 chapterInitial이 null이다 — 줄을 그리지 않는다', async () => {
     state.loginUserId = TARGET_USER_ID
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, name: null, nextChapterNo: null, progress: null })
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, nextChapterNo: null, progress: null })
 
     const props = await renderPage('target')
 
