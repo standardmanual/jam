@@ -122,16 +122,8 @@
       "sourcePath": "components/patterns/ItemSerialCode.jsx"
     },
     {
-      "name": "RecentSyncBanner",
-      "sourcePath": "components/patterns/RecentSyncBanner.jsx"
-    },
-    {
       "name": "BadgeLevelChip",
       "sourcePath": "components/cards/BadgeLevelChip.jsx"
-    },
-    {
-      "name": "BadgeStatusGlyphs",
-      "sourcePath": "components/icons/BadgeStatusGlyphs.jsx"
     },
     {
       "name": "LabelChip",

@@ -8,9 +8,8 @@
  * ① MODULAR `Card` 세 톤(default·tint·inverse)의 면과 글자색 쌍
  * ② 병존 3쌍(ListRowCard·BadgeGridCard·CollectionGridCard)의 서비스·MODULAR 면·테두리·선택 면이 같은 값이다
  *    (`npm run ds:check`는 색 쌍을 비교하지 못한다 — 이 파일이 그 자리를 맡는다)
- * ③ 흰 면 위에서 효과가 없던 흰 그라디언트·inset 흰 하이라이트가 사라지고 그 자리에 면 + 테두리가 있다
- * ④ SlidingTabs 팔레트가 라이트 값이다(흰색 반투명 라벨이 크림 바탕에서 사라지던 것)
- * ⑤ UserSearchBar·RankingListRow의 면
+ * ③ SlidingTabs 팔레트가 라이트 값이다(흰색 반투명 라벨이 크림 바탕에서 사라지던 것)
+ * ④ UserSearchBar·RankingListRow의 면
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)로 확인한다.
  */
@@ -32,7 +31,6 @@ import ServiceCollectionGridCard from '../CollectionGridCard'
 import { CollectionGridCard as DsCollectionGridCard } from '@ds/components/patterns/CollectionGridCard'
 import ServiceSlidingTabs from '../SlidingTabs'
 import { SlidingTabs as DsSlidingTabs } from '@ds/components/navigation/SlidingTabs'
-import { RecentSyncBanner } from '@ds/components/patterns/RecentSyncBanner'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import UserSearchBar from '@/app/(main)/UserSearchBar'
 import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
@@ -159,20 +157,6 @@ describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
   it('서비스·MODULAR 모두 카운트 글자는 --link다', () => {
     expect(renderToStaticMarkup(<ServiceCollectionGridCard {...props} />)).toContain('text-[color:var(--link)]')
     expect(renderToStaticMarkup(<DsCollectionGridCard {...props} />)).toContain('color:var(--link)')
-  })
-})
-
-describe('흰 면 위 흰 그라디언트·inset 흰 하이라이트는 걷고 면 + 테두리를 둔다', () => {
-  const NO_WHITE_HIGHLIGHT = ['linear-gradient(160deg', 'rgba(255,255,255', 'inset 0 1px 0']
-
-  it('RecentSyncBanner — 상태 신호는 8px 점이 맡고 면은 표준 테두리다', () => {
-    const html = renderToStaticMarkup(<RecentSyncBanner visible comparisonMessage={null} />)
-    expect(html).toContain(SURFACE)
-    expect(html).toContain(BORDER)
-    for (const needle of NO_WHITE_HIGHLIGHT) expect(html).not.toContain(needle)
-    // 윤곽을 만들던 inset 링(--progress-latest-soft)은 면에서 걷혔다. 점의 후광만 남는다
-    expect(html).not.toContain('box-shadow:inset')
-    expect(html).toContain('width:8px;height:8px')
   })
 })
 

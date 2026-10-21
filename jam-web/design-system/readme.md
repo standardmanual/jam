@@ -104,11 +104,8 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox
 * `components/patterns/` — BadgeGridCard(`locked` 잠김 카드 포함), ListRowCard, CollectionGridCard, BadgeRevealCarousel(선택 모드·위아래 슬롯·closeDisabled 포함), ItemSerialCode, MixerSlot (서비스 공통 UI 패턴)
-* `components/patterns/` 직전 동기화 비교 — RecentSyncBanner (서비스 호출부 없음: 배지 트리 화면 제거, 티켓 20261018_1817)
 * `components/icons/` — IconCatalog (라인 아이콘 세트 + 전체 카탈로그 그리드. 서비스
   `src/components/ui/icons.tsx`를 이식한 Storybook 전용 사본 — 서비스는 계속 원본을 단일
-  소스로 쓴다, 20260828_2043), **BadgeStatusGlyphs**(배지 화면의 자물쇠·체크·별·chevron 단일
-  소스. TabBar와 같은 Material Symbols 채움 스타일 — `icons.tsx`의 stroke `LockIcon`과 다른
-  물건이다. 배지 화면에서는 이모지를 쓰지 않는다, 20260906_2140)
+  소스로 쓴다, 20260828_2043)
 * `foundations/` — Storybook 파운데이션 페이지 6개 (Colors·Fonts·Motion·Radius·Spacing·Typography)
 * `SKILL.md` — Claude Code / 기타 에이전트용 포터블 스킬 파일
