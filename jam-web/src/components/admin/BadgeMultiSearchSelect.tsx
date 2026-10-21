@@ -23,7 +23,24 @@ interface BadgeMultiSearchSelectProps {
   unassigned?: boolean
   /** 숨김 배지를 검색 결과에서 뺀다. 미션 보상처럼 숨김 배지를 쓸 수 없는 자리에서 켠다(티켓 20261019_1313 2회) */
   excludeHidden?: boolean
+  /** «잠김으로 만든 아이템 배지»(`always_locked`)에 읽기 전용 «잠김» 표시를 붙인다. 선택값은 바뀌지 않는다.
+   *  미션 보상 선택처럼 받는 유저가 잠긴 채로 받는지 운영자가 알아야 하는 자리에서 켠다(티켓 20261019_1318) */
+  markAlwaysLocked?: boolean
   placeholder?: string
+}
+
+const LOCKED_BADGE_TITLE = '잠김으로 만든 아이템 배지'
+
+/** «잠김으로 만든 아이템 배지» 표시 — 칩과 검색 결과가 같이 쓴다 */
+function LockedMark() {
+  return (
+    <span
+      title={LOCKED_BADGE_TITLE}
+      className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 break-keep wrap-break-word whitespace-nowrap"
+    >
+      잠김
+    </span>
+  )
 }
 
 /**
@@ -43,6 +60,7 @@ export default function BadgeMultiSearchSelect({
   typeFilter,
   unassigned,
   excludeHidden,
+  markAlwaysLocked,
   placeholder,
 }: BadgeMultiSearchSelectProps) {
   const [query, setQuery] = useState('')
@@ -103,6 +121,7 @@ export default function BadgeMultiSearchSelect({
             >
               {b.name}
               {b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''}
+              {markAlwaysLocked && b.always_locked && <LockedMark />}
               <IconX className="h-3.5 w-3.5" />
             </button>
           ))}
@@ -135,6 +154,12 @@ export default function BadgeMultiSearchSelect({
                 {b.name} <span className="text-muted-foreground text-xs">[{b.type}/{b.rarity}]</span>
                 {b.point_reward > 0 && (
                   <span className="text-muted-foreground text-xs"> (+{b.point_reward}P)</span>
+                )}
+                {markAlwaysLocked && b.always_locked && (
+                  <>
+                    {' '}
+                    <LockedMark />
+                  </>
                 )}
               </button>
             ))}

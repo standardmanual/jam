@@ -21,6 +21,9 @@ export interface BadgeSearchResult {
   image_url?: string | null
   /** 숨김 배지 여부. /api/admin/badges/search가 내려준다(티켓 20261019_1313 2회) */
   is_hidden?: boolean
+  /** «잠김으로 만든 아이템 배지» 여부(`badges.always_locked`). /api/admin/badges/search가 내려준다.
+   *  미션 양식의 보상 배지 칩이 읽기 전용으로 표시한다(티켓 20261019_1318) */
+  always_locked?: boolean
 }
 
 interface BadgeSearchSelectProps {

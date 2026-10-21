@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
+import { readAllowedTribeIds } from '@/lib/admin/mission-tribes'
 import type { MissionRow } from '@/types/database'
 import MissionForm from '../MissionForm'
+import { loadMissionFormTribes } from '../missionFormTribes'
 
 export default async function EditMissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -16,7 +18,9 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
   // 라벨 조회 — 이름·등급·포인트를 보여주려면 필요하다(예전 missions/page.tsx의 bounded 조회
   // 패턴을 그대로 옮김, 20260826_011 A1·A2). `condition_json.badge_id`는 티켓 20260911_2118이
   // 추가했다 — 아이템 픽업(item_collect) 타입의 목표 배지 필드 빌더가 기존 값을 라벨로 되돌리는 데 쓴다.
-  type BadgeLabelRow = { id: string; name: string; point_reward: number; rarity: string; type: string }
+  //
+  // always_locked는 «잠김으로 만든 아이템 배지» 표시용이다(티켓 20261019_1318). 읽기 전용이라 저장값은 바뀌지 않는다.
+  type BadgeLabelRow = { id: string; name: string; point_reward: number; rarity: string; type: string; always_locked: boolean }
   const conditionBadgeId = typeof mission.condition_json?.badge_id === 'string' ? mission.condition_json.badge_id : null
   const referencedBadgeIds = [
     ...new Set(
@@ -26,7 +30,7 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
     ),
   ]
   const { data: badgeLabelsRaw } = referencedBadgeIds.length > 0
-    ? await supabase.from('badges').select('id, name, point_reward, rarity, type').in('id', referencedBadgeIds)
+    ? await supabase.from('badges').select('id, name, point_reward, rarity, type, always_locked').in('id', referencedBadgeIds)
     : { data: [] as BadgeLabelRow[] }
   const badgeLabels = (badgeLabelsRaw ?? []) as BadgeLabelRow[]
 
@@ -38,6 +42,13 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
     : { data: null }
   const poiLabel = poiRow ? `${poiRow.name} [${poiRow.category}]` : undefined
 
+  // 참가할 수 있는 트라이브(티켓 20261019_1318). 읽지 못하면 던져서 다시 시도 화면이 받는다 — 트라이브 제한이 «없음»으로
+  // 보이는 채로 양식이 열리면 저장하는 순간 제한이 풀린다.
+  const [tribes, allowedTribeIds] = await Promise.all([
+    loadMissionFormTribes(supabase),
+    readAllowedTribeIds(supabase, mission.id),
+  ])
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -46,7 +57,13 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
         </Link>
         <h1 className="text-2xl font-bold mt-2">미션 수정</h1>
       </div>
-      <MissionForm mission={mission} badgeLabels={badgeLabels} poiLabel={poiLabel} />
+      <MissionForm
+        mission={mission}
+        badgeLabels={badgeLabels}
+        poiLabel={poiLabel}
+        tribes={tribes}
+        allowedTribeIds={allowedTribeIds}
+      />
     </div>
   )
 }
