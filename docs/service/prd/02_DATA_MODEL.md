@@ -174,7 +174,7 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 이후 행만 읽고, `normalized`의 `jamActivityType`·`distanceKm`·`movingTimeSec`·`averageSpeedKmh`로 JAM! 종목·걷기
 게이트·차량 속도 필터를 통과한 활동만 센다(티켓 20261001_0633). 걸러진 활동(`filter_reason`이 있는 행)은 읽지 않는다(티켓 20261017_1421).
 
-### 계정 삭제: retained_records · prepare_account_deletion · purge_expired_retained_records — 마이그레이션 262·263, 티켓 20261021_1249 1회
+### 계정 삭제: retained_records · prepare_account_deletion · purge_expired_retained_records — 마이그레이션 262·263·264, 티켓 20261021_1249 1·2회
 운영 로직 17장. 유저 탈퇴, 어드민 삭제(단건·일괄), «그래도 연결하기»의 기존 계정 지우기가 **같은 규칙**으로 지운다. 규칙은 앱의 `deleteAccount`(`lib/account/delete-account.ts`)가 갖고,
 어드민 삭제(`hardDeleteUser`)가 먼저 연결됐다. 유저 탈퇴 화면과 «그래도 연결하기»는 같은 묶음의 뒤 회차가 같은 함수를 부른다. 공용 DB 적용 여부는 티켓 완료 기록을 따른다.
 
@@ -194,7 +194,7 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 
 **retained_records** (마이그레이션 262): `id`, `kind`(CHECK 5종), `source_id`(원본 행 id, 외래키 없음), `subject_user_id`(지운 유저 id, 외래키 없음), `occurred_at`, `detail`(jsonb), `retained_until`, `created_at`. `UNIQUE (kind, source_id)`, `retained_until` 인덱스.
 RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role` 전용이다. 어드민 화면은 없고 수사 등 요청이 오면 SQL로 조회한다. 기간 상수는 `lib/account/retention.ts`이고 시험이 SQL 파일과 같은지 확인한다. 법무 확인(티켓 20260929_1303)에서 기간이 바뀌면 상수와 함수를 함께 고친다.
-**purge_expired_retained_records()** → `retained_until <= now()`인 행을 지우고 지운 수를 돌려준다(`service_role` 전용). 하루 한 번 부르는 크론은 같은 묶음의 2회에서 만든다.
+**purge_expired_retained_records()** → `retained_until <= now()`인 행을 지우고 지운 수를 돌려준다(`service_role` 전용). 하루 한 번 일일 크론 `/api/cron/poi-cleanup`(매일 UTC 00:00, `vercel.json` 변경 없음)이 앱의 `purgeExpiredRetainedRecords`(`lib/account/purge-retained.ts`)로 부른다. 부정 이용 탐지 기록 파기가 실패해도 이 호출을 하고, 이 호출이 실패해도 크론 응답은 200이며 `retainedRecordPurgeError`로만 알린다(응답의 `purgedRetainedRecords`가 지운 수). 드랍 소각 RPC가 실패해 크론이 500으로 끝나는 날에는 파기하지 않고 다음 실행으로 넘어간다.
 
 **어드민 삭제의 응답**: 실패하면 DB·Auth 오류 원문 대신 고정 문구 «계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.»(`ADMIN_DELETE_FAILED_MESSAGE`)만 나간다(단건 500, 일괄 `skipped` 사유). 일괄 미리보기(`dry_run`)는 삭제 안내에 `vanishingItemCount`(없어질 아이템 수)와
 `retainedRecordCount`(보관 표로 복사될 기록 수)를 더해 알린다.
@@ -202,9 +202,31 @@ RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role`
 **알려진 틈**:
 - 준비 함수를 거치지 않고 Supabase 화면에서 직접 지우는 경우는 옛 동작 그대로다(트리거가 `OLD.username`을 남기고 보관 복사·이름 비우기가 없다).
 - 준비와 계정 삭제 사이에 새로 생긴 기록은 보관 표로 복사되지 않는다. 준비 뒤 계정 삭제가 실패하면 소유 아이템은 이미 «없어짐» 처리된 상태이며, 다시 지우면 이어서 처리된다.
-- 이미 지워진 유저가 남긴 `Orphan` 이름 스냅샷(이 규칙 이전)은 `*_user_id`가 비어 있어 찾을 수 없고 남아 있다.
+- 이미 지워진 유저가 남긴 이름 스냅샷(이 규칙 이전)은 `*_user_id`가 비어 있어 준비 함수가 찾을 수 없다. 마이그레이션 264가 한 번 비운다(아래 «탈퇴 유저 표시»). 화면은 264 적용 여부와 상관없이 `*_user_id`가 NULL인 칸의 이름 문자열을 쓰지 않는다.
 - **일련번호 재사용**: 일련번호 유일 인덱스(`idx_inventory_items_serial_number_active`)와 `assign_random_serial()`은 `destroyed_at IS NULL`인 개체만 겹치지 않게 막으므로(마이그레이션 108), «없어짐» 처리한 개체의 번호는 다시 쓰일 수 있다. 번호를 1~999,999에서 무작위로 고르므로 새 아이템을 발급할 때 특정한 없어진 번호가 뽑힐 확률은 한 번에 약 100만 분의 1이고(발급이 쌓이면 누적된다), 어드민 삭제·믹스로 없어진 개체와 같은 동작이다. 운영 로직 6.3·17.2의 «번호를 다시 쓰지 않는다»를 보장하려면 옛 인덱스와 함수를 바꿔야 하므로 후속 티켓 `20261021_1849`에서 다룬다.
 - 문의 기록은 DB가 아니라 Tally와 연결된 읽기 전용 구글 시트라 지우지 않는다. 방침대로 처리 완료 후 3년 보관한다(사용자 결정, 2026-10-21).
+
+**탈퇴 유저 표시** (티켓 20261021_1249 2회, 운영 로직 17.2절): 지운 유저가 남긴 이력의 행위자 칸은 외래키 `ON DELETE SET NULL`로 비워진다(`custody_events.*_user_id`, `poi_drops.dropper_user_id`·`picked_up_by`, `notifications.actor_user_id`).
+화면은 비어 있는 행위자를 **고정 텍스트 `₩*&%#@`**(사용자가 정한 텍스트, 사전 `ko.withdrawnUser.name`)로 보인다. 안내 문구 «₩*&%#@님은 탈퇴한 사용자입니다»(`ko.withdrawnUser.notice`)는 이름 요소의 `title`과 `aria-label`에만 쓰고, 누를 곳이 없으므로 링크와 팝업은 없다.
+**«비었다»만으로는 탈퇴인지 원래 비었는지 알 수 없어**, 칸마다 탈퇴 판정 규칙이 다르다. 규칙은 순수 함수 `lib/account/withdrawn-actor.ts`가 갖는다.
+- `custody_events`: 이벤트 종류별 **필수 칸**의 `*_user_id`가 NULL이면 탈퇴다. 필수가 아닌 칸의 NULL은 원래 빈 것이다.
+
+  | 이벤트 | 필수 칸 |
+  |---|---|
+  | `Minted` · `Expire` | 없음(셋 다 원래 빈다) |
+  | `UserDrop` · `Orphan` | `from` |
+  | `Pickup` | `to`, 그리고 유저 드랍을 줍는 경우의 `from` |
+  | `Slot` · `Unslot` · `Consume` · `AdminDestroy` | `actor` |
+  | `AdminReassign` | `to`, `actor` |
+
+  `Pickup.from`이 NULL일 때 시스템 드랍인지 탈퇴인지는 이벤트만으로 알 수 없어, 같은 개체의 `poi_drops` 중 `picked_up_at`이 이벤트의 `created_at`과 같은 행의 `source`로 가른다(어드민 이력 한정. 2026-10-21 실측 105건 중 100건 일치, 5건은 짝이 없어 아무것도 그리지 않는다).
+  `*_user_id`가 NULL인 칸에 이름 문자열이 남아 있어도 화면은 쓰지 않는다.
+- `poi_drops`: `source = 'user'`인데 `dropper_user_id`가 NULL이면 드랍한 유저가 탈퇴한 것이다. `source = 'system'`(앰비언트)은 원래 NULL이다. `picked_up_at`이 있는데 `picked_up_by`가 NULL이면 항상 탈퇴다.
+- `notifications`: 행위자를 쓰는 5종(`drop_picked_up`, `followed`, `following_rare_badge`, `following_collection_complete`, `following_mission_complete`)에서만 행위자가 없으면 탈퇴다. 나머지 종류의 행위자 칸은 원래 비어 있다.
+- 피드(`user_activity_feed`)·팔로우·미션 참가는 외래키 `CASCADE`로 행이 사라지므로 표시할 자리가 없다.
+
+**마이그레이션 264** (`264_clear_withdrawn_custody_usernames.sql`): 263 이전에 이미 지워진 유저의 옛 이름 스냅샷을 비우는 **데이터 정리 한 번**이다. `custody_events`에서 `*_user_id`가 NULL인 칸의 `*_username`을 NULL로 바꾼다(2026-10-21 조사로 13건: `Slot.actor` 7, `Pickup.from` 1, `Orphan.from` 5).
+제약·외래키·트리거·함수는 바꾸지 않고, 되돌림 SQL은 없다(지운 이름의 사본이 표에 없다). 파일 머리말에 실행 전·후 확인 SELECT가 있다. 공용 DB 적용 여부는 티켓 완료 기록을 따른다.
 
 ---
 
@@ -386,6 +408,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
 **계정을 지울 때는 이 유저의 이름 스냅샷을 비운다**(운영 로직 17.2절, 티켓 20261021_1249): 앱이 계정을 지우는
 경로(`deleteAccount`)는 준비 함수 `prepare_account_deletion`이 짝 `*_user_id`가 이 유저인 행의 이름 칸을 NULL로 만들고, 소유 아이템에
 `Orphan` 이벤트(이름 없이 `from_user_id`만)를 남기고 `destroyed_at`을 채우며 소유를 비워 «없어짐» 처리한다(아래 «계정 삭제» 절).
+이력 화면은 이벤트 종류별 필수 칸의 `*_user_id`가 NULL이면 탈퇴 텍스트로 보인다(«계정 삭제» 절의 «탈퇴 유저 표시»).
 `BEFORE DELETE ON public.users` 트리거(`log_orphan_custody_events()`)는 그대로 있으며, 준비 함수를 거치지 않고 지우는 경우(Supabase 화면에서
 직접 삭제)에만 `destroyed_at IS NULL`인 소유 아이템에 `OLD.username` 스냅샷을 남긴다. 상세는
 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.5-1 참고. 어드민 조회 화면은
