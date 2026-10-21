@@ -7,7 +7,12 @@
  * 조건 필드가 새로 늘어도 이 테스트가 먼저 깨진다.
  */
 import { describe, it, expect } from 'vitest'
-import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeConditionText'
+import {
+  formatBadgeConditionText,
+  formatBadgeConditionSpec,
+  ONBOARDING_COMPLETION_CONDITION_TEXT,
+} from '@/lib/badgeConditionText'
+import { ONBOARDING_COMPLETION_BADGE_ID } from '@/lib/onboarding-quest/config'
 import { CONDITION_FIELDS, type ConditionKey } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition } from '@/types/database'
 
@@ -215,6 +220,26 @@ describe('「관리자가 직접 발급」·미션 보상은 여전히 맞는 �
     expect(formatBadgeConditionText({ activity_type: 'walking', mission_reward: true }, '누적의 증명')).toBe(
       "'누적의 증명' 미션을 완료하면 받을 수 있는 배지예요."
     )
+  })
+
+  it('다른 id를 넘겨도 일반 미션 보상 배지는 미션 문구다', () => {
+    expect(formatBadgeConditionText({ mission_reward: true }, '누적의 증명', 'some-other-badge-id')).toBe(
+      "'누적의 증명' 미션을 완료하면 받을 수 있는 배지예요."
+    )
+  })
+
+  it('온보딩 완료 배지는 이름과 상관없이 전용 문구이고 «퀘스트»·«미션»을 쓰지 않는다 (티켓 20261021_1248)', () => {
+    for (const name of ['JAM!', '퀘스트 클리어']) {
+      const text = formatBadgeConditionText({ mission_reward: true }, name, ONBOARDING_COMPLETION_BADGE_ID)
+      expect(text).toBe(ONBOARDING_COMPLETION_CONDITION_TEXT)
+      expect(text).toBe('JAM!의 첫 단계를 모두 마치면 받을 수 있는 배지예요')
+      expect(text).not.toContain('퀘스트')
+      expect(text).not.toContain('미션')
+    }
+  })
+
+  it('온보딩 완료 배지 id라도 mission_reward 표시가 없으면 전용 문구를 쓰지 않는다', () => {
+    expect(formatBadgeConditionText(null, 'JAM!', ONBOARDING_COMPLETION_BADGE_ID)).toBe(MANUAL_TEXT)
   })
 })
 
