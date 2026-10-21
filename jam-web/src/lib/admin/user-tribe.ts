@@ -125,7 +125,11 @@ export function parseChangeResult(data: unknown): ChangeUserTribeResult {
   const r = data as Record<string, unknown>
 
   if (r.ok === false) {
-    const code = typeof r.code === 'string' ? DB_FAILURE_CODES[r.code] : undefined
+    // 'constructor' 같은 객체 기본 키가 코드로 오면 거절 코드로 오인하지 않게 자기 키만 본다
+    const code =
+      typeof r.code === 'string' && Object.prototype.hasOwnProperty.call(DB_FAILURE_CODES, r.code)
+        ? DB_FAILURE_CODES[r.code]
+        : undefined
     if (!code) throw new Error(`admin_change_user_tribe가 모르는 거절 코드를 돌려줬다: ${String(r.code)}`)
     return { ok: false, code }
   }

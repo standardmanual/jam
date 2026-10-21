@@ -15,7 +15,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const createNotificationMock = vi.hoisted(() => vi.fn(async (_input: unknown): Promise<unknown> => null))
+const createNotificationMock = vi.hoisted(() => vi.fn(async (): Promise<unknown> => null))
 vi.mock('@/lib/notifications', () => ({ createNotification: createNotificationMock }))
 
 import {
@@ -220,6 +220,7 @@ describe('parseChangeResult', () => {
   it('모르는 거절 코드와 해석할 수 없는 응답은 던진다 — 성공으로 보지 않는다', () => {
     expect(() => parseChangeResult({ ok: false, code: 'something_new' })).toThrow()
     expect(() => parseChangeResult({ ok: false })).toThrow()
+    expect(() => parseChangeResult({ ok: false, code: 'constructor' })).toThrow()
     expect(() => parseChangeResult(null)).toThrow()
     expect(() => parseChangeResult('ok')).toThrow()
     expect(() => parseChangeResult({ ok: true })).toThrow()
