@@ -11,13 +11,11 @@
  * 구역마다 `{ ok: true, value }` 또는 `{ ok: false }`다. 읽지 못한 구역은 `logQueryError`로 로그를 남기고 `{ ok: false }`로 돌려준다 — 화면이 «기록 없음»과 다르게 그린다.
  * 한 구역의 실패가 다른 구역을 막지 않고 유저 상세 화면 전체를 오류로 만들지 않는다. 던지지 않는다.
  *
- * ## 이름
- * 챕터 이름은 트라이브별 표(`chapter_names`)에서 **유저의 지금 트라이브**로 한 번 읽어 붙인다. 오른 기록은 그때의 트라이브를 저장하지 않으므로(챕터 숫자는 트라이브가 바뀌어도 그대로다)
- * 오른 기록의 이름도 지금 트라이브의 것이다. 트라이브가 없거나 이름 표를 읽지 못하면 이름은 null이고, 읽지 못한 경우 `namesFailed`가 참이다.
+ * ## 챕터는 숫자로만 표기한다
+ * 챕터 이름은 두지 않는다(2026-10-21 결정, 티켓 20261021_1539). 이름 표를 읽지 않고, 값에도 이름이 없다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logQueryError } from '@/lib/admin/queryError'
-import { normalizeChapterName } from '@/lib/chapter/name'
 import type { ChapterScoreKind } from '@/lib/chapter/kinds'
 
 /** 점수 기록에서 읽는 최근 건수 */
@@ -54,16 +52,12 @@ export interface UserChapterCurrent {
   chapterNo: number | null
   /** 누적 점수. 챕터가 없어도 쌓인 점수가 있을 수 있다 */
   totalScore: number
-  /** 지금 트라이브의 챕터 이름. 없으면 null */
-  name: string | null
 }
 
 export interface UserChapterUp {
   chapterNo: number
   /** 오른 시각(ISO) */
   reachedAt: string
-  /** 지금 트라이브의 그 챕터 이름. 없으면 null */
-  name: string | null
 }
 
 export interface UserChapterScoreEvent {
@@ -94,8 +88,6 @@ export interface UserChapterView {
   current: ViewSection<UserChapterCurrent>
   ups: ViewSection<UserChapterUp[]>
   scoreEvents: ViewSection<UserChapterScoreEvents>
-  /** 이름 표를 읽지 못했다 — 이름 칸이 비어 보이는 것이 «이름 없음»이 아니다 */
-  namesFailed: boolean
 }
 
 function isCount(value: unknown): value is number {
@@ -119,13 +111,9 @@ async function guarded<T>(label: string, run: () => PromiseLike<QueryResult<T>>)
   }
 }
 
-/** 유저 한 명의 챕터 구역 값을 읽는다. `tribeId`는 유저의 지금 트라이브(`users.tribe_id`)이고 없으면 이름을 읽지 않는다 */
-export async function loadUserChapterView(
-  supabase: SupabaseClient,
-  userId: string,
-  tribeId: string | null
-): Promise<UserChapterView> {
-  const [chapterRead, upsRead, eventsRead, namesRead] = await Promise.all([
+/** 유저 한 명의 챕터 구역 값을 읽는다 */
+export async function loadUserChapterView(supabase: SupabaseClient, userId: string): Promise<UserChapterView> {
+  const [chapterRead, upsRead, eventsRead] = await Promise.all([
     guarded<{ chapter_no: unknown; total_score: unknown } | null>('users/detail/chapter', () =>
       supabase.from('user_chapters').select('chapter_no, total_score').eq('user_id', userId).maybeSingle()
     ),
@@ -146,28 +134,16 @@ export async function loadUserChapterView(
         .order('id', { ascending: true })
         .limit(USER_CHAPTER_SCORE_EVENT_LIMIT)
     ),
-    tribeId
-      ? guarded<Array<{ chapter_no: unknown; name: unknown }>>('users/detail/chapter-names', () =>
-          supabase.from('chapter_names').select('chapter_no, name').eq('tribe_id', tribeId)
-        )
-      : Promise.resolve({ data: [] as Array<{ chapter_no: unknown; name: unknown }>, error: null }),
   ])
-
-  const namesFailed = namesRead === null
-  const names = new Map<number, string>()
-  for (const row of namesRead?.data ?? []) {
-    const name = normalizeChapterName(row.name)
-    if (typeof row.chapter_no === 'number' && name !== null) names.set(row.chapter_no, name)
-  }
 
   let current: ViewSection<UserChapterCurrent> = { ok: false }
   if (chapterRead !== null) {
     const row = chapterRead.data
     if (row === null || row === undefined) {
-      current = { ok: true, value: { chapterNo: null, totalScore: 0, name: null } }
+      current = { ok: true, value: { chapterNo: null, totalScore: 0 } }
     } else if (isCount(row.total_score) && (row.chapter_no === null || isCount(row.chapter_no))) {
       const chapterNo = row.chapter_no === null ? null : (row.chapter_no as number)
-      current = { ok: true, value: { chapterNo, totalScore: row.total_score, name: chapterNo === null ? null : (names.get(chapterNo) ?? null) } }
+      current = { ok: true, value: { chapterNo, totalScore: row.total_score } }
     } else {
       logQueryError({ message: '해석할 수 없는 user_chapters 행' }, 'users/detail/chapter')
     }
@@ -182,7 +158,7 @@ export async function loadUserChapterView(
         valid = false
         break
       }
-      value.push({ chapterNo: row.chapter_no, reachedAt: row.reached_at, name: names.get(row.chapter_no) ?? null })
+      value.push({ chapterNo: row.chapter_no, reachedAt: row.reached_at })
     }
     if (valid) ups = { ok: true, value }
     else logQueryError({ message: '해석할 수 없는 chapter_ups 행' }, 'users/detail/chapter-ups')
@@ -220,5 +196,5 @@ export async function loadUserChapterView(
     else logQueryError({ message: '해석할 수 없는 chapter_score_events 행' }, 'users/detail/chapter-score-events')
   }
 
-  return { current, ups, scoreEvents, namesFailed }
+  return { current, ups, scoreEvents }
 }

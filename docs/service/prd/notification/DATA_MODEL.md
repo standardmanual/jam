@@ -506,7 +506,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 | `mission_completed` | `{ mission_id, mission_title, reward_badge_count, reward_points }` |
 | `mission_rank_up` | `{ mission_id, mission_title, rank }` |
 | `mission_participation_cancelled` | `{ missions: [{ mission_id, title }] }` — 한 번의 트라이브 변경으로 취소된 미션 전부. 개수는 배열 길이로 세고 `target_count`는 두지 않는다 |
-| `chapter_up` | `{ chapter_no }` — 오른 챕터 가운데 가장 높은 번호(2 이상). 챕터 이름·점수는 싣지 않는다 |
+| `chapter_up` | `{ chapter_no }` — 오른 챕터 가운데 가장 높은 번호(2 이상). 챕터 이름·점수는 싣지 않는다(챕터는 숫자로만 표기한다) |
 | `followed` | `{ actor_ids: [...] }` — append. 2명까지 이름 나열에 필요 (§4-1) |
 | `sync_stalled` | `{ days: 3 }` |
 | `admin_points_changed` | `{ amount, direction: 'grant'\|'deduct', reason }` — `reason`은 **코드**다. 렌더 시 `adminReasonLabel()`을 반드시 경유할 것 |

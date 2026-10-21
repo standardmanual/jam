@@ -118,10 +118,10 @@ export default async function UserProfilePage({ params }: Props) {
   // 점수는 응답에 없고, 다른 유저에게는 진행·다음 챕터 필드 자체를 만들지 않는다.
   const chapterInitial: MyChapterLineData | null =
     myChapter?.ok && myChapter.chapterNo !== null
-      ? { chapterNo: myChapter.chapterNo, name: myChapter.name, nextChapterNo: myChapter.nextChapterNo, progress: myChapter.progress }
+      ? { chapterNo: myChapter.chapterNo, nextChapterNo: myChapter.nextChapterNo, progress: myChapter.progress }
       : null
   const publicChapter: PublicChapterLineData | null = publicChapterResult?.ok
-    ? { tribeName: publicChapterResult.tribe?.name ?? null, chapterNo: publicChapterResult.chapterNo, name: publicChapterResult.name }
+    ? { tribeName: publicChapterResult.tribe?.name ?? null, chapterNo: publicChapterResult.chapterNo }
     : null
 
   // ─── 피드 / 인벤토리 (대상 유저 기준) ──────────────────────────

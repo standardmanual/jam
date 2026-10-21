@@ -16,7 +16,7 @@ import { d, t } from '@/lib/i18n'
  *   - 서비스 컬럼 폭(430px) 맞춤: `inset: 0` + 좌우 auto 마진
  *   - 닫기: 닫기 X와 Escape
  *   - 접근성 공지: 라이브 리전은 닫혀 있을 때도 계속 마운트해 열릴 때 문장을 채운다
- * `Card` 면에 «축하해요!» / «챕터 N에 올랐어요» / 이름(있을 때만)을 둔다. 점수와 게이지는 없다.
+ * `Card` 면에 «축하해요!» / «챕터 N에 올랐어요» 두 줄만 둔다. 챕터는 숫자로만 표기한다(2026-10-21 결정). 점수와 게이지는 없다.
  *
  * 모션: `--duration-medium` 페이드와 16px 상승. `prefers-reduced-motion`이면 상승을 빼고 페이드만 남긴다(`motion-reduce:`).
  * 다른 오버레이가 열려 있는 동안 띄울지는 이 컴포넌트가 아니라 `ChapterRiseWatcher`가 정한다.
@@ -26,8 +26,6 @@ interface Props {
   open: boolean
   /** 오른 챕터 번호 */
   chapterNo: number
-  /** 지금 트라이브의 챕터 이름. 없으면 이름 줄을 그리지 않는다 */
-  name: string | null
   onClose: () => void
 }
 
@@ -39,7 +37,7 @@ const COLUMN_STYLE = { maxWidth: 430, marginLeft: 'auto', marginRight: 'auto' } 
 
 const TEXT_BASE = 'm-0 break-keep wrap-break-word'
 
-function RiseDialog({ chapterNo, name, onClose }: Omit<Props, 'open'>) {
+function RiseDialog({ chapterNo, onClose }: Omit<Props, 'open'>) {
   // 열린 직후 한 프레임 뒤에 켜서 전환이 보이게 한다(마운트와 같은 프레임에 켜면 시작 상태가 그려지지 않는다).
   const [shown, setShown] = useState(false)
 
@@ -89,7 +87,6 @@ function RiseDialog({ chapterNo, name, onClose }: Omit<Props, 'open'>) {
           <p className={`${TEXT_BASE} text-balance text-2xl font-bold text-foreground`}>
             {t(d.chapter.rise.title, { chapterNo })}
           </p>
-          {name && <p className={`${TEXT_BASE} max-w-full truncate text-base text-muted`}>{name}</p>}
         </Card>
       </div>
       <IconButton icon="close" label={d.common.close} surface="light" onClick={onClose} />
@@ -97,7 +94,7 @@ function RiseDialog({ chapterNo, name, onClose }: Omit<Props, 'open'>) {
   )
 }
 
-export default function ChapterRiseOverlay({ open, chapterNo, name, onClose }: Props) {
+export default function ChapterRiseOverlay({ open, chapterNo, onClose }: Props) {
   // 라이브 리전은 닫혀 있을 때도 마운트돼 있어야 내용 변경이 공지된다 — 텍스트만 열림/닫힘에 따라 채우고 비운다.
   const announcement = open ? t(d.chapter.rise.announce, { chapterNo }) : ''
 
@@ -106,7 +103,7 @@ export default function ChapterRiseOverlay({ open, chapterNo, name, onClose }: P
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
-      {open && <RiseDialog chapterNo={chapterNo} name={name} onClose={onClose} />}
+      {open && <RiseDialog chapterNo={chapterNo} onClose={onClose} />}
     </>
   )
 }

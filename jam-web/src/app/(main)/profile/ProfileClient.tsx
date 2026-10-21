@@ -119,7 +119,7 @@ interface Props {
    */
   chapterInitial?: MyChapterLineData | null
   /**
-   * 다른 유저 프로필의 트라이브·챕터·이름 한 줄(티켓 20261019_1317). **다른 유저 프로필에서만 내려온다.** 진행은 담지 않는다.
+   * 다른 유저 프로필의 트라이브·챕터 한 줄(티켓 20261019_1317). **다른 유저 프로필에서만 내려온다.** 진행은 담지 않는다.
    * `null`은 읽지 못함이고 줄을 그리지 않는다. 보일 조각이 없으면 `ChapterLine`이 아무것도 그리지 않는다.
    */
   publicChapter?: PublicChapterLineData | null

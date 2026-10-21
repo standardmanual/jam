@@ -67,7 +67,7 @@ code:
 [챕터]          users ─1:1─ user_chapters (지금 챕터·누적 점수)
                 users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)
                 users ─1:N─ chapter_ups (오른 기록) ──> chapter_definitions (챕터별 필요 점수)
-                tribes ─1:N─ chapter_names (트라이브별 챕터 이름) ──> chapter_definitions
+                tribes ─1:N─ chapter_names (쓰지 않는 표, 삭제 예정) ──> chapter_definitions
 
 [캡슐]          users ─1:1─ user_capsules (지금 캡슐: 필요량·채운 양)
                 users ─1:N─ capsule_opens (열 때마다 한 줄, append-only)
@@ -831,7 +831,7 @@ JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득
 ### notification_type `chapter_up` — 마이그레이션 255, 티켓 20261019_1316
 알림 종류 enum `notification_type`에 `chapter_up`을 더했다(챕터 오름 소식, 운영 로직 12.3절). 옛 알림 종류는 바꾸지 않았다. 새 enum 값은 같은 트랜잭션에서 쓸 수 없어(55P04) 값을 쓰는 코드와 나눈 별도 파일이다. 2026-10-20 공용 DB에 적용했다. 되돌림은 enum 값을 지울 수 없어 앱이 값을 만들지 않게 하고 값은 쓰지 않은 채로 두는 방식이다(파일 끝에 적음).
 - 만드는 곳: `processChapterRise`(`src/lib/chapter/rise.ts`)가 `createNotification`을 부른다. 아래 «챕터 1 시작과 오름 처리».
-- payload: `{ chapter_no }` — 오른 챕터 가운데 가장 높은 번호(2 이상). 챕터 이름은 이름 표가 비어 있어 싣지 않는다.
+- payload: `{ chapter_no }` — 오른 챕터 가운데 가장 높은 번호(2 이상). 챕터는 숫자로만 표기하므로 이름은 싣지 않는다(2026-10-21 결정).
 - 키: `chapter_up:{chapter_no}` + `once`. 같은 챕터 소식은 다시 만들어지지 않는다.
 - 알림함: 문구 «축하해요! 챕터 N에 올랐어요», 이동 위치는 내 프로필(`/{username}`, 아이디가 없으면 `/profile`), 아이콘은 메달이다. 자세한 문구는 `notification/PRD.md` §3 챕터(#48)다.
 
@@ -989,7 +989,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 `chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지).
 
 #### chapter_names
-`(tribe_id, chapter_no)` 복합 PK, `name`은 비어도 된다. 트라이브 다섯 개가 등록되지 않아 초기 행이 없다. 로그인 유저 모두 SELECT. 입력은 어드민의 챕터 이름 표(`/admin/chapter-names`)가 service 클라이언트로 하고, 빈 칸은 행을 지운다([챕터 PRD](chapter/PRD.md) 9.1절).
+`(tribe_id, chapter_no)` 복합 PK, `name`은 비어도 된다. 로그인 유저 모두 SELECT. **쓰지 않는 표다.** 챕터는 트라이브와 상관없이 숫자로만 표기하기로 해(2026-10-21 결정) 읽는 코드와 쓰는 어드민 화면을 지웠고, 티켓 20261021_1539 조사 시점에 0행이었다. 표 삭제는 같은 티켓의 2회(`db`)에서 한다([챕터 PRD](chapter/PRD.md) 6절).
 
 #### chapter_score_rules
 `activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다.
@@ -1092,17 +1092,16 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 점수 함수와 챕터 1 시작은 오름 처리가 끝나기를 기다린 뒤 돌려준다. 오름이 있는 요청에서만 소식·판정 시간이 더해진다.
 
 #### 챕터 읽기 (티켓 20261019_1316 2회, 운영 로직 12.3절)
-프로필(5-7)이 쓸 서버 읽기 함수다. 이 소절은 **무엇을 어느 표에서 읽는가**만 적는다. 응답 모양과 동작(점수 숫자 비노출, 챕터 없음과 읽지 못함의 구분, 이름이 비었을 때)은 [챕터 PRD](chapter/PRD.md) 5·6절이다. DB 변경은 없다.
+프로필(5-7)이 쓸 서버 읽기 함수다. 이 소절은 **무엇을 어느 표에서 읽는가**만 적는다. 응답 모양과 동작(점수 숫자 비노출, 챕터 없음과 읽지 못함의 구분)은 [챕터 PRD](chapter/PRD.md) 5절이고, 챕터를 숫자로만 표기하는 정책은 6절이다. DB 변경은 없다.
 
 | 함수 (`src/lib/chapter/`) | 읽는 표와 열 |
 |---|---|
-| `getMyChapter` (`read.ts`) | `user_chapters`(이 유저 한 행의 `chapter_no`, `total_score`), 챕터가 있을 때만 `chapter_definitions`(전체, `chapter_no`·`required_score`), `users`(`tribe:tribes(id, name)`), `chapter_names`(`name`) |
-| `getPublicChapter` (`read.ts`) | `user_chapters`(`chapter_no`만), `users`(`tribe:tribes(id, name)`), 챕터와 트라이브가 있을 때만 `chapter_names`(`name`). `total_score`와 `chapter_definitions`는 읽지 않는다 |
-| `getChapterName` (`name.ts`) | `chapter_names`(`tribe_id`, `chapter_no`로 한 행의 `name`) |
+| `getMyChapter` (`read.ts`) | `user_chapters`(이 유저 한 행의 `chapter_no`, `total_score`), 챕터가 있을 때만 `chapter_definitions`(전체, `chapter_no`·`required_score`). 트라이브는 읽지 않는다 |
+| `getPublicChapter` (`read.ts`) | `user_chapters`(`chapter_no`만), `users`(`tribe:tribes(id, name)`). `total_score`와 `chapter_definitions`는 읽지 않는다 |
 
 - `total_score`와 `required_score`는 비율 계산(`progress.ts`)에만 쓰이고 응답에 실리지 않는다.
-- `user_chapters`는 본인 행만 읽는 정책이라 읽기 함수는 service 클라이언트를 받는다. `chapter_definitions`·`chapter_names`는 로그인 유저 모두 읽을 수 있다.
-- 이름을 읽는 트라이브는 `users.tribe_id`가 가리키는 지금 트라이브다. `chapter_names`는 (트라이브, 챕터)가 키이고 `name`이 비어도 된다.
+- `user_chapters`는 본인 행만 읽는 정책이라 읽기 함수는 service 클라이언트를 받는다. `chapter_definitions`는 로그인 유저 모두 읽을 수 있다.
+- 트라이브는 `users.tribe_id`가 가리키는 지금 트라이브이고 `getPublicChapter`만 읽는다. 어느 읽기도 `chapter_names`를 읽지 않는다.
 
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
