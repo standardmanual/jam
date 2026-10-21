@@ -864,7 +864,7 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 
 앱의 호출 경로: `lib/points/index.ts`의 `deductPointsByAdmin`이 RPC를 부르고, 성공이면 `admin_points_changed` 알림을 지금처럼 보낸다. 거절은 알림 없이 결과로 돌려주고, RPC 오류·계약 밖 응답·`invalid_amount`는 `engine_decision_log`(`point_award_failed`)에 남기고 `null`이다. `lib/points/admin-grant.ts`의 `executeAdminGrant`가 음수 금액에서 이 함수를 쓴다(양수 지급은 `awardPoints` 그대로). 단건 `POST /api/admin/points/grant`는 거절을 HTTP 409 `{error, code:'insufficient_balance', balance, requested}`로, 일괄 `POST /api/admin/users/bulk`(`grant_points`)는 거절된 유저를 `skipped`의 사유로 알리고 응답 200으로 나머지 유저를 계속 처리한다.
 
-**한계.** 음수 방지는 이 함수를 거치는 새 경로에서만 유효하다. `award_points()`와 `point_wallets`는 바꾸지 않았고 옛 프로덕션 코드는 이 함수를 모른 채 계속 `award_points()`로 회수하므로, 새 앱이 배포되고 옛 코드가 사라질 때까지 그 경로는 막히지 않는다. 모든 경로를 막는 `point_wallets.balance >= 0` CHECK는 옛 코드를 정리하는 묶음 6에서 더한다(사용자 결정, 2026-10-20). 일괄 미리보기의 `negativeBalanceCount`와 그 안내 문구는 5-8에서 고친다.
+**한계.** 음수 방지는 이 함수를 거치는 새 경로에서만 유효하다. `award_points()`와 `point_wallets`는 바꾸지 않았고 옛 프로덕션 코드는 이 함수를 모른 채 계속 `award_points()`로 회수하므로, 새 앱이 배포되고 옛 코드가 사라질 때까지 그 경로는 막히지 않는다. 모든 경로를 막는 `point_wallets.balance >= 0` CHECK는 옛 코드를 정리하는 묶음 6에서 더한다(사용자 결정, 2026-10-20). 일괄 미리보기는 잔액이 모자라 건너뛰는 유저 수를 `revokeSkippedCount`로 알리고 화면 문구는 «회수하지 못하고 건너뛰는 유저 N명»이다(티켓 20261019_1318 2회). 단건 `POST /api/admin/points/grant`는 `userId`가 UUID 형식이 아니면 DB 오류(500)가 되기 전에 400으로 안내한다.
 
 ### 배지 포인트(`badge_point_reward`)를 주는 곳 (JAM 2.0, 티켓 20261019_1314, 운영 로직 14.1절)
 금액은 모두 `badges.point_reward`다(원장 `source_badge_id`에 그 배지가 남는다). 지급은 `awardPoints`로 하고 실패해도 배지 발급·믹스 결과를 되돌리지 않는다(로그와 `engine_decision_log`만). 앱 코드의 지급 호출은 아래가 전부다.
@@ -989,7 +989,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 `chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지).
 
 #### chapter_names
-`(tribe_id, chapter_no)` 복합 PK, `name`은 비어도 된다. 트라이브 다섯 개가 등록되지 않아 초기 행이 없다. 로그인 유저 모두 SELECT.
+`(tribe_id, chapter_no)` 복합 PK, `name`은 비어도 된다. 트라이브 다섯 개가 등록되지 않아 초기 행이 없다. 로그인 유저 모두 SELECT. 입력은 어드민의 챕터 이름 표(`/admin/chapter-names`)가 service 클라이언트로 하고, 빈 칸은 행을 지운다([챕터 PRD](chapter/PRD.md) 9.1절).
 
 #### chapter_score_rules
 `activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다.
