@@ -8,6 +8,7 @@ import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 import { loadUserChapterView } from '@/lib/admin/user-chapter-view'
+import { loadUserTribeView } from '@/lib/admin/user-tribe-view'
 import type { UserRow } from '@/types/database'
 import UserGrantForm from '../../points/UserGrantForm'
 import { ResetUserButton } from '../ResetUserButton'
@@ -17,6 +18,7 @@ import { AdminRoleToggle } from './AdminRoleToggle'
 import { BadgeDiagnosisButton } from './BadgeDiagnosisButton'
 import { CombineFailTable, type CombineFailRow } from './CombineFailTable'
 import { UserChapterSection } from './UserChapterSection'
+import { UserTribeSection } from './UserTribeSection'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -82,7 +84,11 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
   )
 
   // 챕터와 오른 기록, 점수 기록 (티켓 20261019_1318 2회) — 보조 읽기라 구역마다 실패를 따로 알리고 화면 전체를 막지 않는다.
-  const chapterView = await loadUserChapterView(service, id)
+  // 트라이브 구역도 같은 방식이다(티켓 20261021_1247 3회). 둘 다 던지지 않는 보조 읽기라 함께 읽는다.
+  const [chapterView, tribeView] = await Promise.all([
+    loadUserChapterView(service, id),
+    loadUserTribeView(service, id, user.tribe_id),
+  ])
 
   // ADMIN_EMAILS 화이트리스트 계정인지 (20260827_015) — 안내 문구에만 사용, 판정 로직은 lib/admin/auth.ts 공용
   const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
@@ -136,6 +142,9 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
           </div>
         )}
       </div>
+
+      {/* 트라이브 보기·바꾸기와 변경 이력 (티켓 20261021_1247 3회) — 같은 «소속·진행» 구역인 챕터 바로 앞, 계정 작업 뒤에 둔다. 기존 구역의 순서는 그대로다 */}
+      <UserTribeSection userId={user.id} view={tribeView} />
 
       {/* 챕터와 오른 기록, 점수 기록 (티켓 20261019_1318 2회) — 긴 표 앞에 둔다 */}
       <UserChapterSection view={chapterView} />
