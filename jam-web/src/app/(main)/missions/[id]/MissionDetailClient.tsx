@@ -6,9 +6,11 @@ import Link from 'next/link'
 import SafeImage from '@/components/SafeImage'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
+import InlineNotice from '@/components/ui/InlineNotice'
 import TopNav from '@/components/ui/TopNav'
-import { LockIcon, CoinIcon } from '@/components/ui/icons'
+import { LockIcon, CoinIcon, PackageIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { LockedTile } from '@ds/components/cards/LockedTile'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { Card } from '@ds/components/cards/Card'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
@@ -20,6 +22,8 @@ import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { formatMissionProgress } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
+import type { ClaimItemRewardsErrorCode } from '@/lib/missions/claim-contract'
 
 export interface RewardBadgeInfo {
   id: string
@@ -44,10 +48,17 @@ interface Props {
   progressValue: number
   rewardBadges: RewardBadgeInfo[]
   /**
-   * 내가 아직 받지 않은 아이템 보상(인벤토리 빈칸이 모자라 보류된 것). 서버가 내려주기만 하고 이 화면은 아직 그리지 않는다 —
-   * «받기» 버튼과 안내는 5-7이다(티켓 20261019_1313 3회).
+   * 보상 중 잠긴 아이템 배지의 등급 목록(티켓 20261019_1317 2회, 운영 로직 7.3절). 이름·그림·id는 내려오지 않는다 —
+   * 보상 카드에서 열린 배지 행 뒤에 잠금 타일과 등급 칩으로만 보인다. 등급이 없는 배지는 null이다.
    */
-  pendingRewards?: PendingRewardInfo[]
+  lockedRewardRarities?: (BadgeRarity | null)[]
+  /**
+   * 내가 아직 받지 않은 아이템 보상(인벤토리 빈칸이 모자라 보류된 것). 비어 있지 않으면 «받을 보상» 카드와 «받기» 버튼을 그린다.
+   * `null`은 읽지 못했다는 뜻이다 — «받을 보상 없음»(빈 배열)과 구분해, 완료한 미션에서만 읽지 못했다고 알린다(티켓 20261019_1317 2회).
+   */
+  pendingRewards?: PendingRewardInfo[] | null
+  /** 밤 조건(22:00~05:00 KST와 겹치는 시간대) 미션이면 «달성 조건» 카드 아래에 안전 안내를 늘 보인다 */
+  nightNotice?: boolean
   /** 20260825_028: 아직 열리지 않은 레벨업 미션 — 참가 불가 안내만 노출 */
   locked?: boolean
   /** 잠금 해제에 필요한 본 배지 (locked일 때만) */
@@ -157,6 +168,87 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   return null
 }
 
+/* ── 잠긴 아이템 배지 한 건의 자리 — 이름·그림 없이 잠금 타일과 등급 칩만 (운영 로직 7.3절) ── */
+function LockedRewardRow({ rarity, caption }: { rarity: BadgeRarity | null; caption?: string }) {
+  return (
+    <div className="flex items-center gap-4">
+      <LockedTile size={64} className="flex-shrink-0" />
+      <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+        <RarityBadge rarity={rarity} />
+        <p className="max-w-full text-[16px] font-bold leading-[1.2] text-foreground truncate break-keep wrap-break-word">{d.lockedItem.card.name}</p>
+        {caption && <p className="text-[13px] leading-[1.3] text-muted break-keep wrap-break-word text-pretty">{caption}</p>}
+      </div>
+    </div>
+  )
+}
+
+/* ── 받을 보상 카드의 한 줄 — 열린 보상은 그림·이름·등급 칩, 잠긴 보상은 LockedRewardRow ── */
+function PendingRewardRow({ reward }: { reward: PendingRewardInfo }) {
+  if (reward.locked) return <LockedRewardRow rarity={reward.rarity} />
+  return (
+    <div className="flex items-center gap-4">
+      <div className="w-16 h-16 rounded-2xl bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+        <SafeImage
+          src={reward.image_url}
+          alt={reward.name}
+          width={52}
+          height={52}
+          className="w-[52px] h-[52px] object-contain"
+          fallback={<PackageIcon className="w-6 h-6 text-muted" />}
+        />
+      </div>
+      <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+        <RarityBadge rarity={reward.rarity} />
+        <p className="max-w-full text-[16px] font-bold leading-[1.2] text-foreground truncate break-keep wrap-break-word">{reward.name}</p>
+      </div>
+    </div>
+  )
+}
+
+/** 받기 요청의 결과를 화면이 다룰 갈래로 나눈다 */
+export type ClaimOutcome =
+  | { kind: 'claimed'; granted: number | null }
+  | { kind: 'insufficient_slots'; free: number | null; needed: number | null; message: string }
+  | { kind: 'no_pending'; message: string }
+  | { kind: 'suspended'; message: string }
+  | { kind: 'failed'; message: string }
+
+/** 받기 뒤에 카드 안에 남기는 안내 — 빈칸이 모자라거나 이용이 정지된 경우 */
+type ClaimNotice = { kind: 'short'; free: number | null; needed: number | null; message: string } | { kind: 'message'; message: string }
+
+const CLAIM_INSUFFICIENT_SLOTS: ClaimItemRewardsErrorCode = 'insufficient_slots'
+const CLAIM_NO_PENDING: ClaimItemRewardsErrorCode = 'no_pending'
+
+function readCount(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
+}
+
+/**
+ * `POST /api/missions/[id]/claim` 응답을 읽는다(티켓 20261019_1313 3회의 응답 계약).
+ *  - 200: 받았다. · 409 `insufficient_slots`: 빈칸 부족(`free`·`needed`). · 409 `no_pending`: 받을 보상이 더 없다.
+ *  - 403 `user_suspended`: 이용 정지. · 그 밖(404·500·모양이 다른 응답): 실패.
+ * 문구는 서버가 보낸 `error`를 우선 쓰고, 없으면 같은 뜻의 `d.missions.claim` 문구로 대신한다.
+ */
+export function resolveClaimOutcome(status: number, ok: boolean, raw: unknown): ClaimOutcome {
+  const data = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const serverMessage = typeof data.error === 'string' && data.error.trim() !== '' ? data.error : null
+  if (ok) return { kind: 'claimed', granted: typeof data.granted === 'number' && data.granted > 0 ? data.granted : null }
+  if (status === 403 && data.code === USER_SUSPENDED_CODE) {
+    return { kind: 'suspended', message: serverMessage ?? d.suspension.missionClaimBlocked }
+  }
+  if (status === 409 && data.code === CLAIM_INSUFFICIENT_SLOTS) {
+    return {
+      kind: 'insufficient_slots',
+      free: readCount(data.free),
+      needed: readCount(data.needed),
+      message: serverMessage ?? d.missions.claim.insufficientSlots,
+    }
+  }
+  if (status === 409 && data.code === CLAIM_NO_PENDING) {
+    return { kind: 'no_pending', message: serverMessage ?? d.missions.claim.noPending }
+  }
+  return { kind: 'failed', message: serverMessage ?? d.missions.claim.failed }
+}
 
 export default function MissionDetailClient({
   mission,
@@ -164,12 +256,19 @@ export default function MissionDetailClient({
   isCompleted,
   progressValue,
   rewardBadges,
+  lockedRewardRarities = [],
+  pendingRewards = [],
+  nightNotice = false,
   locked = false,
   requiredBadge = null,
 }: Props) {
   const [participating, setParticipating] = useState(isParticipating)
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  // 받을 보상 받기 — 성공하면 서버가 다시 읽기 전에도 카드를 바로 숨긴다(`claimed`)
+  const [claiming, setClaiming] = useState(false)
+  const [claimed, setClaimed] = useState(false)
+  const [claimNotice, setClaimNotice] = useState<ClaimNotice | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -202,6 +301,45 @@ export default function MissionDetailClient({
       toast(d.missions.joinNetworkError, 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const pendingList = pendingRewards ?? []
+
+  /** 받지 않은 보상을 한 번에 받는다. 받는 중에는 같은 요청을 다시 보내지 않는다 */
+  async function handleClaim() {
+    if (claiming) return
+    setClaiming(true)
+    setClaimNotice(null)
+    try {
+      const res = await fetch(`/api/missions/${mission.id}/claim`, { method: 'POST' })
+      const outcome = resolveClaimOutcome(res.status, res.ok, await res.json().catch(() => null))
+      switch (outcome.kind) {
+        case 'claimed':
+          setClaimed(true)
+          toast(t(d.missions.pendingCard.claimedToast, { count: outcome.granted ?? pendingList.length }), 'success')
+          router.refresh()
+          break
+        case 'insufficient_slots':
+          // 토스트 없이 카드 안에 안내를 남긴다. 받지 못한 보상은 그대로 남는다
+          setClaimNotice({ kind: 'short', free: outcome.free, needed: outcome.needed, message: outcome.message })
+          break
+        case 'no_pending':
+          // 이미 받았다(다른 기기, 중복 클릭) — 받을 보상이 없으므로 카드를 거두고 서버 값을 다시 읽는다
+          setClaimed(true)
+          toast(outcome.message, 'info')
+          router.refresh()
+          break
+        case 'suspended':
+          setClaimNotice({ kind: 'message', message: outcome.message })
+          break
+        default:
+          toast(outcome.message, 'error')
+      }
+    } catch {
+      toast(d.missions.claim.failed, 'error')
+    } finally {
+      setClaiming(false)
     }
   }
 
@@ -254,6 +392,64 @@ export default function MissionDetailClient({
           )}
         </div>
 
+        {/* ── 받을 보상 — 인벤토리 빈칸이 모자라 받지 못한 보상(티켓 20261019_1317 2회). 히어로 바로 아래, 잠금 안내 위.
+            한 번에 모두 받는다. 잠긴 보상은 잠금 타일·«잠긴 아이템 배지»·등급 칩만 보이고 이름·그림·id는 DOM에 없다 ── */}
+        {!claimed && pendingList.length > 0 && (
+          <InfoCard>
+            <SectionLabel>{d.missions.pendingCard.title}</SectionLabel>
+            <p className="text-[14px] leading-[1.43] text-muted break-keep wrap-break-word text-pretty">
+              {t(d.missions.pendingCard.intro, { count: pendingList.length })}
+            </p>
+            <div className="flex flex-col gap-3">
+              {pendingList.map((reward, index) => (
+                <PendingRewardRow key={`${reward.locked ? 'locked' : reward.id}-${index}`} reward={reward} />
+              ))}
+            </div>
+            <Button
+              variant="primary"
+              surface="main"
+              size="lg"
+              fullWidth
+              loading={claiming}
+              className="whitespace-nowrap"
+              onClick={handleClaim}
+            >
+              {claiming ? d.missions.pendingCard.claiming : d.missions.pendingCard.claim}
+            </Button>
+            {claimNotice && (
+              <InlineNotice
+                action={
+                  claimNotice.kind === 'short' ? (
+                    <Link
+                      href="/inventory"
+                      className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)]"
+                    >
+                      {d.missions.pendingCard.inventoryLink}
+                    </Link>
+                  ) : undefined
+                }
+              >
+                {claimNotice.kind === 'short' && claimNotice.free !== null && claimNotice.needed !== null
+                  ? t(d.missions.pendingCard.shortNotice, { free: claimNotice.free, needed: claimNotice.needed })
+                  : claimNotice.message}
+              </InlineNotice>
+            )}
+          </InfoCard>
+        )}
+
+        {/* 받을 보상을 읽지 못함 — 완료한 미션에서만. «받을 보상 없음»처럼 보이지 않게 따로 알린다 */}
+        {pendingRewards === null && isCompleted && (
+          <InlineNotice
+            action={
+              <Button variant="ghost" className="self-start whitespace-nowrap" onClick={() => router.refresh()}>
+                {d.missions.pendingCard.retry}
+              </Button>
+            }
+          >
+            {d.missions.pendingCard.loadFailed}
+          </InlineNotice>
+        )}
+
         {/* ── 잠금 안내 — 히어로 직후. 왜 참가할 수 없는지를 먼저 읽히게 한다 (20260825_028) ── */}
         {locked && (
           <InfoCard>
@@ -286,6 +482,9 @@ export default function MissionDetailClient({
             <ConditionRow tone="muted">{d.missions.conditionAutoCompleteHint}</ConditionRow>
           </div>
         </InfoCard>
+
+        {/* 밤 조건 미션의 안전 안내 — 닫을 수 없고 늘 보인다(운영 로직 13.2절) */}
+        {nightNotice && <InlineNotice>{d.missions.nightNotice}</InlineNotice>}
 
         {/* ── 진행상황 카드 ── */}
         {(participating || isCompleted) && goal.target > 0 && (
@@ -358,7 +557,7 @@ export default function MissionDetailClient({
         )}
 
         {/* ── 보상 카드 ── */}
-        {(rewardBadges.length > 0 || mission.reward_points) && (
+        {(rewardBadges.length > 0 || lockedRewardRarities.length > 0 || mission.reward_points) && (
           <InfoCard>
             <SectionLabel>{d.missions.rewardSectionTitle}</SectionLabel>
 
@@ -384,6 +583,11 @@ export default function MissionDetailClient({
                     </div>
                   </div>
                 </Link>
+              ))}
+
+              {/* 잠긴 아이템 배지 보상 행: 이름·그림·링크 없이 잠금 타일 + 등급 칩 (운영 로직 7.3절) */}
+              {lockedRewardRarities.map((rarity, index) => (
+                <LockedRewardRow key={`locked-${index}`} rarity={rarity} caption={d.missions.rewardBadgeCaption} />
               ))}
 
               {/* 포인트 보상 행: ListRowCard + 서클 CoinIcon */}
