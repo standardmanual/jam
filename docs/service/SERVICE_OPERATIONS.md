@@ -1144,7 +1144,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 
 | 메서드 | 경로 | 기능 |
 |--------|------|------|
-| GET | `/api/cron/poi-cleanup` | 삭제된 배지에 연결된 미픽업 POI 드랍 소각(드랍 자체에는 만료가 없다), 3개월 지난 부정 이용 탐지 기록(`abusing_logs`) 삭제 |
+| GET | `/api/cron/poi-cleanup` | 삭제된 배지에 연결된 미픽업 POI 드랍 소각(드랍 자체에는 만료가 없다), 3개월 지난 부정 이용 탐지 기록(`abusing_logs`) 삭제, 계정을 지울 때 보관 표(`retained_records`)로 옮긴 기록 중 보관 기간이 지난 행 삭제 |
 | GET | `/api/cron/notifications` | 알림(소식) T2 배치 생성 |
 | GET | `/api/cron/ambient-drop` | 앰비언트(시스템) POI 드랍 배치 + 날짜 예약 배포 처리 |
 | GET | `/api/cron/external-inputs` | 날씨·특일을 미리 받아 `external_input_daily`에 저장 |
