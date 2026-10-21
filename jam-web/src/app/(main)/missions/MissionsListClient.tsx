@@ -25,6 +25,11 @@ export interface MissionListItem extends MissionRow {
   locked: boolean
   /** 잠금 해제에 필요한 본 배지 (locked일 때만 값이 있음) */
   requiredBadge: { name: string; rarity: BadgeRarity } | null
+  /**
+   * 보상 중 잠긴 아이템 배지의 등급 목록(티켓 20261019_1317 2회, 운영 로직 7.3절). 이름·그림·id는 내려오지 않는다 —
+   * 등급이 없는 배지는 null이다. 보상 줄에서 열린 배지 뒤에 «등급 칩 + 잠긴 아이템 배지»로 잇는다.
+   */
+  lockedRewardRarities: (BadgeRarity | null)[]
 }
 
 /** 보상 배지 요약에 필요한 최소 정보 — 20260907_0014: 등급칩/레벨칩 분기를 위해 이름만으로는 부족 */
@@ -96,13 +101,28 @@ function rewardBadgeNode(id: string, badgeNames: Record<string, RewardBadgeInfo>
   )
 }
 
-// 텍스트 전용(포인트)과 배지 보상(칩+이름)을 한 줄에 " + "로 이어 붙인다.
-function rewardNodes(m: MissionRow, badgeNames: Record<string, RewardBadgeInfo>): React.ReactNode[] {
+// 잠긴 아이템 배지 보상 — 이름·그림 없이 «등급 칩 + 잠긴 아이템 배지»만 보인다(운영 로직 7.3절).
+// 어떤 배지인지 알 수 있는 값은 이 화면에 내려오지 않는다. 등급이 없으면 칩 없이 문구만 남는다.
+function lockedRewardNode(rarity: BadgeRarity | null): React.ReactNode {
+  return (
+    <span className="break-keep wrap-break-word" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      <RarityBadge rarity={rarity} />
+      {d.lockedItem.card.name}
+    </span>
+  )
+}
+
+// 텍스트 전용(포인트)과 배지 보상(칩+이름)을 한 줄에 " + "로 이어 붙인다. 열린 배지 뒤에 잠긴 보상, 그 뒤에 포인트다.
+function rewardNodes(m: MissionListItem, badgeNames: Record<string, RewardBadgeInfo>): React.ReactNode[] {
   const ids = m.reward_badge_ids ?? []
   const nodes: React.ReactNode[] = []
   ids.forEach((id) => {
     if (nodes.length > 0) nodes.push(<span key={`sep-${id}`}> + </span>)
     nodes.push(<span key={id}>{rewardBadgeNode(id, badgeNames)}</span>)
+  })
+  m.lockedRewardRarities.forEach((rarity, index) => {
+    if (nodes.length > 0) nodes.push(<span key={`sep-locked-${index}`}> + </span>)
+    nodes.push(<span key={`locked-${index}`}>{lockedRewardNode(rarity)}</span>)
   })
   if (m.reward_points) {
     if (nodes.length > 0) nodes.push(<span key="sep-points"> + </span>)

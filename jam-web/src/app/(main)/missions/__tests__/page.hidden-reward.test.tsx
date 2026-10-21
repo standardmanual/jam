@@ -1,8 +1,12 @@
 /**
- * 미션 목록 페이지 — 숨김 보상 배지는 이름·id·개수를 내리지 않는다 (티켓 20261019_1313 2회, 티켓 20261019_0012)
+ * 미션 목록 페이지 — 숨김·잠긴 보상 배지는 이름·id를 내리지 않는다 (티켓 20261019_1313 2회, 티켓 20261019_0012, 티켓 20261019_1317 2회)
  *
  * 목록 화면은 보상 배지 이름을 못 찾으면 «배지 1개» 폴백을 그린다. 숨김 배지의 id를 미션 행에 그대로 두면 이 폴백이
  * 숨김 배지의 존재와 개수를 알리므로, 이름 맵에서 빼는 것과 함께 미션 행의 `reward_badge_ids`에서도 뺀다.
+ * 잠김으로 만든 아이템 배지(`badges.always_locked`)도 이름 맵과 `reward_badge_ids`에서 빼고, 미션마다 등급만 `lockedRewardRarities`로 싣는다(운영 로직 7.3절).
+ *
+ * 참고: 이 폴더(`(main)/missions/__tests__`)는 예전 vitest 제외 패턴(`**\/missions/__tests__/**`)에 걸려 한 번도 돌지 않았다.
+ * 티켓 20261019_1317에서 제외 패턴을 좁혀 이 시험이 돈다.
  *
  * 페이지 함수를 모의 Supabase로 직접 호출하고, 클라이언트 컴포넌트는 그리지 않고 넘긴 props만 본다.
  * 실행: cd jam-web && npx vitest run "src/app/(main)/missions/__tests__/page.hidden-reward.test.tsx"
@@ -60,8 +64,8 @@ const OPEN = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const HIDDEN = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
 type ListProps = {
-  ongoing: { id: string; title: string; reward_badge_ids: string[] | null }[]
-  ended: { id: string; reward_badge_ids: string[] | null }[]
+  ongoing: { id: string; title: string; reward_badge_ids: string[] | null; lockedRewardRarities: (string | null)[] }[]
+  ended: { id: string; reward_badge_ids: string[] | null; lockedRewardRarities: (string | null)[] }[]
   rewardBadgeNames: Record<string, { name: string }>
 }
 
@@ -138,6 +142,76 @@ describe('미션 목록 페이지 — 숨김 보상 배지', () => {
 
     expect(props.rewardBadgeNames).toEqual({})
     expect(props.ongoing.every((m) => (m.reward_badge_ids ?? []).length === 0)).toBe(true)
+    expect(errorSpy).toHaveBeenCalled()
+  })
+})
+
+describe('미션 목록 페이지 — 잠긴 보상 배지', () => {
+  const LOCKED = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+  let errorSpy: MockInstance
+
+  beforeEach(() => {
+    state.tables = {
+      missions: [mission('m1', [OPEN, LOCKED, HIDDEN]), mission('m2', [LOCKED]), mission('m3', [OPEN])],
+      badges: [
+        { id: OPEN, name: '주말 러너', rarity: 'rare', level: null, is_hidden: false, always_locked: false },
+        { id: LOCKED, name: '비밀 장갑', rarity: 'epic', level: null, is_hidden: false, always_locked: true },
+        { id: HIDDEN, name: '비밀 배지', rarity: 'mystic', level: null, is_hidden: true, always_locked: true },
+      ],
+      user_mission_completions: [],
+      user_mission_participations: [],
+    }
+    state.errors = {}
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    errorSpy.mockRestore()
+  })
+
+  it('잠긴 보상 배지는 이름 맵에서 빼고 미션 행의 reward_badge_ids에서도 뺀다', async () => {
+    const props = await render()
+    const byId = new Map(props.ongoing.map((m) => [m.id, m]))
+
+    expect(Object.keys(props.rewardBadgeNames)).toEqual([OPEN])
+    expect(byId.get('m1')?.reward_badge_ids).toEqual([OPEN])
+    expect(byId.get('m2')?.reward_badge_ids).toEqual([])
+    const serialized = JSON.stringify(props)
+    expect(serialized).not.toContain('비밀 장갑')
+    expect(serialized).not.toContain(LOCKED)
+  })
+
+  it('미션마다 자기 보상 중 잠긴 것의 등급만 싣는다. 숨김 배지의 등급은 싣지 않는다', async () => {
+    const props = await render()
+    const byId = new Map(props.ongoing.map((m) => [m.id, m]))
+
+    expect(byId.get('m1')?.lockedRewardRarities).toEqual(['epic'])
+    expect(byId.get('m2')?.lockedRewardRarities).toEqual(['epic'])
+    expect(byId.get('m3')?.lockedRewardRarities).toEqual([])
+    expect(JSON.stringify(props)).not.toContain('mystic')
+  })
+
+  it('종료 탭의 미션도 같은 처리를 받는다', async () => {
+    state.tables.missions = [
+      { ...mission('m4', [OPEN, LOCKED]), ends_at: '2026-02-01T00:00:00Z' },
+    ]
+    state.tables.user_mission_participations = [{ mission_id: 'm4', progress_value: 0 }]
+
+    const props = await render()
+
+    // 모의 DB는 필터를 따지지 않으므로 같은 행이 진행중·종료 양쪽에 올 수 있다. 종료 쪽 행만 본다.
+    const endedRow = props.ended.find((m) => m.id === 'm4')
+    expect(endedRow?.reward_badge_ids).toEqual([OPEN])
+    expect(endedRow?.lockedRewardRarities).toEqual(['epic'])
+  })
+
+  it('잠김 여부를 읽지 못하면 등급도 내리지 않고 보상 id와 이름을 내리지 않는다', async () => {
+    state.errors.badges = { message: 'boom' }
+
+    const props = await render()
+
+    expect(props.rewardBadgeNames).toEqual({})
+    expect(props.ongoing.every((m) => m.lockedRewardRarities.length === 0 && (m.reward_badge_ids ?? []).length === 0)).toBe(true)
     expect(errorSpy).toHaveBeenCalled()
   })
 })

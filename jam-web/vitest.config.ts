@@ -42,7 +42,11 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/today/__tests__/today-logic.test.ts',
-      '**/missions/__tests__/**',
+      // 티켓 20261019_1317 — 예전에는 `**/missions/__tests__/**` 하나라 `(main)/missions/__tests__`의
+      // vitest 시험(목록 페이지의 숨김·잠긴 보상 가림)까지 말없이 제외돼 한 번도 돌지 않았다.
+      // tsx로 도는 node:assert 시험이 있는 두 폴더(`test:node` 목록)만 이름으로 제외한다.
+      '**/lib/missions/__tests__/**',
+      '**/admin/missions/__tests__/**',
       '**/admin/__tests__/today-calendar.test.ts',
       // 스토리 파일은 테스트가 아니다 — storybook 프로젝트 제거 이후에도 vitest 기본
       // include(`**/*.{test,spec}.*`)에는 안 걸리지만, 명시적으로 남겨 재발을 막는다.
