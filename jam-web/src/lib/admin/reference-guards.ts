@@ -13,6 +13,10 @@
  *   `today_cards.mission_id`는 **SET NULL** — 차단 사유는 아니지만 안내 문구에는 포함한다.
  *   `ranking_modes.target_mission_id`도 **SET NULL**(마이그레이션 158) — 삭제하면 랭킹 규칙의
  *   대상이 조용히 비워지므로 투데이 카드 연결과 같이 안내만 한다(티켓 20260925_2105).
+ *   마이그레이션 249·250이 만든 표 3개도 `mission_id` **CASCADE**다(티켓 20261019_1318 1회):
+ *   `mission_item_rewards`(미션이 준·못 준 아이템 배지 보상 — 받지 않은 보상이 함께 사라진다)와
+ *   `mission_participation_cancellations`(트라이브 변경으로 취소된 참가의 이력)는 유저 기록이라 삭제를 막고,
+ *   `mission_allowed_tribes`(참가할 수 있는 트라이브)는 운영자가 정한 설정이라 사용자 기록이 없으면 안내만 한다.
  * - **item_books(컬렉션)**: `user_item_book_slots`·`user_item_book_completions`는
  *   `item_book_id` **CASCADE**. `user_drop_state.last_drop_book_id`는 **NO ACTION**
  *   (사전 조사에 없던 참조 — 거의 모든 활성 유저가 `user_drop_state` 행을 가지므로 실무에서는
@@ -182,6 +186,28 @@ export const MISSION_REFERENCE_SOURCES: ReferenceSource[] = [
     location: 'ranking_modes.target_mission_id',
     blocks: false, // SET NULL — 차단 사유는 아니나 안내에 포함
   },
+  {
+    // 받지 않은 보상(status='pending')은 이 표에만 있어서 미션을 지우면 유저가 받을 보상이 사라진다. 지금은 완료 기록이 먼저
+    // 삭제를 막지만(보상은 완료에서만 생긴다), 그 전제가 깨져도 보상이 조용히 사라지지 않게 직접 막는다(티켓 20261019_1318).
+    key: 'mission_item_rewards',
+    label: '아이템 배지 보상 기록',
+    location: 'mission_item_rewards.mission_id',
+    blocks: true, // CASCADE — 유저가 받지 않은 보상이 함께 사라진다
+  },
+  {
+    key: 'mission_participation_cancellations',
+    label: '참가 취소 기록',
+    location: 'mission_participation_cancellations.mission_id',
+    blocks: true, // CASCADE — 트라이브 변경으로 취소된 참가의 이력이 함께 사라진다
+  },
+  {
+    // 사용자 기록이 아니라 운영자가 정한 설정이다. 미션을 지우면 설정도 함께 지워지는 게 맞으므로 막지 않고 안내만 한다.
+    key: 'mission_allowed_tribes',
+    label: '참가 트라이브 제한',
+    location: 'mission_allowed_tribes.mission_id',
+    blocks: false, // CASCADE — 운영 설정이라 차단 사유가 아니다
+    unit: '곳', // 제한된 트라이브 수
+  },
 ]
 
 export async function collectMissionReferences(
@@ -234,6 +260,24 @@ export async function collectMissionReferences(
   )
   if (rankingModes.error) errors.push(`ranking_modes: ${rankingModes.error}`)
   tally('ranking_modes', rankingModes.rows.map((r) => r.target_mission_id))
+
+  const itemRewards = await fetchAllRows<{ mission_id: string }>((from, to) =>
+    supabase.from('mission_item_rewards').select('mission_id').in('mission_id', missionIds).range(from, to)
+  )
+  if (itemRewards.error) errors.push(`mission_item_rewards: ${itemRewards.error}`)
+  tally('mission_item_rewards', itemRewards.rows.map((r) => r.mission_id))
+
+  const cancellations = await fetchAllRows<{ mission_id: string }>((from, to) =>
+    supabase.from('mission_participation_cancellations').select('mission_id').in('mission_id', missionIds).range(from, to)
+  )
+  if (cancellations.error) errors.push(`mission_participation_cancellations: ${cancellations.error}`)
+  tally('mission_participation_cancellations', cancellations.rows.map((r) => r.mission_id))
+
+  const allowedTribes = await fetchAllRows<{ mission_id: string }>((from, to) =>
+    supabase.from('mission_allowed_tribes').select('mission_id').in('mission_id', missionIds).range(from, to)
+  )
+  if (allowedTribes.error) errors.push(`mission_allowed_tribes: ${allowedTribes.error}`)
+  tally('mission_allowed_tribes', allowedTribes.rows.map((r) => r.mission_id))
 
   return { counts, error: errors.length > 0 ? errors.join(' / ') : null }
 }

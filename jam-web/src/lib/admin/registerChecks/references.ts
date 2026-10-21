@@ -79,7 +79,9 @@ export const BADGE_UNDO_REFERENCES: Array<BadgeUndoReferenceSpec & { isArray: bo
  * 삭제 규칙은 `src/lib/admin/reference-guards.ts` 머리말(011·012·048·080·099)과 마이그레이션 158·249 참고.
  * - CASCADE(지우면 사용자 기록이 함께 사라짐): user_mission_completions · user_mission_participations · mission_rank_snapshots ·
  *   mission_participation_cancellations(트라이브 변경으로 취소된 참가 기록) · mission_item_rewards(미션이 준·못 준 아이템 배지 보상 — 받지 않은 보상이 함께 사라진다, 마이그레이션 250)
- * - CASCADE(지우면 설정이 함께 사라짐): mission_allowed_tribes(참가할 수 있는 트라이브 — 사용자 기록은 아니지만 운영자가 정한 값이라 붙어 있으면 중단한다)
+ * - CASCADE(지우면 설정이 함께 사라짐): mission_allowed_tribes(참가할 수 있는 트라이브) — 사용자 기록이 아니라 운영자가 미션에 정한 설정이다.
+ *   트라이브 제한 미션을 만든 직후 되돌리는 것이 정상 경로라 붙어 있어도 막지 않는다(티켓 20261019_1318 1회). 외래 키 대조를 위해
+ *   `MISSION_UNDO_OPERATING_SETTING_TABLES`에 따로 적고 읽지 않는다.
  * - NO ACTION(지우면 삭제 자체가 실패): point_transactions.source_mission_id
  * - SET NULL(조용히 연결이 끊김): today_cards.mission_id · ranking_modes.target_mission_id
  * SET NULL 두 곳은 어드민 삭제 가드(`MISSION_REFERENCE_SOURCES`)에서 차단 사유가 아니지만, 이 스크립트의 되돌림은
@@ -92,10 +94,18 @@ export const MISSION_UNDO_REFERENCE_TABLES: UndoReferenceSpec[] = [
   { table: 'mission_rank_snapshots', column: 'mission_id' },
   { table: 'mission_participation_cancellations', column: 'mission_id' },
   { table: 'mission_item_rewards', column: 'mission_id' },
-  { table: 'mission_allowed_tribes', column: 'mission_id' },
   { table: 'point_transactions', column: 'source_mission_id' },
   { table: 'today_cards', column: 'mission_id' },
   { table: 'ranking_modes', column: 'target_mission_id' },
+]
+
+/**
+ * `missions`를 가리키지만 되돌림을 막지 않는 운영 설정 표(티켓 20261019_1318 1회). 미션을 지우면 CASCADE로 함께 지워지고,
+ * 사용자 데이터가 아니라서 `findMissionUndoReferences`가 읽지 않는다. 외래 키 9곳 대조 시험은 이 목록과
+ * `MISSION_UNDO_REFERENCE_TABLES`를 합쳐서 맞춘다 — 새 외래 키가 생기면 어느 쪽에 둘지 정해야 시험이 통과한다.
+ */
+export const MISSION_UNDO_OPERATING_SETTING_TABLES: UndoReferenceSpec[] = [
+  { table: 'mission_allowed_tribes', column: 'mission_id' },
 ]
 
 /**

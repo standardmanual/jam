@@ -223,7 +223,7 @@ export class FakeDb {
     user_mission_participations: [],
     mission_rank_snapshots: [],
     mission_participation_cancellations: [], // 마이그레이션 249(티켓 20261019_1311) — 미션 참조 확인 목록에 들어왔다
-    mission_allowed_tribes: [], // 마이그레이션 249(티켓 20261019_1311) — 미션 참조 확인 목록에 들어왔다
+    mission_allowed_tribes: [], // 마이그레이션 249(티켓 20261019_1311) — 운영 설정이라 되돌림 확인에서 읽지 않는다(티켓 20261019_1318). 시험이 붙여 놓고 막히지 않음을 본다
     mission_item_rewards: [], // 마이그레이션 250(티켓 20261019_1313) — 미션·배지 참조 확인 목록에 모두 들어왔다
     point_transactions: [],
     poi: [],
