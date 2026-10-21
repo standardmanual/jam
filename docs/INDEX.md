@@ -640,8 +640,10 @@ status: active
 **현재 서비스 (service)**
 
 - [SERVICE_OPERATIONS.md](service/SERVICE_OPERATIONS.md) — Strava 동기화부터 배지 획득, 드랍, 미션, 피드, 어뷰징 방어, Cron, API, DB 테이블까지 서비스 운영 로직을 정리한 문서다.
+- [LEGAL_REVISION_PROPOSALS.md](service/legal/LEGAL_REVISION_PROPOSALS.md) — 개인정보 처리방침·위치기반서비스 이용약관·로그인 문구의 보완 제안. 고치지 않은 기존 원고와 대조한 초안이다
 - [LOCATION_TERMS.md](service/legal/LOCATION_TERMS.md) — 위치기반서비스 이용약관 원고. `/location-terms` 페이지로 게시했으며 시행일은 2026년 10월 1일이다. 실제 위치정보 처리 흐름을 근거로 작성했다
 - [PRIVACY_POLICY.md](service/legal/PRIVACY_POLICY.md) — 개인정보 처리방침 원고(서비스 /privacy 페이지의 출처 문서)
+- [TERMS_OF_SERVICE.md](service/legal/TERMS_OF_SERVICE.md) — JAM! 서비스 이용약관 초안. 게시 전이며 시행일과 문안 확정, 법률 검토가 남아 있다
 - [01_PRD.md](service/prd/01_PRD.md) — 유저 모바일 웹의 제품 개요, 사용자, 핵심 기능과 구현 상태, 화면 구성, 성공 기준, 만들지 않는 것을 정의한 PRD다.
 - [02_DATA_MODEL.md](service/prd/02_DATA_MODEL.md) — 유저 모바일 웹의 도메인별 테이블 구조와 관계, 원안 대비 변경 요약을 개념 수준으로 정리한 데이터 모델 문서다.
 - [03_PHASES.md](service/prd/03_PHASES.md) — 티켓 기준으로 재구성한 시간순 개발 이력과 현재 구현 상태 요약을 담은 단계 문서다.
@@ -808,8 +810,10 @@ status: active
 
 ### docs/service/legal/
 
+- [LEGAL_REVISION_PROPOSALS.md](service/legal/LEGAL_REVISION_PROPOSALS.md) — 개인정보 처리방침·위치기반서비스 이용약관·로그인 문구의 보완 제안. 고치지 않은 기존 원고와 대조한 초안이다
 - [LOCATION_TERMS.md](service/legal/LOCATION_TERMS.md) — 위치기반서비스 이용약관 원고. `/location-terms` 페이지로 게시했으며 시행일은 2026년 10월 1일이다. 실제 위치정보 처리 흐름을 근거로 작성했다
 - [PRIVACY_POLICY.md](service/legal/PRIVACY_POLICY.md) — 개인정보 처리방침 원고(서비스 /privacy 페이지의 출처 문서)
+- [TERMS_OF_SERVICE.md](service/legal/TERMS_OF_SERVICE.md) — JAM! 서비스 이용약관 초안. 게시 전이며 시행일과 문안 확정, 법률 검토가 남아 있다
 
 ### docs/service/prd/
 
