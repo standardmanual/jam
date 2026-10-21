@@ -135,8 +135,10 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 - 열기 결과 오버레이는 카드 위에 한 줄 「캡슐을 열었어요. 아이템 배지 {n}개를 얻었어요.」가 나오고, 잠긴 채 나온 개체는 잠금 타일 카드로 보인다. 높은 등급 축하 연출은 없다. 오버레이를 닫으면 게이지가 다음 캡슐의 값으로 옮겨 간다.
 - 이용 정지 중 채우기·열기가 403(`user_suspended`)을 받으면 일반 실패가 아니라 안내(info) 토스트다. 버튼을 미리 막지 않고 서버 응답으로 판단한다.
 - 서버 조회가 실패하면 투데이는 위젯을 그대로 그리고(초기값 없음), 위젯이 클라이언트에서 `GET /api/capsule`로 다시 가져온다.
+- 알약 말고도 «JAM! 시작하기» 카드의 «캡슐 채우기»·«캡슐 열기» 버튼이 시트를 연다. 카드는 브라우저 이벤트 하나(`capsule-sheet-signal`)로 «열어 달라»고만 알리고, 위젯은 알약을 누른 것과 같은 경로로 연다(조회에 실패한 상태면 다시 시도한다, 티켓 20261021_1248).
+- 채우기가 끝나거나 열기 결과를 닫으면 위젯이 `router.refresh()`로 서버 화면을 새로 읽는다. 같은 페이지의 «JAM! 시작하기» 카드가 캡슐 상태를 서버 값으로 읽기 때문이다. 열기 결과가 떠 있는 동안에는 새로 읽지 않는다.
 
-근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsulePill`·`CapsuleWidget`·`CapsuleSheet`), `jam-web/src/components/jam/JamFillPanel.tsx`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-view.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsulePill`·`CapsuleWidget`·`CapsuleSheet`), `jam-web/src/components/jam/JamFillPanel.tsx`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-view.ts`·`capsule-sheet-signal.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
 
 ## 3. 카드 노출 규칙
 

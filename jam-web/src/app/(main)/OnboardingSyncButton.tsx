@@ -28,8 +28,10 @@ const SYNC_ANIMATION_MS = 1000
  * 모양: 놓인 자리(TopNav 중앙 슬롯·온보딩 퀘스트 홈 카드)와 상관없이 primary(`--accent` 알약)다.
  * 한때 `appearance`(티켓 20260928_1537)로 nav·card를 갈랐지만 Button에 secondary·danger·outline이
  * 생겨 「outline + accent 인라인 덮어쓰기」가 필요 없어지면서 둘이 같아져 prop을 걷었다(티켓 20261015_2133).
+ *
+ * 크기: 기본은 `xs`(상단 바 중앙 슬롯). 홈 카드 안에서는 44px 터치 영역이 필요해 `sm`을 넘긴다(티켓 20261021_1248).
  */
-export default function OnboardingSyncButton() {
+export default function OnboardingSyncButton({ size = 'xs' }: { size?: 'xs' | 'sm' }) {
   const [loading, setLoading] = useState(false)
   const [revealOpen, setRevealOpen] = useState(false)
   const { toast } = useToast()
@@ -69,7 +71,7 @@ export default function OnboardingSyncButton() {
       <Button
         variant="primary"
         surface="sub"
-        size="xs"
+        size={size}
         onClick={handleSync}
         disabled={loading}
         loading={loading}
