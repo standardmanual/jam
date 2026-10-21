@@ -11,7 +11,7 @@
  *
  * 아이콘은 화면이 쓰는 아이콘 컴포넌트(`MedalIcon`·`TargetIcon`)를 같은 클래스로 따로 그린 마크업과 견준다 — 제품 코드에 시험용 표지를 넣지 않는다.
  * 문구와 착지 계산(`message.ts`·`href.ts`) 자체는 `lib/notifications/__tests__/message-href.test.ts`가 고정한다. 여기서는 화면이 그 결과를 제대로 잇는지 본다.
- * 참가 취소 소식은 호출처가 묶음 6에 있어 아직 실제로 만들어지지 않는다(화면이 받을 준비가 됐는지만 확인한다).
+ * 참가 취소 소식과 트라이브 변경 소식(`tribe_changed`)을 만드는 곳은 어드민 트라이브 변경(`lib/admin/user-tribe.ts`)이라, 마이그레이션 258~261이 공용 DB에 적용되기 전에는 실제로 만들어지지 않는다(화면이 받을 준비가 됐는지만 확인한다).
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/notifications/NotificationsClient.test.tsx"
  */
