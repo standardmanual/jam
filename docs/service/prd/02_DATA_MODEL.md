@@ -123,7 +123,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 (티켓 20261001_0633, [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리).
 
 ### user_onboarding_quests (신규)
-온보딩 퀘스트(1~7단계, 연출용) 유저별 진행 상태(마이그레이션 195, 티켓 20260927_2124/상위 20260927_2123). `user_id`(PK, `users(id)` FK, 유저 삭제 시 CASCADE), `step_progress`(단계 키 `sync`·`bag`·`pickup`·`mix_fail`·`mix_success`·`drop`·`browse` → 완료 시각 ISO 문자열 JSONB, 기본값 `{}`), `skipped_at`(건너뛰기 T8 시각, 있으면 완료 배지 불가), `completed_at`(실제 첫 활동 유입 시각 T6), `reward_granted_at`(완료 배지·100P 지급 시각 T7, 멱등 기준), `created_at`.
+온보딩 퀘스트(1~7단계, 연출용) 유저별 진행 상태(마이그레이션 195, 티켓 20260927_2124/상위 20260927_2123). `user_id`(PK, `users(id)` FK, 유저 삭제 시 CASCADE), `step_progress`(단계 키 `sync`·`bag`·`pickup`·`mix_fail`·`mix_success`·`drop`·`browse` → 완료 시각 ISO 문자열 JSONB, 기본값 `{}`), `skipped_at`(건너뛰기 T8 시각, 있으면 완료 배지 불가), `completed_at`(«연출 7단계를 마쳤거나 건너뜀»과 «실제 3단계 완료»가 둘 다 된 시각 — 티켓 20261021_1248부터. 그 전에는 실제 첫 활동 유입 시각이었다), `reward_granted_at`(완료 배지·100P 지급 시각 T7, 멱등 기준), `created_at`. 실제 3단계는 이 표에 기록하지 않고 `strava_activities`·`capsule_opens`·`inventory_item_events`에서 읽는다(`lib/onboarding-quest/real-steps.ts`).
 
 행 생성 시점은 `POST /api/onboarding/complete`가 `onboarding_completed_at`을 처음 기록하는 순간(service_role, 이미 있으면 무시)이며, **기능 배포 이후 온보딩 2단계를 마친 신규 유저에게만** 만든다 — 기존 유저에게 소급 생성하지 않는다(백필 없음). 행의 존재 자체가 "퀘스트 대상"의 기준이다. 퀘스트 1~7단계는 연출용 데이터이고, 이 테이블 외의 실제 테이블(`inventory_items`·`poi_drops`·`user_activity_badges`·`point_transactions`)에는 퀘스트 때문에 행을 만들지 않는다.
 
@@ -880,7 +880,7 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 | 아이템 배지: 잠긴 채 받은 개체 | 열 때 일련번호마다 한 번, `point_awarded_at`으로 중복 방지 | DB `locked_item_open`(마이그레이션 235) |
 | 컬렉션 보상 배지(`item_books.reward_badge_id`, 등급 보상 배지 포함) | `user_activity_badges`에 **새로 넣을 때만**. 이미 보유·23505는 지급 없음, 보정분도 새로 넣을 때는 준다 | `lib/itembook/checker.ts`(`issueItemBookRewardBadges`, 동기화 보정과 장착 직후 발급이 함께 쓴다) |
 | 미션 보상 배지 | 미션 완료 때 | `lib/missions/rewards.ts` |
-| 퀘스트 완료 배지 | 완료 때 | `lib/onboarding-quest/completion.ts` |
+| 퀘스트 완료 배지(「JAM!」) | «연출 끝 또는 건너뜀 AND 실제 3단계 완료»가 된 뒤 한 번, 건너뛰지 않은 유저에게만 | `lib/onboarding-quest/completion.ts` |
 
 포인트가 0인 배지는 지급을 부르지 않는다. 믹스의 레시피 보상(`combine_recipe_reward`)과 실패 보상(`combine_fail_reward`), 컬렉션 완성 포인트(`item_book_completion_point_reward`), 미션 포인트(`mission_point_reward`)는 이 표의 배지 포인트가 아니다. 공개 전 레시피의 운영자 시험 믹스도 개체를 실제로 주므로 같은 후속이 배지 포인트를 준다(시험 믹스의 레시피 보상 포인트 지급 변경은 이번 범위가 아니다).
 
@@ -1074,16 +1074,17 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 이 소절은 1회(챕터 1 시작·오름 처리·소식·챕터 배지 즉시 판정)다. 읽기 함수(내 챕터·이름·다음 챕터까지 비율, 다른 유저용)와 이름 조회는 아래 «챕터 읽기»(2회)다. 챕터 전체의 기능 정의는 [챕터 PRD](chapter/PRD.md)다.
 
 **챕터 1 시작** (`src/lib/chapter/start.ts`)
-- 호출 지점은 `lib/onboarding-quest/completion.ts`의 `recordOnboardingQuestCompletion` 한 곳이다. 호출처 3곳(`lib/strava/sync.ts`의 `syncStravaActivities`·`app/api/onboarding-quest/step/route.ts`·`skip/route.ts`)은 시그니처가 그대로이고 모두 service 클라이언트를 넘긴다. 동기화는 처리한 인정 활동이 1건 이상일 때만 부르고, 그 호출은 동기화 끝 판정(`processFetchedActivities` 안) **뒤**에 일어난다.
-- 완료가 이번 호출에서 확정되면(`completed_at` 조건부 갱신이 행을 바꿨을 때) **보상 지급 판정 앞에서** `startChapter`가 `chapter_start(p_user_id)`를 부른다. 건너뛴 유저(`skipped_at`)도 부른다 — 건너뛰기는 연출 단계만 건너뛰고, 보상만 받지 않는다. 동시 호출에 져서 바뀐 행이 없으면 부르지 않는다(이긴 호출이 시작한다).
+- 호출 지점은 `lib/onboarding-quest/completion.ts`의 `recordOnboardingQuestCompletion` 한 곳이다. 호출처는 5곳이고 시그니처는 그대로이며 모두 service 클라이언트를 넘긴다: `lib/strava/sync.ts`의 `syncStravaActivities`, `app/api/onboarding-quest/step/route.ts`, `skip/route.ts`, 그리고 **캡슐 열기(`lib/capsule/open.ts`)와 잠긴 개체 열기(`lib/inventory/lockedItemFill.ts`)가 확정된 직후**(챕터 점수를 센 다음, 티켓 20261021_1248)다. 동기화는 처리한 인정 활동이 1건 이상일 때만 부르고, 그 호출은 동기화 끝 판정(`processFetchedActivities` 안) **뒤**에 일어난다. 열기 쪽 호출은 던지지 않고 열기 결과·응답을 바꾸지 않는다.
+- **챕터 1 시작 시점은 실제 3단계가 끝난 순간이다**(티켓 20261021_1248, 운영 로직 2.2절). `lib/onboarding-quest/real-steps.ts`의 `readRealSteps`가 ① `strava_activities`(걸러지지 않은 활동, `filter_reason IS NULL`) ② `capsule_opens`(그 유저의 열기 기록) ③ `inventory_item_events`(`event_type='unlocked'`이고 `user_id`가 그 유저)에 각각 행이 1건 이상 있는지 읽고, 모두 있으면(`isRealStepsDone`) `ensureChapterStarted`가 `chapter_start(p_user_id)`를 부른다. 연출 7단계가 끝났는지·건너뛰었는지와 무관하다. 하나라도 읽지 못하면 던져서 «마쳤다»로 보지 않고 시작하지 않는다.
+- 완료 기록(`completed_at`)은 «연출 7단계를 마쳤거나 건너뜀» **그리고** «실제 3단계 완료»가 둘 다 된 뒤 조건부 갱신으로 한 번 남긴다. 보상(완료 배지 「JAM!」과 포인트 100)은 그 갱신이 행을 바꾼 호출에서 건너뛰지 않은 유저에게만 나간다. 연출 전에 실제 3단계를 마치면 챕터 1은 바로 받고 보상은 연출을 마친 뒤에 나가며, 건너뛴 유저는 챕터 1만 받는다. 동시 호출에 져서 바뀐 행이 없으면 보상은 이긴 호출이 지급한다(챕터 시작은 멱등이라 둘 다 지나도 된다).
 - 응답 `{score_added, current_chapter, reached_chapters}`는 `chapter_add_score`와 같은 계약 검사(`toScoreRow`)로 읽는다. 시작한 뒤에도 챕터가 비어 있는 응답은 계약 밖이다. `reached_chapters`는 챕터 1과, 퀘스트 전에 쌓인 점수로 한 번에 오른 챕터를 모두 담고, 비어 있지 않으면 오름 처리로 넘긴다.
-- **재시도 경로** (사용자 결정 4): `chapter_start`가 실패하면 `completed_at`이 이미 있어 이 함수가 다음 호출에서 일찍 끝난다. 그래서 완료 기록이 있는 유저가 들어오면(보상 재시도 분기와 완료 있음 분기 포함) `ensureChapterStarted`가 `user_chapters.chapter_no`를 읽어 **비어 있을 때(행 없음·NULL)만** `chapter_start`를 다시 부른다. 챕터가 있으면 RPC를 부르지 않는다(조회 한 번만 늘어난다). 옛 퀘스트를 마친 유저도 다음 호출에서 챕터 1을 받는다.
-- 부르지 않는 경우: 퀘스트 행 없음, 연출 도중(7단계를 안 마쳤고 건너뛰지도 않음), 처리된 활동 없음, `ONBOARDING_QUEST_ENABLED`가 꺼짐.
+- **재시도 경로** (사용자 결정 4): `chapter_start`가 실패하면 다음 호출이 다시 시도한다. 완료 기록이 없는 유저는 실제 3단계가 끝난 호출마다, 완료 기록이 있는 유저는 들어올 때마다(보상 재시도 분기와 완료 있음 분기 포함) `ensureChapterStarted`가 `user_chapters.chapter_no`를 읽어 **비어 있을 때(행 없음·NULL)만** `chapter_start`를 다시 부른다. 챕터가 있으면 RPC를 부르지 않는다(조회 한 번만 늘어난다). 완료 기록이 있는 유저는 실제 단계를 다시 읽지 않는다. 옛 퀘스트를 마친 유저도 다음 호출에서 챕터 1을 받는다.
+- 부르지 않는 경우: 퀘스트 행 없음, 실제 3단계가 하나라도 남음(연출을 다 마쳤어도), 실제 단계를 읽지 못함, `ONBOARDING_QUEST_ENABLED`가 꺼짐. 연출 도중이라도 실제 3단계가 끝났으면 부른다.
 - 던지지 않는다. RPC 오류·예외·계약 밖 응답·챕터 조회 실패는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='chapter_start_failed'`)에 남기고, 반환값(지급한 완료 배지 id)과 기존 분기 동작은 그대로다.
 
 **오름 처리** (`src/lib/chapter/rise.ts` `processChapterRise({ userId, reachedChapters }, { skipBadgeEvaluation })`)
 - 부르는 곳: `awardChapterScore`(점수가 성공하고 `reachedChapters`가 비어 있지 않을 때)와 `startChapter`(챕터 1 포함). 비어 있으면 아무것도 하지 않는다.
-- **소식**: 오른 챕터 가운데 가장 높은 챕터가 **2 이상**이면 `chapter_up` 한 건만 보낸다(여러 챕터를 한 번에 넘어도 한 건, 챕터 1만 오르면 퀘스트 완료 보상이 알리므로 없음). 묶음 키 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다(`once`는 이미 있으면 기존 행을 돌려준다).
+- **소식**: 오른 챕터 가운데 가장 높은 챕터로 `chapter_up` 한 건만 보낸다(여러 챕터를 한 번에 넘어도 한 건). **챕터 1만 오른 경우(챕터 1 시작)도 보낸다**(티켓 20261021_1248 — 챕터 1은 실제 3단계를 마친 순간 시작해 완료 보상과 시점이 갈라지고 건너뛴 유저는 보상이 없다). 새 알림 종류나 마이그레이션은 필요 없다(`chapter_up`은 마이그레이션 255에 이미 있다). 묶음 키 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다(`once`는 이미 있으면 기존 행을 돌려준다).
 - **챕터 배지 판정**: 오름이 있으면(챕터 1 시작 포함) `runJamActionEvaluation(userId, ['chapter_reached'])`로 챕터 조건 배지를 바로 판정해 받게 한다. 챕터 도달값은 지금 챕터 하나라서 넘은 챕터가 여럿이어도 한 번의 판정으로 `chapter_reached >= N` 배지를 모두 받는다. 배지 소식은 기존 방식(`activity_recap` 결산)이다.
 - 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 던지지 않고, 실패는 `console.error`와 `engine_decision_log`(`event='chapter_rise_failed'`, 페이로드 `step`=`notification`·`badge_evaluation`·`unexpected`)에 남긴다. `runJamActionEvaluation`은 자기 안의 실패를 스스로 삼키고 `console.error`만 남기므로 `badge_evaluation`은 그 함수를 불러오거나 부르다 던진 경우에만 기록된다.
 - **이중 판정 규칙**: 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)은 DB의 지금 챕터를 읽는다. 동기화가 **직접** 부르는 점수(잼 정산 `settleActivities`, 뒤에 동기화 끝 판정이 반드시 이어짐)만 `skipRiseBadgeEvaluation`을 켜서 오름의 소식은 보내고 챕터 배지 판정은 건너뛴다. 나머지 호출(라우트, 동기화 안의 배지 받기·미션 점수, 동기화 뒤의 챕터 1 시작)은 바로 판정한다. 켜지 않은 호출이 동기화 안에서 겹쳐도 발급은 `user_activity_badges`의 `UNIQUE(user_id, badge_id)`로 한 번뿐이다(`issueQualifyingBadges`가 이미 가진 배지를 건너뛰고 동시 호출의 23505는 부수효과 없이 넘김). 겹치면 판정이 한 번 더 돌고 결과 카드 대신 결산 소식으로 먼저 알려질 뿐이다.
