@@ -349,7 +349,7 @@ interface BadgeGateRequirement {
 
 | 필드 | 타입 | 설명 | 평가 방식 |
 |------|------|------|-----------|
-| `mission_reward` | `boolean` | 미션 완료(`grantMissionRewards`)로만 지급되는 배지 표시용 플래그 | badge-engine 내 **항상 fail**(사유: "미션 보상 배지 — 미션 완료로만 지급") + 발급 후보 조회 단계에서 아예 제외. 배지 상세화면이 이 플래그로 "미션 보상 배지" 안내를 표시. 온보딩 퀘스트 완료 배지('퀘스트 클리어', 마이그레이션 196)도 이 플래그를 쓴다 — 지급 경로는 온보딩 완료 판정이다(티켓 20260927_2130 T7b) |
+| `mission_reward` | `boolean` | 미션 완료(`grantMissionRewards`)로만 지급되는 배지 표시용 플래그 | badge-engine 내 **항상 fail**(사유: "미션 보상 배지 — 미션 완료로만 지급") + 발급 후보 조회 단계에서 아예 제외. 배지 상세화면이 이 플래그로 "미션 보상 배지" 안내를 표시. 온보딩 완료 배지(마이그레이션 196이 '퀘스트 클리어'로 넣었고, 마이그레이션 256이 이름을 「JAM!」으로 바꾼다. 적용은 6-2 2회와 함께, 티켓 20261021_1248)도 이 플래그를 쓴다 — 지급 경로는 온보딩 완료 판정이다(티켓 20260927_2130 T7b) |
 | `follower_count` | `number` | [JAM! 카테고리] 팔로워 수 ≥ 조건값 | badge-engine 내 **항상 fail**(measurable 필드가 없어 "평가 가능한 조건 없음") — `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 별도 판정·발급 |
 | `following_count` | `number` | [JAM! 카테고리] 팔로잉 수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 판정 |
 | `daily_sync_count` | `number` | [JAM! 카테고리] 그날(KST) 누적 동기화 성공 횟수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `syncStravaActivities()`에서 `synced > 0`일 때만 판정(카운터는 `user_daily_sync_counts` + `increment_daily_sync_count()` RPC) |
