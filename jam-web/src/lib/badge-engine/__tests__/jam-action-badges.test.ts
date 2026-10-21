@@ -4,7 +4,7 @@
  *
  * 검증 대상:
  *  ① 시도·성공·실패 임계 발급/미발급. 시도 = 성공 기록 수 + `no_recipe_match` 수(재료 소각 전 실패는 제외)
- *  ② 등급형·레벨형 순차 발급, 섀도우밴을 읽지 않음, 포인트·피드(`usageBadges.ts`의 발급 정책을 그대로 쓴다)
+ *  ② 등급형·레벨형 순차 발급, 고가치 등급 상한 없음, 포인트·피드(`usageBadges.ts`의 발급 정책을 그대로 쓴다)
  *  ③ `recipe_first_success`: 최초 행 보유자만, 멱등, 동시 최초 성공에서 1명만
  *  ④ 호출 규칙: 후보가 없으면 계산 0회, 요청한 지표만 계산, 계산 예외는 그 지표만 건너뜀, 배지 조회 오류는 `[]`
  *  ⑤ 계약: `USAGE_METRIC_CONDITION_KEYS`의 모든 키는 기존 6지표이거나 `JAM_ACTION_CONDITION_KEYS`에 있다
@@ -72,17 +72,11 @@ const state = vi.hoisted(() => ({
   inserts: [] as { user_id: string; badge_id: string; triggered_by: string }[],
 }))
 
-const getUserBanLevelMock = vi.hoisted(() =>
-  vi.fn<(userId: string) => Promise<'none' | 'soft' | 'hard'>>(async () => 'none')
-)
-
 function resetState() {
   state.tables = { badges: [], user_activity_badges: [], user_combine_success_logs: [], user_combine_fail_logs: [] }
   state.errors = {}
   state.queried = []
   state.inserts = []
-  getUserBanLevelMock.mockReset()
-  getUserBanLevelMock.mockResolvedValue('none')
 }
 
 function mockSupabase(): SupabaseClient {
@@ -137,10 +131,6 @@ function mockSupabase(): SupabaseClient {
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
-vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
-  return { ...actual, getUserBanLevel: (userId: string) => getUserBanLevelMock(userId) }
-})
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/policy')>()
   return { ...actual, getAbusingPolicy: vi.fn(async () => actual.DEFAULT_POLICY) }
@@ -170,7 +160,6 @@ const LOG_TABLES = ['user_combine_success_logs', 'user_combine_fail_logs']
 beforeEach(() => {
   resetState()
   vi.clearAllMocks()
-  getUserBanLevelMock.mockResolvedValue('none')
 })
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -268,7 +257,7 @@ describe('믹스 시도 횟수(combine_attempt_count) = 성공 기록 수 + no_r
 })
 
 // ═══════════════════════════════════════════════════════════════════════
-// ② 발급 정책 — 등급형·레벨형·섀도우밴을 읽지 않음·포인트
+// ② 발급 정책 — 등급형·레벨형·고가치 등급 상한 없음·포인트
 // ═══════════════════════════════════════════════════════════════════════
 
 describe('발급 정책은 usageBadges의 것을 그대로 쓴다', () => {
@@ -326,15 +315,13 @@ describe('발급 정책은 usageBadges의 것을 그대로 쓴다', () => {
     expect(state.inserts).toEqual([])
   })
 
-  it('섀도우밴을 읽지 않는다: hard 밴이 남아 있어도 mystic 등급형과 레벨형이 모두 발급된다 (티켓 20261017_1426)', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
+  it('고가치 등급 상한이 없다: mystic 등급형과 레벨형이 모두 발급된다 (티켓 20261017_1426)', async () => {
     setBadges(
       makeBadge({ id: 'g-mystic', rarity: 'mystic', condition_json: { combine_success_count: 1 } }),
       makeBadge({ id: 'lv1', rarity: null, level: 1, family_key: 'fam', condition_json: { combine_success_count: 1 } })
     )
     addSuccess('user-1', RECIPE_A)
     expect((await evaluateJamActionBadges('user-1', ['combine_success_count'])).map((b) => b.id).sort()).toEqual(['g-mystic', 'lv1'])
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
   it('point_reward가 있으면 발급 직후 포인트를 지급하고 피드 이벤트를 남긴다', async () => {

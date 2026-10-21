@@ -5,7 +5,9 @@
  * 발급을 막았지만(missed 사유 «섀도우밴 — 고가치 등급 발급 차단») 이제는 읽지 않는다. 옛 테이블에 hard 밴이 남아 있어도 발급은
  * 평소대로다. 정지 중인 유저는 동기화 입구에서 막혀 이 함수에 오지 않는다.
  *
- * `getUserBanLevel` 모킹은 «불리지 않음»을 고정하려고 남겼다. 쿼리 빌더·반복형 RPC 모킹은 badge-engine-v5.test.ts의 관례를 따른다.
+ * 티켓 20261021_1250(6-4 2회)에서 `getUserBanLevel`과 밴 모듈을 지웠다. «옛 밴을 읽지 않는다»는 이제 모킹이 아니라 쿼리 빌더가 `from()`으로 연
+ * 표 이름을 기록해 `user_shadow_bans`가 한 번도 열리지 않았는지로 고정한다(모든 시험이 끝난 뒤 한 번 더 확인한다). 옛 표에 hard 밴 행이 있는
+ * 것처럼 흉내 내므로 코드가 다시 읽으면 열린 표에 남거나 발급 결과가 달라진다. 쿼리 빌더·반복형 RPC 모킹은 badge-engine-v5.test.ts의 관례를 따른다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/shadow-ban-gate.test.ts
  */
@@ -129,6 +131,8 @@ const state: {
   earnState: Record<string, EarnState>
   inserts: InsertPayload[]
   rpcCalls: { badgeId: string; entries: BadgeEarnHistoryEntry[] }[]
+  /** 쿼리 빌더가 `from()`으로 연 표 이름 — 옛 밴 표를 열지 않았는지 확인하는 데 쓴다 */
+  opened: string[]
 } = {
   badges: [],
   ownedBadgeIds: [],
@@ -138,6 +142,7 @@ const state: {
   earnState: {},
   inserts: [],
   rpcCalls: [],
+  opened: [],
 }
 
 function resetState() {
@@ -148,6 +153,7 @@ function resetState() {
   state.earnState = {}
   state.inserts = []
   state.rpcCalls = []
+  state.opened = []
 }
 
 function earnStateOf(badgeId: string): EarnState {
@@ -162,6 +168,7 @@ function oneRun() {
 /** supabase-js 쿼리 빌더 흉내 — badge-engine-v5.test.ts와 같은 최소 구현 */
 function mockSupabase() {
   const from = (table: string) => {
+    state.opened.push(table)
     let gteValue: string | undefined
     let inIds: string[] | null = null
     const builder: Record<string, unknown> = {}
@@ -180,8 +187,12 @@ function mockSupabase() {
       return builder
     }
     builder.update = self
-    builder.maybeSingle = () =>
-      Promise.resolve(table === 'users' ? { data: state.user, error: null } : { data: null, error: null })
+    builder.maybeSingle = () => {
+      if (table === 'users') return Promise.resolve({ data: state.user, error: null })
+      // 옛 표에 hard 밴 행이 남아 있는 것처럼 흉내 낸다 — 코드가 읽으면 열린 표에 남는다
+      if (table === 'user_shadow_bans') return Promise.resolve({ data: { ban_level: 'hard', expires_at: null }, error: null })
+      return Promise.resolve({ data: null, error: null })
+    }
     builder.insert = (payload: InsertPayload) => {
       if (table !== 'user_activity_badges') return Promise.resolve({ data: null, error: null })
       state.inserts.push(payload)
@@ -236,21 +247,11 @@ function mockSupabase() {
   return { from, rpc }
 }
 
-const getUserBanLevelMock = vi.hoisted(() =>
-  vi.fn<(userId: string) => Promise<'none' | 'soft' | 'hard'>>(async () => 'none')
-)
-
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => true) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
-// getUserBanLevel만 모킹하고 shouldAllowDrop·AbusingPolicy는 실제 구현을 쓴다 — rate 테이블이
-// 결정론적이라(예: hard_mystic_rate=0.0) Math.random()에 기대지 않고도 차단/허용을 고정할 수 있다.
-vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
-  return { ...actual, getUserBanLevel: (userId: string) => getUserBanLevelMock(userId) }
-})
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/policy')>()
   return { ...actual, getAbusingPolicy: vi.fn(async () => actual.DEFAULT_POLICY) }
@@ -259,14 +260,17 @@ vi.mock('@/lib/abusing/policy', async (importOriginal) => {
 beforeEach(() => {
   resetState()
   vi.clearAllMocks()
-  getUserBanLevelMock.mockResolvedValue('none')
+})
+
+afterEach(() => {
+  // 어느 시험이든 발급 경로가 옛 밴 표를 열었다면 여기서 실패한다
+  expect(state.opened).not.toContain('user_shadow_bans')
 })
 
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('섀도우밴을 읽지 않는다 — hard 밴이 남아 있어도 평소대로 발급한다', () => {
-  it('mystic 등급형이 정상 발급되고 밴 조회를 하지 않는다', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
+describe('섀도우밴을 읽지 않는다 — 옛 표에 hard 밴 행이 있어도 평소대로 발급한다', () => {
+  it('mystic 등급형이 정상 발급되고 옛 밴 표를 열지 않는다', async () => {
     state.badges = [makeGradedBadge('G-mystic', 'mystic')]
     oneRun()
 
@@ -275,11 +279,10 @@ describe('섀도우밴을 읽지 않는다 — hard 밴이 남아 있어도 평�
     expect(earned.map((b) => b.id)).toEqual(['G-mystic'])
     expect(state.inserts.map((p) => p.badge_id)).toEqual(['G-mystic'])
     expect(missed.find((x) => x.id === 'G-mystic')).toBeUndefined()
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
+    expect(state.opened).not.toContain('user_shadow_bans')
   })
 
-  it('soft 밴이어도 mystic·rare·common이 모두 발급된다', async () => {
-    getUserBanLevelMock.mockResolvedValue('soft')
+  it('mystic·rare·common이 모두 발급된다', async () => {
     // 서로 다른 이름으로 둬 성장 티어(동명 그룹 최상위 1개) 병합에 걸리지 않게 한다.
     state.badges = [
       makeBadge({ id: 'S-mystic', name: 'S-mystic', rarity: 'mystic', condition_json: { activity_type: 'running', total_count: 1 } }),
@@ -291,11 +294,9 @@ describe('섀도우밴을 읽지 않는다 — hard 밴이 남아 있어도 평�
     const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
 
     expect(earned.map((b) => b.id).sort()).toEqual(['S-common', 'S-mystic', 'S-rare'])
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
   it('레벨형(rarity NULL)도 정상 발급된다', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
     state.badges = [makeLevelBadge(1, 'run:infinite')]
     oneRun()
 
@@ -305,7 +306,6 @@ describe('섀도우밴을 읽지 않는다 — hard 밴이 남아 있어도 평�
   })
 
   it('반복형 최초 발급(action=issue)도 정상 발급된다', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
     state.badges = [makeRepeatBadge('REP-rare', 'rare', 1)]
     state.storedActivities = [
       { normalized: makeLongRun(101, '2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
@@ -314,11 +314,9 @@ describe('섀도우밴을 읽지 않는다 — hard 밴이 남아 있어도 평�
     const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
 
     expect(earned.map((b) => b.id)).toEqual(['REP-rare'])
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
   it('이미 보유한 반복형의 카운터 증가(action=increment)도 평소대로 동작한다', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
     state.badges = [makeRepeatBadge('REP-rare', 'rare', 1)]
     state.ownedBadgeIds = ['REP-rare']
     state.earnState['REP-rare'] = {
