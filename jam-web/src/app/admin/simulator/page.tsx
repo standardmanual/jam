@@ -20,7 +20,7 @@ import VirtualActivityForm, { type VirtualActivityValue } from '@/components/adm
 
 interface ItemDropResult {
   badgeName: string
-  /** 실제로 뽑힌 배지의 등급 (후보가 없어 등급 폴백이 일어나면 상한 적용 등급과 다를 수 있다) */
+  /** 실제로 뽑힌 배지의 등급 (후보가 없어 등급 폴백이 일어나면 추첨 등급과 다를 수 있다) */
   rarity: string | null
   rolledRarity: string
   cappedRarity: string
@@ -72,7 +72,6 @@ const RARITY_LABEL: Record<string, string> = {
 // 엔진 판정(`previewItemDrop`)이 드랍을 내지 못한 이유 — 키는 `tryItemDrop`의 outcome과 같다
 const ITEM_DROP_SKIP_LABEL: Record<string, string> = {
   slot_full: '인벤토리 슬롯이 가득 차 드랍되지 않음',
-  shadow_ban_blocked: '섀도우밴으로 드랍이 차단됨',
   no_candidate: '조건에 맞는 후보 배지가 없음',
 }
 
@@ -344,7 +343,7 @@ export default function SimulatorPage() {
                 )}
               </div>
 
-              {/* 아이템 드랍 — 현재 drop_policy·유저 드랍 상태·섀도우밴 수준으로 엔진 판정을 그대로 따라간다 */}
+              {/* 아이템 드랍 — 현재 drop_policy·유저 드랍 상태로 엔진 판정을 그대로 따라간다 */}
               <div>
                 <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
                   아이템 드랍 ({result.itemDrops.length}개)
@@ -368,8 +367,6 @@ export default function SimulatorPage() {
                         </div>
                         <p className="text-muted-foreground text-xs pl-6">
                           {[d.tribeName, d.bookName].filter(Boolean).join(' · ')}
-                          {d.rolledRarity !== d.cappedRarity &&
-                            ` — 섀도우밴으로 ${RARITY_LABEL[d.rolledRarity] ?? d.rolledRarity} → ${RARITY_LABEL[d.cappedRarity] ?? d.cappedRarity} 강등`}
                         </p>
                       </div>
                     ))}

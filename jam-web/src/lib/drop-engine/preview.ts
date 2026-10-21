@@ -9,7 +9,7 @@
  *
  * 두 층으로 나뉜다.
  * - `planItemDrops` — 순수 함수. 정책·드랍 상태·드랍 구조·난수를 받아 드랍 계획을 돌려준다.
- * - `previewItemDrop` — 정책·상태·구조·섀도우밴 수준을 읽어 `planItemDrops`를 부른다.
+ * - `previewItemDrop` — 정책·상태·구조를 읽어 `planItemDrops`를 부른다.
  *
  * 유저의 드랍 상태(연속 common·pity·일일 카운터)와 결산 소식·엔진 판정 로그는 남기지 않는다.
  * 계획 안에서 상태가 이어지는 것은 한 호출 안의 보너스 드랍(2개째)에 반영하기 위해서다.
@@ -29,7 +29,6 @@ import {
 } from './layers'
 import { matchContextTribes } from './context'
 import {
-  applyShadowBanCap,
   fetchDropStructure,
   getActivityDropWeight,
   getDropState,
@@ -40,7 +39,7 @@ import {
 } from './index'
 
 /** 이번 드랍 시도가 드랍 없이 끝난 이유 — `tryItemDrop`의 `drop_attempt` outcome과 같은 이름이다 */
-export type SkippedDropReason = 'slot_full' | 'shadow_ban_blocked' | 'no_candidate'
+export type SkippedDropReason = 'slot_full' | 'no_candidate'
 
 export interface PlannedDrop {
   /** 0 = 확정 드랍, 1 = 보너스 드랍 */
@@ -49,7 +48,7 @@ export interface PlannedDrop {
   badge: DropBadge
   /** 등급 추첨 결과 */
   rolledRarity: BadgeRarity
-  /** 섀도우밴 상한을 적용한 등급 (밴이 없으면 rolledRarity와 같다) */
+  /** 후보를 고를 때 쓴 등급 — 상한이 없어 rolledRarity와 같다. 이 등급에 후보가 없으면 `badge.rarity`는 한 등급씩 내려간 등급이다(티켓 20261021_1250) */
   cappedRarity: BadgeRarity
   tribeId: string
   tribeName: string
@@ -69,7 +68,7 @@ export interface SkippedDrop {
 export interface DropPlan {
   drops: PlannedDrop[]
   skipped: SkippedDrop[]
-  /** 슬롯·밴·후보와 무관하게 굴린 드랍 시도 횟수 (1 또는 2) */
+  /** 슬롯·후보와 무관하게 굴린 드랍 시도 횟수 (1 또는 2) */
   dropCount: number
   comeback: boolean
   weeklyFirst: boolean
@@ -90,8 +89,6 @@ export interface PlanItemDropsInput {
   activityStartDate: string
   /** `getActivityDropWeight(activity)` 값 */
   activityWeight: number
-  /** 섀도우밴 등급 상한: 그대로 허용하면 같은 등급, 강등되면 낮은 등급, 막히면 null */
-  capRarity: (rarity: BadgeRarity) => BadgeRarity | null
 }
 
 /**
@@ -99,7 +96,7 @@ export interface PlanItemDropsInput {
  * 호출부 객체는 바뀌지 않는다.
  */
 export function planItemDrops(input: PlanItemDropsInput, rand: Rand): DropPlan {
-  const { policy, activity, activityStartDate, activityWeight, capRarity } = input
+  const { policy, activity, activityStartDate, activityWeight } = input
   const state: UserDropStateRow = {
     ...input.state,
     last_piece_pity: { ...(input.state.last_piece_pity ?? {}) },
@@ -141,11 +138,8 @@ export function planItemDrops(input: PlanItemDropsInput, rand: Rand): DropPlan {
       dailyDropCount: state.daily_drop_count,
     }
     const rolled = rollRarityV2(policy, ctx, rand)
-    const capped = capRarity(rolled)
-    if (!capped) {
-      skipped.push({ attempt: i, reason: 'shadow_ban_blocked', rolledRarity: rolled })
-      continue
-    }
+    // 섀도우밴 상한은 없다(티켓 20261021_1250) — `tryItemDrop`(index.ts)과 같게 추첨 등급을 그대로 쓰고, 응답 필드 이름(cappedRarity)은 그대로 둔다.
+    const capped = rolled
 
     // 맥락 오버라이드 발동 판정 — 복귀는 항상, 그 외는 context_override_rate 확률
     const contextActive =
@@ -205,10 +199,8 @@ export type ItemDropPreview =
       reason: 'no_drop_structure' | 'no_inventory'
     }
 
-const RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
-
 /**
- * 현재 `drop_policy`·유저 드랍 상태·드랍 구조·섀도우밴 수준을 읽어 이번 활동의 아이템 드랍을
+ * 현재 `drop_policy`·유저 드랍 상태·드랍 구조를 읽어 이번 활동의 아이템 드랍을
  * 미리 굴린다. DB에 아무것도 쓰지 않는다.
  * @param activity - 이번 드랍의 기준 활동 (맥락·강도 판단)
  * @param activities - 이번 배치 전체 (condition_json 평가용)
@@ -226,11 +218,6 @@ export async function previewItemDrop(
   if (!structure) return { kind: 'unavailable', reason: 'no_drop_structure' }
   if (!structure.inventory) return { kind: 'unavailable', reason: 'no_inventory' }
 
-  // 섀도우밴 상한은 엔진 함수(applyShadowBanCap)를 등급별로 한 번씩 불러 표로 만든다 —
-  // 판정 로직을 여기에 다시 쓰지 않아 엔진과 갈라지지 않는다.
-  const capped = await Promise.all(RARITIES.map((r) => applyShadowBanCap(userId, r)))
-  const capTable = new Map<BadgeRarity, BadgeRarity | null>(RARITIES.map((r, i) => [r, capped[i]]))
-
   const plannable: PlannableStructure = { ...structure, inventory: structure.inventory }
   const plan = planItemDrops(
     {
@@ -240,7 +227,6 @@ export async function previewItemDrop(
       activity,
       activityStartDate,
       activityWeight,
-      capRarity: (rarity) => capTable.get(rarity) ?? null,
     },
     Math.random
   )
