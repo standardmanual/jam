@@ -42,6 +42,7 @@ export default async function ProfilePage({
 
   const row = data as { username: string | null; tribe_id: string | null } | null
   if (!hasTribe(row?.tribe_id)) redirect(TRIBE_SELECT_PATH)
-  if (row?.username) redirect(`/${row.username}${forwardQuery}`)
+  const username = row?.username
+  if (username) redirect(`/${username}${forwardQuery}`)
   redirect(TRIBE_SELECT_PATH)
 }
