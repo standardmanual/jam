@@ -44,13 +44,20 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
     .maybeSingle()
   const badge = badgeRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'> | null
 
-  const [{ data: activeDropRaw }, { data: eventsRaw }, { data: siblingsRaw }] = await Promise.all([
+  const [{ data: activeDropRaw }, { data: pickedUpDropsRaw }, { data: eventsRaw }, { data: siblingsRaw }] = await Promise.all([
     supabase
       .from('poi_drops')
       .select('poi_id, source')
       .eq('inventory_item_id', item.id)
       .eq('is_available', true)
       .maybeSingle(),
+    // Pickup 이벤트의 from이 시스템 드랍인지 탈퇴한 유저의 드랍인지 가르려고 이 개체가 주워진 드랍의 source를 읽는다
+    // (짝은 picked_up_at = 이벤트 시각, lib/account/withdrawn-actor.ts)
+    supabase
+      .from('poi_drops')
+      .select('source, picked_up_at')
+      .eq('inventory_item_id', item.id)
+      .not('picked_up_at', 'is', null),
     supabase.from('custody_events').select('*').eq('inventory_item_id', item.id).order('created_at', { ascending: true }),
     supabase
       .from('inventory_items')
@@ -60,6 +67,7 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
   ])
 
   const activeDrop = activeDropRaw as { poi_id: string; source: PoiDropSource } | null
+  const pickedUpDrops = (pickedUpDropsRaw ?? []) as { source: PoiDropSource; picked_up_at: string | null }[]
   const events = (eventsRaw ?? []) as CustodyEventRow[]
   const siblings = (siblingsRaw ?? []) as Pick<InventoryItemRow, 'id' | 'badge_id' | 'destroyed_at'>[]
 
@@ -225,7 +233,7 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
       {/* 이력 타임라인 */}
       <div>
         <h2 className="text-lg font-bold mb-2">이력</h2>
-        <CustodyTimeline events={events} poiNameById={poiNameById} />
+        <CustodyTimeline events={events} poiNameById={poiNameById} pickedUpDrops={pickedUpDrops} />
       </div>
     </div>
   )

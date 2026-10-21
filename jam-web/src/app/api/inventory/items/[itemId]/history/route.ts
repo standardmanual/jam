@@ -2,13 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getDisplayName } from '@/lib/utils'
 import { d } from '@/lib/i18n'
+import { isWithdrawnDrop } from '@/lib/account/withdrawn-actor'
+import type { PoiDropSource } from '@/types/database'
 
 export interface HistoryEvent {
   type: 'obtained' | 'dropped' | 'picked_up'
   timestamp: string
+  /** 탈퇴한 유저의 이벤트(`withdrawn: true`)와 드랍한 유저가 원래 없는 시스템 드랍은 빈 문자열이다 */
   user_id: string
   /** 20260830_0113: 표시 이름 우선, 없으면 username 폴백까지 서버가 미리 계산해 내려준다 */
   username: string | null
+  /**
+   * 이 이벤트의 유저가 탈퇴했다(운영 로직 17.2절, 티켓 20261021_1249 2회). 화면은 이름 자리에 고정 텍스트를 그린다.
+   * 탈퇴가 아니면 싣지 않는다. 시스템 드랍은 드랍한 유저가 원래 없으므로 탈퇴로 보지 않는다.
+   */
+  withdrawn?: true
   poi_name?: string
   obtained_by?: 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event'
 }
@@ -66,7 +74,7 @@ export async function GET(
   // 이 개체가 실제로 거쳐온 드랍/픽업 사이클 전체(반복 드랍 가능) — 오래된 순
   const { data: dropsRaw, error: dropsError } = await service
     .from('poi_drops')
-    .select('id, dropper_user_id, picked_up_by, dropped_at, picked_up_at, poi ( name )')
+    .select('id, dropper_user_id, picked_up_by, dropped_at, picked_up_at, source, poi ( name )')
     .eq('inventory_item_id', itemId)
     .order('dropped_at', { ascending: true })
   if (dropsError) console.error('[api/inventory/items/[itemId]/history] poi_drops(이력) 조회 실패', dropsError)
@@ -77,6 +85,7 @@ export async function GET(
     picked_up_by: string | null
     dropped_at: string
     picked_up_at: string | null
+    source: PoiDropSource
     poi: { name: string } | null
   }>
 
@@ -99,6 +108,7 @@ export async function GET(
   // 최초 발급(genesis) — 이 개체가 한 번이라도 드랍된 적 있다면, 최초 드랍의 dropper가
   // 곧 발급 당시 소유자다(드랍 전까지는 소유권 이전이 없으므로). 유저 드랍이 아닌
   // 최초 드랍(시스템/앰비언트 배치)은 발급 당시 소유자가 없어 obtained 이벤트를 생략한다.
+  // 최초 유저 드랍의 유저가 탈퇴했으면(dropper_user_id가 NULL인 유저 드랍) 이벤트를 빠뜨리지 않고 탈퇴 표시로 남긴다.
   const firstDrop = drops[0]
   if (firstDrop) {
     if (firstDrop.dropper_user_id) {
@@ -107,6 +117,15 @@ export async function GET(
         timestamp: item.obtained_at,
         user_id: firstDrop.dropper_user_id,
         username: userMap.get(firstDrop.dropper_user_id) ?? null,
+        obtained_by: item.obtained_by as 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event',
+      })
+    } else if (isWithdrawnDrop(firstDrop)) {
+      events.push({
+        type: 'obtained',
+        timestamp: item.obtained_at,
+        user_id: '',
+        username: null,
+        withdrawn: true,
         obtained_by: item.obtained_by as 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event',
       })
     }
@@ -126,14 +145,17 @@ export async function GET(
       timestamp: drop.dropped_at,
       user_id: drop.dropper_user_id ?? '',
       username: drop.dropper_user_id ? (userMap.get(drop.dropper_user_id) ?? null) : null,
+      ...(isWithdrawnDrop(drop) ? { withdrawn: true as const } : {}),
       poi_name: drop.poi?.name,
     })
-    if (drop.picked_up_at && drop.picked_up_by) {
+    // 주운 시각이 있는데 줍은 유저가 없으면 항상 탈퇴다(줍기는 유저만 하고, 시스템은 줍지 않는다)
+    if (drop.picked_up_at) {
       events.push({
         type: 'picked_up',
         timestamp: drop.picked_up_at,
-        user_id: drop.picked_up_by,
-        username: userMap.get(drop.picked_up_by) ?? null,
+        user_id: drop.picked_up_by ?? '',
+        username: drop.picked_up_by ? (userMap.get(drop.picked_up_by) ?? null) : null,
+        ...(drop.picked_up_by ? {} : { withdrawn: true as const }),
         poi_name: drop.poi?.name,
       })
     }

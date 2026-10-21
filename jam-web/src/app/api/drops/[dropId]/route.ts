@@ -6,6 +6,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { PoiDropRow } from '@/types/database'
 import { getDisplayName } from '@/lib/utils'
 import { d } from '@/lib/i18n'
+import { isWithdrawnDrop } from '@/lib/account/withdrawn-actor'
 
 // 20260915_2241 — ADR 0001에 맞춰 `error` 필드를 완성된 사용자 문구로 정정했다. 조사 결과
 // 이 라우트를 호출하는 클라이언트 코드는 현재 없다(`/api/drops/poi/[poiId]`가 대체)
@@ -52,6 +53,11 @@ export async function GET(
     inventory_items: { serial_prefix: string | null; serial_number: number; locked: boolean | null } | null
   }
 
+  // 드랍한 유저 이름. 유저 드랍인데 드랍한 유저가 지워졌으면(dropper_user_id가 NULL) 탈퇴 표기, 시스템(앰비언트) 드랍은 원래 드랍한 유저가 없어 «익명»이다
+  // (운영 로직 17.2절, 티켓 20261021_1249 2회). 프로필이 있는데 표시 이름이 비어 있는 경우도 «익명»이다.
+  const dropperName =
+    (drop.users && getDisplayName(drop.users)) || (isWithdrawnDrop(drop) ? d.withdrawnUser.name : d.drops.anonymous)
+
   // 잠긴 개체는 이름·그림·일련번호를 싣지 않고 «잠김 표시 + 등급»만 싣는다(티켓 20261018_1812, 운영 로직 7.3절).
   if (drop.inventory_items?.locked === true) {
     return NextResponse.json({
@@ -60,7 +66,7 @@ export async function GET(
       badge_name: d.lockedItem.card.name,
       badge_rarity: drop.badges.rarity,
       badge_image_url: null,
-      dropper_name: (drop.users && getDisplayName(drop.users)) || d.drops.anonymous,
+      dropper_name: dropperName,
       dropped_at: drop.dropped_at,
       is_available: drop.is_available,
       is_own: drop.dropper_user_id === user.id,
@@ -75,7 +81,7 @@ export async function GET(
     badge_name: drop.badges.name,
     badge_rarity: drop.badges.rarity,
     badge_image_url: drop.badges.image_url,
-    dropper_name: (drop.users && getDisplayName(drop.users)) || d.drops.anonymous,
+    dropper_name: dropperName,
     dropped_at: drop.dropped_at,
     is_available: drop.is_available,
     is_own: drop.dropper_user_id === user.id,

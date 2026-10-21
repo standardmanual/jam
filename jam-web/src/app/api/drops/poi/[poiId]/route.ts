@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import { getDisplayName } from '@/lib/utils'
+import { isWithdrawnDrop } from '@/lib/account/withdrawn-actor'
+import type { PoiDropSource } from '@/types/database'
 // 이 파일은 poi_drops 행 변수명으로 `d`를 이미 쓰고 있어(아래 rows.map((d) => ...)),
 // 딕셔너리 임포트는 이름 충돌을 피해 `dict`로 별칭한다.
 import { d as dict } from '@/lib/i18n'
@@ -48,7 +50,7 @@ export async function GET(
     // 20260829_2101 개체정체성 모델의 poi_drops.inventory_item_id(현재 드랍이 가리키는
     // 개체). 관계명을 명시하지 않으면 PostgREST가 PGRST201로 거부해 목록 조회 자체가
     // 실패한다 — 여기서는 후자를 써야 하므로 명시적으로 지정한다.
-    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at, locked, unlock_required )`)
+    .select(`id, badge_id, dropped_at, dropper_user_id, source, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at, locked, unlock_required )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
@@ -65,6 +67,8 @@ export async function GET(
     badge_id: string
     dropped_at: string
     dropper_user_id: string | null
+    /** 'system'(앰비언트)은 원래 드랍한 유저가 없다. 'user'인데 dropper_user_id가 NULL이면 드랍한 유저가 탈퇴한 것이다 */
+    source: PoiDropSource
     badges: { name: string; rarity: string; image_url: string | null } | null
     // 마이그레이션 이전에 완료된 과거 드랍은 소급 연결되지 않아 null일 수 있다.
     inventory_items: {
@@ -95,7 +99,11 @@ export async function GET(
   for (const u of usersData) nameById[u.id] = getDisplayName(u)
 
   const drops = rows.map((d) => {
-    const dropperName = (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ?? dict.drops.anonymous
+    // 유저 드랍인데 드랍한 유저가 지워졌으면 탈퇴 표기(운영 로직 17.2절, 티켓 20261021_1249 2회). 시스템 드랍과, 프로덕션에서 조회 대상에서 뺀
+    // 스테이징 테스트 계정(dropper_user_id가 값을 가진다)은 지금처럼 «익명»이다.
+    const dropperName =
+      (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ??
+      (isWithdrawnDrop(d) ? dict.withdrawnUser.name : dict.drops.anonymous)
     // 잠긴 개체: 어떤 아이템 배지인지 알 수 있는 값(배지 id·이름·그림·일련번호)을 읽은 값에서도 옮기지 않는다.
     // `badge_id`는 목록이 배지 종류별로 묶는 키라 비우면 등급이 다른 잠긴 개체가 한 카드로 섞인다 — 등급별 합성 키를 쓴다.
     if (d.inventory_items?.locked === true) {
