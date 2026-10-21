@@ -296,7 +296,7 @@ export const ko = {
       /** ① Strava 동기화. 연동 전에는 연결 길(버튼), 연동됨에는 동기화 버튼(`SyncButton`, 글자는 `today.syncButton`)이다 */
       sync: {
         description: '가장 최근 활동 하나가 잼과 배지가 되어 돌아와요',
-        descriptionConnected: 'Strava에 활동이 올라오면 동기화해서 잼과 배지를 획득해요',
+        descriptionConnected: 'Strava에 활동이 올라오면 동기화해서 잼과 배지를 받아요',
         connectCta: 'Strava 동기화하기',
       },
       /** ② 캡슐 열기. `{n}`은 가진 잼이 아니라 캡슐에 더 채울 잼이다 */
@@ -319,7 +319,7 @@ export const ko = {
       },
       /** 잼 모자람 안내(`InlineNotice`) — 실제로 모자랄 때만. 이때 primary 버튼은 동기화로 바뀐다 */
       shortage: {
-        capsule: '잼이 모자라요. 가진 잼 {have}만큼, 필요한 잼은 {need}만큼이에요. 새 활동을 동기화하면 잼을 더 받아요.',
+        capsule: '잼이 모자라요. 가진 잼은 {have}만큼, 필요한 잼은 {need}만큼이에요. 새 활동을 동기화하면 잼을 더 받아요.',
         locked: '잠긴 아이템 배지를 열 잼이 모자라요. 새 활동을 동기화하면 잼을 더 받아요.',
       },
     },

@@ -344,7 +344,7 @@ describe('JAM! 시작하기 카드 — ① Strava 동기화', () => {
 
   it('연동됨·동기화 대기: 설명과 실제 SyncButton(«동기화») 하나', () => {
     const html = render(realOnly({ stravaConnected: true }), 'runner')
-    expect(html).toContain('Strava에 활동이 올라오면 동기화해서 잼과 배지를 획득해요')
+    expect(html).toContain('Strava에 활동이 올라오면 동기화해서 잼과 배지를 받아요')
     expect(buttonTexts(html)).toEqual([d.today.syncButton])
   })
 })
@@ -394,7 +394,7 @@ describe('JAM! 시작하기 카드 — ② 캡슐 열기', () => {
   it('잼 모자람: 안내가 나오고 primary 버튼이 동기화로 바뀐다', () => {
     const html = render(realOnly({ steps: { sync: true }, capsule: capsule({ balance: 2 }) }), 'runner')
     expect(html).toContain('role="status"')
-    expect(textOf(html)).toContain('잼이 모자라요. 가진 잼 2만큼, 필요한 잼은 5만큼이에요. 새 활동을 동기화하면 잼을 더 받아요.')
+    expect(textOf(html)).toContain('잼이 모자라요. 가진 잼은 2만큼, 필요한 잼은 5만큼이에요. 새 활동을 동기화하면 잼을 더 받아요.')
     expect(buttonTexts(html)).toEqual([d.today.syncButton])
   })
 

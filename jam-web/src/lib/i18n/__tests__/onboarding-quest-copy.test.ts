@@ -106,7 +106,7 @@ describe('«JAM! 시작하기» 카드 문구', () => {
 
   it('잼 안내는 «잼 {n}만큼»처럼 받침이 갈리는 조사를 피하고 열기를 부추기지 않는다', () => {
     const shortage = d.onboardingQuest.real.shortage.capsule
-    expect(shortage).toBe('잼이 모자라요. 가진 잼 {have}만큼, 필요한 잼은 {need}만큼이에요. 새 활동을 동기화하면 잼을 더 받아요.')
+    expect(shortage).toBe('잼이 모자라요. 가진 잼은 {have}만큼, 필요한 잼은 {need}만큼이에요. 새 활동을 동기화하면 잼을 더 받아요.')
     for (const entry of real) {
       expect(entry.text, entry.path).not.toContain('한 번만 더')
       expect(entry.text, entry.path).not.toContain('곧 좋은 게')
