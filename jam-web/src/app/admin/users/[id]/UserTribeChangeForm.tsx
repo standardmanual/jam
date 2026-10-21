@@ -335,7 +335,7 @@ export function UserTribeChangeForm({ userId, currentTribeName, options, reasons
                 <p>
                   {preview.status === 'ready' && preview.missions.length > 0
                     ? `참가 중인 트라이브 미션 ${preview.missions.length}개가 취소돼요.`
-                    : '취소되는 미션이 없어요.'}
+                    : '취소되는 미션이 없어요'}
                 </p>
                 <p>바꾼 뒤 유저에게 알림이 가요.</p>
                 <p>되돌릴 때는 다시 바꾸면 돼요.</p>

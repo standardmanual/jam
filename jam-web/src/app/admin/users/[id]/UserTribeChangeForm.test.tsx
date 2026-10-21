@@ -429,13 +429,13 @@ describe('확인창', () => {
     expect(t).toContain('되돌릴 때는 다시 바꾸면 돼요.')
   })
 
-  it('취소되는 미션이 없으면 «취소되는 미션이 없어요.»라고 알린다', async () => {
+  it('취소되는 미션이 없으면 확인창에서도 «취소되는 미션이 없어요»라고 알린다', async () => {
     setFetch({ previewResponse: () => Promise.resolve(fakeResponse(200, previewBody([]))) })
     const tree = await fillAll()
     press(buttonText(tree, '트라이브 바꾸기'))
     const t = textOf(dialog(draw()))
 
-    expect(t).toContain('취소되는 미션이 없어요.')
+    expect(t).toContain('취소되는 미션이 없어요')
     expect(t).not.toContain('미션 0개')
   })
 
