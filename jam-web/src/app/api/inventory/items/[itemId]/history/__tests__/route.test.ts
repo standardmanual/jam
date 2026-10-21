@@ -1,5 +1,8 @@
 /**
  * GET /api/inventory/items/[itemId]/history — 잠긴 개체의 응답에 가림 대상 값이 없다 (티켓 20261018_0054 2회, 운영 로직 7.3절)
+ * + 탈퇴한 유저의 이벤트가 빠지지 않고 `withdrawn`으로 실린다 (티켓 20261021_1249 2회, 운영 로직 17.2절):
+ * 줍은 유저가 탈퇴한 picked_up · 최초 유저 드랍의 유저가 탈퇴한 obtained · 드랍한 유저가 탈퇴한 dropped는 withdrawn,
+ * 시스템 드랍(드랍한 유저가 원래 없음)은 withdrawn이 아니다.
  *
  * 이력 응답은 «얻은 날과 경로(obtained_by)»와 드랍·픽업 이벤트(지점 이름, 유저 이름)만 싣는다. 이름·그림·설명·컬렉션·트라이브·일련번호·배지 id는
  * 읽지도 싣지도 않는다. 잠긴 개체에서도 그렇다는 것을 응답 전체를 문자열로 만들어 고정하고, 내 개체가 아니면 열람할 수 없다는 기존 규칙도 함께 확인한다.
@@ -98,5 +101,76 @@ describe('이력 API — 잠긴 개체', () => {
     state.user = null
 
     expect((await get()).status).toBe(401)
+  })
+})
+
+describe('이력 API — 탈퇴한 유저의 이벤트', () => {
+  const drop = (over: Record<string, unknown>) => ({
+    id: 'd1',
+    dropper_user_id: null,
+    picked_up_by: null,
+    dropped_at: '2026-10-10T00:00:00Z',
+    picked_up_at: null,
+    source: 'user',
+    poi: { name: '한강 쉼터' },
+    ...over,
+  })
+
+  it('이력에 필요한 source 칸을 드랍에서 함께 읽는다', async () => {
+    await get()
+
+    expect(state.selected.find((s) => s.table === 'poi_drops')?.columns).toContain('source')
+  })
+
+  it('줍은 유저가 탈퇴했으면 picked_up 이벤트를 빠뜨리지 않고 withdrawn으로 싣는다', async () => {
+    state.drops = [drop({ dropper_user_id: 'user-1', picked_up_at: '2026-10-11T00:00:00Z', picked_up_by: null })]
+
+    const body = await (await get()).json()
+
+    const pickedUp = body.events.find((e: { type: string }) => e.type === 'picked_up')
+    expect(pickedUp).toEqual({
+      type: 'picked_up',
+      timestamp: '2026-10-11T00:00:00Z',
+      user_id: '',
+      username: null,
+      withdrawn: true,
+      poi_name: '한강 쉼터',
+    })
+  })
+
+  it('최초 유저 드랍의 유저가 탈퇴했으면 obtained와 dropped 모두 withdrawn으로 싣는다', async () => {
+    state.drops = [drop({})]
+
+    const body = await (await get()).json()
+
+    const byType = Object.fromEntries(body.events.map((e: { type: string }) => [e.type, e]))
+    expect(byType.obtained).toMatchObject({ user_id: '', username: null, withdrawn: true })
+    expect(byType.dropped).toMatchObject({ user_id: '', username: null, withdrawn: true })
+    expect(body.events).toHaveLength(2)
+  })
+
+  it('시스템 드랍은 드랍한 유저가 원래 없으므로 withdrawn이 아니고 obtained도 생략한다', async () => {
+    state.drops = [drop({ source: 'system' })]
+
+    const body = await (await get()).json()
+
+    expect(body.events).toEqual([
+      { type: 'dropped', timestamp: '2026-10-10T00:00:00Z', user_id: '', username: null, poi_name: '한강 쉼터' },
+    ])
+  })
+
+  it('살아 있는 유저의 드랍·픽업에는 withdrawn이 붙지 않는다', async () => {
+    state.users = [
+      { id: 'user-1', username: 'runner', display_name: '러너' },
+      { id: 'user-2', username: 'walker', display_name: '워커' },
+    ]
+    state.drops = [drop({ dropper_user_id: 'user-2', picked_up_by: 'user-1', picked_up_at: '2026-10-11T00:00:00Z' })]
+
+    const body = await (await get()).json()
+
+    expect(body.events).toHaveLength(3)
+    for (const ev of body.events) expect(ev).not.toHaveProperty('withdrawn')
+    expect(body.events.find((e: { type: string }) => e.type === 'picked_up')).toMatchObject({ user_id: 'user-1', username: '러너' })
+    expect(body.events.find((e: { type: string }) => e.type === 'dropped')).toMatchObject({ user_id: 'user-2', username: '워커' })
   })
 })

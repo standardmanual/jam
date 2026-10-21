@@ -113,8 +113,16 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
                     {events.map((ev, i) => (
                       <li key={i} className="flex flex-col gap-0.5">
                         <span className="text-xs text-muted font-mono">{formatKoreanDateTime(ev.timestamp, { year: true, time: true })}</span>
-                        <p className="text-base">
-                          {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
+                        <p className="text-base break-keep wrap-break-word">
+                          {ev.withdrawn ? (
+                            // 탈퇴한 유저는 고정 텍스트로 보인다(운영 로직 17.2절). 누를 곳이 없어 링크·팝업 없이 title·aria-label만 둔다
+                            <span title={d.withdrawnUser.notice} aria-label={d.withdrawnUser.notice}>
+                              {d.withdrawnUser.name}
+                            </span>
+                          ) : (
+                            (ev.username ?? d.inventory.historyUnknownUser)
+                          )}{' '}
+                          · {eventLabel(ev)}
                         </p>
                         {ev.poi_name && (
                           <p className="text-xs text-muted inline-flex items-center gap-1">
