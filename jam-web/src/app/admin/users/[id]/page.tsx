@@ -7,6 +7,7 @@ import { DataTablePagination } from '@/components/admin/data-table/data-table-pa
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
+import { loadUserChapterView } from '@/lib/admin/user-chapter-view'
 import type { UserRow } from '@/types/database'
 import UserGrantForm from '../../points/UserGrantForm'
 import { ResetUserButton } from '../ResetUserButton'
@@ -15,6 +16,7 @@ import { BadgeHistoryTable, type BadgeHistoryRow } from './BadgeHistoryTable'
 import { AdminRoleToggle } from './AdminRoleToggle'
 import { BadgeDiagnosisButton } from './BadgeDiagnosisButton'
 import { CombineFailTable, type CombineFailRow } from './CombineFailTable'
+import { UserChapterSection } from './UserChapterSection'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -79,6 +81,9 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
     ((failBadgesRaw ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name])
   )
 
+  // 챕터와 오른 기록, 점수 기록 (티켓 20261019_1318 2회) — 보조 읽기라 구역마다 실패를 따로 알리고 화면 전체를 막지 않는다.
+  const chapterView = await loadUserChapterView(service, id, user.tribe_id)
+
   // ADMIN_EMAILS 화이트리스트 계정인지 (20260827_015) — 안내 문구에만 사용, 판정 로직은 lib/admin/auth.ts 공용
   const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
   const isWhitelisted = adminEmails.includes(user.email)
@@ -131,6 +136,9 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
           </div>
         )}
       </div>
+
+      {/* 챕터와 오른 기록, 점수 기록 (티켓 20261019_1318 2회) — 긴 표 앞에 둔다 */}
+      <UserChapterSection view={chapterView} />
 
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold">배지 획득 히스토리</h2>

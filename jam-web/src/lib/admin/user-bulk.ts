@@ -102,7 +102,11 @@ export interface UserBulkImpact {
   excludedSelfCount: number
   // 포인트
   totalAmount?: number
-  negativeBalanceCount?: number
+  /**
+   * 회수하지 못하고 건너뛰는 유저 수 — 잔액이 요청 금액보다 적은 유저(티켓 20261019_1314: 잔액보다 큰 회수는 마이너스가 아니라 거절된다).
+   * 지급이거나 회수 대상이 없으면 0이다.
+   */
+  revokeSkippedCount?: number
   notificationCount?: number
   // 초기화·삭제
   badgeCount?: number

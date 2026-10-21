@@ -4,6 +4,11 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { collectTribeReferences, TRIBE_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import type { TribeRow } from '@/types/database'
 
+// 저장·삭제 실패 응답은 고정 문구다. DB 오류 원문(제약 이름·내부 표 이름 등)은 응답에 싣지 않고 서버 로그에만 남긴다(티켓 20261019_1318 2회).
+const SAVE_ERROR_MESSAGE = '트라이브가 저장되지 않았어요. 데이터베이스가 요청을 처리하지 못했어요. 잠시 뒤 다시 저장해 주세요.'
+const ADJACENCY_SAVE_ERROR_MESSAGE = '인접 트라이브가 저장되지 않았어요. 데이터베이스가 요청을 처리하지 못했어요. 잠시 뒤 다시 저장해 주세요.'
+const DELETE_ERROR_MESSAGE = '트라이브를 삭제하지 못했어요. 데이터베이스가 요청을 거부했어요. 잠시 뒤 다시 시도하고, 같으면 개발자에게 전달해 주세요.'
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -56,7 +61,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[tribes PUT] 저장 실패:', error)
+    return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
+  }
 
   // 인접 트라이브 갱신 (배열 전달 시에만) — 드랍엔진 v2 Layer 2의 인접 버킷 원천
   if (Array.isArray(adjacent_tribe_ids)) {
@@ -66,7 +74,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       const adjacencyQuery = supabase.from('tribe_adjacency')
       const adjInsertQuery = adjacencyQuery.insert(ids.map((adjacent_tribe_id) => ({ tribe_id: id, adjacent_tribe_id })))
       const { error: adjError } = await adjInsertQuery
-      if (adjError) return NextResponse.json({ error: `인접 저장 실패: ${adjError.message}` }, { status: 500 })
+      if (adjError) {
+        console.error('[tribes PUT] 인접 저장 실패:', adjError)
+        return NextResponse.json({ error: ADJACENCY_SAVE_ERROR_MESSAGE }, { status: 500 })
+      }
     }
   }
 
@@ -111,6 +122,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   const { error } = await supabase.from('tribes').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[tribes DELETE] 삭제 실패:', error)
+    return NextResponse.json({ error: DELETE_ERROR_MESSAGE }, { status: 500 })
+  }
   return NextResponse.json({ ok: true })
 }

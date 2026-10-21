@@ -68,9 +68,10 @@ export async function computeUserBulkImpact(
     impact.notificationCount = eligible.length
     if (amount < 0 && eligible.length > 0) {
       const balances = await fetchWalletBalances(supabase, eligible)
-      impact.negativeBalanceCount = eligible.filter((id) => (balances.get(id) ?? 0) < Math.abs(amount)).length
+      // 잔액보다 큰 회수는 거절되어 그 유저만 건너뛴다(`admin_deduct_points`, 티켓 20261019_1314)
+      impact.revokeSkippedCount = eligible.filter((id) => (balances.get(id) ?? 0) < Math.abs(amount)).length
     } else {
-      impact.negativeBalanceCount = 0
+      impact.revokeSkippedCount = 0
     }
     return impact
   }
