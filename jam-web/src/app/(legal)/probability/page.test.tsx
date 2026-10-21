@@ -155,6 +155,9 @@ describe('정상 — 구성과 값', () => {
     expect(text).toContain('내가 캡슐을 15번 여는 동안 Epic 이상이 나오지 않으면, 그다음 캡슐의 첫 아이템 배지는 Epic 이상으로 나와요.')
     expect(text).toContain('Common 아이템 배지가 10번 이어서 나오면, 그다음 아이템 배지는 Rare 이상으로 나와요.')
     expect(text).toContain('동기화와 캡슐에서 나온 것을 합쳐서 세어요.')
+    // 보정으로 정해진 등급도 후보가 없으면 낮춰 뽑는다 — 목록 아래에 같은 규칙을 적는다(목록 항목은 그대로 둘)
+    expect(text).toContain('그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.')
+    expect(text).not.toContain('처음 뽑는 등급')
   })
 
   it('바뀐 날짜 표에 첫 줄이 있다(임시값: 출시 전에 사용자가 확정)', async () => {
@@ -248,6 +251,8 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
       expect(textOf(section), title).toContain(UNAVAILABLE)
       expect(textOf(section), title).not.toMatch(sectionNumbers)
       expect(section, title).not.toContain('<table')
+      // 가리킬 등급 표가 없으니 «이 확률은 처음 뽑는 등급이에요»도 남기지 않는다
+      expect(textOf(section), title).not.toContain('처음 뽑는 등급')
     }
     // 시스템 드랍 표와 바뀐 날짜 표는 그대로다
     expect(count(html, '<table')).toBe(2)
@@ -260,9 +265,11 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     expect(textOf(sectionOf(html, '캡슐'))).not.toMatch(sectionNumbers)
   })
 
-  it('값이 없는 문장은 읽기가 실패해도 남는다(낮추는 규칙, 트라이브 문장, 확률이 없는 것, 변경 이력 머리 문장)', async () => {
+  it('스스로 뜻이 닫히는 문장은 읽기가 실패해도 남는다(시스템 드랍 낮춤 규칙, 트라이브 문장, 확률이 없는 것, 변경 이력 머리 문장)', async () => {
     const text = textOf(await render({ ...ALL_OK, capsule_policy: 'throw', ambient_drop_config: failed }))
-    expect(text).toContain('한 등급씩 낮춰서 무작위로 골라요.')
+    // 동기화·캡슐·보정 장치의 낮춤 문장은 표 없이 남기지 않는다(시스템 드랍 쪽만 남는다)
+    expect(text).not.toContain('한 등급씩 낮춰서 무작위로 골라요.')
+    expect(text).not.toContain('처음 뽑는 등급')
     expect(text).toContain('받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.')
     expect(text).toContain('Common부터 Rare, Epic, Mystic 순서로 찾아서')
     expect(text).toContain('에는 확률이 없어요.')

@@ -17,8 +17,9 @@ import {
  *
  * 값은 `capsule_policy`·`jam_policy`·`ambient_drop_config`를 서버에서 읽어 만든다(`lib/probability/disclosure.ts`). 설정을 바꾸면 페이지도 바뀌어야
  * 하므로 `force-dynamic`이다. 읽지 못하면 코드 상수 사본으로 대신하지 않고 해당 섹션을 «지금 불러오지 못했어요»로 바꾼다(틀린 확률을 보이지 않는다).
- * 정책 두 표(동기화·캡슐·보정 장치 세 섹션)와 시스템 드랍은 따로 실패한다. 값이 없는 문장(확률이 없는 것, 변경 이력 머리 문장, 등급을 낮춰 고르는 규칙)은
- * 읽기가 실패해도 그대로 둔다.
+ * 정책 두 표(동기화·캡슐·보정 장치 세 섹션)와 시스템 드랍은 따로 실패한다. 값이 없고 스스로 뜻이 닫히는 문장(확률이 없는 것, 변경 이력 머리 문장,
+ * 트라이브 후보 문장, 시스템 드랍의 낮춤 규칙)은 읽기가 실패해도 그대로 둔다. 표의 숫자를 한정하는 «이 확률은 처음 뽑는 등급이에요»는 가리킬 표가
+ * 없으므로 표와 함께 빠진다.
  *
  * 서식은 `privacy/page.tsx`(티켓 20260901_2217)의 Section·P·Note·H3를 따라 이 페이지가 쓰는 것만 복사했다. 법 페이지의 공용 보조 컴포넌트를 뽑는 티켓
  * 20261021_1428이 끝나면 따라 옮긴다. 표 `ProbabilityTable`은 DS에 Table이 없고 DefCard(라벨 위·값 아래)는 등급 숫자를 나란히 비교하지 못해
@@ -40,9 +41,14 @@ const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침�
  */
 const CHANGE_LOG: DisclosureRow[] = [{ label: '2026년 10월 21일', value: '확률 안내를 처음 열었어요' }]
 
-/** 동기화와 캡슐이 같이 쓰는 문장 — 두 곳의 말이 갈리지 않게 상수 하나를 쓴다 */
-const LOWERING_NOTE =
-  '이 확률은 처음 뽑는 등급이에요. 그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.'
+/**
+ * 동기화와 캡슐이 같이 쓰는 규칙(`pickWithRarityFallback`) — 뽑힌 등급부터 한 등급씩 내려간다. 보정 장치로 정해진 등급도 같은 함수를 지난다.
+ * 두 곳의 말이 갈리지 않게 상수 하나를 쓴다.
+ */
+const LOWERING_RULE = '그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.'
+
+/** 등급 표 바로 아래 문장 — 표의 숫자가 «처음 뽑는 등급»이라는 것을 한정한다 */
+const LOWERING_NOTE = `이 확률은 처음 뽑는 등급이에요. ${LOWERING_RULE}`
 
 const TRIBE_NOTE = '다른 트라이브의 것이 나올 때는 받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.'
 
@@ -158,10 +164,8 @@ function SyncSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> })
           />
         </>
       ) : (
-        <>
-          <Unavailable />
-          <Note>{LOWERING_NOTE}</Note>
-        </>
+        // 가리킬 등급 표가 없으므로 «이 확률은 처음 뽑는 등급이에요» 문장도 함께 뺀다(티켓 20261021_1250 머지 점검)
+        <Unavailable />
       )}
     </Section>
   )
@@ -191,7 +195,6 @@ function CapsuleSection({ policy }: { policy: DisclosureResult<PolicyDisclosure>
         <>
           <Unavailable />
           <Note>{TRIBE_NOTE}</Note>
-          <Note>{LOWERING_NOTE}</Note>
         </>
       )}
     </Section>
@@ -225,13 +228,16 @@ function PitySection({ policy }: { policy: DisclosureResult<PolicyDisclosure> })
   return (
     <Section title="보정 장치">
       {policy.ok ? (
-        <ul className="flex flex-col gap-2 list-disc pl-6">
-          {policy.data.pity.map((sentence, i) => (
-            <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground break-keep wrap-break-word text-pretty">
-              {sentence}
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2 list-disc pl-6">
+            {policy.data.pity.map((sentence, i) => (
+              <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground break-keep wrap-break-word text-pretty">
+                {sentence}
+              </li>
+            ))}
+          </ul>
+          <Note>{LOWERING_RULE}</Note>
+        </div>
       ) : (
         <Unavailable />
       )}
