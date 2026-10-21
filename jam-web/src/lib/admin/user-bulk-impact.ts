@@ -7,6 +7,7 @@
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import type { ValidAdminGrant } from '@/lib/points/admin-grant'
+import { RETENTION_MONTHS, retentionSince, type RetainedKind } from '@/lib/account/retention'
 import { countRowsByKey, type CountRowsClient } from './list-counts'
 import { fetchUserHoldingCounts } from './user-list'
 import { sumCounts, type UserBulkAction, type UserBulkImpact, type UserTarget, type UserTargetPartition } from './user-bulk'
@@ -43,6 +44,61 @@ async function fetchWalletBalances(supabase: ServiceClient, userIds: string[]): 
   return balances
 }
 
+/** 유저들의 인벤토리 id — 아이템이 «없어짐» 처리되는 수를 세는 데 쓴다 */
+async function fetchInventoryIds(supabase: ServiceClient, userIds: string[]): Promise<string[]> {
+  const inventoryIds: string[] = []
+  for (let i = 0; i < userIds.length; i += READ_CHUNK_SIZE) {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('id')
+      .in('user_id', userIds.slice(i, i + READ_CHUNK_SIZE))
+    if (error) throw new Error(`[user-bulk] 인벤토리 조회 실패: ${error.message}`)
+    inventoryIds.push(...(data ?? []).map((row) => row.id))
+  }
+  return inventoryIds
+}
+
+/** 건수만 읽는 쿼리(`head: true`)의 최소 모양 — `.in()` 뒤 `.gte()`가 실행 가능한 쿼리다 */
+interface HeadCountQuery {
+  in(column: string, values: string[]): HeadCountQuery
+  gte(column: string, value: string): PromiseLike<{ count: number | null; error: { message: string } | null }>
+}
+interface HeadCountClient {
+  from(table: string): { select(columns: string, options: { count: 'exact'; head: true }): HeadCountQuery }
+}
+
+/**
+ * 삭제 준비 함수(`prepare_account_deletion`, 마이그레이션 263)가 보관 표로 복사하는 기록의 원본 위치.
+ * 종류별 기간 안(`timeColumn >= 지금 - 기간`)의 행만 복사되므로 미리보기도 같은 조건으로 센다. 같은 `poi_drops` 행이라도
+ * 놓은 유저(`poi_drop`)와 주운 유저(`poi_pickup`)는 따로 복사된다.
+ */
+const RETAINED_SOURCES: ReadonlyArray<{ kind: RetainedKind; table: string; userColumn: string; timeColumn: string }> = [
+  { kind: 'checkin_earn', table: 'user_checkin_badge_earns', userColumn: 'user_id', timeColumn: 'earned_at' },
+  { kind: 'poi_view', table: 'poi_views', userColumn: 'user_id', timeColumn: 'viewed_at' },
+  { kind: 'poi_drop', table: 'poi_drops', userColumn: 'dropper_user_id', timeColumn: 'dropped_at' },
+  { kind: 'poi_pickup', table: 'poi_drops', userColumn: 'picked_up_by', timeColumn: 'picked_up_at' },
+  { kind: 'abuse_log', table: 'abusing_logs', userColumn: 'user_id', timeColumn: 'created_at' },
+]
+
+/** 보관 표로 복사될 기록의 총 수 */
+async function countRetainedRecords(supabase: ServiceClient, userIds: string[], now: Date): Promise<number> {
+  const client = supabase as unknown as HeadCountClient
+  let total = 0
+  for (const source of RETAINED_SOURCES) {
+    const since = retentionSince(now, RETENTION_MONTHS[source.kind])
+    for (let i = 0; i < userIds.length; i += READ_CHUNK_SIZE) {
+      const { count, error } = await client
+        .from(source.table)
+        .select('id', { count: 'exact', head: true })
+        .in(source.userColumn, userIds.slice(i, i + READ_CHUNK_SIZE))
+        .gte(source.timeColumn, since)
+      if (error) throw new Error(`[user-bulk] 보관 대상 ${source.kind} 집계 실패: ${error.message}`)
+      total += count ?? 0
+    }
+  }
+  return total
+}
+
 /**
  * 미리보기 영향 수치. `partition.eligible`이 실제 처리 대상이고, 제외된 어드민·본인 수는 공통으로 돌려준다.
  * DB를 바꾸지 않는다.
@@ -51,7 +107,8 @@ export async function computeUserBulkImpact(
   supabase: ServiceClient,
   action: UserBulkAction,
   partition: UserTargetPartition,
-  grant?: ValidAdminGrant
+  grant?: ValidAdminGrant,
+  now: Date = new Date()
 ): Promise<UserBulkImpact> {
   const { eligible } = partition
   const impact: UserBulkImpact = {
@@ -87,7 +144,7 @@ export async function computeUserBulkImpact(
     return impact
   }
 
-  // delete — 아이템은 삭제되지 않고 소유자만 비워진다(`inventory_items.inventory_id` ON DELETE SET NULL)
+  // delete — 아이템은 지워지지 않고 «없어짐» 처리된다(삭제 준비 함수가 `destroyed_at`을 채우고 Orphan 이력을 남긴다, 티켓 20261021_1249)
   const balances = await fetchWalletBalances(supabase, eligible)
   let balanceTotal = 0
   for (const id of eligible) balanceTotal += balances.get(id) ?? 0
@@ -96,5 +153,11 @@ export async function computeUserBulkImpact(
   impact.stravaConnectionCount = sumCounts(
     await countRowsByKey(countClient, 'strava_connections', 'user_id', eligible, (q) => q.is('disconnected_at', null))
   )
+  impact.vanishingItemCount = sumCounts(
+    await countRowsByKey(countClient, 'inventory_items', 'inventory_id', await fetchInventoryIds(supabase, eligible), (q) =>
+      q.is('destroyed_at', null)
+    )
+  )
+  impact.retainedRecordCount = await countRetainedRecords(supabase, eligible, now)
   return impact
 }
