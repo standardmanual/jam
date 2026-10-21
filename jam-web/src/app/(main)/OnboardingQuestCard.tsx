@@ -59,7 +59,8 @@ const CTA_ROW_CLASS = 'flex'
 // rounded-full은 버튼의 --radius-full과 래퍼 반경을 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정).
 // self-start가 없으면 이 줄 자체가 카드 폭으로 늘어나 펄스 링이 카드 폭 전체에 그려진다(티켓 20260928_2137).
 const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-full jam-quest-pulse`
-const CHIP_ROW_CLASS = 'flex items-center justify-between gap-2'
+// 칩과 분수 라벨 한 줄. 글자를 크게 키운 기기에서는 분수 라벨이 다음 줄로 내려가 가로로 넘치지 않는다(flex-wrap, 높이 고정 없음)
+const CHIP_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-x-2 gap-y-1'
 // ProgressBar.jsx의 fraction 라벨 인라인 스타일(fontSize: var(--text-sm); fontWeight:700;
 // color: var(--link))을 그대로 복제한 클래스 — 새 토큰이 아니라 배치만 칩 줄로 옮긴다. 짧은 라벨이라 한 줄로 둔다(whitespace-nowrap).
 const PROGRESS_LABEL_CLASS = 'text-sm font-bold text-link whitespace-nowrap break-keep wrap-break-word [font-variant-numeric:tabular-nums]'
