@@ -33,7 +33,7 @@ export const STEP_SCREEN_MAP: Record<OnboardingQuestStepKey, OnboardingQuestScre
   browse: 'missions',
 }
 
-// 온보딩 퀘스트 완료 보상 배지 '퀘스트 클리어'의 고정 id — 티켓 20260928_1212(T7a)
+// 온보딩 퀘스트 완료 보상 배지 「JAM!」(처음 이름은 '퀘스트 클리어', 마이그레이션 256이 바꾼다 — 티켓 20261021_1248)의 고정 id — 티켓 20260928_1212(T7a)
 // 마이그레이션 196_onboarding_completion_badge.sql이 넣는 행과 같은 값이다. 지급 로직(T7b,
-// 티켓 20260927_2130)이 이 상수로 user_activity_badges에 행을 넣는다.
+// 티켓 20260927_2130)이 이 상수로 user_activity_badges에 행을 넣는다. 배지를 이름이 아니라 이 id로 찾으므로 이름이 바뀌어도 지급은 그대로다.
 export const ONBOARDING_COMPLETION_BADGE_ID = 'cd20f271-9445-42cc-ac51-d8a96b25e1c3'
