@@ -280,7 +280,7 @@ DB 읽기 검사, 등록 예정 내용, 되돌림 SQL 미리보기, 알아둘 �
 
 저장소 파일은 SQL로 지울 수 없어서 스크립트가 파일 2개와 미션 행을 함께 지운다.
 
-- 지우기 전에 **사용자 데이터가 붙었는지** 읽는다. 대상은 `missions`를 참조하는 외래 키 9곳이다(생성 타입 대조 테스트로 고정):
+- 지우기 전에 **사용자 데이터가 붙었는지** 읽는다. 대상은 `missions`를 참조하는 외래 키 9곳이다(생성 타입 대조 테스트로 고정). 이 중 운영 설정 1곳(`mission_allowed_tribes`)은 읽지 않고 8곳을 읽는다:
 
   | 표.컬럼 | 미션 삭제 시 |
   |---|---|
@@ -294,11 +294,14 @@ DB 읽기 검사, 등록 예정 내용, 되돌림 SQL 미리보기, 알아둘 �
   | `today_cards.mission_id` | 연결이 조용히 끊김(SET NULL) — 홈피드 카드 연결 |
   | `ranking_modes.target_mission_id` | 연결이 조용히 끊김(SET NULL) — 랭킹 모드 대상 |
 
-  어드민 삭제 가드(`lib/admin/reference-guards.ts`의 `MISSION_REFERENCE_SOURCES`)는 앞의 4곳을 차단하고, `today_cards`와 `ranking_modes`는
+  어드민 삭제 가드(`lib/admin/reference-guards.ts`의 `MISSION_REFERENCE_SOURCES`)는 완료 이력·참여 이력·랭킹 스냅샷·포인트 지급 원장과
+  `mission_participation_cancellations`·`mission_item_rewards` 6곳을 차단하고(뒤 두 곳은 티켓 20261019_1318 1회 — 받지 않은 보상과 참가 취소 이력이 함께 사라지지 않게),
+  `mission_allowed_tribes`·`today_cards`·`ranking_modes`는
   삭제를 막지 않는 안내 참조로 다룬다(`ranking_modes`는 티켓 20260925_2105에서 추가). 안내는 단건 삭제 직후의 토스트와 일괄 삭제 확인창에 표시된다.
-  이 스크립트의 되돌림은 «방금 등록한 미션이 아직 아무 데도 쓰이지 않았다»는 전제이므로 9곳 모두
-  하나라도 붙어 있으면 아무것도 지우지 않고 어느 표에 몇 건인지 알리며 중단한다. 참조를 읽지 못해도 중단한다. 이때는 삭제하지
-  말고 어드민에서 노출 모드를 «숨김»으로 바꾼다.
+  이 스크립트의 되돌림은 «방금 등록한 미션이 아직 아무 데도 쓰이지 않았다»는 전제이므로 **나머지 8곳**은
+  하나라도 붙어 있으면 아무것도 지우지 않고 어느 표에 몇 건인지 알리며 중단한다. `mission_allowed_tribes`는 사용자 기록이 아니라 운영자가 정한 설정이라
+  붙어 있어도 막지 않는다(미션을 지우면 함께 지워진다, 티켓 20261019_1318 1회 — `MISSION_UNDO_OPERATING_SETTING_TABLES`).
+  참조를 읽지 못해도 중단한다. 이때는 삭제하지 말고 어드민에서 노출 모드를 «숨김»으로 바꾼다.
 - 기록의 저장소 경로가 규칙(`missions/asset-generator/{id}.png`·`.webp`)과 다르면 시작하지 않는다(엉뚱한 파일을 지우지 않으려고).
 - `image_source`가 `agent-generator`가 아닌 미션은 지우지 않는다.
 - 미션 행을 먼저 지우고 파일을 지운다. 행 삭제가 외래 키 등으로 막히면 이미지는 그대로 남아 미션이 깨지지 않는다.
