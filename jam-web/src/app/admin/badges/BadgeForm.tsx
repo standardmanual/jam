@@ -69,11 +69,6 @@ import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/b
 import { findPoiLinksNotLoadedError, mergeLoadedPoiLinks, type PoiLinksLoadState } from '@/lib/admin/badge-poi-links-guard'
 import { findUnlockRequiredError, normalizeLockFields, type LockedMinimums } from '@/lib/admin/badge-lock-guard'
 import { BRANCH_KEYS, BRANCH_LABEL, findHiddenBadgeError, isBranchKey } from '@/lib/admin/badge-hidden-guard'
-// 배지 트리 화면(BadgeTreeClient 등)의 진행률 분류와 동일한 함수 — 어드민 경고가 화면
-// 렌더링과 다른 판정 로직을 갖지 않도록 재사용한다(제안서 §08 H, 티켓 20260904_1426).
-// `next/headers` 등 서버 전용 의존을 물지 않는 순수 함수라 이 클라이언트 컴포넌트에서
-// 값(value) import로 바로 써도 안전하다(티켓 20260904_0921 게이트 리뷰에서 `npm run build`로 실증됨).
-import { explainUnsupportedProgress } from '@/lib/badge-engine/badgeProgress'
 // 드랍 엔진 본체는 서버 전용이라 import할 수 없다 — 의존 없는 목록 모듈만 가져온다.
 import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/cumulativeConditionFields'
 
@@ -605,14 +600,6 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
     }
   }
 
-  // §08 H(진행 미지원 고지) 어드민 절반 — 배지 트리 화면(`/badges/tree`)이 실제로 조회하는
-  // 대상은 `type: 'activity'` 배지뿐이다. JAM! 카테고리도 activity_types=[]로 저장되는 설계라
-  // 배지 트리에 노출되지 않아 제외한다(티켓 20260904_1426, 20260911_0202).
-  // 조건이 비어 있으면(키가 하나도 없으면) 경고를 계산하지 않는다 — 오탐 방지(티켓 20260911_1019).
-  const hasCondition = !!condPreview && Object.keys(condPreview).length > 0
-  const progressIssue =
-    type === 'activity' && !isJamCategory && hasCondition ? explainUnsupportedProgress(condPreview ?? {}) : null
-
   // 「평가 대기」 — 레지스트리에 선언은 됐지만 엔진이 아직 평가하지 않는 필드가 든 조건은
   // fail-closed로 막힌다. 저장은 되지만 **발급은 되지 않는다**는 걸 화면에서 알린다.
   const pendingConditionKeys = findBlockingConditionKeys(condPreview).pending
@@ -938,7 +925,6 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         unsupportedConditionKeys={unsupportedConditionKeys}
         unrepresentableConditionKeys={unrepresentableConditionKeys}
         pendingConditionKeys={pendingConditionKeys}
-        progressIssue={progressIssue}
         themeContainer={themeContainer}
         poiCategories={poiCategories}
       />

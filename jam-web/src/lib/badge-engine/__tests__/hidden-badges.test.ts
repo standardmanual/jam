@@ -4,29 +4,16 @@
  * 고정하는 성질:
  *  ① 받기 전 숨김 배지만 목록에서 빠진다. 받은 숨김 배지와 일반 배지는 그대로다.
  *  ② `is_hidden` 칸이 없는 행(옛 값·테스트 값)은 숨김이 아니다.
- *  ③ 걸러낸 목록으로 트리를 만들면 받기 전 숨김 배지의 이름·설명이 트리 어디에도 없다
- *     (배지 트리 화면의 «다음 목표»도 이 트리에서 나온다). 받은 숨김 배지는 다른 배지처럼 그려진다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/hidden-badges.test.ts
  */
 import { describe, it, expect } from 'vitest'
 import { excludeHiddenUnearned, isHiddenUnearned } from '@/lib/badge-engine/hiddenBadges'
-import { buildBadgeActivityTrees, type BadgeTreeSourceBadge } from '@/lib/badgeTree'
 
-type Source = BadgeTreeSourceBadge & { is_hidden?: boolean }
+type Source = { id: string; name: string; description: string | null; is_hidden?: boolean }
 
 function badge(overrides: Partial<Source> & Pick<Source, 'id' | 'name'>): Source {
-  return {
-    rarity: 'common',
-    level: null,
-    family_key: overrides.id,
-    description: null,
-    image_url: null,
-    activity_types: ['running'],
-    condition_json: { total_count: 10 },
-    sort_order: 0,
-    ...overrides,
-  }
+  return { description: null, ...overrides }
 }
 
 const normal = badge({ id: 'b-normal', name: '평범한 러너' })
@@ -65,26 +52,5 @@ describe('excludeHiddenUnearned', () => {
     const list = [normal, hiddenSecret]
     excludeHiddenUnearned(list, new Set())
     expect(list).toHaveLength(2)
-  })
-})
-
-describe('배지 트리 — 받기 전 숨김 배지는 이름·설명이 어디에도 없다', () => {
-  it('걸러낸 목록으로 만든 트리에 받기 전 숨김 배지가 없다', () => {
-    const earned = new Set<string>()
-    const source = excludeHiddenUnearned([normal, hiddenSecret], earned)
-    const trees = buildBadgeActivityTrees(source, [], earned)
-    const text = JSON.stringify(trees)
-    expect(text).toContain('평범한 러너')
-    expect(text).not.toContain('비밀스러운 새벽 러너')
-    expect(text).not.toContain('아무도 모르는 조건')
-    expect(text).not.toContain('b-hidden-secret')
-  })
-
-  it('이미 받은 숨김 배지는 다른 배지처럼 트리에 그려진다', () => {
-    const earned = new Set(['b-hidden-earned'])
-    const source = excludeHiddenUnearned([normal, hiddenEarned], earned)
-    const trees = buildBadgeActivityTrees(source, [], earned)
-    const stageIds = trees.flatMap((t) => t.families.flatMap((f) => f.stages.map((s) => s.id)))
-    expect(stageIds).toContain('b-hidden-earned')
   })
 })

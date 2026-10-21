@@ -36,7 +36,6 @@ import {
   type ConditionFormEntry,
   type ConditionFormSection,
 } from '@/lib/badge-engine/conditionRegistry'
-import type { ProgressUnsupportedReason } from '@/lib/badge-engine/badgeProgress'
 import { conditionSummaryChips } from '@/lib/admin/badge-sections'
 import type { ConditionFormFields } from './conditionFormFields'
 import { FieldLabel, FieldMessage, SegmentedControl, SuffixInput } from './BadgeFormControls'
@@ -87,7 +86,6 @@ export interface BadgeConditionSectionProps {
   unsupportedConditionKeys: readonly string[]
   unrepresentableConditionKeys: readonly string[]
   pendingConditionKeys: readonly string[]
-  progressIssue: ProgressUnsupportedReason | null
   themeContainer: HTMLElement | null
   /** `checkin_category_count` 조건의 카테고리 select 선택지(`poi_categories` 재사용, 티켓
    *  20260914_1725) — DB 테이블 기준이라 레지스트리에 정적으로 선언할 수 없어 여기서 주입한다. */
@@ -127,7 +125,6 @@ export default function BadgeConditionSection({
   unsupportedConditionKeys,
   unrepresentableConditionKeys,
   pendingConditionKeys,
-  progressIssue,
   themeContainer,
   poiCategories,
 }: BadgeConditionSectionProps) {
@@ -680,20 +677,6 @@ export default function BadgeConditionSection({
               {unrepresentableConditionKeys.join(', ')} 값의 형태가 입력 항목과 맞지 않아요. 이대로 저장하면 값이 바뀌거나 사라져요.
               아래 「저장될 condition_json 보기」에서 실제 저장될 값을 확인해 주세요.
             </p>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* 진행 미지원 조건 — 저장을 막지 않는다(§08 H 어드민 절반, 티켓 20260904_1426) */}
-      {progressIssue && (
-        <Alert variant="warning">
-          <AlertTitle className="text-sm">이 조건은 배지 트리 화면에 진행률이 표시되지 않아요</AlertTitle>
-          <AlertDescription className="space-y-0.5">
-            <p className="text-xs text-amber-800/80">{progressIssue.reason}</p>
-            {progressIssue.hiddenAxisLabels.length > 0 && (
-              <p className="text-xs text-amber-800/80">화면에서 빠지는 축: {progressIssue.hiddenAxisLabels.join(', ')}</p>
-            )}
-            <p className="text-xs text-amber-800/80">배지 획득에는 영향이 없어요.</p>
           </AlertDescription>
         </Alert>
       )}
