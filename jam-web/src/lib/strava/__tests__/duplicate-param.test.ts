@@ -1,21 +1,28 @@
 /**
- * 중복 연결 안내(`?strava=duplicate`) 주소 처리 (티켓 20261017_1422 2회)
+ * 중복 연결 안내(`?strava=duplicate`, `?strava=duplicate_blocked`) 주소 처리 (티켓 20261017_1422 2회, 20261021_1249 4회)
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/duplicate-param.test.ts
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { hasStravaDuplicateParam, urlWithoutStravaParam } from '../duplicate-param'
+import { hasStravaDuplicateParam, stravaDuplicateMode, urlWithoutStravaParam } from '../duplicate-param'
 
 const params = (query: string) => new URLSearchParams(query)
 
-describe('hasStravaDuplicateParam', () => {
-  it('strava=duplicate일 때만 true다', () => {
+describe('stravaDuplicateMode / hasStravaDuplicateParam', () => {
+  it('strava=duplicate는 offer, strava=duplicate_blocked는 blocked다', () => {
+    expect(stravaDuplicateMode(params('strava=duplicate'))).toBe('offer')
+    expect(stravaDuplicateMode(params('strava=duplicate_blocked'))).toBe('blocked')
     expect(hasStravaDuplicateParam(params('strava=duplicate'))).toBe(true)
-    expect(hasStravaDuplicateParam(params('strava=error&reason=db_error'))).toBe(false)
-    expect(hasStravaDuplicateParam(params('strava=connected'))).toBe(false)
-    expect(hasStravaDuplicateParam(params(''))).toBe(false)
+    expect(hasStravaDuplicateParam(params('strava=duplicate_blocked'))).toBe(true)
+  })
+
+  it('다른 값은 열지 않는다 — connected·error는 StravaConnectReveal의 몫이다', () => {
+    for (const query of ['strava=error&reason=db_error', 'strava=connected', 'strava=connected&reveal=1', 'strava=', 'strava=Duplicate', 'strava=duplicates', '']) {
+      expect(stravaDuplicateMode(params(query)), query).toBeNull()
+      expect(hasStravaDuplicateParam(params(query)), query).toBe(false)
+    }
   })
 })
 
@@ -26,6 +33,11 @@ describe('urlWithoutStravaParam — 열리자마자 주소에서 값을 지운�
 
   it('다른 쿼리는 그대로 둔다', () => {
     expect(urlWithoutStravaParam('/runner', params('strava=duplicate&tab=badges'))).toBe('/runner?tab=badges')
+  })
+
+  it('막힘 안내(duplicate_blocked)도 같은 방식으로 지운다', () => {
+    expect(urlWithoutStravaParam('/runner', params('strava=duplicate_blocked'))).toBe('/runner')
+    expect(urlWithoutStravaParam('/runner', params('strava=duplicate_blocked&tab=badges'))).toBe('/runner?tab=badges')
   })
 })
 
