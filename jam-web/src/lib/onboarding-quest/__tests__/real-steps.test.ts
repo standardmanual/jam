@@ -24,11 +24,18 @@ interface FakeTable {
 }
 
 /** 표마다 결과를 정하는 가짜 클라이언트. 걸린 조건(eq·is)과 `limit`을 표별로 기록한다. */
+interface CallRecord {
+  eq: Array<[string, unknown]>
+  is: Array<[string, unknown]>
+  limit: number | null
+}
+
 function makeFake(tables: Partial<Record<TableName, FakeTable>>) {
-  const calls: Record<string, { eq: Array<[string, unknown]>; is: Array<[string, unknown]>; limit: number | null }> = {}
+  const calls: Record<string, CallRecord> = {}
   const from = (table: string) => {
     const spec = tables[table as TableName] ?? {}
-    const record = (calls[table] = { eq: [], is: [], limit: null })
+    const record: CallRecord = { eq: [], is: [], limit: null }
+    calls[table] = record
     const chain: Record<string, unknown> = {}
     chain.select = () => chain
     chain.eq = (column: string, value: unknown) => {
