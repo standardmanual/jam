@@ -8,6 +8,7 @@
  * 순서(5.2절): 개수 → (개체마다) 트라이브 → 등급 → 후보 → 잠김. 난수는 이 순서로 쓴다.
  *  - 개수: 확정 `guaranteed_count`개 + 확률 `bonus_probability`로 `bonus_count`개 더(난수 1번).
  *  - 트라이브: 개체마다 확률 `other_tribe_probability`로 다른 트라이브, 그 안에서는 나머지 트라이브 가운데 고르게(확률 1번, 뽑을 때 1번).
+ *    «나머지 트라이브»는 후보 배지가 있는 트라이브만이다(`tribesWithCandidates`, 호출부가 좁혀 넘긴다).
  *  - 등급: 설정 확률(70/22/6/2). 보정 1은 `capsule_epic_miss >= pity_epic_threshold`이면 **첫 개체**를 Epic 이상(epic:mystic 설정 비율)으로,
  *    보정 2는 `common_streak >= common_streak_threshold`이면 Rare 이상(설정 비율). 둘이 겹치면 더 센 보정 1을 따른다.
  *    Common 연속은 개체를 받을 때마다 **실제로 받은 등급**으로 이어 센다(DB 함수 `capsule_open`이 세는 방식과 같다).
@@ -17,6 +18,7 @@
  */
 import { assignLock, type LockAssignment, type LockPolicy } from '@/lib/drop-engine/lockAssignment'
 import {
+  listIssueCandidates,
   pickWeighted,
   pickWithRarityFallback,
   type IssueBadge,
@@ -44,7 +46,7 @@ export interface CapsuleRollInput<B extends IssueBadge = IssueBadge> {
   policy: CapsuleRollPolicy
   /** 유저의 소속 트라이브 */
   tribeId: string
-  /** 모든 트라이브 id(소속 포함). «다른 트라이브»는 이 가운데 소속을 뺀 것이다 */
+  /** «다른 트라이브» 후보로 삼을 트라이브 id(소속 포함). «다른 트라이브»는 이 가운데 소속을 뺀 것이다. 호출부(`open.ts`)는 `tribesWithCandidates`로 후보 배지가 있는 트라이브만 넘긴다 */
   tribeIds: readonly string[]
   books: readonly IssueBook[]
   /** 판정 칸(`IssueBadge`) 외에 이름·이미지 같은 칸을 더 실어도 그대로 돌려준다 */
@@ -74,6 +76,29 @@ export interface CapsuleRollResult<B extends IssueBadge = IssueBadge> {
   items: RolledCapsuleItem<B>[]
   /** 모든 등급에 후보가 없어 건너뛴 개체 */
   skipped: Array<{ tribeId: string; rolledRarity: BadgeRarity }>
+}
+
+/** 후보를 뽑을 수 있는 등급 전체 — 어느 등급에든 후보가 있으면 그 트라이브는 «후보 배지가 있는 트라이브»다 */
+const CANDIDATE_RARITIES: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/**
+ * «다른 트라이브» 추첨 대상을 후보 배지가 있는 트라이브로 좁힌다 (티켓 20261021_1248).
+ * 트라이브 표(`tribes`)에는 후보 배지가 없는 비활성 트라이브가 섞여 있어, 그대로 고르면 그 트라이브가 뽑혔을 때 개체가 비고 모든 개체가 비면 캡슐이 열리지 않는다.
+ * 후보 판정은 발급과 같다(`listIssueCandidates` — 활성 컬렉션·공개 기간 안·드랍 제외 아님·삭제 아님). 소속 트라이브는 후보가 없어도 항상 남긴다
+ * (소속으로 뽑히는 길을 없애지 않는다). 다른 트라이브 확률과 «나머지 트라이브 가운데 고르게» 규칙은 그대로고 후보 없는 트라이브만 대상에서 빠진다.
+ */
+export function tribesWithCandidates<B extends IssueBadge>(
+  tribeIds: readonly string[],
+  ownTribeId: string,
+  books: readonly IssueBook[],
+  badges: readonly B[],
+  now: Date
+): string[] {
+  return tribeIds.filter(
+    (id) =>
+      id === ownTribeId ||
+      CANDIDATE_RARITIES.some((rarity) => listIssueCandidates<B>({ tribeId: id, rarity, books, badges, now }).length > 0)
+  )
 }
 
 /** 개수: 확정 개수 + 확률로 보너스 개수. 난수를 한 번 쓴다(확정 개수만 있는 설정이어도 한 번 쓴다). */

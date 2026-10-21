@@ -12,6 +12,7 @@
  * - 챕터 점수 «캡슐 열기»(티켓 20261019_1315): 열기가 확정된 직후(`capsule_open` 다음, 후속 처리 앞) `chapter_add_score`를
  *   (capsule_open, 열기 기록 id, 1)로 한 번 부른다. 거절·추첨 전에 막힌 경우에는 부르지 않고, 같은 열기를 다시 보내도 같은 키다.
  *   점수 실패(RPC 오류·예외)와 후속 처리 실패는 열기·응답을 바꾸지 않는다.
+ * - 다른 트라이브 추첨 대상(티켓 20261021_1248): 후보 배지가 있는 트라이브만이다. 후보 없는 비활성 트라이브가 뽑혀 첫 캡슐이 열리지 않는 일이 없다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트·가짜 RPC·결정적 난수만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/open.test.ts
@@ -105,6 +106,8 @@ interface FakeOptions {
   scoreThrows?: boolean
   tribeId?: string | null
   tribes?: string[]
+  /** 컬렉션(item_books)이 있는 트라이브. 생략하면 `tribes` 전체. 여기에 없는 트라이브는 후보 배지가 하나도 없는 비활성 트라이브다 */
+  bookTribes?: string[]
   userError?: unknown
   stateRow?: unknown
 }
@@ -130,7 +133,7 @@ function fakeClient(options: FakeOptions = {}) {
           return chain({ data: (options.tribes ?? ['A']).map((id) => ({ id, name: `트라이브-${id}` })), error: null })
         case 'item_books':
           return chain({
-            data: (options.tribes ?? ['A']).map((t) => ({
+            data: (options.bookTribes ?? options.tribes ?? ['A']).map((t) => ({
               id: `book-${t}`,
               tribe_id: t,
               is_active: true,
@@ -551,5 +554,61 @@ describe('openCapsule — 챕터 점수 «캡슐 열기» (티켓 20261019_1315)
     expect(payload.openId).toBe('open-1')
     expect(payload.items).toHaveLength(2)
     expect(followUpMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('openCapsule — 다른 트라이브는 후보 배지가 있는 트라이브만 (티켓 20261021_1248)', () => {
+  const badgeOf = (tribe: string, rarity = 'common') => mkBadge(rarity, { id: `badge-${rarity}-${tribe}`, item_book_id: `book-${tribe}` })
+  const oneItemRpc: Result = {
+    data: { ok: true, openId: 'open-t', items: [{ inventoryItemId: 'inv-1', serialNumber: 1 }], next: { required: 90, filled: 0 } },
+    error: null,
+  }
+  // 개수 0.5(1개) / 소속 확률 0.1(다른 트라이브) / 다른 트라이브 고르기 0(첫째) / common 0 / 후보 0 / 잠김 0.9(열린 채)
+  const OTHER_TRIBE_FIRST = [0.5, 0.1, 0, 0, 0, 0.9]
+
+  it('후보 배지가 없는 비활성 트라이브만 «다른 트라이브»로 남아 있어도 소속 트라이브로 열린다 — 개체가 비지 않는다', async () => {
+    badgesRef.rows = [badgeOf('A')]
+    const { client, rpc } = fakeClient({ rpc: oneItemRpc, tribes: ['A', 'B', 'C'], bookTribes: ['A'] })
+
+    // 좁히지 않으면 0이 «다른 트라이브 가운데 첫째» = B(후보 없음)로 가서 개체가 비고 열리지 않았다
+    const payload = await openCapsule(client, USER_ID, { rand: seq(0.5, 0.1, 0, 0, 0.9) })
+
+    const items = (rpc.mock.calls.find(([name]) => name === 'capsule_open')?.[1] as { p_items: Array<Record<string, unknown>> }).p_items
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ badge_id: 'badge-common-A' })
+    expect(payload.openId).toBe('open-t')
+  })
+
+  it('후보가 있는 다른 트라이브는 그대로 뽑힌다 — 활성 트라이브 사이의 고르기는 달라지지 않는다', async () => {
+    badgesRef.rows = [badgeOf('A'), badgeOf('B'), badgeOf('C')]
+    const { client, rpc } = fakeClient({ rpc: oneItemRpc, tribes: ['A', 'B', 'C', 'D'], bookTribes: ['A', 'B', 'C'] })
+
+    await openCapsule(client, USER_ID, { rand: seq(...OTHER_TRIBE_FIRST) })
+    // 다른 트라이브는 B, C 둘(D는 후보 없음으로 빠졌다) — 0.99는 마지막(C)
+    await openCapsule(client, USER_ID, { rand: seq(0.5, 0.1, 0.99, 0, 0, 0.9) })
+
+    const picked = rpc.mock.calls
+      .filter(([name]) => name === 'capsule_open')
+      .map(([, args]) => (args as { p_items: Array<{ badge_id: string }> }).p_items[0].badge_id)
+    expect(picked).toEqual(['badge-common-B', 'badge-common-C'])
+  })
+
+  it('소속 트라이브는 후보가 없어도 대상에서 빠지지 않는다 — 다른 트라이브만 후보가 있으면 그쪽에서 나온다', async () => {
+    badgesRef.rows = [badgeOf('B')]
+    const { client, rpc } = fakeClient({ rpc: oneItemRpc, tribes: ['A', 'B'], bookTribes: ['B'] })
+
+    await openCapsule(client, USER_ID, { rand: seq(...OTHER_TRIBE_FIRST) })
+
+    const items = (rpc.mock.calls.find(([name]) => name === 'capsule_open')?.[1] as { p_items: Array<Record<string, unknown>> }).p_items
+    expect(items[0]).toMatchObject({ badge_id: 'badge-common-B' })
+  })
+
+  it('후속 처리의 트라이브 이름은 전체 트라이브 표에서 찾는다(좁히기가 이름 조회를 줄이지 않는다)', async () => {
+    badgesRef.rows = [badgeOf('B')]
+    const { client } = fakeClient({ rpc: oneItemRpc, tribes: ['A', 'B', 'C'], bookTribes: ['B'] })
+
+    await openCapsule(client, USER_ID, { rand: seq(...OTHER_TRIBE_FIRST) })
+
+    expect(followUpMock.mock.calls[0][0]).toMatchObject({ tribeName: '트라이브-B' })
   })
 })

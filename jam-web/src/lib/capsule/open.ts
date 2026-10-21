@@ -11,6 +11,7 @@
  *  - 후속 처리(포인트·피드, `recordIssuedRewards`)는 열기가 확정된 뒤에 한다. 잠긴 개체는 포인트와 피드에서 빠진다(7.3절, 티켓 20261018_0051).
  *    캡슐에는 대상 활동이 없어 활동 결산 알림은 보내지 않는다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다.
  *  - 열기가 확정되면 챕터 점수 «캡슐 열기»를 센다(`lib/chapter/score.ts`, 원천 id = 열기 기록 id, 티켓 20261019_1315). 점수 실패는 기록만 남고 열기와 응답을 바꾸지 않는다.
+ *  - 다른 트라이브를 고를 때는 후보 배지가 있는 트라이브만 대상이다(`tribesWithCandidates`, 티켓 20261021_1248). 후보가 없는 트라이브가 뽑혀 개체가 비는 일을 없앤다.
  *  - 응답의 잠긴 개체는 이름·그림·일련번호 없이 등급과 여는 데 필요한 양만 싣는다.
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
@@ -32,7 +33,7 @@ import {
   type CapsuleOpenPayload,
   type CapsuleRarity,
 } from './capsule-contract'
-import { rollCapsule, type RolledCapsuleItem } from './capsuleRoll'
+import { rollCapsule, tribesWithCandidates, type RolledCapsuleItem } from './capsuleRoll'
 import { getCapsulePolicy } from './policy'
 
 /** 발급 기록(`item_issue_log.route`)에 쓰는 경로 값 */
@@ -171,7 +172,7 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
     {
       policy: { ...capsulePolicy, ...jamPolicy },
       tribeId: data.tribeId,
-      tribeIds: data.tribes.map((t) => t.id),
+      tribeIds: tribesWithCandidates(data.tribes.map((t) => t.id), data.tribeId, data.books, data.badges, now),
       books: data.books,
       badges: data.badges,
       commonStreak: data.commonStreak,

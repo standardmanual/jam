@@ -8,6 +8,8 @@
  * - 후보: 활성이고 공개 기간 안인 것만, 후보가 없으면 한 등급 내림(올라가지 않음), 모든 등급에 없으면 건너뜀.
  * - 잠김: `assignLock`(경로 capsule), 퀘스트 전 캡슐은 나온 첫 개체를 반드시 잠그고(rolled, 필요한 양 5) 난수를 쓰지 않는다.
  * - 난수 사용 순서(개수, 개체마다 [트라이브 확률, 트라이브 선택], 등급, 후보, 잠김)를 순서가 있는 난수열로 고정한다.
+ * - «다른 트라이브» 대상(티켓 20261021_1248): `tribesWithCandidates`는 후보 배지가 있는 트라이브만 남기고 소속 트라이브는 후보가 없어도 남긴다.
+ *   비활성 트라이브가 뽑혀 개체가 비는 일이 없고, 다른 트라이브 확률과 «나머지 트라이브 가운데 고르게» 규칙은 그대로다.
  * 결정적 난수만 쓴다 — DB는 호출하지 않는다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/capsuleRoll.test.ts
@@ -22,6 +24,7 @@ import {
   rollCapsuleCount,
   rollCapsuleRarity,
   rollCapsuleTribe,
+  tribesWithCandidates,
   type CapsuleRollInput,
   type CapsuleRollPolicy,
 } from '../capsuleRoll'
@@ -334,5 +337,83 @@ describe('rollCapsule — 잠김', () => {
     expect(result.skipped).toHaveLength(1)
     expect(result.items).toHaveLength(1)
     expect(result.items[0].lock).toMatchObject({ locked: true, lockReason: 'rolled' })
+  })
+})
+
+describe('tribesWithCandidates — 후보 배지가 있는 트라이브만 «다른 트라이브» 대상이다 (티켓 20261021_1248)', () => {
+  const ids = ['A', 'B', 'C', 'D', 'E']
+
+  it('후보 배지가 있는 트라이브는 남고 컬렉션도 배지도 없는 비활성 트라이브는 빠진다', () => {
+    const books = [book('A'), book('B')]
+    const badges = [badge('A', 'common'), badge('B', 'epic')]
+
+    expect(tribesWithCandidates(ids, 'A', books, badges, NOW)).toEqual(['A', 'B'])
+  })
+
+  it('어느 등급이든 후보가 하나라도 있으면 남는다(Mystic만 있어도)', () => {
+    expect(tribesWithCandidates(ids, 'A', [book('A'), book('C')], [badge('A', 'common'), badge('C', 'mystic')], NOW)).toEqual(['A', 'C'])
+  })
+
+  it('소속 트라이브는 후보가 없어도 항상 남는다', () => {
+    expect(tribesWithCandidates(ids, 'D', [book('B')], [badge('B', 'common')], NOW)).toEqual(['B', 'D'])
+  })
+
+  it('발급 후보 판정과 같다 — 비활성 컬렉션·드랍 제외·기간 밖·삭제된 배지만 있는 트라이브는 빠진다', () => {
+    const books = [
+      book('B', { is_active: false }),
+      book('C', { drop_excluded: true }),
+      book('D', { valid_until: '2026-10-01T00:00:00Z' }),
+      book('E'),
+    ]
+    const badges = [badge('B', 'common'), badge('C', 'common'), badge('D', 'common'), badge('E', 'common', { deleted_at: '2026-10-10T00:00:00Z' })]
+
+    expect(tribesWithCandidates(ids, 'A', books, badges, NOW)).toEqual(['A'])
+  })
+
+  it('컬렉션은 있어도 그 컬렉션에 배지가 없으면 빠진다', () => {
+    expect(tribesWithCandidates(ids, 'A', [book('A'), book('B')], [badge('A', 'common')], NOW)).toEqual(['A'])
+  })
+
+  it('입력 순서를 지킨다 — 나머지 트라이브 고르기의 구간이 입력 순서를 따르므로 순서가 바뀌면 안 된다', () => {
+    const books = TRIBES.map((t) => book(t))
+    expect(tribesWithCandidates(['E', 'C', 'A', 'B'], 'A', books, fullBadges, NOW)).toEqual(['E', 'C', 'A', 'B'])
+  })
+
+  it('후보가 모두 있으면 아무것도 빠지지 않는다 — 활성 트라이브끼리의 고르기는 달라지지 않는다', () => {
+    const books = TRIBES.map((t) => book(t))
+
+    expect(tribesWithCandidates(TRIBES, 'A', books, fullBadges, NOW)).toEqual([...TRIBES])
+    // 좁힌 목록으로 뽑아도 좁히지 않은 목록으로 뽑은 것과 같다(소속 A, 다른 트라이브 확률 경계 아래, 둘째 구간)
+    const narrowed = tribesWithCandidates(TRIBES, 'A', books, fullBadges, NOW)
+    expect(rollCapsuleTribe(policy, 'A', narrowed, seq(0.1, 0.3).rand)).toBe(rollCapsuleTribe(policy, 'A', TRIBES, seq(0.1, 0.3).rand))
+  })
+
+  it('비활성 트라이브가 섞인 표로 좁힌 뒤에는 어떤 난수로 뽑아도 개체가 비지 않는다 — 다른 트라이브 확률 1에서도', () => {
+    const books = [book('A'), book('B')]
+    const badges = [badge('A', 'common'), badge('B', 'common')]
+    const narrowed = tribesWithCandidates(ids, 'A', books, badges, NOW)
+    const always = { ...policy, other_tribe_probability: 1 }
+
+    for (const pick of [0, 0.25, 0.5, 0.75, 0.9999]) {
+      const result = rollCapsule<TestBadge>(
+        input({ policy: always, tribeIds: narrowed, books, badges }),
+        seq(0.9, 0.5, pick, 0, 0, 0.9).rand
+      )
+      expect(result.skipped).toEqual([])
+      expect(result.items).toHaveLength(1)
+      expect(result.items[0].tribeId).toBe('B') // 다른 트라이브는 B 하나뿐이다
+    }
+  })
+
+  it('좁히지 않은 표는 비활성 트라이브를 뽑아 개체가 비었다 — 좁히기가 막는 문제 그대로', () => {
+    const books = [book('A'), book('B')]
+    const badges = [badge('A', 'common'), badge('B', 'common')]
+    const always = { ...policy, other_tribe_probability: 1 }
+
+    // 나머지 B C D E 가운데 0.5는 D(후보 없음)
+    const result = rollCapsule<TestBadge>(input({ policy: always, tribeIds: TRIBES, books, badges }), seq(0.9, 0.5, 0.5, 0).rand)
+
+    expect(result.items).toEqual([])
+    expect(result.skipped).toEqual([{ tribeId: 'D', rolledRarity: 'common' }])
   })
 })
