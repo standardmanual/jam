@@ -57,8 +57,11 @@ const RARITY_KEYS = ['rarity_common', 'rarity_rare', 'rarity_epic', 'rarity_myst
 /** 등급 확률 합계 허용 오차 — DB 제약(`capsule_policy_rarity_sum_100`)과 같다 */
 const RARITY_SUM_TOLERANCE = 0.001
 
-/** 칸별 값 검사 — 통과하지 못하면 그 칸만 기본값으로 대체한다 */
-const VALIDATORS: Record<keyof CapsulePolicy, (n: number) => boolean> = {
+/**
+ * 칸별 값 검사 — 통과하지 못하면 그 칸만 기본값으로 대체한다.
+ * 확률 안내(`lib/probability/disclosure.ts`, 티켓 20261021_1250)가 같은 검사를 쓰려고 내보낸다. 읽기 실패 때 기본값으로 대체하는 쪽은 이 파일의 `getCapsulePolicy`뿐이다.
+ */
+export const VALIDATORS: Record<keyof CapsulePolicy, (n: number) => boolean> = {
   guaranteed_count: (n) => Number.isInteger(n) && n >= 0,
   bonus_count: (n) => Number.isInteger(n) && n >= 0,
   bonus_probability: (n) => Number.isFinite(n) && n >= 0 && n <= 1,
