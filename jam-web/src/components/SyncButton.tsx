@@ -42,8 +42,11 @@ interface SyncResponse {
  */
 export default function SyncButton({
   username,
+  size = 'xs',
 }: {
   username: string | null
+  /** 버튼 크기. 기본 `xs`(상단 바 중앙 슬롯의 조밀한 자리). 홈 «JAM! 시작하기» 카드는 44px 터치 영역이 필요해 `sm`을 넘긴다(티켓 20261021_1248) */
+  size?: 'xs' | 'sm'
 }) {
   const [loading, setLoading] = useState(false)
   const [revealOpen, setRevealOpen] = useState(false)
@@ -136,7 +139,7 @@ export default function SyncButton({
       <Button
         variant="primary"
         surface="sub"
-        size="xs"
+        size={size}
         onClick={handleSync}
         disabled={loading}
         loading={showLoading}

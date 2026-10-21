@@ -1,12 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
 import CapsulePill, { type CapsulePillStatus } from '@/components/capsule/CapsulePill'
 import CapsuleSheet, { type CapsuleSheetStep } from '@/components/capsule/CapsuleSheet'
 import { toRevealBadges } from '@/components/capsule/capsuleReveal'
 import { fetchCapsule } from '@/lib/capsule/capsule-client'
+import { subscribeCapsuleSheetOpen } from '@/lib/capsule/capsule-sheet-signal'
 import { runFill, runOpen } from '@/lib/capsule/capsule-flow'
 import type { CapsuleOpenPayload, CapsuleStatus } from '@/lib/capsule/capsule-contract'
 import { capsulePercent, capsuleViewStatus, statusAfterOpen, withInsufficientSlots } from '@/lib/capsule/capsule-view'
@@ -23,6 +25,9 @@ import { d } from '@/lib/i18n'
  *    오버레이를 닫으면 다음 캡슐 값으로 게이지가 옮겨 간다. 높은 등급 축하 연출은 없다(열기를 부추기지 않는다).
  *  - 이용 정지(403): 일반 실패가 아니라 info 토스트로 알린다. 버튼은 미리 막지 않고 서버 응답으로 판단한다.
  *  - 오버레이가 열려 있는 동안에는 이 위젯의 토스트를 띄우지 않는다(토스트와 오버레이는 같은 z 60이다).
+ *  - 홈의 «JAM! 시작하기» 카드가 보내는 열기 신호(`capsule-sheet-signal`)를 받으면 알약을 누른 것과 같은 경로로 시트를 연다
+ *    (조회에 실패한 상태면 다시 시도한다). 채우기가 끝나거나 열기 결과를 닫은 뒤에는 서버 화면을 새로 읽는다(`router.refresh()`) —
+ *    같은 페이지의 카드가 캡슐 상태를 서버 값으로 읽기 때문이다. 열기 결과가 떠 있는 동안에는 새로 읽지 않는다(뒤 화면이 바뀌지 않게). 티켓 20261021_1248.
  * 모양은 `CapsulePill` 한 파일만 안다. 이 컴포넌트를 감싸는 곳은 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
  */
 
@@ -36,6 +41,7 @@ const CLOSED_REVEAL: RevealState = { open: false, items: [], message: '' }
 
 export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | null }) {
   const { toast } = useToast()
+  const router = useRouter()
   const [capsule, setCapsule] = useState<CapsuleStatus | null>(initial ?? null)
   const [load, setLoad] = useState<'ready' | 'loading' | 'error'>(initial ? 'ready' : 'loading')
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -113,6 +119,13 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
     setSheetOpen(true)
   }
 
+  // 카드의 열기 신호 — 알약을 누른 것과 같은 경로다. 구독은 한 번만 하고, 신호가 올 때 최신 핸들러를 부른다.
+  const sheetRequestRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    sheetRequestRef.current = handlePillClick
+  })
+  useEffect(() => subscribeCapsuleSheetOpen(() => sheetRequestRef.current()), [])
+
   function handleCloseSheet() {
     // 요청이 오가는 동안 닫으면 응답이 닫힌 시트 위에서 처리되므로 막는다
     if (pending) return
@@ -130,6 +143,8 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
       // 응답이 새 상태다 — 게이지가 차오르고 시트는 본문 단계로 돌아간다
       setCapsule(outcome.status)
       setStep('main')
+      // 같은 페이지의 «JAM! 시작하기» 카드가 채워진 캡슐을 서버 값으로 다시 읽는다
+      router.refresh()
       return
     }
     notify(outcome.notice.message, outcome.notice.type)
@@ -163,6 +178,8 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
     setReveal(CLOSED_REVEAL)
     const next = nextAfterRevealRef.current
     nextAfterRevealRef.current = null
+    // 열기 결과를 닫은 뒤에 서버 화면을 새로 읽는다 — «JAM! 시작하기» 카드의 실제 단계(캡슐 열기·잠긴 아이템 배지)가 이 열기로 바뀐다
+    router.refresh()
     if (next) {
       // 게이지가 다음 캡슐의 값으로 옮겨 간다. 빈칸 수 같은 나머지는 이어지는 조회가 정한다
       setCapsule((prev) => (prev ? statusAfterOpen(prev, next) : prev))

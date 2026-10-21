@@ -16,7 +16,8 @@ interface OnboardingQuestSkipSheetProps {
 }
 
 /**
- * 홈 카드 「건너뛰기」 진입점 + 확인 시트 (티켓 20260927_2131 T8, 상위 20260927_2123).
+ * 홈 카드 「미리 해보기 건너뛰기」 진입점 + 확인 시트 (티켓 20260927_2131 T8, 상위 20260927_2123 · 문구 20261021_1248 2회).
+ * 건너뛰는 것은 연출 7단계뿐이다 — 실제 3단계(내 활동으로)는 건너뛰지 않고, 마치면 건너뛴 유저도 챕터 1을 받는다.
  *
  * 채원 사전 판정 — 재사용. 새 컴포넌트·새 토큰 없이 서비스 BottomSheet(`detent="compact"`)와
  * Button 조합만으로 [계속하기]/[건너뛰기] 선택을 보여 준다(`BadgeDetailSheet.tsx`·
@@ -52,7 +53,7 @@ export default function OnboardingQuestSkipSheet({ step }: OnboardingQuestSkipSh
     <>
       <button
         type="button"
-        className="self-start min-h-11 flex items-center text-xs text-muted active:opacity-60"
+        className="self-start min-h-11 flex items-center text-xs text-muted break-keep wrap-break-word whitespace-nowrap active:opacity-60"
         onClick={() => setOpen(true)}
       >
         {d.onboardingQuest.skip.entryLabel}
@@ -73,7 +74,7 @@ export default function OnboardingQuestSkipSheet({ step }: OnboardingQuestSkipSh
           </div>
         }
       >
-        <p className="text-center text-base text-foreground px-4 py-6">
+        <p className="text-center text-base text-foreground break-keep wrap-break-word text-pretty px-4 py-6">
           {d.onboardingQuest.skip.confirmBody}
         </p>
       </BottomSheet>
