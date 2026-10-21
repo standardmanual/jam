@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { formatKstYmdHm } from '@/lib/admin/kst-format'
-import { USER_CHAPTER_SCORE_EVENT_LIMIT, type UserChapterView } from '@/lib/admin/user-chapter-view'
+import type { UserChapterView } from '@/lib/admin/user-chapter-view'
 
 interface Props {
   view: UserChapterView
@@ -24,7 +24,7 @@ function ReadFailed({ subject }: { subject: string }) {
 
 /**
  * 유저 상세의 «챕터» 구역 (티켓 20261019_1318 2회, 운영 로직 12.5절). 읽기 전용이다.
- * 지금 챕터와 누적 점수, 오른 기록(오른 시각과 챕터), 점수 기록 최근 {@link USER_CHAPTER_SCORE_EVENT_LIMIT}건을 보인다.
+ * 지금 챕터와 누적 점수, 오른 기록(오른 시각과 챕터), 점수 기록 최근 `USER_CHAPTER_SCORE_EVENT_LIMIT`건(`lib/admin/user-chapter-view.ts`)을 보인다.
  * 점수 숫자는 어드민에게만 보인다(유저 화면에는 숫자를 보이지 않는다, 12.3절).
  * 읽지 못한 구역은 «기록 없음»과 다른 문구로 보인다.
  */
