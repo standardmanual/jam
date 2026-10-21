@@ -191,8 +191,15 @@ export function idList(payload: Record<string, unknown>, key: string): string[] 
   return v.filter((x): x is string => typeof x === 'string' && x !== '')
 }
 
+/**
+ * 행위자 이름 자리. 행위자 프로필이 없으면(`actor`가 null) 그 유저가 탈퇴한 것이라 고정 텍스트를 쓴다(운영 로직 17.2절, 티켓 20261021_1249 2회).
+ * 이 함수는 행위자를 쓰는 소식 5종(drop_picked_up·followed·following_rare_badge·following_collection_complete·following_mission_complete)만 부른다 —
+ * 나머지 종류는 행위자 칸이 원래 비어 있어 여기를 거치지 않는다. 프로필은 있는데 표시 이름이 비어 있으면 지금처럼 «익명»이다.
+ * 탈퇴한 유저의 프로필은 없으므로 이름은 링크가 아니다.
+ */
 function nameOf(actor: NotificationActor | null): string {
-  return (actor && getDisplayName({ username: actor.username, display_name: actor.displayName })) || d.profile.anonymous
+  if (!actor) return d.withdrawnUser.name
+  return getDisplayName({ username: actor.username, display_name: actor.displayName }) || d.profile.anonymous
 }
 
 function points(amount: number): string {

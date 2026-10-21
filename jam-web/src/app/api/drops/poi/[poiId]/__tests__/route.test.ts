@@ -5,6 +5,7 @@
  * - 꺼진 장소(`poi.is_active = false`)는 드랍이 남아 있어도 빈 목록이고 드랍을 조회하지 않는다. 다시 켜면 목록에 돌아온다.
  * - 잠긴 개체는 서버에서 이름·그림·일련번호·배지 id를 비우고 «잠김 표시 + 등급»만 싣는다. 직렬화한 응답 어디에도 원래 값이 없다(7.3절).
  * - 열린 개체는 이전과 같은 모양이다.
+ * - 드랍한 유저 이름(티켓 20261021_1249 2회, 운영 로직 17.2절): 유저 드랍인데 드랍한 유저가 지워졌으면 탈퇴 표기, 시스템 드랍은 «익명», 살아 있는 유저는 이름.
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/drops/poi/[poiId]/__tests__/route.test.ts"
  */
@@ -25,6 +26,7 @@ type Row = {
   badge_id: string
   dropped_at: string
   dropper_user_id: string | null
+  source: 'user' | 'system'
   badges: { name: string; rarity: string; image_url: string | null }
   inventory_items: {
     serial_prefix: string | null
@@ -41,6 +43,7 @@ const state = vi.hoisted(() => ({
   poiError: null as unknown,
   rows: [] as unknown[],
   dropReads: 0,
+  dropSelect: '',
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -55,7 +58,10 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
     from: (table: string) => {
       const builder: Record<string, unknown> = {}
-      builder.select = () => builder
+      builder.select = (columns: string) => {
+        if (table === 'poi_drops') state.dropSelect = columns
+        return builder
+      }
       builder.eq = () => builder
       builder.in = () => builder
       builder.order = () => builder
@@ -90,6 +96,7 @@ function row(overrides: Partial<Row> & { locked: boolean }): Row {
     badge_id: SECRET_BADGE_ID,
     dropped_at: '2026-10-18T00:00:00Z',
     dropper_user_id: 'dropper-1',
+    source: 'user',
     badges: { name: SECRET_NAME, rarity: 'epic', image_url: SECRET_IMAGE },
     inventory_items: {
       serial_prefix: SECRET_PREFIX,
@@ -108,6 +115,7 @@ beforeEach(() => {
   state.poiError = null
   state.rows = []
   state.dropReads = 0
+  state.dropSelect = ''
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -216,5 +224,51 @@ describe('잠긴 개체 가림 (운영 로직 7.3절)', () => {
       serial_number: SECRET_SERIAL,
     })
     expect(drops[0]).not.toHaveProperty('locked')
+  })
+})
+
+describe('드랍한 유저 이름 (운영 로직 17.2절)', () => {
+  it('살아 있는 유저의 드랍은 그 이름이다', async () => {
+    state.rows = [row({ locked: false })]
+
+    const { drops } = await (await get()).json()
+
+    expect(drops[0].dropper_name).toBe('러너')
+  })
+
+  it('유저 드랍인데 드랍한 유저가 지워졌으면 탈퇴 표기다', async () => {
+    state.rows = [row({ locked: false, dropper_user_id: null, source: 'user' })]
+
+    const { drops } = await (await get()).json()
+
+    expect(drops[0].dropper_name).toBe(d.withdrawnUser.name)
+  })
+
+  it('시스템 드랍은 원래 드랍한 유저가 없으므로 «익명»이다', async () => {
+    state.rows = [row({ locked: false, dropper_user_id: null, source: 'system' })]
+
+    const { drops } = await (await get()).json()
+
+    expect(drops[0].dropper_name).toBe(d.drops.anonymous)
+  })
+
+  it('잠긴 개체의 응답에서도 같다', async () => {
+    state.rows = [
+      row({ locked: true, id: 'a', dropper_user_id: null, source: 'user' }),
+      row({ locked: true, id: 'b', dropper_user_id: null, source: 'system' }),
+    ]
+
+    const { drops } = await (await get()).json()
+
+    expect(drops.map((x: { dropper_name: string }) => x.dropper_name)).toEqual([d.withdrawnUser.name, d.drops.anonymous])
+  })
+
+  it('드랍 목록에서 source 칸을 함께 읽는다', async () => {
+    // select가 source를 빠뜨리면 모든 탈퇴 드랍이 «익명»으로 보인다 — 시스템 드랍과 구분하는 근거 칸이다
+    state.rows = [row({ locked: false })]
+
+    await get()
+
+    expect(state.dropSelect).toContain('source')
   })
 })
