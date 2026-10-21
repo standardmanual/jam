@@ -6,6 +6,7 @@
  *  - `mission_participation_cancelled`: 문구 «트라이브가 바뀌어 「…」 미션 참가가 취소됐어요»(여러 개면 «미션 N개 참가가 취소됐어요»),
  *    누르면 미션 목록(`/missions`, 단건이어도 상세로 가지 않는다), 아이콘은 과녁.
  *  - 두 종류의 아이콘 마크업이 서로 다르고, 행위자 아바타·경고 칸으로 바뀌지 않는다.
+ *  - `tribe_changed`(티켓 20261021_1247): 문구 «트라이브가 바뀌었어요. 이제 {이름} 소속이에요. …»(트라이브 이름만 굵게), 누르면 `/profile`, 아이콘은 사람들(`UsersIcon`).
  *  - 소식이 없을 때와 읽지 못했을 때는 서로 다른 안내가 보이고, 어느 쪽에도 어드민 용어 «회수»가 없다.
  *
  * 아이콘은 화면이 쓰는 아이콘 컴포넌트(`MedalIcon`·`TargetIcon`)를 같은 클래스로 따로 그린 마크업과 견준다 — 제품 코드에 시험용 표지를 넣지 않는다.
@@ -28,7 +29,7 @@ vi.mock('@/components/ui/TopNav', () => ({
 }))
 
 import NotificationsClient from './NotificationsClient'
-import { MedalIcon, TargetIcon } from '@/components/ui/icons'
+import { MedalIcon, TargetIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { NotificationView } from '@/lib/notifications/message'
 import type { NotificationType } from '@/types/database'
@@ -190,6 +191,42 @@ describe('미션 참가 취소 소식 (mission_participation_cancelled)', () => 
 
     expect(visibleText(html)).toContain('트라이브가 바뀌어 미션 1개 참가가 취소됐어요')
     expect(html).not.toContain('「」')
+  })
+})
+
+describe('어드민 트라이브 변경 소식 (tribe_changed, 티켓 20261021_1247)', () => {
+  const TRIBE_CHANGED = view('tribe_changed', { new_tribe_name: '아스팔트 레인저' })
+
+  it('바뀐 사실과 새 소속을 말하고 트라이브 이름만 굵게 보인다', () => {
+    const html = render([TRIBE_CHANGED])
+
+    expect(visibleText(html)).toContain('트라이브가 바뀌었어요. 이제 아스팔트 레인저 소속이에요. 이미 가진 배지와 잼, 챕터는 그대로예요')
+    expect(html).toContain('<strong class="font-bold">아스팔트 레인저</strong>')
+    expect((html.match(/<strong/g) ?? []).length).toBe(1)
+  })
+
+  it('누르면 /profile로 간다 — 아이디가 있어도 같다', () => {
+    expect(linkOf(render([TRIBE_CHANGED]))).toBe('/profile')
+  })
+
+  it('아이콘은 사람들이고 메달·과녁이 아니다', () => {
+    const html = render([TRIBE_CHANGED])
+
+    expect(html).toContain(icon(UsersIcon))
+    expect(html).not.toContain(icon(MedalIcon))
+    expect(html).not.toContain(icon(TargetIcon))
+  })
+
+  it('경고 칸이나 행위자 아바타가 아니라 종류별 아이콘 칸으로 그려진다', () => {
+    const html = render([TRIBE_CHANGED])
+
+    expect(html).not.toContain(`aria-label="${d.notifications.warningLabel}"`)
+    expect(html).not.toContain(d.profile.avatarAlt)
+    expect(html).not.toContain('bg-warning')
+  })
+
+  it('알림함이 모르는 종류로 보지 않는다', () => {
+    expect(visibleText(render([TRIBE_CHANGED]))).not.toContain(d.notifications.unknown)
   })
 })
 

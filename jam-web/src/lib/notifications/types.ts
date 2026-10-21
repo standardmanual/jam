@@ -248,6 +248,12 @@ export interface NotificationPayloadMap {
    */
   chapter_up: { chapter_no: number }
   /**
+   * 어드민이 트라이브를 바꿨어요(티켓 20261021_1247, 운영 로직 2.4절). 유저 알림에는 사유(코드·메모)를 싣지 않는다 — 운영 기록은 `user_tribe_changes`에만 있다.
+   * `new_tribe_name`은 바뀐 트라이브의 이름이다(트라이브 이름이 나중에 바뀌어도 이 소식은 바뀐 때의 이름을 말한다).
+   * 묶음 키는 `tribe_changed:{변경 기록 id}` + `once`라 변경 한 번에 소식 한 건이다. 같은 유저를 여러 번 바꾸면 변경마다 한 건씩 쌓인다.
+   */
+  tribe_changed: { new_tribe_name: string }
+  /**
    * 29 팔로잉 희귀 배지 — Epic·Mystic **또는** 무한레벨형 Lv.6 이상
    * (`FOLLOWING_LEVEL_THRESHOLD`, 티켓 20260905_0038).
    * `more_count`는 R15(사람 단위 묶음) — 「소식이 N건 더 있어요」

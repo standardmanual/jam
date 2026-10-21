@@ -152,6 +152,10 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     case 'chapter_up':
       return single(meHref ?? '/profile')
 
+    // ── 트라이브 변경 — 소속 트라이브는 내 프로필에서 본다(티켓 20261021_1247). 아이디 경로가 없어도 갈 수 있는 `/profile`로 보낸다 ──
+    case 'tribe_changed':
+      return single('/profile')
+
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       const count = Math.max(view.actorCount, idList(p, 'actor_ids').length, 1)

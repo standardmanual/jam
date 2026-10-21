@@ -677,6 +677,14 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       return { template: n.msgChapterUp, vars: { chapter: t(n.slotChapter, { chapterNo }) } }
     }
 
+    // ── 어드민 트라이브 변경 (티켓 20261021_1247) ────────────────────────────────────
+    case 'tribe_changed': {
+      // 이름이 비었으면(payload 손상) 「이제  소속이에요」 대신 이름 없는 문장을 쓴다
+      const tribeName = str(p, 'new_tribe_name').trim()
+      if (!tribeName) return { template: n.msgTribeChangedNoName, vars: {} }
+      return { template: n.msgTribeChanged, vars: { tribeName } }
+    }
+
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       // R14 — 내 알림함이라 대상은 나로 확정돼 있다. 본인 닉네임을 부르지 않는다
