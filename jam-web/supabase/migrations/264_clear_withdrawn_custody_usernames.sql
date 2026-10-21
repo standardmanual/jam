@@ -11,7 +11,7 @@
 --   (앱은 *_user_id가 NULL인 칸의 이름 문자열을 값이 있어도 무시한다).
 -- 되돌림: 없다. 지우는 것이 목적이고 지운 이름은 이 표 안에 다른 사본이 없다. 가린 이름을 되살리려면 백업에서 복원해야 한다. 실행 전 확인 SELECT의 결과를 기록해 둔다.
 --
--- 실행 전 확인 쿼리(읽기 전용 SELECT) — 13행이 나와야 한다. 다르면 멈추고 보고한다:
+-- 실행 전 확인 쿼리(읽기 전용 SELECT) — 아래 첫 쿼리는 칸 기준 3행(합 13), 둘째 쿼리는 행 기준 13이 나와야 한다. 한 행이 두 칸에 옛 이름을 가지면 첫 쿼리의 합이 행 수보다 클 수 있다(2026-10-21 롤백 실측은 둘 다 13). 다르면 멈추고 보고한다:
 --   SELECT event_type, 'from' AS slot, count(*) FROM public.custody_events WHERE from_user_id IS NULL AND from_username IS NOT NULL GROUP BY event_type
 --   UNION ALL
 --   SELECT event_type, 'to', count(*) FROM public.custody_events WHERE to_user_id IS NULL AND to_username IS NOT NULL GROUP BY event_type
