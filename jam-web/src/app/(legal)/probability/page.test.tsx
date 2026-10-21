@@ -165,6 +165,8 @@ describe('정상 — 구성과 값', () => {
     const text = textOf(section)
     expect(text).toContain('확률을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
     expect(text).toContain('2026년 10월 21일확률 안내를 처음 열었어요')
+    // 날짜가 띄어쓰기에서 «10월 / 21일»로 갈라지지 않게 라벨 칸의 줄바꿈을 막는다
+    expect(section).toMatch(/<th[^>]*whitespace-nowrap[^>]*>2026년 10월 21일/)
     expect(count(section, '<tr')).toBe(1)
   })
 })

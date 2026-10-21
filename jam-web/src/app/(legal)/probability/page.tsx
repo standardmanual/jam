@@ -93,8 +93,19 @@ function H3({ children }: { children: ReactNode }) {
 /**
  * 라벨(th) 왼쪽, 값(td) 오른쪽의 두 칸짜리 표. 열이 둘뿐이라 앱 컬럼 320px에서도 가로 스크롤이 생기지 않는다.
  * 등급 이름은 색이 아니라 글자로만 구분한다. `nowrapValue`는 «84%»처럼 짧은 값 칸에만 쓴다(문장 값은 줄바꿈을 허용한다).
+ * `nowrapLabel`은 «2026년 10월 21일»처럼 띄어쓰기에서 끊기면 어색한 짧은 라벨 칸에만 쓴다(320px에서 날짜가 «10월 / 21일»로 갈라졌다).
  */
-function ProbabilityTable({ caption, rows, nowrapValue = false }: { caption: string; rows: DisclosureRow[]; nowrapValue?: boolean }) {
+function ProbabilityTable({
+  caption,
+  rows,
+  nowrapValue = false,
+  nowrapLabel = false,
+}: {
+  caption: string
+  rows: DisclosureRow[]
+  nowrapValue?: boolean
+  nowrapLabel?: boolean
+}) {
   return (
     <div className="rounded-2xl bg-surface border border-border px-4">
       <table className="w-full border-collapse">
@@ -104,7 +115,7 @@ function ProbabilityTable({ caption, rows, nowrapValue = false }: { caption: str
             <tr key={i} className="border-b border-border last:border-b-0">
               <th
                 scope="row"
-                className="py-3 pr-3 text-left align-top text-base font-normal text-foreground break-keep wrap-break-word"
+                className={`py-3 pr-3 text-left align-top text-base font-normal text-foreground break-keep wrap-break-word${nowrapLabel ? ' whitespace-nowrap' : ''}`}
               >
                 {row.label}
               </th>
@@ -276,7 +287,7 @@ export default async function ProbabilityPage() {
 
         <Section title="바뀐 날짜">
           <P>확률을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.</P>
-          <ProbabilityTable caption="확률 안내가 바뀐 날짜와 내용" rows={CHANGE_LOG} />
+          <ProbabilityTable caption="확률 안내가 바뀐 날짜와 내용" rows={CHANGE_LOG} nowrapLabel />
         </Section>
       </article>
     </div>
