@@ -5,8 +5,11 @@
  * 0. state를 state 쿠키와 대조하고, 연결할 유저를 로그인 세션으로 정한다 (URL의 state는 유저 ID가 아니다)
  *    트라이브를 고르지 않은 유저면 연결을 저장하지 않고 /onboarding(트라이브 고르기)으로 보낸다 (티켓 20261021_1247, 운영 로직 2장)
  * 1. 토큰 교환
- * 2. 이미 다른 JAM 계정에 연결된 Strava 계정이면 저장하지 않고 /profile?strava=duplicate (티켓 20261017_1422)
- * 3. 암호화 후 strava_connections 저장: 같은 계정이면 토큰 갱신·끊김 해제, 다른 계정이면 이 유저의
+ * 2. 이미 다른 JAM 계정에 연결된 Strava 계정이면 저장하지 않는다 (티켓 20261017_1422, 20261021_1249 4회)
+ *    - 기존 계정이 일반·정상이면 방금 받은 토큰을 10분짜리 서명 쿠키(`strava_replace_offer`)에 담아 /profile?strava=duplicate
+ *      («그래도 연결하기» 시트). 실제 연결은 시트에서 고르면 `POST /api/strava/replace`가 한다.
+ *    - 기존 계정이 어드민이거나 이용 정지 중이면 쿠키를 굽지 않고 /profile?strava=duplicate_blocked
+ * 3. 암호화 후 strava_connections 저장(`lib/strava/connection-save.ts`): 같은 계정이면 토큰 갱신·끊김 해제, 다른 계정이면 이 유저의
  *    이전 연결을 교체하고 새 행을 first_sync_pending=true로 만든다
  * 4. 즉시 동기화 트리거
  * 5. /profile 리다이렉트
@@ -16,12 +19,14 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { encrypt } from '@/lib/utils'
-import { syncStravaActivities } from '@/lib/strava/sync'
-import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { assertHasTribe, TribeRequiredError } from '@/lib/tribe/gate'
 import { TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
-import { STRAVA_DISCONNECT_CLEARED } from '@/lib/strava/connection-state'
+import { assessDuplicateOwner, saveStravaConnection, syncAfterConnect } from '@/lib/strava/connection-save'
+import {
+  STRAVA_REPLACE_OFFER_COOKIE,
+  getStravaReplaceOfferCookieOptions,
+  sealStravaReplaceOffer,
+} from '@/lib/strava/replace-offer'
 import {
   STRAVA_OAUTH_STATE_COOKIE,
   getStravaOAuthStateCookieOptions,
@@ -114,9 +119,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. 이 Strava 계정이 이미 다른 JAM 계정에 연결돼 있는지 확인 — 토큰을 저장하기 전에 한다.
-    //    (끊김 상태의 연결 포함.) 있으면 방금 받은 토큰은 저장하지 않고 버린다: 같은 계정을 다시 인증하면
-    //    기존 연결의 토큰이 무효가 될지 확인하지 못했으므로(티켓 20261017_1422 잔여 이슈) 아무것도 쓰지 않는다.
-    //    기존 upsert(onConflict: strava_athlete_id)는 이 경우 다른 유저 행의 user_id를 덮어썼다.
+    //    (끊김 상태의 연결 포함.) 기존 upsert(onConflict: strava_athlete_id)는 이 경우 다른 유저 행의 user_id를 덮어썼다.
+    //    그래서 이 단계에서는 아무것도 저장하지 않는다. «그래도 연결하기»를 고르면 그때 `replace` 라우트가 저장한다.
     const supabase = createServiceClient()
     const athleteId = tokenData.athlete.id
     const { data: existingByAthlete, error: lookupError } = await supabase
@@ -130,95 +134,48 @@ export async function GET(request: NextRequest) {
       return redirectAndClearState('/profile?strava=error&reason=db_error')
     }
     if (existingByAthlete && existingByAthlete.user_id !== userId) {
+      // 기존 계정이 어드민이거나 이용 정지 중이면 «그래도 연결하기»를 주지 않는다 — 쿠키를 굽지 않고 막힘 안내로 보낸다.
+      // 읽지 못하면 «지워도 된다»로 보지 않고 DB 오류로 닫는다.
+      const owner = await assessDuplicateOwner(supabase, existingByAthlete.user_id)
+      if (owner === 'unknown') {
+        return redirectAndClearState('/profile?strava=error&reason=db_error')
+      }
+      if (owner === 'blocked') {
+        console.warn('[JAM! Strava] 콜백 거부: duplicate_connection_blocked')
+        return redirectAndClearState('/profile?strava=duplicate_blocked')
+      }
+
+      // 방금 받은 토큰을 10분짜리 서명 쿠키에 담는다. 토큰·쿠키 값은 로그에 남기지 않는다.
       console.warn('[JAM! Strava] 콜백 거부: duplicate_connection')
-      return redirectAndClearState('/profile?strava=duplicate')
-    }
-
-    // 3. 토큰 암호화
-    const [encryptedAccessToken, encryptedRefreshToken] = await Promise.all([
-      encrypt(tokenData.access_token),
-      encrypt(tokenData.refresh_token),
-    ])
-    const tokenFields = {
-      access_token: encryptedAccessToken,
-      refresh_token: encryptedRefreshToken,
-      token_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
-    }
-
-    // 4. DB 저장 (service client — RLS 우회). 한 JAM 계정에는 연결이 하나뿐이다(운영 로직 3.2절).
-    let insertedNewRow = false
-    if (existingByAthlete) {
-      // 같은 유저가 같은 Strava 계정을 다시 연결 — 토큰을 갱신하고 끊김을 지운다.
-      // first_sync_pending·last_synced_at은 그대로 둬 마지막 동기화 뒤부터 이어서 가져온다.
-      const { error: updateError } = await supabase
-        .from('strava_connections')
-        .update({ ...tokenFields, ...STRAVA_DISCONNECT_CLEARED })
-        .eq('user_id', userId)
-        .eq('strava_athlete_id', athleteId)
-      if (updateError) {
-        console.error('[JAM! Strava] strava_connections 갱신 오류:', updateError)
-        return redirectAndClearState('/profile?strava=error&reason=db_error')
-      }
-    } else {
-      // 다른 Strava 계정 연결 — 새 행은 첫 동기화 대기다. upsert가 아니라 insert라서 동시에
-      // 같은 계정을 연결한 다른 유저와 부딪히면 유니크 위반으로 실패하고 아무것도 덮어쓰지 않는다.
-      const { error: insertError } = await supabase.from('strava_connections').insert({
-        user_id: userId,
-        strava_athlete_id: athleteId,
-        ...tokenFields,
-        backfill_completed: true, // 소급 없음 — 연동 즉시 완료로 표시
-        last_synced_at: null,
-        first_sync_pending: true,
-        ...STRAVA_DISCONNECT_CLEARED,
+      const sealed = await sealStravaReplaceOffer({
+        userId,
+        athleteId,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        tokenExpiresAtSec: tokenData.expires_at,
       })
-      if (insertError) {
-        console.error('[JAM! Strava] strava_connections insert 오류:', insertError)
-        return redirectAndClearState('/profile?strava=error&reason=db_error')
-      }
-      insertedNewRow = true
+      const response = redirectAndClearState('/profile?strava=duplicate')
+      response.cookies.set(STRAVA_REPLACE_OFFER_COOKIE, sealed, getStravaReplaceOfferCookieOptions())
+      return response
     }
 
-    // 이 유저의 이전 연결(다른 Strava 계정) 행을 지운다 — 같은 user_id의 행이 둘이면 조회가 오류를 낸다.
-    // 활동 기록·배지·잼·포인트는 다른 테이블이라 그대로 남는다.
-    const { error: deleteError } = await supabase
-      .from('strava_connections')
-      .delete()
-      .eq('user_id', userId)
-      .neq('strava_athlete_id', athleteId)
-    if (deleteError) {
-      console.error('[JAM! Strava] 이전 연결 삭제 오류:', deleteError)
-      // 방금 넣은 새 행을 되돌려 같은 user_id의 행이 둘 남지 않게 한다(티켓 20261017_1422 서버 보정 b).
-      // 되돌림이 실패해도 원래 오류 응답은 그대로 보낸다 — 로그로만 남긴다.
-      if (insertedNewRow) {
-        const { error: rollbackError } = await supabase
-          .from('strava_connections')
-          .delete()
-          .eq('user_id', userId)
-          .eq('strava_athlete_id', athleteId)
-        if (rollbackError) {
-          console.error('[JAM! Strava] 새 연결 되돌림 실패:', rollbackError)
-        }
-      }
+    // 3~4. 암호화 후 저장 (service client — RLS 우회)
+    const saved = await saveStravaConnection(supabase, {
+      userId,
+      athleteId,
+      tokens: {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAtSec: tokenData.expires_at,
+      },
+      hasSameAthleteRow: Boolean(existingByAthlete),
+    })
+    if (!saved) {
       return redirectAndClearState('/profile?strava=error&reason=db_error')
     }
 
-    // 5. 연동 즉시 동기화 — 반드시 await한다. 서버리스 함수는 응답을 반환하면
-    //    직후 인스턴스가 종료될 수 있어, await 없는 백그라운드 호출은 처리 도중
-    //    끊길 위험이 있다(신규 유저 첫 배지 미발급 인시던트 원인 — 2026-08-10).
-    //    동기화 자체가 실패해도 연동은 이미 완료된 상태이므로 리다이렉트는 그대로 진행한다.
-    try {
-      await syncStravaActivities(userId)
-    } catch (err) {
-      if (err instanceof UserSuspendedError) {
-        // 이용 정지 중이면 동기화만 건너뛴다 — 연결 저장과 로그인 흐름은 그대로 진행한다 (티켓 20261017_1426)
-        console.info('[JAM! Strava] 이용 정지 중이라 즉시 동기화를 건너뜀 (연동은 성공)')
-      } else if (err instanceof TribeRequiredError) {
-        // 위에서 이미 막았으므로 보통 닿지 않는다. 연결 저장 뒤 트라이브가 사라진 경합이면 오류가 아니라 건너뜀으로 남긴다 (티켓 20261021_1247)
-        console.info('[JAM! Strava] 트라이브가 없어 즉시 동기화를 건너뜀 (연동은 성공)')
-      } else {
-        console.error('[JAM! Strava] 즉시 동기화 실패 (연동은 성공):', err)
-      }
-    }
+    // 5. 연동 즉시 동기화 — 실패해도 연동은 이미 완료된 상태이므로 리다이렉트는 그대로 진행한다
+    await syncAfterConnect(userId)
 
     // reveal=1 — 도착 화면에서 최근 획득 배지를 되읽어 획득 연출을 띄우는 플래그.
     // 여기서 배지 상세를 응답에 실을 수 없어(리다이렉트) 플래그만 넘긴다 (20260824_003).

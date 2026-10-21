@@ -14,6 +14,9 @@
  *  - 연결 규칙(티켓 20261017_1422): 다른 JAM 계정에 이미 연결된 Strava 계정이면 아무것도 저장하지 않고
  *    `/profile?strava=duplicate`로 보내며 기존 행의 user_id가 그대로다 · 같은 계정 재연결은 토큰만 갱신하고
  *    끊김을 지운다 · 다른 계정 연결은 이전 행을 지우고 새 행을 first_sync_pending=true로 만든다
+ *  - «그래도 연결하기»(티켓 20261021_1249 4회): 기존 계정이 일반·정상이면 아무것도 저장하지 않고 10분짜리 서명 쿠키(방금 받은 토큰 포함)를 구워
+ *    `?strava=duplicate`로 보낸다 · 기존 계정이 어드민(is_admin·화이트리스트 이메일)이거나 이용 정지 중이거나 유저 행이 없으면 쿠키 없이
+ *    `?strava=duplicate_blocked` · 기존 계정을 읽지 못하면 쿠키 없이 db_error · 쿠키 값과 로그에 토큰이 평문으로 없다
  *  - 트라이브 게이트(티켓 20261021_1247): 로그인 세션 유저가 트라이브를 고르지 않았으면 토큰 교환·저장·동기화 없이 `/onboarding`으로 보내고
  *    state 쿠키를 지운다 · 트라이브를 읽지 못하면 «있음»으로 보지 않고 server_error로 끝낸다 · 세션 유저의 트라이브만 확인한다
  *
@@ -33,6 +36,14 @@ const state = vi.hoisted(() => ({
   authenticated: true,
   tribe: 'has' as 'has' | 'none' | 'fail',
   checkedUserIds: [] as string[],
+  /** 중복 연결의 기존 계정(`users` 행). null이면 행이 없다 */
+  owner: null as null | { id: string; email: string | null; is_admin: boolean },
+  ownerError: false,
+  /** 기존 계정의 진행 중인 이용 정지 */
+  ownerSuspended: false,
+  ownerSuspensionError: false,
+  /** 기존 계정을 읽은 테이블과 유저 id */
+  ownerReads: [] as string[],
 }))
 
 const syncMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<void>>())
@@ -61,6 +72,26 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
   createServiceClient: () => ({
     from: (table: string) => {
+      // 중복 연결의 기존 계정 확인(티켓 20261021_1249 4회): users 한 행과 user_suspensions 진행 중인 정지만 읽는다
+      if (table === 'users' || table === 'user_suspensions') {
+        const read = (run: () => { data: unknown; error: unknown }) => {
+          const chain: Record<string, unknown> = {
+            eq: (_col: string, val: unknown) => (state.ownerReads.push(`${table}:${String(val)}`), chain),
+            is: () => chain,
+            maybeSingle: async () => run(),
+          }
+          return chain
+        }
+        return {
+          select: () =>
+            table === 'users'
+              ? read(() => ({ data: state.owner, error: state.ownerError ? { message: 'db down' } : null }))
+              : read(() => ({
+                  data: state.ownerSuspended ? { id: 's1', reason: 'abuse', suspended_at: '2026-10-01T00:00:00.000Z' } : null,
+                  error: state.ownerSuspensionError ? { message: 'db down' } : null,
+                })),
+        }
+      }
       if (table !== 'strava_connections') throw new Error(`예상치 못한 테이블 — ${table}`)
       type Filter = { op: 'eq' | 'neq'; col: string; val: unknown }
       const filterChain = (
@@ -116,6 +147,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/lib/utils', () => ({
   encrypt: async (text: string) => `enc:${text}`,
+  decrypt: async (text: string) => text.replace(/^enc:/, ''),
 }))
 // 트라이브 판정 자체는 lib/tribe/__tests__/gate.test.ts가 맡는다 — 여기서는 콜백이 그 결과를 이동으로 바꾸는 부분만 본다
 vi.mock('@/lib/tribe/gate', async (importOriginal) => {
@@ -135,6 +167,7 @@ vi.mock('@/lib/strava/sync', () => ({
 
 import { GET } from '../route'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
+import { STRAVA_REPLACE_OFFER_COOKIE, openStravaReplaceOffer } from '@/lib/strava/replace-offer'
 
 interface RequestOptions {
   cookie?: string | null
@@ -187,6 +220,11 @@ describe('GET /api/strava/callback', () => {
     state.authenticated = true
     state.tribe = 'has'
     state.checkedUserIds = []
+    state.owner = { id: OTHER_USER_ID, email: 'owner@example.com', is_admin: false }
+    state.ownerError = false
+    state.ownerSuspended = false
+    state.ownerSuspensionError = false
+    state.ownerReads = []
     db.rows = []
     db.writes = []
     db.failOn = null
@@ -196,6 +234,8 @@ describe('GET /api/strava/callback', () => {
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', BASE_URL)
     vi.stubEnv('STRAVA_CLIENT_ID', 'client-123')
     vi.stubEnv('STRAVA_CLIENT_SECRET', 'secret-xyz')
+    vi.stubEnv('ENCRYPTION_KEY', 'ab'.repeat(32))
+    vi.stubEnv('ADMIN_EMAILS', '')
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -515,6 +555,97 @@ describe('GET /api/strava/callback', () => {
         expect(logged).not.toContain('access')
         expect(logged).not.toContain('refresh')
         expect(logged).not.toContain(CODE)
+      })
+
+      describe('그래도 연결하기 제안 쿠키 (티켓 20261021_1249 4회)', () => {
+        const offerCookie = (res: Response) =>
+          (res as import('next/server').NextResponse).cookies.get(STRAVA_REPLACE_OFFER_COOKIE)
+
+        it('기존 계정이 일반·정상이면 방금 받은 토큰과 로그인 유저를 담은 서명 쿠키를 굽는다', async () => {
+          db.rows = [connRow(OTHER_USER_ID, ATHLETE)]
+
+          const res = await GET(makeRequest())
+
+          expect(location(res)).toBe(`${BASE_URL}/profile?strava=duplicate`)
+          const cookie = offerCookie(res)
+          expect(cookie).toMatchObject({ name: STRAVA_REPLACE_OFFER_COOKIE, httpOnly: true, sameSite: 'lax', path: '/api/strava', maxAge: 600 })
+          const opened = await openStravaReplaceOffer(cookie?.value)
+          expect(opened).toMatchObject({
+            ok: true,
+            offer: {
+              userId: SESSION_USER_ID, // URL의 state가 아니라 로그인 세션 유저다
+              athleteId: ATHLETE,
+              accessToken: 'access',
+              refreshToken: 'refresh',
+              tokenExpiresAtSec: 1_800_000_000,
+            },
+          })
+          // 기존 계정은 지우지 않고 읽기만 했다: 유저 행과 진행 중인 정지
+          expect(state.ownerReads).toEqual([`users:${OTHER_USER_ID}`, `user_suspensions:${OTHER_USER_ID}`])
+          expect(db.writes).toHaveLength(0)
+          expectStateCookieCleared(res)
+        })
+
+        it('로그에 쿠키 값이 없다', async () => {
+          db.rows = [connRow(OTHER_USER_ID, ATHLETE)]
+
+          const res = await GET(makeRequest())
+
+          // 이 파일은 encrypt를 «enc:» 접두 가짜로 바꿨으므로 쿠키 값의 평문 검사는 replace-offer.test.ts가 실제 암호화로 한다
+          const value = offerCookie(res)?.value ?? ''
+          expect(value.length).toBeGreaterThan(0)
+          const logged = JSON.stringify([...warnSpy.mock.calls, ...errorSpy.mock.calls])
+          expect(logged).not.toContain(value)
+        })
+
+        it.each([
+          ['어드민 계정(is_admin)', () => { state.owner = { id: OTHER_USER_ID, email: 'a@example.com', is_admin: true } }],
+          ['어드민 화이트리스트 이메일', () => {
+            vi.stubEnv('ADMIN_EMAILS', 'owner@example.com')
+          }],
+          ['이용 정지 중인 계정', () => { state.ownerSuspended = true }],
+          ['유저 행을 찾을 수 없는 계정', () => { state.owner = null }],
+        ])('기존 계정이 %s이면 쿠키 없이 duplicate_blocked로 보내고 아무것도 저장하지 않는다', async (_label, arrange) => {
+          arrange()
+          db.rows = [connRow(OTHER_USER_ID, ATHLETE)]
+          const before = JSON.parse(JSON.stringify(db.rows))
+
+          const res = await GET(makeRequest())
+
+          expect(location(res)).toBe(`${BASE_URL}/profile?strava=duplicate_blocked`)
+          expect(offerCookie(res)).toBeUndefined()
+          expect(db.writes).toHaveLength(0)
+          expect(db.rows).toEqual(before)
+          expect(syncMock).not.toHaveBeenCalled()
+          expectStateCookieCleared(res)
+        })
+
+        it.each([
+          ['유저 행을 읽지 못하면', () => { state.ownerError = true }],
+          ['정지 여부를 읽지 못하면', () => { state.ownerSuspensionError = true }],
+        ])('%s «지워도 된다»로 보지 않고 쿠키 없이 db_error로 닫는다', async (_label, arrange) => {
+          arrange()
+          db.rows = [connRow(OTHER_USER_ID, ATHLETE)]
+
+          const res = await GET(makeRequest())
+
+          expect(location(res)).toBe(`${BASE_URL}/profile?strava=error&reason=db_error`)
+          expect(offerCookie(res)).toBeUndefined()
+          expect(db.writes).toHaveLength(0)
+          expectStateCookieCleared(res)
+        })
+
+        it('같은 유저의 재연결이나 새 Strava 계정 연결에서는 기존 계정을 읽지도 쿠키를 굽지도 않는다', async () => {
+          db.rows = [connRow(SESSION_USER_ID, ATHLETE)]
+          const same = await GET(makeRequest())
+          expect(offerCookie(same)).toBeUndefined()
+
+          db.rows = []
+          const fresh = await GET(makeRequest())
+          expect(offerCookie(fresh)).toBeUndefined()
+
+          expect(state.ownerReads).toHaveLength(0)
+        })
       })
     })
 
