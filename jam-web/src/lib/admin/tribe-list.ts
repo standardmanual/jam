@@ -32,10 +32,20 @@ async function headCount(
   return count ?? 0
 }
 
+/** 이 트라이브를 참가 대상으로 둔 미션 수. `mission_allowed_tribes`는 `id` 컬럼이 없어(PK는 mission_id + tribe_id) 건수만 센다 */
+async function allowedTribeCount(supabase: ServiceClient, tribeId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('mission_allowed_tribes')
+    .select('mission_id', { count: 'exact', head: true })
+    .eq('tribe_id', tribeId)
+  if (error) throw new Error(`[tribe-list] mission_allowed_tribes.tribe_id 조회 실패: ${error.message}`)
+  return count ?? 0
+}
+
 export async function fetchTribeListCounts(supabase: ServiceClient, tribeIds: string[]): Promise<TribeListCounts> {
   const client = supabase as unknown as CountRowsClient
 
-  const [badgeCounts, bookCounts, userCounts, adjacencyResult, dropStateCounts] = await Promise.all([
+  const [badgeCounts, bookCounts, userCounts, adjacencyResult, dropStateCounts, allowedTribeCounts] = await Promise.all([
     countRowsByKey(client, 'badges', 'tribe_id', tribeIds, (q) => q.is('deleted_at', null)),
     countRowsByKey(client, 'item_books', 'tribe_id', tribeIds),
     countRowsByKey(client, 'users', 'tribe_id', tribeIds),
@@ -43,6 +53,8 @@ export async function fetchTribeListCounts(supabase: ServiceClient, tribeIds: st
     supabase.from('tribe_adjacency').select('tribe_id, adjacent_tribe_id'),
     // `user_drop_state`는 `id` 컬럼이 없어 `countRowsByKey`를 쓸 수 없다 — 트라이브마다 건수만 센다.
     Promise.all(tribeIds.map(async (id) => [id, await headCount(supabase, 'user_drop_state', 'last_drop_tribe_id', id)] as const)),
+    // 참가 대상으로 둔 미션(`mission_allowed_tribes`, FK RESTRICT)
+    Promise.all(tribeIds.map(async (id) => [id, await allowedTribeCount(supabase, id)] as const)),
   ])
   if (adjacencyResult.error) {
     throw new Error(`[tribe-list] tribe_adjacency 조회 실패: ${adjacencyResult.error.message}`)
@@ -55,6 +67,7 @@ export async function fetchTribeListCounts(supabase: ServiceClient, tribeIds: st
     adjacencyCounts[row.adjacent_tribe_id] = (adjacencyCounts[row.adjacent_tribe_id] ?? 0) + 1
   }
   const dropStateById = Object.fromEntries(dropStateCounts)
+  const allowedTribeById = Object.fromEntries(allowedTribeCounts)
 
   const blockingCounts: Record<string, Record<string, number>> = {}
   for (const id of tribeIds) {
@@ -62,6 +75,7 @@ export async function fetchTribeListCounts(supabase: ServiceClient, tribeIds: st
       tribe_adjacency: adjacencyCounts[id] ?? 0,
       user_drop_state: dropStateById[id] ?? 0,
       users: userCounts[id] ?? 0,
+      mission_allowed_tribes: allowedTribeById[id] ?? 0,
     }
   }
 

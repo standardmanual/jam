@@ -26,6 +26,10 @@
  *   **CASCADE**. `user_drop_state.last_drop_tribe_id`는 **NO ACTION**(위와 같은 이유로
  *   실무 차단 확률이 높다). `users.tribe_id`(`users_tribe_id_fkey`)도 **NO ACTION**이다
  *   (티켓 20260924_0945 — 운영 DB 확인). `badges.tribe_id`·`item_books.tribe_id`는 SET NULL.
+ *   `mission_allowed_tribes.tribe_id`(마이그레이션 249)는 **ON DELETE RESTRICT**다 — 참가 대상으로 둔 미션이 있으면 DELETE 자체가
+ *   실패하므로 삭제를 막는 참조다(티켓 20261019_1318 2회, 1회 게이트 [주의]: 목록에 없을 때는 가드를 통과한 뒤 DB에서 막혀 500이 났다).
+ *   `chapter_names.tribe_id`(마이그레이션 221)는 **CASCADE**지만 운영자가 어드민 표에서 다시 입력할 수 있는 설정이라 안내만 한다.
+ *   `mission_participation_cancellations.new_tribe_id`는 SET NULL이고 취소 이력의 «바뀐 트라이브» 표시일 뿐이라 등록하지 않는다.
  *
  * ## fail-closed
  * 조회가 하나라도 실패하면 `error`를 채운다 — 호출부는 이 경우 어떤 삭제도 실행하지 않는다.
@@ -403,6 +407,13 @@ export const TRIBE_REFERENCE_SOURCES: ReferenceSource[] = [
     unit: '명',
   },
   {
+    // 마이그레이션 249의 외래 키는 ON DELETE RESTRICT다. 한 줄이 미션 하나이므로 «미션 N건»이다.
+    key: 'mission_allowed_tribes',
+    label: '참가 대상으로 둔 미션',
+    location: 'mission_allowed_tribes.tribe_id',
+    blocks: true, // RESTRICT
+  },
+  {
     key: 'badges',
     label: '소속 배지',
     location: 'badges.tribe_id',
@@ -413,6 +424,13 @@ export const TRIBE_REFERENCE_SOURCES: ReferenceSource[] = [
     label: '소속 컬렉션',
     location: 'item_books.tribe_id',
     blocks: false, // SET NULL
+  },
+  {
+    // CASCADE — 트라이브를 지우면 그 트라이브의 챕터 이름 표가 함께 지워진다. 설정값이라 막지 않고 안내만 한다.
+    key: 'chapter_names',
+    label: '챕터 이름',
+    location: 'chapter_names.tribe_id',
+    blocks: false, // CASCADE(운영 설정)
   },
 ]
 
@@ -476,6 +494,18 @@ export async function collectTribeReferences(
   )
   if (itemBooks.error) errors.push(`item_books: ${itemBooks.error}`)
   tally('item_books', itemBooks.rows.map((r) => r.tribe_id))
+
+  const allowedTribes = await fetchAllRows<{ tribe_id: string }>((from, to) =>
+    supabase.from('mission_allowed_tribes').select('tribe_id').in('tribe_id', tribeIds).range(from, to)
+  )
+  if (allowedTribes.error) errors.push(`mission_allowed_tribes: ${allowedTribes.error}`)
+  tally('mission_allowed_tribes', allowedTribes.rows.map((r) => r.tribe_id))
+
+  const chapterNames = await fetchAllRows<{ tribe_id: string }>((from, to) =>
+    supabase.from('chapter_names').select('tribe_id').in('tribe_id', tribeIds).range(from, to)
+  )
+  if (chapterNames.error) errors.push(`chapter_names: ${chapterNames.error}`)
+  tally('chapter_names', chapterNames.rows.map((r) => r.tribe_id))
 
   return { counts, error: errors.length > 0 ? errors.join(' / ') : null }
 }
