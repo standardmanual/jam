@@ -680,42 +680,6 @@ export type Database = {
         }
         Relationships: []
       }
-      chapter_names: {
-        Row: {
-          chapter_no: number
-          name: string | null
-          tribe_id: string
-          updated_at: string
-        }
-        Insert: {
-          chapter_no: number
-          name?: string | null
-          tribe_id: string
-          updated_at?: string
-        }
-        Update: {
-          chapter_no?: number
-          name?: string | null
-          tribe_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chapter_names_chapter_no_fkey"
-            columns: ["chapter_no"]
-            isOneToOne: false
-            referencedRelation: "chapter_definitions"
-            referencedColumns: ["chapter_no"]
-          },
-          {
-            foreignKeyName: "chapter_names_tribe_id_fkey"
-            columns: ["tribe_id"]
-            isOneToOne: false
-            referencedRelation: "tribes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       chapter_score_events: {
         Row: {
           activity_kind: string

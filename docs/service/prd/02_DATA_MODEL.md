@@ -67,7 +67,6 @@ code:
 [챕터]          users ─1:1─ user_chapters (지금 챕터·누적 점수)
                 users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)
                 users ─1:N─ chapter_ups (오른 기록) ──> chapter_definitions (챕터별 필요 점수)
-                tribes ─1:N─ chapter_names (쓰지 않는 표, 삭제 예정) ──> chapter_definitions
 
 [캡슐]          users ─1:1─ user_capsules (지금 캡슐: 필요량·채운 양)
                 users ─1:N─ capsule_opens (열 때마다 한 줄, append-only)
@@ -983,13 +982,10 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 **`resolve_sync_pending_items(p_user_id uuid, p_chosen_ids uuid[]) → jsonb`** (`SECURITY DEFINER`, `service_role`만 실행): 인벤토리 행을 잠그고 → 고른 개수가 `LEAST(빈칸, 보류 수)`와 정확히 같은지 확인하고 → 고른 것을 `grant_inventory_item_locked`로 지급하며 보류의 잠김을 개체로 옮기고(`claimed`, 마이그레이션 231 이후. 229는 `grant_inventory_item`을 직접 불렀다) → 나머지 보류를 `discarded`로 닫고 → 지급마다 `item_issue_log`에 한 줄(경로 `sync`, `locked`는 보류의 값)을 남긴다. 한 단계라도 실패하면 전체가 되돌려진다. 성공은 `{ok: true, granted, discarded, itemIds}`, 거절은 `{ok: false, error}`(`inventory_not_found`·`no_pending`·`invalid_selection`·`wrong_count`+`expected`)다. 앱은 `lib/strava/pending-items.ts`가 호출하고 `/api/strava/pending-items`가 세션 유저에게만 연다.
 
 ### 9-3. 챕터 (JAM 2.0) — 마이그레이션 221, 티켓 20261016_2339
-운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다. 점수를 주는 연결은 «점수 호출 지점과 원천 id», 챕터 1 시작·오름 처리·소식·챕터 배지 판정은 «챕터 1 시작과 오름 처리»(티켓 20261019_1316)다. 연출·프로필 표시는 묶음 5(5-7).
+운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다(221이 만든 표 6개 가운데 `chapter_names`는 챕터를 트라이브와 상관없이 숫자로만 표기하기로 한 2026-10-21 결정으로 마이그레이션 257에서 삭제해 5개가 남았다). 점수를 주는 연결은 «점수 호출 지점과 원천 id», 챕터 1 시작·오름 처리·소식·챕터 배지 판정은 «챕터 1 시작과 오름 처리»(티켓 20261019_1316)다. 연출·프로필 표시는 묶음 5(5-7).
 
 #### chapter_definitions
 `chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지).
-
-#### chapter_names
-`(tribe_id, chapter_no)` 복합 PK, `name`은 비어도 된다. 로그인 유저 모두 SELECT. **쓰지 않는 표다.** 챕터는 트라이브와 상관없이 숫자로만 표기하기로 해(2026-10-21 결정) 읽는 코드와 쓰는 어드민 화면을 지웠고, 티켓 20261021_1539 조사 시점에 0행이었다. 표 삭제는 같은 티켓의 2회(`db`)에서 한다([챕터 PRD](chapter/PRD.md) 6절).
 
 #### chapter_score_rules
 `activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다.
@@ -1102,7 +1098,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 - `total_score`와 `required_score`는 비율 계산(`progress.ts`)에만 쓰이고 응답에 실리지 않는다.
 - `user_chapters`는 본인 행만 읽는 정책이라 읽기 함수는 service 클라이언트를 받는다. `chapter_definitions`는 로그인 유저 모두 읽을 수 있다.
-- 트라이브는 `users.tribe_id`가 가리키는 지금 트라이브이고 `getPublicChapter`만 읽는다. 어느 읽기도 `chapter_names`를 읽지 않는다.
+- 트라이브는 `users.tribe_id`가 가리키는 지금 트라이브이고 `getPublicChapter`만 읽는다. 챕터 이름은 두지 않는다(2026-10-21 결정).
 
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
