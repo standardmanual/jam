@@ -174,6 +174,38 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 이후 행만 읽고, `normalized`의 `jamActivityType`·`distanceKm`·`movingTimeSec`·`averageSpeedKmh`로 JAM! 종목·걷기
 게이트·차량 속도 필터를 통과한 활동만 센다(티켓 20261001_0633). 걸러진 활동(`filter_reason`이 있는 행)은 읽지 않는다(티켓 20261017_1421).
 
+### 계정 삭제: retained_records · prepare_account_deletion · purge_expired_retained_records — 마이그레이션 262·263, 티켓 20261021_1249 1회
+운영 로직 17장. 유저 탈퇴, 어드민 삭제(단건·일괄), «그래도 연결하기»의 기존 계정 지우기가 **같은 규칙**으로 지운다. 규칙은 앱의 `deleteAccount`(`lib/account/delete-account.ts`)가 갖고,
+어드민 삭제(`hardDeleteUser`)가 먼저 연결됐다. 유저 탈퇴 화면과 «그래도 연결하기»는 같은 묶음의 뒤 회차가 같은 함수를 부른다. 공용 DB 적용 여부는 티켓 완료 기록을 따른다.
+
+**지우는 순서** (`deleteAccount`):
+1. 어드민 계정은 거절한다(`admin_account`). 호출부의 거절과 별개인 이중 안전장치다.
+2. 준비 RPC `prepare_account_deletion(p_user_id) → jsonb` — 한 트랜잭션, 다시 불러도 안전(두 번째 호출은 모든 건수가 0). 실패하면 여기서 멈추고 계정은 지우지 않는다(`prepare_failed`).
+3. 아바타 파일 삭제(`lib/account/avatar-cleanup.ts`: `avatars` 버킷의 `${userId}/` 폴더를 목록으로 읽어 모두 지운다. 구글 사진 URL을 쓰는 유저는 파일이 없다). **실패해도 계정 삭제는 멈추지 않고** 서버 로그에만 남긴다.
+4. `auth.admin.deleteUser` — `public.users`가 `auth.users`를 `ON DELETE CASCADE`로 참조해 나머지는 외래키가 연쇄로 지운다. 실패는 고정 코드 `delete_failed`로만 돌려주고 원문은 서버 로그에 남는다.
+
+**prepare_account_deletion** (SECURITY DEFINER, `search_path = public`, `service_role`만 실행):
+- `users` 행을 `FOR UPDATE`로 잠근다. 없으면 `{found:false}`.
+- 보관 복사(`retained_records`, `ON CONFLICT (kind, source_id) DO NOTHING`, 이미 기간이 지난 기록은 복사하지 않는다): 체크인 배지 획득 `checkin_earn`, 장소 열람 `poi_view`, 드랍 `poi_drop`(`dropper_user_id`), 픽업 `poi_pickup`(`picked_up_by`)은 최근 6개월, 부정 이용 탐지 기록 `abuse_log`는 최근 3개월.
+  확인자료는 식별자와 시각만 담고(`poi_id`·`badge_id`·`strava_activity_id`) 좌표·활동 이름·거리는 담지 않는다. `abuse_log`만 탐지 시점 좌표가 든 `detail`을 담는다. `retained_until` = 기록 시각 + 기간.
+- `custody_events`의 `*_username`을 짝 `*_user_id`가 이 유저인 행에서 NULL로 비운다.
+- 이 유저 인벤토리의 `destroyed_at IS NULL` 아이템마다 `Orphan` 이벤트(`from_user_id` = 유저, 이름 NULL)를 넣고 `destroyed_at = now()`와 `inventory_id = NULL`(소유 비우기, 마이그레이션 108의 파괴 규약)로 «없어짐» 처리한다. 새 이벤트 종류를 만들지 않는다(`custody_events_event_type_check` 불변). 일련번호는 다시 쓰일 수 있다(알려진 틈 참고).
+- 반환: `{found:true, retained:{checkin_earn, poi_view, poi_drop, poi_pickup, abuse_log}, custody_rows_cleared, vanished_items}`. 앱 파서 `parsePrepareResult`가 이 모양만 인정하고 그 밖은 `prepare_failed`로 멈춘다.
+
+**retained_records** (마이그레이션 262): `id`, `kind`(CHECK 5종), `source_id`(원본 행 id, 외래키 없음), `subject_user_id`(지운 유저 id, 외래키 없음), `occurred_at`, `detail`(jsonb), `retained_until`, `created_at`. `UNIQUE (kind, source_id)`, `retained_until` 인덱스.
+RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role` 전용이다. 어드민 화면은 없고 수사 등 요청이 오면 SQL로 조회한다. 기간 상수는 `lib/account/retention.ts`이고 시험이 SQL 파일과 같은지 확인한다. 법무 확인(티켓 20260929_1303)에서 기간이 바뀌면 상수와 함수를 함께 고친다.
+**purge_expired_retained_records()** → `retained_until <= now()`인 행을 지우고 지운 수를 돌려준다(`service_role` 전용). 하루 한 번 부르는 크론은 같은 묶음의 2회에서 만든다.
+
+**어드민 삭제의 응답**: 실패하면 DB·Auth 오류 원문 대신 고정 문구 «계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.»(`ADMIN_DELETE_FAILED_MESSAGE`)만 나간다(단건 500, 일괄 `skipped` 사유). 일괄 미리보기(`dry_run`)는 삭제 안내에 `vanishingItemCount`(없어질 아이템 수)와
+`retainedRecordCount`(보관 표로 복사될 기록 수)를 더해 알린다.
+
+**알려진 틈**:
+- 준비 함수를 거치지 않고 Supabase 화면에서 직접 지우는 경우는 옛 동작 그대로다(트리거가 `OLD.username`을 남기고 보관 복사·이름 비우기가 없다).
+- 준비와 계정 삭제 사이에 새로 생긴 기록은 보관 표로 복사되지 않는다. 준비 뒤 계정 삭제가 실패하면 소유 아이템은 이미 «없어짐» 처리된 상태이며, 다시 지우면 이어서 처리된다.
+- 이미 지워진 유저가 남긴 `Orphan` 이름 스냅샷(이 규칙 이전)은 `*_user_id`가 비어 있어 찾을 수 없고 남아 있다.
+- **일련번호 재사용**: 일련번호 유일 인덱스(`idx_inventory_items_serial_number_active`)와 `assign_random_serial()`은 `destroyed_at IS NULL`인 개체만 겹치지 않게 막으므로(마이그레이션 108), «없어짐» 처리한 개체의 번호는 다시 쓰일 수 있다. 번호를 1~999,999에서 무작위로 고르므로 확률은 아이템 하나당 약 100만 분의 1이고, 어드민 삭제·믹스로 없어진 개체와 같은 동작이다. 운영 로직 6.3·17.2의 «번호를 다시 쓰지 않는다»를 보장하려면 옛 인덱스와 함수를 바꿔야 하므로 후속 티켓 `20261021_1838`에서 다룬다.
+- 문의 기록은 DB가 아니라 Tally와 연결된 읽기 전용 구글 시트라 지우지 않는다. 방침대로 처리 완료 후 3년 보관한다(사용자 결정, 2026-10-21).
+
 ---
 
 ## 2. 배지
@@ -350,9 +382,12 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
 ### custody_events (신규, 2026-08-29 — 티켓 20260829_2101)
 `InventoryItem` 한 개체의 점유(custody) 변화 이력(append-only). `Minted`/`UserDrop`/
 `Pickup`/`Expire`/`Slot`/`Unslot`/`Consume`/`Orphan` 8종. `from_user_id`/`to_user_id`/
-`actor_user_id`는 라이브 FK(`ON DELETE SET NULL`) + `*_username` 스냅샷을 함께 가진다 —
-계정 탈퇴로 FK가 비어도 스냅샷은 남는다. 계정 탈퇴 시 `Orphan` 이벤트는 앱 로직이 아니라
-`BEFORE DELETE ON public.users` 트리거(`log_orphan_custody_events()`)로 기록된다. 상세는
+`actor_user_id`는 라이브 FK(`ON DELETE SET NULL`) + `*_username` 스냅샷을 함께 가진다.
+**계정을 지울 때는 이 유저의 이름 스냅샷을 비운다**(운영 로직 17.2절, 티켓 20261021_1249): 앱이 계정을 지우는
+경로(`deleteAccount`)는 준비 함수 `prepare_account_deletion`이 짝 `*_user_id`가 이 유저인 행의 이름 칸을 NULL로 만들고, 소유 아이템에
+`Orphan` 이벤트(이름 없이 `from_user_id`만)를 남기고 `destroyed_at`을 채우며 소유를 비워 «없어짐» 처리한다(아래 «계정 삭제» 절).
+`BEFORE DELETE ON public.users` 트리거(`log_orphan_custody_events()`)는 그대로 있으며, 준비 함수를 거치지 않고 지우는 경우(Supabase 화면에서
+직접 삭제)에만 `destroyed_at IS NULL`인 소유 아이템에 `OLD.username` 스냅샷을 남긴다. 상세는
 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.5-1 참고. 어드민 조회 화면은
 별도 티켓([20260829_2139](../../tickets/p2-normal/20260829_2139_Admin_아이템배지-발급현황-이력조회-화면.md)).
 

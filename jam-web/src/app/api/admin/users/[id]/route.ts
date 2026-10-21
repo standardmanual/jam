@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, isAdminAccount } from '@/lib/admin/auth'
-import { hardDeleteUser } from '@/lib/admin/user-actions'
+import { ADMIN_DELETE_FAILED_MESSAGE, hardDeleteUser } from '@/lib/admin/user-actions'
 
 /**
  * 유저 계정 강제 완전 삭제 (티켓 20260909_0911) — 삭제 절차는
@@ -41,7 +41,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   const result = await hardDeleteUser(supabase, userId, admin.email)
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
+  if (!result.ok) {
+    // 500은 DB·Auth 오류 원문이 아니라 고정 문구만 내보낸다(티켓 20261021_1249). 원문은 hardDeleteUser·deleteAccount가 로그에 남긴다.
+    const error = result.status === 500 ? ADMIN_DELETE_FAILED_MESSAGE : result.error
+    return NextResponse.json({ error }, { status: result.status })
+  }
 
   return NextResponse.json({
     deletedEmail: result.deletedEmail,

@@ -30,7 +30,8 @@ vi.mock('@/lib/admin/user-bulk-impact', () => ({
   fetchUserTargets: mocks.fetchUserTargets,
   computeUserBulkImpact: mocks.computeUserBulkImpact,
 }))
-vi.mock('@/lib/admin/user-actions', () => ({
+vi.mock('@/lib/admin/user-actions', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/admin/user-actions')>()),
   resetUserData: mocks.resetUserData,
   hardDeleteUser: mocks.hardDeleteUser,
 }))
@@ -69,6 +70,9 @@ afterEach(() => {
 })
 
 const ALL_IDS = [USER_A, USER_B, OTHER_ADMIN, ADMIN_ID]
+
+// 삭제 실패 때 응답에 나가는 고정 문구(티켓 20261021_1249) — DB·Auth 오류 원문은 싣지 않는다
+const DELETE_FAILED_MESSAGE = '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'
 
 describe('미리보기(dry_run)', () => {
   it('영향 수치와 확인 문구를 돌려주고 아무것도 바꾸지 않는다', async () => {
@@ -121,7 +125,7 @@ describe('실행', () => {
 
   it('확인 문구가 맞으면 어드민·본인을 뺀 유저에게만 실행하고 유저별 결과를 돌려준다', async () => {
     mocks.hardDeleteUser.mockImplementation(async (_client: unknown, id: string) =>
-      id === USER_B ? { ok: false, status: 500, error: '삭제 실패' } : { ok: true, deletedEmail: 'a', deletedActivityBadges: 0, deletedInventoryItems: 0 }
+      id === USER_B ? { ok: false, status: 500, error: 'duplicate key value violates unique constraint' } : { ok: true, deletedEmail: 'a', deletedActivityBadges: 0, deletedInventoryItems: 0 }
     )
     const res = await POST(post({ ids: ALL_IDS, action: 'delete', confirm_phrase: '삭제 2' }))
     expect(res.status).toBe(200)
@@ -132,17 +136,30 @@ describe('실행', () => {
     expect(data.results).toEqual(
       expect.arrayContaining([
         { id: USER_A, ok: true },
-        { id: USER_B, ok: false, error: '삭제 실패' },
+        { id: USER_B, ok: false, error: DELETE_FAILED_MESSAGE },
       ])
     )
     expect(data.processed).toEqual([USER_A])
     expect(data.skipped).toEqual(
       expect.arrayContaining([
-        { id: USER_B, reason: '삭제 실패', label: 'b@x.com' },
+        { id: USER_B, reason: DELETE_FAILED_MESSAGE, label: 'b@x.com' },
         { id: OTHER_ADMIN, reason: '어드민 계정', label: 'boss@x.com' },
         { id: ADMIN_ID, reason: '본인 계정', label: 'me@jam.app' },
       ])
     )
+  })
+
+  it('삭제 함수가 던지면 오류 원문이 아니라 고정 문구를 싣고 원문은 console.error로만 남긴다', async () => {
+    mocks.hardDeleteUser.mockImplementation(async (_client: unknown, id: string) => {
+      if (id === USER_B) throw new Error('connection refused to db-host')
+      return { ok: true, deletedEmail: 'a', deletedActivityBadges: 0, deletedInventoryItems: 0 }
+    })
+    const res = await POST(post({ ids: ALL_IDS, action: 'delete', confirm_phrase: '삭제 2' }))
+    const text = JSON.stringify(await res.clone().json())
+    expect(res.status).toBe(200)
+    expect(text).not.toContain('connection refused')
+    expect((await res.json()).results).toEqual(expect.arrayContaining([{ id: USER_B, ok: false, error: DELETE_FAILED_MESSAGE }]))
+    expect(console.error).toHaveBeenCalled()
   })
 
   it('포인트 지급은 검증을 통과한 금액으로 유저마다 실행한다', async () => {

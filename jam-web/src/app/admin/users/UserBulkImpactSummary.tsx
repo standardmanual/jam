@@ -57,9 +57,12 @@ export function UserBulkImpactSummary({ action, impact, skippedCount }: UserBulk
       {action === 'delete' && (
         <>
           <p>배지 이력 {i.badgeCount ?? 0}건이 지워져요.</p>
-          <p>아이템 {i.itemCount ?? 0}개는 소유자 없음으로 바뀌어요.</p>
+          <p className="break-keep wrap-break-word">아이템 {i.vanishingItemCount ?? 0}개는 없어짐으로 처리돼요.</p>
           <p>포인트 잔액 {won(i.pointBalanceTotal ?? 0)}이 사라져요.</p>
           <p>Strava 연동 {i.stravaConnectionCount ?? 0}건이 끊겨요.</p>
+          <p className="break-keep wrap-break-word">
+            방문·부정 이용 기록 {i.retainedRecordCount ?? 0}건은 법정 기간 동안 따로 보관돼요.
+          </p>
         </>
       )}
 

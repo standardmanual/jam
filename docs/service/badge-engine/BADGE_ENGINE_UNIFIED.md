@@ -1933,11 +1933,14 @@ Held ─▶ Dropped(유저 배치 — 무기한, 회수·만료 없음) ─ 픽�
 Held/Slotted ─▶ Orphaned(소유자 계정 탈퇴 — 유저 비노출, 어드민 전용)
 ```
 
-계정 탈퇴 시 Orphan 이벤트 기록은 앱 레벨 로직이 아니라 `BEFORE DELETE ON public.users`
-DB 트리거(`log_orphan_custody_events()`)로 구현돼 있다 — 이 저장소에 아직 앱 레벨
-"탈퇴 처리 로직"이 없어(계정 삭제는 Supabase Admin API/대시보드에서 직접 처리) 삭제 경로에
-관계없이 항상 실행되는 트리거가 더 견고하다고 판단했다. 관련 스키마: `supabase/migrations/
-108_item_identity_custody_model.sql`. 어드민 조회 화면은 별도 티켓(20260829_2139)에서 구현.
+계정 탈퇴 시 Orphan 이벤트 기록은 `BEFORE DELETE ON public.users`
+DB 트리거(`log_orphan_custody_events()`)가 남긴다 — 삭제 경로에 관계없이 항상 실행되는 안전망이다.
+관련 스키마: `supabase/migrations/108_item_identity_custody_model.sql`. 어드민 조회 화면은 별도 티켓(20260829_2139)에서 구현.
+
+**앱이 계정을 지우는 경로는 달라졌다**(티켓 20261021_1249 1회, 마이그레이션 263): `deleteAccount`가 계정을 지우기 전에 준비 함수
+`prepare_account_deletion`을 부른다. 이 함수는 소유 아이템(`destroyed_at IS NULL`)마다 같은 `Orphan` 이벤트를 **이름 없이** 남기고 `destroyed_at`을 채워
+«없어짐» 처리하므로, 이 경로로 지운 유저의 아이템은 Orphaned(주인 없음)가 아니라 Destroyed로 끝난다. 이 경우 트리거는 이름을 새로 남기지 않는다.
+이력의 이름 스냅샷도 비운다. 자세한 규칙은 [데이터 모델](../prd/02_DATA_MODEL.md)의 «계정 삭제» 절.
 
 #### 3.5-2 표준 불변식 1: 원자적 소유권 이전 (2026-08-30 갱신, 티켓 20260830_0057)
 

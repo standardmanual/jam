@@ -114,6 +114,10 @@ export interface UserBulkImpact {
   missionCompletionCount?: number
   pointBalanceTotal?: number
   stravaConnectionCount?: number
+  /** 삭제 — 삭제 준비 함수가 «없어짐» 처리할 아이템 수(소유 중이고 아직 없어지지 않은 것, 티켓 20261021_1249) */
+  vanishingItemCount?: number
+  /** 삭제 — 삭제 준비 함수가 보관 표(`retained_records`)로 복사할 기록 수. 기간 안의 위치정보 확인자료와 부정 이용 탐지 기록 */
+  retainedRecordCount?: number
 }
 
 /** `{ 유저id: 건수 }` 맵의 합 */
