@@ -45,7 +45,7 @@ async function allowedTribeCount(supabase: ServiceClient, tribeId: string): Prom
 export async function fetchTribeListCounts(supabase: ServiceClient, tribeIds: string[]): Promise<TribeListCounts> {
   const client = supabase as unknown as CountRowsClient
 
-  const [badgeCounts, bookCounts, userCounts, adjacencyResult, dropStateCounts, allowedTribeCounts] = await Promise.all([
+  const [badgeCounts, bookCounts, userCounts, adjacencyResult, dropStateCounts, allowedTribeCounts, changeFromCounts, changeToCounts] = await Promise.all([
     countRowsByKey(client, 'badges', 'tribe_id', tribeIds, (q) => q.is('deleted_at', null)),
     countRowsByKey(client, 'item_books', 'tribe_id', tribeIds),
     countRowsByKey(client, 'users', 'tribe_id', tribeIds),
@@ -55,6 +55,9 @@ export async function fetchTribeListCounts(supabase: ServiceClient, tribeIds: st
     Promise.all(tribeIds.map(async (id) => [id, await headCount(supabase, 'user_drop_state', 'last_drop_tribe_id', id)] as const)),
     // 참가 대상으로 둔 미션(`mission_allowed_tribes`, FK RESTRICT)
     Promise.all(tribeIds.map(async (id) => [id, await allowedTribeCount(supabase, id)] as const)),
+    // 어드민 트라이브 변경 이력(`user_tribe_changes`, 마이그레이션 258, FK NO ACTION) — 두 열 어느 쪽이든 대상 트라이브를 가리키면 그 트라이브의 참조다(티켓 20261021_1247).
+    countRowsByKey(client, 'user_tribe_changes', 'from_tribe_id', tribeIds),
+    countRowsByKey(client, 'user_tribe_changes', 'to_tribe_id', tribeIds),
   ])
   if (adjacencyResult.error) {
     throw new Error(`[tribe-list] tribe_adjacency 조회 실패: ${adjacencyResult.error.message}`)
@@ -76,6 +79,7 @@ export async function fetchTribeListCounts(supabase: ServiceClient, tribeIds: st
       user_drop_state: dropStateById[id] ?? 0,
       users: userCounts[id] ?? 0,
       mission_allowed_tribes: allowedTribeById[id] ?? 0,
+      user_tribe_changes: (changeFromCounts[id] ?? 0) + (changeToCounts[id] ?? 0),
     }
   }
 

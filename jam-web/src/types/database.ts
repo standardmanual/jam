@@ -1974,6 +1974,8 @@ export type NotificationType =
   | 'mission_participation_cancelled'
   // 챕터가 2 이상으로 올랐어요(티켓 20261019_1316, 마이그레이션 255). 챕터 1 시작은 퀘스트 완료 보상이 알려서 보내지 않는다
   | 'chapter_up'
+  // 어드민이 트라이브를 바꿨어요(티켓 20261021_1247, 마이그레이션 261). 유저 알림에는 사유를 싣지 않는다
+  | 'tribe_changed'
   // ⑤ 소셜(나에게) (1) — #27 맞팔(`mutual_follow`)은 20260827_014에서 제거됐다
   //    (자기 행동의 메아리. 되팔로우당한 쪽에는 `followed`가 대신 나간다)
   | 'followed'

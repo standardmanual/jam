@@ -565,6 +565,52 @@ describe('④ 미션', () => {
       expect(isWarningNotification('chapter_up', { chapter_no: 2 }, {})).toBe(false)
     })
   })
+
+  describe('어드민 트라이브 변경 (티켓 20261021_1247)', () => {
+    const changed = { new_tribe_name: '아스팔트 레인저' }
+
+    it('바뀐 사실, 새 소속, 이미 번 것은 그대로라는 안내를 한 소식에 말한다 — 사유는 싣지 않는다', () => {
+      expect(text(view('tribe_changed', changed))).toBe(
+        '트라이브가 바뀌었어요. 이제 아스팔트 레인저 소속이에요. 이미 가진 배지와 잼, 챕터는 그대로예요'
+      )
+      expect(text(view('tribe_changed', { ...changed, reason_code: 'wrong_pick', memo: '메모' }))).not.toContain('메모')
+    })
+
+    it('트라이브 이름은 받침과 상관없이 «{이름} 소속» 꼴이라 조사가 갈리지 않는다', () => {
+      expect(text(view('tribe_changed', { new_tribe_name: '숲속의 갱단' }))).toContain('이제 숲속의 갱단 소속이에요')
+      expect(text(view('tribe_changed', { new_tribe_name: '낭만 미식가' }))).toContain('이제 낭만 미식가 소속이에요')
+    })
+
+    it('트라이브 이름은 payload 슬롯이라 볼드, 고정 문구는 일반이다', () => {
+      const tokens = notificationTokens(view('tribe_changed', changed))
+      expect(tokens.filter((token) => token.bold).map((token) => token.text)).toEqual(['아스팔트 레인저'])
+      expect(tokens.map((token) => token.text).join('')).toBe(text(view('tribe_changed', changed)))
+    })
+
+    it('이름이 비었거나 손상돼도 「이제  소속이에요」 같은 문장을 만들지 않는다', () => {
+      for (const payload of [{}, { new_tribe_name: '' }, { new_tribe_name: '   ' }, { new_tribe_name: 3 }, { new_tribe_name: null }]) {
+        expect(text(view('tribe_changed', payload))).toBe('트라이브가 바뀌었어요. 이미 가진 배지와 잼, 챕터는 그대로예요')
+      }
+    })
+
+    it('채워진 슬롯만 있어 빈 슬롯으로 보고되지 않는다', () => {
+      expect(missingMessageSlots(view('tribe_changed', changed))).toEqual([])
+      expect(missingMessageSlots(view('tribe_changed', {}))).toEqual([])
+    })
+
+    it('착지는 /profile이다 — 아이디가 있어도 없어도 같다', () => {
+      expect(notificationTarget(view('tribe_changed', changed))).toEqual({ href: '/profile', avatarHref: null })
+      const noName = { id: 'me', username: null, avatarUrl: null }
+      expect(notificationTarget(view('tribe_changed', changed, { me: noName }))).toEqual({
+        href: '/profile',
+        avatarHref: null,
+      })
+    })
+
+    it('경고 후보가 아니다', () => {
+      expect(isWarningNotification('tribe_changed', changed, {})).toBe(false)
+    })
+  })
 })
 
 describe('⑤⑥ 소셜', () => {

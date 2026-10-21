@@ -29,6 +29,8 @@
  *   `mission_allowed_tribes.tribe_id`(마이그레이션 249)는 **ON DELETE RESTRICT**다 — 참가 대상으로 둔 미션이 있으면 DELETE 자체가
  *   실패하므로 삭제를 막는 참조다(티켓 20261019_1318 2회, 1회 게이트 [주의]: 목록에 없을 때는 가드를 통과한 뒤 DB에서 막혀 500이 났다).
  *   `mission_participation_cancellations.new_tribe_id`는 SET NULL이고 취소 이력의 «바뀐 트라이브» 표시일 뿐이라 등록하지 않는다.
+ *   `user_tribe_changes.from_tribe_id`·`to_tribe_id`(마이그레이션 258)는 ON DELETE 미지정 → **NO ACTION**이다 — 어드민이 유저의 트라이브를 바꾼
+ *   기록이 있는 트라이브를 지우면 DELETE 자체가 실패한다. 이력이 «어디서 어디로»를 잃지 않게 막는 참조로 등록한다(티켓 20261021_1247 2회).
  *
  * ## fail-closed
  * 조회가 하나라도 실패하면 `error`를 채운다 — 호출부는 이 경우 어떤 삭제도 실행하지 않는다.
@@ -413,6 +415,14 @@ export const TRIBE_REFERENCE_SOURCES: ReferenceSource[] = [
     blocks: true, // RESTRICT
   },
   {
+    // 마이그레이션 258의 외래 키 두 개(from_tribe_id·to_tribe_id)는 ON DELETE 미지정(NO ACTION)이다. 한 줄이 변경 한 번이므로 «변경 N건»이다.
+    // 어느 쪽 열이든 대상 트라이브를 가리키면 그 트라이브의 참조다(`tribe_adjacency`와 같다).
+    key: 'user_tribe_changes',
+    label: '트라이브 변경 이력',
+    location: 'user_tribe_changes.from_tribe_id / to_tribe_id',
+    blocks: true, // NO ACTION
+  },
+  {
     key: 'badges',
     label: '소속 배지',
     location: 'badges.tribe_id',
@@ -492,6 +502,19 @@ export async function collectTribeReferences(
   )
   if (allowedTribes.error) errors.push(`mission_allowed_tribes: ${allowedTribes.error}`)
   tally('mission_allowed_tribes', allowedTribes.rows.map((r) => r.tribe_id))
+
+  // 어드민 트라이브 변경 이력(마이그레이션 258)은 두 열 어느 쪽이든 대상 트라이브를 가리킬 수 있다 — 한 변경이 두 대상을 모두 가리키면 각각의 트라이브에 한 건씩 센다
+  const changesFrom = await fetchAllRows<{ from_tribe_id: string }>((from, to) =>
+    supabase.from('user_tribe_changes').select('from_tribe_id').in('from_tribe_id', tribeIds).range(from, to)
+  )
+  if (changesFrom.error) errors.push(`user_tribe_changes(from_tribe_id): ${changesFrom.error}`)
+  tally('user_tribe_changes', changesFrom.rows.map((r) => r.from_tribe_id))
+
+  const changesTo = await fetchAllRows<{ to_tribe_id: string }>((from, to) =>
+    supabase.from('user_tribe_changes').select('to_tribe_id').in('to_tribe_id', tribeIds).range(from, to)
+  )
+  if (changesTo.error) errors.push(`user_tribe_changes(to_tribe_id): ${changesTo.error}`)
+  tally('user_tribe_changes', changesTo.rows.map((r) => r.to_tribe_id))
 
   return { counts, error: errors.length > 0 ? errors.join(' / ') : null }
 }

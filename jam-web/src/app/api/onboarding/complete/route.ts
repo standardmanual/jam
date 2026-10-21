@@ -109,7 +109,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'INVALID_TRIBE' }, { status: 400 })
   }
 
-  const { error } = await serviceClient
+  // «트라이브가 비어 있을 때만» 저장한다(티켓 20261021_1247). 위에서 읽은 뒤 쓰는 사이에 같은 유저의 두 요청이 겹치면
+  // 둘 다 읽기 검사를 통과하고 나중 요청이 먼저 고른 트라이브를 덮을 수 있다. 조건을 갱신문에 함께 걸면 먼저 저장한 요청만 반영된다.
+  const { data: updatedRows, error } = await serviceClient
     .from('users')
     .update({
       username,
@@ -118,10 +120,18 @@ export async function POST(request: NextRequest) {
       onboarding_completed_at: new Date().toISOString(),
     })
     .eq('id', user.id)
+    .is('tribe_id', null)
+    .select('id')
 
   if (error) {
     console.error('[onboarding/complete] 2단계 update 오류:', error.message)
     return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+  }
+
+  // 바뀐 행이 없으면 다른 요청이 먼저 트라이브를 저장한 것이다 — 위의 «이미 설정됨»과 같은 응답을 준다(화면은 홈으로 보낸다).
+  if (!updatedRows || updatedRows.length === 0) {
+    console.error('[onboarding/complete] 트라이브 저장 경합(다른 요청이 먼저 저장함):', user.id)
+    return NextResponse.json({ error: 'ALREADY_SET' }, { status: 409 })
   }
 
   // 온보딩 퀘스트 진행 테이블 행 생성 — 기능 스위치가 꺼져 있으면 만들지 않는다

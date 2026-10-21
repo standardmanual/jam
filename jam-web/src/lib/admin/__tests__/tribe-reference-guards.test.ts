@@ -118,6 +118,53 @@ describe('트라이브 삭제 보호 — 미션 참가 대상 (티켓 20261019_1
   })
 })
 
+describe('트라이브 삭제 보호 — 어드민 트라이브 변경 이력 (티켓 20261021_1247 2회)', () => {
+  it('user_tribe_changes(FK NO ACTION)는 삭제를 막는 참조다', () => {
+    expect(TRIBE_REFERENCE_SOURCES.find((s) => s.key === 'user_tribe_changes')).toMatchObject({
+      label: '트라이브 변경 이력',
+      location: 'user_tribe_changes.from_tribe_id / to_tribe_id',
+      blocks: true,
+    })
+  })
+
+  it('이력의 «바뀌기 전»이나 «바뀐» 트라이브로 남아 있으면 삭제가 막히고 사유에 이력 건수가 나온다', async () => {
+    const supabase = createStubSupabase({
+      user_tribe_changes: [
+        { from_tribe_id: 't1', to_tribe_id: 't2' },
+        { from_tribe_id: 't3', to_tribe_id: 't1' },
+        { from_tribe_id: 't3', to_tribe_id: 't2' },
+      ],
+    })
+    const { counts, error } = await collectTribeReferences(supabase, ['t1', 't2', 't4'])
+    expect(error).toBeNull()
+    expect(counts.get('t1')?.user_tribe_changes).toBe(2) // 한 건은 from, 한 건은 to
+    expect(counts.get('t2')?.user_tribe_changes).toBe(2)
+    expect(counts.get('t4')?.user_tribe_changes).toBe(0)
+
+    const { deletable, skipped } = classifyReferenceDeletion(
+      ['t1', 't2', 't4'],
+      counts,
+      TRIBE_REFERENCE_SOURCES,
+      (summary) => `연결된 참조 ${summary.blockingTotal}건(${summary.hitLabels})`
+    )
+    expect(deletable).toEqual(['t4'])
+    expect(skipped.map((x) => x.id)).toEqual(['t1', 't2'])
+    expect(skipped[0].reason).toContain('트라이브 변경 이력 2건')
+  })
+
+  it('이력 조회가 실패하면 열마다 error를 채운다(fail-closed — 삭제를 진행하지 않는다)', async () => {
+    const { error } = await collectTribeReferences(createStubSupabase({}, 'user_tribe_changes'), ['t1'])
+    expect(error).toContain('user_tribe_changes(from_tribe_id)')
+    expect(error).toContain('user_tribe_changes(to_tribe_id)')
+  })
+
+  it('이력이 없는 트라이브는 막는 참조가 0이다', async () => {
+    const { counts } = await collectTribeReferences(createStubSupabase({}), ['t1'])
+    const summary = summarizeReference(TRIBE_REFERENCE_SOURCES, counts.get('t1')!)
+    expect(summary.blockingTotal).toBe(0)
+  })
+})
+
 describe('fetchTribeListCounts — 목록의 막는 참조 건수에 참가 대상 미션이 들어간다', () => {
   /** 목록 집계가 쓰는 모양(`select().in().order().range()`, `select()` 전체, `select(.., {head}).eq()`)만 흉내 내는 스텁 */
   function listStub(tables: Record<string, Row[]>) {
@@ -159,6 +206,43 @@ describe('fetchTribeListCounts — 목록의 막는 참조 건수에 참가 대�
     expect(blockingCounts.t3.mission_allowed_tribes).toBe(0)
     expect(tribeDeleteBlockReason(blockingCounts.t1)).toContain('참가 대상으로 둔 미션 2건')
     expect(tribeDeleteBlockReason(blockingCounts.t3)).toBeNull()
+  })
+})
+
+describe('fetchTribeListCounts — 목록의 막는 참조 건수에 트라이브 변경 이력이 들어간다 (티켓 20261021_1247 2회)', () => {
+  /** `select().in().order().range()` 체인만 흉내 내는 스텁(`countRowsByKey`가 쓰는 모양) */
+  function changesStub(rows: Row[]) {
+    return {
+      from(table: string) {
+        const source = table === 'user_tribe_changes' ? rows : []
+        const filters: Array<(r: Row) => boolean> = []
+        const builder: Record<string, unknown> = {
+          select: () => builder,
+          is: () => builder,
+          eq: () => builder,
+          in: (column: string, values: unknown[]) => (filters.push((r) => values.includes(r[column])), builder),
+          order: () => builder,
+          range: async (from: number, to: number) => ({ data: source.filter((r) => filters.every((f) => f(r))).slice(from, to + 1), error: null }),
+          then: (resolve: (v: unknown) => unknown) => Promise.resolve({ data: [], count: 0, error: null }).then(resolve),
+        }
+        return builder
+      },
+    } as unknown as Parameters<typeof fetchTribeListCounts>[0]
+  }
+
+  it('두 열 어느 쪽이든 대상 트라이브를 가리키면 그 트라이브의 건수로 센다', async () => {
+    const { blockingCounts } = await fetchTribeListCounts(
+      changesStub([
+        { id: 'c1', from_tribe_id: 't1', to_tribe_id: 't2' },
+        { id: 'c2', from_tribe_id: 't3', to_tribe_id: 't1' },
+      ]),
+      ['t1', 't2', 't4']
+    )
+    expect(blockingCounts.t1.user_tribe_changes).toBe(2)
+    expect(blockingCounts.t2.user_tribe_changes).toBe(1)
+    expect(blockingCounts.t4.user_tribe_changes).toBe(0)
+    expect(tribeDeleteBlockReason(blockingCounts.t1)).toContain('트라이브 변경 이력 2건')
+    expect(tribeDeleteBlockReason(blockingCounts.t4)).toBeNull()
   })
 })
 

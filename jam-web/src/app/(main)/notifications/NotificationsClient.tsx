@@ -73,6 +73,8 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'following_mission_complete':
       return <TargetIcon className={className} />
     case 'followed':
+    // 트라이브는 사람들의 모임이라 같은 아이콘을 쓴다(티켓 20261021_1247, 새 아이콘을 고르지 않았다). 행위자가 없어 아바타 대신 이 아이콘이 보인다
+    case 'tribe_changed':
       return <UsersIcon className={className} />
     case 'strava_disconnected':
     case 'sync_stalled':

@@ -4320,6 +4320,71 @@ export type Database = {
           },
         ]
       }
+      user_tribe_changes: {
+        Row: {
+          cancelled_mission_count: number
+          changed_by: string | null
+          created_at: string
+          from_tribe_id: string
+          id: string
+          memo: string | null
+          reason_code: string
+          to_tribe_id: string
+          user_id: string
+        }
+        Insert: {
+          cancelled_mission_count?: number
+          changed_by?: string | null
+          created_at?: string
+          from_tribe_id: string
+          id?: string
+          memo?: string | null
+          reason_code: string
+          to_tribe_id: string
+          user_id: string
+        }
+        Update: {
+          cancelled_mission_count?: number
+          changed_by?: string | null
+          created_at?: string
+          from_tribe_id?: string
+          id?: string
+          memo?: string | null
+          reason_code?: string
+          to_tribe_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tribe_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_tribe_changes_from_tribe_id_fkey"
+            columns: ["from_tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_tribe_changes_to_tribe_id_fkey"
+            columns: ["to_tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_tribe_changes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -4396,6 +4461,16 @@ export type Database = {
       activate_theme_preset: {
         Args: { p_preset_id: string }
         Returns: undefined
+      }
+      admin_change_user_tribe: {
+        Args: {
+          p_admin_id: string
+          p_memo?: string
+          p_new_tribe_id: string
+          p_reason_code: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       admin_deduct_points: {
         Args: {
@@ -4801,6 +4876,7 @@ export type Database = {
         | "inventory_slots_low"
         | "mission_participation_cancelled"
         | "chapter_up"
+        | "tribe_changed"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -4972,6 +5048,7 @@ export const Constants = {
         "inventory_slots_low",
         "mission_participation_cancelled",
         "chapter_up",
+        "tribe_changed",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },

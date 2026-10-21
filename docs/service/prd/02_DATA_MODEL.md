@@ -21,7 +21,8 @@ code:
 ```
 [유저/인증]     users ─1:1─ strava_connections
                  ├─1:N─ strava_activities (동기화 원본 활동 기록)
-                 └──tribe_id──> tribes (온보딩에서 1회 선택, 탈퇴 전까지 불변)
+                 ├──tribe_id──> tribes (온보딩에서 1회 선택, 유저는 직접 바꿀 수 없음 — 어드민 변경만)
+                 └─1:N─ user_tribe_changes (어드민이 트라이브를 바꾼 기록, 마이그레이션 258)
 
 [배지]          badges (activity/item/checkin) ──tribe_id──> tribes
                  ├─1:N─ user_activity_badges      (활동/아이템 배지, 행은 1개 · 반복 획득은 earn_count 누적)
@@ -103,7 +104,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 | username | 고유 닉네임 (`^[a-z0-9._]+$`, nullable — 온보딩 1단계 완료 전 null) |
 | display_name | 자유 형식 표시 이름 (nullable, 1~30자, 형식 제한 없음). 화면에서 username이 노출되던 위치는 이 값이 있으면 이 값을, 없으면 username을 대신 노출(표시 전용 폴백 — DB에 복사해 채우지 않음). 온보딩 1단계에서 필수 입력, 프로필 편집에서 임의 시점에 다시 변경 가능(필수 아님, 수정 횟수 제한 없음, 티켓 20260830_0113) |
 | avatar_url | 프로필 이미지. 온보딩 2단계에서 구글 기본값을 보여주고 변경 가능(선택) |
-| tribe_id | 온보딩 2단계에서 선택한 트라이브 FK → `tribes.id`, nullable. **온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변** — 변경 API 없음. null이면 트라이브를 고르지 않은 것이고, **앱을 쓸 수 있는지의 판정 기준이다**: `(main)` 레이아웃이 `/onboarding`으로 보내고 Strava 연결·동기화를 거절한다(티켓 20261021_1247). 개발 로그인 테스트 계정은 비어 있을 때만 로그인 라우트가 활성 트라이브를 지정한다 |
+| tribe_id | 온보딩 2단계에서 선택한 트라이브 FK → `tribes.id`, nullable. **온보딩 완료 시 1회 설정된 뒤 유저는 직접 바꿀 수 없다** — 바꾸는 길은 어드민 변경(`admin_change_user_tribe`)뿐이고, 로그인한 유저가 브라우저에서 본인 `tribe_id`를 직접 쓰는 것은 DB 트리거가 거절한다(마이그레이션 260, 아래 §8 «유저의 직접 쓰기 차단»). null이면 트라이브를 고르지 않은 것이고, **앱을 쓸 수 있는지의 판정 기준이다**: `(main)` 레이아웃이 `/onboarding`으로 보내고 Strava 연결·동기화를 거절한다(티켓 20261021_1247). 개발 로그인 테스트 계정은 비어 있을 때만 로그인 라우트가 활성 트라이브를 지정한다 |
 | onboarding_completed_at | 온보딩 2단계(트라이브 포함)까지 완료된 시각, nullable(티켓 20260909_2119). **리다이렉트 판정에는 쓰지 않는다** — 기준은 `tribe_id`다(티켓 20261021_1247). 완료 시각은 있는데 트라이브가 없는 계정이 있어, 이 값으로 판정하면 앱 안 게이트와 로그인 콜백이 서로 다른 곳으로 보낸다. 어드민 유저 목록의 «온보딩 완료» 표시에는 그대로 쓴다 |
 | last_location_lat/lng/at | 최근 위치 (GPS 조작 감지용) |
 | initial_sync_done | 첫 Strava 동기화 시 common 등급만 발급하는 게이트 완료 여부 |
@@ -783,7 +784,7 @@ JAM 2.0 운영 로직 13.2절(트라이브 미션과 선착순 동시 완료)의
 - `checkMissions`는 완료 기록 id를 `completedMissions: { missionId, completionId }[]`로 돌려준다(챕터 점수가 원천 id로 쓴다). 기존 `completedMissionIds`는 그대로다.
 
 #### mission_cancel_for_tribe_change(p_user_id) → (out_mission_id, out_mission_title)*
-유저의 현재 트라이브가 대상이 아닌 트라이브 제한 미션의 참가를 취소하고(참가 행 삭제, `mission_participation_cancellations`에 기록) 취소한 미션마다 한 행을 돌려준다(호출한 쪽이 소식을 보낸다). 공통 미션과 새 트라이브가 대상인 미션은 그대로이고, 트라이브가 없는 유저는 제한 미션을 모두 취소한다. **이미 완료한 미션의 참가도 취소하지만 완료 기록과 받은 보상은 지우지 않는다**(선착순 자리를 센 완료 기록도 남아 상한에 계속 들어간다). 참가 행이 지워지므로 순위에서 빠진다. **부르는 곳은 아직 없다** — 유저의 트라이브를 바꾸는 경로가 생기는 묶음 6에서 연결한다. 돌려준 목록으로 소식을 만드는 함수(`notifyMissionParticipationCancelled`)는 아래 마이그레이션 251 절에 있다.
+유저의 현재 트라이브가 대상이 아닌 트라이브 제한 미션의 참가를 취소하고(참가 행 삭제, `mission_participation_cancellations`에 기록) 취소한 미션마다 한 행을 돌려준다(호출한 쪽이 소식을 보낸다). 공통 미션과 새 트라이브가 대상인 미션은 그대로이고, 트라이브가 없는 유저는 제한 미션을 모두 취소한다. **이미 완료한 미션의 참가도 취소하지만 완료 기록과 받은 보상은 지우지 않는다**(선착순 자리를 센 완료 기록도 남아 상한에 계속 들어간다). 참가 행이 지워지므로 순위에서 빠진다. **부르는 곳은 어드민 트라이브 변경 함수 `admin_change_user_tribe`(마이그레이션 259) 하나다** — 트라이브를 먼저 갱신한 뒤 같은 트랜잭션 안에서 부른다(아래). 돌려준 목록으로 소식을 만드는 함수(`notifyMissionParticipationCancelled`)는 아래 마이그레이션 251 절에 있다.
 
 ### mission_item_rewards / mission_grant_item_rewards / mission_claim_item_rewards — 마이그레이션 250, 티켓 20261019_1313
 JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득 참 보류와 받기)의 서버 쪽 바탕이다. **새 표 1개와 새 함수 2개만 더했고 옛 표·칸·함수는 바꾸지 않았다.** 2026-10-19 공용 DB에 적용했다. 본보기는 믹스의 `combine_pending_results`·`combine_grant_results`·`combine_claim_pending`(마이그레이션 236)이다. 동기화 보류(`sync_pending_items`)는 «고른 것만 받고 나머지는 폐기»라 미션 보상이 섞이면 영구 폐기되므로 합치지 않고 미션 전용 표를 따로 뒀다.
@@ -822,7 +823,7 @@ JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득
 
 ### notification_type `mission_participation_cancelled` — 마이그레이션 251, 티켓 20261019_1313
 알림 종류 enum `notification_type`에 `mission_participation_cancelled`를 더했다(트라이브 변경에 따른 미션 참가 취소, 운영 로직 13.2절). 옛 알림 종류는 바꾸지 않았다. 2026-10-19 공용 DB에 적용했다.
-- 만드는 곳: `notifyMissionParticipationCancelled(userId, cancelled)`(`src/lib/missions/participation-cancel.ts`)가 `mission_cancel_for_tribe_change`가 돌려준 (미션 id, 이름) 목록으로 `createNotification`을 부른다. **부르는 곳은 아직 없다**(호출 연결은 묶음 6). 목록이 비면 만들지 않는다.
+- 만드는 곳: `notifyMissionParticipationCancelled(userId, cancelled)`(`src/lib/missions/participation-cancel.ts`)가 `mission_cancel_for_tribe_change`가 돌려준 (미션 id, 이름) 목록으로 `createNotification`을 부른다. 부르는 곳은 어드민 트라이브 변경 `changeUserTribe`(`src/lib/admin/user-tribe.ts`, 티켓 20261021_1247)다. 목록이 비면 만들지 않는다.
 - payload: `{ missions: [{ mission_id, title }] }`. 한 번의 변경으로 취소된 미션 전부가 한 행이고, 개수는 배열 길이로 센다. 같은 미션 id는 한 번만 싣는다.
 - 키: `once`. 미션 1개면 `mission_participation_cancelled:{mission_id}:{KST 날짜}`, 2개 이상이면 `mission_participation_cancelled:group:{KST 날짜}:{지문}`이다. 같은 날 같은 묶음은 한 번만, 날이 다르면 새로 만든다.
 - 알림함: 문구 «트라이브가 바뀌어 「○○」 미션 참가가 취소됐어요», 여러 개면 «트라이브가 바뀌어 미션 N개 참가가 취소됐어요». 이동 위치는 단건도 `/missions`다(대상이 아닌 트라이브의 미션 상세는 404). 자세한 문구는 `notification/PRD.md` §3 ④(#47)다.
@@ -833,6 +834,46 @@ JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득
 - payload: `{ chapter_no }` — 오른 챕터 가운데 가장 높은 번호(2 이상). 챕터는 숫자로만 표기하므로 이름은 싣지 않는다(2026-10-21 결정).
 - 키: `chapter_up:{chapter_no}` + `once`. 같은 챕터 소식은 다시 만들어지지 않는다.
 - 알림함: 문구 «축하해요! 챕터 N에 올랐어요», 이동 위치는 내 프로필(`/{username}`, 아이디가 없으면 `/profile`), 아이콘은 메달이다. 자세한 문구는 `notification/PRD.md` §3 챕터(#48)다.
+
+### user_tribe_changes / admin_change_user_tribe / users_block_client_tribe_write / notification_type `tribe_changed` — 마이그레이션 258~261, 티켓 20261021_1247 2회
+JAM 2.0 운영 로직 2.4절(운영자가 트라이브를 바꾼다)의 서버 쪽 바탕이다. **새 표 1개, 새 함수 2개(변경 함수·트리거 함수), 새 트리거 1개, 알림 종류 값 1개만 더했고 옛 표·칸·함수의 서명과 권한은 바꾸지 않았다**(공용 DB라 옛 프로덕션 코드가 같은 DB를 쓴다). **마이그레이션 4개는 파일만 작성했고 공용 DB에는 아직 적용하지 않았다**(2026-10-21 기준 — 카리나가 롤백 실측과 사용자 승인 뒤 적용한다. 적용하면 이 문장을 적용 날짜로 바꾼다).
+
+#### user_tribe_changes — 마이그레이션 258
+어드민이 유저의 트라이브를 바꿀 때마다 한 행. 사용자 결정 8(2026-10-21): 트라이브 변경 전용 표이며 포인트·권한 등 다른 어드민 조치의 기록과 공통 기록 표는 이 티켓 범위 밖이다.
+`id`, `user_id`(→ `users`, CASCADE), `from_tribe_id`·`to_tribe_id`(→ `tribes`, ON DELETE 미지정 = NO ACTION), `reason_code`, `memo`, `changed_by`(→ `users`, SET NULL), `cancelled_mission_count`(기본 0), `created_at`. 인덱스는 `(user_id, created_at DESC)`다.
+- `reason_code`는 앱 상수의 코드(`wrong_pick`·`user_request`·`ops_fix`·`other`)이고 **CHECK를 두지 않는다**(사용자 결정 9 — 목록을 바꿀 때 마이그레이션이 필요 없다). 메모는 `other`일 때 앱이 필수로 받고 200자까지다.
+- `from_tribe_id`·`to_tribe_id`가 NO ACTION이라 변경 이력이 있는 트라이브는 지울 수 없다. 어드민 트라이브 삭제 가드(`TRIBE_REFERENCE_SOURCES`의 `user_tribe_changes`)와 목록의 삭제 불가 사유 집계가 같은 참조를 막는 참조로 센다.
+- `changed_by`는 바꾼 어드민이다. 어드민 계정이 `users`에 없으면(환경변수 화이트리스트 계정 등) NULL로 남고 변경은 실패하지 않는다.
+- RLS를 켜고 정책을 두지 않았고 anon·authenticated 권한을 모두 회수했다(서버 service_role만 읽고 쓴다).
+
+#### admin_change_user_tribe(p_admin_id, p_user_id, p_new_tribe_id, p_reason_code, p_memo) → jsonb — 마이그레이션 259
+SECURITY DEFINER(`search_path = public`), service_role만 실행한다(`anon`·`authenticated`·PUBLIC 권한 없음). 선례는 252 `admin_deduct_points`다. **한 트랜잭션**에서 (가) 사유 코드 검사 (나) 유저 행 `FOR UPDATE`(같은 유저에게 동시에 들어온 변경을 직렬화) (다) 검사 (라) `users.tribe_id` 갱신 (마) `mission_cancel_for_tribe_change(p_user_id)` 호출 — **취소 함수가 지금의 `tribe_id`를 읽으므로 반드시 갱신 뒤** (바) `user_tribe_changes` 삽입 (사) 결과 반환. 예외가 나면 전체가 롤백되고, 거절하면 아무것도 바꾸지 않는다. 새 트라이브 행은 `FOR SHARE`로 잠가 검사와 갱신 사이에 비활성·삭제되지 않게 한다.
+
+| 응답 | 뜻 |
+|---|---|
+| `{ok:true, changeId, fromTribeId, toTribeId, toTribeName, cancelled:[{missionId, title}]}` | 변경 완료. `cancelled`가 빈 배열이면 취소된 미션이 없다 |
+| `{ok:false, code:'reason_required'}` | 사유 코드가 비었다(앞뒤 공백 제거 뒤) |
+| `{ok:false, code:'user_not_found'}` | 유저가 없다 |
+| `{ok:false, code:'no_tribe'}` | 트라이브를 고르지 않은 유저다 — 그런 유저는 고르기 화면에서 스스로 고른다 |
+| `{ok:false, code:'invalid_tribe'}` | 새 트라이브가 없거나 비활성이다 |
+| `{ok:false, code:'same_tribe'}` | 지금 트라이브와 같다 |
+
+사유 코드의 값 검증(고정 목록, «기타» 메모 필수, 메모 길이)은 앱이 한다(`src/lib/admin/user-tribe.ts`). 이 함수는 코드와 메모를 그대로 남기고 메모는 앞뒤 공백을 지워 빈 문자열이면 NULL로 둔다. 이미 받은 배지·잼·챕터와 완료 기록은 건드리지 않고, 보류 중인 아이템 배지도 옛 트라이브의 것 그대로 둔다(이미 번 것을 유지하는 원칙, 사용자 결정 (라)). 끝난 미션의 참가도 5-1 동작대로 함께 취소한다.
+앱의 호출 경로: `changeUserTribe`(`src/lib/admin/user-tribe.ts`)가 사유를 검증하고 RPC를 부른 뒤, 성공하면 소식 한 건(`tribe_changed`)과 취소된 미션이 있으면 참가 취소 소식 한 건을 보낸다(소식은 던지지 않고, 실패해도 변경은 유지). 거절 코드는 라우트 `/api/admin/users/[id]/tribe`(POST)가 400·404·409로 나눠 응답한다. 같은 라우트의 GET이 최근 변경 이력과 영향 미리 보기(`previewTribeChange` — 취소 함수와 같은 기준으로 취소될 미션을 읽기만 한다)를 돌려준다.
+
+#### 유저의 직접 쓰기 차단 — `users_block_client_tribe_write` 트리거, 마이그레이션 260
+`public.users`의 「본인만 수정」 정책은 `USING (auth.uid() = id)`뿐이고 `WITH CHECK`와 열 제한이 없으며 `authenticated`에 `tribe_id` 열 UPDATE 권한이 있어, 로그인한 유저가 브라우저에서 본인 `tribe_id`를 직접 바꿀 수 있는 틈이 있었다(2026-10-21 정책·권한·트리거를 SELECT로 확인). `is_admin`을 막는 마이그레이션 219의 트리거와 같은 방식으로 막는다.
+- `BEFORE INSERT OR UPDATE OF tribe_id ON public.users` 트리거. `current_user`가 `authenticated`·`anon`일 때 INSERT에 `tribe_id`가 있거나 UPDATE에서 `tribe_id` 값이 바뀌면 SQLSTATE `42501`로 거절한다(PostgREST가 403으로 돌려준다). 같은 값을 다시 보내는 저장은 통과한다.
+- 트리거 함수는 SECURITY DEFINER가 아니다(`current_user`가 호출 역할로 남아야 한다). `service_role`(온보딩 완료 API, 개발 로그인)과 `postgres`, SECURITY DEFINER 함수(`admin_change_user_tribe`)는 걸리지 않는다. 권한을 회수하지 않아 다른 열의 쓰기는 영향이 없다.
+- `username`·`onboarding_completed_at`도 본인이 직접 바꿀 수 있는 틈은 이 티켓 밖이다(별도 티켓 후보).
+- 온보딩 완료 API(`api/onboarding/complete`)의 2단계 갱신은 `tribe_id IS NULL`일 때만 저장한다 — 읽은 뒤 쓰는 사이에 두 요청이 겹쳐도 먼저 고른 트라이브를 덮지 못한다. 바뀐 행이 없으면 기존 «이미 설정됨» 응답(409 `ALREADY_SET`)을 준다.
+
+#### notification_type `tribe_changed` — 마이그레이션 261
+알림 종류 enum `notification_type`에 `tribe_changed`를 더했다(어드민 트라이브 변경 소식). 맞는 기존 종류가 없다(`announcement`는 투데이 카드 공지). 새 enum 값은 같은 트랜잭션에서 쓸 수 없어(55P04) 값을 쓰는 코드와 나눈 별도 파일이다. 되돌림은 enum 값을 지울 수 없어 앱이 값을 만들지 않게 하고 값은 쓰지 않은 채로 두는 방식이다(파일 끝에 적음).
+- 만드는 곳: `changeUserTribe`(`src/lib/admin/user-tribe.ts`)가 변경이 성공한 뒤 `createNotification`을 부른다. 티켓 `20261021_1249`(6-3) 4번의 «트라이브 변경 소식»은 이 종류로 대신한다.
+- payload: `{ new_tribe_name }` — 바뀐 트라이브 이름. **유저 알림에는 사유(코드·메모)를 싣지 않는다.**
+- 키: `tribe_changed:{user_tribe_changes.id}` + `once`. 변경 한 번에 한 건이다.
+- 알림함: 문구 «트라이브가 바뀌었어요. 이제 ○○ 소속이에요. 이미 가진 배지와 잼, 챕터는 그대로예요»(이름이 비면 가운데 문장을 뺀다), 이동 위치는 `/profile`, 아이콘은 사람들(`UsersIcon`)이다. 자세한 문구는 `notification/PRD.md` §3(#49)다.
 
 ---
 
