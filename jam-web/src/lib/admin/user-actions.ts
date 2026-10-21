@@ -6,6 +6,7 @@
  * 대상이 이미 걸러졌다고 보고 실행만 한다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
+import { deleteAccount } from '@/lib/account/delete-account'
 import type { InventoryRow, UserRow } from '@/types/database'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
@@ -172,9 +173,17 @@ export type HardDeleteUserResult =
   | UserActionFailure
 
 /**
- * 유저 계정 강제 완전 삭제 (티켓 20260909_0911)
- * 초기화(`resetUserData`)와 달리 계정 자체를 지운다. `public.users.id`는 `auth.users(id)`를
- * `ON DELETE CASCADE`로 참조하므로(001_initial_schema), Admin API로 `auth.users` 행을
+ * 어드민 삭제가 실패했을 때 화면에 나가는 고정 문구(티켓 20261021_1249). DB·Auth 오류 원문은 싣지 않고 서버 로그에만 남긴다.
+ * 단건(`api/admin/users/[id]`)과 일괄(`api/admin/users/bulk`) 라우트가 같은 문구를 쓴다.
+ */
+export const ADMIN_DELETE_FAILED_MESSAGE = '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+
+/**
+ * 유저 계정 강제 완전 삭제 (티켓 20260909_0911, 지우는 규칙은 티켓 20261021_1249)
+ * 초기화(`resetUserData`)와 달리 계정 자체를 지운다. 지우는 순서는 `deleteAccount`(`lib/account/delete-account.ts`)가
+ * 갖는다 — 유저 탈퇴·«그래도 연결하기»와 같은 함수다: 준비 RPC(`prepare_account_deletion`: 법정 보관 기록 복사, 이력 이름 칸 비우기,
+ * 소유 아이템 «없어짐» 처리) → 아바타 파일 삭제 → `auth.admin.deleteUser`.
+ * `public.users.id`는 `auth.users(id)`를 `ON DELETE CASCADE`로 참조하므로(001_initial_schema), Admin API로 `auth.users` 행을
  * 지우면 `public.users`와 그 아래 모든 참조 테이블(strava_connections, inventory,
  * user_activity_badges 등)이 한 번의 DB 트랜잭션으로 연쇄 삭제된다. `public.users`를
  * 먼저 지우고 `auth.users`를 뒤이어 지우는 2단계 방식은 그 사이 상태가 갈라지는 창이
@@ -191,7 +200,10 @@ export async function hardDeleteUser(
     .eq('id', userId)
     .maybeSingle()
 
-  if (userError) return { ok: false, status: 500, error: userError.message }
+  if (userError) {
+    console.error('[admin/users/delete] 유저 조회 실패:', userError.message)
+    return { ok: false, status: 500, error: ADMIN_DELETE_FAILED_MESSAGE }
+  }
   if (!userRow) return { ok: false, status: 404, error: '유저를 찾을 수 없습니다.' }
 
   const targetUser = userRow as Pick<UserRow, 'id' | 'email' | 'username'>
@@ -218,11 +230,17 @@ export async function hardDeleteUser(
     deletedInventoryItems = count ?? 0
   }
 
-  const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId)
-  if (deleteAuthError) return { ok: false, status: 500, error: deleteAuthError.message }
+  const deleted = await deleteAccount(supabase, userId)
+  if (!deleted.ok) {
+    // 오류 원문은 deleteAccount가 이미 서버 로그에 남겼다. 응답에는 고정 문구만 싣는다.
+    if (deleted.code === 'not_found') return { ok: false, status: 404, error: '유저를 찾을 수 없습니다.' }
+    console.error(`[admin/users/delete] 삭제 실패 userId: ${userId}, code: ${deleted.code} (by admin: ${adminEmail})`)
+    return { ok: false, status: 500, error: ADMIN_DELETE_FAILED_MESSAGE }
+  }
 
+  const retainedTotal = Object.values(deleted.summary.retained).reduce((sum, n) => sum + n, 0)
   console.info(
-    `[admin/users/delete] userId: ${userId}, email: ${targetUser.email}, 배지: ${deletedActivityBadges ?? 0}개, 아이템: ${deletedInventoryItems}개 (by admin: ${adminEmail})`
+    `[admin/users/delete] userId: ${userId}, email: ${targetUser.email}, 배지: ${deletedActivityBadges ?? 0}개, 아이템: ${deletedInventoryItems}개(없어짐 처리 ${deleted.summary.vanishedItems}개), 보관 복사 ${retainedTotal}건 (by admin: ${adminEmail})`
   )
 
   return {

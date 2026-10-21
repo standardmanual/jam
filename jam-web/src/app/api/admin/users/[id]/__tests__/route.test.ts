@@ -29,7 +29,10 @@ vi.mock('@/lib/admin/auth', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/admin/auth')>()),
   getAdminUser: async () => ({ id: ADMIN_ID, email: 'me@jam.app' }),
 }))
-vi.mock('@/lib/admin/user-actions', () => ({ hardDeleteUser: mocks.hardDeleteUser }))
+vi.mock('@/lib/admin/user-actions', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/admin/user-actions')>()),
+  hardDeleteUser: mocks.hardDeleteUser,
+}))
 
 const { DELETE } = await import('../route')
 
@@ -96,6 +99,22 @@ describe('DELETE /api/admin/users/[id]', () => {
     const res = await call(USER_A)
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ error: '삭제할 수 없어요.' })
+  })
+
+  it('삭제 함수가 500을 돌려주면 오류 원문이 아니라 고정 문구만 응답한다(티켓 20261021_1249)', async () => {
+    mocks.target = { id: USER_A, email: 'a@x.com', is_admin: false }
+    mocks.hardDeleteUser.mockResolvedValue({ ok: false, status: 500, error: 'update or delete violates foreign key constraint' })
+    const res = await call(USER_A)
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.' })
+  })
+
+  it('삭제 함수가 404를 돌려주면 그 문구를 그대로 응답한다', async () => {
+    mocks.target = { id: USER_A, email: 'a@x.com', is_admin: false }
+    mocks.hardDeleteUser.mockResolvedValue({ ok: false, status: 404, error: '유저를 찾을 수 없습니다.' })
+    const res = await call(USER_A)
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: '유저를 찾을 수 없습니다.' })
   })
 
   it('일반 유저는 삭제하고 결과를 돌려준다', async () => {

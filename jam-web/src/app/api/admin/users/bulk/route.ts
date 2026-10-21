@@ -11,7 +11,7 @@ import {
   type UserBulkAction,
 } from '@/lib/admin/user-bulk'
 import { computeUserBulkImpact, fetchUserTargets } from '@/lib/admin/user-bulk-impact'
-import { resetUserData, hardDeleteUser } from '@/lib/admin/user-actions'
+import { ADMIN_DELETE_FAILED_MESSAGE, resetUserData, hardDeleteUser } from '@/lib/admin/user-actions'
 import {
   validateAdminGrantInput,
   executeAdminGrant,
@@ -57,11 +57,23 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
   return results
 }
 
-async function safely(id: string, run: () => Promise<{ ok: true } | { ok: false; error: string }>): Promise<UserActionResult> {
+/**
+ * `thrownMessage`를 주면 던져진 오류의 원문 대신 그 문구를 응답에 싣고 원문은 서버 로그에만 남긴다
+ * (삭제: 티켓 20261021_1249). 주지 않으면 지금처럼 원문을 싣는다.
+ */
+async function safely(
+  id: string,
+  run: () => Promise<{ ok: true } | { ok: false; error: string }>,
+  thrownMessage?: string
+): Promise<UserActionResult> {
   try {
     const outcome = await run()
     return outcome.ok ? { id, ok: true } : { id, ok: false, error: outcome.error }
   } catch (error) {
+    if (thrownMessage) {
+      console.error('[users bulk] 처리 중 예외:', error)
+      return { id, ok: false, error: thrownMessage }
+    }
     return { id, ok: false, error: error instanceof Error ? error.message : '처리 중 오류가 발생했습니다.' }
   }
 }
@@ -152,10 +164,16 @@ export async function POST(req: NextRequest) {
     )
   } else {
     results = await mapWithConcurrency(eligible, MUTATE_CONCURRENCY, (id) =>
-      safely(id, async () => {
-        const outcome = await hardDeleteUser(supabase, id, admin.email)
-        return outcome.ok ? { ok: true } : { ok: false, error: outcome.error }
-      })
+      safely(
+        id,
+        async () => {
+          const outcome = await hardDeleteUser(supabase, id, admin.email)
+          if (outcome.ok) return { ok: true }
+          // 500은 DB·Auth 오류 원문이 아니라 고정 문구만 내보낸다(티켓 20261021_1249)
+          return { ok: false, error: outcome.status === 500 ? ADMIN_DELETE_FAILED_MESSAGE : outcome.error }
+        },
+        ADMIN_DELETE_FAILED_MESSAGE
+      )
     )
   }
 
