@@ -174,15 +174,22 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 이후 행만 읽고, `normalized`의 `jamActivityType`·`distanceKm`·`movingTimeSec`·`averageSpeedKmh`로 JAM! 종목·걷기
 게이트·차량 속도 필터를 통과한 활동만 센다(티켓 20261001_0633). 걸러진 활동(`filter_reason`이 있는 행)은 읽지 않는다(티켓 20261017_1421).
 
-### 계정 삭제: retained_records · prepare_account_deletion · purge_expired_retained_records — 마이그레이션 262·263·264, 티켓 20261021_1249 1·2회
+### 계정 삭제: retained_records · prepare_account_deletion · purge_expired_retained_records — 마이그레이션 262·263·264, 티켓 20261021_1249 1·2·3회
 운영 로직 17장. 유저 탈퇴, 어드민 삭제(단건·일괄), «그래도 연결하기»의 기존 계정 지우기가 **같은 규칙**으로 지운다. 규칙은 앱의 `deleteAccount`(`lib/account/delete-account.ts`)가 갖고,
-어드민 삭제(`hardDeleteUser`)가 먼저 연결됐다. 유저 탈퇴 화면과 «그래도 연결하기»는 같은 묶음의 뒤 회차가 같은 함수를 부른다. 공용 DB 적용 여부는 티켓 완료 기록을 따른다.
+어드민 삭제(`hardDeleteUser`)와 유저 탈퇴(`POST /api/account/delete`)가 이 함수를 부른다. «그래도 연결하기»는 같은 묶음의 뒤 회차가 같은 함수를 부른다. 공용 DB 적용 여부는 티켓 완료 기록을 따른다.
 
 **지우는 순서** (`deleteAccount`):
 1. 어드민 계정은 거절한다(`admin_account`). 호출부의 거절과 별개인 이중 안전장치다.
-2. 준비 RPC `prepare_account_deletion(p_user_id) → jsonb` — 한 트랜잭션, 다시 불러도 안전(두 번째 호출은 모든 건수가 0). 실패하면 여기서 멈추고 계정은 지우지 않는다(`prepare_failed`).
-3. 아바타 파일 삭제(`lib/account/avatar-cleanup.ts`: `avatars` 버킷의 `${userId}/` 폴더를 목록으로 읽어 모두 지운다. 구글 사진 URL을 쓰는 유저는 파일이 없다). **실패해도 계정 삭제는 멈추지 않고** 서버 로그에만 남긴다.
-4. `auth.admin.deleteUser` — `public.users`가 `auth.users`를 `ON DELETE CASCADE`로 참조해 나머지는 외래키가 연쇄로 지운다. 실패는 고정 코드 `delete_failed`로만 돌려주고 원문은 서버 로그에 남는다.
+2. Strava 토큰을 메모리로 읽어 둔다(`strava_connections`의 암호화된 토큰 칸). 연결 행은 계정을 지울 때 함께 사라지기 때문이다. 연결이 없거나 이미 끊겼거나 읽기가 실패하면 해제를 건너뛸 뿐 멈추지 않는다.
+3. 아바타 파일 삭제(`lib/account/avatar-cleanup.ts`: `avatars` 버킷의 `${userId}/` 폴더를 목록으로 읽어 모두 지운다. 구글 사진 URL을 쓰는 유저는 파일이 없다). **실패해도 계정 삭제는 멈추지 않고** 서버 로그에만 남긴다. 준비 RPC보다 앞이다: 아이템이 «없어짐»으로 바뀐 뒤 계정 삭제까지의 틈에 느린 파일 삭제가 끼지 않게 한다(티켓 20261021_1841). 대신 준비 RPC가 실패하면 계정은 남는데 아바타 파일은 이미 지워진 상태가 된다.
+4. 준비 RPC `prepare_account_deletion(p_user_id) → jsonb` — 한 트랜잭션, 다시 불러도 안전(두 번째 호출은 모든 건수가 0). 실패하면 여기서 멈추고 계정은 지우지 않는다(`prepare_failed`).
+5. `auth.admin.deleteUser` — `public.users`가 `auth.users`를 `ON DELETE CASCADE`로 참조해 나머지는 외래키가 연쇄로 지운다. 실패는 고정 코드 `delete_failed`로만 돌려주고 원문은 서버 로그에 남는다.
+6. 계정 삭제가 성공했을 때만 Strava 쪽 앱 승인을 해제한다(`lib/strava/deauthorize-connection.ts`, 연결 끊기 API와 같은 함수: 만료 직전이면 토큰을 갱신하고 `POST /oauth/deauthorize`). 실패는 로그만 남기고 탈퇴는 성공이다. 탈퇴 화면은 Strava 앱 목록에서 JAM!이 빠진다는 약속을 하지 않는다(해제 실패는 로그만 남아 지킬 수 없다).
+
+**유저 탈퇴 API** (티켓 20261021_1249 3회, 운영 로직 17.1절):
+- `POST /api/account/delete` 본문 `{ confirmPhrase }`. 순서: 로그인 확인(401, `d.common.authRequired`) → 확인 문구 서버 재검사(400, 앞뒤 공백 무시·NFC 정규화, 상수 `WITHDRAW_CONFIRM_PHRASE`=«탈퇴합니다») → `deleteAccount`. 지울 대상은 세션의 유저뿐이다(본문의 id는 읽지 않는다). 어드민 계정은 403, 유저 행이 없으면 404, 준비·삭제 실패와 예외는 500이다. 성공은 `200 { success: true }`. **이용 정지 중인 유저도 탈퇴할 수 있다**(`assertNotSuspended`를 부르지 않는다, 운영 로직 16.4). 실패 응답은 `d.account.*`의 고정 문장이고 DB·Auth 원문을 싣지 않는다.
+- `GET /api/account/delete-summary` — 로그인한 유저 본인의 «지워지는 것» 수치 `{ summary: { activityBadgeCount, checkinBadgeCount, itemCount, jamBalance, pointBalance, stravaConnected } }`(`lib/account/summary.ts`). 액티비티 배지는 `user_activity_badges` 행(삭제된 배지 제외), 체크인 배지는 `user_checkin_badge_earns`를 배지 종류로 합친 수, 아이템은 인벤토리의 `destroyed_at IS NULL` 개체 수(준비 RPC가 «없어짐» 처리하는 수), 잼·포인트는 각 지갑 잔액, Strava는 끊기지 않은 연결이 있을 때만 true다. 조회가 하나라도 실패하면 0으로 위장하지 않고 500이며, 화면은 수치 없이 일반 문장을 보이고 탈퇴는 막지 않는다.
+- 화면은 프로필 편집의 «탈퇴하기»(`components/account/WithdrawSheet.tsx`)다. 성공하면 브라우저에서 `signOut({ scope: 'local' })`을 마친 뒤 `window.location.replace('/login?withdrawn=1')`로 이동하고, 로그인 화면이 «탈퇴가 끝났어요. 계정을 지웠어요.» 안내를 보인다(`?error`가 함께 있으면 오류 배너만). 트라이브를 고르지 않아 온보딩에 머무는 유저는 프로필 편집에 닿지 못한다(티켓 20261021_2124).
 
 **prepare_account_deletion** (SECURITY DEFINER, `search_path = public`, `service_role`만 실행):
 - `users` 행을 `FOR UPDATE`로 잠근다. 없으면 `{found:false}`.
@@ -201,7 +208,7 @@ RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role`
 
 **알려진 틈**:
 - 준비 함수를 거치지 않고 Supabase 화면에서 직접 지우는 경우는 옛 동작 그대로다(트리거가 `OLD.username`을 남기고 보관 복사·이름 비우기가 없다).
-- 준비와 계정 삭제 사이에 새로 생긴 기록은 보관 표로 복사되지 않는다. 준비 뒤 계정 삭제가 실패하면 소유 아이템은 이미 «없어짐» 처리된 상태이며, 다시 지우면 이어서 처리된다.
+- 준비와 계정 삭제 사이에 새로 생긴 기록은 보관 표로 복사되지 않는다. 준비 뒤 계정 삭제가 실패하면 소유 아이템은 이미 «없어짐» 처리된 상태이며, 다시 지우면 이어서 처리된다. 유저 탈퇴 화면은 이 경우에도 «다시 시도해 주세요»만 안내하고 계정이나 데이터가 그대로라고 단정하지 않는다(티켓 20261021_1841에서 아바타 삭제를 준비 앞으로 옮겨 틈을 줄였다).
 - 이미 지워진 유저가 남긴 이름 스냅샷(이 규칙 이전)은 `*_user_id`가 비어 있어 준비 함수가 찾을 수 없다. 마이그레이션 264가 한 번 비운다(아래 «탈퇴 유저 표시»). 화면은 264 적용 여부와 상관없이 `*_user_id`가 NULL인 칸의 이름 문자열을 쓰지 않는다.
 - **일련번호 재사용**: 일련번호 유일 인덱스(`idx_inventory_items_serial_number_active`)와 `assign_random_serial()`은 `destroyed_at IS NULL`인 개체만 겹치지 않게 막으므로(마이그레이션 108), «없어짐» 처리한 개체의 번호는 다시 쓰일 수 있다. 번호를 1~999,999에서 무작위로 고르므로 새 아이템을 발급할 때 특정한 없어진 번호가 뽑힐 확률은 한 번에 약 100만 분의 1이고(발급이 쌓이면 누적된다), 어드민 삭제·믹스로 없어진 개체와 같은 동작이다. 운영 로직 6.3·17.2의 «번호를 다시 쓰지 않는다»를 보장하려면 옛 인덱스와 함수를 바꿔야 하므로 후속 티켓 `20261021_1849`에서 다룬다.
 - 문의 기록은 DB가 아니라 Tally와 연결된 읽기 전용 구글 시트라 지우지 않는다. 방침대로 처리 완료 후 3년 보관한다(사용자 결정, 2026-10-21).

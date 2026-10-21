@@ -64,6 +64,54 @@ export const ko = {
     notice: '₩*&%#@님은 탈퇴한 사용자입니다',
   },
 
+  /**
+   * 유저용 탈퇴 API 응답 문구 (운영 로직 17장, 티켓 20261021_1249 3회).
+   * `POST /api/account/delete`가 이 키를 직접 참조해 최종 문구를 완성하고, 화면은 그대로 보인다(ADR 0001, 가이드 4.0).
+   * 401은 `common.authRequired`를 그대로 쓴다. 확인 문구 글자는 여기에 적지 않는다: `{phrase}`로 받아
+   * `lib/account/withdraw-contract.ts`의 `WITHDRAW_CONFIRM_PHRASE` 한 곳에서 끌어온다.
+   * 실패 문구는 DB·Auth 오류 원문을 싣지 않는 고정 문장이고, 계정이나 데이터가 그대로라고 단정하지 않는다(준비 뒤 삭제 실패 구간이 있다).
+   */
+  account: {
+    /** 500과 네트워크 — [현상, 원인, 해결책] */
+    deleteFailed: '탈퇴하지 못했어요. 연결이 불안정했거나 서버에 문제가 생겼을 수 있어요. 잠시 후 다시 시도해 주세요.',
+    /** 403 — 관리자 계정 */
+    deleteAdminForbidden: '관리자 계정은 앱에서 탈퇴할 수 없어요. 운영자에게 요청해 주세요.',
+    /** 400 — 서버가 확인 문구를 다시 검사해 어긋났을 때 */
+    deleteConfirmMismatch: '확인 문구가 맞지 않아요. "{phrase}"를 다시 입력해 주세요.',
+  },
+
+  /**
+   * 탈퇴 확인 시트 (프로필 편집의 «탈퇴하기», 티켓 20261021_1249 3회, 채원 사전 판정 2026-10-21).
+   * 제목·버튼·라벨은 마침표가 없고, 여러 문장인 본문은 문장마다 마침표가 있다(가이드 3절). 인라인 불일치 문구는 한 문장이라 마침표가 없다.
+   * «탈퇴»는 행위(제목·버튼), «지워져요»는 데이터에만 쓴다. 숫자는 글자를 박지 않고 보간으로 받는다:
+   * `{confirmMonths}`·`{abuseMonths}`는 `lib/account/retention.ts`, `{phrase}`는 `lib/account/withdraw-contract.ts`에서 온다.
+   * 행 값은 `common.countItems`(개수)와 `points.amountValue`(포인트)를 쓴다.
+   */
+  withdrawSheet: {
+    title: 'JAM!에서 탈퇴할까요?',
+    intro: '탈퇴하면 계정이 바로 지워지고 되돌릴 수 없어요.',
+    removedLabel: '지워지는 것',
+    rowActivityBadges: '액티비티 배지',
+    rowCheckinBadges: '체크인 배지',
+    rowItemBadges: '아이템 배지',
+    rowJam: '잼',
+    rowPoints: '포인트',
+    /** Strava 동기화가 연결돼 있을 때만 */
+    stravaSync: 'Strava 동기화도 함께 끊겨요.',
+    /** 요약을 읽지 못했을 때 행 다섯 줄과 위 문장 대신 보이는 한 문장. 오류 문구가 아니라 사실만 말한다 */
+    removedFallback: '액티비티 배지, 체크인 배지, 아이템 배지, 잼, 포인트가 지워지고 Strava 동기화도 끊겨요.',
+    keptLabel: '남는 것',
+    keptRecords:
+      '체크인, 드랍, 픽업 같은 장소 기록은 법에 따라 {confirmMonths}개월, 부정 이용 탐지 기록은 {abuseMonths}개월 동안 따로 보관하고 기간이 지나면 지워요.',
+    keptDrops: '드랍해 둔 아이템 배지는 장소에 남아 다른 유저가 픽업할 수 있어요.',
+    confirmLabel: '계속하려면 "{phrase}"를 입력해 주세요.',
+    /** 입력칸을 벗어났을 때만 보이는 한 문장 */
+    confirmMismatch: '"{phrase}"와 똑같이 입력해 주세요',
+    cancel: '취소',
+    confirm: '탈퇴하기',
+    confirming: '탈퇴하는 중',
+  },
+
   /** 바텀 탭바(글로벌 네비게이션) 라벨 */
   nav: {
     today: '투데이',
@@ -958,6 +1006,8 @@ export const ko = {
      *  고아 컴포넌트 `StravaStatusCard`와 그 문구 키는 티켓 20261017_1422에서 지웠고 이 키만 API가 쓴다. */
     stravaNotConnectedTitle: '아직 Strava를 동기화하지 않았어요',
     stravaLastSyncedLabel: '마지막 동기화',
+    /** 탈퇴를 마친 뒤 `/login?withdrawn=1`에서 로고 아래에 한 번 보이는 안내 (티켓 20261021_1249 3회) */
+    withdrawnNotice: '탈퇴가 끝났어요. 계정을 지웠어요.',
   },
 
   /**
@@ -1372,8 +1422,8 @@ export const ko = {
     saving: '저장 중',
     cancelButton: '취소',
     saveError: '프로필을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
-    withdrawLink: '탈퇴 신청',
-    withdrawCaption: '이메일로 요청하면 계정과 활동 기록이 삭제돼요',
+    /** 탈퇴 확인 시트를 여는 작은 밑줄 버튼. 설명은 시트가 하므로 캡션은 두지 않는다 (티켓 20261021_1249 3회) */
+    withdrawButton: '탈퇴하기',
   },
 
   /** JAM 포인트 내역 */

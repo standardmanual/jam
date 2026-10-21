@@ -2,8 +2,10 @@
  * deleteAccount — 계정을 지우는 규칙 하나의 순서와 실패 처리 (티켓 20261021_1249 1회, 운영 로직 17장)
  * DB·스토리지·Auth는 모두 가짜다 — 공용 DB를 부르지 않는다. 준비 함수(SQL) 자체의 동작은 이 시험이 아니라 카리나가 롤백 트랜잭션으로 실측한다.
  *
- * 고정하는 것: 어드민 계정은 거절 · 순서는 «유저 조회 → 준비 RPC → 아바타 삭제 → 계정 삭제» · 준비가 실패하면 계정을 지우지 않는다 ·
- * 아바타 삭제가 실패해도 계정 삭제는 계속한다 · 계정 삭제 실패는 오류 원문 없이 고정 코드(`delete_failed`)로만 돌려준다.
+ * 고정하는 것: 어드민 계정은 거절 · 순서는 «유저 조회 → Strava 토큰 읽기 → 아바타 삭제 → 준비 RPC → 계정 삭제 → Strava 앱 해제»
+ * (티켓 20261021_1249 3회: 아이템이 없어짐으로 바뀐 뒤 계정 삭제까지의 틈을 좁히려고 아바타를 준비 앞으로 옮겼다) · 준비가 실패하면 계정을
+ * 지우지 않는다 · 아바타 삭제가 실패해도 계정 삭제는 계속한다 · 계정 삭제 실패는 오류 원문 없이 고정 코드(`delete_failed`)로만 돌려준다 ·
+ * Strava 앱 해제는 계정 삭제가 성공했을 때만 하고, 읽기·해제가 실패해도 탈퇴는 성공이다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/account/__tests__/delete-account.test.ts
  */
@@ -12,10 +14,12 @@ import type { createServiceClient } from '@/lib/supabase/server'
 
 const mocks = vi.hoisted(() => ({
   removeAvatarFiles: vi.fn(),
+  deauthorizeStoredConnection: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => ({}), createClient: async () => ({}) }))
 vi.mock('../avatar-cleanup', () => ({ removeAvatarFiles: mocks.removeAvatarFiles }))
+vi.mock('@/lib/strava/deauthorize-connection', () => ({ deauthorizeStoredConnection: mocks.deauthorizeStoredConnection }))
 
 const { deleteAccount, parsePrepareResult } = await import('../delete-account')
 
@@ -30,9 +34,20 @@ const PREPARED = {
   vanished_items: 7,
 }
 
+const CONNECTION = {
+  access_token: 'enc:ACCESS',
+  refresh_token: 'enc:REFRESH',
+  token_expires_at: '2099-01-01T00:00:00.000Z',
+  disconnected_at: null,
+}
+
 interface Setup {
   user?: { id: string; email: string; is_admin: boolean } | null
   userError?: { message: string } | null
+  /** `strava_connections` 행. 기본은 연결 중. null이면 연결 행이 없다 */
+  connection?: Record<string, unknown> | null
+  connectionError?: { message: string } | null
+  connectionThrows?: boolean
   rpcResult?: { data: unknown; error: { message: string } | null }
   rpcThrows?: boolean
   deleteError?: { message: string } | null
@@ -49,7 +64,14 @@ function makeSupabase(setup: Setup = {}) {
       return {
         select: () => ({
           eq: () => ({
-            maybeSingle: async () => ({ data: user, error: setup.userError ?? null }),
+            maybeSingle: async () => {
+              if (table === 'strava_connections') {
+                if (setup.connectionThrows) throw new Error('연결 조회 네트워크 오류')
+                const row = setup.connection === undefined ? CONNECTION : setup.connection
+                return { data: row, error: setup.connectionError ?? null }
+              }
+              return { data: user, error: setup.userError ?? null }
+            },
           }),
         }),
       }
@@ -76,6 +98,7 @@ function makeSupabase(setup: Setup = {}) {
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   mocks.removeAvatarFiles.mockReset().mockImplementation(async () => 0)
+  mocks.deauthorizeStoredConnection.mockReset().mockImplementation(async () => true)
 })
 
 afterEach(() => {
@@ -84,16 +107,27 @@ afterEach(() => {
 })
 
 describe('deleteAccount — 순서', () => {
-  it('유저 조회 → 준비 RPC → 아바타 삭제 → 계정 삭제 순서로 하고 건수 요약을 돌려준다', async () => {
+  it('유저 조회 → Strava 토큰 읽기 → 아바타 삭제 → 준비 RPC → 계정 삭제 → Strava 앱 해제 순서로 하고 건수 요약을 돌려준다', async () => {
     const { client, calls, rpcArgs } = makeSupabase()
     mocks.removeAvatarFiles.mockImplementation(async () => {
       calls.push('avatar')
       return 1
     })
+    mocks.deauthorizeStoredConnection.mockImplementation(async () => {
+      calls.push('strava-deauthorize')
+      return true
+    })
 
     const result = await deleteAccount(client, USER_ID)
 
-    expect(calls).toEqual(['from:users', 'rpc:prepare_account_deletion', 'avatar', `deleteUser:${USER_ID}`])
+    expect(calls).toEqual([
+      'from:users',
+      'from:strava_connections',
+      'avatar',
+      'rpc:prepare_account_deletion',
+      `deleteUser:${USER_ID}`,
+      'strava-deauthorize',
+    ])
     expect(rpcArgs).toEqual([{ p_user_id: USER_ID }])
     expect(mocks.removeAvatarFiles).toHaveBeenCalledWith(client, USER_ID)
     expect(result).toEqual({
@@ -139,8 +173,9 @@ describe('deleteAccount — 준비 단계 실패는 계정을 지우지 않는�
   it('준비 RPC 오류면 prepare_failed로 멈추고 아바타·계정을 지우지 않는다', async () => {
     const { client, calls } = makeSupabase({ rpcResult: { data: null, error: { message: 'function failed' } } })
     expect(await deleteAccount(client, USER_ID)).toEqual({ ok: false, code: 'prepare_failed' })
-    expect(calls).toEqual(['from:users', 'rpc:prepare_account_deletion'])
-    expect(mocks.removeAvatarFiles).not.toHaveBeenCalled()
+    expect(calls).toEqual(['from:users', 'from:strava_connections', 'rpc:prepare_account_deletion'])
+    expect(calls).not.toContain(`deleteUser:${USER_ID}`)
+    expect(mocks.deauthorizeStoredConnection).not.toHaveBeenCalled()
   })
 
   it('준비 RPC가 던져도 prepare_failed로 멈춘다', async () => {
@@ -159,7 +194,7 @@ describe('deleteAccount — 준비 단계 실패는 계정을 지우지 않는�
     const { client, calls } = makeSupabase({ rpcResult: { data: { found: true, retained: {} }, error: null } })
     expect(await deleteAccount(client, USER_ID)).toEqual({ ok: false, code: 'prepare_failed' })
     expect(calls).not.toContain(`deleteUser:${USER_ID}`)
-    expect(mocks.removeAvatarFiles).not.toHaveBeenCalled()
+    expect(mocks.deauthorizeStoredConnection).not.toHaveBeenCalled()
   })
 })
 
@@ -188,6 +223,62 @@ describe('deleteAccount — 아바타와 계정 삭제', () => {
   it('계정 삭제가 던져도 delete_failed다', async () => {
     const { client } = makeSupabase({ deleteThrows: true })
     expect(await deleteAccount(client, USER_ID)).toEqual({ ok: false, code: 'delete_failed' })
+  })
+})
+
+describe('deleteAccount — Strava 앱 해제', () => {
+  it('연결 중이면 계정 삭제가 끝난 뒤에 읽어 둔 토큰으로 해제한다', async () => {
+    const { client } = makeSupabase()
+
+    await deleteAccount(client, USER_ID)
+
+    expect(mocks.deauthorizeStoredConnection).toHaveBeenCalledTimes(1)
+    expect(mocks.deauthorizeStoredConnection).toHaveBeenCalledWith(
+      { access_token: 'enc:ACCESS', refresh_token: 'enc:REFRESH', token_expires_at: '2099-01-01T00:00:00.000Z' },
+      { userId: USER_ID }
+    )
+  })
+
+  it.each([
+    ['연결 행이 없으면', { connection: null }],
+    ['이미 끊긴 연결이면', { connection: { ...CONNECTION, disconnected_at: '2026-10-10T00:00:00.000Z' } }],
+    ['토큰이 비어 있으면', { connection: { ...CONNECTION, access_token: '', refresh_token: '' } }],
+  ])('%s 해제하지 않고 탈퇴는 성공한다', async (_label, setup) => {
+    const { client, calls } = makeSupabase(setup)
+
+    const result = await deleteAccount(client, USER_ID)
+
+    expect(result.ok).toBe(true)
+    expect(calls).toContain(`deleteUser:${USER_ID}`)
+    expect(mocks.deauthorizeStoredConnection).not.toHaveBeenCalled()
+  })
+
+  it('연결 조회가 실패하거나 던져도 계정은 지우고 해제만 건너뛴다', async () => {
+    const failed = makeSupabase({ connectionError: { message: 'db down' }, connection: null })
+    expect((await deleteAccount(failed.client, USER_ID)).ok).toBe(true)
+    expect(failed.calls).toContain(`deleteUser:${USER_ID}`)
+
+    const thrown = makeSupabase({ connectionThrows: true })
+    expect((await deleteAccount(thrown.client, USER_ID)).ok).toBe(true)
+    expect(thrown.calls).toContain(`deleteUser:${USER_ID}`)
+
+    expect(mocks.deauthorizeStoredConnection).not.toHaveBeenCalled()
+  })
+
+  it('계정 삭제가 실패하면 승인을 해제하지 않는다(계정이 남아 있으므로)', async () => {
+    const { client } = makeSupabase({ deleteError: { message: 'auth down' } })
+
+    expect(await deleteAccount(client, USER_ID)).toEqual({ ok: false, code: 'delete_failed' })
+    expect(mocks.deauthorizeStoredConnection).not.toHaveBeenCalled()
+  })
+
+  it('해제가 실패하거나 던져도 이미 지워진 계정에는 성공을 돌려준다', async () => {
+    mocks.deauthorizeStoredConnection.mockImplementation(async () => false)
+    expect((await deleteAccount(makeSupabase().client, USER_ID)).ok).toBe(true)
+
+    mocks.deauthorizeStoredConnection.mockRejectedValue(new Error('예상 밖 예외'))
+    expect((await deleteAccount(makeSupabase().client, USER_ID)).ok).toBe(true)
+    expect(console.error).toHaveBeenCalled()
   })
 })
 

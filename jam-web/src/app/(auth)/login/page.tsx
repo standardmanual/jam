@@ -3,11 +3,15 @@
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Suspense } from 'react'
+import InlineNotice from '@/components/ui/InlineNotice'
+import { WITHDRAWN_QUERY_KEY } from '@/lib/account/withdraw-contract'
 import { d } from '@/lib/i18n'
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
+  // 탈퇴를 마친 유저가 오는 곳(`/login?withdrawn=1`, 티켓 20261021_1249 3회). 오류와 안내가 쌓이지 않게 ?error가 있으면 오류만 보인다
+  const withdrawn = searchParams.get(WITHDRAWN_QUERY_KEY) === '1'
 
   const handleGoogleLogin = async () => {
     const supabase = createClient()
@@ -30,6 +34,13 @@ function LoginContent() {
       {error && (
         <div className="w-full max-w-sm mb-6 rounded-2xl bg-background-inverse text-snow px-4 py-4 text-base text-center">
           {error === 'auth_failed' ? d.auth.errorFailed : d.auth.errorGeneric}
+        </div>
+      )}
+
+      {/* 탈퇴 완료 안내 — 오류처럼 읽히지 않도록 검정 반전 배너를 쓰지 않고 InlineNotice(왼쪽 정렬)로 보인다 */}
+      {!error && withdrawn && (
+        <div className="w-full max-w-sm mb-6">
+          <InlineNotice>{d.auth.withdrawnNotice}</InlineNotice>
         </div>
       )}
 

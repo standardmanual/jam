@@ -442,8 +442,10 @@ export interface PoiDropRow {
 /**
  * InventoryItem 한 개체에 점유(custody) 변화가 생길 때마다 쌓이는 append-only 이력.
  * 8종 이벤트가 상태 전이 다이어그램의 화살표와 1:1 대응한다 — 20260829_2101.
- * from/to/actor는 유저명을 스냅샷 값으로 저장한다(라이브 FK 조인에만 의존 금지 — 탈퇴 후
- * *_user_id는 SET NULL로 비지만 *_username은 영구 보존).
+ * from/to/actor는 유저명을 스냅샷 값으로 저장한다(라이브 FK 조인에만 의존 금지). 계정을 지우면
+ * *_user_id는 SET NULL로 비고, 지우는 규칙(`prepare_account_deletion`, 운영 로직 17.2절)이 그 유저의
+ * *_username도 NULL로 비운다 — 탈퇴 유저의 이름은 남지 않고 화면은 `₩*&%#@`로 보인다
+ * (`lib/account/withdrawn-actor.ts`). 살아 있는 유저의 이름만 스냅샷으로 남는다.
  */
 export type CustodyEventType =
   | 'Minted'
