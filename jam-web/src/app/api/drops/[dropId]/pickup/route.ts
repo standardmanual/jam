@@ -8,7 +8,6 @@ import type { PoiRow, PoiDropRow } from '@/types/database'
 import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
 import { checkAndUpdateLocation } from '@/lib/abusing/gps-detector'
-import { applyBan } from '@/lib/abusing/shadow-ban'
 import { logAbusingEvent } from '@/lib/abusing/abusing-log'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 import { findLockedItemIds } from '@/lib/inventory/lockedItem'
@@ -112,13 +111,10 @@ export async function POST(
       gpsCheck.reason === 'daily_distance'
         ? `일일 누적 이동거리 초과 (${gpsCheck.dailyDistanceKm}km/일)`
         : `속도 ${gpsCheck.speedKmh}km/h`
-    // 소프트밴은 POI 블록과 동일한 기간(poi_block_hours)만 유지한다.
-    // 만료시간 없이 적용하면 오탐이어도 관리자가 수동 해제할 때까지 epic/mystic
-    // 드랍률이 영구히 0으로 묶이는 문제가 있었다 (20260813_002 티켓).
-    const banExpiresAt = new Date(Date.now() + policy.poi_block_hours * 3_600_000)
+    // 제재는 이 픽업 거부, 이 장소 `poi_block_hours`(기본 72시간) 차단, 기록 셋이다. 이용 정지는 자동으로 걸지 않고
+    // 운영자가 기록을 보고 건다(정책 20번 4절). 옛 72시간 섀도우밴(`applyBan`)은 지웠다(티켓 20261021_1250).
     try {
       await Promise.all([
-        applyBan(user.id, 'soft', `GPS 조작 의심 (${detail})`, 'system', banExpiresAt),
         blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
         logAbusingEvent(user.id, 'gps_spoof_detected', {
           poi_id: drop.poi_id,
@@ -130,10 +126,10 @@ export async function POST(
         }),
       ])
     } catch (e) {
-      // 제재 기록(밴·POI 블록) 저장이 실패해도 이번 픽업은 그대로 차단한다 — 스푸핑은 이미
+      // 제재 기록(POI 블록·로그) 저장이 실패해도 이번 픽업은 그대로 차단한다 — 스푸핑은 이미
       // 감지됐으므로 이 요청의 판정을 바꿀 이유가 없다. 다만 제재가 실제로 걸리지 않았을 수
       // 있으므로(다음 요청부터 다시 통과할 위험) 반드시 서버 로그로 남긴다.
-      // 이전에는 applyBan/blockPoiForUser의 upsert 에러가 통째로 삼켜져 이 실패가 무음이었다
+      // 이전에는 blockPoiForUser의 upsert 에러가 통째로 삼켜져 이 실패가 무음이었다
       // (티켓 20260901_1843).
       console.error(
         `[pickup] GPS 스푸핑 제재 기록 실패 — 이번 요청은 차단 유지, 제재는 미적용일 수 있음 (userId: ${user.id}, poiId: ${drop.poi_id}):`,
