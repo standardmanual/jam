@@ -19,7 +19,10 @@
 --   (c) custody_events의 from_username·to_username·actor_username을 해당 *_user_id가 이 유저인 행에서 NULL로 비운다(운영 로직 17.2: 지울 때 이름을 지운다).
 --       이미 지워진 유저의 옛 스냅샷은 user id가 비어 있어 이 함수가 찾을 수 없다.
 --   (d) 이 유저 인벤토리의 destroyed_at IS NULL 아이템마다 custody_events에 기존 'Orphan' 이벤트(from_user_id = 유저, 이름 NULL)를 넣고 destroyed_at = now()로 «없어짐» 처리한다(운영 로직 17.5).
---       새 이벤트 종류를 만들지 않는다(custody_events_event_type_check를 바꾸지 않는다). 일련번호는 destroyed_at이 채워지므로 다시 쓰이지 않는다(assign_random_serial의 조건이 destroyed_at IS NULL).
+--       새 이벤트 종류를 만들지 않는다(custody_events_event_type_check를 바꾸지 않는다). 108의 파괴 규약대로 destroyed_at과 inventory_id(소유)를 함께 바꾼다.
+--       주의: 108의 일련번호 유일 인덱스(idx_inventory_items_serial_number_active)와 assign_random_serial은 destroyed_at IS NULL인 개체만 겹치지 않게 막는다.
+--       그래서 «없어짐» 처리한 개체의 번호는 다시 쓰일 수 있다(번호를 1~999,999에서 무작위로 고르므로 확률은 아이템 하나당 약 100만 분의 1이다).
+--       이미 없어진 개체(어드민 삭제·믹스)와 같은 동작이고, 번호 불변은 옛 인덱스와 함수를 바꿔야 해서 이 티켓에서 하지 않는다(후속 티켓 20261021_1838).
 --       옛 트리거는 destroyed_at IS NULL인 소유 아이템에만 이름을 남기므로, 이 함수를 거친 유저에게는 이름을 새로 남기지 않는다.
 --       이 함수를 거치지 않고 Supabase 화면에서 직접 지우는 경우는 옛 동작 그대로다(알려진 틈).
 --   (e) 건수 요약을 돌려준다.
@@ -127,7 +130,7 @@ BEGIN
   -- (d) «없어짐» 처리 — 소유한 살아 있는 아이템에 Orphan 이벤트를 남기고 destroyed_at을 채운다
   WITH vanishing AS (
     UPDATE public.inventory_items ii
-    SET destroyed_at = now()
+    SET destroyed_at = now(), inventory_id = NULL
     FROM public.inventory inv
     WHERE inv.id = ii.inventory_id
       AND inv.user_id = p_user_id
