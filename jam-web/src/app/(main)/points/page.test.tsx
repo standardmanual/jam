@@ -9,7 +9,7 @@
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 이 화면이 부르는 훅(`useState`·`useEffect`·`useCallback`)을
  * **화면 함수가 실행되는 동안에만** 가짜로 바꾼다. 상태는 호출 순서대로 보관하고 효과는 모아 두었다가 손으로 돌린다.
- * 그 사이 자식 컴포넌트는 진짜 훅을 쓴다. 그려진 글은 `renderToStaticMarkup`으로, 누르기는 요소 트리에서 찾은 `onClick`을 불러 확인한다.
+ * 그 사이 자식 컴포넌트는 원래 훅을 그대로 쓴다. 그려진 글은 `renderToStaticMarkup`으로, 누르기는 요소 트리에서 찾은 `onClick`을 불러 확인한다.
  * `fetch`는 가짜로 대신한다. 실제 DB와 `/api/points`는 부르지 않는다(`api/points/__tests__/route.test.ts`가 서버 쪽을 고정한다).
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/points/page.test.tsx"
