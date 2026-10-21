@@ -6,8 +6,8 @@
 //   - 1단계 호출: { username, display_name } — tribe_id 없이 호출. username·display_name만
 //     저장하고 onboarding_completed_at은 건드리지 않는다.
 //   - 2단계 호출: { username, display_name, tribe_id } — tribe_id까지 채워지면 그 시점에만
-//     onboarding_completed_at을 기록한다. 이 값이 "온보딩 완료" 판정 기준이다
-//     (`/auth/callback`의 needsOnboarding 참고).
+//     onboarding_completed_at을 기록한다. «앱을 쓸 수 있는가»의 판정 기준은 이 시각이 아니라
+//     tribe_id다(티켓 20261021_1247, `lib/tribe/gate-contract.ts`의 hasTribe).
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'

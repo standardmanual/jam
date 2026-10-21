@@ -16,6 +16,7 @@ import QuestPreviewBanner from '@/components/QuestPreviewBanner'
 import { PAGE_GRADIENT_BACKGROUND } from '@/lib/pageBackground'
 import ChapterRiseWatcher from '@/components/chapter/ChapterRiseWatcher'
 import { parseChapterNo } from '@/lib/chapter/celebrate'
+import { hasTribe, TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -33,7 +34,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   // 20260824_021: 알림 종의 빨간 버블 판정도 여기서 함께 내려준다. seen_at은 위 users
   // 조회에 컬럼 하나만 더 붙이고, 최신 소식 시각은 병렬로 읽어 왕복 지연을 더하지 않는다.
   const [
-    { data: profileRaw },
+    { data: profileRaw, error: profileError },
     { data: stravaConnRaw, error: stravaConnError },
     latestBumpingAt,
     questPreview,
@@ -42,7 +43,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   ] = await Promise.all([
     service
       .from('users')
-      .select('username, avatar_url, notifications_seen_at')
+      .select('username, avatar_url, notifications_seen_at, tribe_id')
       .eq('id', user.id)
       .maybeSingle(),
     // 연결 상태 판정에 필요한 두 칸만 읽는다(connection-state.ts 한 곳에서 판정)
@@ -70,7 +71,20 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     username: string | null
     avatar_url: string | null
     notifications_seen_at: string | null
+    tribe_id: string | null
   } | null
+
+  // 트라이브 게이트(티켓 20261021_1247, 운영 로직 2장): 트라이브를 고르기 전에는 이 레이아웃 아래 어느 화면도 쓸 수 없다.
+  // 로그인 직후만이 아니라 앱에 들어오는 모든 경로가 이 레이아웃을 지나므로 여기서 한 번 판정한다(판정 기준은 `users.tribe_id` 하나 —
+  // 로그인 콜백·프로필 경유지·고르기 화면도 같은 `hasTribe`를 쓴다). 고르기 화면은 `(onboarding)` 그룹에 있어 이 판정을 지나지 않는다 — 되돌림 반복이 없다.
+  // `users`를 읽지 못했을 때는 막지 않고 로그만 남긴다: 읽기 실패 한 번으로 트라이브를 고른 유저를 고르기 화면으로 쫓아내지 않기 위해서다.
+  // 이 화면 게이트는 보상을 주지 않는다 — 동기화·Strava 연결은 API가 읽지 못하면 «있음»으로 보지 않고 거절한다(`lib/tribe/gate.ts`).
+  // 행이 없는 경우(`profile` null, 오류 없음)는 트라이브가 없는 것이다.
+  if (profileError) {
+    console.error('[(main)/layout] users 조회 실패 — 트라이브 게이트를 건너뛴다', profileError)
+  } else if (!hasTribe(profile?.tribe_id)) {
+    redirect(TRIBE_SELECT_PATH)
+  }
   const username = profile?.username ?? null
   const avatarUrl = profile?.avatar_url ?? null
   // 조회가 실패하면 상단 메뉴는 이전과 같이 동기화 시작 버튼(none)으로 둔다 — 라벨이 중립이고

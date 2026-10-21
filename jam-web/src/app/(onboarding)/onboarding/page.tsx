@@ -3,15 +3,15 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import SafeImage from '@/components/SafeImage'
 import { createClient } from '@/lib/supabase/client'
 import { UserIcon, PencilIcon } from '@/components/ui/icons'
-import { Card } from '@ds/components/cards/Card'
+import Button from '@/components/ui/Button'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
-import type { TribeRow } from '@/types/database'
+import TribeStep, { type TribesState } from './TribeStep'
+import { resolveOnboardingEntry, type OnboardingUserRow } from './onboarding-entry'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 type Step = 'account' | 'tribe'
@@ -52,20 +52,22 @@ function OnboardingContent() {
 
   const [submittingStep1, setSubmittingStep1] = useState(false)
 
+  // 로그아웃 요청이 진행 중이다(두 단계 공통) — 티켓 20261021_1247. 성공하면 풀지 않는다(/login으로 넘어갈 때까지 중복 클릭을 막는다).
+  const [loggingOut, setLoggingOut] = useState(false)
+
   // ── 2단계: 트라이브 + 프로필이미지 ───────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  type TribesState =
-    | { kind: 'loading' }
-    | { kind: 'ready'; tribes: Pick<TribeRow, 'id' | 'name' | 'tagline' | 'image_url'>[] }
-    | { kind: 'error' }
   const [tribesState, setTribesState] = useState<TribesState>({ kind: 'loading' })
   const [selectedTribeId, setSelectedTribeId] = useState<string | null>(null)
   const [step2Error, setStep2Error] = useState('')
   const [submittingStep2, setSubmittingStep2] = useState(false)
+  // 아이디를 이미 정해 곧장 2단계로 온 유저(트라이브 게이트로 돌아온 유저 포함)에게만 «트라이브를 고르면 JAM!을 시작할 수 있어요» 한 줄을 보인다.
+  // 이 화면에서 1단계를 막 마치고 넘어온 유저에게는 이유를 설명할 필요가 없다(티켓 20261021_1247).
+  const [arrivedAtTribeStep, setArrivedAtTribeStep] = useState(false)
 
   async function loadTribes() {
     setTribesState({ kind: 'loading' })
@@ -78,10 +80,10 @@ function OnboardingContent() {
       setTribesState({ kind: 'error' })
       return
     }
-    setTribesState({ kind: 'ready', tribes: data as Pick<TribeRow, 'id' | 'name' | 'tagline' | 'image_url'>[] })
+    setTribesState({ kind: 'ready', tribes: data as Extract<TribesState, { kind: 'ready' }>['tribes'] })
   }
 
-  // 현재 유저 정보 로드 — username·display_name·avatar_url·온보딩 완료 여부 확인
+  // 현재 유저 정보 로드 — username·display_name·avatar_url·트라이브 확인
   useEffect(() => {
     let cancelled = false
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -97,29 +99,27 @@ function OnboardingContent() {
         .single()
         .then(({ data: raw }) => {
           if (cancelled) return
-          const data = raw as {
-            username: string | null
-            display_name: string | null
-            avatar_url: string | null
-            onboarding_completed_at: string | null
-          } | null
+          // 어디에 둘지는 tribe_id 하나로 정한다(티켓 20261021_1247). `(main)` 레이아웃의 트라이브 게이트·로그인 콜백·프로필 경유지와 같은 기준이라
+          // «게이트는 여기로 보내고 여기서는 홈으로 되돌리는» 반복이 없다. 예전에는 onboarding_completed_at을 봤다.
+          const entry = resolveOnboardingEntry(raw as OnboardingUserRow | null)
 
-          // 2단계(트라이브 포함)까지 이미 끝난 유저는 온보딩으로 올 이유가 없다.
-          if (data?.onboarding_completed_at) {
+          // 트라이브를 이미 고른 유저는 온보딩으로 올 이유가 없다.
+          if (entry.kind === 'home') {
             router.replace('/')
             return
           }
 
-          setAvatarUrl(data?.avatar_url ?? null)
+          setAvatarUrl(entry.avatarUrl)
 
-          if (data?.username) {
+          if (entry.kind === 'tribe') {
             // 1단계는 이미 마쳤고 2단계(트라이브)만 남은 유저 — 아이디는 이미 확정된
             // 값이므로 재확인 없이 곧장 2단계로 보낸다.
-            setCurrentUsername(data.username)
-            setInput(data.username)
+            setCurrentUsername(entry.username)
+            setInput(entry.username)
             setStatus('same')
-            setNameInput(data.display_name ?? '')
+            setNameInput(entry.displayName)
             setAgeConfirmed(true)
+            setArrivedAtTribeStep(true)
             setStep('tribe')
             loadTribes()
           }
@@ -127,7 +127,7 @@ function OnboardingContent() {
         })
     })
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 때 한 번만 읽는다(기존 동작)
   }, [])
 
   // GA4 sign_up_complete — /auth/callback이 신규 가입(users row가 이번에 처음 생김) 때만
@@ -197,7 +197,8 @@ function OnboardingContent() {
     (status === 'available' || status === 'same') &&
     nameInput.trim().length > 0 &&
     ageConfirmed &&
-    !submittingStep1
+    !submittingStep1 &&
+    !loggingOut
 
   async function handleStep1Next() {
     if (!canProceedStep1) return
@@ -286,7 +287,7 @@ function OnboardingContent() {
         setSelectedTribeId(null)
         loadTribes()
       } else if (json.error === 'ALREADY_SET') {
-        // 정상 UI 흐름에서는 도달하지 않는다(이미 온보딩 완료 유저는 로드 시점에 홈으로 리다이렉트됨).
+        // 정상 UI 흐름에서는 도달하지 않는다(트라이브를 이미 고른 유저는 로드 시점에 홈으로 리다이렉트됨).
         router.replace('/')
       } else {
         setStep2Error(d.onboarding.genericError)
@@ -296,6 +297,31 @@ function OnboardingContent() {
     } finally {
       setSubmittingStep2(false)
     }
+  }
+
+  // ── 로그아웃 길 (두 단계 공통) — 티켓 20261021_1247, 채원 사전 판정 2026-10-21 ───────────
+  // 트라이브를 고르지 않은 유저는 (main) 화면에 닿지 못해 프로필의 «로그아웃»을 쓸 수 없다. 잘못된 구글 계정으로 들어온 유저가 빠져나갈 길이 이 화면에 있어야 한다.
+  // 실패를 반드시 알린다: signOut이 네트워크 오류면 세션을 지우지 않고 error만 돌려주는데, proxy.ts는 로그인된 유저를 /login에서 /로 돌려보내고
+  // /는 트라이브 게이트가 다시 /onboarding으로 보내 막다른 길이 된다. 프로필의 로그아웃은 오류를 무시하지만 여기서는 따라 하지 않는다.
+  async function handleLogout() {
+    if (loggingOut || submittingStep1 || submittingStep2) return
+    setLoggingOut(true)
+    let failed = false
+    try {
+      const { error } = await supabase.auth.signOut()
+      failed = Boolean(error)
+    } catch {
+      failed = true
+    }
+    if (failed) {
+      setLoggingOut(false)
+      // 2단계는 기존 오류 자리(role="alert"), 1단계는 기존 안내 줄(message)에 보인다
+      if (step === 'tribe') setStep2Error(d.onboarding.networkError)
+      else setMessage(d.onboarding.networkError)
+      return
+    }
+    // 성공하면 loggingOut을 풀지 않는다 — 화면이 넘어갈 때까지 중복 클릭을 막는다
+    router.push('/login')
   }
 
   // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
@@ -449,121 +475,40 @@ function OnboardingContent() {
           >
             {submittingStep1 ? d.onboarding.step1Saving : d.onboarding.step1NextButton}
           </button>
+
+          {/* 로그아웃 길 — 티켓 20261021_1247. 1단계에는 «뒤로»도 없어 잘못된 구글 계정으로 들어온 유저가 빠져나갈 길이 없다.
+              2단계(TribeStep)와 같은 ghost 버튼이다. 제출 중에는 비활성이고, 로그아웃 중에는 스피너를 보인다(글자는 그대로). */}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleLogout}
+            disabled={submittingStep1}
+            loading={loggingOut}
+            className="whitespace-nowrap break-keep wrap-break-word"
+          >
+            {d.profile.logoutButton}
+          </Button>
         </div>
       </div>
     )
   }
 
-  // ── 2단계: 트라이브 선택 + 프로필이미지 ──────────────────────────────────
+  // ── 2단계: 트라이브 고르기 ───────────────────────────────────────────────
+  // 화면 구성은 TribeStep(받은 값을 그리기만 한다). 카드를 눌러도 확정되지 않고 «이 트라이브로 시작하기» 버튼을 눌러야 handleFinish가 돈다.
   return (
-    <div className="min-h-full text-foreground flex flex-col items-center px-6 py-12">
-      <div className="w-full max-w-sm flex flex-col items-center gap-8">
-
-        <div className="flex flex-col items-center gap-4">
-          {/* 프로필 이미지 변경 UI는 1단계로 이동(티켓 20260909_2119 추가 수정) */}
-          <h1 className="text-3xl text-center whitespace-pre-line">
-            {d.onboarding.step2Title}
-          </h1>
-          <p className="text-muted text-base text-center">
-            {d.onboarding.step2Subtitle}
-          </p>
-        </div>
-
-        {/* 트라이브 카드 그리드 */}
-        {tribesState.kind === 'loading' && (
-          <div className="w-full flex items-center justify-center py-8">
-            <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-
-        {tribesState.kind === 'error' && (
-          <div className="w-full flex flex-col items-center gap-4 py-4">
-            <p className="text-base text-center text-muted">
-              {d.onboarding.tribesLoadError}
-            </p>
-            <button
-              onClick={loadTribes}
-              className="min-h-11 px-6 rounded-full shadow-[inset_0_0_0_1px_var(--separator)] text-base active:scale-95 transition-transform duration-100"
-            >
-              {d.onboarding.retryButton}
-            </button>
-          </div>
-        )}
-
-        {tribesState.kind === 'ready' && tribesState.tribes.length === 0 && (
-          <div className="w-full flex flex-col items-center gap-4 py-4">
-            <p className="text-base text-center text-muted">
-              {d.onboarding.tribesEmptyError}
-            </p>
-            <button
-              onClick={loadTribes}
-              className="min-h-11 px-6 rounded-full shadow-[inset_0_0_0_1px_var(--separator)] text-base active:scale-95 transition-transform duration-100"
-            >
-              {d.onboarding.retryButton}
-            </button>
-          </div>
-        )}
-
-        {tribesState.kind === 'ready' && tribesState.tribes.length > 0 && (
-          <div className="w-full grid grid-cols-2 gap-2">
-            {tribesState.tribes.map((tribe) => {
-              const selected = selectedTribeId === tribe.id
-              return (
-                <Card
-                  key={tribe.id}
-                  tone={selected ? 'inverse' : 'default'}
-                  onClick={() => setSelectedTribeId(tribe.id)}
-                  className="flex flex-col items-center text-center gap-2"
-                  style={{ minHeight: 140 }}
-                >
-                  <SafeImage
-                    src={tribe.image_url}
-                    alt=""
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 rounded-2xl object-cover"
-                    fallback={
-                      <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center">
-                        <UserIcon className="w-6 h-6 opacity-40" />
-                      </div>
-                    }
-                  />
-                  <span className="text-base font-bold">
-                    {tribe.name}
-                  </span>
-                  {tribe.tagline && (
-                    <span className="text-xs opacity-60">
-                      {tribe.tagline}
-                    </span>
-                  )}
-                </Card>
-              )
-            })}
-          </div>
-        )}
-
-        {step2Error && (
-          <p className="text-base text-center">{step2Error}</p>
-        )}
-
-        <div className="w-full flex flex-col gap-3">
-          <button
-            onClick={handleFinish}
-            disabled={!selectedTribeId || submittingStep2}
-            className="w-full min-h-11 bg-background-inverse text-snow py-[14px] rounded-full active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-base"
-          >
-            {submittingStep2 ? d.onboarding.finishing : d.onboarding.finishButton}
-          </button>
-          {/* 1단계(아이디·이름)로 돌아가 값을 다시 확인·수정할 수 있게 한다. */}
-          <button
-            onClick={() => setStep('account')}
-            className="w-full min-h-11 text-muted text-base active:opacity-70 transition-opacity"
-          >
-            {d.common.back}
-          </button>
-        </div>
-      </div>
-    </div>
+    <TribeStep
+      tribesState={tribesState}
+      selectedTribeId={selectedTribeId}
+      submitting={submittingStep2}
+      loggingOut={loggingOut}
+      error={step2Error}
+      showGateHint={arrivedAtTribeStep}
+      onSelect={setSelectedTribeId}
+      onFinish={handleFinish}
+      onBack={() => setStep('account')}
+      onRetry={loadTribes}
+      onLogout={handleLogout}
+    />
   )
 }
 

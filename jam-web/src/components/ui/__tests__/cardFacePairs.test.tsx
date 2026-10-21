@@ -61,7 +61,31 @@ describe('MODULAR Card — 면과 글자색 쌍', () => {
     const html = renderToStaticMarkup(<Card tone="inverse">내용</Card>)
     expect(html).toContain('background:var(--background-inverse)')
     expect(html).toContain('color:var(--snow)')
-    expect(html).not.toContain('border:')
+  })
+
+  // 티켓 20261021_1247 — inverse에 테두리가 없으면 default(1px --border)에서 선택으로 바뀔 때 카드가 2px 줄어 안쪽이 움직였다.
+  it('inverse는 면과 같은 색의 1px 테두리를 가진다(색을 더하지 않고 크기만 고정한다)', () => {
+    const html = renderToStaticMarkup(<Card tone="inverse">내용</Card>)
+    expect(html).toContain('border:1px solid var(--background-inverse)')
+    expect(html).toContain('box-sizing:border-box')
+    // 테두리 색이 면 색과 같아야 화면에서 새 선이 보이지 않는다
+    expect(html).not.toContain('border:1px solid var(--border)')
+  })
+
+  it('default와 inverse는 테두리 두께·box-sizing·여백·반경이 같아 톤이 바뀌어도 박스 크기가 같다', () => {
+    const boxOf = (tone: 'default' | 'inverse') => {
+      const html = renderToStaticMarkup(<Card tone={tone}>내용</Card>)
+      const style = /style="([^"]*)"/.exec(html)?.[1] ?? ''
+      const pick = (prop: string) => new RegExp(`(?:^|;)${prop}:([^;]*)`).exec(style)?.[1]
+      return {
+        borderWidth: pick('border')?.split(' ')[0],
+        boxSizing: pick('box-sizing'),
+        padding: pick('padding'),
+        borderRadius: pick('border-radius'),
+      }
+    }
+    expect(boxOf('inverse')).toEqual(boxOf('default'))
+    expect(boxOf('inverse').borderWidth).toBe('1px')
   })
 
   it('알 수 없는 tone은 default 면으로 그린다', () => {

@@ -62,6 +62,9 @@ vi.mock('@/lib/suspension/suspension', async (importOriginal) => ({
   getSuspensionPeriods: vi.fn(async () => []),
 }))
 
+// 트라이브 게이트(티켓 20261021_1247)는 sync-tribe-gate.test.ts가 맡는다 — 이 파일은 트라이브를 고른 유저로 본다.
+vi.mock('@/lib/tribe/gate', () => ({ assertHasTribe: async () => {} }))
+
 import { syncStravaActivities } from '../sync'
 
 const USER_ID = 'user-cursor-test'

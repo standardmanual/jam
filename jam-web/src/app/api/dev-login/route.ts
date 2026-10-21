@@ -16,6 +16,7 @@ import {
   DEV_LOGIN_USER_ID,
   isStagingOrDevEnv,
 } from '@/lib/env/test-accounts'
+import { ensureDevLoginTribe } from '@/lib/tribe/dev-login-tribe'
 
 // 고정 테스트 유저 — jam-web/supabase/seed_dev_test_user.sql과 동일한 값 사용
 // (프로덕션 공개 목록 제외 대상·staging 어드민 차단 대상 — jam-web/src/lib/env/test-accounts.ts가 단일 진실)
@@ -70,6 +71,11 @@ export async function GET(request: NextRequest) {
     console.error('[JAM!][dev-login] 세션 발급 실패:', verifyError.message)
     return NextResponse.redirect(`${origin}/login?error=auth_failed`)
   }
+
+  // 4) 트라이브 게이트(티켓 20261021_1247) 때문에 트라이브가 없는 테스트 계정은 어디서나 고르기 화면에 막힌다.
+  //    이 계정의 tribe_id가 비어 있을 때만 활성 트라이브 하나를 지정한다(이미 있으면 그대로, 활성 트라이브가 없으면 지정 없이 계속).
+  //    위의 환경 게이트(isStagingOrDevEnv) 안에서만 도달한다. 실패해도 로그인은 막지 않는다.
+  await ensureDevLoginTribe(serviceClient, DEV_USER_ID)
 
   return NextResponse.redirect(`${origin}/`)
 }

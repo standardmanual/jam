@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { hasTribe, TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -30,17 +31,17 @@ export async function GET(request: NextRequest) {
   const serviceClient = createServiceClient()
   const googleAvatarUrl: string | null = user.user_metadata?.avatar_url ?? null
 
-  // 기존 프로필 조회 (avatar_url, username, onboarding_completed_at)
+  // 기존 프로필 조회 (avatar_url, username, tribe_id)
   const { data: existing } = await serviceClient
     .from('users')
-    .select('avatar_url, username, onboarding_completed_at')
+    .select('avatar_url, username, tribe_id')
     .eq('id', user.id)
     .maybeSingle()
 
   const existingProfile = existing as {
     avatar_url: string | null
     username: string | null
-    onboarding_completed_at: string | null
+    tribe_id: string | null
   } | null
 
   // avatar_url 갱신 여부 판단
@@ -60,11 +61,11 @@ export async function GET(request: NextRequest) {
   const usersTable = serviceClient.from('users')
   await usersTable.upsert(upsertData, { onConflict: 'id' })
 
-  // 온보딩 2단계(트라이브 포함) 완료 여부로 온보딩 필요 여부를 판단한다(티켓 20260909_2119).
-  // username만으로 판단하면 1단계만 마친 유저가 재로그인 시 홈으로 잘못 보내진다 —
-  // onboarding_completed_at은 2단계까지 전부 채워졌을 때만 기록되므로, 이 값이 null이면
-  // 1단계만 했든 아예 안 했든 온보딩 화면(내부에서 단계를 자동으로 분기)으로 보낸다.
-  const needsOnboarding = !existingProfile?.onboarding_completed_at
+  // 트라이브를 골랐는지로 온보딩 필요 여부를 판단한다(티켓 20261021_1247, 운영 로직 2장). 이전에는 `onboarding_completed_at`을 봤으나
+  // 공용 DB에는 완료 시각은 있는데 트라이브가 없는 계정이 있어, 앱 안(`(main)` 레이아웃 게이트)은 막는데 여기는 홈으로 보내는 어긋남이 생긴다.
+  // 판정 기준을 `users.tribe_id` 하나로 맞춘다 — 1단계(아이디·이름)만 했든 아예 안 했든 트라이브가 없으면 온보딩 화면
+  // (내부에서 단계를 자동으로 분기)으로 보낸다.
+  const needsOnboarding = !hasTribe(existingProfile?.tribe_id)
 
   // GA4 sign_up_complete — "구글 로그인 최초 완료" 판정은 upsert 이전에 이미 읽어둔
   // `existing`(기존 users row 존재 여부)이 기준이다. `needsOnboarding`은 username 미설정
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(
     needsOnboarding
-      ? `${origin}/onboarding${isNewSignup ? '?new_signup=1' : ''}`
+      ? `${origin}${TRIBE_SELECT_PATH}${isNewSignup ? '?new_signup=1' : ''}`
       : `${origin}/`
   )
 }

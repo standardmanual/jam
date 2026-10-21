@@ -64,12 +64,14 @@ export interface UserRow {
   /**
    * 온보딩에서 유저가 직접 선택한 트라이브. 티켓 20260909_2119.
    * 온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변 — 변경 API가 어디에도 없다.
-   * 기존 유저는 NULL일 수 있다(강제 재온보딩 없음, 점진적 유도는 후속 과제).
+   * NULL이면 트라이브를 고르지 않은 것이다. 이 값이 «앱을 쓸 수 있는가»의 판정 기준이다 — 없으면 `(main)` 레이아웃이 `/onboarding`으로 보내고
+   * Strava 연결·동기화도 거절한다(티켓 20261021_1247, `lib/tribe/gate-contract.ts`의 `hasTribe`).
    */
   tribe_id: string | null
   /**
    * 온보딩 2단계(아이디·이름 + 트라이브·프로필이미지)까지 완료된 시각. 티켓 20260909_2119.
-   * NULL이면 온보딩 미완료 — `/auth/callback`이 이 값 기준으로 `/onboarding` 리다이렉트를 판정한다.
+   * NULL이면 온보딩 미완료. 이 값은 더 이상 `/onboarding` 리다이렉트의 판정 기준이 아니다 — 기준은 `tribe_id`다(티켓 20261021_1247).
+   * 어드민 유저 목록의 «온보딩 완료» 표시에는 그대로 쓰인다.
    */
   onboarding_completed_at: string | null
   /** 첫 Strava 싱크 완료 여부 — false이면 배지 엔진이 Common만 발급 */

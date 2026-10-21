@@ -945,6 +945,19 @@ export const ko = {
   },
 
   /**
+   * 트라이브를 고르기 전에 막힌 API 응답의 `error` 문구 — 티켓 20261021_1247 1회 (운영 로직 2장).
+   * `/api/strava/sync`와 `/api/strava/auth`의 403(`code: 'tribe_required'`)이 이 키를 직접 참조한다(ADR 0001).
+   * 현상, 해결책 순(§4.1)으로 «현상(트라이브를 고르지 않아 할 수 없어요) → 해결책(트라이브를 먼저 골라 주세요)» 두 문장이다. 앱 화면은 레이아웃이 먼저 고르기 화면으로 보내므로,
+   * 이 문구는 화면을 거치지 않은 직접 호출이나 고르기 도중 계정이 바뀐 경우에만 보인다.
+   */
+  tribeGate: {
+    /** 동기화 403 — 트라이브를 고르지 않아 새 활동을 가져오지 않았다 */
+    syncBlocked: '아직 트라이브를 고르지 않아 동기화할 수 없어요. 트라이브를 먼저 골라 주세요.',
+    /** Strava 동기화 시작(연결) 403 — 트라이브를 고르지 않아 Strava 인증으로 보내지 않았다 */
+    connectBlocked: '아직 트라이브를 고르지 않아 Strava 동기화를 시작할 수 없어요. 트라이브를 먼저 골라 주세요.',
+  },
+
+  /**
    * 캡슐 API 오류 — 티켓 20261018_0052 (운영 로직 5.2절).
    * `/api/capsule`·`/api/capsule/fill`·`/api/capsule/open`이 이 키를 직접 참조한다(ADR 0001). 이용 정지 403은 `d.suspension.capsuleBlocked`(채우기)와
    * `d.suspension.capsuleOpenBlocked`(열기)다. 열기 문구는 «다시 열기를 부추기는 말, 낮은 등급을 꽝으로 보는 말, 다음 결과를 미리 기대하게 하는 말»을 쓰지 않는다.
@@ -1268,15 +1281,20 @@ export const ko = {
     networkError: '네트워크 오류가 발생했어요.',
     ageConfirmLabel: '만 14세 이상이에요',
 
-    // 2단계 — 트라이브 선택
+    // 2단계 — 트라이브 선택 (티켓 20261021_1247, 운영 로직 2.2절)
     step2Title: '당신의 트라이브를\n선택해 주세요',
-    step2Subtitle: '한 번 고른 트라이브는 탈퇴하기 전까지 바꿀 수 없어요',
+    /** 제목 아래 첫 안내(foreground, text-base). 바꾸는 방법(운영자가 바꿔 주는 길)은 화면에 알리지 않는다 */
+    step2Subtitle: '한 번 고르면 바꿀 수 없어요',
+    /** 제목 아래 둘째 안내(muted, text-sm) */
+    step2ItemBadgeNotice: '동기화로 받는 아이템 배지는 고른 트라이브의 것이에요',
+    /** 아이디를 이미 정해 곧장 이 단계로 온 유저(트라이브 게이트로 돌아온 유저)에게만 제목 아래에 한 줄(muted) */
+    step2GateHint: '트라이브를 고르면 JAM!을 시작할 수 있어요',
     tribesLoadError: '트라이브 목록을 불러오지 못했어요. 다시 시도해 주세요.',
     tribesEmptyError: '지금은 고를 수 있는 트라이브가 없어요. 잠시 후 다시 시도해 주세요.',
     retryButton: '다시 시도',
     invalidTribeError: '이 트라이브는 지금 선택할 수 없어요. 다른 트라이브를 선택해 주세요.',
-    finishButton: '시작하기',
-    finishing: '가입하는 중',
+    finishButton: '이 트라이브로 시작하기',
+    finishing: '시작하는 중',
   },
 
   /** 프로필 편집 */
