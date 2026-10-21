@@ -5,7 +5,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.generated'
 import type { AbusingPolicy } from './policy'
 import { chunkIds } from './chunk-ids'
-import { logAbusingEvents, type ExtendResult } from './shadow-ban'
+import { logAbusingEvents, type ExtendResult } from './abusing-log'
 
 /**
  * 해당 유저가 이 POI에서 차단됐는지 확인.

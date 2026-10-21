@@ -128,7 +128,8 @@ vi.mock('@/lib/abusing/gps-detector', () => ({
   checkAndUpdateLocation: async () =>
     (state.gpsCalls += 1) && state.gpsDetected ? { detected: true, reason: 'speed', speedKmh: 400, dailyDistanceKm: 0 } : { detected: false },
 }))
-vi.mock('@/lib/abusing/shadow-ban', () => ({ applyBan: async () => {}, logAbusingEvent: async () => {} }))
+vi.mock('@/lib/abusing/shadow-ban', () => ({ applyBan: async () => {} }))
+vi.mock('@/lib/abusing/abusing-log', () => ({ logAbusingEvent: async () => {} }))
 vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/suspension/suspension')>()
   return {

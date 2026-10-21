@@ -57,7 +57,7 @@ vi.mock('@/lib/supabase/server', () => ({
   },
 }))
 
-import { applyBan, removeBan, logAbusingEvent, getUserBanLevel } from '../shadow-ban'
+import { applyBan, removeBan, getUserBanLevel } from '../shadow-ban'
 
 beforeEach(() => {
   stub.banRow = null
@@ -104,24 +104,6 @@ describe('removeBan — delete 실패 전파', () => {
 
   it('정상이면 예외 없이 완료된다', async () => {
     await expect(removeBan('user-1')).resolves.toBeUndefined()
-  })
-})
-
-describe('logAbusingEvent — insert 실패는 삼키되 반드시 로그를 남긴다', () => {
-  it('insert error가 있어도 예외를 던지지 않지만 console.error를 남긴다', async () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    stub.insertError = { code: '23503', message: 'foreign key violation' }
-    await expect(logAbusingEvent('user-1', 'gps_spoof_detected')).resolves.toBeUndefined()
-    expect(spy).toHaveBeenCalled()
-    expect(String(spy.mock.calls[0][0])).toContain('gps_spoof_detected')
-    spy.mockRestore()
-  })
-
-  it('정상이면 로그를 남기지 않는다', async () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    await logAbusingEvent('user-1', 'gps_spoof_detected')
-    expect(spy).not.toHaveBeenCalled()
-    spy.mockRestore()
   })
 })
 

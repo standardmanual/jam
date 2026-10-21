@@ -3,10 +3,11 @@
  * service_role 클라이언트 전용
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { Database, Json } from '@/types/database.generated'
+import type { Database } from '@/types/database.generated'
 import { DEFAULT_POLICY, type AbusingPolicy } from './policy'
 import { BAN_RATE_KEY } from './rate-keys'
 import { chunkIds } from './chunk-ids'
+import { logAbusingEvent, logAbusingEvents, type ExtendResult } from './abusing-log'
 import type { BadgeRarity } from '@/types/database'
 
 export type BanLevel = 'none' | 'soft' | 'hard'
@@ -146,32 +147,6 @@ export async function removeBan(userId: string): Promise<void> {
   }
 }
 
-/**
- * 어뷰징 이벤트 로그 기록. 로그는 부가 정보이므로 실패해도 호출부(밴 적용·GPS 감지 등 핵심
- * 동작)를 막지 않도록 예외를 던지지 않는다 — 다만 실패 자체는 반드시 서버 로그에 남긴다
- * (이전에는 `catch {}`로 완전히 무음이었다 — 티켓 20260901_1843).
- */
-export async function logAbusingEvent(
-  userId: string,
-  eventType: string,
-  detail?: Record<string, unknown>
-): Promise<void> {
-  try {
-    const supabase = createServiceClient()
-    const logsTable = supabase.from('abusing_logs')
-    // abusing_logs.detail은 jsonb 컬럼이라 생성 타입이 Json이다. 호출부 편의를 위해 파라미터는
-    // Record<string, unknown>으로 받고 있어(값 타입이 unknown이라 Json에 직접 대입 불가) 이
-    // 한 필드만 Json으로 단언한다 — 나머지 컬럼은 이름·타입 검사를 그대로 받는다.
-    const payload = { user_id: userId, event_type: eventType, detail: (detail ?? null) as Json }
-    const { error } = await logsTable.insert(payload)
-    if (error) {
-      console.error(`[shadow-ban] 어뷰징 이벤트 로그 기록 실패 (userId: ${userId}, eventType: ${eventType}):`, error)
-    }
-  } catch (e) {
-    console.error(`[shadow-ban] 어뷰징 이벤트 로그 기록 예외 (userId: ${userId}, eventType: ${eventType}):`, e)
-  }
-}
-
 export type ShadowBanRecord = Database['public']['Tables']['user_shadow_bans']['Row']
 
 /**
@@ -191,32 +166,6 @@ export async function changeBanLevel(id: string, level: 'soft' | 'hard'): Promis
     throw new Error(`user_shadow_bans update 실패 (${error.code}): ${error.message}`)
   }
   return (data ?? []).length > 0
-}
-
-export interface AbusingLogEntry {
-  user_id: string
-  event_type: string
-  detail: Record<string, Json | undefined>
-}
-
-/**
- * 여러 건의 어뷰징 로그를 한 문장으로 기록한다. 지운 행의 유일한 기록이라 실패하면 지운 내용을
- * 서버 로그에 통째로 남기고 `false`를 돌려준다(호출부는 이미 지운 뒤라 되돌릴 수 없다).
- */
-export async function logAbusingEvents(entries: AbusingLogEntry[]): Promise<boolean> {
-  if (entries.length === 0) return true
-  try {
-    const supabase = createServiceClient()
-    const { error } = await supabase.from('abusing_logs').insert(entries)
-    if (error) {
-      console.error('[shadow-ban] 어뷰징 로그 일괄 기록 실패 — 기록하지 못한 내용:', JSON.stringify(entries), error)
-      return false
-    }
-    return true
-  } catch (e) {
-    console.error('[shadow-ban] 어뷰징 로그 일괄 기록 예외 — 기록하지 못한 내용:', JSON.stringify(entries), e)
-    return false
-  }
 }
 
 export interface ReleaseBansResult {
@@ -264,12 +213,6 @@ export async function releaseBans(ids: string[], releasedBy: string): Promise<Re
   }
 
   return { released, logged, error: null }
-}
-
-export interface ExtendResult {
-  /** 실제로 만료가 늦춰진 행 */
-  updatedIds: string[]
-  error: string | null
 }
 
 /**
