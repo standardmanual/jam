@@ -91,10 +91,9 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(NAV_GROUPS.flatMap((g) => g.items).some((i) => i.href === '/admin/shader-lab')).toBe(false)
   })
 
-  it('컨텐츠 관리 그룹에 챕터 이름 메뉴가 트라이브 바로 뒤에 있고, 그 경로에서만 활성이다(티켓 20261019_1318 2회)', () => {
-    const hrefs = NAV_GROUPS.find((g) => g.id === 'content')?.items.map((i) => i.href) ?? []
-    expect(hrefs.indexOf('/admin/chapter-names')).toBe(hrefs.indexOf('/admin/tribes') + 1)
-    expect(mostSpecificActiveItem('/admin/chapter-names')?.label).toBe('챕터 이름')
+  it('챕터는 숫자로만 표기하므로 챕터 이름 메뉴가 없다(티켓 20261021_1539)', () => {
+    const hrefs = NAV_GROUPS.flatMap((g) => g.items).map((i) => i.href)
+    expect(hrefs).not.toContain('/admin/chapter-names')
     expect(mostSpecificActiveItem('/admin/tribes')?.href).toBe('/admin/tribes')
   })
 

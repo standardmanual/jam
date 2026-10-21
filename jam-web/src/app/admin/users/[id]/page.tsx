@@ -82,7 +82,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
   )
 
   // 챕터와 오른 기록, 점수 기록 (티켓 20261019_1318 2회) — 보조 읽기라 구역마다 실패를 따로 알리고 화면 전체를 막지 않는다.
-  const chapterView = await loadUserChapterView(service, id, user.tribe_id)
+  const chapterView = await loadUserChapterView(service, id)
 
   // ADMIN_EMAILS 화이트리스트 계정인지 (20260827_015) — 안내 문구에만 사용, 판정 로직은 lib/admin/auth.ts 공용
   const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)

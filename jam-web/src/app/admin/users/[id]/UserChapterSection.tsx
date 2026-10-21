@@ -29,14 +29,14 @@ function ReadFailed({ subject }: { subject: string }) {
  * 읽지 못한 구역은 «기록 없음»과 다른 문구로 보인다.
  */
 export function UserChapterSection({ view }: Props) {
-  const { current, ups, scoreEvents, namesFailed } = view
+  const { current, ups, scoreEvents } = view
 
   return (
     <section className="mb-10">
       <div className="mb-4">
         <h2 className="text-lg font-bold">챕터</h2>
         <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-pretty">
-          챕터 이름은 유저의 지금 트라이브 기준이에요. 점수 숫자는 어드민에게만 보여요.
+          점수 숫자는 어드민에게만 보여요.
         </p>
       </div>
 
@@ -53,12 +53,6 @@ export function UserChapterSection({ view }: Props) {
               ) : (
                 <p className="text-2xl font-bold text-foreground break-keep wrap-break-word">
                   챕터 {current.value.chapterNo}
-                  {current.value.name !== null && ` · ${current.value.name}`}
-                </p>
-              )}
-              {current.value.chapterNo !== null && current.value.name === null && (
-                <p className="text-muted-foreground text-xs mt-1 break-keep wrap-break-word">
-                  {namesFailed ? '챕터 이름을 읽지 못했어요.' : '이 트라이브에는 이 챕터의 이름이 아직 없어요.'}
                 </p>
               )}
             </div>
@@ -82,7 +76,6 @@ export function UserChapterSection({ view }: Props) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="whitespace-nowrap">챕터</TableHead>
-                  <TableHead className="whitespace-nowrap">이름</TableHead>
                   <TableHead className="whitespace-nowrap">오른 시각</TableHead>
                 </TableRow>
               </TableHeader>
@@ -90,7 +83,6 @@ export function UserChapterSection({ view }: Props) {
                 {ups.value.map((up) => (
                   <TableRow key={up.chapterNo}>
                     <TableCell className="whitespace-nowrap">챕터 {up.chapterNo}</TableCell>
-                    <TableCell className="break-keep wrap-break-word">{up.name ?? '—'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatKstYmdHm(up.reachedAt)}</TableCell>
                   </TableRow>
                 ))}

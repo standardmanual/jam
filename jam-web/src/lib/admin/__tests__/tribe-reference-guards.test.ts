@@ -74,16 +74,13 @@ describe('트라이브 삭제 보호 — users.tribe_id (티켓 20260924_0945)',
   })
 })
 
-describe('트라이브 삭제 보호 — 미션 참가 대상과 챕터 이름 (티켓 20261019_1318 2회)', () => {
-  it('mission_allowed_tribes(FK RESTRICT)는 삭제를 막는 참조이고, chapter_names(CASCADE 설정값)는 안내만이다', () => {
+describe('트라이브 삭제 보호 — 미션 참가 대상 (티켓 20261019_1318 2회)', () => {
+  it('mission_allowed_tribes(FK RESTRICT)는 삭제를 막는 참조이고, 챕터 이름 표(chapter_names)는 보호 목록에 없다(티켓 20261021_1539)', () => {
     expect(TRIBE_REFERENCE_SOURCES.find((s) => s.key === 'mission_allowed_tribes')).toMatchObject({
       location: 'mission_allowed_tribes.tribe_id',
       blocks: true,
     })
-    expect(TRIBE_REFERENCE_SOURCES.find((s) => s.key === 'chapter_names')).toMatchObject({
-      location: 'chapter_names.tribe_id',
-      blocks: false,
-    })
+    expect(TRIBE_REFERENCE_SOURCES.find((s) => s.key === 'chapter_names')).toBeUndefined()
   })
 
   it('참가 대상으로 둔 미션이 있는 트라이브는 삭제가 막히고 사유에 미션 수가 나온다', async () => {
@@ -108,22 +105,16 @@ describe('트라이브 삭제 보호 — 미션 참가 대상과 챕터 이름 (
     expect(skipped[0].reason).toContain('참가 대상으로 둔 미션 2건')
   })
 
-  it('챕터 이름만 있으면 삭제를 막지 않는다(안내 문구에는 들어간다)', async () => {
-    const supabase = createStubSupabase({
-      chapter_names: [
-        { tribe_id: 't1', chapter_no: 1 },
-        { tribe_id: 't1', chapter_no: 2 },
-      ],
-    })
-    const { counts } = await collectTribeReferences(supabase, ['t1'])
-    const summary = summarizeReference(TRIBE_REFERENCE_SOURCES, counts.get('t1')!)
-    expect(summary.blockingTotal).toBe(0)
-    expect(summary.noticeLabels).toBe('챕터 이름 2건')
+  it('챕터 이름 표는 읽지 않는다(표가 남아 있어도 참조 조회에 들어가지 않는다)', async () => {
+    const supabase = createStubSupabase({ chapter_names: [{ tribe_id: 't1', chapter_no: 1 }] }, 'chapter_names')
+    const { counts, error } = await collectTribeReferences(supabase, ['t1'])
+    expect(error).toBeNull()
+    expect(Object.keys(counts.get('t1')!)).not.toContain('chapter_names')
   })
 
-  it.each(['mission_allowed_tribes', 'chapter_names'])('%s 조회가 실패하면 error를 채운다(fail-closed)', async (table) => {
-    const { error } = await collectTribeReferences(createStubSupabase({}, table), ['t1'])
-    expect(error).toContain(table)
+  it('mission_allowed_tribes 조회가 실패하면 error를 채운다(fail-closed)', async () => {
+    const { error } = await collectTribeReferences(createStubSupabase({}, 'mission_allowed_tribes'), ['t1'])
+    expect(error).toContain('mission_allowed_tribes')
   })
 })
 

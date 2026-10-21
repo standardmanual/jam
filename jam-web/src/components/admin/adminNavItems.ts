@@ -33,7 +33,6 @@ import {
   IconCalendarWeek,
   IconAdjustmentsHorizontal,
   IconBooks,
-  IconListNumbers,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -66,7 +65,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/item-badges/orphaned', label: '미소유 아이템배지', icon: IconUserOff },
       { href: '/admin/itembooks', label: '컬렉션', icon: IconBook },
       { href: '/admin/tribes', label: '트라이브', icon: IconWorld },
-      { href: '/admin/chapter-names', label: '챕터 이름', icon: IconListNumbers },
       { href: '/admin/recipes', label: '믹스 레시피', icon: IconFlask },
       { href: '/admin/poi', label: '체크인 관리', icon: IconMapPin },
       { href: '/admin/missions', label: '미션 관리', icon: IconTarget },

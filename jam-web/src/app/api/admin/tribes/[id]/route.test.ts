@@ -101,8 +101,7 @@ describe('DELETE /api/admin/tribes/[id]', () => {
     expect(holder.tables.tribes).toHaveLength(1)
   })
 
-  it('막는 참조가 없으면 삭제한다(챕터 이름은 안내만이라 막지 않는다)', async () => {
-    holder.tables.chapter_names = [{ tribe_id: TRIBE, chapter_no: 1, name: '새내기' }]
+  it('막는 참조가 없으면 삭제한다', async () => {
     const res = await del()
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ ok: true })

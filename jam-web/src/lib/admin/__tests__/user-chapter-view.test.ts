@@ -2,10 +2,10 @@
  * lib/admin/user-chapter-view — 어드민 유저 상세의 챕터 구역 읽기 (티켓 20261019_1318 2회)
  *
  * 고정하는 것:
- * - 지금 챕터·누적 점수·이름, 오른 기록(이름 포함), 점수 기록 최근 50건(전체 건수 포함)을 읽는다.
+ * - 지금 챕터·누적 점수, 오른 기록, 점수 기록 최근 50건(전체 건수 포함)을 읽는다.
  * - 챕터가 없는 유저(행 없음, chapter_no NULL)는 «기록 없음»이지 읽기 실패가 아니다.
  * - 구역마다 실패가 독립이다 — 읽지 못한 구역만 `{ ok: false }`이고 로그가 남으며 다른 구역은 그대로다. 던지지 않는다.
- * - 이름은 유저의 지금 트라이브로 표를 한 번 읽어 붙인다. 트라이브가 없으면 표를 읽지 않고, 읽지 못하면 `namesFailed`다.
+ * - 챕터는 숫자로만 표기한다(2026-10-21 결정): 이름 표를 읽지 않고 값에 이름이 없다.
  * - 활동 종류 12종은 모두 한글 이름이 있고, 사전에 없는 종류는 값 그대로 보인다.
  * 공용 DB는 부르지 않는다 — 가짜 클라이언트만 쓴다.
  *
@@ -22,7 +22,6 @@ import {
 } from '../user-chapter-view'
 
 const USER = '11111111-1111-4111-8111-111111111111'
-const TRIBE = '22222222-2222-4222-8222-222222222222'
 
 type Result = { data: unknown; error: { message: string } | null; count?: number | null }
 type Call = { table: string; select: string | null; eq: Array<[string, unknown]>; order: Array<[string, boolean]>; limit: number | null }
@@ -77,27 +76,20 @@ const happy = () => ({
     error: null,
     count: 120,
   },
-  chapter_names: {
-    data: [
-      { chapter_no: 1, name: '새내기' },
-      { chapter_no: 3, name: '단골' },
-    ],
-    error: null,
-  },
 })
 
 describe('loadUserChapterView — 정상', () => {
-  it('지금 챕터와 점수와 이름, 오른 기록, 점수 기록을 담는다', async () => {
+  it('지금 챕터와 점수, 오른 기록, 점수 기록을 담는다', async () => {
     const { client } = fakeClient(happy())
-    const view = await loadUserChapterView(client, USER, TRIBE)
+    const view = await loadUserChapterView(client, USER)
 
-    expect(view.current).toEqual({ ok: true, value: { chapterNo: 3, totalScore: 2450, name: '단골' } })
+    expect(view.current).toEqual({ ok: true, value: { chapterNo: 3, totalScore: 2450 } })
     expect(view.ups).toEqual({
       ok: true,
       value: [
-        { chapterNo: 1, reachedAt: '2026-09-01T00:00:00+00:00', name: '새내기' },
-        { chapterNo: 2, reachedAt: '2026-09-20T03:00:00+00:00', name: null },
-        { chapterNo: 3, reachedAt: '2026-10-15T06:30:00+00:00', name: '단골' },
+        { chapterNo: 1, reachedAt: '2026-09-01T00:00:00+00:00' },
+        { chapterNo: 2, reachedAt: '2026-09-20T03:00:00+00:00' },
+        { chapterNo: 3, reachedAt: '2026-10-15T06:30:00+00:00' },
       ],
     })
     expect(view.scoreEvents.ok && view.scoreEvents.value.total).toBe(120)
@@ -105,13 +97,12 @@ describe('loadUserChapterView — 정상', () => {
       ['e2', '캡슐 열기', 20, 20],
       ['e1', '모은 잼', 400, 350],
     ])
-    expect(view.namesFailed).toBe(false)
     expect(errorSpy).not.toHaveBeenCalled()
   })
 
   it('점수 기록은 최근 50건만, 최근순으로 읽고 전체 건수를 함께 센다', async () => {
     const { client, calls } = fakeClient(happy())
-    await loadUserChapterView(client, USER, TRIBE)
+    await loadUserChapterView(client, USER)
     const events = calls.find((c) => c.table === 'chapter_score_events')!
     expect(USER_CHAPTER_SCORE_EVENT_LIMIT).toBe(50)
     expect(events.limit).toBe(50)
@@ -120,17 +111,16 @@ describe('loadUserChapterView — 정상', () => {
     expect(events.order[0]).toEqual(['created_at', false])
   })
 
-  it('이름은 유저의 지금 트라이브로 표를 한 번만 읽는다', async () => {
+  it('챕터는 숫자로만 표기한다 — 이름 표를 읽지 않고 값에 이름이 없다', async () => {
     const { client, calls } = fakeClient(happy())
-    await loadUserChapterView(client, USER, TRIBE)
-    const nameReads = calls.filter((c) => c.table === 'chapter_names')
-    expect(nameReads).toHaveLength(1)
-    expect(nameReads[0].eq).toEqual([['tribe_id', TRIBE]])
+    const view = await loadUserChapterView(client, USER)
+    expect(calls.map((c) => c.table).sort()).toEqual(['chapter_score_events', 'chapter_ups', 'user_chapters'])
+    expect(JSON.stringify(view)).not.toContain('name')
   })
 
   it('오른 기록은 오른 시각 오름차순으로 읽는다', async () => {
     const { client, calls } = fakeClient(happy())
-    await loadUserChapterView(client, USER, TRIBE)
+    await loadUserChapterView(client, USER)
     expect(calls.find((c) => c.table === 'chapter_ups')!.order[0]).toEqual(['reached_at', true])
   })
 })
@@ -138,8 +128,8 @@ describe('loadUserChapterView — 정상', () => {
 describe('loadUserChapterView — 챕터가 없는 유저는 기록 없음이다', () => {
   it('user_chapters 행이 없으면 챕터 없음, 점수 0이고 읽기 실패가 아니다', async () => {
     const { client } = fakeClient({ ...happy(), user_chapters: { data: null, error: null }, chapter_ups: { data: [], error: null }, chapter_score_events: { data: [], error: null, count: 0 } })
-    const view = await loadUserChapterView(client, USER, TRIBE)
-    expect(view.current).toEqual({ ok: true, value: { chapterNo: null, totalScore: 0, name: null } })
+    const view = await loadUserChapterView(client, USER)
+    expect(view.current).toEqual({ ok: true, value: { chapterNo: null, totalScore: 0 } })
     expect(view.ups).toEqual({ ok: true, value: [] })
     expect(view.scoreEvents).toEqual({ ok: true, value: { rows: [], total: 0 } })
     expect(errorSpy).not.toHaveBeenCalled()
@@ -147,35 +137,8 @@ describe('loadUserChapterView — 챕터가 없는 유저는 기록 없음이다
 
   it('퀘스트 전에 점수가 쌓인 유저(chapter_no NULL)는 챕터 없음에 쌓인 점수를 보인다', async () => {
     const { client } = fakeClient({ ...happy(), user_chapters: { data: { chapter_no: null, total_score: 120 }, error: null } })
-    const view = await loadUserChapterView(client, USER, TRIBE)
-    expect(view.current).toEqual({ ok: true, value: { chapterNo: null, totalScore: 120, name: null } })
-  })
-})
-
-describe('loadUserChapterView — 이름', () => {
-  it('트라이브를 고르지 않은 유저는 이름 표를 읽지 않고 이름이 null이다(읽기 실패가 아니다)', async () => {
-    const { client, calls } = fakeClient(happy())
-    const view = await loadUserChapterView(client, USER, null)
-    expect(calls.some((c) => c.table === 'chapter_names')).toBe(false)
-    expect(view.current).toEqual({ ok: true, value: { chapterNo: 3, totalScore: 2450, name: null } })
-    expect(view.namesFailed).toBe(false)
-  })
-
-  it('공백뿐인 이름은 이름 없음이다', async () => {
-    const { client } = fakeClient({ ...happy(), chapter_names: { data: [{ chapter_no: 3, name: '  ' }], error: null } })
-    const view = await loadUserChapterView(client, USER, TRIBE)
-    expect(view.current.ok && view.current.value.name).toBeNull()
-    expect(view.namesFailed).toBe(false)
-  })
-
-  it('이름 표를 읽지 못하면 namesFailed이고 로그를 남기며 다른 구역은 그대로다', async () => {
-    const { client } = fakeClient({ ...happy(), chapter_names: { data: null, error: { message: '이름 표 실패' } } })
-    const view = await loadUserChapterView(client, USER, TRIBE)
-    expect(view.namesFailed).toBe(true)
-    expect(view.current).toEqual({ ok: true, value: { chapterNo: 3, totalScore: 2450, name: null } })
-    expect(view.ups.ok).toBe(true)
-    expect(errorSpy).toHaveBeenCalledTimes(1)
-    expect(String(errorSpy.mock.calls[0][0])).toContain('users/detail/chapter-names')
+    const view = await loadUserChapterView(client, USER)
+    expect(view.current).toEqual({ ok: true, value: { chapterNo: null, totalScore: 120 } })
   })
 })
 
@@ -186,7 +149,7 @@ describe('loadUserChapterView — 구역마다 실패가 독립이다', () => {
     ['chapter_score_events', 'scoreEvents', 'users/detail/chapter-score-events'],
   ] as const)('%s를 읽지 못하면 %s만 읽기 실패이고 로그를 남긴다', async (table, section, label) => {
     const { client } = fakeClient({ ...happy(), [table]: { data: null, error: { message: `${table} 실패` } } })
-    const view = await loadUserChapterView(client, USER, TRIBE)
+    const view = await loadUserChapterView(client, USER)
     for (const key of ['current', 'ups', 'scoreEvents'] as const) {
       expect(view[key].ok).toBe(key !== section)
     }
@@ -201,7 +164,7 @@ describe('loadUserChapterView — 구역마다 실패가 독립이다', () => {
         throw new Error('네트워크 끊김')
       },
     })
-    const view = await loadUserChapterView(client, USER, TRIBE)
+    const view = await loadUserChapterView(client, USER)
     expect(view.ups).toEqual({ ok: false })
     expect(view.current.ok).toBe(true)
   })
@@ -212,7 +175,7 @@ describe('loadUserChapterView — 구역마다 실패가 독립이다', () => {
       user_chapters: { data: { chapter_no: 3, total_score: 'x' }, error: null },
       chapter_ups: { data: [{ chapter_no: 'a', reached_at: '2026-10-15T06:30:00+00:00' }], error: null },
     })
-    const view = await loadUserChapterView(client, USER, TRIBE)
+    const view = await loadUserChapterView(client, USER)
     expect(view.current).toEqual({ ok: false })
     expect(view.ups).toEqual({ ok: false })
     expect(view.scoreEvents.ok).toBe(true)
