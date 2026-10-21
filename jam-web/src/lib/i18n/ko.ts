@@ -1418,8 +1418,6 @@ export const ko = {
     saving: '저장 중',
     cancelButton: '취소',
     saveError: '프로필을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
-    withdrawLink: '탈퇴 신청',
-    withdrawCaption: '이메일로 요청하면 계정과 활동 기록이 삭제돼요',
     /** 탈퇴 확인 시트를 여는 작은 밑줄 버튼. 설명은 시트가 하므로 캡션은 두지 않는다 (티켓 20261021_1249 3회) */
     withdrawButton: '탈퇴하기',
   },

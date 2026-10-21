@@ -24,6 +24,12 @@ export function isWithdrawConfirmed(value: unknown): boolean {
   return typeof value === 'string' && normalizeConfirmInput(value) === normalizeConfirmInput(WITHDRAW_CONFIRM_PHRASE)
 }
 
+/** 탈퇴를 마친 유저를 보낼 로그인 화면의 안내 쿼리. 로그인 화면이 같은 키로 읽어 «탈퇴가 끝났어요» 안내를 보인다 */
+export const WITHDRAWN_QUERY_KEY = 'withdrawn'
+
+/** 탈퇴가 끝난 뒤 이동하는 곳 */
+export const WITHDRAWN_LOGIN_PATH = `/login?${WITHDRAWN_QUERY_KEY}=1`
+
 /** `POST /api/account/delete` 본문 */
 export interface WithdrawRequestBody {
   confirmPhrase: string

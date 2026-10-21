@@ -10,6 +10,7 @@ import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import StravaSettingsSection, { type StravaSettingsState } from '@/components/strava/StravaSettingsSection'
 import StravaDisconnectSheet from '@/components/strava/StravaDisconnectSheet'
+import WithdrawSheet from '@/components/account/WithdrawSheet'
 import { resolveStravaUiState } from '@/lib/strava/connection-state'
 import { d } from '@/lib/i18n'
 
@@ -55,6 +56,7 @@ export default function ProfileEditPage() {
     lastSyncedAt: string | null
   } | null>(null)
   const [disconnectSheetOpen, setDisconnectSheetOpen] = useState(false)
+  const [withdrawSheetOpen, setWithdrawSheetOpen] = useState(false)
 
   // 현재 유저 정보 로드
   useEffect(() => {
@@ -368,20 +370,16 @@ export default function ProfileEditPage() {
           >
             {d.profileEdit.cancelButton}
           </button>
-          {/* 티켓 20260901_2217: 탈퇴 신청 안내 — 실제 삭제 로직 없이 mailto 링크로만
-              접수 창구를 연다. 저장/취소와 시각적으로 구분되도록 별도 줄에 두고, 캡션으로
-              "되돌릴 수 없음"을 먼저 알린다(UX 라이팅 가이드 — 해요체·간결함). */}
-          <a
-            href="mailto:sihyunrr@gmail.com?subject=JAM!%20탈퇴%20신청"
-            className="w-full min-h-11 flex flex-col items-center justify-center gap-1 text-center active:opacity-70 transition-opacity"
+          {/* 티켓 20261021_1249 3회(채원 사전 판정): 탈퇴 진입. 바로 위 «취소»와 짝처럼 읽히지 않도록 일부러 작게, 밑줄로, 16px를 더 띄운다
+              (gap 16px + mt-4 16px = 약 32px). 설명 캡션은 두지 않는다 — 시트가 지워지는 것을 설명한다. 닫히면 포커스가 이 버튼으로 돌아온다. */}
+          <button
+            type="button"
+            onClick={() => setWithdrawSheetOpen(true)}
+            aria-haspopup="dialog"
+            className="mt-4 self-center min-h-11 px-4 text-sm text-muted underline underline-offset-4 break-keep wrap-break-word whitespace-nowrap active:opacity-70 transition-opacity"
           >
-            <span className="text-muted text-base">
-              {d.profileEdit.withdrawLink}
-            </span>
-            <span className="text-muted text-xs">
-              {d.profileEdit.withdrawCaption}
-            </span>
-          </a>
+            {d.profileEdit.withdrawButton}
+          </button>
         </div>
       </div>
 
@@ -390,6 +388,8 @@ export default function ProfileEditPage() {
         onClose={() => setDisconnectSheetOpen(false)}
         onDisconnected={() => setStravaSection((prev) => (prev ? { ...prev, state: 'disconnected_user' } : prev))}
       />
+
+      <WithdrawSheet open={withdrawSheetOpen} onClose={() => setWithdrawSheetOpen(false)} />
     </div>
   )
 }
