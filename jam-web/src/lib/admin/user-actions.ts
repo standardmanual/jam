@@ -181,8 +181,8 @@ export const ADMIN_DELETE_FAILED_MESSAGE = '계정을 삭제하지 못했습니�
 /**
  * 유저 계정 강제 완전 삭제 (티켓 20260909_0911, 지우는 규칙은 티켓 20261021_1249)
  * 초기화(`resetUserData`)와 달리 계정 자체를 지운다. 지우는 순서는 `deleteAccount`(`lib/account/delete-account.ts`)가
- * 갖는다 — 유저 탈퇴·«그래도 연결하기»와 같은 함수다: 준비 RPC(`prepare_account_deletion`: 법정 보관 기록 복사, 이력 이름 칸 비우기,
- * 소유 아이템 «없어짐» 처리) → 아바타 파일 삭제 → `auth.admin.deleteUser`.
+ * 갖는다 — 유저 탈퇴·«그래도 연결하기»와 같은 함수다: Strava 토큰 읽기 → 아바타 파일 삭제 → 준비 RPC(`prepare_account_deletion`: 법정 보관 기록 복사,
+ * 이력 이름 칸 비우기, 소유 아이템 «없어짐» 처리) → `auth.admin.deleteUser` → 성공하면 Strava 앱 승인 해제(실패해도 무시).
  * `public.users.id`는 `auth.users(id)`를 `ON DELETE CASCADE`로 참조하므로(001_initial_schema), Admin API로 `auth.users` 행을
  * 지우면 `public.users`와 그 아래 모든 참조 테이블(strava_connections, inventory,
  * user_activity_badges 등)이 한 번의 DB 트랜잭션으로 연쇄 삭제된다. `public.users`를
