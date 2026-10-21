@@ -488,18 +488,6 @@ export const ko = {
     sortCheckinLatest: '최신순',
     sortCheckinName: '이름순',
 
-    // 배지 트리 화면(/badges/tree)은 티켓 20261018_1817에서 제거했다. 아래 «받는 방법» note 3개는
-    // `lib/badgeTree.ts`의 게이트 그룹이 아직 쓴다(안 쓰이게 되면 후속 정리에서 함께 지운다).
-    /** 「받는 방법」 시트 — 선행 배지 잠금 항목 하단 note. 등급 제한 유무로 갈린다 */
-    unlockNoteMinRarity: '배지 · {rarity} 이상',
-    unlockNoteAnyRarity: '배지 · 어느 등급이든 1개',
-    /**
-     * 「받는 방법」 시트 — 교차 게이트(축 내/축 간) 및 미션 게이트가 N개 이상 필요할 때의
-     * note. §1.3 '잠김' 행이 해제 안내는 '열려요'로 고정한다고 명시해 그 형태로 교정
-     * (티켓 20260916_0734)
-     */
-    unlockNoteMinCount: '{count}개 이상 모으면 열려요',
-
     // 공유 시트 캐러셀(20260911_1102) — 스크린리더 전용 aria-label
     shareCarouselAriaLabel: '공유 이미지 선택',
     /** '통계'는 배지 트리의 '지표'/'축'과 갈라지는 미등록 용어라 이미 쓰는 '기록'으로 통일 (티켓 20260916_0734) */

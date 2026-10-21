@@ -76,8 +76,9 @@ export function ChapterNamesTable({ tribes, chapterNos, cells }: Props) {
     )
   }
 
+  // 표의 최소 너비(열 10개)가 페이지 전체를 넓히지 않도록, 구역은 너비 0에서 시작해 부모 너비만큼만 차지하고 표는 안에서 가로로 스크롤된다.
   return (
-    <section className="bg-white border border-border rounded-2xl p-6">
+    <section className="bg-white border border-border rounded-2xl p-6 w-0 min-w-full">
       <Table>
         <TableHeader>
           <TableRow>
