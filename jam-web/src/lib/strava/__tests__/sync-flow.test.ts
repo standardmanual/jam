@@ -8,6 +8,7 @@
  * - `pendingItems`가 없는 이전 응답은 고르기 없이 기존 동작 그대로다.
  * - 409지만 `code`가 다른 응답과 그 밖의 실패는 `failed`다(고르기를 열지 않는다).
  * - 고르기가 떠 있는 동안 버튼 스피너를 끄고, 동기화를 다시 요청할 때 켠다.
+ * - 403 + `code: 'tribe_required'` → 일반 실패가 아니라 `tribe_required`로 돌려준다(호출부가 트라이브 고르기 화면으로 보낸다, 티켓 20261021_1247).
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-flow.test.ts
  */
@@ -16,6 +17,7 @@ import { runSyncFlow } from '../sync-flow'
 import { SYNC_PENDING_ITEMS_CODE } from '../pending-items-contract'
 import type { PickResult } from '../pending-pick'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
+import { TRIBE_REQUIRED_CODE } from '@/lib/tribe/gate-contract'
 
 interface Data {
   synced: number
@@ -162,6 +164,31 @@ describe('runSyncFlow — 403 user_suspended (티켓 20261017_1426)', () => {
     const t = setup([new Response('', { status: 403 })], [])
 
     await expect(t.run()).resolves.toEqual({ kind: 'failed' })
+  })
+})
+
+describe('runSyncFlow — 403 tribe_required (티켓 20261021_1247)', () => {
+  const tribeRequired = () => json(403, { error: 'x', code: TRIBE_REQUIRED_CODE, redirectTo: '/onboarding' })
+
+  it('일반 실패가 아니라 tribe_required로 돌려주고 고르기를 열지 않으며 다시 요청하지 않는다', async () => {
+    const t = setup([tribeRequired()], [])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'tribe_required' })
+    expect(t.fetchSync).toHaveBeenCalledTimes(1)
+    expect(t.openPicker).not.toHaveBeenCalled()
+  })
+
+  it('고르기를 마친 뒤 다시 요청한 응답이 403 tribe_required여도 tribe_required다', async () => {
+    const t = setup([blocked(), tribeRequired()], ['resolved'])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'tribe_required' })
+    expect(t.fetchSync).toHaveBeenCalledTimes(2)
+  })
+
+  it('403 본문을 한 번만 읽어도 정지 403은 그대로 suspended로 가려진다(복제본으로 먼저 가린다)', async () => {
+    const t = setup([json(403, { error: 'x', code: USER_SUSPENDED_CODE })], [])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'suspended' })
   })
 })
 

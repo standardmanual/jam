@@ -3,6 +3,7 @@
  * GET /api/strava/callback?code=...&state={무작위 일회용 값}
  *
  * 0. state를 state 쿠키와 대조하고, 연결할 유저를 로그인 세션으로 정한다 (URL의 state는 유저 ID가 아니다)
+ *    트라이브를 고르지 않은 유저면 연결을 저장하지 않고 /onboarding(트라이브 고르기)으로 보낸다 (티켓 20261021_1247, 운영 로직 2장)
  * 1. 토큰 교환
  * 2. 이미 다른 JAM 계정에 연결된 Strava 계정이면 저장하지 않고 /profile?strava=duplicate (티켓 20261017_1422)
  * 3. 암호화 후 strava_connections 저장: 같은 계정이면 토큰 갱신·끊김 해제, 다른 계정이면 이 유저의
@@ -18,6 +19,8 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { encrypt } from '@/lib/utils'
 import { syncStravaActivities } from '@/lib/strava/sync'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
+import { assertHasTribe, TribeRequiredError } from '@/lib/tribe/gate'
+import { TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
 import { STRAVA_DISCONNECT_CLEARED } from '@/lib/strava/connection-state'
 import {
   STRAVA_OAUTH_STATE_COOKIE,
@@ -72,6 +75,18 @@ export async function GET(request: NextRequest) {
       return redirectAndClearState('/profile?strava=error&reason=auth_required')
     }
     const userId = user.id
+
+    // 트라이브를 고르지 않았으면 토큰 교환·저장·동기화를 하지 않고 고르기 화면으로 보낸다 (티켓 20261021_1247).
+    // 읽지 못한 경우는 «있음»으로 보지 않고 아래 catch로 넘겨 server_error로 끝낸다.
+    try {
+      await assertHasTribe(createServiceClient(), userId)
+    } catch (err) {
+      if (err instanceof TribeRequiredError) {
+        console.warn('[JAM! Strava] 콜백 거부: tribe_required')
+        return redirectAndClearState(TRIBE_SELECT_PATH)
+      }
+      throw err
+    }
 
     // 1. 토큰 교환
     const tokenRes = await fetch(STRAVA_TOKEN_URL, {
@@ -197,6 +212,9 @@ export async function GET(request: NextRequest) {
       if (err instanceof UserSuspendedError) {
         // 이용 정지 중이면 동기화만 건너뛴다 — 연결 저장과 로그인 흐름은 그대로 진행한다 (티켓 20261017_1426)
         console.info('[JAM! Strava] 이용 정지 중이라 즉시 동기화를 건너뜀 (연동은 성공)')
+      } else if (err instanceof TribeRequiredError) {
+        // 위에서 이미 막았으므로 보통 닿지 않는다. 연결 저장 뒤 트라이브가 사라진 경합이면 오류가 아니라 건너뜀으로 남긴다 (티켓 20261021_1247)
+        console.info('[JAM! Strava] 트라이브가 없어 즉시 동기화를 건너뜀 (연동은 성공)')
       } else {
         console.error('[JAM! Strava] 즉시 동기화 실패 (연동은 성공):', err)
       }

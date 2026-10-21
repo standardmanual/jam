@@ -14,6 +14,8 @@
  *  - 연결 규칙(티켓 20261017_1422): 다른 JAM 계정에 이미 연결된 Strava 계정이면 아무것도 저장하지 않고
  *    `/profile?strava=duplicate`로 보내며 기존 행의 user_id가 그대로다 · 같은 계정 재연결은 토큰만 갱신하고
  *    끊김을 지운다 · 다른 계정 연결은 이전 행을 지우고 새 행을 first_sync_pending=true로 만든다
+ *  - 트라이브 게이트(티켓 20261021_1247): 로그인 세션 유저가 트라이브를 고르지 않았으면 토큰 교환·저장·동기화 없이 `/onboarding`으로 보내고
+ *    state 쿠키를 지운다 · 트라이브를 읽지 못하면 «있음»으로 보지 않고 server_error로 끝낸다 · 세션 유저의 트라이브만 확인한다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/strava/callback/__tests__/route.test.ts
  */
@@ -27,7 +29,11 @@ const STATE = 'valid-state-value-0123456789abcdefghijklmnopq'
 const CODE = 'strava-auth-code-secret'
 const BASE_URL = 'https://jam.test'
 
-const state = vi.hoisted(() => ({ authenticated: true }))
+const state = vi.hoisted(() => ({
+  authenticated: true,
+  tribe: 'has' as 'has' | 'none' | 'fail',
+  checkedUserIds: [] as string[],
+}))
 
 const syncMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<void>>())
 const fetchMock = vi.hoisted(() => vi.fn())
@@ -111,6 +117,18 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/utils', () => ({
   encrypt: async (text: string) => `enc:${text}`,
 }))
+// 트라이브 판정 자체는 lib/tribe/__tests__/gate.test.ts가 맡는다 — 여기서는 콜백이 그 결과를 이동으로 바꾸는 부분만 본다
+vi.mock('@/lib/tribe/gate', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/tribe/gate')>()
+  return {
+    ...actual,
+    assertHasTribe: async (_client: unknown, userId: string) => {
+      state.checkedUserIds.push(userId)
+      if (state.tribe === 'none') throw new actual.TribeRequiredError()
+      if (state.tribe === 'fail') throw new Error('users.tribe_id 조회 실패: db down')
+    },
+  }
+})
 vi.mock('@/lib/strava/sync', () => ({
   syncStravaActivities: (userId: string) => syncMock(userId),
 }))
@@ -167,6 +185,8 @@ describe('GET /api/strava/callback', () => {
 
   beforeEach(() => {
     state.authenticated = true
+    state.tribe = 'has'
+    state.checkedUserIds = []
     db.rows = []
     db.writes = []
     db.failOn = null
@@ -254,6 +274,61 @@ describe('GET /api/strava/callback', () => {
       expect(warnSpy).toHaveBeenCalledTimes(1)
       expect(logged).not.toContain(STATE)
       expect(logged).not.toContain(CODE)
+    })
+  })
+
+  describe('트라이브 게이트 (티켓 20261021_1247)', () => {
+    it('트라이브가 없으면 토큰 교환·저장·동기화 없이 /onboarding으로 보내고 state 쿠키를 지운다', async () => {
+      state.tribe = 'none'
+
+      const res = await GET(makeRequest())
+
+      expect(location(res)).toBe(`${BASE_URL}/onboarding`)
+      expectNothingExecuted()
+      expectStateCookieCleared(res)
+    })
+
+    it('트라이브를 읽지 못하면 «있음»으로 보지 않고 아무것도 실행하지 않은 채 server_error로 끝낸다', async () => {
+      state.tribe = 'fail'
+
+      const res = await GET(makeRequest())
+
+      expect(location(res)).toBe(`${BASE_URL}/profile?strava=error&reason=server_error`)
+      expectNothingExecuted()
+      expectStateCookieCleared(res)
+    })
+
+    it('트라이브가 있으면 기존 흐름 그대로 저장하고 동기화한다', async () => {
+      const res = await GET(makeRequest())
+
+      expect(location(res)).toBe(`${BASE_URL}/profile?strava=connected&reveal=1`)
+      expect(db.rows).toHaveLength(1)
+      expect(syncMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('확인하는 유저는 URL의 state가 아니라 세션 유저뿐이다', async () => {
+      await GET(makeRequest({ cookie: OTHER_USER_ID, stateParam: OTHER_USER_ID }))
+
+      expect(state.checkedUserIds).toEqual([SESSION_USER_ID])
+    })
+
+    it('state 대조와 세션 확인에서 먼저 거부되면 트라이브를 읽지 않는다', async () => {
+      await GET(makeRequest({ cookie: null }))
+      state.authenticated = false
+      await GET(makeRequest())
+
+      expect(state.checkedUserIds).toEqual([])
+    })
+
+    it('연결을 저장한 뒤 즉시 동기화가 트라이브 없음을 던져도(경합) 연동은 성공으로 돌려보낸다', async () => {
+      const { TribeRequiredError } = await import('@/lib/tribe/gate')
+      syncMock.mockRejectedValue(new TribeRequiredError())
+
+      const res = await GET(makeRequest())
+
+      expect(location(res)).toBe(`${BASE_URL}/profile?strava=connected&reveal=1`)
+      expect(errorSpy).not.toHaveBeenCalled()
+      expectStateCookieCleared(res)
     })
   })
 

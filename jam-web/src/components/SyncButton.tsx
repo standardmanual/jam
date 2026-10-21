@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { usePendingItemsPicker } from '@/components/strava/PendingItemsPickerProvider'
 import { runSyncFlow } from '@/lib/strava/sync-flow'
+import { TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
 import { d } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
@@ -78,6 +79,9 @@ export default function SyncButton({
 
       if (flow.kind === 'blocked') {
         toast(d.syncPending.syncBlocked, 'info')
+      } else if (flow.kind === 'tribe_required') {
+        // 트라이브를 고르지 않아 동기화가 막혔다 — 실패 토스트가 아니라 고르기 화면으로 보낸다(티켓 20261021_1247)
+        router.replace(TRIBE_SELECT_PATH)
       } else if (flow.kind === 'suspended') {
         // 정지는 고장이 아니라 막힌 상태라 'error'가 아니라 'info'로 낸다(티켓 20261017_1426)
         toast(d.suspension.syncBlocked, 'info')

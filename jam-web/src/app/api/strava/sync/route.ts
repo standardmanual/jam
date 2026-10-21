@@ -12,6 +12,8 @@ import { SyncPendingItemsError } from '@/lib/strava/pending-items'
 import { SYNC_PENDING_ITEMS_CODE } from '@/lib/strava/pending-items-contract'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
+import { TribeRequiredError } from '@/lib/tribe/gate'
+import { TRIBE_REQUIRED_CODE, TRIBE_SELECT_PATH, type TribeRequiredResponse } from '@/lib/tribe/gate-contract'
 import { d } from '@/lib/i18n'
 
 // 백필(최초 연동) 시 Strava Streams 조회 + 드랍/배지 평가로 수 초~수십 초가 걸릴 수 있어
@@ -38,6 +40,15 @@ export async function POST() {
         { error: d.auth.stravaSyncError, code: 'strava_disconnected', connectionState: 'disconnected' },
         { status: 409 }
       )
+    }
+    // 트라이브를 고르지 않았으면 가져오기·정산 없이 403으로 알린다 — 서버 오류(500)가 아니다. 클라이언트는 `redirectTo`의 고르기 화면으로 보낸다 (티켓 20261021_1247)
+    if (err instanceof TribeRequiredError) {
+      const body: TribeRequiredResponse = {
+        error: d.tribeGate.syncBlocked,
+        code: TRIBE_REQUIRED_CODE,
+        redirectTo: TRIBE_SELECT_PATH,
+      }
+      return NextResponse.json(body, { status: 403 })
     }
     // 이용 정지 중이면 가져오기·정산 없이 403으로 알린다 — 가진 잼·아이템 배지·배지·포인트는 그대로다 (티켓 20261017_1426)
     if (err instanceof UserSuspendedError) {

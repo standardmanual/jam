@@ -19,6 +19,7 @@ import {
 import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { countPendingItems, SyncPendingItemsError } from '@/lib/strava/pending-items'
 import { assertNotSuspended, getSuspensionPeriods } from '@/lib/suspension/suspension'
+import { assertHasTribe } from '@/lib/tribe/gate'
 import { isDuringSuspension } from '@/lib/suspension/suspension-contract'
 import { qualifyActivity, MIN_QUALIFIED_MOVING_TIME_SEC, type FilterReason, type SourceMeta } from '@/lib/strava/qualification'
 import { detectAndExcludeTransitSegments, needsTransitStreams } from '@/lib/strava/transitSegment'
@@ -1327,6 +1328,7 @@ async function recordStravaDisconnect(
  *          jamEarned: 이번 동기화로 받은 잼의 합계(받은 잼이 없으면 0, 티켓 20261017_1423)
  *          pendingItems: 이번 동기화로 새로 보류된 아이템 배지 개수(없으면 0, 티켓 20261017_1425)
  * @throws SyncPendingItemsError 고르지 않은 보류가 남아 있으면 가져오기·정산 없이 던진다(`/api/strava/sync`가 409로 알린다)
+ * @throws TribeRequiredError 트라이브를 고르지 않았으면 가져오기·정산 없이 던진다(`/api/strava/sync`가 403 `tribe_required`로 알린다, 티켓 20261021_1247)
  */
 export async function syncStravaActivities(
   userId: string
@@ -1345,6 +1347,11 @@ export async function syncStravaActivities(
   pendingItems: number
 }> {
   const supabase = createServiceClient()
+
+  // 0. 트라이브를 고르지 않은 유저는 동기화하지 않는다(티켓 20261021_1247, 운영 로직 2장). 동기화로 받는 아이템 배지가 모두 소속 트라이브의 것이라
+  //    트라이브가 없으면 줄 아이템 배지를 정할 수 없다. 연결 조회보다 먼저 막아, 연결이 없는 트라이브 없는 유저도 «연동 정보 없음» 500이 아니라
+  //    트라이브 게이트로 알린다. 읽지 못하면 «있음»으로 보지 않고 던진다. 수동 경로(/api/strava/sync)가 403으로 바꾸고, 콜백은 이 앞에서 먼저 막는다.
+  await assertHasTribe(supabase, userId)
 
   // 1. strava_connections 조회
   const { data: connectionRaw, error: connError } = await supabase

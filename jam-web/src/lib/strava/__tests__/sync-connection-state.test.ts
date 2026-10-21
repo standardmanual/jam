@@ -63,6 +63,9 @@ vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async (
 vi.mock('@/lib/notifications/batch/collections', () => ({ selectCompletableDrafts: vi.fn(() => []) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
 
+// 트라이브 게이트(티켓 20261021_1247)는 sync-tribe-gate.test.ts가 맡는다 — 이 파일은 트라이브를 고른 유저로 본다.
+vi.mock('@/lib/tribe/gate', () => ({ assertHasTribe: async () => {} }))
+
 import { syncStravaActivities } from '../sync'
 import { StravaApiError } from '../api'
 import { StravaDisconnectedError } from '../connection-state'

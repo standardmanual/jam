@@ -7,7 +7,8 @@
  *  - 연결이 끊긴 상태(StravaDisconnectedError)는 500이 아니라 409와 구분 값(`code`, `connectionState`)이다
  *  - 고르지 않은 보류가 남아 있으면(SyncPendingItemsError) 409와 구분 값(`code: 'sync_pending_items'`, `pendingCount`)이다 (티켓 20261017_1425)
  *  - 이용 정지 중이면(UserSuspendedError) 403과 구분 값(`code: 'user_suspended'`)이다 (티켓 20261017_1426)
- *  - 그 밖의 오류는 지금처럼 500이다
+ *  - 트라이브를 고르지 않았으면(TribeRequiredError) 403과 구분 값(`code: 'tribe_required'`, `redirectTo: '/onboarding'`)이다 (티켓 20261021_1247)
+ *  - 그 밖의 오류는 지금처럼 500이다 (트라이브를 읽지 못한 일반 오류도 403이 아니라 500이다)
  *
  * 실행: cd jam-web && npx vitest run src/app/api/strava/sync/__tests__/route.test.ts
  */
@@ -16,6 +17,7 @@ import { d } from '@/lib/i18n'
 import { StravaDisconnectedError } from '@/lib/strava/connection-state'
 import { SyncPendingItemsError } from '@/lib/strava/pending-items'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
+import { TribeRequiredError } from '@/lib/tribe/gate'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 const state = vi.hoisted(() => ({ authenticated: true }))
@@ -101,6 +103,28 @@ describe('POST /api/strava/sync', () => {
     const body = await res.json()
     expect(body).toEqual({ error: d.suspension.syncBlocked, code: 'user_suspended' })
     expect(JSON.stringify(body)).not.toContain('운영자만 보는 메모')
+  })
+
+  it('트라이브를 고르지 않았으면 403과 구분 값, 이동할 곳으로 알린다(500이 아니다)', async () => {
+    syncMock.mockRejectedValue(new TribeRequiredError())
+
+    const res = await POST()
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({
+      error: d.tribeGate.syncBlocked,
+      code: 'tribe_required',
+      redirectTo: '/onboarding',
+    })
+  })
+
+  it('트라이브를 읽지 못한 일반 오류는 403 tribe_required가 아니라 500이다', async () => {
+    syncMock.mockRejectedValue(new Error('users.tribe_id 조회 실패: db down'))
+
+    const res = await POST()
+
+    expect(res.status).toBe(500)
+    await expect(res.json()).resolves.toEqual({ error: d.auth.stravaSyncError })
   })
 
   it('정상 동기화 결과의 기존 필드와 pendingItems를 그대로 돌려준다', async () => {
