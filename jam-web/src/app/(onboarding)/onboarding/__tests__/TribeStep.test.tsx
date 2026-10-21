@@ -11,6 +11,8 @@
  *  - 오류 문구에는 role="alert"가 있다. 로딩·읽기 실패와 «다시 시도»·활성 0개 상태는 그대로다.
  *  - 카드는 세로 1열 가로형(padding 16), 이미지 48, 사람 모양 폴백과 minHeight 140이 없고, 이미지가 하나도 없으면 이미지 자리를 뺀다.
  *  - 새로 쓴 한국어 요소에 줄바꿈 클래스(break-keep + wrap-break-word)가 있다.
+ *  - 로그아웃 길(티켓 20261021_1247 재작업, 채원 사전 판정 2026-10-21): 맨 아래에 ghost «로그아웃» 하나가 있고(프로필과 같은 문구), 로딩·읽기 실패·활성 0개·준비 네 상태에서
+ *    모두 보인다. 제출 중에는 비활성이다. 로그아웃 중에는 스피너를 보이고 카드·«뒤로»·확정 버튼을 잠그며 확정 버튼 문구는 «시작하는 중»으로 바뀌지 않는다.
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)와, Hook을 쓰지 않는 컴포넌트를 함수로 불러 얻은
  * 요소 트리 읽기(클릭은 요소의 onClick을 직접 부른다)로 확인한다.
@@ -18,7 +20,7 @@
  * 실행: cd jam-web && npx vitest run "src/app/(onboarding)/onboarding/__tests__/TribeStep.test.tsx"
  */
 import { describe, it, expect, vi } from 'vitest'
-import { isValidElement, type ReactElement } from 'react'
+import { Children, isValidElement, type ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 vi.mock('next/image', () => ({
@@ -44,12 +46,14 @@ function makeProps(overrides: Partial<TribeStepProps> = {}): TribeStepProps {
     tribesState: { kind: 'ready', tribes: TRIBES },
     selectedTribeId: null,
     submitting: false,
+    loggingOut: false,
     error: '',
     showGateHint: false,
     onSelect: vi.fn(),
     onFinish: vi.fn(),
     onBack: vi.fn(),
     onRetry: vi.fn(),
+    onLogout: vi.fn(),
     ...overrides,
   }
 }
@@ -367,5 +371,135 @@ describe('카드 모양', () => {
     const markup = html(makeProps())
 
     expect(markup.match(/class="w-12 h-12 shrink-0"/g)).toHaveLength(3)
+  })
+})
+
+describe('로그아웃 길 (티켓 20261021_1247, 채원 사전 판정 2026-10-21)', () => {
+  const STATES: Array<[string, TribeStepProps['tribesState']]> = [
+    ['로딩', { kind: 'loading' }],
+    ['읽기 실패', { kind: 'error' }],
+    ['활성 0개', { kind: 'ready', tribes: [] }],
+    ['준비(카드 있음)', { kind: 'ready', tribes: TRIBES }],
+  ]
+  const logoutOf = (tree: unknown) => buttonLabeled(tree, d.profile.logoutButton) as Element
+
+  it('문구는 프로필의 «로그아웃»을 그대로 쓴다 — 새 문구가 없다', () => {
+    expect(d.profile.logoutButton).toBe('로그아웃')
+    expect(logoutOf(treeOf(makeProps()))).toBeDefined()
+  })
+
+  it.each(STATES)('%s 상태에서도 «로그아웃»이 보인다', (_name, tribesState) => {
+    const props = makeProps({ tribesState })
+
+    expect(logoutOf(treeOf(props))).toBeDefined()
+    expect(html(props)).toContain(`>${d.profile.logoutButton}<`)
+  })
+
+  it('ghost 버튼이고 내용 폭(fullWidth 없음)이며 type="button"이다, aria-label은 달지 않는다', () => {
+    const logout = logoutOf(treeOf(makeProps()))
+
+    expect(logout.props.variant).toBe('ghost')
+    expect(logout.props.fullWidth).toBeUndefined()
+    expect(logout.props.size).toBeUndefined()
+    expect(logout.props.type).toBe('button')
+    expect(logout.props['aria-label']).toBeUndefined()
+  })
+
+  it('한 줄로 읽히고 줄바꿈 클래스(whitespace-nowrap, break-keep, wrap-break-word)가 있다', () => {
+    const cls = String(logoutOf(treeOf(makeProps())).props.className)
+
+    expect(cls).toContain('whitespace-nowrap')
+    expect(cls).toContain('break-keep')
+    expect(cls).toContain('wrap-break-word')
+  })
+
+  it('tribesState 조건 블록 밖, 바깥 스택의 마지막 자식이다 — «시작하기/뒤로» 묶음 바로 다음 형제다', () => {
+    for (const [name, tribesState] of STATES) {
+      const tree = treeOf(makeProps({ tribesState }))
+      const [stack] = findAll(tree, (e) => e.type === 'div' && String(e.props.className).includes('max-w-sm'))
+      const children = Children.toArray(stack.props.children) as Element[]
+      const last = children[children.length - 1]
+      const beforeLast = children[children.length - 2]
+
+      expect(last.type, name).toBe(Button)
+      expect(last.props.children, name).toBe(d.profile.logoutButton)
+      expect(String(beforeLast.props.className), name).toContain('gap-3')
+      expect(Children.toArray(beforeLast.props.children).map((c) => (c as Element).props.children), name).toEqual([
+        d.onboarding.finishButton,
+        d.common.back,
+      ])
+    }
+  })
+
+  it('화면 순서는 카드 → 시작하기 → 뒤로 → 로그아웃이다(포커스 순서와 같다)', () => {
+    const markup = html(makeProps({ selectedTribeId: 't1' }))
+
+    const lastCard = markup.lastIndexOf('role="radio"')
+    const finish = markup.indexOf(d.onboarding.finishButton)
+    const back = markup.indexOf(`>${d.common.back}<`)
+    const logout = markup.indexOf(`>${d.profile.logoutButton}<`)
+    expect(lastCard).toBeLessThan(finish)
+    expect(finish).toBeLessThan(back)
+    expect(back).toBeLessThan(logout)
+  })
+
+  it('누르면 onLogout이 불린다, 아무 일도 없을 때는 열려 있고 스피너가 없다', () => {
+    const props = makeProps()
+    const logout = logoutOf(treeOf(props))
+
+    expect(logout.props.disabled).toBe(false)
+    expect(logout.props.loading).toBe(false)
+    ;(logout.props.onClick as () => void)()
+    expect(props.onLogout).toHaveBeenCalledTimes(1)
+    expect(html(props)).not.toContain('animate-spin')
+  })
+
+  it('제출 중(submitting)에는 비활성이다', () => {
+    const props = makeProps({ selectedTribeId: 't1', submitting: true })
+
+    expect(logoutOf(treeOf(props)).props.disabled).toBe(true)
+    expect(html(props)).toMatch(new RegExp(`<button [^>]*disabled=""[^>]*>${d.profile.logoutButton}</button>`))
+  })
+
+  it('로그아웃 중에는 스피너를 보이고 글자는 «로그아웃» 그대로다', () => {
+    const props = makeProps({ loggingOut: true })
+    const markup = html(props)
+
+    expect(logoutOf(treeOf(props)).props.loading).toBe(true)
+    expect(markup).toContain('animate-spin')
+    expect(markup).toContain(`>${d.profile.logoutButton}<`)
+  })
+
+  it('로그아웃 중에는 카드의 onClick이 없고 aria-disabled가 붙는다', () => {
+    const props = makeProps({ selectedTribeId: 't1', loggingOut: true })
+
+    for (const card of cardsOf(treeOf(props))) {
+      expect(card.props.onClick).toBeUndefined()
+      expect(card.props['aria-disabled']).toBe(true)
+    }
+    const markup = html(props)
+    expect(markup).not.toContain('tabindex="0"')
+    expect(markup.match(/aria-disabled="true"/g)).toHaveLength(3)
+    expect(props.onSelect).not.toHaveBeenCalled()
+  })
+
+  it('로그아웃 중에는 «뒤로»와 확정 버튼이 비활성이고 확정 버튼 문구는 «시작하는 중»으로 바뀌지 않는다', () => {
+    const props = makeProps({ selectedTribeId: 't1', loggingOut: true })
+    const tree = treeOf(props)
+
+    const back = buttonLabeled(tree, d.common.back) as Element
+    const finish = buttonLabeled(tree, d.onboarding.finishButton) as Element
+    expect(back.props.disabled).toBe(true)
+    expect(finish).toBeDefined()
+    expect(finish.props.disabled).toBe(true)
+    expect(buttonLabeled(tree, d.onboarding.finishing)).toBeUndefined()
+    expect(html(props)).not.toContain(d.onboarding.finishing)
+  })
+
+  it('로그아웃 중이 아니고 제출 중도 아니면 카드·«뒤로»가 열려 있다(잠금이 새지 않는다)', () => {
+    const tree = treeOf(makeProps({ selectedTribeId: 't1' }))
+
+    expect(cardsOf(tree).every((c) => typeof c.props.onClick === 'function')).toBe(true)
+    expect((buttonLabeled(tree, d.common.back) as Element).props.disabled).toBe(false)
   })
 })

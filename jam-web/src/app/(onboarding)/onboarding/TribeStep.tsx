@@ -22,6 +22,9 @@ import type { TribeRow } from '@/types/database'
  * - 아이디를 이미 정해 곧장 이 단계로 온 유저(`showGateHint`)에게만 제목 아래에 muted 한 줄을 더한다.
  * - 카드를 눌러도 확정되지 않는다. 확정은 «이 트라이브로 시작하기» 버튼이다(확인 시트 없음, 사용자 결정 6).
  * - 제출 중에는 카드와 «뒤로»를 잠근다. 카드는 `onClick`을 빼 포커스·클릭이 모두 막히고 `aria-disabled`가 붙는다.
+ * - 로그아웃 길(티켓 20261021_1247, 채원 사전 판정 2026-10-21): 맨 아래에 ghost «로그아웃» 하나. 트라이브가 없는 유저는 프로필 화면에 닿지 못해
+ *   이 화면이 로그아웃할 수 있는 유일한 자리다. 로딩·읽기 실패·활성 0개 상태에서도 항상 보이도록 `tribesState` 조건 밖에 둔다.
+ *   제출 중에는 비활성이고, 로그아웃 중에는 스피너와 함께 카드·«뒤로»·확정 버튼도 잠근다(글자는 그대로, «시작하는 중»은 제출만 따른다).
  * - 접근성: 카드 묶음은 `radiogroup`(이름은 제목), 카드는 `radio`와 `aria-checked`. 오류 문구는 `role="alert"`.
  */
 export type TribeOption = Pick<TribeRow, 'id' | 'name' | 'tagline' | 'image_url'>
@@ -39,6 +42,8 @@ export interface TribeStepProps {
   selectedTribeId: string | null
   /** 확정 요청이 진행 중이다 — 카드와 «뒤로»를 잠그고 버튼 문구를 바꾼다 */
   submitting: boolean
+  /** 로그아웃 요청이 진행 중이다 — «로그아웃»에 스피너를 보이고 카드·«뒤로»·확정 버튼을 잠근다(버튼 문구는 그대로) */
+  loggingOut: boolean
   /** 제출 실패 문구. 빈 문자열이면 보이지 않는다 */
   error: string
   /** 아이디를 이미 정해 곧장 이 단계로 온 유저에게만 true */
@@ -47,6 +52,7 @@ export interface TribeStepProps {
   onFinish: () => void
   onBack: () => void
   onRetry: () => void
+  onLogout: () => void
 }
 
 // 한국어 줄바꿈(UX 라이팅 §3.2): 띄어쓰기 단위로만 끊고, 긴 한 단어만 칸 밖으로 넘치지 않게 끊는다
@@ -56,13 +62,17 @@ export default function TribeStep({
   tribesState,
   selectedTribeId,
   submitting,
+  loggingOut,
   error,
   showGateHint,
   onSelect,
   onFinish,
   onBack,
   onRetry,
+  onLogout,
 }: TribeStepProps) {
+  // 확정·로그아웃 어느 쪽이든 진행 중이면 카드·«뒤로»·확정 버튼을 잠근다. 확정 버튼 문구는 submitting만 따른다.
+  const locked = submitting || loggingOut
   const tribes = tribesState.kind === 'ready' ? tribesState.tribes : []
   const showImageSlot = tribes.some((tribe) => Boolean(tribe.image_url))
 
@@ -127,9 +137,9 @@ export default function TribeStep({
                   tone={selected ? 'inverse' : 'default'}
                   role="radio"
                   aria-checked={selected}
-                  aria-disabled={submitting ? true : undefined}
-                  // 제출 중에는 onClick을 빼 클릭·키보드·포커스를 함께 막는다(Card는 onClick이 있을 때만 버튼처럼 동작한다)
-                  onClick={submitting ? undefined : () => onSelect(tribe.id)}
+                  aria-disabled={locked ? true : undefined}
+                  // 제출·로그아웃 중에는 onClick을 빼 클릭·키보드·포커스를 함께 막는다(Card는 onClick이 있을 때만 버튼처럼 동작한다)
+                  onClick={locked ? undefined : () => onSelect(tribe.id)}
                   className="flex items-center gap-2 text-left"
                   style={{ padding: 'var(--spacing-16)' }}
                 >
@@ -170,7 +180,7 @@ export default function TribeStep({
             variant="primary"
             fullWidth
             onClick={onFinish}
-            disabled={!selectedTribeId || submitting}
+            disabled={!selectedTribeId || locked}
             className={`whitespace-nowrap ${KO_BREAK}`}
           >
             {submitting ? d.onboarding.finishing : d.onboarding.finishButton}
@@ -181,12 +191,25 @@ export default function TribeStep({
             variant="secondary"
             fullWidth
             onClick={onBack}
-            disabled={submitting}
+            disabled={locked}
             className={`whitespace-nowrap ${KO_BREAK}`}
           >
             {d.common.back}
           </Button>
         </div>
+
+        {/* 로그아웃 길 — 티켓 20261021_1247. 트라이브 읽기 상태와 무관하게 항상 보이므로 `tribesState` 조건 밖의 바깥 스택 마지막 자식이다.
+            문구는 프로필의 «로그아웃»을 그대로 쓴다(새 문구·확인 시트 없음). 위 «뒤로»와 gap-8(32px) 떨어져 오탭 위험이 낮다. */}
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onLogout}
+          disabled={submitting}
+          loading={loggingOut}
+          className={`whitespace-nowrap ${KO_BREAK}`}
+        >
+          {d.profile.logoutButton}
+        </Button>
       </div>
     </div>
   )

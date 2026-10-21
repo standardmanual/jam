@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { UserIcon, PencilIcon } from '@/components/ui/icons'
+import Button from '@/components/ui/Button'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
@@ -50,6 +51,9 @@ function OnboardingContent() {
   const [ageConfirmed, setAgeConfirmed] = useState(false)
 
   const [submittingStep1, setSubmittingStep1] = useState(false)
+
+  // 로그아웃 요청이 진행 중이다(두 단계 공통) — 티켓 20261021_1247. 성공하면 풀지 않는다(/login으로 넘어갈 때까지 중복 클릭을 막는다).
+  const [loggingOut, setLoggingOut] = useState(false)
 
   // ── 2단계: 트라이브 + 프로필이미지 ───────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -193,7 +197,8 @@ function OnboardingContent() {
     (status === 'available' || status === 'same') &&
     nameInput.trim().length > 0 &&
     ageConfirmed &&
-    !submittingStep1
+    !submittingStep1 &&
+    !loggingOut
 
   async function handleStep1Next() {
     if (!canProceedStep1) return
@@ -292,6 +297,31 @@ function OnboardingContent() {
     } finally {
       setSubmittingStep2(false)
     }
+  }
+
+  // ── 로그아웃 길 (두 단계 공통) — 티켓 20261021_1247, 채원 사전 판정 2026-10-21 ───────────
+  // 트라이브를 고르지 않은 유저는 (main) 화면에 닿지 못해 프로필의 «로그아웃»을 쓸 수 없다. 잘못된 구글 계정으로 들어온 유저가 빠져나갈 길이 이 화면에 있어야 한다.
+  // 실패를 반드시 알린다: signOut이 네트워크 오류면 세션을 지우지 않고 error만 돌려주는데, proxy.ts는 로그인된 유저를 /login에서 /로 돌려보내고
+  // /는 트라이브 게이트가 다시 /onboarding으로 보내 막다른 길이 된다. 프로필의 로그아웃은 오류를 무시하지만 여기서는 따라 하지 않는다.
+  async function handleLogout() {
+    if (loggingOut || submittingStep1 || submittingStep2) return
+    setLoggingOut(true)
+    let failed = false
+    try {
+      const { error } = await supabase.auth.signOut()
+      failed = Boolean(error)
+    } catch {
+      failed = true
+    }
+    if (failed) {
+      setLoggingOut(false)
+      // 2단계는 기존 오류 자리(role="alert"), 1단계는 기존 안내 줄(message)에 보인다
+      if (step === 'tribe') setStep2Error(d.onboarding.networkError)
+      else setMessage(d.onboarding.networkError)
+      return
+    }
+    // 성공하면 loggingOut을 풀지 않는다 — 화면이 넘어갈 때까지 중복 클릭을 막는다
+    router.push('/login')
   }
 
   // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
@@ -445,6 +475,19 @@ function OnboardingContent() {
           >
             {submittingStep1 ? d.onboarding.step1Saving : d.onboarding.step1NextButton}
           </button>
+
+          {/* 로그아웃 길 — 티켓 20261021_1247. 1단계에는 «뒤로»도 없어 잘못된 구글 계정으로 들어온 유저가 빠져나갈 길이 없다.
+              2단계(TribeStep)와 같은 ghost 버튼이다. 제출 중에는 비활성이고, 로그아웃 중에는 스피너를 보인다(글자는 그대로). */}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleLogout}
+            disabled={submittingStep1}
+            loading={loggingOut}
+            className="whitespace-nowrap break-keep wrap-break-word"
+          >
+            {d.profile.logoutButton}
+          </Button>
         </div>
       </div>
     )
@@ -457,12 +500,14 @@ function OnboardingContent() {
       tribesState={tribesState}
       selectedTribeId={selectedTribeId}
       submitting={submittingStep2}
+      loggingOut={loggingOut}
       error={step2Error}
       showGateHint={arrivedAtTribeStep}
       onSelect={setSelectedTribeId}
       onFinish={handleFinish}
       onBack={() => setStep('account')}
       onRetry={loadTribes}
+      onLogout={handleLogout}
     />
   )
 }
