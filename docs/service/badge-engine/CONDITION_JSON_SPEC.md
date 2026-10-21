@@ -417,7 +417,7 @@ interface BadgeGateRequirement {
 > 설계 전제다 — `activity_types[0]`이 없으면 (제거 전) `/badges/tree` 배지 트리 화면에는 노출되지 않았다(이 화면은
 > 티켓 20261018_1817에서 제거했다). `/badges` 일반 목록·프로필은 `type==='activity'`만 보므로 정상 노출된다. 발급 규칙(등급형
 > 성장 티어·레벨형 연속 발급)은 BADGE_ENGINE_UNIFIED.md §2.2(Step 3-A/3-B)와 같은 정책을
-> `usageBadges.ts`가 최소 재구현한다. 섀도우밴은 rarity가 있는(등급형) 배지만 차단 대상이다.
+> `usageBadges.ts`가 최소 재구현한다. 섀도우밴 차단은 없앴다(티켓 20261017_1426, 코드는 6-4 2회 티켓 20261021_1250에서 지움).
 >
 > **체크인 배지 보유 조건 2종** (2026-09-14, 티켓 20260914_1725): `checkin_category_count`·
 > `checkin_badge_count`도 같은 자리(`role: 'meta'` + `evaluation: 'external'`)이지만 값이

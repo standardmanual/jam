@@ -76,7 +76,7 @@ code:
 [소셜]          users ─N:M(팔로우)─ users (user_follows)
                 user_activity_feed (배지/드랍/미션 이벤트 통합 피드)
 
-[어뷰징]        abusing_policy(싱글톤) / user_shadow_bans(옛 방식, 새 코드는 읽지 않음) / poi_blocks / abusing_logs
+[어뷰징]        abusing_policy(싱글톤) / user_shadow_bans(옛 방식, 코드가 쓰지 않음, 표 정리 대기(6-4 4회)) / poi_blocks / abusing_logs
                 users ─1:N─ user_suspensions (이용 정지 상태와 이력, JAM 2.0)
 
 [CMS/기타]      today_cards (홈 에디토리얼) / theme_presets (어드민 컬러 테마)
@@ -630,7 +630,9 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 > (티켓 20260813_003의 컬럼 rename 누락 → 20260831_1118의 한시적 대응), 마이그레이션 115가
 > 세 테이블을 전부 통일하면서 그 변환 매핑은 제거했다(티켓 20260831_1115).
 >
-> ⚠️ **`abusing_policy`의 Epic 차단율은 의도적으로 꺼둔 상태다.** 컬럼명이 어긋나 있던 동안
+> ℹ️ 아래 Epic 차단율 이야기는 이력이다. 6-4 2회(티켓 20261021_1250)에서 `shadow-ban.ts`와 배율 8열을 읽고 쓰던 코드(어드민 «정책 설정» 탭의 배율 입력, 저장 API의 0~1 검증, `DEFAULT_POLICY`의 배율 8칸)를 모두 지웠다. 배율 8열은 **코드가 쓰지 않음, 열 정리 대기(6-4 4회)**다.
+>
+> ⚠️ **`abusing_policy`의 Epic 차단율은 의도적으로 꺼둔 상태였다.** 컬럼명이 어긋나 있던 동안
 > `shadow-ban.ts`의 3단계 조회가 `undefined ?? 1.0`으로 폴백해 **차단이 한 번도 작동하지
 > 않았다**. 개명으로 조회가 성립하면 잠들어 있던 값 `0.00`이 살아나 soft/hard밴 유저의 Epic
 > 드랍이 즉시 0%가 되므로, 등급명 변경만으로 유저 체감 동작이 바뀌지 않도록 마이그레이션 115가
@@ -1263,8 +1265,8 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 
 | 테이블 | 역할 |
 |---|---|
-| abusing_policy | 싱글톤. 섀도우밴 등급별 드랍률 배율, GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터, 교통수단 구간 기준, 종목 불일치 기준값(마이그레이션 224: `mismatch_run_min_speed_kmh` 기본 6, `mismatch_cycling_min_speed_kmh` 기본 10 — 평균 속도가 이 값보다 느린 러닝·자전거는 걷기로 계산, 어뷰징 정책 화면에서 수정, 티켓 20261017_1421) |
-| user_shadow_bans | soft/hard 밴 등급 + 만료시각. **옛 방식이다**: JAM 2.0의 제재는 이용 정지 하나라 새 동기화·드랍·배지 코드는 읽지 않는다(티켓 20261017_1426). 옛 어드민 «제재» 탭, 옛 API, 픽업 GPS 감지(쓰기), `drop-engine/preview.ts`가 아직 쓰므로 표와 함수는 그대로 두고 삭제는 묶음 6 전환 단계에서 한다 |
+| abusing_policy | 싱글톤. GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터, 교통수단 구간 기준, 종목 불일치 기준값(마이그레이션 224: `mismatch_run_min_speed_kmh` 기본 6, `mismatch_cycling_min_speed_kmh` 기본 10 — 평균 속도가 이 값보다 느린 러닝·자전거는 걷기로 계산, 어뷰징 정책 화면에서 수정, 티켓 20261017_1421). 섀도우밴 등급별 드랍률 배율 8열(`soft_*_rate`·`hard_*_rate`)은 NOT NULL·기본값으로 DB에 남아 있고 **코드가 쓰지 않음, 열 정리 대기(6-4 4회)** |
+| user_shadow_bans | soft/hard 밴 등급 + 만료시각. **옛 방식이다**: JAM 2.0의 제재는 이용 정지 하나라 새 동기화·드랍·배지 코드는 읽지 않는다(티켓 20261017_1426). 마지막으로 쓰던 코드(옛 어드민 밴 관리 API, 픽업 GPS 감지의 쓰기, `drop-engine/preview.ts`의 읽기)도 6-4 2회(티켓 20261021_1250)에서 지웠다. **코드가 쓰지 않음, 표 정리 대기(6-4 4회 정리 SQL, 출시 뒤 실행)** — 공용 DB에서 0행이다 |
 | user_suspensions | JAM 2.0 이용 정지의 상태와 이력(마이그레이션 230, 티켓 20261017_1426). 아래 «user_suspensions» 절 |
 | poi_blocks | 유저×POI 단위 72시간 재방문 차단 |
 | abusing_logs | GPS 조작 감지 등 이벤트 로그 |
