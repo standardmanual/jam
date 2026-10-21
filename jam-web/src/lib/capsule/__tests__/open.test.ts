@@ -12,6 +12,8 @@
  * - 챕터 점수 «캡슐 열기»(티켓 20261019_1315): 열기가 확정된 직후(`capsule_open` 다음, 후속 처리 앞) `chapter_add_score`를
  *   (capsule_open, 열기 기록 id, 1)로 한 번 부른다. 거절·추첨 전에 막힌 경우에는 부르지 않고, 같은 열기를 다시 보내도 같은 키다.
  *   점수 실패(RPC 오류·예외)와 후속 처리 실패는 열기·응답을 바꾸지 않는다.
+ * - 퀘스트 완료 처리(티켓 20261021_1248): 열기가 확정된 직후 챕터 점수 다음에 `(supabase, userId)`로 한 번 부른다. 거절·추첨 전에 막힌 경우에는 부르지 않고,
+ *   완료 처리가 던져도 열기와 응답은 그대로다. 응답에는 완료 배지를 싣지 않는다. 실제 판정은 `onboarding-quest/__tests__`가 고정한다(여기서는 가짜).
  * - 다른 트라이브 추첨 대상(티켓 20261021_1248): 후보 배지가 있는 트라이브만이다. 후보 없는 비활성 트라이브가 뽑혀 첫 캡슐이 열리지 않는 일이 없다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트·가짜 RPC·결정적 난수만 쓴다.
  *
@@ -32,6 +34,7 @@ const awardPointsMock = vi.hoisted(() => vi.fn())
 const feedMock = vi.hoisted(() => vi.fn())
 const logMock = vi.hoisted(() => vi.fn())
 const badgesRef = vi.hoisted(() => ({ rows: [] as unknown[] }))
+const completionMock = vi.hoisted(() => vi.fn())
 const realFollowUp = vi.hoisted(() => ({ fn: null as null | ((...args: never[]) => unknown) }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -74,6 +77,12 @@ vi.mock('@/lib/db/fetchAllRows', () => ({
   },
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+vi.mock('@/lib/onboarding-quest/completion', () => ({
+  recordOnboardingQuestCompletion: async (...args: unknown[]) => {
+    order.calls.push('quest_completion')
+    return completionMock(...args)
+  },
+}))
 vi.mock('@/lib/points', () => ({ awardPoints: (...args: unknown[]) => awardPointsMock(...args) }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: (...args: unknown[]) => feedMock(...args) }))
 vi.mock('@/lib/drop-engine/issueFollowUp', async (importOriginal) => {
@@ -223,6 +232,8 @@ beforeEach(() => {
   feedMock.mockResolvedValue(undefined)
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
+  completionMock.mockReset()
+  completionMock.mockResolvedValue(null)
   badgesRef.rows = [mkBadge('common'), mkBadge('epic')]
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -235,13 +246,14 @@ describe('openCapsule — 성공', () => {
     const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
 
     // 열기가 확정된 직후 남은 칸 알림을 검사한다(티켓 20261018_0056)
-    // 챕터 점수는 열기 확정 직후, 후속 처리 앞이다(티켓 20261019_1315)
+    // 챕터 점수는 열기 확정 직후, 후속 처리 앞이다(티켓 20261019_1315). 퀘스트 완료 처리는 점수 바로 다음이다(티켓 20261021_1248)
     expect(order.calls).toEqual([
       'assertNotSuspended',
       'getCapsuleState',
       'badges',
       'rpc:capsule_open',
       'rpc:chapter_add_score',
+      'quest_completion',
       'rpc:inventory_slot_alert_step',
     ])
     expect(rpc).toHaveBeenCalledWith('inventory_slot_alert_step', { p_user_id: USER_ID })
@@ -441,6 +453,8 @@ describe('openCapsule — DB 응답 변환', () => {
     expect(order.calls).not.toContain('rpc:inventory_slot_alert_step')
     // 챕터 점수도 세지 않는다(티켓 20261019_1315)
     expect(order.calls).not.toContain('rpc:chapter_add_score')
+    // 퀘스트 완료 처리도 부르지 않는다(티켓 20261021_1248)
+    expect(completionMock).not.toHaveBeenCalled()
   })
 })
 
@@ -554,6 +568,60 @@ describe('openCapsule — 챕터 점수 «캡슐 열기» (티켓 20261019_1315)
     expect(payload.openId).toBe('open-1')
     expect(payload.items).toHaveLength(2)
     expect(followUpMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('openCapsule — 퀘스트 완료 처리 (티켓 20261021_1248)', () => {
+  it('열기가 확정되면 (클라이언트, 유저 id)로 한 번 부르고, 점수를 센 다음이며 후속 처리보다 앞이다', async () => {
+    followUpMock.mockImplementation(async () => {
+      order.calls.push('followUp')
+    })
+    const { client } = fakeClient({ rpc: OK_RPC })
+
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(completionMock).toHaveBeenCalledTimes(1)
+    expect(completionMock).toHaveBeenCalledWith(client, USER_ID)
+    expect(order.calls.indexOf('quest_completion')).toBeGreaterThan(order.calls.indexOf('rpc:chapter_add_score'))
+    expect(order.calls.indexOf('quest_completion')).toBeLessThan(order.calls.indexOf('followUp'))
+  })
+
+  it('추첨 전에 막히거나 DB가 거절하거나 나올 개체가 없으면 부르지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
+    await openCapsule(fakeClient({ rpc: OK_RPC }).client, USER_ID, { rand: seq() }).catch(() => {})
+
+    stateMock.mockResolvedValueOnce(stateOf({ filled: 50, remaining: 60, openable: false, notOpenableReason: 'not_full' }))
+    await openCapsule(fakeClient({ rpc: OK_RPC }).client, USER_ID, { rand: seq() }).catch(() => {})
+
+    await openCapsule(fakeClient({ rpc: { data: { ok: false, error: 'not_full' }, error: null } }).client, USER_ID, { rand: seq(...TWO_ITEMS) }).catch(() => {})
+
+    badgesRef.rows = []
+    await openCapsule(fakeClient({ rpc: OK_RPC }).client, USER_ID, { rand: seq(0.5, 0.5, 0) }).catch(() => {})
+
+    expect(completionMock).not.toHaveBeenCalled()
+  })
+
+  it('완료 처리가 던져도 열기와 응답은 그대로이고 후속 처리를 이어 하며 기록만 남긴다', async () => {
+    completionMock.mockRejectedValue(new Error('퀘스트 완료 처리 장애'))
+    const { client } = fakeClient({ rpc: OK_RPC })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(payload.openId).toBe('open-1')
+    expect(payload.items).toHaveLength(2)
+    expect(payload.next).toEqual({ required: 120, filled: 0 })
+    expect(followUpMock).toHaveBeenCalledTimes(2)
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('퀘스트 완료 처리 실패'), expect.any(Error))
+  })
+
+  it('응답에는 완료 배지를 싣지 않는다 — 완료 처리가 배지 id를 돌려줘도 응답 모양은 같다', async () => {
+    completionMock.mockResolvedValue('cd20f271-9445-42cc-ac51-d8a96b25e1c3')
+    const { client } = fakeClient({ rpc: OK_RPC })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(Object.keys(payload).sort()).toEqual(['items', 'next', 'openId'])
+    expect(JSON.stringify(payload)).not.toContain('cd20f271')
   })
 })
 
