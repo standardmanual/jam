@@ -97,8 +97,11 @@ const ITEM_ISSUE_KEYS = [
 /** 등급 확률 합계 허용 오차 — DB 제약(`jam_policy_sync_rarity_sum_100`)과 같다 */
 const RARITY_SUM_TOLERANCE = 0.001
 
-/** 칸별 값 검사 — 통과하지 못하면 그 칸만 기본값으로 대체한다 */
-const VALIDATORS: Record<keyof JamPolicy, (n: number) => boolean> = {
+/**
+ * 칸별 값 검사 — 통과하지 못하면 그 칸만 기본값으로 대체한다.
+ * 확률 안내(`lib/probability/disclosure.ts`, 티켓 20261021_1250)가 같은 검사를 쓰려고 내보낸다. 읽기 실패 때 기본값으로 대체하는 쪽은 이 파일의 `getJamPolicy`뿐이다.
+ */
+export const VALIDATORS: Record<keyof JamPolicy, (n: number) => boolean> = {
   intensity_light: (n) => Number.isInteger(n) && n >= 0,
   intensity_normal: (n) => Number.isInteger(n) && n >= 0,
   intensity_hard: (n) => Number.isInteger(n) && n >= 0,

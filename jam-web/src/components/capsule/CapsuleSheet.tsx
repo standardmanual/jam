@@ -15,7 +15,7 @@ import { d, t } from '@/lib/i18n'
  * 캡슐 시트 — 알약을 누르면 뜨는 시트 한 개 안에서 본문 단계와 채우기 단계를 오간다 (티켓 20261018_0054, 채원 판정 2026-10-18)
  *
  * 새 라우트나 스택 화면이 없다. 투데이와 내 프로필이 같은 시트를 쓴다. 상태와 API 호출은 `CapsuleWidget`이 맡고 이 파일은 그린다.
- *  - 본문 단계: 외곽선 게이지, 가진 잼(숫자), 상태별 푸터. 채우는 중이면 «채우기», 다 찼으면 «열기»,
+ *  - 본문 단계: 외곽선 게이지, 가진 잼(숫자), 확률 안내 링크, 상태별 푸터. 채우는 중이면 «채우기», 다 찼으면 «열기»,
  *    인벤토리 빈칸이 모자라면 버튼 대신 안내 블록과 «인벤토리 보기» 링크를 둔다.
  *  - 채우기 단계: 공용 `JamFillPanel`과 «취소». 시트 높이는 `BottomSheet`의 compact 디텐트 안에서 유지된다.
  * 열기 결과는 시트가 아니라 위젯이 시트를 닫은 뒤 `BadgeRevealOverlay`로 보여 준다.
@@ -105,6 +105,17 @@ export default function CapsuleSheet({ open, onClose, status, step, pending, onS
             <ProgressBar outlined percent={capsulePercent(status)} fillMode="track-gradient" trackColor="var(--background)" height={10} labelType="none" />
           </div>
           <JamBalance balance={status.balance} />
+          {/* 확률 안내 링크 (티켓 20261021_1250, 채원 판정): 본문 맨 아래에 두어 채우는 중·열 수 있음·빈칸 모자람 세 상태에서 같은 자리에 보인다.
+              푸터의 주요 버튼 곁에 붙이지 않는다(열기 버튼과 터치 영역이 맞닿지 않게). 문구는 이름만 쓰고 숫자·퍼센트·아이콘이 없다.
+              열기 결과 화면에는 더하지 않는다(열자마자 확률 링크가 나오면 결과를 확률로 읽게 된다). 누르면 시트를 닫고 일반 라우트로 이동한다 —
+              뒤로 왔을 때 시트가 닫혀 있고 스크롤 잠금·하단 점유 신고가 풀린다. */}
+          <Link
+            href="/probability"
+            onClick={() => onClose()}
+            className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-sm text-muted underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          >
+            {d.capsule.sheet.probabilityLink}
+          </Link>
         </div>
       )}
     </BottomSheet>

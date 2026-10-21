@@ -51,7 +51,9 @@ export default function Footer() {
           피드백을 받아 min-h-11을 제거했다 — 44px 히트박스(AAA 권장치)를 버리고 텍스트 크기
           그대로(28px, AA 기준 충족)를 히트박스로 쓴다. gap-0과 결합해 두 링크가 슬로건의
           줄바꿈과 같은 간격으로 붙는다.
-          20260929_1359: 위치기반서비스 이용약관 링크를 개인정보처리방침 아래에 같은 스타일로 추가. */}
+          20260929_1359: 위치기반서비스 이용약관 링크를 개인정보처리방침 아래에 같은 스타일로 추가.
+          20261021_1250: 확률 안내 링크를 맨 아래에 같은 스타일로 추가(운영 로직 18.3절). 방침·약관 두 법 문서가
+          붙어 있는 묶음을 깨지 않으려고 끝에 둔다. 확률 안내 페이지는 (legal) 그룹이라 푸터가 없으므로 입구는 이 푸터와 캡슐 시트다. */}
       <div className="flex flex-col items-start gap-0">
         <Link
           href="/philosophy"
@@ -70,6 +72,12 @@ export default function Footer() {
           className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerLocationTerms}
+        </Link>
+        <Link
+          href="/probability"
+          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+        >
+          {d.common.footerProbability}
         </Link>
       </div>
       {/* 20260909_2319: 로고 이미지 제거, 저작권 텍스트만 남긴다(Figma 사양). */}

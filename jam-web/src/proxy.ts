@@ -56,6 +56,8 @@ export async function proxy(request: NextRequest) {
   //
   // '/privacy'·'/location-terms'는 법정 공개 문서라 로그인 전에도 읽을 수 있어야 한다
   // (개인정보 보호법 제30조제2항, 티켓 20260929_1400). 두 페이지는 인증 호출이 없는 `(legal)` 그룹이다.
+  // '/probability'(확률 안내)도 같은 `(legal)` 그룹이고 로그인하지 않은 사람도 읽을 수 있어야 해서 공개한다
+  // (운영 로직 18.3절, 티켓 20261021_1250).
   const publicPaths = [
     '/login',
     '/auth/callback',
@@ -65,6 +67,7 @@ export async function proxy(request: NextRequest) {
     '/api/cron',
     '/privacy',
     '/location-terms',
+    '/probability',
   ]
   const isPublicPath = publicPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
 

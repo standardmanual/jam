@@ -36,6 +36,8 @@ export const ko = {
     footerPhilosophy: 'Philosophy',
     footerPrivacy: '개인정보처리방침',
     footerLocationTerms: '위치기반서비스 이용약관',
+    /** 확률 안내 페이지(`/probability`)로 가는 푸터 링크. 페이지 제목·캡슐 시트 링크와 같은 말이다 (티켓 20261021_1250) */
+    footerProbability: '확률 안내',
     footerCopyright: '© 2026 Standard Manual',
     /** 여러 화면이 공유하는 범용 로딩 스피너(`LoadingSpinner`)의 보조기술 라벨 (티켓 20260915_2237) */
     loading: '불러오는 중',
@@ -1084,6 +1086,8 @@ export const ko = {
       noSlotsCount: '지금 빈칸 {free}개, 열려면 {needed}개가 필요해요',
       noSlotsKept: '채운 잼은 그대로 남아 있어요',
       inventoryLink: '인벤토리 보기',
+      /** 본문 맨 아래의 조용한 링크. 숫자·퍼센트·아이콘 없이 페이지 이름만 쓴다(시트는 게이지에도 숫자를 쓰지 않는다, 티켓 20261021_1250) */
+      probabilityLink: '확률 안내',
     },
     /** 채우기 입력 — 캡슐과 잠긴 아이템 배지가 같은 문구를 쓴다(운영 로직 7.2절: 같은 동작이 두 곳에서 다르면 안 된다) */
     fill: {
