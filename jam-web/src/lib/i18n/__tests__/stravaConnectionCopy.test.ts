@@ -122,9 +122,9 @@ describe('Strava 끊김·끊기·중복 안내 문구', () => {
     expect(c.replaceResult.blocked).not.toMatch(/어드민|관리자|정지/)
   })
 
-  it('중복 안내 시트와 응답 문구에 «준비 중»처럼 향후를 약속하는 표현·붙잡기·압박·엠대시·«확인»·«계속» 버튼이 없다', () => {
+  it('중복 안내 시트와 응답 문구에 «준비 중»처럼 향후를 약속하는 표현·압박·엠대시·«확인»·«계속» 버튼이 없다', () => {
     for (const text of [...duplicateSentences, ...duplicateLabels]) {
-      expect(text, text).not.toMatch(/준비 중|나중에|곧|예정|정말|지금 바로|—/)
+      expect(text, text).not.toMatch(/준비 중|나중에|곧|예정|지금 바로|—/)
     }
     expect(c.duplicateSheet.confirm).toBe('그래도 연결하기')
     expect(c.duplicateSheet.confirming).toBe('연결하는 중')

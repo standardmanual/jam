@@ -28,11 +28,6 @@ export function stravaDuplicateMode(searchParams: ParamsLike): StravaDuplicateMo
   return null
 }
 
-/** 주소에 중복 안내 값(`duplicate`·`duplicate_blocked`)이 실려 있는가 */
-export function hasStravaDuplicateParam(searchParams: ParamsLike): boolean {
-  return stravaDuplicateMode(searchParams) !== null
-}
-
 /** `strava` 값만 지운 주소(경로 + 남은 쿼리). 다른 쿼리는 그대로 둔다 */
 export function urlWithoutStravaParam(pathname: string, searchParams: ParamsLike): string {
   const params = new URLSearchParams(searchParams.toString())

@@ -6,22 +6,19 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { hasStravaDuplicateParam, stravaDuplicateMode, urlWithoutStravaParam } from '../duplicate-param'
+import { stravaDuplicateMode, urlWithoutStravaParam } from '../duplicate-param'
 
 const params = (query: string) => new URLSearchParams(query)
 
-describe('stravaDuplicateMode / hasStravaDuplicateParam', () => {
+describe('stravaDuplicateMode', () => {
   it('strava=duplicate는 offer, strava=duplicate_blocked는 blocked다', () => {
     expect(stravaDuplicateMode(params('strava=duplicate'))).toBe('offer')
     expect(stravaDuplicateMode(params('strava=duplicate_blocked'))).toBe('blocked')
-    expect(hasStravaDuplicateParam(params('strava=duplicate'))).toBe(true)
-    expect(hasStravaDuplicateParam(params('strava=duplicate_blocked'))).toBe(true)
   })
 
   it('다른 값은 열지 않는다 — connected·error는 StravaConnectReveal의 몫이다', () => {
     for (const query of ['strava=error&reason=db_error', 'strava=connected', 'strava=connected&reveal=1', 'strava=', 'strava=Duplicate', 'strava=duplicates', '']) {
       expect(stravaDuplicateMode(params(query)), query).toBeNull()
-      expect(hasStravaDuplicateParam(params(query)), query).toBe(false)
     }
   })
 })
