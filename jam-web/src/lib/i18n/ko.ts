@@ -1666,6 +1666,8 @@ export const ko = {
     msgMissionParticipationCancelledGrouped: '트라이브가 바뀌어 미션 {count} 참가가 취소됐어요',
     /** 챕터 오름(티켓 20261019_1316, 운영 로직 12.3절). 챕터 이름은 이름 표가 비어 있어 싣지 않는다. 착지는 내 프로필이다 */
     msgChapterUp: '축하해요! {chapter}에 올랐어요',
+    /** 챕터 1을 받은 소식(티켓 20261021_1248). 챕터 1은 «오른» 것이 아니라 «시작»이다. 건너뛴 유저도 받는다. 착지는 `msgChapterUp`과 같은 내 프로필이다 */
+    msgChapterStart: '{chapter}{을/를} 시작했어요',
     /** payload의 챕터 번호가 비었거나 손상됐을 때 — 「챕터 0에」 같은 문장을 만들지 않는다 */
     msgChapterUpNoNumber: '축하해요! 챕터가 올랐어요',
 

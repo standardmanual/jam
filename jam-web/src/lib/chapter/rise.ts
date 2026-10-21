@@ -3,8 +3,10 @@
  *
  * 챕터가 오른 순간(`chapter_add_score`·`chapter_start`가 `reachedChapters`를 돌려줄 때) 할 일을 한 곳에 둔다.
  *  1) `reachedChapters`가 비어 있으면 아무것도 하지 않는다.
- *  2) 소식: 오른 챕터 가운데 **가장 높은 챕터가 2 이상**이면 `chapter_up` 한 건만 보낸다. 한 번에 여러 챕터를 넘어도 한 건이고, 챕터 1만 오른 경우
- *     (퀘스트 완료 보상이 이미 알린다)는 보내지 않는다. 묶음 키는 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다.
+ *  2) 소식: 오른 챕터 가운데 **가장 높은 챕터**로 `chapter_up` 한 건만 보낸다. 한 번에 여러 챕터를 넘어도 한 건이다. 챕터 1을 받은 것(챕터 1만 오른 경우)도 보낸다 —
+ *     챕터 1은 퀘스트 완료와 시점이 갈라져(실제 3단계를 마친 순간 시작하고, 완료 배지는 연출까지 끝난 뒤에 나가며 건너뛴 유저는 배지가 없다) 완료 보상이 알려 주지 못한다.
+ *     그래서 챕터 1은 연출 카드를 띄우지 않고(`celebrate.ts`) 소식으로 알린다(티켓 20261021_1248 사용자 결정 4). 문구는 챕터 1이면 «챕터 1을 시작했어요»다.
+ *     묶음 키는 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다.
  *     챕터는 내려가지 않으므로 같은 챕터가 다시 «가장 높은 챕터»가 되는 일은 재시도뿐이다.
  *  3) 챕터 배지 판정: 비어 있지 않으면(챕터 1 시작 포함) `runJamActionEvaluation(userId, ['chapter_reached'])`로 챕터 조건 배지를 바로 판정해 받게 한다.
  *     넘은 챕터가 여럿이어도 챕터 도달값은 지금 챕터 하나라서 `chapter_reached >= N` 조건 배지는 한 번의 판정으로 모두 받는다.
@@ -111,8 +113,8 @@ export async function processChapterRise(input: ChapterRiseInput, options: Chapt
     if (reachedChapters.length === 0) return
 
     const highest = Math.max(...reachedChapters)
-    // 챕터 1 시작은 퀘스트 완료 보상이 이미 알린다. 2 이상으로 오를 때만 보낸다
-    if (highest >= 2) await sendRiseNotification(input.userId, highest, reachedChapters)
+    // 챕터 1 시작도 소식으로 알린다(티켓 20261021_1248). 완료 보상은 시점이 갈라지고 건너뛴 유저는 받지 않아 알림 구실을 하지 못한다
+    await sendRiseNotification(input.userId, highest, reachedChapters)
     if (options.skipBadgeEvaluation !== true) await evaluateChapterBadges(input.userId, reachedChapters)
   } catch (e) {
     await recordRiseFailure(input.userId, 'unexpected', input.reachedChapters, errorText(e))

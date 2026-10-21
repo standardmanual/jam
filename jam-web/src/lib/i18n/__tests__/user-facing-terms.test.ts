@@ -57,6 +57,7 @@ describe('유저 화면 문구 사전 d — 어드민 전용 용어', () => {
     expect(paths.has('d.points.balanceLabel')).toBe(true)
     expect(paths.has('d.points.reasonAbuseReclaim')).toBe(true)
     expect(paths.has('d.notifications.msgChapterUp')).toBe(true)
+    expect(paths.has('d.notifications.msgChapterStart')).toBe(true)
     expect(paths.has('d.notifications.msgMissionParticipationCancelled')).toBe(true)
   })
 
