@@ -59,6 +59,15 @@ describe('접근과 검증', () => {
     expect(mocks.executeAdminGrant).not.toHaveBeenCalled()
   })
 
+  it('유저 id가 UUID 형식이 아니면 400으로 안내하고 실행하지 않는다(DB 형식 오류로 500이 되지 않는다)', async () => {
+    for (const userId of ['not-a-uuid', '12345', '00000000-0000-4000-8000-00000000000g']) {
+      const res = await POST(post({ userId, amount: -100, reasonLabel: 'cs_compensation' }))
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toContain('형식이 올바르지 않아요')
+    }
+    expect(mocks.executeAdminGrant).not.toHaveBeenCalled()
+  })
+
   it('금액이 0이면 400', async () => {
     const res = await POST(post({ userId: USER, amount: 0, reasonLabel: 'cs_compensation' }))
     expect(res.status).toBe(400)

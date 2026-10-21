@@ -37,8 +37,10 @@ export function UserBulkImpactSummary({ action, impact, skippedCount }: UserBulk
           <p>
             {i.totalAmount !== undefined && i.totalAmount < 0 ? '회수' : '지급'} 합계 {won(Math.abs(i.totalAmount ?? 0))}
           </p>
-          {(i.negativeBalanceCount ?? 0) > 0 && (
-            <p className="text-red-600">잔액이 모자라 마이너스가 되는 유저 {i.negativeBalanceCount}명</p>
+          {(i.revokeSkippedCount ?? 0) > 0 && (
+            <p className="text-red-600 break-keep wrap-break-word">
+              잔액이 요청 금액보다 적어 회수하지 못하고 건너뛰는 유저 {i.revokeSkippedCount}명
+            </p>
           )}
           <p>운영진 알림 {i.notificationCount ?? 0}건이 발송돼요.</p>
         </>

@@ -29,7 +29,7 @@ import {
  * - 유저 단위 작업은 하나로 묶을 수 없어 유저별로 실행하고 `results[{ id, ok, error }]`를 돌려준다.
  *   표준 응답(`processed`·`skipped`)에도 같은 내용을 담아 화면의 공용 토스트가 그대로 쓴다.
  * - 잔액보다 큰 회수는 그 유저만 `skipped`의 사유(현재 잔액·요청 금액)로 알리고 응답은 200이다
- *   (티켓 20261019_1314). 일괄 `dryRun`의 `negativeBalanceCount` 문구는 5-8에서 고친다.
+ *   (티켓 20261019_1314). 일괄 `dryRun`은 그런 유저 수를 `revokeSkippedCount`로 알린다(티켓 20261019_1318 2회).
  */
 export const maxDuration = 60
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { isUuid } from '@/lib/admin/uuid'
 import {
   validateAdminGrantInput,
   executeAdminGrant,
@@ -35,6 +36,13 @@ export async function POST(req: NextRequest) {
 
   if (!userId || typeof userId !== 'string') {
     return NextResponse.json({ error: '대상 유저가 지정되지 않았습니다.' }, { status: 400 })
+  }
+  // UUID 형식이 아니면 DB 함수가 형식 오류를 내 500과 `point_award_failed` 로그로 끝났다 — 실행 전에 400으로 안내한다(티켓 20261019_1318 2회)
+  if (!isUuid(userId)) {
+    return NextResponse.json(
+      { error: '대상 유저를 찾지 못했어요. 유저 id의 형식이 올바르지 않아요. 유저 상세 화면에서 다시 시도해 주세요.' },
+      { status: 400 }
+    )
   }
 
   const validated = validateAdminGrantInput({ amount, reasonLabel, note, confirmed })
