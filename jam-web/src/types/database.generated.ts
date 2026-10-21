@@ -2962,6 +2962,39 @@ export type Database = {
           },
         ]
       }
+      retained_records: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: string
+          kind: string
+          occurred_at: string
+          retained_until: string
+          source_id: string
+          subject_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind: string
+          occurred_at: string
+          retained_until: string
+          source_id: string
+          subject_user_id: string
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind?: string
+          occurred_at?: string
+          retained_until?: string
+          source_id?: string
+          subject_user_id?: string
+        }
+        Relationships: []
+      }
       strava_activities: {
         Row: {
           created_at: string
@@ -4750,6 +4783,8 @@ export type Database = {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
         Returns: Json
       }
+      prepare_account_deletion: { Args: { p_user_id: string }; Returns: Json }
+      purge_expired_retained_records: { Args: never; Returns: number }
       record_checkin_earn: {
         Args: {
           p_activity_date: string

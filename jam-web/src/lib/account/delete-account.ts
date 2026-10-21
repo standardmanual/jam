@@ -34,14 +34,6 @@ export type DeleteAccountResult =
   | { ok: true; summary: AccountDeletionSummary }
   | { ok: false; code: DeleteAccountFailureCode }
 
-/** 생성 타입(`database.generated.ts`)에 준비 RPC가 반영되기 전에도 컴파일되도록 이 호출 하나만 좁게 정의한다 */
-interface PrepareRpcClient {
-  rpc(
-    fn: 'prepare_account_deletion',
-    args: { p_user_id: string }
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>
-}
-
 function toCount(value: unknown): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
 }
@@ -92,7 +84,7 @@ export async function deleteAccount(supabase: ServiceClient, userId: string): Pr
   // 2. 준비 RPC — 실패하면 계정을 지우지 않는다
   let prepared: ParsedPrepareResult | null
   try {
-    const { data, error } = await (supabase as unknown as PrepareRpcClient).rpc('prepare_account_deletion', {
+    const { data, error } = await supabase.rpc('prepare_account_deletion', {
       p_user_id: userId,
     })
     if (error) {
