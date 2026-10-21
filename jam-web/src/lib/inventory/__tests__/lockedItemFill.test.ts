@@ -590,6 +590,10 @@ function specifiersOf(source: string): string[] {
   return out
 }
 
+// 'use client' 파일 약 300개가 같은 파일을 공유하므로 파일별 로컬 import 목록을 한 번만 만든다.
+// 진입점마다 다시 읽으면 전체 실행의 부하에서 5초 제한을 넘겼다(티켓 20261021_1019).
+const localImportsCache = new Map<string, string[]>()
+
 function crawl(entry: string): Set<string> {
   const files = new Set<string>()
   const queue = [entry]
@@ -597,10 +601,9 @@ function crawl(entry: string): Set<string> {
     const file = queue.pop() as string
     if (files.has(file)) continue
     files.add(file)
-    for (const spec of specifiersOf(readFileSync(file, 'utf8'))) {
-      const resolved = resolveLocal(file, spec)
-      if (resolved) queue.push(resolved)
-    }
+    const found = localImportsCache.get(file) ?? specifiersOf(readFileSync(file, 'utf8')).flatMap((spec) => resolveLocal(file, spec) ?? [])
+    localImportsCache.set(file, found)
+    queue.push(...found)
   }
   return files
 }

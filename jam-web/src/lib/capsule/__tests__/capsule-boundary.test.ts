@@ -46,6 +46,26 @@ function withoutTypeOnly(source: string): string {
   return source.replace(/\b(?:import|export)\s+type\s+[^'";]*?from\s*['"][^'"]+['"]/g, '')
 }
 
+// 'use client' 파일 약 300개가 같은 파일을 공유하므로 파일별 import 목록을 한 번만 만든다.
+// 진입점마다 다시 읽으면 전체 실행의 부하에서 5초 제한을 넘겼다(티켓 20261021_1019).
+const importsCache = new Map<string, { locals: string[]; packages: string[] }>()
+
+function importsOf(file: string, skipTypeOnly: boolean): { locals: string[]; packages: string[] } {
+  const key = `${skipTypeOnly}:${file}`
+  let found = importsCache.get(key)
+  if (!found) {
+    found = { locals: [], packages: [] }
+    const source = readFileSync(file, 'utf8')
+    for (const spec of specifiersOf(skipTypeOnly ? withoutTypeOnly(source) : source)) {
+      const resolved = resolveLocal(file, spec)
+      if (resolved) found.locals.push(resolved)
+      else if (!spec.startsWith('.') && !spec.startsWith('@/') && !spec.startsWith('@ds/')) found.packages.push(spec)
+    }
+    importsCache.set(key, found)
+  }
+  return found
+}
+
 function crawl(entry: string, { skipTypeOnly = false }: { skipTypeOnly?: boolean } = {}): { files: Set<string>; packages: Set<string> } {
   const files = new Set<string>()
   const packages = new Set<string>()
@@ -54,12 +74,9 @@ function crawl(entry: string, { skipTypeOnly = false }: { skipTypeOnly?: boolean
     const file = queue.pop() as string
     if (files.has(file)) continue
     files.add(file)
-    const source = readFileSync(file, 'utf8')
-    for (const spec of specifiersOf(skipTypeOnly ? withoutTypeOnly(source) : source)) {
-      const resolved = resolveLocal(file, spec)
-      if (resolved) queue.push(resolved)
-      else if (!spec.startsWith('.') && !spec.startsWith('@/') && !spec.startsWith('@ds/')) packages.add(spec)
-    }
+    const found = importsOf(file, skipTypeOnly)
+    queue.push(...found.locals)
+    for (const spec of found.packages) packages.add(spec)
   }
   return { files, packages }
 }
