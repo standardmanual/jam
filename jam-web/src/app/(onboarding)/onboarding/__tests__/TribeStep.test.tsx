@@ -20,7 +20,7 @@
  * 실행: cd jam-web && npx vitest run "src/app/(onboarding)/onboarding/__tests__/TribeStep.test.tsx"
  */
 import { describe, it, expect, vi } from 'vitest'
-import { Children, isValidElement, type ReactElement } from 'react'
+import { Children, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 vi.mock('next/image', () => ({
@@ -417,14 +417,14 @@ describe('로그아웃 길 (티켓 20261021_1247, 채원 사전 판정 2026-10-2
     for (const [name, tribesState] of STATES) {
       const tree = treeOf(makeProps({ tribesState }))
       const [stack] = findAll(tree, (e) => e.type === 'div' && String(e.props.className).includes('max-w-sm'))
-      const children = Children.toArray(stack.props.children) as Element[]
+      const children = Children.toArray(stack.props.children as ReactNode) as Element[]
       const last = children[children.length - 1]
       const beforeLast = children[children.length - 2]
 
       expect(last.type, name).toBe(Button)
       expect(last.props.children, name).toBe(d.profile.logoutButton)
       expect(String(beforeLast.props.className), name).toContain('gap-3')
-      expect(Children.toArray(beforeLast.props.children).map((c) => (c as Element).props.children), name).toEqual([
+      expect(Children.toArray(beforeLast.props.children as ReactNode).map((c) => (c as Element).props.children), name).toEqual([
         d.onboarding.finishButton,
         d.common.back,
       ])
