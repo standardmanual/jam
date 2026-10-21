@@ -46,7 +46,6 @@
  * `external` 조건이라 `evaluateBadgesDetailed`로는 발급되지 않는다. 그래서 유저마다 메인 엔진 다음에
  * `evaluateJamActionBadges`를 한 번 더 부른다 — 순서는 동기화(`sync.ts`)와 같다(메인 엔진 → JAM!).
  * 부수효과는 위 정책과 같다: 피드는 억제(`silent`)하고 포인트는 정상 지급하며 dry-run은 아무것도 쓰지 않는다.
- * 섀도우밴 차단은 dry-run에도 반영된다(`issueQualifyingBadges`가 게이트 뒤에서 dryRun을 가른다).
  * 발급 기록의 `triggered_by`에는 `catalog_reevaluation:` 접두가 붙어 자연 발급과 구분된다.
  * JAM! 알림은 호출부(`jamActionRoute.ts`·`sync.ts`)가 만들므로 이 배치는 알림을 만들지 않는다.
  *
@@ -307,7 +306,7 @@ type BadgeMeta = Pick<BadgeRow, 'id' | 'name' | 'point_reward' | 'valid_from'>
  *
  * 예약 공개 배지는 공개 시각에 옛 기록으로 소급 지급되고 회수할 수 없다. 기본 재평가(`reevaluateUsersForCatalog`)는
  * `valid_from`이 미래인 배지를 후보에서 빼므로(BADGE_ENGINE_UNIFIED §2.17 알려진 한계) 승인 전에 이 수를 셀 수 없다.
- * 이 함수는 `valid_from` 필터만 풀어 같은 판정(보유 제외·섀도우밴·등급/레벨 규칙)을 돌린다. 숫자는 **미리보기 시점의
+ * 이 함수는 `valid_from` 필터만 풀어 같은 판정(보유 제외·등급/레벨 규칙)을 돌린다. 숫자는 **미리보기 시점의
  * 기록 기준**이라 공개 시각까지 기록이 더 쌓이면 늘어난다 — 화면에는 「약」을 붙인다.
  *
  * - JAM! 경로만 센다(메인 엔진·사용량 지표 배지는 범위 밖). 기존 `reevaluateUsersForCatalog`는 건드리지 않는다
