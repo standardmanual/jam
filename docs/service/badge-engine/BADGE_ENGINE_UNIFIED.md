@@ -185,7 +185,7 @@ badge-engine 밖의 세 번째 평가 경로.
 "유저 단위로 한 번 계산한 숫자"를 모든 후보에 그대로 비교하지만, `checkin_category_count`
 (지정 카테고리 내 보유 개수)·`checkin_badge_count`(지정 목록 중 보유 개수)는 후보 배지마다
 `condition_json`이 가리키는 카테고리·이름 목록이 달라 **후보별로** 현재값을 계산해야 한다.
-그래서 `usageBadges.ts`는 발급 로직(등급형 성장 티어·레벨형 연속 발급, 섀도우밴)만
+그래서 `usageBadges.ts`는 발급 로직(등급형 성장 티어·레벨형 연속 발급)만
 `issueQualifyingBadges()`로 공유하고, 현재값 계산 경로는 `evaluateUsageBadges()`(4종)와
 `evaluateCheckinUsageBadges()`(체크인 2종)로 갈린다. 카테고리는 "effective category" —
 `badges.category`(어드민 직접 지정) 우선, 없으면 연결된 `poi.category` 폴백 — 정의를
@@ -200,7 +200,7 @@ badge-engine 밖의 세 번째 평가 경로.
 `jamActionBadges.ts`의 `evaluateJamActionBadges(userId, triggers, client?)`가 맡는다 —
 후보 배지를 한 번 조회해 **요청한 지표를 가진 후보만** 남기고(없으면 값 계산 없이 종료),
 지표별 계산 함수(`jamActionMetrics.ts`)로 현재값을 구해 `usageBadges.ts`의
-`issueQualifyingBadges()`로 발급한다(등급형 성장 티어·레벨형 연속 발급·섀도우밴·포인트·피드는
+`issueQualifyingBadges()`로 발급한다(등급형 성장 티어·레벨형 연속 발급·포인트·피드는
 위 지표들과 같은 정책). 계산 함수는 DB 오류를 던지고, 호출부가 그 지표만 건너뛴다
 (fail-closed) — 「센 값이 0」과 「세지 못함」을 섞지 않는다. `METRIC_COMPUTERS`가
 `Record<JamActionMetric, …>`라 키를 더하고 계산 함수를 빠뜨리면 컴파일 오류다.
@@ -455,10 +455,10 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 신규 발급은 없으므로, 이미 발급된 배지도 회수하지 않는다(조건 미충족으로 돌아가도 그대로
 보유).
 
-**공통 정책 (①·② 두 엔진 공유 — ③은 아래 중 섀도우밴·피드 이벤트만 같은 방식으로 따른다):**
+**공통 정책 (①·② 두 엔진 공유 — ③은 아래 중 피드 이벤트만 같은 방식으로 따른다):**
 - 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=계열의 첫 칸만 — 등급형은 Common 외 차단·무한레벨형은 Lv.1 외 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
 - **가입 시점 앵커**(티켓 20260905_0030 §5): 누적 조건이 보는 이력은 `users.created_at` 이후로 잘린다. `getActivityHistory(supabase, userId, sinceDate)`의 3번째 인자를 호출처 4곳(`badge-engine/index.ts` · `missions/checker.ts` · `strava/sync.ts`의 진행 스냅샷 · `badges/tree/page.tsx`)이 전부 넘긴다 — 한 곳이라도 빠지면 화면·미션·발급이 서로 다른 창을 본다. **이번 싱크 배치는 앵커를 거치지 않는다**(첫 싱크의 «마지막 활동 1건 정산»이 성립해야 하므로). 앵커로 `strava_connections.created_at`을 쓰지 않은 이유는 `activity-history.ts`의 `getSignupAnchorDate` 주석 참조
-- 섀도우밴: **없앴다**(티켓 20261017_1426). 새 발급 경로(액티비티·사용량·체크인·POI 배지, 아이템 배지 드랍)는 `user_shadow_bans`를 읽지 않는다. JAM 2.0의 제재는 이용 정지 하나이고, 정지 중인 유저는 동기화 입구에서 막혀 발급 경로에 오지 않는다(`user_suspensions`, `lib/suspension/`). 아래 Step 4.9 등 옛 서술은 이력으로 남긴다
+- 섀도우밴: **없앴다**(티켓 20261017_1426). 새 발급 경로(액티비티·사용량·체크인·POI 배지, 아이템 배지 드랍)는 `user_shadow_bans`를 읽지 않는다. JAM 2.0의 제재는 이용 정지 하나이고, 정지 중인 유저는 동기화 입구에서 막혀 발급 경로에 오지 않는다(`user_suspensions`, `lib/suspension/`). 옛 코드(`lib/abusing/shadow-ban.ts`, 드랍 엔진의 `applyShadowBanCap`, 픽업의 `applyBan`, 밴 관리 API `api/admin/abusing/bans/**`)는 6-4 2회(티켓 20261021_1250)에서 지웠다. `user_shadow_bans` 표는 코드가 쓰지 않음, 표 정리 대기(6-4 4회). 아래 Step 4.9 등 옛 서술은 이력으로 남긴다
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
 - **새 활동 0건 동기화에서도 ① 배지 평가는 항상 실행된다** *(2026-09-06, 티켓 20260906_1430)*:
   유저가 "동기화" 버튼을 눌러도 새로 받아올 활동이 없으면 `evaluateBadges(userId, [])`를
@@ -816,7 +816,7 @@ Rare를 얻는 순간 Common이 후보에서 빠져 **하위 등급의 회차 �
 발급되며 자기들끼리 캡을 소진해 이후 정당한 발급까지 막는 문제가 있었기 때문이다
 (`src/lib/badge-engine/index.ts` 692~698행 주석 참고). 성과·루틴 배지(`type='activity'`)는
 전부 명시적 수치 조건으로 검증되므로 조건 충족 시 항상 발급을 보장한다 — 캡을 두지 않는다.
-아이템/드랍 배지는 §3의 drop-engine이 자체 확률·섀도우밴·일일 하향 로직으로 별도 어뷰징을
+아이템/드랍 배지는 §3의 drop-engine이 자체 확률·일일 하향 로직으로 별도 어뷰징을
 방지한다.
 
 **v5의 홍수 방지는 캡이 아니라 «발급과 카운터의 분리»다** (2026-09-05, 티켓 20260905_0030 §2).
@@ -1527,11 +1527,10 @@ triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER })`를 한 번 더 부른다. �
 새 JAM! 배지를 열 때의 순서는 「카탈로그에 넣기 → 바로 dry-run → 숫자 확인 → 실제 실행」이다. 그 사이 자연 발급된
 배지는 정상 발급으로 본다.
 
-- **발급 정책**: 등급형·레벨형·섀도우밴·포인트는 `usageBadges.ts`의 `issueQualifyingBadges`가 그대로 한다.
+- **발급 정책**: 등급형·레벨형·포인트는 `usageBadges.ts`의 `issueQualifyingBadges`가 그대로 한다.
   이 함수의 마지막 인자 `options?: { dryRun, silent, triggeredByPrefix }`가 재평가용 분기다 — 생략하면 자연 발급과 같다.
-  `dryRun`은 섀도우밴 판정 **뒤**에서 갈라(메인 엔진 2.9단계와 같은 순서) 통과한 배지를 `earned`에 담기만 하고
-  `user_activity_badges` insert·`awardPoints`·`recordFeedEvent`를 하나도 부르지 않는다. 그래서 섀도우밴 차단은
-  dry-run 숫자에도 반영된다. `silent`는 피드만 건너뛴다.
+  `dryRun`은 등급형·레벨형 판정을 마친 **뒤**에서 갈라 통과한 배지를 `earned`에 담기만 하고
+  `user_activity_badges` insert·`awardPoints`·`recordFeedEvent`를 하나도 부르지 않는다. `silent`는 피드만 건너뛴다.
 - **`triggered_by` 접두**: 재평가로 발급한 JAM! 배지는 `catalog_reevaluation:jam_action:<지표 키>`(레시피 최초 성공은
   `catalog_reevaluation:recipe_first_success:<recipe_id>`)로 기록된다. 자연 발급(`jam_action:…`)과 구분되어, 되돌릴 때
   골라내는 근거가 된다. 메인 엔진 몫은 기존대로 `catalog_reevaluation`이다.
@@ -1565,7 +1564,7 @@ POST /api/admin/badges/reevaluate-all
 ```
 
 - **판정**: `evaluateJamActionBadges`의 5번째 인자 `candidateOptions`(`includeUpcoming`·`extraCandidates`·`badgeIds`)가 후보를
-  넓힌다. `valid_from` 필터만 빼고 `valid_until` 필터는 그대로다. 보유 제외·섀도우밴·등급형/레벨형 규칙은 기본 dry-run과 같다.
+  넓힌다. `valid_from` 필터만 빼고 `valid_until` 필터는 그대로다. 보유 제외·등급형/레벨형 규칙은 기본 dry-run과 같다.
   `includeUpcoming`·`extraCandidates`를 `dryRun` 없이 켜면 **던진다** — 공개 전 배지가 실제로 발급되면 안 되기 때문이다.
 - **진입점**: 라우트는 운영자 수동 확인용이다. 예약 등록 요약창은 서버 함수 `previewUpcomingJamBadges(supabase, { userIds,
   badgeIds?, candidateBadges? })`(`reevaluateCatalog.ts`)를 직접 부른다. `candidateBadges`는 DB에 아직 없는 배지 정의이고
@@ -1745,7 +1744,7 @@ POST /api/admin/badges/reevaluate-all
 - 컬렉션 쪽 보정 — 완성률 감쇠, 직전 컬렉션 감쇠, 없는 것 먼저, 마지막 조각 몰아주기
 - 최근 3건 상한(`MAX_DROP_ACTIVITIES_PER_SYNC`) — 처리하는 활동 수에 상한을 두지 않는다
 - 동기화로 받은 아이템 배지의 기한을 공개 종료일로 두는 규칙(`expires_at`)
-- 섀도우밴 등급 상한(`applyShadowBanCap`)은 동기화 발급에서 쓰이지 않는다. 이용 정지·섀도우밴 정리는 2-6이 다룬다
+- 섀도우밴 등급 상한은 동기화 발급에서 쓰이지 않았고(티켓 20261017_1426) 그 함수(`applyShadowBanCap`)도 지웠다(6-4 2회, 티켓 20261021_1250). 제재는 이용 정지 하나다
 
 드랍 결정 3단계: **① 드랍 발생 → ② 트라이브 선택 → ③ 컬렉션·배지 선택** (옛 규칙 — 동기화 경로는 §3.0)
 
@@ -1801,7 +1800,7 @@ POST /api/admin/badges/reevaluate-all
 | 복귀 보너스 | 7일+ 공백 후 복귀 활동은 **rare 이상 확정** | 이탈 위험이 가장 큰 복귀 순간을 보상 순간으로 |
 
 - 첫싱크(온보딩) 드랍 확정은 기존대로 유지 ("10초 첫 보상").
-- 섀도우밴은 rarity 상한으로 작동 — 최소 1개 약속과 충돌하지 않음 (common은 허용).
+- ~~섀도우밴은 rarity 상한으로 작동~~ — 옛 규칙이다. 동기화 경로는 티켓 20261017_1426에서 읽기를 끊었고 상한 함수·밴 모듈은 6-4 2회(티켓 20261021_1250)에서 지웠다.
 - **인벤토리 슬롯 초과 시 드랍 불가** — "최소 1개"의 유일한 예외. 슬롯 정리를 유도하는 investment 장치.
   (믹스 보상 지급의 슬롯 부족 처리는 이와 다르다 — §3.5 "믹스(`Consume`) 판정" 참고: 드랍
   자체를 취소하는 대신 매칭은 성공 처리하고 결과 전부를 «받지 않은 결과»로 남긴다.)
@@ -2008,7 +2007,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
      복귀(7일+) → rare+ 확정 / common_streak ≥ 5 → rare+ 확정
      / 주간 첫 활동 → rare+ 확률 2배 / 당일 4번째부터 → common 90%
      / 기본 60/28/9/3 → common이면 common_streak++, rare+면 리셋
-  3. 섀도우밴 체크 (rarity 상한으로 작동)
+  3. (옛 규칙) 섀도우밴 체크 — 없앴다. 티켓 20261017_1426에서 읽기를 끊고 6-4 2회(티켓 20261021_1250)에서 코드를 지웠다
   4. 트라이브 선택:
      a. 맥락 오버라이드 매칭 → 60% 확률로 해당 트라이브 확정
      b. 아니면 모멘텀 50 / 인접 25 / 탐험 15 (미발동 오버라이드분은 모멘텀 흡수)
@@ -2059,22 +2058,22 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 `/api/admin/simulate`의 아이템 드랍은 **엔진 판정을 그대로 따른다.** 예전에는 등급별 누적 문턱
 0.40/0.65/0.75/0.80(v1 상수)으로 따로 굴려 `drop_policy` 값(기본 0.6/0.28/0.09/0.03)과 어긋났다.
 지금은 `previewItemDrop`(`src/lib/drop-engine/preview.ts`)이 현재 `drop_policy`·유저 드랍 상태·
-드랍 구조·섀도우밴 수준을 읽고, 순수 함수 `planItemDrops`가 `tryItemDrop`과 같은 순서로 판정한다
-(일일 카운터 리셋 → 복귀·주간 첫 활동·고강도 → 드랍 개수 → 슬롯 확인 → 등급 추첨 → 섀도우밴 상한 →
-맥락 오버라이드 → 트라이브·컬렉션·배지 선택 → 메모리 안 상태 갱신).
+드랍 구조를 읽고, 순수 함수 `planItemDrops`가 `tryItemDrop`과 같은 순서로 판정한다
+(일일 카운터 리셋 → 복귀·주간 첫 활동·고강도 → 드랍 개수 → 슬롯 확인 → 등급 추첨 →
+맥락 오버라이드 → 트라이브·컬렉션·배지 선택 → 메모리 안 상태 갱신). 섀도우밴 등급 상한 단계는 6-4 2회(티켓 20261021_1250)에서 지웠다.
 
 - **DB에 아무것도 쓰지 않는다.** 응답은 드랍 목록(`itemDrops`: 0~2개, 배지·등급·트라이브·컬렉션·보너스 여부)과
-  빠진 이유(`itemDropSkips`: `slot_full`·`shadow_ban_blocked`·`no_candidate`)를 돌려준다.
+  빠진 이유(`itemDropSkips`: `slot_full`·`no_candidate`)를 돌려준다.
 - **적용 모드(`dryRun: false`)**는 고른 배지를 인벤토리에만 넣는다. 유저 드랍 상태(연속 common·pity·일일
   카운터)·결산 소식·엔진 판정 로그는 남기지 않아 시험 계정의 실제 드랍 흐름을 흔들지 않는다.
-- **섀도우밴 등급 상한은 엔진대로 적용**하고, 등급이 바뀌거나 막히면 그 이유를 결과에 보인다. (POI 발급이
-  시뮬레이터를 밴 밖에 두는 것과는 별개다 — §2의 `poi_id` 행 참조.)
+- **섀도우밴 등급 상한은 없다.** 추첨 등급이 그대로 후보를 고르는 등급이 되고(`cappedRarity`는 `rolledRarity`와 같다 — 응답 필드 이름만
+  남겼다), 후보가 없어 등급 폴백이 일어나면 실제 배지의 등급(`rarity`)이 달라질 수 있다.
 - **유지 규칙**: `tryItemDrop`의 판정 순서를 고치면 `planItemDrops`도 함께 고친다. 두 곳이 같은 난수열에서
   같은 결과를 내는지 `src/lib/drop-engine/__tests__/preview.test.ts`가 대조한다.
 
 ### 3.8 유지되는 v1 로직
 
-활성 컬렉션 필터(`item_books.is_active`), 유효기간(valid_from/until), `isDroppableForActivity`(monthly_km 등 누적조건 배지 드랍 제외 가드), 인벤토리 슬롯, 섀도우밴, 피드 이벤트.
+활성 컬렉션 필터(`item_books.is_active`), 유효기간(valid_from/until), `isDroppableForActivity`(monthly_km 등 누적조건 배지 드랍 제외 가드), 인벤토리 슬롯, 피드 이벤트. (섀도우밴은 6-4 2회에서 지웠다.)
 
 ### 3.9 튜닝 파라미터 (런칭 후 조정 대상)
 
@@ -2537,7 +2536,7 @@ src/app/api/admin/badges/reevaluate-all/route.ts  위 재평가 어드민 라우
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
 src/lib/ambient-drop/                     앰비언트(시스템) POI 드랍 엔진 — §3.12
 src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출) — updateFamilyProgressSnapshots §2.13
-src/lib/abusing/                          섀도우밴 정책 (공용)
+src/lib/abusing/                          어뷰징 정책·GPS 조작 감지·장소 블록·로그 (공용). 옛 섀도우밴 모듈은 6-4 2회에서 지움
 supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시드
 supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 최초 스키마 — §3.12
 supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제거(2026-08-25) — §3.12

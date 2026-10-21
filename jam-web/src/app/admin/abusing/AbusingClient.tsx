@@ -3,11 +3,9 @@
 import { Suspense, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { IconAlertTriangle } from '@tabler/icons-react'
-import { Alert, AlertTitle, AlertDescription } from '@/components/admin/ui/alert'
 import { Input } from '@/components/admin/ui/input'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
-import type { AbusingPolicy, AbusingPolicyMismatch } from '@/lib/abusing/policy'
+import type { AbusingPolicy } from '@/lib/abusing/policy'
 import type { PoiBlockRow } from '@/lib/admin/abusing-list'
 import type { SuspensionRow } from '@/lib/admin/suspension-list'
 import { SuspensionTable } from './SuspensionTable'
@@ -16,7 +14,6 @@ import AbusingFilterBar from './AbusingFilterBar'
 
 interface Props {
   policy: AbusingPolicy
-  policyMismatch: AbusingPolicyMismatch[]
   /** URL `?tab=`에서 서버가 읽은 현재 탭 — 탭 이동은 링크(서버 이동)다 */
   tab: Tab
   /** 탭 라벨에 붙이는 활성 건수. 조회에 실패하면 null */
@@ -42,31 +39,8 @@ const SUSPENSION_STATUS_OPTIONS = [
   { value: 'all', label: '전체' },
 ]
 
-function RateInput({
-  label, value, onChange,
-}: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-2">
-        <input
-          type="range"
-          min={0} max={1} step={0.1}
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="flex-1 accent-primary"
-        />
-        <span className={`text-sm font-mono w-8 text-right ${value === 0 ? 'text-red-600' : value < 1 ? 'text-amber-600' : 'text-foreground'}`}>
-          {value === 0 ? '차단' : value < 1 ? `${Math.round(value * 100)}%` : '정상'}
-        </span>
-      </div>
-    </label>
-  )
-}
-
 export default function AbusingClient({
   policy: initPolicy,
-  policyMismatch: initMismatch,
   tab,
   counts,
   suspensions,
@@ -77,7 +51,6 @@ export default function AbusingClient({
 }: Props) {
   const router = useRouter()
   const [policy, setPolicy] = useState(initPolicy)
-  const [policyMismatch, setPolicyMismatch] = useState(initMismatch)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
@@ -108,7 +81,7 @@ export default function AbusingClient({
         body: JSON.stringify(policy),
       })
       const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; policy?: AbusingPolicy; mismatch?: AbusingPolicyMismatch[]; error?: string }
+        | { ok?: boolean; policy?: AbusingPolicy; error?: string }
         | null
       if (!res.ok) {
         // API가 실패 사유를 실어 보내므로 그대로 노출한다 (어드민 화면 — 원인 특정이 우선)
@@ -123,7 +96,6 @@ export default function AbusingClient({
       if (json?.policy) {
         setPolicy(json.policy)
       }
-      setPolicyMismatch(json?.mismatch ?? [])
       flash('ok', '정책이 저장됐어요')
     } catch {
       flash(
@@ -175,7 +147,7 @@ export default function AbusingClient({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">어뷰징 정책 관리</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">투트랙 섀도우밴 + 장소 GPS 조작 감지</p>
+          <p className="break-keep wrap-break-word text-muted-foreground text-sm mt-0.5">장소 GPS 조작 감지 + 이용 정지</p>
         </div>
         {msg && (
           <div className={`flex items-start gap-2 text-sm font-medium px-4 py-2 rounded-xl max-w-md ${msg.type === 'ok' ? 'bg-primary/10 text-foreground' : 'bg-red-50 text-red-600'}`}>
@@ -218,57 +190,6 @@ export default function AbusingClient({
       {/* 정책 설정 탭 */}
       {tab === 'policy' && (
         <div className="space-y-6">
-          {/* 정책 불일치 배너 — DB 배율과 코드 폴백(DEFAULT_POLICY)이 갈라지면 정상 경로와
-              폴백 경로의 판정이 달라진다. 운영자가 코드를 고칠 수는 없으니 개발자 전달을
-              행동 지시로 담는다 (티켓 20260831_1330). */}
-          {policyMismatch.length > 0 && (
-            <Alert variant="destructive">
-              <IconAlertTriangle className="h-4 w-4" />
-              <AlertTitle>DB 배율이 코드 기본값과 달라요</AlertTitle>
-              <AlertDescription>
-                <p>
-                  아래 배율은 DB에 저장된 값과 코드의 폴백 기본값(DEFAULT_POLICY)이 서로 달라요.
-                  DB 조회가 실패하면 이 화면의 값이 아니라 코드 기본값이 대신 적용돼요.
-                </p>
-                <ul className="mt-1.5 list-disc list-inside space-y-0.5">
-                  {policyMismatch.map((m) => (
-                    <li key={m.key} className="font-mono text-xs">
-                      {m.key}: DB {m.dbValue} / 코드 {m.codeValue}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-1.5">
-                  개발자에게 알려서 src/lib/abusing/policy.ts의 DEFAULT_POLICY를 같이 갱신해 주세요.
-                </p>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* 안내 */}
-          <div className="bg-white border border-border rounded-2xl p-4 text-sm text-foreground leading-relaxed">
-            <p className="font-semibold text-foreground mb-1">투트랙 정책</p>
-            <p><span className="text-amber-600 font-medium">Soft-ban</span> — 폰 흔들기 등 소프트 어뷰저. 잡템은 허용하되 고가치 아이템(epic/mystic) 차단.</p>
-            <p className="mt-1"><span className="text-red-600 font-medium">Hard-ban</span> — GPS 조작 등 생태계 파괴. 유저 화면은 정상이지만 희귀 아이템 드랍률 0% 고정.</p>
-          </div>
-
-          {/* Soft-ban 설정 */}
-          <div className="bg-white border border-amber-100 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-amber-600 uppercase tracking-wider">Soft-ban 드랍 배율</h3>
-            <RateInput label="Common" value={policy.soft_common_rate} onChange={(v) => policySet('soft_common_rate', v)} />
-            <RateInput label="Rare" value={policy.soft_rare_rate} onChange={(v) => policySet('soft_rare_rate', v)} />
-            <RateInput label="Epic" value={policy.soft_epic_rate} onChange={(v) => policySet('soft_epic_rate', v)} />
-            <RateInput label="Mystic" value={policy.soft_mystic_rate} onChange={(v) => policySet('soft_mystic_rate', v)} />
-          </div>
-
-          {/* Hard-ban 설정 */}
-          <div className="bg-white border border-red-100 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wider">Hard-ban 드랍 배율</h3>
-            <RateInput label="Common" value={policy.hard_common_rate} onChange={(v) => policySet('hard_common_rate', v)} />
-            <RateInput label="Rare" value={policy.hard_rare_rate} onChange={(v) => policySet('hard_rare_rate', v)} />
-            <RateInput label="Epic" value={policy.hard_epic_rate} onChange={(v) => policySet('hard_epic_rate', v)} />
-            <RateInput label="Mystic" value={policy.hard_mystic_rate} onChange={(v) => policySet('hard_mystic_rate', v)} />
-          </div>
-
           {/* GPS 설정 */}
           <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">GPS 조작 감지</h3>

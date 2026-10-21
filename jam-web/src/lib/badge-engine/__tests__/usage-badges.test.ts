@@ -6,7 +6,7 @@
  *  ① badge-engine(`evaluateConditionDetailed`)은 이 3개 조건 필드를 항상 fail 처리한다
  *     (mission_reward와 같은 자리 — 실제 판정은 usageBadges.ts가 전담)
  *  ② `evaluateUsageBadges()` — 조건 충족/미충족, 등급형 성장 티어(최상위 1개만),
- *     레벨형 연속 발급(보유 레벨+1부터), 섀도우밴을 읽지 않음(티켓 20261017_1426), 멱등성
+ *     레벨형 연속 발급(보유 레벨+1부터), 고가치 등급 상한 없음(티켓 20261017_1426), 멱등성
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/usage-badges.test.ts
  */
@@ -98,10 +98,6 @@ const stub = vi.hoisted(() => ({
   checkinNamesQueryFails: false,
 }))
 
-const getUserBanLevelMock = vi.hoisted(() =>
-  vi.fn<(userId: string) => Promise<'none' | 'soft' | 'hard'>>(async () => 'none')
-)
-
 function resetStub() {
   stub.badges = []
   stub.ownedBadgeIds = []
@@ -122,8 +118,6 @@ function resetStub() {
   stub.badgeCategoryQueryFails = false
   stub.poiCategoryQueryFails = false
   stub.checkinNamesQueryFails = false
-  getUserBanLevelMock.mockReset()
-  getUserBanLevelMock.mockResolvedValue('none')
 }
 
 /** supabase-js 쿼리 빌더 흉내 — badge-engine-v5.test.ts의 mockSupabase()와 같은 최소 체인 */
@@ -236,12 +230,6 @@ function mockSupabase() {
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
-// getUserBanLevel만 모킹하고 shouldAllowDrop·AbusingPolicy는 실제 구현을 쓴다 — rate 테이블이
-// 결정론적이라(예: hard_mystic_rate=0.0) Math.random()에 기대지 않고도 차단/허용을 고정할 수 있다.
-vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
-  return { ...actual, getUserBanLevel: (userId: string) => getUserBanLevelMock(userId) }
-})
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/policy')>()
   return { ...actual, getAbusingPolicy: vi.fn(async () => actual.DEFAULT_POLICY) }
@@ -252,7 +240,6 @@ import { evaluateUsageBadges, recordDailySyncAndEvaluate, evaluateCheckinUsageBa
 beforeEach(() => {
   resetStub()
   vi.clearAllMocks()
-  getUserBanLevelMock.mockResolvedValue('none')
 })
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -414,24 +401,15 @@ describe('evaluateUsageBadges — 레벨형(family_key) 연속 발급', () => {
   })
 })
 
-describe('evaluateUsageBadges — 섀도우밴을 읽지 않는다 (티켓 20261017_1426)', () => {
-  it('hard 밴이 남아 있어도 mystic 등급형 배지가 발급되고 밴 조회를 하지 않는다', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
+describe('evaluateUsageBadges — 고가치 등급을 막는 상한이 없다 (티켓 20261017_1426, 옛 섀도우밴 코드는 20261021_1250에서 지움)', () => {
+  it('mystic 등급형 배지도 그대로 발급된다', async () => {
     stub.badges = [makeBadge({ id: 'g-mystic', rarity: 'mystic', condition_json: { follower_count: 10 } })]
     const earned = await evaluateUsageBadges('user-1', 'follower_count', 10)
     expect(earned.map((e) => e.id)).toEqual(['g-mystic'])
     expect(stub.insertedBadgeIds).toEqual(['g-mystic'])
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
-  it('밴이 없는(none) 유저도 정상 발급된다', async () => {
-    stub.badges = [makeBadge({ id: 'g-mystic', rarity: 'mystic', condition_json: { follower_count: 10 } })]
-    const earned = await evaluateUsageBadges('user-1', 'follower_count', 10)
-    expect(earned.map((e) => e.id)).toEqual(['g-mystic'])
-  })
-
-  it('hard 밴이어도 레벨형(rarity NULL)은 정상 발급된다', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
+  it('레벨형(rarity NULL)도 정상 발급된다', async () => {
     stub.badges = [makeBadge({ id: 'lv1', rarity: null, level: 1, family_key: 'fam', condition_json: { daily_sync_count: 3 } })]
     const earned = await evaluateUsageBadges('user-1', 'daily_sync_count', 3)
     expect(earned.map((e) => e.id)).toEqual(['lv1'])
@@ -443,12 +421,6 @@ describe('evaluateUsageBadges — 조회 실패는 예외를 던지지 않는다
     stub.badgesQueryFails = true
     const earned = await evaluateUsageBadges('user-1', 'follower_count', 100)
     expect(earned).toEqual([])
-  })
-
-  it('후보가 없으면(0건) 밴 조회를 하지 않는다', async () => {
-    stub.badges = []
-    await evaluateUsageBadges('user-1', 'follower_count', 100)
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 })
 
@@ -651,7 +623,7 @@ describe('evaluateCheckinUsageBadges — checkin_badge_count(지정 목록 보�
   })
 })
 
-describe('evaluateCheckinUsageBadges — 등급형/레벨형·섀도우밴을 읽지 않음', () => {
+describe('evaluateCheckinUsageBadges — 등급형/레벨형 발급, 고가치 등급 상한 없음', () => {
   it('등급형은 이름 그룹 내 최상위 tier 1개만 발급된다', async () => {
     stub.badges = [
       makeBadge({
@@ -699,8 +671,7 @@ describe('evaluateCheckinUsageBadges — 등급형/레벨형·섀도우밴을 �
     expect(earned.map((e) => e.id)).toEqual([`${fam}-lv1`, `${fam}-lv2`])
   })
 
-  it('hard 밴이 남아 있어도 mystic 등급형 배지가 발급되고 밴 조회를 하지 않는다', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
+  it('mystic 등급형 배지도 그대로 발급된다', async () => {
     stub.badges = [
       makeBadge({ id: 'cat-mystic', rarity: 'mystic', condition_json: { checkin_category_count: { category: 'train_subway', count: 1 } } }),
     ]
@@ -709,7 +680,6 @@ describe('evaluateCheckinUsageBadges — 등급형/레벨형·섀도우밴을 �
 
     const earned = await evaluateCheckinUsageBadges('user-1')
     expect(earned.map((e) => e.id)).toEqual(['cat-mystic'])
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 })
 

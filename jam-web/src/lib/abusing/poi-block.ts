@@ -5,14 +5,13 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.generated'
 import type { AbusingPolicy } from './policy'
 import { chunkIds } from './chunk-ids'
-import { logAbusingEvents, type ExtendResult } from './shadow-ban'
+import { logAbusingEvents, type ExtendResult } from './abusing-log'
 
 /**
  * 해당 유저가 이 POI에서 차단됐는지 확인.
  *
  * 조회 실패는 fail-open(`false` = 차단 아님)으로 둔다. 이 함수는 모든 유저의 픽업 경로마다
- * 호출되므로 fail-closed로 바꾸면 DB 일시 장애가 "전체 픽업 정지"로 번진다 — 반대로
- * `getUserBanLevel()`이 DB 전체 장애 시 `'none'`을 반환해도 영향이 없는 것과 같은 이유
+ * 호출되므로 fail-closed로 바꾸면 DB 일시 장애가 "전체 픽업 정지"로 번진다
  * (20260831_1259 §"DB 전체 장애" 행). 다만 이전에는 이 실패가 완전히 무음이었다 —
  * 최소한 서버 로그는 남긴다 (티켓 20260901_1843).
  */
@@ -83,7 +82,7 @@ export interface ReleasePoiBlocksResult {
 }
 
 /**
- * POI 차단 일괄 해제(티켓 20260924_0952) — 제재 해제(`releaseBans`)와 같은 방식이다. 200건
+ * POI 차단 일괄 해제(티켓 20260924_0952) — 200건
  * 묶음마다 삭제 한 문장 뒤 지운 행을 실행 어드민과 함께 `abusing_logs`에 남긴다.
  */
 export async function releasePoiBlocks(ids: string[], releasedBy: string): Promise<ReleasePoiBlocksResult> {

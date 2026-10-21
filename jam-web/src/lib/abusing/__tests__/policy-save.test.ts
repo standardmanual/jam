@@ -1,6 +1,10 @@
 /**
  * abusing/policy — 저장 실패 전파 + 읽기 정규화 회귀 테스트
  *
+ * 티켓 20261021_1250(6-4 2회): 옛 섀도우밴 드랍 배율 8칸(`soft_*_rate`·`hard_*_rate`)과 불일치 대조(`findPolicyRateMismatches`)·
+ * 저장 시 불일치 경고·`mismatch` 응답·배율 0~1 검증을 지웠다. 이 파일은 남은 칸(GPS 임계값·장소 블록 시간·차량 속도 필터·교통수단·종목 불일치)의
+ * 읽기·저장만 본다. DB 행에는 옛 배율 열이 아직 있으므로(6-4 4회 정리 SQL 몫) 픽스처 행에도 그대로 둔다.
+ *
  * 배경 (티켓 20260831_1149):
  * 1. `updateAbusingPolicy()`가 upsert 반환 `error`를 버려 저장 실패가 "저장됐어요"로 응답됐다.
  * 2. `PUT /api/admin/abusing/policy`에 키 화이트리스트가 없어 폼이 함께 보내는
@@ -15,17 +19,18 @@
  *
  * 갱신 (티켓 20260831_1328): 마이그레이션 115가 적용됐고(근거 1도 소멸) 소비 지점 전수 확인
  * 결과 `DEFAULT_POLICY` 밖 키를 읽는 곳이 없어 상위집합 스프레드를 제거했다.
- * `getAbusingPolicy()`는 이제 `AbusingPolicy` 키만 돌려준다. 구 등급 케이스가 여전히 "차단"인
- * 이유는 상위집합 보존이 아니라 **미지 등급 fail-closed**다(shadow-ban.ts의 타입 맵에 없음).
+ * `getAbusingPolicy()`는 이제 `AbusingPolicy` 키만 돌려준다.
+ *
+ * 갱신 (티켓 20261021_1250, 6-4 2회): `shadow-ban.ts`(와 `shouldAllowDrop`)를 지웠으므로 «미지 등급 fail-closed»
+ * 시험은 함수와 함께 없어졌다. 위 3번의 «구 컬럼명 보존» 근거도 같이 사라졌다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/abusing/__tests__/policy-save.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NextRequest } from 'next/server'
-import type { BadgeRarity } from '@/types/database'
 
-/** 마이그레이션 115 적용 후의 `abusing_policy` 행 */
+/** 마이그레이션 115 적용 후의 `abusing_policy` 행 — 옛 배율 열 8개가 그대로 들어 있다(코드는 읽지 않는다) */
 const POST_115_ROW: Record<string, unknown> = {
   id: 1,
   soft_common_rate: 1.0,
@@ -46,24 +51,6 @@ const POST_115_ROW: Record<string, unknown> = {
   transit_segment_min_duration_sec: 30,
   mismatch_run_min_speed_kmh: 6,
   mismatch_cycling_min_speed_kmh: 10,
-  updated_at: '2026-08-13T01:28:00.090694+00:00',
-}
-
-/** 마이그레이션 115 실행 **전**의 실제 행 (조사 시점 2026-08-31 백업값) */
-const PRE_115_ROW: Record<string, unknown> = {
-  id: 1,
-  soft_common_rate: 1.0,
-  soft_rare_rate: 1.0,
-  soft_legendary_rate: 0.0,
-  soft_mythic_rate: 0.0,
-  hard_common_rate: 1.0,
-  hard_rare_rate: 0.0,
-  hard_legendary_rate: 0.0,
-  hard_mythic_rate: 0.0,
-  gps_max_speed_kmh: 300,
-  poi_block_hours: 72,
-  vehicle_speed_filter_kmh: 60,
-  gps_daily_distance_cap_km: 3000,
   updated_at: '2026-08-13T01:28:00.090694+00:00',
 }
 
@@ -99,11 +86,9 @@ vi.mock('@/lib/admin/auth', () => ({
 import {
   getAbusingPolicy,
   updateAbusingPolicy,
-  findPolicyRateMismatches,
   DEFAULT_POLICY,
   MIN_VEHICLE_SPEED_FILTER_KMH,
 } from '../policy'
-import { shouldAllowDrop } from '../shadow-ban'
 import { PUT } from '@/app/api/admin/abusing/policy/route'
 
 const fakeReq = (body: unknown) => ({ json: async () => body }) as unknown as NextRequest
@@ -117,51 +102,43 @@ beforeEach(() => {
 })
 
 describe('getAbusingPolicy — DEFAULT_POLICY 키만 돌려준다', () => {
-  it('마이그레이션 115 미실행 구간에서는 신규 등급 키가 기본값으로 폴백하고, 구 등급 드랍은 fail-closed로 차단된다', async () => {
-    stub.row = { ...PRE_115_ROW }
+  it('행에 옛 배율 열 8개가 있어도 결과에 담지 않고, 없어도 읽기가 깨지지 않으며 로그도 남기지 않는다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const RATE_COLUMNS = [
+      'soft_common_rate', 'soft_rare_rate', 'soft_epic_rate', 'soft_mystic_rate',
+      'hard_common_rate', 'hard_rare_rate', 'hard_epic_rate', 'hard_mystic_rate',
+    ]
+
+    const withRates = await getAbusingPolicy() // POST_115_ROW에는 배율 열 8개가 있다
+    expect(Object.keys(withRates).filter((k) => RATE_COLUMNS.includes(k))).toEqual([])
+    expect(withRates.gps_max_speed_kmh).toBe(300)
+
+    const withoutRates = { ...POST_115_ROW }
+    for (const column of RATE_COLUMNS) delete withoutRates[column]
+    stub.row = withoutRates
     const policy = await getAbusingPolicy()
-
-    // 상위집합을 돌려주지 않으므로 구 컬럼명(soft_legendary_rate 등)은 결과에 없다 —
-    // 신규 키(soft_epic_rate 등)는 PRE_115_ROW에 없어 DEFAULT_POLICY로 폴백한다.
-    expect(policy.soft_epic_rate).toBe(DEFAULT_POLICY.soft_epic_rate)
-    expect(policy.hard_epic_rate).toBe(DEFAULT_POLICY.hard_epic_rate)
-
-    // 115 미실행 구간의 DB enum 값은 'mythic'/'legendary'라 타입 단언으로 그 구간을 재현한다.
-    // shadow-ban.ts의 `Record<BadgeRarity, keyof AbusingPolicy>` 맵에 없는 등급이라
-    // fail-closed로 차단된다 (티켓 20260831_1259) — 상위집합 보존과는 무관하다.
-    expect(shouldAllowDrop('mythic' as BadgeRarity, 'soft', policy)).toBe(false)
-    expect(shouldAllowDrop('legendary' as BadgeRarity, 'soft', policy)).toBe(false)
-    expect(shouldAllowDrop('legendary' as BadgeRarity, 'hard', policy)).toBe(false)
+    expect(policy).toEqual(withRates)
+    expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
   })
 
-  it('마이그레이션 115 적용 후에는 신규 키로 판정한다', async () => {
-    const policy = await getAbusingPolicy()
-    expect(shouldAllowDrop('mystic', 'soft', policy)).toBe(false)
-    expect(shouldAllowDrop('common', 'soft', policy)).toBe(true)
-    // 115의 5절 결정대로 epic 차단은 꺼진 상태(1.0)를 유지한다
-    expect(shouldAllowDrop('epic', 'soft', policy)).toBe(true)
-    expect(shouldAllowDrop('rare', 'hard', policy)).toBe(false)
-  })
-
   it('NUMERIC이 문자열로 내려와도 숫자로 정규화한다', async () => {
-    stub.row = { ...POST_115_ROW, soft_epic_rate: '0.30', gps_max_speed_kmh: '250' }
+    stub.row = { ...POST_115_ROW, transit_run_max_speed_kmh: '27.5', gps_max_speed_kmh: '250' }
     const policy = await getAbusingPolicy()
-    expect(policy.soft_epic_rate).toBeCloseTo(0.3)
+    expect(policy.transit_run_max_speed_kmh).toBeCloseTo(27.5)
     expect(policy.gps_max_speed_kmh).toBe(250)
   })
 
   it('키가 없으면 기본값으로 폴백하고 서버 로그를 남긴다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const withoutEpic = { ...POST_115_ROW }
-    delete withoutEpic.soft_epic_rate
-    stub.row = withoutEpic
+    const withoutWalk = { ...POST_115_ROW }
+    delete withoutWalk.transit_walk_max_speed_kmh
+    stub.row = withoutWalk
 
     const policy = await getAbusingPolicy()
-    expect(policy.soft_epic_rate).toBe(DEFAULT_POLICY.soft_epic_rate)
+    expect(policy.transit_walk_max_speed_kmh).toBe(DEFAULT_POLICY.transit_walk_max_speed_kmh)
     expect(spy).toHaveBeenCalled()
-    expect(String(spy.mock.calls[0][0])).toContain('soft_epic_rate')
+    expect(String(spy.mock.calls[0][0])).toContain('transit_walk_max_speed_kmh')
     spy.mockRestore()
   })
 
@@ -226,56 +203,12 @@ describe('updateAbusingPolicy — upsert 실패 전파', () => {
   })
 
   it('정상이면 { id: 1, ...patch, updated_at } 페이로드로 저장한다', async () => {
-    await updateAbusingPolicy({ soft_epic_rate: 0.5 })
+    await updateAbusingPolicy({ poi_block_hours: 48 })
     expect(stub.upsertPayloads).toHaveLength(1)
     const payload = stub.upsertPayloads[0]
     expect(payload.id).toBe(1)
-    expect(payload.soft_epic_rate).toBe(0.5)
+    expect(payload.poi_block_hours).toBe(48)
     expect(typeof payload.updated_at).toBe('string')
-  })
-})
-
-describe('findPolicyRateMismatches — DB 배율과 DEFAULT_POLICY 대조', () => {
-  it('배율 8종이 모두 같으면 빈 배열을 돌려준다', () => {
-    expect(findPolicyRateMismatches(DEFAULT_POLICY)).toEqual([])
-  })
-
-  it('갈라진 키만 { key, dbValue, codeValue }로 돌려준다', () => {
-    const current = { ...DEFAULT_POLICY, soft_epic_rate: 0.5, hard_mystic_rate: 0.2 }
-    const mismatches = findPolicyRateMismatches(current)
-    expect(mismatches).toHaveLength(2)
-    expect(mismatches).toContainEqual({ key: 'soft_epic_rate', dbValue: 0.5, codeValue: 1.0 })
-    expect(mismatches).toContainEqual({ key: 'hard_mystic_rate', dbValue: 0.2, codeValue: 0.0 })
-  })
-
-  it('임계값 4종(gps_max_speed_kmh 등)은 대조 대상이 아니다', () => {
-    const current = { ...DEFAULT_POLICY, gps_max_speed_kmh: 999 }
-    expect(findPolicyRateMismatches(current)).toEqual([])
-  })
-})
-
-describe('updateAbusingPolicy — 저장 시 DEFAULT_POLICY 불일치 경고', () => {
-  it('저장 후 읽은 값이 DEFAULT_POLICY와 다르면 console.warn을 1회 남긴다', async () => {
-    // upsert 자체는 목이라 DB를 실제로 바꾸지 않으므로, "저장 후 상태"는 select가 돌려주는
-    // stub.row로 시뮬레이션한다 (기존 테스트와 동일한 방식).
-    stub.row = { ...POST_115_ROW, soft_epic_rate: 0.5 }
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    await updateAbusingPolicy({ soft_epic_rate: 0.5 })
-    expect(spy).toHaveBeenCalledTimes(1)
-    const msg = String(spy.mock.calls[0][0])
-    expect(msg).toContain('soft_epic_rate')
-    expect(msg).toContain('DB=0.5')
-    expect(msg).toContain('policy.ts=1')
-    expect(msg).toContain('DEFAULT_POLICY')
-    spy.mockRestore()
-  })
-
-  it('저장 후 읽은 값이 DEFAULT_POLICY와 일치하면 console.warn을 남기지 않는다', async () => {
-    stub.row = { ...POST_115_ROW }
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    await updateAbusingPolicy({ gps_max_speed_kmh: 300 })
-    expect(spy).not.toHaveBeenCalled()
-    spy.mockRestore()
   })
 })
 
@@ -290,15 +223,18 @@ describe('PUT /api/admin/abusing/policy — 키 화이트리스트', () => {
       (k) => k !== 'id' && k !== 'updated_at' && !(k in DEFAULT_POLICY)
     )
     expect(extraneous).toEqual([])
+    // 폼이 옛 배율 칸을 함께 보내도(열려 있던 옛 화면) 저장 본문에는 실리지 않는다
+    expect(Object.keys(payload).filter((k) => /^(soft|hard)_.*_rate$/.test(k))).toEqual([])
     // updated_at은 서버가 새로 찍은 값이어야 한다 (폼이 보낸 옛 값이 아니라)
     expect(payload.updated_at).not.toBe(POST_115_ROW.updated_at)
   })
 
-  it('배율 8종은 0~1 범위를 벗어나면 400으로 거절한다', async () => {
-    const res = await PUT(fakeReq({ soft_epic_rate: 1.5 }))
-    expect(res.status).toBe(400)
-    expect((await res.json()).error).toContain('0~1 범위를 벗어났어요')
-    expect(stub.upsertPayloads).toHaveLength(0)
+  it('옛 배율 키는 본문에 와도 0~1 검증 없이 버려지고, 함께 보낸 다른 칸은 저장된다', async () => {
+    const res = await PUT(fakeReq({ soft_epic_rate: 1.5, gps_max_speed_kmh: 301 }))
+    expect(res.status).toBe(200)
+    expect(stub.upsertPayloads).toHaveLength(1)
+    expect(stub.upsertPayloads[0].gps_max_speed_kmh).toBe(301)
+    expect('soft_epic_rate' in stub.upsertPayloads[0]).toBe(false)
   })
 
   it('숫자가 아니거나 음수면 400으로 거절한다', async () => {
@@ -364,7 +300,7 @@ describe('PUT /api/admin/abusing/policy — 키 화이트리스트', () => {
   it('저장이 실패하면 200이 아니라 500 + 사유를 응답한다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     stub.upsertError = { code: 'PGRST204', message: 'column not found' }
-    const res = await PUT(fakeReq({ soft_epic_rate: 1 }))
+    const res = await PUT(fakeReq({ gps_max_speed_kmh: 300 }))
     expect(res.status).toBe(500)
     const json = await res.json()
     expect(json.ok).toBeUndefined()
@@ -373,20 +309,31 @@ describe('PUT /api/admin/abusing/policy — 키 화이트리스트', () => {
     spy.mockRestore()
   })
 
-  it('저장 후 DB 값이 DEFAULT_POLICY와 갈리면 응답에 mismatch를 실어 어드민 배너가 쓸 수 있게 한다', async () => {
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    stub.row = { ...POST_115_ROW, soft_epic_rate: 0.5 }
-    const res = await PUT(fakeReq({ soft_epic_rate: 0.5 }))
-    expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.mismatch).toContainEqual({ key: 'soft_epic_rate', dbValue: 0.5, codeValue: 1.0 })
-    spy.mockRestore()
-  })
-
-  it('일치하면 응답의 mismatch가 빈 배열이다', async () => {
+  it('응답에 mismatch(옛 배율 불일치 경고)가 없고 저장 직후 읽은 정책을 돌려준다', async () => {
     const res = await PUT(fakeReq({ gps_max_speed_kmh: 300 }))
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json.mismatch).toEqual([])
+    expect(json.mismatch).toBeUndefined()
+    expect(json.ok).toBe(true)
+    expect(json.policy.gps_max_speed_kmh).toBe(300)
+  })
+
+  it('저장 후 읽은 값이 DEFAULT_POLICY와 달라도 경고 로그를 남기지 않는다', async () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    stub.row = { ...POST_115_ROW, gps_max_speed_kmh: 999 }
+    await updateAbusingPolicy({ gps_max_speed_kmh: 999 })
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+})
+
+describe('GET /api/admin/abusing/policy', () => {
+  it('정책만 돌려주고 mismatch는 없다', async () => {
+    const { GET } = await import('@/app/api/admin/abusing/policy/route')
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.mismatch).toBeUndefined()
+    expect(json.policy.poi_block_hours).toBe(72)
   })
 })

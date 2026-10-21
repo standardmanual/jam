@@ -69,17 +69,11 @@ const state = vi.hoisted(() => ({
   inserts: [] as { user_id: string; badge_id: string; triggered_by: string }[],
 }))
 
-const getUserBanLevelMock = vi.hoisted(() =>
-  vi.fn<(userId: string) => Promise<'none' | 'soft' | 'hard'>>(async () => 'none')
-)
-
 function resetState() {
   state.tables = { badges: [], user_activity_badges: [], poi_drops: [] }
   state.errors = {}
   state.queried = []
   state.inserts = []
-  getUserBanLevelMock.mockReset()
-  getUserBanLevelMock.mockResolvedValue('none')
 }
 
 function mockSupabase(): SupabaseClient {
@@ -156,10 +150,6 @@ function mockSupabase(): SupabaseClient {
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
-vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
-  return { ...actual, getUserBanLevel: (userId: string) => getUserBanLevelMock(userId) }
-})
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/policy')>()
   return { ...actual, getAbusingPolicy: vi.fn(async () => actual.DEFAULT_POLICY) }
@@ -190,7 +180,6 @@ const idsOf = (earned: { id: string }[]) => earned.map((b) => b.id)
 beforeEach(() => {
   resetState()
   vi.clearAllMocks()
-  getUserBanLevelMock.mockResolvedValue('none')
   nextDropId = 0
 })
 

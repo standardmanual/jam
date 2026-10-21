@@ -246,10 +246,6 @@ vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => true) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
 vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
-vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
-  return { ...actual, getUserBanLevel: vi.fn(async () => 'none') }
-})
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/policy')>()
   return { ...actual, getAbusingPolicy: vi.fn(async () => actual.DEFAULT_POLICY) }

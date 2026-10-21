@@ -3,8 +3,8 @@
  *
  * 티켓 20261001_1219: 시뮬레이터가 v1 상수(40/25/10/5)로 따로 굴려 엔진과 어긋났다.
  * `planItemDrops`가 같은 난수열에서 `rollBonusDrop`·`rollRarityV2`·`selectBadge`를 직접 부른
- * 결과와 같은 값을 내는지, 일일 하향·pity·복귀·보너스 드랍·슬롯 가득·후보 없음·섀도우밴 경우와
- * 입력 객체 불변을 본다.
+ * 결과와 같은 값을 내는지, 일일 하향·pity·복귀·보너스 드랍·슬롯 가득·후보 없음 경우와
+ * 입력 객체 불변을 본다. 섀도우밴 상한(`capRarity`)과 `shadow_ban_blocked` 사유는 티켓 20261021_1250에서 지웠다.
  */
 import { vi } from 'vitest'
 import { planItemDrops, type PlanItemDropsInput, type PlannableStructure } from '../preview'
@@ -141,7 +141,6 @@ function makeInput(overrides: Partial<PlanItemDropsInput> = {}): PlanItemDropsIn
     activity: makeActivity(),
     activityStartDate: ACTIVITY_START,
     activityWeight: 1,
-    capRarity: (rarity) => rarity,
     ...overrides,
   }
 }
@@ -378,22 +377,13 @@ describe('planItemDrops — 판정 단계별 경우', () => {
     ])
   })
 
-  it('섀도우밴으로 등급이 강등되면 상한 적용 등급으로 배지를 고른다', () => {
-    const banned = makeInput({
-      capRarity: (rarity) => (rarity === 'epic' || rarity === 'mystic' ? 'common' : rarity),
-    })
-    // 난수 0.9 → epic 추첨, 상한으로 common 강등
-    const plan = planItemDrops(banned, seq(0.99, 0.9, 0.5))
+  it('등급 상한이 없어 추첨한 등급이 그대로 후보 선택 등급이 된다 (cappedRarity는 rolledRarity와 같다)', () => {
+    // 난수 0.9 → epic 추첨 — 예전에는 밴 상한으로 common 강등이 있었지만 지금은 그대로 epic 후보를 고른다
+    const plan = planItemDrops(makeInput(), seq(0.99, 0.9, 0.5))
     expect(plan.drops[0].rolledRarity).toBe('epic')
-    expect(plan.drops[0].cappedRarity).toBe('common')
-    expect(plan.drops[0].badge.rarity).toBe('common')
-  })
-
-  it('섀도우밴으로 등급이 막히면 shadow_ban_blocked로 빠지고 다음 난수를 쓰지 않는다', () => {
-    const blocked = makeInput({ capRarity: () => null })
-    const plan = planItemDrops(blocked, seq(0.99, 0.5, 0.5))
-    expect(plan.drops).toEqual([])
-    expect(plan.skipped).toEqual([{ attempt: 0, reason: 'shadow_ban_blocked', rolledRarity: 'common' }])
+    expect(plan.drops[0].cappedRarity).toBe('epic')
+    expect(plan.drops[0].badge.rarity).toBe('epic')
+    expect(plan.skipped).toEqual([])
   })
 })
 

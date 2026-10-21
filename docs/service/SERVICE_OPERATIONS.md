@@ -440,10 +440,8 @@ tryItemDrop(userId, activityId):
    0.75 ~ 0.80: mystic   ( 5%)
    0.80 ~ 1.00: null     (20%, 드랍 없음)
 
-2. 섀도우밴 적용 (shouldAllowDrop):
-   soft 밴 → epic, mystic 드랍률 0%로 강제
-   hard 밴 → rare, epic, mystic 드랍률 0%로 강제
-              (common만 통과)
+2. 섀도우밴 적용: 없앴다 (옛 규칙 — soft 밴은 epic·mystic, hard 밴은 rare·epic·mystic 드랍률을 0%로 강제하고
+   common으로 강등했다. 동기화 경로는 티켓 20261017_1426에서 읽기를 끊었고 코드는 6-4 2회(티켓 20261021_1250)에서 지웠다. 12-3 참조)
    null rarity → 바로 종료 (드랍 없음)
 
 3. 배지 후보 조회:
@@ -473,7 +471,7 @@ tryItemDrop(userId, activityId):
 | mystic | 5% | — |
 | 드랍 없음 | — | 20% |
 
-섀도우밴 시 epic/mystic 또는 rare까지 차단되어 실질 드랍률 감소.
+섀도우밴으로 실질 드랍률을 낮추던 옛 규칙은 없앴다(6-4 2회, 티켓 20261021_1250). 12-3 참조.
 
 ---
 
@@ -948,37 +946,20 @@ checkAndUpdateLocation(userId, lat, lng):
   났다(티켓 20260813_002의 6건, 20260831_1504의 2건 모두 같은 근본 원인). 이 함수를
   다시 손댈 때는 반환 단위를 재확인할 것.
 
-### 12-3. 섀도우밴
+### 12-3. 섀도우밴 — 없앴다 (티켓 20261017_1426에서 읽기를 끊고, 6-4 2회 티켓 20261021_1250에서 코드를 지움)
 
-```
-user_shadow_bans { user_id, ban_level: 'soft'|'hard', reason, expires_at }
+지금의 도둑 의심(GPS 조작) 제재는 셋이다 (정책 문서 20번 4절). 픽업 때 `12-2`의 감지에 걸리면
+1. 그 픽업을 거부한다(403).
+2. 그 장소를 `poi_block_hours`(기본 72시간) 동안 차단한다(12-4).
+3. `abusing_logs`에 `gps_spoof_detected`를 기록한다.
 
-soft 밴:
-  epic, mystic 발급 → 0% (차단)
-  rare, common 정상 유지
+이용 정지는 자동으로 걸지 않는다 — 운영자가 기록을 보고 어드민 «이용 정지»에서 건다. «운영자에게 알린다»는 앱 코드에
+알림이 없고 별도 티켓에서 다룬다.
 
-hard 밴:
-  rare, epic, mystic 발급 → 0% (차단)
-  common만 정상 유지
-```
-
-적용 경로 (`getUserBanLevel()`·`shouldAllowDrop()` 공용, `src/lib/abusing/shadow-ban.ts`):
-- 아이템 드랍(`src/lib/drop-engine/index.ts`) — 차단된 등급은 common으로 강등한다("활동당
-  최소 1개 확정" 보장을 지키기 위한 예외), common도 차단이면 그 드랍 자체가 취소된다
-- 액티비티 배지 발급(`src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed`) — rarity가
-  있는 배지(등급형·반복형 등급 사다리)만 대상. 레벨형(`rarity` NULL)은 등급 서열이 없어
-  대상이 아니다. 강등 없이 차단되며, 그 배치에서는 단순 미발급으로 남는다(조건 자체는
-  유지되므로 밴이 풀린 뒤 다음 평가에서 정상 발급된다)
-- 서비스 사용량 배지(`src/lib/badge-engine/usageBadges.ts`, 팔로우 API·동기화 API 트리거) —
-  rarity가 있는 배지만 대상, 액티비티 배지와 동일한 판정(강등 없이 미발급)
-- POI·체크인 배지 발급(`src/lib/strava/sync.ts`의 `processFetchedActivities`) — checkin
-  타입(`user_checkin_badge_earns`)은 최초 획득에만 적용(반복 방문 카운터 증가는 대상 밖),
-  레거시 `activity`+`poi_id` 타입(`user_activity_badges`)은 항상 최초 1회 지급이라 매번
-  적용. 어드민 시뮬레이터(`/api/admin/simulate`)는 실유저 발급과 분리된 진단 도구라
-  의도적으로 게이트 밖에 있다
-
-> ⚠️ 위는 **설계 의도**다. **Epic 차단은 현재 꺼져 있다**(soft/hard 모두 배율 1.00).
-> 경위와 판단 보류 사유는 [12-6](#12-6-어뷰징-정책-싱글톤-abusing_policy) 참조.
+옛 방식은 `user_shadow_bans`에 soft/hard 밴을 걸어 epic·mystic(hard는 rare까지) 드랍률을 0%로 낮추고 차단된 등급을 common으로
+강등하는 것이었다. 이 방식과 쓰던 코드 — `lib/abusing/shadow-ban.ts`(`getUserBanLevel`·`shouldAllowDrop`·`applyBan` 등),
+드랍 엔진의 `applyShadowBanCap`, 어드민 밴 관리 API(`api/admin/abusing/bans/**`) — 를 모두 지웠다. `user_shadow_bans` 표는
+**코드가 쓰지 않음, 표 정리 대기(6-4 4회 정리 SQL)**다.
 
 ### 12-4. POI 블록
 
@@ -1033,18 +1014,9 @@ Strava 동기화 시 (poiMatchTargets — 배치 최신 10건, POI 매칭과 동
 ### 12-6. 어뷰징 정책 싱글톤 (abusing_policy)
 
 ```sql
--- 컬럼 16종 + id + updated_at (2026-09-09 마이그레이션 148 반영)
+-- 코드가 읽는 칸 10종 + id + updated_at (옛 배율 8열은 아래 참고)
 abusing_policy {
   id: 1 (항상 단 1건)
-  -- 밴 등급별 드랍 배율 (0.0 = 완전 차단, 1.0 = 정상). 8종 모두 0~1
-  soft_common_rate:  1.0            -- soft밴 시 common 드랍률
-  soft_rare_rate:    1.0            -- soft밴 시 rare 드랍률
-  soft_epic_rate:    1.0            -- soft밴 시 epic 드랍률  ⚠️ 아래 주석 참조
-  soft_mystic_rate:  0.0            -- soft밴 시 mystic 드랍률
-  hard_common_rate:  1.0            -- hard밴 시 common 드랍률
-  hard_rare_rate:    0.0            -- hard밴 시 rare 드랍률
-  hard_epic_rate:    1.0            -- hard밴 시 epic 드랍률  ⚠️ 아래 주석 참조
-  hard_mystic_rate:  0.0            -- hard밴 시 mystic 드랍률
   -- 임계값 (상한 없는 정수)
   gps_max_speed_kmh:                300  -- GPS 조작 감지 기준
   gps_daily_distance_cap_km:        3000 -- 일일 누적 이동거리 상한
@@ -1054,41 +1026,31 @@ abusing_policy {
   transit_run_max_speed_kmh:        27   -- 러닝 활동 중 교통수단 구간 감지 임계값 (12-5)
   transit_cycling_max_speed_kmh:    55   -- 자전거 활동 중 교통수단 구간 감지 임계값 (12-5)
   transit_segment_min_duration_sec: 30   -- 교통수단 구간 판정 최소 연속 지속시간 (12-5)
+  mismatch_run_min_speed_kmh:       6    -- 러닝 평균속도가 이보다 느리면 걷기(가벼움)로 계산 (양의 정수, 티켓 20261017_1421)
+  mismatch_cycling_min_speed_kmh:   10   -- 자전거 평균속도가 이보다 느리면 걷기(가벼움)로 계산 (양의 정수, 티켓 20261017_1421)
   updated_at
 }
 ```
 
-> ⚠️ **Epic 차단은 현재 의도적으로 꺼져 있다** (`soft_epic_rate` = `hard_epic_rate` = **1.00**).
-> 12-3의 "soft/hard 밴 → epic 0% 차단"은 **설계 의도이지 현재 동작이 아니다.**
->
-> 경위: 2026-08-13 티켓 20260813_003의 rename 누락으로 코드가 조회하는 키와 DB 컬럼명이
-> 어긋났고, `shadow-ban.ts`의 `?? 1.0` 폴백이 그 결여를 "허용"으로 읽어 Epic 차단이 18일간
-> 무음으로 꺼져 있었다. 마이그레이션 115(티켓 20260831_1115)가 컬럼명을 통일하면서
-> **유저 체감 동작을 바꾸지 않기로 결정해**(사용자 확인 2026-08-31) 실효값 1.00을 명시했다.
-> **차단을 실제로 켤지는 어뷰징 현황을 확인한 뒤 별도 티켓에서 판단한다.**
-> Mystic 차단(0.00)은 그동안에도 정상 작동했다.
+> 옛 섀도우밴 드랍 배율 8열(`soft_common_rate` … `hard_mystic_rate`)은 DB 행에 남아 있다(NOT NULL·기본값). 어드민 화면·저장 API·
+> `DEFAULT_POLICY` 어디에서도 읽거나 쓰지 않는다 — **코드가 쓰지 않음, 열 정리 대기(6-4 4회 정리 SQL)**. 지우면 값이 사라지므로(되돌릴 수 없다)
+> 정리 SQL 단계에서 백업 여부를 정한다. 6-4 2회(티켓 20261021_1250)에서 어드민 «정책 설정» 탭의 «투트랙 정책» 안내와 Soft-ban·Hard-ban 배율 입력
+> 8칸, DB 값과 코드 기본값의 불일치 경고를 함께 지웠다.
 
 어드민 패널(`/admin/abusing`)에서 `PUT /api/admin/abusing/policy`로 수정한다.
-라우트는 `DEFAULT_POLICY`의 16개 키만 통과시키는 화이트리스트를 돌린다 — 배율 8종은 0~1,
-임계값 8종은 0 이상만 검사하고 상한을 두지 않는다. 저장 실패는 500 + `error`로 화면에 노출된다
+라우트는 `DEFAULT_POLICY`의 10개 키만 통과시키는 화이트리스트를 돌린다 — 모두 0 이상만 검사하고 상한을 두지 않는다
+(차량 속도 필터는 하한 20, 종목 불일치 두 칸은 1 이상 정수). 옛 배율 8종의 0~1 검증은 지웠고, 그 키가 본문에 와도 화이트리스트에 없어 버려진다. 저장 실패는 500 + `error`로 화면에 노출된다
 (2026-08-13 ~ 08-31 사이 이 화면의 저장은 전부 무음 실패했다 — 티켓 20260831_1149).
 
 **불변식: `src/lib/abusing/policy.ts`의 `DEFAULT_POLICY`는 이 행의 미러다.**
 "바람직한 값"이 아니라 **DB를 못 읽을 때 현행 운영값을 그대로 재현하는 값**이다.
-폴백이 정책을 바꾸면 장애 대응이 아니라 무음 정책 변경이 된다 — 실제로 `DEFAULT_POLICY`의
-Epic 배율만 `0.0`이어서 정책 조회가 한 번 실패하면 의도적으로 꺼둔 Epic 차단이 켜졌다
-(티켓 20260831_1259에서 `1.0`으로 정렬).
+폴백이 정책을 바꾸면 장애 대응이 아니라 무음 정책 변경이 된다(티켓 20260831_1259).
 
-> ⚠️ **DB의 배율을 바꾸면 같은 티켓에서 `policy.ts`의 `DEFAULT_POLICY`도 함께 바꾼다.**
+> ⚠️ **DB의 값을 바꾸면 같은 티켓에서 `policy.ts`의 `DEFAULT_POLICY`도 함께 바꾼다.**
 > 한쪽만 바꾸면 정상 경로와 폴백 경로의 판정이 갈리고, 그 차이는 무음으로 드러나지 않는다.
-> 회귀 가드: `src/lib/abusing/__tests__/shadow-ban.test.ts`가 배율 8종의 일치를 고정한다.
+> (예전에는 저장할 때 DB와 `DEFAULT_POLICY`가 갈라지면 경고를 남겼으나 배율 8칸과 함께 지웠다 — 6-4 2회.)
 
-소비 지점 `shouldAllowDrop()`의 폴백 방향도 이 행과 묶여 있다 — **미지 등급은 차단(fail-closed),
-값 결여·NaN은 `DEFAULT_POLICY` 폴백**이며 둘 다 `console.error`를 남긴다.
-다만 미지 등급의 **실효 결과는 "드랍 취소"가 아니라 "common 강등"** 이다 — 호출부
-`drop-engine/index.ts`의 `applyShadowBanCap()`이 차단된 등급을 common으로 낮춰 재판정하고,
-common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키 매핑은
-`Record<BadgeRarity, keyof AbusingPolicy>`로 고정돼 있어 등급명이 바뀌면 `tsc`가 잡는다.
+읽기(`getAbusingPolicy`)는 `DEFAULT_POLICY`의 키로만 값을 골라 정규화한다. DB 행에 옛 배율 열이 있든 없든 읽기가 깨지지 않는다.
 
 ---
 
@@ -1186,7 +1148,6 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | POST | `/api/admin/drop-policy/exclusions/bulk` | 드랍 제외 관리 일괄 제외·제외 해제(아이템배지·컬렉션) |
 | GET | `/api/admin/drop-policy/exclusions/ids` | 드랍 제외 관리 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
 | GET, PUT | `/api/admin/abusing/policy` | 어뷰징 정책 조회/수정 |
-| GET, POST, DELETE | `/api/admin/abusing/bans` | 섀도우밴 목록/부여 |
 | GET, DELETE | `/api/admin/abusing/poi-blocks` | POI 블록 관리 |
 
 ---
@@ -1218,7 +1179,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | `drop_events` | 이벤트성 드랍 (total/claimed_quantity) | 003 |
 | `drop_claims` | 드랍 이벤트 수령 기록 | 003 |
 | `abusing_policy` | 어뷰징 방어 정책 싱글톤 (id=1) | 010 |
-| `user_shadow_bans` | 섀도우밴 기록 (ban_level, expires_at) | 010 |
+| `user_shadow_bans` | 섀도우밴 기록 (ban_level, expires_at) — 코드가 쓰지 않음, 표 정리 대기(6-4 4회) | 010 |
 | `poi_blocks` | POI별 유저 블록 기록 (blocked_until) | 010 |
 | `abusing_logs` | 어뷰징 감지 로그 | 010 |
 

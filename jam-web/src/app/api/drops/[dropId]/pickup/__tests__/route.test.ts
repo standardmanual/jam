@@ -62,6 +62,8 @@ const state = vi.hoisted(() => ({
     | 'throw',
   badgeReads: 0,
   afterCallbacks: [] as (() => unknown)[],
+  /** 서비스 클라이언트가 `from()`으로 연 표 이름(옛 밴 표를 건드리지 않는지 확인하는 데 쓴다) */
+  tablesTouched: [] as string[],
 }))
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
@@ -70,6 +72,8 @@ const createNotificationMock = vi.hoisted(() =>
 )
 const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
 const logMock = vi.hoisted(() => vi.fn())
+const blockPoiMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
+const logAbusingEventMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
 
 // 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
@@ -85,6 +89,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
   createServiceClient: () => ({
     from: (table: string) => {
+      state.tablesTouched.push(table)
       const builder: Record<string, unknown> = {}
       builder.select = () => builder
       builder.eq = () => builder
@@ -122,13 +127,15 @@ vi.mock('@/lib/poi/proximity', async (importOriginal) => {
 vi.mock('@/lib/abusing/policy', () => ({ getAbusingPolicy: async () => ({ poi_block_hours: 24 }) }))
 vi.mock('@/lib/abusing/poi-block', () => ({
   isPoiBlocked: async () => state.blocked,
-  blockPoiForUser: async () => {},
+  blockPoiForUser: (...args: unknown[]) => blockPoiMock(...args),
 }))
 vi.mock('@/lib/abusing/gps-detector', () => ({
   checkAndUpdateLocation: async () =>
     (state.gpsCalls += 1) && state.gpsDetected ? { detected: true, reason: 'speed', speedKmh: 400, dailyDistanceKm: 0 } : { detected: false },
 }))
-vi.mock('@/lib/abusing/shadow-ban', () => ({ applyBan: async () => {}, logAbusingEvent: async () => {} }))
+// 옛 섀도우밴 모듈(`shadow-ban.ts`)은 모킹하지 않는다. 라우트가 옛 밴을 다시 부르면 실제 `applyBan`이 `user_shadow_bans`를 열어
+// `state.tablesTouched`에 남아 시험이 실패한다(티켓 20261021_1250).
+vi.mock('@/lib/abusing/abusing-log', () => ({ logAbusingEvent: (...args: unknown[]) => logAbusingEventMock(...args) }))
 vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/suspension/suspension')>()
   return {
@@ -202,6 +209,7 @@ beforeEach(() => {
   state.scoreResult = { data: [{ score_added: 5, current_chapter: null, reached_chapters: [] }], error: null }
   state.badgeReads = 0
   state.afterCallbacks = []
+  state.tablesTouched = []
   runJamActionMock.mockResolvedValue(undefined)
   logMock.mockResolvedValue(undefined)
 })
@@ -532,6 +540,56 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
     expect(await res.json()).toEqual(blockCode ? { error: message, code: blockCode } : { error: message })
     expect(state.afterCallbacks).toHaveLength(0)
     expect(createNotificationMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('GPS 조작 의심 제재 — 픽업 거부·장소 차단·기록만 남는다 (티켓 20261021_1250, 정책 20번 4절)', () => {
+  it('403으로 거부하고 이 장소를 차단하고 gps_spoof_detected를 기록한다', async () => {
+    state.gpsDetected = true
+    const res = await POST(request(), params())
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.drops.pickupLocationUnverified })
+    expect(blockPoiMock).toHaveBeenCalledTimes(1)
+    expect(blockPoiMock).toHaveBeenCalledWith(PICKER, 'poi-1', { poi_block_hours: 24 }, 'gps_spoof_detected (속도 400km/h)')
+    expect(logAbusingEventMock).toHaveBeenCalledTimes(1)
+    expect(logAbusingEventMock).toHaveBeenCalledWith(PICKER, 'gps_spoof_detected', {
+      poi_id: 'poi-1',
+      reason: 'speed',
+      speed_kmh: 400,
+      daily_distance_km: 0,
+      lat: BODY.user_lat,
+      lng: BODY.user_lng,
+    })
+    expect(state.rpcCalls).toBe(0)
+  })
+
+  it('옛 섀도우밴 표(user_shadow_bans)에 쓰지 않고 이용 정지도 자동으로 걸지 않는다', async () => {
+    state.gpsDetected = true
+    await POST(request(), params())
+
+    expect(state.tablesTouched).not.toContain('user_shadow_bans')
+    expect(state.tablesTouched).not.toContain('user_suspensions')
+  })
+
+  it('장소 차단·기록 저장이 실패해도 이번 픽업은 403으로 막고 서버 로그를 남긴다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.gpsDetected = true
+    blockPoiMock.mockRejectedValueOnce(new Error('poi_blocks upsert 실패'))
+    const res = await POST(request(), params())
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.drops.pickupLocationUnverified })
+    expect(state.rpcCalls).toBe(0)
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('GPS가 정상이면 장소 차단도 기록도 하지 않는다', async () => {
+    await POST(request(), params())
+
+    expect(blockPoiMock).not.toHaveBeenCalled()
+    expect(logAbusingEventMock).not.toHaveBeenCalled()
   })
 })
 

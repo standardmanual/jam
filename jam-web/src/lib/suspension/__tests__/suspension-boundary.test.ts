@@ -4,8 +4,8 @@
  * ① `suspension-contract.ts`는 import가 없는 순수 파일이다. 클라이언트가 이 파일을 가져와도 서버 모듈이 번들에 끌려오지 않는다.
  *    클라이언트 진입점(동기화 버튼·보류 고르기)의 import 사슬에도 서버 전용 `suspension.ts`가 없다. 타입 검사·CI가 통과해도
  *    실제 번들에서만 경계 위반이 드러난 적이 있어(`project_nextjs_client_server_boundary_build_only`) 정적·동적 import를 끝까지 따라간다.
- * ② 새 동기화·드랍·배지 코드는 옛 섀도우밴(`user_shadow_bans`, `getUserBanLevel`, `shouldAllowDrop`)을 읽지 않는다.
- *    옛 어드민·옛 API·픽업·`applyShadowBanCap` 함수·`drop-engine/preview.ts`는 그대로 남아 있으므로 검사 대상이 아니다.
+ * ② 새 동기화·드랍·배지 코드는 옛 섀도우밴(`user_shadow_bans`, `getUserBanLevel`, `shouldAllowDrop`, `applyShadowBanCap`)을 읽지 않는다.
+ *    티켓 20261021_1250(6-4 2회)에서 밴 모듈·관리 API·`applyShadowBanCap`을 지워 `drop-engine/index.ts`·`preview.ts`도 검사 대상이 되었다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/suspension/__tests__/suspension-boundary.test.ts
  */
@@ -152,16 +152,12 @@ function sourceFilesUnder(dir: string): string[] {
 }
 
 // 옛 섀도우밴을 읽는 식별자들 — 새 동기화·드랍·배지 코드에 있으면 안 된다
-const SHADOW_BAN_READS = /user_shadow_bans|getUserBanLevel|shouldAllowDrop|abusing\/shadow-ban/
+const SHADOW_BAN_READS = /user_shadow_bans|getUserBanLevel|shouldAllowDrop|applyShadowBanCap|abusing\/shadow-ban/
 
 describe('새 동기화·드랍·배지 코드는 user_shadow_bans를 읽지 않는다', () => {
-  // 드랍 엔진 중 index.ts(applyShadowBanCap 함수 정의를 보존)와 preview.ts(어드민 미리보기)는 아래에서 따로 본다
   const DIRS = ['lib/strava', 'lib/badge-engine', 'lib/jam', 'lib/drop-engine'] as const
-  const EXCLUDED = new Set(['lib/drop-engine/index.ts', 'lib/drop-engine/preview.ts'])
 
-  const targets = DIRS.flatMap((dir) => sourceFilesUnder(join(srcRoot, dir)))
-    .map((file) => file.replace(srcRoot, ''))
-    .filter((file) => !EXCLUDED.has(file))
+  const targets = DIRS.flatMap((dir) => sourceFilesUnder(join(srcRoot, dir))).map((file) => file.replace(srcRoot, ''))
 
   it('검사 대상에 핵심 파일이 들어 있다(찾지 못해 통과하는 일을 막는다)', () => {
     for (const must of [
@@ -169,6 +165,8 @@ describe('새 동기화·드랍·배지 코드는 user_shadow_bans를 읽지 않
       'lib/badge-engine/index.ts',
       'lib/badge-engine/usageBadges.ts',
       'lib/drop-engine/syncIssueRun.ts',
+      'lib/drop-engine/index.ts',
+      'lib/drop-engine/preview.ts',
     ]) {
       expect(targets, `${must}가 검사 대상에 없다`).toContain(must)
     }
@@ -178,15 +176,19 @@ describe('새 동기화·드랍·배지 코드는 user_shadow_bans를 읽지 않
     const source = readFileSync(join(srcRoot, file), 'utf8')
     expect(source).not.toMatch(SHADOW_BAN_READS)
   })
+})
 
-  it('drop-engine/index.ts는 applyShadowBanCap 함수만 남기고 호출하지 않는다', () => {
-    const source = readFileSync(join(srcRoot, 'lib/drop-engine/index.ts'), 'utf8')
-    const lines = source.split('\n')
+describe('옛 섀도우밴 코드가 사라졌다 (티켓 20261021_1250, 6-4 2회)', () => {
+  it.each(['lib/abusing/shadow-ban.ts', 'lib/abusing/rate-keys.ts', 'app/api/admin/abusing/bans'])('%s가 없다', (path) => {
+    expect(existsSync(join(srcRoot, path)), `${path}가 다시 생겼다`).toBe(false)
+  })
 
-    const definitions = lines.filter((line) => /^export async function applyShadowBanCap\(/.test(line))
-    const calls = lines.filter((line) => /\bapplyShadowBanCap\(/.test(line) && !/^export async function applyShadowBanCap\(/.test(line))
-
-    expect(definitions).toHaveLength(1) // 어드민 미리보기(preview.ts)가 쓰므로 지우지 않는다
-    expect(calls).toEqual([])
+  it('앱 코드(생성 타입 제외) 어디서도 user_shadow_bans 표를 열지 않는다', () => {
+    const files = sourceFilesUnder(srcRoot).filter((file) => !file.replace(srcRoot, '').startsWith('types/'))
+    expect(files.length, '검사 대상이 비어 있다').toBeGreaterThan(500)
+    const offenders = files
+      .filter((file) => /\.from\(\s*['"]user_shadow_bans['"]/.test(readFileSync(file, 'utf8')))
+      .map((file) => file.replace(srcRoot, 'src/'))
+    expect(offenders).toEqual([])
   })
 })

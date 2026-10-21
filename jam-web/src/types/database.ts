@@ -1873,7 +1873,10 @@ export interface AbusingLogRow {
   created_at: string
 }
 
-/** 어뷰징 정책 설정 (싱글톤 id=1) — src/lib/abusing/policy.ts의 AbusingPolicy와 필드 일치 */
+/**
+ * 어뷰징 정책 설정 (싱글톤 id=1) — src/lib/abusing/policy.ts의 AbusingPolicy와 필드 일치.
+ * 단 `soft_*_rate`·`hard_*_rate` 8열은 코드가 쓰지 않음, 열 정리 대기(티켓 20261021_1250, 6-4 4회 정리 SQL).
+ */
 export interface AbusingPolicyRow {
   id: number
   soft_common_rate: number
@@ -1913,7 +1916,7 @@ export interface PoiSearchCacheRow {
   searched_at: string
 }
 
-/** 어뷰징 섀도우밴 — src/lib/abusing/shadow-ban.ts */
+/** 어뷰징 섀도우밴 — 코드가 쓰지 않음, 표 정리 대기(티켓 20261021_1250, 6-4 4회 정리 SQL). 옛 모듈 shadow-ban.ts는 지웠다 */
 export interface UserShadowBanRow {
   id: string
   user_id: string

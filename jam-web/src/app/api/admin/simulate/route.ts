@@ -101,12 +101,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. 아이템 드랍 시뮬레이션 — 엔진(`tryItemDrop`)의 판정 단계를 그대로 따라간다(`previewItemDrop`).
-  //    첫 번째 활동 기준으로 한 번 굴리며, 현재 drop_policy·유저 드랍 상태·섀도우밴 수준을 읽는다.
+  //    첫 번째 활동 기준으로 한 번 굴리며, 현재 drop_policy·유저 드랍 상태를 읽는다.
   //    DB에는 아무것도 쓰지 않는다. 적용 모드(dryRun=false)만 고른 배지를 인벤토리에 넣고,
   //    유저 드랍 상태(연속 common·pity·일일 카운터)·결산 소식·엔진 판정 로그는 남기지 않는다.
   const itemDrops: {
     badgeName: string
-    /** 실제로 뽑힌 배지의 등급 — 등급 폴백(후보 없음)이 일어나면 cappedRarity와 다를 수 있다 */
+    /** 실제로 뽑힌 배지의 등급 — 등급 폴백(후보 없음)이 일어나면 추첨 등급(rolledRarity·cappedRarity)과 다를 수 있다 */
     rarity: string | null
     rolledRarity: string
     cappedRarity: string

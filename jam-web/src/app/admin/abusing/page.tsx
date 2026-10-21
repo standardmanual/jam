@@ -1,7 +1,7 @@
 import { getAdminUser } from '@/lib/admin/auth'
 import { redirect } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getAbusingPolicy, findPolicyRateMismatches } from '@/lib/abusing/policy'
+import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { ADMIN_LIST_PAGE_SIZE, totalPagesOf } from '@/lib/admin/list-params'
 import {
   fetchAbusingTabCounts,
@@ -58,7 +58,6 @@ export default async function AbusingPage({ searchParams }: AbusingPageProps) {
   return (
     <AbusingClient
       policy={policy}
-      policyMismatch={findPolicyRateMismatches(policy)}
       tab={tab}
       counts={counts}
       suspensions={list.suspensions}

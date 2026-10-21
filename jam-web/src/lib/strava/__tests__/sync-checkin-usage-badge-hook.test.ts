@@ -53,10 +53,6 @@ vi.mock('@/lib/strava/api', () => ({
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
-vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
-  return { ...actual, getUserBanLevel: vi.fn(async () => 'none' as const) }
-})
 
 let matchedPoisFixture: Array<{ id: string; name: string; linked_badge_id: string | null }> = []
 vi.mock('@/lib/poi/matcher', () => ({
