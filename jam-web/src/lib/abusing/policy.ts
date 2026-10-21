@@ -4,17 +4,12 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
-import { RATE_KEYS } from './rate-keys'
 
+/**
+ * 티켓 20261021_1250(6-4 2회): 옛 섀도우밴 드랍 배율 8칸(`soft_*_rate`·`hard_*_rate`)을 이 타입·`DEFAULT_POLICY`·저장 검증에서
+ * 지웠다. `abusing_policy`의 배율 열 8개는 DB에 남아 있고(NOT NULL·기본값) 코드가 읽지도 쓰지도 않는다 — 열 정리는 6-4 4회 정리 SQL 몫이다.
+ */
 export interface AbusingPolicy {
-  soft_common_rate: number
-  soft_rare_rate: number
-  soft_epic_rate: number
-  soft_mystic_rate: number
-  hard_common_rate: number
-  hard_rare_rate: number
-  hard_epic_rate: number
-  hard_mystic_rate: number
   gps_max_speed_kmh: number
   poi_block_hours: number
   vehicle_speed_filter_kmh: number
@@ -46,27 +41,12 @@ export const MISMATCH_POLICY_KEYS = [
  * `abusing_policy` id=1 행의 **미러**. "바람직한 값"이 아니라
  * **"DB를 못 읽을 때 현행 운영값을 그대로 재현하는 값"** 이다.
  *
- * 폴백이 정책을 바꾸면 장애 대응이 아니라 무음 정책 변경이 된다. 실제로
- * `soft_epic_rate`·`hard_epic_rate`가 여기만 `0.0`(차단)이고 DB는 `1.00`(차단 꺼짐)이어서,
- * 정책 조회가 한 번 실패하면 의도적으로 꺼둔 Epic 차단이 켜지는 상태였다 (티켓 20260831_1259).
+ * 폴백이 정책을 바꾸면 장애 대응이 아니라 무음 정책 변경이 된다 (티켓 20260831_1259).
  *
- * 값 출처: 2026-08-31 12:59 `abusing_policy` id=1 실측.
- * Epic 배율이 1.00인 경위는 마이그레이션 `115_rename_rarity_epic_mystic.sql` §5
- * (사용자 확인 2026-08-31, "유저 체감 동작을 바꾸지 않는다")와
- * `docs/service/SERVICE_OPERATIONS.md` §12-5 참조.
- *
- * ⚠️ **DB의 배율을 바꾸면 같은 티켓에서 이 상수도 함께 바꾼다.** 한쪽만 바꾸면
+ * ⚠️ **DB의 값을 바꾸면 같은 티켓에서 이 상수도 함께 바꾼다.** 한쪽만 바꾸면
  * 폴백 경로와 정상 경로의 판정이 갈리고, 그 차이는 무음으로 드러나지 않는다.
  */
 export const DEFAULT_POLICY: AbusingPolicy = {
-  soft_common_rate: 1.0,
-  soft_rare_rate: 1.0,
-  soft_epic_rate: 1.0,
-  soft_mystic_rate: 0.0,
-  hard_common_rate: 1.0,
-  hard_rare_rate: 0.0,
-  hard_epic_rate: 1.0,
-  hard_mystic_rate: 0.0,
   gps_max_speed_kmh: 300,
   poi_block_hours: 72,
   vehicle_speed_filter_kmh: 60,
@@ -83,40 +63,6 @@ export const DEFAULT_POLICY: AbusingPolicy = {
   // 마이그레이션 224의 기본값과 같아야 한다(티켓 20261017_1421, 운영 로직 16.2절).
   mismatch_run_min_speed_kmh: 6,
   mismatch_cycling_min_speed_kmh: 10,
-}
-
-/**
- * 0~1 비율(밴 레벨별 rarity 드랍 배율) 필드 목록. `rate-keys.ts`의 `BAN_RATE_KEY`(shadow-ban.ts가
- * 쓰는 실제 배선 맵)에서 파생된 값을 그대로 재노출한다 — 호출부(`api/admin/abusing/policy/route.ts`
- * 등)가 계속 `policy.ts`에서 import할 수 있도록 경로만 유지한다. 나머지 4개
- * (gps_max_speed_kmh·poi_block_hours·vehicle_speed_filter_kmh·gps_daily_distance_cap_km)는
- * 상한 없는 정수 임계값이라 검증 범위가 다르므로 여기 없다.
- * (`rate-keys.ts`가 실제 목록을 소유 — 이 주석은 개요일 뿐 파생 로직의 출처가 아니다)
- */
-export { RATE_KEYS }
-
-/** {@link findPolicyRateMismatches}가 돌려주는 갈림 항목 하나 */
-export interface AbusingPolicyMismatch {
-  key: keyof AbusingPolicy
-  dbValue: number
-  codeValue: number
-}
-
-/**
- * DB에 저장된 배율(`RATE_KEYS` 8종)이 `DEFAULT_POLICY`(폴백 미러)와 갈라졌는지 검사한다.
- * 저장 경로(`updateAbusingPolicy`)와 어드민 배너가 같은 검사를 공유해 판정이 어긋나지
- * 않게 한다 (티켓 20260831_1330).
- */
-export function findPolicyRateMismatches(current: AbusingPolicy): AbusingPolicyMismatch[] {
-  const mismatches: AbusingPolicyMismatch[] = []
-  for (const key of RATE_KEYS) {
-    const dbValue = current[key]
-    const codeValue = DEFAULT_POLICY[key]
-    if (dbValue !== codeValue) {
-      mismatches.push({ key, dbValue, codeValue })
-    }
-  }
-  return mismatches
 }
 
 /**
@@ -192,22 +138,15 @@ export async function getAbusingPolicy(client?: SupabaseClient): Promise<Abusing
       normalized[key] = n
     }
     if (fellBack.length > 0) {
-      // 키 누락을 무음으로 넘기면 섀도우밴 판정이 조용히 틀어진다 (티켓 20260831_1149).
-      // 마이그레이션 115가 아직 실행되지 않았다면 등급 배율 키가 여기 걸린다.
+      // 키 누락을 무음으로 넘기면 GPS 조작·차량 속도 판정이 조용히 틀어진다 (티켓 20260831_1149).
       console.error(
         `[abusing-policy] DB 값을 읽지 못해 기본값으로 대체한 항목: ${fellBack.join(', ')}`
       )
     }
 
-    // `AbusingPolicy` 키만 담아 돌려준다 (티켓 20260831_1328).
-    // 한때 `{ ...row, ...normalized }`로 원본 행의 **상위집합**을 돌려줬다 — 마이그레이션 115
-    // (등급명 legend·mythic → epic·mystic) 미실행 구간에 DB에 남은 구 컬럼명을, shadow-ban.ts가
-    // 런타임 문자열로 `${banLevel}_${rarity}_rate`를 조합해 찾아갈 수 있게 살려두려는
-    // 목적이었다(티켓 20260831_1149). 그런데 1) 115가 적용돼 DB 컬럼과 앱 키가 일치하고,
-    // 2) 티켓 20260831_1259가 그 문자열 조합을 `Record<BadgeRarity, keyof AbusingPolicy>`
-    // 타입 맵으로 바꿔 애초에 구 키를 조회하지 않는다 — 두 근거가 모두 사라져 상위집합은
-    // `AbusingPolicy`에 없는 키를 실어 나르기만 했다. 소비 지점(pickup route·drop-engine·
-    // 어드민 화면·정책 API) 전수 확인 결과 `DEFAULT_POLICY` 밖 키를 읽는 곳이 없어 제거했다.
+    // `AbusingPolicy` 키만 담아 돌려준다 (티켓 20260831_1328). 한때 원본 행의 상위집합을 돌려줬지만
+    // `DEFAULT_POLICY` 밖 키를 읽는 곳이 없어 제거했다. 그래서 DB 행에 남은 옛 배율 열 8개(티켓 20261021_1250)가
+    // 있어도 읽기는 그 열을 보지 않고, 이름으로 검증하지도 않으므로 열이 있든 없든 읽기가 깨지지 않는다.
     return normalized
   } catch (e) {
     console.error('[abusing-policy] 조회 예외 — 기본 정책으로 폴백:', e)
@@ -226,21 +165,5 @@ export async function updateAbusingPolicy(patch: Partial<AbusingPolicy>): Promis
   if (error) {
     console.error('[abusing-policy] 저장 실패:', error)
     throw new Error(`abusing_policy upsert 실패 (${error.code}): ${error.message}`)
-  }
-
-  // 저장이 성공한 직후에만(드랍마다가 아니라 1회) DB와 DEFAULT_POLICY(폴백 미러)가
-  // 갈라졌는지 검사한다. 이 규율이 "같은 티켓에서 policy.ts도 함께 바꾼다"는 문서 규칙을
-  // 어드민 저장 경로에서도 강제하는 유일한 코드 상의 장치다 (티켓 20260831_1330).
-  const saved = await getAbusingPolicy(supabase)
-  const mismatches = findPolicyRateMismatches(saved)
-  if (mismatches.length > 0) {
-    const detail = mismatches
-      .map((m) => `${m.key}(DB=${m.dbValue}, policy.ts=${m.codeValue})`)
-      .join(', ')
-    console.warn(
-      `[abusing-policy] 저장된 배율이 DEFAULT_POLICY와 달라요 — ${detail}. ` +
-        `폴백(DB 조회 실패) 시에는 policy.ts 값이 대신 적용되니, DB 배율을 바꿨다면 ` +
-        `src/lib/abusing/policy.ts의 DEFAULT_POLICY도 같은 티켓에서 함께 갱신하세요.`
-    )
   }
 }

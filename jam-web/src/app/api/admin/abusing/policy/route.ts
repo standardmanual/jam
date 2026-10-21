@@ -3,9 +3,7 @@ import { getAdminUser } from '@/lib/admin/auth'
 import {
   getAbusingPolicy,
   updateAbusingPolicy,
-  findPolicyRateMismatches,
   DEFAULT_POLICY,
-  RATE_KEYS,
   MIN_VEHICLE_SPEED_FILTER_KMH,
   MISMATCH_POLICY_KEYS,
   type AbusingPolicy,
@@ -16,7 +14,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const policy = await getAbusingPolicy()
-  return NextResponse.json({ policy, mismatch: findPolicyRateMismatches(policy) })
+  return NextResponse.json({ policy })
 }
 
 export async function PUT(req: NextRequest) {
@@ -41,16 +39,8 @@ export async function PUT(req: NextRequest) {
         { status: 400 }
       )
     }
-    // rate 계열은 슬라이더 범위와 DB NUMERIC(3,2) 제약에 맞춰 0~1로 제한한다.
-    // 임계값 계열(km/h·시간)에는 상한을 두지 않는다.
-    if (RATE_KEYS.has(key) && n > 1) {
-      return NextResponse.json(
-        {
-          error: `어뷰징 정책이 저장되지 않았어요. ${key} 값이 0~1 범위를 벗어났어요. 0~1 사이로 맞추고 다시 저장해 주세요.`,
-        },
-        { status: 400 }
-      )
-    }
+    // 임계값 계열(km/h·시간)에는 상한을 두지 않는다. 옛 섀도우밴 배율 8칸의 0~1 검증은 지웠다(티켓 20261021_1250) —
+    // 그 키가 본문에 와도 화이트리스트(`DEFAULT_POLICY` 키)에 없어 조용히 버려진다.
     // 차량 속도 필터만 하한이 있다. 이 값은 "차량 탑승 판정 기준"인데 필터식이
     // `평균속도 <= 임계값`(이하만 통과)이라, 낮출수록 정상 활동이 걸러진다. 20km/h 미만이면
     // 사이클링·달리기까지 배제돼 배지·아이템 드랍·미션이 한꺼번에 멈춘다 (티켓 20260831_1300).
@@ -91,5 +81,5 @@ export async function PUT(req: NextRequest) {
 
   // 저장 직후 DB에서 다시 읽어 돌려준다 — 폼이 실제 반영된 값으로 화면을 맞출 수 있다
   const saved = await getAbusingPolicy()
-  return NextResponse.json({ ok: true, policy: saved, mismatch: findPolicyRateMismatches(saved) })
+  return NextResponse.json({ ok: true, policy: saved })
 }

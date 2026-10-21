@@ -177,3 +177,18 @@ describe('새 동기화·드랍·배지 코드는 user_shadow_bans를 읽지 않
     expect(source).not.toMatch(SHADOW_BAN_READS)
   })
 })
+
+describe('옛 섀도우밴 코드가 사라졌다 (티켓 20261021_1250, 6-4 2회)', () => {
+  it.each(['lib/abusing/shadow-ban.ts', 'lib/abusing/rate-keys.ts', 'app/api/admin/abusing/bans'])('%s가 없다', (path) => {
+    expect(existsSync(join(srcRoot, path)), `${path}가 다시 생겼다`).toBe(false)
+  })
+
+  it('앱 코드(생성 타입 제외) 어디서도 user_shadow_bans 표를 열지 않는다', () => {
+    const files = sourceFilesUnder(srcRoot).filter((file) => !file.replace(srcRoot, '').startsWith('types/'))
+    expect(files.length, '검사 대상이 비어 있다').toBeGreaterThan(500)
+    const offenders = files
+      .filter((file) => /\.from\(\s*['"]user_shadow_bans['"]/.test(readFileSync(file, 'utf8')))
+      .map((file) => file.replace(srcRoot, 'src/'))
+    expect(offenders).toEqual([])
+  })
+})
