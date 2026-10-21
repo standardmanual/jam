@@ -69,6 +69,7 @@ status: active
 - [ACTIVITY_BADGES.md](service/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
 - [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙과, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차를 컨텐츠 입력자용으로 정리한 문서다.
 - [v5_badge_name_split.md](service/content/v5_badge_name_split.md) — v5 액티비티배지에서 종목마다 계열 이름을 다르게 짓는 이름 분화의 근거, 후보안, 승인 후 검증 결과를 기록한 문서다.
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -199,6 +200,7 @@ status: active
 - [TRIBES.md](service/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
 - [PRD.md](service/prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -366,6 +368,10 @@ status: active
 - [06 트라이브, 온보딩, 계정, 소셜.md](plan/jam2/service-redesign/current-service-map/06%20트라이브,%20온보딩,%20계정,%20소셜.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 트라이브와 유저의 트라이브 선택, 로그인과 온보딩, 퀘스트 7단계, 프로필, 탈퇴와 계정 삭제, 어드민 유저 관리, 팔로우, 피드, 검색, 알림, 문의.
 
 ### Strava동기화
+
+**현재 서비스 (service)**
+
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -868,6 +874,10 @@ status: active
 
 - [INTERACTION_FLOW.md](service/prd/point-system/INTERACTION_FLOW.md) — 포인트 시스템 1a단계에서 유저와 어드민이 어느 화면에서 무엇을 하고 어디로 이동하는지 정리한 화면 흐름 문서다.
 - [OBJECT_MODEL.md](service/prd/point-system/OBJECT_MODEL.md) — 포인트 지갑(PointWallet), 내역(PointTransaction), 발행 장부(PointTreasury)와 적립 규칙을 정의한 포인트 시스템 객체 모델이다.
+
+### docs/service/prd/probability/
+
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 ### docs/service/prd/ranking-board/
 

@@ -8,6 +8,8 @@
  * - 빈칸이 모자라면 «열기»가 없고 지금 빈칸 수와 필요한 빈칸 수, 인벤토리 링크가 있다.
  * - 열기 진행 중에는 «여는 중»이고 비활성이다.
  * - 채우기 단계: 제목 «잼 채우기», 공용 채우기 입력, «취소». 푸터가 없다.
+ * - 확률 안내 링크 (티켓 20261021_1250, 채원 판정): 본문 맨 아래(가진 잼 다음)에 세 상태 모두 같은 자리로 있고, 푸터에는 없다. 채우기 단계에는 없다.
+ *   조용한 밑줄 링크이고 숫자·퍼센트·아이콘이 없으며, 누르면 시트를 닫고 /probability로 간다.
  *
  * 실행: cd jam-web && npx vitest run src/components/capsule/CapsuleSheet.test.tsx
  */
@@ -172,5 +174,93 @@ describe('채우기 단계', () => {
     const pendingHtml = render({ step: 'fill', pending: 'fill' })
     const cancel = pendingHtml.match(/<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g)?.find((b) => textOf(b) === d.capsule.sheet.cancel) ?? ''
     expect(cancel).toContain('disabled=""')
+  })
+})
+
+describe('확률 안내 링크', () => {
+  const bodyOf = (html: string) => html.match(/<div data-body="">([\s\S]*?)<\/div><div data-footer="">/)?.[1] ?? ''
+  const LINK = /<a ([^>]*href="\/probability"[^>]*)>([^<]*)<\/a>/
+
+  const states: Array<[string, CapsuleStatus]> = [
+    ['채우는 중(filling)', status()],
+    ['열 수 있음(ready)', READY],
+    ['빈칸 모자람(noSlots)', NO_SLOTS],
+  ]
+
+  it.each(states)('%s: 본문 맨 아래, 가진 잼 다음 줄에 «확률 안내» 링크가 있다', (_name, s) => {
+    const body = bodyOf(render({ status: s }))
+    const link = body.match(LINK)
+    expect(link?.[2]).toBe(d.capsule.sheet.probabilityLink)
+    expect(d.capsule.sheet.probabilityLink).toBe('확률 안내')
+    // 가진 잼(숫자) 다음, 본문 컬럼(px-6 flex-col)의 마지막 요소
+    expect(body.indexOf('/probability')).toBeGreaterThan(body.indexOf(d.capsule.sheet.balanceLabel))
+    expect(body.endsWith('</a></div>')).toBe(true)
+  })
+
+  it.each(states)('%s: 푸터(주요 버튼 영역)에는 확률 링크를 붙이지 않는다', (_name, s) => {
+    expect(footerOf(render({ status: s }))).not.toContain('/probability')
+  })
+
+  it('채우기 단계에는 링크가 없다', () => {
+    expect(render({ step: 'fill' })).not.toContain('/probability')
+  })
+
+  it('왼쪽 정렬된 muted 밑줄 링크이고 44px 터치 영역·한국어 줄바꿈 클래스가 있다. 초록(--link)을 쓰지 않는다', () => {
+    const attrs = bodyOf(render()).match(LINK)?.[1] ?? ''
+    for (const cls of [
+      'inline-flex',
+      'min-h-11',
+      'items-center',
+      'self-start',
+      'break-keep',
+      'wrap-break-word',
+      'whitespace-nowrap',
+      'text-sm',
+      'text-muted',
+      'underline',
+      'underline-offset-2',
+      'active:opacity-60',
+      'transition-opacity',
+      'duration-[var(--duration-micro)]',
+    ]) {
+      expect(attrs, cls).toContain(cls)
+    }
+    expect(attrs).not.toContain('link')
+  })
+
+  it('문구에 숫자·퍼센트·아이콘이 없고 다시 열기를 부추기지 않는다', () => {
+    const html = bodyOf(render())
+    const link = html.match(LINK)?.[0] ?? ''
+    expect(textOf(link)).not.toMatch(/\d|%/)
+    expect(link).not.toContain('<svg')
+    expect(textOf(link)).not.toMatch(/한 번만 더|곧|조금만 더|꽝/)
+  })
+
+  it('누르면 시트를 닫는다(뒤로 왔을 때 시트가 닫혀 있다) — 이동은 일반 라우트 링크가 맡는다', () => {
+    const onClose = vi.fn()
+    const tree = CapsuleSheet({
+      open: true,
+      onClose,
+      status: status(),
+      step: 'main',
+      pending: null,
+      onStartFill: () => {},
+      onCancelFill: () => {},
+      onConfirmFill: () => {},
+      onOpen: () => {},
+    })
+    const found: Array<{ href: string; onClick?: () => void }> = []
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) return node.forEach(walk)
+      if (!node || typeof node !== 'object' || !('props' in node)) return
+      const props = (node as { props: Record<string, unknown> }).props
+      if (props.href === '/probability') found.push({ href: String(props.href), onClick: props.onClick as () => void })
+      walk(props.children)
+    }
+    walk(tree)
+    expect(found).toHaveLength(1)
+    expect(found[0].onClick).toBeTypeOf('function')
+    found[0].onClick?.()
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
