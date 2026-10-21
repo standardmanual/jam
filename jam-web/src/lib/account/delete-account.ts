@@ -12,6 +12,9 @@
  *   5. `auth.admin.deleteUser` — `public.users`가 `auth.users`를 `ON DELETE CASCADE`로 참조해 나머지 행은 외래키가 연쇄로 지운다.
  *   6. 계정 삭제가 성공했을 때만 Strava 쪽 앱 승인을 해제한다(실패는 로그만). 해제 때문에 계정 삭제가 막히거나 새 실패 구간이 생기지 않는다.
  *
+ * 옵션 `skipStravaDeauthorize`(티켓 20261021_1249 4회): «그래도 연결하기»가 기존 계정을 지울 때만 켠다. 지우는 계정과 새로 연결하는 계정이 같은
+ * Strava 계정(athlete)이라, 앱 승인 해제가 방금 받은 새 토큰까지 무효로 만들 수 있다(추정). 켜면 2번(토큰 읽기)과 6번(해제)을 모두 건너뛴다.
+ *
  * 호출자에게는 DB·Auth 오류 원문 대신 고정 코드만 돌려준다. 원문은 서버 로그에만 남는다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
@@ -97,7 +100,16 @@ async function readStravaTokens(supabase: ServiceClient, userId: string): Promis
   }
 }
 
-export async function deleteAccount(supabase: ServiceClient, userId: string): Promise<DeleteAccountResult> {
+export interface DeleteAccountOptions {
+  /** Strava 앱 승인 해제를 건너뛴다. «그래도 연결하기»의 기존 계정 지우기에서만 켠다(위 설명) */
+  skipStravaDeauthorize?: boolean
+}
+
+export async function deleteAccount(
+  supabase: ServiceClient,
+  userId: string,
+  options: DeleteAccountOptions = {}
+): Promise<DeleteAccountResult> {
   // 1. 어드민 계정 거절 — 조회가 실패하면 어드민인지 알 수 없으므로 아무것도 바꾸지 않고 멈춘다
   try {
     const { data: user, error } = await supabase.from('users').select('id, email, is_admin').eq('id', userId).maybeSingle()
@@ -112,8 +124,8 @@ export async function deleteAccount(supabase: ServiceClient, userId: string): Pr
     return { ok: false, code: 'prepare_failed' }
   }
 
-  // 2. Strava 토큰을 메모리로 — 계정을 지우면 연결 행도 사라진다
-  const stravaTokens = await readStravaTokens(supabase, userId)
+  // 2. Strava 토큰을 메모리로 — 계정을 지우면 연결 행도 사라진다. 해제를 건너뛰는 호출은 읽지 않는다
+  const stravaTokens = options.skipStravaDeauthorize ? null : await readStravaTokens(supabase, userId)
 
   // 3. 아바타 파일 — 실패해도 계속한다
   try {

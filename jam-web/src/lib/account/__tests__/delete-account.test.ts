@@ -5,7 +5,8 @@
  * 고정하는 것: 어드민 계정은 거절 · 순서는 «유저 조회 → Strava 토큰 읽기 → 아바타 삭제 → 준비 RPC → 계정 삭제 → Strava 앱 해제»
  * (티켓 20261021_1249 3회: 아이템이 없어짐으로 바뀐 뒤 계정 삭제까지의 틈을 좁히려고 아바타를 준비 앞으로 옮겼다) · 준비가 실패하면 계정을
  * 지우지 않는다 · 아바타 삭제가 실패해도 계정 삭제는 계속한다 · 계정 삭제 실패는 오류 원문 없이 고정 코드(`delete_failed`)로만 돌려준다 ·
- * Strava 앱 해제는 계정 삭제가 성공했을 때만 하고, 읽기·해제가 실패해도 탈퇴는 성공이다.
+ * Strava 앱 해제는 계정 삭제가 성공했을 때만 하고, 읽기·해제가 실패해도 탈퇴는 성공이다 ·
+ * `skipStravaDeauthorize`(티켓 20261021_1249 4회, «그래도 연결하기»)를 켜면 토큰 읽기도 앱 해제도 하지 않고 나머지 순서·실패 처리는 그대로다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/account/__tests__/delete-account.test.ts
  */
@@ -279,6 +280,46 @@ describe('deleteAccount — Strava 앱 해제', () => {
     mocks.deauthorizeStoredConnection.mockRejectedValue(new Error('예상 밖 예외'))
     expect((await deleteAccount(makeSupabase().client, USER_ID)).ok).toBe(true)
     expect(console.error).toHaveBeenCalled()
+  })
+})
+
+describe('deleteAccount — skipStravaDeauthorize (그래도 연결하기)', () => {
+  it('켜면 Strava 토큰을 읽지도 해제하지도 않고 나머지 순서는 그대로다', async () => {
+    const { client, calls, rpcArgs } = makeSupabase()
+    mocks.removeAvatarFiles.mockImplementation(async () => {
+      calls.push('avatar')
+      return 1
+    })
+
+    const result = await deleteAccount(client, USER_ID, { skipStravaDeauthorize: true })
+
+    expect(result.ok).toBe(true)
+    expect(calls).toEqual(['from:users', 'avatar', 'rpc:prepare_account_deletion', `deleteUser:${USER_ID}`])
+    expect(calls).not.toContain('from:strava_connections')
+    expect(rpcArgs).toEqual([{ p_user_id: USER_ID }])
+    expect(mocks.deauthorizeStoredConnection).not.toHaveBeenCalled()
+  })
+
+  it('옵션을 주지 않거나 false면 기존처럼 해제한다', async () => {
+    await deleteAccount(makeSupabase().client, USER_ID)
+    await deleteAccount(makeSupabase().client, USER_ID, { skipStravaDeauthorize: false })
+    expect(mocks.deauthorizeStoredConnection).toHaveBeenCalledTimes(2)
+  })
+
+  it('켜도 어드민 거절과 준비 실패 처리는 그대로다', async () => {
+    const admin = makeSupabase({ user: { id: USER_ID, email: 'boss@x.com', is_admin: true } })
+    expect(await deleteAccount(admin.client, USER_ID, { skipStravaDeauthorize: true })).toEqual({
+      ok: false,
+      code: 'admin_account',
+    })
+    expect(admin.calls).toEqual(['from:users'])
+
+    const failed = makeSupabase({ rpcResult: { data: null, error: { message: 'function failed' } } })
+    expect(await deleteAccount(failed.client, USER_ID, { skipStravaDeauthorize: true })).toEqual({
+      ok: false,
+      code: 'prepare_failed',
+    })
+    expect(failed.calls).not.toContain(`deleteUser:${USER_ID}`)
   })
 })
 
