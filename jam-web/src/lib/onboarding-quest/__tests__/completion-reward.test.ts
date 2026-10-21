@@ -11,13 +11,17 @@
  * `type`·`is_hidden`·`condition_json`을 함께 읽는다. 점수 쪽이 실패해도 완료 보상(포인트·피드)은 그대로다. 거르는 규칙은 `lib/chapter/__tests__/badge-receive.test.ts`가 고정한다.
  *
  * 챕터 1 시작(티켓 20261019_1316)은 이 파일의 관심사가 아니라 가짜로 막는다(`@/lib/chapter/start`). 시작 호출의 분기·순서는 `completion-chapter-start.test.ts`가 고정한다.
+ * 실제 3단계 읽기(티켓 20261021_1248)도 가짜로 막는다(`../real-steps`). 이 파일에서 `hasActivity: true`는 «실제 3단계가 모두 끝났다»는 뜻이다 —
+ * 읽기 자체는 `real-steps.test.ts`, 완료 판정의 두 조건은 `completion.test.ts`가 고정한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/onboarding-quest/__tests__/completion-reward.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const { awardPointsMock, recordFeedEventMock, awardBadgeReceiveScoreMock, badgeSelects } = vi.hoisted(() => ({
+const { awardPointsMock, recordFeedEventMock, awardBadgeReceiveScoreMock, badgeSelects, readRealStepsMock } = vi.hoisted(() => ({
+  /** 실제 3단계 읽기의 가짜. `makeFakeSupabase`가 `hasActivity`에 맞춰 값을 정한다 */
+  readRealStepsMock: vi.fn(),
   awardPointsMock: vi.fn(async () => null),
   recordFeedEventMock: vi.fn(async () => {}),
   awardBadgeReceiveScoreMock: vi.fn(async () => ({ status: 'scored' })),
@@ -25,6 +29,10 @@ const { awardPointsMock, recordFeedEventMock, awardBadgeReceiveScoreMock, badgeS
   badgeSelects: [] as string[],
 }))
 
+vi.mock('../real-steps', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../real-steps')>()),
+  readRealSteps: (...args: unknown[]) => readRealStepsMock(...args),
+}))
 vi.mock('@/lib/points', () => ({ awardPoints: awardPointsMock }))
 vi.mock('@/lib/chapter/badgeReceive', () => ({ awardBadgeReceiveScore: awardBadgeReceiveScoreMock }))
 vi.mock('@/lib/chapter/start', () => ({ startChapter: vi.fn(async () => ({ ok: true })), ensureChapterStarted: vi.fn(async () => {}) }))
@@ -42,7 +50,7 @@ import { ONBOARDING_COMPLETION_BADGE_ID } from '../config'
 
 const USER_ID = 'user-quest-reward-test'
 const BADGE_ROW = {
-  name: '퀘스트 클리어',
+  name: 'JAM!',
   image_url: 'https://example.com/badge.png',
   rarity: null,
   point_reward: 100,
@@ -61,10 +69,11 @@ const ALL_STEPS_DONE = {
   browse: '1',
 }
 
-/** `user_onboarding_quests`(행 상태 가변)·`strava_activities`·`user_activity_badges`·
- *  `badges` 4개 테이블만 지원하는 최소 페이크 supabase. */
+/** `user_onboarding_quests`(행 상태 가변)·`user_activity_badges`·`badges` 3개 테이블만 지원하는 최소 페이크 supabase.
+ *  실제 3단계 읽기(`readRealSteps`)는 `hasActivity`에 맞춰 가짜 값을 돌려주도록 정한다. */
 function makeFakeSupabase(opts: {
   questRow: { step_progress: Record<string, string>; skipped_at: string | null; completed_at: string | null; reward_granted_at: string | null }
+  /** 실제 3단계(첫 동기화·캡슐 열기·잠긴 개체 열기)가 모두 끝났는가 */
   hasActivity: boolean
   badgeInsertError?: { code: string; message: string }
   /** 지정하면 그 횟수만큼만 배지 insert가 실패하고 이후엔 성공한다(재시도 검증용). */
@@ -73,6 +82,7 @@ function makeFakeSupabase(opts: {
 }): SupabaseClient {
   const state = { ...opts.questRow }
   const insertCalls: unknown[] = []
+  readRealStepsMock.mockResolvedValue({ sync: opts.hasActivity, capsuleOpened: opts.hasActivity, lockedOpened: opts.hasActivity })
 
   const from = (table: string) => {
     if (table === 'user_onboarding_quests') {
@@ -122,20 +132,6 @@ function makeFakeSupabase(opts: {
             }),
           }
         },
-      }
-    }
-    if (table === 'strava_activities') {
-      return {
-        select: () => ({
-          eq: () => ({
-            // 걸러진 활동은 «실제 첫 활동»이 아니다 — `filter_reason IS NULL` 조건이 붙는다(티켓 20261017_1421)
-            is: () => ({
-              limit: () => ({
-                maybeSingle: async () => ({ data: opts.hasActivity ? { id: 1 } : null, error: null }),
-              }),
-            }),
-          }),
-        }),
       }
     }
     if (table === 'user_activity_badges') {
@@ -194,6 +190,21 @@ describe('recordOnboardingQuestCompletion — 완료 보상 지급(T7b)', () => 
       'badge_earned',
       expect.objectContaining({ badge_id: ONBOARDING_COMPLETION_BADGE_ID, point_reward: 100 })
     )
+  })
+
+  it('연출 7단계를 다 마쳐도 실제 3단계가 끝나지 않았으면 완료도 보상도 없다 (티켓 20261021_1248)', async () => {
+    const supabase = makeFakeSupabase({
+      questRow: { step_progress: ALL_STEPS_DONE, skipped_at: null, completed_at: null, reward_granted_at: null },
+      hasActivity: false,
+    })
+
+    const result = await recordOnboardingQuestCompletion(supabase, USER_ID)
+
+    expect(result).toBeNull()
+    expect((supabase as unknown as { __state: { completed_at: string | null } }).__state.completed_at).toBeNull()
+    expect((supabase as unknown as { __insertCalls: unknown[] }).__insertCalls).toHaveLength(0)
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(recordFeedEventMock).not.toHaveBeenCalled()
   })
 
   it('건너뛴 유저는 completed_at만 기록되고 보상은 지급하지 않는다', async () => {

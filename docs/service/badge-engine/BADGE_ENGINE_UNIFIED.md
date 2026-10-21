@@ -852,7 +852,13 @@ Rare를 얻는 순간 Common이 후보에서 빠져 **하위 등급의 회차 �
 > `condition_json = {"mission_reward": true}`) 1종은 위 15종과 같은 방식으로 발급 후보에서
 > 제외되고, 지급은 온보딩 완료 판정 경로(티켓 20260927_2130 T7b)가 전담한다. 새 플래그를
 > 만들지 않은 이유는 사용자 결정(재사용하면 엔진 코드가 바뀌지 않는다) — 대신 배지 상세
-> 화면의 획득 조건 문장이 "'퀘스트 클리어' 미션을 완료하면 받을 수 있는 배지예요."로 고정된다.
+> 화면의 획득 조건 문장이 "'{배지 이름}' 미션을 완료하면 받을 수 있는 배지예요."로 고정된다.
+>
+> **이름 변경 (2026-10-21, 티켓 20261021_1248):** 운영 로직 2.2절에 따라 이 배지의 이름을 「JAM!」으로 바꾼다
+> (마이그레이션 256, 설명도 «퀘스트»를 빼고 «JAM!의 첫 단계를 모두 마친 증표입니다.»로 바꾼다. 파일은 작성했고 적용은 사용자 승인 뒤).
+> 지급 코드(`completion.ts`의 `grantOnboardingQuestReward`)는 배지를 이름이 아니라 고정 id
+> (`ONBOARDING_COMPLETION_BADGE_ID`, `config.ts`)로 찾으므로 이름이 바뀌어도 지급은 그대로다.
+> 적용되면 획득 조건 문장은 «'JAM!' 미션을 완료하면…»이 된다(이 배지는 미션이 아니라 문장이 어색한 점은 이 티켓의 범위 밖이다).
 
 > 배경: 마이그레이션 `084_badge_condition_cleanup.sql`(2026-08-13)이 배지 상세 화면 표시용으로
 > 미션보상배지 15종에 `{"mission_reward": true}`를 UPDATE하면서, "조건이 비어 있으면 미발급"이라는
@@ -1755,11 +1761,11 @@ POST /api/admin/badges/reevaluate-all
 | 이용 정지 | 앱 코드가 `assertNotSuspended`로 RPC보다 먼저 막고, DB 함수가 한 번 더 막는다. 정지 여부를 읽지 못하면 채우지 않는다(500). 상태 조회(`GET /api/capsule`)는 정지 중에도 허용한다 |
 | 열 수 있는지 | 응답의 `openable`은 다 채웠고(`filled >= required`) 인벤토리 빈칸이 나올 수 있는 최대 개수(`guaranteed_count + bonus_count`, 기본 2) 이상일 때만 참이다. 못 여는 까닭은 `not_full`이 먼저이고 그 다음이 `no_free_slots`이며, 응답에 지금 빈칸 `freeSlots`와 필요한 빈칸 `neededSlots`를 싣는다 |
 | 수치 설정 | `capsule_policy` 한 행(`getCapsulePolicy`, 조회 실패·비정상 값은 기본값으로 대체). 추첨이 이 값을 읽는다. Common 연속 임계값과 잠김 확률은 `jam_policy`의 값을 쓴다 |
-| 열기 순서 | `capsuleRoll.ts`(서버 모듈을 가져오지 않는 순수 추첨, 난수 주입)가 ① 개수: 확정 `guaranteed_count`(1)개에 확률 `bonus_probability`(20%)로 `bonus_count`(1)개 더 ② 트라이브(개체마다): 확률 `other_tribe_probability`(20%)로 다른 트라이브, 다른 트라이브는 나머지 넷 가운데 고르게 ③ 등급(70/22/6/2) ④ 후보: 그 트라이브·등급의 활성이고 공개 기간 안인 아이템 배지 중 균등 무작위(동기화와 같은 `listIssueCandidates`·`pickWithRarityFallback`) ⑤ 잠김: `assignLock`(경로 `capsule`)을 이 순서로 한다 |
+| 열기 순서 | `capsuleRoll.ts`(서버 모듈을 가져오지 않는 순수 추첨, 난수 주입)가 ① 개수: 확정 `guaranteed_count`(1)개에 확률 `bonus_probability`(20%)로 `bonus_count`(1)개 더 ② 트라이브(개체마다): 확률 `other_tribe_probability`(20%)로 다른 트라이브, 다른 트라이브는 나머지 트라이브 가운데 고르게(후보 배지가 있는 트라이브만 대상이다 — 컬렉션도 배지도 없는 비활성 트라이브가 뽑혀 개체가 비는 일을 막는다, 소속 트라이브는 후보가 없어도 남긴다, `tribesWithCandidates`, 티켓 20261021_1248) ③ 등급(70/22/6/2) ④ 후보: 그 트라이브·등급의 활성이고 공개 기간 안인 아이템 배지 중 균등 무작위(동기화와 같은 `listIssueCandidates`·`pickWithRarityFallback`) ⑤ 잠김: `assignLock`(경로 `capsule`)을 이 순서로 한다 |
 | 보정 | 보정 1: `user_drop_state.capsule_epic_miss >= pity_epic_threshold`(15)이면 **첫 개체**를 Epic 이상으로 뽑는다(epic:mystic은 설정 비율). 보정 2: `common_streak >= jam_policy.common_streak_threshold`(10)이면 Rare 이상으로 뽑는다(설정 비율). 둘이 겹치면 보정 1을 따른다. Common 연속은 같은 캡슐 안에서도 개체를 받을 때마다 **실제로 받은 등급**으로 이어 센다(동기화와 합산하는 `common_streak`). 후보가 없어 내려가 Common을 받아도 Common으로 센다 |
 | 후보 없음 | 뽑힌 등급에 후보가 없으면 한 등급씩 내려간다(위로 올라가지 않는다). 모든 등급에 없는 개체는 건너뛰고 엔진 판정 로그(`drop_attempt`, `outcome: no_candidate`)를 남긴다. 나올 개체가 하나도 없으면 열지 않는다(500, 채운 잼은 그대로) |
-| 퀘스트 전 캡슐 | `chapter_no`가 null인 캡슐은 **나온 첫 개체**를 반드시 잠근 채(`lock_reason: rolled`, 여는 데 필요한 양 `capsule_policy.pre_quest_unlock_required` 5)로 둔다. 잠김 난수를 쓰지 않는다. 온보딩 연결은 묶음 6이다 |
-| 열기 | `openCapsule`(`open.ts`): 이용 정지 확인 → 캡슐 상태·빈칸 사전 확인(안 되면 추첨하지 않음) → 소속 트라이브(`users.tribe_id`, 없으면 `no_tribe`)·후보·카운터 조회(읽지 못하면 틀린 값으로 추첨하지 않고 던진다) → 추첨 → RPC `capsule_open` → 응답에 개체 정보를 채움 → 후속 처리. `capsule_open`이 한 트랜잭션으로 정지·가득 참·빈칸 확인, 개체 지급(`grant_inventory_item_locked`)과 발급 기록(`item_issue_log`, route `capsule`), 열기 기록(`capsule_opens`), 보정 카운터 갱신, 다음 캡슐 생성(그때의 챕터로 필요량 고정)을 한다. 같은 캡슐을 동시에 두 번 열어도 캡슐 행 잠금으로 한 번만 열린다 |
+| 퀘스트 전 캡슐 | `chapter_no`가 null인 캡슐은 **나온 첫 개체**를 반드시 잠근 채(`lock_reason: rolled`, 여는 데 필요한 양 `capsule_policy.pre_quest_unlock_required` 5)로 둔다. 잠김 난수를 쓰지 않는다. 이 보장은 «첫 캡슐»이 아니라 «챕터가 없는 동안의 모든 캡슐»에 걸려 있어, 첫 캡슐을 열 때 만들어지는 다음 캡슐도 챕터가 없으면 필요량 5와 확정 잠김으로 생긴다(챕터 1은 실제 3단계를 마친 순간 시작하므로, 그 사이에 만들어진 캡슐은 챕터 1이 시작돼도 그대로다). 온보딩 연결은 아래 «열기» 행의 완료 처리 호출이다 |
+| 열기 | `openCapsule`(`open.ts`): 이용 정지 확인 → 캡슐 상태·빈칸 사전 확인(안 되면 추첨하지 않음) → 소속 트라이브(`users.tribe_id`, 없으면 `no_tribe`)·후보·카운터 조회(읽지 못하면 틀린 값으로 추첨하지 않고 던진다) → 추첨 → RPC `capsule_open` → 응답에 개체 정보를 채움 → 후속 처리. `capsule_open`이 한 트랜잭션으로 정지·가득 참·빈칸 확인, 개체 지급(`grant_inventory_item_locked`)과 발급 기록(`item_issue_log`, route `capsule`), 열기 기록(`capsule_opens`), 보정 카운터 갱신, 다음 캡슐 생성(그때의 챕터로 필요량 고정)을 한다. 같은 캡슐을 동시에 두 번 열어도 캡슐 행 잠금으로 한 번만 열린다. 열기가 확정되면 챕터 점수 «캡슐 열기»를 센 다음 퀘스트 완료 처리(`recordOnboardingQuestCompletion`)를 부른다 — 퀘스트 실제 단계 ② «캡슐 열기»가 여기서 끝날 수 있고, 실제 3단계가 모두 끝났으면 챕터 1이 시작된다(티켓 20261021_1248). 던지지 않고 열기 결과·응답을 바꾸지 않으며 응답에 완료 배지를 싣지 않는다 |
 | 빈칸 검사 | 빈칸이 나올 수 있는 최대 개수보다 적으면 열기를 거절하고(`insufficient_slots`) 채운 잼은 그대로 남으며 다음 캡슐은 생기지 않는다. 앱이 추첨 전에 먼저 확인하고, DB 함수가 경쟁에 대비해 한 번 더 확인한다 |
 | 후속 처리 | 열기가 확정된 뒤 개체마다 `recordIssuedRewards`(포인트·피드, 활동 없음)를 부른다. **잠긴 개체는 포인트를 주지 않고 피드에도 올리지 않는다**(7.3절). 캡슐에는 대상 활동이 없어 활동 결산 알림은 보내지 않는다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다 |
 | 열기 응답 | 열린 개체는 이름·그림·등급·일련번호, 잠긴 개체는 이름·그림·일련번호·`badgeId` 없이 `locked`·등급·`unlockRequired`만 싣는다. 다음 캡슐의 `required`·`filled`를 함께 싣는다 |

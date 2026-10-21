@@ -520,6 +520,18 @@ describe('④ 미션', () => {
       expect(text(view('chapter_up', { chapter_no: 10 }))).toBe('축하해요! 챕터 10에 올랐어요')
     })
 
+    it('챕터 1은 «오른» 것이 아니라 «시작»이라 「챕터 1을 시작했어요」를 말한다 (티켓 20261021_1248)', () => {
+      expect(text(view('chapter_up', { chapter_no: 1 }))).toBe('챕터 1을 시작했어요')
+      // 챕터 2 이상은 그대로다
+      expect(text(view('chapter_up', { chapter_no: 2 }))).toBe('축하해요! 챕터 2에 올랐어요')
+    })
+
+    it('챕터 1 변형도 챕터 번호만 볼드이고 조사 「을」은 볼드가 아니다', () => {
+      const tokens = notificationTokens(view('chapter_up', { chapter_no: 1 }))
+      expect(tokens.filter((token) => token.bold).map((token) => token.text)).toEqual(['챕터 1'])
+      expect(tokens.map((token) => token.text).join('')).toBe('챕터 1을 시작했어요')
+    })
+
     it('챕터 번호는 payload 슬롯이라 볼드, 고정 문구는 일반이다', () => {
       const bold = notificationTokens(view('chapter_up', { chapter_no: 3 }))
         .filter((token) => token.bold)
@@ -534,11 +546,13 @@ describe('④ 미션', () => {
     })
 
     it('채워진 슬롯만 있어 빈 슬롯으로 보고되지 않는다', () => {
+      expect(missingMessageSlots(view('chapter_up', { chapter_no: 1 }))).toEqual([])
       expect(missingMessageSlots(view('chapter_up', { chapter_no: 2 }))).toEqual([])
       expect(missingMessageSlots(view('chapter_up', {}))).toEqual([])
     })
 
     it('착지는 내 프로필이다 — 아이디가 없으면 /profile이다', () => {
+      expect(notificationTarget(view('chapter_up', { chapter_no: 1 }))).toEqual({ href: '/시현', avatarHref: null })
       expect(notificationTarget(view('chapter_up', { chapter_no: 2 }))).toEqual({ href: '/시현', avatarHref: null })
       const noName = { id: 'me', username: null, avatarUrl: null }
       expect(notificationTarget(view('chapter_up', { chapter_no: 2 }, { me: noName }))).toEqual({

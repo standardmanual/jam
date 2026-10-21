@@ -11,6 +11,9 @@
  *  - 후속 처리(포인트·피드, `recordIssuedRewards`)는 열기가 확정된 뒤에 한다. 잠긴 개체는 포인트와 피드에서 빠진다(7.3절, 티켓 20261018_0051).
  *    캡슐에는 대상 활동이 없어 활동 결산 알림은 보내지 않는다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다.
  *  - 열기가 확정되면 챕터 점수 «캡슐 열기»를 센다(`lib/chapter/score.ts`, 원천 id = 열기 기록 id, 티켓 20261019_1315). 점수 실패는 기록만 남고 열기와 응답을 바꾸지 않는다.
+ *  - 그 다음 퀘스트 완료 처리를 부른다(티켓 20261021_1248, 운영 로직 2.2절). 실제 단계 ② «캡슐 열기»가 여기서 끝날 수 있고, 실제 3단계가 다 끝났으면 챕터 1이 시작된다.
+ *    점수 다음이라 퀘스트 전에 쌓인 점수가 챕터 1 시작 때 함께 계산된다. 던지지 않고, 어떤 실패도 열기와 응답을 바꾸지 않는다(응답에 완료 배지를 싣지 않는다).
+ *  - 다른 트라이브를 고를 때는 후보 배지가 있는 트라이브만 대상이다(`tribesWithCandidates`, 티켓 20261021_1248). 후보가 없는 트라이브가 뽑혀 개체가 비는 일을 없앤다.
  *  - 응답의 잠긴 개체는 이름·그림·일련번호 없이 등급과 여는 데 필요한 양만 싣는다.
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
@@ -23,6 +26,7 @@ import type { IssueBadge, IssueBook, Rand } from '@/lib/drop-engine/syncIssue'
 import { logEngineDecision } from '@/lib/engine-log'
 import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { getJamPolicy } from '@/lib/jam/policy'
+import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import { CapsuleError, getCapsuleState } from './capsule'
 import {
@@ -32,7 +36,7 @@ import {
   type CapsuleOpenPayload,
   type CapsuleRarity,
 } from './capsule-contract'
-import { rollCapsule, type RolledCapsuleItem } from './capsuleRoll'
+import { rollCapsule, tribesWithCandidates, type RolledCapsuleItem } from './capsuleRoll'
 import { getCapsulePolicy } from './policy'
 
 /** 발급 기록(`item_issue_log.route`)에 쓰는 경로 값 */
@@ -171,7 +175,7 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
     {
       policy: { ...capsulePolicy, ...jamPolicy },
       tribeId: data.tribeId,
-      tribeIds: data.tribes.map((t) => t.id),
+      tribeIds: tribesWithCandidates(data.tribes.map((t) => t.id), data.tribeId, data.books, data.badges, now),
       books: data.books,
       badges: data.badges,
       commonStreak: data.commonStreak,
@@ -220,6 +224,12 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
   // 챕터 점수 «캡슐 열기» (티켓 20261019_1315, 운영 로직 12.2절). 후속 처리(`recordIssuedRewards`) 결과와 무관하게 먼저 센다.
   // 원천 id는 열기 기록 id(`capsule_opens.id`)라 같은 열기를 다시 보내도 한 번만 센다. 던지지 않는다(실패는 기록만 남는다).
   await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
+  // 퀘스트 실제 단계 ② «캡슐 열기»(티켓 20261021_1248). 점수 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
+  try {
+    await recordOnboardingQuestCompletion(supabase, userId)
+  } catch (e) {
+    console.error(`[capsule-open] 퀘스트 완료 처리 실패 — 열기는 유지한다 (userId: ${userId}):`, e)
+  }
 
   const tribeNameOf = new Map(data.tribes.map((t) => [t.id, t.name]))
   const items: CapsuleOpenedItem[] = []

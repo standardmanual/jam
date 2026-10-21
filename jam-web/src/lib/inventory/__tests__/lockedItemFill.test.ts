@@ -11,6 +11,8 @@
  *   열기 거절 응답에는 개체 정보를 읽는 조회가 아예 나가지 않는다.
  * - 열기 점수(티켓 20261019_1315): 열기가 확정되면 `chapter_add_score`를 (locked_item_badge_open, 개체 id, 1)로 한 번 부른다. 거절·정지·해석 불가 응답에는 부르지 않고,
  *   같은 개체를 다시 보내도 같은 키다. 점수 실패(RPC 오류·예외)는 열기와 응답을 바꾸지 않는다. 채우기는 점수와 무관하다.
+ * - 퀘스트 완료 처리(티켓 20261021_1248): 열기가 확정되면 챕터 점수 다음에 `(supabase, userId)`로 한 번 부른다. 거절·정지·해석 불가 응답과 채우기에는 부르지 않고,
+ *   완료 처리가 던져도 열기와 응답은 그대로다. 응답에는 완료 배지를 싣지 않는다. 실제 판정은 `onboarding-quest/__tests__`가 고정한다(여기서는 가짜).
  * - 조회: 채운 양·필요량·남은 양·잔액·열 수 있는지만 싣고 `badges` 등 개체 정보 표는 읽지 않는다. 내 것이 아니거나 버려지거나 드랍된 개체는
  *   `item_not_found`다. 이용 정지 중에도 막지 않는다. 지갑 행이 없으면 잔액 0이다.
  * - 경계: 계약 파일은 아무것도 가져오지 않고, 서버 전용 모듈은 클라이언트 파일의 import 사슬에 없다.
@@ -28,7 +30,15 @@ import { UserSuspendedError } from '@/lib/suspension/suspension'
 const calls = vi.hoisted(() => ({ order: [] as string[] }))
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
 const logMock = vi.hoisted(() => vi.fn())
+const completionMock = vi.hoisted(() => vi.fn())
 
+// 퀘스트 완료 처리는 가짜로 막는다(티켓 20261021_1248) — 불린 순서와 인자만 본다
+vi.mock('@/lib/onboarding-quest/completion', () => ({
+  recordOnboardingQuestCompletion: async (...args: unknown[]) => {
+    calls.order.push('quest_completion')
+    return completionMock(...args)
+  },
+}))
 // 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 vi.mock('@/lib/supabase/server', () => ({
@@ -98,6 +108,8 @@ beforeEach(() => {
   assertNotSuspendedMock.mockResolvedValue(undefined)
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
+  completionMock.mockReset()
+  completionMock.mockResolvedValue(null)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -318,7 +330,7 @@ describe('openLockedItem — 챕터 점수 «잠긴 아이템 배지 열기» (�
 
     await openLockedItem(client, USER_ID, ITEM_ID)
 
-    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open', 'rpc:chapter_add_score'])
+    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open', 'rpc:chapter_add_score', 'quest_completion'])
     const scoreCalls = rpc.mock.calls.filter(([name]) => name === 'chapter_add_score')
     expect(scoreCalls).toEqual([['chapter_add_score', SCORE_ARGS]])
   })
@@ -390,6 +402,68 @@ describe('openLockedItem — 챕터 점수 «잠긴 아이템 배지 열기» (�
     const payload = await openLockedItem(client, USER_ID, ITEM_ID)
 
     expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, pointsAwarded: 50 })
+  })
+})
+
+describe('openLockedItem — 퀘스트 완료 처리 (티켓 20261021_1248)', () => {
+  it('열기가 확정되면 (클라이언트, 유저 id)로 한 번 부르고, 챕터 점수 다음이며 개체 정보 조회보다 앞이다', async () => {
+    const { client, reads } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+    let readsWhenCalled = -1
+    completionMock.mockImplementation(async () => {
+      readsWhenCalled = reads.length
+      return null
+    })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(completionMock).toHaveBeenCalledTimes(1)
+    expect(completionMock).toHaveBeenCalledWith(client, USER_ID)
+    expect(calls.order.indexOf('quest_completion')).toBeGreaterThan(calls.order.indexOf('rpc:chapter_add_score'))
+    // 완료 처리가 불릴 때까지 개체 정보 표는 아직 읽지 않았고, 그 뒤에 읽는다
+    expect(readsWhenCalled).toBe(0)
+    expect(reads.length).toBeGreaterThan(0)
+  })
+
+  it('정지·DB 거절·해석할 수 없는 응답은 부르지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
+    await openLockedItem(fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES }).client, USER_ID, ITEM_ID).catch(() => {})
+
+    const notFull = fakeClient({ rpc: { locked_item_open: { data: { ok: false, error: 'not_full', required: 100, filled: 60 }, error: null } } })
+    await openLockedItem(notFull.client, USER_ID, ITEM_ID).catch(() => {})
+
+    const broken = fakeClient({ rpc: { locked_item_open: { data: { ok: true }, error: null } } })
+    await openLockedItem(broken.client, USER_ID, ITEM_ID).catch(() => {})
+
+    expect(completionMock).not.toHaveBeenCalled()
+  })
+
+  it('채우기는 완료 처리와 무관하다 — 열기만 실제 단계 ③이다', async () => {
+    const { client } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
+
+    await fillLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(completionMock).not.toHaveBeenCalled()
+  })
+
+  it('완료 처리가 던져도 열기와 응답은 그대로이고 개체 정보를 이어 읽으며 기록만 남긴다', async () => {
+    completionMock.mockRejectedValue(new Error('퀘스트 완료 처리 장애'))
+    const { client } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
+    expect(payload.item).not.toBeNull()
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('퀘스트 완료 처리 실패'), expect.any(Error))
+  })
+
+  it('응답에는 완료 배지를 싣지 않는다 — 완료 처리가 배지 id를 돌려줘도 응답 모양은 같다', async () => {
+    completionMock.mockResolvedValue('cd20f271-9445-42cc-ac51-d8a96b25e1c3')
+    const { client } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(Object.keys(payload).sort()).toEqual(['badgeId', 'item', 'itemId', 'pointsAwarded', 'serialNumber', 'serialPrefix'])
+    expect(JSON.stringify(payload)).not.toContain('cd20f271')
   })
 })
 

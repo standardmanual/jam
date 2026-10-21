@@ -2,8 +2,8 @@
  * lib/chapter/rise — 챕터 오름 처리 (티켓 20261019_1316, 운영 로직 12.1~12.3절)
  *
  * 고정하는 것:
- * - 오른 챕터가 없으면 아무것도 하지 않는다. 챕터 1만 오르면 소식은 없고 챕터 배지 판정은 있다.
- * - 소식은 오른 챕터 가운데 가장 높은 챕터(2 이상)로 한 건만 보낸다. 묶음 키는 `chapter_up:{챕터}` + `once`라 같은 오름을 두 번 처리해도 소식은 한 건이다.
+ * - 오른 챕터가 없으면 아무것도 하지 않는다. 챕터 1만 오르면(챕터 1 시작) 소식 한 건과 챕터 배지 판정이 있다(티켓 20261021_1248 — 예전에는 챕터 1 소식이 없었다).
+ * - 소식은 오른 챕터 가운데 가장 높은 챕터로 한 건만 보낸다. 묶음 키는 `chapter_up:{챕터}` + `once`라 같은 오름을 두 번 처리해도 소식은 한 건이다.
  * - 챕터 배지 판정은 `runJamActionEvaluation(userId, ['chapter_reached'])`이다. `skipBadgeEvaluation`이면 건너뛴다(소식은 보낸다).
  * - 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 어떤 경우에도 던지지 않고 실패는 `chapter_rise_failed`로 남긴다.
  * - 챕터 배지가 다시 챕터 점수를 올리는 고리는 5-5의 제외 규칙이 막는다(`chapter_reached` 조건 배지는 «배지 받기» 점수에서 뺀다).
@@ -66,12 +66,38 @@ describe('processChapterRise — 오른 챕터가 없을 때', () => {
 })
 
 describe('processChapterRise — 소식', () => {
-  it('챕터 1만 오르면(챕터 1 시작) 소식은 보내지 않고 챕터 배지는 판정한다', async () => {
+  it('챕터 1만 오르면(챕터 1 시작) chapter_up 한 건을 챕터 번호 1·묶음 키 chapter_up:1·once로 보내고 챕터 배지도 판정한다', async () => {
     await processChapterRise({ userId: USER, reachedChapters: [1] })
 
-    expect(createNotificationMock).not.toHaveBeenCalled()
+    expect(createNotificationMock).toHaveBeenCalledTimes(1)
+    expect(createNotificationMock).toHaveBeenCalledWith({
+      userId: USER,
+      type: 'chapter_up',
+      payload: { chapter_no: 1 },
+      groupKey: 'chapter_up:1',
+      mode: 'once',
+    })
     expect(runEvaluationMock).toHaveBeenCalledTimes(1)
     expect(runEvaluationMock).toHaveBeenCalledWith(USER, ['chapter_reached'])
+  })
+
+  it('챕터 1 시작 소식도 같은 오름을 두 번 처리하면 한 건이다 — 같은 묶음 키 + once', async () => {
+    const rows = new Map<string, { id: string }>()
+    createNotificationMock.mockImplementation(async (input: { userId: string; groupKey: string; mode: string }) => {
+      const key = `${input.userId}:${input.groupKey}`
+      const existing = rows.get(key)
+      if (existing && input.mode === 'once') return existing
+      const row = { id: `n${rows.size + 1}` }
+      rows.set(key, row)
+      return row
+    })
+
+    await processChapterRise({ userId: USER, reachedChapters: [1] })
+    await processChapterRise({ userId: USER, reachedChapters: [1] })
+
+    expect(createNotificationMock).toHaveBeenCalledTimes(2)
+    expect(rows.size).toBe(1)
+    expect(logMock).not.toHaveBeenCalled()
   })
 
   it('챕터 2 이상으로 오르면 chapter_up 한 건을 챕터 번호·묶음 키·once로 보낸다', async () => {
@@ -197,13 +223,22 @@ describe('processChapterRise — 서로 막지 않고 던지지 않는다', () =
     expect(logMock).toHaveBeenCalledTimes(2)
   })
 
-  it('챕터 1 시작에서 판정이 실패해도 던지지 않는다(소식은 원래 없다)', async () => {
+  it('챕터 1 시작에서 판정이 실패해도 던지지 않고 소식은 보낸다', async () => {
     runEvaluationMock.mockRejectedValue(new Error('판정 장애'))
 
     await expect(processChapterRise({ userId: USER, reachedChapters: [1] })).resolves.toBeUndefined()
 
-    expect(createNotificationMock).not.toHaveBeenCalled()
+    expect(createNotificationMock).toHaveBeenCalledTimes(1)
     expect(logMock.mock.calls[0][3]).toMatchObject({ step: 'badge_evaluation' })
+  })
+
+  it('챕터 1 시작에서 소식이 실패해도 던지지 않고 판정은 한다', async () => {
+    createNotificationMock.mockResolvedValue(null)
+
+    await expect(processChapterRise({ userId: USER, reachedChapters: [1] })).resolves.toBeUndefined()
+
+    expect(runEvaluationMock).toHaveBeenCalledTimes(1)
+    expect(logMock.mock.calls[0][3]).toMatchObject({ step: 'notification', reachedChapters: [1] })
   })
 })
 

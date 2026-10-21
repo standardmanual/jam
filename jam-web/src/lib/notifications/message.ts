@@ -667,11 +667,13 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       }
     }
 
-    // ── 챕터 오름 (티켓 20261019_1316) ────────────────────────────────────
+    // ── 챕터 오름·챕터 1 시작 (티켓 20261019_1316, 20261021_1248) ────────────────────
     case 'chapter_up': {
       // 챕터는 1부터다. 번호가 비었거나 손상됐으면 「챕터 0에」 대신 번호 없는 문장을 쓴다
       const chapterNo = Math.floor(num(p, 'chapter_no'))
       if (chapterNo < 1) return { template: n.msgChapterUpNoNumber, vars: {} }
+      // 챕터 1은 «오른» 것이 아니라 «시작»이다(티켓 20261021_1248). 건너뛴 유저도 같은 소식을 받는다
+      if (chapterNo === 1) return { template: n.msgChapterStart, vars: { chapter: t(n.slotChapter, { chapterNo }) } }
       return { template: n.msgChapterUp, vars: { chapter: t(n.slotChapter, { chapterNo }) } }
     }
 
