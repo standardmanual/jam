@@ -68,8 +68,11 @@ export default async function HomePage() {
   const leftStatusPromise: Promise<TodayLeftStatus> = showsStravaSyncCta(stravaView)
     ? Promise.resolve({ kind: 'strava_not_connected', href: '/api/strava/auth' })
     : getTodayLeftStatus(userId)
+  // «JAM! 시작하기» 카드는 실제 3단계와 캡슐 상태(가득 참·빈칸·필요한 잼·가진 잼)를 읽어 그린다(티켓 20261021_1248 2회).
+  // 캡슐 상태는 위에서 이미 시작한 조회(capsulePromise)를 받는다 — 같은 값을 두 번 읽지 않고 홈 응답을 늦추지 않는다.
   const onboardingQuestPromise = getOnboardingQuestCard(userId, {
     stravaConnected: stravaView === 'connected' || stravaView === 'unknown',
+    capsule: capsulePromise,
   })
   const onboardingQuestGatePromise = getOnboardingQuestGate(userId, 'home')
 
@@ -134,7 +137,7 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      {/* 온보딩 퀘스트 홈 카드 (티켓 20260927_2133) — 대상 유저에게만 렌더, 그 외엔 null */}
+      {/* «JAM! 시작하기» 카드 (티켓 20260927_2133, 실제 3단계 20261021_1248) — 대상 유저에게만 렌더, 그 외엔 null */}
       <OnboardingQuestCard state={onboardingQuestCard} username={userProfile?.username ?? null} />
 
       {/* Strava 동기화 끊김 카드 (티켓 20261017_1422) — 오류로 끊긴 유저에게만 렌더, 그 외엔 DOM에 없다.

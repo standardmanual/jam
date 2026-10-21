@@ -11,6 +11,7 @@ import {
   resolvePreviewCard,
   advancePreviewStep,
 } from '../preview'
+import { resolveRealStepsView } from '../real-view'
 
 describe('parseQuestPreview', () => {
   it('단계 키·done은 그대로 통과시킨다', () => {
@@ -42,12 +43,22 @@ describe('resolvePreviewGate', () => {
 })
 
 describe('resolvePreviewCard', () => {
-  it('단계 키면 in_progress 상태(done은 그 단계 이전에 마친 단계 수)를 돌려준다', () => {
+  // 미리보기는 DB를 읽지 않으므로 실제 3단계는 «아무것도 안 했다»이고 지금 할 차례는 늘 ① Strava 동기화다(티켓 20261021_1248)
+  const realOf = (stravaConnected: boolean) =>
+    resolveRealStepsView({
+      steps: { sync: false, capsuleOpened: false, lockedOpened: false },
+      stravaConnected,
+      capsule: null,
+      lockedTarget: null,
+    })
+
+  it('단계 키면 in_progress 상태(done은 그 단계 이전에 마친 단계 수)와 아무것도 안 한 실제 3단계를 돌려준다', () => {
     expect(resolvePreviewCard('sync', { stravaConnected: false })).toEqual({
       kind: 'in_progress',
       done: 0,
       total: 7,
       nextStep: 'sync',
+      real: realOf(false),
       preview: true,
     })
     expect(resolvePreviewCard('mix_success', { stravaConnected: false })).toEqual({
@@ -55,17 +66,15 @@ describe('resolvePreviewCard', () => {
       done: 4,
       total: 7,
       nextStep: 'mix_success',
+      real: realOf(false),
       preview: true,
     })
   })
 
-  it('done이면 awaiting_sync 상태를 돌려준다(stravaConnected 실제 값 그대로)', () => {
-    expect(resolvePreviewCard('done', { stravaConnected: true })).toEqual({
-      kind: 'awaiting_sync',
-      stravaConnected: true,
-      skipped: false,
-      preview: true,
-    })
+  it('done이면 실제 구역 카드(kind: real)를 돌려준다(stravaConnected 실제 값 그대로)', () => {
+    const state = resolvePreviewCard('done', { stravaConnected: true })
+    expect(state).toEqual({ kind: 'real', real: realOf(true), preview: true })
+    expect(state).toMatchObject({ real: { doneCount: 0, current: { step: 'sync', stravaConnected: true } } })
   })
 })
 
