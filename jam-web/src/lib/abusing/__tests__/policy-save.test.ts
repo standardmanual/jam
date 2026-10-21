@@ -15,15 +15,16 @@
  *
  * 갱신 (티켓 20260831_1328): 마이그레이션 115가 적용됐고(근거 1도 소멸) 소비 지점 전수 확인
  * 결과 `DEFAULT_POLICY` 밖 키를 읽는 곳이 없어 상위집합 스프레드를 제거했다.
- * `getAbusingPolicy()`는 이제 `AbusingPolicy` 키만 돌려준다. 구 등급 케이스가 여전히 "차단"인
- * 이유는 상위집합 보존이 아니라 **미지 등급 fail-closed**다(shadow-ban.ts의 타입 맵에 없음).
+ * `getAbusingPolicy()`는 이제 `AbusingPolicy` 키만 돌려준다.
+ *
+ * 갱신 (티켓 20261021_1250, 6-4 2회): `shadow-ban.ts`(와 `shouldAllowDrop`)를 지웠으므로 «미지 등급 fail-closed»
+ * 시험은 함수와 함께 없어졌다. 이 파일은 정책 읽기·저장만 본다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/abusing/__tests__/policy-save.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NextRequest } from 'next/server'
-import type { BadgeRarity } from '@/types/database'
 
 /** 마이그레이션 115 적용 후의 `abusing_policy` 행 */
 const POST_115_ROW: Record<string, unknown> = {
@@ -103,7 +104,6 @@ import {
   DEFAULT_POLICY,
   MIN_VEHICLE_SPEED_FILTER_KMH,
 } from '../policy'
-import { shouldAllowDrop } from '../shadow-ban'
 import { PUT } from '@/app/api/admin/abusing/policy/route'
 
 const fakeReq = (body: unknown) => ({ json: async () => body }) as unknown as NextRequest
@@ -117,7 +117,7 @@ beforeEach(() => {
 })
 
 describe('getAbusingPolicy — DEFAULT_POLICY 키만 돌려준다', () => {
-  it('마이그레이션 115 미실행 구간에서는 신규 등급 키가 기본값으로 폴백하고, 구 등급 드랍은 fail-closed로 차단된다', async () => {
+  it('마이그레이션 115 미실행 구간에서는 신규 등급 키가 기본값으로 폴백한다', async () => {
     stub.row = { ...PRE_115_ROW }
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const policy = await getAbusingPolicy()
@@ -126,23 +126,16 @@ describe('getAbusingPolicy — DEFAULT_POLICY 키만 돌려준다', () => {
     // 신규 키(soft_epic_rate 등)는 PRE_115_ROW에 없어 DEFAULT_POLICY로 폴백한다.
     expect(policy.soft_epic_rate).toBe(DEFAULT_POLICY.soft_epic_rate)
     expect(policy.hard_epic_rate).toBe(DEFAULT_POLICY.hard_epic_rate)
-
-    // 115 미실행 구간의 DB enum 값은 'mythic'/'legendary'라 타입 단언으로 그 구간을 재현한다.
-    // shadow-ban.ts의 `Record<BadgeRarity, keyof AbusingPolicy>` 맵에 없는 등급이라
-    // fail-closed로 차단된다 (티켓 20260831_1259) — 상위집합 보존과는 무관하다.
-    expect(shouldAllowDrop('mythic' as BadgeRarity, 'soft', policy)).toBe(false)
-    expect(shouldAllowDrop('legendary' as BadgeRarity, 'soft', policy)).toBe(false)
-    expect(shouldAllowDrop('legendary' as BadgeRarity, 'hard', policy)).toBe(false)
     spy.mockRestore()
   })
 
-  it('마이그레이션 115 적용 후에는 신규 키로 판정한다', async () => {
+  it('마이그레이션 115 적용 후에는 신규 키를 그대로 읽는다', async () => {
     const policy = await getAbusingPolicy()
-    expect(shouldAllowDrop('mystic', 'soft', policy)).toBe(false)
-    expect(shouldAllowDrop('common', 'soft', policy)).toBe(true)
+    expect(policy.soft_mystic_rate).toBe(0)
+    expect(policy.soft_common_rate).toBe(1)
     // 115의 5절 결정대로 epic 차단은 꺼진 상태(1.0)를 유지한다
-    expect(shouldAllowDrop('epic', 'soft', policy)).toBe(true)
-    expect(shouldAllowDrop('rare', 'hard', policy)).toBe(false)
+    expect(policy.soft_epic_rate).toBe(1)
+    expect(policy.hard_rare_rate).toBe(0)
   })
 
   it('NUMERIC이 문자열로 내려와도 숫자로 정규화한다', async () => {

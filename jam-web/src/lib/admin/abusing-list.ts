@@ -1,12 +1,13 @@
 /**
  * 어뷰징 화면 목록 쿼리 단일화(티켓 20260924_0952, 상위 티켓 §4.4 어뷰징 행) — 목록 페이지
- * (`admin/abusing/page.tsx`)와 전체 선택용 ID 조회(`api/admin/abusing/{bans,poi-blocks}/ids`)가
+ * (`admin/abusing/page.tsx`)와 전체 선택용 ID 조회(`api/admin/abusing/poi-blocks/ids`)가
  * 같은 필터 규칙({@link parseAbusingListParams})을 쓰도록 모은다.
  *
- * 활성 = 만료 시각이 없거나(영구 제재) 지금보다 뒤. POI 차단은 `blocked_until` 기준이다.
- * 검색은 유저 이름·이메일(제재·POI 차단 공통)과 POI 이름(POI 차단만)을 {@link sanitizeSearchTerm}으로
+ * 활성 = 차단 만료 시각(`blocked_until`)이 지금보다 뒤.
+ * 검색은 유저 이름·이메일과 POI 이름을 {@link sanitizeSearchTerm}으로
  * 정제한 뒤 먼저 일치하는 id를 찾고, 그 id로 목록을 좁힌다 — 한 쿼리로 두 관계(유저·POI)를 OR로
  * 걸 수 없기 때문이다.
+ * 옛 섀도우밴(`user_shadow_bans`) 탭의 목록 조회는 티켓 20261021_1250(6-4 2회)에서 지웠다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import { sanitizeSearchTerm } from './search-term'
@@ -15,7 +16,7 @@ import { fetchSuspensionActiveCount } from './suspension-list'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export type AbusingListTab = 'bans' | 'poi-blocks'
+export type AbusingListTab = 'poi-blocks'
 export type AbusingListStatus = 'active' | 'expired' | 'all'
 
 /** "필터 결과 전체 선택" 상한(상위 티켓 §6 결정 1) */
@@ -23,17 +24,6 @@ export const ABUSING_SELECT_ALL_CAP = 1000
 
 /** 검색어와 일치하는 유저·POI를 찾을 때 가져오는 최대 건수 — `.in()` 목록이 URL 상한에 걸리지 않게 한다 */
 const SEARCH_MATCH_LIMIT = 100
-
-export interface BanRow {
-  id: string
-  user_id: string
-  ban_level: 'soft' | 'hard'
-  reason: string
-  expires_at: string | null
-  created_at: string
-  created_by: string
-  user: { id: string; email: string; username: string | null } | null
-}
 
 export interface PoiBlockRow {
   id: string
@@ -48,7 +38,6 @@ export interface PoiBlockRow {
 
 /** 머리 칸 정렬 id → DB 컬럼. 표의 `columnHelper` id와 같아야 한다 */
 export const ABUSING_SORT_COLUMNS: Record<AbusingListTab, Record<string, string>> = {
-  bans: { level: 'ban_level', expires: 'expires_at' },
   'poi-blocks': { expires: 'blocked_until' },
 }
 
@@ -87,19 +76,21 @@ export function parseAbusingListParams(raw: Record<string, string | undefined>, 
 }
 
 /** 탭별 "만료 시각" 컬럼 */
-export function expiryColumnOf(tab: AbusingListTab): 'expires_at' | 'blocked_until' {
-  return tab === 'bans' ? 'expires_at' : 'blocked_until'
+const EXPIRY_COLUMN_OF = { 'poi-blocks': 'blocked_until' } as const
+
+export function expiryColumnOf(tab: AbusingListTab): 'blocked_until' {
+  return EXPIRY_COLUMN_OF[tab]
 }
 
 /**
  * 상태 필터를 PostgREST `or()` 조건 문자열로 만든다. `all`이면 null(필터 없음).
- * 제재의 활성은 영구(`expires_at` null)를 포함하고 만료는 포함하지 않는다.
+ * 장소 차단의 활성은 `blocked_until`이 지금보다 뒤이고 만료는 지금 이전이다.
  */
 export function statusFilterOf(tab: AbusingListTab, status: AbusingListStatus, nowIso: string): string | null {
   if (status === 'all') return null
   const column = expiryColumnOf(tab)
   if (status === 'expired') return `${column}.lte.${nowIso}`
-  return tab === 'bans' ? `${column}.is.null,${column}.gt.${nowIso}` : `${column}.gt.${nowIso}`
+  return `${column}.gt.${nowIso}`
 }
 
 export interface AbusingSearchIds {
@@ -158,9 +149,8 @@ async function resolveSearchIds(supabase: ServiceClient, tab: AbusingListTab, q:
   return { userIds: (users.data ?? []).map((row) => row.id), poiIds }
 }
 
-const BAN_SELECT = '*, user:user_id(id, email, username)'
 const POI_BLOCK_SELECT = '*, user:user_id(id, email, username), poi:poi_id(id, name)'
-const TABLE_OF = { bans: 'user_shadow_bans', 'poi-blocks': 'poi_blocks' } as const
+const TABLE_OF = { 'poi-blocks': 'poi_blocks' } as const
 
 interface ListResult<T> {
   rows: T[]
@@ -202,20 +192,6 @@ async function runList<T>(
   return { rows: data ?? [], total: count ?? 0, error: null }
 }
 
-/** 제재 목록 한 쪽 — 서버 컴포넌트가 그대로 렌더링한다 */
-export async function fetchBanListPage(
-  supabase: ServiceClient,
-  params: AbusingListParams,
-  page: number,
-  now: Date = new Date()
-): Promise<ListResult<BanRow>> {
-  const from = (Math.max(1, page) - 1) * ADMIN_LIST_PAGE_SIZE
-  const result = await runList<BanRow>(supabase, 'bans', params, BAN_SELECT, [from, from + ADMIN_LIST_PAGE_SIZE - 1], now, true)
-  // ban_level은 TEXT + CHECK('soft','hard') 제약이라(migrations/010) 값 집합이 DB에서 보장되지만
-  // 생성 타입은 string이다 — 이 필드만 좁혀 넘긴다.
-  return { ...result, rows: result.rows.map((row) => ({ ...row, ban_level: row.ban_level as BanRow['ban_level'] })) }
-}
-
 /** POI 차단 목록 한 쪽 */
 export async function fetchPoiBlockListPage(
   supabase: ServiceClient,
@@ -244,7 +220,7 @@ export async function fetchAbusingListIds(
 
 /**
  * 탭 라벨에 붙이는 활성 건수 — 조회에 실패하면 null(라벨에서 숨긴다).
- * 「이용 정지」 탭은 진행 중인 정지(`lifted_at IS NULL`) 건수다(티켓 20261017_1426). 옛 섀도우밴 건수는 읽지 않는다.
+ * 「이용 정지」 탭은 진행 중인 정지(`lifted_at IS NULL`) 건수다(티켓 20261017_1426).
  */
 export async function fetchAbusingTabCounts(
   supabase: ServiceClient,

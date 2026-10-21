@@ -17,7 +17,7 @@ interface SanctionBulkConfig {
   bulkEndpoint: string
   /** `GET /api/admin/abusing/<탭>/ids` */
   idsEndpoint: string
-  /** 확인창 제목에 붙이는 이름(섀도우밴·POI 블록) */
+  /** 확인창 제목에 붙이는 이름(예: 장소 블록) */
   noun: string
   selectedIds: string[]
   clear: () => void

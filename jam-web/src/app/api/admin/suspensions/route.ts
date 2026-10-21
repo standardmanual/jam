@@ -9,7 +9,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /**
  * 이용 정지 이력 조회·정지 걸기(티켓 20261017_1426 2회). 어드민만 부를 수 있다(`getAdminUser()`, 아니면 403).
- * 옛 `/api/admin/abusing/bans`(섀도우밴)는 그대로 두고 이 경로를 따로 둔다.
+ * 옛 `/api/admin/abusing/bans`(섀도우밴)는 티켓 20261021_1250(6-4 2회)에서 지웠다. 제재 관리는 이 경로(이용 정지)와 장소 차단 둘이다.
  */
 const FAILURES: Record<SuspendFailure, { status: number; error: string }> = {
   reason_required: { status: 400, error: '정지 사유를 입력해 주세요. 사유는 유저에게 그대로 보여요.' },
