@@ -63,12 +63,22 @@ describe('StravaDisconnectSheetView — 끊기 확인 시트', () => {
   const markup = (submitting: boolean) =>
     renderToStaticMarkup(<StravaDisconnectSheetView open submitting={submitting} onClose={noop} onConfirm={noop} />)
 
-  it('제목과 본문 세 문장을 d.* 문구 그대로 그린다', () => {
+  it('제목과 본문 네 문단을 d.* 문구 그대로 그린다', () => {
     const html = markup(false)
     const copy = d.stravaConnection.disconnectSheet
     expect(html).toContain(copy.title)
-    expect(copy.body).toHaveLength(3)
+    expect(copy.body).toHaveLength(4)
     for (const line of copy.body) expect(html).toContain(line)
+  })
+
+  it('좌표 파기 문단은 «기록은 남는다» 문단 바로 뒤, Strava 앱 목록 문단 앞에 있다 (티켓 20261021_1249 4회)', () => {
+    const [, kept, scrub, appList] = d.stravaConnection.disconnectSheet.body
+    expect(kept).toBe('지금까지의 활동 기록, 배지, 잼, 포인트는 그대로 남아요.')
+    expect(scrub).toBe('다만 마지막 위치와 활동에 담긴 좌표는 지워져요.')
+    expect(appList).toContain('Strava의 앱 목록')
+    const html = markup(false)
+    expect(html.indexOf(kept)).toBeLessThan(html.indexOf(scrub))
+    expect(html.indexOf(scrub)).toBeLessThan(html.indexOf(appList))
   })
 
   it('본문은 가운데 정렬이 아니라 왼쪽 정렬이고 한국어 줄바꿈 클래스를 갖는다', () => {
