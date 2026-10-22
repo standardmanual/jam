@@ -95,6 +95,8 @@ parent: "20261021_1250"
 - **로컬 실렌더 확인(카리나, 개발 서버 `jam-web-admin`, 읽기 전용 요청만)**: `/admin/drop-policy`·`/api/admin/drop-policy`·`/api/admin/test/simulate`는 404(의도한 삭제). `/admin/drop-policy/exclusions`는 200이고 사이드바에 «드랍 제외 관리»만 있으며 «드랍 정책 파라미터로 돌아가기» 링크가 없다. `/admin/simulator`는 열리고 «아이템 드랍»·«드랍 없음»·«섀도우밴» 문구가 없으며 확장 필드, 첫 싱크 모드, 미리보기(Dry Run)·실제 적용(Apply)이 남아 있다. `/admin/ambient-drop`은 200이고 `GET /api/admin/ambient-drop/config` 응답에 `all_random`이 없다. 콘솔의 404 세 건은 위에서 직접 호출한 삭제 경로 세 건이다(화면이 부른 요청 아님, 리소스 성능 항목에도 4xx 없음).
 - **시뮬레이터 «실제 적용(Apply)» 동작 변화 점검**: 삭제 전에는 적용 모드(`dryRun=false`)가 활동 배지·장소 배지를 저장하는 데 더해 고른 아이템 배지를 인벤토리에도 넣었다. 지금은 활동 배지·장소(체크인) 배지만 저장하고 아이템 배지는 지급하지 않는다(결정 2로 의도한 변화). 화면의 버튼과 결과 문구(«실제 적용(Apply)», «실제 적용됨», «Dry Run — DB 반영 없음»)는 아이템 지급을 약속하지 않으므로 고치지 않았다. 운영자가 시뮬레이터로 아이템을 넣어 시험하던 습관이 있었다면 더 이상 되지 않는다는 점만 알아 두면 된다.
 
+- **배포(staging)**: 2026-10-22 12:23 KST, 프로젝트 `jam-stage` 배포 `dpl_DHPogW6HpHa9eFYGRnmx4soDyha6`가 READY이고 별칭 `stage.j-a-m.app`에 붙었다. 대상 커밋은 코드 변경을 모두 담은 `078f199f8`(기록 커밋, 코드 머지 `722efd984`·`09f09fa4e` 포함)이다. `/probability`는 200이다. 삭제한 어드민 경로는 로그인 뒤에만 열려서 외부에서는 응답으로 구분하지 못했고(로그인 안내로 이동), 404 확인은 위 로컬 실렌더로 했다. main에는 올리지 않았다.
+
 ### 1회가 남긴 것 (2회와 후속 티켓에 넘김)
 
 - **2회에서 같은 배포에 걷을 것**: `user_drop_state.last_drop_tribe_id`·`last_drop_book_id`를 조회하는 어드민 삭제 가드(`lib/admin/reference-guards.ts` 364·472줄, `lib/admin/tribe-list.ts` 55줄, `registerChecks/references.ts` 141줄 근처, 줄 위치는 2회 때 다시 확인)와 그 시험. 열을 지운 뒤에도 이 조회가 남으면 트라이브·컬렉션 삭제 화면이 오류를 낸다.
