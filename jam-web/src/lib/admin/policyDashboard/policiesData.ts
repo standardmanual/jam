@@ -646,13 +646,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch8-tier-up-recipes',
     chapter: 8,
     chapterTitle: '인벤토리, 컬렉션, 믹스',
-    title: '등급 올리기 레시피 1,350건 규격',
-    type: 'pre_launch_pending',
-    currentSpec: '같은 트라이브·같은 등급의 아이템 배지 5개를 같은 이름의 바로 위 등급 1개로 바꿈 (Common→Rare, Rare→Epic, Epic→Mystic, Mystic은 재료 아님, 성공 포인트 0, 공개 전으로 숨겨 입력, 컬렉션이 열릴 때 그 컬렉션의 레시피 27건을 함께 공개)',
-    codeLocation: 'jam-web/supabase/migrations/283_tier_up_recipes.sql',
-    userExperience: '겹친 아이템 배지를 모아 위 등급으로 올려, 컬렉션을 원하는 등급으로 채워요.',
+    title: '등급 올리기 규칙 (레시피 없음)',
+    type: 'code_constant',
+    currentSpec: '레시피를 만들지 않고 규칙 하나로 처리 (같은 등급의 아이템 배지 5개를 내면 새 아이템 1개를 받음, 트라이브·컬렉션·아이템 이름은 무관, Mystic은 재료 아님, 결과 등급은 캡슐 등급 확률을 재료 등급 이상으로 잘라 합이 100%가 되게 다시 맞춘 확률로 정함, 그 등급의 아이템은 열린 컬렉션에서 균등 추첨)',
+    userExperience: '겹친 아이템 배지 5개를 내면 새 아이템 1개를 받아요. 운이 좋으면 더 높은 등급이 나와요.',
     basisDoc: '운영 로직 8.4절, 19.3절',
-    ticketId: '20261022_1138',
+    ticketId: '20261022_2119',
   },
 
   // =========================================================================

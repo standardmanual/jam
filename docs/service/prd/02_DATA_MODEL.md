@@ -789,10 +789,9 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 성공 포인트(`reward_points`)는 재료 수 × 10이고 4등급에 같으며, 칸은 재료마다 하나(`allowed_badge_ids` 후보 1개)라 4등급이면 344개다. 옛 트라이브 단독 레시피 3건은 마이그레이션 282가 오픈 직전에 `valid_until`을 채워 끈다(지우지 않는다).
 내용과 건수는 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이고, 끄기 직전 상태는 4-4절의 백업 표가 담는다.
 
-**JAM 2.0 등급 올리기 레시피 (마이그레이션 283, 티켓 20261022_1138 2회)**: 등급 올리기는 별도 종류가 아니라 슬롯 후보 목록으로 만든 보통 레시피이고, 새 트라이브 5곳의 아이템 이름 450개 × 올릴 등급 3개(Common→Rare, Rare→Epic, Epic→Mystic)라 1,350건이다.
-보상(`reward_badge_ids`)은 같은 컬렉션·같은 이름의 바로 위 등급 아이템 배지 1개이고, 칸(`combination_recipe_slots`)은 레시피마다 5개(`slot_order` 0~4, `badge_type` item)라 6,750개다. 칸마다 후보(`allowed_badge_ids`)는 같은 트라이브·재료 등급의 아이템 배지 90종 전부이고 5칸이 같다(후보 id 607,500개, 약 10MB). Mystic은 재료가 되지 않는다.
-성공 포인트(`reward_points`)는 0이고, 이름은 «{아이템 이름} {보상 등급} 올리기», 설명은 습니다체 틀이다(사용자 결정 2026-10-22). 1,350건 모두 `valid_from`에 먼 미래 자리 값 `2099-01-01 00:00 KST`를 넣어 숨긴 채 들어가며, 오픈 때 열리는 컬렉션마다 그 컬렉션이 보상인 27건의 `valid_from`을 실제 시각으로 바꾼다(283 파일 끝의 주석 예시).
-레시피와 칸은 SQL이 DB의 아이템 배지를 읽어 `INSERT … SELECT`로 만든다. 믹스 화면이 레시피를 고를 때만 후보를 읽도록 먼저 고친 뒤(7-7a, 티켓 `20261022_2119`) 공용 DB에 적용한다. 스키마는 바뀌지 않는다. 내용과 안전장치는 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이다.
+**JAM 2.0 등급 올리기는 레시피 행을 만들지 않는다 (티켓 20261022_2119, 7-7a)**: 등급 올리기는 `combination_recipes`·`combination_recipe_slots`에 행을 넣지 않고 규칙 하나로 처리한다(사용자 결정 2026-10-23).
+처음 계획한 레시피 1,350건(마이그레이션 283)은 공용 DB에 적용된 적 없이 폐기했고 파일을 지웠다. 이 기능으로 스키마는 바뀌지 않는다.
+규칙(재료 같은 등급 5개, 결과 등급은 확률로 정해짐, 아이템은 균등)은 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이다.
 
 **삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200): `combination_recipes.id`를 FK로 참조하는
 테이블은 없다. 대신 삭제되지 않은(`deleted_at IS NULL`) 배지의 조건
