@@ -279,7 +279,7 @@ badge-engine 밖의 세 번째 평가 경로.
 | 키 | 값 | 세는 것 |
 |---|---|---|
 | `mission_complete_count` | 정수 ≥1 | 내가 완료한 **서로 다른 미션** 수. 전체 기록(가입 이전 포함). 원천 `user_mission_completions`는 `UNIQUE(user_id, mission_id)`라 행 수가 곧 서로 다른 미션 수다 |
-| `collection_complete_count` | 정수 ≥1 | 내가 완성한 **서로 다른 컬렉션** 수. 전체 기록. 원천 `user_item_book_completions`는 PK `(user_id, item_book_id)`이고, 장착 해제·교체는 이 기록을 지우지 않는다 |
+| `collection_complete_count` | 정수 ≥1 | 내가 완성한 **서로 다른 컬렉션** 수. 전체 기록. 원천은 옛 완성 표 `user_item_book_completions`(PK `(user_id, item_book_id)`)와 등급 완성 표 `user_item_book_tier_completions`(PK `(user_id, item_book_id, tier)`) 둘이다. **등급 하나라도 완성하면 센다, 컬렉션당 최대 1** — 컬렉션 id 기준으로 합쳐 한 컬렉션의 등급 행이 여러 개여도, 두 표에 같은 컬렉션이 겹쳐도 한 번만 센다(티켓 20261022_0939 1회). 선택 인자 `window`는 두 표의 `completed_at`에 모두 건다. 장착 해제·교체는 이 기록을 지우지 않는다 |
 | `days_since_signup` | 정수 1~3650 | 가입한 날(KST)부터 오늘(KST)까지의 **날짜 차**. 가입한 날이 0. 24시간 경과가 아니라 한국 날짜가 바뀐 횟수다 |
 | `signup_recent_active_days` | 정수 1~30, 선택 | `days_since_signup`의 **보조 키**. 오늘(KST)을 포함한 최근 30일(오늘-29일 ~ 오늘) 가운데 활동한 날 수 |
 | `weekly_active_days` | 정수 1~7 | 월~일(KST) 한 주 안의 활동한 날 수. **역대 최고 주**의 값 |

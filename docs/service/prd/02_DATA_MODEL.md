@@ -479,8 +479,9 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
     "어느 개체인가"는 이 컬럼으로만 확정된다. 컬렉션 화면의 배지 상세 링크가 싣는
     `?item={inventory_item_id}`의 출처이기도 하다 (티켓 20260907_2059).
 - `user_item_book_completions`: 완성 기록 (PK user_id+item_book_id)
-  - **JAM! 행동 지표의 원천**: 완성한 컬렉션 수(`collection_complete_count`)가 `user_id`로 거른 행 수를 센다.
-    PK라 행 수가 서로 다른 컬렉션 수이고, 장착 해제·교체는 이 기록을 지우지 않는다(티켓 20261001_0633).
+  - **JAM! 행동 지표의 원천**: 완성한 컬렉션 수(`collection_complete_count`)가 이 표와 등급 완성 표(`user_item_book_tier_completions`,
+    아래 4-2절)에서 `user_id`로 거른 컬렉션 id를 합쳐 서로 다른 컬렉션 수를 센다. 장착 해제·교체는 이 기록을 지우지 않는다(티켓 20261001_0633,
+    두 표 합산은 티켓 20261022_0939 1회).
 
 ### 4-2. 컬렉션 4등급 구조 (JAM 2.0) — 마이그레이션 222, 티켓 20261016_2340
 운영 로직 8.3절이 근거다. 마이그레이션 222는 2026-10-17에 적용됐고 `tier_mode`가 켜진 컬렉션은 아직 없다. 옛 객체(`slot_item_into_book`, `swap_item_in_book`, `unslot_item_from_book`, `user_item_book_completions`, `item_books.reward_points`·`reward_badge_id`)는 바꾸지 않고 새 객체를 덧붙인다. 옛 것을 지우는 축소는 묶음 6이다.
@@ -512,6 +513,11 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 - `tiers`는 등급을 키로 `total`·`filled`(그 등급의 이름 수 기준, 판정은 아래 「완성 판정 규칙」)·`complete`(지금 계산상 완성)·`recorded`(그 등급의 `user_item_book_tier_completions` 행 유무)를 담는다. 옛 컬렉션은 `{}`다.
 - `isCompleted`: `tier_mode` 컬렉션은 등급별 완성 기록이 하나라도 있거나 지금 계산상 완성이면 true다(등급별 상세는 `tiers`). 옛 컬렉션은 옛 완성 기록이 있거나 계산상 완성이면 true로 이전과 같다.
 - 응답 필드는 `tierMode`를 쓰고 `tier_mode`는 DB 열 이름이다. 컬렉션 화면은 아직 이 필드를 읽지 않는다(묶음 3).
+
+**컬렉션 완성을 세는 곳 — 옛 완성 표와 등급 완성 표를 함께 읽는다** (티켓 20261022_0939 1회, 읽는 쪽 빈틈 메우기. 옛 완성 표를 읽는 쪽을 걷는 일은 이 티켓 2회)
+- **`collection_complete_count` 지표**(`jam-web/src/lib/badge-engine/jamActionCompletionMetrics.ts`): 두 표의 컬렉션 id를 합쳐 서로 다른 컬렉션 수를 센다. **등급 하나라도 완성하면 센다, 컬렉션당 최대 1**이고 겹쳐도 한 번만 센다. 선택 인자 `window`는 두 표의 `completed_at`에 건다. 조회 오류는 0으로 바꾸지 않고 던진다.
+- **운영 신호 «컬렉션 완성» 카운터**(`jam-web/src/lib/admin/opsSignals/load.ts`, 행동 횟수 급증): 두 표의 기간 안 행 수를 더한다. 이 카운터는 컬렉션 수가 아니라 완성 건수라 한 컬렉션의 등급 완성은 등급마다 한 건이다.
+- **팔로잉 소식 `following_collection_complete` 후보**(`jam-web/src/lib/notifications/batch/following.ts`): 24시간 안의 두 표 기록을 (유저, 컬렉션)당 하나(가장 이른 완성 시각)로 줄여 후보를 만든다. 한 사람이 같은 컬렉션의 여러 등급을 완성해도 «소식이 N건 더 있어요»가 붙지 않는다. 후보 모양과 알림 그룹 키(컬렉션, 행위자)는 그대로다.
 
 **삭제 가드** (`jam-web/src/lib/admin/reference-guards.ts` `ITEM_BOOK_REFERENCE_SOURCES`)
 - `user_item_book_tier_completions`는 컬렉션 삭제 시 CASCADE라, 옛 `user_item_book_slots`·`user_item_book_completions`와 같이 삭제를 막는 참조로 센다. 등급별 완성 기록이 있는 컬렉션은 하드 삭제 대신 비활성화를 안내한다.
