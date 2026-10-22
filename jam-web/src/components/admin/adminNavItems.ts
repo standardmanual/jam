@@ -32,6 +32,7 @@ import {
   IconCalendarWeek,
   IconAdjustmentsHorizontal,
   IconBooks,
+  IconShape,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -101,6 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/badge-image', label: '체크인 배지 이미지 생성', icon: IconPhoto },
       { href: '/admin/activity-badge-image', label: '액티비티 배지 이미지 생성', icon: IconPhotoEdit },
       { href: '/admin/asset-generator', label: '에셋 제너레이터', icon: IconSparkles },
+      { href: '/admin/assets', label: '에셋', icon: IconShape },
     ],
   },
 ]
