@@ -78,14 +78,15 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(mostSpecificActiveItem('/admin/ops-settings')?.href).not.toBe('/admin/ops-inbox')
   })
 
-  it('디자인 그룹은 배지 이미지 생성 2종 + 에셋 제너레이터를 포함하고 테마 컬러·쉐이더 랩 항목은 ' +
+  it('디자인 그룹은 배지 이미지 생성 2종 + 에셋 제너레이터 + 에셋을 포함하고 테마 컬러·쉐이더 랩 항목은 ' +
     '완전히 제거됐다(쉐이더 텍스트 생성은 티켓 20260913_0413, 쉐이더 랩은 티켓 20260925_1416에서 제거, ' +
-    '에셋 제너레이터는 티켓 20260924_2156에서 추가)', () => {
+    '에셋 제너레이터는 티켓 20260924_2156, 에셋은 티켓 20261022_1318에서 추가)', () => {
     const design = NAV_GROUPS.find((g) => g.id === 'design')
     expect(design?.items.map((i) => i.href)).toEqual([
       '/admin/badge-image',
       '/admin/activity-badge-image',
       '/admin/asset-generator',
+      '/admin/assets',
     ])
     expect(NAV_GROUPS.flatMap((g) => g.items).some((i) => i.href === '/admin/theme')).toBe(false)
     expect(NAV_GROUPS.flatMap((g) => g.items).some((i) => i.href === '/admin/shader-lab')).toBe(false)
