@@ -128,8 +128,8 @@ const copy=x=>JSON.parse(JSON.stringify(x));
 const REF=640; // 기준 캔버스 높이(px). 슬라이더 값은 이 기준의 px 입니다.
 const seg=(h,rt,rb,w=100)=>({h,rt,rb,w});
 const shapePresets=[
- {id:'hourglass',name:'Hourglass',width:250,overlap:0,metaball:true,merge:24,segments:[seg(190,20,400),seg(190,400,20)]},
- {id:'mushroom',name:'Mushroom',width:400,overlap:0,metaball:true,merge:26,segments:[seg(182,154,63),seg(207,363,120)]}
+ {id:'hourglass',name:'Hourglass',width:250,overlap:28,metaball:true,merge:36,segments:[seg(190,20,400),seg(190,400,20)]},
+ {id:'mushroom',name:'Mushroom',width:400,overlap:28,metaball:true,merge:36,segments:[seg(182,154,63),seg(207,363,120)]}
 ];
 // JAM 로고(첨부 SVG)의 세 글자. 좌표는 원본 SVG 기준입니다.
 const GLYPHS={

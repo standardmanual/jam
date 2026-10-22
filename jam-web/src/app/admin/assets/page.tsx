@@ -1,16 +1,40 @@
 'use client'
 
 /**
- * 어드민 디자인 > 에셋 — Shape Studio v2 (티켓 20261022_1318)
+ * 어드민 디자인 > 에셋 — 통합 에셋 스튜디오 (티켓 20261022_1318)
  *
- * 원본 프로토타입 `docs/assets/prototypes/20261022_shape-studio.html`의 상단 바·
- * 좌측 WebGL 프리뷰 워크스페이스·우측 352px 설정 패널·히스토리(50단계)·단축키·
- * 커스텀 PNG/SVG 쉐입 추가·JSON 설정 입출력을 통합한다.
+ * Shape Studio v2(WebGL 세그먼트·메타볼·글자 SDF)와 에셋 제너레이터(2D 리본 곡선 이동 엔진·
+ * 마스터 시드) 두 가지 생성 모드를 지원하며, 이미지·텍스트 오버레이 레이어 합성, 서버 DB 프리셋
+ * 저장·불러오기(`PresetPanel`), 콘텐츠 바로 적용(`ApplyTab`)을 단일 화면에서 제공한다.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
+import {
+  choice,
+  deriveRibbonFromSeed,
+  type ImageLayerConfig,
+  type LetterKey,
+  type OverlayLayerConfig,
+  type RandomRibbonValues,
+  type RibbonLayerConfig,
+  type StageRatio,
+  type TextLayerConfig,
+} from '@/lib/asset-generator'
+import {
+  computeInitialImageWidthPct,
+  createImageLayer,
+  createTextLayer,
+  deselectIfRemoved,
+  generateRandomSeed,
+  INITIAL_RIBBON_LAYER,
+  LETTER_KEYS,
+  moveImageLayer,
+  readImageNaturalWidth,
+  removeImageLayer,
+  resolveStageSize,
+} from '@/app/admin/asset-generator/assetGeneratorHelpers'
 import ShapeStudioPanel from './ShapeStudioPanel'
 import ShapeStudioViewport, { type ShapeStudioViewportHandle } from './ShapeStudioViewport'
 import {
@@ -25,7 +49,6 @@ import {
   randomizeState,
   seg,
   SHAPE_PRESETS,
-  validatePresetState,
   VIDEO_SEC,
   type AnyShapePreset,
   type BackgroundMode,
@@ -37,6 +60,7 @@ import {
   type RandomToggleState,
   type SegmentItem,
   type ShapeStudioState,
+  type StudioEngineMode,
 } from './shapeStudioConfig'
 
 function loadImageFile(file: File): Promise<HTMLImageElement> {
@@ -55,7 +79,31 @@ function loadImageFile(file: File): Promise<HTMLImageElement> {
   })
 }
 
+function applyRandomRibbon(
+  random: RandomRibbonValues,
+  prev: RibbonLayerConfig
+): RibbonLayerConfig {
+  return {
+    ...prev,
+    backgroundColor: random.backgroundColor,
+    endColor: random.endColor,
+    linkStartToBackground: random.linkStartToBackground,
+    startColor: random.linkStartToBackground ? random.backgroundColor : prev.startColor,
+    sizePct: random.sizePct,
+    blurPct: random.blurPct,
+    rotationDeg: random.rotationDeg,
+    followPath: random.followPath,
+    direction: random.direction,
+    irregularityPct: random.irregularityPct,
+    seed: random.seed,
+    speed: random.speed,
+    gap: random.gap,
+    count: random.count,
+  }
+}
+
 export default function AdminAssetsShapeStudioPage() {
+  const [engineMode, setEngineMode] = useState<StudioEngineMode>('shape')
   const [state, setState] = useState<ShapeStudioState>(() => cloneState(INITIAL_STATE))
   const [history, setHistory] = useState<ShapeStudioState[]>([])
   const [randOn, setRandOn] = useState<RandomToggleState>(() => ({ ...INITIAL_RAND_TOGGLES }))
@@ -63,6 +111,14 @@ export default function AdminAssetsShapeStudioPage() {
   const [glyphsMap, setGlyphsMap] = useState<Record<string, GlyphDefinition>>(() => ({
     ...BUILTIN_GLYPHS,
   }))
+
+  const [ribbonLayer, setRibbonLayer] = useState<RibbonLayerConfig>(INITIAL_RIBBON_LAYER)
+  const [uploadedRibbonFileName, setUploadedRibbonFileName] = useState<string | null>(null)
+  const [masterSeed, setMasterSeed] = useState<number | null>(null)
+
+  const [overlayLayers, setOverlayLayers] = useState<OverlayLayerConfig[]>([])
+  const [selectedOverlayLayerId, setSelectedOverlayLayerId] = useState<string | null>(null)
+
   const [statusText, setStatusText] = useState('실시간 렌더링')
   const [exportSize, setExportSize] = useState(2048)
   const [videoSize, setVideoSize] = useState(1080)
@@ -71,12 +127,15 @@ export default function AdminAssetsShapeStudioPage() {
   const [videoButtonLabel, setVideoButtonLabel] = useState(`동영상 저장 (${VIDEO_SEC}초)`)
 
   const viewportRef = useRef<ShapeStudioViewportHandle | null>(null)
-  const presetFileInputRef = useRef<HTMLInputElement | null>(null)
   const shapeFileInputRef = useRef<HTMLInputElement | null>(null)
   const customCountRef = useRef(0)
+  const customPresetsRef = useRef<GlyphPreset[]>(customPresets)
+  const uploadedRibbonUrlRef = useRef<string | null>(null)
+  const imageLayerUrlsRef = useRef<Set<string>>(new Set())
 
   const stateRef = useRef<ShapeStudioState>(state)
   const randOnRef = useRef<RandomToggleState>(randOn)
+  const engineModeRef = useRef<StudioEngineMode>(engineMode)
 
   useEffect(() => {
     stateRef.current = state
@@ -85,6 +144,23 @@ export default function AdminAssetsShapeStudioPage() {
   useEffect(() => {
     randOnRef.current = randOn
   }, [randOn])
+
+  useEffect(() => {
+    engineModeRef.current = engineMode
+  }, [engineMode])
+
+  useEffect(() => {
+    customPresetsRef.current = customPresets
+  }, [customPresets])
+
+  useEffect(() => {
+    const imageLayerUrls = imageLayerUrlsRef.current
+    return () => {
+      if (uploadedRibbonUrlRef.current) URL.revokeObjectURL(uploadedRibbonUrlRef.current)
+      imageLayerUrls.forEach((url) => URL.revokeObjectURL(url))
+      imageLayerUrls.clear()
+    }
+  }, [])
 
   const remember = useCallback((snapshot: ShapeStudioState) => {
     setHistory((prev) => {
@@ -106,7 +182,7 @@ export default function AdminAssetsShapeStudioPage() {
     })
   }, [])
 
-  const handleRandomize = useCallback(() => {
+  const handleRandomizeShape = useCallback(() => {
     const cur = stateRef.current
     const toggles = randOnRef.current
     if (!hasActiveRandomOption(cur, toggles)) {
@@ -117,9 +193,37 @@ export default function AdminAssetsShapeStudioPage() {
     setState(randomizeState(cur, toggles))
   }, [remember])
 
+  const handleRandomizeRibbonAll = useCallback(() => {
+    const newMasterSeed = generateRandomSeed()
+    const random = deriveRibbonFromSeed(newMasterSeed)
+    setMasterSeed(newMasterSeed)
+    setRibbonLayer((prev) => ({
+      ...applyRandomRibbon(random, prev),
+      source:
+        prev.source.kind === 'upload'
+          ? prev.source
+          : { kind: 'letter', letter: choice(LETTER_KEYS) },
+    }))
+  }, [])
+
+  const handleRandomizeActiveMode = useCallback(() => {
+    if (engineModeRef.current === 'ribbon') {
+      handleRandomizeRibbonAll()
+    } else {
+      handleRandomizeShape()
+    }
+  }, [handleRandomizeRibbonAll, handleRandomizeShape])
+
   const handleReset = useCallback(() => {
     remember(stateRef.current)
     setState(cloneState(INITIAL_STATE))
+    setRibbonLayer(INITIAL_RIBBON_LAYER)
+    setMasterSeed(null)
+    if (uploadedRibbonUrlRef.current) {
+      URL.revokeObjectURL(uploadedRibbonUrlRef.current)
+      uploadedRibbonUrlRef.current = null
+    }
+    setUploadedRibbonFileName(null)
     viewportRef.current?.resetMotionTime()
     toast('처음 설정으로 돌아왔어요.')
   }, [remember])
@@ -130,7 +234,7 @@ export default function AdminAssetsShapeStudioPage() {
       if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(activeTag)) return
       if (e.code === 'Space') {
         e.preventDefault()
-        handleRandomize()
+        handleRandomizeActiveMode()
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault()
@@ -139,7 +243,7 @@ export default function AdminAssetsShapeStudioPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleRandomize, handleUndo])
+  }, [handleRandomizeActiveMode, handleUndo])
 
   const allPresets = useMemo<AnyShapePreset[]>(
     () => [...GLYPH_PRESETS, ...SHAPE_PRESETS, ...customPresets],
@@ -259,24 +363,17 @@ export default function AdminAssetsShapeStudioPage() {
           width: 380,
         }
 
-        let removedGlyphKey: string | null = null
-        setCustomPresets((prev) => {
-          const next = [...prev, preset]
-          if (next.length > 6) {
-            const removed = next.shift()
-            if (removed) {
-              removedGlyphKey = removed.glyph
-            }
-          }
-          return next
-        })
+        const nextCustomPresets = [...customPresetsRef.current, preset]
+        const removedPreset = nextCustomPresets.length > 6 ? nextCustomPresets.shift() : undefined
+        customPresetsRef.current = nextCustomPresets
+        setCustomPresets(nextCustomPresets)
         setGlyphsMap((prev) => {
           const next: Record<string, GlyphDefinition> = {
             ...prev,
             [key]: { box: [0, 0, iw, ih], mask },
           }
-          if (removedGlyphKey) {
-            delete next[removedGlyphKey]
+          if (removedPreset) {
+            delete next[removedPreset.glyph]
           }
           return next
         })
@@ -443,38 +540,113 @@ export default function AdminAssetsShapeStudioPage() {
     [remember]
   )
 
-  const handleSavePresetJson = useCallback(() => {
-    const blob = new Blob([JSON.stringify(stateRef.current, null, 2)], {
-      type: 'application/json',
-    })
-    const a = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    a.href = url
-    a.download = 'shape-studio-preset.json'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 10000)
-    toast('설정 JSON을 저장했어요.')
+  const handleRibbonLayerChange = useCallback((patch: Partial<RibbonLayerConfig>) => {
+    setRibbonLayer((prev) => ({ ...prev, ...patch }))
   }, [])
 
-  const handlePresetFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    e.target.value = ''
-    if (!f) return
-    try {
-      if (f.size > 100000) {
-        throw new Error('100KB 이하의 설정 파일을 선택해주세요.')
+  const handleSelectRibbonLetter = useCallback((letter: LetterKey) => {
+    setUploadedRibbonFileName(null)
+    setRibbonLayer((prev) => ({ ...prev, source: { kind: 'letter', letter } }))
+  }, [])
+
+  const handleSelectRibbonFile = useCallback((file: File) => {
+    if (uploadedRibbonUrlRef.current) URL.revokeObjectURL(uploadedRibbonUrlRef.current)
+    const url = URL.createObjectURL(file)
+    uploadedRibbonUrlRef.current = url
+    setUploadedRibbonFileName(file.name)
+    setRibbonLayer((prev) => ({ ...prev, source: { kind: 'upload', assetUrl: url } }))
+  }, [])
+
+  const handleApplyMasterSeed = useCallback((seed: number) => {
+    const random = deriveRibbonFromSeed(seed)
+    setMasterSeed(seed)
+    setRibbonLayer((prev) => applyRandomRibbon(random, prev))
+  }, [])
+
+  const handleAddImageLayer = useCallback(async (file: File) => {
+    const url = URL.createObjectURL(file)
+    imageLayerUrlsRef.current.add(url)
+    const naturalWidth = await readImageNaturalWidth(url)
+    const { width, height } = resolveStageSize(stateRef.current.ratio)
+    const newLayer = createImageLayer(
+      url,
+      naturalWidth ? { naturalWidth, stageShortSide: Math.min(width, height) } : undefined
+    )
+    setOverlayLayers((prev) => [newLayer, ...prev])
+    setSelectedOverlayLayerId(newLayer.id)
+  }, [])
+
+  const handleAddTextLayer = useCallback(() => {
+    const newLayer = createTextLayer()
+    setOverlayLayers((prev) => [newLayer, ...prev])
+    setSelectedOverlayLayerId(newLayer.id)
+  }, [])
+
+  const handleRemoveOverlayLayer = useCallback((id: string) => {
+    setOverlayLayers((prev) => {
+      const target = prev.find((l) => l.id === id)
+      if (target && target.type === 'image' && imageLayerUrlsRef.current.has(target.assetUrl)) {
+        URL.revokeObjectURL(target.assetUrl)
+        imageLayerUrlsRef.current.delete(target.assetUrl)
       }
-      const next = validatePresetState(JSON.parse(await f.text()))
+      return removeImageLayer(prev, id)
+    })
+    setSelectedOverlayLayerId((prev) => deselectIfRemoved(prev, id))
+  }, [])
+
+  const handleMoveOverlayLayer = useCallback((id: string, direction: 'up' | 'down') => {
+    setOverlayLayers((prev) => moveImageLayer(prev, id, direction))
+  }, [])
+
+  const handleLoadPreset = useCallback(
+    (newStageRatio: StageRatio, newLayers: OverlayLayerConfig[]) => {
       remember(stateRef.current)
-      setState(next)
-      viewportRef.current?.resetMotionTime()
-      toast('설정을 불러왔어요.')
-    } catch (err) {
-      toast(err instanceof Error ? err.message : '설정을 불러오지 못했어요.')
-    }
-  }
+      setState((prev) => ({ ...cloneState(prev), ratio: newStageRatio }))
+      setOverlayLayers((prev) => {
+        prev.forEach((l) => {
+          if (l.type === 'image' && imageLayerUrlsRef.current.has(l.assetUrl)) {
+            URL.revokeObjectURL(l.assetUrl)
+            imageLayerUrlsRef.current.delete(l.assetUrl)
+          }
+        })
+        return newLayers
+      })
+      setSelectedOverlayLayerId(null)
+    },
+    [remember]
+  )
+
+  const handleImageLayerChange = useCallback((id: string, patch: Partial<ImageLayerConfig>) => {
+    setOverlayLayers((prev) =>
+      prev.map((l) => (l.id === id && l.type === 'image' ? { ...l, ...patch } : l))
+    )
+  }, [])
+
+  const handleTextLayerChange = useCallback((id: string, patch: Partial<TextLayerConfig>) => {
+    setOverlayLayers((prev) =>
+      prev.map((l) => (l.id === id && l.type === 'text' ? { ...l, ...patch } : l))
+    )
+  }, [])
+
+  const handleReplaceImageLayerAsset = useCallback(async (id: string, file: File) => {
+    const url = URL.createObjectURL(file)
+    imageLayerUrlsRef.current.add(url)
+    const naturalWidth = await readImageNaturalWidth(url)
+    const { width, height } = resolveStageSize(stateRef.current.ratio)
+    const widthPct = naturalWidth
+      ? computeInitialImageWidthPct({ naturalWidth, stageShortSide: Math.min(width, height) })
+      : null
+    setOverlayLayers((prev) =>
+      prev.map((l) => {
+        if (l.id !== id || l.type !== 'image') return l
+        if (imageLayerUrlsRef.current.has(l.assetUrl)) {
+          URL.revokeObjectURL(l.assetUrl)
+          imageLayerUrlsRef.current.delete(l.assetUrl)
+        }
+        return { ...l, assetUrl: url, ...(widthPct !== null ? { widthPct } : {}) }
+      })
+    )
+  }, [])
 
   const handleShapeFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -501,7 +673,9 @@ export default function AdminAssetsShapeStudioPage() {
           <div>
             <b className="text-base tracking-[-0.5px] whitespace-nowrap">Shape Studio</b>
             <small className="hidden text-[10px] tracking-[0.4px] text-[#7f8582] sm:block whitespace-nowrap">
-              Segment gradient generator · v2
+              {engineMode === 'shape'
+                ? 'Segment gradient generator · v2'
+                : '2D Ribbon curve generator · v2'}
             </small>
           </div>
         </div>
@@ -524,10 +698,10 @@ export default function AdminAssetsShapeStudioPage() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleRandomize}
+            onClick={handleRandomizeActiveMode}
             className="border-[#c3db9f] bg-[#d5edac] text-xs text-[#1e2322] hover:bg-[#c8e39c] whitespace-nowrap"
           >
-            랜덤 생성
+            {engineMode === 'shape' ? '랜덤 생성' : '전체 무작위'}
           </Button>
           <Button
             type="button"
@@ -544,13 +718,20 @@ export default function AdminAssetsShapeStudioPage() {
       <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <ShapeStudioViewport
           ref={viewportRef}
+          engineMode={engineMode}
           state={state}
+          ribbonLayer={ribbonLayer}
+          overlayLayers={overlayLayers}
           glyphsMap={glyphsMap}
           canUndo={history.length > 0}
           onUndo={handleUndo}
-          onSavePreset={handleSavePresetJson}
-          onLoadPresetClick={() => presetFileInputRef.current?.click()}
-          onDropShapeFile={handleAddShapeFile}
+          onDropShapeFile={(file) => {
+            if (engineModeRef.current === 'ribbon') {
+              handleSelectRibbonFile(file)
+            } else {
+              void handleAddShapeFile(file)
+            }
+          }}
           onStatusChange={setStatusText}
           onExportBusyChange={setExportBusy}
           onVideoRecordingChange={(rec, label) => {
@@ -560,10 +741,18 @@ export default function AdminAssetsShapeStudioPage() {
         />
 
         <ShapeStudioPanel
+          viewportRef={viewportRef}
+          engineMode={engineMode}
+          onChangeEngineMode={setEngineMode}
           state={state}
           presets={allPresets}
           glyphsMap={glyphsMap}
           randOn={randOn}
+          ribbonLayer={ribbonLayer}
+          uploadedRibbonFileName={uploadedRibbonFileName}
+          masterSeed={masterSeed}
+          overlayLayers={overlayLayers}
+          selectedOverlayLayerId={selectedOverlayLayerId}
           exportSize={exportSize}
           videoSize={videoSize}
           exportBusy={exportBusy}
@@ -571,7 +760,7 @@ export default function AdminAssetsShapeStudioPage() {
           videoButtonLabel={videoButtonLabel}
           onSelectShapePreset={handleSelectShapePreset}
           onAddShapeClick={() => shapeFileInputRef.current?.click()}
-          onRandomize={handleRandomize}
+          onRandomize={handleRandomizeShape}
           onToggleRandOption={handleToggleRandOption}
           onChangeRatio={handleChangeRatio}
           onChangeSegmentCount={handleChangeSegmentCount}
@@ -583,6 +772,20 @@ export default function AdminAssetsShapeStudioPage() {
           onUpdateColor={handleUpdateColor}
           onChangeBgMode={handleChangeBgMode}
           onUpdateBgColor={handleUpdateBgColor}
+          onRibbonLayerChange={handleRibbonLayerChange}
+          onSelectRibbonLetter={handleSelectRibbonLetter}
+          onSelectRibbonFile={handleSelectRibbonFile}
+          onRandomizeRibbonAll={handleRandomizeRibbonAll}
+          onApplyMasterSeed={handleApplyMasterSeed}
+          onSelectOverlayLayer={setSelectedOverlayLayerId}
+          onAddImageLayer={handleAddImageLayer}
+          onAddTextLayer={handleAddTextLayer}
+          onRemoveOverlayLayer={handleRemoveOverlayLayer}
+          onMoveOverlayLayer={handleMoveOverlayLayer}
+          onImageLayerChange={handleImageLayerChange}
+          onTextLayerChange={handleTextLayerChange}
+          onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
+          onLoadPreset={handleLoadPreset}
           onChangeExportSize={setExportSize}
           onExportPng={() => viewportRef.current?.exportPng(exportSize)}
           onChangeVideoSize={setVideoSize}
@@ -591,13 +794,6 @@ export default function AdminAssetsShapeStudioPage() {
         />
       </main>
 
-      <input
-        ref={presetFileInputRef}
-        type="file"
-        accept=".json,application/json"
-        onChange={handlePresetFileChange}
-        className="hidden"
-      />
       <input
         ref={shapeFileInputRef}
         type="file"
