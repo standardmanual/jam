@@ -114,7 +114,6 @@ export default function AdminAssetsShapeStudioPage() {
 
   const [ribbonLayer, setRibbonLayer] = useState<RibbonLayerConfig>(INITIAL_RIBBON_LAYER)
   const [uploadedRibbonFileName, setUploadedRibbonFileName] = useState<string | null>(null)
-  const [masterSeed, setMasterSeed] = useState<number | null>(null)
 
   const [overlayLayers, setOverlayLayers] = useState<OverlayLayerConfig[]>([])
   const [selectedOverlayLayerId, setSelectedOverlayLayerId] = useState<string | null>(null)
@@ -194,9 +193,7 @@ export default function AdminAssetsShapeStudioPage() {
   }, [remember])
 
   const handleRandomizeRibbonAll = useCallback(() => {
-    const newMasterSeed = generateRandomSeed()
-    const random = deriveRibbonFromSeed(newMasterSeed)
-    setMasterSeed(newMasterSeed)
+    const random = deriveRibbonFromSeed(generateRandomSeed())
     setRibbonLayer((prev) => ({
       ...applyRandomRibbon(random, prev),
       source:
@@ -218,7 +215,6 @@ export default function AdminAssetsShapeStudioPage() {
     remember(stateRef.current)
     setState(cloneState(INITIAL_STATE))
     setRibbonLayer(INITIAL_RIBBON_LAYER)
-    setMasterSeed(null)
     if (uploadedRibbonUrlRef.current) {
       URL.revokeObjectURL(uploadedRibbonUrlRef.current)
       uploadedRibbonUrlRef.current = null
@@ -557,12 +553,6 @@ export default function AdminAssetsShapeStudioPage() {
     setRibbonLayer((prev) => ({ ...prev, source: { kind: 'upload', assetUrl: url } }))
   }, [])
 
-  const handleApplyMasterSeed = useCallback((seed: number) => {
-    const random = deriveRibbonFromSeed(seed)
-    setMasterSeed(seed)
-    setRibbonLayer((prev) => applyRandomRibbon(random, prev))
-  }, [])
-
   const handleAddImageLayer = useCallback(async (file: File) => {
     const url = URL.createObjectURL(file)
     imageLayerUrlsRef.current.add(url)
@@ -750,7 +740,6 @@ export default function AdminAssetsShapeStudioPage() {
           randOn={randOn}
           ribbonLayer={ribbonLayer}
           uploadedRibbonFileName={uploadedRibbonFileName}
-          masterSeed={masterSeed}
           overlayLayers={overlayLayers}
           selectedOverlayLayerId={selectedOverlayLayerId}
           exportSize={exportSize}
@@ -776,7 +765,6 @@ export default function AdminAssetsShapeStudioPage() {
           onSelectRibbonLetter={handleSelectRibbonLetter}
           onSelectRibbonFile={handleSelectRibbonFile}
           onRandomizeRibbonAll={handleRandomizeRibbonAll}
-          onApplyMasterSeed={handleApplyMasterSeed}
           onSelectOverlayLayer={setSelectedOverlayLayerId}
           onAddImageLayer={handleAddImageLayer}
           onAddTextLayer={handleAddTextLayer}
