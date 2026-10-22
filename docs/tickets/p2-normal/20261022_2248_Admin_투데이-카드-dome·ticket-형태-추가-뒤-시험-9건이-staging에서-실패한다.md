@@ -18,6 +18,8 @@ created: 2026-10-22
 
 티켓 `20261022_1138`(7-7) 1회 보강 머지 시험(최신 `origin/staging` `10ff5ec2e` 위, 전체 785파일 16,975건)에서 발견했다. 7-7 변경은 `scripts/asset-generator`와 `src/lib/admin/opsInbox`를 건드리지 않았고(원격과의 diff가 비어 있음) 같은 파일들이 `10ff5ec2e`와 같은 상태에서 시험이 실패한다. staging push에는 전체 시험이 걸려 있지 않아(티켓 `20260922_0205`) 눈에 띄지 않았다. 이 커밋은 TodayCard·shape 시험은 고쳤지만 위 세 파일은 고치지 않았다.
 
+**추가 발견(2026-10-22, 티켓 `20261022_1138` 7-7 2회 게이트)**: 같은 원인의 시험이 하나 더 있다. `scripts/ops-patterns-seed.test.mjs`(275줄 부근)가 `verify.sh`의 scripts-test 단계에서 실패해, 이 저장소의 모든 `claude/*` 브랜치 CI가 빨갛게 나온다. 위 3개 파일 9건(vitest)과 이 1건(node:test)을 함께 고친다. 전체 시험은 vitest 기준 786파일 17,007건 가운데 9건만 실패한다(카리나가 최신 `origin/staging` `1a46da3d4` 위에서 확인). 완료 조건에 `scripts/ops-patterns-seed.test.mjs`가 통과함을 더한다.
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
