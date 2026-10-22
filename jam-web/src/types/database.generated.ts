@@ -558,6 +558,44 @@ export type Database = {
         }
         Relationships: []
       }
+      balance_setting_changes: {
+        Row: {
+          affects_disclosure: boolean
+          changed_by: string | null
+          changes: Json
+          created_at: string
+          id: string
+          note: string | null
+          section_key: string
+        }
+        Insert: {
+          affects_disclosure?: boolean
+          changed_by?: string | null
+          changes: Json
+          created_at?: string
+          id?: string
+          note?: string | null
+          section_key: string
+        }
+        Update: {
+          affects_disclosure?: boolean
+          changed_by?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          note?: string | null
+          section_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_setting_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capsule_chapter_costs: {
         Row: {
           chapter_no: number

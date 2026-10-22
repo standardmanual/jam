@@ -32,6 +32,7 @@ import {
   IconAdjustmentsHorizontal,
   IconBooks,
   IconShape,
+  IconScale,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -74,6 +75,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'policy',
     label: '정책 및 밸런스',
     items: [
+      { href: '/admin/balance', label: '밸런스 설정', icon: IconScale },
       { href: '/admin/drop-policy/exclusions', label: '드랍 제외 관리', icon: IconBan },
       { href: '/admin/ambient-drop', label: '앰비언트 드랍', icon: IconCloudFog },
       { href: '/admin/combine-policy', label: '믹스 정책', icon: IconTestPipe },
