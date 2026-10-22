@@ -5,6 +5,8 @@
  *  - 아이템 배지는 `mission_grant_item_rewards` 한 번으로 준다. 이미 가진 배지도 그대로 넘기고(앱이 먼저 건너뛰지 않는다) 옛 `grant_inventory_item`은 부르지 않는다
  *  - `granted`면 열린 개체의 배지 포인트를 한 번 주고(`sourceMissionId` 포함) 받은 배지로 올린다. 잠긴 개체는 포인트·이름 없이 올리지 않는다. 이미 포인트를 준 개체는 다시 주지 않는다
  *  - `pending`이면 아무것도 주지 않고 `pendingItemBadgeIds`로 돌려준다(잠긴 배지는 `pendingLockedBadgeIds`에도). `none`이면 아무것도 하지 않는다
+ *  - 받지 않은 보상 소식(티켓 20261021_1249 6-3 5회): `pending`일 때만 미션마다 `reward_pending` 소식 한 건을 `reward_pending:{미션 id}` 키로 한 번만 만든다(미션 id와 제목만 싣는다).
+ *    지급됨·`none`·RPC 오류·계약 밖 응답·보류가 없는 미션에서는 만들지 않고, 소식이 던져도 보류 결과는 그대로다
  *  - 숨김 배지와 체크인 배지는 지급하지 않고 경고를 남긴다
  *  - RPC 오류·계약 밖 응답·`inventory_not_found`는 던지지 않고 기록한 뒤 나머지 보상을 이어 준다
  *  - 활동 배지는 지금처럼 `user_activity_badges`에 넣고 이미 가졌으면 건너뛴다
@@ -47,6 +49,7 @@ const awardPointsMock = vi.hoisted(() => vi.fn(async () => ({ id: 'tx' })))
 const logEngineMock = vi.hoisted(() => vi.fn(async () => {}))
 const slotAlertMock = vi.hoisted(() => vi.fn(async () => {}))
 const scoreMock = vi.hoisted(() => vi.fn())
+const createNotificationMock = vi.hoisted(() => vi.fn(async (): Promise<unknown> => null))
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
@@ -102,6 +105,7 @@ vi.mock('@/lib/points', () => ({ awardPoints: awardPointsMock }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
 vi.mock('@/lib/chapter/badgeReceive', () => ({ awardBadgeReceiveScore: (...args: unknown[]) => scoreMock(...args) }))
 vi.mock('@/lib/inventory/slotAlert', () => ({ notifyInventorySlotsLow: slotAlertMock }))
+vi.mock('@/lib/notifications', () => ({ createNotification: createNotificationMock }))
 
 import { grantMissionRewards } from '@/lib/missions/rewards'
 
@@ -114,7 +118,7 @@ function setBadges(...badges: BadgeFixture[]) {
 }
 
 function mission(badgeIds: string[], rewardPoints = 0) {
-  return { id: MISSION, reward_badge_ids: badgeIds, reward_points: rewardPoints }
+  return { id: MISSION, title: '한강 100km', reward_badge_ids: badgeIds, reward_points: rewardPoints }
 }
 
 function rpcReturns(data: unknown) {
@@ -139,6 +143,8 @@ beforeEach(() => {
   slotAlertMock.mockClear()
   scoreMock.mockReset()
   scoreMock.mockResolvedValue({ status: 'scored' })
+  createNotificationMock.mockReset()
+  createNotificationMock.mockResolvedValue(null)
   warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -250,6 +256,75 @@ describe('grantMissionRewards — 가득 참 보류', () => {
     expect(awardPointsMock).toHaveBeenCalledTimes(1)
     expect(awardPointsMock).toHaveBeenCalledWith(USER, 100, 'mission_point_reward', { sourceMissionId: MISSION })
     expect(slotAlertMock).not.toHaveBeenCalled()
+  })
+
+  it('pending이면 미션마다 받지 않은 보상 소식 한 건을 미션 id 키로 한 번만 만든다 — 미션 id와 제목만 싣는다', async () => {
+    setBadges(badge('item-1', { point_reward: 30 }), badge('item-2', { always_locked: true }))
+    rpcReturns({ ok: true, status: 'pending', itemIds: [], pendingCount: 2, free: 1, needed: 2 })
+
+    await grantMissionRewards(USER, mission(['item-1', 'item-2'], 100))
+
+    // 배지가 둘이어도 미션 하나에 소식 한 건이다
+    expect(createNotificationMock).toHaveBeenCalledTimes(1)
+    expect(createNotificationMock).toHaveBeenCalledWith({
+      userId: USER,
+      type: 'reward_pending',
+      payload: { mission_id: MISSION, mission_title: '한강 100km' },
+      groupKey: `reward_pending:${MISSION}`,
+      mode: 'once',
+    })
+    // 잠긴 배지의 id·이름은 소식에도 싣지 않는다(공개 경로가 아니지만 payload는 미션 단위로 둔다)
+    expect(JSON.stringify(createNotificationMock.mock.calls)).not.toContain('item-2')
+  })
+
+  it('소식이 던져도 보류 결과와 미션 포인트 지급은 그대로다', async () => {
+    setBadges(badge('item-1'))
+    rpcReturns({ ok: true, status: 'pending', itemIds: [], pendingCount: 1, free: 0, needed: 1 })
+    createNotificationMock.mockRejectedValueOnce(new Error('rpc down'))
+
+    const result = await grantMissionRewards(USER, mission(['item-1'], 100))
+
+    expect(result.pendingItemBadgeIds).toEqual(['item-1'])
+    expect(awardPointsMock).toHaveBeenCalledWith(USER, 100, 'mission_point_reward', { sourceMissionId: MISSION })
+    expect(errorSpy).toHaveBeenCalled()
+  })
+
+  it('지급됨(granted)이면 받지 않은 보상 소식을 만들지 않는다', async () => {
+    setBadges(badge('item-1'))
+    rpcReturns({ ok: true, status: 'granted', itemIds: ['ii-1'], pendingCount: 0 })
+    state.items = [{ id: 'ii-1', badge_id: 'item-1', locked: false, point_awarded_at: null }]
+
+    await grantMissionRewards(USER, mission(['item-1']))
+
+    expect(createNotificationMock).not.toHaveBeenCalled()
+  })
+
+  it('none이면 받지 않은 보상 소식을 만들지 않는다(이미 기록된 재호출)', async () => {
+    setBadges(badge('item-1'))
+    rpcReturns({ ok: true, status: 'none', itemIds: [], pendingCount: 0 })
+
+    await grantMissionRewards(USER, mission(['item-1']))
+
+    expect(createNotificationMock).not.toHaveBeenCalled()
+  })
+
+  it('RPC 오류나 계약 밖 응답이면 받지 않은 보상 소식을 만들지 않는다', async () => {
+    setBadges(badge('item-1'))
+    state.rpcResult = { data: null, error: { message: 'boom' } }
+    await grantMissionRewards(USER, mission(['item-1']))
+
+    rpcReturns({ pending: true })
+    await grantMissionRewards(USER, mission(['item-1']))
+
+    expect(createNotificationMock).not.toHaveBeenCalled()
+  })
+
+  it('활동 배지만 있는 미션은 받지 않은 보상 소식을 만들지 않는다', async () => {
+    setBadges(badge('act-1', { type: 'activity' }))
+
+    await grantMissionRewards(USER, mission(['act-1']))
+
+    expect(createNotificationMock).not.toHaveBeenCalled()
   })
 
   it('none이면 아무것도 하지 않는다(이미 기록된 재호출)', async () => {

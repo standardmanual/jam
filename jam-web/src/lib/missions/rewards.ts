@@ -9,9 +9,12 @@
  *  - 그 밖의 유형(체크인 등)과 숨김 배지(`is_hidden`)는 보상으로 지급하지 않는다(경고만 남긴다).
  * 배지 자체 포인트(point_reward)와 미션 포인트(reward_points)를 별개 사유로 지급한다.
  * 아이템 배지의 포인트는 열린 개체만 받을 때 주고, 잠긴 개체는 열 때 준다(`itemRewardFollowUp.ts`).
+ * 아이템 배지 보상이 «받지 않은 보상»으로 보류되면 미션마다 소식 한 건(`reward_pending`)을 보낸다(티켓 20261021_1249 6-3 5회, 운영 로직 15.4절).
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
+import { createNotification } from '@/lib/notifications'
+import { scopedGroupKey } from '@/lib/notifications/groupKey'
 import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { logEngineDecision } from '@/lib/engine-log'
 import { parseGrantItemRewardsResult } from '@/lib/missions/claim-contract'
@@ -31,7 +34,26 @@ export interface MissionRewardResult {
   pendingLockedBadgeIds: string[]
 }
 
-type RewardMission = Pick<MissionRow, 'id' | 'reward_badge_ids' | 'reward_points'>
+type RewardMission = Pick<MissionRow, 'id' | 'title' | 'reward_badge_ids' | 'reward_points'>
+
+/**
+ * 받지 않은 보상이 생긴 미션마다 «받을 보상이 있어요» 소식 한 건. 던지지 않는다 — 소식이 실패해도 보상 결과(보류 기록)는 그대로다.
+ * 묶음 키는 `reward_pending:{mission_id}` + `once`라 같은 미션을 다시 판정해도 소식은 한 번이다. 소식은 사건의 기록이라 보상을 받은 뒤에도 남는다.
+ * 믹스 결과 보류와 동기화 보류는 이 경로가 아니므로 대상이 아니다.
+ */
+async function notifyRewardPending(userId: string, mission: RewardMission): Promise<void> {
+  try {
+    await createNotification({
+      userId,
+      type: 'reward_pending',
+      payload: { mission_id: mission.id, mission_title: mission.title },
+      groupKey: scopedGroupKey('reward_pending', mission.id),
+      mode: 'once',
+    })
+  } catch (error) {
+    console.error(`[grantMissionRewards] 받지 않은 보상 소식 실패 (mission: ${mission.id}):`, error)
+  }
+}
 
 interface RewardBadge {
   id: string
@@ -191,6 +213,7 @@ export async function grantMissionRewards(
           pendingItemBadgeIds.push(b.id)
           if (b.always_locked) pendingLockedBadgeIds.push(b.id)
         }
+        await notifyRewardPending(userId, mission)
       }
     }
   }
