@@ -2,9 +2,9 @@
 id: "20261022_1318"
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-22
-closed:
+closed: 2026-10-22
 ---
 
 # [Admin] 어드민 디자인 묶음에 「에셋」 메뉴 추가 및 Shape Studio v2 이식
@@ -73,7 +73,7 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 
 ### 구현 내용 요약
 - 어드민 사이드바 `디자인`(`design`) 그룹에서 `에셋 제너레이터` 메뉴를 제거하고 `에셋`(`href: '/admin/assets'`, `IconShape`) 메뉴로 단일화했으며 `adminNavItems.test.ts` 단위 테스트를 갱신했다.
-- `에셋`(`/admin/assets`) 화면의 상단 헤더 바 + 좌측 프리뷰 워크스페이스 + 우측 352px 스크롤 설정 패널 구조 안에서 **Shape (WebGL 세그먼트·메타볼·글자 SDF)** 모드와 **Ribbon (2D 곡선 이동 엔진·마스터 시드)** 모드를 전환해 각 프로퍼티를 조정할 수 있도록 통합했다.
+- `에셋`(`/admin/assets`) 화면의 상단 헤더 바 + 좌측 프리뷰 워크스페이스 + 우측 352px 스크롤 설정 패널 구조 안에서 **Shape (WebGL 세그먼트·메타볼·글자 SDF)** 모드와 **Ribbon (2D 곡선 이동 엔진, 마스터 시드 입력 기능 제외)** 모드를 전환해 각 프로퍼티를 조정할 수 있도록 통합했다.
 - 이미지·텍스트 오버레이 레이어(`LayerSidebar`, `ImageLayerFields`, `TextLayerFields`)를 Shape 모드와 Ribbon 모드 양쪽 모두에서 동일하게 합성·내보내기(고해상도 PNG, 15초 동영상)할 수 있도록 `ShapeStudioViewport`를 통합했다.
 - 우측 패널 상단에 `제작` / `콘텐츠 적용` 화면 전환을 두고 기존 `ApplyTab`을 연결해 두 모드로 제작한 에셋 모두 배지·미션·컬렉션·홈피드 카드 대표 이미지로 바로 반영할 수 있게 했으며, 프리셋 저장·불러오기는 로컬 JSON 기능을 제거하고 서버 DB 프리셋(`PresetPanel`)으로 일원화했다.
 - `Mushroom`, `Hourglass` 형태 프리셋의 `overlap: 28`, `merge: 36` 조정을 통해 상하 세그먼트가 간격 없이 밀착되도록 보완하고, 커스텀 쉐입 상태 관리 및 WebGL 리소스 해제를 보강했다.
@@ -92,7 +92,7 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 
 ### 테스트 결과
 - [x] `scripts/verify.sh` 전항목 통과 (`lint` · `typecheck` · `test` · `ds:check` · `asset-bundle` · `slop` · `scripts-test` · `contract` · `team-doc` · `team-map` · `scheduled-jobs` · `home-feed-doc` · `skills` · `client-server-imports`)
-- [x] 민지(`jam-reviewer`) 게이트 리뷰 **PASS** (`9a946a481..bf8fc3483`)
+- [x] 민지(`jam-reviewer`) 게이트 리뷰 **PASS** (`313111e8b..52b563380`)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
@@ -106,7 +106,7 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 ### 배포 정보
 - 배포일: 2026-10-22
 - 환경: staging
-- 커밋: bf8fc3483
+- 커밋: 52b563380
 
 ### 실행 지표
 
