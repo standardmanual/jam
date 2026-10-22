@@ -40,7 +40,8 @@
  *   FROM jam_transactions t
  *   WHERE t.user_id = :u AND t.reason = 'activity_settlement'
  *     AND t.source_activity_id IN (SELECT a.id FROM strava_activities a
- *                                  WHERE a.user_id = :u AND a.start_date BETWEEN :from AND :to)   -- 하한·상한 포함, 상한 없으면 하한만
+ *                                  WHERE a.user_id = :u AND a.filter_reason IS NULL           -- 인정된 활동만(티켓 20261017_1459)
+                                    AND a.start_date BETWEEN :from AND :to)                  -- 하한·상한 포함, 상한 없으면 하한만
  * ```
  * 채움(`capsule_fill`·`locked_item_badge_fill`, 음수)과 운영자 지급·회수(`admin_grant`·`admin_deduct`)는 `reason`이 달라 합계에 들지 않는다 —
  * 모은 양은 쓴 양으로 줄지 않는다. 정산되지 않은 활동은 원장에 줄이 없어 0이다.
@@ -158,7 +159,12 @@ const IN_CHUNK_SIZE = 200
  */
 export async function readJamEarnedWithin(supabase: SupabaseClient, userId: string, window: MetricWindow): Promise<number> {
   const activityRows = await selectAllPages<{ id: string }>(TAG, '기간 안 활동', (from, to) =>
-    applyMetricWindow(supabase.from('strava_activities').select('id').eq('user_id', userId), 'start_date', window)
+    applyMetricWindow(
+      // 걸러진 활동은 정산되지 않아 원장에 줄이 없다 — 인정된 활동만 읽어 읽는 행 수를 줄인다(티켓 20261017_1459)
+      supabase.from('strava_activities').select('id').eq('user_id', userId).is('filter_reason', null),
+      'start_date',
+      window
+    )
       .order('id')
       .range(from, to)
   )

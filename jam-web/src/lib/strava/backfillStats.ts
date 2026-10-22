@@ -227,7 +227,10 @@ export function splitBackfillable(
   return { backfillable, orphaned }
 }
 
-/** 집계에 필요한 활동 행을 페이지 단위로 모두 읽는다 (읽기 전용) */
+/**
+ * 집계에 필요한 활동 행을 페이지 단위로 모두 읽는다 (읽기 전용).
+ * **인정된 활동만** 읽는다(`filter_reason IS NULL`) — 걸러진 활동은 활동 수·종목별 커버리지·고아 행 수에 들어가지 않는다(티켓 20261017_1459).
+ */
 async function fetchActivityStatRows(
   supabase: SupabaseClient
 ): Promise<{ rows: ActivityStatRow[]; truncated: boolean }> {
@@ -236,6 +239,7 @@ async function fetchActivityStatRows(
     const { data, error } = await supabase
       .from('strava_activities')
       .select('user_id, jam_activity_type, normalized')
+      .is('filter_reason', null) // 걸러진 활동은 인정 활동으로 세지 않는다(티켓 20261017_1459)
       .order('start_date', { ascending: true })
       .range(offset, offset + DB_PAGE_SIZE - 1)
     if (error) throw new Error(`strava_activities 집계 조회 실패: ${error.message}`)
