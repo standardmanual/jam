@@ -72,6 +72,11 @@ const state = vi.hoisted(() => ({
   pickedRows: [] as unknown[],
   // true면 poi_drops 조회가 오류를 돌려준다
   poiDropsError: false,
+  // 레거시 피드(활동 드랍) 합성용 인벤토리 개체 행(obtained_by = 'drop')과, 그 가운데 캡슐로 발급한 개체의 발급 기록 행
+  actDropRows: [] as unknown[],
+  capsuleIssueRows: [] as unknown[],
+  // true면 item_issue_log(캡슐 발급) 조회가 오류를 돌려준다
+  capsuleIssueError: false,
 }))
 
 const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>>())
@@ -87,6 +92,13 @@ function singleResponse(table: string) {
   return { data: null, error: null }
 }
 function listResponse(table: string, eqs: [string, unknown][] = []) {
+  if (table === 'inventory_items' && eqs.some(([column, value]) => column === 'obtained_by' && value === 'drop')) {
+    return { data: state.actDropRows, count: 0, error: null }
+  }
+  if (table === 'item_issue_log') {
+    if (state.capsuleIssueError) return { data: null, count: 0, error: { message: 'item_issue_log 조회 실패' } }
+    return { data: state.capsuleIssueRows, count: 0, error: null }
+  }
   if (table === 'poi_drops') {
     if (state.poiDropsError) return { data: null, count: 0, error: { message: 'poi_drops 조회 실패' } }
     if (eqs.some(([column]) => column === 'dropper_user_id')) return { data: state.droppedRows, count: 0, error: null }
@@ -207,6 +219,9 @@ beforeEach(() => {
   state.droppedRows = []
   state.pickedRows = []
   state.poiDropsError = false
+  state.actDropRows = []
+  state.capsuleIssueRows = []
+  state.capsuleIssueError = false
   getWalletMock.mockReset()
   getWalletMock.mockResolvedValue(1234)
   getCapsuleStatusMock.mockReset()
@@ -538,5 +553,71 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
 
     expect(props.chapterInitial).toBeNull()
     expect(props.isOwnProfile).toBe(true)
+  })
+})
+
+/**
+ * 캡슐에서 나온 개체는 프로필 합성에서 뺀다 (티켓 20261022_1021, 운영 로직 15.3절)
+ *
+ * 프로필 페이지는 피드 행이 없는 개체(`inventory_items.obtained_by = 'drop'`)를 «아이템 드랍» 카드(`legacy_actdrop_`)로 합성한다.
+ * 캡슐 개체도 `obtained_by`가 'drop'이라 걸리므로, 발급 기록(`item_issue_log.route = 'capsule'`)으로 가려 합성에서 뺀다.
+ * 동기화로 받은 개체는 그대로 합성한다.
+ */
+describe('/{username} 프로필 페이지 — 캡슐에서 나온 개체 제외', () => {
+  function actDropRow(id: string, name: string) {
+    return {
+      id,
+      badge_id: `badge-${id}`,
+      obtained_at: '2026-10-19T01:00:00Z',
+      badges: { id: `badge-${id}`, name, image_url: `https://example.com/${id}.png`, rarity: 'common', deleted_at: null },
+    }
+  }
+
+  type FeedProp = { id: string; event_type: string; metadata: Record<string, unknown> }
+  async function feedOf(viewer: string) {
+    state.loginUserId = viewer
+    const props = await renderPage('target')
+    return props.feedItems as FeedProp[]
+  }
+
+  it('(m) 캡슐로 발급한 개체는 아이템 드랍 카드로 합성하지 않고, 동기화로 받은 개체는 그대로 합성한다(타인·본인 모두)', async () => {
+    state.actDropRows = [actDropRow('item-sync-1', '동기화배지'), actDropRow('item-capsule-1', '캡슐배지')]
+    state.capsuleIssueRows = [{ inventory_item_id: 'item-capsule-1' }]
+
+    for (const viewer of [LOGIN_USER_ID, TARGET_USER_ID]) {
+      const feed = await feedOf(viewer)
+      expect(feed.find((f) => f.id === 'legacy_actdrop_item-sync-1'), `${viewer} 시점에 동기화 개체 카드가 없다`).toBeDefined()
+      expect(feed.find((f) => f.id === 'legacy_actdrop_item-capsule-1'), `${viewer} 시점에 캡슐 개체 카드가 있다`).toBeUndefined()
+    }
+  })
+
+  it("(m) 캡슐 발급 조회는 route = 'capsule' 조건을 건다", async () => {
+    state.actDropRows = [actDropRow('item-sync-2', '동기화배지')]
+
+    await renderPage('target')
+
+    const issueCalls = state.calls.filter((c) => c.table === 'item_issue_log')
+    expect(issueCalls.length).toBe(1)
+    expect(issueCalls[0].eqs).toContainEqual(['route', 'capsule'])
+  })
+
+  it('(n) 합성할 개체가 없으면 발급 기록을 조회하지 않는다', async () => {
+    await renderPage('target')
+
+    expect(state.calls.filter((c) => c.table === 'item_issue_log')).toHaveLength(0)
+  })
+
+  it('(o) 캡슐 발급 조회가 실패하면 이전처럼 모두 합성하고 서버 로그를 남긴다(화면은 그대로 그려진다)', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.actDropRows = [actDropRow('item-sync-3', '동기화배지'), actDropRow('item-capsule-3', '캡슐배지')]
+    state.capsuleIssueRows = [{ inventory_item_id: 'item-capsule-3' }]
+    state.capsuleIssueError = true
+
+    const feed = await feedOf(LOGIN_USER_ID)
+
+    expect(feed.find((f) => f.id === 'legacy_actdrop_item-sync-3')).toBeDefined()
+    expect(feed.find((f) => f.id === 'legacy_actdrop_item-capsule-3')).toBeDefined()
+    expect(errorLog).toHaveBeenCalled()
+    errorLog.mockRestore()
   })
 })

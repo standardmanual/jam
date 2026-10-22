@@ -91,7 +91,7 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'suspension_lifted':
       return <CheckCircleIcon className={className} />
     default:
-      // 20종 전수에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 파일을
+      // 27종 전수에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 파일을
       // 빠뜨리면 아래 호출이 컴파일 에러가 난다(20260827_021).
       unknownNotificationType(type)
       return <BellIcon className={className} />
