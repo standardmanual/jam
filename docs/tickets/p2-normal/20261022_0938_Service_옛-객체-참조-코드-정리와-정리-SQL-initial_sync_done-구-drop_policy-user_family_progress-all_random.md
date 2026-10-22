@@ -2,7 +2,7 @@
 id: "20261022_0938"
 category: Service
 priority: P2
-status: IN_PROGRESS
+status: WAITING
 created: 2026-10-22
 parent: "20261021_1250"
 ---
