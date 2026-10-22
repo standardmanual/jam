@@ -489,7 +489,7 @@ async function evaluateWithoutNewActivities(
  * strava_activities에 기록한다. 걸러진 활동은 사유와 함께 기록만 한다.
  *
  * 처리 순서(운영 로직 3.4절, 티켓 20261017_1421): ① 인정 기준으로 거르기 → ② 어뷰징 필터(교통수단
- * 구간 검사, 종목 불일치, 차량 속도) → 첫 동기화의 «최근 1건» 선택 → ③ 정산(체크인, 아이템 배지 드랍, 배지, 아이템북, 미션, 계열 진행).
+ * 구간 검사, 종목 불일치, 차량 속도) → 첫 동기화의 «최근 1건» 선택 → ③ 정산(체크인, 아이템 배지 드랍, 배지, 아이템북, 미션).
  * 체크인은 ②를 지난 활동에만 돈다.
  */
 export async function processFetchedActivities(
@@ -604,7 +604,7 @@ export async function processFetchedActivities(
     const sourceMeta: SourceMeta = mismatch.changedFrom
       ? { ...entry.sourceMeta, typeMismatchFrom: mismatch.changedFrom }
       : entry.sourceMeta
-    // 걸러진 활동은 `vehicle_speed` 사유로 저장만 한다 — 체크인·드랍·배지·미션·계열 진행에 넣지 않는다.
+    // 걸러진 활동은 `vehicle_speed` 사유로 저장만 한다 — 체크인·드랍·배지·미션에 넣지 않는다.
     const filterReason: FilterReason | null =
       activity.averageSpeedKmh > vehicleSpeedFilterKmh ? 'vehicle_speed' : null
     return { activity, sourceMeta, raw: entry.raw, filterReason }
@@ -639,7 +639,7 @@ export async function processFetchedActivities(
     .filter((c) => c.filterReason !== null)
     .map((c) => ({ activity: c.activity, filterReason: c.filterReason, sourceMeta: c.sourceMeta }))
   const passedEntries = checkedEntries.filter((c) => c.filterReason === null)
-  // 모든 필터를 통과한 활동 — 이후 정산(체크인·드랍·배지·미션·계열 진행)에 쓰는 «인정 활동» 목록
+  // 모든 필터를 통과한 활동 — 이후 정산(체크인·드랍·배지·미션)에 쓰는 «인정 활동» 목록
   const activitiesFiltered: NormalizedActivity[] = passedEntries.map((c) => c.activity)
 
   if (passedEntries.length === 0 && isFirstSync) {
