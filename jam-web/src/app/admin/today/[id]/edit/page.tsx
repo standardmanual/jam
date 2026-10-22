@@ -63,7 +63,7 @@ export default async function EditTodayCardPage({ params, searchParams }: EditTo
               href={`/admin/today/${id}?date=${returnDate}`}
               className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             >
-              ← 투데이 카드 상세
+              ← 카드 상세
             </Link>
             <h1 className="text-2xl font-bold mt-2">투데이 카드 수정</h1>
           </div>

@@ -58,13 +58,13 @@ export default async function AdminTodayPage({ searchParams }: AdminTodayPagePro
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">투데이 콘텐츠 관리</h1>
+          <h1 className="text-2xl font-bold">투데이</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            홈(투데이) 카드 CMS — 템플릿별 카드 제작 · 예약 발행 · 노출조건 태그
+            홈 화면에 노출되는 투데이 카드를 제작하고 발행 일정을 관리해요
           </p>
         </div>
         <Link href={`/admin/today/new?date=${selectedDate}`}>
-          <Button>+ 콘텐츠 추가</Button>
+          <Button>+ 카드 추가</Button>
         </Link>
       </div>
 

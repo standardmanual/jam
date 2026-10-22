@@ -43,7 +43,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
             className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
             <IconArrowLeft className="size-4" aria-hidden="true" />
-            받은 기획함
+            운영플랜
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <h1 className="text-2xl font-bold">{range ? `${range.label} (${range.range})` : '주차 없음'}</h1>

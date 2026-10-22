@@ -53,7 +53,7 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
         const json = (await res.json()) as { cards: TodayCardWithHref[] }
         if (!cancelled) setData({ cards: json.cards, baseTime: previewBaseTime(selectedDate).toISOString() })
       } catch {
-        if (!cancelled) setError('미리보기를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+        if (!cancelled) setError('미리보기를 불러오지 못했어요. 잠시 후 다시 시도해 주세요')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -77,8 +77,7 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>{formatKstDateLabel(selectedDate)} 미리보기</DialogTitle>
           <DialogDescription>
-            실제 라이브 화면이 아닌 시뮬레이션입니다. 활성 상태와 노출 기간만 반영하고,
-            시간대·참여 미션 등 유저 개인화 조건은 &apos;all&apos; 기준으로 단순화합니다.
+            활성 상태와 노출 기간을 기준으로 구성한 미리보기예요. 시간대나 참여 미션 같은 개인화 조건은 기본값으로 표시돼요.
           </DialogDescription>
         </DialogHeader>
 
@@ -87,7 +86,7 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
           {loading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}
           {!loading && error && <p className="text-sm text-destructive">{error}</p>}
           {!loading && !error && data && data.cards.length === 0 && (
-            <p className="text-sm text-muted-foreground">이 날짜에 노출될 카드가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">이 날짜에 노출되는 카드가 없어요</p>
           )}
           {!loading && !error && data && data.cards.length > 0 && <TodayCardPreview views={views} />}
         </div>

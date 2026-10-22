@@ -276,7 +276,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
       router.push(`/admin/today?date=${returnDate}`)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.')
+      setError(err instanceof Error ? err.message : '카드를 저장하지 못했어요')
     } finally {
       setLoading(false)
     }
@@ -294,7 +294,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
       router.push(`/admin/today?date=${returnDate}`)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.')
+      setError(err instanceof Error ? err.message : '카드를 삭제하지 못했어요')
       setLoading(false)
     }
   }
@@ -461,7 +461,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         />
         {titleInvalid && (
           <FieldMessage id="today-card-title-error" tone="error">
-            제목을 입력해 주세요.
+            제목을 입력해 주세요
           </FieldMessage>
         )}
       </div>
@@ -486,8 +486,8 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           <FieldMessage id="today-card-description-help">
             {description.length}/{TODAY_DESCRIPTION_MAX_LENGTH}
           </FieldMessage>
-          {layoutType === 'shortcut' && <FieldMessage>바로가기형은 화면에 보이지 않아요.</FieldMessage>}
-          <FieldMessage>기사로 바꾸면 설명문은 저장할 때 지워져요.</FieldMessage>
+          {layoutType === 'shortcut' && <FieldMessage>바로가기형은 화면에 보이지 않아요</FieldMessage>}
+          <FieldMessage>기사로 바꾸면 설명문은 저장할 때 삭제돼요</FieldMessage>
         </div>
       )}
 
@@ -502,7 +502,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           aria-describedby="today-card-cover-help"
         />
         <FieldMessage id="today-card-cover-help">
-          비워 두면 템플릿에 따라 첫 배지 이미지로 대체되거나 이미지 없이 노출돼요.
+          비워 두면 템플릿에 따라 첫 배지 이미지로 대체되거나 이미지 없이 노출돼요
         </FieldMessage>
         {/* 제작 경로 라벨(티켓 20260925_1411) — 수정 화면(card 존재)에서만 보인다. 신규 작성
             화면은 아직 image_source가 없다(적용 탭에서 반영해야 생긴다). */}
@@ -523,7 +523,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           <div id="today-card-badges">
             <BadgeMultiSearchSelect selected={selectedBadgeChips} onSelect={addBadge} onRemove={removeBadge} placeholder="배지 이름 검색..." />
           </div>
-          <FieldMessage id="today-card-badges-help">여러 개 선택할 수 있어요.</FieldMessage>
+          <FieldMessage id="today-card-badges-help">여러 개 선택할 수 있어요</FieldMessage>
         </div>
       )}
 
@@ -672,10 +672,10 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
             )
           })}
         </div>
-        <FieldMessage id="today-card-exposure-tags-help">하나라도 해당하면 노출돼요(OR 매칭).</FieldMessage>
+        <FieldMessage id="today-card-exposure-tags-help">하나라도 해당하면 노출돼요(OR 매칭)</FieldMessage>
         {exposureTagsInvalid && (
           <FieldMessage id="today-card-exposure-tags-error" tone="error">
-            노출조건 태그를 하나 이상 선택해 주세요.
+            노출조건 태그를 하나 이상 선택해 주세요
           </FieldMessage>
         )}
       </div>
@@ -691,10 +691,10 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
             autoComplete="off"
             aria-describedby="today-card-target-href-help"
           />
-          <FieldMessage id="today-card-target-href-help">비워 두면 템플릿 규칙으로 자동 생성돼요.</FieldMessage>
+          <FieldMessage id="today-card-target-href-help">비워 두면 템플릿 규칙으로 자동 생성돼요</FieldMessage>
         </div>
       )}
-      {templateType === 'drop_alert' && <FieldMessage>이동 경로는 /drops로 고정돼요.</FieldMessage>}
+      {templateType === 'drop_alert' && <FieldMessage>이동 경로는 /drops로 고정돼요</FieldMessage>}
       {templateType === 'editorial_article' && <FieldMessage>카드 자체는 전용 기사 페이지(/today/{'{id}'})로 열려요. 여기 적은 이동 경로·컬렉션·미션은 기사 본문 끝의 버튼(자세히 보기·컬렉션 보기·미션 보기)이 가는 곳이에요.</FieldMessage>}
     </TodaySectionCard>
   )
@@ -740,7 +740,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
               aria-describedby="today-card-sort-order-help"
               className="tabular-nums"
             />
-            <FieldMessage id="today-card-sort-order-help">작을수록 위에 노출돼요.</FieldMessage>
+            <FieldMessage id="today-card-sort-order-help">작을수록 위에 노출돼요</FieldMessage>
           </div>
           <div className="flex min-w-0 flex-col justify-end gap-1.5 pb-1.5">
             <div className="flex items-center gap-2.5">
@@ -753,7 +753,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         </div>
       </div>
       {(startsAtInvalid || endsAtInvalid) && (
-        <FieldMessage tone="error">시작·종료 일시를 모두 입력해 주세요.</FieldMessage>
+        <FieldMessage tone="error">시작·종료 일시를 모두 입력해 주세요</FieldMessage>
       )}
     </TodaySectionCard>
   )
@@ -827,7 +827,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           <AlertDialogHeader>
             <AlertDialogTitle>투데이 카드 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{card?.title}&apos; 카드를 삭제합니다. 삭제하면 되돌릴 수 없습니다.
+              &apos;{card?.title}&apos; 카드를 삭제할까요? 삭제한 카드는 되돌릴 수 없어요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -835,7 +835,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
               취소
             </Button>
             <Button type="button" variant="destructive" disabled={loading} onClick={handleDelete}>
-              {loading ? '삭제 중...' : '삭제 확인'}
+              {loading ? '삭제 중...' : '삭제'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

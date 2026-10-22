@@ -152,7 +152,7 @@ export function OpsInboxTable({ rows }: OpsInboxTableProps) {
     <DataTable
       table={table}
       columnCount={columns.length}
-      emptyMessage="표시할 기획이 없어요."
+      emptyMessage="표시할 기획이 없어요"
       getRowHref={(row) => opsBundleHref(row.original.id)}
     />
   )

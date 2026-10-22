@@ -9,9 +9,9 @@ export default function OpsBundleNotFound() {
       <div className="flex max-w-xl flex-col items-start gap-3 rounded-lg border border-border p-8">
         <IconInbox className="size-6 text-muted-foreground" aria-hidden="true" />
         <h1 className="text-lg font-semibold">찾을 수 없는 기획이에요</h1>
-        <p className="text-sm text-muted-foreground">주소가 잘못됐거나 지워진 기획일 수 있어요.</p>
+        <p className="text-sm text-muted-foreground">주소가 잘못됐거나 삭제된 기획일 수 있어요</p>
         <Button asChild variant="outline" size="sm">
-          <Link href="/admin/ops-inbox">받은 기획함으로</Link>
+          <Link href="/admin/ops-inbox">운영플랜으로</Link>
         </Button>
       </div>
     </div>

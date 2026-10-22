@@ -30,7 +30,7 @@ export default async function OpsInboxPage({ searchParams }: OpsInboxPageProps) 
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">받은 기획함</h1>
+        <h1 className="text-2xl font-bold">운영플랜</h1>
         <p className="text-muted-foreground text-sm mt-1">에이전트가 보낸 한 주 기획을 확인하고 승인해요</p>
       </div>
 
@@ -38,7 +38,7 @@ export default async function OpsInboxPage({ searchParams }: OpsInboxPageProps) 
         <div className="flex flex-col items-start gap-2 rounded-lg border border-border p-8">
           <IconInbox className="size-6 text-muted-foreground" aria-hidden="true" />
           <p className="font-medium">아직 받은 기획이 없어요</p>
-          <p className="text-sm text-muted-foreground">에이전트가 기획을 보내면 여기에 나타나요.</p>
+          <p className="text-sm text-muted-foreground">에이전트가 기획을 보내면 여기에 나타나요</p>
         </div>
       ) : (
         // 탭·표·쪽 이동이 `useSearchParams`를 쓴다 — 다른 어드민 목록과 같은 이유로 Suspense로 감싼다.

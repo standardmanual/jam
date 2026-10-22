@@ -101,7 +101,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
       const res = await fetch(`/api/admin/today/${card.id}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error ?? '삭제에 실패했습니다. 다시 시도해주세요.')
+        toast.error(data.error ?? '카드를 삭제하지 못했어요. 다시 시도해 주세요')
         return
       }
       router.push(`/admin/today?date=${returnDate}`)
@@ -122,7 +122,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
+        toast.error(data.error ?? '상태를 변경하지 못했어요. 다시 시도해 주세요')
         return
       }
       router.refresh()
@@ -288,7 +288,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
         header={
           <div>
             <Link href={`/admin/today?date=${returnDate}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-              ← 투데이 목록
+              ← 투데이
             </Link>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold">{card.title}</h1>
@@ -317,7 +317,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
           <AlertDialogHeader>
             <AlertDialogTitle>투데이 카드 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{card.title}&apos; 카드를 삭제합니다. 삭제하면 되돌릴 수 없습니다.
+              &apos;{card.title}&apos; 카드를 삭제할까요? 삭제한 카드는 되돌릴 수 없어요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -325,7 +325,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
               취소
             </Button>
             <Button type="button" variant="destructive" disabled={deleting} onClick={handleDelete}>
-              {deleting ? '삭제 중...' : '삭제 확인'}
+              {deleting ? '삭제 중...' : '삭제'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

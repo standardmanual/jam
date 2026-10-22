@@ -224,7 +224,7 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
       clear()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.')
+      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요')
     } finally {
       setBulkPending(false)
     }
@@ -248,7 +248,7 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
         requiredPhrase: result.requiredPhrase ?? '',
       })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '삭제 대상을 확인하지 못했어요.')
+      toast.error(error instanceof Error ? error.message : '삭제 대상을 확인하지 못했어요')
       closeConfirm()
     } finally {
       setImpactLoading(false)
@@ -264,7 +264,7 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
         body: JSON.stringify({ ids: selectedIds }),
       })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '내보내지 못했어요. 다시 시도해 주세요.')
+      toast.error(error instanceof Error ? error.message : '내보내지 못했어요. 다시 시도해 주세요')
     } finally {
       setBulkPending(false)
     }
@@ -299,7 +299,7 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="이 날짜에 노출되는 카드가 없어요."
+        emptyMessage="이 날짜에 노출되는 카드가 없어요"
         getRowHref={(row) => `/admin/today/${row.original.id}?date=${selectedDate}`}
       />
 
@@ -318,7 +318,7 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
               deletePreview.skipped.length > 0 ? (
                 <>선택한 카드 중 {deletePreview.skipped.length}건은 이미 삭제돼 있어 제외돼요. 삭제한 카드는 되돌릴 수 없어요.</>
               ) : (
-                <>삭제한 카드는 되돌릴 수 없어요.</>
+                <>삭제한 카드는 되돌릴 수 없어요</>
               )
             ) : null
           }

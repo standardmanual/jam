@@ -44,7 +44,7 @@ export default async function NewTodayCardPage({ searchParams }: NewTodayCardPag
         header={
           <div>
             <Link href={`/admin/today?date=${date}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-              ← 투데이 목록
+              ← 투데이
             </Link>
             <h1 className="text-2xl font-bold mt-2">투데이 카드 등록</h1>
           </div>
