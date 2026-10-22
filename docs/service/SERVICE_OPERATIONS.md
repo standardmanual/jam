@@ -166,10 +166,11 @@ GET /api/strava/callback?code=...&state={무작위 일회용 값}
            ↓
 Strava 토큰 교환 (POST strava.com/oauth/token)
            ↓
+이 Strava 계정이 이미 다른 JAM! 계정에 연결돼 있으면 저장하지 않고 안내 시트로 보냄 (아래 «그래도 연결하기»)
+           ↓
 access_token, refresh_token → AES-256 암호화
            ↓
-strava_connections UPSERT
-(onConflict: strava_athlete_id)
+strava_connections 저장 (같은 계정 재연결은 토큰 갱신, 다른 계정은 새 행 insert + 이 유저의 이전 행 정리)
            ↓
 즉시 syncStravaActivities(userId) 호출
 ```
@@ -183,6 +184,13 @@ strava_connections UPSERT
 - 콜백의 모든 응답(성공·실패)이 `state` 쿠키를 지운다(일회용)
 - 토큰은 `encrypt()` 함수로 암호화하여 DB 저장
 - 소급 동기화는 없음: 연동 이후 활동만 처리
+- **«그래도 연결하기»**(티켓 20261021_1249 4회, 운영 로직 3.2절): 같은 Strava 계정이 다른 JAM! 계정에 이미 연결돼 있으면 콜백은 저장하지 않는다.
+  기존 계정이 일반·정상이면 방금 받은 토큰을 암호화하고 서명한 10분짜리 쿠키 `strava_replace_offer`에 담아 `/profile?strava=duplicate`로 보내고(안내 시트 «취소»·«그래도 연결하기»),
+  어드민이거나 이용 정지 중이면 쿠키 없이 `/profile?strava=duplicate_blocked`로 보낸다(«닫기»·«문의하기»). «그래도 연결하기»는 `POST /api/strava/replace`가
+  쿠키와 기존 계정 상태를 다시 확인하고, 기존 계정을 지우는 규칙(`deleteAccount`, Strava 앱 해제는 건너뜀)으로 지운 뒤 새 연결을 저장하고 첫 동기화를 시작한다.
+  쿠키 구조·실패 응답은 [02_DATA_MODEL.md](prd/02_DATA_MODEL.md) `strava_connections`
+- **연결 끊기**(`POST /api/strava/disconnect`): Strava 앱 해제와 토큰 비우기 뒤 끊김을 저장하고, 위치정보 수집 동의 철회로 보아 개인위치정보(마지막 위치,
+  활동 기록의 시작·끝 좌표)를 지운다(`scrub_user_location`, 실패하면 한 번 더 시도하고 끊기는 성공)
 
 ### 3-2. 동기화 흐름 (syncStravaActivities)
 
@@ -1075,7 +1083,9 @@ abusing_policy {
 |--------|------|------|
 | GET | `/auth/callback` | Supabase Auth 콜백 |
 | GET | `/api/strava/auth` | Strava OAuth 시작 |
-| GET | `/api/strava/callback` | Strava OAuth 콜백 (토큰 저장 + 첫 동기화) |
+| GET | `/api/strava/callback` | Strava OAuth 콜백 (토큰 저장 + 첫 동기화, 이미 연결된 Strava 계정이면 안내 시트로) |
+| POST | `/api/strava/replace` | «그래도 연결하기»: 기존 계정을 지우고 이 계정에 연결 (제안 쿠키 필요) |
+| POST | `/api/strava/disconnect` | 연결 끊기 (Strava 앱 해제 + 좌표 파기) |
 | POST | `/api/strava/sync` | 수동 Strava 동기화 |
 | GET, PATCH | `/api/profile` | 프로필 조회/수정 |
 | POST | `/api/profile/avatar` | 아바타 업로드(서버에서 EXIF 제거·방향 적용 후 저장) |
