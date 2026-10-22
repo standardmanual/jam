@@ -130,7 +130,10 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
 
 export const JAM_ROW_STAMP = '2026-10-22T01:00:00.123456+00:00'
 
-/** `jam_policy` id=1 행(마이그레이션 226·227 기본값). `mass_earn_alert_multiplier`는 NUMERIC이라 문자열로 내려오는 경우를 흉내 낸다. */
+/**
+ * `jam_policy` id=1 행(마이그레이션 226·227·231 기본값). NUMERIC 칸(`mass_earn_alert_multiplier`·`sync_item_bonus_max_probability`·`sync_rarity_*`·`locked_roll_probability`)은
+ * 문자열로 내려오는 경우를 흉내 낸다.
+ */
 export function jamPolicyRow(overrides: Row = {}): Row {
   return {
     id: 1,
@@ -141,7 +144,47 @@ export function jamPolicyRow(overrides: Row = {}): Row {
     mass_earn_alert_weeks: 4,
     mass_earn_alert_no_history_amount: 1200,
     sync_item_guaranteed: 1,
+    sync_item_guaranteed_hiking: 2,
+    sync_item_bonus_rolls: 2,
+    sync_item_bonus_jam_divisor: 600,
+    sync_item_bonus_max_probability: '0.250',
+    sync_rarity_common: '84.000',
+    sync_rarity_rare: '13.000',
+    sync_rarity_epic: '2.500',
+    sync_rarity_mystic: '0.500',
+    common_streak_threshold: 10,
+    locked_min_common: 30,
+    locked_roll_probability: '0.250',
     updated_at: JAM_ROW_STAMP,
     ...overrides,
   }
+}
+
+export const CAPSULE_ROW_STAMP = '2026-10-22T01:05:00.5+00:00'
+
+/** `capsule_policy` id=1 행(마이그레이션 232 기본값). NUMERIC 칸은 문자열로 내려오는 경우를 흉내 낸다. */
+export function capsulePolicyRow(overrides: Row = {}): Row {
+  return {
+    id: 1,
+    guaranteed_count: 1,
+    bonus_count: 1,
+    bonus_probability: '0.200',
+    other_tribe_probability: '0.200',
+    rarity_common: '70.000',
+    rarity_rare: '22.000',
+    rarity_epic: '6.000',
+    rarity_mystic: '2.000',
+    pity_epic_threshold: 15,
+    pre_quest_fill_amount: 5,
+    pre_quest_unlock_required: 5,
+    updated_at: CAPSULE_ROW_STAMP,
+    ...overrides,
+  }
+}
+
+const CHAPTER_DEFAULT_FILL = [90, 100, 110, 120, 135, 150, 165, 180, 200, 220]
+
+/** `capsule_chapter_costs` 챕터 1~10 행(마이그레이션 232 시드). 행마다 수정 시각을 따로 줄 수 있다. */
+export function chapterCostRows(stamp: string = CAPSULE_ROW_STAMP): Row[] {
+  return CHAPTER_DEFAULT_FILL.map((fill_amount, index) => ({ chapter_no: index + 1, fill_amount, updated_at: stamp }))
 }

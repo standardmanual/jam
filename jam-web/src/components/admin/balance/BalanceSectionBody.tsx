@@ -30,7 +30,13 @@ export async function BalanceSectionBody({ binding }: { binding: BalanceSectionB
   const units = Object.fromEntries(binding.fields.map((def) => [def.key, def.unit]))
   return (
     <div className="space-y-6">
-      <BalanceSectionForm sectionId={binding.id} fields={binding.fields} values={loaded.values} updatedAt={loaded.updatedAt} />
+      <BalanceSectionForm
+        sectionId={binding.id}
+        fields={binding.fields}
+        values={loaded.values}
+        updatedAt={loaded.updatedAt}
+        zeroWarnings={binding.zeroWarnings}
+      />
       <BalanceHistory sectionId={binding.id} entries={loaded.history} labels={labels} units={units} />
     </div>
   )
