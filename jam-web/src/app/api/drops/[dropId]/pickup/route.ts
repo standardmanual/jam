@@ -9,6 +9,7 @@ import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
 import { checkAndUpdateLocation } from '@/lib/abusing/gps-detector'
 import { logAbusingEvent } from '@/lib/abusing/abusing-log'
+import { alertGpsSpoof } from '@/lib/abusing/gpsSpoofAlert'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 import { findLockedItemIds } from '@/lib/inventory/lockedItem'
 import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
@@ -136,6 +137,20 @@ export async function POST(
         e
       )
     }
+    // 운영자에게 알린다(티켓 20261022_0940, 운영 로직 16.5절). 응답을 보낸 뒤 `#jam-alert`에 글 한 건을 올린다 — 픽업이 슬랙 응답을 기다리지 않는다.
+    // 위 장소 차단·기록 저장이 실패했어도 보낸다. `alertGpsSpoof`는 던지지 않고, 글에는 유저 ID·장소 이름·사유·차단 시간만 싣는다(좌표·이메일은 싣지 않는다).
+    // 이미 막힌 장소(`isPoiBlocked`)는 감지 전에 끝나므로 알림이 없다. 자동 정지는 걸지 않는다(정책 20번 4절).
+    const poiName = (poiRaw as PoiRow).name
+    after(() =>
+      alertGpsSpoof({
+        userId: user.id,
+        poiName,
+        reason: gpsCheck.reason === 'daily_distance' ? 'daily_distance' : 'speed',
+        speedKmh: gpsCheck.speedKmh,
+        dailyDistanceKm: gpsCheck.dailyDistanceKm,
+        blockHours: policy.poi_block_hours,
+      })
+    )
     return NextResponse.json({ error: d.drops.pickupLocationUnverified }, { status: 403 })
   }
 

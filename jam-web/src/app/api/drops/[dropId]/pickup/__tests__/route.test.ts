@@ -15,6 +15,8 @@
  *
  * `after()`는 요청 범위 밖에서 부를 수 없다. 콜백을 모아 두었다가 테스트가 「응답이 끝난 뒤」를 직접 흉내 낸다
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
+ *  - (티켓 20261022_0940) GPS 조작이 감지되면 응답을 보낸 뒤 `alertGpsSpoof`가 한 번 불린다(유저 ID·장소 이름·사유·차단 시간, 좌표는 없다). 감지되지 않거나 이미 막힌
+ *    장소면 부르지 않고, 알림이 던져도 403과 장소 차단·기록 호출은 그대로다. 알림 모듈은 모킹한다(실제 슬랙을 부르지 않는다).
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/drops/[dropId]/pickup/__tests__/route.test.ts"
  */
@@ -74,6 +76,7 @@ const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
 const logMock = vi.hoisted(() => vi.fn())
 const blockPoiMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
 const logAbusingEventMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
+const alertGpsSpoofMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<boolean>>(async () => true))
 
 // 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
@@ -136,6 +139,8 @@ vi.mock('@/lib/abusing/gps-detector', () => ({
 // 옛 섀도우밴 모듈(`shadow-ban.ts`)은 모킹하지 않는다. 라우트가 옛 밴을 다시 부르면 실제 `applyBan`이 `user_shadow_bans`를 열어
 // `state.tablesTouched`에 남아 시험이 실패한다(티켓 20261021_1250).
 vi.mock('@/lib/abusing/abusing-log', () => ({ logAbusingEvent: (...args: unknown[]) => logAbusingEventMock(...args) }))
+// 실제 슬랙(`postOpsSlack`)을 부르지 않게 알림 모듈 전체를 막는다(티켓 20261022_0940). 글의 내용은 `lib/abusing/__tests__/gpsSpoofAlert.test.ts`가 본다.
+vi.mock('@/lib/abusing/gpsSpoofAlert', () => ({ alertGpsSpoof: (...args: unknown[]) => alertGpsSpoofMock(...args) }))
 vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/suspension/suspension')>()
   return {
@@ -212,6 +217,7 @@ beforeEach(() => {
   state.tablesTouched = []
   runJamActionMock.mockResolvedValue(undefined)
   logMock.mockResolvedValue(undefined)
+  alertGpsSpoofMock.mockResolvedValue(true)
 })
 
 describe('성공 — 드랍 출처별로 판정할 지표', () => {
@@ -500,12 +506,17 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
     expect(state.afterCallbacks).toHaveLength(0)
   })
 
-  it('403 GPS 조작 의심', async () => {
+  it('403 GPS 조작 의심 — 행동 지표·챕터 점수 판정은 예약하지 않고 운영자 알림 한 건만 예약한다 (티켓 20261022_0940)', async () => {
     state.gpsDetected = true
     const res = await POST(request(), params())
     expect(res.status).toBe(403)
     expect(await res.json()).toEqual({ error: d.drops.pickupLocationUnverified })
-    expect(state.afterCallbacks).toHaveLength(0)
+    expect(state.afterCallbacks).toHaveLength(1)
+
+    await flushAfter()
+    expect(runJamActionMock).not.toHaveBeenCalled()
+    expect(state.scoreCalls).toHaveLength(0)
+    expect(alertGpsSpoofMock).toHaveBeenCalledTimes(1)
   })
 
   it('404 인벤토리를 만들지 못함', async () => {
@@ -590,6 +601,86 @@ describe('GPS 조작 의심 제재 — 픽업 거부·장소 차단·기록만 �
 
     expect(blockPoiMock).not.toHaveBeenCalled()
     expect(logAbusingEventMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('GPS 조작 의심 운영자 알림 (티켓 20261022_0940, 운영 로직 16.5절)', () => {
+  it('감지되면 응답을 보낸 뒤 알림이 한 번 불리고 인자에 유저 ID·장소 이름·사유·차단 시간이 있다 (좌표는 없다)', async () => {
+    state.gpsDetected = true
+    const res = await POST(request(), params())
+
+    expect(res.status).toBe(403)
+    expect(state.afterCallbacks).toHaveLength(1)
+    expect(alertGpsSpoofMock).not.toHaveBeenCalled() // 응답 전에는 보내지 않는다
+
+    await flushAfter()
+    expect(alertGpsSpoofMock).toHaveBeenCalledTimes(1)
+    expect(alertGpsSpoofMock).toHaveBeenCalledWith({
+      userId: PICKER,
+      poiName: '성수역',
+      reason: 'speed',
+      speedKmh: 400,
+      dailyDistanceKm: 0,
+      blockHours: 24,
+    })
+    const [input] = alertGpsSpoofMock.mock.calls[0] as [Record<string, unknown>]
+    expect(Object.keys(input)).not.toContain('lat')
+    expect(Object.keys(input)).not.toContain('lng')
+    expect(JSON.stringify(input)).not.toContain(String(BODY.user_lat))
+  })
+
+  it('감지되지 않으면 알림을 부르지 않는다', async () => {
+    const res = await POST(request(), params())
+    expect(res.status).toBe(200)
+
+    await flushAfter()
+    expect(alertGpsSpoofMock).not.toHaveBeenCalled()
+  })
+
+  it('이미 막힌 장소는 감지 전에 끝나므로 알림이 없다', async () => {
+    state.blocked = true
+    const res = await POST(request(), params())
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.drops.pickupPoiBlocked, code: 'poi_blocked' })
+    expect(state.gpsCalls).toBe(0)
+
+    await flushAfter()
+    expect(alertGpsSpoofMock).not.toHaveBeenCalled()
+  })
+
+  it('알림이 던져도 403 본문과 장소 차단·기록 호출은 그대로다', async () => {
+    state.gpsDetected = true
+    alertGpsSpoofMock.mockRejectedValue(new Error('slack down'))
+    const res = await POST(request(), params())
+    await flushAfter()
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.drops.pickupLocationUnverified })
+    expect(blockPoiMock).toHaveBeenCalledTimes(1)
+    expect(blockPoiMock).toHaveBeenCalledWith(PICKER, 'poi-1', { poi_block_hours: 24 }, 'gps_spoof_detected (속도 400km/h)')
+    expect(logAbusingEventMock).toHaveBeenCalledTimes(1)
+    expect(state.rpcCalls).toBe(0)
+  })
+
+  it('장소 차단·기록 저장이 실패해도 알림은 보낸다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.gpsDetected = true
+    blockPoiMock.mockRejectedValueOnce(new Error('poi_blocks upsert 실패'))
+    const res = await POST(request(), params())
+    await flushAfter()
+
+    expect(res.status).toBe(403)
+    expect(alertGpsSpoofMock).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
+  })
+
+  it('이용 정지를 자동으로 걸지 않는다 (알림은 운영자에게 알릴 뿐이다)', async () => {
+    state.gpsDetected = true
+    await POST(request(), params())
+    await flushAfter()
+
+    expect(state.tablesTouched).not.toContain('user_suspensions')
+    expect(state.tablesTouched).not.toContain('user_shadow_bans')
   })
 })
 
