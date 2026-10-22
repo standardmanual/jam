@@ -124,7 +124,8 @@
       "jam-web/src/lib/admin/opsSignals/stopAlert.ts",
       "jam-web/src/app/admin/ops-inbox/page.tsx",
       "jam-web/src/app/admin/ops-inbox/[bundleId]/page.tsx",
-      "jam-web/src/app/api/admin/__tests__/token-write-contract.test.ts"
+      "jam-web/src/app/api/admin/__tests__/token-write-contract.test.ts",
+      "jam-web/src/lib/abusing/gpsSpoofAlert.ts"
     ]
   },
 
@@ -304,6 +305,11 @@
       {
         "doc": "docs/service/prd/04_PROJECT_SPEC.md",
         "code": "jam-web/src/lib/admin/opsInbox/slack.ts",
+        "names": ["SLACK_BOT_TOKEN", "SLACK_CHANNEL_JAM_REPORT", "SLACK_CHANNEL_JAM_ALERT"]
+      },
+      {
+        "doc": "docs/service/prd/04_PROJECT_SPEC.md",
+        "code": "jam-web/.env.example",
         "names": ["SLACK_BOT_TOKEN", "SLACK_CHANNEL_JAM_REPORT", "SLACK_CHANNEL_JAM_ALERT"]
       }
     ]
