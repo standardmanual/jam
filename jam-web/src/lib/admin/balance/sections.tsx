@@ -3,14 +3,18 @@
  * **구역을 더하는 일은 구역 연결 객체(`lib/admin/balance/<구역>.ts`) 하나, 구역 본문 컴포넌트 하나, 이 배열 한 줄이다.**
  * 화면(`app/admin/balance/page.tsx`)과 구역 이동 링크(`OpsSettingsNav`)와 저장 라우트(`/api/admin/balance/[section]`)가 이 배열 하나를 읽는다.
  *
- * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회). 다음에 붙을 구역: 잠긴 아이템 배지·인벤토리(7-2·7-3) 등.
+ * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회). 다음에 붙을 구역: 챕터(7-2 2회), 인벤토리(7-3) 등.
  */
 import type { ReactElement } from 'react'
 import { CapsuleSection } from '@/components/admin/balance/CapsuleSection'
+import { CollectionSection } from '@/components/admin/balance/CollectionSection'
 import { JamSection } from '@/components/admin/balance/JamSection'
+import { LockedSection } from '@/components/admin/balance/LockedSection'
 import { SyncSection } from '@/components/admin/balance/SyncSection'
 import { CAPSULE_BINDING } from './capsule'
+import { COLLECTION_BINDING } from './collection'
 import { JAM_BINDING } from './jam'
+import { LOCKED_BINDING } from './locked'
 import { SYNC_BINDING } from './sync'
 import type { BalanceSectionBinding } from './types'
 
@@ -57,6 +61,26 @@ export const BALANCE_SECTIONS: readonly BalanceSectionDef[] = [
       '챕터 번호는 늘리거나 줄이지 않고 값만 바꿔요. 이미 만들어진 캡슐이 채울 양은 그대로이고 바꾼 값은 앞으로 만들어지는 캡슐부터 적용돼요. 확률 안내 페이지에 반영되는 칸을 바꾸면 저장하기 전에 한 번 더 확인해요.',
     ],
     Body: CapsuleSection,
+  },
+  {
+    binding: LOCKED_BINDING,
+    label: '잠긴 아이템 배지',
+    title: '잠긴 아이템 배지',
+    description: [
+      '잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값이에요. 아이템 배지에 필요한 양을 따로 정하지 않았을 때 이 값을 써요.',
+      '1 이상의 정수로 써요. 등급 사이의 순서는 따로 검사하지 않아요. 바꾼 값은 앞으로 잠기는 아이템 배지부터 적용돼요.',
+    ],
+    Body: LockedSection,
+  },
+  {
+    binding: COLLECTION_BINDING,
+    label: '컬렉션과 믹스',
+    title: '컬렉션과 믹스',
+    description: [
+      '컬렉션을 등급별로 완성했을 때 주는 기본 포인트와, 믹스에 실패했을 때 주는 포인트예요.',
+      '0 이상의 정수로 써요. 저장하면 다음 완성과 다음 믹스부터 바로 적용돼요.',
+    ],
+    Body: CollectionSection,
   },
 ]
 
