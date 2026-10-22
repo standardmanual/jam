@@ -64,7 +64,7 @@ export interface RecapItemBadge {
   name: string
   /**
    * 등급형은 등급 문자열, 등급 없는 배지는 `null`. 드랍 엔진은 등급이 있는 배지만 담지만
-   * (`drop-engine/index.ts`), 읽는 쪽이 `null`을 `'common'`으로 접지 않도록 타입을 열어 둔다 —
+   * (`drop-engine/syncIssueRun.ts`의 발급 결과 `rarity`는 `NonNullable`), 읽는 쪽이 `null`을 `'common'`으로 접지 않도록 타입을 열어 둔다 —
    * 접는 순간 등급 없는 배지가 조용히 Common으로 표시된다 (티켓 20260905_0030).
    */
   rarity: BadgeRarity | null

@@ -4,18 +4,6 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { evaluateBadgesDetailed } from '@/lib/badge-engine'
 import { buildVirtualActivities, readExtendedFields } from '@/lib/admin/virtualActivity'
-import { previewItemDrop, type SkippedDropReason } from '@/lib/drop-engine/preview'
-import type { Database } from '@/types/database.generated'
-
-/**
- * `inventory_items.serial_number`는 NOT NULL인데 DEFAULT가 없어(migrations/034) 생성 타입이
- * Insert 필수 컬럼으로 잡지만, 실제 값은 BEFORE INSERT 트리거 `assign_random_serial()`
- * (migrations/108)이 채운다. 이 한 컬럼만 `Omit`으로 떼어내고 나머지 컬럼은 이름·타입 검사를
- * 그대로 받게 둔다 — 억제(`@ts-expect-error`)로 덮으면 컬럼명 오타까지 같이 통과한다
- * (티켓 20260831_1213).
- */
-type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
-type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
 
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
@@ -100,75 +88,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 4. 아이템 드랍 시뮬레이션 — 엔진(`tryItemDrop`)의 판정 단계를 그대로 따라간다(`previewItemDrop`).
-  //    첫 번째 활동 기준으로 한 번 굴리며, 현재 drop_policy·유저 드랍 상태를 읽는다.
-  //    DB에는 아무것도 쓰지 않는다. 적용 모드(dryRun=false)만 고른 배지를 인벤토리에 넣고,
-  //    유저 드랍 상태(연속 common·pity·일일 카운터)·결산 소식·엔진 판정 로그는 남기지 않는다.
-  const itemDrops: {
-    badgeName: string
-    /** 실제로 뽑힌 배지의 등급 — 등급 폴백(후보 없음)이 일어나면 추첨 등급(rolledRarity·cappedRarity)과 다를 수 있다 */
-    rarity: string | null
-    rolledRarity: string
-    cappedRarity: string
-    tribeName: string
-    bookName: string
-    isBonus: boolean
-    isLastPiece: boolean
-  }[] = []
-  let itemDropSkips: { attempt: number; reason: SkippedDropReason; rolledRarity: string | null }[] = []
-  let itemDropUnavailable: 'no_drop_structure' | 'no_inventory' | null = null
-
-  const preview = await previewItemDrop(userId, activities[0] ?? null, activities)
-  if (preview.kind === 'unavailable') {
-    itemDropUnavailable = preview.reason
-  } else {
-    const { plan, inventory } = preview
-    itemDropSkips = plan.skipped.map((skip) => ({
-      attempt: skip.attempt,
-      reason: skip.reason,
-      rolledRarity: skip.rolledRarity ?? null,
-    }))
-
-    const bookIds = [...new Set(plan.drops.map((d) => d.bookId))]
-    const { data: booksRaw } = bookIds.length > 0
-      ? await supabase.from('item_books').select('id, name').in('id', bookIds)
-      : { data: [] as { id: string; name: string }[] }
-    const bookNameById = new Map((booksRaw ?? []).map((b) => [b.id, b.name]))
-
-    let insertedCount = 0
-    for (const drop of plan.drops) {
-      itemDrops.push({
-        badgeName: drop.badge.name,
-        rarity: drop.badge.rarity,
-        rolledRarity: drop.rolledRarity,
-        cappedRarity: drop.cappedRarity,
-        tribeName: drop.tribeName,
-        bookName: bookNameById.get(drop.bookId) ?? '',
-        isBonus: drop.isBonus,
-        isLastPiece: drop.isLastPiece,
-      })
-
-      if (!dryRun) {
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        const inventoryItemsQuery = supabase.from('inventory_items')
-        const insertQuery = inventoryItemsQuery.insert({
-          inventory_id: inventory.id,
-          badge_id: drop.badge.id,
-          obtained_by: 'drop',
-          expires_at: expiresAt,
-        } satisfies InventoryItemInsertByTrigger as InventoryItemInsert)
-        const { data: insertedItem } = await insertQuery.select('id').single()
-
-        if (insertedItem) {
-          insertedCount += 1
-          await supabase
-            .from('inventory')
-            .update({ used_slots: inventory.used_slots + insertedCount })
-            .eq('id', inventory.id)
-        }
-      }
-    }
-  }
+  // 아이템 드랍 시뮬레이션은 없다 — 옛 드랍 엔진 미리 보기(`previewItemDrop`)를 지우면서 함께 지웠다(티켓 20261022_0938).
+  // 새 발급 경로(`lib/drop-engine/syncIssue*.ts`)용 미리 보기는 필요해지면 별도 티켓으로 만든다.
 
   // Phase 8: 아이템북 완성은 유저가 직접 슬롯을 채우는 방식으로 변경됨.
   // 시뮬레이션으로는 슬롯 액션을 재현할 수 없으므로 완성 체크는 생략.
@@ -187,9 +108,6 @@ export async function POST(req: NextRequest) {
     badgesEarned,
     badgesMissed,
     poisMatched,
-    itemDrops,
-    itemDropSkips,
-    itemDropUnavailable,
     itemBooksCompleted,
     applied: !dryRun,
   })

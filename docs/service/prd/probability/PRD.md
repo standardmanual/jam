@@ -45,7 +45,7 @@ code:
 - 필요한 칸만 이름으로 읽는다(`select('*')`를 쓰지 않는다). `jam_policy`에는 대량 수령 경보 기준(`mass_earn_alert_*`)이 같은 행에 있고, 어뷰징 임계값은 공개하지 않는 것이 원칙이다.
 - 잠길 확률은 동기화와 캡슐이 한 값(`jam_policy.locked_roll_probability`)이라 캡슐 표에도 같은 값이 나온다.
 - 확률은 숫자에 %를 붙이고 소수는 필요한 자리까지만 쓴다. 0.07처럼 부동소수 오차가 나는 값은 소수 둘째 자리로 정리한다(`Number((x * 100).toFixed(2))`).
-- 시스템 드랍은 `rarity_mode`가 `explicit`이면 등급 표(0%인 줄도 그대로), `random`이면 표 없이 설명 문장이다. `random`은 놓을 때마다 등급 분포를 무작위로 정해 고정된 표를 만들 수 없다. `category_mode`, `all_random`, `auto_enabled`는 보이지 않는다.
+- 시스템 드랍은 `rarity_mode`가 `explicit`이면 등급 표(0%인 줄도 그대로), `random`이면 표 없이 설명 문장이다. `random`은 놓을 때마다 등급 분포를 무작위로 정해 고정된 표를 만들 수 없다. `category_mode`, `auto_enabled` 같은 설정은 보이지 않는다(옛 `all_random` 칸은 코드가 읽지 않는다).
 - 0인 값: 확정 개수 0은 「0개」, 보너스 개수나 보너스 기회가 0이면 「없음」으로 쓰고 보너스 확률 줄은 뺀다.
 
 ### 읽기 실패

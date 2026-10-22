@@ -225,9 +225,9 @@ strava_connections 저장 (같은 계정 재연결은 토큰 갱신, 다른 계�
      처음 받을 때(is_first)만 배지의 point_reward를 awardPoints로 준다(티켓 20261018_1814)
    → 체크인이 아닌 배지가 연결돼 있어도 발급하지 않는다(옛 'poi_match' 경로 삭제)
 
-7. 아이템 드랍 추첨
-   → jamActivityType이 있는 활동에만 tryItemDrop 호출
-   → 결과에 따라 inventory_items INSERT
+7. 아이템 배지 발급 (JAM 2.0)
+   → 잼 정산을 마친 뒤 issueSyncItemBadges(lib/drop-engine/syncIssueRun.ts)가 정산한 활동마다 발급한다
+   → 빈칸이 충분하면 inventory_items에 지급하고, 모자라면 전부 sync_pending_items에 보류한다 (5장)
 
 8. 뱃지 엔진 실행
    → evaluateBadges: 조건 달성 배지 발급
@@ -428,58 +428,35 @@ matchPoisForActivity(latlngPath, pois):
 
 ## 5. 드랍 엔진
 
-**관련 파일:** `src/lib/drop-engine/index.ts`
+**관련 파일:** `src/lib/drop-engine/syncIssue.ts`(개수·등급·후보 순수 판정), `syncIssueRun.ts`(조회·지급·기록), `lockAssignment.ts`(잠김 배정), `issueFollowUp.ts`(지급 뒤 포인트·피드)
 
-### 5-1. 드랍 발생 시점
+> 옛 드랍 엔진(`tryItemDrop`, 3레이어 v2)은 JAM 2.0에서 동기화 경로를 끊었고(티켓 20261017_1424),
+> 코드는 2026-10-22(티켓 20261022_0938 1회)에 지웠다. 어드민 «드랍 정책» 화면과 시뮬레이터의 «아이템 드랍» 구역도 함께 지웠다.
+> 옛 엔진의 설정 표 `drop_policy`는 **코드가 쓰지 않음, 표 정리 대기**, `user_drop_state`의 옛 열 7개는 **열 정리 대기**다(0938 2회. 상세는 `02_DATA_MODEL.md`).
 
-- Strava 동기화 중 각 활동마다 `tryItemDrop` 1회 호출
-- `jamActivityType`이 null인 활동(기타 종목)은 드랍 제외
+### 5-1. 발급 시점
 
-### 5-2. 드랍 흐름
+- Strava 동기화가 **잼 정산을 마친 뒤** 정산한 모든 활동에 대해 `issueSyncItemBadges`를 부른다. 최근 3건 상한은 없고, 첫 동기화는 정산이 최근 1건이라 발급도 1건이다
+- 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다(잼 정산 등 다른 보상은 그대로)
+
+### 5-2. 발급 흐름
 
 ```
-tryItemDrop(userId, activityId):
-
-1. Rarity 추첨 (rollRarity):
-   Random 값 → rarity 결정
-   0.00 ~ 0.40: common   (40%)
-   0.40 ~ 0.65: rare     (25%)
-   0.65 ~ 0.75: epic(10%)
-   0.75 ~ 0.80: mystic   ( 5%)
-   0.80 ~ 1.00: null     (20%, 드랍 없음)
-
-2. 섀도우밴 적용: 없앴다 (옛 규칙 — soft 밴은 epic·mystic, hard 밴은 rare·epic·mystic 드랍률을 0%로 강제하고
-   common으로 강등했다. 동기화 경로는 티켓 20261017_1426에서 읽기를 끊었고 코드는 6-4 2회(티켓 20261021_1250)에서 지웠다. 12-3 참조)
-   null rarity → 바로 종료 (드랍 없음)
-
-3. 배지 후보 조회:
-   badges WHERE type='item' AND rarity=추첨rarity
-
-4. 가중 랜덤 선택 (weightedPick):
-   badges.drop_weight 기반 가중 확률 적용
-
-5. 인벤토리 슬롯 확인:
-   inventory.used_slots >= max_slots → 드랍 취소
-
-6. inventory_items INSERT:
-   { badge_id, obtained_by: 'drop', expires_at: 7-1 「만료값」 표의 동기화 드랍 행 }
-
-7. inventory.used_slots += 1
-
-8. recordFeedEvent: 'item_dropped' 기록
+활동마다 개수 정함 (확정 + 보너스)
+  → 등급 추첨 (jam_policy의 sync_rarity_* 확률, Common이 이어지면 Rare 이상 보정)
+  → 후보 선정 (소속 트라이브 컬렉션, 그 등급, 활성·공개 기간 안·드랍 제외 아님 — 균등 무작위, 없으면 한 등급씩 내림)
+  → 잠김 배정 (lockAssignment.ts)
+  → 이번 동기화의 발급 목록 전체를 빈칸(max_slots - used_slots)과 비교
+      이하: grant_inventory_item_locked RPC로 바로 지급 (obtained_by 'drop', 기한 7-1 「만료값」 표의 동기화 드랍 행)
+      초과: 하나도 주지 않고 전부 sync_pending_items에 보류 → 유저가 빈칸 수만큼 고른다
+  → item_issue_log 기록, 지급분은 포인트·피드·결산(issueFollowUp.ts)
 ```
 
-### 5-3. 드랍 확률 요약
+규칙과 값은 [BADGE_ENGINE_UNIFIED.md](badge-engine/BADGE_ENGINE_UNIFIED.md) §3.0이 단일 원천이다. 여기에 옮겨 적지 않는다.
 
-| 등급 | 기본 확률 | 드랍 없음 확률 |
-|------|----------|---------------|
-| common | 40% | — |
-| rare | 25% | — |
-| epic | 10% | — |
-| mystic | 5% | — |
-| 드랍 없음 | — | 20% |
+### 5-3. 드랍 확률
 
-섀도우밴으로 실질 드랍률을 낮추던 옛 규칙은 없앴다(6-4 2회, 티켓 20261021_1250). 12-3 참조.
+등급 확률은 `jam_policy`의 `sync_rarity_*`가 정한다(값은 위 문서 §3.0). 섀도우밴으로 실질 드랍률을 낮추던 옛 규칙은 없앴다(6-4 2회, 티켓 20261021_1250). 12-3 참조.
 
 ---
 
@@ -553,12 +530,11 @@ inventory_items (슬롯당 1개)
 
 | 발급 경로 | obtained_by | expires_at | 코드 |
 |---|---|---|---|
-| 동기화 드랍 (5-2) | `drop` | 그 아이템 배지의 공개 종료일(`badges.valid_until`). 공개 종료일이 없으면 NULL | `jam-web/src/lib/drop-engine/index.ts` `insertDrop()` |
+| 동기화 드랍 (5-2) | `drop` | NULL (`p_expires_at`을 넘기지 않는다. 공개 종료일을 기한으로 두지 않는다, 티켓 20261017_1424) | `jam-web/src/lib/drop-engine/syncIssueRun.ts` |
 | 시스템 드랍 (POI에 미리 배치) | `ambient_drop` | NULL | `mint_and_place_ambient_drop()` (마이그레이션 108). 잠김으로 만든 배지는 `mint_and_place_ambient_drop_locked()` (마이그레이션 240) |
 | 믹스 보상 (8-1 6-a단계) | `system_event` | 지급 시점 + 30일 | `jam-web/src/lib/combine/index.ts` 보상 지급 |
 | 미션 보상 (9장) | `system_event` | NULL (`p_expires_at`을 넘기지 않는다) | `jam-web/src/lib/missions/rewards.ts` `grantMissionRewards()` → DB 함수 `mission_grant_item_rewards`(마이그레이션 250), 받지 않은 보상은 `mission_claim_item_rewards` |
 | POI 픽업 (6-2) | 바꾸지 않음 | 바꾸지 않음 (소유자와 `obtained_at`만 옮긴다) | `pickup_drop()` (마이그레이션 108) |
-| 어드민 시뮬레이션 (`dryRun`이 아닐 때) | `drop` | 지급 시점 + 30일 | `jam-web/src/app/api/admin/simulate/route.ts` |
 
 만료일이 지나도 개체를 파괴하거나 장착·믹스·드랍을 막는 처리는 없다. 만료값은 화면 표시(획득
 이력의 만료일, 7일 이내면 「곧 만료」 칩)에만 쓰인다. 타입과 획득 이력 화면에 `drop_event` 분기가
@@ -915,7 +891,7 @@ Strava 동기화 시:
   activity.average_speed_kmh > vehicle_speed_filter_kmh
   → 해당 활동을 아래 세 곳에서 모두 제외
      · 액티비티 배지 평가 (evaluateBadges)
-     · 아이템 드랍 대상 선정·판정 (tryItemDrop)
+     · 아이템 배지 발급 (issueSyncItemBadges)
      · 미션 진행 체크 (checkMissions)
 ```
 
@@ -1157,7 +1133,7 @@ abusing_policy {
 | GET | `/api/admin/users/ids` | 유저 목록 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
 | POST | `/api/admin/users/export` | 선택한 유저 CSV 내보내기 |
 | POST | `/api/admin/users/bulk` | 유저 일괄 포인트 지급·회수·초기화·삭제 (미리보기·확인 문구, 어드민·본인 자동 제외) |
-| POST | `/api/admin/simulate` | 드랍/배지 시뮬레이션 |
+| POST | `/api/admin/simulate` | 배지·장소 시뮬레이션(가상 활동으로 배지 판정·장소 매칭. 옛 «아이템 드랍» 구역은 티켓 20261022_0938에서 지웠다) |
 | POST | `/api/admin/drop-policy/exclusions/bulk` | 드랍 제외 관리 일괄 제외·제외 해제(아이템배지·컬렉션) |
 | GET | `/api/admin/drop-policy/exclusions/ids` | 드랍 제외 관리 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
 | GET, PUT | `/api/admin/abusing/policy` | 어뷰징 정책 조회/수정 |

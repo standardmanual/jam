@@ -45,7 +45,6 @@ export function world(): Record<string, Row[]> {
       {
         id: 1,
         auto_enabled: true,
-        all_random: false,
         rarity_mode: 'explicit',
         rarity_common: 1,
         rarity_rare: 0,

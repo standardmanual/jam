@@ -23,7 +23,7 @@ export interface BadgeTribeAssignmentClassification {
  * - 체크인 배지: 저장 API(`badges/[id]/route.ts`)가 트라이브를 항상 null로 강제하므로 건너뛴다.
  * - 소속 컬렉션(`item_book_id`)이 있고 그 컬렉션의 트라이브가 지정하려는 트라이브와 다르면
  *   건너뛴다 — 드랍 엔진은 배지가 아니라 **컬렉션**의 트라이브를 읽는다
- *   (`lib/drop-engine/index.ts`의 `tribeOfBook`), 그래서 배지의 트라이브만 바꾸면 실제 드랍
+ *   (`lib/drop-engine/syncIssue.ts`가 `item_books.tribe_id`로 거른다), 그래서 배지의 트라이브만 바꾸면 실제 드랍
  *   가중치와 어긋나는 값이 남는다.
  */
 export function classifyBadgeTribeAssignment(

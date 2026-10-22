@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// 어드민 API 읽기 — 미션·배지·유저·드랍 정책·배지 지표 라벨 현황을 어드민 API 경유로 조회한다.
-// (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A5)
+// 어드민 API 읽기 — 미션·배지·유저·배지 지표 라벨 현황을 어드민 API 경유로 조회한다.
+// (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A5. 드랍 정책 조회는 어드민 «드랍 정책» 화면과 API를 지우면서 뺐다, 티켓 20261022_0938)
 //
 // service_role 키를 쓰지 않는다. DB 직접 접근이 아니라 반드시 /api/admin/* HTTP 경유로만
 // 조회한다 — 권한 검사·검증 로직을 그대로 타기 위함이다(JAM-WORK/05_자동화목록.md 원칙).
@@ -55,7 +55,6 @@ const TARGETS = [
   ['missions', '/api/admin/missions'],
   ['badges', '/api/admin/badges'],
   ['users', '/api/admin/users'],
-  ['dropPolicy', '/api/admin/drop-policy'],
   ['badgeMetricLabels', '/api/admin/badge-metric-labels'],
 ]
 
@@ -79,10 +78,6 @@ async function main() {
 
   if (results.users.__error) console.log(`- 유저(최근 20): 조회 실패 (${results.users.__error})`)
   else console.log(`- 유저(최근 20): ${results.users.users?.length ?? 0}건`)
-
-  if (results.dropPolicy.__error)
-    console.log(`- 드랍 정책: 조회 실패 (${results.dropPolicy.__error})`)
-  else console.log(`- 드랍 정책: ${JSON.stringify(results.dropPolicy.policy)}`)
 
   if (results.badgeMetricLabels.__error)
     console.log(`- 배지 지표 라벨: 조회 실패 (${results.badgeMetricLabels.__error})`)

@@ -19,7 +19,33 @@
  *
  * 순수 함수다. DB 조회는 호출부(checker·completable·화면·API)가 한다.
  */
-import { buildBadgeIdsOfBook } from '@/lib/drop-engine'
+/** 컬렉션 분모 구성에 필요한 배지 필드 */
+export interface BadgeIdsOfBookInput {
+  id: string
+  item_book_id: string | null
+  drop_excluded: boolean
+}
+
+/**
+ * 컬렉션 완성률 분모(badgeIdsOfBook)를 구성한다. 개별 배지 `drop_excluded=true`는
+ * 분모에서 제외한다 — 드랍으로 영원히 얻을 수 없는 배지를 분모에 남겨두면 그 컬렉션은
+ * 드랍만으로는 완성 불가능해진다(티켓 20260911_2235). 정책상 "드랍 제외 배지는 컬렉션
+ * 완성 조건에서도 제외"로 확정 — 이미 그 배지를 보유한 유저도 이 분모로 재계산되어
+ * 즉시 완성 처리된다(의도된 동작).
+ *
+ * 옛 드랍 엔진(`lib/drop-engine/index.ts`)에 있던 함수를 옛 엔진을 지우면서 옮겼다(티켓 20261022_0938).
+ */
+export function buildBadgeIdsOfBook(badges: BadgeIdsOfBookInput[]): Map<string, string[]> {
+  const badgeIdsOfBook = new Map<string, string[]>()
+  for (const b of badges) {
+    if (!b.item_book_id) continue
+    if (b.drop_excluded) continue
+    const list = badgeIdsOfBook.get(b.item_book_id) ?? []
+    list.push(b.id)
+    badgeIdsOfBook.set(b.item_book_id, list)
+  }
+  return badgeIdsOfBook
+}
 
 /** 완성 분모에 들어가는 배지 종류 기본값 */
 export const COMPLETION_BADGE_TYPES = ['item', 'checkin'] as const

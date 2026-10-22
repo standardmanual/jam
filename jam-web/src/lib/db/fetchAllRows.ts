@@ -3,7 +3,7 @@
  *
  * 순수 모듈이다. `node:`·Supabase·서버 모듈을 값으로 가져오지 않는다. 예약 등록 핸들러(`opsInbox/execute/dropSchedule.ts`)가 드랍 서버 함수를
  * 거쳐 이 함수를 끌어오는데, 서버 전용 모듈(`createServiceClient`)을 값으로 가져오는 `shared.ts`를 거치면 핸들러 폴더의 순수 모듈 계약이 깨져서 따로 뺐다.
- * `shared.ts`는 같은 이름을 다시 내보내므로 기존 호출부(`ambient-drop/index.ts`·`drop-engine/index.ts` 등)는 고치지 않는다. 동작과 오류 문장(`[notifications-batch]` 접두)은 그대로다.
+ * `shared.ts`는 같은 이름을 다시 내보내므로 기존 호출부(`ambient-drop/index.ts` 등)는 고치지 않는다. 동작과 오류 문장(`[notifications-batch]` 접두)은 그대로다.
  *
  * ## 이 파일이 강제하는 것
  *

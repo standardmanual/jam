@@ -161,13 +161,13 @@ Strava 싱크
  └─ ② 아이템배지 드랍 엔진 (drop-engine) — 확률·서사 기반 드랍
 ```
 
-| 구분 | ① 액티비티배지 엔진 | ② 아이템배지 드랍 엔진 v2 |
+| 구분 | ① 액티비티배지 엔진 | ② 아이템배지 드랍 엔진 (JAM 2.0) |
 |------|--------------------|--------------------------|
 | 대상 | `type='activity'` (147종: 기존 5종목 체계 115종 + 걷기 v4 신규 32종) | `type='item'` (~900종: 10트라이브 × 10컬렉션) |
 | 성격 | **성취의 증명** — 조건 달성 = 발급 (결정론) | **수집의 재미** — 활동당 최소 1개, 내용은 변동 (확률론) |
 | 평가 기준 | 유저 **전체 활동 이력** 누적 평가 | **단일 활동**(이번 싱크 배치) 기준 |
 | 저장 | `user_activity_badges` | `inventory_items` (일련번호 무작위) |
-| 구현 파일 | `src/lib/badge-engine/index.ts` ✅ 구현 | `src/lib/drop-engine/` ✅ v2 구현 (2026-07-21) |
+| 구현 파일 | `src/lib/badge-engine/index.ts` ✅ 구현 | `src/lib/drop-engine/syncIssue*.ts` ✅ JAM 2.0 발급(§3.0). 옛 v2(2026-07-21)는 2026-10-22에 지웠다 |
 | 게이미피케이션 역할 | 장기 목표·티어 성장 (mastery) | 세션 보상·트라이브 서사·수집 (variable reward) |
 
 **③ JAM! 카테고리 — 서비스 사용량 배지 (2026-09-10, 티켓 20260910_1557; 연속 동기화 일수
@@ -457,14 +457,14 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 
 **공통 정책 (①·② 두 엔진 공유 — ③은 아래 중 피드 이벤트만 같은 방식으로 따른다):**
 - 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=계열의 첫 칸만 — 등급형은 Common 외 차단·무한레벨형은 Lv.1 외 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
-- **가입 시점 앵커**(티켓 20260905_0030 §5): 누적 조건이 보는 이력은 `users.created_at` 이후로 잘린다. `getActivityHistory(supabase, userId, sinceDate)`의 3번째 인자를 호출처 4곳(`badge-engine/index.ts` · `missions/checker.ts` · `strava/sync.ts`의 진행 스냅샷 · `badges/tree/page.tsx`)이 전부 넘긴다 — 한 곳이라도 빠지면 화면·미션·발급이 서로 다른 창을 본다. **이번 싱크 배치는 앵커를 거치지 않는다**(첫 싱크의 «마지막 활동 1건 정산»이 성립해야 하므로). 앵커로 `strava_connections.created_at`을 쓰지 않은 이유는 `activity-history.ts`의 `getSignupAnchorDate` 주석 참조
+- **가입 시점 앵커**(티켓 20260905_0030 §5): 누적 조건이 보는 이력은 `users.created_at` 이후로 잘린다. `getActivityHistory(supabase, userId, sinceDate)`의 3번째 인자를 호출처(`badge-engine/index.ts` · `missions/checker.ts` 등. 진행 스냅샷 갱신과 배지 트리 화면은 지웠다)가 전부 넘긴다 — 한 곳이라도 빠지면 화면·미션·발급이 서로 다른 창을 본다. **이번 싱크 배치는 앵커를 거치지 않는다**(첫 싱크의 «마지막 활동 1건 정산»이 성립해야 하므로). 앵커로 `strava_connections.created_at`을 쓰지 않은 이유는 `activity-history.ts`의 `getSignupAnchorDate` 주석 참조
 - 섀도우밴: **없앴다**(티켓 20261017_1426). 새 발급 경로(액티비티·사용량·체크인·POI 배지, 아이템 배지 드랍)는 `user_shadow_bans`를 읽지 않는다. JAM 2.0의 제재는 이용 정지 하나이고, 정지 중인 유저는 동기화 입구에서 막혀 발급 경로에 오지 않는다(`user_suspensions`, `lib/suspension/`). 옛 코드(`lib/abusing/shadow-ban.ts`, 드랍 엔진의 `applyShadowBanCap`, 픽업의 `applyBan`, 밴 관리 API `api/admin/abusing/bans/**`)는 6-4 2회(티켓 20261021_1250)에서 지웠다. `user_shadow_bans` 표는 코드가 쓰지 않음, 표 정리 대기(6-4 4회). 아래 Step 4.9 등 옛 서술은 이력으로 남긴다
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
 - **새 활동 0건 동기화에서도 ① 배지 평가는 항상 실행된다** *(2026-09-06, 티켓 20260906_1430)*:
   유저가 "동기화" 버튼을 눌러도 새로 받아올 활동이 없으면 `evaluateBadges(userId, [])`를
   빈 배열로 호출한다 — 카탈로그가 확장된 시점부터 그 유저의 다음 새 활동까지 「조건은
-  충족인데 미발급」인 창이 열리는 것을 막기 위함(실측 사고: 22일간 미발급). **② 드랍
-  (`tryItemDrop`)과 미션 평가는 여전히 새 활동이 1건 이상 있을 때만 실행된다** — 이
+  충족인데 미발급」인 창이 열리는 것을 막기 위함(실측 사고: 22일간 미발급). **② 아이템 배지 발급
+  (`issueSyncItemBadges`)과 미션 평가는 여전히 새 활동이 1건 이상 있을 때만 실행된다** — 이
   게이트는 그대로 유지. 호출 경로는 `src/lib/strava/sync.ts`의 `processFetchedActivities`가
   정산할 활동이 0건일 때 타는 이른 반환(`evaluateWithoutNewActivities` — 새 활동이 0건이거나 전부 걸러진 경우)과
   `activitiesFiltered.length > 0` 삼항 게이트 두 곳 — 배지 평가에 한해서만 무조건 호출로 바뀌었다.
@@ -486,7 +486,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
   | (어뷰징 필터) | `vehicle_speed` | 평균 속도가 차량 속도 기준 초과 — 인정 판정이 아니라 어뷰징 필터가 붙인다 |
 
   처리 순서는 ① 인정 기준으로 거르기 → ② 어뷰징 필터 → 첫 동기화의 «최근 1건» 선택 → ③ 정산(체크인,
-  아이템 배지 드랍, 활동 배지, 아이템북, 미션, 계열 진행)이다. **체크인은 ②를 지난 활동에만 돈다** — 예전에는 체크인이
+  아이템 배지 드랍, 활동 배지, 아이템북, 미션)이다. **체크인은 ②를 지난 활동에만 돈다** — 예전에는 체크인이
   차량 속도 필터보다 먼저 돌아 걸러질 활동도 체크인 배지를 받았다. ②의 어뷰징 필터는 활동 1건에 아래 순서로 건다
   (`processFetchedActivities`의 `checkAbusingFilters`).
 
@@ -504,8 +504,8 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 
   **걸러진 활동의 처리**: 버리지 않고 `strava_activities`에 `filter_reason`(NULL이면 인정)과 함께 저장한다 — 같은
   활동을 다음 동기화에서 다시 가져와 다시 거르는 낭비를 막고 `UNIQUE(user_id, strava_id)`를 그대로 쓰기 위해서다.
-  이력은 `getActivityHistory` 한 함수가 `filter_reason IS NULL`인 행만 읽는다(배지 엔진·미션·계열 진행·랭킹·
-  배지 트리·조건 시뮬레이션이 모두 이 함수로 읽는다). 「활동한 날」 지표(`jamActionDayMetrics`)와 온보딩 퀘스트
+  이력은 `getActivityHistory` 한 함수가 `filter_reason IS NULL`인 행만 읽는다(배지 엔진·미션·랭킹·
+  조건 시뮬레이션이 모두 이 함수로 읽는다). 「활동한 날」 지표(`jamActionDayMetrics`)와 온보딩 퀘스트
   완료 판정도 같은 조건을 건다. 반대로 «이미 처리한 활동 id» 조회(`getProcessedStravaIds`)는 걸러진 행도 포함한다.
   옛 행은 칸이 NULL이라 그대로 인정으로 읽히고 소급 판정하지 않는다. 판정에 쓴 원본 값의 유무·모양은
   `source_meta`에 남긴다(경로 요약 본문·좌표·외부 ID 원문은 저장하지 않는다).
@@ -816,8 +816,7 @@ Rare를 얻는 순간 Common이 후보에서 빠져 **하위 등급의 회차 �
 발급되며 자기들끼리 캡을 소진해 이후 정당한 발급까지 막는 문제가 있었기 때문이다
 (`src/lib/badge-engine/index.ts` 692~698행 주석 참고). 성과·루틴 배지(`type='activity'`)는
 전부 명시적 수치 조건으로 검증되므로 조건 충족 시 항상 발급을 보장한다 — 캡을 두지 않는다.
-아이템/드랍 배지는 §3의 drop-engine이 자체 확률·일일 하향 로직으로 별도 어뷰징을
-방지한다.
+아이템/드랍 배지는 §3의 발급 규칙이 따로 다룬다(옛 drop-engine의 일일 하향 로직은 2026-10-22에 코드와 함께 지웠다).
 
 **v5의 홍수 방지는 캡이 아니라 «발급과 카운터의 분리»다** (2026-09-05, 티켓 20260905_0030 §2).
 반복형은 매 회차 `earn_count`만 올리고 임계값(예: 1·5·20·50회)에서만 실제로 발급된다.
@@ -1088,9 +1087,10 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 배지 트리 화면(`/badges/tree`)에 진행률·잔여값·병목 축을 보여주기 위한 **표시 전용 계층**이었다.
 
 > **2026-10-19 갱신(티켓 20261018_1817 2회)**: 이 값을 그리던 배지 트리 화면과 «다음 목표»는 사용자 결정으로
-> 제거했다. 지금 유저 화면에는 진행 표시가 어디에도 없다. 이 계층의 계산 함수는 계열 진행 스냅샷
-> (`user_family_progress`, `sync.ts`의 `updateFamilyProgressSnapshots`)이 아직 부르지만, 그 스냅샷을 읽는 곳이
-> 없어졌다 — 정리는 후속 티켓으로 남겼다. 아래 소비처·화면 서술은 제거 전 기록이다.
+> 제거했다. 지금 유저 화면에는 진행 표시가 어디에도 없다. 이 계층의 계산 함수를 부르던 계열 진행 스냅샷 갱신
+> (`sync.ts`의 `updateFamilyProgressSnapshots`)은 2026-10-22(티켓 20261022_0938 1회)에 지웠다. `user_family_progress` 표는
+> **코드가 쓰지 않음, 표 정리 대기(0938 2회)**다. `computeBadgeProgress` 자체는 코드와 시험에 남아 있지만 앱 코드에서 부르는 곳이 없다.
+> 아래 소비처·화면 서술은 제거 전 기록이다.
 
 `evaluateConditionDetailed`/`checkCondition`(§2.2 발급 파이프라인)은 이 계층이 존재하기 전과
 **완전히 동일하게 동작**한다 — 발급 판정에 영향을 주지 않는 별도 함수를 옆에 추가했을 뿐이다.
@@ -1138,7 +1138,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   `BadgeProgressAxis`에 축 단위 진행비율 `fraction`이 노출돼 있다 — "작을수록 좋음"(페이스)·
   한파(`temperature_max_c`, 비선형 기준점) 축은 `current`/`target` 단순 비율로 재계산하면
   진행 바가 틀리므로 표시 레이어가 이 값을 그대로 써야 한다.
-- **3차 1단계 — 진행 스냅샷 저장(티켓 20260904_1156).** 2b~2d는 전부 "지금 이 순간" 값만
+- **3차 1단계 — 진행 스냅샷 저장(티켓 20260904_1156).** *(2026-10-22 갱신: 이 훅과 `UserFamilyProgressRow` 타입은 티켓 20261022_0938 1회에서 지웠다. 표는 코드가 쓰지 않음, 정리 대기. 아래는 지우기 전 기록이다.)* 2b~2d는 전부 "지금 이 순간" 값만
   실시간 재계산해 이전 상태와 비교할 방법이 없었다. 신규 테이블 `user_family_progress`
   (`user_id, activity_type, family_name` PK, RLS는 service_role 전용으로 닫아둠 —
   `mission_rank_snapshots`·`poi_views`와 동일 방침)가 계열별 프런티어(첫 미획득 등급)의
@@ -1168,7 +1168,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   레벨형을 등급형으로 되돌리는 UPDATE가 검사를 통째로 건너뛰게 했다. **그룹핑 키는 여전히
   `(activity_types, name)`이다** — `family_key`로 옮길지는 어드민 계열 관리(티켓 20260905_0032)에서
   결정한다.
-- **3차 2단계 — "3b"는 배너 텍스트로 절반만 구현됨(티켓 20260904_1425).** `user_family_progress`의
+- **3차 2단계 — "3b"는 배너 텍스트로 절반만 구현됨(티켓 20260904_1425).** *(배지 트리 화면과 함께 제거됐다. 스냅샷 쓰기도 2026-10-22에 지웠다.)* `user_family_progress`의
   `current`/`prev`에서 fraction 증가폭이 가장 큰 축 하나를 골라 "직전 동기화보다 {라벨}
   {델타}{단위} 가까워졌어요" 문장을 조립해 `RecentSyncBanner`(DS)에 배선했다 — 재계산 없이
   저장된 스냅샷만 읽는다. **위 3차 1단계 문단이 예고한 "레일 채움 막대 꼬리"(레일 진행바
@@ -1239,7 +1239,7 @@ v5(티켓 20260905_0030)가 만든 네 구조는 전부 진행률에서 `unsuppo
   `evaluation: 'external'`이라 fail-closed에도 걸리지 않아 수치만 채우면 라임으로 뜨던 상태였다.
 
 **계열 프런티어 산출이 `badgeKind.ts` 기준으로 바뀌었다.** 등급 순서 배열(`FAMILY_RARITY_ORDER`)만
-훑던 `sync.ts`의 `updateFamilyProgressSnapshots`는 레벨형 계열을 통째로 누락했고, 반복형은
+훑던 `sync.ts`의 `updateFamilyProgressSnapshots`(2026-10-22에 지움)는 레벨형 계열을 통째로 누락했고, 반복형은
 「보유하면 프런티어가 지나간다」는 전제가 틀렸다(§2.14 — 반복형은 보유해도 후보에서 빠지지 않는다).
 이제 세 종류를 각각 고른다: 등급형=첫 미획득 등급 / 레벨형=`level` 오름차순 첫 미획득 /
 반복형=**보유해도 대상**. 레벨형만 `family_key`로 묶는다(이름은 레벨형을 유일하게 식별하지
@@ -1686,7 +1686,6 @@ POST /api/admin/badges/reevaluate-all
   - 배지 트리 `/badges/tree`는 2026-10-19(티켓 20261018_1817 2회)에 제거했다. 화면이 없어졌으므로 이 위치는 더 걸러낼 곳이 없다.
   - 배지 상세 `/badges/[id]` — 조회 대상 유저가 받지 않았으면 없는 배지와 같은 404. 다른 배지의 선행 배지 목록에서도 뺀다.
   - 공유 데이터 `/api/badges/[id]/share-data` — 받기 전이면 없는 배지와 같은 `badge_not_found`(404). `not_earned`로 응답하면 존재를 알리기 때문이다.
-  - 계열 진행 스냅샷(`updateFamilyProgressSnapshots`, `user_family_progress`) — 받기 전 숨김 배지의 계열은 싣지 않는다.
 - **배지함·프로필·피드·획득 연출은 받은 배지만 읽는다.** 이미 받은 숨김 배지는 다른 배지와 똑같이 보인다. 개수는 받은 배지 기준이라 받기 전 숨김 배지가 들어가지 않는다.
 - **한계**: 숨김 배지가 다른 배지의 선행 조건이면 그 배지 상세의 선행 배지 목록에서도 같이 빠진다(엔진은 선행 조건을 계속 본다). 숨김 배지를 선행 조건으로 쓰는 카탈로그를 만들 때는 4-5·4-6에서 이 표시를 정한다. 미션 보상으로 지급하는 배지(`/missions`의 보상 표시)는 이번 범위가 아니다.
 - 숨김 배지는 액티비티 배지만, 포인트 0, 등급은 Common 또는 없음이다(DB 제약, `02_DATA_MODEL.md` badges). 어드민 양식의 입력 칸은 4-5다.
@@ -1697,23 +1696,24 @@ POST /api/admin/badges/reevaluate-all
 
 #### 교통수단 구간은 모든 조건의 판정에서 빠진다
 
-- 구간은 동기화 때 한 번 뺀다(`strava/transitSegment.ts`). 뺀 값이 `strava_activities.normalized`에 저장되고, 배지·미션·계열 진행·JAM! 행동 지표·재평가는 모두 `getActivityHistory`(인정된 활동의 저장값)로 이력을 읽으므로 같은 값을 쓴다.
+- 구간은 동기화 때 한 번 뺀다(`strava/transitSegment.ts`). 뺀 값이 `strava_activities.normalized`에 저장되고, 배지·미션·JAM! 행동 지표·재평가는 모두 `getActivityHistory`(인정된 활동의 저장값)로 이력을 읽으므로 같은 값을 쓴다.
 - 이번에 **최고 속도(`maxSpeedKmh`)도 같이 뺀다.** 전에는 거리·움직인 시간·평균 속도만 재산정해 `max_speed_kmh` 조건이 지하철 속도로 채워질 수 있었다. 이제 남은 구간의 평균 속도 최댓값을 상한으로 쓴다(원래 값보다 커지지 않는다). 구간을 뺀 활동에는 `transitExcludedSec`가 붙고, 확장 필드 백필(`mergeExtendedFields`)은 이 활동의 최고 속도를 Strava 원본으로 되돌리지 않는다.
 - 소급하지 않는다. 이미 저장된 활동은 그대로다.
 - 한계: 고도(`elevationGainM`·`maxElevationM`)·심박·파워·케이던스는 속도 스트림만으로 구간별로 나눌 수 없어 활동 전체 값 그대로다. 교통수단 구간이 이 값에 주는 영향은 이번에 고치지 않았다.
 
 ---
 
-## 3. 아이템배지 드랍 엔진 v2 (✅ 구현됨 — 3레이어)
+## 3. 아이템배지 드랍 엔진 (JAM 2.0 발급 §3.0 · 옛 v2 3레이어는 삭제됨)
 
-> v1(활동당 80% 확률, 전체 풀 완전 랜덤)을 대체. 2026-07-21 구현 완료 (마이그레이션 034 + `src/lib/drop-engine/`).  
-> 구현 파일: `index.ts`(오케스트레이션) / `layers.ts`(순수 함수 추첨) / `context.ts`(맥락 매칭) / `policy.ts`(파라미터) / `constants.ts`(트라이브 고정 UUID)  
-> 파라미터는 `drop_policy` 싱글톤 테이블 — **어드민 `/admin/drop-policy`에서 배포 없이 편집** 가능. 인접 그래프는 트라이브 수정 화면에서 편집.  
-> ⚠️ 아래 §3.1 등 이 문서의 파라미터 값은 **초기 설계값**이다. 운영 중 실제 적용값은 어드민 화면에서 확인할 것.  
-> 설계 방침: **집중은 보이지 않는 가중치로만** — "활성 트라이브 N개 제한" 같은 명시 규칙은 유저가 인지하는 순간 상한·박탈로 읽히므로, 하드캡·트라이브 선택 UI 없이 드랍 분포가 자연스럽게 2~3개 트라이브에 수렴하게 한다.  
+> **현재 규칙은 §3.0이다.** 코드는 `src/lib/drop-engine/`의 `syncIssue.ts`(순수 판정)·`syncIssueRun.ts`(조회·지급·기록)·`lockAssignment.ts`·`issueFollowUp.ts`다.
+> 아래 §3.1~§3.7은 **옛 드랍엔진 v2(3레이어, 2026-07-21 구현, 마이그레이션 034)의 설계 기록**이다. 그 코드(`index.ts`의 `tryItemDrop`·`selectBadge`, `layers.ts`, `context.ts`, `policy.ts`, `constants.ts`, `preview.ts`)와
+> 어드민 «드랍 정책» 화면(`/admin/drop-policy`), 시뮬레이터의 «아이템 드랍» 구역, 화면 링크가 없던 시험 라우트(`/api/admin/test/simulate`)는 **2026-10-22(티켓 20261022_0938 1회)에 지웠다.**
+> 옛 설정 표 `drop_policy`와 `user_drop_state`의 옛 열 7개는 옛 프로덕션 코드가 읽어서 DB에 남아 있고, `drop_policy`는 **코드가 쓰지 않음, 표 정리 대기**, 옛 열 7개는 **열 정리 대기**다(0938 2회). 발급 경로가 쓰는 열은 `user_drop_state.common_streak`·`capsule_epic_miss`뿐이고, 어드민 삭제 가드가 `last_drop_tribe_id`·`last_drop_book_id`를 조회만 한다(`02_DATA_MODEL.md`).
+> 옛 엔진의 파라미터 값(§3.1 등)은 초기 설계값이었고 지금은 어디에서도 읽지 않는다. 인접 그래프(`tribe_adjacency`)도 새 발급 경로는 읽지 않는다.
+> 설계 방침(옛): **집중은 보이지 않는 가중치로만** — "활성 트라이브 N개 제한" 같은 명시 규칙은 유저가 인지하는 순간 상한·박탈로 읽히므로, 하드캡·트라이브 선택 UI 없이 드랍 분포가 자연스럽게 2~3개 트라이브에 수렴하게 한다.  
 > 아이템배지·컬렉션·트라이브·인접 그래프의 단일 진실 원천: **`아이템북 레시피.xlsx`** (배지 목록 시트 + '트라이브 인접' 시트).
 
-> **2026-10-17 (JAM 2.0, 티켓 20261017_1424): 동기화로 받는 아이템 배지는 아래 §3.0의 규칙으로 발급한다.** §3.1~§3.4(트라이브 고르기, 등급 보정 셋, 컬렉션 쪽 보정, 맥락 오버라이드)는 **동기화 경로에서 쓰이지 않는다.** 그 코드(`index.ts`의 `tryItemDrop`·`selectBadge`, `layers.ts`, `context.ts`, `constants.ts`)는 지우지 않았다 — 어드민 시뮬레이터(`previewItemDrop`, 테스트 시뮬레이터의 `tryItemDrop`)와 앰비언트 드랍(`fetchDropStructure`)이 같은 함수를 쓰고, 캡슐(묶음 3)·시스템 드랍(묶음 4)이 재사용한다. 어드민 시뮬레이터의 미리보기는 아직 옛 규칙을 따른다(후속 정리 대상).
+> **2026-10-17 (JAM 2.0, 티켓 20261017_1424): 동기화로 받는 아이템 배지는 아래 §3.0의 규칙으로 발급한다.** §3.1~§3.4(트라이브 고르기, 등급 보정 셋, 컬렉션 쪽 보정, 맥락 오버라이드)는 **동기화 경로에서 쓰이지 않았고**, 그 코드는 어드민 시뮬레이터와 시험 라우트가 쓰고 있어 한동안 남겨 두었다가 2026-10-22에 지웠다. 컬렉션 완성 분모를 계산하는 `buildBadgeIdsOfBook`만 `lib/itembook/completion-basis.ts`로 옮겼다. 앰비언트 드랍이 옛 `fetchDropStructure`와 같은 드랍 제외 조건을 거는 것은 §3.12에 있다.
 
 ### 3.0 JAM 2.0 동기화 발급 규칙 (2026-10-17, 티켓 20261017_1424·20261017_1425, 운영 로직 6.1~6.7절)
 
@@ -1971,7 +1971,7 @@ DB 트리거(`log_orphan_custody_events()`)가 남긴다 — 삭제 경로에 �
 
 **`grant_inventory_item()`/`release_inventory_slots()`(마이그레이션
 `173_atomic_inventory_slot_grant.sql`, 티켓 20260914_1813)는 같은 규율을 `inventory.used_slots`
-카운터로 확장한 것이다** — 드랍엔진(`drop-engine/index.ts`)·미션 보상(`missions/rewards.ts`)·
+카운터로 확장한 것이다** — 옛 드랍엔진(`drop-engine/index.ts`, 2026-10-22에 지움)·미션 보상(`missions/rewards.ts`)·
 아이템 조합 보상(`combine/index.ts`)이 각자 `used_slots`를 read-then-write(읽고 → 메모리에서
 계산 → 절대값으로 덮어쓰기)하던 구조라, 두 지급 경로가 같은 유저에게 겹치면 슬롯 상한이 조용히
 뚫리거나 카운터가 실제 상태와 어긋날 수 있는 타이밍 윈도우가 있었다. `grant_inventory_item()`은
@@ -1980,7 +1980,9 @@ DB 트리거(`log_orphan_custody_events()`)가 남긴다 — 삭제 경로에 �
 (`src/lib/inventory/slots.ts`)은 화면 단 사전 판정·루프 조기 종료 최적화용으로 그대로 유지되고,
 이 두 RPC가 지급/소각 시점의 최종 확인을 맡는 역할 분리 구조다.
 
-### 3.6 데이터 모델
+### 3.6 데이터 모델 (옛 v2 설계 기록)
+
+> 발급 경로가 쓰는 열은 `common_streak`(동기화와 캡슐이 합산)와 `capsule_epic_miss`(캡슐)뿐이다. 아래 SQL의 나머지 옛 열은 **열 정리 대기(0938 2회)**다. `last_drop_*` 두 열은 어드민 삭제 가드가 조회만 한다(`02_DATA_MODEL.md`).
 
 ```sql
 CREATE TABLE user_drop_state (
@@ -1997,7 +1999,7 @@ CREATE TABLE user_drop_state (
 -- item_books.world_id 추가 필요 ← xlsx '팩션' 시트의 트라이브 열이 원천
 ```
 
-### 3.7 엔진 의사코드
+### 3.7 엔진 의사코드 (옛 `tryItemDrop` — 코드는 삭제됨, 티켓 20261022_0938)
 
 ```
 tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260823_007)
@@ -2018,6 +2020,8 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
   8. 드랍된 badge_id 목록 반환 (획득 연출용 — 20260823_007)
 ```
 
+> *(옛 `tryItemDrop` 시절의 기록이다. 그 함수는 2026-10-22에 지웠고, 새 발급기는 이번 동기화의 발급 목록 전체를 먼저 계획한 뒤 오래된 활동부터 순차로 지급한다 — §3.0.)*
+>
 > **불변식(2026-08-11, 티켓 20260811_009)**: `tryItemDrop`은 호출마다 `user_drop_state`를
 > 새로 읽고 다시 저장하므로, 한 번의 싱크 배치에 활동 여러 건을 넘길 때는 반드시
 > **시간순(오래된 → 최신)** 으로 처리해야 한다. 역순(최신 → 오래된)으로 처리하면 배치의
@@ -2039,7 +2043,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 | 경로 | 시그니처 변경 |
 |---|---|
 | 액티비티배지 | `evaluateBadges()` `number` → `string[]` |
-| 아이템배지 | `tryItemDrop()` `void` → `string[]` |
+| 아이템배지 | 옛 `tryItemDrop()` `void` → `string[]` (함수는 2026-10-22에 지움) |
 | 체크인 배지 | `sync.ts`에서 발급분 수집 |
 | 컬렉션·미션 보상 | `ItemBookCompletionResult.rewardBadgeIds` / `MissionCheckResult.awardedBadgeIds` |
 
@@ -2053,23 +2057,14 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 > 반대로 중복 id 제거와 소프트 삭제 제외로 `earnedBadges`가 더 짧아질 수도 있다.
 > 두 값을 같은 의미로 쓰면 안 된다.
 
-### 3.7.2 어드민 시뮬레이터의 아이템 드랍 (2026-10-01, 티켓 20261001_1219)
+### 3.7.2 어드민 시뮬레이터의 아이템 드랍 (삭제됨, 티켓 20261022_0938)
 
-`/api/admin/simulate`의 아이템 드랍은 **엔진 판정을 그대로 따른다.** 예전에는 등급별 누적 문턱
-0.40/0.65/0.75/0.80(v1 상수)으로 따로 굴려 `drop_policy` 값(기본 0.6/0.28/0.09/0.03)과 어긋났다.
-지금은 `previewItemDrop`(`src/lib/drop-engine/preview.ts`)이 현재 `drop_policy`·유저 드랍 상태·
-드랍 구조를 읽고, 순수 함수 `planItemDrops`가 `tryItemDrop`과 같은 순서로 판정한다
-(일일 카운터 리셋 → 복귀·주간 첫 활동·고강도 → 드랍 개수 → 슬롯 확인 → 등급 추첨 →
-맥락 오버라이드 → 트라이브·컬렉션·배지 선택 → 메모리 안 상태 갱신). 섀도우밴 등급 상한 단계는 6-4 2회(티켓 20261021_1250)에서 지웠다.
+2026-10-01(티켓 20261001_1219)에 `previewItemDrop`(`preview.ts`)을 만들어 `/api/admin/simulate`의 아이템 드랍이 옛 엔진 판정을 따라가게 했다.
+옛 엔진을 지우면서 미리 보기와 시뮬레이터의 «아이템 드랍» 구역, 응답 필드(`itemDrops`·`itemDropSkips`·`itemDropUnavailable`, `cappedRarity`)를 함께 지웠다.
 
-- **DB에 아무것도 쓰지 않는다.** 응답은 드랍 목록(`itemDrops`: 0~2개, 배지·등급·트라이브·컬렉션·보너스 여부)과
-  빠진 이유(`itemDropSkips`: `slot_full`·`no_candidate`)를 돌려준다.
-- **적용 모드(`dryRun: false`)**는 고른 배지를 인벤토리에만 넣는다. 유저 드랍 상태(연속 common·pity·일일
-  카운터)·결산 소식·엔진 판정 로그는 남기지 않아 시험 계정의 실제 드랍 흐름을 흔들지 않는다.
-- **섀도우밴 등급 상한은 없다.** 추첨 등급이 그대로 후보를 고르는 등급이 되고(`cappedRarity`는 `rolledRarity`와 같다 — 응답 필드 이름만
-  남겼다), 후보가 없어 등급 폴백이 일어나면 실제 배지의 등급(`rarity`)이 달라질 수 있다.
-- **유지 규칙**: `tryItemDrop`의 판정 순서를 고치면 `planItemDrops`도 함께 고친다. 두 곳이 같은 난수열에서
-  같은 결과를 내는지 `src/lib/drop-engine/__tests__/preview.test.ts`가 대조한다.
+- `/api/admin/simulate`는 **배지 판정(`badgesEarned`·`badgesMissed`)과 장소 매칭(`poisMatched`)만** 돌려준다. 아이템 배지를 굴리거나 인벤토리에 넣지 않는다.
+  시뮬레이터 화면에 남는 구역은 확장 필드·배지 획득·장소 매칭·컬렉션 완성(항상 비어 있다)·미획득 배지다.
+- 새 발급 경로(`syncIssue*.ts`)용 미리 보기는 만들지 않았다. 필요해지면 별도 티켓으로 만든다.
 
 ### 3.8 유지되는 v1 로직
 
@@ -2216,8 +2211,8 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 | 대상 컬렉션(`item_books`) | 단독 또는 멀티 선택(`collection_ids`), 빈 배열은 "전체 컬렉션" | 실행 시점에 노출 중 컬렉션 1개를 무작위로 선택 |
 
 세 축은 각자의 모드(명시/무작위)만 따른다. «전체 무작위» 메타 옵션은 없어졌다(티켓 20261018_1813, 사용자 결정 2026-10-18).
-엔진(`runAmbientDropBatch`·날짜 예약의 `runAmbientDropSpec`)은 `ambient_drop_config.all_random`을 더는 읽지 않고, 어드민 폼에도 스위치가 없으며 저장 라우트는
-본문의 `all_random`을 받지 않는다. 옛 프로덕션 코드가 읽는 칸이라 DB 칸과 값은 그대로 둔다(`true`로 남아 있어도 새 엔진은 무시한다).
+엔진(`runAmbientDropBatch`·날짜 예약의 `runAmbientDropSpec`)은 `ambient_drop_config.all_random`을 읽지 않고, 어드민 폼에도 스위치가 없으며 저장 라우트는
+본문의 `all_random`을 받지도 저장 값에 싣지도 않는다(설정 타입에서도 뺐다, 티켓 20261022_0938 1회). 옛 프로덕션 코드가 읽는 칸이라 DB 칸과 값은 그대로 두었고(`true`로 남아 있어도 새 엔진은 무시한다), **코드가 쓰지 않음, 열 정리 대기(0938 2회)**다.
 공개 중인 컬렉션 전체에서 고르되 양·주기·장소당 상한·등급 비율은 어드민 설정을 따른다는 운영 로직 9.4절의 뜻이다.
 
 **잠긴 채 놓기** (티켓 20261018_1813, 운영 로직 7.2·9.4절): 놓기 직전(`placeAmbientDrops`, `src/lib/ambient-drop/placeAmbientDrops.ts`)에 후보 배지의
@@ -2244,7 +2239,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 
 **드랍 제외는 활동 드랍과 앰비언트 드랍(정기·무작위·지정 예약·지금 배포) 모두에 적용된다** (티켓
 [20261005_1957](../../tickets/p2-normal/20261005_1957_Feature_앰비언트-드랍이-드랍-제외-컬렉션과-아이템을-거르지-않는다.md), 사용자 결정 2026-10-06):
-드랍 제외는 「드랍 후보에서만 뺀다」는 표시라, 활동 드랍(`fetchDropStructure`)과 같은 조건으로 앰비언트 드랍의 컬렉션·아이템 조회에도 건다
+드랍 제외는 「드랍 후보에서만 뺀다」는 표시라, 활동 드랍(`syncIssue.ts`, 옛 `fetchDropStructure`와 같은 조건)과 같은 조건으로 앰비언트 드랍의 컬렉션·아이템 조회에도 건다
 (`item_books.drop_excluded = false`, `badges.drop_excluded = false`). 조건은 노출 판정(`applyDroppableItemBookFilter`)에 넣지 않고 앰비언트의 두 조회
 (`index.ts`·`scheduleTargets.ts`)에서 더한다 — 그 필터는 완성 판정(`checker.ts`)·완성 가능 소식(`completable.ts`)도 쓰는데, 완성 쪽의 드랍 제외 취급은 분모에서 빼는 것이라 다르기 때문이다(§3.16).
 지정 예약·지금 배포에서 드랍 제외 아이템·컬렉션을 지정하면 등록 판정이 `badge_drop_excluded`(「드랍 제외 아이템」)·`collection_drop_excluded`(「드랍 제외 컬렉션」) 사유로 막고,
@@ -2377,11 +2372,13 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 
 > **상향 배경**: 산 정상부는 GPS drift가 크고 단일 좌표(정상)로만 표현되어 루트가 정상 인근을 지나도 50m 반경 안에 들어오지 않는 경우가 많았음. 2026-08-11에 `mountain` 카테고리 847개 POI(`radius_meters=50`)를 150m로 일괄 업데이트. 나머지 6개(이미 500m)는 그대로 유지.
 
-### 3.15 종목별 드랍 가중치 — 걷기 계수 0.4 (2026-08-08)
+### 3.15 종목별 드랍 가중치 — 걷기 계수 0.4 (2026-08-08, 옛 드랍엔진 v2의 규칙 — 코드 삭제됨)
+
+> 아래는 옛 엔진의 기록이다. `constants.ts`·`rollBonusDrop`·`getActivityDropWeight`는 2026-10-22(티켓 20261022_0938)에 지웠고, JAM 2.0 발급은 걷기 가중을 쓰지 않는다(§3.0 「동기화 경로에서 없어진 규칙」).
 
 > 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `docs/tickets/p2-normal/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
 
-`jam-web/src/lib/drop-engine/constants.ts`에 `ACTIVITY_TYPE_DROP_WEIGHT`(walking: 0.4) + `DEFAULT_ACTIVITY_DROP_WEIGHT`(그 외 1.0) 추가. `getActivityDropWeight(act)`는 걷기이면서 축1 게이트(§2.10)를 통과한 활동에만 0.4를 반환.
+옛 `lib/drop-engine/constants.ts`(2026-10-22에 지움)에 `ACTIVITY_TYPE_DROP_WEIGHT`(walking: 0.4) + `DEFAULT_ACTIVITY_DROP_WEIGHT`(그 외 1.0) 추가. `getActivityDropWeight(act)`는 걷기이면서 축1 게이트(§2.10)를 통과한 활동에만 0.4를 반환.
 
 - **확정 1개 드랍(§3.1)에는 가중치 미적용** — "활동 1건 = 최소 1개 확정" 원칙은 걷기에도 그대로 유지. 가중치는 `rollBonusDrop(policy, intense, rand, activityWeight=1.0)`의 4번째 파라미터로만 적용되어 **보너스(2번째) 드랍 확률**만 낮춘다. `dropCount = 1 + (rollBonusDrop(...) ? 1 : 0)`에서 `1`은 가중치 무관.
 - `activityWeight` 기본값 1.0으로 기존 호출부(걷기 외 종목) 하위호환 유지.
@@ -2533,9 +2530,9 @@ src/lib/badge-engine/badgeProgress.ts     진행 계산 계층(표시 전용, �
 src/lib/badge-engine/metricLabels.ts      배지 지표 라벨·단위 배치 조회 — §2.13
 src/lib/badge-engine/reevaluateCatalog.ts 카탈로그 시딩 후 일괄 재평가 조립(메인 엔진 + JAM! 행동 지표 + 사용량 지표 6종) — §2.17
 src/app/api/admin/badges/reevaluate-all/route.ts  위 재평가 어드민 라우트 — §2.17
-src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
+src/lib/drop-engine/syncIssue*.ts           아이템 배지 발급(JAM 2.0) — §3.0. 옛 index.ts(v1·v2 엔진)는 2026-10-22에 지움
 src/lib/ambient-drop/                     앰비언트(시스템) POI 드랍 엔진 — §3.12
-src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출) — updateFamilyProgressSnapshots §2.13
+src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출). 계열 진행 스냅샷 갱신은 2026-10-22에 지움 — §2.13
 src/lib/abusing/                          어뷰징 정책·GPS 조작 감지·장소 블록·로그 (공용). 옛 섀도우밴 모듈은 6-4 2회에서 지움
 supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시드
 supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 최초 스키마 — §3.12
@@ -2546,7 +2543,7 @@ supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각(KST
 supabase/migrations/209_ambient_drop_schedules.sql       앰비언트 드랍 날짜 예약 저장소(2026-10-01) — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
-supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블 + 계열 정합성 트리거 — §2.13
+supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블(코드가 쓰지 않음, 정리 대기) + 계열 정합성 트리거 — §2.13
 supabase/migrations/140_condition_keys_v5_extension.sql  조건 키 3종 CHECK 개방(누적 이동시간·월간 횟수·개인기록 지표) — §2.3
 supabase/migrations/141_backfill_cadence_normalization.sql  케이던스 ×2 재정규화 백필(러닝·트레일러닝) — §2.1-1
 ```

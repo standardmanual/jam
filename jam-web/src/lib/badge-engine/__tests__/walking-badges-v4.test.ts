@@ -15,8 +15,6 @@ import {
   WALKING_GATE_MAX_SPEED_KMH,
 } from '../index'
 import { kstIso } from './kstFixture'
-import { rollBonusDrop } from '@/lib/drop-engine/layers'
-import { DEFAULT_DROP_POLICY } from '@/lib/drop-engine/policy'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, BadgeRow } from '@/types/database'
 
@@ -487,37 +485,5 @@ describe('버그 회귀 — temperature_min_c + total_count 누수 (T12)', () =>
       makeGatedWalk({ weatherTempC: 34, startDate: kstIso(`2026-07-0${i + 1}T09:00`) })
     )
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════
-// 8. 드랍엔진 걷기 가중치 — rollBonusDrop activityWeight
-// ═══════════════════════════════════════════════════════════════════════
-
-describe('rollBonusDrop — activity_type 가중치', () => {
-  const P = DEFAULT_DROP_POLICY
-  const seq = (...values: number[]) => {
-    let i = 0
-    return () => values[Math.min(i++, values.length - 1)]
-  }
-
-  it('activityWeight 생략 시 기존 동작(1.0)과 동일 — 기본 15% 경계', () => {
-    expect(rollBonusDrop(P, false, seq(0.1))).toBe(true) // 0.1 < 0.15
-    expect(rollBonusDrop(P, false, seq(0.2))).toBe(false) // 0.2 >= 0.15
-  })
-
-  it('activityWeight=0.4 적용 시 유효 확률이 0.15*0.4=0.06으로 감쇠', () => {
-    expect(rollBonusDrop(P, false, seq(0.05), 0.4)).toBe(true) // 0.05 < 0.06
-    expect(rollBonusDrop(P, false, seq(0.1), 0.4)).toBe(false) // 0.1 >= 0.06 (가중치 없으면 true였을 값)
-  })
-
-  it('고강도 활동 + activityWeight=0.4 — 0.3*0.4=0.12로 감쇠', () => {
-    expect(rollBonusDrop(P, true, seq(0.1), 0.4)).toBe(true) // 0.1 < 0.12
-    expect(rollBonusDrop(P, true, seq(0.2), 0.4)).toBe(false) // 0.2 >= 0.12 (가중치 없으면 true였을 값)
-  })
-
-  it('activityWeight=1.0을 명시해도 기본값과 동일하게 동작 (하위호환)', () => {
-    expect(rollBonusDrop(P, false, seq(0.1), 1.0)).toBe(rollBonusDrop(P, false, seq(0.1)))
-    expect(rollBonusDrop(P, false, seq(0.2), 1.0)).toBe(rollBonusDrop(P, false, seq(0.2)))
   })
 })

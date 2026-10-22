@@ -15,7 +15,7 @@ code:
 ## 1. 제품 개요
 
 ### 한 줄 요약
-배지·POI·아이템북을 등록·관리하고, 가상 액티비티로 배지 발급~아이템 드랍~아이템북 완성까지 전체 파이프라인을 시뮬레이션할 수 있는 내부 관리 도구.
+배지·POI·아이템북을 등록·관리하고, 가상 액티비티로 배지 발급과 장소 매칭을 시뮬레이션할 수 있는 내부 관리 도구. (옛 «아이템 드랍» 시뮬레이션은 2026-10-22 티켓 20261022_0938에서 지웠다.)
 
 ### 해결하는 문제
 현재 배지/POI/아이템북은 Supabase 대시보드에서 SQL로 직접 INSERT해야 한다. 배지 발급 조건(condition_json)을 바꿀 때마다 실제 Strava 활동이 있어야만 테스트가 가능하다.  
@@ -199,7 +199,7 @@ code:
 | 모드 | 설명 |
 |------|------|
 | 미리보기 (Dry Run) | DB 반영 없음. 어떤 배지가 발급될지 결과만 표시 |
-| 실제 실행 (Apply) | 선택한 유저의 DB에 배지·아이템 드랍·아이템북 완성 결과 실제 반영 |
+| 실제 실행 (Apply) | 선택한 유저의 DB에 배지 발급 결과(장소에 연결된 배지 포함) 실제 반영 |
 
 **결과 리포트 패널**
 
@@ -218,11 +218,6 @@ GPX 파일:  hangang_ride.gpx
 ■ POI 매칭 (경로 내 통과 POI)
   📍 뚝섬 한강공원 (bike_route) — 반경 50m 통과 확인
 
-■ 아이템 드랍 (2개)
-  🏷️ 서울 야경 패치 (rare) — 야간 라이더 · 서울 야경 컬렉션
-  🏷️ 한강 물결 스티커 (common) 보너스 드랍 — 강변 클럽 · 한강 컬렉션
-  (드랍이 빠지면 「보너스 드랍 없음: 인벤토리 슬롯이 가득 차 드랍되지 않음」처럼 이유를 보인다)
-
 ■ 아이템북 완성
   📖 서울 라이더 컬렉션 — 완성! (reward: 골드 라이더 배지 발급)
 
@@ -235,7 +230,7 @@ GPX 파일:  hangang_ride.gpx
 **시뮬레이터 구현 원칙**
 - GPX 파싱은 클라이언트 사이드에서 수행 (파일을 서버에 업로드하지 않음)
 - 파싱 결과(`NormalizedActivity` + 경로 좌표 배열)를 JSON으로 API에 전송
-- Dry Run: `evaluateBadges`, `tryItemDrop`, `checkItemBookCompletion` 로직을 그대로 실행하되 INSERT를 skip하고 결과만 반환
+- Dry Run: 배지 판정(`evaluateBadgesDetailed`)과 장소 매칭을 그대로 실행하되 INSERT를 skip하고 결과만 반환. 아이템 드랍은 시뮬레이션하지 않는다(옛 `tryItemDrop` 미리 보기는 티켓 20261022_0938에서 지웠다). 컬렉션 완성은 유저가 직접 슬롯을 채우는 방식이라 항상 빈 결과다
 - Apply: 동일 로직을 실제 DB에 반영
 - 미발급 배지도 조건별 미충족 이유(실제값 vs 필요값) 함께 표시
 
@@ -440,19 +435,7 @@ Response: {
   badgesEarned: { id: string; name: string; rarity: string; reason: string }[]
   badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[]
   poisMatched: { id: string; name: string }[]
-  // 아이템 드랍은 드랍 엔진 판정(previewItemDrop)을 그대로 따른다 — BADGE_ENGINE_UNIFIED §3.7.2
-  itemDrops: {                 // 0~2개 (확정 1 + 보너스 1)
-    badgeName: string
-    rarity: string | null      // 뽑힌 배지의 등급
-    rolledRarity: string       // 추첨 등급
-    cappedRarity: string       // 후보를 고를 때 쓴 등급 — 섀도우밴 상한이 없어 rolledRarity와 같다(필드 이름만 남겼다)
-    tribeName: string
-    bookName: string
-    isBonus: boolean
-    isLastPiece: boolean
-  }[]
-  itemDropSkips: { attempt: number; reason: 'slot_full' | 'no_candidate'; rolledRarity: string | null }[]
-  itemDropUnavailable: 'no_drop_structure' | 'no_inventory' | null
+  // 아이템 드랍 필드(itemDrops·itemDropSkips·itemDropUnavailable)는 지웠다 — BADGE_ENGINE_UNIFIED §3.7.2
   itemBooksCompleted: { bookName: string; rewardBadgeName: string | null }[]
   applied: boolean
 }

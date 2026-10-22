@@ -60,7 +60,7 @@ jam-web/
 │   │   ├── supabase/            # 클라이언트 (server/client 분리)
 │   │   ├── strava/              # Strava API 래퍼
 │   │   ├── badge-engine/        # 액티비티배지 엔진 (+__tests__)
-│   │   ├── drop-engine/         # 드랍엔진 v2 (+__tests__)
+│   │   ├── drop-engine/         # 아이템 배지 발급(JAM 2.0 syncIssue*·lockAssignment·issueFollowUp, +__tests__). 옛 드랍엔진 v2는 20261022_0938에서 지웠다
 │   │   ├── ambient-drop/        # 앰비언트(시스템) POI 드랍 엔진 (+__tests__)
 │   │   ├── combine/             # 아이템 조합 엔진
 │   │   ├── missions/            # 미션 시스템 (+__tests__)

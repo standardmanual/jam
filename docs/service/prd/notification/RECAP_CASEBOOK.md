@@ -522,4 +522,4 @@ R4("미션은 완료만 말한다")를 그대로 적용하면 E2도 "**한강 10
 | `src/lib/i18n/ko.ts` | `slotPoints`·`rewardPointsLine`·`consolationPoints` + 결산 문구 전반 |
 | `src/lib/notifications/message.ts` | 총량 계산(R5)·대표 선정(R8)·활동 묶음(R9) |
 | `src/lib/notifications/href.ts` | 착지 규칙(R6) |
-| `src/lib/strava/sync.ts` · `drop-engine/index.ts` · `points/index.ts` | 결산 생성 지점 통합 |
+| `src/lib/strava/sync.ts` · `drop-engine/syncIssueRun.ts` · `points/index.ts` | 결산 생성 지점 통합 |

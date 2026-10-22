@@ -144,7 +144,6 @@ const EXCLUDED = 'book-drop-excluded'
 function baseConfig(overrides: Partial<AmbientDropConfig> = {}): Record<string, unknown> {
   return {
     auto_enabled: true,
-    all_random: false,
     category_mode: 'explicit',
     category_slug: null,
     rarity_mode: 'explicit',
@@ -334,12 +333,13 @@ describe('드랍 제외 — 컬렉션·아이템 모두 후보에서 뺀다', ()
 })
 
 // 티켓 20261018_1813 — «전체 무작위» 설정은 더는 보지 않는다. 각 축의 모드(지정/무작위)만 따른다.
-describe('all_random은 무시하고 각 축의 설정을 따른다', () => {
+// 티켓 20261022_0938 — 설정 객체에서 그 칸을 지웠다(DB 행에 남은 칸을 설정 로더가 싣지 않는 것은 config-load.test.ts).
+describe('각 축의 설정을 따른다', () => {
   const LIVE2 = 'book-live-2'
 
   beforeEach(() => {
-    // 운영 DB 행과 같은 모양: all_random 켜짐 + 등급 Common 100% + 컬렉션 지정 + 카테고리 무작위
-    state.config = baseConfig({ all_random: true, category_mode: 'random', collection_ids: [LIVE] })
+    // 운영 DB 행과 같은 모양: 등급 Common 100% + 컬렉션 지정 + 카테고리 무작위
+    state.config = baseConfig({ category_mode: 'random', collection_ids: [LIVE] })
     state.tables.item_books = [book(LIVE), book(LIVE2)]
     state.tables.badges = [
       itemBadge('badge-live', LIVE),
@@ -365,7 +365,7 @@ describe('all_random은 무시하고 각 축의 설정을 따른다', () => {
   })
 
   it('카테고리 축: 지정한 카테고리의 장소에만 놓는다', async () => {
-    state.config = baseConfig({ all_random: true, category_mode: 'explicit', category_slug: 'cafe', collection_ids: [LIVE] })
+    state.config = baseConfig({ category_mode: 'explicit', category_slug: 'cafe', collection_ids: [LIVE] })
     state.tables.poi = [
       { id: 'poi-cafe', is_active: true, category: 'cafe' },
       { id: 'poi-park', is_active: true, category: 'park' },
@@ -374,14 +374,6 @@ describe('all_random은 무시하고 각 축의 설정을 따른다', () => {
 
     expect(result.effectiveCategorySlug).toBe('cafe')
     expect(state.rpcCalls.map((c) => c.args.p_poi_id)).toEqual(['poi-cafe'])
-  })
-
-  it('all_random이 꺼져 있어도 결과가 같다(값이 결과를 바꾸지 않는다)', async () => {
-    state.config = baseConfig({ all_random: false, category_mode: 'random', collection_ids: [LIVE] })
-    const result = await runAmbientDropBatch('manual')
-
-    expect(result.effectiveCollectionIds).toEqual([LIVE])
-    expect(result.effectiveRarityDistribution).toEqual({ common: 1, rare: 0, epic: 0, mystic: 0 })
   })
 })
 

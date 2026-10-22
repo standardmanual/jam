@@ -1,7 +1,8 @@
 /**
- * 어드민 정기 배포 설정 저장 라우트 — `all_random`을 새로 쓰지 않는다 (티켓 20261018_1813)
+ * 어드민 정기 배포 설정 저장 라우트 — `all_random`을 읽지도 쓰지도 않는다 (티켓 20261018_1813, 20261022_0938)
  *
- * 엔진이 «전체 무작위»를 더는 보지 않는다. 옛 프로덕션 코드가 읽는 칸이라 DB 값은 그대로 두고, 본문에 들어와도 받지 않는다.
+ * 엔진이 «전체 무작위»를 더는 보지 않는다. 옛 프로덕션 코드가 읽는 DB 칸은 그대로 두려고 저장 값에 아예 싣지 않는다
+ * (upsert는 보낸 열만 바꾼다). 본문에 들어와도 받지 않는다.
  *
  * 실행: cd jam-web && npx vitest run src/app/api/admin/ambient-drop/config/__tests__/route.test.ts
  */
@@ -35,7 +36,6 @@ beforeEach(() => {
   state.admin = { id: 'admin-1', email: 'admin@example.com' }
   state.current = {
     auto_enabled: false,
-    all_random: true,
     schedule_hour_kst: 3,
     exclusion_window_minutes: 15,
     category_mode: 'random',
@@ -53,21 +53,21 @@ beforeEach(() => {
 })
 
 describe('PUT /api/admin/ambient-drop/config', () => {
-  it('본문의 all_random은 받지 않고 DB의 현재 값을 그대로 둔다', async () => {
+  it('본문에 all_random이 들어와도 저장 값에 싣지 않는다(DB 칸을 건드리지 않는다)', async () => {
     const res = await PUT(put({ ...state.current, all_random: false, batch_size: 10 }))
 
     expect(res.status).toBe(200)
     expect(state.update).toHaveBeenCalledTimes(1)
-    expect(state.update.mock.calls[0][0]).toMatchObject({ all_random: true, batch_size: 10 })
+    const saved = state.update.mock.calls[0][0] as Record<string, unknown>
+    expect(saved).toMatchObject({ batch_size: 10 })
+    expect(saved).not.toHaveProperty('all_random')
   })
 
   it('본문에 all_random이 없어도 저장된다', async () => {
-    const { all_random: _omit, ...body } = state.current
-    void _omit
-    const res = await PUT(put(body))
+    const res = await PUT(put(state.current))
 
     expect(res.status).toBe(200)
-    expect(state.update.mock.calls[0][0]).toMatchObject({ all_random: true })
+    expect(state.update.mock.calls[0][0]).not.toHaveProperty('all_random')
   })
 
   it('비관리자는 403이고 저장하지 않는다', async () => {

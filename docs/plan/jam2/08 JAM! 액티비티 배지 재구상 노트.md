@@ -228,7 +228,7 @@ sources:
 - Strava의 수영·요가·웨이트 등은 JAM 분류가 `null`이어서 배지 평가와 드랍에서 빠진다
   (`docs/service/SERVICE_OPERATIONS.md` §16).
 - 드랍 엔진에는 활동 맥락(복귀, 극한 기온, 새벽, 심야, 고도, 90분 이상)으로 트라이브를 정하는 맥락 오버라이드가
-  있다. 매핑은 `jam-web/src/lib/drop-engine/context.ts`가 원본이다.
+  있다. 매핑은 `lib/drop-engine/context.ts`(2026-10-22 삭제)가 원본이다.
 - Strava 활동 타입에 `manual`(직접 입력) 필드가 정의돼 있고, `jam-web/src/lib/strava`, `badge-engine`,
   `drop-engine`, `abusing` 폴더에서 이 값으로 활동을 거르는 코드는 검색되지 않았다(확신도 보통).
 - `docs/service/prd/01_PRD.md` §6은 Garmin 연동을 미착수, Apple Health 연동을 범위 밖(네이티브 앱 필요)으로 둔다.
@@ -276,7 +276,7 @@ sources:
 - `docs/plan/vision/04 JAM! 트라이브.md`: 설정 원문
 - `docs/plan/vision/01 JAM! 철학.md`: [이슈 3] 트라이브 기반 배지 생태계 원칙
 - `docs/service/content/ITEMBOOKS.xlsx`: 트라이브별 컬렉션과 아이템배지 900종
-- `jam-web/src/lib/drop-engine/context.ts`: 맥락과 트라이브의 현재 연결
+- `lib/drop-engine/context.ts`(2026-10-22 삭제): 맥락과 트라이브의 현재 연결
 - `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`: 드랍 엔진의 트라이브 모멘텀
 - `docs/service/content/tribes-history/`: 설정 변경 전 스냅샷
 

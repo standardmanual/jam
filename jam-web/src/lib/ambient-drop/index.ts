@@ -61,8 +61,8 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   const config = await getAmbientDropConfig()
   const ranAt = new Date().toISOString()
 
-  // `all_random`은 더는 보지 않는다 — 세 축이 각자의 모드(무작위/지정)만 따른다(티켓 20261018_1813).
-  // 옛 프로덕션 코드가 읽으므로 DB 칸과 값은 그대로 둔다.
+  // 세 축이 각자의 모드(무작위/지정)만 따른다(티켓 20261018_1813). 옛 «전체 무작위» 칸은 이 코드가 읽지도
+  // 쓰지도 않는다 — DB 칸과 값은 옛 프로덕션 코드가 읽어서 남아 있고, 정리는 티켓 20261022_0938 2회다.
   const useRandomCategory = config.category_mode === 'random'
   const useRandomRarity = config.rarity_mode === 'random'
   const useRandomCollection = config.collection_mode === 'random'
@@ -71,7 +71,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   let effectiveCategorySlug: string | null
   if (useRandomCategory) {
     // 공용 fetchAllRows는 에러 시 예외를 던지므로 .then/.catch로 흡수해 기존 그레이스풀
-    // 폴백(에러 시 console.error 후 빈 배열로 계속 진행)을 유지한다 — drop-engine/index.ts와 동일 패턴.
+    // 폴백(에러 시 console.error 후 빈 배열로 계속 진행)을 유지한다 — 옛 drop-engine/index.ts와 같은 패턴이었다.
     const { data: categories, error: categoriesError } = await fetchAllRows<{ slug: string }>(
       'poi_categories',
       'slug',
@@ -101,7 +101,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   // ── 축 3: 대상 컬렉션 ───────────────────────────────────────
   // 드랍 대상은 노출 중 컬렉션(is_active + 노출 기간 안)뿐이다 — 공개 전·기간이 끝난 컬렉션에는 드랍하지
   // 않는다(티켓 20260930_1516, 판정은 lib/itembook/visibility.ts). 드랍 제외(`drop_excluded`) 컬렉션도 활동 드랍
-  // (`fetchDropStructure`)처럼 뺀다(티켓 20261005_1957) — 이 조건은 완성 판정이 함께 쓰는 노출 판정이 아니라
+  // (옛 `fetchDropStructure`, 티켓 20261022_0938에서 삭제. 지금은 `syncIssue.ts`)처럼 뺀다(티켓 20261005_1957) — 이 조건은 완성 판정이 함께 쓰는 노출 판정이 아니라
   // 드랍 후보에만 거는 것이라 공용 필터(`applyDroppableItemBookFilter`)에 넣지 않고 여기서 더한다.
   // 조회가 실패하면 대상이 없는 것으로 보고 건너뛴다 — 빈 배열이 「전체 컬렉션」으로 읽혀 넓어지는 것을 막는다.
   const { data: droppableBooks, error: booksError } = await fetchAllRows<{ id: string }>(

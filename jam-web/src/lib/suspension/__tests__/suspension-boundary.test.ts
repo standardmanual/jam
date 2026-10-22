@@ -5,7 +5,8 @@
  *    클라이언트 진입점(동기화 버튼·보류 고르기)의 import 사슬에도 서버 전용 `suspension.ts`가 없다. 타입 검사·CI가 통과해도
  *    실제 번들에서만 경계 위반이 드러난 적이 있어(`project_nextjs_client_server_boundary_build_only`) 정적·동적 import를 끝까지 따라간다.
  * ② 새 동기화·드랍·배지 코드는 옛 섀도우밴(`user_shadow_bans`, `getUserBanLevel`, `shouldAllowDrop`, `applyShadowBanCap`)을 읽지 않는다.
- *    티켓 20261021_1250(6-4 2회)에서 밴 모듈·관리 API·`applyShadowBanCap`을 지워 `drop-engine/index.ts`·`preview.ts`도 검사 대상이 되었다.
+ *    티켓 20261021_1250(6-4 2회)에서 밴 모듈·관리 API·`applyShadowBanCap`을 지웠고, 티켓 20261022_0938에서 옛 드랍 엔진
+ *    (`drop-engine/index.ts`·`preview.ts` 등)을 지워 검사 대상에서 빠졌다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/suspension/__tests__/suspension-boundary.test.ts
  */
@@ -172,8 +173,6 @@ describe('새 동기화·드랍·배지 코드는 user_shadow_bans를 읽지 않
       'lib/badge-engine/index.ts',
       'lib/badge-engine/usageBadges.ts',
       'lib/drop-engine/syncIssueRun.ts',
-      'lib/drop-engine/index.ts',
-      'lib/drop-engine/preview.ts',
     ]) {
       expect(targets, `${must}가 검사 대상에 없다`).toContain(must)
     }
