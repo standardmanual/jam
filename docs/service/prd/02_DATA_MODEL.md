@@ -42,8 +42,8 @@ code:
 [POI/드랍]      poi ──category──> poi_categories
                  ├─1:N─ poi_drops (유저 드랍)
                  └─연결─ badges (linked_badge_id)
-                users ─1:1─ user_drop_state (발급 경로가 쓰는 열은 common_streak·capsule_epic_miss뿐. 옛 열 7개는 열 정리 대기)
-                drop_policy (옛 싱글톤 파라미터. 코드가 쓰지 않음, 표 정리 대기)
+                users ─1:1─ user_drop_state (발급 경로가 쓰는 열은 common_streak·capsule_epic_miss뿐. 옛 열 7개는 정리 SQL 272 작성됨, 출시 뒤 실행 대기)
+                drop_policy (옛 싱글톤 파라미터. 코드가 쓰지 않음, 정리 SQL 271 작성됨, 출시 뒤 실행 대기)
 
 [조합]          combination_recipes (보상만) + combination_recipe_slots (슬롯 2~5개, OR 후보)
                 combine_pending_results (빈칸이 모자라 받지 않은 믹스 결과, 마이그레이션 236)
@@ -643,8 +643,8 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### user_drop_state / drop_policy (옛 드랍엔진 v2의 표 — 엔진은 지웠다)
 옛 드랍엔진 v2(`lib/drop-engine/index.ts`·`layers.ts`·`policy.ts` 등)와 어드민 «드랍 정책» 화면은 2026-10-22(티켓 20261022_0938 1회)에 지웠다. 동기화·캡슐의 아이템 배지 발급은 JAM 2.0 경로(`lib/drop-engine/syncIssue*.ts`, 설정은 `jam_policy`·`capsule_policy`)가 한다 — 상세는 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.0 참고. 공용 DB의 표와 열은 옛 프로덕션 코드가 아직 읽어서 남아 있다.
 
-- **`drop_policy`** (옛 엔진 파라미터 싱글톤): 코드가 읽지도 쓰지도 않는다. **코드가 쓰지 않음, 표 정리 대기(티켓 20261022_0938 2회)**다.
-- **`user_drop_state`**: 발급 경로(동기화·캡슐)가 읽고 쓰는 열은 `user_id`·`common_streak`(동기화와 캡슐이 합산)·`capsule_epic_miss`(캡슐)·`updated_at`뿐이다. 옛 엔진 전용이던 7열(`last_drop_tribe_id`·`last_drop_book_id`·`last_piece_pity`·`daily_drop_count`·`daily_drop_date`·`total_drops`·`last_activity_at`)은 **열 정리 대기(티켓 20261022_0938 2회)**다. 그중 5열은 코드가 읽지도 쓰지도 않는다. `last_drop_tribe_id`·`last_drop_book_id`에는 `tribes`·`item_books`를 가리키는 외래키(삭제 시 NO ACTION)가 있어 트라이브·컬렉션 삭제를 막는데, 어드민 삭제 가드(`lib/admin/reference-guards.ts`, 트라이브 목록의 참조 개수 `lib/admin/tribe-list.ts`, 운영툴 등록 검사 `lib/admin/registerChecks/references.ts`)가 이 두 열을 아직 조회한다. 2회에서 외래키와 열을 뺄 때 이 가드도 함께 걷어낸다.
+- **`drop_policy`** (옛 엔진 파라미터 싱글톤): 코드가 읽지도 쓰지도 않는다. **코드가 쓰지 않음. 정리 SQL 271 작성됨, 출시 뒤 실행 대기(티켓 20261022_0938 2회)**다.
+- **`user_drop_state`**: 발급 경로(동기화·캡슐)가 읽고 쓰는 열은 `user_id`·`common_streak`(동기화와 캡슐이 합산)·`capsule_epic_miss`(캡슐)·`updated_at`뿐이다. 옛 엔진 전용이던 7열(`last_drop_tribe_id`·`last_drop_book_id`·`last_piece_pity`·`daily_drop_count`·`daily_drop_date`·`total_drops`·`last_activity_at`)은 코드가 읽지도 쓰지도 않는다. **정리 SQL 272 작성됨, 출시 뒤 실행 대기(티켓 20261022_0938 2회)**다. `last_drop_tribe_id`·`last_drop_book_id`에는 `tribes`·`item_books`를 가리키는 외래키(삭제 시 NO ACTION)가 있다. 어드민 삭제 가드(`lib/admin/reference-guards.ts`), 트라이브 목록의 참조 개수(`lib/admin/tribe-list.ts`), 운영툴 컬렉션 되돌림 참조 확인(`lib/admin/registerChecks/references.ts`)은 이 두 열을 조회했지만 2회에서 코드를 걷어, 삭제 가드의 참조 목록에 `user_drop_state`가 없다. SQL 272를 실행하기 전까지는 DB 외래키가 이 두 열이 가리키는 트라이브·컬렉션의 삭제를 막는다(어드민 삭제 라우트는 500으로 답한다).
 
 > ℹ️ **등급 컬럼명은 앱 키와 일치한다** — `drop_policy`·`ambient_drop_config`는
 > `rarity_epic`/`rarity_mystic`, `abusing_policy`는 `soft|hard_epic_rate`/`soft|hard_mystic_rate`.
@@ -697,7 +697,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
 등급비율(4종 합=1)·대상 컬렉션(`item_books` 단독/멀티/전체) 3축을 각각 명시값 또는 무작위로
-설정한다. `all_random` 칸은 옛 프로덕션 코드용으로 남아 있고, 코드는 읽지도 쓰지도 않는다(티켓 20261018_1813 — 세 축은 각자의 모드만 따른다. 티켓 20261022_0938 1회에서 설정 타입·저장 값에서도 뺐다). **코드가 쓰지 않음, 열 정리 대기(0938 2회)**다. `auto_enabled`(예약 배포
+설정한다. `all_random` 칸은 옛 프로덕션 코드용으로 남아 있고, 코드는 읽지도 쓰지도 않는다(티켓 20261018_1813 — 세 축은 각자의 모드만 따른다. 티켓 20261022_0938 1회에서 설정 타입·저장 값에서도 뺐다). **코드가 쓰지 않음. 정리 SQL 274 작성됨, 출시 뒤 실행 대기(0938 2회)**다. `auto_enabled`(예약 배포
 사용 여부)·`schedule_hour_kst`(예약 배포 시각 — **KST 정시 0~23**)·`exclusion_window_minutes`
 (그 시각 전후 즉시 배포 차단 창)로 예약 배포/즉시 배포 트리거의 상호 배제를 관리한다.
 `last_auto_run_on`(KST 날짜)은 매시 도는 cron이 하루 2회 배포하지 않도록 조건부 UPDATE로

@@ -62,7 +62,7 @@ parent: "20261021_1250"
 **SQL 파일(번호순 실행, 서로 의존하지 않는다)**: `jam-web/supabase/migrations/`에 `post_release` 4개를 쓴다. 모든 파일에 6-4 4회 선례(266~269, 특히 269)의 머리말·선행 조건·적용 전후 확인 SELECT·`-- 되돌림 SQL` 규칙을 따르고 선행 조건에 «출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤, 코드 참조 0건 `grep` 재확인»을 넣는다.
 - `271_post_release_drop_drop_policy.sql`: `DROP TABLE IF EXISTS public.drop_policy`(1행 24열, 정책 0개, 코멘트 없음). 되돌림은 표·열·기본값·제약·RLS와 1행(`updated_at` 명시)을 다시 만든다.
 - `272_post_release_drop_user_drop_state_old_columns.sql`: `user_drop_state`의 옛 열 7개(`last_drop_tribe_id`·`last_drop_book_id`·`last_piece_pity`·`daily_drop_count`·`daily_drop_date`·`total_drops`·`last_activity_at`)를 `DROP COLUMN IF EXISTS`로 지운다(외래키 2개는 열과 함께 사라진다). 데이터를 잃으므로 4행의 지금 값 표를 머리말에 싣고 되돌림이 이 값으로 복원한다. 외래키가 `tribes`·`item_books`에 걸려 있어 잠금이 그 두 표에도 닿는다고 적는다(`lock_timeout` 안내).
-- `273_post_release_drop_user_family_progress.sql`: `DROP TABLE IF EXISTS public.user_family_progress`(600행, 파생 스냅샷). 되돌림은 구조만 복원하고(코멘트 8개 포함, 외래키 2개, 기본키, RLS) 데이터는 복원하지 않는다고 머리말에 적는다.
+- `273_post_release_drop_user_family_progress.sql`: `DROP TABLE IF EXISTS public.user_family_progress`(600행, 파생 스냅샷). 되돌림은 구조만 복원하고(코멘트 7개 포함: 표 1 + 열 6, 외래키 2개, 기본키, RLS) 데이터는 복원하지 않는다고 머리말에 적는다.
 - `274_post_release_drop_ambient_drop_config_all_random.sql`: `ambient_drop_config.all_random`을 `DROP COLUMN IF EXISTS`로 지운다. 되돌림은 `boolean NOT NULL DEFAULT false`로 다시 만들고 행 id=1을 `true`로 복원한다.
 - 각 파일 머리말에 «적용 뒤 생성 타입에서 지울 위치»를 줄 번호와 함께 적고, 코드 참조 `grep` 명령과 «0줄이어야 한다»를 적는다.
 

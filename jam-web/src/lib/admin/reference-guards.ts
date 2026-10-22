@@ -18,13 +18,11 @@
  *   `mission_participation_cancellations`(트라이브 변경으로 취소된 참가의 이력)는 유저 기록이라 삭제를 막고,
  *   `mission_allowed_tribes`(참가할 수 있는 트라이브)는 운영자가 정한 설정이라 사용자 기록이 없으면 안내만 한다.
  * - **item_books(컬렉션)**: `user_item_book_slots`·`user_item_book_completions`는
- *   `item_book_id` **CASCADE**. `user_drop_state.last_drop_book_id`는 **NO ACTION**
- *   (사전 조사에 없던 참조 — 거의 모든 활성 유저가 `user_drop_state` 행을 가지므로 실무에서는
- *   이 한 자리가 컬렉션 하드 삭제를 사실상 항상 막는다). `badges.item_book_id`·
- *   `today_cards.item_book_id`는 SET NULL.
+ *   `item_book_id` **CASCADE**. `badges.item_book_id`·`today_cards.item_book_id`는 SET NULL.
+ *   (옛 드랍 엔진이 `user_drop_state`에 남기던 «최근 드랍 트라이브·컬렉션» 열 둘은 NO ACTION 참조였지만
+ *   지금 코드가 읽지도 쓰지도 않아 가드에서 뺐다 — 티켓 20261022_0938 2회. 열은 마이그레이션 272가 지운다.)
  * - **tribes(트라이브)**: `tribe_adjacency`의 `tribe_id`/`adjacent_tribe_id` 모두
- *   **CASCADE**. `user_drop_state.last_drop_tribe_id`는 **NO ACTION**(위와 같은 이유로
- *   실무 차단 확률이 높다). `users.tribe_id`(`users_tribe_id_fkey`)도 **NO ACTION**이다
+ *   **CASCADE**. `users.tribe_id`(`users_tribe_id_fkey`)는 **NO ACTION**이다
  *   (티켓 20260924_0945 — 운영 DB 확인). `badges.tribe_id`·`item_books.tribe_id`는 SET NULL.
  *   `mission_allowed_tribes.tribe_id`(마이그레이션 249)는 **ON DELETE RESTRICT**다 — 참가 대상으로 둔 미션이 있으면 DELETE 자체가
  *   실패하므로 삭제를 막는 참조다(티켓 20261019_1318 2회, 1회 게이트 [주의]: 목록에 없을 때는 가드를 통과한 뒤 DB에서 막혀 500이 났다).
@@ -309,12 +307,6 @@ export const ITEM_BOOK_REFERENCE_SOURCES: ReferenceSource[] = [
     blocks: true, // CASCADE
   },
   {
-    key: 'user_drop_state',
-    label: '유저 드랍 상태(최근 드랍 컬렉션)',
-    location: 'user_drop_state.last_drop_book_id',
-    blocks: true, // NO ACTION — 사전 조사에 없던 참조. 거의 모든 활성 유저가 행을 갖는다.
-  },
-  {
     key: 'badges',
     label: '소속 아이템배지',
     location: 'badges.item_book_id',
@@ -361,12 +353,6 @@ export async function collectItemBookReferences(
   if (tierCompletions.error) errors.push(`user_item_book_tier_completions: ${tierCompletions.error}`)
   tally('user_item_book_tier_completions', tierCompletions.rows.map((r) => r.item_book_id))
 
-  const dropState = await fetchAllRows<{ last_drop_book_id: string | null }>((from, to) =>
-    supabase.from('user_drop_state').select('last_drop_book_id').in('last_drop_book_id', itemBookIds).range(from, to)
-  )
-  if (dropState.error) errors.push(`user_drop_state: ${dropState.error}`)
-  tally('user_drop_state', dropState.rows.map((r) => r.last_drop_book_id))
-
   const badges = await fetchAllRows<{ item_book_id: string | null }>((from, to) =>
     supabase.from('badges').select('item_book_id').in('item_book_id', itemBookIds).range(from, to)
   )
@@ -390,12 +376,6 @@ export const TRIBE_REFERENCE_SOURCES: ReferenceSource[] = [
     label: '드랍 인접 관계',
     location: 'tribe_adjacency.tribe_id / adjacent_tribe_id',
     blocks: true, // CASCADE
-  },
-  {
-    key: 'user_drop_state',
-    label: '유저 드랍 상태(최근 드랍 계열)',
-    location: 'user_drop_state.last_drop_tribe_id',
-    blocks: true, // NO ACTION — 사전 조사에 없던 참조. 거의 모든 활성 유저가 행을 갖는다.
   },
   {
     // `users_tribe_id_fkey`는 삭제를 막는 FK(NO ACTION)다(운영 DB 확인, 티켓 20260924_0945).
@@ -468,16 +448,6 @@ export async function collectTribeReferences(
   )
   if (asAdjacent.error) errors.push(`tribe_adjacency(adjacent_tribe_id): ${asAdjacent.error}`)
   tally('tribe_adjacency', asAdjacent.rows.map((r) => r.adjacent_tribe_id))
-
-  const dropState = await fetchAllRows<{ last_drop_tribe_id: string | null }>((from, to) =>
-    supabase
-      .from('user_drop_state')
-      .select('last_drop_tribe_id')
-      .in('last_drop_tribe_id', tribeIds)
-      .range(from, to)
-  )
-  if (dropState.error) errors.push(`user_drop_state: ${dropState.error}`)
-  tally('user_drop_state', dropState.rows.map((r) => r.last_drop_tribe_id))
 
   const users = await fetchAllRows<{ tribe_id: string | null }>((from, to) =>
     supabase.from('users').select('tribe_id').in('tribe_id', tribeIds).range(from, to)

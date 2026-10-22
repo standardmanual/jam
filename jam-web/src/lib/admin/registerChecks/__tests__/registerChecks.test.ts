@@ -581,7 +581,7 @@ describe('runCollectionDbChecks (티켓 20261004_2039)', () => {
 })
 
 describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', () => {
-  it('item_books를 가리키는 외래 키 8곳과 같다(생성 타입 대조)', () => {
+  it('item_books를 가리키는 외래 키 7곳과 같다(생성 타입 대조)', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'types', 'database.generated.ts'), 'utf8')
     const found: string[] = []
     const starts = [...source.matchAll(/^ {6}(\w+): \{\n {8}Row: \{/gm)].map((m) => ({ name: m[1], index: m.index }))
@@ -589,9 +589,13 @@ describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', ()
       const block = source.slice(start.index, starts[i + 1]?.index ?? source.length)
       for (const fk of block.matchAll(/columns: \["(\w+)"\]\n\s+isOneToOne: \w+\n\s+referencedRelation: "item_books"/g)) found.push(`${start.name}.${fk[1]}`)
     })
+    // 옛 드랍 엔진의 외래 키는 코드가 읽지 않아 목록에서 뺐지만, 열은 마이그레이션 272를 적용하기 전까지 생성 타입에 남아 있다.
+    // SQL 272 적용 뒤 생성 타입에서 이 외래 키가 사라지면 아래 제외 줄(과 filter)을 지우고 기대 개수를 그대로 7로 둔다. (티켓 20261022_0938 2회)
+    const NOT_YET_DROPPED_FK = 'user_drop_state.last_drop_book_id'
+    const foundInUse = found.filter((name) => name !== NOT_YET_DROPPED_FK)
     const declared = ITEM_BOOK_UNDO_REFERENCE_TABLES.map((r) => `${r.table}.${r.column}`)
-    expect(declared.sort()).toEqual(found.sort())
-    expect(found).toHaveLength(8)
+    expect(declared.sort()).toEqual(foundInUse.sort())
+    expect(foundInUse).toHaveLength(7)
   })
 
   it('외래 키는 eq, 배열 칸은 contains로 목록 순서대로 읽고, 드랍 예약은 끝나지 않은 상태(scheduled·running)만 센다', async () => {
@@ -609,7 +613,7 @@ describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', ()
     expect(AMBIENT_SCHEDULE_UNFINISHED_STATUSES).toEqual(['scheduled', 'running'])
   })
 
-  it('아이템 배지(소프트 삭제 포함)·카드·유저 기록·포인트·드랍 상태·드랍 배열 칸이 모두 확인 대상이다', () => {
+  it('아이템 배지(소프트 삭제 포함)·카드·유저 기록·포인트·드랍 배열 칸이 모두 확인 대상이다(옛 드랍 상태 열은 읽지 않는다)', () => {
     expect(ITEM_BOOK_UNDO_REFERENCES.map((r) => `${r.table}.${r.column}`)).toEqual([
       'badges.item_book_id',
       'today_cards.item_book_id',
@@ -617,7 +621,6 @@ describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', ()
       'user_item_book_completions.item_book_id',
       'item_book_tier_rewards.item_book_id',
       'user_item_book_tier_completions.item_book_id',
-      'user_drop_state.last_drop_book_id',
       'point_transactions.source_item_book_id',
       'ambient_drop_config.collection_ids',
       'ambient_drop_schedules.collection_ids',

@@ -799,7 +799,7 @@ stateDiagram-v2
 > - `check`는 연결로 채운 칸을 뺀 사본(`withoutLinkedFields`)으로 `runCollectionDbChecks`(`registerChecks/collection.ts`)를 돌린다: 같은 이름의 기존 컬렉션(정확히 같은 이름. `item_books`에는 이름 UNIQUE가 없어 직접 막는다)·트라이브 존재·`resource`에 직접 적은 보상 배지의 존재·삭제 여부·`type = 'activity'`(완성 보상 지급이 활동 배지를 전제한다).
 >   연결로 채우는 보상 배지(같은 실행에서 만들 배지)는 존재 확인을 건너뛴다(생성 순서가 보장한다). 읽지 못하면 실패다.
 > - `create`는 정한 ID(`idFirst`)로 `{ id, ...payload }`를 insert하고 같은 ID를 돌려준다. insert가 오류를 받으면 같은 ID로 delete를 한 번 시도한다. `undo`는 참조(`findItemBookUndoReferences`)를 확인한 뒤 ID로 지운다. 시각 조건은 걸지 않는다(멈춘 준비중 정리는 공개 시각 뒤에 올 수 있다).
->   확인하는 참조는 `badges.item_book_id`(소프트 삭제된 배지도 센다. 아이템 배지가 붙은 컬렉션은 기존 어드민에서 아이템을 먼저 빼야 지울 수 있다)·`today_cards.item_book_id`·`user_item_book_slots`·`user_item_book_completions`·`user_drop_state.last_drop_book_id`·`point_transactions.source_item_book_id`와,
+>   확인하는 참조는 `badges.item_book_id`(소프트 삭제된 배지도 센다. 아이템 배지가 붙은 컬렉션은 기존 어드민에서 아이템을 먼저 빼야 지울 수 있다)·`today_cards.item_book_id`·`user_item_book_slots`·`user_item_book_completions`·`point_transactions.source_item_book_id`와,
 >   배열 칸 `ambient_drop_config.collection_ids`·`ambient_drop_schedules.collection_ids`(끝나지 않은 예약 `scheduled`·`running`만. 공개 전에 취소된 드랍은 행이 「취소」로 남으므로 세지 않는다)다. 어드민 삭제 가드(`reference-guards.ts`)는 이 표와 달리 `point_transactions`·드랍 배열 칸이 빠져 있고 이 조각에서 고치지 않았다.
 > - `cancel`·`observe`는 §8.7·§8.6의 「구현됨」에 있다.
 > - **컬렉션 완성 보상 JAM! 배지(사용자 결정 2026-10-04).** 같은 그룹에서 컬렉션이 `reward_badge_id` 칸으로 가리키는 JAM! 배지는 발급 조건이 없어도 형식 오류가 아니다(발급 경로가 컬렉션 완성이다). JAM! 배지 핸들러가 `pointedBy`로 알아 「발급 조건이 없는 배지예요」 검사만 건너뛴다.

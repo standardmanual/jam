@@ -1,0 +1,159 @@
+-- 272_post_release_drop_user_drop_state_old_columns.sql
+-- JAM 2.0 출시 뒤 정리: user_drop_state의 옛 드랍 엔진 열 7개를 지운다 (티켓 20261022_0938 2회, 상위 20261021_1250)
+--
+-- **작성만 하고 실행하지 않았다. 출시(main 승격) 뒤 사용자 승인으로 실행한다.**
+--
+-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.
+--    옛 프로덕션(origin/main) 코드는 이 열들을 읽고 쓴다(2026-10-22 git grep: jam-web/src/lib/drop-engine/index.ts 329~420줄이 total_drops·last_piece_pity 등을 쓰고,
+--    jam-web/src/lib/admin/reference-guards.ts 303~307·396~400줄이 last_drop_book_id·last_drop_tribe_id를 조회한다). 출시 전에 지우면 옛 코드의 드랍 판정과
+--    어드민 삭제 가드가 오류를 낸다. 그래서 옛 프로덕션 코드가 사라지는 출시(main 승격) 뒤에만 실행한다.
+--    staging 코드는 이 열을 쓰지 않는다. 남기는 열(user_id·common_streak·capsule_epic_miss·updated_at)은 새 발급 경로와 캡슐이 쓰므로 건드리지 않는다.
+--
+-- ⚠️ 어드민 삭제 가드 코드는 이 SQL과 같은 출시에 실려 있어야 한다: 이 커밋이 reference-guards.ts·tribe-list.ts·registerChecks/references.ts에서
+--    두 열(last_drop_tribe_id·last_drop_book_id)의 조회를 뺐다. 가드가 옛 코드 그대로이면 이 SQL 적용 뒤 트라이브·컬렉션 삭제 화면이 «열 없음» 오류를 낸다.
+--    반대로 코드만 먼저 나가고 SQL이 아직이면, 아래 4행이 가리키는 트라이브 2개·컬렉션 4개를 지우려 할 때 가드는 통과하고 DB 외래키가 막는다(어드민 삭제 라우트는 500).
+--
+-- ⚠️ 데이터를 잃는다: 열 7개 × 4행의 값이 사라진다. 아래 «지금 값» 표가 2026-10-22 공용 DB에서 읽은 값이고 되돌림이 이 값으로 복원한다.
+--    **이 값은 출시 전까지 계속 바뀐다**(옛 프로덕션 동기화가 출시 때까지 이 열들을 쓴다). 출시 뒤에는 어떤 코드도 쓰지 않으므로 적용 직전에 «적용 전 확인» 첫 쿼리를 한 번
+--    다시 돌려 표와 비교하고, 다르면 되돌림 UPDATE의 값을 그 결과로 고친 뒤 실행한다. 시각은 아래 표에 초 단위까지만 적었으니 첫 쿼리의 ::text 결과(마이크로초 포함)를 쓴다.
+--
+--   user_id                               last_drop_tribe_id                    last_drop_book_id                     last_piece_pity                              daily_drop_count  daily_drop_date  total_drops  last_activity_at
+--   25782789-2840-436c-827e-7ec90f898020  defa02b9-c4b6-af0d-dc99-c43c278a78d8  def1f1fe-dd44-0a0f-227b-2fb53eaa63ce  {}                                           0                 2026-10-17       11           2026-10-17 22:02:31+00
+--   3649ed39-2be2-402e-82ae-41e0cd328105  73f0f601-2382-900c-8ca2-5cc7c93ed95d  3a7f3fa1-08de-ad46-8c03-ac0ada645054  {"1407bbea-f57a-aa97-2dce-c6ec834bec1c": 3}  2                 2026-10-21       37           2026-10-21 11:02:02+00
+--   cbecda65-04a4-4b6c-a488-00e35dfdebc4  73f0f601-2382-900c-8ca2-5cc7c93ed95d  6fc07713-c620-5fe8-dac1-475de83976d2  {}                                           0                 2026-10-12       12           2026-10-12 10:52:35+00
+--   dad44dda-5a52-45db-a060-669230118f34  defa02b9-c4b6-af0d-dc99-c43c278a78d8  e42446a1-d63f-f089-5fc0-c60552996d31  {}                                           2                 2026-10-05       20           2026-10-05 18:54:26+00
+--
+--   열                  타입         NULL 허용  기본값
+--   last_drop_tribe_id  uuid         예         없음 (tribes(id)를 가리키는 외래키 user_drop_state_last_drop_tribe_id_fkey, ON DELETE 미지정 = NO ACTION)
+--   last_drop_book_id   uuid         예         없음 (item_books(id)를 가리키는 외래키 user_drop_state_last_drop_book_id_fkey, ON DELETE 미지정 = NO ACTION)
+--   last_piece_pity     jsonb        아니오     '{}'::jsonb
+--   daily_drop_count    integer      아니오     0
+--   daily_drop_date     date         예         없음
+--   total_drops         integer      아니오     0
+--   last_activity_at    timestamptz  예         없음
+--   (7개 열에 걸린 다른 CHECK·인덱스·기본값 의존은 없다. 표의 나머지 제약은 user_drop_state_pkey PRIMARY KEY (user_id), user_drop_state_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+--    user_drop_state_capsule_epic_miss_check CHECK ((capsule_epic_miss >= 0))이고 이 파일은 건드리지 않는다. 정책 "user_drop_state: 본인만 읽기" SELECT USING (auth.uid() = user_id)도 그대로다.)
+--
+-- 선행 조건
+--   ① 출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤.
+--   ② 코드 참조 0건을 grep으로 다시 확인한다. 이 파일을 쓴 2026-10-22 staging 기준 결과는 두 쿼리 모두 기대대로였다(2회에서 어드민 삭제 가드의 조회를 모두 지웠다. 시험 파일에는 이름이 남아 있다).
+--        grep -rnE "last_drop_tribe_id|last_drop_book_id|last_piece_pity|daily_drop_count|daily_drop_date|total_drops" jam-web/src jam-web/scripts --include="*.ts" --include="*.tsx" --include="*.mjs" | grep -v -E "src/types/database|__tests__"   # 0줄이어야 한다
+--        grep -rnE "from\(['\"\`]user_drop_state['\"\`]\)" jam-web/src jam-web/scripts --include="*.ts" --include="*.tsx" --include="*.mjs" | grep -v "__tests__"   # 4줄이어야 한다: syncIssueRun.ts 두 곳(common_streak 읽기·upsert), capsule/open.ts(common_streak, capsule_epic_miss 읽기), admin/user-actions.ts(행 삭제). 다섯 번째가 보이면 그 줄이 7개 열(특히 last_activity_at)을 쓰는지 본다
+--      jam-web/supabase/seed_reset_users_20260906.sql(80·113줄)이 이 표를 백업·삭제한다. 이름에 날짜가 붙은 2026-09-06 일회성 초기화 스크립트라 고치지 않는다(역사 기록). 이 열들이 사라진 뒤에도 그 스크립트의 백업·삭제 문장은 표 전체를 다루므로 영향이 없다.
+--   ③ 아래 «적용 전 확인»에서 이 열들을 읽는 뷰·인덱스·트리거와 본문 언급 함수가 0이어야 한다. 아니면 멈추고 보고한다.
+--
+-- 실행 순서: 이 묶음은 271(drop_policy 표) → 272(user_drop_state 옛 열) → 273(user_family_progress 표) → 274(all_random 열) 순서로 실행한다. 네 파일은 서로 의존하지 않아 하나가 멈춰도 나머지에 영향이 없다.
+--
+-- 하는 일: user_drop_state의 7개 열을 한 문장으로 지운다. 이미 없는 열은 건너뛴다(다시 실행해도 안전하다). 한 문장이라 7개가 함께 지워지거나 하나도 안 지워진다.
+--   외래키 2개(user_drop_state_last_drop_tribe_id_fkey, user_drop_state_last_drop_book_id_fkey)는 이 열들에 걸려 있어 열과 함께 사라진다. CASCADE를 쓰지 않으므로 이 열에 기대는
+--   표 밖의 객체(뷰 등)가 있으면 오류로 멈춘다.
+-- 바꾸지 않는 것: 행 4개, 남는 열 4개(user_id·common_streak·capsule_epic_miss·updated_at)와 그 값, 기본키·user_id 외래키·capsule_epic_miss CHECK, capsule_epic_miss 열 코멘트, RLS(켜짐)와 정책 1개.
+-- 잠금: ALTER TABLE ... DROP COLUMN은 이 표에 ACCESS EXCLUSIVE 잠금을 요구하고, 외래키를 지우므로 가리키던 tribes·item_books에도 잠금이 닿는다(트라이브·컬렉션을 읽고 쓰는 쿼리가 잠깐 기다릴 수 있다).
+--   표는 4행이라 바로 끝나지만, 진행 중인 쿼리 뒤에서 기다리는 동안 뒤따르는 쿼리를 막는다. 실행하는 쪽에서 같은 트랜잭션 안에 SET LOCAL lock_timeout = '3s'를 둔다(본문에는 넣지 않았다).
+-- 생성 타입: 적용 뒤 database.generated.ts·database.ts에서 아래 위치를 지운다(이 파일을 쓴 2026-10-22 staging 기준 줄 번호).
+--   · jam-web/src/types/database.generated.ts: user_drop_state의 Row 3898~3904줄(daily_drop_count·daily_drop_date·last_activity_at·last_drop_book_id·last_drop_tribe_id·last_piece_pity·total_drops),
+--     Insert 3911~3917줄, Update 3924~3930줄(칸마다 7줄씩)과, Relationships의 외래키 두 개(user_drop_state_last_drop_book_id_fkey 3935~3941줄, user_drop_state_last_drop_tribe_id_fkey 3942~3948줄 — 객체 두 개).
+--     user_id 외래키(3949~3955줄)는 남긴다.
+--   · jam-web/src/types/database.ts: UserDropStateRow(1061~1080줄)의 7개 칸(last_drop_tribe_id·last_drop_book_id·last_piece_pity·daily_drop_count·daily_drop_date·total_drops·last_activity_at, 1071·1072·1074~1078줄)과
+--     그 위 설명 주석(1061~1068줄, «열 정리와 가드 정리는 티켓 20261022_0938 2회» 문장)을 새 상태로 고친다.
+--   · jam-web/src/lib/admin/registerChecks/__tests__/registerChecks.test.ts: «item_books를 가리키는 외래 키 7곳과 같다(생성 타입 대조)» 시험의 NOT_YET_DROPPED_FK 제외 줄과 filter를 지운다(생성 타입에서 외래키가 사라지면 제외할 것이 없다).
+--   시험 파일의 가짜 행(Record<string, unknown>)은 타입과 무관해 그대로 둬도 컴파일된다.
+--
+-- 적용 전 확인(읽기 전용 SELECT):
+--   SELECT user_id, last_drop_tribe_id, last_drop_book_id, last_piece_pity, daily_drop_count, daily_drop_date, total_drops, last_activity_at::text AS last_activity_at_text
+--     FROM public.user_drop_state ORDER BY user_id;                                                    -- 4행. 위 «지금 값» 표와 같은지 본다(다르면 되돌림 UPDATE의 값을 이 결과로 고친다. 시각은 ::text 그대로 쓴다)
+--   SELECT count(*) AS 행 FROM public.user_drop_state;                                                  -- 4
+--   SELECT column_name, data_type, is_nullable, column_default
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'user_drop_state'
+--      AND column_name IN ('last_drop_tribe_id','last_drop_book_id','last_piece_pity','daily_drop_count','daily_drop_date','total_drops','last_activity_at')
+--    ORDER BY column_name;                                                                           -- 7행: 위 열 표와 같다
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.user_drop_state'::regclass ORDER BY conname;                            -- 5행: user_drop_state_capsule_epic_miss_check, user_drop_state_last_drop_book_id_fkey, user_drop_state_last_drop_tribe_id_fkey, user_drop_state_pkey, user_drop_state_user_id_fkey
+--   SELECT count(*) AS 이_열을_쓰는_인덱스 FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY (i.indkey)
+--    WHERE i.indrelid = 'public.user_drop_state'::regclass
+--      AND a.attname IN ('last_drop_tribe_id','last_drop_book_id','last_piece_pity','daily_drop_count','daily_drop_date','total_drops','last_activity_at');   -- 0
+--   SELECT count(*) AS 이_열을_읽는_뷰 FROM pg_depend d JOIN pg_rewrite r ON r.oid = d.objid
+--    WHERE d.classid = 'pg_rewrite'::regclass AND d.refobjid = 'public.user_drop_state'::regclass AND d.refobjsubid > 0
+--      AND r.ev_class <> d.refobjid;                                                                  -- 0
+--   SELECT count(*) AS 트리거 FROM pg_trigger WHERE tgrelid = 'public.user_drop_state'::regclass AND NOT tgisinternal;   -- 0 (있으면 되돌림 UPDATE가 updated_at 같은 값을 바꿀 수 있다)
+--   SELECT p.oid::regprocedure AS 본문에서_이_열을_언급하는_함수 FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ~ 'user_drop_state'
+--      AND p.prosrc ~ '\m(last_drop_tribe_id|last_drop_book_id|last_piece_pity|daily_drop_count|daily_drop_date|total_drops|last_activity_at)\M';   -- 0행 (캡슐 함수 등은 user_drop_state를 쓰지만 common_streak·capsule_epic_miss만 다룬다. 함수 본문 안의 이름은 pg_depend가 추적하지 못해 따로 본다)
+--   SELECT count(*) AS 정책 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_drop_state';   -- 1 (본인만 읽기. 남긴다)
+--   SELECT to_jsonb(s) - ARRAY['last_drop_tribe_id','last_drop_book_id','last_piece_pity','daily_drop_count','daily_drop_date','total_drops','last_activity_at'] AS 나머지_칸
+--     FROM public.user_drop_state s ORDER BY s.user_id;                                                -- 4행. 기록해 둔다. 적용 후와 같아야 한다
+--
+-- 적용 후 확인(읽기 전용 SELECT):
+--   SELECT column_name FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'user_drop_state' ORDER BY ordinal_position;       -- 4행: user_id, common_streak, updated_at, capsule_epic_miss
+--   SELECT to_jsonb(s) AS 행 FROM public.user_drop_state s ORDER BY s.user_id;                          -- 적용 전 «나머지_칸» 기록과 같다(7개 열만 빠졌다)
+--   SELECT count(*) AS 행 FROM public.user_drop_state;                                                  -- 4
+--   SELECT conname FROM pg_constraint WHERE conrelid = 'public.user_drop_state'::regclass ORDER BY conname;   -- 3행: user_drop_state_capsule_epic_miss_check, user_drop_state_pkey, user_drop_state_user_id_fkey
+--   SELECT count(*) AS 정책 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_drop_state';   -- 1
+--   SELECT count(*) FROM public.tribes;                                                                 -- 적용 전과 같다(tribes·item_books는 건드리지 않는다)
+--   SELECT count(*) FROM public.item_books;                                                             -- 적용 전과 같다
+
+ALTER TABLE public.user_drop_state
+  DROP COLUMN IF EXISTS last_drop_tribe_id,
+  DROP COLUMN IF EXISTS last_drop_book_id,
+  DROP COLUMN IF EXISTS last_piece_pity,
+  DROP COLUMN IF EXISTS daily_drop_count,
+  DROP COLUMN IF EXISTS daily_drop_date,
+  DROP COLUMN IF EXISTS total_drops,
+  DROP COLUMN IF EXISTS last_activity_at;
+
+-- 되돌림 SQL
+-- 7개 열을 같은 타입·NOT NULL·기본값으로 다시 만들고, 4행의 값을 2026-10-22 공용 DB의 지금 값으로 복원한 뒤 외래키 2개를 같은 이름으로 다시 건다.
+-- 아래 «-- » 접두어를 떼고 세 문장을 한 트랜잭션으로 묶어 실행한다. 적용 직전 값이 위 표와 달랐다면 UPDATE의 값을 그 값으로 바꾼 뒤 실행한다.
+-- 열 순서는 표의 맨 뒤로 바뀐다(코드는 이름으로 읽으므로 영향이 없다).
+-- 외래키는 값을 채운 뒤에 건다: 4행이 가리키는 트라이브 2개·컬렉션 4개 중 하나라도 그사이 지워졌다면(어드민 가드는 이제 이 열을 보지 않는다) ADD CONSTRAINT가 오류로 멈춘다.
+--   그 경우 트랜잭션이 취소되므로 아래 «되돌리기 전 확인»의 결과를 보고 값을 어떻게 복원할지(지워진 id는 NULL로 두는 등) 카리나가 정한다.
+--
+-- 되돌리기 전 확인(읽기 전용 SELECT):
+--   SELECT (SELECT count(*) FROM public.tribes WHERE id IN ('defa02b9-c4b6-af0d-dc99-c43c278a78d8', '73f0f601-2382-900c-8ca2-5cc7c93ed95d')) AS 트라이브,
+--          (SELECT count(*) FROM public.item_books WHERE id IN ('def1f1fe-dd44-0a0f-227b-2fb53eaa63ce', '3a7f3fa1-08de-ad46-8c03-ac0ada645054', '6fc07713-c620-5fe8-dac1-475de83976d2', 'e42446a1-d63f-f089-5fc0-c60552996d31')) AS 컬렉션;   -- 2, 4
+--
+-- ALTER TABLE public.user_drop_state
+--   ADD COLUMN last_drop_tribe_id uuid,
+--   ADD COLUMN last_drop_book_id  uuid,
+--   ADD COLUMN last_piece_pity    jsonb       NOT NULL DEFAULT '{}'::jsonb,
+--   ADD COLUMN daily_drop_count   integer     NOT NULL DEFAULT 0,
+--   ADD COLUMN daily_drop_date    date,
+--   ADD COLUMN total_drops        integer     NOT NULL DEFAULT 0,
+--   ADD COLUMN last_activity_at   timestamptz;
+--
+-- UPDATE public.user_drop_state AS s
+--    SET last_drop_tribe_id = v.last_drop_tribe_id,
+--        last_drop_book_id  = v.last_drop_book_id,
+--        last_piece_pity    = v.last_piece_pity,
+--        daily_drop_count   = v.daily_drop_count,
+--        daily_drop_date    = v.daily_drop_date,
+--        total_drops        = v.total_drops,
+--        last_activity_at   = v.last_activity_at
+--   FROM (VALUES
+--     ('25782789-2840-436c-827e-7ec90f898020'::uuid, 'defa02b9-c4b6-af0d-dc99-c43c278a78d8'::uuid, 'def1f1fe-dd44-0a0f-227b-2fb53eaa63ce'::uuid, '{}'::jsonb,                                          0, '2026-10-17'::date, 11, '2026-10-17 22:02:31+00'::timestamptz),
+--     ('3649ed39-2be2-402e-82ae-41e0cd328105'::uuid, '73f0f601-2382-900c-8ca2-5cc7c93ed95d'::uuid, '3a7f3fa1-08de-ad46-8c03-ac0ada645054'::uuid, '{"1407bbea-f57a-aa97-2dce-c6ec834bec1c": 3}'::jsonb, 2, '2026-10-21'::date, 37, '2026-10-21 11:02:02+00'::timestamptz),
+--     ('cbecda65-04a4-4b6c-a488-00e35dfdebc4'::uuid, '73f0f601-2382-900c-8ca2-5cc7c93ed95d'::uuid, '6fc07713-c620-5fe8-dac1-475de83976d2'::uuid, '{}'::jsonb,                                          0, '2026-10-12'::date, 12, '2026-10-12 10:52:35+00'::timestamptz),
+--     ('dad44dda-5a52-45db-a060-669230118f34'::uuid, 'defa02b9-c4b6-af0d-dc99-c43c278a78d8'::uuid, 'e42446a1-d63f-f089-5fc0-c60552996d31'::uuid, '{}'::jsonb,                                          2, '2026-10-05'::date, 20, '2026-10-05 18:54:26+00'::timestamptz)
+--   ) AS v(user_id, last_drop_tribe_id, last_drop_book_id, last_piece_pity, daily_drop_count, daily_drop_date, total_drops, last_activity_at)
+--  WHERE s.user_id = v.user_id;
+--
+-- ALTER TABLE public.user_drop_state
+--   ADD CONSTRAINT user_drop_state_last_drop_tribe_id_fkey FOREIGN KEY (last_drop_tribe_id) REFERENCES public.tribes(id),
+--   ADD CONSTRAINT user_drop_state_last_drop_book_id_fkey  FOREIGN KEY (last_drop_book_id)  REFERENCES public.item_books(id);
+--
+-- 되돌린 뒤 확인(읽기 전용 SELECT):
+--   SELECT user_id, last_drop_tribe_id, last_drop_book_id, last_piece_pity, daily_drop_count, daily_drop_date, total_drops, last_activity_at::text AS last_activity_at_text
+--     FROM public.user_drop_state ORDER BY user_id;                                                    -- 적용 전 확인의 첫 쿼리와 같다(4행)
+--   SELECT column_name, data_type, is_nullable, column_default
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'user_drop_state'
+--      AND column_name IN ('last_drop_tribe_id','last_drop_book_id','last_piece_pity','daily_drop_count','daily_drop_date','total_drops','last_activity_at')
+--    ORDER BY column_name;                                                                           -- 적용 전 확인과 같은 7행(타입·NULL 허용·기본값)
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.user_drop_state'::regclass ORDER BY conname;                            -- 적용 전 확인과 같은 5행(이름·정의 모두. 외래키 정의는 REFERENCES tribes(id) / item_books(id), ON DELETE 절 없음)
+--   SELECT to_jsonb(s) - ARRAY['last_drop_tribe_id','last_drop_book_id','last_piece_pity','daily_drop_count','daily_drop_date','total_drops','last_activity_at'] AS 나머지_칸
+--     FROM public.user_drop_state s ORDER BY s.user_id;                                                -- 적용 전에 기록한 «나머지_칸»과 같다
+--   SELECT count(*) FROM public.user_drop_state;                                                       -- 4
+--   SELECT count(*) AS 정책 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_drop_state';   -- 1

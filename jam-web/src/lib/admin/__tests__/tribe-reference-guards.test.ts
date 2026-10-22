@@ -1,6 +1,8 @@
 import {
+  ITEM_BOOK_REFERENCE_SOURCES,
   TRIBE_REFERENCE_SOURCES,
   classifyReferenceDeletion,
+  collectItemBookReferences,
   collectTribeReferences,
   summarizeReference,
 } from '../reference-guards'
@@ -248,13 +250,61 @@ describe('fetchTribeListCounts — 목록의 막는 참조 건수에 트라이�
 
 describe('tribeDeleteBlockReason — 목록의 "삭제 불가 사유" 칸', () => {
   it('막는 참조가 없으면 null이다', () => {
-    expect(tribeDeleteBlockReason({ tribe_adjacency: 0, user_drop_state: 0, users: 0 })).toBeNull()
+    expect(tribeDeleteBlockReason({ tribe_adjacency: 0, users: 0 })).toBeNull()
   })
 
   it('막는 참조만 건수와 함께 나열한다(소속 배지·컬렉션은 넣지 않는다)', () => {
-    const reason = tribeDeleteBlockReason({ users: 3, user_drop_state: 12, badges: 40, item_books: 5 })
+    const reason = tribeDeleteBlockReason({ users: 3, user_tribe_changes: 12, badges: 40, item_books: 5 })
     expect(reason).toContain('이 트라이브를 고른 유저 3명')
-    expect(reason).toContain('유저 드랍 상태(최근 드랍 계열) 12건')
+    expect(reason).toContain('트라이브 변경 이력 12건')
     expect(reason).not.toContain('소속')
+  })
+})
+
+describe('옛 드랍 엔진의 user_drop_state 열은 삭제를 막는 참조가 아니다 (티켓 20261022_0938 2회)', () => {
+  it('트라이브·컬렉션의 참조 목록에 user_drop_state가 없다', () => {
+    expect(TRIBE_REFERENCE_SOURCES.map((s) => s.key)).not.toContain('user_drop_state')
+    expect(ITEM_BOOK_REFERENCE_SOURCES.map((s) => s.key)).not.toContain('user_drop_state')
+    expect(TRIBE_REFERENCE_SOURCES.map((s) => s.location).join(' ')).not.toContain('user_drop_state')
+    expect(ITEM_BOOK_REFERENCE_SOURCES.map((s) => s.location).join(' ')).not.toContain('user_drop_state')
+  })
+
+  it('트라이브·컬렉션 참조를 모을 때 user_drop_state를 열지 않는다(열이 지워져도 조회 오류가 나지 않는다)', async () => {
+    const opened: string[] = []
+    const supabase = {
+      from(table: string) {
+        opened.push(table)
+        return { select: () => ({ in: () => ({ range: async () => ({ data: [], error: null }) }) }) }
+      },
+    }
+    const tribes = await collectTribeReferences(supabase as unknown as Parameters<typeof collectTribeReferences>[0], ['t1'])
+    const books = await collectItemBookReferences(supabase as unknown as Parameters<typeof collectItemBookReferences>[0], ['b1'])
+    expect(tribes.error).toBeNull()
+    expect(books.error).toBeNull()
+    expect(opened).not.toContain('user_drop_state')
+    expect(opened.length).toBeGreaterThan(0)
+  })
+
+  it('목록 건수에서도 user_drop_state를 세지 않는다', async () => {
+    const opened: string[] = []
+    const builder = (table: string) => {
+      opened.push(table)
+      const b: Record<string, unknown> = {
+        select: () => b,
+        in: () => b,
+        eq: () => b,
+        is: () => b,
+        order: () => b,
+        range: async () => ({ data: [], error: null }),
+        then: (resolve: (v: unknown) => unknown) => Promise.resolve({ data: [], count: 0, error: null }).then(resolve),
+      }
+      return b
+    }
+    const { blockingCounts } = await fetchTribeListCounts(
+      { from: builder } as unknown as Parameters<typeof fetchTribeListCounts>[0],
+      ['t1']
+    )
+    expect(opened).not.toContain('user_drop_state')
+    expect(Object.keys(blockingCounts.t1)).not.toContain('user_drop_state')
   })
 })

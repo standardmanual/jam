@@ -87,8 +87,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 /**
  * 하드 삭제 — 참조 가드는 `lib/admin/reference-guards.ts`가 단일 출처다(티켓 20260907_1134).
  * `tribe_adjacency`는 CASCADE라 그냥 삭제하면 드랍엔진 인접 그래프가 조용히 깨지고,
- * `user_drop_state.last_drop_tribe_id`는 NO ACTION이라 FK 위반으로 삭제 자체가 실패할 수
- * 있다. 참조가 있으면 비활성화를 안내한다.
+ * `users.tribe_id`는 NO ACTION이라 FK 위반으로 삭제 자체가 실패할 수 있다.
+ * 참조가 있으면 비활성화를 안내한다.
  */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()

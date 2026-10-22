@@ -1089,7 +1089,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > **2026-10-19 갱신(티켓 20261018_1817 2회)**: 이 값을 그리던 배지 트리 화면과 «다음 목표»는 사용자 결정으로
 > 제거했다. 지금 유저 화면에는 진행 표시가 어디에도 없다. 이 계층의 계산 함수를 부르던 계열 진행 스냅샷 갱신
 > (`sync.ts`의 `updateFamilyProgressSnapshots`)은 2026-10-22(티켓 20261022_0938 1회)에 지웠다. `user_family_progress` 표는
-> **코드가 쓰지 않음, 표 정리 대기(0938 2회)**다. `computeBadgeProgress` 자체는 코드와 시험에 남아 있지만 앱 코드에서 부르는 곳이 없다.
+> **코드가 쓰지 않음. 정리 SQL 273 작성됨, 출시 뒤 실행 대기(0938 2회)**다. `computeBadgeProgress` 자체는 코드와 시험에 남아 있지만 앱 코드에서 부르는 곳이 없다.
 > 아래 소비처·화면 서술은 제거 전 기록이다.
 
 `evaluateConditionDetailed`/`checkCondition`(§2.2 발급 파이프라인)은 이 계층이 존재하기 전과
@@ -1138,7 +1138,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   `BadgeProgressAxis`에 축 단위 진행비율 `fraction`이 노출돼 있다 — "작을수록 좋음"(페이스)·
   한파(`temperature_max_c`, 비선형 기준점) 축은 `current`/`target` 단순 비율로 재계산하면
   진행 바가 틀리므로 표시 레이어가 이 값을 그대로 써야 한다.
-- **3차 1단계 — 진행 스냅샷 저장(티켓 20260904_1156).** *(2026-10-22 갱신: 이 훅과 `UserFamilyProgressRow` 타입은 티켓 20261022_0938 1회에서 지웠다. 표는 코드가 쓰지 않음, 정리 대기. 아래는 지우기 전 기록이다.)* 2b~2d는 전부 "지금 이 순간" 값만
+- **3차 1단계 — 진행 스냅샷 저장(티켓 20260904_1156).** *(2026-10-22 갱신: 이 훅과 `UserFamilyProgressRow` 타입은 티켓 20261022_0938 1회에서 지웠다. 표는 코드가 쓰지 않음. 정리 SQL 273 작성됨, 출시 뒤 실행 대기. 아래는 지우기 전 기록이다.)* 2b~2d는 전부 "지금 이 순간" 값만
   실시간 재계산해 이전 상태와 비교할 방법이 없었다. 신규 테이블 `user_family_progress`
   (`user_id, activity_type, family_name` PK, RLS는 service_role 전용으로 닫아둠 —
   `mission_rank_snapshots`·`poi_views`와 동일 방침)가 계열별 프런티어(첫 미획득 등급)의
@@ -1708,7 +1708,7 @@ POST /api/admin/badges/reevaluate-all
 > **현재 규칙은 §3.0이다.** 코드는 `src/lib/drop-engine/`의 `syncIssue.ts`(순수 판정)·`syncIssueRun.ts`(조회·지급·기록)·`lockAssignment.ts`·`issueFollowUp.ts`다.
 > 아래 §3.1~§3.7은 **옛 드랍엔진 v2(3레이어, 2026-07-21 구현, 마이그레이션 034)의 설계 기록**이다. 그 코드(`index.ts`의 `tryItemDrop`·`selectBadge`, `layers.ts`, `context.ts`, `policy.ts`, `constants.ts`, `preview.ts`)와
 > 어드민 «드랍 정책» 화면(`/admin/drop-policy`), 시뮬레이터의 «아이템 드랍» 구역, 화면 링크가 없던 시험 라우트(`/api/admin/test/simulate`)는 **2026-10-22(티켓 20261022_0938 1회)에 지웠다.**
-> 옛 설정 표 `drop_policy`와 `user_drop_state`의 옛 열 7개는 옛 프로덕션 코드가 읽어서 DB에 남아 있고, `drop_policy`는 **코드가 쓰지 않음, 표 정리 대기**, 옛 열 7개는 **열 정리 대기**다(0938 2회). 발급 경로가 쓰는 열은 `user_drop_state.common_streak`·`capsule_epic_miss`뿐이고, 어드민 삭제 가드가 `last_drop_tribe_id`·`last_drop_book_id`를 조회만 한다(`02_DATA_MODEL.md`).
+> 옛 설정 표 `drop_policy`와 `user_drop_state`의 옛 열 7개는 옛 프로덕션 코드가 읽어서 DB에 남아 있고, `drop_policy`와 옛 열 7개는 **코드가 쓰지 않음. 정리 SQL 271·272 작성됨, 출시 뒤 실행 대기**다(0938 2회). 발급 경로가 쓰는 열은 `user_drop_state.common_streak`·`capsule_epic_miss`뿐이다. 어드민 삭제 가드가 조회하던 `last_drop_tribe_id`·`last_drop_book_id`는 0938 2회에서 가드 코드를 걷었다(`02_DATA_MODEL.md`).
 > 옛 엔진의 파라미터 값(§3.1 등)은 초기 설계값이었고 지금은 어디에서도 읽지 않는다. 인접 그래프(`tribe_adjacency`)도 새 발급 경로는 읽지 않는다.
 > 설계 방침(옛): **집중은 보이지 않는 가중치로만** — "활성 트라이브 N개 제한" 같은 명시 규칙은 유저가 인지하는 순간 상한·박탈로 읽히므로, 하드캡·트라이브 선택 UI 없이 드랍 분포가 자연스럽게 2~3개 트라이브에 수렴하게 한다.  
 > 아이템배지·컬렉션·트라이브·인접 그래프의 단일 진실 원천: **`아이템북 레시피.xlsx`** (배지 목록 시트 + '트라이브 인접' 시트).
@@ -1982,7 +1982,7 @@ DB 트리거(`log_orphan_custody_events()`)가 남긴다 — 삭제 경로에 �
 
 ### 3.6 데이터 모델 (옛 v2 설계 기록)
 
-> 발급 경로가 쓰는 열은 `common_streak`(동기화와 캡슐이 합산)와 `capsule_epic_miss`(캡슐)뿐이다. 아래 SQL의 나머지 옛 열은 **열 정리 대기(0938 2회)**다. `last_drop_*` 두 열은 어드민 삭제 가드가 조회만 한다(`02_DATA_MODEL.md`).
+> 발급 경로가 쓰는 열은 `common_streak`(동기화와 캡슐이 합산)와 `capsule_epic_miss`(캡슐)뿐이다. 아래 SQL의 나머지 옛 열은 **코드가 쓰지 않음. 정리 SQL 272 작성됨, 출시 뒤 실행 대기(0938 2회)**다. `last_drop_*` 두 열을 조회하던 어드민 삭제 가드는 0938 2회에서 코드를 걷었다(`02_DATA_MODEL.md`).
 
 ```sql
 CREATE TABLE user_drop_state (
@@ -2212,7 +2212,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 
 세 축은 각자의 모드(명시/무작위)만 따른다. «전체 무작위» 메타 옵션은 없어졌다(티켓 20261018_1813, 사용자 결정 2026-10-18).
 엔진(`runAmbientDropBatch`·날짜 예약의 `runAmbientDropSpec`)은 `ambient_drop_config.all_random`을 읽지 않고, 어드민 폼에도 스위치가 없으며 저장 라우트는
-본문의 `all_random`을 받지도 저장 값에 싣지도 않는다(설정 타입에서도 뺐다, 티켓 20261022_0938 1회). 옛 프로덕션 코드가 읽는 칸이라 DB 칸과 값은 그대로 두었고(`true`로 남아 있어도 새 엔진은 무시한다), **코드가 쓰지 않음, 열 정리 대기(0938 2회)**다.
+본문의 `all_random`을 받지도 저장 값에 싣지도 않는다(설정 타입에서도 뺐다, 티켓 20261022_0938 1회). 옛 프로덕션 코드가 읽는 칸이라 DB 칸과 값은 그대로 두었고(`true`로 남아 있어도 새 엔진은 무시한다), **코드가 쓰지 않음. 정리 SQL 274 작성됨, 출시 뒤 실행 대기(0938 2회)**다.
 공개 중인 컬렉션 전체에서 고르되 양·주기·장소당 상한·등급 비율은 어드민 설정을 따른다는 운영 로직 9.4절의 뜻이다.
 
 **잠긴 채 놓기** (티켓 20261018_1813, 운영 로직 7.2·9.4절): 놓기 직전(`placeAmbientDrops`, `src/lib/ambient-drop/placeAmbientDrops.ts`)에 후보 배지의
@@ -2543,7 +2543,7 @@ supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각(KST
 supabase/migrations/209_ambient_drop_schedules.sql       앰비언트 드랍 날짜 예약 저장소(2026-10-01) — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
-supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블(코드가 쓰지 않음, 정리 대기) + 계열 정합성 트리거 — §2.13
+supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블(코드가 쓰지 않음. 정리 SQL 273 작성됨, 출시 뒤 실행 대기) + 계열 정합성 트리거 — §2.13
 supabase/migrations/140_condition_keys_v5_extension.sql  조건 키 3종 CHECK 개방(누적 이동시간·월간 횟수·개인기록 지표) — §2.3
 supabase/migrations/141_backfill_cadence_normalization.sql  케이던스 ×2 재정규화 백필(러닝·트레일러닝) — §2.1-1
 ```
