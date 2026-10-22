@@ -692,6 +692,20 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       return { template: n.msgTribeChanged, vars: { tribeName } }
     }
 
+    // ── 이용 정지·풀림 (티켓 20261021_1249 6-3 5회) — 사유·어드민·메모를 싣지 않아 고정 문장이다. 사유와 정지일은 홈 배너가 보여 준다 ──
+    case 'suspension_started':
+      return { template: n.msgSuspensionStarted, vars: {} }
+    case 'suspension_lifted':
+      return { template: n.msgSuspensionLifted, vars: {} }
+
+    // ── 받지 않은 보상 (티켓 20261021_1249 6-3 5회) ──────────────────────────────────
+    case 'reward_pending': {
+      // 미션 제목이 비었으면(payload 손상) 「에서 받을 보상이」 대신 제목 없는 문장을 쓴다
+      const missionTitle = str(p, 'mission_title').trim()
+      if (!missionTitle) return { template: n.msgRewardPendingNoTitle, vars: {} }
+      return { template: n.msgRewardPending, vars: { missionTitle } }
+    }
+
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       // R14 — 내 알림함이라 대상은 나로 확정돼 있다. 본인 닉네임을 부르지 않는다

@@ -124,6 +124,8 @@ describe('bumps_badge 파생 — ① 보상 획득(활동 결산)만 false', () 
     'mission_participation_cancelled',
     'chapter_up',
     'tribe_changed',
+    'suspension_started', 'suspension_lifted',
+    'reward_pending',
     'followed',
     'following_rare_badge', 'following_collection_complete',
     'following_mission_complete',
@@ -140,9 +142,9 @@ describe('bumps_badge 파생 — ① 보상 획득(활동 결산)만 false', () 
     for (const type of OTHER_TYPES) expect(bumpsBadgeFor(type)).toBe(true)
   })
 
-  it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_016 — 레거시 6종 제거 후 20종, 20261018_0056 남은 칸 알림으로 21종, 20261019_1313 미션 참가 취소로 22종, 20261019_1316 챕터 오름으로 23종, 20261021_1247 트라이브 변경으로 24종)', () => {
-    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(24)
-    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(24)
+  it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_016 — 레거시 6종 제거 후 20종, 20261018_0056 남은 칸 알림으로 21종, 20261019_1313 미션 참가 취소로 22종, 20261019_1316 챕터 오름으로 23종, 20261021_1247 트라이브 변경으로 24종, 20261021_1249 이용 정지·풀림과 받지 않은 보상으로 27종)', () => {
+    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(27)
+    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(27)
   })
 })
 

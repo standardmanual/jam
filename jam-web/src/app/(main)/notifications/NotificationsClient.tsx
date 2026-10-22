@@ -12,8 +12,10 @@ import {
   AlertTriangleIcon,
   BellIcon,
   BookIcon,
+  CheckCircleIcon,
   CoinIcon,
   GiftIcon,
+  LockIcon,
   MedalIcon,
   NewspaperIcon,
   PackageIcon,
@@ -61,6 +63,8 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'following_collection_complete':
       return <BookIcon className={className} />
     case 'drop_picked_up':
+    // 받지 않은 보상도 선물이라 같은 아이콘을 쓴다(티켓 20261021_1249 6-3 5회, 새 아이콘을 고르지 않았다)
+    case 'reward_pending':
       return <GiftIcon className={className} />
     case 'drop_spot_active':
       return <PinIcon className={className} />
@@ -81,6 +85,11 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
       return <ActivityIcon className={className} />
     case 'announcement':
       return <NewspaperIcon className={className} />
+    // 이용 정지는 경고면이 아니라 일반 타일에 잠금으로 그린다. 지난 사건의 기록이라 경고 재평가 대상(`warning.ts`)에도 넣지 않았다(티켓 20261021_1249 6-3 5회)
+    case 'suspension_started':
+      return <LockIcon className={className} />
+    case 'suspension_lifted':
+      return <CheckCircleIcon className={className} />
     default:
       // 20종 전수에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 파일을
       // 빠뜨리면 아래 호출이 컴파일 에러가 난다(20260827_021).

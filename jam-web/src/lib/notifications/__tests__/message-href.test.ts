@@ -611,6 +611,96 @@ describe('④ 미션', () => {
       expect(isWarningNotification('tribe_changed', changed, {})).toBe(false)
     })
   })
+
+  describe('이용 정지·풀림 (티켓 20261021_1249 6-3 5회)', () => {
+    const started = { suspension_id: 's1', suspended_at: '2026-10-22T01:00:00.000Z' }
+    const lifted = { suspension_id: 's1', lifted_at: '2026-10-23T01:00:00.000Z' }
+
+    it('정지됨은 사실과 문의로 가는 길만 말한다 — 사유를 싣지 않는다', () => {
+      expect(text(view('suspension_started', started))).toBe('이용이 정지됐어요. 정지 사유와 해제 방법은 문의로 알려 드려요')
+    })
+
+    it('풀림은 해제됐다는 사실과 다시 할 수 있는 일을 말한다', () => {
+      expect(text(view('suspension_lifted', lifted))).toBe('이용 정지가 해제됐어요. 이제 동기화하고 아이템 배지를 획득할 수 있어요')
+    })
+
+    it('payload에 사유·어드민 이메일·상담 메모가 섞여 들어와도 문구에 나오지 않는다', () => {
+      const leaked = {
+        ...started,
+        reason: '부정 이용 의심',
+        suspended_by: 'admin@j-a-m.app',
+        lift_note: '상담 메모',
+        memo: '상담 메모',
+      }
+      for (const type of ['suspension_started', 'suspension_lifted'] as const) {
+        const out = text(view(type, leaked))
+        expect(out).not.toContain('부정 이용 의심')
+        expect(out).not.toContain('admin@')
+        expect(out).not.toContain('상담 메모')
+      }
+    })
+
+    it('두 문구 모두 고정 문장이라 볼드 슬롯이 없다', () => {
+      expect(notificationTokens(view('suspension_started', started)).some((token) => token.bold)).toBe(false)
+      expect(notificationTokens(view('suspension_lifted', lifted)).some((token) => token.bold)).toBe(false)
+    })
+
+    it('빈 슬롯으로 보고되지 않는다 — payload가 비어도 같다', () => {
+      expect(missingMessageSlots(view('suspension_started', started))).toEqual([])
+      expect(missingMessageSlots(view('suspension_started', {}))).toEqual([])
+      expect(missingMessageSlots(view('suspension_lifted', {}))).toEqual([])
+    })
+
+    it('착지는 홈이다 — 사유·정지일·문의 버튼이 있는 정지 안내 배너가 홈에 있다', () => {
+      expect(notificationTarget(view('suspension_started', started))).toEqual({ href: '/', avatarHref: null })
+      expect(notificationTarget(view('suspension_lifted', lifted))).toEqual({ href: '/', avatarHref: null })
+      expect(notificationTarget(view('suspension_started', {}))).toEqual({ href: '/', avatarHref: null })
+    })
+
+    it('경고 후보가 아니다 — 지난 사건의 기록이라 현재 상태로 강등하지 않는다', () => {
+      expect(isWarningNotification('suspension_started', started, {})).toBe(false)
+      expect(isWarningNotification('suspension_lifted', lifted, {})).toBe(false)
+    })
+  })
+
+  describe('받지 않은 보상 (티켓 20261021_1249 6-3 5회)', () => {
+    const pending = { mission_id: 'm1', mission_title: '한강 100km' }
+
+    it('미션 제목과 받지 못한 까닭을 말하고, 미션 제목만 굵게 보인다', () => {
+      expect(text(view('reward_pending', pending))).toBe('한강 100km에서 받을 보상이 있어요. 인벤토리 빈칸이 모자라 아직 받지 못했어요')
+      const tokens = notificationTokens(view('reward_pending', pending))
+      expect(tokens.filter((token) => token.bold).map((token) => token.text)).toEqual(['한강 100km'])
+    })
+
+    it('«에서»는 받침과 상관없이 같아 조사가 갈리지 않는다', () => {
+      expect(text(view('reward_pending', { ...pending, mission_title: '남산 오르기' }))).toContain('남산 오르기에서 받을 보상이 있어요')
+      expect(text(view('reward_pending', { ...pending, mission_title: '새벽 러닝' }))).toContain('새벽 러닝에서 받을 보상이 있어요')
+    })
+
+    it('제목이 비었거나 손상돼도 「에서 받을 보상이」 같은 문장을 만들지 않는다', () => {
+      for (const payload of [{}, { mission_id: 'm1' }, { mission_title: '' }, { mission_title: '   ' }, { mission_title: 3 }, { mission_title: null }]) {
+        const out = text(view('reward_pending', payload))
+        expect(out).toBe('받을 보상이 있어요. 인벤토리 빈칸이 모자라 아직 받지 못했어요')
+        expect(notificationTokens(view('reward_pending', payload)).some((token) => token.bold)).toBe(false)
+        expect(missingMessageSlots(view('reward_pending', payload))).toEqual([])
+      }
+    })
+
+    it('채워진 슬롯만 있어 빈 슬롯으로 보고되지 않는다', () => {
+      expect(missingMessageSlots(view('reward_pending', pending))).toEqual([])
+    })
+
+    it('착지는 그 미션 상세다 — 미션 id가 비었거나 손상되면 미션 목록이다', () => {
+      expect(notificationTarget(view('reward_pending', pending))).toEqual({ href: '/missions/m1', avatarHref: null })
+      for (const payload of [{}, { mission_title: '한강 100km' }, { mission_id: '' }, { mission_id: 7 }, { mission_id: null }]) {
+        expect(notificationTarget(view('reward_pending', payload))).toEqual({ href: '/missions', avatarHref: null })
+      }
+    })
+
+    it('경고 후보가 아니다', () => {
+      expect(isWarningNotification('reward_pending', pending, {})).toBe(false)
+    })
+  })
 })
 
 describe('⑤⑥ 소셜', () => {
