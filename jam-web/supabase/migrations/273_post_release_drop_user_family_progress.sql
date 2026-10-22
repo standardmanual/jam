@@ -1,0 +1,126 @@
+-- 273_post_release_drop_user_family_progress.sql
+-- JAM 2.0 출시 뒤 정리: 배지 계열 진행 스냅샷 표 user_family_progress를 지운다 (티켓 20261022_0938 2회, 상위 20261021_1250)
+--
+-- **작성만 하고 실행하지 않았다. 출시(main 승격) 뒤 사용자 승인으로 실행한다.**
+--
+-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.
+--    옛 프로덕션(origin/main) 코드는 이 표를 읽고 쓴다(2026-10-22 git grep: jam-web/src/lib/strava/sync.ts 583줄 select, 645줄 upsert의 updateFamilyProgressSnapshots).
+--    출시 전에 지우면 옛 동기화의 계열 진행 스냅샷 읽기·저장이 실패한다. 그래서 옛 프로덕션 코드가 사라지는 출시(main 승격) 뒤에만 실행한다.
+--    staging 코드는 이 표를 열지 않는다(티켓 20261022_0938 1회가 쓰기를 지웠고, 읽는 곳은 원래 없었다).
+--
+-- ⚠️ 데이터를 잃는다: 600행(2026-10-22 조회 기준)이 사라진다. 이 행들은 «싱크마다 다시 계산하는 파생 스냅샷»이라 되돌림은 **구조만 복원하고 데이터는 복원하지 않는다**.
+--    되돌린 표는 빈 표다. 옛 동기화 코드를 되돌려 동기화를 돌리면 다시 채워진다. 행 수는 출시 전까지 옛 동기화가 계속 쓰므로 바뀐다.
+--
+-- 선행 조건
+--   ① 출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤.
+--   ② 코드 참조 0건을 grep으로 다시 확인한다. 이 파일을 쓴 2026-10-22 staging 기준 결과는 0줄이었다(시험 파일에는 «이 표를 열지 않는다»를 확인하는 줄이 남아 있다).
+--        grep -rn "user_family_progress" jam-web/src jam-web/scripts --include="*.ts" --include="*.tsx" --include="*.mjs" | grep -v -E "src/types/database|__tests__"   # 0줄이어야 한다
+--      jam-web/supabase/seed_reset_users_20260906.sql(64·97줄)이 이 표를 백업·삭제한다. 이름에 날짜가 붙은 2026-09-06 일회성 초기화 스크립트라 고치지 않는다(역사 기록).
+--      이 표가 사라진 뒤 그 스크립트를 다시 돌리면 이 표를 가리키는 문장에서 실패한다. 다시 돌릴 파일이 아니다.
+--   ③ 아래 «적용 전 확인»에서 이 표를 가리키는 외래키·읽는 뷰·트리거·정책·함수 본문 언급이 모두 0이어야 한다. 아니면 멈추고 보고한다.
+--      마이그레이션 128이 같은 파일에서 만든 트리거 badges_family_consistency → 함수 check_family_condition_consistency는 badges 표에 걸려 있고 이 표를 읽지 않는다(함수 본문에 family_progress 언급 0, 2026-10-22 조회). 건드리지 않는다.
+--
+-- 실행 순서: 이 묶음은 271(drop_policy 표) → 272(user_drop_state 옛 열) → 273(user_family_progress 표) → 274(all_random 열) 순서로 실행한다. 네 파일은 서로 의존하지 않아 하나가 멈춰도 나머지에 영향이 없다.
+--
+-- 하는 일: DROP TABLE public.user_family_progress. CASCADE를 쓰지 않으므로 이 표에 기대는 객체(외래키·뷰)가 있으면 오류로 멈춘다.
+-- 바꾸지 않는 것: users·strava_activities 표와 그 밖의 표. 이 표가 가진 외래키(users, strava_activities를 가리킨다)는 표와 함께 사라지고 그 두 표 쪽에는 바뀔 데이터가 없다. badges와 계열 정합성 트리거도 그대로다.
+-- 잠금: DROP TABLE은 이 표에 ACCESS EXCLUSIVE 잠금을 요구하고, 외래키로 이어진 users·strava_activities에도 짧은 잠금이 걸릴 수 있다(유저·활동 쿼리가 잠깐 기다릴 수 있다).
+--   실행하는 쪽에서 같은 트랜잭션 안에 SET LOCAL lock_timeout = '3s'를 두어 다른 쿼리를 오래 막지 않게 한다(본문에는 넣지 않았다).
+-- 생성 타입: 적용 뒤 database.generated.ts에서 이 표를 지운다. database.ts에는 이 표의 Row 타입이 없다(티켓 20261022_0938 1회가 UserFamilyProgressRow를 이미 지웠다).
+--   · jam-web/src/types/database.generated.ts: Tables의 user_family_progress 항목 전체(Row·Insert·Update·Relationships, 이 파일을 쓴 시점 3958~4005줄. 다음 항목 user_follows가 4006줄에서 시작한다).
+--   시험 파일의 가짜 행은 타입과 무관해 그대로 둬도 컴파일된다.
+--
+-- 적용 전 확인(읽기 전용 SELECT):
+--   SELECT count(*) AS 행 FROM public.user_family_progress;                                             -- 600 (2026-10-22 기준. 출시 전까지 늘고 줄 수 있다. 되돌림은 데이터를 복원하지 않으므로 기록만 해 둔다)
+--   SELECT count(*) AS 이_표를_가리키는_외래키 FROM pg_constraint WHERE confrelid = 'public.user_family_progress'::regclass;   -- 0
+--   SELECT count(*) AS 이_표를_읽는_뷰 FROM pg_depend d JOIN pg_rewrite r ON r.oid = d.objid
+--    WHERE d.classid = 'pg_rewrite'::regclass AND d.refobjid = 'public.user_family_progress'::regclass
+--      AND r.ev_class <> d.refobjid;                                                                  -- 0
+--   SELECT count(*) AS 트리거 FROM pg_trigger WHERE tgrelid = 'public.user_family_progress'::regclass AND NOT tgisinternal;   -- 0
+--   SELECT count(*) AS 정책 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_family_progress';               -- 0 (RLS는 켜져 있고 정책이 없다)
+--   SELECT p.oid::regprocedure AS 본문에서_이_표를_언급하는_함수 FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ~ '\muser_family_progress\M';        -- 0행 (함수 본문 안의 이름은 pg_depend가 추적하지 못해 따로 본다)
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.user_family_progress'::regclass ORDER BY conname;                       -- 3행: user_family_progress_last_activity_id_fkey (→ strava_activities(id), ON DELETE 절 없음), user_family_progress_pkey (user_id, activity_type, family_name), user_family_progress_user_id_fkey (→ users(id) ON DELETE CASCADE)
+--   SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'user_family_progress';   -- 1행: user_family_progress_pkey
+--   SELECT ordinal_position, column_name, data_type, is_nullable, column_default
+--     FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user_family_progress' ORDER BY ordinal_position;   -- 8행: user_id uuid NO / activity_type text NO / family_name text NO / progress real NO / current jsonb NO / prev jsonb YES / last_activity_id uuid YES / updated_at timestamp with time zone NO now()
+--   SELECT relrowsecurity, relacl::text FROM pg_class WHERE oid = 'public.user_family_progress'::regclass;   -- true, {postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}
+--   코멘트 7개(표 1 + 열 6)가 되돌림 문구와 같은지. objsubid는 열 번호이고 0이 표다:
+--   SELECT objsubid, md5(description) AS md5, length(description) AS len FROM pg_description
+--    WHERE classoid = 'pg_class'::regclass AND objoid = 'public.user_family_progress'::regclass ORDER BY objsubid;   -- 7행. 아래 값과 같다(objsubid, md5, 글자 수)
+--   0  (표)               f5a20b7c5633e3b4bc29b74362243cf9  175
+--   2  activity_type     b90538cc8ec34c8169140a1847ea78c9  147
+--   3  family_name       7a7c38f1ed10a2287c66a03846ccdf8a  48
+--   4  progress          e3d855eabda9045a328fdf6ce05b4eeb  64
+--   5  current           5869150d7d057a807585cff3774f1882  187
+--   6  prev              09141a2f5cc55edfedb0c85b8b126563  55
+--   7  last_activity_id  904751979a1cc3f36545ab852b49f982  176
+--
+-- 적용 후 확인(읽기 전용 SELECT):
+--   SELECT to_regclass('public.user_family_progress') IS NULL AS 표_없음;                                -- true
+--   SELECT count(*) FROM public.users;                                                                 -- 적용 전과 같다(users는 건드리지 않는다)
+--   SELECT count(*) FROM public.strava_activities;                                                     -- 적용 전과 같다
+--   SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.badges'::regclass AND NOT tgisinternal AND tgname = 'badges_family_consistency';   -- 1행 (계열 정합성 트리거는 그대로)
+
+DROP TABLE IF EXISTS public.user_family_progress;
+
+-- 되돌림 SQL
+-- 표를 같은 모양으로 다시 만든다(구조만, 데이터는 복원하지 않는다 — 위 «데이터를 잃는다» 참고). 열·제약·코멘트·RLS는 2026-10-22 공용 DB의 실제 정의다(마이그레이션 128과 같다).
+-- 아래 «-- » 접두어를 떼고 한 번에 실행한다. 코멘트 7개(표 1 + 열 6)는 문구가 줄바꿈 뒤 공백 3칸까지 같아야 하므로 $$ 문자열 안의 줄을 고치지 않는다.
+--   접두어를 뗄 때는 줄 맨 앞의 «-- »(대시 둘과 공백 하나)만 뗀다. 연속 줄의 공백 3칸이 문구의 일부다.
+-- 코멘트 문구는 카리나가 공용 DB에서 읽은 값의 md5·글자 수와 대조했다(위 «적용 전 확인»의 마지막 쿼리).
+-- 별도 인덱스는 기본키가 만드는 하나뿐이다. 권한은 GRANT를 쓰지 않고 Supabase 기본 권한이 자동으로 붙는지 아래 확인으로 본다.
+--
+-- CREATE TABLE public.user_family_progress (
+--   user_id           uuid        NOT NULL,
+--   activity_type     text        NOT NULL,
+--   family_name       text        NOT NULL,
+--   progress          real        NOT NULL,
+--   current           jsonb       NOT NULL,
+--   prev              jsonb       NULL,
+--   last_activity_id  uuid        NULL,
+--   updated_at        timestamptz NOT NULL DEFAULT now(),
+--   CONSTRAINT user_family_progress_pkey PRIMARY KEY (user_id, activity_type, family_name),
+--   CONSTRAINT user_family_progress_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+--   CONSTRAINT user_family_progress_last_activity_id_fkey FOREIGN KEY (last_activity_id) REFERENCES public.strava_activities(id)
+-- );
+--
+-- ALTER TABLE public.user_family_progress ENABLE ROW LEVEL SECURITY;
+-- -- 정책은 만들지 않는다(원래 0개). service_role은 RLS를 우회하고 anon·authenticated는 정책이 없어 거부된다.
+--
+-- COMMENT ON TABLE public.user_family_progress IS
+-- $$배지 계열(activity_type, name)별 진행 스냅샷. 매 싱크마다 현재값을 계산해 직전 값(prev)과
+--    교체 저장한다 — "직전 동기화 대비 얼마나 나아갔는지"(레일 꼬리, 3b 화면 티켓)의 비교 기준.
+--    이번 티켓 범위에는 화면이 없다 — write-hook까지만. 20260904_1156$$;
+-- COMMENT ON COLUMN public.user_family_progress.activity_type IS
+-- $$ActivityType 값 하나(walking 등) — badges.activity_types[0]과 동일(활동배지의 activity_types
+--    배열 길이는 항상 1, 1차 시도 실측). badges.activity_types(복수형 배열)와 다른 컬럼이다.$$;
+-- COMMENT ON COLUMN public.user_family_progress.family_name IS
+-- $$= badges.name. 계열의 유일한 식별자(2b/2c 티켓에서 이미 확인된 전제)$$;
+-- COMMENT ON COLUMN public.user_family_progress.progress IS
+-- $$0~1. 계열 안 프런티어(첫 미획득 등급) 배지의 computeBadgeProgress().progress 스냅샷$$;
+-- COMMENT ON COLUMN public.user_family_progress.current IS
+-- $$프런티어 배지의 computeBadgeProgress().axes 스냅샷(jsonb 배열). 라벨(label/unit)은 이 티켓의
+--    write-hook이 빈 라벨 맵으로 계산해 넣으므로 원문 key로 채워진다 — 실제 라벨은 표시 시점(3b)에
+--    badge_metric_labels를 다시 조회해 값을 붙인다(완료 기록 참고)$$;
+-- COMMENT ON COLUMN public.user_family_progress.prev IS
+-- $$직전 동기화 시점의 current를 그대로 옮긴 값 — 새로 계산하지 않는다. 최초 1회는 NULL$$;
+-- COMMENT ON COLUMN public.user_family_progress.last_activity_id IS
+-- $$이 스냅샷을 갱신한 싱크 배치에서 가장 최신인 활동의 strava_activities.id(감사용). 계열별
+--    활동 종목과 무관하게 그 싱크를 트리거한 배치 전체 기준 1개 값을 모든 계열 행에 공유한다 —
+--    활동 단위 기여도 계산에는 쓰이지 않는다(D절 설계 수정: current/prev 축 차이로 대체)$$;
+--
+-- 되돌린 뒤 확인(읽기 전용 SELECT):
+--   SELECT ordinal_position, column_name, data_type, is_nullable, column_default
+--     FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user_family_progress' ORDER BY ordinal_position;   -- 적용 전 확인과 같은 8행(순서·타입·NOT NULL·기본값)
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.user_family_progress'::regclass ORDER BY conname;                       -- 적용 전 확인과 같은 3행(이름·정의 모두)
+--   SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'user_family_progress';   -- 1행: user_family_progress_pkey
+--   SELECT relrowsecurity, relacl::text FROM pg_class WHERE oid = 'public.user_family_progress'::regclass;   -- true, 적용 전 확인과 같은 권한 문자열
+--   SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_family_progress';   -- 0
+--   SELECT objsubid, md5(description) AS md5, length(description) AS len FROM pg_description
+--    WHERE classoid = 'pg_class'::regclass AND objoid = 'public.user_family_progress'::regclass ORDER BY objsubid;   -- 적용 전 확인과 같은 7행(md5·글자 수가 위 값과 모두 같다)
+--   SELECT count(*) FROM public.user_family_progress;                                                  -- 0 (데이터는 복원하지 않는다)
+--   위 relacl이 적용 전과 다르면(기본 권한이 붙지 않았으면) 멈추고 보고한다. 아래 한 줄을 더할지는 카리나가 판단한다:
+--   -- GRANT ALL ON TABLE public.user_family_progress TO anon, authenticated, service_role;

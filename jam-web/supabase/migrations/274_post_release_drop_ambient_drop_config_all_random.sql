@@ -1,0 +1,84 @@
+-- 274_post_release_drop_ambient_drop_config_all_random.sql
+-- JAM 2.0 출시 뒤 정리: ambient_drop_config의 옛 «전체 무작위» 열 all_random을 지운다 (티켓 20261022_0938 2회, 상위 20261021_1250)
+--
+-- **작성만 하고 실행하지 않았다. 출시(main 승격) 뒤 사용자 승인으로 실행한다.**
+--
+-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.
+--    옛 프로덕션(origin/main) 코드는 이 열을 읽고 쓴다(2026-10-22 git grep: jam-web/src/lib/ambient-drop/index.ts 63~65줄과 scheduleRun.ts 177줄이 config.all_random을 읽고,
+--    jam-web/src/app/api/admin/ambient-drop/config/route.ts 37·119줄이 저장 값에 싣고, jam-web/src/app/admin/ambient-drop/AmbientDropForm.tsx 216줄이 스위치로 보여 준다).
+--    출시 전에 지우면 옛 코드의 어드민 정기 배포 설정 저장이 없는 열에 쓰려다 실패한다. 그래서 옛 프로덕션 코드가 사라지는 출시(main 승격) 뒤에만 실행한다.
+--    staging 코드는 이 열을 읽지도 쓰지도 않는다(티켓 20261022_0938 1회가 지웠다. DB 행에 열이 남아 있어도 설정 객체에 싣지 않는다).
+--
+-- ⚠️ 데이터를 잃는다: 열을 지우면 행 id=1의 값이 사라진다. 2026-10-22 공용 DB에서 읽은 값은 all_random = true이고 기본값(false)과 다르다.
+--    되돌림이 열을 boolean NOT NULL DEFAULT false로 다시 만들고 id=1을 true로 복원한다. 적용 직전에 «적용 전 확인» 첫 쿼리를 다시 돌려 true인지 본다. 다르면 되돌림 UPDATE의 값을 그 결과로 고친다.
+--    (코드는 이미 이 값을 보지 않으므로 true가 지금 동작에 영향을 주지 않는다. 옛 프로덕션은 이 값이 true이면 세 축을 모두 무작위로 정했다.)
+--
+-- 선행 조건
+--   ① 출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤.
+--   ② 코드 참조 0건을 grep으로 다시 확인한다. 이 파일을 쓴 2026-10-22 staging 기준 결과는 0줄이었다(시험 파일에는 «이 열을 싣지 않는다»를 확인하는 줄이 남아 있다).
+--        grep -rn "all_random" jam-web/src jam-web/scripts --include="*.ts" --include="*.tsx" --include="*.mjs" | grep -v -E "src/types/database|__tests__|\.test\."   # 0줄이어야 한다
+--   ③ 아래 «적용 전 확인»에서 이 열을 읽는 뷰·제약·인덱스·트리거와 본문 언급 함수가 0이어야 한다. 아니면 멈추고 보고한다.
+--
+-- 실행 순서: 이 묶음은 271(drop_policy 표) → 272(user_drop_state 옛 열) → 273(user_family_progress 표) → 274(all_random 열) 순서로 실행한다. 네 파일은 서로 의존하지 않아 하나가 멈춰도 나머지에 영향이 없다.
+--
+-- 하는 일: ambient_drop_config의 all_random 열을 지운다. 이미 없는 열은 건너뛴다(다시 실행해도 안전하다). CASCADE를 쓰지 않으므로 이 열에 기대는 객체(뷰 등)가 있으면 오류로 멈춘다.
+-- 바꾸지 않는 것: 행(id=1), 그 밖의 열(auto_enabled·schedule_hour_kst·category_mode·rarity_*·collection_mode·collection_ids·batch_size·max_active_per_poi 등)과 값, 표 코멘트(«앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). ...»),
+--   표의 다른 제약(batch_size·category_mode·collection_mode·exclusion_window_minutes·id·max_active_per_poi·rarity_mode·schedule_hour_kst의 CHECK·기본키), RLS(켜짐, 정책 없음).
+--   이 열에 걸린 CHECK·인덱스·외래키는 없다(2026-10-22 조회).
+-- 잠금: ALTER TABLE ... DROP COLUMN은 이 표에 ACCESS EXCLUSIVE 잠금을 요구한다. 행이 1개라 바로 끝나지만, 진행 중인 쿼리 뒤에서 기다리는 동안 뒤따르는 쿼리를 막는다.
+--   실행하는 쪽에서 같은 트랜잭션 안에 SET LOCAL lock_timeout = '3s'를 둔다(본문에는 넣지 않았다).
+-- 생성 타입: 적용 뒤 database.generated.ts·database.ts에서 이 열을 지운다.
+--   · jam-web/src/types/database.generated.ts: ambient_drop_config의 Row 161줄(all_random: boolean), Insert 181줄(all_random?: boolean), Update 201줄(all_random?: boolean). 이 파일을 쓴 2026-10-22 staging 기준이다.
+--   · jam-web/src/types/database.ts: AmbientDropConfigRow 위 설명 주석(1091~1092줄)의 «DB 표에는 옛 «전체 무작위» 열이 아직 남아 있지만 … 열 정리는 티켓 20261022_0938 2회» 문장을 지운다(인터페이스 자체에는 이 열이 없다).
+--   시험 파일의 가짜 행(Record<string, unknown>)은 타입과 무관해 그대로 둬도 컴파일된다.
+--
+-- 적용 전 확인(읽기 전용 SELECT):
+--   SELECT id, all_random FROM public.ambient_drop_config;                                               -- 1행: id=1, true
+--   SELECT count(*) AS 행 FROM public.ambient_drop_config;                                                -- 1
+--   SELECT column_name, data_type, is_nullable, column_default
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'ambient_drop_config' AND column_name = 'all_random';   -- 1행: all_random / boolean / NO / false
+--   SELECT count(*) AS 열_코멘트 FROM pg_description
+--    WHERE classoid = 'pg_class'::regclass AND objoid = 'public.ambient_drop_config'::regclass
+--      AND objsubid = (SELECT attnum FROM pg_attribute WHERE attrelid = 'public.ambient_drop_config'::regclass AND attname = 'all_random');   -- 0
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.ambient_drop_config'::regclass ORDER BY conname;                         -- 이 열을 쓰는 제약이 없어야 한다(정의에 all_random이 없다)
+--   SELECT count(*) AS 이_열을_쓰는_인덱스 FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY (i.indkey)
+--    WHERE i.indrelid = 'public.ambient_drop_config'::regclass AND a.attname = 'all_random';             -- 0
+--   SELECT count(*) AS 이_열을_읽는_뷰 FROM pg_depend d JOIN pg_rewrite r ON r.oid = d.objid
+--    WHERE d.classid = 'pg_rewrite'::regclass AND d.refobjid = 'public.ambient_drop_config'::regclass AND d.refobjsubid > 0
+--      AND r.ev_class <> d.refobjid;                                                                  -- 0
+--   SELECT count(*) AS 트리거 FROM pg_trigger WHERE tgrelid = 'public.ambient_drop_config'::regclass AND NOT tgisinternal;   -- 0 (있으면 되돌림 UPDATE가 updated_at 같은 값을 바꿀 수 있다)
+--   SELECT p.oid::regprocedure AS 본문에서_이_열을_언급하는_함수 FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ~ '\mall_random\M';                    -- 0행 (함수 본문 안의 이름은 pg_depend가 추적하지 못해 따로 본다)
+--   SELECT to_jsonb(c) - 'all_random' AS 나머지_칸 FROM public.ambient_drop_config c WHERE id = 1;      -- 기록해 둔다. 적용 후와 같아야 한다
+--
+-- 적용 후 확인(읽기 전용 SELECT):
+--   SELECT count(*) AS 남은_열 FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'ambient_drop_config' AND column_name = 'all_random';   -- 0
+--   SELECT to_jsonb(c) AS 행 FROM public.ambient_drop_config c WHERE id = 1;                            -- 적용 전 «나머지_칸» 기록과 같다(all_random만 빠졌다)
+--   SELECT count(*) AS 행 FROM public.ambient_drop_config;                                                -- 1
+--   SELECT obj_description('public.ambient_drop_config'::regclass, 'pg_class') IS NOT NULL AS 표_코멘트_그대로;   -- true
+
+ALTER TABLE public.ambient_drop_config
+  DROP COLUMN IF EXISTS all_random;
+
+-- 되돌림 SQL
+-- 열을 같은 타입·NOT NULL·기본값으로 다시 만들고, 행 id=1을 2026-10-22 공용 DB의 지금 값(true)으로 복원한다.
+-- 아래 «-- » 접두어를 떼고 두 문장을 한 트랜잭션으로 묶어 실행한다. 적용 직전 값이 true가 아니었다면 UPDATE의 값을 그 값으로 바꾼 뒤 실행한다.
+-- 기본값(false)과 지금 값(true)이 달라 UPDATE가 필요하다. 열 순서는 표의 맨 뒤로 바뀐다(코드는 이름으로 읽으므로 영향이 없다). 열 코멘트·CHECK·인덱스는 원래 없었으므로 만들지 않는다.
+--
+-- ALTER TABLE public.ambient_drop_config
+--   ADD COLUMN all_random boolean NOT NULL DEFAULT false;
+--
+-- UPDATE public.ambient_drop_config
+--    SET all_random = true
+--  WHERE id = 1;
+--
+-- 되돌린 뒤 확인(읽기 전용 SELECT):
+--   SELECT id, all_random FROM public.ambient_drop_config;                                               -- 1행: id=1, true
+--   SELECT column_name, data_type, is_nullable, column_default
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'ambient_drop_config' AND column_name = 'all_random';   -- 적용 전 확인과 같은 1행(boolean / NO / false)
+--   SELECT to_jsonb(c) - 'all_random' AS 나머지_칸 FROM public.ambient_drop_config c WHERE id = 1;      -- 적용 전에 기록한 «나머지_칸»과 같다
+--   SELECT conname FROM pg_constraint WHERE conrelid = 'public.ambient_drop_config'::regclass ORDER BY conname;   -- 적용 전 확인과 같은 제약 목록(이름)

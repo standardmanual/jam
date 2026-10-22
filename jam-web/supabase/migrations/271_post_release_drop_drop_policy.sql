@@ -1,0 +1,126 @@
+-- 271_post_release_drop_drop_policy.sql
+-- JAM 2.0 출시 뒤 정리: 옛 드랍 엔진의 정책 표 drop_policy를 지운다 (티켓 20261022_0938 2회, 상위 20261021_1250)
+--
+-- **작성만 하고 실행하지 않았다. 출시(main 승격) 뒤 사용자 승인으로 실행한다.**
+--
+-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.
+--    옛 프로덕션(origin/main) 코드는 이 표를 읽고 쓴다(2026-10-22 git grep: jam-web/src/lib/drop-engine/policy.ts 41줄 select, 70줄 upsert,
+--    어드민 «드랍 정책» 화면과 시뮬레이터 «아이템 드랍» 구역이 그 함수를 부른다). 출시 전에 지우면 옛 코드의 정책 읽기·저장이 실패한다.
+--    그래서 옛 프로덕션 코드가 사라지는 출시(main 승격) 뒤에만 실행한다. staging 코드는 이 표를 열지 않는다(티켓 20261022_0938 1회가 지웠다).
+--
+-- ⚠️ 데이터를 잃는다: 표를 지우면 1행(id=1)이 사라진다. 2026-10-22 공용 DB에서 읽은 값은 모두 열 기본값과 같고 updated_at만 2026-08-31 02:40:00+00이다.
+--    되돌림이 이 행을 같은 값으로 다시 넣는다. 적용 직전에 «적용 전 확인» 첫 쿼리를 다시 돌려 되돌림 INSERT의 값과 같은지 본다.
+--    다르면 되돌림 INSERT의 값을 그 결과로 고친 뒤 실행한다.
+--
+-- 선행 조건
+--   ① 출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤.
+--   ② 코드 참조 0건을 grep으로 다시 확인한다. 이 파일을 쓴 2026-10-22 staging 기준 결과는 0줄이었다(1회에서 앱 코드의 참조를 모두 지웠다).
+--        grep -rnE "from\(\s*['\"\`]drop_policy['\"\`]|['\"\`]public\.drop_policy" jam-web/src jam-web/scripts --include="*.ts" --include="*.tsx" --include="*.mjs" | grep -v -E "src/types/database"   # 0줄이어야 한다
+--   ③ 아래 «적용 전 확인»에서 행 1, 이 표를 가리키는 외래키·읽는 뷰·트리거·정책·함수 본문 언급이 모두 0이어야 한다. 아니면 멈추고 보고한다.
+--
+-- 실행 순서: 이 묶음은 271(drop_policy 표) → 272(user_drop_state 옛 열) → 273(user_family_progress 표) → 274(all_random 열) 순서로 실행한다.
+--   네 파일은 서로 의존하지 않아 하나가 멈춰도 나머지에 영향이 없다. 가드 코드(어드민 삭제 가드)는 272와 같은 출시에 실려 있어야 한다.
+--
+-- 하는 일: DROP TABLE public.drop_policy. CASCADE를 쓰지 않으므로 이 표에 기대는 객체(외래키·뷰)가 있으면 오류로 멈춘다.
+-- 바꾸지 않는 것: 다른 표 전부. 이 표는 들어오는 외래키가 없고 나가는 외래키도 없다. abusing_policy·inventory_policy·jam_policy·capsule_policy 같은 다른 정책 표는 건드리지 않는다.
+-- 잠금: DROP TABLE은 이 표에 ACCESS EXCLUSIVE 잠금을 요구한다. 행이 1개이고 다른 표와 이어진 것이 없어 바로 끝난다.
+--   실행하는 쪽에서 같은 트랜잭션 안에 SET LOCAL lock_timeout = '3s'를 둔다(본문에는 넣지 않았다).
+-- 생성 타입: 적용 뒤 database.generated.ts에서 이 표를 지운다. database.ts에는 이 표의 Row 타입이 없어 지울 것이 없다(23줄 근처 주석은 지난 일을 적은 설명이라 그대로 둔다).
+--   · jam-web/src/types/database.generated.ts: Tables의 drop_policy 항목 전체(Row·Insert·Update, 이 파일을 쓴 시점 1029~1109줄. 다음 항목 engine_decision_log가 1110줄에서 시작한다).
+--   시험 파일의 가짜 행은 타입과 무관해 그대로 둬도 컴파일된다.
+--
+-- 적용 전 확인(읽기 전용 SELECT):
+--   SELECT to_jsonb(d) AS 행, d.updated_at::text AS updated_at_text FROM public.drop_policy d;       -- 1행. 값은 아래 되돌림 INSERT와 같다(모든 값이 열 기본값, updated_at만 2026-08-31 02:40:00+00)
+--   SELECT count(*) AS 행 FROM public.drop_policy;                                                     -- 1
+--   SELECT count(*) AS 이_표를_가리키는_외래키 FROM pg_constraint WHERE confrelid = 'public.drop_policy'::regclass;   -- 0
+--   SELECT count(*) AS 이_표를_읽는_뷰 FROM pg_depend d JOIN pg_rewrite r ON r.oid = d.objid
+--    WHERE d.classid = 'pg_rewrite'::regclass AND d.refobjid = 'public.drop_policy'::regclass
+--      AND r.ev_class <> d.refobjid;                                                                  -- 0
+--   SELECT count(*) AS 트리거 FROM pg_trigger WHERE tgrelid = 'public.drop_policy'::regclass AND NOT tgisinternal;   -- 0
+--   SELECT count(*) AS 정책 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'drop_policy';              -- 0 (RLS는 켜져 있고 정책이 없다)
+--   SELECT p.oid::regprocedure AS 본문에서_이_표를_언급하는_함수 FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ~ '\mdrop_policy\M';                 -- 0행 (함수 본문 안의 이름은 pg_depend가 추적하지 못해 따로 본다)
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.drop_policy'::regclass ORDER BY conname;                               -- 2행: drop_policy_id_check CHECK ((id = 1)), drop_policy_pkey PRIMARY KEY (id)
+--   SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'drop_policy';       -- 1행: drop_policy_pkey
+--   SELECT count(*) AS 코멘트 FROM pg_description WHERE classoid = 'pg_class'::regclass AND objoid = 'public.drop_policy'::regclass;   -- 0 (표·열 코멘트 없음)
+--   SELECT relrowsecurity, relacl::text FROM pg_class WHERE oid = 'public.drop_policy'::regclass;     -- true, {postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}
+--   SELECT ordinal_position, column_name, data_type, numeric_precision, numeric_scale, is_nullable, column_default
+--     FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'drop_policy' ORDER BY ordinal_position;   -- 24행: 되돌림 CREATE TABLE의 열 순서·타입·NOT NULL·기본값과 같다
+--
+-- 적용 후 확인(읽기 전용 SELECT):
+--   SELECT to_regclass('public.drop_policy') IS NULL AS 표_없음;                                        -- true
+--   SELECT count(*) FROM public.abusing_policy;                                                        -- 적용 전과 같다(다른 정책 표는 건드리지 않는다)
+
+DROP TABLE IF EXISTS public.drop_policy;
+
+-- 되돌림 SQL
+-- 표를 같은 모양으로 다시 만들고 1행을 넣는다. 열·제약은 2026-10-22 공용 DB의 실제 정의다(저장소의 옛 마이그레이션과 다르면 DB 쪽이 실제다).
+-- 아래 «-- » 접두어를 떼고 세 문장을 한 트랜잭션으로 묶어 실행한다. 적용 직전 값이 위와 달랐다면 INSERT의 값을 그 값으로 바꾼 뒤 실행한다.
+-- 표 코멘트·열 코멘트·트리거·정책·별도 인덱스는 원래 없었으므로 만들지 않는다(RLS만 켠다). 권한은 GRANT를 쓰지 않고 Supabase 기본 권한이 자동으로 붙는지 아래 확인으로 본다.
+--
+-- CREATE TABLE public.drop_policy (
+--   id                        integer       NOT NULL DEFAULT 1,
+--   rarity_common             numeric(4,3)  NOT NULL DEFAULT 0.60,
+--   rarity_rare               numeric(4,3)  NOT NULL DEFAULT 0.28,
+--   rarity_epic               numeric(4,3)  NOT NULL DEFAULT 0.09,
+--   rarity_mystic             numeric(4,3)  NOT NULL DEFAULT 0.03,
+--   bonus_drop_rate           numeric(4,3)  NOT NULL DEFAULT 0.15,
+--   bonus_drop_rate_intense   numeric(4,3)  NOT NULL DEFAULT 0.30,
+--   intense_duration_min      integer       NOT NULL DEFAULT 60,
+--   intense_elevation_m       integer       NOT NULL DEFAULT 300,
+--   rare_pity_threshold       integer       NOT NULL DEFAULT 5,
+--   daily_downgrade_from      integer       NOT NULL DEFAULT 4,
+--   daily_downgrade_common    numeric(4,3)  NOT NULL DEFAULT 0.90,
+--   comeback_gap_days         integer       NOT NULL DEFAULT 7,
+--   weekly_first_rare_mult    numeric(4,2)  NOT NULL DEFAULT 2.0,
+--   momentum_weight           numeric(4,3)  NOT NULL DEFAULT 0.50,
+--   adjacent_weight           numeric(4,3)  NOT NULL DEFAULT 0.25,
+--   explore_weight            numeric(4,3)  NOT NULL DEFAULT 0.15,
+--   context_override_rate     numeric(4,3)  NOT NULL DEFAULT 0.60,
+--   mystery_spice_rate        numeric(4,3)  NOT NULL DEFAULT 0.15,
+--   completion_decay          numeric(4,3)  NOT NULL DEFAULT 0.70,
+--   completed_book_weight     numeric(4,3)  NOT NULL DEFAULT 0.30,
+--   same_book_penalty         numeric(4,3)  NOT NULL DEFAULT 0.50,
+--   last_piece_pity_threshold integer       NOT NULL DEFAULT 5,
+--   updated_at                timestamptz   NOT NULL DEFAULT now(),
+--   CONSTRAINT drop_policy_pkey PRIMARY KEY (id),
+--   CONSTRAINT drop_policy_id_check CHECK (id = 1)
+-- );
+--
+-- ALTER TABLE public.drop_policy ENABLE ROW LEVEL SECURITY;
+-- -- 정책은 만들지 않는다(원래 0개). service_role은 RLS를 우회하고 anon·authenticated는 정책이 없어 거부된다.
+--
+-- INSERT INTO public.drop_policy (
+--   id, rarity_common, rarity_rare, rarity_epic, rarity_mystic,
+--   bonus_drop_rate, bonus_drop_rate_intense, intense_duration_min, intense_elevation_m,
+--   rare_pity_threshold, daily_downgrade_from, daily_downgrade_common, comeback_gap_days,
+--   weekly_first_rare_mult, momentum_weight, adjacent_weight, explore_weight,
+--   context_override_rate, mystery_spice_rate, completion_decay, completed_book_weight,
+--   same_book_penalty, last_piece_pity_threshold, updated_at
+-- ) VALUES (
+--   1, 0.600, 0.280, 0.090, 0.030,
+--   0.150, 0.300, 60, 300,
+--   5, 4, 0.900, 7,
+--   2.00, 0.500, 0.250, 0.150,
+--   0.600, 0.150, 0.700, 0.300,
+--   0.500, 5, '2026-08-31 02:40:00+00'
+-- );
+--
+-- 되돌린 뒤 확인(읽기 전용 SELECT):
+--   SELECT to_jsonb(d) AS 행 FROM public.drop_policy d;                                              -- {"id": 1, "updated_at": "2026-08-31T02:40:00+00:00", "rarity_epic": 0.090, "rarity_rare": 0.280, "rarity_common": 0.600, "rarity_mystic": 0.030,
+--                                                                                                    --  "explore_weight": 0.150, "adjacent_weight": 0.250, "bonus_drop_rate": 0.150, "momentum_weight": 0.500, "completion_decay": 0.700, "comeback_gap_days": 7,
+--                                                                                                    --  "same_book_penalty": 0.500, "mystery_spice_rate": 0.150, "intense_elevation_m": 300, "rare_pity_threshold": 5, "daily_downgrade_from": 4,
+--                                                                                                    --  "intense_duration_min": 60, "completed_book_weight": 0.300, "context_override_rate": 0.600, "daily_downgrade_common": 0.900,
+--                                                                                                    --  "weekly_first_rare_mult": 2.00, "bonus_drop_rate_intense": 0.300, "last_piece_pity_threshold": 5} (적용 전 확인의 첫 쿼리와 같다)
+--   SELECT ordinal_position, column_name, data_type, numeric_precision, numeric_scale, is_nullable, column_default
+--     FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'drop_policy' ORDER BY ordinal_position;   -- 적용 전 확인과 같은 24행(순서·타입·NOT NULL·기본값)
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.drop_policy'::regclass ORDER BY conname;                               -- 적용 전 확인과 같은 2행(이름·정의 모두)
+--   SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'drop_policy';       -- 1행: drop_policy_pkey
+--   SELECT relrowsecurity, relacl::text FROM pg_class WHERE oid = 'public.drop_policy'::regclass;     -- true, 적용 전 확인과 같은 권한 문자열
+--   SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'drop_policy';      -- 0
+--   SELECT count(*) AS 코멘트 FROM pg_description WHERE classoid = 'pg_class'::regclass AND objoid = 'public.drop_policy'::regclass;   -- 0
+--   SELECT count(*) FROM public.drop_policy;                                                         -- 1
+--   위 relacl이 적용 전과 다르면(기본 권한이 붙지 않았으면) 멈추고 보고한다. 아래 한 줄을 더할지는 카리나가 판단한다:
+--   -- GRANT ALL ON TABLE public.drop_policy TO anon, authenticated, service_role;
