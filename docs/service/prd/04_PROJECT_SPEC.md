@@ -45,7 +45,7 @@ jam-web/
 │   │   ├── (main)/             # badges, collections, combine, drops, inventory,
 │   │   │                       # missions, onboarding, points, profile, search,
 │   │   │                       # today, [username] 등
-│   │   ├── admin/               # abusing, ambient-drop, badges, combine-policy,
+│   │   ├── admin/               # abusing, ambient-drop, badges, balance,
 │   │   │                       # drop-policy, tribes, itembooks, missions, poi,
 │   │   │                       # points, recipes, simulator, theme, today, users
 │   │   ├── api/                 # admin, combine, cron, drops, follows, inventory,

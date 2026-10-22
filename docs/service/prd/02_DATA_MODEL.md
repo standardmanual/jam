@@ -495,7 +495,7 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 **테이블**
 - `user_item_book_tier_completions`: 등급별 완성 기록. `(user_id, item_book_id, tier)` 복합 PK, `completed_at`. 본인만 SELECT, 쓰기 정책 없음.
 - `item_book_tier_rewards`: 컬렉션·등급별 보상. `(item_book_id, tier)` 복합 PK, `reward_points`(NULL이면 기본값, `>= 0`), `reward_badge_id`(→ `badges.id`, 삭제 시 NULL, NULL이면 보상 배지 없음). RLS 활성·정책 없음(서버 전용).
-- `item_book_tier_default_rewards`: 등급별 기본 보상 포인트. `tier` PK, `reward_points`(`>= 0`). 초기값 common 100 / rare 200 / epic 400 / mystic 800(운영 로직 8.6절). 값 변경에 마이그레이션이 필요 없다. RLS 활성·정책 없음(서버 전용).
+- `item_book_tier_default_rewards`: 등급별 기본 보상 포인트. `tier` PK, `reward_points`(`>= 0`). 초기값 common 100 / rare 200 / epic 400 / mystic 800(운영 로직 8.6절). 값 변경에 마이그레이션이 필요 없다. RLS 활성·정책 없음(서버 전용). 편집 화면은 어드민 «밸런스 설정»의 «컬렉션과 믹스» 구역이다(`/admin/balance#collection`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 네 등급 행을 칸 이름 `default_reward:<등급>`으로 편집하고, 저장하면 바뀐 행의 `updated_at`을 직접 올린다(갱신 트리거가 없다). 컬렉션마다 따로 정한 값(`item_book_tier_rewards.reward_points`)이 있으면 그 값이 먼저이고, 이미 받은 보상은 바뀌지 않는다.
 - `tier` 열의 형은 `badge_rarity`다.
 
 **함수** (둘 다 SECURITY DEFINER, `service_role`만 실행)
@@ -787,6 +787,8 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 ### combine_policy (싱글톤)
 `fail_reward_points`(미매칭 시 지급할 고정 포인트) 하나만 남아 있다. 트라이브 다양성 티어
 확률 정책·피티 카운터(`user_combine_state`)는 2026-09-10 폐기됐다.
+편집 화면은 어드민 «밸런스 설정»의 «컬렉션과 믹스» 구역이다(`/admin/balance#collection`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 0 이상 정수이고 저장하면 `updated_at`을 직접 올리며 변경 이력이 남는다.
+옛 «믹스 정책» 화면(`/admin/combine-policy`)과 그 API는 없앴다. 정책 대시보드 저장 라우트가 쓰는 `lib/combine/policy.ts`의 `updateCombinePolicy`는 남아 있다(정리는 티켓 20261022_1717).
 
 ### user_combine_fail_logs (마이그레이션 153)
 믹스 실패 1건 = 1행. 어드민 유저 상세에서만 조회한다(유저 화면 비노출). `user_id`(→ `users`,
@@ -1043,7 +1045,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 > 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수와 채움은 가진 양만 바꾼다(운영 로직 4.5절).
 
 #### jam_policy — 마이그레이션 226, 티켓 20261017_1423
-잼 정산의 조정 값을 담는 한 행 싱글톤(`id = 1` 고정). `abusing_policy`·`inventory_policy`와 같은 패턴으로 RLS만 켜고 정책은 없어 service_role만 읽는다. 어드민 화면은 «밸런스 설정»(`/admin/balance`)이다: 강도·경보 여섯 칸은 «잼» 구역(7-1 1회), 동기화 칸과 `common_streak_threshold`·`locked_roll_probability` 열한 칸은 «동기화» 구역(7-1 2회, 캡슐 구역에는 «동기화와 같은 값이에요» 안내만 둔다), `locked_min_*` 네 칸은 7-2 몫이라 그 전에는 SQL로 고친다. 같은 행을 쓰는 구역이 여럿이라 한 구역을 저장하면 이 행의 `updated_at`이 올라 다른 구역 화면의 수정 시각도 낡는다(편집하던 값은 화면이 지킨다). 동기화 구역의 열한 칸은 모두 확률 안내 페이지가 읽는 칸(`lib/probability/disclosure.ts`의 `JAM_COLUMNS`)이라 바꾸면 저장 전 확인창이 뜬다. 코드는 `src/lib/jam/policy.ts`의 `getJamPolicy`로만 읽으며, 조회 실패·비정상 값은 기본값(`DEFAULT_JAM_POLICY`)으로 대체하고 로그를 남긴다. 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다.
+잼 정산의 조정 값을 담는 한 행 싱글톤(`id = 1` 고정). `abusing_policy`·`inventory_policy`와 같은 패턴으로 RLS만 켜고 정책은 없어 service_role만 읽는다. 어드민 화면은 «밸런스 설정»(`/admin/balance`)이다: 강도·경보 여섯 칸은 «잼» 구역(7-1 1회), 동기화 칸과 `common_streak_threshold`·`locked_roll_probability` 열한 칸은 «동기화» 구역(7-1 2회, 캡슐 구역에는 «동기화와 같은 값이에요» 안내만 둔다), `locked_min_*` 네 칸은 «잠긴 아이템 배지» 구역(7-2 1회, 티켓 20261022_1133)이다. 같은 행을 쓰는 구역이 여럿이라 한 구역을 저장하면 이 행의 `updated_at`이 올라 다른 구역 화면의 수정 시각도 낡는다(편집하던 값은 화면이 지킨다). 동기화 구역의 열한 칸은 모두 확률 안내 페이지가 읽는 칸(`lib/probability/disclosure.ts`의 `JAM_COLUMNS`)이라 바꾸면 저장 전 확인창이 뜬다. 코드는 `src/lib/jam/policy.ts`의 `getJamPolicy`로만 읽으며, 조회 실패·비정상 값은 기본값(`DEFAULT_JAM_POLICY`)으로 대체하고 로그를 남긴다. 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다.
 
 | 칸 | 기본값 | 뜻 |
 |---|---|---|
@@ -1057,7 +1059,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `sync_item_bonus_max_probability` | 0.25 | 보너스 한 번마다 확률의 상한(0~1) |
 | `sync_rarity_common` / `_rare` / `_epic` / `_mystic` | 84 / 13 / 2.5 / 0.5 | 동기화 등급 확률(퍼센트). 네 칸 합계는 100이고 DB 제약(`jam_policy_sync_rarity_sum_100`)이 지킨다 |
 | `common_streak_threshold` | 10 | Common이 이 횟수만큼 연속이면 다음은 Rare 이상(`user_drop_state.common_streak`, 동기화와 캡슐 합산) |
-| `locked_min_common` / `_rare` / `_epic` / `_mystic` | 30 / 60 / 120 / 240 | 잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값. 배지에 값이 없을 때 이 값을 쓴다. 1 이상 정수 (마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.4절) |
+| `locked_min_common` / `_rare` / `_epic` / `_mystic` | 30 / 60 / 120 / 240 | 잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값. 배지에 값이 없을 때 이 값을 쓴다. 1 이상 정수 (마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.4절). 편집 화면은 «밸런스 설정»의 «잠긴 아이템 배지» 구역이다(티켓 20261022_1133). 이미 잠긴 개체의 `unlock_required`는 배정 때 고정돼 바뀌지 않는다 |
 | `locked_roll_probability` | 0.25 | 동기화·캡슐에서 나온 아이템 배지가 잠긴 채 배정될 확률(0~1). 0이면 무작위로는 절대 잠기지 않고 1이면 늘 잠긴다 |
 
 **아이템 발급 정책의 대체 규칙**(`getJamPolicy`): 위 10칸 가운데 하나라도 비정상이거나 등급 확률 합계가 100이 아니면(오차 0.001 미만은 허용) **10칸 전체**를 기본값으로 대체하고 로그를 한 번 남긴다. 한 칸만 바꾸면 합계가 어긋나기 때문이다. 강도·경보 칸과 잠김 칸 5개(`locked_*`)는 이 대체와 상관없이 칸 단위로 대체한다. 판정은 순수 함수 `src/lib/drop-engine/syncIssue.ts`(개수 `rollItemCount`, 등급 `rollRarity`, 후보 `pickItemBadge`, 후보 없는 등급을 한 등급씩 내리는 `pickWithRarityFallback`)이고 정책을 인자로 받는다. 동기화는 잼 정산 뒤 `src/lib/drop-engine/syncIssueRun.ts`의 `issueSyncItemBadges`로 이 값들을 읽어 발급한다(규칙은 `BADGE_ENGINE_UNIFIED.md` §3.0). 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다.
