@@ -73,8 +73,8 @@ parent: "20261021_1250"
 
 ### 구현 범위 (게이트 판정 대상)
 
-- [ ] (1회) 위 참조 코드가 없고, `buildBadgeIdsOfBook`을 쓰는 컬렉션 완성 판정과 새 발급 경로 시험이 통과한다
-- [ ] (1회) 어드민 «드랍 제외 관리»와 시뮬레이터의 남은 구역이 로컬 실렌더로 열린다
+- [x] (1회) 위 참조 코드가 없고, `buildBadgeIdsOfBook`을 쓰는 컬렉션 완성 판정과 새 발급 경로 시험이 통과한다
+- [x] (1회) 어드민 «드랍 제외 관리»와 시뮬레이터의 남은 구역이 로컬 실렌더로 열린다
 - [ ] (2회) 정리 SQL 4개가 파일로 있고 되돌림 SQL과 롤백 실측 결과가 이 티켓에 있다. 실행하지 않았다
 
 ### 후속 범위 (담당: 카리나, 시점: 출시 뒤)
@@ -83,7 +83,28 @@ parent: "20261021_1250"
 
 ## 진행 기록
 
+### 1회 코드 정리 (2026-10-22, 완료·staging 머지)
+
+- **구현**: 아현이 브랜치 `claude/jamwork-20261022_0938-code-cleanup`(커밋 `1cc18961c`)에 구현했다. 81개 파일(+619/−3,530), 삭제 14개·신규 5개, DB·마이그레이션 변경 없음. 검증 CI 성공. `scripts/verify.sh` 전 항목 통과.
+- **게이트(민지)**: WARN(FAIL 아님). 사유 네 가지와 처리: ① 격리 워크트리에서 개발 서버가 뜨지 않아 실렌더 미확인 → 머지 뒤 카리나가 로컬에서 직접 열어 확인했다(아래). ② `computeBadgeProgress`(앱 호출처 0건)가 시험 때문에 남음 → 사용자가 후속 티켓으로 넘기기로 했다(티켓 `20261022_1217`). ③ `sync.ts` 주석 세 곳이 지운 «계열 진행» 정산 단계를 적고 있음 → 머지 점검 커밋 `09f09fa4e`에서 고쳤다(동작 변경 없음). ④ 지시와 달리 `current-service-map/03`과 `docs/plan/` 노트 5곳의 경로 표기를 건드림 → 삭제된 파일 경로를 가리키면 커밋 검사가 막아서 «삭제 표시»만 더한 것이라(내용 불변) 승인했다.
+- **시험 머지(카리나, 임시 워크트리)**: 최신 staging(묶음 7 티켓 추가 포함) 위에서 충돌 없음. 타입 검사와 전체 시험(753개 파일, 16,243건) 통과.
+- **사용자 승인(2026-10-22)**: «머지 승인, 주석은 머지 때 고치고 computeBadgeProgress는 후속 티켓으로». 머지 커밋 `722efd984`와 주석 보정 `09f09fa4e`.
+- **지운 것**: 옛 드랍 엔진(`lib/drop-engine`의 `index`·`preview`·`policy`·`layers`·`context`·`constants`와 각 시험, `buildBadgeIdsOfBook`은 `lib/itembook/completion-basis.ts`로 이동), 어드민 «드랍 정책» 화면·API·메뉴 항목, 시험용 `api/admin/test/simulate` 라우트, 시뮬레이터의 «아이템 드랍» 구역과 응답 필드(`cappedRarity` 포함), `sync.ts`의 `updateFamilyProgressSnapshots`와 호출·전용 도우미, `ambient_drop_config.all_random`의 설정 타입·기본값·저장 값 참조, `scripts/admin-api-read.mjs`의 drop-policy 조회.
+- **남긴 것**: 새 발급 경로(`syncIssue*`·`issueFollowUp`·`lockAssignment`), 컬렉션 완성 판정, «드랍 제외 관리»(`/admin/drop-policy/exclusions`), `cumulativeConditionFields`, `users.initial_sync_done`, `computeBadgeProgress`. DB의 표와 열은 하나도 지우지 않았다(옛 프로덕션이 읽는다).
+- **문서**: 약 25개를 «옛 방식 삭제, 표와 열은 코드가 쓰지 않음, 정리 대기(0938 2회)»로 맞췄다(`SERVICE_OPERATIONS`, `BADGE_ENGINE_UNIFIED`, `02_DATA_MODEL`, `ADMIN_PRD`, `01_PRD`, `04_PROJECT_SPEC`, `TRIBES`, `현재 서비스 비교`, `docs/plan/jam2` 노트 등).
+- **로컬 실렌더 확인(카리나, 개발 서버 `jam-web-admin`, 읽기 전용 요청만)**: `/admin/drop-policy`·`/api/admin/drop-policy`·`/api/admin/test/simulate`는 404(의도한 삭제). `/admin/drop-policy/exclusions`는 200이고 사이드바에 «드랍 제외 관리»만 있으며 «드랍 정책 파라미터로 돌아가기» 링크가 없다. `/admin/simulator`는 열리고 «아이템 드랍»·«드랍 없음»·«섀도우밴» 문구가 없으며 확장 필드, 첫 싱크 모드, 미리보기(Dry Run)·실제 적용(Apply)이 남아 있다. `/admin/ambient-drop`은 200이고 `GET /api/admin/ambient-drop/config` 응답에 `all_random`이 없다. 콘솔의 404 세 건은 위에서 직접 호출한 삭제 경로 세 건이다(화면이 부른 요청 아님, 리소스 성능 항목에도 4xx 없음).
+- **시뮬레이터 «실제 적용(Apply)» 동작 변화 점검**: 삭제 전에는 적용 모드(`dryRun=false`)가 활동 배지·장소 배지를 저장하는 데 더해 고른 아이템 배지를 인벤토리에도 넣었다. 지금은 활동 배지·장소(체크인) 배지만 저장하고 아이템 배지는 지급하지 않는다(결정 2로 의도한 변화). 화면의 버튼과 결과 문구(«실제 적용(Apply)», «실제 적용됨», «Dry Run — DB 반영 없음»)는 아이템 지급을 약속하지 않으므로 고치지 않았다. 운영자가 시뮬레이터로 아이템을 넣어 시험하던 습관이 있었다면 더 이상 되지 않는다는 점만 알아 두면 된다.
+
+### 1회가 남긴 것 (2회와 후속 티켓에 넘김)
+
+- **2회에서 같은 배포에 걷을 것**: `user_drop_state.last_drop_tribe_id`·`last_drop_book_id`를 조회하는 어드민 삭제 가드(`lib/admin/reference-guards.ts` 364·472줄, `lib/admin/tribe-list.ts` 55줄, `registerChecks/references.ts` 141줄 근처, 줄 위치는 2회 때 다시 확인)와 그 시험. 열을 지운 뒤에도 이 조회가 남으면 트라이브·컬렉션 삭제 화면이 오류를 낸다.
+- **후속 티켓 새로 만듦**: `20261022_1216`(트라이브 «드랍 가중치»와 «인접 트라이브»가 드랍에 쓰이지 않는데 화면은 영향이 있다고 안내), `20261022_1217`(`computeBadgeProgress` 정리).
+- **OPEN 티켓 5건 판독(닫기는 사용자 승인 뒤)**: `20261001_2048`(`tryItemDrop`·`planItemDrops` 복제)과 `20261001_2049`(시뮬레이터 섀도우밴 상한표 8회 조회)는 두 함수가 지워져 문제가 사라졌다. `20261008_1106`(시뮬레이션이 다른 방식으로 아이템 배지를 지급)은 시뮬레이터에 아이템 지급 코드가 없어졌고 `SERVICE_OPERATIONS` 7-1 만료값 표에 시뮬레이션 행이 없다. `20261001_2050`(`SERVICE_OPERATIONS` §5-2가 v1 흐름)은 5-2가 JAM 2.0 발급 흐름으로 다시 적혀 v1 상수가 남아 있지 않다. 네 건은 해소로 닫을 수 있다. `20261017_1821`(시뮬레이터·미리 보기를 새 발급 규칙에 맞춘다)은 사용자 결정 2(옛 «아이템 드랍» 구역 삭제, 새 발급 경로용 미리 보기는 필요하면 별도 티켓)로 «맞춘다» 대신 «지웠다»가 되었으므로 대체로 닫는 것을 추천한다.
+- **범위 밖 참고**: `/admin/ambient-drop`을 열면 콘솔에 «Each child in a list should have a unique key» 경고가 한 건 난다(`AmbientDropForm`). 이 폼은 이번 변경에서 건드리지 않았고(마지막 수정은 `43ac5d1db`) 목록 키가 겹치는 데이터가 있어서 나는 것으로 보인다. 동작 오류는 아니며 고칠지는 정하지 않았다.
+
 ## 잔여 이슈
 
 - `users.initial_sync_done`과 `first_sync_pending`이 함께 있는 구조는 그대로다(결정 1). 합치려면 첫 동기화 게이트의 뜻을 정하는 설계가 먼저다.
 - `jam_policy`·`capsule_policy`를 고치는 어드민 화면이 없다(묶음 7).
+- 새 발급 경로용 어드민 미리 보기가 없다(결정 2). 필요해지면 별도 티켓으로 만든다.
+- 2회(SQL 4개)는 사용자가 «시작해»라고 한 뒤에 쓴다. 실행은 출시(main 승격) 뒤 사용자 승인으로 한다.
