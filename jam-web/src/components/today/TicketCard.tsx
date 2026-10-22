@@ -37,7 +37,7 @@ export default function TicketCard({ view }: { view: ImageCardView }) {
         </div>
 
         {/* 하단 본문 영역 */}
-        <CardBody className="pb-6">
+        <CardBody>
           <CardChipRow view={view} />
 
           {hasTitleGroup && <CardTitleGroup title={view.title} subtitle={view.subtitle} />}

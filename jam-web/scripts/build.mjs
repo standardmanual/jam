@@ -35,6 +35,7 @@ function run(command, args) {
     // (npm run 경유일 때는 npm이 이미 넣어주지만, 그때도 중복이라 무해하다).
     env: {
       ...process.env,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=6144`.trim(),
       PATH: `${path.join(projectRoot, 'node_modules', '.bin')}${path.delimiter}${process.env.PATH ?? ''}`,
     },
   });
