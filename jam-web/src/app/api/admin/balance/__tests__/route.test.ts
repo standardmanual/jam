@@ -1,5 +1,5 @@
 /**
- * GET·PUT /api/admin/balance/[section] (티켓 20261022_1132 1회)
+ * GET·PUT /api/admin/balance/[section] (티켓 20261022_1132 1·2회)
  *
  * 인증은 실제 `@/lib/admin/auth`를 쓰고(세션만 모의한다), 저장·읽기 처리(`lib/admin/balance/save.ts`)도 모의하지 않고 쓰되 서비스 클라이언트만 메모리 안의 가짜 표로 바꾼다
  * (실 DB에 접속하지 않는다). 지키는 것:
@@ -30,7 +30,15 @@ import {
   BALANCE_NO_CHANGE_MESSAGE,
   BALANCE_SECTION_NOT_FOUND_MESSAGE,
 } from '@/lib/admin/balance/save'
-import { createFakeDb, jamPolicyRow, JAM_ROW_STAMP, type FakeDb } from '@/lib/admin/balance/__tests__/fakeDb'
+import {
+  CAPSULE_ROW_STAMP,
+  capsulePolicyRow,
+  chapterCostRows,
+  createFakeDb,
+  jamPolicyRow,
+  JAM_ROW_STAMP,
+  type FakeDb,
+} from '@/lib/admin/balance/__tests__/fakeDb'
 
 const TOKEN = 'test-admin-read-token-abcdef'
 const ADMIN = { id: '11111111-1111-4111-8111-111111111111', email: 'admin@example.com' }
@@ -65,6 +73,8 @@ beforeEach(() => {
   h.user = null
   db = createFakeDb({
     jam_policy: [jamPolicyRow()],
+    capsule_policy: [capsulePolicyRow()],
+    capsule_chapter_costs: chapterCostRows(),
     balance_setting_changes: [],
     users: [
       { id: ADMIN.id, username: 'karina', is_admin: false },
@@ -280,5 +290,61 @@ describe('동기화 구역 (2회)', () => {
     expect(body.affectsDisclosure).toBe(true)
     expect(JSON.stringify(body)).not.toContain(ADMIN.id)
     expect(db.tables.balance_setting_changes[0]).toMatchObject({ section_key: 'sync', affects_disclosure: true, changed_by: ADMIN.id })
+  })
+})
+
+describe('캡슐 구역 (2회)', () => {
+  beforeEach(() => {
+    h.user = ADMIN
+  })
+
+  it('GET은 정책 열한 칸과 챕터 열 칸(chapter:N)의 값, 가장 늦은 수정 시각을 돌려준다', async () => {
+    const res = await GET(getRequest(), params('capsule'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Object.keys(body.values)).toHaveLength(21)
+    expect(body.values).toMatchObject({ guaranteed_count: 1, rarity_common: 70, 'chapter:1': 90, 'chapter:10': 220 })
+    expect(body.updatedAt).toBe(CAPSULE_ROW_STAMP)
+  })
+
+  it('PUT: 챕터별 채울 양을 바꾸면 그 행만 바뀌고 이력은 chapter:3 칸 이름으로 capsule 구역에 남는다', async () => {
+    const res = await PUT(putRequest({ values: { 'chapter:3': 115 }, expectedUpdatedAt: CAPSULE_ROW_STAMP, note: '완화' }), params('capsule'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.changes).toEqual([{ field: 'chapter:3', from: 110, to: 115 }])
+    expect(body.affectsDisclosure).toBe(false)
+    expect(JSON.stringify(body)).not.toContain(ADMIN.id)
+    expect(db.tables.capsule_chapter_costs.find((row) => row.chapter_no === 3)?.fill_amount).toBe(115)
+    expect(db.tables.capsule_chapter_costs.find((row) => row.chapter_no === 4)?.fill_amount).toBe(120)
+    expect(db.tables.balance_setting_changes[0]).toMatchObject({
+      section_key: 'capsule',
+      changes: [{ field: 'chapter:3', from: 110, to: 115 }],
+      note: '완화',
+      affects_disclosure: false,
+      changed_by: ADMIN.id,
+    })
+  })
+
+  it('PUT: 등급 확률 합이 100이 아니면 400이고, 챕터 번호를 늘리는 칸(chapter:11)은 거절한다', async () => {
+    const sum = await PUT(putRequest({ values: { rarity_common: 60 }, expectedUpdatedAt: CAPSULE_ROW_STAMP }), params('capsule'))
+    expect(sum.status).toBe(400)
+    expect(Object.keys((await sum.json()).fieldErrors).sort()).toEqual(['rarity_common', 'rarity_epic', 'rarity_mystic', 'rarity_rare'])
+
+    const extra = await PUT(putRequest({ values: { 'chapter:11': 240 }, expectedUpdatedAt: CAPSULE_ROW_STAMP }), params('capsule'))
+    expect(extra.status).toBe(400)
+    expect((await extra.json()).fieldErrors).toEqual({ 'chapter:11': '알 수 없는 칸이에요.' })
+    expect(db.updates).toEqual([])
+  })
+
+  it('PUT: 이력을 쓰지 못하면 500이고 정책과 챕터가 모두 원래대로 돌아온다', async () => {
+    db.writeErrors.balance_setting_changes = SECRET
+    const res = await PUT(
+      putRequest({ values: { rarity_common: 65, rarity_rare: 27, 'chapter:3': 115 }, expectedUpdatedAt: CAPSULE_ROW_STAMP }),
+      params('capsule')
+    )
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: BALANCE_HISTORY_FAILED_MESSAGE })
+    expect(db.tables.capsule_policy[0]).toMatchObject({ rarity_common: 70, rarity_rare: 22, updated_at: CAPSULE_ROW_STAMP })
+    expect(db.tables.capsule_chapter_costs.find((row) => row.chapter_no === 3)).toMatchObject({ fill_amount: 110, updated_at: CAPSULE_ROW_STAMP })
   })
 })
