@@ -6,7 +6,8 @@
  *
  * 구성
  *  1) 호출 지점 목록(소스 검색) — `chapter_add_score`를 부르는 곳이 `score.ts` 하나이고, 점수 함수를 부르는 파일·횟수가 아래 목록과 같다.
- *     활동 종류 12종은 각각 한 모듈만 만든다(같은 종류를 두 모듈이 세면 이중 가산 위험). 시스템 드랍 배치는 챕터 점수를 가져오지 않는다.
+ *     활동 종류 12종은 각각 한 모듈만 만든다(같은 종류를 두 모듈이 세면 이중 가산 위험). 단 등급 올리기는 «믹스 성공»을 새 UUID 원천 id로 따로 센다(`SHARED_KIND_SCORE_SITES`).
+ *     시스템 드랍 배치는 챕터 점수를 가져오지 않는다.
  *     목록이 어긋나면 이 시험이 깨진다 — 호출 지점을 더하거나 옮긴 사람이 키 충돌·이중 호출을 한 번 더 살피게 하려는 장치다.
  *  2) DB 모사 — 마이그레이션 221 `chapter_add_score`의 규칙(점수표 초기값, (종류, 원천) 전역 유일, 다른 유저의 키와 겹치면 예외, 활동한 날이 속한 주(월~일)의
  *     상한, 미래 날짜 거절)을 그대로 옮긴 가짜 DB 위에서 **실제 연결 함수**를 돌린다.
@@ -97,6 +98,15 @@ const DIRECT_SCORE_SITES: Record<string, string> = {
   'lib/chapter/mix.ts': 'mix_success',
 }
 
+/**
+ * 다른 모듈이 이미 세는 종류를 같은 점수표 항목으로 한 번 더 세는 지점 (티켓 20261022_2119 2회).
+ * 등급 올리기(`lib/combine/tierUp.ts`)는 레시피 성공 기록이 없어 «믹스 성공»(`mix_success`)을 시도마다 새로 만든 UUID를 원천 id로 센다.
+ * 믹스는 성공 기록 행의 id를 원천 id로 쓰므로 두 원천 id가 겹치지 않아 이중 가산이 아니다. «종류마다 한 모듈» 검사에서는 뺀다.
+ */
+const SHARED_KIND_SCORE_SITES: Record<string, string> = {
+  'lib/combine/tierUp.ts': 'mix_success',
+}
+
 describe('호출 지점 목록 — 소스 검색', () => {
   it('chapter_add_score RPC를 부르는 곳은 score.ts 하나다 (점수 가산의 유일한 경로)', () => {
     const files = [...SOURCES].filter(([, source]) => /rpc\(\s*['"]chapter_add_score['"]/.test(source)).map(([file]) => file)
@@ -105,13 +115,13 @@ describe('호출 지점 목록 — 소스 검색', () => {
 
   it('awardChapterScore를 부르는 파일과 횟수가 목록과 같다 — 파일마다 한 번, 컬렉션 완성은 collection.ts 한 곳', () => {
     expect(callSites('awardChapterScore')).toEqual({
-      ...Object.fromEntries(Object.keys(DIRECT_SCORE_SITES).map((file) => [file, 1])),
+      ...Object.fromEntries(Object.keys({ ...DIRECT_SCORE_SITES, ...SHARED_KIND_SCORE_SITES }).map((file) => [file, 1])),
       'lib/chapter/collection.ts': 1,
     })
   })
 
   it('직접 부르는 지점은 자기 활동 종류를 리터럴로 적고, 활동 종류 12종은 각각 한 모듈만 만든다', () => {
-    for (const [file, kind] of Object.entries(DIRECT_SCORE_SITES)) {
+    for (const [file, kind] of Object.entries({ ...DIRECT_SCORE_SITES, ...SHARED_KIND_SCORE_SITES })) {
       expect(literalKindOf(file), file).toBe(kind)
     }
     const direct = Object.values(DIRECT_SCORE_SITES)
