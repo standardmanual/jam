@@ -107,6 +107,14 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(mostSpecificActiveItem('/admin/drop-policy/exclusions')?.href).toBe('/admin/drop-policy/exclusions')
   })
 
+  it('«밸런스 설정»은 «정책 및 밸런스» 그룹의 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1132)', () => {
+    const policy = NAV_GROUPS.find((g) => g.id === 'policy')
+    expect(policy?.items[0]).toMatchObject({ href: '/admin/balance', label: '밸런스 설정' })
+    expect(mostSpecificActiveItem('/admin/balance')?.label).toBe('밸런스 설정')
+    // 같은 이름의 항목이 다른 그룹에 또 있지 않다
+    expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/balance')).toHaveLength(1)
+  })
+
   it('랭킹 규칙 관리는 정책 그룹으로, 어뷰징 관리는 정책 그룹으로 이동했다', () => {
     const policy = NAV_GROUPS.find((g) => g.id === 'policy')
     expect(policy?.items.map((i) => i.href)).toContain('/admin/ranking-modes')

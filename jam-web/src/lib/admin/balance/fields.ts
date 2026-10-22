@@ -30,7 +30,12 @@ export function parseDraftNumber(text: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-const DECIMAL_ORDINALS = ['', '첫째', '둘째', '셋째', '넷째']
+/** 이력처럼 칸이 어느 묶음 것인지 함께 보여야 할 때의 이름(예: «강도 배율 · 가벼움»). 묶음이 없으면 라벨만. */
+export function fullFieldLabel(def: BalanceFieldDef): string {
+  return def.group ? `${def.group} · ${def.label}` : def.label
+}
+
+const DECIMAL_ORDINALS =['', '첫째', '둘째', '셋째', '넷째']
 
 /** 범위를 알리는 문장. 정수 칸의 상한이 DB 정수 한계이면 «이상»만 쓴다. */
 export function rangeMessage(def: BalanceFieldDef): string {

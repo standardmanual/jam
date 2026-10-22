@@ -18,6 +18,7 @@ import {
   draftErrors,
   draftFromValues,
   formatBalanceNumber,
+  fullFieldLabel,
   parseDraftNumber,
   rangeMessage,
   validateSumTo100,
@@ -127,6 +128,11 @@ describe('초안 계산', () => {
       { field: 'weeks', from: 4, to: 8 },
       { field: 'multiplier', from: 3, to: 5 },
     ])
+  })
+
+  it('이력에 쓰는 칸 이름은 묶음 제목이 있으면 함께 쓴다', () => {
+    expect(fullFieldLabel({ ...INT_FIELD, label: '가벼움', group: '강도 배율' })).toBe('강도 배율 · 가벼움')
+    expect(fullFieldLabel(INT_FIELD)).toBe('기간')
   })
 
   it('숫자 글자는 천 단위 쉼표를 쓰고 소수는 필요한 자리까지만 쓴다', () => {
