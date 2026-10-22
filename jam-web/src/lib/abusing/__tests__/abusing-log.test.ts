@@ -3,7 +3,8 @@
  *
  * `logAbusingEvent`의 시험은 티켓 20260901_1843에서 `shadow-ban-write.test.ts`에 있었고, 티켓
  * 20261021_1250(6-4 2회)에서 함수와 함께 이 파일로 옮겼다. 고정하는 계약:
- * 1. 로그 기록이 실패해도 호출부(GPS 감지 등)를 막지 않도록 예외를 던지지 않되, 서버 로그는 남긴다.
+ * 1. 로그 기록이 실패해도 호출부(GPS 감지 등)를 막지 않도록 예외를 던지지 않되, 서버 로그는 남기고
+ *    저장 성공 여부를 true/false로 돌려준다(티켓 20261022_0940).
  * 2. 여러 건 기록(`logAbusingEvents`)은 한 문장으로 insert하고, 실패하면 `false`와 함께 기록하지
  *    못한 내용을 서버 로그에 통째로 남긴다.
  *
@@ -46,21 +47,25 @@ beforeEach(() => {
 })
 
 describe('logAbusingEvent — insert 실패는 삼키되 반드시 로그를 남긴다', () => {
-  it('insert error가 있어도 예외를 던지지 않지만 console.error를 남긴다', async () => {
+  it('insert error가 있어도 예외를 던지지 않고 false를 돌려주며 console.error를 남긴다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     stub.insertError = { code: '23503', message: 'foreign key violation' }
-    await expect(logAbusingEvent('user-1', 'gps_spoof_detected')).resolves.toBeUndefined()
+    await expect(logAbusingEvent('user-1', 'gps_spoof_detected')).resolves.toBe(false)
     expect(spy).toHaveBeenCalled()
     expect(String(spy.mock.calls[0][0])).toContain('gps_spoof_detected')
     spy.mockRestore()
   })
 
-  it('insert가 예외를 던져도 삼키되 console.error를 남긴다', async () => {
+  it('insert가 예외를 던져도 삼키고 false를 돌려주며 console.error를 남긴다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     stub.insertThrows = true
-    await expect(logAbusingEvent('user-1', 'gps_spoof_detected')).resolves.toBeUndefined()
+    await expect(logAbusingEvent('user-1', 'gps_spoof_detected')).resolves.toBe(false)
     expect(spy).toHaveBeenCalled()
     spy.mockRestore()
+  })
+
+  it('정상이면 true를 돌려준다 (티켓 20261022_0940: 픽업 알림이 기록 저장 여부를 이 값으로 안다)', async () => {
+    await expect(logAbusingEvent('user-1', 'gps_spoof_detected')).resolves.toBe(true)
   })
 
   it('정상이면 abusing_logs에 { user_id, event_type, detail } 한 줄을 넣고 로그를 남기지 않는다', async () => {
