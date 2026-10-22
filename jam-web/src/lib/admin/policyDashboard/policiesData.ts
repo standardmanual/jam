@@ -636,7 +636,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '인벤토리, 컬렉션, 믹스',
     title: '단서 레시피 20선 규격',
     type: 'pre_launch_pending',
-    currentSpec: '정해진 3~5개 재료 조합 시 확정 결과물 20종 제공 (Common 등급, 성공 포인트는 재료 수 × 10, 오픈 직전 공개)',
+    currentSpec: '정해진 3~5개 재료 조합 시 확정 결과물 제공 (재료와 같은 등급, 단서 20개 × 4등급 = 80건, 성공 포인트는 재료 수 × 10, 오픈 직전 공개)',
     codeLocation: 'jam-web/supabase/migrations/281_clue_recipes.sql',
     userExperience: '힌트를 모아 특별한 히든 아이템을 제작하는 재미를 느껴요.',
     basisDoc: '운영 로직 8.4절, 19.3절',

@@ -1,13 +1,16 @@
-// 티켓 20261022_1138(7-7): 단서 레시피 SQL(281)과 끄기 SQL(282) 생성기 — 건수, 포인트, 공개 시작 값, 안전장치,
-// 되돌림 SQL이 백업 표를 쓰는지, 커밋된 SQL 파일과 생성 결과의 일치를 검사한다.
+// 티켓 20261022_1138(7-7): 단서 레시피 SQL(281, 단서 20개 × 4등급 = 80건)과 끄기 SQL(282) 생성기 — 건수, 등급, 포인트, 공개 시작 값,
+// 안전장치, 되돌림 SQL이 백업 표를 쓰는지, 커밋된 SQL 파일과 생성 결과의 일치를 검사한다.
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { MIGRATIONS_DIR, buildPlan, q } from '../gen-content-sql.mjs';
 import {
   ACTIVE_UNPLANNED_BOOKS_IN_DB,
   BOOKS_IN_DB_AFTER_7_6,
   CLUE_FILE,
+  CLUE_TIERS,
   CLUE_VALID_FROM,
   OLD_RECIPE_NAMES,
   POINTS_PER_INGREDIENT,
@@ -87,14 +90,26 @@ describe('계획: 원고 07의 재료·보상을 7-6 계획의 이름으로 푼�
   it('단서 20건, 재료 칸 86개, 성공 포인트는 재료 수 × 10이다(3개 30, 4개 40, 5개 50)', () => {
     expect(POINTS_PER_INGREDIENT).toBe(10);
     expect(clues).toHaveLength(20);
-    expect(countClueRecipes(clues)).toEqual({ recipes: 20, slots: 86, points: 860 });
     for (const c of clues) expect(c.points, c.code).toBe(c.ingredients.length * 10);
+    expect(clues.reduce((n, c) => n + c.ingredients.length, 0)).toBe(86);
     const byCode = Object.fromEntries(clues.map((c) => [c.code, c.points]));
     expect(byCode.R05).toBe(30);
     expect(byCode.R07).toBe(30);
     expect(byCode.R03).toBe(40);
     expect(byCode.R01).toBe(50);
     expect(new Set(clues.map((c) => c.points))).toEqual(new Set([30, 40, 50]));
+  });
+
+  it('등급은 Common, Rare, Epic, Mystic 네 개이고 레시피는 단서 20개 × 4등급 = 80건, 칸은 86 × 4 = 344개다', () => {
+    expect(CLUE_TIERS).toEqual(['common', 'rare', 'epic', 'mystic']);
+    expect(countClueRecipes(clues)).toEqual({
+      clues: 20,
+      tiers: 4,
+      recipes: 80,
+      slotsPerTier: 86,
+      slots: 344,
+      points: 3440
+    });
   });
 
   it('R01의 재료는 한입만 연구회 «5번 컬렉션»의 아이템이고 보상은 혼자들 4번 컬렉션의 접이식 테이블이다', () => {
@@ -118,8 +133,8 @@ describe('계획: 원고 07의 재료·보상을 7-6 계획의 이름으로 푼�
   });
 });
 
-describe('281: 단서 레시피 SQL', () => {
-  it('레시피 20행과 재료 칸 86행이 계획과 같고 칸 순서는 0부터 원고 순서다', () => {
+describe('281: 단서 레시피 SQL (단서 20개 × 등급 4개 = 80건)', () => {
+  it('단서 20행, 단서의 재료 86행, 등급 4행이 계획과 같고 칸 순서는 0부터 원고 순서다', () => {
     const recipeRows = readInsertRows(sql281, '_jam2_clue');
     expect(recipeRows).toEqual(
       clues.map((c) => [c.no, c.code, c.name, c.description, c.points, c.reward.tribe, c.reward.bookName, c.reward.itemName])
@@ -129,16 +144,38 @@ describe('281: 단서 레시피 SQL', () => {
     expect(slotRows).toEqual(
       clues.flatMap((c) => c.ingredients.map((ing, k) => [c.no, k, ing.tribe, ing.bookName, ing.itemName]))
     );
+    expect(readInsertRows(sql281, '_jam2_tier')).toEqual([['common', 0], ['rare', 1], ['epic', 2], ['mystic', 3]]);
   });
 
-  it('성공 포인트가 SQL 행의 칸 수 × 10과 같다', () => {
+  it('단서 표와 등급 표를 교차해 (단서, 등급)마다 레시피 id를 만들고 칸도 등급마다 펼친다', () => {
+    // 레시피: 단서 × 등급, 재료 칸: 단서의 재료 × 등급
+    expect(sql281).toMatch(/INSERT INTO _jam2_recipe \(clue_no, rarity, reward_tribe, reward_book, reward_item\)\s+SELECT c\.no, t\.rarity, c\.reward_tribe, c\.reward_book, c\.reward_item\s+FROM _jam2_clue c\s+CROSS JOIN _jam2_tier t/);
+    expect(sql281).toMatch(/INSERT INTO _jam2_recipe_slot \(clue_no, rarity, slot_order, tribe, book_name, item_name\)\s+SELECT s\.clue_no, t\.rarity, s\.slot_order, s\.tribe, s\.book_name, s\.item_name\s+FROM _jam2_clue_slot s\s+CROSS JOIN _jam2_tier t/);
+    expect(sql281).toContain('recipe_id       UUID NOT NULL DEFAULT gen_random_uuid()');
+    expect(sql281).toContain('PRIMARY KEY (clue_no, rarity)');
+    expect(sql281).toContain('PRIMARY KEY (clue_no, rarity, slot_order)');
+    // 펼치면 80건과 344칸이고, 단서마다 4등급이 같은 이름·설명·포인트를 쓴다
+    const tiers = readInsertRows(sql281, '_jam2_tier').map((r) => r[0]);
+    const clueRows = readInsertRows(sql281, '_jam2_clue');
+    const slotRows = readInsertRows(sql281, '_jam2_clue_slot');
+    const recipes = clueRows.flatMap((c) => tiers.map((rarity) => ({ no: c[0], name: c[2], rarity })));
+    const slots = slotRows.flatMap((s) => tiers.map((rarity) => ({ clue: s[0], order: s[1], rarity })));
+    expect(recipes).toHaveLength(80);
+    expect(slots).toHaveLength(344);
+    expect(new Set(recipes.map((r) => `${r.name}/${r.rarity}`)).size).toBe(80);
+    for (const c of clueRows) expect(slots.filter((s) => s.clue === c[0] && s.rarity === 'mystic'), c[1]).toHaveLength(slotRows.filter((s) => s[0] === c[0]).length);
+  });
+
+  it('성공 포인트가 SQL 행의 칸 수 × 10과 같고 모든 등급에 같다', () => {
     const recipeRows = readInsertRows(sql281, '_jam2_clue');
     const slotRows = readInsertRows(sql281, '_jam2_clue_slot');
     for (const row of recipeRows) {
       const slots = slotRows.filter((s) => s[0] === row[0]).length;
       expect(row[4], row[1]).toBe(slots * 10);
     }
-    expect(sql281).toContain(`r.reward_points = ${POINTS_PER_INGREDIENT} * (SELECT count(*) FROM public.combination_recipe_slots`);
+    expect(sql281).toContain(`cr.reward_points = ${POINTS_PER_INGREDIENT} * (SELECT count(*) FROM public.combination_recipe_slots cs`);
+    // 레시피를 넣을 때 포인트는 단서의 값(c.points)이라 등급에 따라 달라지지 않는다
+    expect(sql281).toMatch(/SELECT r\.recipe_id, c\.name, c\.description, c\.points, ARRAY\[r\.reward_id\]/);
   });
 
   it('공개 시작은 2099-01-01 00:00 KST 자리 값이고, 종료 시각은 넣지 않는다', () => {
@@ -152,44 +189,62 @@ describe('281: 단서 레시피 SQL', () => {
     expect(insert[1]).not.toContain('valid_until');
   });
 
-  it('재료와 보상 배지를 id가 아니라 «트라이브, 컬렉션, 아이템 이름, Common 등급»으로 찾는다', () => {
+  it('재료와 보상 배지를 id가 아니라 «트라이브, 컬렉션, 아이템 이름, 레시피의 등급»으로 찾는다(Common으로 고정하지 않는다)', () => {
     expect(sql281).not.toMatch(UUID);
-    // 찾기 4곳(재료 건수·id, 보상 건수·id)과 끝 검사 1곳
-    expect(sql281.match(/b\.type = 'item' AND b\.rarity = 'common' AND b\.deleted_at IS NULL/g)).toHaveLength(5);
+    // 찾기 4곳: 재료 건수·id는 칸의 등급(s.rarity), 보상 건수·id는 레시피의 등급(c.rarity)
+    expect(sql281.match(/b\.type = 'item' AND b\.rarity = s\.rarity AND b\.deleted_at IS NULL/g)).toHaveLength(2);
+    expect(sql281.match(/b\.type = 'item' AND b\.rarity = c\.rarity AND b\.deleted_at IS NULL/g)).toHaveLength(2);
     expect(sql281.match(/t\.name = s\.tribe AND ib\.name = s\.book_name AND b\.name = s\.item_name/g)).toHaveLength(2);
     expect(sql281.match(/t\.name = c\.reward_tribe AND ib\.name = c\.reward_book AND b\.name = c\.reward_item/g)).toHaveLength(2);
+    expect(sql281).not.toMatch(/rarity\s*=\s*'common'/);
+    expect(sql281).not.toMatch(/rarity\s*<>\s*'common'/);
   });
 
-  it('찾은 수가 한 건씩이 아니거나 같은 이름의 레시피가 있으면 멈추고, 끝 검사가 건수와 포인트를 확인한다', () => {
+  it('등급마다 한 건씩 찾지 못하거나 같은 이름의 레시피가 있으면 멈추고, 끝 검사가 건수·포인트·등급·중복을 확인한다', () => {
     expect(sql281).toContain('badge_matches IS DISTINCT FROM 1');
     expect(sql281).toContain('reward_matches IS DISTINCT FROM 1');
-    expect(sql281).toContain('기대: 86개 모두 1건');
-    expect(sql281).toContain('기대: 20개 모두 1건');
+    expect(sql281).toContain('재료 배지를 이름과 등급으로 한 건씩 찾지 못한 것이 %개입니다(등급: %. 기대: 344개 모두 1건)');
+    expect(sql281).toContain('보상 배지를 이름과 등급으로 한 건씩 찾지 못한 것이 %개입니다(등급: %. 기대: 80개 모두 1건)');
     expect(sql281).toContain('같은 이름의 레시피가 이미 %건 있습니다');
-    expect(sql281).toContain('s.badge_id = c.reward_id');
-    expect(sql281).toContain('끝 검사: 계획과 같은 레시피가 %건입니다(기대 20)');
-    expect(sql281).toContain('끝 검사: 단서 레시피의 칸이 %개입니다(기대 86)');
-    expect(sql281).toContain('끝 검사: 계획과 같은 칸이 %개입니다(기대 86)');
-    expect(sql281).toContain('끝 검사: 성공 포인트가 칸 수 × 10인 레시피가 %건입니다(기대 20)');
-    expect(sql281).toContain('NOT r.reward_locked AND NOT r.allow_no_reward');
+    expect(sql281).toContain('WHERE s.badge_id = c.reward_id');
+    expect(sql281).toContain('JOIN _jam2_recipe c ON c.clue_no = s.clue_no AND c.rarity = s.rarity');
+    expect(sql281).toContain('끝 검사: 계획과 같은 레시피가 %건입니다(기대 80)');
+    expect(sql281).toContain('끝 검사: 단서 레시피의 칸이 %개입니다(기대 344)');
+    expect(sql281).toContain('끝 검사: 계획과 같은 칸이 %개입니다(기대 344)');
+    expect(sql281).toContain('끝 검사: 성공 포인트가 칸 수 × 10인 레시피가 %건입니다(기대 80)');
+    expect(sql281).toContain('끝 검사: 보상 배지의 등급이 레시피의 등급과 같은 레시피가 %건입니다(기대 80)');
+    expect(sql281).toContain('끝 검사: 후보의 등급이 레시피의 등급과 같은 칸이 %개입니다(기대 344)');
+    expect(sql281).toContain('NOT cr.reward_locked AND NOT cr.allow_no_reward');
+  });
+
+  it('끝 검사가 보상·재료 배지의 등급을 레시피의 등급과 대조하고 같은 (이름, 보상 등급) 쌍이 80개인지 확인한다', () => {
+    expect(sql281).toContain("AND b.type = 'item' AND b.rarity = r.rarity AND b.deleted_at IS NULL");
+    expect(sql281).toContain('JOIN public.badges b ON b.id = cr.reward_badge_ids[1]');
+    expect(sql281).toContain('JOIN public.badges b ON b.id = cs.allowed_badge_ids[1]');
+    expect(sql281).toContain('count(DISTINCT (cr.name, b.rarity))');
+    expect(sql281).toContain('IF v_n <> 80 OR v_pairs <> 80 THEN');
+    expect(sql281).toContain('끝 검사: 단서 이름의 레시피가 %건, 이름과 보상 등급이 서로 다른 쌍이 %개입니다(기대 둘 다 80)');
   });
 
   it('칸은 item 타입이고 후보는 재료 배지 1개이며 BEGIN/COMMIT은 쓰지 않는다', () => {
-    expect(sql281).toMatch(/INSERT INTO public\.combination_recipe_slots \(recipe_id, slot_order, badge_type, allowed_badge_ids\)\s*SELECT c\.recipe_id, s\.slot_order, 'item', ARRAY\[s\.badge_id\]/);
+    expect(sql281).toMatch(/INSERT INTO public\.combination_recipe_slots \(recipe_id, slot_order, badge_type, allowed_badge_ids\)\s*SELECT r\.recipe_id, s\.slot_order, 'item', ARRAY\[s\.badge_id\]/);
     expect(sql281).not.toMatch(/^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im);
   });
 
-  it('파일 끝 되돌림 SQL(deploy-gate 표식)은 모두 주석이고 단서 레시피 20건을 이름으로 지운다', () => {
+  it('파일 끝 되돌림 SQL(deploy-gate 표식)은 모두 주석이고 단서 레시피 80건을 이름과 자리 값 공개 시작으로 지운다', () => {
     expect(sql281).toMatch(ROLLBACK_MARKER);
     const tail = rollbackTail(sql281);
     for (const line of tail.split('\n').filter((l) => l.trim() !== '')) expect(line.startsWith('--')).toBe(true);
-    expect(tail).toContain('DELETE FROM public.combination_recipes WHERE valid_from =');
+    expect(tail).toContain("DELETE FROM public.combination_recipes WHERE valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND name IN (");
+    expect(tail).toContain('정확히 80건이 지워진다');
     for (const c of clues) expect(tail, c.name).toContain(q(c.name));
   });
 
-  it('머리말에 적용 전·후 확인 SELECT가 있다', () => {
+  it('머리말에 적용 전·후 확인 SELECT가 있고 등급별 레시피 수 확인이 있다', () => {
     expect(sql281).toContain('적용 전 확인 쿼리(읽기 전용 SELECT)');
     expect(sql281).toContain('적용 후 확인 쿼리(읽기 전용 SELECT)');
+    expect(sql281).toContain('보상 배지의 등급별 레시피 수 (common 20, rare 20, epic 20, mystic 20)');
+    expect(sql281).toContain('재료 칸 344개, 후보는 모두 1개 (344, 1)');
   });
 
   it('원고의 이름과 설명 20쌍이 SQL에 한 글자도 다르지 않게 들어 있고 원고 원문에도 그대로 있다', () => {
@@ -316,6 +371,16 @@ describe('커밋된 마이그레이션 파일', () => {
     for (const [file, text] of Object.entries(outputs)) {
       expect(fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'), file).toBe(text);
     }
+  });
+
+  it('--dry는 파일을 쓰지 않고 단서 80건·칸 344개와 끄기 건수만 출력한다', () => {
+    const script = fileURLToPath(new URL('../gen-recipe-sql.mjs', import.meta.url));
+    const before = Object.fromEntries(Object.keys(outputs).map((f) => [f, fs.statSync(path.join(MIGRATIONS_DIR, f)).mtimeMs]));
+    const out = execFileSync(process.execPath, [script, '--dry'], { encoding: 'utf8' });
+    expect(out).toContain('281 단서 레시피: 단서 20개 × 등급 4개(common, rare, epic, mystic) = 80건, 재료 칸 344개');
+    expect(out).toContain('성공 포인트 합계 3440');
+    expect(out).toContain('282 끄기: 계획 컬렉션 50개를 남기고, 끄기 대상 19개');
+    for (const [f, mtime] of Object.entries(before)) expect(fs.statSync(path.join(MIGRATIONS_DIR, f)).mtimeMs, f).toBe(mtime);
   });
 
   it('281·282 번호를 쓰는 마이그레이션은 이 두 파일뿐이다', () => {
