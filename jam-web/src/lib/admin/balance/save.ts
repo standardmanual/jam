@@ -26,6 +26,7 @@ export const BALANCE_SAVE_FAILED_MESSAGE = '설정을 저장하지 못했어요.
 export const BALANCE_HISTORY_FAILED_MESSAGE = '변경 이력을 남기지 못해 저장을 취소했어요. 잠시 뒤 다시 시도해 주세요.'
 export const BALANCE_ROLLBACK_FAILED_MESSAGE =
   '값은 바뀌었지만 변경 이력을 남기지 못했고 되돌리지도 못했어요. 화면을 새로 불러와 값을 확인하고 개발자에게 알려 주세요.'
+export const BALANCE_SECTION_NOT_FOUND_MESSAGE = '찾을 수 없는 구역이에요. 주소의 구역 이름을 확인해 주세요.'
 export const BALANCE_LOAD_FAILED_MESSAGE = '설정을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 
 export interface SaveBalanceInput {
