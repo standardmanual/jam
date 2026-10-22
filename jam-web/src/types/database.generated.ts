@@ -986,6 +986,30 @@ export type Database = {
         }
         Relationships: []
       }
+      content_overwrite_backup_20261022: {
+        Row: {
+          backed_up_at: string
+          kind: string
+          row_id: string
+          snapshot: Json | null
+          target_tribe: string
+        }
+        Insert: {
+          backed_up_at?: string
+          kind: string
+          row_id: string
+          snapshot?: Json | null
+          target_tribe: string
+        }
+        Update: {
+          backed_up_at?: string
+          kind?: string
+          row_id?: string
+          snapshot?: Json | null
+          target_tribe?: string
+        }
+        Relationships: []
+      }
       custody_events: {
         Row: {
           actor_user_id: string | null
