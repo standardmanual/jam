@@ -394,9 +394,9 @@ describe('toTodayCardRegisterInput · pattern_no(결정 5)', () => {
 })
 
 describe('toTodayCardRegisterInput · 제목 글자 수 경고(G15)', () => {
-  it('제목 상한 상수는 모양 5개를 모두 갖는다', () => {
+  it('제목 상한 상수는 CARD_SHAPES의 모양을 모두 갖는다', () => {
     expect(Object.keys(CARD_TITLE_MAX_LENGTH).sort()).toEqual([...CARD_SHAPES].sort())
-    expect(CARD_TITLE_MAX_LENGTH).toEqual({ hero: 22, poster: 18, square: 22, brief: 28, list: 22 })
+    expect(CARD_TITLE_MAX_LENGTH).toEqual({ hero: 22, poster: 18, square: 22, brief: 28, list: 22, dome: 22, ticket: 22 })
   })
 
   for (const shape of CARD_SHAPES) {
