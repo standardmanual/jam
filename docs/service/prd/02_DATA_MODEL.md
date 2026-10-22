@@ -539,7 +539,8 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 - 열: `kind`(`item_book`·`badge`·`new_item_book`·`new_badge`), `row_id`(UUID, `kind`와 함께 PK), `target_tribe`(새 트라이브 이름, 트라이브별 되돌림이 거른다), `snapshot`(JSONB, `to_jsonb(row)`), `backed_up_at`. `item_book`·`badge`는 덮어쓰기 전 전체 행을 `snapshot`에 담고, `new_*`는 새로 넣은 행의 id만 담는다(`snapshot` 없음, CHECK가 짝을 강제한다).
 - 접근: RLS를 켜고 정책을 두지 않으며 `anon`·`authenticated` 권한을 회수한다. 서버(service role)만 읽고 쓴다.
 - 쓰는 곳: 트라이브별 컨텐츠 SQL(276~280)이 덮어쓰기 직전에 자기 대상 행을 이 표에 (다시) 기록하고, 파일 끝의 되돌림 SQL이 이 표로 옛 값을 되돌린다. SQL은 배지 id가 아니라 «컬렉션의 옛 이름과 옛 배지 이름»으로 옛 행을 찾는다. 짝은 [ITEMBOOK_REPLACEMENT_MAP.md](../content/ITEMBOOK_REPLACEMENT_MAP.md)이고 생성기·데이터는 `jam-web/scripts/jam2-content/`다.
-- 덮어쓰기가 바꾸는 열: 컬렉션은 `name`·`description`·`tribe_id`·`is_active`·`tier_mode`·`story_text`·`image_url`·`image_source`, 옛 배지 행은 `name`·`description`·`rarity`(common)·`deleted_at`(비움)·`tribe_id`·`image_url`·`image_source`다. `point_reward`·`reward_points`·`reward_badge_id`는 건드리지 않는다.
+- 덮어쓰기가 바꾸는 열: 컬렉션은 `name`·`description`·`tribe_id`·`is_active`·`tier_mode`·`story_text`·`image_url`·`image_source`와 **배경 칸 5개**(`background_color`·`background_shader_id`·`background_image_url`·`background_video_url`·`background_animation`, 모두 NULL로 비움), 옛 배지 행은 `name`·`description`·`rarity`(common)·`deleted_at`(비움)·`tribe_id`·`image_url`·`image_source`와 같은 **배경 칸 5개**(NULL로 비움)다. `point_reward`·`reward_points`·`reward_badge_id`는 건드리지 않는다. 새로 넣는 행은 배경 칸을 적지 않아 열의 기본값(NULL)이다.
+- 되돌림이 복원하는 열: 위에서 바꾼 열 전부(배경 칸 5개 포함)를 `snapshot`에서 읽어 되돌린다. 배경 칸 중 `background_animation`만 JSONB라서 `to_jsonb`가 담은 JSON null을 `NULLIF(snapshot->'background_animation', 'null'::jsonb)`로 SQL NULL로 바꿔 되돌리고, 나머지 TEXT 칸은 `snapshot->>'열'`로 읽는다.
 
 ---
 
