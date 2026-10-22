@@ -57,14 +57,7 @@
           </div>
         </div>
 
-        <!-- 버튼을 캡슐 아래로 이동 -->
-        <div class="mt-3.5 flex justify-center">
-          <button id="action-btn" type="button" class="group inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold tracking-tight transition-all duration-200 active:scale-95 cursor-pointer shadow-xs bg-white border border-black/10 text-neutral-800 hover:border-black/25 hover:shadow-sm">
-            <span class="inline-block w-2 h-2 rounded-full bg-[#FF2A00]" style="box-shadow: 0 0 6px rgba(255, 42, 0, 0.9);"></span>
-            <span id="btn-text">채우기</span>
-          </button>
-        </div>
-
+        <!-- 채우기 버튼 제거 (캡슐 자체를 터치하여 채움) -->
       </div>
 
       <!-- 토스트 알림 -->
@@ -125,7 +118,6 @@
                   <span class="text-[9px] font-black uppercase tracking-wider text-neutral-800 mt-0.5">CAPSULE</span>
                 </div>
               </div>
-              <span class="mt-2 px-3 py-1 rounded-full text-xs font-bold bg-white text-black shadow-xs border border-black/10">채우기</span>
             </div>
           </div>
         </div>
@@ -149,8 +141,6 @@
     const centerLabel = document.getElementById('center-label');
     const miniRadial = document.getElementById('mini-radial');
     const miniCore = document.getElementById('mini-core');
-    const btnText = document.getElementById('btn-text');
-    const actionBtn = document.getElementById('action-btn');
     const replayBtn = document.getElementById('replay-btn');
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toast-msg');
@@ -215,7 +205,6 @@
       displayVal.textContent = val + '%';
       sliderLabel.textContent = val + '%';
       centerPercent.textContent = val + '%';
-      btnText.textContent = is100 ? '열기' : '채우기';
     }
 
     // 진입 모션: 0%(2% 코어)를 브라우저에 그린 뒤 140ms 후 목표량까지 2초 동안 차오름
@@ -246,7 +235,8 @@
 
     replayBtn.addEventListener('click', triggerEntryMotion);
 
-    actionBtn.addEventListener('click', () => {
+    // 캡슐 본체 터치 시 시뮬레이션 동작
+    capsuleContainer.addEventListener('click', () => {
       if (targetPercent >= 100) {
         showToast('캡슐이 가득 차서 열 수 있습니다!');
         return;

@@ -3,12 +3,19 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import RadialCapsule from './RadialCapsule'
 
 describe('RadialCapsule', () => {
-  it('기본 렌더링 시 "채우기" 버튼, 퍼센트, CAPSULE 텍스트가 정상 생성된다', () => {
+  it('기본 렌더링 시 채우기 버튼 없이 퍼센트와 CAPSULE 텍스트가 정상 생성된다', () => {
     const html = renderToStaticMarkup(<RadialCapsule percent={50} actionText="채우기" />)
-    expect(html).toContain('채우기')
+    expect(html).not.toContain('채우기')
     expect(html).toContain('CAPSULE')
     expect(html).toContain('50%')
     expect(html).toContain('radial-gradient')
+  })
+
+  it('showActionButton={true} 명시 시 액션 버튼이 렌더링된다', () => {
+    const html = renderToStaticMarkup(
+      <RadialCapsule percent={50} actionText="채우기" showActionButton={true} />
+    )
+    expect(html).toContain('채우기')
   })
 
   it('0%일 때도 중심 코어의 시각적 그라데이션 및 핫 코어가 렌더링된다', () => {
@@ -19,11 +26,10 @@ describe('RadialCapsule', () => {
     expect(html).toContain('CAPSULE')
   })
 
-  it('100%일 때 "열기" 문구 및 100% 텍스트로 변경 가능하다', () => {
+  it('100%일 때 100% 텍스트와 CAPSULE이 정상 표기된다', () => {
     const html = renderToStaticMarkup(
-      <RadialCapsule percent={100} actionText="열기" animateOnMount={false} />
+      <RadialCapsule percent={100} animateOnMount={false} />
     )
-    expect(html).toContain('열기')
     expect(html).toContain('100%')
     expect(html).toContain('CAPSULE')
   })

@@ -7,11 +7,11 @@ export interface RadialCapsuleProps {
   percent: number
   /** 캡슐 높이 (px) - 96px 고정 */
   height?: number
-  /** 풀라운드 버튼 문구 (기본: '채우기') */
+  /** 풀라운드 버튼 문구 (선택 사항) */
   actionText?: string
   /** 풀라운드 버튼 클릭 핸들러 */
   onAction?: () => void
-  /** 버튼을 캡슐 아래에 표시할지 여부 (기본: true) */
+  /** 버튼을 캡슐 아래에 표시할지 여부 (기본: false - 채우기 버튼 제거 사양) */
   showActionButton?: boolean
   /** 캡슐 바디 전체 클릭 핸들러 (옵션) */
   onClick?: () => void
@@ -45,14 +45,14 @@ const CAPSULE_BG = '#ECECEE'
  * 4. 두 가지 방사형 그라데이션 레이어 모두 중심에서 바깥으로 부드럽게 스케일 확장 모션
  * 5. 그라데이션 외곽은 캡슐 배경색(#ECECEE) 속으로 경계선 없이 부드럽게 블렌딩
  * 6. 100%일 때는 테두리와 내부 그림자 없이 캡슐 전체가 선명한 붉은 잼으로 꽉 참
- * 7. 캡슐 아래에 작은 풀라운드('rounded-full') 버튼으로 '채우기' 표기
+ * 7. 채우기 버튼 제거: 캡슐 본체 자체를 클릭/터치하여 시트 오픈
  */
 export default function RadialCapsule({
   percent,
   height = 96,
-  actionText = '채우기',
+  actionText,
   onAction,
-  showActionButton = true,
+  showActionButton = false,
   onClick,
   animateOnMount = true,
   durationMs = 2000,

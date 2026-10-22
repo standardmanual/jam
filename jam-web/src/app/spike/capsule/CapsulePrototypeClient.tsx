@@ -200,7 +200,7 @@ export default function CapsulePrototypeClient() {
                 </button>
               </div>
 
-              {/* 캡슐 렌더 영역 (높이 96px, 버튼은 캡슐 아래에 위치) */}
+              {/* 캡슐 렌더 영역 (높이 96px, 채우기 버튼 제거 - 캡슐 본체 터치) */}
               <div className="py-4 bg-[#F5F5F7] rounded-2xl p-6 flex flex-col items-center">
                 <div className="w-full max-w-md">
                   <RadialCapsule
@@ -209,7 +209,7 @@ export default function CapsulePrototypeClient() {
                     height={96}
                     durationMs={durationMs}
                     actionText={percent >= 100 ? '열기' : '채우기'}
-                    onAction={handleFillAction}
+                    onClick={handleFillAction}
                   />
                 </div>
               </div>
@@ -378,7 +378,7 @@ export default function CapsulePrototypeClient() {
               <div>
                 <h2 className="text-sm font-bold text-neutral-900">실제 서비스 화면 내 배치 미리보기</h2>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  높이 96px와 아래 배치된 ‘채우기’ 버튼이 화면에 어떻게 자리잡는지 확인합니다.
+                  높이 96px와 방사형 그라데이션 캡슐이 화면에 어떻게 자리잡는지 확인합니다.
                 </p>
               </div>
 
@@ -437,7 +437,7 @@ export default function CapsulePrototypeClient() {
                     </div>
                   </div>
 
-                  {/* 캡슐 영역 (높이 96px, 버튼은 캡슐 아래) */}
+                  {/* 캡슐 영역 (높이 96px, 채우기 버튼 제거 - 캡슐 본체 터치) */}
                   <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-xs space-y-2">
                     <div className="flex justify-between items-center px-1">
                       <span className="text-xs font-bold text-neutral-700">캡슐 게이지</span>
@@ -451,7 +451,7 @@ export default function CapsulePrototypeClient() {
                       height={96}
                       durationMs={durationMs}
                       actionText={percent >= 100 ? '열기' : '채우기'}
-                      onAction={handleFillAction}
+                      onClick={handleFillAction}
                     />
                   </div>
 
@@ -498,7 +498,7 @@ export default function CapsulePrototypeClient() {
                       height={96}
                       durationMs={durationMs}
                       actionText={percent >= 100 ? '열기' : '채우기'}
-                      onAction={handleFillAction}
+                      onClick={handleFillAction}
                     />
                   </div>
                 </div>

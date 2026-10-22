@@ -11,7 +11,7 @@ import { d } from '@/lib/i18n'
  * - 애니메이션 2초(2000ms), 뒤로 갈수록 느려지는 Expo Ease-Out 감속 곡선
  * - 캡슐 중앙에 'CAPSULE' 볼드 표기, 그 위에 'xx%' 큰 텍스트 볼드 표기
  * - 100%일 때는 테두리와 내부 그림자 없이 캡슐 전체가 선명한 붉은 잼으로 꽉 참
- * - 캡슐 아래에 작은 풀라운드('rounded-full') 버튼으로 '채우기' / 상태 문구 표기
+ * - 채우기 버튼 제거 (캡슐 자체를 터치/클릭하여 시트 오픈)
  */
 
 export type CapsulePillStatus = 'filling' | 'ready' | 'noSlots' | 'loading' | 'error'
@@ -33,11 +33,8 @@ export const CAPSULE_PILL_HEIGHT_PX = 96
 export default function CapsulePill({ status, percent, statusText, actionText, onClick }: Props) {
   if (status === 'loading') {
     return (
-      <div role="status" aria-label={d.capsule.aria.loading} className="w-full flex flex-col items-center">
+      <div role="status" aria-label={d.capsule.aria.loading} className="w-full">
         <Skeleton height={CAPSULE_PILL_HEIGHT_PX} borderRadius="var(--radius-full)" className="w-full" />
-        <div className="mt-3">
-          <Skeleton height={28} width={76} borderRadius="var(--radius-full)" />
-        </div>
       </div>
     )
   }
@@ -46,7 +43,7 @@ export default function CapsulePill({ status, percent, statusText, actionText, o
 
   if (isError) {
     return (
-      <div className="w-full flex flex-col items-center">
+      <div className="w-full">
         <button
           type="button"
           onClick={onClick}
@@ -55,17 +52,8 @@ export default function CapsulePill({ status, percent, statusText, actionText, o
           style={{ height: `${CAPSULE_PILL_HEIGHT_PX}px` }}
         >
           <span className="text-sm font-bold text-muted">{statusText}</span>
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted/70 mt-1">CAPSULE</span>
+          <span className="text-xs font-semibold text-primary mt-1">{actionText}</span>
         </button>
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={onClick}
-            className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-border text-foreground hover:border-foreground/30 shadow-xs cursor-pointer"
-          >
-            {actionText}
-          </button>
-        </div>
       </div>
     )
   }
@@ -76,6 +64,7 @@ export default function CapsulePill({ status, percent, statusText, actionText, o
       height={CAPSULE_PILL_HEIGHT_PX}
       durationMs={2000}
       actionText={actionText}
+      showActionButton={false}
       onAction={onClick}
       onClick={onClick}
       ariaLabel={d.capsule.aria[status] ?? '캡슐'}
