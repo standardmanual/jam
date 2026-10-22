@@ -2,7 +2,7 @@
 id: "20261022_2248"
 category: Admin
 priority: P2
-status: OPEN
+status: IN_PROGRESS
 created: 2026-10-22
 ---
 
@@ -35,6 +35,10 @@ created: 2026-10-22
 
 - 위 시험 3개 파일이 모두 통과하고, 전체 시험이 통과한다.
 - 허용 모양 목록을 한 곳(`CARD_SHAPES`)에서 읽는 시험과 문구가 같은 목록을 가리킨다.
+
+## 진행 기록
+
+- 2026-10-23 JAM 2.0 부가 P2 티켓 일괄 처리(jam-work)로 착수한다. 카리나가 최신 `origin/staging`에서 아직 재현됨을 확인했다. 유형 `bug`, 경로 ③ 표준. 규모 사전 판정: 파일 5~6개, 변경 50줄 안팎이다. 구현 계획과 관련 파일에 경로·함수명이 적혀 있고 범위가 한 가지 일이라 `planOnlyWaiver`를 넘긴다. 확인한 사실: vitest 3개 파일에서 9건이 그대로 실패하고, `scripts/ops-patterns-seed.test.mjs`도 `deepStrictEqual`로 실패한다(실제 5개 모양, 기대 7개). 결정: 시험이 `CARD_SHAPES`를 직접 가져오게 바꾼다(상세 요구사항의 선택 항목을 채택). 시드 시험은 코드가 낡았는지 시험이 낡았는지 가려서 고친다.
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
