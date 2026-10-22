@@ -11,7 +11,7 @@
 -- 하는 일 (한 트랜잭션, 파일만 쓰고 실행은 롤백 실측과 사용자 승인 뒤 카리나가 한다)
 --   1. 레시피 1,350건(combination_recipes): 새 트라이브 5곳의 아이템 이름 450개(트라이브마다 90종) × 올릴 등급 3개(Common→Rare, Rare→Epic, Epic→Mystic).
 --      보상은 같은 컬렉션·같은 이름의 바로 위 등급 아이템 배지 1개다(운영 로직 8.4절). Mystic은 재료가 되지 않는다.
---      이름은 «{아이템 이름} {보상 등급} 올리기», 설명은 «같은 트라이브의 {재료 등급} 아이템 배지 다섯 개를 «{아이템 이름}» {보상 등급} 한 개로 바꿉니다.»다(사용자 결정 2026-10-22 5번, 습니다체).
+--      이름은 «{아이템 이름} {보상 등급} 올리기», 설명은 «같은 트라이브의 {재료 등급} 아이템 배지 다섯 개를 **{아이템 이름}** {보상 등급} 한 개로 바꿉니다.»다(사용자 결정 2026-10-22 5번, 습니다체).
 --      성공 포인트는 0이다(결정 6번. 포인트 없이 위 등급 아이템 배지만 받는다). reward_locked는 false(결과를 열린 채 지급), allow_no_reward는 false, valid_until은 비운다.
 --   2. 재료 칸 6,750개(combination_recipe_slots): 레시피마다 5개(slot_order 0~4), badge_type은 item.
 --      후보(allowed_badge_ids)는 같은 트라이브·재료 등급의 아이템 배지 90종 전부(어느 컬렉션의 것이든)이고 5칸이 같다. 등급을 섞어 넣을 수 없다.
@@ -169,7 +169,7 @@ CREATE TEMP TABLE _jam2_up_recipe (
 INSERT INTO _jam2_up_recipe (tribe_id, material_rarity, reward_rarity, reward_id, name, description)
 SELECT u.tribe_id, p.material_rarity, p.reward_rarity, b.id,
        b.name || ' ' || p.reward_label || ' 올리기',
-       '같은 트라이브의 ' || p.material_label || ' 아이템 배지 다섯 개를 «' || b.name || '» ' || p.reward_label || ' 한 개로 바꿉니다.'
+       '같은 트라이브의 ' || p.material_label || ' 아이템 배지 다섯 개를 **' || b.name || '** ' || p.reward_label || ' 한 개로 바꿉니다.'
   FROM _jam2_up_tribe u
   JOIN public.item_books ib ON ib.tribe_id = u.tribe_id
   JOIN public.badges b ON b.item_book_id = ib.id
@@ -380,7 +380,7 @@ DROP TABLE _jam2_up_base;
 
 -- 적용 후 확인 쿼리(읽기 전용 SELECT):
 --   -- 등급 올리기 레시피 1,350건: 자리 값 공개 시작, 이름과 설명이 틀에 맞는다 (1350)
---   SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 «.+» (Rare|Epic|Mystic) 한 개로 바꿉니다\.$';
+--   SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 \*\*.+\*\* (Rare|Epic|Mystic) 한 개로 바꿉니다\.$';
 --   -- 보상 배지의 등급별 레시피 수 (rare 450, epic 450, mystic 450)
 --   SELECT rb.rarity, count(*) FROM public.combination_recipes cr
 --     JOIN public.badges rb ON rb.id = cr.reward_badge_ids[1]
@@ -409,7 +409,7 @@ DROP TABLE _jam2_up_base;
 --   SELECT count(*) FROM public.combination_recipe_slots s JOIN public.combination_recipes cr ON cr.id = s.recipe_id
 --    WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.reward_badge_ids[1] = ANY (s.allowed_badge_ids);
 --   -- 단서 레시피 80건은 그대로다: 자리 값 공개 시작이면서 이 틀에 맞지 않는 레시피 (281 적용 뒤 공개 시작을 바꾸기 전에는 80)
---   SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND NOT (cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 «.+» (Rare|Epic|Mystic) 한 개로 바꿉니다\.$');
+--   SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND NOT (cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 \*\*.+\*\* (Rare|Epic|Mystic) 한 개로 바꿉니다\.$');
 --   -- 전체 레시피와 칸: 적용 전 값 + 1,350건, + 6,750개
 --   SELECT (SELECT count(*) FROM public.combination_recipes) AS recipes, (SELECT count(*) FROM public.combination_recipe_slots) AS slots;
 
@@ -443,11 +443,11 @@ DROP TABLE _jam2_up_base;
 -- 배지 조건(condition_json.recipe_first_success)이 이 레시피를 가리키는지도 확인한다(삭제 가드와 같다).
 --
 -- 1) 지우기 전 확인(읽기 전용): 틀에 맞는 레시피와, 틀에 맞지 않는 자리 값 레시피(단서 80건)를 센다 (1350, 80. 281 적용 뒤 공개 시작을 바꾸기 전 기준)
--- SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 «.+» (Rare|Epic|Mystic) 한 개로 바꿉니다\.$';
--- SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND NOT (cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 «.+» (Rare|Epic|Mystic) 한 개로 바꿉니다\.$');
+-- SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 \*\*.+\*\* (Rare|Epic|Mystic) 한 개로 바꿉니다\.$';
+-- SELECT count(*) FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND NOT (cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 \*\*.+\*\* (Rare|Epic|Mystic) 한 개로 바꿉니다\.$');
 --
 -- 2) 지우기 (자리 값 공개 시작인 상태에서는 정확히 1350건이 지워진다. 공개 시작을 이미 바꿨다면 valid_from 조건을 뺀다)
--- DELETE FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 «.+» (Rare|Epic|Mystic) 한 개로 바꿉니다\.$';
+-- DELETE FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ ' (Rare|Epic|Mystic) 올리기$' AND cr.description ~ '^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 \*\*.+\*\* (Rare|Epic|Mystic) 한 개로 바꿉니다\.$';
 --
 -- 3) 되돌린 뒤 확인: 첫째는 0이고 둘째는 남은 단서 레시피 80건이라 80이다(281 적용 뒤 공개 시작을 바꾸기 전 기준)
 -- SELECT count(*) FROM public.combination_recipes cr WHERE cr.name ~ ' (Rare|Epic|Mystic) 올리기$';

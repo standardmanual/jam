@@ -642,6 +642,18 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 8.4절, 19.3절',
     ticketId: '20261022_1138',
   },
+  {
+    id: 'ch8-tier-up-recipes',
+    chapter: 8,
+    chapterTitle: '인벤토리, 컬렉션, 믹스',
+    title: '등급 올리기 레시피 1,350건 규격',
+    type: 'pre_launch_pending',
+    currentSpec: '같은 트라이브·같은 등급의 아이템 배지 5개를 같은 이름의 바로 위 등급 1개로 바꿈 (Common→Rare, Rare→Epic, Epic→Mystic, Mystic은 재료 아님, 성공 포인트 0, 공개 전으로 숨겨 입력, 컬렉션이 열릴 때 그 컬렉션의 레시피 27건을 함께 공개)',
+    codeLocation: 'jam-web/supabase/migrations/283_tier_up_recipes.sql',
+    userExperience: '겹친 아이템 배지를 모아 위 등급으로 올려, 컬렉션을 원하는 등급으로 채워요.',
+    basisDoc: '운영 로직 8.4절, 19.3절',
+    ticketId: '20261022_1138',
+  },
 
   // =========================================================================
   // 9장. 장소, 드랍과 픽업

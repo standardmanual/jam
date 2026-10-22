@@ -469,9 +469,9 @@ describe('283: 등급 올리기 레시피 SQL (트라이브 5곳 × 아이템 90
     expect(TIER_LABELS).toEqual({ common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' });
     expect(TIER_UP_NAME_SUFFIX).toBe(' 올리기');
     expect(tierUpName('접이식 테이블', 'rare')).toBe('접이식 테이블 Rare 올리기');
-    expect(tierUpDescription('접이식 테이블', 'common', 'rare')).toBe('같은 트라이브의 Common 아이템 배지 다섯 개를 «접이식 테이블» Rare 한 개로 바꿉니다.');
-    expect(tierUpDescription('접이식 테이블', 'rare', 'epic')).toBe('같은 트라이브의 Rare 아이템 배지 다섯 개를 «접이식 테이블» Epic 한 개로 바꿉니다.');
-    expect(tierUpDescription('접이식 테이블', 'epic', 'mystic')).toBe('같은 트라이브의 Epic 아이템 배지 다섯 개를 «접이식 테이블» Mystic 한 개로 바꿉니다.');
+    expect(tierUpDescription('접이식 테이블', 'common', 'rare')).toBe('같은 트라이브의 Common 아이템 배지 다섯 개를 **접이식 테이블** Rare 한 개로 바꿉니다.');
+    expect(tierUpDescription('접이식 테이블', 'rare', 'epic')).toBe('같은 트라이브의 Rare 아이템 배지 다섯 개를 **접이식 테이블** Epic 한 개로 바꿉니다.');
+    expect(tierUpDescription('접이식 테이블', 'epic', 'mystic')).toBe('같은 트라이브의 Epic 아이템 배지 다섯 개를 **접이식 테이블** Mystic 한 개로 바꿉니다.');
     expect(TIER_UP_DESCRIPTION_PARTS[1]).toContain('다섯 개');
     for (const r of tierUps) {
       expect(r.description, r.name).toMatch(/바꿉니다\.$/);
@@ -600,7 +600,7 @@ describe('283: 등급 올리기 레시피 SQL (트라이브 5곳 × 아이템 90
     const tail = rollbackTail(sql283);
     for (const line of tail.split('\n').filter((l) => l.trim() !== '')) expect(line.startsWith('--')).toBe(true);
     expect(patterns.name).toBe(' (Rare|Epic|Mystic) 올리기$');
-    expect(patterns.description).toBe('^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 «.+» (Rare|Epic|Mystic) 한 개로 바꿉니다\\.$');
+    expect(patterns.description).toBe('^같은 트라이브의 (Common|Rare|Epic) 아이템 배지 다섯 개를 \\*\\*.+\\*\\* (Rare|Epic|Mystic) 한 개로 바꿉니다\\.$');
     expect(tail).toContain(
       `DELETE FROM public.combination_recipes cr WHERE cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.name ~ '${patterns.name}' AND cr.description ~ '${patterns.description}';`
     );
@@ -654,7 +654,7 @@ describe('283: 등급 올리기 레시피 SQL (트라이브 5곳 × 아이템 90
   it('머리말에 7-7a 뒤 적용, 적용 전 확인 SELECT, 이름·설명 틀, 성공 포인트 0이 적혀 있다', () => {
     expect(sql283).toContain('7-7a(믹스 화면이 재료 후보를 레시피를 고를 때만 불러오게 고침, 티켓 20261022_2119)가 staging에 반영된 뒤에 공용 DB에 적용한다');
     expect(sql283).toContain('적용 전 확인 쿼리(읽기 전용 SELECT)');
-    expect(sql283).toContain('이름은 «{아이템 이름} {보상 등급} 올리기», 설명은 «같은 트라이브의 {재료 등급} 아이템 배지 다섯 개를 «{아이템 이름}» {보상 등급} 한 개로 바꿉니다.»다');
+    expect(sql283).toContain('이름은 «{아이템 이름} {보상 등급} 올리기», 설명은 «같은 트라이브의 {재료 등급} 아이템 배지 다섯 개를 **{아이템 이름}** {보상 등급} 한 개로 바꿉니다.»다');
     expect(sql283).toContain('성공 포인트는 0이다(결정 6번.');
     expect(sql283).toContain('후보 약 607,500개를 한 번에 읽기 때문이다');
   });
