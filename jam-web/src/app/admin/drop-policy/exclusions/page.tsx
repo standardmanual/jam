@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -28,9 +27,10 @@ interface Props {
 }
 
 /**
- * 드랍 정책 — 아이템배지·컬렉션 드랍 제외 관리(티켓 20260911_2220, 탭·표준 표 전환 20260924_0948).
+ * 드랍 제외 관리 — 아이템배지·컬렉션 드랍 제외 관리(티켓 20260911_2220, 탭·표준 표 전환 20260924_0948).
  *
- * `/admin/drop-policy`(드랍엔진 v2 파라미터 폼)의 하위 화면. 탭(`?tab=badges|collections`)마다 표가
+ * 예전에는 `/admin/drop-policy`(옛 드랍 엔진 파라미터 폼)의 하위 화면이었다. 그 폼과 화면은 티켓 20261022_0938에서
+ * 지웠고, 이 화면은 주소를 그대로 둔 채 메뉴에서 바로 연다. 탭(`?tab=badges|collections`)마다 표가
  * 하나씩이고, 두 탭은 서로 다른 컬럼을 건드리는 완전히 별개 액션이다:
  *   - 컬렉션 전체 드랍 제외: `item_books.drop_excluded` 토글 하나로 소속 배지 전체가
  *     드랍 후보에서 빠진다(소속 배지 각각의 `drop_excluded` 값은 건드리지 않는다).
@@ -114,11 +114,7 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
         <h1 className="text-2xl md:text-3xl font-bold">드랍 제외 관리</h1>
         <p className="text-muted-foreground text-sm mt-1">
           아이템배지·컬렉션을 드랍 후보에서만 제외합니다. 화면 노출·이미 보유한 유저 이력에는
-          영향이 없습니다.{' '}
-          <Link href="/admin/drop-policy" className="underline hover:text-foreground">
-            드랍 정책 파라미터
-          </Link>
-          로 돌아가기
+          영향이 없습니다.
         </p>
       </div>
 

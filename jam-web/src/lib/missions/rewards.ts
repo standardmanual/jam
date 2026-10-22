@@ -156,7 +156,7 @@ export async function grantMissionRewards(
       // 챕터 점수 «배지 받기» (티켓 20261019_1315 2a회, 운영 로직 12.2절). 새 행을 실제로 넣은 보상만 여기 온다(이미 보유·23505는 위에서 건너뛰었다).
       // 숨김 배지는 보상으로 줄 수 없어 이미 걸러졌고, 팔로워·팔로잉·챕터 조건 배지는 공용 함수가 거른다. 던지지 않아 보상 결과를 바꾸지 않는다.
       await awardBadgeReceiveScore(supabase, { userId, badge, origin: { triggeredBy: `mission_reward:${mission.id}` } })
-      // 배지 자체 포인트 지급 (badge-engine/drop-engine과 동일하게 코드에서 명시적 재현)
+      // 배지 자체 포인트 지급 (badge-engine/drop-engine과 동일하게 코드에서 명시적 재현. 옛 drop-engine/index.ts는 티켓 20261022_0938에서 지웠다)
       const pr = badge.point_reward ?? 0
       if (pr > 0) {
         // sourceMissionId를 함께 넘기는 이유 두 가지 (티켓 20260824_019 3차)

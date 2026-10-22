@@ -39,7 +39,6 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { getAbusingPolicy, DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh } from '@/lib/abusing/policy'
-import { getActivityHistory } from '@/lib/strava/activity-history'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 // JAM 2.0 잼 정산과 대량 수령 경보(티켓 20261017_1423) — 서버 전용 모듈. 이 파일에서만 부른다.

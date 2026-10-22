@@ -1,6 +1,6 @@
 /**
  * 믹스 정책(combine_policy) 로딩 — service_role 클라이언트 전용
- * 패턴: src/lib/drop-engine/policy.ts (싱글톤 id=1, 실패 시 기본값 폴백)
+ * 싱글톤 id=1, 실패 시 기본값 폴백
  *
  * 마이그레이션 153(티켓 20260910_1408)에서 트라이브 다양성 티어(경로 B)와 피티를
  * 전면 폐기했다 — 남은 설정은 「레시피 미매칭 시 지급할 고정 포인트」 하나뿐이다.
@@ -42,8 +42,8 @@ export async function getCombinePolicy(): Promise<CombinePolicy> {
 
 /**
  * 조합 정책을 저장한다. 실패하면 호출부가 인지하도록 예외를 던진다.
- * (이전에는 upsert 반환 error를 확인하지 않아 저장 실패가 성공으로 응답됐다 — 티켓 20260901_1843,
- * `drop-engine/policy.ts`의 `updateDropPolicy` 패턴을 그대로 따른다)
+ * (이전에는 upsert 반환 error를 확인하지 않아 저장 실패가 성공으로 응답됐다 — 티켓 20260901_1843.
+ * 옛 `drop-engine/policy.ts`의 `updateDropPolicy`와 같은 패턴이었고, 그 파일은 티켓 20261022_0938에서 지웠다)
  */
 export async function updateCombinePolicy(patch: Partial<CombinePolicy>): Promise<void> {
   const supabase = createServiceClient()

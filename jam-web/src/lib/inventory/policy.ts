@@ -1,6 +1,6 @@
 /**
  * 인벤토리 최대 슬롯 수(inventory.max_slots) 전역 정책 — service_role 클라이언트 전용.
- * 패턴: src/lib/drop-engine/policy.ts (싱글톤 id=1, 실패 시 기본값 폴백).
+ * 싱글톤 id=1, 실패 시 기본값 폴백.
  * 티켓 20260904_1623.
  */
 import { createServiceClient } from '@/lib/supabase/server'

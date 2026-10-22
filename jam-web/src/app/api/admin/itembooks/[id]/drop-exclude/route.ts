@@ -7,7 +7,7 @@ import { getAdminUser } from '@/lib/admin/auth'
  *
  * `[id]/route.ts`의 PATCH(`{ is_active }`, 화면 노출 자체를 끄고 소속 배지를 연쇄
  * 소프트삭제하는 강한 토글)와는 완전히 별개다. 이 토글은 화면 노출·보유 이력을 그대로 두고
- * 드랍엔진의 컬렉션 조회(`item_books.drop_excluded = false` 조건, `lib/drop-engine/index.ts`)에서만
+ * 활동 드랍의 컬렉션 조회(`item_books.drop_excluded = false` 조건, `lib/drop-engine/syncIssue.ts`)에서만
  * 이 컬렉션과 소속 배지 전체를 뺀다. 배지 개별 `drop_excluded`와는 별개 축이라 소속 배지의
  * 값은 건드리지 않는다. 되돌릴 수 있는 낮은 위험도의 값이라 확인 다이얼로그·캐스케이드
  * 소프트삭제를 거치지 않는다.

@@ -7,8 +7,8 @@
  *
  * 1. 아이템으로 바꾸면 `missionReward`를 비운다 — 아이템의 `{mission_reward: true}`는 드랍
  *    엔진에서 영구히 드랍되지 않는데, 서버 검증도 막지 않는다.
- * 2. 아이템에서 막는 누적 조건 목록은 드랍 엔진·서버 검증과 같은 배열이다 — 예전에는 폼만
- *    5개를 복제해 두어 엔진의 11개와 어긋났다.
+ * 2. 아이템에서 막는 누적 조건 목록은 폼과 서버 검증이 같은 배열이다 — 예전에는 폼만
+ *    5개를 복제해 두어 엔진의 11개와 어긋났다. (옛 드랍 엔진의 재수출은 티켓 20261022_0938에서 지웠다)
  * 3. JAM!을 켜면 트라이브·컬렉션을 비운다 — JAM!에서는 연결 정보 섹션이 숨겨진다.
  *
  * 실행: `npx vitest run src/app/admin/badges/__tests__/type-switch-hidden-values-contract.test.ts`
@@ -17,7 +17,6 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CUMULATIVE_CONDITION_FIELDS as FROM_MODULE } from '@/lib/drop-engine/cumulativeConditionFields'
-import { CUMULATIVE_CONDITION_FIELDS as FROM_ENGINE } from '@/lib/drop-engine/index'
 
 const FORM = readFileSync(join(__dirname, '..', 'BadgeForm.tsx'), 'utf-8')
 const VALIDATION = readFileSync(join(__dirname, '../../../../lib/admin/badge-validation.ts'), 'utf-8')
@@ -48,8 +47,7 @@ describe('타입 전환 시 숨겨진 값 정리', () => {
 })
 
 describe('아이템에서 막는 누적 조건 목록은 한 곳에서 온다', () => {
-  it('드랍 엔진은 새 모듈의 배열을 그대로 재수출한다', () => {
-    expect(FROM_ENGINE).toBe(FROM_MODULE)
+  it('누적 조건 목록은 11개다', () => {
     expect(FROM_MODULE).toHaveLength(11)
   })
 
@@ -59,7 +57,7 @@ describe('아이템에서 막는 누적 조건 목록은 한 곳에서 온다', 
   })
 
   it('서버 저장 검증도 같은 배열을 쓴다', () => {
-    // 드랍 엔진 index는 같은 배열을 다시 내보낼 뿐이라(위 첫 테스트) 서버 모듈을 거치지 않는 새 모듈에서 바로 가져온다.
+    // 서버 모듈을 거치지 않는 순수 모듈에서 바로 가져온다.
     // 운영툴 예약 등록의 JAM! 배지 핸들러가 이 파일을 순수 모듈로 쓰기 때문이다(티켓 20261004_1756).
     expect(VALIDATION).toMatch(/import \{ CUMULATIVE_CONDITION_FIELDS \} from '@\/lib\/drop-engine\/cumulativeConditionFields'/)
     expect(VALIDATION).not.toMatch(/from '@\/lib\/drop-engine\/index'/)

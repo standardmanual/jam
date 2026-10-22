@@ -25,7 +25,7 @@ export async function GET() {
   return NextResponse.json({ config })
 }
 
-/** 폼 전체 저장 — DropPolicyForm/PUT(/api/admin/drop-policy)과 동일 패턴 */
+/** 폼 전체 저장 */
 export async function PUT(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

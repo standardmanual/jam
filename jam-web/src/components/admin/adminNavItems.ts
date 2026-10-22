@@ -8,7 +8,6 @@ import {
   IconWorld,
   IconFlask,
   IconNews,
-  IconDice,
   IconCloudFog,
   IconTestPipe,
   IconTarget,
@@ -75,7 +74,6 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'policy',
     label: '정책 및 밸런스',
     items: [
-      { href: '/admin/drop-policy', label: '드랍 정책', icon: IconDice },
       { href: '/admin/drop-policy/exclusions', label: '드랍 제외 관리', icon: IconBan },
       { href: '/admin/ambient-drop', label: '앰비언트 드랍', icon: IconCloudFog },
       { href: '/admin/combine-policy', label: '믹스 정책', icon: IconTestPipe },

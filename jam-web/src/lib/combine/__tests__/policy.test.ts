@@ -4,7 +4,7 @@
  * 배경 (티켓 20260901_1843):
  * `updateCombinePolicy()`가 upsert 반환 `error`를 확인하지 않아 저장 실패가 "성공"으로
  * 응답됐고, `getCombinePolicy()`도 select 실패를 로그 없이 기본 정책으로 흡수했다.
- * `drop-engine/policy.ts`(`getDropPolicy`/`updateDropPolicy`)와 같은 패턴으로 맞췄다.
+ * (옛 `drop-engine/policy.ts`의 `getDropPolicy`/`updateDropPolicy`와 같은 패턴이었다. 그 파일은 티켓 20261022_0938에서 지웠다.)
  *
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/policy.test.ts
  */

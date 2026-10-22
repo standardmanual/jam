@@ -8,14 +8,14 @@
  *
  * | 길 | 판정에 쓰는 기존 함수·조건 |
  * |---|---|
- * | 드랍 | 컬렉션: `isItemBookDroppable`(노출 중) + `drop_excluded` 아님. 아이템: 삭제 안 됨·`drop_excluded` 아님·유효기간 안 — `fetchDropStructure`와 같은 조건 |
+ * | 드랍 | 컬렉션: `isItemBookDroppable`(노출 중) + `drop_excluded` 아님. 아이템: 삭제 안 됨·`drop_excluded` 아님·유효기간 안 — 활동 드랍(`drop-engine/syncIssue.ts`)과 같은 조건 |
  * | 믹스 | `isRecipeReleased`로 공개 중인 레시피의 `reward_badge_ids`에 그 아이템이 있다 |
  * | 미션 | `isMissionExposed`(노출) 그리고 `isMissionActive`(진행 중)인 미션의 `reward_badge_ids`에 그 아이템이 있다 |
  *
  * - 드랍 길은 활동 드랍 또는 앰비언트 드랍으로 보고, 누적 조건(`condition_json`)은 보지 않는다.
  * - 어드민 직접 지급·컬렉션 완성 보상은 길로 세지 않는다. 선착순 미션이 다 찬 경우도 이번에는 세지 않는다(열림).
  * - 경계는 각 기존 함수를 따른다: 레시피 종료 시각은 빼고(`<`), 컬렉션 종료 시각은 포함한다(`<=`).
- * - 아이템 유효기간은 전용 판정 함수가 없고 `fetchDropStructure`가 `valid_from > now`·`valid_until < now`로
+ * - 아이템 유효기간은 전용 판정 함수가 없고 활동 드랍이 `valid_from > now`·`valid_until < now`로
  *   직접 거른다. 같은 경계(시작·종료 포함)를 가진 `isItemBookDroppable`에 `is_active: true`로 넘겨 다시 쓴다.
  * - 소프트 삭제된 아이템(`deleted_at`)은 결과에서 뺀다 — 드랍 쿼리가 `deleted_at IS NULL`로 거르는 것과 같다.
  */

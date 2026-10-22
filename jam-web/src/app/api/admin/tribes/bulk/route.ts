@@ -13,7 +13,7 @@ import {
  * 비활성화(등급 2)·삭제(등급 3). 옛 `bulk-delete` 라우트의 삭제를 이 라우트로 옮겼다.
  *
  * 비활성화의 실제 영향은 온보딩 선택지와 추천 후보에서 빠지는 것이다. 드랍 엔진은 트라이브의 활성
- * 여부를 읽지 않는다(`lib/drop-engine/index.ts`) — 그래서 미리보기(`dry_run`)의 영향 수치도
+ * 여부를 읽지 않는다(`lib/drop-engine/syncIssueRun.ts`는 `tribes`에서 이름만 읽는다) — 그래서 미리보기(`dry_run`)의 영향 수치도
  * 이 컬렉션·배지·유저 수만 돌려준다(의미 확장은 티켓 20260924_0938).
  */
 export const maxDuration = 60

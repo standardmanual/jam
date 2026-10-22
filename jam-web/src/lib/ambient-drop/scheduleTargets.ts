@@ -11,7 +11,7 @@
  * - 컬렉션: 노출 중이고 드랍 제외가 아닌 것만(`applyDroppableItemBookFilter` + `resolveAmbientTargetCollections`).
  *   후보 풀에서도 드랍 제외 아이템은 뺀다
  *
- * 드랍 제외는 활동 드랍(`drop-engine`의 `fetchDropStructure`)과 같은 조건이다(티켓 20261005_1957, 사용자 결정 A).
+ * 드랍 제외는 활동 드랍(`drop-engine/syncIssue.ts`, 옛 `fetchDropStructure`와 같은 조건)과 같은 조건이다(티켓 20261005_1957, 사용자 결정 A).
  * 특별히 놓으려면 운영자가 드랍 제외 표시를 먼저 끈다.
  *
  * 등록 때는 「예정 시각」을 기준으로 미리 돌린다 — 지금은 공개 전이지만 예정 시각에 공개되는 컬렉션은

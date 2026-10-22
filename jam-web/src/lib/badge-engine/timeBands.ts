@@ -2,8 +2,8 @@
  * 시간대 구간 상수와 KST 변환 — 단일 출처 (티켓 20261018_1815 1회)
  *
  * 스펙(`docs/plan/jam2/10 JAM 2.0 서비스 운영 로직.md` 10장)의 시간대 6구간을 한 곳에 둔다.
- * 배지 조건 판정(`activityFilters.ts`)·조건 문구(`badgeConditionText.ts`)·드랍 엔진
- * (`drop-engine/context.ts`)이 모두 이 상수를 읽는다 — 세 곳이 각자 경계를 들고 있으면
+ * 배지 조건 판정(`activityFilters.ts`)·조건 문구(`badgeConditionText.ts`)와, 옛 드랍 엔진
+ * (`drop-engine/context.ts`, 티켓 20261022_0938에서 삭제)이 이 상수를 읽었다 — 여러 곳이 각자 경계를 들고 있으면
  * 같은 활동이 «새벽»이기도 «아침»이기도 하다(이전 상태: 판정 4~8시, 드랍 5~7시).
  *
  * 판정은 활동 시작 시각(UTC `startDate`)을 한국 시각(KST, UTC+09:00 고정)으로 바꿔 읽는다.

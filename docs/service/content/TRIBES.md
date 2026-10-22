@@ -116,7 +116,7 @@ source:
 
 ## 트라이브 인접 그래프
 
-드랍엔진의 트라이브 모멘텀 로직에 사용되는 인접 관계. 각 트라이브는 서사적 개연성에 따라 인접 트라이브 최대 3개를 가진다.
+옛 드랍엔진 v2의 트라이브 모멘텀 로직에 쓰던 인접 관계. 각 트라이브는 서사적 개연성에 따라 인접 트라이브 최대 3개를 가진다. 그 엔진은 2026-10-22(티켓 20261022_0938)에 지웠고, JAM 2.0 발급은 소속 트라이브 한 곳만 보므로 이 그래프를 읽지 않는다. `tribe_adjacency` 표와 어드민 인접 편집 화면은 남아 있다.
 
 | 트라이브 | 인접 트라이브 | 서사 근거 |
 |---|---|---|
@@ -223,7 +223,7 @@ source:
 - 등장할 때는 목격담이나 소문 형식으로 쓴다. 미스터리 헌터가 유저에게 직접 말을 걸지 않고, 여럿이 함께하자는 어휘도 쓰지 않는다.
 - "고통의 임계점(러너스 하이)"을 도달 목표나 미션 조건으로 내걸지 않는다.
 - 일간 편성에는 미스터리 헌터의 노출 상한을 둔다. 희소성이 곧 정체성이므로 자주 보여서 그 희소성을 써 버리지 않게 하려는 장치다. 상한은 운영에서 정한다.
-- **이 상한은 컨텐츠 노출 빈도 조정이며 드랍 확률과 무관하다.** 미스터리 헌터가 언제 드랍되는지는 인접 그래프와 드랍 엔진이 정하며, 이 원칙은 그것을 바꾸지 않는다.
+- **이 상한은 컨텐츠 노출 빈도 조정이며 드랍 확률과 무관하다.** 미스터리 헌터가 언제 드랍되는지는 드랍 엔진이 정하며, 이 원칙은 그것을 바꾸지 않는다.
 
 ### 시간대 화자 원칙
 
@@ -292,7 +292,7 @@ source:
 | DB 스키마 | `jam-web/supabase/migrations/014_factions.sql` (신설) → `152_factions_to_tribes_rename.sql` (테이블·컬럼·RPC를 tribes/tribe_id로 완전 리네임) |
 | 배지 연결 | `jam-web/supabase/migrations/015_badges_faction.sql`, `016_itembooks_faction.sql` |
 | 초기 시드 | `jam-web/supabase/migrations/019_seed_worldview.sql` |
-| 드랍엔진 v2 트라이브 모멘텀 로직 | `jam-web/supabase/migrations/034_drop_engine_v2_schema.sql`, `jam-web/src/lib/drop-engine/` |
+| 옛 드랍엔진 v2 트라이브 모멘텀 로직 (코드는 2026-10-22에 삭제) | `jam-web/supabase/migrations/034_drop_engine_v2_schema.sql` |
 | 조합 시스템 트라이브 융합 | `jam-web/supabase/migrations/054_combine_v2.sql`, [Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) |
 | 어드민 관리 화면 | `jam-web/src/app/admin/tribes/` |
 

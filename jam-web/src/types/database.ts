@@ -628,7 +628,7 @@ export interface CombinationRecipeSlotRow {
 /**
  * 믹스 정책 (싱글톤 id=1) — 마이그레이션 153에서 티어·피티 19개 컬럼을 제거하고
  * `fail_reward_points` 하나만 남겼다(티켓 20260910_1408).
- * 패턴: drop_policy — 실패 시 기본값 폴백
+ * 실패 시 기본값 폴백
  */
 export interface CombinePolicyRow {
   id: number
@@ -1054,6 +1054,14 @@ export interface TribeAdjacencyRow {
   adjacent_tribe_id: string
 }
 
+/**
+ * user_drop_state — 발급 경로(동기화·캡슐)가 읽고 쓰는 열은 `common_streak`(`syncIssueRun.ts`)·
+ * `capsule_epic_miss`(캡슐)·`updated_at`뿐이다. `last_drop_tribe_id`·`last_drop_book_id`는 어드민의
+ * 트라이브·컬렉션 삭제 가드(`lib/admin/reference-guards.ts`, `tribe-list.ts`)가 외래키 때문에 조회만 한다.
+ * `last_piece_pity`·`daily_drop_count`·`daily_drop_date`·`total_drops`·`last_activity_at`은 옛 드랍 엔진 전용이었고,
+ * 그 엔진을 지운 지금 코드가 읽지도 쓰지도 않는다. 옛 열 7개는 DB에 남아 있다(열 정리와 가드 정리는
+ * 티켓 20261022_0938 2회).
+ */
 export interface UserDropStateRow {
   user_id: string
   last_drop_tribe_id: string | null
@@ -1064,41 +1072,6 @@ export interface UserDropStateRow {
   daily_drop_date: string | null
   total_drops: number
   last_activity_at: string | null
-  updated_at: string
-}
-
-/**
- * drop_policy 테이블 — 컬럼명이 DB와 1:1로 일치한다.
- *
- * 한동안 앱 키와 DB 컬럼명이 어긋나 `policy.ts`가 입출력 시점에 변환했다
- * (티켓 20260813_003의 컬럼 rename 누락 → 20260831_1118의 한시적 대응).
- * 마이그레이션 115가 컬럼을 `rarity_epic`으로 개명해 불일치가 해소되면서
- * 그 변환 매핑은 제거했다. (티켓 20260831_1115)
- */
-export interface DropPolicyRow {
-  id: number
-  rarity_common: number
-  rarity_rare: number
-  rarity_epic: number
-  rarity_mystic: number
-  bonus_drop_rate: number
-  bonus_drop_rate_intense: number
-  intense_duration_min: number
-  intense_elevation_m: number
-  rare_pity_threshold: number
-  daily_downgrade_from: number
-  daily_downgrade_common: number
-  comeback_gap_days: number
-  weekly_first_rare_mult: number
-  momentum_weight: number
-  adjacent_weight: number
-  explore_weight: number
-  context_override_rate: number
-  mystery_spice_rate: number
-  completion_decay: number
-  completed_book_weight: number
-  same_book_penalty: number
-  last_piece_pity_threshold: number
   updated_at: string
 }
 
@@ -2285,12 +2258,6 @@ export interface Database {
         Row: UserDropStateRow
         Insert: Omit<UserDropStateRow, 'updated_at'> & { updated_at?: string }
         Update: Partial<Omit<UserDropStateRow, 'user_id'>>
-        Relationships: []
-      }
-      drop_policy: {
-        Row: DropPolicyRow
-        Insert: Partial<DropPolicyRow> & { id: number }
-        Update: Partial<Omit<DropPolicyRow, 'id'>>
         Relationships: []
       }
       inventory_policy: {

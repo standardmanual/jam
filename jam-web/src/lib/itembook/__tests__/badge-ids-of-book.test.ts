@@ -1,13 +1,14 @@
 /**
- * drop-engine — 컬렉션 완성률 분모(badgeIdsOfBook) 구성 회귀 테스트
+ * itembook/completion-basis — 컬렉션 완성률 분모(badgeIdsOfBook) 구성 회귀 테스트
  *
  * 티켓 20260911_2235: 배지 개별 drop_excluded=true는 컬렉션 완성 분모에서 제외해야 한다.
  * (컬렉션 단위 drop_excluded는 상위 item_books 조회에서 이미 걸러지므로 이 테스트 범위 밖)
+ * 티켓 20261022_0938: 옛 드랍 엔진을 지우면서 함수와 이 시험을 drop-engine에서 옮겼다.
  *
- * 실행: jest 또는 vitest (프레임워크 무관 — describe/it/expect 호환)
+ * 실행: cd jam-web && npx vitest run src/lib/itembook/__tests__/badge-ids-of-book.test.ts
  */
 
-import { buildBadgeIdsOfBook } from '../index'
+import { buildBadgeIdsOfBook } from '../completion-basis'
 
 function makeBadge(id: string, itemBookId: string, dropExcluded: boolean) {
   return { id, item_book_id: itemBookId, drop_excluded: dropExcluded }

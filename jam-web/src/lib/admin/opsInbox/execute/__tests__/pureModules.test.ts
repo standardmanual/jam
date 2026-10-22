@@ -88,6 +88,6 @@ describe('순수 모듈 경계 — 값 import를 끝까지 따라가도 서버 �
   it('검사 도구가 서버 전용 모듈을 실제로 찾는다(서버 클라이언트를 값으로 가져오는 파일)', () => {
     // 이 파일들은 `@/lib/supabase/server`를 값으로 가져오고 순수화하지 않았다. 도구가 못 찾으면 위 통과가 아무것도 말하지 못한다.
     expect(serverReaches(path.join(SRC, 'lib/badge-engine/jamActionBadges.ts')).length).toBeGreaterThan(0)
-    expect(serverReaches(path.join(SRC, 'lib/drop-engine/index.ts')).length).toBeGreaterThan(0)
+    expect(serverReaches(path.join(SRC, 'lib/drop-engine/syncIssueRun.ts')).length).toBeGreaterThan(0)
   })
 })

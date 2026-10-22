@@ -52,10 +52,10 @@ const FORBIDDEN: { name: string; pattern: RegExp }[] = [
 ]
 
 describe('완성 판정 단일 원천', () => {
-  it('buildBadgeIdsOfBook은 drop-engine과 completion-basis 밖에서 부르지 않는다', () => {
+  it('buildBadgeIdsOfBook은 completion-basis 밖에서 부르지 않는다(옛 드랍 엔진에서 옮겼다, 티켓 20261022_0938)', () => {
     const users = walk(SRC)
       .map(rel)
-      .filter((f) => !f.startsWith('lib/drop-engine/') && f !== 'lib/itembook/completion-basis.ts')
+      .filter((f) => f !== 'lib/itembook/completion-basis.ts')
       .filter((f) => readFileSync(path.join(SRC, f), 'utf8').includes('buildBadgeIdsOfBook'))
     expect(users).toEqual([])
   })

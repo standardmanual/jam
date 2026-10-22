@@ -579,8 +579,8 @@ type FeedEntry =
 // ⚠️ 접기 대상이 BADGE_EVENTS 전체(badge_earned·item_dropped·item_picked_up)다.
 //    아이템 배지는 시리얼 넘버가 다른 **개별 개체**라, 같은 활동에서 동일 아이템배지가
 //    2개 나오면 한 장으로 접혀 한쪽 개체가 피드에서 도달 불가가 된다.
-//    지금은 드랍 엔진이 「활동당 1개 확정」(lib/drop-engine/layers.ts:12)이라 프로덕션
-//    중복 그룹이 0건이지만, **드랍 규칙이 바뀌면 즉시 발화한다**(게이트 리뷰 지적).
+//    예전 드랍 엔진은 「활동당 1개 확정」이라 프로덕션 중복 그룹이 0건이었지만
+//    (옛 lib/drop-engine/layers.ts, 티켓 20261022_0938에서 삭제), **드랍 규칙이 바뀌면 즉시 발화한다**(게이트 리뷰 지적).
 //    그때는 아이템 이벤트를 접기에서 빼거나 inventory_item_id까지 키에 넣어야 한다.
 function collapseRepeatEarns(items: ActivityFeedRow[]): ActivityFeedRow[] {
   const indexByKey = new Map<string, number>()

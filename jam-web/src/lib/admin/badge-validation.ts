@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-// 같은 상수가 서버 전용 의존이 없는 순수 파일에 있다. `@/lib/drop-engine/index`에서 가져오면 서버 모듈이 끌려와
-// 운영툴 예약 등록 핸들러(순수 모듈 계약)가 이 파일을 쓸 수 없다(티켓 20261004_1756).
+// 같은 상수가 서버 전용 의존이 없는 순수 파일에 있다. 서버 모듈이 끌려오면 운영툴 예약 등록 핸들러(순수 모듈 계약)가
+// 이 파일을 쓸 수 없다(티켓 20261004_1756. 예전에는 `@/lib/drop-engine/index`에서 가져오던 길이 막혀 있었고, 그 파일은 티켓 20261022_0938에서 지웠다).
 import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/cumulativeConditionFields'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
 import { CROSS_GATE_CONDITION_KEYS } from '@/lib/badge-engine/crossGate'
@@ -28,9 +28,9 @@ export {
 }
 
 /**
- * 아이템 배지(type='item')에 누적조건(monthly_km 등)을 걸면 drop-engine의
- * hasCumulativeCondition()이 항상 true를 반환해 이 배지가 구조적으로 영원히
- * 드랍 후보에 오르지 못한다 — 저장 단계에서 미리 막는다.
+ * 아이템 배지(type='item')에 누적조건(monthly_km 등)을 걸면 활동 1건으로는 조건을 평가할 수 없어
+ * (`drop-engine/cumulativeConditionFields.ts`의 `hasCumulativeCondition()`이 true) 이 배지가
+ * 구조적으로 영원히 드랍 후보에 오르지 못한다 — 저장 단계에서 미리 막는다.
  */
 export function findCumulativeConditionError(type: string, condition: BadgeCondition | null): string | null {
   if (type !== 'item' || !condition) return null
