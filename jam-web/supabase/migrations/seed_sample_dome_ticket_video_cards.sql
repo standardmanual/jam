@@ -1,5 +1,8 @@
--- 홈피드 돔형(dome)·티켓형(ticket)·에셋 동영상(video) 샘플 카드 시드 등록 (티켓 20261022_2300 후속)
--- 사용자 승인 하에 라이브 DB에 등록 완료된 샘플 데이터 정의 파일.
+-- 홈피드 돔형 전체 영상(dome poster)·티켓형 영상(ticket)·박스형 전체 영상(box poster) 샘플 카드 시드 등록 (티켓 20261022_2300 후속)
+-- 사용자 요청에 따른 3가지 영상 카드 샘플:
+-- 1. 돔 형태 전체가 영상인 카드 (Dome Poster)
+-- 2. 티켓 모양 카드의 이미지가 영상인 카드 (Ticket)
+-- 3. 박스 카드 전체가 영상인 카드 (Box Poster)
 --
 -- 재실행 가능(idempotent): ON CONFLICT (id) DO UPDATE
 
@@ -25,11 +28,11 @@ INSERT INTO public.today_cards (
 (
   'e0000000-0000-4000-8000-000000000001',
   'drop_alert',
+  'banner',
   'dome',
-  'dome',
-  '성수 가을 숲길 트레일',
+  '성수 가을 숲길 돔 에디션',
   '숲길을 걸으며 찾는 한정판 배지',
-  '아치 돔형 실루엣에 에셋 루프 비디오가 적용된 홈피드 카드입니다.',
+  NULL,
   '성수동 서울숲',
   'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/factions/backgrounds/1787132025744_2gfhi6.mp4',
   'admin-generator',
@@ -59,13 +62,13 @@ INSERT INTO public.today_cards (
 (
   'e0000000-0000-4000-8000-000000000003',
   'drop_alert',
-  'dome',
-  'dome',
-  '북한산 가을 능선 하이킹',
-  '바위 능선을 넘어 가을 숲으로',
-  '아치 돔형 실루엣에 고화질 커버 이미지가 적용된 카드입니다.',
-  '북한산 백운대',
-  'https://images.unsplash.com/photo-1551632811-561732d1e306?q=80&w=800&auto=format&fit=crop',
+  'banner',
+  'poster',
+  '새벽 안개 브리즈 런 박스',
+  '호숫가를 따라 달리는 특별한 코스',
+  NULL,
+  '한강공원',
+  'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/factions/backgrounds/1787132036068_scc23y.mp4',
   'admin-generator',
   ARRAY['all'],
   '2026-10-22 00:00:00+09',

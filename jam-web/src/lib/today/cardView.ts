@@ -11,7 +11,7 @@
  */
 import type { TodayCardWithHref } from './cards'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
-import type { TodayCardTemplateType } from '@/types/database'
+import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import {
@@ -232,6 +232,8 @@ interface CardViewBase {
 export interface ImageCardView extends CardViewBase {
   shape: ImageCardShape
   imageUrl: string | null
+  /** 카드의 레이아웃 형태(티켓 20261022_2300 후속, 돔 포스터 등). */
+  layoutType?: TodayCardLayoutType
   /** 첫 배지 그림이 커버로 올라간 카드에서 유저가 그 배지를 아직 갖지 않았을 때 true(흑백으로 그린다). 값이 없으면(유저 정보가 없는 미리보기) 컬러다. */
   imageDimmed?: boolean
 }
@@ -356,6 +358,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   // hero·poster·square — 커버가 있으면 커버, 없으면 첫 배지 그림(옛 카드가 올려 쓰던 규칙 그대로)
   const first = badges[0]
   const view: ImageCardView = { ...base, shape, imageUrl: card.cover_image_url || null }
+  if (card.layout_type) view.layoutType = card.layout_type
   if (!card.cover_image_url && first?.image_url) {
     view.imageUrl = first.image_url
     if (first.earned === false) view.imageDimmed = true
