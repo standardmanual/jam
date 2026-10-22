@@ -122,8 +122,8 @@ describe('PUT /api/admin/itembooks/[id] — image_url 형식', () => {
 })
 
 describe('PUT /api/admin/itembooks/[id] — tier_mode 보존(티켓 20261016_2340 3회-나)', () => {
-  // tier_mode는 어드민 화면이 켜는 칸(묶음 7)이 생길 때까지 PUT이 쓰지 않는다. 저장 칸이 명시 목록이라
-  // 본문에 실려 와도 update 페이로드에 들어가지 않고, 등급 보상 표는 이 라우트가 아예 건드리지 않는다.
+  // 켜기·끄기는 `[id]/tier` 라우트가 한다(티켓 20261022_1139). 이 PUT은 tier_mode를 쓰지 않는다. 저장 칸이
+  // 명시 목록이라 본문에 실려 와도 update 페이로드에 들어가지 않고, 등급 보상 표는 이 라우트가 아예 건드리지 않는다.
   it.each([
     ['본문에 tier_mode가 없어도', { name: '새 이름' }],
     ['본문에 tier_mode: false가 실려 와도', { name: '새 이름', tier_mode: false }],

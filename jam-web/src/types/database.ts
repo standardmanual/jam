@@ -512,6 +512,10 @@ export interface ItemBookRow {
    *  없다(상위 티켓 20260925_1404 결정 6). NULL이면 기존 컬렉션(미상).
    *  라벨 매핑은 `lib/admin/contentImageSource.ts` 참조. */
   image_source: string | null
+  /** 4등급 구조(같은 이름 4등급을 한 칸으로 묶어 등급별로 완성·보상)를 쓰는 컬렉션이면 true(마이그레이션 222,
+   *  티켓 20261016_2340). 기본 false는 옛 규칙. 어드민의 켜기·끄기는 `api/admin/itembooks/[id]/tier`가 맡는다
+   *  (티켓 20261022_1139) — `PUT /api/admin/itembooks/[id]`는 이 칸을 쓰지 않는다. */
+  tier_mode: boolean
 }
 
 export interface PoiRow {

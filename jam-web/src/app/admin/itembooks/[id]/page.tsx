@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/admin/ui/button'
 import { ItemBookDetail } from '@/components/admin/itembooks/ItemBookDetail'
+import { ItemBookTierPanel } from '@/components/admin/itembooks/ItemBookTierPanel'
 import ItemBookForm from '../ItemBookForm'
 import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 
@@ -68,6 +69,11 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
         tribeName={tribeLabel}
         itemBadgeCount={activeSlottedBadgeCount}
       />
+
+      {/* 4등급 방식 켜기·끄기와 켜기 전 점검 (티켓 20261022_1139) — 편집 폼이 이 값으로 옛 보상 칸을 접는다 */}
+      <div className="border-t pt-8">
+        <ItemBookTierPanel itemBookId={book.id} initialTierMode={book.tier_mode} />
+      </div>
 
       {/* 편집 폼 */}
       <div className="border-t pt-8">

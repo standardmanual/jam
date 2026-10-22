@@ -52,8 +52,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     now
   )
 
-  // tier_mode는 수기 ItemBookRow에 아직 없다(생성 타입에는 있음) — 이 파일에서만 좁게 덧붙인다
-  const itemBooks = itemBooksRaw as (ItemBookRow & { tier_mode?: boolean | null })[] | null
+  const itemBooks = itemBooksRaw as ItemBookRow[] | null
 
   if (itemBooksError || !itemBooks || itemBooks.length === 0) {
     if (itemBooksError) console.error('[checkItemBookCompletion] item_books 조회 오류:', itemBooksError)
