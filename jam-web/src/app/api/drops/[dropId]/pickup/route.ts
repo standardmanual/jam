@@ -114,10 +114,10 @@ export async function POST(
         : `속도 ${gpsCheck.speedKmh}km/h`
     // 제재는 이 픽업 거부, 이 장소 `poi_block_hours`(기본 72시간) 차단, 기록 셋이다. 이용 정지는 자동으로 걸지 않고
     // 운영자가 기록을 보고 건다(정책 20번 4절). 옛 72시간 섀도우밴(`applyBan`)은 지웠다(티켓 20261021_1250).
-    // `sanctionStored`: 장소 차단·기록 저장이 끝났으면 true, 아래 catch로 빠졌으면 false — 알림 글이 사실대로 말하게 한다(티켓 20261022_0940).
-    let sanctionStored = true
+    // `sanctionStored`: 장소 차단과 기록이 둘 다 저장됐을 때만 true — 알림 글이 사실대로 말하게 한다(티켓 20261022_0940).
+    let sanctionStored = false
     try {
-      await Promise.all([
+      const [, logStored] = await Promise.all([
         blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
         logAbusingEvent(user.id, 'gps_spoof_detected', {
           poi_id: drop.poi_id,
@@ -128,8 +128,11 @@ export async function POST(
           lng: user_lng,
         }),
       ])
+      // 장소 차단이 실패하면(upsert 오류) 위 Promise.all이 던져 아래 catch로 가고, 여기까지 왔으면 차단은 저장된 것이다.
+      // 기록 저장 실패는 `logAbusingEvent`가 삼키고 `false`를 돌려주므로 catch로 오지 않는다 — 반환값으로 따진다.
+      sanctionStored = logStored === true
     } catch (e) {
-      sanctionStored = false
+      // 장소 차단(`blockPoiForUser`) 저장 실패가 여기로 온다(sanctionStored는 false 그대로).
       // 제재 기록(POI 블록·로그) 저장이 실패해도 이번 픽업은 그대로 차단한다 — 스푸핑은 이미
       // 감지됐으므로 이 요청의 판정을 바꿀 이유가 없다. 다만 제재가 실제로 걸리지 않았을 수
       // 있으므로(다음 요청부터 다시 통과할 위험) 반드시 서버 로그로 남긴다.

@@ -17,7 +17,8 @@
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
  *  - (티켓 20261022_0940) GPS 조작이 감지되면 응답을 보낸 뒤 `alertGpsSpoof`가 한 번 불린다(유저 ID·장소 이름·사유·차단 시간, 좌표는 없다). 감지되지 않거나 이미 막힌
  *    장소면 부르지 않고, 알림이 던져도 403과 장소 차단·기록 호출은 그대로다. 알림 모듈은 모킹한다(실제 슬랙을 부르지 않는다).
- *    장소 차단·기록 저장이 끝났으면 `sanctionStored: true`, 실패해 catch로 빠졌으면 `false`를 넘긴다(알림은 두 경우 모두 보낸다).
+ *    장소 차단과 기록이 둘 다 저장됐을 때만 `sanctionStored: true`다. 장소 차단이 던지면(catch) 또는 기록이 `false`를 돌려주면(`logAbusingEvent`는 던지지
+ *    않고 `false`를 돌려준다) `false`를 넘긴다(알림은 모든 경우에 보낸다).
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/drops/[dropId]/pickup/__tests__/route.test.ts"
  */
@@ -76,7 +77,8 @@ const createNotificationMock = vi.hoisted(() =>
 const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
 const logMock = vi.hoisted(() => vi.fn())
 const blockPoiMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
-const logAbusingEventMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
+// 실제 `logAbusingEvent`는 던지지 않고 저장 성공 여부(true/false)를 돌려준다 — 기본은 저장 성공이다(티켓 20261022_0940).
+const logAbusingEventMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<boolean>>(async () => true))
 const alertGpsSpoofMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<boolean>>(async () => true))
 
 // 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
@@ -677,17 +679,30 @@ describe('GPS 조작 의심 운영자 알림 (티켓 20261022_0940, 운영 로�
     consoleError.mockRestore()
   })
 
-  it('기록(logAbusingEvent) 저장이 실패해도 sanctionStored: false다', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('기록 저장이 실패해 logAbusingEvent가 던지지 않고 false를 돌려줘도 알림은 한 번 불리고 sanctionStored: false다', async () => {
+    // 실제 함수는 insert 오류·예외를 삼키고 false를 돌려준다. 그래서 장소 차단이 성공해도 catch로 오지 않는다.
     state.gpsDetected = true
-    logAbusingEventMock.mockRejectedValueOnce(new Error('abusing_logs insert 실패'))
+    logAbusingEventMock.mockResolvedValueOnce(false)
     const res = await POST(request(), params())
     await flushAfter()
 
     expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.drops.pickupLocationUnverified })
+    expect(blockPoiMock).toHaveBeenCalledTimes(1)
+    expect(logAbusingEventMock).toHaveBeenCalledTimes(1)
     expect(alertGpsSpoofMock).toHaveBeenCalledTimes(1)
     expect(alertGpsSpoofMock).toHaveBeenCalledWith(expect.objectContaining({ sanctionStored: false }))
-    consoleError.mockRestore()
+  })
+
+  it('장소 차단과 기록이 둘 다 저장되면(logAbusingEvent가 true) sanctionStored: true다', async () => {
+    state.gpsDetected = true
+    const res = await POST(request(), params())
+    await flushAfter()
+
+    expect(res.status).toBe(403)
+    expect(logAbusingEventMock).toHaveBeenCalledTimes(1)
+    expect(alertGpsSpoofMock).toHaveBeenCalledTimes(1)
+    expect(alertGpsSpoofMock).toHaveBeenCalledWith(expect.objectContaining({ sanctionStored: true }))
   })
 
   it('이용 정지를 자동으로 걸지 않는다 (알림은 운영자에게 알릴 뿐이다)', async () => {
