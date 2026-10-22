@@ -56,6 +56,8 @@ export default function ItemBookForm({
 }: ItemBookFormProps) {
   const router = useRouter()
   const isEdit = !!book
+  // 4등급 방식이 켜진 컬렉션은 옛 보상 칸(완성 보상 배지·포인트 보상)을 접는다 — 값은 state에 그대로 남아 저장 때도 같이 간다(티켓 20261022_1139).
+  const isTierMode = book?.tier_mode === true
 
   // Select/AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
@@ -321,34 +323,45 @@ export default function ItemBookForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-foreground">완성 보상 배지</span>
-        <BadgeSearchSelect
-          key={book?.id ?? 'new'}
-          value={rewardBadgeId}
-          initialLabel={rewardBadgeLabel}
-          placeholder="보상 배지 검색..."
-          onChange={(id) => setRewardBadgeId(id)}
-        />
-      </label>
+      {isTierMode ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm text-foreground">완성 보상</span>
+          <FieldMessage className="break-keep wrap-break-word text-pretty">
+            4등급 방식에서는 등급별 보상을 써요. 완성 보상 배지와 포인트 보상 칸은 접어 뒀고, 저장해 둔 값은 지우지 않아요.
+          </FieldMessage>
+        </div>
+      ) : (
+        <>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-foreground">완성 보상 배지</span>
+            <BadgeSearchSelect
+              key={book?.id ?? 'new'}
+              value={rewardBadgeId}
+              initialLabel={rewardBadgeLabel}
+              placeholder="보상 배지 검색..."
+              onChange={(id) => setRewardBadgeId(id)}
+            />
+          </label>
 
-      <div className="flex flex-col gap-1.5">
-        <FieldLabel htmlFor="itembook-reward-points">포인트 보상</FieldLabel>
-        <SuffixInput
-          id="itembook-reward-points"
-          type="number"
-          inputMode="numeric"
-          min="0"
-          value={rewardPoints}
-          onChange={(e) => setRewardPoints(e.target.value)}
-          placeholder="0"
-          suffix="포인트"
-          describedBy="itembook-reward-points-help"
-        />
-        <FieldMessage id="itembook-reward-points-help">
-          컬렉션을 완성하는 순간 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요.
-        </FieldMessage>
-      </div>
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor="itembook-reward-points">포인트 보상</FieldLabel>
+            <SuffixInput
+              id="itembook-reward-points"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              value={rewardPoints}
+              onChange={(e) => setRewardPoints(e.target.value)}
+              placeholder="0"
+              suffix="포인트"
+              describedBy="itembook-reward-points-help"
+            />
+            <FieldMessage id="itembook-reward-points-help">
+              컬렉션을 완성하는 순간 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요.
+            </FieldMessage>
+          </div>
+        </>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <FieldLabel id="itembook-period-label">노출 기간 (한국 시각)</FieldLabel>
