@@ -194,7 +194,8 @@ export default function AbusingClient({
           <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">GPS 조작 감지</h3>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">이동 속도 임계값 (km/h) — 이 속도를 초과하면 GPS 조작으로 판단</span>
+              <span className="text-sm font-medium text-foreground">이동 속도 임계값 (km/h)</span>
+              <span className="text-xs text-muted-foreground">초과 시 비정상 이동(GPS 조작)으로 판정해요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -206,7 +207,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">하루 누적 이동거리 상한 (km) — 순간 속도는 정상이지만 하루 총 이동거리가 이 값을 넘으면 GPS 조작(느린 텔레포트)으로 판단</span>
+              <span className="text-sm font-medium text-foreground">하루 누적 이동거리 상한 (km)</span>
+              <span className="text-xs text-muted-foreground">하루 총 이동거리가 이 값을 넘으면 비정상 이동으로 판정해요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -218,7 +220,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">차량 속도 필터 (km/h) — 이 속도를 초과하는 활동은 배지·아이템 드랍·미션 평가에서 모두 제외 (Phase 18)</span>
+              <span className="text-sm font-medium text-foreground">차량 속도 필터 (km/h)</span>
+              <span className="text-xs text-muted-foreground">초과하는 활동은 배지·아이템 드랍·미션 평가에서 제외해요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -230,7 +233,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 걷기 최고속도 임계값 (km/h) — 걷기 활동 중 이 속도를 30초 이상 연속으로 초과하는 구간을 지하철·버스 탑승으로 보고 거리·시간에서 제외 (20260909_1012)</span>
+              <span className="text-sm font-medium text-foreground">교통수단 감지 — 걷기 최고속도 (km/h)</span>
+              <span className="text-xs text-muted-foreground">30초 이상 연속 초과 시 대중교통 탑승으로 판정해 거리·시간에서 제외해요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -242,7 +246,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 러닝 최고속도 임계값 (km/h)</span>
+              <span className="text-sm font-medium text-foreground">교통수단 감지 — 러닝 최고속도 (km/h)</span>
+              <span className="text-xs text-muted-foreground">연속 초과 시 대중교통 탑승 구간으로 판정해요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -254,7 +259,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 자전거 최고속도 임계값 (km/h)</span>
+              <span className="text-sm font-medium text-foreground">교통수단 감지 — 자전거 최고속도 (km/h)</span>
+              <span className="text-xs text-muted-foreground">연속 초과 시 대중교통 탑승 구간으로 판정해요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -266,7 +272,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 최소 연속 지속시간 (초) — 이 시간 이상 연속으로 임계값을 초과해야 교통수단 구간으로 판정</span>
+              <span className="text-sm font-medium text-foreground">교통수단 감지 — 최소 지속시간 (초)</span>
+              <span className="text-xs text-muted-foreground">이 시간 이상 연속 초과해야 교통수단 탑승 구간으로 판정해요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -278,7 +285,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="break-keep wrap-break-word text-xs text-muted-foreground">종목 불일치 — 러닝 최소 평균속도 (km/h) — 러닝으로 기록했는데 평균 속도가 이 값보다 느리면 걷기(가벼움)로 계산 (트레일러닝·등산은 판정하지 않음)</span>
+              <span className="break-keep wrap-break-word text-sm font-medium text-foreground">종목 불일치 — 러닝 최소 평균속도 (km/h)</span>
+              <span className="break-keep wrap-break-word text-xs text-muted-foreground">기록 속도가 이 값보다 느리면 걷기로 계산해요 (트레일러닝·등산 제외)</span>
               <div className="flex items-center gap-3">
                 <Input
                   type="number"
@@ -292,7 +300,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="break-keep wrap-break-word text-xs text-muted-foreground">종목 불일치 — 자전거 최소 평균속도 (km/h) — 자전거로 기록했는데 평균 속도가 이 값보다 느리면 걷기(가벼움)로 계산</span>
+              <span className="break-keep wrap-break-word text-sm font-medium text-foreground">종목 불일치 — 자전거 최소 평균속도 (km/h)</span>
+              <span className="break-keep wrap-break-word text-xs text-muted-foreground">기록 속도가 이 값보다 느리면 걷기로 계산해요</span>
               <div className="flex items-center gap-3">
                 <Input
                   type="number"
@@ -306,7 +315,8 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">장소 블록 지속 시간 (시간)</span>
+              <span className="text-sm font-medium text-foreground">장소 블록 지속 시간 (시간)</span>
+              <span className="text-xs text-muted-foreground">차단된 장소의 블록 유지 시간이에요</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"

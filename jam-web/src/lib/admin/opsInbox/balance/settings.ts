@@ -31,13 +31,12 @@ import {
 // ── 구역·그룹 ───────────────────────────────────────────────────────────────────────────────────
 
 export const SETTINGS_PAGE_TITLE = '운영 설정'
-export const SETTINGS_PAGE_SUBTITLE = '운영툴이 알려 주는 기준을 확인하고 바꿔요'
+export const SETTINGS_PAGE_SUBTITLE = '서비스 운영 임계값과 자동화 감지 기준을 설정해요'
 
 export const BALANCE_SECTION_TITLE = '밸런스 규칙'
 export const BALANCE_SECTION_DESCRIPTION = [
-  '기획이 이 기준을 넘으면 기획 상세에 경고가 떠요. 경고는 승인을 막지 않아요.',
-  '값을 바꾸면 기획 상세를 다음에 열 때부터 반영돼요. 에이전트의 주간 밸런스 점검도 같은 값을 읽어요.',
-  '주의는 눈에 띄게, 참고는 가볍게 알려요.',
+  '기획 검토 시 기준을 초과하면 경고를 표시해요 (승인은 가능).',
+  '변경된 기준은 기획 상세 열람과 주간 밸런스 점검에 즉시 반영돼요.',
 ] as const
 
 /** 밸런스 규칙 8개를 보이는 그룹 3개. 순서가 화면 순서다. */

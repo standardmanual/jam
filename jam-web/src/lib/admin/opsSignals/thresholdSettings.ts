@@ -31,9 +31,8 @@ import {
 export const SIGNAL_SECTION_ID = 'signals'
 export const SIGNAL_SECTION_TITLE = '신호 기준값'
 export const SIGNAL_SECTION_DESCRIPTION = [
-  '운영 신호가 언제 뜨는지 정하는 숫자와 시각이에요. 신호는 승인을 막지 않아요.',
-  '바꾼 값만 저장하고, 나머지는 기본값을 써요. 바꾼 값은 다음 신호 계산부터 반영돼요.',
-  '밸런스 경고의 기준은 「밸런스 규칙」 구역에서 바꿔요.',
+  '운영 신호 감지 기준값과 감지 주기를 설정해요 (신호 발생 시에도 승인은 가능).',
+  '수정된 기준값은 다음 신호 계산 주기부터 적용돼요.',
 ] as const
 
 export const SIGNAL_SECTION_LOAD_FAILED = {
