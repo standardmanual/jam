@@ -4,7 +4,7 @@
  * - prepare: 변환 결과·툴이 정하는 값, 형식 오류 문장과 「외 N건」, 보상 배지 연결 채우기와 충돌(가정 5), 표에 없는 칸 경고
  * - check: 이름 중복·트라이브·보상 배지(없음·삭제·종류)를 고정 문장으로, 연결로 채운 보상 배지는 건너뛴다. DB 오류·ID는 `reason`에 없다(가정 6·8)
  * - create: 정한 ID로 만들고, 오류면 같은 ID로 정리 delete를 한 번 시도한다
- * - undo: 참조(아이템 배지·카드·유저 기록·포인트·드랍 상태와 배열 칸)가 있거나 읽지 못하면 지우지 않고, 없으면 시각과 상관없이 ID로 지운다(가정 7)
+ * - undo: 참조(아이템 배지·카드·유저 기록·포인트와 배열 칸)가 있거나 읽지 못하면 지우지 않고, 없으면 시각과 상관없이 ID로 지운다(가정 7)
  * - cancel: 없음·공개됨(`published`)·참조 있음(`referenced`)·삭제 경합·오류 비노출
  * - observe: 없음·공개 판정·종료·비활성·시각 읽기 실패·쓰기 없음
  */
@@ -335,7 +335,6 @@ const REFERENCES: Array<[string, string, Row]> = [
   ['today_cards', 'today_cards', { id: CARD_ID, item_book_id: BOOK_ID }],
   ['user_item_book_slots', 'user_item_book_slots', { user_id: USER_ID, item_book_id: BOOK_ID }],
   ['user_item_book_completions', 'user_item_book_completions', { user_id: USER_ID, item_book_id: BOOK_ID }],
-  ['user_drop_state', 'user_drop_state', { user_id: USER_ID, last_drop_book_id: BOOK_ID }],
   ['point_transactions', 'point_transactions', { id: uid(20), source_item_book_id: BOOK_ID }],
   ['ambient_drop_config(배열 칸)', 'ambient_drop_config', { id: 1, collection_ids: [BOOK_ID] }],
   ['ambient_drop_schedules(예약됨)', 'ambient_drop_schedules', { id: uid(21), status: 'scheduled', collection_ids: [BOOK_ID] }],
@@ -397,10 +396,17 @@ describe('undo — 참조를 확인한 뒤 ID로 지운다', () => {
     expect(bookIds(db)).toEqual([EXISTING_BOOK_ID])
   })
 
+  it('옛 드랍 상태 표(user_drop_state)는 읽지 않는다 — 그 열이 지워져도 되돌림이 막히지 않는다 (티켓 20261022_0938 2회)', async () => {
+    const db = new FakeDb()
+    seed(db)
+    expect(await handler.undo(db.service, BOOK_ID)).toBeNull()
+    expect(db.calls.map((call) => call.table)).not.toContain('user_drop_state')
+  })
+
   it('참조를 읽지 못하면 지우지 않는다. DB 오류 원문은 detail에만 있다', async () => {
     const db = new FakeDb()
     seed(db)
-    db.failIf = (call) => call.table === 'user_drop_state'
+    db.failIf = (call) => call.table === 'user_item_book_slots'
     const failure = await handler.undo(db.service, BOOK_ID)
 
     expect(failure).toMatchObject({ reason: '아이템 배지나 유저 기록·연결이 있거나 확인하지 못해 컬렉션을 지우지 않았어요' })
