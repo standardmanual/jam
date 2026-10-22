@@ -2,17 +2,39 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import SafeImage from '@/components/SafeImage'
 import TopNav from '@/components/ui/TopNav'
+import ListRowCard from '@/components/ui/ListRowCard'
 import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { SearchIcon, PackageIcon } from '@/components/ui/icons'
+import { SearchIcon, PackageIcon, ChevronRightIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet, { type PendingSheetView } from './PendingResultsSheet'
+import BagItemCell from './BagItemCell'
+import TierUpPanel from './TierUpPanel'
+import {
+  TIER_UP_ENDPOINT,
+  buildTierUpSheet,
+  emptyTierUpSlots,
+  fillTierUpSlot,
+  groupTierUpMaterials,
+  hasEnoughTierUpGroup,
+  lockedTierUpRarity,
+  nextEmptyTierUpSlot,
+  pickableTierUpIds,
+  removeTierUpSlot,
+  resolveTierUpSlots,
+  tierUpRarityNote,
+  tierUpRejection,
+  tierUpResultMessage,
+  tierUpSubmitIds,
+  type TierUpRequest,
+  type TierUpResultBadge,
+  type TierUpSlots,
+} from './tierUpClient'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
@@ -115,6 +137,18 @@ export function toMixRevealBadges(resultBadges: MixResultBadge[], rewardBadges: 
       rarity: detail?.rarity,
     }
   })
+}
+
+/**
+ * 순수 변환 — 등급 올리기 응답의 결과 배지를 결과 캐러셀 항목으로 바꾼다(티켓 20261022_2119 3회). 등급 올리기에는 레시피가 없어
+ * 보상 배지 상세를 미리 로드해 둘 수 없으므로, 응답이 싣는 `imageUrl`·`rarity`로 상세를 만들어 `toMixRevealBadges`의 규칙을 그대로 쓴다
+ * (잠긴 결과는 이름·그림 없이 가린 카드). `imageUrl`이 없으면 카드는 기본 아이콘으로 나온다.
+ */
+export function toTierUpRevealBadges(resultBadges: TierUpResultBadge[]): RevealBadge[] {
+  const details: BadgeDetail[] = resultBadges
+    .filter((b) => b.locked !== true)
+    .map((b) => ({ id: b.id, name: b.name, image_url: b.imageUrl ?? null, rarity: b.rarity ?? null, description: '' }))
+  return toMixRevealBadges(resultBadges, details)
 }
 
 /** 순수 변환 — 받은 «받지 않은 결과» 목록을 결과 캐러셀 항목으로 바꾼다. 잠긴 결과를 열린 척 보이지 않는다. */
@@ -350,8 +384,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     testMix?: boolean
     /** 오버레이 위 한 줄 결과 문구(받기 성공 연출) — `emptyMessage`와 달리 캐러셀 위에 얹힌다 */
     resultMessage?: string
-    /** 어디서 온 결과인가 — `claim`(받지 않은 결과 받기)은 믹서의 채운 슬롯을 건드리지 않는다 */
-    kind?: 'mix' | 'claim'
+    /** 어디서 온 결과인가 — `claim`(받지 않은 결과 받기)은 믹서의 채운 슬롯을 건드리지 않고, `tierUp`은 등급 올리기의 담은 칸을 비운다 */
+    kind?: 'mix' | 'claim' | 'tierUp'
     /** 오버레이를 닫는 순간 배너가 가리킬 받지 않은 결과 개수(닫은 뒤 서버 값을 다시 읽는다) */
     pendingAfterClose?: number
   } | null>(null)
@@ -362,6 +396,15 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   const [pendingOverride, setPendingOverride] = useState<number | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheet, setSheet] = useState<PendingSheetView>(INITIAL_SHEET)
+  /**
+   * 등급 올리기(티켓 20261022_2119 3회) — 레시피 믹서(`selectedRecipeId`)와 같은 층의 분기다. 담은 칸은 개체 id 5칸이고, 재료 시트가 열려 있는 동안
+   * `tierUpTarget`이 다음에 채울 칸을 가리킨다(담을 때마다 다음 빈 칸으로 이어지고 5칸이 차면 시트가 닫힌다).
+   */
+  const [tierUpOpen, setTierUpOpen] = useState(false)
+  const [tierUpSlots, setTierUpSlots] = useState<TierUpSlots>(emptyTierUpSlots)
+  const [tierUpSheetOpen, setTierUpSheetOpen] = useState(false)
+  const [tierUpTarget, setTierUpTarget] = useState(0)
+  const [tierUpLoading, setTierUpLoading] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -403,6 +446,14 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
 
   const selectedRecipe = publicRecipes.find((r) => r.id === selectedRecipeId) ?? null
   const canSubmit = !!selectedRecipe && selectedRecipe.slots.every((s) => fills[s.id])
+
+  // 등급 올리기 — 목록에서 찾을 수 없는 개체(새로고침으로 사라진 것)를 담은 칸에서 걸러 유령 칸을 만들지 않는다.
+  const tierUpGroups = groupTierUpMaterials(items)
+  const tierUpFilled = resolveTierUpSlots(tierUpSlots, items)
+  const tierUpVisibleSlots: TierUpSlots = tierUpFilled.map((item) => item?.id ?? null)
+  const tierUpSheet = buildTierUpSheet(tierUpGroups, tierUpFilled)
+  const tierUpLockedRarity = lockedTierUpRarity(tierUpFilled)
+  const tierUpSubmitItemIds = tierUpSubmitIds(tierUpFilled)
 
   function selectRecipe(recipeId: string) {
     setSelectedRecipeId(recipeId)
@@ -479,6 +530,42 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
       delete next[slotId]
       return next
     })
+  }
+
+  function openTierUp() {
+    setTierUpOpen(true)
+    setTierUpSlots(emptyTierUpSlots())
+    setResult(null)
+  }
+
+  function closeTierUp() {
+    setTierUpOpen(false)
+    setTierUpSlots(emptyTierUpSlots())
+    setTierUpSheetOpen(false)
+  }
+
+  function openTierUpSheet(slotIndex: number) {
+    setTierUpTarget(slotIndex)
+    setTierUpSheetOpen(true)
+  }
+
+  /**
+   * 재료 시트에서 개체를 담는다 — 누른 칸부터 다음 빈 칸으로 이어서 채우고 5칸이 차면 시트를 닫는다. 시트가 비활성으로 그린 개체
+   * (다른 등급, 5개 미만 묶음, 이미 담은 것)는 한 번 더 걸러 다른 등급이 섞인 제출이 화면에서 만들어지지 않게 한다.
+   */
+  function pickTierUpItem(itemId: string) {
+    if (!pickableTierUpIds(tierUpSheet).has(itemId)) return
+    const index = tierUpVisibleSlots[tierUpTarget] ? nextEmptyTierUpSlot(tierUpVisibleSlots, tierUpTarget) : tierUpTarget
+    if (index === null) return
+    const next = fillTierUpSlot(tierUpVisibleSlots, index, itemId)
+    setTierUpSlots(next)
+    const following = nextEmptyTierUpSlot(next, index + 1)
+    if (following === null) setTierUpSheetOpen(false)
+    else setTierUpTarget(following)
+  }
+
+  function removeTierUpItem(slotIndex: number) {
+    setTierUpSlots(removeTierUpSlot(tierUpVisibleSlots, slotIndex))
   }
 
   /**
@@ -723,6 +810,66 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     }
   }
 
+  /**
+   * 등급 올리기 제출 — 요청은 `{ itemIds }` 하나뿐이다(확률과 결과는 서버가 정한다). 소각 앞의 거절은 모두 토스트로 알리고 결과 오버레이를 열지
+   * 않으며 담은 칸을 그대로 둔다(`items_not_found`만 칸을 비운다). 분석 이벤트는 보내지 않는다 — `combine_attempt` 같은 레시피 믹스 지표를
+   * 섞지 않기 위해서다(티켓 가정 나).
+   */
+  async function handleTierUp() {
+    if (tierUpLoading || pendingBlocked || demoMode || !tierUpSubmitItemIds) return
+    const body: TierUpRequest = { itemIds: tierUpSubmitItemIds }
+
+    setTierUpLoading(true)
+    setResult(null)
+    try {
+      const res = await fetch(TIER_UP_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok || !data || data.success !== true) {
+        const rejection = tierUpRejection(res.status, data)
+        toast(rejection.message, rejection.tone)
+        if (rejection.clearSlots) setTierUpSlots(emptyTierUpSlots())
+        if (rejection.refreshPending) await refreshPendingCount()
+        if (rejection.refresh) router.refresh()
+        return
+      }
+
+      const resultBadges = (data.resultBadges ?? []) as TierUpResultBadge[]
+      if (data.resultStatus === 'pending') {
+        // 빈칸이 모자라 받지 않은 결과로 남았다 — 카드 없이 기존 «받지 않은 믹스 결과» 문구를 쓴다(포인트는 없다). 닫으면 배너가 나타난다.
+        const pendingTotal = Number(data.pendingCount ?? 0)
+        setResult({
+          success: true,
+          badges: [],
+          points: 0,
+          message: pendingResultMessage({ pendingCount: pendingTotal, freeSlots: Number(data.freeSlots ?? 0), points: 0 }),
+          kind: 'tierUp',
+          pendingAfterClose: pendingTotal,
+        })
+      } else {
+        const message = tierUpResultMessage(data.materialRarity, resultBadges)
+        setResult({
+          success: true,
+          badges: toTierUpRevealBadges(resultBadges),
+          points: 0,
+          message,
+          resultMessage: message,
+          kind: 'tierUp',
+        })
+      }
+      // 재료 소각·지급 반영 — 담은 칸은 오버레이를 닫을 때 비운다
+      router.refresh()
+    } catch {
+      toast(d.combine.genericError, 'error')
+    } finally {
+      setTierUpLoading(false)
+    }
+  }
+
   function closeResult() {
     const testMixNotice = testMixNoticeOnClose(result)
     const closing = result
@@ -734,7 +881,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     }
     // 티켓 요구사항: 오버레이를 닫으면 같은 레시피 화면에 슬롯만 비운 채로 남는다.
     // 받지 않은 결과를 받은 연출은 믹서의 채운 슬롯과 무관하므로 건드리지 않는다.
-    if (closing?.kind !== 'claim') setFills({})
+    if (closing?.kind === 'tierUp') setTierUpSlots(emptyTierUpSlots())
+    else if (closing?.kind !== 'claim') setFills({})
     // 받지 않은 결과 개수가 바뀌었다 — 오버레이를 닫은 뒤에 배너를 나타내거나 지운다.
     if (closing?.pendingAfterClose !== undefined) {
       setPendingOverride(closing.pendingAfterClose)
@@ -787,8 +935,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         돌아온다(closeMixer) — 라우트 이탈은 탐색 화면에서 한 번 더 눌러야 일어난다.
       */}
       <TopNav
-        title={d.combine.title}
-        onBack={selectedRecipe ? closeMixer : undefined}
+        title={tierUpOpen ? d.combine.tierUp.title : d.combine.title}
+        onBack={tierUpOpen ? closeTierUp : selectedRecipe ? closeMixer : undefined}
       />
 
       {/* 받지 않은 믹스 결과 배너 — 탐색·믹서 두 화면 모두 TopNav 바로 아래. 오류가 아니라 «할 일»이라 경고색을 쓰지 않는다(티켓 20261018_0055 2회). */}
@@ -808,8 +956,39 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         </div>
       )}
 
-      {!selectedRecipe ? (
+      {tierUpOpen ? (
+        <TierUpPanel
+          slots={tierUpFilled}
+          noMaterials={tierUpGroups.length === 0}
+          rarityNote={tierUpLockedRarity ? tierUpRarityNote(tierUpLockedRarity) : null}
+          showNoEnoughNotice={!hasEnoughTierUpGroup(tierUpGroups)}
+          canSubmit={!!tierUpSubmitItemIds}
+          submitting={tierUpLoading}
+          pendingBlocked={pendingBlocked}
+          onOpenSheet={openTierUpSheet}
+          onRemove={removeTierUpItem}
+          onSubmit={handleTierUp}
+          sheetOpen={tierUpSheetOpen}
+          onCloseSheet={() => setTierUpSheetOpen(false)}
+          sheet={tierUpSheet}
+          onPick={pickTierUpItem}
+        />
+      ) : !selectedRecipe ? (
         <>
+          {/*
+            등급 올리기 입구(티켓 20261022_2119 3회, 채원 판정) — 레시피가 아니라서 검색 결과에 걸리지 않게 검색창 위에 두고, 레시피 행의
+            아이콘 칸과 슬롯 개수 원을 쓰지 않는다. 받지 않은 결과가 있어도 눌린다(막는 것은 제출 버튼뿐). 온보딩 연출 모드에서는
+            레시피 하나만 보여야 하므로 그리지 않는다.
+          */}
+          {!demoMode && (
+            <div className="px-4 pt-4">
+              <ListRowCard onClick={openTierUp} trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}>
+                <p className="m-0 text-base text-foreground break-keep wrap-break-word">{d.combine.tierUp.title}</p>
+                <p className="m-0 mt-0.5 text-sm text-muted break-keep wrap-break-word text-pretty">{d.combine.tierUp.entrySubtitle}</p>
+              </ListRowCard>
+            </div>
+          )}
+
           {/* 검색 */}
           <div className="px-4 pt-4 pb-4">
             <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-surface">
@@ -940,47 +1119,15 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                 <div className="grid grid-cols-3 gap-2">
                   {bagRows.map((row) => {
                     const active = row.state === 'active'
-                    // 미보유 후보(needed)는 그레이스케일로만 표현한다(인벤토리·컬렉션 화면의
-                    // 미획득 처리와 동일한 grayscale+opacity 조합, 티켓 20260917_1828 — "필요"
-                    // 텍스트는 제거).
-                    const needed = row.state === 'needed'
-                    const pulseRow = pulseTarget?.type === 'bagRow' && pulseTarget.key === row.key
                     return (
-                      <button
+                      <BagItemCell
                         key={row.key}
-                        type="button"
-                        disabled={!active}
+                        name={row.name}
+                        imageUrl={row.imageUrl}
+                        state={row.state}
+                        pulse={pulseTarget?.type === 'bagRow' && pulseTarget.key === row.key}
                         onClick={() => bagSlot && active && fillSlot(bagSlot.id, row)}
-                        className={[
-                          'flex flex-col items-center gap-1 p-2 rounded-2xl bg-background',
-                          active ? 'active:scale-95' : 'opacity-40',
-                          pulseRow ? 'jam-quest-pulse' : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                      >
-                        <div
-                          className={[
-                            'w-16 h-16 rounded-2xl bg-surface flex items-center justify-center overflow-hidden',
-                            needed ? 'grayscale opacity-40' : '',
-                          ].join(' ')}
-                        >
-                          <SafeImage
-                            src={row.imageUrl}
-                            alt={row.name}
-                            width={64}
-                            height={64}
-                            className="object-contain w-full h-full"
-                            fallback={<PackageIcon className="w-6 h-6 text-muted" />}
-                          />
-                        </div>
-                        <p className="text-xs text-foreground text-center line-clamp-2">
-                          {row.name}
-                        </p>
-                        {row.state === 'used' && (
-                          <span className="text-xs text-muted">{d.combine.bagUsedLabel}</span>
-                        )}
-                      </button>
+                      />
                     )
                   })}
                 </div>
