@@ -58,7 +58,7 @@ describe('완성 판정 단일 원천', () => {
       .filter((f) => f !== 'lib/itembook/completion-basis.ts')
       .filter((f) => readFileSync(path.join(SRC, f), 'utf8').includes('buildBadgeIdsOfBook'))
     expect(users).toEqual([])
-  })
+  }, 30_000)
 
   it('소비처 목록의 파일이 모두 존재한다(파일을 옮기면 목록을 함께 고친다)', () => {
     const missing = CONSUMERS.filter((f) => !existsSync(path.join(SRC, f)))

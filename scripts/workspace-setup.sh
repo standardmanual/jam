@@ -138,7 +138,7 @@ cleanup_worktrees() {
     fi
   done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
 
-  echo "정리 완료: 제거 $removed개, 보존 $kept개"
+  echo "정리 완료: 제거 ${removed}개, 보존 ${kept}개"
 
   cleanup_local_branches
 }

@@ -107,12 +107,13 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(mostSpecificActiveItem('/admin/drop-policy/exclusions')?.href).toBe('/admin/drop-policy/exclusions')
   })
 
-  it('«밸런스 설정»은 «정책 및 밸런스» 그룹의 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1132)', () => {
+  it('«서비스 정책 대시보드»는 «정책 및 밸런스» 그룹 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1631)', () => {
     const policy = NAV_GROUPS.find((g) => g.id === 'policy')
-    expect(policy?.items[0]).toMatchObject({ href: '/admin/balance', label: '밸런스 설정' })
+    expect(policy?.items[0]).toMatchObject({ href: '/admin/policy-dashboard', label: '서비스 정책 대시보드' })
+    expect(policy?.items[1]).toMatchObject({ href: '/admin/balance', label: '밸런스 설정' })
+    expect(mostSpecificActiveItem('/admin/policy-dashboard')?.label).toBe('서비스 정책 대시보드')
     expect(mostSpecificActiveItem('/admin/balance')?.label).toBe('밸런스 설정')
-    // 같은 이름의 항목이 다른 그룹에 또 있지 않다
-    expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/balance')).toHaveLength(1)
+    expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/policy-dashboard')).toHaveLength(1)
   })
 
   it('랭킹 규칙 관리는 정책 그룹으로, 어뷰징 관리는 정책 그룹으로 이동했다', () => {

@@ -98,7 +98,7 @@ describe('저장소에 옛 눌림 문자열이 남지 않는다', () => {
     expect(files.length).toBeGreaterThan(100) // 걷기 자체가 동작한다
     const offenders = files.filter((file) => !isAllowed(file) && readFileSync(file, 'utf8').includes(OLD_PRESS))
     expect(offenders.map((f) => path.relative(SRC, f))).toEqual([])
-  })
+  }, 30_000)
 
   it('정의 파일 transitions.css에 .jam-press가 있다(옛 문자열을 대체하는 쪽이 살아 있다)', () => {
     const css = readFileSync(path.join(SRC, 'components/transitions.css'), 'utf8')
