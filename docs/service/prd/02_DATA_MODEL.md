@@ -1129,10 +1129,10 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다(221이 만든 표 6개 가운데 `chapter_names`는 챕터를 트라이브와 상관없이 숫자로만 표기하기로 한 2026-10-21 결정으로 마이그레이션 257에서 삭제해 5개가 남았다). 점수를 주는 연결은 «점수 호출 지점과 원천 id», 챕터 1 시작·오름 처리·소식·챕터 배지 판정은 «챕터 1 시작과 오름 처리»(티켓 20261019_1316)다. 연출·프로필 표시는 묶음 5(5-7).
 
 #### chapter_definitions
-`chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지).
+`chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지). 편집 화면은 어드민 «밸런스 설정»의 «챕터» 구역이다(`/admin/balance#chapter`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 챕터 2~10의 `required_score`만 칸 이름 `required:<챕터>`로 편집하고(앞 챕터보다 커야 하며 챕터 1은 0으로 고정), 저장하면 바뀐 행의 `updated_at`을 직접 올린다(갱신 트리거가 없다). 필요 점수를 낮추면 이미 점수가 넘은 유저는 바로 오르지 않고 다음에 점수가 쌓일 때 오른다(`chapter_add_score`만 챕터를 올린다). `user_chapters`·`chapter_ups`의 외래키가 이 표를 가리켜 유저가 있는 챕터는 지울 수 없으므로 줄이기는 만들지 않고, 행을 더하는 챕터 더하기는 후속 티켓 20261022_1718이다.
 
 #### chapter_score_rules
-`activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다.
+`activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다. 편집 화면은 «밸런스 설정»의 «챕터» 구역이다(티켓 20261022_1133). 활동 12종마다 `points_per_unit`·`weekly_cap`·`over_cap_ratio`를 칸 이름 `rule:<활동>:points|cap|ratio`로 편집한다. 화면의 주간 상한 0은 «상한 없음»이고 이 표에는 NULL로 쓴다(읽을 때 NULL은 0으로 보인다). 저장하면 바뀐 행의 `updated_at`을 직접 올린다(갱신 트리거가 없다).
 
 #### user_chapters
 유저당 1개(첫 점수·시작 때 생성). `chapter_no`(NULL=퀘스트 전), `total_score`. 본인만 SELECT.
