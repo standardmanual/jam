@@ -16,6 +16,7 @@ import { formatKoreanDateTime } from '@/components/LocalDate'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import {
   MedalIcon,
+  BookIcon,
   PackageIcon,
   GiftIcon,
   TargetIcon,
@@ -57,7 +58,7 @@ const FILTER_TABS: SlidingTabItem<FilterTab>[] = [
 const BADGE_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 const MISSION_EVENTS = new Set<ActivityFeedEventType>(['mission_joined', 'mission_completed', 'mission_cancelled'])
 
-function matchesFilter(item: ActivityFeedRow, tab: FilterTab): boolean {
+export function matchesFilter(item: ActivityFeedRow, tab: FilterTab): boolean {
   if (tab === 'all') return true
   if (tab === 'badge') return BADGE_EVENTS.has(item.event_type) && item.event_type !== 'badge_earned'
   if (tab === 'mission') return MISSION_EVENTS.has(item.event_type)
@@ -65,8 +66,29 @@ function matchesFilter(item: ActivityFeedRow, tab: FilterTab): boolean {
   return false
 }
 
+/**
+ * 이미 경고를 남긴 미지 피드 종류 — 프로세스/세션 단위 중복 억제용. 카드마다·렌더마다 호출되므로 억제가 없으면 경고가 쏟아진다.
+ * 소식의 `unknownNotificationType`(`lib/notifications/types.ts`)과 같은 방식이다. 그 파일은 소식 종류 전용이라 여기에 따로 둔다.
+ */
+const warnedUnknownFeedEventTypes = new Set<string>()
+
+/**
+ * 피드 종류 `switch`의 `default` 분기에서 호출하는 전수 처리 확인 헬퍼(티켓 20261021_1249 6-3 5회).
+ * 예전 `EventIcon`은 `default`가 메달 폴백이라 종류를 추가하고 이 `switch`를 빠뜨려도 컴파일이 통과해 조용히 메달로 그려졌다.
+ * 인자 타입이 `never`라 남은 종류가 있으면 **호출 지점이 컴파일 오류**가 된다.
+ *
+ * **던지지 않는다.** DB의 `feed_event_type`이 코드보다 먼저 늘어난 배포 시차에는 모르는 종류의 행이 목록에 섞여 들어오므로 런타임 폴백은 그대로 살아 있어야 한다.
+ * 로그에는 종류만 남긴다(유저 식별자·메타데이터 원문 금지).
+ */
+function unknownFeedEventType(type: never): void {
+  const key = String(type)
+  if (warnedUnknownFeedEventTypes.has(key)) return
+  warnedUnknownFeedEventTypes.add(key)
+  console.warn('[feed] 미지 피드 종류', { type: key })
+}
+
 /** 이모지 대신 SVG 라인 아이콘 (등록된 배지 이미지가 있으면 그 이미지가 우선) */
-function EventIcon({ type, className }: { type: ActivityFeedEventType; className?: string }): ReactNode {
+export function EventIcon({ type, className }: { type: ActivityFeedEventType; className?: string }): ReactNode {
   switch (type) {
     case 'badge_earned': return <MedalIcon className={className} />
     case 'item_dropped': return <PackageIcon className={className} />
@@ -74,7 +96,13 @@ function EventIcon({ type, className }: { type: ActivityFeedEventType; className
     case 'mission_joined': return <TargetIcon className={className} />
     case 'mission_completed': return <CheckCircleIcon className={className} />
     case 'mission_cancelled': return <XCircleIcon className={className} />
-    default: return <MedalIcon className={className} />
+    // 챕터 오름은 소식의 chapter_up이 이미 쓰는 메달, 컬렉션 완성은 컬렉션 소식이 쓰는 책이다(티켓 20261021_1249 6-3 5회, 새 아이콘을 고르지 않았다)
+    case 'chapter_up': return <MedalIcon className={className} />
+    case 'collection_tier_completed': return <BookIcon className={className} />
+    default:
+      // 모든 종류에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 switch를 빠뜨리면 아래 호출이 컴파일 오류가 난다.
+      unknownFeedEventType(type)
+      return <MedalIcon className={className} />
   }
 }
 
@@ -106,6 +134,34 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
   mission_joined: d.feed.eventMissionJoined,
   mission_completed: d.feed.eventMissionCompleted,
   mission_cancelled: d.feed.eventMissionCancelled,
+  chapter_up: d.feed.eventChapterUp,
+  collection_tier_completed: d.feed.eventCollectionTierCompleted,
+}
+
+/**
+ * 카드(`FeedCard`)와 상세 시트(`DetailSheet`)가 함께 쓰는 대상 이름 한 줄.
+ * 예전에는 두 곳이 같은 삼항식(배지 이벤트면 `badge_name`, 아니면 `mission_title`)을 따로 갖고 있어 새 종류에서 어긋나기 쉬웠다(티켓 20261021_1249 6-3 5회).
+ *
+ * - 챕터 오름: `d.chapter.line.chapter`(«챕터 3»). 번호가 정수가 아니거나 1 미만이면 빈 문자열이다 — «챕터 0»을 그리지 않는다.
+ * - 컬렉션 완성: `metadata.collection_name`. 비었거나 문자열이 아니면 빈 문자열이다.
+ * - 그 밖: 지금까지와 같다(배지 이벤트는 `badge_name`, 나머지는 `mission_title`).
+ *
+ * 빈 문자열이면 카드는 제목 줄을 그리지 않고, 시트는 제목 자리에 종류 라벨을 쓴다.
+ */
+export function feedTitle(item: ActivityFeedRow): string {
+  const meta = item.metadata as Record<string, unknown>
+  switch (item.event_type) {
+    case 'chapter_up': {
+      const chapterNo = meta.chapter_no
+      return typeof chapterNo === 'number' && Number.isInteger(chapterNo) && chapterNo >= 1
+        ? t(d.chapter.line.chapter, { chapterNo })
+        : ''
+    }
+    case 'collection_tier_completed':
+      return typeof meta.collection_name === 'string' ? meta.collection_name.trim() : ''
+    default:
+      return BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
+  }
 }
 
 /**
@@ -317,7 +373,7 @@ export function DetailSheet({
   const meta = item.metadata as Record<string, string | number | null>
   const rarity = meta.rarity ? String(meta.rarity) : null
   const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
-  const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
+  const title = feedTitle(item)
   const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
   const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
   const missionBadgeNames = Array.isArray(rawBadgeNames) ? (rawBadgeNames as string[]) : []
@@ -362,8 +418,15 @@ export function DetailSheet({
             {earnCount != null && <EarnCountBadge count={earnCount} />}
           </div>
         </div>
-        <p className="text-center text-base text-muted mb-1 line-clamp-2">{eventLabel(item)}</p>
-        <h2 id={titleId} className="text-center text-2xl text-foreground mb-4">{title}</h2>
+        {/* 제목이 비면 aria-labelledby가 빈 h2를 가리키지 않도록 종류 라벨을 h2 자리에 쓰고 muted 라벨 줄은 그리지 않는다(티켓 20261021_1249 6-3 5회) */}
+        {title ? (
+          <>
+            <p className="text-center text-base text-muted mb-1 line-clamp-2 break-keep wrap-break-word">{eventLabel(item)}</p>
+            <h2 id={titleId} className="text-center text-2xl text-foreground mb-4 break-keep wrap-break-word text-balance">{title}</h2>
+          </>
+        ) : (
+          <h2 id={titleId} className="text-center text-2xl text-foreground mb-4 break-keep wrap-break-word text-balance">{eventLabel(item)}</h2>
+        )}
         {/* 레벨형은 등급이 없어 Lv.N 칩으로 갈라진다. 등급형 common은 기존대로 칩을 그리지 않는다. */}
         {(level != null || (rarity && rarity !== 'common')) && (
           <div className="flex justify-center mb-4">
@@ -419,7 +482,7 @@ export function DetailSheet({
 function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => void }) {
   const meta = item.metadata as Record<string, string | number | boolean | null>
   const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
-  const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
+  const title = feedTitle(item)
   const sub = (() => {
     if (item.event_type === 'item_dropped') {
       // 드랍엔진 v2: 트라이브 이름 노출 ("아스팔트 레인저의 파편")
@@ -460,8 +523,9 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         <span className="text-base text-muted">{formatRelativeTime(item.created_at)}</span>
       }
     >
-      <p className="text-base text-muted line-clamp-2">{eventLabel(item)}</p>
-      <p className="text-base text-foreground truncate">{title}</p>
+      <p className="text-base text-muted line-clamp-2 break-keep wrap-break-word">{eventLabel(item)}</p>
+      {/* 제목이 비면(챕터 번호·컬렉션 이름 손상) 제목 줄을 그리지 않고 라벨 한 줄만 둔다 */}
+      {title && <p className="text-base text-foreground truncate break-keep wrap-break-word">{title}</p>}
       {sub && <p className="text-base text-muted truncate">{sub}</p>}
       {(badgeChip || isLastPiece) && (
         <span className="inline-flex items-center gap-2 mt-1">

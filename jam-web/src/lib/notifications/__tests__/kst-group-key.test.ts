@@ -17,6 +17,7 @@ import {
 } from '../groupKey'
 import { bumpsBadgeFor, NON_BUMPING_NOTIFICATION_TYPES } from '../types'
 import type { NotificationType } from '@/types/database'
+import { Constants } from '@/types/database.generated'
 
 describe('kstDateString — KST 기준 날짜', () => {
   it('UTC 15:00은 KST로 다음 날 00:00이라 날짜가 넘어간다', () => {
@@ -145,6 +146,13 @@ describe('bumps_badge 파생 — ① 보상 획득(활동 결산)만 false', () 
   it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_016 — 레거시 6종 제거 후 20종, 20261018_0056 남은 칸 알림으로 21종, 20261019_1313 미션 참가 취소로 22종, 20261019_1316 챕터 오름으로 23종, 20261021_1247 트라이브 변경으로 24종, 20261021_1249 이용 정지·풀림과 받지 않은 보상으로 27종)', () => {
     expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(27)
     expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(27)
+  })
+
+  // 앱이 쓰는 27종이 전부 DB enum에 있어야 한다(마이그레이션 270 포함). 생성 타입의 enum은 레거시 값 9개를 더 갖고 있어 36개다(티켓 20261021_1249 6-3 5회)
+  it('쓰는 27종이 모두 생성 타입의 notification_type 값에 있다 — 새 종류를 마이그레이션 없이 더했을 때 잡힌다', () => {
+    const dbValues: readonly string[] = Constants.public.Enums.notification_type
+    for (const type of [...REWARD_TYPES, ...OTHER_TYPES]) expect(dbValues, type).toContain(type)
+    expect(dbValues).toHaveLength(36)
   })
 })
 

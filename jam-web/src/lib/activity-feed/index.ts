@@ -7,6 +7,8 @@ export type FeedEventType =
   | 'mission_joined'
   | 'mission_completed'
   | 'mission_cancelled'
+  | 'chapter_up'
+  | 'collection_tier_completed'
 
 export interface FeedEventMeta {
   badge_earned: {
@@ -94,6 +96,24 @@ export interface FeedEventMeta {
     target_value: number
   }
   mission_cancelled: { mission_id: string; mission_title: string }
+  /**
+   * 챕터 오름(티켓 20261021_1249 6-3 5회, 운영 로직 15.3절). 챕터 2 이상으로 **새로** 올랐을 때만, 한 번에 여러 챕터를 넘어도 가장 높은 챕터 한 건만 기록한다(`lib/chapter/rise.ts`).
+   * 챕터 1 시작은 기록하지 않는다. 챕터는 숫자로만 표기하므로 이름은 싣지 않는다. 활동 단위 이벤트가 아니라 `strava_activity_id`를 넘기지 않는다 —
+   * 값이 있으면 같은 활동 묶음(`ActivityGroupCard`)에 섞이고 묶음 제목이 «기록 N개»로 폴백된다.
+   */
+  chapter_up: { chapter_no: number }
+  /**
+   * 컬렉션 등급 완성(티켓 20261021_1249 6-3 5회, 운영 로직 15.3절). 등급을 **처음** 완성한 순간에만 기록한다(`lib/chapter/collection.ts`). `strava_activity_id`를 넘기지 않는다(위와 같은 이유).
+   * 공용 DB의 컬렉션은 모두 `tier_mode`가 꺼져 있어 지금은 `common`만 나온다.
+   *
+   * **키 이름 주의.** 등급 키는 `rarity`다 — `FeedSection`의 `BadgeChip`이 이 키를 읽어 `common`이 아니면 등급 칩을 그린다.
+   * **`level`·`earn_count` 키를 쓰지 않는다** — `badgeLevelOf`·`earnCountOf`가 읽어 Lv.N 칩이나 ×N 필이 잘못 붙는다.
+   */
+  collection_tier_completed: {
+    collection_id: string
+    collection_name: string
+    rarity: string
+  }
 }
 
 /**

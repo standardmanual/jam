@@ -205,6 +205,13 @@ export const ko = {
     eventMissionJoined: '미션 참가',
     eventMissionCompleted: '미션 완료',
     eventMissionCancelled: '미션 취소',
+    /**
+     * 챕터 오름·컬렉션 완성(티켓 20261021_1249 6-3 5회, 채원 판정). 기존 완료형 라벨(«배지 획득»·«미션 완료»)과 같은 짧은 라벨 문법이다.
+     * 피드는 남도 보는 화면이라 «축하해요!»는 두지 않는다(본인에게 하는 말은 소식 `d.notifications.msgChapterUp`과 오름 카드가 맡는다).
+     * 챕터 번호 줄은 `d.chapter.line.chapter`를 쓰고 새 문구를 만들지 않는다
+     */
+    eventChapterUp: '챕터 오름',
+    eventCollectionTierCompleted: '컬렉션 완성',
 
     // 희귀도 라벨 (색상 매핑은 상태 팔레트 — Phase 2에서 DB 이관)
     rarityCommon: 'Common',

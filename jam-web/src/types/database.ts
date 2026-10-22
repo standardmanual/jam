@@ -1769,6 +1769,9 @@ export type ActivityFeedEventType =
   | 'mission_joined'
   | 'mission_completed'
   | 'mission_cancelled'
+  // 챕터가 2 이상으로 올랐어요·컬렉션 등급을 처음 완성했어요(티켓 20261021_1249 6-3 5회, 마이그레이션 270)
+  | 'chapter_up'
+  | 'collection_tier_completed'
 
 export interface ActivityFeedRow {
   id: string

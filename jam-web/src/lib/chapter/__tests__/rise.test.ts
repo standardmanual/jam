@@ -4,6 +4,8 @@
  * 고정하는 것:
  * - 오른 챕터가 없으면 아무것도 하지 않는다. 챕터 1만 오르면(챕터 1 시작) 소식 한 건과 챕터 배지 판정이 있다(티켓 20261021_1248 — 예전에는 챕터 1 소식이 없었다).
  * - 소식은 오른 챕터 가운데 가장 높은 챕터로 한 건만 보낸다. 묶음 키는 `chapter_up:{챕터}` + `once`라 같은 오름을 두 번 처리해도 소식은 한 건이다.
+ * - 피드(티켓 20261021_1249 6-3 5회): 가장 높은 챕터가 2 이상일 때만 `chapter_up` 한 건을 `{ chapter_no }`만 담아 기록한다. 챕터 1 시작은 기록하지 않고, 한 번에 여러 챕터를 넘어도 최고 챕터 한 건이며,
+ *   오른 챕터가 없으면(같은 일을 다시 보낸 경우 포함) 기록하지 않는다. 활동 id를 넘기지 않는다(넘기면 활동 묶음 카드에 섞인다). 피드가 실패해도 소식·판정은 하고, 소식·판정이 실패해도 피드는 기록한다.
  * - 챕터 배지 판정은 `runJamActionEvaluation(userId, ['chapter_reached'])`이다. `skipBadgeEvaluation`이면 건너뛴다(소식은 보낸다).
  * - 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 어떤 경우에도 던지지 않고 실패는 `chapter_rise_failed`로 남긴다.
  * - 챕터 배지가 다시 챕터 점수를 올리는 고리는 5-5의 제외 규칙이 막는다(`chapter_reached` 조건 배지는 «배지 받기» 점수에서 뺀다).
@@ -14,10 +16,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const { createNotificationMock, runEvaluationMock, logMock } = vi.hoisted(() => ({
+const { createNotificationMock, runEvaluationMock, logMock, recordFeedEventMock } = vi.hoisted(() => ({
   createNotificationMock: vi.fn(),
   runEvaluationMock: vi.fn(),
   logMock: vi.fn(),
+  recordFeedEventMock: vi.fn(),
 }))
 
 vi.mock('@/lib/notifications', async () => {
@@ -32,6 +35,7 @@ vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
   runJamActionEvaluation: (...args: unknown[]) => runEvaluationMock(...args),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: (...args: unknown[]) => recordFeedEventMock(...args) }))
 
 import { awardBadgeReceiveScore } from '../badgeReceive'
 import { processChapterRise } from '../rise'
@@ -42,6 +46,8 @@ beforeEach(() => {
   createNotificationMock.mockReset()
   runEvaluationMock.mockReset()
   logMock.mockReset()
+  recordFeedEventMock.mockReset()
+  recordFeedEventMock.mockResolvedValue(undefined)
   createNotificationMock.mockResolvedValue({ id: 'n1' })
   runEvaluationMock.mockResolvedValue(undefined)
   logMock.mockResolvedValue(undefined)
@@ -53,6 +59,7 @@ describe('processChapterRise — 오른 챕터가 없을 때', () => {
     await processChapterRise({ userId: USER, reachedChapters: [] })
 
     expect(createNotificationMock).not.toHaveBeenCalled()
+    expect(recordFeedEventMock).not.toHaveBeenCalled()
     expect(runEvaluationMock).not.toHaveBeenCalled()
     expect(logMock).not.toHaveBeenCalled()
   })
@@ -61,7 +68,74 @@ describe('processChapterRise — 오른 챕터가 없을 때', () => {
     await processChapterRise({ userId: USER, reachedChapters: [0, -1, 1.5, Number.NaN] })
 
     expect(createNotificationMock).not.toHaveBeenCalled()
+    expect(recordFeedEventMock).not.toHaveBeenCalled()
     expect(runEvaluationMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('processChapterRise — 피드 (티켓 20261021_1249 6-3 5회)', () => {
+  it('챕터 2 이상으로 오르면 chapter_up 한 건을 챕터 번호만 담아 기록한다 — 활동 id 같은 뒤 인자는 넘기지 않는다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [2] })
+
+    expect(recordFeedEventMock).toHaveBeenCalledTimes(1)
+    expect(recordFeedEventMock).toHaveBeenCalledWith(USER, 'chapter_up', { chapter_no: 2 })
+    expect(recordFeedEventMock.mock.calls[0]).toHaveLength(3)
+  })
+
+  it('챕터 1 시작은 기록하지 않는다 — 소식과 판정은 그대로 있다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [1] })
+
+    expect(recordFeedEventMock).not.toHaveBeenCalled()
+    expect(createNotificationMock).toHaveBeenCalledTimes(1)
+    expect(runEvaluationMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('한 번에 여러 챕터를 넘으면 최고 챕터 한 건만 기록한다 — 챕터 1 시작과 함께 오른 경우 포함', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [1, 2, 3] })
+    await processChapterRise({ userId: USER, reachedChapters: [5, 3, 4] })
+
+    expect(recordFeedEventMock).toHaveBeenCalledTimes(2)
+    expect(recordFeedEventMock.mock.calls[0]).toEqual([USER, 'chapter_up', { chapter_no: 3 }])
+    expect(recordFeedEventMock.mock.calls[1]).toEqual([USER, 'chapter_up', { chapter_no: 5 }])
+  })
+
+  it('오른 챕터가 없는 처리(같은 일을 다시 보낸 경우)에는 기록하지 않는다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [] })
+    await processChapterRise({ userId: USER, reachedChapters: [] })
+
+    expect(recordFeedEventMock).not.toHaveBeenCalled()
+  })
+
+  it('skipBadgeEvaluation이어도 기록한다 — 판정만 건너뛴다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [4] }, { skipBadgeEvaluation: true })
+
+    expect(recordFeedEventMock).toHaveBeenCalledTimes(1)
+    expect(runEvaluationMock).not.toHaveBeenCalled()
+  })
+
+  it('피드 기록이 던져도 소식과 판정은 하고, 실패를 step feed로 남기며 던지지 않는다', async () => {
+    recordFeedEventMock.mockRejectedValue(new Error('피드 장애'))
+
+    await expect(processChapterRise({ userId: USER, reachedChapters: [3] })).resolves.toBeUndefined()
+
+    expect(createNotificationMock).toHaveBeenCalledTimes(1)
+    expect(runEvaluationMock).toHaveBeenCalledTimes(1)
+    expect(logMock).toHaveBeenCalledTimes(1)
+    expect(logMock).toHaveBeenCalledWith('points', 'chapter_rise_failed', USER, {
+      step: 'feed',
+      reachedChapters: [3],
+      error: '피드 기록 예외: 피드 장애',
+    })
+  })
+
+  it('소식이 실패하거나 판정이 실패해도 피드는 기록한다', async () => {
+    createNotificationMock.mockResolvedValue(null)
+    runEvaluationMock.mockRejectedValue(new Error('판정 장애'))
+
+    await processChapterRise({ userId: USER, reachedChapters: [3] })
+
+    expect(recordFeedEventMock).toHaveBeenCalledTimes(1)
+    expect(recordFeedEventMock).toHaveBeenCalledWith(USER, 'chapter_up', { chapter_no: 3 })
   })
 })
 
