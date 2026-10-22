@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  BACKGROUND_COLUMNS,
   BACKUP_FILE,
   BACKUP_TABLE,
   DB_NAME_OVERRIDES,
@@ -17,7 +18,7 @@ import {
   genTribeSql,
   q
 } from '../gen-content-sql.mjs';
-import { RARITIES, parseManuscripts } from '../parse-manuscript.mjs';
+import { MANUSCRIPT_DIR, RARITIES, parseManuscripts } from '../parse-manuscript.mjs';
 import { readPairingJson } from '../parse-pairing-doc.mjs';
 
 const plan = buildPlan();
@@ -219,6 +220,53 @@ describe('안전장치', () => {
         expect(m[1]).not.toContain('image_source');
       }
     });
+
+    it(`${name}: 덮어쓰는 컬렉션과 옛 배지 행의 배경 칸 ${BACKGROUND_COLUMNS.length}개를 모두 NULL로 비운다`, () => {
+      const bookUpd = sql.match(/UPDATE public\.item_books ib[\s\S]*?;/)[0];
+      const badgeUpd = sql.match(/UPDATE public\.badges b[\s\S]*?;/)[0];
+      for (const c of BACKGROUND_COLUMNS) {
+        expect(bookUpd, `컬렉션 ${c}`).toMatch(new RegExp(`^\\s+${c} = NULL,?$`, 'm'));
+        expect(badgeUpd, `배지 ${c}`).toMatch(new RegExp(`^\\s+${c} = NULL,?$`, 'm'));
+      }
+      // 덮어쓰기 UPDATE는 두 표 모두 이 칸들을 한 번씩만 건드리고, 값을 채우는 대입은 없다
+      for (const upd of [bookUpd, badgeUpd]) {
+        expect(upd.match(/background_\w+ = /g)).toHaveLength(BACKGROUND_COLUMNS.length);
+        expect(upd).not.toMatch(/background_\w+ = (?!NULL)/);
+      }
+    });
+
+    it(`${name}: 새 행은 배경 칸을 따로 넣지 않아 기본값(NULL)을 쓴다`, () => {
+      const inserts = [...sql.matchAll(/INSERT INTO public\.(?:badges|item_books) \(([\s\S]*?)\)\s*(?:SELECT|VALUES)/g)];
+      expect(inserts.length).toBeGreaterThan(0);
+      for (const m of inserts) expect(m[1]).not.toContain('background');
+    });
+
+    it(`${name}: 끝 검사가 컬렉션과 배지 전체의 배경 칸이 비었는지 확인한다`, () => {
+      const endCheck = sql.slice(sql.indexOf('-- 6. 끝 검사'), sql.lastIndexOf('-- 되돌림 SQL'));
+      expect(endCheck).toContain('DROP TABLE _jam2_new_badge');
+      for (const c of BACKGROUND_COLUMNS) {
+        expect(endCheck, `컬렉션 ${c}`).toContain(`ib.${c} IS NULL`);
+        expect(endCheck, `배지 ${c}`).toContain(`b.${c} IS NULL`);
+      }
+    });
+
+    it(`${name}: 되돌림 SQL이 배경 칸 ${BACKGROUND_COLUMNS.length}개를 백업 값으로 복원한다(JSONB 칸은 JSON null을 SQL NULL로)`, () => {
+      const tail = sql.slice(sql.lastIndexOf('-- 되돌림 SQL'));
+      for (const c of BACKGROUND_COLUMNS) {
+        const restore =
+          c === 'background_animation' ? `${c} = NULLIF(s.snapshot->'${c}', 'null'::jsonb)` : `${c} = s.snapshot->>'${c}'`;
+        // 배지 되돌림과 컬렉션 되돌림에 한 번씩
+        expect(tail.split(restore).length - 1, c).toBe(2);
+      }
+    });
+
+    it(`${name}: 머리말이 배경 칸 비우기를 설명하고 적용 전·후 확인 SELECT가 배경 칸을 센다`, () => {
+      const head = sql.slice(0, sql.indexOf('\nDROP TABLE IF EXISTS pg_temp._jam2_ctx'));
+      expect(head).toContain(`배경 칸 ${BACKGROUND_COLUMNS.length}개(${BACKGROUND_COLUMNS.join(', ')})`);
+      expect(head.split('AS books_with_background').length - 1).toBe(2);
+      expect(head.split('AS badges_with_background').length - 1).toBe(2);
+      expect(head).toContain('배경 칸이 남은 컬렉션·배지 (0, 0)');
+    });
   }
 
   it('새 컬렉션이 있는 트라이브만 컬렉션 INSERT와 new_item_book 기록을 만든다', () => {
@@ -240,6 +288,27 @@ describe('안전장치', () => {
     expect(sqls.backup).toContain('REVOKE ALL ON');
   });
 
+  it('백업 SQL은 행을 통째로(to_jsonb) 담아 배경 칸의 옛 값도 되돌림에 쓸 수 있다', () => {
+    expect(sqls.backup).toContain('to_jsonb(ib)');
+    expect(sqls.backup).toContain('to_jsonb(b)');
+    expect(sqls.backup).toContain(`배경 칸 ${BACKGROUND_COLUMNS.length}개(${BACKGROUND_COLUMNS.join(', ')})`);
+  });
+
+  it('배경 칸 다섯 열은 생성 타입의 badges·item_books 두 표에 모두 있다(열 이름 오타 방지)', () => {
+    const generated = fs.readFileSync(path.resolve(MIGRATIONS_DIR, '../../src/types/database.generated.ts'), 'utf8');
+    const rowColumns = (table) => {
+      const start = generated.indexOf(`      ${table}: {\n        Row: {\n`);
+      expect(start, `${table} Row를 찾지 못했습니다`).toBeGreaterThanOrEqual(0);
+      const end = generated.indexOf('        Insert: {', start);
+      return [...generated.slice(start, end).matchAll(/^ {10}(\w+): /gm)].map((m) => m[1]);
+    };
+    expect(BACKGROUND_COLUMNS).toHaveLength(5);
+    for (const table of ['badges', 'item_books']) {
+      const cols = rowColumns(table);
+      for (const c of BACKGROUND_COLUMNS) expect(cols, `${table}.${c}`).toContain(c);
+    }
+  });
+
   it('q는 작은따옴표를 겹쳐 쓰고 NUL 글자를 거부한다', () => {
     expect(q("좋아요' 하트")).toBe("'좋아요'' 하트'");
     expect(q('')).toBe("''");
@@ -249,23 +318,73 @@ describe('안전장치', () => {
 });
 
 describe('커밋된 마이그레이션 파일', () => {
-  const outputs = buildOutputs(plan, FIRST_ROUND_TRIBES);
+  const allTribes = Object.keys(TRIBE_FILES);
+  // 1회 몫(275, 276)에 2회 몫(277~280, 트라이브 네 개)을 더한 여섯 파일 전체
+  const outputs = buildOutputs(plan, allTribes);
 
   it('1회 몫은 백업 표 SQL(275)과 한입만 연구회(276) 두 파일이다', () => {
-    expect(Object.keys(outputs)).toEqual([BACKUP_FILE.file, TRIBE_FILES['한입만 연구회'].file]);
+    expect(Object.keys(buildOutputs(plan, FIRST_ROUND_TRIBES))).toEqual([BACKUP_FILE.file, TRIBE_FILES['한입만 연구회'].file]);
     expect(BACKUP_FILE.number).toBe(275);
     expect(TRIBE_FILES['한입만 연구회'].number).toBe(276);
   });
 
-  it('생성기 결과와 저장소의 SQL 파일이 한 글자도 다르지 않다(생성기를 고치면 --write로 다시 만든다)', () => {
+  it('2회 몫은 찰칵단(277)·비사이드 레코즈(278)·소나무 잡화점(279)·혼자들(280) 네 파일이다', () => {
+    expect(TRIBE_FILES).toEqual({
+      '한입만 연구회': { number: 276, file: '276_tribe_content_hanipman.sql' },
+      찰칵단: { number: 277, file: '277_tribe_content_chalkak.sql' },
+      '비사이드 레코즈': { number: 278, file: '278_tribe_content_bside.sql' },
+      '소나무 잡화점': { number: 279, file: '279_tribe_content_sonamu.sql' },
+      혼자들: { number: 280, file: '280_tribe_content_honjadeul.sql' }
+    });
+    expect(Object.keys(outputs)).toEqual([
+      '275_content_overwrite_backup.sql',
+      '276_tribe_content_hanipman.sql',
+      '277_tribe_content_chalkak.sql',
+      '278_tribe_content_bside.sql',
+      '279_tribe_content_sonamu.sql',
+      '280_tribe_content_honjadeul.sql'
+    ]);
+  });
+
+  it('생성기 결과와 저장소의 SQL 파일 여섯 개가 한 글자도 다르지 않다(생성기를 고치면 --write로 다시 만든다)', () => {
     for (const [file, text] of Object.entries(outputs)) {
       expect(fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'), file).toBe(text);
     }
   });
 
-  it('275·276 번호를 쓰는 마이그레이션은 이 두 파일뿐이다', () => {
-    const files = fs.readdirSync(MIGRATIONS_DIR).filter((f) => /^27[56]_/.test(f));
+  it('275~280 번호를 쓰는 마이그레이션은 이 여섯 파일뿐이다', () => {
+    const files = fs.readdirSync(MIGRATIONS_DIR).filter((f) => /^(27[5-9]|280)_/.test(f));
     expect(files.sort()).toEqual(Object.keys(outputs).sort());
+  });
+
+  it('커밋된 다섯 파일의 설명 1,800개가 원고 글자와 한 글자도 다르지 않다', () => {
+    const manuscript = parseManuscripts();
+    const rawNames = fs.readdirSync(MANUSCRIPT_DIR);
+    let checked = 0;
+    for (const mt of manuscript.tribes) {
+      const file = TRIBE_FILES[mt.name].file;
+      const rows = readInsertRows(fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'), '_jam2_item');
+      const expected = mt.collections.flatMap((c) => c.items.map((i) => ({ book: c.no, item: i })));
+      expect(rows, file).toHaveLength(expected.length);
+
+      // 원고 파일의 원문(파서를 거치지 않은 글자)
+      const rawName = rawNames.find((f) => f.normalize('NFC') === mt.file);
+      expect(rawName, `${mt.name} 원고 파일`).toBeTruthy();
+      const raw = fs.readFileSync(path.join(MANUSCRIPT_DIR, rawName), 'utf8');
+
+      rows.forEach((row, k) => {
+        const { book, item } = expected[k];
+        const where = `${file} ${book}-${item.no}`;
+        expect(row.slice(0, 3), where).toEqual([book, item.no, item.name]);
+        RARITIES.forEach((r, ri) => {
+          const text = row[4 + ri];
+          expect(text, `${where} ${r}`).toBe(item.descriptions[r]); // 파서 결과와 같다
+          expect(raw.includes(text), `${where} ${r}: 원고 원문에 없다`).toBe(true); // 원문에 그대로 있다
+          checked++;
+        });
+      });
+    }
+    expect(checked).toBe(1800);
   });
 
   it('파일 번호가 겹치지 않는다(전체 마이그레이션의 번호 접두어가 유일하다)', () => {

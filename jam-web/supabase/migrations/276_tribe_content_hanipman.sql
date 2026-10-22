@@ -7,12 +7,14 @@
 --
 -- 하는 일 (한 트랜잭션, 파일만 쓰고 실행은 사용자 승인과 롤백 실측 뒤 카리나가 한다)
 --   1. 컬렉션 10개 덮어쓰기: 옛 컬렉션의 name ← 새 이름, description ← 한 줄 서사, tribe_id ← «한입만 연구회»,
---      is_active ← true, tier_mode ← true, story_text·image_url·image_source ← 비움. reward_points·reward_badge_id는 건드리지 않는다.
+--      is_active ← true, tier_mode ← true, story_text·image_url·image_source와 배경 칸 5개(background_color, background_shader_id, background_image_url, background_video_url, background_animation) ← 비움.
+--      reward_points·reward_badge_id는 건드리지 않는다.
 --      이 트라이브에는 새로 만드는 컬렉션이 없다.
 --   2. 옛 아이템 배지 행 90개 덮어쓰기(Common): name ← 새 아이템 이름, description ← Common 설명, rarity ← common,
---      deleted_at ← 비움, tribe_id ← 새 트라이브, image_url·image_source ← 비움. point_reward는 그대로 둔다.
+--      deleted_at ← 비움, tribe_id ← 새 트라이브, image_url·image_source와 위와 같은 배경 칸 5개 ← 비움. point_reward는 그대로 둔다.
 --   3. 새 배지 행 270개: 덮어쓴 행마다 Rare·Epic·Mystic 270개.
---      같은 이름이 4등급 모두 같고 설명만 등급마다 다르다. point_reward와 이미지는 비운다(포인트는 7-4가 일괄 적용).
+--      같은 이름이 4등급 모두 같고 설명만 등급마다 다르다. point_reward·이미지·배경 칸은 비운다(포인트는 7-4가 일괄 적용).
+--      새 행은 배경 칸을 복사하지 않고 기본값(NULL)을 쓴다. 덮어쓴 Common 행도 비우므로 4등급이 모두 배경 없음으로 같아진다.
 --      덮어쓴 행에서 유효기간·드랍 제외·가중치·활동 종류 같은 드랍 설정을 그대로 복사해 4등급이 같은 조건으로 나오게 한다.
 --
 -- 찾는 방법과 멈추는 조건
@@ -44,6 +46,12 @@
 --          count(*) FILTER (WHERE b.drop_excluded OR b.valid_from IS NOT NULL OR b.valid_until IS NOT NULL OR b.always_locked OR b.is_hidden) AS badges_with_setting
 --     FROM public.badges b JOIN public.item_books ib ON ib.id = b.item_book_id
 --    WHERE ib.name IN ('무명無名을 쫓는 야식가들', '환상의 꼬치구이 트럭', '편의점 심야 만찬', '시장 골목의 전설', '비 오는 날의 기름 냄새', '새벽 라이딩 끝의 국밥', '겨울밤의 소박한 온기', '봉인된 연금술 배합', '오아시스 자판기의 동전', '위로의 탄수화물');
+--   -- 지워질 배경 칸 값이 있는 컬렉션·배지 수 (참고용. 적용하면 모두 비워지고 백업 표에 옛 값이 남는다)
+--   SELECT (SELECT count(*) FROM public.item_books ib WHERE ib.name IN ('무명無名을 쫓는 야식가들', '환상의 꼬치구이 트럭', '편의점 심야 만찬', '시장 골목의 전설', '비 오는 날의 기름 냄새', '새벽 라이딩 끝의 국밥', '겨울밤의 소박한 온기', '봉인된 연금술 배합', '오아시스 자판기의 동전', '위로의 탄수화물')
+--              AND (ib.background_color IS NOT NULL OR ib.background_shader_id IS NOT NULL OR ib.background_image_url IS NOT NULL OR ib.background_video_url IS NOT NULL OR ib.background_animation IS NOT NULL)) AS books_with_background,
+--          (SELECT count(*) FROM public.badges b JOIN public.item_books ib ON ib.id = b.item_book_id
+--            WHERE ib.name IN ('무명無名을 쫓는 야식가들', '환상의 꼬치구이 트럭', '편의점 심야 만찬', '시장 골목의 전설', '비 오는 날의 기름 냄새', '새벽 라이딩 끝의 국밥', '겨울밤의 소박한 온기', '봉인된 연금술 배합', '오아시스 자판기의 동전', '위로의 탄수화물')
+--              AND (b.background_color IS NOT NULL OR b.background_shader_id IS NOT NULL OR b.background_image_url IS NOT NULL OR b.background_video_url IS NOT NULL OR b.background_animation IS NOT NULL)) AS badges_with_background;
 --   -- 백업 표가 있다 (275 적용 뒤)
 --   SELECT to_regclass('public.content_overwrite_backup_20261022');                       -- NULL이 아니다
 --
@@ -64,6 +72,12 @@
 --   SELECT count(*) FROM public.badges b JOIN public.item_books ib ON ib.id = b.item_book_id
 --     JOIN public.tribes t ON t.id = ib.tribe_id WHERE t.name = '한입만 연구회'
 --      AND (b.image_url IS NOT NULL OR b.image_source IS NOT NULL OR b.deleted_at IS NOT NULL);
+--   -- 배경 칸이 남은 컬렉션·배지 (0, 0)
+--   SELECT (SELECT count(*) FROM public.item_books ib JOIN public.tribes t ON t.id = ib.tribe_id
+--            WHERE t.name = '한입만 연구회' AND (ib.background_color IS NOT NULL OR ib.background_shader_id IS NOT NULL OR ib.background_image_url IS NOT NULL OR ib.background_video_url IS NOT NULL OR ib.background_animation IS NOT NULL)) AS books_with_background,
+--          (SELECT count(*) FROM public.badges b JOIN public.item_books ib ON ib.id = b.item_book_id
+--            JOIN public.tribes t ON t.id = ib.tribe_id WHERE t.name = '한입만 연구회'
+--              AND (b.background_color IS NOT NULL OR b.background_shader_id IS NOT NULL OR b.background_image_url IS NOT NULL OR b.background_video_url IS NOT NULL OR b.background_animation IS NOT NULL)) AS badges_with_background;
 --   -- 백업 건수 (item_book 10, badge 90, new_badge 270)
 --   SELECT kind, count(*) FROM public.content_overwrite_backup_20261022 WHERE target_tribe = '한입만 연구회' GROUP BY kind ORDER BY kind;
 
@@ -299,7 +313,12 @@ UPDATE public.item_books ib
        tier_mode    = true,
        story_text   = NULL,
        image_url    = NULL,
-       image_source = NULL
+       image_source = NULL,
+       background_color = NULL,
+       background_shader_id = NULL,
+       background_image_url = NULL,
+       background_video_url = NULL,
+       background_animation = NULL
   FROM _jam2_book k
  CROSS JOIN _jam2_ctx c
  WHERE ib.id = k.book_id AND k.old_name IS NOT NULL;
@@ -314,7 +333,12 @@ UPDATE public.badges b
        deleted_at   = NULL,
        tribe_id     = c.tribe_id,
        image_url    = NULL,
-       image_source = NULL
+       image_source = NULL,
+       background_color = NULL,
+       background_shader_id = NULL,
+       background_image_url = NULL,
+       background_video_url = NULL,
+       background_animation = NULL
   FROM _jam2_item i
  CROSS JOIN _jam2_ctx c
  WHERE b.id = i.old_badge_id;
@@ -360,14 +384,15 @@ DO $$
 DECLARE
   v_n INTEGER;
 BEGIN
-  -- 컬렉션 10개: 새 이름·서사·트라이브, 활성, 4등급, 비운 칸
+  -- 컬렉션 10개: 새 이름·서사·트라이브, 활성, 4등급, 비운 칸(이미지·배경 포함)
   SELECT count(*) INTO v_n
     FROM public.item_books ib
     JOIN _jam2_book k ON k.book_id = ib.id
    CROSS JOIN _jam2_ctx c
    WHERE ib.name = k.new_name AND ib.description = k.summary AND ib.tribe_id = c.tribe_id
      AND ib.is_active AND ib.tier_mode
-     AND ib.story_text IS NULL AND ib.image_url IS NULL AND ib.image_source IS NULL;
+     AND ib.story_text IS NULL AND ib.image_url IS NULL AND ib.image_source IS NULL
+     AND ib.background_color IS NULL AND ib.background_shader_id IS NULL AND ib.background_image_url IS NULL AND ib.background_video_url IS NULL AND ib.background_animation IS NULL;
   IF v_n <> 10 THEN
     RAISE EXCEPTION '끝 검사: 새 값을 가진 컬렉션이 %개입니다(기대 10).', v_n;
   END IF;
@@ -378,7 +403,7 @@ BEGIN
     RAISE EXCEPTION '끝 검사: 컬렉션 안의 배지가 %개입니다(기대 360).', v_n;
   END IF;
 
-  -- 이름·등급·설명·트라이브가 원고와 같고, 이미지가 없고, 삭제되지 않은 배지
+  -- 이름·등급·설명·트라이브가 원고와 같고, 이미지와 배경이 없고, 삭제되지 않은 배지
   SELECT count(*) INTO v_n
     FROM public.badges b
     JOIN _jam2_book k ON k.book_id = b.item_book_id
@@ -386,6 +411,7 @@ BEGIN
    CROSS JOIN _jam2_ctx c
    WHERE b.type = 'item' AND b.tribe_id = c.tribe_id AND b.deleted_at IS NULL
      AND b.image_url IS NULL AND b.image_source IS NULL
+     AND b.background_color IS NULL AND b.background_shader_id IS NULL AND b.background_image_url IS NULL AND b.background_video_url IS NULL AND b.background_animation IS NULL
      AND b.description = CASE b.rarity WHEN 'common' THEN i.d_common WHEN 'rare' THEN i.d_rare WHEN 'epic' THEN i.d_epic ELSE i.d_mystic END;
   IF v_n <> 360 THEN
     RAISE EXCEPTION '끝 검사: 원고와 같은 배지가 %개입니다(기대 360).', v_n;
@@ -429,11 +455,12 @@ DROP TABLE _jam2_ctx;
 -- «한입만 연구회»만 되돌린다. 백업 표 content_overwrite_backup_20261022(275)를 쓴다. 한 번의 호출로 통째로 실행한다.
 -- 새로 넣은 행을 유저가 이미 받았거나 꽂았다면 1)의 DELETE가 외래키 오류로 멈춘다. 그때는 유저 보유를 먼저 확인하고,
 -- 지우는 대신 deleted_at을 채워 소프트 삭제한다(UPDATE public.badges SET deleted_at = now() WHERE id IN (SELECT row_id FROM public.content_overwrite_backup_20261022 WHERE kind = 'new_badge' AND target_tribe = '한입만 연구회');).
+-- 배경 칸 중 background_animation만 JSONB다. 백업(to_jsonb)이 SQL NULL을 JSON null로 담으므로 NULLIF로 SQL NULL로 되돌린다.
 --
 -- 1) 새로 넣은 행 지우기
 -- DELETE FROM public.badges WHERE id IN (SELECT row_id FROM public.content_overwrite_backup_20261022 WHERE kind = 'new_badge' AND target_tribe = '한입만 연구회');
 --
--- 2) 덮어쓴 아이템 배지 행을 백업 값으로 되돌리기 (name, description, rarity, deleted_at, tribe_id, image_url, image_source)
+-- 2) 덮어쓴 아이템 배지 행을 백업 값으로 되돌리기 (name, description, rarity, deleted_at, tribe_id, image_url, image_source, 배경 칸 5개)
 -- UPDATE public.badges b
 --    SET name         = s.snapshot->>'name',
 --        description  = s.snapshot->>'description',
@@ -441,11 +468,16 @@ DROP TABLE _jam2_ctx;
 --        deleted_at   = (s.snapshot->>'deleted_at')::timestamptz,
 --        tribe_id     = (s.snapshot->>'tribe_id')::uuid,
 --        image_url    = s.snapshot->>'image_url',
---        image_source = s.snapshot->>'image_source'
+--        image_source = s.snapshot->>'image_source',
+--        background_color = s.snapshot->>'background_color',
+--        background_shader_id = s.snapshot->>'background_shader_id',
+--        background_image_url = s.snapshot->>'background_image_url',
+--        background_video_url = s.snapshot->>'background_video_url',
+--        background_animation = NULLIF(s.snapshot->'background_animation', 'null'::jsonb)
 --   FROM public.content_overwrite_backup_20261022 s
 --  WHERE s.kind = 'badge' AND s.target_tribe = '한입만 연구회' AND s.row_id = b.id;
 --
--- 3) 덮어쓴 컬렉션을 백업 값으로 되돌리기 (name, description, tribe_id, is_active, tier_mode, story_text, image_url, image_source)
+-- 3) 덮어쓴 컬렉션을 백업 값으로 되돌리기 (name, description, tribe_id, is_active, tier_mode, story_text, image_url, image_source, 배경 칸 5개)
 -- UPDATE public.item_books ib
 --    SET name         = s.snapshot->>'name',
 --        description  = s.snapshot->>'description',
@@ -454,7 +486,12 @@ DROP TABLE _jam2_ctx;
 --        tier_mode    = (s.snapshot->>'tier_mode')::boolean,
 --        story_text   = s.snapshot->>'story_text',
 --        image_url    = s.snapshot->>'image_url',
---        image_source = s.snapshot->>'image_source'
+--        image_source = s.snapshot->>'image_source',
+--        background_color = s.snapshot->>'background_color',
+--        background_shader_id = s.snapshot->>'background_shader_id',
+--        background_image_url = s.snapshot->>'background_image_url',
+--        background_video_url = s.snapshot->>'background_video_url',
+--        background_animation = NULLIF(s.snapshot->'background_animation', 'null'::jsonb)
 --   FROM public.content_overwrite_backup_20261022 s
 --  WHERE s.kind = 'item_book' AND s.target_tribe = '한입만 연구회' AND s.row_id = ib.id;
 --

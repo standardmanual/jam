@@ -7,6 +7,7 @@
 -- 하는 일: 백업 표 content_overwrite_backup_20261022를 만들고, 덮어쓸 컬렉션 44개와 옛 아이템 배지 행 396개의
 -- 현재 값을 통째로(to_jsonb) 복사한다. 7-6의 트라이브별 SQL(276~280)은 덮어쓰기 직전에 자기 대상 행의 상태를
 -- 이 표에 다시 기록하고(ON CONFLICT DO UPDATE), 되돌림 SQL이 이 표로 옛 값을 되돌린다. 6-4의 오픈 뒤 정리 SQL 때 이 표를 지운다.
+-- 통째로 복사하므로 7-6이 비우는 배경 칸 5개(background_color, background_shader_id, background_image_url, background_video_url, background_animation)의 옛 값도 이 표에 남고, 되돌림이 복원한다.
 --
 -- 표에 담는 종류(kind):
 --   item_book      덮어쓴 컬렉션의 덮어쓰기 전 전체 행
