@@ -71,7 +71,6 @@ interface ShapeStudioPanelProps {
   randOn: RandomToggleState
   ribbonLayer: RibbonLayerConfig
   uploadedRibbonFileName: string | null
-  masterSeed: number | null
   overlayLayers: OverlayLayerConfig[]
   selectedOverlayLayerId: string | null
   exportSize: number
@@ -123,7 +122,6 @@ interface ShapeStudioPanelProps {
   onSelectRibbonLetter: (letter: LetterKey) => void
   onSelectRibbonFile: (file: File) => void
   onRandomizeRibbonAll: () => void
-  onApplyMasterSeed: (seed: number) => void
   onSelectOverlayLayer: (id: string) => void
   onAddImageLayer: (file: File) => void
   onAddTextLayer: () => void
@@ -251,7 +249,6 @@ export default function ShapeStudioPanel({
   randOn,
   ribbonLayer,
   uploadedRibbonFileName,
-  masterSeed,
   overlayLayers,
   selectedOverlayLayerId,
   exportSize,
@@ -277,7 +274,6 @@ export default function ShapeStudioPanel({
   onSelectRibbonLetter,
   onSelectRibbonFile,
   onRandomizeRibbonAll,
-  onApplyMasterSeed,
   onSelectOverlayLayer,
   onAddImageLayer,
   onAddTextLayer,
@@ -294,7 +290,6 @@ export default function ShapeStudioPanel({
   onCancelVideo,
 }: ShapeStudioPanelProps) {
   const [screenTab, setScreenTab] = useState<'design' | 'apply'>('design')
-  const [seedInput, setSeedInput] = useState('')
   const ribbonFileInputRef = useRef<HTMLInputElement | null>(null)
 
   const isGlyphMode = Boolean(state.glyph)
@@ -302,7 +297,6 @@ export default function ShapeStudioPanel({
   const colorStartedRef = useRef<Record<string, boolean>>({})
 
   const effectiveRibbonStartColor = computeEffectiveStartColor(ribbonLayer)
-  const parsedSeedInput = /^-?\d+$/.test(seedInput.trim()) ? Number(seedInput.trim()) : null
 
   return (
     <aside className="w-full overflow-y-auto border-t border-[#e0e4df] bg-[#f8f9f6] text-[#1e2322] lg:w-[352px] lg:shrink-0 lg:border-t-0 lg:border-l">
@@ -932,50 +926,17 @@ export default function ShapeStudioPanel({
             </>
           ) : (
             <>
-              {/* Ribbon 1. Random & Master Seed */}
+              {/* Ribbon 1. Random */}
               <section className="border-t border-[#e0e4df] px-5 py-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onRandomizeRibbonAll}
-                  className="mb-3 h-10 w-full rounded-full border-[#b9c7aa] bg-[#dfe5d9] font-semibold text-[#1e2322] hover:bg-[#d3dccb] whitespace-nowrap"
+                  className="h-10 w-full rounded-full border-[#b9c7aa] bg-[#dfe5d9] font-semibold text-[#1e2322] hover:bg-[#d3dccb] whitespace-nowrap"
                 >
                   <IconArrowsShuffle className="mr-1.5 h-4 w-4" />
                   전체 무작위
                 </Button>
-                <div className="flex flex-col gap-1.5 rounded-[10px] bg-[#eff2eb] p-3">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold text-[#1e2322]">마스터 시드</span>
-                    <span className="font-mono text-[10px] text-[#6f766c]">
-                      {masterSeed ?? '아직 없음'}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-[#8c9288]">
-                    같은 시드를 CLI에 넣으면 같은 리본이 나와요.
-                  </p>
-                  <div className="mt-1 flex gap-1.5">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={seedInput}
-                      onChange={(e) => setSeedInput(e.target.value)}
-                      placeholder="시드 입력"
-                      className="h-8 flex-1 bg-white text-xs"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={parsedSeedInput === null}
-                      onClick={() => {
-                        if (parsedSeedInput !== null) onApplyMasterSeed(parsedSeedInput)
-                      }}
-                      className="h-8 border-[#e0e4df] bg-white text-xs text-[#1e2322] hover:bg-[#e8ece4] whitespace-nowrap"
-                    >
-                      시드 불러오기
-                    </Button>
-                  </div>
-                </div>
               </section>
 
               {/* Ribbon 2. Source Graphic */}
