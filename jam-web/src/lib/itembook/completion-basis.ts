@@ -16,6 +16,9 @@
  *   분자는 그 등급에서 채운 «이름 수»다(222와 같게, 그 등급이 전부 드랍 제외이면 제외 없이 센다).
  *   컬렉션 등급(`tier`)은 저장하지 않고 채운 배지의 등급에서 읽는다. 최상위 필드
  *   (`denomIds`·`filledIds`·`total`·`filled`·`complete`)는 그 등급 기준이다.
+ * - 컬렉션 등급(`tier`) 판별에서만 소프트 삭제 배지에 꽂힌 슬롯도 센다(티켓 20261022_1139 2회, 2340 정리 ④). 222의 `tier_mismatch` 판정과
+ *   시험 하네스의 등급 읽기가 `deleted_at`을 걸지 않기 때문이다. 분모·분자와 `tiers`는 그대로 소프트 삭제 배지를 뺀다. 그 등급에 살아 있는
+ *   배지가 없어 `tiers`에 없으면 최상위 필드의 기준은 첫 등급이다. 호출부가 소프트 삭제 배지를 `badges`에 넘길 때만 영향이 있다.
  *
  * 순수 함수다. DB 조회는 호출부(checker·completable·화면·API)가 한다.
  */
@@ -151,23 +154,41 @@ export function computeBookCompletion(
     else registeredByBook.set(key, [b])
   }
 
+  // 소프트 삭제 배지는 분모·분자에서 빠지지만 컬렉션 등급 판별에는 들어간다(222 SQL과 맞춘다). 장착 칸에는 아이템 배지만 꽂히므로
+  // 아이템 배지 가운데 등급이 있는 것만 모은다(체크인 배지는 장착이 아니라 획득 이력으로 채워 이 경로에 해당하지 않는다).
+  const deletedByBook = new Map<string, CompletionBadgeInput[]>()
+  for (const b of badges) {
+    if (!b.deleted_at || !b.item_book_id || !b.rarity || b.type !== 'item' || !types.includes(b.type)) continue
+    const list = deletedByBook.get(b.item_book_id)
+    if (list) list.push(b)
+    else deletedByBook.set(b.item_book_id, [b])
+  }
+
   const result = new Map<string, BookCompletion>()
   for (const [bookId, registeredBadges] of registeredByBook) {
     const filledSet = filledByBook ? (filledByBook.get(bookId) ?? EMPTY_SET) : filledBadgeIds
 
     if (tierModeBookIds?.has(bookId)) {
       const tiers: Record<string, TierCompletion> = {}
+      const deletedBadges = deletedByBook.get(bookId) ?? []
       let tier: string | null = null
       let firstTier: string | null = null
       for (const rarity of COMPLETION_TIER_ORDER) {
         const inTier = registeredBadges.filter((b) => b.rarity === rarity)
-        if (inTier.length === 0) continue
-        tiers[rarity] = computeTierCompletion(inTier, filledSet)
-        firstTier ??= rarity
-        // 컬렉션 등급 = 채운 배지의 등급(드랍 제외 배지도 등급을 정한다). 섞여 있으면 순서가 앞선 등급
-        if (tier === null && inTier.some((b) => filledSet.has(b.id))) tier = rarity
+        if (inTier.length > 0) {
+          tiers[rarity] = computeTierCompletion(inTier, filledSet)
+          firstTier ??= rarity
+        }
+        // 컬렉션 등급 = 채운 배지의 등급(드랍 제외 배지도 등급을 정한다). 소프트 삭제 배지에 꽂힌 슬롯도 센다. 섞여 있으면 순서가 앞선 등급
+        if (
+          tier === null &&
+          (inTier.some((b) => filledSet.has(b.id)) || deletedBadges.some((b) => b.rarity === rarity && filledSet.has(b.id)))
+        ) {
+          tier = rarity
+        }
       }
-      const shown = tier ?? firstTier
+      // 컬렉션 등급이 삭제 배지에서만 나와 `tiers`에 없으면 표시 기준은 첫 등급이다
+      const shown = tier !== null && tiers[tier] ? tier : firstTier
       const base = shown ? tiers[shown] : null
       result.set(bookId, {
         denomIds: base?.denomIds ?? [],
