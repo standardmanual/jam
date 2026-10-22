@@ -1,0 +1,103 @@
+-- 267_post_release_drop_old_record_combine_success.sql
+-- JAM 2.0 출시 뒤 정리: 옛 믹스 성공 기록 함수 record_combine_success(5개 인자)를 지운다 (티켓 20261021_1250 = 6-4 4회, 상위 20261021_1246)
+--
+-- **작성만 하고 실행하지 않았다. 출시(main 승격) 뒤 사용자 승인으로 실행한다.**
+--
+-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.
+--    옛 프로덕션 코드(티켓 조사 기준 main의 lib/combine/index.ts 484줄)는 이 함수를 부른다. 출시 전에 지우면 옛 코드의 믹스 성공 기록이 누락된다.
+--    그래서 옛 프로덕션 코드가 사라지는 출시(main 승격) 뒤에만 실행한다.
+--
+-- 선행 조건
+--   ① 출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤.
+--   ② 코드 참조 0건을 grep으로 다시 확인한다. 이 파일을 쓴 2026-10-22 staging 기준 결과는 0줄이었다(주석의 언급 3곳과 생성 타입은 호출이 아니다).
+--        grep -rnE "['\"]record_combine_success['\"]" jam-web/src jam-web/scripts            # 0줄이어야 한다(새 코드는 record_combine_success_with_id만 부른다)
+--   ③ 아래 «적용 전 확인»의 의존 객체가 0개, 다른 함수 본문 언급이 0행이어야 한다. 아니면 멈추고 보고한다.
+--
+-- 실행 순서: 이 묶음은 266(제약) → 267(함수) → 268(표) → 269(열) 순서로 실행한다. 네 파일은 서로 의존하지 않아 하나가 멈춰도 나머지에 영향이 없다.
+--
+-- 하는 일: DROP FUNCTION public.record_combine_success(uuid, uuid, uuid[], uuid[], integer). 5개 인자 시그니처를 정확히 쓴다. CASCADE를 쓰지 않으므로 이 함수에 기대는 객체가 있으면 오류로 멈춘다.
+-- 바꾸지 않는 것: record_combine_success_with_id(새 코드가 쓴다. 이름이 접두어로 겹치지만 다른 함수이고 시그니처를 정확히 써서 건드리지 않는다), user_combine_success_logs 표와 그 행·인덱스.
+-- 데이터 손실: 없다. 함수 정의만 사라지고 되돌림이 같은 정의를 다시 만든다(권한 포함).
+-- 잠금: 실행하는 쪽에서 같은 트랜잭션 안에 SET LOCAL lock_timeout = '3s'를 두어 다른 쿼리를 오래 막지 않게 한다(본문에는 넣지 않았다).
+-- 생성 타입: 적용 뒤 jam-web/src/types/database.generated.ts의 Functions에서 record_combine_success 항목(이 파일을 쓴 시점 4800줄 근처)을 지운다.
+--   record_combine_success_with_id 항목은 남긴다.
+--
+-- 적용 전 확인(읽기 전용 SELECT). 첫 쿼리와 셋째 쿼리의 결과를 기록해 두면 되돌림 뒤 확인에서 같은지 비교할 수 있다:
+--   SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS 인자, p.proacl::text AS 권한
+--     FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace
+--      AND p.proname IN ('record_combine_success', 'record_combine_success_with_id')
+--    ORDER BY p.proname;
+--      -- 예상 2행. record_combine_success: p_user_id uuid, p_recipe_id uuid, p_ingredient_badge_ids uuid[], p_result_badge_ids uuid[], p_points_awarded integer
+--      --   권한 {postgres=X/postgres,service_role=X/postgres}. record_combine_success_with_id: 같은 인자, service_role만 실행
+--   SELECT count(*) AS 의존_객체
+--     FROM pg_depend d
+--    WHERE d.refclassid = 'pg_proc'::regclass
+--      AND d.refobjid = 'public.record_combine_success(uuid, uuid, uuid[], uuid[], integer)'::regprocedure
+--      AND d.deptype = 'n';                                                                        -- 0 (2026-10-22 조회 기준)
+--   SELECT p.prosecdef, p.proconfig::text, p.proacl::text, pg_get_function_result(p.oid), pg_get_userbyid(p.proowner), obj_description(p.oid, 'pg_proc')
+--     FROM pg_proc p
+--    WHERE p.oid = 'public.record_combine_success(uuid, uuid, uuid[], uuid[], integer)'::regprocedure;
+--      -- 예상: true / {search_path=public} / {postgres=X/postgres,service_role=X/postgres} / boolean / postgres / 코멘트 없음(NULL)
+--   SELECT p.oid::regprocedure AS 본문에서_옛_이름을_언급하는_함수
+--     FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace
+--      AND p.prosrc ~ '\mrecord_combine_success\M'
+--      AND p.proname <> 'record_combine_success';                                                  -- 0행 (함수 본문 안의 이름은 pg_depend가 추적하지 못해 따로 본다)
+--   SELECT count(*) FROM public.user_combine_success_logs;                                         -- 기록해 둔다. 적용 후와 같아야 한다(표는 건드리지 않는다)
+--
+-- 적용 후 확인(읽기 전용 SELECT):
+--   SELECT proname, pg_get_function_identity_arguments(oid) AS 인자 FROM pg_proc
+--    WHERE pronamespace = 'public'::regnamespace
+--      AND proname IN ('record_combine_success', 'record_combine_success_with_id') ORDER BY proname;  -- 1행: record_combine_success_with_id만
+--   SELECT to_regprocedure('public.record_combine_success(uuid, uuid, uuid[], uuid[], integer)') IS NULL AS 옛_함수_없음;   -- true
+--   SELECT has_function_privilege('service_role', 'public.record_combine_success_with_id(uuid, uuid, uuid[], uuid[], integer)', 'EXECUTE');   -- true (새 함수는 그대로)
+--   SELECT count(*) FROM public.user_combine_success_logs;                                         -- 적용 전과 같다
+
+DROP FUNCTION IF EXISTS public.record_combine_success(uuid, uuid, uuid[], uuid[], integer);
+
+-- 되돌림 SQL
+-- 함수 정의 원문과 권한을 그대로 다시 만든다. 원문은 2026-10-22 공용 DB의 실제 정의다(저장소의 마이그레이션 200과 다르면 이쪽이 실제다).
+-- 아래 «-- » 접두어를 떼고 CREATE부터 GRANT까지 한 번에 실행한다. 새로 만든 함수에는 기본 권한이 붙으므로 REVOKE·GRANT를 반드시 함께 실행한다.
+-- 끝의 $function$ 뒤에는 문장을 끝내는 세미콜론을 붙였다.
+--
+-- CREATE OR REPLACE FUNCTION public.record_combine_success(p_user_id uuid, p_recipe_id uuid, p_ingredient_badge_ids uuid[], p_result_badge_ids uuid[], p_points_awarded integer)
+--  RETURNS boolean
+--  LANGUAGE plpgsql
+--  SECURITY DEFINER
+--  SET search_path TO 'public'
+-- AS $function$
+-- DECLARE
+--   v_id uuid;
+-- BEGIN
+--   INSERT INTO public.user_combine_success_logs
+--     (user_id, recipe_id, ingredient_badge_ids, result_badge_ids, points_awarded, is_recipe_first)
+--   VALUES
+--     (p_user_id, p_recipe_id, COALESCE(p_ingredient_badge_ids, '{}'), COALESCE(p_result_badge_ids, '{}'),
+--      GREATEST(COALESCE(p_points_awarded, 0), 0), true)
+--   ON CONFLICT (recipe_id) WHERE is_recipe_first DO NOTHING
+--   RETURNING id INTO v_id;
+--   IF v_id IS NOT NULL THEN
+--     RETURN true;
+--   END IF;
+--   INSERT INTO public.user_combine_success_logs
+--     (user_id, recipe_id, ingredient_badge_ids, result_badge_ids, points_awarded, is_recipe_first)
+--   VALUES
+--     (p_user_id, p_recipe_id, COALESCE(p_ingredient_badge_ids, '{}'), COALESCE(p_result_badge_ids, '{}'),
+--      GREATEST(COALESCE(p_points_awarded, 0), 0), false);
+--   RETURN false;
+-- END;
+-- $function$;
+--
+-- REVOKE ALL ON FUNCTION public.record_combine_success(uuid, uuid, uuid[], uuid[], integer) FROM PUBLIC, anon, authenticated;
+-- GRANT EXECUTE ON FUNCTION public.record_combine_success(uuid, uuid, uuid[], uuid[], integer) TO service_role;
+--
+-- 되돌린 뒤 확인(읽기 전용 SELECT). 적용 전 확인에서 기록한 값과 같아야 한다:
+--   SELECT p.prosecdef, p.proconfig::text, p.proacl::text, pg_get_function_result(p.oid), pg_get_userbyid(p.proowner), obj_description(p.oid, 'pg_proc')
+--     FROM pg_proc p
+--    WHERE p.oid = 'public.record_combine_success(uuid, uuid, uuid[], uuid[], integer)'::regprocedure;
+--      -- true / {search_path=public} / {postgres=X/postgres,service_role=X/postgres} / boolean / postgres / NULL
+--   SELECT has_function_privilege('anon', 'public.record_combine_success(uuid, uuid, uuid[], uuid[], integer)', 'EXECUTE'),
+--          has_function_privilege('authenticated', 'public.record_combine_success(uuid, uuid, uuid[], uuid[], integer)', 'EXECUTE'),
+--          has_function_privilege('service_role', 'public.record_combine_success(uuid, uuid, uuid[], uuid[], integer)', 'EXECUTE');   -- false, false, true
+--   SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname = 'record_combine_success';                -- 1 (오버로드가 생기지 않았다)
