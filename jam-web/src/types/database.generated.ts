@@ -4825,6 +4825,7 @@ export type Database = {
         Args: { p_chosen_ids: string[]; p_user_id: string }
         Returns: Json
       }
+      scrub_user_location: { Args: { p_user_id: string }; Returns: Json }
       set_inventory_max_slots: {
         Args: { p_max_slots: number }
         Returns: number

@@ -23,17 +23,6 @@ export const dynamic = 'force-dynamic'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-/**
- * 마이그레이션 265의 `scrub_user_location`은 적용 뒤에 생성 타입(`database.generated.ts`)에 들어온다. 그 전에도 컴파일되도록
- * 이 호출 하나에 한해 좁은 구조 타입으로 부른다 — 생성 타입에 함수가 들어오면 이 캐스트를 지운다.
- */
-type ScrubLocationClient = {
-  rpc: (
-    fn: 'scrub_user_location',
-    args: { p_user_id: string }
-  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>
-}
-
 const SCRUB_ATTEMPTS = 2
 
 /**
@@ -41,10 +30,9 @@ const SCRUB_ATTEMPTS = 2
  * 오류 원문은 서버 로그에만 남기고 응답에는 싣지 않는다.
  */
 async function scrubLocationWithRetry(supabase: ServiceClient, userId: string): Promise<boolean> {
-  const client = supabase as unknown as ScrubLocationClient
   for (let attempt = 1; attempt <= SCRUB_ATTEMPTS; attempt += 1) {
     try {
-      const { error } = await client.rpc('scrub_user_location', { p_user_id: userId })
+      const { error } = await supabase.rpc('scrub_user_location', { p_user_id: userId })
       if (!error) return true
       console.error(`[/api/strava/disconnect] 좌표 파기 실패 (${attempt}/${SCRUB_ATTEMPTS}):`, error.message)
     } catch (err) {
