@@ -97,6 +97,15 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(mostSpecificActiveItem('/admin/tribes')?.href).toBe('/admin/tribes')
   })
 
+  it('«드랍 정책» 메뉴는 없고 «드랍 제외 관리»는 남는다(티켓 20261022_0938)', () => {
+    const items = NAV_GROUPS.flatMap((g) => g.items)
+    expect(items.map((i) => i.href)).not.toContain('/admin/drop-policy')
+    expect(items.map((i) => i.label)).not.toContain('드랍 정책')
+    expect(items.find((i) => i.href === '/admin/drop-policy/exclusions')?.label).toBe('드랍 제외 관리')
+    // 드랍 제외 관리 하위 경로에서 자기 자신만 활성이다
+    expect(mostSpecificActiveItem('/admin/drop-policy/exclusions')?.href).toBe('/admin/drop-policy/exclusions')
+  })
+
   it('랭킹 규칙 관리는 정책 그룹으로, 어뷰징 관리는 정책 그룹으로 이동했다', () => {
     const policy = NAV_GROUPS.find((g) => g.id === 'policy')
     expect(policy?.items.map((i) => i.href)).toContain('/admin/ranking-modes')
