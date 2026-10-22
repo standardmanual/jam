@@ -54,7 +54,7 @@ vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) })
 import { processFetchedActivities } from '../sync'
 
 /** `badges` 조회까지 지원하는 최소 페이크 supabase — 그 외 테이블은 `{data:null}`로 폴백해도
- *  안전하다(getAbusingPolicy·updateFamilyProgressSnapshots는 모두 조회 실패 시 자체 폴백/흡수). */
+ *  안전하다(getAbusingPolicy는 조회 실패 시 자체 폴백한다). */
 function makeFakeSupabase(): SupabaseClient {
   const from = () => {
     const builder: Record<string, unknown> = {

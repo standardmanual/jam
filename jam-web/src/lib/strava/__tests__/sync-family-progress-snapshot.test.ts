@@ -1,18 +1,15 @@
 /**
- * strava/sync — 계열 진행 스냅샷 write-hook 회귀 테스트 (티켓 20260904_1156)
+ * strava/sync — `user_family_progress` 쓰기 중단 회귀 테스트 (티켓 20261022_0938)
  *
- * `processFetchedActivities()`가 `recordProcessedActivities()` 직후 호출하는
- * `updateFamilyProgressSnapshots()`(비공개 함수라 이 공개 진입점을 통해서만 검증 가능)의
- * 계약을 고정한다. 이 훅은 이번 티켓에서 처음으로 실제 유저 싱크 흐름에 새 쓰기
- * 부작용(`user_family_progress` upsert)을 추가하므로, 아래 네 가지를 명시적으로 검증한다.
+ * 예전에는 `processFetchedActivities()`가 `recordProcessedActivities()` 직후 계열별 진행
+ * 스냅샷을 `user_family_progress`에 upsert했다(티켓 20260904_1156). 이 표는 읽는 곳이 없어서
+ * 훅을 지웠다. 이 시험은 «동기화가 이 표를 읽지도 쓰지도 않는다»를 고정한다 — 표와 열은 공용
+ * DB에 남아 있고(옛 프로덕션 코드가 아직 쓴다), 정리는 티켓 20261022_0938 2회에서 한다.
  *
- * 1. 훅이 던져도(예: 예상 못한 쿼리 실패) `processFetchedActivities` 자체는 정상 완료된다
- *    (C절 "이 훅이 실패해도 싱크 자체는 죽지 않아야 한다").
- * 2. 계열의 프런티어(첫 미획득 등급)만 진행을 계산해 upsert한다 — 계열을 이미 전부
- *    획득했으면 upsert하지 않는다.
- * 3. upsert 행의 `progress`/`current`는 기존 `computeUserPeriodMetrics`/`computeBadgeProgress`
- *    결과를 그대로 담는다(새 계산 없음).
- * 4. `prev`는 직전에 저장돼 있던 `current`를 그대로 옮긴 값이다(최초 1회는 null).
+ * 1. 계열 진행 스냅샷을 만들 수 있는 입력(미획득 프런티어 배지 + 활동 이력)을 줘도
+ *    `user_family_progress`에는 어떤 호출도 일어나지 않는다.
+ * 2. 계열을 전부 획득한 유저도 이 표를 열지 않는다(예전 훅의 «기존값 조회»가 없다).
+ * 3. 그래도 `processFetchedActivities`는 정상 완료된다(훅을 지운 것이 동기화 흐름을 깨지 않는다).
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-family-progress-snapshot.test.ts
  */
@@ -140,18 +137,8 @@ function makeHistoryActivity(stravaId: number, startDate: string): NormalizedAct
   } as NormalizedActivity
 }
 
-type FamilyProgressRow = {
-  user_id: string
-  activity_type: string
-  family_name: string
-  progress: number
-  current: unknown
-  prev: unknown
-  last_activity_id: string | null
-}
-
 interface FakeConfig {
-  /** badges 테이블 응답 — 계열 그룹핑 대상 */
+  /** badges 테이블 응답 — 예전 훅이 계열 그룹핑에 쓰던 입력 */
   badges?: {
     id: string
     name: string
@@ -163,33 +150,25 @@ interface FakeConfig {
   earnedBadgeIds?: string[]
   /** strava_activities(getActivityHistory) 테이블 응답 — 전체 활동 이력 */
   history?: NormalizedActivity[]
-  /** user_family_progress 테이블의 기존 행(직전 스냅샷) */
-  existingFamilyProgress?: { activity_type: string; family_name: string; current: unknown }[]
-  /** badges 조회에 .not()이 없는 등 의도적으로 불완전한 스텁을 만들 때 사용 */
-  breakBadgesQuery?: boolean
 }
 
-/** upsert 호출을 테이블별로 수집 */
-type UpsertCall = { table: string; rows: unknown[] }
+/** 가짜 클라이언트가 받은 호출 기록 — `from(table)`을 연 테이블과, 쓰기 호출을 테이블별로 모은다 */
+interface CallLog {
+  fromTables: string[]
+  writes: { table: string; method: 'upsert' | 'insert' | 'update' | 'delete' }[]
+}
 
-function makeFakeSupabase(config: FakeConfig, upsertCalls: UpsertCall[]): SupabaseClient {
-  const {
-    badges = [],
-    earnedBadgeIds = [],
-    history = [],
-    existingFamilyProgress = [],
-    breakBadgesQuery = false,
-  } = config
+function makeFakeSupabase(config: FakeConfig, log: CallLog): SupabaseClient {
+  const { badges = [], earnedBadgeIds = [], history = [] } = config
 
   const from = (table: string) => {
+    log.fromTables.push(table)
     const builder: Record<string, unknown> = {
       select: () => builder,
       eq: () => builder,
       in: () => builder,
       is: () => builder,
-      // badges 조회 회귀 테스트용 — 의도적으로 .not()이 없는 스텁을 재현할 때만 undefined
-      // (실제 구현이 badges 조회에서 던지는지 검증하는 용도, breakBadgesQuery 케이스 전용)
-      not: breakBadgesQuery && table === 'badges' ? undefined : () => builder,
+      not: () => builder,
       limit: () => builder,
       order: () => builder,
       single: async () => {
@@ -200,13 +179,23 @@ function makeFakeSupabase(config: FakeConfig, upsertCalls: UpsertCall[]): Supaba
         if (table === 'strava_activities') return { data: { id: 'sa-latest-id' }, error: null }
         return { data: null, error: null } // user_drop_state 등
       },
-      upsert: async (rows: unknown[]) => {
-        upsertCalls.push({ table, rows })
+      upsert: async () => {
+        log.writes.push({ table, method: 'upsert' })
         return { error: null }
       },
-      insert: async () => ({ error: null }),
-      // 직접 await되는 경로(.maybeSingle()/.single()/.upsert()를 거치지 않는 조회) —
-      // getActivityHistory·badges·user_activity_badges·user_family_progress(SELECT)가 여기로 온다.
+      insert: async () => {
+        log.writes.push({ table, method: 'insert' })
+        return { error: null }
+      },
+      update: () => {
+        log.writes.push({ table, method: 'update' })
+        return builder
+      },
+      delete: () => {
+        log.writes.push({ table, method: 'delete' })
+        return builder
+      },
+      // 직접 await되는 경로(.maybeSingle()/.single()/.upsert()를 거치지 않는 조회)
       then(
         onFulfilled: (v: { data: unknown; error: unknown }) => unknown,
         onRejected?: (e: unknown) => unknown
@@ -214,14 +203,10 @@ function makeFakeSupabase(config: FakeConfig, upsertCalls: UpsertCall[]): Supaba
         let payload: { data: unknown; error: unknown }
         switch (table) {
           case 'badges':
-            // breakBadgesQuery면 위 not:undefined가 이 지점 도달 전에 이미 TypeError를 던진다
             payload = { data: badges, error: null }
             break
           case 'user_activity_badges':
             payload = { data: earnedBadgeIds.map((id) => ({ badge_id: id })), error: null }
-            break
-          case 'user_family_progress':
-            payload = { data: existingFamilyProgress, error: null }
             break
           case 'strava_activities':
             payload = { data: history.map((a) => ({ normalized: a, start_date: a.startDate })), error: null }
@@ -237,34 +222,46 @@ function makeFakeSupabase(config: FakeConfig, upsertCalls: UpsertCall[]): Supaba
   return { from } as unknown as SupabaseClient
 }
 
+function newLog(): CallLog {
+  return { fromTables: [], writes: [] }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('processFetchedActivities — 계열 진행 스냅샷 write-hook', () => {
-  it('훅 내부 쿼리가 실패해도 processFetchedActivities는 정상 완료된다', async () => {
-    const upsertCalls: UpsertCall[] = []
-    const supabase = makeFakeSupabase({ breakBadgesQuery: true }, upsertCalls)
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    const result = await processFetchedActivities(
-      supabase,
-      'user-1',
-      'token',
-      [makeRawActivity(1)],
-      false,
-      'sync'
+describe('processFetchedActivities — user_family_progress를 쓰지 않는다 (티켓 20261022_0938)', () => {
+  it('미획득 프런티어와 활동 이력이 있어도 user_family_progress를 열지도 쓰지도 않는다', async () => {
+    const log = newLog()
+    const supabase = makeFakeSupabase(
+      {
+        badges: [
+          {
+            id: 'badge-common-1',
+            name: '테스트계열',
+            rarity: 'common',
+            activity_types: ['running'],
+            condition_json: { total_count: 5 },
+          },
+        ],
+        earnedBadgeIds: [], // 예전 훅이라면 프런티어로 잡아 upsert했을 입력
+        history: [
+          makeHistoryActivity(101, '2026-08-01T00:00:00Z'),
+          makeHistoryActivity(102, '2026-08-05T00:00:00Z'),
+        ],
+      },
+      log
     )
+
+    const result = await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
     expect(result).toBeDefined()
-    expect(result.badges).toBe(0)
-    // user_family_progress에는 아무것도 upsert되지 않는다(훅이 badges 조회에서 실패)
-    expect(upsertCalls.filter((c) => c.table === 'user_family_progress')).toHaveLength(0)
-    errorSpy.mockRestore()
+    expect(log.fromTables).not.toContain('user_family_progress')
+    expect(log.writes.filter((w) => w.table === 'user_family_progress')).toHaveLength(0)
   })
 
-  it('프런티어(미획득 첫 등급)의 진행값을 계열 1건으로 upsert한다', async () => {
-    const upsertCalls: UpsertCall[] = []
+  it('계열을 전부 획득한 유저도 user_family_progress를 열지 않고, 동기화는 그대로 끝난다', async () => {
+    const log = newLog()
     const supabase = makeFakeSupabase(
       {
         badges: [
@@ -276,88 +273,25 @@ describe('processFetchedActivities — 계열 진행 스냅샷 write-hook', () =
             condition_json: { total_count: 5 },
           },
         ],
-        earnedBadgeIds: [], // 아직 미획득 — 프런티어
-        history: [
-          makeHistoryActivity(101, '2026-08-01T00:00:00Z'),
-          makeHistoryActivity(102, '2026-08-05T00:00:00Z'),
-        ], // total_count 2/5
-        existingFamilyProgress: [], // 최초 1회 — prev는 null
-      },
-      upsertCalls
-    )
-
-    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
-
-    const familyUpserts = upsertCalls.filter((c) => c.table === 'user_family_progress')
-    expect(familyUpserts).toHaveLength(1)
-    const rows = familyUpserts[0].rows as FamilyProgressRow[]
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({
-      user_id: 'user-1',
-      activity_type: 'running',
-      family_name: '테스트계열',
-      progress: 0.4, // 2/5
-      prev: null,
-      last_activity_id: 'sa-latest-id',
-    })
-    expect(Array.isArray(rows[0].current)).toBe(true)
-  })
-
-  it('계열을 이미 전부 획득했으면 upsert하지 않는다', async () => {
-    const upsertCalls: UpsertCall[] = []
-    const supabase = makeFakeSupabase(
-      {
-        badges: [
-          {
-            id: 'badge-common-1',
-            name: '테스트계열',
-            rarity: 'common',
-            activity_types: ['running'],
-            condition_json: { total_count: 5 },
-          },
-        ],
-        earnedBadgeIds: ['badge-common-1'], // 이미 획득 — 프런티어 없음
+        earnedBadgeIds: ['badge-common-1'],
         history: [makeHistoryActivity(101, '2026-08-01T00:00:00Z')],
       },
-      upsertCalls
+      log
     )
 
-    await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
+    const result = await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
-    expect(upsertCalls.filter((c) => c.table === 'user_family_progress')).toHaveLength(0)
+    expect(result.badges).toBe(0)
+    expect(log.fromTables).not.toContain('user_family_progress')
   })
 
-  it('직전 스냅샷의 current를 이번 prev로 그대로 옮긴다', async () => {
-    const upsertCalls: UpsertCall[] = []
-    const previousCurrent = [{ key: 'total_count', current: 1, target: 5, met: false, fraction: 0.2 }]
-    const supabase = makeFakeSupabase(
-      {
-        badges: [
-          {
-            id: 'badge-common-1',
-            name: '테스트계열',
-            rarity: 'common',
-            activity_types: ['running'],
-            condition_json: { total_count: 5 },
-          },
-        ],
-        earnedBadgeIds: [],
-        history: [
-          makeHistoryActivity(101, '2026-08-01T00:00:00Z'),
-          makeHistoryActivity(102, '2026-08-05T00:00:00Z'),
-        ],
-        existingFamilyProgress: [
-          { activity_type: 'running', family_name: '테스트계열', current: previousCurrent },
-        ],
-      },
-      upsertCalls
-    )
+  it('다른 쓰기(strava_activities 기록)는 그대로 일어난다 — 훅만 빠졌다', async () => {
+    const log = newLog()
+    const supabase = makeFakeSupabase({}, log)
 
     await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
-    const rows = upsertCalls.find((c) => c.table === 'user_family_progress')!.rows as FamilyProgressRow[]
-    expect(rows[0].prev).toEqual(previousCurrent)
-    // prev는 옮겨졌을 뿐 이번 current(재계산값)와는 다른 객체다(새로 계산됐으므로 값 자체가 다름)
-    expect(rows[0].current).not.toEqual(previousCurrent)
+    expect(log.writes.some((w) => w.table === 'strava_activities' && w.method === 'upsert')).toBe(true)
+    expect(log.fromTables).not.toContain('user_family_progress')
   })
 })
