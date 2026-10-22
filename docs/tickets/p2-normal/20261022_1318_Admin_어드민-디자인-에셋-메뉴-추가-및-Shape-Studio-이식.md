@@ -2,9 +2,9 @@
 id: "20261022_1318"
 category: Admin
 priority: P2
-status: CLOSED
+status: OPEN
 created: 2026-10-22
-closed: 2026-10-22
+closed:
 ---
 
 # [Admin] 어드민 디자인 묶음에 「에셋」 메뉴 추가 및 Shape Studio v2 이식
@@ -60,7 +60,7 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 
 ### 구현 범위 (게이트 판정 대상)
 - 어드민 `디자인` 그룹에서 `에셋 제너레이터` 메뉴를 제거하고 `에셋`(`href: '/admin/assets'`) 메뉴만 남기며 `adminNavItems.test.ts`가 통과한다.
-- `에셋`(`/admin/assets`) 화면 안에서 **Shape (WebGL)** 모드와 **Ribbon (2D 곡선)** 모드를 전환해 각 프로퍼티를 조정할 수 있고, 이미지·텍스트 오버레이 레이어(`LayerSidebar`, `ImageLayerFields`, `TextLayerFields`)와 콘텐츠 바로 적용(`ApplyTab`), 고해상도 PNG/동영상 내보내기가 두 모드 모두에서 정상 동작한다.
+- `에셋`(`/admin/assets`) 화면 안에서 **Shape (WebGL)** 모드와 **Ribbon (2D 곡선)** 모드를 전환해 각 프로퍼티를 조정할 수 있고(리본 모드에서 마스터 시드 입력/불러오기 UI는 제외), 이미지·텍스트 오버레이 레이어(`LayerSidebar`, `ImageLayerFields`, `TextLayerFields`)와 콘텐츠 바로 적용(`ApplyTab`), 고해상도 PNG/동영상 내보내기가 두 모드 모두에서 정상 동작한다.
 - 프리셋 저장/불러오기는 로컬 JSON 파일 기능을 제거하고 서버 DB 프리셋(`PresetPanel`)으로 통합된다.
 - `Mushroom`, `Hourglass` 형태 프리셋 및 세그먼트 배치에서 위·아래 세그먼트가 떨어져 보이지 않고 간격 없이 밀착해 붙도록 연결된다.
 - `shapeStudioConfig.test.ts` 단위 테스트 및 `scripts/verify.sh` 전항목(lint·typecheck·test·ds:check·slop)이 통과한다.
