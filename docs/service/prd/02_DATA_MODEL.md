@@ -533,6 +533,14 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 
 > 챕터 점수 연결(`chapter_add_score`)은 묶음 5, 컬렉션 화면 표시·잠금·등급 올리기 레시피는 묶음 3이다. 완성 판정을 `src/lib/itembook/` 한 모듈로 모으는 일은 회차 2에서 끝났다(2회-가: 모듈과 일치 시험, 2회-나: 소비처 교체).
 
+### 4-3. 트라이브 컨텐츠 덮어쓰기 백업 표 `content_overwrite_backup_20261022` (JAM 2.0 7-6) — 마이그레이션 275, 티켓 20261022_1137
+옛 컬렉션 44개와 옛 아이템 배지 행 396개를 새 컨텐츠로 **덮어쓰기** 때문에, 되돌림 SQL이 쓸 원본을 담는 임시 표다. 작성됨, **적용 대기**(적용은 롤백 실측과 사용자 승인 뒤 메인 세션이 한다). 6-4의 오픈 뒤 정리 SQL 때 지운다.
+
+- 열: `kind`(`item_book`·`badge`·`new_item_book`·`new_badge`), `row_id`(UUID, `kind`와 함께 PK), `target_tribe`(새 트라이브 이름, 트라이브별 되돌림이 거른다), `snapshot`(JSONB, `to_jsonb(row)`), `backed_up_at`. `item_book`·`badge`는 덮어쓰기 전 전체 행을 `snapshot`에 담고, `new_*`는 새로 넣은 행의 id만 담는다(`snapshot` 없음, CHECK가 짝을 강제한다).
+- 접근: RLS를 켜고 정책을 두지 않으며 `anon`·`authenticated` 권한을 회수한다. 서버(service role)만 읽고 쓴다.
+- 쓰는 곳: 트라이브별 컨텐츠 SQL(276~280)이 덮어쓰기 직전에 자기 대상 행을 이 표에 (다시) 기록하고, 파일 끝의 되돌림 SQL이 이 표로 옛 값을 되돌린다. SQL은 배지 id가 아니라 «컬렉션의 옛 이름과 옛 배지 이름»으로 옛 행을 찾는다. 짝은 [ITEMBOOK_REPLACEMENT_MAP.md](../content/ITEMBOOK_REPLACEMENT_MAP.md)이고 생성기·데이터는 `jam-web/scripts/jam2-content/`다.
+- 덮어쓰기가 바꾸는 열: 컬렉션은 `name`·`description`·`tribe_id`·`is_active`·`tier_mode`·`story_text`·`image_url`·`image_source`, 옛 배지 행은 `name`·`description`·`rarity`(common)·`deleted_at`(비움)·`tribe_id`·`image_url`·`image_source`다. `point_reward`·`reward_points`·`reward_badge_id`는 건드리지 않는다.
+
 ---
 
 ## 5. 트라이브 (tribe) — 신규 도메인
