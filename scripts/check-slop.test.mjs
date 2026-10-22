@@ -17,6 +17,12 @@ const TREND_REL = `docs/operations/inbox/trends/2099-01-01_slop-probe-${process.
 const PROBE = join(ROOT, PROBE_REL)
 const BIN = join(ROOT, BIN_REL)
 const TREND = join(ROOT, TREND_REL)
+// 7-6 컨텐츠 입력의 데이터 파일(백업 표·트라이브별 컨텐츠 마이그레이션, 짝짓기 데이터)은 옮겨 적은 데이터라 빠지고, 비슷한 이름의 다른 파일은 그대로 검사한다 (티켓 20261022_1137)
+const CONTENT_SQL_REL = `jam-web/supabase/migrations/999_tribe_content_probe_${process.pid}.sql`
+const BACKUP_SQL_REL = `jam-web/supabase/migrations/999_content_overwrite_backup.sql`
+const OTHER_SQL_REL = `jam-web/supabase/migrations/999_other_probe_${process.pid}.sql`
+const CONTENT_SQL = join(ROOT, CONTENT_SQL_REL)
+const OTHER_SQL = join(ROOT, OTHER_SQL_REL)
 
 // 인자로 준 파일만 판정한다 — 워킹트리의 다른 미커밋 변경이 결과를 흔들지 않게 한다 (티켓 20260924_0652).
 const run = (rel) => spawnSync('node', ['scripts/check-slop.mjs', rel], { cwd: ROOT, encoding: 'utf8' })
@@ -41,9 +47,20 @@ try {
   writeFileSync(TREND, '진짜 금칙어\n')
   const trend = run(TREND_REL)
   assert.equal(trend.status, 0, `사용자 트렌드 자료는 금칙어 검사에서 빠져야 한다: ${trend.stderr}`)
+
+  writeFileSync(CONTENT_SQL, "-- 진짜 궁극의 금칙어(옛 배지 이름과 원고 문구)\n")
+  const content = run(CONTENT_SQL_REL)
+  assert.equal(content.status, 0, `7-6 컨텐츠 마이그레이션은 금칙어 검사에서 빠져야 한다: ${content.stderr}`)
+
+  writeFileSync(OTHER_SQL, "-- 진짜 금칙어\n")
+  const other = run(OTHER_SQL_REL)
+  assert.equal(other.status, 1, '이름이 다른 마이그레이션은 계속 검사해야 한다')
+  assert.match(other.stderr, /999_other_probe_/)
   console.log('check-slop 테스트 통과')
 } finally {
   rmSync(PROBE, { force: true })
   rmSync(BIN, { force: true })
   rmSync(TREND, { force: true })
+  rmSync(CONTENT_SQL, { force: true })
+  rmSync(OTHER_SQL, { force: true })
 }

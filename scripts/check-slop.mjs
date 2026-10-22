@@ -14,6 +14,10 @@ import { readFileSync } from 'node:fs'
 
 const DICT_PATH = 'docs/service/writing/SLOP_DICTIONARY.md'
 
+// 검사에서 빼는 컨텐츠 데이터 파일(정확한 경로만): 짝짓기 데이터 하나와 7-6의 백업 표·트라이브별 컨텐츠 마이그레이션
+const CONTENT_DATA_FILE =
+  /^(jam-web\/scripts\/jam2-content\/pairing\.json|jam-web\/supabase\/migrations\/\d+_(content_overwrite_backup|tribe_content_[a-z0-9_]+)\.sql)$/
+
 function extractQuoted(text) {
   return [...text.matchAll(/"([^"]+)"/g)].map((m) => m[1].replace(/~$/, '').trim())
 }
@@ -98,7 +102,10 @@ function collectAddedLines() {
     !f.startsWith('docs/archive/') &&
     !f.startsWith('docs/assets/') &&
     // 사용자가 넣은 트렌드 자료 원문은 고치지 않으므로 금칙어 검사에서 뺀다 (티켓 20260930_1518)
-    !f.startsWith('docs/operations/inbox/trends/')
+    !f.startsWith('docs/operations/inbox/trends/') &&
+    // 7-6 컨텐츠 입력의 데이터 파일은 새로 쓴 글이 아니라 옮겨 적은 데이터다(티켓 20261022_1137): 짝짓기 데이터는 공용 DB의
+    // 옛 배지 이름(SQL이 옛 행을 찾는 키)이고, 컨텐츠 SQL은 그 이름과 사용자가 확인한 원고 문구를 그대로 담는다
+    !CONTENT_DATA_FILE.test(f)
   // 워킹트리 기준으로 비교한다 — 커밋 전(verify.sh를 커밋 전에 돌리는 경우)의 수정·스테이징 줄과
   // 추적되지 않는 새 파일도 잡는다. `origin/staging...HEAD`만 보면 커밋 전 줄이 빠져 CI와 결과가 갈렸다.
   const base = execSync('git merge-base origin/staging HEAD', opts).trim()
