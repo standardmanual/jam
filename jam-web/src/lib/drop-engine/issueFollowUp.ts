@@ -22,12 +22,18 @@ export interface IssuedRewardsInput {
   rarity: 'common' | 'rare' | 'epic' | 'mystic'
   /** 잠긴 채 받은 개체인가. 잠긴 채 받으면 포인트를 주지 않고 피드에도 올리지 않는다 — 열린 상태가 될 때 한 번 준다(운영 로직 7.2절, 티켓 20261018_0051). 생략하면 열린 개체다. */
   locked?: boolean
+  /**
+   * 피드(`item_dropped`)를 올리지 않는다. 포인트는 그대로 준다. 캡슐을 열어 나온 아이템 배지가 쓴다 —
+   * 운영 로직 15.3절 «캡슐을 열어 나온 아이템 배지는 피드에 올리지 않는다»(2026-10-10 사용자 결정, 티켓 20261021_1249 6-3 5회). 생략하면 올린다.
+   */
+  skipFeed?: boolean
 }
 
 /**
  * `badge.point_reward`가 있으면 포인트를 지급하고, 피드 이벤트(`item_dropped`)를 남긴다. 던지지 않는다.
  * 잠긴 채 받은 개체는 둘 다 건너뛴다 — 피드는 배지 이름·그림을 싣는 공개 기록이라 7.3절 가림 원칙에 어긋난다(티켓 20261018_0051 2회, 사용자 결정 2026-10-18).
  * 연 뒤의 이름 공개와 피드는 3-3이다.
+ * `skipFeed`가 참이면 열린 개체여도 피드를 올리지 않는다(포인트는 그대로 준다).
  */
 export async function recordIssuedRewards(input: IssuedRewardsInput): Promise<void> {
   const { userId, badge } = input
@@ -40,7 +46,7 @@ export async function recordIssuedRewards(input: IssuedRewardsInput): Promise<vo
     console.error(`[syncIssue] 포인트 지급 예외 (badge_id: ${badge.id}):`, e)
   }
 
-  if (input.locked) return
+  if (input.locked || input.skipFeed) return
 
   try {
     await recordFeedEvent(
