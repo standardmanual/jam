@@ -22,7 +22,7 @@ export default async function AdminTribesPage() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">트라이브 관리</h1>
+        <h1 className="text-2xl font-bold">트라이브</h1>
         <Link
           href="/admin/tribes/new"
           className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm"

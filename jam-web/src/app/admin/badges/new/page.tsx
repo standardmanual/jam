@@ -29,7 +29,7 @@ export default async function NewBadgePage() {
         header={
           <div>
             <Link href="/admin/badges" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-              ← 배지 목록
+              ← 배지
             </Link>
             <h1 className="text-2xl font-bold mt-2">배지 등록</h1>
           </div>

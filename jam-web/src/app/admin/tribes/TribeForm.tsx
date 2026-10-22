@@ -48,7 +48,7 @@ export default function TribeForm({ tribe }: TribeFormProps) {
     // 않도록 배경색 모드일 때만 검증한다(20260901_1944).
     const trimmedBackgroundColor = backgroundColor.trim()
     if (!backgroundAnimation && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
-      return '배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해주세요.'
+      return '배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해 주세요'
     }
     return null
   }
@@ -104,7 +104,7 @@ export default function TribeForm({ tribe }: TribeFormProps) {
       router.push('/admin/tribes')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.')
+      setError(err instanceof Error ? err.message : '트라이브를 저장하지 못했어요')
     } finally {
       setLoading(false)
     }
@@ -119,7 +119,7 @@ export default function TribeForm({ tribe }: TribeFormProps) {
       router.push('/admin/tribes')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.')
+      setError(err instanceof Error ? err.message : '트라이브를 삭제하지 못했어요')
       setLoading(false)
     }
   }
@@ -280,7 +280,7 @@ export default function TribeForm({ tribe }: TribeFormProps) {
           <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">트라이브 삭제</h3>
             <p className="text-muted-foreground text-sm mb-5">
-              &apos;{tribe?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              &apos;{tribe?.name}&apos; 트라이브를 삭제할까요? 삭제한 트라이브는 되돌릴 수 없어요.
             </p>
             <div className="flex gap-3">
               <button
@@ -288,7 +288,7 @@ export default function TribeForm({ tribe }: TribeFormProps) {
                 disabled={loading}
                 className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
-                {loading ? '삭제 중...' : '삭제 확인'}
+                {loading ? '삭제 중...' : '삭제'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}

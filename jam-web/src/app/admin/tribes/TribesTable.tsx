@@ -218,7 +218,7 @@ export function TribesTable({ tribes, badgeCounts, bookCounts, deleteBlockReason
             return reason ? (
               <span className="text-xs text-muted-foreground">{reason}</span>
             ) : (
-              <span className="text-xs text-muted-foreground">삭제할 수 있음</span>
+              <span className="text-xs text-muted-foreground">삭제 가능</span>
             )
           },
         }),
@@ -251,7 +251,7 @@ export function TribesTable({ tribes, badgeCounts, bookCounts, deleteBlockReason
       clear()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했습니다. 잠시 뒤 다시 시도해주세요.')
+      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요')
     } finally {
       setBulkPending(false)
     }
@@ -280,7 +280,7 @@ export function TribesTable({ tribes, badgeCounts, bookCounts, deleteBlockReason
         })
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했습니다.')
+      toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했어요')
       closeConfirm()
     } finally {
       setImpactLoading(false)
@@ -304,7 +304,7 @@ export function TribesTable({ tribes, badgeCounts, bookCounts, deleteBlockReason
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="등록된 트라이브가 없습니다."
+        emptyMessage="등록된 트라이브가 없어요"
         getRowHref={(row) => `/admin/tribes/${row.original.id}`}
       />
 
@@ -352,9 +352,9 @@ export function TribesTable({ tribes, badgeCounts, bookCounts, deleteBlockReason
               <DeactivateImpactNote impact={deactivateImpact} />
             ) : confirmAction === 'delete' && deletePreview ? (
               deletePreview.skipped.length > 0 ? (
-                <>선택한 트라이브 중 {deletePreview.skipped.length}건은 연결된 참조가 있어 삭제에서 제외됩니다.</>
+                <>선택한 트라이브 중 {deletePreview.skipped.length}건은 연결된 참조가 있어 삭제에서 제외돼요.</>
               ) : (
-                <>선택한 트라이브를 모두 삭제할 수 있습니다.</>
+                <>선택한 트라이브를 모두 삭제할 수 있어요.</>
               )
             ) : null
           }

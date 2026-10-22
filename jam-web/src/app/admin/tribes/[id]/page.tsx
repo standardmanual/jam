@@ -24,7 +24,7 @@ export default async function EditTribePage({ params }: { params: Promise<{ id: 
     <div className="p-8">
       <div className="mb-6">
         <Link href="/admin/tribes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-          ← 트라이브 목록
+          ← 트라이브
         </Link>
         <h1 className="text-2xl font-bold mt-2">트라이브 수정</h1>
       </div>

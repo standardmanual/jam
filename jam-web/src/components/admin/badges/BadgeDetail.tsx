@@ -423,8 +423,8 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
           <AlertDialogHeader>
             <AlertDialogTitle>배지 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{badge.name}&apos; 배지를 완전히 삭제합니다. 이 작업은 되돌릴 수 없습니다.
-              단, 발급·드랍 등 이력이 있는 배지는 삭제할 수 없으며 비활성화만 가능합니다.
+              &apos;{badge.name}&apos; 배지를 삭제할까요? 삭제한 배지는 되돌릴 수 없어요.
+              발급이나 드랍 이력이 있으면 삭제되지 않고 비활성화돼요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -432,7 +432,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
               취소
             </Button>
             <Button type="button" variant="destructive" disabled={deleting} onClick={handleDelete}>
-              {deleting ? '삭제 중...' : '삭제 확인'}
+              {deleting ? '삭제 중...' : '삭제'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

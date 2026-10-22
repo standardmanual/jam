@@ -210,7 +210,7 @@ export function BadgeFamiliesTable({ families, totalCount }: BadgeFamiliesTableP
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="조건에 맞는 계열이 없어요. 검색어나 필터를 바꿔 보세요."
+        emptyMessage="조건에 맞는 계열이 없어요"
         getRowHref={(row) => familyDetailHref(row.original.key)}
       />
     </div>

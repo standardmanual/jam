@@ -69,15 +69,15 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
     <div className="p-4 md:p-8 space-y-6">
       {/* 헤더 */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold">배지 관리</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">배지</h1>
         <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
           <Link href="/admin/badges/bulk" className="w-full md:w-auto">
             <Button variant="outline" className="w-full md:w-auto h-11 md:h-10">
-              일괄 작업
+              배지 수정
             </Button>
           </Link>
           <Link href="/admin/badges/new" className="w-full md:w-auto">
-            <Button className="w-full md:w-auto h-11 md:h-10">+ 새 배지</Button>
+            <Button className="w-full md:w-auto h-11 md:h-10">+ 배지 등록</Button>
           </Link>
         </div>
       </div>

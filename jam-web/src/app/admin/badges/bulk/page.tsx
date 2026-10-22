@@ -31,9 +31,9 @@ export default async function AdminBadgeBulkPage({ searchParams }: AdminBadgeBul
     <div className="p-4 md:p-8 space-y-6">
       <div>
         <Link href="/admin/badges" className="text-sm text-muted-foreground underline underline-offset-4">
-          ← 배지 관리
+          ← 배지
         </Link>
-        <h1 className="mt-2 text-2xl md:text-3xl font-bold">배지 일괄 작업</h1>
+        <h1 className="mt-2 text-2xl md:text-3xl font-bold">배지 수정</h1>
         <p className="text-muted-foreground text-sm mt-1">
           필터에 맞는 배지를 페이지 경계 없이 전부 골라 한 번에 처리해요. 실행 전에 영향 분석을
           거치고, 대상·영향 건수를 그대로 입력해야 실행돼요.

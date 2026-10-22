@@ -38,9 +38,9 @@ export default async function PolicyDashboardPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">서비스 운영 정책 대시보드</h1>
+        <h1 className="text-2xl font-bold tracking-tight">정책 대시보드</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          JAM! 서비스의 19개 도메인 운영 정책과 기능 판정 규칙, 밸런스 파라미터를 한눈에 조망하고 관리해요.
+          서비스 운영 정책과 밸런스 기준을 한눈에 조망하고 관리해요
         </p>
       </div>
 

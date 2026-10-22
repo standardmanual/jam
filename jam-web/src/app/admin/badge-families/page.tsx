@@ -83,11 +83,9 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">계열 관리</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">배지 계열</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          레벨(Lv.1~N)이나 등급(Common~Mystic)으로 단계가 나뉘는 같은 시리즈의 배지를 한 화면에서
-          보고 고쳐요. 이 시리즈를 &apos;계열&apos;이라고 불러요. 계열 키(family_key)라는 값으로
-          배지들을 하나의 계열로 묶고, 계열 키가 없는 배지는 이름이 같으면 자동으로 같은 계열로 봐요.
+          단계별로 이어지는 같은 시리즈의 배지를 묶어서 관리해요
         </p>
       </div>
 

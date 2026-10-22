@@ -90,10 +90,10 @@ const NO_BLOCKED_KEYS: ReadonlySet<string> = new Set()
  * `PAIR_ENFORCED_CONDITION_KEYS`, season_count는 아래 `validateCondition`의 계절 짝 검사.
  */
 const FIELD_PAIR_MESSAGES: Partial<Record<keyof BadgeCondition, string>> = {
-  rest_after_streak: '누적 목표의 연속 활동 일수를 함께 입력해야 저장할 수 있어요.',
-  rest_after_long: '한 번의 거리나 한 번의 이동시간 중 하나를 함께 입력해야 저장할 수 있어요.',
-  season_count: '대상 활동에서 계절을 함께 골라야 저장할 수 있어요.',
-  personal_record_break: '비교 지표를 함께 골라야 저장할 수 있어요.',
+  rest_after_streak: '누적 목표의 연속 활동 일수를 함께 입력해야 저장할 수 있어요',
+  rest_after_long: '한 번의 거리나 한 번의 이동시간 중 하나를 함께 입력해야 저장할 수 있어요',
+  season_count: '대상 활동에서 계절을 함께 골라야 저장할 수 있어요',
+  personal_record_break: '비교 지표를 함께 골라야 저장할 수 있어요',
 }
 
 /** 배지에 연결할 수 있는 POI(이미 DB에 등록된 것) */
@@ -365,20 +365,20 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
     }
     // 계절 조건은 season_count 와 짝을 이뤄야 함
     if (cond.season && cond.season !== 'all' && !cond.season_count) {
-      return '계절(season)을 설정하면 계절 활동 횟수(season_count)도 입력해야 합니다.'
+      return '계절(season)을 설정하면 계절 활동 횟수(season_count)도 입력해야 해요'
     }
     if (cond.season_count && !cond.season) {
-      return '계절 활동 횟수(season_count)를 설정하면 계절(season)도 선택해야 합니다.'
+      return '계절 활동 횟수(season_count)를 설정하면 계절(season)도 선택해야 해요'
     }
     // time_range 는 start/end 둘 다, HH:MM 형식이어야 함
     const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/
     const { timeStart, timeEnd } = condFields
     if (timeStart || timeEnd) {
       if (!timeStart || !timeEnd) {
-        return '시간대 조건은 시작·종료 시각을 모두 입력해야 합니다.'
+        return '시간대 조건은 시작·종료 시각을 모두 입력해야 해요'
       }
       if (!hhmm.test(timeStart) || !hhmm.test(timeEnd)) {
-        return '시간대 조건의 시각은 HH:MM 형식이어야 합니다. (예: 05:30)'
+        return '시간대 조건의 시각은 HH:MM 형식이어야 해요 (예: 05:30)'
       }
     }
     // 「저장은 되는데 영원히 안 나오는 배지」 3경로 — 저장 API와 **같은 함수·같은 문구**다.
@@ -860,7 +860,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         />
         {nameInvalid && (
           <FieldMessage id="badge-name-error" tone="error">
-            배지 이름을 입력해 주세요.
+            배지 이름을 입력해 주세요
           </FieldMessage>
         )}
       </div>
@@ -874,7 +874,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          placeholder="배지 설명을 입력하세요"
+          placeholder="배지 설명 입력"
           aria-invalid={descriptionInvalid || undefined}
           aria-describedby={cn('badge-description-count', descriptionInvalid && 'badge-description-error')}
           className="resize-y aria-invalid:border-destructive"
@@ -883,7 +883,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         <FieldMessage id="badge-description-count">{description.length}자</FieldMessage>
         {descriptionInvalid && (
           <FieldMessage id="badge-description-error" tone="error">
-            설명을 입력해 주세요.
+            설명을 입력해 주세요
           </FieldMessage>
         )}
       </div>
@@ -1432,8 +1432,8 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
           <AlertDialogHeader>
             <AlertDialogTitle>배지 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{badge?.name}&apos; 배지를 완전히 삭제합니다. 이 작업은 되돌릴 수 없습니다.
-              단, 발급·드랍 등 이력이 있는 배지는 삭제할 수 없으며 비활성화만 가능합니다.
+              &apos;{badge?.name}&apos; 배지를 삭제할까요? 삭제한 배지는 되돌릴 수 없어요.
+              발급이나 드랍 이력이 있으면 삭제되지 않고 비활성화돼요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1441,7 +1441,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
               취소
             </Button>
             <Button type="button" variant="destructive" disabled={loading} onClick={handleDelete}>
-              {loading ? '삭제 중...' : '삭제 확인'}
+              {loading ? '삭제 중...' : '삭제'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
