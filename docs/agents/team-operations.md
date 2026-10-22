@@ -202,7 +202,7 @@ tags: [워크플로]
 | 검사기 | 범위 | 제외 |
 |---|---|---|
 | `doc-check` (링크·frontmatter) | `docs/` 전체 | `docs/archive/`, `docs/assets/`, `docs/operations/reports/`, `docs/tickets/modular/` |
-| `check-slop` (한국어 슬롭) | `jam-web/`, `docs/` | `docs/tickets/`, `docs/archive/`, `docs/assets/`, `docs/operations/inbox/trends/` |
+| `check-slop` (한국어 슬롭) | `jam-web/`, `docs/` | `docs/tickets/`, `docs/archive/`, `docs/assets/`, `docs/operations/inbox/trends/`, 7-6 컨텐츠 입력의 데이터 파일(`jam-web/scripts/jam2-content/pairing.json`과 마이그레이션 `*_content_overwrite_backup.sql`·`*_tribe_content_*.sql`, 티켓 20261022_1137) |
 
 ---
 

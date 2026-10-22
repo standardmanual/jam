@@ -20,6 +20,7 @@ const TREND = join(ROOT, TREND_REL)
 // 7-6 컨텐츠 입력의 데이터 파일(백업 표·트라이브별 컨텐츠 마이그레이션, 짝짓기 데이터)은 옮겨 적은 데이터라 빠지고, 비슷한 이름의 다른 파일은 그대로 검사한다 (티켓 20261022_1137)
 const CONTENT_SQL_REL = `jam-web/supabase/migrations/999_tribe_content_probe_${process.pid}.sql`
 const BACKUP_SQL_REL = `jam-web/supabase/migrations/999_content_overwrite_backup.sql`
+const BACKUP_SQL = join(ROOT, BACKUP_SQL_REL)
 const OTHER_SQL_REL = `jam-web/supabase/migrations/999_other_probe_${process.pid}.sql`
 const CONTENT_SQL = join(ROOT, CONTENT_SQL_REL)
 const OTHER_SQL = join(ROOT, OTHER_SQL_REL)
@@ -52,6 +53,11 @@ try {
   const content = run(CONTENT_SQL_REL)
   assert.equal(content.status, 0, `7-6 컨텐츠 마이그레이션은 금칙어 검사에서 빠져야 한다: ${content.stderr}`)
 
+  // 백업 표 SQL 갈래도 빠져야 한다. pairing.json 갈래는 같은 정규식의 다른 선택지라 따로 탐침을 만들지 않는다(추적 중인 실제 파일이다).
+  writeFileSync(BACKUP_SQL, "-- 진짜 궁극의 금칙어(옛 배지 이름)\n")
+  const backup = run(BACKUP_SQL_REL)
+  assert.equal(backup.status, 0, `7-6 백업 표 마이그레이션은 금칙어 검사에서 빠져야 한다: ${backup.stderr}`)
+
   writeFileSync(OTHER_SQL, "-- 진짜 금칙어\n")
   const other = run(OTHER_SQL_REL)
   assert.equal(other.status, 1, '이름이 다른 마이그레이션은 계속 검사해야 한다')
@@ -62,5 +68,6 @@ try {
   rmSync(BIN, { force: true })
   rmSync(TREND, { force: true })
   rmSync(CONTENT_SQL, { force: true })
+  rmSync(BACKUP_SQL, { force: true })
   rmSync(OTHER_SQL, { force: true })
 }
