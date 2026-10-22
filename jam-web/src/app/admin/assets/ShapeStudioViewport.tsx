@@ -328,6 +328,8 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
     const displayCanvasRef = useRef<HTMLCanvasElement | null>(null)
     // Shape 모드 전용 오프스크린 WebGL 캔버스
     const glCanvasRef = useRef<HTMLCanvasElement | null>(null)
+    // Ribbon 모드 기준 해상도(refW × refH) 렌더링용 오프스크린 2D 캔버스
+    const ribbonBufferRef = useRef<HTMLCanvasElement | null>(null)
 
     const glRef = useRef<WebGLRenderingContext | null>(null)
     const programRef = useRef<WebGLProgram | null>(null)
@@ -738,13 +740,31 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
             headRef.current = customHead
           }
 
-          rawCtx.save()
-          const scaleX = w / refW
-          const scaleY = h / refH
-          rawCtx.scale(scaleX, scaleY)
-          fillBackground(ctxLike, refW, refH, rLayer.backgroundColor)
+          // drawRibbonLayer는 내부에서 ctx.setTransform(...)을 직접 호출하므로,
+          // 출력 해상도(w × h)가 기준 스테이지 크기(refW × refH)와 다를 때는
+          // refW × refH 오프스크린 캔버스에 먼저 그린 뒤 displayCanvas(w × h)로 스케일 복사한다.
+          let targetRibbonCtx: Canvas2DContextLike = ctxLike
+          let offscreenCanvas: HTMLCanvasElement | null = null
+          if (w !== refW || h !== refH) {
+            if (!ribbonBufferRef.current) {
+              ribbonBufferRef.current = createRawCanvas(refW, refH)
+            }
+            offscreenCanvas = ribbonBufferRef.current
+            if (offscreenCanvas.width !== refW || offscreenCanvas.height !== refH) {
+              offscreenCanvas.width = refW
+              offscreenCanvas.height = refH
+            }
+            const offCtx = offscreenCanvas.getContext('2d')
+            if (offCtx) {
+              targetRibbonCtx = toContextLike(offCtx)
+            } else {
+              offscreenCanvas = null
+            }
+          }
+
+          fillBackground(targetRibbonCtx, refW, refH, rLayer.backgroundColor)
           if (rStamp && rBase) {
-            drawRibbonLayer(ctxLike, {
+            drawRibbonLayer(targetRibbonCtx, {
               stamp: rStamp,
               baseWidth: rBase.width,
               baseHeight: rBase.height,
@@ -759,14 +779,23 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
               stageHeight: refH,
             })
           }
+
+          if (offscreenCanvas) {
+            rawCtx.clearRect(0, 0, w, h)
+            rawCtx.imageSmoothingEnabled = true
+            rawCtx.imageSmoothingQuality = 'high'
+            rawCtx.drawImage(offscreenCanvas, 0, 0, refW, refH, 0, 0, w, h)
+          }
+
+          // drawImageLayer·drawTextLayer는 stageWidth/stageHeight 대비 비율(%)로 크기·위치를 계산하고
+          // 내부에서 ctx.setTransform을 설정하므로 목표 해상도(w, h)를 직접 넘겨 선명하게 합성한다.
           drawOverlayLayersOnto(
             ctxLike,
             overlayLayersRef.current,
             imageTrackerRef.current.getValues(),
-            refW,
-            refH
+            w,
+            h
           )
-          rawCtx.restore()
         }
       },
       [drawWebGLToCanvas]
