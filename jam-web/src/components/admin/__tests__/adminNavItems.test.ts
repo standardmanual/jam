@@ -45,28 +45,29 @@ describe('mostSpecificActiveItem', () => {
   })
 })
 
-describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', () => {
+describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 간결화)', () => {
   it('그룹 레이블·순서가 목표 구조와 일치한다', () => {
-    expect(NAV_GROUPS.map((g) => g.id)).toEqual(['live-ops', 'content', 'policy', 'ops', 'design'])
-    expect(NAV_GROUPS.map((g) => g.label)).toEqual(['라이브 운영', '컨텐츠 관리', '정책 및 밸런스', '운영 도구', '디자인'])
+    expect(NAV_GROUPS.map((g) => g.id)).toEqual(['live', 'users', 'content', 'balance', 'design', 'system'])
+    expect(NAV_GROUPS.map((g) => g.label)).toEqual(['라이브', '유저', '콘텐츠', '밸런스', '디자인', '시스템'])
   })
 
-  it('라이브 운영 그룹(티켓 20260930_1817)은 맨 위에 있고 받은 기획함·일정표(티켓 20261006_1539)·패턴 사전(티켓 20261008_1400)과, 마지막에 운영 설정(티켓 20260930_1459 조각 B)을 담는다', () => {
-    expect(NAV_GROUPS[0].id).toBe('live-ops')
+  it('라이브 그룹은 맨 위에 있고 운영플랜·일정표·투데이·패턴 사전을 담는다', () => {
+    expect(NAV_GROUPS[0].id).toBe('live')
     expect(NAV_GROUPS[0].items.map((i) => [i.href, i.label])).toEqual([
-      ['/admin/ops-inbox', '받은 기획함'],
+      ['/admin/ops-inbox', '운영플랜'],
       ['/admin/ops-schedule', '일정표'],
+      ['/admin/today', '투데이'],
       ['/admin/ops-patterns', '패턴 사전'],
-      ['/admin/ops-settings', '운영 설정'],
     ])
   })
 
-  it('기획 상세 경로에서도 받은 기획함이 활성이다', () => {
+  it('기획 상세 경로에서도 운영플랜이 활성이다', () => {
     expect(mostSpecificActiveItem('/admin/ops-inbox')?.href).toBe('/admin/ops-inbox')
+    expect(mostSpecificActiveItem('/admin/ops-inbox')?.label).toBe('운영플랜')
     expect(mostSpecificActiveItem('/admin/ops-inbox/4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee')?.href).toBe('/admin/ops-inbox')
   })
 
-  it('일정표 경로에서는 일정표만 활성이다(받은 기획함·운영 설정은 아니다)', () => {
+  it('일정표 경로에서는 일정표만 활성이다(운영플랜·운영 설정은 아니다)', () => {
     expect(mostSpecificActiveItem('/admin/ops-schedule')?.href).toBe('/admin/ops-schedule')
     expect(mostSpecificActiveItem('/admin/ops-schedule')?.label).toBe('일정표')
     expect(mostSpecificActiveItem('/admin/ops-patterns')?.label).toBe('패턴 사전')
@@ -98,32 +99,35 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(mostSpecificActiveItem('/admin/tribes')?.href).toBe('/admin/tribes')
   })
 
-  it('«드랍 정책» 메뉴는 없고 «드랍 제외 관리»는 남는다(티켓 20261022_0938)', () => {
+  it('«드랍 정책» 메뉴는 없고 «드랍 제외»는 남는다(티켓 20261022_0938, 20261022_2035 간결화)', () => {
     const items = NAV_GROUPS.flatMap((g) => g.items)
     expect(items.map((i) => i.href)).not.toContain('/admin/drop-policy')
     expect(items.map((i) => i.label)).not.toContain('드랍 정책')
-    expect(items.find((i) => i.href === '/admin/drop-policy/exclusions')?.label).toBe('드랍 제외 관리')
+    expect(items.find((i) => i.href === '/admin/drop-policy/exclusions')?.label).toBe('드랍 제외')
     // 드랍 제외 관리 하위 경로에서 자기 자신만 활성이다
     expect(mostSpecificActiveItem('/admin/drop-policy/exclusions')?.href).toBe('/admin/drop-policy/exclusions')
   })
 
-  it('«서비스 정책 대시보드»는 «정책 및 밸런스» 그룹 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1631)', () => {
-    const policy = NAV_GROUPS.find((g) => g.id === 'policy')
-    expect(policy?.items[0]).toMatchObject({ href: '/admin/policy-dashboard', label: '서비스 정책 대시보드' })
-    expect(policy?.items[1]).toMatchObject({ href: '/admin/balance', label: '밸런스 설정' })
-    expect(mostSpecificActiveItem('/admin/policy-dashboard')?.label).toBe('서비스 정책 대시보드')
-    expect(mostSpecificActiveItem('/admin/balance')?.label).toBe('밸런스 설정')
+  it('«정책 대시보드»는 «밸런스» 그룹 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1631, 20261022_2035 간결화)', () => {
+    const balance = NAV_GROUPS.find((g) => g.id === 'balance')
+    expect(balance?.items[0]).toMatchObject({ href: '/admin/policy-dashboard', label: '정책 대시보드' })
+    expect(balance?.items[1]).toMatchObject({ href: '/admin/balance', label: '밸런스' })
+    expect(mostSpecificActiveItem('/admin/policy-dashboard')?.label).toBe('정책 대시보드')
+    expect(mostSpecificActiveItem('/admin/balance')?.label).toBe('밸런스')
     expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/policy-dashboard')).toHaveLength(1)
   })
 
-  it('랭킹 규칙 관리는 정책 그룹으로, 어뷰징 관리는 정책 그룹으로 이동했다', () => {
-    const policy = NAV_GROUPS.find((g) => g.id === 'policy')
-    expect(policy?.items.map((i) => i.href)).toContain('/admin/ranking-modes')
-    expect(policy?.items.map((i) => i.href)).toContain('/admin/abusing')
+  it('미션과 게이트 미션은 콘텐츠 그룹에, 랭킹은 밸런스 그룹에, 어뷰징과 유저는 유저 그룹에 있다', () => {
     const content = NAV_GROUPS.find((g) => g.id === 'content')
-    expect(content?.items.map((i) => i.href)).not.toContain('/admin/ranking-modes')
-    const ops = NAV_GROUPS.find((g) => g.id === 'ops')
-    expect(ops?.items.map((i) => i.href)).not.toContain('/admin/abusing')
+    expect(content?.items.map((i) => i.href)).toContain('/admin/missions')
+    expect(content?.items.map((i) => i.href)).toContain('/admin/gate-missions')
+
+    const balance = NAV_GROUPS.find((g) => g.id === 'balance')
+    expect(balance?.items.map((i) => i.href)).toContain('/admin/ranking-modes')
+
+    const users = NAV_GROUPS.find((g) => g.id === 'users')
+    expect(users?.items.map((i) => i.href)).toContain('/admin/abusing')
+    expect(users?.items.map((i) => i.href)).toContain('/admin/users')
   })
 })
 
