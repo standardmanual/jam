@@ -95,15 +95,15 @@ const posterView = (overrides: Partial<ImageCardView> = {}): CardView => ({
 })
 
 describe('RENDERED_SHAPES — 새 틀이 그리는 모양 목록', () => {
-  it('다섯 모양 전부다: brief·hero·poster·square·list', () => {
-    expect([...RENDERED_SHAPES]).toEqual(['brief', 'hero', 'poster', 'square', 'list'])
+  it('일곱 모양 전부다: brief·hero·poster·square·list·dome·ticket', () => {
+    expect([...RENDERED_SHAPES]).toEqual(['brief', 'hero', 'poster', 'square', 'list', 'dome', 'ticket'])
   })
 
-  it('카드 모양 5개와 같은 집합이다(저장될 수 있는 모든 모양을 새 틀이 그린다)', () => {
+  it('카드 모양 7개와 같은 집합이다(저장될 수 있는 모든 모양을 새 틀이 그린다)', () => {
     expect([...RENDERED_SHAPES].sort()).toEqual([...CARD_SHAPES].sort())
   })
 
-  it('모든 항목이 카드 모양 5개 안의 값이다', () => {
+  it('모든 항목이 카드 모양 7개 안의 값이다', () => {
     for (const shape of RENDERED_SHAPES) expect(CARD_SHAPES).toContain(shape)
   })
 
@@ -113,6 +113,8 @@ describe('RENDERED_SHAPES — 새 틀이 그리는 모양 목록', () => {
     expect(isRenderedShape('poster')).toBe(true)
     expect(isRenderedShape('square')).toBe(true)
     expect(isRenderedShape('list')).toBe(true)
+    expect(isRenderedShape('dome')).toBe(true)
+    expect(isRenderedShape('ticket')).toBe(true)
     for (const shape of CARD_SHAPES.filter((s) => !(RENDERED_SHAPES as readonly string[]).includes(s))) {
       expect(isRenderedShape(shape)).toBe(false)
     }

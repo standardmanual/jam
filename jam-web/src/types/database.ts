@@ -1232,6 +1232,8 @@ export type TodayCardLayoutType =
   | 'banner'           // 배너형 — 가로로 넓은 띠 배너, 이미지 위 텍스트 오버레이
   | 'other'            // 기타 — 위 4종에 안 맞는 경우의 기본형
   | 'ranking_list'     // 순위 리스트형 — 랭킹보드 전용, 포디엄 없이 순위 목록만(티켓 20260911_1440)
+  | 'dome'             // 아치 돔형 — 상단이 둥근 아치 실루엣 (티켓 20261022_2225)
+  | 'ticket'           // 티켓형 — 상하 펀칭 노치가 파인 티켓 실루엣 (티켓 20261022_2225)
 
 export interface TodayCardRow {
   id: string

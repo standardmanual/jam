@@ -14,8 +14,8 @@
  */
 import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
 
-/** 카드 모양 5개. 이미지가 있는 모양 3개(`hero`·`poster`·`square`)와 없는 모양 2개(`brief`·`list`). */
-export const CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list'] as const
+/** 카드 모양 7개. 이미지가 있는 모양 5개(`hero`·`poster`·`square`·`dome`·`ticket`)와 없는 모양 2개(`brief`·`list`). 티켓 20261022_2225에서 dome, ticket 추가. */
+export const CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket'] as const
 
 export type CardShape = (typeof CARD_SHAPES)[number]
 
@@ -29,10 +29,12 @@ export const CARD_TITLE_MAX_LENGTH: Record<CardShape, number> = {
   square: 22,
   brief: 28,
   list: 22,
+  dome: 22,
+  ticket: 22,
 }
 
 /** 이미지가 있는 모양 — 이미지 제작이 필요한 모양이다. */
-export const IMAGE_CARD_SHAPES = ['hero', 'poster', 'square'] as const satisfies readonly CardShape[]
+export const IMAGE_CARD_SHAPES = ['hero', 'poster', 'square', 'dome', 'ticket'] as const satisfies readonly CardShape[]
 
 export type ImageCardShape = (typeof IMAGE_CARD_SHAPES)[number]
 
@@ -90,6 +92,8 @@ function isCoverPromotedFromBadge(card: ShapeCardInput): boolean {
  */
 export function resolveShape(card: ShapeCardInput): CardShape {
   if (isCardShape(card.shape)) return card.shape
+  if (card.layout_type === 'dome') return 'dome'
+  if (card.layout_type === 'ticket') return 'ticket'
   if (card.template_type === 'editorial_article') return 'hero'
 
   switch (card.layout_type) {

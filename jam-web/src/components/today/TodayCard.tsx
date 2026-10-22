@@ -2,16 +2,17 @@ import type { CardView } from '@/lib/today/cardView'
 import { isRankingRows, type CardShape } from '@/lib/today/shape'
 import BriefCard from './BriefCard'
 import CardFrame from './CardFrame'
+import DomeCard from './DomeCard'
 import HeroCard from './HeroCard'
 import ListCard from './ListCard'
 import PosterCard from './PosterCard'
 import SquareCard from './SquareCard'
+import TicketCard from './TicketCard'
 
 /**
- * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 상위 20260930_1453 조각 b2). 조각 b3(`hero`, 티켓 20261001_1737)·b4(`poster`·`square`, 티켓 20261001_2013)·
- * b5(`list`, 티켓 20261001_2104)가 더해 다섯 모양이 모두 있다. 모르는 모양 값은 `TodayCard`가 아무것도 그리지 않는다. 옛 렌더러는 티켓 20261001_2244(조각 b7)가 지웠으므로 홈의 모든 카드가 이 틀로 온다.
+ * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 티켓 20261022_2225에서 dome, ticket 추가).
  */
-export const RENDERED_SHAPES = ['brief', 'hero', 'poster', 'square', 'list'] as const satisfies readonly CardShape[]
+export const RENDERED_SHAPES = ['brief', 'hero', 'poster', 'square', 'list', 'dome', 'ticket'] as const satisfies readonly CardShape[]
 
 export type RenderedShape = (typeof RENDERED_SHAPES)[number]
 
@@ -61,6 +62,18 @@ export default function TodayCard({ view, currentUserId }: { view: CardView; cur
       return (
         <CardFrame view={view} link={!isRankingRows(view.resource)}>
           <ListCard view={view} currentUserId={currentUserId} />
+        </CardFrame>
+      )
+    case 'dome':
+      return (
+        <CardFrame view={view}>
+          <DomeCard view={view} />
+        </CardFrame>
+      )
+    case 'ticket':
+      return (
+        <CardFrame view={view}>
+          <TicketCard view={view} />
         </CardFrame>
       )
     default:

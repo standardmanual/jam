@@ -278,6 +278,8 @@ code:
 | `square` | 있음 (이미지 제작 필요) |
 | `brief` | 없음 |
 | `list` | 없음 |
+| `dome` | 있음 (이미지 제작 필요) |
+| `ticket` | 있음 (이미지 제작 필요) |
 <!-- END generated: card-shapes -->
 
 | 모양 | 이름 | 이미지 | 모습 |
@@ -341,11 +343,13 @@ code:
 | 값 | 라벨 |
 |---|---|
 | `large_thumbnail` | 큰 썸네일형 — 커버 이미지 크게 |
+| `dome` | 아치 돔형 — 상단이 둥근 포스터/히어로 |
+| `ticket` | 티켓형 — 상하 노치가 파인 티켓 |
 | `badge_gallery` | 배지목록형 — 배지 갤러리/리스트 |
 | `shortcut` | 바로가기형 — 이미지 없는 짧은 CTA |
 | `banner` | 배너형 — 가로 띠 배너 |
-| `other` | 기타 — 기본형 |
 | `ranking_list` | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) |
+| `other` | 기타 — 기본형 |
 <!-- END generated: layouts -->
 
 **게재용 설명문(`description`)**: 한 덩어리 문단으로 보이는 짧은 글이다(공백 포함 40자 이하, 줄바꿈 없음, 14px, 넘치면 2줄에서 말줄임). `hero`와 `list`(타일형·행형 모두)에서만 보이고 `brief`·`poster`·`square`는 설명문을 그리지 않는다 — 그래서 `brief`로 그려지는 옛 `shortcut`·`other` 카드, `poster`가 되는 옛 `banner` 카드, `square`가 되는 카드의 설명문은 화면에 나오지 않는다. 값이 없거나 공백뿐이면 그 그룹만 사라진다. `editorial_article`은 본문(`body_markdown`)이 있어 쓰지 않는다: 어드민 폼은 이 템플릿에서 칸을 숨기고 저장할 때 비운다. 길이 상한은 어드민 폼과 등록 묶음이 같은 상수(`TODAY_DESCRIPTION_MAX_LENGTH`)를 쓴다(티켓 [20260929_1335](../../../tickets/p2-normal/20260929_1335_Feature_홈피드-카드에-게재용-설명문-칸-추가.md)).
@@ -365,13 +369,15 @@ code:
 | `large_thumbnail` (큰 썸네일형) | 미션 소개 카드(`mission_spotlight`) | `square` |
 | `large_thumbnail` (큰 썸네일형) | 커버 없음 · 배지가 걸려 있음(배지 그림이 있는지는 보지 않는다) | `square` |
 | `large_thumbnail` (큰 썸네일형) | 커버 없음 · 배지 없음 | `hero` |
+| `dome` (아치 돔형) | 입력과 무관 | `dome` |
+| `ticket` (티켓형) | 입력과 무관 | `ticket` |
 | `badge_gallery` (배지목록형) | 배지가 1개 이상 | `list` 타일형 |
 | `badge_gallery` (배지목록형) | 배지가 0개(타일이 없다) | `brief` |
 | `shortcut` (바로가기형) | 입력과 무관 | `brief` |
 | `banner` (배너형) | 커버 있음 | `poster` |
 | `banner` (배너형) | 커버 없음 | `brief` |
-| `other` (기타) | 입력과 무관 | `brief` |
 | `ranking_list` (순위 리스트형) | 랭킹보드(`ranking_board`) | `list` 행형 |
+| `other` (기타) | 입력과 무관 | `brief` |
 | 모든 레이아웃 | 기사(`editorial_article`)는 레이아웃과 상관없이 | `hero` |
 | 모든 레이아웃 | 저장된 `shape`가 모양 값이면 옛 값과 상관없이 그 값(예: `poster`) | `poster` |
 | 모든 레이아웃 | 목록에 없는 레이아웃 값은 큰 썸네일형으로 본다 | `hero` |

@@ -45,6 +45,7 @@ export interface TodayCardFormValues {
 export interface TodayCardSavePayload {
   template_type: TodayCardTemplateType
   layout_type: TodayCardLayoutType
+  shape?: string | null
   title: string
   subtitle: string | null
   description: string | null
@@ -81,11 +82,13 @@ export const TODAY_TEMPLATE_OPTIONS: readonly { value: TodayCardTemplateType; la
 
 export const TODAY_LAYOUT_OPTIONS: readonly { value: TodayCardLayoutType; label: string }[] = [
   { value: 'large_thumbnail', label: '큰 썸네일형 — 커버 이미지 크게' },
+  { value: 'dome', label: '아치 돔형 — 상단이 둥근 포스터/히어로' },
+  { value: 'ticket', label: '티켓형 — 상하 노치가 파인 티켓' },
   { value: 'badge_gallery', label: '배지목록형 — 배지 갤러리/리스트' },
   { value: 'shortcut', label: '바로가기형 — 이미지 없는 짧은 CTA' },
   { value: 'banner', label: '배너형 — 가로 띠 배너' },
-  { value: 'other', label: '기타 — 기본형' },
   { value: 'ranking_list', label: '순위 리스트형 — 랭킹보드 목록(포디엄 없음)' },
+  { value: 'other', label: '기타 — 기본형' },
 ]
 
 /** 템플릿을 고르면 처음엔 이 레이아웃을 기본 선택해둠(추천값일 뿐, 어드민이 자유롭게 바꿀 수 있음) */
@@ -327,6 +330,7 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
   return {
     template_type: v.templateType,
     layout_type: v.layoutType,
+    shape: v.layoutType === 'dome' ? 'dome' : v.layoutType === 'ticket' ? 'ticket' : null,
     title: v.title.trim(),
     subtitle: v.subtitle.trim() || null,
     description: fields.description ? v.description.trim() || null : null,

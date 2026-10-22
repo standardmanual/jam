@@ -24,20 +24,20 @@ import {
 } from '../shape'
 
 describe('카드 모양', () => {
-  it('모양은 5개다(마이그레이션 206 today_cards_shape_check와 같은 목록)', () => {
-    expect([...CARD_SHAPES]).toEqual(['hero', 'poster', 'square', 'brief', 'list'])
+  it('모양은 7개다(마이그레이션 286 today_cards_shape_check와 같은 목록)', () => {
+    expect([...CARD_SHAPES]).toEqual(['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket'])
   })
 
-  it('이미지 모양은 hero·poster·square 3개이고 모두 모양 목록 안에 있다', () => {
-    expect([...IMAGE_CARD_SHAPES]).toEqual(['hero', 'poster', 'square'])
+  it('이미지 모양은 hero·poster·square·dome·ticket 5개이고 모두 모양 목록 안에 있다', () => {
+    expect([...IMAGE_CARD_SHAPES]).toEqual(['hero', 'poster', 'square', 'dome', 'ticket'])
     for (const shape of IMAGE_CARD_SHAPES) expect(CARD_SHAPES).toContain(shape)
   })
 
-  it.each(['hero', 'poster', 'square', 'brief', 'list'])('isCardShape: %s는 모양이다', (shape) => {
+  it.each(['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket'])('isCardShape: %s는 모양이다', (shape) => {
     expect(isCardShape(shape)).toBe(true)
   })
 
-  it.each(['hero', 'poster', 'square'])('isImageShape: %s는 이미지 모양이다', (shape) => {
+  it.each(['hero', 'poster', 'square', 'dome', 'ticket'])('isImageShape: %s는 이미지 모양이다', (shape) => {
     expect(isImageShape(shape)).toBe(true)
   })
 
@@ -82,6 +82,8 @@ describe('resolveShape — 옛 값 → 새 모양 대응표 (1453 확정 설계 
     ['shortcut', 'brief'],
     ['other', 'brief'],
     ['ranking_list', 'list'],
+    ['dome', 'dome'],
+    ['ticket', 'ticket'],
   ] as const)('커버가 있는 %s는 %s다', (layout, expected) => {
     expect(resolveShape(card({ layout_type: layout }))).toBe(expected)
   })
