@@ -11,6 +11,7 @@ import {
   hexToRgb,
   INITIAL_RAND_TOGGLES,
   INITIAL_STATE,
+  makeState,
   randomizeState,
   SHAPE_PRESETS,
   validatePresetState,
@@ -30,13 +31,22 @@ describe('shapeStudioConfig', () => {
     expect(hexToRgb('#ff0080')[1]).toBeCloseTo(0)
   })
 
-  it('세그먼트 모드와 글자 모드에서 기하 유니폼을 계산한다', () => {
+  it('세그먼트 모드와 글자 모드에서 기하 유니폼을 계산하고 Mushroom·Hourglass 상하 세그먼트가 간격 없이 겹쳐 붙는다', () => {
     const segGeo = computeGeometry(INITIAL_STATE)
     expect(segGeo.glyph).toBeUndefined()
     expect(segGeo.ext).toBeGreaterThan(0)
     expect(segGeo.fit).toBeLessThanOrEqual(1)
     expect(segGeo.geo).toHaveLength(16)
     expect(segGeo.rad).toHaveLength(16)
+
+    for (const preset of SHAPE_PRESETS) {
+      expect(preset.overlap).toBeGreaterThan(0)
+      const presetState = makeState(preset, GRADIENT_PRESETS[0])
+      const g = computeGeometry(presetState)
+      const bottom0 = g.geo[0] - g.geo[1]
+      const top1 = g.geo[4] + g.geo[5]
+      expect(bottom0).toBeLessThan(top1)
+    }
 
     const glyphState = {
       ...cloneState(INITIAL_STATE),
@@ -99,6 +109,12 @@ describe('shapeStudioConfig', () => {
     expect(valid.version).toBe(2)
     expect(valid.shape).toBe('custom')
     expect(valid.grad).toBe('custom')
+
+    const valid916 = validatePresetState({
+      ...cloneState(INITIAL_STATE),
+      ratio: '9:16',
+    })
+    expect(valid916.ratio).toBe('9:16')
 
     expect(() => validatePresetState({ version: 1 })).toThrow('Shape Studio v2 설정 파일을 선택해주세요.')
     expect(() =>

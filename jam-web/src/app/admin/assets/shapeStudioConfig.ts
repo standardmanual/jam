@@ -55,8 +55,9 @@ export type GradientPreset = {
   dir?: number
 }
 
-export type CanvasRatio = '1:1' | '4:5' | '16:9'
+export type CanvasRatio = '1:1' | '4:5' | '9:16' | '16:9'
 export type BackgroundMode = 'gradient' | 'solid' | 'transparent'
+export type StudioEngineMode = 'shape' | 'ribbon'
 
 export type ShapeStudioState = {
   version: 2
@@ -118,18 +119,18 @@ export const SHAPE_PRESETS: ShapePreset[] = [
     id: 'hourglass',
     name: 'Hourglass',
     width: 250,
-    overlap: 0,
+    overlap: 28,
     metaball: true,
-    merge: 24,
+    merge: 36,
     segments: [seg(190, 20, 400), seg(190, 400, 20)],
   },
   {
     id: 'mushroom',
     name: 'Mushroom',
     width: 400,
-    overlap: 0,
+    overlap: 28,
     metaball: true,
-    merge: 26,
+    merge: 36,
     segments: [seg(182, 154, 63), seg(207, 363, 120)],
   },
 ]
@@ -709,7 +710,7 @@ export function validatePresetState(inp: unknown): ShapeStudioState {
   }
   r.bgMode = obj.bgMode
 
-  if (obj.ratio !== '1:1' && obj.ratio !== '4:5' && obj.ratio !== '16:9') {
+  if (obj.ratio !== '1:1' && obj.ratio !== '4:5' && obj.ratio !== '9:16' && obj.ratio !== '16:9') {
     throw new Error('비율이 올바르지 않습니다.')
   }
   r.ratio = obj.ratio
