@@ -542,6 +542,15 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 - 덮어쓰기가 바꾸는 열: 컬렉션은 `name`·`description`·`tribe_id`·`is_active`·`tier_mode`·`story_text`·`image_url`·`image_source`와 **배경 칸 5개**(`background_color`·`background_shader_id`·`background_image_url`·`background_video_url`·`background_animation`, 모두 NULL로 비움), 옛 배지 행은 `name`·`description`·`rarity`(common)·`deleted_at`(비움)·`tribe_id`·`image_url`·`image_source`와 같은 **배경 칸 5개**(NULL로 비움)다. `point_reward`·`reward_points`·`reward_badge_id`는 건드리지 않는다. 새로 넣는 행은 배경 칸을 적지 않아 열의 기본값(NULL)이다.
 - 되돌림이 복원하는 열: 위에서 바꾼 열 전부(배경 칸 5개 포함)를 `snapshot`에서 읽어 되돌린다. 배경 칸 중 `background_animation`만 JSONB라서 `to_jsonb`가 담은 JSON null을 `NULLIF(snapshot->'background_animation', 'null'::jsonb)`로 SQL NULL로 바꿔 되돌리고, 나머지 TEXT 칸은 `snapshot->>'열'`로 읽는다.
 
+### 4-4. 쓰지 않는 컬렉션·옛 레시피 끄기 백업 표 `retire_backup_20261022` (JAM 2.0 7-7) — 마이그레이션 282, 티켓 20261022_1138
+오픈 직전에 쓰지 않는 컬렉션과 옛 레시피 3건을 **끄기** 때문에, 되돌림 SQL이 쓸 직전 상태를 담는 임시 표다. 마이그레이션 282가 만들고, 적용은 오픈 직전이다(묶음 7의 7-9 목록). 오픈 뒤 문제가 없으면 지운다.
+7-6의 백업 표(4-3)는 `kind` 제약이 레시피를 담지 못하고 6-4의 오픈 뒤 정리 SQL 때 지워져서 쓰지 않고 따로 만든다.
+
+- 열: `kind`(`item_book`·`combination_recipe`), `row_id`(UUID, `kind`와 함께 PK), `snapshot`(JSONB NOT NULL, `to_jsonb(row)`), `backed_up_at`.
+- 접근: RLS를 켜고 정책을 두지 않으며 `anon`·`authenticated` 권한을 회수한다. 서버(service role)만 읽고 쓴다.
+- 끄는 대상: «활성 컬렉션 가운데 7-6 계획의 컬렉션 50개에 들지 않는 것»의 `item_books.is_active`(false로, 공용 DB에서 56개로 보고 56개가 아니면 SQL이 멈춘다)와 옛 레시피 3건의 `combination_recipes.valid_until`(적용 시각으로)이다. 다른 열은 바꾸지 않는다. 지우지 않고, 이미 받은 기록은 그대로다.
+- 되돌림: 파일 끝의 되돌림 SQL이 `snapshot`에서 `is_active`와 `valid_until`만 읽어 되돌린다. 건수는 `item_book` 56, `combination_recipe` 3으로 기대한다.
+
 ---
 
 ## 5. 트라이브 (tribe) — 신규 도메인
@@ -773,6 +782,11 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 보상 배지가 하나 이상»으로 바뀌었다. 기본값이 false라 옛 행과 옛 어드민의 저장은 지금처럼 보상 하나 이상을 요구하고,
 새 어드민 저장 라우트만 `allow_no_reward`를 켠다(운영 로직 8.4절). 레시피당 슬롯 상한은 5다(운영 로직 8.6절, 코드 상수
 `MAX_SLOTS`·`MAX_ITEMS`).
+
+**JAM 2.0 단서 레시피와 옛 레시피 끄기 (마이그레이션 281·282, 티켓 20261022_1138)**: 단서 레시피 20건은 `valid_from`에 먼 미래 자리 값 `2099-01-01 00:00 KST`를
+넣어 숨긴 채 들어간다. 오픈 전까지 일반 유저와 프로덕션에는 보이지 않고, 운영자만 staging에서 공개 전 시험 믹스를 한다. 오픈 직전 SQL(묶음 7의 7-9 목록)이 이 칸을 실제 오픈 시각으로 바꾼다.
+성공 포인트(`reward_points`)는 재료 수 × 10이고, 칸은 재료마다 하나(`allowed_badge_ids` 후보 1개)다. 옛 트라이브 단독 레시피 3건은 마이그레이션 282가 오픈 직전에 `valid_until`을 채워 끈다(지우지 않는다).
+내용과 건수는 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이고, 끄기 직전 상태는 4-4절의 백업 표가 담는다.
 
 **삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200): `combination_recipes.id`를 FK로 참조하는
 테이블은 없다. 대신 삭제되지 않은(`deleted_at IS NULL`) 배지의 조건
