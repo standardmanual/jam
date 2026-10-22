@@ -81,8 +81,11 @@ function toOpenError(result: CapsuleOpenResult): Error {
   return new CapsuleError(code as CapsuleOpenErrorCode)
 }
 
-/** 추첨에 쓸 데이터(트라이브·후보·카운터)를 읽는다. 읽지 못하면 던진다 — 틀린 값으로 추첨하지 않는다. */
-async function loadRollData(supabase: SupabaseClient, userId: string) {
+/**
+ * 추첨에 쓸 데이터(트라이브·후보·카운터)를 읽는다. 읽지 못하면 던진다 — 틀린 값으로 추첨하지 않는다.
+ * 등급 올리기(`lib/combine/tierUp.ts`, 티켓 20261022_2119 2회)도 같은 풀을 읽으려고 내보낸다.
+ */
+export async function loadRollData(supabase: SupabaseClient, userId: string) {
   const { data: userRow, error: userError } = await supabase.from('users').select('tribe_id').eq('id', userId).maybeSingle()
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`)
   const tribeId = (userRow as { tribe_id?: string | null } | null)?.tribe_id ?? null

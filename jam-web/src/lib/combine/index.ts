@@ -424,9 +424,10 @@ interface GrantResultsOutcome {
 
 /**
  * 지급된 개체의 «여는 데 필요한 양»을 `itemIds`와 같은 순서로 돌려준다(`combine_grant_results`가 입력 순서대로 개체 id를 준다).
+ * 등급 올리기(`tierUp.ts`, 티켓 20261022_2119 2회)가 잠긴 결과의 필요한 양을 읽을 때도 쓴다.
  * 선택 칸이라 읽지 못하면 던지지 않고 빈 배열을 돌려준다 — 값을 추측해 채우지 않고 응답에서 칸을 뺀다(티켓 20261018_0055 2회).
  */
-async function readUnlockRequired(supabase: ServiceClient, itemIds: string[]): Promise<(number | undefined)[]> {
+export async function readUnlockRequired(supabase: ServiceClient, itemIds: string[]): Promise<(number | undefined)[]> {
   if (itemIds.length === 0) return []
   const { data, error } = await supabase.from('inventory_items').select('id, unlock_required').in('id', itemIds)
   if (error) {
