@@ -104,6 +104,7 @@ describe('서버 전용 suspension.ts는 서버 쪽에서만 가져온다', () =
 
     expect(reached.filter((f) => f.endsWith('lib/suspension/suspension.ts')), `${entry}가 suspension.ts를 끌어온다`).toEqual([])
     expect(reached.filter((f) => f.endsWith('lib/suspension/suspension-write.ts')), `${entry}가 suspension-write.ts를 끌어온다`).toEqual([])
+    expect(reached.filter((f) => f.endsWith('lib/suspension/notify.ts')), `${entry}가 notify.ts를 끌어온다`).toEqual([])
     expect(reached.filter((f) => f.endsWith('lib/suspension/home-banner.ts')), `${entry}가 home-banner.ts를 끌어온다`).toEqual([])
     expect(reached.filter((f) => f.endsWith('lib/supabase/server.ts')), `${entry}가 lib/supabase/server.ts를 끌어온다`).toEqual([])
     expect([...packages].filter((p) => p === 'next/headers' || p === 'server-only'), `${entry}가 서버 전용 패키지를 끌어온다`).toEqual([])
@@ -118,10 +119,16 @@ describe('서버 전용 suspension.ts는 서버 쪽에서만 가져온다', () =
 })
 
 describe('서버 전용 suspension-write.ts·home-banner.ts는 서버 쪽에서만 가져온다 (2회)', () => {
-  it('suspension-write.ts는 supabase-js 타입만 가져온다(런타임 의존이 없다)', () => {
+  // 정지·풀림 소식(티켓 20261021_1249 6-3 5회)을 보내려고 `./notify` 하나만 더 가져온다. 나머지는 supabase-js 타입뿐이다
+  it('suspension-write.ts는 supabase-js 타입과 소식 모듈(./notify)만 가져온다', () => {
     const source = readFileSync(join(srcRoot, 'lib/suspension/suspension-write.ts'), 'utf8')
-    expect(specifiersOf(source)).toEqual(['@supabase/supabase-js'])
+    expect(specifiersOf(source).sort()).toEqual(['./notify', '@supabase/supabase-js'])
     expect(source).toMatch(/import type \{ SupabaseClient \} from '@supabase\/supabase-js'/)
+  })
+
+  it('notify.ts는 소식 라이브러리와 묶음 키 빌더만 가져온다', () => {
+    const source = readFileSync(join(srcRoot, 'lib/suspension/notify.ts'), 'utf8')
+    expect(specifiersOf(source).sort()).toEqual(['@/lib/notifications', '@/lib/notifications/groupKey'])
   })
 
   // 어드민 클라이언트 컴포넌트는 정지 서버 모듈을 직접 가져오지 않는다(API 라우트로만 부른다)

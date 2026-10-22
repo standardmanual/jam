@@ -9,8 +9,11 @@
  *
  * 예상한 거절은 던지지 않고 `{ ok: false, code }`로 돌려준다(라우트가 400·404·409로 바꾼다).
  * 예상하지 못한 DB 오류는 던진다.
+ *
+ * 걸기와 풀기가 DB에 성공하면 유저에게 소식 한 건을 보낸다(`notify.ts`, 티켓 20261021_1249 6-3 5회). 소식은 던지지 않으므로 실패해도 결과는 그대로다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { notifySuspensionLifted, notifySuspensionStarted } from './notify'
 
 export type SuspendFailure = 'reason_required' | 'user_not_found' | 'already_suspended'
 export type LiftFailure = 'not_suspended'
@@ -44,14 +47,17 @@ export async function suspendUser(
   const inserted = await supabase
     .from('user_suspensions')
     .insert({ user_id: input.userId, reason, suspended_by: input.adminEmail })
-    .select('id')
+    .select('id, suspended_at')
     .single()
   if (inserted.error) {
     const error = inserted.error as DbError
     if (error.code === UNIQUE_VIOLATION) return { ok: false, code: 'already_suspended' }
     throw new Error(`user_suspensions 삽입 실패: ${error.message}`)
   }
-  return { ok: true, id: (inserted.data as { id: string }).id }
+  const row = inserted.data as { id: string; suspended_at: string }
+  // 소식에는 사유·어드민 이메일을 넘기지 않는다(notify.ts). 정지 줄이 이미 생겼으므로 소식 실패는 결과를 바꾸지 않는다
+  await notifySuspensionStarted({ userId: input.userId, suspensionId: row.id, suspendedAt: row.suspended_at })
+  return { ok: true, id: row.id }
 }
 
 /**
@@ -64,11 +70,11 @@ export async function liftSuspension(
 ): Promise<LiftResult> {
   const read = await supabase
     .from('user_suspensions')
-    .select('id, suspended_at, lifted_at')
+    .select('id, user_id, suspended_at, lifted_at')
     .eq('id', input.suspensionId)
     .maybeSingle()
   if (read.error) throw new Error(`user_suspensions 조회 실패: ${read.error.message}`)
-  const row = read.data as { id: string; suspended_at: string; lifted_at: string | null } | null
+  const row = read.data as { id: string; user_id: string; suspended_at: string; lifted_at: string | null } | null
   if (!row || row.lifted_at !== null) return { ok: false, code: 'not_suspended' }
 
   const nowMs = (input.now ?? new Date()).getTime()
@@ -84,5 +90,7 @@ export async function liftSuspension(
     .select('id')
   if (updated.error) throw new Error(`user_suspensions 갱신 실패: ${updated.error.message}`)
   if (!updated.data || updated.data.length === 0) return { ok: false, code: 'not_suspended' }
+  // 소식에는 푼 메모(lift_note)·푼 어드민 이메일을 넘기지 않는다(notify.ts). 푼 줄이 이미 저장됐으므로 소식 실패는 결과를 바꾸지 않는다
+  await notifySuspensionLifted({ userId: row.user_id, suspensionId: row.id, liftedAt })
   return { ok: true }
 }
