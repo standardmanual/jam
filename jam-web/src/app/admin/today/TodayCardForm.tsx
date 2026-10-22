@@ -12,7 +12,7 @@
  * 구성 로직은 예전 `TodayCardList.tsx`에서 그대로 옮겼다 — 값 자체는 바뀌지 않았다. 템플릿
  * 타입 → 필요한 섹션/필드 매핑은 `lib/admin/today-sections.ts`로 옮겼다.
  */
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Button } from '@/components/admin/ui/button'
@@ -131,6 +131,30 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [subtitle, setSubtitle] = useState(card?.subtitle ?? '')
   const [description, setDescription] = useState(card?.description ?? '')
   const [coverImageUrl, setCoverImageUrl] = useState(card?.cover_image_url ?? '')
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [coverUploadError, setCoverUploadError] = useState<string | null>(null)
+  const coverFileRef = useRef<HTMLInputElement>(null)
+
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCoverUploadError(null)
+    setUploadingCover(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'today_cards')
+      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '업로드에 실패했어요.')
+      setCoverImageUrl(data.url)
+    } catch (err) {
+      setCoverUploadError(err instanceof Error ? err.message : '업로드 중 오류가 발생했어요.')
+    } finally {
+      setUploadingCover(false)
+      if (coverFileRef.current) coverFileRef.current.value = ''
+    }
+  }
   const [badgeIds, setBadgeIds] = useState<string[]>(card?.badge_ids ?? [])
   // 배지 id → 검색 결과 객체 캐시. badgeLabels(초기 참조 배지)로 시작해 새로 검색·선택한
   // 배지가 추가되면서 자라난다.
@@ -493,17 +517,50 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
       )}
 
       <div className="flex flex-col gap-1.5">
-        <FieldLabel htmlFor="today-card-cover">커버 이미지 URL</FieldLabel>
-        <Input
-          id="today-card-cover"
-          value={coverImageUrl}
-          onChange={(e) => setCoverImageUrl(e.target.value)}
-          placeholder="https://..."
-          autoComplete="off"
-          aria-describedby="today-card-cover-help"
-        />
+        <FieldLabel htmlFor="today-card-cover">커버 미디어 (이미지 / 동영상)</FieldLabel>
+        <div className="flex gap-2">
+          <Input
+            id="today-card-cover"
+            value={coverImageUrl}
+            onChange={(e) => setCoverImageUrl(e.target.value)}
+            placeholder="https://... 또는 파일 선택"
+            autoComplete="off"
+            aria-describedby="today-card-cover-help"
+            className="flex-1"
+          />
+          <input
+            ref={coverFileRef}
+            type="file"
+            accept="image/*,video/mp4,video/webm"
+            className="hidden"
+            onChange={handleCoverFileUpload}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={uploadingCover}
+            onClick={() => coverFileRef.current?.click()}
+            className="shrink-0"
+          >
+            {uploadingCover ? '업로드 중...' : '파일 선택'}
+          </Button>
+          {coverImageUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCoverImageUrl('')}
+              className="text-xs text-muted-foreground hover:text-destructive shrink-0"
+            >
+              지우기
+            </Button>
+          )}
+        </div>
+        {coverUploadError && (
+          <FieldMessage tone="error">{coverUploadError}</FieldMessage>
+        )}
         <FieldMessage id="today-card-cover-help">
-          비워 두면 템플릿에 따라 첫 배지 이미지로 대체되거나 이미지 없이 노출돼요
+          에셋(Shape Studio)에서 생성한 동영상(MP4, WebM)이나 이미지를 직접 업로드하거나 URL을 입력하세요. 비워 두면 템플릿에 따라 첫 배지 이미지로 대체되거나 이미지 없이 노출돼요.
         </FieldMessage>
         {/* 제작 경로 라벨(티켓 20260925_1411) — 수정 화면(card 존재)에서만 보인다. 신규 작성
             화면은 아직 image_source가 없다(적용 탭에서 반영해야 생긴다). */}

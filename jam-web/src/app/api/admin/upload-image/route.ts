@@ -8,10 +8,10 @@ const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
 
 /**
- * 배경 제너레이터 애니메이션 모드가 굽는 반복 재생 영상 (20260819_012).
- * 유저단은 <video>로 재생만 하므로 iOS Safari 호환이 필수 — H.264 MP4만 허용한다.
+ * 배경 제너레이터 및 에셋(Shape Studio) 애니메이션 모드가 굽는 반복 재생 영상 (20260819_012, 20261022_2300).
+ * 유저단은 <video>로 재생하므로 iOS Safari 호환을 위한 MP4 및 WebM을 허용한다.
  */
-const ALLOWED_VIDEO_TYPES = ['video/mp4']
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm']
 /**
  * 영상 용량 상한. Storage 'images' 버킷의 file_size_limit(5MB)과 반드시 같아야 한다 —
  * 더 크게 잡으면 API는 통과시키고 Storage가 거부해 안내 문구와 실제 동작이 어긋난다.
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type)
 
   if (!isVideo && !ALLOWED_TYPES.includes(file.type)) {
-    return NextResponse.json({ error: '지원하지 않는 파일 형식입니다. (이미지: JPEG, PNG, WebP, GIF, SVG / 영상: MP4)' }, { status: 400 })
+    return NextResponse.json({ error: '지원하지 않는 파일 형식입니다. (이미지: JPEG, PNG, WebP, GIF, SVG / 영상: MP4, WebM)' }, { status: 400 })
   }
   if (isVideo) {
     if (file.size > MAX_VIDEO_SIZE) {

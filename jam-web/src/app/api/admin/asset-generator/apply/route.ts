@@ -128,16 +128,29 @@ export async function POST(req: NextRequest) {
   const targetId = typeof form.get('targetId') === 'string' ? String(form.get('targetId')).trim() : ''
   if (!targetId) return NextResponse.json({ error: config.missingTargetIdMessage }, { status: 400 })
 
-  const file = form.get('image')
+  const videoFile = form.get('video')
+  const isVideo = videoFile instanceof File && videoFile.size > 0
+  const file = isVideo ? videoFile : form.get('image')
+
   if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json({ error: '이미지 파일이 없습니다.' }, { status: 400 })
+    return NextResponse.json({ error: isVideo ? '동영상 파일이 없습니다.' : '이미지 파일이 없습니다.' }, { status: 400 })
   }
-  if (file.type !== 'image/png') {
+
+  if (isVideo) {
+    if (targetTypeRaw !== 'home_feed') {
+      return NextResponse.json({ error: '동영상은 홈피드 카드에만 반영할 수 있습니다.' }, { status: 400 })
+    }
+    const validVideo = file.type === 'video/mp4' || file.type === 'video/webm'
+    if (!validVideo) {
+      return NextResponse.json({ error: 'MP4 또는 WebM 동영상만 반영할 수 있습니다.' }, { status: 400 })
+    }
+  } else if (file.type !== 'image/png') {
     return NextResponse.json({ error: 'PNG 이미지만 반영할 수 있습니다.' }, { status: 400 })
   }
+
   if (file.size > MAX_APPLY_IMAGE_BYTES) {
     return NextResponse.json(
-      { error: `이미지가 너무 큽니다(${(file.size / 1024 / 1024).toFixed(1)}MB). 5MB 이하만 반영할 수 있습니다.` },
+      { error: `파일이 너무 큽니다(${(file.size / 1024 / 1024).toFixed(1)}MB). 5MB 이하만 반영할 수 있습니다.` },
       { status: 400 }
     )
   }
@@ -150,6 +163,46 @@ export async function POST(req: NextRequest) {
   if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 })
   if (!targetRow) return NextResponse.json({ error: config.notFoundMessage }, { status: 404 })
   const targetName = targetRow[config.nameColumn]
+
+  if (isVideo) {
+    const isMp4 = file.type.includes('mp4')
+    const ext = isMp4 ? 'mp4' : 'webm'
+    const videoBuffer = Buffer.from(await file.arrayBuffer())
+    const videoPath = `${config.storagePrefix}/asset-generator/${targetId}.${ext}`
+
+    const { error: videoUploadErr } = await supabase.storage
+      .from(APPLY_GENERATED_IMAGE_BUCKET)
+      .upload(videoPath, videoBuffer, { contentType: file.type, upsert: true })
+    if (videoUploadErr) {
+      return NextResponse.json({ error: `동영상 업로드 실패: ${videoUploadErr.message}` }, { status: 500 })
+    }
+
+    const {
+      data: { publicUrl: videoPublicUrl },
+    } = supabase.storage.from(APPLY_GENERATED_IMAGE_BUCKET).getPublicUrl(videoPath)
+    const mediaUrl = `${videoPublicUrl}?v=${Date.now()}`
+
+    const { error: updateErr } = await table
+      .update({ [config.imageUrlColumn]: mediaUrl, image_source: 'admin-generator' })
+      .eq('id', targetId)
+    if (updateErr) {
+      return NextResponse.json(
+        { error: `동영상은 업로드됐지만 반영에 실패했습니다: ${updateErr.message}` },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      id: targetId,
+      name: targetName,
+      originalUrl: videoPublicUrl,
+      webpUrl: mediaUrl,
+      mediaUrl,
+      webpBytes: videoBuffer.length,
+      mediaBytes: videoBuffer.length,
+      isVideo: true,
+    })
+  }
 
   const png = Buffer.from(await file.arrayBuffer())
   let webp: Buffer

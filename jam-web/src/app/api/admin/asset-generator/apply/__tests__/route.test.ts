@@ -337,4 +337,47 @@ describe('POST /api/admin/asset-generator/apply', () => {
       expect(uploadMock.mock.calls.every((call) => call[2].upsert === true)).toBe(true)
     })
   })
+
+  describe('동영상 반영 (티켓 20261022_2300)', () => {
+    it('홈피드: 동영상(MP4) 파일을 반영하면 cover_image_url을 .mp4 주소로 갱신하고 admin-generator로 기록한다', async () => {
+      lookupResult = { data: { id: HOME_FEED_ID, title: '홈피드 카드' }, error: null }
+      const fakeMp4 = new File([new Uint8Array([0, 0, 0, 20, 102, 116, 121, 112])], 'stage.mp4', { type: 'video/mp4' })
+      const form = new FormData()
+      form.append('targetType', 'home_feed')
+      form.append('targetId', HOME_FEED_ID)
+      form.append('video', fakeMp4)
+
+      const res = await POST(postReq(form))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.isVideo).toBe(true)
+      expect(body.mediaUrl).toContain('.mp4')
+
+      expect(fromCalls).toContain('today_cards')
+      expect(uploadMock).toHaveBeenCalledTimes(1)
+      expect(uploadMock).toHaveBeenCalledWith(
+        `today_cards/asset-generator/${HOME_FEED_ID}.mp4`,
+        expect.any(Buffer),
+        expect.objectContaining({ contentType: 'video/mp4', upsert: true })
+      )
+      expect(updatePayloads).toHaveLength(1)
+      expect(updatePayloads[0]).toEqual({
+        cover_image_url: expect.stringContaining(`https://cdn.test.jam.app/images/today_cards/asset-generator/${HOME_FEED_ID}.mp4`),
+        image_source: 'admin-generator',
+      })
+    })
+
+    it('배지나 미션 등 홈피드가 아닌 대상에 동영상을 반영하려고 하면 400 에러를 반환한다', async () => {
+      lookupResult = { data: { id: BADGE_ID, name: '테스트 배지' }, error: null }
+      const fakeMp4 = new File([new Uint8Array([1, 2, 3])], 'stage.mp4', { type: 'video/mp4' })
+      const form = new FormData()
+      form.append('targetType', 'badge')
+      form.append('targetId', BADGE_ID)
+      form.append('video', fakeMp4)
+
+      const res = await POST(postReq(form))
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toBe('동영상은 홈피드 카드에만 반영할 수 있습니다.')
+    })
+  })
 })

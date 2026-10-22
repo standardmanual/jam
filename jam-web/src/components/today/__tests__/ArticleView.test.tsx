@@ -63,6 +63,14 @@ describe('ArticleView — 커버', () => {
     expect(html).not.toContain('<img')
     expect(html).toContain('<article class="px-4 pt-6">')
   })
+
+  it('동영상 커버(mp4)면 video 태그로 16:9 칸에 렌더링된다', () => {
+    const html = renderToStaticMarkup(<ArticleView view={{ ...makeView(), coverUrl: 'https://cdn.example/video.mp4' }} />)
+    expect(html).toContain('<video')
+    expect(html).not.toContain('<img')
+    expect(html).toContain('src="https://cdn.example/video.mp4"')
+    expect(html).toContain('aspect-video')
+  })
 })
 
 describe('ArticleView — 머리 영역', () => {

@@ -43,6 +43,7 @@ import ItemBookSearchSelect, { type ItemBookSearchResult } from '@/components/ad
 import TodayCardSearchSelect, { type TodayCardSearchResult } from '@/components/admin/TodayCardSearchSelect'
 import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
 import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
+import { isVideoUrl } from '@/lib/today/cardMedia'
 import type { AssetGeneratorViewportHandle } from './AssetGeneratorViewport'
 
 interface ApplyTabProps {
@@ -107,8 +108,10 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
   const [collection, setCollection] = useState<ItemBookSearchResult | undefined>(undefined)
   const [cardId, setCardId] = useState('')
   const [card, setCard] = useState<TodayCardSearchResult | undefined>(undefined)
+  const [applyMode, setApplyMode] = useState<'image' | 'video'>('image')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [applying, setApplying] = useState(false)
+  const [progressLabel, setProgressLabel] = useState<string | null>(null)
 
   const targetId =
     contentType === 'badge' ? badgeId : contentType === 'mission' ? missionId : contentType === 'collection' ? collectionId : cardId
@@ -167,42 +170,102 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
     const viewport = viewportRef.current
     if (!viewport || !targetId) return
     setApplying(true)
+    setProgressLabel(null)
     try {
       await ensureImageAssetsReady(viewport)
       warnIfImageAssetsMissing(viewport)
       await ensureFontsReady(viewport)
       warnIfFontsMissing(viewport)
-      viewport.drawAtHead(viewport.getHead())
+
       const canvas = viewport.getCanvas()
       if (!canvas) throw new Error('캔버스를 찾지 못했어요.')
-      const blob = await canvasToBlob(canvas)
-      if (blob.size > MAX_APPLY_IMAGE_BYTES) {
-        throw new Error(
-          `이미지가 너무 커요(${(blob.size / 1024 / 1024).toFixed(1)}MB). ${MAX_APPLY_IMAGE_BYTES / 1024 / 1024}MB 이하만 반영할 수 있어요.`
-        )
-      }
+
       const form = new FormData()
       form.append('targetType', contentType)
       form.append('targetId', targetId)
-      form.append('image', blob, 'stage.png')
+
+      if (contentType === 'home_feed' && applyMode === 'video') {
+        setProgressLabel('동영상 녹화 준비 중…')
+        const canvasWithStream = canvas as HTMLCanvasElement & { captureStream?: (fps?: number) => MediaStream }
+        if (typeof window === 'undefined' || !('MediaRecorder' in window) || !canvasWithStream.captureStream) {
+          throw new Error('이 브라우저는 영상 녹화를 지원하지 않아요. Chrome에서 열어주세요.')
+        }
+        const candidates = [
+          'video/mp4;codecs=avc1.42E01E',
+          'video/mp4',
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm',
+        ]
+        const type = candidates.find((t) => MediaRecorder.isTypeSupported(t))
+        if (!type) throw new Error('지원되는 동영상 형식이 없어요.')
+
+        const stream = canvasWithStream.captureStream(30)
+        const chunks: BlobPart[] = []
+        const recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 2_500_000 })
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data)
+        }
+        const done = new Promise<void>((res) => {
+          recorder.onstop = () => res()
+        })
+        const durationSec = 10
+        recorder.start(250)
+        const t0 = performance.now()
+        await new Promise<void>((res) => {
+          const timer = setInterval(() => {
+            const el = (performance.now() - t0) / 1000
+            setProgressLabel(`녹화 중 ${Math.min(durationSec, Math.floor(el))} / ${durationSec}초`)
+            if (el >= durationSec) {
+              clearInterval(timer)
+              res()
+            }
+          }, 200)
+        })
+        recorder.stop()
+        await done
+        stream.getTracks().forEach((t) => t.stop())
+
+        const mime = type.split(';')[0]
+        const videoBlob = new Blob(chunks, { type: mime })
+        if (!videoBlob.size) throw new Error('녹화된 영상이 비어 있어요.')
+        if (videoBlob.size > MAX_APPLY_IMAGE_BYTES) {
+          throw new Error(`동영상이 너무 커요(${(videoBlob.size / 1024 / 1024).toFixed(1)}MB). 5MB 이하만 반영할 수 있어요.`)
+        }
+        const isMp4 = mime.includes('mp4')
+        form.append('video', videoBlob, `stage.${isMp4 ? 'mp4' : 'webm'}`)
+        setProgressLabel('동영상 업로드 및 반영 중…')
+      } else {
+        viewport.drawAtHead(viewport.getHead())
+        const blob = await canvasToBlob(canvas)
+        if (blob.size > MAX_APPLY_IMAGE_BYTES) {
+          throw new Error(
+            `이미지가 너무 커요(${(blob.size / 1024 / 1024).toFixed(1)}MB). ${MAX_APPLY_IMAGE_BYTES / 1024 / 1024}MB 이하만 반영할 수 있어요.`
+          )
+        }
+        form.append('image', blob, 'stage.png')
+      }
+
       const res = await fetch('/api/admin/asset-generator/apply', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '반영에 실패했어요.')
-      const result = data as ApplyResponse
-      toast.success(`'${result.name}'에 반영했어요 (WebP ${(result.webpBytes / 1024).toFixed(0)}KB).`)
+      const result = data as ApplyResponse & { mediaUrl?: string; isVideo?: boolean }
+      const finalUrl = result.mediaUrl ?? result.webpUrl
+      toast.success(`'${result.name}'에 ${result.isVideo ? '동영상을' : '이미지를'} 반영했어요.`)
       if (contentType === 'badge') {
-        setBadge((prev) => (prev ? { ...prev, image_url: result.webpUrl } : prev))
+        setBadge((prev) => (prev ? { ...prev, image_url: finalUrl } : prev))
       } else if (contentType === 'mission') {
-        setMission((prev) => (prev ? { ...prev, imageUrl: result.webpUrl } : prev))
+        setMission((prev) => (prev ? { ...prev, imageUrl: finalUrl } : prev))
       } else if (contentType === 'collection') {
-        setCollection((prev) => (prev ? { ...prev, imageUrl: result.webpUrl } : prev))
+        setCollection((prev) => (prev ? { ...prev, imageUrl: finalUrl } : prev))
       } else {
-        setCard((prev) => (prev ? { ...prev, imageUrl: result.webpUrl } : prev))
+        setCard((prev) => (prev ? { ...prev, imageUrl: finalUrl } : prev))
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '반영에 실패했어요.')
     } finally {
       setApplying(false)
+      setProgressLabel(null)
     }
   }
 
@@ -249,14 +312,51 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
         )}
       </div>
 
+      {contentType === 'home_feed' && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-foreground">반영 형식</label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={applyMode === 'image' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setApplyMode('image')}
+              className="flex-1 text-xs"
+            >
+              정지 이미지 (WebP)
+            </Button>
+            <Button
+              type="button"
+              variant={applyMode === 'video' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setApplyMode('video')}
+              className="flex-1 text-xs"
+            >
+              동영상 모션 (10초 녹화)
+            </Button>
+          </div>
+        </div>
+      )}
+
       {targetName && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-sm font-medium text-foreground">현재 이미지</p>
+          <p className="text-sm font-medium text-foreground">현재 미디어</p>
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-3">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-white">
               {targetImageUrl ? (
-                // 홈피드 기존 카드는 외부 호스트 이미지가 많아 허용 목록 밖일 수 있다 — SafeImage가 일반 <img>로 처리한다
-                <SafeImage src={targetImageUrl} alt={targetName} className="object-contain" />
+                isVideoUrl(targetImageUrl) ? (
+                  <video
+                    src={targetImageUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  // 홈피드 기존 카드는 외부 호스트 이미지가 많아 허용 목록 밖일 수 있다 — SafeImage가 일반 <img>로 처리한다
+                  <SafeImage src={targetImageUrl} alt={targetName} className="object-contain" />
+                )
               ) : (
                 <span className="flex h-full w-full items-center justify-center text-[11px] text-muted-foreground">
                   없음
@@ -270,21 +370,36 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
                   [{badge.type}/{badge.rarity}]
                 </span>
               )}
+              {targetImageUrl && isVideoUrl(targetImageUrl) && (
+                <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  동영상 재생 중
+                </span>
+              )}
             </div>
           </div>
         </div>
       )}
 
       <Button type="button" onClick={() => setConfirmOpen(true)} disabled={!targetId || applying}>
-        {applying ? '반영하는 중…' : '지금 스테이지 이미지로 반영'}
+        {applying
+          ? (progressLabel ?? '반영하는 중…')
+          : contentType === 'home_feed' && applyMode === 'video'
+            ? '지금 스테이지를 동영상으로 녹화해 반영'
+            : '지금 스테이지 이미지로 반영'}
       </Button>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
-            <AlertDialogTitle>이미지를 반영할까요?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {contentType === 'home_feed' && applyMode === 'video'
+                ? '동영상을 반영할까요?'
+                : '이미지를 반영할까요?'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{targetName}&apos;의 대표 이미지를 지금 스테이지 화면으로 바꿔요. 되돌릴 수 없어요.
+              {contentType === 'home_feed' && applyMode === 'video'
+                ? `'${targetName}'의 커버를 지금 스테이지의 동영상(10초 모션 녹화)으로 바꿔요. 되돌릴 수 없어요.`
+                : `'${targetName}'의 대표 이미지를 지금 스테이지 화면으로 바꿔요. 되돌릴 수 없어요.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

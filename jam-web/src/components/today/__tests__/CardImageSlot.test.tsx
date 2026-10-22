@@ -13,6 +13,7 @@ import { resourceIconOf } from '../resourceIcon'
 import { CARD_RESOURCES, type ImageCardView } from '@/lib/today/cardView'
 
 const IMAGE = 'https://cdn.example/cover.png'
+const VIDEO = 'https://cdn.example/motion.mp4'
 const INTERNAL_IMAGE = '/badges/sample/s142.png'
 
 // 칸을 공용으로 빼기 전 HeroCard의 문자열(티켓 20261001_1737)
@@ -158,5 +159,40 @@ describe('CardImageSlot — alt·sizes는 세 비율이 같은 한 곳의 규칙
 
   it.each([['video'], ['poster'], ['square']] as const)('%s: 최적화 가능한 주소에는 카드 폭(398px/뷰포트−32px) sizes를 준다', (ratio) => {
     expect(render(ratio, { imageUrl: INTERNAL_IMAGE })).toContain('sizes="(min-width: 430px) 398px, calc(100vw - 32px)"')
+  })
+})
+
+describe('CardImageSlot — 동영상 미디어 지원 (티켓 20261022_2300)', () => {
+  it('동영상 URL(mp4)이 주어지면 video 태그로 렌더링된다', () => {
+    const html = render('video', { imageUrl: VIDEO })
+    expect(html).toContain('<video')
+    expect(html).not.toContain('<img')
+    expect(html).toContain(`src="${VIDEO}"`)
+    expect(html).toContain('autoPlay=""')
+    expect(html).toContain('loop=""')
+    expect(html).toContain('muted=""')
+    expect(html).toContain('playsInline=""')
+  })
+
+  it('비디오 태그에 비율별 클래스가 적용된다 (video: object-cover, square: object-contain)', () => {
+    expect(render('video', { imageUrl: VIDEO })).toContain('class="absolute inset-0 w-full h-full object-cover"')
+    expect(render('poster', { imageUrl: VIDEO })).toContain('class="absolute inset-0 w-full h-full object-cover"')
+    expect(render('square', { imageUrl: VIDEO })).toContain('class="absolute inset-0 w-full h-full object-contain"')
+  })
+
+  it('imageDimmed일 때 비디오 태그에도 grayscale이 붙는다', () => {
+    const html = render('video', { imageUrl: VIDEO, imageDimmed: true })
+    expect(html).toContain('grayscale')
+  })
+
+  it('titleInImage가 아니면 aria-hidden="true"가 붙는다', () => {
+    const html = render('video', { imageUrl: VIDEO, titleInImage: false })
+    expect(html).toContain('aria-hidden="true"')
+  })
+
+  it('titleInImage면 aria-label에 제목이 들어간다', () => {
+    const html = render('video', { imageUrl: VIDEO, titleInImage: true })
+    expect(html).toContain('aria-label="한강 러닝 챌린지"')
+    expect(html).not.toContain('aria-hidden="true"')
   })
 })

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import LocalDate from '@/components/LocalDate'
 import SafeImage from '@/components/SafeImage'
+import { isVideoUrl } from '@/lib/today/cardMedia'
 import { d } from '@/lib/i18n'
 import type { ArticleView as ArticleViewData } from '@/lib/today/articleView'
 
@@ -34,14 +35,28 @@ export default function ArticleView({ view }: { view: ArticleViewData }) {
       {/* 20260824_004: 홈 카드와 같은 cover_image_url(어드민 자유 입력)이라 SafeImage 경유.
           앱 열이 최대 430px이라 `sizes`를 주지 않으면 100vw로 가정해 과대 다운로드한다 */}
       {view.coverUrl && (
-        <SafeImage
-          src={view.coverUrl}
-          alt=""
-          priority
-          sizes="(min-width: 430px) 430px, 100vw"
-          containerClassName="relative w-full aspect-video overflow-hidden"
-          className="object-cover"
-        />
+        isVideoUrl(view.coverUrl) ? (
+          <div className="relative w-full aspect-video overflow-hidden">
+            <video
+              src={view.coverUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <SafeImage
+            src={view.coverUrl}
+            alt=""
+            priority
+            sizes="(min-width: 430px) 430px, 100vw"
+            containerClassName="relative w-full aspect-video overflow-hidden"
+            className="object-cover"
+          />
+        )
       )}
 
       <article className="px-4 pt-6">
