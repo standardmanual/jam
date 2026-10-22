@@ -22,6 +22,7 @@
       "docs/service/writing/UX_WRITING_GUIDELINE.md",
       "docs/service/writing/SLOP_DICTIONARY.md",
       "docs/tickets/_TEMPLATE.md",
+      "jam-web/src/lib/admin/policyDashboard/policiesData.ts",
       "scripts/verify.sh",
       "scripts/doc-check.mjs",
       "scripts/doc-check.config.json",

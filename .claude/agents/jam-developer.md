@@ -75,6 +75,10 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    - Content seed generators (`docs/assets/content-seed/v5_*.py`) may be run from the worktree
      root: they resolve paths relative to their own location and write into your worktree's
      `jam-web/supabase/migrations/`.
+   - **Service Policy Dashboard synchronization**: Whenever service operating policies, balance
+     constants, speed/activity thresholds, cooldowns, or domain rules are added or altered, you
+     must update the matching items in `jam-web/src/lib/admin/policyDashboard/policiesData.ts`
+     in the same commit (`CLAUDE.md` Hard rule 2).
 10. **Do not claim "Google login blocks verification."** `stage.j-a-m.app`
    (`STAGING_MODE=true`) redirects unauthenticated requests to `/api/dev-login` and signs in a fixed
    test account; local `next dev` behaves the same. If this branch is not merged into staging yet,

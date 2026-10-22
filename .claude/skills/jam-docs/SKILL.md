@@ -231,6 +231,19 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 ---
 
+## ⑥ 서비스 운영 정책 대시보드 (`policiesData.ts`)
+
+**대상 변경**: 서비스 운영 정책, 밸런스 수치(확률·비용·임계값·배율 등), 속도/어뷰징 판정 기준, 챕터/미션/포인트/보상 등 도메인 규칙 변경
+
+**위치**: `jam-web/src/lib/admin/policyDashboard/policiesData.ts`
+
+**갱신 원칙**:
+1. 서비스 운영 정책 대시보드(`/admin/policy-dashboard`)는 19개 장 전체 96개 정책 카탈로그를 관리자에게 단일 관제로 제공한다.
+2. 정책 수치나 비즈니스 규칙이 코드나 문서에서 변경되면, 대시보드 카탈로그(`policiesData.ts`)의 해당 항목(`value`, `description`, `userImpact`, `status` 등)도 반드시 같은 작업에서 함께 갱신한다.
+3. 신규 정책이 도입되면 해당 챕터 배열에 새 `PolicyItem`을 추가하고 고유한 `id`를 부여한다.
+
+---
+
 ## 폐기된 규칙
 
 `SERVICE_OPERATIONS_YYYYMMDD_HHMM.md` 타임스탬프 파일 생성 방식은 티켓 시스템으로 대체됐다.

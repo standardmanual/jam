@@ -110,9 +110,11 @@ a one-word reason; do not silently omit it.
      minimized
    - `admin`: the `ADMIN_EMAILS`/`ADMIN_SECRET` check path is present
 10. Error handling matches the spec's expected behaviour
-11. Documentation — did 아현 update every document the change actually affects. `docs/` edits
-    appear in the review diff like any other file. Judge the diff itself, and check `문서 갱신안`
-    against it
+11. Documentation & Policy Dashboard — did 아현 update every document the change actually affects.
+    If the change modifies service operating policies, balance constants, speed/activity thresholds,
+    or domain rules, check that `jam-web/src/lib/admin/policyDashboard/policiesData.ts` is updated
+    alongside them. `docs/` edits appear in the review diff like any other file. Judge the diff
+    itself, and check `문서 갱신안` against it
 12. **Korean naturalness** (`copy`·`ui`·`content` types only, when the diff has new/changed
     user-facing Korean text). Two sources, both context-dependent — pattern matching already
     caught the rest at `verify.sh` time (`scripts/check-slop.mjs`):

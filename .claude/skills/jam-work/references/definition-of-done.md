@@ -31,6 +31,7 @@
   skip/only, `max-warnings` 상향 등) — 확인: 기준 방어 — `scripts/verify.sh`의 lint 단계 +
   `.githooks/pre-push` 통과
 - [ ] 이 변경이 실제로 영향을 주는 문서가 갱신됐다 — 확인: 민지 점검표 11번(문서 반영)
+- [ ] 정책·밸런스 수치·운영 규칙 변경 시 서비스 운영 정책 대시보드(`jam-web/src/lib/admin/policyDashboard/policiesData.ts`)가 동기화됐다 — 확인: 민지 점검표 11번(문서 및 정책 대시보드 반영)
 
 ## 배포 준비
 
