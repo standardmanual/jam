@@ -24,6 +24,7 @@ import { buildMissionDrafts, buildMissionRankDrafts } from '../batch/missions'
 import { buildFollowingDrafts } from '../batch/following'
 import { buildInventoryFullDrafts, buildSyncStalledDrafts } from '../batch/account'
 import { kstDateString } from '../kst'
+import { scopedGroupKey } from '../groupKey'
 
 const BATCH_AT = new Date('2026-08-25T09:00:00.000Z')
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -332,6 +333,104 @@ function fixtures(badgeCount = 3): Record<string, Row[]> {
   }
 }
 
+/** 팔로잉 컬렉션 완성 소식만 남긴 표 — 희귀 배지 후보가 대표를 가로채지 않게 비운다 */
+function followingBookOnly(over: Record<string, Row[]>): Record<string, Row[]> {
+  return {
+    ...fixtures(),
+    item_books: [
+      { id: 'book-1', name: '오아시스 자판기' },
+      { id: 'book-2', name: '잃어버린 시간' },
+    ],
+    user_activity_badges: [],
+    inventory_items: [],
+    user_item_book_completions: [],
+    user_item_book_tier_completions: [],
+    ...over,
+  }
+}
+
+describe('팔로잉 컬렉션 완성 — 옛 표와 등급 표를 합친다 (티켓 20261022_0939 1회)', () => {
+  it('등급 완성 표의 완성도 팔로워에게 컬렉션 완성 소식이 된다', async () => {
+    const stub = createStubClient(
+      followingBookOnly({
+        user_item_book_tier_completions: [{ user_id: 'u1', item_book_id: 'book-1', tier: 'common', completed_at: ISO }],
+      })
+    )
+    const out = await buildFollowingDrafts(ctxOf(stub.client))
+    expect(out.drafts).toHaveLength(1)
+    expect(out.drafts[0]).toMatchObject({
+      userId: 'u2',
+      type: 'following_collection_complete',
+      actorUserId: 'u1',
+      payload: { item_book_id: 'book-1', book_name: '오아시스 자판기' },
+    })
+  })
+
+  it('한 유저가 같은 컬렉션의 여러 등급을 완성해도 소식은 하나이고 «더 있어요» 꼬리가 붙지 않는다', async () => {
+    const stub = createStubClient(
+      followingBookOnly({
+        user_item_book_tier_completions: [
+          { user_id: 'u1', item_book_id: 'book-1', tier: 'common', completed_at: ISO },
+          { user_id: 'u1', item_book_id: 'book-1', tier: 'rare', completed_at: ISO },
+          { user_id: 'u1', item_book_id: 'book-1', tier: 'epic', completed_at: ISO },
+        ],
+      })
+    )
+    const out = await buildFollowingDrafts(ctxOf(stub.client))
+    expect(out.drafts).toHaveLength(1)
+    expect(out.drafts[0].payload).not.toHaveProperty('more_count')
+  })
+
+  it('옛 표와 등급 표에 같은 컬렉션이 겹쳐도 소식은 하나다', async () => {
+    const stub = createStubClient(
+      followingBookOnly({
+        user_item_book_completions: [{ user_id: 'u1', item_book_id: 'book-1', completed_at: ISO }],
+        user_item_book_tier_completions: [{ user_id: 'u1', item_book_id: 'book-1', tier: 'common', completed_at: ISO }],
+      })
+    )
+    const out = await buildFollowingDrafts(ctxOf(stub.client))
+    expect(out.drafts).toHaveLength(1)
+    expect(out.drafts[0].payload).not.toHaveProperty('more_count')
+  })
+
+  it('다른 컬렉션 둘을 완성하면 후보는 둘이라 한 사람의 대표 하나에 «1건 더»가 붙는다', async () => {
+    const stub = createStubClient(
+      followingBookOnly({
+        user_item_book_completions: [{ user_id: 'u1', item_book_id: 'book-1', completed_at: ISO }],
+        user_item_book_tier_completions: [{ user_id: 'u1', item_book_id: 'book-2', tier: 'common', completed_at: ISO }],
+      })
+    )
+    const out = await buildFollowingDrafts(ctxOf(stub.client))
+    expect(out.drafts).toHaveLength(1)
+    expect(out.drafts[0].payload).toMatchObject({ more_count: 1 })
+  })
+
+  it('후보 모양과 알림 그룹 키는 그대로다 — (컬렉션, 행위자)', async () => {
+    const stub = createStubClient(
+      followingBookOnly({
+        user_item_book_tier_completions: [{ user_id: 'u1', item_book_id: 'book-1', tier: 'mystic', completed_at: ISO }],
+      })
+    )
+    const out = await buildFollowingDrafts(ctxOf(stub.client))
+    expect(out.drafts[0].groupKey).toBe(scopedGroupKey('following_collection_complete', 'book-1', 'u1'))
+    expect(out.drafts[0].mode).toBe('once')
+  })
+
+  it('scanned는 합치기 전 이벤트 행 수다 — 두 표의 행을 모두 센다', async () => {
+    const stub = createStubClient(
+      followingBookOnly({
+        user_item_book_completions: [{ user_id: 'u1', item_book_id: 'book-1', completed_at: ISO }],
+        user_item_book_tier_completions: [
+          { user_id: 'u1', item_book_id: 'book-1', tier: 'common', completed_at: ISO },
+          { user_id: 'u1', item_book_id: 'book-1', tier: 'rare', completed_at: ISO },
+        ],
+      })
+    )
+    const out = await buildFollowingDrafts(ctxOf(stub.client))
+    expect(out.scanned).toBe(3)
+  })
+})
+
 const LOADERS = [
   { name: 'collections', run: buildCollectionDrafts },
   { name: 'drop-spot', run: buildDropSpotDrafts },
@@ -369,6 +468,13 @@ describe('7개 단계 로더', () => {
     await buildMissionRankDrafts(ctxOf(rankStub.client))
     const snapshots = rankStub.paged().find((q) => q.table === 'mission_rank_snapshots')
     expect(snapshots?.orders).toEqual(['mission_id', 'user_id'])
+  })
+
+  it('등급 완성 표(복합 PK 세 열)도 컬럼을 전부 정렬 키로 쓴다 (티켓 20261022_0939 1회)', async () => {
+    const stub = createStubClient(fixtures())
+    await buildFollowingDrafts(ctxOf(stub.client))
+    const tierCompletions = stub.paged().find((q) => q.table === 'user_item_book_tier_completions')
+    expect(tierCompletions?.orders).toEqual(['user_id', 'item_book_id', 'tier'])
   })
 
   it('아이템북 소속 배지가 상한을 넘으면 inventory_items 조회를 쪼갠다 (TRIBES 목표 900종)', async () => {

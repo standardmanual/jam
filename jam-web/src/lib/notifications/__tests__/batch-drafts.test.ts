@@ -21,6 +21,7 @@ import {
 } from '../batch/missions'
 import {
   FOLLOWING_DAILY_CAP,
+  dedupeBookCompletions,
   selectFollowingDrafts,
   type FollowingCandidate,
 } from '../batch/following'
@@ -810,6 +811,45 @@ describe('⑥ 팔로잉 활동 — 하루 상한 사람 2명 (R15)', () => {
     const drafts = selectFollowingDrafts(many, today)
     expect(drafts).toHaveLength(FOLLOWING_DAILY_CAP)
     expect(drafts.map((d) => d.actorUserId)).toEqual(['a1', 'a2'])
+  })
+})
+
+describe('⑥ 팔로잉 컬렉션 완성 — (유저, 컬렉션)당 한 줄 (티켓 20261022_0939 1회)', () => {
+  it('같은 유저가 같은 컬렉션의 여러 등급을 완성해도 한 줄이고, 가장 이른 완성 시각을 남긴다', () => {
+    const rows = dedupeBookCompletions([
+      { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T06:00:00+00:00' },
+      { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T04:30:00+00:00' },
+      { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T05:00:00+00:00' },
+    ])
+    expect(rows).toEqual([{ user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T04:30:00+00:00' }])
+  })
+
+  it('입력 순서가 달라도 같은 결과다', () => {
+    const early = { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T04:00:00Z' }
+    const late = { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T08:00:00Z' }
+    expect(dedupeBookCompletions([early, late])).toEqual([early])
+    expect(dedupeBookCompletions([late, early])).toEqual([early])
+  })
+
+  it('시각 표기(Z와 +00:00)가 달라도 시각으로 비교한다', () => {
+    const rows = dedupeBookCompletions([
+      { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T05:00:00Z' },
+      { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T04:59:59+00:00' },
+    ])
+    expect(rows.map((r) => r.completed_at)).toEqual(['2026-08-25T04:59:59+00:00'])
+  })
+
+  it('다른 유저·다른 컬렉션은 각각 남는다', () => {
+    const rows = dedupeBookCompletions([
+      { user_id: 'a1', item_book_id: 'book-1', completed_at: '2026-08-25T04:00:00Z' },
+      { user_id: 'a2', item_book_id: 'book-1', completed_at: '2026-08-25T04:00:00Z' },
+      { user_id: 'a1', item_book_id: 'book-2', completed_at: '2026-08-25T04:00:00Z' },
+    ])
+    expect(rows.map((r) => `${r.user_id}:${r.item_book_id}`).sort()).toEqual(['a1:book-1', 'a1:book-2', 'a2:book-1'])
+  })
+
+  it('빈 입력은 빈 배열이다', () => {
+    expect(dedupeBookCompletions([])).toEqual([])
   })
 })
 

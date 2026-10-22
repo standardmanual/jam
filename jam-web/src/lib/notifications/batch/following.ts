@@ -114,6 +114,32 @@ export type FollowingCandidate =
       actorIds: string[]
     }
 
+/** 컬렉션 완성 기록 한 줄 — 옛 완성 표와 등급 완성 표가 같은 모양으로 합쳐진다 */
+export interface BookCompletionRow {
+  user_id: string
+  item_book_id: string
+  completed_at: string
+}
+
+/**
+ * 컬렉션 완성 기록을 **(유저, 컬렉션)당 한 줄**로 줄인다. 가장 이른 완성 시각을 남긴다.
+ *
+ * 등급 완성 표는 등급마다 한 행이라 한 유저가 같은 컬렉션의 여러 등급을 24시간 안에 완성하면 같은 컬렉션이 여러 줄로 온다.
+ * 그대로 후보를 만들면 같은 사람의 소식이 둘로 세어져 «소식이 1건 더 있어요»가 붙는다. 옛 완성 표와 등급 완성 표에 같은
+ * 컬렉션이 겹칠 때도 같다(티켓 20261022_0939 1회). 알림 그룹 키가 (컬렉션, 행위자)라 후보 한 줄이 곧 알림 한 건이다.
+ *
+ * 입력 순서와 상관없이 같은 결과를 낸다: 시각이 같으면 먼저 들어온 줄을 그대로 둔다.
+ */
+export function dedupeBookCompletions(rows: readonly BookCompletionRow[]): BookCompletionRow[] {
+  const earliest = new Map<string, BookCompletionRow>()
+  for (const row of rows) {
+    const key = `${row.user_id}:${row.item_book_id}`
+    const kept = earliest.get(key)
+    if (!kept || Date.parse(row.completed_at) < Date.parse(kept.completed_at)) earliest.set(key, row)
+  }
+  return [...earliest.values()]
+}
+
 /** 대표 선정 정렬 — 우선순위(R8) → 최근 순. 동률은 행위자 id로 고정해 결정론을 유지한다 */
 function byPriorityThenRecent(a: FollowingCandidate, b: FollowingCandidate): number {
   if (a.priority !== b.priority) return a.priority - b.priority
@@ -218,7 +244,8 @@ function toDraft(c: FollowingCandidate, today: string, more = 0): NotificationDr
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `scanned`는 **지난 24시간 이벤트 행 수**다(배지·아이템·컬렉션 완성·미션 완료 합).
+ * `scanned`는 **지난 24시간 이벤트 행 수**다(배지·아이템·컬렉션 완성·미션 완료 합). 컬렉션 완성은 옛 완성 표와 등급 완성 표의
+ * 행을 합치기 **전**의 수라 한 컬렉션의 등급 행이 여러 개면 그만큼 센다.
  * 이벤트가 있는데 초안이 0인 상태가 이어지면 팔로우 팬아웃이나 등급·레벨 필터가 깨진 것이다 —
  * 제거된 지역 소식이 정확히 이 패턴(입력은 있는데 매칭이 0)으로 무증상이었다.
  */
@@ -242,7 +269,7 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
   }
 
   // 지난 24시간 이벤트만 조회한다(배지 전체를 훑고 거르는 것보다 훨씬 싸다)
-  const [activityBadges, invItems, bookCompletions, missionCompletions] = await Promise.all([
+  const [activityBadges, invItems, legacyBookCompletions, tierBookCompletions, missionCompletions] = await Promise.all([
     fetchAllRows<{ user_id: string; badge_id: string; earned_at: string }>(
       'user_activity_badges(24h)',
       'id',
@@ -261,12 +288,22 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
           .is('dropped_at', null)
     ),
     // user_item_book_completions는 복합 PK (user_id, item_book_id) — 둘 다 줘야 전순서가 잡힌다
-    fetchAllRows<{ user_id: string; item_book_id: string; completed_at: string }>(
+    fetchAllRows<BookCompletionRow>(
       'user_item_book_completions(24h)',
       ['user_id', 'item_book_id'],
       () =>
         supabase
           .from('user_item_book_completions')
+          .select('user_id, item_book_id, completed_at')
+          .gte('completed_at', since)
+    ),
+    // user_item_book_tier_completions는 복합 PK (user_id, item_book_id, tier) — 셋 다 줘야 전순서가 잡힌다
+    fetchAllRows<BookCompletionRow>(
+      'user_item_book_tier_completions(24h)',
+      ['user_id', 'item_book_id', 'tier'],
+      () =>
+        supabase
+          .from('user_item_book_tier_completions')
           .select('user_id, item_book_id, completed_at')
           .gte('completed_at', since)
     ),
@@ -281,9 +318,16 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
     ),
   ])
 
+  // 두 표를 (유저, 컬렉션)당 한 줄로 합친다 — 등급 여러 개·두 표 겹침이 후보를 늘리지 않게
+  const bookCompletions = dedupeBookCompletions([...legacyBookCompletions, ...tierBookCompletions])
+
   const candidates: FollowingCandidate[] = []
   const scanned =
-    activityBadges.length + invItems.length + bookCompletions.length + missionCompletions.length
+    activityBadges.length +
+    invItems.length +
+    legacyBookCompletions.length +
+    tierBookCompletions.length +
+    missionCompletions.length
 
   // ── #29 팔로잉 희귀 배지 — Epic·Mystic 또는 Lv.6 이상 ────────────────────
   const badgeIds = [

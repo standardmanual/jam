@@ -208,6 +208,35 @@ describe('완료 수 지표 — completed_at 기준', () => {
     expect(await countCollectionCompletions(client, U, WINDOW)).toBe(3)
     expect(await countCollectionCompletions(client, U)).toBe(5)
   })
+
+  it('collection_complete_count: 등급 완성 표도 같은 기간으로 건다 — 기간 안 등급 행만 센다 / 인자가 없으면 전부', async () => {
+    const { client } = makeFakeDb({
+      user_item_book_tier_completions: rowsAround((at, n) => ({ user_id: U, item_book_id: `book-${n}`, tier: 'common', completed_at: at })),
+    })
+    expect(await countCollectionCompletions(client, U, WINDOW)).toBe(3)
+    expect(await countCollectionCompletions(client, U)).toBe(5)
+  })
+
+  it('collection_complete_count: 두 표를 합쳐 센다 — 기간 안의 같은 컬렉션은 한 번, 기간 밖 행은 두 표 모두 뺀다', async () => {
+    const { client } = makeFakeDb({
+      user_item_book_completions: [
+        { user_id: U, item_book_id: 'book-a', completed_at: INSIDE },
+        { user_id: U, item_book_id: 'book-b', completed_at: BEFORE },
+      ],
+      user_item_book_tier_completions: [
+        { user_id: U, item_book_id: 'book-a', tier: 'common', completed_at: AT_FROM },
+        { user_id: U, item_book_id: 'book-a', tier: 'rare', completed_at: AT_TO },
+        { user_id: U, item_book_id: 'book-c', tier: 'common', completed_at: INSIDE },
+        { user_id: U, item_book_id: 'book-d', tier: 'common', completed_at: AFTER },
+        { user_id: U, item_book_id: 'book-b', tier: 'rare', completed_at: AFTER },
+        { user_id: OTHER, item_book_id: 'book-x', tier: 'common', completed_at: INSIDE },
+      ],
+    })
+    // 기간 안: book-a(옛 표 + 등급 2행), book-c → 2권
+    expect(await countCollectionCompletions(client, U, WINDOW)).toBe(2)
+    // 인자 없음: a, b, c, d → 4권
+    expect(await countCollectionCompletions(client, U)).toBe(4)
+  })
 })
 
 describe('새 JAM 조건 지표', () => {

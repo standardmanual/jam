@@ -318,8 +318,10 @@ function buildCounters(supabase: Supabase): Record<ActionMetricKey, Counter[]> {
     mission_complete: [
       (a, b) => supabase.from('user_mission_completions').select('*', head).gte('completed_at', a).lt('completed_at', b),
     ],
+    // 옛 완성 표 + 등급 완성 표 행 수의 합. 한 컬렉션의 등급 완성은 등급마다 한 행이라 등급 완성 건수로 센다(티켓 20261022_0939 1회).
     collection_complete: [
       (a, b) => supabase.from('user_item_book_completions').select('*', head).gte('completed_at', a).lt('completed_at', b),
+      (a, b) => supabase.from('user_item_book_tier_completions').select('*', head).gte('completed_at', a).lt('completed_at', b),
     ],
   }
 }

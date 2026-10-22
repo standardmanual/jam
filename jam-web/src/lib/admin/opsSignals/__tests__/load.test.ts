@@ -266,6 +266,7 @@ beforeEach(() => {
     poi_drops: [],
     user_mission_completions: [],
     user_item_book_completions: [],
+    user_item_book_tier_completions: [],
     badges: [],
   }
   h.state.errors = {}
@@ -587,6 +588,7 @@ describe('loadOpsSignals — 행동 건수', () => {
       'poi_drops',
       'user_mission_completions',
       'user_item_book_completions',
+      'user_item_book_tier_completions',
     ]
     for (const table of actionTables) {
       const selects = h.state.selects.filter((entry) => entry.table === table)
@@ -610,6 +612,44 @@ describe('loadOpsSignals — 행동 건수', () => {
     expect(messages).toContain('유저 드랍: 최근 7일 15건이에요. 직전 4주에는 한 건도 없었어요.')
     expect(messages).toContain('믹스 시도: 최근 7일 5건이에요. 직전 4주에는 한 건도 없었어요.')
     expect(messages.some((message) => message.startsWith('픽업'))).toBe(false)
+  })
+
+  it('컬렉션 완성은 옛 완성 표와 등급 완성 표의 행 수를 더해서 센다 (티켓 20261022_0939 1회)', async () => {
+    h.state.tables.user_item_book_completions = [{ user_id: 'u1', item_book_id: 'b1', completed_at: recent(1) }]
+    h.state.tables.user_item_book_tier_completions = [
+      { user_id: 'u2', item_book_id: 'b2', tier: 'common', completed_at: recent(2) },
+      { user_id: 'u2', item_book_id: 'b2', tier: 'rare', completed_at: recent(3) },
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    const messages = signal(result, 'action_spike').results.map((entry) => entry.message)
+    // 옛 표 1건 + 등급 표 2건 = 3건. 한 표만 세면 1건(최소 2건 미만)이라 신호가 뜨지 않는다.
+    expect(messages).toContain('컬렉션 완성: 최근 7일 3건이에요. 직전 4주에는 한 건도 없었어요.')
+  })
+
+  it('등급 완성 표만 있어도 컬렉션 완성을 센다 — 모든 컬렉션이 등급형이 되어도 0으로 남지 않는다', async () => {
+    h.state.tables.user_item_book_tier_completions = [
+      { user_id: 'u1', item_book_id: 'b1', tier: 'common', completed_at: recent(1) },
+      { user_id: 'u2', item_book_id: 'b1', tier: 'common', completed_at: recent(2) },
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    const messages = signal(result, 'action_spike').results.map((entry) => entry.message)
+    expect(messages).toContain('컬렉션 완성: 최근 7일 2건이에요. 직전 4주에는 한 건도 없었어요.')
+  })
+
+  it('컬렉션 완성의 직전 4주 건수도 두 표를 더해 주평균을 낸다', async () => {
+    h.state.tables.user_item_book_completions = rowsWith(4, (n) => ({
+      user_id: `o${n}`,
+      item_book_id: 'b1',
+      completed_at: recent(15),
+    }))
+    h.state.tables.user_item_book_tier_completions = [
+      ...rowsWith(4, (n) => ({ user_id: `t${n}`, item_book_id: 'b1', tier: 'common', completed_at: recent(20) })),
+      ...rowsWith(4, (n) => ({ user_id: `r${n}`, item_book_id: 'b1', tier: 'common', completed_at: recent(2) })),
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    const messages = signal(result, 'action_spike').results.map((entry) => entry.message)
+    // 직전 4주 4+4=8건 = 주 2건, 최근 7일 4건 = 2배
+    expect(messages).toContain('컬렉션 완성: 최근 7일 4건으로, 직전 4주 평균(주 2건)의 2배예요.')
   })
 
   it('직전 4주 합계를 주평균으로 바꿔 배수와 맞댄다(픽업 최근 30건, 직전 4주 60건 = 주 15건의 2배)', async () => {
@@ -684,6 +724,13 @@ describe('loadOpsSignals — 원천 하나가 실패하면 그 원천에 기대�
     expect(byKey.action_spike).toBe('load_failed')
     expect(byKey.execution_failed).toBe('raised')
     expect(byKey.empty_content).not.toBe('load_failed')
+  })
+
+  it('등급 완성 표 조회가 실패해도 행동 횟수 급증이 load_failed이다 — 옛 표 값만으로 낮게 세지 않는다', async () => {
+    h.state.errors.user_item_book_tier_completions = '권한 없음'
+    const result = await loadOpsSignals({ now: NOW })
+    expect(result.sourceErrors.actions).toBe('권한 없음')
+    expect(states(result).action_spike).toBe('load_failed')
   })
 
   it('미션 조회가 실패해도 어떤 신호도 load_failed가 되지 않는다', async () => {
