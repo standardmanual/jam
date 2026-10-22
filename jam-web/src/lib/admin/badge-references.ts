@@ -64,6 +64,7 @@ export type BadgeReferenceKey =
   | 'recipes_required'
   | 'item_books_required'
   | 'item_books_reward'
+  | 'item_book_tier_rewards'
 
 export interface BadgeReferenceSource {
   key: BadgeReferenceKey
@@ -282,6 +283,18 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
     cascades: false,
     detachable: false,
   },
+  {
+    // 마이그레이션 222(티켓 20261022_1139 2회): 등급별 보상 배지. 지우면 그 등급의 보상 배지 칸만 NULL이 되어(ON DELETE SET NULL) 보상이 조용히 나가지 않게 된다.
+    // 외래키 위반으로 삭제가 실패하지 않으므로 blocksDelete는 false다 — 위 «컬렉션 완성 보상»과 같은 방식으로, 삭제 전 참조 목록에 보여 주고
+    // 콘텐츠 연결 합계(`contentTotal`)로 하드 삭제 가드가 먼저 정리하게 한다.
+    key: 'item_book_tier_rewards',
+    group: 'content',
+    label: '컬렉션 등급별 보상',
+    location: 'item_book_tier_rewards.reward_badge_id',
+    blocksDelete: false,
+    cascades: false,
+    detachable: false,
+  },
 ]
 
 export const BADGE_REFERENCE_SOURCE_BY_KEY = new Map(BADGE_REFERENCE_SOURCES.map((s) => [s.key, s]))
@@ -458,6 +471,12 @@ export async function collectBadgeReferences(
     {
       key: 'poi',
       run: (chunk) => supabase.from('poi').select('*', { count: 'exact', head: true }).in('linked_badge_id', chunk),
+    },
+    {
+      // 행 수가 컬렉션 수 × 4 이하인 작은 표지만, 배지 id 목록을 청크로 쪼개 세는 이 방식이 가장 단순해 같이 둔다.
+      key: 'item_book_tier_rewards',
+      run: (chunk) =>
+        supabase.from('item_book_tier_rewards').select('*', { count: 'exact', head: true }).in('reward_badge_id', chunk),
     },
   ]
 

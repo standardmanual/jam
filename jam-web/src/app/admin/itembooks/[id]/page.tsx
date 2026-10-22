@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/admin/ui/button'
 import { ItemBookDetail } from '@/components/admin/itembooks/ItemBookDetail'
 import { ItemBookTierPanel } from '@/components/admin/itembooks/ItemBookTierPanel'
+import { ItemBookTierRewards } from '@/components/admin/itembooks/ItemBookTierRewards'
 import ItemBookForm from '../ItemBookForm'
 import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 
@@ -74,6 +75,13 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
       <div className="border-t pt-8">
         <ItemBookTierPanel itemBookId={book.id} initialTierMode={book.tier_mode} />
       </div>
+
+      {/* 등급별 보상 편집기 (티켓 20261022_1139 2회) — 4등급 방식이 켜진 컬렉션에만 붙는다. 패널이 켜기·끄기 뒤 서버 화면을 다시 읽어 나타나거나 사라진다 */}
+      {book.tier_mode && (
+        <div className="border-t pt-8">
+          <ItemBookTierRewards itemBookId={book.id} />
+        </div>
+      )}
 
       {/* 편집 폼 */}
       <div className="border-t pt-8">

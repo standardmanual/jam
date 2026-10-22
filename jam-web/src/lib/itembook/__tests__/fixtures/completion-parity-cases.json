@@ -235,6 +235,39 @@
       "expect": {"tier": "common", "total": 2, "filled": 2, "complete": true}
     },
     {
+      "name": "tier: 소프트 삭제 배지에만 꽂아도 그 등급이 컬렉션 등급이다(분자에는 들지 않는다)",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item", "deleted": true}
+      ],
+      "slotted": ["zc"],
+      "expect": {"tier": "common", "total": 2, "filled": 0, "complete": false, "tiers": {"common": {"total": 2, "filled": 0, "complete": false}}}
+    },
+    {
+      "name": "tier: 소프트 삭제 배지에 꽂은 슬롯은 분자에 들지 않는다(등급만 정한다)",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item", "deleted": true}
+      ],
+      "slotted": ["zc", "xc"],
+      "expect": {"tier": "common", "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "tier: 소프트 삭제 배지에 꽂은 등급에 살아 있는 배지가 없으면 표시 기준은 첫 등급이다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zr", "name": "Z", "rarity": "rare", "type": "item", "deleted": true}
+      ],
+      "slotted": ["zr"],
+      "expect": {"tier": "rare", "total": 2, "filled": 0, "complete": false, "tiers": {"common": {"total": 2, "filled": 0, "complete": false}}}
+    },
+    {
       "name": "tier: 드랍 제외 배지는 분모에서 빠진다",
       "tierMode": true,
       "badges": [

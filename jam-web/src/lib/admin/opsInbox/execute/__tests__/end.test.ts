@@ -520,6 +520,56 @@ describe('미리 보기(가정 10·11, 테스트 ⑫⑬)', () => {
     expect(ok2(await preview()).impact).toEqual({ fillingUsers: 2 })
   })
 
+  it('컬렉션(4등급): 등급별 완성 기록이 하나라도 있는 유저를 채우는 중에서 뺀다. 옛 완성 기록은 보지 않는다', async () => {
+    const collection = KINDS[3]
+    const { db, preview } = setup([liveSpec(collection)], { resources: { item_books: [{ ...collection.row(RES_ID), tier_mode: true }] } })
+    db.tables.user_item_book_slots = [
+      { id: 's1', item_book_id: RES_ID, user_id: 'u1' },
+      { id: 's2', item_book_id: RES_ID, user_id: 'u1' },
+      { id: 's3', item_book_id: RES_ID, user_id: 'u2' },
+      { id: 's4', item_book_id: RES_ID, user_id: 'u3' },
+      { id: 's5', item_book_id: RES_ID, user_id: 'u4' },
+      { id: 's9', item_book_id: uid(99), user_id: 'u9' },
+    ]
+    db.tables.user_item_book_tier_completions = [
+      // u3은 두 등급을 완성했어도 한 명이다
+      { item_book_id: RES_ID, user_id: 'u3', tier: 'common' },
+      { item_book_id: RES_ID, user_id: 'u3', tier: 'rare' },
+      { item_book_id: RES_ID, user_id: 'u4', tier: 'mystic' },
+      // 다른 컬렉션의 기록은 세지 않는다
+      { item_book_id: uid(99), user_id: 'u1', tier: 'common' },
+    ]
+    // 옛 완성 기록은 4등급 컬렉션에서 완성으로 보지 않는다(u2는 계속 채우는 중이다)
+    db.tables.user_item_book_completions = [{ item_book_id: RES_ID, user_id: 'u2' }]
+    expect(ok2(await preview()).impact).toEqual({ fillingUsers: 2 })
+    expect(db.calls.some((call) => call.table === 'user_item_book_tier_completions')).toBe(true)
+    expect(db.calls.some((call) => call.table === 'user_item_book_completions')).toBe(false)
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('컬렉션(옛 방식): 등급별 완성 기록은 보지 않는다', async () => {
+    const collection = KINDS[3]
+    const { db, preview } = setup([liveSpec(collection)], { resources: { item_books: [{ ...collection.row(RES_ID), tier_mode: false }] } })
+    db.tables.user_item_book_slots = [
+      { id: 's1', item_book_id: RES_ID, user_id: 'u1' },
+      { id: 's2', item_book_id: RES_ID, user_id: 'u2' },
+    ]
+    db.tables.user_item_book_completions = [{ item_book_id: RES_ID, user_id: 'u2' }]
+    db.tables.user_item_book_tier_completions = [{ item_book_id: RES_ID, user_id: 'u1', tier: 'common' }]
+    expect(ok2(await preview()).impact).toEqual({ fillingUsers: 1 })
+    expect(db.calls.some((call) => call.table === 'user_item_book_tier_completions')).toBe(false)
+  })
+
+  it('컬렉션(4등급): 등급별 완성 기록을 읽지 못하면 impact는 null이고 원문은 응답에 없다', async () => {
+    const collection = KINDS[3]
+    const { db, preview } = setup([liveSpec(collection)], { resources: { item_books: [{ ...collection.row(RES_ID), tier_mode: true }] } })
+    db.tables.user_item_book_slots = [{ id: 's1', item_book_id: RES_ID, user_id: 'u1' }]
+    db.failIf = (call) => call.table === 'user_item_book_tier_completions'
+    const result = ok2(await preview())
+    expect(result.impact).toBeNull()
+    expect(JSON.stringify(result)).not.toContain(DB_SECRET)
+  })
+
   it('카드·배지·레시피는 숫자 없이 빈 impact이고 사용자 기록 표를 읽지 않는다. 시험 묶음도 세지 않는다', async () => {
     for (const kind of [KINDS[0], KINDS[2], KINDS[4]]) {
       const { db, preview } = setupKind(kind)

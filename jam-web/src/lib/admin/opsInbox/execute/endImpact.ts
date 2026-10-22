@@ -3,7 +3,9 @@
  *
  * 쓰기 없음. 센 도중 오류는 던진다 — 부르는 쪽(`end.ts`의 미리 보기)이 잡아 `impact: null`로 두고 미리 보기는 막지 않는다.
  * - 미션: 참가자 수(`user_mission_participations`)와 진행 중 유저 수(참가 − 완료, `user_mission_completions`). 미션 일괄 처리의 미리 보기(`api/admin/missions/bulk`)와 같은 세기다.
- * - 컬렉션: 채우는 중 유저 수 = 칸에 아이템 배지를 넣은 유저(`user_item_book_slots`, 같은 유저의 여러 칸은 한 명) 가운데 완성하지 않은 유저(`user_item_book_completions`).
+ * - 컬렉션: 채우는 중 유저 수 = 칸에 아이템 배지를 넣은 유저(`user_item_book_slots`, 같은 유저의 여러 칸은 한 명) 가운데 완성하지 않은 유저.
+ *   «완성한 유저»는 옛 컬렉션이면 `user_item_book_completions`에 기록이 있는 유저이고, 4등급 방식(`item_books.tier_mode`)이 켜진 컬렉션이면
+ *   `user_item_book_tier_completions`에 등급 기록이 하나라도 있는 유저다(티켓 20261022_1139 2회, 2340 정리 ③). 4등급 컬렉션은 옛 완성 기록을 보지 않는다.
  *   체크인 배지 획득 이력은 세지 않는다(운영툴 컬렉션은 아이템 배지로 채운다). 그래서 화면 문구는 「약 N명」이다.
  */
 import { countRowsByKey, type CountRowsClient } from '@/lib/admin/list-counts'
@@ -33,12 +35,21 @@ export async function countMissionImpact(service: ExecuteServiceClient, missionI
 
 /** 컬렉션을 채우는 중인 유저 수(완성한 유저 제외). 어느 표든 못 읽으면 던진다. */
 export async function countCollectionFillingUsers(service: ExecuteServiceClient, itemBookId: string): Promise<number> {
+  const { data: book, error: bookError } = await service.from('item_books').select('tier_mode').eq('id', itemBookId).maybeSingle()
+  if (bookError) throw new Error(`[endImpact] 컬렉션 4등급 여부 조회 실패: ${bookError.message}`)
+  const tierMode = Boolean(book?.tier_mode)
+
   const slots = await fetchAllRows<{ id: string; user_id: string }>('컬렉션 칸', 'id', () =>
     service.from('user_item_book_slots').select('id, user_id').eq('item_book_id', itemBookId)
   )
-  const completed = await fetchAllRows<{ user_id: string }>('컬렉션 완성', 'user_id', () =>
-    service.from('user_item_book_completions').select('user_id').eq('item_book_id', itemBookId)
-  )
+  // 4등급 컬렉션은 등급 기록이 하나라도 있으면 완성한 유저다(키가 유저·컬렉션·등급이라 같은 유저가 여러 줄일 수 있고, 아래에서 한 명으로 모은다).
+  const completed = tierMode
+    ? await fetchAllRows<{ user_id: string; tier: string }>('컬렉션 등급별 완성', ['user_id', 'tier'], () =>
+        service.from('user_item_book_tier_completions').select('user_id, tier').eq('item_book_id', itemBookId)
+      )
+    : await fetchAllRows<{ user_id: string }>('컬렉션 완성', 'user_id', () =>
+        service.from('user_item_book_completions').select('user_id').eq('item_book_id', itemBookId)
+      )
   const completedUsers = new Set(completed.map((row) => row.user_id))
   const filling = new Set(slots.map((row) => row.user_id).filter((userId) => !completedUsers.has(userId)))
   return filling.size
