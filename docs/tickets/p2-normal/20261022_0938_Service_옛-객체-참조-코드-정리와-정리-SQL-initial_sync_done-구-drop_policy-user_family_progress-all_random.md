@@ -53,10 +53,29 @@ parent: "20261021_1250"
 4. **문서**: 옛 드랍 엔진·드랍 정책 화면·`drop_policy`·`user_family_progress`·`all_random`·`user_drop_state` 옛 열을 현재 서술로 적은 곳(`docs/service/SERVICE_OPERATIONS.md`, `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`, `docs/service/prd/02_DATA_MODEL.md`, `docs/service/prd/admin-ui/ADMIN_PRD.md`, `docs/service/prd/01_PRD.md`·`04_PROJECT_SPEC.md`, `docs/plan/jam2/service-redesign/현재 서비스 비교.md` 등, `grep`으로 찾는다)을 «옛 방식이 지워졌다, 표와 열은 코드가 쓰지 않음, 열 정리 대기(0938 2회)»로 고친다. `current-service-map/`, `docs/archive/`, 옛 티켓은 고치지 않는다. 티켓 기록과 `docs/plan/` 진행 노트는 카리나 몫이다.
 5. **하지 않는 것**: `users.initial_sync_done`·`first_sync_pending` 변경, 옛 컬렉션 구조(티켓 `20261022_0939`), 새 정책 편집 화면, 새 발급 경로용 미리 보기, DB 변경.
 
-### 2회 (SQL 파일 4개, 실행 안 함, 1회 머지 뒤 현재 스키마로 쓴다)
+### 2회 (SQL 파일 4개 + 삭제 가드 코드 정리, 실행 안 함, 1회 머지 뒤 현재 스키마로 쓴다)
 
-6. `jam-web/supabase/migrations/`에 `post_release` 파일 4개(번호는 시작 때 가장 높은 번호 뒤, 6-3이 쓴 270 등과 겹치지 않게 확인): ① `drop_policy` 표 삭제(1행 24열, 되돌림은 표·열 정의와 지금 1행 값), ② `user_drop_state`의 옛 열 7개와 외래키 2개 삭제(4행의 지금 값을 되돌림에 싣는다), ③ `user_family_progress` 표 삭제(되돌림은 구조만, 600행은 파생 스냅샷이라 데이터 복원은 코드를 되돌려 동기화로 다시 채운다고 머리말에 적는다), ④ `ambient_drop_config.all_random` 열 삭제(값 true를 되돌림에 싣는다). 모든 파일에 6-4 4회 선례(266~269)의 머리말·선행 조건·적용 전후 확인 SELECT·`-- 되돌림 SQL` 규칙을 따르고, 선행 조건에 «1회 코드가 출시된 뒤, 코드 참조 0건 `grep` 재확인»을 넣는다.
-7. 카리나가 롤백 실측(한 트랜잭션, `lock_timeout 3s`, 적용·되돌림·재확인 뒤 예외로 취소)을 하고 결과를 이 티켓에 적는다. **적용은 출시 뒤 사용자 승인**이다. 적용 뒤 생성 타입에서 지운 표·열을 지운다.
+**시작 전 조사(카리나, 2026-10-22, 읽기 전용 DB 조회와 코드 `grep`)**: 공용 DB의 현재 정의는 `live-defs-0938-2.md`(작업 메모, 저장소 밖)에 정리했다. 네 객체 모두 들어오는 외래키·뷰·트리거·본문 언급 함수가 0개이고, `user_drop_state` 4행의 옛 열 값은 모두 실제 트라이브·컬렉션 id를 가리킨다. 1회 기록이 «같은 배포에서 걷는다»고 넘긴 어드민 가드는 세 곳이 아니라 **네 곳**이다: 삭제 가드(`reference-guards.ts`), 목록의 삭제 불가 사유(`tribe-list.ts`), 운영툴 컬렉션 되돌림 확인(`registerChecks/references.ts`), 그리고 이 표를 쓰는 시험들이다.
+
+**가정(다르게 하라고 하지 않으면 이대로)**: (가) 가드 코드 정리를 2회에 넣는다. SQL을 출시 뒤에 실행하면 가드가 지운 열을 조회해 어드민 삭제 화면이 오류를 내므로, 가드 코드는 SQL과 **같은 출시**에 실려야 한다. 이 변경으로 컬렉션·트라이브 삭제가 `user_drop_state`로 막히지 않게 된다(지금은 거의 모든 컬렉션이 이 참조 때문에 사실상 지워지지 않는다. 다른 참조 가드는 그대로다). 출시와 SQL 실행 사이 몇 분 동안 이 4행이 가리키는 트라이브·컬렉션(트라이브 2개, 컬렉션 4개)을 지우려 하면 DB가 외래키 오류로 막는다(어드민 삭제 라우트는 500으로 답한다). (나) 번호는 271~274. 시작 시점 가장 높은 번호는 270(6-3)이다. (다) 생성 타입(`database.generated.ts`·`database.ts`)과 시드 파일은 고치지 않는다. 생성 타입은 SQL을 적용한 뒤에 고치고, 지울 위치는 SQL 머리말에 적는다. (라) `registerChecks.test.ts`의 «외래 키 8곳(생성 타입 대조)» 시험은 SQL 적용 전까지 생성 타입에 남는 외래키 1개를 이름으로 제외해 7곳으로 맞추고, 적용 뒤 생성 타입을 고칠 때 제외 줄을 지운다. (마) `user_drop_state`의 되돌림 UPDATE 값은 2026-10-22 스냅샷이고 출시 전까지 옛 프로덕션이 값을 바꾸므로, 실행 직전에 다시 읽어 고친다고 머리말에 적는다(269와 같은 방식).
+
+**SQL 파일(번호순 실행, 서로 의존하지 않는다)**: `jam-web/supabase/migrations/`에 `post_release` 4개를 쓴다. 모든 파일에 6-4 4회 선례(266~269, 특히 269)의 머리말·선행 조건·적용 전후 확인 SELECT·`-- 되돌림 SQL` 규칙을 따르고 선행 조건에 «출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤, 코드 참조 0건 `grep` 재확인»을 넣는다.
+- `271_post_release_drop_drop_policy.sql`: `DROP TABLE IF EXISTS public.drop_policy`(1행 24열, 정책 0개, 코멘트 없음). 되돌림은 표·열·기본값·제약·RLS와 1행(`updated_at` 명시)을 다시 만든다.
+- `272_post_release_drop_user_drop_state_old_columns.sql`: `user_drop_state`의 옛 열 7개(`last_drop_tribe_id`·`last_drop_book_id`·`last_piece_pity`·`daily_drop_count`·`daily_drop_date`·`total_drops`·`last_activity_at`)를 `DROP COLUMN IF EXISTS`로 지운다(외래키 2개는 열과 함께 사라진다). 데이터를 잃으므로 4행의 지금 값 표를 머리말에 싣고 되돌림이 이 값으로 복원한다. 외래키가 `tribes`·`item_books`에 걸려 있어 잠금이 그 두 표에도 닿는다고 적는다(`lock_timeout` 안내).
+- `273_post_release_drop_user_family_progress.sql`: `DROP TABLE IF EXISTS public.user_family_progress`(600행, 파생 스냅샷). 되돌림은 구조만 복원하고(코멘트 8개 포함, 외래키 2개, 기본키, RLS) 데이터는 복원하지 않는다고 머리말에 적는다.
+- `274_post_release_drop_ambient_drop_config_all_random.sql`: `ambient_drop_config.all_random`을 `DROP COLUMN IF EXISTS`로 지운다. 되돌림은 `boolean NOT NULL DEFAULT false`로 다시 만들고 행 id=1을 `true`로 복원한다.
+- 각 파일 머리말에 «적용 뒤 생성 타입에서 지울 위치»를 줄 번호와 함께 적고, 코드 참조 `grep` 명령과 «0줄이어야 한다»를 적는다.
+
+**가드 코드 정리**: 줄 위치는 시작 때 아현이 다시 확인한다.
+- `jam-web/src/lib/admin/reference-guards.ts`: 머리 주석 두 문장(21~27줄 근처), `ITEM_BOOK_REFERENCE_SOURCES`·`TRIBE_REFERENCE_SOURCES`의 `user_drop_state` 항목 둘(310~315, 394~399줄 근처)과 `collectItemBookReferences`·`collectTribeReferences`의 조회·집계(364~368, 471~480줄 근처)를 지운다.
+- `jam-web/src/lib/admin/tribe-list.ts`: `headCount` 도우미, `Promise.all`의 `dropStateCounts`, `dropStateById`, `blockingCounts`의 `user_drop_state` 키, 주석 두 곳(54줄, 91줄 예시 문구)을 고친다.
+- `jam-web/src/lib/admin/registerChecks/references.ts`: `ITEM_BOOK_UNDO_REFERENCE_TABLES`의 `user_drop_state` 항목(141줄)과 머리 주석(127줄)을 고친다.
+- `jam-web/src/app/api/admin/tribes/[id]/route.ts` 90~92줄, `jam-web/src/app/api/admin/itembooks/[id]/route.ts` 119~121줄의 DELETE 설명 주석에서 `user_drop_state` 문장을 뺀다.
+- 시험: `jam-web/src/lib/admin/__tests__/tribe-reference-guards.test.ts`, `jam-web/src/lib/admin/registerChecks/__tests__/registerChecks.test.ts`(590~610줄 근처, 가정 라), `jam-web/src/lib/admin/opsInbox/execute/__tests__/collectionLaunch.test.ts`(338·403줄 근처, 읽기 실패 시험은 다른 참조 표로 바꿔 의도를 유지), 그 밖에 두 옛 열을 가짜 행에 쓰는 시험. 같은 변경을 건드릴 수 있는 묶음 7 세션의 파일이므로 필요한 줄만 고친다.
+- 문서: `docs/service/prd/02_DATA_MODEL.md`(45·46·645·646줄 근처), `docs/service/SERVICE_OPERATIONS.md`(435줄 근처), `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`(1092·1711·1985·2215·2546줄 근처), `docs/plan/jam2/service-redesign/현재 서비스 비교.md`(279~282줄), `docs/service/prd/admin-ui/ADMIN_PRD.md`(삭제 가드의 참조 목록 서술이 있으면)의 «정리 대기(0938 2회)»를 «정리 SQL 271~274 작성됨, 출시 뒤 실행 대기»로 고치고, 어드민 삭제 가드의 참조 목록에서 `user_drop_state`를 뺀다.
+
+6. 위 SQL 4개와 가드 코드 정리를 쓴다(DB 실행 없음). 아현이 쓰고 민지가 판정한다.
+7. 카리나가 롤백 실측(객체마다 한 트랜잭션, `lock_timeout 3s`, 적용·멱등 재적용·되돌림·재확인 뒤 예외로 취소)을 하고 결과를 이 티켓에 적는다. **적용은 출시 뒤 사용자 승인**이다. 적용 뒤 생성 타입에서 지운 표·열을 지우고 `registerChecks.test.ts`의 제외 줄을 뺀다.
 
 ## 상세 요구사항
 
@@ -75,7 +94,8 @@ parent: "20261021_1250"
 
 - [x] (1회) 위 참조 코드가 없고, `buildBadgeIdsOfBook`을 쓰는 컬렉션 완성 판정과 새 발급 경로 시험이 통과한다
 - [x] (1회) 어드민 «드랍 제외 관리»와 시뮬레이터의 남은 구역이 로컬 실렌더로 열린다
-- [ ] (2회) 정리 SQL 4개가 파일로 있고 되돌림 SQL과 롤백 실측 결과가 이 티켓에 있다. 실행하지 않았다
+- [ ] (2회) 정리 SQL 4개(271~274)가 파일로 있고 되돌림 SQL과 롤백 실측 결과가 이 티켓에 있다. 실행하지 않았다
+- [ ] (2회) 앱 코드(삭제 가드·목록·운영툴 되돌림 확인)가 `user_drop_state.last_drop_tribe_id`·`last_drop_book_id`를 조회하지 않고, 관련 시험과 전체 시험·타입 검사가 통과한다. 생성 타입은 고치지 않았다(적용 뒤 정리)
 
 ### 후속 범위 (담당: 카리나, 시점: 출시 뒤)
 
