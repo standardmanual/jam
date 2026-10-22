@@ -42,12 +42,27 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/today/__tests__/today-logic.test.ts',
-      // 티켓 20261019_1317 — 예전에는 `**/missions/__tests__/**` 하나라 `(main)/missions/__tests__`의
-      // vitest 시험(목록 페이지의 숨김·잠긴 보상 가림)까지 말없이 제외돼 한 번도 돌지 않았다.
-      // tsx로 도는 node:assert 시험이 있는 두 폴더(`test:node` 목록)만 이름으로 제외한다.
-      '**/lib/missions/__tests__/**',
-      '**/admin/missions/__tests__/**',
       '**/admin/__tests__/today-calendar.test.ts',
+      // 티켓 20261021_1018 — 폴더째 제외(`**/lib/missions/__tests__/**`, `**/admin/missions/__tests__/**`)는
+      // 같은 이름 폴더에 있는 vitest 시험까지 말없이 가렸다(앞서 `(main)/missions/__tests__`가 한 번,
+      // 이어서 `api/admin/missions/__tests__/reward-badges-routes.test.ts`가 한 번 CI에서 돌지 않았다).
+      // `test:node`로 도는 node:assert 시험만 파일 이름으로 제외한다. 이 폴더에 시험을 더하면
+      // 러너가 어긋나는 쪽(vitest 스위트가 tsx로, 또는 tsx 시험이 vitest로)이 「No test suite found」로
+      // 소리 내어 실패하므로, 새 tsx 시험은 `package.json`의 `test:node`와 아래 목록에 함께 올린다.
+      '**/lib/missions/__tests__/checker-logic.test.ts',
+      '**/lib/missions/__tests__/condition-keys.test.ts',
+      '**/lib/missions/__tests__/condition-values.test.ts',
+      '**/lib/missions/__tests__/dedupeReward.test.ts',
+      '**/lib/missions/__tests__/engineCondition.test.ts',
+      '**/lib/missions/__tests__/exposure-logic.test.ts',
+      '**/lib/missions/__tests__/gate-visibility.test.ts',
+      '**/lib/missions/__tests__/ranking-rankable.test.ts',
+      '**/lib/missions/__tests__/tribe-access.test.ts',
+      '**/lib/missions/__tests__/visibility-logic.test.ts',
+      '**/lib/missions/__tests__/visibility-realdata.test.ts',
+      '**/lib/missions/__tests__/window.test.ts',
+      '**/app/admin/missions/__tests__/missionConditionFields.test.ts',
+      '**/app/admin/missions/__tests__/missionFormRules.test.ts',
       // 스토리 파일은 테스트가 아니다 — storybook 프로젝트 제거 이후에도 vitest 기본
       // include(`**/*.{test,spec}.*`)에는 안 걸리지만, 명시적으로 남겨 재발을 막는다.
       '**/*.stories.@(js|jsx|mjs|ts|tsx)'
