@@ -26,7 +26,7 @@ import {
 const NOT_FOUND_MESSAGE = '컬렉션을 찾지 못했어요. 이미 삭제됐거나 주소가 잘못됐을 수 있어요. 컬렉션 목록에서 다시 열어 주세요.'
 const TIER_MODE_OFF_MESSAGE = '등급별 보상을 다루지 못했어요. 이 컬렉션은 4등급 방식이 꺼져 있어요. 4등급 방식을 켠 뒤에 다시 열어 주세요.'
 const READ_ERROR_MESSAGE = '등급별 보상을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
-const SAVE_ERROR_MESSAGE = '등급별 보상을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 다시 열어 저장된 값을 확인해 주세요.'
+const SAVE_ERROR_MESSAGE = '등급별 보상을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 같은 값으로 다시 저장해 주세요.'
 
 type RouteContext = { params: Promise<{ id: string }> }
 type ServiceClient = ReturnType<typeof createServiceClient>
