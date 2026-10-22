@@ -44,7 +44,7 @@
 DROP TABLE IF EXISTS public.user_shadow_bans;
 
 -- 되돌림 SQL
--- 표를 같은 모양으로 다시 만든다. 열·제약은 2026-10-22 공용 DB의 실제 정의다(저장소의 마이그레이션 010과 열 순서가 다르다. 이쪽이 실제다).
+-- 표를 같은 모양으로 다시 만든다. 열·제약은 2026-10-22 공용 DB의 실제 정의다(마이그레이션 010과 같은 열 순서다. 롤백 실측에서 되돌림 뒤 열 순서가 적용 전과 같음을 확인했다).
 -- 아래 «-- » 접두어를 떼고 한 번에 실행한다. 지운 표는 0행이었으므로 되살릴 데이터가 없다(행이 있었다면 이 되돌림으로는 돌아오지 않는다).
 --
 -- CREATE TABLE public.user_shadow_bans (
@@ -53,8 +53,8 @@ DROP TABLE IF EXISTS public.user_shadow_bans;
 --   ban_level   text        NOT NULL,
 --   reason      text        NOT NULL DEFAULT '',
 --   expires_at  timestamptz NULL,
---   created_by  text        NOT NULL DEFAULT 'admin',
 --   created_at  timestamptz NOT NULL DEFAULT now(),
+--   created_by  text        NOT NULL DEFAULT 'admin',
 --   CONSTRAINT user_shadow_bans_pkey PRIMARY KEY (id),
 --   CONSTRAINT user_shadow_bans_user_id_key UNIQUE (user_id),
 --   CONSTRAINT user_shadow_bans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
@@ -69,7 +69,7 @@ DROP TABLE IF EXISTS public.user_shadow_bans;
 -- 되돌린 뒤 확인(읽기 전용 SELECT):
 --   SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns
 --    WHERE table_schema = 'public' AND table_name = 'user_shadow_bans' ORDER BY ordinal_position;
---      -- 7행: id uuid NO gen_random_uuid() / user_id uuid NO / ban_level text NO / reason text NO ''::text / expires_at timestamp with time zone YES / created_by text NO 'admin'::text / created_at timestamp with time zone NO now()
+--      -- 7행: id uuid NO gen_random_uuid() / user_id uuid NO / ban_level text NO / reason text NO ''::text / expires_at timestamp with time zone YES / created_at timestamp with time zone NO now() / created_by text NO 'admin'::text
 --   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
 --    WHERE conrelid = 'public.user_shadow_bans'::regclass ORDER BY conname;                         -- 적용 전 확인과 같은 4행(이름·정의 모두)
 --   SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'user_shadow_bans' ORDER BY indexname;   -- 2행: user_shadow_bans_pkey, user_shadow_bans_user_id_key

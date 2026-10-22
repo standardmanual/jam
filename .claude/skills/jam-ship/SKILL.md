@@ -78,6 +78,9 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   적용됐는지 확인한다(가드레일 패턴 2). `supabase_migrations.schema_migrations`는 전수 기록이
   아니므로 의심되면 Supabase MCP로 실물을 대조한다. 되돌림 SQL의 동반 여부는 「보안」의
   `deploy-gate.mjs check`가 확인한다.
+  **예외**: 이름에 `post_release`가 든 파일(예: `266_post_release_*.sql`)은 출시(main 승격) 뒤 사용자 승인으로 실행하는
+  정리 SQL이라 **미적용이 정상**이다. 출시 전에 적용하면 옛 프로덕션 코드가 깨지므로 미적용으로 세지 않고 점검에서 뺀다.
+  대신 10단계 보고에 «출시 뒤 실행 대기 목록»으로 올린다(티켓 20261021_1250 6-4 4회).
 - [ ] 루트 응답(DNS·SSL 겸함) — 8단계의 `curl https://j-a-m.app` 확인으로 겸한다.
 
 ### 문서
@@ -255,6 +258,7 @@ node scripts/deploy-gate.mjs served
 - 프로덕션에 올라간 커밋 목록 (한국어 요약)
 - 배포 URL과 Ready 확인 결과, alias 연결 상태
 - 이번 배포에 포함된 DB 마이그레이션이 있으면 **실행 여부를 명시**
+- **출시 뒤 실행 대기 목록**: 저장소에 있고 이름에 `post_release`가 든 마이그레이션 파일 가운데 아직 적용하지 않은 것(파일 이름, 선행 조건, 데이터를 잃는지). 사용자 승인으로 실행한다
 - **롤백 계획 요약** (4단계에서 정한 트리거·절차·목표 시간·DB 고려) — 롤백 계획이 없으면
   7단계로 진행하지 않았어야 한다.
 - **병렬 점검 결과** (5단계) — 민지 모드 ②·③의 발견물 개수·신호 분포, 생략했으면 사유
