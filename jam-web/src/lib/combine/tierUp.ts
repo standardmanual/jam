@@ -17,6 +17,8 @@
  *    풀이 비어 굴림이 `null`이면 재료를 소각하기 전에 `no_candidate`로 거절한다.
  *  - 결과 지급은 믹스와 같은 `combine_grant_results`(마이그레이션 236)다. 레시피가 없으므로 `p_recipe_id`는 null, 잠김은 배지(`always_locked`)만 정한다.
  *    빈칸이 모자라면 결과를 받지 않은 결과로 남기고(재료는 소모됨) 받기 전에는 새 믹스와 등급 올리기를 할 수 없다. 잠긴 결과를 가리는 방식은 믹스와 같다.
+ *  - 응답의 결과 배지에는 `id`·`name`·`rarity` 외에 `imageUrl`(`badges.image_url`, 없으면 null)을 싣는다. 믹스는 레시피의 보상 배지 정보로 그림을 찾지만
+ *    등급 올리기에는 레시피가 없어서다. 잠긴 결과는 그림도 가리므로 `imageUrl`이 null이다.
  *  - 챕터 점수 «믹스 성공»(20점)은 시도마다 새로 만든 UUID를 원천 id로 센다. 성공 기록 표(`user_combine_success_logs`)와 JAM! 행동 지표는 쓰지 않는다
  *    (`recipe_id`가 필수라 담을 수 없고, 레시피 첫 성공 같은 조건은 레시피가 있는 믹스의 것이다). 추적은 개체 이력(`custody_events` Consume, `inventory_item_events` received)이다.
  *  - 결과를 지급하지 못하면(`combine_grant_results` 오류·결과 없음) 재료가 이미 소각된 뒤라 되돌릴 수 없다. 운영이 복구할 수 있게 로그를 남기고 던진다(라우트가 500).
@@ -141,14 +143,24 @@ export type TierUpFailReason =
   /** 결과로 나올 수 있는 아이템 배지가 하나도 없다. 소각 전에 거절하므로 재료는 그대로다 */
   | 'no_candidate'
 
+/**
+ * 등급 올리기 응답의 결과 배지 한 줄 — 믹스의 `CombineResultBadge`에 그림 주소(`imageUrl`)를 더했다.
+ * 믹스는 레시피의 보상 배지 정보로 그림을 찾지만 등급 올리기에는 레시피가 없어서, 응답이 그림 주소를 직접 싣는다.
+ * 믹스 응답 타입(`CombineResultBadge`)은 바꾸지 않는다.
+ */
+export interface TierUpResultBadge extends CombineResultBadge {
+  /** `badges.image_url`. 그림이 없는 배지는 `null`이다. 잠긴 결과(`locked: true`)는 그림을 가리므로 늘 `null`이다 */
+  imageUrl: string | null
+}
+
 export type TierUpResult =
   | {
       success: true
       path: 'tier_up'
       /** 낸 재료의 등급 */
       materialRarity: TierUpMaterialRarity
-      /** 지급된 결과. 잠긴 채 나온 것은 `locked: true`이고 `id`·`name`을 가린다. 받지 않은 결과(`pending`)는 빈 배열이다 */
-      resultBadges: CombineResultBadge[]
+      /** 지급된 결과. 잠긴 채 나온 것은 `locked: true`이고 `id`·`name`·`imageUrl`을 가린다. 받지 않은 결과(`pending`)는 빈 배열이다 */
+      resultBadges: TierUpResultBadge[]
       /** 등급 올리기는 포인트를 주지 않는다 */
       pointsAwarded: 0
       resultStatus: 'granted' | 'pending'
@@ -273,11 +285,16 @@ export async function tierUp(userId: string, itemIds: string[], options: TierUpO
   } else {
     const grantedItemIds = Array.isArray(grant.itemIds) ? grant.itemIds : []
     const locked = rolled.badge.always_locked === true
-    let resultBadge: CombineResultBadge = { id: rolled.badge.id, name: rolled.badge.name, rarity: rolled.rarity }
+    let resultBadge: TierUpResultBadge = {
+      id: rolled.badge.id,
+      name: rolled.badge.name,
+      rarity: rolled.rarity,
+      imageUrl: rolled.badge.image_url ?? null,
+    }
     if (locked) {
       // 잠긴 결과는 이름·그림·일련번호를 싣지 않는다(운영 로직 7.3절). 필요한 양은 DB가 정한 값을 개체에서 읽고, 읽지 못하면 칸을 뺀다.
       const [unlockRequired] = await readUnlockRequired(supabase, grantedItemIds)
-      resultBadge = { id: '', name: '', rarity: rolled.rarity, locked: true, ...(unlockRequired !== undefined ? { unlockRequired } : {}) }
+      resultBadge = { id: '', name: '', rarity: rolled.rarity, imageUrl: null, locked: true, ...(unlockRequired !== undefined ? { unlockRequired } : {}) }
     }
     result = {
       success: true,

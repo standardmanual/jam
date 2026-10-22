@@ -6,7 +6,7 @@
  *  - 로그인한 유저 id와 본문의 `itemIds`만 엔진에 넘긴다 — 확률·결과를 정하는 값은 본문에서 받지 않는다
  *  - 이용 정지는 엔진이 던지는 `UserSuspendedError`를 403(`code: 'user_suspended'`)으로 바꾼다
  *  - 잠긴 개체·받지 않은 결과는 `code`를 더해 409로 내리고, 그 밖의 거절은 200에 `success: false`와 사용자 문구를 싣는다 (믹스 라우트와 같은 규칙)
- *  - 성공 응답은 엔진 결과 그대로고, 결과를 받지 않은 상태로 남기면(`pending`) 안내 문구가 붙는다
+ *  - 성공 응답은 엔진 결과 그대로(결과 배지의 `imageUrl` 포함)고, 결과를 받지 않은 상태로 남기면(`pending`) 안내 문구가 붙는다
  *  - 엔진이 그 밖의 오류를 던지면 500이다. JAM! 행동 지표는 판정하지 않는다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/combine/tier-up/__tests__/route.test.ts
@@ -56,7 +56,7 @@ const SUCCESS: TierUpResult = {
   success: true,
   path: 'tier_up',
   materialRarity: 'common',
-  resultBadges: [{ id: 'b1', name: '결과 배지', rarity: 'rare' }],
+  resultBadges: [{ id: 'b1', name: '결과 배지', rarity: 'rare', imageUrl: 'https://cdn.example/b1.png' }],
   pointsAwarded: 0,
   resultStatus: 'granted',
 }

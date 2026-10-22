@@ -551,7 +551,7 @@ describe('tierUp — 성공', () => {
       success: true,
       path: 'tier_up',
       materialRarity: 'common',
-      resultBadges: [{ id: 'own-e1', name: '배지 own-e1', rarity: 'epic' }],
+      resultBadges: [{ id: 'own-e1', name: '배지 own-e1', rarity: 'epic', imageUrl: null }],
       pointsAwarded: 0,
       resultStatus: 'granted',
     })
@@ -568,6 +568,28 @@ describe('tierUp — 성공', () => {
     // 후속 — 남은 칸 알림, 지급된 개체의 배지 포인트
     expect(mocks.notifyInventorySlotsLow).toHaveBeenCalledTimes(1)
     expect(mocks.followUpCombineResultPoints).toHaveBeenCalledWith(expect.anything(), USER, ['new-item-1'])
+  })
+
+  it('결과 배지에 그림 주소(imageUrl)를 싣는다 — badges.image_url 그대로, 없으면 null', async () => {
+    const withImage = badge('own-e1', 'epic', 'book-own', { image_url: 'https://cdn.example/own-e1.png' })
+    mocks.loadRollData.mockResolvedValue({
+      tribeId: T_OWN,
+      tribes: [{ id: T_OWN, name: '내 트라이브' }],
+      books: BOOKS,
+      badges: [withImage, badge('own-c1', 'common', 'book-own')],
+      commonStreak: 0,
+      epicMiss: 0,
+    })
+
+    // Epic 굴림 → 그림이 있는 배지
+    const epic = await tierUp(USER, ITEM_IDS, { rand: seq(0.9, 0.95, 0.0) })
+    expect(epic.success && epic.resultBadges).toEqual([
+      { id: 'own-e1', name: '배지 own-e1', rarity: 'epic', imageUrl: 'https://cdn.example/own-e1.png' },
+    ])
+
+    // Common 굴림 → 그림이 없는 배지는 null (키가 빠지지 않는다)
+    const common = await tierUp(USER, ITEM_IDS, { rand: seq(0.9, 0.0, 0.0) })
+    expect(common.success && common.resultBadges).toEqual([{ id: 'own-c1', name: '배지 own-c1', rarity: 'common', imageUrl: null }])
   })
 
   it('챕터 점수 «믹스 성공»은 새 UUID를 원천 id로 한 번만 센다 — 시도마다 다른 id다', async () => {
@@ -661,8 +683,8 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
     expect(mocks.awardChapterScore).toHaveBeenCalledTimes(1)
   })
 
-  it('잠김으로 만든 배지가 나오면 이름·id를 가리고 필요한 양을 싣는다', async () => {
-    const locked = badge('own-c1', 'common', 'book-own', { always_locked: true })
+  it('잠김으로 만든 배지가 나오면 이름·id·그림을 가리고 필요한 양을 싣는다', async () => {
+    const locked = badge('own-c1', 'common', 'book-own', { always_locked: true, image_url: 'https://cdn.example/own-c1.png' })
     mocks.loadRollData.mockResolvedValue({
       tribeId: T_OWN,
       tribes: [{ id: T_OWN, name: '내 트라이브' }],
@@ -678,7 +700,7 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
     expect(result).toMatchObject({
       success: true,
       resultStatus: 'granted',
-      resultBadges: [{ id: '', name: '', rarity: 'common', locked: true, unlockRequired: 5 }],
+      resultBadges: [{ id: '', name: '', rarity: 'common', imageUrl: null, locked: true, unlockRequired: 5 }],
     })
     expect(mocks.readUnlockRequired).toHaveBeenCalledWith(expect.anything(), ['new-item-1'])
     // 지급은 열린 채 요청한다 — 잠김은 DB가 배지(always_locked)로 정한다
@@ -699,7 +721,7 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
 
     const result = await tierUp(USER, ITEM_IDS, { rand: seq(0.9, 0.5, 0.0) })
 
-    expect(result.success && result.resultBadges[0]).toEqual({ id: '', name: '', rarity: 'common', locked: true })
+    expect(result.success && result.resultBadges[0]).toEqual({ id: '', name: '', rarity: 'common', imageUrl: null, locked: true })
   })
 })
 
