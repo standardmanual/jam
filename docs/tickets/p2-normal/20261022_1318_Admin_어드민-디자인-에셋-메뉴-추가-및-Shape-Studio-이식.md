@@ -2,9 +2,9 @@
 id: "20261022_1318"
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-22
-closed:
+closed: 2026-10-22
 ---
 
 # [Admin] 어드민 디자인 묶음에 「에셋」 메뉴 추가 및 Shape Studio v2 이식
@@ -70,39 +70,53 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 어드민 사이드바 `디자인`(`design`) 그룹에 `에셋`(`href: '/admin/assets'`, `IconShape`) 메뉴 항목을 추가하고 `adminNavItems.test.ts` 단위 테스트를 갱신했다.
+- 원본 프로토타입(`docs/assets/prototypes/20261022_shape-studio.html`, Shape Studio v2 — Segment Gradient Generator)의 상단 헤더 바(`Shape Studio`, 실시간 렌더링 상태 표시, `초기화`/`랜덤 생성`/`PNG 저장`), 좌측 프리뷰 워크스페이스(상단 `PREVIEW · 비율 · 해상도` 바, 체크보드 WebGL 캔버스 스테이지, PNG/SVG 드래그 앤 드롭, 하단 단축키 안내 및 `되돌리기`·`설정 저장`·`불러오기`), 우측 352px 설정 패널 9개 섹션(`Shape`, 랜덤 항목 토글, `Canvas`, `Segments`, `Blend`, `Motion`, `Gradient`, `Background`, `Export`)을 어드민 표준 shadcn 컴포넌트(`Button`, `Badge`, `Checkbox`, `Switch`, `Select`, `Input`, `sonner` `toast`) 기반으로 100% 이식했다.
+- WebGL Vertex/Fragment Shader GLSL, 유클리드 거리장(`edt`, `buildGlyphSdf`), PNG/SVG 알파 및 배경색 자동 판별 마스크 추출, 고해상도 PNG 출력(1024/2048/4096px), 15초 `MediaRecorder` 동영상 녹화(720/1080/1440px), 50단계 되돌리기 히스토리, 키보드 단축키(`Space`, `⌘/Ctrl+Z`), JSON 설정 저장/불러오기 및 `shapeStudioConfig.test.ts` 단위 테스트를 구현했다.
 
 ### 변경된 파일
 ```
--
+- jam-web/src/components/admin/adminNavItems.ts
+- jam-web/src/components/admin/__tests__/adminNavItems.test.ts
+- jam-web/src/app/admin/assets/shapeStudioConfig.ts
+- jam-web/src/app/admin/assets/ShapeStudioViewport.tsx
+- jam-web/src/app/admin/assets/ShapeStudioPanel.tsx
+- jam-web/src/app/admin/assets/page.tsx
+- jam-web/src/app/admin/assets/__tests__/shapeStudioConfig.test.ts
+- docs/assets/prototypes/20261022_shape-studio.html
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전항목 통과 (`lint` · `typecheck` · `test` · `ds:check` · `asset-bundle` · `slop` · `scripts-test` · `contract` · `team-doc` · `team-map` · `scheduled-jobs` · `home-feed-doc` · `skills` · `client-server-imports`)
+- [x] GitHub Actions `verify` 워크플로 통과 (`run 39725081226`)
+- [x] 민지(`jam-reviewer`) 게이트 리뷰 **PASS** (`f49f279ba..6e5a5e176`)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 용어 일관성: 고정 용어만 사용 (어드민 내부 도구 UI, 원본 프로토타입 라벨 유지)
+- [x] 톤앤매너: 상황에 맞는 톤
+- [x] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
+- [x] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
+- [x] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
 
 ### 배포 정보
-- 배포일:
+- 배포일: 2026-10-22
 - 환경: staging
-- 커밋:
+- 커밋: 6e5a5e176
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1 | 아현 (jam-developer) | - | - | 33m | - |
+| 2 | 민지 (jam-reviewer) | - | - | 8m | - |
+| 합계 | 2회 | - | - | 41m | - |
 
 ### 주요 의사결정 / 핵심 메모
 - 작업 유형 `admin`(라이트 파이프라인: 아현 구현 → 민지 게이트 리뷰, MODULAR 적용 제외로 채원①·② 생략).
 - 규모 사전 판정: 신규 화면 파일 5개 + 수정 2개 + 프로토타입 보관 1개로 `stop-conditions.md`의 `plan_only` 임계값을 넘기므로, 카리나가 파일 단위 구현 계획을 티켓에 확정하고 첫 호출부터 `planOnlyWaiver`를 부여했다.
 
 ### 잔여 이슈
--
+- [정확성/참고] 커스텀 쉐입 6개 초과 시 제거 키(`removedGlyphKey`)를 `setCustomPresets` 업데이터 내부 부수효과로 할당해 `setGlyphsMap`에서 참조하고 있어, 향후 `customPresets` 배열 기준으로 계산하거나 단일 상태로 묶고 `sdfCacheRef` 캐시도 함께 비우면 더 안전함 (`jam-web/src/app/admin/assets/page.tsx:262`).
+- [성능/참고] 언마운트 시 `ResizeObserver`·이벤트 리스너·RAF는 정리되나 WebGL `program`/`texture`/`buffer`의 명시적 `delete` 호출 및 동영상 녹화 중 언마운트 시 `recAbortRef` 중단 처리를 보강하면 리소스 회수가 더 확실해짐 (`jam-web/src/app/admin/assets/ShapeStudioViewport.tsx:372`).
