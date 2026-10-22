@@ -23,6 +23,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { BALANCE_SECTIONS, findBalanceSection } from '@/lib/admin/balance/sections'
 import { JAM_BINDING } from '@/lib/admin/balance/jam'
+import { SYNC_BINDING } from '@/lib/admin/balance/sync'
 import { BALANCE_LOAD_FAILED_MESSAGE } from '@/lib/admin/balance/save'
 import { createFakeDb, jamPolicyRow, type FakeDb } from '@/lib/admin/balance/__tests__/fakeDb'
 import { BalanceSectionBody } from '../BalanceSectionBody'
@@ -53,8 +54,8 @@ beforeEach(() => {
 const html = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: JAM_BINDING })).replace(/<!-- -->/g, '')
 
 describe('구역 레지스트리', () => {
-  it('지금 구역은 잼 하나이고 구역 키는 겹치지 않는다', () => {
-    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam'])
+  it('지금 구역은 잼·동기화 순서이고 구역 키는 겹치지 않는다', () => {
+    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync'])
     const ids = BALANCE_SECTIONS.map((section) => section.binding.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
@@ -80,6 +81,7 @@ describe('구역 레지스트리', () => {
 
   it('구역 키로 구역을 찾고, 모르는 키는 undefined다', () => {
     expect(findBalanceSection('jam')?.binding).toBe(JAM_BINDING)
+    expect(findBalanceSection('sync')?.binding).toBe(SYNC_BINDING)
     expect(findBalanceSection('nope')).toBeUndefined()
     expect(findBalanceSection('')).toBeUndefined()
   })
@@ -118,5 +120,41 @@ describe('BalanceSectionBody', () => {
     const out = await html()
     expect(out).toContain('<form')
     expect(out).toContain(HISTORY_FAILED_MESSAGE)
+  })
+})
+
+describe('BalanceSectionBody — 동기화 구역 (2회)', () => {
+  const syncHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: SYNC_BINDING })).replace(/<!-- -->/g, '')
+
+  it('열한 칸의 입력(저장된 값)과 네 묶음 제목, 등급 확률 합계 줄이 보인다', async () => {
+    const out = await syncHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(11)
+    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual([
+      '확정으로 받는 개수',
+      '보너스',
+      '등급 확률',
+      '캡슐과 함께 쓰는 값',
+    ])
+    expect(out).toMatch(/id="balance-sync-sync_rarity_common"[^>]*value="84"/)
+    expect(out).toMatch(/id="balance-sync-sync_rarity_epic"[^>]*value="2.5"/)
+    expect(out).toMatch(/id="balance-sync-locked_roll_probability"[^>]*value="0.25"/)
+    expect(out).toMatch(/<p role="status"[^>]*>합계 100%<\/p>/)
+    expect(out).not.toContain('아이템 배지가 나오지 않아요')
+  })
+
+  it('읽기만 한다(쓰기 호출이 없다)', async () => {
+    await syncHtml()
+    expect(db.calls.filter((call) => call.endsWith('.update') || call.endsWith('.insert'))).toEqual([])
+  })
+
+  it('최근 변경은 이 구역(sync)의 줄만 보인다(잼 구역 줄은 보이지 않는다)', async () => {
+    const out = await syncHtml()
+    expect(out).not.toContain('karina')
+    expect(out).toContain('아직 바꾼 기록이 없어요.')
+  })
+
+  it('저장된 개수가 모두 0이면 경고가 서버 렌더에도 보인다(0개 허용)', async () => {
+    db.tables.jam_policy = [jamPolicyRow({ sync_item_guaranteed: 0, sync_item_guaranteed_hiking: 0, sync_item_bonus_rolls: 0 })]
+    expect(await syncHtml()).toContain('아이템 배지가 나오지 않아요')
   })
 })

@@ -245,3 +245,40 @@ describe('PUT', () => {
     expect(db.tables.jam_policy[0]).toMatchObject({ intensity_normal: 2, updated_at: JAM_ROW_STAMP })
   })
 })
+
+describe('동기화 구역 (2회)', () => {
+  beforeEach(() => {
+    h.user = ADMIN
+  })
+
+  it('GET은 동기화 열한 칸의 값을 돌려준다(잼 칸은 없다)', async () => {
+    const res = await GET(getRequest(), params('sync'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Object.keys(body.values)).toHaveLength(11)
+    expect(body.values).toMatchObject({ sync_item_guaranteed: 1, sync_rarity_epic: 2.5, locked_roll_probability: 0.25 })
+    expect(body.values.intensity_light).toBeUndefined()
+    expect(body.updatedAt).toBe(JAM_ROW_STAMP)
+  })
+
+  it('PUT: 등급 확률 합이 100이 아니면 400이고 쓰지 않는다', async () => {
+    const res = await PUT(putRequest({ values: { sync_rarity_common: 80 }, expectedUpdatedAt: JAM_ROW_STAMP }), params('sync'))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe(BALANCE_INVALID_MESSAGE)
+    expect(Object.keys(body.fieldErrors).sort()).toEqual(['sync_rarity_common', 'sync_rarity_epic', 'sync_rarity_mystic', 'sync_rarity_rare'])
+    expect(db.updates).toEqual([])
+  })
+
+  it('PUT: 0개(확정 0, 보너스 0)도 저장되고 이력은 sync 구역에 «확률 안내 반영»으로 남는다', async () => {
+    const res = await PUT(
+      putRequest({ values: { sync_item_guaranteed: 0, sync_item_guaranteed_hiking: 0, sync_item_bonus_rolls: 0 }, expectedUpdatedAt: JAM_ROW_STAMP }),
+      params('sync')
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.affectsDisclosure).toBe(true)
+    expect(JSON.stringify(body)).not.toContain(ADMIN.id)
+    expect(db.tables.balance_setting_changes[0]).toMatchObject({ section_key: 'sync', affects_disclosure: true, changed_by: ADMIN.id })
+  })
+})
