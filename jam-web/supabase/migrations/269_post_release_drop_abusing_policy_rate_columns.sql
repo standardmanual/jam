@@ -1,0 +1,118 @@
+-- 269_post_release_drop_abusing_policy_rate_columns.sql
+-- JAM 2.0 출시 뒤 정리: abusing_policy의 옛 섀도우밴 드랍 배율 열 8개를 지운다 (티켓 20261021_1250 = 6-4 4회, 상위 20261021_1246)
+--
+-- **작성만 하고 실행하지 않았다. 출시(main 승격) 뒤 사용자 승인으로 실행한다.**
+--
+-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.
+--    티켓 조사 기준 옛 프로덕션 코드는 이 열들을 읽고 쓰는 경로가 있다(6-4 2회 결정 5: 어드민 «정책» 탭의 배율 입력 8칸과 저장 API의 배율 검증).
+--    출시 전에 지우면 옛 코드의 정책 읽기·저장이 틀어진다. 그래서 옛 프로덕션 코드가 사라지는 출시(main 승격) 뒤에만 실행한다.
+--
+-- ⚠️ 데이터를 잃는다: 열을 지우면 8개 값이 사라진다. 아래 «지금 값» 표가 2026-10-22 공용 DB에서 읽은 값이고 되돌림이 이 값으로 복원한다.
+--    적용 직전에 «적용 전 확인» 첫 쿼리를 다시 돌려 표와 같은지 본다. 다르면 되돌림 UPDATE의 값을 그 결과로 고친 뒤 실행한다.
+--
+--   열                  타입           기본값   지금 값(행 id=1)
+--   soft_common_rate    numeric(3,2)   1.0      1.00
+--   soft_rare_rate      numeric(3,2)   1.0      1.00
+--   soft_epic_rate      numeric(3,2)   0.0      1.00   ← 기본값과 다르다
+--   soft_mystic_rate    numeric(3,2)   0.0      0.00
+--   hard_common_rate    numeric(3,2)   1.0      1.00
+--   hard_rare_rate      numeric(3,2)   0.0      0.00
+--   hard_epic_rate      numeric(3,2)   0.0      1.00   ← 기본값과 다르다
+--   hard_mystic_rate    numeric(3,2)   0.0      0.00
+--   (8개 모두 NOT NULL. 열마다 따로 건 CHECK 제약은 없다. 표의 제약은 abusing_policy_pkey PRIMARY KEY (id)와 abusing_policy_id_check CHECK (id = 1)뿐이다. 행은 id=1 하나다.)
+--
+-- 선행 조건
+--   ① 출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤.
+--   ② 코드 참조 0건을 grep으로 다시 확인한다. 이 파일을 쓴 2026-10-22 staging 기준 결과는 0줄이었다(6-4 2회에서 앱 코드의 참조를 모두 지웠다. 시험 파일에는 가짜 행의 칸 이름으로 남아 있다).
+--        grep -rnE "(soft|hard)_(common|rare|epic|mystic)_rate" jam-web/src jam-web/scripts --include="*.ts" --include="*.tsx" --include="*.mjs" | grep -v -E "src/types/database|__tests__"   # 0줄이어야 한다
+--   ③ 아래 «적용 전 확인»에서 이 칸들을 읽는 뷰와 함수 본문 언급이 0이어야 한다. 아니면 멈추고 보고한다.
+--
+-- 실행 순서: 이 묶음은 266(제약) → 267(함수) → 268(표) → 269(열) 순서로 실행한다. 네 파일은 서로 의존하지 않아 하나가 멈춰도 나머지에 영향이 없다.
+--
+-- 하는 일: abusing_policy의 soft_{common,rare,epic,mystic}_rate, hard_{common,rare,epic,mystic}_rate 8개 열을 지운다. 이미 없는 열은 건너뛴다(다시 실행해도 안전하다).
+--   한 문장이라 8개가 함께 지워지거나 하나도 안 지워진다. CASCADE를 쓰지 않으므로 이 열에 기대는 객체(뷰 등)가 있으면 오류로 멈춘다.
+-- 바꾸지 않는 것: 행, 그 밖의 열(gps_max_speed_kmh 등 정책값 전부), 기본키·id 제약, RLS(켜짐, 정책 없음).
+-- 잠금: ALTER TABLE은 이 표에 ACCESS EXCLUSIVE 잠금을 요구한다. 행이 1개라 바로 끝나지만, 진행 중인 쿼리 뒤에서 기다리는 동안 뒤따르는 쿼리를 막는다.
+--   실행하는 쪽에서 같은 트랜잭션 안에 SET LOCAL lock_timeout = '3s'를 둔다(본문에는 넣지 않았다).
+-- 생성 타입: 적용 뒤 database.generated.ts·database.ts에서 이 표의 해당 칸을 지운다.
+--   · jam-web/src/types/database.generated.ts: abusing_policy의 Row·Insert·Update에 있는 8개 칸(이 파일을 쓴 시점 53~108줄 사이, 칸마다 3번씩 모두 24줄).
+--   · jam-web/src/types/database.ts: AbusingPolicyRow의 8개 칸(1882~1889줄 근처)과 그 위 주석의 «열 정리 대기» 문장.
+--   시험 파일의 가짜 행(Record<string, unknown>)은 타입과 무관해 그대로 둬도 컴파일된다.
+--
+-- 적용 전 확인(읽기 전용 SELECT):
+--   SELECT soft_common_rate, soft_rare_rate, soft_epic_rate, soft_mystic_rate,
+--          hard_common_rate, hard_rare_rate, hard_epic_rate, hard_mystic_rate
+--     FROM public.abusing_policy WHERE id = 1;                                                        -- 1.00, 1.00, 1.00, 0.00, 1.00, 0.00, 1.00, 0.00 (위 표의 «지금 값»)
+--   SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable, column_default
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'abusing_policy'
+--      AND column_name ~ '^(soft|hard)_(common|rare|epic|mystic)_rate$' ORDER BY column_name;         -- 8행: numeric / 3 / 2 / NO / 기본값은 위 표와 같다
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.abusing_policy'::regclass ORDER BY conname;                             -- abusing_policy_id_check, abusing_policy_pkey 둘뿐(열별 CHECK 없음)
+--   SELECT count(*) AS 행 FROM public.abusing_policy;                                                 -- 1
+--   SELECT count(*) AS 이_칸을_읽는_뷰 FROM pg_depend d JOIN pg_rewrite r ON r.oid = d.objid
+--    WHERE d.classid = 'pg_rewrite'::regclass AND d.refobjid = 'public.abusing_policy'::regclass AND d.refobjsubid > 0
+--      AND r.ev_class <> d.refobjid;                                                                  -- 0
+--   SELECT p.oid::regprocedure AS 본문에서_이_칸을_언급하는_함수 FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace
+--      AND p.prosrc ~ '\m(soft|hard)_(common|rare|epic|mystic)_rate\M';                                -- 0행 (함수 본문 안의 이름은 pg_depend가 추적하지 못해 따로 본다)
+--   SELECT to_jsonb(a) - ARRAY['soft_common_rate','soft_rare_rate','soft_epic_rate','soft_mystic_rate',
+--                              'hard_common_rate','hard_rare_rate','hard_epic_rate','hard_mystic_rate'] AS 나머지_칸
+--     FROM public.abusing_policy a WHERE id = 1;                                                       -- 기록해 둔다. 적용 후와 같아야 한다
+--
+-- 적용 후 확인(읽기 전용 SELECT):
+--   SELECT count(*) AS 남은_배율_열 FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'abusing_policy'
+--      AND column_name ~ '^(soft|hard)_(common|rare|epic|mystic)_rate$';                              -- 0
+--   SELECT to_jsonb(a) AS 행 FROM public.abusing_policy a WHERE id = 1;                                -- 위 «나머지_칸» 기록과 같다(배율 8개만 빠졌다)
+--   SELECT count(*) AS 행 FROM public.abusing_policy;                                                 -- 1
+
+ALTER TABLE public.abusing_policy
+  DROP COLUMN IF EXISTS soft_common_rate,
+  DROP COLUMN IF EXISTS soft_rare_rate,
+  DROP COLUMN IF EXISTS soft_epic_rate,
+  DROP COLUMN IF EXISTS soft_mystic_rate,
+  DROP COLUMN IF EXISTS hard_common_rate,
+  DROP COLUMN IF EXISTS hard_rare_rate,
+  DROP COLUMN IF EXISTS hard_epic_rate,
+  DROP COLUMN IF EXISTS hard_mystic_rate;
+
+-- 되돌림 SQL
+-- 8개 열을 같은 타입·NOT NULL·기본값으로 다시 만들고, 행 id=1의 값을 2026-10-22 공용 DB의 지금 값으로 복원한다.
+-- 아래 «-- » 접두어를 떼고 두 문장을 한 트랜잭션으로 묶어 실행한다. 적용 직전 값이 위 표와 달랐다면 UPDATE의 값을 그 값으로 바꾼 뒤 실행한다.
+-- 기본값과 지금 값이 달라(soft_epic_rate, hard_epic_rate) UPDATE가 필요하다. 열 순서는 표의 맨 뒤로 바뀌지만 이름으로 읽는 코드에는 영향이 없다.
+-- 열별 CHECK 제약은 원래 없었으므로 다시 만들지 않는다.
+--
+-- ALTER TABLE public.abusing_policy
+--   ADD COLUMN soft_common_rate numeric(3,2) NOT NULL DEFAULT 1.0,
+--   ADD COLUMN soft_rare_rate   numeric(3,2) NOT NULL DEFAULT 1.0,
+--   ADD COLUMN soft_epic_rate   numeric(3,2) NOT NULL DEFAULT 0.0,
+--   ADD COLUMN soft_mystic_rate numeric(3,2) NOT NULL DEFAULT 0.0,
+--   ADD COLUMN hard_common_rate numeric(3,2) NOT NULL DEFAULT 1.0,
+--   ADD COLUMN hard_rare_rate   numeric(3,2) NOT NULL DEFAULT 0.0,
+--   ADD COLUMN hard_epic_rate   numeric(3,2) NOT NULL DEFAULT 0.0,
+--   ADD COLUMN hard_mystic_rate numeric(3,2) NOT NULL DEFAULT 0.0;
+--
+-- UPDATE public.abusing_policy
+--    SET soft_common_rate = 1.00,
+--        soft_rare_rate   = 1.00,
+--        soft_epic_rate   = 1.00,
+--        soft_mystic_rate = 0.00,
+--        hard_common_rate = 1.00,
+--        hard_rare_rate   = 0.00,
+--        hard_epic_rate   = 1.00,
+--        hard_mystic_rate = 0.00
+--  WHERE id = 1;
+--
+-- 되돌린 뒤 확인(읽기 전용 SELECT):
+--   SELECT soft_common_rate, soft_rare_rate, soft_epic_rate, soft_mystic_rate,
+--          hard_common_rate, hard_rare_rate, hard_epic_rate, hard_mystic_rate
+--     FROM public.abusing_policy WHERE id = 1;                                                        -- 1.00, 1.00, 1.00, 0.00, 1.00, 0.00, 1.00, 0.00
+--   SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable, column_default
+--     FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'abusing_policy'
+--      AND column_name ~ '^(soft|hard)_(common|rare|epic|mystic)_rate$' ORDER BY column_name;         -- 적용 전 확인과 같은 8행(타입·NOT NULL·기본값)
+--   SELECT to_jsonb(a) - ARRAY['soft_common_rate','soft_rare_rate','soft_epic_rate','soft_mystic_rate',
+--                              'hard_common_rate','hard_rare_rate','hard_epic_rate','hard_mystic_rate'] AS 나머지_칸
+--     FROM public.abusing_policy a WHERE id = 1;                                                       -- 적용 전에 기록한 «나머지_칸»과 같다
+--   SELECT conname FROM pg_constraint WHERE conrelid = 'public.abusing_policy'::regclass ORDER BY conname;   -- abusing_policy_id_check, abusing_policy_pkey 둘뿐
