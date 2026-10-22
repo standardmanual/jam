@@ -1,26 +1,31 @@
 -- 281_clue_recipes.sql
--- JAM 2.0 묶음 7 · 7-7: 단서 레시피 20건 입력 (티켓 20261022_1138)
+-- JAM 2.0 묶음 7 · 7-7: 단서 레시피 80건 입력 (단서 20개 × 등급 4개, 티켓 20261022_1138)
 --
 -- 이 파일은 gen-recipe-sql.mjs가 단서 레시피 원고(docs/plan/jam2/tribe-rethink/manuscript/07 단서 레시피.md)와
 -- 트라이브 원고 01~05에서 만든다. 손으로 고치지 말고 생성기를 고쳐 다시 만든다
 -- (node scripts/jam2-content/gen-recipe-sql.mjs --write). 시험이 생성 결과와 이 파일이 같은지 비교한다.
 --
 -- 하는 일 (한 트랜잭션, 파일만 쓰고 실행은 롤백 실측과 사용자 승인 뒤 카리나가 한다)
---   1. 레시피 20건(combination_recipes): 이름·설명은 원고 07의 5절 값 그대로, 보상 배지는 도착 트라이브의 Common 아이템 배지 1개.
---      성공 포인트는 재료 수 × 10이다(재료 3개 30, 4개 40, 5개 50. 재료 3개 2건, 4개 10건, 5개 8건).
+--   1. 레시피 80건(combination_recipes): 단서마다 common·rare·epic·mystic 레시피를 하나씩 만든다(20개 × 4등급). 재료와 보상은 레시피와 같은 등급이다.
+--      컬렉션의 등급은 유저가 처음 꽂은 아이템 배지의 등급으로 정해지고 그 뒤로는 같은 등급만 꽂을 수 있어서(운영 로직 8.3절),
+--      한 등급뿐이면 다른 등급으로 컬렉션을 채우는 유저는 쓸 수 없다. 그래서 4등급을 모두 만든다(사용자 정정 2026-10-22).
+--      이름·설명은 원고 07의 5절 값 그대로이고 4등급이 같다. 보상 배지는 도착 트라이브의 같은 이름·같은 등급 아이템 배지 1개다.
+--      성공 포인트는 칸 수 × 10이고 모든 등급에 같다(재료 3개 30, 4개 40, 5개 50. 단서 기준 재료 3개 2건, 4개 10건, 5개 8건).
 --      reward_locked는 false(결과를 열린 채 지급), allow_no_reward는 false(보상 없음 허용 끔), valid_until은 비운다.
---   2. 재료 칸 86개(combination_recipe_slots): 재료마다 칸 하나, badge_type은 item, 후보(allowed_badge_ids)는 출발 트라이브의 Common 아이템 배지 1개.
+--   2. 재료 칸 344개(combination_recipe_slots, 단서 기준 86개 × 4등급): 재료마다 칸 하나, badge_type은 item, 후보(allowed_badge_ids)는 출발 트라이브의 같은 이름·레시피와 같은 등급 아이템 배지 1개.
 --      slot_order는 원고의 재료 순서대로 0부터 매긴다(어드민 저장 코드와 같다).
 --   3. 공개 시작(valid_from)은 2099-01-01 00:00:00+09 자리 값(2099-01-01 00:00 KST)이다. 일반 유저와 프로덕션에는 보이지 않고,
 --      운영자만 staging 믹스 화면에서 공개 전 시험 믹스를 할 수 있다. 오픈 직전 SQL(7-9 목록)이 valid_from을 실제 오픈 시각으로 바꾼다.
+--      80건 모두 숨겨 넣으므로 오픈 때 등급별로 따로 열 수 있다.
 --      컬렉션을 트라이브마다 3개로 줄일 때는 재료와 보상 컬렉션이 모두 열리는 날에 공개 시각을 맞춘다(자동 연동 코드는 없다).
 --
 -- 찾는 방법과 멈추는 조건
---   - 재료·보상 배지는 id가 아니라 «트라이브 이름, 컬렉션 이름, 아이템 이름, Common 등급(type item, 삭제되지 않음)»으로 찾는다.
---   - 재료 86개와 보상 20개가 각각 한 건씩 맞지 않으면(0건이거나 2건 이상) 멈춘다.
---   - 같은 이름의 레시피가 이미 있으면 멈춘다. 이 파일은 한 번만 적용한다.
+--   - 재료·보상 배지는 id가 아니라 «트라이브 이름, 컬렉션 이름, 아이템 이름, 레시피의 등급(type item, 삭제되지 않음)»으로 찾는다.
+--     7-6의 트라이브 SQL(276~280)이 같은 이름의 아이템 배지를 4등급으로 모두 만들어 두었다.
+--   - 재료 344개와 보상 80개가 각각 등급마다 한 건씩 맞지 않으면(0건이거나 2건 이상) 멈춘다. 오류 문구에 맞지 않은 등급을 적는다.
+--   - 단서 레시피와 같은 이름의 레시피가 이미 있으면 멈춘다. 이 파일은 한 번만 적용한다.
 --   - 재료 배지가 같은 레시피의 보상 배지와 같으면 멈춘다.
---   - 끝에서 레시피·칸·포인트·공개 시작·Common 등급을 검사하고 어긋나면 전체를 되돌린다(트랜잭션).
+--   - 끝에서 레시피·칸·포인트·공개 시작·보상과 재료의 등급(레시피의 등급과 같음)·같은 (이름, 보상 등급) 중복 없음을 검사하고 어긋나면 전체를 되돌린다(트랜잭션).
 --
 -- 적용 순서: 7-6의 다섯 트라이브 SQL(276~280)을 적용한 뒤. 282(끄기)와는 순서가 상관없다(282는 오픈 직전에 적용한다).
 -- 실행: BEGIN/COMMIT 없이 한 번의 호출로 통째로 실행한다. 롤백 실측은 이 파일 뒤에 일부러 오류를 내는 문장을 붙여 같은 호출로 실행한다.
@@ -33,10 +38,14 @@
 --   SELECT count(*) FROM public.combination_recipes WHERE name IN ('노트 위의 별', '노을 구석의 트럭', '무명의 손글씨 번호표', '마감 무렵의 노래', '반셔터 벽의 무대 사진', '혼자 찍은 네컷', '좌판 위의 닫힌 카메라', '필름 마지막 장의 트럭', '수첩 첫 장의 아침 노래', '끝까지 들은 새벽의 곡', '10시 50분의 공중전화', '카세트 표지의 같은 글씨', '녹음 부스의 셔터 소리', '같은 숫자만 적힌 번호표', '열쇠고리에 끼운 네컷', '하은의 칸에 꽂힌 카세트', '벽장의 월세 봉투', '창문과 대합실 사이', '맨 아래 줄의 노트 12권', '빨래방 노트 사이의 봉투');
 --
 -- 적용 후 확인 쿼리(읽기 전용 SELECT):
---   -- 단서 레시피 20건: 자리 값 공개 시작, 종료 없음, 열린 채 지급 (20)
+--   -- 단서 레시피 80건: 자리 값 공개 시작, 종료 없음, 열린 채 지급 (80)
 --   SELECT count(*) FROM public.combination_recipes
 --    WHERE valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND valid_until IS NULL AND NOT reward_locked AND NOT allow_no_reward;
---   -- 재료 칸 86개, 후보는 모두 1개 (86, 1)
+--   -- 보상 배지의 등급별 레시피 수 (common 20, rare 20, epic 20, mystic 20)
+--   SELECT rb.rarity, count(*) FROM public.combination_recipes r
+--     JOIN public.badges rb ON rb.id = r.reward_badge_ids[1]
+--    WHERE r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' GROUP BY rb.rarity ORDER BY rb.rarity;
+--   -- 재료 칸 344개, 후보는 모두 1개 (344, 1)
 --   SELECT count(*), max(array_length(s.allowed_badge_ids, 1)) FROM public.combination_recipe_slots s
 --     JOIN public.combination_recipes r ON r.id = s.recipe_id WHERE r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09';
 --   -- 성공 포인트가 칸 수 × 10이 아닌 레시피 (0행)
@@ -44,26 +53,43 @@
 --     JOIN public.combination_recipe_slots s ON s.recipe_id = r.id
 --    WHERE r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09'
 --    GROUP BY r.id HAVING r.reward_points <> count(s.id) * 10;
---   -- 재료 칸의 후보와 보상 배지 중 Common 아이템 배지가 아닌 것 (0)
+--   -- 보상이 아이템 배지가 아니거나 삭제된 레시피 (0)
 --   SELECT count(*) FROM public.combination_recipes r
 --     CROSS JOIN LATERAL unnest(r.reward_badge_ids) AS rb(id)
 --     JOIN public.badges b ON b.id = rb.id
---    WHERE r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND (b.type <> 'item' OR b.rarity <> 'common' OR b.deleted_at IS NOT NULL);
+--    WHERE r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND (b.type <> 'item' OR b.deleted_at IS NOT NULL);
+--   -- 재료 칸의 후보가 아이템 배지가 아니거나 삭제됐거나, 같은 레시피의 보상 배지와 등급이 다른 칸 (0)
 --   SELECT count(*) FROM public.combination_recipe_slots s
 --     JOIN public.combination_recipes r ON r.id = s.recipe_id
+--     JOIN public.badges rb ON rb.id = r.reward_badge_ids[1]
 --     CROSS JOIN LATERAL unnest(s.allowed_badge_ids) AS ab(id)
 --     JOIN public.badges b ON b.id = ab.id
---    WHERE r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND (b.type <> 'item' OR b.rarity <> 'common' OR b.deleted_at IS NOT NULL);
---   -- 전체 레시피: 옛 3건 + 단서 20건 (23)
+--    WHERE r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND (b.type <> 'item' OR b.deleted_at IS NOT NULL OR b.rarity <> rb.rarity);
+--   -- 전체 레시피: 옛 3건 + 단서 80건 (83)
 --   SELECT count(*) FROM public.combination_recipes;
 
 -- ----------------------------------------------------------------
 -- 0. 작업용 임시 표
 -- ----------------------------------------------------------------
+DROP TABLE IF EXISTS pg_temp._jam2_recipe_slot;
+DROP TABLE IF EXISTS pg_temp._jam2_recipe;
 DROP TABLE IF EXISTS pg_temp._jam2_clue_slot;
 DROP TABLE IF EXISTS pg_temp._jam2_clue;
+DROP TABLE IF EXISTS pg_temp._jam2_tier;
 
--- 단서 레시피 20건: 번호, 코드, 이름, 설명, 성공 포인트, 보상 배지를 찾을 이름(트라이브, 컬렉션, 아이템)
+-- 등급 4개: 단서마다 이 등급별로 레시피를 하나씩 만든다. 재료와 보상은 레시피와 같은 등급이다
+CREATE TEMP TABLE _jam2_tier (
+  rarity    public.badge_rarity PRIMARY KEY,
+  tier_ord  INTEGER NOT NULL
+);
+
+INSERT INTO _jam2_tier (rarity, tier_ord) VALUES
+  ('common', 0),
+  ('rare', 1),
+  ('epic', 2),
+  ('mystic', 3);
+
+-- 단서 20개: 번호, 코드, 이름, 설명, 성공 포인트, 보상 배지를 찾을 이름(트라이브, 컬렉션, 아이템)
 CREATE TEMP TABLE _jam2_clue (
   no              INTEGER PRIMARY KEY,
   code            TEXT NOT NULL,
@@ -72,10 +98,7 @@ CREATE TEMP TABLE _jam2_clue (
   points          INTEGER NOT NULL,
   reward_tribe    TEXT NOT NULL,
   reward_book     TEXT NOT NULL,
-  reward_item     TEXT NOT NULL,
-  reward_id       UUID,
-  reward_matches  INTEGER,
-  recipe_id       UUID NOT NULL DEFAULT gen_random_uuid()
+  reward_item     TEXT NOT NULL
 );
 
 INSERT INTO _jam2_clue (no, code, name, description, points, reward_tribe, reward_book, reward_item) VALUES
@@ -100,15 +123,13 @@ INSERT INTO _jam2_clue (no, code, name, description, points, reward_tribe, rewar
   (19, 'R19', '맨 아래 줄의 노트 12권', '빨래방에서 다 쓴 노트 12권은 소나무 잡화점 맨 아래 줄 한 칸에 꽂혀 있습니다. 이 가게의 유리 칸 100개는 한 달씩 빌려주는 자리입니다.', 40, '소나무 잡화점', '유리 칸 닦는 아침', '유리 칸'),
   (20, 'R20', '빨래방 노트 사이의 봉투', '노트 사이에 낀 반셔터 인화 봉투에는 세탁기 문을 하나씩 찍은 사진이 있습니다. 맨 위에는 광호가 고른 한 장이 올려져 있습니다.', 40, '찰칵단', '골목길 필름 스냅', '손글씨 인화 봉투');
 
--- 재료 칸 86개: 단서 번호, 칸 순서(0부터), 재료 배지를 찾을 이름(트라이브, 컬렉션, 아이템)
+-- 단서의 재료 86개: 단서 번호, 칸 순서(0부터), 재료 배지를 찾을 이름(트라이브, 컬렉션, 아이템)
 CREATE TEMP TABLE _jam2_clue_slot (
-  clue_no        INTEGER NOT NULL REFERENCES _jam2_clue (no),
-  slot_order     INTEGER NOT NULL,
-  tribe          TEXT NOT NULL,
-  book_name      TEXT NOT NULL,
-  item_name      TEXT NOT NULL,
-  badge_id       UUID,
-  badge_matches  INTEGER,
+  clue_no     INTEGER NOT NULL REFERENCES _jam2_clue (no),
+  slot_order  INTEGER NOT NULL,
+  tribe       TEXT NOT NULL,
+  book_name   TEXT NOT NULL,
+  item_name   TEXT NOT NULL,
   PRIMARY KEY (clue_no, slot_order)
 );
 
@@ -200,55 +221,97 @@ INSERT INTO _jam2_clue_slot (clue_no, slot_order, tribe, book_name, item_name) V
   (20, 2, '혼자들', '침묵의 메아리', '제습기'),
   (20, 3, '혼자들', '침묵의 메아리', '보풀 롤러');
 
+-- 레시피 80건 = 단서 20개 × 등급 4개. 레시피 id는 여기서 한 번 만들고, 보상 배지는 레시피의 등급으로 찾는다
+CREATE TEMP TABLE _jam2_recipe (
+  clue_no         INTEGER NOT NULL REFERENCES _jam2_clue (no),
+  rarity          public.badge_rarity NOT NULL REFERENCES _jam2_tier (rarity),
+  recipe_id       UUID NOT NULL DEFAULT gen_random_uuid(),
+  reward_tribe    TEXT NOT NULL,
+  reward_book     TEXT NOT NULL,
+  reward_item     TEXT NOT NULL,
+  reward_id       UUID,
+  reward_matches  INTEGER,
+  PRIMARY KEY (clue_no, rarity)
+);
+
+INSERT INTO _jam2_recipe (clue_no, rarity, reward_tribe, reward_book, reward_item)
+SELECT c.no, t.rarity, c.reward_tribe, c.reward_book, c.reward_item
+  FROM _jam2_clue c
+ CROSS JOIN _jam2_tier t
+ ORDER BY c.no, t.tier_ord;
+
+-- 재료 칸 344개 = 단서의 재료 86개 × 등급 4개. 재료 배지는 레시피의 등급으로 찾는다
+CREATE TEMP TABLE _jam2_recipe_slot (
+  clue_no        INTEGER NOT NULL,
+  rarity         public.badge_rarity NOT NULL,
+  slot_order     INTEGER NOT NULL,
+  tribe          TEXT NOT NULL,
+  book_name      TEXT NOT NULL,
+  item_name      TEXT NOT NULL,
+  badge_id       UUID,
+  badge_matches  INTEGER,
+  PRIMARY KEY (clue_no, rarity, slot_order),
+  FOREIGN KEY (clue_no, rarity) REFERENCES _jam2_recipe (clue_no, rarity)
+);
+
+INSERT INTO _jam2_recipe_slot (clue_no, rarity, slot_order, tribe, book_name, item_name)
+SELECT s.clue_no, t.rarity, s.slot_order, s.tribe, s.book_name, s.item_name
+  FROM _jam2_clue_slot s
+ CROSS JOIN _jam2_tier t
+ ORDER BY s.clue_no, t.tier_ord, s.slot_order;
+
 -- ----------------------------------------------------------------
--- 1. 이름으로 배지를 찾고, 찾은 수가 기대와 다르면 멈춘다
+-- 1. 이름과 등급으로 배지를 찾고, 등급마다 한 건씩 찾지 못하면 멈춘다
 -- ----------------------------------------------------------------
-UPDATE _jam2_clue_slot s
+UPDATE _jam2_recipe_slot s
    SET badge_matches = (SELECT count(*)
                           FROM public.badges b
                           JOIN public.item_books ib ON ib.id = b.item_book_id
                           JOIN public.tribes t ON t.id = ib.tribe_id
                          WHERE t.name = s.tribe AND ib.name = s.book_name AND b.name = s.item_name
-                           AND b.type = 'item' AND b.rarity = 'common' AND b.deleted_at IS NULL),
+                           AND b.type = 'item' AND b.rarity = s.rarity AND b.deleted_at IS NULL),
        badge_id      = (SELECT b.id
                           FROM public.badges b
                           JOIN public.item_books ib ON ib.id = b.item_book_id
                           JOIN public.tribes t ON t.id = ib.tribe_id
                          WHERE t.name = s.tribe AND ib.name = s.book_name AND b.name = s.item_name
-                           AND b.type = 'item' AND b.rarity = 'common' AND b.deleted_at IS NULL
+                           AND b.type = 'item' AND b.rarity = s.rarity AND b.deleted_at IS NULL
                          ORDER BY b.created_at LIMIT 1);
 
-UPDATE _jam2_clue c
+UPDATE _jam2_recipe c
    SET reward_matches = (SELECT count(*)
                            FROM public.badges b
                            JOIN public.item_books ib ON ib.id = b.item_book_id
                            JOIN public.tribes t ON t.id = ib.tribe_id
                           WHERE t.name = c.reward_tribe AND ib.name = c.reward_book AND b.name = c.reward_item
-                            AND b.type = 'item' AND b.rarity = 'common' AND b.deleted_at IS NULL),
+                            AND b.type = 'item' AND b.rarity = c.rarity AND b.deleted_at IS NULL),
        reward_id      = (SELECT b.id
                            FROM public.badges b
                            JOIN public.item_books ib ON ib.id = b.item_book_id
                            JOIN public.tribes t ON t.id = ib.tribe_id
                           WHERE t.name = c.reward_tribe AND ib.name = c.reward_book AND b.name = c.reward_item
-                            AND b.type = 'item' AND b.rarity = 'common' AND b.deleted_at IS NULL
+                            AND b.type = 'item' AND b.rarity = c.rarity AND b.deleted_at IS NULL
                           ORDER BY b.created_at LIMIT 1);
 
 DO $$
 DECLARE
   v_bad INTEGER;
+  v_tiers TEXT;
 BEGIN
-  SELECT count(*) INTO v_bad FROM _jam2_clue_slot WHERE badge_matches IS DISTINCT FROM 1;
+  SELECT count(*), string_agg(DISTINCT rarity::text, ', ') INTO v_bad, v_tiers
+    FROM _jam2_recipe_slot WHERE badge_matches IS DISTINCT FROM 1;
   IF v_bad > 0 THEN
-    RAISE EXCEPTION '재료 배지를 이름으로 한 건씩 찾지 못한 것이 %개입니다(기대: 86개 모두 1건). 7-6의 트라이브 SQL(276~280)이 적용되지 않았거나 같은 이름이 둘 이상 있습니다.', v_bad;
+    RAISE EXCEPTION '재료 배지를 이름과 등급으로 한 건씩 찾지 못한 것이 %개입니다(등급: %. 기대: 344개 모두 1건). 7-6의 트라이브 SQL(276~280)이 적용되지 않았거나, 그 등급의 같은 이름 아이템 배지가 없거나, 둘 이상 있습니다.', v_bad, v_tiers;
   END IF;
 
-  SELECT count(*) INTO v_bad FROM _jam2_clue WHERE reward_matches IS DISTINCT FROM 1;
+  SELECT count(*), string_agg(DISTINCT rarity::text, ', ') INTO v_bad, v_tiers
+    FROM _jam2_recipe WHERE reward_matches IS DISTINCT FROM 1;
   IF v_bad > 0 THEN
-    RAISE EXCEPTION '보상 배지를 이름으로 한 건씩 찾지 못한 것이 %개입니다(기대: 20개 모두 1건).', v_bad;
+    RAISE EXCEPTION '보상 배지를 이름과 등급으로 한 건씩 찾지 못한 것이 %개입니다(등급: %. 기대: 80개 모두 1건).', v_bad, v_tiers;
   END IF;
 
   SELECT count(*) INTO v_bad
-    FROM _jam2_clue_slot s JOIN _jam2_clue c ON c.no = s.clue_no
+    FROM _jam2_recipe_slot s JOIN _jam2_recipe c ON c.clue_no = s.clue_no AND c.rarity = s.rarity
    WHERE s.badge_id = c.reward_id;
   IF v_bad > 0 THEN
     RAISE EXCEPTION '재료 배지가 같은 레시피의 보상 배지와 같은 것이 %개입니다.', v_bad;
@@ -262,18 +325,21 @@ BEGIN
 END $$;
 
 -- ----------------------------------------------------------------
--- 2. 레시피 20건과 재료 칸 86개 넣기 (공개 시작은 먼 미래 자리 값)
+-- 2. 레시피 80건과 재료 칸 344개 넣기 (공개 시작은 먼 미래 자리 값)
 -- ----------------------------------------------------------------
 INSERT INTO public.combination_recipes (id, name, description, reward_points, reward_badge_ids, valid_from)
-SELECT c.recipe_id, c.name, c.description, c.points, ARRAY[c.reward_id], TIMESTAMPTZ '2099-01-01 00:00:00+09'
-  FROM _jam2_clue c
- ORDER BY c.no;
+SELECT r.recipe_id, c.name, c.description, c.points, ARRAY[r.reward_id], TIMESTAMPTZ '2099-01-01 00:00:00+09'
+  FROM _jam2_recipe r
+  JOIN _jam2_clue c ON c.no = r.clue_no
+  JOIN _jam2_tier t ON t.rarity = r.rarity
+ ORDER BY c.no, t.tier_ord;
 
 INSERT INTO public.combination_recipe_slots (recipe_id, slot_order, badge_type, allowed_badge_ids)
-SELECT c.recipe_id, s.slot_order, 'item', ARRAY[s.badge_id]
-  FROM _jam2_clue_slot s
-  JOIN _jam2_clue c ON c.no = s.clue_no
- ORDER BY s.clue_no, s.slot_order;
+SELECT r.recipe_id, s.slot_order, 'item', ARRAY[s.badge_id]
+  FROM _jam2_recipe_slot s
+  JOIN _jam2_recipe r ON r.clue_no = s.clue_no AND r.rarity = s.rarity
+  JOIN _jam2_tier t ON t.rarity = s.rarity
+ ORDER BY s.clue_no, t.tier_ord, s.slot_order;
 
 -- ----------------------------------------------------------------
 -- 3. 끝 검사 — 어긋나면 오류로 멈추고 트랜잭션 전체가 되돌아간다
@@ -281,65 +347,90 @@ SELECT c.recipe_id, s.slot_order, 'item', ARRAY[s.badge_id]
 DO $$
 DECLARE
   v_n INTEGER;
-  v_expected INTEGER;
+  v_pairs INTEGER;
 BEGIN
-  -- 레시피 20건: 이름·설명·성공 포인트·보상 배지가 계획과 같고, 자리 값 공개 시작, 종료 없음, 열린 채 지급, 보상 없음 허용 꺼짐
+  -- 레시피 80건: 이름·설명·성공 포인트·보상 배지가 계획과 같고, 자리 값 공개 시작, 종료 없음, 열린 채 지급, 보상 없음 허용 꺼짐
   SELECT count(*) INTO v_n
-    FROM public.combination_recipes r
-    JOIN _jam2_clue c ON c.recipe_id = r.id
-   WHERE r.name = c.name AND r.description = c.description AND r.reward_points = c.points
-     AND r.reward_badge_ids = ARRAY[c.reward_id]
-     AND r.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND r.valid_until IS NULL
-     AND NOT r.reward_locked AND NOT r.allow_no_reward;
-  IF v_n <> 20 THEN
-    RAISE EXCEPTION '끝 검사: 계획과 같은 레시피가 %건입니다(기대 20).', v_n;
+    FROM public.combination_recipes cr
+    JOIN _jam2_recipe r ON r.recipe_id = cr.id
+    JOIN _jam2_clue c ON c.no = r.clue_no
+   WHERE cr.name = c.name AND cr.description = c.description AND cr.reward_points = c.points
+     AND cr.reward_badge_ids = ARRAY[r.reward_id]
+     AND cr.valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND cr.valid_until IS NULL
+     AND NOT cr.reward_locked AND NOT cr.allow_no_reward;
+  IF v_n <> 80 THEN
+    RAISE EXCEPTION '끝 검사: 계획과 같은 레시피가 %건입니다(기대 80).', v_n;
   END IF;
 
-  -- 재료 칸 86개
-  SELECT count(*) INTO v_n FROM public.combination_recipe_slots s WHERE s.recipe_id IN (SELECT recipe_id FROM _jam2_clue);
-  IF v_n <> 86 THEN
-    RAISE EXCEPTION '끝 검사: 단서 레시피의 칸이 %개입니다(기대 86).', v_n;
+  -- 재료 칸 344개
+  SELECT count(*) INTO v_n FROM public.combination_recipe_slots cs WHERE cs.recipe_id IN (SELECT recipe_id FROM _jam2_recipe);
+  IF v_n <> 344 THEN
+    RAISE EXCEPTION '끝 검사: 단서 레시피의 칸이 %개입니다(기대 344).', v_n;
   END IF;
 
   -- 칸의 순서와 후보가 계획과 같다: item 칸, 후보는 재료 배지 1개
   SELECT count(*) INTO v_n
-    FROM public.combination_recipe_slots s
-    JOIN _jam2_clue c ON c.recipe_id = s.recipe_id
-    JOIN _jam2_clue_slot x ON x.clue_no = c.no AND x.slot_order = s.slot_order
-   WHERE s.badge_type = 'item' AND s.allowed_badge_ids = ARRAY[x.badge_id];
-  IF v_n <> 86 THEN
-    RAISE EXCEPTION '끝 검사: 계획과 같은 칸이 %개입니다(기대 86).', v_n;
+    FROM public.combination_recipe_slots cs
+    JOIN _jam2_recipe r ON r.recipe_id = cs.recipe_id
+    JOIN _jam2_recipe_slot x ON x.clue_no = r.clue_no AND x.rarity = r.rarity AND x.slot_order = cs.slot_order
+   WHERE cs.badge_type = 'item' AND cs.allowed_badge_ids = ARRAY[x.badge_id];
+  IF v_n <> 344 THEN
+    RAISE EXCEPTION '끝 검사: 계획과 같은 칸이 %개입니다(기대 344).', v_n;
   END IF;
 
   -- 성공 포인트 = 칸 수 × 10
   SELECT count(*) INTO v_n
-    FROM public.combination_recipes r
-    JOIN _jam2_clue c ON c.recipe_id = r.id
-   WHERE r.reward_points = 10 * (SELECT count(*) FROM public.combination_recipe_slots s WHERE s.recipe_id = r.id);
-  IF v_n <> 20 THEN
-    RAISE EXCEPTION '끝 검사: 성공 포인트가 칸 수 × 10인 레시피가 %건입니다(기대 20).', v_n;
+    FROM public.combination_recipes cr
+    JOIN _jam2_recipe r ON r.recipe_id = cr.id
+   WHERE cr.reward_points = 10 * (SELECT count(*) FROM public.combination_recipe_slots cs WHERE cs.recipe_id = cr.id);
+  IF v_n <> 80 THEN
+    RAISE EXCEPTION '끝 검사: 성공 포인트가 칸 수 × 10인 레시피가 %건입니다(기대 80).', v_n;
   END IF;
 
-  -- 재료와 보상 배지는 모두 Common 아이템 배지다
-  SELECT count(*) INTO v_expected FROM (SELECT badge_id FROM _jam2_clue_slot UNION SELECT reward_id FROM _jam2_clue) u;
+  -- 보상 배지는 레시피의 등급과 같은 등급의 아이템 배지 1개다
   SELECT count(*) INTO v_n
-    FROM public.badges b
-   WHERE b.id IN (SELECT badge_id FROM _jam2_clue_slot UNION SELECT reward_id FROM _jam2_clue)
-     AND b.type = 'item' AND b.rarity = 'common' AND b.deleted_at IS NULL;
-  IF v_n <> v_expected THEN
-    RAISE EXCEPTION '끝 검사: Common 아이템 배지인 재료·보상이 %개입니다(기대 %).', v_n, v_expected;
+    FROM public.combination_recipes cr
+    JOIN _jam2_recipe r ON r.recipe_id = cr.id
+    JOIN public.badges b ON b.id = cr.reward_badge_ids[1]
+   WHERE array_length(cr.reward_badge_ids, 1) = 1
+     AND b.type = 'item' AND b.rarity = r.rarity AND b.deleted_at IS NULL;
+  IF v_n <> 80 THEN
+    RAISE EXCEPTION '끝 검사: 보상 배지의 등급이 레시피의 등급과 같은 레시피가 %건입니다(기대 80).', v_n;
+  END IF;
+
+  -- 재료 칸의 후보는 레시피의 등급과 같은 등급의 아이템 배지 1개다
+  SELECT count(*) INTO v_n
+    FROM public.combination_recipe_slots cs
+    JOIN _jam2_recipe r ON r.recipe_id = cs.recipe_id
+    JOIN public.badges b ON b.id = cs.allowed_badge_ids[1]
+   WHERE array_length(cs.allowed_badge_ids, 1) = 1
+     AND b.type = 'item' AND b.rarity = r.rarity AND b.deleted_at IS NULL;
+  IF v_n <> 344 THEN
+    RAISE EXCEPTION '끝 검사: 후보의 등급이 레시피의 등급과 같은 칸이 %개입니다(기대 344).', v_n;
+  END IF;
+
+  -- 같은 (이름, 보상 등급) 중복이 없다: 이름 20개 × 등급 4개 = 80쌍이 모두 다르고, 이 이름의 레시피는 80건뿐이다
+  SELECT count(*), count(DISTINCT (cr.name, b.rarity)) INTO v_n, v_pairs
+    FROM public.combination_recipes cr
+    JOIN public.badges b ON b.id = cr.reward_badge_ids[1]
+   WHERE cr.name IN (SELECT name FROM _jam2_clue);
+  IF v_n <> 80 OR v_pairs <> 80 THEN
+    RAISE EXCEPTION '끝 검사: 단서 이름의 레시피가 %건, 이름과 보상 등급이 서로 다른 쌍이 %개입니다(기대 둘 다 80).', v_n, v_pairs;
   END IF;
 END $$;
 
+DROP TABLE _jam2_recipe_slot;
+DROP TABLE _jam2_recipe;
 DROP TABLE _jam2_clue_slot;
 DROP TABLE _jam2_clue;
+DROP TABLE _jam2_tier;
 
 -- 되돌림 SQL
--- 단서 레시피 20건만 지운다. 칸(combination_recipe_slots)은 외래키 ON DELETE CASCADE로 함께 지워진다. 한 번의 호출로 통째로 실행한다.
+-- 단서 레시피 80건만 지운다. 칸(combination_recipe_slots)은 외래키 ON DELETE CASCADE로 함께 지워진다. 한 번의 호출로 통째로 실행한다.
 -- 공개 시작을 실제 오픈 시각으로 바꾼 뒤라면 유저가 이미 믹스했을 수 있다. 그때는 먼저 user_combine_success_logs와 user_combine_fail_logs를 확인하고,
 -- 배지 조건(condition_json.recipe_first_success)이 이 레시피를 가리키는지도 확인한다(삭제 가드와 같다).
 --
--- 1) 지우기 (자리 값 공개 시작인 상태에서는 정확히 20건이 지워진다. 공개 시작을 이미 바꿨다면 valid_from 조건을 뺀다)
+-- 1) 지우기 (자리 값 공개 시작인 상태에서는 정확히 80건이 지워진다. 공개 시작을 이미 바꿨다면 valid_from 조건을 뺀다)
 -- DELETE FROM public.combination_recipes WHERE valid_from = TIMESTAMPTZ '2099-01-01 00:00:00+09' AND name IN ('노트 위의 별', '노을 구석의 트럭', '무명의 손글씨 번호표', '마감 무렵의 노래', '반셔터 벽의 무대 사진', '혼자 찍은 네컷', '좌판 위의 닫힌 카메라', '필름 마지막 장의 트럭', '수첩 첫 장의 아침 노래', '끝까지 들은 새벽의 곡', '10시 50분의 공중전화', '카세트 표지의 같은 글씨', '녹음 부스의 셔터 소리', '같은 숫자만 적힌 번호표', '열쇠고리에 끼운 네컷', '하은의 칸에 꽂힌 카세트', '벽장의 월세 봉투', '창문과 대합실 사이', '맨 아래 줄의 노트 12권', '빨래방 노트 사이의 봉투');
 --
 -- 2) 되돌린 뒤 확인: 아래 둘이 모두 0이어야 한다
