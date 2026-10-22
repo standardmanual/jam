@@ -118,7 +118,7 @@ function tribeByName(plan, name) {
   return t;
 }
 
-/** 되돌림 SQL의 주석 줄 — 모든 줄을 `-- `로 시작한다. */
+/** SQL 주석 블록(머리말과 되돌림 SQL) — 모든 줄을 `-- `로 시작해 실수로 실행되지 않게 한다. */
 function commentBlock(lines) {
   return lines.map((l) => (l === '' ? '--' : `-- ${l}`)).join('\n');
 }
