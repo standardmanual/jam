@@ -114,37 +114,34 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Strava 확장 필드 백필</h1>
+        <h1 className="text-2xl font-bold">Strava 백필</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          이미 저장된 활동을 Strava 목록에서 다시 훑어 심박수·파워·케이던스 등 확장 필드만 채웁니다.
-          한 번에 유저 한 명씩 실행합니다.
+          저장된 활동에서 심박수·파워·케이던스 등 확장 필드를 다시 채워요. 한 번에 유저 한 명씩 실행해요
         </p>
       </div>
 
       <Alert>
         <IconAlertTriangle className="h-4 w-4" />
-        <AlertTitle>미리보기도 완전한 읽기 전용은 아닙니다</AlertTitle>
+        <AlertTitle>미리보기에서도 토큰은 갱신돼요</AlertTitle>
         <AlertDescription>
-          Strava를 호출하려면 유효한 토큰이 있어야 해서, 만료된 access_token은 미리보기에서도 갱신되고
-          저장됩니다. Strava가 refresh_token을 회전시키기 때문에 저장하지 않으면 그 유저의 Strava
-          동기화가 끊깁니다. 활동 데이터는 «적용»을 눌렀을 때만 바뀝니다.
+          Strava를 호출하려면 유효한 토큰이 필요해서, 만료된 access_token은 미리보기에서도 갱신돼요.
+          활동 데이터는 &apos;적용&apos;을 눌렀을 때만 변경돼요.
         </AlertDescription>
       </Alert>
 
       <Alert>
         <IconInfoCircle className="h-4 w-4" />
-        <AlertTitle>배지·아이템·미션·소식은 실행되지 않습니다</AlertTitle>
+        <AlertTitle>배지·아이템·미션·소식은 실행되지 않아요</AlertTitle>
         <AlertDescription>
-          백필은 활동의 확장 필드만 채웁니다. 배지 평가·아이템 드랍·미션 판정·소식 생성은 하나도
-          일어나지 않고, 마지막 동기화 시각도 건드리지 않습니다. 같은 유저에게 여러 번 실행해도
-          결과가 같습니다.
+          백필은 활동의 확장 필드만 채워요. 배지 평가·아이템 드랍·미션 판정·소식 생성은 발생하지 않고,
+          마지막 동기화 시각도 유지돼요. 같은 유저에게 여러 번 실행해도 안전해요.
         </AlertDescription>
       </Alert>
 
       {loadError && (
         <Alert variant="destructive">
           <IconAlertTriangle className="h-4 w-4" />
-          <AlertTitle>현황을 불러오지 못했습니다</AlertTitle>
+          <AlertTitle>현황을 불러오지 못했어요</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
@@ -152,7 +149,7 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
       {error && (
         <Alert variant="destructive">
           <IconAlertTriangle className="h-4 w-4" />
-          <AlertTitle>백필을 실행하지 못했습니다</AlertTitle>
+          <AlertTitle>백필을 실행하지 못했어요</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -160,7 +157,7 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
       {overview?.truncated && (
         <Alert variant="destructive">
           <IconAlertTriangle className="h-4 w-4" />
-          <AlertTitle>활동이 집계 상한을 넘었습니다</AlertTitle>
+          <AlertTitle>활동이 집계 한도를 넘었어요</AlertTitle>
           <AlertDescription>
             아래 숫자는 전체가 아니라 일부만 센 값입니다. 이 값을 근거로 배지 조건 임계값을 정하지
             마세요.
@@ -172,8 +169,7 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
         <CardHeader>
           <CardTitle>대상 유저</CardTitle>
           <CardDescription>
-            Strava 동기화를 한 유저 {numberFormat(users.length)}명. «미리보기»로 갱신 대상 건수를 먼저
-            확인한 뒤 «적용»을 누르세요.
+            Strava를 연동한 유저 {numberFormat(users.length)}명이에요. &apos;미리보기&apos;로 대상을 확인한 뒤 &apos;적용&apos;해 주세요
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -191,7 +187,7 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
               {users.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Strava 동기화를 한 유저가 없습니다.
+                    Strava 동기화를 한 유저가 없어요
                   </TableCell>
                 </TableRow>
               )}
@@ -216,10 +212,10 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
                               {numberFormat(runState.result.changed)}건 · 적용{' '}
                               {numberFormat(runState.result.updated)}건 · 요청{' '}
                               {numberFormat(runState.result.requests)}회
-                              {runState.result.truncated && ' · 요청 예산이 떨어져 중간에 멈췄습니다'}
+                              {runState.result.truncated && ' · 요청 한도에 도달해 중간에 멈췄어요'}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground"> — 처리된 유저가 없습니다</span>
+                            <span className="text-muted-foreground"> — 처리된 유저가 없어요</span>
                           )}
                           {runState.result?.error && (
                             <div className="text-red-600 mt-1">오류: {runState.result.error}</div>
@@ -263,8 +259,8 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
                               <AlertDialogTitle>이 유저의 활동에 확장 필드를 채울까요?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 {userDisplayName(user)}님의 저장된 활동{' '}
-                                {numberFormat(user.activityCount)}건에서 확장 필드만 채웁니다. 기존 값을
-                                지우거나 덮어쓰지 않고, 배지·아이템·미션·소식도 실행되지 않습니다.
+                                {numberFormat(user.activityCount)}건에서 확장 필드만 채워요. 기존 값을
+                                지우거나 덮어쓰지 않고, 배지·아이템·미션·소식도 실행되지 않아요.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -304,11 +300,10 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
         <CardContent className="space-y-4">
           <Alert>
             <IconAlertTriangle className="h-4 w-4" />
-            <AlertTitle>케이던스 원값의 단위를 먼저 확인하세요</AlertTitle>
+            <AlertTitle>케이던스 원값의 단위를 먼저 확인해 주세요</AlertTitle>
             <AlertDescription>
-              달리기 케이던스 중앙값이 90 근처면 한쪽 발 기준이고, 180 근처면 양발 합계(spm)입니다.
-              어느 쪽인지 확인하지 않고 배지 조건 임계값을 정하면 영영 획득되지 않는 배지가 만들어집니다.
-              자전거는 rpm이라 애초에 다른 축입니다.
+              달리기 케이던스 중앙값이 90 근처면 한쪽 발 기준이고, 180 근처면 양발 합계(spm)예요.
+              단위를 먼저 확인한 뒤 배지 조건 임계값을 정해 주세요. 자전거는 rpm 단위예요.
             </AlertDescription>
           </Alert>
 
@@ -330,7 +325,7 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
               {coverage.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    집계할 활동이 없습니다.
+                    집계할 활동이 없어요
                   </TableCell>
                 </TableRow>
               )}

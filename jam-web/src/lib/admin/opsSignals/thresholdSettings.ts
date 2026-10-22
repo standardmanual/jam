@@ -31,8 +31,8 @@ import {
 export const SIGNAL_SECTION_ID = 'signals'
 export const SIGNAL_SECTION_TITLE = '신호 기준값'
 export const SIGNAL_SECTION_DESCRIPTION = [
-  '운영 신호 감지 기준값과 감지 주기를 설정해요 (신호 발생 시에도 승인은 가능).',
-  '수정된 기준값은 다음 신호 계산 주기부터 적용돼요.',
+  '운영 신호 감지 기준값과 감지 주기를 설정해요. 신호가 발생해도 승인은 가능해요',
+  '수정된 기준값은 다음 신호 계산 주기부터 적용돼요',
 ] as const
 
 export const SIGNAL_SECTION_LOAD_FAILED = {

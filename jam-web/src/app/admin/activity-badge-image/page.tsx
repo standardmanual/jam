@@ -253,10 +253,9 @@ export default function ActivityBadgeImagePage() {
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">액티비티 배지 이미지 생성</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">액티비티 배지</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          액티비티 배지 1개를 골라 등급 칩·이름·설명·배경을 합성해 이미지를 만듭니다.
-          적용하면 즉시 반영됩니다 — 별도 배포나 SQL 적용이 필요 없습니다.
+          액티비티 배지를 선택하고 등급·이름·설명·배경을 합성해 이미지를 만들어요. 적용 즉시 반영돼요
         </p>
       </div>
 
@@ -264,7 +263,7 @@ export default function ActivityBadgeImagePage() {
         <CardHeader>
           <CardTitle>배지 검색</CardTitle>
           <CardDescription>
-            액티비티 배지만 검색합니다. 이름이 같은 배지가 여러 개 있으니 등급·레벨·활동 종목까지 보고 고르세요.
+            액티비티 배지만 검색해요. 이름이 같은 배지는 등급·레벨·활동 종목을 확인하고 선택해 주세요
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -349,7 +348,7 @@ export default function ActivityBadgeImagePage() {
           </CardHeader>
           <CardContent>
             {results.length === 0 ? (
-              <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
+              <p className="text-sm text-muted-foreground">검색 결과가 없어요</p>
             ) : (
               <div className="max-h-96 overflow-y-auto">
                 <Table>
@@ -569,7 +568,7 @@ export default function ActivityBadgeImagePage() {
             <CardHeader>
               <CardTitle>미리보기</CardTitle>
               <CardDescription>
-                아래 캔버스가 그대로 이미지로 구워져요. 재생하다가 마음에 드는 배경에서 일시정지한 뒤 적용하세요.
+                아래 캔버스가 그대로 이미지로 구워져요. 재생하다가 원하는 배경에서 일시정지한 뒤 적용해 주세요
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

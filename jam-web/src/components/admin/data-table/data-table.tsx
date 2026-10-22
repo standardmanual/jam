@@ -40,7 +40,7 @@ const INTERACTIVE_SELECTOR = 'a, button, input, label, [role="switch"], [role="c
 export function DataTable<TData extends RowData>({
   table,
   columnCount,
-  emptyMessage = '표시할 항목이 없습니다.',
+  emptyMessage = '표시할 항목이 없어요',
   className,
   getRowHref,
 }: DataTableProps<TData>) {

@@ -110,17 +110,16 @@ export default function BadgeImagePage() {
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">체크인 배지 이미지 생성</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">체크인 배지</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          체크인 배지 1개를 검색해 선택하고, 표시할 텍스트를 입력해 이미지를 생성합니다.
-          생성하면 즉시 반영됩니다 — 별도 배포나 SQL 적용이 필요 없습니다.
+          체크인 배지를 선택하고 표시할 텍스트를 입력해 이미지를 만들어요. 생성 즉시 반영돼요
         </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>배지 검색</CardTitle>
-          <CardDescription>배지 이름 또는 연결된 장소 이름으로 검색합니다.</CardDescription>
+          <CardDescription>배지 이름이나 연결된 장소 이름으로 검색해요</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -170,12 +169,12 @@ export default function BadgeImagePage() {
           <CardHeader>
             <CardTitle>검색 결과 {results.length}건</CardTitle>
             {searchTruncated && (
-              <CardDescription>결과가 많아 상위 {results.length}건만 표시합니다. 검색어를 더 구체화하세요.</CardDescription>
+              <CardDescription>결과가 많아 상위 {results.length}건만 표시했어요. 검색어를 더 자세히 입력해 보세요</CardDescription>
             )}
           </CardHeader>
           <CardContent>
             {results.length === 0 ? (
-              <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
+              <p className="text-sm text-muted-foreground">검색 결과가 없어요</p>
             ) : (
               <div className="max-h-80 overflow-y-auto">
                 <Table>
@@ -222,7 +221,7 @@ export default function BadgeImagePage() {
         <Card>
           <CardHeader>
             <CardTitle>이미지 생성 — {selected.name}</CardTitle>
-            <CardDescription>렌더링할 디자인과 표시할 텍스트를 확인·편집한 뒤 생성하세요.</CardDescription>
+            <CardDescription>디자인과 표시할 텍스트를 확인하고 만들어 보세요</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
@@ -287,7 +286,7 @@ export default function BadgeImagePage() {
 
             <Alert>
               <AlertDescription>
-                이미지가 즉시 반영됐습니다. 배지 화면에서 바로 확인할 수 있습니다.
+                이미지가 즉시 반영됐어요. 배지 화면에서 바로 확인할 수 있어요.
               </AlertDescription>
             </Alert>
           </CardContent>

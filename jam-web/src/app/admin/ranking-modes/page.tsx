@@ -84,14 +84,13 @@ export default async function AdminRankingModesPage({ searchParams }: AdminRanki
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">랭킹 규칙 관리</h1>
+          <h1 className="text-2xl font-bold">랭킹</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            홈 피드 랭킹 카드에 연결할 랭킹을 미리 만들어 둡니다. 누구를 줄 세울지와 어떤
-            지표로 줄 세울지를 여기서 정합니다. 연결된 카드 수는 활성이고 아직 끝나지 않은 카드만 셉니다.
+            홈 피드 랭킹 카드에 연결할 순위 규칙을 관리해요. 연결된 카드는 활성 상태인 카드만 집계해요
           </p>
         </div>
         <Link href="/admin/ranking-modes/new">
-          <Button>+ 랭킹 규칙 추가</Button>
+          <Button>랭킹 규칙 추가</Button>
         </Link>
       </div>
 

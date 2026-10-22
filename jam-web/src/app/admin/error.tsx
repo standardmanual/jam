@@ -20,14 +20,14 @@ export default function AdminError({
 
   return (
     <div className="p-8 max-w-xl">
-      <h1 className="text-2xl font-bold mb-2 text-red-600">오류 발생</h1>
-      <p className="text-muted-foreground mb-6 text-sm">어드민 페이지를 로드하는 중 오류가 발생했습니다.</p>
+      <h1 className="text-2xl font-bold mb-2 text-red-600">문제가 생겼어요</h1>
+      <p className="text-muted-foreground mb-6 text-sm">페이지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
 
       {isMissingServiceKey && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
-          <p className="font-semibold text-amber-600 mb-2">환경변수 설정 필요</p>
+          <p className="font-semibold text-amber-600 mb-2">환경 변수 설정이 필요해요</p>
           <p className="text-foreground mb-3">
-            Vercel 프로젝트 설정 → Environment Variables 에서 아래 변수를 추가하세요.
+            Vercel 프로젝트 설정 → Environment Variables에서 아래 변수를 추가해 주세요.
           </p>
           <ul className="space-y-1 text-xs text-muted-foreground">
             <li>
@@ -43,7 +43,7 @@ export default function AdminError({
       )}
 
       <details className="mb-6 bg-white border border-border rounded-xl p-4">
-        <summary className="text-xs text-muted-foreground cursor-pointer">오류 상세</summary>
+        <summary className="text-xs text-muted-foreground cursor-pointer">오류 상세 정보</summary>
         <pre className="mt-2 text-xs text-red-500 whitespace-pre-wrap break-all">{error.message}</pre>
       </details>
 

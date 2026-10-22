@@ -145,7 +145,7 @@ export default function BadgeSearchSelect({
         <div className="absolute z-20 mt-1 w-full bg-white border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
           {loading && <p className="px-3 py-2 text-xs text-muted-foreground">검색 중...</p>}
           {!loading && displayResults.length === 0 && (
-            <p className="px-3 py-2 text-xs text-muted-foreground">검색 결과가 없습니다.</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">검색 결과가 없어요</p>
           )}
           {!loading &&
             displayResults.map((b) => (

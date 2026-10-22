@@ -346,10 +346,10 @@ export default function RankingModeForm({ mode, missions, initialTargetUsers }: 
       <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => { if (!open && !loading) setShowDeleteConfirm(false) }}>
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
-            <AlertDialogTitle>랭킹 규칙 삭제</AlertDialogTitle>
+            <AlertDialogTitle>랭킹 규칙을 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{mode?.title}&apos; 랭킹 규칙을 삭제합니다. 이 랭킹 규칙을 연결한 투데이 카드가 있다면
-              연결이 풀리고 빈 순위 목록으로 남습니다. 삭제하면 되돌릴 수 없습니다.
+              &apos;{mode?.title}&apos; 랭킹 규칙을 삭제하면 되돌릴 수 없어요. 연결된 투데이 카드가 있다면
+              연결이 해제돼요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -357,7 +357,7 @@ export default function RankingModeForm({ mode, missions, initialTargetUsers }: 
               취소
             </Button>
             <Button type="button" variant="destructive" disabled={loading} onClick={handleDelete}>
-              {loading ? '삭제 중...' : '삭제 확인'}
+              {loading ? '삭제 중…' : '삭제'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

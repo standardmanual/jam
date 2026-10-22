@@ -84,11 +84,11 @@ export function UserSearchCombobox({ value, onChange, container }: UserSearchCom
       </PopoverTrigger>
       <PopoverContent className="w-[360px] p-0" align="start" container={container ?? undefined}>
         <Command shouldFilter={false}>
-          <CommandInput placeholder="유저명 또는 이메일 검색..." value={query} onValueChange={setQuery} />
+          <CommandInput placeholder="유저명 또는 이메일 검색" value={query} onValueChange={setQuery} />
           <CommandList>
             {loading && <p className="py-6 text-center text-sm text-muted-foreground">검색 중...</p>}
             {!loading && query.trim() && displayResults.length === 0 && (
-              <CommandEmpty>검색 결과가 없습니다</CommandEmpty>
+              <CommandEmpty>검색 결과가 없어요</CommandEmpty>
             )}
             {!loading && displayResults.length > 0 && (
               <CommandGroup>

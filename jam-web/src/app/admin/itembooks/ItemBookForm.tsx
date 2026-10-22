@@ -457,7 +457,7 @@ export default function ItemBookForm({
           </div>
 
           {slottedBadges.length === 0 && (
-            <p className="text-muted-foreground text-sm">등록된 배지가 없습니다.</p>
+            <p className="text-muted-foreground text-sm">등록된 배지가 없어요</p>
           )}
           <div className="space-y-2">
             {slottedBadges.map((b) => {
@@ -561,10 +561,9 @@ export default function ItemBookForm({
       <AlertDialog open={showDeactivateConfirm} onOpenChange={(open) => { if (!open) handleDeactivateCancel() }}>
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
-            <AlertDialogTitle>컬렉션 비활성화</AlertDialogTitle>
+            <AlertDialogTitle>컬렉션을 비활성화할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              이 컬렉션을 비활성화하면 유저에게 더 이상 노출되지 않습니다. 소속 아이템배지에는
-              영향을 주지 않습니다. 계속하시겠습니까?
+              비활성화하면 유저에게 더 이상 보이지 않아요. 소속 아이템배지에는 영향을 주지 않아요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -573,7 +572,7 @@ export default function ItemBookForm({
               onClick={handleDeactivateConfirm}
               className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              계속
+              비활성화
             </button>
             <button
               type="button"

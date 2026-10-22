@@ -148,7 +148,7 @@ export default function VirtualActivityForm({ onActivityChange, themeContainer }
 
   const handleFile = (file: File) => {
     if (!file.name.endsWith('.gpx')) {
-      setGpxError('.gpx 파일만 업로드할 수 있습니다.')
+      setGpxError('.gpx 파일만 올릴 수 있어요')
       return
     }
     setGpxError(null)

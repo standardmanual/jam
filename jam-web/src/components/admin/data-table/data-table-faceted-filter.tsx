@@ -100,7 +100,7 @@ export function DataTableFacetedFilter({
         <Command>
           <CommandInput placeholder={title} />
           <CommandList>
-            <CommandEmpty>결과가 없습니다.</CommandEmpty>
+            <CommandEmpty>결과가 없어요</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {
                 const isSelected = selectedValues.has(option.value)

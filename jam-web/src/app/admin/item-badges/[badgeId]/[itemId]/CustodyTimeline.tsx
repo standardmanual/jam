@@ -45,7 +45,7 @@ export function CustodyTimeline({ events, poiNameById, pickedUpDrops }: CustodyT
   if (events.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        이력이 없습니다 (개체 정체성 모델 도입 이전 데이터로 추정됩니다).
+        이력이 없어요 (개체 정체성 모델 도입 이전 데이터로 추정돼요)
       </p>
     )
   }

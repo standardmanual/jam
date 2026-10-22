@@ -197,13 +197,13 @@ export default function MultiBadgeSearchSelect({
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
-          placeholder={placeholder ?? '배지 이름 검색... (필터만으로도 후보를 볼 수 있어요)'}
+          placeholder={placeholder ?? '배지 이름 검색 (필터만으로도 후보를 볼 수 있어요)'}
         />
         {open && hasCriteria && (
           <div className="absolute z-20 mt-1 w-full bg-white border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
             {loading && <p className="px-3 py-2 text-xs text-muted-foreground">검색 중...</p>}
             {!loading && displayResults.length === 0 && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">검색 결과가 없습니다.</p>
+              <p className="px-3 py-2 text-xs text-muted-foreground">검색 결과가 없어요</p>
             )}
             {!loading &&
               displayResults.map((b) => {
@@ -225,7 +225,7 @@ export default function MultiBadgeSearchSelect({
               })}
             {!loading && truncated && (
               <p className="px-3 py-2 text-xs text-amber-600 border-t border-border">
-                결과가 많아 일부만 표시했습니다. 검색어를 추가해 좁혀보세요.
+                결과가 많아 일부만 표시했어요. 검색어를 더 입력해 보세요.
               </p>
             )}
           </div>
@@ -234,7 +234,7 @@ export default function MultiBadgeSearchSelect({
 
       {/* 선택 누적 목록 */}
       {selected.length === 0 ? (
-        <p className="text-xs text-muted-foreground">선택한 배지가 없습니다.</p>
+        <p className="text-xs text-muted-foreground">선택한 배지가 없어요</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {selected.map((s) => (
