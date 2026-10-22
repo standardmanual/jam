@@ -10,22 +10,33 @@ import { Input } from '@/components/admin/ui/input'
 import { Textarea } from '@/components/admin/ui/textarea'
 import { cn } from '@/lib/utils'
 import {
+  activeZeroWarnings,
   draftChangedValues,
   draftErrors,
   draftFromValues,
   formatBalanceNumber,
+  fullFieldLabel,
+  groupSums,
   parseDraftNumber,
+  reconcileSnapshot,
+  splitDisclosureChanges,
+  type BalanceGroupSum,
 } from '@/lib/admin/balance/fields'
-import { NOTE_MAX_LENGTH } from '@/lib/admin/balance/history'
-import type { BalanceFieldDef, BalanceSnapshot, BalanceValues } from '@/lib/admin/balance/types'
+import { NOTE_LABEL, NOTE_MAX_LENGTH, NOTE_PLACEHOLDER } from '@/lib/admin/balance/history'
+import type { BalanceFieldDef, BalanceSnapshot, BalanceValues, BalanceZeroWarning } from '@/lib/admin/balance/types'
 import { putBalanceSection } from './balanceClient'
+import { BalanceProbabilityConfirm, type BalanceConfirmLine } from './BalanceProbabilityConfirm'
 
 /**
  * 밸런스 설정 구역 공용 폼 (티켓 20261022_1132 1회). 구역마다 이 폼 하나가 칸 목록·기본값·바뀐 표시·메모·저장을 맡는다.
  *
  * 구역은 «칸 정의»(값만 담긴 `BalanceFieldDef` 목록)를 서버 컴포넌트에서 받아 칸을 그린다. 흐름: 고치는 동안 바뀐 칸에 «바꾼 값» 줄이 나온다 → 칸을 떠나면 그 칸의 오류가 보이고
  * 저장이 막힌다 → [저장]은 바뀐 칸만 보낸다(메모는 선택, 비워도 저장된다) → 성공하면 알림과 토스트, 서버 컴포넌트(최근 변경)를 다시 읽는다. 400의 칸별 문장은 같은 칸 아래에,
- * 409(다른 사람이 먼저 바꿈)는 [새로 불러오기]로 서버 값을 다시 읽는다. 확률 안내에 반영되는 칸의 확인창은 2회에서 더한다.
+ * 409(다른 사람이 먼저 바꿈)는 [새로 불러오기]로 서버 값을 다시 읽는다.
+ *
+ * 2회에서 더한 것: ① 등급 확률처럼 합을 맞춰야 하는 묶음(`sumTo`) 아래에 합계 줄을 보이고 합이 어긋나면 저장을 막는다. ② 값이 모두 0이면 서비스에 영향이 큰 조합(`zeroWarnings`)에 경고를 보인다(막지 않는다).
+ * ③ 확률 안내에 반영되는 칸이 바뀌었으면 [저장]이 확인창(`BalanceProbabilityConfirm`)을 먼저 열고, 확인해야 저장된다. ④ 같은 행을 쓰는 다른 구역이 저장해 수정 시각만 달라졌고 이 구역의 값이 그대로면
+ * 고치던 초안을 지키고 새 수정 시각만 받는다(`reconcileSnapshot`).
  *
  * 화면(`BalanceSectionFormView`)과 컨테이너(`BalanceSectionForm`)를 나눴다: 화면은 값만 받아 그리는 순수 부분이라 서버 렌더로 시험하고,
  * 상태·요청은 컨테이너가 맡는다. 문장은 모두 React 텍스트 노드다.
@@ -35,8 +46,7 @@ export const SAVE_LABEL = '저장'
 export const SAVING_LABEL = '저장하는 중'
 export const RELOAD_LABEL = '새로 불러오기'
 export const SAVED_MESSAGE = '저장했어요. 바뀐 값은 staging과 프로덕션에 바로 반영돼요.'
-export const NOTE_LABEL = '변경 메모 (선택)'
-export const NOTE_PLACEHOLDER = '왜 바꾸는지 적어 두면 최근 변경에 함께 남아요'
+export { NOTE_LABEL, NOTE_PLACEHOLDER }
 
 const TEXT = 'break-keep wrap-break-word'
 
@@ -124,6 +134,23 @@ function BalanceField({ def, idBase, text, saved, error, disabled, onChange, onT
   )
 }
 
+/** 합계를 맞춰야 하는 묶음 아래의 합계 줄. 맞으면 «합계 100%», 어긋나면 서버와 같은 문장이다. 합계를 알 수 없으면(칸 오류가 따로 알린다) 그리지 않는다. */
+function GroupSumLine({ sum }: { sum: BalanceGroupSum | undefined }) {
+  if (!sum || sum.sum === null) return null
+  if (sum.ok) {
+    return (
+      <p role="status" className={cn('text-xs text-muted-foreground', TEXT)}>
+        합계 {withUnit(sum.sum, sum.unit)}
+      </p>
+    )
+  }
+  return (
+    <p role="status" className={cn('text-xs font-medium text-destructive text-pretty', TEXT)}>
+      {sum.message}
+    </p>
+  )
+}
+
 export interface BalanceSectionFormViewProps {
   /** 요소 ID 접두사(`balance-<구역 키>`). */
   idBase: string
@@ -138,6 +165,10 @@ export interface BalanceSectionFormViewProps {
   canSave: boolean
   saving: boolean
   notice: BalanceNotice | null
+  /** 합계를 맞춰야 하는 묶음의 지금 합계(묶음 소제목으로 찾는다). */
+  sums?: readonly BalanceGroupSum[]
+  /** 지금 초안에서 켜진 «모두 0» 경고 문장들. 막지는 않는다. */
+  warnings?: readonly string[]
   onDraftChange: (key: string, text: string) => void
   onTouch: (key: string) => void
   onNoteChange: (text: string) => void
@@ -146,7 +177,24 @@ export interface BalanceSectionFormViewProps {
 }
 
 export function BalanceSectionFormView(props: BalanceSectionFormViewProps) {
-  const { idBase, fields, savedValues, draft, note, errors, canSave, saving, notice, onDraftChange, onTouch, onNoteChange, onSubmit, onReload } = props
+  const {
+    idBase,
+    fields,
+    savedValues,
+    draft,
+    note,
+    errors,
+    canSave,
+    saving,
+    notice,
+    sums = [],
+    warnings = [],
+    onDraftChange,
+    onTouch,
+    onNoteChange,
+    onSubmit,
+    onReload,
+  } = props
   const changedCount = Object.keys(draftChangedValues(fields, savedValues, draft)).length
   const noteId = `${idBase}-note`
 
@@ -176,7 +224,14 @@ export function BalanceSectionFormView(props: BalanceSectionFormViewProps) {
                 />
               ))}
             </div>
+            {group.title && <GroupSumLine sum={sums.find((entry) => entry.title === group.title)} />}
           </fieldset>
+        ))}
+
+        {warnings.map((warning) => (
+          <Alert key={warning} variant="warning" role="status">
+            <p className={cn('text-sm text-pretty', TEXT)}>{warning}</p>
+          </Alert>
         ))}
 
         <div className="space-y-1.5">
@@ -232,9 +287,11 @@ export interface BalanceSectionFormProps {
   values: BalanceValues
   /** 서버가 읽은 때의 수정 시각. 저장 때 그대로 돌려보낸다. */
   updatedAt: string
+  /** 칸이 모두 0이면 보일 경고(막지는 않는다). */
+  zeroWarnings?: readonly BalanceZeroWarning[]
 }
 
-export function BalanceSectionForm({ sectionId, fields, values, updatedAt }: BalanceSectionFormProps) {
+export function BalanceSectionForm({ sectionId, fields, values, updatedAt, zeroWarnings }: BalanceSectionFormProps) {
   const router = useRouter()
   const [snapshot, setSnapshot] = useState<BalanceSnapshot>({ values, updatedAt })
   const [propStamp, setPropStamp] = useState(updatedAt)
@@ -244,11 +301,16 @@ export function BalanceSectionForm({ sectionId, fields, values, updatedAt }: Bal
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<BalanceNotice | null>(null)
   const [saving, setSaving] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   // 화면을 새로 읽어 서버 값이 달라졌으면(다른 곳의 저장·새로 불러오기) 초안을 그 값으로 다시 만든다. 내 저장 직후의 새로 읽기는 이미 반영돼 있어 건드리지 않는다.
+  // 같은 행을 쓰는 다른 구역(잼·동기화)이 저장해 수정 시각만 바뀌었고 이 구역의 값이 그대로면 고치던 초안을 지키고 새 수정 시각만 받는다.
   if (updatedAt !== propStamp) {
     setPropStamp(updatedAt)
-    if (updatedAt !== snapshot.updatedAt) {
+    const verdict = reconcileSnapshot(fields, snapshot, { values, updatedAt })
+    if (verdict === 'adopt') {
+      setSnapshot({ values, updatedAt })
+    } else if (verdict === 'reset') {
       setSnapshot({ values, updatedAt })
       setDraft(draftFromValues(fields, values))
       setNote('')
@@ -265,7 +327,23 @@ export function BalanceSectionForm({ sectionId, fields, values, updatedAt }: Bal
     for (const [key, message] of Object.entries(liveErrors)) if (touched.has(key)) shown[key] = message
     return { ...shown, ...serverErrors }
   }, [liveErrors, touched, serverErrors])
-  const canSave = !saving && Object.keys(changed).length > 0 && Object.keys(liveErrors).length === 0
+  const sums = useMemo(() => groupSums(fields, draft), [fields, draft])
+  const warnings = useMemo(() => activeZeroWarnings(zeroWarnings, draft), [zeroWarnings, draft])
+  const split = useMemo(() => splitDisclosureChanges(fields, snapshot.values, changed), [fields, snapshot.values, changed])
+  const canSave = !saving && Object.keys(changed).length > 0 && Object.keys(liveErrors).length === 0 && sums.every((entry) => entry.ok)
+  const confirmLines = useMemo<BalanceConfirmLine[]>(
+    () =>
+      split.disclosure.map((change) => {
+        const def = fields.find((entry) => entry.key === change.field)
+        const unit = def?.unit ?? ''
+        return {
+          label: def ? fullFieldLabel(def) : change.field,
+          before: `${formatBalanceNumber(change.from)}${unit}`,
+          after: `${formatBalanceNumber(change.to)}${unit}`,
+        }
+      }),
+    [fields, split]
+  )
 
   function changeDraft(key: string, text: string) {
     setDraft((current) => ({ ...current, [key]: text }))
@@ -280,6 +358,21 @@ export function BalanceSectionForm({ sectionId, fields, values, updatedAt }: Bal
 
   function touch(key: string) {
     setTouched((current) => (current.has(key) ? current : new Set(current).add(key)))
+  }
+
+  /** [저장]. 확률 안내에 반영되는 칸이 바뀌었으면 확인창을 먼저 열고, 아니면 바로 저장한다. */
+  function requestSave() {
+    if (!canSave) return
+    if (split.disclosure.length > 0) {
+      setConfirmOpen(true)
+      return
+    }
+    void submit()
+  }
+
+  async function confirmSave() {
+    await submit()
+    setConfirmOpen(false)
   }
 
   async function submit() {
@@ -311,21 +404,35 @@ export function BalanceSectionForm({ sectionId, fields, values, updatedAt }: Bal
   }
 
   return (
-    <BalanceSectionFormView
-      idBase={`balance-${sectionId}`}
-      fields={fields}
-      savedValues={snapshot.values}
-      draft={draft}
-      note={note}
-      errors={visibleErrors}
-      canSave={canSave}
-      saving={saving}
-      notice={notice}
-      onDraftChange={changeDraft}
-      onTouch={touch}
-      onNoteChange={setNote}
-      onSubmit={() => void submit()}
-      onReload={() => router.refresh()}
-    />
+    <>
+      <BalanceSectionFormView
+        idBase={`balance-${sectionId}`}
+        fields={fields}
+        savedValues={snapshot.values}
+        draft={draft}
+        note={note}
+        errors={visibleErrors}
+        canSave={canSave}
+        saving={saving}
+        notice={notice}
+        sums={sums}
+        warnings={warnings}
+        onDraftChange={changeDraft}
+        onTouch={touch}
+        onNoteChange={setNote}
+        onSubmit={requestSave}
+        onReload={() => router.refresh()}
+      />
+      <BalanceProbabilityConfirm
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        lines={confirmLines}
+        otherChangeCount={split.others.length}
+        note={note}
+        onNoteChange={setNote}
+        pending={saving}
+        onConfirm={() => void confirmSave()}
+      />
+    </>
   )
 }

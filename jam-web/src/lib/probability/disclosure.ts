@@ -83,7 +83,11 @@ export interface AmbientDisclosureInput {
   rarity_mystic: number
 }
 
-const CAPSULE_COLUMNS: readonly CapsuleColumn[] = [
+/**
+ * 확률 안내 페이지가 읽는 `capsule_policy` 칸 — «확률 안내에 반영되는 칸»의 단일 원천이다.
+ * 어드민 밸런스 설정(`lib/admin/balance`)이 이 목록으로 저장 전 확인창이 필요한 칸을 가른다(티켓 20261022_1132 2회).
+ */
+export const CAPSULE_COLUMNS: readonly CapsuleColumn[] = [
   'guaranteed_count',
   'bonus_count',
   'bonus_probability',
@@ -95,7 +99,8 @@ const CAPSULE_COLUMNS: readonly CapsuleColumn[] = [
   'pity_epic_threshold',
 ]
 
-const JAM_COLUMNS: readonly JamColumn[] = [
+/** 확률 안내 페이지가 읽는 `jam_policy` 칸 — 위 `CAPSULE_COLUMNS`와 같은 용도의 단일 원천이다. */
+export const JAM_COLUMNS: readonly JamColumn[] = [
   'sync_item_guaranteed',
   'sync_item_guaranteed_hiking',
   'sync_item_bonus_rolls',

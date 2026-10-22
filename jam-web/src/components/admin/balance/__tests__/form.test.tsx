@@ -10,6 +10,7 @@
  * - [저장]은 `canSave`가 거짓이면 비활성이고, 저장 중에는 입력이 잠기며 글자가 바뀐다
  * - 알림: 성공은 `status`, 오류·충돌은 경고 상자이고 충돌에만 [새로 불러오기]가 있다
  * - 한국어를 그리는 요소에 줄바꿈 클래스(`break-keep wrap-break-word`)가 붙어 있다
+ * - (2회) 합계를 맞춰야 하는 묶음 아래에 «합계 100%»가 보이고 어긋나면 서버와 같은 문장이 붉게 보인다. «모두 0» 경고는 켜진 문장만 보이고 [저장]을 막지 않는다
  */
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -20,7 +21,8 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => ({}) }))
 
 import { JAM_FIELDS } from '@/lib/admin/balance/jam'
-import { draftFromValues } from '@/lib/admin/balance/fields'
+import { draftFromValues, groupSums } from '@/lib/admin/balance/fields'
+import type { BalanceFieldDef } from '@/lib/admin/balance/types'
 import {
   BalanceSectionFormView,
   groupFields,
@@ -183,5 +185,69 @@ describe('한국어 줄바꿈', () => {
       expect(match?.[2], text).toContain('break-keep')
       expect(match?.[2], text).toContain('wrap-break-word')
     }
+  })
+})
+
+describe('BalanceSectionFormView — 합계 줄과 경고 (2회)', () => {
+  const rarity = (key: string, label: string): BalanceFieldDef => ({
+    key,
+    label,
+    unit: '%',
+    group: '등급 확률',
+    decimals: 3,
+    min: 0,
+    max: 100,
+    defaultValue: 25,
+    affectsDisclosure: true,
+    sumTo: 100,
+  })
+  const fields: BalanceFieldDef[] = [
+    { key: 'count', label: '개수', unit: '개', group: '개수', decimals: 0, min: 0, max: 10, defaultValue: 1, affectsDisclosure: true },
+    rarity('a', 'Common'),
+    rarity('b', 'Rare'),
+    rarity('c', 'Epic'),
+    rarity('d', 'Mystic'),
+  ]
+  const saved = { count: 1, a: 70, b: 22, c: 6, d: 2 }
+  const withDraft = (overrides: Record<string, string> = {}, extra: Partial<BalanceSectionFormViewProps> = {}) => {
+    const draft = { ...draftFromValues(fields, saved), ...overrides }
+    return view({ fields, savedValues: saved, draft, sums: groupSums(fields, draft), ...extra })
+  }
+
+  it('합이 맞으면 묶음 아래에 «합계 100%»가 보인다(개수 묶음에는 없다)', () => {
+    const out = withDraft()
+    expect(out).toMatch(/<p role="status"[^>]*>합계 100%<\/p>/)
+    expect([...out.matchAll(/합계/g)]).toHaveLength(1)
+  })
+
+  it('합이 어긋나면 서버와 같은 문장이 붉게 보인다', () => {
+    const out = withDraft({ a: '60' })
+    expect(out).toMatch(/<p role="status"[^>]*text-destructive[^>]*>등급 확률 합이 100이어야 해요\. 지금은 90이에요\.<\/p>/)
+    expect(out).not.toContain('합계 ')
+  })
+
+  it('읽을 수 없는 글자가 있으면 합계 줄을 그리지 않는다', () => {
+    expect(withDraft({ a: 'x' })).not.toContain('role="status"')
+  })
+
+  it('합계 줄에도 줄바꿈 클래스가 붙어 있다', () => {
+    const out = withDraft({ a: '60' })
+    const match = out.match(/<p role="status" class="([^"]*)"[^>]*>등급 확률 합이/)
+    expect(match?.[1]).toContain('break-keep')
+    expect(match?.[1]).toContain('wrap-break-word')
+  })
+
+  it('켜진 경고만 상태 문장으로 보이고 [저장]은 막지 않는다', () => {
+    const out = withDraft({ count: '0' }, { canSave: true, warnings: ['아이템 배지가 나오지 않아요.'] })
+    expect(out).toMatch(/role="status"[^>]*>.*아이템 배지가 나오지 않아요\./)
+    expect(out).not.toMatch(new RegExp(`<button[^>]*type="submit"[^>]*disabled`))
+    expect(withDraft()).not.toContain('아이템 배지가 나오지 않아요')
+  })
+
+  it('경고 문장에도 줄바꿈 클래스가 붙어 있다', () => {
+    const out = withDraft({}, { warnings: ['아이템 배지가 나오지 않아요.'] })
+    const match = out.match(/<p class="([^"]*)"[^>]*>아이템 배지가 나오지 않아요\./)
+    expect(match?.[1]).toContain('break-keep')
+    expect(match?.[1]).toContain('wrap-break-word')
   })
 })

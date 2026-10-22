@@ -8,6 +8,8 @@
  * - 읽기에 실패하면 코드 상수 사본(`DEFAULT_*`)으로 대신하지 않고 `{ ok: false }`만 돌려준다(숫자가 하나도 없다).
  *   정책(동기화·캡슐·보정 장치)과 시스템 드랍은 따로 실패한다.
  * - 필요한 칸만 이름으로 읽는다(`select('*')`와 대량 수령 경보 기준 칸이 없다).
+ * - 읽는 칸 목록(`CAPSULE_COLUMNS`·`JAM_COLUMNS`)을 내보낸다: 어드민 밸런스 설정이 «확률 안내에 반영되는 칸»을 가르는 단일 원천이며(티켓 20261022_1132 2회),
+ *   실제로 읽는 칸과 같다(동작 변경 없음).
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/probability/__tests__/disclosure.test.ts
@@ -22,6 +24,8 @@ import { DEFAULT_CAPSULE_POLICY } from '@/lib/capsule/policy'
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import { DEFAULT_AMBIENT_DROP_CONFIG } from '@/lib/ambient-drop/config'
 import {
+  CAPSULE_COLUMNS,
+  JAM_COLUMNS,
   buildAmbientDisclosure,
   buildPolicyDisclosure,
   formatFraction,
@@ -397,5 +401,14 @@ describe('읽는 칸', () => {
     expect(fake.selects.capsule_policy.split(', ').sort()).toEqual(Object.keys(CAPSULE_ROW).sort())
     expect(fake.selects.jam_policy.split(', ').sort()).toEqual(Object.keys(JAM_ROW).sort())
     expect(fake.selects.ambient_drop_config.split(', ').sort()).toEqual(Object.keys(AMBIENT_ROW).sort())
+  })
+
+  it('내보낸 칸 목록이 실제로 읽는 칸과 같다(어드민이 확률 안내 반영 칸을 가르는 단일 원천)', async () => {
+    const fake = fakeClient(ALL_OK)
+    await loadProbabilityDisclosure(fake.client)
+    expect([...CAPSULE_COLUMNS].sort()).toEqual(fake.selects.capsule_policy.split(', ').sort())
+    expect([...JAM_COLUMNS].sort()).toEqual(fake.selects.jam_policy.split(', ').sort())
+    expect(CAPSULE_COLUMNS).toHaveLength(9)
+    expect(JAM_COLUMNS).toHaveLength(11)
   })
 })

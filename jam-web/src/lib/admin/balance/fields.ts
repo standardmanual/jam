@@ -5,7 +5,7 @@
  * 칸 하나의 기준(정수 여부·범위·소수 자릿수)은 칸 정의(`BalanceFieldDef`)가 값으로 들고 있고, DB의 CHECK 제약과 같은 기준이다.
  * 구역 연결(`BalanceSectionBinding.validators`)이 `lib/jam/policy.ts`의 `VALIDATORS`를 얹어 서버가 한 번 더 건다.
  */
-import type { BalanceChange, BalanceFieldDef, BalanceValues } from './types'
+import type { BalanceChange, BalanceFieldDef, BalanceSnapshot, BalanceValues, BalanceZeroWarning } from './types'
 import { INTEGER_MAX } from './types'
 
 /** 등급 확률 네 칸의 합계 기준과 허용 오차 — DB 제약(`jam_policy_sync_rarity_sum_100` 등)과 같다. */
@@ -27,6 +27,12 @@ export function parseDraftNumber(text: string): number | null {
   const trimmed = text.trim()
   if (!/^-?\d+(\.\d+)?$/.test(trimmed)) return null
   const n = Number(trimmed)
+  return Number.isFinite(n) ? n : null
+}
+
+/** DB 숫자 칸을 숫자로 읽는다. NUMERIC이 문자열로 내려올 수 있다. 숫자가 아니면 `null`. */
+export function dbNumber(value: unknown): number | null {
+  const n = typeof value === 'string' ? parseFloat(value) : typeof value === 'number' ? value : NaN
   return Number.isFinite(n) ? n : null
 }
 
@@ -110,6 +116,11 @@ export function diffValues(fields: readonly BalanceFieldDef[], current: BalanceV
   return changes
 }
 
+/** 합이 어긋났을 때의 문장. 서버(`validateSumTo100`)와 화면의 합계 줄이 같은 문장을 쓴다. */
+export function sumMismatchMessage(what: string, sum: number): string {
+  return `${what} 합이 ${RARITY_SUM_TARGET}이어야 해요. 지금은 ${formatBalanceNumber(sum)}이에요.`
+}
+
 /**
  * 칸들의 합이 100(±0.001)인지 검사한다(등급 확률 네 칸). 맞으면 빈 객체, 아니면 **합에 든 모든 칸**에 같은 문장을 붙인다.
  * `keys`의 칸이 하나라도 숫자가 아니면 합을 알 수 없어 검사하지 않는다(칸별 검사가 먼저 알린다).
@@ -122,6 +133,81 @@ export function validateSumTo100(values: BalanceValues, keys: readonly string[],
     sum += n
   }
   if (Math.abs(sum - RARITY_SUM_TARGET) < RARITY_SUM_TOLERANCE) return {}
-  const message = `${what} 합이 ${RARITY_SUM_TARGET}이어야 해요. 지금은 ${formatBalanceNumber(sum)}이에요.`
+  const message = sumMismatchMessage(what, sum)
   return Object.fromEntries(keys.map((key) => [key, message]))
+}
+
+/** 합계를 맞춰야 하는 칸 묶음(`sumTo`를 지정한 칸이 모인 `group`) 하나의 지금 합계. */
+export interface BalanceGroupSum {
+  /** 묶음 소제목. 화면이 이 묶음 아래에 합계를 보인다. */
+  title: string
+  target: number
+  unit?: string
+  /** 초안 합계. 읽을 수 없는 칸이 있으면 `null`(칸별 오류가 먼저 알린다). */
+  sum: number | null
+  /** 합계가 맞는지. 합계를 알 수 없으면 `false`가 아니라 `true`다(칸 오류가 따로 저장을 막는다). */
+  ok: boolean
+  /** 어긋났을 때의 문장. 맞으면 `null`. */
+  message: string | null
+}
+
+/** 초안에서 묶음마다 합계를 낸다. 묶음 순서는 칸 정의 순서를 따른다. */
+export function groupSums(fields: readonly BalanceFieldDef[], draft: Readonly<Record<string, string>>): BalanceGroupSum[] {
+  const byGroup = new Map<string, BalanceFieldDef[]>()
+  for (const def of fields) {
+    if (def.sumTo === undefined || def.group === undefined) continue
+    const list = byGroup.get(def.group)
+    if (list) list.push(def)
+    else byGroup.set(def.group, [def])
+  }
+  return [...byGroup.entries()].map(([title, defs]) => {
+    const target = defs[0].sumTo ?? RARITY_SUM_TARGET
+    let sum: number | null = 0
+    for (const def of defs) {
+      const n = parseDraftNumber(draft[def.key] ?? '')
+      if (n === null) {
+        sum = null
+        break
+      }
+      sum += n
+    }
+    const ok = sum === null || Math.abs(sum - target) < RARITY_SUM_TOLERANCE
+    return { title, target, unit: defs[0].unit, sum, ok, message: ok || sum === null ? null : sumMismatchMessage(title, sum) }
+  })
+}
+
+/** 초안에서 **모두 0**이 된 경고 묶음의 문장들. */
+export function activeZeroWarnings(
+  warnings: readonly BalanceZeroWarning[] | undefined,
+  draft: Readonly<Record<string, string>>
+): string[] {
+  if (!warnings) return []
+  return warnings.filter((warning) => warning.keys.every((key) => parseDraftNumber(draft[key] ?? '') === 0)).map((warning) => warning.message)
+}
+
+/** 바뀐 칸을 «확률 안내에 반영되는 칸»과 그 밖의 칸으로 나눈다. 칸 정의 순서를 따른다. */
+export function splitDisclosureChanges(
+  fields: readonly BalanceFieldDef[],
+  saved: BalanceValues,
+  changed: BalanceValues
+): { disclosure: BalanceChange[]; others: BalanceChange[] } {
+  const affects = new Set(fields.filter((def) => def.affectsDisclosure).map((def) => def.key))
+  const changes = diffValues(fields, saved, changed)
+  return {
+    disclosure: changes.filter((change) => affects.has(change.field)),
+    others: changes.filter((change) => !affects.has(change.field)),
+  }
+}
+
+export type SnapshotVerdict = 'same' | 'adopt' | 'reset'
+
+/**
+ * 화면을 새로 읽었을 때 서버 값(`next`)과 폼이 들고 있는 값(`prev`)을 견준다.
+ * - `same`: 수정 시각이 같다. 아무것도 하지 않는다.
+ * - `adopt`: 수정 시각만 달라졌고 **이 구역의 칸 값은 그대로**다(같은 행을 쓰는 다른 구역이 저장했다). 고치던 초안을 지키고 새 수정 시각만 받는다.
+ * - `reset`: 이 구역의 칸 값이 달라졌다. 초안을 서버 값으로 다시 만든다.
+ */
+export function reconcileSnapshot(fields: readonly BalanceFieldDef[], prev: BalanceSnapshot, next: BalanceSnapshot): SnapshotVerdict {
+  if (prev.updatedAt === next.updatedAt) return 'same'
+  return fields.every((def) => prev.values[def.key] === next.values[def.key]) ? 'adopt' : 'reset'
 }

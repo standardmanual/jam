@@ -35,6 +35,17 @@ export interface BalanceFieldDef {
   defaultValue: number
   /** 이 칸을 바꾸면 확률 안내 페이지(`/probability`)에 함께 반영되는지. */
   affectsDisclosure: boolean
+  /**
+   * 같은 `group`에서 이 값을 지정한 칸들의 합이 이 값(등급 확률은 100)이어야 한다. 화면이 묶음 아래에 합계를 보이고 합이 어긋나면 저장을 막는다.
+   * 서버는 구역 연결의 `validateTogether`가 같은 기준으로 한 번 더 검사한다.
+   */
+  sumTo?: number
+}
+
+/** 이 칸들이 **모두 0**이면 화면이 경고를 보인다(막지는 않는다). 서버 컴포넌트에서 클라이언트 폼으로 넘어가므로 값만 담는다. */
+export interface BalanceZeroWarning {
+  keys: readonly string[]
+  message: string
 }
 
 /** 저장 한 번에서 바뀐 칸 하나. 이력의 `changes` JSON 배열 한 줄이다. (타입 별칭이라야 `Json`에 들어간다) */
@@ -68,6 +79,8 @@ export interface BalanceSectionBinding {
   validators?: Readonly<Record<string, (n: number) => boolean>>
   /** 합쳐진 전체 값으로 칸 사이 관계를 검사한다(등급 확률 합 100 등). 칸 이름 → 문장. 문제가 없으면 빈 객체. */
   validateTogether?: (values: BalanceValues) => Record<string, string>
+  /** 값이 0이어도 저장은 되지만 서비스에 영향이 큰 조합(예: 개수가 모두 0). 화면이 경고만 보인다. */
+  zeroWarnings?: readonly BalanceZeroWarning[]
   /** 현재 값을 읽는다. 읽지 못하면 던진다. */
   read: (service: BalanceServiceClient) => Promise<BalanceSnapshot>
   /** `expectedUpdatedAt`과 같을 때만 갱신한다. 0행이면 `conflict`다. */

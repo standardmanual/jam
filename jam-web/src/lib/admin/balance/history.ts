@@ -14,6 +14,10 @@ const LOG = '[admin/balance]'
 /** 변경 메모의 글자 수 상한 — DB CHECK(`char_length(note) <= 200`)와 같다. */
 export const NOTE_MAX_LENGTH = 200
 
+/** 변경 메모 입력의 이름표와 안내. 구역 폼과 확률 확인창이 같은 문장을 쓴다. */
+export const NOTE_LABEL = '변경 메모 (선택)'
+export const NOTE_PLACEHOLDER = '왜 바꾸는지 적어 두면 최근 변경에 함께 남아요'
+
 /** 구역 화면이 보이는 최근 변경 건수. */
 export const HISTORY_DEFAULT_LIMIT = 10
 

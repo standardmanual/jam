@@ -4,6 +4,8 @@
  * - 초안 오류(빈 칸·읽을 수 없는 글자·범위 밖), 바뀐 칸 계산(읽을 수 없는 글자는 바뀐 것으로 세지 않는다), 현재 값과 새 값의 차이(이력 줄)
  * - 등급 확률 합 100(±0.001) 검증: 합에 든 모든 칸에 같은 문장, 칸이 비어 있으면 합을 알 수 없어 검사하지 않는다
  * - 잼 구역의 칸 정의가 `lib/jam/policy.ts`의 `VALIDATORS`와 어긋나지 않고(칸 정의를 통과하면 `VALIDATORS`도 통과), 기본값이 `DEFAULT_JAM_POLICY`와 같다
+ * - (2회) 합계 묶음 계산(`groupSums`), «모두 0» 경고(`activeZeroWarnings`), 확률 안내 반영 칸 가름(`splitDisclosureChanges`),
+ *   같은 행을 쓰는 다른 구역의 저장 뒤 수정 시각 비교(`reconcileSnapshot`), DB 숫자 읽기(`dbNumber`)
  */
 import { describe, it, expect, vi } from 'vitest'
 
@@ -12,15 +14,21 @@ vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => ({}) }))
 import { DEFAULT_JAM_POLICY, VALIDATORS } from '@/lib/jam/policy'
 import { JAM_BALANCE_KEYS, JAM_FIELDS, JAM_SELECT } from '../jam'
 import {
+  activeZeroWarnings,
   checkFieldValue,
+  dbNumber,
   diffValues,
   draftChangedValues,
   draftErrors,
   draftFromValues,
   formatBalanceNumber,
   fullFieldLabel,
+  groupSums,
   parseDraftNumber,
   rangeMessage,
+  reconcileSnapshot,
+  splitDisclosureChanges,
+  sumMismatchMessage,
   validateSumTo100,
 } from '../fields'
 import { INTEGER_MAX, type BalanceFieldDef } from '../types'
@@ -201,5 +209,103 @@ describe('잼 구역의 칸 정의', () => {
     expect(checkFieldValue(byKey.mass_earn_alert_weeks, 1)).toBeNull()
     expect(checkFieldValue(byKey.mass_earn_alert_weeks, 0)).not.toBeNull()
     expect(checkFieldValue(byKey.mass_earn_alert_no_history_amount, 0)).not.toBeNull()
+  })
+})
+
+describe('dbNumber — DB 숫자 칸 읽기', () => {
+  it('NUMERIC 문자열과 숫자를 읽고 그 밖은 null이다', () => {
+    expect(dbNumber('3.00')).toBe(3)
+    expect(dbNumber(2.5)).toBe(2.5)
+    expect(dbNumber('abc')).toBeNull()
+    expect(dbNumber(null)).toBeNull()
+    expect(dbNumber(undefined)).toBeNull()
+    expect(dbNumber(Number.NaN)).toBeNull()
+  })
+})
+
+describe('groupSums — 합계를 맞춰야 하는 묶음', () => {
+  const rarity = (key: string): BalanceFieldDef => ({ ...DECIMAL_FIELD, key, label: key, group: '등급 확률', unit: '%', min: 0, max: 100, sumTo: 100 })
+  const fields = [INT_FIELD, rarity('a'), rarity('b'), rarity('c'), rarity('d')]
+  const draft = (a: string, b: string, c: string, d: string) => ({ weeks: '4', a, b, c, d })
+
+  it('sumTo를 지정한 칸이 있는 묶음마다 하나씩 합계를 낸다(그 밖의 묶음은 없다)', () => {
+    const sums = groupSums(fields, draft('84', '13', '2.5', '0.5'))
+    expect(sums).toEqual([{ title: '등급 확률', target: 100, unit: '%', sum: 100, ok: true, message: null }])
+    expect(groupSums([INT_FIELD, DECIMAL_FIELD], { weeks: '4', multiplier: '3' })).toEqual([])
+  })
+
+  it('합이 100이 아니면 어긋난 문장을 돌려준다(서버와 같은 문장)', () => {
+    const [sum] = groupSums(fields, draft('80', '13', '2.5', '0.5'))
+    expect(sum.ok).toBe(false)
+    expect(sum.sum).toBe(96)
+    expect(sum.message).toBe(sumMismatchMessage('등급 확률', 96))
+    expect(sum.message).toBe('등급 확률 합이 100이어야 해요. 지금은 96이에요.')
+    expect(validateSumTo100({ a: 80, b: 13, c: 2.5, d: 0.5 }, ['a', 'b', 'c', 'd']).a).toBe(sum.message)
+  })
+
+  it('허용 오차 0.001 안은 맞는 것으로 본다', () => {
+    expect(groupSums(fields, draft('84', '13', '2.5', '0.5004'))[0].ok).toBe(true)
+    expect(groupSums(fields, draft('84', '13', '2.5', '0.502'))[0].ok).toBe(false)
+  })
+
+  it('읽을 수 없는 칸이 있으면 합계를 알 수 없고 어긋난 것으로 세지 않는다(칸 오류가 따로 저장을 막는다)', () => {
+    const [sum] = groupSums(fields, draft('84', '13', '', '0.5'))
+    expect(sum).toMatchObject({ sum: null, ok: true, message: null })
+  })
+})
+
+describe('activeZeroWarnings — 모두 0이면 켜지는 경고', () => {
+  const warnings = [{ keys: ['a', 'b'], message: '둘 다 0이에요.' }]
+
+  it('나열한 칸이 모두 0일 때만 문장이 나온다', () => {
+    expect(activeZeroWarnings(warnings, { a: '0', b: '0' })).toEqual(['둘 다 0이에요.'])
+    expect(activeZeroWarnings(warnings, { a: '0', b: '1' })).toEqual([])
+    expect(activeZeroWarnings(warnings, { a: '0', b: '' })).toEqual([])
+    expect(activeZeroWarnings(warnings, { a: '0', b: 'x' })).toEqual([])
+  })
+
+  it('경고가 없는 구역은 빈 목록이다', () => {
+    expect(activeZeroWarnings(undefined, { a: '0' })).toEqual([])
+    expect(activeZeroWarnings([], { a: '0' })).toEqual([])
+  })
+})
+
+describe('splitDisclosureChanges — 확률 안내에 반영되는 칸 가름', () => {
+  const affecting: BalanceFieldDef = { ...INT_FIELD, key: 'p', label: '확률', affectsDisclosure: true }
+  const plain: BalanceFieldDef = { ...INT_FIELD, key: 'q', label: '그 밖', affectsDisclosure: false }
+  const fields = [affecting, plain]
+  const saved = { p: 1, q: 2 }
+
+  it('바뀐 칸을 반영 칸과 그 밖의 칸으로 나눈다(칸 정의 순서)', () => {
+    expect(splitDisclosureChanges(fields, saved, { p: 5, q: 6 })).toEqual({
+      disclosure: [{ field: 'p', from: 1, to: 5 }],
+      others: [{ field: 'q', from: 2, to: 6 }],
+    })
+  })
+
+  it('반영 칸이 바뀌지 않았으면 disclosure가 비어 확인창이 필요 없다', () => {
+    expect(splitDisclosureChanges(fields, saved, { q: 9 })).toEqual({ disclosure: [], others: [{ field: 'q', from: 2, to: 9 }] })
+    expect(splitDisclosureChanges(fields, saved, {})).toEqual({ disclosure: [], others: [] })
+  })
+
+  it('값이 같은 칸은 바뀐 것으로 세지 않는다', () => {
+    expect(splitDisclosureChanges(fields, saved, { p: 1 }).disclosure).toEqual([])
+  })
+})
+
+describe('reconcileSnapshot — 화면을 새로 읽었을 때', () => {
+  const fields = [INT_FIELD, DECIMAL_FIELD]
+  const prev = { values: { weeks: 4, multiplier: 3 }, updatedAt: 't1' }
+
+  it('수정 시각이 같으면 same이다', () => {
+    expect(reconcileSnapshot(fields, prev, { values: { weeks: 9, multiplier: 9 }, updatedAt: 't1' })).toBe('same')
+  })
+
+  it('수정 시각만 달라지고 이 구역의 값은 그대로면 adopt다(같은 행을 쓰는 다른 구역이 저장했다)', () => {
+    expect(reconcileSnapshot(fields, prev, { values: { weeks: 4, multiplier: 3 }, updatedAt: 't2' })).toBe('adopt')
+  })
+
+  it('이 구역의 값이 달라졌으면 reset이다', () => {
+    expect(reconcileSnapshot(fields, prev, { values: { weeks: 5, multiplier: 3 }, updatedAt: 't2' })).toBe('reset')
   })
 })
