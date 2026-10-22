@@ -2,9 +2,9 @@
 id: "20261022_1318"
 category: Admin
 priority: P2
-status: CLOSED
+status: OPEN
 created: 2026-10-22
-closed: 2026-10-22
+closed:
 ---
 
 # [Admin] 어드민 디자인 묶음에 「에셋」 메뉴 추가 및 Shape Studio v2 이식
@@ -56,11 +56,12 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 | `jam-web/src/app/admin/assets/page.tsx` | 상단 바 + 좌우 2단 레이아웃 + 상태·히스토리(50단계)·단축키(`Space`, `⌘/Ctrl+Z`)·커스텀 PNG/SVG 쉐입 추가 연결 |
 | `jam-web/src/app/admin/assets/__tests__/shapeStudioConfig.test.ts` | 초깃값, 기하 계산, EDT, 랜덤 생성, JSON 프리셋 검증 단위 테스트 |
 
-## 완료 조건
+### 완료 조건
 
 ### 구현 범위 (게이트 판정 대상)
 - 어드민 `디자인` 그룹에 `에셋`(`href: '/admin/assets'`) 메뉴가 표시되고 `adminNavItems.test.ts`가 통과한다.
 - 원본 `shape-studio.html`의 9개 설정 섹션(Shape 프리셋 6종 + PNG/SVG 추가, 항목별 랜덤 토글, Canvas 비율 3종, Segments 개수 2·3·4 및 세그먼트별 슬라이더 4종, Blend 슬라이더 6종 + Metaball 토글, Motion 재생 스위치 + 속도, Gradient 팔레트 14종 + 6색 피커 + 슬라이더 7종, Background 방식 Select + 배경 A/B 색 + 슬라이더 2종, Export PNG/동영상 저장)과 상단/하단 액션 바(초기화·랜덤 생성·PNG 저장·되돌리기·설정 저장·불러오기)가 빠짐없이 구현된다.
+- `Mushroom`, `Hourglass` 형태 프리셋 및 세그먼트 배치에서 위·아래 세그먼트가 떨어져 보이지 않고 간격 없이 밀착해 붙도록 연결된다.
 - `shapeStudioConfig.test.ts` 단위 테스트 및 `scripts/verify.sh` 전항목(lint·typecheck·test·ds:check·slop)이 통과한다.
 
 ### 후속 범위 (담당: 카리나, 시점: 머지 뒤)
