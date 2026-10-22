@@ -1,6 +1,6 @@
 /**
  * 앰비언트(시스템) POI 드랍 설정(ambient_drop_config) 로딩 — service_role 클라이언트 전용
- * 패턴: src/lib/drop-engine/policy.ts (싱글톤 id=1, 실패 시 기본값 폴백)
+ * 싱글톤 id=1, 읽기 실패 시 기본값으로 폴백한다
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { AmbientDropConfigRow } from '@/types/database'
@@ -13,7 +13,6 @@ export const DEFAULT_AMBIENT_DROP_CONFIG: AmbientDropConfig = {
   schedule_hour_kst: 3,
   last_auto_run_on: null,
   exclusion_window_minutes: 15,
-  all_random: false,
   category_mode: 'random',
   category_slug: null,
   rarity_mode: 'explicit',
@@ -67,9 +66,8 @@ export async function getAmbientDropConfig(): Promise<AmbientDropConfig> {
 
 /**
  * @throws category_slug가 poi_categories.slug FK를 위반하는 등 DB 제약에 걸리면 에러 메시지를 던진다.
- *   drop_policy의 동명 함수와 달리 명시적으로 검사한다 — category_slug에 실재 FK 제약이 있어
- *   (drop_policy 필드들은 전부 순수 숫자라 이 실패 경로가 없었다) 조용히 실패하면 어드민이
- *   저장 성공으로 오인할 수 있다.
+ *   category_slug에 실재 FK 제약이 있어 조용히 실패하면 어드민이 저장 성공으로 오인할 수 있으므로
+ *   명시적으로 검사한다.
  */
 export async function updateAmbientDropConfig(
   patch: Partial<Omit<AmbientDropConfig, 'last_auto_run_on'>>

@@ -1110,6 +1110,9 @@ export type AmbientDropAxisMode = 'explicit' | 'random'
  * 구 ambient_drop_policy(마이그레이션 044, 100에서 DROP)와 스키마가 다르다 — 전역 커버리지
  * 목표치 모델이 아니라, 실행마다 카테고리/등급비율/대상컬렉션 3축을 명시 또는 무작위로
  * 골라 batch_size개를 배치하는 배치 실행형 모델이다. 로직: `src/lib/ambient-drop/`.
+ *
+ * DB 표에는 옛 «전체 무작위» 열이 아직 남아 있지만 코드는 읽지도 쓰지도 않아 이 타입에 두지 않는다
+ * (옛 프로덕션 코드가 읽어서 지우지 않았다. 열 정리는 티켓 20261022_0938 2회).
  */
 export interface AmbientDropConfigRow {
   id: number
@@ -1121,8 +1124,6 @@ export interface AmbientDropConfigRow {
   last_auto_run_on: string | null
   /** 예약 배포 시각 전후 n분 — 이 구간엔 「지금 배포」 비활성화 (auto_enabled=false면 무시) */
   exclusion_window_minutes: number
-  /** 메타 옵션 — true면 실행 시점에 아래 3축 모드를 전부 'random'으로 취급(비파괴적 오버라이드) */
-  all_random: boolean
   category_mode: AmbientDropAxisMode
   /** explicit + null = "전체 카테고리". poi_categories.slug 참조 */
   category_slug: string | null

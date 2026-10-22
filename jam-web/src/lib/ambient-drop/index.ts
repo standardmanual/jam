@@ -61,8 +61,8 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   const config = await getAmbientDropConfig()
   const ranAt = new Date().toISOString()
 
-  // `all_random`은 더는 보지 않는다 — 세 축이 각자의 모드(무작위/지정)만 따른다(티켓 20261018_1813).
-  // 옛 프로덕션 코드가 읽으므로 DB 칸과 값은 그대로 둔다.
+  // 세 축이 각자의 모드(무작위/지정)만 따른다(티켓 20261018_1813). 옛 «전체 무작위» 칸은 이 코드가 읽지도
+  // 쓰지도 않는다 — DB 칸과 값은 옛 프로덕션 코드가 읽어서 남아 있고, 정리는 티켓 20261022_0938 2회다.
   const useRandomCategory = config.category_mode === 'random'
   const useRandomRarity = config.rarity_mode === 'random'
   const useRandomCollection = config.collection_mode === 'random'

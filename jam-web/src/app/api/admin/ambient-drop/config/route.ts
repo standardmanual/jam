@@ -115,8 +115,6 @@ export async function PUT(req: NextRequest) {
     auto_enabled,
     schedule_hour_kst,
     exclusion_window_minutes,
-    // 엔진이 더는 보지 않는 칸이다(티켓 20261018_1813). 옛 프로덕션 코드가 읽으므로 DB 값은 그대로 두고 body로 받지 않는다
-    all_random: current.all_random,
     category_mode,
     category_slug,
     rarity_mode,

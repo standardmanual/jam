@@ -187,7 +187,7 @@ describe('runDueAmbientDropSchedules — 도래 전후', () => {
     expect(placed().every((p) => p.badge === uuid(42))).toBe(true)
   })
 
-  it('종류+개수 × 컬렉션 — all_random이 켜져 있어도 설정의 등급 분포를 따른다 (티켓 20261018_1813)', async () => {
+  it('종류+개수 × 컬렉션 — DB 행에 옛 all_random 칸이 true로 남아 있어도 설정의 등급 분포를 따른다 (티켓 20261018_1813, 20261022_0938)', async () => {
     db.tables.badges.push(badge(uuid(42), BOOK_LIVE, { rarity: 'rare' }))
     setConfig({ all_random: true, rarity_common: 0, rarity_rare: 1, max_active_per_poi: 5 })
     insertSchedule({
