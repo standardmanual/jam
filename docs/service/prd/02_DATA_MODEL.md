@@ -953,6 +953,11 @@ SECURITY DEFINER(`search_path = public`), service_role만 실행한다(`anon`·`
 - 키: `tribe_changed:{user_tribe_changes.id}` + `once`. 변경 한 번에 한 건이다.
 - 알림함: 문구 «트라이브가 바뀌었어요. 이제 ○○ 소속이에요. 이미 가진 배지와 잼, 챕터는 그대로예요»(이름이 비면 가운데 문장을 뺀다), 이동 위치는 `/profile`, 아이콘은 사람들(`UsersIcon`)이다. 자세한 문구는 `notification/PRD.md` §3(#49)다.
 
+#### notification_type 3종과 feed_event_type 2종 — 마이그레이션 270, 티켓 20261021_1249 5회
+알림 종류 enum `notification_type`에 `suspension_started`·`suspension_lifted`·`reward_pending`(33개 → 36개)을, 피드 종류 enum `feed_event_type`에 `chapter_up`·`collection_tier_completed`(6개 → 8개)를 `ADD VALUE IF NOT EXISTS`로 덧붙였다. 옛 값과 옛 코드는 그대로다. 새 enum 값은 같은 트랜잭션에서 쓸 수 없어(55P04) 값을 쓰는 코드와 나눈 별도 파일이고, **적용 순서는 DDL 먼저, 코드 배포 나중**이다(뒤집히면 `create_notification`과 피드 INSERT가 22P02로 실패하고 앱이 오류를 삼켜 새 소식·새 피드가 한 건도 안 생긴다). 되돌림은 enum 값을 지울 수 없어 앱이 값을 만들지 않게 하고 값은 쓰지 않은 채로 두는 방식이다(파일 끝에 해당 종류 행을 지우는 SQL을 적음). 공용 DB에 적용했는지는 티켓 `20261021_1249`의 진행 기록이 단일 원천이다.
+- 소식 3종의 문구·착지·만드는 곳은 `notification/PRD.md` §3(#50 정지됨, #51 정지 해제, #52 받지 않은 보상)이다. 정지됨·풀림 payload에는 **사유 글, 어드민 이메일, 상담 메모를 싣지 않는다.**
+- 피드 2종의 메타: `chapter_up` = `{ chapter_no }`(챕터 2 이상으로 새로 올랐을 때만, 한 번에 여러 챕터를 넘으면 가장 높은 챕터 한 건, 챕터 1 시작은 기록하지 않는다. `lib/chapter/rise.ts`). `collection_tier_completed` = `{ collection_id, collection_name, rarity }`(등급을 처음 완성했을 때만, 점수보다 먼저 기록한다. `lib/chapter/collection.ts`). 두 종류 모두 `strava_activity_id`를 비워 기록한다(§10 `user_activity_feed`). 컬렉션 메타에 `level`·`earn_count` 키를 쓰지 않는다(피드 렌더러가 읽어 Lv.N 칩·×N 필을 잘못 붙인다).
+
 ---
 
 ## 9. 포인트 (JAM 포인트) — 신규 도메인
@@ -1200,8 +1205,9 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 **오름 처리** (`src/lib/chapter/rise.ts` `processChapterRise({ userId, reachedChapters }, { skipBadgeEvaluation })`)
 - 부르는 곳: `awardChapterScore`(점수가 성공하고 `reachedChapters`가 비어 있지 않을 때)와 `startChapter`(챕터 1 포함). 비어 있으면 아무것도 하지 않는다.
 - **소식**: 오른 챕터 가운데 가장 높은 챕터로 `chapter_up` 한 건만 보낸다(여러 챕터를 한 번에 넘어도 한 건). **챕터 1만 오른 경우(챕터 1 시작)도 보낸다**(티켓 20261021_1248 — 챕터 1은 실제 3단계를 마친 순간 시작해 완료 보상과 시점이 갈라지고 건너뛴 유저는 보상이 없다). 새 알림 종류나 마이그레이션은 필요 없다(`chapter_up`은 마이그레이션 255에 이미 있다). 묶음 키 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다(`once`는 이미 있으면 기존 행을 돌려준다).
+- **피드**(티켓 20261021_1249 5회): 가장 높은 챕터가 2 이상일 때만 `recordFeedEvent(userId, 'chapter_up', { chapter_no })` 한 건을 기록한다(챕터 1 시작은 제외). 활동 id를 넘기지 않는다. 오른 챕터 목록이 이번 호출로 `chapter_ups`에 새로 들어간 챕터만 담으므로 목록이 비어 있지 않을 때만 기록하는 것이 «새로 오른 경우에만»이다. 소식·판정과 서로 막지 않는다.
 - **챕터 배지 판정**: 오름이 있으면(챕터 1 시작 포함) `runJamActionEvaluation(userId, ['chapter_reached'])`로 챕터 조건 배지를 바로 판정해 받게 한다. 챕터 도달값은 지금 챕터 하나라서 넘은 챕터가 여럿이어도 한 번의 판정으로 `chapter_reached >= N` 배지를 모두 받는다. 배지 소식은 기존 방식(`activity_recap` 결산)이다.
-- 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 던지지 않고, 실패는 `console.error`와 `engine_decision_log`(`event='chapter_rise_failed'`, 페이로드 `step`=`notification`·`badge_evaluation`·`unexpected`)에 남긴다. `runJamActionEvaluation`은 자기 안의 실패를 스스로 삼키고 `console.error`만 남기므로 `badge_evaluation`은 그 함수를 불러오거나 부르다 던진 경우에만 기록된다.
+- 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 던지지 않고, 실패는 `console.error`와 `engine_decision_log`(`event='chapter_rise_failed'`, 페이로드 `step`=`notification`·`feed`·`badge_evaluation`·`unexpected`)에 남긴다. `runJamActionEvaluation`은 자기 안의 실패를 스스로 삼키고 `console.error`만 남기므로 `badge_evaluation`은 그 함수를 불러오거나 부르다 던진 경우에만 기록된다.
 - **이중 판정 규칙**: 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)은 DB의 지금 챕터를 읽는다. 동기화가 **직접** 부르는 점수(잼 정산 `settleActivities`, 뒤에 동기화 끝 판정이 반드시 이어짐)만 `skipRiseBadgeEvaluation`을 켜서 오름의 소식은 보내고 챕터 배지 판정은 건너뛴다. 나머지 호출(라우트, 동기화 안의 배지 받기·미션 점수, 동기화 뒤의 챕터 1 시작)은 바로 판정한다. 켜지 않은 호출이 동기화 안에서 겹쳐도 발급은 `user_activity_badges`의 `UNIQUE(user_id, badge_id)`로 한 번뿐이다(`issueQualifyingBadges`가 이미 가진 배지를 건너뛰고 동시 호출의 23505는 부수효과 없이 넘김). 겹치면 판정이 한 번 더 돌고 결과 카드 대신 결산 소식으로 먼저 알려질 뿐이다.
 - **순환 import**: `score.ts → rise.ts → jamActionRoute → strava/sync.ts → jam/settlement.ts → score.ts`가 정적으로 이어지면 순환이 되므로, `rise.ts`가 `jamActionRoute`를 호출 시점에 `await import()`로 불러 모듈 평가 시점의 순환을 없앴다(`rise-import-cycle.test.ts`가 두 불러오기 순서를 고정).
 - 챕터 배지가 다시 챕터 점수를 올리지 않는다: `chapter_reached` 조건 배지는 «배지 받기» 점수에서 뺀다(위 «배지 받기 점수의 규칙», `rise.test.ts`가 확인).
@@ -1253,7 +1259,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 `follower_id`/`following_id`, UNIQUE + 자기 팔로우 방지 CHECK.
 
 ### user_activity_feed (신규)
-배지 획득·아이템 드랍·픽업·미션 참가/완료 이벤트를 통합한 피드. `event_type` ENUM, `metadata JSONB`.
+배지 획득·아이템 드랍·픽업·미션 참가/완료·챕터 오름·컬렉션 등급 완성 이벤트를 통합한 피드. `event_type` ENUM(`feed_event_type` 8개 값), `metadata JSONB`. 챕터 오름·컬렉션 완성은 마이그레이션 270(티켓 20261021_1249 5회)이 더했다.
 
 **`strava_activity_id BIGINT NULL`** (마이그레이션 107, 티켓 20260827_018) — 이 이벤트가
 어느 활동에서 나왔는지. UUID FK가 아니라 **Strava 숫자 id**를 쓴다:
@@ -1263,7 +1269,8 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 참조 무결성보다 기록 유실 방지가 우선이다.
 
 - **NULL = 활동 귀속 불명.** 활동 단위가 아닌 이벤트(`mission_joined`·`item_picked_up`·
-  `mission_completed`)와 **107 이전에 쌓인 과거 행 전부**가 여기 해당한다.
+  `mission_completed`·`chapter_up`·`collection_tier_completed`)와 **107 이전에 쌓인 과거 행 전부**가 여기 해당한다.
+  챕터 오름·컬렉션 완성에 값을 넣으면 같은 활동 묶음 카드에 섞여 묶음 제목이 «기록 N개»로 폴백된다.
   `mission_completed`를 뺀 이유는 미션이 여러 활동에 걸친 누적이라 한 활동에 귀속시키면
   사실과 어긋나기 때문이다.
 - **백필하지 않는다.** 과거 이벤트가 어느 활동에서 나왔는지 복원할 방법이 없다 —
