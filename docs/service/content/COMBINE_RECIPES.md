@@ -9,7 +9,7 @@ snapshot: "2026-09-10"
 # 아이템 조합(믹스) 시스템 — 정책
 
 > 관련 코드: `jam-web/src/lib/combine/index.ts`, `jam-web/src/lib/combine/policy.ts`
-> 관련 어드민: `/admin/recipes` (레시피·슬롯 CRUD), `/admin/combine-policy` (실패 보상 포인트)
+> 관련 어드민: `/admin/recipes` (레시피·슬롯 CRUD), `/admin/balance#collection` (밸런스 설정의 «컬렉션과 믹스» 구역, 실패 보상 포인트)
 > 관련 마이그레이션: `jam-web/supabase/migrations/174_combine_recipe_slots.sql`
 >  (선행: `153_combine_v3.sql` — 정확 집합 일치 방식, 174에서 슬롯 구조로 대체)
 
@@ -110,7 +110,7 @@ snapshot: "2026-09-10"
 ## 3. 실패 처리
 
 - 미매칭 실패는 `combine_policy.fail_reward_points`(싱글톤 id=1, 기본 10,
-  `/admin/combine-policy`에서 조정) 고정 포인트만 지급한다. 포인트 사유 코드는
+  `/admin/balance#collection`의 «컬렉션과 믹스» 구역에서 조정) 고정 포인트만 지급한다. 포인트 사유 코드는
   `combine_fail_reward`(표시 라벨 「믹스 실패 보상」), 매칭 성공 보상 포인트는
   `combine_recipe_reward`(「믹스 보상」)로 원장에 남는다.
 - 결과로 받은 아이템 배지에 배지 포인트(`badges.point_reward`)가 있으면 레시피 보상 포인트와 별개로 `badge_point_reward`로 남는다.

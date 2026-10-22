@@ -627,7 +627,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       unit: 'pt',
       valueType: 'integer',
       min: 0,
-      relatedAdminUrl: '/admin/combine-policy',
+      relatedAdminUrl: '/admin/balance#collection',
     },
   },
   {

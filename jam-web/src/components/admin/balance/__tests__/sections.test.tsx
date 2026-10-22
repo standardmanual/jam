@@ -2,11 +2,12 @@
  * 밸런스 설정 구역 레지스트리와 구역 본문 (티켓 20261022_1132 1회)
  *
  * - 레지스트리(`lib/admin/balance/sections.tsx`): 구역 키가 겹치지 않고, 구역마다 연결 객체·제목·본문이 있으며, 키로 구역을 찾는다(없으면 `undefined`).
- *   지금 구역은 잼·동기화·캡슐이다. 7-2~7-4는 이 배열에 줄을 더하면 된다
+ *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스다. 7-2 2회~7-4는 이 배열에 줄을 더하면 된다
  * - 구역 본문(`BalanceSectionBody`, 서버 컴포넌트): 가짜 클라이언트로 값을 읽어 폼과 최근 변경을 그린다. **값을 읽지 못하면 던지지 않고** 오류 카드가 되고
  *   (한 구역이 실패해도 다른 구역은 보인다), 최근 변경만 못 읽으면 폼은 열린다. 읽기만 하고 아무것도 쓰지 않는다
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { Children, type ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 const h = vi.hoisted(() => ({ client: null as unknown }))
@@ -25,10 +26,29 @@ import { BALANCE_SECTIONS, findBalanceSection } from '@/lib/admin/balance/sectio
 import { JAM_BINDING } from '@/lib/admin/balance/jam'
 import { SYNC_BINDING } from '@/lib/admin/balance/sync'
 import { CAPSULE_BINDING } from '@/lib/admin/balance/capsule'
+import { COLLECTION_BINDING } from '@/lib/admin/balance/collection'
+import { LOCKED_BINDING } from '@/lib/admin/balance/locked'
 import { BALANCE_LOAD_FAILED_MESSAGE } from '@/lib/admin/balance/save'
-import { capsulePolicyRow, chapterCostRows, createFakeDb, jamPolicyRow, type FakeDb } from '@/lib/admin/balance/__tests__/fakeDb'
+import {
+  capsulePolicyRow,
+  chapterCostRows,
+  combinePolicyRow,
+  createFakeDb,
+  jamPolicyRow,
+  tierDefaultRewardRows,
+  type FakeDb,
+} from '@/lib/admin/balance/__tests__/fakeDb'
 import { BalanceSectionBody } from '../BalanceSectionBody'
 import { SHARED_VALUES_NOTICE_LINK, SHARED_VALUES_NOTICE_PREFIX, SharedValuesNotice } from '../CapsuleSection'
+import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, CollectionNotice, CollectionSection } from '../CollectionSection'
+import {
+  LOCKED_AMOUNT_NOTICE,
+  LOCKED_ROLL_NOTICE_LINK,
+  LOCKED_ROLL_NOTICE_PREFIX,
+  LockedAmountNotice,
+  LockedRollNotice,
+  LockedSection,
+} from '../LockedSection'
 import { HISTORY_FAILED_MESSAGE } from '../BalanceHistory'
 
 let db: FakeDb
@@ -38,6 +58,8 @@ beforeEach(() => {
     jam_policy: [jamPolicyRow()],
     capsule_policy: [capsulePolicyRow()],
     capsule_chapter_costs: chapterCostRows(),
+    item_book_tier_default_rewards: tierDefaultRewardRows(),
+    combine_policy: [combinePolicyRow()],
     balance_setting_changes: [
       {
         id: 'h-1',
@@ -58,8 +80,8 @@ beforeEach(() => {
 const html = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: JAM_BINDING })).replace(/<!-- -->/g, '')
 
 describe('구역 레지스트리', () => {
-  it('지금 구역은 잼·동기화·캡슐 순서이고 구역 키는 겹치지 않는다', () => {
-    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule'])
+  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스 순서이고 구역 키는 겹치지 않는다', () => {
+    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection'])
     const ids = BALANCE_SECTIONS.map((section) => section.binding.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
@@ -87,6 +109,8 @@ describe('구역 레지스트리', () => {
     expect(findBalanceSection('jam')?.binding).toBe(JAM_BINDING)
     expect(findBalanceSection('sync')?.binding).toBe(SYNC_BINDING)
     expect(findBalanceSection('capsule')?.binding).toBe(CAPSULE_BINDING)
+    expect(findBalanceSection('locked')?.binding).toBe(LOCKED_BINDING)
+    expect(findBalanceSection('collection')?.binding).toBe(COLLECTION_BINDING)
     expect(findBalanceSection('nope')).toBeUndefined()
     expect(findBalanceSection('')).toBeUndefined()
   })
@@ -215,5 +239,113 @@ describe('BalanceSectionBody — 캡슐 구역 (2회)', () => {
     expect(out).toContain('role="note"')
     expect(out).not.toContain('role="alert"')
     expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+  })
+})
+
+describe('BalanceSectionBody — 잠긴 아이템 배지 구역 (7-2 1회)', () => {
+  const lockedHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: LOCKED_BINDING })).replace(/<!-- -->/g, '')
+
+  it('네 칸의 입력(저장된 값)과 한 묶음 제목이 보이고, 합계 줄은 없다', async () => {
+    const out = await lockedHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(4)
+    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['등급별 최소값'])
+    expect(out).toMatch(/id="balance-locked-locked_min_common"[^>]*value="30"/)
+    expect(out).toMatch(/id="balance-locked-locked_min_rare"[^>]*value="60"/)
+    expect(out).toMatch(/id="balance-locked-locked_min_epic"[^>]*value="120"/)
+    expect(out).toMatch(/id="balance-locked-locked_min_mystic"[^>]*value="240"/)
+    expect(out).toContain('기본값 240잼')
+    expect(out).not.toContain('role="status"')
+  })
+
+  it('잠길 확률 칸은 이 구역에 없다(동기화 구역에서 편집한다)', async () => {
+    expect(await lockedHtml()).not.toContain('locked_roll_probability')
+  })
+
+  it('읽기만 한다(쓰기 호출이 없다)', async () => {
+    await lockedHtml()
+    expect(db.calls.filter((call) => call.endsWith('.update') || call.endsWith('.insert'))).toEqual([])
+  })
+
+  it('값을 읽지 못하면 던지지 않고 이 구역만 오류 카드가 된다', async () => {
+    db.readErrors.jam_policy = 'boom'
+    const out = await lockedHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
+  it('«잠길 확률은 동기화와 같은 값이에요» 안내가 있고 동기화 구역 링크가 레지스트리의 구역 키를 가리킨다', () => {
+    const out = renderToStaticMarkup(<LockedRollNotice />).replace(/<!-- -->/g, '')
+    expect(LOCKED_ROLL_NOTICE_PREFIX).toContain('동기화와 같은 값이에요')
+    expect(out).toContain(LOCKED_ROLL_NOTICE_PREFIX)
+    expect(out).toContain(`href="#${SYNC_BINDING.id}"`)
+    expect(out).toContain(`>${LOCKED_ROLL_NOTICE_LINK}</a>`)
+    expect(out).toContain('role="note"')
+    expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+  })
+
+  it('아래 안내는 «배지에 따로 정한 값이 먼저»이고 줄바꿈 설정이 붙는다', () => {
+    const out = renderToStaticMarkup(<LockedAmountNotice />).replace(/<!-- -->/g, '')
+    expect(LOCKED_AMOUNT_NOTICE).toContain('따로 정해 둔 경우에는 그 값이 먼저')
+    expect(LOCKED_AMOUNT_NOTICE).toContain('새 최소값보다 낮은 값이 남아 있을 수 있어요')
+    expect(out).toContain(LOCKED_AMOUNT_NOTICE)
+    expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+  })
+
+  it('구역 본문은 위쪽 안내, 폼 뼈대(잠긴 구역 연결), 아래쪽 안내 순서다', () => {
+    const children = Children.toArray(LockedSection().props.children) as ReactElement<{ binding?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([LockedRollNotice, BalanceSectionBody, LockedAmountNotice])
+    expect(children[1].props.binding).toBe(LOCKED_BINDING)
+  })
+})
+
+describe('BalanceSectionBody — 컬렉션과 믹스 구역 (7-2 1회)', () => {
+  const collectionHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: COLLECTION_BINDING })).replace(/<!-- -->/g, '')
+
+  it('다섯 칸의 입력(저장된 값)과 두 묶음 제목이 보인다', async () => {
+    const out = await collectionHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(5)
+    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['컬렉션 등급별 완성 포인트', '믹스'])
+    expect(out).toMatch(/id="balance-collection-default_reward:common"[^>]*value="100"/)
+    expect(out).toMatch(/id="balance-collection-default_reward:mystic"[^>]*value="800"/)
+    expect(out).toMatch(/id="balance-collection-fail_reward_points"[^>]*value="10"/)
+    expect(out).toContain('믹스 실패 포인트')
+    expect(out).toContain('기본값 800포인트')
+  })
+
+  it('읽기만 한다(쓰기 호출이 없다)', async () => {
+    await collectionHtml()
+    expect(db.calls.filter((call) => call.endsWith('.update') || call.endsWith('.insert'))).toEqual([])
+  })
+
+  it('등급 행이 비어 있으면 던지지 않고 이 구역만 오류 카드가 된다', async () => {
+    db.tables.item_book_tier_default_rewards = tierDefaultRewardRows().slice(0, 2)
+    const out = await collectionHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
+  it('믹스 정책 행을 읽지 못해도 이 구역만 오류 카드가 된다', async () => {
+    db.readErrors.combine_policy = 'boom'
+    expect(await collectionHtml()).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+  })
+
+  it('안내에 «컬렉션마다 따로 정한 값이 먼저»·«이미 받은 보상은 그대로»·«재료가 사라지고 실패 포인트를 줘요»가 있다', () => {
+    const out = renderToStaticMarkup(<CollectionNotice />).replace(/<!-- -->/g, '')
+    expect(COLLECTION_REWARD_NOTICE).toContain('따로 정해 둔')
+    expect(COLLECTION_REWARD_NOTICE).toContain('그 값이 먼저')
+    expect(COLLECTION_REWARD_NOTICE).toContain('이미 받은 보상은 바뀌지 않아요')
+    expect(COLLECTION_REWARD_NOTICE).toContain('0이면 포인트를 주지 않아요')
+    expect(COMBINE_FAIL_NOTICE).toContain('재료가 사라지고')
+    expect(COMBINE_FAIL_NOTICE).toContain('믹스 실패 포인트')
+    expect(out).toContain(COLLECTION_REWARD_NOTICE)
+    expect(out).toContain(COMBINE_FAIL_NOTICE)
+    expect(out).toContain('role="note"')
+    expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+  })
+
+  it('구역 본문은 안내, 폼 뼈대(컬렉션과 믹스 구역 연결) 순서다', () => {
+    const children = Children.toArray(CollectionSection().props.children) as ReactElement<{ binding?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([CollectionNotice, BalanceSectionBody])
+    expect(children[1].props.binding).toBe(COLLECTION_BINDING)
   })
 })

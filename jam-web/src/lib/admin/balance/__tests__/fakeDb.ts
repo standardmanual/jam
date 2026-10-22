@@ -154,6 +154,9 @@ export function jamPolicyRow(overrides: Row = {}): Row {
     sync_rarity_mystic: '0.500',
     common_streak_threshold: 10,
     locked_min_common: 30,
+    locked_min_rare: 60,
+    locked_min_epic: 120,
+    locked_min_mystic: 240,
     locked_roll_probability: '0.250',
     updated_at: JAM_ROW_STAMP,
     ...overrides,
@@ -187,4 +190,22 @@ const CHAPTER_DEFAULT_FILL = [90, 100, 110, 120, 135, 150, 165, 180, 200, 220]
 /** `capsule_chapter_costs` 챕터 1~10 행(마이그레이션 232 시드). 행마다 수정 시각을 따로 줄 수 있다. */
 export function chapterCostRows(stamp: string = CAPSULE_ROW_STAMP): Row[] {
   return CHAPTER_DEFAULT_FILL.map((fill_amount, index) => ({ chapter_no: index + 1, fill_amount, updated_at: stamp }))
+}
+
+export const TIER_REWARD_ROW_STAMP = '2026-10-22T01:10:00.25+00:00'
+export const COMBINE_ROW_STAMP = '2026-10-22T01:12:00+00:00'
+
+/** `item_book_tier_default_rewards` 네 등급 행(마이그레이션 222 시드). 행마다 수정 시각을 따로 줄 수 있다. */
+export function tierDefaultRewardRows(stamp: string = TIER_REWARD_ROW_STAMP): Row[] {
+  return [
+    { tier: 'common', reward_points: 100, updated_at: stamp },
+    { tier: 'rare', reward_points: 200, updated_at: stamp },
+    { tier: 'epic', reward_points: 400, updated_at: stamp },
+    { tier: 'mystic', reward_points: 800, updated_at: stamp },
+  ]
+}
+
+/** `combine_policy` id=1 행(마이그레이션 153 기본값). */
+export function combinePolicyRow(overrides: Row = {}): Row {
+  return { id: 1, fail_reward_points: 10, updated_at: COMBINE_ROW_STAMP, ...overrides }
 }

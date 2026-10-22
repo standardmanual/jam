@@ -262,6 +262,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 `AbusingClient.tsx`·`AmbientDropForm.tsx`·`DropPolicyForm.tsx`·`CombinePolicyForm.tsx`) +
 소형 페이지 3개(`drop-policy/page.tsx`·`ambient-drop/page.tsx`·`combine-policy/page.tsx`,
 실측 128건) 전환 완료, 사용자 최종 승인 대기 중(`20260827_001`). 4d 착수 시 참고할 구현 노트:
+(2026-10-22 주: 이 단락의 `CombinePolicyForm.tsx`와 `combine-policy/page.tsx`는 티켓 20261022_1133에서 지웠다. 믹스 실패 포인트는 «밸런스 설정»의 «컬렉션과 믹스» 구역(`/admin/balance#collection`)에서 바꾼다.)
 
 - 4a/4b 매핑 규칙을 그대로 재사용, 결정적(deterministic) 문자열 치환으로 전량 처리 가능했다
   (파이썬 스크립트로 순서 있는 리터럴 치환 — `hover:bg-[#e5e7eb]`→`hover:bg-accent`,
