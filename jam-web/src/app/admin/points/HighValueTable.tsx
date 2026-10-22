@@ -153,7 +153,7 @@ export function HighValueTable({ rows, totalCount }: HighValueTableProps) {
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="조건에 맞는 원장이 없습니다."
+        emptyMessage="조건에 맞는 내역이 없어요"
         getRowHref={(row) => `/admin/users/${row.original.user_id}`}
       />
     </div>

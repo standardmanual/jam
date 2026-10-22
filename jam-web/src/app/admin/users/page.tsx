@@ -38,7 +38,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
   return (
     <div className="p-8 space-y-6">
-      <h1 className="text-2xl font-bold">유저 조회</h1>
+      <h1 className="text-2xl font-bold">유저</h1>
 
       {/* 필터·표는 URL(useSearchParams)과 동기화하므로 Suspense로 감싼다 */}
       <Suspense>

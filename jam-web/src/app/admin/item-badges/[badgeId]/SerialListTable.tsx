@@ -222,7 +222,7 @@ export function SerialListTable({ rows, badgeId }: SerialListTableProps) {
         />
       </DataTableBulkActionBar>
 
-      <DataTable table={table} columnCount={columns.length} emptyMessage="조건에 맞는 결과가 없습니다." />
+      <DataTable table={table} columnCount={columns.length} emptyMessage="조건에 맞는 결과가 없어요" />
     </div>
   )
 }

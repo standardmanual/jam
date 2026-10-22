@@ -138,7 +138,7 @@ export function BadgeHistoryTable({ rows }: BadgeHistoryTableProps) {
       <div className="flex justify-end">
         <DataTableViewOptions table={table} />
       </div>
-      <DataTable table={table} columnCount={columns.length} emptyMessage="획득한 배지가 없습니다." />
+      <DataTable table={table} columnCount={columns.length} emptyMessage="획득한 배지가 없어요" />
     </div>
   )
 }

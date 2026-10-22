@@ -115,9 +115,9 @@ export function DestroyOrphanedAction({
             preview ? (
               <>
                 지금도 소유자가 없는 개체 {preview.itemCount}개(배지 {preview.badgeKindCount}종)를 영구히
-                폐기합니다. 되돌릴 수 없습니다.
+                폐기해요. 되돌릴 수 없어요.
                 {preview.skipped.length > 0 && (
-                  <> 상태가 바뀐 {preview.skipped.length}개는 제외됩니다.</>
+                  <> 상태가 바뀐 {preview.skipped.length}개는 제외돼요.</>
                 )}
               </>
             ) : null

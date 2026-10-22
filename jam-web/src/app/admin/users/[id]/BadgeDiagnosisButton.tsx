@@ -82,7 +82,7 @@ export function BadgeDiagnosisButton({ userId }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-          {loading && <p className="text-sm text-muted-foreground">평가 중입니다...</p>}
+          {loading && <p className="text-sm text-muted-foreground">평가하는 중...</p>}
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           {!loading && !error && result && (
@@ -91,7 +91,7 @@ export function BadgeDiagnosisButton({ userId }: Props) {
                 {result.conditionMetBadges.length}건 · {result.elapsedMs}ms
               </p>
               {result.conditionMetBadges.length === 0 ? (
-                <p className="text-sm">조건 충족인데 미발급인 배지가 없습니다.</p>
+                <p className="text-sm">조건을 채웠는데 발급되지 않은 배지가 없어요</p>
               ) : (
                 <ul className="max-h-80 overflow-y-auto divide-y divide-border rounded-md border border-border">
                   {result.conditionMetBadges.map((b) => (

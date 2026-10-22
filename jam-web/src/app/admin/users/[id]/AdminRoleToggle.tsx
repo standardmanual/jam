@@ -67,10 +67,10 @@ export function AdminRoleToggle({ userId, userName, initialIsAdmin, isWhiteliste
         <p className="text-sm font-bold">어드민 권한</p>
         <p className="text-muted-foreground text-xs mt-0.5">
           {isWhitelisted
-            ? 'ADMIN_EMAILS 화이트리스트로 이미 어드민 권한이 있습니다.'
+            ? 'ADMIN_EMAILS 설정으로 항상 어드민 권한을 가져요'
             : isAdmin
-              ? '이 유저는 어드민 권한을 보유하고 있습니다.'
-              : '이 유저는 어드민 권한이 없습니다.'}
+              ? '어드민 권한을 가지고 있어요'
+              : '어드민 권한이 없어요'}
         </p>
         {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
       </div>

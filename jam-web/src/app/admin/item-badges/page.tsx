@@ -77,9 +77,9 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">아이템배지 현황</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">아이템배지</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          배지를 검색해 발급된 일련번호와 이력을 조회합니다.
+          배지별 발급된 일련번호와 소유 현황을 확인해요
         </p>
       </div>
 

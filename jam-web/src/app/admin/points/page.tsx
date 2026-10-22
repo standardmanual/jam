@@ -72,8 +72,8 @@ export default async function AdminPointsPage({ searchParams }: AdminPointsPageP
   return (
     <div className="p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">포인트 관리</h1>
-        <p className="text-muted-foreground text-sm mt-1">잼 포인트 발행 현황 · 정합성 · 유저 지급/회수</p>
+        <h1 className="text-2xl font-bold">포인트</h1>
+        <p className="text-muted-foreground text-sm mt-1">포인트 발행 현황 · 정합성 점검 · 유저 지급/회수</p>
       </div>
 
       {/* 정합성 경고 배너 */}
@@ -85,7 +85,7 @@ export default async function AdminPointsPage({ searchParams }: AdminPointsPageP
           </p>
           <p className="text-red-600 text-xs leading-relaxed">
             유통량({fmt(s.circulation)}) · 유저 보유 합계({fmt(s.walletSum)}) · 원장 합계({fmt(s.txnSum)})가
-            일치하지 않습니다. 원장을 우회한 직접 SQL 수정 등이 있었는지 확인이 필요합니다.
+            일치하지 않아요. 원장 외 직접 데이터 수정이 있었는지 확인해 주세요
           </p>
         </div>
       )}
@@ -108,7 +108,7 @@ export default async function AdminPointsPage({ searchParams }: AdminPointsPageP
       <div className="space-y-3">
         <div>
           <h2 className="text-lg font-bold mb-1">고액 지급/회수 원장</h2>
-          <p className="text-muted-foreground text-xs">기준액({fmt(s.highValueThreshold)}P) 이상 원장 (사후 감사)</p>
+          <p className="text-muted-foreground text-xs">기준액({fmt(s.highValueThreshold)}P) 이상 고액 거래 내역이에요</p>
         </div>
         <Suspense>
           <LedgerFilters />

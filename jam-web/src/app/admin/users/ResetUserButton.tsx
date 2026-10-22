@@ -64,7 +64,7 @@ export function ResetUserButton({ userId, userName }: { userId: string; userName
                   <strong className="text-foreground">인벤토리 아이템</strong>을 삭제하고 슬롯을 리셋합니다.
                 </p>
                 <p className="text-red-500 text-xs mb-5">
-                  이 작업은 되돌릴 수 없습니다. 계정 정보와 Strava 동기화는 유지됩니다.
+                  초기화하면 인벤토리·배지가 모두 삭제되며 되돌릴 수 없어요 (계정과 Strava 동기화는 유지)
                 </p>
                 {error && <p className="text-red-600 text-xs mb-3">{error}</p>}
                 <div className="flex gap-3">
@@ -73,7 +73,7 @@ export function ResetUserButton({ userId, userName }: { userId: string; userName
                     disabled={loading}
                     className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
                   >
-                    {loading ? '초기화 중...' : '초기화 확인'}
+                    {loading ? '초기화하는 중...' : '초기화하기'}
                   </button>
                   <button
                     onClick={() => setShowConfirm(false)}

@@ -107,7 +107,7 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
       <div className="p-4 md:p-8">
         {header}
         <div className="text-center py-12 text-muted-foreground text-sm">
-          이 배지로 발급된 개체가 아직 없습니다.
+          이 배지로 발급된 개체가 아직 없어요
         </div>
       </div>
     )
@@ -261,7 +261,7 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">조건에 맞는 결과가 없습니다.</div>
+          <div className="text-center py-12 text-muted-foreground text-sm">조건에 맞는 결과가 없어요</div>
         ) : (
           <SerialListTable rows={pageRows} badgeId={badgeId} />
         )}

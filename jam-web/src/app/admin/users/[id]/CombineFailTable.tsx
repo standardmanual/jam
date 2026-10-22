@@ -110,7 +110,7 @@ export function CombineFailTable({ rows, badgeNames }: CombineFailTableProps) {
       <div className="flex justify-end">
         <DataTableViewOptions table={table} />
       </div>
-      <DataTable table={table} columnCount={columns.length} emptyMessage="믹스 실패 이력이 없습니다." />
+      <DataTable table={table} columnCount={columns.length} emptyMessage="믹스 실패 이력이 없어요" />
     </div>
   )
 }

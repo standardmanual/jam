@@ -41,9 +41,9 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">미소유 아이템배지 현황</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">미소유 배지</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          계정 탈퇴 등으로 소유자를 잃은 아이템배지 개체를 배지 구분 없이 한 번에 조회합니다.
+          회원 탈퇴 등으로 소유자가 지정되지 않은 아이템배지 목록이에요
         </p>
       </div>
 

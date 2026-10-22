@@ -180,7 +180,7 @@ export function OrphanedItemsTable({ rows, totalCount }: OrphanedItemsTableProps
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="소유자 없는 개체가 없습니다."
+        emptyMessage="소유자 없는 배지가 없어요"
         getRowHref={(row) => `/admin/item-badges/${row.original.badgeId}/${row.original.id}`}
       />
     </div>

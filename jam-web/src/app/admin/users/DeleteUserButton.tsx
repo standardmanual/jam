@@ -92,7 +92,7 @@ export function DeleteUserButton({
                   함께 사라집니다.
                 </p>
                 <p className="text-red-700 text-xs font-bold mb-4">
-                  이 작업은 영구적으로 실행되며, 실행한 뒤에는 절대 되돌릴 수 없습니다.
+                  삭제하면 계정과 모든 데이터가 즉시 삭제되며, 되돌릴 수 없어요
                 </p>
                 <label htmlFor="delete-user-confirm-input" className="block text-xs text-muted-foreground mb-1">
                   삭제하려면 아래 입력란에 &apos;{CONFIRM_TEXT}&apos;를 정확히 입력하세요.
@@ -107,7 +107,7 @@ export function DeleteUserButton({
                   className="w-full border border-border rounded-lg px-3 py-2 text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-red-700"
                 />
                 <p className="text-muted-foreground text-xs mb-4">
-                  입력한 문구가 정확히 일치해야 삭제 버튼이 활성화됩니다.
+                  입력한 문구가 일치해야 삭제 버튼이 켜져요
                 </p>
                 {error && <p className="text-red-600 text-xs mb-3">{error}</p>}
                 <div className="flex gap-3">

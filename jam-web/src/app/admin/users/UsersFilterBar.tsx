@@ -14,8 +14,8 @@ const ONBOARDING_OPTIONS = [
 ]
 
 const BAN_OPTIONS = [
-  { value: 'banned', label: '제재 중' },
-  { value: 'clean', label: '제재 없음' },
+  { value: 'banned', label: '이용 정지' },
+  { value: 'clean', label: '정상' },
 ]
 
 interface UsersFilterBarProps {

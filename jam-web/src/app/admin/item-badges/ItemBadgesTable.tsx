@@ -162,7 +162,7 @@ export function ItemBadgesTable({ badges, issuedCountByBadge, totalCount }: Item
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="조건에 맞는 배지가 없습니다."
+        emptyMessage="조건에 맞는 배지가 없어요"
         getRowHref={(row) => `/admin/item-badges/${row.original.id}`}
       />
     </div>

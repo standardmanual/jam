@@ -127,15 +127,15 @@ export function ReassignOrphanedAction({
     }
   }
 
-  let impact: ReactNode = <>재배정할 유저를 먼저 골라주세요. 재배정된 유저에게 별도 알림은 가지 않습니다.</>
+  let impact: ReactNode = <>재배정할 유저를 먼저 선택해 주세요. 유저에게 별도 알림은 가지 않아요.</>
   if (target && preview) {
     impact = !preview.hasInventory ? (
-      <>대상 유저의 인벤토리를 찾을 수 없어 재배정할 수 없습니다.</>
+      <>대상 유저의 인벤토리를 찾을 수 없어 재배정할 수 없어요</>
     ) : (
       <>
-        대상 유저의 빈 칸은 {preview.freeSlots}칸이고 재배정할 개체는 {preview.eligibleCount}개입니다.
-        {preview.shortCount > 0 && <> 모자라는 {preview.shortCount}개는 인벤토리가 꽉 차서 실패합니다.</>}
-        {preview.skippedCount > 0 && <> 상태가 바뀐 {preview.skippedCount}개는 제외됩니다.</>}
+        대상 유저의 빈 칸은 {preview.freeSlots}칸이고 재배정할 개체는 {preview.eligibleCount}개예요.
+        {preview.shortCount > 0 && <> 모자라는 {preview.shortCount}개는 인벤토리가 꽉 차서 제외돼요.</>}
+        {preview.skippedCount > 0 && <> 상태가 바뀐 {preview.skippedCount}개는 제외돼요.</>}
       </>
     )
   }
