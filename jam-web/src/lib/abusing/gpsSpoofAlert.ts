@@ -35,6 +35,11 @@ export interface GpsSpoofAlertInput {
   dailyDistanceKm?: number
   /** 이 장소를 막은 시간(정책 `poi_block_hours`) */
   blockHours: number
+  /**
+   * 장소 차단·기록 저장이 끝났는지(티켓 20261022_0940). `false`면 글이 «막았고 기록을 남겼어요»라고 말하지 않고
+   * 저장하지 못했다고 알린다 — 알림은 저장이 실패해도 보낸다.
+   */
+  sanctionStored: boolean
 }
 
 function formatCount(n: number): string {
@@ -53,20 +58,25 @@ function describeReason(input: GpsSpoofAlertInput): string {
 }
 
 /**
- * 알림 글. 두 줄이다.
- * 예:
+ * 알림 글. 세 줄이다.
+ * 예(`sanctionStored: true`):
  * ```
  * GPS 조작이 의심돼서 픽업을 거부했어요
  * • 유저(7b1c…) · 장소 성수역 · 속도 412km/h
  * • 이 장소는 72시간 막았고 기록을 남겼어요. 어드민 어뷰징 관리의 장소 블록에서 확인한 뒤 운영자가 정지를 정해요
  * ```
  * 사유가 하루 이동거리면 `하루 이동거리 3,200km`로 쓴다.
+ * `sanctionStored: false`(장소 차단·기록 저장 실패)면 셋째 줄을 «• 장소 차단이나 기록을 저장하지 못했어요. 서버 로그를 확인하고,
+ * 필요하면 운영자가 정지를 정해요»로 바꾼다 — 막지 못한 것을 막았다고 쓰지 않으므로 차단 시간 문구도 쓰지 않는다.
  */
 export function formatGpsSpoofAlertMessage(input: GpsSpoofAlertInput): string {
+  const outcome = input.sanctionStored
+    ? `• 이 장소는 ${formatCount(input.blockHours)}시간 막았고 기록을 남겼어요. 어드민 어뷰징 관리의 장소 블록에서 확인한 뒤 운영자가 정지를 정해요`
+    : '• 장소 차단이나 기록을 저장하지 못했어요. 서버 로그를 확인하고, 필요하면 운영자가 정지를 정해요'
   return [
     'GPS 조작이 의심돼서 픽업을 거부했어요',
     `• 유저(${safeField(input.userId)}) · 장소 ${safeField(input.poiName)} · ${describeReason(input)}`,
-    `• 이 장소는 ${formatCount(input.blockHours)}시간 막았고 기록을 남겼어요. 어드민 어뷰징 관리의 장소 블록에서 확인한 뒤 운영자가 정지를 정해요`,
+    outcome,
   ].join('\n')
 }
 

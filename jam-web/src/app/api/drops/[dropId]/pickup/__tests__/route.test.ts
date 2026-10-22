@@ -17,6 +17,7 @@
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
  *  - (티켓 20261022_0940) GPS 조작이 감지되면 응답을 보낸 뒤 `alertGpsSpoof`가 한 번 불린다(유저 ID·장소 이름·사유·차단 시간, 좌표는 없다). 감지되지 않거나 이미 막힌
  *    장소면 부르지 않고, 알림이 던져도 403과 장소 차단·기록 호출은 그대로다. 알림 모듈은 모킹한다(실제 슬랙을 부르지 않는다).
+ *    장소 차단·기록 저장이 끝났으면 `sanctionStored: true`, 실패해 catch로 빠졌으면 `false`를 넘긴다(알림은 두 경우 모두 보낸다).
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/drops/[dropId]/pickup/__tests__/route.test.ts"
  */
@@ -622,6 +623,7 @@ describe('GPS 조작 의심 운영자 알림 (티켓 20261022_0940, 운영 로�
       speedKmh: 400,
       dailyDistanceKm: 0,
       blockHours: 24,
+      sanctionStored: true,
     })
     const [input] = alertGpsSpoofMock.mock.calls[0] as [Record<string, unknown>]
     expect(Object.keys(input)).not.toContain('lat')
@@ -662,7 +664,7 @@ describe('GPS 조작 의심 운영자 알림 (티켓 20261022_0940, 운영 로�
     expect(state.rpcCalls).toBe(0)
   })
 
-  it('장소 차단·기록 저장이 실패해도 알림은 보낸다', async () => {
+  it('장소 차단·기록 저장이 실패해도 알림은 보내고 sanctionStored: false로 글이 저장 실패를 알리게 한다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     state.gpsDetected = true
     blockPoiMock.mockRejectedValueOnce(new Error('poi_blocks upsert 실패'))
@@ -671,6 +673,20 @@ describe('GPS 조작 의심 운영자 알림 (티켓 20261022_0940, 운영 로�
 
     expect(res.status).toBe(403)
     expect(alertGpsSpoofMock).toHaveBeenCalledTimes(1)
+    expect(alertGpsSpoofMock).toHaveBeenCalledWith(expect.objectContaining({ sanctionStored: false }))
+    consoleError.mockRestore()
+  })
+
+  it('기록(logAbusingEvent) 저장이 실패해도 sanctionStored: false다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.gpsDetected = true
+    logAbusingEventMock.mockRejectedValueOnce(new Error('abusing_logs insert 실패'))
+    const res = await POST(request(), params())
+    await flushAfter()
+
+    expect(res.status).toBe(403)
+    expect(alertGpsSpoofMock).toHaveBeenCalledTimes(1)
+    expect(alertGpsSpoofMock).toHaveBeenCalledWith(expect.objectContaining({ sanctionStored: false }))
     consoleError.mockRestore()
   })
 

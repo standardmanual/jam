@@ -114,6 +114,8 @@ export async function POST(
         : `속도 ${gpsCheck.speedKmh}km/h`
     // 제재는 이 픽업 거부, 이 장소 `poi_block_hours`(기본 72시간) 차단, 기록 셋이다. 이용 정지는 자동으로 걸지 않고
     // 운영자가 기록을 보고 건다(정책 20번 4절). 옛 72시간 섀도우밴(`applyBan`)은 지웠다(티켓 20261021_1250).
+    // `sanctionStored`: 장소 차단·기록 저장이 끝났으면 true, 아래 catch로 빠졌으면 false — 알림 글이 사실대로 말하게 한다(티켓 20261022_0940).
+    let sanctionStored = true
     try {
       await Promise.all([
         blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
@@ -127,6 +129,7 @@ export async function POST(
         }),
       ])
     } catch (e) {
+      sanctionStored = false
       // 제재 기록(POI 블록·로그) 저장이 실패해도 이번 픽업은 그대로 차단한다 — 스푸핑은 이미
       // 감지됐으므로 이 요청의 판정을 바꿀 이유가 없다. 다만 제재가 실제로 걸리지 않았을 수
       // 있으므로(다음 요청부터 다시 통과할 위험) 반드시 서버 로그로 남긴다.
@@ -138,7 +141,8 @@ export async function POST(
       )
     }
     // 운영자에게 알린다(티켓 20261022_0940, 운영 로직 16.5절). 응답을 보낸 뒤 `#jam-alert`에 글 한 건을 올린다 — 픽업이 슬랙 응답을 기다리지 않는다.
-    // 위 장소 차단·기록 저장이 실패했어도 보낸다. `alertGpsSpoof`는 던지지 않고, 글에는 유저 ID·장소 이름·사유·차단 시간만 싣는다(좌표·이메일은 싣지 않는다).
+    // 위 장소 차단·기록 저장이 실패했어도 보낸다 — 그때는 `sanctionStored: false`로 글이 저장 실패를 알린다. `alertGpsSpoof`는 던지지 않고,
+    // 글에는 유저 ID·장소 이름·사유·차단 시간만 싣는다(좌표·이메일은 싣지 않는다).
     // 이미 막힌 장소(`isPoiBlocked`)는 감지 전에 끝나므로 알림이 없다. 자동 정지는 걸지 않는다(정책 20번 4절).
     const poiName = (poiRaw as PoiRow).name
     after(() =>
@@ -149,6 +153,7 @@ export async function POST(
         speedKmh: gpsCheck.speedKmh,
         dailyDistanceKm: gpsCheck.dailyDistanceKm,
         blockHours: policy.poi_block_hours,
+        sanctionStored,
       })
     )
     return NextResponse.json({ error: d.drops.pickupLocationUnverified }, { status: 403 })

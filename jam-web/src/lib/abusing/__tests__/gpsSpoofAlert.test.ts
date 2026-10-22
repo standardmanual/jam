@@ -4,6 +4,7 @@
  * 고정하는 것:
  * - 글: 머리 «GPS 조작이 의심돼서 픽업을 거부했어요», 유저 ID·장소 이름·사유(속도 또는 하루 이동거리)·장소를 막은 시간,
  *   어드민 어뷰징 관리의 장소 블록에서 확인한 뒤 운영자가 정지를 정한다는 안내. 좌표·이메일·토큰은 싣지 않는다.
+ * - 장소 차단·기록 저장이 실패했으면(`sanctionStored: false`) «막았고 기록을 남겼어요»라고 쓰지 않고 저장 실패를 알린다.
  * - 장소 이름은 슬랙 특수문자를 거르고 길면 자른다(외부 장소 검색에서 온 값).
  * - 발송: `postOpsSlack('alert', 글)`. 값이 없거나(`not_configured`) 실패하거나 던져도 서버 로그만 남기고 false, 던지지 않는다.
  * 실제 슬랙은 호출하지 않는다 — 발송 함수를 모킹한다.
@@ -27,6 +28,7 @@ const SPEED_INPUT: GpsSpoofAlertInput = {
   reason: 'speed',
   speedKmh: 412,
   blockHours: 72,
+  sanctionStored: true,
 }
 
 const DAILY_INPUT: GpsSpoofAlertInput = {
@@ -36,6 +38,7 @@ const DAILY_INPUT: GpsSpoofAlertInput = {
   speedKmh: 12,
   dailyDistanceKm: 3200,
   blockHours: 72,
+  sanctionStored: true,
 }
 
 beforeEach(() => {
@@ -59,6 +62,23 @@ describe('formatGpsSpoofAlertMessage', () => {
     const text = formatGpsSpoofAlertMessage(DAILY_INPUT)
     expect(text).toContain('• 유저(user-picker) · 장소 성수역 · 하루 이동거리 3,200km')
     expect(text).not.toContain('km/h')
+  })
+
+  it('sanctionStored가 참/거짓이면 셋째 줄이 각각 «막았고 기록을 남겼어요» / «저장하지 못했어요»다', () => {
+    const stored = formatGpsSpoofAlertMessage({ ...SPEED_INPUT, sanctionStored: true })
+    expect(stored.split('\n')[2]).toBe(
+      '• 이 장소는 72시간 막았고 기록을 남겼어요. 어드민 어뷰징 관리의 장소 블록에서 확인한 뒤 운영자가 정지를 정해요'
+    )
+
+    const failed = formatGpsSpoofAlertMessage({ ...SPEED_INPUT, sanctionStored: false })
+    expect(failed.split('\n')).toEqual([
+      'GPS 조작이 의심돼서 픽업을 거부했어요',
+      '• 유저(user-picker) · 장소 성수역 · 속도 412km/h',
+      '• 장소 차단이나 기록을 저장하지 못했어요. 서버 로그를 확인하고, 필요하면 운영자가 정지를 정해요',
+    ])
+    expect(failed).not.toContain('72시간 막았고')
+    expect(failed).not.toContain('기록을 남겼어요')
+    expect(failed).not.toMatch(/\d+시간/)
   })
 
   it('차단 시간은 정책 값을 따른다', () => {
