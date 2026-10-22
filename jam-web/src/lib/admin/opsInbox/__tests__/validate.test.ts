@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest'
 import { validateHomeFeedBundle } from '../../../../../scripts/asset-generator/registerHomeFeedBundle.mjs'
 import { MAX_ITEMS, OPS_ITEM_KINDS } from '../constants'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
+import { CARD_SHAPES } from '@/lib/today/shape'
 import {
   EDIT_HEX_COLOR_PATTERN,
   revalidateOpsItem,
@@ -428,7 +429,7 @@ describe('카드 칸 — shape (티켓 20261001_1152)', () => {
     expect(result.bundle).not.toBeNull()
     expect(result.items).toHaveLength(1)
     expect(result.errors).toEqual([
-      'items[0].shape: 필수 항목이 없어요(카드 모양을 hero, poster, square, brief, list 중 하나로 적어 주세요).',
+      `items[0].shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적어 주세요).`,
     ])
     expect(result.items[0].format_errors).toEqual(result.errors)
   })
@@ -437,7 +438,7 @@ describe('카드 칸 — shape (티켓 20261001_1152)', () => {
     expect(shapeResult({ shape: null }).errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요/)
   })
 
-  it.each(['hero', 'poster', 'square', 'brief', 'list'])('모양 %s는 통과한다', (shape) => {
+  it.each([...CARD_SHAPES])('모양 %s는 통과한다', (shape) => {
     expect(shapeResult({ shape }).errors).toEqual([])
   })
 
@@ -449,7 +450,7 @@ describe('카드 칸 — shape (티켓 20261001_1152)', () => {
     ['빈 문자열', '', '""'],
   ])('shape가 %s이면 허용값을 안내한다', (_label, shape, shown) => {
     expect(shapeResult({ shape }).errors).toEqual([
-      `items[0].shape: 허용되지 않는 카드 모양이에요(받은 값: ${shown}). 허용값: hero, poster, square, brief, list`,
+      `items[0].shape: 허용되지 않는 카드 모양이에요(받은 값: ${shown}). 허용값: ${CARD_SHAPES.join(', ')}`,
     ])
   })
 
@@ -1059,16 +1060,16 @@ describe('패턴 제안 내용 칸 — resource.pattern (티켓 20261007_1746)',
     expect(errorsOf(proposal({ ...PATTERN, samples: [{ no: 1, name: '샘플', role: 7, impl: '' }] }))[0]).toContain('받은 값: 7)')
   })
 
-  it('card_shapes: 배열이 아니면 한 줄, shape는 5개 모양만 허용하고 note는 빈 문자열을 허용한다', () => {
+  it('card_shapes: 배열이 아니면 한 줄, shape는 CARD_SHAPES의 모양만 허용하고 note는 빈 문자열을 허용한다', () => {
     expect(errorsOf(proposal({ ...PATTERN, card_shapes: 'hero' }))[0]).toContain('pattern.card_shapes: 배열이어야 해요')
-    for (const shape of ['hero', 'poster', 'square', 'brief', 'list']) {
+    for (const shape of CARD_SHAPES) {
       expect(errorsOf(proposal({ ...PATTERN, card_shapes: [{ shape, note: '' }, { shape }] }))).toEqual([])
     }
     expect(errorsOf(proposal({ ...PATTERN, card_shapes: [{ shape: 'hero', note: '' }, { shape: 'large_thumbnail', note: 'x' }] }))).toEqual([
-      'items[0].resource.pattern.card_shapes[1].shape: 허용되지 않는 카드 모양이에요(받은 값: "large_thumbnail"). 허용값: hero, poster, square, brief, list',
+      `items[0].resource.pattern.card_shapes[1].shape: 허용되지 않는 카드 모양이에요(받은 값: "large_thumbnail"). 허용값: ${CARD_SHAPES.join(', ')}`,
     ])
     expect(errorsOf(proposal({ ...PATTERN, card_shapes: [{ note: 'x' }, 'list', { shape: 'hero', note: 3 }] }))).toEqual([
-      'items[0].resource.pattern.card_shapes[0].shape: 필수 항목이 없어요(허용값: hero, poster, square, brief, list).',
+      `items[0].resource.pattern.card_shapes[0].shape: 필수 항목이 없어요(허용값: ${CARD_SHAPES.join(', ')}).`,
       'items[0].resource.pattern.card_shapes[1]: 객체여야 해요(받은 값: "list").',
       'items[0].resource.pattern.card_shapes[2].note: 문자열이어야 해요(받은 값: 3).',
     ])
