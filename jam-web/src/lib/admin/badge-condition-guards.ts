@@ -25,6 +25,9 @@
  * | 사용량 지표 + 회차 조합 | `findUsageMetricRepeatConflictError` (이 파일) |
  * | 사용량 지표 + 다른 measurable 조합 | `findUsageMetricOtherMeasurableConflictError` (이 파일, 신규, 티켓 20260910_1804) |
  * | 사용량 지표 둘 이상 조합 | `findMultipleUsageMetricsError` (이 파일, 신규, 티켓 20261001_0712) |
+ *
+ * 막지는 않고 **경고만** 돌려주는 판정은 맨 아래 `findConditionShapeSaveWarning` 하나다
+ * (회차 조건에 회차 술어가 소비하지 않는 키가 끼는 조합, 티켓 20261021_1426).
  */
 import {
   findBlockingConditionKeys,
@@ -36,7 +39,11 @@ import { restConditionKeysIn } from '@/lib/badge-engine/activityFilters'
 // 휴식 키가 정확히 1개면 회차와 함께 저장할 수 있다(티켓 20260906_2056, §B-10 재설계) —
 // 엔진(index.ts)의 회차 차단 분기·진행 계산(badgeProgress.ts)과 같은 판정을 봐야
 // 「저장은 막히는데 엔진은 발급하는」 어긋남이 생기지 않는다.
-import { isRestDrivenRepeatCondition } from '@/lib/badge-engine/repeatOccurrences'
+import {
+  isPeriodDrivenRepeatCondition,
+  isRestDrivenRepeatCondition,
+  unconsumedRepeatConditionKeys,
+} from '@/lib/badge-engine/repeatOccurrences'
 import { findCrossGateShapeError } from '@/lib/badge-engine/crossGate'
 import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeCondition, BadgeRow } from '@/types/database'
@@ -214,4 +221,34 @@ export function findConditionShapeSaveError(
     findUsageMetricOtherMeasurableConflictError(condition) ??
     findCrossGateShapeError(badge, condition)
   )
+}
+
+/**
+ * 회차(`repeat_count`) 조건에 회차 술어가 다루지 못하는 키가 끼어 **발급이 멈추는** 조합을 알린다
+ * (티켓 20261021_1426). 저장은 막지 않고 경고 문구만 돌려준다 — 미션 조건에서 «판정 못 하는
+ * 조건은 저장을 허용하고 경고만 한다»로 정한 선례(`checkMissionCondition`)와 같다.
+ *
+ * 판정은 엔진(`collectRepeatOccurrences`)이 회차를 세는 순서를 그대로 따른다 — 기간 단위 회차 →
+ * 휴식 회차 → 그 밖의 키가 남으면 회차 0(fail-closed). 앞의 둘은 엔진이 별도 계산으로 가져가므로
+ * 경고하지 않는다. 마지막 단계의 키 목록은 엔진이 쓰는 `unconsumedRepeatConditionKeys` **그 함수**다 —
+ * 어드민 쪽에 키 목록을 따로 두지 않으므로 엔진이 소비하는 키가 늘어나면 경고도 함께 줄어든다.
+ *
+ * 경고하지 않는 경우
+ *  - 저장 자체가 막히는 조합(`findConditionShapeSaveError`) — 오류가 먼저 나가므로 경고를 겹치지 않는다.
+ *  - `mission_reward`·`poi_id` — 엔진이 회차를 세기 전에 먼저 끝내는 조건이라(`evaluateConditionDetailed`)
+ *    회차 0이 발급을 막는 원인이 아니다.
+ */
+export function findConditionShapeSaveWarning(
+  badge: Pick<BadgeRow, 'name' | 'family_key'>,
+  condition: BadgeCondition | null
+): string | null {
+  if (!condition || condition.repeat_count === undefined) return null
+  if (condition.mission_reward === true || condition.poi_id !== undefined) return null
+  if (findConditionShapeSaveError(badge, condition) !== null) return null
+  if (isPeriodDrivenRepeatCondition(condition) || isRestDrivenRepeatCondition(condition)) return null
+
+  const unconsumed = unconsumedRepeatConditionKeys(condition)
+  if (unconsumed.length === 0) return null
+  const labels = unconsumed.map((key) => `${getConditionField(key)?.label ?? key}(${key})`)
+  return `이 배지는 저장해도 발급되지 않아요. 충족 횟수(repeat_count)를 세는 계산이 다루지 못하는 조건이 함께 있어서 충족 횟수를 0회로 처리해요 — ${labels.join(', ')}. 충족 횟수를 빼거나 이 조건을 빼 주세요.`
 }

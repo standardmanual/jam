@@ -65,7 +65,11 @@ import { CONDITION_FORM_SECTIONS, conditionFormEntriesOf, findBlockingConditionK
 import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 // 저장 API가 쓰는 것과 **같은 판정·같은 문구**. 서버 전용 의존(drop-engine → next/headers)이
 // 없는 파일로 갈라 두었기에 클라이언트 컴포넌트에서 그대로 쓸 수 있다.
-import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/badge-condition-guards'
+import {
+  findConditionShapeSaveError,
+  findConditionShapeSaveWarning,
+  findRarityLevelError,
+} from '@/lib/admin/badge-condition-guards'
 import { findPoiLinksNotLoadedError, mergeLoadedPoiLinks, type PoiLinksLoadState } from '@/lib/admin/badge-poi-links-guard'
 import { findUnlockRequiredError, normalizeLockFields, type LockedMinimums } from '@/lib/admin/badge-lock-guard'
 import { BRANCH_KEYS, BRANCH_LABEL, findHiddenBadgeError, isBranchKey } from '@/lib/admin/badge-hidden-guard'
@@ -604,6 +608,11 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   // fail-closed로 막힌다. 저장은 되지만 **발급은 되지 않는다**는 걸 화면에서 알린다.
   const pendingConditionKeys = findBlockingConditionKeys(condPreview).pending
 
+  // 회차 조건에 회차 판정이 다루지 못하는 키가 끼면 회차가 0이 되어 발급이 멈춘다 — 저장 API가
+  // 응답 `warning`으로 돌려주는 것과 **같은 함수·같은 문구**다(티켓 20261021_1426).
+  const repeatConditionWarning =
+    type === 'checkin' ? null : findConditionShapeSaveWarning({ name, family_key: badge?.family_key ?? null }, condPreview)
+
   // ── 섹션 상태·미리보기 ─────────────────────────────────────────────────
 
   const sectionCtx = { type, isJam: isJamCategory }
@@ -925,6 +934,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         unsupportedConditionKeys={unsupportedConditionKeys}
         unrepresentableConditionKeys={unrepresentableConditionKeys}
         pendingConditionKeys={pendingConditionKeys}
+        repeatConditionWarning={repeatConditionWarning}
         themeContainer={themeContainer}
         poiCategories={poiCategories}
       />
