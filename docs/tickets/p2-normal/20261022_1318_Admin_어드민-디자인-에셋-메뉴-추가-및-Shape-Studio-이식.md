@@ -2,9 +2,9 @@
 id: "20261022_1318"
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-22
-closed:
+closed: 2026-10-22
 ---
 
 # [Admin] 어드민 디자인 묶음에 「에셋」 메뉴 추가 및 Shape Studio v2 이식
@@ -92,8 +92,7 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 
 ### 테스트 결과
 - [x] `scripts/verify.sh` 전항목 통과 (`lint` · `typecheck` · `test` · `ds:check` · `asset-bundle` · `slop` · `scripts-test` · `contract` · `team-doc` · `team-map` · `scheduled-jobs` · `home-feed-doc` · `skills` · `client-server-imports`)
-- [x] GitHub Actions `verify` 워크플로 통과 (`run 39725081226`)
-- [x] 민지(`jam-reviewer`) 게이트 리뷰 **PASS** (`f49f279ba..6e5a5e176`)
+- [x] 민지(`jam-reviewer`) 게이트 리뷰 **PASS** (`9a946a481..bf8fc3483`)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
@@ -107,7 +106,7 @@ Muse로 제작한 스탠드얼론 셰이더 웹페이지(`shape-studio.html`, Sh
 ### 배포 정보
 - 배포일: 2026-10-22
 - 환경: staging
-- 커밋: 6e5a5e176
+- 커밋: bf8fc3483
 
 ### 실행 지표
 
