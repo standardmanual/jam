@@ -8,7 +8,7 @@
  * - 응답: 열린 개체는 이름·그림·등급·일련번호, 잠긴 개체는 이름·그림·일련번호·badgeId 없이 등급과 필요한 양만. 다음 캡슐 필요량·채운 양.
  * - DB 거절(`not_full`·`insufficient_slots`(지금 빈칸·필요한 빈칸 포함)·`user_suspended`·`invalid_items`·`inventory_not_found`)은 `CapsuleError`,
  *   모르는 코드·RPC 오류·해석할 수 없는 응답은 일반 오류.
- * - 후속 처리: 개체마다 `recordIssuedRewards`(활동 없음, 잠김 여부 전달). 잠긴 개체는 포인트·피드에서 빠진다. 후속 처리가 던져도 열기는 유지된다.
+ * - 후속 처리: 개체마다 `recordIssuedRewards`(활동 없음, 잠김 여부 전달, 피드 건너뜀 `skipFeed`). 잠긴 개체는 포인트에서 빠진다. 열린 개체도 피드에 올리지 않는다(운영 로직 15.3절, 티켓 20261021_1249 6-3 5회). 후속 처리가 던져도 열기는 유지된다.
  * - 챕터 점수 «캡슐 열기»(티켓 20261019_1315): 열기가 확정된 직후(`capsule_open` 다음, 후속 처리 앞) `chapter_add_score`를
  *   (capsule_open, 열기 기록 id, 1)로 한 번 부른다. 거절·추첨 전에 막힌 경우에는 부르지 않고, 같은 열기를 다시 보내도 같은 키다.
  *   점수 실패(RPC 오류·예외)와 후속 처리 실패는 열기·응답을 바꾸지 않는다.
@@ -459,7 +459,7 @@ describe('openCapsule — DB 응답 변환', () => {
 })
 
 describe('openCapsule — 후속 처리', () => {
-  it('개체마다 활동 없이 후속 처리를 부르고, 잠긴 개체는 포인트·피드에서 빠진다', async () => {
+  it('개체마다 활동 없이 후속 처리를 부르고, 잠긴 개체는 포인트에서 빠진다', async () => {
     const { client } = fakeClient({ rpc: OK_RPC })
 
     await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
@@ -470,10 +470,17 @@ describe('openCapsule — 후속 처리', () => {
     // 잠긴 common(포인트 10)은 주지 않고, 열린 epic(포인트 50)만 준다
     expect(awardPointsMock).toHaveBeenCalledTimes(1)
     expect(awardPointsMock).toHaveBeenCalledWith(USER_ID, 50, 'badge_point_reward', { sourceBadgeId: 'badge-epic' })
-    // 피드도 열린 개체만, 활동 없이
-    expect(feedMock).toHaveBeenCalledTimes(1)
-    expect(feedMock.mock.calls[0][2]).toMatchObject({ inventory_item_id: 'inv-2', badge_id: 'badge-epic' })
-    expect(feedMock.mock.calls[0][4]).toBeNull()
+  })
+
+  it('캡슐에서 나온 아이템 배지는 열린 개체여도 피드에 올리지 않는다(운영 로직 15.3절) — 모든 개체의 후속 처리가 피드 건너뜀을 켠다', async () => {
+    const { client } = fakeClient({ rpc: OK_RPC })
+
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(followUpMock.mock.calls.every(([input]) => (input as { skipFeed?: boolean }).skipFeed === true)).toBe(true)
+    expect(feedMock).not.toHaveBeenCalled()
+    // 포인트는 그대로 준다
+    expect(awardPointsMock).toHaveBeenCalledWith(USER_ID, 50, 'badge_point_reward', { sourceBadgeId: 'badge-epic' })
   })
 
   it('후속 처리가 던져도 열기는 유지되고 응답이 그대로 나온다. 로그만 남긴다', async () => {

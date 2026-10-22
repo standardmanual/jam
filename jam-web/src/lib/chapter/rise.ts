@@ -8,6 +8,9 @@
  *     그래서 챕터 1은 연출 카드를 띄우지 않고(`celebrate.ts`) 소식으로 알린다(티켓 20261021_1248 사용자 결정 4). 문구는 챕터 1이면 «챕터 1을 시작했어요»다.
  *     묶음 키는 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다.
  *     챕터는 내려가지 않으므로 같은 챕터가 다시 «가장 높은 챕터»가 되는 일은 재시도뿐이다.
+ *  2-1) 피드: 가장 높은 챕터가 **2 이상**일 때만 `chapter_up` 한 건을 기록한다(티켓 20261021_1249 6-3 5회, 운영 로직 15.3절). 챕터 1 시작은 올리지 않는다.
+ *     피드에는 중복 방지 키가 없다. `reachedChapters`는 `chapter_ups`에 **이번 호출로 새로 들어간** 챕터만 담으므로(같은 일을 다시 보내면 빈 목록이다), 이 목록이 비어 있지 않을 때만 기록하는 것이 «새로 오른 경우에만»이다.
+ *     한 번에 여러 챕터를 넘어도 최고 챕터 한 건이다. 메타는 `chapter_no`뿐이고 `strava_activity_id`를 넘기지 않는다(넘기면 활동 묶음 카드에 섞인다).
  *  3) 챕터 배지 판정: 비어 있지 않으면(챕터 1 시작 포함) `runJamActionEvaluation(userId, ['chapter_reached'])`로 챕터 조건 배지를 바로 판정해 받게 한다.
  *     넘은 챕터가 여럿이어도 챕터 도달값은 지금 챕터 하나라서 `chapter_reached >= N` 조건 배지는 한 번의 판정으로 모두 받는다.
  *     `skipBadgeEvaluation`이 참이면 이 판정만 건너뛴다(아래 «이중 판정»).
@@ -21,7 +24,7 @@
  * 겹쳐서 생기는 일은 판정이 한 번 더 도는 것과, 동기화 결과 카드 대신 결산 소식(`activity_recap`)으로 먼저 알려지는 것뿐이다. 챕터 오름은 평생 챕터 수(10)번 안쪽이라 비용이 작다.
  *
  * ## 서로 막지 않는다
- * 소식과 판정은 각자 `try/catch`로 감싼다. 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. **절대 던지지 않는다** — 실패는 `console.error`와
+ * 소식, 피드, 판정은 각자 `try/catch`로 감싼다. 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. **절대 던지지 않는다** — 실패는 `console.error`와
  * `engine_decision_log`(`points` 엔진, 이벤트 `chapter_rise_failed`, `step`으로 구분)에 남긴다. `runJamActionEvaluation`은 자기 안의 실패를 스스로 삼키고
  * `console.error`만 남기므로, 이 함수가 기록하는 판정 실패는 그 함수를 불러오거나 부르다 던진 경우다.
  *
@@ -33,6 +36,7 @@
  *
  * 서버 전용이다.
  */
+import { recordFeedEvent } from '@/lib/activity-feed'
 import { logEngineDecision } from '@/lib/engine-log'
 import { createNotification, scopedGroupKey } from '@/lib/notifications'
 
@@ -47,7 +51,7 @@ export interface ChapterRiseOptions {
   skipBadgeEvaluation?: boolean
 }
 
-type ChapterRiseFailureStep = 'notification' | 'badge_evaluation' | 'unexpected'
+type ChapterRiseFailureStep = 'notification' | 'feed' | 'badge_evaluation' | 'unexpected'
 
 function isChapterNo(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1
@@ -96,6 +100,19 @@ async function sendRiseNotification(userId: string, highest: number, reachedChap
   }
 }
 
+/**
+ * 챕터 2 이상으로 올랐을 때만 «챕터 오름» 피드 한 건. 챕터 1 시작은 올리지 않는다.
+ * `recordFeedEvent`는 던지지 않고 실패를 로그로 남기며, 여기서 한 번 더 감싸 오름 처리의 다른 단계를 막지 않는다.
+ */
+async function recordRiseFeed(userId: string, highest: number, reachedChapters: readonly number[]): Promise<void> {
+  if (highest < 2) return
+  try {
+    await recordFeedEvent(userId, 'chapter_up', { chapter_no: highest })
+  } catch (e) {
+    await recordRiseFailure(userId, 'feed', reachedChapters, `피드 기록 예외: ${errorText(e)}`)
+  }
+}
+
 async function evaluateChapterBadges(userId: string, reachedChapters: readonly number[]): Promise<void> {
   try {
     // 정적 import는 `score.ts`와 순환이 된다(파일 머리말 «순환 import»)
@@ -106,7 +123,7 @@ async function evaluateChapterBadges(userId: string, reachedChapters: readonly n
   }
 }
 
-/** 챕터 오름을 처리한다(소식과 챕터 배지 판정). 던지지 않는다. */
+/** 챕터 오름을 처리한다(소식, 피드, 챕터 배지 판정). 던지지 않는다. */
 export async function processChapterRise(input: ChapterRiseInput, options: ChapterRiseOptions = {}): Promise<void> {
   try {
     const reachedChapters = input.reachedChapters.filter(isChapterNo)
@@ -115,6 +132,7 @@ export async function processChapterRise(input: ChapterRiseInput, options: Chapt
     const highest = Math.max(...reachedChapters)
     // 챕터 1 시작도 소식으로 알린다(티켓 20261021_1248). 완료 보상은 시점이 갈라지고 건너뛴 유저는 받지 않아 알림 구실을 하지 못한다
     await sendRiseNotification(input.userId, highest, reachedChapters)
+    await recordRiseFeed(input.userId, highest, reachedChapters)
     if (options.skipBadgeEvaluation !== true) await evaluateChapterBadges(input.userId, reachedChapters)
   } catch (e) {
     await recordRiseFailure(input.userId, 'unexpected', input.reachedChapters, errorText(e))

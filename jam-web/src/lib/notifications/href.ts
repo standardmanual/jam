@@ -156,6 +156,17 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     case 'tribe_changed':
       return single('/profile')
 
+    // ── 이용 정지·풀림 — 홈의 정지 안내 배너가 사유·정지일·문의 버튼을 모두 보여 주므로 홈으로 보낸다. 소식에는 사유를 싣지 않는다(티켓 20261021_1249 6-3 5회) ──
+    case 'suspension_started':
+    case 'suspension_lifted':
+      return single('/')
+
+    // ── 받지 않은 보상 — 미션 상세의 «받을 보상» 카드로 보낸다. 미션 id가 비면 목록으로 보낸다(티켓 20261021_1249 6-3 5회) ──
+    case 'reward_pending': {
+      const id = typeof p.mission_id === 'string' ? p.mission_id : ''
+      return single(id ? `/missions/${id}` : '/missions')
+    }
+
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       const count = Math.max(view.actorCount, idList(p, 'actor_ids').length, 1)

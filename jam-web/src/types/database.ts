@@ -1769,6 +1769,9 @@ export type ActivityFeedEventType =
   | 'mission_joined'
   | 'mission_completed'
   | 'mission_cancelled'
+  // 챕터가 2 이상으로 올랐어요·컬렉션 등급을 처음 완성했어요(티켓 20261021_1249 6-3 5회, 마이그레이션 270)
+  | 'chapter_up'
+  | 'collection_tier_completed'
 
 export interface ActivityFeedRow {
   id: string
@@ -1981,6 +1984,11 @@ export type NotificationType =
   | 'chapter_up'
   // 어드민이 트라이브를 바꿨어요(티켓 20261021_1247, 마이그레이션 261). 유저 알림에는 사유를 싣지 않는다
   | 'tribe_changed'
+  // 이용 정지가 걸렸어요·풀렸어요(티켓 20261021_1249 6-3 5회, 마이그레이션 270). 사유·어드민 이메일·상담 메모는 싣지 않는다
+  | 'suspension_started'
+  | 'suspension_lifted'
+  // 인벤토리 빈칸이 모자라 아직 받지 못한 미션 보상이 있어요(티켓 20261021_1249 6-3 5회, 마이그레이션 270)
+  | 'reward_pending'
   // ⑤ 소셜(나에게) (1) — #27 맞팔(`mutual_follow`)은 20260827_014에서 제거됐다
   //    (자기 행동의 메아리. 되팔로우당한 쪽에는 `followed`가 대신 나간다)
   | 'followed'

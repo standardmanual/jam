@@ -82,7 +82,7 @@ CREATE TABLE public.notifications (
 );
 ```
 
-> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 33값 중 9값 (실사용 24종)**
+> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 36값 중 9값 (실사용 27종)**
 >
 > | 값 | 사용 중단 시점 | 사유 |
 > |---|---|---|
@@ -90,7 +90,7 @@ CREATE TABLE public.notifications (
 > | `mutual_follow` | 2026-08-27 (20260827_014) | #27 맞팔은 자기 행동의 메아리다. 되팔로우당한 쪽에는 `followed`가 대신 나간다 |
 > | `badge_earned`·`rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·`points_earned`·`first_badge` | 2026-08-27 (20260827_014) | ① 보상 획득 6종을 활동 결산(`activity_recap`) 1종으로 재편 |
 >
-> **실제로 쓰는 종류는 24종**이다(28 − 9 + `activity_recap` 1 + `inventory_slots_low` 1 + `mission_participation_cancelled` 1 + `chapter_up` 1 + `tribe_changed` 1 = 24).
+> **실제로 쓰는 종류는 27종**이다(28 − 9 + `activity_recap` 1 + `inventory_slots_low` 1 + `mission_participation_cancelled` 1 + `chapter_up` 1 + `tribe_changed` 1 + `suspension_started` 1 + `suspension_lifted` 1 + `reward_pending` 1 = 27). 마지막 세 값은 마이그레이션 270(티켓 20261021_1249 5회)이 더했다.
 >
 > **DDL로 지우지 않는다.** Postgres에는 `ALTER TYPE … DROP VALUE`가 없고, 타입을 새로 만들어
 > 갈아끼우는 우회는 컬럼·인덱스·RLS를 전부 재생성해야 하는 위험한 작업이다. 해당 타입 소식은
@@ -102,7 +102,7 @@ CREATE TABLE public.notifications (
 > 죽은 코드다. `NotificationType`·`NotificationPayloadMap`·`buildNotificationMessage`·
 > `notificationTarget`·`TypeIcon`·`ko.ts`에서 전부 제거했다.
 >
-> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 24종만 노출해 컴파일러가 재사용을
+> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 27종만 노출해 컴파일러가 재사용을
 > 막는다. 만에 하나 이 타입의 행이 존재하면 렌더러의 `default` 분기가 받는다.
 >
 > **`default` 분기는 컴파일 타임 안전망을 겸한다 (2026-08-27 / 티켓 20260827_021).**
@@ -136,7 +136,7 @@ CREATE TABLE public.notifications (
 | 필드 | 설명 |
 |---|---|
 | `user_id` | **받는 사람.** 행위자가 아니다 |
-| `type` | ENUM 33값 중 **실사용 24종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
+| `type` | ENUM 36값 중 **실사용 27종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
 | `actor_user_id` | 아바타 탭 대상. 팔로우·픽업됨·팔로잉 활동에만 존재, 나머지는 NULL |
 | `actor_count` | 묶음 **고유 인원** — "**예린**님 외 **3명**"의 N. 기본 1. 병합 횟수가 아니라 `payload.actor_ids`의 고유 개수와 일치해야 한다 (§4-1) |
 | `group_key` | 묶음 병합 키. NULL이면 묶지 않는 소식 (§4 참고) |

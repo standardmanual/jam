@@ -254,6 +254,22 @@ export interface NotificationPayloadMap {
    */
   tribe_changed: { new_tribe_name: string }
   /**
+   * 어드민이 이용 정지를 걸었어요(티켓 20261021_1249 6-3 5회, 운영 로직 15.4·16장).
+   * **사유 글, 어드민 이메일, 상담 메모를 싣지 않는다.** 소식 행은 `notifications_select_own` 정책으로 유저 브라우저에서 읽히고, 사유 복사본은 이후 수정과 어긋난 채 영구히 남는다.
+   * 사유와 정지일은 홈 정지 안내 배너가 계속 보여 준다. 묶음 키는 `suspension_started:{suspension_id}` + `once`라 정지 한 번에 소식 한 건이다.
+   */
+  suspension_started: { suspension_id: string; suspended_at: string }
+  /**
+   * 어드민이 이용 정지를 풀었어요(같은 티켓). 정지 소식과 같은 이유로 풀면서 남긴 메모(`lift_note`)를 싣지 않는다.
+   * 묶음 키는 `suspension_lifted:{suspension_id}` + `once`라 정지 한 줄에 풀림 소식 한 건이다.
+   */
+  suspension_lifted: { suspension_id: string; lifted_at: string }
+  /**
+   * 인벤토리 빈칸이 모자라 아직 받지 못한 미션 보상이 있어요(같은 티켓, 운영 로직 6.4·15.4절). 미션 보상이 «받지 않은 보상»으로 보류될 때만 만든다.
+   * 믹스 결과 보류와 동기화 보류는 대상이 아니다. 묶음 키는 `reward_pending:{mission_id}` + `once`라 미션마다 한 건이다. 소식은 사건의 기록이라 보상을 받은 뒤에도 남는다.
+   */
+  reward_pending: { mission_id: string; mission_title: string }
+  /**
    * 29 팔로잉 희귀 배지 — Epic·Mystic **또는** 무한레벨형 Lv.6 이상
    * (`FOLLOWING_LEVEL_THRESHOLD`, 티켓 20260905_0038).
    * `more_count`는 R15(사람 단위 묶음) — 「소식이 N건 더 있어요」

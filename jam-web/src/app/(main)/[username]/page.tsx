@@ -4,6 +4,7 @@ import type { ActivityFeedRow } from '@/types/database'
 import ProfileClient, { type ProfileClientProfile } from '../profile/ProfileClient'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
 import { isDropRowLocked, lockedDropFeedMeta, type DropRowLockInfo } from '@/lib/activity-feed/lockedDrop'
+import { fetchCapsuleIssuedItemIds } from '@/lib/activity-feed/capsuleItems'
 import { getWallet } from '@/lib/points'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
 import { getMyChapter, getPublicChapter } from '@/lib/chapter/read'
@@ -316,8 +317,12 @@ export default async function UserProfilePage({ params }: Props) {
   }
 
   const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).inventory_item_id ?? '')))
-  for (const row of (actDropsResult.data ?? []) as unknown as ActDropRow[]) {
+  // 캡슐을 열어 나온 개체는 피드에 올리지 않는다(운영 로직 15.3, 티켓 20261022_1021). 피드 행이 없다고 «아이템 드랍» 카드로 다시 합성하지 않는다.
+  const actDropRows = (actDropsResult.data ?? []) as unknown as ActDropRow[]
+  const capsuleItemIds = await fetchCapsuleIssuedItemIds(service, actDropRows.map(row => row.id))
+  for (const row of actDropRows) {
     if (feedDropItemIds.has(row.id)) continue
+    if (capsuleItemIds.has(row.id)) continue
     const b = row.badges
     if (!b || b.deleted_at) continue
     legacyItems.push(makeFeedItem(`legacy_actdrop_${row.id}`, 'item_dropped', row.obtained_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: '' }))

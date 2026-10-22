@@ -7,14 +7,28 @@
  * - `liftSuspension`: 진행 중 정지의 `lifted_at`·`lifted_by`·`lift_note`를 채운다. 이미 풀렸거나 없으면 `not_suspended`.
  *   푼 시각은 건 시각보다 앞서지 않는다. 읽은 뒤 다른 운영자가 먼저 풀었으면(갱신된 줄 0) `not_suspended`.
  * - 풀고 다시 걸면 이력이 두 줄이 된다.
+ * - 소식(티켓 20261021_1249 6-3 5회): 걸기·풀기가 DB에 성공했을 때만 소식 모듈을 한 번 부르고(유저 id, 정지 줄 id, 시각만 넘긴다 — 사유·어드민 이메일·메모는 넘기지 않는다),
+ *   거절·DB 오류 때는 부르지 않는다. 소식 모듈이 던지지 않으므로 실패해도 걸기·풀기 결과는 그대로다(소식 모듈 자체는 `notify.test.ts`가 고정한다).
  *
- * 실제 공용 DB는 호출하지 않는다 — user_suspensions 한 표를 흉내내는 가짜 클라이언트만 쓴다.
+ * 실제 공용 DB는 호출하지 않는다 — user_suspensions 한 표를 흉내내는 가짜 클라이언트만 쓴다. 소식 모듈은 모의한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/suspension/__tests__/suspension-write.test.ts
  */
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
+
+const notifyMocks = vi.hoisted(() => ({
+  notifySuspensionStarted: vi.fn(async (): Promise<void> => undefined),
+  notifySuspensionLifted: vi.fn(async (): Promise<void> => undefined),
+}))
+vi.mock('../notify', () => notifyMocks)
+
 import { liftSuspension, suspendUser } from '../suspension-write'
+
+beforeEach(() => {
+  notifyMocks.notifySuspensionStarted.mockClear()
+  notifyMocks.notifySuspensionLifted.mockClear()
+})
 
 interface Row {
   id: string
@@ -77,7 +91,7 @@ function makeFake(options: FakeOptions = {}) {
           lift_note: null,
         }
         rows.push(row)
-        return { data: { id: row.id }, error: null }
+        return { data: { id: row.id, suspended_at: row.suspended_at }, error: null }
       }
       if (op === 'update') {
         if (options.liftedByOtherBeforeUpdate) {
@@ -175,6 +189,51 @@ describe('suspendUser', () => {
   })
 })
 
+describe('suspendUser의 소식 (티켓 20261021_1249 6-3 5회)', () => {
+  it('걸기에 성공하면 소식을 한 번 보낸다 — 유저 id, 정지 줄 id, 건 시각만 넘긴다', async () => {
+    const t = makeFake()
+
+    const result = await suspendUser(t.supabase, { userId: 'u1', reason: '  GPS 조작  ', adminEmail: 'a@x.com' })
+
+    expect(result).toEqual({ ok: true, id: 's1' })
+    expect(notifyMocks.notifySuspensionStarted).toHaveBeenCalledTimes(1)
+    expect(notifyMocks.notifySuspensionStarted).toHaveBeenCalledWith({
+      userId: 'u1',
+      suspensionId: 's1',
+      suspendedAt: '2026-10-17T00:00:00.000Z',
+    })
+    expect(notifyMocks.notifySuspensionLifted).not.toHaveBeenCalled()
+  })
+
+  it('소식 모듈에 사유와 어드민 이메일을 넘기지 않는다', async () => {
+    const t = makeFake()
+
+    await suspendUser(t.supabase, { userId: 'u1', reason: 'GPS 조작', adminEmail: 'a@x.com' })
+
+    const sent = JSON.stringify(notifyMocks.notifySuspensionStarted.mock.calls)
+    expect(sent).not.toContain('GPS 조작')
+    expect(sent).not.toContain('a@x.com')
+  })
+
+  it('거절되거나 DB 오류가 나면 소식을 보내지 않는다', async () => {
+    const empty = makeFake()
+    await suspendUser(empty.supabase, { userId: 'u1', reason: '   ', adminEmail: 'a@x.com' })
+
+    const ghost = makeFake({ users: [] })
+    await suspendUser(ghost.supabase, { userId: 'ghost', reason: '사유', adminEmail: 'a@x.com' })
+
+    const dup = makeFake()
+    await suspendUser(dup.supabase, { userId: 'u1', reason: '첫 정지', adminEmail: 'a@x.com' })
+    notifyMocks.notifySuspensionStarted.mockClear()
+    await suspendUser(dup.supabase, { userId: 'u1', reason: '두 번째', adminEmail: 'a@x.com' })
+
+    const broken = makeFake({ failTable: { table: 'user_suspensions', op: 'insert', message: 'boom' } })
+    await expect(suspendUser(broken.supabase, { userId: 'u1', reason: '사유', adminEmail: 'a@x.com' })).rejects.toThrow()
+
+    expect(notifyMocks.notifySuspensionStarted).not.toHaveBeenCalled()
+  })
+})
+
 describe('liftSuspension', () => {
   const NOW = new Date('2026-10-18T00:00:00.000Z')
 
@@ -246,6 +305,65 @@ describe('liftSuspension', () => {
     if (!suspended.ok) throw new Error('정지 실패')
 
     await expect(liftSuspension(t.supabase, { suspensionId: suspended.id, adminEmail: 'b@x.com', now: NOW })).rejects.toThrow(/갱신 실패: boom/)
+  })
+})
+
+describe('liftSuspension의 소식 (티켓 20261021_1249 6-3 5회)', () => {
+  const NOW = new Date('2026-10-18T00:00:00.000Z')
+
+  it('풀기에 성공하면 정지된 유저에게 소식을 한 번 보낸다 — 유저 id는 정지 줄에서 읽고, 푼 시각을 넘긴다', async () => {
+    const t = makeFake({ users: ['u1', 'u2'] })
+    const suspended = await suspendUser(t.supabase, { userId: 'u2', reason: '사유', adminEmail: 'a@x.com' })
+    if (!suspended.ok) throw new Error('정지 실패')
+    notifyMocks.notifySuspensionStarted.mockClear()
+
+    const result = await liftSuspension(t.supabase, { suspensionId: suspended.id, adminEmail: 'b@x.com', note: '상담 후 해제', now: NOW })
+
+    expect(result).toEqual({ ok: true })
+    expect(notifyMocks.notifySuspensionLifted).toHaveBeenCalledTimes(1)
+    expect(notifyMocks.notifySuspensionLifted).toHaveBeenCalledWith({
+      userId: 'u2',
+      suspensionId: suspended.id,
+      liftedAt: '2026-10-18T00:00:00.000Z',
+    })
+    expect(notifyMocks.notifySuspensionStarted).not.toHaveBeenCalled()
+  })
+
+  it('소식 모듈에 푼 메모와 어드민 이메일을 넘기지 않는다', async () => {
+    const t = makeFake()
+    const suspended = await suspendUser(t.supabase, { userId: 'u1', reason: '사유', adminEmail: 'a@x.com' })
+    if (!suspended.ok) throw new Error('정지 실패')
+
+    await liftSuspension(t.supabase, { suspensionId: suspended.id, adminEmail: 'b@x.com', note: '상담 후 해제', now: NOW })
+
+    const sent = JSON.stringify(notifyMocks.notifySuspensionLifted.mock.calls)
+    expect(sent).not.toContain('상담 후 해제')
+    expect(sent).not.toContain('b@x.com')
+    expect(sent).not.toContain('사유')
+  })
+
+  it('없는 정지·이미 푼 정지·먼저 풀린 정지·갱신 오류에서는 소식을 보내지 않는다', async () => {
+    const none = makeFake()
+    await liftSuspension(none.supabase, { suspensionId: 'nope', adminEmail: 'b@x.com', now: NOW })
+
+    const done = makeFake()
+    const first = await suspendUser(done.supabase, { userId: 'u1', reason: '사유', adminEmail: 'a@x.com' })
+    if (!first.ok) throw new Error('정지 실패')
+    await liftSuspension(done.supabase, { suspensionId: first.id, adminEmail: 'b@x.com', now: NOW })
+    notifyMocks.notifySuspensionLifted.mockClear()
+    await liftSuspension(done.supabase, { suspensionId: first.id, adminEmail: 'c@x.com', now: NOW })
+
+    const raced = makeFake({ liftedByOtherBeforeUpdate: true })
+    const second = await suspendUser(raced.supabase, { userId: 'u1', reason: '사유', adminEmail: 'a@x.com' })
+    if (!second.ok) throw new Error('정지 실패')
+    await liftSuspension(raced.supabase, { suspensionId: second.id, adminEmail: 'b@x.com', now: NOW })
+
+    const broken = makeFake({ failTable: { table: 'user_suspensions', op: 'update', message: 'boom' } })
+    const third = await suspendUser(broken.supabase, { userId: 'u1', reason: '사유', adminEmail: 'a@x.com' })
+    if (!third.ok) throw new Error('정지 실패')
+    await expect(liftSuspension(broken.supabase, { suspensionId: third.id, adminEmail: 'b@x.com', now: NOW })).rejects.toThrow()
+
+    expect(notifyMocks.notifySuspensionLifted).not.toHaveBeenCalled()
   })
 })
 

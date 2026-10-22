@@ -4879,6 +4879,8 @@ export type Database = {
         | "mission_joined"
         | "mission_completed"
         | "mission_cancelled"
+        | "chapter_up"
+        | "collection_tier_completed"
       notification_type:
         | "badge_earned"
         | "rare_badge_earned"
@@ -4913,6 +4915,9 @@ export type Database = {
         | "mission_participation_cancelled"
         | "chapter_up"
         | "tribe_changed"
+        | "suspension_started"
+        | "suspension_lifted"
+        | "reward_pending"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -5050,6 +5055,8 @@ export const Constants = {
         "mission_joined",
         "mission_completed",
         "mission_cancelled",
+        "chapter_up",
+        "collection_tier_completed",
       ],
       notification_type: [
         "badge_earned",
@@ -5085,6 +5092,9 @@ export const Constants = {
         "mission_participation_cancelled",
         "chapter_up",
         "tribe_changed",
+        "suspension_started",
+        "suspension_lifted",
+        "reward_pending",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },
