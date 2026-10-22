@@ -42,6 +42,14 @@ export const RETIRE_BACKUP_TABLE = 'retire_backup_20261022';
 /** 7-6 적용 뒤 공용 DB의 컬렉션 수(옛 100 + 새 6). 티켓 20261022_1137 전체 마무리 점검(카리나, 2026-10-22)에서 읽은 값이다. */
 export const BOOKS_IN_DB_AFTER_7_6 = 106;
 
+/**
+ * 끄기 대상: 계획 밖 컬렉션(106 − 50 = 56개) 가운데 지금 켜져 있는 것. 56개 전부가 아니다 — 옛 트라이브를 끌 때
+ * 37개가 이미 꺼져 있었다. 켜진 19개는 아직 켜진 옛 트라이브 3곳의 것이다(낭만 미식가 2, 숲속의 갱단 8, 아스팔트 레인저 9).
+ * 티켓 20261022_1138 1회 롤백 실측(카리나, 2026-10-22)에서 공용 DB를 읽어 확인한 값이다. 처음에는 56으로 적었고
+ * 실측에서 SQL의 건수 검사가 멈춰 고쳤다. 오픈 직전에 적용할 때 실제 건수가 달라지면 SQL이 멈춘다.
+ */
+export const ACTIVE_UNPLANNED_BOOKS_IN_DB = 19;
+
 /** 오픈 때 끄는 옛 레시피 3건(트라이브 단독 레시피). docs/service/content/COMBINE_RECIPES.md 4절, seed_combine_recipes_r1_r3.sql */
 export const OLD_RECIPE_NAMES = ['무명 트럭의 불맛 흔적', '블랙 트랙 입구의 채비', '살롱의 장물 시세'];
 
@@ -98,10 +106,15 @@ export function planBooks(plan) {
   return plan.tribes.flatMap((t) => t.books.map((b) => ({ tribe: t.name, book: b.name })));
 }
 
-/** 끄기 SQL의 건수 기대: 계획 컬렉션 50개, 끄기 대상 56개(= 106 − 50), 옛 레시피 3건 */
+/** 끄기 SQL의 건수 기대: 계획 컬렉션 50개, 끄기 대상 19개(계획 밖 56개 가운데 켜진 것), 옛 레시피 3건 */
 export function retireExpectation(plan) {
   const planned = countPlan(plan).books;
-  return { plannedBooks: planned, retireBooks: BOOKS_IN_DB_AFTER_7_6 - planned, oldRecipes: OLD_RECIPE_NAMES.length };
+  return {
+    plannedBooks: planned,
+    retireBooks: ACTIVE_UNPLANNED_BOOKS_IN_DB,
+    alreadyOffBooks: BOOKS_IN_DB_AFTER_7_6 - planned - ACTIVE_UNPLANNED_BOOKS_IN_DB,
+    oldRecipes: OLD_RECIPE_NAMES.length
+  };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -412,7 +425,7 @@ export function genRetireSql(plan) {
     '',
     '찾는 방법과 멈추는 조건',
     `  - 계획 컬렉션 ${e.plannedBooks}개는 «트라이브 이름과 컬렉션 이름»으로 찾고, 한 건씩 맞지 않으면 멈춘다(7-6 SQL을 적용하기 전이라면 여기서 멈춘다).`,
-    `  - 끄기 대상은 계획 컬렉션이 아닌 활성 컬렉션이다. 공용 DB에서 ${e.retireBooks}개일 것으로 본다(7-6 적용 뒤 컬렉션 ${BOOKS_IN_DB_AFTER_7_6}개 − 계획 ${e.plannedBooks}개).`,
+    `  - 끄기 대상은 계획 컬렉션이 아닌 활성 컬렉션이다. 공용 DB에서 ${e.retireBooks}개다(2026-10-22 롤백 실측: 계획 밖 컬렉션 ${BOOKS_IN_DB_AFTER_7_6 - e.plannedBooks}개 가운데 ${e.alreadyOffBooks}개는 옛 트라이브를 끌 때 이미 꺼져 있고, 켜진 것은 낭만 미식가 2, 숲속의 갱단 8, 아스팔트 레인저 9).`,
     `    ${e.retireBooks}개가 아니면 멈춘다(그 사이 컬렉션이 늘었거나 이미 꺼진 것이 있다는 뜻이다. 실제 건수를 확인한 뒤 판단한다).`,
     `  - 옛 레시피는 이름으로 찾고 ${e.oldRecipes}건이 한 건씩 맞지 않으면 멈춘다. 이미 종료 시각이 있거나 공개 전이면 멈춘다.`,
     '  - 끝에서 끈 컬렉션 수, 활성으로 남은 비계획 컬렉션, 옛 레시피의 종료 시각, 백업 건수를 검사하고 어긋나면 전체를 되돌린다(트랜잭션).',
@@ -520,7 +533,7 @@ DECLARE
 BEGIN
   SELECT count(*) INTO v_n FROM _jam2_retire_book;
   IF v_n <> ${e.retireBooks} THEN
-    RAISE EXCEPTION '끄기 대상 컬렉션이 %개입니다(기대 ${e.retireBooks}개: 7-6 적용 뒤 컬렉션 ${BOOKS_IN_DB_AFTER_7_6}개 − 계획 ${e.plannedBooks}개). 실제 건수를 확인한 뒤 판단합니다.', v_n;
+    RAISE EXCEPTION '끄기 대상 컬렉션이 %개입니다(기대 ${e.retireBooks}개: 계획 밖 컬렉션 가운데 켜진 것, 2026-10-22 실측). 실제 건수를 확인한 뒤 판단합니다.', v_n;
   END IF;
 END $$;
 
@@ -684,7 +697,7 @@ function main() {
       console.log(`  ${c.code} ${c.name}: 재료 ${c.ingredients.length}개, 성공 포인트 ${c.points}, 보상 ${c.reward.tribe}/${c.reward.bookName}/${c.reward.itemName}`);
     }
     const e = retireExpectation(plan);
-    console.log(`282 끄기: 계획 컬렉션 ${e.plannedBooks}개를 남기고, 끄기 대상 ${e.retireBooks}개(= ${BOOKS_IN_DB_AFTER_7_6} − ${e.plannedBooks}), 옛 레시피 ${e.oldRecipes}건`);
+    console.log(`282 끄기: 계획 컬렉션 ${e.plannedBooks}개를 남기고, 끄기 대상 ${e.retireBooks}개(계획 밖 ${BOOKS_IN_DB_AFTER_7_6 - e.plannedBooks}개 가운데 켜진 것), 옛 레시피 ${e.oldRecipes}건`);
     return;
   }
 

@@ -548,8 +548,8 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 
 - 열: `kind`(`item_book`·`combination_recipe`), `row_id`(UUID, `kind`와 함께 PK), `snapshot`(JSONB NOT NULL, `to_jsonb(row)`), `backed_up_at`.
 - 접근: RLS를 켜고 정책을 두지 않으며 `anon`·`authenticated` 권한을 회수한다. 서버(service role)만 읽고 쓴다.
-- 끄는 대상: «활성 컬렉션 가운데 7-6 계획의 컬렉션 50개에 들지 않는 것»의 `item_books.is_active`(false로, 공용 DB에서 56개로 보고 56개가 아니면 SQL이 멈춘다)와 옛 레시피 3건의 `combination_recipes.valid_until`(적용 시각으로)이다. 다른 열은 바꾸지 않는다. 지우지 않고, 이미 받은 기록은 그대로다.
-- 되돌림: 파일 끝의 되돌림 SQL이 `snapshot`에서 `is_active`와 `valid_until`만 읽어 되돌린다. 건수는 `item_book` 56, `combination_recipe` 3으로 기대한다.
+- 끄는 대상: «활성 컬렉션 가운데 7-6 계획의 컬렉션 50개에 들지 않는 것»의 `item_books.is_active`(false로, 공용 DB에서 19개이고 19개가 아니면 SQL이 멈춘다. 계획 밖 컬렉션 56개 가운데 37개는 이미 꺼져 있다)와 옛 레시피 3건의 `combination_recipes.valid_until`(적용 시각으로)이다. 다른 열은 바꾸지 않는다. 지우지 않고, 이미 받은 기록은 그대로다.
+- 되돌림: 파일 끝의 되돌림 SQL이 `snapshot`에서 `is_active`와 `valid_until`만 읽어 되돌린다. 건수는 `item_book` 19, `combination_recipe` 3으로 기대한다.
 
 ---
 

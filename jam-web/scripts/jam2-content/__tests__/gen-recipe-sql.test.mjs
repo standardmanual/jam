@@ -5,6 +5,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MIGRATIONS_DIR, buildPlan, q } from '../gen-content-sql.mjs';
 import {
+  ACTIVE_UNPLANNED_BOOKS_IN_DB,
   BOOKS_IN_DB_AFTER_7_6,
   CLUE_FILE,
   CLUE_VALID_FROM,
@@ -205,10 +206,11 @@ describe('281: 단서 레시피 SQL', () => {
   });
 });
 
-describe('282: 쓰지 않는 컬렉션 56개와 옛 레시피 3건 끄기 SQL', () => {
-  it('건수 기대는 계획 컬렉션 50개, 끄기 대상 56개(106 − 50), 옛 레시피 3건이다', () => {
+describe('282: 쓰지 않는 컬렉션 19개와 옛 레시피 3건 끄기 SQL', () => {
+  it('건수 기대는 계획 컬렉션 50개, 끄기 대상 19개(계획 밖 56개 가운데 켜진 것, 이미 꺼진 37개 제외), 옛 레시피 3건이다', () => {
     expect(BOOKS_IN_DB_AFTER_7_6).toBe(106);
-    expect(retireExpectation(plan)).toEqual({ plannedBooks: 50, retireBooks: 56, oldRecipes: 3 });
+    expect(ACTIVE_UNPLANNED_BOOKS_IN_DB).toBe(19);
+    expect(retireExpectation(plan)).toEqual({ plannedBooks: 50, retireBooks: 19, alreadyOffBooks: 37, oldRecipes: 3 });
   });
 
   it('계획 컬렉션 50개를 «트라이브 이름, 컬렉션 이름»으로 담고 한 건씩 맞지 않으면 멈춘다', () => {
@@ -222,10 +224,10 @@ describe('282: 쓰지 않는 컬렉션 56개와 옛 레시피 3건 끄기 SQL', 
     expect(sql282).not.toMatch(UUID);
   });
 
-  it('끄기 대상은 활성 컬렉션 가운데 계획 컬렉션이 아닌 것이고, 56개가 아니면 멈춘다', () => {
+  it('끄기 대상은 활성 컬렉션 가운데 계획 컬렉션이 아닌 것이고, 19개가 아니면 멈춘다', () => {
     expect(sql282).toMatch(/WHERE ib\.is_active\s+AND ib\.id NOT IN \(SELECT book_id FROM _jam2_keep\)/);
-    expect(sql282).toContain('IF v_n <> 56 THEN');
-    expect(sql282).toContain('끄기 대상 컬렉션이 %개입니다(기대 56개: 7-6 적용 뒤 컬렉션 106개 − 계획 50개)');
+    expect(sql282).toContain('IF v_n <> 19 THEN');
+    expect(sql282).toContain('끄기 대상 컬렉션이 %개입니다(기대 19개: 계획 밖 컬렉션 가운데 켜진 것, 2026-10-22 실측)');
   });
 
   it('컬렉션은 is_active만 false로 바꾸고 지우지 않는다', () => {
@@ -269,10 +271,10 @@ describe('282: 쓰지 않는 컬렉션 56개와 옛 레시피 3건 끄기 SQL', 
 
   it('끝 검사가 끈 수, 활성으로 남은 비계획 컬렉션 0, 옛 레시피 종료, 백업 건수를 확인한다', () => {
     const end = sql282.slice(sql282.indexOf('-- 6. 끝 검사'), sql282.lastIndexOf('-- 되돌림 SQL'));
-    expect(end).toContain('끝 검사: 꺼진 컬렉션이 %개입니다(기대 56)');
+    expect(end).toContain('끝 검사: 꺼진 컬렉션이 %개입니다(기대 19)');
     expect(end).toContain('끝 검사: 계획 밖의 활성 컬렉션이 %개 남았습니다(기대 0)');
     expect(end).toContain('끝 검사: 종료 시각이 채워진 옛 레시피가 %건입니다(기대 3)');
-    expect(end).toContain('끝 검사: 컬렉션 백업이 %건입니다(기대 56)');
+    expect(end).toContain('끝 검사: 컬렉션 백업이 %건입니다(기대 19)');
     expect(end).toContain('끝 검사: 레시피 백업이 %건입니다(기대 3)');
   });
 

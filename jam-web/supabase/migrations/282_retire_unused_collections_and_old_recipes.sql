@@ -1,5 +1,5 @@
 -- 282_retire_unused_collections_and_old_recipes.sql
--- JAM 2.0 묶음 7 · 7-7: 쓰지 않는 컬렉션 56개와 옛 레시피 3건 끄기 (티켓 20261022_1138)
+-- JAM 2.0 묶음 7 · 7-7: 쓰지 않는 컬렉션 19개와 옛 레시피 3건 끄기 (티켓 20261022_1138)
 --
 -- 이 파일은 gen-recipe-sql.mjs가 7-6 계획(원고 01~05의 컬렉션 50개)에서 만든다. 손으로 고치지 말고 생성기를 고쳐 다시 만든다
 -- (node scripts/jam2-content/gen-recipe-sql.mjs --write). 시험이 생성 결과와 이 파일이 같은지 비교한다.
@@ -7,7 +7,7 @@
 -- 이 파일은 오픈 직전에 적용한다(7-9 목록). 지금 적용하지 않는다.
 --
 -- 하는 일 (한 트랜잭션, 파일만 쓰고 실행은 롤백 실측과 사용자 승인 뒤 카리나가 한다)
---   1. 컬렉션 56개 끄기: «활성 컬렉션 가운데 7-6 계획의 컬렉션 50개에 들지 않는 것»의 is_active를 false로 바꾼다.
+--   1. 컬렉션 19개 끄기: «활성 컬렉션 가운데 7-6 계획의 컬렉션 50개에 들지 않는 것»의 is_active를 false로 바꾼다.
 --      지우지 않는다(소프트 삭제). 컬렉션 안의 배지와 유저가 이미 받은 기록은 그대로다. 다른 열은 건드리지 않는다.
 --   2. 옛 레시피 3건 끄기(트라이브 단독 레시피, 운영 로직 15장 4절): valid_until을 이 SQL이 실행되는 시각(now())으로 채운다.
 --      지우지 않는다. 이미 받은 보상·포인트·배지는 그대로다.
@@ -16,8 +16,8 @@
 --
 -- 찾는 방법과 멈추는 조건
 --   - 계획 컬렉션 50개는 «트라이브 이름과 컬렉션 이름»으로 찾고, 한 건씩 맞지 않으면 멈춘다(7-6 SQL을 적용하기 전이라면 여기서 멈춘다).
---   - 끄기 대상은 계획 컬렉션이 아닌 활성 컬렉션이다. 공용 DB에서 56개일 것으로 본다(7-6 적용 뒤 컬렉션 106개 − 계획 50개).
---     56개가 아니면 멈춘다(그 사이 컬렉션이 늘었거나 이미 꺼진 것이 있다는 뜻이다. 실제 건수를 확인한 뒤 판단한다).
+--   - 끄기 대상은 계획 컬렉션이 아닌 활성 컬렉션이다. 공용 DB에서 19개다(2026-10-22 롤백 실측: 계획 밖 컬렉션 56개 가운데 37개는 옛 트라이브를 끌 때 이미 꺼져 있고, 켜진 것은 낭만 미식가 2, 숲속의 갱단 8, 아스팔트 레인저 9).
+--     19개가 아니면 멈춘다(그 사이 컬렉션이 늘었거나 이미 꺼진 것이 있다는 뜻이다. 실제 건수를 확인한 뒤 판단한다).
 --   - 옛 레시피는 이름으로 찾고 3건이 한 건씩 맞지 않으면 멈춘다. 이미 종료 시각이 있거나 공개 전이면 멈춘다.
 --   - 끝에서 끈 컬렉션 수, 활성으로 남은 비계획 컬렉션, 옛 레시피의 종료 시각, 백업 건수를 검사하고 어긋나면 전체를 되돌린다(트랜잭션).
 --   - 적용된 뒤에는 끄기 대상이 0개가 되므로 같은 파일을 다시 실행하면 멈춘다.
@@ -29,7 +29,7 @@
 --   -- 새 트라이브 5곳의 컬렉션이 50개다 (50). 몸통의 1단계 검사가 이름 한 건씩으로 정확히 확인한다
 --   SELECT count(*) FROM public.item_books ib JOIN public.tribes t ON t.id = ib.tribe_id
 --    WHERE t.name IN ('한입만 연구회', '찰칵단', '비사이드 레코즈', '소나무 잡화점', '혼자들');
---   -- 끄기 대상 후보: 새 트라이브 밖의 활성 컬렉션 (56)
+--   -- 끄기 대상 후보: 새 트라이브 밖의 활성 컬렉션 (19)
 --   SELECT count(*) FROM public.item_books ib LEFT JOIN public.tribes t ON t.id = ib.tribe_id
 --    WHERE ib.is_active AND (t.name IS NULL OR t.name NOT IN ('한입만 연구회', '찰칵단', '비사이드 레코즈', '소나무 잡화점', '혼자들'));
 --   -- 옛 레시피 3건은 종료 시각이 비어 있다 (3행, valid_until 모두 NULL)
@@ -38,14 +38,14 @@
 --   SELECT to_regclass('public.retire_backup_20261022');                                  -- NULL
 --
 -- 적용 후 확인 쿼리(읽기 전용 SELECT):
---   -- 끈 컬렉션 56개가 모두 꺼져 있다 (56)
+--   -- 끈 컬렉션 19개가 모두 꺼져 있다 (19)
 --   SELECT count(*) FROM public.item_books ib JOIN public.retire_backup_20261022 s ON s.kind = 'item_book' AND s.row_id = ib.id WHERE NOT ib.is_active;
 --   -- 새 트라이브 밖에 활성 컬렉션이 남지 않았다 (0)
 --   SELECT count(*) FROM public.item_books ib LEFT JOIN public.tribes t ON t.id = ib.tribe_id
 --    WHERE ib.is_active AND (t.name IS NULL OR t.name NOT IN ('한입만 연구회', '찰칵단', '비사이드 레코즈', '소나무 잡화점', '혼자들'));
 --   -- 옛 레시피 3건에 종료 시각이 채워졌다 (3행)
 --   SELECT name, valid_until FROM public.combination_recipes WHERE name IN ('무명 트럭의 불맛 흔적', '블랙 트랙 입구의 채비', '살롱의 장물 시세') AND valid_until IS NOT NULL;
---   -- 백업 건수 (combination_recipe 3, item_book 56)
+--   -- 백업 건수 (combination_recipe 3, item_book 19)
 --   SELECT kind, count(*) FROM public.retire_backup_20261022 GROUP BY kind ORDER BY kind;
 
 -- ----------------------------------------------------------------
@@ -154,7 +154,7 @@ BEGIN
 END $$;
 
 -- ----------------------------------------------------------------
--- 2. 끄기 대상 = 활성 컬렉션 가운데 계획 컬렉션이 아닌 것. 56개가 아니면 멈춘다
+-- 2. 끄기 대상 = 활성 컬렉션 가운데 계획 컬렉션이 아닌 것. 19개가 아니면 멈춘다
 -- ----------------------------------------------------------------
 CREATE TEMP TABLE _jam2_retire_book AS
   SELECT ib.id AS book_id
@@ -167,8 +167,8 @@ DECLARE
   v_n INTEGER;
 BEGIN
   SELECT count(*) INTO v_n FROM _jam2_retire_book;
-  IF v_n <> 56 THEN
-    RAISE EXCEPTION '끄기 대상 컬렉션이 %개입니다(기대 56개: 7-6 적용 뒤 컬렉션 106개 − 계획 50개). 실제 건수를 확인한 뒤 판단합니다.', v_n;
+  IF v_n <> 19 THEN
+    RAISE EXCEPTION '끄기 대상 컬렉션이 %개입니다(기대 19개: 계획 밖 컬렉션 가운데 켜진 것, 2026-10-22 실측). 실제 건수를 확인한 뒤 판단합니다.', v_n;
   END IF;
 END $$;
 
@@ -244,12 +244,12 @@ DO $$
 DECLARE
   v_n INTEGER;
 BEGIN
-  -- 끈 컬렉션 56개가 모두 꺼져 있다
+  -- 끈 컬렉션 19개가 모두 꺼져 있다
   SELECT count(*) INTO v_n
     FROM public.item_books ib JOIN _jam2_retire_book r ON r.book_id = ib.id
    WHERE NOT ib.is_active;
-  IF v_n <> 56 THEN
-    RAISE EXCEPTION '끝 검사: 꺼진 컬렉션이 %개입니다(기대 56).', v_n;
+  IF v_n <> 19 THEN
+    RAISE EXCEPTION '끝 검사: 꺼진 컬렉션이 %개입니다(기대 19).', v_n;
   END IF;
 
   -- 활성으로 남은 컬렉션은 모두 계획 컬렉션이다
@@ -270,7 +270,7 @@ BEGIN
 
   -- 백업 건수
   SELECT count(*) INTO v_n FROM public.retire_backup_20261022 WHERE kind = 'item_book';
-  IF v_n <> 56 THEN RAISE EXCEPTION '끝 검사: 컬렉션 백업이 %건입니다(기대 56).', v_n; END IF;
+  IF v_n <> 19 THEN RAISE EXCEPTION '끝 검사: 컬렉션 백업이 %건입니다(기대 19).', v_n; END IF;
   SELECT count(*) INTO v_n FROM public.retire_backup_20261022 WHERE kind = 'combination_recipe';
   IF v_n <> 3 THEN RAISE EXCEPTION '끝 검사: 레시피 백업이 %건입니다(기대 3).', v_n; END IF;
 END $$;
