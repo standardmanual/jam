@@ -1,0 +1,87 @@
+-- 268_post_release_drop_user_shadow_bans.sql
+-- JAM 2.0 출시 뒤 정리: 옛 도둑 의심 제재(섀도우밴) 표 user_shadow_bans를 지운다 (티켓 20261021_1250 = 6-4 4회, 상위 20261021_1246)
+--
+-- **작성만 하고 실행하지 않았다. 출시(main 승격) 뒤 사용자 승인으로 실행한다.**
+--
+-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.
+--    옛 프로덕션 코드는 이 표를 쓰고 읽는다(티켓 조사 기준: 픽업의 applyBan, 어드민 유저 목록 lib/admin/user-list.ts 28줄 외). 출시 전에 지우면
+--    옛 코드의 밴 쓰기·읽기가 실패한다. 그래서 옛 프로덕션 코드가 사라지는 출시(main 승격) 뒤에만 실행한다.
+--
+-- 선행 조건
+--   ① 출시(main 승격)로 옛 프로덕션 코드가 사라진 뒤.
+--   ② 코드 참조 0건을 grep으로 다시 확인한다. 이 파일을 쓴 2026-10-22 staging 기준 결과는 0줄이었다(남은 언급은 주석, «이 표를 열지 않는다»를 확인하는 시험, 생성 타입뿐이다).
+--        grep -rnE "from\(\s*['\"\`]user_shadow_bans|['\"\`]public\.user_shadow_bans" jam-web/src jam-web/scripts   # 0줄이어야 한다
+--      jam-web/supabase/seed_reset_users_20260906.sql에도 이름이 있다. 이름에 날짜가 붙은 시드 스크립트라 다시 실행할 파일로 보지 않았다(판단).
+--   ③ 아래 «적용 전 확인»에서 행·외래키·뷰·트리거·정책·함수 언급 조회가 모두 0이어야 한다. 하나라도 아니면 멈추고 보고한다(DROP은 행을 함께 지우고, 되돌림은 빈 표만 만든다).
+--
+-- 실행 순서: 이 묶음은 266(제약) → 267(함수) → 268(표) → 269(열) 순서로 실행한다. 네 파일은 서로 의존하지 않아 하나가 멈춰도 나머지에 영향이 없다.
+--
+-- 하는 일: DROP TABLE public.user_shadow_bans. CASCADE를 쓰지 않으므로 이 표에 기대는 객체(외래키·뷰)가 있으면 오류로 멈춘다.
+-- 바꾸지 않는 것: users 표와 그 밖의 표. users를 가리키는 외래키는 이 표가 가진 것이라 표와 함께 사라지고 users 쪽에는 바뀔 것이 없다. user_suspensions(새 이용 정지)는 건드리지 않는다.
+-- 데이터 손실: 없다. 2026-10-22 조회 기준 0행이다. 행이 생겼다면 위 ③에서 멈춘다.
+-- 잠금: 실행하는 쪽에서 같은 트랜잭션 안에 SET LOCAL lock_timeout = '3s'를 두어 다른 쿼리를 오래 막지 않게 한다(본문에는 넣지 않았다). 표를 지울 때도 배타 잠금이 걸린다.
+-- 생성 타입: 적용 뒤 jam-web/src/types/database.generated.ts의 Tables에서 user_shadow_bans 항목(Row·Insert·Update·Relationships, 이 파일을 쓴 시점 4277줄 근처)을 지운다.
+--   jam-web/src/types/database.ts에서는 UserShadowBanRow 인터페이스(1919줄 근처)와 Tables 맵의 user_shadow_bans 항목(2395줄 근처)을 지운다.
+--
+-- 적용 전 확인(읽기 전용 SELECT):
+--   SELECT count(*) AS 행 FROM public.user_shadow_bans;                                             -- 0
+--   SELECT count(*) AS 이_표를_가리키는_외래키 FROM pg_constraint WHERE confrelid = 'public.user_shadow_bans'::regclass;   -- 0
+--   SELECT count(*) AS 이_표를_읽는_뷰 FROM pg_depend d JOIN pg_rewrite r ON r.oid = d.objid
+--    WHERE d.classid = 'pg_rewrite'::regclass AND d.refobjid = 'public.user_shadow_bans'::regclass
+--      AND r.ev_class <> d.refobjid;                                                                -- 0
+--   SELECT count(*) AS 트리거 FROM pg_trigger WHERE tgrelid = 'public.user_shadow_bans'::regclass AND NOT tgisinternal;   -- 0
+--   SELECT count(*) AS 정책 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_shadow_bans';              -- 0 (RLS는 켜져 있고 정책이 없다)
+--   SELECT p.oid::regprocedure AS 본문에서_이_표를_언급하는_함수 FROM pg_proc p
+--    WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ~ '\muser_shadow_bans\M';           -- 0행 (함수 본문 안의 이름은 pg_depend가 추적하지 못해 따로 본다)
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.user_shadow_bans'::regclass ORDER BY conname;                         -- 4행: user_shadow_bans_ban_level_check, user_shadow_bans_pkey, user_shadow_bans_user_id_fkey, user_shadow_bans_user_id_key
+--
+-- 적용 후 확인(읽기 전용 SELECT):
+--   SELECT to_regclass('public.user_shadow_bans') IS NULL AS 표_없음;                                -- true
+--   SELECT count(*) FROM public.users;                                                              -- 적용 전과 같다(users는 건드리지 않는다)
+--   SELECT count(*) FROM public.user_suspensions;                                                   -- 적용 전과 같다
+
+DROP TABLE IF EXISTS public.user_shadow_bans;
+
+-- 되돌림 SQL
+-- 표를 같은 모양으로 다시 만든다. 열·제약은 2026-10-22 공용 DB의 실제 정의다(저장소의 마이그레이션 010과 열 순서가 다르다. 이쪽이 실제다).
+-- 아래 «-- » 접두어를 떼고 한 번에 실행한다. 지운 표는 0행이었으므로 되살릴 데이터가 없다(행이 있었다면 이 되돌림으로는 돌아오지 않는다).
+--
+-- CREATE TABLE public.user_shadow_bans (
+--   id          uuid        NOT NULL DEFAULT gen_random_uuid(),
+--   user_id     uuid        NOT NULL,
+--   ban_level   text        NOT NULL,
+--   reason      text        NOT NULL DEFAULT '',
+--   expires_at  timestamptz NULL,
+--   created_by  text        NOT NULL DEFAULT 'admin',
+--   created_at  timestamptz NOT NULL DEFAULT now(),
+--   CONSTRAINT user_shadow_bans_pkey PRIMARY KEY (id),
+--   CONSTRAINT user_shadow_bans_user_id_key UNIQUE (user_id),
+--   CONSTRAINT user_shadow_bans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+--   CONSTRAINT user_shadow_bans_ban_level_check CHECK (ban_level = ANY (ARRAY['soft', 'hard']))
+-- );
+-- ALTER TABLE public.user_shadow_bans ENABLE ROW LEVEL SECURITY;
+-- -- 정책은 만들지 않는다(원래 0개). service_role은 RLS를 우회하고 anon·authenticated는 정책이 없어 거부된다.
+--
+-- 별도 인덱스는 없다. 기본키와 user_id UNIQUE가 만드는 둘뿐이다.
+-- 권한은 GRANT를 쓰지 않는다. Supabase 기본 권한(anon·authenticated·postgres·service_role에 모든 권한)이 새 표에 자동으로 붙는지 아래 확인으로 본다.
+--
+-- 되돌린 뒤 확인(읽기 전용 SELECT):
+--   SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'user_shadow_bans' ORDER BY ordinal_position;
+--      -- 7행: id uuid NO gen_random_uuid() / user_id uuid NO / ban_level text NO / reason text NO ''::text / expires_at timestamp with time zone YES / created_by text NO 'admin'::text / created_at timestamp with time zone NO now()
+--   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--    WHERE conrelid = 'public.user_shadow_bans'::regclass ORDER BY conname;                         -- 적용 전 확인과 같은 4행(이름·정의 모두)
+--   SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'user_shadow_bans' ORDER BY indexname;   -- 2행: user_shadow_bans_pkey, user_shadow_bans_user_id_key
+--   SELECT relrowsecurity FROM pg_class WHERE oid = 'public.user_shadow_bans'::regclass;             -- true
+--   SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_shadow_bans';  -- 0
+--   SELECT count(*) FROM public.user_shadow_bans;                                                   -- 0
+--   기본 권한이 자동으로 붙었는지(읽기 전용). 같은 010 마이그레이션이 만든 poi_blocks와 비교한다 — 두 표의 grantee와 권한 개수가 같아야 한다:
+--   SELECT table_name, grantee, count(*) AS 권한_수 FROM information_schema.role_table_grants
+--    WHERE table_schema = 'public' AND table_name IN ('user_shadow_bans', 'poi_blocks')
+--    GROUP BY table_name, grantee ORDER BY grantee, table_name;                                      -- anon·authenticated·postgres·service_role 네 grantee가 두 표에 같은 권한 수로 나온다
+--   SELECT has_table_privilege('anon', 'public.user_shadow_bans', 'SELECT'),
+--          has_table_privilege('authenticated', 'public.user_shadow_bans', 'SELECT'),
+--          has_table_privilege('service_role', 'public.user_shadow_bans', 'SELECT');                -- true, true, true
+--   위 비교에서 user_shadow_bans에만 grantee가 빠지면 멈추고 보고한다. 기본 권한이 붙지 않은 경우에만 아래 한 줄을 더하는 것을 카리나가 판단한다:
+--   -- GRANT ALL ON TABLE public.user_shadow_bans TO anon, authenticated, service_role;
