@@ -47,7 +47,7 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
       <div className="space-y-3">
         <Link href="/admin/poi">
           <Button variant="ghost" className="h-auto p-0 text-sm">
-            ← 장소 목록
+            ← 체크인
           </Button>
         </Link>
         <h1 className="text-2xl font-bold md:text-3xl">장소 수정</h1>

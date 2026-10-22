@@ -74,7 +74,7 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
     <div className="space-y-6 p-4 md:p-8">
       {/* 헤더 */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-bold md:text-3xl">장소 관리</h1>
+        <h1 className="text-2xl font-bold md:text-3xl">체크인</h1>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link href="/admin/poi/review">
             <Button variant="outline" className="w-full sm:w-auto">

@@ -48,7 +48,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
       <div className="space-y-3">
         <Link href="/admin/itembooks">
           <Button variant="ghost" className="h-auto p-0 text-sm">
-            ← 컬렉션 목록
+            ← 컬렉션
           </Button>
         </Link>
         <h1 className="text-2xl font-bold md:text-3xl">컬렉션 수정</h1>

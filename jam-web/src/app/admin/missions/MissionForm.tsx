@@ -229,7 +229,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, al
     // '노출일 지정'은 노출 시각이 없으면 fail-closed로 항상 숨겨진다(lib/missions/visibility.ts)
     // — 저장 전에 막아 관리자가 의도치 않게 미션을 영구히 숨기지 않도록 한다.
     if (form.exposure_mode === 'scheduled' && !form.exposure_at) {
-      setConditionError('노출일 지정을 선택하면 노출 일시를 입력해야 해요.')
+      setConditionError('노출일 지정을 선택하면 노출 일시를 입력해야 해요')
       return
     }
 
@@ -273,7 +273,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, al
         setSaveError(message)
         return
       }
-      setConditionError(message ?? '미션을 저장하지 못했어요. 잠시 후 다시 시도해주세요.')
+      setConditionError(message ?? '미션을 저장하지 못했어요. 잠시 후 다시 시도해 주세요')
       return
     }
 
@@ -469,7 +469,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, al
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-600 text-xs leading-relaxed">
             총 지급 포인트 미리보기: <b>{totalPoints.toLocaleString('ko-KR')}P</b>
             {' '}(미션 {missionPoints.toLocaleString('ko-KR')}P + 배지 자체 포인트 {badgePointsSum.toLocaleString('ko-KR')}P)
-            {badgePointsSum > 0 && ' — 선택한 배지의 자동 포인트가 합산 지급됩니다.'}
+            {badgePointsSum > 0 && ' — 선택한 배지의 기본 포인트가 함께 지급돼요'}
           </div>
         </div>
 

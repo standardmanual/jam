@@ -18,9 +18,9 @@ export default async function NewRecipePage() {
     <div className="p-8">
       <div className="mb-6">
         <Link href="/admin/recipes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-          ← 레시피 목록
+          ← 레시피
         </Link>
-        <h1 className="text-2xl font-bold mt-2">새 레시피</h1>
+        <h1 className="text-2xl font-bold mt-2">레시피 등록</h1>
       </div>
       <RecipeForm badges={[]} tribes={tribes} itemBooks={itemBooks} />
     </div>

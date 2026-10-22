@@ -82,8 +82,8 @@ export default async function AdminRecipesPage({ searchParams }: AdminRecipesPag
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">믹스 레시피</h1>
-          <p className="text-muted-foreground text-sm mt-1">아이템 믹스 공식 관리</p>
+          <h1 className="text-2xl font-bold">레시피</h1>
+          <p className="text-muted-foreground text-sm mt-1">아이템 믹스 공식과 성공 보상을 관리해요</p>
         </div>
         <Link
           href="/admin/recipes/new"

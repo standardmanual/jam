@@ -49,7 +49,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
     <div className="p-8">
       <div className="mb-6">
         <Link href="/admin/recipes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-          ← 레시피 목록
+          ← 레시피
         </Link>
         <h1 className="text-2xl font-bold mt-2">레시피 수정</h1>
       </div>

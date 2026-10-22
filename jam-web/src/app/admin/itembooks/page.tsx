@@ -73,13 +73,13 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
   const itemBadgeCountMap = new Map(Object.entries(itemBadgeCounts))
 
   const hasFilter = !!(params.q || params.tribe || params.status !== DEFAULT_ITEM_BOOK_STATUS)
-  const emptyMessage = hasFilter ? '조건에 맞는 컬렉션이 없습니다.' : '등록된 컬렉션이 없습니다.'
+  const emptyMessage = hasFilter ? '조건에 맞는 컬렉션이 없어요' : '등록된 컬렉션이 없어요'
 
   return (
     <div className="space-y-6 p-4 md:p-8">
       {/* 헤더 */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-bold md:text-3xl">컬렉션 관리</h1>
+        <h1 className="text-2xl font-bold md:text-3xl">컬렉션</h1>
         <Link href="/admin/itembooks/new">
           <Button className="w-full md:w-auto">
             + 컬렉션 등록

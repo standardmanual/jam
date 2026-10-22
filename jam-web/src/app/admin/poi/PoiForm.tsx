@@ -55,7 +55,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       if (!res.ok) throw new Error(data.error ?? '검색 실패')
       setNaverResults(data.results)
     } catch (err) {
-      setNaverError(err instanceof Error ? err.message : '검색 중 오류가 발생했습니다.')
+      setNaverError(err instanceof Error ? err.message : '검색하지 못했어요')
     } finally {
       setNaverSearching(false)
     }
@@ -98,7 +98,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       router.push('/admin/poi')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.')
+      setError(err instanceof Error ? err.message : '장소를 저장하지 못했어요')
     } finally {
       setLoading(false)
     }
@@ -113,7 +113,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       router.push('/admin/poi')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.')
+      setError(err instanceof Error ? err.message : '장소를 삭제하지 못했어요')
       setLoading(false)
     }
   }
@@ -246,8 +246,8 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
         <>
           {poi?.pending_review && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm">
-              검토 대기 중인 임시등록 장소입니다. 정보를 확인·수정한 뒤 아래 활성화 스위치를 켜고
-              저장하면 검토가 완료되며 지도·드랍에 노출됩니다.
+              검토 대기 중인 임시등록 장소예요. 정보를 확인·수정한 뒤 아래 활성화 스위치를 켜고
+              저장하면 검토가 완료되며 지도와 드랍에 노출돼요.
             </div>
           )}
           <label className="flex items-center gap-3 cursor-pointer">
@@ -257,8 +257,8 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
         </>
       ) : (
         <div className="bg-muted border border-border rounded-xl px-4 py-3 text-sm text-muted-foreground">
-          임시등록(비활성·검토대기) 상태로 저장됩니다. 저장 후 검토 큐(/admin/poi/review)에서
-          정보를 확인·수정하고 명시적으로 활성화해야 지도·드랍에 노출됩니다.
+          비활성 상태로 등록돼요. 등록 후 검토 큐(/admin/poi/review)에서
+          정보를 확인하고 활성화하면 지도와 드랍에 노출돼요.
         </div>
       )}
 
@@ -268,7 +268,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
           disabled={loading}
           className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {loading ? '저장 중...' : isEdit ? '수정 저장' : '임시등록'}
+          {loading ? '저장 중...' : isEdit ? '수정 저장' : '장소 등록'}
         </button>
         <button
           type="button"
@@ -293,7 +293,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
           <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">장소 삭제</h3>
             <p className="text-muted-foreground text-sm mb-5">
-              &apos;{poi?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              &apos;{poi?.name}&apos; 장소를 삭제할까요? 삭제한 장소는 되돌릴 수 없어요.
             </p>
             <div className="flex gap-3">
               <button
@@ -301,7 +301,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
                 disabled={loading}
                 className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
-                {loading ? '삭제 중...' : '삭제 확인'}
+                {loading ? '삭제 중...' : '삭제'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}

@@ -185,7 +185,7 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
         cardCount: (result.impact?.cardCount as number | undefined) ?? 0,
       })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했습니다.')
+      toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했어요')
       closeDelete()
     } finally {
       setPreviewLoading(false)
@@ -205,7 +205,7 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
       clear()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했습니다. 잠시 뒤 다시 시도해주세요.')
+      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요')
     } finally {
       setBulkPending(false)
       closeDelete()
@@ -221,7 +221,7 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
         body: JSON.stringify({ ids: selectedIds }),
       })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '내보내기에 실패했습니다. 다시 시도해주세요.')
+      toast.error(error instanceof Error ? error.message : '내보내지 못했어요. 다시 시도해 주세요')
     } finally {
       setBulkPending(false)
     }
@@ -253,7 +253,7 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="레시피 없음"
+        emptyMessage="등록된 레시피가 없어요"
         getRowHref={(row) => `/admin/recipes/${row.original.id}`}
       />
 

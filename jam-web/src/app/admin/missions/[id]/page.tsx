@@ -53,7 +53,7 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
     <div className="p-8">
       <div className="mb-6">
         <Link href="/admin/missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-          ← 미션 목록
+          ← 미션
         </Link>
         <h1 className="text-2xl font-bold mt-2">미션 수정</h1>
       </div>

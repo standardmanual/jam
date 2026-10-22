@@ -79,14 +79,14 @@ export default async function AdminMissionsPage({ searchParams }: AdminMissionsP
     <div className="space-y-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold md:text-3xl">미션 관리</h1>
-          <p className="mt-1 text-sm text-muted-foreground">다이나믹 미션 생성 및 모니터링</p>
+          <h1 className="text-2xl font-bold md:text-3xl">미션</h1>
+          <p className="mt-1 text-sm text-muted-foreground">미션을 등록하고 달성 조건을 관리해요</p>
         </div>
         <Link
           href="/admin/missions/new"
           className="inline-block rounded-xl bg-primary px-4 py-2 text-center text-sm font-bold text-white transition-colors hover:bg-primary/90"
         >
-          + 미션 생성
+          + 미션 등록
         </Link>
       </div>
 

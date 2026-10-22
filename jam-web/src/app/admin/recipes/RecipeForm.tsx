@@ -115,40 +115,40 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
     setError(null)
 
     if (!name.trim()) {
-      setError('레시피 이름을 입력해 주세요.')
+      setError('레시피 이름을 입력해 주세요')
       return
     }
 
     const emptySlotIdx = slots.findIndex((s) => s.badges.length === 0)
     if (emptySlotIdx !== -1) {
-      setError(`슬롯마다 후보 배지를 1개 이상 넣어 주세요 (슬롯 ${emptySlotIdx + 1}이 비어 있어요).`)
+      setError(`슬롯마다 후보 배지를 1개 이상 넣어 주세요 (슬롯 ${emptySlotIdx + 1}이 비어 있어요)`)
       return
     }
     if (slots.length < MIN_SLOTS) {
-      setError(`슬롯을 ${MIN_SLOTS}개 이상 만들어 주세요.`)
+      setError(`슬롯을 ${MIN_SLOTS}개 이상 만들어 주세요`)
       return
     }
     if (slots.length > MAX_SLOTS) {
-      setError(`슬롯은 최대 ${MAX_SLOTS}개까지 만들 수 있어요.`)
+      setError(`슬롯은 최대 ${MAX_SLOTS}개까지 만들 수 있어요`)
       return
     }
     if (itemSlotCount < MIN_ITEM_SLOTS) {
       setError(
-        `아이템 타입 슬롯을 ${MIN_ITEM_SLOTS}개 이상 만들어 주세요. 소각되는 재료가 없는 레시피는 만들 수 없어요.`
+        `아이템 타입 슬롯을 ${MIN_ITEM_SLOTS}개 이상 만들어 주세요. 소각되는 재료가 없는 레시피는 만들 수 없어요`
       )
       return
     }
     const points = Number(rewardPoints || '0')
     if (!Number.isInteger(points) || points < 0) {
-      setError('보상 포인트는 0 이상의 정수여야 해요.')
+      setError('보상 포인트는 0 이상의 정수여야 해요')
       return
     }
     if (description.trim().length > MAX_DESCRIPTION_LENGTH) {
-      setError(`레시피 설명은 ${MAX_DESCRIPTION_LENGTH}자까지 쓸 수 있어요. 줄여서 다시 입력해 주세요.`)
+      setError(`레시피 설명은 ${MAX_DESCRIPTION_LENGTH}자까지 쓸 수 있어요. 줄여서 다시 입력해 주세요`)
       return
     }
     if (!allowNoReward && points === 0 && rewardBadges.length === 0) {
-      setError('보상을 하나 이상 지정해 주세요. 포인트나 배지 중 최소 하나가 필요해요.')
+      setError('보상을 하나 이상 지정해 주세요. 포인트나 배지 중 최소 하나가 필요해요')
       return
     }
 
@@ -157,16 +157,16 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
     if (!alreadyReleased) {
       if (releaseMode === 'scheduled') {
         if (!validFromLocal) {
-          setError('공개 시각을 선택해 주세요. 바로 공개하려면 「바로 공개」를 골라 주세요.')
+          setError('공개 시각을 선택해 주세요. 바로 공개하려면 「바로 공개」를 골라 주세요')
           return
         }
         const iso = kstLocalInputToIso(validFromLocal)
         if (!iso) {
-          setError('공개 시각을 읽을 수 없어요. 날짜와 시각을 다시 선택해 주세요.')
+          setError('공개 시각을 읽을 수 없어요. 날짜와 시각을 다시 선택해 주세요')
           return
         }
         if (new Date(iso).getTime() <= Date.now()) {
-          setError('공개 시각이 이미 지났어요. 지금보다 늦은 시각을 고르거나 「바로 공개」로 바꿔 주세요.')
+          setError('공개 시각이 이미 지났어요. 지금보다 늦은 시각을 고르거나 「바로 공개」로 바꿔 주세요')
           return
         }
         validFrom = iso
@@ -502,7 +502,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
                 />
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">저장하면 바로 유저에게 공개돼요.</p>
+              <p className="text-xs text-muted-foreground">저장하면 바로 유저에게 공개돼요</p>
             )}
           </>
         )}

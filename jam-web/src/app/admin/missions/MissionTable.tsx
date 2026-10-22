@@ -78,7 +78,7 @@ const CONFIRM_META: Record<ConfirmAction, { level: 1 | 2 | 3; title: string }> =
   delete: { level: 3, title: '미션 삭제' },
 }
 
-const IN_PROGRESS_NOTICE = '숨겨도 이미 참여 중인 유저는 계속 진행하고 보상을 받아요.'
+const IN_PROGRESS_NOTICE = '숨겨도 이미 참여 중인 유저는 계속 진행하고 보상을 받아요'
 
 /**
  * 미션 목록 테이블(티켓 20260924_0946) — 공통 부품으로 전환했다. 필터·정렬·페이지는 서버(URL)에서
@@ -126,7 +126,7 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
           )
         })
         .catch((error) => {
-          toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했어요.')
+          toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했어요')
           setHideTarget(null)
           resolve(false)
         })
@@ -288,7 +288,7 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
       clear()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해주세요.')
+      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요')
     } finally {
       setBulkPending(false)
     }
@@ -312,7 +312,7 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
         requiredPhrase: result.requiredPhrase ?? '',
       })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했어요.')
+      toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했어요')
       closeConfirm()
     } finally {
       setImpactLoading(false)
@@ -328,7 +328,7 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
         body: JSON.stringify({ ids: selectedIds }),
       })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '내보내기에 실패했어요. 다시 시도해주세요.')
+      toast.error(error instanceof Error ? error.message : '내보내지 못했어요. 다시 시도해 주세요')
     } finally {
       setBulkPending(false)
     }
@@ -401,7 +401,7 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="조건에 맞는 미션이 없어요."
+        emptyMessage="조건에 맞는 미션이 없어요"
         getRowHref={(row) => `/admin/missions/${row.original.mission.id}`}
       />
 
