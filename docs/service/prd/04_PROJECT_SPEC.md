@@ -218,7 +218,7 @@ push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main 
 | `CRON_SECRET` | Vercel Cron 요청 인증 | 6개 Cron 라우트 공통 |
 | `SLACK_BOT_TOKEN` | 슬랙 봇(JAM 봇) 토큰. 운영 묶음 도착 글을 서버가 `chat.postMessage`로 게시한다 | `lib/admin/opsInbox/slack.ts`. 미설정이면 게시를 건너뛰고 결정 기록에 `not_configured`만 남긴다(제출은 성공). Vercel 두 프로젝트에 등록 필요 |
 | `SLACK_CHANNEL_JAM_REPORT` | 슬랙 `#jam-report` 채널 ID (도착·승인·예약·공개 알림) | `lib/admin/opsInbox/slack.ts`. 값의 원천은 `.claude/skills/jam-work/references/scheduled-jobs.md` 「Slack 알림」 |
-| `SLACK_CHANNEL_JAM_ALERT` | 슬랙 `#jam-alert` 채널 ID (실패·되돌림 알림) | `lib/admin/opsInbox/slack.ts`. 예약 등록 실패 글을 이 채널에 게시한다(티켓 20261002_1123). 상태 맞추기의 실패 알림(티켓 20261002_1813)과 매시 중단 신호 점검(티켓 20261001_1154)도 같은 채널에 게시한다 |
+| `SLACK_CHANNEL_JAM_ALERT` | 슬랙 `#jam-alert` 채널 ID (실패·되돌림 알림) | `lib/admin/opsInbox/slack.ts`. 예약 등록 실패 글을 이 채널에 게시한다(티켓 20261002_1123). 상태 맞추기의 실패 알림(티켓 20261002_1813)과 매시 중단 신호 점검(티켓 20261001_1154)도 같은 채널에 게시한다. 앱이 올리는 운영자용 알림인 대량 수령 경보(`lib/jam/massEarnAlert.ts`)와 GPS 조작 의심 알림(`lib/abusing/gpsSpoofAlert.ts`, 픽업이 GPS 조작을 감지하면 응답 뒤에 한 건, 티켓 20261022_0940)도 같은 채널에 게시한다 |
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 SDK 클라이언트 ID | |
 | `NCP_MAP_CLIENT_SECRET` | 네이버 클라우드 플랫폼 지도 서버 인증 | |
 | `NEXT_PUBLIC_NAVER_MAP_STYLE_ID` | 네이버 지도 커스텀 스타일 ID | |

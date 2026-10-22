@@ -12,12 +12,16 @@ import type { Json } from '@/types/database.generated'
  * 어뷰징 이벤트 로그 기록. 로그는 부가 정보이므로 실패해도 호출부(GPS 감지 등 핵심 동작)를
  * 막지 않도록 예외를 던지지 않는다 — 다만 실패 자체는 반드시 서버 로그에 남긴다
  * (이전에는 `catch {}`로 완전히 무음이었다 — 티켓 20260901_1843).
+ *
+ * 저장에 성공하면 `true`, insert 오류나 예외로 저장하지 못했으면 `false`를 돌려준다(`logAbusingEvents`와 같은 모양).
+ * 호출부가 «기록이 남았는가»를 알아야 할 때만 이 값을 쓴다 — 픽업 GPS 감지 알림이 기록 저장 여부를 글에 싣는다
+ * (티켓 20261022_0940). 값을 무시하는 호출부의 동작은 달라지지 않는다.
  */
 export async function logAbusingEvent(
   userId: string,
   eventType: string,
   detail?: Record<string, unknown>
-): Promise<void> {
+): Promise<boolean> {
   try {
     const supabase = createServiceClient()
     const logsTable = supabase.from('abusing_logs')
@@ -28,9 +32,12 @@ export async function logAbusingEvent(
     const { error } = await logsTable.insert(payload)
     if (error) {
       console.error(`[abusing-log] 어뷰징 이벤트 로그 기록 실패 (userId: ${userId}, eventType: ${eventType}):`, error)
+      return false
     }
+    return true
   } catch (e) {
     console.error(`[abusing-log] 어뷰징 이벤트 로그 기록 예외 (userId: ${userId}, eventType: ${eventType}):`, e)
+    return false
   }
 }
 
