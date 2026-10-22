@@ -488,7 +488,7 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 **구조 규칙**
 - **한 칸 묶기**: 같은 컬렉션(`badges.item_book_id`) 안에서 이름(`badges.name`)이 같은 아이템 배지 4장(`badges.rarity` = common·rare·epic·mystic)을 한 칸으로 본다. 묶음용 새 테이블은 없다. 어드민은 지금처럼 배지를 컬렉션에 넣기만 한다.
 - **컬렉션 등급은 저장하지 않는다**: 그 유저가 그 컬렉션에 지금 꽂아 둔 배지의 등급이 곧 컬렉션 등급이다. 다 빼면 풀린다.
-- **켜는 칸**: `item_books.tier_mode`(BOOLEAN NOT NULL, 기본 false). true인 컬렉션만 새 규칙을 쓰고 false인 컬렉션은 옛 규칙·옛 함수 그대로다. 어드민에서 하나씩 켠다(화면은 묶음 7).
+- **켜는 칸**: `item_books.tier_mode`(BOOLEAN NOT NULL, 기본 false). true인 컬렉션만 새 규칙을 쓰고 false인 컬렉션은 옛 규칙·옛 함수 그대로다. 어드민 컬렉션 수정 화면의 «4등급 방식» 패널에서 하나씩 켜고 끈다(티켓 20261022_1139 1회). 켜기는 한 유저가 여러 등급을 꽂아 둔 컬렉션이면 서버가 거절하고, 끄기는 등급별 완성 기록이 있으면 거절한다. 등급별 보상은 켜진 컬렉션에만 나오는 같은 화면의 «등급별 보상» 편집기에서 입력한다(2회, `PUT /api/admin/itembooks/[id]/tier-rewards`: 포인트는 비우면 기본값·0이면 지급 없음, 보상 배지는 비우면 없음, 같은 배지를 두 등급에 고를 수 없다). 편집기는 `item_book_tier_rewards`만 쓴다. 4등급 컬렉션의 `item_books.reward_points`·`reward_badge_id` 값은 지우지 않고 편집 폼이 그 칸만 접는다.
 - **완성**: 그 등급의 이름 칸을 모두 채우면 그 등급이 완성된다. 분모는 그 컬렉션에서 그 등급 배지가 있는 이름 수이고, 옛 규칙(179)처럼 드랍 제외(`drop_excluded`)·소프트 삭제 배지를 빼며 그 등급이 전부 드랍 제외이면 제외 없이 센다. 등급마다 한 번만 기록하고 보상도 한 번만 나간다. 장착을 풀어도 기록은 남고 다시 채워도 같은 등급 보상은 나가지 않는다.
 
 **테이블**
@@ -515,12 +515,13 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 
 **삭제 가드** (`jam-web/src/lib/admin/reference-guards.ts` `ITEM_BOOK_REFERENCE_SOURCES`)
 - `user_item_book_tier_completions`는 컬렉션 삭제 시 CASCADE라, 옛 `user_item_book_slots`·`user_item_book_completions`와 같이 삭제를 막는 참조로 센다. 등급별 완성 기록이 있는 컬렉션은 하드 삭제 대신 비활성화를 안내한다.
+- 배지 하드 삭제 가드(`jam-web/src/lib/admin/badge-references.ts` `BADGE_REFERENCE_SOURCES`)는 `item_book_tier_rewards.reward_badge_id`를 «컬렉션 등급별 보상»으로 센다(티켓 20261022_1139 2회). 외래키가 `ON DELETE SET NULL`이라 삭제가 DB에서 실패하지는 않으므로 옛 «컬렉션 완성 보상»(`item_books.reward_badge_id`)과 같이 `blocksDelete`는 false이고 콘텐츠 연결로 센다. 단건 하드 삭제는 콘텐츠 연결이 하나라도 있으면 먼저 정리하라고 409로 안내한다.
 
 **완성 판정 규칙 (코드, 2026-10-17 통일 — 티켓 20261016_2340 2회)**
 `jam-web/src/lib/itembook/completion-basis.ts`의 `computeBookCompletion` 한 곳이 컬렉션의 분모·분자를 정한다. 장착 뒤 보정(`checker.ts`), 완성 가능 소식, 컬렉션 화면·목록 API, 투데이, 알림 배치가 모두 이 함수를 부른다. 기준은 완성 기록을 남기는 DB 함수(179·222)다.
 - **분모**: 소속 배지 중 소프트 삭제가 아닌 `item`+`checkin` 배지에서 드랍 제외(`drop_excluded`)를 뺀 집합이다. 전부 제외이면 등록 배지 전체를 센다.
 - **분자**: 컬렉션별이다. 그 컬렉션의 슬롯과 그 컬렉션 소속 체크인 배지의 획득 이력만 센다(다른 컬렉션 슬롯은 세지 않는다).
-- **`tier_mode` 컬렉션**: 등급마다 따로, 분모·분자 모두 그 등급의 이름 수로 센다. 컬렉션 등급은 채운 배지의 등급에서 읽는다. `tier_mode` 컬렉션의 등급별 완성은 새 함수가 `user_item_book_tier_completions`에 기록하므로 보정 함수는 옛 완성 기록 `user_item_book_completions`를 쓰지 않는다.
+- **`tier_mode` 컬렉션**: 등급마다 따로, 분모·분자 모두 그 등급의 이름 수로 센다. 컬렉션 등급은 채운 배지의 등급에서 읽고, 이 판별에서만 소프트 삭제 배지에 꽂힌 슬롯도 센다(222의 `tier_mismatch` 판정과 일치 시험의 등급 읽기가 `deleted_at`을 걸지 않기 때문이다. 분모·분자는 그대로 삭제 배지를 뺀다. 그 등급에 살아 있는 배지가 없어 등급별 계산에 없으면 최상위 필드의 기준은 첫 등급이다. 티켓 20261022_1139 2회). `tier_mode` 컬렉션의 등급별 완성은 새 함수가 `user_item_book_tier_completions`에 기록하므로 보정 함수는 옛 완성 기록 `user_item_book_completions`를 쓰지 않는다.
 - **표시**: 화면·API의 완성 여부는 `user_item_book_completions` 기록이 있거나 계산상 완성이면 완성이다(`isBookCompleted`).
 - 자세한 규칙·근거·영향 실측은 `BADGE_ENGINE_UNIFIED.md` §3.16이다.
 
