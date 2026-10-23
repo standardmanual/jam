@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// check-client-server-imports — 'use client' 파일이 값 import를 따라가다 서버 전용 모듈에 닿으면 실패한다
-// (티켓 20260924_1639). UsersFilterBar(클라이언트) → user-list → auth(서버 전용) 체인이 lint·타입 검사·
-// 단위 테스트·CI를 모두 통과하고 실렌더에서만 500으로 드러난 사고의 재발 방지다.
+// check-client-server-imports — 'use client' 파일이 값 import(동적 import() 포함)를 따라가다 서버 전용 모듈에
+// 닿으면 실패한다(티켓 20260924_1639, 동적 import() 추적은 20261017_1638). UsersFilterBar(클라이언트) →
+// user-list → auth(서버 전용) 체인이 lint·타입 검사·단위 테스트·CI를 모두 통과하고 실렌더에서만 500으로 드러난
+// 사고의 재발 방지다.
 //
 // 규칙
 //   - 시작점: jam-web/src 하위에서 첫 문장이 'use client' 지시문인 파일
