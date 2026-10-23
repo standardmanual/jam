@@ -415,7 +415,7 @@ GPX 파일:  hangang_ride.gpx
 - **컬렉션과 믹스 구역의 칸**(`item_book_tier_default_rewards` 네 등급 행 + `combine_policy` id=1, 티켓 20261022_1133): 컬렉션 등급별 기본 완성 포인트 4칸(칸 이름 `default_reward:common`~`default_reward:mystic`, 0 이상 정수, 마이그레이션 222의 CHECK와 같다)과
   믹스 실패 포인트 `fail_reward_points`(0 이상 정수, 마이그레이션 153). **0이면 포인트를 주지 않는다.** 컬렉션마다 따로 정해 둔 완성 포인트(`item_book_tier_rewards.reward_points`)가 있으면 그 값이 먼저이고, 이미 받은 보상은 바뀌지 않는다는 안내를 폼 위에 둔다.
   믹스 실패 포인트는 레시피에 맞지 않는 재료로 믹스했을 때 재료가 사라지고 나가는 포인트다(옛 「믹스 정책」 화면이 하던 일). 「챕터 점수」(`chapter_score_rules.collection_complete_*`)와 이 구역의 「포인트」는 값이 같아도 다른 설정이다.
-  정책 대시보드의 «믹스 실패 보상 포인트» 카드는 이 구역(`/admin/balance#collection`)으로 이어 준다(대시보드의 직접 저장 경로 정리는 티켓 20261022_1717).
+  정책 대시보드의 «믹스 실패 보상 포인트» 카드는 이 구역(`/admin/balance#collection`)으로 이어 준다(대시보드의 직접 저장 경로는 티켓 20261022_1717에서 없앴다. 대시보드는 값을 읽어 보여 주고 링크만 둔다).
 - **챕터 구역의 칸**(`chapter_definitions` 챕터 1~10행 + `chapter_score_rules` 활동 12행, 45칸, 티켓 20261022_1133 2회): 챕터 2~10에 오르는 데 필요한 **누적 점수** 9칸(칸 이름 `required:2`~`required:10`, 단위 점, 1 이상 정수)과,
   활동 12종(모은 잼, 캡슐 열기, 잠긴 아이템 배지 열기, 배지 받기, 컬렉션 완성 Common·Rare·Epic·Mystic, 믹스 성공, 미션 완료, 드랍, 픽업 — `lib/chapter/kinds.ts`의 `CHAPTER_SCORE_KINDS`가 기준이다)마다 세 칸:
   단위당 점수(`rule:<활동>:points`, 0 이상·소수 둘째 자리), **주간 상한**(`:cap`, 0 이상 정수), 상한을 넘은 점수를 세는 비율(`:ratio`, 0~1·소수 셋째 자리). 범위는 마이그레이션 221의 CHECK와 같고 칸 이름은 이력에도 그대로 남는다.

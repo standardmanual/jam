@@ -807,7 +807,7 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 `fail_reward_points`(미매칭 시 지급할 고정 포인트) 하나만 남아 있다. 트라이브 다양성 티어
 확률 정책·피티 카운터(`user_combine_state`)는 2026-09-10 폐기됐다.
 편집 화면은 어드민 «밸런스 설정»의 «컬렉션과 믹스» 구역이다(`/admin/balance#collection`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 0 이상 정수이고 저장하면 `updated_at`을 직접 올리며 변경 이력이 남는다.
-옛 «믹스 정책» 화면(`/admin/combine-policy`)과 그 API는 없앴다. 정책 대시보드 저장 라우트가 쓰는 `lib/combine/policy.ts`의 `updateCombinePolicy`는 남아 있다(정리는 티켓 20261022_1717).
+옛 «믹스 정책» 화면(`/admin/combine-policy`)과 그 API는 없앴다. 정책 대시보드의 저장 라우트(`PUT /api/admin/policy-dashboard/field`)도 티켓 20261022_1717에서 없앴다. `lib/combine/policy.ts`의 `updateCombinePolicy`는 부르는 곳이 없어졌지만 함수와 시험은 남아 있다(삭제는 후속).
 
 ### user_combine_fail_logs (마이그레이션 153)
 믹스 실패 1건 = 1행. 어드민 유저 상세에서만 조회한다(유저 화면 비노출). `user_id`(→ `users`,
