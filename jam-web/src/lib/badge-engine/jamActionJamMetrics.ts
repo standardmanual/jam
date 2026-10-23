@@ -40,9 +40,10 @@
  *   FROM jam_transactions t
  *   WHERE t.user_id = :u AND t.reason = 'activity_settlement'
  *     AND t.source_activity_id IN (SELECT a.id FROM strava_activities a
- *                                  WHERE a.user_id = :u AND a.filter_reason IS NULL           -- 인정된 활동만(티켓 20261017_1459)
-                                    AND a.start_date BETWEEN :from AND :to)                  -- 하한·상한 포함, 상한 없으면 하한만
+ *                                  WHERE a.user_id = :u AND a.filter_reason IS NULL   -- 인정된 활동만(티켓 20261017_1459)
+ *                                    AND a.start_date BETWEEN :from AND :to)         -- 하한·상한 포함, 상한 없으면 하한만
  * ```
+ * 걸러진 활동은 정산되지 않아 원장에 줄이 없다 — 이 조건은 결과를 바꾸지 않고, 읽는 행 수를 줄이며 «인정된 활동 기준»을 코드에 못 박는다.
  * 채움(`capsule_fill`·`locked_item_badge_fill`, 음수)과 운영자 지급·회수(`admin_grant`·`admin_deduct`)는 `reason`이 달라 합계에 들지 않는다 —
  * 모은 양은 쓴 양으로 줄지 않는다. 정산되지 않은 활동은 원장에 줄이 없어 0이다.
  */
