@@ -148,6 +148,19 @@ const cases: Array<[string, () => void]> = [
       null
     )
   }],
+  ['저장 전 검사: 입력 범위를 벗어난 위임 키 값은 어떤 틀에서도 저장 전에 알린다 (20261021_1114 1회)', () => {
+    const condition = buildMissionConditionJson('engine_condition', fields({ distinctTimeBands: '9', avgWatts: '300' }))
+    for (const frame of ['achievement', 'individual', 'ranking']) {
+      const error = findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
+      assert.ok(error && error.includes('서로 다른 시간대 9개(허용 범위 2~6개)'), `${frame}: ${error}`)
+      assert.ok(error.includes('범위 안의 값으로 고쳐서 다시 저장해 주세요'))
+    }
+    const inRange = buildMissionConditionJson('engine_condition', fields({ distinctTimeBands: '3', avgWatts: '300' }))
+    assert.strictEqual(
+      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: inRange }),
+      null
+    )
+  }],
 
   // ── 요청 본문 ───────────────────────────────────────────────────────────
   ['요청 본문: 트라이브 미션은 고른 목록을 보내고, 공통 미션은 빈 목록으로 제한을 푼다', () => {

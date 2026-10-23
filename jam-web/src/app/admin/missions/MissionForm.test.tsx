@@ -160,3 +160,71 @@ describe('MissionForm — 잠김으로 만든 아이템 배지(읽기 전용)', 
     expect(out).not.toContain('잠김으로 만든 아이템 배지')
   })
 })
+
+describe('MissionForm — 시간대·요일·계절·운동 속성 입력 칸 (티켓 20261021_1114 1회)', () => {
+  const FULL = {
+    activity_type: 'running',
+    time_range: { start: '05:00', end: '08:00' },
+    day_of_week: ['saturday', 'sunday'],
+    weekly_streak: 4,
+    season: 'summer',
+    season_count: 3,
+    season_count_all: 2,
+    distinct_time_bands: 3,
+    weekend_duration_hours: 2.5,
+    cumulative_duration_hours: 10,
+    max_speed_kmh: 30,
+    avg_heartrate_bpm: 150,
+    avg_watts: 200,
+    avg_cadence: 80,
+  }
+
+  function engine(condition: Record<string, unknown>): MissionRow {
+    return mission({ mission_type: 'engine_condition', status_display_type: 'individual', condition_json: condition })
+  }
+
+  it('12개 키가 모두 든 미션은 입력 칸마다 기존 값을 채워 열고, 입력 칸이 없다는 보존 안내를 띄우지 않는다', () => {
+    const out = render({ mission: engine(FULL) })
+
+    expect(out).not.toContain('값이 이미 설정돼 있어요')
+    expect(out).toMatch(/id="mc-eng-timeStart"[^>]*value="05:00"/)
+    expect(out).toMatch(/id="mc-eng-timeEnd"[^>]*value="08:00"/)
+    expect(out).toMatch(/id="mc-eng-seasonCount"[^>]*value="3"/)
+    expect(out).toMatch(/id="mc-eng-seasonCountAll"[^>]*value="2"/)
+    expect(out).toMatch(/id="mc-eng-distinctTimeBands"[^>]*value="3"/)
+    expect(out).toMatch(/id="mc-eng-weekendDurationHours"[^>]*value="2.5"/)
+    expect(out).toMatch(/id="mc-eng-cumulativeDurationHours"[^>]*value="10"/)
+    expect(out).toMatch(/id="mc-eng-maxSpeedKmh"[^>]*value="30"/)
+    expect(out).toMatch(/id="mc-eng-avgHeartrateBpm"[^>]*value="150"/)
+    expect(out).toMatch(/id="mc-eng-avgWatts"[^>]*value="200"/)
+    expect(out).toMatch(/id="mc-eng-avgCadence"[^>]*value="80"/)
+  })
+
+  it('시간대는 시작·끝을 한 묶음으로 그리고, 요일은 월~일 칩을 그린다', () => {
+    const out = render({ mission: engine(FULL) })
+
+    expect(out).toContain('활동 시작 시간대')
+    expect(out).toContain('aria-labelledby="mc-eng-timeStart-pair"')
+    expect(out).toContain('활동 요일')
+    // 칩마다 체크 상태가 «체크 상자 → 글자» 순서로 붙는다(한 칩의 `</label>`을 넘지 않는다). 토·일만 체크되어 열린다.
+    // 같은 월~일 칩이 «서로 다른 요일 수» 칸에도 있어서 «활동 요일» 칸부터 읽는다
+    const dayField = out.slice(out.indexOf('활동 요일'))
+    const chipState = (label: string) =>
+      dayField.match(new RegExp(`data-state="(checked|unchecked)"(?:(?!</label>)[\\s\\S])*?/>${label}</label>`))?.[1]
+    for (const label of ['월', '화', '수', '목', '금']) expect(chipState(label), label).toBe('unchecked')
+    for (const label of ['토', '일']) expect(chipState(label), label).toBe('checked')
+  })
+
+  it('수치 칸에는 배지 양식과 같은 범위를 건다 (서로 다른 시간대 2~6개, 평균 파워 0~2000W)', () => {
+    const out = render({ mission: engine({ distance_km: 10 }) })
+
+    expect(out).toMatch(/id="mc-eng-distinctTimeBands"[^>]*min="2"[^>]*max="6"/)
+    expect(out).toMatch(/id="mc-eng-avgWatts"[^>]*min="0"[^>]*max="2000"/)
+  })
+
+  it('DB 기록 키는 이번 회차 대상이 아니라 여전히 보존 안내를 띄운다', () => {
+    const out = render({ mission: engine({ capsule_open_count: 3 }) })
+
+    expect(out).toContain('capsule_open_count 값이 이미 설정돼 있어요')
+  })
+})
