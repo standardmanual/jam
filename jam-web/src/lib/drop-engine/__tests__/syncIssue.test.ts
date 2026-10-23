@@ -65,22 +65,31 @@ describe('rollItemCount — 개수', () => {
   it('활동마다 1~3개다 (등산 제외)', () => {
     const rand = mulberry32(5)
     const seen = new Set<number>()
+    // 루프 안에서 매번 expect를 부르면 20만 번 호출이 느린 러너에서 기본 제한 5초를 넘긴다(티켓 20261023_1422). 최솟값·최댓값을 모아 한 번에 확인한다.
+    let min = Infinity
+    let max = -Infinity
     for (let i = 0; i < N; i++) {
       const c = rollItemCount(POLICY, { jam: 200, isHiking: false }, rand)
-      expect(c).toBeGreaterThanOrEqual(1)
-      expect(c).toBeLessThanOrEqual(3)
+      if (c < min) min = c
+      if (c > max) max = c
       seen.add(c)
     }
+    expect(min).toBeGreaterThanOrEqual(1)
+    expect(max).toBeLessThanOrEqual(3)
     expect([...seen].sort()).toEqual([1, 2, 3])
   })
 
   it('등산은 최소 2개이고 최대 4개다', () => {
     const rand = mulberry32(6)
+    let min = Infinity
+    let max = -Infinity
     for (let i = 0; i < N; i++) {
       const c = rollItemCount(POLICY, { jam: 400, isHiking: true }, rand)
-      expect(c).toBeGreaterThanOrEqual(2)
-      expect(c).toBeLessThanOrEqual(4)
+      if (c < min) min = c
+      if (c > max) max = c
     }
+    expect(min).toBeGreaterThanOrEqual(2)
+    expect(max).toBeLessThanOrEqual(4)
   })
 
   it('잼이 0 이하이면 보너스 없이 확정 개수만이다', () => {
