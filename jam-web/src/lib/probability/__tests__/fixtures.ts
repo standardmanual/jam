@@ -2,6 +2,9 @@
  * 확률 안내 시험이 함께 쓰는 설정 표 행과 가짜 클라이언트 (티켓 20261021_1250 1회)
  *
  * 공용 DB를 부르지 않는다. 표마다 돌려줄 결과(행·오류·예외)를 정하고, 표마다 select에 넘긴 칸 목록을 기록한다.
+ *
+ * 변경 이력 표(`balance_setting_changes`, 티켓 20261022_1700)는 설정 표와 달리 여러 행을 읽는다: `select().eq().order()` 사슬을 받아
+ * `eq`로 행을 거르고 `order`로 정렬해 돌려준다(걸러지는 것은 시험이 눈으로 볼 수 있다). 결과를 정하지 않으면 이력이 없는 표(빈 배열)다.
  */
 import { expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -35,18 +38,45 @@ export const AMBIENT_ROW = { rarity_mode: 'explicit', rarity_common: 1, rarity_r
 
 export type Result = { data: unknown; error: unknown } | 'throw'
 
+export const CHANGES_TABLE = 'balance_setting_changes'
+
 export interface Fake {
   client: SupabaseClient
   /** 표마다 select에 넘긴 칸 목록 */
   selects: Record<string, string>
+  /** 변경 이력 표에 건 `eq` 조건(칸, 값)과 정렬(칸, 오름차순 여부) */
+  changesQuery: { filters: Array<[string, unknown]>; order: [string, boolean] | null }
 }
 
 export function fakeClient(results: Record<string, Result>): Fake {
   const selects: Record<string, string> = {}
+  const changesQuery: Fake['changesQuery'] = { filters: [], order: null }
+
+  const changesBuilder = () => {
+    const builder = {
+      eq: (column: string, value: unknown) => {
+        changesQuery.filters.push([column, value])
+        return builder
+      },
+      order: async (column: string, options: { ascending: boolean }) => {
+        changesQuery.order = [column, options.ascending]
+        const result = results[CHANGES_TABLE] ?? ok([])
+        if (result === 'throw') throw new Error('network')
+        if (result.error || !Array.isArray(result.data)) return result
+        const rows = (result.data as Array<Record<string, unknown>>)
+          .filter((row) => changesQuery.filters.every(([c, v]) => row[c] === v))
+          .sort((a, b) => String(a[column]).localeCompare(String(b[column])) * (options.ascending ? 1 : -1))
+        return { data: rows, error: null }
+      },
+    }
+    return builder
+  }
+
   const client = {
     from: (table: string) => ({
       select: (columns: string) => {
         selects[table] = columns
+        if (table === CHANGES_TABLE) return changesBuilder()
         return {
           eq: (column: string, value: number) => {
             expect([column, value]).toEqual(['id', 1])
@@ -63,7 +93,7 @@ export function fakeClient(results: Record<string, Result>): Fake {
       },
     }),
   } as unknown as SupabaseClient
-  return { client, selects }
+  return { client, selects, changesQuery }
 }
 
 export const ok = (row: unknown): Result => ({ data: row, error: null })

@@ -6,6 +6,8 @@
  *
  * 고정하는 것:
  * - 구성: 머리(유료 결제 없음 한 줄), 동기화·캡슐·시스템 드랍 표, 확률이 없는 것 한 문단, 보정 장치 목록(접지 않음), 바뀐 날짜 표.
+ * - 바뀐 날짜 표(티켓 20261022_1700): 변경 이력(`balance_setting_changes`)에서 읽은 줄이 위, «처음 열었어요» 상수 줄이 항상 맨 아래다. 이력을 읽지 못해도
+ *   페이지는 열리고 첫 줄만 보이며 표 아래에 읽기 실패 안내가 한 줄 붙는다. 유저 ID·변경 메모·내부 칸 이름·방향어는 HTML에 없다.
  * - 값은 읽은 행에서 만든다: 설정을 바꾸면 표가 따라 바뀐다.
  * - 읽기 실패: 해당 섹션만 «지금 불러오지 못했어요»로 바뀌고 숫자가 하나도 없다. 코드 상수 사본(DEFAULT_*)의 값이 새지 않는다. 시스템 드랍만 실패하면 정책 섹션은 그대로다.
  * - 의미 있는 표(caption, th scope="row"), 한국어 줄바꿈 클래스, 색 강조·그래프·애니메이션 없음, 유저 화면에 쓰지 않는 말·열기를 부추기는 말 없음.
@@ -34,7 +36,17 @@ import ProbabilityPage, { dynamic } from './page'
 import { DEFAULT_AMBIENT_DROP_CONFIG } from '@/lib/ambient-drop/config'
 import { DEFAULT_CAPSULE_POLICY } from '@/lib/capsule/policy'
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
-import { ALL_OK, AMBIENT_ROW, CAPSULE_ROW, JAM_ROW, fakeClient, failed, ok, type Result } from '@/lib/probability/__tests__/fixtures'
+import {
+  ALL_OK,
+  AMBIENT_ROW,
+  CAPSULE_ROW,
+  CHANGES_TABLE,
+  JAM_ROW,
+  fakeClient,
+  failed,
+  ok,
+  type Result,
+} from '@/lib/probability/__tests__/fixtures'
 
 const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.'
 
@@ -68,7 +80,8 @@ describe('렌더 방식', () => {
 
   it('로그인 확인 없이 service 클라이언트로만 읽고, 상단 바는 뒤로 가기와 제목뿐이다', async () => {
     const html = await render()
-    expect(createServiceClientMock).toHaveBeenCalledTimes(1)
+    // 설정 표 읽기와 변경 이력 읽기가 각자 service 클라이언트를 만든다(로그인 확인은 없다)
+    expect(createServiceClientMock).toHaveBeenCalledTimes(2)
     // LegalTopNav: 뒤로 가기 버튼 하나뿐(동기화·알림·아바타 없음)
     expect(count(html, '<button')).toBe(1)
     expect(html).not.toContain('<img')
@@ -160,14 +173,113 @@ describe('정상 — 구성과 값', () => {
     expect(text).not.toContain('처음 뽑는 등급')
   })
 
-  it('바뀐 날짜 표에 첫 줄이 있다(임시값: 출시 전에 사용자가 확정)', async () => {
+  it('이력이 없으면 바뀐 날짜 표에 «처음 열었어요» 한 줄만 있고 안내 문구는 없다(임시값: 출시 전에 사용자가 확정)', async () => {
     const section = sectionOf(await render(), '바뀐 날짜')
     const text = textOf(section)
-    expect(text).toContain('확률을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
+    expect(text).toContain('확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
     expect(text).toContain('2026년 10월 21일확률 안내를 처음 열었어요')
     // 날짜가 띄어쓰기에서 «10월 / 21일»로 갈라지지 않게 라벨 칸의 줄바꿈을 막는다
     expect(section).toMatch(/<th[^>]*whitespace-nowrap[^>]*>2026년 10월 21일/)
     expect(count(section, '<tr')).toBe(1)
+    expect(section).not.toContain('role="status"')
+  })
+})
+
+describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
+  const historyRow = (createdAt: string, section: string, changes: unknown, extra: Record<string, unknown> = {}) => ({
+    section_key: section,
+    changes,
+    created_at: createdAt,
+    affects_disclosure: true,
+    ...extra,
+  })
+  const change = (field: string, from: number, to: number) => ({ field, from, to })
+
+  // 채원 판정의 배치도: 이력 두 줄 + 맨 아래 상수 줄
+  const HISTORY = [
+    historyRow('2026-10-22T05:00:00Z', 'capsule', [change('pity_epic_threshold', 15, 12)], {
+      note: '내부 메모: 공지는 슬랙에 올림',
+      changed_by: '0b8a3f2e-aaaa-bbbb-cccc-111122223333',
+    }),
+    historyRow('2026-10-23T05:00:00Z', 'sync', [change('sync_rarity_common', 84, 83), change('sync_rarity_rare', 12, 13)], {
+      changed_by: '0b8a3f2e-aaaa-bbbb-cccc-111122223333',
+    }),
+    historyRow('2026-10-22T06:00:00Z', 'sync', [change('sync_rarity_common', 90, 80)], { affects_disclosure: false }),
+  ]
+
+  it('최신이 맨 위, «처음 열었어요»가 항상 맨 아래이고 칸이 여럿이어도 저장 한 번은 한 줄이다', async () => {
+    const html = await render({ ...ALL_OK, [CHANGES_TABLE]: ok(HISTORY) })
+    const section = sectionOf(html, '바뀐 날짜')
+    const text = textOf(section)
+    expect(text).toContain(
+      '2026년 10월 23일동기화 Common 확률을 84%에서 83%로, 동기화 Rare 확률을 12%에서 13%로 바꿨어요' +
+        '2026년 10월 22일캡슐 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' +
+        '2026년 10월 21일확률 안내를 처음 열었어요'
+    )
+    expect(count(section, '<tr')).toBe(3)
+    // 읽기에 성공했으므로 실패 안내가 없다
+    expect(section).not.toContain('role="status"')
+  })
+
+  it('날짜 칸은 줄바꿈이 없고, 문장 칸은 줄바꿈을 허용한다(표 모양은 그대로)', async () => {
+    const section = sectionOf(await render({ ...ALL_OK, [CHANGES_TABLE]: ok(HISTORY) }), '바뀐 날짜')
+    const heads = [...section.matchAll(/<th[^>]*>([^<]*)<\/th>/g)]
+    expect(heads.map((m) => m[1])).toEqual(['2026년 10월 23일', '2026년 10월 22일', '2026년 10월 21일'])
+    for (const head of section.match(/<th[^>]*>/g) ?? []) expect(head).toContain('whitespace-nowrap')
+    for (const cell of section.match(/<td[^>]*>/g) ?? []) {
+      expect(cell).not.toContain('whitespace-nowrap')
+      expect(cell).toContain('break-keep wrap-break-word')
+    }
+  })
+
+  it('확률 안내에 반영되지 않는 변경(affects_disclosure = false)은 나오지 않는다', async () => {
+    const html = await render({ ...ALL_OK, [CHANGES_TABLE]: ok(HISTORY) })
+    expect(textOf(html)).not.toContain('90%에서 80%')
+    expect(textOf(sectionOf(html, '바뀐 날짜'))).not.toContain('동기화 Common 확률을 90%')
+  })
+
+  it('같은 날 저장이 여러 번이면 날짜가 반복된다', async () => {
+    const html = await render({
+      ...ALL_OK,
+      [CHANGES_TABLE]: ok([
+        historyRow('2026-10-23T05:00:00Z', 'capsule', [change('rarity_common', 70, 69)]),
+        historyRow('2026-10-23T01:00:00Z', 'capsule', [change('rarity_common', 71, 70)]),
+      ]),
+    })
+    const text = textOf(sectionOf(html, '바뀐 날짜'))
+    expect(text).toContain('2026년 10월 23일캡슐 Common 확률을 70%에서 69%로 바꿨어요2026년 10월 23일캡슐 Common 확률을 71%에서 70%로 바꿨어요')
+  })
+
+  it('값 0을 지우지 않고, 표에 없는 칸은 내부 이름 없이 일반 문장이다', async () => {
+    const html = await render({
+      ...ALL_OK,
+      [CHANGES_TABLE]: ok([
+        historyRow('2026-10-23T05:00:00Z', 'capsule', [change('pre_quest_fill_amount', 3, 4)]),
+        historyRow('2026-10-22T05:00:00Z', 'capsule', [change('bonus_probability', 0.2, 0), change('chapter:3', 100, 120)]),
+      ]),
+    })
+    const section = sectionOf(html, '바뀐 날짜')
+    const text = textOf(section)
+    expect(text).toContain('2026년 10월 23일확률 안내의 값을 바꿨어요')
+    expect(text).toContain('캡슐 보너스 확률을 20%에서 0%로, 그 밖의 값도 바꿨어요')
+    expect(section).not.toMatch(/pre_quest|chapter|bonus_probability/)
+  })
+
+  it('유저 ID, 변경 메모, 내부 칸 이름, 방향어가 HTML 어디에도 없다', async () => {
+    const html = await render({ ...ALL_OK, [CHANGES_TABLE]: ok(HISTORY) })
+    expect(html).not.toContain('0b8a3f2e')
+    expect(html).not.toContain('내부 메모')
+    expect(html).not.toMatch(/changed_by|section_key|affects_disclosure|balance_setting_changes/)
+    expect(html).not.toMatch(/sync_rarity|pity_epic_threshold|rarity_common|common_streak_threshold/)
+    const text = textOf(sectionOf(html, '바뀐 날짜'))
+    expect(text).not.toMatch(/올렸|낮췄|높였|높아|낮아|늘렸|줄였|UP|→|—|NEW/)
+  })
+
+  it('이력 줄에도 색·아이콘·강조가 없다(최신 줄도 다른 줄과 같은 모양이다)', async () => {
+    const section = sectionOf(await render({ ...ALL_OK, [CHANGES_TABLE]: ok(HISTORY) }), '바뀐 날짜')
+    expect(section).not.toMatch(/<svg|<img|<mark|<strong|<b>|animate-|transition|--link|--accent/)
+    const rowClasses = new Set([...section.matchAll(/<tr class="([^"]*)"/g)].map((m) => m[1]))
+    expect(rowClasses.size).toBe(1)
   })
 })
 
@@ -275,7 +387,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     expect(text).toContain('받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.')
     expect(text).toContain('Common부터 Rare, Epic, Mystic 순서로 찾아서')
     expect(text).toContain('에는 확률이 없어요.')
-    expect(text).toContain('확률을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
+    expect(text).toContain('확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
   })
 
   it('시스템 드랍만 못 읽으면 그 섹션만 안내로 바뀌고 다른 섹션은 그대로다', async () => {
@@ -288,6 +400,31 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     expect(textOf(sectionOf(html, '동기화로 받는 아이템 배지'))).toMatch(/Common84%/)
     expect(textOf(sectionOf(html, '캡슐'))).toMatch(/Common70%/)
     expect(count(sectionOf(html, '보정 장치'), '<li')).toBe(2)
+  })
+
+  it('변경 이력만 못 읽으면 페이지는 열리고 «처음 열었어요» 줄만 보이며, 표 아래에 안내가 한 줄 붙는다', async () => {
+    for (const failure of [failed, 'throw' as const, ok({ not: 'a list' })]) {
+      const html = await render({ ...ALL_OK, [CHANGES_TABLE]: failure })
+      const section = sectionOf(html, '바뀐 날짜')
+      expect(count(html, 'role="status"')).toBe(1)
+      expect(count(section, '<tr')).toBe(1)
+      expect(textOf(section)).toContain('2026년 10월 21일확률 안내를 처음 열었어요')
+      // 안내는 표 아래에 있고, 머리 문장은 그대로다
+      expect(section.indexOf('<div role="status"')).toBeGreaterThan(section.indexOf('</table>'))
+      expect(textOf(section.slice(section.indexOf('<div role="status"')))).toBe(UNAVAILABLE)
+      expect(textOf(section)).toContain('확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
+      // 다른 섹션은 그대로다
+      expect(textOf(sectionOf(html, '동기화로 받는 아이템 배지'))).toMatch(/Common84%/)
+      expect(textOf(sectionOf(html, '캡슐'))).toMatch(/Common70%/)
+      expect(count(sectionOf(html, '보정 장치'), '<li')).toBe(2)
+    }
+  })
+
+  it('정책과 변경 이력이 함께 실패해도 각자 안내를 보인다(이력 쪽은 표 아래에 한 줄)', async () => {
+    const html = await render({ ...ALL_OK, capsule_policy: failed, [CHANGES_TABLE]: failed })
+    expect(count(html, 'role="status"')).toBe(4)
+    expect(count(sectionOf(html, '바뀐 날짜'), 'role="status"')).toBe(1)
+    expect(textOf(sectionOf(html, '바뀐 날짜'))).toContain('2026년 10월 21일확률 안내를 처음 열었어요')
   })
 
   it('셋 다 못 읽으면 값 칸이 하나도 없다(퍼센트·나눗셈 기호 없음, 날짜 외 숫자 없음)', async () => {
