@@ -33,6 +33,7 @@ import {
   conditionFormEntriesOf,
   conditionFormSectionOf,
   getConditionField,
+  isIntegerFormField,
   type ConditionFormEntry,
   type ConditionFormSection,
 } from '@/lib/badge-engine/conditionRegistry'
@@ -276,7 +277,7 @@ export default function BadgeConditionSection({
       <SuffixInput
         id={domId}
         type={control.kind === 'number' ? 'number' : control.kind === 'time' ? 'time' : 'text'}
-        inputMode={control.kind === 'number' ? 'decimal' : undefined}
+        inputMode={control.kind === 'number' ? (isIntegerFormField(control.field) ? 'numeric' : 'decimal') : undefined}
         {...(control.kind === 'number' ? { min: meta.min, max: meta.max, step: meta.step } : {})}
         value={text(control.field)}
         onChange={(e) => setCondField(control.field, e.target.value)}

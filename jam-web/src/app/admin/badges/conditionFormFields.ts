@@ -1,7 +1,9 @@
-import type { BadgeCondition } from '@/types/database'
+import type { BadgeCondition, BadgeType } from '@/types/database'
 import {
   ALL_CONDITION_KEYS,
   CONDITION_FIELDS,
+  describeNonIntegerInputs,
+  findNonIntegerFormInputs,
   parsePaceToSec,
   type ConditionKey,
 } from '@/lib/badge-engine/conditionRegistry'
@@ -376,6 +378,18 @@ function deepEqualIgnoringKeyOrder(a: unknown, b: unknown): boolean {
     return aKeys.every((k) => k in bo && deepEqualIgnoringKeyOrder(ao[k], bo[k]))
   }
   return false
+}
+
+/**
+ * 정수 칸에 소수나 지수 표기(«2.5»·«1e3»)가 들어 있으면 저장 전에 알릴 한 문장을 돌려준다(없으면 null) (티켓 20261023_1748).
+ *
+ * 정수 읽기(`int()`)는 이 글자를 2·1로 잘라 읽어 운영자가 쓴 값과 다른 값이 조용히 저장된다. 읽기 동작은 그대로 두고,
+ * 읽기 전의 입력 글자를 레지스트리의 정수 칸 목록으로 검사한다. 미션 양식과 같은 함수·같은 문구다.
+ * 체크인 배지는 조건 칸이 보이지 않고 조건 JSON도 만들지 않으므로 검사하지 않는다 — 보이지 않는 옛 입력 때문에 저장이 막히면 안 된다.
+ */
+export function findConditionIntegerError(type: BadgeType, fields: ConditionFormFields): string | null {
+  if (type === 'checkin') return null
+  return describeNonIntegerInputs(findNonIntegerFormInputs(fields))
 }
 
 /**

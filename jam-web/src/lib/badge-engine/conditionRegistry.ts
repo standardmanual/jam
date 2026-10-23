@@ -249,6 +249,19 @@ export interface ConditionFormBinding<V> {
    * (미션 보상 체크박스·2단 교차 게이트)가 여기 해당한다. 값 조립·복원은 그대로 동작한다.
    */
   controls?: readonly ConditionFormControl[]
+  /**
+   * `read`가 `int()`(정수로 읽기)로 읽는 폼 state 키 (티켓 20261023_1748).
+   *
+   * `int()`는 «2.5»를 2로, «1e3»을 1로 읽어 소수를 알림 없이 잘라 낸다. 그 동작은 그대로 두고,
+   * 저장 전에 `findNonIntegerFormInputs`가 이 목록의 칸을 글자 그대로 검사해 정수가 아니면 막는다.
+   * 입력 칸이 숫자 키패드를 고를 때도 이 목록을 본다. 정수 칸을 새로 만들면 여기 적어야 하고,
+   * 빠뜨리면 회귀 시험이 알려 준다.
+   */
+  integerFields?: readonly string[]
+  /** `read`가 쉼표로 나눈 조각을 각각 정수로 읽는 폼 state 키(`month`). 조각마다 정수 검사를 한다 */
+  integerListFields?: readonly string[]
+  /** `controls`가 없는 정수 칸(전용 UI가 그리는 게이트 개수)의 안내용 이름. 칸 이름 → 이름 */
+  integerLabels?: Readonly<Record<string, string>>
   section: ConditionFormSection
   /**
    * 섹션 안 표시 순서(작은 값 먼저). 생략하면 순서를 준 필드 뒤에 선언 순서대로 선다.
@@ -304,6 +317,7 @@ function integerForm(field: string, ui: FormUi): ConditionFormBinding<number> {
     read: (f) => int(f[field]),
     write: (v) => ({ [field]: String(v) }),
     controls: [controlOf(field, 'number', ui)],
+    integerFields: [field],
     section: ui.section,
     order: ui.order,
     subsection: ui.subsection,
@@ -342,8 +356,10 @@ function csv(raw: string | boolean | undefined): string[] {
  * 세 게이트가 값 스키마(`family_keys` + `min_rarity?` + `min_count?`)를 공유하므로 폼 연결도
  * 하나로 둔다. **입력 UI는 전용 블록이 그린다** — 게이트끼리의 결합 규칙(교차 둘은 OR,
  * 미션 게이트는 AND)을 화면에서 드러내야 해서 입력 그리드에 흩어 놓을 수 없다.
+ *
+ * `title`은 필요 계열 수 칸이 정수가 아닐 때 안내 문구에 들어가는 게이트 이름이다(화면의 게이트 블록 제목과 같다).
  */
-function gateForm(prefix: string): ConditionFormBinding<BadgeGateRequirement> {
+function gateForm(prefix: string, title: string): ConditionFormBinding<BadgeGateRequirement> {
   const keysField = `${prefix}FamilyKeys`
   const rarityField = `${prefix}MinRarity`
   const countField = `${prefix}MinCount`
@@ -366,6 +382,8 @@ function gateForm(prefix: string): ConditionFormBinding<BadgeGateRequirement> {
       [rarityField]: typeof v?.min_rarity === 'string' ? v.min_rarity : '',
       [countField]: typeof v?.min_count === 'number' ? String(v.min_count) : '',
     }),
+    integerFields: [countField],
+    integerLabels: { [countField]: `${title}의 필요 계열 수` },
     section: 'gate',
   }
 }
@@ -751,6 +769,7 @@ export const CONDITION_FIELDS = [
           help: '1~12 사이로 적어요. 여러 달은 쉼표로 구분해요 (6, 7).',
         },
       ],
+      integerListFields: ['month'],
       section: 'scope',
       order: 3,
     },
@@ -1442,6 +1461,7 @@ export const CONDITION_FIELDS = [
           help: '두 칸을 모두 채워야 조건이 만들어져요.',
         },
       ],
+      integerFields: ['activitiesWithinHoursHours', 'activitiesWithinHoursCount'],
       section: 'rhythm',
     },
   }),
@@ -1635,7 +1655,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'external',
     chip: (c) => gateChip('축 내 교차', c.cross_in_axis),
     detail: (c) => gateDetail('축 내 교차', c.cross_in_axis),
-    form: gateForm('crossInAxis'),
+    form: gateForm('crossInAxis', '축 내 교차'),
   }),
   field({
     key: 'cross_between_axis',
@@ -1647,7 +1667,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'external',
     chip: (c) => gateChip('축 간 교차', c.cross_between_axis),
     detail: (c) => gateDetail('축 간 교차', c.cross_between_axis),
-    form: gateForm('crossBetweenAxis'),
+    form: gateForm('crossBetweenAxis', '축 간 교차'),
   }),
   field({
     key: 'gate_mission_badge',
@@ -1659,7 +1679,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'external',
     chip: (c) => gateChip('미션 보상 배지', c.gate_mission_badge),
     detail: (c) => gateDetail('미션 보상 배지', c.gate_mission_badge),
-    form: gateForm('gateMissionBadge'),
+    form: gateForm('gateMissionBadge', '미션 보상 배지'),
   }),
 
   // ── ⑤ JAM! 카테고리 — 서비스 사용량 지표 3종 (티켓 20260910_1557) +
@@ -1807,6 +1827,7 @@ export const CONDITION_FIELDS = [
           suffix: '개',
         },
       ],
+      integerFields: ['checkinCategoryCountCount'],
       section: 'meta',
     },
   }),
@@ -1850,6 +1871,7 @@ export const CONDITION_FIELDS = [
           help: '지정한 배지 중 몇 개 이상 보유해야 하는지예요.',
         },
       ],
+      integerFields: ['checkinBadgeCountCount'],
       section: 'meta',
     },
   }),
@@ -2740,6 +2762,93 @@ export function conditionFormSectionOf(key: string): ConditionFormSection | null
   const meta = FIELD_BY_KEY.get(key)
   if (!meta) return null
   return meta.form?.section ?? 'scope'
+}
+
+// ── 정수 칸 검사 (티켓 20261023_1748) ────────────────────────────────────
+
+/**
+ * 정수로 쓴 글자: `+`·`-` 부호가 붙을 수 있는 숫자만. 소수점(2.5)·지수(1e3)·천 단위 쉼표(1,000)·다른 글자가 있으면
+ * 정수가 아니다. `\d`는 플래그 없이 쓰면 ASCII 숫자만 받는다.
+ */
+const INTEGER_TEXT = /^[+-]?\d+$/
+
+/**
+ * 폼 글자가 정수로 쓰였는지. 앞뒤 공백은 무시하고, 비어 있으면(칸을 비움) 검사할 값이 없어 true다.
+ * `int()`(정수로 읽기)의 동작은 바꾸지 않는다. 이 함수가 저장 전에 원래 입력 글자를 따로 검사한다 —
+ * `int()`는 «2.5»를 2로, «7.9»를 7로, «1e3»을 1로 읽어 값이 조용히 달라진다.
+ */
+export function isIntegerFormText(raw: string): boolean {
+  const text = raw.trim()
+  return text === '' || INTEGER_TEXT.test(text)
+}
+
+/** 정수 칸으로 선언된 폼 state 키 전부(쉼표 목록 칸 제외). 입력 칸이 숫자 키패드를 고르는 기준이다 */
+export const INTEGER_FORM_FIELDS: readonly string[] = CONDITION_FIELDS.flatMap(
+  (f) => (f.form?.integerFields ?? []) as readonly string[]
+)
+
+const INTEGER_FORM_FIELD_SET: ReadonlySet<string> = new Set(INTEGER_FORM_FIELDS)
+
+/** 이 폼 state 키가 정수 칸인가 — 입력 칸이 `inputMode="numeric"`을 걸지 `decimal`을 걸지 가른다 */
+export function isIntegerFormField(field: string): boolean {
+  return INTEGER_FORM_FIELD_SET.has(field)
+}
+
+/** 정수가 아닌 글자가 든 칸 하나 — 안내 문구에 칸 이름과 입력한 값을 넣는다 */
+export type NonIntegerFormInput = { field: string; label: string; raw: string }
+
+/** 안내 문구에 쓸 칸 이름. 입력 컨트롤의 라벨이 먼저고, 컨트롤이 없는 칸은 바인딩이 적은 이름이다 */
+function integerFieldLabel(meta: AnyConditionFieldMeta, field: string): string {
+  const control = meta.form?.controls?.find((c) => c.field === field)
+  return control?.label ?? meta.form?.integerLabels?.[field] ?? meta.label
+}
+
+/**
+ * 폼 값에서 정수가 아닌 글자가 든 칸을 화면 순서(그룹 → 그룹 안 순서)대로 찾는다.
+ *
+ * `conditionKeys`를 주면 그 조건 키에 속한 칸만 본다. 미션 양식은 자기가 읽는 조건 키만 넘기고, 배지 양식은
+ * 생략해 전부 본다. 쉼표 목록 칸(`month`)은 조각마다 검사하고, 틀린 조각을 입력한 값으로 보여 준다.
+ */
+export function findNonIntegerFormInputs(
+  values: ConditionFormValues,
+  conditionKeys?: readonly string[]
+): NonIntegerFormInput[] {
+  const only = conditionKeys ? new Set<string>(conditionKeys) : null
+  const rows: { input: NonIntegerFormInput; sectionIndex: number; order: number; index: number }[] = []
+  CONDITION_FIELDS.forEach((field, index) => {
+    const meta = field as AnyConditionFieldMeta
+    const form = meta.form
+    if (!form || (only && !only.has(meta.key))) return
+    const sectionIndex = CONDITION_FORM_SECTIONS.indexOf(form.section)
+    const order = form.order ?? Number.POSITIVE_INFINITY
+    const push = (stateKey: string, raw: string) =>
+      rows.push({ input: { field: stateKey, label: integerFieldLabel(meta, stateKey), raw }, sectionIndex, order, index })
+    for (const stateKey of form.integerFields ?? []) {
+      const raw = values[stateKey]
+      if (typeof raw === 'string' && !isIntegerFormText(raw)) push(stateKey, raw.trim())
+    }
+    for (const stateKey of form.integerListFields ?? []) {
+      const raw = values[stateKey]
+      if (typeof raw !== 'string') continue
+      const piece = csv(raw).find((p) => !isIntegerFormText(p))
+      if (piece !== undefined) push(stateKey, piece)
+    }
+  })
+  rows.sort((a, b) =>
+    a.sectionIndex !== b.sectionIndex ? a.sectionIndex - b.sectionIndex : a.order !== b.order ? a.order - b.order : a.index - b.index
+  )
+  return rows.map((r) => r.input)
+}
+
+/**
+ * 정수가 아닌 칸을 저장 전에 알리는 한 문장 묶음(없으면 null). 첫 칸만 이름과 입력한 값을 보이고, 나머지는 칸 수로 알린다.
+ * 배지 양식과 미션 양식이 같은 문구를 쓰도록 문구를 이 함수 하나에 둔다. 조사가 갈리지 않는 «에는»으로 이어 칸 이름이 무엇이든 말이 맞는다.
+ */
+export function describeNonIntegerInputs(found: readonly NonIntegerFormInput[]): string | null {
+  const [first, ...rest] = found
+  if (!first) return null
+  const message = `${first.label}에는 정수만 쓸 수 있어요. 소수나 e가 든 값은 정수로 고쳐 주세요. (입력한 값: ${first.raw})`
+  return rest.length > 0 ? `${message} 이 밖에 ${rest.length}칸에도 정수가 아닌 값이 있어요.` : message
 }
 
 // ── fail-closed 판정 ─────────────────────────────────────────────────────

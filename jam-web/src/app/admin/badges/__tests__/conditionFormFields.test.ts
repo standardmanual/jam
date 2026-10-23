@@ -20,6 +20,7 @@ import {
   buildConditionJsonFromFields,
   conditionFormFieldsFrom,
   emptyConditionFormFields,
+  findConditionIntegerError,
   findUnrepresentableConditionKeys,
   parsePaceToSec,
   getUnsupportedConditionKeys,
@@ -36,6 +37,7 @@ import {
   CONDITION_FORM_SECTION_LABEL,
   conditionFormEntriesOf,
   conditionFormSectionOf,
+  findNonIntegerFormInputs,
   formatConditionChipEntries,
   formatConditionChips,
   formatConditionDetail,
@@ -684,5 +686,104 @@ describe('새 JAM 조건 5종과 잼·챕터 3종 — 폼 입력·저장·복원
     expect(fields.chapterReached).toBe('3')
     expect(fields.capsuleOpenCount).toBe('')
     expect(fields.jamTotalEarned).toBe('')
+  })
+})
+
+describe('정수 칸의 소수·지수 표기는 저장 전에 막는다 (티켓 20261023_1748)', () => {
+  const message = (label: string, raw: string) =>
+    `${label}에는 정수만 쓸 수 있어요. 소수나 e가 든 값은 정수로 고쳐 주세요. (입력한 값: ${raw})`
+
+  it('입력 글자 → 읽기 → 저장 전 검사: «2.5»는 읽기에서 2로 잘리고, 저장 전 검사가 칸 이름과 함께 먼저 막는다', () => {
+    const fields = emptyFields({ totalCount: '2.5' })
+    // 읽기(int)는 그대로다 — 이 잘림 때문에 조립된 JSON만 보는 검사로는 문제를 잡지 못한다
+    expect(buildConditionJsonFromFields(fields)).toEqual({ total_count: 2 })
+    expect(findConditionIntegerError('activity', fields)).toBe(message('누적 활동 횟수', '2.5'))
+  })
+
+  it('«1e3»은 1로, «7.9»는 7로 읽히지만 저장 전에 막힌다', () => {
+    const exp = emptyFields({ streakDays: '1e3' })
+    expect(buildConditionJsonFromFields(exp)).toEqual({ streak_days: 1 })
+    expect(findConditionIntegerError('activity', exp)).toBe(message('연속 활동 일수', '1e3'))
+
+    const fraction = emptyFields({ weeklyCount: '7.9' })
+    expect(buildConditionJsonFromFields(fraction)).toEqual({ weekly_count: 7 })
+    expect(findConditionIntegerError('activity', fraction)).toBe(message('한 주(월~일) 최소 횟수', '7.9'))
+  })
+
+  it('«7»·«+7»·빈 칸은 통과한다', () => {
+    expect(findConditionIntegerError('activity', emptyFields({ totalCount: '7', streakDays: '+7' }))).toBeNull()
+    expect(findConditionIntegerError('activity', emptyFields())).toBeNull()
+  })
+
+  it('소수를 받는 칸의 소수는 막지 않는다', () => {
+    expect(findConditionIntegerError('activity', emptyFields({ distanceKm: '12.5', weekendDurationHours: '1.5' }))).toBeNull()
+  })
+
+  it('여러 칸이 틀리면 화면 순서로 첫 칸만 이름을 보이고 나머지는 칸 수로 알린다', () => {
+    const error = findConditionIntegerError('activity', emptyFields({ streakDays: '1.5', totalCount: '2.5', weeklyCount: '3.5' }))
+    expect(error).toBe(`${message('누적 활동 횟수', '2.5')} 이 밖에 2칸에도 정수가 아닌 값이 있어요.`)
+  })
+
+  it('체크인 배지는 보이지 않는 조건 칸을 검사하지 않는다 — 옛 입력 때문에 저장이 막히면 안 된다', () => {
+    const fields = emptyFields({ totalCount: '2.5' })
+    expect(findConditionIntegerError('checkin', fields)).toBeNull()
+    expect(findConditionIntegerError('activity', fields)).not.toBeNull()
+    expect(findConditionIntegerError('item', fields)).not.toBeNull()
+  })
+
+  it('월 목록의 소수 조각도 막는다', () => {
+    expect(findConditionIntegerError('activity', emptyFields({ month: '6, 7' }))).toBeNull()
+    expect(findConditionIntegerError('activity', emptyFields({ month: '6, 7.5' }))).toBe(message('해당 월', '7.5'))
+  })
+
+  it('2단 게이트·짝 입력·객체 조건 안쪽 개수 칸도 막는다', () => {
+    expect(findConditionIntegerError('activity', emptyFields({ crossInAxisFamilyKeys: 'a:b', crossInAxisMinCount: '1.5' }))).toBe(
+      message('축 내 교차의 필요 계열 수', '1.5')
+    )
+    expect(findConditionIntegerError('activity', emptyFields({ activitiesWithinHoursHours: '24', activitiesWithinHoursCount: '2.5' }))).toBe(
+      message('그 안의 활동 횟수', '2.5')
+    )
+    expect(findConditionIntegerError('activity', emptyFields({ checkinBadgeCountNames: '성수역', checkinBadgeCountCount: '1e1' }))).toBe(
+      message('보유 개수', '1e1')
+    )
+  })
+
+  describe('누락 방지 — 각 폼 state 키에 «2.5»를 넣었을 때 읽은 값이 «2»를 넣었을 때와 같으면 정수 목록에 있어야 한다', () => {
+    // 다른 칸을 모두 «2»로 채워 짝이 있어야 값이 만들어지는 칸(게이트·짝 입력·객체 조건)도 읽히게 한다
+    const base = Object.fromEntries(
+      Object.entries(emptyConditionFormFields()).map(([key, value]) => [key, typeof value === 'string' ? '2' : value])
+    ) as ConditionFormFields
+    const stringKeys = Object.entries(emptyConditionFormFields())
+      .filter(([, value]) => typeof value === 'string')
+      .map(([key]) => key)
+
+    /** 조립 결과가 «2.5»와 «2»에서 같고(소수가 잘렸고), 칸이 읽기에 쓰이는(«2»와 빈 칸이 다른) state 키 */
+    const truncated = stringKeys.filter((key) => {
+      const build = (value: string) => JSON.stringify(buildConditionJsonFromFields({ ...base, [key]: value }))
+      return build('2') !== build('') && build('2.5') === build('2')
+    })
+
+    it('소수가 잘리는 state 키가 있다 — 이 검사가 빈 표본으로 통과하지 않는다', () => {
+      expect(truncated).toEqual(expect.arrayContaining(['totalCount', 'month', 'crossInAxisMinCount', 'checkinCategoryCountCount']))
+    })
+
+    it('그 키마다 «2.5»를 넣으면 저장 전 검사가 그 칸을 짚는다', () => {
+      const notCaught = truncated.filter(
+        (key) => !findNonIntegerFormInputs({ ...base, [key]: '2.5' }).some((input) => input.field === key)
+      )
+      expect(notCaught).toEqual([])
+    })
+
+    it('«1e3»도 같다 — 1로 잘려 읽히는 키(«1e3»의 읽은 값이 «1»과 같다)는 모두 짚는다', () => {
+      const exponent = stringKeys.filter((key) => {
+        const build = (value: string) => JSON.stringify(buildConditionJsonFromFields({ ...base, [key]: value }))
+        return build('1') !== build('') && build('1e3') === build('1')
+      })
+      expect(exponent).toEqual(expect.arrayContaining(['totalCount', 'month']))
+      const notCaught = exponent.filter(
+        (key) => !findNonIntegerFormInputs({ ...base, [key]: '1e3' }).some((input) => input.field === key)
+      )
+      expect(notCaught).toEqual([])
+    })
   })
 })
