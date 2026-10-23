@@ -3,7 +3,8 @@ name: verify
 # 리뷰 브랜치(claude/**) push에서 scripts/verify.sh를 훅 없이 직접 실행해 결과를 커밋 상태(check)로
 # 남긴다 (티켓 20260921_2304, 근거: 20260921_2207 #1). staging push에서는 돌리지 않는다 —
 # 비공개 저장소라 GitHub Actions 무료 한도(요금제에 따라 월 2,000~3,000분)를 아끼기 위한
-# 2026-09-22 사용자 결정. 1주 실측 후 사용량에 여유가 있으면 staging 추가를 검토한다.
+# 2026-09-22 사용자 결정. 1주 실측에서 여유가 없어(리뷰 브랜치만 월 2,466~3,733분) 2026-10-23에
+# staging 추가를 보류로 정했다 (티켓 20260922_0205).
 #
 # jam-web·scripts·.githooks·.github를 건드리지 않은 push(문서만 변경)는 npm ci를 건너뛰고,
 # 설치 없이 도는 검사(check-slop·check-contract·gen-team-doc --check와 .claude/workflows 진입점
