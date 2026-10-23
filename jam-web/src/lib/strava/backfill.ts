@@ -169,7 +169,13 @@ async function resolveAccessToken(
   return refreshed.access_token
 }
 
-/** 유저의 `strava_activities` 전체를 읽는다 (PostgREST 기본 상한을 넘길 수 있으므로 페이지 분할) */
+/**
+ * 유저의 `strava_activities` 중 **인정된 활동**을 모두 읽는다 (PostgREST 기본 상한을 넘길 수 있으므로 페이지 분할).
+ *
+ * 걸러진 행(`filter_reason`이 있는 행)은 읽지 않는다 — 다시 계산하면 걸러진 활동의 `normalized`가 바뀌고(가상 종목은
+ * `jamActivityType`이 null이라 케이던스 보정도 달라진다) 갱신·대조 수에도 섞인다(티켓 20261017_1459). 옛 행은 열이 NULL이라
+ * 그대로 읽힌다 — 소급 재판정은 하지 않는다.
+ */
 async function fetchStoredActivities(
   supabase: SupabaseClient,
   userId: string
@@ -180,6 +186,7 @@ async function fetchStoredActivities(
       .from('strava_activities')
       .select('id, strava_id, normalized')
       .eq('user_id', userId)
+      .is('filter_reason', null) // 걸러진 활동은 다시 계산하지 않는다(티켓 20261017_1459)
       .order('start_date', { ascending: true })
       .range(offset, offset + DB_PAGE_SIZE - 1)
     if (error) throw new Error(`strava_activities 조회 실패: ${error.message}`)
