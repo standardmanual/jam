@@ -16,7 +16,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { VALIDATORS as CAPSULE_VALIDATORS, type CapsulePolicy } from '@/lib/capsule/policy'
+import { TIER_UP_MATERIAL_COUNT, TIER_UP_MATERIAL_RARITIES, tierUpProbabilities } from '@/lib/combine/tierUpOdds'
 import { VALIDATORS as JAM_VALIDATORS, type JamPolicy } from '@/lib/jam/policy'
+import type { BadgeRarity } from '@/types/database'
 
 /** 표 한 줄 — 라벨과 값 모두 화면에 그대로 쓰는 문자열이다 */
 export interface DisclosureRow {
@@ -30,9 +32,24 @@ export interface DisclosureTables {
   rarity: DisclosureRow[]
 }
 
+/** 등급 올리기 표 하나 — 넣은 등급 하나의 결과 등급 확률. 제목과 caption도 화면에 그대로 쓰는 문자열이다 */
+export interface TierUpMaterialDisclosure {
+  heading: string
+  caption: string
+  rows: DisclosureRow[]
+}
+
+/** 등급 올리기 — 재료 등급별 결과 등급 표와, 받는 아이템 배지의 트라이브 표(한 줄) */
+export interface TierUpDisclosure {
+  materials: TierUpMaterialDisclosure[]
+  tribe: DisclosureRow[]
+}
+
 export interface PolicyDisclosure {
   sync: DisclosureTables
   capsule: DisclosureTables
+  /** 등급 올리기 표(캡슐 설정에서 만든다). 읽는 칸은 캡슐 표와 같아 늘지 않는다 */
+  tierUp: TierUpDisclosure
   /** 보정 장치 문장(접지 않고 목록으로 보인다) */
   pity: string[]
 }
@@ -42,7 +59,7 @@ export type AmbientDisclosure = { mode: 'explicit'; rarity: DisclosureRow[] } | 
 export type DisclosureResult<T> = { ok: true; data: T } | { ok: false }
 
 export interface ProbabilityDisclosure {
-  /** 동기화·캡슐·보정 장치 세 섹션이 함께 쓴다. 두 정책 표 중 하나라도 못 읽으면 `ok: false` */
+  /** 동기화·캡슐·등급 올리기·보정 장치 네 섹션이 함께 쓴다. 두 정책 표 중 하나라도 못 읽으면 `ok: false` */
   policy: DisclosureResult<PolicyDisclosure>
   ambient: DisclosureResult<AmbientDisclosure>
 }
@@ -198,6 +215,34 @@ function buildCapsule(capsule: CapsuleDisclosureInput, jam: JamDisclosureInput):
   }
 }
 
+const RARITY_LABEL_BY_VALUE: Record<BadgeRarity, string> = {
+  common: 'Common',
+  rare: 'Rare',
+  epic: 'Epic',
+  mystic: 'Mystic',
+}
+
+/**
+ * 등급 올리기 표 — 재료 등급(`TIER_UP_MATERIAL_RARITIES` 순서)마다 «넣은 등급 이상» 줄을 만들고, 받는 아이템 배지의 트라이브 한 줄을 더한다.
+ * 확률은 서버 굴림이 쓰는 `tierUpProbabilities`로 만들어 페이지와 실제 결과가 갈라지지 않는다. 확률 0인 줄도 지우지 않는다.
+ */
+function buildTierUp(capsule: CapsuleDisclosureInput): TierUpDisclosure {
+  return {
+    materials: TIER_UP_MATERIAL_RARITIES.map((material) => {
+      const label = RARITY_LABEL_BY_VALUE[material]
+      return {
+        heading: `${label} ${TIER_UP_MATERIAL_COUNT}개를 넣으면`,
+        caption: `${label} 아이템 배지 ${TIER_UP_MATERIAL_COUNT}개를 넣었을 때 받는 등급 확률`,
+        rows: tierUpProbabilities(material, capsule).map(([rarity, probability]) => ({
+          label: RARITY_LABEL_BY_VALUE[rarity],
+          value: formatFraction(probability),
+        })),
+      }
+    }),
+    tribe: [{ label: '다른 트라이브의 것일 확률', value: formatFraction(capsule.other_tribe_probability) }],
+  }
+}
+
 /** 보정 장치 — 접지 않고 사실 문장으로만 적는다. 몇 번 남았는지 같은 개인 정보는 싣지 않는다 */
 function buildPity(capsule: CapsuleDisclosureInput, jam: JamDisclosureInput): string[] {
   return [
@@ -207,7 +252,7 @@ function buildPity(capsule: CapsuleDisclosureInput, jam: JamDisclosureInput): st
 }
 
 /**
- * 동기화·캡슐·보정 장치 표를 만든다. 등급 확률 합계가 100이 아니면 null이다(틀린 표를 보이지 않는다).
+ * 동기화·캡슐·등급 올리기·보정 장치 표를 만든다. 등급 확률 합계가 100이 아니면 null이다(틀린 표를 보이지 않는다).
  */
 export function buildPolicyDisclosure(capsule: CapsuleDisclosureInput, jam: JamDisclosureInput): PolicyDisclosure | null {
   const capsuleRarity = [capsule.rarity_common, capsule.rarity_rare, capsule.rarity_epic, capsule.rarity_mystic]
@@ -216,6 +261,7 @@ export function buildPolicyDisclosure(capsule: CapsuleDisclosureInput, jam: JamD
   return {
     sync: buildSync(jam),
     capsule: buildCapsule(capsule, jam),
+    tierUp: buildTierUp(capsule),
     pity: buildPity(capsule, jam),
   }
 }

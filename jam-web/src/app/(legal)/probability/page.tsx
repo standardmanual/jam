@@ -61,6 +61,19 @@ const AMBIENT_LOWERING_NOTE =
 
 const AMBIENT_RANDOM_TEXT = '지금은 놓을 때마다 등급 비율을 무작위로 정해요. 그래서 고정된 확률 표가 없어요.'
 
+/** 등급 올리기 소개 — 숫자가 없는 문장이라 읽기가 실패해도 남는다 */
+const TIER_UP_INTRO =
+  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 넣으면 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 같은 등급이 나올 수도 있어요. Mystic은 넣을 수 없어요.'
+
+/** 등급 올리기 등급 표 아래 문장 — 표의 값이 캡슐의 등급 확률에서 나왔다는 것과, 처음 뽑는 등급이라는 것을 한정한다 */
+const TIER_UP_ODDS_NOTE = `캡슐의 등급 확률에서 넣은 등급보다 낮은 등급을 빼고 남은 등급끼리 비율을 다시 맞춘 값이에요. ${LOWERING_NOTE} 넣은 등급보다 낮아지지는 않아요.`
+
+const TIER_UP_TRIBE_HEADING = '받는 아이템 배지'
+
+const TIER_UP_TRIBE_CAPTION = '등급 올리기에서 받는 아이템 배지의 트라이브'
+
+const TIER_UP_TRIBE_NOTE = `${TRIBE_NOTE} 받을 수 있는 아이템 배지가 여럿이면 모두 같은 확률로 골라요.`
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-4">
@@ -235,6 +248,42 @@ function AmbientSection({ ambient }: { ambient: DisclosureResult<AmbientDisclosu
   )
 }
 
+/**
+ * 등급 올리기 (티켓 20261022_2119 4회, 운영 로직 8.4·18.3절, 채원 사전 판정 2026-10-23).
+ *
+ * 레시피 없이 규칙으로 처리하는 믹스의 예외라 결과 등급이 확률로 정해진다. 넣은 등급(Common, Rare, Epic)마다 «넣은 등급 이상» 줄의 두 칸 표를 하나씩 보이고,
+ * 받는 아이템 배지의 트라이브 표를 하나 더 둔다. 값은 서버 굴림과 같은 함수(`tierUpProbabilities`)로 `disclosure.ts`가 만든다.
+ *
+ * 두 정책 표가 모두 읽혀야 보인다(캡슐 설정에서 만든 값이다). 읽기가 실패하면 소개 문장 뒤에 안내 한 개만 두고 표·Note·숫자를 모두 뺀다.
+ * 서버 굴림은 읽기에 실패하면 코드 상수 기본값으로 굴리지만 이 페이지는 값을 숨긴다(PRD 6절 알려진 차이).
+ * 링크·버튼은 두지 않는다. 믹스 화면으로 보내거나 «해 보세요»라고 하면 열기를 부추기게 된다(운영 로직 5.2절).
+ */
+function TierUpSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> }) {
+  return (
+    <Section title="등급 올리기">
+      <P>{TIER_UP_INTRO}</P>
+      {policy.ok ? (
+        <>
+          {policy.data.tierUp.materials.map((material) => (
+            <TableBlock key={material.heading} heading={material.heading} caption={material.caption} rows={material.rows} nowrapValue />
+          ))}
+          <Note>{TIER_UP_ODDS_NOTE}</Note>
+          <TableBlock
+            heading={TIER_UP_TRIBE_HEADING}
+            caption={TIER_UP_TRIBE_CAPTION}
+            rows={policy.data.tierUp.tribe}
+            nowrapValue
+            note={TIER_UP_TRIBE_NOTE}
+          />
+        </>
+      ) : (
+        // 가리킬 표가 없으므로 «처음 뽑는 등급이에요»·낮춤 문장·트라이브 문장도 함께 뺀다
+        <Unavailable />
+      )}
+    </Section>
+  )
+}
+
 function PitySection({ policy }: { policy: DisclosureResult<PolicyDisclosure> }) {
   return (
     <Section title="보정 장치">
@@ -275,11 +324,12 @@ export default async function ProbabilityPage() {
         <SyncSection policy={policy} />
         <CapsuleSection policy={policy} />
         <AmbientSection ambient={ambient} />
+        <TierUpSection policy={policy} />
 
         <Section title="확률이 없는 것">
           <P>
-            믹스, 잠긴 아이템 배지 열기, 액티비티 배지, 체크인 배지, 미션 보상, 유저가 직접 놓은 드랍에는 확률이 없어요. 믹스는 레시피에 정해진 결과가 나오고,
-            잠긴 아이템 배지는 받을 때 이미 무엇인지 정해져 있어요. 액티비티 배지와 체크인 배지는 조건을 채우면 받고, 미션 보상은 미션마다 정해져 있어요.
+            레시피로 하는 믹스, 잠긴 아이템 배지 열기, 액티비티 배지, 체크인 배지, 미션 보상, 유저가 직접 놓은 드랍에는 확률이 없어요. 레시피로 하는 믹스는 정해진
+            결과가 나오고, 잠긴 아이템 배지는 받을 때 이미 무엇인지 정해져 있어요. 액티비티 배지와 체크인 배지는 조건을 채우면 받고, 미션 보상은 미션마다 정해져 있어요.
           </P>
         </Section>
 
