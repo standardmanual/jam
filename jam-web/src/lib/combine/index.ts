@@ -60,13 +60,13 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
+import { burnMaterials, type InventorySlotState } from '@/lib/combine/burn'
 import { getPendingCount } from '@/lib/combine/pending'
 import { followUpCombineResultPoints } from '@/lib/combine/resultPointFollowUp'
 import { hasEndedResultBadge, recipeReleaseState } from '@/lib/combine/visibility'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import { awardMixSuccessScore, recordMixScoreFailure } from '@/lib/chapter/mix'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
-import type { ReleaseInventorySlotsResult } from '@/lib/inventory/slots'
 import type {
   CombinationRecipeRow,
   CombinationRecipeSlotRow,
@@ -124,12 +124,6 @@ export interface CombineAttemptOptions {
   /** 공개 전 레시피도 믹스를 허용한다(운영자 전용). 허용된 공개 전 믹스는 시험 믹스가 된다. */
   allowUnreleased?: boolean
 }
-
-/**
- * `combineRecipeAttempt()` 실행 중 갱신되는 `inventory.used_slots` 캐시 카운터의 로컬 사본.
- * 소각·지급이 일어날 때마다 이 값을 갱신하며 DB에도 함께 반영한다(20260912_2101).
- */
-type InventorySlotState = { id: string; used_slots: number; max_slots: number }
 
 /**
  * 유저가 선택한 레시피 하나만 검증한다(티켓 20260917_1427) — 이전 `combineItems()`처럼
@@ -261,74 +255,12 @@ export async function combineRecipeAttempt(
   // 3. 선택된 레시피의 슬롯 충족 여부만 판정한다(전체 레시피 스캔 없음).
   const matched = (await matchesRecipeSlots(supabase, userId, recipeSlots, badgeIds)) ? recipe : undefined
 
-  // 4. 원본 아이템 소각 — 성공/실패 무관 항상 소각
-  // 20260829_2101: 개체 파괴 방식이 소프트 삭제로 확정됐다(하드 삭제하면 CustodyEvent
-  // 이력이 고아가 된다) — DELETE 대신 destroyed_at을 세운다. 레이스 판정 방식은 동일한
-  // 원리를 유지한다: `.is('destroyed_at', null)`로 필터한 UPDATE는 Postgres가 행 단위로
-  // 원자 처리하므로, 동일 재료로 믹스 API를 동시에 2회 호출해도 먼저 커밋된 요청만
-  // itemIds 전체를 파괴하고 뒤늦은 요청은 이미 destroyed_at이 찍힌 행이라 매치되지 않는다.
-  // 개수가 요청한 itemIds와 다르면 레이스로 판단해 보상 지급 없이 중단한다.
-  // inventory_id도 함께 비운다 — 코드베이스 전반의 "owned = inventory_id IS NOT NULL"
-  // 조회 관례가 destroyed_at을 모르는 채로도 파괴된 개체를 자동으로 걸러내게 하기 위함
-  // (migrations/108 주석 참고).
-  const destroyedAt = new Date().toISOString()
-  const { data: destroyedRows, error: destroyError } = await supabase
-    .from('inventory_items')
-    .update({ destroyed_at: destroyedAt, inventory_id: null })
-    .in('id', itemIds)
-    .eq('inventory_id', inventory.id)
-    .is('destroyed_at', null)
-    .select('id')
-
-  if (destroyError) {
-    console.error('[combineRecipeAttempt] 아이템 소각 오류:', destroyError)
+  // 4. 원본 아이템 소각 — 성공/실패 무관 항상 소각. 소프트 삭제·칸 반환·Consume 이벤트는 공용 소각 단계(`burn.ts`)가 한다.
+  // 소각 행 수가 요청한 itemIds와 다르면(동시 믹스 시도) 보상 지급 없이 중단한다.
+  const burn = await burnMaterials(supabase, { userId, inventory, itemIds, logPrefix: '[combineRecipeAttempt]' })
+  if (!burn.ok) {
     await recordFailure(badgeIds, 'items_not_found', 0)
     return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
-  }
-
-  if (!destroyedRows || destroyedRows.length !== itemIds.length) {
-    console.error('[combineRecipeAttempt] 소각된 행 수 불일치 — 동시 믹스 시도로 판단, 처리 중단', {
-      expected: itemIds.length,
-      actual: destroyedRows?.length ?? 0,
-      userId,
-    })
-    await recordFailure(badgeIds, 'items_not_found', 0)
-    return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
-  }
-
-  // used_slots 감소 — 소각한 재료 개수만큼 인벤토리 칸을 반환한다(20260912_2101).
-  // release_inventory_slots() RPC(마이그레이션 173, 티켓 20260914_1813)가 inventory 행을
-  // 잠근 채로 감소시키므로, 아래 grantBadge()의 지급 증가와 같은 인벤토리 행을 두고
-  // 서로 다른 시점에 read-then-write하던 레이스가 사라진다. 클램프(GREATEST(0, ...))는
-  // RPC 내부에서 처리한다.
-  const { data: releaseRpcResult, error: releaseRpcError } = await supabase.rpc('release_inventory_slots', {
-    p_inventory_id: inventory.id,
-    p_count: destroyedRows.length,
-  })
-  if (releaseRpcError) {
-    console.error('[combineRecipeAttempt] release_inventory_slots RPC 오류:', releaseRpcError)
-  } else {
-    const releaseResult = releaseRpcResult as ReleaseInventorySlotsResult
-    if (releaseResult.ok) {
-      inventory.used_slots = releaseResult.usedSlots
-    } else {
-      console.error('[combineRecipeAttempt] release_inventory_slots 실패:', releaseResult.reason)
-    }
-  }
-
-  // Consume 이벤트 — actor 유저명을 스냅샷으로 기록한다(라이브 조인 의존 금지).
-  const { data: actorRaw } = await supabase.from('users').select('username').eq('id', userId).maybeSingle()
-  const actorUsername = (actorRaw as { username: string } | null)?.username ?? null
-  const consumeEventsQuery = supabase.from('custody_events')
-  const consumeEventsPayload = itemIds.map((id) => ({
-    inventory_item_id: id,
-    event_type: 'Consume' as const,
-    actor_user_id: userId,
-    actor_username: actorUsername,
-  }))
-  const { error: consumeEventError } = await consumeEventsQuery.insert(consumeEventsPayload)
-  if (consumeEventError) {
-    console.error('[combineRecipeAttempt] Consume 이벤트 기록 오류:', consumeEventError)
   }
 
   // 5-a. 매칭 성공 — 지정 보상 확정 지급 (확률 없음)
@@ -492,9 +424,10 @@ interface GrantResultsOutcome {
 
 /**
  * 지급된 개체의 «여는 데 필요한 양»을 `itemIds`와 같은 순서로 돌려준다(`combine_grant_results`가 입력 순서대로 개체 id를 준다).
+ * 등급 올리기(`tierUp.ts`, 티켓 20261022_2119 2회)가 잠긴 결과의 필요한 양을 읽을 때도 쓴다.
  * 선택 칸이라 읽지 못하면 던지지 않고 빈 배열을 돌려준다 — 값을 추측해 채우지 않고 응답에서 칸을 뺀다(티켓 20261018_0055 2회).
  */
-async function readUnlockRequired(supabase: ServiceClient, itemIds: string[]): Promise<(number | undefined)[]> {
+export async function readUnlockRequired(supabase: ServiceClient, itemIds: string[]): Promise<(number | undefined)[]> {
   if (itemIds.length === 0) return []
   const { data, error } = await supabase.from('inventory_items').select('id, unlock_required').in('id', itemIds)
   if (error) {
