@@ -1,14 +1,19 @@
 #!/usr/bin/env node
-// check-client-server-imports — 'use client' 파일이 값 import를 따라가다 서버 전용 모듈에 닿으면 실패한다
-// (티켓 20260924_1639). UsersFilterBar(클라이언트) → user-list → auth(서버 전용) 체인이 lint·타입 검사·
-// 단위 테스트·CI를 모두 통과하고 실렌더에서만 500으로 드러난 사고의 재발 방지다.
+// check-client-server-imports — 'use client' 파일이 값 import(동적 import() 포함)를 따라가다 서버 전용 모듈에
+// 닿으면 실패한다(티켓 20260924_1639, 동적 import() 추적은 20261017_1638). UsersFilterBar(클라이언트) →
+// user-list → auth(서버 전용) 체인이 lint·타입 검사·단위 테스트·CI를 모두 통과하고 실렌더에서만 500으로 드러난
+// 사고의 재발 방지다.
 //
 // 규칙
 //   - 시작점: jam-web/src 하위에서 첫 문장이 'use client' 지시문인 파일
-//   - 따라가는 간선: 값 import·export ... from·부수효과 import. `import type`, `export type ... from`,
-//     `{ type X }`만 있는 import는 런타임에 지워지므로 간선이 아니다
+//   - 따라가는 간선: 값 import·export ... from·부수효과 import, 그리고 동적 import('...'). `import type`,
+//     `export type ... from`, `{ type X }`만 있는 import는 런타임에 지워지므로 간선이 아니다.
+//     타입 위치의 import 타입(`import('x').Type`, `typeof import('x')`)도 지워지므로 간선이 아니다
 //   - 서버 전용 모듈: SERVER_ONLY_MODULES 목록의 파일, 그리고 next/headers 또는 server-only를 import하는 파일
-//   - 동적 import()는 따라가지 않는다(정적 도달만 본다)
+//   - 동적 import()도 따라간다. 이전에는 «동적 import()는 따라가지 않는다(정적 도달만 본다)»였으나 티켓
+//     20261017_1638에서 뒤집었다: 클라이언트 → connection-state.ts → `(await import('@/lib/supabase/server'))`
+//     모양을 Turbopack이 정적 import처럼 추적해 브라우저 번들에 next/headers가 들어갔고 /profile/edit이 500이
+//     됐는데, 이 검사는 통과했다. 지정자가 변수·보간 템플릿이라 해석할 수 없는 import()는 볼 수 없다
 //
 // 사용법: node scripts/check-client-server-imports.mjs
 //   종료 코드 0 = 통과, 1 = 위반 발견(도달 경로 출력)
@@ -38,7 +43,17 @@ export function isClientFile(src) {
   return /^\s*['"]use client['"]/.test(stripComments(src))
 }
 
-/** import 구문에서 모듈 지정자와 값 import 여부를 뽑는다. 값 import(런타임에 남는 것)만 돌려준다. */
+// 동적 import(): `(await import('x')).y`·`dynamic(() => import('x'))`처럼 줄 중간에도 나오므로 줄 첫머리로 묶지 않는다.
+// 앞에 [\w$.]가 오면 `loader.import(...)`·`reimport(...)`이므로 제외한다. 지정자가 문자열 또는 보간 없는 템플릿 리터럴일 때만
+// 읽는다(변수·보간은 해석할 수 없다). 두 번째 인자(import attributes)는 건너뛴다.
+// 뒤따르는 `.이름`은 group 4 — Promise 메서드(then·catch·finally)가 아니면 `import('x').Type` 형태의 타입 위치 참조다.
+const DYNAMIC_IMPORT_RE = /(?<![\w$.])import\s*\(\s*(?:'([^'\n]+)'|"([^"\n]+)"|`([^`$\n]+)`)(?:\s*,[^)]*)?\s*\)(?:\s*\.\s*([\w$]+))?/g
+const PROMISE_METHODS = new Set(['then', 'catch', 'finally'])
+
+/**
+ * import 구문에서 모듈 지정자를 뽑는다. 런타임에 남는 것만 돌려준다 — 정적 값 import·`export ... from`·부수효과 import,
+ * 그리고 동적 `import()`(티켓 20261017_1638). 번들러는 동적 import도 정적처럼 따라가 같은 번들에 싣는다.
+ */
 export function parseValueImports(src) {
   const code = stripComments(src)
   const specs = []
@@ -53,6 +68,14 @@ export function parseValueImports(src) {
   // 부수효과 import: import './x'
   const sideRe = /^[ \t]*import\s*['"]([^'"]+)['"]/gm
   while ((m = sideRe.exec(code))) specs.push(m[1])
+  // 동적 import()
+  DYNAMIC_IMPORT_RE.lastIndex = 0
+  while ((m = DYNAMIC_IMPORT_RE.exec(code))) {
+    const [, single, double, template, member] = m
+    if (member && !PROMISE_METHODS.has(member)) continue // import('x').Type — 타입 위치, 런타임에 지워진다
+    if (/\btypeof\s*$/.test(code.slice(0, m.index))) continue // typeof import('x') — 타입 위치
+    specs.push(single ?? double ?? template)
+  }
   return specs
 }
 
@@ -165,6 +188,7 @@ function main() {
   console.error(`check-client-server-imports 실패: 클라이언트 파일이 서버 전용 모듈에 닿습니다 (${violations.length}건)`)
   for (const route of violations) console.error(`  ${route.join(' → ')}`)
   console.error('  값 import를 `import type`으로 바꾸거나, 서버 전용 코드와 공유 상수를 다른 파일로 나눕니다.')
+  console.error('  동적 import()도 번들러가 정적 import처럼 따라가므로 같은 방식으로 풉니다(서버 쪽 호출부로 옮기기).')
   return 1
 }
 
