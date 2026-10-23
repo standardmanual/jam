@@ -9,7 +9,12 @@
  */
 import { rankingConditionError, usesNightCondition } from '@/lib/missions/condition-keys'
 import type { MissionScope } from '@/lib/admin/mission-tribes'
-import { missionConditionRangeError } from './missionConditionFields'
+import type { MissionType } from '@/types/database'
+import {
+  missionConditionRangeError,
+  missionIntegerInputError,
+  type MissionConditionFormFields,
+} from './missionConditionFields'
 
 /** 폼이 트라이브 체크 목록을 그리는 데 쓰는 트라이브 한 건 */
 export interface MissionFormTribe {
@@ -74,6 +79,10 @@ export interface MissionFormSaveInput {
   statusDisplayType: string
   /** 저장될 condition_json (폼 미리보기) */
   condition: unknown
+  /** 고른 미션 타입 — 어떤 정수 칸을 읽는지 가른다 */
+  missionType: MissionType
+  /** 조건 빌더가 들고 있는 입력 글자. `condition`은 이미 숫자라 «2.5»가 2로 잘린 뒤여서, 정수 검사는 이 글자를 본다 */
+  conditionFields: MissionConditionFormFields
 }
 
 /**
@@ -84,6 +93,9 @@ export function findMissionFormSaveError(input: MissionFormSaveInput): string | 
   if (input.scope === 'tribe' && input.allowedTribeIds.length === 0) {
     return '트라이브 미션은 참가할 수 있는 트라이브를 하나 이상 골라야 해요. 트라이브를 고르거나 공통 미션으로 바꿔 주세요.'
   }
+  // 정수 칸의 소수·지수 표기 — 조립된 값은 이미 2·1로 잘려 있어 범위 검사가 통과시키므로 입력 글자를 먼저 본다(티켓 20261023_1748)
+  const integerError = missionIntegerInputError(input.missionType, input.conditionFields)
+  if (integerError) return integerError
   // 입력 칸 범위 — 서버는 위임 키의 범위를 보지 않아, 도달할 수 없는 값은 폼이 먼저 막는다(티켓 20261021_1114 1회)
   const rangeError = missionConditionRangeError(input.condition)
   if (rangeError) return rangeError

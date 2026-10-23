@@ -33,7 +33,14 @@
  * 폼 목록으로 옮긴다(티켓 20261019_1312, 20261021_1114).
  */
 import type { ActivityType, DayOfWeek, MissionCondition, MissionType, MissionStreakSubset } from '@/types/database'
-import { getConditionField, type ConditionFormValues } from '@/lib/badge-engine/conditionRegistry'
+import {
+  describeNonIntegerInputs,
+  findNonIntegerFormInputs,
+  getConditionField,
+  isIntegerFormText,
+  type ConditionFormValues,
+  type NonIntegerFormInput,
+} from '@/lib/badge-engine/conditionRegistry'
 import {
   ENGINE_DELEGATED_CONDITION_KEY_LIST,
   MISSION_DB_CONDITION_KEY_LIST,
@@ -753,4 +760,82 @@ export function missionConditionRangeError(condition: unknown): string | null {
   }
   if (problems.length === 0) return null
   return `저장하지 못했어요. 허용 범위를 벗어난 조건이 있어요 — ${problems.join(', ')}. 범위 안의 값으로 고쳐서 다시 저장해 주세요.`
+}
+
+// ── 정수 칸 검사 (티켓 20261023_1748) ────────────────────────────────────
+
+/** 미션 쪽에서 직접 정수로 읽는 칸 하나. 칸 이름과 라벨은 `MissionConditionSection.tsx`의 칸과 같다 */
+interface MissionDirectIntegerInput {
+  field: keyof MissionConditionFormFields
+  label: string
+  /** 이 조건일 때만 읽는 칸 — 안 읽는 칸의 남은 글자 때문에 저장이 막히면 안 된다 */
+  readsWhen?: (fields: MissionConditionFormFields) => boolean
+}
+
+const filled = (value: string) => value.trim() !== ''
+
+/** 단순 타입이 직접 정수로 읽는 칸(`buildSimpleConditionJson`) — 타입마다 하나다. 나머지 단순 타입은 정수 칸이 없다 */
+const SIMPLE_TYPE_INTEGER_INPUTS: Partial<Record<MissionType, MissionDirectIntegerInput>> = {
+  activity_count: { field: 'count', label: '목표 활동 횟수' },
+  streak_days: { field: 'streakDays', label: '목표 연속 활동 일수' },
+  duration_minutes: { field: 'durationMinutes', label: '목표 단일 활동 시간' },
+}
+
+/**
+ * `engine_condition`에서 이 파일이 직접 정수로 읽는 미션 전용 칸(`buildEngineConditionJson`)의 화면 순서.
+ * 연속 주 수(`weeklyStreak`) 등 레지스트리가 아는 칸은 여기 없다 — 레지스트리의 정수 칸 목록이 맡는다.
+ * 주간·월간 최소 횟수는 연속 주·개월 수를 채워야 읽히고(화면에서도 그때만 켜진다), 부분집합 최소 횟수는 둘 중 하나가 있어야 읽힌다.
+ */
+export const MISSION_DIRECT_INTEGER_INPUTS: readonly MissionDirectIntegerInput[] = [
+  { field: 'weeklyStreakMinCount', label: '주간 최소 활동 횟수', readsWhen: (f) => filled(f.weeklyStreak) },
+  { field: 'monthlyStreak', label: '연속 개월 수' },
+  { field: 'monthlyStreakMinCount', label: '월간 최소 활동 횟수', readsWhen: (f) => filled(f.monthlyStreak) },
+  {
+    field: 'streakSubsetMinCount',
+    label: '부분집합 최소 횟수',
+    readsWhen: (f) => filled(f.weeklyStreak) || filled(f.monthlyStreak),
+  },
+  { field: 'distinctWeekdayCount', label: '서로 다른 요일 수' },
+  { field: 'distinctMonthsRequired', label: '서로 다른 달 수' },
+]
+
+function directIntegerProblems(
+  inputs: readonly MissionDirectIntegerInput[],
+  fields: MissionConditionFormFields
+): NonIntegerFormInput[] {
+  const found: NonIntegerFormInput[] = []
+  for (const { field, label, readsWhen } of inputs) {
+    if (readsWhen && !readsWhen(fields)) continue
+    const raw = fields[field]
+    if (typeof raw === 'string' && !isIntegerFormText(raw)) found.push({ field, label, raw: raw.trim() })
+  }
+  return found
+}
+
+/**
+ * 정수 칸에 정수가 아닌 글자(«2.5»·«1e3»)가 든 칸을 찾는다 — 저장될 값이 아니라 입력한 글자를 본다(`int()`는 «2.5»를 2로 잘라 읽는다).
+ * 미션 타입이 읽는 칸만 본다: 단순 타입은 그 타입의 목표 칸 하나, `engine_condition`은 화면에 그린 위임 키·미션 전용 칸·기록으로 세는 키 전부다.
+ * 다른 타입으로 바꾸기 전에 남은 글자는 저장되지 않는 값이라 보지 않는다.
+ */
+export function findMissionNonIntegerInputs(
+  missionType: MissionType,
+  fields: MissionConditionFormFields
+): NonIntegerFormInput[] {
+  if (missionType !== 'engine_condition') {
+    const simple = SIMPLE_TYPE_INTEGER_INPUTS[missionType]
+    return simple ? directIntegerProblems([simple], fields) : []
+  }
+  // 레지스트리에 입력 칸 정의가 없는 키(`day_of_week`·`jam_period_earned`)는 레지스트리 검사가 건너뛴다. 화면 순서는 위임 키 → 미션 전용 → 기록으로 세는 조건이다
+  const values = fields as unknown as ConditionFormValues
+  return [
+    ...findNonIntegerFormInputs(values, MISSION_ENGINE_DELEGATED_KEYS),
+    ...directIntegerProblems(MISSION_DIRECT_INTEGER_INPUTS, fields),
+    ...findNonIntegerFormInputs(values, MISSION_DB_FORM_KEYS),
+    ...directIntegerProblems([{ field: JAM_PERIOD_EARNED_INPUT.field, label: JAM_PERIOD_EARNED_INPUT.label }], fields),
+  ]
+}
+
+/** `findMissionNonIntegerInputs`의 결과를 배지 양식과 같은 문구 한 문장으로 만든다(없으면 null) */
+export function missionIntegerInputError(missionType: MissionType, fields: MissionConditionFormFields): string | null {
+  return describeNonIntegerInputs(findMissionNonIntegerInputs(missionType, fields))
 }

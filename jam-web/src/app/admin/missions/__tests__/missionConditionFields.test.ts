@@ -14,7 +14,9 @@ import {
   buildMissionConditionJson,
   emptyMissionConditionFields,
   filledMissionDbKeys,
+  findMissionNonIntegerInputs,
   missionConditionFieldsFrom,
+  missionIntegerInputError,
   unsupportedMissionConditionKeys,
   missionConditionRangeError,
   readDayOfWeek,
@@ -42,7 +44,7 @@ import {
   checkMissionCondition,
   checkMissionConditionValue,
 } from '@/lib/missions/condition-keys'
-import { getConditionField } from '@/lib/badge-engine/conditionRegistry'
+import { describeNonIntegerInputs, getConditionField } from '@/lib/badge-engine/conditionRegistry'
 import type { MissionCondition, MissionType } from '@/types/database'
 
 function fields(overrides: Partial<MissionConditionFormFields> = {}): MissionConditionFormFields {
@@ -701,6 +703,128 @@ const cases: Array<[string, () => void]> = [
       unsupportedMissionConditionKeys({ time_band_counts: [{ start: '05:00', end: '06:00', count: 1 }] }),
       ['time_band_counts']
     )
+  }],
+
+  // ── 정수 칸의 소수·지수 표기는 저장 전에 막는다 (티켓 20261023_1748) ─────────────
+  ['정수 검사(단순 타입): 입력 글자 «2.5»는 읽기에서 2로 잘리지만 검사가 칸 이름과 함께 짚는다', () => {
+    const f = fields({ count: '2.5' })
+    assert.deepStrictEqual(buildMissionConditionJson('activity_count', f), { count: 2 }) // 읽기는 그대로다
+    assert.deepStrictEqual(findMissionNonIntegerInputs('activity_count', f), [
+      { field: 'count', label: '목표 활동 횟수', raw: '2.5' },
+    ])
+    const exp = fields({ streakDays: '1e3' })
+    assert.deepStrictEqual(buildMissionConditionJson('streak_days', exp), { streak_days: 1 })
+    assert.deepStrictEqual(findMissionNonIntegerInputs('streak_days', exp), [
+      { field: 'streakDays', label: '목표 연속 활동 일수', raw: '1e3' },
+    ])
+    const fraction = fields({ durationMinutes: '7.9' })
+    assert.deepStrictEqual(buildMissionConditionJson('duration_minutes', fraction), { duration_minutes: 7 })
+    assert.deepStrictEqual(findMissionNonIntegerInputs('duration_minutes', fraction), [
+      { field: 'durationMinutes', label: '목표 단일 활동 시간', raw: '7.9' },
+    ])
+  }],
+  ['정수 검사(단순 타입): 소수를 받는 타입과 정수 칸이 없는 타입, 정수·빈 칸은 통과한다', () => {
+    assert.deepStrictEqual(findMissionNonIntegerInputs('distance', fields({ distanceKm: '12.5' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('elevation_gain_m', fields({ elevationM: '500.5' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('checkin', fields({ poiId: 'x' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('item_collect', fields({ badgeId: 'x' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('activity_count', fields({ count: '10' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('activity_count', fields({ count: '+10' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('activity_count', fields()), [])
+  }],
+  ['정수 검사: 다른 타입으로 바꾸기 전에 남은 글자는 저장되지 않는 값이라 막지 않는다', () => {
+    const stale = fields({ count: '2.5', streakDays: '1e3', distinctTimeBands: '2.5', weeklyActiveDays: '7.9' })
+    assert.deepStrictEqual(findMissionNonIntegerInputs('distance', stale), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('checkin', stale), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('duration_minutes', stale), [])
+    assert.strictEqual(findMissionNonIntegerInputs('activity_count', stale).length, 1) // 그 타입의 칸 하나만 본다
+    assert.strictEqual(findMissionNonIntegerInputs('streak_days', stale).length, 1)
+  }],
+  ['정수 검사(engine_condition): 위임 키·미션 전용 칸·기록으로 세는 키·잼 칸을 모두 짚는다', () => {
+    const cases: Array<[Partial<MissionConditionFormFields>, string, string]> = [
+      [{ distinctTimeBands: '2.5' }, 'distinctTimeBands', '서로 다른 시간대'],
+      [{ repeatCount: '1e3' }, 'repeatCount', '충족 횟수'],
+      [{ weeklyStreak: '3.5' }, 'weeklyStreak', '연속 주(월~일) 수'],
+      [{ monthlyStreak: '1e3' }, 'monthlyStreak', '연속 개월 수'],
+      [{ distinctWeekdayCount: '2.5' }, 'distinctWeekdayCount', '서로 다른 요일 수'],
+      [{ distinctMonthsRequired: '2.5' }, 'distinctMonthsRequired', '서로 다른 달 수'],
+      [{ weeklyActiveDays: '7.9' }, 'weeklyActiveDays', getConditionField('weekly_active_days')!.label],
+      [{ checkinBadgeCountNames: '성수역', checkinBadgeCountCount: '1.5' }, 'checkinBadgeCountCount', '보유 개수'],
+      [{ jamPeriodEarned: '2.5' }, 'jamPeriodEarned', JAM_PERIOD_EARNED_INPUT.label],
+    ]
+    for (const [overrides, field, label] of cases) {
+      const found = findMissionNonIntegerInputs('engine_condition', fields(overrides))
+      assert.strictEqual(found.length, 1, field)
+      assert.strictEqual(found[0].field, field)
+      assert.strictEqual(found[0].label, label)
+      assert.strictEqual(found[0].raw, (overrides as Record<string, string>)[field])
+    }
+  }],
+  ['정수 검사(engine_condition): 소수를 받는 칸은 막지 않는다', () => {
+    const decimals = fields({
+      distanceKm: '12.5',
+      elevationM: '500.5',
+      minSpeedKmh: '8.5',
+      weekendDurationHours: '1.5',
+      distinctMonthsRequired: '2',
+      distinctMonthsThreshold: '30.5',
+      maxSpeedKmh: '31.5',
+    })
+    assert.deepStrictEqual(findMissionNonIntegerInputs('engine_condition', decimals), [])
+  }],
+  ['정수 검사(engine_condition): 안 읽히는 칸의 남은 글자는 막지 않는다 (연속 주·개월 수가 비면 최소 횟수 칸이 꺼진다)', () => {
+    assert.deepStrictEqual(findMissionNonIntegerInputs('engine_condition', fields({ weeklyStreakMinCount: '1.5' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('engine_condition', fields({ monthlyStreakMinCount: '1.5' })), [])
+    assert.deepStrictEqual(findMissionNonIntegerInputs('engine_condition', fields({ streakSubsetMinCount: '1.5' })), [])
+    // 읽히면 막는다
+    const weekly = findMissionNonIntegerInputs('engine_condition', fields({ weeklyStreak: '3', weeklyStreakMinCount: '1.5' }))
+    assert.deepStrictEqual(weekly.map((i) => i.field), ['weeklyStreakMinCount'])
+    const monthly = findMissionNonIntegerInputs('engine_condition', fields({ monthlyStreak: '3', monthlyStreakMinCount: '1.5' }))
+    assert.deepStrictEqual(monthly.map((i) => i.field), ['monthlyStreakMinCount'])
+    const subset = findMissionNonIntegerInputs('engine_condition', fields({ monthlyStreak: '3', streakSubsetMinCount: '1.5' }))
+    assert.deepStrictEqual(subset.map((i) => i.field), ['streakSubsetMinCount'])
+  }],
+  ['정수 검사: 여러 칸이면 화면 순서대로 모으고, 문구는 배지 양식과 같은 함수가 만든다', () => {
+    const f = fields({ distinctTimeBands: '2.5', monthlyStreak: '1e3', jamPeriodEarned: '3.5', weeklyActiveDays: '7.9' })
+    const found = findMissionNonIntegerInputs('engine_condition', f)
+    assert.deepStrictEqual(found.map((i) => i.field), ['distinctTimeBands', 'monthlyStreak', 'weeklyActiveDays', 'jamPeriodEarned'])
+    const message = missionIntegerInputError('engine_condition', f)
+    assert.strictEqual(message, describeNonIntegerInputs(found))
+    assert.strictEqual(
+      message,
+      '서로 다른 시간대에는 정수만 쓸 수 있어요. 소수나 e가 든 값은 정수로 고쳐 주세요. (입력한 값: 2.5) 이 밖에 3칸에도 정수가 아닌 값이 있어요.'
+    )
+    assert.ok(!/[—–]/.test(message ?? ''), '엠대시를 쓰지 않는다')
+    assert.strictEqual(missionIntegerInputError('engine_condition', fields({ distinctTimeBands: '3' })), null)
+  }],
+  ['정수 검사 누락 방지: 각 폼 state 키에 «2.5»를 넣었을 때 읽은 값이 «2»를 넣었을 때와 같으면 그 타입의 검사가 그 칸을 짚는다', () => {
+    const missionTypes: MissionType[] = [
+      'distance', 'checkin', 'activity_count', 'item_collect', 'streak_days', 'duration_minutes', 'elevation_gain_m', 'engine_condition',
+    ]
+    // 다른 칸을 모두 «2»로 채워 연속 주·개월 수가 있어야 읽히는 칸도 읽히게 한다
+    const base = Object.fromEntries(
+      Object.entries(emptyMissionConditionFields()).map(([key, value]) => [key, typeof value === 'string' ? '2' : value])
+    ) as MissionConditionFormFields
+    const stringKeys = Object.entries(emptyMissionConditionFields())
+      .filter(([, value]) => typeof value === 'string')
+      .map(([key]) => key as keyof MissionConditionFormFields)
+
+    const truncated = new Set<string>()
+    for (const missionType of missionTypes) {
+      for (const key of stringKeys) {
+        const build = (value: string) => JSON.stringify(buildMissionConditionJson(missionType, { ...base, [key]: value }))
+        if (build('2') === build('') || build('2.5') !== build('2')) continue
+        truncated.add(key)
+        const flagged = findMissionNonIntegerInputs(missionType, { ...base, [key]: '2.5' }).map((i) => i.field)
+        assert.ok(flagged.includes(key), `${missionType}의 ${key}: «2.5»가 2로 잘리는데 검사가 짚지 않는다`)
+      }
+    }
+    // 빈 표본으로 통과하지 않는다 — 단순 타입 칸, 레지스트리 위임 칸, 미션 전용 칸, 기록으로 세는 칸, 잼 칸이 모두 들어온다
+    for (const key of ['count', 'streakDays', 'durationMinutes', 'distinctTimeBands', 'weeklyStreakMinCount', 'monthlyStreak',
+      'monthlyStreakMinCount', 'streakSubsetMinCount', 'distinctWeekdayCount', 'distinctMonthsRequired', 'weeklyActiveDays',
+      'checkinBadgeCountCount', 'jamPeriodEarned']) {
+      assert.ok(truncated.has(key), `표본에 ${key}가 없다`)
+    }
   }],
 ]
 

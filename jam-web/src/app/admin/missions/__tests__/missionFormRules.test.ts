@@ -20,11 +20,13 @@ import {
   rankingFrameNotice,
   sortMissionFormTribes,
   NIGHT_SAFETY_NOTICE,
+  type MissionFormSaveInput,
   type MissionFormTribe,
 } from '../missionFormRules'
 import {
   buildMissionConditionJson,
   emptyMissionConditionFields,
+  missionConditionRangeError,
   type MissionConditionFormFields,
 } from '../missionConditionFields'
 import { checkMissionCondition, rankingConditionError, usesNightCondition } from '@/lib/missions/condition-keys'
@@ -39,6 +41,17 @@ const BOTH = { capsule_open_count: 3, time_range: { start: '23:00', end: '04:00'
 
 function fields(overrides: Partial<MissionConditionFormFields> = {}): MissionConditionFormFields {
   return { ...emptyMissionConditionFields(), ...overrides }
+}
+
+/**
+ * 저장 전 검사 호출 — 미션 타입과 입력 글자를 따로 정하지 않는 사례용이다. 입력 칸이 비어 있어 정수 검사는 통과하고,
+ * 이 사례들이 보려는 트라이브·틀·범위 검사만 남는다(티켓 20261023_1748에서 두 입력이 필수가 됐다).
+ */
+function saveError(
+  input: Omit<MissionFormSaveInput, 'missionType' | 'conditionFields'> &
+    Partial<Pick<MissionFormSaveInput, 'missionType' | 'conditionFields'>>
+): string | null {
+  return findMissionFormSaveError({ missionType: 'engine_condition', conditionFields: fields(), ...input })
 }
 
 function tribe(overrides: Partial<MissionFormTribe> & { id: string }): MissionFormTribe {
@@ -105,18 +118,18 @@ const cases: Array<[string, () => void]> = [
   // ── 저장 전 검사 ────────────────────────────────────────────────────────
   ['저장 전 검사: 트라이브 미션은 트라이브를 1개 이상 골라야 한다', () => {
     const base = { statusDisplayType: 'achievement', condition: { distance_km: 10 } }
-    const error = findMissionFormSaveError({ ...base, scope: 'tribe', allowedTribeIds: [] })
+    const error = saveError({ ...base, scope: 'tribe', allowedTribeIds: [] })
     assert.ok(error && error.includes('트라이브를 하나 이상 골라야 해요'))
-    assert.strictEqual(findMissionFormSaveError({ ...base, scope: 'tribe', allowedTribeIds: [A] }), null)
+    assert.strictEqual(saveError({ ...base, scope: 'tribe', allowedTribeIds: [A] }), null)
   }],
   ['저장 전 검사: 공통 미션은 트라이브 선택이 없어도 된다', () => {
     assert.strictEqual(
-      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: { distance_km: 10 } }),
+      saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: { distance_km: 10 } }),
       null
     )
   }],
   ['저장 전 검사: 랭킹형으로 정해진 채 밤 조건이면 저장 전에 알리고 틀을 바꾸라고 안내한다', () => {
-    const error = findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'ranking', condition: NIGHT })
+    const error = saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'ranking', condition: NIGHT })
     assert.ok(error)
     assert.ok(error.includes('지금 랭킹형으로 정해져 있어서'))
     assert.ok(error.includes('밤 조건'))
@@ -135,7 +148,7 @@ const cases: Array<[string, () => void]> = [
     for (const frame of ['achievement', 'individual']) {
       for (const condition of [NIGHT, CAPSULE, BOTH]) {
         assert.strictEqual(
-          findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition }),
+          saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition }),
           null,
           `${frame} ${JSON.stringify(condition)}`
         )
@@ -144,20 +157,20 @@ const cases: Array<[string, () => void]> = [
   }],
   ['저장 전 검사: 랭킹형이어도 막힐 조건이 없으면 통과한다', () => {
     assert.strictEqual(
-      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'ranking', condition: MORNING }),
+      saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'ranking', condition: MORNING }),
       null
     )
   }],
   ['저장 전 검사: 입력 범위를 벗어난 위임 키 값은 어떤 틀에서도 저장 전에 알린다 (20261021_1114 1회)', () => {
     const condition = buildMissionConditionJson('engine_condition', fields({ distinctTimeBands: '9', avgWatts: '300' }))
     for (const frame of ['achievement', 'individual', 'ranking']) {
-      const error = findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
+      const error = saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
       assert.ok(error && error.includes('서로 다른 시간대 9개(허용 범위 2~6개)'), `${frame}: ${error}`)
       assert.ok(error.includes('범위 안의 값으로 고쳐서 다시 저장해 주세요'))
     }
     const inRange = buildMissionConditionJson('engine_condition', fields({ distinctTimeBands: '3', avgWatts: '300' }))
     assert.strictEqual(
-      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: inRange }),
+      saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: inRange }),
       null
     )
   }],
@@ -167,7 +180,7 @@ const cases: Array<[string, () => void]> = [
       fields({ weeklyActiveDays: '8', jamPeriodEarned: '0', checkinBadgeCountNames: '성수역', checkinBadgeCountCount: '0' })
     )
     for (const frame of ['achievement', 'individual', 'ranking']) {
-      const error = findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
+      const error = saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
       assert.ok(error, frame)
       assert.ok(error.includes('주간 활동일 8일(허용 범위 1~7일의 정수)'), `${frame}: ${error}`)
       assert.ok(error.includes('기간 동안 모은 잼 0잼(허용 범위 1~1000000잼의 정수)'), `${frame}: ${error}`)
@@ -179,7 +192,7 @@ const cases: Array<[string, () => void]> = [
       fields({ weeklyActiveDays: '7', jamPeriodEarned: '300', checkinBadgeCountNames: '성수역', checkinBadgeCountCount: '1' })
     )
     assert.strictEqual(
-      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: inRange }),
+      saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: inRange }),
       null
     )
   }],
@@ -187,7 +200,74 @@ const cases: Array<[string, () => void]> = [
     const condition = buildMissionConditionJson('distance', fields({ distanceKm: '10', weeklyActiveDays: '8' }))
     assert.deepStrictEqual(condition, { distance_km: 10 })
     assert.strictEqual(
-      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition }),
+      saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition }),
+      null
+    )
+  }],
+  ['저장 전 검사: 정수 칸의 «2.5»는 조립된 값이 2라 범위 검사를 통과하지만, 입력 글자를 보는 검사가 먼저 칸 이름과 함께 막는다 (20261023_1748)', () => {
+    const conditionFields = fields({ distinctTimeBands: '2.5' })
+    const condition = buildMissionConditionJson('engine_condition', conditionFields)
+    assert.deepStrictEqual(condition, { distinct_time_bands: 2 }) // 읽기에서 이미 잘렸다
+    assert.strictEqual(missionConditionRangeError(condition), null) // 조립된 값만 보면 2~6 범위 안이라 통과한다
+    for (const frame of ['achievement', 'individual', 'ranking']) {
+      const error = saveError({
+        scope: 'common',
+        allowedTribeIds: [],
+        statusDisplayType: frame,
+        condition,
+        missionType: 'engine_condition',
+        conditionFields,
+      })
+      assert.strictEqual(
+        error,
+        '서로 다른 시간대에는 정수만 쓸 수 있어요. 소수나 e가 든 값은 정수로 고쳐 주세요. (입력한 값: 2.5)',
+        frame
+      )
+    }
+  }],
+  ['저장 전 검사: «1e3»은 1로 읽히고, 단순 타입(활동 횟수)에서도 입력 글자를 본다 (20261023_1748)', () => {
+    const conditionFields = fields({ count: '1e3' })
+    const condition = buildMissionConditionJson('activity_count', conditionFields)
+    assert.deepStrictEqual(condition, { count: 1 })
+    const error = saveError({
+      scope: 'common',
+      allowedTribeIds: [],
+      statusDisplayType: 'achievement',
+      condition,
+      missionType: 'activity_count',
+      conditionFields,
+    })
+    assert.strictEqual(error, '목표 활동 횟수에는 정수만 쓸 수 있어요. 소수나 e가 든 값은 정수로 고쳐 주세요. (입력한 값: 1e3)')
+  }],
+  ['저장 전 검사: 정수 검사는 범위 검사보다 먼저, 트라이브 검사보다는 나중이다 (20261023_1748)', () => {
+    const conditionFields = fields({ distinctTimeBands: '9.5' }) // 읽으면 9라 범위 밖이기도 하다
+    const condition = buildMissionConditionJson('engine_condition', conditionFields)
+    const error = saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition, conditionFields })
+    assert.ok(error && error.includes('정수만 쓸 수 있어요') && !error.includes('허용 범위'), String(error))
+    const tribeError = saveError({ scope: 'tribe', allowedTribeIds: [], statusDisplayType: 'achievement', condition, conditionFields })
+    assert.ok(tribeError && tribeError.includes('트라이브를 하나 이상 골라야 해요'), String(tribeError))
+  }],
+  ['저장 전 검사: 정수를 쓰거나 소수를 받는 칸이면 통과한다 (20261023_1748)', () => {
+    const conditionFields = fields({ distinctTimeBands: '3', avgWatts: '300', distanceKm: '12.5' })
+    const condition = buildMissionConditionJson('engine_condition', conditionFields)
+    assert.strictEqual(
+      saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition, conditionFields }),
+      null
+    )
+  }],
+  ['저장 전 검사: 다른 타입으로 바꾸기 전에 남은 소수 글자는 저장되지 않는 값이라 막지 않는다 (20261023_1748)', () => {
+    const conditionFields = fields({ distanceKm: '10', count: '2.5', distinctTimeBands: '2.5' })
+    const condition = buildMissionConditionJson('distance', conditionFields)
+    assert.deepStrictEqual(condition, { distance_km: 10 })
+    assert.strictEqual(
+      saveError({
+        scope: 'common',
+        allowedTribeIds: [],
+        statusDisplayType: 'achievement',
+        condition,
+        missionType: 'distance',
+        conditionFields,
+      }),
       null
     )
   }],
