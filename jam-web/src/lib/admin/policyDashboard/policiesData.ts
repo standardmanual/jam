@@ -1179,6 +1179,20 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     ticketId: '20261021_1250',
   },
   {
+    id: 'ch18-probability-change-log',
+    chapter: 18,
+    chapterTitle: '안전과 확률 안내',
+    title: '확률 안내의 «바뀐 날짜» 표 자동 기록',
+    type: 'code_constant',
+    currentSpec:
+      '밸런스 설정 변경 이력 중 확률 안내에 반영되는 저장만 읽어 한 번의 저장을 한 줄로 기록(KST 날짜, «칸 이름 + 전 값 + 후 값»), 맨 아래는 «처음 열었어요» 고정 줄, 변경 메모와 바꾼 사람은 보이지 않음',
+    dbTable: 'balance_setting_changes',
+    codeLocation: 'jam-web/src/lib/probability/changeLog.ts',
+    userExperience: '확률이 바뀐 날짜와 내용을 /probability 맨 아래 표에서 직접 확인할 수 있어요.',
+    basisDoc: '운영 로직 18.3절',
+    ticketId: '20261022_1700',
+  },
+  {
     id: 'ch18-probability-pre-notice',
     chapter: 18,
     chapterTitle: '안전과 확률 안내',
