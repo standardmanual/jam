@@ -17,7 +17,10 @@ import {
   findCrossGateShapeError,
   findRarityLevelError,
   findConditionShapeSaveError,
+  findConditionShapeSaveWarning,
 } from '../badge-condition-guards'
+import { collectRepeatOccurrences, unconsumedRepeatConditionKeys } from '@/lib/badge-engine/repeatOccurrences'
+import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
 
 const badge = { name: '테스트 배지', family_key: 'running:test' }
@@ -407,5 +410,116 @@ describe('findConditionShapeSaveError — 네 검사를 한 진입점에서 돌�
 
   it('조건이 없으면 통과한다', () => {
     expect(findConditionShapeSaveError(badge, null)).toBeNull()
+  })
+})
+
+describe('⑧ 회차 조건에 회차 판정이 다루지 못하는 키가 끼면 저장은 되고 경고가 붙는다 (티켓 20261021_1426)', () => {
+  const activityBadge = { name: '테스트 배지', family_key: 'running:test', type: 'activity' as const, admin_category: null }
+
+  // 엔진(`collectRepeatOccurrences`)이 실제로 어떻게 세는지 같이 본다 — 경고가 엔진과 어긋나지 않는다는 증거다.
+  const activity: NormalizedActivity = {
+    stravaId: 1,
+    name: '시험 활동',
+    distanceKm: 10,
+    movingTimeSec: 4200,
+    elevationGainM: 50,
+    jamActivityType: 'running',
+    startDate: '2026-01-10T05:30:00Z',
+    startDateLocal: '2026-01-10T05:30:00',
+    averageSpeedKmh: 10,
+    startLatLng: null,
+    endLatLng: null,
+    weatherTempC: null,
+  }
+
+  describe('경고가 붙는 조합 — 엔진이 회차를 0으로 처리한다', () => {
+    it('계절 필터가 낀 회차 조건은 경고한다 — 현상·원인·해결책이 모두 들어 있다', () => {
+      const condition: BadgeCondition = { repeat_count: 5, duration_minutes: 60, season: 'winter' }
+      const warning = findConditionShapeSaveWarning(activityBadge, condition)
+      expect(warning).not.toBeNull()
+      expect(warning).toContain('발급되지 않아요') // 현상
+      expect(warning).toContain('계절(season)') // 어느 키가 원인인지
+      expect(warning).toContain('0회로 처리해요') // 원인
+      expect(warning).toContain('빼 주세요') // 해결책
+      // 엔진도 같은 조건을 0회로 센다 — 조건을 만족하는 활동이 있어도 회차는 비어 있다
+      expect(collectRepeatOccurrences(condition, [activity])).toHaveLength(0)
+    })
+
+    it('엔진이 소비하지 않는 키가 여럿이면 전부 나열한다', () => {
+      const warning = findConditionShapeSaveWarning(activityBadge, { repeat_count: 5, season: 'winter', total_count: 10 })
+      expect(warning).toContain('계절(season)')
+      expect(warning).toContain('total_count')
+    })
+
+    it('나열하는 키는 엔진이 쓰는 unconsumedRepeatConditionKeys 결과와 같다 — 어드민에 키 목록을 따로 두지 않는다', () => {
+      const condition: BadgeCondition = { repeat_count: 5, season: 'winter', total_count: 10 }
+      const unconsumed = unconsumedRepeatConditionKeys(condition)
+      expect(unconsumed).toEqual(['season', 'total_count'])
+      const warning = findConditionShapeSaveWarning(activityBadge, condition)
+      for (const key of unconsumed) expect(warning).toContain(`(${key})`)
+    })
+  })
+
+  describe('경고가 없는 조합 — 엔진이 회차를 센다', () => {
+    it('회차 판정이 다루는 키만 있으면 경고하지 않는다', () => {
+      const condition: BadgeCondition = { repeat_count: 5, duration_minutes: 60, activity_type: 'running' }
+      expect(findConditionShapeSaveWarning(activityBadge, condition)).toBeNull()
+      // 엔진은 같은 조건에서 회차를 센다
+      expect(collectRepeatOccurrences(condition, [activity])).toHaveLength(1)
+    })
+
+    it('기간 단위 회차(streak_days)는 엔진이 전용 계산으로 세므로 경고하지 않는다', () => {
+      expect(findConditionShapeSaveWarning(activityBadge, { repeat_count: 2, streak_days: 3 })).toBeNull()
+    })
+
+    it('휴식 키 1개와 그 짝 필드(휴식 회차)는 경고하지 않는다', () => {
+      expect(findConditionShapeSaveWarning(activityBadge, { repeat_count: 2, rest_after_streak: 2, streak_days: 6 })).toBeNull()
+    })
+
+    it('repeat_count가 없으면 다른 키가 있어도 경고하지 않는다', () => {
+      expect(findConditionShapeSaveWarning(activityBadge, { season: 'winter', duration_minutes: 60 })).toBeNull()
+    })
+
+    it('조건이 없으면 경고하지 않는다', () => {
+      expect(findConditionShapeSaveWarning(activityBadge, null)).toBeNull()
+    })
+  })
+
+  describe('엔진이 회차를 세기 전에 다른 사유로 끝내는 조건은 알리지 않는다 — 회차 0이 원인이 아니다', () => {
+    it('mission_reward·poi_id', () => {
+      expect(findConditionShapeSaveWarning(activityBadge, { repeat_count: 1, mission_reward: true })).toBeNull()
+      expect(findConditionShapeSaveWarning(activityBadge, { repeat_count: 1, poi_id: 'poi-1' })).toBeNull()
+    })
+
+    it('알 수 없는 필드가 낀 조건 — 엔진이 먼저 «알 수 없는 필드»로 끝낸다', () => {
+      const condition = { repeat_count: 5, not_a_key: 1 } as unknown as BadgeCondition
+      expect(findConditionShapeSaveWarning(activityBadge, condition)).toBeNull()
+    })
+
+    it('형태가 틀린 repeat_count — 엔진이 «형태 오류»로 먼저 끝낸다', () => {
+      expect(findConditionShapeSaveWarning(activityBadge, { repeat_count: 0, season: 'winter' })).toBeNull()
+      expect(
+        findConditionShapeSaveWarning(activityBadge, { repeat_count: '5', season: 'winter' } as unknown as BadgeCondition)
+      ).toBeNull()
+    })
+
+    it('저장 자체가 막히는 조합은 오류가 먼저 나가므로 경고를 겹치지 않는다', () => {
+      const condition: BadgeCondition = { repeat_count: 3, rest_after_streak: 2, streak_days: 6, return_gap_days: 10, season: 'winter' }
+      expect(findConditionShapeSaveError(activityBadge, condition)).not.toBeNull()
+      expect(findConditionShapeSaveWarning(activityBadge, condition)).toBeNull()
+    })
+  })
+
+  describe('엔진이 평가하지 않는 배지는 알리지 않는다', () => {
+    const condition: BadgeCondition = { repeat_count: 5, season: 'winter' }
+
+    it('활동 배지가 아니면(아이템·체크인) 경고하지 않는다', () => {
+      expect(findConditionShapeSaveWarning({ ...activityBadge, type: 'item' }, condition)).toBeNull()
+      expect(findConditionShapeSaveWarning({ ...activityBadge, type: 'checkin' }, condition)).toBeNull()
+    })
+
+    it('JAM! 카테고리는 활동 엔진 후보에서 빠지므로 경고하지 않는다', () => {
+      expect(findConditionShapeSaveWarning({ ...activityBadge, admin_category: 'jam' }, condition)).toBeNull()
+    })
   })
 })

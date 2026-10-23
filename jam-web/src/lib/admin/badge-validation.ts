@@ -10,6 +10,7 @@ import type { SaveBlock } from '@/lib/missions/reward-badges'
 // **같은 문자열**을 쓰려면 이 파일(→ drop-engine → next/headers)을 import할 수 없다.
 import {
   findConditionShapeSaveError,
+  findConditionShapeSaveWarning,
   findUnpairedConditionError,
   findRepeatRestConflictError,
   findUsageMetricRepeatConflictError,
@@ -20,6 +21,7 @@ import type { BadgeCondition, BadgeRow } from '@/types/database'
 
 export {
   findConditionShapeSaveError,
+  findConditionShapeSaveWarning,
   findUnpairedConditionError,
   findRepeatRestConflictError,
   findUsageMetricRepeatConflictError,
