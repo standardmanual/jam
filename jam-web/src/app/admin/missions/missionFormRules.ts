@@ -19,6 +19,12 @@ export interface MissionFormTribe {
   sortOrder: number
 }
 
+/** 폼이 «기록으로 세는 조건»의 장소 카테고리 선택 칸을 그리는 데 쓰는 장소 카테고리 한 건(`poi_categories`, 티켓 20261021_1114 2회) */
+export interface MissionFormPoiCategory {
+  slug: string
+  label: string
+}
+
 /** 유저 화면에 붙는 밤 조건 안전 안내를 운영자에게 알리는 문구(`14 안전과 윤리.md` 2절) */
 export const NIGHT_SAFETY_NOTICE =
   '유저 화면에 안전 안내가 늘 붙어요. 이름과 설명은 활동을 권하지 않고 기념하는 말로 써 주세요.'

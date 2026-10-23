@@ -161,6 +161,36 @@ const cases: Array<[string, () => void]> = [
       null
     )
   }],
+  ['저장 전 검사: 기록으로 세는 조건의 입력 범위를 벗어난 값은 어떤 틀에서도 저장 전에 알린다 (20261021_1114 2회)', () => {
+    const condition = buildMissionConditionJson(
+      'engine_condition',
+      fields({ weeklyActiveDays: '8', jamPeriodEarned: '0', checkinBadgeCountNames: '성수역', checkinBadgeCountCount: '0' })
+    )
+    for (const frame of ['achievement', 'individual', 'ranking']) {
+      const error = findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
+      assert.ok(error, frame)
+      assert.ok(error.includes('주간 활동일 8일(허용 범위 1~7일의 정수)'), `${frame}: ${error}`)
+      assert.ok(error.includes('기간 동안 모은 잼 0잼(허용 범위 1~1000000잼의 정수)'), `${frame}: ${error}`)
+      assert.ok(error.includes('지정 체크인 배지 보유 개수 0개'), `${frame}: ${error}`)
+      assert.ok(error.includes('범위 안의 값으로 고쳐서 다시 저장해 주세요'))
+    }
+    const inRange = buildMissionConditionJson(
+      'engine_condition',
+      fields({ weeklyActiveDays: '7', jamPeriodEarned: '300', checkinBadgeCountNames: '성수역', checkinBadgeCountCount: '1' })
+    )
+    assert.strictEqual(
+      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition: inRange }),
+      null
+    )
+  }],
+  ['저장 전 검사: 복합 조건이 아닌 타입은 입력 칸에 남은 기록으로 세는 조건의 범위를 보지 않는다 (저장되지 않는 값이라서)', () => {
+    const condition = buildMissionConditionJson('distance', fields({ distanceKm: '10', weeklyActiveDays: '8' }))
+    assert.deepStrictEqual(condition, { distance_km: 10 })
+    assert.strictEqual(
+      findMissionFormSaveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: 'achievement', condition }),
+      null
+    )
+  }],
 
   // ── 요청 본문 ───────────────────────────────────────────────────────────
   ['요청 본문: 트라이브 미션은 고른 목록을 보내고, 공통 미션은 빈 목록으로 제한을 푼다', () => {

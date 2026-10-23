@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { readAllowedTribeIds } from '@/lib/admin/mission-tribes'
 import type { MissionRow } from '@/types/database'
 import MissionForm from '../MissionForm'
+import { loadMissionFormPoiCategories } from '../missionFormPoiCategories'
 import { loadMissionFormTribes } from '../missionFormTribes'
 
 export default async function EditMissionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,10 +44,11 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
   const poiLabel = poiRow ? `${poiRow.name} [${poiRow.category}]` : undefined
 
   // 참가할 수 있는 트라이브(티켓 20261019_1318). 읽지 못하면 던져서 다시 시도 화면이 받는다 — 트라이브 제한이 «없음»으로
-  // 보이는 채로 양식이 열리면 저장하는 순간 제한이 풀린다.
-  const [tribes, allowedTribeIds] = await Promise.all([
+  // 보이는 채로 양식이 열리면 저장하는 순간 제한이 풀린다. 장소 카테고리 선택지(티켓 20261021_1114 2회)도 같은 방식이다.
+  const [tribes, allowedTribeIds, poiCategories] = await Promise.all([
     loadMissionFormTribes(supabase),
     readAllowedTribeIds(supabase, mission.id),
+    loadMissionFormPoiCategories(supabase),
   ])
 
   return (
@@ -62,6 +64,7 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
         badgeLabels={badgeLabels}
         poiLabel={poiLabel}
         tribes={tribes}
+        poiCategories={poiCategories}
         allowedTribeIds={allowedTribeIds}
       />
     </div>

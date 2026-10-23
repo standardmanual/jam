@@ -29,8 +29,13 @@ const tribes: MissionFormTribe[] = [
   { id: C, name: '옛 트라이브', isActive: false, sortOrder: 3 },
 ]
 
+const poiCategories = [
+  { slug: 'train_subway', label: '지하철역' },
+  { slug: 'cafe', label: '카페' },
+]
+
 function render(overrides: Partial<Props> = {}): string {
-  const props: Props = { badgeLabels: [], tribes, ...overrides }
+  const props: Props = { badgeLabels: [], tribes, poiCategories, ...overrides }
   return renderToStaticMarkup(<MissionForm {...props} />).replace(/<!-- -->/g, '')
 }
 
@@ -222,9 +227,165 @@ describe('MissionForm — 시간대·요일·계절·운동 속성 입력 칸 (�
     expect(out).toMatch(/id="mc-eng-avgWatts"[^>]*min="0"[^>]*max="2000"/)
   })
 
-  it('DB 기록 키는 이번 회차 대상이 아니라 여전히 보존 안내를 띄운다', () => {
+  it('DB 기록 키는 2회에서 입력 칸이 생겨 보존 안내 대신 칸에 값을 채워 연다', () => {
     const out = render({ mission: engine({ capsule_open_count: 3 }) })
 
-    expect(out).toContain('capsule_open_count 값이 이미 설정돼 있어요')
+    expect(out).not.toContain('값이 이미 설정돼 있어요')
+    expect(out).toMatch(/id="mc-eng-capsuleOpenCount"[^>]*value="3"/)
+  })
+})
+
+describe('MissionForm — 기록으로 세는 조건 입력 칸 (티켓 20261021_1114 2회)', () => {
+  const RECIPE = '00000000-0000-0000-0000-0000000000aa'
+  const ALL = {
+    combine_attempt_count: 10,
+    combine_success_count: 5,
+    combine_fail_count: 3,
+    recipe_first_success: { recipe_id: RECIPE },
+    cross_tribe_combine_success_count: 2,
+    drop_item_count: 4,
+    pickup_item_count: 6,
+    pickup_from_user_count: 2,
+    picked_up_by_user_count: 3,
+    mission_complete_count: 3,
+    collection_complete_count: 1,
+    capsule_open_count: 7,
+    locked_item_open_count: 2,
+    locked_item_pickup_count: 1,
+    weekly_active_days: 4,
+    same_spot_checkin_days: 12,
+    new_checkin_badge_count: 5,
+    checkin_category_count: { category: 'train_subway', count: 2 },
+    checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
+    jam_period_earned: 300,
+  }
+
+  function engine(condition: Record<string, unknown>): MissionRow {
+    return mission({ mission_type: 'engine_condition', status_display_type: 'individual', condition_json: condition })
+  }
+
+  it('복합 조건 미션은 「기록으로 세는 조건」 구역과 한 줄 설명, 소제목 6개를 정해진 순서로 그린다', () => {
+    const out = render({ mission: engine({ distance_km: 10 }) })
+
+    expect(out).toContain('기록으로 세는 조건')
+    expect(out).toContain('참가한 뒤 미션 기간 안의 기록만 세요.')
+    const titles = ['믹스', '드랍·픽업', '완료 수', '캡슐·잠긴 아이템 배지', '날짜·체크인', '잼']
+    const area = out.slice(out.indexOf('기록으로 세는 조건'))
+    // 소제목은 각자 묶음의 라벨(aria-labelledby)이다. 같은 글자가 다른 곳에 있어도 묶음 id로 순서를 확인한다
+    const positions = titles.map((_, i) => area.indexOf(`id="mc-db-group-${i}"`))
+    expect(positions.every((p) => p >= 0)).toBe(true)
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+    titles.forEach((title, i) => {
+      expect(area).toMatch(new RegExp(`id="mc-db-group-${i}"[^>]*>${title}</p>`))
+    })
+  })
+
+  it('복합 조건이 아니면 「기록으로 세는 조건」 구역을 그리지 않는다', () => {
+    const out = render({ mission: mission() })
+
+    expect(out).not.toContain('기록으로 세는 조건')
+    expect(out).not.toContain('mc-db-group-')
+  })
+
+  it('20개 키가 든 미션은 입력 칸마다 기존 값을 채워 열고 보존 안내를 띄우지 않는다', () => {
+    const out = render({ mission: engine(ALL) })
+
+    expect(out).not.toContain('값이 이미 설정돼 있어요')
+    const valueOf = (id: string, value: string) => expect(out).toMatch(new RegExp(`id="mc-eng-${id}"[^>]*value="${value}"`))
+    valueOf('combineAttemptCount', '10')
+    valueOf('combineSuccessCount', '5')
+    valueOf('combineFailCount', '3')
+    valueOf('recipeFirstSuccessRecipeId', RECIPE)
+    valueOf('crossTribeCombineSuccessCount', '2')
+    valueOf('dropItemCount', '4')
+    valueOf('pickupItemCount', '6')
+    valueOf('pickupFromUserCount', '2')
+    valueOf('pickedUpByUserCount', '3')
+    valueOf('missionCompleteCount', '3')
+    valueOf('collectionCompleteCount', '1')
+    valueOf('capsuleOpenCount', '7')
+    valueOf('lockedItemOpenCount', '2')
+    valueOf('lockedItemPickupCount', '1')
+    valueOf('weeklyActiveDays', '4')
+    valueOf('sameSpotCheckinDays', '12')
+    valueOf('newCheckinBadgeCount', '5')
+    valueOf('checkinCategoryCountCount', '2')
+    valueOf('checkinBadgeCountNames', '성수역, 왕십리역')
+    valueOf('checkinBadgeCountCount', '1')
+    valueOf('jamPeriodEarned', '300')
+    // 장소 카테고리는 선택 칸이다
+    expect(out).toContain('id="mc-eng-checkinCategoryCountCategory"')
+  })
+
+  it('수치 칸에는 라벨·단위·범위를 건다 (주간 활동일 1~7일, 모은 잼 1~1,000,000잼, 체크인 개수 1~1,000,000개)', () => {
+    const out = render({ mission: engine({ distance_km: 10 }) })
+
+    expect(out).toMatch(/id="mc-eng-weeklyActiveDays"[^>]*min="1"[^>]*max="7"/)
+    expect(out).toMatch(/id="mc-eng-sameSpotCheckinDays"[^>]*min="1"[^>]*max="3650"/)
+    expect(out).toMatch(/id="mc-eng-newCheckinBadgeCount"[^>]*min="1"[^>]*max="100000"/)
+    expect(out).toMatch(/id="mc-eng-combineSuccessCount"[^>]*min="1"[^>]*max="1000000"/)
+    expect(out).toMatch(/id="mc-eng-jamPeriodEarned"[^>]*min="1"[^>]*max="1000000"/)
+    // 레지스트리에 범위가 없는 객체형 두 키의 안쪽 개수도 같은 범위를 건다
+    expect(out).toMatch(/id="mc-eng-checkinCategoryCountCount"[^>]*min="1"[^>]*max="1000000"/)
+    expect(out).toMatch(/id="mc-eng-checkinBadgeCountCount"[^>]*min="1"[^>]*max="1000000"/)
+    expect(out).toContain('주간 활동일')
+    expect(out).toContain('믹스 시도 횟수')
+  })
+
+  it('기간 동안 모은 잼은 사용자가 정한 라벨·단위·도움말로 그린다', () => {
+    const out = render({ mission: engine({ distance_km: 10 }) })
+
+    expect(out).toContain('기간 동안 모은 잼')
+    expect(out).toMatch(/id="mc-eng-jamPeriodEarned-suffix"[^>]*>잼</)
+    expect(out).toContain('참가한 뒤 미션 기간 안에 모은 잼만 세요. 참가 전에 모은 잼은 포함되지 않아요.')
+  })
+
+  it('배지 기준으로 적힌 레지스트리 도움말은 미션 말로 바꿔 보인다 («발급»·«가입한 날부터» 없이)', () => {
+    const out = render({ mission: engine({ distance_km: 10 }) })
+
+    expect(out).toContain('이 레시피를 가장 먼저 성공한 1명만 달성해요')
+    expect(out).not.toContain('발급돼요')
+    expect(out).not.toContain('가입한 날부터')
+    // 바꾸지 않은 칸은 레지스트리 도움말 그대로다
+    expect(out).toContain('서로 다른 아이템만 세요. 같은 아이템을 다시 놓아도 1개예요.')
+  })
+
+  it('기간을 걸 수 없는 키 5개는 입력 칸이 없다', () => {
+    const out = render({ mission: engine({ distance_km: 10 }) })
+
+    for (const id of ['jamTotalEarned', 'chapterReached', 'daysSinceSignup', 'otherTribeItemKindsCount', 'signupRecentActiveDays']) {
+      expect(out).not.toContain(`id="mc-eng-${id}"`)
+    }
+    for (const label of ['가입 경과일', '최근 30일 활동일', '다른 트라이브 아이템 배지 종류 수']) {
+      expect(out).not.toContain(label)
+    }
+  })
+
+  it('복합 조건이 아닌 타입에 기록으로 세는 조건이 입력돼 있으면 경고 박스만 보인다 (값은 지우지 않는다)', () => {
+    const out = render({ mission: mission({ condition_json: { distance_km: 10, capsule_open_count: 3 } }) })
+
+    expect(out).toContain(
+      '이 미션 타입에서는 기록으로 세는 조건이 저장되지 않아요. 저장하면 지금 입력한 조건이 지워져요. 조건을 남기려면 타입을 원래대로 되돌려 주세요.'
+    )
+    // 입력 칸 구역 자체는 복합 조건에서만 보인다
+    expect(out).not.toContain('기록으로 세는 조건</p>')
+    expect(out).not.toContain('id="mc-eng-capsuleOpenCount"')
+  })
+
+  it('경고는 기록으로 세는 조건이 입력돼 있을 때만 보인다', () => {
+    const notice = '이 미션 타입에서는 기록으로 세는 조건이 저장되지 않아요'
+    expect(render({ mission: mission() })).not.toContain(notice)
+    expect(render({ mission: engine(ALL) })).not.toContain(notice)
+    expect(render({ mission: engine({ distance_km: 10 }) })).not.toContain(notice)
+    expect(render()).not.toContain(notice)
+  })
+
+  it('장소 카테고리는 선택 칸과 개수 칸 둘로 그린다 (선택지 목록 자체는 열어야 그려져 서버 렌더에는 없다)', () => {
+    const out = render({ mission: engine({ checkin_category_count: { category: 'train_subway', count: 2 } }) })
+
+    expect(out).toContain('장소 카테고리')
+    expect(out).toMatch(/<button[^>]*role="combobox"[^>]*id="mc-eng-checkinCategoryCountCategory"[^>]*aria-label="장소 카테고리"/)
+    expect(out).toMatch(/id="mc-eng-checkinCategoryCountCount"[^>]*value="2"/)
+    expect(out).toContain('보유 개수')
   })
 })
