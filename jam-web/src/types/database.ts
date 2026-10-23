@@ -638,6 +638,11 @@ export interface CombinePolicyRow {
   id: number
   /** 레시피 미매칭 시 지급하는 고정 포인트 — 0이면 미지급 */
   fail_reward_points: number
+  /**
+   * 등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률(0~1, 기본 0.7). 나머지는 같은 등급이다.
+   * 마이그레이션 287(티켓 20261023_1648). 칸이 DB에 없어도 `getCombinePolicy`가 기본값으로 채운다.
+   */
+  tier_up_probability: number
   updated_at: string
 }
 

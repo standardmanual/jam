@@ -75,6 +75,48 @@ describe('getCombinePolicy — 조회 실패 시 기본 정책 폴백 + 로그',
   })
 })
 
+describe('getCombinePolicy — 등급 올리기 윗등급 확률 tier_up_probability (마이그레이션 287, 티켓 20261023_1648)', () => {
+  it('기본 정책의 윗등급 확률은 0.7 — DB DEFAULT(마이그레이션 287)와 같다', () => {
+    expect(DEFAULT_COMBINE_POLICY.tier_up_probability).toBe(0.7)
+  })
+
+  it('칸이 DB에 없는 행(마이그레이션 287 적용 전)이면 그 칸만 기본값 0.7로 채우고 다른 칸은 DB 값을 쓴다', async () => {
+    // POLICY_ROW에는 tier_up_probability가 없다
+    expect('tier_up_probability' in POLICY_ROW).toBe(false)
+    const policy = await getCombinePolicy()
+    expect(policy.tier_up_probability).toBe(0.7)
+    expect(policy.fail_reward_points).toBe(7)
+  })
+
+  it('칸이 있으면 DB 값을 그대로 돌려준다 (숫자와 NUMERIC 문자열 둘 다)', async () => {
+    stub.row = { ...POLICY_ROW, tier_up_probability: 0.5 }
+    expect((await getCombinePolicy()).tier_up_probability).toBe(0.5)
+    stub.row = { ...POLICY_ROW, tier_up_probability: '0.25' }
+    expect((await getCombinePolicy()).tier_up_probability).toBe(0.25)
+  })
+
+  it('경계값 0과 1을 기본값으로 덮지 않는다', async () => {
+    stub.row = { ...POLICY_ROW, tier_up_probability: 0 }
+    expect((await getCombinePolicy()).tier_up_probability).toBe(0)
+    stub.row = { ...POLICY_ROW, tier_up_probability: '1' }
+    expect((await getCombinePolicy()).tier_up_probability).toBe(1)
+  })
+
+  it('숫자로 읽을 수 없는 값(null·문자열)이면 기본값 0.7로 채운다', async () => {
+    stub.row = { ...POLICY_ROW, tier_up_probability: null }
+    expect((await getCombinePolicy()).tier_up_probability).toBe(0.7)
+    stub.row = { ...POLICY_ROW, tier_up_probability: 'abc' }
+    expect((await getCombinePolicy()).tier_up_probability).toBe(0.7)
+  })
+
+  it('조회 실패 폴백에도 윗등급 확률 0.7이 들어 있다', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    stub.selectError = { code: 'PGRST116', message: 'no rows' }
+    expect((await getCombinePolicy()).tier_up_probability).toBe(0.7)
+    spy.mockRestore()
+  })
+})
+
 describe('updateCombinePolicy — upsert 실패 전파', () => {
   it('upsert error를 받으면 예외를 던진다 (이전에는 삼켰다)', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
