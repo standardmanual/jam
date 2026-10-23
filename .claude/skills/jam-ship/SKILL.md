@@ -42,8 +42,8 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 
 ### 코드 품질
 - [ ] `scripts/verify.sh` 통과 — main push는 `.githooks/pre-push`가 `JAM_SHIP=1` 여부만 보고
-  lint·typecheck·test를 다시 돌리지 않는다(staging push는 lint와 기준 방어만, 리뷰 브랜치 push는
-  전체 verify와 CI를 돈다. staging과 main에는 CI가 없다). 이 단계가 승격 전 유일한 재검증이다.
+  lint·typecheck·test를 다시 돌리지 않는다(staging push는 로컬에서 lint와 기준 방어만 돌고 CI `verify`가 더해진다,
+  리뷰 브랜치 push는 전체 verify와 CI를 돈다. main에는 CI가 없다). 이 단계가 승격 전 유일한 재검증이다.
   로컬 `staging`을 `SHIP_SHA`에 맞춘 뒤(`git merge --ff-only <SHIP_SHA>`, `git rev-parse HEAD`로 확인) 돌린다.
 
 ### 보안

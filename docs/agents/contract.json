@@ -269,6 +269,18 @@
       {
         "text": "매일·주 1회 종합으로 이미 돈다",
         "reason": "카즈하의 예약 점검은 2026-10-07 예약 루틴 삭제로 돌지 않는다. scheduled-jobs.md 머리말 참고 (티켓 20261007_1956)"
+      },
+      {
+        "text": "staging과 main에는 CI가 없다",
+        "reason": "2026-10-23 .github/workflows/verify.yml의 push 트리거에 staging을 추가했다. CI가 없는 브랜치는 main뿐이다 (티켓 20260922_0205, 20261023_2318)"
+      },
+      {
+        "text": "staging push에는 아직 CI가 없다",
+        "reason": "2026-10-23 staging push에도 verify 워크플로가 돈다 (티켓 20261023_2318)"
+      },
+      {
+        "text": "CI는 리뷰 브랜치에만 있습니다",
+        "reason": "2026-10-23부터 CI는 리뷰 브랜치와 staging에 있다. main에만 없다 (티켓 20261023_2318)"
       }
     ]
   },

@@ -1,10 +1,10 @@
 name: verify
 
-# 리뷰 브랜치(claude/**) push에서 scripts/verify.sh를 훅 없이 직접 실행해 결과를 커밋 상태(check)로
-# 남긴다 (티켓 20260921_2304, 근거: 20260921_2207 #1). staging push에서는 돌리지 않는다 —
-# 저장소가 비공개였을 때 GitHub Actions 무료 한도(요금제에 따라 월 2,000~3,000분)를 아끼기 위한
-# 2026-09-22 사용자 결정이다. 2026-10-23 저장소를 공개로 전환해 이 한도 제약이 없어졌으므로
-# staging 추가 여부는 비용 이외의 기준으로 다시 정한다 (티켓 20260922_0205).
+# 리뷰 브랜치(claude/**)와 staging push에서 scripts/verify.sh를 훅 없이 직접 실행해 결과를
+# 커밋 상태(check)로 남긴다 (티켓 20260921_2304, 근거: 20260921_2207 #1). staging은 처음에
+# 제외했다. 저장소가 비공개였을 때 GitHub Actions 무료 한도(요금제에 따라 월 2,000~3,000분)를
+# 아끼기 위한 2026-09-22 사용자 결정이었다. 2026-10-23 저장소를 공개로 전환해 그 제약이
+# 없어졌고, 같은 날 사용자가 staging 추가를 결정했다 (티켓 20260922_0205, 구현 20261023_2318).
 #
 # jam-web·scripts·.githooks·.github를 건드리지 않은 push(문서만 변경)는 npm ci를 건너뛰고,
 # 설치 없이 도는 검사(check-slop·check-contract·gen-team-doc --check와 .claude/workflows 진입점
@@ -14,11 +14,14 @@ on:
   push:
     branches:
       - "claude/**"
+      - staging
 
 # 이 워크플로는 저장소를 읽기만 한다. 저장소 기본값(현재 read)이 바뀌어도 쓰기 권한을 받지 않도록 명시한다.
 permissions:
   contents: read
 
+# 같은 브랜치에 push가 이어지면 앞 실행은 취소된다(staging도 같다). 취소된 커밋의 check는
+# cancelled로 남고, 마지막 push의 실행 결과가 그 브랜치 끝의 검증이다.
 concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
@@ -51,6 +54,11 @@ jobs:
           else
             git fetch origin staging --quiet
             base="$(git merge-base HEAD origin/staging || true)"
+            # staging push의 폴백은 병합 기준점이 HEAD 자신이라 변경 파일이 비고, 그러면 가벼운 검사로
+            # 잘못 분류된다. 기준점이 HEAD와 같으면 비교 기준이 없는 것으로 보고 전체 검증으로 간다.
+            if [ "$base" = "$(git rev-parse HEAD)" ]; then
+              base=""
+            fi
           fi
 
           if [ -z "$base" ]; then
