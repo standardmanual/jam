@@ -83,9 +83,9 @@ function item(id: string, rarity: InventoryItemWithBadge['badge']['rarity']): In
     id,
     badge_id: `badge-${id}`,
     serial_prefix: null,
-    serial_number: null,
+    serial_number: 1,
     badge: { id: `badge-${id}`, name: `배지 ${id}`, image_url: null, rarity },
-  } as InventoryItemWithBadge
+  }
 }
 
 function many(prefix: string, rarity: InventoryItemWithBadge['badge']['rarity'], count: number) {
