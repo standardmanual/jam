@@ -13,12 +13,18 @@ const NON_TEST_PATTERNS = ['**/node_modules/**', '**/*.stories.@(js|jsx|mjs|ts|t
 const exclude = (config.test?.exclude ?? []) as string[];
 const fileExcludes = exclude.filter((p) => !NON_TEST_PATTERNS.includes(p));
 
+// `src` 아래 파일 전체(jam-web 기준 상대 경로, `/` 구분). `fs.globSync`는 @types/node 20에 선언이 없다.
+const srcFiles = (fs.readdirSync(path.join(ROOT, 'src'), { encoding: 'utf8', recursive: true }) as string[])
+  .map((p) => `src/${p.split(path.sep).join('/')}`)
+  .filter((p) => fs.statSync(path.join(ROOT, p)).isFile());
+
 // 제외 패턴 하나가 가리키는 파일(jam-web 기준 상대 경로). 앞의 `**/`만 와일드카드로 푼다.
 function resolveExclude(pattern: string): string[] {
-  return fs.globSync(pattern, { cwd: path.join(ROOT, 'src') }).map((p) => path.join('src', p));
+  const tail = pattern.replace(/^\*\*\//, '');
+  return srcFiles.filter((p) => p === tail || p.endsWith(`/${tail}`));
 }
 
-// `test:node` 스크립트의 `for f in <목록>; do` 부분을 파일 경로로 펼친다.
+// `test:node` 스크립트의 `for f in <목록>; do` 부분을 파일 경로로 펼친다. 파일 이름 자리의 `*`만 푼다.
 function testNodeFiles(): string[] {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as {
     scripts: Record<string, string>;
@@ -27,7 +33,16 @@ function testNodeFiles(): string[] {
   return listed
     .split(/\s+/)
     .filter(Boolean)
-    .flatMap((token) => fs.globSync(token, { cwd: ROOT }));
+    .flatMap((token) => {
+      if (!token.includes('*')) return [token];
+      // 이 저장소의 목록은 `dir/*.test.ts` 꼴(`*` 하나)뿐이다
+      const dir = path.posix.dirname(token);
+      const [head, tail] = path.posix.basename(token).split('*');
+      return fs
+        .readdirSync(path.join(ROOT, dir))
+        .filter((f) => f.length >= head.length + tail.length && f.startsWith(head) && f.endsWith(tail))
+        .map((f) => `${dir}/${f}`);
+    });
 }
 
 describe('vitest 제외 목록', () => {
