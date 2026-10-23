@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import {
+  isIssuableBook,
   listIssueCandidates,
   pickItemBadge,
   pickWithRarityFallback,
@@ -381,6 +382,35 @@ describe('listIssueCandidates / pickItemBadge — 후보', () => {
     const books = [book('b1'), book('b9', { tribe_id: OTHER_TRIBE })]
     const badges = [badge('mine', 'b1'), badge('theirs', 'b9')]
     expect(ids(listIssueCandidates({ ...base, tribeId: OTHER_TRIBE, books, badges }))).toEqual(['theirs'])
+  })
+})
+
+describe('isIssuableBook — 발급할 수 있는 컬렉션 (등급 올리기의 고른 컬렉션 검사와 후보 목록이 같은 판정을 쓴다)', () => {
+  it('소속 트라이브의 활성이고 드랍 제외가 아니며 공개 기간 안인 컬렉션이다', () => {
+    expect(isIssuableBook(book('b1'), MY_TRIBE, NOW)).toBe(true)
+    expect(isIssuableBook(book('b1', { valid_from: '2026-10-01T00:00:00Z', valid_until: '2026-11-01T00:00:00Z' }), MY_TRIBE, NOW)).toBe(true)
+  })
+
+  it('다른 트라이브·트라이브 없음·비활성·드랍 제외·공개 전·공개 끝은 아니다', () => {
+    expect(isIssuableBook(book('b1', { tribe_id: OTHER_TRIBE }), MY_TRIBE, NOW)).toBe(false)
+    expect(isIssuableBook(book('b1', { tribe_id: null }), MY_TRIBE, NOW)).toBe(false)
+    expect(isIssuableBook(book('b1', { is_active: false }), MY_TRIBE, NOW)).toBe(false)
+    expect(isIssuableBook(book('b1', { drop_excluded: true }), MY_TRIBE, NOW)).toBe(false)
+    expect(isIssuableBook(book('b1', { valid_from: '2026-11-01T00:00:00Z' }), MY_TRIBE, NOW)).toBe(false)
+    expect(isIssuableBook(book('b1', { valid_until: '2026-10-01T00:00:00Z' }), MY_TRIBE, NOW)).toBe(false)
+  })
+
+  it('후보 목록과 같은 판정이다 — 이 함수가 거짓인 컬렉션의 배지는 후보에 없다', () => {
+    const closed = [
+      book('c1', { tribe_id: OTHER_TRIBE }),
+      book('c2', { is_active: false }),
+      book('c3', { drop_excluded: true }),
+      book('c4', { valid_from: '2026-11-01T00:00:00Z' }),
+      book('c5', { valid_until: '2026-10-01T00:00:00Z' }),
+    ]
+    const badges = closed.map((b) => badge(`in-${b.id}`, b.id))
+    for (const b of closed) expect(isIssuableBook(b, MY_TRIBE, NOW), b.id).toBe(false)
+    expect(listIssueCandidates({ tribeId: MY_TRIBE, rarity: 'common', now: NOW, books: closed, badges })).toEqual([])
   })
 })
 

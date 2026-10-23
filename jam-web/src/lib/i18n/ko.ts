@@ -2031,7 +2031,7 @@ export const ko = {
     /**
      * 등급 올리기 — 티켓 20261022_2119 3회 (채원 사전 판정 2026-10-23, 사용자 승인). 레시피 없이 규칙으로 처리하는 믹스 화면의 별도 기능이다(운영 로직 8.4절).
      * 확률 숫자·퍼센트는 어떤 문구에도 쓰지 않는다(UX 라이팅 §3.3). «운이 좋으면 윗등급»을 숨기지 않되 «항상 올라간다»로 읽히는 제목(「등급이 올랐어요」)은 쓰지 않는다.
-     * 소각 전 거절 문구(`noCandidate`·`invalidMaterials`·`invalidCount`)는 `/api/combine/tier-up`(2회)도 같은 키를 참조한다(ADR 0001).
+     * 소각 전 거절 문구(`noCandidate`·`invalidMaterials`·`invalidCount`·`invalidCollection`)는 `/api/combine/tier-up`(2회)도 같은 키를 참조한다(ADR 0001).
      * 재료 소모·받지 않은 결과·이용 정지·잠긴 개체 안내는 믹스 문구(`itemsNotFound`·`pendingResultsExist` 등)를 그대로 쓴다.
      */
     tierUp: {
@@ -2065,8 +2065,10 @@ export const ko = {
       resultSame: '{rarity} 아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요',
       /** 결과 오버레이 한 줄 — 응답에 등급이 없어 비교할 수 없을 때. 등급을 지어내지 않는다 */
       resultUnknown: '아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요',
-      /** 소각 전 거절 `no_candidate` — 「후보」는 유저 화면에 쓰지 않는 말이다(§3.3) */
-      noCandidate: '지금은 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 조금 뒤에 다시 해주세요.',
+      /** 소각 전 거절 `no_candidate` — 다른 컬렉션을 고르라는 안내다. 「후보」는 유저 화면에 쓰지 않는 말이다(§3.3) */
+      noCandidate: '고른 컬렉션에서는 지금 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.',
+      /** 소각 전 거절 `invalid_collection` — 고른 컬렉션이 소속 트라이브의 열린 컬렉션이 아니다 */
+      invalidCollection: '지금은 고를 수 없는 컬렉션이에요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.',
       /** 소각 전 거절 `invalid_materials` — 등급이 섞였거나 Mystic·등급 없는 배지가 들어 있다 */
       invalidMaterials:
         '같은 등급의 Common, Rare, Epic 아이템 배지 5개만 넣을 수 있어요. 넣은 재료는 그대로 있어요. 다시 골라 주세요.',

@@ -34,6 +34,8 @@ export const JAM_ROW = {
   common_streak_threshold: 10,
   locked_roll_probability: 0.25,
 }
+// 마이그레이션 287의 기본값(티켓 20261023_1648) — 등급 올리기 윗등급 확률 한 칸
+export const COMBINE_ROW = { tier_up_probability: 0.7 }
 export const AMBIENT_ROW = { rarity_mode: 'explicit', rarity_common: 1, rarity_rare: 0, rarity_epic: 0, rarity_mystic: 0 }
 
 export type Result = { data: unknown; error: unknown } | 'throw'
@@ -102,5 +104,6 @@ export const failed: Result = { data: null, error: { message: 'boom' } }
 export const ALL_OK = {
   capsule_policy: ok(CAPSULE_ROW),
   jam_policy: ok(JAM_ROW),
+  combine_policy: ok(COMBINE_ROW),
   ambient_drop_config: ok(AMBIENT_ROW),
 }
