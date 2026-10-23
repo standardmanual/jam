@@ -146,8 +146,8 @@ describe('허용값 목록 — today-sections.ts·DB CHECK와 갈라지지 않�
     expect([...TEMPLATE_TYPES].sort()).toEqual(checkValues('217_today_cards_recipe_reveal.sql', 'today_cards_template_type_check').sort());
   });
 
-  it('노출 형태 목록은 today_cards_layout_type_check(마이그레이션 158)와 같다', () => {
-    expect([...LAYOUT_TYPES].sort()).toEqual(checkValues('158_ranking_modes.sql', 'today_cards_layout_type_check').sort());
+  it('노출 형태 목록은 today_cards_layout_type_check(마이그레이션 286, dome·ticket을 더한 최신 정의)와 같다', () => {
+    expect([...LAYOUT_TYPES].sort()).toEqual(checkValues('286_today_cards_add_dome_ticket_shapes.sql', 'today_cards_layout_type_check').sort());
   });
 
   it('컨텐츠 유형 목록은 today_cards_content_type_id_check(마이그레이션 183)와 같다', () => {
