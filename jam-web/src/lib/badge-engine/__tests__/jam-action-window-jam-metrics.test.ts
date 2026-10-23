@@ -162,6 +162,21 @@ describe('readJamEarnedWithin — 활동 id를 200개씩 나눠 읽는다', () =
   })
 })
 
+describe('readJamEarnedWithin — 걸러진 활동은 읽지 않는다 (티켓 20261017_1459)', () => {
+  it('인정된 활동(걸러짐 표시 없음·옛 행 포함)만 읽는다 — 걸러진 활동의 원장 줄이 있어도 세지 않는다', async () => {
+    // 걸러진 활동은 정산되지 않아 원장에 줄이 없는 것이 정상이다. 줄이 있는 잘못된 상태에서도 인정 활동 기준을 지킨다.
+    const { client } = makeFakeDb({
+      strava_activities: [
+        { ...activity('a-ok', INSIDE), filter_reason: null },
+        activity('a-legacy', INSIDE), // 열이 비어 있는 옛 행 = 인정
+        { ...activity('a-filtered', INSIDE), filter_reason: 'virtual' },
+      ],
+      jam_transactions: [settlement('a-ok', 10), settlement('a-legacy', 20), settlement('a-filtered', 500)],
+    })
+    expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(30)
+  })
+})
+
 describe('readJamEarnedWithin — 읽지 못하면 0으로 바꾸지 않고 던진다', () => {
   it('활동 조회 오류는 던진다', async () => {
     const { client } = makeFakeDb({}, { errors: { strava_activities: '활동 장애' } })

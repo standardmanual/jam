@@ -15,9 +15,11 @@ import {
   summarizeCoverage,
   summarizeUsers,
   splitBackfillable,
+  loadBackfillOverview,
   UNCLASSIFIED_SPORT,
   type ActivityStatRow,
 } from '../backfillStats'
+import { makeFakeDb } from '@/lib/badge-engine/__tests__/fakeSupabase'
 
 function row(
   overrides: Partial<ActivityStatRow> & { normalized?: Record<string, unknown> } = {}
@@ -228,5 +230,52 @@ describe('splitBackfillable — Strava 연결이 없는 유저의 활동은 분�
     const { backfillable, orphaned } = splitBackfillable(rows, [])
     expect(backfillable).toHaveLength(0)
     expect(orphaned).toHaveLength(4)
+  })
+})
+
+describe('loadBackfillOverview — 걸러진 활동은 인정 활동으로 세지 않는다 (티켓 20261017_1459)', () => {
+  // 걸러진 행의 종목은 null일 수 있다(가상 종목) — 걸러진 행을 세면 «미분류» 줄과 활동 수가 부풀어 오른다
+  type StoredActivity = {
+    user_id: string
+    jam_activity_type: string | null
+    normalized: Record<string, unknown>
+    filter_reason?: string | null
+  }
+  const tables = () => {
+    const activities: StoredActivity[] = [
+      { user_id: 'u1', jam_activity_type: 'running', normalized: { avgHeartrateBpm: 150 }, filter_reason: null },
+      { user_id: 'u1', jam_activity_type: 'running', normalized: { stravaId: 2 } }, // 마이그레이션 223 이전 행 — 열이 비었다(= 인정)
+      { user_id: 'u1', jam_activity_type: null, normalized: { stravaId: 3 }, filter_reason: 'virtual' },
+      { user_id: 'u1', jam_activity_type: 'running', normalized: { stravaId: 4 }, filter_reason: 'too_short' },
+    ]
+    return {
+      strava_connections: [{ user_id: 'u1', disconnected_at: null }],
+      users: [{ id: 'u1', email: 'u1@example.com', username: 'u1' }],
+      strava_activities: activities,
+    }
+  }
+
+  it('활동 수·종목별 줄·유저별 수에 걸러진 행이 들어가지 않는다', async () => {
+    const { client } = makeFakeDb(tables())
+
+    const overview = await loadBackfillOverview(client)
+
+    expect(overview.totals.activityCount).toBe(2)
+    expect(overview.users[0].activityCount).toBe(2)
+    expect(overview.coverage.map((c) => [c.sport, c.activityCount])).toEqual([['running', 2]])
+    expect(overview.coverage.some((c) => c.sport === UNCLASSIFIED_SPORT)).toBe(false)
+  })
+
+  it('고아 행 수에도 걸러진 행이 들어가지 않는다', async () => {
+    const data = tables()
+    data.strava_activities.push(
+      { user_id: 'ghost', jam_activity_type: 'running', normalized: { stravaId: 5 }, filter_reason: null },
+      { user_id: 'ghost', jam_activity_type: null, normalized: { stravaId: 6 }, filter_reason: 'virtual' }
+    )
+    const { client } = makeFakeDb(data)
+
+    const overview = await loadBackfillOverview(client)
+
+    expect(overview.orphaned).toEqual({ activityCount: 1, userCount: 1 })
   })
 })

@@ -506,7 +506,9 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
   활동을 다음 동기화에서 다시 가져와 다시 거르는 낭비를 막고 `UNIQUE(user_id, strava_id)`를 그대로 쓰기 위해서다.
   이력은 `getActivityHistory` 한 함수가 `filter_reason IS NULL`인 행만 읽는다(배지 엔진·미션·랭킹·
   조건 시뮬레이션이 모두 이 함수로 읽는다). 「활동한 날」 지표(`jamActionDayMetrics`)와 온보딩 퀘스트
-  완료 판정도 같은 조건을 건다. 반대로 «이미 처리한 활동 id» 조회(`getProcessedStravaIds`)는 걸러진 행도 포함한다.
+  완료 판정도 같은 조건을 건다. 소급 백필(`fetchStoredActivities`)과 어드민 백필 통계(`fetchActivityStatRows`)도 같은 조건을
+  걸어, 걸러진 행의 `normalized`를 다시 계산하지 않고 활동 수·종목별 커버리지·고아 행 수에 세지 않는다(티켓 20261017_1459).
+  반대로 «이미 처리한 활동 id» 조회(`getProcessedStravaIds`)와 조회 커서(마지막 활동 시작 시각)는 걸러진 행도 포함한다.
   옛 행은 칸이 NULL이라 그대로 인정으로 읽히고 소급 판정하지 않는다. 판정에 쓴 원본 값의 유무·모양은
   `source_meta`에 남긴다(경로 요약 본문·좌표·외부 ID 원문은 저장하지 않는다).
 
