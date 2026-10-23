@@ -17,7 +17,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/admin/ui/alert'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 import PoiSearchSelect from '@/components/admin/PoiSearchSelect'
-import { getConditionField, ACTIVITY_TYPE_FORM_OPTIONS, type ConditionFormEntry } from '@/lib/badge-engine/conditionRegistry'
+import {
+  getConditionField,
+  isIntegerFormField,
+  ACTIVITY_TYPE_FORM_OPTIONS,
+  type ConditionFormEntry,
+} from '@/lib/badge-engine/conditionRegistry'
 import { FieldLabel, FieldMessage, SuffixInput } from '@/app/admin/badges/BadgeFormControls'
 import { cn } from '@/lib/utils'
 import {
@@ -562,7 +567,7 @@ function renderDelegatedInput(
     <SuffixInput
       id={`mc-eng-${control.field}`}
       type={control.kind === 'number' ? 'number' : control.kind === 'time' ? 'time' : 'text'}
-      inputMode={control.kind === 'number' ? 'decimal' : undefined}
+      inputMode={control.kind === 'number' ? (isIntegerFormField(control.field) ? 'numeric' : 'decimal') : undefined}
       {...(control.kind === 'number'
         ? { min: range?.min ?? meta.min, max: range?.max ?? meta.max, step: range?.step ?? meta.step }
         : {})}

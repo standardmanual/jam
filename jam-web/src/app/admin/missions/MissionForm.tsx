@@ -223,6 +223,8 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
       allowedTribeIds: form.allowed_tribe_ids,
       statusDisplayType: form.status_display_type,
       condition: missionConditionPreview,
+      missionType: form.mission_type as MissionType,
+      conditionFields,
     })
     if (formError) {
       setSaveError(formError)

@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils'
 import {
   buildConditionJsonFromFields,
   conditionFormFieldsFrom,
+  findConditionIntegerError,
   findUnrepresentableConditionKeys,
   getUnsupportedConditionKeys,
   type ConditionFormFields,
@@ -502,6 +503,12 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
     // 조건 그룹 대부분을 숨기지만 condition_json 저장 방식은 바꾸지 않는다 — 숨긴 입력값도
     // condFields에 그대로 남아 buildConditionJson() 결과가 리뉴얼 전과 같다.
     const conditionJson = type === 'checkin' ? null : buildConditionJson()
+    // 정수 칸의 소수·지수 표기(2.5·1e3)는 정수 읽기가 2·1로 잘라 조용히 다른 값이 저장되므로 먼저 막는다(티켓 20261023_1748). 체크인은 검사하지 않는다.
+    const integerError = findConditionIntegerError(type, condFields)
+    if (integerError) {
+      setError(integerError)
+      return
+    }
     const condError = validateCondition(conditionJson)
     if (condError) {
       setError(condError)
