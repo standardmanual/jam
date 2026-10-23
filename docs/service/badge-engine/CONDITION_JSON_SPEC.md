@@ -629,6 +629,8 @@ interface BadgeGateRequirement {
 
 `day_of_week`·`season`은 «거르는 조건»(`role: 'filter'`)이라 혼자서는 판정할 값이 없다. 거리·`season_count` 같은 판정할 값과 함께 써야 하고, 미션 전용 키하고만 짝지으면 배지 엔진이 「평가 가능한 조건 없음」으로 막는다(영구 미달성, 필터를 조용히 무시하지 않는다).
 
+**어드민 미션 양식의 입력 칸**(티켓 20261021_1114 1회): 위 «배지 엔진 위임 (26개)» 전부에 입력 칸이 있다. 라벨·단위·허용 범위는 배지 조건 레지스트리(`conditionRegistry.ts`)의 정의를 그대로 쓰고, 시간대 `time_range`는 시작·끝을 한 줄로 묶어 둘 다 채워야 만들어진다. 레지스트리에 입력 칸 정의가 없는 `day_of_week`만 미션 쪽(`missionConditionFields.ts`)에서 정했다 — 월~일 칩을 체크해 고르고, 한 요일은 문자열(`"sunday"`), 두 요일 이상은 배열(`["saturday","sunday"]`)로 저장한다. 열어서 저장해도 값의 모양은 바뀌지 않는다(배열로 저장된 미션은 한 요일만 남아도 배열). 수치 키 9개(`season_count`·`season_count_all`·`distinct_time_bands`·`weekend_duration_hours`·`cumulative_duration_hours`·`max_speed_kmh`·`avg_heartrate_bpm`·`avg_watts`·`avg_cadence`)는 레지스트리 범위(`min`~`max`) 밖이면 폼이 저장 전에 알리고 막는다. 서버 저장 검사는 이 키들의 범위를 보지 않는다. DB 기록 키 20개와 `time_band_counts`는 아직 입력 칸이 없고 열어서 저장해도 보존된다.
+
 ### 7.2 쓰지 않는 키와 판정하지 않는 키
 
 | 구분 | 키 | 저장 | 이유 |
