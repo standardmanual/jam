@@ -523,7 +523,7 @@ function checkInteractiveSessionAuthor(c) {
   }
   if (!Array.isArray(spec.entrypoints) || spec.entrypoints.length === 0 || !spec.entrypoints.every(isStr)) {
     violate('interactive_session_author', `interactive_session_author.entrypoints가 비어 있거나 문자열 목록이 아닙니다`,
-      `사람이 연 세션으로 확인한 CLAUDE_CODE_ENTRYPOINT 값을 하나 이상 적으세요. 비면 스크립트가 아무것도 바꾸지 않습니다.`)
+      `사람이 연 세션으로 확인한 CLAUDE_CODE_ENTRYPOINT 값을 하나 이상 적으세요. 비면 스크립트는 아무것도 바꾸지 않지만 이 검사는 위반으로 봅니다. 기능을 끄려면 interactive_session_author 선언 전체를 지우세요.`)
   }
   if (!existsSync(path.join(REPO, 'scripts/ensure-session-author.sh'))) {
     violate('interactive_session_author', `interactive_session_author가 선언돼 있는데 scripts/ensure-session-author.sh가 없습니다`,
