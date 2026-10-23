@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import LegalTopNav from '../LegalTopNav'
 import InlineNotice from '@/components/ui/InlineNotice'
+import { loadProbabilityChangeLog } from '@/lib/probability/changeLog'
 import {
   loadProbabilityDisclosure,
   type AmbientDisclosure,
@@ -21,6 +22,9 @@ import {
  * 트라이브 후보 문장, 시스템 드랍의 낮춤 규칙)은 읽기가 실패해도 그대로 둔다. 표의 숫자를 한정하는 «이 확률은 처음 뽑는 등급이에요»는 가리킬 표가
  * 없으므로 표와 함께 빠진다.
  *
+ * «바뀐 날짜» 표는 어드민 «밸런스 설정»의 변경 이력(`balance_setting_changes`)에서 `affects_disclosure = true`인 행을 읽어 만든다
+ * (`lib/probability/changeLog.ts`, 티켓 20261022_1700). 이력을 읽지 못하면 «처음 열었어요» 줄만 남기고 표 아래에 읽기 실패 안내를 보인다.
+ *
  * 서식은 `privacy/page.tsx`(티켓 20260901_2217)의 Section·P·Note·H3를 따라 이 페이지가 쓰는 것만 복사했다. 법 페이지의 공용 보조 컴포넌트를 뽑는 티켓
  * 20261021_1428이 끝나면 따라 옮긴다. 표 `ProbabilityTable`은 DS에 Table이 없고 DefCard(라벨 위·값 아래)는 등급 숫자를 나란히 비교하지 못해
  * 이 페이지 안에 둔 두 칸짜리 의미 있는 `<table>`이다(쓰는 곳 1곳이라 MODULAR 승격 대상이 아니다).
@@ -35,11 +39,12 @@ const PAGE_TITLE = '확률 안내'
 const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.'
 
 /**
- * 바뀐 날짜 — 앱 상수, 최신이 위. `capsule_policy.updated_at`은 갱신 트리거가 없어 날짜로 쓸 수 없다.
- * 첫 줄(2026년 10월 21일)은 임시값이다. 시행일은 출시 전에 사용자가 확정한다(티켓 20261021_1250).
- * 확률을 바꾸는 티켓은 같은 변경에서 이 목록 맨 위에 한 줄을 더한다.
+ * 바뀐 날짜의 맨 아래 줄 — 앱 상수. 이 줄은 변경 이력(`balance_setting_changes`)에 없으므로 상수로 두고, 이력에서 읽은 줄(`lib/probability/changeLog.ts`)
+ * 아래에 항상 붙인다. 날짜(2026년 10월 21일)는 임시값이다. 시행일은 출시 전에 사용자가 확정한다(티켓 20261021_1250).
+ * 확률을 어드민 «밸런스 설정»에서 바꾸면 이력에서 읽은 줄이 저절로 이 줄 위에 생기므로, 확률을 바꾸는 티켓이 여기에 줄을 더하지 않는다(티켓 20261022_1700).
+ * 이력을 쓰지 않는 경로(옛 어드민 화면의 시스템 드랍 저장)의 변경은 담기지 않는다.
  */
-const CHANGE_LOG: DisclosureRow[] = [{ label: '2026년 10월 21일', value: '확률 안내를 처음 열었어요' }]
+const FIRST_OPENED_ROW: DisclosureRow = { label: '2026년 10월 21일', value: '확률 안내를 처음 열었어요' }
 
 /**
  * 동기화와 캡슐이 같이 쓰는 규칙(`pickWithRarityFallback`) — 뽑힌 등급부터 한 등급씩 내려간다. 보정 장치로 정해진 등급도 같은 함수를 지난다.
@@ -305,8 +310,23 @@ function PitySection({ policy }: { policy: DisclosureResult<PolicyDisclosure> })
   )
 }
 
+/**
+ * 이력에서 읽은 줄 + 맨 아래 «처음 열었어요» 줄. 이력을 읽지 못해도 페이지는 열리고 첫 줄만 보이며, 표 아래에 읽기 실패 안내를 한 줄 보인다.
+ * 표의 모양(`ProbabilityTable`)은 그대로다.
+ */
+function ChangeLogSection({ changeLog }: { changeLog: DisclosureResult<DisclosureRow[]> }) {
+  const rows = changeLog.ok ? [...changeLog.data, FIRST_OPENED_ROW] : [FIRST_OPENED_ROW]
+  return (
+    <Section title="바뀐 날짜">
+      <P>확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.</P>
+      <ProbabilityTable caption="확률 안내가 바뀐 날짜와 내용" rows={rows} nowrapLabel />
+      {!changeLog.ok && <Unavailable />}
+    </Section>
+  )
+}
+
 export default async function ProbabilityPage() {
-  const { policy, ambient } = await loadProbabilityDisclosure()
+  const [{ policy, ambient }, changeLog] = await Promise.all([loadProbabilityDisclosure(), loadProbabilityChangeLog()])
 
   return (
     <div className="min-h-full text-foreground">
@@ -335,10 +355,7 @@ export default async function ProbabilityPage() {
 
         <PitySection policy={policy} />
 
-        <Section title="바뀐 날짜">
-          <P>확률을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.</P>
-          <ProbabilityTable caption="확률 안내가 바뀐 날짜와 내용" rows={CHANGE_LOG} nowrapLabel />
-        </Section>
+        <ChangeLogSection changeLog={changeLog} />
       </article>
     </div>
   )
