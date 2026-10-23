@@ -21,8 +21,15 @@ import { getConditionField, ACTIVITY_TYPE_FORM_OPTIONS, type ConditionFormEntry 
 import { FieldLabel, FieldMessage, SuffixInput } from '@/app/admin/badges/BadgeFormControls'
 import { cn } from '@/lib/utils'
 import {
+  JAM_PERIOD_EARNED_INPUT,
+  MISSION_DB_FORM_GROUPS,
+  MISSION_DB_HELP_OVERRIDES,
+  MISSION_DB_OBJECT_COUNT_FIELDS,
+  MISSION_DB_OBJECT_COUNT_RANGE,
   MISSION_ENGINE_DELEGATED_KEYS,
+  filledMissionDbKeys,
   missionTypeUsesActivityTypeFilter,
+  selectOptionsWithCurrent,
   type MissionConditionFormFields,
 } from './missionConditionFields'
 
@@ -45,6 +52,13 @@ const KO_HELP = 'break-keep wrap-break-word text-balance'
 /** 위임 키 그리드(`sm` 2열 → `lg` 3열)에서 입력이 차지하는 칸 수 — 레지스트리 `span`을 이 그리드 기준으로 옮긴다 */
 const GRID_SPAN_CLASS = { 2: 'sm:col-span-2', 3: 'sm:col-span-2 lg:col-span-3' } as const
 
+/** 「기록으로 세는 조건」 구역의 한 줄 설명 (티켓 20261021_1114 2회, 사용자 결정) */
+const DB_CONDITION_SECTION_HELP = '참가한 뒤 미션 기간 안의 기록만 세요.'
+
+/** 미션 타입을 「복합 조건」이 아닌 것으로 바꿨는데 기록으로 세는 조건이 입력돼 있을 때 보이는 경고 (사용자 결정) */
+const DB_CONDITION_DROPPED_NOTICE =
+  '이 미션 타입에서는 기록으로 세는 조건이 저장되지 않아요. 저장하면 지금 입력한 조건이 지워져요. 조건을 남기려면 타입을 원래대로 되돌려 주세요.'
+
 const DISTINCT_MONTHS_METRIC_OPTIONS = [
   { value: 'distance_km', label: '누적 거리' },
   { value: 'elevation_gain_m', label: '누적 고도' },
@@ -56,8 +70,10 @@ export interface MissionConditionSectionProps {
   setField: (field: keyof MissionConditionFormFields, value: string | boolean) => void
   /** 저장될 condition_json(MissionForm이 조립) */
   conditionPreview: MissionCondition | null
-  /** 이 폼이 입력 UI를 주지 않는 조건 키(`time_band_counts`와 DB 기록 키) — 값이 있으면 보존 안내를 띄운다 */
+  /** 이 폼이 입력 UI를 주지 않는 조건 키(`time_band_counts`) — 값이 있으면 보존 안내를 띄운다 */
   unsupportedKeys: readonly string[]
+  /** 「기록으로 세는 조건」의 장소 카테고리 선택지(`poi_categories`) — DB 테이블 기준이라 레지스트리에 정적으로 선언할 수 없어 주입한다 */
+  poiCategories: readonly { slug: string; label: string }[]
   /** 아이템 픽업(badge_id) 초기 라벨 — 수정 화면에서 기존 값을 보여준다 */
   badgeIdInitialLabel?: string
   /** 체크인(poi_id) 초기 라벨 — 수정 화면에서 기존 값을 보여준다 */
@@ -70,6 +86,7 @@ export default function MissionConditionSection({
   setField,
   conditionPreview,
   unsupportedKeys,
+  poiCategories,
   badgeIdInitialLabel,
   poiIdInitialLabel,
 }: MissionConditionSectionProps) {
@@ -202,6 +219,17 @@ export default function MissionConditionSection({
         )}
         {withActivityType && activityTypeSelect('mc-activity-type')}
 
+        {/* 기록으로 세는 조건이 입력돼 있는데 이 타입으로는 저장되지 않는다. 값은 지우지 않고 알리기만 한다(티켓 20261021_1114 2회) */}
+        {filledMissionDbKeys(fields).length > 0 && (
+          <div className="sm:col-span-2">
+            <Alert variant="warning">
+              <AlertDescription>
+                <p className={cn('text-xs text-amber-800/80 text-pretty', KO_TEXT)}>{DB_CONDITION_DROPPED_NOTICE}</p>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
         <div className="sm:col-span-2">
           <ConditionJsonPreview open={jsonOpen} onOpenChange={setJsonOpen} conditionPreview={conditionPreview} />
         </div>
@@ -219,6 +247,32 @@ export default function MissionConditionSection({
       (control) => ({ meta, control, section: meta!.form!.section }) as ConditionFormEntry
     )
     return renderDelegatedEntries(entries, fields, setField)
+  })
+
+  // 「기록으로 세는 조건」은 소제목 6개로 묶는다. 장소 카테고리 선택지는 DB 값이라 여기서 주입한다
+  const dbExtras: RenderExtras = {
+    selectOptions: { checkinCategoryCountCategory: poiCategories.map((c) => ({ value: c.slug, label: c.label })) },
+    helpOverrides: MISSION_DB_HELP_OVERRIDES,
+    numberRanges: Object.fromEntries(MISSION_DB_OBJECT_COUNT_FIELDS.map((field) => [field, MISSION_DB_OBJECT_COUNT_RANGE])),
+  }
+  const dbGroupNodes = MISSION_DB_FORM_GROUPS.map((group, index) => {
+    const nodes = group.keys.flatMap((key): ReactElement[] => {
+      if (key === 'jam_period_earned') return [renderJamPeriodEarnedField(fields, setField)]
+      const meta = getConditionField(key)
+      const entries = (meta?.form?.controls ?? []).map(
+        (control) => ({ meta, control, section: meta!.form!.section }) as ConditionFormEntry
+      )
+      return renderDelegatedEntries(entries, fields, setField, dbExtras)
+    })
+    const titleId = `mc-db-group-${index}`
+    return (
+      <div key={group.title} role="group" aria-labelledby={titleId} className="flex flex-col gap-2">
+        <p id={titleId} className={cn('text-xs font-medium text-foreground/80', KO_TEXT)}>
+          {group.title}
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{nodes}</div>
+      </div>
+    )
   })
 
   return (
@@ -436,6 +490,14 @@ export default function MissionConditionSection({
         </div>
       </div>
 
+      <div className="flex flex-col gap-4 rounded-lg border border-border bg-muted/40 p-3.5">
+        <div className="flex flex-col gap-1">
+          <p className={cn('text-xs font-bold text-foreground', KO_TEXT)}>기록으로 세는 조건</p>
+          <p className={cn('text-xs text-muted-foreground', KO_HELP)}>{DB_CONDITION_SECTION_HELP}</p>
+        </div>
+        {dbGroupNodes}
+      </div>
+
       {unsupportedKeys.length > 0 && (
         <Alert variant="warning">
           <AlertDescription>
@@ -454,18 +516,34 @@ export default function MissionConditionSection({
 
 type SetField = (field: keyof MissionConditionFormFields, value: string | boolean) => void
 
+/**
+ * 레지스트리 컨트롤 정의만으로 그릴 수 없는 칸을 위한 보충. 칸 이름(`control.field`)이 키다. 「기록으로 세는 조건」 구역만 넘기고,
+ * 넘기지 않으면 위임 키 칸은 1회와 똑같이 그려진다.
+ */
+interface RenderExtras {
+  /** 선택지가 DB 값이라 레지스트리에 비어 있는 선택 칸의 선택지 */
+  selectOptions?: Readonly<Record<string, readonly { value: string; label: string }[]>>
+  /** 미션에서는 뜻이 달라지는 레지스트리 도움말을 바꾼다 */
+  helpOverrides?: Readonly<Record<string, string>>
+  /** 레지스트리 메타에 범위가 없는 수치 칸의 범위 */
+  numberRanges?: Readonly<Record<string, { min: number; max: number; step: number }>>
+}
+
 /** 한 키의 컨트롤들 — 짝의 둘째 칸은 첫째 칸이 함께 그린다 */
 function renderDelegatedEntries(
   entries: readonly ConditionFormEntry[],
   fields: MissionConditionFormFields,
-  setField: SetField
+  setField: SetField,
+  extras?: RenderExtras
 ): ReactElement[] {
   const byField = new Map(entries.map((e) => [e.control.field, e]))
   const partnerFields = new Set(entries.flatMap((e) => (e.control.pair ? [e.control.pair.with] : [])))
   return entries.flatMap((entry) => {
     if (partnerFields.has(entry.control.field)) return []
     const partner = entry.control.pair ? byField.get(entry.control.pair.with) : undefined
-    return [partner ? renderDelegatedPair(entry, partner, fields, setField) : renderDelegatedField(entry, fields, setField)]
+    return [
+      partner ? renderDelegatedPair(entry, partner, fields, setField) : renderDelegatedField(entry, fields, setField, extras),
+    ]
   })
 }
 
@@ -474,7 +552,8 @@ function renderDelegatedInput(
   entry: ConditionFormEntry,
   fields: MissionConditionFormFields,
   setField: SetField,
-  ariaLabel?: string
+  ariaLabel?: string,
+  range?: { min: number; max: number; step: number }
 ) {
   const { control, meta } = entry
   const field = control.field as keyof MissionConditionFormFields
@@ -484,7 +563,9 @@ function renderDelegatedInput(
       id={`mc-eng-${control.field}`}
       type={control.kind === 'number' ? 'number' : control.kind === 'time' ? 'time' : 'text'}
       inputMode={control.kind === 'number' ? 'decimal' : undefined}
-      {...(control.kind === 'number' ? { min: meta.min, max: meta.max, step: meta.step } : {})}
+      {...(control.kind === 'number'
+        ? { min: range?.min ?? meta.min, max: range?.max ?? meta.max, step: range?.step ?? meta.step }
+        : {})}
       value={fields[field] as string}
       onChange={(e) => setField(field, e.target.value)}
       placeholder={control.placeholder}
@@ -567,12 +648,14 @@ function renderDayOfWeekField(fields: MissionConditionFormFields, setField: SetF
 function renderDelegatedField(
   entry: ConditionFormEntry,
   fields: MissionConditionFormFields,
-  setField: SetField
+  setField: SetField,
+  extras?: RenderExtras
 ) {
   const { control, meta } = entry
   const field = control.field as keyof MissionConditionFormFields
   const domId = `mc-eng-${control.field}`
   const label = control.label ?? meta.label
+  const help = extras?.helpOverrides?.[control.field] ?? control.help
 
   if (control.kind === 'checkbox') {
     return (
@@ -592,8 +675,11 @@ function renderDelegatedField(
 
   if (control.kind === 'select') {
     const current = (fields[field] as string) || NONE_VALUE
+    const injected = extras?.selectOptions?.[control.field]
+    // 주입한 선택지에 없는 저장값(지워진 카테고리 등)은 값 그대로 보여 준다. 안 그러면 선택 칸이 비어 보이는 채로 저장된다
+    const options = injected ? selectOptionsWithCurrent(injected, fields[field] as string) : (control.options ?? [])
     return (
-      <div key={control.field} className="flex min-w-0 flex-col gap-1.5">
+      <div key={control.field} className={cn('flex min-w-0 flex-col gap-1.5', control.span && GRID_SPAN_CLASS[control.span])}>
         <FieldLabel htmlFor={domId} className={KO_TEXT}>
           {label}
         </FieldLabel>
@@ -603,14 +689,14 @@ function renderDelegatedField(
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NONE_VALUE}>{control.noneLabel ?? '— 없음 —'}</SelectItem>
-            {(control.options ?? []).map((o) => (
+            {options.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {control.help && <FieldMessage className={KO_HELP}>{control.help}</FieldMessage>}
+        {help && <FieldMessage className={KO_HELP}>{help}</FieldMessage>}
       </div>
     )
   }
@@ -620,8 +706,38 @@ function renderDelegatedField(
       <FieldLabel htmlFor={domId} className={KO_TEXT}>
         {label}
       </FieldLabel>
-      {renderDelegatedInput(entry, fields, setField)}
-      {control.help && <FieldMessage className={KO_HELP}>{control.help}</FieldMessage>}
+      {renderDelegatedInput(entry, fields, setField, undefined, extras?.numberRanges?.[control.field])}
+      {help && <FieldMessage className={KO_HELP}>{help}</FieldMessage>}
+    </div>
+  )
+}
+
+/**
+ * 기간 동안 모은 잼(`jam_period_earned`). 배지 조건 레지스트리에 없는 미션 전용 키라 입력 칸 정의를 미션 쪽에서 정했다
+ * (`JAM_PERIOD_EARNED_INPUT`, 티켓 20261021_1114 2회). 1 이상 정수 칸이고 도움말은 참가 전에 모은 잼이 세어지지 않는다는 말이다.
+ */
+function renderJamPeriodEarnedField(fields: MissionConditionFormFields, setField: SetField) {
+  const input = JAM_PERIOD_EARNED_INPUT
+  const domId = `mc-eng-${input.field}`
+  return (
+    <div key="jam_period_earned" className="flex min-w-0 flex-col gap-1.5">
+      <FieldLabel htmlFor={domId} className={KO_TEXT}>
+        {input.label}
+      </FieldLabel>
+      <SuffixInput
+        id={domId}
+        type="number"
+        inputMode="numeric"
+        min={input.min}
+        max={input.max}
+        step={input.step}
+        value={fields.jamPeriodEarned}
+        onChange={(e) => setField('jamPeriodEarned', e.target.value)}
+        placeholder={input.placeholder}
+        suffix={input.unit}
+        autoComplete="off"
+      />
+      <FieldMessage className={KO_HELP}>{input.help}</FieldMessage>
     </div>
   )
 }

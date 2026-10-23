@@ -36,6 +36,7 @@ import {
   rankingBlockReason,
   rankingFrameNotice,
   sortMissionFormTribes,
+  type MissionFormPoiCategory,
   type MissionFormTribe,
 } from './missionFormRules'
 
@@ -51,6 +52,8 @@ interface Props {
   poiLabel?: string
   /** 참가할 수 있는 트라이브 체크 목록 — DB의 트라이브 전체(비활성 포함, 티켓 20261019_1318) */
   tribes: MissionFormTribe[]
+  /** 「기록으로 세는 조건」의 장소 카테고리 선택지 — DB의 `poi_categories` 전체(티켓 20261021_1114 2회) */
+  poiCategories: MissionFormPoiCategory[]
   /** 수정 대상이 지금 참가를 허용하는 트라이브 id. 없거나 비어 있으면 공통 미션 */
   allowedTribeIds?: string[]
 }
@@ -136,7 +139,7 @@ function formFromMission(m: MissionRow, allowedTribeIds: string[]): typeof empty
  * `/admin/missions/new`, `/admin/missions/[id]` 별도 페이지로 이동해 연다. 폼 자체(입력
  * 필드·검증 로직)는 예전 목록 컴포넌트(현재는 삭제됨)에서 그대로 옮겨왔다.
  */
-export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, allowedTribeIds = [] }: Props) {
+export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, poiCategories, allowedTribeIds = [] }: Props) {
   const editingId = mission?.id ?? null
   const [form, setForm] = useState(mission ? formFromMission(mission, allowedTribeIds) : emptyForm)
   const [saving, setSaving] = useState(false)
@@ -415,6 +418,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, al
             setField={setConditionField}
             conditionPreview={missionConditionPreview}
             unsupportedKeys={unsupportedMissionConditionKeys(initCondition)}
+            poiCategories={poiCategories}
             badgeIdInitialLabel={formatBadgeLabel(badgeLabelCache.get(conditionFields.badgeId))}
             poiIdInitialLabel={poiLabel}
           />
