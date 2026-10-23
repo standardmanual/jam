@@ -84,6 +84,32 @@ describe('①②③ 조건 형태 검사를 저장 시점에 돌린다', () => {
   })
 })
 
+describe('⑦ 회차 조건 경고 — 저장은 허용하고 응답 warning으로 알린다 (티켓 20261021_1426)', () => {
+  it('POST·PUT 모두 findConditionShapeSaveWarning을 badge-validation에서 가져와 부른다', () => {
+    for (const code of [postCode, putCode]) {
+      expect(code).toMatch(
+        /import\s*\{[^}]*\bfindConditionShapeSaveWarning\b[^}]*\}\s*from\s*'@\/lib\/admin\/badge-validation'/
+      )
+      expect(code).toMatch(/findConditionShapeSaveWarning\(/)
+    }
+  })
+
+  it('경고는 저장이 끝난 뒤 응답에만 싣는다 — 저장을 막는 분기(status 400)에 쓰지 않는다', () => {
+    for (const code of [postCode, putCode]) {
+      expect(code).toMatch(/\{\s*badge:\s*data,\s*warning\s*\}/)
+      const saveCall = Math.max(code.indexOf('.insert('), code.indexOf('.update('))
+      expect(saveCall).toBeGreaterThan(-1)
+      expect(code.indexOf('findConditionShapeSaveWarning(')).toBeGreaterThan(saveCall)
+    }
+  })
+
+  it('경고 판정을 라우트 안에 복사하지 않는다 — 엔진의 unconsumedRepeatConditionKeys는 가드 파일만 부른다', () => {
+    for (const code of [postCode, putCode]) {
+      expect(code).not.toContain('unconsumedRepeatConditionKeys')
+    }
+  })
+})
+
 describe('family_key 불변 (판단 ③)', () => {
   it('PUT의 update 페이로드에 family_key가 없다', () => {
     expect(putCode).not.toMatch(/family_key:\s*body\.family_key/)

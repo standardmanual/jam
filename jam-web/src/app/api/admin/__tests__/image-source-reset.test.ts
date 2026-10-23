@@ -58,6 +58,7 @@ vi.mock('@/lib/admin/auth', () => ({
 // 배지 PUT의 조건 검증은 이 테스트의 관심사가 아니다 — 통과시킨다
 vi.mock('@/lib/admin/badge-validation', () => ({
   findBadgeConditionSaveError: () => null,
+  findConditionShapeSaveWarning: () => null,
   findCheckinBadgeNamesNotFoundError: async () => null,
   findRecipeFirstSuccessNotFoundError: async () => null,
   findRarityLevelError: () => null,

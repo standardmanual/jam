@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import {
   findBadgeConditionSaveError,
+  findConditionShapeSaveWarning,
   findCheckinBadgeNamesNotFoundError,
   findHiddenBadgeReferenceError,
   findRecipeFirstSuccessNotFoundError,
@@ -149,5 +150,10 @@ export async function POST(req: NextRequest) {
   const { data, error } = await insertQuery.select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ badge: data }, { status: 201 })
+
+  // 저장은 됐지만 발급이 멈추는 회차 조건이면 경고를 함께 돌려준다(티켓 20261021_1426).
+  // 엔진이 읽는 값 그대로(type·admin_category·condition_json) 판정하려고 저장된 행을 쓴다.
+  const saved = data as BadgeRow
+  const warning = findConditionShapeSaveWarning(saved, saved.condition_json)
+  return NextResponse.json(warning ? { badge: data, warning } : { badge: data }, { status: 201 })
 }
