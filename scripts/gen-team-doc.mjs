@@ -106,6 +106,7 @@ function genSessionHooks() {
     'check-routine-reports': '예정 시각이 지났는데 예약 리포트가 없으면 경고한다',
     'workspace-setup': 'staging에 머지된 격리 워크트리와 연결 워크트리 없는 브랜치를 정리한다',
     'ensure-hooks-path': '이 클론의 core.hooksPath가 이 저장소의 .githooks로 해석되지 않으면 .githooks로 맞춘다',
+    'ensure-session-author': '조건(사람이 붙은 클라우드 세션, 예약 작업이 시작하지 않음, 세션 소유자 일치, 허용 진입점)을 모두 만족하면 이 클론의 git 작성자를 사용자 계정으로 맞춘다',
   }
   for (const c of commands) {
     const key = Object.keys(explain).find((k) => c.includes(k))

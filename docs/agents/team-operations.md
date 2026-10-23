@@ -247,6 +247,7 @@ tags: [워크플로]
 | `scripts/check-routine-reports.mjs` | 예정 시각이 지났는데 예약 리포트가 없으면 경고한다 |
 | `scripts/workspace-setup.sh` | staging에 머지된 격리 워크트리와 연결 워크트리 없는 브랜치를 정리한다 |
 | `scripts/ensure-hooks-path.sh` | 이 클론의 core.hooksPath가 이 저장소의 .githooks로 해석되지 않으면 .githooks로 맞춘다 |
+| `scripts/ensure-session-author.sh` | 조건(사람이 붙은 클라우드 세션, 예약 작업이 시작하지 않음, 세션 소유자 일치, 허용 진입점)을 모두 만족하면 이 클론의 git 작성자를 사용자 계정으로 맞춘다 |
 <!-- END generated: session-hooks -->
 
 위 표는 `.claude/settings.json`의 `SessionStart` 훅에서 자동 생성된다. 무인 루틴이 실패했을 때

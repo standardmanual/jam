@@ -500,6 +500,37 @@ function checkRoutineCommitRestriction(c) {
   }
 }
 
+// ── ⑮ 대화형 세션 작성자(interactive_session_author) ────────────────────────────
+// scripts/ensure-session-author.sh가 세션 시작 때 읽는 선언이다(티켓 20261002_0734). 선언이 깨지면
+// 스크립트는 조용히 아무것도 하지 않아(실패하면 닫히는 방향) 대화형 세션의 커밋이 다시 막힌다.
+// 그 상태를 여기서 잡는다. 선언한 이메일이 무인 루틴 작성자와 같으면 맞춰도 훅이 계속 막으므로
+// 위반이다. SessionStart 훅에 스크립트가 걸려 있는지는 hooks 검사(⑦)가 본다.
+function checkInteractiveSessionAuthor(c) {
+  const spec = c.interactive_session_author
+  if (!spec) return
+
+  const isStr = (v) => typeof v === 'string' && v.length > 0
+  if (!isStr(spec.name)) {
+    violate('interactive_session_author', `interactive_session_author.name이 비어 있거나 문자열이 아닙니다`,
+      `맞출 git 작성자 이름을 적으세요.`)
+  }
+  if (!isStr(spec.email) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(spec.email)) {
+    violate('interactive_session_author', `interactive_session_author.email이 이메일 형식이 아닙니다: ${spec.email}`,
+      `맞출 git 작성자 이메일을 적으세요.`)
+  } else if (spec.email === c.routine_commit_restriction?.author_email) {
+    violate('interactive_session_author', `interactive_session_author.email이 무인 루틴 작성자와 같습니다: ${spec.email}`,
+      `같으면 작성자를 맞춰도 pre-commit이 계속 막습니다. 사용자 계정 이메일을 적으세요.`)
+  }
+  if (!Array.isArray(spec.entrypoints) || spec.entrypoints.length === 0 || !spec.entrypoints.every(isStr)) {
+    violate('interactive_session_author', `interactive_session_author.entrypoints가 비어 있거나 문자열 목록이 아닙니다`,
+      `사람이 연 세션으로 확인한 CLAUDE_CODE_ENTRYPOINT 값을 하나 이상 적으세요. 비면 스크립트가 아무것도 바꾸지 않습니다.`)
+  }
+  if (!existsSync(path.join(REPO, 'scripts/ensure-session-author.sh'))) {
+    violate('interactive_session_author', `interactive_session_author가 선언돼 있는데 scripts/ensure-session-author.sh가 없습니다`,
+      `스크립트를 되살리거나 선언을 지우세요.`)
+  }
+}
+
 // ── ⑭ 설계 원본 폴더 동결(workflow_freeze) ────────────────────────────────────
 // docs/agents/workflow/ 는 2026-09-22 동결된 기록이다(티켓 20260921_2311). 이 동결이
 // .githooks/pre-commit에 실제로 걸려 있는지만 본다 — routine_commit_restriction과 같은
@@ -649,6 +680,7 @@ checkQualityBar(contract)
 checkGitConfig(contract)
 checkDeployGate(contract)
 checkRoutineCommitRestriction(contract)
+checkInteractiveSessionAuthor(contract)
 checkWorkflowFreeze(contract)
 checkSettingsPermissions(contract)
 checkEnvVars(contract)

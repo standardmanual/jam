@@ -229,7 +229,7 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
 | 저장 | `docs/operations/reports/triage/YYYY-MM-DD.md` + 상태 파일 `docs/operations/reports/triage/state.json` |
 | 읽는 것 | 상태 파일 기준 증분 대상 OPEN 티켓만(전량 재판정 금지) |
 | 도구 호출·토큰 상한 | 도구 호출 60회 이내, 세션 전체 토큰 150,000 이내(2026-09-22 수동 실행 실측: 대상 11건에 도구 호출 29회·전체 토큰 65,677, 대상 0건에 12회·46,506 — 티켓당 약 2회·6,000토큰이므로 60회·150,000이면 대상 약 25건까지 감당). 넘기면 판정을 중단하고 어디까지 했는지 `#jam-alert`에 남긴다. 4회 실측 후 다시 정한다 |
-| 무인 쓰기 범위 | `docs/operations/reports/` 안만. `docs/tickets/`를 포함한 그 밖은 쓰지 않는다 — `.githooks/pre-commit`이 예약 루틴 커밋 작성자(`Claude <noreply@anthropic.com>`)의 다른 경로 변경을 차단한다. 우회 변수는 없다 |
+| 무인 쓰기 범위 | `docs/operations/reports/` 안만. `docs/tickets/`를 포함한 그 밖은 쓰지 않는다 — `.githooks/pre-commit`이 예약 루틴 커밋 작성자(`Claude <noreply@anthropic.com>`)의 다른 경로 변경을 차단한다. 우회 변수는 없다. 사람이 직접 연 클라우드 세션은 세션 시작 때 `scripts/ensure-session-author.sh`가 여섯 조건(`docs/agents/contract.json`의 `interactive_session_author` 참고)을 모두 확인한 경우에만 작성자를 사용자 계정으로 맞춘다. 예약 작업이 시작한 세션이 그 조건에서 걸러지는지는 아직 실제 값으로 확인하지 못했다(티켓 20261002_0734 후속 범위) |
 | 프롬프트 초안 (카즈하) | "오늘 실행 대상(상태 파일의 마지막 실행 시각 이후 변경된 OPEN 티켓)만 `.claude/skills/jam-work/references/ops-triage.md` 판정 기준으로 적격/사람 필요를 정해줘. 판정 근거는 상태 파일과 리포트에만 남기고 티켓 파일은 절대 건드리지 마. 리포트를 push한 뒤 `#jam-report`에 요약을 올릴 때 마지막 줄에 그 리포트의 GitHub 링크를 붙여. 완료하지 못하면 `#jam-alert`에 알려." |
 | 실패 처리 | 판정 자체를 완료하지 못하면(전체 실패) `#jam-alert`에 알린다. 그 외 처리는 「실패 처리 (4-10)」과 같다 |
 | 반영 | 사용자가 리포트의 체크박스로 판정에 동의하는지 표시한다. 동의율(체크된 줄 / 전체 줄)은 주간 브리핑의 「선별 동의율」 칸에 카즈하가 계산해 남긴다 — 2주 뒤 이 값이 다음 단계(야간 소화) 도입 재질문의 입력이다 |
