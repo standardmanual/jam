@@ -84,10 +84,10 @@ describe('정상 — 구성과 값', () => {
     expect(text).toContain('JAM!에는 유료 결제가 없어요. 잼과 포인트는 돈으로 팔지 않아요.')
   })
 
-  it('섹션이 동기화 → 캡슐 → 시스템 드랍 → 확률이 없는 것 → 보정 장치 → 바뀐 날짜 순이다', async () => {
+  it('섹션이 동기화 → 캡슐 → 시스템 드랍 → 등급 올리기 → 확률이 없는 것 → 보정 장치 → 바뀐 날짜 순이다', async () => {
     const html = await render()
     const titles = [...html.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1])
-    expect(titles).toEqual(['동기화로 받는 아이템 배지', '캡슐', '시스템 드랍', '확률이 없는 것', '보정 장치', '바뀐 날짜'])
+    expect(titles).toEqual(['동기화로 받는 아이템 배지', '캡슐', '시스템 드랍', '등급 올리기', '확률이 없는 것', '보정 장치', '바뀐 날짜'])
   })
 
   it('동기화: 개수와 잠김 표, 등급 표(서열 순 영문), 처음 뽑는 등급 문장이 등급 표 바로 아래에 있다', async () => {
@@ -143,7 +143,9 @@ describe('정상 — 구성과 값', () => {
     const section = sectionOf(await render(), '확률이 없는 것')
     expect(count(section, '<p')).toBe(1)
     expect(section).not.toContain('<table')
-    expect(textOf(section)).toContain('믹스, 잠긴 아이템 배지 열기, 액티비티 배지, 체크인 배지, 미션 보상, 유저가 직접 놓은 드랍에는 확률이 없어요.')
+    expect(textOf(section)).toContain(
+      '레시피로 하는 믹스, 잠긴 아이템 배지 열기, 액티비티 배지, 체크인 배지, 미션 보상, 유저가 직접 놓은 드랍에는 확률이 없어요.'
+    )
   })
 
   it('보정 장치 두 가지가 접힌 곳 없이 목록으로 보인다', async () => {
@@ -172,13 +174,13 @@ describe('정상 — 구성과 값', () => {
 })
 
 describe('표 마크업 — 의미 있는 표, 가로 스크롤 없음', () => {
-  it('표 여섯 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
+  it('표 열 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
     const html = await render()
-    expect(count(html, '<table')).toBe(6)
-    expect(count(html, '<caption class="sr-only">')).toBe(6)
+    expect(count(html, '<table')).toBe(10)
+    expect(count(html, '<caption class="sr-only">')).toBe(10)
     // 행마다 th 하나 + td 하나
     expect(count(html, '<th scope="row"')).toBe(count(html, '<td '))
-    expect(count(html, '<th scope="row"')).toBeGreaterThanOrEqual(6)
+    expect(count(html, '<th scope="row"')).toBeGreaterThanOrEqual(10)
   })
 
   it('표 카드는 흰 면 + 테두리 둥근 카드이고, 값 칸은 오른쪽 정렬 tabular-nums다. 가로 스크롤 래퍼가 없다', async () => {
@@ -247,7 +249,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
 
   it('정책을 못 읽으면 동기화·캡슐·보정 장치가 안내로 바뀌고 숫자가 하나도 없다', async () => {
     const html = await render({ ...ALL_OK, capsule_policy: failed })
-    expect(count(html, 'role="status"')).toBe(3)
+    expect(count(html, 'role="status"')).toBe(4)
     for (const title of ['동기화로 받는 아이템 배지', '캡슐', '보정 장치']) {
       const section = sectionOf(html, title)
       expect(textOf(section), title).toContain(UNAVAILABLE)
@@ -263,7 +265,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
 
   it('jam_policy만 못 읽어도 세 섹션이 함께 안내로 바뀐다(두 표가 한 묶음이다)', async () => {
     const html = await render({ ...ALL_OK, jam_policy: failed })
-    expect(count(html, 'role="status"')).toBe(3)
+    expect(count(html, 'role="status"')).toBe(4)
     expect(textOf(sectionOf(html, '캡슐'))).not.toMatch(sectionNumbers)
   })
 
@@ -293,7 +295,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
   it('셋 다 못 읽으면 값 칸이 하나도 없다(퍼센트·나눗셈 기호 없음, 날짜 외 숫자 없음)', async () => {
     const html = await render({ capsule_policy: failed, jam_policy: 'throw', ambient_drop_config: { data: null, error: null } })
     const text = textOf(html).replace('2026년 10월 21일', '')
-    expect(count(html, 'role="status"')).toBe(4)
+    expect(count(html, 'role="status"')).toBe(5)
     expect(text).not.toContain('%')
     expect(text).not.toContain('÷')
     expect(text).not.toMatch(/\d/)
@@ -341,7 +343,7 @@ describe('문구와 서식 규칙', () => {
     const html = articleOf(await render())
     expect(html).not.toMatch(/gradient|animate-|transition|--link|--accent|rarity|<svg|<img|progress|<canvas/i)
     // 크림 단색 바탕 위의 표 카드와 Note만 쓴다 — 카드 안 카드가 없다
-    expect(count(html, 'rounded-2xl bg-surface')).toBe(6)
+    expect(count(html, 'rounded-2xl bg-surface')).toBe(10)
   })
 
   it('제목 계층이 h1 → h2 → h3다', async () => {
