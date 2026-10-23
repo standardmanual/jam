@@ -4,8 +4,8 @@
  * 배경: `admin/badges/conditionFormFields.test.ts`와 같은 이유로 존재한다 — 필드 빌더가
  * 만드는 `condition_json`이 저장 검증(`checkMissionCondition`/`checkMissionConditionValue`)을
  * 통과하는지, 기존 값을 열었을 때 폼이 원래 값으로 정확히 되돌아가는지(왕복)를 고정한다.
- * `missions/__tests__/*`와 같은 골격(node:assert + 자체 러너)을 쓴다 — 이 폴더도
- * `vitest.config.ts`의 `**\/missions/__tests__/**` 제외 대상이라 vitest로는 못 돈다.
+ * `missions/__tests__/*`와 같은 골격(node:assert + 자체 러너)을 쓴다 — 이 파일도
+ * `vitest.config.ts`의 제외 목록에 파일 이름으로 올라 있어 vitest로는 못 돈다.
  *
  * 실행: `npx tsx src/app/admin/missions/__tests__/missionConditionFields.test.ts`
  */

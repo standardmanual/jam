@@ -3,8 +3,8 @@
  *
  * 폼 구성 요소에는 시험이 없어서 폼이 보이는 문구와 저장 전 검사를 `missionFormRules.ts`로 빼고 여기서 고정한다.
  * 순위형 금지 판정은 서버 저장 검사와 같은 함수(`rankingConditionError`)여야 해서, 서버 결과와 어긋나지 않는지도 대조한다.
- * 이 폴더는 `vitest.config.ts`의 `**\/admin/missions/__tests__/**` 제외 대상이라 node:assert + 자체 러너로 쓴다
- * (`package.json`의 `test:node`가 돈다).
+ * 이 파일은 `vitest.config.ts`의 제외 목록에 파일 이름으로 올라 있어 node:assert + 자체 러너로 쓴다
+ * (`package.json`의 `test:node`가 돈다). 같은 폴더에 vitest 스위트를 두어도 가려지지 않는다.
  *
  * 실행: `npx tsx src/app/admin/missions/__tests__/missionFormRules.test.ts`
  */
