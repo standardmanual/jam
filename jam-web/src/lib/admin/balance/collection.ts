@@ -11,7 +11,7 @@
  *
  * 읽기는 **가공하지 않은 행**을 읽는다(비정상 값을 기본값으로 바꿔 보이지 않는다). 쓰기는 두 표라 한 번의 조건부 갱신으로 끝나지 않는다.
  * 구역 수정 시각 계산과 행 단위 갱신·되돌림은 공용 모듈(`rowwise.ts`)에 맡기고, 이 파일은 표에 맞는 갱신·되돌림 함수만 만든다.
- * `lib/combine/policy.ts`의 `updateCombinePolicy`는 정책 대시보드 저장 라우트가 쓰므로 그대로 둔다(티켓 20261022_1717이 정리한다, 가정 카).
+ * `lib/combine/policy.ts`의 `updateCombinePolicy`는 정책 대시보드 저장 라우트가 없어지면서(티켓 20261022_1717) 부르는 곳이 없다. 함수와 시험은 남겨 두었다(삭제는 후속, 가정 카).
  */
 import { DEFAULT_COMBINE_POLICY } from '@/lib/combine/policy'
 import { TIER_ORDER, type TierName } from '@/lib/itembook/tier-readiness'

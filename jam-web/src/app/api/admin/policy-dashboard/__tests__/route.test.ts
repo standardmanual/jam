@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NextRequest } from 'next/server'
+import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 const authState = vi.hoisted(() => ({
   isAdmin: true,
@@ -9,59 +10,32 @@ vi.mock('@/lib/admin/auth', () => ({
   getAdminUser: async () => (authState.isAdmin ? { id: 'admin-1', email: 'admin@jam.test' } : null),
 }))
 
-const updateSpies = vi.hoisted(() => ({
-  updateAbusingPolicy: vi.fn().mockResolvedValue(undefined),
-  updateInventoryMaxSlots: vi.fn().mockResolvedValue(1),
-  updateCombinePolicy: vi.fn().mockResolvedValue(undefined),
-  updateAmbientDropConfig: vi.fn().mockResolvedValue(undefined),
-}))
-
 vi.mock('@/lib/abusing/policy', () => ({
   getAbusingPolicy: async () => ({ vehicle_speed_filter_kmh: 60 }),
-  updateAbusingPolicy: updateSpies.updateAbusingPolicy,
-  MIN_VEHICLE_SPEED_FILTER_KMH: 20,
 }))
 
 vi.mock('@/lib/jam/policy', () => ({
   getJamPolicy: async () => ({ intensity_light: 1, intensity_normal: 2, intensity_hard: 3 }),
-  VALIDATORS: {
-    intensity_light: (n: number) => n >= 0,
-    intensity_normal: (n: number) => n >= 0,
-    intensity_hard: (n: number) => n >= 0,
-  },
 }))
 
 vi.mock('@/lib/combine/policy', () => ({
   getCombinePolicy: async () => ({ fail_reward_points: 10 }),
-  updateCombinePolicy: updateSpies.updateCombinePolicy,
 }))
 
 vi.mock('@/lib/inventory/policy', () => ({
   getInventoryPolicy: async () => ({ max_slots: 50 }),
-  updateInventoryMaxSlots: updateSpies.updateInventoryMaxSlots,
 }))
 
 vi.mock('@/lib/ambient-drop/config', () => ({
   getAmbientDropConfig: async () => ({ schedule_hour_kst: 9, max_active_per_poi: 3 }),
-  updateAmbientDropConfig: updateSpies.updateAmbientDropConfig,
 }))
 
 vi.mock('@/lib/capsule/policy', () => ({
   getCapsulePolicy: async () => ({ guaranteed_count: 1 }),
 }))
 
-vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
-    from: () => ({
-      update: () => ({
-        eq: () => Promise.resolve({ error: null }),
-      }),
-    }),
-  }),
-}))
-
-const { GET } = await import('../route')
-const { PUT } = await import('../field/route')
+const routeModule = await import('../route')
+const { GET } = routeModule
 
 describe('/api/admin/policy-dashboard API 라우트 검증', () => {
   beforeEach(() => {
@@ -83,73 +57,28 @@ describe('/api/admin/policy-dashboard API 라우트 검증', () => {
     expect(data.liveValues.vehicle_speed_filter_kmh).toBe(60)
     expect(data.liveValues.max_slots).toBe(50)
   })
+})
 
-  it('차량 속도 필터를 20km/h 미만으로 수정하려 하면 400 오류를 반환한다', async () => {
-    const req = new NextRequest('http://localhost:3000/api/admin/policy-dashboard/field', {
-      method: 'PUT',
-      body: JSON.stringify({
-        target: 'abusing_policy',
-        field: 'vehicle_speed_filter_kmh',
-        value: 15,
-      }),
-    })
-
-    const res = await PUT(req)
-    expect(res.status).toBe(400)
-    const data = await res.json()
-    expect(data.error).toContain('20km/h 이상')
-    expect(updateSpies.updateAbusingPolicy).not.toHaveBeenCalled()
+// 정책 값을 바꾸는 일은 설정 화면(밸런스 설정 등)만 한다. 대시보드에는 저장 경로가 없다(티켓 20261022_1717).
+describe('정책 대시보드에는 값을 저장하는 경로가 없다', () => {
+  it('저장 라우트 파일(field/route.ts)이 없다', () => {
+    const fieldRoute = fileURLToPath(new URL('../field/route.ts', import.meta.url))
+    expect(existsSync(fieldRoute)).toBe(false)
   })
 
-  it('유효한 차량 속도 필터(30km/h) 수정 요청은 성공한다', async () => {
-    const req = new NextRequest('http://localhost:3000/api/admin/policy-dashboard/field', {
-      method: 'PUT',
-      body: JSON.stringify({
-        target: 'abusing_policy',
-        field: 'vehicle_speed_filter_kmh',
-        value: 30,
-      }),
-    })
-
-    const res = await PUT(req)
-    expect(res.status).toBe(200)
-    const data = await res.json()
-    expect(data.ok).toBe(true)
-    expect(updateSpies.updateAbusingPolicy).toHaveBeenCalledWith({
-      vehicle_speed_filter_kmh: 30,
-    })
+  it('정책 대시보드 라우트는 읽기(GET)만 내보낸다', () => {
+    const methods = Object.keys(routeModule).filter((name) =>
+      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(name),
+    )
+    expect(methods).toEqual([])
   })
 
-  it('인벤토리 슬롯을 0 이하로 설정하려 하면 400 오류를 반환한다', async () => {
-    const req = new NextRequest('http://localhost:3000/api/admin/policy-dashboard/field', {
-      method: 'PUT',
-      body: JSON.stringify({
-        target: 'inventory_policy',
-        field: 'max_slots',
-        value: 0,
-      }),
-    })
-
-    const res = await PUT(req)
-    expect(res.status).toBe(400)
-    const data = await res.json()
-    expect(data.error).toContain('1 이상의 정수')
-  })
-
-  it('유효한 인벤토리 슬롯(60) 수정 요청은 성공한다', async () => {
-    const req = new NextRequest('http://localhost:3000/api/admin/policy-dashboard/field', {
-      method: 'PUT',
-      body: JSON.stringify({
-        target: 'inventory_policy',
-        field: 'max_slots',
-        value: 60,
-      }),
-    })
-
-    const res = await PUT(req)
-    expect(res.status).toBe(200)
-    const data = await res.json()
-    expect(data.ok).toBe(true)
-    expect(updateSpies.updateInventoryMaxSlots).toHaveBeenCalledWith(60)
+  it('대시보드 화면 코드가 저장 경로를 부르지 않는다', () => {
+    const clientPath = fileURLToPath(
+      new URL('../../../../../components/admin/policyDashboard/PolicyDashboardClient.tsx', import.meta.url),
+    )
+    const source = readFileSync(clientPath, 'utf-8')
+    expect(source).not.toContain('/api/admin/policy-dashboard/field')
+    expect(source).not.toContain("method: 'PUT'")
   })
 })

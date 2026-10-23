@@ -1,23 +1,24 @@
 /**
- * 서비스 운영 정책 대시보드 타입 정의 (티켓 20261022_1631)
+ * 서비스 운영 정책 대시보드 타입 정의 (티켓 20261022_1631, 저장 경로 제거 티켓 20261022_1717)
  */
 
 export type PolicyType =
-  | 'db_editable' // 어드민 DB 즉시 수정 가능
+  | 'admin_link' // 어드민 설정 화면에서 값을 바꾸는 정책 (대시보드는 값을 읽어 보여 주고 링크만 둔다)
   | 'code_constant' // 엔진/코드 고정 상수
   | 'ticket_decision' // JAM 2.0 티켓 세부 결정
   | 'pre_launch_pending' // 오픈 전 적용 대기
 
-export interface PolicyEditableConfig {
-  target: 'abusing_policy' | 'jam_policy' | 'combine_policy' | 'inventory_policy' | 'ambient_drop_config'
-  field: string
-  label: string
+/**
+ * 값을 바꾸는 화면으로 가는 링크. 대시보드는 값을 직접 저장하지 않는다 —
+ * 변경 이력·동시 수정 검사·확률 확인창은 설정 화면이 지킨다.
+ */
+export interface PolicyAdminLink {
+  /** `/admin/balance#<구역 키>`. 밸런스 설정에 구역이 아직 없는 대상은 7-3이 옮겨 올 때까지 옛 화면 주소. */
+  href: string
+  /** 카드에 «현재 DB 실측값»으로 읽어 보여 줄 칸 이름(`liveValues`의 키). 칸이 여럿이면 비운다. */
+  liveField?: string
+  /** `liveField` 값 뒤에 붙일 단위 */
   unit?: string
-  valueType: 'number' | 'integer' | 'boolean'
-  min?: number
-  max?: number
-  step?: number
-  relatedAdminUrl?: string
 }
 
 export interface PolicyItem {
@@ -34,14 +35,14 @@ export interface PolicyItem {
   userExperience: string
   basisDoc: string
   ticketId?: string
-  editableConfig?: PolicyEditableConfig
+  adminLink?: PolicyAdminLink
 }
 
 export interface ChapterSummary {
   chapter: number
   title: string
   totalCount: number
-  dbEditableCount: number
+  adminLinkCount: number
   codeConstantCount: number
   ticketDecisionCount: number
   preLaunchPendingCount: number
