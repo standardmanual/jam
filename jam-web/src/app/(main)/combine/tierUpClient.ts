@@ -20,6 +20,8 @@ export type TierUpMaterialRarity = (typeof TIER_UP_MATERIAL_RARITIES)[number]
 
 type Rarity = TierUpMaterialRarity | 'mystic'
 const RARITY_RANK: Record<Rarity, number> = { common: 0, rare: 1, epic: 2, mystic: 3 }
+/** 재료 등급의 바로 위 등급 — 윗등급이 나오면 이 등급이다(서버 규칙과 같다) */
+const NEXT_RARITY: Record<TierUpMaterialRarity, Rarity> = { common: 'rare', rare: 'epic', epic: 'mystic' }
 
 export const TIER_UP_ENDPOINT = '/api/combine/tier-up'
 
@@ -29,6 +31,8 @@ export const TIER_UP_PENDING_RESULTS_EXIST = 'pending_results_exist'
 /** `POST /api/combine/tier-up` 본문 */
 export interface TierUpRequest {
   itemIds: string[]
+  /** 받을 컬렉션(아이템북) id — 소속 트라이브의 열린 컬렉션이어야 한다. 아니면 서버가 `invalid_collection`으로 거절한다 */
+  collectionId: string
 }
 
 /** 응답의 결과 배지 한 줄 — 잠긴 것은 `locked`가 참이고 id·이름이 빈 문자열이다. `imageUrl`은 2회 응답이 싣는다(없어도 깨지지 않는다) */
@@ -204,6 +208,59 @@ export function tierUpRarityNote(rarity: TierUpMaterialRarity): string {
 }
 
 /**
+ * 받을 컬렉션 후보 한 줄 (티켓 20261023_1648 3회) — 서버(`page.tsx`)가 소속 트라이브의 열린 컬렉션을 읽어 내려준다.
+ * `rarities`는 그 컬렉션에서 지금 실제로 나올 수 있는 아이템 배지가 있는 등급이다(서버 굴림의 후보 조건과 같은 판정으로 만든다).
+ */
+export interface TierUpCollectionOption {
+  id: string
+  name: string
+  imageUrl: string | null
+  rarities: Rarity[]
+}
+
+/**
+ * 순수 — 재료 등급으로 고를 수 있는 컬렉션. 재료 등급의 바로 위 등급과 같은 등급이 모두 있는 컬렉션만 남기고 이름 가나다순으로 돌려준다.
+ * 윗등급만 있는 컬렉션이 섞이면 같은 등급이 나올 때 받을 것이 없어 소각 전 거절이 나므로(`no_candidate`) 미리 뺀다.
+ */
+export function tierUpCollectionChoices(
+  options: readonly TierUpCollectionOption[],
+  materialRarity: TierUpMaterialRarity,
+): TierUpCollectionOption[] {
+  const upper = NEXT_RARITY[materialRarity]
+  return options
+    .filter((option) => option.rarities.includes(materialRarity) && option.rarities.includes(upper))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+}
+
+/** 받을 컬렉션 행·시트가 그릴 모양 — 다섯 갈래 가운데 하나(재료 시트의 `TierUpSheetView`와 같은 방식) */
+export type TierUpCollectionView =
+  /** 아직 재료를 담지 않아 등급이 정해지지 않았다 */
+  | { kind: 'needMaterial' }
+  /** 이 재료 등급으로 고를 컬렉션이 없다(트라이브가 없거나 열린 컬렉션이 없는 경우 포함) */
+  | { kind: 'none'; rarity: TierUpMaterialRarity }
+  /** 목록을 읽지 못했다 — «없다»와 구분한다 */
+  | { kind: 'error' }
+  /** 고를 수 있다. `selectedId`는 지금 목록에 있는 선택만 담는다 */
+  | { kind: 'ready'; choices: TierUpCollectionOption[]; selectedId: string | null }
+
+/**
+ * 순수 — 받을 컬렉션 행의 모양. `options`가 null이면 서버가 목록을 읽지 못한 것이다(빈 배열은 «읽었더니 없다»).
+ * 고른 컬렉션(`pickedId`)이 새 등급의 목록에 없으면 조용히 미선택으로 본다 — 화면에 보이지 않는 선택을 서버로 보내지 않는다.
+ * 재료가 없으면 이전 선택을 그리지 않지만 `pickedId`를 지우지는 않는다(첫 재료를 넣는 순간 유효하면 다시 나타난다).
+ */
+export function buildTierUpCollectionView(
+  options: readonly TierUpCollectionOption[] | null,
+  materialRarity: TierUpMaterialRarity | null,
+  pickedId: string | null,
+): TierUpCollectionView {
+  if (options === null) return { kind: 'error' }
+  if (materialRarity === null) return { kind: 'needMaterial' }
+  const choices = tierUpCollectionChoices(options, materialRarity)
+  if (choices.length === 0) return { kind: 'none', rarity: materialRarity }
+  return { kind: 'ready', choices, selectedId: choices.some((choice) => choice.id === pickedId) ? pickedId : null }
+}
+
+/**
  * 순수 — 바로 지급된 결과의 오버레이 한 줄. 재료 등급과 받은 등급을 비교해 윗등급일 때만 «윗등급이 나왔어요!»를 쓰고, 같은 등급이면
  * «윗등급은 운이 좋을 때 나와요»를 덧붙인다. 응답에 등급이 없어 비교할 수 없으면 등급을 지어내지 않는다.
  */
@@ -228,6 +285,8 @@ export interface TierUpRejection {
   tone: 'info' | 'error'
   /** 담은 칸을 비운다 */
   clearSlots: boolean
+  /** 고른 컬렉션만 푼다(담은 칸은 그대로) — 그 컬렉션으로는 받을 수 없다는 거절 */
+  clearCollection: boolean
   /** 받지 않은 결과 개수를 서버에서 다시 읽는다 */
   refreshPending: boolean
   /** `router.refresh()`로 개체 목록을 다시 받는다 */
@@ -245,7 +304,7 @@ function textOf(body: unknown, key: 'message' | 'error'): string | undefined {
  * 소각 앞의 거절은 모두 «넣은 재료는 그대로 있어요»를 말한다. 알려진 거절이 아닌 응답(모르는 reason, 5xx, JSON이 아님)만 오류로 알린다.
  */
 export function tierUpRejection(status: number, body: unknown): TierUpRejection {
-  const base = { tone: 'info', clearSlots: false, refreshPending: false, refresh: false } as const
+  const base = { tone: 'info', clearSlots: false, clearCollection: false, refreshPending: false, refresh: false } as const
   const message = textOf(body, 'message')
   const reason = body && typeof body === 'object' ? (body as { reason?: unknown; code?: unknown }).reason : undefined
   const code = body && typeof body === 'object' ? (body as { code?: unknown }).code : undefined
@@ -262,8 +321,11 @@ export function tierUpRejection(status: number, body: unknown): TierUpRejection 
   switch (reason) {
     case 'items_not_found':
       return { ...base, clearSlots: true, refresh: true, message: message ?? d.combine.itemsNotFound }
+    // 고른 컬렉션으로는 받을 수 없다 — 담은 칸은 그대로 두고 컬렉션만 풀어 목록을 다시 읽는다(재료는 소각 전이라 안전하다)
+    case 'invalid_collection':
+      return { ...base, clearCollection: true, refresh: true, message: message ?? d.combine.tierUp.collectionPicker.invalidCollection }
     case 'no_candidate':
-      return { ...base, message: message ?? d.combine.tierUp.noCandidate }
+      return { ...base, clearCollection: true, refresh: true, message: message ?? d.combine.tierUp.noCandidate }
     case 'invalid_materials':
       return { ...base, message: message ?? d.combine.tierUp.invalidMaterials }
     case 'invalid_count':
