@@ -2,7 +2,8 @@
 id: "20261022_2248"
 category: Admin
 priority: P2
-status: IN_PROGRESS
+status: CLOSED
+closed: 2026-10-23
 created: 2026-10-22
 ---
 
@@ -41,31 +42,56 @@ created: 2026-10-22
 - 2026-10-23 JAM 2.0 부가 P2 티켓 일괄 처리(jam-work)로 착수한다. 카리나가 최신 `origin/staging`에서 아직 재현됨을 확인했다. 유형 `bug`, 경로 ③ 표준. 규모 사전 판정: 파일 5~6개, 변경 50줄 안팎이다. 구현 계획과 관련 파일에 경로·함수명이 적혀 있고 범위가 한 가지 일이라 `planOnlyWaiver`를 넘긴다. 확인한 사실: vitest 3개 파일에서 9건이 그대로 실패하고, `scripts/ops-patterns-seed.test.mjs`도 `deepStrictEqual`로 실패한다(실제 5개 모양, 기대 7개). 결정: 시험이 `CARD_SHAPES`를 직접 가져오게 바꾼다(상세 요구사항의 선택 항목을 채택). 시드 시험은 코드가 낡았는지 시험이 낡았는지 가려서 고친다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
 
+- 원인: 커밋 `10ff5ec2e`(티켓 20261022_2225)가 투데이 카드 모양을 7개(`dome`, `ticket` 추가)로 늘렸지만, 모양을 5개로 고정한 시험과 시드 스크립트의 허용 목록이 함께 고쳐지지 않았다.
+- `validate.test.ts`: 하드코딩한 5개 모양 기대값을 `@/lib/today/shape`의 `CARD_SHAPES` 직접 import로 바꿨다(오류 문구 4곳, `it.each` 2곳).
+- `registerInput.test.ts`: 제목 상한 기대 객체에 `dome` 22, `ticket` 22를 더했다. `CARD_TITLE_MAX_LENGTH`와 일치한다.
+- `registerHomeFeedBundle.test.ts`: 노출 형태 대조 기준을 마이그레이션 158에서 최신 CHECK인 286으로 옮겼다.
+- `scripts/ops-patterns-seed.mjs`: 코드가 낡은 쪽이라 허용 목록을 7개로 맞췄다. 원고가 바뀌지 않아 SQL 212는 그대로다.
+- 앱 코드와 마이그레이션 변경은 없다.
+
 ### 변경된 파일
 ```
--
+jam-web/scripts/asset-generator/__tests__/registerHomeFeedBundle.test.ts
+jam-web/src/lib/admin/opsInbox/__tests__/registerInput.test.ts
+jam-web/src/lib/admin/opsInbox/__tests__/validate.test.ts
+scripts/ops-patterns-seed.mjs
+(추가 13줄, 삭제 12줄)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] vitest 66파일 3,009건 통과(`opsInbox`, `asset-generator`)
+- [x] `node --test scripts/ops-patterns-seed.test.mjs` 22건 통과
+- [x] CI `verify` 성공(Actions 실행 39898231052, 커밋 `bf54be011`)
+- [x] 게이트(민지) PASS(재판정). 첫 판정은 FAIL이었고 사유는 이 패치가 아니라 범위 밖의 프로필 캡슐 시험 1건이었다
 
 ### 배포 정보
-- 배포일: 
-- 환경: production
-- 커밋: 
+- 배포일: 2026-10-23
+- 환경: staging (main 반영은 JAM 2.0 출시 전까지 하지 않는다)
+- 커밋: `ca628d5bc` (머지 커밋)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 구현(중간 저장 커밋 이어받기) | 1 | 60,609 | 15,426 / - | 8분 29초 | 40 |
+| 게이트(FAIL, 범위 밖 시험 1건) | 1 | 59,346 | - / 18,502 | 7분 1초 | 33 |
+| 게이트 재판정(PASS) | 1 | 45,729 | - / 8,977 | 5분 48초 | 20 |
+| 합계 | 3 | 165,684 | 15,426 / 27,479 | 21분 18초 | 93 |
+
+앞선 중단된 실행 3회분의 토큰은 측정하지 못해 이 표에 없다.
 
 ### 주요 의사결정 / 핵심 메모
 
+- 상세 요구사항의 선택 항목(시험이 `CARD_SHAPES`를 직접 가져오게 한다)을 채택했다.
+- 시드 시험의 실패는 시험이 아니라 코드(허용 목록)가 낡은 쪽이라 스크립트를 고쳤다.
+- 실행이 세 차례 중단돼(앱 종료 2회, 중단 요청 1회) 구현 중간 저장 커밋을 이어받아 완성했다.
+- 첫 게이트의 FAIL 사유는 이 패치가 아니라 최신 staging에서 이미 실패하던 `ProfileClient.capsule.test.tsx` 1건(원인 커밋 `260ee2344`)이었다. 같은 실패를 다른 세션이 티켓 `20261023_1248`로 먼저 남겨 두었고, 카리나가 같은 방식으로 기대를 뒤집어 `668d82f7c`로 staging에 올린 뒤 재판정해 PASS를 받았다.
+- 아현이 최신 staging 위로 옮기자 원격 브랜치와 갈라졌고 강제 push는 권한 시스템이 거부했다. 우회하지 않고 새 브랜치 이름(`...-final`, `...-final2`)으로 일반 push했다.
+
 ### 잔여 이슈
--
+- 모양 5개를 하드코딩한 부분집합 시험 5곳 → 티켓 `20261023_1311`
+- 운영 패턴 원고와 SQL 212의 어긋남 → 티켓 `20261023_1312`
