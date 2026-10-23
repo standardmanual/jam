@@ -15,9 +15,13 @@ import {
   emptyMissionConditionFields,
   missionConditionFieldsFrom,
   unsupportedMissionConditionKeys,
+  missionConditionRangeError,
+  readDayOfWeek,
+  writeDayOfWeek,
   MISSION_ENGINE_DB_PRESERVED_KEYS,
   MISSION_ENGINE_DELEGATED_KEYS,
   MISSION_ENGINE_PRESERVED_KEYS,
+  MISSION_RANGE_CHECKED_KEYS,
   type MissionConditionFormFields,
 } from '../missionConditionFields'
 import {
@@ -173,7 +177,10 @@ const cases: Array<[string, () => void]> = [
       streak_days: 7,
       weekly_streak: 4,
     }
-    assert.strictEqual(Object.keys(cond).length, MISSION_ENGINE_DELEGATED_KEYS.length)
+    assert.strictEqual(Object.keys(cond).length, 14)
+    for (const key of Object.keys(cond)) {
+      assert.ok((MISSION_ENGINE_DELEGATED_KEYS as readonly string[]).includes(key), `폼 목록에 없는 키: ${key}`)
+    }
     const f = missionConditionFieldsFrom(cond)
     const rebuilt = buildMissionConditionJson('engine_condition', f, cond)
     assert.deepStrictEqual(rebuilt, cond)
@@ -190,23 +197,26 @@ const cases: Array<[string, () => void]> = [
       MISSION_ENGINE_DELEGATED_KEYS.length + MISSION_ENGINE_PRESERVED_KEYS.length
     )
   }],
-  ['폼이 입력 칸을 그리는 위임 키는 전부 레지스트리에 폼 정의가 있다', () => {
+  ['폼이 입력 칸을 그리는 위임 키는 day_of_week만 빼고 전부 레지스트리에 폼 정의가 있다', () => {
     for (const key of MISSION_ENGINE_DELEGATED_KEYS) {
+      if (key === 'day_of_week') {
+        // 레지스트리에 입력 칸 정의가 없는 유일한 키 — 미션 쪽이 읽기·쓰기를 정한다. 레지스트리를 고치지 않았는지도 고정한다
+        assert.strictEqual(getConditionField(key)?.form, undefined, 'day_of_week에 레지스트리 폼 정의가 생겼다 — 미션 쪽 정의를 걷어낼 수 있는지 본다')
+        continue
+      }
       assert.ok(getConditionField(key)?.form, `레지스트리에 폼 정의가 없다: ${key}`)
     }
   }],
-  ['보존 키는 시간대·요일·계절·운동 속성 12개이고 기온 키는 없다', () => {
-    assert.deepStrictEqual([...MISSION_ENGINE_PRESERVED_KEYS].sort(), [
-      'avg_cadence', 'avg_heartrate_bpm', 'avg_watts', 'cumulative_duration_hours', 'day_of_week',
-      'distinct_time_bands', 'max_speed_kmh', 'season', 'season_count', 'season_count_all',
-      'time_range', 'weekend_duration_hours',
-    ])
+  ['위임 키 26개가 전부 폼 목록에 있고 보존 목록은 비었으며 기온 키는 없다 (20261021_1114 1회)', () => {
+    assert.strictEqual(MISSION_ENGINE_DELEGATED_KEYS.length, 26)
+    assert.deepStrictEqual([...MISSION_ENGINE_DELEGATED_KEYS].sort(), [...ENGINE_DELEGATED_CONDITION_KEY_LIST].sort())
+    assert.deepStrictEqual([...MISSION_ENGINE_PRESERVED_KEYS], [])
     for (const key of MISSION_FORBIDDEN_CONDITION_KEYS) {
-      assert.ok(!(MISSION_ENGINE_PRESERVED_KEYS as readonly string[]).includes(key), `기온 키가 보존 목록에 있다: ${key}`)
+      assert.ok(!(MISSION_ENGINE_DELEGATED_KEYS as readonly string[]).includes(key), `기온 키가 폼 목록에 있다: ${key}`)
     }
   }],
-  ['engine_condition: 입력 칸이 없는 위임 키(시간대·요일·계절·운동 속성)도 열었다 저장하면 그대로 남는다', () => {
-    const init: MissionCondition = {
+  ['engine_condition: 시간대·요일·계절·운동 속성 12개를 모두 채워도 그대로 되돌아오고 보존 안내 대상이 아니다', () => {
+    const cond: MissionCondition = {
       activity_type: 'running',
       distance_km: 20,
       time_range: { start: '05:00', end: '08:00' },
@@ -215,17 +225,114 @@ const cases: Array<[string, () => void]> = [
       season: 'summer',
       season_count: 3,
       season_count_all: 2,
-      max_speed_kmh: 30,
+      max_speed_kmh: 30.5,
       avg_heartrate_bpm: 150,
       avg_watts: 200,
       avg_cadence: 80,
-      cumulative_duration_hours: 10,
+      cumulative_duration_hours: 10.5,
       weekend_duration_hours: 2,
     }
-    const f = missionConditionFieldsFrom(init)
-    const rebuilt = buildMissionConditionJson('engine_condition', f, init)
-    assert.deepStrictEqual(rebuilt, init, '입력 칸이 없는 위임 키가 저장 중에 사라졌다')
-    assert.deepStrictEqual(unsupportedMissionConditionKeys(init).sort(), [...MISSION_ENGINE_PRESERVED_KEYS].sort())
+    const f = missionConditionFieldsFrom(cond)
+    assert.strictEqual(f.timeStart, '05:00')
+    assert.strictEqual(f.timeEnd, '08:00')
+    assert.strictEqual(f.dayOfWeek, 'sunday')
+    assert.strictEqual(f.season, 'summer')
+    const rebuilt = buildMissionConditionJson('engine_condition', f, cond)
+    assert.deepStrictEqual(rebuilt, cond, '12개 키 왕복이 어긋났다')
+    // 원본 없이도(보존에 기대지 않고) 폼 값만으로 같은 조건이 만들어진다
+    assert.deepStrictEqual(buildMissionConditionJson('engine_condition', f, null), cond, '보존 목록이 아니라 입력 칸이 값을 만들어야 한다')
+    assert.deepStrictEqual(unsupportedMissionConditionKeys(cond), [])
+    assert.deepStrictEqual(checkMissionCondition('engine_condition', rebuilt), { error: null, warning: null })
+  }],
+  ['engine_condition: 새 12개 키는 입력 칸에서 하나씩 채워도 그 키 하나만 조립된다', () => {
+    const cases: Array<[Partial<MissionConditionFormFields>, MissionCondition]> = [
+      [{ timeStart: '22:00', timeEnd: '05:00' }, { time_range: { start: '22:00', end: '05:00' } }],
+      [{ dayOfWeek: 'monday' }, { day_of_week: 'monday' }],
+      [{ season: 'winter' }, { season: 'winter' }],
+      [{ seasonCount: '5' }, { season_count: 5 }],
+      [{ seasonCountAll: '3' }, { season_count_all: 3 }],
+      [{ distinctTimeBands: '3' }, { distinct_time_bands: 3 }],
+      [{ weekendDurationHours: '2.5' }, { weekend_duration_hours: 2.5 }],
+      [{ cumulativeDurationHours: '120' }, { cumulative_duration_hours: 120 }],
+      [{ maxSpeedKmh: '60' }, { max_speed_kmh: 60 }],
+      [{ avgHeartrateBpm: '150' }, { avg_heartrate_bpm: 150 }],
+      [{ avgWatts: '200' }, { avg_watts: 200 }],
+      [{ avgCadence: '180' }, { avg_cadence: 180 }],
+    ]
+    assert.strictEqual(cases.length, 12)
+    for (const [input, expected] of cases) {
+      assert.deepStrictEqual(buildMissionConditionJson('engine_condition', fields(input)), expected)
+    }
+  }],
+  ['time_range는 시작·끝 둘 다 있어야 만들어진다', () => {
+    assert.strictEqual(buildMissionConditionJson('engine_condition', fields({ timeStart: '05:00' })), null)
+    assert.strictEqual(buildMissionConditionJson('engine_condition', fields({ timeEnd: '08:00' })), null)
+  }],
+  ['day_of_week: 한 요일은 문자열, 여러 요일은 배열, 없으면 키를 넣지 않는다', () => {
+    assert.strictEqual(readDayOfWeek('saturday'), 'saturday')
+    assert.deepStrictEqual(readDayOfWeek('saturday, sunday'), ['saturday', 'sunday'])
+    assert.strictEqual(readDayOfWeek(''), undefined)
+    assert.strictEqual(readDayOfWeek('funday'), undefined, '모르는 요일은 버린다')
+    assert.deepStrictEqual(readDayOfWeek('friday, funday'), 'friday')
+    assert.strictEqual(writeDayOfWeek('sunday'), 'sunday')
+    assert.strictEqual(writeDayOfWeek(['saturday', 'sunday']), 'saturday, sunday')
+  }],
+  ['day_of_week: 한 요일만 든 배열도 열었다 저장하면 배열 그대로 남는다', () => {
+    const init: MissionCondition = { weekly_streak: 4, day_of_week: ['saturday'] }
+    const rebuilt = buildMissionConditionJson('engine_condition', missionConditionFieldsFrom(init), init)
+    assert.deepStrictEqual(rebuilt, init)
+    // 원본이 문자열이거나 새 미션이면 한 요일은 문자열이다
+    const single: MissionCondition = { distance_km: 10, day_of_week: 'saturday' }
+    assert.deepStrictEqual(buildMissionConditionJson('engine_condition', missionConditionFieldsFrom(single), single), single)
+  }],
+  ['day_of_week 배열(주 단위 연속)도 저장 검증을 통과한다', () => {
+    const init: MissionCondition = { weekly_streak: 4, day_of_week: ['saturday', 'sunday'] }
+    const rebuilt = buildMissionConditionJson('engine_condition', missionConditionFieldsFrom(init), init)
+    assert.deepStrictEqual(rebuilt, init)
+    assert.deepStrictEqual(checkMissionCondition('engine_condition', rebuilt), { error: null, warning: null })
+  }],
+
+  // ── 입력 범위 ↔ 저장 검증 (20261021_1114 1회) ───────────────────────────
+  ['입력 범위를 검사하는 수치 키 9개는 레지스트리에 min·max가 있고, 경계 값은 저장 검증을 통과한다', () => {
+    assert.strictEqual(MISSION_RANGE_CHECKED_KEYS.length, 9)
+    for (const key of MISSION_RANGE_CHECKED_KEYS) {
+      assert.ok((MISSION_ENGINE_DELEGATED_KEYS as readonly string[]).includes(key), `폼 목록에 없는 키: ${key}`)
+      const meta = getConditionField(key)
+      assert.ok(meta && meta.min !== undefined && meta.max !== undefined, `레지스트리에 범위가 없다: ${key}`)
+      for (const edge of [meta.min!, meta.max!]) {
+        const cond = { [key]: edge } as MissionCondition
+        assert.strictEqual(missionConditionRangeError(cond), null, `${key} 경계 값 ${edge}가 막힌다`)
+        assert.deepStrictEqual(checkMissionCondition('engine_condition', cond).error, null, `${key} ${edge}가 서버 키 검사에서 막힌다`)
+        assert.deepStrictEqual(checkMissionConditionValue('engine_condition', cond), { error: null, warning: null })
+      }
+    }
+  }],
+  ['입력 범위 밖의 값은 키마다 막힌다 — 상한 위, 하한 아래', () => {
+    for (const key of MISSION_RANGE_CHECKED_KEYS) {
+      const meta = getConditionField(key)!
+      const label = meta.label
+      for (const bad of [meta.max! + 1, meta.min! - 1]) {
+        const error = missionConditionRangeError({ [key]: bad })
+        assert.ok(error, `${key} ${bad}가 통과했다`)
+        assert.ok(error.includes(label), `${key} 오류에 라벨이 없다`)
+        assert.ok(error.includes(String(bad)), `${key} 오류에 입력값이 없다`)
+      }
+    }
+  }],
+  ['입력 범위 오류는 문제 키를 한 번에 모두 알리고 단위를 붙인다', () => {
+    const error = missionConditionRangeError({ avg_watts: 5000, distinct_time_bands: 9, distance_km: 10 })
+    assert.ok(error)
+    assert.ok(error.includes('평균 파워 5000W(허용 범위 0~2000W)'), error)
+    assert.ok(error.includes('서로 다른 시간대 9개(허용 범위 2~6개)'), error)
+    assert.ok(!error.includes('distance_km'), '범위 검사 대상이 아닌 키가 섞였다')
+    // 케이던스는 단위가 없다
+    assert.ok(missionConditionRangeError({ avg_cadence: 300 })!.includes('평균 케이던스 300(허용 범위 0~250)'))
+  }],
+  ['입력 범위 검사는 조건이 없거나 대상 키가 없으면 null이다', () => {
+    assert.strictEqual(missionConditionRangeError(null), null)
+    assert.strictEqual(missionConditionRangeError(undefined), null)
+    assert.strictEqual(missionConditionRangeError([]), null)
+    assert.strictEqual(missionConditionRangeError({ distance_km: 9999999 }), null)
   }],
   ['engine_condition: 원본이 없으면(새 미션) 보존 키를 만들지 않는다', () => {
     const cond = buildMissionConditionJson('engine_condition', fields({ distanceKm: '10' }))

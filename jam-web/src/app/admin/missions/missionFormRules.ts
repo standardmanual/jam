@@ -9,6 +9,7 @@
  */
 import { rankingConditionError, usesNightCondition } from '@/lib/missions/condition-keys'
 import type { MissionScope } from '@/lib/admin/mission-tribes'
+import { missionConditionRangeError } from './missionConditionFields'
 
 /** 폼이 트라이브 체크 목록을 그리는 데 쓰는 트라이브 한 건 */
 export interface MissionFormTribe {
@@ -77,6 +78,9 @@ export function findMissionFormSaveError(input: MissionFormSaveInput): string | 
   if (input.scope === 'tribe' && input.allowedTribeIds.length === 0) {
     return '트라이브 미션은 참가할 수 있는 트라이브를 하나 이상 골라야 해요. 트라이브를 고르거나 공통 미션으로 바꿔 주세요.'
   }
+  // 입력 칸 범위 — 서버는 위임 키의 범위를 보지 않아, 도달할 수 없는 값은 폼이 먼저 막는다(티켓 20261021_1114 1회)
+  const rangeError = missionConditionRangeError(input.condition)
+  if (rangeError) return rangeError
   if (input.statusDisplayType === 'ranking') return rankingFrameNotice(input.statusDisplayType, input.condition)
   return null
 }

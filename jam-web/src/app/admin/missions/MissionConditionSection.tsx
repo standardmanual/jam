@@ -9,7 +9,7 @@
  * 타입으로 잠깐 바꿨다 되돌려도 입력이 사라지지 않는다) — 실제로 저장되는 값은 그 시점의
  * mission_type이 쓰는 필드만 골라 조립한다.
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { MissionCondition, MissionType } from '@/types/database'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Input } from '@/components/admin/ui/input'
@@ -19,6 +19,7 @@ import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 import PoiSearchSelect from '@/components/admin/PoiSearchSelect'
 import { getConditionField, ACTIVITY_TYPE_FORM_OPTIONS, type ConditionFormEntry } from '@/lib/badge-engine/conditionRegistry'
 import { FieldLabel, FieldMessage, SuffixInput } from '@/app/admin/badges/BadgeFormControls'
+import { cn } from '@/lib/utils'
 import {
   MISSION_ENGINE_DELEGATED_KEYS,
   missionTypeUsesActivityTypeFilter,
@@ -37,6 +38,13 @@ const DAY_OF_WEEK_OPTIONS: { value: string; label: string }[] = [
   { value: 'sunday', label: '일' },
 ]
 
+/** 한국어 줄바꿈 — 새로 만들거나 고치는 문구에 붙인다(UX_WRITING_GUIDELINE §3.2) */
+const KO_TEXT = 'break-keep wrap-break-word'
+const KO_HELP = 'break-keep wrap-break-word text-balance'
+
+/** 위임 키 그리드(`sm` 2열 → `lg` 3열)에서 입력이 차지하는 칸 수 — 레지스트리 `span`을 이 그리드 기준으로 옮긴다 */
+const GRID_SPAN_CLASS = { 2: 'sm:col-span-2', 3: 'sm:col-span-2 lg:col-span-3' } as const
+
 const DISTINCT_MONTHS_METRIC_OPTIONS = [
   { value: 'distance_km', label: '누적 거리' },
   { value: 'elevation_gain_m', label: '누적 고도' },
@@ -48,7 +56,7 @@ export interface MissionConditionSectionProps {
   setField: (field: keyof MissionConditionFormFields, value: string | boolean) => void
   /** 저장될 condition_json(MissionForm이 조립) */
   conditionPreview: MissionCondition | null
-  /** 이 폼이 입력 UI를 주지 않는 조건 키(`time_band_counts`) — 값이 있으면 보존 안내를 띄운다 */
+  /** 이 폼이 입력 UI를 주지 않는 조건 키(`time_band_counts`와 DB 기록 키) — 값이 있으면 보존 안내를 띄운다 */
   unsupportedKeys: readonly string[]
   /** 아이템 픽업(badge_id) 초기 라벨 — 수정 화면에서 기존 값을 보여준다 */
   badgeIdInitialLabel?: string
@@ -202,13 +210,16 @@ export default function MissionConditionSection({
   }
 
   // ── 복합 조건(engine_condition) — 다중 조건 빌더 ─────────────────────────
-  const delegatedEntries = MISSION_ENGINE_DELEGATED_KEYS
-    .map((key) => {
-      const meta = getConditionField(key)
-      const control = meta?.form?.controls?.[0]
-      return meta && control ? ({ meta, control, section: meta.form!.section } as ConditionFormEntry) : null
-    })
-    .filter((e): e is ConditionFormEntry => e !== null)
+  // 키마다 컨트롤을 전부 그린다 — 짝이 있는 `time_range`(시작·끝)는 한 줄로 묶는다(티켓 20261021_1114 1회).
+  const delegatedNodes = MISSION_ENGINE_DELEGATED_KEYS.flatMap((key) => {
+    // 레지스트리에 입력 칸 정의가 없는 키 — 미션 쪽에서 정한 칸을 그린다
+    if (key === 'day_of_week') return [renderDayOfWeekField(fields, setField)]
+    const meta = getConditionField(key)
+    const entries = (meta?.form?.controls ?? []).map(
+      (control) => ({ meta, control, section: meta!.form!.section }) as ConditionFormEntry
+    )
+    return renderDelegatedEntries(entries, fields, setField)
+  })
 
   return (
     <div className="flex flex-col gap-5">
@@ -224,7 +235,7 @@ export default function MissionConditionSection({
       <div className="flex flex-col gap-3">
         <p className="text-xs font-bold text-foreground">배지엔진 조건</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {delegatedEntries.map((entry) => renderDelegatedField(entry, fields, setField))}
+          {delegatedNodes}
         </div>
       </div>
 
@@ -441,11 +452,122 @@ export default function MissionConditionSection({
   )
 }
 
+type SetField = (field: keyof MissionConditionFormFields, value: string | boolean) => void
+
+/** 한 키의 컨트롤들 — 짝의 둘째 칸은 첫째 칸이 함께 그린다 */
+function renderDelegatedEntries(
+  entries: readonly ConditionFormEntry[],
+  fields: MissionConditionFormFields,
+  setField: SetField
+): ReactNode[] {
+  const byField = new Map(entries.map((e) => [e.control.field, e]))
+  const partnerFields = new Set(entries.flatMap((e) => (e.control.pair ? [e.control.pair.with] : [])))
+  return entries.flatMap((entry) => {
+    if (partnerFields.has(entry.control.field)) return []
+    const partner = entry.control.pair ? byField.get(entry.control.pair.with) : undefined
+    return [partner ? renderDelegatedPair(entry, partner, fields, setField) : renderDelegatedField(entry, fields, setField)]
+  })
+}
+
+/** 수치·글자·시각 입력 칸 하나 — 수치는 레지스트리의 범위(min·max·step)를 그대로 건다 */
+function renderDelegatedInput(
+  entry: ConditionFormEntry,
+  fields: MissionConditionFormFields,
+  setField: SetField,
+  ariaLabel?: string
+) {
+  const { control, meta } = entry
+  const field = control.field as keyof MissionConditionFormFields
+  const suffix = control.kind === 'time' ? null : (control.suffix ?? meta.unit)
+  return (
+    <SuffixInput
+      id={`mc-eng-${control.field}`}
+      type={control.kind === 'number' ? 'number' : control.kind === 'time' ? 'time' : 'text'}
+      inputMode={control.kind === 'number' ? 'decimal' : undefined}
+      {...(control.kind === 'number' ? { min: meta.min, max: meta.max, step: meta.step } : {})}
+      value={fields[field] as string}
+      onChange={(e) => setField(field, e.target.value)}
+      placeholder={control.placeholder}
+      suffix={suffix}
+      aria-label={ariaLabel}
+      autoComplete="off"
+    />
+  )
+}
+
+/** 짝 입력 한 줄(시간대 시작~끝) — 묶음 라벨 아래에 두 입력을 구분 글자로 잇는다 */
+function renderDelegatedPair(
+  a: ConditionFormEntry,
+  b: ConditionFormEntry,
+  fields: MissionConditionFormFields,
+  setField: SetField
+) {
+  const pair = a.control.pair!
+  const labelId = `mc-eng-${a.control.field}-pair`
+  return (
+    <div
+      key={a.control.field}
+      role="group"
+      aria-labelledby={labelId}
+      className={cn('flex min-w-0 flex-col gap-1.5', a.control.span && GRID_SPAN_CLASS[a.control.span])}
+    >
+      <FieldLabel id={labelId} className={KO_TEXT}>
+        {pair.label}
+      </FieldLabel>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+        {renderDelegatedInput(a, fields, setField, a.control.label ?? a.meta.label)}
+        <span className="text-xs text-muted-foreground" aria-hidden="true">
+          {pair.separator}
+        </span>
+        {renderDelegatedInput(b, fields, setField, b.control.label ?? b.meta.label)}
+      </div>
+      {a.control.help && <FieldMessage className={KO_HELP}>{a.control.help}</FieldMessage>}
+      {b.control.help && <FieldMessage className={KO_HELP}>{b.control.help}</FieldMessage>}
+    </div>
+  )
+}
+
+/**
+ * 활동 요일(`day_of_week`) — 레지스트리에 입력 칸 정의가 없어 미션 쪽에서 정했다(티켓 20261021_1114 1회).
+ * 월~일 칩을 체크해 고른다. 값 모양(한 요일은 문자열, 여러 요일은 배열)은 `readDayOfWeek`가 정한다.
+ */
+function renderDayOfWeekField(fields: MissionConditionFormFields, setField: SetField) {
+  const days = fields.dayOfWeek.split(',').map((s) => s.trim()).filter(Boolean)
+  return (
+    <div key="day_of_week" className={cn('flex min-w-0 flex-col gap-1.5', GRID_SPAN_CLASS[3])}>
+      <FieldLabel id="mc-eng-day-of-week-label" className={KO_TEXT}>
+        활동 요일
+      </FieldLabel>
+      <div role="group" aria-labelledby="mc-eng-day-of-week-label" className="flex flex-wrap gap-1.5">
+        {DAY_OF_WEEK_OPTIONS.map((d) => (
+          <label
+            key={d.value}
+            className="flex cursor-pointer items-center gap-1 whitespace-nowrap break-keep wrap-break-word rounded-full border border-border bg-white px-2.5 py-1 text-xs"
+          >
+            <Checkbox
+              checked={days.includes(d.value)}
+              onCheckedChange={(v) => {
+                const next = v === true ? [...days, d.value] : days.filter((x) => x !== d.value)
+                setField('dayOfWeek', next.join(', '))
+              }}
+            />
+            {d.label}
+          </label>
+        ))}
+      </div>
+      <FieldMessage className={KO_HELP}>
+        활동을 시작한 요일(한국 시간)로 좁혀요. 한 요일만 고르면 그 요일의 활동만 세고, 여러 요일은 「연속 주(월~일)
+        수」와 함께 쓸 때만 반영돼요. 요일만으로는 달성을 판정할 수 없어서 거리나 횟수 같은 값을 함께 채워야 해요.
+      </FieldMessage>
+    </div>
+  )
+}
+
 /** 배지엔진 위임 필드 하나 — 컨트롤 종류(number/text/time/checkbox/select)에 맞게 그린다 */
 function renderDelegatedField(
   entry: ConditionFormEntry,
   fields: MissionConditionFormFields,
-  setField: (field: keyof MissionConditionFormFields, value: string | boolean) => void
+  setField: SetField
 ) {
   const { control, meta } = entry
   const field = control.field as keyof MissionConditionFormFields
@@ -461,7 +583,7 @@ function renderDelegatedField(
           onCheckedChange={(v) => setField(field, v === true)}
           className="mt-0.5"
         />
-        <label htmlFor={domId} className="cursor-pointer text-sm font-medium text-foreground">
+        <label htmlFor={domId} className={cn('cursor-pointer text-sm font-medium text-foreground', KO_TEXT)}>
           {label}
         </label>
       </div>
@@ -472,7 +594,9 @@ function renderDelegatedField(
     const current = (fields[field] as string) || NONE_VALUE
     return (
       <div key={control.field} className="flex min-w-0 flex-col gap-1.5">
-        <FieldLabel htmlFor={domId}>{label}</FieldLabel>
+        <FieldLabel htmlFor={domId} className={KO_TEXT}>
+          {label}
+        </FieldLabel>
         <Select value={current} onValueChange={(v) => setField(field, v === NONE_VALUE ? '' : v)}>
           <SelectTrigger id={domId} aria-label={label}>
             <SelectValue />
@@ -486,26 +610,18 @@ function renderDelegatedField(
             ))}
           </SelectContent>
         </Select>
-        {control.help && <FieldMessage>{control.help}</FieldMessage>}
+        {control.help && <FieldMessage className={KO_HELP}>{control.help}</FieldMessage>}
       </div>
     )
   }
 
-  const suffix = control.kind === 'time' ? null : (control.suffix ?? meta.unit)
   return (
-    <div key={control.field} className="flex min-w-0 flex-col gap-1.5">
-      <FieldLabel htmlFor={domId}>{label}</FieldLabel>
-      <SuffixInput
-        id={domId}
-        type={control.kind === 'number' ? 'number' : control.kind === 'time' ? 'time' : 'text'}
-        inputMode={control.kind === 'number' ? 'decimal' : undefined}
-        value={fields[field] as string}
-        onChange={(e) => setField(field, e.target.value)}
-        placeholder={control.placeholder}
-        suffix={suffix}
-        autoComplete="off"
-      />
-      {control.help && <FieldMessage>{control.help}</FieldMessage>}
+    <div key={control.field} className={cn('flex min-w-0 flex-col gap-1.5', control.span && GRID_SPAN_CLASS[control.span])}>
+      <FieldLabel htmlFor={domId} className={KO_TEXT}>
+        {label}
+      </FieldLabel>
+      {renderDelegatedInput(entry, fields, setField)}
+      {control.help && <FieldMessage className={KO_HELP}>{control.help}</FieldMessage>}
     </div>
   )
 }
