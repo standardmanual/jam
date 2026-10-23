@@ -199,11 +199,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // 저장은 됐지만 발급이 멈추는 회차 조건이면 경고를 함께 돌려준다(티켓 20261021_1426). 체크인 배지는 조건을 저장하지 않는다.
-  const warning = findConditionShapeSaveWarning(
-    { name: body.name !== undefined ? body.name : existing.name, family_key: existing.family_key },
-    type === 'checkin' ? null : (conditionJson ?? null)
-  )
+  // 저장은 됐지만 발급이 멈추는 회차 조건이면 경고를 함께 돌려준다(티켓 20261021_1426).
+  // 엔진이 읽는 값 그대로(type·admin_category·condition_json) 판정하려고 저장된 행을 쓴다.
+  const saved = data as BadgeRow
+  const warning = findConditionShapeSaveWarning(saved, saved.condition_json)
   return NextResponse.json(warning ? { badge: data, warning } : { badge: data })
 }
 

@@ -32,6 +32,7 @@
 import {
   findBlockingConditionKeys,
   getConditionField,
+  hasBlockingConditionKeys,
   MEASURABLE_CONDITION_KEYS,
   USAGE_METRIC_CONDITION_KEYS,
 } from '@/lib/badge-engine/conditionRegistry'
@@ -228,21 +229,27 @@ export function findConditionShapeSaveError(
  * (티켓 20261021_1426). 저장은 막지 않고 경고 문구만 돌려준다 — 미션 조건에서 «판정 못 하는
  * 조건은 저장을 허용하고 경고만 한다»로 정한 선례(`checkMissionCondition`)와 같다.
  *
- * 판정은 엔진(`collectRepeatOccurrences`)이 회차를 세는 순서를 그대로 따른다 — 기간 단위 회차 →
- * 휴식 회차 → 그 밖의 키가 남으면 회차 0(fail-closed). 앞의 둘은 엔진이 별도 계산으로 가져가므로
- * 경고하지 않는다. 마지막 단계의 키 목록은 엔진이 쓰는 `unconsumedRepeatConditionKeys` **그 함수**다 —
- * 어드민 쪽에 키 목록을 따로 두지 않으므로 엔진이 소비하는 키가 늘어나면 경고도 함께 줄어든다.
- *
- * 경고하지 않는 경우
+ * 판정은 엔진이 회차를 세기까지 거치는 순서를 그대로 따른다. 엔진이 그 앞에서 다른 사유로 끝내거나
+ * 별도 계산으로 가져가는 조합은 «회차 0»이 발급을 막는 원인이 아니므로 알리지 않는다.
+ *  - 엔진이 평가하는 배지가 아니다 — 활동 배지(`type='activity'`)가 아니거나 JAM! 카테고리다
+ *    (`evaluateBadgesDetailed`가 두 경우를 후보에서 뺀다).
+ *  - `evaluateConditionDetailed`가 회차보다 먼저 끝내는 조건 — 알 수 없는 필드·평가 대기·짝 없는 필드
+ *    (화면에 따로 경고가 있다), `mission_reward`, `poi_id`, 형태가 틀린 `repeat_count`.
  *  - 저장 자체가 막히는 조합(`findConditionShapeSaveError`) — 오류가 먼저 나가므로 경고를 겹치지 않는다.
- *  - `mission_reward`·`poi_id` — 엔진이 회차를 세기 전에 먼저 끝내는 조건이라(`evaluateConditionDetailed`)
- *    회차 0이 발급을 막는 원인이 아니다.
+ *  - 기간 단위 회차·휴식 회차 — 엔진이 전용 계산으로 센다(`collectRepeatOccurrences`의 ⓪-a1·⓪-a2).
+ *
+ * 남은 조합에서 어떤 키가 회차 0을 만드는지는 엔진이 쓰는 `unconsumedRepeatConditionKeys` **그 함수**로
+ * 가린다 — 어드민 쪽에 키 목록을 따로 두지 않으므로 엔진이 소비하는 키가 늘어나면 경고도 함께 줄어든다.
  */
 export function findConditionShapeSaveWarning(
-  badge: Pick<BadgeRow, 'name' | 'family_key'>,
+  badge: Pick<BadgeRow, 'name' | 'family_key' | 'type' | 'admin_category'>,
   condition: BadgeCondition | null
 ): string | null {
+  if (badge.type !== 'activity' || badge.admin_category === 'jam') return null
   if (!condition || condition.repeat_count === undefined) return null
+  const { repeat_count: repeatCount } = condition
+  if (typeof repeatCount !== 'number' || !Number.isFinite(repeatCount) || repeatCount < 1) return null
+  if (hasBlockingConditionKeys(findBlockingConditionKeys(condition))) return null
   if (condition.mission_reward === true || condition.poi_id !== undefined) return null
   if (findConditionShapeSaveError(badge, condition) !== null) return null
   if (isPeriodDrivenRepeatCondition(condition) || isRestDrivenRepeatCondition(condition)) return null
@@ -250,5 +257,5 @@ export function findConditionShapeSaveWarning(
   const unconsumed = unconsumedRepeatConditionKeys(condition)
   if (unconsumed.length === 0) return null
   const labels = unconsumed.map((key) => `${getConditionField(key)?.label ?? key}(${key})`)
-  return `이 배지는 저장해도 발급되지 않아요. 충족 횟수(repeat_count)를 세는 계산이 다루지 못하는 조건이 함께 있어서 충족 횟수를 0회로 처리해요 — ${labels.join(', ')}. 충족 횟수를 빼거나 이 조건을 빼 주세요.`
+  return `이 조합은 발급되지 않아요. 충족 횟수(repeat_count)를 세는 계산이 다루지 못하는 조건(${labels.join(', ')})이 함께 있어서 충족 횟수를 0회로 처리해요. 이 조건을 빼거나 충족 횟수를 빼 주세요.`
 }

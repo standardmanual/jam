@@ -610,8 +610,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
 
   // 회차 조건에 회차 판정이 다루지 못하는 키가 끼면 회차가 0이 되어 발급이 멈춘다 — 저장 API가
   // 응답 `warning`으로 돌려주는 것과 **같은 함수·같은 문구**다(티켓 20261021_1426).
-  const repeatConditionWarning =
-    type === 'checkin' ? null : findConditionShapeSaveWarning({ name, family_key: badge?.family_key ?? null }, condPreview)
+  const repeatConditionWarning = findConditionShapeSaveWarning(
+    { name, family_key: badge?.family_key ?? null, type, admin_category: adminCategory || null },
+    condPreview
+  )
 
   // ── 섹션 상태·미리보기 ─────────────────────────────────────────────────
 
