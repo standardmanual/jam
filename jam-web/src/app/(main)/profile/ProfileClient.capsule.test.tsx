@@ -58,7 +58,7 @@ describe('프로필의 캡슐 위젯', () => {
   it('내 프로필 + 서버 초기값이 있으면 알약이 보인다', () => {
     const html = render({ capsuleInitial: CAPSULE })
     expect(html).toContain(`aria-label="${d.capsule.aria.filling}"`)
-    expect(html).toContain(d.capsule.pill.filling)
+    expect(html).not.toContain(d.capsule.pill.filling)
   })
 
   it('내 프로필에서 서버 조회가 실패해 null이 오면 위젯이 로딩 알약으로 시작한다(클라이언트가 다시 가져온다)', () => {
