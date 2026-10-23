@@ -86,6 +86,8 @@ export interface BadgeConditionSectionProps {
   unsupportedConditionKeys: readonly string[]
   unrepresentableConditionKeys: readonly string[]
   pendingConditionKeys: readonly string[]
+  /** 회차 조건에 회차 판정이 다루지 못하는 키가 끼어 발급이 멈출 때의 경고 문구(없으면 null) — 저장 API의 응답 `warning`과 같은 문구 */
+  repeatConditionWarning: string | null
   themeContainer: HTMLElement | null
   /** `checkin_category_count` 조건의 카테고리 select 선택지(`poi_categories` 재사용, 티켓
    *  20260914_1725) — DB 테이블 기준이라 레지스트리에 정적으로 선언할 수 없어 여기서 주입한다. */
@@ -125,6 +127,7 @@ export default function BadgeConditionSection({
   unsupportedConditionKeys,
   unrepresentableConditionKeys,
   pendingConditionKeys,
+  repeatConditionWarning,
   themeContainer,
   poiCategories,
 }: BadgeConditionSectionProps) {
@@ -651,6 +654,17 @@ export default function BadgeConditionSection({
               {pendingConditionKeys.map((k) => `${getConditionField(k)?.label ?? k}(${k})`).join(', ')}
               {' '}는 엔진이 아직 평가하지 않아요. 저장은 되지만 이 배지는 평가가 열릴 때까지 발급되지 않아요.
             </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* 회차 0 — 저장은 되지만 충족 횟수를 세는 계산이 다루지 못하는 조건이 함께 있어 발급이 멈춘다.
+          문구는 저장 API 응답의 `warning`과 같다(티켓 20261021_1426) */}
+      {repeatConditionWarning && (
+        <Alert variant="warning">
+          <AlertTitle className="text-sm break-keep wrap-break-word text-balance">충족 횟수를 세지 못하는 조건이 있어요</AlertTitle>
+          <AlertDescription>
+            <p className="text-xs text-amber-800/80 break-keep wrap-break-word text-pretty">{repeatConditionWarning}</p>
           </AlertDescription>
         </Alert>
       )}

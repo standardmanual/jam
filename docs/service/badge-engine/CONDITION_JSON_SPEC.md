@@ -228,7 +228,7 @@ BADGE_ENGINE_UNIFIED.md §2.3-0 참조.
 | `{ duration_minutes: 60, total_count: 5 }` | 「60분 이상 활동이 **1건 있고**, 활동이 총 5회」 (수치 필드는 이력 전반에서 독립 평가되므로) |
 | `{ duration_minutes: 60, repeat_count: 5 }` | 「60분 이상 활동이 **5건**」 |
 
-**회차의 정의** — `collectRepeatOccurrences()`(`src/lib/badge-engine/index.ts`) 한 곳에만 있다.
+**회차의 정의** — `collectRepeatOccurrences()`(`src/lib/badge-engine/repeatOccurrences.ts`) 한 곳에만 있다.
 조건 평가와 카운터 증가가 **같은 함수를 공유해야** 「발급은 됐는데 카운터는 안 오른다」가 생기지 않는다.
 
 1. `activity_type` 필터 + 걷기 축1 게이트
@@ -248,6 +248,18 @@ BADGE_ENGINE_UNIFIED.md §2.3-0 참조.
    `collectPeriodStreakOccurrences()` 한 곳. `total_count`로 치환하지 않는다 —
    「기준 조건을 무시한 전체 활동 수」가 세어져 조용히 후하게 발급되기 때문이다(위 6~13종과 같은 이유)
 5. 걷기는 하루 1회 상한(`dedupeOnePerDay`) 적용 — 걷기 배지 v4 정책과 같다
+
+⚠️ **회차 술어가 읽는 키만 회차와 함께 쓸 수 있다**(fail-closed, 티켓 20261021_1426로 저장 경고 추가). 위 1~3의
+키(`repeat_count`·`activity_type`·`day_of_week`·`same_activity`·`time_range`·`PER_ACTIVITY_KEYS`·`distance_km`·
+`elevation_gain_m`)와 게이트 키(`prerequisite_badge_names`·교차 게이트 3종) 밖의 키가 조건에 있으면(예:
+`{ season: 'winter', duration_minutes: 60, repeat_count: 5 }`의 `season`, `total_count`) 회차를 **0으로 처리**한다 —
+모르는 키를 건너뛴 채 세면 회차가 실제보다 많이 잡히기 때문이다. 이 키 목록은 `unconsumedRepeatConditionKeys()`
+(`repeatOccurrences.ts`) 한 곳이고, 위 4의 기간 단위 회차와 §2.13의 휴식 회차는 이 판정보다 먼저 전용 계산으로
+간다. 이런 조건은 **저장은 되지만 발급되지 않는다.** 어드민 저장 가드 `findConditionShapeSaveWarning()`
+(`badge-condition-guards.ts`)이 같은 함수로 가려내 저장을 막지 않고 응답의 `warning`과 조건 폼의 경고로 알린다.
+엔진이 회차를 세기 전에 다른 사유로 끝내는 조건(알 수 없는 필드·평가 대기·짝 없는 필드·`mission_reward`·`poi_id`·
+형태가 틀린 `repeat_count`), 저장 자체가 막히는 조합, 활동 엔진이 평가하지 않는 배지(활동 배지가 아니거나 JAM!
+카테고리)에는 경고하지 않는다.
 
 **배지 종류 판정** — `rarity`가 있고 `repeat_count`가 있으면 **반복형**이다(세 번째 종류).
 `rarity IS NULL`이면 레벨형이 우선한다. 판정은 `badgeKind.ts`의 `badgeKindOf()` 한 곳.
@@ -500,7 +512,9 @@ interface BadgeGateRequirement {
 - `repeat_count`(§2.11)는 fail-closed 대상이 **아니다** — 평가가 구현돼 있다. 활동 1건 단위
   축(v5 스칼라 7종 포함)뿐 아니라 「기간 단위 회차」(`streak_days`·`weekly_count`·
   `monthly_count`·`weekly_streak` 결합, 2026-09-06 티켓 20260906_0110 ②)도 셀 수 있다. 다만
-  회차 술어로 같이 쓰려는 필드가 여전히 `pending`이면 그 필드 때문에 조건 전체가 막힌다
+  회차 술어로 같이 쓰려는 필드가 여전히 `pending`이면 그 필드 때문에 조건 전체가 막힌다. 회차 술어가 읽지
+  않는 키(`season`·`total_count` 등)가 끼면 평가는 시작되지만 회차가 0이라 발급되지 않는다(§2.11) —
+  저장 때 응답 `warning`으로 알린다
 - 휴식 4종(§2.13)은 **`repeat_count`와 휴식 키 1개까지 조합 가능하다**(2026-09-06, 티켓
   20260906_2056) — 전용 술어가 "휴식 조건을 만족한 복귀 사건"만 센다. 휴식 키 2개 이상은
   사건 경계가 정의되지 않아 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다
