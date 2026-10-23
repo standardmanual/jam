@@ -972,16 +972,19 @@ export type Database = {
         Row: {
           fail_reward_points: number
           id: number
+          tier_up_probability: number
           updated_at: string
         }
         Insert: {
           fail_reward_points?: number
           id?: number
+          tier_up_probability?: number
           updated_at?: string
         }
         Update: {
           fail_reward_points?: number
           id?: number
+          tier_up_probability?: number
           updated_at?: string
         }
         Relationships: []

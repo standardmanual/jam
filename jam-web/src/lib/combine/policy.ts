@@ -3,17 +3,23 @@
  * 싱글톤 id=1, 실패 시 기본값 폴백
  *
  * 마이그레이션 153(티켓 20260910_1408)에서 트라이브 다양성 티어(경로 B)와 피티를
- * 전면 폐기했다 — 남은 설정은 「레시피 미매칭 시 지급할 고정 포인트」 하나뿐이다.
+ * 전면 폐기했다 — 남은 설정은 「레시피 미매칭 시 지급할 고정 포인트」 하나였고,
+ * 마이그레이션 287(티켓 20261023_1648)이 「등급 올리기 윗등급 확률」 한 칸을 더했다.
  * 싱글톤 구조·기본값 폴백·저장 실패 시 예외 던지기 패턴은 그대로 지킨다.
+ * 칸이 DB에 없으면(마이그레이션 287 적용 전) 그 칸만 기본값으로 채운다 — 행의 다른 칸은 DB 값을 쓴다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { CombinePolicyRow } from '@/types/database'
 
 export type CombinePolicy = Omit<CombinePolicyRow, 'id' | 'updated_at'>
 
-/** DB 기본값(마이그레이션 153의 `DEFAULT 10`)과 동일하게 맞춘다 — 폴백 시 실패가 빈손이 되지 않게. */
+/**
+ * DB 기본값과 동일하게 맞춘다 — 폴백 시 실패가 빈손이 되지 않게.
+ * `fail_reward_points`는 마이그레이션 153의 `DEFAULT 10`, `tier_up_probability`는 마이그레이션 287의 `DEFAULT 0.7`이다.
+ */
 export const DEFAULT_COMBINE_POLICY: CombinePolicy = {
   fail_reward_points: 10,
+  tier_up_probability: 0.7,
 }
 
 export async function getCombinePolicy(): Promise<CombinePolicy> {

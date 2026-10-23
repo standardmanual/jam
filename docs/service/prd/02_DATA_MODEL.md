@@ -47,7 +47,7 @@ code:
 
 [조합]          combination_recipes (보상만) + combination_recipe_slots (슬롯 2~5개, OR 후보)
                 combine_pending_results (빈칸이 모자라 받지 않은 믹스 결과, 마이그레이션 236)
-                combine_policy (싱글톤 — 실패 시 고정 포인트)
+                combine_policy (싱글톤 — 실패 시 고정 포인트 · 등급 올리기 윗등급 확률)
                 user_combine_fail_logs · user_combine_success_logs (유저별 믹스 실패·성공 이력)
 
 [미션]          missions ─1:N─ user_mission_participations (참가+진행도)
@@ -804,9 +804,10 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 슬롯 단위로 고정), `allowed_badge_ids[]`(같은 타입 배지 후보, OR — 유저는 슬롯당 하나만 채운다).
 
 ### combine_policy (싱글톤)
-`fail_reward_points`(미매칭 시 지급할 고정 포인트) 하나만 남아 있다. 트라이브 다양성 티어
+`fail_reward_points`(미매칭 시 지급할 고정 포인트)와 `tier_up_probability`(등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률) 두 칸이 있다. 트라이브 다양성 티어
 확률 정책·피티 카운터(`user_combine_state`)는 2026-09-10 폐기됐다.
-편집 화면은 어드민 «밸런스 설정»의 «컬렉션과 믹스» 구역이다(`/admin/balance#collection`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 0 이상 정수이고 저장하면 `updated_at`을 직접 올리며 변경 이력이 남는다.
+`tier_up_probability`는 마이그레이션 287(티켓 20261023_1648, 7-7b 1회)이 더한 `NUMERIC NOT NULL DEFAULT 0.7`이고 `CHECK`로 0 이상 1 이하만 받는다. 0.7이면 윗등급 70%, 같은 등급 30%다. 재료 등급마다 따로 두지 않는 한 칸이다. 이 칸을 읽는 서버 규칙·확률 안내·어드민 칸은 2·4회에서 나온다. 코드의 `DEFAULT_COMBINE_POLICY.tier_up_probability`(0.7)가 칸이 없는 DB에서도 같은 값으로 움직이게 한다.
+편집 화면은 어드민 «밸런스 설정»의 «컬렉션과 믹스» 구역이다(`/admin/balance#collection`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 지금 화면에서 고치는 칸은 `fail_reward_points`뿐이고 0 이상 정수이며, 저장하면 `updated_at`을 직접 올리며 변경 이력이 남는다.
 옛 «믹스 정책» 화면(`/admin/combine-policy`)과 그 API는 없앴다. 정책 대시보드의 저장 라우트(`PUT /api/admin/policy-dashboard/field`)도 티켓 20261022_1717에서 없앴다. `lib/combine/policy.ts`의 `updateCombinePolicy`는 부르는 곳이 없어졌지만 함수와 시험은 남아 있다(삭제는 후속).
 
 ### user_combine_fail_logs (마이그레이션 153)
