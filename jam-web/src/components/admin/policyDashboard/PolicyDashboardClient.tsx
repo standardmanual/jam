@@ -9,7 +9,6 @@ import {
   IconDatabase,
   IconFileCertificate,
   IconClock,
-  IconCheck,
   IconX,
   IconArrowRight,
   IconChevronDown,
@@ -19,7 +18,6 @@ import { Badge } from '@/components/admin/ui/badge'
 import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Card, CardContent } from '@/components/admin/ui/card'
-import { toast } from 'sonner'
 import type { PolicyItem, PolicyType } from '@/lib/admin/policyDashboard/types'
 
 interface Props {
@@ -36,26 +34,21 @@ export function PolicyDashboardClient({
   updatedAt,
 }: Props) {
   const [policies] = useState<readonly PolicyItem[]>(initialPolicies)
-  const [liveValues, setLiveValues] = useState<Record<string, unknown>>(initialLiveValues)
+  // 값은 읽어서 보여 주기만 한다. 바꾸는 일은 카드의 링크가 이어 주는 설정 화면에서 한다.
+  const liveValues = initialLiveValues
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTab, setSelectedTab] = useState<FilterTab>('all')
   const [collapsedChapters, setCollapsedChapters] = useState<Record<number, boolean>>({})
 
-  // 인라인 편집 상태
-  const [editingPolicyId, setEditingPolicyId] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState<string>('')
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-
   // 상단 통계 수치
   const metrics = useMemo(() => {
-    let dbEditable = 0
+    let adminLink = 0
     let codeConstant = 0
     let ticketDecision = 0
     let preLaunch = 0
 
     for (const p of policies) {
-      if (p.type === 'db_editable') dbEditable += 1
+      if (p.type === 'admin_link') adminLink += 1
       else if (p.type === 'code_constant') codeConstant += 1
       else if (p.type === 'ticket_decision') ticketDecision += 1
       else if (p.type === 'pre_launch_pending') preLaunch += 1
@@ -63,7 +56,7 @@ export function PolicyDashboardClient({
 
     return {
       total: policies.length,
-      dbEditable,
+      adminLink,
       codeConstant,
       ticketDecision,
       preLaunch,
@@ -140,89 +133,13 @@ export function PolicyDashboardClient({
     setCollapsedChapters(next)
   }
 
-  // 인라인 수정 시작
-  const startEdit = (policy: PolicyItem) => {
-    if (!policy.editableConfig) return
-    const currentVal = liveValues[policy.editableConfig.field] ?? policy.defaultValue ?? ''
-    setEditingPolicyId(policy.id)
-    setEditValue(String(currentVal))
-    setSaveError(null)
-  }
-
-  // 인라인 수정 취소
-  const cancelEdit = () => {
-    setEditingPolicyId(null)
-    setEditValue('')
-    setSaveError(null)
-  }
-
-  // 인라인 수정 저장
-  const handleSaveField = async (policy: PolicyItem) => {
-    if (!policy.editableConfig) return
-
-    const numVal = Number(editValue.trim())
-    if (Number.isNaN(numVal)) {
-      setSaveError('유효한 숫자를 입력해 주세요.')
-      return
-    }
-
-    if (policy.editableConfig.min !== undefined && numVal < policy.editableConfig.min) {
-      setSaveError(`최소값은 ${policy.editableConfig.min}입니다.`)
-      return
-    }
-
-    if (policy.editableConfig.max !== undefined && numVal > policy.editableConfig.max) {
-      setSaveError(`최대값은 ${policy.editableConfig.max}입니다.`)
-      return
-    }
-
-    setSaving(true)
-    setSaveError(null)
-
-    try {
-      const res = await fetch('/api/admin/policy-dashboard/field', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target: policy.editableConfig.target,
-          field: policy.editableConfig.field,
-          value: numVal,
-        }),
-      })
-
-      const data = (await res.json()) as { ok?: boolean; error?: string }
-
-      if (!res.ok || !data.ok) {
-        const errorMsg = data.error ?? '저장 요청이 실패했어요.'
-        setSaveError(errorMsg)
-        toast.error(errorMsg)
-        return
-      }
-
-      // 로컬 라이브 값 갱신
-      setLiveValues((prev) => ({
-        ...prev,
-        [policy.editableConfig!.field]: numVal,
-      }))
-
-      toast.success(`${policy.title} 값이 저장되었어요.`)
-      setEditingPolicyId(null)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '저장 중 네트워크 오류가 발생했어요.'
-      setSaveError(msg)
-      toast.error(msg)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const getTypeBadge = (type: PolicyType) => {
     switch (type) {
-      case 'db_editable':
+      case 'admin_link':
         return (
-          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1 font-semibold">
+          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1 font-semibold whitespace-nowrap break-keep wrap-break-word">
             <IconDatabase className="size-3" />
-            즉시 수정 가능 (DB)
+            설정 화면에서 바꾸기
           </Badge>
         )
       case 'code_constant':
@@ -272,21 +189,21 @@ export function PolicyDashboardClient({
 
         <Card
           className={`cursor-pointer transition-all border ${
-            selectedTab === 'db_editable'
+            selectedTab === 'admin_link'
               ? 'border-emerald-500 ring-2 ring-emerald-500/20'
               : 'hover:border-emerald-300'
           }`}
-          onClick={() => setSelectedTab('db_editable')}
+          onClick={() => setSelectedTab('admin_link')}
         >
           <CardContent className="p-4">
-            <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+            <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 break-keep wrap-break-word">
               <IconDatabase className="size-3.5" />
-              즉시 수정 가능
+              설정 화면에서 바꾸기
             </div>
             <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
-              {metrics.dbEditable}건
+              {metrics.adminLink}건
             </div>
-            <div className="text-[11px] text-emerald-600/80 mt-1">대시보드 직접 반영</div>
+            <div className="text-[11px] text-emerald-600/80 mt-1 break-keep wrap-break-word">값은 설정 화면에서 수정</div>
           </CardContent>
         </Card>
 
@@ -413,11 +330,11 @@ export function PolicyDashboardClient({
           <Button
             type="button"
             size="sm"
-            variant={selectedTab === 'db_editable' ? 'default' : 'ghost'}
-            onClick={() => setSelectedTab('db_editable')}
-            className="h-7 text-xs px-2.5 text-emerald-800 dark:text-emerald-300"
+            variant={selectedTab === 'admin_link' ? 'default' : 'ghost'}
+            onClick={() => setSelectedTab('admin_link')}
+            className="h-7 text-xs px-2.5 text-emerald-800 dark:text-emerald-300 whitespace-nowrap break-keep wrap-break-word"
           >
-            어드민 즉시 수정 가능 ({metrics.dbEditable})
+            설정 화면에서 바꾸기 ({metrics.adminLink})
           </Button>
           <Button
             type="button"
@@ -542,10 +459,10 @@ export function PolicyDashboardClient({
                 {!isCollapsed && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     {items.map((policy) => {
-                      const isEditing = editingPolicyId === policy.id
+                      const adminLink = policy.type === 'admin_link' ? policy.adminLink : undefined
                       const liveVal =
-                        policy.editableConfig && liveValues[policy.editableConfig.field] !== undefined
-                          ? liveValues[policy.editableConfig.field]
+                        adminLink?.liveField !== undefined && liveValues[adminLink.liveField] !== undefined
+                          ? liveValues[adminLink.liveField]
                           : null
 
                       return (
@@ -572,103 +489,37 @@ export function PolicyDashboardClient({
                                   </span>
                                 </div>
 
-                                {/* DB 수정 가능 항목의 실시간 값 및 인라인 수정 컨트롤 */}
-                                {policy.type === 'db_editable' && policy.editableConfig && (
+                                {/* 설정 화면에서 바꾸는 항목: 실시간 값은 읽기만 하고, 바꾸는 일은 링크가 이어 준다 */}
+                                {adminLink && (
                                   <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800 space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                                    {adminLink.liveField !== undefined && (
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold break-keep wrap-break-word">
                                           현재 DB 실측값:
                                         </span>
-                                        <span className="font-bold text-emerald-800 dark:text-emerald-300">
-                                          {liveVal !== null ? `${liveVal}${policy.editableConfig.unit ?? ''}` : '조회 중'}
+                                        <span className="font-bold text-emerald-800 dark:text-emerald-300 break-keep wrap-break-word">
+                                          {liveVal !== null ? `${liveVal}${adminLink.unit ?? ''}` : '조회 중'}
                                         </span>
                                         {policy.defaultValue !== undefined && (
-                                          <span className="text-[11px] text-muted-foreground ml-1">
+                                          <span className="text-[11px] text-muted-foreground ml-1 break-keep wrap-break-word">
                                             (기본값: {policy.defaultValue}
-                                            {policy.editableConfig.unit ?? ''})
+                                            {adminLink.unit ?? ''})
                                           </span>
                                         )}
                                       </div>
+                                    )}
 
-                                      {!isEditing && (
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => startEdit(policy)}
-                                          className="h-6 text-[11px] px-2"
-                                        >
-                                          값 변경
-                                        </Button>
-                                      )}
+                                    <div className="text-right">
+                                      <Link
+                                        href={adminLink.href}
+                                        className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-0.5 whitespace-nowrap break-keep wrap-break-word"
+                                      >
+                                        {adminLink.href.startsWith('/admin/balance')
+                                          ? '밸런스 설정에서 바꾸기'
+                                          : '설정 화면에서 바꾸기'}{' '}
+                                        <IconArrowRight className="size-3" />
+                                      </Link>
                                     </div>
-
-                                    {/* 인라인 수정 폼 */}
-                                    {isEditing && (
-                                      <div className="pt-2 space-y-2 bg-white dark:bg-slate-950 p-2 rounded border border-emerald-300 dark:border-emerald-700">
-                                        <div className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
-                                          {policy.editableConfig.label} 값 수정
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <div className="relative flex-1">
-                                            <Input
-                                              type="number"
-                                              value={editValue}
-                                              onChange={(e) => setEditValue(e.target.value)}
-                                              step={policy.editableConfig.valueType === 'integer' ? '1' : 'any'}
-                                              min={policy.editableConfig.min}
-                                              max={policy.editableConfig.max}
-                                              className="h-8 text-xs pr-8"
-                                              disabled={saving}
-                                              autoFocus
-                                            />
-                                            {policy.editableConfig.unit && (
-                                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                                {policy.editableConfig.unit}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            onClick={() => handleSaveField(policy)}
-                                            disabled={saving}
-                                            className="h-8 text-xs px-2.5"
-                                          >
-                                            {saving ? '저장 중...' : <IconCheck className="size-3.5" />}
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={cancelEdit}
-                                            disabled={saving}
-                                            className="h-8 text-xs px-2"
-                                          >
-                                            <IconX className="size-3.5" />
-                                          </Button>
-                                        </div>
-
-                                        {saveError && (
-                                          <p className="text-[11px] text-destructive leading-tight">
-                                            {saveError}
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {/* 상세 설정 이동 링크 */}
-                                    {policy.editableConfig.relatedAdminUrl && (
-                                      <div className="text-right">
-                                        <Link
-                                          href={policy.editableConfig.relatedAdminUrl}
-                                          className="text-[11px] text-muted-foreground hover:text-primary inline-flex items-center gap-0.5"
-                                        >
-                                          전용 설정 화면 <IconArrowRight className="size-3" />
-                                        </Link>
-                                      </div>
-                                    )}
                                   </div>
                                 )}
                               </div>
