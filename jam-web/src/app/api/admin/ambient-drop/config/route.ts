@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { fractionToPercent } from '@/lib/admin/balance/fields'
 import {
   getAmbientDropConfig,
   updateAmbientDropConfig,
-  type AmbientDropConfig,
+  type AmbientAxisPatch,
 } from '@/lib/ambient-drop/config'
-import {
-  AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES,
-  isValidScheduleHourKst,
-} from '@/lib/ambient-drop/schedule'
 import type { AmbientDropAxisMode } from '@/types/database'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -25,7 +22,10 @@ export async function GET() {
   return NextResponse.json({ config })
 }
 
-/** 폼 전체 저장 */
+/**
+ * 스위치와 세 축 고르기 저장. 본문에 숫자 8칸이 들어와도 받지 않는다(옛 화면이 열린 채 남은 경우에도 낡은 숫자로 덮어쓰지 않는다).
+ * `rarity_mode`가 explicit이 되면 등급 비율 합 1을 **저장된 값(밸런스 설정이 저장한 값)** 으로 검사한다. 본문의 비율은 보지 않는다.
+ */
 export async function PUT(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -34,27 +34,6 @@ export async function PUT(req: NextRequest) {
   const current = await getAmbientDropConfig()
 
   const auto_enabled = typeof body.auto_enabled === 'boolean' ? body.auto_enabled : current.auto_enabled
-
-  const schedule_hour_kst =
-    body.schedule_hour_kst === undefined ? current.schedule_hour_kst : Number(body.schedule_hour_kst)
-  if (!isValidScheduleHourKst(schedule_hour_kst)) {
-    return NextResponse.json({ error: 'schedule_hour_kst는 0~23 사이의 정수여야 합니다.' }, { status: 400 })
-  }
-
-  const exclusion_window_minutes =
-    body.exclusion_window_minutes === undefined ? current.exclusion_window_minutes : Number(body.exclusion_window_minutes)
-  if (
-    Number.isNaN(exclusion_window_minutes) ||
-    exclusion_window_minutes < 0 ||
-    exclusion_window_minutes > AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES
-  ) {
-    return NextResponse.json(
-      {
-        error: `상호 배제 창은 0~${AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES}분 사이여야 해요. 720분을 넘기면 「지금 배포」가 하루 종일 막혀요. 예약 배포와 겹치는 것만 막으면 되니 15분 안팎이면 충분해요.`,
-      },
-      { status: 400 }
-    )
-  }
 
   const category_mode = body.category_mode === undefined ? current.category_mode : body.category_mode
   if (!isAxisMode(category_mode)) {
@@ -70,20 +49,13 @@ export async function PUT(req: NextRequest) {
   if (!isAxisMode(rarity_mode)) {
     return NextResponse.json({ error: 'rarity_mode는 explicit 또는 random이어야 합니다.' }, { status: 400 })
   }
-  const rarity_common = body.rarity_common === undefined ? current.rarity_common : Number(body.rarity_common)
-  const rarity_rare = body.rarity_rare === undefined ? current.rarity_rare : Number(body.rarity_rare)
-  const rarity_epic = body.rarity_epic === undefined ? current.rarity_epic : Number(body.rarity_epic)
-  const rarity_mystic = body.rarity_mystic === undefined ? current.rarity_mystic : Number(body.rarity_mystic)
-  for (const [key, v] of Object.entries({ rarity_common, rarity_rare, rarity_epic, rarity_mystic })) {
-    if (Number.isNaN(v) || v < 0) {
-      return NextResponse.json({ error: `${key}: 0 이상의 숫자여야 합니다.` }, { status: 400 })
-    }
-  }
   if (rarity_mode === 'explicit') {
-    const raritySum = rarity_common + rarity_rare + rarity_epic + rarity_mystic
+    const raritySum = current.rarity_common + current.rarity_rare + current.rarity_epic + current.rarity_mystic
     if (Math.abs(raritySum - 1) > 0.001) {
       return NextResponse.json(
-        { error: `등급 비율 합이 1이어야 합니다. (현재 ${raritySum.toFixed(3)})` },
+        {
+          error: `등급을 「명시」로 정할 수 없어요. 저장된 등급 비율의 합이 100%가 아니라 ${fractionToPercent(raritySum)}%예요. 밸런스 설정의 시스템 드랍 구역에서 등급 비율 합을 100으로 맞춘 뒤 다시 저장해 주세요.`,
+        },
         { status: 400 }
       )
     }
@@ -100,32 +72,14 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'collection_ids는 UUID 문자열 배열이어야 합니다.' }, { status: 400 })
   }
 
-  const batch_size = body.batch_size === undefined ? current.batch_size : Number(body.batch_size)
-  if (Number.isNaN(batch_size) || batch_size < 1) {
-    return NextResponse.json({ error: 'batch_size는 1 이상의 숫자여야 합니다.' }, { status: 400 })
-  }
-  const max_active_per_poi =
-    body.max_active_per_poi === undefined ? current.max_active_per_poi : Number(body.max_active_per_poi)
-  if (Number.isNaN(max_active_per_poi) || max_active_per_poi < 1) {
-    return NextResponse.json({ error: 'max_active_per_poi는 1 이상의 숫자여야 합니다.' }, { status: 400 })
-  }
-
-  // last_auto_run_on은 예약 배포 선점용 시스템 전용 필드다 — 어드민이 쓰지 못하게 patch에서 제외한다.
-  const patch: Omit<AmbientDropConfig, 'last_auto_run_on'> = {
+  // 여섯 열만 쓴다. last_auto_run_on(예약 배포 선점용 시스템 전용 열)과 숫자 8열은 싣지 않는다.
+  const patch: AmbientAxisPatch = {
     auto_enabled,
-    schedule_hour_kst,
-    exclusion_window_minutes,
     category_mode,
     category_slug,
     rarity_mode,
-    rarity_common,
-    rarity_rare,
-    rarity_epic,
-    rarity_mystic,
     collection_mode,
     collection_ids: collection_ids as string[],
-    batch_size,
-    max_active_per_poi,
   }
 
   try {
