@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES } from '@/lib/ambient-drop/schedule'
 import { POLICIES_DATA } from '../policiesData'
 
 describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', () => {
@@ -94,12 +95,27 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(POLICIES_DATA.filter((p) => p.adminLink?.href.startsWith('/admin/inventory-policy'))).toEqual([])
   })
 
-  it('밸런스 설정에 구역이 아직 없는 항목(시스템 드랍)은 옛 화면 링크를 둔다', () => {
-    const hrefOf = (id: string) => POLICIES_DATA.find((p) => p.id === id)?.adminLink?.href
-
-    for (const id of ['ch9-ambient-schedule-hour', 'ch9-ambient-poi-cap', 'ch9-ambient-exclusion-window']) {
-      expect(hrefOf(id), id).toBe('/admin/ambient-drop')
+  it('시스템 드랍 카드 3개는 모두 시스템 드랍 구역(/admin/balance#ambient)으로 이어진다. 옛 화면(/admin/ambient-drop)은 가리키지 않는다 (티켓 20261022_1134 3회)', () => {
+    const ambient = POLICIES_DATA.filter((p) => p.dbTable === 'ambient_drop_config')
+    expect(ambient.map((p) => p.id).sort()).toEqual(['ch9-ambient-exclusion-window', 'ch9-ambient-poi-cap', 'ch9-ambient-schedule-hour'])
+    for (const p of ambient) {
+      expect(p.adminLink?.href, p.id).toBe('/admin/balance#ambient')
     }
+    expect(POLICIES_DATA.filter((p) => p.adminLink?.href.startsWith('/admin/ambient-drop'))).toEqual([])
+  })
+
+  it('설정 화면 링크가 있는 카드는 모두 밸런스 설정 구역으로 이어진다(옛 화면 링크가 하나도 남지 않아 화면의 링크 글자 분기를 지웠다)', () => {
+    const linked = POLICIES_DATA.filter((p) => p.type === 'admin_link')
+    expect(linked.length).toBeGreaterThan(5)
+    for (const p of linked) {
+      expect(p.adminLink?.href, p.id).toMatch(/^\/admin\/balance#[a-z]+$/)
+    }
+  })
+
+  it('상호 배제 창 카드의 상한은 코드 기준 180분이다(720분이 아니다)', () => {
+    const card = POLICIES_DATA.find((p) => p.id === 'ch9-ambient-exclusion-window')
+    expect(card?.currentSpec).toContain(`상한 ${AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES}분`)
+    expect(card?.currentSpec).not.toContain('720')
   })
 
   it('차량 속도 필터 카드는 기본값 60km/h를 읽어 보이고 밸런스 설정 어뷰징 구역으로 이어진다', () => {

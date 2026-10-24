@@ -1,7 +1,7 @@
 /**
  * 정책 대시보드 화면 (티켓 20261022_1717) — 서버 렌더(`renderToStaticMarkup`)로 그린 모양만 고정한다. 지키는 것:
  * - 설정 화면에서 바꾸는 카드는 값을 읽어 보여 주고(`liveValues`), «밸런스 설정에서 바꾸기» 링크로 해당 구역에 이어진다
- * - 밸런스 설정에 구역이 아직 없는 대상(시스템 드랍)은 옛 화면 링크(`/admin/ambient-drop`)로 이어지고 글자는 «설정 화면에서 바꾸기»다 (어뷰징 카드는 7-3 2회에서 구역으로 옮겨 갔다)
+ * - 시스템 드랍 카드도 구역(`/admin/balance#ambient`)으로 이어지고 링크 글자는 «밸런스 설정에서 바꾸기»다. 카드 어디에도 옛 화면 링크와 «설정 화면에서 바꾸기» 링크가 없다 (7-3 3회가 마지막 옛 화면 링크를 옮겼다)
  * - 숫자 입력칸·«값 변경» 버튼 같은 직접 수정 컨트롤은 어디에도 없다
  * - 읽어 보여 줄 칸이 없는 카드(여러 칸)는 실측값 줄 없이 링크만 둔다. 검색창과 유형 탭은 그대로 있다
  */
@@ -54,14 +54,29 @@ describe('PolicyDashboardClient — 값 읽기와 설정 화면 링크', () => {
     expect(out).not.toContain('href="/admin/abusing"')
   })
 
-  it('구역이 아직 없는 대상(시스템 드랍)은 옛 화면 링크로 이어지고 글자는 «설정 화면에서 바꾸기»다', () => {
+  it('시스템 드랍 카드는 /admin/balance#ambient로 이어지고 글자는 «밸런스 설정에서 바꾸기»다. 옛 화면 링크는 없다', () => {
     const ambient = POLICIES_DATA.filter((p) => p.id === 'ch9-ambient-schedule-hour')
     expect(ambient).toHaveLength(1)
     const out = renderToStaticMarkup(
       <PolicyDashboardClient initialPolicies={ambient} initialLiveValues={{ schedule_hour_kst: 9 }} updatedAt="2026-10-23T00:00:00.000Z" />,
     ).replace(/<!-- -->/g, '')
-    expect(out).toContain('href="/admin/ambient-drop"')
-    expect(out).toMatch(/href="\/admin\/ambient-drop"[^>]*>설정 화면에서 바꾸기/)
+    expect(out).toContain('href="/admin/balance#ambient"')
+    expect(out).toMatch(/href="\/admin\/balance#ambient"[^>]*>밸런스 설정에서 바꾸기/)
+    expect(out).not.toContain('href="/admin/ambient-drop"')
+  })
+
+  it('모든 카드의 링크는 /admin/balance#구역이고, «설정 화면에서 바꾸기» 글자의 링크는 하나도 없다(링크 글자를 가르던 분기를 지웠다)', () => {
+    const out = renderToStaticMarkup(
+      <PolicyDashboardClient initialPolicies={POLICIES_DATA} initialLiveValues={{}} updatedAt="2026-10-23T00:00:00.000Z" />,
+    ).replace(/<!-- -->/g, '')
+    // «바꾸기» 링크는 설정 화면 링크다(카드의 다른 링크와 가른다)
+    const changeLinks = [...out.matchAll(/<a [^>]*href="([^"]+)"[^>]*>([^<]*)</g)].filter((match) => match[2].includes('바꾸기'))
+    expect(changeLinks.length).toBe(POLICIES_DATA.filter((p) => p.type === 'admin_link').length)
+    for (const [, href, text] of changeLinks) {
+      expect(href, href).toMatch(/^\/admin\/balance#[a-z]+$/)
+      expect(text.trim(), href).toBe('밸런스 설정에서 바꾸기')
+    }
+    expect(out).not.toMatch(/<a [^>]*>설정 화면에서 바꾸기/)
   })
 
   it('값을 못 읽었으면 «조회 중»으로 보인다', () => {

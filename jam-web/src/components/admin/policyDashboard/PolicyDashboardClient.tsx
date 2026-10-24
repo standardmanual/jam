@@ -514,10 +514,7 @@ export function PolicyDashboardClient({
                                         href={adminLink.href}
                                         className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-0.5 whitespace-nowrap break-keep wrap-break-word"
                                       >
-                                        {adminLink.href.startsWith('/admin/balance')
-                                          ? '밸런스 설정에서 바꾸기'
-                                          : '설정 화면에서 바꾸기'}{' '}
-                                        <IconArrowRight className="size-3" />
+                                        밸런스 설정에서 바꾸기 <IconArrowRight className="size-3" />
                                       </Link>
                                     </div>
                                   </div>
