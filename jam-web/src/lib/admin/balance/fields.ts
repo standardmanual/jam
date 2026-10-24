@@ -36,6 +36,19 @@ export function dbNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/**
+ * 0~1로 저장된 비율(`NUMERIC(4,3)`)을 화면 단위인 퍼센트(소수 첫째 자리)로 바꾼다. 0.333 → 33.3.
+ * 곱셈만 하면 `0.333 * 100 = 33.300000000000004`처럼 어긋나서 입력칸에 긴 소수가 보이고 «바뀐 칸»으로 잘못 센다. 저장 눈금(0.001)으로 반올림해 지운다.
+ */
+export function fractionToPercent(fraction: number): number {
+  return Math.round(fraction * 1000) / 10
+}
+
+/** 화면 퍼센트(소수 첫째 자리)를 0~1 저장값(`NUMERIC(4,3)`)으로 바꾼다. 33.3 → 0.333. `fractionToPercent`의 거꾸로이고 왕복해도 어긋나지 않는다. */
+export function percentToFraction(percent: number): number {
+  return Math.round(percent * 10) / 1000
+}
+
 /** 이력처럼 칸이 어느 묶음 것인지 함께 보여야 할 때의 이름(예: «강도 배율 · 가벼움»). 묶음이 없으면 라벨만. */
 export function fullFieldLabel(def: BalanceFieldDef): string {
   return def.group ? `${def.group} · ${def.label}` : def.label

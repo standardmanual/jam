@@ -355,3 +355,32 @@ export function abusingPolicyRow(overrides: Row = {}): Row {
     ...overrides,
   }
 }
+
+export const AMBIENT_ROW_STAMP = '2026-10-24T02:10:00.5+00:00'
+
+/**
+ * `ambient_drop_config` id=1 행(마이그레이션 104·137). 숫자 8칸(배포 시각·상호 배제 창·배치 규모·지점당 한도·등급 비율 4칸)은 이 구역이 읽고 쓰는 칸이고,
+ * 스위치·세 축 고르기·`last_auto_run_on`은 이 구역이 읽지도 쓰지도 않는 칸이다. 등급 비율은 `NUMERIC(4,3)`(0~1)이라 문자열로 내려오는 경우를 흉내 낸다.
+ */
+export function ambientDropConfigRow(overrides: Row = {}): Row {
+  return {
+    id: 1,
+    auto_enabled: true,
+    schedule_hour_kst: 3,
+    last_auto_run_on: '2026-10-23',
+    exclusion_window_minutes: 15,
+    category_mode: 'explicit',
+    category_slug: 'cafe',
+    rarity_mode: 'explicit',
+    rarity_common: '0.600',
+    rarity_rare: '0.300',
+    rarity_epic: '0.100',
+    rarity_mystic: '0.000',
+    collection_mode: 'explicit',
+    collection_ids: ['5d6b3a38-5c8e-4b4a-9a52-0a1b2c3d4e5f'],
+    batch_size: 30,
+    max_active_per_poi: 1,
+    updated_at: AMBIENT_ROW_STAMP,
+    ...overrides,
+  }
+}

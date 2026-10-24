@@ -2,7 +2,7 @@
  * 밸런스 설정 구역 레지스트리와 구역 본문 (티켓 20261022_1132 1회)
  *
  * - 레지스트리(`lib/admin/balance/sections.tsx`): 구역 키가 겹치지 않고, 구역마다 연결 객체·제목·본문이 있으며, 키로 구역을 찾는다(없으면 `undefined`).
- *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징이다. 7-3 3회와 7-4는 이 배열에 줄을 더하면 된다
+ *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍이다. 7-4는 이 배열에 줄을 더하면 된다
  * - 구역 본문(`BalanceSectionBody`, 서버 컴포넌트): 가짜 클라이언트로 값을 읽어 폼과 최근 변경을 그린다. **값을 읽지 못하면 던지지 않고** 오류 카드가 되고
  *   (한 구역이 실패해도 다른 구역은 보인다), 최근 변경만 못 읽으면 폼은 열린다. 읽기만 하고 아무것도 쓰지 않는다
  */
@@ -29,11 +29,13 @@ import { CAPSULE_BINDING } from '@/lib/admin/balance/capsule'
 import { CHAPTER_BINDING } from '@/lib/admin/balance/chapter'
 import { COLLECTION_BINDING } from '@/lib/admin/balance/collection'
 import { ABUSING_BINDING } from '@/lib/admin/balance/abusing'
+import { AMBIENT_BINDING } from '@/lib/admin/balance/ambient'
 import { INVENTORY_BINDING } from '@/lib/admin/balance/inventory'
 import { LOCKED_BINDING } from '@/lib/admin/balance/locked'
 import { BALANCE_LOAD_FAILED_MESSAGE } from '@/lib/admin/balance/save'
 import {
   abusingPolicyRow,
+  ambientDropConfigRow,
   capsulePolicyRow,
   chapterCostRows,
   chapterDefinitionRows,
@@ -57,6 +59,7 @@ import {
   ChapterSection,
 } from '../ChapterSection'
 import { AbusingSection } from '../AbusingSection'
+import { AMBIENT_RARITY_RANDOM_NOTICE, AmbientRarityRandomNotice, AmbientSection } from '../AmbientSection'
 import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, CollectionNotice, CollectionSection } from '../CollectionSection'
 import { INVENTORY_APPLY_NOTICE_FALLBACK, InventoryNotice, InventorySection, inventoryApplyNotice } from '../InventorySection'
 import {
@@ -83,6 +86,7 @@ beforeEach(() => {
     inventory_policy: [inventoryPolicyRow()],
     inventory: inventoryRows(1234),
     abusing_policy: [abusingPolicyRow()],
+    ambient_drop_config: [ambientDropConfigRow()],
     balance_setting_changes: [
       {
         id: 'h-1',
@@ -103,8 +107,8 @@ beforeEach(() => {
 const html = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: JAM_BINDING })).replace(/<!-- -->/g, '')
 
 describe('구역 레지스트리', () => {
-  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징 순서이고 구역 키는 겹치지 않는다', () => {
-    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection', 'chapter', 'inventory', 'abusing'])
+  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍 순서이고 구역 키는 겹치지 않는다', () => {
+    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection', 'chapter', 'inventory', 'abusing', 'ambient'])
     const ids = BALANCE_SECTIONS.map((section) => section.binding.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
@@ -137,6 +141,7 @@ describe('구역 레지스트리', () => {
     expect(findBalanceSection('chapter')?.binding).toBe(CHAPTER_BINDING)
     expect(findBalanceSection('inventory')?.binding).toBe(INVENTORY_BINDING)
     expect(findBalanceSection('abusing')?.binding).toBe(ABUSING_BINDING)
+    expect(findBalanceSection('ambient')?.binding).toBe(AMBIENT_BINDING)
     expect(findBalanceSection('nope')).toBeUndefined()
     expect(findBalanceSection('')).toBeUndefined()
   })
@@ -576,5 +581,105 @@ describe('BalanceSectionBody — 어뷰징 구역 (7-3 2회)', () => {
     const description = (section?.description ?? []).join(' ')
     expect(description).toContain('비정상 이동(GPS 조작)')
     expect(description).toContain('저장 즉시 다음 동기화와 장소 픽업부터 적용돼요')
+  })
+})
+
+describe('BalanceSectionBody — 시스템 드랍 구역 (7-3 3회)', () => {
+  const ambientHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: AMBIENT_BINDING })).replace(/<!-- -->/g, '')
+
+  it('여덟 칸의 입력(저장된 값)이 세 묶음 제목 아래에 보이고, 등급 비율은 퍼센트로 보이며 합계 줄이 있다', async () => {
+    const out = await ambientHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(8)
+    for (const title of ['예약 배포', '배치 규모', '등급 비율']) expect(out, title).toContain(`>${title}</legend>`)
+    expect([...out.matchAll(/<legend/g)]).toHaveLength(3)
+    expect(out).toMatch(/id="balance-ambient-schedule_hour_kst"[^>]*value="3"/)
+    expect(out).toMatch(/id="balance-ambient-exclusion_window_minutes"[^>]*value="15"/)
+    expect(out).toMatch(/id="balance-ambient-batch_size"[^>]*value="30"/)
+    expect(out).toMatch(/id="balance-ambient-max_active_per_poi"[^>]*value="1"/)
+    // DB는 0.600·0.300·0.100·0.000이지만 화면은 퍼센트다
+    expect(out).toMatch(/id="balance-ambient-rarity_common"[^>]*value="60"/)
+    expect(out).toMatch(/id="balance-ambient-rarity_rare"[^>]*value="30"/)
+    expect(out).toMatch(/id="balance-ambient-rarity_epic"[^>]*value="10"/)
+    expect(out).toMatch(/id="balance-ambient-rarity_mystic"[^>]*value="0"/)
+    expect(out).toContain('기본값 3시')
+    expect(out).toContain('기본값 15분')
+    expect(out).toContain('기본값 100%')
+    expect(out).toMatch(/<p role="status"[^>]*>합계 100%<\/p>/)
+    expect(out).toContain('180분까지만 정할 수 있어요')
+    expect(out).not.toContain('720')
+  })
+
+  it('소수 퍼센트로 저장된 값(0.333·0.333·0.334)은 긴 소수 없이 33.3·33.3·33.4로 보인다', async () => {
+    db.tables.ambient_drop_config = [ambientDropConfigRow({ rarity_common: '0.333', rarity_rare: '0.333', rarity_epic: '0.334', rarity_mystic: '0.000' })]
+    const out = await ambientHtml()
+    expect(out).toMatch(/id="balance-ambient-rarity_common"[^>]*value="33.3"/)
+    expect(out).toMatch(/id="balance-ambient-rarity_epic"[^>]*value="33.4"/)
+    expect(out).toMatch(/<p role="status"[^>]*>합계 100%<\/p>/)
+  })
+
+  it('읽기만 한다(쓰기 호출이 없다)', async () => {
+    await ambientHtml()
+    expect(db.calls.filter((call) => call.startsWith('ambient_drop_config.') && call !== 'ambient_drop_config.select')).toEqual([])
+  })
+
+  it('값을 읽지 못하면 던지지 않고 이 구역만 오류 카드가 된다(기본값으로 바꿔 보이지 않는다)', async () => {
+    db.readErrors.ambient_drop_config = 'boom'
+    const out = await ambientHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
+  it('행이 없으면 기본값으로 바꿔 보이지 않고 오류 카드가 된다', async () => {
+    db.tables.ambient_drop_config = []
+    const out = await ambientHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
+  it('등급이 무작위이면 폼 위에 «비율을 쓰지 않아요» 안내 한 줄과 폼 뼈대 순서다', async () => {
+    db.tables.ambient_drop_config = [ambientDropConfigRow({ rarity_mode: 'random' })]
+    const section = await AmbientSection()
+    const children = Children.toArray(section.props.children) as ReactElement<{ binding?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([AmbientRarityRandomNotice, BalanceSectionBody])
+    expect(children[1].props.binding).toBe(AMBIENT_BINDING)
+  })
+
+  it('등급이 명시이면 안내 없이 폼 뼈대뿐이다', async () => {
+    const section = await AmbientSection()
+    const children = Children.toArray(section.props.children) as ReactElement<{ binding?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([BalanceSectionBody])
+    expect(children[0].props.binding).toBe(AMBIENT_BINDING)
+  })
+
+  it('등급 축을 읽지 못해도 구역은 열리고 안내만 빠진다(값 읽기를 막지 않는다. 읽기 오류는 로그로 남는다)', async () => {
+    db.tables.ambient_drop_config = [ambientDropConfigRow({ rarity_mode: 'weird' })]
+    const section = await AmbientSection()
+    const children = Children.toArray(section.props.children) as ReactElement<{ binding?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([BalanceSectionBody])
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ambient 등급 축 조회 실패'), expect.stringContaining('rarity_mode'))
+    // 구역 값 읽기는 그대로 성공한다
+    const out = await ambientHtml()
+    expect(out).toMatch(/id="balance-ambient-batch_size"[^>]*value="30"/)
+  })
+
+  it('안내 문장은 무작위라 비율을 쓰지 않는다는 뜻이고 줄바꿈 설정이 붙으며 링크가 없다', () => {
+    expect(AMBIENT_RARITY_RANDOM_NOTICE).toBe('지금 등급은 「무작위」로 정해서 아래 등급 비율을 쓰지 않아요. 앰비언트 드랍 화면에서 등급을 「명시」로 바꾸면 이 비율대로 정해요.')
+    const out = renderToStaticMarkup(<AmbientRarityRandomNotice />).replace(/<!-- -->/g, '')
+    expect(out).toContain(AMBIENT_RARITY_RANDOM_NOTICE)
+    expect(out).toContain('role="note"')
+    expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+    expect(out).not.toContain('<a ')
+  })
+
+  it('구역 설명이 예약 배포·상호 배제 창·등급 비율과 적용 시점, 옛 화면에 남은 일을 말한다', () => {
+    const section = findBalanceSection('ambient')
+    expect(section?.label).toBe('시스템 드랍')
+    expect(section?.title).toBe('시스템 드랍')
+    const description = (section?.description ?? []).join(' ')
+    expect(description).toContain('예약 배포')
+    expect(description).toContain('상호 배제 창')
+    expect(description).toContain('등급 비율')
+    expect(description).toContain('저장하면 다음 배포부터 적용돼요')
+    expect(description).toContain('앰비언트 드랍 화면')
   })
 })
