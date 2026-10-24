@@ -6,7 +6,7 @@
  *
  * 저장 순서(`saveBalanceSection`):
  * ① 본문 모양과 메모 길이 확인 ② 칸마다 검증(정수·범위·구역 연결의 `validators`) ③ 현재 값 읽기 ④ 화면이 본 `updated_at`과 같은지(다르면 409)
- * ⑤ **바뀐 칸만** 계산(없으면 400) ⑥ 칸 사이 검증(등급 확률 합 100 등) ⑦ `updated_at` 조건 갱신(0행이면 409) ⑧ 변경 이력 한 줄.
+ * ⑤ **바뀐 칸만** 계산(없으면 400) ⑥ 칸 사이 검증(등급 확률 합 100 등) ⑦ `updated_at` 조건 갱신(0행이면 409, 구역이 «사용자에게 보일 거절»(`rejected`)로 답하면 그 문장 그대로 400) ⑧ 변경 이력 한 줄.
  * 이력을 쓰지 못하면 방금 갱신을 이전 값으로 되돌린다. 되돌리기까지 실패하면 로그에 남기고 오류로 답한다. 응답에는 DB 오류 원문을 싣지 않는다.
  *
  * 입력은 HTTP 본문이라 `unknown`으로 받아 여기서 확인한다. 서비스 클라이언트는 인자로 받는다(시험은 가짜를 넘긴다).
@@ -131,6 +131,8 @@ export async function saveBalanceSection(service: BalanceServiceClient, input: S
   })
   if (!written.ok) {
     if (written.reason === 'conflict') return fail(409, BALANCE_CONFLICT_MESSAGE)
+    // 구역이 «사용자에게 보일 거절»로 답한 경우: 그 문장을 그대로 400으로 돌려준다(시스템 오류가 아니라 로그를 더 남기지 않는다)
+    if (written.reason === 'rejected') return fail(400, written.message)
     console.error(`${LOG} ${binding.id} 저장 실패:`, written.message)
     return fail(500, BALANCE_SAVE_FAILED_MESSAGE)
   }
@@ -148,7 +150,7 @@ export async function saveBalanceSection(service: BalanceServiceClient, input: S
       console.error(
         `${LOG} ${binding.id} 이력 쓰기 실패 뒤 되돌리기도 실패 — 값만 바뀌어 있을 수 있다:`,
         JSON.stringify(changes),
-        rolledBack.reason === 'error' ? rolledBack.message : rolledBack.reason
+        rolledBack.reason === 'conflict' ? rolledBack.reason : rolledBack.message
       )
       return fail(500, BALANCE_ROLLBACK_FAILED_MESSAGE)
     }

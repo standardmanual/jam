@@ -70,6 +70,12 @@ export type BalanceWriteResult =
   | { ok: true; updatedAt: string }
   | { ok: false; reason: 'conflict' }
   | { ok: false; reason: 'error'; message: string }
+  /**
+   * DB가 값을 **규칙에 따라 거절**했고 그 이유를 어드민에게 알려야 할 때(예: 인벤토리 최대치보다 많은 아이템을 가진 유저가 있음, 티켓 20261022_1134).
+   * `message`는 **그대로 화면에 보일 [현상-원인-해결책] 문장**이다(DB 오류 원문을 싣지 않는다). 공용 저장은 400으로 답하고 이력을 쓰지 않는다.
+   * 시스템 오류(`error`, 500)와 달리 어드민이 값을 고쳐 다시 저장하면 되는 경우에만 쓴다.
+   */
+  | { ok: false; reason: 'rejected'; message: string }
 
 export interface BalanceSectionBinding {
   /** 구역 키. 이력의 `section_key`이고 저장 경로의 `[section]`이다. */
