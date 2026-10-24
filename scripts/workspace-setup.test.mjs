@@ -2,8 +2,9 @@
 //
 // 임시 저장소에 브랜치 4종(연결된 worktree-wf / 연결 안 된 worktree-wf / 병합된 jamwork /
 // 미병합 jamwork)을 만들어 보존·삭제가 맞는지 확인한다. 이어서 cleanup --remote가 목록만
-// 출력하고, --yes가 있을 때만 실제로 지우는지 확인한다. GIT_* 변수와 전역 설정은 격리해
-// 실제 저장소를 건드리지 않는다.
+// 출력하고, --yes가 있을 때만 실제로 지우는지 확인한다. 워크트리 정리는 wf_*·gate-*만 제거하고
+// 앱 세션 워크트리는 보존하는지, 판정이 workspace-cleanup.log에 남는지 확인한다(티켓 20261001_1143).
+// GIT_* 변수와 전역 설정은 격리해 실제 저장소를 건드리지 않는다.
 // 실행: node scripts/workspace-setup.test.mjs
 
 import assert from 'node:assert/strict'
@@ -94,6 +95,70 @@ try {
   assert.ok(!removedLines.some((l) => l.includes('claude/jamwork-unmerged')), removedLines.join('\n'))
 
   console.log('통과: workspace-setup cleanup 로컬 브랜치 정리')
+
+  // ── 워크트리 정리: 허용 목록(wf_*·gate-*)만 제거하고 앱 세션 워크트리는 보존 (티켓 20261001_1143) ──
+  // 앱이 만든 세션 워크트리(.claude/worktrees/app-test, 브랜치 claude/app-test)는 변경이 없고 staging에
+  // 병합돼 있어도 지워지면 안 된다. 허용 목록 안에서는 기존 조건(미커밋 변경 없음 + staging 병합)이 그대로 적용된다.
+  const cleanupLog = join(main, '.git', 'workspace-cleanup.log')
+  const wtPath = (name) => join(main, '.claude', 'worktrees', name)
+  const addWt = (name, ...extra) => git(['worktree', 'add', '-q', ...extra, wtPath(name), 'HEAD'], main)
+  addWt('wf_test', '-b', 'worktree-wf_test')
+  addWt('gate-abc1234', '--detach')
+  addWt('app-test', '-b', 'claude/app-test')
+  addWt('wf_dirty', '-b', 'worktree-wf_dirty')
+  writeFileSync(join(wtPath('wf_dirty'), 'untracked.txt'), 'wip')
+  addWt('wf_ahead', '-b', 'worktree-wf_ahead')
+  git(['-c', 'user.name=x', '-c', 'user.email=dev@jam.internal', 'commit', '-q', '--allow-empty', '-m', 'ahead'], wtPath('wf_ahead'))
+  addWt('wf_locked', '--detach')
+  git(['worktree', 'lock', '--reason', 'test', wtPath('wf_locked')], main)
+
+  const wr = runCleanup(main)
+  assert.equal(wr.status, 0, `cleanup 실패:\n${wr.stdout}${wr.stderr}`)
+
+  assert.ok(!existsSync(wtPath('wf_test')), 'staging에 병합된 깨끗한 wf_* 워크트리는 제거돼야 한다')
+  assert.ok(!existsSync(wtPath('gate-abc1234')), 'staging에 병합된 깨끗한 gate-* 워크트리는 제거돼야 한다')
+  assert.ok(existsSync(wtPath('app-test')), '앱 세션 워크트리는 변경이 없고 병합돼 있어도 보존돼야 한다')
+  assert.ok(branchExists(main, 'claude/app-test'), '앱 세션 워크트리의 브랜치는 보존돼야 한다')
+  assert.ok(existsSync(wtPath('wf_dirty')), '미커밋 변경이 있는 wf_*는 보존돼야 한다')
+  assert.ok(existsSync(wtPath('wf_ahead')), 'staging에 병합되지 않은 wf_*는 보존돼야 한다')
+  assert.match(wr.stdout, /^제거\(staging에 병합됨\): .*[/]wf_test$/m)
+  assert.match(wr.stdout, /^제거\(staging에 병합됨\): .*[/]gate-abc1234$/m)
+  assert.match(wr.stdout, /^보존\(정리 대상 경로 아님\): .*[/]app-test$/m)
+  assert.match(wr.stdout, /^보존\(미커밋 변경 있음\): .*[/]wf_dirty$/m)
+  assert.match(wr.stdout, /^보존\(아직 staging에 병합되지 않음\): .*[/]wf_ahead$/m)
+  // 잠겨서 제거가 거부되면 "제거"로 보고하지 않고, git이 알려 준 사유를 함께 적는다(git 메시지는 로캘마다 달라 내용은 보지 않는다).
+  assert.ok(existsSync(wtPath('wf_locked')), '잠긴 wf_*는 제거되지 않는다')
+  assert.match(wr.stdout, /^제거 실패: .*[/]wf_locked \(사유: (?!확인 못함).+\)$/m)
+
+  // 판정 기록: git 공용 디렉터리의 workspace-cleanup.log에 워크트리별로 시각과 함께 남는다.
+  const stamp = String.raw`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{4}`
+  const logText = readFileSync(cleanupLog, 'utf8')
+  assert.match(logText, new RegExp(`^${stamp} 제거\\(staging에 병합됨\\): .*[/]wf_test$`, 'm'))
+  assert.match(logText, new RegExp(`^${stamp} 제거\\(staging에 병합됨\\): .*[/]gate-abc1234$`, 'm'))
+  assert.match(logText, new RegExp(`^${stamp} 보존\\(정리 대상 경로 아님\\): .*[/]app-test$`, 'm'))
+  assert.match(logText, new RegExp(`^${stamp} 보존\\(미커밋 변경 있음\\): .*[/]wf_dirty$`, 'm'))
+  assert.match(logText, new RegExp(`^${stamp} 제거 실패: .*[/]wf_locked \\(사유: (?!확인 못함).+\\)$`, 'm'))
+
+  // 다른 워크트리(앱 세션)에서 연 세션도 같은 대상을 정리한다. 현재 워크트리와 메인 체크아웃은 건드리지 않는다.
+  addWt('wf_sibling', '--detach')
+  const fromWt = runCleanup(wtPath('app-test'))
+  assert.equal(fromWt.status, 0, `워크트리에서 cleanup 실패:\n${fromWt.stdout}${fromWt.stderr}`)
+  assert.ok(!existsSync(wtPath('wf_sibling')), '앱 세션 워크트리에서 실행해도 형제 wf_*는 제거돼야 한다')
+  assert.ok(existsSync(wtPath('app-test')), '실행 중인 앱 세션 워크트리는 그대로여야 한다')
+  assert.ok(!fromWt.stdout.split('\n').some((l) => l.endsWith(`: ${main}`)), '메인 체크아웃은 판정 대상이 아니다')
+  assert.match(readFileSync(cleanupLog, 'utf8'), new RegExp(`^${stamp} 제거\\(staging에 병합됨\\): .*[/]wf_sibling$`, 'm'))
+
+  // 로그는 최근 500줄만 유지한다.
+  const old = Array.from({ length: 600 }, (_, i) => `old-${String(i).padStart(3, '0')}`)
+  writeFileSync(cleanupLog, old.join('\n') + '\n')
+  const trimmed = runCleanup(main)
+  assert.equal(trimmed.status, 0, `cleanup 실패:\n${trimmed.stdout}${trimmed.stderr}`)
+  const trimmedLines = readFileSync(cleanupLog, 'utf8').trimEnd().split('\n')
+  assert.equal(trimmedLines.length, 500, `로그가 500줄로 줄어야 한다: ${trimmedLines.length}줄`)
+  assert.ok(!trimmedLines.includes('old-000'), '오래된 줄이 먼저 버려져야 한다')
+  assert.ok(trimmedLines.some((l) => /보존\(정리 대상 경로 아님\): .*[/]app-test$/.test(l)), '이번 실행의 판정 줄은 남아야 한다')
+
+  console.log('통과: workspace-setup cleanup 워크트리 허용 목록·판정 기록')
 
   // ── 원격 정리: 목록만 출력 → --yes일 때만 실제 삭제 ──────────────────────────
   const remoteSrc = join(root, 'remote-src')
