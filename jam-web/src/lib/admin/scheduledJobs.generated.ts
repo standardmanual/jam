@@ -22,5 +22,5 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
   { name: '선별', enabled: false, schedule: { type: 'daily', hour: 6, minute: 0 } },
   { name: '주간 배포 승인', enabled: false, schedule: { type: 'weekly-labeled', weekday: 4, labels: [{ label: '확인', hour: 15, minute: 0 }, { label: '실행', hour: 23, minute: 59 }] } },
   { name: '월간', enabled: false, schedule: { type: 'monthly', day: 1, hour: 9, minute: 0 } },
-  { name: '데일리 미팅', enabled: true, schedule: { type: 'weekdays', weekdays: [1, 3, 5], hour: 20, minute: 0 } },
+  { name: '데일리 미팅', enabled: false, schedule: { type: 'weekdays', weekdays: [1, 3, 5], hour: 20, minute: 0 } },
 ]

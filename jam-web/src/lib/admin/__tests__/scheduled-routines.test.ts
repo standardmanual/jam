@@ -9,7 +9,8 @@
  * 4. 월간(monthly) 루틴은 그 날짜(N일)가 보고 있는 주에 들어 있을 때만 발생한다
  * 5. 꺼진 루틴은 enabled: false로 나온다
  * 6. 여러 요일(weekdays) 루틴은 지정한 요일마다 한 건씩 발생한다 (티켓 20261007_1956)
- * 7. 실제 생성 파일(SCHEDULED_JOBS) 기준으로 켜진 루틴은 데일리 미팅뿐이고, 나머지 4개는 꺼짐으로 나온다
+ * 7. 실제 생성 파일(SCHEDULED_JOBS) 기준으로 켜진 루틴은 없고, 데일리 미팅을 포함한 5개 모두 꺼짐으로 나온다
+ *    (데일리 미팅은 2026-10-24 JAM 2.0 완성까지 중단, 티켓 20261014_1647)
  */
 import { describe, it, expect } from 'vitest'
 import { weeklyRoutineOccurrences, routineOccurrenceId } from '../scheduledRoutines'
@@ -108,13 +109,13 @@ describe('weeklyRoutineOccurrences — 커스텀 정의', () => {
 })
 
 describe('weeklyRoutineOccurrences — 실제 생성 파일(SCHEDULED_JOBS) 기준', () => {
-  // 주간·선별·주간 배포 승인·월간은 2026-10-07 예약 루틴 삭제로 꺼졌고, 데일리 미팅만 켜져 있다(티켓 20261007_1956)
-  it('2026-10-12 주: 데일리 미팅이 월·수·금 20:00 켜짐으로 나온다', () => {
+  // 주간·선별·주간 배포 승인·월간은 2026-10-07 예약 루틴 삭제로 꺼졌고, 데일리 미팅은 2026-10-24부터 JAM 2.0 완성까지 꺼 두었다(티켓 20261007_1956, 20261014_1647)
+  it('2026-10-12 주: 데일리 미팅이 월·수·금 20:00 꺼짐으로 나온다', () => {
     const occ = weeklyRoutineOccurrences('2026-10-12', SCHEDULED_JOBS)
     expect(occ.filter((o) => o.label === '데일리 미팅')).toEqual([
-      { date: '2026-10-12', time: '20:00', label: '데일리 미팅', enabled: true },
-      { date: '2026-10-14', time: '20:00', label: '데일리 미팅', enabled: true },
-      { date: '2026-10-16', time: '20:00', label: '데일리 미팅', enabled: true },
+      { date: '2026-10-12', time: '20:00', label: '데일리 미팅', enabled: false },
+      { date: '2026-10-14', time: '20:00', label: '데일리 미팅', enabled: false },
+      { date: '2026-10-16', time: '20:00', label: '데일리 미팅', enabled: false },
     ])
   })
 
@@ -144,7 +145,8 @@ describe('weeklyRoutineOccurrences — 실제 생성 파일(SCHEDULED_JOBS) 기�
     ])
   })
 
-  it('켜진 루틴은 데일리 미팅 하나뿐이다', () => {
-    expect(SCHEDULED_JOBS.filter((j) => j.enabled).map((j) => j.name)).toEqual(['데일리 미팅'])
+  it('켜진 루틴이 없다(데일리 미팅은 JAM 2.0 완성까지 꺼 둔 상태다)', () => {
+    expect(SCHEDULED_JOBS.filter((j) => j.enabled).map((j) => j.name)).toEqual([])
+    expect(SCHEDULED_JOBS.map((j) => j.name)).toContain('데일리 미팅')
   })
 })
