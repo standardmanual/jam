@@ -8,6 +8,7 @@ import { checkMissionCondition, usesNightCondition } from '@/lib/missions/condit
 import { MISSION_SCOPE_LABEL, type MissionScope } from '@/lib/admin/mission-tribes'
 import { MISSION_TYPES, MISSION_TYPE_LABEL } from '@/lib/admin/badge-labels'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
+import { findMissionIntegerInputError, readIntegerInput } from '@/lib/admin/integerRangeInput'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import BadgeSearchSelect, { type BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
@@ -83,7 +84,7 @@ const emptyForm = {
   conditionText: '',
   mission_type: 'distance' as string,
   reward_badge_ids: [] as string[],
-  reward_points: 100,
+  reward_points: '100' as string, // 입력 글자 그대로 둔다(소수·지수 표기를 저장 전에 검사한다, 티켓 20261023_1940). 빈칸=0
   status_display_type: 'ranking' as string,
   visible_rank_count: '' as string, // 빈값 = 전체 공개
   gated_badge_id: '' as string, // 빈값 = 게이팅 없음 (일반 미션)
@@ -118,7 +119,7 @@ function formFromMission(m: MissionRow, allowedTribeIds: string[]): typeof empty
     conditionText: m.condition_text ?? '',
     mission_type: m.mission_type,
     reward_badge_ids: m.reward_badge_ids ?? [],
-    reward_points: m.reward_points ?? 0,
+    reward_points: String(m.reward_points ?? 0),
     status_display_type: m.status_display_type,
     visible_rank_count: m.visible_rank_count != null ? String(m.visible_rank_count) : '',
     gated_badge_id: m.gated_badge_id ?? '',
@@ -196,7 +197,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
     .filter((b): b is BadgeSearchResult => !!b)
   const lockedNotice = lockedRewardNotice(lockedRewardBadgeNames(rewardBadgeChips))
   const badgePointsSum = rewardBadgeChips.reduce((sum, b) => sum + (b.point_reward ?? 0), 0)
-  const missionPoints = Number(form.reward_points) || 0
+  const missionPoints = readIntegerInput(form.reward_points) ?? 0
   const totalPoints = badgePointsSum + missionPoints
 
   function addRewardBadge(b: BadgeSearchResult) {
@@ -216,6 +217,18 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
   async function handleSave() {
     setConditionError('')
     setSaveError('')
+
+    // 공개 인원·미션 포인트·선착순 인원의 소수·지수 표기(2.5·1e3)와 최소값 미만을 저장 전에 막는다(티켓 20261023_1940).
+    // 읽은 값은 «2.5»를 2로 자르고 서버는 이 칸들의 값을 보지 않아, 입력 글자를 읽기 전에 먼저 검사한다.
+    const integerInputError = findMissionIntegerInputError({
+      visibleRankCount: form.visible_rank_count,
+      rewardPoints: form.reward_points,
+      maxCompletions: form.max_completions,
+    })
+    if (integerInputError) {
+      setSaveError(integerInputError)
+      return
+    }
 
     // 종류·틀 저장 전 검사 — 서버가 같은 검사를 하지만, 서버 거절은 무엇을 고칠지 늦게 알려 준다(티켓 20261019_1318).
     const formError = findMissionFormSaveError({
@@ -249,12 +262,12 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
       reward_badge_ids: form.reward_badge_ids,
       reward_points: missionPoints > 0 ? missionPoints : null,
       status_display_type: form.status_display_type,
-      visible_rank_count: form.visible_rank_count ? Number(form.visible_rank_count) : null,
+      visible_rank_count: readIntegerInput(form.visible_rank_count),
       gated_badge_id: form.gated_badge_id || null,
       starts_at: new Date(form.starts_at).toISOString(),
       // 상시 미션(종료일 없음) — ends_at null
       ends_at: form.is_permanent ? null : new Date(form.ends_at).toISOString(),
-      max_completions: form.max_completions ? Number(form.max_completions) : null,
+      max_completions: readIntegerInput(form.max_completions),
       image_url: form.image_url || null,
       exposure_mode: form.exposure_mode,
       exposure_at: form.exposure_mode === 'scheduled' ? new Date(form.exposure_at).toISOString() : null,
@@ -451,7 +464,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
 
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">미션 포인트 (선택, 0=없음)</label>
-            <input type="number" value={form.reward_points} onChange={(e) => setForm((f) => ({ ...f, reward_points: Number(e.target.value) }))}
+            <input type="number" value={form.reward_points} onChange={(e) => setForm((f) => ({ ...f, reward_points: e.target.value }))}
               className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" />
           </div>
 
