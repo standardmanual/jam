@@ -347,6 +347,36 @@ export type Database = {
         }
         Relationships: []
       }
+      badge_point_policy: {
+        Row: {
+          common_points: number
+          epic_points: number
+          id: number
+          leveled_points: number
+          mystic_points: number
+          rare_points: number
+          updated_at: string
+        }
+        Insert: {
+          common_points?: number
+          epic_points?: number
+          id?: number
+          leveled_points?: number
+          mystic_points?: number
+          rare_points?: number
+          updated_at?: string
+        }
+        Update: {
+          common_points?: number
+          epic_points?: number
+          id?: number
+          leveled_points?: number
+          mystic_points?: number
+          rare_points?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           activity_types: string[]
