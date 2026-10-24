@@ -972,7 +972,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.2절',
     ticketId: '20260831_1300',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'vehicle_speed_filter_kmh',
       unit: 'km/h',
     },
@@ -991,7 +991,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.2절',
     ticketId: '20260909_1012',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'transit_walk_max_speed_kmh',
       unit: 'km/h',
     },
@@ -1010,7 +1010,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.2절',
     ticketId: '20260909_1012',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'transit_run_max_speed_kmh',
       unit: 'km/h',
     },
@@ -1029,7 +1029,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.2절',
     ticketId: '20260909_1012',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'transit_cycling_max_speed_kmh',
       unit: 'km/h',
     },
@@ -1048,7 +1048,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.2절',
     ticketId: '20261017_1421',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'mismatch_run_min_speed_kmh',
       unit: 'km/h',
     },
@@ -1067,7 +1067,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.2절',
     ticketId: '20261017_1421',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'mismatch_cycling_min_speed_kmh',
       unit: 'km/h',
     },
@@ -1086,7 +1086,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.5절',
     ticketId: '20261022_0940',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'gps_max_speed_kmh',
       unit: 'km/h',
     },
@@ -1105,7 +1105,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 16.5절',
     ticketId: '20260901_1843',
     adminLink: {
-      href: '/admin/abusing',
+      href: '/admin/balance#abusing',
       liveField: 'poi_block_hours',
       unit: '시간',
     },

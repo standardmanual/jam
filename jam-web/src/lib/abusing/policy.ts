@@ -1,6 +1,9 @@
 /**
  * 어뷰징 정책 설정 로딩
  * service_role 클라이언트 전용
+ *
+ * 저장은 이 파일에 없다. 기준값은 밸런스 설정 «어뷰징» 구역(`lib/admin/balance/abusing.ts`)이 저장한다
+ * (옛 `updateAbusingPolicy`와 `PUT /api/admin/abusing/policy`는 티켓 20261022_1134 2회에서 지웠다).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -30,7 +33,7 @@ export interface AbusingPolicy {
 
 /**
  * 종목과 움직임 불일치 기준값 칸 — 양의 정수여야 한다(0·음수·소수는 비정상).
- * 로더(`getAbusingPolicy`)와 저장 경로(어드민 정책 라우트)가 같은 목록을 쓴다.
+ * 로더(`getAbusingPolicy`)가 이 목록으로 비정상 값을 가린다. 저장 쪽 기준(정수 1 이상)은 밸런스 설정 «어뷰징» 구역의 칸 정의가 갖고, 시험이 두 목록이 같은 칸인지 지킨다.
  */
 export const MISMATCH_POLICY_KEYS = [
   'mismatch_run_min_speed_kmh',
@@ -74,8 +77,8 @@ export const DEFAULT_POLICY: AbusingPolicy = {
  * 통째로 배제하게 된다. 걸러진 활동은 배지뿐 아니라 아이템 드랍·미션에서도 빠지므로
  * 핵심 보상 루프가 한꺼번에 멈춘다 (티켓 20260831_1300).
  *
- * 하한 검증은 **저장 경로(어드민 정책 라우트)가 소유**한다 — 운영자가 즉시 400으로 인지할 수
- * 있는 지점이기 때문이다. 소비 지점은 `<= 0`·비유한수만 막는 페일세이프만 둔다.
+ * 하한 검증은 **저장 경로(밸런스 설정 «어뷰징» 구역의 칸 정의, `lib/admin/balance/abusing.ts`)가 소유**한다 —
+ * 운영자가 즉시 400으로 인지할 수 있는 지점이기 때문이다. 소비 지점은 `<= 0`·비유한수만 막는 페일세이프만 둔다.
  */
 export const MIN_VEHICLE_SPEED_FILTER_KMH = 20
 
@@ -151,19 +154,5 @@ export async function getAbusingPolicy(client?: SupabaseClient): Promise<Abusing
   } catch (e) {
     console.error('[abusing-policy] 조회 예외 — 기본 정책으로 폴백:', e)
     return DEFAULT_POLICY
-  }
-}
-
-/**
- * 어뷰징 정책을 저장한다. 실패하면 호출부가 인지하도록 예외를 던진다.
- * (이전에는 upsert 반환 error를 확인하지 않아 저장 실패가 성공으로 응답됐다 — 티켓 20260831_1149)
- */
-export async function updateAbusingPolicy(patch: Partial<AbusingPolicy>): Promise<void> {
-  const supabase = createServiceClient()
-  const payload = { id: 1, ...patch, updated_at: new Date().toISOString() }
-  const { error } = await supabase.from('abusing_policy').upsert(payload)
-  if (error) {
-    console.error('[abusing-policy] 저장 실패:', error)
-    throw new Error(`abusing_policy upsert 실패 (${error.code}): ${error.message}`)
   }
 }
