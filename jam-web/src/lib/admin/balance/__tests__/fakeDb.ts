@@ -1,5 +1,5 @@
 /**
- * 밸런스 설정 시험용 가짜 서비스 클라이언트 — 메모리 안의 표 몇 개로 `from(표).select/update/insert/eq/in/order/limit`을 흉내 낸다.
+ * 밸런스 설정 시험용 가짜 서비스 클라이언트 — 메모리 안의 표 몇 개로 `from(표).select/update/insert/upsert/eq/in/order/limit`을 흉내 낸다.
  * 실 DB에는 접속하지 않는다(공용 DB에 쓰는 코드는 시험에서 가짜 클라이언트로만 돌린다).
  */
 import type { BalanceServiceClient } from '../types'
@@ -18,10 +18,12 @@ export interface FakeDb {
   beforeUpdate: null | ((nth: number) => void)
   /** 표 이름 → update 횟수 중 이 번째(1부터)부터 실패시킨다. 되돌리기 실패 시험에 쓴다. */
   failUpdateFrom: Record<string, number | undefined>
-  /** 실행한 일을 순서대로 적는다(`표.select`·`표.update`·`표.insert`). */
+  /** 실행한 일을 순서대로 적는다(`표.select`·`표.update`·`표.insert`·`표.upsert`). */
   calls: string[]
   /** 표별 update 본문. */
   updates: Row[]
+  /** upsert에 넘긴 본문(표 구분 없이 순서대로). 가짜 upsert는 `id`가 같은 행을 갱신하고 없으면 새로 넣는다(`id` 한 칸으로 가리는 싱글톤 표만 흉내 낸다). */
+  upserts: Row[]
   /** select에 넘긴 칸 목록. */
   selects: string[]
   /** `rpc`를 부른 기록(이름과 인자). */
@@ -44,6 +46,7 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
     failUpdateFrom: {},
     calls: [],
     updates: [],
+    upserts: [],
     selects: [],
     rpcCalls: [],
     rpcHandlers: {},
@@ -54,9 +57,10 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
   let updateCount = 0
 
   class Query implements PromiseLike<Result> {
-    private mode: 'select' | 'update' | 'insert' = 'select'
+    private mode: 'select' | 'update' | 'insert' | 'upsert' = 'select'
     private patch: Row = {}
     private inserted: Row = {}
+    private upserted: Row = {}
     private filters: Array<(row: Row) => boolean> = []
     private orderBy: { col: string; ascending: boolean } | null = null
     private max: number | null = null
@@ -78,6 +82,12 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
       db.calls.push(`${this.table}.insert`)
       this.mode = 'insert'
       this.inserted = row
+      return this
+    }
+    upsert(row: Row) {
+      db.calls.push(`${this.table}.upsert`)
+      this.mode = 'upsert'
+      this.upserted = row
       return this
     }
     eq(col: string, val: unknown) {
@@ -122,6 +132,14 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
         if (writeError) return Promise.resolve({ data: null, error: { message: writeError } })
         rows.push({ id: `row-${rows.length + 1}`, created_at: `2026-10-22T0${rows.length}:00:00.000+00:00`, ...this.inserted })
         return Promise.resolve({ data: null, error: null })
+      }
+      if (this.mode === 'upsert') {
+        if (writeError) return Promise.resolve({ data: null, error: { message: writeError } })
+        db.upserts.push(this.upserted)
+        const existing = rows.find((row) => row.id === this.upserted.id)
+        if (existing) Object.assign(existing, this.upserted)
+        else rows.push({ ...this.upserted })
+        return Promise.resolve({ data: [{ ...(existing ?? this.upserted) }], error: null })
       }
       updateCount += 1
       db.beforeUpdate?.(updateCount)
@@ -312,4 +330,28 @@ export function chapterScoreRuleRows(stamp: string = CHAPTER_RULE_ROW_STAMP): Ro
     over_cap_ratio: '0.500',
     updated_at: stamp,
   }))
+}
+
+export const ABUSING_ROW_STAMP = '2026-10-24T01:40:00.25+00:00'
+
+/**
+ * `abusing_policy` id=1 행(마이그레이션 010·011·078·148·224 기본값, 코드의 `DEFAULT_POLICY`와 같다). 모두 INTEGER 칸이다.
+ * 옛 섀도우밴 배율 8열(`soft_*_rate`·`hard_*_rate`)은 DB에 아직 남아 있지만(티켓 20261021_1250, 열 정리는 출시 뒤 SQL) 이 구역이 읽지도 쓰지도 않아 흉내 내지 않는다.
+ */
+export function abusingPolicyRow(overrides: Row = {}): Row {
+  return {
+    id: 1,
+    gps_max_speed_kmh: 300,
+    gps_daily_distance_cap_km: 3000,
+    vehicle_speed_filter_kmh: 60,
+    transit_walk_max_speed_kmh: 20,
+    transit_run_max_speed_kmh: 27,
+    transit_cycling_max_speed_kmh: 55,
+    transit_segment_min_duration_sec: 30,
+    mismatch_run_min_speed_kmh: 6,
+    mismatch_cycling_min_speed_kmh: 10,
+    poi_block_hours: 72,
+    updated_at: ABUSING_ROW_STAMP,
+    ...overrides,
+  }
 }
