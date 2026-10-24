@@ -2,7 +2,7 @@
  * 밸런스 설정 구역 레지스트리와 구역 본문 (티켓 20261022_1132 1회)
  *
  * - 레지스트리(`lib/admin/balance/sections.tsx`): 구역 키가 겹치지 않고, 구역마다 연결 객체·제목·본문이 있으며, 키로 구역을 찾는다(없으면 `undefined`).
- *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리다. 7-3 2회 이후와 7-4는 이 배열에 줄을 더하면 된다
+ *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징이다. 7-3 3회와 7-4는 이 배열에 줄을 더하면 된다
  * - 구역 본문(`BalanceSectionBody`, 서버 컴포넌트): 가짜 클라이언트로 값을 읽어 폼과 최근 변경을 그린다. **값을 읽지 못하면 던지지 않고** 오류 카드가 되고
  *   (한 구역이 실패해도 다른 구역은 보인다), 최근 변경만 못 읽으면 폼은 열린다. 읽기만 하고 아무것도 쓰지 않는다
  */
@@ -28,10 +28,12 @@ import { SYNC_BINDING } from '@/lib/admin/balance/sync'
 import { CAPSULE_BINDING } from '@/lib/admin/balance/capsule'
 import { CHAPTER_BINDING } from '@/lib/admin/balance/chapter'
 import { COLLECTION_BINDING } from '@/lib/admin/balance/collection'
+import { ABUSING_BINDING } from '@/lib/admin/balance/abusing'
 import { INVENTORY_BINDING } from '@/lib/admin/balance/inventory'
 import { LOCKED_BINDING } from '@/lib/admin/balance/locked'
 import { BALANCE_LOAD_FAILED_MESSAGE } from '@/lib/admin/balance/save'
 import {
+  abusingPolicyRow,
   capsulePolicyRow,
   chapterCostRows,
   chapterDefinitionRows,
@@ -54,6 +56,7 @@ import {
   ChapterNotice,
   ChapterSection,
 } from '../ChapterSection'
+import { AbusingSection } from '../AbusingSection'
 import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, CollectionNotice, CollectionSection } from '../CollectionSection'
 import { INVENTORY_APPLY_NOTICE_FALLBACK, InventoryNotice, InventorySection, inventoryApplyNotice } from '../InventorySection'
 import {
@@ -79,6 +82,7 @@ beforeEach(() => {
     chapter_score_rules: chapterScoreRuleRows(),
     inventory_policy: [inventoryPolicyRow()],
     inventory: inventoryRows(1234),
+    abusing_policy: [abusingPolicyRow()],
     balance_setting_changes: [
       {
         id: 'h-1',
@@ -99,8 +103,8 @@ beforeEach(() => {
 const html = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: JAM_BINDING })).replace(/<!-- -->/g, '')
 
 describe('구역 레지스트리', () => {
-  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리 순서이고 구역 키는 겹치지 않는다', () => {
-    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection', 'chapter', 'inventory'])
+  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징 순서이고 구역 키는 겹치지 않는다', () => {
+    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection', 'chapter', 'inventory', 'abusing'])
     const ids = BALANCE_SECTIONS.map((section) => section.binding.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
@@ -132,6 +136,7 @@ describe('구역 레지스트리', () => {
     expect(findBalanceSection('collection')?.binding).toBe(COLLECTION_BINDING)
     expect(findBalanceSection('chapter')?.binding).toBe(CHAPTER_BINDING)
     expect(findBalanceSection('inventory')?.binding).toBe(INVENTORY_BINDING)
+    expect(findBalanceSection('abusing')?.binding).toBe(ABUSING_BINDING)
     expect(findBalanceSection('nope')).toBeUndefined()
     expect(findBalanceSection('')).toBeUndefined()
   })
@@ -519,5 +524,57 @@ describe('BalanceSectionBody — 인벤토리 구역 (7-3 1회)', () => {
     const description = (findBalanceSection('inventory')?.description ?? []).join(' ')
     expect(description).toContain('지금 있는 유저 전원과 앞으로 가입할 유저에게 모두 적용돼요')
     expect(description).toContain('새 최대치보다 많은 아이템을 가진 유저가 있으면 저장되지 않아요')
+  })
+})
+
+describe('BalanceSectionBody — 어뷰징 구역 (7-3 2회)', () => {
+  const abusingHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: ABUSING_BINDING })).replace(/<!-- -->/g, '')
+
+  it('열 칸의 입력(저장된 값)이 다섯 묶음 제목 아래에 보이고 단위·기본값이 붙으며, 합계 줄은 없다', async () => {
+    const out = await abusingHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(10)
+    for (const title of ['이동 감지', '차량', '교통수단', '종목 불일치', '장소 블록']) expect(out, title).toContain(`>${title}</legend>`)
+    expect([...out.matchAll(/<legend/g)]).toHaveLength(5)
+    expect(out).toMatch(/id="balance-abusing-gps_max_speed_kmh"[^>]*value="300"/)
+    expect(out).toMatch(/id="balance-abusing-vehicle_speed_filter_kmh"[^>]*value="60"/)
+    expect(out).toMatch(/id="balance-abusing-mismatch_run_min_speed_kmh"[^>]*value="6"/)
+    expect(out).toMatch(/id="balance-abusing-poi_block_hours"[^>]*value="72"/)
+    expect(out).toContain('기본값 60km/h')
+    expect(out).toContain('기본값 72시간')
+    expect(out).toContain('20km/h 아래로는 내릴 수 없어요')
+    expect(out).not.toContain('role="status"')
+  })
+
+  it('읽기만 한다(쓰기 호출이 없다)', async () => {
+    await abusingHtml()
+    expect(db.calls.filter((call) => call.startsWith('abusing_policy.') && call !== 'abusing_policy.select')).toEqual([])
+  })
+
+  it('행이 없으면 기본값으로 폼을 열고(읽기 오류 카드가 아니다) 첫 저장이 행을 만든다', async () => {
+    db.tables.abusing_policy = []
+    const out = await abusingHtml()
+    expect(out).toMatch(/id="balance-abusing-gps_max_speed_kmh"[^>]*value="300"/)
+    expect(out).not.toContain(BALANCE_LOAD_FAILED_MESSAGE)
+  })
+
+  it('값을 읽지 못하면 던지지 않고 이 구역만 오류 카드가 된다(기본값으로 바꿔 보이지 않는다)', async () => {
+    db.readErrors.abusing_policy = 'boom'
+    const out = await abusingHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
+  it('구역 본문은 폼 뼈대(어뷰징 구역 연결)다', () => {
+    const body = AbusingSection()
+    expect(body.type).toBe(BalanceSectionBody)
+    expect((body.props as { binding: unknown }).binding).toBe(ABUSING_BINDING)
+  })
+
+  it('구역 설명이 기준값의 뜻과 적용 시점을 말한다', () => {
+    const section = findBalanceSection('abusing')
+    expect(section?.label).toBe('어뷰징')
+    const description = (section?.description ?? []).join(' ')
+    expect(description).toContain('비정상 이동(GPS 조작)')
+    expect(description).toContain('저장 즉시 다음 동기화와 장소 픽업부터 적용돼요')
   })
 })

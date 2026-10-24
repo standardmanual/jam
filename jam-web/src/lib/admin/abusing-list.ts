@@ -19,6 +19,18 @@ type ServiceClient = ReturnType<typeof createServiceClient>
 export type AbusingListTab = 'poi-blocks'
 export type AbusingListStatus = 'active' | 'expired' | 'all'
 
+/** 어뷰징 화면의 탭 둘(`?tab=`). 기본은 이용 정지다. */
+export type AbusingPageTab = 'suspensions' | 'poi-blocks'
+
+/**
+ * URL `?tab=` 값을 화면 탭으로 읽는다. `poi-blocks`만 장소 블록이고 나머지는 모두 이용 정지다.
+ * 값이 없거나 알 수 없는 값에 더해, 옛 «정책 설정» 탭의 `policy`(티켓 20261022_1134 2회에서 기준값이 밸런스 설정 «어뷰징» 구역으로 옮겨 갔다)와
+ * 옛 섀도우밴 탭의 `bans`로 들어오는 오래된 주소도 이용 정지 탭으로 떨어진다.
+ */
+export function parseAbusingPageTab(raw: string | undefined): AbusingPageTab {
+  return raw === 'poi-blocks' ? 'poi-blocks' : 'suspensions'
+}
+
 /** "필터 결과 전체 선택" 상한(상위 티켓 §6 결정 1) */
 export const ABUSING_SELECT_ALL_CAP = 1000
 

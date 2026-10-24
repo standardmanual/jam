@@ -1024,10 +1024,12 @@ abusing_policy {
 > 정리 SQL 단계에서 백업 여부를 정한다. 6-4 2회(티켓 20261021_1250)에서 어드민 «정책 설정» 탭의 «투트랙 정책» 안내와 Soft-ban·Hard-ban 배율 입력
 > 8칸, DB 값과 코드 기본값의 불일치 경고를 함께 지웠다.
 
-어드민 패널(`/admin/abusing`)에서 `PUT /api/admin/abusing/policy`로 수정한다.
-라우트는 `DEFAULT_POLICY`의 10개 키만 통과시키는 화이트리스트를 돌린다 — 모두 0 이상만 검사하고 상한을 두지 않는다
-(차량 속도 필터는 하한 20, 종목 불일치 두 칸은 1 이상 정수). 옛 배율 8종의 0~1 검증은 지웠고, 그 키가 본문에 와도 화이트리스트에 없어 버려진다. 저장 실패는 500 + `error`로 화면에 노출된다
-(2026-08-13 ~ 08-31 사이 이 화면의 저장은 전부 무음 실패했다 — 티켓 20260831_1149).
+어드민 밸런스 설정(`/admin/balance`)의 «어뷰징» 구역에서 수정한다(`PUT /api/admin/balance/abusing`, 티켓 20261022_1134 2회).
+구역은 `DEFAULT_POLICY`의 10개 키만 칸으로 갖고 모르는 칸은 거절한다 — 열이 모두 `INTEGER`라 **모두 1 이상 정수**이고 상한은 DB 정수 한계뿐이다
+(차량 속도 필터는 하한 20). 옛 «정책 설정» 탭과 `PUT /api/admin/abusing/policy`(0 이상 숫자를 받았다)는 이 구역으로 옮기며 지웠다. 옛 배율 8종은 칸이 아니라 본문에 와도 거절한다.
+저장은 `updated_at` 조건 갱신이고(다르면 409) 변경 이력이 `balance_setting_changes`에 남는다. 저장 실패는 500이고 응답에 DB 오류 원문을 싣지 않는다.
+행이 없으면 구역은 `DEFAULT_POLICY`를 보이고 첫 저장이 행을 `upsert`로 만든다(옛 화면과 같다).
+(2026-08-13 ~ 08-31 사이 옛 화면의 저장은 전부 무음 실패했다 — 티켓 20260831_1149.)
 
 **불변식: `src/lib/abusing/policy.ts`의 `DEFAULT_POLICY`는 이 행의 미러다.**
 "바람직한 값"이 아니라 **DB를 못 읽을 때 현행 운영값을 그대로 재현하는 값**이다.
@@ -1136,7 +1138,6 @@ abusing_policy {
 | POST | `/api/admin/simulate` | 배지·장소 시뮬레이션(가상 활동으로 배지 판정·장소 매칭. 옛 «아이템 드랍» 구역은 티켓 20261022_0938에서 지웠다) |
 | POST | `/api/admin/drop-policy/exclusions/bulk` | 드랍 제외 관리 일괄 제외·제외 해제(아이템배지·컬렉션) |
 | GET | `/api/admin/drop-policy/exclusions/ids` | 드랍 제외 관리 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
-| GET, PUT | `/api/admin/abusing/policy` | 어뷰징 정책 조회/수정 |
 | GET, DELETE | `/api/admin/abusing/poi-blocks` | POI 블록 관리 |
 
 ---

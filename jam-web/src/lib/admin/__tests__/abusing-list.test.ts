@@ -1,6 +1,7 @@
 import {
   applyAbusingListFilters,
   parseAbusingListParams,
+  parseAbusingPageTab,
   searchFilterOf,
   statusFilterOf,
   type AbusingListQuery,
@@ -14,6 +15,24 @@ import {
 
 const NOW = new Date('2026-09-24T00:00:00.000Z')
 const NOW_ISO = NOW.toISOString()
+
+describe('parseAbusingPageTab (티켓 20261022_1134 2회: «정책 설정» 탭을 밸런스 설정으로 옮겼다)', () => {
+  it('poi-blocks만 장소 블록 탭이고 suspensions는 이용 정지 탭이다', () => {
+    expect(parseAbusingPageTab('poi-blocks')).toBe('poi-blocks')
+    expect(parseAbusingPageTab('suspensions')).toBe('suspensions')
+  })
+
+  it('값이 없으면 이용 정지 탭이 기본이다', () => {
+    expect(parseAbusingPageTab(undefined)).toBe('suspensions')
+    expect(parseAbusingPageTab('')).toBe('suspensions')
+  })
+
+  it('옛 «정책 설정» 탭 주소(?tab=policy)와 옛 섀도우밴 탭 주소(?tab=bans)와 알 수 없는 값은 이용 정지 탭으로 떨어진다', () => {
+    expect(parseAbusingPageTab('policy')).toBe('suspensions')
+    expect(parseAbusingPageTab('bans')).toBe('suspensions')
+    expect(parseAbusingPageTab('nope')).toBe('suspensions')
+  })
+})
 
 describe('parseAbusingListParams', () => {
   it('빈 파라미터의 상태는 active, 정렬은 최신순이다', () => {

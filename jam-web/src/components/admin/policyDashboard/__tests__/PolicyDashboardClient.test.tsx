@@ -1,7 +1,7 @@
 /**
  * 정책 대시보드 화면 (티켓 20261022_1717) — 서버 렌더(`renderToStaticMarkup`)로 그린 모양만 고정한다. 지키는 것:
  * - 설정 화면에서 바꾸는 카드는 값을 읽어 보여 주고(`liveValues`), «밸런스 설정에서 바꾸기» 링크로 해당 구역에 이어진다
- * - 밸런스 설정에 구역이 아직 없는 대상은 옛 화면 링크(`/admin/abusing` 등)로 이어지고 글자는 «설정 화면에서 바꾸기»다
+ * - 밸런스 설정에 구역이 아직 없는 대상(시스템 드랍)은 옛 화면 링크(`/admin/ambient-drop`)로 이어지고 글자는 «설정 화면에서 바꾸기»다 (어뷰징 카드는 7-3 2회에서 구역으로 옮겨 갔다)
  * - 숫자 입력칸·«값 변경» 버튼 같은 직접 수정 컨트롤은 어디에도 없다
  * - 읽어 보여 줄 칸이 없는 카드(여러 칸)는 실측값 줄 없이 링크만 둔다. 검색창과 유형 탭은 그대로 있다
  */
@@ -13,7 +13,7 @@ import { PolicyDashboardClient } from '../PolicyDashboardClient'
 const PICKED_IDS = [
   'ch1-core-loop', // 엔진 고정 규칙
   'ch4-intensity-light', // 잼 구역 링크 + 실측값
-  'ch16-vehicle-speed-filter', // 옛 화면 링크 + 실측값
+  'ch16-vehicle-speed-filter', // 어뷰징 구역 링크 + 실측값
   'ch7-locked-min-requirements', // 잠긴 구역 링크, 읽는 칸 없음
 ]
 
@@ -46,11 +46,22 @@ describe('PolicyDashboardClient — 값 읽기와 설정 화면 링크', () => {
     expect(out.split('현재 DB 실측값:').length - 1).toBe(2)
   })
 
-  it('구역이 없는 대상(어뷰징)은 옛 화면 링크로 이어지고 글자는 «설정 화면에서 바꾸기»다', () => {
+  it('어뷰징 카드는 실측값을 보이고 «밸런스 설정에서 바꾸기»로 /admin/balance#abusing에 이어진다', () => {
     const out = html()
     expect(out).toContain('>45km/h<')
-    expect(out).toContain('href="/admin/abusing"')
-    expect(out).toMatch(/href="\/admin\/abusing"[^>]*>설정 화면에서 바꾸기/)
+    expect(out).toContain('href="/admin/balance#abusing"')
+    expect(out).toMatch(/href="\/admin\/balance#abusing"[^>]*>밸런스 설정에서 바꾸기/)
+    expect(out).not.toContain('href="/admin/abusing"')
+  })
+
+  it('구역이 아직 없는 대상(시스템 드랍)은 옛 화면 링크로 이어지고 글자는 «설정 화면에서 바꾸기»다', () => {
+    const ambient = POLICIES_DATA.filter((p) => p.id === 'ch9-ambient-schedule-hour')
+    expect(ambient).toHaveLength(1)
+    const out = renderToStaticMarkup(
+      <PolicyDashboardClient initialPolicies={ambient} initialLiveValues={{ schedule_hour_kst: 9 }} updatedAt="2026-10-23T00:00:00.000Z" />,
+    ).replace(/<!-- -->/g, '')
+    expect(out).toContain('href="/admin/ambient-drop"')
+    expect(out).toMatch(/href="\/admin\/ambient-drop"[^>]*>설정 화면에서 바꾸기/)
   })
 
   it('값을 못 읽었으면 «조회 중»으로 보인다', () => {

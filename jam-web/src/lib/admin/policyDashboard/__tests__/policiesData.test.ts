@@ -80,29 +80,34 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(hrefOf('ch8-inventory-max-slots')).toBe('/admin/balance#inventory')
   })
 
+  it('어뷰징 기준값 카드 8개는 모두 어뷰징 구역(/admin/balance#abusing)으로 이어진다. 옛 «정책 설정» 탭은 없앴다 (티켓 20261022_1134 2회)', () => {
+    const abusing = POLICIES_DATA.filter((p) => p.dbTable === 'abusing_policy')
+    expect(abusing.length).toBe(8)
+    for (const p of abusing) {
+      expect(p.adminLink?.href, p.id).toBe('/admin/balance#abusing')
+    }
+    // 이용 정지·장소 블록 화면(/admin/abusing)은 기준값 화면이 아니라 카드가 가리키지 않는다
+    expect(POLICIES_DATA.filter((p) => p.adminLink?.href === '/admin/abusing')).toEqual([])
+  })
+
   it('옛 인벤토리 화면 주소(/admin/inventory-policy)를 가리키는 카드가 없다', () => {
     expect(POLICIES_DATA.filter((p) => p.adminLink?.href.startsWith('/admin/inventory-policy'))).toEqual([])
   })
 
-  it('밸런스 설정에 구역이 아직 없는 항목(시스템 드랍·어뷰징)은 옛 화면 링크를 둔다', () => {
+  it('밸런스 설정에 구역이 아직 없는 항목(시스템 드랍)은 옛 화면 링크를 둔다', () => {
     const hrefOf = (id: string) => POLICIES_DATA.find((p) => p.id === id)?.adminLink?.href
 
     for (const id of ['ch9-ambient-schedule-hour', 'ch9-ambient-poi-cap', 'ch9-ambient-exclusion-window']) {
       expect(hrefOf(id), id).toBe('/admin/ambient-drop')
     }
-    const abusing = POLICIES_DATA.filter((p) => p.dbTable === 'abusing_policy')
-    expect(abusing.length).toBe(8)
-    for (const p of abusing) {
-      expect(p.adminLink?.href, p.id).toBe('/admin/abusing')
-    }
   })
 
-  it('차량 속도 필터 카드는 기본값 60km/h를 읽어 보이고 어뷰징 화면으로 이어진다', () => {
+  it('차량 속도 필터 카드는 기본값 60km/h를 읽어 보이고 밸런스 설정 어뷰징 구역으로 이어진다', () => {
     const vehiclePolicy = POLICIES_DATA.find((p) => p.id === 'ch16-vehicle-speed-filter')
     expect(vehiclePolicy).toBeDefined()
     expect(vehiclePolicy?.adminLink?.liveField).toBe('vehicle_speed_filter_kmh')
     expect(vehiclePolicy?.adminLink?.unit).toBe('km/h')
-    expect(vehiclePolicy?.adminLink?.href).toBe('/admin/abusing')
+    expect(vehiclePolicy?.adminLink?.href).toBe('/admin/balance#abusing')
     expect(vehiclePolicy?.defaultValue).toBe(60)
   })
 

@@ -560,7 +560,7 @@ export async function processFetchedActivities(
     // 보상 루프 전체가 멈춘다. 그래서 폴백 방향을 **핵심 루프를 살리는 쪽**(기본 임계값)으로
     // 고르되, 무음으로 넘기지 않고 로그를 남긴다 (DEV_PROCESS_GUARDRAILS 패턴 9 규칙 1·6).
     // 하한(MIN_VEHICLE_SPEED_FILTER_KMH)은 여기서 재검사하지 않는다 — 정책 검증은 저장
-    // 경로(어드민 정책 라우트)가 소유한다. 운영자가 의도적으로 넣은 값을 소비 지점이 조용히
+    // 경로(밸런스 설정 «어뷰징» 구역의 칸 정의, lib/admin/balance/abusing.ts)가 소유한다. 운영자가 의도적으로 넣은 값을 소비 지점이 조용히
     // 덮어쓰면 "저장한 값과 실제 동작이 다른" 같은 종류의 불일치가 재발한다.
     console.error(
       `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${configuredVehicleSpeedFilterKmh}) — ` +
