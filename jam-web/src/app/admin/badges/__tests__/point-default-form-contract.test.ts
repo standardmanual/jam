@@ -8,7 +8,7 @@
  * 1. 포인트 칸의 글자는 «사용자가 쓴 글자(pointOverride)가 있으면 그것, 없으면 기본값»이다. 새 배지는 null로 시작해 기본값을 따라가고, 기존 배지는 저장된 값으로 시작해 따라가지 않는다.
  * 2. 기본값은 지금 화면의 등급·레벨형·숨김 state로 계산한다 — 그래서 등급이나 종류를 바꾸면 직접 고치기 전까지 칸이 따라 바뀐다.
  * 3. 칸을 직접 고치면 그 글자를 쓴다(따라가지 않는다). 칸을 비우면 빈 글자 그대로라 기본값으로 되돌아가지 않는다.
- * 4. 숨김은 기존대로 0으로 고정한다(`changeHidden`). 이 시험은 그 줄이 남아 있는지 본다.
+ * 4. 숨김은 0으로 고정한다(`changeHidden`). 새 배지는 기본값을 따라가는 상태(null)로 되돌려, 숨김인 동안은 기본값 0이 보이고 숨김을 끄면 등급 기본값이 돌아온다(게이트 WARN 반영). 기존 배지 수정은 입력 글자를 0으로 둔다.
  * 5. 저장 본문·저장 전 검사는 칸에 보이는 글자(`pointReward`)를 읽는다. 일괄 값은 prop(`pointPolicy`)으로만 받는다.
  * 6. 새 배지·기존 배지 수정 페이지가 서버에서 일괄 값을 읽어 폼에 내린다.
  *
@@ -62,9 +62,11 @@ describe('포인트 칸의 글자', () => {
     expect(FORM).toMatch(/id="badge-point-reward"[\s\S]{0,300}value=\{pointReward\}[\s\S]{0,100}onChange=\{\(e\) => setPointReward\(e\.target\.value\)\}/)
   })
 
-  it('숨김은 기존대로 0으로 고정한다', () => {
+  it('숨김은 0으로 고정한다: 새 배지는 기본값을 따라가는 상태(null)로 되돌려 숨김을 끄면 등급 기본값이 돌아오고, 기존 배지 수정은 입력 글자를 0으로 둔다', () => {
     const body = bodyOf(FORM, 'const changeHidden = (next: boolean) => {')
-    expect(body).toMatch(/setPointReward\('0'\)/)
+    expect(body).toMatch(/setPointReward\(isEdit \? '0' : null\)/)
+    // 숨김을 끌 때(next가 false)는 포인트 칸을 건드리지 않는다 — 켤 때 정한 상태가 그대로 남는다
+    expect(body).toMatch(/if \(!next\) return\n\s+setRarity\('common'\)/)
   })
 
   it('저장 본문과 저장 전 검사는 칸에 보이는 글자를 읽는다', () => {

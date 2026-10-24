@@ -346,11 +346,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   }
 
   // 숨김을 켜면 마이그레이션 243의 제약에 맞게 등급은 Common, 포인트는 0으로 맞춘다(티켓 20261018_1816).
+  // 새 배지는 입력 글자를 '0'으로 박지 않고 «기본값을 따라가는 상태(null)»로 되돌린다. 숨김인 동안은 기본값이 0이라 칸이 0이고,
+  // 숨김을 끄면 등급의 기본값으로 돌아온다(티켓 20261022_1135 게이트). 기존 배지 수정은 저장된 값을 유지하는 화면이라 '0'으로 둔다.
   const changeHidden = (next: boolean) => {
     setIsHidden(next)
     if (!next) return
     setRarity('common')
-    setPointReward('0')
+    setPointReward(isEdit ? '0' : null)
   }
 
   const toggleActivityType = (t: ActivityType) => {
