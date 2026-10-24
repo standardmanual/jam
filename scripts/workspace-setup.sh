@@ -5,9 +5,11 @@
 # 사용법:
 #   scripts/workspace-setup.sh link <새-워크트리-경로>   # jam-web/node_modules 심볼릭 링크 연결
 #   scripts/workspace-setup.sh link-secrets <워크트리-경로> # 카리나 세션용: .mcp.json·.vercel·jam-web/.env.local 링크 연결
-#   scripts/workspace-setup.sh cleanup                    # staging에 병합됐고 미커밋 변경 없는 워크트리 +
+#   scripts/workspace-setup.sh cleanup                    # .claude/worktrees/wf_*·gate-* 가운데 staging에 병합됐고
+#                                                           # 미커밋 변경 없는 워크트리(앱 세션 워크트리 등 그 밖의 이름은 보존) +
 #                                                           # 연결 워크트리 없는 worktree-wf_* 브랜치 +
-#                                                           # staging에 병합된 로컬 claude/jamwork-* 브랜치 제거
+#                                                           # staging에 병합된 로컬 claude/jamwork-* 브랜치 제거.
+#                                                           # 워크트리 판정은 git 공용 디렉터리의 workspace-cleanup.log에 남는다
 #   scripts/workspace-setup.sh cleanup --remote            # 병합된 원격 claude/jamwork-*·claude/docs-* 목록만 출력
 #   scripts/workspace-setup.sh cleanup --remote --yes      # 위 목록을 실제로 삭제
 set -uo pipefail
@@ -88,11 +90,15 @@ link_secrets() {
 # git worktree remove가 절대경로로 실패하면(티켓 20260921_2303에서 실측: 한글 폴더명의
 # NFC/NFD 표기 차이로 추정, 원인은 확인하지 못함) 저장소 루트 기준 상대경로로 한 번 더 시도한다.
 # 둘 다 실패하면 실패를 반환한다 — 호출부가 "제거"로 잘못 보고하지 않도록 종료 코드로만 알린다.
+# 첫 시도의 git 오류 첫 줄(예: 잠긴 워크트리)은 REMOVE_ERR에 남겨 호출부가 실패 사유로 기록하게 한다.
+REMOVE_ERR=""
 remove_worktree() {
-  local wt="$1"
-  if git worktree remove "$wt" >/dev/null 2>&1; then
+  local wt="$1" err
+  REMOVE_ERR=""
+  if err="$(git worktree remove "$wt" 2>&1 >/dev/null)"; then
     return 0
   fi
+  REMOVE_ERR="${err%%$'\n'*}"
   local rel=""
   case "$wt" in
     "$REPO_ROOT"/*) rel="${wt:${#REPO_ROOT}}"; rel="${rel#/}" ;;
@@ -103,17 +109,80 @@ remove_worktree() {
   return 1
 }
 
+# 정리 판정 기록 (티켓 20261001_1143). 세션 시작 훅이 출력을 버리므로, 무엇을 지웠는지 나중에
+# 확인할 수 있게 워크트리별 판정을 시각과 함께 git 공용 디렉터리의 workspace-cleanup.log에 덧붙인다.
+# git 내부 디렉터리라 git status에 잡히지 않고 .gitignore를 고칠 필요가 없다. 기록 실패는
+# 정리를 막지 않는다.
+CLEANUP_LOG_MAX_LINES=500
+CLEANUP_LOG=""
+
+init_cleanup_log() {
+  local common
+  common="$(git rev-parse --git-common-dir 2>/dev/null)" || return 0
+  common="$(cd "$common" 2>/dev/null && pwd -P)" || return 0
+  CLEANUP_LOG="$common/workspace-cleanup.log"
+}
+
+# 판정 한 줄을 출력하고 로그에도 시각과 함께 남긴다. 시각은 사용자에게 보이는 값이므로 한국 표준시로 쓴다.
+report_worktree() {
+  echo "$1"
+  [ -n "$CLEANUP_LOG" ] || return 0
+  printf '%s %s\n' "$(TZ=Asia/Seoul date '+%Y-%m-%dT%H:%M:%S%z')" "$1" >>"$CLEANUP_LOG" 2>/dev/null || true
+}
+
+# 로그가 무한히 커지지 않게 최근 CLEANUP_LOG_MAX_LINES줄만 남긴다. 세션이 동시에 시작해 같은
+# 로그를 줄이면 그 사이에 덧붙은 줄이 사라질 수 있다 — 기록용이라 감수한다.
+trim_cleanup_log() {
+  { [ -n "$CLEANUP_LOG" ] && [ -f "$CLEANUP_LOG" ]; } || return 0
+  local lines
+  lines="$(wc -l <"$CLEANUP_LOG" 2>/dev/null | tr -d ' ')"
+  [ "${lines:-0}" -gt "$CLEANUP_LOG_MAX_LINES" ] || return 0
+  if tail -n "$CLEANUP_LOG_MAX_LINES" "$CLEANUP_LOG" >"$CLEANUP_LOG.$$" 2>/dev/null; then
+    mv -f "$CLEANUP_LOG.$$" "$CLEANUP_LOG" 2>/dev/null || rm -f "$CLEANUP_LOG.$$"
+  else
+    rm -f "$CLEANUP_LOG.$$"
+  fi
+}
+
+# 제거 후보 경로인지 판정한다(허용 목록). 메인 체크아웃의 .claude/worktrees/ 바로 아래에서 파이프라인이
+# 만드는 이름만 허용한다: wf_*(Workflow 격리 워크트리), gate-*(jam-reviewer가 필요할 때 만드는 검증용
+# 워크트리). 앱이 만든 세션 워크트리처럼 그 밖의 이름은 기본값이 "지우지 않음"이다(티켓 20261001_1143).
+# 기준 경로를 현재 워크트리가 아닌 메인 체크아웃으로 잡아, 다른 워크트리에서 연 세션도 같은 대상을 정리한다.
+is_cleanup_target_path() {
+  local wt="$1" main_root="$2"
+  local name="${wt#"$main_root"/.claude/worktrees/}"
+  [ "$name" != "$wt" ] || return 1
+  case "$name" in
+    */*) return 1 ;;
+    wf_*|gate-*) return 0 ;;
+  esac
+  return 1
+}
+
 cleanup_worktrees() {
   git fetch origin staging >/dev/null 2>&1 || true
+  init_cleanup_log
   local removed=0 kept=0
+
+  # git worktree list의 첫 항목은 항상 메인 체크아웃이다.
+  local main_root
+  main_root="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+  [ -n "$main_root" ] || main_root="$REPO_ROOT"
 
   while IFS= read -r wt; do
     [ "$wt" = "$REPO_ROOT" ] && continue
+    [ "$wt" = "$main_root" ] && continue
+
+    if ! is_cleanup_target_path "$wt" "$main_root"; then
+      report_worktree "보존(정리 대상 경로 아님): $wt"
+      kept=$((kept + 1))
+      continue
+    fi
 
     local status
     status="$(git -C "$wt" status --short 2>/dev/null)"
     if [ -n "$status" ]; then
-      echo "보존(미커밋 변경 있음): $wt"
+      report_worktree "보존(미커밋 변경 있음): $wt"
       kept=$((kept + 1))
       continue
     fi
@@ -121,23 +190,24 @@ cleanup_worktrees() {
     local head
     head="$(git -C "$wt" rev-parse HEAD 2>/dev/null)"
     if [ -z "$head" ]; then
-      echo "건너뜀(HEAD 조회 실패): $wt"
+      report_worktree "건너뜀(HEAD 조회 실패): $wt"
       continue
     fi
 
     if git merge-base --is-ancestor "$head" origin/staging 2>/dev/null; then
       if remove_worktree "$wt"; then
-        echo "제거(staging에 병합됨): $wt"
+        report_worktree "제거(staging에 병합됨): $wt"
         removed=$((removed + 1))
       else
-        echo "제거 실패: $wt"
+        report_worktree "제거 실패: $wt (사유: ${REMOVE_ERR:-확인 못함})"
       fi
     else
-      echo "보존(아직 staging에 병합되지 않음): $wt"
+      report_worktree "보존(아직 staging에 병합되지 않음): $wt"
       kept=$((kept + 1))
     fi
   done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
 
+  trim_cleanup_log
   echo "정리 완료: 제거 ${removed}개, 보존 ${kept}개"
 
   cleanup_local_branches
