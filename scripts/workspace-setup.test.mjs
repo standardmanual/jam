@@ -4,6 +4,7 @@
 // 미병합 jamwork)을 만들어 보존·삭제가 맞는지 확인한다. 이어서 cleanup --remote가 목록만
 // 출력하고, --yes가 있을 때만 실제로 지우는지 확인한다. 워크트리 정리는 wf_*·gate-*만 제거하고
 // 앱 세션 워크트리는 보존하는지, 판정이 workspace-cleanup.log에 남는지 확인한다(티켓 20261001_1143).
+// 허용 목록 경계(밖의 위치·하위 폴더·대소문자·비슷한 이름·공백 경로)는 보존되는지도 확인한다(티켓 20261024_1053).
 // GIT_* 변수와 전역 설정은 격리해 실제 저장소를 건드리지 않는다.
 // 실행: node scripts/workspace-setup.test.mjs
 
@@ -159,6 +160,37 @@ try {
   assert.ok(trimmedLines.some((l) => /보존\(정리 대상 경로 아님\): .*[/]app-test$/.test(l)), '이번 실행의 판정 줄은 남아야 한다')
 
   console.log('통과: workspace-setup cleanup 워크트리 허용 목록·판정 기록')
+
+  // ── 허용 목록 경계 (티켓 20261024_1053): 변경이 없고 staging에 병합돼 이전 규칙이라면 지워졌을 워크트리도
+  // 이름이나 위치가 허용 목록 밖이면 보존돼야 한다. 대조군 wf_ok·gate-ok는 같은 실행에서 제거된다.
+  const outside = join(root, 'elsewhere', 'wf_outside')
+  const nested = 'wf_nest/sub'
+  const lookalikes = ['WF_upper', 'Gate-upper', 'wfx', 'gate_x']
+  const spaced = 'wf_ space'
+  addWt('wf_ok', '--detach')
+  addWt('gate-ok', '--detach')
+  for (const name of [nested, ...lookalikes, spaced]) addWt(name, '--detach')
+  git(['worktree', 'add', '-q', '--detach', outside, 'HEAD'], main)
+
+  const edge = runCleanup(main)
+  assert.equal(edge.status, 0, `cleanup 실패:\n${edge.stdout}${edge.stderr}`)
+  assert.ok(!existsSync(wtPath('wf_ok')), '대조군 wf_ok는 제거돼야 한다')
+  assert.ok(!existsSync(wtPath('gate-ok')), '대조군 gate-ok는 제거돼야 한다')
+  const edgeLines = edge.stdout.split('\n')
+  const keptNotTarget = (suffix) =>
+    edgeLines.some((l) => l.startsWith('보존(정리 대상 경로 아님): ') && l.endsWith(`/${suffix}`))
+  assert.ok(existsSync(outside) && keptNotTarget('elsewhere/wf_outside'), '.claude/worktrees 밖의 wf_*는 보존돼야 한다')
+  assert.ok(existsSync(wtPath(nested)) && keptNotTarget(nested), '하위 폴더의 워크트리는 보존돼야 한다')
+  for (const name of lookalikes) {
+    assert.ok(existsSync(wtPath(name)) && keptNotTarget(name), `대소문자·접두가 다른 이름(${name})은 보존돼야 한다`)
+  }
+  // 공백이 든 경로(⑥): 지워지지 않는 것이 핵심이다. 현재는 `awk '{print $2}'`가 첫 토큰에서 잘라 `.../wf_`로 읽고,
+  // 그 경로의 HEAD를 못 읽어 «건너뜀»으로 끝난다. awk를 고치면 이 줄의 형태가 달라지니 그때 이 단언을 함께 정한다.
+  assert.ok(existsSync(wtPath(spaced)), '이름에 공백이 든 워크트리는 지워지면 안 된다')
+  assert.match(edge.stdout, /^건너뜀\(HEAD 조회 실패\): .*[/]wf_$/m)
+  assert.ok(!edgeLines.some((l) => /^제거/.test(l) && /[/]wf_( space)?$/.test(l)), '공백 경로가 제거 줄로 나오면 안 된다')
+
+  console.log('통과: workspace-setup cleanup 허용 목록 경계(위치·깊이·대소문자·비슷한 이름·공백)')
 
   // ── 원격 정리: 목록만 출력 → --yes일 때만 실제 삭제 ──────────────────────────
   const remoteSrc = join(root, 'remote-src')
