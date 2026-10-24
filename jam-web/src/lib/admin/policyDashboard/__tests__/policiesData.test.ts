@@ -76,12 +76,17 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     // 챕터 구역
     expect(hrefOf('ch12-score-thresholds')).toBe('/admin/balance#chapter')
     expect(hrefOf('ch12-jam-weekly-cap')).toBe('/admin/balance#chapter')
+    // 인벤토리 구역(옛 «인벤토리 최대치» 화면은 없앴다, 티켓 20261022_1134)
+    expect(hrefOf('ch8-inventory-max-slots')).toBe('/admin/balance#inventory')
   })
 
-  it('밸런스 설정에 구역이 아직 없는 항목(인벤토리·시스템 드랍·어뷰징)은 옛 화면 링크를 둔다', () => {
+  it('옛 인벤토리 화면 주소(/admin/inventory-policy)를 가리키는 카드가 없다', () => {
+    expect(POLICIES_DATA.filter((p) => p.adminLink?.href.startsWith('/admin/inventory-policy'))).toEqual([])
+  })
+
+  it('밸런스 설정에 구역이 아직 없는 항목(시스템 드랍·어뷰징)은 옛 화면 링크를 둔다', () => {
     const hrefOf = (id: string) => POLICIES_DATA.find((p) => p.id === id)?.adminLink?.href
 
-    expect(hrefOf('ch8-inventory-max-slots')).toBe('/admin/inventory-policy')
     for (const id of ['ch9-ambient-schedule-hour', 'ch9-ambient-poi-cap', 'ch9-ambient-exclusion-window']) {
       expect(hrefOf(id), id).toBe('/admin/ambient-drop')
     }

@@ -108,6 +108,16 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(mostSpecificActiveItem('/admin/drop-policy/exclusions')?.href).toBe('/admin/drop-policy/exclusions')
   })
 
+  it('«인벤토리» 메뉴는 없다 — 옛 화면은 «밸런스» 구역으로 옮겼다(티켓 20261022_1134)', () => {
+    const items = NAV_GROUPS.flatMap((g) => g.items)
+    expect(items.map((i) => i.href)).not.toContain('/admin/inventory-policy')
+    expect(items.map((i) => i.label)).not.toContain('인벤토리')
+    // 옛 주소는 어느 메뉴도 활성으로 만들지 않는다
+    expect(mostSpecificActiveItem('/admin/inventory-policy')).toBeUndefined()
+    // 같은 값은 «밸런스» 메뉴(/admin/balance)의 인벤토리 구역에서 바꾼다
+    expect(items.find((i) => i.href === '/admin/balance')?.label).toBe('밸런스')
+  })
+
   it('«정책 대시보드»는 «밸런스» 그룹 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1631, 20261022_2035 간결화)', () => {
     const balance = NAV_GROUPS.find((g) => g.id === 'balance')
     expect(balance?.items[0]).toMatchObject({ href: '/admin/policy-dashboard', label: '정책 대시보드' })

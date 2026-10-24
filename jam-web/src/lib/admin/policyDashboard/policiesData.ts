@@ -545,7 +545,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 8.2절',
     ticketId: '20260904_1646',
     adminLink: {
-      href: '/admin/inventory-policy',
+      href: '/admin/balance#inventory',
       liveField: 'max_slots',
       unit: '칸',
     },

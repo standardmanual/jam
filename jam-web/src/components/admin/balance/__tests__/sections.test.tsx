@@ -2,7 +2,7 @@
  * 밸런스 설정 구역 레지스트리와 구역 본문 (티켓 20261022_1132 1회)
  *
  * - 레지스트리(`lib/admin/balance/sections.tsx`): 구역 키가 겹치지 않고, 구역마다 연결 객체·제목·본문이 있으며, 키로 구역을 찾는다(없으면 `undefined`).
- *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터다. 7-3~7-4는 이 배열에 줄을 더하면 된다
+ *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리다. 7-3 2회 이후와 7-4는 이 배열에 줄을 더하면 된다
  * - 구역 본문(`BalanceSectionBody`, 서버 컴포넌트): 가짜 클라이언트로 값을 읽어 폼과 최근 변경을 그린다. **값을 읽지 못하면 던지지 않고** 오류 카드가 되고
  *   (한 구역이 실패해도 다른 구역은 보인다), 최근 변경만 못 읽으면 폼은 열린다. 읽기만 하고 아무것도 쓰지 않는다
  */
@@ -28,6 +28,7 @@ import { SYNC_BINDING } from '@/lib/admin/balance/sync'
 import { CAPSULE_BINDING } from '@/lib/admin/balance/capsule'
 import { CHAPTER_BINDING } from '@/lib/admin/balance/chapter'
 import { COLLECTION_BINDING } from '@/lib/admin/balance/collection'
+import { INVENTORY_BINDING } from '@/lib/admin/balance/inventory'
 import { LOCKED_BINDING } from '@/lib/admin/balance/locked'
 import { BALANCE_LOAD_FAILED_MESSAGE } from '@/lib/admin/balance/save'
 import {
@@ -37,6 +38,8 @@ import {
   chapterScoreRuleRows,
   combinePolicyRow,
   createFakeDb,
+  inventoryPolicyRow,
+  inventoryRows,
   jamPolicyRow,
   tierDefaultRewardRows,
   type FakeDb,
@@ -52,6 +55,7 @@ import {
   ChapterSection,
 } from '../ChapterSection'
 import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, CollectionNotice, CollectionSection } from '../CollectionSection'
+import { INVENTORY_APPLY_NOTICE_FALLBACK, InventoryNotice, InventorySection, inventoryApplyNotice } from '../InventorySection'
 import {
   LOCKED_AMOUNT_NOTICE,
   LOCKED_ROLL_NOTICE_LINK,
@@ -73,6 +77,8 @@ beforeEach(() => {
     combine_policy: [combinePolicyRow()],
     chapter_definitions: chapterDefinitionRows(),
     chapter_score_rules: chapterScoreRuleRows(),
+    inventory_policy: [inventoryPolicyRow()],
+    inventory: inventoryRows(1234),
     balance_setting_changes: [
       {
         id: 'h-1',
@@ -93,8 +99,8 @@ beforeEach(() => {
 const html = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: JAM_BINDING })).replace(/<!-- -->/g, '')
 
 describe('구역 레지스트리', () => {
-  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터 순서이고 구역 키는 겹치지 않는다', () => {
-    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection', 'chapter'])
+  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리 순서이고 구역 키는 겹치지 않는다', () => {
+    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection', 'chapter', 'inventory'])
     const ids = BALANCE_SECTIONS.map((section) => section.binding.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
@@ -125,6 +131,7 @@ describe('구역 레지스트리', () => {
     expect(findBalanceSection('locked')?.binding).toBe(LOCKED_BINDING)
     expect(findBalanceSection('collection')?.binding).toBe(COLLECTION_BINDING)
     expect(findBalanceSection('chapter')?.binding).toBe(CHAPTER_BINDING)
+    expect(findBalanceSection('inventory')?.binding).toBe(INVENTORY_BINDING)
     expect(findBalanceSection('nope')).toBeUndefined()
     expect(findBalanceSection('')).toBeUndefined()
   })
@@ -446,5 +453,71 @@ describe('BalanceSectionBody — 챕터 구역 (7-2 2회)', () => {
     const children = Children.toArray(ChapterSection().props.children) as ReactElement<{ binding?: unknown }>[]
     expect(children.map((child) => child.type)).toEqual([ChapterNotice, BalanceSectionBody])
     expect(children[1].props.binding).toBe(CHAPTER_BINDING)
+  })
+})
+
+describe('BalanceSectionBody — 인벤토리 구역 (7-3 1회)', () => {
+  const inventoryHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: INVENTORY_BINDING })).replace(/<!-- -->/g, '')
+
+  it('한 칸의 입력(저장된 값)과 단위·기본값이 보이고, 묶음 제목과 합계 줄은 없다', async () => {
+    const out = await inventoryHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(1)
+    expect(out).toMatch(/id="balance-inventory-max_slots"[^>]*value="10"/)
+    expect(out).toContain('인벤토리 최대치')
+    expect(out).toContain('기본값 50개')
+    expect(out).not.toContain('<legend')
+    expect(out).not.toContain('role="status"')
+  })
+
+  it('읽기만 한다(쓰기와 RPC 호출이 없다)', async () => {
+    await inventoryHtml()
+    expect(db.calls.filter((call) => call.endsWith('.update') || call.endsWith('.insert') || call.startsWith('rpc.'))).toEqual([])
+    expect(db.rpcCalls).toEqual([])
+  })
+
+  it('값을 읽지 못하면 던지지 않고 이 구역만 오류 카드가 된다', async () => {
+    db.readErrors.inventory_policy = 'boom'
+    const out = await inventoryHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
+  it('안내는 «저장하면 전체 유저 N명의 인벤토리 최대치가 즉시 바뀌어요»이고 줄바꿈 설정이 붙는다', () => {
+    expect(inventoryApplyNotice(1234)).toBe('저장하면 전체 유저 1,234명의 인벤토리 최대치가 즉시 바뀌어요.')
+    expect(inventoryApplyNotice(0)).toBe('저장하면 전체 유저 0명의 인벤토리 최대치가 즉시 바뀌어요.')
+    const out = renderToStaticMarkup(<InventoryNotice userCount={1234} />).replace(/<!-- -->/g, '')
+    expect(out).toContain('저장하면 전체 유저 1,234명의 인벤토리 최대치가 즉시 바뀌어요.')
+    expect(out).toContain('role="note"')
+    expect(out).not.toContain('role="alert"')
+    expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+  })
+
+  it('유저 수를 모르면 N 없이 같은 뜻의 문장을 보인다', () => {
+    expect(inventoryApplyNotice(null)).toBe(INVENTORY_APPLY_NOTICE_FALLBACK)
+    expect(INVENTORY_APPLY_NOTICE_FALLBACK).toBe('저장하면 전체 유저의 인벤토리 최대치가 즉시 바뀌어요.')
+    expect(renderToStaticMarkup(<InventoryNotice userCount={null} />)).toContain(INVENTORY_APPLY_NOTICE_FALLBACK)
+  })
+
+  it('구역 본문은 안내, 폼 뼈대(인벤토리 구역 연결) 순서이고 안내의 N은 inventory 표에서 읽은 유저 수다', async () => {
+    const section = await InventorySection()
+    const children = Children.toArray(section.props.children) as ReactElement<{ binding?: unknown; userCount?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([InventoryNotice, BalanceSectionBody])
+    expect(children[0].props.userCount).toBe(1234)
+    expect(children[1].props.binding).toBe(INVENTORY_BINDING)
+  })
+
+  it('유저 수를 읽지 못해도 구역은 열리고 안내만 N 없이 나온다(읽기 오류는 로그로 남는다)', async () => {
+    db.readErrors.inventory = 'boom'
+    const section = await InventorySection()
+    const children = Children.toArray(section.props.children) as ReactElement<{ userCount?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([InventoryNotice, BalanceSectionBody])
+    expect(children[0].props.userCount).toBeNull()
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it('구역 설명에 «지금 있는 유저와 앞으로 가입할 유저 모두»와 «더 많이 가진 유저가 있으면 저장되지 않아요»가 있다', () => {
+    const description = (findBalanceSection('inventory')?.description ?? []).join(' ')
+    expect(description).toContain('지금 있는 유저 전원과 앞으로 가입할 유저에게 모두 적용돼요')
+    expect(description).toContain('새 최대치보다 많은 아이템을 가진 유저가 있으면 저장되지 않아요')
   })
 })

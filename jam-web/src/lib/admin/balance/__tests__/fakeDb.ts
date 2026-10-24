@@ -5,7 +5,8 @@
 import type { BalanceServiceClient } from '../types'
 
 export type Row = Record<string, unknown>
-type Result = { data: unknown; error: { message: string } | null }
+type Result = { data: unknown; error: { message: string } | null; count?: number }
+type RpcResult = { data: unknown; error: { message: string } | null }
 
 export interface FakeDb {
   tables: Record<string, Row[]>
@@ -23,6 +24,12 @@ export interface FakeDb {
   updates: Row[]
   /** select에 넘긴 칸 목록. */
   selects: string[]
+  /** `rpc`를 부른 기록(이름과 인자). */
+  rpcCalls: Array<{ name: string; args: Row }>
+  /** RPC 이름 → 응답을 만드는 함수. 없는 이름을 부르면 오류로 답한다. `set_inventory_max_slots`는 기본으로 들어 있다. */
+  rpcHandlers: Record<string, (args: Row) => RpcResult>
+  /** 기본 `set_inventory_max_slots`가 `inventory_policy.updated_at`에 쓰는 시각(실 RPC는 `now()`). */
+  rpcStamp: string
   /** `order`를 부른 기록(`표.order:칸`). 정렬해서 읽는지 가린다. */
   orders: string[]
   client: BalanceServiceClient
@@ -38,6 +45,9 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
     calls: [],
     updates: [],
     selects: [],
+    rpcCalls: [],
+    rpcHandlers: {},
+    rpcStamp: INVENTORY_RPC_STAMP,
     orders: [],
     client: undefined as unknown as BalanceServiceClient,
   }
@@ -50,10 +60,12 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
     private filters: Array<(row: Row) => boolean> = []
     private orderBy: { col: string; ascending: boolean } | null = null
     private max: number | null = null
+    private countHead = false
     constructor(private table: string) {}
-    select(columns?: string) {
+    select(columns?: string, options?: { count?: 'exact'; head?: boolean }) {
       if (this.mode === 'select') db.calls.push(`${this.table}.select`)
       if (columns) db.selects.push(columns)
+      if (options?.count === 'exact' && options.head === true) this.countHead = true
       return this
     }
     update(patch: Row) {
@@ -101,6 +113,8 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
           hit = hit.sort((a, b) => (String(a[col]) < String(b[col]) ? -1 : String(a[col]) > String(b[col]) ? 1 : 0) * (ascending ? 1 : -1))
         }
         if (this.max !== null) hit = hit.slice(0, this.max)
+        // `select('*', { count: 'exact', head: true })`: 행은 주지 않고 개수만 돌려준다(적용 대상 유저 수 조회)
+        if (this.countHead) return Promise.resolve({ data: null, error: null, count: hit.length })
         return Promise.resolve({ data: hit, error: null })
       }
       const writeError = db.writeErrors[this.table]
@@ -128,8 +142,55 @@ export function createFakeDb(tables: Record<string, Row[]>): FakeDb {
     }
   }
 
-  db.client = { from: (table: string) => new Query(table) } as unknown as BalanceServiceClient
+  db.rpcHandlers.set_inventory_max_slots = (args) => setInventoryMaxSlots(db, args)
+  db.client = {
+    from: (table: string) => new Query(table),
+    rpc: async (name: string, args: Row = {}) => {
+      db.calls.push(`rpc.${name}`)
+      db.rpcCalls.push({ name, args })
+      const handler = db.rpcHandlers[name]
+      return handler ? handler(args) : { data: null, error: { message: `가짜 RPC가 없음: ${name}` } }
+    },
+  } as unknown as BalanceServiceClient
   return db
+}
+
+/**
+ * `set_inventory_max_slots`(마이그레이션 129)의 흉내: 1 미만이면 `INVENTORY_MAX_SLOTS_INVALID:`, 새 최대치보다 많이 가진 유저가 있으면 `INVENTORY_MAX_SLOTS_OVER_LIMIT:`로 막고,
+ * 아니면 `inventory` 전체 행과 `inventory_policy` id=1(`updated_at`은 `db.rpcStamp`)을 바꾸고 바뀐 `inventory` 행 수를 돌려준다. 던지는 문장은 SQL의 것과 같다.
+ */
+function setInventoryMaxSlots(db: FakeDb, args: Row): RpcResult {
+  const maxSlots = args.p_max_slots
+  if (typeof maxSlots !== 'number' || maxSlots < 1) {
+    return { data: null, error: { message: `INVENTORY_MAX_SLOTS_INVALID: max_slots는 1 이상의 정수여야 합니다. (받은 값: ${String(maxSlots)})` } }
+  }
+  const inventory = (db.tables.inventory ??= [])
+  const overCount = inventory.filter((row) => Number(row.used_slots) > maxSlots).length
+  if (overCount > 0) {
+    return {
+      data: null,
+      error: { message: `INVENTORY_MAX_SLOTS_OVER_LIMIT: ${overCount}명의 유저가 이미 ${maxSlots}개보다 많은 아이템을 보유하고 있어 적용할 수 없습니다.` },
+    }
+  }
+  for (const row of inventory) row.max_slots = maxSlots
+  const policy = (db.tables.inventory_policy ??= [])
+  const row = policy.find((entry) => entry.id === 1)
+  if (row) Object.assign(row, { max_slots: maxSlots, updated_at: db.rpcStamp })
+  else policy.push({ id: 1, max_slots: maxSlots, updated_at: db.rpcStamp })
+  return { data: inventory.length, error: null }
+}
+
+export const INVENTORY_ROW_STAMP = '2026-10-22T01:30:00.75+00:00'
+export const INVENTORY_RPC_STAMP = '2026-10-22T03:00:00.5+00:00'
+
+/** `inventory_policy` id=1 행(마이그레이션 129). 코드 기본값은 50이지만 운영은 어드민 설정으로 정한 값을 쓰므로 시험은 10으로 둔다. */
+export function inventoryPolicyRow(overrides: Row = {}): Row {
+  return { id: 1, max_slots: 10, updated_at: INVENTORY_ROW_STAMP, ...overrides }
+}
+
+/** `inventory` 행(유저당 하나). 사용 칸과 최대 칸만 흉내 낸다. */
+export function inventoryRows(count: number, usedSlots = 0, maxSlots = 10): Row[] {
+  return Array.from({ length: count }, (_, index) => ({ user_id: `user-${index + 1}`, used_slots: usedSlots, max_slots: maxSlots }))
 }
 
 export const JAM_ROW_STAMP = '2026-10-22T01:00:00.123456+00:00'

@@ -7,6 +7,7 @@
  * - 409: 화면이 본 수정 시각이 낡았을 때, 읽은 뒤 쓰기 전에 다른 곳이 바꿨을 때(조건부 갱신 0행). 어느 경우도 이력을 쓰지 않는다
  * - 이력 쓰기가 실패하면 방금 갱신을 이전 값과 이전 수정 시각으로 되돌리고 500. 되돌리기까지 실패하면 다른 문장의 500. 응답에 DB 오류 원문이 없다
  * - 칸 사이 검증(`validateTogether`, 등급 확률 합 100 등)은 합쳐진 전체 값으로 걸리고 걸리면 갱신하지 않는다
+ * - 구역이 «사용자에게 보일 거절»(`rejected`)로 답하면 그 문장 그대로 400이고 이력을 쓰지 않으며 오류 로그를 남기지 않는다. 되돌리기가 거절되면 되돌리기 실패의 500이다
  * - 읽기(`loadBalanceSection`): 값을 못 읽으면 던지고, 이력만 못 읽으면 `history: null`
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -275,6 +276,72 @@ describe('saveBalanceSection — 칸 사이 검증과 확률 안내 반영 표�
     const out = await save({ values: { other: 9 } }, rarityBinding)
     expect(out).toMatchObject({ ok: true, affectsDisclosure: false })
     expect(historyRows()[0].affects_disclosure).toBe(false)
+  })
+})
+
+describe('saveBalanceSection — 구역이 사용자에게 보일 거절(rejected)로 답할 때', () => {
+  const REJECTION = '인벤토리 최대치가 저장되지 않았어요. 3명의 유저가 이미 5개보다 많은 아이템을 보유하고 있어 적용할 수 없습니다. 더 큰 값을 입력하거나, 해당 유저의 아이템을 정리한 뒤 다시 저장해 주세요.'
+  let stored: number
+  let stamp: string
+  let writes: Array<{ values: Record<string, number>; expectedUpdatedAt: string }>
+  let reject: (nth: number) => boolean
+
+  const rejectingBinding: BalanceSectionBinding = {
+    id: 'rejecting-test',
+    fields: [{ key: 'slots', label: '칸', decimals: 0, min: 1, max: 1000, defaultValue: 10, affectsDisclosure: false }],
+    read: async () => ({ values: { slots: stored }, updatedAt: stamp }),
+    write: async (_service, input) => {
+      writes.push({ values: { ...input.values }, expectedUpdatedAt: input.expectedUpdatedAt })
+      if (reject(writes.length)) return { ok: false, reason: 'rejected', message: REJECTION }
+      stored = input.values.slots
+      stamp = input.nextUpdatedAt
+      return { ok: true, updatedAt: stamp }
+    },
+  }
+
+  beforeEach(() => {
+    stored = 10
+    stamp = JAM_ROW_STAMP
+    writes = []
+    reject = () => false
+  })
+
+  it('거절 문장을 그대로 400으로 돌려주고, 칸별 문장은 붙이지 않으며, 이력을 쓰지 않는다', async () => {
+    reject = () => true
+    const out = await save({ values: { slots: 5 } }, rejectingBinding)
+
+    expect(out).toEqual({ ok: false, status: 400, error: REJECTION })
+    expect(stored).toBe(10)
+    expect(historyRows()).toEqual([])
+    expect(writes).toHaveLength(1)
+  })
+
+  it('거절은 시스템 오류가 아니라서 오류 로그를 남기지 않는다', async () => {
+    vi.mocked(console.error).mockClear()
+    reject = () => true
+    await save({ values: { slots: 5 } }, rejectingBinding)
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it('거절 문장은 DB 오류 문장(500)과 다르다 — 시스템 오류는 여전히 500이다', async () => {
+    const failingBinding: BalanceSectionBinding = {
+      ...rejectingBinding,
+      write: async () => ({ ok: false, reason: 'error', message: SECRET_DB_MESSAGE }),
+    }
+    const out = await save({ values: { slots: 5 } }, failingBinding)
+    expect(out).toMatchObject({ ok: false, status: 500, error: BALANCE_SAVE_FAILED_MESSAGE })
+    expect(JSON.stringify(out)).not.toContain('secret detail')
+  })
+
+  it('이력을 못 쓴 뒤 되돌리기가 거절되면 되돌리기 실패의 500이고 거절 문장을 로그에 남긴다', async () => {
+    db.writeErrors.balance_setting_changes = SECRET_DB_MESSAGE
+    reject = (nth) => nth === 2
+    const out = await save({ values: { slots: 5 } }, rejectingBinding)
+
+    expect(out).toMatchObject({ ok: false, status: 500, error: BALANCE_ROLLBACK_FAILED_MESSAGE })
+    expect(JSON.stringify(out)).not.toContain('secret detail')
+    expect(writes.map((entry) => entry.values.slots)).toEqual([5, 10])
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('되돌리기도 실패'), expect.any(String), REJECTION)
   })
 })
 
