@@ -2,7 +2,7 @@
  * 밸런스 설정 구역 레지스트리와 구역 본문 (티켓 20261022_1132 1회)
  *
  * - 레지스트리(`lib/admin/balance/sections.tsx`): 구역 키가 겹치지 않고, 구역마다 연결 객체·제목·본문이 있으며, 키로 구역을 찾는다(없으면 `undefined`).
- *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍이다. 7-4는 이 배열에 줄을 더하면 된다
+ *   지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍·배지와 포인트다
  * - 구역 본문(`BalanceSectionBody`, 서버 컴포넌트): 가짜 클라이언트로 값을 읽어 폼과 최근 변경을 그린다. **값을 읽지 못하면 던지지 않고** 오류 카드가 되고
  *   (한 구역이 실패해도 다른 구역은 보인다), 최근 변경만 못 읽으면 폼은 열린다. 읽기만 하고 아무것도 쓰지 않는다
  */
@@ -30,12 +30,14 @@ import { CHAPTER_BINDING } from '@/lib/admin/balance/chapter'
 import { COLLECTION_BINDING } from '@/lib/admin/balance/collection'
 import { ABUSING_BINDING } from '@/lib/admin/balance/abusing'
 import { AMBIENT_BINDING } from '@/lib/admin/balance/ambient'
+import { BADGEPOINTS_BINDING } from '@/lib/admin/balance/badgepoints'
 import { INVENTORY_BINDING } from '@/lib/admin/balance/inventory'
 import { LOCKED_BINDING } from '@/lib/admin/balance/locked'
 import { BALANCE_LOAD_FAILED_MESSAGE } from '@/lib/admin/balance/save'
 import {
   abusingPolicyRow,
   ambientDropConfigRow,
+  badgePointPolicyRow,
   capsulePolicyRow,
   chapterCostRows,
   chapterDefinitionRows,
@@ -59,6 +61,7 @@ import {
   ChapterSection,
 } from '../ChapterSection'
 import { AbusingSection } from '../AbusingSection'
+import { BADGEPOINTS_NOTICE, BadgePointsNotice, BadgePointsSection } from '../BadgePointsSection'
 import { AMBIENT_RARITY_RANDOM_NOTICE, AmbientRarityRandomNotice, AmbientSection } from '../AmbientSection'
 import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, CollectionNotice, CollectionSection } from '../CollectionSection'
 import { INVENTORY_APPLY_NOTICE_FALLBACK, InventoryNotice, InventorySection, inventoryApplyNotice } from '../InventorySection'
@@ -87,6 +90,7 @@ beforeEach(() => {
     inventory: inventoryRows(1234),
     abusing_policy: [abusingPolicyRow()],
     ambient_drop_config: [ambientDropConfigRow()],
+    badge_point_policy: [badgePointPolicyRow()],
     balance_setting_changes: [
       {
         id: 'h-1',
@@ -107,8 +111,19 @@ beforeEach(() => {
 const html = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: JAM_BINDING })).replace(/<!-- -->/g, '')
 
 describe('구역 레지스트리', () => {
-  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍 순서이고 구역 키는 겹치지 않는다', () => {
-    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual(['jam', 'sync', 'capsule', 'locked', 'collection', 'chapter', 'inventory', 'abusing', 'ambient'])
+  it('지금 구역은 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍·배지와 포인트 순서이고 구역 키는 겹치지 않는다', () => {
+    expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual([
+      'jam',
+      'sync',
+      'capsule',
+      'locked',
+      'collection',
+      'chapter',
+      'inventory',
+      'abusing',
+      'ambient',
+      'badgepoints',
+    ])
     const ids = BALANCE_SECTIONS.map((section) => section.binding.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
@@ -142,6 +157,7 @@ describe('구역 레지스트리', () => {
     expect(findBalanceSection('inventory')?.binding).toBe(INVENTORY_BINDING)
     expect(findBalanceSection('abusing')?.binding).toBe(ABUSING_BINDING)
     expect(findBalanceSection('ambient')?.binding).toBe(AMBIENT_BINDING)
+    expect(findBalanceSection('badgepoints')?.binding).toBe(BADGEPOINTS_BINDING)
     expect(findBalanceSection('nope')).toBeUndefined()
     expect(findBalanceSection('')).toBeUndefined()
   })
@@ -681,5 +697,74 @@ describe('BalanceSectionBody — 시스템 드랍 구역 (7-3 3회)', () => {
     expect(description).toContain('등급 비율')
     expect(description).toContain('저장하면 다음 배포부터 적용돼요')
     expect(description).toContain('앰비언트 드랍 화면')
+  })
+})
+
+describe('BalanceSectionBody — 배지와 포인트 구역 (7-4 1회)', () => {
+  const badgePointsHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: BADGEPOINTS_BINDING })).replace(/<!-- -->/g, '')
+
+  it('다섯 칸의 입력(저장된 값)과 두 묶음 제목이 보이고, 합계 줄은 없다', async () => {
+    const out = await badgePointsHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(5)
+    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['등급별 포인트', '레벨형'])
+    expect(out).toMatch(/id="balance-badgepoints-common_points"[^>]*value="10"/)
+    expect(out).toMatch(/id="balance-badgepoints-rare_points"[^>]*value="20"/)
+    expect(out).toMatch(/id="balance-badgepoints-epic_points"[^>]*value="50"/)
+    expect(out).toMatch(/id="balance-badgepoints-mystic_points"[^>]*value="100"/)
+    expect(out).toMatch(/id="balance-badgepoints-leveled_points"[^>]*value="10"/)
+    expect(out).toContain('기본값 100포인트')
+    expect(out).not.toContain('role="status"')
+  })
+
+  it('저장된 값이 기본값과 달라도 저장된 값을 보인다', async () => {
+    db.tables.badge_point_policy = [badgePointPolicyRow({ rare_points: 25, leveled_points: 0 })]
+    const out = await badgePointsHtml()
+    expect(out).toMatch(/id="balance-badgepoints-rare_points"[^>]*value="25"/)
+    expect(out).toMatch(/id="balance-badgepoints-leveled_points"[^>]*value="0"/)
+  })
+
+  it('칸 안내가 «이미 있는 배지는 바뀌지 않아요»를 말한다', async () => {
+    const out = await badgePointsHtml()
+    expect([...out.matchAll(/이미 있는 배지는 바뀌지 않아요/g)]).toHaveLength(5)
+  })
+
+  it('읽기만 한다(쓰기 호출이 없다)', async () => {
+    await badgePointsHtml()
+    expect(db.calls.filter((call) => call.endsWith('.update') || call.endsWith('.insert'))).toEqual([])
+  })
+
+  it('값을 읽지 못하면 던지지 않고 이 구역만 오류 카드가 된다', async () => {
+    db.readErrors.badge_point_policy = 'boom'
+    const out = await badgePointsHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
+  it('위 안내는 «새 배지의 기본값이고 이미 있는 배지·받은 포인트는 그대로, 숨김은 0»이며 줄바꿈 설정이 붙는다', () => {
+    const out = renderToStaticMarkup(<BadgePointsNotice />).replace(/<!-- -->/g, '')
+    expect(BADGEPOINTS_NOTICE).toContain('새 배지의 기본값')
+    expect(BADGEPOINTS_NOTICE).toContain('이미 있는 배지의 포인트는 바뀌지 않고')
+    expect(BADGEPOINTS_NOTICE).toContain('이미 받은 포인트도 그대로')
+    expect(BADGEPOINTS_NOTICE).toContain('숨김 배지는 항상 0')
+    expect(out).toContain(BADGEPOINTS_NOTICE)
+    expect(out).toContain('role="note"')
+    expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+  })
+
+  it('구역 본문은 안내, 폼 뼈대(배지와 포인트 구역 연결) 순서다', () => {
+    const children = Children.toArray(BadgePointsSection().props.children) as ReactElement<{ binding?: unknown }>[]
+    expect(children.map((child) => child.type)).toEqual([BadgePointsNotice, BalanceSectionBody])
+    expect(children[1].props.binding).toBe(BADGEPOINTS_BINDING)
+  })
+
+  it('구역 설명이 새 배지 양식의 기본값, 포인트를 정하지 않고 만든 배지, 적용 시점을 말한다', () => {
+    const section = findBalanceSection('badgepoints')
+    expect(section?.label).toBe('배지와 포인트')
+    expect(section?.title).toBe('배지와 포인트')
+    const description = (section?.description ?? []).join(' ')
+    expect(description).toContain('새 배지 양식')
+    expect(description).toContain('레벨형')
+    expect(description).toContain('「단계 추가」')
+    expect(description).toContain('저장하면 다음에 만드는 배지부터 적용돼요')
   })
 })
