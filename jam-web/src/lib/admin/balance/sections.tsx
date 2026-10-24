@@ -3,18 +3,20 @@
  * **구역을 더하는 일은 구역 연결 객체(`lib/admin/balance/<구역>.ts`) 하나, 구역 본문 컴포넌트 하나, 이 배열 한 줄이다.**
  * 화면(`app/admin/balance/page.tsx`)과 구역 이동 링크(`OpsSettingsNav`)와 저장 라우트(`/api/admin/balance/[section]`)가 이 배열 하나를 읽는다.
  *
- * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회). 다음에 붙을 구역: 인벤토리(7-3) 등.
+ * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회), 인벤토리(`inventory`, 7-3 1회). 다음에 붙을 구역: 어뷰징·시스템 드랍(7-3 2~3회) 등.
  */
 import type { ReactElement } from 'react'
 import { CapsuleSection } from '@/components/admin/balance/CapsuleSection'
 import { ChapterSection } from '@/components/admin/balance/ChapterSection'
 import { CollectionSection } from '@/components/admin/balance/CollectionSection'
+import { InventorySection } from '@/components/admin/balance/InventorySection'
 import { JamSection } from '@/components/admin/balance/JamSection'
 import { LockedSection } from '@/components/admin/balance/LockedSection'
 import { SyncSection } from '@/components/admin/balance/SyncSection'
 import { CAPSULE_BINDING } from './capsule'
 import { CHAPTER_BINDING } from './chapter'
 import { COLLECTION_BINDING } from './collection'
+import { INVENTORY_BINDING } from './inventory'
 import { JAM_BINDING } from './jam'
 import { LOCKED_BINDING } from './locked'
 import { SYNC_BINDING } from './sync'
@@ -93,6 +95,16 @@ export const BALANCE_SECTIONS: readonly BalanceSectionDef[] = [
       '챕터 1은 퀘스트를 마치면 얻어서 필요한 점수가 0이에요. 챕터 번호는 늘리거나 줄이지 않고 값만 바꾸며, 필요한 점수는 앞 챕터보다 커야 해요. 주간 상한이 0이면 상한이 없어요. 저장하면 다음에 쌓는 점수부터 바로 적용돼요.',
     ],
     Body: ChapterSection,
+  },
+  {
+    binding: INVENTORY_BINDING,
+    label: '인벤토리',
+    title: '인벤토리',
+    description: [
+      '유저 한 명이 가질 수 있는 인벤토리의 최대 칸 수예요. 지금 있는 유저 전원과 앞으로 가입할 유저에게 모두 적용돼요.',
+      '새 최대치보다 많은 아이템을 가진 유저가 있으면 저장되지 않아요.',
+    ],
+    Body: InventorySection,
   },
 ]
 

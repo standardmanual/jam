@@ -60,11 +60,17 @@ export const INVENTORY_MAX_SLOTS_INVALID_PREFIX = 'INVENTORY_MAX_SLOTS_INVALID:'
  * (129_inventory_policy_max_slots.sql).
  *
  * 실패하면 호출부가 인지하도록 예외를 던진다. 이미 새 최대치보다 많은 아이템을 보유한
- * 유저가 있으면 메시지가 `INVENTORY_MAX_SLOTS_OVER_LIMIT:`로 시작한다 — 호출부(API 라우트)가
- * 이를 구분해 [현상]-[원인]-[해결책] 구조의 사용자용 메시지로 변환한다.
+ * 유저가 있으면 메시지가 `INVENTORY_MAX_SLOTS_OVER_LIMIT:`로 시작한다 — 호출부(밸런스 설정의
+ * 인벤토리 구역, `lib/admin/balance/inventory.ts`)가 이를 구분해 [현상]-[원인]-[해결책] 구조의
+ * 사용자용 메시지로 변환한다.
+ *
+ * `supabase`는 호출부가 이미 만든 서비스 클라이언트를 넘길 때만 쓴다(밸런스 설정의 시험이 가짜
+ * 클라이언트를 넘긴다). 생략하면 지금까지처럼 새로 만든다.
  */
-export async function updateInventoryMaxSlots(maxSlots: number): Promise<number> {
-  const supabase = createServiceClient()
+export async function updateInventoryMaxSlots(
+  maxSlots: number,
+  supabase: ReturnType<typeof createServiceClient> = createServiceClient()
+): Promise<number> {
   const { data, error } = await supabase.rpc('set_inventory_max_slots', { p_max_slots: maxSlots })
   if (error) {
     console.error('[inventory-policy] 저장 실패:', error)
