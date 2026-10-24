@@ -162,7 +162,10 @@ sessions. Do not run `git checkout`, `git switch`, `git reset --hard` or `git re
 branch or a detached HEAD makes the orchestrator's next commit unreachable or turns its push into a
 silent no-op (ticket 20260926_0121). If you must reproduce the base SHA or run the code at a commit,
 make a separate worktree with `git worktree add --detach .claude/worktrees/gate-<short-sha> <sha>`
-and remove it with `git worktree remove` when you finish. Read-only commands (`git show`,
+and lock it at once with `git worktree lock --reason "jam-reviewer gate" .claude/worktrees/gate-<short-sha>`:
+a locked worktree is refused by `git worktree remove`, so another session's
+`scripts/workspace-setup.sh cleanup` cannot delete it while you still use it (ticket 20261024_1053).
+When you finish, run `git worktree unlock` on it, then `git worktree remove`. Read-only commands (`git show`,
 `git diff`, `git log`, `git cat-file`) are always fine. A `PreToolUse` hook in this file's
 frontmatter (`scripts/guard-shared-head.mjs`) is registered to deny those commands in the shared
 folder, but it did not trigger in actual cloud-session calls (ticket 20261002_1905) — do not rely
