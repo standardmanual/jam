@@ -26,7 +26,16 @@ import {
   AMBIENT_SELECT,
   readAmbientRarityMode,
 } from '../ambient'
-import { checkFieldValue, draftChangedValues, draftFromValues, fractionToPercent, groupSums, percentToFraction, sumMismatchMessage } from '../fields'
+import {
+  checkFieldValue,
+  draftChangedValues,
+  draftFromValues,
+  fractionToPercent,
+  groupSums,
+  percentToFraction,
+  splitDisclosureChanges,
+  sumMismatchMessage,
+} from '../fields'
 import {
   BALANCE_CONFLICT_MESSAGE,
   BALANCE_HISTORY_FAILED_MESSAGE,
@@ -152,6 +161,20 @@ describe('시스템 드랍 칸 정의', () => {
     for (const key of AMBIENT_RARITY_KEYS) expect(field(key).affectsDisclosure, key).toBe(true)
   })
 
+  it('확인창에 오르는 칸: 등급 비율을 고치면 확률 안내 칸이고 숫자 칸만 고치면 그 밖의 칸이다(BalanceSectionForm이 쓰는 분리)', () => {
+    const changed = { schedule_hour_kst: 5, batch_size: 40, ...rarity(50, 40, 10, 0) }
+    const { disclosure, others } = splitDisclosureChanges(AMBIENT_FIELDS, ROW_VALUES, changed)
+    expect(disclosure.map((change) => change.field)).toEqual(['rarity_common', 'rarity_rare'])
+    expect(disclosure).toEqual([
+      { field: 'rarity_common', from: 60, to: 50 },
+      { field: 'rarity_rare', from: 30, to: 40 },
+    ])
+    expect(others.map((change) => change.field)).toEqual(['schedule_hour_kst', 'batch_size'])
+    const numbersOnly = splitDisclosureChanges(AMBIENT_FIELDS, ROW_VALUES, { schedule_hour_kst: 5, exclusion_window_minutes: 30, max_active_per_poi: 2 })
+    expect(numbersOnly.disclosure).toEqual([])
+    expect(numbersOnly.others).toHaveLength(3)
+  })
+
   it('합계 묶음은 등급 비율 하나이고 합계 목표는 100이다', () => {
     const draft = draftFromValues(AMBIENT_FIELDS, ROW_VALUES)
     const sums = groupSums(AMBIENT_FIELDS, draft)
@@ -233,7 +256,7 @@ describe('퍼센트 ↔ 0~1 변환 (부동소수 반올림)', () => {
     expect(percentToFraction(0.7)).toBe(0.007)
   })
 
-  it('0.0%부터 100.0%까지 천한 눈금 전부가 왕복해도 같은 값이다', () => {
+  it('0.0%부터 100.0%까지 0.1% 눈금 1,001개가 모두 왕복해도 같은 값이다', () => {
     for (let tenths = 0; tenths <= 1000; tenths += 1) {
       const percent = tenths / 10
       const fraction = tenths / 1000
