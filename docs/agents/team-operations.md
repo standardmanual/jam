@@ -163,12 +163,17 @@ tags: [워크플로]
    (커밋 범위가 없으면 아현과 같다). 이 지시가 없으면 `staging`에만 있는 변경이 보이지 않아 "없는 파일"로 오판한다(티켓 20260918_1158).
 2. **연결**: `scripts/workspace-setup.sh link "$(pwd)"`로 `node_modules`를 잇는다. `npm install`을
    다시 돌리지 않기 위함이다.
-3. **정리**: `scripts/workspace-setup.sh cleanup`이 staging에 머지됐고 미커밋 변경이 없는
-   워크트리와, 연결 워크트리가 없는 `worktree-wf_*`·staging에 병합된 `claude/jamwork-*` 로컬
-   브랜치를 제거한다(아래 「알려진 빈틈」 참고). 세션 시작 훅에서 **백그라운드(`async`)로** 돌고
-   출력을 세션에 싣지 않는다 — `git fetch`가 최악 19초 걸려 세션 시작을 막았고, 제거 로그가 매
-   세션 컨텍스트를 차지했다(티켓 20260928_2339). 결과는 `scripts/workspace-setup.sh cleanup`을
-   직접 실행해 확인한다.
+3. **정리**: `scripts/workspace-setup.sh cleanup`이 `.claude/worktrees/wf_*`(Workflow 격리
+   워크트리)와 `.claude/worktrees/gate-*`(jam-reviewer가 만드는 검증용 워크트리) 가운데 staging에
+   머지됐고 미커밋 변경이 없는 것만 제거한다. 앱이 만든 세션 워크트리처럼 그 밖의 이름은 상태와
+   상관없이 지우지 않는다(티켓 20261001_1143). 브랜치는 연결 워크트리가 없는 `worktree-wf_*`와
+   staging에 병합된 `claude/jamwork-*` 로컬 브랜치를 제거한다(아래 「알려진 빈틈」 참고). 세션 시작
+   훅에서 **백그라운드(`async`)로** 돌고 출력을 세션에 싣지 않는다 — `git fetch`가 최악 19초
+   걸려 세션 시작을 막았고, 제거 로그가 매 세션 컨텍스트를 차지했다(티켓 20260928_2339). 결과는
+   `scripts/workspace-setup.sh cleanup`을 직접 실행해 확인한다.
+   판정 기록: 워크트리별 제거·보존·실패와 사유가 시각과 함께 git 공용 디렉터리의
+   `workspace-cleanup.log`에 최근 500줄까지 남는다(`git rev-parse --git-common-dir` 아래, 모든
+   워크트리가 공유).
 
 ---
 
@@ -333,7 +338,7 @@ frontmatter 형식만 검사받으면서, 에이전트에게는 코드와 똑같
 **② 워크트리 정리 — 세션 시작에 자동화했다 (티켓 20260920_1907, 브랜치 정리는 20260921_2309).**
 `workspace-setup.sh cleanup`은 누가 부르지 않으면 돌지 않았고, 티켓 0045 작업이 끝난 뒤에도
 워크트리 하나와 브랜치 두 개가 남아 있었다. 지금은 세션을 열 때마다 자동으로 돌며, staging에
-머지됐고 미커밋 변경이 없는 워크트리를 지운 뒤, 연결 워크트리가 없는 `worktree-wf_*` 로컬
+머지됐고 미커밋 변경이 없는 `wf_*`·`gate-*` 워크트리를 지운 뒤, 연결 워크트리가 없는 `worktree-wf_*` 로컬
 브랜치와 staging에 병합된 로컬 `claude/jamwork-*` 브랜치도 함께 지운다. 워크트리가 아직
 연결된 브랜치는 지우지 않는다. 원격 리뷰 브랜치는 `cleanup --remote`가 목록만 보여 주고
 `--remote --yes`일 때만 지운다(세션 훅은 부르지 않으며, 카리나가 사용자 승인 후 실행). **남은
