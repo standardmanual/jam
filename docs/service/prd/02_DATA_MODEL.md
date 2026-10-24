@@ -1330,7 +1330,7 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 
 | 테이블 | 역할 |
 |---|---|
-| abusing_policy | 싱글톤. GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터, 교통수단 구간 기준, 종목 불일치 기준값(마이그레이션 224: `mismatch_run_min_speed_kmh` 기본 6, `mismatch_cycling_min_speed_kmh` 기본 10 — 평균 속도가 이 값보다 느린 러닝·자전거는 걷기로 계산, 어뷰징 정책 화면에서 수정, 티켓 20261017_1421). 섀도우밴 등급별 드랍률 배율 8열(`soft_*_rate`·`hard_*_rate`)은 NOT NULL·기본값으로 DB에 남아 있고 **코드가 쓰지 않음, 열 정리 대기(6-4 4회)** |
+| abusing_policy | 싱글톤. GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터, 교통수단 구간 기준, 종목 불일치 기준값(마이그레이션 224: `mismatch_run_min_speed_kmh` 기본 6, `mismatch_cycling_min_speed_kmh` 기본 10 — 평균 속도가 이 값보다 느린 러닝·자전거는 걷기로 계산, 밸런스 설정 «어뷰징» 구역(`/admin/balance`)에서 수정, 티켓 20261017_1421·20261022_1134). 섀도우밴 등급별 드랍률 배율 8열(`soft_*_rate`·`hard_*_rate`)은 NOT NULL·기본값으로 DB에 남아 있고 **코드가 쓰지 않음, 열 정리 대기(6-4 4회)** |
 | user_shadow_bans | soft/hard 밴 등급 + 만료시각. **옛 방식이다**: JAM 2.0의 제재는 이용 정지 하나라 새 동기화·드랍·배지 코드는 읽지 않는다(티켓 20261017_1426). 마지막으로 쓰던 코드(옛 어드민 밴 관리 API, 픽업 GPS 감지의 쓰기, `drop-engine/preview.ts`의 읽기)도 6-4 2회(티켓 20261021_1250)에서 지웠다. **코드가 쓰지 않음, 표 정리 대기(6-4 4회 정리 SQL, 출시 뒤 실행)** — 공용 DB에서 0행이다 |
 | user_suspensions | JAM 2.0 이용 정지의 상태와 이력(마이그레이션 230, 티켓 20261017_1426). 아래 «user_suspensions» 절 |
 | poi_blocks | 유저×POI 단위 72시간 재방문 차단 |
