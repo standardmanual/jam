@@ -74,6 +74,7 @@ import {
 import { findPoiLinksNotLoadedError, mergeLoadedPoiLinks, type PoiLinksLoadState } from '@/lib/admin/badge-poi-links-guard'
 import { findUnlockRequiredError, normalizeLockFields, type LockedMinimums } from '@/lib/admin/badge-lock-guard'
 import { BRANCH_KEYS, BRANCH_LABEL, findHiddenBadgeError, isBranchKey } from '@/lib/admin/badge-hidden-guard'
+import { findBadgeIntegerInputError, readIntegerInput } from '@/lib/admin/integerRangeInput'
 // 드랍 엔진 본체는 서버 전용이라 import할 수 없다 — 의존 없는 목록 모듈만 가져온다.
 import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/cumulativeConditionFields'
 
@@ -473,12 +474,20 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
       return
     }
 
+    // 정수 칸(포인트 보상·패치 가격·레벨)의 소수·지수 표기(2.5·1e3)는 정수 읽기가 2·1로 잘라 조용히 다른 값이 저장되므로 먼저 막는다
+    // (티켓 20261023_1940). 아래 포인트 읽기보다 앞에서 입력 글자를 본다.
+    const integerInputError = findBadgeIntegerInputError({ pointReward, patchAvailable, patchPriceKrw, isLeveled, level })
+    if (integerInputError) {
+      setError(integerInputError)
+      return
+    }
+
     // 숨김 배지 규칙(액티비티만·포인트 0·Common만): 저장 API와 같은 함수·같은 문구로 먼저 막는다(티켓 20261018_1816).
     const hiddenError = findHiddenBadgeError({
       isHidden,
       type,
       rarity: isLeveled ? null : rarity,
-      pointReward: Math.max(0, parseInt(pointReward, 10) || 0),
+      pointReward: Math.max(0, readIntegerInput(pointReward) ?? 0),
     })
     if (hiddenError) {
       setError(hiddenError)
@@ -532,11 +541,11 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         type,
         // 레벨형은 등급이 없다(rarity IS NULL) — 둘을 함께 보내면 CHECK 위반이다.
         rarity: isLeveled ? null : rarity,
-        level: isLeveled ? parseInt(level, 10) : null,
+        level: isLeveled ? readIntegerInput(level) : null,
         image_url: imageUrl,
         activity_types: activityTypes,
         patch_available: patchAvailable,
-        patch_price_krw: patchAvailable && patchPriceKrw ? Math.max(0, parseInt(patchPriceKrw, 10) || 0) : null,
+        patch_price_krw: patchAvailable && patchPriceKrw ? Math.max(0, readIntegerInput(patchPriceKrw) ?? 0) : null,
         condition_json: conditionJson,
         // 체크인 배지는 트라이브/컬렉션 개념이 없다 — UI는 숨겼지만 기존 값이 남아있을 수 있으므로
         // 저장 시점에 명시적으로 null 처리한다(티켓 20260830_1344). JAM! 배지는 연결 정보 섹션을
@@ -556,7 +565,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         ...normalizeLockFields(type, alwaysLocked, unlockRequired),
         valid_from: resolvePeriodInputIso(badge?.valid_from, validFrom),
         valid_until: resolvePeriodInputIso(badge?.valid_until, validUntil),
-        point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
+        point_reward: Math.max(0, readIntegerInput(pointReward) ?? 0),
         is_hidden: isHidden,
         branch_key: isBranchKey(branchKey) ? branchKey : null,
         // background_shader_id/background_image_url/background_video_url은 보내지 않는다
