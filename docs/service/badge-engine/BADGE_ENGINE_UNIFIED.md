@@ -2123,7 +2123,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 싶으면 `badges.valid_from`/`valid_until`을 쓴다.
 
 **트리거 — 예약 배포 + 즉시 배포, 상호 배제** (2026-09-06 리뉴얼, [20260906_1206](../../tickets/p1-high/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)):
-- **예약 배포**: 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, **KST 정시 0~23**)에
+- **예약 배포**: 어드민이 밸런스 설정 «시스템 드랍» 구역에서 정한 시각(`ambient_drop_config.schedule_hour_kst`, **KST 정시 0~23**)에
   매일 1회 자동 배포한다. Vercel의 cron 표현식은 동적일 수 없으므로 `/api/cron/ambient-drop`은
   **매시 정각**(`"0 * * * *"`)에 호출되고, 핸들러가 지금이 설정 시각인지 판정해 아니면 즉시
   no-op으로 반환한다(`src/lib/ambient-drop/schedule.ts`). `auto_enabled`가 꺼져 있어도 no-op이다.
@@ -2142,7 +2142,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
   설정은 하나이고 실행 시점만 다르다. 날짜 예약 배포(아래)는 이 설정을 쓰지 않는다 — 등급 비율과
   지점당 한도만 읽기 전용으로 빌려 쓴다.
 - 상호 배제: `auto_enabled=true`일 때, **설정된 배포 시각** 전후 `exclusion_window_minutes`분
-  (어드민 설정값) 동안은 즉시 배포를 거부한다(409) — 레이스 컨디션 방지 목적. 이 창 밖에서는
+  (밸런스 설정 «시스템 드랍» 구역의 값, 0~180분 정수) 동안은 즉시 배포를 거부한다(409) — 레이스 컨디션 방지 목적. 이 창 밖에서는
   자유롭게 즉시 배포 가능. 서버(API) 레벨에서 강제하고, 어드민 화면 버튼 비활성화는 UX 편의일 뿐.
 - **지정 배포**(20261001_2053): 같은 `POST /api/admin/ambient-drop/deploy`에 본문(날짜 예약 등록과 같은 모양, `scheduled_at`은
   없거나 `"now"`, 다른 값은 400)을 실으면 지정한 지점·아이템으로 한 번만 놓는다. 어드민 「날짜 예약」 폼에서 시각 대신 「지금」을 고르고, 「확인하기」를 거친 뒤
@@ -2209,8 +2209,13 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 | 축 | 명시 모드 | 무작위 모드 |
 |---|---|---|
 | 카테고리 | `poi_categories`(14종, 2026-09-07 재정리 이후) 중 하나, 또는 `category_slug=NULL`로 "전체" | 실행 시점에 카테고리 하나를 무작위로 선택 |
-| 등급(rarity) 비율 | `rarity_common/rare/epic/mystic`(합=1)로 가중 추첨 | 실행 시점에 4개 등급 비율 자체를 무작위로 생성해 그 실행 전체에 적용 |
+| 등급(rarity) 비율 | `rarity_common/rare/epic/mystic`(합=1, 밸런스 설정 화면은 퍼센트 합 100)로 가중 추첨 | 실행 시점에 4개 등급 비율 자체를 무작위로 생성해 그 실행 전체에 적용 |
 | 대상 컬렉션(`item_books`) | 단독 또는 멀티 선택(`collection_ids`), 빈 배열은 "전체 컬렉션" | 실행 시점에 노출 중 컬렉션 1개를 무작위로 선택 |
+
+**설정값 편집 위치** (티켓 20261022_1134 3회, 운영 로직 19.1절): 설정 열 가운데 **숫자 8열**(`schedule_hour_kst`·`exclusion_window_minutes`·`batch_size`·`max_active_per_poi`·`rarity_common/rare/epic/mystic`)은
+어드민 «밸런스 설정»(`/admin/balance#ambient`)의 «시스템 드랍» 구역이 바꾼다(`updated_at` 조건 갱신, 바뀐 열만 쓰고 변경 이력을 남긴다). 등급 비율은 그 화면에서 퍼센트(소수 첫째 자리, 합 100)로 보이고 저장할 때 0~1(`NUMERIC(4,3)`, 합 1)로 바꾼다.
+스위치(`auto_enabled`)와 세 축 고르기(`category_mode`·`category_slug`·`rarity_mode`·`collection_mode`·`collection_ids`), 「지금 배포」, 날짜 예약, 실행 이력은 `/admin/ambient-drop`에 그대로 있고, 그 화면의 저장(`PUT /api/admin/ambient-drop/config`)은
+이 **여섯 열만** 쓴다 — 숫자 8열을 `current`로 다시 쓰면 밸런스 설정이 방금 바꾼 값을 되돌릴 수 있기 때문이다. `rarity_mode`를 explicit으로 저장할 때만 저장된 등급 비율 합이 1인지 검사한다. `last_auto_run_on`은 시스템 전용이다.
 
 세 축은 각자의 모드(명시/무작위)만 따른다. «전체 무작위» 메타 옵션은 없어졌다(티켓 20261018_1813, 사용자 결정 2026-10-18).
 엔진(`runAmbientDropBatch`·날짜 예약의 `runAmbientDropSpec`)은 `ambient_drop_config.all_random`을 읽지 않고, 어드민 폼에도 스위치가 없으며 저장 라우트는

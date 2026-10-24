@@ -38,9 +38,9 @@ export default async function AdminAmbientDropPage() {
     <div className="p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">앰비언트 드랍</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          시스템이 장소에 아이템배지를 직접 배치해요. 배포 시각(KST)은 아래 「배포 트리거」에서
-          정해요. 로직: docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3.12
+        <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-pretty">
+          시스템이 장소에 아이템배지를 직접 배치해요. 배포 시각·상호 배제 창·배치 규모·장소당 한도·등급 비율은
+          밸런스 설정에서 바꿔요. 로직: docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3.12
         </p>
       </div>
       <AmbientDropForm

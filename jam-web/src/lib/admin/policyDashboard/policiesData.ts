@@ -663,7 +663,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 9.4절',
     ticketId: '20261001_2052',
     adminLink: {
-      href: '/admin/ambient-drop',
+      href: '/admin/balance#ambient',
       liveField: 'schedule_hour_kst',
       unit: '시',
     },
@@ -682,7 +682,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 9.4절',
     ticketId: '20261001_2052',
     adminLink: {
-      href: '/admin/ambient-drop',
+      href: '/admin/balance#ambient',
       liveField: 'max_active_per_poi',
       unit: '개',
     },
@@ -693,7 +693,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '장소, 드랍과 픽업',
     title: '정기 배포 전후 상호 배제 창',
     type: 'admin_link',
-    currentSpec: '15분 (기본값: 15분, 상한 720분)',
+    currentSpec: '15분 (기본값: 15분, 상한 180분)',
     defaultValue: 15,
     dbTable: 'ambient_drop_config',
     dbColumn: 'exclusion_window_minutes',
@@ -701,7 +701,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 9.4절',
     ticketId: '20261001_2052',
     adminLink: {
-      href: '/admin/ambient-drop',
+      href: '/admin/balance#ambient',
       liveField: 'exclusion_window_minutes',
       unit: '분',
     },

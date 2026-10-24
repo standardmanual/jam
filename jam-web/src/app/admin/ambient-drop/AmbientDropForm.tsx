@@ -1,20 +1,14 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import type { AmbientDropConfig } from '@/lib/ambient-drop/config'
+import type { AmbientAxisPatch, AmbientDropConfig } from '@/lib/ambient-drop/config'
 import type { AmbientDropAxisMode } from '@/types/database'
 import type { AmbientDropBatchResult } from '@/lib/ambient-drop'
 import { formatAmbientBatchSummary } from '@/lib/ambient-drop/scheduleView'
 import { Switch } from '@/components/admin/ui/switch'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
-import {
-  AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES,
-  AMBIENT_DROP_SCHEDULE_HOURS_KST,
-  formatAmbientDropScheduleLabel,
-  formatAmbientDropScheduleOption,
-  formatAmbientDropScheduleTime,
-} from '@/lib/ambient-drop/schedule'
+import { formatAmbientDropScheduleOption, formatAmbientDropScheduleTime } from '@/lib/ambient-drop/schedule'
 
 export interface AmbientDropHistoryEntry {
   id: string
@@ -33,6 +27,25 @@ interface AmbientDropFormProps {
 }
 
 const ALL_CATEGORY_VALUE = '__ALL__'
+
+/** 밸런스 설정이 바꾸는 칸 안내(링크 없이 글자만, 사용자 결정) */
+export const BALANCE_ONLY_NOTICE = '배포 시각과 상호 배제 창은 밸런스 설정에서 바꿔요.'
+export const RARITY_BALANCE_NOTICE = '저장된 등급 비율대로 정해요. 비율은 밸런스 설정에서 바꿔요.'
+
+/**
+ * 저장 본문 — 스위치와 세 축 고르기 여섯 칸만 보낸다. 숫자 칸(배포 시각, 상호 배제 창, 배치 규모, 지점당 한도, 등급 비율)은 이 화면에서 바꾸지 않고
+ * 밸런스 설정이 바꾼다. 화면이 들고 있는 낡은 숫자를 함께 보내면 서버가 받지 않더라도 뜻이 흐려져서 처음부터 싣지 않는다 (티켓 20261022_1134 3회).
+ */
+export function axisSettingsPayload(values: AmbientDropConfig): AmbientAxisPatch {
+  return {
+    auto_enabled: values.auto_enabled,
+    category_mode: values.category_mode,
+    category_slug: values.category_slug,
+    rarity_mode: values.rarity_mode,
+    collection_mode: values.collection_mode,
+    collection_ids: values.collection_ids,
+  }
+}
 
 /** 명시(explicit)/무작위(random) 2단 토글 — 어드민 전용 세그먼트 컨트롤(MODULAR 대상 아님) */
 function AxisModeToggle({
@@ -84,9 +97,6 @@ export default function AmbientDropForm({
   const [deployResult, setDeployResult] = useState<AmbientDropBatchResult | null>(null)
   const [deployError, setDeployError] = useState<string | null>(null)
 
-  const raritySum = values.rarity_common + values.rarity_rare + values.rarity_epic + values.rarity_mystic
-  const raritySumInvalid = values.rarity_mode === 'explicit' && Math.abs(raritySum - 1) > 0.001
-
   const set = <K extends keyof AmbientDropConfig>(key: K, value: AmbientDropConfig[K]) =>
     setValues((v) => ({ ...v, [key]: value }))
 
@@ -98,17 +108,13 @@ export default function AmbientDropForm({
   }
 
   const handleSave = async () => {
-    if (raritySumInvalid) {
-      setMessage({ type: 'error', text: '등급 비율 합을 먼저 1로 맞춰주세요.' })
-      return
-    }
     setSaving(true)
     setMessage(null)
     try {
       const res = await fetch('/api/admin/ambient-drop/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify(axisSettingsPayload(values)),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -146,11 +152,11 @@ export default function AmbientDropForm({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* 배포 트리거 — 예약 배포(시각·스위치) + 상호 배제 창 */}
+      {/* 배포 트리거 — 예약 배포 스위치. 시각과 상호 배제 창은 밸런스 설정에서 바꾸고 여기서는 읽기만 한다 */}
       <section className="bg-white border border-border rounded-2xl p-6">
         <h2 className="font-bold mb-1">배포 트리거</h2>
-        <p className="text-muted-foreground text-xs mb-4">
-          배포는 세 갈래예요. <strong className="text-foreground">예약 배포</strong>는 아래에서 정한
+        <p className="text-muted-foreground text-xs mb-4 break-keep wrap-break-word text-pretty">
+          배포는 세 갈래예요. <strong className="text-foreground">예약 배포</strong>는 정해 둔
           시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 「지금
           배포」를 누른 그 자리에서 1회 배포해요. 두 갈래는 저장된 같은 설정값을 써요.{' '}
           <strong className="text-foreground">날짜 예약</strong>은 아래 「날짜 예약」에서 날짜·장소·아이템을
@@ -161,53 +167,15 @@ export default function AmbientDropForm({
           <Switch checked={values.auto_enabled} onCheckedChange={(checked) => set('auto_enabled', checked)} />
           <span className="text-sm">예약 배포 켜기</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 mb-4">
-          켜면 {formatAmbientDropScheduleLabel(values.schedule_hour_kst)}에 저장된 설정값으로 자동
-          배포해요. 끄면 「지금 배포」로만 배포돼요.
+        <p className="text-xs text-muted-foreground mt-2 mb-4 break-keep wrap-break-word text-pretty">
+          켜면 저장된 설정값으로 매일 배포 시각에 자동 배포해요. 끄면 「지금 배포」로만 배포돼요.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
-          <div className="block">
-            <span className="text-sm text-foreground">배포 시각 (KST)</span>
-            <Select
-              value={String(values.schedule_hour_kst)}
-              onValueChange={(value) => set('schedule_hour_kst', Number(value))}
-            >
-              <SelectTrigger className="mt-1 w-full" aria-label="예약 배포 시각 선택">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent container={themeContainer ?? undefined}>
-                {AMBIENT_DROP_SCHEDULE_HOURS_KST.map((hour) => (
-                  <SelectItem key={hour} value={String(hour)}>
-                    {formatAmbientDropScheduleOption(hour)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className="text-xs text-muted-foreground">
-              한국시간 기준 정시 단위로 정할 수 있어요. 오늘 예약 배포가 이미 돌았다면 새 시각은
-              내일부터 적용돼요.
-            </span>
-          </div>
-
-          <label className="block">
-            <span className="text-sm text-foreground">상호 배제 창 (분)</span>
-            <input
-              type="number"
-              min={0}
-              max={AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES}
-              step={1}
-              value={values.exclusion_window_minutes}
-              onChange={(e) => set('exclusion_window_minutes', Number(e.target.value))}
-              className="mt-1 w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50"
-            />
-            <span className="text-xs text-muted-foreground">
-              예약 배포 시각 {formatAmbientDropScheduleTime(values.schedule_hour_kst)} 전후 이 분(分)
-              동안은 「지금 배포」를 누를 수 없어요. 두 배포가 겹치지 않게 하기 위해서예요.
-              최대 {AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES}분까지 정할 수 있어요.
-            </span>
-          </label>
-        </div>
+        <p className="text-sm text-foreground break-keep wrap-break-word text-pretty">
+          배포 시각{' '}
+          <span className="font-semibold">{formatAmbientDropScheduleOption(values.schedule_hour_kst)}</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-1 break-keep wrap-break-word text-pretty">{BALANCE_ONLY_NOTICE}</p>
       </section>
 
       {/* 축 1: 카테고리 */}
@@ -245,39 +213,9 @@ export default function AmbientDropForm({
           <AxisModeToggle value={values.rarity_mode} onChange={(mode) => set('rarity_mode', mode)} />
         </div>
         {values.rarity_mode === 'explicit' ? (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {(
-                [
-                  ['rarity_common', 'Common'],
-                  ['rarity_rare', 'Rare'],
-                  ['rarity_epic', 'Epic'],
-                  ['rarity_mystic', 'Mystic'],
-                ] as const
-              ).map(([key, label]) => (
-                <label key={key} className="block">
-                  <span className="text-xs text-foreground">{label}</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="1"
-                    value={values[key]}
-                    onChange={(e) => set(key, Number(e.target.value))}
-                    className="mt-1 w-full bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                  />
-                </label>
-              ))}
-            </div>
-            <p className={`text-xs mt-2 ${raritySumInvalid ? 'text-red-600' : 'text-muted-foreground'}`}>
-              합: {raritySum.toFixed(3)} {raritySumInvalid && '(1이어야 함)'}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              현재 아이템배지 카탈로그는 common 등급만 존재해요 — 운영값은 common 100%를 권장해요.
-            </p>
-          </>
+          <p className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">{RARITY_BALANCE_NOTICE}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">실행 시점에 등급 분포 자체를 무작위로 생성해요.</p>
+          <p className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">실행 시점에 등급 분포 자체를 무작위로 생성해요.</p>
         )}
       </section>
 
@@ -310,43 +248,10 @@ export default function AmbientDropForm({
         )}
       </section>
 
-      {/* 배치 규모 */}
-      <section className="bg-white border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">배치 규모</h2>
-        <p className="text-muted-foreground text-xs mb-4">
-          3축에 속하지 않는 실행 파라미터예요. 커버리지 목표치 계산은 없어요 — 실행마다 이 개수만큼
-          그때그때 배치해요.
-        </p>
-        <div className="grid grid-cols-2 gap-4 max-w-sm">
-          <label className="block">
-            <span className="text-xs text-foreground">실행당 배치 개수</span>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={values.batch_size}
-              onChange={(e) => set('batch_size', Number(e.target.value))}
-              className="mt-1 w-full bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-foreground">장소당 최대 활성 드랍</span>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={values.max_active_per_poi}
-              onChange={(e) => set('max_active_per_poi', Number(e.target.value))}
-              className="mt-1 w-full bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-            />
-          </label>
-        </div>
-      </section>
-
       <div className="flex items-center gap-4">
         <button
           onClick={handleSave}
-          disabled={saving || raritySumInvalid}
+          disabled={saving}
           className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
         >
           {saving ? '저장 중…' : '저장'}

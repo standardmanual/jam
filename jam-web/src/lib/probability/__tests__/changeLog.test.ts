@@ -2,11 +2,11 @@
  * lib/probability/changeLog — 확률 안내 «바뀐 날짜» 표를 변경 이력에서 읽기 (티켓 20261022_1700, 채원 사전 판정 2026-10-23)
  *
  * 고정하는 것:
- * - 칸 이름 표가 `JAM_COLUMNS`·`CAPSULE_COLUMNS` 20칸과 빠짐없이 맞물린다(칸이 늘면 이 시험이 먼저 깨진다).
- * - 20칸 모두의 문장(이름, 단위, 조사 «을/를»·«로/으로»)을 칸마다 기대 문장으로 고정한다. 값 서식은 표 위쪽 숫자와 같다(84%, 20%, 0%).
+ * - 칸 이름 표가 `JAM_COLUMNS`·`CAPSULE_COLUMNS`·`AMBIENT_COLUMNS` 24칸과 빠짐없이 맞물린다(칸이 늘면 이 시험이 먼저 깨진다).
+ * - 24칸 모두의 문장(이름, 단위, 조사 «을/를»·«로/으로»)을 칸마다 기대 문장으로 고정한다. 값 서식은 표 위쪽 숫자와 같다(84%, 20%, 0%). 시스템 드랍은 이력 값이 퍼센트(33.3)다.
  * - 한 번의 저장은 칸이 여럿이어도 한 줄이고, 쉼표로 잇고 «바꿨어요»는 끝에 한 번이다. 칸 순서는 칸 목록 순서다.
  * - 표에 없는 칸은 내부 이름을 보이지 않는다: 전부 모르면 일반 문장, 일부만 모르면 끝에 «그 밖의 값도».
- * - 구역을 함께 본다: 시스템 드랍처럼 칸 이름이 겹치는 다른 구역의 칸을 캡슐 칸으로 읽지 않는다.
+ * - 구역을 함께 본다: 시스템 드랍과 캡슐처럼 칸 이름이 겹치는 다른 구역의 칸을 서로 바꿔 읽지 않는다(시스템 드랍 구역 이력이 «시스템 드랍 …»으로 읽힌다, 7-3 3회).
  * - 날짜는 한국 표준시(경계: 15:00 UTC), 연도를 포함한다. 방향어와 화살표가 없다.
  * - 읽기: `affects_disclosure = true`만, 최신이 위, 읽는 칸은 `section_key, changes, created_at`뿐이다(메모·바꾼 사람 없음). 실패는 `{ ok: false }`이고
  *   이력이 없는 것(`ok: true`, 빈 배열)과 구분된다.
@@ -19,10 +19,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const { createServiceClientMock } = vi.hoisted(() => ({ createServiceClientMock: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClientMock }))
 
+import { AMBIENT_SECTION_ID } from '@/lib/admin/balance/ambient'
 import { CAPSULE_SECTION_ID } from '@/lib/admin/balance/capsule'
 import { SYNC_SECTION_ID } from '@/lib/admin/balance/sync'
-import { CAPSULE_COLUMNS, JAM_COLUMNS } from '../disclosure'
+import { AMBIENT_COLUMNS, CAPSULE_COLUMNS, JAM_COLUMNS } from '../disclosure'
 import {
+  AMBIENT_COLUMN_LABELS,
   CAPSULE_COLUMN_LABELS,
   JAM_COLUMN_LABELS,
   UNKNOWN_ONLY_SENTENCE,
@@ -43,35 +45,39 @@ beforeEach(() => {
 
 const change = (field: string, from: number, to: number) => ({ field, from, to })
 
-describe('칸 이름 표 — 20칸과 맞물린다', () => {
-  it('동기화 구역 표는 JAM_COLUMNS 11칸과, 캡슐 구역 표는 CAPSULE_COLUMNS 9칸과 정확히 같다', () => {
+describe('칸 이름 표 — 24칸과 맞물린다', () => {
+  it('동기화 구역 표는 JAM_COLUMNS 11칸과, 캡슐 구역 표는 CAPSULE_COLUMNS 9칸과, 시스템 드랍 구역 표는 AMBIENT_COLUMNS 4칸과 정확히 같다', () => {
     expect(Object.keys(JAM_COLUMN_LABELS).sort()).toEqual([...JAM_COLUMNS].sort())
     expect(Object.keys(CAPSULE_COLUMN_LABELS).sort()).toEqual([...CAPSULE_COLUMNS].sort())
+    expect(Object.keys(AMBIENT_COLUMN_LABELS).sort()).toEqual([...AMBIENT_COLUMNS].sort())
     expect(JAM_COLUMNS).toHaveLength(11)
     expect(CAPSULE_COLUMNS).toHaveLength(9)
+    expect(AMBIENT_COLUMNS).toHaveLength(4)
   })
 
   it('이름은 칸마다 달라서 두 줄이 같은 문장으로 읽히지 않고, 내부 이름이나 운영 이름이 아니다', () => {
-    const names = [...Object.values(JAM_COLUMN_LABELS), ...Object.values(CAPSULE_COLUMN_LABELS)].map((label) => label.name)
-    expect(new Set(names).size).toBe(20)
+    const names = [...Object.values(JAM_COLUMN_LABELS), ...Object.values(CAPSULE_COLUMN_LABELS), ...Object.values(AMBIENT_COLUMN_LABELS)].map((label) => label.name)
+    expect(new Set(names).size).toBe(24)
     for (const name of names) {
       expect(name, name).not.toMatch(/[_:]/)
       expect(name, name).not.toMatch(/보정 [12]/)
       // 조사를 받침으로 가르므로 이름은 한글 음절로 끝나야 한다
       expect(name, name).toMatch(/[가-힣]$/)
     }
-    // «Common 확률»이 동기화와 캡슐에 모두 있으므로 구역을 앞에 붙인다
+    // «Common 확률»이 동기화·캡슐·시스템 드랍에 모두 있으므로 구역을 앞에 붙인다
     expect(JAM_COLUMN_LABELS.sync_rarity_common.name).toBe('동기화 Common 확률')
     expect(CAPSULE_COLUMN_LABELS.rarity_common.name).toBe('캡슐 Common 확률')
+    expect(AMBIENT_COLUMN_LABELS.rarity_common.name).toBe('시스템 드랍 Common 확률')
   })
 
   it('구역 키는 어드민 밸런스 설정의 구역 키와 같다', () => {
     expect(SYNC_SECTION_ID).toBe('sync')
     expect(CAPSULE_SECTION_ID).toBe('capsule')
+    expect(AMBIENT_SECTION_ID).toBe('ambient')
   })
 })
 
-describe('문장 — 20칸을 칸마다 고정한다(이름, 단위, 조사)', () => {
+describe('문장 — 24칸을 칸마다 고정한다(이름, 단위, 조사)', () => {
   const cases: Array<[section: string, field: string, from: number, to: number, expected: string]> = [
     [SYNC_SECTION_ID, 'sync_item_guaranteed', 1, 2, '동기화 확정 개수를 1개에서 2개로 바꿨어요'],
     [SYNC_SECTION_ID, 'sync_item_guaranteed_hiking', 2, 3, '동기화 등산 확정 개수를 2개에서 3개로 바꿨어요'],
@@ -93,12 +99,18 @@ describe('문장 — 20칸을 칸마다 고정한다(이름, 단위, 조사)', (
     [CAPSULE_SECTION_ID, 'rarity_epic', 6, 5, '캡슐 Epic 확률을 6%에서 5%로 바꿨어요'],
     [CAPSULE_SECTION_ID, 'rarity_mystic', 2, 3, '캡슐 Mystic 확률을 2%에서 3%로 바꿨어요'],
     [CAPSULE_SECTION_ID, 'pity_epic_threshold', 15, 12, '캡슐 Epic 보정 횟수를 15번에서 12번으로 바꿨어요'],
+    // 시스템 드랍은 DB에 0~1로 저장하지만 이력 값은 화면 단위인 퍼센트다(소수 첫째 자리까지 그대로)
+    [AMBIENT_SECTION_ID, 'rarity_common', 100, 66.7, '시스템 드랍 Common 확률을 100%에서 66.7%로 바꿨어요'],
+    [AMBIENT_SECTION_ID, 'rarity_rare', 0, 33.3, '시스템 드랍 Rare 확률을 0%에서 33.3%로 바꿨어요'],
+    [AMBIENT_SECTION_ID, 'rarity_epic', 0.1, 0, '시스템 드랍 Epic 확률을 0.1%에서 0%로 바꿨어요'],
+    [AMBIENT_SECTION_ID, 'rarity_mystic', 5, 10.5, '시스템 드랍 Mystic 확률을 5%에서 10.5%로 바꿨어요'],
   ]
 
-  it('시험 사례가 20칸을 한 번씩 모두 덮는다', () => {
-    expect(cases).toHaveLength(20)
+  it('시험 사례가 24칸을 한 번씩 모두 덮는다', () => {
+    expect(cases).toHaveLength(24)
     expect(cases.filter(([section]) => section === SYNC_SECTION_ID).map(([, field]) => field)).toEqual([...JAM_COLUMNS])
     expect(cases.filter(([section]) => section === CAPSULE_SECTION_ID).map(([, field]) => field)).toEqual([...CAPSULE_COLUMNS])
+    expect(cases.filter(([section]) => section === AMBIENT_SECTION_ID).map(([, field]) => field)).toEqual([...AMBIENT_COLUMNS])
   })
 
   it.each(cases)('%s 구역 %s: %s → %s', (section, field, from, to, expected) => {
@@ -179,10 +191,24 @@ describe('표에 없는 칸 — 내부 이름을 보이지 않는다', () => {
     expect(sentence).not.toMatch(/[a-z]+_[a-z_]+|chapter|pre_quest/)
   })
 
+  it('시스템 드랍 구역의 숫자 칸(배포 시각·상호 배제 창·배치 규모·지점당 한도)은 확률 안내에 없어 «그 밖의 값도»로 묶고 내부 이름을 보이지 않는다', () => {
+    const sentence = describeChanges(AMBIENT_SECTION_ID, [
+      change('rarity_common', 100, 90),
+      change('rarity_rare', 0, 10),
+      change('schedule_hour_kst', 3, 5),
+      change('batch_size', 30, 40),
+    ])
+    expect(sentence).toBe('시스템 드랍 Common 확률을 100%에서 90%로, 시스템 드랍 Rare 확률을 0%에서 10%로, 그 밖의 값도 바꿨어요')
+    expect(sentence).not.toMatch(/[a-z]+_[a-z_]+/)
+    expect(describeChanges(AMBIENT_SECTION_ID, [change('batch_size', 30, 40)])).toBe(UNKNOWN_ONLY_SENTENCE)
+  })
+
   it('칸이 비어 있거나 모르는 구역이면 일반 문장이다(구역을 함께 본다)', () => {
     expect(describeChanges(SYNC_SECTION_ID, [])).toBe(UNKNOWN_ONLY_SENTENCE)
-    // 시스템 드랍에도 rarity_common이 있다 — 구역이 다르면 캡슐 칸으로 읽지 않는다
-    expect(describeChanges('ambient', [change('rarity_common', 1, 0.5)])).toBe(UNKNOWN_ONLY_SENTENCE)
+    // 시스템 드랍에도 rarity_common이 있다 — 구역 키가 다르면 시스템 드랍 칸으로 읽지 않고, 구역이 시스템 드랍이면 캡슐 칸으로 읽지 않는다
+    expect(describeChanges('abusing', [change('rarity_common', 1, 0.5)])).toBe(UNKNOWN_ONLY_SENTENCE)
+    expect(describeChanges(AMBIENT_SECTION_ID, [change('rarity_common', 100, 50)])).toBe('시스템 드랍 Common 확률을 100%에서 50%로 바꿨어요')
+    expect(describeChanges(AMBIENT_SECTION_ID, [change('guaranteed_count', 1, 2)])).toBe(UNKNOWN_ONLY_SENTENCE)
     // 칸 이름만 맞고 구역이 어긋난 경우도 아는 칸이 아니다
     expect(describeChanges(CAPSULE_SECTION_ID, [change('sync_rarity_common', 84, 83)])).toBe(UNKNOWN_ONLY_SENTENCE)
     expect(describeChanges('jam', [change('sync_rarity_common', 84, 83)])).toBe(UNKNOWN_ONLY_SENTENCE)
@@ -193,10 +219,11 @@ describe('표에 없는 칸 — 내부 이름을 보이지 않는다', () => {
 })
 
 describe('문구 규칙 — 방향어·화살표·마침표가 없다', () => {
-  it('20칸 문장 어디에도 올렸어요·낮췄어요·UP·화살표·엠대시·마침표가 없고 동사는 «바꿨어요»뿐이다', () => {
+  it('24칸 문장 어디에도 올렸어요·낮췄어요·UP·화살표·엠대시·마침표가 없고 동사는 «바꿨어요»뿐이다', () => {
     const sentences = [
       ...JAM_COLUMNS.map((field) => describeChanges(SYNC_SECTION_ID, [change(field, 5, 7)])),
       ...CAPSULE_COLUMNS.map((field) => describeChanges(CAPSULE_SECTION_ID, [change(field, 5, 7)])),
+      ...AMBIENT_COLUMNS.map((field) => describeChanges(AMBIENT_SECTION_ID, [change(field, 5, 7)])),
       UNKNOWN_ONLY_SENTENCE,
     ]
     for (const sentence of sentences) {

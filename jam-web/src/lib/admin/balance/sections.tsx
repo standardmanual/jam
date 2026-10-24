@@ -3,10 +3,11 @@
  * **구역을 더하는 일은 구역 연결 객체(`lib/admin/balance/<구역>.ts`) 하나, 구역 본문 컴포넌트 하나, 이 배열 한 줄이다.**
  * 화면(`app/admin/balance/page.tsx`)과 구역 이동 링크(`OpsSettingsNav`)와 저장 라우트(`/api/admin/balance/[section]`)가 이 배열 하나를 읽는다.
  *
- * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회), 인벤토리(`inventory`, 7-3 1회), 어뷰징(`abusing`, 7-3 2회). 다음에 붙을 구역: 시스템 드랍(7-3 3회) 등.
+ * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회), 인벤토리(`inventory`, 7-3 1회), 어뷰징(`abusing`, 7-3 2회), 시스템 드랍(`ambient`, 7-3 3회). 다음에 붙을 구역: 7-4 등.
  */
 import type { ReactElement } from 'react'
 import { AbusingSection } from '@/components/admin/balance/AbusingSection'
+import { AmbientSection } from '@/components/admin/balance/AmbientSection'
 import { CapsuleSection } from '@/components/admin/balance/CapsuleSection'
 import { ChapterSection } from '@/components/admin/balance/ChapterSection'
 import { CollectionSection } from '@/components/admin/balance/CollectionSection'
@@ -15,6 +16,7 @@ import { JamSection } from '@/components/admin/balance/JamSection'
 import { LockedSection } from '@/components/admin/balance/LockedSection'
 import { SyncSection } from '@/components/admin/balance/SyncSection'
 import { ABUSING_BINDING } from './abusing'
+import { AMBIENT_BINDING } from './ambient'
 import { CAPSULE_BINDING } from './capsule'
 import { CHAPTER_BINDING } from './chapter'
 import { COLLECTION_BINDING } from './collection'
@@ -117,6 +119,16 @@ export const BALANCE_SECTIONS: readonly BalanceSectionDef[] = [
       '저장 즉시 다음 동기화와 장소 픽업부터 적용돼요.',
     ],
     Body: AbusingSection,
+  },
+  {
+    binding: AMBIENT_BINDING,
+    label: '시스템 드랍',
+    title: '시스템 드랍',
+    description: [
+      '시스템이 장소에 아이템 배지를 놓는 예약 배포의 시각과 「지금 배포」를 막는 상호 배제 창, 배포 한 번에 놓는 개수와 장소당 한도, 등급 비율이에요.',
+      '저장하면 다음 배포부터 적용돼요. 예약 배포 켜기·카테고리·컬렉션 고르기와 지금 배포, 날짜 예약은 앰비언트 드랍 화면에서 해요.',
+    ],
+    Body: AmbientSection,
   },
 ]
 

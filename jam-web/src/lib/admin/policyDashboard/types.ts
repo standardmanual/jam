@@ -13,7 +13,7 @@ export type PolicyType =
  * 변경 이력·동시 수정 검사·확률 확인창은 설정 화면이 지킨다.
  */
 export interface PolicyAdminLink {
-  /** `/admin/balance#<구역 키>`. 밸런스 설정에 구역이 아직 없는 대상은 7-3이 옮겨 올 때까지 옛 화면 주소. */
+  /** `/admin/balance#<구역 키>`. 설정 화면은 밸런스 설정 하나뿐이다(7-3 3회에서 시스템 드랍이 마지막으로 옮겨 왔다). */
   href: string
   /** 카드에 «현재 DB 실측값»으로 읽어 보여 줄 칸 이름(`liveValues`의 키). 칸이 여럿이면 비운다. */
   liveField?: string

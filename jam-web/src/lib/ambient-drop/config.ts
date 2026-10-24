@@ -65,13 +65,23 @@ export async function getAmbientDropConfig(): Promise<AmbientDropConfig> {
 }
 
 /**
+ * 어드민 앰비언트 드랍 화면이 저장하는 열 — 스위치와 세 축 고르기 여섯 개뿐이다 (티켓 20261022_1134 3회).
+ * 숫자 8열(배포 시각, 상호 배제 창, 배치 규모, 지점당 한도, 등급 비율 4칸)은 밸런스 설정 «시스템 드랍» 구역(`lib/admin/balance/ambient.ts`)이
+ * `updated_at` 조건으로 바꾼다. 이 저장이 숫자 열을 `current`로 다시 채워 쓰면 밸런스 설정이 방금 바꾼 값을 낡은 값으로 덮어쓸 수 있어, 타입으로 막는다.
+ */
+export type AmbientAxisPatch = Pick<
+  AmbientDropConfig,
+  'auto_enabled' | 'category_mode' | 'category_slug' | 'rarity_mode' | 'collection_mode' | 'collection_ids'
+>
+
+/**
+ * 스위치와 세 축 고르기(`AmbientAxisPatch` 여섯 열)만 쓴다. 숫자 열과 `last_auto_run_on`은 받지 않는다.
+ *
  * @throws category_slug가 poi_categories.slug FK를 위반하는 등 DB 제약에 걸리면 에러 메시지를 던진다.
  *   category_slug에 실재 FK 제약이 있어 조용히 실패하면 어드민이 저장 성공으로 오인할 수 있으므로
  *   명시적으로 검사한다.
  */
-export async function updateAmbientDropConfig(
-  patch: Partial<Omit<AmbientDropConfig, 'last_auto_run_on'>>
-): Promise<void> {
+export async function updateAmbientDropConfig(patch: Partial<AmbientAxisPatch>): Promise<void> {
   const supabase = createServiceClient()
   const table = supabase.from('ambient_drop_config')
   const { error } = await table.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })

@@ -131,7 +131,11 @@ export const JAM_COLUMNS: readonly JamColumn[] = [
   'locked_roll_probability',
 ]
 
-const AMBIENT_COLUMNS: readonly AmbientColumn[] = ['rarity_common', 'rarity_rare', 'rarity_epic', 'rarity_mystic']
+/**
+ * 확률 안내 페이지가 읽는 `ambient_drop_config` 칸(등급 비율 네 칸, 0~1 저장) — «확률 안내에 반영되는 칸»의 단일 원천이다.
+ * 어드민 밸런스 설정 시스템 드랍 구역(`lib/admin/balance/ambient.ts`)이 이 목록으로 확인창이 필요한 칸을 가르고, 변경 이력 문장(`changeLog.ts`)이 칸 이름표를 맞춘다(티켓 20261022_1134 3회).
+ */
+export const AMBIENT_COLUMNS: readonly AmbientColumn[] = ['rarity_common', 'rarity_rare', 'rarity_epic', 'rarity_mystic']
 
 /** 등급 확률 합계 허용 오차 — 정책 로더와 DB 제약(`*_rarity_sum_100`)이 쓰는 값과 같다 */
 const RARITY_SUM_TOLERANCE = 0.001

@@ -14,6 +14,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
+import { AMBIENT_SECTION_ID } from '@/lib/admin/balance/ambient'
 import { CAPSULE_SECTION_ID } from '@/lib/admin/balance/capsule'
 import { parseChanges } from '@/lib/admin/balance/history'
 import { SYNC_SECTION_ID } from '@/lib/admin/balance/sync'
@@ -21,6 +22,7 @@ import type { BalanceChange } from '@/lib/admin/balance/types'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import type { Json } from '@/types/database.generated'
 import {
+  AMBIENT_COLUMNS,
   CAPSULE_COLUMNS,
   JAM_COLUMNS,
   formatFraction,
@@ -34,7 +36,7 @@ type ColumnValue =
   | { kind: 'count'; unit: '개' | '번' | '잼' }
   /** 0~1로 저장된 확률 칸 */
   | { kind: 'fraction' }
-  /** 이미 퍼센트로 저장된 등급 확률 칸(70) */
+  /** 이력 값이 퍼센트인 등급 확률 칸(70). 시스템 드랍은 DB에 0~1로 저장하지만 이력에는 화면 값인 퍼센트를 남긴다 */
   | { kind: 'percent' }
 
 interface ColumnLabel {
@@ -78,19 +80,31 @@ export const CAPSULE_COLUMN_LABELS: Record<(typeof CAPSULE_COLUMNS)[number], Col
   pity_epic_threshold: count('캡슐 Epic 보정 횟수', '번'),
 }
 
+/**
+ * 시스템 드랍 구역(`ambient_drop_config` 칸)의 칸 이름. 구역이 등급 비율을 화면 단위(퍼센트)로 이력에 남기므로(`lib/admin/balance/ambient.ts`) 값 종류는 `percent`다.
+ * DB에는 0~1로 저장돼 있지만 이력의 `changes`는 DB 값이 아니라 화면 값이다.
+ */
+export const AMBIENT_COLUMN_LABELS: Record<(typeof AMBIENT_COLUMNS)[number], ColumnLabel> = {
+  rarity_common: percent('시스템 드랍 Common 확률'),
+  rarity_rare: percent('시스템 드랍 Rare 확률'),
+  rarity_epic: percent('시스템 드랍 Epic 확률'),
+  rarity_mystic: percent('시스템 드랍 Mystic 확률'),
+}
+
 interface SectionColumns {
-  /** 문장에 쓰는 칸 순서 — `JAM_COLUMNS`·`CAPSULE_COLUMNS` 순서다 */
+  /** 문장에 쓰는 칸 순서 — `JAM_COLUMNS`·`CAPSULE_COLUMNS`·`AMBIENT_COLUMNS` 순서다 */
   columns: readonly string[]
   labels: Readonly<Record<string, ColumnLabel>>
 }
 
 /**
  * 구역 키 → 그 구역이 확률 안내에 반영하는 칸. 칸 이름만으로 찾지 않고 구역을 함께 본다:
- * 시스템 드랍(`ambient_drop_config`)에도 `rarity_common`이 있어, 나중에 그 구역이 이력을 쓰면 캡슐 칸으로 잘못 읽는 일을 막는다.
+ * 시스템 드랍(`ambient_drop_config`)에도 `rarity_common`이 있어, 구역 없이 칸 이름만 보면 캡슐 칸으로 잘못 읽는다(티켓 20261022_1134 3회에서 시스템 드랍 구역이 이력을 쓰기 시작했다).
  */
 const SECTION_COLUMNS: Readonly<Record<string, SectionColumns>> = {
   [SYNC_SECTION_ID]: { columns: JAM_COLUMNS, labels: JAM_COLUMN_LABELS },
   [CAPSULE_SECTION_ID]: { columns: CAPSULE_COLUMNS, labels: CAPSULE_COLUMN_LABELS },
+  [AMBIENT_SECTION_ID]: { columns: AMBIENT_COLUMNS, labels: AMBIENT_COLUMN_LABELS },
 }
 
 /** 표에 없는 칸만 있을 때의 문장(내부 칸 이름을 보이지 않는다) */

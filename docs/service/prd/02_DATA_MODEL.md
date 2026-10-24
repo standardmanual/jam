@@ -730,6 +730,11 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 `batch_size`/`max_active_per_poi`는 3축에 속하지 않는 실행
 파라미터. 상세 로직은 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.12 참고.
 
+**편집 위치** (티켓 20261022_1134 3회): 숫자 8열(`schedule_hour_kst`·`exclusion_window_minutes`·`batch_size`·`max_active_per_poi`·`rarity_common/rare/epic/mystic`)은
+어드민 밸런스 설정(`/admin/balance#ambient`)의 «시스템 드랍» 구역이 `updated_at` 조건으로 바꾼다. `rarity_*`는 `NUMERIC(4,3)`(0~1, 합 1)이고 그 화면은 퍼센트(소수 첫째 자리, 합 100)로 보이고 저장할 때 0~1로 바꾼다.
+상호 배제 창 상한은 코드 기준 180분이다. `auto_enabled`와 세 축 고르기(`*_mode`·`category_slug`·`collection_ids`)는 어드민 `/admin/ambient-drop`의 저장(`PUT /api/admin/ambient-drop/config`)이 이 **여섯 열만** 쓴다.
+`updated_at`은 마이그레이션에 갱신 트리거가 없고 두 화면의 저장이 직접 올린다(`last_auto_run_on`만 쓰는 cron 선점은 올리지 않는다).
+
 > **구 `ambient_drop_policy`(마이그레이션 044, 100에서 DROP)와는 스키마가 다르다.** 구 모델은
 > "활성 POI 수 × 커버리지 비율 → 부족분 보충"이라는 전역 목표치 모델이었고, 신규 모델은
 > 실행마다 3축을 골라 `batch_size`개를 그때그때 배치하는 배치 실행형이다 — 티켓
