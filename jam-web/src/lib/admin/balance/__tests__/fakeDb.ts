@@ -288,9 +288,9 @@ export function tierDefaultRewardRows(stamp: string = TIER_REWARD_ROW_STAMP): Ro
   ]
 }
 
-/** `combine_policy` id=1 행(마이그레이션 153 기본값). */
+/** `combine_policy` id=1 행(마이그레이션 153 기본값, 마이그레이션 287의 `tier_up_probability` 기본값 0.7). */
 export function combinePolicyRow(overrides: Row = {}): Row {
-  return { id: 1, fail_reward_points: 10, updated_at: COMBINE_ROW_STAMP, ...overrides }
+  return { id: 1, fail_reward_points: 10, tier_up_probability: 0.7, updated_at: COMBINE_ROW_STAMP, ...overrides }
 }
 
 export const CHAPTER_DEFINITION_ROW_STAMP = '2026-10-22T01:20:00.5+00:00'
