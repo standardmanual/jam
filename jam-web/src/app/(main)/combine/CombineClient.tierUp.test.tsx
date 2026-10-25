@@ -793,7 +793,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
     })
 
     it.each([
-      ['invalid_collection', { success: false, reason: 'invalid_collection' }, '고른 컬렉션은 지금 받을 수 없어요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.'],
+      ['invalid_collection', { success: false, reason: 'invalid_collection' }, '지금은 고를 수 없는 컬렉션이에요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.'],
       ['no_candidate', { success: false, reason: 'no_candidate' }, d.combine.tierUp.noCandidate],
       ['invalid_collection(서버 문구)', { success: false, reason: 'invalid_collection', message: '서버 문구' }, '서버 문구'],
     ])('%s 거절은 info 토스트로 알리고 담은 칸은 그대로, 고른 컬렉션만 풀며 목록을 다시 읽는다', async (_name, body, message) => {

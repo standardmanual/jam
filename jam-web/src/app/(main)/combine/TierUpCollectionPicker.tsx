@@ -84,6 +84,8 @@ export function TierUpCollectionRow({ view, submitting, onOpen, onRetry }: RowPr
         ? t(copy.none, { rarity: getRarityLabel(view.rarity) ?? '' })
         : (picked?.name ?? copy.unselected)
   const selectable = view.kind === 'ready'
+  // 이름은 2줄까지만 보이게 줄이지만, 정적 행의 이유 문장은 눌러 펼 수 없으므로 끝까지 보인다(360·390px에서 3줄이 되어도 잘리지 않는다)
+  const valueClamp = selectable ? 'line-clamp-2 ' : ''
 
   return (
     <ListRowCard
@@ -93,7 +95,7 @@ export function TierUpCollectionRow({ view, submitting, onOpen, onRetry }: RowPr
       trailing={selectable ? <ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" /> : undefined}
     >
       <p className={`m-0 text-sm text-muted ${KO_BREAK}`}>{copy.label}</p>
-      <p className={`m-0 text-base text-foreground line-clamp-2 ${KO_BREAK}`}>{value}</p>
+      <p className={`m-0 text-base text-foreground ${valueClamp}${KO_BREAK}`}>{value}</p>
     </ListRowCard>
   )
 }

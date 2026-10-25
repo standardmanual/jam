@@ -228,7 +228,7 @@ describe('tierUpRejection — 소각 전 거절', () => {
   it('invalid_collection은 info 안내이고 고른 컬렉션만 풀며 담은 칸은 그대로 두고 목록을 다시 읽는다', () => {
     const rejection = tierUpRejection(200, { success: false, reason: 'invalid_collection' })
     expect(rejection).toMatchObject({ tone: 'info', clearSlots: false, clearCollection: true, refresh: true, refreshPending: false })
-    expect(rejection.message).toBe('고른 컬렉션은 지금 받을 수 없어요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.')
+    expect(rejection.message).toBe('지금은 고를 수 없는 컬렉션이에요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.')
   })
 
   it('no_candidate도 같은 후속 동작을 한다 — 컬렉션만 풀고 목록을 다시 읽으며 문구는 그대로다', () => {
@@ -293,7 +293,7 @@ describe('tierUpRejection — 소각 전 거절', () => {
       d.combine.tierUp.noCandidate,
       d.combine.tierUp.invalidMaterials,
       d.combine.tierUp.invalidCount,
-      d.combine.tierUp.collectionPicker.invalidCollection,
+      d.combine.tierUp.invalidCollection,
     ].join('\n')
     expect(copies).not.toMatch(/%|퍼센트/)
     expect(copies).not.toMatch(/개체|후보|소각/)

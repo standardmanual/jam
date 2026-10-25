@@ -323,7 +323,7 @@ export function tierUpRejection(status: number, body: unknown): TierUpRejection 
       return { ...base, clearSlots: true, refresh: true, message: message ?? d.combine.itemsNotFound }
     // 고른 컬렉션으로는 받을 수 없다 — 담은 칸은 그대로 두고 컬렉션만 풀어 목록을 다시 읽는다(재료는 소각 전이라 안전하다)
     case 'invalid_collection':
-      return { ...base, clearCollection: true, refresh: true, message: message ?? d.combine.tierUp.collectionPicker.invalidCollection }
+      return { ...base, clearCollection: true, refresh: true, message: message ?? d.combine.tierUp.invalidCollection }
     case 'no_candidate':
       return { ...base, clearCollection: true, refresh: true, message: message ?? d.combine.tierUp.noCandidate }
     case 'invalid_materials':
