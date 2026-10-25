@@ -45,7 +45,7 @@
 --
 -- 실행: BEGIN/COMMIT 없이 한 번의 호출로 통째로 실행한다(한 트랜잭션). 롤백 실측은 이 파일 뒤에 일부러 오류를 내는 문장을 붙여 같은 호출로 실행한다.
 --   계획은 임시 표(_badge_point_plan_290)로 한 번 만들어 가드·백업·갱신이 같은 계획을 쓴다. 읽은 뒤 값이 바뀐 행은 갱신하지 않고(b.point_reward = plan.before_pt), 동등 가드가 잡는다.
--- 백업 표 badge_point_backup_290은 badges에 updated_at이 없어 이전 값의 유일한 원본이다. 6-4의 오픈 뒤 정리 SQL 때 지운다.
+-- 백업 표 badge_point_backup_290은 badges에 updated_at이 없어 이전 값의 유일한 원본이다. 지우는 시점은 아직 정해지지 않았다(필요 없어지면 따로 지운다).
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 드라이런 (읽기 전용 SELECT. 244, 245, 248 적용 뒤 오픈 직전에 돌려서 사용자에게 보인다. 데이터를 바꾸지 않는다)
@@ -144,7 +144,7 @@ ALTER TABLE public.badge_point_backup_290 ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.badge_point_backup_290 FROM anon, authenticated;
 
 COMMENT ON TABLE public.badge_point_backup_290 IS
-  '마이그레이션 290(액티비티 배지 포인트 일괄 적용)이 바꾼 행의 이전 값 백업(티켓 20261022_1135). 되돌림 SQL이 before_point로 되돌린다. 6-4의 오픈 뒤 정리 SQL 때 지운다. 서버(service role)만 읽고 쓴다.';
+  '마이그레이션 290(액티비티 배지 포인트 일괄 적용)이 바꾼 행의 이전 값 백업(티켓 20261022_1135). 되돌림 SQL이 before_point로 되돌린다. 지우는 시점은 아직 정해지지 않았다. 서버(service role)만 읽고 쓴다.';
 
 -- 3. 계획: 범위 안의 행마다 «지금 값(before)»과 «정책 표가 정한 값(after)». 등급 → 칸 대응은 defaultPointFor와 같다
 CREATE TEMP TABLE _badge_point_plan_290 AS
