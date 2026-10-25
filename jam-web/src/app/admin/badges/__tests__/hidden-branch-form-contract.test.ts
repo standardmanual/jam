@@ -30,7 +30,9 @@ describe('숨김·가지 입력', () => {
   it('숨김을 켜면 등급을 Common으로, 포인트를 0으로 맞춘다', () => {
     const body = bodyOf(FORM, 'const changeHidden = (next: boolean) => {')
     expect(body).toMatch(/setRarity\('common'\)/)
-    expect(body).toMatch(/setPointReward\('0'\)/)
+    // 새 배지는 기본값을 따라가는 상태(null)로 되돌려 숨김인 동안 기본값 0이 보이게 하고, 기존 배지 수정은 입력 글자를 '0'으로 둔다
+    // (티켓 20261022_1135 게이트. 숨김 해제 때 새 배지의 포인트가 0에 남지 않게 한다. 자세한 동작은 point-default-form-contract.test.ts).
+    expect(body).toMatch(/setPointReward\(isEdit \? '0' : null\)/)
   })
 
   it('액티비티 밖으로 바꾸면 숨김·가지를 비운다', () => {

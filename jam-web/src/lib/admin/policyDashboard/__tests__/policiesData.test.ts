@@ -91,6 +91,24 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(POLICIES_DATA.filter((p) => p.adminLink?.href === '/admin/abusing')).toEqual([])
   })
 
+  it('배지 포인트 일괄 값 카드는 14장에 있고 배지와 포인트 구역(/admin/balance#badgepoints)으로 이어진다 (티켓 20261022_1135)', () => {
+    const card = POLICIES_DATA.find((p) => p.id === 'ch14-badge-point-defaults')
+    expect(card).toBeDefined()
+    expect(card?.chapter).toBe(14)
+    expect(card?.type).toBe('admin_link')
+    expect(card?.dbTable).toBe('badge_point_policy')
+    expect(card?.adminLink?.href).toBe('/admin/balance#badgepoints')
+    // 칸이 다섯이라 한 칸만 읽어 보이지 않는다
+    expect(card?.adminLink?.liveField).toBeUndefined()
+    // 값 문구: 일괄 값 5개와 숨김 0, 기존 배지가 바뀌지 않는다는 것, 온보딩 배지 예외
+    for (const text of ['Common 10pt', 'Rare 20pt', 'Epic 50pt', 'Mystic 100pt', '레벨형 레벨마다 10pt', '숨김 배지 0pt']) {
+      expect(card?.currentSpec, text).toContain(text)
+    }
+    expect(card?.currentSpec).toContain('이미 있는 배지의 포인트는 바뀌지 않음')
+    expect(card?.currentSpec).toContain('온보딩 완료 배지 «JAM!»')
+    expect(card?.currentSpec).toContain('100pt로 따로 정해져 있음')
+  })
+
   it('옛 인벤토리 화면 주소(/admin/inventory-policy)를 가리키는 카드가 없다', () => {
     expect(POLICIES_DATA.filter((p) => p.adminLink?.href.startsWith('/admin/inventory-policy'))).toEqual([])
   })

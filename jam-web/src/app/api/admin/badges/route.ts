@@ -15,6 +15,8 @@ import { findBranchKeyError, findHiddenBadgeError, normalizeIsHidden } from '@/l
 import { checkHiddenBadgeUsage } from '@/lib/missions/reward-badges'
 import { findUnlockRequiredError, lockedMinimumsFrom, parseUnlockRequired } from '@/lib/admin/badge-lock-guard'
 import { getJamPolicy } from '@/lib/jam/policy'
+import { defaultPointFor } from '@/lib/admin/badge-point-defaults'
+import { getBadgePointPolicy } from '@/lib/badge/pointPolicy'
 import type { BadgeRow } from '@/types/database'
 
 export async function GET(req: NextRequest) {
@@ -141,6 +143,15 @@ export async function POST(req: NextRequest) {
   const recipeFirstSuccessError = await findRecipeFirstSuccessNotFoundError(condition_json ?? null, supabase)
   if (recipeFirstSuccessError) {
     return NextResponse.json({ error: recipeFirstSuccessError }, { status: 400 })
+  }
+
+  // 포인트를 생략한 요청(계열 화면의 «단계 추가» 등)은 배지 포인트 일괄 값으로 채운다: 숨김이면 0, 레벨형이면 레벨형 값, 아니면 등급 값(티켓 20261022_1135).
+  // 값이 있으면 그대로 쓴다. 공용 함수(buildBadgeInsertPayload)의 «없으면 0»은 운영툴 등록·에셋 스크립트도 쓰므로 바꾸지 않고 이 라우트에서 채운다.
+  if (body.point_reward === undefined) {
+    body.point_reward = defaultPointFor(
+      { rarity: rarity || null, isLeveled: !rarity, isHidden: normalizeIsHidden(body.is_hidden) },
+      await getBadgePointPolicy(supabase)
+    )
   }
 
   // 페이로드 매핑은 등록 스크립트와 공용이다(lib/admin/badge-insert-payload.ts).

@@ -75,6 +75,9 @@ import { findPoiLinksNotLoadedError, mergeLoadedPoiLinks, type PoiLinksLoadState
 import { findUnlockRequiredError, normalizeLockFields, type LockedMinimums } from '@/lib/admin/badge-lock-guard'
 import { BRANCH_KEYS, BRANCH_LABEL, findHiddenBadgeError, isBranchKey } from '@/lib/admin/badge-hidden-guard'
 import { findBadgeIntegerInputError, readIntegerInput } from '@/lib/admin/integerRangeInput'
+// 새 배지의 포인트 기본값 — 일괄 값(`badge_point_policy`)은 서버 페이지가 읽어 내리고, 계산은 저장 API와 같은 순수 함수를 쓴다(티켓 20261022_1135).
+import { defaultPointFor } from '@/lib/admin/badge-point-defaults'
+import type { BadgePointPolicy } from '@/lib/badge/pointPolicy'
 // 드랍 엔진 본체는 서버 전용이라 import할 수 없다 — 의존 없는 목록 모듈만 가져온다.
 import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/cumulativeConditionFields'
 
@@ -122,6 +125,8 @@ interface BadgeFormProps {
   poiCategories: { slug: string; label: string }[]
   /** 잠긴 아이템 배지의 «여는 데 필요한 양» 등급별 최소값 — 서버 페이지가 `jam_policy.locked_min_*`에서 읽어 내린다(티켓 20261018_0051). 저장 API가 같은 값으로 최종 검증한다. */
   lockedMinimums: LockedMinimums
+  /** 배지 포인트 일괄 값 — 서버 페이지가 `badge_point_policy`에서 읽어 내린다(티켓 20261022_1135). 새 배지의 포인트 칸 기본값과 칸 안내에 쓴다. */
+  pointPolicy: BadgePointPolicy
   /** 페이지 제목·뒤로 가기 — 섹션 열 위에 둔다(레일은 페이지 맨 위에서 시작, BadgeEditorShell 주석) */
   header?: ReactNode
 }
@@ -142,7 +147,7 @@ const FOCUS_ID = {
   image: 'badge-image-field',
 } as const
 
-export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, lockedMinimums, header }: BadgeFormProps) {
+export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, lockedMinimums, pointPolicy, header }: BadgeFormProps) {
   const router = useRouter()
   const isEdit = !!badge
 
@@ -173,7 +178,14 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>(badge?.activity_types ?? [])
   const [patchAvailable, setPatchAvailable] = useState(badge?.patch_available ?? false)
   const [patchPriceKrw, setPatchPriceKrw] = useState<string>(badge?.patch_price_krw?.toString() ?? '')
-  const [pointReward, setPointReward] = useState<string>(badge?.point_reward?.toString() ?? '0')
+  // 포인트 보상 칸 (티켓 20261022_1135). `pointOverride`는 사용자가 칸에 쓴 글자이고, `null`이면 아직 직접 고치지 않은 것이다.
+  // 새 배지는 `null`로 시작해 기본값(일괄 값)을 따라간다 — 등급·레벨형 전환·숨김에 맞춰 칸이 바뀌고, 한 번 직접 고치면 그 글자를 쓴다.
+  // 기존 배지 수정은 저장된 값으로 시작하므로 처음부터 따라가지 않는다(등급을 바꿔도 값을 바꾸지 않고, 칸 안내에 기본값만 보인다).
+  const [pointOverride, setPointReward] = useState<string | null>(badge ? (badge.point_reward?.toString() ?? '0') : null)
+  const pointDefault = defaultPointFor({ rarity: isLeveled ? null : rarity, isLeveled, isHidden }, pointPolicy)
+  // 칸에 보이는 글자 = 입력 글자. 읽는 곳(저장 전 검사·본문·섹션 상태)은 모두 이 값을 쓴다.
+  const pointReward = pointOverride ?? String(pointDefault)
+  const pointDefaultNotice = `${isLeveled ? '레벨형의' : '이 등급의'} 기본값은 ${pointDefault}포인트예요.`
   // 배경 테마 — background_color: 배경색(피커+hex, 이미지 업로드 시 평균 컬러 자동 프리필).
   const [backgroundColor, setBackgroundColor] = useState<string>(badge?.background_color ?? '')
   // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다.
@@ -334,11 +346,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   }
 
   // 숨김을 켜면 마이그레이션 243의 제약에 맞게 등급은 Common, 포인트는 0으로 맞춘다(티켓 20261018_1816).
+  // 새 배지는 입력 글자를 '0'으로 박지 않고 «기본값을 따라가는 상태(null)»로 되돌린다. 숨김인 동안은 기본값이 0이라 칸이 0이고,
+  // 숨김을 끄면 등급의 기본값으로 돌아온다(티켓 20261022_1135 게이트). 기존 배지 수정은 저장된 값을 유지하는 화면이라 '0'으로 둔다.
   const changeHidden = (next: boolean) => {
     setIsHidden(next)
     if (!next) return
     setRarity('common')
-    setPointReward('0')
+    setPointReward(isEdit ? '0' : null)
   }
 
   const toggleActivityType = (t: ActivityType) => {
@@ -1234,7 +1248,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
             <FieldMessage id="badge-point-reward-help" className={KO_BREAK}>
               {isHidden
                 ? '숨김 배지는 포인트를 지급하지 않아요. 0으로 고정돼요.'
-                : '획득 시점 값으로 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요.'}
+                : `획득 시점 값으로 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요. ${pointDefaultNotice}`}
             </FieldMessage>
           </div>
 

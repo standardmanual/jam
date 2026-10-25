@@ -384,3 +384,19 @@ export function ambientDropConfigRow(overrides: Row = {}): Row {
     ...overrides,
   }
 }
+
+export const BADGEPOINTS_ROW_STAMP = '2026-10-24T03:00:00.5+00:00'
+
+/** `badge_point_policy` id=1 행(마이그레이션 288 기본값, 코드의 `DEFAULT_BADGE_POINT_POLICY`와 같다). 모두 INTEGER 칸이다. */
+export function badgePointPolicyRow(overrides: Row = {}): Row {
+  return {
+    id: 1,
+    common_points: 10,
+    rare_points: 20,
+    epic_points: 50,
+    mystic_points: 100,
+    leveled_points: 10,
+    updated_at: BADGEPOINTS_ROW_STAMP,
+    ...overrides,
+  }
+}

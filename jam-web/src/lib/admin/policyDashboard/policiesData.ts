@@ -914,6 +914,23 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 14.2절',
     ticketId: '20261019_1314',
   },
+  {
+    id: 'ch14-badge-point-defaults',
+    chapter: 14,
+    chapterTitle: '포인트',
+    title: '배지 등급별 포인트 일괄 값',
+    type: 'admin_link',
+    currentSpec:
+      '기본값: Common 10pt · Rare 20pt · Epic 50pt · Mystic 100pt · 레벨형 레벨마다 10pt · 숨김 배지 0pt. 새 배지의 기본값이고 이미 있는 배지의 포인트는 바뀌지 않음. 온보딩 완료 배지 «JAM!»은 Common인데 100pt로 따로 정해져 있음',
+    dbTable: 'badge_point_policy',
+    dbColumn: '*_points',
+    userExperience: '배지를 받을 때 등급에 따라 정해진 포인트를 한 번 받아요. 숨김 배지는 포인트를 주지 않아요.',
+    basisDoc: '운영 로직 10.5절, 11.4절, 14.1절',
+    ticketId: '20261022_1135',
+    adminLink: {
+      href: '/admin/balance#badgepoints',
+    },
+  },
 
   // =========================================================================
   // 15장. 홈, 소셜, 알림, 문의

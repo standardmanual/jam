@@ -58,6 +58,7 @@ code:
 
 [포인트]        users ─1:1─ point_wallets ─1:N─ point_transactions (append-only 원장)
                 point_treasury (전체 발행/회수 싱글톤 장부)
+                badge_point_policy(싱글톤: 등급별·레벨형 배지 포인트 일괄 값 — 새 배지의 기본값, 마이그레이션 288)
 
 [잼]            users ─1:1─ jam_wallets ─1:N─ jam_transactions (append-only 원장)
                 users ─1:N─ jam_daily_earned (KST 날짜별 모은 양)
@@ -264,7 +265,7 @@ RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role`
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 옛 드랍엔진 판정용. 새 발급 경로(`syncIssue.ts`)는 후보를 균등 무작위로 골라 읽지 않는다(코드에서 읽는 곳은 어드민 배지·트라이브 양식뿐) |
 | valid_from / valid_until | 노출 기간 |
-| point_reward | 발급 시 지급 포인트. 잠긴 채 받은 아이템 배지는 주지 않는다(열린 상태가 될 때 한 번 준다, 연 때 주는 것은 3-3). 아이템·체크인 배지 값은 마이그레이션 253으로 규칙 값이 되었다(현황은 포인트 객체 모델 1.7) |
+| point_reward | 발급 시 지급 포인트. 잠긴 채 받은 아이템 배지는 주지 않는다(열린 상태가 될 때 한 번 준다, 연 때 주는 것은 3-3). 아이템·체크인 배지 값은 마이그레이션 253으로 규칙 값이 되었다(현황은 포인트 객체 모델 1.7). 새 배지의 기본값(등급별·레벨형 일괄 값)은 `badge_point_policy`(마이그레이션 288)에 있다 |
 | always_locked | **잠김으로 만든 아이템 배지**(boolean, 기본 false, 마이그레이션 231). true면 어느 경로로 얻어도 늘 잠긴 채 나온다(`lock_reason = badge_locked`). 어드민 양식 입력은 2회 |
 | unlock_required | 여는 데 필요한 잼의 양(integer, nullable, 양수, 마이그레이션 231). NULL이면 그 등급의 최소값(`jam_policy.locked_min_*`)을 쓴다. 최소값보다 적게는 저장하지 않는다(앱 코드가 막는다, 2회). 개체에는 배정될 때 이 값이 고정된다 |
 | deleted_at | 소프트 삭제 |
@@ -1051,6 +1052,20 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 | 퀘스트 완료 배지(「JAM!」) | «연출 끝 또는 건너뜀 AND 실제 3단계 완료»가 된 뒤 한 번, 건너뛰지 않은 유저에게만 | `lib/onboarding-quest/completion.ts` |
 
 포인트가 0인 배지는 지급을 부르지 않는다. 믹스의 레시피 보상(`combine_recipe_reward`)과 실패 보상(`combine_fail_reward`), 컬렉션 완성 포인트(`item_book_completion_point_reward`), 미션 포인트(`mission_point_reward`)는 이 표의 배지 포인트가 아니다. 공개 전 레시피의 운영자 시험 믹스도 개체를 실제로 주므로 같은 후속이 배지 포인트를 준다(시험 믹스의 레시피 보상 포인트 지급 변경은 이번 범위가 아니다).
+
+#### badge_point_policy (싱글톤) — 마이그레이션 288, 티켓 20261022_1135
+배지 포인트의 **일괄 값**을 담는 한 행 싱글톤(`id = 1` 고정, `CHECK (id = 1)`). `inventory_policy`와 같은 패턴으로 RLS만 켜고 정책은 없으며 anon·authenticated 권한을 회수해 service_role만 읽고 쓴다. 갱신 트리거가 없어 저장 API가 `updated_at`을 직접 올린다.
+이 값은 **새 배지의 기본값**이다. 이미 있는 배지의 `badges.point_reward`는 바꾸지 않고, 이미 받은 포인트도 그대로다(지급 코드는 배지를 받을 때 `badges.point_reward`를 읽는다). 기존 배지에 일괄 값을 적용하는 일은 별도 SQL(티켓 20261022_1135 2회)이 맡는다.
+
+| 칸 | 기본값 | 뜻 |
+|---|---|---|
+| `common_points` / `rare_points` / `epic_points` / `mystic_points` | 10 / 20 / 50 / 100 | 등급별 배지 포인트. 0 이상 정수, INTEGER NOT NULL |
+| `leveled_points` | 10 | 레벨형 액티비티 배지의 레벨마다 포인트. 0 이상 정수 |
+| `updated_at` | `now()` | 마지막 저장 시각. 화면이 이 값으로 동시 수정을 가른다(409) |
+
+숨김 배지는 마이그레이션 243의 `badges_hidden_no_points` 제약으로 항상 0이라 칸이 없다. 읽는 곳은 둘이다: 어드민 배지 양식의 새 배지 포인트 칸 초깃값(서버 페이지가 읽어 prop으로 내린다)과, 배지 생성 API(`POST /api/admin/badges`)가 `point_reward`를 생략했을 때 채우는 값이다.
+코드는 `src/lib/badge/pointPolicy.ts`의 `getBadgePointPolicy`로 읽고, 표나 행이 없거나 값이 비정상이면 칸 단위로 기본값(`DEFAULT_BADGE_POINT_POLICY`)으로 대체하고 로그를 남긴다. 기본값을 바꾸면 마이그레이션 DEFAULT와 이 상수를 같은 티켓에서 함께 바꾼다(시험이 288 파일의 DEFAULT 리터럴과 대조한다).
+기본값 계산은 순수 함수 `src/lib/admin/badge-point-defaults.ts`의 `defaultPointFor`다: 숨김이면 0, 레벨형이면 `leveled_points`, 아니면 등급 값. 편집 화면은 어드민 «밸런스 설정»의 «배지와 포인트» 구역이다(`/admin/balance#badgepoints`, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 변경 이력은 `balance_setting_changes`에 남는다(구역 키 `badgepoints`).
 
 ### 9-2. 잼 (JAM 2.0) — 마이그레이션 220, 티켓 20261016_2338
 포인트 원장 구조를 본떴다. 운영 로직 4.2절 "원장과 기록"이 근거다. 2026-10-17 공용 DB에 적용했다.
