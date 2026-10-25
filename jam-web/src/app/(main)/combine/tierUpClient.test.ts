@@ -213,7 +213,7 @@ describe('tierUpRejection — 소각 전 거절', () => {
       expect(rejection.clearSlots).toBe(false)
     }
     expect(tierUpRejection(200, { success: false, reason: 'no_candidate' }).message).toBe(
-      '지금은 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 조금 뒤에 다시 해주세요.',
+      '고른 컬렉션에서는 지금 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.',
     )
   })
 

@@ -6,9 +6,9 @@
  * - 단위 변환: 정책 표의 등급은 퍼센트(70), 확률 칸은 0~1(0.2), 시스템 드랍 등급은 0~1(1, 0, 0, 0)이다. 부동소수 오차(0.07)도 정리한다.
  * - 0인 값: 등급 0% 줄은 지우지 않고, 확정 개수 0은 «0개», 보너스 개수 0은 «없음»이다.
  * - 읽기에 실패하면 코드 상수 사본(`DEFAULT_*`)으로 대신하지 않고 `{ ok: false }`만 돌려준다(숫자가 하나도 없다).
- *   정책(동기화·캡슐·보정 장치)과 시스템 드랍은 따로 실패한다.
+ *   정책(동기화·캡슐·보정 장치), 등급 올리기(`combine_policy`), 시스템 드랍은 서로 따로 실패한다(등급 올리기 표 자체는 `tierUpDisclosure.test.ts`).
  * - 필요한 칸만 이름으로 읽는다(`select('*')`와 대량 수령 경보 기준 칸이 없다).
- * - 읽는 칸 목록(`CAPSULE_COLUMNS`·`JAM_COLUMNS`)을 내보낸다: 어드민 밸런스 설정이 «확률 안내에 반영되는 칸»을 가르는 단일 원천이며(티켓 20261022_1132 2회),
+ * - 읽는 칸 목록(`CAPSULE_COLUMNS`·`JAM_COLUMNS`·`COMBINE_COLUMNS`)을 내보낸다: 어드민 밸런스 설정이 «확률 안내에 반영되는 칸»을 가르는 단일 원천이며(티켓 20261022_1132 2회),
  *   실제로 읽는 칸과 같다(동작 변경 없음).
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
@@ -19,12 +19,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const { createServiceClientMock } = vi.hoisted(() => ({ createServiceClientMock: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClientMock }))
 
-import { ALL_OK, AMBIENT_ROW, CAPSULE_ROW, JAM_ROW, fakeClient, failed, ok, type Result } from './fixtures'
+import { ALL_OK, AMBIENT_ROW, CAPSULE_ROW, COMBINE_ROW, JAM_ROW, fakeClient, failed, ok, type Result } from './fixtures'
 import { DEFAULT_CAPSULE_POLICY } from '@/lib/capsule/policy'
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import { DEFAULT_AMBIENT_DROP_CONFIG } from '@/lib/ambient-drop/config'
 import {
   CAPSULE_COLUMNS,
+  COMBINE_COLUMNS,
   JAM_COLUMNS,
   buildAmbientDisclosure,
   buildPolicyDisclosure,
@@ -234,6 +235,7 @@ describe('단위 변환 — 읽는 곳마다 고정한다', () => {
       fakeClient({
         capsule_policy: ok(asStrings(CAPSULE_ROW)),
         jam_policy: ok(asStrings(JAM_ROW)),
+        combine_policy: ok(asStrings(COMBINE_ROW)),
         ambient_drop_config: ok(asStrings(AMBIENT_ROW)),
       }).client
     )
@@ -325,8 +327,9 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
     const result = await loadProbabilityDisclosure(fakeClient(results).client)
     expect(result.policy).toEqual({ ok: false })
     expect(JSON.stringify(result.policy)).not.toMatch(/\d/)
-    // 시스템 드랍은 따로 읽는다 — 정책 실패에 끌려가지 않는다
+    // 시스템 드랍과 등급 올리기는 따로 읽는다 — 정책 실패에 끌려가지 않는다
     expect(result.ambient.ok).toBe(true)
+    expect(result.tierUp.ok).toBe(true)
   })
 
   it('정책이 정상이면 DB 값이 그대로 나오고 기본값 상수의 값은 나오지 않는다', async () => {
@@ -366,19 +369,19 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
     expect(JSON.stringify(result.ambient)).not.toContain('100%')
   })
 
-  it('셋 다 실패해도 던지지 않고 둘 다 { ok: false }다', async () => {
+  it('모든 표가 실패해도 던지지 않고 정책·등급 올리기·시스템 드랍 모두 { ok: false }다', async () => {
     const result = await loadProbabilityDisclosure(
-      fakeClient({ capsule_policy: 'throw', jam_policy: 'throw', ambient_drop_config: 'throw' }).client
+      fakeClient({ capsule_policy: 'throw', jam_policy: 'throw', combine_policy: 'throw', ambient_drop_config: 'throw' }).client
     )
-    expect(result).toEqual({ policy: { ok: false }, ambient: { ok: false } })
+    expect(result).toEqual({ policy: { ok: false }, tierUp: { ok: false }, ambient: { ok: false } })
   })
 
-  it('클라이언트를 만들지 못해도 던지지 않고 둘 다 { ok: false }다', async () => {
+  it('클라이언트를 만들지 못해도 던지지 않고 모두 { ok: false }다', async () => {
     createServiceClientMock.mockImplementation(() => {
       throw new Error('SUPABASE_SERVICE_ROLE_KEY 없음')
     })
     const result = await loadProbabilityDisclosure()
-    expect(result).toEqual({ policy: { ok: false }, ambient: { ok: false } })
+    expect(result).toEqual({ policy: { ok: false }, tierUp: { ok: false }, ambient: { ok: false } })
   })
 
   it('클라이언트를 넘기지 않으면 service 클라이언트를 만들어 읽는다', async () => {
@@ -390,16 +393,17 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
 })
 
 describe('읽는 칸', () => {
-  it('세 표 모두 칸 이름을 골라 읽는다 — select(*)와 대량 수령 경보 기준 칸이 없다', async () => {
+  it('네 표 모두 칸 이름을 골라 읽는다 — select(*)와 대량 수령 경보 기준 칸이 없다', async () => {
     const fake = fakeClient(ALL_OK)
     await loadProbabilityDisclosure(fake.client)
-    expect(Object.keys(fake.selects).sort()).toEqual(['ambient_drop_config', 'capsule_policy', 'jam_policy'])
+    expect(Object.keys(fake.selects).sort()).toEqual(['ambient_drop_config', 'capsule_policy', 'combine_policy', 'jam_policy'])
     for (const columns of Object.values(fake.selects)) {
       expect(columns).not.toContain('*')
       expect(columns).not.toContain('mass_earn_alert')
     }
     expect(fake.selects.capsule_policy.split(', ').sort()).toEqual(Object.keys(CAPSULE_ROW).sort())
     expect(fake.selects.jam_policy.split(', ').sort()).toEqual(Object.keys(JAM_ROW).sort())
+    expect(fake.selects.combine_policy.split(', ').sort()).toEqual(Object.keys(COMBINE_ROW).sort())
     expect(fake.selects.ambient_drop_config.split(', ').sort()).toEqual(Object.keys(AMBIENT_ROW).sort())
   })
 
@@ -408,7 +412,9 @@ describe('읽는 칸', () => {
     await loadProbabilityDisclosure(fake.client)
     expect([...CAPSULE_COLUMNS].sort()).toEqual(fake.selects.capsule_policy.split(', ').sort())
     expect([...JAM_COLUMNS].sort()).toEqual(fake.selects.jam_policy.split(', ').sort())
+    expect([...COMBINE_COLUMNS].sort()).toEqual(fake.selects.combine_policy.split(', ').sort())
     expect(CAPSULE_COLUMNS).toHaveLength(9)
     expect(JAM_COLUMNS).toHaveLength(11)
+    expect(COMBINE_COLUMNS).toEqual(['tier_up_probability'])
   })
 })
