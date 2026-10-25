@@ -655,7 +655,10 @@ combination_recipe_slots {
   badge_type: 'item' | 'activity' | 'checkin'   -- item은 소각, 나머지는 보유 확인만
   allowed_badge_ids: UUID[]       -- 슬롯 후보(OR)
 }
-combine_policy { fail_reward_points: integer }  -- 미매칭 시 지급하는 고정 포인트
+combine_policy {
+  fail_reward_points: integer      -- 미매칭 시 지급하는 고정 포인트
+  tier_up_probability: numeric     -- 등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률(0 이상 1 이하, 기본 0.7). 나머지는 같은 등급
+}
 ```
 
 레시피당 슬롯은 2~10개이고 아이템 슬롯이 1개 이상 있어야 한다(`recipe-payload.ts`).
