@@ -9,13 +9,21 @@ import InlineNotice from '@/components/ui/InlineNotice'
 import { PackageIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import BagItemCell from './BagItemCell'
-import { tierUpRarityNote, type TierUpMaterial, type TierUpSheetCell, type TierUpSheetView } from './tierUpClient'
+import { TierUpCollectionRow, TierUpCollectionSheetContent } from './TierUpCollectionPicker'
+import {
+  tierUpRarityNote,
+  type TierUpCollectionView,
+  type TierUpMaterial,
+  type TierUpSheetCell,
+  type TierUpSheetView,
+} from './tierUpClient'
 
 /**
  * 등급 올리기 화면 본문 (티켓 20261022_2119 3회, 채원 사전 판정 2026-10-23) — 서비스 전용 조립 컴포넌트, MODULAR 승격은 하지 않는다.
  *
  * 그리기만 한다. 담은 칸·시트 열림·제출 중 상태와 `/api/combine/tier-up` 호출은 `CombineClient`가 갖는다(`PendingResultsSheet`와 같은 분리).
- * 위에서 아래로 설명 문단, «확률 안내» 링크, 슬롯 5칸(3+2), 등급 안내 한 줄, (조건부) 안내, 제출 버튼, 재료 시트 순이다.
+ * 위에서 아래로 설명 문단, «확률 안내» 링크, 슬롯 5칸(3+2), 등급 안내 한 줄, «받을 컬렉션» 행(티켓 20261023_1648 3회), (조건부) 안내, 제출 버튼,
+ * 재료 시트, 컬렉션 시트 순이다. 컬렉션 행·시트 본문은 `TierUpCollectionPicker`가 그리고 여기서는 슬롯 아래에 끼우기만 한다.
  * 확률 숫자·퍼센트는 어디에도 쓰지 않는다 — 링크 이름 하나만 둔다(UX 라이팅 §3.3).
  */
 
@@ -42,6 +50,15 @@ interface Props<T extends TierUpMaterial> {
   onCloseSheet: () => void
   sheet: TierUpSheetView<T>
   onPick: (itemId: string) => void
+  /** 받을 컬렉션 행·시트가 그릴 모양. `showNoEnoughNotice`일 때는 행을 그리지 않는다(올릴 수 없는데 «재료를 넣으면»이라고 말하면 거짓이 된다) */
+  collection: TierUpCollectionView
+  collectionSheetOpen: boolean
+  onOpenCollectionSheet: () => void
+  onCloseCollectionSheet: () => void
+  /** 시트의 줄을 눌렀다 — 호출부가 고르고 시트를 닫는다 */
+  onPickCollection: (collectionId: string) => void
+  /** 읽기 실패 안내의 «다시 불러오기» */
+  onRetryCollections: () => void
 }
 
 function SheetCells<T extends TierUpMaterial>({ cells, onPick }: { cells: TierUpSheetCell<T>[]; onPick: (itemId: string) => void }) {
@@ -112,6 +129,12 @@ export default function TierUpPanel<T extends TierUpMaterial>({
   onCloseSheet,
   sheet,
   onPick,
+  collection,
+  collectionSheetOpen,
+  onOpenCollectionSheet,
+  onCloseCollectionSheet,
+  onPickCollection,
+  onRetryCollections,
 }: Props<T>) {
   return (
     <>
@@ -150,6 +173,14 @@ export default function TierUpPanel<T extends TierUpMaterial>({
           {rarityNote}
         </p>
 
+        {/* 받을 컬렉션 — 재료 등급이 정해져야 고를 목록이 정해지므로 재료 뒤 단계다. 행이 갈래마다 바뀌는 것을 스크린리더가 읽도록 래퍼 하나가
+            aria-live(polite)다. 5개 모인 등급이 없어 아래 안내가 뜨는 때는 이 블록 전체를 그리지 않는다 */}
+        {!showNoEnoughNotice && (
+          <div aria-live="polite" className="mt-2">
+            <TierUpCollectionRow view={collection} submitting={submitting} onOpen={onOpenCollectionSheet} onRetry={onRetryCollections} />
+          </div>
+        )}
+
         {showNoEnoughNotice && (
           <InlineNotice className="mt-2">{d.combine.tierUp.noEnoughNotice}</InlineNotice>
         )}
@@ -180,6 +211,15 @@ export default function TierUpPanel<T extends TierUpMaterial>({
       <BottomSheet open={sheetOpen} onClose={onCloseSheet} title={d.combine.bagTitle}>
         <div className="px-4 pt-2 pb-6">
           <TierUpSheetContent sheet={sheet} onPick={onPick} />
+        </div>
+      </BottomSheet>
+
+      {/* 컬렉션 시트 — 줄 하나를 누르면 호출부가 고르고 바로 닫는다. 재료 시트와 동시에 열리지 않게 호출부가 한쪽을 열 때 다른 쪽을 닫는다 */}
+      <BottomSheet open={collectionSheetOpen} onClose={onCloseCollectionSheet} title={d.combine.tierUp.collectionPicker.sheetTitle} detent="compact">
+        <div className="px-4 pt-2 pb-6">
+          {collection.kind === 'ready' && (
+            <TierUpCollectionSheetContent choices={collection.choices} selectedId={collection.selectedId} onPick={onPickCollection} />
+          )}
         </div>
       </BottomSheet>
     </>

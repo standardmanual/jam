@@ -13,6 +13,7 @@ import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-dat
 import { filterRecipesWithLiveResults, filterReleasedRecipes, recipeReleaseState } from '@/lib/combine/visibility'
 import { hasAdminAccess } from '@/lib/admin/auth'
 import { getPendingCount } from '@/lib/combine/pending'
+import { loadTierUpCollections } from '@/lib/combine/tierUpCollections'
 
 export default async function CombinePage() {
   const supabase = await createClient()
@@ -210,7 +211,13 @@ export default async function CombinePage() {
 
   // 받지 않은 믹스 결과 개수(티켓 20261018_0055 2회) — 있으면 배너를 띄우고 새 믹스를 막는다. 온보딩 연출 모드는 0이다.
   // 읽지 못하면 던진다: 있는데 없다고 보여 주면 재료가 또 소모되고 결과가 더 쌓인다(서버도 소각 앞에서 한 번 더 거절한다).
-  const pendingCount = questStep ? 0 : await getPendingCount(service, user.id)
+  // 등급 올리기에서 고를 수 있는 컬렉션(티켓 20261023_1648 3회) — 소속 트라이브의 열린 컬렉션과 거기서 나올 수 있는 등급. 서버 굴림과 같은
+  // 후보 판정(`listIssueCandidates`)을 쓴다. 읽지 못하면 null(화면이 «없다»와 «못 읽었다»를 가른다). 온보딩 연출 중에는 입구 행이 숨겨져
+  // 이 화면에 들어오지 못하므로 조회를 건너뛴다. 받지 않은 결과 개수와 서로 기다릴 이유가 없어 함께 읽는다.
+  const [pendingCount, tierUpCollections] = await Promise.all([
+    questStep ? 0 : getPendingCount(service, user.id),
+    questStep ? [] : loadTierUpCollections(service, user.id),
+  ])
 
   return (
     <CombineClient
@@ -219,6 +226,7 @@ export default async function CombinePage() {
       ownedConditionBadgeIds={questStep ? [] : ownedConditionBadgeIds}
       questStep={questStep}
       pendingCount={pendingCount}
+      tierUpCollections={tierUpCollections}
     />
   )
 }

@@ -3,9 +3,18 @@
  * 클릭·상태 전환은 `CombineClient.tierUp.test.tsx`가 맡는다.
  */
 import { describe, it, expect, vi } from 'vitest'
+import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import TierUpPanel, { TierUpSheetContent } from './TierUpPanel'
-import { buildTierUpSheet, groupTierUpMaterials, type TierUpMaterial } from './tierUpClient'
+import { TierUpCollectionRow, TierUpCollectionSheetContent } from './TierUpCollectionPicker'
+import BottomSheet from '@/components/ui/BottomSheet'
+import {
+  buildTierUpSheet,
+  groupTierUpMaterials,
+  type TierUpCollectionOption,
+  type TierUpCollectionView,
+  type TierUpMaterial,
+} from './tierUpClient'
 import { d } from '@/lib/i18n'
 
 vi.mock('next/navigation', () => ({
@@ -43,6 +52,12 @@ function panel(overrides: Partial<Parameters<typeof TierUpPanel<TierUpMaterial>>
       onCloseSheet={noop}
       sheet={{ kind: 'empty' }}
       onPick={noop}
+      collection={{ kind: 'needMaterial' }}
+      collectionSheetOpen={false}
+      onOpenCollectionSheet={noop}
+      onCloseCollectionSheet={noop}
+      onPickCollection={noop}
+      onRetryCollections={noop}
       {...overrides}
     />
   )
@@ -53,13 +68,14 @@ function html(overrides: Partial<Parameters<typeof TierUpPanel<TierUpMaterial>>[
 }
 
 describe('TierUpPanel 본문 순서', () => {
-  it('설명, 확률 안내 링크, 슬롯 5칸, 등급 안내 줄, 버튼, 소각 안내가 위에서 아래로 나온다', () => {
+  it('설명, 확률 안내 링크, 슬롯 5칸, 등급 안내 줄, 받을 컬렉션 행, 버튼, 소각 안내가 위에서 아래로 나온다', () => {
     const out = html()
     const order = [
       d.combine.tierUp.description,
       d.capsule.sheet.probabilityLink,
       'grid grid-cols-3 gap-2',
       'aria-live="polite"',
+      d.combine.tierUp.collectionPicker.label,
       d.combine.tierUp.submit,
       d.combine.tierUp.burnNotice,
     ].map((needle) => out.indexOf(needle))
@@ -159,6 +175,117 @@ describe('TierUpPanel 제출 버튼', () => {
 
   it('«넣은 재료는 사라져요»가 muted 글자로 항상 나온다', () => {
     expect(html()).toMatch(/<p class="[^"]*text-muted[^"]*">넣은 재료는 사라져요<\/p>/)
+  })
+})
+
+const FOREST: TierUpCollectionOption = { id: 'forest', name: '숲속 산책 컬렉션', imageUrl: null, rarities: ['common', 'rare'] }
+const RIVER: TierUpCollectionOption = { id: 'river', name: '한강 라이딩 컬렉션', imageUrl: null, rarities: ['common', 'rare'] }
+
+type AnyElement = ReactElement<Record<string, unknown>>
+function findAll(node: ReactNode, predicate: (el: AnyElement) => boolean, found: AnyElement[] = []): AnyElement[] {
+  if (Array.isArray(node)) {
+    node.forEach((child) => findAll(child, predicate, found))
+    return found
+  }
+  if (!isValidElement(node)) return found
+  const el = node as AnyElement
+  if (predicate(el)) found.push(el)
+  findAll(el.props.children as ReactNode, predicate, found)
+  return found
+}
+
+describe('TierUpPanel 받을 컬렉션', () => {
+  const READY: TierUpCollectionView = { kind: 'ready', choices: [FOREST, RIVER], selectedId: null }
+
+  it('슬롯과 등급 안내 줄 아래, 제출 버튼 위에 행이 있고 aria-live(polite) 래퍼 하나로 감싼다', () => {
+    const out = html({ collection: READY })
+    const order = ['grid grid-cols-3 gap-2', 'min-h-5', '<div aria-live="polite" class="mt-2">', '받을 컬렉션', d.combine.tierUp.submit].map((needle) =>
+      out.indexOf(needle),
+    )
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(out.match(/<div aria-live="polite"/g)).toHaveLength(1)
+  })
+
+  it.each([
+    ['needMaterial', { kind: 'needMaterial' }, '재료를 넣으면 컬렉션을 고를 수 있어요'],
+    ['none', { kind: 'none', rarity: 'epic' }, '지금은 Epic 아이템 배지로 받을 수 있는 컬렉션이 없어요. 다른 등급으로 해 보세요.'],
+    ['error', { kind: 'error' }, d.combine.tierUp.collectionPicker.loadFailed],
+    ['ready', READY, d.combine.tierUp.collectionPicker.unselected],
+  ] as [string, TierUpCollectionView, string][])('%s 갈래는 이 문구를 그린다', (_name, collection, text) => {
+    expect(html({ collection })).toContain(text)
+  })
+
+  it('5개 이상 가진 등급이 없어 안내 블록이 뜰 때는 행을 그리지 않는다(올릴 수 없는데 «재료를 넣으면»이라고 말하면 거짓이다)', () => {
+    const out = html({ showNoEnoughNotice: true, collection: { kind: 'needMaterial' } })
+    expect(out).toContain(d.combine.tierUp.noEnoughNotice)
+    expect(out).not.toContain('받을 컬렉션')
+    expect(out).not.toContain('재료를 넣으면 컬렉션을 고를 수 있어요')
+    expect(out).not.toContain('<div aria-live="polite"')
+  })
+
+  it('제출 중에는 행이 잠긴다(disabled)', () => {
+    const tree = TierUpPanel<TierUpMaterial>({ ...(panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]), collection: READY, submitting: true })
+    const rowEl = findAll(tree, (el) => el.type === TierUpCollectionRow)[0]
+    expect(rowEl.props.submitting).toBe(true)
+    expect(html({ collection: READY, submitting: true })).toMatch(/<button type="button" disabled=""[^>]*>[\s\S]*?받을 컬렉션/)
+  })
+
+  it('행의 열기·다시 불러오기와 시트의 줄 선택이 호출부 핸들러로 이어진다', () => {
+    const onOpen = vi.fn()
+    const onRetry = vi.fn()
+    const onPick = vi.fn()
+    const tree = TierUpPanel<TierUpMaterial>({
+      ...(panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]),
+      collection: READY,
+      collectionSheetOpen: true,
+      onOpenCollectionSheet: onOpen,
+      onRetryCollections: onRetry,
+      onPickCollection: onPick,
+    })
+    const rowEl = findAll(tree, (el) => el.type === TierUpCollectionRow)[0]
+    ;(rowEl.props.onOpen as () => void)()
+    ;(rowEl.props.onRetry as () => void)()
+    const content = findAll(tree, (el) => el.type === TierUpCollectionSheetContent)[0]
+    ;(content.props.onPick as (id: string) => void)('river')
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    expect(onRetry).toHaveBeenCalledTimes(1)
+    expect(onPick).toHaveBeenCalledWith('river')
+  })
+
+  it('컬렉션 시트는 «컬렉션 고르기» 제목의 compact 시트이고 열림은 호출부가 정한다(재료 시트와 따로)', () => {
+    const base = panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]
+    const sheets = (props: Parameters<typeof TierUpPanel<TierUpMaterial>>[0]) =>
+      findAll(TierUpPanel<TierUpMaterial>(props), (el) => el.type === BottomSheet)
+    const closed = sheets({ ...base, collection: READY, sheetOpen: true, collectionSheetOpen: false })
+    expect(closed).toHaveLength(2)
+    const [material, collection] = closed
+    expect(material.props.title).toBe(d.combine.bagTitle)
+    expect(material.props.open).toBe(true)
+    expect(collection.props.title).toBe('컬렉션 고르기')
+    expect(collection.props.detent).toBe('compact')
+    expect(collection.props.open).toBe(false)
+
+    const open = sheets({ ...base, collection: READY, sheetOpen: false, collectionSheetOpen: true })
+    expect(open[0].props.open).toBe(false)
+    expect(open[1].props.open).toBe(true)
+  })
+
+  it('컬렉션 시트 본문은 ready일 때만 목록을 그린다', () => {
+    const base = panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]
+    const contents = (collection: TierUpCollectionView) =>
+      findAll(TierUpPanel<TierUpMaterial>({ ...base, collection, collectionSheetOpen: true }), (el) => el.type === TierUpCollectionSheetContent)
+    expect(contents(READY)).toHaveLength(1)
+    expect(contents({ kind: 'needMaterial' })).toHaveLength(0)
+    expect(contents({ kind: 'error' })).toHaveLength(0)
+    expect(contents({ kind: 'none', rarity: 'rare' })).toHaveLength(0)
+  })
+
+  it('확률 숫자·퍼센트는 어느 갈래에도 없다', () => {
+    for (const collection of [READY, { kind: 'none', rarity: 'rare' }, { kind: 'error' }, { kind: 'needMaterial' }] as TierUpCollectionView[]) {
+      const visibleText = html({ collection }).replace(/<[^>]+>/g, ' ')
+      expect(visibleText).not.toMatch(/\d\s*%|퍼센트/)
+    }
   })
 })
 
