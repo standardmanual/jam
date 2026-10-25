@@ -718,7 +718,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       expect(screen.nav(closed).props.title).toBe('등급 올리기')
     })
 
-    it('같은 등급이 나오면 «윗등급은 운이 좋을 때 나와요»를 덧붙이고, 등급이 없으면 등급을 지어내지 않는다', async () => {
+    it('같은 등급이 나오면 받은 등급만 말하고, 등급이 없으면 등급을 지어내지 않는다', async () => {
       const same = {
         success: true,
         path: 'tier_up',
@@ -730,14 +730,14 @@ describe('CombineClient 등급 올리기 흐름', () => {
       let screen = createScreen()
       screen.openTierUp()
       screen.fillAll()
-      expect(screen.overlay(await submit(screen)).props.resultMessage).toBe('Rare 아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요')
+      expect(screen.overlay(await submit(screen)).props.resultMessage).toBe('Rare 아이템 배지를 받았어요')
 
       hooks.store = []
       stubFetch({ ...same, resultBadges: [{ id: 'b1', name: '새 배지' }] })
       screen = createScreen()
       screen.openTierUp()
       screen.fillAll()
-      expect(screen.overlay(await submit(screen)).props.resultMessage).toBe('아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요')
+      expect(screen.overlay(await submit(screen)).props.resultMessage).toBe('아이템 배지를 받았어요')
     })
 
     it('빈칸이 모자라면 카드 없이 기존 «받지 않은 믹스 결과» 문구가 나오고, 닫으면 배너 개수가 서버 값으로 바뀐다', async () => {

@@ -177,15 +177,15 @@ describe('tierUpRarityNote / tierUpResultMessage', () => {
     expect(tierUpResultMessage('epic', [{ rarity: 'mystic' }])).toBe('윗등급이 나왔어요! Mystic 아이템 배지를 받았어요')
   })
 
-  it('같은 등급이면 «윗등급은 운이 좋을 때 나와요»를 덧붙인다', () => {
-    expect(tierUpResultMessage('rare', [{ rarity: 'rare' }])).toBe('Rare 아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요')
+  it('같은 등급이면 받은 등급만 말하고 뒤에 설명을 덧붙이지 않는다', () => {
+    expect(tierUpResultMessage('rare', [{ rarity: 'rare' }])).toBe('Rare 아이템 배지를 받았어요')
     expect(tierUpResultMessage('common', [{ rarity: 'common' }])).toBe(
-      'Common 아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요',
+      'Common 아이템 배지를 받았어요',
     )
   })
 
   it('응답에 등급이 없거나 비교할 수 없으면 등급을 지어내지 않는다', () => {
-    const unknown = '아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요'
+    const unknown = '아이템 배지를 받았어요'
     expect(tierUpResultMessage('rare', [{}])).toBe(unknown)
     expect(tierUpResultMessage('rare', [{ rarity: null }])).toBe(unknown)
     expect(tierUpResultMessage(undefined, [{ rarity: 'epic' }])).toBe(unknown)

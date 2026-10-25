@@ -627,11 +627,29 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '인벤토리, 컬렉션, 믹스',
     title: '등급 올리기 규칙 (레시피 없음)',
     type: 'code_constant',
-    currentSpec: '레시피를 만들지 않고 규칙 하나로 처리 (같은 등급의 아이템 배지 5개를 내면 새 아이템 1개를 받음, 트라이브·컬렉션·아이템 이름은 무관, Mystic은 재료 아님, 결과 등급은 캡슐 등급 확률을 재료 등급 이상으로 잘라 합이 100%가 되게 다시 맞춘 확률로 정함, 그 등급의 아이템은 열린 컬렉션에서 균등 추첨, 결과 트라이브는 캡슐과 같은 굴림(다른 트라이브일 확률은 캡슐 설정), 정한 등급에 아이템이 없으면 재료 등급까지만 한 등급씩 낮춤, 같은 확률표를 확률 안내 페이지가 재료 등급별 표로 보임)',
+    currentSpec:
+      '레시피를 만들지 않고 규칙 하나로 처리 (같은 등급의 아이템 배지 5개와 받을 컬렉션 하나를 내면 새 아이템 1개를 받음, 재료는 트라이브·컬렉션·아이템 이름 무관, Mystic은 재료 아님, 받을 컬렉션은 소속 트라이브의 열린 컬렉션 중 재료 등급과 바로 위 등급의 아이템이 모두 있는 것에서 고름(화면 목록과 서버가 같은 판정을 쓰고, 한쪽이라도 없는 컬렉션은 서버가 재료를 소각하기 전에 거절함), 결과 등급은 재료 등급의 바로 위가 윗등급 확률(기본 70%)이고 같은 등급이 나머지(기본 30%), 아이템은 고른 컬렉션 안에서 정한 등급의 것을 균등 추첨, 정한 등급의 아이템이 없는 경우(방어)에도 재료를 소각하기 전에 거절하고 아래 등급으로 내려가지 않음, 같은 확률표를 확률 안내 페이지가 재료 등급별 표로 보임)',
     codeLocation: 'jam-web/src/lib/combine/tierUp.ts',
-    userExperience: '겹친 아이템 배지 5개를 내면 새 아이템 1개를 받아요. 받는 등급은 확률로 정해지고, 같은 등급이 나올 수도 있어요.',
-    basisDoc: '운영 로직 8.4절, 18.3절, 19.3절',
-    ticketId: '20261022_2119',
+    userExperience: '겹친 아이템 배지 5개를 내고 받을 컬렉션을 고르면 그 컬렉션의 새 아이템 1개를 받아요. 받는 등급은 확률로 정해지고, 같은 등급이 나올 수도 있어요.',
+    basisDoc: '운영 로직 8.4절, 8.6절, 18.3절, 19.3절',
+    ticketId: '20261023_1648',
+  },
+  {
+    id: 'ch8-tier-up-probability',
+    chapter: 8,
+    chapterTitle: '인벤토리, 컬렉션, 믹스',
+    title: '등급 올리기 윗등급 확률',
+    type: 'admin_link',
+    currentSpec:
+      '기본 70% (0~100%, 재료 등급의 바로 위가 나올 확률이고 나머지는 같은 등급, Common·Rare·Epic 재료 모두 같은 값, 바꾸면 확률 안내 페이지에도 함께 반영되고 저장 전에 확인창이 뜸)',
+    dbTable: 'combine_policy',
+    dbColumn: 'tier_up_probability',
+    userExperience: '같은 등급 5개로 등급 올리기를 하면 설정한 확률로 한 등급 위가 나오고, 나머지는 같은 등급이 나와요.',
+    basisDoc: '운영 로직 8.4절, 8.6절, 19.1절',
+    ticketId: '20261023_1648',
+    adminLink: {
+      href: '/admin/balance#collection',
+    },
   },
 
   // =========================================================================
@@ -1189,7 +1207,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '안전과 확률 안내',
     title: '공식 확률 안내 페이지 (/probability) 실시간 연동',
     type: 'code_constant',
-    currentSpec: 'force-dynamic으로 jam_policy·capsule_policy 실시간 조회 반영',
+    currentSpec: 'force-dynamic으로 jam_policy·capsule_policy·combine_policy(등급 올리기 윗등급 확률) 실시간 조회 반영',
     codeLocation: 'jam-web/src/lib/probability/disclosure.ts',
     userExperience: '운영자가 어드민에서 확률을 변경하면 공개 페이지에 지체 없이 즉시 반영돼요.',
     basisDoc: '운영 로직 18.3절',

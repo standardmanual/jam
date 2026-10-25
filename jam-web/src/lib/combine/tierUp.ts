@@ -13,7 +13,9 @@
  *    정한 등급의 후보가 고른 컬렉션에 없으면 `null`이다 — 아래 등급으로 내려가지 않는다. 난수 함수와 현재 시각은 인자로 받는다 — 시험이 고정한 난수로 경계를 재현한다.
  *  - 실행(`tierUp`) 순서: ① 개수 5개·중복 없음 ② 이용 정지 ③ 받지 않은 결과 ④ 인벤토리·개체 ⑤ 잠김 ⑥ 재료 배지 ⑥-2 **고른 컬렉션**(소각 전)
  *    ⑦ **굴림(소각 전)** ⑧ 소각 ⑨ 결과 지급 ⑩ 후속(남은 칸 알림, 열린 개체의 배지 포인트) ⑪ 챕터 점수 «믹스 성공». 소각 앞(①~⑦)의 거절은 재료·포인트·점수 모두 그대로다.
- *    고른 컬렉션이 소속 트라이브의 열린 컬렉션이 아니면(비었거나 모르는 id 포함) `invalid_collection`, 정한 등급의 후보가 없어 굴림이 `null`이면 `no_candidate`로 소각 전에 거절한다.
+ *    고른 컬렉션이 소속 트라이브의 열린 컬렉션이 아니거나(모르는 id 포함), 재료 등급과 바로 윗등급의 아이템 배지 가운데 한쪽이라도 나올 수 없으면 `invalid_collection`으로 소각 전에 거절한다
+ *    (믹스 화면 목록의 `tierUpCollectionChoices`와 같은 `collectionSupportsTierUp` 판정, 티켓 20261025_2011). 한쪽만 있는 컬렉션을 받으면 굴린 등급에 따라 «받을 것 없음» 거절이 나는데
+ *    거절은 비용이 없어, 윗등급만 있는 컬렉션으로 윗등급이 나올 때까지 다시 시도해 윗등급 100%를 얻을 수 있었다. 위 검사를 통과했는데도 굴림이 `null`이면(방어) `no_candidate`로 소각 전에 거절한다.
  *  - 윗등급 확률은 `getCombinePolicy`로 읽는다. 읽기에 실패하거나 칸이 아직 없으면 기본값 0.7로 굴린다(믹스 기능이 죽지 않게 하는 폴백). 확률 안내 페이지는 이 폴백을 쓰지 않고 엄격하게 읽는다.
  *  - 결과 지급은 믹스와 같은 `combine_grant_results`(마이그레이션 236)다. 레시피가 없으므로 `p_recipe_id`는 null, 잠김은 배지(`always_locked`)만 정한다.
  *    빈칸이 모자라면 결과를 받지 않은 결과로 남기고(재료는 소모됨) 받기 전에는 새 믹스와 등급 올리기를 할 수 없다. 잠긴 결과를 가리는 방식은 믹스와 같다.
@@ -31,9 +33,11 @@ import { readUnlockRequired, type CombineResultBadge } from '@/lib/combine/index
 import { getPendingCount } from '@/lib/combine/pending'
 import { followUpCombineResultPoints } from '@/lib/combine/resultPointFollowUp'
 import { getCombinePolicy } from '@/lib/combine/policy'
+import { issuableRaritiesByBook } from '@/lib/combine/tierUpCollections'
 import {
   TIER_UP_MATERIAL_COUNT,
   TIER_UP_MATERIAL_RARITIES,
+  collectionSupportsTierUp,
   isTierUpMaterialRarity,
   tierUpProbabilities,
   type TierUpMaterialRarity,
@@ -91,9 +95,9 @@ export type TierUpFailReason =
   | 'locked_item_not_allowed'
   /** 재료가 아이템 배지가 아니거나, 등급이 섞였거나, Mystic이다 */
   | 'invalid_materials'
-  /** 고른 컬렉션이 소속 트라이브의 열린 컬렉션이 아니다(고르지 않았거나 모르는 id 포함). 소각 전에 거절하므로 재료는 그대로다 */
+  /** 고른 컬렉션이 소속 트라이브의 열린 컬렉션이 아니거나(고르지 않았거나 모르는 id 포함), 재료 등급·바로 윗등급 아이템 배지 가운데 한쪽이 없다. 소각 전에 거절하므로 재료는 그대로다 */
   | 'invalid_collection'
-  /** 고른 컬렉션에서 정한 등급으로 나올 수 있는 아이템 배지가 없다. 소각 전에 거절하므로 재료는 그대로다 */
+  /** 방어용 — 컬렉션 검사를 통과했는데도 정한 등급으로 나올 수 있는 아이템 배지가 없다. 소각 전에 거절하므로 재료는 그대로다 */
   | 'no_candidate'
 
 /**
@@ -136,7 +140,7 @@ const fail = (reason: TierUpFailReason): TierUpResult => ({ success: false, reas
  * 등급 올리기를 실행한다. 던지는 것: `UserSuspendedError`(정지, 라우트가 403), 읽기 실패 같은 일반 오류(라우트가 500),
  * `CapsuleError('no_tribe')`(소속 트라이브 없음). 모두 소각 전이라 재료는 그대로다. 단 «결과 지급 실패»는 소각 뒤에 던진다(머리말 참고).
  *
- * @param collectionId 유저가 고른 컬렉션(아이템북) id. 비어 있거나 소속 트라이브의 열린 컬렉션이 아니면 `invalid_collection`이다
+ * @param collectionId 유저가 고른 컬렉션(아이템북) id. 비어 있거나 소속 트라이브의 열린 컬렉션이 아니거나, 재료 등급·바로 윗등급 아이템 배지 가운데 한쪽이 없으면 `invalid_collection`이다
  */
 export async function tierUp(userId: string, itemIds: string[], collectionId: string, options: TierUpOptions = {}): Promise<TierUpResult> {
   const rand = options.rand ?? Math.random
@@ -195,8 +199,12 @@ export async function tierUp(userId: string, itemIds: string[], collectionId: st
   const pool = await loadRollData(supabase, userId)
   const chosenBook = pool.books.find((b) => b.id === collectionId)
   if (!chosenBook || !isIssuableBook(chosenBook, pool.tribeId, now)) return fail('invalid_collection')
+  // 재료 등급과 바로 윗등급의 아이템 배지가 모두 나올 수 있는 컬렉션이어야 한다(소각 전, 티켓 20261025_2011). 한쪽만 있으면 굴린 등급에 따라 받을 것이 없어
+  // 거절이 나는데 거절은 비용이 없으므로, 윗등급만 있는 컬렉션으로 윗등급이 나올 때까지 다시 시도해 윗등급 100%를 얻는 길이 열린다. 믹스 화면의 목록과 같은 판정이다.
+  const chosenRarities = issuableRaritiesByBook({ tribeId: pool.tribeId, books: [chosenBook], badges: pool.badges, now }).get(collectionId)
+  if (!chosenRarities || !collectionSupportsTierUp([...chosenRarities], materialRarity)) return fail('invalid_collection')
 
-  // ⑦ 굴림(소각 전) — 정한 등급으로 나올 아이템이 고른 컬렉션에 없으면 재료를 소각하기 전에 거절한다.
+  // ⑦ 굴림(소각 전) — 위 검사를 통과했으므로 정한 등급의 후보가 늘 있다. 그래도 없으면(방어) 재료를 소각하기 전에 거절한다.
   const { tier_up_probability: tierUpProbability } = await getCombinePolicy()
   const rolled = rollTierUp(
     {

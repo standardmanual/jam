@@ -63,7 +63,7 @@ import {
 import { AbusingSection } from '../AbusingSection'
 import { BADGEPOINTS_NOTICE, BadgePointsNotice, BadgePointsSection } from '../BadgePointsSection'
 import { AMBIENT_RARITY_RANDOM_NOTICE, AmbientRarityRandomNotice, AmbientSection } from '../AmbientSection'
-import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, CollectionNotice, CollectionSection } from '../CollectionSection'
+import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, COMBINE_TIER_UP_NOTICE, CollectionNotice, CollectionSection } from '../CollectionSection'
 import { INVENTORY_APPLY_NOTICE_FALLBACK, InventoryNotice, InventorySection, inventoryApplyNotice } from '../InventorySection'
 import {
   LOCKED_AMOUNT_NOTICE,
@@ -348,15 +348,18 @@ describe('BalanceSectionBody — 잠긴 아이템 배지 구역 (7-2 1회)', () 
 describe('BalanceSectionBody — 컬렉션과 믹스 구역 (7-2 1회)', () => {
   const collectionHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: COLLECTION_BINDING })).replace(/<!-- -->/g, '')
 
-  it('다섯 칸의 입력(저장된 값)과 두 묶음 제목이 보인다', async () => {
+  it('여섯 칸의 입력(저장된 값)과 두 묶음 제목이 보이고 윗등급 확률은 퍼센트로 보인다', async () => {
     const out = await collectionHtml()
-    expect([...out.matchAll(/<input /g)]).toHaveLength(5)
+    expect([...out.matchAll(/<input /g)]).toHaveLength(6)
     expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['컬렉션 등급별 완성 포인트', '믹스'])
     expect(out).toMatch(/id="balance-collection-default_reward:common"[^>]*value="100"/)
     expect(out).toMatch(/id="balance-collection-default_reward:mystic"[^>]*value="800"/)
     expect(out).toMatch(/id="balance-collection-fail_reward_points"[^>]*value="10"/)
+    expect(out).toMatch(/id="balance-collection-tier_up_probability"[^>]*value="70"/)
     expect(out).toContain('믹스 실패 포인트')
+    expect(out).toContain('등급 올리기 윗등급 확률')
     expect(out).toContain('기본값 800포인트')
+    expect(out).toContain('기본값 70%')
   })
 
   it('읽기만 한다(쓰기 호출이 없다)', async () => {
@@ -376,7 +379,7 @@ describe('BalanceSectionBody — 컬렉션과 믹스 구역 (7-2 1회)', () => {
     expect(await collectionHtml()).toContain(BALANCE_LOAD_FAILED_MESSAGE)
   })
 
-  it('안내에 «컬렉션마다 따로 정한 값이 먼저»·«이미 받은 보상은 그대로»·«재료가 사라지고 실패 포인트를 줘요»가 있다', () => {
+  it('안내에 «컬렉션마다 따로 정한 값이 먼저»·«이미 받은 보상은 그대로»·«재료가 사라지고 실패 포인트를 줘요»·«윗등급 확률이 확률 안내에도 반영»이 있다', () => {
     const out = renderToStaticMarkup(<CollectionNotice />).replace(/<!-- -->/g, '')
     expect(COLLECTION_REWARD_NOTICE).toContain('따로 정해 둔')
     expect(COLLECTION_REWARD_NOTICE).toContain('그 값이 먼저')
@@ -384,8 +387,12 @@ describe('BalanceSectionBody — 컬렉션과 믹스 구역 (7-2 1회)', () => {
     expect(COLLECTION_REWARD_NOTICE).toContain('0이면 포인트를 주지 않아요')
     expect(COMBINE_FAIL_NOTICE).toContain('재료가 사라지고')
     expect(COMBINE_FAIL_NOTICE).toContain('믹스 실패 포인트')
+    expect(COMBINE_TIER_UP_NOTICE).toContain('윗등급 확률')
+    expect(COMBINE_TIER_UP_NOTICE).toContain('같은 등급')
+    expect(COMBINE_TIER_UP_NOTICE).toContain('확률 안내 페이지')
     expect(out).toContain(COLLECTION_REWARD_NOTICE)
     expect(out).toContain(COMBINE_FAIL_NOTICE)
+    expect(out).toContain(COMBINE_TIER_UP_NOTICE)
     expect(out).toContain('role="note"')
     expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
   })

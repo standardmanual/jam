@@ -43,3 +43,18 @@ export function tierUpProbabilities(materialRarity: TierUpMaterialRarity, tierUp
     [upper, tierUpProbability],
   ]
 }
+
+/** 재료 등급의 바로 위 등급 — 윗등급이 나오면 이 등급이다 */
+export function tierUpUpperRarity(materialRarity: TierUpMaterialRarity): BadgeRarity {
+  return RARITY_ASCENDING[rarityRank(materialRarity) + 1]
+}
+
+/**
+ * 순수 — 컬렉션을 등급 올리기의 받을 컬렉션으로 고를 수 있는가 (티켓 20261025_2011).
+ * `rarities`는 그 컬렉션에서 지금 실제로 나올 수 있는 아이템 배지가 있는 등급이다. **재료 등급과 바로 윗등급이 모두** 있어야 한다.
+ * 한쪽이 없으면 굴린 등급에 따라 받을 것이 없어 거절이 나는데, 거절은 소각 전이라 비용이 없다 — 윗등급만 있는 컬렉션이면 거절될 때마다
+ * 다시 시도해 윗등급 100%를 얻을 수 있다. 믹스 화면의 컬렉션 목록(`tierUpCollectionChoices`)과 서버(`tierUp`)가 이 함수 하나로 판정한다.
+ */
+export function collectionSupportsTierUp(rarities: readonly BadgeRarity[], materialRarity: TierUpMaterialRarity): boolean {
+  return rarities.includes(materialRarity) && rarities.includes(tierUpUpperRarity(materialRarity))
+}

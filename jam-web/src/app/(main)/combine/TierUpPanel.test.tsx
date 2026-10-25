@@ -83,9 +83,10 @@ describe('TierUpPanel 본문 순서', () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 
-  it('설명 문단은 운이 좋으면 윗등급이 나오고 아니면 같은 등급이 나온다는 문장을 접지 않고 보인다', () => {
+  it('설명 문단은 윗등급이 나오거나 같은 등급이 나온다는 문장을 접지 않고 보이고 «운이 좋으면»으로 꾸미지 않는다', () => {
     const out = html()
-    expect(out).toContain('운이 좋으면 윗등급이 나오고, 아니면 같은 등급이 나와요')
+    expect(out).toContain('윗등급이 나오거나 같은 등급이 나와요')
+    expect(out).not.toContain('운이 좋')
     expect(out).toContain('Mystic은 넣을 수 없어요')
     expect(out).not.toContain('더 보기')
   })

@@ -5,7 +5,8 @@
  *  1) 확률표 — 재료 등급 그대로가 `1 - p`, 바로 위 등급이 `p`(윗등급 확률 한 칸). 기본 0.7이면 30/70. 0과 1에서도 0% 줄을 지우지 않는다. Mystic 재료는 던진다
  *  2) 굴림(순수) — 난수를 인자로 주입해 경계를 고정한다. 난수 순서는 등급(1번) → 아이템(1번)이다. 아이템은 **고른 컬렉션** 안의 그 등급 후보에서 균등이다.
  *     정한 등급의 후보가 없거나 소속 트라이브의 열린 컬렉션이 아니면 아래 등급으로 내려가지 않고 null이다
- *  3) 실행 — 소각 앞(개수·정지·받지 않은 결과·소유·잠김·재료 검사·고른 컬렉션 검사·후보 없음)의 거절은 소각·지급·점수가 없다. 성공하면 소각 → 지급(`combine_grant_results`,
+ *  3) 실행 — 소각 앞(개수·정지·받지 않은 결과·소유·잠김·재료 검사·고른 컬렉션 검사)의 거절은 소각·지급·점수가 없다. 고른 컬렉션에 재료 등급·바로 윗등급 아이템 배지가
+ *     모두 있어야 하고(`collectionSupportsTierUp`, 믹스 화면 목록과 같은 판정, 티켓 20261025_2011) 한쪽만 있으면 `invalid_collection`이다. 성공하면 소각 → 지급(`combine_grant_results`,
  *     레시피 없음) → 후속 → 챕터 점수 «믹스 성공» 한 번(새 UUID). 빈칸이 모자라면 받지 않은 결과로 남기고, 잠긴 결과는 가린다. 지급 실패는 던진다
  *
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/tierUp.test.ts
@@ -126,6 +127,9 @@ vi.mock('@/lib/combine/index', () => ({
 }))
 
 import { UserSuspendedError } from '@/lib/suspension/suspension'
+import { tierUpCollectionChoices } from '@/app/(main)/combine/tierUpClient'
+import { buildTierUpCollectionOptions } from '@/lib/combine/tierUpCollections'
+import { collectionSupportsTierUp, tierUpUpperRarity } from '@/lib/combine/tierUpOdds'
 import {
   isTierUpMaterialRarity,
   rollTierUp,
@@ -287,6 +291,27 @@ describe('tierUpProbabilities — 재료 등급별 결과 등급 확률', () => 
     expect(isTierUpMaterialRarity('mystic')).toBe(false)
     expect(isTierUpMaterialRarity(null)).toBe(false)
     expect(isTierUpMaterialRarity('legend')).toBe(false)
+  })
+
+  it('tierUpUpperRarity — 재료 등급의 바로 위 등급이다', () => {
+    expect(tierUpUpperRarity('common')).toBe('rare')
+    expect(tierUpUpperRarity('rare')).toBe('epic')
+    expect(tierUpUpperRarity('epic')).toBe('mystic')
+  })
+
+  it('collectionSupportsTierUp — 재료 등급과 바로 윗등급이 모두 있어야 true다 (한쪽만 있거나 두 칸 위·아래 등급만 있으면 false)', () => {
+    expect(collectionSupportsTierUp(['common', 'rare'], 'common')).toBe(true)
+    expect(collectionSupportsTierUp(['common', 'rare', 'epic', 'mystic'], 'common')).toBe(true)
+    expect(collectionSupportsTierUp(['rare', 'epic'], 'rare')).toBe(true)
+    expect(collectionSupportsTierUp(['epic', 'mystic'], 'epic')).toBe(true)
+    // 윗등급만, 재료 등급만, 비어 있음
+    expect(collectionSupportsTierUp(['rare'], 'common')).toBe(false)
+    expect(collectionSupportsTierUp(['common'], 'common')).toBe(false)
+    expect(collectionSupportsTierUp([], 'common')).toBe(false)
+    // 두 칸 위 등급이나 아래 등급은 바로 윗등급이 아니다
+    expect(collectionSupportsTierUp(['common', 'epic'], 'common')).toBe(false)
+    expect(collectionSupportsTierUp(['common', 'rare'], 'rare')).toBe(false)
+    expect(collectionSupportsTierUp(['epic'], 'epic')).toBe(false)
   })
 })
 
@@ -676,7 +701,7 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
 
   it('잠김으로 만든 배지가 나오면 이름·id·그림을 가리고 필요한 양을 싣는다', async () => {
     const locked = badge('own-c1', 'common', BOOK_OWN, { always_locked: true, image_url: 'https://cdn.example/own-c1.png' })
-    setPool(BOOKS, [locked])
+    setPool(BOOKS, [locked, badge('own-r1', 'rare', BOOK_OWN)])
     mocks.readUnlockRequired.mockResolvedValue([5])
 
     const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.1, 0.0) })
@@ -693,7 +718,7 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
 
   it('필요한 양을 읽지 못하면 unlockRequired 칸을 뺀다', async () => {
     const locked = badge('own-c1', 'common', BOOK_OWN, { always_locked: true })
-    setPool(BOOKS, [locked])
+    setPool(BOOKS, [locked, badge('own-r1', 'rare', BOOK_OWN)])
     mocks.readUnlockRequired.mockResolvedValue([])
 
     const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.1, 0.0) })
@@ -876,31 +901,31 @@ describe('tierUp — 소각 앞의 거절 (재료·지급·점수 모두 그대�
     expectNothingChanged()
   })
 
-  it('고른 컬렉션이 비어 있으면 소각하지 않고 no_candidate로 거절한다', async () => {
+  it('고른 컬렉션이 비어 있으면 소각하지 않고 invalid_collection으로 거절한다', async () => {
     setPool(BOOKS, [])
 
-    const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.5, 0.0) })
+    const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq() })
 
-    expect(result).toEqual({ success: false, reason: 'no_candidate', pointsAwarded: 0 })
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
     expectNothingChanged()
   })
 
-  it('정한 등급의 아이템이 고른 컬렉션에 없으면 no_candidate다 (재료 등급으로 내려가지 않고, 다른 컬렉션에서 뽑지도 않는다)', async () => {
-    // 고른 컬렉션에 Common만 있고 윗등급(Rare)이 정해졌다. 같은 트라이브의 다른 컬렉션에 Rare가 있어도 고른 컬렉션 밖에서는 뽑지 않는다
+  it('고른 컬렉션에 윗등급이 없으면 invalid_collection이다 (같은 트라이브의 다른 컬렉션에 윗등급이 있어도 고른 컬렉션 밖에서는 뽑지 않는다)', async () => {
     setPool(BOOKS, [badge('own-c1', 'common', BOOK_OWN), badge('own2-r1', 'rare', BOOK_OWN_2)])
 
-    const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.5, 0.0) })
+    const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq() })
 
-    expect(result).toEqual({ success: false, reason: 'no_candidate', pointsAwarded: 0 })
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
     expectNothingChanged()
   })
 
-  it('같은 컬렉션이라도 같은 등급이 정해지면 받는다 (Common만 있는 컬렉션, 난수 0.1)', async () => {
+  it('Common만 있는 컬렉션은 같은 등급이 정해지는 난수에서도 invalid_collection이다 (한쪽만 있는 컬렉션은 받지 않는다)', async () => {
     setPool(BOOKS, [badge('own-c1', 'common', BOOK_OWN)])
 
-    const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.1, 0.0) })
+    const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq() })
 
-    expect(result.success && result.resultBadges[0]).toMatchObject({ id: 'own-c1', rarity: 'common' })
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
+    expectNothingChanged()
   })
 
   it('풀을 읽지 못하면 던진다 (소각 전)', async () => {
@@ -910,6 +935,128 @@ describe('tierUp — 소각 앞의 거절 (재료·지급·점수 모두 그대�
 
     expectNothingChanged()
   })
+})
+
+describe('tierUp — 재료 등급과 바로 윗등급이 모두 있는 컬렉션만 받는다 (티켓 20261025_2011)', () => {
+  /** 윗등급(Rare)만 있는 컬렉션 — Common 재료로는 받을 수 없다 */
+  const BOOK_UPPER_ONLY = 'book-upper-only'
+  /** 재료 등급(Common)만 있는 컬렉션 — 윗등급이 정해져도 받을 것이 없다 */
+  const BOOK_SAME_ONLY = 'book-same-only'
+
+  function setSplitPool(extraBooks: IssueBook[] = [], extraBadges: PoolBadge[] = []) {
+    setPool(
+      [...BOOKS, book(BOOK_UPPER_ONLY, T_OWN), book(BOOK_SAME_ONLY, T_OWN), ...extraBooks],
+      [
+        ...pool(),
+        badge('up-r1', 'rare', BOOK_UPPER_ONLY),
+        badge('up-r2', 'rare', BOOK_UPPER_ONLY),
+        badge('same-c1', 'common', BOOK_SAME_ONLY),
+        ...extraBadges,
+      ]
+    )
+  }
+
+  it('윗등급만 있는 컬렉션은 윗등급이 정해지는 난수에서도 invalid_collection이다 — 소각·지급 없음, 난수도 쓰지 않는다', async () => {
+    setSplitPool()
+
+    const result = await tierUp(USER, ITEM_IDS, BOOK_UPPER_ONLY, { rand: seq() })
+
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
+    expectNothingChanged()
+  })
+
+  it('윗등급만 있는 컬렉션은 같은 등급이 정해지는 난수에서도 invalid_collection이다 (no_candidate가 아니다)', async () => {
+    setSplitPool()
+
+    const result = await tierUp(USER, ITEM_IDS, BOOK_UPPER_ONLY, { rand: () => 0.1 })
+
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
+    expectNothingChanged()
+  })
+
+  it('재료 등급만 있는 컬렉션도 invalid_collection이다 — 윗등급이 정해지는 난수에서도 소각하지 않는다', async () => {
+    setSplitPool()
+
+    const result = await tierUp(USER, ITEM_IDS, BOOK_SAME_ONLY, { rand: () => 0.9 })
+
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
+    expectNothingChanged()
+  })
+
+  it('윗등급만 있는 컬렉션으로 난수를 바꿔 100번 반복해도 한 번도 소각·지급되지 않고 윗등급이 나오지 않는다', async () => {
+    setSplitPool()
+
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const result = await tierUp(USER, ITEM_IDS, BOOK_UPPER_ONLY, { rand: () => attempt / 100 })
+      expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
+    }
+
+    expectNothingChanged()
+  })
+
+  it.each([
+    ['Rare 재료 — 윗등급(Epic)이 없는 컬렉션', 'rare', BOOK_OWN_2],
+    ['Epic 재료 — 윗등급(Mystic)이 없는 컬렉션', 'epic', BOOK_OWN_2],
+    ['Epic 재료 — Epic만 있고 Mystic이 없는 컬렉션', 'epic', 'book-epic-only'],
+  ] as const)('%s은 invalid_collection이다', async (_label, rarity, bookId) => {
+    setSplitPool([book('book-epic-only', T_OWN)], [badge('ep-e1', 'epic', 'book-epic-only')])
+    setMaterials(rarity)
+
+    const result = await tierUp(USER, ITEM_IDS, bookId, { rand: () => 0.9 })
+
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
+    expectNothingChanged()
+  })
+
+  it.each([
+    ['삭제된 배지', { deleted_at: '2026-10-01T00:00:00.000Z' }],
+    ['드랍 제외 배지', { drop_excluded: true }],
+    ['공개 전 배지', { valid_from: '2026-11-01T00:00:00.000Z' }],
+    ['공개가 끝난 배지', { valid_until: '2026-10-01T00:00:00.000Z' }],
+  ])('윗등급 배지가 %s뿐이면 윗등급이 없는 것으로 보고 invalid_collection이다', async (_label, overrides) => {
+    setSplitPool(
+      [book('book-dead-upper', T_OWN)],
+      [badge('dead-c1', 'common', 'book-dead-upper'), badge('dead-r1', 'rare', 'book-dead-upper', overrides)]
+    )
+
+    const result = await tierUp(USER, ITEM_IDS, 'book-dead-upper', { rand: () => 0.9 })
+
+    expect(result).toEqual({ success: false, reason: 'invalid_collection', pointsAwarded: 0 })
+    expectNothingChanged()
+  })
+
+  it('두 등급이 모두 있는 컬렉션은 어느 등급이 정해져도 받는다 (같은 등급 0.1 / 윗등급 0.9)', async () => {
+    setSplitPool()
+
+    const same = await tierUp(USER, ITEM_IDS, BOOK_OWN_2, { rand: seq(0.1, 0.0) })
+    const upper = await tierUp(USER, ITEM_IDS, BOOK_OWN_2, { rand: seq(0.9, 0.0) })
+
+    expect(same.success && same.resultBadges[0]).toMatchObject({ id: 'own2-c1', rarity: 'common' })
+    expect(upper.success && upper.resultBadges[0]).toMatchObject({ id: 'own2-r1', rarity: 'rare' })
+  })
+
+  it.each(['common', 'rare', 'epic'] as const)(
+    '믹스 화면의 목록(tierUpCollectionChoices)에 보이는 컬렉션만 서버도 받는다 — %s 재료',
+    async (rarity) => {
+      setSplitPool([book('book-epic-only', T_OWN)], [badge('ep-e1', 'epic', 'book-epic-only')])
+      setMaterials(rarity)
+      const poolData = (await mocks.loadRollData()) as { books: IssueBook[]; badges: PoolBadge[] }
+      const books = poolData.books.map((b) => ({ ...b, name: b.id, image_url: null }))
+      const options = buildTierUpCollectionOptions({ tribeId: T_OWN, books, badges: poolData.badges, now: NOW })
+      const shown = new Set(tierUpCollectionChoices(options, rarity).map((option) => option.id))
+
+      const mine = books.filter((b) => b.tribe_id === T_OWN)
+      expect(mine.length).toBeGreaterThan(shown.size) // 보이지 않는 컬렉션도 섞여 있어야 비교가 의미 있다
+      expect(shown.size).toBeGreaterThan(0)
+      for (const mineBook of mine) {
+        for (const roll of [0.1, 0.9]) {
+          const result = await tierUp(USER, ITEM_IDS, mineBook.id, { rand: () => roll })
+          const accepted = !(!result.success && (result.reason === 'invalid_collection' || result.reason === 'no_candidate'))
+          expect(accepted, `${mineBook.id} / 난수 ${roll}`).toBe(shown.has(mineBook.id))
+        }
+      }
+    }
+  )
 })
 
 describe('tierUp — 소각 뒤', () => {

@@ -655,7 +655,10 @@ combination_recipe_slots {
   badge_type: 'item' | 'activity' | 'checkin'   -- item은 소각, 나머지는 보유 확인만
   allowed_badge_ids: UUID[]       -- 슬롯 후보(OR)
 }
-combine_policy { fail_reward_points: integer }  -- 미매칭 시 지급하는 고정 포인트
+combine_policy {
+  fail_reward_points: integer      -- 미매칭 시 지급하는 고정 포인트
+  tier_up_probability: numeric     -- 등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률(0 이상 1 이하, 기본 0.7). 나머지는 같은 등급
+}
 ```
 
 레시피당 슬롯은 2~10개이고 아이템 슬롯이 1개 이상 있어야 한다(`recipe-payload.ts`).
@@ -714,8 +717,12 @@ progress 계산 (calculateProgress):
     condition_json.activity_type 필터 후 누적 distanceKm
   mission_type = 'activity_count':
     해당 종목 활동 횟수
-  mission_type = 'poi_visit': 미구현 (0 반환)
-  mission_type = 'item_collect': 미구현 (0 반환)
+  mission_type = 'checkin':
+    대상 지점(condition_json.poi_id)의 체크인 배지 획득 이력(user_checkin_badge_earns.poi_id)
+    또는 레거시 user_activity_badges.triggered_by_poi_id가 있으면 1, 없으면 0
+  mission_type = 'item_collect':
+    대상 배지(condition_json.badge_id)를 활동 배지·인벤토리로 보유하거나
+    체크인 배지 획득 이력(user_checkin_badge_earns.badge_id)이 있으면 1, 없으면 0
 
 달성 판정:
   progress >= target 값:
@@ -771,8 +778,8 @@ progress 계산 (calculateProgress):
 |---|---|---|
 | `distance` | 누적 이동 거리(km) | ✅ 운영 중 |
 | `activity_count` | 활동 횟수 | ✅ 운영 중 |
-| `poi_visit` | POI 방문 횟수 | ❌ 미구현 |
-| `item_collect` | 아이템 수집 | ❌ 미구현 |
+| `checkin` | 대상 지점 체크인(체크인 배지 획득 이력, 달성형 0/1) | ✅ 구현 |
+| `item_collect` | 대상 배지 수집(활동 배지·인벤토리·체크인 배지 이력, 달성형 0/1) | ✅ 구현 |
 
 ### 9-5. 공개 미션 운영 원칙
 
