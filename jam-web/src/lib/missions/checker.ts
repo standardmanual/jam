@@ -175,10 +175,22 @@ export async function checkMissions(
   // 4. checkin / item_collect 판정에 필요한 유저 보유 현황을 미리 조회.
   //    (활동 배치만으로는 판단 불가 — DB 조회 필요. 참가 미션이 하나라도
   //     이 두 타입일 때만 조회해 불필요한 쿼리를 피한다.)
-  const needsOwnership = pendingMissions.some(
+  //    체크인 배지 이력(user_checkin_badge_earns)은 방문마다 행이 쌓여 전체를 읽으면 PostgREST
+  //    상한(1,000행)에 걸리므로, 참가 중인 미션의 대상 지점·배지 id만 넘겨 그 id로 좁혀 읽는다.
+  const ownershipMissions = pendingMissions.filter(
     (m) => participationSet.has(m.id) && (m.mission_type === 'checkin' || m.mission_type === 'item_collect')
   )
-  const ownership = needsOwnership ? await loadOwnership(userId) : { ownedBadgeIds: new Set<string>(), visitedPoiIds: new Set<string>() }
+  const targetPoiIds = new Set<string>()
+  const targetBadgeIds = new Set<string>()
+  for (const m of ownershipMissions) {
+    const c = m.condition_json as MissionCondition
+    if (m.mission_type === 'checkin' && c.poi_id) targetPoiIds.add(c.poi_id)
+    if (m.mission_type === 'item_collect' && c.badge_id) targetBadgeIds.add(c.badge_id)
+  }
+  const ownership =
+    ownershipMissions.length > 0
+      ? await loadOwnership(userId, { poiIds: [...targetPoiIds], badgeIds: [...targetBadgeIds] })
+      : { ownedBadgeIds: new Set<string>(), visitedPoiIds: new Set<string>() }
 
   // DB 기록 조건 미션들이 같은 원천(체크인 방문 기록 전체 등)을 다시 읽지 않게 한 번 읽은 결과를 이 호출 안에서 나눠 쓴다(티켓 20261019_1445 4회).
   // 이 호출이 끝나면 버려진다. 값이 루프 안에서 바뀌는 mission_complete_count 같은 읽기는 나누지 않는다(dbMetrics.ts의 SharedReads 참고).
@@ -532,13 +544,20 @@ export function evaluateMission(
 
 /**
  * checkin / item_collect 달성 판정에 필요한 유저 보유 현황 조회.
- * - 체크인한 지점: user_activity_badges.triggered_by_poi_id (지점 매칭 시스템 재사용)
- * - 보유 배지: user_activity_badges.badge_id ∪ inventory_items.badge_id
+ * - 체크인한 지점: user_checkin_badge_earns.poi_id ∪ user_activity_badges.triggered_by_poi_id(레거시)
+ * - 보유 배지: user_checkin_badge_earns.badge_id ∪ user_activity_badges.badge_id ∪ inventory_items.badge_id
+ *
+ * 체크인 배지 획득은 `user_activity_badges`가 아니라 `user_checkin_badge_earns`에만 기록된다(sync.ts).
+ * 이력은 방문마다 쌓이므로 `targets`의 지점·배지 id로 좁혀 읽는다. 대상이 없으면 그 조회는 하지 않고,
+ * 조회가 실패하면 그 몫은 빈 집합으로 둔다(미달성 쪽으로 끝난다 — 예외를 던지지 않는다).
  */
-async function loadOwnership(userId: string): Promise<OwnershipContext> {
+async function loadOwnership(
+  userId: string,
+  targets: { poiIds: string[]; badgeIds: string[] }
+): Promise<OwnershipContext> {
   const supabase = createServiceClient()
 
-  const [{ data: activityBadgesRaw }, { data: invRaw }] = await Promise.all([
+  const [{ data: activityBadgesRaw }, { data: invRaw }, poiEarns, badgeEarns] = await Promise.all([
     supabase
       .from('user_activity_badges')
       .select('badge_id, triggered_by_poi_id')
@@ -548,6 +567,20 @@ async function loadOwnership(userId: string): Promise<OwnershipContext> {
       .select('inventory_items(badge_id)')
       .eq('user_id', userId)
       .maybeSingle(),
+    targets.poiIds.length > 0
+      ? supabase
+          .from('user_checkin_badge_earns')
+          .select('badge_id, poi_id')
+          .eq('user_id', userId)
+          .in('poi_id', targets.poiIds)
+      : null,
+    targets.badgeIds.length > 0
+      ? supabase
+          .from('user_checkin_badge_earns')
+          .select('badge_id, poi_id')
+          .eq('user_id', userId)
+          .in('badge_id', targets.badgeIds)
+      : null,
   ])
 
   const ownedBadgeIds = new Set<string>()
@@ -562,6 +595,18 @@ async function loadOwnership(userId: string): Promise<OwnershipContext> {
   const invItems = ((invRaw as { inventory_items?: { badge_id: string }[] } | null)?.inventory_items ?? [])
   for (const it of invItems) {
     if (it.badge_id) ownedBadgeIds.add(it.badge_id)
+  }
+
+  for (const earns of [poiEarns, badgeEarns]) {
+    if (!earns) continue
+    if (earns.error) {
+      console.error('[loadOwnership] user_checkin_badge_earns 조회 오류:', earns.error)
+      continue
+    }
+    for (const e of (earns.data ?? []) as { badge_id: string; poi_id: string }[]) {
+      if (e.badge_id) ownedBadgeIds.add(e.badge_id)
+      if (e.poi_id) visitedPoiIds.add(e.poi_id)
+    }
   }
 
   return { ownedBadgeIds, visitedPoiIds }
