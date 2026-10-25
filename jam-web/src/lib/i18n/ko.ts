@@ -2067,7 +2067,7 @@ export const ko = {
       resultUnknown: '아이템 배지를 받았어요',
       /** 소각 전 거절 `no_candidate` — 다른 컬렉션을 고르라는 안내다. 「후보」는 유저 화면에 쓰지 않는 말이다(§3.3) */
       noCandidate: '고른 컬렉션에서는 지금 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.',
-      /** 소각 전 거절 `invalid_collection` — 고른 컬렉션이 소속 트라이브의 열린 컬렉션이 아니다 */
+      /** 소각 전 거절 `invalid_collection` — 고른 컬렉션이 소속 트라이브의 열린 컬렉션이 아니거나, 재료 등급·바로 윗등급 아이템 배지 가운데 한쪽이 없다 */
       invalidCollection: '지금은 고를 수 없는 컬렉션이에요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.',
       /** 소각 전 거절 `invalid_materials` — 등급이 섞였거나 Mystic·등급 없는 배지가 들어 있다 */
       invalidMaterials:
