@@ -56,12 +56,19 @@ describe('규칙 경고 문장', () => {
     )
   })
 
-  it('R8 이름표: 드랍 확률·등급 비율은 「드랍 확률 값」, 믹스 실패 보상, 나머지는 「경제 정책 값」', () => {
+  it('R8 이름표: 드랍 확률·등급 비율은 「드랍 확률 값」, 믹스 실패 보상, 등급 올리기 윗등급 확률, 나머지는 「경제 정책 값」', () => {
     expect(economyKeyLabel('rarity_common')).toBe('드랍 확률 값')
     expect(economyKeyLabel('rarity_mystic')).toBe('드랍 확률 값')
     expect(economyKeyLabel('bonus_drop_rate_intense')).toBe('드랍 확률 값')
     expect(economyKeyLabel('fail_reward_points')).toBe('믹스 실패 보상 값')
+    expect(economyKeyLabel('tier_up_probability')).toBe('등급 올리기 확률 값')
     expect(economyKeyLabel('completion_decay')).toBe('경제 정책 값')
+  })
+
+  it('R8: 키가 하나면 이름표 뒤에 키 이름을 괄호로 붙인다(등급 올리기 윗등급 확률 포함)', () => {
+    expect(economyKeysMessage(['tier_up_probability'])).toBe(
+      '등급 올리기 확률 값(tier_up_probability)이 이 항목에 들어 있어요. 경제 수치는 기획에서 바꾸지 않는 게 기준이에요.'
+    )
   })
 
   it('R8: 키 3개까지는 이름을 다 보이고 그 이상은 「외 N개」다', () => {

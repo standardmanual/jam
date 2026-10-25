@@ -147,10 +147,14 @@ export function countLadderMessage(familyKey: string, sum: number, max: number):
   return `같은 계열(${familyKey})의 횟수형 배지 단계 포인트를 모두 더하면 ${formatCount(sum)} 포인트예요. ${formatCount(max)} 포인트까지가 기준이에요.`
 }
 
-/** R8 경제 정책 값 이름. 드랍 확률·등급 비율은 「드랍 확률 값」, 믹스 실패 보상은 「믹스 실패 보상 값」, 나머지는 「경제 정책 값」이다. */
+/**
+ * R8 경제 정책 값 이름. 드랍 확률·등급 비율은 「드랍 확률 값」, 믹스 실패 보상은 「믹스 실패 보상 값」, 등급 올리기 윗등급 확률은 「등급 올리기 확률 값」, 나머지는 「경제 정책 값」이다.
+ * `tier_up_probability`는 `combine_policy`의 칸이다(마이그레이션 287, 티켓 20261023_1648). 규칙 행(`ops_rules`의 `economy_keys`)에 이 이름이 들어 있을 때 쓰는 이름표이고, 행에 넣는 일은 DB 변경이라 이 파일이 하지 않는다.
+ */
 export function economyKeyLabel(key: string): string {
   if (key.startsWith('rarity_') || key.startsWith('bonus_drop_rate')) return '드랍 확률 값'
   if (key === 'fail_reward_points') return '믹스 실패 보상 값'
+  if (key === 'tier_up_probability') return '등급 올리기 확률 값'
   return '경제 정책 값'
 }
 

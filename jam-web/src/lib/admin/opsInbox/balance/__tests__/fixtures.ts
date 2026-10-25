@@ -1,5 +1,7 @@
 /**
  * 밸런스 평가 테스트 공용 재료 (티켓 20260930_1459 조각 A). 규칙 값은 마이그레이션 207의 시드와 같은 값이다.
+ * 단 R8 경제 키는 시드의 일부 몇 개에 등급 올리기 윗등급 확률(`tier_up_probability`, 티켓 20261023_1648)을 더한 표본이다 — 시드(23개)에는 아직 없는 칸이고,
+ * 규칙 행에 넣을지는 DB 변경이라 후속에서 정한다. 시험은 그 키가 들어 있을 때 이름표가 맞게 나오는지만 본다.
  */
 import type { ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import type { BalanceItemInput } from '../evaluate'
@@ -8,7 +10,7 @@ import type { BalanceState } from '../state'
 
 export const NOW = '2026-10-01T03:00:00.000Z' // 10/1(수) 12:00 KST
 
-const ECONOMY_KEYS = ['rarity_common', 'rarity_rare', 'bonus_drop_rate', 'fail_reward_points', 'completion_decay']
+const ECONOMY_KEYS = ['rarity_common', 'rarity_rare', 'bonus_drop_rate', 'fail_reward_points', 'tier_up_probability', 'completion_decay']
 
 export const SEED_ROWS: OpsRuleRow[] = [
   { rule_key: 'open_collections_max', rule_group: 'balance', value: { max: 6, provisional: true }, level: 'warn', enabled: true },
