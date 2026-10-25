@@ -155,17 +155,18 @@ export interface PickItemBadgeInput<B extends IssueBadge = IssueBadge> {
   now: Date
 }
 
+/**
+ * 발급할 수 있는 컬렉션인가 — 소속 트라이브, 활성, 드랍 제외 아님, 공개 기간 안.
+ * 후보 목록(`listIssueCandidates`)과 등급 올리기의 «고른 컬렉션 검사»(`lib/combine/tierUp.ts`)가 같은 판정을 쓴다.
+ */
+export function isIssuableBook(book: IssueBook, tribeId: string, now: Date): boolean {
+  return book.tribe_id === tribeId && book.is_active && !book.drop_excluded && inWindow(book.valid_from, book.valid_until, now.getTime())
+}
+
 /** 발급할 수 있는 후보 전체 — 소속 트라이브 컬렉션, 그 등급, 활성, 공개 기간 안, 드랍 제외 아님, 삭제 아님 */
 export function listIssueCandidates<B extends IssueBadge>(input: PickItemBadgeInput<B>): B[] {
   const nowMs = input.now.getTime()
-  const bookIds = new Set(
-    input.books
-      .filter(
-        (b) =>
-          b.tribe_id === input.tribeId && b.is_active && !b.drop_excluded && inWindow(b.valid_from, b.valid_until, nowMs)
-      )
-      .map((b) => b.id)
-  )
+  const bookIds = new Set(input.books.filter((b) => isIssuableBook(b, input.tribeId, input.now)).map((b) => b.id))
   return input.badges.filter(
     (b) =>
       b.rarity === input.rarity &&

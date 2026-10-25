@@ -10,6 +10,7 @@
  *   페이지는 열리고 첫 줄만 보이며 표 아래에 읽기 실패 안내가 한 줄 붙는다. 유저 ID·변경 메모·내부 칸 이름·방향어는 HTML에 없다.
  * - 값은 읽은 행에서 만든다: 설정을 바꾸면 표가 따라 바뀐다.
  * - 읽기 실패: 해당 섹션만 «지금 불러오지 못했어요»로 바뀌고 숫자가 하나도 없다. 코드 상수 사본(DEFAULT_*)의 값이 새지 않는다. 시스템 드랍만 실패하면 정책 섹션은 그대로다.
+ *   정책 표(동기화·캡슐·보정 장치)와 등급 올리기(`combine_policy`)는 따로 실패한다 — 등급 올리기 섹션의 시험은 `page.tierUp.test.tsx`에 있다.
  * - 의미 있는 표(caption, th scope="row"), 한국어 줄바꿈 클래스, 색 강조·그래프·애니메이션 없음, 유저 화면에 쓰지 않는 말·열기를 부추기는 말 없음.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(legal)/probability/page.test.tsx"
@@ -35,12 +36,14 @@ vi.mock('@/lib/supabase/server', () => ({
 import ProbabilityPage, { dynamic } from './page'
 import { DEFAULT_AMBIENT_DROP_CONFIG } from '@/lib/ambient-drop/config'
 import { DEFAULT_CAPSULE_POLICY } from '@/lib/capsule/policy'
+import { DEFAULT_COMBINE_POLICY } from '@/lib/combine/policy'
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import {
   ALL_OK,
   AMBIENT_ROW,
   CAPSULE_ROW,
   CHANGES_TABLE,
+  COMBINE_ROW,
   JAM_ROW,
   fakeClient,
   failed,
@@ -286,13 +289,14 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
 })
 
 describe('표 마크업 — 의미 있는 표, 가로 스크롤 없음', () => {
-  it('표 열 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
+  it('표 아홉 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
     const html = await render()
-    expect(count(html, '<table')).toBe(10)
-    expect(count(html, '<caption class="sr-only">')).toBe(10)
+    // 동기화 2 + 캡슐 2 + 시스템 드랍 1 + 등급 올리기 3 + 바뀐 날짜 1
+    expect(count(html, '<table')).toBe(9)
+    expect(count(html, '<caption class="sr-only">')).toBe(9)
     // 행마다 th 하나 + td 하나
     expect(count(html, '<th scope="row"')).toBe(count(html, '<td '))
-    expect(count(html, '<th scope="row"')).toBeGreaterThanOrEqual(10)
+    expect(count(html, '<th scope="row"')).toBeGreaterThanOrEqual(9)
   })
 
   it('표 카드는 흰 면 + 테두리 둥근 카드이고, 값 칸은 오른쪽 정렬 tabular-nums다. 가로 스크롤 래퍼가 없다', async () => {
@@ -361,7 +365,8 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
 
   it('정책을 못 읽으면 동기화·캡슐·보정 장치가 안내로 바뀌고 숫자가 하나도 없다', async () => {
     const html = await render({ ...ALL_OK, capsule_policy: failed })
-    expect(count(html, 'role="status"')).toBe(4)
+    // 등급 올리기는 combine_policy만 읽으므로 안내가 아니다 — 동기화·캡슐·보정 장치 세 곳이다
+    expect(count(html, 'role="status"')).toBe(3)
     for (const title of ['동기화로 받는 아이템 배지', '캡슐', '보정 장치']) {
       const section = sectionOf(html, title)
       expect(textOf(section), title).toContain(UNAVAILABLE)
@@ -370,14 +375,15 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
       // 가리킬 등급 표가 없으니 «이 확률은 처음 뽑는 등급이에요»도 남기지 않는다
       expect(textOf(section), title).not.toContain('처음 뽑는 등급')
     }
-    // 시스템 드랍 표와 바뀐 날짜 표는 그대로다
-    expect(count(html, '<table')).toBe(2)
+    // 시스템 드랍 표, 등급 올리기 표 셋, 바뀐 날짜 표는 그대로다
+    expect(count(html, '<table')).toBe(5)
     expect(textOf(sectionOf(html, '시스템 드랍'))).toMatch(/Common100%/)
+    expect(textOf(sectionOf(html, '등급 올리기'))).toContain('Rare30%Epic70%')
   })
 
   it('jam_policy만 못 읽어도 세 섹션이 함께 안내로 바뀐다(두 표가 한 묶음이다)', async () => {
     const html = await render({ ...ALL_OK, jam_policy: failed })
-    expect(count(html, 'role="status"')).toBe(4)
+    expect(count(html, 'role="status"')).toBe(3)
     expect(textOf(sectionOf(html, '캡슐'))).not.toMatch(sectionNumbers)
   })
 
@@ -424,14 +430,19 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
 
   it('정책과 변경 이력이 함께 실패해도 각자 안내를 보인다(이력 쪽은 표 아래에 한 줄)', async () => {
     const html = await render({ ...ALL_OK, capsule_policy: failed, [CHANGES_TABLE]: failed })
-    // 정책 쪽 4곳(동기화·캡슐·등급 올리기·보정 장치)에 변경 이력 1곳을 더한 5곳이다
-    expect(count(html, 'role="status"')).toBe(5)
+    // 정책 쪽 3곳(동기화·캡슐·보정 장치)에 변경 이력 1곳을 더한 4곳이다
+    expect(count(html, 'role="status"')).toBe(4)
     expect(count(sectionOf(html, '바뀐 날짜'), 'role="status"')).toBe(1)
     expect(textOf(sectionOf(html, '바뀐 날짜'))).toContain('2026년 10월 21일확률 안내를 처음 열었어요')
   })
 
-  it('셋 다 못 읽으면 값 칸이 하나도 없다(퍼센트·나눗셈 기호 없음, 날짜 외 숫자 없음)', async () => {
-    const html = await render({ capsule_policy: failed, jam_policy: 'throw', ambient_drop_config: { data: null, error: null } })
+  it('설정 표를 모두 못 읽으면 값 칸이 하나도 없다(퍼센트·나눗셈 기호 없음, 날짜 외 숫자 없음)', async () => {
+    const html = await render({
+      capsule_policy: failed,
+      jam_policy: 'throw',
+      combine_policy: failed,
+      ambient_drop_config: { data: null, error: null },
+    })
     const text = textOf(html).replace('2026년 10월 21일', '')
     expect(count(html, 'role="status"')).toBe(5)
     expect(text).not.toContain('%')
@@ -440,7 +451,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
   })
 
   it('읽기가 실패해도 코드 상수 사본(DEFAULT_*)의 값이 새지 않는다', async () => {
-    const html = await render({ capsule_policy: failed, jam_policy: failed, ambient_drop_config: failed })
+    const html = await render({ capsule_policy: failed, jam_policy: failed, combine_policy: failed, ambient_drop_config: failed })
     const text = textOf(html)
     const leaks = [
       `${DEFAULT_JAM_POLICY.sync_rarity_common}%`,
@@ -451,10 +462,12 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
       `${DEFAULT_JAM_POLICY.common_streak_threshold}번`,
       `÷ ${DEFAULT_JAM_POLICY.sync_item_bonus_jam_divisor}`,
       `${DEFAULT_AMBIENT_DROP_CONFIG.rarity_common * 100}%`,
+      `${Math.round(DEFAULT_COMBINE_POLICY.tier_up_probability * 100)}%`,
+      `${Math.round((1 - DEFAULT_COMBINE_POLICY.tier_up_probability) * 100)}%`,
     ]
     for (const leak of leaks) expect(text, leak).not.toContain(leak)
     // 이 시험의 전제 — 정상 값(= 기본값과 같다)은 화면에 실제로 나온다
-    const normal = textOf(await render({ capsule_policy: ok(CAPSULE_ROW), jam_policy: ok(JAM_ROW), ambient_drop_config: ok(AMBIENT_ROW) }))
+    const normal = textOf(await render({ capsule_policy: ok(CAPSULE_ROW), jam_policy: ok(JAM_ROW), combine_policy: ok(COMBINE_ROW), ambient_drop_config: ok(AMBIENT_ROW) }))
     expect(normal).toContain('84%')
   })
 })
@@ -481,7 +494,7 @@ describe('문구와 서식 규칙', () => {
     const html = articleOf(await render())
     expect(html).not.toMatch(/gradient|animate-|transition|--link|--accent|rarity|<svg|<img|progress|<canvas/i)
     // 크림 단색 바탕 위의 표 카드와 Note만 쓴다 — 카드 안 카드가 없다
-    expect(count(html, 'rounded-2xl bg-surface')).toBe(10)
+    expect(count(html, 'rounded-2xl bg-surface')).toBe(9)
   })
 
   it('제목 계층이 h1 → h2 → h3다', async () => {

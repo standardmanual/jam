@@ -52,6 +52,7 @@ import TierUpPanel from './TierUpPanel'
 import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
+import type { TierUpCollectionOption, TierUpCollectionView } from './tierUpClient'
 import { d } from '@/lib/i18n'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
@@ -94,6 +95,13 @@ function many(prefix: string, rarity: InventoryItemWithBadge['badge']['rarity'],
 
 const RARE5 = many('r', 'rare', 5)
 const DEFAULT_ITEMS = [...RARE5, ...many('c', 'common', 3), item('m1', 'mystic')]
+/** 일부러 이름 순서를 섞었다 — 화면은 가나다순으로 보인다 */
+const COLLECTIONS: TierUpCollectionOption[] = [
+  { id: 'col-b', name: '나무 컬렉션', imageUrl: 'https://example.com/b.png', rarities: ['rare', 'epic'] },
+  { id: 'col-c', name: '다람쥐 컬렉션', imageUrl: null, rarities: ['common', 'rare'] },
+  { id: 'col-a', name: '가을 컬렉션', imageUrl: null, rarities: ['common', 'rare', 'epic', 'mystic'] },
+]
+const FULL = ['r1', 'r2', 'r3', 'r4', 'r5']
 
 describe('등급 올리기 입구 (탐색 화면)', () => {
   it('검색창보다 위에 있고 아이콘 없이 제목과 부제가 보인다', () => {
@@ -146,13 +154,22 @@ describe('CombineClient 등급 올리기 흐름', () => {
     vi.unstubAllGlobals()
   })
 
-  function createScreen(options: { items?: InventoryItemWithBadge[]; pendingCount?: number; questStep?: 'mix_fail' | 'mix_success' | null } = {}) {
+  function createScreen(
+    options: {
+      items?: InventoryItemWithBadge[]
+      pendingCount?: number
+      questStep?: 'mix_fail' | 'mix_success' | null
+      /** 생략하면 COLLECTIONS, null은 «읽지 못했다» */
+      collections?: TierUpCollectionOption[] | null
+    } = {},
+  ) {
     const props = {
       items: options.items ?? DEFAULT_ITEMS,
       publicRecipes: [DEMO_MIX_RECIPE],
       ownedConditionBadgeIds: [],
       pendingCount: options.pendingCount ?? 0,
       questStep: options.questStep ?? null,
+      tierUpCollections: options.collections === undefined ? COLLECTIONS : options.collections,
     }
     const render = () => {
       hooks.cursor = 0
@@ -177,8 +194,29 @@ describe('CombineClient 등급 올리기 흐름', () => {
     const setItems = (next: InventoryItemWithBadge[]) => {
       props.items = next
     }
-    return { render, panel, entry, nav, overlay, openTierUp, fill, setItems }
+    const setCollections = (next: TierUpCollectionOption[] | null) => {
+      props.tierUpCollections = next
+    }
+    /** 컬렉션 행을 눌러 시트를 연다 */
+    const openCollectionSheet = () => {
+      ;(panel(render()).props.onOpenCollectionSheet as () => void)()
+      return render()
+    }
+    /** 시트의 줄을 눌러 컬렉션을 고른다(시트는 그 자리에서 닫힌다) */
+    const pickCollection = (id: string) => {
+      ;(panel(render()).props.onPickCollection as (id: string) => void)(id)
+      return render()
+    }
+    /** 재료 5개를 담고 컬렉션을 시트에서 골라 제출 직전까지 만든다 */
+    const fillAll = (ids: string[] = FULL, collectionId = 'col-a') => {
+      fill(ids)
+      openCollectionSheet()
+      return pickCollection(collectionId)
+    }
+    return { render, panel, entry, nav, overlay, openTierUp, fill, setItems, setCollections, openCollectionSheet, pickCollection, fillAll }
   }
+
+  const collectionView = (tree: ReactNode, screen: ReturnType<typeof createScreen>) => screen.panel(tree).props.collection as TierUpCollectionView
 
   const slotIds = (tree: ReactNode, screen: ReturnType<typeof createScreen>) =>
     (screen.panel(tree).props.slots as (InventoryItemWithBadge | null)[]).map((slot) => slot?.id ?? null)
@@ -247,7 +285,10 @@ describe('CombineClient 등급 올리기 흐름', () => {
     const full = screen.render()
     expect(slotIds(full, screen)).toEqual(['r1', 'r2', 'r3', 'r4', 'r5'])
     expect(screen.panel(full).props.sheetOpen).toBe(false)
-    expect(screen.panel(full).props.canSubmit).toBe(true)
+    // 재료 5개만으로는 제출할 수 없다 — 컬렉션도 골라야 한다
+    expect(screen.panel(full).props.canSubmit).toBe(false)
+    screen.openCollectionSheet()
+    expect(screen.panel(screen.pickCollection('col-a')).props.canSubmit).toBe(true)
   })
 
   it('누른 칸부터 채우고 빈 칸이 앞에 남아 있으면 한 바퀴 돌아 이어서 채운다', () => {
@@ -351,15 +392,198 @@ describe('CombineClient 등급 올리기 흐름', () => {
     void opened
   })
 
-  describe('제출', () => {
-    const FULL = ['r1', 'r2', 'r3', 'r4', 'r5']
+  describe('받을 컬렉션 고르기', () => {
+    const names = (view: TierUpCollectionView) => (view.kind === 'ready' ? view.choices.map((choice) => choice.name) : [])
 
+    it('처음 열면 재료가 없어 needMaterial이고 컬렉션 시트는 열 수 없다', () => {
+      const screen = createScreen()
+      const opened = screen.openTierUp()
+      expect(collectionView(opened, screen)).toEqual({ kind: 'needMaterial' })
+      expect(screen.panel(opened).props.collectionSheetOpen).toBe(false)
+      screen.openCollectionSheet()
+      expect(screen.panel(screen.render()).props.collectionSheetOpen).toBe(false)
+    })
+
+    it('첫 재료를 담으면 ready(미선택)가 되고, 목록은 재료 등급의 바로 위 등급과 같은 등급이 모두 있는 컬렉션만 가나다순이다', () => {
+      const screen = createScreen()
+      screen.openTierUp()
+      // Rare 재료: Rare와 Epic이 모두 있는 컬렉션 - 가을, 나무. 다람쥐(Common·Rare)는 윗등급이 없어 빠진다
+      const tree = screen.fill(['r1'])
+      const view = collectionView(tree, screen)
+      expect(view).toMatchObject({ kind: 'ready', selectedId: null })
+      expect(names(view)).toEqual(['가을 컬렉션', '나무 컬렉션'])
+      expect(screen.panel(tree).props.canSubmit).toBe(false)
+    })
+
+    it('행을 누르면 시트가 열리고, 줄을 누르면 컬렉션이 선택되며 시트가 바로 닫힌다', () => {
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fill(['r1'])
+      // 첫 재료 뒤 재료 시트는 계속 열려 있다 - 컬렉션 시트를 열면 재료 시트가 닫힌다(동시에 열리지 않는다)
+      expect(screen.panel(screen.render()).props.sheetOpen).toBe(true)
+      const sheetOpened = screen.openCollectionSheet()
+      expect(screen.panel(sheetOpened).props.collectionSheetOpen).toBe(true)
+      expect(screen.panel(sheetOpened).props.sheetOpen).toBe(false)
+
+      const picked = screen.pickCollection('col-b')
+      expect(screen.panel(picked).props.collectionSheetOpen).toBe(false)
+      expect(collectionView(picked, screen)).toMatchObject({ kind: 'ready', selectedId: 'col-b' })
+    })
+
+    it('시트를 다시 열면 고른 줄이 selectedId로 내려가고, 직접 닫아도 선택은 유지된다', () => {
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fill(['r1'])
+      screen.openCollectionSheet()
+      screen.pickCollection('col-a')
+      const reopened = screen.openCollectionSheet()
+      expect(collectionView(reopened, screen)).toMatchObject({ selectedId: 'col-a' })
+      ;(screen.panel(reopened).props.onCloseCollectionSheet as () => void)()
+      const closed = screen.render()
+      expect(screen.panel(closed).props.collectionSheetOpen).toBe(false)
+      expect(collectionView(closed, screen)).toMatchObject({ selectedId: 'col-a' })
+    })
+
+    it('재료 시트를 열면 컬렉션 시트가 닫힌다 - 두 시트는 동시에 열리지 않는다', () => {
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fill(['r1'])
+      screen.openCollectionSheet()
+      expect(screen.panel(screen.render()).props.collectionSheetOpen).toBe(true)
+      ;(screen.panel(screen.render()).props.onOpenSheet as (i: number) => void)(1)
+      const tree = screen.render()
+      expect(screen.panel(tree).props.sheetOpen).toBe(true)
+      expect(screen.panel(tree).props.collectionSheetOpen).toBe(false)
+    })
+
+    it('지금 목록에 없는 id는 선택되지 않는다', () => {
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fill(['r1'])
+      screen.openCollectionSheet()
+      // 다람쥐(col-c)는 Rare 재료의 목록에 없다
+      const tree = screen.pickCollection('col-c')
+      expect(collectionView(tree, screen)).toMatchObject({ selectedId: null })
+      expect(screen.panel(tree).props.collectionSheetOpen).toBe(true)
+    })
+
+    it('재료 등급이 바뀌어 고른 컬렉션이 새 등급의 목록에 없으면 조용히 미선택으로 돌아가고 제출할 수 없다', async () => {
+      const fetchMock = stubFetch({})
+      const items = [...RARE5, ...many('c', 'common', 5)]
+      const screen = createScreen({ items })
+      screen.openTierUp()
+      screen.fill(['r1'])
+      screen.openCollectionSheet()
+      screen.pickCollection('col-b') // 나무: Rare·Epic - Rare 재료에서만 유효
+      // 재료를 모두 빼 등급이 풀린 뒤 Common 5개를 채운다
+      ;(screen.panel(screen.render()).props.onRemove as (i: number) => void)(0)
+      const filled = screen.fill(['c1', 'c2', 'c3', 'c4', 'c5'])
+      expect(names(collectionView(filled, screen))).toEqual(['가을 컬렉션', '다람쥐 컬렉션'])
+      expect(collectionView(filled, screen)).toMatchObject({ selectedId: null })
+      expect(screen.panel(filled).props.canSubmit).toBe(false)
+      await (screen.panel(filled).props.onSubmit as () => Promise<void>)()
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('새 등급의 목록에도 있는 컬렉션이면 선택이 유지된다', () => {
+      const items = [...RARE5, ...many('c', 'common', 5)]
+      const screen = createScreen({ items })
+      screen.openTierUp()
+      screen.fill(['r1'])
+      screen.openCollectionSheet()
+      screen.pickCollection('col-a') // 가을: 모든 등급
+      ;(screen.panel(screen.render()).props.onRemove as (i: number) => void)(0)
+      const filled = screen.fill(['c1', 'c2', 'c3', 'c4', 'c5'])
+      expect(collectionView(filled, screen)).toMatchObject({ kind: 'ready', selectedId: 'col-a' })
+      expect(screen.panel(filled).props.canSubmit).toBe(true)
+    })
+
+    it('이 등급으로 고를 컬렉션이 없으면 none(등급)이고 시트는 열 수 없으며 제출할 수 없다', () => {
+      // Epic 5개 - 목록의 컬렉션(나무)에는 Mystic이 없어 고를 수 있는 컬렉션이 없다
+      const items = [...many('e', 'epic', 5), ...RARE5]
+      const screen = createScreen({ items, collections: [COLLECTIONS[0]] })
+      screen.openTierUp()
+      const tree = screen.fill(['e1'])
+      expect(collectionView(tree, screen)).toEqual({ kind: 'none', rarity: 'epic' })
+      screen.openCollectionSheet()
+      expect(screen.panel(screen.render()).props.collectionSheetOpen).toBe(false)
+      expect(screen.panel(screen.fill(['e2', 'e3', 'e4', 'e5'])).props.canSubmit).toBe(false)
+    })
+
+    it('트라이브가 없거나 열린 컬렉션이 0개여도(빈 배열) none이다 - 읽지 못한 것과 다르다', () => {
+      const screen = createScreen({ collections: [] })
+      screen.openTierUp()
+      expect(collectionView(screen.fill(['r1']), screen)).toEqual({ kind: 'none', rarity: 'rare' })
+    })
+
+    it('목록을 읽지 못했으면(null) error이고 재료를 채워도 제출할 수 없으며, 다시 불러오기는 목록을 새로 받되 담은 칸을 지우지 않는다', async () => {
+      const fetchMock = stubFetch({})
+      const screen = createScreen({ collections: null })
+      const opened = screen.openTierUp()
+      expect(collectionView(opened, screen)).toEqual({ kind: 'error' })
+      const filled = screen.fill(FULL)
+      expect(collectionView(filled, screen)).toEqual({ kind: 'error' })
+      expect(screen.panel(filled).props.canSubmit).toBe(false)
+      await (screen.panel(filled).props.onSubmit as () => Promise<void>)()
+      expect(fetchMock).not.toHaveBeenCalled()
+
+      refreshMock.mockClear()
+      ;(screen.panel(filled).props.onRetryCollections as () => void)()
+      expect(refreshMock).toHaveBeenCalledTimes(1)
+      expect(slotIds(screen.render(), screen)).toEqual(FULL)
+      // 서버가 새로 내려준 목록이 오면 곧바로 고를 수 있다
+      screen.setCollections(COLLECTIONS)
+      expect(collectionView(screen.render(), screen)).toMatchObject({ kind: 'ready', selectedId: null })
+    })
+
+    it('제출 중에는 컬렉션 시트를 열 수 없다', async () => {
+      let release: (value: unknown) => void = () => {}
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          () =>
+            new Promise((resolve) => {
+              release = resolve
+            }),
+        ),
+      )
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fillAll()
+      const first = (screen.panel(screen.render()).props.onSubmit as () => Promise<void>)()
+      const during = screen.render()
+      expect(screen.panel(during).props.submitting).toBe(true)
+      ;(screen.panel(during).props.onOpenCollectionSheet as () => void)()
+      expect(screen.panel(screen.render()).props.collectionSheetOpen).toBe(false)
+      release({ ok: true, status: 200, json: async () => ({ success: false, reason: 'invalid_materials' }) })
+      await first
+    })
+
+    it('받지 않은 결과가 있어도 행은 고를 수 있다 - 막는 것은 제출 버튼뿐이다', () => {
+      const screen = createScreen({ pendingCount: 1 })
+      screen.openTierUp()
+      screen.fill(['r1'])
+      screen.openCollectionSheet()
+      const tree = screen.pickCollection('col-a')
+      expect(collectionView(tree, screen)).toMatchObject({ kind: 'ready', selectedId: 'col-a' })
+      expect(screen.panel(tree).props.pendingBlocked).toBe(true)
+    })
+
+    it('탐색 화면에는 컬렉션 행이 없다 - 등급 올리기 화면에서만 나온다', () => {
+      const html = renderToStaticMarkup(
+        <CombineClient items={DEFAULT_ITEMS} publicRecipes={[]} ownedConditionBadgeIds={[]} tierUpCollections={COLLECTIONS} />,
+      )
+      expect(html).not.toContain('받을 컬렉션')
+    })
+  })
+
+  describe('제출', () => {
     async function submit(screen: ReturnType<typeof createScreen>) {
       await (screen.panel(screen.render()).props.onSubmit as () => Promise<void>)()
       return screen.render()
     }
 
-    it('요청 본문은 {itemIds}이고 /api/combine/tier-up을 부른다', async () => {
+    it('요청 본문은 {itemIds, collectionId}이고 /api/combine/tier-up을 부른다', async () => {
       const fetchMock = stubFetch({
         success: true,
         path: 'tier_up',
@@ -369,13 +593,57 @@ describe('CombineClient 등급 올리기 흐름', () => {
       })
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       await submit(screen)
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
       expect(url).toBe('/api/combine/tier-up')
       expect(init.method).toBe('POST')
-      expect(JSON.parse(init.body as string)).toEqual({ itemIds: FULL })
+      expect(JSON.parse(init.body as string)).toEqual({ itemIds: FULL, collectionId: 'col-a' })
+      // 확률 숫자는 본문에도 없다
+      expect(Object.keys(JSON.parse(init.body as string)).sort()).toEqual(['collectionId', 'itemIds'])
+    })
+
+    it('재료 5개가 차도 컬렉션을 고르지 않았으면 요청을 보내지 않는다', async () => {
+      const fetchMock = stubFetch({})
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fill(FULL)
+      await submit(screen)
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('결과를 받은 뒤 같은 화면에 머무는 동안은 고른 컬렉션이 유지된다 — 칸만 비워진다', async () => {
+      stubFetch({
+        success: true,
+        path: 'tier_up',
+        materialRarity: 'rare',
+        resultStatus: 'granted',
+        resultBadges: [{ id: 'b1', name: '새 배지', rarity: 'epic' }],
+      })
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fillAll(FULL, 'col-b')
+      const after = await submit(screen)
+      ;(screen.overlay(after).props.onClose as () => void)()
+      const closed = screen.render()
+      expect(slotIds(closed, screen)).toEqual([null, null, null, null, null])
+      // 재료가 비면 행은 needMaterial로 보이고 이전 선택을 그리지 않는다
+      expect(collectionView(closed, screen)).toEqual({ kind: 'needMaterial' })
+      // 첫 재료를 넣는 순간 유효한 선택이 다시 나타난다
+      const refilled = screen.fill(['r1'])
+      expect(collectionView(refilled, screen)).toMatchObject({ kind: 'ready', selectedId: 'col-b' })
+    })
+
+    it('화면을 나갔다 다시 들어오면 고른 컬렉션이 비워져 있다', () => {
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fillAll(FULL, 'col-b')
+      ;(screen.nav(screen.render()).props.onBack as () => void)()
+      screen.render()
+      screen.openTierUp()
+      const refilled = screen.fill(['r1'])
+      expect(collectionView(refilled, screen)).toMatchObject({ kind: 'ready', selectedId: null })
     })
 
     it('5개가 차기 전에는 요청을 보내지 않는다', async () => {
@@ -391,7 +659,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       const fetchMock = stubFetch({})
       const screen = createScreen({ pendingCount: 1 })
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       await submit(screen)
       expect(fetchMock).not.toHaveBeenCalled()
     })
@@ -407,7 +675,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       vi.stubGlobal('fetch', fetchMock)
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const first = (screen.panel(screen.render()).props.onSubmit as () => Promise<void>)()
       const during = screen.render()
       expect(screen.panel(during).props.submitting).toBe(true)
@@ -428,7 +696,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       })
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
 
       const overlay = screen.overlay(after)
@@ -461,14 +729,14 @@ describe('CombineClient 등급 올리기 흐름', () => {
       stubFetch(same)
       let screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       expect(screen.overlay(await submit(screen)).props.resultMessage).toBe('Rare 아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요')
 
       hooks.store = []
       stubFetch({ ...same, resultBadges: [{ id: 'b1', name: '새 배지' }] })
       screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       expect(screen.overlay(await submit(screen)).props.resultMessage).toBe('아이템 배지를 받았어요. 윗등급은 운이 좋을 때 나와요')
     })
 
@@ -484,7 +752,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       })
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
       const overlay = screen.overlay(after)
       expect(overlay.props.open).toBe(true)
@@ -507,14 +775,13 @@ describe('CombineClient 등급 올리기 흐름', () => {
     })
 
     it.each([
-      ['no_candidate', 200, { success: false, reason: 'no_candidate' }],
       ['invalid_materials', 200, { success: false, reason: 'invalid_materials' }],
       ['invalid_count', 400, { success: false, reason: 'invalid_count' }],
     ])('소각 전 거절 %s은 info 토스트로 알리고 칸을 그대로 두며 오버레이를 열지 않는다', async (_name, status, body) => {
       stubFetch(body, { ok: status === 200, status })
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
       expect(toastMock).toHaveBeenCalledTimes(1)
       const [message, tone] = toastMock.mock.calls[0]
@@ -525,11 +792,30 @@ describe('CombineClient 등급 올리기 흐름', () => {
       expect(refreshMock).not.toHaveBeenCalled()
     })
 
+    it.each([
+      ['invalid_collection', { success: false, reason: 'invalid_collection' }, '지금은 고를 수 없는 컬렉션이에요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.'],
+      ['no_candidate', { success: false, reason: 'no_candidate' }, d.combine.tierUp.noCandidate],
+      ['invalid_collection(서버 문구)', { success: false, reason: 'invalid_collection', message: '서버 문구' }, '서버 문구'],
+    ])('%s 거절은 info 토스트로 알리고 담은 칸은 그대로, 고른 컬렉션만 풀며 목록을 다시 읽는다', async (_name, body, message) => {
+      stubFetch(body)
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fillAll()
+      const after = await submit(screen)
+      expect(toastMock).toHaveBeenCalledTimes(1)
+      expect(toastMock).toHaveBeenCalledWith(message, 'info')
+      expect(screen.overlay(after).props.open).toBe(false)
+      expect(slotIds(after, screen)).toEqual(FULL)
+      expect(collectionView(after, screen)).toMatchObject({ kind: 'ready', selectedId: null })
+      expect(screen.panel(after).props.canSubmit).toBe(false)
+      expect(refreshMock).toHaveBeenCalledTimes(1)
+    })
+
     it('items_not_found는 칸을 비우고 목록을 새로 받는다', async () => {
       stubFetch({ success: false, reason: 'items_not_found', message: d.combine.itemsNotFound })
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
       expect(toastMock).toHaveBeenCalledWith(d.combine.itemsNotFound, 'info')
       expect(slotIds(after, screen)).toEqual([null, null, null, null, null])
@@ -544,7 +830,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       )
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
       expect(toastMock).toHaveBeenCalledWith(d.lockedItem.combine, 'info')
       expect(slotIds(after, screen)).toEqual(FULL)
@@ -562,7 +848,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       vi.stubGlobal('fetch', fetchMock)
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
       expect(toastMock).toHaveBeenCalledWith(d.combine.pendingResultsExist, 'info')
       expect(fetchMock.mock.calls.map((call) => call[0])).toEqual(['/api/combine/tier-up', '/api/combine/pending'])
@@ -574,7 +860,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       stubFetch({ error: d.suspension.combineBlocked, code: USER_SUSPENDED_CODE }, { ok: false, status: 403 })
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
       expect(toastMock).toHaveBeenCalledWith(d.suspension.combineBlocked, 'info')
       expect(slotIds(after, screen)).toEqual(FULL)
@@ -585,7 +871,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network') }))
       const screen = createScreen()
       screen.openTierUp()
-      screen.fill(FULL)
+      screen.fillAll()
       const after = await submit(screen)
       expect(toastMock).toHaveBeenCalledWith(d.combine.genericError, 'error')
       expect(slotIds(after, screen)).toEqual(FULL)

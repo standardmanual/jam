@@ -8,6 +8,7 @@ import {
   type DisclosureResult,
   type DisclosureRow,
   type PolicyDisclosure,
+  type TierUpDisclosure,
 } from '@/lib/probability/disclosure'
 
 /**
@@ -16,10 +17,10 @@ import {
  * 확률이 들어간 보상(동기화로 받는 아이템 배지, 캡슐, 시스템 드랍)의 확률을 표로 모두 보이고 보정 장치도 접지 않고 적는다.
  * 로그인하지 않은 방문자도 열 수 있다(`proxy.ts` 공개 경로, `(legal)` 레이아웃은 인증 호출이 없다).
  *
- * 값은 `capsule_policy`·`jam_policy`·`ambient_drop_config`를 서버에서 읽어 만든다(`lib/probability/disclosure.ts`). 설정을 바꾸면 페이지도 바뀌어야
+ * 값은 `capsule_policy`·`jam_policy`·`combine_policy`·`ambient_drop_config`를 서버에서 읽어 만든다(`lib/probability/disclosure.ts`). 설정을 바꾸면 페이지도 바뀌어야
  * 하므로 `force-dynamic`이다. 읽지 못하면 코드 상수 사본으로 대신하지 않고 해당 섹션을 «지금 불러오지 못했어요»로 바꾼다(틀린 확률을 보이지 않는다).
- * 정책 두 표(동기화·캡슐·보정 장치 세 섹션)와 시스템 드랍은 따로 실패한다. 값이 없고 스스로 뜻이 닫히는 문장(확률이 없는 것, 변경 이력 머리 문장,
- * 트라이브 후보 문장, 시스템 드랍의 낮춤 규칙)은 읽기가 실패해도 그대로 둔다. 표의 숫자를 한정하는 «이 확률은 처음 뽑는 등급이에요»는 가리킬 표가
+ * 정책 두 표(동기화·캡슐·보정 장치 세 섹션), 등급 올리기(`combine_policy` 한 표), 시스템 드랍은 서로 따로 실패한다. 값이 없고 스스로 뜻이 닫히는 문장(확률이 없는 것,
+ * 변경 이력 머리 문장, 트라이브 후보 문장, 등급 올리기의 아이템 고르는 방식, 시스템 드랍의 낮춤 규칙)은 읽기가 실패해도 그대로 둔다. 표의 숫자를 한정하는 «이 확률은 처음 뽑는 등급이에요»는 가리킬 표가
  * 없으므로 표와 함께 빠진다.
  *
  * «바뀐 날짜» 표는 어드민 «밸런스 설정»의 변경 이력(`balance_setting_changes`)에서 `affects_disclosure = true`인 행을 읽어 만든다
@@ -68,16 +69,10 @@ const AMBIENT_RANDOM_TEXT = '지금은 놓을 때마다 등급 비율을 무작�
 
 /** 등급 올리기 소개 — 숫자가 없는 문장이라 읽기가 실패해도 남는다 */
 const TIER_UP_INTRO =
-  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 넣으면 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 같은 등급이 나올 수도 있어요. Mystic은 넣을 수 없어요.'
+  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 넣고 받을 컬렉션을 고르면, 그 컬렉션의 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic은 넣을 수 없어요.'
 
-/** 등급 올리기 등급 표 아래 문장 — 표의 값이 캡슐의 등급 확률에서 나왔다는 것과, 처음 뽑는 등급이라는 것을 한정한다 */
-const TIER_UP_ODDS_NOTE = `캡슐의 등급 확률에서 넣은 등급보다 낮은 등급을 빼고 남은 등급끼리 비율을 다시 맞춘 값이에요. ${LOWERING_NOTE} 넣은 등급보다 낮아지지는 않아요.`
-
-const TIER_UP_TRIBE_HEADING = '받는 아이템 배지'
-
-const TIER_UP_TRIBE_CAPTION = '등급 올리기에서 받는 아이템 배지의 트라이브'
-
-const TIER_UP_TRIBE_NOTE = `${TRIBE_NOTE} 받을 수 있는 아이템 배지가 여럿이면 모두 같은 확률로 골라요.`
+/** 등급 올리기 섹션 맨 끝 문장 — 등급이 정해진 뒤 아이템을 고르는 방식. 숫자가 없는 문장이라 읽기가 실패해도 남는다 */
+const TIER_UP_PICK_NOTE = '등급이 정해지면 고른 컬렉션에서 그 등급으로 받을 수 있는 아이템 배지를 모두 같은 확률로 골라요.'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -254,37 +249,27 @@ function AmbientSection({ ambient }: { ambient: DisclosureResult<AmbientDisclosu
 }
 
 /**
- * 등급 올리기 (티켓 20261022_2119 4회, 운영 로직 8.4·18.3절, 채원 사전 판정 2026-10-23).
+ * 등급 올리기 (티켓 20261022_2119 4회, 20261023_1648 2회, 운영 로직 8.4·18.3절, 채원 사전 판정 2026-10-23).
  *
- * 레시피 없이 규칙으로 처리하는 믹스의 예외라 결과 등급이 확률로 정해진다. 넣은 등급(Common, Rare, Epic)마다 «넣은 등급 이상» 줄의 두 칸 표를 하나씩 보이고,
- * 받는 아이템 배지의 트라이브 표를 하나 더 둔다. 값은 서버 굴림과 같은 함수(`tierUpProbabilities`)로 `disclosure.ts`가 만든다.
+ * 레시피 없이 규칙으로 처리하는 믹스의 예외라 결과 등급이 확률로 정해진다. 넣은 등급(Common, Rare, Epic)마다 «넣은 등급 그대로»와 «바로 윗등급» 두 줄의 두 칸 표를
+ * 하나씩 보이고, 섹션 맨 끝에 아이템을 고르는 방식 한 문장(Note)을 한 번만 둔다. 값은 서버 굴림과 같은 함수(`tierUpProbabilities`)로 `disclosure.ts`가 만든다.
  *
- * 두 정책 표가 모두 읽혀야 보인다(캡슐 설정에서 만든 값이다). 읽기가 실패하면 소개 문장 뒤에 안내 한 개만 두고 표·Note·숫자를 모두 뺀다.
- * 서버 굴림은 읽기에 실패하면 코드 상수 기본값으로 굴리지만 이 페이지는 값을 숨긴다(PRD 6절 알려진 차이).
+ * `combine_policy.tier_up_probability` 하나로 정해지므로 정책 표(동기화·캡슐·보정 장치)와 따로 실패한다. 읽기가 실패하면 소개 문장 뒤에 안내 한 개와 끝 Note만 두고
+ * 표·숫자를 모두 뺀다(Note에는 숫자가 없다). 서버 굴림은 읽기에 실패하면 코드 상수 기본값으로 굴리지만 이 페이지는 값을 숨긴다(PRD 6절 알려진 차이).
  * 링크·버튼은 두지 않는다. 믹스 화면으로 보내거나 «해 보세요»라고 하면 열기를 부추기게 된다(운영 로직 5.2절).
  */
-function TierUpSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> }) {
+function TierUpSection({ tierUp }: { tierUp: DisclosureResult<TierUpDisclosure> }) {
   return (
     <Section title="등급 올리기">
       <P>{TIER_UP_INTRO}</P>
-      {policy.ok ? (
-        <>
-          {policy.data.tierUp.materials.map((material) => (
-            <TableBlock key={material.heading} heading={material.heading} caption={material.caption} rows={material.rows} nowrapValue />
-          ))}
-          <Note>{TIER_UP_ODDS_NOTE}</Note>
-          <TableBlock
-            heading={TIER_UP_TRIBE_HEADING}
-            caption={TIER_UP_TRIBE_CAPTION}
-            rows={policy.data.tierUp.tribe}
-            nowrapValue
-            note={TIER_UP_TRIBE_NOTE}
-          />
-        </>
+      {tierUp.ok ? (
+        tierUp.data.materials.map((material) => (
+          <TableBlock key={material.heading} heading={material.heading} caption={material.caption} rows={material.rows} nowrapValue />
+        ))
       ) : (
-        // 가리킬 표가 없으므로 «처음 뽑는 등급이에요»·낮춤 문장·트라이브 문장도 함께 뺀다
         <Unavailable />
       )}
+      <Note>{TIER_UP_PICK_NOTE}</Note>
     </Section>
   )
 }
@@ -326,7 +311,7 @@ function ChangeLogSection({ changeLog }: { changeLog: DisclosureResult<Disclosur
 }
 
 export default async function ProbabilityPage() {
-  const [{ policy, ambient }, changeLog] = await Promise.all([loadProbabilityDisclosure(), loadProbabilityChangeLog()])
+  const [{ policy, tierUp, ambient }, changeLog] = await Promise.all([loadProbabilityDisclosure(), loadProbabilityChangeLog()])
 
   return (
     <div className="min-h-full text-foreground">
@@ -344,7 +329,7 @@ export default async function ProbabilityPage() {
         <SyncSection policy={policy} />
         <CapsuleSection policy={policy} />
         <AmbientSection ambient={ambient} />
-        <TierUpSection policy={policy} />
+        <TierUpSection tierUp={tierUp} />
 
         <Section title="확률이 없는 것">
           <P>
