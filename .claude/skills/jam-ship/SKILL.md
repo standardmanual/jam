@@ -130,7 +130,7 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   20260922_0002)에서 `vercel rollback` 명령이 약 5초에 끝났고(npx 기동 0.7초 포함) 페이지가 서빙하는
   배포는 명령이 끝난 지 1초 뒤에 바뀌었다. 복구(`vercel promote`)도 명령 약 5.6초에 반영 1.2초였다.
   프로덕션 프로젝트는 실사용자가 있어 연습하지 않았고, 같은 팀의 같은 기능이라 같다고 본다.
-  DB는 되돌림 SQL이 있으면 사용자 승인 후 즉시, 없으면 원래 이번 배포에 포함하지 않았어야 한다.
+  DB는 되돌림 SQL이 있으면 바로 실행하고(2026-10-25부터 DB 실행에 사용자 승인을 받지 않는다), 없으면 원래 이번 배포에 포함하지 않았어야 한다.
 - **DB 고려**: Supabase는 staging·프로덕션 공용 단일 DB라 코드 롤백이 DB 변경을 되돌리지
   않는다. 이번 배포에 새 번호 마이그레이션이 있으면 되돌림 SQL이 동반돼 있는지는 3단계
   「보안」의 `node scripts/deploy-gate.mjs check`가 확인한다(`jam-developer.md`의 `db` 규칙과 같은

@@ -547,7 +547,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 <section id="access">
 <h2>6. 접근 범위 — 각자 어디를 보는가</h2>
 <div class="tw"><table class=""><thead><tr><th>에이전트</th><th>읽는 곳</th><th>쓰는 곳</th><th>물리적 제약</th></tr></thead><tbody>
-<tr><td>카리나</td><td>전부</td><td>전부</td><td>없음 (채팅에서 받는 사용자 승인이 유일한 제약. Supabase MCP의 SQL 실행 도구는 자동 허용이라 도구 프롬프트가 관문 역할을 하지 않는다)</td></tr>
+<tr><td>카리나</td><td>전부</td><td>전부</td><td>없음 (2026-10-25부터 SQL 실행에 채팅 승인도 받지 않는다. 제약은 실행 전 점검 절차이고, Supabase MCP의 SQL 실행 도구는 자동 허용이라 도구 프롬프트도 없다. 근거는 CLAUDE.md 절대 규칙 6)</td></tr>
 <tr><td>아현</td><td>워크트리 전체</td><td>워크트리 안, 자기 브랜치</td><td>DB 도구 없음 · <code>CLOSED</code> 커밋 차단 · main/staging push 차단</td></tr>
 <tr><td>민지</td><td>지정된 커밋 범위의 diff + 티켓 + 스펙</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 워크플로 게이트와 <code>/jam-ship</code> 5단계에서 격리 워크트리에 실행(티켓 20261002_1905) · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령을 막는 정의 frontmatter 훅은 등록돼 있으나 클라우드 세션의 실제 호출에서 걸리지 않음</td></tr>
 <tr><td>채원</td><td><code>jam-web/design-system/</code>, Storybook, 지정된 diff</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 사후 리뷰(②)만 워크플로 게이트에서 격리 워크트리에 실행 · 민지와 같은 frontmatter 훅(같은 상태)</td></tr>
