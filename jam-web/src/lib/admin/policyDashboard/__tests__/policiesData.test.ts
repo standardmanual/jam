@@ -145,6 +145,47 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(vehiclePolicy?.defaultValue).toBe(60)
   })
 
+  it('등급 올리기 카드는 «고른 컬렉션 안에서 균등, 바로 윗등급 70%·같은 등급 30%, 후보 없으면 소각 전 거절, 아래 등급으로 내려가지 않음» 규칙을 말한다 (티켓 20261023_1648 4회)', () => {
+    const rule = POLICIES_DATA.find((p) => p.id === 'ch8-tier-up-recipes')
+    expect(rule?.type).toBe('code_constant')
+    for (const text of [
+      '받을 컬렉션',
+      '고른 컬렉션 안에서',
+      '균등 추첨',
+      '윗등급 확률(기본 70%)',
+      '같은 등급이 나머지(기본 30%)',
+      '소각하기 전에 거절',
+      '아래 등급으로 내려가지 않음',
+      '확률 안내 페이지가 재료 등급별 표',
+    ]) {
+      expect(rule?.currentSpec, text).toContain(text)
+    }
+    // 7-7a의 옛 규칙 문구가 남아 있지 않다
+    for (const old of ['캡슐 등급 확률', '합이 100%', '열린 컬렉션에서 균등', '캡슐과 같은 굴림', '한 등급씩 낮춤', '다른 트라이브일 확률']) {
+      expect(`${rule?.currentSpec} ${rule?.userExperience}`, old).not.toContain(old)
+    }
+    expect(rule?.userExperience).toContain('받을 컬렉션을 고르면')
+    expect(rule?.ticketId).toBe('20261023_1648')
+  })
+
+  it('등급 올리기 윗등급 확률 카드는 combine_policy.tier_up_probability를 밸런스 설정 «컬렉션과 믹스» 구역으로 잇는다 (티켓 20261023_1648 4회)', () => {
+    const card = POLICIES_DATA.find((p) => p.id === 'ch8-tier-up-probability')
+    expect(card?.chapter).toBe(8)
+    expect(card?.type).toBe('admin_link')
+    expect(card?.dbTable).toBe('combine_policy')
+    expect(card?.dbColumn).toBe('tier_up_probability')
+    expect(card?.adminLink?.href).toBe('/admin/balance#collection')
+    // DB는 0~1, 화면은 %라 한 칸 실측값은 읽어 보이지 않는다(0.7이 70%로 읽히지 않는다)
+    expect(card?.adminLink?.liveField).toBeUndefined()
+    expect(card?.currentSpec).toContain('기본 70%')
+    expect(card?.currentSpec).toContain('확률 안내 페이지')
+  })
+
+  it('확률 안내 페이지 카드가 등급 올리기 윗등급 확률(combine_policy)을 읽는다고 적는다 (티켓 20261023_1648 4회)', () => {
+    const card = POLICIES_DATA.find((p) => p.id === 'ch18-probability-page')
+    expect(card?.currentSpec).toContain('combine_policy')
+  })
+
   it('슬롭 금칙어가 정책 텍스트에 포함되지 않는다', () => {
     // 슬롭 검사기가 테스트 코드 자체를 오탐하지 않도록 분할 정의
     const forbidden = [
