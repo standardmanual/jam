@@ -29,15 +29,16 @@ export interface TierUpCollectionBook extends IssueBook {
 const RARITIES: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /**
- * 순수 — 읽어 온 컬렉션·아이템 배지에서 컬렉션별로 «지금 나올 수 있는 등급»을 만든다. 나올 수 있는 배지가 하나도 없는 컬렉션은 뺀다.
+ * 순수 — 컬렉션별로 «지금 나올 수 있는 등급»을 만든다. 나올 수 있는 배지가 하나도 없는 컬렉션은 맵에 없다.
  * 등급마다 `listIssueCandidates`를 한 번씩 부른다(서버 굴림이 등급을 정한 뒤 후보를 고르는 것과 같은 호출이다).
+ * 믹스 화면의 목록(`buildTierUpCollectionOptions`)과 서버(`tierUp`의 고른 컬렉션 검사, 티켓 20261025_2011)가 같은 함수를 쓴다.
  */
-export function buildTierUpCollectionOptions(input: {
+export function issuableRaritiesByBook(input: {
   tribeId: string
-  books: readonly TierUpCollectionBook[]
+  books: readonly IssueBook[]
   badges: readonly IssueBadge[]
   now: Date
-}): TierUpCollectionOption[] {
+}): Map<string, Set<BadgeRarity>> {
   const raritiesByBook = new Map<string, Set<BadgeRarity>>()
   for (const rarity of RARITIES) {
     for (const badge of listIssueCandidates({ tribeId: input.tribeId, rarity, books: input.books, badges: input.badges, now: input.now })) {
@@ -47,6 +48,19 @@ export function buildTierUpCollectionOptions(input: {
       raritiesByBook.set(badge.item_book_id, found)
     }
   }
+  return raritiesByBook
+}
+
+/**
+ * 순수 — 읽어 온 컬렉션·아이템 배지에서 컬렉션별로 «지금 나올 수 있는 등급»을 만든다. 나올 수 있는 배지가 하나도 없는 컬렉션은 뺀다.
+ */
+export function buildTierUpCollectionOptions(input: {
+  tribeId: string
+  books: readonly TierUpCollectionBook[]
+  badges: readonly IssueBadge[]
+  now: Date
+}): TierUpCollectionOption[] {
+  const raritiesByBook = issuableRaritiesByBook(input)
   return input.books
     .filter((book) => raritiesByBook.has(book.id))
     .map((book) => ({

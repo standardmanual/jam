@@ -3,11 +3,13 @@
  *
  * 서버 규칙은 `lib/combine/tierUp.ts`(2회)가 갖고 있고 그 파일은 Supabase를 읽는 서버 전용 모듈이다. 이 파일은 그 모듈을 값으로도 타입으로도
  * 가져오지 않는다. 요청·응답 모양은 티켓 「2회 규칙 명세」를 보고 여기서 직접 선언한다(서버 파일과 이름이 겹치지 않게 파일명도 다르다).
+ * 서버와 같은 판정이 필요한 곳(받을 컬렉션 목록)만 서버 모듈이 아닌 순수 규칙 파일 `lib/combine/tierUpOdds.ts`의 함수를 가져온다(Supabase·서버 모듈 없음).
  *
  * 굴림과 확률은 서버에서만 정한다. 이 파일에는 확률 숫자가 없다(UX 라이팅 §3.3) — 화면은 «확률 안내» 링크만 둔다.
  */
 import { getRarityLabel } from '@ds/components/cards/RarityBadge'
 import { d, t } from '@/lib/i18n'
+import { collectionSupportsTierUp } from '@/lib/combine/tierUpOdds'
 import { isLockedItemBody } from '@/lib/inventory/locked-item-block'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 
@@ -20,8 +22,6 @@ export type TierUpMaterialRarity = (typeof TIER_UP_MATERIAL_RARITIES)[number]
 
 type Rarity = TierUpMaterialRarity | 'mystic'
 const RARITY_RANK: Record<Rarity, number> = { common: 0, rare: 1, epic: 2, mystic: 3 }
-/** 재료 등급의 바로 위 등급 — 윗등급이 나오면 이 등급이다(서버 규칙과 같다) */
-const NEXT_RARITY: Record<TierUpMaterialRarity, Rarity> = { common: 'rare', rare: 'epic', epic: 'mystic' }
 
 export const TIER_UP_ENDPOINT = '/api/combine/tier-up'
 
@@ -220,15 +220,15 @@ export interface TierUpCollectionOption {
 
 /**
  * 순수 — 재료 등급으로 고를 수 있는 컬렉션. 재료 등급의 바로 위 등급과 같은 등급이 모두 있는 컬렉션만 남기고 이름 가나다순으로 돌려준다.
- * 윗등급만 있는 컬렉션이 섞이면 같은 등급이 나올 때 받을 것이 없어 소각 전 거절이 나므로(`no_candidate`) 미리 뺀다.
+ * 판정은 서버(`lib/combine/tierUp.ts`)가 쓰는 `collectionSupportsTierUp`(`lib/combine/tierUpOdds.ts`)과 같은 함수다 — 한쪽만 있는 컬렉션은
+ * 서버가 소각 전에 `invalid_collection`으로 거절하므로 목록에서도 뺀다(티켓 20261025_2011).
  */
 export function tierUpCollectionChoices(
   options: readonly TierUpCollectionOption[],
   materialRarity: TierUpMaterialRarity,
 ): TierUpCollectionOption[] {
-  const upper = NEXT_RARITY[materialRarity]
   return options
-    .filter((option) => option.rarities.includes(materialRarity) && option.rarities.includes(upper))
+    .filter((option) => collectionSupportsTierUp(option.rarities, materialRarity))
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 }
 
