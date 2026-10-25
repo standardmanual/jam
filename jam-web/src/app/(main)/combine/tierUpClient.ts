@@ -262,7 +262,7 @@ export function buildTierUpCollectionView(
 
 /**
  * 순수 — 바로 지급된 결과의 오버레이 한 줄. 재료 등급과 받은 등급을 비교해 윗등급일 때만 «윗등급이 나왔어요!»를 쓰고, 같은 등급이면
- * «윗등급은 운이 좋을 때 나와요»를 덧붙인다. 응답에 등급이 없어 비교할 수 없으면 등급을 지어내지 않는다.
+ * 받은 등급만 말한다(뒤에 설명을 덧붙이지 않는다). 응답에 등급이 없어 비교할 수 없으면 등급을 지어내지 않는다.
  */
 export function tierUpResultMessage(
   materialRarity: string | null | undefined,

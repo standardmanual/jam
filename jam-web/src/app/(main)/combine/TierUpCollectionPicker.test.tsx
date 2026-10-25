@@ -262,7 +262,7 @@ describe('컬렉션 고르기 문구', () => {
     expect(d.combine.tierUp.invalidCollection).toBe('지금은 고를 수 없는 컬렉션이에요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.')
     expect(Object.values(copy).join('\n')).not.toMatch(/아이템북|후보|소각|슬롯|%|퍼센트/)
     expect(d.combine.tierUp.description).toBe(
-      '같은 등급 아이템 배지 5개를 넣고 컬렉션을 고르면, 그 컬렉션의 새 아이템 배지 1개를 받아요. 운이 좋으면 윗등급이 나오고, 아니면 같은 등급이 나와요. Mystic은 넣을 수 없어요.',
+      '같은 등급 아이템 배지 5개를 넣고 컬렉션을 고르면, 그 컬렉션의 새 아이템 배지 1개를 받아요. 윗등급이 나오거나 같은 등급이 나와요. Mystic은 넣을 수 없어요.',
     )
   })
 })
