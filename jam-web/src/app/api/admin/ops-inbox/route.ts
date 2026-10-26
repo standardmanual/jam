@@ -150,6 +150,8 @@ export async function POST(req: Request) {
       routine_run: bundle.routine_run,
       color_rationale_link: bundle.color_rationale_link,
       is_sample: bundle.is_sample,
+      title: bundle.title,
+      trends: bundle.trends,
       raw: parsed as Json,
       raw_hash: rawHash,
       format_errors: errors,

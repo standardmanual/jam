@@ -1167,3 +1167,210 @@ describe('수정 때만 하는 색 검사', () => {
     expect(result.errors).toEqual([])
   })
 })
+
+// ── 기획 제목·기획 이유·단계 기록·읽은 트렌드 (티켓 20261026_2021) ─────────────────────────────────────
+
+// 이미지 지시가 없는 항목은 image_spec 경고가 늘 붙으므로, 이 절은 highlight 경고만 가려서 본다.
+function highlightWarnings(warnings: string[]) {
+  return warnings.filter((warning) => warning.startsWith('highlight:'))
+}
+
+const STAGE = {
+  agent: '기획',
+  stage: 'plan',
+  started_at: '2026-10-27T09:00:00+09:00',
+  ended_at: '2026-10-27T09:12:00+09:00',
+  in_count: 0,
+  out_count: 24,
+  excluded_count: 0,
+}
+const TREND = {
+  label: 'LP 리바이벌',
+  source_ids: [1, 'tag-lp'],
+  summary: '해시태그 언급이 2주째 늘고 있어요',
+  series: [1, 2, 3],
+  outcome: 'used',
+}
+
+describe('validateOpsBundle — 새 필드가 모두 없으면 지금과 같다(옛 묶음 호환)', () => {
+  it('title·trends는 null이고 오류·경고가 없다', () => {
+    const result = validateOpsBundle(makeBundle())
+    expect(result.errors).toEqual([])
+    expect(highlightWarnings(result.warnings)).toEqual([])
+    expect(result.bundle).toMatchObject({ title: null, trends: null })
+  })
+})
+
+describe('validateOpsBundle — title', () => {
+  it('정상 제목은 앞뒤 공백을 떼고 담는다', () => {
+    const result = validateOpsBundle(makeBundle({ title: '  LP 리바이벌 × 억새 절정  ' }))
+    expect(result.errors).toEqual([])
+    expect(result.bundle?.title).toBe('LP 리바이벌 × 억새 절정')
+  })
+
+  it('30자는 통과하고 31자는 형식 오류이며 저장 값은 null이다', () => {
+    expect(validateOpsBundle(makeBundle({ title: '가'.repeat(30) })).errors).toEqual([])
+    const result = validateOpsBundle(makeBundle({ title: '가'.repeat(31) }))
+    expect(result.fatal).toEqual([])
+    expect(result.errors).toEqual([expect.stringContaining('title: 30자까지 받아요')])
+    expect(result.bundle?.title).toBeNull()
+  })
+
+  it('문자열이 아니거나 비어 있으면 형식 오류다', () => {
+    for (const bad of [7, '', '   ', ['a']]) {
+      const result = validateOpsBundle(makeBundle({ title: bad }))
+      expect(result.errors, JSON.stringify(bad)).toEqual([expect.stringContaining('title: 비어 있지 않은 문자열')])
+      expect(result.bundle?.title).toBeNull()
+    }
+  })
+})
+
+describe('validateOpsBundle — 항목의 rationale·highlight', () => {
+  const rationale = { kind: 'trend', label: 'LP 리바이벌', note: '언급이 늘었어요', source_id: 1 }
+
+  it('정상 값은 오류 없이 원본에 그대로 남는다', () => {
+    const item = makeItem({ rationale: [rationale, { kind: 'pattern', label: 'P07' }], highlight: true })
+    const result = validateOpsBundle(makeBundle({ items: [item] }))
+    expect(result.errors).toEqual([])
+    expect(result.items[0].original).toEqual(item)
+  })
+
+  it('label 12자·note 120자는 통과하고 넘으면 그 항목의 형식 오류다', () => {
+    const ok = makeItem({ rationale: [{ kind: 'season', label: '가'.repeat(12), note: '나'.repeat(120) }] })
+    expect(validateOpsBundle(makeBundle({ items: [ok] })).errors).toEqual([])
+
+    const long = makeItem({ rationale: [{ kind: 'season', label: '가'.repeat(13), note: '나'.repeat(121) }] })
+    const result = validateOpsBundle(makeBundle({ items: [long] }))
+    expect(result.items[0].format_errors).toEqual([
+      expect.stringContaining('items[0].rationale[0].label: 12자까지'),
+      expect.stringContaining('items[0].rationale[0].note: 120자까지'),
+    ])
+    expect(result.errors).toEqual(result.items[0].format_errors)
+  })
+
+  it('kind는 다섯 값만 받는다', () => {
+    for (const kind of ['trend', 'season', 'weather', 'signal', 'pattern']) {
+      const item = makeItem({ rationale: [{ kind, label: 'x' }] })
+      expect(validateOpsBundle(makeBundle({ items: [item] })).errors, kind).toEqual([])
+    }
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ rationale: [{ kind: 'mood', label: 'x' }] })] }))
+    expect(result.errors).toEqual([expect.stringContaining('items[0].rationale[0].kind: 허용되지 않는 종류예요')])
+  })
+
+  it('항목당 3개를 넘으면 형식 오류다', () => {
+    const four = Array.from({ length: 4 }, () => ({ kind: 'signal', label: 'x' }))
+    expect(validateOpsBundle(makeBundle({ items: [makeItem({ rationale: four.slice(0, 3) })] })).errors).toEqual([])
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ rationale: four })] }))
+    expect(result.errors).toEqual([expect.stringContaining('items[0].rationale: 항목당 3개까지')])
+  })
+
+  it('배열·객체 모양, label 유무, note·source_id·highlight 형식을 본다', () => {
+    const cases: Array<[Record<string, unknown>, string]> = [
+      [{ rationale: 'x' }, 'items[0].rationale: 배열이어야 해요'],
+      [{ rationale: ['x'] }, 'items[0].rationale[0]: 객체여야 해요'],
+      [{ rationale: [{ kind: 'signal' }] }, 'items[0].rationale[0].label: 필수 항목이 없어요'],
+      [{ rationale: [{ label: 'x' }] }, 'items[0].rationale[0].kind: 필수 항목이 없어요'],
+      [{ rationale: [{ kind: 'signal', label: 'x', note: 3 }] }, 'items[0].rationale[0].note: 문자열이어야 해요'],
+      [{ rationale: [{ kind: 'signal', label: 'x', source_id: 0 }] }, 'items[0].rationale[0].source_id: 출처 번호'],
+      [{ highlight: 'yes' }, 'items[0].highlight: true 또는 false여야 해요'],
+    ]
+    for (const [overrides, expected] of cases) {
+      const result = validateOpsBundle(makeBundle({ items: [makeItem(overrides)] }))
+      expect(result.errors, expected).toEqual([expect.stringContaining(expected)])
+    }
+  })
+
+  it('highlight가 묶음에서 5개를 넘으면 오류가 아니라 경고다', () => {
+    const items = (count: number) =>
+      Array.from({ length: count }, (_, index) => makeItem({ item_key: `c-${index}`, highlight: true }))
+    const five = validateOpsBundle(makeBundle({ items: items(5) }))
+    expect(highlightWarnings(five.warnings)).toEqual([])
+    const six = validateOpsBundle(makeBundle({ items: items(6) }))
+    expect(six.errors).toEqual([])
+    expect(highlightWarnings(six.warnings)).toEqual([expect.stringContaining('핵심 항목은 한 묶음에 5개 이하')])
+  })
+})
+
+describe('validateOpsBundle — routine_run.stages', () => {
+  it('정상 단계 기록은 오류 없이 routine_run에 그대로 담긴다', () => {
+    const routineRun = { stages: [STAGE, { agent: '검수', stage: 'world_review' }, { agent: '밸런스', stage: 'balance_check' }] }
+    const result = validateOpsBundle(makeBundle({ routine_run: routineRun }))
+    expect(result.errors).toEqual([])
+    expect(result.bundle?.routine_run).toEqual(routineRun)
+  })
+
+  it('stages가 없으면 오류가 아니다(기존 routine_run 호환)', () => {
+    expect(validateOpsBundle(makeBundle({ routine_run: { started_at: 'x' } })).errors).toEqual([])
+  })
+
+  it('값 범위 밖은 형식 오류에 쌓이고 묶음은 받는다', () => {
+    const cases: Array<[unknown, string]> = [
+      ['x', 'routine_run.stages: 배열이어야 해요'],
+      [['x'], 'routine_run.stages[0]: 객체여야 해요'],
+      [[{ ...STAGE, stage: 'review' }], 'routine_run.stages[0].stage: 허용되지 않는 단계예요'],
+      [[{ ...STAGE, agent: '' }], 'routine_run.stages[0].agent: 비어 있지 않은 문자열'],
+      [[{ ...STAGE, started_at: '어제' }], 'routine_run.stages[0].started_at: 시간대가 붙은 ISO 8601'],
+      [[{ ...STAGE, in_count: -1 }], 'routine_run.stages[0].in_count: 0 이상의 정수'],
+      [[{ ...STAGE, excluded_count: 1.5 }], 'routine_run.stages[0].excluded_count: 0 이상의 정수'],
+    ]
+    for (const [stages, expected] of cases) {
+      const result = validateOpsBundle(makeBundle({ routine_run: { stages } }))
+      expect(result.fatal).toEqual([])
+      expect(result.errors, expected).toEqual([expect.stringContaining(expected)])
+      expect(result.bundle).not.toBeNull()
+    }
+  })
+})
+
+describe('validateOpsBundle — trends', () => {
+  it('정상 트렌드(반영·보류·자동 제외)는 오류 없이 담긴다', () => {
+    const trends = [
+      TREND,
+      { ...TREND, outcome: 'held' },
+      { label: '정치 밈', source_ids: [], summary: '선거 관련 밈이에요', outcome: 'excluded', outcome_reason: '정치' },
+    ]
+    const result = validateOpsBundle(makeBundle({ trends }))
+    expect(result.errors).toEqual([])
+    expect(result.bundle?.trends).toEqual(trends)
+  })
+
+  it('excluded인데 outcome_reason이 없으면 형식 오류이고 trends는 저장하지 않는다', () => {
+    const result = validateOpsBundle(makeBundle({ trends: [{ ...TREND, outcome: 'excluded' }] }))
+    expect(result.errors).toEqual([expect.stringContaining('trends[0].outcome_reason: 자동 제외(excluded)한 트렌드는')])
+    expect(result.bundle?.trends).toBeNull()
+  })
+
+  it('값 범위 밖은 형식 오류에 쌓인다', () => {
+    const cases: Array<[unknown, string]> = [
+      ['x', 'trends: 배열이어야 해요'],
+      [['x'], 'trends[0]: 객체여야 해요'],
+      [[{ ...TREND, outcome: 'maybe' }], 'trends[0].outcome: 허용되지 않는 결과예요'],
+      [[{ ...TREND, outcome: undefined }], 'trends[0].outcome: 필수 항목이 없어요'],
+      [[{ ...TREND, label: '' }], 'trends[0].label: 비어 있지 않은 문자열'],
+      [[{ ...TREND, summary: undefined }], 'trends[0].summary: 필수 항목이 없어요'],
+      [[{ ...TREND, source_ids: undefined }], 'trends[0].source_ids: 필수 항목이 없어요'],
+      [[{ ...TREND, source_ids: [0] }], 'trends[0].source_ids: 출처 번호'],
+      [[{ ...TREND, series: Array.from({ length: 15 }, () => 1) }], 'trends[0].series: 숫자 14개 이하'],
+      [[{ ...TREND, series: [1, 'a'] }], 'trends[0].series: 숫자 14개 이하'],
+    ]
+    for (const [trends, expected] of cases) {
+      const result = validateOpsBundle(makeBundle({ trends }))
+      expect(result.fatal).toEqual([])
+      expect(result.errors, expected).toEqual([expect.stringContaining(expected)])
+      expect(result.bundle?.trends).toBeNull()
+    }
+  })
+
+  it('새 필드를 모두 채운 묶음도 오류 없이 받는다', () => {
+    const result = validateOpsBundle(
+      makeBundle({
+        title: 'LP 리바이벌 × 억새 절정',
+        trends: [TREND],
+        routine_run: { stages: [STAGE] },
+        items: [makeItem({ rationale: [{ kind: 'trend', label: 'LP 리바이벌', source_id: 1 }], highlight: true })],
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(highlightWarnings(result.warnings)).toEqual([])
+  })
+})

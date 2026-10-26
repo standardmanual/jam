@@ -42,6 +42,33 @@ export const OPS_EXCLUDED_ITEM_STAGES = ['world_review', 'balance_check'] as con
 
 export type OpsExcludedItemStage = (typeof OPS_EXCLUDED_ITEM_STAGES)[number]
 
+/**
+ * 에이전트 단계 기록(`routine_run.stages[].stage`)의 허용값(티켓 20261026_2021, 어드민 상황판 PRD §5.3).
+ * 기획 단계(`plan`)에 뺀 항목의 단계 두 값을 이어 붙여 같은 이름을 쓴다.
+ */
+export const OPS_ROUTINE_STAGES = ['plan', ...OPS_EXCLUDED_ITEM_STAGES] as const
+
+export type OpsRoutineStage = (typeof OPS_ROUTINE_STAGES)[number]
+
+/** 기획 이유(`rationale[].kind`)의 허용값 다섯 개(어드민 상황판 PRD §5.2). */
+export const OPS_RATIONALE_KINDS = ['trend', 'season', 'weather', 'signal', 'pattern'] as const
+
+export type OpsRationaleKind = (typeof OPS_RATIONALE_KINDS)[number]
+
+/** 읽은 트렌드(`trends[].outcome`)의 처리 결과: 기획에 반영 · 보류 · 자동 제외(어드민 상황판 PRD §5.4). */
+export const OPS_TREND_OUTCOMES = ['used', 'held', 'excluded'] as const
+
+export type OpsTrendOutcome = (typeof OPS_TREND_OUTCOMES)[number]
+
+/** 기획 제목·기획 이유 길이 상한(글자)과 개수 상한(티켓 20261026_2021). */
+export const MAX_TITLE_CHARS = 30
+export const MAX_RATIONALE_LABEL_CHARS = 12
+export const MAX_RATIONALE_NOTE_CHARS = 120
+export const MAX_RATIONALES_PER_ITEM = 3
+export const MAX_HIGHLIGHTS_PER_BUNDLE = 5
+/** 트렌드 추이(`series`)는 최근 14일 값이다. */
+export const MAX_TREND_SERIES_POINTS = 14
+
 /** 항목 상태 10개(PRD §7). 새로 도착한 항목은 `arrived`다. */
 export const OPS_ITEM_STATUSES = [
   'arrived',
