@@ -6,7 +6,7 @@
  *   **추첨 난수를 쓰기 전에** 막고 RPC를 부르지 않는다. 나올 개체가 하나도 없으면 RPC를 부르지 않는다(채운 잼이 개체 없이 사라지지 않게).
  * - RPC 인자: 개체마다 badge_id·등급·처음 뽑힌 등급·잠김 여부·까닭·필요한 양. 퀘스트 전 캡슐은 첫 개체가 잠긴다.
  * - 응답: 열린 개체는 이름·그림·등급·일련번호, 잠긴 개체는 이름·그림·일련번호·badgeId 없이 등급과 필요한 양만. 다음 캡슐 필요량·채운 양.
- * - DB 거절(`not_full`·`insufficient_slots`(지금 빈칸·필요한 빈칸 포함)·`user_suspended`·`invalid_items`·`inventory_not_found`)은 `CapsuleError`,
+ * - DB 거절(`not_full`·`insufficient_slots`(지금 빈칸·필요한 빈칸 포함)·`user_suspended`·`invalid_items`·`inventory_not_found`·`capsule_changed`)은 `CapsuleError`,
  *   모르는 코드·RPC 오류·해석할 수 없는 응답은 일반 오류.
  * - 후속 처리: 개체마다 `recordIssuedRewards`(활동 없음, 잠김 여부 전달, 피드 건너뜀 `skipFeed`). 잠긴 개체는 포인트에서 빠진다. 열린 개체도 피드에 올리지 않는다(운영 로직 15.3절, 티켓 20261021_1249 6-3 5회). 후속 처리가 던져도 열기는 유지된다.
  * - 챕터 점수 «캡슐 열기»(티켓 20261019_1315): 열기가 확정된 직후(`capsule_open` 다음, 후속 처리 앞) `chapter_add_score`를
@@ -408,7 +408,7 @@ describe('openCapsule — 추첨 전에 막는다', () => {
 })
 
 describe('openCapsule — DB 응답 변환', () => {
-  it.each(['user_suspended', 'not_full', 'invalid_items', 'inventory_not_found'] as const)('DB 거절 %s를 CapsuleError로 바꾼다', async (code) => {
+  it.each(['user_suspended', 'not_full', 'invalid_items', 'inventory_not_found', 'capsule_changed'] as const)('DB 거절 %s를 CapsuleError로 바꾼다', async (code) => {
     const { client } = fakeClient({ rpc: { data: { ok: false, error: code }, error: null } })
 
     const error = (await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) }).catch((e: unknown) => e)) as CapsuleError

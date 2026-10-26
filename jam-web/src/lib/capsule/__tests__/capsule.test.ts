@@ -6,7 +6,7 @@
  *   다 채웠어도 빈칸이 나올 수 있는 최대 개수(2)보다 적으면 `no_free_slots`(지금 빈칸·필요한 빈칸 포함)다. 지갑 행이 없으면 잔액 0, 인벤토리 행이 없으면 빈칸 0이다.
  *   RPC·조회 오류와 해석할 수 없는 응답은 던진다. 채우기 응답은 빈칸을 읽지 못해도 채우기를 실패로 돌려주지 않는다.
  * - 채우기: 이용 정지 확인(`assertNotSuspended`)이 RPC보다 먼저다. 정지 중이면 RPC를 부르지 않는다. 정지 여부를 읽지 못해도 RPC를 부르지 않는다.
- * - DB 함수의 거절 코드(`already_full`·`exceeds_remaining`·`invalid_amount`·`insufficient_jam`·`user_suspended`)를 `CapsuleError`로 바꾼다.
+ * - DB 함수의 거절 코드(`already_full`·`exceeds_remaining`·`invalid_amount`·`insufficient_jam`·`capsule_changed`·`user_suspended`)를 `CapsuleError`로 바꾼다.
  *   알 수 없는 코드와 RPC 오류는 일반 오류다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
@@ -276,7 +276,7 @@ describe('fillCapsule', () => {
     expect(rpc).not.toHaveBeenCalled()
   })
 
-  it.each(['user_suspended', 'already_full', 'invalid_amount', 'insufficient_jam'] as const)('DB 거절 %s를 CapsuleError로 바꾼다', async (code) => {
+  it.each(['user_suspended', 'already_full', 'invalid_amount', 'insufficient_jam', 'capsule_changed'] as const)('DB 거절 %s를 CapsuleError로 바꾼다', async (code) => {
     const { client } = fakeClient({ rpc: { capsule_fill: { data: { ok: false, error: code }, error: null } } })
 
     const error = await fillCapsule(client, USER_ID, 10).catch((e: unknown) => e)

@@ -7,7 +7,7 @@
  *   채우지 않는다. 본문의 `userId`는 무시하고 세션 유저로만 채운다.
  * - 정상은 200과 채운 양·캡슐 상태다.
  * - 이용 정지는 403(`code: 'user_suspended'`, `d.suspension.capsuleBlocked`, 2-6과 같은 모양)이다. 앱 코드가 던진 경우와 DB 함수가 거절한 경우 모두다.
- * - DB 거절 코드: `already_full`·`exceeds_remaining`(남은 양 포함)·`invalid_amount` 400, `insufficient_jam` 409. 그 밖의 오류는 500(`d.capsule.fillFailed`).
+ * - DB 거절 코드: `already_full`·`exceeds_remaining`(남은 양 포함)·`invalid_amount` 400, `insufficient_jam`·`capsule_changed` 409(문구는 «캡슐이 방금 바뀌었어요. 다시 시도해 주세요.»). 그 밖의 오류는 500(`d.capsule.fillFailed`).
  *
  * 실행: cd jam-web && npx vitest run src/app/api/capsule/fill/__tests__/route.test.ts
  */
@@ -131,6 +131,7 @@ describe('POST /api/capsule/fill — 거절과 오류', () => {
     ['already_full', 400, d.capsule.alreadyFull],
     ['invalid_amount', 400, d.capsule.invalidAmount],
     ['insufficient_jam', 409, d.capsule.insufficientJam],
+    ['capsule_changed', 409, '캡슐이 방금 바뀌었어요. 다시 시도해 주세요.'],
   ] as const)('DB 거절 %s는 %i와 정해진 문구다', async (code, status, message) => {
     fillMock.mockRejectedValue(new CapsuleError(code))
 
