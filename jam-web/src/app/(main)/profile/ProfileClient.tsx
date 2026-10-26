@@ -29,6 +29,7 @@ import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSect
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
+import JamBalance from '@/components/jam/JamBalance'
 import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
 import ChapterLine, { type MyChapterLineData, type PublicChapterLineData } from '@/components/chapter/ChapterLine'
 
@@ -657,6 +658,11 @@ export default function ProfileClient({
                 </Button>
               </div>
             )}
+
+            {/* 가진 잼 한 줄 (티켓 20261026_1030) — 포인트 행 바로 아래, 누를 수 없는 텍스트. 값은 캡슐 위젯과 같은 서버 초기값
+                (`capsuleInitial.balance`)이라 채우기·열기 뒤 router.refresh로 따라 바뀐다. 읽지 못함(null)·prop 없음(undefined)은 줄이 없고
+                (0으로 대신 그리지 않는다), 잔액 0은 «가진 잼 0»이다. `isOwnProfile`을 함께 걸어 타인 프로필에 prop이 와도 막는다. */}
+            {isOwnProfile && capsuleInitial != null && <JamBalance balance={capsuleInitial.balance} />}
           </div>
 
           {!isOwnProfile && (
