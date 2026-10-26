@@ -6,6 +6,7 @@
  * 2. 컬렉션은 공개된 것 전부다 — 기간이 끝난 것은 싣고 비활성·공개 전은 뺀다. 아이템은 그 컬렉션 소속이고 삭제되지 않은 아이템 배지만 읽는다
  * 3. 표 하나라도 읽기에 실패하면 부분 결과 없이 던진다(조용히 「막힘」이 되지 않는다)
  * 4. select 목록에 관리자 ID 칸이 없다
+ * 5. 동기화·캡슐·등급 올리기 길에 필요한 칸(tribe_id, rarity, always_locked, unlock_required)만 더 읽고 정책 표는 읽지 않는다 (티켓 20261022_1136 2회)
  */
 import { describe, it, expect } from 'vitest'
 import { loadItemPathInputs } from '../load'
@@ -118,7 +119,16 @@ const FUTURE = '2026-11-01T00:00:00.000Z'
 const ADMIN_ID = 'secret-admin-user-id'
 
 function book(id: string, over: Row = {}): Row {
-  return { id, is_active: true, valid_from: null, valid_until: null, drop_excluded: false, updated_by: ADMIN_ID, ...over }
+  return {
+    id,
+    tribe_id: 'tribe-1',
+    is_active: true,
+    valid_from: null,
+    valid_until: null,
+    drop_excluded: false,
+    updated_by: ADMIN_ID,
+    ...over,
+  }
 }
 
 function itemRow(id: string, bookId: string | null, over: Row = {}): Row {
@@ -130,6 +140,9 @@ function itemRow(id: string, bookId: string | null, over: Row = {}): Row {
     drop_excluded: false,
     valid_from: null,
     valid_until: null,
+    rarity: 'common',
+    always_locked: false,
+    unlock_required: null,
     ...over,
   }
 }
@@ -152,11 +165,55 @@ describe('loadItemPathInputs — 컬렉션·아이템 범위', () => {
     expect(inputs.collections.map((c) => c.id)).toEqual(['boundary', 'ended', 'open'])
     expect(inputs.collections[1]).toEqual({
       id: 'ended',
+      tribe_id: 'tribe-1',
       is_active: true,
       valid_from: null,
       valid_until: PAST,
       drop_excluded: false,
     })
+  })
+
+  it('동기화·캡슐·등급 올리기 길에 필요한 칸(컬렉션 tribe_id, 아이템 rarity·always_locked·unlock_required)을 그대로 담는다', async () => {
+    const db = makeDb({
+      item_books: [book('c1'), book('no-tribe', { tribe_id: null })],
+      badges: [
+        itemRow('i1', 'c1', { rarity: 'mystic', always_locked: true, unlock_required: 12 }),
+        itemRow('i2', 'c1', { rarity: null }),
+      ],
+    })
+    const inputs = await load(db, NOW)
+    expect(inputs.collections.map((c) => [c.id, c.tribe_id])).toEqual([
+      ['c1', 'tribe-1'],
+      ['no-tribe', null],
+    ])
+    expect(inputs.items[0]).toMatchObject({ rarity: 'mystic', always_locked: true, unlock_required: 12 })
+    expect(inputs.items[1]).toMatchObject({ rarity: null, always_locked: false, unlock_required: null })
+  })
+
+  it('새 길에 필요한 칸만 더 읽고 정책 표(jam_policy·combine_policy)는 읽지 않는다', async () => {
+    const db = makeDb({ item_books: [book('c1')], badges: [itemRow('i1', 'c1')] })
+    await load(db, NOW)
+    const tables = new Set(db.selects.map((s) => s.table))
+    expect([...tables].sort()).toEqual(['badges', 'combination_recipes', 'item_books', 'missions'])
+    expect(db.selects.find((s) => s.table === 'item_books')?.columns).toEqual([
+      'id',
+      'tribe_id',
+      'is_active',
+      'valid_from',
+      'valid_until',
+      'drop_excluded',
+    ])
+    expect(db.selects.find((s) => s.table === 'badges')?.columns).toEqual([
+      'id',
+      'item_book_id',
+      'deleted_at',
+      'drop_excluded',
+      'valid_from',
+      'valid_until',
+      'rarity',
+      'always_locked',
+      'unlock_required',
+    ])
   })
 
   it('아이템은 읽어 온 컬렉션 소속이고 삭제되지 않은 아이템 배지만 읽는다', async () => {

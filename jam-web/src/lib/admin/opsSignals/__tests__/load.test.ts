@@ -897,6 +897,7 @@ describe('loadOpsSignals — 획득 경로가 막힌 컬렉션 (티켓 20261008_
   const FUTURE = '2027-01-01T00:00:00+09:00'
   const book = (id: string, over: Record<string, unknown> = {}) => ({
     id,
+    tribe_id: 'tribe-1',
     is_active: true,
     valid_from: PAST,
     valid_until: null,
@@ -910,6 +911,9 @@ describe('loadOpsSignals — 획득 경로가 막힌 컬렉션 (티켓 20261008_
     drop_excluded: false,
     valid_from: null,
     valid_until: null,
+    rarity: 'common',
+    always_locked: false,
+    unlock_required: null,
     ...over,
   })
   /** 아이템 유효기간이 지나 드랍 길이 닫힌 아이템(레시피·미션도 없어 막힘). */
@@ -938,6 +942,33 @@ describe('loadOpsSignals — 획득 경로가 막힌 컬렉션 (티켓 20261008_
       '컬렉션 「진행 중 컬렉션」의 아이템 2개는 지금 얻을 길이 없어요(전체 3개).',
     ])
     expect(result.sourceErrors).toEqual({})
+  })
+
+  it('동기화·캡슐·등급 올리기 길이 더해져도 막힌 아이템의 수는 그대로다 — 새 길은 드랍 길이 닫힌 아이템을 열지 못한다(티켓 20261022_1136 2회)', async () => {
+    // 트라이브가 있고 Common·Rare가 함께 있는 컬렉션: 두 등급 모두 동기화·캡슐과 등급 올리기가 열려 있다.
+    // 유효기간이 지난 아이템 하나는 세 길 모두 닫혀 막힘이고, 소속 트라이브가 없는 컬렉션의 열린 아이템은 드랍 길로 열려 있다.
+    const NO_TRIBE_BOOK = 'a0000000-0000-4000-8000-000000000004'
+    h.paths.inputs = {
+      collections: [book(OPEN_BOOK), book(NO_TRIBE_BOOK, { tribe_id: null })],
+      items: [
+        item('i1', OPEN_BOOK, { rarity: 'common' }),
+        item('i2', OPEN_BOOK, { rarity: 'rare' }),
+        blockedItem('i3', OPEN_BOOK),
+        item('n1', NO_TRIBE_BOOK),
+      ],
+      recipes: [],
+      missions: [],
+    }
+    h.state.tables.item_books = [
+      { id: OPEN_BOOK, name: '진행 중 컬렉션' },
+      { id: NO_TRIBE_BOOK, name: '트라이브 없는 컬렉션' },
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    const outcome = signal(result, 'blocked_collection')
+    expect(outcome.state).toBe('raised')
+    expect(outcome.results.map((entry) => entry.message)).toEqual([
+      '컬렉션 「진행 중 컬렉션」의 아이템 1개는 지금 얻을 길이 없어요(전체 3개).',
+    ])
   })
 
   it('기간이 끝난 컬렉션과 드랍 제외 아이템은 세지 않고, 막힌 것이 없으면 이름도 읽지 않는다', async () => {
