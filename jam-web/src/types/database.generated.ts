@@ -2275,6 +2275,8 @@ export type Database = {
           raw_hash: string
           received_at: string
           routine_run: Json | null
+          title: string | null
+          trends: Json | null
           week: string | null
         }
         Insert: {
@@ -2289,6 +2291,8 @@ export type Database = {
           raw_hash: string
           received_at?: string
           routine_run?: Json | null
+          title?: string | null
+          trends?: Json | null
           week?: string | null
         }
         Update: {
@@ -2303,6 +2307,8 @@ export type Database = {
           raw_hash?: string
           received_at?: string
           routine_run?: Json | null
+          title?: string | null
+          trends?: Json | null
           week?: string | null
         }
         Relationships: []
