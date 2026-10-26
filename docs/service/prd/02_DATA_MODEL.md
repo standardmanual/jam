@@ -417,7 +417,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
     `poi_drops.inventory_item_id → inventory_items.locked`를 함께 읽는다. 잠긴 개체의 항목은 서버에서 이름·그림·배지 id를 비우고 이름은 «잠긴 아이템 배지»(`d.lockedItem.card.name`)와 등급(`rarity`)만 싣는다
     (`badge_id`가 비어 피드의 «상세» 버튼도 그려지지 않는다). 개체가 연결돼 있는데 잠김을 읽지 못하면(`inventory_items`·`locked`가 비었다) 잠긴 것으로 본다. 개체 연결이 없는 과거 드랍은 열린 것으로 본다.
     열린 개체의 항목은 그대로 이름·그림을 싣는다. 판정과 가린 메타는 `lib/activity-feed/lockedDrop.ts`가 단일 원천이다. 홈·`/feed` 피드는 `poi_drops`를 읽지 않고 `user_activity_feed`만 읽으며,
-    잠긴 채 받은 개체는 받을 때·픽업할 때 피드 기록(`item_dropped`·`item_picked_up`)을 남기지 않으므로(`issueFollowUp`·픽업 라우트) 열기 전에는 이름이 실릴 행이 없다(연 때는 `openLockedItem`이 `item_dropped`를 올린다, 티켓 20261026_1031). 드랍 라우트(`POST /api/drops`)는 피드·소식을 기록하지 않는다.
+    잠긴 채 받은 개체는 받을 때·픽업할 때 피드 기록(`item_dropped`·`item_picked_up`)을 남기지 않으므로(`issueFollowUp`·픽업 라우트) 열기 전에는 이름이 실릴 행이 없다(연 때는 `openLockedItem`이 동기화로 받은 개체만 `item_dropped`를 올린다. 캡슐에서 나온 잠긴 개체는 열어도 올리지 않는다, 티켓 20261026_1031). 드랍 라우트(`POST /api/drops`)는 피드·소식을 기록하지 않는다.
   - 되돌림: 새 객체만 지운다. 채운 잼은 원장에 남아 지갑으로 돌아오지 않고, 열어서 준 포인트도 회수되지 않는다.
 
 ### custody_events (신규, 2026-08-29 — 티켓 20260829_2101)
