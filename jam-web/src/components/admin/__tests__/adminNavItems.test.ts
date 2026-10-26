@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { IconLayoutDashboard, IconAward, IconMapPin } from '@tabler/icons-react'
-import { DASHBOARD_ITEM, isNavItemActive, mostSpecificActiveItem, NAV_GROUPS } from '@/components/admin/adminNavItems'
+import { activeNavGroupId, DASHBOARD_ITEM, isNavItemActive, mostSpecificActiveItem, NAV_GROUPS } from '@/components/admin/adminNavItems'
 import type { NavItem } from '@/components/admin/adminNavItems'
 
 describe('isNavItemActive', () => {
@@ -125,6 +125,16 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(mostSpecificActiveItem('/admin/policy-dashboard')?.label).toBe('정책 대시보드')
     expect(mostSpecificActiveItem('/admin/balance')?.label).toBe('밸런스')
     expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/policy-dashboard')).toHaveLength(1)
+  })
+
+  it('«밸런스 지표»는 «밸런스» 바로 아래 같은 그룹에 한 번 있고, 그 경로에서는 자기 자신만 활성이다(티켓 20261022_1136 1회 b)', () => {
+    const balance = NAV_GROUPS.find((g) => g.id === 'balance')
+    expect(balance?.items[2]).toMatchObject({ href: '/admin/balance/dashboard', label: '밸런스 지표' })
+    expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/balance/dashboard')).toHaveLength(1)
+    // 하위 경로라 «밸런스»도 접두어로 맞지만 더 구체적인 «밸런스 지표»만 고른다
+    expect(mostSpecificActiveItem('/admin/balance/dashboard')?.label).toBe('밸런스 지표')
+    expect(mostSpecificActiveItem('/admin/balance')?.label).toBe('밸런스')
+    expect(activeNavGroupId('/admin/balance/dashboard')).toBe('balance')
   })
 
   it('미션과 게이트 미션은 콘텐츠 그룹에, 랭킹은 밸런스 그룹에, 어뷰징과 유저는 유저 그룹에 있다', () => {

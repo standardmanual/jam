@@ -32,6 +32,7 @@ import {
   IconShape,
   IconScale,
   IconClipboardList,
+  IconChartBar,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -86,6 +87,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/policy-dashboard', label: '정책 대시보드', icon: IconClipboardList },
       { href: '/admin/balance', label: '밸런스', icon: IconScale },
+      { href: '/admin/balance/dashboard', label: '밸런스 지표', icon: IconChartBar },
       { href: '/admin/simulator', label: '시뮬레이터', icon: IconDeviceGamepad2 },
       { href: '/admin/ambient-drop', label: '앰비언트 드랍', icon: IconCloudFog },
       { href: '/admin/drop-policy/exclusions', label: '드랍 제외', icon: IconBan },
