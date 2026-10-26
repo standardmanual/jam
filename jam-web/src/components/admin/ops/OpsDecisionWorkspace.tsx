@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { findRevertTarget } from '@/lib/admin/opsInbox/edit'
-import { executeToast, readExecuteResult } from '@/lib/admin/opsInbox/executeView'
+import { executeToast, readExecuteResult, scheduledItemIds } from '@/lib/admin/opsInbox/executeView'
 import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
 import {
   isDecidable,
@@ -101,6 +101,8 @@ export function OpsDecisionWorkspace({
     else toast.success(toastResult.message)
     if (toastResult.logWarning) toast.warning(toastResult.logWarning)
     refresh()
+    // 승인과 예약이 한 번에 일어나므로 예약된 항목의 이미지를 여기서 만든다. 실패해도 예약은 그대로다.
+    void imageProduction.startMany(scheduledItemIds(data), items)
   }
 
   const checkLabel = (item: OpsItemRecord): string => {
