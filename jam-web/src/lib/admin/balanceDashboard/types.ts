@@ -97,7 +97,10 @@ export interface MetricPartSpec {
   target: PartTarget | null
 }
 
-/** 문제가 되는 수치를 바로 고치러 가는 곳. `BALANCE_SECTIONS`의 구역 키와 그 구역의 칸 키다. */
+/**
+ * 문제가 되는 수치를 바로 고치러 가는 곳 하나. `BALANCE_SECTIONS`의 구역 키와 그 구역의 칸 키다.
+ * 화면 링크는 구역 단위(`/admin/balance#<구역 키>`)이고 칸 키는 어느 칸을 고치라는 안내와 시험 대조에 쓴다.
+ */
 export interface AdjustTarget {
   sectionId: string
   fieldKeys: readonly string[]
@@ -107,7 +110,8 @@ export interface MetricSpec {
   key: BalanceMetricKey
   title: string
   parts: readonly MetricPartSpec[]
-  adjust: AdjustTarget
+  /** 지표를 움직이는 수치가 여러 구역에 나뉘면 구역마다 하나씩 둔다(월 아이템 배지는 동기화와 캡슐의 합이다). 비어 있지 않다 */
+  adjust: readonly AdjustTarget[]
 }
 
 /** 읽어 온 행. 계산이 쓰는 칸만 담는다. 관리자 ID(`*_by`)와 이메일은 읽지 않는다. */
