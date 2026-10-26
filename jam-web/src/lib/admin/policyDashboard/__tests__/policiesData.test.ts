@@ -1,5 +1,8 @@
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES } from '@/lib/ambient-drop/schedule'
+import { INVENTORY_LOW_FREE_SLOTS, METRIC_SPECS, REACH_HORIZONS } from '@/lib/admin/balanceDashboard/targets'
 import { POLICIES_DATA } from '../policiesData'
 
 describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', () => {
@@ -184,6 +187,35 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
   it('확률 안내 페이지 카드가 등급 올리기 윗등급 확률(combine_policy)을 읽는다고 적는다 (티켓 20261023_1648 4회)', () => {
     const card = POLICIES_DATA.find((p) => p.id === 'ch18-probability-page')
     expect(card?.currentSpec).toContain('combine_policy')
+  })
+
+  it('밸런스 목표 카드 5개(캡슐·챕터 도달·월 아이템 배지·컬렉션 완성·인벤토리)는 밸런스 지표의 목표 정의(targets.ts)를 코드 위치로 가리키고 그 파일이 실재한다 (티켓 20261022_1136 1회 b)', () => {
+    const kpi = POLICIES_DATA.filter((p) => p.id.startsWith('ch19-kpi-'))
+    expect(kpi.map((p) => p.id).sort()).toEqual([
+      'ch19-kpi-capsule-speed',
+      'ch19-kpi-chapter-reach',
+      'ch19-kpi-collection-speed',
+      'ch19-kpi-inventory-full',
+      'ch19-kpi-item-badges-monthly',
+    ])
+    const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+    for (const p of kpi) {
+      expect(p.chapter, p.id).toBe(19)
+      expect(p.ticketId, p.id).toBe('20261022_1136')
+      expect(p.codeLocation, p.id).toBe('jam-web/src/lib/admin/balanceDashboard/targets.ts')
+      expect(existsSync(`${repoRoot}${p.codeLocation}`), `${p.id}의 코드 위치가 실재해야 합니다`).toBe(true)
+    }
+  })
+
+  it('챕터 도달·인벤토리 카드의 숫자는 밸런스 지표의 목표 정의(targets.ts)와 같다 (티켓 20261022_1136 1회 b)', () => {
+    const reach = POLICIES_DATA.find((p) => p.id === 'ch19-kpi-chapter-reach')
+    for (const { chapterNo, days } of REACH_HORIZONS) {
+      expect(reach?.currentSpec, `챕터 ${chapterNo}`).toContain(`${days}일 안에 챕터 ${chapterNo}`)
+    }
+    const inventory = POLICIES_DATA.find((p) => p.id === 'ch19-kpi-inventory-full')
+    const target = METRIC_SPECS.inventory_full.parts[0].target
+    expect(inventory?.currentSpec).toContain(`남은 칸이 ${INVENTORY_LOW_FREE_SLOTS} 이하`)
+    expect(inventory?.currentSpec).toContain(`${Math.round((target?.high ?? 0) * 100)}% 미만`)
   })
 
   it('슬롭 금칙어가 정책 텍스트에 포함되지 않는다', () => {
