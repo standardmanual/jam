@@ -447,6 +447,7 @@ const UNKNOWN_COLLECTION_NAME = '이름을 모르는 컬렉션'
 /**
  * 기간이 끝나지 않은 컬렉션(`valid_until`이 없거나 기준 시각 이전이 아닌 것) 가운데 얻을 길이 모두 닫힌 아이템이 있는 컬렉션.
  * 공개 판정·아이템 상태는 얻을 길 계산(`computeItemPaths`)을 그대로 쓴다. 기간이 끝난 컬렉션과 「드랍 제외」(막힘이 아님)는 세지 않는다.
+ * 길은 다섯 개(드랍·믹스·미션·동기화와 캡슐·등급 올리기)지만 뒤의 둘은 드랍 길의 부분집합이라 막힘 개수는 길을 더하기 전과 같다(티켓 20261022_1136 2회, `itemPaths/compute.ts` 머리 주석).
  * 이름은 막힌 컬렉션이 있을 때만 읽는다. 어느 읽기든 실패하면 던진다.
  */
 async function loadBlockedCollections(supabase: Supabase, now: Date): Promise<BlockedCollectionInput[]> {

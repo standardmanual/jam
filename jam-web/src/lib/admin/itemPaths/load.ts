@@ -18,6 +18,11 @@
  * 읽지 못한 표를 빈 목록으로 두면 그 표에서 오던 길이 조용히 「닫힘」으로 바뀌어 아이템이 막힘으로 보인다. 그래서 어느 표든 오류가 나면 부분 결과 없이
  * 예외를 던지고, 라우트가 서버 로그를 남기고 고정 문장 500으로 받는다. 모든 읽기는 `fetchAllRows`(안정 정렬 + 끝까지 쪽 읽기)를 거친다.
  *
+ * ## 동기화·캡슐·등급 올리기 길에 더한 칸 (티켓 20261022_1136 2회)
+ *
+ * 컬렉션은 `tribe_id`(그 길이 푸는 트라이브), 아이템은 `rarity`(등급)·`always_locked`·`unlock_required`(잠긴 채 받는 모습)를 더 읽는다. 컬렉션의 `drop_excluded`·기간과
+ * 아이템의 `drop_excluded`·기간은 원래 읽던 칸이다. 정책 표(잠김 최소값·확률)는 읽지 않는다.
+ *
  * 관리자 ID(`updated_by` 등)는 select 목록에 없다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
@@ -39,8 +44,9 @@ export const ITEM_PATH_LOAD_FAILED_MESSAGE = '아이템 얻을 길을 불러오�
 export type ItemPathInputs = Omit<ComputeItemPathsInput, 'now'>
 
 /** 읽는 칸 목록 */
-const COLLECTION_COLUMNS = 'id, is_active, valid_from, valid_until, drop_excluded'
-const ITEM_COLUMNS = 'id, item_book_id, deleted_at, drop_excluded, valid_from, valid_until'
+const COLLECTION_COLUMNS = 'id, tribe_id, is_active, valid_from, valid_until, drop_excluded'
+const ITEM_COLUMNS =
+  'id, item_book_id, deleted_at, drop_excluded, valid_from, valid_until, rarity, always_locked, unlock_required'
 const RECIPE_COLUMNS = 'id, reward_badge_ids, valid_from, valid_until'
 const MISSION_COLUMNS = 'id, reward_badge_ids, starts_at, ends_at, exposure_mode, exposure_at'
 

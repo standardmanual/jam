@@ -8,24 +8,32 @@
  * 4. 상태 분류 — 세 길이 모두 닫히면 막힘, 드랍 제외는 따로, 한 길이라도 열리면 열림
  * 5. 경계 시각 — 레시피 종료는 제외(`<`)·컬렉션 종료는 포함(`<=`), 기존 판정 함수와 같은 결과
  * 6. 여러 레시피·미션 ID는 중복 없이 모은다
+ * 7. 동기화·캡슐 길 — `listIssueCandidates`와 열림이 같고, 트라이브·등급이 없으면 닫힌다. 컬렉션·아이템 사유는 드랍 길과 같은 상수를 쓴다 (티켓 20261022_1136 2회)
+ * 8. 등급 올리기 길 — 컬렉션에 바로 아래 또는 바로 위 등급의 아이템이 함께 나올 수 있을 때만 열린다. 네 등급의 모든 조합을 대조한다
+ * 9. 잠긴 배지 — 어느 길이든 잠긴 채 받는 모습만 싣고 열림 판정에는 쓰지 않는다. 필요한 양은 `resolveUnlockRequired`와 같은 기준이다
+ * 10. 새 길은 드랍 길의 부분집합이라 아이템 상태(열림/막힘/드랍 제외)를 바꾸지 않는다(격자 대조)
  */
 import { describe, it, expect } from 'vitest'
-import { computeItemPaths, classifyItem, summarizeCollection } from '../compute'
+import { computeItemPaths, classifyItem, lockInfoOf, summarizeCollection } from '../compute'
 import type {
   ItemPathCollectionInput,
   ItemPathItemInput,
   ItemPathMissionInput,
   ItemPathRecipeInput,
+  ItemPathResult,
 } from '../types'
 import { isItemBookDroppable } from '@/lib/itembook/visibility'
 import { isRecipeReleased } from '@/lib/combine/visibility'
+import { listIssueCandidates } from '@/lib/drop-engine/syncIssue'
+import { resolveUnlockRequired, type LockPolicy } from '@/lib/drop-engine/lockAssignment'
+import type { BadgeRarity } from '@/types/database'
 
 const NOW = new Date('2026-10-04T00:00:00.000Z')
 const PAST = '2026-09-01T00:00:00.000Z'
 const FUTURE = '2026-11-01T00:00:00.000Z'
 
 function collection(over: Partial<ItemPathCollectionInput> = {}): ItemPathCollectionInput {
-  return { id: 'c1', is_active: true, valid_from: null, valid_until: null, drop_excluded: false, ...over }
+  return { id: 'c1', tribe_id: 't1', is_active: true, valid_from: null, valid_until: null, drop_excluded: false, ...over }
 }
 
 function item(over: Partial<ItemPathItemInput> = {}): ItemPathItemInput {
@@ -36,6 +44,9 @@ function item(over: Partial<ItemPathItemInput> = {}): ItemPathItemInput {
     drop_excluded: false,
     valid_from: null,
     valid_until: null,
+    rarity: 'common',
+    always_locked: false,
+    unlock_required: null,
     ...over,
   }
 }
@@ -302,7 +313,7 @@ describe('미션 길', () => {
 })
 
 describe('상태 분류', () => {
-  it('세 길이 모두 닫히면 막힘이다', () => {
+  it('다섯 길이 모두 닫히면 막힘이다', () => {
     const r = run({
       collection: { is_active: false },
       recipes: [recipe({ valid_until: PAST })],
@@ -311,6 +322,8 @@ describe('상태 분류', () => {
     expect(r.drop.open).toBe(false)
     expect(r.mix.open).toBe(false)
     expect(r.mission.open).toBe(false)
+    expect(r.syncCapsule.open).toBe(false)
+    expect(r.tierUp.open).toBe(false)
     expect(r.status).toBe('blocked')
   })
 
@@ -339,13 +352,26 @@ describe('상태 분류', () => {
     expect(r.status).toBe('drop_excluded')
   })
 
-  it('classifyItem은 세 길 열림 여부와 드랍 사유만으로 분류한다', () => {
+  it('classifyItem은 다섯 길 열림 여부와 드랍 사유만으로 분류한다', () => {
     const closed = { open: false }
-    expect(classifyItem({ drop: { open: false, reasons: [] }, mix: closed, mission: closed })).toBe('blocked')
-    expect(classifyItem({ drop: { open: true, reasons: [] }, mix: closed, mission: closed })).toBe('open')
-    expect(
-      classifyItem({ drop: { open: false, reasons: ['item_drop_excluded'] }, mix: closed, mission: closed }),
-    ).toBe('drop_excluded')
+    const base = { drop: { open: false, reasons: [] }, mix: closed, mission: closed, syncCapsule: closed, tierUp: closed }
+    expect(classifyItem(base)).toBe('blocked')
+    expect(classifyItem({ ...base, drop: { open: true, reasons: [] } })).toBe('open')
+    expect(classifyItem({ ...base, drop: { open: false, reasons: ['item_drop_excluded'] } })).toBe('drop_excluded')
+  })
+
+  it('classifyItem은 동기화·캡슐 길이나 등급 올리기 길 하나만 열려도 열림이다', () => {
+    const closed = { open: false }
+    const base = { drop: { open: false, reasons: [] }, mix: closed, mission: closed, syncCapsule: closed, tierUp: closed }
+    expect(classifyItem({ ...base, syncCapsule: { open: true } })).toBe('open')
+    expect(classifyItem({ ...base, tierUp: { open: true } })).toBe('open')
+  })
+
+  it('classifyItem은 드랍 제외여도 새 길이 열려 있으면 열림이고, 모두 닫히면 드랍 제외를 지킨다', () => {
+    const closed = { open: false }
+    const excluded = { drop: { open: false, reasons: ['collection_drop_excluded' as const] }, mix: closed, mission: closed }
+    expect(classifyItem({ ...excluded, syncCapsule: { open: true }, tierUp: closed })).toBe('open')
+    expect(classifyItem({ ...excluded, syncCapsule: closed, tierUp: closed })).toBe('drop_excluded')
   })
 })
 
@@ -403,5 +429,212 @@ describe('결과 범위와 컬렉션 요약', () => {
       now: NOW,
     })
     expect(result.collections[0]).toMatchObject({ total: 2, open: 0, blocked: 2 })
+  })
+})
+
+// ── 동기화·캡슐·등급 올리기 길과 잠긴 배지 (티켓 20261022_1136 2회) ──────────────────────────────
+
+const ORDER: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/** 컬렉션 하나에 주어진 등급마다 아이템을 하나씩 두고 계산해, 등급 → 결과로 돌려준다 */
+function runRarities(
+  rarities: readonly BadgeRarity[],
+  over: { collection?: Partial<ItemPathCollectionInput>; itemOver?: (rarity: BadgeRarity) => Partial<ItemPathItemInput> } = {},
+): Record<BadgeRarity, ItemPathResult> {
+  const result = computeItemPaths({
+    collections: [collection(over.collection)],
+    items: rarities.map((rarity) => item({ id: `i-${rarity}`, rarity, ...over.itemOver?.(rarity) })),
+    recipes: [],
+    missions: [],
+    now: NOW,
+  })
+  return Object.fromEntries(result.items.map((r) => [r.itemId.replace('i-', ''), r])) as Record<BadgeRarity, ItemPathResult>
+}
+
+describe('동기화·캡슐 길', () => {
+  it('소속 트라이브와 등급이 있는 정상 아이템이면 열린다', () => {
+    const r = run({})
+    expect(r.syncCapsule).toEqual({ open: true, reasons: [] })
+  })
+
+  it('컬렉션에 소속 트라이브가 없으면 닫히고(collection_no_tribe) 드랍 길만 남는다', () => {
+    const r = run({ collection: { tribe_id: null } })
+    expect(r.syncCapsule).toEqual({ open: false, reasons: ['collection_no_tribe'] })
+    expect(r.tierUp).toEqual({ open: false, reasons: ['collection_no_tribe'] })
+    expect(r.drop.open).toBe(true)
+    expect(r.status).toBe('open')
+  })
+
+  it('등급이 없는 아이템은 닫힌다(item_no_rarity)', () => {
+    const r = run({ item: { rarity: null } })
+    expect(r.syncCapsule).toEqual({ open: false, reasons: ['item_no_rarity'] })
+    expect(r.tierUp.open).toBe(false)
+  })
+
+  it.each([
+    ['비활성', { is_active: false }, 'collection_inactive'],
+    ['공개 전', { valid_from: FUTURE }, 'collection_not_launched'],
+    ['기간 끝', { valid_until: PAST }, 'collection_ended'],
+    ['드랍 제외', { drop_excluded: true }, 'collection_drop_excluded'],
+  ] as const)('컬렉션이 %s이면 드랍 길과 같은 사유로 닫힌다', (_label, over, reason) => {
+    const r = run({ collection: over })
+    expect(r.syncCapsule).toEqual({ open: false, reasons: [reason] })
+    expect(r.syncCapsule.reasons).toEqual(r.drop.reasons)
+  })
+
+  it('아이템이 드랍 제외이거나 유효기간 밖이면 닫힌다', () => {
+    expect(run({ item: { drop_excluded: true } }).syncCapsule.reasons).toEqual(['item_drop_excluded'])
+    expect(run({ item: { valid_until: PAST } }).syncCapsule.reasons).toEqual(['item_out_of_period'])
+    expect(run({ item: { valid_from: FUTURE } }).syncCapsule.reasons).toEqual(['item_out_of_period'])
+  })
+
+  it('컬렉션 닫힘과 트라이브 없음이 겹치면 사유를 모두 담는다', () => {
+    const r = run({ collection: { is_active: false, tribe_id: null } })
+    expect(r.syncCapsule.reasons).toEqual(['collection_inactive', 'collection_no_tribe'])
+  })
+
+  it('열림은 listIssueCandidates와 같고, 열림과 «사유 없음»이 늘 일치한다 — 컬렉션·아이템 조합을 전부 대조한다', () => {
+    const times = [null, PAST, NOW.toISOString(), FUTURE]
+    const itemTimes = [null, PAST, FUTURE]
+    for (const tribe_id of ['t1', null]) {
+      for (const is_active of [true, false]) {
+        for (const valid_from of times) {
+          for (const valid_until of times) {
+            for (const drop_excluded of [true, false]) {
+              const c = collection({ tribe_id, is_active, valid_from, valid_until, drop_excluded })
+              for (const itemExcluded of [true, false]) {
+                for (const itemFrom of itemTimes) {
+                  for (const itemUntil of itemTimes) {
+                    const i = item({ drop_excluded: itemExcluded, valid_from: itemFrom, valid_until: itemUntil })
+                    const r = computeItemPaths({ collections: [c], items: [i], recipes: [], missions: [], now: NOW }).items[0]
+                    const expectedOpen =
+                      tribe_id !== null && listIssueCandidates({ tribeId: tribe_id, rarity: 'common', books: [c], badges: [i], now: NOW }).length > 0
+                    expect(r.syncCapsule.open).toBe(expectedOpen)
+                    expect(r.syncCapsule.reasons.length === 0).toBe(r.syncCapsule.open)
+                    // 동기화·캡슐 ⊂ 드랍, 등급 올리기 ⊂ 동기화·캡슐 — 새 길은 아이템 상태를 바꾸지 않는다
+                    if (r.syncCapsule.open) expect(r.drop.open).toBe(true)
+                    if (r.tierUp.open) expect(r.syncCapsule.open).toBe(true)
+                    expect(r.status === 'open').toBe(r.drop.open)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  })
+})
+
+describe('등급 올리기 길', () => {
+  it('Common과 Rare가 함께 나올 수 있으면 둘 다 열린다', () => {
+    const r = runRarities(['common', 'rare'])
+    expect(r.common.tierUp).toEqual({ open: true, reasons: [] })
+    expect(r.rare.tierUp).toEqual({ open: true, reasons: [] })
+  })
+
+  it('한 등급만 나올 수 있는 컬렉션은 닫히고(tier_up_rarity_pair_missing) 동기화·캡슐 길은 그대로 열린다', () => {
+    const r = runRarities(['rare'])
+    expect(r.rare.tierUp).toEqual({ open: false, reasons: ['tier_up_rarity_pair_missing'] })
+    expect(r.rare.syncCapsule.open).toBe(true)
+    expect(r.rare.status).toBe('open')
+  })
+
+  it('이웃하지 않은 등급(Common과 Epic, Rare와 Mystic)은 짝이 아니라 닫힌다', () => {
+    const a = runRarities(['common', 'epic'])
+    expect(a.common.tierUp.open).toBe(false)
+    expect(a.epic.tierUp.open).toBe(false)
+    const b = runRarities(['rare', 'mystic'])
+    expect(b.rare.tierUp.open).toBe(false)
+    expect(b.mystic.tierUp.open).toBe(false)
+  })
+
+  it('네 등급의 모든 조합 — 바로 아래 또는 바로 위 등급이 함께 나올 수 있는 아이템만 열린다', () => {
+    for (let mask = 1; mask < 16; mask++) {
+      const present = ORDER.filter((_, bit) => (mask & (1 << bit)) !== 0)
+      const r = runRarities(present)
+      for (const rarity of present) {
+        const index = ORDER.indexOf(rarity)
+        const expected = present.includes(ORDER[index - 1]) || present.includes(ORDER[index + 1])
+        expect(r[rarity].tierUp.open, `${present.join('+')} 중 ${rarity}`).toBe(expected)
+      }
+    }
+  })
+
+  it('발급 풀에 못 드는 아이템(드랍 제외)은 짝으로 세지 않는다', () => {
+    const r = runRarities(['common', 'rare'], { itemOver: (rarity) => (rarity === 'common' ? { drop_excluded: true } : {}) })
+    expect(r.common.tierUp).toEqual({ open: false, reasons: ['item_drop_excluded'] })
+    expect(r.rare.tierUp).toEqual({ open: false, reasons: ['tier_up_rarity_pair_missing'] })
+  })
+
+  it('소프트 삭제된 아이템은 짝으로 세지 않는다', () => {
+    const r = runRarities(['common', 'rare'], { itemOver: (rarity) => (rarity === 'common' ? { deleted_at: PAST } : {}) })
+    expect(r.common).toBeUndefined()
+    expect(r.rare.tierUp.reasons).toEqual(['tier_up_rarity_pair_missing'])
+  })
+
+  it('다른 컬렉션의 아이템은 짝으로 세지 않는다', () => {
+    const result = computeItemPaths({
+      collections: [collection({ id: 'c1' }), collection({ id: 'c2' })],
+      items: [item({ id: 'a', item_book_id: 'c1', rarity: 'common' }), item({ id: 'b', item_book_id: 'c2', rarity: 'rare' })],
+      recipes: [],
+      missions: [],
+      now: NOW,
+    })
+    expect(result.items.map((r) => r.tierUp.open)).toEqual([false, false])
+  })
+
+  it('소속 트라이브가 없는 컬렉션은 닫힌다', () => {
+    const r = runRarities(['common', 'rare'], { collection: { tribe_id: null } })
+    expect(r.common.tierUp).toEqual({ open: false, reasons: ['collection_no_tribe'] })
+  })
+
+  it('컬렉션 기간이 끝났으면 어느 등급도 열리지 않고 사유는 동기화·캡슐 길과 같다', () => {
+    const r = runRarities(['common', 'rare'], { collection: { valid_until: PAST } })
+    expect(r.common.tierUp).toEqual({ open: false, reasons: ['collection_ended'] })
+    expect(r.rare.tierUp.reasons).toEqual(r.rare.syncCapsule.reasons)
+    expect(r.common.status).toBe('blocked')
+  })
+})
+
+describe('잠긴 배지 — 길이 아니라 받는 모습', () => {
+  it('잠김으로 만들지 않은 아이템은 잠기지 않는다(필요한 양을 정해 둬도 싣지 않는다)', () => {
+    const r = run({ item: { always_locked: false, unlock_required: 5 } })
+    expect(r.lock).toEqual({ receivedLocked: false, unlockRequired: null })
+  })
+
+  it('잠김으로 만든 아이템은 잠긴 채 받고, 정한 필요한 양을 싣는다', () => {
+    const r = run({ item: { always_locked: true, unlock_required: 5 } })
+    expect(r.lock).toEqual({ receivedLocked: true, unlockRequired: 5 })
+  })
+
+  it('필요한 양을 정하지 않았으면 null(등급 기본값)이다', () => {
+    const r = run({ item: { always_locked: true, unlock_required: null } })
+    expect(r.lock).toEqual({ receivedLocked: true, unlockRequired: null })
+  })
+
+  it('필요한 양은 lockAssignment의 resolveUnlockRequired와 같은 기준으로 읽는다 — 양의 정수만 인정한다', () => {
+    const sentinel = -1
+    const policy: LockPolicy = {
+      locked_min_common: sentinel,
+      locked_min_rare: sentinel,
+      locked_min_epic: sentinel,
+      locked_min_mystic: sentinel,
+      locked_roll_probability: 0,
+    }
+    for (const value of [null, 0, -3, 1, 2.5, 7, Number.NaN]) {
+      const resolved = resolveUnlockRequired(value, 'common', policy)
+      const info = lockInfoOf({ always_locked: true, unlock_required: value })
+      expect(info.unlockRequired, `값 ${value}`).toBe(resolved === sentinel ? null : resolved)
+    }
+  })
+
+  it('잠겨도 열림 판정은 달라지지 않는다 — 열린 길은 열린 채, 닫힌 길은 닫힌 채다', () => {
+    const open = run({ item: { always_locked: true } })
+    expect(open.status).toBe('open')
+    expect(open.drop.open).toBe(true)
+    const closed = run({ item: { always_locked: true }, collection: { is_active: false } })
+    expect(closed.status).toBe('blocked')
+    expect(closed.lock.receivedLocked).toBe(true)
   })
 })

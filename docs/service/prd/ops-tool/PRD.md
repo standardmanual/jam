@@ -208,7 +208,7 @@ related:
 | 겹침 | 그날 시작하는 운영 묶음 항목끼리 같은 패턴이나 같은 트라이브가 두 건 이상(4주짜리 미션이 기간 내내 겹침으로 뜨지 않게 하고, 실제 카드에는 패턴·트라이브 칸이 없어 세지 않는다). 그날 보이는 홈피드 카드 가운데 이미지가 있는 모양이 3장 이상, 모양을 아는 카드가 있는데 이미지 없는 모양이 0장(모양을 모르는 카드는 세지 않는다), 신규 유저에게 보이는 카드(노출 대상에 `all`·`new_user`·`time_*`)가 3장 초과 |
 | 단조로운 흐름 | 검사 날짜마다 그날까지 7일의 대표 카드를 본다. 같은 패턴이나 트라이브가 3번 이상 나오거나, 같은 모양이 3일 연속 대표다. 같은 값은 한 번만 알린다 |
 | 행동 횟수 급증 | 지표 5개(믹스 시도·유저 드랍·픽업·미션 완료·컬렉션 완성)의 전체 유저 원시 건수다. 최근 7일 합계가 직전 4주 주평균의 2배 이상이고 지표별 최소 건수 이상이다. 믹스 시도는 성공·실패 로그를 더하고, 유저 드랍은 `poi_drops`에서 유저가 놓은 것(`source = 'user'`), 픽업은 `picked_up_at`이 기간 안인 `poi_drops`다 |
-| 획득 경로가 막힌 컬렉션 | 컬렉션마다 본다(검사 날짜와 무관, 참고). 아이템 얻을 길 계산(§11.11, `computeItemPaths`)의 컬렉션 요약에서 막힘(`blocked`) 아이템이 하나라도 있는 컬렉션이 한 건이다. **기간이 끝나지 않은 컬렉션만 센다**: `valid_until`이 없거나 지금 이전이 아니다(끝난 컬렉션은 아이템이 대부분 막히는 것이 당연해 신호가 쌓이므로 세지 않고, 그 막힘은 S6에서 본다). 「드랍 제외」는 막힘이 아니라 세지 않는다. 문장은 「컬렉션 「<이름>」의 아이템 N개는 지금 얻을 길이 없어요(전체 M개).」, 순서는 이름 다음 컬렉션 ID, 날짜·묶음·항목·시작 시각은 없고 시험 표식도 없다. 얻을 길 읽기와 계산은 서버(`opsSignals/load.ts`)에서 하고 순수 계산에는 막힌 컬렉션 목록만 넘긴다. 막힌 컬렉션이 있을 때만 `item_books`에서 이름을 한 번 더 읽는다. 어느 읽기든 실패하면 이 신호만 「확인하지 못했어요」다. 「그 때문에 완성하지 못하는 유저 수」(06 6.3)는 세지 않는다 |
+| 획득 경로가 막힌 컬렉션 | 컬렉션마다 본다(검사 날짜와 무관, 참고). 아이템 얻을 길 계산(§11.11, `computeItemPaths`)의 컬렉션 요약에서 막힘(`blocked`) 아이템이 하나라도 있는 컬렉션이 한 건이다. 길은 다섯 개(드랍·믹스·미션·동기화와 캡슐·등급 올리기)이고 다섯 개가 모두 닫혀야 막힘이다. 동기화·캡슐과 등급 올리기는 드랍 길의 부분집합이라 길을 더해도 이 신호의 결과는 달라지지 않는다(티켓 20261022_1136 2회, 시험이 지킨다). **기간이 끝나지 않은 컬렉션만 센다**: `valid_until`이 없거나 지금 이전이 아니다(끝난 컬렉션은 아이템이 대부분 막히는 것이 당연해 신호가 쌓이므로 세지 않고, 그 막힘은 S6에서 본다). 「드랍 제외」는 막힘이 아니라 세지 않는다. 문장은 「컬렉션 「<이름>」의 아이템 N개는 지금 얻을 길이 없어요(전체 M개).」, 순서는 이름 다음 컬렉션 ID, 날짜·묶음·항목·시작 시각은 없고 시험 표식도 없다. 얻을 길 읽기와 계산은 서버(`opsSignals/load.ts`)에서 하고 순수 계산에는 막힌 컬렉션 목록만 넘긴다. 막힌 컬렉션이 있을 때만 `item_books`에서 이름을 한 번 더 읽는다. 어느 읽기든 실패하면 이 신호만 「확인하지 못했어요」다. 「그 때문에 완성하지 못하는 유저 수」(06 6.3)는 세지 않는다 |
 | 밸런스 경고 | 계산 규칙 없음. 항상 「아직 확인하지 않아요」 |
 
 - **대표 카드.** 그날 전원 대상(`all`) 카드 가운데 정렬이 가장 앞인 카드다. 실제 카드는 지금 정렬(`sort_order` 오름차순 → `starts_at` 내림차순), 운영 묶음 카드는
@@ -1778,7 +1778,7 @@ stateDiagram-v2
 
 ### 11.11 아이템 얻을 길 읽기 `GET /api/admin/item-paths` (구현됨: 티켓 [20261004_1641](../../../tickets/p2-normal/20261004_1641_API_운영툴-패턴-사전-7b-아이템-얻을-길-읽기-API.md))
 
-컬렉션마다 아이템이 드랍·믹스·미션 세 길 중 어디가 열려 있는지 요청 때 계산해 돌려준다. **저장하지 않는다.** 계산은 `jam-web/src/lib/admin/itemPaths/compute.ts`(`computeItemPaths`, 티켓 20261004_1640)가 하고,
+컬렉션마다 아이템이 드랍·믹스·미션·동기화와 캡슐·등급 올리기 다섯 길 중 어디가 열려 있는지 요청 때 계산해 돌려준다(동기화·캡슐과 등급 올리기는 티켓 20261022_1136 2회에서 더했다). **저장하지 않는다.** 계산은 `jam-web/src/lib/admin/itemPaths/compute.ts`(`computeItemPaths`, 티켓 20261004_1640)가 하고,
 입력 읽기는 `jam-web/src/lib/admin/itemPaths/load.ts`(`loadItemPathInputs`), 라우트(`jam-web/src/app/api/admin/item-paths/route.ts`)는 인증·쿼리·쪽 나누기·응답만 맡는다. ⑬ 화면(S6)과 에이전트가 쓴다.
 `compute.ts`는 서버 전용 모듈(`lib/missions/checker.ts`)을 값으로 가져오므로 서버(라우트·서버 컴포넌트)에서만 부르고, 클라이언트 컴포넌트가 값으로 가져오지 않는다.
 운영 신호 「획득 경로가 막힌 컬렉션」(§5)도 같은 계산을 쓴다(진행 중인 컬렉션만 센다, 티켓 20261008_1301).
@@ -1787,6 +1787,7 @@ stateDiagram-v2
 - **읽는 범위** (`load.ts`):
   - 컬렉션(`item_books`): **공개된 것 전부**다 — 활성이고 시작 시각이 지난 것(`applyLaunchedItemBookFilter`). **기간이 끝난 컬렉션도 싣는다**(막힘을 찾는 것이 목적이다). 비활성·공개 전 컬렉션은 읽지 않는다.
   - 아이템 배지(`badges`, `type = 'item'`): 위 컬렉션에 속하고 소프트 삭제되지 않은 것. 3,600개가 넘어 1,000행 쪽 읽기(`fetchAllRows`)로 끝까지 읽는다.
+  - 동기화·캡슐·등급 올리기 길에 필요한 칸을 더 읽는다: 컬렉션 `tribe_id`, 아이템 `rarity`·`always_locked`·`unlock_required`. 정책 표(잠김 최소값·윗등급 확률)는 읽지 않는다.
   - 레시피(`combination_recipes`)·미션(`missions`): 전부. 공개·노출·진행 중인지는 계산 함수가 가른다.
   - **원천 하나라도 읽기에 실패하면 500이다.** 읽지 못한 표를 빈 목록으로 두면 그 길이 조용히 「닫힘」이 되어 아이템이 막힘으로 보이기 때문이다.
 - **쿼리**(모두 선택):
@@ -1796,10 +1797,14 @@ stateDiagram-v2
 - **응답 200** `{ now, total, limit, offset, nextOffset, collections }`.
   - `now`: 계산 기준 시각(ISO). `total`: 조건에 맞는 컬렉션 수(쪽 나누기 전). `nextOffset`: 다음 쪽의 `offset`, 마지막 쪽이면 `null`. `offset`이 끝을 넘으면 `collections`가 빈 배열인 200이다.
   - `collections`: 컬렉션 `id` 순서(쪽을 이어 읽어도 겹치거나 빠지지 않는다). 한 건은 `collectionId`·`total`(삭제되지 않은 아이템 수)·`open`·`blocked`·`dropExcluded`·`items`다. 표시용 이름은 싣지 않는다(ID만).
-  - `items`의 한 건은 `itemId`·`collectionId`·`status`·`drop`·`mix`·`mission`이다. `status`는 `open`(한 길이라도 열림)·`blocked`(세 길 모두 닫힘)·`drop_excluded`(드랍 제외 설정이고 다른 길이 없음) 중 하나다.
+  - `items`의 한 건은 `itemId`·`collectionId`·`status`·`drop`·`mix`·`mission`·`syncCapsule`·`tierUp`·`lock`이다. `status`는 `open`(한 길이라도 열림)·`blocked`(다섯 길 모두 닫힘)·`drop_excluded`(드랍 제외 설정이고 다른 길이 없음) 중 하나다.
     `drop`·`mix`·`mission`은 `{ open, reasons }`이고 `mix`는 `recipeIds`, `mission`은 `missionIds`(그 아이템을 보상으로 주는 열린 레시피·미션 ID)를 더 싣는다. `reasons`는 닫혔을 때만 채운다.
     사유 값: 드랍 `collection_inactive`·`collection_not_launched`·`collection_ended`·`collection_drop_excluded`·`item_drop_excluded`·`item_out_of_period`, 믹스 `no_recipe`·`recipe_scheduled`·`recipe_ended`,
     미션 `no_mission`·`mission_hidden`·`mission_not_exposed`·`mission_not_started`·`mission_ended`.
+    `syncCapsule`·`tierUp`도 `{ open, reasons }`이고 `reasons`는 닫혔을 때만 채운다. 동기화·캡슐의 사유는 위 드랍 사유 여섯 개에 `collection_no_tribe`(컬렉션에 `tribe_id`가 없음)·`item_no_rarity`(아이템 배지에 등급이 없음)를 더한 것이고,
+    등급 올리기의 사유는 아이템 배지가 발급 풀에 들지 못할 때 동기화·캡슐과 같은 사유, 풀에는 드는데 컬렉션에 바로 아래나 위 등급의 아이템 배지가 함께 나올 수 없을 때 `tier_up_rarity_pair_missing`이다.
+    `lock`은 `{ receivedLocked, unlockRequired }`로 «잠긴 채 받는 모습»이다(`badges.always_locked`, 정한 필요한 양은 `badges.unlock_required`이고 없으면 null=등급 기본값). 길이 아니라서 `status`에 쓰지 않는다.
+  - 판정은 기존 함수를 그대로 부른다: 동기화·캡슐은 `listIssueCandidates`(`drop-engine/syncIssue.ts`), 등급 올리기는 `issuableRaritiesByBook`·`collectionSupportsTierUp`(`combine/`). 두 길은 드랍 길의 부분집합이라 `status`는 길을 더하기 전과 같다.
 - **「드랍 제외」는 막힘과 다르다.** 컬렉션 또는 아이템이 `drop_excluded`이면 드랍 길이 닫히고, 다른 길도 없으면 상태가 `blocked`가 아니라 `drop_excluded`다(운영자가 일부러 드랍에서 뺀 것이라 「막힘」 신호로 세지 않는다).
   `onlyBlocked`에도 들어가지 않는다. 드랍 길은 활동 드랍 또는 앰비언트 드랍으로 보고 누적 조건(`condition_json`)은 보지 않으며, 드랍 제외를 앰비언트 드랍에도 적용하는 것으로 정의한다(사용자 결정, P2 20261005_1957 A. 앰비언트 쪽 코드는 그 티켓이 맞춘다).
   어드민 직접 지급·컬렉션 완성 보상은 길로 세지 않고, 선착순 미션이 다 찬 경우도 이번에는 세지 않는다(열림). 판정은 기존 함수(`isItemBookDroppable`·`recipeReleaseState`·`isMissionExposed`·`isMissionActive`)를 그대로 쓴다.

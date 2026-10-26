@@ -119,10 +119,19 @@ const PAST = '2026-09-01T00:00:00.000Z'
 type Row = Record<string, unknown>
 
 function bookRow(id: string, over: Row = {}): Row {
-  return { id, is_active: true, valid_from: null, valid_until: null, drop_excluded: false, updated_by: ADMIN_ID_VALUE, ...over }
+  return {
+    id,
+    tribe_id: 'tribe-1',
+    is_active: true,
+    valid_from: null,
+    valid_until: null,
+    drop_excluded: false,
+    updated_by: ADMIN_ID_VALUE,
+    ...over,
+  }
 }
 
-function itemRow(id: string, bookId: string): Row {
+function itemRow(id: string, bookId: string, over: Row = {}): Row {
   return {
     id,
     type: 'item',
@@ -131,7 +140,11 @@ function itemRow(id: string, bookId: string): Row {
     drop_excluded: false,
     valid_from: null,
     valid_until: null,
+    rarity: 'common',
+    always_locked: false,
+    unlock_required: null,
     updated_by: ADMIN_ID_VALUE,
+    ...over,
   }
 }
 
@@ -221,6 +234,39 @@ describe('GET /api/admin/item-paths — 인증', () => {
     expect(collections[1]).toMatchObject({ total: 1, open: 0, blocked: 0, dropExcluded: 1 })
     expect(collections[1].items.map((i) => `${i.itemId}:${i.status}`)).toEqual(['x1:drop_excluded'])
     expect(collections[2].items.map((i) => `${i.itemId}:${i.status}`)).toEqual(['o1:open'])
+  })
+
+  it('아이템마다 다섯 길(drop·mix·mission·syncCapsule·tierUp)과 잠긴 채 받는 모습(lock)이 실린다 — 티켓 20261022_1136 2회', async () => {
+    h.db.tables.item_books = [bookRow('c1'), bookRow('c2-no-tribe', { tribe_id: null })]
+    h.db.tables.badges = [
+      itemRow('a', 'c1', { rarity: 'common', always_locked: true, unlock_required: 8 }),
+      itemRow('b', 'c1', { rarity: 'rare' }),
+      itemRow('c', 'c2-no-tribe', { rarity: 'common' }),
+    ]
+    h.db.tables.missions = []
+    const body = await (await GET(request('', AUTH))).json()
+    const items = (body.collections as Array<{ items: Array<Record<string, unknown>> }>).flatMap((c) => c.items)
+    const byId = Object.fromEntries(items.map((i) => [i.itemId as string, i]))
+
+    for (const item of items) {
+      expect(Object.keys(item).sort()).toEqual(
+        ['collectionId', 'drop', 'itemId', 'lock', 'mission', 'mix', 'status', 'syncCapsule', 'tierUp'].sort(),
+      )
+    }
+    expect(byId.a).toMatchObject({
+      status: 'open',
+      syncCapsule: { open: true, reasons: [] },
+      tierUp: { open: true, reasons: [] },
+      lock: { receivedLocked: true, unlockRequired: 8 },
+    })
+    expect(byId.b).toMatchObject({ tierUp: { open: true }, lock: { receivedLocked: false, unlockRequired: null } })
+    // 소속 트라이브가 없는 컬렉션은 동기화·캡슐·등급 올리기가 닫히지만 드랍 길이 열려 있어 아이템은 열림이다
+    expect(byId.c).toMatchObject({
+      status: 'open',
+      drop: { open: true },
+      syncCapsule: { open: false, reasons: ['collection_no_tribe'] },
+      tierUp: { open: false, reasons: ['collection_no_tribe'] },
+    })
   })
 
   it('관리자 세션으로도 200이다', async () => {
