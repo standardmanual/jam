@@ -22,7 +22,7 @@ import { TEST_ACCOUNT_USER_IDS } from '@/lib/env/test-accounts'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import {
   CAPSULE_WINDOW_WEEKS,
-  MONTHLY_WINDOW_DAYS,
+  MONTH_DAYS,
   RARITY_WINDOW_WEEKS,
 } from './targets'
 import type { ChapterUpRow, SuspensionRow, UserRow } from './types'
@@ -58,7 +58,7 @@ export function capsuleWindow(now: Date): TimeWindow {
 /** 지표 3이 보는 구간: 지금까지 최근 30일(주에 맞추지 않는다) */
 export function monthlyWindow(now: Date): TimeWindow {
   const end = now.getTime()
-  return { start: end - MONTHLY_WINDOW_DAYS * DAY_MS, end }
+  return { start: end - MONTH_DAYS * DAY_MS, end }
 }
 
 /** 지표 4가 보는 구간: 완결 12주 */

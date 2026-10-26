@@ -12,7 +12,7 @@
  * - 등급 체감의 관찰 기간(12주)과 한 달의 길이(30일)는 티켓에 없어 정한 값이다.
  *
  * 이동 칸(`ADJUST`)의 키는 밸런스 설정 구역 연결(`lib/admin/balance/*.ts`)의 칸 키와 같아야 한다. 서버 전용 모듈을 끌어오지 않으려고 문자열로 적고,
- * `__tests__/targets.test.ts`가 실제 칸 정의에 있는지 대조한다.
+ * `__tests__/targets.test.ts`가 구역 키는 `BALANCE_SECTIONS`에, 칸 키는 그 구역의 칸 정의에 있는지 대조한다.
  *
  * 순수 모듈이다. 서버 모듈을 값으로 가져오지 않는다.
  */
@@ -25,7 +25,7 @@ export const MIN_RATIO_SAMPLE_USERS = 20
 /** 등급 체감: 목표 속도대로면 관찰 기간 안에 이만큼은 나와야 값을 낸다(기대 건수) */
 export const MIN_EXPECTED_COUNT = 5
 
-/** 한 달의 길이(일). 유저-월과 지표 3의 관찰 구간이 같은 길이를 쓴다 */
+/** 한 달의 길이(일). 유저-월(지표 4)과 지표 3의 최근 구간이 같은 길이를 쓴다 */
 export const MONTH_DAYS = 30
 
 /** 지표 1: 완결 주 몇 개를 보나 */
@@ -39,8 +39,7 @@ export const REACH_HORIZONS: readonly { chapterNo: number; days: number }[] = [
   { chapterNo: 10, days: 365 },
 ]
 
-/** 지표 3: 최근 며칠을 세나, 유저가 최소 며칠은 관찰돼야 표본으로 세나 */
-export const MONTHLY_WINDOW_DAYS = 30
+/** 지표 3: 유저가 최소 며칠은 관찰돼야 표본으로 세나(최근 구간의 길이는 `MONTH_DAYS`다) */
 export const MONTHLY_MIN_OBSERVED_DAYS = 28
 
 /** 지표 4: 완결 주 몇 개를 보나 */
@@ -125,20 +124,27 @@ const RARITY_PARTS: readonly MetricPartSpec[] = [
   },
 ]
 
-/** 이동 칸. 구역 키와 칸 키는 밸런스 설정 구역 연결의 정의와 같다(시험이 대조한다) */
-const ADJUST: Record<BalanceMetricKey, AdjustTarget> = {
-  capsule_open: { sectionId: 'capsule', fieldKeys: CAPSULE_CHAPTER_NUMBERS.map((chapterNo) => `chapter:${chapterNo}`) },
-  chapter_reach: {
-    sectionId: 'chapter',
-    fieldKeys: [2, 3, 4, 5, 6, 7, 8, 9, 10].map((chapterNo) => `required:${chapterNo}`),
-  },
-  monthly_items: { sectionId: 'sync', fieldKeys: ['sync_item_guaranteed'] },
-  rarity_feel: {
-    sectionId: 'sync',
-    fieldKeys: ['sync_rarity_common', 'sync_rarity_rare', 'sync_rarity_epic', 'sync_rarity_mystic'],
-  },
-  collection_complete: { sectionId: 'collection', fieldKeys: ['tier_up_probability'] },
-  inventory_full: { sectionId: 'inventory', fieldKeys: ['max_slots'] },
+/**
+ * 이동 칸. 구역 키와 칸 키는 밸런스 설정 구역 연결의 정의와 같다(시험이 `BALANCE_SECTIONS`와 대조한다).
+ * 월 아이템 배지(지표 3)는 동기화로 받는 개수와 캡슐로 받는 개수의 합이라 두 구역을 모두 가리킨다.
+ */
+const ADJUST: Record<BalanceMetricKey, readonly AdjustTarget[]> = {
+  capsule_open: [{ sectionId: 'capsule', fieldKeys: CAPSULE_CHAPTER_NUMBERS.map((chapterNo) => `chapter:${chapterNo}`) }],
+  chapter_reach: [
+    { sectionId: 'chapter', fieldKeys: [2, 3, 4, 5, 6, 7, 8, 9, 10].map((chapterNo) => `required:${chapterNo}`) },
+  ],
+  monthly_items: [
+    { sectionId: 'sync', fieldKeys: ['sync_item_guaranteed'] },
+    { sectionId: 'capsule', fieldKeys: ['guaranteed_count', 'bonus_count'] },
+  ],
+  rarity_feel: [
+    {
+      sectionId: 'sync',
+      fieldKeys: ['sync_rarity_common', 'sync_rarity_rare', 'sync_rarity_epic', 'sync_rarity_mystic'],
+    },
+  ],
+  collection_complete: [{ sectionId: 'collection', fieldKeys: ['tier_up_probability'] }],
+  inventory_full: [{ sectionId: 'inventory', fieldKeys: ['max_slots'] }],
 }
 
 /** 지표 6개의 정의. 키 순서는 `BALANCE_METRIC_KEYS`와 같다 */

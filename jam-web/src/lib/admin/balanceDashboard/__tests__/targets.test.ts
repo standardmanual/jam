@@ -4,37 +4,31 @@
  * 지키는 것:
  * 1. 지표 6개가 운영 로직 19.2절 표의 순서로 있고, 칸 id가 지표 안에서 겹치지 않는다
  * 2. 최소 표본: 비율형(지표 2·5·6)은 20명, 나머지는 5명이고 등급 체감은 기대 건수 5건에서 나온 노출량이다
- * 3. 이동 칸의 구역 키와 칸 키가 밸런스 설정 구역 연결의 칸 정의에 실제로 있다 (이름이 어긋나면 «바로 조정» 링크가 빈 곳으로 간다)
+ * 3. 이동 칸의 구역 키가 밸런스 설정 화면의 구역 레지스트리(`BALANCE_SECTIONS`)에 실제로 있고, 칸 키가 그 구역의 칸 정의에 있다
+ *    (이름이 어긋나면 «바로 조정» 링크가 빈 곳으로 간다. 구역이 레지스트리에서 빠져도 잡는다)
+ * 4. 월 아이템 배지(지표 3)는 동기화와 캡슐 두 구역을 가리킨다 (월 개수가 두 길의 합이다)
  */
 import { describe, it, expect, vi } from 'vitest'
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
+}))
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => ({}) }))
 
-import type { BalanceSectionBinding } from '@/lib/admin/balance/types'
-import { CAPSULE_BINDING } from '@/lib/admin/balance/capsule'
-import { CHAPTER_BINDING } from '@/lib/admin/balance/chapter'
-import { COLLECTION_BINDING } from '@/lib/admin/balance/collection'
-import { INVENTORY_BINDING } from '@/lib/admin/balance/inventory'
-import { SYNC_BINDING } from '@/lib/admin/balance/sync'
+import { BALANCE_SECTIONS } from '@/lib/admin/balance/sections'
+import * as targets from '../targets'
 import {
   MIN_EXPECTED_COUNT,
   MIN_RATIO_SAMPLE_USERS,
   MIN_SAMPLE_USERS,
   METRIC_SPECS,
+  MONTH_DAYS,
   partSpec,
   RARITY_KEYS,
   RARITY_MIN_EXPOSURE,
   targetRate,
 } from '../targets'
 import { BALANCE_METRIC_KEYS } from '../types'
-
-const BINDINGS: readonly BalanceSectionBinding[] = [
-  CAPSULE_BINDING,
-  CHAPTER_BINDING,
-  COLLECTION_BINDING,
-  INVENTORY_BINDING,
-  SYNC_BINDING,
-]
 
 describe('지표 정의', () => {
   it('지표 6개가 운영 로직 19.2절의 순서로 있다', () => {
@@ -102,29 +96,51 @@ describe('최소 표본', () => {
 })
 
 describe('이동 칸', () => {
-  it('구역 키와 칸 키가 밸런스 설정 구역 연결의 칸 정의에 모두 있다', () => {
+  it('구역 키는 BALANCE_SECTIONS에 있고 칸 키는 그 구역의 칸 정의에 모두 있다', () => {
     for (const key of BALANCE_METRIC_KEYS) {
-      const { sectionId, fieldKeys } = METRIC_SPECS[key].adjust
-      const binding = BINDINGS.find((b) => b.id === sectionId)
-      expect(binding, `${key}의 구역 ${sectionId}`).toBeDefined()
-      const defined = new Set(binding?.fields.map((field) => field.key))
-      expect(fieldKeys.length).toBeGreaterThan(0)
-      for (const fieldKey of fieldKeys) expect(defined.has(fieldKey), `${key}의 칸 ${fieldKey}`).toBe(true)
+      const { adjust } = METRIC_SPECS[key]
+      expect(adjust.length, `${key}의 이동 칸`).toBeGreaterThan(0)
+      for (const { sectionId, fieldKeys } of adjust) {
+        const section = BALANCE_SECTIONS.find((def) => def.binding.id === sectionId)
+        expect(section, `${key}의 구역 ${sectionId}`).toBeDefined()
+        const defined = new Set(section?.binding.fields.map((field) => field.key))
+        expect(fieldKeys.length).toBeGreaterThan(0)
+        for (const fieldKey of fieldKeys) expect(defined.has(fieldKey), `${key}의 칸 ${fieldKey}`).toBe(true)
+      }
     }
   })
 
-  it('티켓 표의 이동 구역과 같다', () => {
-    const sections = Object.fromEntries(BALANCE_METRIC_KEYS.map((key) => [key, METRIC_SPECS[key].adjust.sectionId]))
+  it('한 지표 안에서 같은 구역을 두 번 가리키지 않는다', () => {
+    for (const key of BALANCE_METRIC_KEYS) {
+      const ids = METRIC_SPECS[key].adjust.map((target) => target.sectionId)
+      expect(new Set(ids).size, key).toBe(ids.length)
+    }
+  })
+
+  it('티켓 표의 이동 구역과 같다. 월 아이템 배지만 동기화와 캡슐 두 구역이다', () => {
+    const sections = Object.fromEntries(
+      BALANCE_METRIC_KEYS.map((key) => [key, METRIC_SPECS[key].adjust.map((target) => target.sectionId)])
+    )
     expect(sections).toEqual({
-      capsule_open: 'capsule',
-      chapter_reach: 'chapter',
-      monthly_items: 'sync',
-      rarity_feel: 'sync',
-      collection_complete: 'collection',
-      inventory_full: 'inventory',
+      capsule_open: ['capsule'],
+      chapter_reach: ['chapter'],
+      monthly_items: ['sync', 'capsule'],
+      rarity_feel: ['sync'],
+      collection_complete: ['collection'],
+      inventory_full: ['inventory'],
     })
-    expect(METRIC_SPECS.monthly_items.adjust.fieldKeys).toEqual(['sync_item_guaranteed'])
-    expect(METRIC_SPECS.collection_complete.adjust.fieldKeys).toEqual(['tier_up_probability'])
-    expect(METRIC_SPECS.inventory_full.adjust.fieldKeys).toEqual(['max_slots'])
+    expect(METRIC_SPECS.monthly_items.adjust.map((target) => target.fieldKeys)).toEqual([
+      ['sync_item_guaranteed'],
+      ['guaranteed_count', 'bonus_count'],
+    ])
+    expect(METRIC_SPECS.collection_complete.adjust[0].fieldKeys).toEqual(['tier_up_probability'])
+    expect(METRIC_SPECS.inventory_full.adjust[0].fieldKeys).toEqual(['max_slots'])
+  })
+})
+
+describe('한 달의 길이', () => {
+  it('한 달 30일 상수는 하나다: 유저-월(지표 4)과 지표 3의 최근 구간이 같은 값을 쓴다', () => {
+    expect(MONTH_DAYS).toBe(30)
+    expect(targets).not.toHaveProperty('MONTHLY_WINDOW_DAYS')
   })
 })
