@@ -46,6 +46,8 @@ export interface PrecheckView {
   /** 그룹마다 이번에 만들 항목 ID(생성 순서). */
   groups: Array<{ executeIds: string[] }>
   warnings: Array<{ itemIds: string[]; message: string }>
+  /** 「승인하고 예약」 점검(`{ dryRun: true, approve: true }`)에서 예약 등록과 함께 승인할 항목 ID. 응답에 없으면 빈 목록이다. */
+  approving: string[]
 }
 
 function recordOf(value: unknown): Record<string, unknown> | null {
@@ -80,6 +82,7 @@ export function readPrecheck(data: Record<string, unknown>): PrecheckView {
     warnings: recordList(data.warnings).flatMap((entry) =>
       typeof entry.message === 'string' ? [{ itemIds: stringList(entry.itemIds), message: entry.message }] : []
     ),
+    approving: stringList(data.approving),
   }
 }
 
@@ -118,6 +121,8 @@ export interface ExecuteSummary {
   blocked: Array<SummaryItem & { reasons: string[] }>
   failClose: Array<SummaryItem & { reason: string }>
   warnings: Array<{ message: string; names: string[] }>
+  /** 예약 등록과 함께 승인할 항목(검토중이던 항목). 예약할 항목·실패로 닫을 항목 안에 든 것만 싣는다. */
+  approving: SummaryItem[]
   isSample: boolean
   /** 주 버튼이 하는 일: 예약 등록 / 실패로 닫기(예약할 항목은 없고 실패로 닫을 항목만 있다) / 할 일 없음(버튼이 꺼진다). */
   action: ExecuteAction
@@ -178,6 +183,7 @@ export function buildExecuteSummary(precheck: PrecheckView, items: readonly Summ
     blocked: precheck.blocked.map((entry) => ({ ...nameOf(entry.id), reasons: entry.reasons })),
     failClose: precheck.failClose.map((entry) => ({ ...nameOf(entry.id), reason: entry.reason })),
     warnings: precheck.warnings.map((warning) => ({ message: warning.message, names: warning.itemIds.map((id) => nameOf(id).name) })),
+    approving: precheck.approving.filter((id) => readyIds.includes(id) || closeIds.includes(id)).map(nameOf),
     isSample,
     action,
     confirmLabel: action === 'close' ? '실패로 닫기' : executeButtonLabel(readyIds.length),

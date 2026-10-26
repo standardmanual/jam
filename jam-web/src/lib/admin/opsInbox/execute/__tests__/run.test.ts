@@ -4,6 +4,7 @@
  * ⑥(티켓 20261002_1944)이 붙인 미션 핸들러까지 통합해 본다.
  *
  * - 사전 점검 요청: 쓰기 없음
+ * - 승인하고 예약(티켓 20261026_2022): `includeReviewing` 모드에서 검토중 → 승인됨 → 예약됨, 연결 그룹 실패 시 둘 다 되돌려져 `failed`, 이미 처리된 항목 건너뜀, 시험 묶음은 승인하지 않음, 모드가 꺼져 있으면 검토중을 건드리지 않음
  * - 배지 미리 세기 요청(⑨-b, 티켓 20261005_1607): 묶음 없음 404, 예약할 JAM! 배지만 넘김, 쓰기·슬랙 없음, 오류 비노출. 연결 도우미(`linkedIdsFor`·`pointedByOf`)는 `byId`만 받는다
  * - 선점: 조건부 update, 두 번째 실행·동시 실행 409, 그룹 일부만 차지했을 때(가정 3)
  * - 검증 단계 실패: 만든 것 없이 그룹 전체 실패, 다른 그룹은 계속
@@ -188,7 +189,7 @@ describe('사전 점검 요청 dryRunExecution', () => {
     const { db, handlers } = setup([...chain(), { id: ID.solo, key: 'solo', kind: 'recipe', startsAt: null }])
     const outcome = await dryRunExecution(db.service, B, { handlers, now: () => NOW })
     const expected = precheckBundle(db.tables.ops_bundle_items as never, { now: NOW, handlers })
-    expect(outcome).toEqual({ ok: true, body: { ok: true, dryRun: true, ...expected } })
+    expect(outcome).toEqual({ ok: true, body: { ok: true, dryRun: true, ...expected, approving: [] } })
     expect(expected.ready).toHaveLength(3)
     expect(expected.blocked.map((entry) => entry.id)).toEqual([ID.solo])
     expect(nonSelect(db)).toEqual([])
@@ -2721,5 +2722,176 @@ describe('실제 레지스트리: JAM! 배지 핸들러 (티켓 20261004_1756)',
       expect(output).not.toContain(plannedId)
     }
     expect(logged()).toContain(DB_SECRET)
+  })
+})
+
+
+// ── 승인하고 예약 (티켓 20261026_2022) ───────────────────────────────────────────────────────────
+
+describe('승인하고 예약 includeReviewing', () => {
+  const reviewingChain = (): ItemSpec[] => chain().map((spec) => ({ ...spec, status: 'reviewing' }))
+  const approveRun = (db: FakeDb, handlers: ExecuteHandlerRegistry, itemIds: unknown) =>
+    executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR, includeReviewing: true }, { handlers, now: () => NOW })
+
+  it('사전 점검: 검토중 항목을 예약할 항목에 넣고 approving에 싣되 아무것도 쓰지 않는다. 모드가 꺼져 있으면 넣지 않는다', async () => {
+    const { db, handlers } = setup([...reviewingChain(), { id: ID.solo, key: 'solo', kind: 'recipe', status: 'rejected' }])
+    const on = await dryRunExecution(db.service, B, { handlers, now: () => NOW, includeReviewing: true })
+    expect(on.ok).toBe(true)
+    if (!on.ok) return
+    expect([...on.body.ready].sort()).toEqual([ID.badge, ID.card, ID.mission].sort())
+    expect([...on.body.approving].sort()).toEqual([ID.badge, ID.card, ID.mission].sort())
+    expect(nonSelect(db)).toEqual([])
+    for (const id of [ID.card, ID.mission, ID.badge]) expect(statusOf(db, id)).toBe('reviewing')
+
+    const off = await dryRunExecution(db.service, B, { handlers, now: () => NOW })
+    expect(off.ok && off.body.ready).toEqual([])
+    expect(off.ok && off.body.approving).toEqual([])
+  })
+
+  it('사전 점검: 패턴 제안은 승인 대상이 아니다', async () => {
+    const { db, handlers } = setup([{ id: ID.other, key: 'p', kind: 'pattern_proposal', status: 'reviewing' }, ...reviewingChain()])
+    const on = await dryRunExecution(db.service, B, { handlers, now: () => NOW, includeReviewing: true })
+    expect(on.ok && on.body.approving).not.toContain(ID.other)
+    expect(on.ok && on.body.ready).not.toContain(ID.other)
+  })
+
+  it('배지 미리 세기: 모드가 켜져 있으면 검토중 JAM! 배지도 센다. 쓰기는 없다', async () => {
+    const { db, handlers } = setup([{ id: ID.badge, key: 'badge', kind: 'jam_badge', status: 'reviewing' }])
+    const off = await badgePreviewExecution(db.service, B, { handlers, now: () => NOW })
+    expect(off.ok && off.body.badgePreview.lines).toEqual([])
+    const on = await badgePreviewExecution(db.service, B, { handlers, now: () => NOW, includeReviewing: true })
+    expect(on.ok && on.body.badgePreview.lines.map((line) => line.itemId)).toEqual([ID.badge])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('① 검토중 → 승인됨 → 예약됨: 연결 그룹이 함께 승인되고 생성되며 승인 기록 3건·execute 기록 3건이 서로 다른 batch_id로 남는다', async () => {
+    const { db, rec, handlers } = setup(reviewingChain())
+    const result = ok(await approveRun(db, handlers, [ID.card, ID.mission, ID.badge]))
+
+    expect(result.body.scheduled).toEqual([ID.badge, ID.mission, ID.card])
+    expect([...(result.body.approved ?? [])].sort()).toEqual([ID.badge, ID.card, ID.mission].sort())
+    for (const id of [ID.card, ID.mission, ID.badge]) expect(statusOf(db, id)).toBe('scheduled')
+    expect(rec.events.filter((event) => event.startsWith('create:'))).toEqual(['create:badge', 'create:mission', 'create:card'])
+
+    const approves = db.decisions('approve')
+    const executes = db.decisions('execute')
+    expect(approves).toHaveLength(3)
+    expect(executes).toHaveLength(3)
+    expect(approves.every((row) => row.actor === ACTOR && row.batch_id === result.approval?.batchId)).toBe(true)
+    expect(result.approval?.batchId).not.toBe(result.batchId)
+    expect(executes.every((row) => row.batch_id === result.batchId)).toBe(true)
+    expect(result.approval?.decisionIds).toHaveLength(3)
+    expect(result.approval?.slack).toEqual({ action: 'bulk_approve', isSample: false, approved: 3, excluded: 0, skipped: 0 })
+  })
+
+  it('② 연결 그룹 중 하나의 생성이 실패하면 만든 자원을 되돌리고 둘 다 failed다. 승인 기록은 남는다', async () => {
+    const { db, rec, handlers } = setup(
+      [
+        { id: ID.card, key: 'card', kind: 'home_feed_card', links: ['mission'], status: 'reviewing' },
+        { id: ID.mission, key: 'mission', kind: 'mission', status: 'reviewing' },
+      ],
+      { card: { failCreate: { reason: '카드를 만들지 못했어요' } } }
+    )
+    const result = ok(await approveRun(db, handlers, [ID.card, ID.mission]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.map((entry) => entry.id).sort()).toEqual([ID.card, ID.mission].sort())
+    expect(statusOf(db, ID.card)).toBe('failed')
+    expect(statusOf(db, ID.mission)).toBe('failed')
+    expect(rec.events).toContain('undo:mission')
+    expect(db.decisions('approve')).toHaveLength(2)
+    expect(db.decisions('fail')).toHaveLength(2)
+    expect(db.decisions('execute')).toHaveLength(0)
+  })
+
+  it('③ 승인 직전에 다른 곳에서 처리한 항목은 건너뛴다. 같은 연결 그룹은 함께 건너뛰고 다른 그룹은 계속한다', async () => {
+    const { db, handlers } = setup([
+      { id: ID.card, key: 'card', kind: 'home_feed_card', links: ['mission'], status: 'reviewing' },
+      { id: ID.mission, key: 'mission', kind: 'mission', status: 'reviewing' },
+      { id: ID.solo, key: 'solo', kind: 'recipe', status: 'reviewing' },
+    ])
+    let flipped = false
+    db.beforeRun = (call: FakeCall) => {
+      if (!flipped && call.op === 'update' && (call.payload as Row).status === 'approved') {
+        flipped = true
+        db.item(ID.mission).status = 'rejected'
+      }
+    }
+    const result = ok(await approveRun(db, handlers, [ID.card, ID.mission, ID.solo]))
+
+    expect(result.body.scheduled).toEqual([ID.solo])
+    expect(result.body.skipped.map((entry) => entry.id).sort()).toEqual([ID.card, ID.mission].sort())
+    expect(statusOf(db, ID.mission)).toBe('rejected') // 다른 사람의 결정은 건드리지 않는다
+    expect(statusOf(db, ID.card)).toBe('approved') // 우리가 승인한 항목은 「승인됨」으로 남는다(다음 예약 등록이 이어 간다)
+    expect(result.approval?.slack).toMatchObject({ approved: 2, skipped: 1 })
+  })
+
+  it('④ 시험 묶음은 승인하지 않는다: 검토중 항목은 그대로이고 승인 기록이 없다. 이미 승인된 항목은 지금처럼 검증만 한다', async () => {
+    const { db, handlers } = setup(
+      [
+        { id: ID.solo, key: 'solo', kind: 'recipe', status: 'reviewing' },
+        { id: ID.other, key: 'other', kind: 'recipe', status: 'approved' },
+      ],
+      {},
+      { is_sample: true }
+    )
+    const dry = await dryRunExecution(db.service, B, { handlers, now: () => NOW, includeReviewing: true })
+    expect(dry.ok && dry.body.approving).toEqual([])
+    expect(dry.ok && dry.body.ready).toEqual([ID.other])
+
+    const result = ok(await approveRun(db, handlers, [ID.solo, ID.other]))
+    expect(result.body.scheduled).toEqual([ID.other])
+    expect(result.body.skipped.map((entry) => entry.id)).toEqual([ID.solo])
+    expect(result.approval).toBeUndefined()
+    expect(statusOf(db, ID.solo)).toBe('reviewing')
+    expect(db.decisions('approve')).toHaveLength(0)
+    expect(db.item(ID.other).created_resource).toEqual({ sample: true })
+  })
+
+  it('⑤ 모드 없이 호출하면 검토중 항목은 건드리지 않고 승인 기록도 없다', async () => {
+    const { db, run } = setup([
+      { id: ID.solo, key: 'solo', kind: 'recipe', status: 'reviewing' },
+      { id: ID.other, key: 'other', kind: 'recipe', status: 'approved' },
+    ])
+    const result = ok(await run([ID.solo, ID.other]))
+    expect(result.body.scheduled).toEqual([ID.other])
+    expect(result.body.skipped.map((entry) => entry.id)).toEqual([ID.solo])
+    expect(result.body.approved).toBeUndefined()
+    expect(result.approval).toBeUndefined()
+    expect(statusOf(db, ID.solo)).toBe('reviewing')
+    expect(db.decisions('approve')).toHaveLength(0)
+  })
+
+  it('승인 단계에서 DB 오류가 나면 원문 없이 500이고 핸들러를 부르지 않는다', async () => {
+    const { db, rec, handlers } = setup(reviewingChain())
+    db.failIf = (call) => call.table === 'ops_bundle_items' && call.op === 'update'
+    const failure = bad(await approveRun(db, handlers, [ID.card, ID.mission, ID.badge]))
+    expect(failure.status).toBe(500)
+    expect(JSON.stringify(failure)).not.toContain(DB_SECRET)
+    expect(rec.events).toEqual([])
+  })
+
+  it('승인 기록을 남기지 못하면 승인을 되돌리고 500이다(항목은 검토중으로 돌아간다)', async () => {
+    const { db, rec, handlers } = setup(reviewingChain())
+    db.failIf = (call) => call.table === 'ops_decisions' && call.op === 'insert'
+    const failure = bad(await approveRun(db, handlers, [ID.card, ID.mission, ID.badge]))
+    expect(failure.status).toBe(500)
+    for (const id of [ID.card, ID.mission, ID.badge]) expect(statusOf(db, id)).toBe('reviewing')
+    expect(rec.events).toEqual([])
+  })
+
+  it('실패로 닫을 검토중 항목도 승인된 뒤 닫힌다(점검에 보인 대로)', async () => {
+    const { db, handlers } = setup([
+      { id: ID.card, key: 'card', kind: 'home_feed_card', links: ['mission'], status: 'reviewing' },
+      { id: ID.mission, key: 'mission', kind: 'mission', status: 'rejected' },
+    ])
+    const dry = await dryRunExecution(db.service, B, { handlers, now: () => NOW, includeReviewing: true })
+    expect(dry.ok && dry.body.failClose.map((entry) => entry.id)).toEqual([ID.card])
+    expect(dry.ok && dry.body.approving).toEqual([ID.card])
+
+    const result = ok(await approveRun(db, handlers, [ID.card]))
+    expect(result.body.failed.map((entry) => entry.id)).toEqual([ID.card])
+    expect(statusOf(db, ID.card)).toBe('failed')
+    expect(db.decisions('approve')).toHaveLength(1)
   })
 })

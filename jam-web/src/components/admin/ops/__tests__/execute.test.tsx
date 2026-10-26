@@ -53,7 +53,7 @@ const ITEMS: SummarySource[] = [
 ]
 
 function precheck(overrides: Partial<PrecheckView> = {}): PrecheckView {
-  return { ready: [], waiting: [], blocked: [], failClose: [], groups: [], warnings: [], ...overrides }
+  return { ready: [], waiting: [], blocked: [], failClose: [], groups: [], warnings: [], approving: [], ...overrides }
 }
 
 const noop = () => {}

@@ -67,7 +67,7 @@ function src(id: string, overrides: Partial<SummarySource> = {}): SummarySource 
 }
 
 function precheck(overrides: Partial<PrecheckView> = {}): PrecheckView {
-  return { ready: [], waiting: [], blocked: [], failClose: [], groups: [], warnings: [], ...overrides }
+  return { ready: [], waiting: [], blocked: [], failClose: [], groups: [], warnings: [], approving: [], ...overrides }
 }
 
 describe('문장 — 사전 점검과 어긋나지 않는다', () => {
@@ -128,11 +128,17 @@ describe('readPrecheck', () => {
       failClose: [{ id: 'f', reason: '연결된 미션이 반려됐어요' }],
       groups: [{ executeIds: ['a', 'b'] }],
       warnings: [{ itemIds: ['a', 'b'], message: '경고' }],
+      approving: [],
     })
   })
 
   it('빈 객체여도 모든 칸이 빈 목록이다', () => {
     expect(readPrecheck({})).toEqual(precheck())
+  })
+
+  it('승인하고 예약 점검의 approving을 읽고, 문자열이 아닌 값은 버린다', () => {
+    expect(readPrecheck({ approving: ['a', 1, 'b'] }).approving).toEqual(['a', 'b'])
+    expect(readPrecheck({ approving: 'a' }).approving).toEqual([])
   })
 })
 
@@ -209,6 +215,24 @@ describe('buildExecuteSummary — 구역', () => {
   it('시험 묶음 표시를 그대로 싣는다', () => {
     expect(buildExecuteSummary(precheck(), items, true).isSample).toBe(true)
     expect(buildExecuteSummary(precheck(), items, false).isSample).toBe(false)
+  })
+})
+
+describe('buildExecuteSummary — 승인할 항목', () => {
+  const items = [src('a1'), src('a2'), src('a3')]
+
+  it('approving 가운데 예약할 항목·실패로 닫을 항목에 든 것만 이름과 함께 싣는다', () => {
+    const summary = buildExecuteSummary(
+      precheck({ ready: ['a1'], failClose: [{ id: 'a2', reason: '이유' }], approving: ['a1', 'a2', 'a3'] }),
+      items,
+      false
+    )
+    expect(summary.approving.map((entry) => entry.id)).toEqual(['a1', 'a2'])
+    expect(summary.approving[0].name).toBe(itemDisplayName(items[0]))
+  })
+
+  it('approving이 없으면 빈 목록이다', () => {
+    expect(buildExecuteSummary(precheck({ ready: ['a1'] }), items, false).approving).toEqual([])
   })
 })
 
