@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/admin/ui/button'
 import { Skeleton } from '@/components/admin/ui/skeleton'
+import { HashScrollKeeper } from '@/components/admin/balance/HashScrollKeeper'
 import { OpsSettingsNav } from '@/components/admin/ops/OpsSettingsNav'
 import { OpsSettingsSection } from '@/components/admin/ops/OpsSettingsSection'
 import { BALANCE_SECTIONS } from '@/lib/admin/balance/sections'
@@ -44,6 +45,7 @@ export default function BalanceSettingsPage() {
       </div>
 
       <OpsSettingsNav sections={navSections} />
+      <HashScrollKeeper />
 
       <div className="max-w-4xl space-y-12">
         {BALANCE_SECTIONS.map(({ binding, title, description, Body }) => (
