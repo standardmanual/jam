@@ -260,14 +260,23 @@ describe('값 글자와 목표 견줌', () => {
     expect(compareToTarget('per_week', 1.9996, target)).toBe('within')
   })
 
-  it('비율 목표: 과반이면 충족, 인벤토리는 20% 이하가 안이다', () => {
+  it('비율 목표: 과반이면 충족, 인벤토리는 20% 미만이 안이다(정확히 20%는 밖)', () => {
     const half = { low: 0.5, high: 1, text: '' }
     expect(compareToTarget('ratio', 0.49, half)).toBe('below')
     expect(compareToTarget('ratio', 0.5, half)).toBe('within')
     expect(compareToTarget('ratio', 1, half)).toBe('within')
-    const inventory = { low: 0, high: 0.2, text: '' }
+    const inventory = { low: 0, high: 0.2, highExclusive: true, text: '' }
     expect(compareToTarget('ratio', 0, inventory)).toBe('within')
-    expect(compareToTarget('ratio', 0.2, inventory)).toBe('within')
+    expect(compareToTarget('ratio', 0.199, inventory)).toBe('within')
+    expect(compareToTarget('ratio', 0.2, inventory)).toBe('above')
     expect(compareToTarget('ratio', 0.21, inventory)).toBe('above')
+  })
+
+  it('실제 인벤토리 목표 정의가 «미만»으로 표시돼 목표 문장과 견줌이 같은 규칙을 쓴다', () => {
+    const target = METRIC_SPECS.inventory_full.parts[0].target
+    expect(target?.text).toContain('20% 미만')
+    expect(target?.highExclusive).toBe(true)
+    expect(compareToTarget('ratio', 4 / 20, target!)).toBe('above')
+    expect(compareToTarget('ratio', 3 / 20, target!)).toBe('within')
   })
 })

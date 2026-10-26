@@ -200,7 +200,7 @@ export const METRIC_SPECS: Readonly<Record<BalanceMetricKey, MetricSpec>> = {
         unit: 'ratio',
         sampleUnit: 'user',
         minSample: MIN_RATIO_SAMPLE_USERS,
-        target: { low: 0, high: 0.2, text: '여유가 남아 있는 상태 (20% 미만)' },
+        target: { low: 0, high: 0.2, highExclusive: true, text: '여유가 남아 있는 상태 (20% 미만)' },
       },
     ],
     adjust: ADJUST.inventory_full,

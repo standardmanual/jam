@@ -64,11 +64,14 @@ export function formatSample(sampleUnit: SampleUnit, sample: number): string {
 
 export type TargetFit = 'below' | 'within' | 'above'
 
-/** 값이 목표 범위 아래인지, 안인지, 위인지 본다(범위의 양 끝은 안이다). 보이는 자릿수로 맞춘 값으로 견준다 */
+/**
+ * 값이 목표 범위 아래인지, 안인지, 위인지 본다. 범위의 양 끝은 안이지만, 목표가 `highExclusive`(«미만»)이면
+ * 위쪽 끝은 밖이다. 보이는 자릿수로 맞춘 값으로 견준다
+ */
 export function compareToTarget(unit: ValueUnit, value: number, target: PartTarget): TargetFit {
   const shown = Number(value.toFixed(DISPLAY_DIGITS[unit]))
   if (shown < target.low) return 'below'
-  if (shown > target.high) return 'above'
+  if (target.highExclusive ? shown >= target.high : shown > target.high) return 'above'
   return 'within'
 }
 

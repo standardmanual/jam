@@ -79,10 +79,14 @@ export interface BalanceDashboardData {
   metrics: readonly MetricResult[]
 }
 
-/** 목표. 한 점이면 `low`와 `high`가 같다. `text`는 화면에 그대로 보이는 문장이다. */
+/**
+ * 목표. 한 점이면 `low`와 `high`가 같다. `text`는 화면에 그대로 보이는 문장이다.
+ * `highExclusive`가 참이면 `high`는 «미만»의 끝이라 `high` 값 자체는 목표 밖이다(예: «20% 미만»).
+ */
 export interface PartTarget {
   low: number
   high: number
+  highExclusive?: boolean
   text: string
 }
 
