@@ -64,7 +64,10 @@ export function ToastRow({
         .join(' ')}
       onClick={onDismiss}
     >
-      <span className="shrink-0 text-snow/60">{icon}</span>
+      {/* 아이콘 칸은 글자 한 줄과 같은 높이(h-6 = 24px)의 줄 상자로 두고 아이콘을 그 안에서 가운데에 놓는다. 행이 items-start라도
+          한 줄에서 아이콘이 글자와 같은 높이에 걸리고(svg가 display:block이라 칸 높이가 16px로 줄어 4px 올라가는 것을 막는다),
+          두 줄에서는 첫 줄 옆에 붙는다. */}
+      <span className="flex h-6 shrink-0 items-center text-snow/60">{icon}</span>
       <span className="min-w-0 break-keep wrap-break-word">{item.message}</span>
     </div>
   )

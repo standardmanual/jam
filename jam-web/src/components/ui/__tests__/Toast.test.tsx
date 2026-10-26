@@ -6,7 +6,8 @@
  *   `min-w-0`이 없으면 flex 아이템의 기본 min-width:auto 때문에 공백 없는 긴 어절이 알약 밖으로 넘친다.
  * - 행: `items-start rounded-3xl`. 한 줄(높이 48px)에서 24px 모서리는 `rounded-full`과 같은 반원이고,
  *   두 줄(72px)에서도 모서리가 24px로 남는다. 아이콘은 첫 줄 옆에 붙는다.
- * - 아이콘 칸: `shrink-0`이 있어야 문구가 길어도 아이콘이 찌그러지지 않는다.
+ * - 아이콘 칸: `shrink-0`이 있어야 문구가 길어도 아이콘이 찌그러지지 않는다. `h-6 items-center`는 글자 한 줄과 같은 24px 줄 상자 안에
+ *   아이콘을 가운데 놓는다(svg가 display:block이라 칸 높이가 16px로 줄어 `items-start`에서 아이콘이 4px 올라가는 것을 막는다).
  *
  * `ToastProvider`는 마운트 게이트(`useSyncExternalStore` 서버 스냅샷 false) 때문에 서버 렌더에서 포털을
  * 만들지 않으므로, 행만 따로 내보낸 `ToastRow`를 `renderToStaticMarkup`으로 확인한다.
@@ -50,9 +51,9 @@ describe('ToastRow — 문구 칸', () => {
 })
 
 describe('ToastRow — 아이콘 칸', () => {
-  it('아이콘 span에 shrink-0이 있다', () => {
+  it('아이콘 span이 글자 한 줄과 같은 24px 줄 상자(h-6)이고 shrink-0이다', () => {
     const html = render('success', '문구')
-    expect(html).toContain('<span class="shrink-0 text-snow/60"><svg data-icon="success"></svg></span>')
+    expect(html).toContain('<span class="flex h-6 shrink-0 items-center text-snow/60"><svg data-icon="success"></svg></span>')
   })
 })
 
