@@ -52,6 +52,14 @@ describe('postExecute', () => {
     expect(JSON.parse(init.body)).toEqual({ badgePreview: true })
   })
 
+  it('approve: true는 사전 점검·실행 본문에 그대로 실린다(승인하고 예약, 티켓 20261026_2031)', async () => {
+    fetchMock.mockReturnValue(respond(200, { ok: true }))
+    await postExecute('bundle-1', { dryRun: true, approve: true })
+    await postExecute('bundle-1', { itemIds: ['a'], approve: true })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ dryRun: true, approve: true })
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ itemIds: ['a'], approve: true })
+  })
+
   it('실행은 { itemIds }를 보내고 200이면 응답을 그대로 돌려준다', async () => {
     const body = { ok: true, scheduled: ['a', 'b'], failed: [], skipped: [], excludedCount: 0 }
     fetchMock.mockReturnValue(respond(200, body))
@@ -105,15 +113,23 @@ describe('fetchBadgePreview', () => {
   const items = [{ id: 'b1', position: 1, kind: 'jam_badge', startsAt: '2026-10-10T00:00:00Z', original: { user_experience: '첫 믹스 배지' }, edited: null }]
   const ok = { totalUsers: 40, evaluatedUsers: 40, sampled: false, failedUsers: 0, lines: [{ itemId: 'b1', status: 'counted', userCount: 12, points: 120 }] }
 
-  it('{ badgePreview: true }를 보내고 응답을 완료 상태(줄·안내)로 바꾼다', async () => {
+  it('{ badgePreview: true, approve: true }를 보내고 응답을 완료 상태(줄·안내)로 바꾼다', async () => {
     fetchMock.mockReturnValue(respond(200, { ok: true, badgePreview: ok }))
     const section = await fetchBadgePreview('bundle-1', items)
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ badgePreview: true })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ badgePreview: true, approve: true })
     expect(section).toEqual({
       status: 'done',
       lines: [{ id: 'b1', name: 'JAM! 배지 · 10/10(토) 09:00 시작 · 첫 믹스 배지', text: '공개되면 약 12명에게 120포인트' }],
       notes: [],
     })
+  })
+
+  it('대상 항목을 주면 그 항목의 줄만 싣는다(체크하지 않은 검토중 배지는 뺀다)', async () => {
+    const two = [...items, { ...items[0], id: 'b2', position: 2 }]
+    const lines = [...ok.lines, { itemId: 'b2', status: 'counted', userCount: 3, points: 30 }]
+    fetchMock.mockReturnValue(respond(200, { ok: true, badgePreview: { ...ok, lines } }))
+    const section = await fetchBadgePreview('bundle-1', two, new Set(['b1']))
+    expect(section.status === 'done' && section.lines.map((line) => line.id)).toEqual(['b1'])
   })
 
   it('서버 오류·권한 오류·네트워크 오류는 던지지 않고 failed다', async () => {

@@ -170,11 +170,11 @@ describe('항목 서랍 — 운영 항목', () => {
     expect(itemView(ok({}, { isSample: false }))).not.toContain('시험</span>')
   })
 
-  it('검토중이면 반려하기·수정하기·승인하기가 있다', () => {
+  it('검토중이면 반려하기·수정하기가 있고 개별 승인 버튼은 없다(승인은 기획 상세의 「N건 승인하고 예약」, 티켓 20261026_2031)', () => {
     const out = itemView(ok({ status: 'reviewing' }))
     expect(out).toContain('반려하기')
     expect(out).toContain('수정하기')
-    expect(out).toContain('승인하기')
+    expect(out).not.toContain('승인하기')
   })
 
   it('승인됨은 「예약 등록은 기획 상세에서 해요」와 [기획 상세로 가기 →]이고 결정 버튼이 없다', () => {

@@ -43,6 +43,8 @@ import {
   executeButtonLabel,
   executeToast,
   itemDisplayName,
+  narrowToChecked,
+  pickExecuteIds,
   latestFailReasons,
   readBadgePreview,
   readEndPreview,
@@ -89,10 +91,10 @@ describe('문장 — 사전 점검과 어긋나지 않는다', () => {
 })
 
 describe('executeButtonLabel', () => {
-  it('예약할 항목이 있으면 「N개 예약 등록하기」, 0이면 「예약 등록하기」다', () => {
-    expect(executeButtonLabel(3)).toBe('3개 예약 등록하기')
-    expect(executeButtonLabel(1)).toBe('1개 예약 등록하기')
-    expect(executeButtonLabel(0)).toBe('예약 등록하기')
+  it('승인 대상이 있으면 「N건 승인하고 예약」, 0이면 「승인하고 예약」이다', () => {
+    expect(executeButtonLabel(3)).toBe('3건 승인하고 예약')
+    expect(executeButtonLabel(1)).toBe('1건 승인하고 예약')
+    expect(executeButtonLabel(0)).toBe('승인하고 예약')
   })
 })
 
@@ -203,7 +205,7 @@ describe('buildExecuteSummary — 구역', () => {
     )
     expect(summary.waiting).toEqual([{ id: 'a6', name: itemDisplayName(items[5]) }])
     expect(summary.blocked).toEqual([{ id: 'a7', name: itemDisplayName(items[6]), reasons: ['공개 시각이 이미 지났어요', '아직 연결하지 않은 종류예요'] }])
-    expect(summary.failClose).toEqual([{ id: 'a8', name: itemDisplayName(items[7]), reason: '연결된 미션이 반려됐어요' }])
+    expect(summary.failClose).toEqual([{ id: 'a8', name: itemDisplayName(items[7]), reason: '연결된 미션이 반려됐어요', approving: false }])
     expect(summary.warnings).toEqual([{ message: '연결된 항목의 공개 시각이 서로 달라요', names: [itemDisplayName(items[0]), itemDisplayName(items[1])] }])
   })
 
@@ -239,9 +241,9 @@ describe('buildExecuteSummary — 승인할 항목', () => {
 describe('buildExecuteSummary — 주 버튼', () => {
   const items = [src('a1'), src('a2')]
 
-  it('예약할 항목이 있으면 「N개 예약 등록하기」이고 요청은 예약할 항목이다(실패로 닫을 항목이 함께 있어도)', () => {
+  it('예약할 항목이 있으면 「N건 승인하고 예약」이고 요청은 예약할 항목이다(실패로 닫을 항목이 함께 있어도)', () => {
     const summary = buildExecuteSummary(precheck({ ready: ['a1'], failClose: [{ id: 'a2', reason: '이유' }] }), items, false)
-    expect(summary).toMatchObject({ action: 'schedule', confirmLabel: '1개 예약 등록하기', pendingLabel: '예약 등록하는 중', requestIds: ['a1'] })
+    expect(summary).toMatchObject({ action: 'schedule', confirmLabel: '1건 승인하고 예약', pendingLabel: '승인하고 예약하는 중', requestIds: ['a1'] })
   })
 
   it('예약할 항목이 없고 실패로 닫을 항목이 있으면 「실패로 닫기」이고 요청은 실패로 닫을 항목이다', () => {
@@ -251,7 +253,37 @@ describe('buildExecuteSummary — 주 버튼', () => {
 
   it('둘 다 없으면 꺼진다(할 일 없음)', () => {
     const summary = buildExecuteSummary(precheck({ waiting: ['a1'], blocked: [{ id: 'a2', reasons: ['이유'] }] }), items, false)
-    expect(summary).toMatchObject({ action: 'none', confirmLabel: '예약 등록하기', requestIds: [] })
+    expect(summary).toMatchObject({ action: 'none', confirmLabel: '승인하고 예약', requestIds: [] })
+  })
+})
+
+describe('pickExecuteIds — 승인하고 예약의 itemIds', () => {
+  const items = [src('a1'), src('a2'), src('a3'), src('a4')]
+
+  it('이미 승인된 예약할 항목과 체크한 검토중 항목만 담는다. 체크하지 않은 검토중 항목은 뺀다', () => {
+    const summary = buildExecuteSummary(precheck({ ready: ['a1', 'a2', 'a3'], approving: ['a1', 'a2'] }), items, false)
+    expect(pickExecuteIds(summary, new Set(['a1']))).toEqual(expect.arrayContaining(['a1', 'a3']))
+    expect(pickExecuteIds(summary, new Set(['a1']))).toHaveLength(2)
+    expect(pickExecuteIds(summary, new Set())).toEqual(['a3'])
+  })
+
+  it('연결 묶음에 체크하지 않은 검토중 항목이 있으면 묶음째 뺀다', () => {
+    const summary = buildExecuteSummary(precheck({ ready: ['a1', 'a2'], groups: [{ executeIds: ['a1', 'a2'] }], approving: ['a2'] }), items, false)
+    expect(pickExecuteIds(summary, new Set())).toEqual([])
+    expect(pickExecuteIds(summary, new Set(['a2'])).sort()).toEqual(['a1', 'a2'])
+  })
+
+  it('담을 예약할 항목이 없으면 실패로 닫을 항목이다', () => {
+    const summary = buildExecuteSummary(precheck({ ready: ['a1'], failClose: [{ id: 'a4', reason: '이유' }], approving: ['a1', 'a4'] }), items, false)
+    expect(pickExecuteIds(summary, new Set())).toEqual(['a4'])
+  })
+
+  it('narrowToChecked의 요청은 pickExecuteIds와 같고 사전 점검 요약은 바꾸지 않는다', () => {
+    const summary = buildExecuteSummary(precheck({ ready: ['a1', 'a2'], approving: ['a1', 'a2'] }), items, false)
+    const narrowed = narrowToChecked(summary, new Set(['a2']))
+    expect(narrowed.requestIds).toEqual(pickExecuteIds(summary, new Set(['a2'])))
+    expect(narrowed.requestIds).toEqual(['a2'])
+    expect(summary.ready).toHaveLength(2)
   })
 })
 
@@ -441,10 +473,20 @@ describe('readyJamBadgeIds — 배지 미리 세기를 요청할지', () => {
 })
 
 describe('executeToast', () => {
-  const base = { scheduled: 0, failed: 0, skipped: 0, decisionLogFailed: false }
+  const base = { approved: 0, scheduled: 0, failed: 0, skipped: 0, decisionLogFailed: false }
 
   it('예약만 했으면 「N개를 예약 등록했어요」', () => {
     expect(executeToast({ ...base, scheduled: 3 })).toEqual({ level: 'success', message: '3개를 예약 등록했어요', logWarning: null })
+  })
+
+  it('먼저 승인한 항목이 있으면 「N건을 승인했어요」를 앞에 붙인다(티켓 20261026_2031)', () => {
+    expect(executeToast({ ...base, approved: 2, scheduled: 2 })).toEqual({ level: 'success', message: '2건을 승인했어요. 2개를 예약 등록했어요', logWarning: null })
+    expect(executeToast({ ...base, approved: 1, failed: 1 }).message).toBe('1건을 승인했어요. 1개를 실패로 닫았어요')
+  })
+
+  it('실행 응답의 approved 목록 길이를 읽는다. 없으면 0이다', () => {
+    expect(readExecuteResult({ scheduled: ['a'], approved: ['a', 'b'] }).approved).toBe(2)
+    expect(readExecuteResult({ scheduled: ['a'] }).approved).toBe(0)
   })
 
   it('실패가 있으면 「N개를 예약 등록했고 M개는 실패했어요」', () => {
@@ -490,12 +532,13 @@ describe('readExecuteResult', () => {
         excludedCount: 4,
         decisionLogFailed: true,
       })
-    ).toEqual({ scheduled: 2, failed: 1, skipped: 2, decisionLogFailed: true })
+    ).toEqual({ approved: 0, scheduled: 2, failed: 1, skipped: 2, decisionLogFailed: true })
   })
 
   it('칸이 없거나 모양이 틀리면 0이고 decisionLogFailed는 true일 때만 true다', () => {
-    expect(readExecuteResult({})).toEqual({ scheduled: 0, failed: 0, skipped: 0, decisionLogFailed: false })
+    expect(readExecuteResult({})).toEqual({ approved: 0, scheduled: 0, failed: 0, skipped: 0, decisionLogFailed: false })
     expect(readExecuteResult({ scheduled: 3, failed: 'x', decisionLogFailed: 'true' })).toEqual({
+      approved: 0,
       scheduled: 0,
       failed: 0,
       skipped: 0,

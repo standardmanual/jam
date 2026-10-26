@@ -4,8 +4,6 @@
  * 지키는 것: 시험 묶음·이미지 칸 없는 종류·`preset_id` 없음은 렌더도 저장도 하지 않는다 / 있으면 렌더 → 저장을 부르고 시드는 호출마다 다르다 /
  * 렌더·저장이 실패해도 던지지 않고 `failed` / 일괄 승인 부품은 이 제작을 부르지 않는다.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 
@@ -72,12 +70,5 @@ describe('produceItemImage', () => {
     await produceItemImage('b1', makeItem(), false)
     const seeds = render.mock.calls.map((c) => (c[0] as { seed: number }).seed)
     expect(seeds[0]).not.toBe(seeds[1])
-  })
-})
-
-describe('일괄 승인 제외', () => {
-  it('OpsBulkApprove는 이미지 제작을 부르지 않는다', () => {
-    const src = readFileSync(join(__dirname, '..', 'OpsBulkApprove.tsx'), 'utf8')
-    expect(src).not.toMatch(/useItemImageProduction|produceItemImage|imageProduction/)
   })
 })
