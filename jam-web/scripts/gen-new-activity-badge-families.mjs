@@ -19,6 +19,11 @@
  *   node scripts/gen-new-activity-badge-families.mjs --set held            # 248 기본 경로에 쓴다
  *   node scripts/gen-new-activity-badge-families.mjs --set held --stdout   # 표준출력
  *
+ * 5-6 한 계열(티켓 20261026_1018): `--set late`를 주면 마이그레이션 `291_seed_activity_badge_family_5_6.sql`을 만든다(원고 11.5절, 혼자들 «채워 둔 세제 칸»).
+ * 245·248 출력은 이 확장으로 한 글자도 바뀌지 않는다(시험이 디스크 파일과 대조하고 SHA-256으로도 고정한다).
+ *   node scripts/gen-new-activity-badge-families.mjs --set late            # 291 기본 경로에 쓴다
+ *   node scripts/gen-new-activity-badge-families.mjs --set late --stdout   # 표준출력
+ *
  * 번호 대조(verifyNumbering): 계열마다 아래 셋이 어긋나면 던진다. 어긋난 채 SQL을 만들지 않는다.
  *   ① 원고 2절의 조건·종류·단계 수 ↔ 11절 제목·표 머리·행 수 ↔ 11절 조건 표기의 숫자
  *   ② 2절의 «단계(임시 값)»에 숫자가 있으면 11절 조건 표기의 숫자와 같은지
@@ -42,6 +47,22 @@ export const MIGRATION_FILE_NAME = '245_seed_new_activity_badge_families.sql'
 export const HELD_CHECK_MIGRATION_PATH = path.join(HERE, '..', 'supabase/migrations/247_condition_json_checkin_drop_jam_keys.sql')
 export const HELD_OUT_PATH = path.join(HERE, '..', 'supabase/migrations/248_seed_held_activity_badge_families.sql')
 export const HELD_MIGRATION_FILE_NAME = '248_seed_held_activity_badge_families.sql'
+
+/**
+ * 5-6 한 계열 시드(티켓 20261026_1018). 허용 키 목록은 248과 같이 가장 최근에 CHECK를 넓힌 247에서 읽는다(92개).
+ * 번호는 시작 때 origin/staging의 가장 높은 번호(290)에 하나를 더해 정했다. 적용 직전에 다시 확인한다.
+ */
+export const LATE_SEED_NUMBERS = ['5-6']
+export const LATE_CHECK_MIGRATION_PATH = HELD_CHECK_MIGRATION_PATH
+export const LATE_OUT_PATH = path.join(HERE, '..', 'supabase/migrations/291_seed_activity_badge_family_5_6.sql')
+export const LATE_MIGRATION_FILE_NAME = '291_seed_activity_badge_family_5_6.sql'
+
+/**
+ * 244가 재활용 후보 밖 활동 배지를 끈 뒤 남는 활성 활동 배지 수(244의 «유지 270행», 온보딩 배지 1개 포함).
+ * 5-6 시드의 선행 조건 가드(활성 수 = 이 값 + 245의 행 + 248의 행)와 사후 확인(+ 5-6의 행)이 쓴다.
+ * 마이그레이션 290의 가드(390)도 같은 값에서 나온다(시험이 290 파일과 대조한다).
+ */
+export const ACTIVE_ACTIVITY_AFTER_244 = 270
 
 /**
  * @typedef {object} FamilyDef
@@ -100,7 +121,7 @@ export const TARGET_NUMBERS = [
 ]
 
 /**
- * 보류했다가 마이그레이션 248로 입력하는 13계열(티켓 20261019_0542 사용자 결정 6의 3회, 원고 번호). 5-6은 원고에 이름·설명이 없어 없다.
+ * 보류했다가 마이그레이션 248로 입력하는 13계열(티켓 20261019_0542 사용자 결정 6의 3회, 원고 번호). 5-6은 당시 원고에 이름·설명이 없어 없다(2026-10-25에 생겨 LATE_SEED_NUMBERS로 따로 입력한다).
  * 3-3은 재활용 후보 문서에서 «고쳐서 재활용»이라 기존 행이 있고 이름이 종목마다 달라 입력 대상이 아니다.
  * 3-2는 1회가 등급형 묶음 기준을 이름에서 계열(`family_key`)로 바꿔서 같은 이름의 종목별 계열 5개가 서로 막지 않으므로 여기서 입력한다.
  * 위 TARGET_NUMBERS·HELD_FAMILIES·`--include-held`는 245 출력과 시험을 그대로 두려고 바꾸지 않았다.
@@ -172,6 +193,9 @@ export const FAMILY_DEFS = {
   '5-2': { key: 'distinct_activity_type_count', parse: 'int', scope: 'all', branch: 'explore', image: 'walking:P1' },
   '5-4': { key: 'new_checkin_badge_count', parse: 'fixed', fixed: 1, scope: 'all', branch: 'explore', image: 'walking:A9' },
   '5-5': { key: 'checkin_season_year_count', parse: 'int', scope: 'all', branch: 'explore', image: 'walking:A8' },
+  // 5-6(마이그레이션 291, 티켓 20261026_1018): 판정 키는 기존 JAM! 지표 same_spot_checkin_days(지점별 서로 다른 체크인 날 수의 최댓값, 203부터 허용).
+  // 이미지는 «날을 쌓는» 성격이 가장 가까운 walking:K3(5-3의 원본, 244 유지 목록)를 임시로 복사한다(사용자 결정 4와 같은 방식)
+  '5-6': { key: 'same_spot_checkin_days', parse: 'int', scope: 'all', branch: 'explore', image: 'walking:K3' },
   '7-3': {
     key: 'jam_week_count', parse: 'pattern', scope: 'jam', branch: 'milestone', image: 'walking:P2',
     pattern: /^한 주에 모은 잼 (?<aux>\d+) 이상 (?:누적 )?(?<value>\d+)주$/,
@@ -628,9 +652,72 @@ function pushHeldHeader({ push, rows, fams, numbersUsed, imageTable, fileName })
   push('-- 되돌림 방법과 사후 확인은 파일 끝에 있다.')
 }
 
+/** 숫자 이름 뒤에 붙는 조사(받침 유무). 마지막 숫자 0·1·3·6·7·8(영·일·삼·육·칠·팔)은 받침이 있다 */
+function withJosa(label, withBatchim, withoutBatchim) {
+  return `${label}${'013678'.includes(label.slice(-1)) ? withBatchim : withoutBatchim}`
+}
+
+/**
+ * 5-6 한 계열 시드(291)의 머리 주석. 규칙·영향·적용 순서·290과의 관계를 싣는다.
+ * @param {{label: string, families: string[], rowCount: number}[]} priorSets 먼저 적용하는 시드(245·248)
+ */
+function pushLateHeader({ push, rows, fams, imageTable, fileName, priorSets, activeBefore, activeAfter, totalPoints }) {
+  const r0 = rows[0]
+  const key = FAMILY_DEFS[r0.number].key
+  const steps = rows.map((r) => r.condition_json[key])
+  const pointText = rows.map((r) => `${r.rarity === 'common' ? 'Common' : r.rarity === 'rare' ? 'Rare' : 'Epic'} ${r.point_reward}`).join('·')
+  const priorText = priorSets.map((s) => `${s.label}의 ${s.rowCount}`).join(' + ')
+  push(`-- ${fileName}`)
+  push('-- JAM 2.0 액티비티 배지: 5-6 계열 «같은 장소에 여러 날 체크인함»(혼자들 «채워 둔 세제 칸») 입력 (티켓 20261026_1018, 상위 20261022_1131. 이름·설명은 2026-10-25 사용자 확정, 원고 11.5절)')
+  push('--')
+  push('-- 작성만 하고 실행하지 않았다. 실행은 오픈 직전에 사용자 승인과 롤백 실측 뒤 카리나가 한다(오픈 전후 적용 순서 문서 4절). 새 칸·새 제약·새 함수는 없고 badges에 새 행만 넣는다(옛 행과 245·248의 행은 바꾸지 않는다).')
+  push('-- 생성: jam-web/scripts/gen-new-activity-badge-families.mjs --set late (원고 06 액티비티 배지.md 2·11절 + 재활용 후보 문서 2절). 손으로 고치지 말고 스크립트를 고쳐 다시 만든다.')
+  push('--')
+  push('-- ⚠️ 공용 DB 영향: Supabase는 staging과 프로덕션이 한 DB를 쓰므로, 적용하는 순간 옛 프로덕션 코드에도 바로 반영된다.')
+  push(`--    넣는 행: ${fams.length}계열 ${rows.length}행(활동 배지, 등급형 ${rows.length}단). 옛 프로덕션의 배지함·배지 목록·어드민 배지 목록에 새 배지가 나타난다.`)
+  push(`--    같은 장소에 서로 다른 날 ${steps[0]}일 이상 체크인한 유저는 다음 동기화 끝 판정(JAM_SYNC_TRIGGERS의 ${key})에서 이 배지를 받는다(소급 발급은 따로 돌리지 않는다). 받으면 point_reward만큼 포인트가 지급된다.`)
+  push('--    등급형이라 채운 가장 높은 단계 하나만 받는다.')
+  push(`--    ${key}는 203이 허용한 기존 JAM! 지표다. 옛 프로덕션 코드가 이 키로 배지를 판정하는지는 이 파일에서 확인하지 않았다(판정 코드는 이 브랜치의 jamActionBadges.ts에 있다). 판정하지 못하는 코드가 도는 동안에는 이 배지가 보이기만 하고 발급되지 않는다.`)
+  push('--')
+  push('-- ⚠️ 적용 순서: 244 → 245 → 248 → 이 파일. 이 파일은 244·245·248이 모두 적용된 «뒤에» 적용한다.')
+  push('--    244(재활용 후보 밖 활동 배지를 끄는 SQL)의 끄기 대상은 «type=activity이고 family_key가 유지 61계열 목록에 없는 배지 전부»라서, 이 파일의 새 행을 244보다 먼저 넣고 244를 돌리면 새 행이 전부 꺼진다.')
+  push(`--    아래 가드 ③이 활성 액티비티 배지 수(${ACTIVE_ACTIVITY_AFTER_244} + ${priorText} = ${activeBefore})를 대조해, 244·245·248 적용 전에는 멈춘다.`)
+  push('--    245·248의 드라이런·사후 검증 기대값(포인트 합 1410, 1650 등)은 이 파일을 넣기 «전» 숫자이므로 그 검증도 이 파일 앞에서 돌린다.')
+  push('--    이 파일은 CHECK 제약을 새로 만들지 않는다. 허용 키 92개는 247까지 적용돼 있어야 한다(246: 86개, 247: 92개, 둘 다 적용 완료). 드라이런 ④가 같은 식으로 새 행을 미리 대조한다.')
+  push('--')
+  push('-- ⚠️ 마이그레이션 290(기존 액티비티 배지 포인트 일괄 적용)과의 관계 — 활성 액티비티 배지 수가 이 파일로 ' + `${activeBefore} → ${activeAfter}이 된다`)
+  push(`--    290의 선행 조건 가드는 «활성 액티비티 배지가 ${activeBefore}개일 때만 진행»이다. 290은 배지 수를 바꾸지 않으므로 이 파일의 가드 ③은 290 앞에서도 뒤에서도 통과한다.`)
+  push(`--    (가) 290을 먼저, 이 파일을 나중에: 290은 고치지 않고 통과한다. 다만 이 파일의 포인트는 아래 규칙 ②의 고정값이라, 290 뒤에 배지 포인트 일괄 값(badge_point_policy)을 바꿨다면 이 행은 그 값을 따르지 않는다.`)
+  push(`--    (나) 이 파일을 먼저, 290을 나중에: 290의 가드가 ${activeAfter}개를 보고 멈춘다(아무것도 바꾸지 않는다). 이 순서를 쓰려면 290의 가드와 안내 문구의 기대 수를 ${activeBefore}에서 ${activeAfter}(${ACTIVE_ACTIVITY_AFTER_244} + ${priorText} + 이 파일의 ${rows.length})까지 올려 고쳐야 한다.`)
+  push('--         이 행들은 290의 범위(삭제되지 않은 숨김 아님 액티비티 배지)에 들어가 정책 표 값으로 다시 쓰인다.')
+  push('--    어느 쪽을 쓸지는 카리나가 정한다. 이 파일의 작업에서는 290을 고치지 않았다.')
+  push('--')
+  push('-- 규칙')
+  push(`--   ① 넣는 계열(원고 번호): ${r0.number} (1개 번호, family_key ${fams.length}개). 원고 11.5절의 이름·설명·조건 표기를 한 글자도 바꾸지 않고 쓴다. 트라이브는 혼자들이고 이름 «${r0.name}»은 ${rows.length}단이 같다.`)
+  push('--      등급형이라 rarity(Common·Rare·Epic)만 있고 level은 NULL이다(130 제약 badges_rarity_level_exclusive). 숨김 배지는 없다(is_hidden 전부 false).')
+  push(`--   ② point_reward: ${pointText}(합 ${totalPoints}). 245·248과 같은 규칙 값이고 배지 포인트 일괄 값(badge_point_policy, 288)의 기본값과 같다. 숨김이 아니라서 badges_hidden_no_points 제약과 부딪히지 않는다.`)
+  push(`--   ③ condition_json: {${key}: ${steps.join(' | ')}} (단계마다 키 하나). 지점(poi_id)별로 센 서로 다른 체크인 날(KST) 수의 최댓값이다. 여러 장소의 합이 아니다.`)
+  push('--      판정은 엔진 밖 파이프라인(jamActionBadges.ts)이 한다. 메인 엔진은 이 키만 든 조건을 항상 fail 처리한다.')
+  push('--   ④ activity_types·admin_category·family_key: 종목과 상관없이 합산하는 계열이라 activity_types=\'{}\'·admin_category NULL(JAM! 필터에 넣지 않는다)·family_key `all:J5-6`이다(248의 합산 계열과 같다).')
+  push('--      → 배지 목록의 «전체»에는 나오지만 종목 필터에는 나오지 않는다. 종목을 붙일지는 따로 정한다.')
+  push('--      적용 전에 같은 family_key가 이미 있으면 가드 ①이, 같은 이름의 살아 있는 배지가 있으면 가드 ②가 예외를 던져 전체를 되돌린다(되돌림 SQL이 family_key로 지우므로 남의 행이 섞이면 안 된다).')
+  push(`--   ⑤ branch_key: ${r0.branch_key}(243의 가지 일곱 중 하나). sort_order = 가지 번호×100 + 계열 번호 = ${r0.sort_order}. 공개 기간(valid_from·valid_until)은 두지 않는다.`)
+  push('--   ⑥ image_url: 가장 가까운 기존 배지(재활용 후보)의 image_url을 복사한다(사용자 결정 4, 임시). 대응표는 아래. 원본 n단, 새 m단이면 새 i번째는 원본 ceil(i×n/m)번째다.')
+  push('--      이미지 파일은 원본 배지와 같은 파일을 가리킨다(복사가 아니라 같은 주소). 원본에 image_url이 없으면 새 행도 NULL이다(INSERT는 통과한다). 드라이런 ③으로 원본에 이미지가 있는지 먼저 본다.')
+  push('--   ⑦ 트리거 badges_family_consistency(140·134): 등급형은 같은 family_key 안에서 측정 조건 키 집합이 같아야 한다. 이 파일은 단계마다 같은 키 하나라 통과한다.')
+  push('--   받은 기록·유저·포인트 원장·미션은 바꾸지 않는다.')
+  push('--')
+  push('-- 이미지 대응표 (새 family_key → 이미지를 복사할 기존 family_key)')
+  for (const l of imageTable) push(l)
+  push('--')
+  push('-- 되돌림 방법과 사후 확인은 파일 끝에 있다.')
+}
+
 /** 시드 SQL 전체 본문 */
-export function renderSql(rows, { allowedKeys, variant = 'main', priorFamilies = [], priorRowCount = 0 }) {
-  const fileName = variant === 'held' ? HELD_MIGRATION_FILE_NAME : MIGRATION_FILE_NAME
+export function renderSql(rows, { allowedKeys, variant = 'main', priorFamilies = [], priorRowCount = 0, priorSets = [] }) {
+  const fileName = variant === 'held' ? HELD_MIGRATION_FILE_NAME : variant === 'late' ? LATE_MIGRATION_FILE_NAME : MIGRATION_FILE_NAME
+  const activeBefore = ACTIVE_ACTIVITY_AFTER_244 + priorSets.reduce((s, p) => s + p.rowCount, 0)
+  const activeAfter = activeBefore + rows.length
   const fams = familySummary(rows)
   const famKeys = fams.map((f) => f.family_key)
   const srcKeys = [...new Set(rows.map((r) => r.image.src_family_key))]
@@ -665,6 +752,8 @@ export function renderSql(rows, { allowedKeys, variant = 'main', priorFamilies =
 
   if (variant === 'held') {
     pushHeldHeader({ push, rows, fams, numbersUsed, imageTable, fileName })
+  } else if (variant === 'late') {
+    pushLateHeader({ push, rows, fams, imageTable, fileName, priorSets, activeBefore, activeAfter, totalPoints })
   } else {
     push(`-- ${fileName}`)
     push('-- JAM 2.0 액티비티 배지: 새 계열 입력 (티켓 20261018_1816 3회, 상위 20261018_1811. 사용자 결정 3·4·5 = 2026-10-19 질문창 답)')
@@ -741,13 +830,27 @@ export function renderSql(rows, { allowedKeys, variant = 'main', priorFamilies =
     push('--   (기대값 270. 244의 기대값과 같은 2026-10-10 조사 기준이라 그 뒤에 옛 형식 배지를 더했다면 달라질 수 있다).')
     push("--   SELECT count(*) FROM public.badges WHERE type = 'activity' AND deleted_at IS NULL AND (family_key IS NULL OR family_key !~ ':J[0-9]+-[0-9]+$');")
     push('--')
+  } else if (variant === 'late') {
+    for (const [i, s] of priorSets.entries()) {
+      const mark = ['⑥', '⑦'][i]
+      push(`-- ${mark} ${withJosa(s.label, '이', '가')} 들어갔는가: ${s.label}의 ${s.families.length}계열 ${s.rowCount}행이 있어야 한다(기대값 ${s.families.length} / ${s.rowCount}. 아니면 ${withJosa(s.label, '을', '를')} 먼저 적용한다)`)
+      push(`--   SELECT count(DISTINCT family_key) AS 계열수, count(*) AS 행수 FROM public.badges WHERE family_key IN (${s.families.map(sqlStr).join(', ')}) AND deleted_at IS NULL;`)
+      push('--')
+    }
+    push('-- ⑧ 244가 들어갔는가: 활성 활동 배지 가운데 새 계열(`:J<번호>` 형식 family_key)이 아닌 것의 수는 244의 «유지 270행»만 남아 있어야 한다')
+    push(`--   (기대값 ${ACTIVE_ACTIVITY_AFTER_244}. 244의 기대값과 같은 2026-10-10 조사 기준이라 그 뒤에 옛 형식 배지를 더했다면 달라질 수 있다).`)
+    push("--   SELECT count(*) FROM public.badges WHERE type = 'activity' AND deleted_at IS NULL AND (family_key IS NULL OR family_key !~ ':J[0-9]+-[0-9]+$');")
+    push('--')
+    push(`-- ⑨ 가드 ③과 같은 식: 위 ⑤의 활성 활동 배지 수가 ${activeBefore}이어야 이 파일이 통과한다(= ${ACTIVE_ACTIVITY_AFTER_244} + ${priorSets.map((s) => `${s.label}의 ${s.rowCount}`).join(' + ')}. 적용 뒤에는 ${activeAfter}).`)
+    push('--   290(기존 액티비티 배지 포인트 일괄 적용)을 이미 적용했는지는 개수에 나타나지 않는다: SELECT to_regclass(\'public.badge_point_backup_290\'); 가 NULL이 아니면 적용했다.')
+    push('--')
   }
   push('-- 롤백 실측: 아래 BEGIN 이후 본문(가드 DO 블록, INSERT, 사후 확인 DO 블록)을 한 트랜잭션으로 실행하고 COMMIT 대신 ROLLBACK 한다.')
   push('--   트랜잭션을 못 쓰는 도구(MCP)에서는 본문을 DO 블록 하나로 감싸 마지막에 RAISE EXCEPTION으로 되돌린다(CHECK·트리거·가드 통과를 실측한다).')
   push('')
   push('BEGIN;')
   push('')
-  push('-- 가드: 같은 family_key가 이미 있으면 멈춘다 (되돌림 SQL이 family_key로 지우므로 남의 행이 섞이면 안 된다)')
+  push(`-- 가드${variant === 'late' ? ' ①' : ''}: 같은 family_key가 이미 있으면 멈춘다 (되돌림 SQL이 family_key로 지우므로 남의 행이 섞이면 안 된다)`)
   push('DO $guard$')
   push('BEGIN')
   push(`  IF EXISTS (SELECT 1 FROM public.badges WHERE family_key IN (${familyList})) THEN`)
@@ -756,6 +859,29 @@ export function renderSql(rows, { allowedKeys, variant = 'main', priorFamilies =
   push('END')
   push('$guard$;')
   push('')
+  if (variant === 'late') {
+    push('-- 가드 ②: 같은 이름의 살아 있는 배지가 이미 있으면 멈춘다 (드라이런 ②와 같은 식)')
+    push('DO $guard_name$')
+    push('BEGIN')
+    push(`  IF EXISTS (SELECT 1 FROM public.badges WHERE deleted_at IS NULL AND name IN (${names.map(sqlStr).join(', ')})) THEN`)
+    push(`    RAISE EXCEPTION '${fileName}: 같은 이름의 배지가 이미 있다. 드라이런 ②로 확인한다';`)
+    push('  END IF;')
+    push('END')
+    push('$guard_name$;')
+    push('')
+    push(`-- 가드 ③: 활성 액티비티 배지 수가 ${activeBefore}개(${ACTIVE_ACTIVITY_AFTER_244} + ${priorSets.map((s) => `${s.label}의 ${s.rowCount}`).join(' + ')})일 때만 진행한다. 244·245·248이 모두 적용된 뒤라는 뜻이다(244가 새 행을 끄는 순서 사고를 막는다)`)
+    push('DO $guard_count$')
+    push('DECLARE')
+    push('  v_active int;')
+    push('BEGIN')
+    push("  SELECT count(*) INTO v_active FROM public.badges WHERE type = 'activity' AND deleted_at IS NULL;")
+    push(`  IF v_active <> ${activeBefore} THEN`)
+    push(`    RAISE EXCEPTION '${fileName}: 244, 245, 248 적용 전이거나 건수가 계획과 다르다: 활성 액티비티 배지 %개(계획 ${activeBefore}개 = ${ACTIVE_ACTIVITY_AFTER_244} + ${priorSets.map((s) => `${s.label}의 ${s.rowCount}`).join(' + ')}). 아무것도 넣지 않고 멈춘다', v_active;`)
+    push('  END IF;')
+    push('END')
+    push('$guard_count$;')
+    push('')
+  }
   push(`-- ${rows.length}행 입력 (${fams.length}계열)`)
   push('WITH new_rows (name, description, type, rarity, level, family_key, sort_order, condition_json, activity_types, point_reward, branch_key, admin_category, src_family_key, pos, total) AS (')
   push('  VALUES')
@@ -780,7 +906,7 @@ export function renderSql(rows, { allowedKeys, variant = 'main', priorFamilies =
   push('-- 사후 확인(같은 트랜잭션 안): 어긋나면 예외로 전체를 되돌린다')
   push('DO $verify$')
   push('DECLARE')
-  push('  v_rows int; v_fams int; v_points int; v_hidden int; v_ungrouped int;')
+  push(variant === 'late' ? '  v_rows int; v_fams int; v_points int; v_hidden int; v_ungrouped int; v_active int;' : '  v_rows int; v_fams int; v_points int; v_hidden int; v_ungrouped int;')
   push('BEGIN')
   push(`  SELECT count(*), count(DISTINCT family_key), COALESCE(sum(point_reward), 0), count(*) FILTER (WHERE is_hidden)`)
   push('    INTO v_rows, v_fams, v_points, v_hidden')
@@ -792,6 +918,12 @@ export function renderSql(rows, { allowedKeys, variant = 'main', priorFamilies =
   push('  IF v_ungrouped <> 0 THEN')
   push(`    RAISE EXCEPTION '${fileName}: 등급과 레벨이 둘 다 있거나 둘 다 없는 행이 % 개 있다', v_ungrouped;`)
   push('  END IF;')
+  if (variant === 'late') {
+    push("  SELECT count(*) INTO v_active FROM public.badges WHERE type = 'activity' AND deleted_at IS NULL;")
+    push(`  IF v_active <> ${activeAfter} THEN`)
+    push(`    RAISE EXCEPTION '${fileName}: 활성 액티비티 배지 수가 계획과 다르다: %개 — 기대값 ${activeAfter}(= ${activeBefore} + ${rows.length})', v_active;`)
+    push('  END IF;')
+  }
   push('END')
   push('$verify$;')
   push('')
@@ -840,15 +972,30 @@ export function generateHeld() {
   return { rows, sql: renderSql(rows, { allowedKeys, variant: 'held', priorFamilies, priorRowCount: prior.length }), allowedKeys }
 }
 
+/**
+ * 5-6 한 계열 시드(291). 245·248의 계열·행 수는 드라이런 ⑥·⑦의 기대값과 선행 조건 가드의 활성 수(270 + 61 + 59)로 싣는다.
+ * 앞선 두 시드는 읽기만 하고 그 출력(renderSql 호출)을 바꾸지 않는다.
+ */
+export function generateLate() {
+  const rows = buildRows({ numbers: LATE_SEED_NUMBERS })
+  const allowedKeys = readAllowedConditionKeys(fs.readFileSync(LATE_CHECK_MIGRATION_PATH, 'utf8'))
+  const priorMain = buildRows()
+  const priorHeld = buildRows({ numbers: HELD_SEED_NUMBERS })
+  const setOf = (label, list) => ({ label, families: [...new Set(list.map((r) => r.family_key))], rowCount: list.length })
+  const priorSets = [setOf('245', priorMain), setOf('248', priorHeld)]
+  return { rows, sql: renderSql(rows, { allowedKeys, variant: 'late', priorSets }), allowedKeys, priorSets }
+}
+
 function main(argv) {
   const setIdx = argv.indexOf('--set')
   const set = setIdx >= 0 ? argv[setIdx + 1] : 'main'
-  if (set !== 'main' && set !== 'held') throw new Error(`--set은 main 또는 held다 («${set}»)`)
+  if (set !== 'main' && set !== 'held' && set !== 'late') throw new Error(`--set은 main, held, late 중 하나다 («${set}»)`)
   const held = set === 'held'
+  const late = set === 'late'
   const includeHeld = argv.includes('--include-held')
   const outIdx = argv.indexOf('--out')
-  const outPath = outIdx >= 0 ? path.resolve(argv[outIdx + 1]) : held ? HELD_OUT_PATH : DEFAULT_OUT_PATH
-  const { rows, sql } = held ? generateHeld() : generate({ includeHeld })
+  const outPath = outIdx >= 0 ? path.resolve(argv[outIdx + 1]) : late ? LATE_OUT_PATH : held ? HELD_OUT_PATH : DEFAULT_OUT_PATH
+  const { rows, sql } = late ? generateLate() : held ? generateHeld() : generate({ includeHeld })
   if (argv.includes('--stdout')) {
     process.stdout.write(sql)
     return
