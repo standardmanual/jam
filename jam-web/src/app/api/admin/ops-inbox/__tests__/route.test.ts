@@ -689,6 +689,53 @@ describe('POST /api/admin/ops-inbox', () => {
     })
   })
 
+  describe('기획 제목·이유·단계 기록·트렌드 (티켓 20261026_2021)', () => {
+    const TREND = { label: 'LP 리바이벌', source_ids: [1], summary: '언급이 늘고 있어요', series: [1, 2, 3], outcome: 'used' }
+    const STAGES = [{ agent: '기획', stage: 'plan', started_at: '2026-10-27T09:00:00+09:00', in_count: 0, out_count: 24, excluded_count: 0 }]
+
+    it('새 필드를 모두 채운 묶음은 201이고 title·trends·routine_run.stages·항목 rationale이 저장된다', async () => {
+      const item = makeItem({ rationale: [{ kind: 'trend', label: 'LP 리바이벌', source_id: 1 }], highlight: true })
+      const body = makeBundle({
+        title: 'LP 리바이벌 × 억새 절정',
+        trends: [TREND],
+        routine_run: { stages: STAGES },
+        items: [item],
+      })
+      const res = await submit(body)
+
+      expect(res.status).toBe(201)
+      expect((await res.json()).format_errors).toEqual([])
+      expect(h.state.tables.ops_bundles[0]).toMatchObject({
+        title: 'LP 리바이벌 × 억새 절정',
+        trends: [TREND],
+        routine_run: { stages: STAGES },
+        raw: body,
+      })
+      expect(h.state.tables.ops_bundle_items[0].original).toEqual(item)
+    })
+
+    it('새 필드가 하나도 없는 묶음도 201이고 title·trends는 null이다', async () => {
+      const res = await submit(makeBundle())
+
+      expect(res.status).toBe(201)
+      expect(h.state.tables.ops_bundles[0]).toMatchObject({ title: null, trends: null })
+    })
+
+    it('형식이 틀린 title·trends는 저장하지 않고(null) 묶음 오류에 남기며 원본은 raw에 남는다', async () => {
+      const body = makeBundle({ title: '가'.repeat(31), trends: [{ ...TREND, outcome: 'excluded' }] })
+      const res = await submit(body)
+
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toEqual([
+        expect.stringContaining('title: 30자까지 받아요'),
+        expect.stringContaining('trends[0].outcome_reason'),
+      ])
+      expect(h.state.tables.ops_bundles[0]).toMatchObject({ title: null, trends: null, raw: body })
+      expect(h.state.tables.ops_bundles[0].format_errors).toEqual(json.format_errors)
+    })
+  })
+
   describe('패턴 번호·장소 카테고리 (티켓 20261007_1745)', () => {
     it('형식이 틀린 번호(P-07·7·p07)는 201이고 항목 형식 오류로 남으며 열은 NULL, 원본에는 그대로 있다', async () => {
       const body = makeBundle({

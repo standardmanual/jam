@@ -24,6 +24,10 @@
  * 이름·작동 원리·유저가 겪는 것·손잡이 5종(`knobs`)이 필수이고, 메뉴·샘플·카드 모양·주의점은 선택이다. 정의되지 않은 키는 오류가 아니다(읽기 쪽이 버린다).
  * 틀려도 저장·승인은 막지 않고 형식 오류만 남긴다. 읽는 쪽은 `fields.ts`의 `readOpsPatternProposal`이다. 사전의 기존 이름과 겹치는지는 보지 않는다.
  *
+ * 기획 제목·이유·단계 기록·트렌드(티켓 20261026_2021, 어드민 상황판 PRD §5): 모두 선택이다. 묶음의 `title`·`trends[]`·`routine_run.stages[]`
+ * 오류는 묶음 오류에, 항목의 `rationale[]`·`highlight` 오류는 그 항목의 `format_errors`에 담고 저장·승인은 막지 않는다. 형식이 틀린 `title`·`trends`는
+ * 열을 비워(null) 저장한다(원본은 `raw`에 남는다). `highlight`가 묶음에서 5개를 넘으면 오류가 아니라 경고다.
+ *
  * `world_review` 규칙은 `jam-web/scripts/asset-generator/registerHomeFeedBundle.mjs`의
  * `validateWorldReview`(`WORLD_REVIEW_FIELDS`)와 같다. 그 스크립트는 지금의 등록 절차라 고치지 않고 규칙을
  * 여기에 다시 적었으며, 두 구현이 같은 입력에 같은 문장을 내는지 `validate.test.ts`가 대조한다.
@@ -31,10 +35,19 @@
 import type { Json } from '@/types/database.generated'
 import { imageSpecWarnings, isImageKind } from './imageSpec'
 import {
+  MAX_HIGHLIGHTS_PER_BUNDLE,
   MAX_ITEMS,
+  MAX_RATIONALES_PER_ITEM,
+  MAX_RATIONALE_LABEL_CHARS,
+  MAX_RATIONALE_NOTE_CHARS,
+  MAX_TITLE_CHARS,
+  MAX_TREND_SERIES_POINTS,
   OPS_EXCLUDED_ITEM_STAGES,
   OPS_HOME_FEED_CARD_KIND,
   OPS_ITEM_KINDS,
+  OPS_RATIONALE_KINDS,
+  OPS_ROUTINE_STAGES,
+  OPS_TREND_OUTCOMES,
 } from '@/lib/admin/opsInbox/constants'
 import { OPS_PATTERN_KNOB_LABELS, OPS_PATTERN_KNOB_VALUE_LABELS } from '@/lib/admin/opsInbox/labels'
 import {
@@ -70,6 +83,10 @@ export interface ValidatedOpsBundle {
   routine_run: Json | null
   color_rationale_link: string | null
   is_sample: boolean
+  /** 기획 제목(티켓 20261026_2021). 없거나 형식이 틀리면 null이다(원본은 `raw`에 남는다). */
+  title: string | null
+  /** 읽은 트렌드. 없거나 하나라도 형식이 틀리면 통째로 null이다(원본은 `raw`에 남는다). */
+  trends: Json | null
 }
 
 export interface ValidatedOpsItem {
@@ -424,6 +441,159 @@ export function validateExcludedItems(value: unknown, path = 'excluded_items'): 
   return errors
 }
 
+// ── 기획 제목·기획 이유·단계 기록·읽은 트렌드 (티켓 20261026_2021, 어드민 상황판 PRD §5) ─────────────
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
+/** 트렌드 출처 번호: 비어 있지 않은 문자열이거나 1 이상의 정수. */
+function isSourceId(value: unknown): boolean {
+  return isNonEmptyString(value) || (typeof value === 'number' && Number.isInteger(value) && value >= 1)
+}
+
+/** 기획 제목 검사. 통과한 값(앞뒤 공백 뗀 것)이나 null을 돌려준다. */
+function validateOpsTitle(value: unknown): { title: string | null; errors: string[] } {
+  if (!isPresent(value)) return { title: null, errors: [] }
+  if (!isNonEmptyString(value)) {
+    return { title: null, errors: [`title: 비어 있지 않은 문자열이어야 해요(받은 값: ${describeShort(value)}).`] }
+  }
+  const title = value.trim()
+  if (title.length > MAX_TITLE_CHARS) {
+    return { title: null, errors: [`title: ${MAX_TITLE_CHARS}자까지 받아요(받은 길이: ${title.length}자).`] }
+  }
+  return { title, errors: [] }
+}
+
+/** `routine_run.stages[]` 검사. 단계 기록이 없으면 오류가 아니다. `routine_run` 자체는 그대로 저장한다. */
+function validateRoutineStages(routineRun: unknown): string[] {
+  if (!isPlainObject(routineRun) || !isPresent(routineRun.stages)) return []
+  const stages = routineRun.stages
+  if (!Array.isArray(stages)) {
+    return [`routine_run.stages: 배열이어야 해요(받은 값: ${describeShort(stages)}).`]
+  }
+  const errors: string[] = []
+  stages.forEach((entry: unknown, index: number) => {
+    const at = `routine_run.stages[${index}]`
+    if (!isPlainObject(entry)) {
+      errors.push(`${at}: 객체여야 해요(받은 값: ${describeShort(entry)}).`)
+      return
+    }
+    if (!isPresent(entry.agent)) errors.push(`${at}.agent: 필수 항목이 없어요.`)
+    else if (!isNonEmptyString(entry.agent)) errors.push(`${at}.agent: 비어 있지 않은 문자열이어야 해요.`)
+    if (!isPresent(entry.stage)) {
+      errors.push(`${at}.stage: 필수 항목이 없어요.`)
+    } else if (typeof entry.stage !== 'string' || !(OPS_ROUTINE_STAGES as readonly string[]).includes(entry.stage)) {
+      errors.push(`${at}.stage: 허용되지 않는 단계예요(받은 값: ${describeShort(entry.stage)}). 허용값: ${OPS_ROUTINE_STAGES.join(', ')}`)
+    }
+    for (const key of ['started_at', 'ended_at'] as const) {
+      if (isPresent(entry[key]) && !isIsoDateTime(entry[key])) {
+        errors.push(
+          `${at}.${key}: 시간대가 붙은 ISO 8601 형식이어야 해요(예: 2026-10-05T09:00:00+09:00, 받은 값: ${describeShort(entry[key])}).`
+        )
+      }
+    }
+    for (const key of ['in_count', 'out_count', 'excluded_count'] as const) {
+      if (isPresent(entry[key]) && !isNonNegativeInteger(entry[key])) {
+        errors.push(`${at}.${key}: 0 이상의 정수여야 해요(받은 값: ${describeShort(entry[key])}).`)
+      }
+    }
+  })
+  return errors
+}
+
+/** 읽은 트렌드 검사. 오류가 하나도 없을 때만 `trends`를 돌려준다(하나라도 틀리면 null — 원본은 `raw`에 남는다). */
+function validateOpsTrends(value: unknown): { trends: Json | null; errors: string[] } {
+  if (!isPresent(value)) return { trends: null, errors: [] }
+  if (!Array.isArray(value)) {
+    return { trends: null, errors: [`trends: 배열이어야 해요(받은 값: ${describeShort(value)}).`] }
+  }
+  const errors: string[] = []
+  value.forEach((entry: unknown, index: number) => {
+    const at = `trends[${index}]`
+    if (!isPlainObject(entry)) {
+      errors.push(`${at}: 객체여야 해요(받은 값: ${describeShort(entry)}).`)
+      return
+    }
+    if (!isPresent(entry.label)) errors.push(`${at}.label: 필수 항목이 없어요.`)
+    else if (!isNonEmptyString(entry.label)) errors.push(`${at}.label: 비어 있지 않은 문자열이어야 해요.`)
+    if (!isPresent(entry.summary)) errors.push(`${at}.summary: 필수 항목이 없어요.`)
+    else if (!isNonEmptyString(entry.summary)) errors.push(`${at}.summary: 비어 있지 않은 문자열이어야 해요.`)
+    if (!isPresent(entry.source_ids)) {
+      errors.push(`${at}.source_ids: 필수 항목이 없어요(출처가 없으면 빈 배열 []로 보내 주세요).`)
+    } else if (!Array.isArray(entry.source_ids) || !entry.source_ids.every(isSourceId)) {
+      errors.push(`${at}.source_ids: 출처 번호(비어 있지 않은 문자열이나 1 이상의 정수)의 배열이어야 해요.`)
+    }
+    if (isPresent(entry.series)) {
+      if (
+        !Array.isArray(entry.series) ||
+        entry.series.length > MAX_TREND_SERIES_POINTS ||
+        !entry.series.every((point: unknown) => typeof point === 'number' && Number.isFinite(point))
+      ) {
+        errors.push(`${at}.series: 숫자 ${MAX_TREND_SERIES_POINTS}개 이하의 배열이어야 해요(최근 ${MAX_TREND_SERIES_POINTS}일 값).`)
+      }
+    }
+    const outcome = entry.outcome
+    if (!isPresent(outcome)) {
+      errors.push(`${at}.outcome: 필수 항목이 없어요.`)
+    } else if (typeof outcome !== 'string' || !(OPS_TREND_OUTCOMES as readonly string[]).includes(outcome)) {
+      errors.push(`${at}.outcome: 허용되지 않는 결과예요(받은 값: ${describeShort(outcome)}). 허용값: ${OPS_TREND_OUTCOMES.join(', ')}`)
+    } else if (outcome === 'excluded' && !isNonEmptyString(entry.outcome_reason)) {
+      errors.push(`${at}.outcome_reason: 자동 제외(excluded)한 트렌드는 제외 범주를 적어야 해요.`)
+    }
+    if (isPresent(entry.outcome_reason) && !isNonEmptyString(entry.outcome_reason) && entry.outcome !== 'excluded') {
+      errors.push(`${at}.outcome_reason: 비어 있지 않은 문자열이어야 해요.`)
+    }
+  })
+  return { trends: errors.length === 0 ? (value as Json) : null, errors }
+}
+
+/** 항목의 `rationale`(기획 이유 최대 3개)와 `highlight`(핵심 항목 표시) 검사. */
+function validateRationaleFields(raw: Record<string, unknown>, path: string): string[] {
+  const errors: string[] = []
+  if (isPresent(raw.highlight) && typeof raw.highlight !== 'boolean') {
+    errors.push(`${path}.highlight: true 또는 false여야 해요(받은 값: ${describeShort(raw.highlight)}).`)
+  }
+  if (!isPresent(raw.rationale)) return errors
+  if (!Array.isArray(raw.rationale)) {
+    errors.push(`${path}.rationale: 배열이어야 해요(받은 값: ${describeShort(raw.rationale)}).`)
+    return errors
+  }
+  if (raw.rationale.length > MAX_RATIONALES_PER_ITEM) {
+    errors.push(`${path}.rationale: 항목당 ${MAX_RATIONALES_PER_ITEM}개까지 받아요(받은 개수: ${raw.rationale.length}).`)
+  }
+  raw.rationale.forEach((entry: unknown, index: number) => {
+    const at = `${path}.rationale[${index}]`
+    if (!isPlainObject(entry)) {
+      errors.push(`${at}: 객체여야 해요(받은 값: ${describeShort(entry)}).`)
+      return
+    }
+    if (!isPresent(entry.kind)) {
+      errors.push(`${at}.kind: 필수 항목이 없어요.`)
+    } else if (typeof entry.kind !== 'string' || !(OPS_RATIONALE_KINDS as readonly string[]).includes(entry.kind)) {
+      errors.push(`${at}.kind: 허용되지 않는 종류예요(받은 값: ${describeShort(entry.kind)}). 허용값: ${OPS_RATIONALE_KINDS.join(', ')}`)
+    }
+    if (!isPresent(entry.label)) {
+      errors.push(`${at}.label: 필수 항목이 없어요.`)
+    } else if (!isNonEmptyString(entry.label)) {
+      errors.push(`${at}.label: 비어 있지 않은 문자열이어야 해요.`)
+    } else if (entry.label.length > MAX_RATIONALE_LABEL_CHARS) {
+      errors.push(`${at}.label: ${MAX_RATIONALE_LABEL_CHARS}자까지 받아요(받은 길이: ${entry.label.length}자).`)
+    }
+    if (isPresent(entry.note)) {
+      if (typeof entry.note !== 'string') {
+        errors.push(`${at}.note: 문자열이어야 해요(받은 값: ${describeShort(entry.note)}).`)
+      } else if (entry.note.length > MAX_RATIONALE_NOTE_CHARS) {
+        errors.push(`${at}.note: ${MAX_RATIONALE_NOTE_CHARS}자까지 받아요(받은 길이: ${entry.note.length}자).`)
+      }
+    }
+    if (isPresent(entry.source_id) && !isSourceId(entry.source_id)) {
+      errors.push(`${at}.source_id: 출처 번호(비어 있지 않은 문자열이나 1 이상의 정수)여야 해요(받은 값: ${describeShort(entry.source_id)}).`)
+    }
+  })
+  return errors
+}
+
 // ── 항목 ─────────────────────────────────────────────────────────────────────────────────────────
 
 function validateItem(
@@ -537,6 +707,7 @@ function validateItem(
 
   errors.push(...validateWorldReview(raw.world_review, `${path}.world_review`))
   errors.push(...validateOpsCardFields(raw, path, ctx))
+  errors.push(...validateRationaleFields(raw, path))
   errors.push(...validateOpsPlaceCategory(raw.knobs, path, ctx.poiCategorySlugs))
   if (kind === 'pattern_proposal') errors.push(...validateOpsPatternProposal(raw.resource, path))
 
@@ -668,6 +839,12 @@ export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}):
     else bundleErrors.push(`routine_run: 객체여야 해요(받은 값: ${describeShort(raw.routine_run)}).`)
   }
 
+  const titleResult = validateOpsTitle(raw.title)
+  bundleErrors.push(...titleResult.errors)
+  bundleErrors.push(...validateRoutineStages(raw.routine_run))
+  const trendsResult = validateOpsTrends(raw.trends)
+  bundleErrors.push(...trendsResult.errors)
+
   // 뺀 항목은 묶음 오류에만 담는다(어느 항목에도 속하지 않는다).
   bundleErrors.push(...validateExcludedItems(raw.excluded_items))
 
@@ -689,10 +866,17 @@ export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}):
     return validateItem(item, index, ownKey, firstIndexByKey, allKeys, ctx)
   })
 
+  // 핵심 항목(`highlight: true`)은 묶음당 5개까지다. 넘어도 받고 경고만 낸다.
+  const highlightCount = items.filter((item) => isPlainObject(item.original) && item.original.highlight === true).length
+  const bundleWarnings =
+    highlightCount > MAX_HIGHLIGHTS_PER_BUNDLE
+      ? [`highlight: 핵심 항목은 한 묶음에 ${MAX_HIGHLIGHTS_PER_BUNDLE}개 이하가 좋아요(받은 개수: ${highlightCount}).`]
+      : []
+
   return {
     fatal: [],
     errors: [...bundleErrors, ...items.flatMap((item) => item.format_errors)],
-    warnings: items.flatMap((item) => item.warnings),
+    warnings: [...bundleWarnings, ...items.flatMap((item) => item.warnings)],
     bundle: {
       bundle_id: (raw.bundle_id as string).trim(),
       author: (raw.author as string).trim(),
@@ -701,6 +885,8 @@ export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}):
       routine_run: routineRun,
       color_rationale_link: colorRationaleLink,
       is_sample: isSample,
+      title: titleResult.title,
+      trends: trendsResult.trends,
     },
     items,
   }

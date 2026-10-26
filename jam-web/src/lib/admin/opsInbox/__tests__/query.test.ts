@@ -120,6 +120,9 @@ import {
   getOpsBundleDetail,
   listOpsBundles,
   parseOpsInboxParams,
+  readOpsItemHighlight,
+  readOpsItemRationales,
+  readOpsRoutineStages,
   type OpsInboxParams,
 } from '../query'
 import type { ExecuteHandler, ExecuteHandlerRegistry, ExecuteItem } from '../execute/handlers'
@@ -132,6 +135,9 @@ function bundle(id: string, overrides: Record<string, unknown> = {}) {
     id,
     week: '2026-W41',
     hypothesis: '가설',
+    title: null,
+    trends: null,
+    routine_run: null,
     author: '윤진',
     is_sample: false,
     format_errors: [],
@@ -435,6 +441,29 @@ describe('getOpsBundleDetail', () => {
     expect(detail!.previewNames).toEqual({ badges: {}, pois: {}, collections: {}, categories: {} })
   })
 
+  it('저장된 title·trends·단계 기록을 보낸 값 그대로 되읽는다(티켓 20261026_2021)', async () => {
+    seedDetail()
+    const trends = [{ label: 'LP 리바이벌', source_ids: [1], summary: '언급이 늘고 있어요', outcome: 'used' }]
+    const stage = { agent: '기획', stage: 'plan', started_at: '2026-10-27T09:00:00+09:00', ended_at: '2026-10-27T09:12:00+09:00', in_count: 0, out_count: 24, excluded_count: 2 }
+    h.state.tables.ops_bundles[0] = { ...h.state.tables.ops_bundles[0], title: 'LP 리바이벌 × 억새 절정', trends, routine_run: { stages: [stage] } }
+    const detail = await getOpsBundleDetail(ID)
+    expect(detail!.bundle).toMatchObject({ title: 'LP 리바이벌 × 억새 절정', trends })
+    expect(detail!.bundle.stages).toEqual([
+      { agent: '기획', stage: 'plan', startedAt: stage.started_at, endedAt: stage.ended_at, inCount: 0, outCount: 24, excludedCount: 2 },
+    ])
+  })
+
+  it('새 필드가 없는 옛 묶음은 title·trends가 null이고 단계 기록이 비어 있다', async () => {
+    seedDetail()
+    const detail = await getOpsBundleDetail(ID)
+    expect(detail!.bundle.title).toBeNull()
+    expect(detail!.bundle.trends).toBeNull()
+    expect(detail!.bundle.stages).toEqual([])
+    const bundleSelect = h.state.selects.find((s) => s.table === 'ops_bundles')!
+    expect(bundleSelect.columns).toMatch(/\btitle\b/)
+    expect(bundleSelect.columns).toMatch(/\btrends\b/)
+  })
+
   it('묶음 제출 원본(raw)은 가져오지 않는다', async () => {
     seedDetail()
     await getOpsBundleDetail(ID)
@@ -721,5 +750,58 @@ describe('buildOpsExecution — 핸들러를 주입해 센다', () => {
       },
     })
     expect(buildOpsExecution([exec('m1')], NOW, throwing)).toEqual({ approvedCount: 1, readyCount: 0 })
+  })
+})
+
+describe('readOpsRoutineStages (티켓 20261026_2021)', () => {
+  it('routine_run이 없거나 객체가 아니거나 stages가 배열이 아니면 빈 배열이다', () => {
+    for (const value of [null, undefined, 'x', [], {}, { stages: 'x' }, { stages: {} }]) {
+      expect(readOpsRoutineStages(value as never), JSON.stringify(value)).toEqual([])
+    }
+  })
+
+  it('agent·stage가 맞는 원소만 남기고 나머지 칸은 맞을 때만 싣는다', () => {
+    const stages = [
+      { agent: '기획', stage: 'plan', started_at: '2026-10-27T09:00:00+09:00', in_count: 3, out_count: -1 },
+      { agent: '', stage: 'plan' },
+      { agent: '검수', stage: 'unknown' },
+      'x',
+      { agent: '밸런스', stage: 'balance_check', started_at: '어제', excluded_count: 2 },
+    ]
+    expect(readOpsRoutineStages({ stages })).toEqual([
+      { agent: '기획', stage: 'plan', startedAt: '2026-10-27T09:00:00+09:00', endedAt: null, inCount: 3, outCount: null, excludedCount: null },
+      { agent: '밸런스', stage: 'balance_check', startedAt: null, endedAt: null, inCount: null, outCount: null, excludedCount: 2 },
+    ])
+  })
+})
+
+describe('readOpsItemRationales·readOpsItemHighlight (티켓 20261026_2021)', () => {
+  it('항목 원본의 기획 이유와 핵심 표시를 꺼낸다', () => {
+    const original = {
+      highlight: true,
+      rationale: [
+        { kind: 'trend', label: 'LP 리바이벌', note: '언급이 늘었어요', source_id: 1 },
+        { kind: 'pattern', label: 'P07' },
+      ],
+    }
+    expect(readOpsItemRationales(original)).toEqual([
+      { kind: 'trend', label: 'LP 리바이벌', note: '언급이 늘었어요', sourceId: 1 },
+      { kind: 'pattern', label: 'P07', note: null, sourceId: null },
+    ])
+    expect(readOpsItemHighlight(original)).toBe(true)
+  })
+
+  it('없거나 모양이 틀리면 빈 목록·거짓이다. 허용값 밖 원소는 빠지고 3개까지만 돌려준다', () => {
+    for (const value of [null, undefined, 'x', [], {}, { rationale: 'x' }]) {
+      expect(readOpsItemRationales(value as never), JSON.stringify(value)).toEqual([])
+    }
+    expect(readOpsItemHighlight({ highlight: 'true' })).toBe(false)
+    expect(readOpsItemHighlight({})).toBe(false)
+    const rationale = [
+      { kind: 'mood', label: 'x' },
+      { kind: 'signal', label: '' },
+      ...Array.from({ length: 4 }, (_, index) => ({ kind: 'signal', label: `s${index}` })),
+    ]
+    expect(readOpsItemRationales({ rationale }).map((entry) => entry.label)).toEqual(['s0', 's1', 's2'])
   })
 })

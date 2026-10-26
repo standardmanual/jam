@@ -30,6 +30,13 @@ import {
   type OpsBundleStage,
   type OpsInboxTab,
 } from '@/lib/admin/opsInbox/bundleStatus'
+import {
+  MAX_RATIONALES_PER_ITEM,
+  OPS_RATIONALE_KINDS,
+  OPS_ROUTINE_STAGES,
+  type OpsRationaleKind,
+  type OpsRoutineStage,
+} from '@/lib/admin/opsInbox/constants'
 import { OPS_RULE_COLUMNS, parseBalanceRules, type BalanceRules } from '@/lib/admin/opsInbox/balance/rules'
 import {
   collectBalanceReferences,
@@ -251,10 +258,101 @@ export interface OpsBundleHeader {
   bundleId: string
   week: string | null
   hypothesis: string | null
+  /** 기획 제목(티켓 20261026_2021). 제출에 없었거나 형식이 틀려 저장하지 않았으면 null이다. */
+  title: string | null
+  /** 읽은 트렌드. 제출에 없었거나 형식이 틀려 저장하지 않았으면 null이다. 모양은 `OpsTrend`다. */
+  trends: Json | null
+  /** 에이전트 단계 기록(`routine_run.stages`에서 꺼낸 것). 없거나 모양이 틀린 원소는 빠진다. */
+  stages: OpsRoutineStageRecord[]
   author: string
   isSample: boolean
   formatErrors: string[]
   receivedAt: string
+}
+
+/** `routine_run.stages[]` 한 원소(어드민 상황판 PRD §5.3). 검사를 통과한 값만 담고 나머지 칸은 null이다. */
+export interface OpsRoutineStageRecord {
+  agent: string
+  stage: OpsRoutineStage
+  startedAt: string | null
+  endedAt: string | null
+  inCount: number | null
+  outCount: number | null
+  excludedCount: number | null
+}
+
+/** 항목 하나의 기획 이유 한 개(어드민 상황판 PRD §5.2). */
+export interface OpsItemRationale {
+  kind: OpsRationaleKind
+  label: string
+  note: string | null
+  sourceId: string | number | null
+}
+
+function countOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
+}
+
+function timeOrNull(value: unknown): string | null {
+  return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null
+}
+
+/**
+ * 묶음의 `routine_run`에서 단계 기록을 꺼낸다(순수 함수). 객체가 아니거나 `stages`가 배열이 아니면 빈 배열이다.
+ * 원소는 `agent`(비어 있지 않은 문자열)와 `stage`(허용값)가 맞는 것만 남기고, 나머지 칸은 맞을 때만 값을 싣고 아니면 null이다.
+ */
+export function readOpsRoutineStages(routineRun: Json | null | undefined): OpsRoutineStageRecord[] {
+  if (!routineRun || typeof routineRun !== 'object' || Array.isArray(routineRun)) return []
+  const stages = (routineRun as { [key: string]: Json | undefined }).stages
+  if (!Array.isArray(stages)) return []
+  const records: OpsRoutineStageRecord[] = []
+  for (const entry of stages) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+    const { agent, stage, started_at, ended_at, in_count, out_count, excluded_count } = entry as { [key: string]: Json | undefined }
+    if (typeof agent !== 'string' || agent.trim() === '') continue
+    if (typeof stage !== 'string' || !(OPS_ROUTINE_STAGES as readonly string[]).includes(stage)) continue
+    records.push({
+      agent,
+      stage: stage as OpsRoutineStage,
+      startedAt: timeOrNull(started_at),
+      endedAt: timeOrNull(ended_at),
+      inCount: countOrNull(in_count),
+      outCount: countOrNull(out_count),
+      excludedCount: countOrNull(excluded_count),
+    })
+  }
+  return records
+}
+
+/**
+ * 항목 원본(`original`, 수정본이 있으면 수정본)에서 기획 이유 목록을 꺼낸다(순수 함수). 배열이 아니면 빈 배열이고,
+ * `kind`가 허용값이 아니거나 `label`이 비어 있는 원소는 빠진다. 최대 3개까지만 돌려준다.
+ */
+export function readOpsItemRationales(source: Json | null | undefined): OpsItemRationale[] {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return []
+  const list = (source as { [key: string]: Json | undefined }).rationale
+  if (!Array.isArray(list)) return []
+  const rationales: OpsItemRationale[] = []
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+    const { kind, label, note, source_id } = entry as { [key: string]: Json | undefined }
+    if (typeof kind !== 'string' || !(OPS_RATIONALE_KINDS as readonly string[]).includes(kind)) continue
+    if (typeof label !== 'string' || label.trim() === '') continue
+    rationales.push({
+      kind: kind as OpsRationaleKind,
+      label,
+      note: typeof note === 'string' ? note : null,
+      sourceId: typeof source_id === 'string' || typeof source_id === 'number' ? source_id : null,
+    })
+    if (rationales.length >= MAX_RATIONALES_PER_ITEM) break
+  }
+  return rationales
+}
+
+/** 항목 원본(수정본이 있으면 수정본)의 `highlight`(핵심 항목 표시). `true`일 때만 참이다. */
+export function readOpsItemHighlight(source: Json | null | undefined): boolean {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return false
+  return (source as { [key: string]: Json | undefined }).highlight === true
 }
 
 export interface OpsItemRecord {
@@ -312,7 +410,8 @@ export interface OpsBundleDetail {
   previewNames: OpsPreviewNames
 }
 
-const BUNDLE_DETAIL_COLUMNS = 'id, bundle_id, week, hypothesis, author, is_sample, format_errors, received_at'
+const BUNDLE_DETAIL_COLUMNS =
+  'id, bundle_id, week, hypothesis, title, trends, routine_run, author, is_sample, format_errors, received_at'
 // `created_resource`는 사전 점검(연결 대상이 만든 자원 확인)만 읽는다. 화면 항목(`OpsItemRecord`)에는 싣지 않는다.
 const ITEM_DETAIL_COLUMNS =
   'id, position, item_key, kind, pattern_no, starts_at, ends_at, status, original, edited, created_resource, format_errors, updated_at'
@@ -457,6 +556,9 @@ export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | 
       bundleId: bundle.bundle_id,
       week: bundle.week,
       hypothesis: bundle.hypothesis,
+      title: bundle.title,
+      trends: bundle.trends,
+      stages: readOpsRoutineStages(bundle.routine_run),
       author: bundle.author,
       isSample: bundle.is_sample,
       formatErrors: stringList(bundle.format_errors),
