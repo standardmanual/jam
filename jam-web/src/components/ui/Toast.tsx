@@ -32,7 +32,7 @@ const subscribeNoop = () => () => {}
  * 사용한다. 마운트 직후 다음 프레임에 `.is-open`을 붙여야 닫힌 상태(아래 +
  * 블러 + scale)에서 트랜지션이 발화한다.
  */
-function ToastRow({
+export function ToastRow({
   item,
   icon,
   onDismiss,
@@ -56,14 +56,19 @@ function ToastRow({
         't-toast',
         isOpen ? 'is-open' : '',
         // 20260816_012: 보더 제거 — 흰 토스트가 다크 배경 위에서 대비만으로 충분히 구분됨
-        'flex items-center gap-2 px-4 py-3 rounded-full bg-background-inverse text-snow text-base pointer-events-auto',
+        // 20261026_1055: 문구가 두 줄이 돼도 알약이 부풀지 않도록 rounded-3xl(24px) + 아이콘 첫 줄 정렬(items-start).
+        // 한 줄은 높이 48px(py-3 24px + 줄 높이 24px)라 24px 모서리가 rounded-full과 같은 반원이다.
+        'flex items-start gap-2 px-4 py-3 rounded-3xl bg-background-inverse text-snow text-base pointer-events-auto',
       ]
         .filter(Boolean)
         .join(' ')}
       onClick={onDismiss}
     >
-      <span className="shrink-0 text-snow/60">{icon}</span>
-      <span>{item.message}</span>
+      {/* 아이콘 칸은 글자 한 줄과 같은 높이(h-6 = 24px)의 줄 상자로 두고 아이콘을 그 안에서 가운데에 놓는다. 행이 items-start라도
+          한 줄에서 아이콘이 글자와 같은 높이에 걸리고(svg가 display:block이라 칸 높이가 16px로 줄어 4px 올라가는 것을 막는다),
+          두 줄에서는 첫 줄 옆에 붙는다. */}
+      <span className="flex h-6 shrink-0 items-center text-snow/60">{icon}</span>
+      <span className="min-w-0 break-keep wrap-break-word">{item.message}</span>
     </div>
   )
 }

@@ -436,6 +436,8 @@ JAM!은 **모바일 전용 앱**이다.
 | 믹스 성공 | 결과 화면 (리뉴얼 후) | `--duration-very-slow` 500ms |
 | 버튼 로딩 | `Button loading={true}` | 스피너 자동 |
 
+토스트 문구는 `break-keep wrap-break-word`, 두 줄이 돼도 모서리는 24px(`rounded-3xl`), 아이콘은 첫 줄 정렬이다. 한 줄(높이 48px)에서는 24px 모서리가 `rounded-full`과 같은 반원이다.
+
 ### Loading
 
 - **현재:** 기존 스켈레톤 임시 유지
