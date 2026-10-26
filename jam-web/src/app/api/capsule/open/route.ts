@@ -5,7 +5,7 @@
  *
  * 세션으로 유저를 확인하고(401) 서비스 클라이언트로 부른다. 대상은 세션 유저뿐이라 본문은 읽지 않는다.
  * 이용 정지 중이면 403(`code: 'user_suspended'`)이고 추첨하지 않는다.
- * 거절: `not_full`·`insufficient_slots`·`no_tribe` 409(`insufficient_slots`는 응답에 지금 빈칸 수 `freeSlots`와 필요한 빈칸 수 `neededSlots`).
+ * 거절: `not_full`·`insufficient_slots`·`no_tribe`·`capsule_changed` 409(`insufficient_slots`는 응답에 지금 빈칸 수 `freeSlots`와 필요한 빈칸 수 `neededSlots`).
  * 그 밖의 오류는 500이고 내부 오류 원문은 싣지 않는다. 채운 잼은 거절·오류에서 그대로 남는다.
  */
 import { after, NextResponse } from 'next/server'
@@ -25,6 +25,7 @@ const OPEN_ERRORS = {
   not_full: d.capsule.openNotFull,
   insufficient_slots: d.capsule.openInsufficientSlots,
   no_tribe: d.capsule.openNoTribe,
+  capsule_changed: d.capsule.changed,
 } as const
 
 export async function POST() {
@@ -46,7 +47,7 @@ export async function POST() {
       const body: UserSuspendedResponse = { error: d.suspension.capsuleOpenBlocked, code: USER_SUSPENDED_CODE }
       return NextResponse.json(body, { status: 403 })
     }
-    if (err instanceof CapsuleError && (err.code === 'not_full' || err.code === 'insufficient_slots' || err.code === 'no_tribe')) {
+    if (err instanceof CapsuleError && (err.code === 'not_full' || err.code === 'insufficient_slots' || err.code === 'no_tribe' || err.code === 'capsule_changed')) {
       const body: CapsuleErrorResponse = {
         error: OPEN_ERRORS[err.code],
         code: err.code,

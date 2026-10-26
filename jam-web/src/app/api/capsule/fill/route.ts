@@ -6,7 +6,7 @@
  * 세션으로 유저를 확인하고(401) 서비스 클라이언트로 부른다. 대상은 세션 유저뿐이라 본문의 `userId`는 무시한다.
  * `amount`는 양의 정수만 받는다(상한은 필요량 이내인지 DB가 판정한다). 본문이 비어 있으면 `amount` 생략과 같다.
  * 이용 정지 중이면 403(`code: 'user_suspended'`)이고 잼은 줄지 않는다.
- * 거절 코드: `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam` 409, 그 밖의 오류는 500.
+ * 거절 코드: `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam`·`capsule_changed` 409, 그 밖의 오류는 500.
  */
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
@@ -23,6 +23,7 @@ const FILL_ERRORS: Record<Exclude<CapsuleFillErrorCode, 'user_suspended'>, { sta
   exceeds_remaining: { status: 400, message: d.capsule.exceedsRemaining },
   invalid_amount: { status: 400, message: d.capsule.invalidAmount },
   insufficient_jam: { status: 409, message: d.capsule.insufficientJam },
+  capsule_changed: { status: 409, message: d.capsule.changed },
 }
 
 type ParsedAmount = { ok: true; amount: number | undefined } | { ok: false }

@@ -5,7 +5,7 @@
  * - 비로그인은 401이고 열지 않는다. 대상은 세션 유저뿐이다(본문은 읽지 않는다).
  * - 정상은 200과 나온 개체·다음 캡슐이다.
  * - 이용 정지는 403(`code: 'user_suspended'`, `d.suspension.capsuleOpenBlocked`, 2-6과 같은 모양)이다. 앱 코드가 던진 경우와 DB 함수가 거절한 경우 모두다.
- * - `not_full`·`no_tribe` 409, `insufficient_slots` 409(응답에 지금 빈칸 수 `freeSlots`와 필요한 빈칸 수 `neededSlots`).
+ * - `not_full`·`no_tribe`·`capsule_changed` 409(`capsule_changed` 문구는 «캡슐이 방금 바뀌었어요. 다시 시도해 주세요.»), `insufficient_slots` 409(응답에 지금 빈칸 수 `freeSlots`와 필요한 빈칸 수 `neededSlots`).
  * - 그 밖의 오류(DB의 `invalid_items`·`inventory_not_found` 포함)는 500이고 내부 오류 원문을 내려보내지 않는다.
  *
  * 실행: cd jam-web && npx vitest run src/app/api/capsule/open/__tests__/route.test.ts
@@ -122,6 +122,7 @@ describe('POST /api/capsule/open', () => {
   it.each([
     ['not_full', d.capsule.openNotFull],
     ['no_tribe', d.capsule.openNoTribe],
+    ['capsule_changed', '캡슐이 방금 바뀌었어요. 다시 시도해 주세요.'],
   ] as const)('%s는 409와 정해진 문구다', async (code, message) => {
     openMock.mockRejectedValue(new CapsuleError(code))
 

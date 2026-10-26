@@ -37,12 +37,25 @@ export interface CapsuleFillPayload extends CapsuleStatus {
   applied: number
 }
 
-/** 채우기가 거절되는 경우의 코드. DB 함수 `capsule_fill`의 `error` 값과 같다. */
-export const CAPSULE_FILL_ERROR_CODES = ['user_suspended', 'already_full', 'invalid_amount', 'exceeds_remaining', 'insufficient_jam'] as const
+/**
+ * 채우기가 거절되는 경우의 코드. DB 함수 `capsule_fill`의 `error` 값과 같다.
+ * `capsule_changed`는 잠근 직후 캡슐 행이 없을 때(캡슐이 그사이 바뀐 경우)의 거절이고, 다시 시도하면 된다(티켓 20261026_1031).
+ */
+export const CAPSULE_FILL_ERROR_CODES = [
+  'user_suspended',
+  'already_full',
+  'invalid_amount',
+  'exceeds_remaining',
+  'insufficient_jam',
+  'capsule_changed',
+] as const
 
 export type CapsuleFillErrorCode = (typeof CAPSULE_FILL_ERROR_CODES)[number]
 
-/** 열기가 거절되는 경우의 코드. `no_tribe`는 앱이 추첨 전에 정하고, 나머지는 DB 함수 `capsule_open`의 `error` 값과 같다. */
+/**
+ * 열기가 거절되는 경우의 코드. `no_tribe`는 앱이 추첨 전에 정하고, 나머지는 DB 함수 `capsule_open`의 `error` 값과 같다.
+ * `capsule_changed`는 열기 중에 캡슐이 바뀐 경우이고, 다시 시도하면 된다(티켓 20261026_1031).
+ */
 export const CAPSULE_OPEN_ERROR_CODES = [
   'user_suspended',
   'not_full',
@@ -50,6 +63,7 @@ export const CAPSULE_OPEN_ERROR_CODES = [
   'invalid_items',
   'inventory_not_found',
   'no_tribe',
+  'capsule_changed',
 ] as const
 
 export type CapsuleOpenErrorCode = (typeof CAPSULE_OPEN_ERROR_CODES)[number]
