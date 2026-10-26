@@ -265,7 +265,7 @@ RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role`
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 옛 드랍엔진 판정용. 새 발급 경로(`syncIssue.ts`)는 후보를 균등 무작위로 골라 읽지 않는다(코드에서 읽는 곳은 어드민 배지·트라이브 양식뿐) |
 | valid_from / valid_until | 노출 기간 |
-| point_reward | 발급 시 지급 포인트. 잠긴 채 받은 아이템 배지는 주지 않는다(열린 상태가 될 때 한 번 준다, 연 때 주는 것은 3-3). 아이템·체크인 배지 값은 마이그레이션 253으로 규칙 값이 되었다(현황은 포인트 객체 모델 1.7). 새 배지의 기본값(등급별·레벨형 일괄 값)은 `badge_point_policy`(마이그레이션 288)에 있다 |
+| point_reward | 발급 시 지급 포인트. 잠긴 채 받은 아이템 배지는 주지 않는다(열린 상태가 될 때 한 번 준다. 연 때의 포인트·포인트 소식·피드는 `openLockedItem`이 처리한다, 티켓 20261026_1031). 아이템·체크인 배지 값은 마이그레이션 253으로 규칙 값이 되었다(현황은 포인트 객체 모델 1.7). 새 배지의 기본값(등급별·레벨형 일괄 값)은 `badge_point_policy`(마이그레이션 288)에 있다 |
 | always_locked | **잠김으로 만든 아이템 배지**(boolean, 기본 false, 마이그레이션 231). true면 어느 경로로 얻어도 늘 잠긴 채 나온다(`lock_reason = badge_locked`). 어드민 양식 입력은 2회 |
 | unlock_required | 여는 데 필요한 잼의 양(integer, nullable, 양수, 마이그레이션 231). NULL이면 그 등급의 최소값(`jam_policy.locked_min_*`)을 쓴다. 최소값보다 적게는 저장하지 않는다(앱 코드가 막는다, 2회). 개체에는 배정될 때 이 값이 고정된다 |
 | deleted_at | 소프트 삭제 |
