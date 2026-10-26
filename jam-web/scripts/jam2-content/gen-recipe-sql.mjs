@@ -62,7 +62,7 @@ export const ACTIVE_UNPLANNED_BOOKS_IN_DB = 19;
 export const OLD_RECIPE_NAMES = ['무명 트럭의 불맛 흔적', '블랙 트랙 입구의 채비', '살롱의 장물 시세'];
 
 /** SQL 주석 블록 — 모든 줄을 `-- `로 시작해 실수로 실행되지 않게 한다. */
-function commentBlock(lines) {
+export function commentBlock(lines) {
   return lines.map((l) => (l === '' ? '--' : `-- ${l}`)).join('\n');
 }
 
