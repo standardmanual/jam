@@ -2,7 +2,7 @@
  * 운영 묶음 제출 경로의 토큰 쓰기 예외 (티켓 20260930_1816)
  *
  * `isOpsInboxTokenRequest`는 읽기 토큰으로 쓰기가 열리는 **유일한** 판정이다. 지키는 것:
- * 1. POST + 경로가 정확히 `/api/admin/ops-inbox` + 맞는 토큰일 때만 true
+ * 1. POST + 경로가 정확히 `/api/admin/ops-inbox` 또는 `/api/admin/ops-inbox/routine-start`(티켓 20261026_2032) + 맞는 토큰일 때만 true
  * 2. 다른 메서드, 다른 어드민 경로, 경로에 무언가 붙은 것(`/x`, `x`, 끝 `/`), 틀린 토큰, 환경변수 미설정은 false
  * 3. 기존 `requireAdminRead`는 여전히 토큰 POST를 거부한다(제출용 판정과 섞이지 않는다)
  */
@@ -18,7 +18,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { isOpsInboxTokenRequest, requireAdminRead } from '../auth'
-import { OPS_INBOX_METHOD, OPS_INBOX_PATH } from '../opsInbox/constants'
+import { OPS_INBOX_METHOD, OPS_INBOX_PATH, OPS_INBOX_TOKEN_WRITE_PATHS, OPS_ROUTINE_START_PATH } from '../opsInbox/constants'
 
 const TOKEN = 'test-admin-read-token-abcdef'
 
@@ -39,8 +39,47 @@ describe('isOpsInboxTokenRequest', () => {
     expect(OPS_INBOX_METHOD).toBe('POST')
   })
 
+  it('토큰 쓰기가 열린 경로는 정확히 두 개다(늘리면 이 테스트가 먼저 알린다)', () => {
+    expect(OPS_ROUTINE_START_PATH).toBe('/api/admin/ops-inbox/routine-start')
+    expect([...OPS_INBOX_TOKEN_WRITE_PATHS]).toEqual(['/api/admin/ops-inbox', '/api/admin/ops-inbox/routine-start'])
+  })
+
   it('POST + 정확한 경로 + 맞는 토큰이면 true', () => {
     expect(isOpsInboxTokenRequest('POST', '/api/admin/ops-inbox', TOKEN)).toBe(true)
+  })
+
+  it('POST + 루틴 시작 기록 경로 + 맞는 토큰이면 true', () => {
+    expect(isOpsInboxTokenRequest('POST', '/api/admin/ops-inbox/routine-start', TOKEN)).toBe(true)
+  })
+
+  it.each(['GET', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'post'])(
+    '루틴 시작 기록 경로라도 %s는 false(토큰으로 열리는 메서드는 POST 하나)',
+    (method) => {
+      expect(isOpsInboxTokenRequest(method, '/api/admin/ops-inbox/routine-start', TOKEN)).toBe(false)
+    }
+  )
+
+  it.each([
+    '/api/admin/ops-inbox/routine-start/',
+    '/api/admin/ops-inbox/routine-start/x',
+    '/api/admin/ops-inbox/routine-startx',
+    '/api/admin/ops-inbox/routine-star',
+    '/api/admin/ops-inbox/routine-start%2Fx',
+    '/api/admin/ops-inbox//routine-start',
+    '/api/admin/ops-inbox/Routine-Start',
+    '/api/admin/routine-start',
+    '/api/admin/ops-inbox/routine-start?x=1',
+    '/api/admin/ops-inbox/routine-start#x',
+  ])('POST + 맞는 토큰이라도 루틴 시작 기록과 비슷한 경로 %j는 false', (pathname) => {
+    expect(isOpsInboxTokenRequest('POST', pathname, TOKEN)).toBe(false)
+  })
+
+  it('루틴 시작 기록 경로도 틀린 토큰·빈 토큰·환경변수 미설정이면 false', () => {
+    expect(isOpsInboxTokenRequest('POST', '/api/admin/ops-inbox/routine-start', 'wrong')).toBe(false)
+    expect(isOpsInboxTokenRequest('POST', '/api/admin/ops-inbox/routine-start', null)).toBe(false)
+    expect(isOpsInboxTokenRequest('POST', '/api/admin/ops-inbox/routine-start', '')).toBe(false)
+    delete process.env.ADMIN_API_READ_TOKEN
+    expect(isOpsInboxTokenRequest('POST', '/api/admin/ops-inbox/routine-start', TOKEN)).toBe(false)
   })
 
   it.each(['GET', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'post'])(

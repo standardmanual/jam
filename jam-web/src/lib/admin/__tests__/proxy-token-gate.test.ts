@@ -87,6 +87,34 @@ describe('proxy — 토큰 쓰기 예외와 기존 게이트', () => {
     })
   })
 
+  describe('두 번째 예외: 루틴 시작 기록 경로 하나 (티켓 20261026_2032)', () => {
+    const START = '/api/admin/ops-inbox/routine-start'
+
+    it('POST + 정확한 경로 + 맞는 토큰이면 통과한다', async () => {
+      const res = await proxy(makeRequest('POST', START, { 'x-admin-read-token': TOKEN }))
+      expect(passedThrough(res)).toBe(true)
+    })
+
+    it('토큰이 없거나 틀리면 로그인으로 리다이렉트한다', async () => {
+      expect(redirectPath(await proxy(makeRequest('POST', START)))).toBe('/login')
+      expect(redirectPath(await proxy(makeRequest('POST', START, { 'x-admin-read-token': 'wrong' })))).toBe('/login')
+    })
+
+    it.each(['PUT', 'PATCH', 'DELETE'])('토큰 %s는 리다이렉트한다', async (method) => {
+      const res = await proxy(makeRequest(method, START, { 'x-admin-read-token': TOKEN }))
+      expect(redirectPath(res)).toBe('/login')
+    })
+
+    it.each([`${START}/`, `${START}/x`, `${START}x`, '/api/admin/ops-inbox/routine'])(
+      'POST %s 는 토큰이 맞아도 리다이렉트한다',
+      async (pathname) => {
+        const res = await proxy(makeRequest('POST', pathname, { 'x-admin-read-token': TOKEN }))
+        expect(passedThrough(res)).toBe(false)
+        expect(redirectPath(res)).toBe('/login')
+      }
+    )
+  })
+
   describe('토큰 POST·PUT·PATCH·DELETE는 제출 경로 밖의 어드민 경로에서 모두 막힌다', () => {
     const paths = [
       '/api/admin/missions',

@@ -91,11 +91,11 @@ related:
 - 항목마다 `highlight`(참·거짓): 이번 기획의 핵심 항목. 묶음당 5개 이하. 결정 패널 맨 위에 먼저 보인다.
 - 묶음의 이유 칩은 항목 이유를 종류별로 세어 화면이 만든다(따로 저장하지 않는다).
 
-### 5.3 에이전트 단계 기록 (D2) (제출 쪽 `routine_run.stages`는 구현됨: 티켓 20261026_2021. 「시작」 기록은 티켓 20261026_2032)
-- **쓰기 2번:** ① 루틴 시작 때 「시작」 기록 1번(주차, 시작 시각, 맡은 에이전트 목록), ② 제출 때 묶음 안의 `routine_run.stages`에 단계별 요약을 한 번에 싣는다.
+### 5.3 에이전트 단계 기록 (D2) (제출 쪽 `routine_run.stages`는 구현됨: 티켓 20261026_2021. 「시작」 기록 경로·멈춤 판정 함수도 구현됨: 티켓 20261026_2032, 내 차례에 띄우는 화면은 티켓 20261026_2023)
+- **쓰기 2번:** ① 루틴 시작 때 「시작」 기록 1번(주차, 시작 시각, 맡은 에이전트 목록. `POST /api/admin/ops-inbox/routine-start`, 저장 위치 `ops_routine_starts`, 본문 `run_key`·`week?`·`author`·`agents[]`. 제출 묶음의 `routine_run.run_key`가 같으면 이어진다), ② 제출 때 묶음 안의 `routine_run.stages`에 단계별 요약을 한 번에 싣는다.
 - `stages[]`: `{ agent, stage, started_at, ended_at, in_count, out_count, excluded_count }`. `stage`는 `plan`·`world_review`·`balance_check` 셋이다. 지금의 `excluded_items[].stage` 값과 같은 이름을 쓴다.
 - 시작과 제출 사이에는 단계별 진행을 실시간으로 알 수 없다. 이 동안 주간 흐름 칸에는 「진행 중 · 시작 후 N분」만 보인다. 제출 뒤에는 단계마다 걸린 시간과 「2건 뺌」 같은 결과가 보인다.
-- 시작 기록이 있는데 3시간 안에 제출이 없으면 「문제 · 루틴이 멈췄어요」로 내 차례에 뜬다(기준 시간은 운영 설정 값).
+- 시작 기록이 있는데 3시간 안에 제출이 없으면 「문제 · 루틴이 멈췄어요」로 내 차례에 뜬다(기준 시간은 운영 설정 값). 판정은 `isRoutineStalled`(`routineStart.ts`)이고 기준은 `OPS_ROUTINE_STALL_HOURS`(3) 한 곳이다.
 
 ### 5.4 읽은 트렌드 (구현됨: 티켓 20261026_2021)
 - 묶음에 `trends[]`: `{ label, source_ids, summary, series?, outcome, outcome_reason? }`

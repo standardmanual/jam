@@ -1,13 +1,13 @@
 /**
- * 읽기 토큰의 쓰기 권한은 제출 라우트 하나에만 — 계약 회귀 (티켓 20260930_1816)
+ * 읽기 토큰의 쓰기 권한은 제출 라우트와 루틴 시작 기록 라우트 둘에만 — 계약 회귀 (티켓 20260930_1816, 20261026_2032)
  *
  * 읽기 토큰(`x-admin-read-token`)은 원래 GET 전용이다. 운영 묶음 제출(`POST /api/admin/ops-inbox`)에만 쓰기
  * 예외를 열었고, 이 테스트가 그 예외가 다른 곳으로 번지지 않는지 소스를 훑어 확인한다(기존
  * `route-contract.test.ts`들이 라우트 하나의 인증 계약을 고정하던 방식을 어드민 전체로 넓힌 것이다).
  *
  * 지키는 것:
- * 1. 토큰 쓰기 검사(`requireOpsInboxSubmit`·`isOpsInboxTokenRequest`)를 부르는 `route.ts`는 제출 라우트 하나뿐이다
- * 2. 제출 라우트는 POST만 export하고, 래퍼 `requireOpsInboxSubmit`으로 인증한다
+ * 1. 토큰 쓰기 검사(`requireOpsInboxSubmit`·`isOpsInboxTokenRequest`)를 부르는 `route.ts`는 제출 라우트와 루틴 시작 기록 라우트(티켓 20261026_2032) 둘뿐이다
+ * 2. 그 두 라우트는 POST만 export하고, 래퍼 `requireOpsInboxSubmit`으로 인증한다
  * 3. 다른 `route.ts`는 읽기 토큰 헤더나 `isValidAdminReadToken`을 직접 다루지 않는다(`requireAdminRead`만 쓴다)
  * 4. 토큰 쓰기 판정 함수는 auth.ts·래퍼·proxy.ts 밖의 서비스 코드에서 쓰이지 않는다
  * 5. 제출 경로 상수와 라우트 파일 위치가 같다
@@ -19,7 +19,7 @@
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
-import { OPS_INBOX_PATH } from '@/lib/admin/opsInbox/constants'
+import { OPS_INBOX_PATH, OPS_INBOX_TOKEN_WRITE_PATHS, OPS_ROUTINE_START_PATH } from '@/lib/admin/opsInbox/constants'
 
 const SRC = join(process.cwd(), 'src')
 const API_ROOT = join(SRC, 'app/api')
@@ -58,23 +58,31 @@ const routeFiles = walk(API_ROOT).filter((f) => f.endsWith(`${sep}route.ts`))
 const adminRouteFiles = routeFiles.filter((f) => rel(f).startsWith('app/api/admin/'))
 // 제출 경로 상수(`/api/admin/ops-inbox`)가 가리키는 라우트 파일.
 const SUBMIT_ROUTE = `app${OPS_INBOX_PATH}/route.ts`
+// 루틴 시작 기록 경로 상수(`/api/admin/ops-inbox/routine-start`, 티켓 20261026_2032)가 가리키는 라우트 파일.
+const ROUTINE_START_ROUTE = `app${OPS_ROUTINE_START_PATH}/route.ts`
+// 토큰 쓰기 검사를 부르는 라우트는 이 둘뿐이다.
+const TOKEN_WRITE_ROUTES = [SUBMIT_ROUTE, ROUTINE_START_ROUTE]
 
 const TOKEN_WRITE_CHECKS = /\b(requireOpsInboxSubmit|isOpsInboxTokenRequest)\b/
 
-describe('읽기 토큰의 쓰기 권한 — 제출 라우트 하나', () => {
+describe('읽기 토큰의 쓰기 권한 — 제출 라우트와 루틴 시작 기록 라우트 둘', () => {
   it('어드민 라우트 파일을 실제로 찾았다(빈 목록으로 통과하지 않는다)', () => {
     expect(adminRouteFiles.length).toBeGreaterThan(50)
     expect(adminRouteFiles.map(rel)).toContain(SUBMIT_ROUTE)
+    expect(adminRouteFiles.map(rel)).toContain(ROUTINE_START_ROUTE)
   })
 
-  it('토큰 쓰기 검사를 부르는 route.ts는 제출 라우트 하나뿐이다(app/api 전체)', () => {
+  it('토큰 쓰기 검사를 부르는 route.ts는 제출 라우트와 루틴 시작 기록 라우트 둘뿐이다(app/api 전체)', () => {
     // 주석을 벗기지 않은 원문으로 본다 — 주석 제거가 코드를 삼켜 호출을 놓치지 않게, 과하게 잡는 쪽으로 판정한다.
     const callers = routeFiles.filter((f) => TOKEN_WRITE_CHECKS.test(readRaw(f))).map(rel)
-    expect(callers).toEqual([SUBMIT_ROUTE])
+    expect([...callers].sort()).toEqual([...TOKEN_WRITE_ROUTES].sort())
   })
 
-  describe('제출 라우트', () => {
-    const routeFile = join(SRC, SUBMIT_ROUTE)
+  describe.each([
+    ['제출 라우트', SUBMIT_ROUTE],
+    ['루틴 시작 기록 라우트', ROUTINE_START_ROUTE],
+  ])('%s', (_name, routePath) => {
+    const routeFile = join(SRC, routePath)
     const code = readRaw(routeFile)
 
     it('POST만 export한다(GET·PUT·PATCH·DELETE·HEAD·OPTIONS 없음)', () => {
@@ -103,7 +111,7 @@ describe('읽기 토큰의 쓰기 권한 — 제출 라우트 하나', () => {
 
   it('다른 route.ts는 읽기 토큰 헤더나 isValidAdminReadToken을 직접 다루지 않는다', () => {
     const offenders = routeFiles
-      .filter((f) => rel(f) !== SUBMIT_ROUTE)
+      .filter((f) => !TOKEN_WRITE_ROUTES.includes(rel(f)))
       .filter((f) => /x-admin-read-token|\bisValidAdminReadToken\b|ADMIN_API_READ_TOKEN/.test(readCode(f)))
       .map(rel)
     expect(offenders).toEqual([])
@@ -114,7 +122,7 @@ describe('읽기 토큰의 쓰기 권한 — 제출 라우트 하나', () => {
       'lib/admin/auth.ts',
       'lib/admin/opsInbox/auth.ts',
       'proxy.ts',
-      SUBMIT_ROUTE, // requireOpsInboxSubmit 호출(위에서 래퍼 경유만 허용했다)
+      ...TOKEN_WRITE_ROUTES, // requireOpsInboxSubmit 호출(위에서 래퍼 경유만 허용했다)
     ])
     const offenders = walk(SRC)
       .filter((f) => /\.(ts|tsx)$/.test(f) && !f.includes(`${sep}__tests__${sep}`) && !/\.test\.tsx?$/.test(f))
@@ -178,5 +186,14 @@ describe('읽기 토큰의 쓰기 권한 — 제출 라우트 하나', () => {
   it('제출 경로 상수가 /api/admin/ops-inbox이고 라우트 파일이 그 위치에 있다', () => {
     expect(OPS_INBOX_PATH).toBe('/api/admin/ops-inbox')
     expect(SUBMIT_ROUTE).toBe('app/api/admin/ops-inbox/route.ts')
+  })
+
+  it('루틴 시작 기록 경로 상수가 /api/admin/ops-inbox/routine-start이고 라우트 파일이 그 위치에 있다', () => {
+    expect(OPS_ROUTINE_START_PATH).toBe('/api/admin/ops-inbox/routine-start')
+    expect(ROUTINE_START_ROUTE).toBe('app/api/admin/ops-inbox/routine-start/route.ts')
+  })
+
+  it('토큰 쓰기가 열린 경로 목록은 이 두 상수뿐이다', () => {
+    expect([...OPS_INBOX_TOKEN_WRITE_PATHS]).toEqual([OPS_INBOX_PATH, OPS_ROUTINE_START_PATH])
   })
 })

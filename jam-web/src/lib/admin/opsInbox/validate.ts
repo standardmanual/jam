@@ -40,6 +40,7 @@ import {
   MAX_RATIONALES_PER_ITEM,
   MAX_RATIONALE_LABEL_CHARS,
   MAX_RATIONALE_NOTE_CHARS,
+  MAX_RUN_KEY_CHARS,
   MAX_TITLE_CHARS,
   MAX_TREND_SERIES_POINTS,
   OPS_EXCLUDED_ITEM_STAGES,
@@ -465,6 +466,20 @@ function validateOpsTitle(value: unknown): { title: string | null; errors: strin
   return { title, errors: [] }
 }
 
+/** `routine_run.run_key` 검사(티켓 20261026_2032). 루틴 시작 기록과 잇는 키라 문자열·64자 이하여야 한다. 없으면 오류가 아니다. */
+function validateRoutineRunKey(routineRun: unknown): string[] {
+  if (!isPlainObject(routineRun) || !isPresent(routineRun.run_key)) return []
+  const runKey = routineRun.run_key
+  if (typeof runKey !== 'string') {
+    return [`routine_run.run_key: 문자열이어야 해요(받은 값: ${describeShort(runKey)}).`]
+  }
+  if (runKey.trim().length === 0) return ['routine_run.run_key: 비어 있지 않은 문자열이어야 해요.']
+  if (runKey.trim().length > MAX_RUN_KEY_CHARS) {
+    return [`routine_run.run_key: ${MAX_RUN_KEY_CHARS}자까지 받아요(받은 길이: ${runKey.trim().length}자).`]
+  }
+  return []
+}
+
 /** `routine_run.stages[]` 검사. 단계 기록이 없으면 오류가 아니다. `routine_run` 자체는 그대로 저장한다. */
 function validateRoutineStages(routineRun: unknown): string[] {
   if (!isPlainObject(routineRun) || !isPresent(routineRun.stages)) return []
@@ -841,6 +856,7 @@ export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}):
 
   const titleResult = validateOpsTitle(raw.title)
   bundleErrors.push(...titleResult.errors)
+  bundleErrors.push(...validateRoutineRunKey(raw.routine_run))
   bundleErrors.push(...validateRoutineStages(raw.routine_run))
   const trendsResult = validateOpsTrends(raw.trends)
   bundleErrors.push(...trendsResult.errors)

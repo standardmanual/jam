@@ -7,7 +7,7 @@
  *
  * 흐름: ① 인증 → ② 본문 1MB 확인 → ③ JSON 파싱 → ④ 트라이브·패턴 번호·지점 카테고리 목록 조회(실패하면 저장 없이 500) 뒤 필수 형식 검증(fatal이면 400) → ⑤ 최근 1시간 제출 수 확인(429)
  *  → ⑥ 같은 bundle_id 확인(같은 내용 200 / 다른 내용 409) → ⑦ 묶음·항목·결정 기록 저장(실패하면 묶음을 지워 되돌림)
- *  → ⑧ 201 → ⑨ 응답 뒤 슬랙 도착 글 게시(실패해도 제출은 성공, 결과는 결정 기록에 남긴다).
+ *  → 같은 run_key의 루틴 시작 기록과 잇기(실패해도 제출은 성공, 티켓 20261026_2032) → ⑧ 201 → ⑨ 응답 뒤 슬랙 도착 글 게시(실패해도 제출은 성공, 결과는 결정 기록에 남긴다).
  *
  * 시간당 제출 수는 서버 인스턴스별 메모리가 아니라 DB(`ops_bundles.received_at`)로 센다.
  */
@@ -22,6 +22,7 @@ import {
   OPS_ITEM_INITIAL_STATUS,
 } from '@/lib/admin/opsInbox/constants'
 import { computeRawHash } from '@/lib/admin/opsInbox/rawHash'
+import { linkRoutineStartToBundle } from '@/lib/admin/opsInbox/routineStart'
 import { formatArrivalMessage, postOpsSlack } from '@/lib/admin/opsInbox/slack'
 import { loadOpsValidationContext } from '@/lib/admin/opsInbox/validationContext'
 import { validateOpsBundle } from '@/lib/admin/opsInbox/validate'
@@ -203,6 +204,11 @@ export async function POST(req: Request) {
     return serverError()
   }
   const decisionId = decision.data.id
+
+  // 같은 run_key의 루틴 시작 기록이 있으면 이 묶음과 잇는다(티켓 20261026_2032). 실패해도 제출은 성공이다(던지지 않고 로그만).
+  const routineRun = bundle.routine_run
+  const runKey = routineRun && typeof routineRun === 'object' && !Array.isArray(routineRun) ? routineRun.run_key : undefined
+  await linkRoutineStartToBundle(service, runKey, bundleDbId)
 
   // ⑨ 응답 뒤 슬랙 도착 글. 실패해도 제출은 성공이고, 결과는 결정 기록에 남긴다.
   after(async () => {

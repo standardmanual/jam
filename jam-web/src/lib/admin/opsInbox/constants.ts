@@ -12,6 +12,30 @@ export const OPS_INBOX_PATH = '/api/admin/ops-inbox'
 /** 그 경로에서 토큰으로 허용되는 유일한 메서드. */
 export const OPS_INBOX_METHOD = 'POST'
 
+/**
+ * 읽기 토큰으로 쓰기가 허용되는 두 번째 경로: 루틴 「시작」 기록(티켓 20261026_2032, 어드민 상황판 PRD §5.3).
+ * 제출 경로와 마찬가지로 **정확히 일치**로만 비교한다(접두사·끝 `/`·하위 경로는 다른 경로다). 메서드는 `OPS_INBOX_METHOD` 하나.
+ */
+export const OPS_ROUTINE_START_PATH = '/api/admin/ops-inbox/routine-start'
+
+/** 토큰 쓰기가 열리는 경로 전체. 이 목록에 **정확히 같은** 경로만 통과한다(토큰 쓰기 판정이 이 목록을 읽는다). 늘리려면 보안 점검이 필요하다. */
+export const OPS_INBOX_TOKEN_WRITE_PATHS: readonly string[] = [OPS_INBOX_PATH, OPS_ROUTINE_START_PATH]
+
+/** 시작 기록 본문 상한(바이트). 한 줄짜리 기록이라 제출 본문(1MB)보다 훨씬 작다. */
+export const MAX_ROUTINE_START_BODY_BYTES = 16 * 1024
+
+/** 루틴 실행 식별자(`run_key`) 최대 글자 수. 시작 기록과 묶음의 `routine_run.run_key`가 이 값으로 이어진다. */
+export const MAX_RUN_KEY_CHARS = 64
+
+/** 시작 기록에 담는 에이전트 이름 개수 상한. */
+export const MAX_ROUTINE_AGENTS = 8
+
+/**
+ * 시작 후 이 시간 안에 묶음이 이어지지 않으면 루틴이 멈춘 것으로 본다(단위: 시간, PRD §5.3 「기준 시간은 운영 설정 값」).
+ * 판정은 `routineStart.ts`의 `isRoutineStalled`가 이 상수 하나를 읽는다.
+ */
+export const OPS_ROUTINE_STALL_HOURS = 3
+
 /** 제출 본문 상한(바이트). 카드 21~35장 기준 추정값(상위 티켓 가정 9). */
 export const MAX_BODY_BYTES = 1_048_576
 

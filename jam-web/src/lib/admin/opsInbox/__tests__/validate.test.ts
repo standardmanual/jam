@@ -1322,6 +1322,34 @@ describe('validateOpsBundle — routine_run.stages', () => {
   })
 })
 
+describe('validateOpsBundle — routine_run.run_key (티켓 20261026_2032)', () => {
+  it('문자열 run_key는 오류 없이 routine_run에 그대로 담긴다(64자까지)', () => {
+    const routineRun = { run_key: 'k'.repeat(64) }
+    const result = validateOpsBundle(makeBundle({ routine_run: routineRun }))
+    expect(result.errors).toEqual([])
+    expect(result.bundle?.routine_run).toEqual(routineRun)
+  })
+
+  it('run_key가 없으면 오류가 아니다(시작 기록 없이 제출하는 기존 방식)', () => {
+    expect(validateOpsBundle(makeBundle({ routine_run: { stages: [] } })).errors).toEqual([])
+  })
+
+  it('형식이 틀리면 형식 오류에 쌓이고 묶음은 받는다', () => {
+    const cases: Array<[unknown, string]> = [
+      [123, 'routine_run.run_key: 문자열이어야 해요'],
+      [{ a: 1 }, 'routine_run.run_key: 문자열이어야 해요'],
+      ['   ', 'routine_run.run_key: 비어 있지 않은 문자열'],
+      ['k'.repeat(65), 'routine_run.run_key: 64자까지'],
+    ]
+    for (const [runKey, expected] of cases) {
+      const result = validateOpsBundle(makeBundle({ routine_run: { run_key: runKey } }))
+      expect(result.fatal).toEqual([])
+      expect(result.errors, expected).toEqual([expect.stringContaining(expected)])
+      expect(result.bundle).not.toBeNull()
+    }
+  })
+})
+
 describe('validateOpsBundle — trends', () => {
   it('정상 트렌드(반영·보류·자동 제외)는 오류 없이 담긴다', () => {
     const trends = [

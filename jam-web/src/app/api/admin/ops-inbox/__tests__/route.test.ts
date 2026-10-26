@@ -27,12 +27,14 @@ const h = vi.hoisted(() => {
       tribes: [],
       ops_patterns: [],
       poi_categories: [],
+      ops_routine_starts: [],
     } as Record<string, Row[]>,
     failInsert: new Set<string>(),
     failCount: false,
     failTribes: false,
     failPatterns: false,
     failCategories: false,
+    failStartUpdate: false,
     hideExistingOnce: false,
     seq: 0,
     afterCallbacks: [] as Array<() => unknown>,
@@ -77,6 +79,10 @@ const h = vi.hoisted(() => {
       this.filters.push((row) => row[col] === val)
       return this
     }
+    is(col: string, val: unknown) {
+      this.filters.push((row) => (row[col] ?? null) === val)
+      return this
+    }
     gte(col: string, val: string) {
       this.filters.push((row) => String(row[col]) >= val)
       return this
@@ -115,6 +121,7 @@ const h = vi.hoisted(() => {
       }
 
       if (this.mode === 'update') {
+        if (this.table === 'ops_routine_starts' && state.failStartUpdate) return { data: null, error: { message: 'start update boom' } }
         for (const row of matches()) Object.assign(row, this.payload)
         return { data: null, error: null }
       }
@@ -254,12 +261,14 @@ describe('POST /api/admin/ops-inbox', () => {
       tribes: [{ id: TRIBE_ID }],
       ops_patterns: [{ pattern_no: 'P07' }, { pattern_no: 'P20' }],
       poi_categories: [{ slug: 'cafe' }, { slug: 'park' }],
+      ops_routine_starts: [],
     }
     h.state.failInsert.clear()
     h.state.failCount = false
     h.state.failTribes = false
     h.state.failPatterns = false
     h.state.failCategories = false
+    h.state.failStartUpdate = false
     h.state.hideExistingOnce = false
     h.state.seq = 0
     h.state.afterCallbacks = []
@@ -733,6 +742,65 @@ describe('POST /api/admin/ops-inbox', () => {
       ])
       expect(h.state.tables.ops_bundles[0]).toMatchObject({ title: null, trends: null, raw: body })
       expect(h.state.tables.ops_bundles[0].format_errors).toEqual(json.format_errors)
+    })
+  })
+
+  describe('루틴 시작 기록 짝짓기 (티켓 20261026_2032)', () => {
+    const START = { id: 'start-1', run_key: 'weekly-2026-W44-a', week: '2026-W44', author: '윤진', bundle_id: null }
+
+    it('routine_run.run_key가 시작 기록과 같으면 저장된 묶음의 ID가 bundle_id에 채워진다', async () => {
+      h.state.tables.ops_routine_starts.push({ ...START })
+      const res = await submit(makeBundle({ routine_run: { run_key: START.run_key } }))
+
+      expect(res.status).toBe(201)
+      const saved = h.state.tables.ops_bundles[0]
+      expect(h.state.tables.ops_routine_starts[0].bundle_id).toBe(saved.id)
+    })
+
+    it('run_key가 다른 시작 기록은 건드리지 않는다(주차·작성자가 같아도)', async () => {
+      h.state.tables.ops_routine_starts.push({ ...START, run_key: 'another-run' })
+      const res = await submit(makeBundle({ routine_run: { run_key: START.run_key } }))
+
+      expect(res.status).toBe(201)
+      expect(h.state.tables.ops_routine_starts[0].bundle_id).toBeNull()
+    })
+
+    it('시작 기록 없이 제출해도 지금처럼 저장된다(routine_run도 run_key도 없는 경우 포함)', async () => {
+      const withKey = await submit(makeBundle({ routine_run: { run_key: 'no-start-record' } }))
+      expect(withKey.status).toBe(201)
+      const withoutRoutineRun = await submit(makeBundle({ bundle_id: 'sample-2026-w42' }))
+      expect(withoutRoutineRun.status).toBe(201)
+      expect(h.state.tables.ops_bundles).toHaveLength(2)
+    })
+
+    it('run_key가 문자열이 아니면 형식 오류만 남기고 이어 붙이지 않는다', async () => {
+      h.state.tables.ops_routine_starts.push({ ...START })
+      const res = await submit(makeBundle({ routine_run: { run_key: 123 } }))
+
+      expect(res.status).toBe(201)
+      expect((await res.json()).format_errors).toEqual([expect.stringContaining('routine_run.run_key: 문자열이어야 해요')])
+      expect(h.state.tables.ops_routine_starts[0].bundle_id).toBeNull()
+    })
+
+    it('짝짓기에 실패해도 제출은 201이다', async () => {
+      h.state.tables.ops_routine_starts.push({ ...START })
+      h.state.failStartUpdate = true
+      const res = await submit(makeBundle({ routine_run: { run_key: START.run_key } }))
+
+      expect(res.status).toBe(201)
+      expect(h.state.tables.ops_bundles).toHaveLength(1)
+      expect(h.state.tables.ops_routine_starts[0].bundle_id).toBeNull()
+    })
+
+    it('같은 묶음을 다시 보내면(200) 이미 이어진 기록을 바꾸지 않는다', async () => {
+      h.state.tables.ops_routine_starts.push({ ...START })
+      const body = makeBundle({ routine_run: { run_key: START.run_key } })
+      await submit(body)
+      const linked = h.state.tables.ops_routine_starts[0].bundle_id
+      const again = await submit(body)
+
+      expect(again.status).toBe(200)
+      expect(h.state.tables.ops_routine_starts[0].bundle_id).toBe(linked)
     })
   })
 
