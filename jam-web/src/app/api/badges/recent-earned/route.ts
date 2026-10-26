@@ -22,11 +22,20 @@
  * 상세 상한(10건)과 잔여 개수 계산은 `/api/strava/sync`와 동일하게
  * `buildEarnedBadgePayload()` 한 곳에서만 처리한다.
  *
+ * 잼 합계 (티켓 20261026_1029): 같은 시간 창에서 잼 원장(`jam_transactions`, 마이그레이션 220)의
+ * 활동 정산(`reason = 'activity_settlement'`) 줄을 읽어 `jamEarned`로 더한다. 도착 화면이
+ * «이번에 잼 {n}만큼 받았어요» 한 줄을 헤더에 얹는 데 쓴다(수동 동기화 결과와 같은 줄).
+ * 이 사유의 amount는 항상 양수(CHECK)라 읽은 줄을 그대로 더한다. 읽기 오류는 `jamEarned: 0`으로
+ * 접는다 — 잼 줄만 빠지고 배지 연출은 그대로 나온다.
+ * 한계: 연동 직후 10분 안에 수동 동기화로 받은 잼도 같은 창에 들어간다. `jam_apply`가 같은 활동의
+ * 재호출에는 기존 줄을 돌려주므로 `created_at`은 첫 정산 시각이라 같은 활동이 두 번 더해지지는 않는다.
+ *
  * 응답:
- *   200 { earnedBadges: EarnedBadgeSummary[], earnedBadgesMore: number, isFirstBadgeEver: boolean }
+ *   200 { earnedBadges: EarnedBadgeSummary[], earnedBadgesMore: number, isFirstBadgeEver: boolean, jamEarned: number }
  *   401 { error: d.common.authRequired }
  */
 import { NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { buildEarnedBadgePayload } from '@/lib/strava/sync'
 import { d } from '@/lib/i18n'
@@ -52,6 +61,33 @@ const FEED_SCAN_LIMIT = 50
  * item_picked_up(남이 드랍한 것 줍기)은 싱크가 만드는 이벤트가 아니라 제외한다.
  */
 const EARNED_EVENT_TYPES: ActivityFeedEventType[] = ['badge_earned', 'item_dropped']
+
+/**
+ * 시간 창 안에서 이 유저가 활동 정산으로 받은 잼의 합계. 던지지 않는다 — 읽기에 실패하면 0이다.
+ * 인덱스 `(user_id, created_at DESC)`를 탄다. 한 번에 읽는 줄 수는 Supabase 기본 상한(1000줄)에 걸리지만
+ * 10분 창 안의 정산 건수가 그보다 많을 수는 없다.
+ */
+async function readRecentJamEarned(service: SupabaseClient, userId: string, since: string): Promise<number> {
+  try {
+    const { data, error } = await service
+      .from('jam_transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('reason', 'activity_settlement')
+      .gte('created_at', since)
+    if (error) {
+      console.error(`[/api/badges/recent-earned] 잼 원장 조회 오류 (code: ${error.code}):`, error)
+      return 0
+    }
+    return ((data ?? []) as { amount: number }[]).reduce(
+      (sum, row) => (typeof row.amount === 'number' && row.amount > 0 ? sum + row.amount : sum),
+      0
+    )
+  } catch (e) {
+    console.error('[/api/badges/recent-earned] 잼 원장 조회 예외:', e)
+    return 0
+  }
+}
 
 export async function GET() {
   const supabase = await createClient()
@@ -81,7 +117,7 @@ export async function GET() {
     // ⚠️ 마이그레이션 093 미적용 상태에서는 여기로 빠진다(42703 column does not exist).
     //    "최근 획득 없음"과 구분되도록 코드까지 남긴다 — 빈 배열을 정상으로 오독하지 않기 위함.
     console.error(`[/api/badges/recent-earned] 피드 조회 오류 (code: ${error.code}):`, error)
-    return NextResponse.json({ earnedBadges: [], earnedBadgesMore: 0 })
+    return NextResponse.json({ earnedBadges: [], earnedBadgesMore: 0, jamEarned: 0 })
   }
 
   // 피드는 최신순으로 읽었으므로 뒤집어 **획득 순서(오래된 → 최신)** 로 되돌린다.
@@ -96,6 +132,10 @@ export async function GET() {
   }
 
   // 중복 제거·소프트 삭제 제외·상한 적용·isFirstBadgeEver 판정은 buildEarnedBadgePayload가 담당한다.
-  const payload = await buildEarnedBadgePayload(service, badgeIds, user.id)
-  return NextResponse.json(payload)
+  // 잼 합계는 배지 상세 조회와 서로 기다릴 이유가 없어 함께 보낸다.
+  const [payload, jamEarned] = await Promise.all([
+    buildEarnedBadgePayload(service, badgeIds, user.id),
+    readRecentJamEarned(service, user.id, since),
+  ])
+  return NextResponse.json({ ...payload, jamEarned })
 }
