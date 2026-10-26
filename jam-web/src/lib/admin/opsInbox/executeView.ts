@@ -13,14 +13,17 @@ import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/quer
 
 // ── 화면 문구 ───────────────────────────────────────────────────────────────────────────────────
 
-export const EXECUTE_SUMMARY_TITLE = '예약 등록 전에 확인해 주세요'
+export const EXECUTE_SUMMARY_TITLE = '승인하고 예약하기 전에 확인해 주세요'
 /**
  * 「기다리는 항목」의 이유. 사전 점검의 문장(`PRECHECK_MESSAGES.waiting`)과 같아야 한다 — 그 모듈을 값으로 가져올 수 없어 여기에 적고
  * `executeView.test.ts`가 둘이 같은지 지킨다.
  */
 export const EXECUTE_WAITING_REASON = '연결된 항목이 아직 결정 전이에요'
-export const EXECUTE_FAIL_CLOSE_NOTE = '예약 등록하면 실패로 닫혀요'
+export const EXECUTE_FAIL_CLOSE_NOTE = '실패로 닫혀요'
+/** 검토중이라 요청에 없어도 승인된 뒤 실패로 닫히는 항목(티켓 20261026_2022 규칙)에 붙는 문장. */
+export const EXECUTE_FAIL_CLOSE_APPROVING_NOTE = '검토중이라 승인한 뒤 실패로 닫혀요'
 export const EXECUTE_SAMPLE_NOTICE = '시험 묶음이라 자원은 만들지 않아요'
+export const EXECUTE_APPROVE_IRREVERSIBLE = '승인은 되돌릴 수 없어요'
 export const EXECUTE_NOTHING_TO_RUN = '지금 예약할 수 있는 항목이 없어요'
 export const EXECUTE_LOADING = '사전 점검하는 중이에요'
 export const EXECUTE_DECISION_LOG_FAILED = '결정 기록을 남기지 못했어요. 예약은 그대로예요.'
@@ -30,9 +33,9 @@ export const EXECUTE_BADGE_PREVIEW_LOADING = '미리 세는 중이에요'
 /** 구역 전체가 실패했을 때와 배지 한 줄을 세지 못했을 때 같은 문장이다. */
 export const EXECUTE_BADGE_PREVIEW_FAILED = '미리 세지 못했어요'
 
-/** [N개 예약 등록하기]. 예약할 항목이 없으면 「예약 등록하기」다(눌러서 왜 못 하는지 볼 수 있게 끄지 않는다). */
-export function executeButtonLabel(readyCount: number): string {
-  return readyCount > 0 ? `${readyCount}개 예약 등록하기` : '예약 등록하기'
+/** [N건 승인하고 예약]. N은 승인 대상 수이고, 0이면 「승인하고 예약」이다(요약창 안에서는 눌러 볼 수 없는 상태를 뜻한다). */
+export function executeButtonLabel(count: number): string {
+  return count > 0 ? `${count}건 승인하고 예약` : '승인하고 예약'
 }
 
 // ── 사전 점검 응답 읽기 ─────────────────────────────────────────────────────────────────────────
@@ -119,7 +122,8 @@ export interface ExecuteSummary {
   ready: ReadyEntry[]
   waiting: SummaryItem[]
   blocked: Array<SummaryItem & { reasons: string[] }>
-  failClose: Array<SummaryItem & { reason: string }>
+  /** `approving`은 검토중이라 승인한 뒤 닫히는 항목이다(요청 `itemIds`에 없어도 승인된다). */
+  failClose: Array<SummaryItem & { reason: string; approving: boolean }>
   warnings: Array<{ message: string; names: string[] }>
   /** 예약 등록과 함께 승인할 항목(검토중이던 항목). 예약할 항목·실패로 닫을 항목 안에 든 것만 싣는다. */
   approving: SummaryItem[]
@@ -172,23 +176,75 @@ export function buildExecuteSummary(precheck: PrecheckView, items: readonly Summ
   }
 
   const ready = orderReady(precheck, byId, nameOf)
-  const readyIds = ready.flatMap((entry) => (entry.type === 'group' ? entry.items.map((item) => item.id) : [entry.item.id]))
+  const readyIds = readyIdsOf(ready)
   const closeIds = precheck.failClose.map((entry) => entry.id)
-  const action: ExecuteAction = readyIds.length > 0 ? 'schedule' : closeIds.length > 0 ? 'close' : 'none'
+  const approvingIds = new Set(precheck.approving)
 
   return {
-    readyCount: readyIds.length,
     ready,
     waiting: precheck.waiting.map(nameOf),
     blocked: precheck.blocked.map((entry) => ({ ...nameOf(entry.id), reasons: entry.reasons })),
-    failClose: precheck.failClose.map((entry) => ({ ...nameOf(entry.id), reason: entry.reason })),
+    failClose: precheck.failClose.map((entry) => ({ ...nameOf(entry.id), reason: entry.reason, approving: approvingIds.has(entry.id) })),
     warnings: precheck.warnings.map((warning) => ({ message: warning.message, names: warning.itemIds.map((id) => nameOf(id).name) })),
     approving: precheck.approving.filter((id) => readyIds.includes(id) || closeIds.includes(id)).map(nameOf),
     isSample,
+    ...actionOf(readyIds, closeIds),
+  }
+}
+
+function readyIdsOf(ready: readonly ReadyEntry[]): string[] {
+  return ready.flatMap((entry) => (entry.type === 'group' ? entry.items.map((item) => item.id) : [entry.item.id]))
+}
+
+/** 예약할 항목·실패로 닫을 항목 ID로 주 버튼이 하는 일과 문구, 실행 요청의 `itemIds`를 정한다. */
+function actionOf(readyIds: readonly string[], closeIds: readonly string[]) {
+  const action: ExecuteAction = readyIds.length > 0 ? 'schedule' : closeIds.length > 0 ? 'close' : 'none'
+  return {
+    readyCount: readyIds.length,
     action,
     confirmLabel: action === 'close' ? '실패로 닫기' : executeButtonLabel(readyIds.length),
-    pendingLabel: action === 'close' ? '실패로 닫는 중' : '예약 등록하는 중',
-    requestIds: action === 'close' ? closeIds : readyIds,
+    pendingLabel: action === 'close' ? '실패로 닫는 중' : '승인하고 예약하는 중',
+    requestIds: [...(action === 'close' ? closeIds : readyIds)],
+  }
+}
+
+/** 예약 묶음의 항목들. 단독 항목은 하나, 연결 묶음은 여럿이다. */
+function membersOf(entry: ReadyEntry): SummaryItem[] {
+  return entry.type === 'group' ? entry.items : [entry.item]
+}
+
+/** 체크한 검토중 항목과 이미 승인된 항목만 든 예약 묶음이 이번 실행 대상이다. 묶음 안에 체크하지 않은 검토중 항목이 하나라도 있으면 묶음째 뺀다. */
+function isPicked(entry: ReadyEntry, summary: ExecuteSummary, checkedReviewingIds: ReadonlySet<string>): boolean {
+  const approvingIds = new Set(summary.approving.map((item) => item.id))
+  return membersOf(entry).every((item) => !approvingIds.has(item.id) || checkedReviewingIds.has(item.id))
+}
+
+/**
+ * 「승인하고 예약」의 실행 요청 `itemIds`를 고른다. 이미 승인된 예약할 항목과 체크한 검토중 항목을 담는다.
+ * 체크하지 않은 검토중 항목은 담지 않는다(서버도 연결 묶음이 모자라면 그 묶음을 건너뛴다).
+ * 담을 예약할 항목이 하나도 없으면 실패로 닫을 항목이다(실패로 닫을 검토중 항목은 요청에 없어도 서버가 승인한다).
+ */
+export function pickExecuteIds(summary: ExecuteSummary, checkedReviewingIds: ReadonlySet<string>): string[] {
+  const ids = readyIdsOf(summary.ready.filter((entry) => isPicked(entry, summary, checkedReviewingIds)))
+  return ids.length > 0 ? ids : summary.failClose.map((item) => item.id)
+}
+
+/**
+ * 체크한 검토중 항목만 남긴 요약. 사전 점검(`approve: true`)은 검토중 항목 전부를 대상으로 하므로, 체크하지 않은 항목은 요약에서 뺀다.
+ * 묶음 안에 체크하지 않은 항목이 있어 빠진 묶음은 「기다리는 항목」으로 옮겨 이유를 보인다. 요청 `itemIds`는 `pickExecuteIds`와 같다.
+ */
+export function narrowToChecked(summary: ExecuteSummary, checkedReviewingIds: ReadonlySet<string>): ExecuteSummary {
+  const ready = summary.ready.filter((entry) => isPicked(entry, summary, checkedReviewingIds))
+  const heldBack = summary.ready.filter((entry) => entry.type === 'group' && !isPicked(entry, summary, checkedReviewingIds)).flatMap(membersOf)
+  const readyIds = readyIdsOf(ready)
+  const closeIds = summary.failClose.map((item) => item.id)
+  return {
+    ...summary,
+    ready,
+    waiting: [...summary.waiting, ...heldBack],
+    approving: summary.approving.filter((item) => readyIds.includes(item.id) || closeIds.includes(item.id)),
+    ...actionOf(readyIds, closeIds),
+    requestIds: pickExecuteIds(summary, checkedReviewingIds),
   }
 }
 
@@ -306,6 +362,8 @@ export function readyJamBadgeIds(precheck: PrecheckView, items: readonly Pick<Su
 // ── 실행 결과 ───────────────────────────────────────────────────────────────────────────────────
 
 export interface ExecuteResult {
+  /** 이번 실행에서 먼저 승인한 항목 수(「승인하고 예약」 모드의 응답 `approved`). */
+  approved: number
   scheduled: number
   failed: number
   skipped: number
@@ -316,6 +374,7 @@ export interface ExecuteResult {
 export function readExecuteResult(data: Record<string, unknown>): ExecuteResult {
   const count = (value: unknown) => (Array.isArray(value) ? value.length : 0)
   return {
+    approved: count(data.approved),
     scheduled: count(data.scheduled),
     failed: count(data.failed),
     skipped: count(data.skipped),
@@ -333,8 +392,9 @@ export interface ExecuteToast {
 
 /** 결과 토스트 문장. 건너뛴 항목이 있으면 그 수를 덧붙인다. */
 export function executeToast(result: ExecuteResult): ExecuteToast {
-  const { scheduled, failed, skipped, decisionLogFailed } = result
+  const { approved, scheduled, failed, skipped, decisionLogFailed } = result
   const parts: string[] = []
+  if (approved > 0) parts.push(`${approved}건을 승인했어요`)
   if (scheduled > 0) {
     parts.push(failed > 0 ? `${scheduled}개를 예약 등록했고 ${failed}개는 실패했어요` : `${scheduled}개를 예약 등록했어요`)
   } else if (failed > 0) {

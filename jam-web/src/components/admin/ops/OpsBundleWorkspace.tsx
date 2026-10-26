@@ -11,7 +11,7 @@
  * **슬롯(`barAction`·`rowLead`·`listHeader`·`notices`·`detailFooter`·`detailEdit`·`detailHistoryAction`)은 함수라 서버 컴포넌트에서
  * 넘길 수 없다.** 티켓 20260930_1818이 슬롯을 채운 client 래퍼(`OpsDecisionWorkspace.tsx`)를 만들었고 `page.tsx`가 그 래퍼를
  * 렌더한다. 슬롯이 비면 접혀 자리를 잡지 않는다.
- * - `barAction`: 단계 표시줄 오른쪽(「N개 승인하기」·「N개 예약 등록하기」)  - `rowLead`: 목록 행 왼쪽(체크박스)
+ * - `barAction`: 단계 표시줄 오른쪽(「N건 승인하고 예약」)  - `rowLead`: 목록 행 왼쪽(체크박스)
  * - `listHeader`: 목록 머리줄(「전체 선택」과 「결정할 것 12개 중 11개 선택」)
  * - `notices`: 알림 줄(래퍼가 지금 채우는 알림은 없다. 예약 등록은 단계 표시줄의 버튼과 요약창이 알리고 공개는 상태 맞추기가 잇는다)
  * - `detailFooter`: 상세 카드 아래 고정 줄(반려·수정·승인, 예약됨은 공개 전 취소, 게재중은 지금 종료)

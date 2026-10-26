@@ -2,7 +2,7 @@
  * 예약 등록 사전 점검 (티켓 20261002_1122, 상위 20260930_1500 ③-a). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.2다.
  *
  * `precheckBundle(items, { now, handlers })`는 묶음의 「승인됨」 항목을 넷으로 나눈다: 예약할 항목(`ready`) · 기다리는 중(`waiting`) ·
- * 못 하는 항목(`blocked`) · 실패로 닫을 항목(`failClose`). 쓰기 없는 순수 함수라 실행 API와 요약창([N개 예약 등록하기]의 N)이 같은 결과를 쓴다.
+ * 못 하는 항목(`blocked`) · 실패로 닫을 항목(`failClose`). 쓰기 없는 순수 함수라 실행 API와 요약창([N건 승인하고 예약]의 N)이 같은 결과를 쓴다.
  *
  * 판정은 연결 그룹(`groups.ts`) 단위다. 그룹의 한 항목이 못 하는 항목이면 같은 그룹의 승인됨 항목도 모두 못 하고,
  * 결정 전 항목이 있으면 모두 기다린다. 한 항목에 둘 이상 걸리면 실패로 닫을 항목 > 못 하는 항목 > 기다리는 중 순으로 정한다
@@ -112,7 +112,7 @@ export interface PrecheckGroup {
 }
 
 export interface PrecheckResult {
-  /** 예약할 항목. 이 길이가 [N개 예약 등록하기]의 N이다. */
+  /** 예약할 항목. 이 길이가 [N건 승인하고 예약]의 N에 더해진다. */
   ready: string[]
   /** 기다리는 중. 「승인됨」을 유지한다(사유는 `PRECHECK_MESSAGES.waiting`). */
   waiting: string[]

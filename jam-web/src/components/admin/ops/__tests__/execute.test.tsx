@@ -1,10 +1,10 @@
 /**
- * 예약 등록 버튼과 요약창의 초기 렌더 (티켓 20261002_1648, 운영툴 PRD §8.2)
+ * 「N건 승인하고 예약」 버튼과 요약창의 초기 렌더 (티켓 20261002_1648, 20261026_2031, 운영툴 PRD §7.3·§8)
  *
  * 저장소에 jsdom·testing-library가 없어(`render.test.tsx`와 같은 방식) 서버 렌더(`renderToStaticMarkup`)로 처음 그린 모양만 고정한다:
- * - 버튼 문구: 예약할 항목 수 N이 있으면 「N개 예약 등록하기」, 0이면 「예약 등록하기」(끄지 않는다)
+ * - 버튼 문구: 승인 대상 수 N이 있으면 「N건 승인하고 예약」, 0이면 「승인하고 예약」이고 꺼진다(승인됨 항목이 있으면 끄지 않는다)
  * - 요약창: 구역 순서와 문구, 연결 묶음은 한 덩어리, 경고, 시험 묶음 문장, 비어 있는 구역은 그리지 않는다
- * - 주 버튼: 「N개 예약 등록하기」 · 「실패로 닫기」 · 꺼짐(「지금 예약할 수 있는 항목이 없어요」), 진행형 문구
+ * - 주 버튼: 「N건 승인하고 예약」 · 「실패로 닫기」 · 꺼짐(「지금 예약할 수 있는 항목이 없어요」), 진행형 문구
  * - 불러오는 중·실패는 창 안 문장이고 주 버튼은 꺼진다
  * - JAM! 배지 구역(티켓 20261005_1607 ⑨-b): 「공개되면 바로 획득하는 유저」가 예약할 항목 구역 바로 뒤에 놓이고, 세는 중 · 줄 목록과 안내 · 실패가 구역 안 문장이다.
  *   구역이 어떤 상태여도 주 버튼은 미리 세기와 무관하다. 구역이 없으면(예약할 JAM! 배지가 없다) 그리지 않는다
@@ -18,7 +18,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { TooltipProvider } from '@/components/admin/ui/tooltip'
 import { AlertDialog } from '@/components/admin/ui/alert-dialog'
-import { badgePreviewLines, buildExecuteSummary, type BadgePreviewSection, type BadgePreviewView, type PrecheckView, type SummarySource } from '@/lib/admin/opsInbox/executeView'
+import { badgePreviewLines, buildExecuteSummary, narrowToChecked, pickExecuteIds, type BadgePreviewSection, type BadgePreviewView, type PrecheckView, type SummarySource } from '@/lib/admin/opsInbox/executeView'
 import { OpsExecuteBundle, OpsExecutePanel } from '../OpsExecuteBundle'
 
 const html = (node: ReactElement) => renderToStaticMarkup(<TooltipProvider>{node}</TooltipProvider>)
@@ -61,22 +61,29 @@ const panel = (summary: ReturnType<typeof buildExecuteSummary> | null, extra: Pa
   inDialog(<OpsExecutePanel summary={summary} onConfirm={noop} onCancel={noop} {...extra} />)
 
 describe('OpsExecuteBundle — 버튼', () => {
-  const props = { bundleId: 'bundle-1', items: [], isSample: false, onExecuted: noop, onConflict: noop }
+  const props = { bundleId: 'bundle-1', items: [], checkedReviewingIds: new Set<string>(), approvedCount: 0, isSample: false, onExecuted: noop, onConflict: noop }
 
-  it('예약할 항목이 N개면 「N개 예약 등록하기」다', () => {
-    const out = flat(<OpsExecuteBundle {...props} readyCount={3} />)
-    expect(out).toContain('>3개 예약 등록하기<')
+  it('승인 대상이 N건이면 「N건 승인하고 예약」이고 켜져 있다', () => {
+    const out = flat(<OpsExecuteBundle {...props} approvableCount={3} />)
+    expect(out).toContain('>3건 승인하고 예약<')
+    expect(isDisabled(buttonOf(out, '3건 승인하고 예약'))).toBe(false)
+    expect(out).not.toContain('승인할 항목을 골라 주세요')
   })
 
-  it('예약할 항목이 0개면 「예약 등록하기」이고, 눌러서 이유를 볼 수 있게 끄지 않는다', () => {
-    const out = flat(<OpsExecuteBundle {...props} readyCount={0} />)
-    expect(out).toContain('>예약 등록하기<')
-    expect(isDisabled(buttonOf(out, '예약 등록하기'))).toBe(false)
+  it('승인 대상이 0건이고 승인됨 항목도 없으면 「승인하고 예약」이 꺼지고 안내가 붙는다', () => {
+    const out = flat(<OpsExecuteBundle {...props} approvableCount={0} />)
+    expect(isDisabled(buttonOf(out, '승인하고 예약'))).toBe(true)
+    expect(out).toContain('승인할 항목을 골라 주세요')
+  })
+
+  it('승인 대상이 0건이어도 승인됨 항목이 있으면 켜져 있다(예약할 수 없는 이유를 요약창에서 보고 실패로 닫을 수 있다)', () => {
+    const out = flat(<OpsExecuteBundle {...props} approvableCount={0} approvedCount={2} />)
+    expect(isDisabled(buttonOf(out, '승인하고 예약'))).toBe(false)
   })
 
   it('요약창은 처음에 닫혀 있다(열 때 사전 점검 요청을 보낸다)', () => {
-    const out = flat(<OpsExecuteBundle {...props} readyCount={3} />)
-    expect(out).not.toContain('예약 등록 전에 확인해 주세요')
+    const out = flat(<OpsExecuteBundle {...props} approvableCount={3} />)
+    expect(out).not.toContain('승인하고 예약하기 전에 확인해 주세요')
     expect(out).not.toContain('role="alertdialog"')
   })
 })
@@ -95,9 +102,9 @@ describe('OpsExecutePanel — 구역', () => {
     false
   )
 
-  it('제목은 「예약 등록 전에 확인해 주세요」이고 보조 버튼은 「닫기」다', () => {
+  it('제목은 「승인하고 예약하기 전에 확인해 주세요」이고 보조 버튼은 「닫기」다', () => {
     const out = panel(full)
-    expect(out).toContain('예약 등록 전에 확인해 주세요')
+    expect(out).toContain('승인하고 예약하기 전에 확인해 주세요')
     expect(out).toContain('>닫기<')
     expect(out).not.toContain('>취소<')
   })
@@ -121,11 +128,11 @@ describe('OpsExecutePanel — 구역', () => {
     expect(out.indexOf('a2 경험')).toBeLessThan(out.indexOf('a1 경험'))
   })
 
-  it('기다리는 항목에는 사전 점검 문장, 예약할 수 없는 항목에는 이유, 실패로 닫을 항목에는 이유와 「예약 등록하면 실패로 닫혀요」가 붙는다', () => {
+  it('기다리는 항목에는 사전 점검 문장, 예약할 수 없는 항목에는 이유, 실패로 닫을 항목에는 이유와 「실패로 닫혀요」가 붙는다', () => {
     const out = panel(full)
     expect(out).toContain('연결된 항목이 아직 결정 전이에요')
     expect(out).toContain('공개 시각이 이미 지났어요 · 아직 연결하지 않은 종류예요')
-    expect(out).toContain('연결된 미션이 반려됐어요. 예약 등록하면 실패로 닫혀요')
+    expect(out).toContain('연결된 미션이 반려됐어요. 실패로 닫혀요')
   })
 
   it('경고는 warning 상자로 그리고 가리키는 항목 이름을 함께 보인다', () => {
@@ -177,9 +184,9 @@ describe('OpsExecutePanel — 구역', () => {
 })
 
 describe('OpsExecutePanel — 주 버튼', () => {
-  it('예약할 항목이 있으면 「N개 예약 등록하기」이고 켜져 있다(실패로 닫을 항목이 함께 있어도)', () => {
+  it('예약할 항목이 있으면 「N건 승인하고 예약」이고 켜져 있다(실패로 닫을 항목이 함께 있어도)', () => {
     const out = panel(buildExecuteSummary(precheck({ ready: ['a1', 'a2'], failClose: [{ id: 'a5', reason: '이유' }] }), ITEMS, false))
-    const button = buttonOf(out, '2개 예약 등록하기')
+    const button = buttonOf(out, '2건 승인하고 예약')
     expect(button).not.toBe('')
     expect(isDisabled(button)).toBe(false)
     expect(out).not.toContain('지금 예약할 수 있는 항목이 없어요')
@@ -190,13 +197,13 @@ describe('OpsExecutePanel — 주 버튼', () => {
     const button = buttonOf(out, '실패로 닫기')
     expect(button).not.toBe('')
     expect(isDisabled(button)).toBe(false)
-    expect(out).not.toContain('개 예약 등록하기')
+    expect(out).not.toContain('건 승인하고 예약')
     expect(out).not.toContain('지금 예약할 수 있는 항목이 없어요')
   })
 
   it('예약할 항목도 실패로 닫을 항목도 없으면 주 버튼이 꺼지고 「지금 예약할 수 있는 항목이 없어요」가 보인다(기다리는·못 하는 항목 이유는 그대로 보인다)', () => {
     const out = panel(buildExecuteSummary(precheck({ waiting: ['a3'], blocked: [{ id: 'a4', reasons: ['공개 시각이 없어요'] }] }), ITEMS, false))
-    expect(isDisabled(buttonOf(out, '예약 등록하기'))).toBe(true)
+    expect(isDisabled(buttonOf(out, '승인하고 예약'))).toBe(true)
     expect(out).toContain('지금 예약할 수 있는 항목이 없어요')
     expect(out).toContain('기다리는 항목 1개')
     expect(out).toContain('공개 시각이 없어요')
@@ -205,7 +212,7 @@ describe('OpsExecutePanel — 주 버튼', () => {
   it('처리 중에는 진행형 문구이고 두 버튼이 모두 꺼진다', () => {
     const schedule = buildExecuteSummary(precheck({ ready: ['a1'] }), ITEMS, false)
     const running = panel(schedule, { pending: true })
-    expect(isDisabled(buttonOf(running, '예약 등록하는 중'))).toBe(true)
+    expect(isDisabled(buttonOf(running, '승인하고 예약하는 중'))).toBe(true)
     expect(isDisabled(buttonOf(running, '닫기'))).toBe(true)
     const closing = panel(buildExecuteSummary(precheck({ failClose: [{ id: 'a5', reason: '이유' }] }), ITEMS, false), { pending: true })
     expect(isDisabled(buttonOf(closing, '실패로 닫는 중'))).toBe(true)
@@ -218,7 +225,7 @@ describe('OpsExecutePanel — 주 버튼', () => {
     expect(out).toContain('role="alert"')
     expect(out).toContain('예약 등록하지 못했어요. 잠시 뒤 다시 눌러 주세요.')
     expect(out).toContain('예약할 항목 1개')
-    expect(isDisabled(buttonOf(out, '1개 예약 등록하기'))).toBe(false)
+    expect(isDisabled(buttonOf(out, '1건 승인하고 예약'))).toBe(false)
   })
 })
 
@@ -226,8 +233,8 @@ describe('OpsExecutePanel — 불러오는 중·점검 실패', () => {
   it('불러오는 중에는 안내 글만 보이고 주 버튼은 꺼져 있다', () => {
     const out = panel(null, { loading: true })
     expect(out).toContain('사전 점검하는 중이에요')
-    expect(out).toContain('예약 등록 전에 확인해 주세요')
-    expect(isDisabled(buttonOf(out, '예약 등록하기'))).toBe(true)
+    expect(out).toContain('승인하고 예약하기 전에 확인해 주세요')
+    expect(isDisabled(buttonOf(out, '승인하고 예약'))).toBe(true)
     expect(isDisabled(buttonOf(out, '닫기'))).toBe(false)
   })
 
@@ -235,7 +242,91 @@ describe('OpsExecutePanel — 불러오는 중·점검 실패', () => {
     const out = panel(null, { error: '사전 점검을 하지 못했어요. 잠시 뒤 다시 눌러 주세요.' })
     expect(out).toContain('사전 점검을 하지 못했어요. 잠시 뒤 다시 눌러 주세요.')
     expect(out).not.toContain('사전 점검하는 중이에요')
-    expect(isDisabled(buttonOf(out, '예약 등록하기'))).toBe(true)
+    expect(isDisabled(buttonOf(out, '승인하고 예약'))).toBe(true)
+  })
+})
+
+describe('OpsExecutePanel — 승인할 항목 (티켓 20261026_2031)', () => {
+  const reviewing = buildExecuteSummary(
+    precheck({
+      ready: ['a1', 'a2'],
+      failClose: [{ id: 'a5', reason: '연결된 미션이 반려됐어요' }, { id: 'a6', reason: '연결된 카드가 실패했어요' }],
+      approving: ['a1', 'a5'],
+    }),
+    ITEMS,
+    false
+  )
+
+  it('검토중 항목은 「승인할 항목」 구역에 따로 보이고 예약할 항목 구역 앞에 놓인다', () => {
+    const out = panel(reviewing)
+    expect(out).toContain('승인할 항목 2개')
+    expect(out.indexOf('승인할 항목 2개')).toBeLessThan(out.indexOf('예약할 항목 2개'))
+    expect(out).toContain('승인은 되돌릴 수 없어요')
+  })
+
+  it('실패로 닫을 검토중 항목은 승인한 뒤 닫힌다는 문장이 붙고, 이미 승인된 항목은 「실패로 닫혀요」만 붙는다', () => {
+    const out = panel(reviewing)
+    expect(out).toContain('연결된 미션이 반려됐어요. 검토중이라 승인한 뒤 실패로 닫혀요')
+    expect(out).toContain('연결된 카드가 실패했어요. 실패로 닫혀요')
+  })
+
+  it('승인할 항목이 없으면 구역과 되돌릴 수 없다는 문장을 그리지 않는다', () => {
+    const out = panel(buildExecuteSummary(precheck({ ready: ['a1'] }), ITEMS, false))
+    expect(out).not.toContain('승인할 항목')
+    expect(out).not.toContain('승인은 되돌릴 수 없어요')
+  })
+})
+
+describe('narrowToChecked·pickExecuteIds — 체크한 항목만 대상', () => {
+  // a1·a2 검토중(a2는 체크하지 않음), a3 이미 승인됨, a4·a5는 연결 묶음(a5가 검토중이고 체크하지 않음)
+  const base = buildExecuteSummary(
+    precheck({
+      ready: ['a1', 'a2', 'a3', 'a4', 'a5'],
+      groups: [{ executeIds: ['a4', 'a5'] }],
+      approving: ['a1', 'a2', 'a5'],
+    }),
+    ITEMS,
+    false
+  )
+  const checked = new Set(['a1'])
+
+  it('이미 승인된 항목과 체크한 검토중 항목만 itemIds에 담고, 체크하지 않은 항목이 든 묶음은 묶음째 뺀다', () => {
+    expect(pickExecuteIds(base, checked).sort()).toEqual(['a1', 'a3'])
+  })
+
+  it('요약에서도 체크하지 않은 항목이 빠지고, 빠진 묶음은 기다리는 항목으로 간다. 건수와 문구가 맞는다', () => {
+    const narrowed = narrowToChecked(base, checked)
+    expect(narrowed.requestIds.sort()).toEqual(['a1', 'a3'])
+    expect(narrowed.readyCount).toBe(2)
+    expect(narrowed.confirmLabel).toBe('2건 승인하고 예약')
+    expect(narrowed.approving.map((item) => item.id)).toEqual(['a1'])
+    expect(narrowed.waiting.map((item) => item.id).sort()).toEqual(['a4', 'a5'])
+    const out = panel(narrowed)
+    expect(out).toContain('예약할 항목 2개')
+    expect(out).toContain('승인할 항목 1개')
+    expect(out).not.toContain('a2 경험')
+  })
+
+  it('예약할 항목이 하나도 남지 않으면 실패로 닫을 항목이 요청이 되고, 그것도 없으면 꺼진다', () => {
+    const closing = buildExecuteSummary(precheck({ ready: ['a2'], failClose: [{ id: 'a5', reason: '이유' }], approving: ['a2', 'a5'] }), ITEMS, false)
+    expect(pickExecuteIds(closing, new Set())).toEqual(['a5'])
+    expect(narrowToChecked(closing, new Set())).toMatchObject({ action: 'close', confirmLabel: '실패로 닫기', requestIds: ['a5'] })
+    const nothing = buildExecuteSummary(precheck({ ready: ['a2'], approving: ['a2'] }), ITEMS, false)
+    expect(pickExecuteIds(nothing, new Set())).toEqual([])
+    expect(narrowToChecked(nothing, new Set())).toMatchObject({ action: 'none', requestIds: [] })
+  })
+
+  it('사전 점검 실패 항목은 확인 전에 이유와 함께 보이고 itemIds에는 들어가지 않는다', () => {
+    const summary = buildExecuteSummary(
+      precheck({ ready: ['a1'], blocked: [{ id: 'a4', reasons: ['공개 시각이 이미 지났어요'] }], approving: ['a1'] }),
+      ITEMS,
+      false
+    )
+    const narrowed = narrowToChecked(summary, new Set(['a1']))
+    const out = panel(narrowed)
+    expect(out).toContain('예약할 수 없는 항목 1개')
+    expect(out).toContain('공개 시각이 이미 지났어요')
+    expect(narrowed.requestIds).toEqual(['a1'])
   })
 })
 
@@ -268,7 +359,7 @@ describe('OpsExecutePanel — JAM! 배지 구역 (티켓 20261005_1607)', () => 
     const out = panel(ready, { badgePreview: { status: 'loading' } })
     expect(out).toContain('공개되면 바로 획득하는 유저')
     expect(out).toContain('미리 세는 중이에요')
-    const button = buttonOf(out, '3개 예약 등록하기')
+    const button = buttonOf(out, '3건 승인하고 예약')
     expect(button).not.toBe('')
     expect(isDisabled(button)).toBe(false)
     expect(isDisabled(buttonOf(out, '닫기'))).toBe(false)
@@ -281,7 +372,7 @@ describe('OpsExecutePanel — JAM! 배지 구역 (티켓 20261005_1607)', () => 
     expect(out).toContain('JAM! 배지 · 10/11(일) 09:00 시작 · 믹스 마스터')
     expect(out).toContain('컬렉션을 완성하면 획득해요')
     expect(out).not.toContain('미리 세는 중이에요')
-    expect(isDisabled(buttonOf(out, '3개 예약 등록하기'))).toBe(false)
+    expect(isDisabled(buttonOf(out, '3건 승인하고 예약'))).toBe(false)
   })
 
   it('표본으로 추정했거나 일부 유저를 세지 못했으면 안내가 구역 안에 붙는다', () => {
@@ -299,7 +390,7 @@ describe('OpsExecutePanel — JAM! 배지 구역 (티켓 20261005_1607)', () => 
     expect(out).toContain('예약할 항목 3개')
     expect(out).toContain('기다리는 항목 1개')
     expect(out).not.toContain('role="alert"')
-    expect(isDisabled(buttonOf(out, '3개 예약 등록하기'))).toBe(false)
+    expect(isDisabled(buttonOf(out, '3건 승인하고 예약'))).toBe(false)
   })
 
   it('구역은 예약할 항목 구역 바로 뒤, 기다리는 항목 구역 앞에 놓인다', () => {
@@ -320,12 +411,12 @@ describe('OpsExecutePanel — JAM! 배지 구역 (티켓 20261005_1607)', () => 
   it('예약할 항목이 없어 주 버튼이 꺼진 요약에서도 구역 상태와 무관하게 주 버튼 판정은 그대로다', () => {
     const none = buildExecuteSummary(precheck({ waiting: ['a3'] }), items, false)
     const out = panel(none, { badgePreview: { status: 'loading' } })
-    expect(isDisabled(buttonOf(out, '예약 등록하기'))).toBe(true)
+    expect(isDisabled(buttonOf(out, '승인하고 예약'))).toBe(true)
   })
 
   it('처리 중에는 구역이 어떤 상태여도 두 버튼이 꺼진다(미리 세기가 아니라 실행 때문이다)', () => {
     const out = panel(ready, { badgePreview: done(), pending: true })
-    expect(isDisabled(buttonOf(out, '예약 등록하는 중'))).toBe(true)
+    expect(isDisabled(buttonOf(out, '승인하고 예약하는 중'))).toBe(true)
   })
 
   it('항목 이름은 HTML로 해석되지 않는다', () => {
@@ -386,9 +477,25 @@ describe('소스 계약 — 예약 등록 화면 (티켓 20261002_1648)', () => 
     expect(offenders).toEqual([])
   })
 
-  it('승인 확인창은 「예약은 승인한 뒤 [예약 등록하기]에서 해요.」로 안내한다', () => {
-    const code = readFileSync(join(SRC, 'components/admin/ops/OpsItemActions.tsx'), 'utf8')
-    expect(code).toContain('예약은 승인한 뒤 [예약 등록하기]에서 해요.')
+  it('화면 소스(주석 밖)에 「예약 등록하기」·「승인하기」·「N개 승인하기」 문구가 없다(티켓 20261026_2031)', () => {
+    const offenders = screenFiles
+      .filter((file) => /예약 등록하기|승인하기|개 승인/.test(stripComments(readFileSync(file, 'utf8'))))
+      .map((file) => file.slice(SRC.length))
+    expect(offenders).toEqual([])
+  })
+
+  it('일괄 승인 컴포넌트는 화면에서 쓰이지 않고 파일도 없다', () => {
+    expect(existsSync(join(SRC, 'components/admin/ops/OpsBulkApprove.tsx'))).toBe(false)
+    const offenders = screenFiles.filter((file) => /OpsBulkApprove/.test(stripComments(readFileSync(file, 'utf8')))).map((file) => file.slice(SRC.length))
+    expect(offenders).toEqual([])
+  })
+
+  it('요약창은 `approve: true`로 사전 점검하고, 확인하면 요약이 고른 itemIds를 `approve: true`로 보낸다', () => {
+    const code = stripComments(readFileSync(join(SRC, 'components/admin/ops/OpsExecuteBundle.tsx'), 'utf8'))
+    expect(code).toContain('postExecute(bundleId, { dryRun: true, approve: true })')
+    expect(code).toContain('postExecute(bundleId, { itemIds: summary.requestIds, approve: true })')
+    const client = stripComments(readFileSync(join(SRC, 'components/admin/ops/executeClient.ts'), 'utf8'))
+    expect(client).toContain('postExecute(bundleId, { badgePreview: true, approve: true })')
   })
 
   it('화면은 레지스트리·카드 핸들러·사전 점검·실행 모듈과 서버 조회 모듈을 값으로 가져오지 않는다(사전 점검은 서버 로더와 dryRun API로만)', () => {
@@ -403,7 +510,7 @@ describe('소스 계약 — 예약 등록 화면 (티켓 20261002_1648)', () => 
   it('요약창은 예약할 JAM! 배지가 있을 때만 두 번째 요청을 보내고, 창을 닫았다 다시 열면 앞선 응답을 버린다(티켓 20261005_1607)', () => {
     // 브라우저 흐름은 단위 테스트로 열 수 없어(jsdom 없음) 소스의 연결 지점을 고정한다. 실제 흐름은 PC 세션에서 본다.
     const code = stripComments(readFileSync(join(SRC, 'components/admin/ops/OpsExecuteBundle.tsx'), 'utf8'))
-    expect(code).toMatch(/if \(readyJamBadgeIds\(precheck, items\)\.length > 0\) void loadBadgePreview\(run\)/)
+    expect(code).toMatch(/if \(readyJamBadgeIds\(\{ \.\.\.precheck, ready: \[\.\.\.scheduleIds\] \}, items\)\.length > 0\) void loadBadgePreview\(run, scheduleIds\)/)
     expect(code).toMatch(/if \(run === precheckRun\.current\) setBadgePreview\(section\)/)
     expect(code).toMatch(/setBadgePreview\(null\)/)
     // 주 버튼 판정(`confirmDisabled`)은 배지 구역 상태를 읽지 않는다.

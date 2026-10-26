@@ -17,8 +17,7 @@ import {
   type CheckOverrides,
 } from '@/lib/admin/opsInbox/selection'
 import type { OpsBundleExecution, OpsItemRecord } from '@/lib/admin/opsInbox/query'
-import { OpsBulkApprove, bulkResultMessage } from './OpsBulkApprove'
-import { OpsBundleWorkspace, type OpsBundleWorkspaceProps, type OpsWorkspaceContext } from './OpsBundleWorkspace'
+import { OpsBundleWorkspace, type OpsBundleWorkspaceProps } from './OpsBundleWorkspace'
 import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsImageProduction } from './OpsImageProduction'
@@ -31,10 +30,10 @@ import { useItemImageProduction } from './useItemImageProduction'
  * 결정 슬롯을 채운 기획 상세 (티켓 20260930_1818). 기획 상세(S3) 페이지가 셸(`OpsBundleWorkspace`) 대신 이 래퍼를 그린다.
  *
  * 셸의 슬롯은 함수라 서버 컴포넌트에서 넘길 수 없다 — 그래서 client 래퍼가 슬롯 갈래를 채운다.
- * - `barAction`: 「N개 승인하기」와 요약 창 (`OpsBulkApprove`), 그 오른쪽에 「N개 예약 등록하기」와 요약창 (`OpsExecuteBundle`, 승인됨 항목이 있을 때만. 티켓 20261002_1648)
- * - `rowLead`·`listHeader`: 행 체크박스와 「전체 선택 · 결정할 것 12개 중 11개 선택」
+ * - `barAction`: 「N건 승인하고 예약」과 요약창 (`OpsExecuteBundle`, 티켓 20261026_2031). 승인과 예약을 한 버튼이 한다. 승인할 검토중 항목이나 승인됨 항목이 있을 때 나온다
+ * - `rowLead`·`listHeader`: 행 체크박스와 「전체 선택 · 결정할 것 12개 중 11개 선택」. 패턴 제안은 예약 대상이 아니라 체크박스가 없다(항목 서랍에서 「패턴 사전에 넣기」로 처리한다)
  * - `detailFooter`: 항목 상태별 결정 줄(`OpsItemFooter`, 티켓 20261006_1537 ③-b가 `OpsItemActions`·`OpsCancelItem`·`OpsEndItem` 분기와 결과 처리를 일정표 서랍과 함께 쓰도록 옮겼다):
- *   「예약됨」 항목이면 안내와 [공개 전 취소하기] (티켓 20261002_1649), 「게재중」이고 지금 종료가 있는 종류면 안내와 [지금 종료하기] (티켓 20261006_1038 ⑪-b), 그 밖에는 반려·수정·승인
+ *   「예약됨」 항목이면 안내와 [공개 전 취소하기] (티켓 20261002_1649), 「게재중」이고 지금 종료가 있는 종류면 안내와 [지금 종료하기] (티켓 20261006_1038 ⑪-b), 그 밖에는 반려·수정(패턴 제안은 「패턴 사전에 넣기」도)
  * - `detailEdit`: 직접 수정 양식 (`OpsItemEditForm`)
  * - `detailHistoryAction`: 「마지막 수정 되돌리기」(수정 내역이 있는 검토중 항목만, 확인창 없음)
  *
@@ -42,6 +41,8 @@ import { useItemImageProduction } from './useItemImageProduction'
  * 바뀌면 새 항목 기준의 기본 체크(검토중이면서 형식 오류 없음)로 저절로 돌아간다. 결정이 끝나면 토스트를 띄우고 `router.refresh()`로
  * 서버 화면을 다시 읽고, 항목 하나를 결정했으면 다음 결정 전 항목을 선택한다.
  */
+
+const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 type OpsDecisionWorkspaceProps = Pick<
   OpsBundleWorkspaceProps,
@@ -82,30 +83,18 @@ export function OpsDecisionWorkspace({
   previewNames,
 }: OpsDecisionWorkspaceProps) {
   const [overrides, setOverrides] = useState<CheckOverrides>({})
-  const { decidable, checked, excluded } = useMemo(() => splitByChecked(items, overrides), [items, overrides])
+  const { decidable: reviewing, checked: reviewingChecked } = useMemo(() => splitByChecked(items, overrides), [items, overrides])
+  // 패턴 제안은 승인 즉시 종료라 예약 대상이 아니다. 체크·건수·요약창에서 뺀다.
+  const decidable = useMemo(() => reviewing.filter((item) => item.kind !== PATTERN_PROPOSAL_KIND), [reviewing])
+  const checked = useMemo(() => reviewingChecked.filter((item) => item.kind !== PATTERN_PROPOSAL_KIND), [reviewingChecked])
+  const checkedIds = useMemo(() => new Set(checked.map((item) => item.id)), [checked])
   const allChecked = decidable.length > 0 && checked.length === decidable.length
 
   const handlers = useOpsItemResultHandlers({ bundleId })
   const { refresh } = handlers
   const imageProduction = useItemImageProduction({ bundleId, isSample: isSample ?? false, onDone: refresh })
 
-  const handleBulkApproved = (ctx: OpsWorkspaceContext, result: { approved: number; skipped: number; patternProposals: number }) => {
-    const message = bulkResultMessage(result.approved, result.skipped, result.patternProposals)
-    if (result.skipped > 0) toast.warning(message)
-    else toast.success(message)
-    // 보고 있던 항목이 방금 승인됐으면 남은 결정 전 항목으로 옮긴다.
-    const approvedIds = new Set(checked.map((item) => item.id))
-    if (ctx.selectedItem && approvedIds.has(ctx.selectedItem.id)) {
-      const next = nextDecidableItemId(
-        items.filter((item) => !approvedIds.has(item.id)),
-        ctx.selectedItem.id
-      )
-      if (next) ctx.selectItem(next)
-    }
-    refresh()
-  }
-
-  /** 예약 등록이 끝났을 때. 결과 문장은 `executeToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
+  /** 승인하고 예약이 끝났을 때. 결과 문장은 `executeToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
   const handleExecuted = (data: Record<string, unknown>) => {
     const toastResult = executeToast(readExecuteResult(data))
     if (toastResult.level === 'warning') toast.warning(toastResult.message)
@@ -136,38 +125,22 @@ export function OpsDecisionWorkspace({
           <OpsImageProduction item={item} items={items} isSample={isSample ?? false} production={imageProduction} />
         </>
       )}
-      barAction={(ctx) => {
-        const bulkApprove =
-          decidable.length > 0 ? (
-            <OpsBulkApprove
-              bundleId={bundleId}
-              checked={checked}
-              excluded={excluded}
-              onApproved={(result) => handleBulkApproved(ctx, result)}
-              onConflict={refresh}
-            />
-          ) : null
-        const executeBundle =
-          execution.approvedCount > 0 ? (
-            <OpsExecuteBundle
-              bundleId={bundleId}
-              items={items}
-              readyCount={execution.readyCount}
-              isSample={isSample ?? false}
-              onExecuted={handleExecuted}
-              onConflict={refresh}
-            />
-          ) : null
-        // 일괄 승인 버튼이 함께 있으면 예약 등록 버튼은 그 오른쪽이다. 둘 다 없으면 자리를 잡지 않는다.
-        return bulkApprove || executeBundle ? (
-          <div className="flex items-start gap-2">
-            {bulkApprove}
-            {executeBundle}
-          </div>
+      barAction={() =>
+        decidable.length > 0 || execution.approvedCount > 0 ? (
+          <OpsExecuteBundle
+            bundleId={bundleId}
+            items={items}
+            checkedReviewingIds={checkedIds}
+            approvableCount={checked.length + execution.readyCount}
+            approvedCount={execution.approvedCount}
+            isSample={isSample ?? false}
+            onExecuted={handleExecuted}
+            onConflict={refresh}
+          />
         ) : null
-      }}
+      }
       rowLead={(item) =>
-        isDecidable(item) ? (
+        isDecidable(item) && item.kind !== PATTERN_PROPOSAL_KIND ? (
           <label className="flex size-10 cursor-pointer items-center justify-center">
             <Checkbox
               checked={isItemChecked(item, overrides)}

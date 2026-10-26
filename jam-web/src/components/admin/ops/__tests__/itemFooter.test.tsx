@@ -68,11 +68,17 @@ function footer(item: OpsItemRecord, extra: Partial<Parameters<typeof OpsItemFoo
 }
 
 describe('OpsItemFooter — 상태별 분기', () => {
-  it('검토중이면 반려하기·수정하기·승인하기가 나온다', () => {
+  it('검토중이면 반려하기·수정하기가 나오고 개별 승인 버튼은 없다', () => {
     const out = footer(makeItem({ status: 'reviewing' }))
     expect(out).toContain('반려하기')
     expect(out).toContain('수정하기')
-    expect(out).toContain('승인하기')
+    expect(out).not.toContain('승인하기')
+  })
+
+  it('검토중 패턴 제안이면 「패턴 사전에 넣기」가 나온다', () => {
+    const out = footer(makeItem({ status: 'reviewing', kind: 'pattern_proposal' }))
+    expect(out).toContain('패턴 사전에 넣기')
+    expect(out).not.toContain('승인하기')
   })
 
   it('예약됨이면 공개 전 취소하기만 나오고 승인·반려는 없다', () => {
@@ -101,7 +107,7 @@ describe('OpsItemFooter — 상태별 분기', () => {
     expect(approved).toContain('안내 글')
     expect(approved).not.toContain('승인한 항목은 여기서 고칠 수 없어요')
     const reviewing = footer(makeItem({ status: 'reviewing' }), { statusNotice: notice })
-    expect(reviewing).toContain('승인하기')
+    expect(reviewing).toContain('반려하기')
     expect(reviewing).not.toContain('안내 글')
   })
 

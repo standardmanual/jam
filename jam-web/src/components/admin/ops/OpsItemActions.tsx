@@ -16,12 +16,14 @@ import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
 /**
  * 항목 결정 줄 (티켓 20260930_1818, 채원 화면 설계 「행동 영역」). 상세 카드 아래 고정 줄 `detailFooter` 슬롯을 채운다.
  *
- * `[반려하기](테두리형·붉은 글) ··· [수정하기] [승인하기]`는 **검토중 항목에만** 보인다. 그 밖의 상태는 버튼 자리에 안내 글만 둔다.
+ * `[반려하기](테두리형·붉은 글) ··· [수정하기] [패턴 사전에 넣기]`는 **검토중 항목에만** 보인다. 그 밖의 상태는 버튼 자리에 안내 글만 둔다.
+ * 개별 승인 버튼은 **패턴 제안에만** 있고 이름은 「패턴 사전에 넣기」다(승인 즉시 종료라 예약 대상이 아니다). 그 밖의 종류는 승인과 예약을
+ * 단계 표시줄의 [N건 승인하고 예약]이 한 번에 하므로 개별 승인 버튼이 없다(티켓 20261026_2031).
  * 승인·반려는 확인창 뒤에만 실행된다. 실패는 창 안 인라인이고 창은 유지한다. 붉은 면은 반려 창의 확인 버튼 하나뿐이다.
- * 승인은 「승인됨」에서 멈춘다 — 예약은 승인한 뒤 단계 표시줄의 [예약 등록하기]에서 하므로 창에 그 사실을 알린다(상위 티켓 1455 가정 1, 20261002_1648).
  */
 
 const ERROR_LIST_SHOWN = 5
+const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 /** 검토중이 아닌 항목의 버튼 자리 안내 글. */
 export function decisionGuidance(status: string): string {
@@ -141,6 +143,7 @@ export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict }: O
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const editing = ctx.draft?.itemId === item.id
+  const isPatternProposal = item.kind === PATTERN_PROPOSAL_KIND
 
   if (item.status !== 'reviewing') {
     return <p className="text-sm text-muted-foreground">{decisionGuidance(item.status)}</p>
@@ -188,27 +191,28 @@ export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict }: O
           >
             수정하기
           </Button>
-          <Button type="button" disabled={editing} onClick={() => open('approve')}>
-            승인하기
-          </Button>
+          {isPatternProposal && (
+            <Button type="button" disabled={editing} onClick={() => open('approve')}>
+              패턴 사전에 넣기
+            </Button>
+          )}
         </div>
       </div>
       {editing && <p className="mt-2 text-xs text-muted-foreground">수정 중이에요. 저장하거나 취소한 뒤 결정해 주세요</p>}
 
-      {dialog === 'approve' && (
+      {dialog === 'approve' && isPatternProposal && (
         <OpsConfirmDialog
           open
           onOpenChange={(next) => !next && setDialog(null)}
-          title="이 항목을 승인할까요?"
+          title="이 패턴 제안을 사전에 넣을까요?"
           description={
             <div className="space-y-2">
               {summary}
-              <p>승인하면 「승인됨」으로 바뀌고 기록이 남아요. 승인은 되돌릴 수 없어요.</p>
-              <p>예약은 승인한 뒤 [예약 등록하기]에서 해요.</p>
+              <p className="break-keep wrap-break-word">패턴 사전에 새 패턴이 들어가고 항목은 바로 끝나요. 기록이 남고 되돌릴 수 없어요.</p>
             </div>
           }
-          confirmLabel="승인하기"
-          pendingLabel="승인하는 중"
+          confirmLabel="패턴 사전에 넣기"
+          pendingLabel="넣는 중"
           pending={pending}
           error={error}
           onConfirm={() => run('approve', { action: 'approve', itemId: item.id })}
