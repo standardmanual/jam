@@ -266,6 +266,8 @@ export const ko = {
     // Strava 동기화 상태 카드
     syncButton: '동기화',
     syncDone: '동기화 완료',
+    /** 이번 동기화로 받은 잼의 합계 한 줄(티켓 20261025_2050). `{n}`은 toLocaleString('ko-KR') 문자열. 합계가 0이면 이 줄을 그리지 않는다 */
+    syncJamEarned: '이번에 잼 {n}만큼 받았어요',
     syncFailed: 'Strava 동기화에 실패했어요. 잠시 후 다시 시도해 주세요.',
 
     // 유저 검색
@@ -457,6 +459,8 @@ export const ko = {
     moreLabel: '배지 전부 보기',
     /** 오버레이가 열릴 때 스크린리더에 알리는 획득 개수 */
     opened: '배지 {count}개를 획득했어요',
+    /** 헤더에 요약 줄이 함께 있을 때 라이브 리전이 읽는 문구. 개수 뒤에 요약을 잇는다(티켓 20261025_2050) */
+    openedWithSummary: '배지 {count}개를 획득했어요. {summary}',
     /** 최초 연동 직후 획득 배지를 되읽는 동안의 대기 안내 */
     loading: '방금 획득한 배지를 확인하고 있어요',
   },

@@ -98,6 +98,12 @@ interface Props {
    * 지정하지 않으면 기존 화면 그대로다(헤더 슬롯 없음).
    */
   resultMessage?: string
+  /**
+   * 카드 위에 얹는 요약 한 줄(티켓 20261025_2050). 동기화 결과의 «이번에 잼 {n}만큼 받았어요»처럼 배지 개수 공지를 대신하지 않고 보태는 문장이다.
+   * `resultMessage`와 같은 헤더 패널에 그린다. 라이브 리전은 «배지 {count}개를 획득했어요. {요약}» 순서로 읽는다.
+   * `resultMessage`도 함께 주면 `resultMessage`가 이긴다(요약은 그리지도 읽지도 않는다). 지정하지 않으면 기존 화면 그대로다.
+   */
+  summaryMessage?: string
 }
 
 /** 캐러셀 오버레이(zIndex 60)와 같은 층에 두는 대기 화면 */
@@ -115,6 +121,7 @@ export default function BadgeRevealOverlay({
   onClose,
   emptyMessage,
   resultMessage,
+  summaryMessage,
 }: Props) {
   const router = useRouter()
   // 항목 배열의 정체성을 유지한다 — 잠긴 개체를 가린 문구로 바꾸는 변환이 렌더마다 새 배열을 만들지 않게 한다.
@@ -143,8 +150,12 @@ export default function BadgeRevealOverlay({
      중에 파생시킨다(이미 떠 있는 노드의 내용이 바뀌는 것이므로 별도 커밋이 필요 없다). */
   const revealing = open && !loading
   const cardCount = items.length + moreCount
-  const announcement =
-    revealing && cardCount > 0 ? (resultMessage ?? t(d.badgeReveal.opened, { count: cardCount })) : ''
+  const countAnnouncement = summaryMessage
+    ? t(d.badgeReveal.openedWithSummary, { count: cardCount, summary: summaryMessage })
+    : t(d.badgeReveal.opened, { count: cardCount })
+  const announcement = revealing && cardCount > 0 ? (resultMessage ?? countAnnouncement) : ''
+  // 헤더 패널은 resultMessage가 쓰는 마크업 하나를 같이 쓴다
+  const headerMessage = resultMessage ?? summaryMessage
   const showEmptyState = revealing && cardCount === 0 && Boolean(emptyMessage)
 
   function handleMoreClick() {
@@ -222,7 +233,7 @@ export default function BadgeRevealOverlay({
         earnCountMessage={(n: number) => t(d.badges.earnCountAria, { count: n })}
         style={COLUMN_STYLE}
         header={
-          resultMessage ? (
+          headerMessage ? (
             // 흰 글자를 --backdrop 위에 직접 놓으면 크림 바탕 위에서 대비가 모자라 --surface 패널에 올린다(보류 고르기 헤더와 같은 방식).
             <div
               style={{
@@ -236,7 +247,7 @@ export default function BadgeRevealOverlay({
                 className="m-0 break-keep wrap-break-word text-balance"
                 style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: 700 }}
               >
-                {resultMessage}
+                {headerMessage}
               </p>
             </div>
           ) : undefined
