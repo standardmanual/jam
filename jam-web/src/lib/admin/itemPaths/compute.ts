@@ -318,6 +318,7 @@ export function computeItemPaths(input: ComputeItemPathsInput): ComputeItemPaths
     results.push({
       itemId: item.id,
       collectionId: collection.id,
+      rarity: item.rarity,
       status: classifyItem({ drop, mix, mission, syncCapsule, tierUp }),
       drop,
       mix,

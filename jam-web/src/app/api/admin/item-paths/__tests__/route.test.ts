@@ -250,7 +250,7 @@ describe('GET /api/admin/item-paths — 인증', () => {
 
     for (const item of items) {
       expect(Object.keys(item).sort()).toEqual(
-        ['collectionId', 'drop', 'itemId', 'lock', 'mission', 'mix', 'status', 'syncCapsule', 'tierUp'].sort(),
+        ['collectionId', 'drop', 'itemId', 'lock', 'mission', 'mix', 'rarity', 'status', 'syncCapsule', 'tierUp'].sort(),
       )
     }
     expect(byId.a).toMatchObject({

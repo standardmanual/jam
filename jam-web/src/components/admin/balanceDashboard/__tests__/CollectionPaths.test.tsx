@@ -18,6 +18,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { computeItemPaths } from '@/lib/admin/itemPaths/compute'
+import { RARITY_LABEL } from '@/lib/rarity'
 import { buildCollectionPathViews, pickCollectionPage, type CollectionPathView, type PathNames } from '@/lib/admin/itemPaths/pathView'
 import {
   ITEM_PATH_REASONS,
@@ -90,6 +91,31 @@ const render = (views: CollectionPathView[], pageInfo = { page: 1, totalPages: 1
   renderToStaticMarkup(<CollectionPaths views={views} pageInfo={pageInfo} generatedAt={NOW.toISOString()} />).replace(/<!-- -->/g, '')
 
 const textOf = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+
+describe('CollectionPaths — 같은 이름의 아이템 배지는 등급으로 구분된다', () => {
+  // 막힘이 있는 컬렉션은 기본으로 펼쳐지므로(닫힌 아코디언은 내용을 그리지 않는다) 끝난 컬렉션으로 아이템을 모두 막힘으로 둔다
+  const sameNameViews = viewsOf(
+    {
+      collections: [collection({ valid_until: PAST })],
+      items: [
+        item({ id: 'r1', rarity: 'common' }),
+        item({ id: 'r2', rarity: 'rare' }),
+        item({ id: 'r3', rarity: 'epic' }),
+        item({ id: 'r4', rarity: 'mystic' }),
+      ],
+    },
+    names({ c1: '편의점 심야 만찬' }, { r1: '검은 비닐봉지', r2: '검은 비닐봉지', r3: '검은 비닐봉지', r4: '검은 비닐봉지' }),
+  )
+  const sameNameText = textOf(render(sameNameViews))
+
+  it('이름이 같아도 등급 라벨이 줄마다 보이고 낮은 등급부터 나온다', () => {
+    const positions = [RARITY_LABEL.common, RARITY_LABEL.rare, RARITY_LABEL.epic, RARITY_LABEL.mystic].map((label) =>
+      sameNameText.indexOf(`검은 비닐봉지 ${label}`),
+    )
+    expect(positions.every((p) => p >= 0)).toBe(true)
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+  })
+})
 
 describe('CollectionPaths — 컬렉션과 아이템', () => {
   // 끝난 컬렉션: 아이템 하나는 미션으로 열려 있고 하나는 얻을 길이 없다. 노출 중 컬렉션: 아이템 하나가 열려 있다.

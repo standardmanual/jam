@@ -141,6 +141,8 @@ export interface ItemLockInfo {
 export interface ItemPathResult {
   itemId: string
   collectionId: string
+  /** 아이템 배지의 등급. 같은 이름이 등급마다 하나씩 있어서 화면이 줄을 구분하는 데 쓴다(없으면 null) */
+  rarity: BadgeRarity | null
   status: ItemPathStatus
   drop: DropPath
   mix: MixPath

@@ -13,6 +13,7 @@ import { Badge } from '@/components/admin/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { formatKstYmdHm } from '@/lib/admin/kst-format'
+import { RARITY_LABEL } from '@/lib/rarity'
 import type { CollectionPageInfo, CollectionPathView, ItemPathRow } from '@/lib/admin/itemPaths/pathView'
 import type { ItemPathStatus } from '@/lib/admin/itemPaths/types'
 import { PATH_LABELS, PATH_REASON_LABELS, STATUS_LABELS, lockLabel } from './PathReasonLabels'
@@ -44,7 +45,10 @@ function blockedSummary(blocked: number): string {
 function ItemRow({ row }: { row: ItemPathRow }) {
   return (
     <TableRow>
-      <TableCell className="min-w-40 align-top break-keep wrap-break-word">{row.name ?? UNKNOWN_ITEM_NAME}</TableCell>
+      <TableCell className="min-w-40 align-top break-keep wrap-break-word">
+        <span>{row.name ?? UNKNOWN_ITEM_NAME}</span>
+        {row.rarity ? <span className="block text-xs text-muted-foreground">{RARITY_LABEL[row.rarity]}</span> : null}
+      </TableCell>
       <TableCell className="align-top">
         <Badge variant={STATUS_VARIANT[row.status]} className="whitespace-nowrap">
           {STATUS_LABELS[row.status]}

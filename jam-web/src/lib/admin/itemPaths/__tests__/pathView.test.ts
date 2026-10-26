@@ -203,6 +203,29 @@ describe('컬렉션 보기 모델', () => {
     expect(live.items.map((r) => `${r.itemId}:${r.status}`)).toEqual(['x1:drop_excluded', 'o2:open', 'o1:open'])
   })
 
+  it('같은 이름이 등급마다 하나씩 있으면 낮은 등급부터 나오고, 행에 등급이 실린다(화면이 줄을 구분한다)', () => {
+    const sameName = computeItemPaths({
+      collections: [collection()],
+      items: [
+        item({ id: 'z-mystic', rarity: 'mystic' }),
+        item({ id: 'a-epic', rarity: 'epic' }),
+        item({ id: 'm-common', rarity: 'common' }),
+        item({ id: 'b-rare', rarity: 'rare' }),
+      ],
+      recipes: [],
+      missions: [],
+      now: NOW,
+    })
+    const sameNames = names({}, { 'z-mystic': '검은 비닐봉지', 'a-epic': '검은 비닐봉지', 'm-common': '검은 비닐봉지', 'b-rare': '검은 비닐봉지' })
+    const [view] = buildCollectionPathViews(sameName, ['c1'], sameNames)
+    expect(view.items.map((r) => `${r.itemId}:${r.rarity}`)).toEqual([
+      'm-common:common',
+      'b-rare:rare',
+      'a-epic:epic',
+      'z-mystic:mystic',
+    ])
+  })
+
   it('이름을 모르는 아이템은 같은 상태의 맨 뒤이고 이름이 null이다', () => {
     const [live] = buildCollectionPathViews(computed, ['c-live'], names({}, { o2: '나' }))
     expect(live.items.filter((r) => r.status === 'open').map((r) => `${r.itemId}:${r.name}`)).toEqual(['o2:나', 'o1:null'])

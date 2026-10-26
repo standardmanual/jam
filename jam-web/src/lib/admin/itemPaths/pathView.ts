@@ -16,6 +16,8 @@ import type {
   ItemPathResult,
   ItemPathStatus,
 } from './types'
+import { rarityTier } from '@/lib/rarity'
+import type { BadgeRarity } from '@/types/database'
 
 /** 화면에 보이는 길 다섯 개 — 이 순서로 보인다 */
 export const PATH_KEYS = ['drop', 'mix', 'mission', 'syncCapsule', 'tierUp'] as const
@@ -56,6 +58,8 @@ export interface ItemPathRow {
   itemId: string
   /** 이름을 못 읽었으면 null */
   name: string | null
+  /** 같은 이름이 등급마다 하나씩 있어서 줄을 구분하려고 싣는다(등급이 없으면 null) */
+  rarity: BadgeRarity | null
   status: ItemPathStatus
   /** 열려 있는 길 — `PATH_KEYS` 순서 */
   openPaths: PathKey[]
@@ -126,12 +130,12 @@ export function itemPathRowOf(result: ItemPathResult, name: string | null): Item
     if (state.open) openPaths.push(path)
     else closedPaths.push({ path, reasons: [...state.reasons] })
   }
-  return { itemId: result.itemId, name, status: result.status, openPaths, closedPaths, lock: result.lock }
+  return { itemId: result.itemId, name, rarity: result.rarity, status: result.status, openPaths, closedPaths, lock: result.lock }
 }
 
 const STATUS_ORDER: Record<ItemPathStatus, number> = { blocked: 0, drop_excluded: 1, open: 2 }
 
-/** 막힘 → 드랍 제외 → 열림, 같은 상태끼리는 이름(모르면 뒤) → 아이템 ID 순서 */
+/** 막힘 → 드랍 제외 → 열림, 같은 상태끼리는 이름(모르면 뒤) → 같은 이름이면 낮은 등급부터 → 아이템 ID 순서 */
 function compareRows(a: ItemPathRow, b: ItemPathRow): number {
   const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
   if (byStatus !== 0) return byStatus
@@ -141,6 +145,8 @@ function compareRows(a: ItemPathRow, b: ItemPathRow): number {
     const byName = a.name.localeCompare(b.name, 'ko')
     if (byName !== 0) return byName
   }
+  const byRarity = rarityTier(a.rarity) - rarityTier(b.rarity)
+  if (byRarity !== 0) return byRarity
   return a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0
 }
 
