@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { usePendingItemsPicker } from '@/components/strava/PendingItemsPickerProvider'
 import { runSyncFlow } from '@/lib/strava/sync-flow'
+import { resolveSyncResult } from '@/lib/strava/sync-result'
 import { TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
 import { d } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
@@ -27,6 +28,8 @@ interface SyncResponse {
   completedMissionIds?: string[]
   /** 이번 동기화에서 새로 보류된 아이템 배지 개수(티켓 20261017_1425). 이전 응답에는 없다 */
   pendingItems?: number
+  /** 이번 동기화로 받은 잼의 합계(티켓 20261017_1423). 이전 응답에는 없다 — 읽는 규칙은 `foldJamEarned` 한 곳이다(티켓 20261025_2050) */
+  jamEarned?: number
 }
 
 /**
@@ -52,6 +55,8 @@ export default function SyncButton({
   const [revealOpen, setRevealOpen] = useState(false)
   const [earnedBadges, setEarnedBadges] = useState<RevealBadge[]>([])
   const [earnedBadgesMore, setEarnedBadgesMore] = useState(0)
+  // 이번 동기화로 받은 잼 한 줄. 동기화마다 새로 정하고, 없으면 명시적으로 비운다(이전 동기화의 값이 남으면 안 된다)
+  const [summaryMessage, setSummaryMessage] = useState<string | undefined>(undefined)
   const { toast } = useToast()
   const router = useRouter()
   const picker = usePendingItemsPicker()
@@ -101,21 +106,26 @@ export default function SyncButton({
         /* 노출 판단은 earnedBadges.length 단일 기준이다.
            badges 카운터에는 아이템 드랍 배지·미션 보상 배지가 빠져 있어, 그 값을 쓰면
            아이템배지만 드랍된 날 배지를 받고도 연출이 뜨지 않는다 (20260823_008 확정). */
-        if (badges.length > 0) {
+        /* 결과 갈래(배지 연출 / 토스트 / 새로 읽기만)와 이번에 받은 잼 한 줄은 resolveSyncResult가 정한다(티켓 20261025_2050).
+           잼 합계가 0이거나 없으면 잼 줄이 없고, 갈래는 예전 그대로다. */
+        const result = resolveSyncResult({ badgeCount: badges.length, pickedFirst, jamEarned: data.jamEarned })
+
+        if (result.kind === 'reveal') {
           // GA4 first_badge_earned — 서버가 user_activity_badges 전체 카운트로 판정한 값을
           // 그대로 신뢰한다 (StravaConnectReveal과 동일 계약).
           if (data.isFirstBadgeEver) trackEvent('first_badge_earned')
           setEarnedBadges(badges)
           setEarnedBadgesMore(data.earnedBadgesMore ?? 0)
+          setSummaryMessage(result.summaryMessage)
           setRevealOpen(true)
           // router.refresh()는 오버레이를 닫을 때로 미룬다 —
           // 연출이 떠 있는 동안 뒤 페이지가 리렌더되지 않도록.
-        } else if (pickedFirst) {
-          // 고르기를 이미 보여 줬으므로 완료 토스트 없이 화면만 새로 읽는다.
+        } else if (result.kind === 'toast') {
+          // 배지 0개면 연출이 없으므로 토스트로 알린다(무반응 방지). 잼이 있으면 «동기화 완료» 대신 잼 한 줄이다.
+          toast(result.message, 'success')
           router.refresh()
         } else {
-          // 배지 0개면 연출이 없으므로 기존 완료 토스트를 유지한다(무반응 방지).
-          toast(d.today.syncDone, 'success')
+          // 고르기를 이미 보여 줬으므로 완료 토스트 없이 화면만 새로 읽는다.
           router.refresh()
         }
       } else {
@@ -152,6 +162,7 @@ export default function SyncButton({
         items={earnedBadges}
         moreCount={earnedBadgesMore}
         profileHref={profileHref}
+        summaryMessage={summaryMessage}
         onClose={handleRevealClose}
       />
     </>
