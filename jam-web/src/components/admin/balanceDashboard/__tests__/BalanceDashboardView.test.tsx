@@ -90,7 +90,7 @@ describe('BalanceDashboardView — 부족', () => {
     expect(text.split(INSUFFICIENT_TEXT).length - 1).toBe(totalParts)
   })
 
-  it('«0»·«100%»가 화면 어디에도 없다. 표본이 0이어도 그렇다 (기준 시각의 시·분 숫자는 따로 센다)', () => {
+  it('«0»·«100%»가 화면 어디에도 없다. 입력한 표본이 0이어도 그렇다', () => {
     expect(text).not.toContain('100%')
     expect(text).not.toMatch(/(?<![0-9.])0(?![0-9])/)
     expect(text).not.toMatch(/(?<![0-9.])0%/)
