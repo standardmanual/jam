@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
+import { isActivityWithinBadgeWindow } from '@/lib/poi/checkin-window'
 import { evaluateBadgesDetailed } from '@/lib/badge-engine'
 import { buildVirtualActivities, readExtendedFields } from '@/lib/admin/virtualActivity'
 
@@ -57,9 +58,17 @@ export async function POST(req: NextRequest) {
 
   const poiBadgeIds = matchedPois.map((p) => p.linked_badge_id).filter(Boolean) as string[]
   const { data: poiBadgesRaw } = poiBadgeIds.length > 0
-    ? await supabase.from('badges').select('id, name, rarity, type').in('id', poiBadgeIds).is('deleted_at', null)
-    : { data: [] as { id: string; name: string; rarity: string; type: string }[] }
-  const poiBadgesById = new Map((poiBadgesRaw ?? []).map((b) => [b.id, b]))
+    ? await supabase.from('badges').select('id, name, rarity, type, valid_from, valid_until').in('id', poiBadgeIds).is('deleted_at', null)
+    : { data: [] as { id: string; name: string; rarity: string; type: string; valid_from: string | null; valid_until: string | null }[] }
+  // 공개 기간 밖의 POI 배지는 실제 동기화 경로(`lib/strava/sync.ts`)와 같은 판정(`isActivityWithinBadgeWindow`)으로
+  // 획득 예정에 넣지 않고 dryRun=false여도 기록하지 않는다(스펙 §3.18, 티켓 20260930_0015). 기준 시각은 동기화와 같이
+  // 활동 시작 시각이다 — 반복 횟수만큼 만든 가상 활동 중 마지막 것(입력한 시작 시각)을 쓴다.
+  const activityStartDate = activities[activities.length - 1].startDate
+  const poiBadgesById = new Map(
+    (poiBadgesRaw ?? [])
+      .filter((b) => isActivityWithinBadgeWindow(activityStartDate, b.valid_from, b.valid_until))
+      .map((b) => [b.id, b])
+  )
 
   for (const poi of matchedPois) {
     if (!poi.linked_badge_id) continue
