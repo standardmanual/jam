@@ -527,6 +527,18 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 7.2절, 12.2절',
     ticketId: '20261019_1315',
   },
+  {
+    id: 'ch7-locked-open-feed',
+    chapter: 7,
+    chapterTitle: '잠긴 아이템 배지',
+    title: '잠긴 개체를 열 때의 활동 피드',
+    type: 'code_constant',
+    currentSpec: '잠긴 채 받을 때는 피드에 올리지 않고, 열 때 item_dropped를 한 번 올림 (칸은 열린 채 받은 개체와 같고 시각은 연 때)',
+    codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
+    userExperience: '잠긴 배지는 열기 전에는 친구들의 피드에 나오지 않고, 열면 이름과 그림이 드러난 채로 올라와요.',
+    basisDoc: '운영 로직 7.2절, 7.3절',
+    ticketId: '20261026_1031',
+  },
 
   // =========================================================================
   // 8장. 인벤토리, 컬렉션, 믹스
