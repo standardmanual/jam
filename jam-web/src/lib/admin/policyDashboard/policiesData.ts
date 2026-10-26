@@ -389,9 +389,9 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '캡슐',
     title: '캡슐 개봉 결과 활동 피드 제외 원칙',
     type: 'code_constant',
-    currentSpec: '캡슐 오픈 아이템 배지는 활동 피드에 게시하지 않음',
+    currentSpec: '캡슐 오픈 아이템 배지는 활동 피드에 게시하지 않음 (캡슐에서 나온 잠긴 개체를 연 때도 제외 — 동기화로 받은 잠긴 개체만 열 때 올림)',
     codeLocation: 'jam-web/src/lib/chapter/celebrate.ts',
-    userExperience: '캡슐을 자주 열어도 친구들의 피드가 도배되지 않아요.',
+    userExperience: '캡슐을 자주 열어도 친구들의 피드가 도배되지 않아요. 캡슐에서 나온 잠긴 배지를 열 때도 피드에는 올라가지 않아요.',
     basisDoc: '운영 로직 5.3절, 15.3절',
     ticketId: '20261022_1021',
   },
@@ -533,10 +533,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '잠긴 아이템 배지',
     title: '잠긴 개체를 열 때의 활동 피드',
     type: 'code_constant',
-    currentSpec: '잠긴 채 받을 때는 피드에 올리지 않고, 열 때 item_dropped를 한 번 올림 (칸은 열린 채 받은 개체와 같고 시각은 연 때)',
+    currentSpec:
+      '잠긴 채 받을 때는 피드에 올리지 않고, 동기화로 받은 잠긴 개체만 열 때 item_dropped를 한 번 올림 (칸은 열린 채 받은 개체와 같고 시각은 연 때). 캡슐에서 나온 잠긴 개체(발급 기록 경로 capsule)는 열어도 올리지 않음',
     codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
-    userExperience: '잠긴 배지는 열기 전에는 친구들의 피드에 나오지 않고, 열면 이름과 그림이 드러난 채로 올라와요.',
-    basisDoc: '운영 로직 7.2절, 7.3절',
+    userExperience:
+      '동기화로 받은 잠긴 배지는 열기 전에는 친구들의 피드에 나오지 않고, 열면 이름과 그림이 드러난 채로 올라와요. 캡슐에서 나온 잠긴 배지는 열어도 피드에 올라가지 않아요.',
+    basisDoc: '운영 로직 7.2절, 7.3절, 15.3절',
     ticketId: '20261026_1031',
   },
 

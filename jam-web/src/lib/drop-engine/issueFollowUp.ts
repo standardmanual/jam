@@ -36,7 +36,7 @@ export interface IssuedRewardsInput {
  * `badge.point_reward`가 있으면 포인트를 지급하고, 피드 이벤트(`item_dropped`)를 남긴다. 던지지 않는다.
  * 잠긴 채 받은 개체는 둘 다 건너뛴다 — 피드는 배지 이름·그림을 싣는 공개 기록이라 7.3절 가림 원칙에 어긋난다(티켓 20261018_0051 2회, 사용자 결정 2026-10-18).
  * 연 때의 포인트와 피드는 이 함수가 아니라 열기 경로(`openLockedItem`)가 낸다 — 포인트는 DB 함수 `locked_item_open` 안에서 주고, 피드는 `recordItemDroppedFeed`로
- * 올린다(티켓 20261026_1031).
+ * 올린다(티켓 20261026_1031). 피드는 동기화로 받은 잠긴 개체만 올린다 — 캡슐에서 나온 잠긴 개체는 열어도 올리지 않는다(발급 기록 `item_issue_log.route`로 가른다, 사용자 결정 2026-10-26).
  * `skipFeed`가 참이면 열린 개체여도 피드를 올리지 않는다(포인트는 그대로 준다).
  */
 export async function recordIssuedRewards(input: IssuedRewardsInput): Promise<void> {
@@ -84,7 +84,7 @@ export interface ItemDroppedFeedInput {
 }
 
 /**
- * 피드 이벤트(`item_dropped`) 한 건을 올린다. 칸 이름과 값은 열린 채 받은 개체의 피드(`recordIssuedRewards`)와 잠긴 개체를 연 때의 피드(`openLockedItem`)가 같다.
+ * 피드 이벤트(`item_dropped`) 한 건을 올린다. 칸 이름과 값은 열린 채 받은 개체의 피드(`recordIssuedRewards`)와 잠긴 개체를 연 때의 피드(`openLockedItem`, 동기화 출처만)가 같다.
  * 포인트는 주지 않고 잠김도 보지 않는다 — 호출하는 쪽이 정한다. `recordFeedEvent`가 실패를 삼키므로 보통 던지지 않는다.
  */
 export async function recordItemDroppedFeed(input: ItemDroppedFeedInput): Promise<void> {
