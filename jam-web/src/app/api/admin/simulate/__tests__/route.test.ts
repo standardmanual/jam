@@ -193,7 +193,7 @@ describe('POST /api/admin/simulate — POI 연결 배지의 공개 기간', () =
     expect(state.inserts).toEqual([])
   })
 
-  it('기간 밖이면 checkin 타입이 아닌 POI 배지도 활동 배지 이력에 기록하지 않는다', async () => {
+  it('체크인이 아닌 타입은 기간과 무관하게 건너뛴다 — 기간 밖이어도 활동 배지 이력에 기록하지 않는다', async () => {
     const body = await simulate(false, poiBadge(null, '2026-10-19T00:00:00Z', 'activity'))
     expect(poiEarned(body)).toHaveLength(0)
     expect(state.inserts).toEqual([])
@@ -203,5 +203,54 @@ describe('POST /api/admin/simulate — POI 연결 배지의 공개 기간', () =
     // valid_until=2026-10-25는 오늘(2026-10-26)보다 앞이지만, 활동(2026-10-20)은 그 기간 안에 시작했다
     const body = await simulate(true, poiBadge('2026-10-01T00:00:00Z', '2026-10-25T00:00:00Z'))
     expect(poiEarned(body)).toHaveLength(1)
+  })
+})
+
+// 체크인이 아닌 타입의 POI 연결 배지 — 동기화(`lib/strava/sync.ts`의 `badge.type !== 'checkin'`이면 continue)와 같이 건너뛴다
+// (티켓 20261026_1053, 스펙 BADGE_ENGINE_UNIFIED §3.18). 동기화는 이 타입에 아무것도 발급하지 않으므로 시뮬레이터도 아무 표에도 쓰지 않는다.
+describe('POST /api/admin/simulate — 체크인이 아닌 타입의 POI 연결 배지', () => {
+  const ROUTE = [[37.5, 127.0]] as Array<[number, number]>
+  const POI = { id: 'poi-1', name: '반포대교 남단', linked_badge_id: 'poi-badge-1' }
+
+  async function simulate(dryRun: boolean, type: string) {
+    vi.mocked(matchPoisForActivity).mockResolvedValueOnce([POI] as never)
+    state.poiBadgeRows = [
+      { id: 'poi-badge-1', name: '반포대교 배지', rarity: 'common', type, valid_from: null, valid_until: null },
+    ]
+    const res = await POST(post({ userId: 'u1', dryRun, activity: { ...ACTIVITY, route: ROUTE } }))
+    expect(res.status).toBe(200)
+    return (await res.json()) as { badgesEarned: { id: string }[]; poisMatched: { id: string; name: string }[] }
+  }
+
+  const poiEarned = (body: { badgesEarned: { id: string }[] }) => body.badgesEarned.filter((b) => b.id === 'poi-badge-1')
+
+  it('activity 타입은 dryRun=true에서 획득 예정에 없다', async () => {
+    const body = await simulate(true, 'activity')
+    expect(poiEarned(body)).toHaveLength(0)
+    expect(state.inserts).toEqual([])
+  })
+
+  it('activity 타입은 dryRun=false여도 user_activity_badges·user_checkin_badge_earns 어디에도 기록하지 않는다', async () => {
+    const body = await simulate(false, 'activity')
+    expect(poiEarned(body)).toHaveLength(0)
+    expect(state.inserts.filter((i) => i.table === 'user_activity_badges')).toEqual([])
+    expect(state.inserts.filter((i) => i.table === 'user_checkin_badge_earns')).toEqual([])
+    expect(state.inserts).toEqual([])
+  })
+
+  it('장소 매칭은 그대로 보인다 — 배지만 빠진다', async () => {
+    const body = await simulate(true, 'activity')
+    expect(body.poisMatched).toEqual([{ id: 'poi-1', name: '반포대교 남단' }])
+  })
+
+  it('checkin 타입은 기존대로 한 번 기록된다', async () => {
+    const body = await simulate(false, 'checkin')
+    expect(poiEarned(body)).toHaveLength(1)
+    expect(state.inserts).toEqual([
+      {
+        table: 'user_checkin_badge_earns',
+        row: { user_id: 'u1', badge_id: 'poi-badge-1', poi_id: 'poi-1', triggered_by_activity_name: 'admin_simulate' },
+      },
+    ])
   })
 })

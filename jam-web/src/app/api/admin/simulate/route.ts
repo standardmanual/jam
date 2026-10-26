@@ -64,8 +64,12 @@ export async function POST(req: NextRequest) {
   // 획득 예정에 넣지 않고 dryRun=false여도 기록하지 않는다(스펙 §3.18, 티켓 20260930_0015). 기준 시각은 동기화와 같이
   // 활동 시작 시각이다 — 반복 횟수만큼 만든 가상 활동 중 마지막 것(입력한 시작 시각)을 쓴다.
   const activityStartDate = activities[activities.length - 1].startDate
+  // 체크인이 아닌 타입의 POI 연결 배지는 건너뛴다 — 동기화(`lib/strava/sync.ts`의 `badge.type !== 'checkin'`이면 continue)와
+  // 같은 판정이다. 장소 연결로는 체크인 배지만 발급하고(옛 `poi_match` 경로 삭제), 다른 타입에는 아무것도 하지 않는다.
+  // 그래서 획득 예정에도 넣지 않고 dryRun=false여도 어떤 표에도 기록하지 않는다(티켓 20261026_1053). 장소 매칭(poisMatched)은 그대로 보인다.
   const poiBadgesById = new Map(
     (poiBadgesRaw ?? [])
+      .filter((b) => b.type === 'checkin')
       .filter((b) => isActivityWithinBadgeWindow(activityStartDate, b.valid_from, b.valid_until))
       .map((b) => [b.id, b])
   )
@@ -78,21 +82,16 @@ export async function POST(req: NextRequest) {
       badgesEarned.push({ id: badge.id, name: badge.name, rarity: badge.rarity, reason: `장소 통과: ${poi.name}` })
       earnedBadgeIds.add(badge.id)
       if (!dryRun) {
-        // checkin 타입 배지(POI 연결 배지는 항상 이 타입)는 반복 획득 이력 테이블에 기록한다.
+        // 여기까지 온 배지는 위에서 걸러 낸 checkin 타입뿐이다. 반복 획득 이력 테이블에 기록한다.
         // 정상 체크인 경로(src/lib/strava/sync.ts)와 동일한 테이블로 맞춰야 badges/page.tsx의
         // 활동 탭·체크인 탭이 서로 새지 않는다 (티켓 20260906_2023).
-        if (badge.type === 'checkin') {
-          const checkinBadgeEarnsQuery = supabase.from('user_checkin_badge_earns')
-          await checkinBadgeEarnsQuery.insert({
-            user_id: userId,
-            badge_id: badge.id,
-            poi_id: poi.id,
-            triggered_by_activity_name: 'admin_simulate',
-          })
-        } else {
-          const userActivityBadgesQuery = supabase.from('user_activity_badges')
-          await userActivityBadgesQuery.insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' })
-        }
+        const checkinBadgeEarnsQuery = supabase.from('user_checkin_badge_earns')
+        await checkinBadgeEarnsQuery.insert({
+          user_id: userId,
+          badge_id: badge.id,
+          poi_id: poi.id,
+          triggered_by_activity_name: 'admin_simulate',
+        })
       }
     }
   }
