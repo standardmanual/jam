@@ -64,12 +64,25 @@ related:
 
 ## 5. 묶음에 더하는 데이터
 
-에이전트가 제출하는 묶음(`POST /api/admin/ops-inbox`)에 아래를 더한다. 모두 선택 필드로 시작하고, 없으면 화면은 지금처럼 그린다(옛 묶음·시험 묶음 호환). 저장 위치는 티켓 20261026_2021에서 정한다.
+에이전트가 제출하는 묶음(`POST /api/admin/ops-inbox`)에 아래를 더한다. 모두 선택 필드로 시작하고, 없으면 화면은 지금처럼 그린다(옛 묶음·시험 묶음 호환).
 
-### 5.1 기획 제목
+**저장 위치 (결정: 티켓 [20261026_2021](../../../tickets/p2-normal/20261026_2021_Infra_기획-묶음에-제목-이유-단계기록-트렌드-필드.md), 2026-10-26).** 새 테이블을 만들지 않고 이미 있는 칸을 최대한 쓴다.
+
+| 필드 | 저장 |
+|---|---|
+| 묶음 `title` | `ops_bundles.title TEXT NULL` 새 칸 |
+| 묶음 `trends[]` | `ops_bundles.trends JSONB NULL` 새 칸 |
+| `routine_run.stages[]` | 기존 `ops_bundles.routine_run`(JSONB) 안. 새 칸 없음 |
+| 항목 `rationale`·`highlight` | 기존 `ops_bundle_items.original`(제출 항목 원본) 안. 새 칸 없음 |
+
+형식이 틀린 `title`·`trends`는 저장하지 않고 NULL로 둔다(원본은 `raw`에 남는다). 오류는 제출 응답과 묶음·항목의 형식 오류 목록에 쌓이고 제출은 막지 않는다.
+검증은 `jam-web/src/lib/admin/opsInbox/validate.ts`, 읽기는 `query.ts`의 `getOpsBundleDetail`(`title`·`trends`·`stages`)과 `readOpsItemRationales`·`readOpsItemHighlight`다.
+`source_id`·`source_ids`의 출처 번호는 출처 등록(§6.4)이 아직 없어 비어 있지 않은 문자열이나 1 이상의 정수로 본다. `outcome_reason`은 자동 제외 범주 이름을 비어 있지 않은 문자열로 받는다(범주 목록은 [`content-automation/PRD.md`](../content-automation/PRD.md) §10.2, 허용 목록 검사는 하지 않는다).
+
+### 5.1 기획 제목 (구현됨: 티켓 20261026_2021)
 - `title`: 그 주 기획을 한 줄로 부르는 이름, 30자 이내(예: 「LP 리바이벌 × 억새 절정」). 주간 흐름의 주차 칸과 결정 패널 제목에 쓴다. 지금의 `hypothesis`는 결정 패널 안에서 한 줄 설명으로 남긴다.
 
-### 5.2 기획 이유
+### 5.2 기획 이유 (구현됨: 티켓 20261026_2021)
 - 항목마다 `rationale` 1~3개: `{ kind, label, note?, source_id? }`
   - `kind`: `trend`(온라인 트렌드) · `season`(시즌·절기·기념일) · `weather`(날씨) · `signal`(서비스 데이터 신호) · `pattern`(패턴 사전 번호)
   - `label`: 칩에 쓰는 말, 12자 이내(예: 「LP 리바이벌」, 「잠긴 배지 누적」, 「P07」)
@@ -78,13 +91,13 @@ related:
 - 항목마다 `highlight`(참·거짓): 이번 기획의 핵심 항목. 묶음당 5개 이하. 결정 패널 맨 위에 먼저 보인다.
 - 묶음의 이유 칩은 항목 이유를 종류별로 세어 화면이 만든다(따로 저장하지 않는다).
 
-### 5.3 에이전트 단계 기록 (D2)
+### 5.3 에이전트 단계 기록 (D2) (제출 쪽 `routine_run.stages`는 구현됨: 티켓 20261026_2021. 「시작」 기록은 티켓 20261026_2032)
 - **쓰기 2번:** ① 루틴 시작 때 「시작」 기록 1번(주차, 시작 시각, 맡은 에이전트 목록), ② 제출 때 묶음 안의 `routine_run.stages`에 단계별 요약을 한 번에 싣는다.
 - `stages[]`: `{ agent, stage, started_at, ended_at, in_count, out_count, excluded_count }`. `stage`는 `plan`·`world_review`·`balance_check` 셋이다. 지금의 `excluded_items[].stage` 값과 같은 이름을 쓴다.
 - 시작과 제출 사이에는 단계별 진행을 실시간으로 알 수 없다. 이 동안 주간 흐름 칸에는 「진행 중 · 시작 후 N분」만 보인다. 제출 뒤에는 단계마다 걸린 시간과 「2건 뺌」 같은 결과가 보인다.
 - 시작 기록이 있는데 3시간 안에 제출이 없으면 「문제 · 루틴이 멈췄어요」로 내 차례에 뜬다(기준 시간은 운영 설정 값).
 
-### 5.4 읽은 트렌드
+### 5.4 읽은 트렌드 (구현됨: 티켓 20261026_2021)
 - 묶음에 `trends[]`: `{ label, source_ids, summary, series?, outcome, outcome_reason? }`
   - `outcome`: `used`(기획에 반영) · `held`(보류) · `excluded`(자동 제외)
   - `series`: 출처가 숫자 추이를 줄 때만 최근 14일 값
