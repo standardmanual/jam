@@ -2516,6 +2516,44 @@ export type Database = {
           },
         ]
       }
+      ops_routine_starts: {
+        Row: {
+          agents: Json
+          author: string
+          bundle_id: string | null
+          id: string
+          run_key: string
+          started_at: string
+          week: string | null
+        }
+        Insert: {
+          agents?: Json
+          author: string
+          bundle_id?: string | null
+          id?: string
+          run_key: string
+          started_at?: string
+          week?: string | null
+        }
+        Update: {
+          agents?: Json
+          author?: string
+          bundle_id?: string | null
+          id?: string
+          run_key?: string
+          started_at?: string
+          week?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_routine_starts_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "ops_bundles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ops_rules: {
         Row: {
           enabled: boolean
