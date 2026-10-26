@@ -3,7 +3,8 @@
  *
  * 채우기는 DB 함수 `locked_item_fill`(잼 원장 한 줄, 개체의 채운 양, 이력이 한 트랜잭션), 열기는 `locked_item_open`(같은 개체를 열린 상태로 바꾸고
  * 포인트를 한 번만 주고 이력을 남긴다)이 한다. 규칙은 캡슐 채우기와 같고, 열기에는 인벤토리 빈칸이 필요 없다. 앱은 정지 확인과 RPC 호출,
- * 응답 모양 만들기만 한다. DB 안에서 포인트를 주므로 `awardPoints`의 알림(`notifyPointChange`)은 이 경로에서 나가지 않는다.
+ * 응답 모양 만들기만 한다. DB 안에서 포인트를 주므로 `awardPoints`의 알림(`notifyPointChange`)은 이 경로에서 나가지 않는다 — 그래서 열기 성공 뒤
+ * 이 파일이 같은 포인트 소식(활동 결산의 «포인트» 꼬리)을 직접 낸다(티켓 20261026_1031). 피드는 만들지 않는다 — 받을 때 `item_dropped`가 이미 나갔다.
  *
  * 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다. 열기 성공 응답에만 `loadOpenedInfo`가 읽은 정보를 싣는다.
  *
@@ -15,6 +16,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { awardChapterScore } from '@/lib/chapter/score'
+import { recordActivityRecap } from '@/lib/notifications/recap'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import {
@@ -188,6 +190,15 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
     await recordOnboardingQuestCompletion(supabase, userId)
   } catch (e) {
     console.error(`[locked-item] 퀘스트 완료 처리 실패 — 열기는 유지한다 (userId: ${userId}, itemId: ${itemId}):`, e)
+  }
+  // 포인트 소식(티켓 20261026_1031). 열린 채 받을 때와 같은 활동 결산의 «포인트» 꼬리이고 피드는 만들지 않는다. 포인트는 RPC 안에서 이미 지급됐으므로
+  // 소식이 실패해도 열기와 응답을 막지 않는다. RPC는 `point_awarded_at`이 비었을 때만 0보다 큰 값을 돌려주고 두 번째 열기는 `not_locked`로 거절하므로 한 번만 나간다.
+  if (result.pointsAwarded > 0) {
+    try {
+      await recordActivityRecap(userId, { points: result.pointsAwarded }, { client: supabase })
+    } catch (e) {
+      console.error(`[locked-item] 포인트 소식 기록 실패 — 열기는 유지한다 (userId: ${userId}, itemId: ${itemId}):`, e)
+    }
   }
 
   let info: LockedItemOpenedInfo | null = null
