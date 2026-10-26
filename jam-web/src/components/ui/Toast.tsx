@@ -32,7 +32,7 @@ const subscribeNoop = () => () => {}
  * 사용한다. 마운트 직후 다음 프레임에 `.is-open`을 붙여야 닫힌 상태(아래 +
  * 블러 + scale)에서 트랜지션이 발화한다.
  */
-function ToastRow({
+export function ToastRow({
   item,
   icon,
   onDismiss,
@@ -56,14 +56,16 @@ function ToastRow({
         't-toast',
         isOpen ? 'is-open' : '',
         // 20260816_012: 보더 제거 — 흰 토스트가 다크 배경 위에서 대비만으로 충분히 구분됨
-        'flex items-center gap-2 px-4 py-3 rounded-full bg-background-inverse text-snow text-base pointer-events-auto',
+        // 20261026_1055: 문구가 두 줄이 돼도 알약이 부풀지 않도록 rounded-3xl(24px) + 아이콘 첫 줄 정렬(items-start).
+        // 한 줄은 높이 48px(py-3 24px + 줄 높이 24px)라 24px 모서리가 rounded-full과 같은 반원이다.
+        'flex items-start gap-2 px-4 py-3 rounded-3xl bg-background-inverse text-snow text-base pointer-events-auto',
       ]
         .filter(Boolean)
         .join(' ')}
       onClick={onDismiss}
     >
       <span className="shrink-0 text-snow/60">{icon}</span>
-      <span>{item.message}</span>
+      <span className="min-w-0 break-keep wrap-break-word">{item.message}</span>
     </div>
   )
 }
