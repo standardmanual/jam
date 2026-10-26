@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast'
 import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 import { d } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
+import { jamEarnedMessage } from '@/lib/strava/sync-result'
 
 /**
  * 최초 Strava 연동 직후 도착 화면 피드백 (20260824_003, 20260824_008).
@@ -15,6 +16,10 @@ import { trackEvent } from '@/lib/analytics/gtag'
  * 배지를 실을 수 없다. 그래서 콜백이 목적지에 `?reveal=1` 플래그를 붙이고, 도착한 화면에서
  * `/api/badges/recent-earned`로 방금 받은 배지를 되읽어 연출을 띄운다.
  * (되읽기 판정 기준은 `user_activity_feed.created_at` — 마이그레이션 093에서 추가한 기록 시각)
+ *
+ * 되읽기 응답의 `jamEarned`(이번 연동 직후 10분 창의 활동 정산 잼 합계, 티켓 20261026_1029)는
+ * `jamEarnedMessage()`로 접어 오버레이 헤더 한 줄(`summaryMessage`)로 넘긴다. 합계가 0이거나 없으면
+ * 줄이 없다. 배지 0개 분기는 이 줄을 쓰지 않고 연동 성공 토스트만 낸다.
  *
  * 되읽는 구간에는 버튼이 없어 스피너를 걸 자리가 없다(수동 동기화는 `SyncButton`의 loading이
  * 담당). 이 구간의 대기 표현은 `WanderingEyesLoader`다 — `NavigationLoader`에서 이미 쓰는
@@ -33,6 +38,8 @@ interface RecentEarnedResponse {
   earnedBadgesMore?: number
   /** 유저가 지금까지 획득한 배지가 이번 배치뿐인지 — GA4 first_badge_earned 판정 (20260903_1034) */
   isFirstBadgeEver?: boolean
+  /** 이번 연동 직후 활동 정산으로 받은 잼 합계 — 옛 응답에는 없다 (20261026_1029) */
+  jamEarned?: number
 }
 
 type Phase = 'idle' | 'loading' | 'open'
@@ -60,6 +67,7 @@ function Inner({ username }: { username: string | null }) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [items, setItems] = useState<RevealBadge[]>([])
   const [moreCount, setMoreCount] = useState(0)
+  const [summaryMessage, setSummaryMessage] = useState<string | undefined>(undefined)
 
   /* 한 번 시작한 조회는 다시 시작하지 않는다. 아래에서 플래그를 지우려고 router.replace를
      호출하면 searchParams가 바뀌며 이펙트가 다시 도는데, 그때 재요청이 나가면 안 된다. */
@@ -142,6 +150,7 @@ function Inner({ username }: { username: string | null }) {
         }
         setItems(badges)
         setMoreCount(data.earnedBadgesMore ?? 0)
+        setSummaryMessage(jamEarnedMessage(data.jamEarned))
         setPhase('open')
         // GA4 first_badge_earned — "최초 1회"는 서버(recent-earned)가 user_activity_badges
         // 전체 행 수 기준으로 판정해 내려준 값을 그대로 신뢰한다(클라이언트 상태만으로는
@@ -209,6 +218,7 @@ function Inner({ username }: { username: string | null }) {
       loading={showLoadingOverlay}
       items={items}
       moreCount={moreCount}
+      summaryMessage={summaryMessage}
       profileHref={username ? `/${username}` : '/profile'}
       onClose={handleClose}
     />
