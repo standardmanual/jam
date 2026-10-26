@@ -67,6 +67,11 @@ related:
 | 묶음 | `week` | `YYYY-Www`(주 01~53). 예: `2026-W41`. 없어도 오류가 아니다 |
 | 묶음 | `is_sample` | `true`/`false`(다른 값이면 400, 없으면 `false`). `true`면 시험 묶음이다(신호·결과·학습용 읽기에서 뺀다, 슬랙 글 앞에 「[시험]」) |
 | 묶음 | `hypothesis`·`color_rationale_link`·`routine_run` | 있으면 형식만 본다(문자열·문자열·객체). `created_at`은 원본(`raw`)에만 남고 검사하지 않는다 |
+| 묶음 | `title`(선택) | 비어 있지 않은 문자열, 앞뒤 공백을 뗀 뒤 30자 이내(구현됨: 티켓 20261026_2021). 틀리면 `ops_bundles.title`을 비워(NULL) 저장한다 |
+| 묶음 | `routine_run.stages[]`(선택) | 배열. 원소는 `agent`(필수 문자열)·`stage`(필수, `plan`·`world_review`·`balance_check`)·`started_at`·`ended_at`(시간대가 붙은 ISO 8601)·`in_count`·`out_count`·`excluded_count`(0 이상의 정수). `routine_run`째로 저장하고 틀린 원소는 형식 오류만 남긴다 |
+| 묶음 | `trends[]`(선택) | 배열. 원소는 `label`·`summary`(필수 문자열)·`source_ids`(필수, 출처 번호 배열, 빈 배열 가능)·`outcome`(필수, `used`·`held`·`excluded`)·`outcome_reason`(`excluded`면 필수 문자열)·`series`(선택, 숫자 14개 이하). 하나라도 틀리면 `ops_bundles.trends`를 비워(NULL) 저장한다 |
+| 항목 | `rationale[]`(선택) | 항목당 3개 이하. 원소는 `kind`(필수, `trend`·`season`·`weather`·`signal`·`pattern`)·`label`(필수, 12자 이내)·`note`(선택 문자열, 120자 이내)·`source_id`(선택). 항목 원본(`original`)에 그대로 저장한다 |
+| 항목 | `highlight`(선택) | `true`/`false`. 묶음에서 `true`가 5개를 넘으면 오류가 아니라 **경고**(응답 `warnings`에만 싣고 저장하지 않는다) |
 | 항목 | `item_key`(필수) | 비어 있지 않은 문자열이고 묶음 안에서 겹치지 않는다(겹치면 뒤에 나온 항목이 오류) |
 | 항목 | `kind`(필수) | `home_feed_card`·`mission`·`drop_schedule`·`recipe`·`jam_badge`·`collection_launch`·`pattern_proposal` 중 하나 |
 | 항목 | `pattern_no`(선택) | 문자열이고 앞뒤 공백을 뗀 값이 `P01`처럼 `^P[0-9]{2,}$`에 맞아야 한다(숫자·`P-07`·`p07`은 형식 오류). 형식이 맞으면 패턴 사전(`ops_patterns`)에 있는 번호여야 한다 — 보관(`archived`) 패턴의 번호도 사전에 있는 번호다. 형식이 틀리면 항목의 `pattern_no` 열을 비워(NULL) 저장하고(제출 원본 `original`에는 그대로 남는다), 형식은 맞지만 사전에 없는 번호는 열에 그대로 저장한다. 어느 쪽이든 형식 오류만 남기고 저장·승인은 막지 않는다. 사전 조회가 실패하면 저장하지 않고 500이다 |
