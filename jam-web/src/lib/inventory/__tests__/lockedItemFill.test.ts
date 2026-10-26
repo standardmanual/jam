@@ -14,8 +14,13 @@
  * - 퀘스트 완료 처리(티켓 20261021_1248): 열기가 확정되면 챕터 점수 다음에 `(supabase, userId)`로 한 번 부른다. 거절·정지·해석 불가 응답과 채우기에는 부르지 않고,
  *   완료 처리가 던져도 열기와 응답은 그대로다. 응답에는 완료 배지를 싣지 않는다. 실제 판정은 `onboarding-quest/__tests__`가 고정한다(여기서는 가짜).
  * - 포인트 소식(티켓 20261026_1031): 열기가 확정되고 `pointsAwarded`가 0보다 크면 활동 결산의 «포인트» 조각을 `(유저 id, { points }, { client })`로 한 번 낸다.
- *   퀘스트 완료 처리 다음이며 개체 정보 조회보다 앞이다. 피드(`recordFeedEvent`)는 만들지 않는다(받을 때 `item_dropped`가 이미 나갔다).
- *   `pointsAwarded`가 0이면 내지 않고, 거절(`not_locked` 포함)·정지·해석 불가 응답과 채우기에도 내지 않는다. 소식이 던져도 열기와 응답은 그대로다.
+ *   퀘스트 완료 처리 다음이며 개체 정보 조회보다 앞이다. `pointsAwarded`가 0이면 내지 않고, 거절(`not_locked` 포함)·정지·해석 불가 응답과 채우기에도 내지 않는다.
+ *   소식이 던져도 열기와 응답은 그대로다.
+ * - 활동 피드(티켓 20261026_1031, 사용자 결정 2026-10-26): 잠긴 채 받은 개체는 받을 때 피드가 없다(`recordIssuedRewards`가 잠긴 개체는 포인트와 피드를 모두 건너뛴다, 7.3절).
+ *   그래서 열기가 확정되면 `item_dropped`를 한 번 올린다. 칸 이름과 값은 열린 채 받은 개체의 피드와 같고(같은 헬퍼 `recordItemDroppedFeed`), 시각은 연 때(생략 = DB 기본값),
+ *   활동에는 묶지 않는다. 포인트를 준 경우에만 `point_reward`를 싣고, 포인트를 다시 주지는 않는다(`awardPoints` 없음). 포인트가 0이어도 올린다(포인트와 별개).
+ *   개체 정보를 읽지 못했으면 올리지 않고 기록만 남긴다. 피드가 던져도 열기와 응답은 그대로다. 거절(`not_locked` 포함)·정지·해석 불가 응답과 채우기에는 올리지 않고,
+ *   같은 개체를 다시 열려 하면(`not_locked`) 두 번 올라가지 않는다.
  * - 조회: 채운 양·필요량·남은 양·잔액·열 수 있는지만 싣고 `badges` 등 개체 정보 표는 읽지 않는다. 내 것이 아니거나 버려지거나 드랍된 개체는
  *   `item_not_found`다. 이용 정지 중에도 막지 않는다. 지갑 행이 없으면 잔액 0이다.
  * - 경계: 계약 파일은 아무것도 가져오지 않고, 서버 전용 모듈은 클라이언트 파일의 import 사슬에 없다.
@@ -36,6 +41,7 @@ const logMock = vi.hoisted(() => vi.fn())
 const completionMock = vi.hoisted(() => vi.fn())
 const recapMock = vi.hoisted(() => vi.fn())
 const feedMock = vi.hoisted(() => vi.fn())
+const awardPointsMock = vi.hoisted(() => vi.fn())
 
 // 퀘스트 완료 처리는 가짜로 막는다(티켓 20261021_1248) — 불린 순서와 인자만 본다
 vi.mock('@/lib/onboarding-quest/completion', () => ({
@@ -51,10 +57,12 @@ vi.mock('@/lib/notifications/recap', () => ({
     return recapMock(...args)
   },
 }))
-// 열기는 피드를 만들지 않는다 — 어떤 피드 이벤트도 불리지 않는지 본다
+// 활동 피드(item_dropped)는 가짜로 막는다(티켓 20261026_1031) — 불린 횟수와 인자(칸 이름·값, 시각)를 본다
 vi.mock('@/lib/activity-feed', () => ({
   recordFeedEvent: async (...args: unknown[]) => feedMock(...args),
 }))
+// 열린 채 받은 개체의 피드(`recordIssuedRewards`)와 칸을 견주려고 포인트 지급은 가짜로 막는다 — 열기 경로가 포인트를 다시 주지 않는지도 본다
+vi.mock('@/lib/points', () => ({ awardPoints: (...args: unknown[]) => awardPointsMock(...args) }))
 // 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 vi.mock('@/lib/supabase/server', () => ({
@@ -73,6 +81,7 @@ vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
   }
 })
 
+import { recordIssuedRewards } from '@/lib/drop-engine/issueFollowUp'
 import { fillLockedItem, getLockedItemStatus, LockedItemError, openLockedItem } from '../lockedItemFill'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
@@ -130,6 +139,8 @@ beforeEach(() => {
   recapMock.mockResolvedValue(undefined)
   feedMock.mockReset()
   feedMock.mockResolvedValue(undefined)
+  awardPointsMock.mockReset()
+  awardPointsMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -504,12 +515,11 @@ describe('openLockedItem — 포인트 소식 (티켓 20261026_1031)', () => {
     expect(reads.length).toBeGreaterThan(0)
   })
 
-  it('소식만 내고 피드는 만들지 않는다 — 피드 이벤트도 알림 RPC도 부르지 않는다', async () => {
+  it('소식은 알림 RPC를 직접 부르지 않는다 — 부르는 RPC는 열기와 챕터 점수뿐이다', async () => {
     const { client, rpc } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
 
     await openLockedItem(client, USER_ID, ITEM_ID)
 
-    expect(feedMock).not.toHaveBeenCalled()
     expect(rpc.mock.calls.map((call) => call[0]).sort()).toEqual(['chapter_add_score', 'locked_item_open'])
   })
 
@@ -558,6 +568,172 @@ describe('openLockedItem — 포인트 소식 (티켓 20261026_1031)', () => {
     expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
     expect(payload.item).not.toBeNull()
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('포인트 소식 기록 실패'), expect.any(Error))
+  })
+})
+
+describe('openLockedItem — 활동 피드 item_dropped (티켓 20261026_1031)', () => {
+  it('열기가 확정되면 item_dropped를 한 번, 연 개체의 정보를 열린 채 받은 개체와 같은 칸으로 올린다', async () => {
+    const { client, reads } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+    let readsWhenCalled = -1
+    feedMock.mockImplementation(async () => {
+      readsWhenCalled = reads.length
+    })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(feedMock).toHaveBeenCalledTimes(1)
+    expect(feedMock).toHaveBeenCalledWith(
+      USER_ID,
+      'item_dropped',
+      {
+        inventory_item_id: ITEM_ID,
+        badge_id: BADGE_ID,
+        badge_name: '새벽의 첫 바퀴',
+        badge_image_url: 'https://img/x.png',
+        rarity: 'epic',
+        poi_name: '',
+        tribe_name: '러너',
+        is_last_piece: false,
+        point_reward: 50,
+      },
+      undefined,
+      undefined
+    )
+    // 개체 정보를 읽은 다음에 올린다
+    expect(readsWhenCalled).toBeGreaterThan(0)
+  })
+
+  it('시각은 연 때(생략 = DB 기본값 지금)이고 활동에는 묶지 않는다', async () => {
+    const { client } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    // recordFeedEvent(유저, 종류, 메타, 시각, 활동 id) — 4·5번째 인자를 넘기지 않는다
+    expect(feedMock.mock.calls[0][3]).toBeUndefined()
+    expect(feedMock.mock.calls[0][4]).toBeUndefined()
+  })
+
+  it('칸 이름과 값이 열린 채 받은 개체의 피드(recordIssuedRewards)와 같다', async () => {
+    await recordIssuedRewards({
+      userId: USER_ID,
+      stravaId: null,
+      startDate: null,
+      tribeName: '러너',
+      inventoryItemId: ITEM_ID,
+      badge: { id: BADGE_ID, name: '새벽의 첫 바퀴', image_url: 'https://img/x.png', point_reward: 50 },
+      rarity: 'epic',
+    })
+    expect(feedMock).toHaveBeenCalledTimes(1)
+    const received = feedMock.mock.calls[0]
+    feedMock.mockClear()
+
+    const { client } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(feedMock).toHaveBeenCalledTimes(1)
+    expect(feedMock.mock.calls[0].slice(0, 4)).toEqual(received.slice(0, 4))
+  })
+
+  it('포인트를 다시 주지 않는다 — 포인트는 열기 RPC 안에서 한 번 주고, 피드는 point_reward 칸에 그 값을 적을 뿐이다', async () => {
+    const { client } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+
+  it('포인트가 0이어도(포인트 없는 배지·이미 지급) 열기가 확정되면 피드는 올라가고 point_reward 칸은 없다', async () => {
+    const { client } = fakeClient({
+      rpc: { locked_item_open: { data: { ...OPEN_OK, pointsAwarded: 0 }, error: null } },
+      tables: INFO_TABLES,
+    })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(recapMock).not.toHaveBeenCalled()
+    expect(feedMock).toHaveBeenCalledTimes(1)
+    expect(feedMock.mock.calls[0][2]).not.toHaveProperty('point_reward')
+    expect(feedMock.mock.calls[0][2]).toMatchObject({ inventory_item_id: ITEM_ID, badge_id: BADGE_ID })
+  })
+
+  it('그림·트라이브가 없는 배지는 그 칸을 빈 문자열로 올린다', async () => {
+    const { client } = fakeClient({
+      rpc: { locked_item_open: { data: OPEN_OK, error: null } },
+      tables: {
+        ...INFO_TABLES,
+        badges: { data: { name: '이름만', image_url: null, description: null, rarity: null, item_book_id: null, tribe_id: null }, error: null },
+      },
+    })
+
+    await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(feedMock.mock.calls[0][2]).toMatchObject({ badge_name: '이름만', badge_image_url: '', rarity: null, tribe_name: '' })
+  })
+
+  it('개체 정보를 읽지 못하면(조회 실패·배지 행 없음) 피드를 올리지 않고 기록만 남기며, 열기는 성공이다', async () => {
+    const failed = fakeClient({
+      rpc: { locked_item_open: { data: OPEN_OK, error: null } },
+      tables: { ...INFO_TABLES, badges: { data: null, error: { message: 'down' } } },
+    })
+    const failedPayload = await openLockedItem(failed.client, USER_ID, ITEM_ID)
+
+    const missing = fakeClient({
+      rpc: { locked_item_open: { data: OPEN_OK, error: null } },
+      tables: { ...INFO_TABLES, badges: { data: null, error: null } },
+    })
+    const missingPayload = await openLockedItem(missing.client, USER_ID, ITEM_ID)
+
+    expect(feedMock).not.toHaveBeenCalled()
+    expect(failedPayload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, pointsAwarded: 50, item: null })
+    expect(missingPayload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, pointsAwarded: 50, item: null })
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('개체 정보가 없어 피드를 올리지 않는다'))
+    // 포인트 소식은 개체 정보와 무관하게 나간다
+    expect(recapMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('피드가 던져도 열기와 응답은 그대로이고 기록만 남긴다', async () => {
+    feedMock.mockRejectedValue(new Error('피드 장애'))
+    const { client } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
+    expect(payload.item).not.toBeNull()
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('피드 기록 실패'), expect.any(Error))
+  })
+
+  it('이미 연 개체(not_locked)·정지·DB 거절·해석할 수 없는 응답은 피드를 올리지 않는다', async () => {
+    const notLocked = fakeClient({ rpc: { locked_item_open: { data: { ok: false, error: 'not_locked' }, error: null } } })
+    await expect(openLockedItem(notLocked.client, USER_ID, ITEM_ID)).rejects.toMatchObject({ code: 'not_locked' })
+
+    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-26T00:00:00Z' }))
+    await openLockedItem(fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES }).client, USER_ID, ITEM_ID).catch(() => {})
+
+    const notFull = fakeClient({ rpc: { locked_item_open: { data: { ok: false, error: 'not_full', required: 100, filled: 60 }, error: null } } })
+    await openLockedItem(notFull.client, USER_ID, ITEM_ID).catch(() => {})
+
+    const broken = fakeClient({ rpc: { locked_item_open: { data: { ok: true }, error: null } } })
+    await openLockedItem(broken.client, USER_ID, ITEM_ID).catch(() => {})
+
+    expect(feedMock).not.toHaveBeenCalled()
+  })
+
+  it('같은 개체를 다시 열려 하면(두 번째는 not_locked) 피드가 두 번 올라가지 않는다', async () => {
+    const first = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+    await openLockedItem(first.client, USER_ID, ITEM_ID)
+
+    const second = fakeClient({ rpc: { locked_item_open: { data: { ok: false, error: 'not_locked' }, error: null } }, tables: INFO_TABLES })
+    await expect(openLockedItem(second.client, USER_ID, ITEM_ID)).rejects.toMatchObject({ code: 'not_locked' })
+
+    expect(feedMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('채우기는 피드를 올리지 않는다', async () => {
+    const { client } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
+
+    await fillLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(feedMock).not.toHaveBeenCalled()
   })
 })
 

@@ -4,7 +4,9 @@
  * 채우기는 DB 함수 `locked_item_fill`(잼 원장 한 줄, 개체의 채운 양, 이력이 한 트랜잭션), 열기는 `locked_item_open`(같은 개체를 열린 상태로 바꾸고
  * 포인트를 한 번만 주고 이력을 남긴다)이 한다. 규칙은 캡슐 채우기와 같고, 열기에는 인벤토리 빈칸이 필요 없다. 앱은 정지 확인과 RPC 호출,
  * 응답 모양 만들기만 한다. DB 안에서 포인트를 주므로 `awardPoints`의 알림(`notifyPointChange`)은 이 경로에서 나가지 않는다 — 그래서 열기 성공 뒤
- * 이 파일이 같은 포인트 소식(활동 결산의 «포인트» 꼬리)을 직접 낸다(티켓 20261026_1031). 피드는 만들지 않는다 — 받을 때 `item_dropped`가 이미 나갔다.
+ * 이 파일이 같은 포인트 소식(활동 결산의 «포인트» 꼬리)을 직접 낸다(티켓 20261026_1031).
+ * 활동 피드도 이 파일이 올린다. 잠긴 채 받은 개체는 받을 때 포인트도 피드도 건너뛰므로(`recordIssuedRewards`, 7.3절 가림 원칙) 열 때가 `item_dropped`를 처음 올리는 때다.
+ * 칸은 열린 채 받은 개체의 피드와 같고(`recordItemDroppedFeed`) 시각은 연 때다(티켓 20261026_1031, 사용자 결정 2026-10-26).
  *
  * 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다. 열기 성공 응답에만 `loadOpenedInfo`가 읽은 정보를 싣는다.
  *
@@ -16,6 +18,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { awardChapterScore } from '@/lib/chapter/score'
+import { recordItemDroppedFeed } from '@/lib/drop-engine/issueFollowUp'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
@@ -168,6 +171,7 @@ async function loadSerialPrefix(supabase: SupabaseClient, itemId: string): Promi
 /**
  * 가득 찬 잠긴 개체를 연다. 인벤토리 빈칸은 필요 없고 새로 뽑지 않는다. 이용 정지 중이면 RPC를 부르기 전에 `UserSuspendedError`를 던진다.
  * DB 함수의 거절은 `LockedItemError`다. 열기가 확정된 뒤 개체 정보를 읽지 못하면 열기를 되돌리지 않고 `item: null`로 돌려준다.
+ * 열기가 확정되면 포인트 소식(`pointsAwarded`가 0보다 클 때)과 활동 피드 `item_dropped`(개체 정보를 읽었을 때)를 한 번씩 낸다. 둘 다 서로와 열기 응답에 영향을 주지 않는다.
  */
 export async function openLockedItem(supabase: SupabaseClient, userId: string, itemId: string): Promise<LockedItemOpenPayload> {
   await assertNotSuspended(supabase, userId)
@@ -191,7 +195,7 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
   } catch (e) {
     console.error(`[locked-item] 퀘스트 완료 처리 실패 — 열기는 유지한다 (userId: ${userId}, itemId: ${itemId}):`, e)
   }
-  // 포인트 소식(티켓 20261026_1031). 열린 채 받을 때와 같은 활동 결산의 «포인트» 꼬리이고 피드는 만들지 않는다. 포인트는 RPC 안에서 이미 지급됐으므로
+  // 포인트 소식(티켓 20261026_1031). 열린 채 받을 때와 같은 활동 결산의 «포인트» 꼬리다(피드는 아래에서 따로 올린다). 포인트는 RPC 안에서 이미 지급됐으므로
   // 소식이 실패해도 열기와 응답을 막지 않는다. RPC는 `point_awarded_at`이 비었을 때만 0보다 큰 값을 돌려주고 두 번째 열기는 `not_locked`로 거절하므로 한 번만 나간다.
   if (result.pointsAwarded > 0) {
     try {
@@ -206,6 +210,25 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
     info = await loadOpenedInfo(supabase, result.badgeId)
   } catch (e) {
     console.error(`[locked-item] 열기 뒤 개체 정보 조회 실패 — 정보 없이 돌려준다 (userId: ${userId}, itemId: ${itemId}):`, e)
+  }
+  // 활동 피드 `item_dropped`(티켓 20261026_1031, 사용자 결정 2026-10-26). 잠긴 채 받은 개체는 받을 때 피드가 없으므로(7.3절 가림 원칙) 열 때 처음 올린다.
+  // 칸은 열린 채 받은 개체와 같고 시각은 연 때(생략 = DB 기본값 지금)이며 활동에는 묶지 않는다. 포인트가 없어도 올린다 — 포인트를 준 경우에만 `point_reward`를 싣는다.
+  // 개체 정보를 읽지 못했으면 이름·그림 없이 올릴 수 없으니 올리지 않는다. 실패해도 열기와 응답을 막지 않는다. 두 번째 열기는 RPC가 `not_locked`로 거절해 여기까지 오지 않으므로 한 번만 올라간다.
+  if (info) {
+    try {
+      await recordItemDroppedFeed({
+        userId,
+        inventoryItemId: itemId,
+        badge: { id: result.badgeId, name: info.name, image_url: info.imageUrl },
+        rarity: info.rarity,
+        tribeName: info.tribe?.name ?? '',
+        pointReward: result.pointsAwarded,
+      })
+    } catch (e) {
+      console.error(`[locked-item] 피드 기록 실패 — 열기는 유지한다 (userId: ${userId}, itemId: ${itemId}):`, e)
+    }
+  } else {
+    console.error(`[locked-item] 개체 정보가 없어 피드를 올리지 않는다 (userId: ${userId}, itemId: ${itemId})`)
   }
   let serialPrefix: string | null = null
   try {

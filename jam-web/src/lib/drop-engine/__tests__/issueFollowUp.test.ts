@@ -6,6 +6,8 @@
  *  - 잠긴 개체: 포인트도 피드도 건너뛴다(운영 로직 7.3절).
  *  - `skipFeed`(캡슐 열기): 열린 개체여도 피드를 올리지 않고 포인트는 그대로 준다(운영 로직 15.3절 «캡슐을 열어 나온 아이템 배지는 피드에 올리지 않는다»).
  *  - 포인트·피드가 던져도 던지지 않는다.
+ *  - `recordItemDroppedFeed`(티켓 20261026_1031): 피드 칸을 한 곳에서 정한다. 열린 채 받은 개체(위)와 잠긴 개체를 연 때(`openLockedItem`)가 같이 쓴다.
+ *    시각·활동 id를 생략하면 넘기지 않고(DB 기본값 = 지금), 포인트가 0이면 `point_reward` 칸이 없으며, 그림이 없으면 빈 문자열이다.
  * 실제 포인트·피드·공용 DB는 부르지 않는다 — 둘 다 모의한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/drop-engine/__tests__/issueFollowUp.test.ts
@@ -18,7 +20,7 @@ const awardPointsMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: (...args: unknown[]) => feedMock(...args) }))
 vi.mock('@/lib/points', () => ({ awardPoints: (...args: unknown[]) => awardPointsMock(...args) }))
 
-import { recordIssuedRewards, type IssuedRewardsInput } from '../issueFollowUp'
+import { recordIssuedRewards, recordItemDroppedFeed, type IssuedRewardsInput } from '../issueFollowUp'
 
 const USER = 'user-1'
 
@@ -99,5 +101,68 @@ describe('recordIssuedRewards', () => {
     feedMock.mockRejectedValue(new Error('피드 서버 다운'))
 
     await expect(recordIssuedRewards(input())).resolves.toBeUndefined()
+  })
+})
+
+describe('recordItemDroppedFeed', () => {
+  it('칸 이름과 값을 정해진 모양으로 싣고, 시각·활동 id를 생략하면 넘기지 않는다', async () => {
+    await recordItemDroppedFeed({
+      userId: USER,
+      inventoryItemId: 'inv-1',
+      badge: { id: 'badge-1', name: '파편', image_url: 'https://example.com/a.png' },
+      rarity: 'epic',
+      tribeName: '트라이브-A',
+      pointReward: 50,
+    })
+
+    expect(feedMock).toHaveBeenCalledTimes(1)
+    expect(feedMock).toHaveBeenCalledWith(
+      USER,
+      'item_dropped',
+      {
+        inventory_item_id: 'inv-1',
+        badge_id: 'badge-1',
+        badge_name: '파편',
+        badge_image_url: 'https://example.com/a.png',
+        rarity: 'epic',
+        poi_name: '',
+        tribe_name: '트라이브-A',
+        is_last_piece: false,
+        point_reward: 50,
+      },
+      undefined,
+      undefined
+    )
+  })
+
+  it('포인트가 0이면 point_reward 칸이 없고, 그림이 없으면 빈 문자열이며, 등급이 없으면 null이다', async () => {
+    await recordItemDroppedFeed({
+      userId: USER,
+      inventoryItemId: 'inv-1',
+      badge: { id: 'badge-1', name: '파편', image_url: null },
+      rarity: null,
+      tribeName: '',
+      pointReward: 0,
+      eventAt: '2026-10-26T01:00:00.000Z',
+      stravaId: 99,
+    })
+
+    expect(feedMock.mock.calls[0][2]).not.toHaveProperty('point_reward')
+    expect(feedMock.mock.calls[0][2]).toMatchObject({ badge_image_url: '', rarity: null, tribe_name: '' })
+    expect(feedMock.mock.calls[0][3]).toBe('2026-10-26T01:00:00.000Z')
+    expect(feedMock.mock.calls[0][4]).toBe(99)
+  })
+
+  it('포인트를 주지 않는다', async () => {
+    await recordItemDroppedFeed({
+      userId: USER,
+      inventoryItemId: 'inv-1',
+      badge: { id: 'badge-1', name: '파편', image_url: null },
+      rarity: 'common',
+      tribeName: '트라이브-A',
+      pointReward: 50,
+    })
+
+    expect(awardPointsMock).not.toHaveBeenCalled()
   })
 })
