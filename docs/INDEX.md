@@ -176,6 +176,7 @@ status: active
 **현재 서비스 (service)**
 
 - [POI.md](service/content/POI.md) — 장소(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -201,6 +202,7 @@ status: active
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
 - [POI.md](service/content/POI.md) — 장소(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 - [TRIBES.md](service/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
 - [PRD.md](service/prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
@@ -273,6 +275,7 @@ status: active
 
 - [ACTIVITY_BADGES.md](service/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [MISSION_REGISTRATION_BUNDLE.md](service/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 미션 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
 - [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
@@ -342,6 +345,7 @@ status: active
 
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
 - [SPECIAL_DAYS.md](service/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [HOME_FEED_REGISTRATION_BUNDLE.md](service/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 홈피드 카드 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
 - [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
@@ -389,6 +393,7 @@ status: active
 
 **현재 서비스 (service)**
 
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [ADMIN_PRD.md](service/prd/admin-ui/ADMIN_PRD.md) — 어드민의 배지·지점(POI)·컬렉션 관리, 시뮬레이터, 유저 조회 기능과 화면 구성, 기술 스펙을 정의한 어드민 PRD다.
 - [PHASES.md](service/prd/admin-ui/PHASES.md) — 어드민 UI를 shadcn 디자인시스템으로 전환하는 단계별 범위, 의존성, 완료 기준과 완료 결과를 정리한 문서다.
 - [README.md](service/prd/admin-ui/README.md) — 어드민 UI 리디자인 폴더의 문서 구성을 안내하고 현재 유효한 문서를 밝히는 목차 문서다.
@@ -487,6 +492,7 @@ status: active
 **현재 서비스 (service)**
 
 - [SPECIAL_DAYS.md](service/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
 
 **비전 (plan/vision)**
@@ -537,6 +543,7 @@ status: active
 
 **현재 서비스 (service)**
 
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
 
@@ -582,6 +589,7 @@ status: active
 
 **현재 서비스 (service)**
 
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
 
 **JAM 2.0 (plan/jam2)**
@@ -833,6 +841,10 @@ status: active
 - [04_PROJECT_SPEC.md](service/prd/04_PROJECT_SPEC.md) — 기술 스택, 프로젝트 구조, 어드민 인증, Cron, 금지 사항, 환경변수, 핵심 비즈니스 규칙을 정리한 프로젝트 스펙이다.
 - [2026-08-15 DESIGN_RENEWAL_SPEC.md](service/prd/2026-08-15%20DESIGN_RENEWAL_SPEC.md) — 서비스 UI 리뉴얼의 목표, 디자인 원칙, 시각 방향, 컴포넌트·레이아웃·UX 규칙과 변경 금지·필수 변경 항목을 정한 스펙이다.
 - [README.md](service/prd/README.md) — PRD 폴더의 문서 구성, 읽는 시점, 주제별 PRD 하위 폴더, 과거 이력 자료를 안내하는 목차 문서다.
+
+### docs/service/prd/admin-boards/
+
+- [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 
 ### docs/service/prd/admin-ui/
 
