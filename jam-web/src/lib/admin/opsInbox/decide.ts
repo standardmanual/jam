@@ -376,6 +376,59 @@ export async function rejectItem(service: ServiceClient, input: StatusDecisionIn
 
 // ── 일괄 승인 ────────────────────────────────────────────────────────────────────────────────────
 
+export interface ApproveTransition {
+  ok: true
+  /** 이번에 검토중에서 승인됨으로 실제 바뀐 항목. 비면 아무것도 바뀌지 않은 것이다(결정 기록도 없다). */
+  changedIds: string[]
+  decisionIds: string[]
+  /** 바뀐 항목이 있을 때만 있다. */
+  batchId: string | null
+}
+
+/**
+ * 검토중 항목을 조건부로 승인으로 옮기고 바뀐 항목마다 결정 기록 1행을 같은 `batch_id`로 남긴다(`bulkApprove`와 예약 등록의 「승인하고 예약」이 함께 쓴다).
+ * 호출한 쪽이 패턴 제안을 미리 걸러 넘긴다. 결정 기록 insert가 실패하면 바꾼 항목을 검토중으로 되돌리고 500이다.
+ */
+export async function approveReviewingItems(
+  service: ServiceClient,
+  input: { bundleId: string; itemIds: readonly string[]; actor: string }
+): Promise<ApproveTransition | DecisionFailure> {
+  const { bundleId, itemIds, actor } = input
+  const updated = await service
+    .from('ops_bundle_items')
+    .update({ status: 'approved', updated_at: new Date().toISOString() })
+    .eq('bundle_id', bundleId)
+    .eq('status', 'reviewing')
+    .in('id', [...itemIds])
+    .select('id')
+  if (updated.error) {
+    logError('일괄 승인 상태 변경 실패', updated.error)
+    return fail(500, APPROVE_FAILED)
+  }
+  const changedIds = (updated.data ?? []).map((row) => row.id)
+  if (changedIds.length === 0) return { ok: true, changedIds, decisionIds: [], batchId: null }
+
+  const batchId = crypto.randomUUID()
+  const inserted = await service
+    .from('ops_decisions')
+    .insert(
+      changedIds.map((itemId) => ({
+        bundle_id: bundleId,
+        item_id: itemId,
+        action: OPS_DECISION_ACTION_APPROVE,
+        actor,
+        batch_id: batchId,
+      }))
+    )
+    .select('id')
+  if (inserted.error || !inserted.data) {
+    logError('결정 기록 저장 실패', inserted.error)
+    await restoreStatus(service, changedIds, bundleId, 'approved')
+    return fail(500, APPROVE_FAILED)
+  }
+  return { ok: true, changedIds, decisionIds: inserted.data.map((row) => row.id), batchId }
+}
+
 /**
  * 그 묶음의 검토중 항목을 한 번에 조건부로 승인하고, 실제로 바뀐 항목마다 결정 기록 1행을 같은 `batch_id`로 남긴다.
  * `skipped`는 요청했지만 그 사이 다른 곳에서 이미 처리한 항목, `excluded`는 요청하지 않은 검토중 항목이다.
@@ -416,45 +469,17 @@ export async function bulkApprove(
   const requested = new Set(requestedIds)
   const excluded = items.filter((item) => item.status === 'reviewing' && !requested.has(item.id)).length
 
-  const updated = await service
-    .from('ops_bundle_items')
-    .update({ status: 'approved', updated_at: new Date().toISOString() })
-    .eq('bundle_id', bundleId)
-    .eq('status', 'reviewing')
-    .in('id', ids)
-    .select('id')
-  if (updated.error) {
-    logError('일괄 승인 상태 변경 실패', updated.error)
-    return fail(500, APPROVE_FAILED)
-  }
-  const changedIds = (updated.data ?? []).map((row) => row.id)
+  const transitioned = await approveReviewingItems(service, { bundleId, itemIds: ids, actor })
+  if (isFailure(transitioned)) return transitioned
+  const { changedIds, decisionIds, batchId } = transitioned
   const approved = changedIds.length
   const skipped = ids.length - approved
   if (approved === 0) return fail(409, CONFLICT_MESSAGE, { approved, skipped, excluded, ...proposalExtra })
 
-  const batchId = crypto.randomUUID()
-  const inserted = await service
-    .from('ops_decisions')
-    .insert(
-      changedIds.map((itemId) => ({
-        bundle_id: bundleId,
-        item_id: itemId,
-        action: OPS_DECISION_ACTION_APPROVE,
-        actor,
-        batch_id: batchId,
-      }))
-    )
-    .select('id')
-  if (inserted.error || !inserted.data) {
-    logError('결정 기록 저장 실패', inserted.error)
-    await restoreStatus(service, changedIds, bundleId, 'approved')
-    return fail(500, APPROVE_FAILED)
-  }
-
   return {
     ok: true,
     body: { ok: true, approved, skipped, excluded, ...proposalExtra },
-    decisionIds: inserted.data.map((row) => row.id),
+    decisionIds,
     batchId,
     slack: { action: 'bulk_approve', isSample: bundle.is_sample, approved, excluded, skipped },
   }

@@ -15,6 +15,9 @@
  *   예약한 항목도 실패로 닫은 항목도 없을 때만 409다(티켓 20261002_1255 가정 6).
  * - 자원을 만든 뒤 결정 기록 insert가 실패하면 자원과 상태는 그대로 두고 `decisionLogFailed`로 알린다(되돌리면 자원을 지워야 한다).
  * - 응답·결정 기록·슬랙에는 핸들러의 `reason`(쉬운 문장)만 싣고, `detail`과 DB 오류 원문은 서버 로그에만 남긴다.
+ * - 승인하고 예약(`includeReviewing`, 티켓 20261026_2022): 켜면 검토중 항목(패턴 제안 제외)도 승인된 것처럼 점검하고, 실행에서는 예약할 항목과 실패로 닫을 항목 가운데
+ *   검토중인 것을 먼저 조건부로 승인한 뒤(`approveReviewingItems`, 결정 기록 `approve`) 기존 선점·그룹 생성으로 이어 간다. 점검(`dryRun`·`badgePreview`)은 아무것도 바꾸지 않는다.
+ *   시험 묶음은 이 모드를 꺼 둔다(승인도 하지 않고 지금 동작 그대로 검증만 한다).
  * - 시험 묶음은 검증까지 하고 자원은 만들지 않는다. 성공한 항목의 `created_resource`는 `{ "sample": true }`다(§8.8).
  * - 결정 기록은 insert만 하고 뒤에 `slack_result` 열만 채운다(`notifyExecution`). 제출 원본(`original`)은 건드리지 않는다.
  */
@@ -39,6 +42,7 @@ import {
   type ExecuteServiceClient,
   type PointedByEntry,
 } from './handlers'
+import { approveReviewingItems, type DecisionSuccess } from '@/lib/admin/opsInbox/decide'
 import { previewBundleBadges, type BadgePreviewInput, type BundleBadgePreview } from './badgePreview'
 import { PRECHECK_MESSAGES, precheckBundle, type PrecheckGroup, type PrecheckResult } from './precheck'
 import { EXECUTE_HANDLERS } from './registry'
@@ -61,6 +65,7 @@ const MESSAGES = {
   changed: '그사이 상태가 바뀌어 건너뛰었어요',
   partialGroup: '함께 예약할 연결 항목이 요청에 없어서 건너뛰었어요',
   concurrent: '다른 곳에서 동시에 처리해서 건너뛰었어요',
+  approveFailed: '승인하지 못해 예약 등록을 멈췄어요. 잠시 뒤 다시 눌러 주세요.',
   closeFailed: '실패로 닫지 못해 건너뛰었어요. 다시 눌러 주세요',
   groupFailed: '연결된 항목을 만들지 못해 함께 실패했어요',
   undoFailed: '되돌리지 못한 자원이 있어요',
@@ -88,7 +93,10 @@ export interface RunFailure {
 
 export interface DryRunSuccess {
   ok: true
-  body: { ok: true; dryRun: true } & PrecheckResult
+  body: { ok: true; dryRun: true } & PrecheckResult & {
+      /** 「승인하고 예약」 모드에서 예약 등록과 함께 승인할 항목(지금 검토중인 예약할 항목·실패로 닫을 항목). 모드가 꺼져 있으면 빈 배열이다. */
+      approving: string[]
+    }
 }
 
 export interface BadgePreviewSuccess {
@@ -118,9 +126,13 @@ export interface ExecuteSuccess {
     excludedCount: number
     /** 자원은 만들었는데 결정 기록을 남기지 못했다. 있을 때만 `true`다. */
     decisionLogFailed?: true
+    /** 이 요청이 검토중에서 승인으로 옮긴 항목 ID(`approve: true`일 때만). */
+    approved?: string[]
   }
   batchId: string
   slack: ExecuteNotification
+  /** 승인한 항목이 있을 때만: 승인 결정 기록과 슬랙 글 재료. 응답 뒤 `notifyDecision`이 올린다(승인 1건 + 예약 결과 1건). */
+  approval?: DecisionSuccess
 }
 
 export interface ExecuteDeps {
@@ -174,12 +186,43 @@ export function itemLabelOf(item: Pick<ExecuteItem, 'kind' | 'starts_at'>): stri
 
 // ── 사전 점검 ────────────────────────────────────────────────────────────────────────────────────
 
-/** 사전 점검 요청(`{ dryRun: true }`). 쓰기 없이 `precheckBundle` 결과를 돌려준다. */
-export async function dryRunExecution(service: ServiceClient, bundleId: string, deps: Partial<ExecuteDeps> = {}): Promise<DryRunSuccess | RunFailure> {
+const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
+
+/** 「승인하고 예약」 모드로 승인할 수 있는 항목: 검토중이고 패턴 제안이 아니다(패턴 제안은 승인 즉시 종료라 예약 대상이 아니다). */
+function isApprovable(item: Pick<ExecuteItem, 'status' | 'kind'>): boolean {
+  return item.status === 'reviewing' && item.kind !== PATTERN_PROPOSAL_KIND
+}
+
+/**
+ * 점검용 항목: 모드가 켜져 있고 시험 묶음이 아니면 승인할 수 있는 검토중 항목을 승인된 것처럼 바꿔 `precheckBundle`에 넘긴다(DB는 건드리지 않는다).
+ * 꺼져 있거나 시험 묶음이면 그대로다(시험 묶음은 승인도 하지 않는다).
+ */
+function precheckItemsOf(items: ExecuteItem[], includeReviewing: boolean, isSample: boolean): ExecuteItem[] {
+  if (!includeReviewing || isSample) return items
+  return items.map((item) => (isApprovable(item) ? { ...item, status: 'approved' } : item))
+}
+
+/** 사전 점검 요청(`{ dryRun: true }`, 선택 `approve: true`). 쓰기 없이 `precheckBundle` 결과를 돌려준다. */
+export async function dryRunExecution(
+  service: ServiceClient,
+  bundleId: string,
+  deps: Partial<ExecuteDeps> & { includeReviewing?: boolean } = {}
+): Promise<DryRunSuccess | RunFailure> {
   const loaded = await loadBundleItems(service, bundleId, MESSAGES.dryRunFailed)
   if (isRunFailure(loaded)) return loaded
-  const result = precheckBundle(loaded.items, { now: (deps.now ?? (() => new Date()))(), handlers: deps.handlers ?? EXECUTE_HANDLERS })
-  return { ok: true, body: { ok: true, dryRun: true, ...result } }
+  const includeReviewing = deps.includeReviewing === true && !loaded.isSample
+  const result = precheckBundle(precheckItemsOf(loaded.items, includeReviewing, loaded.isSample), {
+    now: (deps.now ?? (() => new Date()))(),
+    handlers: deps.handlers ?? EXECUTE_HANDLERS,
+  })
+  const approving = includeReviewing ? approvingIdsOf(loaded.items, result) : []
+  return { ok: true, body: { ok: true, dryRun: true, ...result, approving } }
+}
+
+/** 이번에 승인할 항목: 예약할 항목과 실패로 닫을 항목 가운데 지금 검토중인 것(제출 순서). */
+function approvingIdsOf(items: readonly ExecuteItem[], precheck: PrecheckResult): string[] {
+  const wanted = new Set([...precheck.ready, ...precheck.failClose.map((entry) => entry.id)])
+  return items.filter((item) => wanted.has(item.id) && isApprovable(item)).map((item) => item.id)
 }
 
 /**
@@ -189,15 +232,17 @@ export async function dryRunExecution(service: ServiceClient, bundleId: string, 
 export async function badgePreviewExecution(
   service: ServiceClient,
   bundleId: string,
-  deps: Partial<ExecuteDeps> & Partial<Omit<BadgePreviewInput, 'linkedIdsFor' | 'pointedByOf'>> = {}
+  deps: Partial<ExecuteDeps> & Partial<Omit<BadgePreviewInput, 'linkedIdsFor' | 'pointedByOf'>> & { includeReviewing?: boolean } = {}
 ): Promise<BadgePreviewSuccess | RunFailure> {
   const loaded = await loadBundleItems(service, bundleId, MESSAGES.badgePreviewFailed)
   if (isRunFailure(loaded)) return loaded
-  const { handlers: registry, now: clockNow, ...previewDeps } = deps
+  const { handlers: registry, now: clockNow, includeReviewing, ...previewDeps } = deps
   const now = clockNow ?? (() => new Date())
-  const precheck = precheckBundle(loaded.items, { now: now(), handlers: registry ?? EXECUTE_HANDLERS })
+  // 검토중 항목을 승인된 것처럼 세어 요약창의 예약할 항목(`dryRun`)과 같은 대상을 센다. 미리 세기는 쓰지 않는다.
+  const items = precheckItemsOf(loaded.items, includeReviewing === true, loaded.isSample)
+  const precheck = precheckBundle(items, { now: now(), handlers: registry ?? EXECUTE_HANDLERS })
   try {
-    const badgePreview = await previewBundleBadges(service, loaded.items, precheck, { ...previewDeps, now, linkedIdsFor, pointedByOf })
+    const badgePreview = await previewBundleBadges(service, items, precheck, { ...previewDeps, now, linkedIdsFor, pointedByOf })
     return { ok: true, body: { ok: true, badgePreview } }
   } catch (err) {
     console.error(`${LOG} 배지 미리 세기 실패:`, err instanceof Error ? err.message : 'unknown')
@@ -411,12 +456,13 @@ async function runGroup(ctx: RunContext, group: PrecheckGroup): Promise<GroupRes
 // ── 실행 ─────────────────────────────────────────────────────────────────────────────────────────
 
 /** 요청한 항목이 지금 예약할 수 없는 이유(건너뛴 항목의 사유). */
-function skipReasonOf(id: string, byId: ReadonlyMap<string, ExecuteItem>, precheck: PrecheckResult): string {
+function skipReasonOf(id: string, byId: ReadonlyMap<string, ExecuteItem>, precheck: PrecheckResult, includeReviewing: boolean): string {
   const blocked = precheck.blocked.find((entry) => entry.id === id)
   if (blocked) return blocked.reasons[0]
   if (precheck.waiting.includes(id)) return PRECHECK_MESSAGES.waiting
   if (precheck.excluded.includes(id)) return MESSAGES.notExecutableKind
-  return byId.get(id)?.status === 'approved' ? MESSAGES.changed : MESSAGES.alreadyHandled
+  const status = byId.get(id)?.status
+  return status === 'approved' || (includeReviewing && status === 'reviewing') ? MESSAGES.changed : MESSAGES.alreadyHandled
 }
 
 /**
@@ -445,7 +491,7 @@ async function releaseClaim(ctx: RunContext, itemIds: string[]) {
  */
 export async function executeBundle(
   service: ServiceClient,
-  input: { bundleId: string; itemIds: unknown; actor: string },
+  input: { bundleId: string; itemIds: unknown; actor: string; includeReviewing?: boolean },
   deps: Partial<ExecuteDeps> = {}
 ): Promise<ExecuteSuccess | RunFailure> {
   const { bundleId, actor } = input
@@ -468,13 +514,15 @@ export async function executeBundle(
   const ctx: RunContext = { service, bundleId, actor, isSample, handlers, byId, now: now(), stamp: () => now().toISOString() }
 
   // 사전 점검을 다시 해 지금도 예약할 수 있는 항목만 실행한다.
-  const precheck = precheckBundle(items, { now: now(), handlers })
+  // 「승인하고 예약」 모드(`includeReviewing`)면 검토중 항목을 승인된 것처럼 점검한다. 시험 묶음은 꺼 둔다.
+  const includeReviewing = input.includeReviewing === true && !isSample
+  const precheck = precheckBundle(precheckItemsOf(items, includeReviewing, isSample), { now: now(), handlers })
   const requested = new Set(ids)
   const readyIds = new Set(precheck.ready)
   const failCloseIds = new Set(precheck.failClose.map((entry) => entry.id))
   const skipped: ItemReason[] = ids
     .filter((id) => !readyIds.has(id) && !failCloseIds.has(id))
-    .map((id) => ({ id, reason: skipReasonOf(id, byId, precheck) }))
+    .map((id) => ({ id, reason: skipReasonOf(id, byId, precheck, includeReviewing) }))
 
   // 연결 그룹은 함께 예약한다. 요청에 그룹의 예약할 항목이 다 있지 않으면 그룹째 건너뛴다.
   const candidates: PrecheckGroup[] = []
@@ -483,6 +531,29 @@ export async function executeBundle(
     if (wanted.length === 0) continue
     if (wanted.length < group.executeIds.length) skipped.push(...wanted.map((id) => ({ id, reason: MESSAGES.partialGroup })))
     else candidates.push(group)
+  }
+
+  // 승인: 모드가 켜져 있으면 실행할 그룹의 항목과 실패로 닫을 항목 가운데 검토중인 것을 먼저 조건부로 승인한다(결정 기록 `approve` 1회분).
+  // 다른 곳에서 먼저 처리해 바뀌지 않은 항목은 아래 선점에서 「승인됨」이 아니라 차지하지 못하므로 그 그룹이 건너뛰어진다.
+  let approval: DecisionSuccess | undefined
+  let approvedIds: string[] = []
+  if (includeReviewing) {
+    const wantedIds = [...candidates.flatMap((group) => group.executeIds), ...failCloseIds]
+    const toApprove = wantedIds.filter((id) => byId.get(id) && isApprovable(byId.get(id) as ExecuteItem))
+    if (toApprove.length > 0) {
+      const transitioned = await approveReviewingItems(service, { bundleId, itemIds: toApprove, actor })
+      if (!transitioned.ok) return fail(500, MESSAGES.approveFailed)
+      approvedIds = transitioned.changedIds
+      if (approvedIds.length > 0) {
+        approval = {
+          ok: true,
+          body: { ok: true, approved: approvedIds.length },
+          decisionIds: transitioned.decisionIds,
+          batchId: transitioned.batchId,
+          slack: { action: 'bulk_approve', isSample, approved: approvedIds.length, excluded: 0, skipped: toApprove.length - approvedIds.length },
+        }
+      }
+    }
   }
 
   // 선점: 「승인됨 → 준비중」을 조건부로 차지한다. 선점할 항목이 없으면 이 단계를 건너뛴다(실패로 닫기는 아래에서 그대로 탄다).
@@ -551,7 +622,7 @@ export async function executeBundle(
 
   // 예약한 항목도 실패로 닫은 항목도 없으면 409다(쓴 것이 없으니 결정 기록도 남기지 않는다).
   if (scheduled.length === 0 && failed.length === 0) {
-    return fail(409, MESSAGES.nothingToRun, { skipped, excludedCount: countExcluded(precheck, skipped) })
+    return fail(409, MESSAGES.nothingToRun, { skipped, excludedCount: countExcluded(precheck, skipped), ...(approvedIds.length > 0 ? { approved: approvedIds } : {}) })
   }
 
   // 결정 기록: 예약된 항목마다 `execute`, 실패한 항목마다 `fail`(사유 필수), 같은 `batch_id`다.
@@ -570,8 +641,17 @@ export async function executeBundle(
   const excludedCount = countExcluded(precheck, skipped)
   return {
     ok: true,
-    body: { ok: true, scheduled, failed, skipped, excludedCount, ...(decisionLogFailed ? { decisionLogFailed: true as const } : {}) },
+    body: {
+      ok: true,
+      scheduled,
+      failed,
+      skipped,
+      excludedCount,
+      ...(decisionLogFailed ? { decisionLogFailed: true as const } : {}),
+      ...(includeReviewing ? { approved: approvedIds } : {}),
+    },
     batchId,
+    ...(approval ? { approval } : {}),
     slack: {
       batchId,
       isSample,

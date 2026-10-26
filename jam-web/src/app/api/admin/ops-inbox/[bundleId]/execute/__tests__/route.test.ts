@@ -232,6 +232,59 @@ describe('실행 { itemIds }', () => {
   })
 })
 
+describe('승인하고 예약 { approve: true } (티켓 20261026_2022)', () => {
+  it('approve는 true만 받는다(그 밖의 값은 400)', async () => {
+    for (const body of [{ itemIds: [I1], approve: false }, { itemIds: [I1], approve: 'true' }, { dryRun: true, approve: 1 }, { badgePreview: true, approve: null }]) {
+      expect((await call(body)).status, JSON.stringify(body)).toBe(400)
+    }
+    for (const fn of processors()) expect(fn).not.toHaveBeenCalled()
+  })
+
+  it('approve만 보내고 dryRun·badgePreview·itemIds가 없으면 400이다', async () => {
+    expect((await call({ approve: true })).status).toBe(400)
+    for (const fn of processors()) expect(fn).not.toHaveBeenCalled()
+  })
+
+  it('사전 점검·배지 미리 세기·실행에 includeReviewing: true를 넘기고 응답은 그대로 돌려준다', async () => {
+    expect((await call({ dryRun: true, approve: true })).status).toBe(200)
+    expect(h.state.dryRunExecution).toHaveBeenCalledWith(expect.anything(), B, { includeReviewing: true })
+    expect((await call({ badgePreview: true, approve: true })).status).toBe(200)
+    expect(h.state.badgePreviewExecution).toHaveBeenCalledWith(expect.anything(), B, { includeReviewing: true })
+    const res = await call({ itemIds: [I1, I2], approve: true })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, scheduled: [I1, I2], failed: [], skipped: [], excludedCount: 1 })
+    expect(h.state.executeBundle).toHaveBeenCalledWith(expect.anything(), { bundleId: B, itemIds: [I1, I2], actor: 'admin-1', includeReviewing: true })
+  })
+
+  it('approve 없이 보내면 includeReviewing 키 없이 옛 호출과 같다', async () => {
+    await call({ itemIds: [I1] })
+    expect(h.state.executeBundle).toHaveBeenLastCalledWith(expect.anything(), { bundleId: B, itemIds: [I1], actor: 'admin-1' })
+    await call({ dryRun: true })
+    expect(h.state.dryRunExecution).toHaveBeenLastCalledWith(expect.anything(), B)
+  })
+
+  it('승인한 항목이 있으면 응답 뒤에 승인 글(#jam-report)이 먼저, 예약 결과 글이 그 뒤에 나가고 slack_result는 각 batch_id로 채운다', async () => {
+    h.state.executeBundle.mockResolvedValue({
+      ...executed(),
+      approval: {
+        ok: true,
+        body: { ok: true, approved: 2 },
+        decisionIds: ['d1', 'd2'],
+        batchId: 'approve-batch',
+        slack: { action: 'bulk_approve', isSample: false, approved: 2, excluded: 0, skipped: 0 },
+      },
+    })
+    h.state.postOpsSlack.mockResolvedValue({ ok: true })
+    await call({ itemIds: [I1, I2], approve: true })
+    await flushAfter()
+    expect(h.state.postOpsSlack.mock.calls).toEqual([
+      ['report', '일괄 승인했어요 · 2개 승인, 0개 제외'],
+      ['report', '2개 예약 등록, 1개 제외'],
+    ])
+    expect(h.state.decisionUpdates.map((entry) => entry.filters)).toEqual([[['batch_id', 'approve-batch']], [['batch_id', 'batch-1'], ['action', 'execute']]])
+  })
+})
+
 describe('응답 뒤 슬랙 글', () => {
   it('성공하면 응답 뒤에 요약을 #jam-report에 올리고 결과를 execute 기록에 채운다', async () => {
     h.state.postOpsSlack.mockResolvedValue({ ok: true })
