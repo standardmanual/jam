@@ -248,7 +248,12 @@ related:
 - **데이터(D3):** 서버에서 GitHub API로 저장소 `standardmanual/jam`을 읽는다. 티켓 목록은 파일 수백 개를 하나씩 읽지 않도록 저장소에 티켓 색인 파일을 두고 그 한 파일을 읽는다(색인 생성 방식은 티켓 20261026_2028). 배포 상태는 브랜치 비교와 GitHub 배포 기록에서 읽는다. 토큰은 서버 환경변수에만 둔다.
 - **개발 요청:** 생태계·운영 상황판에서 만든 요청은 DB에 쌓이고 보드의 「대기」 칸에 「요청」으로 보인다. 카리나가 세션을 시작할 때 요청을 읽어 티켓으로 바꾼다. 어드민이 티켓 파일을 직접 만들지 않는다.
   - **구현됨(저장·API): 티켓 20261026_2027 1회차.** 테이블 `ops_dev_requests`(요청 번호 `no`, 제목, 내용, 출처 `ops`·`eco`·`other`, 정책 ID, 상태 `requested`·`ticketed`·`dismissed`, 티켓 ID). `GET /api/admin/dev-requests`(관리자 세션 또는 읽기 토큰, `status` 쿼리 기본 `requested`)·`POST`(관리자 세션만)·`PATCH /api/admin/dev-requests/[id]`(관리자 세션만, `requested`↔`dismissed`). 같은 정책(`policy_id`)에 `requested` 요청이 이미 있으면 새 요청을 만들지 않고 409로 기존 번호를 알려 준다(`policy_id`가 없는 요청은 검사하지 않음). `ticketed`와 `ticket_id`는 API가 받지 않고 카리나가 세션 시작 때 SQL로 정한다(절차는 `docs/agents/orchestrator.md` 카리나 카드).
-- 티켓에 출처를 적는 선택 필드 `origin`(`ops`·`eco`·`other`)을 더한다(`docs/DOCUMENT_SCHEMA.md` 확장 규칙 1).
+- 티켓에 출처를 적는 선택 필드 `origin`(`ops`·`eco`·`other`)을 더했다(`docs/DOCUMENT_SCHEMA.md` 확장 규칙 1).
+- **구현됨(색인): 티켓 20261026_2028 1회차.** 위 보드의 데이터 원천인 티켓 색인 파일과 그 판정 규칙이다. 2회차(GitHub 읽기)는 이 규칙을 따른다.
+  - **색인 파일:** `docs/tickets/_index.json`. 생성물이라 손으로 고치지 않는다. 티켓 하나당 한 줄 `{id,title,status,category,priority,parent,origin,created,closed,path}`이고 id 오름차순(같으면 경로순)이다. 제목은 첫 H1 그대로(카테고리 접두 포함)이며 100자로 자른다. `modular/`·`_TEMPLATE.md`·`README.md`·`Archive` 폴더는 넣지 않는다.
+  - **갱신 방식:** `scripts/gen-ticket-index.mjs`가 작업 폴더가 아니라 git 인덱스(스테이지된 상태)에서 티켓을 읽는다(병렬 세션의 미스테이지 변경이 섞이지 않게). `.githooks/pre-commit`이 스테이지된 티켓 `.md`가 있으면 색인을 다시 만들어 같은 커밋에 스테이지하고, `scripts/verify.sh`가 `--check`로 최신인지 본다. 병합으로 색인에 충돌이 나면 손으로 풀지 않고 생성기를 다시 돌린다.
+  - **보드 칸 판정 규칙:** `OPEN`·`WAITING` = 대기, `IN_PROGRESS` = 진행. 색인을 `staging`과 `main` 두 브랜치에서 읽어 티켓마다 견준다. staging 색인에서 `CLOSED`이고 main 색인에서 `CLOSED`가 아니거나 없으면 「staging 반영」, main 색인에서도 `CLOSED`이면 「배포됨」이다(티켓 커밋이 main에 있는지와 같은 뜻이라 커밋 메시지에 티켓 번호가 있어야 한다는 전제가 필요 없다). 「배포됨」은 최근 14일(`closed` 기준)만 보인다.
+  - **`origin`:** 색인의 `origin`은 티켓 frontmatter에 있을 때만 채우고(`ops`·`eco`·`other` 밖이면 빈 문자열), 보드 카드의 출처 표시는 `origin`이 있을 때만 쓴다. 기존 티켓은 소급하지 않는다. 개발 요청 행은 요청 행의 `origin`을 쓴다.
 
 ## 9. 확인 방법
 

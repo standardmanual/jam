@@ -90,6 +90,14 @@ else
   rm -f "$LOG_PREFIX.team-map"
 fi
 
+# docs/tickets/_index.json(티켓 색인)이 git 인덱스의 티켓 파일에서 생성된 최신본인지 확인한다 (티켓 20261026_2028).
+# 경로를 지정한 부분 커밋은 pre-commit 훅이 만든 색인이 그 커밋에 들어가지 않으므로 여기서 잡는다.
+if ! ( cd "$REPO_ROOT" && node scripts/gen-ticket-index.mjs --check ) >"$LOG_PREFIX.ticket-index" 2>&1; then
+  FAILED+=("ticket-index")
+else
+  rm -f "$LOG_PREFIX.ticket-index"
+fi
+
 # scheduledJobs.generated.ts(어드민 캘린더의 Claude 예약 루틴 표시)가 scheduled-jobs.md에서
 # 생성된 최신본인지 확인한다 (티켓 20260924_0905).
 if ! ( cd "$REPO_ROOT" && node scripts/gen-scheduled-jobs.mjs --check ) >"$LOG_PREFIX.scheduled-jobs" 2>&1; then
