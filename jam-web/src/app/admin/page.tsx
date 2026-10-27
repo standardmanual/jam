@@ -6,6 +6,7 @@ import { OpsSampleBusy, OpsSampleScope } from '@/components/admin/ops/OpsSampleS
 import { readIncludeSample } from '@/lib/admin/opsHome/links'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import {
+  BoardSection,
   KpiSection,
   RecentDecisionsSection,
   SampleSwitchSection,
@@ -13,18 +14,18 @@ import {
   SignalSection,
   StatsSection,
   TrendSection,
-  WeekStatusSection,
   startKpiWeekly,
 } from './_home/sections'
 
 /**
  * 운영 홈 (`/admin`, 티켓 20261006_1341 ②-c, 상위 20260930_1502 「채원 S1·S4 사전 판정」·운영툴 PRD §6 S1).
  *
- * 머리(제목·부제·시험 묶음 스위치) 아래에 구역을 순서대로 둔다: 이번 주 상태 → 신호 → 서비스 점검 → 최근 이력 → 주간 핵심 지표 → 배지 경제 흐름 → 통계 → 빠른 실행.
+ * 머리(제목·부제·시험 묶음 스위치) 아래에 구역을 순서대로 둔다: 운영 상황판(내 차례 → 주간 흐름 → 에이전트) → 신호 → 서비스 점검 → 최근 이력 → 주간 핵심 지표 → 배지 경제 흐름 → 통계 → 빠른 실행.
  * 페이지는 쿼리(`sample`·`trend`)만 읽고(옛 `?week=`는 읽지 않고 무시한다), 구역마다 `Suspense` + 스켈레톤으로 따로 읽어 느린 구역이 다른 구역을 막지 않는다(승인 #18).
  * 한 구역을 읽지 못하면 그 구역만 안내 카드가 된다(`_home/sections.tsx`). 이 화면은 캐시하지 않는다(`unstable_cache`·`revalidate` 없음).
  *
- * 주간 캘린더는 일정표(`/admin/ops-schedule`, 티켓 20261006_1539 ③-d)로 옮겼다. 「이번 주 상태」 머리의 [일정표 보기 →]로 들어간다.
+ * 주간 캘린더는 일정표(`/admin/ops-schedule`, 티켓 20261006_1539 ③-d)로 옮겼다. 상황판 「주간 흐름」 머리의 [일정표 보기 →]로 들어간다.
+ * 주간 핵심 지표·배지 경제 흐름·통계는 생태계 상황판(티켓 20261026_2027)으로 옮길 구역이라 이번에는 그대로 아래쪽에 둔다(티켓 20261026_2023 2회차).
  */
 
 interface AdminDashboardPageProps {
@@ -61,7 +62,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
         <header className="mb-8 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
           <div>
             <h1 className="text-2xl font-bold">운영 홈</h1>
-            <p className="text-sm text-muted-foreground mt-1">이번 주 라이브 운영의 진행과 신호를 한눈에 봐요</p>
+            <p className="text-sm text-muted-foreground mt-1">이번 주 내가 할 일과 흐름을 한눈에 봐요</p>
           </div>
           <Suspense fallback={<Skeleton className="h-11 w-64" />}>
             <SampleSwitchSection includeSample={includeSample} />
@@ -69,8 +70,8 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
         </header>
 
         <OpsSampleBusy className="space-y-10">
-          <Suspense fallback={<SectionFallback heightClass="h-40" />}>
-            <WeekStatusSection includeSample={includeSample} />
+          <Suspense fallback={<SectionFallback heightClass="h-96" />}>
+            <BoardSection includeSample={includeSample} />
           </Suspense>
 
           <Suspense fallback={<SectionFallback heightClass="h-48" />}>

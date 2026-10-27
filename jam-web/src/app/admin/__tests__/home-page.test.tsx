@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('../_home/sections', () => ({
   startKpiWeekly: hoisted.startKpiWeekly,
-  WeekStatusSection: (props: Record<string, unknown>) => stub('week', props),
+  BoardSection: (props: Record<string, unknown>) => stub('board', props),
   SignalSection: (props: Record<string, unknown>) => stub('signal', props),
   ServiceCheckSection: (props: Record<string, unknown>) => stub('service', props),
   RecentDecisionsSection: (props: Record<string, unknown>) => stub('history', props),
@@ -65,7 +65,7 @@ describe('운영 홈 머리 (승인 #12)', () => {
   it('제목은 「운영 홈」이고 부제가 있다. 「대시보드」는 없다', async () => {
     const out = await renderPage()
     expect(out).toContain('<h1 class="text-2xl font-bold">운영 홈</h1>')
-    expect(out).toContain('이번 주 라이브 운영의 진행과 신호를 한눈에 봐요')
+    expect(out).toContain('이번 주 내가 할 일과 흐름을 한눈에 봐요')
     expect(out).not.toContain('대시보드')
   })
 
@@ -77,8 +77,8 @@ describe('운영 홈 머리 (승인 #12)', () => {
 })
 
 describe('구역 순서 (승인 #18)', () => {
-  it('이번 주 상태 → 신호 → 서비스 점검 → 최근 이력 → KPI → 주간 캘린더 → 경제 추이 → 통계다', async () => {
-    expect(sectionOrder(await renderPage())).toEqual(['switch', 'week', 'signal', 'service', 'history', 'kpi', 'trend', 'stats'])
+  it('운영 상황판 → 신호 → 서비스 점검 → 최근 이력 → KPI → 경제 추이 → 통계 순서다(KPI·경제 추이·통계는 생태계 상황판으로 옮기기 전이라 아래쪽에 둔다)', async () => {
+    expect(sectionOrder(await renderPage())).toEqual(['switch', 'board', 'signal', 'service', 'history', 'kpi', 'trend', 'stats'])
   })
 
   it('빠른 실행은 통계 다음이고 링크 4개가 같다', async () => {
@@ -97,7 +97,7 @@ describe('구역 순서 (승인 #18)', () => {
     expect(shortcuts.match(/<a /g)).toHaveLength(4)
   })
 
-  it('주간 캘린더 구역이 없다(일정표로 옮겼다, 「일정표 보기」 링크는 이번 주 상태 구역이 그린다)', async () => {
+  it('주간 캘린더 구역이 없다(일정표로 옮겼다, 「일정표 보기」 링크는 운영 상황판 구역이 그린다)', async () => {
     await renderPage()
     expect(hoisted.props.calendar).toBeUndefined()
   })
@@ -108,14 +108,14 @@ describe('구역마다 Suspense + 스켈레톤 (승인 #18)', () => {
     hoisted.suspended.add('signal')
     const out = await renderPage()
     expect(out.match(/role="status" aria-label="불러오는 중"/g)).toHaveLength(1)
-    expect(sectionOrder(out)).toEqual(['switch', 'week', 'service', 'history', 'kpi', 'trend', 'stats'])
-    // 대체 화면이 신호 자리(이번 주 상태 다음, 서비스 점검 앞)에 있다
-    expect(out.indexOf('data-section="week"')).toBeLessThan(out.indexOf('불러오는 중'))
+    expect(sectionOrder(out)).toEqual(['switch', 'board', 'service', 'history', 'kpi', 'trend', 'stats'])
+    // 대체 화면이 신호 자리(운영 상황판 다음, 서비스 점검 앞)에 있다
+    expect(out.indexOf('data-section="board"')).toBeLessThan(out.indexOf('불러오는 중'))
     expect(out.indexOf('불러오는 중')).toBeLessThan(out.indexOf('data-section="service"'))
   })
 
   it('모든 구역이 읽는 중이면 구역마다 스켈레톤이 하나씩이다(스위치 자리는 role 없는 막대다)', async () => {
-    for (const key of ['week', 'signal', 'service', 'history', 'kpi', 'trend', 'stats']) hoisted.suspended.add(key)
+    for (const key of ['board', 'signal', 'service', 'history', 'kpi', 'trend', 'stats']) hoisted.suspended.add(key)
     const out = await renderPage()
     expect(out.match(/role="status" aria-label="불러오는 중"/g)).toHaveLength(7)
   })
@@ -124,13 +124,13 @@ describe('구역마다 Suspense + 스켈레톤 (승인 #18)', () => {
 describe('쿼리와 주간 지표', () => {
   it('sample=1이면 시험 묶음 포함 값이 읽는 구역들에 넘어가고, 키가 없거나 다른 값이면 꺼짐이다', async () => {
     await renderPage({ sample: '1' })
-    for (const key of ['switch', 'week', 'signal', 'history', 'trend']) expect(hoisted.props[key].includeSample, key).toBe(true)
+    for (const key of ['switch', 'board', 'signal', 'history', 'trend']) expect(hoisted.props[key].includeSample, key).toBe(true)
     await renderPage({})
-    for (const key of ['switch', 'week', 'signal', 'history', 'trend']) expect(hoisted.props[key].includeSample, key).toBe(false)
+    for (const key of ['switch', 'board', 'signal', 'history', 'trend']) expect(hoisted.props[key].includeSample, key).toBe(false)
     await renderPage({ sample: '0' })
-    expect(hoisted.props.week.includeSample).toBe(false)
+    expect(hoisted.props.board.includeSample).toBe(false)
     await renderPage({ sample: ['1', '0'] })
-    expect(hoisted.props.week.includeSample).toBe(true)
+    expect(hoisted.props.board.includeSample).toBe(true)
   })
 
   it('trend 쿼리를 구역에 넘기고 week는 무시한다(같은 키가 둘이면 값 없음으로 읽는다)', async () => {
