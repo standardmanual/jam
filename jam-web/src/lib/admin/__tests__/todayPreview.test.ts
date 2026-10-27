@@ -1,5 +1,5 @@
 /**
- * 어드민 날짜 미리보기 조회가 표시 데이터용 자원 값을 싣는지 (티켓 20261001_2208, 상위 20260930_1453 조각 b6)
+ * 어드민 미리보기가 표시 데이터용 자원 값(`resolvePreviewCards`)을 싣는지 (티켓 20261001_2208, 상위 20260930_1453 조각 b6)
  *
  * 확인하는 것:
  * 1. 미션 소개·자동 카드에 `resolved_mission`, 컬렉션 소식 카드에 `resolved_collection`이 실린다(홈 조회 `getTodayCards`와 같은 판정).
@@ -72,7 +72,8 @@ vi.mock('@/lib/missions/visibility-server', () => ({
 }))
 vi.mock('@/lib/ranking/rankingDataSource', () => ({ computeRankingModeResult: async () => ({ entries: [] }) }))
 
-import { getAdminTodayPreviewCards } from '../todayPreview'
+import { createServiceClient } from '@/lib/supabase/server'
+import { resolvePreviewCards } from '../todayPreview'
 import { previewBaseTime } from '../today-calendar'
 import {
   collectionIdsToResolve,
@@ -136,6 +137,16 @@ function bookRow(id: string, name: string, overrides: Row = {}): Row {
 const NOW = new Date('2026-10-05T03:00:00Z')
 const TODAY = '2026-10-05'
 
+/**
+ * 가짜 `today_cards` 전체에 자원 값을 싣는다. 예전에는 날짜 미리보기 조회(`getAdminTodayPreviewCards`)가 이 일을 했다.
+ * 그 조회는 티켓 20261026_2025 2회차에서 홈피드 미리보기로 합쳐지며 없어졌고, 자원 값을 싣는 `resolvePreviewCards`(홈피드 미리보기 `load.ts`도 쓴다)를 직접 시험한다.
+ */
+async function getAdminTodayPreviewCards(dateStr: string, now: Date = new Date()) {
+  const supabase = createServiceClient()
+  const { data } = await supabase.from('today_cards').select('*')
+  return resolvePreviewCards(supabase, (data ?? []) as unknown as TodayCardRow[], previewBaseTime(dateStr, now))
+}
+
 beforeEach(() => {
   fx.tables = {}
   fx.errors = {}
@@ -182,7 +193,7 @@ describe('previewBaseTime — 기준 시각 규칙', () => {
   })
 })
 
-describe('getAdminTodayPreviewCards — 표시 데이터용 자원 값', () => {
+describe('resolvePreviewCards — 표시 데이터용 자원 값', () => {
   it('미션 소개 카드에 미션 기간·보상·이미지, 컬렉션 카드에 이름·아이템 수를 싣는다', async () => {
     fx.tables.today_cards = [
       cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' }),
@@ -291,7 +302,7 @@ describe('getAdminTodayPreviewCards — 표시 데이터용 자원 값', () => {
   })
 })
 
-describe('getAdminTodayPreviewCards — 레시피 공개 카드의 레시피 값 (티켓 20261006_1218)', () => {
+describe('resolvePreviewCards — 레시피 공개 카드의 레시피 값 (티켓 20261006_1218)', () => {
   const recipeCard = (overrides: Row = {}) =>
     cardRow({ id: 'a', template_type: 'recipe_reveal', layout_type: 'badge_gallery', shape: 'list', recipe_id: 'r1', resolved_href: '/combine', ...overrides })
   const slot = (order: number, allowed: string[]): Row => ({ id: `s${order}`, recipe_id: 'r1', slot_order: order, allowed_badge_ids: allowed })
@@ -391,7 +402,7 @@ describe('getAdminTodayPreviewCards — 레시피 공개 카드의 레시피 값
   })
 })
 
-describe('getAdminTodayPreviewCards — 컬렉션 공개 판정이 기준 시각을 쓴다', () => {
+describe('resolvePreviewCards — 컬렉션 공개 판정이 기준 시각을 쓴다', () => {
   const collectionCard = () => cardRow({ id: 'a', template_type: 'itembook_milestone', item_book_id: 'book1' })
 
   it('아직 공개 전인 컬렉션은 그 날짜 00:00(KST) 기준으로 판정한다 — 공개 시각 뒤 날짜면 이름이 실린다', async () => {

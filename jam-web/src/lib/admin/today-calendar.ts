@@ -2,7 +2,7 @@
  * 어드민 투데이 캘린더뷰(20260902_1028) — 'YYYY-MM-DD' 날짜 문자열 ↔ KST 하루 경계 변환.
  *
  * 순수 함수만 모아둔다(DB·네트워크 접근 없음) — 서버 컴포넌트(`page.tsx`)·API
- * 라우트(`api/admin/today/preview`)·클라이언트 컴포넌트(`TodayDateNav.tsx`) 셋 모두에서
+ * 라우트(`api/admin/home-preview`)·클라이언트 컴포넌트(`TodayDateNav.tsx`) 셋 모두에서
  * 그대로 import해 쓴다. KST(Asia/Seoul)는 서머타임이 없어 UTC 연산만으로 항상 정확하다
  * (`lib/notifications/kst.ts`와 동일 근거).
  */
@@ -52,7 +52,7 @@ export function kstDayBoundsIso(dateStr: string): { startIso: string; endIso: st
 /**
  * 날짜 미리보기의 기준 시각(티켓 20261001_2208). 선택한 날짜가 오늘(KST)이면 지금, 아니면 그 날짜의 00:00(KST)이다.
  * 「N일 남음」 계산(`toCardView`)과 컬렉션 공개 판정(`fetchCollectionsById`)에 같은 값을 쓴다.
- * 서버(`getAdminTodayPreviewCards`)와 클라이언트(`TodayPreviewModal`)가 모두 부르므로 서버 전용 모듈을 읽지 않는 이 파일에 둔다.
+ * 서버(홈피드 미리보기 `load.ts`)와 클라이언트(`HomePreviewPanel`)가 모두 부르므로 서버 전용 모듈을 읽지 않는 이 파일에 둔다.
  */
 export function previewBaseTime(dateStr: string, now: Date = new Date()): Date {
   if (dateStr === todayKstDateString(now)) return now
