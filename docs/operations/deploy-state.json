@@ -1,0 +1,9 @@
+{
+  "_comment": [
+    "main 배포 동결 여부와 다음 배포 일정의 단일 원천이다. 어드민 개발·배포 상황판이 staging 브랜치에서 이 파일을 읽는다.",
+    "카리나가 /jam-ship을 다시 켤 때 고친다. frozen은 true 또는 false여야 하고, reason과 nextDeploy는 화면에 그대로 보이는 한 줄 글이다."
+  ],
+  "frozen": true,
+  "reason": "JAM 2.0 출시 전까지 main 배포를 멈춤(2026-10-15 결정)",
+  "nextDeploy": "JAM 2.0 출시 때"
+}

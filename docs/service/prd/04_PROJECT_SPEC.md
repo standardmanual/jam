@@ -216,6 +216,7 @@ push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main 
 | `ADMIN_API_READ_TOKEN` | 어드민 자동화 읽기 토큰 (GET 전용. 쓰기는 `POST /api/admin/ops-inbox` 하나만 예외, 값을 바꾸면 이전 토큰 즉시 차단) | `requireAdminRead`, `isOpsInboxTokenRequest`, `proxy.ts` |
 | `ADMIN_SECRET` | 어드민 보조 인증 비밀번호 (쿠키 토큰 발급용) | 시뮬레이터 등 |
 | `CRON_SECRET` | Vercel Cron 요청 인증 | 6개 Cron 라우트 공통 |
+| `GITHUB_READ_TOKEN` | GitHub 읽기 전용 토큰(선택). 어드민 개발·배포 상황판이 저장소 `standardmanual/jam`의 티켓 색인·브랜치 비교·배포 기록을 읽을 때 쓴다. 서버 전용 | `lib/admin/devBoard/github.ts`. 없으면 토큰 없이 읽고 시간당 60번 한도다 ([20261026_2028](../../tickets/p2-normal/20261026_2028_Admin_개발-배포-상황판과-개발요청.md)) |
 | `SLACK_BOT_TOKEN` | 슬랙 봇(JAM 봇) 토큰. 운영 묶음 도착 글을 서버가 `chat.postMessage`로 게시한다 | `lib/admin/opsInbox/slack.ts`. 미설정이면 게시를 건너뛰고 결정 기록에 `not_configured`만 남긴다(제출은 성공). Vercel 두 프로젝트에 등록 필요 |
 | `SLACK_CHANNEL_JAM_REPORT` | 슬랙 `#jam-report` 채널 ID (도착·승인·예약·공개 알림) | `lib/admin/opsInbox/slack.ts`. 값의 원천은 `.claude/skills/jam-work/references/scheduled-jobs.md` 「Slack 알림」 |
 | `SLACK_CHANNEL_JAM_ALERT` | 슬랙 `#jam-alert` 채널 ID (실패·되돌림 알림) | `lib/admin/opsInbox/slack.ts`. 예약 등록 실패 글을 이 채널에 게시한다(티켓 20261002_1123). 상태 맞추기의 실패 알림(티켓 20261002_1813)과 매시 중단 신호 점검(티켓 20261001_1154)도 같은 채널에 게시한다. 앱이 올리는 운영자용 알림인 대량 수령 경보(`lib/jam/massEarnAlert.ts`)와 GPS 조작 의심 알림(`lib/abusing/gpsSpoofAlert.ts`, 픽업이 GPS 조작을 감지하면 응답 뒤에 한 건, 티켓 20261022_0940)도 같은 채널에 게시한다 |

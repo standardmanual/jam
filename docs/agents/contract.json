@@ -51,6 +51,9 @@
       "scripts/gen-ticket-index.mjs",
       "scripts/gen-ticket-index.test.mjs",
       "docs/tickets/_index.json",
+      "docs/operations/deploy-state.json",
+      "jam-web/src/lib/admin/devBoard/github.ts",
+      "jam-web/src/lib/admin/devBoard/load.ts",
       "docs/INDEX.md",
       "scripts/gen-home-feed-doc.mjs",
       "scripts/gen-home-feed-doc.test.mjs",
@@ -355,6 +358,16 @@
         "doc": "docs/service/prd/04_PROJECT_SPEC.md",
         "code": "jam-web/.env.example",
         "names": ["SLACK_BOT_TOKEN", "SLACK_CHANNEL_JAM_REPORT", "SLACK_CHANNEL_JAM_ALERT"]
+      },
+      {
+        "doc": "docs/service/prd/04_PROJECT_SPEC.md",
+        "code": "jam-web/src/lib/admin/devBoard/github.ts",
+        "names": ["GITHUB_READ_TOKEN"]
+      },
+      {
+        "doc": "docs/service/prd/04_PROJECT_SPEC.md",
+        "code": "jam-web/.env.example",
+        "names": ["GITHUB_READ_TOKEN"]
       }
     ]
   },
