@@ -48,7 +48,6 @@ import { kstDayBoundsIso, previewBaseTime } from './today-calendar'
 export async function getAdminTodayPreviewCards(dateStr: string, now: Date = new Date()): Promise<TodayCardWithHref[]> {
   const { startIso, endIso } = kstDayBoundsIso(dateStr)
   const baseTime = previewBaseTime(dateStr, now)
-  const baseIso = baseTime.toISOString()
   const supabase = createServiceClient()
 
   const { data, error } = await supabase
@@ -65,7 +64,20 @@ export async function getAdminTodayPreviewCards(dateStr: string, now: Date = new
     return []
   }
 
-  const cards = (data ?? []) as TodayCardRow[]
+  return resolvePreviewCards(supabase, (data ?? []) as TodayCardRow[], baseTime)
+}
+
+/**
+ * 카드 행에 표시 데이터용 자원 값(배지·랭킹·미션·컬렉션·레시피)과 이동 주소를 싣는다. 읽기는 카드 수와 상관없이 종류마다 한 번이다.
+ * 날짜 미리보기(`getAdminTodayPreviewCards`)와 홈피드 미리보기(`lib/admin/homePreview/load.ts`)가 같은 규칙으로 싣도록 꺼냈다(티켓 20261026_2025).
+ * `baseTime`은 기준 시각 규칙(`previewBaseTime`)의 값이다 — 컬렉션·레시피 공개 판정의 기준 시각이다.
+ */
+export async function resolvePreviewCards(
+  supabase: ReturnType<typeof createServiceClient>,
+  cards: TodayCardRow[],
+  baseTime: Date,
+): Promise<TodayCardWithHref[]> {
+  const baseIso = baseTime.toISOString()
   // 공개 뒤 레시피의 재료 타일이 쓰는 후보 배지는 이름·그림을 읽어야 하므로 배지 조회보다 먼저 레시피를 읽는다(홈 조회와 같은 순서).
   const recipesById = await fetchRecipesById(supabase, recipeIdsToResolve(cards), baseTime)
   const badgeIds = [...new Set([...cards.flatMap((c) => c.badge_ids ?? []), ...recipeCandidateBadgeIds(recipesById)])]

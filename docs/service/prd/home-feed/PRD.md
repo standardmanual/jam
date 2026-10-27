@@ -174,7 +174,7 @@ code:
 
 - 노출 수 상한은 없다. 조건에 맞는 카드는 모두 쌓인다.
 - 조회가 실패하면 카드 0장(영역 숨김)으로 처리한다.
-- 어드민 미리보기는 같은 규칙(`lib/today/cardSelection.ts`의 기간·태그 겹침·정렬 함수)을 쓴다. 2번과 3번을 바꾸면 이 파일도 함께 바꾼다(티켓 20261026_2025).
+- 어드민 미리보기는 같은 규칙(`lib/today/cardSelection.ts`의 기간·태그 겹침·정렬 함수)을 쓴다. 2번과 3번을 바꾸면 이 파일도 함께 바꾼다. 미리보기의 날씨·특일 태그는 «오늘» 값이 아니라 고른 날짜에 저장된 값(`external_input_daily`)을 읽고, 저장된 값이 없는 날은 그 태그를 넣지 않는다(`lib/admin/homePreview/dayInputs.ts`, 티켓 20261026_2025).
 
 근거: `jam-web/src/lib/today/cardSelection.ts`(`cardIsLiveDuring`·`cardMatchesTags`·`sortHomeCards`), `jam-web/src/lib/today/cards.ts`(`getTodayCards`·`filterMissionSpotlightCards`·`filterRankingBoardCardsByTribe`·`fetchBadgesById`·`fetchRankingBoardData`), `jam-web/src/lib/ranking/rankingDataSource.ts`(`computeMissionParticipantsResult`)
 
