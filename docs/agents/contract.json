@@ -32,6 +32,7 @@
       "jam-web/src/lib/admin/ecosystem/load.ts",
       "jam-web/src/lib/admin/ecosystem/view.ts",
       "jam-web/src/lib/admin/policyDashboard/liveValues.ts",
+      "jam-web/src/lib/admin/kpiWeeklyPair.ts",
       "jam-web/src/app/admin/ecosystem/page.tsx",
       "jam-web/src/app/admin/ecosystem/_sections.tsx",
       "jam-web/src/components/admin/ecosystem/DevRequestButton.tsx",

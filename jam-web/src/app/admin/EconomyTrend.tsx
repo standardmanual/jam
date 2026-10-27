@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { summarizeTrend, TREND_LONG_DAYS, TREND_SHORT_DAYS } from '@/lib/admin/economyTrend'
-import { SAMPLE_PARAM, SAMPLE_PARAM_ON } from '@/lib/admin/opsHome/links'
+import type { EcosystemNodeId } from '@/lib/admin/ecosystem/types'
 
 /**
- * 어드민 메인 — 배지 경제 흐름(티켓 20260924_0911). 일별 배지 발급량과 일별 앰비언트 드랍량을
+ * 생태계 상황판(`/admin/ecosystem`)의 배지 경제 흐름(티켓 20260924_0911, 운영 홈에서 옮김 20261026_2027 3-2). 일별 배지 발급량과 일별 앰비언트 드랍량을
  * CSS 막대 그래프 두 개로 그린다. 두 그래프는 값 크기가 달라 눈금(최댓값)을 따로 쓴다.
  * 데이터는 `page.tsx`가 조회해 내려주고, 이 화면은 그리기만 한다(서버 컴포넌트).
  */
@@ -20,16 +20,16 @@ interface EconomyTrendProps {
   days: number
   /** 오늘(KST), 'YYYY-MM-DD' — 이 날짜 막대에 "오늘"을 붙인다 */
   todayKst: string
-  /** 시험 묶음을 포함해서 보는 중이면 기간 전환 링크에서도 `sample=1`을 유지한다(티켓 20261006_1341 ②-c 가정 8) */
-  includeSample?: boolean
+  /** 선택한 마디. 기간 전환 링크에서도 `node`를 유지한다(티켓 20261026_2027 3-2) */
+  node?: EcosystemNodeId | null
   badges: TrendSeries
   drops: TrendSeries
 }
 
-export function trendHref(days: number, includeSample = false): string {
+export function trendHref(days: number, node: EcosystemNodeId | null = null): string {
   const params = new URLSearchParams({ trend: String(days) })
-  if (includeSample) params.set(SAMPLE_PARAM, SAMPLE_PARAM_ON)
-  return `/admin?${params.toString()}`
+  if (node !== null) params.set('node', node)
+  return `/admin/ecosystem?${params.toString()}`
 }
 
 function shortDate(date: string): string {
@@ -100,7 +100,7 @@ function TrendCard({ title, unit, dates, todayKst, series, barClass }: TrendCard
   )
 }
 
-export default function EconomyTrend({ dates, days, todayKst, includeSample = false, badges, drops }: EconomyTrendProps) {
+export default function EconomyTrend({ dates, days, todayKst, node = null, badges, drops }: EconomyTrendProps) {
   const options = [TREND_SHORT_DAYS, TREND_LONG_DAYS]
   return (
     <section className="mb-10" aria-label="배지 경제 흐름">
@@ -110,7 +110,7 @@ export default function EconomyTrend({ dates, days, todayKst, includeSample = fa
           {options.map((option) => (
             <Link
               key={option}
-              href={trendHref(option, includeSample)}
+              href={trendHref(option, node)}
               aria-current={option === days ? 'true' : undefined}
               className={
                 option === days

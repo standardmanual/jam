@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import type { ComponentProps } from 'react'
-import { IconAward, IconMapPin, IconBook, IconUsers } from '@tabler/icons-react'
 import { createServiceClient } from '@/lib/supabase/server'
 import { OpsRecentDecisions } from '@/components/admin/ops/OpsRecentDecisions'
 import { OpsSampleSwitch } from '@/components/admin/ops/OpsSampleSwitch'
@@ -9,7 +6,6 @@ import { OpsSignalPanel } from '@/components/admin/ops/OpsSignalPanel'
 import { OpsAgentRows } from '@/components/admin/ops/board/OpsAgentRows'
 import { OpsMyTurn } from '@/components/admin/ops/board/OpsMyTurn'
 import { OpsWeekFlowMap } from '@/components/admin/ops/board/OpsWeekFlowMap'
-import { logQueryError } from '@/lib/admin/queryError'
 import { fetchContentGaps, type ContentGapSource, type MissionGapResult } from '@/lib/admin/contentGaps'
 import { listRecentOpsDecisions, type OpsRecentDecisionRecord } from '@/lib/admin/opsDecisions/read'
 import { agentRowsOf, weekStripOf } from '@/lib/admin/opsBoard/agentRows'
@@ -18,24 +14,8 @@ import { computeMyTurn } from '@/lib/admin/opsBoard/myTurn'
 import { flowRowHrefs } from '@/lib/admin/opsBoard/rowLinks'
 import { computeWeekFlow } from '@/lib/admin/opsBoard/weekFlow'
 import { loadOpsSignals, type LoadedOpsSignals } from '@/lib/admin/opsSignals/load'
-import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS, type KpiWeeklyMetrics } from '@/lib/admin/kpiWeekly'
-import { kstDayBoundsIso, todayKstDateString } from '@/lib/admin/today-calendar'
-import {
-  trendDates,
-  bucketDailyCounts,
-  fetchBadgeIssuanceDaily,
-  fetchAmbientDropDaily,
-  TREND_LONG_DAYS,
-  TREND_SHORT_DAYS,
-} from '@/lib/admin/economyTrend'
-import {
-  ServiceCheckRow,
-  WeeklyKpiCards,
-  type DashboardSignalMetric,
-  type ServiceCheckProps,
-  type WeeklyKpiProps,
-} from '../DashboardSignals'
-import EconomyTrend, { type TrendSeries } from '../EconomyTrend'
+import { messageOf, type KpiWeeklyPair } from '@/lib/admin/kpiWeeklyPair'
+import { ServiceCheckRow, type DashboardSignalMetric, type ServiceCheckProps } from '../DashboardSignals'
 
 /**
  * 운영 홈(`/admin`)의 구역들 (티켓 20261006_1341 ②-c, 상위 20260930_1502 「채원 S1·S4 사전 판정」 「구역 상태」).
@@ -57,19 +37,7 @@ export const SECTION_NOTICE_TITLES = {
   signal: '신호를 불러오지 못했어요',
   history: '최근 이력을 불러오지 못했어요',
   service: '서비스 점검을 불러오지 못했어요',
-  kpi: '주간 핵심 지표를 불러오지 못했어요',
-  trend: '배지 경제 흐름을 불러오지 못했어요',
-  stats: '통계를 불러오지 못했어요',
 } as const
-
-const STATS_LOAD_FAILED_DESCRIPTION =
-  '서비스 키가 설정되지 않았을 수 있어요. Vercel 환경변수에 SUPABASE_SERVICE_ROLE_KEY를 설정한 뒤 새로 고쳐 주세요'
-
-function messageOf(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (error && typeof error === 'object' && 'message' in error) return String((error as { message: unknown }).message)
-  return String(error)
-}
 
 // ── 운영 상황판 ──────────────────────────────────────────────────────────────────────────────────
 
@@ -130,34 +98,7 @@ export async function SignalSection({ includeSample }: { includeSample: boolean 
   return <OpsSignalPanel signals={signals} includeSample={includeSample} />
 }
 
-// ── 서비스 점검·주간 핵심 지표 ───────────────────────────────────────────────────────────────────
-
-interface KpiResult {
-  metrics: KpiWeeklyMetrics | null
-  error: string | null
-}
-
-/** 이번 주와 지난주의 주간 지표. 둘 다 던지지 않고 실패 사유를 담는다. */
-export interface KpiWeeklyPair {
-  thisWeek: KpiResult
-  lastWeek: KpiResult
-}
-
-/**
- * 주간 지표 두 구간(이번 7일·직전 7일)을 읽기 시작한다. **페이지에서 한 번만** 불러 서비스 점검(Strava 칸)과 주간 핵심 지표 두 구역에 같은 약속을 넘긴다.
- * 약속은 거부되지 않는다 — 실패는 `error`에 담긴다.
- */
-export function startKpiWeekly(now: Date = new Date()): Promise<KpiWeeklyPair> {
-  const thisWeekRange = resolveKpiWeeklyRange(null, now)
-  // 직전 7일 구간 — resolveKpiWeeklyRange(days, now)의 now 자리에 "7일 전 시각"을 넣으면
-  // start=14일 전 · end=7일 전인, 이번 주 바로 앞 7일 구간이 그대로 나온다(같은 함수 재사용).
-  const lastWeekRange = resolveKpiWeeklyRange(null, new Date(now.getTime() - DEFAULT_KPI_WEEKLY_DAYS * 24 * 60 * 60 * 1000))
-  const settle = (range: ReturnType<typeof resolveKpiWeeklyRange>): Promise<KpiResult> =>
-    computeKpiWeeklyMetrics(range)
-      .then((metrics): KpiResult => ({ metrics, error: null }))
-      .catch((error): KpiResult => ({ metrics: null, error: messageOf(error) }))
-  return Promise.all([settle(thisWeekRange), settle(lastWeekRange)]).then(([thisWeek, lastWeek]) => ({ thisWeek, lastWeek }))
-}
+// ── 서비스 점검 ───────────────────────────────────────────────────────────────────
 
 /** 진행 중인 이용 정지 건수(`lifted_at IS NULL`). 옛 섀도우밴(`user_shadow_bans`)은 읽지 않는다(티켓 20261017_1426). */
 async function readSuspensions(): Promise<DashboardSignalMetric> {
@@ -231,31 +172,6 @@ export async function ServiceCheckSection({ kpi }: { kpi: Promise<KpiWeeklyPair>
   return <ServiceCheckRow {...props} />
 }
 
-/** 주간 핵심 지표 두 장. 이번 주 값을 못 읽으면(두 장이 모두 기대는 값이다) 구역이 안내 카드다. 지난주만 못 읽으면 「비교 불가」로 둔다. */
-export async function KpiSection({ kpi }: { kpi: Promise<KpiWeeklyPair> }) {
-  let props: WeeklyKpiProps
-  try {
-    const { thisWeek, lastWeek } = await kpi
-    if (thisWeek.metrics === null) throw new Error(thisWeek.error ?? '주간 지표를 읽지 못했어요')
-    props = {
-      missionAchievers: {
-        value: thisWeek.metrics.missionAchievers.value,
-        previousValue: lastWeek.metrics?.missionAchievers.value ?? null,
-        error: null,
-      },
-      badgeIssuance: {
-        value: thisWeek.metrics.badgeIssuance.issued.value,
-        previousValue: lastWeek.metrics?.badgeIssuance.issued.value ?? null,
-        error: null,
-      },
-    }
-  } catch (error) {
-    console.error('[admin/home] 주간 핵심 지표 구역 오류:', error)
-    return <OpsSectionNotice icon="kpi" title={SECTION_NOTICE_TITLES.kpi} />
-  }
-  return <WeeklyKpiCards {...props} />
-}
-
 // ── 최근 이력 ────────────────────────────────────────────────────────────────────────────────────
 
 export async function RecentDecisionsSection({ includeSample }: { includeSample: boolean }) {
@@ -267,100 +183,6 @@ export async function RecentDecisionsSection({ includeSample }: { includeSample:
     return <OpsSectionNotice icon="history" title={SECTION_NOTICE_TITLES.history} />
   }
   return <OpsRecentDecisions records={records} includeSample={includeSample} />
-}
-
-// ── 배지 경제 흐름 ───────────────────────────────────────────────────────────────────────────────
-
-interface TrendSectionProps {
-  /** `?trend=`. `7`이면 7일, 그 외는 30일이다. */
-  trendParam: string | undefined
-  includeSample: boolean
-}
-
-/**
- * 20260924_0911: 배지 발급량·앰비언트 드랍량은 30일 범위로 한 번씩만 읽고 7일 보기는 그 결과에서 잘라 쓴다.
- * 두 조회는 서로 독립적으로 실패한다(한쪽 그래프만 오류 카드로 바뀐다). 둘 다 못 읽으면 구역이 안내 카드다.
- */
-export async function TrendSection({ trendParam, includeSample }: TrendSectionProps) {
-  let view: Pick<ComponentProps<typeof EconomyTrend>, 'dates' | 'days' | 'todayKst' | 'badges' | 'drops'>
-  try {
-    const trendDays = trendParam === String(TREND_SHORT_DAYS) ? TREND_SHORT_DAYS : TREND_LONG_DAYS
-    const todayKst = todayKstDateString()
-    const longDates = trendDates(TREND_LONG_DAYS, todayKst)
-    const trendDateList = longDates.slice(longDates.length - trendDays)
-    const { startIso: trendStartIso } = kstDayBoundsIso(longDates[0])
-    const { endIso: trendEndIso } = kstDayBoundsIso(todayKst)
-    const loadTrendSeries = async (fetcher: (startIso: string, endIso: string) => Promise<string[]>): Promise<TrendSeries> => {
-      try {
-        const stamps = await fetcher(trendStartIso, trendEndIso)
-        return { counts: bucketDailyCounts(stamps, longDates).slice(longDates.length - trendDays), error: null }
-      } catch (error) {
-        return { counts: null, error: messageOf(error) }
-      }
-    }
-    const [badgeTrend, dropTrend] = await Promise.all([
-      loadTrendSeries(fetchBadgeIssuanceDaily),
-      loadTrendSeries(fetchAmbientDropDaily),
-    ])
-    if (badgeTrend.counts === null && dropTrend.counts === null) {
-      throw new Error(`배지 경제 흐름을 모두 읽지 못했어요: ${badgeTrend.error ?? ''}`)
-    }
-    view = { dates: trendDateList, days: trendDays, todayKst, badges: badgeTrend, drops: dropTrend }
-  } catch (error) {
-    console.error('[admin/home] 배지 경제 흐름 구역 오류:', error)
-    return <OpsSectionNotice icon="trend" title={SECTION_NOTICE_TITLES.trend} />
-  }
-  return <EconomyTrend {...view} includeSample={includeSample} />
-}
-
-// ── 통계 ─────────────────────────────────────────────────────────────────────────────────────────
-
-/**
- * 통계 4칸. 한 칸의 조회 실패가 화면 전체를 막지 않도록 던지지 않는다 — 실패한 칸은 null로 두어 「—」로 표시하고(0건과 구분), 원인은 서버 로그에 남긴다(티켓 20260925_2004).
- * 서비스 클라이언트를 만들지 못하는 경우(서비스 키 없음)는 구역 안내 카드다(옛 「서비스 클라이언트 오류」 배너를 대신한다).
- */
-export async function StatsSection() {
-  let stats: Array<{ label: string; value: number | null; href: string; icon: typeof IconAward }>
-  try {
-    const supabase = createServiceClient()
-    const [b, p, ib, u] = await Promise.all([
-      supabase.from('badges').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      supabase.from('poi').select('*', { count: 'exact', head: true }),
-      supabase.from('item_books').select('*', { count: 'exact', head: true }),
-      supabase.from('users').select('*', { count: 'exact', head: true }),
-    ])
-    logQueryError(b.error, 'dashboard/badge-count')
-    logQueryError(p.error, 'dashboard/poi-count')
-    logQueryError(ib.error, 'dashboard/item-book-count')
-    logQueryError(u.error, 'dashboard/user-count')
-    stats = [
-      { label: '배지', value: b.error ? null : (b.count ?? 0), href: '/admin/badges', icon: IconAward },
-      { label: '장소', value: p.error ? null : (p.count ?? 0), href: '/admin/poi', icon: IconMapPin },
-      { label: '컬렉션', value: ib.error ? null : (ib.count ?? 0), href: '/admin/itembooks', icon: IconBook },
-      { label: '유저', value: u.error ? null : (u.count ?? 0), href: '/admin/users', icon: IconUsers },
-    ]
-  } catch (error) {
-    console.error('[admin/home] 통계 구역 오류:', error)
-    return <OpsSectionNotice icon="stats" title={SECTION_NOTICE_TITLES.stats} description={STATS_LOAD_FAILED_DESCRIPTION} />
-  }
-  return (
-    <section aria-label="통계" className="grid grid-cols-4 gap-4">
-      {stats.map((stat) => (
-        <Link
-          key={stat.label}
-          href={stat.href}
-          className="bg-white border border-border rounded-2xl p-5 hover:border-foreground/30 transition-colors"
-        >
-          <stat.icon className="mb-2 h-8 w-8 text-muted-foreground" />
-          <p className="text-3xl font-bold tabular-nums" title={stat.value === null ? '불러오지 못했어요' : undefined}>
-            {stat.value === null ? '—' : stat.value.toLocaleString()}
-          </p>
-          <p className="text-muted-foreground text-sm mt-1">{stat.label}</p>
-          {stat.value === null && <p className="text-red-700 text-xs mt-1">불러오지 못했어요</p>}
-        </Link>
-      ))}
-    </section>
-  )
 }
 
 // ── 시험 스위치 ──────────────────────────────────────────────────────────────────────────────────

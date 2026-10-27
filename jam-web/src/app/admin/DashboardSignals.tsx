@@ -7,7 +7,7 @@ import type { ContentGapSource, MissionGapResult } from '@/lib/admin/contentGaps
  * 운영 홈의 서비스 점검(Strava 동기화 실패·제재·차단 POI·미션 공백)과 주간 핵심 지표
  * (미션 달성자 수·배지 발급량) (티켓 20260924_0909, 20261006_1341 ②-c가 한 줄 4칸과 구역별 내보내기로 나눴다).
  *
- * 데이터는 전부 `_home/sections.tsx`가 조회해 내려준다 — 이 화면은 그리기와 증감·강조 판정만 한다
+ * 데이터는 전부 `_home/sections.tsx`(서비스 점검)와 `ecosystem/_sections.tsx`(주간 핵심 지표, 티켓 20261026_2027 3-2)가 조회해 내려준다 — 이 화면은 그리기와 증감·강조 판정만 한다
  * (게이트 미션 화면과 같은 원칙, `gate-missions/page.tsx` 주석 참고). 빨간 카드의 글자색은 `text-red-700`이다(승인 #17).
  */
 
