@@ -540,8 +540,8 @@ export default function ShapeStudioPanel({
                   id="width"
                   label="전체 너비"
                   value={state.width}
-                  min={160}
-                  max={560}
+                  min={500}
+                  max={1920}
                   unit="px"
                   onChange={(v, commit) => onUpdateNumberParam('width', v, commit)}
                 />

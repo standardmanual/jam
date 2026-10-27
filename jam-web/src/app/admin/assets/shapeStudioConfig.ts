@@ -652,7 +652,7 @@ export function validatePresetState(inp: unknown): ShapeStudioState {
   }
 
   const lim = {
-    width: [160, 560],
+    width: [160, 1920],
     merge: [0, 140],
     overlap: [-40, 100],
     soft: [0, 100],

@@ -104,7 +104,11 @@ function applyRandomRibbon(
 
 export default function AdminAssetsShapeStudioPage() {
   const [engineMode, setEngineMode] = useState<StudioEngineMode>('shape')
-  const [state, setState] = useState<ShapeStudioState>(() => cloneState(INITIAL_STATE))
+  const [state, setState] = useState<ShapeStudioState>(() => {
+    const s = cloneState(INITIAL_STATE)
+    if (s.width < 500) s.width = 500
+    return s
+  })
   const [history, setHistory] = useState<ShapeStudioState[]>([])
   const [randOn, setRandOn] = useState<RandomToggleState>(() => ({ ...INITIAL_RAND_TOGGLES }))
   const [customPresets, setCustomPresets] = useState<GlyphPreset[]>([])
