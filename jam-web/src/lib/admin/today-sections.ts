@@ -175,6 +175,16 @@ export const TODAY_EXPOSURE_TAG_OPTIONS: readonly { value: string; label: string
   { value: 'holiday_today', label: 'holiday_today (오늘 쉬는 공휴일)' },
   { value: 'seasonal_today', label: 'seasonal_today (오늘 절기·잡절: 입춘·동지·말복 등)' },
   { value: 'anniversary_today', label: 'anniversary_today (오늘 기념일: 식목일·어버이날 등)' },
+  { value: 'chapter_1_3', label: 'chapter_1_3 (챕터 1~3)' },
+  { value: 'chapter_4_6', label: 'chapter_4_6 (챕터 4~6)' },
+  { value: 'chapter_7_9', label: 'chapter_7_9 (챕터 7~9)' },
+  { value: 'chapter_10', label: 'chapter_10 (챕터 10)' },
+  { value: 'capsule_full', label: 'capsule_full (캡슐이 가득 참)' },
+  { value: 'capsule_nearly_full', label: 'capsule_nearly_full (캡슐 80% 이상 참)' },
+  { value: 'jam_plenty', label: 'jam_plenty (잼이 캡슐 필요량의 2배 이상)' },
+  { value: 'jam_low', label: 'jam_low (잼이 캡슐 필요량의 3분의 1 미만)' },
+  { value: 'inventory_full', label: 'inventory_full (인벤토리 가득 참)' },
+  { value: 'inventory_nearly_full', label: 'inventory_nearly_full (인벤토리 남은 칸 1~3)' },
 ]
 
 /**

@@ -193,10 +193,19 @@ code:
 | `new_user` | 가입 7일 이내 |
 | `weather_*` | 그날 저장된 날씨 값(아래) |
 | `holiday_today`·`seasonal_today`·`anniversary_today` | 그날 저장된 특일 목록을 **이름**으로 판정(대상 목록 정본 `docs/service/content/SPECIAL_DAYS.md`). 한 날에 여러 개가 켜질 수 있다 |
+| `chapter_1_3`·`chapter_4_6`·`chapter_7_9`·`chapter_10` | `user_chapters.chapter_no`가 그 구간(1~3·4~6·7~9·10, `CHAPTER_BANDS`). 챕터 행이 없거나 1~10 밖이면 붙지 않는다 |
+| `capsule_full` | 캡슐 `filled >= required`(`required > 0`) — 열 수 있는 상태 |
+| `capsule_nearly_full` | `filled / required >= 0.8`(`CAPSULE_NEARLY_FULL_RATIO`)이고 아직 안 참. 캡슐 행이 없으면 캡슐·잼 태그 모두 없다 |
+| `jam_plenty` | 잼 잔액이 캡슐 필요량의 2배 이상(`JAM_PLENTY_MULTIPLE`). 지갑 행이 없는데 캡슐 행이 있으면 잔액 0으로 본다 |
+| `jam_low` | 잼 잔액이 캡슐 필요량의 3분의 1 미만(`JAM_LOW_FRACTION`) |
+| `inventory_full` | 남은 칸(`max_slots - used_slots`)이 0 이하 |
+| `inventory_nearly_full` | 남은 칸이 1~3(`INVENTORY_LOW_FREE_SLOTS`, 밸런스 대시보드와 같은 값) |
+
+**JAM 2.0 태그(티켓 20261026_2030 1회차)**: 챕터·캡슐·잼·인벤토리 태그는 요청마다 4개 표를 읽어 계산한다. 한 유저는 챕터 구간 1개, 캡슐·잼·인벤토리 태그 각 0~1개를 가지고, 읽기 하나가 실패하면 로그만 남기고 그 태그만 빠진다. 경계값은 가정 값이며 `jam-web/src/lib/today/exposureThresholds.ts` 한 곳에 있다(오픈 뒤 실제 데이터로 맞춘다). 홈피드 미리보기의 가상 유저(`virtualViewer.ts`)는 개인 상태 태그를 넣지 않는 규칙이라 이 태그도 넣지 않는다. 소속 트라이브 태그는 2회차에서 다룬다.
 
 **날씨·특일 입력**: 요청 때 외부 API를 부르지 않는다. Vercel 크론 `/api/cron/external-inputs`가 매일 06:00 KST(`jam-web/vercel.json`의 `0 21 * * *` UTC)에 기상청 단기예보(서울 격자 60·127)와 특일정보를 받아 `external_input_daily`에 저장하고, 홈은 그 저장값만 읽는다. 날씨 구분은 오늘 예보에 강수가 있으면 `rain`, 없고 최고 33°C 이상 또는 최저 -12°C 이하면 `extreme`, 하늘 맑음이면 `clear`, 그 밖은 `mild`다. **저장값이 없거나 읽기에 실패하면 해당 태그만 조용히 빠진다**(홈이 깨지지는 않는다). 그래서 날씨·특일 태그만 단 카드는 저장이 실패한 날 아무에게도 보이지 않는다 — 요일마다 `all` 카드를 두는 운영 규칙의 이유다(content-automation PRD §8).
 
-근거: `jam-web/src/lib/today/exposure.ts`, `jam-web/src/lib/inputs/weather.ts`·`holidays.ts`·`special-days-config.ts`·`daily-store.ts`, `jam-web/src/app/api/cron/external-inputs/route.ts`
+근거: `jam-web/src/lib/today/exposure.ts`, `jam-web/src/lib/today/exposureThresholds.ts`, `jam-web/src/lib/inputs/weather.ts`·`holidays.ts`·`special-days-config.ts`·`daily-store.ts`, `jam-web/src/app/api/cron/external-inputs/route.ts`
 
 노출 태그 값·라벨(`TODAY_EXPOSURE_TAG_OPTIONS`):
 
@@ -222,6 +231,16 @@ code:
 | `holiday_today` | holiday_today (오늘 쉬는 공휴일) |
 | `seasonal_today` | seasonal_today (오늘 절기·잡절: 입춘·동지·말복 등) |
 | `anniversary_today` | anniversary_today (오늘 기념일: 식목일·어버이날 등) |
+| `chapter_1_3` | chapter_1_3 (챕터 1~3) |
+| `chapter_4_6` | chapter_4_6 (챕터 4~6) |
+| `chapter_7_9` | chapter_7_9 (챕터 7~9) |
+| `chapter_10` | chapter_10 (챕터 10) |
+| `capsule_full` | capsule_full (캡슐이 가득 참) |
+| `capsule_nearly_full` | capsule_nearly_full (캡슐 80% 이상 참) |
+| `jam_plenty` | jam_plenty (잼이 캡슐 필요량의 2배 이상) |
+| `jam_low` | jam_low (잼이 캡슐 필요량의 3분의 1 미만) |
+| `inventory_full` | inventory_full (인벤토리 가득 참) |
+| `inventory_nearly_full` | inventory_nearly_full (인벤토리 남은 칸 1~3) |
 <!-- END generated: exposure-tags -->
 
 ## 5. 템플릿

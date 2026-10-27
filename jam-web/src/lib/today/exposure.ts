@@ -14,6 +14,13 @@ import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { getTodayWeather } from '@/lib/inputs/weather'
 import { getTodaySpecialDays } from '@/lib/inputs/holidays'
 import { specialDayTags } from '@/lib/inputs/special-days-config'
+import {
+  CAPSULE_NEARLY_FULL_RATIO,
+  CHAPTER_BANDS,
+  INVENTORY_LOW_FREE_SLOTS,
+  JAM_LOW_FRACTION,
+  JAM_PLENTY_MULTIPLE,
+} from './exposureThresholds'
 
 export type TimeOfDayTag =
   | 'time_dawn'
@@ -259,6 +266,97 @@ async function stravaStaleDays(userId: string, now: Date): Promise<number | null
   )
 }
 
+/** 챕터 번호 → 구간 태그 (순수 함수 — 테스트 대상, 티켓 20261026_2030).
+ *  null·정수가 아님·1~10 밖이면 태그 없음. */
+export function chapterBandTag(chapterNo: number | null | undefined): string | null {
+  if (chapterNo === null || chapterNo === undefined || !Number.isInteger(chapterNo)) return null
+  return CHAPTER_BANDS.find((band) => chapterNo >= band.min && chapterNo <= band.max)?.tag ?? null
+}
+
+export type CapsuleGauge = { filled: number; required: number }
+
+/** 캡슐 게이지 → 태그 (순수 함수, 티켓 20261026_2030). 캡슐이 없거나 required <= 0이면 태그 없음.
+ *  filled >= required(초과 포함)면 capsule_full, 비율이 기준 이상이고 아직 안 찼으면 capsule_nearly_full. */
+export function capsuleGaugeTag(capsule: CapsuleGauge | null | undefined): string | null {
+  if (!capsule || !(capsule.required > 0)) return null
+  if (capsule.filled >= capsule.required) return 'capsule_full'
+  if (capsule.filled / capsule.required >= CAPSULE_NEARLY_FULL_RATIO) return 'capsule_nearly_full'
+  return null
+}
+
+/** 잼 잔액 → 태그 (순수 함수, 티켓 20261026_2030). 캡슐 필요량에 대한 배수로 판정하므로
+ *  캡슐이 없거나 required <= 0이면 태그 없음. 잔액이 없으면(지갑 행 없음) 0으로 본다. */
+export function jamBalanceTag(
+  balance: number | null | undefined,
+  capsule: { required: number } | null | undefined
+): string | null {
+  if (!capsule || !(capsule.required > 0)) return null
+  const jam = typeof balance === 'number' && Number.isFinite(balance) ? balance : 0
+  if (jam >= capsule.required * JAM_PLENTY_MULTIPLE) return 'jam_plenty'
+  if (jam < capsule.required * JAM_LOW_FRACTION) return 'jam_low'
+  return null
+}
+
+/** 인벤토리 남은 칸 → 태그 (순수 함수, 티켓 20261026_2030). 인벤토리 행이 없으면 태그 없음.
+ *  남은 칸 0 이하(used > max 포함)는 inventory_full, 1~INVENTORY_LOW_FREE_SLOTS는 inventory_nearly_full. */
+export function inventoryRoomTag(
+  inventory: { max_slots: number; used_slots: number } | null | undefined
+): string | null {
+  if (!inventory) return null
+  const free = inventory.max_slots - inventory.used_slots
+  if (free <= 0) return 'inventory_full'
+  if (free <= INVENTORY_LOW_FREE_SLOTS) return 'inventory_nearly_full'
+  return null
+}
+
+/** 유저의 챕터 번호. 행이 없거나 조회 오류면 null(태그 없음) */
+async function getUserChapterNo(userId: string): Promise<number | null> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('user_chapters')
+    .select('chapter_no')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) console.error('[getUserChapterNo] user_chapters 조회 오류:', error.message)
+  return data?.chapter_no ?? null
+}
+
+/** 유저의 지금 캡슐. 행이 없거나 조회 오류면 null(캡슐·잼 태그 없음) */
+async function getUserCapsule(userId: string): Promise<CapsuleGauge | null> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('user_capsules')
+    .select('required, filled')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) console.error('[getUserCapsule] user_capsules 조회 오류:', error.message)
+  return data ? { required: data.required, filled: data.filled } : null
+}
+
+/** 잼 지갑 잔액. 조회 오류면 failed=true(잼 태그만 뺀다), 행이 없으면 balance=null(잔액 0으로 본다) */
+async function getJamBalance(userId: string): Promise<{ failed: boolean; balance: number | null }> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('jam_wallets')
+    .select('balance')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) console.error('[getJamBalance] jam_wallets 조회 오류:', error.message)
+  return { failed: !!error, balance: data?.balance ?? null }
+}
+
+/** 유저의 인벤토리 칸 수. 행이 없거나 조회 오류면 null(인벤토리 태그 없음) */
+async function getUserInventory(userId: string): Promise<{ max_slots: number; used_slots: number } | null> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('inventory')
+    .select('max_slots, used_slots')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) console.error('[getUserInventory] inventory 조회 오류:', error.message)
+  return data ? { max_slots: data.max_slots, used_slots: data.used_slots } : null
+}
+
 /**
  * 유저의 현재 노출조건 태그 집합을 계산한다.
  * 항상 'all' 과 시간대 태그를 포함하고, 자동계산 조건들을 만족하면 추가한다.
@@ -270,7 +368,7 @@ export async function computeUserExposureTags(
 ): Promise<string[]> {
   const tags: string[] = ['all', timeOfDayTag(now)]
 
-  const [participating, endingSoon, itemBookProgress, staleDays, weather, specialDays] =
+  const [participating, endingSoon, itemBookProgress, staleDays, weather, specialDays, chapterNo, capsule, jamWallet, inventory] =
     await Promise.all([
       hasParticipatingMission(userId),
       hasEndingSoonMission(userId, now),
@@ -278,6 +376,10 @@ export async function computeUserExposureTags(
       stravaStaleDays(userId, now),
       getTodayWeather(),
       getTodaySpecialDays(),
+      getUserChapterNo(userId),
+      getUserCapsule(userId),
+      getJamBalance(userId),
+      getUserInventory(userId),
     ])
 
   if (participating) tags.push('has_participating_mission')
@@ -295,6 +397,16 @@ export async function computeUserExposureTags(
   if (weather) tags.push(`weather_${weather}`)
   // 공휴일·절기·기념일은 이름 목록으로 태그를 나눈다(티켓 20260924_0805)
   tags.push(...specialDayTags(specialDays))
+
+  // JAM 2.0 태그 (티켓 20261026_2030) — 챕터 → 캡슐 → 잼 → 인벤토리 순. 읽기가 실패한 항목은 태그만 빠진다
+  const chapterTag = chapterBandTag(chapterNo)
+  if (chapterTag) tags.push(chapterTag)
+  const capsuleTag = capsuleGaugeTag(capsule)
+  if (capsuleTag) tags.push(capsuleTag)
+  const jamTag = jamWallet.failed ? null : jamBalanceTag(jamWallet.balance, capsule)
+  if (jamTag) tags.push(jamTag)
+  const inventoryTag = inventoryRoomTag(inventory)
+  if (inventoryTag) tags.push(inventoryTag)
 
   return tags
 }
