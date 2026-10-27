@@ -34,7 +34,7 @@ preparing the launch moment. **Channels: 뉴스레터 + 홈피드.**
 | ⑥ 홈피드 운영 | 주간 편성표 + 7일치 초안 | Sonnet |
 | ⑦ 뉴스레터 | **현재 꺼 둠** — 발행 계획이 서면 도구·주기·발송 절차를 그때 정한다 | Sonnet |
 | ⑧ 신규 콘텐츠 이미지·등록 묶음 | 신규 배지·미션·홈피드 기획안의 이미지를 프리셋·컬러로 만들고 등록 묶음을 준비해 컨펌 자료로 올림(`marketer-assets.md`). 세션 실행은 배지·미션·홈피드 전부. 예약(주간·월간) 실행은 이미지·묶음·`--dry-run`을 만들지 않는다(티켓 20260930_1519) | Sonnet |
-| ⑨ 운영 묶음 기획(주간) | Weekly scheduled run only. Reads the 카즈하 briefing and the tool data (`ops-read.mjs`: patterns, patterns-draw, decisions, rules, item-paths, trend-sources), plans next week's operations bundle, and is the only agent that submits it to the inbox (07 3.2 steps 2 and 6). Use the draw result first; never leave novelty to your own creativity. Fill the bundle's `title` (30 chars max), each item's `rationale` and `highlight` (5 or fewer per bundle), the plain one-sentence 「유저가 겪는 것」, `trends[]`, and `routine_run.stages` (윤진 `plan`, 윈터 `world_review`, 혜린 `balance_check`). Format: the validator code, not this file | Sonnet |
+| ⑨ 운영 묶음 기획(주간) | Weekly scheduled run only. Reads the 카즈하 briefing and the tool data (`ops-read.mjs`: patterns, patterns-draw, decisions, rules, item-paths, trend-sources), plans next week's operations bundle, and is the only agent that submits it to the inbox (07 3.2 steps 2 and 6). Use the draw result first; never leave novelty to your own creativity. Fill the bundle's `title` (30 chars max), each item's `rationale` and `highlight` (5 or fewer per bundle), the plain one-sentence 「유저가 겪는 것」, `trends[]`, and `routine_run.stages` (윤진 `plan`, 윈터 `world_review`, 혜린 `balance_check`). Always submit a bundle, even with zero items (a missing bundle is read as a routine failure); items that 윈터 or 혜린 removed go in the bundle's `excluded_items` (`stage` = `world_review` or `balance_check`, one-line `reason` required). Weather appears only in the reason chip (`rationale.kind = weather`) and in the copy, never as a mission condition. Format: the validator code, not this file | Sonnet |
 | ⑩ 패턴 후보 발굴(월간) | Monthly scheduled run only. After the trend collection, submits new pattern candidates as 「패턴 제안」 items (07 3.3). Never edits the pattern dictionary | Sonnet |
 
 ## 모드별 읽을 파일
@@ -67,8 +67,8 @@ A call that runs none of these modes (for example, a meeting statement) reads no
 In modes ⑨ and ⑩ only, two more commands are allowed, nothing else is added:
 `node scripts/ops-read.mjs <name>` (GET only) and `node scripts/ops-submit.mjs bundle|start <file>`
 (the submission and the routine-start record). Write the submission file only to a temporary folder
-outside the repository (`/tmp`). `curl` and direct commands stay forbidden, and the ⑧ scope above is
-unchanged. Do not run the image or registration scripts in ⑨⑩ (images are made by the ops tool after
+outside the repository (`/tmp`) with a shell redirect (this agent has no Write tool). `curl` and direct commands stay forbidden, and the ⑧ scope above is
+unchanged. Precedence: the scheduled-run bans in the ⑧ row and in Forbidden (no image, no registration `bundle.json`, no `--dry-run` output, nothing written outside `docs/operations/reports/`) cover the registration bundle and the repository. The ⑨⑩ submission file in `/tmp` is a different file and is the one allowed exception. Do not run the image or registration scripts in ⑨⑩ (images are made by the ops tool after
 approval, 07 4.5).
 
 ## Reference documents
