@@ -204,7 +204,28 @@ related:
 - **목표 대비:** 밸런스 목표 정책(`policiesData.ts`의 「밸런스 목표」 항목)마다 지금 값, 목표 범위 표시선, 화면 상태(정상·주의·중단). 주의 이상만 상단에 뜨고 상단 바 숫자에 더한다.
 - **순환 지도:** 성장 순환(활동 동기화 → 잼 → 캡슐 → 아이템 배지 → 인벤토리 → 컬렉션)과 필드 순환(시스템 드랍·유저 드랍 → 지점 → 픽업 → 인벤토리)을 마디로 그린다. 마디마다 대표 지표 하나와 상태 점.
 - **정책 패널:** 마디를 누르면 그 마디의 정책 목록(`policiesData.ts`)을 보인다. 설정값은 [값 바꾸기]로 해당 설정 화면에 가고, 코드에 고정된 값은 [개발 요청]으로 개발 항목을 만든다(§8).
-- 지표의 계산식과 기간은 티켓 20261026_2027에서 정한다. 이 문서에 수치를 적지 않는다.
+- 지표의 계산식과 기간은 티켓 20261026_2027에서 정했다(아래 표). 임계값 수치는 코드 상수가 단일 원천이라 이 문서에는 상수 이름과 의미만 적는다.
+
+**구현됨(계산): 티켓 20261026_2027 2회차** (`jam-web/src/lib/admin/ecosystem/`, 화면은 3회차). 마디 ID는 `sync`·`jam`·`capsule`·`item_badge`·`inventory`·`collection`·`system_drop`·`user_drop`·`checkin_point`·`pickup`이다. 「최근 7일」은 지금부터 `FIELD_WINDOW_DAYS`×24시간 전까지의 롤링 구간(`kpiWeekly.ts`와 같은 정의)이고, 개수를 세는 마디(활동 동기화·유저 드랍·픽업)는 대상 유저(어드민과 `TEST_ACCOUNT_USER_IDS` 계정 제외)만 센다.
+
+| 마디 | 대표 지표 | 계산식 | 기간 | 읽는 표 | 목표 |
+|---|---|---|---|---|---|
+| 활동 동기화 | 동기화된 활동 건수 (보조: 동기화 실패 건수) | `strava_activities`에서 `created_at`이 기간 안이고 `processed_via`가 `manual_backfill`이 아닌 행. 실패는 `strava_sync_failures`에서 `drop_attempt_failed`를 뺀 행 | 최근 7일 | `strava_activities`, `strava_sync_failures` | 없음 |
+| 잼 | 지급된 잼 합계 (보조: 쓴 잼) | `jam_transactions`에서 `amount > 0`이고 `admin_user_id`가 없는 행의 합. 쓴 잼은 `amount < 0` 행의 합(양수) | 최근 7일 | `jam_transactions` | 없음 |
+| 캡슐 | 캡슐 여는 속도 | 밸런스 `capsule_open`, 가장 상태가 나쁜 칸이 대표 | 완결 4주 | 밸런스 읽기 재사용 | 있음 |
+| 아이템 배지 | 월간 획득량·등급 체감 | 밸런스 `monthly_items`·`rarity_feel` 중 가장 나쁜 칸 | 최근 30일(등급은 완결 12주) | 밸런스 읽기 재사용 | 있음 |
+| 인벤토리 | 남은 칸 3 이하 유저 비율 | 밸런스 `inventory_full` | 지금 | 밸런스 읽기 재사용 | 있음 |
+| 컬렉션 | 컬렉션 완성 속도 | 밸런스 `collection_complete` 중 가장 나쁜 칸 | 챕터 1 이후 60일·365일 | 밸런스 읽기 재사용 | 있음 |
+| 시스템 드랍 | 놓인 시스템 드랍 건수 | `poi_drops`에서 `source = 'system'`이고 `dropped_at`이 기간 안인 행(유저 조건 없음) | 최근 7일 | `poi_drops` | 없음 |
+| 유저 드랍 | 놓인 유저 드랍 건수 | `source = 'user'`이고 `dropped_at`이 기간 안이며 `dropper_user_id`가 대상 유저인 행 | 최근 7일 | `poi_drops` | 없음 |
+| 지점 | 켜진 지점 수 (보조: 배지가 연결된 지점 수) | `poi`에서 `is_active`이고 `pending_review`가 아닌 행. 보조는 그 중 `linked_badge_id`가 있는 행 | 지금 | `poi`(개수만) | 없음 |
+| 픽업 | 주워 간 드랍 건수 | `poi_drops`에서 `picked_up_at`이 기간 안이고 `picked_up_by`가 대상 유저인 행 | 최근 7일 | `poi_drops` | 없음 |
+
+- **상태 규칙:** 칸마다 목표와 견줘(`compareToTarget`) 목표 안이면 정상, 밖이면 주의다. 목표 한계(값이 가까운 쪽 끝)에서 벗어난 폭이 그 한계값의 `STOP_DEVIATION_RATIO` 이상이면 중단이고, 한계값이 0이면 벗어나는 순간 중단이다. **`STOP_DEVIATION_RATIO`(50%)는 가정 값**이라 오픈 뒤 실제 데이터로 맞춘다. 표본이 모자라면 부족, 읽기에 실패하면 읽지 못함, 목표가 없는 마디는 목표 없음(값만 보임)이다. 마디 상태는 칸 상태 중 가장 나쁜 것(중단 > 주의 > 읽지 못함 > 부족 > 정상)이다.
+- **주의 이상 개수:** 목표 대비 행 중 주의와 중단의 합이다. 읽지 못함은 주의로 섞지 않고 따로 센다.
+- **목표 대비 연결:** `ch19-kpi-capsule-speed`→`capsule_open`, `ch19-kpi-chapter-reach`→`chapter_reach`(마디 없음, 목표 대비 칸에만), `ch19-kpi-item-badges-monthly`→`monthly_items`+`rarity_feel`, `ch19-kpi-collection-speed`→`collection_complete`, `ch19-kpi-inventory-full`→`inventory_full`. 목표 대비 칸은 밸런스 서브 대시보드의 읽기(`loadBalanceDashboard`)를 그대로 재사용한다.
+- **정책의 마디 연결:** `policiesData.ts`의 항목에 선택 칸 `nodes`를 더했다(3~9·11장과 19장 밸런스 목표 항목, 값·설명·상태는 그대로). 마디 정의·이음선·상수(`FIELD_WINDOW_DAYS`·`STOP_DEVIATION_RATIO`)는 `ecosystem/nodes.ts`가 단일 원천이다.
+- 읽기 하나가 실패해도 그 마디만 읽지 못함이고, `loadEcosystemSnapshot`은 던지지 않고 마디 10개를 항상 돌려준다.
 
 ## 8. ③ 개발·배포 상황판
 
