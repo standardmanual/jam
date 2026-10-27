@@ -213,6 +213,7 @@ related:
 - **개발 항목 보드:** 대기 / 진행 / staging 반영 / 배포됨 네 칸. 카드마다 제목, 티켓 번호, 어디서 왔는지(운영에서·생태계에서·그 밖).
 - **데이터(D3):** 서버에서 GitHub API로 저장소 `standardmanual/jam`을 읽는다. 티켓 목록은 파일 수백 개를 하나씩 읽지 않도록 저장소에 티켓 색인 파일을 두고 그 한 파일을 읽는다(색인 생성 방식은 티켓 20261026_2028). 배포 상태는 브랜치 비교와 GitHub 배포 기록에서 읽는다. 토큰은 서버 환경변수에만 둔다.
 - **개발 요청:** 생태계·운영 상황판에서 만든 요청은 DB에 쌓이고 보드의 「대기」 칸에 「요청」으로 보인다. 카리나가 세션을 시작할 때 요청을 읽어 티켓으로 바꾼다. 어드민이 티켓 파일을 직접 만들지 않는다.
+  - **구현됨(저장·API): 티켓 20261026_2027 1회차.** 테이블 `ops_dev_requests`(요청 번호 `no`, 제목, 내용, 출처 `ops`·`eco`·`other`, 정책 ID, 상태 `requested`·`ticketed`·`dismissed`, 티켓 ID). `GET /api/admin/dev-requests`(관리자 세션 또는 읽기 토큰, `status` 쿼리 기본 `requested`)·`POST`(관리자 세션만)·`PATCH /api/admin/dev-requests/[id]`(관리자 세션만, `requested`↔`dismissed`). 같은 정책(`policy_id`)에 `requested` 요청이 이미 있으면 새 요청을 만들지 않고 409로 기존 번호를 알려 준다(`policy_id`가 없는 요청은 검사하지 않음). `ticketed`와 `ticket_id`는 API가 받지 않고 카리나가 세션 시작 때 SQL로 정한다(절차는 `docs/agents/orchestrator.md` 카리나 카드).
 - 티켓에 출처를 적는 선택 필드 `origin`(`ops`·`eco`·`other`)을 더한다(`docs/DOCUMENT_SCHEMA.md` 확장 규칙 1).
 
 ## 9. 확인 방법

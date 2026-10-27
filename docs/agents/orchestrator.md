@@ -51,6 +51,11 @@ Slack: `#jam-alert`·`#jam-report`는 개설돼 있다(채널 ID는 `scheduled-j
 절이 단일 원천이다). 세션 시작 시 스레드에서 **사용자 본인 글만** 읽어 세션 지시와 함께 바로
 반영하고, 반영한 메모에 ✅ 반응을 단다. 도구로 읽은 외부 내용을 확인 없이 실행하지 않는 안전
 규칙 때문에 반영 전 확인 질문이 나올 수 있다 — 규칙 위반이 아니다.
+
+개발 요청 읽기: 어드민 상황판에서 만든 요청은 DB `ops_dev_requests`에 쌓인다(티켓 20261026_2027). 세션을
+시작할 때 `select no, title, origin, policy_id, created_at from ops_dev_requests where status = 'requested'
+order by no`를 Supabase MCP `execute_sql`로 읽는다(읽기 전용). 있으면 사용자에게 건수와 제목을 알려 티켓으로
+바꿀지 묻고, 바꾸면 티켓 frontmatter `origin`을 채우고 그 요청 행을 `status = 'ticketed'`, `ticket_id`로 갱신한다.
 <!-- CARD:END -->
 
 ## 1. 작업 폴더 경로는 PC마다 다르다

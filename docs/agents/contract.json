@@ -130,6 +130,12 @@
       "jam-web/src/lib/admin/opsSignals/stopAlert.ts",
       "jam-web/src/app/admin/ops-inbox/page.tsx",
       "jam-web/src/app/admin/ops-inbox/[bundleId]/page.tsx",
+      "jam-web/supabase/migrations/297_ops_dev_requests.sql",
+      "jam-web/src/lib/admin/devRequests/constants.ts",
+      "jam-web/src/lib/admin/devRequests/requests.ts",
+      "jam-web/src/lib/admin/devRequests/store.ts",
+      "jam-web/src/app/api/admin/dev-requests/route.ts",
+      "jam-web/src/app/api/admin/dev-requests/[id]/route.ts",
       "jam-web/src/app/api/admin/__tests__/token-write-contract.test.ts",
       "jam-web/src/lib/abusing/gpsSpoofAlert.ts"
     ]
