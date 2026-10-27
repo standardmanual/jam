@@ -147,6 +147,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '동일한 Strava 활동을 두 개 이상의 계정으로 중복 인정받을 수 없어요.',
     basisDoc: '운영 로직 3.2절',
     ticketId: '20261017_1422',
+    nodes: ['sync'],
   },
   {
     id: 'ch3-replace-offer',
@@ -159,6 +160,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '이전 계정에 묶인 Strava를 새 계정으로 옮길 때 확인 절차를 거치며 기존 계정은 안전하게 삭제돼요.',
     basisDoc: '운영 로직 3.2절',
     ticketId: '20261022_0540',
+    nodes: ['sync'],
   },
   {
     id: 'ch3-recognized-sports',
@@ -171,6 +173,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '실제 야외에서 수행한 5개 종목의 활동만 인정받아 보상이 지급돼요.',
     basisDoc: '운영 로직 3.3절',
     ticketId: '20261017_1421',
+    nodes: ['sync'],
   },
   {
     id: 'ch3-device-record-only',
@@ -183,6 +186,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '스마트워치나 GPS 앱으로 실시간 측정한 기록만 인정돼요.',
     basisDoc: '운영 로직 3.3절',
     ticketId: '20261017_1421',
+    nodes: ['sync'],
   },
   {
     id: 'ch3-min-moving-time',
@@ -195,6 +199,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '10분 미만의 짧은 이동은 활동 정산 대상에서 제외돼요.',
     basisDoc: '운영 로직 3.3절',
     ticketId: '20261017_1421',
+    nodes: ['sync'],
   },
   {
     id: 'ch3-filter-reason-saved',
@@ -207,6 +212,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '조건에 미달해 걸러진 활동도 안전하게 보관되어 중복 요청 없이 안정적으로 동기화돼요.',
     basisDoc: '운영 로직 3.4절',
     ticketId: '20261017_1421',
+    nodes: ['sync'],
   },
 
   // =========================================================================
@@ -223,6 +229,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '휴식 시간을 제외한 순수 이동 분마다 종목 강도에 맞춘 정수 잼을 받아요.',
     basisDoc: '운영 로직 4.2절',
     ticketId: '20261017_1423',
+    nodes: ['jam'],
   },
   {
     id: 'ch4-intensity-light',
@@ -242,6 +249,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'intensity_light',
       unit: '배',
     },
+    nodes: ['jam'],
   },
   {
     id: 'ch4-intensity-normal',
@@ -261,6 +269,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'intensity_normal',
       unit: '배',
     },
+    nodes: ['jam'],
   },
   {
     id: 'ch4-intensity-hard',
@@ -280,6 +289,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'intensity_hard',
       unit: '배',
     },
+    nodes: ['jam'],
   },
   {
     id: 'ch4-mass-earn-multiplier',
@@ -299,6 +309,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'mass_earn_alert_multiplier',
       unit: '배',
     },
+    nodes: ['jam'],
   },
   {
     id: 'ch4-mass-earn-no-history',
@@ -318,6 +329,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'mass_earn_alert_no_history_amount',
       unit: '잼',
     },
+    nodes: ['jam'],
   },
 
   // =========================================================================
@@ -334,6 +346,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '챕터가 높아질수록 더 많은 잼을 모아 캡슐을 채우게 돼요.',
     basisDoc: '운영 로직 5.4절',
     ticketId: '20261018_0052',
+    nodes: ['capsule'],
   },
   {
     id: 'ch5-guaranteed-count',
@@ -346,6 +359,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '캡슐을 열면 최소 1개, 확률에 따라 2개의 아이템 배지를 받아요.',
     basisDoc: '운영 로직 5.2절, 5.4절',
     ticketId: '20261018_0052',
+    nodes: ['capsule'],
   },
   {
     id: 'ch5-other-tribe-prob',
@@ -358,6 +372,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '캡슐을 열면 20% 확률로 다른 트라이브의 희귀 아이템을 발견할 수 있어요.',
     basisDoc: '운영 로직 5.2절, 5.4절',
     ticketId: '20261018_0052',
+    nodes: ['capsule'],
   },
   {
     id: 'ch5-rarity-probabilities',
@@ -370,6 +385,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '확률 안내 페이지에 고시된 비율대로 공정하게 등급이 추첨돼요.',
     basisDoc: '운영 로직 5.4절, 18.3절',
     ticketId: '20261018_0052',
+    nodes: ['capsule'],
   },
   {
     id: 'ch5-pity-epic',
@@ -382,6 +398,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '15번 동안 에픽을 얻지 못해도 16번째에는 에픽 이상의 상위 배지가 확정 지급돼요.',
     basisDoc: '운영 로직 5.2절, 5.4절',
     ticketId: '20261018_0052',
+    nodes: ['capsule'],
   },
   {
     id: 'ch5-feed-exclusion',
@@ -394,6 +411,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '캡슐을 자주 열어도 친구들의 피드가 도배되지 않아요. 캡슐에서 나온 잠긴 배지를 열 때도 피드에는 올라가지 않아요.',
     basisDoc: '운영 로직 5.3절, 15.3절',
     ticketId: '20261022_1021',
+    nodes: ['capsule'],
   },
 
   // =========================================================================
@@ -410,6 +428,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '운동 동기화 시 최소 1개(등산은 2개)의 아이템 배지를 즉시 받아요.',
     basisDoc: '운영 로직 6.2절, 6.7절',
     ticketId: '20261017_1424',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch6-sync-bonus-formula',
@@ -422,6 +441,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '긴 시간 격렬하게 운동할수록 추가 보너스 배지를 얻을 확률이 최대 25%까지 높아져요.',
     basisDoc: '운영 로직 6.2절, 6.7절',
     ticketId: '20261017_1424',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch6-sync-rarity-prob',
@@ -434,6 +454,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '동기화 보상으로 나오는 아이템 등급 비율이 확률 안내에 투명하게 안내돼요.',
     basisDoc: '운영 로직 6.7절',
     ticketId: '20261017_1424',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch6-common-streak',
@@ -446,6 +467,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '커먼만 계속 나오는 불운을 방지하기 위해 10회 연속 커먼 획득 후 레어 이상이 확정돼요.',
     basisDoc: '운영 로직 6.2절',
     ticketId: '20261017_1424',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch6-inventory-hold',
@@ -458,6 +480,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '인벤토리가 가득 차도 보상이 유실되지 않으며, 보류 목록에서 남길 아이템을 선택할 수 있어요.',
     basisDoc: '운영 로직 6.4절',
     ticketId: '20261017_1425',
+    nodes: ['item_badge', 'inventory'],
   },
   {
     id: 'ch6-serial-number-invariance',
@@ -470,6 +493,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '내가 획득한 고유 번호(#0001 등)는 다른 유저에게 전달돼도 유지돼요.',
     basisDoc: '운영 로직 6.3절',
     ticketId: '20261021_1849',
+    nodes: ['item_badge'],
   },
 
   // =========================================================================
@@ -486,6 +510,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '아이템 배지를 얻을 때 25% 확률로 잠긴 상태로 획득해요.',
     basisDoc: '운영 로직 7.4절',
     ticketId: '20261018_0051',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch7-locked-min-requirements',
@@ -502,6 +527,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     adminLink: {
       href: '/admin/balance#locked',
     },
+    nodes: ['item_badge'],
   },
   {
     id: 'ch7-locked-restrictions',
@@ -514,6 +540,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '잠긴 배지는 해금하기 전까지 장소에 내려놓거나 조합할 수 없어요.',
     basisDoc: '운영 로직 7.2절',
     ticketId: '20261018_0657',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch7-locked-open-score',
@@ -526,6 +553,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '잠긴 배지를 열 때마다 챕터 점수 10점을 얻어요.',
     basisDoc: '운영 로직 7.2절, 12.2절',
     ticketId: '20261019_1315',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch7-locked-open-feed',
@@ -540,6 +568,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       '동기화로 받은 잠긴 배지는 열기 전에는 친구들의 피드에 나오지 않고, 열면 이름과 그림이 드러난 채로 올라와요. 캡슐에서 나온 잠긴 배지는 열어도 피드에 올라가지 않아요.',
     basisDoc: '운영 로직 7.2절, 7.3절, 15.3절',
     ticketId: '20261026_1031',
+    nodes: ['item_badge'],
   },
 
   // =========================================================================
@@ -563,6 +592,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'max_slots',
       unit: '칸',
     },
+    nodes: ['inventory'],
   },
   {
     id: 'ch8-collection-4tiers',
@@ -575,6 +605,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '동일한 컬렉션이라도 더 높은 등급의 배지로 채워 완성 등급을 업그레이드할 수 있어요.',
     basisDoc: '운영 로직 8.3절',
     ticketId: '20261016_2340',
+    nodes: ['collection'],
   },
   {
     id: 'ch8-collection-rewards',
@@ -591,6 +622,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     adminLink: {
       href: '/admin/balance#collection',
     },
+    nodes: ['collection'],
   },
   {
     id: 'ch8-mix-slots',
@@ -603,6 +635,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '조합을 진행하려면 정확히 5개의 재료 아이템이 필요해요.',
     basisDoc: '운영 로직 8.4절',
     ticketId: '20261018_0055',
+    nodes: ['inventory'],
   },
   {
     id: 'ch8-mix-fail-reward',
@@ -622,6 +655,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'fail_reward_points',
       unit: 'pt',
     },
+    nodes: ['inventory'],
   },
   {
     id: 'ch8-clue-recipes',
@@ -634,6 +668,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '힌트를 모아 특별한 히든 아이템을 제작하는 재미를 느껴요.',
     basisDoc: '운영 로직 8.4절, 19.3절',
     ticketId: '20261022_1138',
+    nodes: ['inventory'],
   },
   {
     id: 'ch8-tier-up-recipes',
@@ -647,6 +682,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '겹친 아이템 배지 5개를 내고 받을 컬렉션을 고르면 그 컬렉션의 새 아이템 1개를 받아요. 받는 등급은 확률로 정해지고, 같은 등급이 나올 수도 있어요.',
     basisDoc: '운영 로직 8.4절, 8.6절, 18.3절, 19.3절',
     ticketId: '20261023_1648',
+    nodes: ['collection'],
   },
   {
     id: 'ch8-tier-up-probability',
@@ -664,6 +700,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     adminLink: {
       href: '/admin/balance#collection',
     },
+    nodes: ['collection'],
   },
 
   // =========================================================================
@@ -680,6 +717,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '특정 지점을 혼자 독점해 도배할 수 없으며 본인이 둔 물건은 다시 주울 수 없어요.',
     basisDoc: '운영 로직 9.3절',
     ticketId: '20261018_1812',
+    nodes: ['user_drop', 'pickup'],
   },
   {
     id: 'ch9-ambient-schedule-hour',
@@ -699,6 +737,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'schedule_hour_kst',
       unit: '시',
     },
+    nodes: ['system_drop'],
   },
   {
     id: 'ch9-ambient-poi-cap',
@@ -718,6 +757,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'max_active_per_poi',
       unit: '개',
     },
+    nodes: ['system_drop', 'checkin_point'],
   },
   {
     id: 'ch9-ambient-exclusion-window',
@@ -737,6 +777,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       liveField: 'exclusion_window_minutes',
       unit: '분',
     },
+    nodes: ['system_drop', 'user_drop'],
   },
 
   // =========================================================================
@@ -793,6 +834,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '앱을 켜서 버튼을 누르지 않아도 경로가 장소를 지나면 체크인 배지를 받아요.',
     basisDoc: '운영 로직 11.2절',
     ticketId: '20261018_1814',
+    nodes: ['checkin_point'],
   },
   {
     id: 'ch11-first-visit-points',
@@ -805,6 +847,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '처음 가본 동네나 새로운 장소를 방문하면 더 큰 보람을 느껴요.',
     basisDoc: '운영 로직 11.2절',
     ticketId: '20261018_1814',
+    nodes: ['checkin_point'],
   },
 
   // =========================================================================
@@ -1292,6 +1335,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '유저가 너무 지치지 않도록 적절한 주기로 캡슐 보상을 맛볼 수 있게 설계돼요.',
     basisDoc: '운영 로직 19.2절',
     ticketId: '20261022_1136',
+    nodes: ['capsule'],
   },
   {
     id: 'ch19-kpi-chapter-reach',
@@ -1316,6 +1360,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '아이템 배지가 과도하게 쏟아지거나 지나치게 메마르지 않게 유지돼요.',
     basisDoc: '운영 로직 19.2절',
     ticketId: '20261022_1136',
+    nodes: ['item_badge'],
   },
   {
     id: 'ch19-kpi-collection-speed',
@@ -1328,6 +1373,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '수집의 즐거움이 장기적으로 이어지도록 밸런스가 조율돼요.',
     basisDoc: '운영 로직 19.2절',
     ticketId: '20261022_1136',
+    nodes: ['collection'],
   },
   {
     id: 'ch19-kpi-inventory-full',
@@ -1340,6 +1386,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '인벤토리에 늘 여유가 있어서 새로 받은 아이템 배지를 둘 자리가 남아 있어요.',
     basisDoc: '운영 로직 19.2절',
     ticketId: '20261022_1136',
+    nodes: ['inventory'],
   },
   {
     id: 'ch19-content-bulk-seed',

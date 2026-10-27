@@ -1,6 +1,7 @@
 /**
  * 서비스 운영 정책 대시보드 타입 정의 (티켓 20261022_1631, 저장 경로 제거 티켓 20261022_1717)
  */
+import type { EcosystemNodeId } from '@/lib/admin/ecosystem/types'
 
 export type PolicyType =
   | 'admin_link' // 어드민 설정 화면에서 값을 바꾸는 정책 (대시보드는 값을 읽어 보여 주고 링크만 둔다)
@@ -36,6 +37,8 @@ export interface PolicyItem {
   basisDoc: string
   ticketId?: string
   adminLink?: PolicyAdminLink
+  /** 이 정책이 걸린 생태계 순환 마디(티켓 20261026_2027). 마디가 없는 정책은 비운다 */
+  nodes?: readonly EcosystemNodeId[]
 }
 
 export interface ChapterSummary {
