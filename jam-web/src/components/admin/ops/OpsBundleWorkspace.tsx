@@ -20,6 +20,9 @@
  * - `detailHistoryAction`: 서랍 「결정 기록」 안쪽 위 오른쪽(「마지막 수정 되돌리기」)
  * - `stages`(속성): 묶음 단계 기록. 서랍 「검수 결과」의 시각에 쓴다
  *
+ * 트렌드 걸러 보기(`trendFilter`, 티켓 20261026_2033 2회차): 트렌드 레이더의 「연결 항목 N건」으로 들어오면(`?trend=`) 목록과 탭 숫자를 그 트렌드에서 나온 항목으로 좁히고
+ * 알림 줄에 「N건만 보고 있어요」와 [전체 보기](쿼리에서 `trend`를 지운다)를 둔다. 보는 것만 바꾼다 — 슬롯이 받는 `items`와 체크 상태는 그대로다.
+ *
  * 처음 열 때 도착 항목이 있으면 「도착 → 검토중」 전환을 화면이 따로 한 번 요청한다(읽기 요청으로 상태를 바꾸지 않는다).
  * 서버는 그 묶음의 `status = 'arrived'` 항목만 바꾼다. 성공하면 서버 화면을 다시 읽고(`router.refresh()`), 실패하면 알림만
  * 띄운다 — 화면은 그대로 볼 수 있고, 새로 고치면 다시 시도한다.
@@ -33,7 +36,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { IconAlertTriangle, IconInbox } from '@tabler/icons-react'
+import { IconAlertTriangle, IconFilter, IconInbox } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/admin/ui/alert'
 import { Button } from '@/components/admin/ui/button'
@@ -47,8 +50,10 @@ import {
   countByItemFilter,
   defaultSelectedItem,
   matchesItemFilter,
+  narrowItemsToIds,
   type OpsItemFilter,
 } from '@/lib/admin/opsInbox/itemView'
+import type { TrendFilter } from '@/lib/admin/opsTrends/radar'
 import type { OpsDecisionRecord, OpsItemRecord, OpsRoutineStageRecord } from '@/lib/admin/opsInbox/query'
 import {
   balanceItemIdSet,
@@ -118,6 +123,11 @@ export interface OpsBundleWorkspaceProps {
   makingItemIds?: ReadonlySet<string>
   /** 레시피·드랍 미리보기가 쓰는 배지·지점·컬렉션 이름(서버가 읽어 내린다, 티켓 20261007_1401). */
   previewNames?: OpsPreviewNames
+  /**
+   * 트렌드 레이더에서 들어온 걸러 보기(`?trend=`, 티켓 20261026_2033 2회차). 있으면 목록을 그 트렌드에서 나온 항목으로 좁히고
+   * 알림 줄에 「N건만 보고 있어요」와 [전체 보기]를 둔다. 좁히기는 보는 것만 바꾼다(체크·승인 대상은 건드리지 않는다).
+   */
+  trendFilter?: TrendFilter | null
 }
 
 export const OPS_TRANSITION_FAILED_MESSAGE =
@@ -126,6 +136,12 @@ export const OPS_TRANSITION_FAILED_MESSAGE =
 const DRAWER_PARAM = 'drawer'
 const DRAWER_EMPTY = 'empty'
 const ITEM_PARAM = 'item'
+const TREND_PARAM = 'trend'
+
+/** 걸러 보기 알림 줄의 문장. */
+export function trendFilterNotice(label: string, count: number): string {
+  return `「${label}」 트렌드에서 나온 항목 ${count}건만 보고 있어요`
+}
 
 function isItemFilter(value: string): value is OpsItemFilter {
   return (OPS_ITEM_FILTERS as readonly string[]).includes(value)
@@ -150,6 +166,7 @@ export function OpsBundleWorkspace({
   previewAction,
   makingItemIds,
   previewNames,
+  trendFilter,
 }: OpsBundleWorkspaceProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -160,13 +177,18 @@ export function OpsBundleWorkspace({
   const [draft, setDraft] = useState<OpsItemDraft | null>(null)
   const [colorPick, setColorPick] = useState<OpsColorPick | null>(null)
   const [transitionFailed, setTransitionFailed] = useState(false)
+  // [전체 보기]를 누르면 쿼리를 지우고 이 화면에서도 걸러 보기를 끈다(서버가 준 `trendFilter`는 새로 읽을 때까지 그대로라서).
+  const [trendDismissed, setTrendDismissed] = useState(false)
+  const activeTrend = trendFilter && !trendDismissed ? trendFilter : null
+  // 좁힌 목록. 걸러 보기가 꺼져 있으면 `items` 그대로다.
+  const visibleItems = useMemo(() => narrowItemsToIds(items, activeTrend?.itemIds), [items, activeTrend])
 
   // ── 선택 ──────────────────────────────────────────────────────────────────────────────────────
   // `?item=`이 가리키는 항목이 없으면(잘못된 값·지워진 항목) 처음 선택 규칙으로 돌아간다: 결정 전 첫 항목, 없으면 첫 행.
   const selectedItem = useMemo(() => {
     const fromUrl = itemParam ? items.find((item) => item.id === itemParam) : undefined
-    return fromUrl ?? defaultSelectedItem(items)
-  }, [items, itemParam])
+    return fromUrl ?? defaultSelectedItem(visibleItems)
+  }, [items, visibleItems, itemParam])
 
   // 밸런스 평가 결과를 화면 모양으로 바꾼다. 행 칩·탭 숫자·묶음 알림 건수가 같은 줄에서 나온다.
   const balanceView = useMemo(() => buildBalanceView(balance), [balance])
@@ -176,10 +198,10 @@ export function OpsBundleWorkspace({
   const failReasonsByItem = useMemo(() => latestFailReasons(decisions), [decisions])
 
   const filteredItems = useMemo(
-    () => items.filter((item) => matchesItemFilter(item, filter, balanceItemIds)),
-    [items, filter, balanceItemIds]
+    () => visibleItems.filter((item) => matchesItemFilter(item, filter, balanceItemIds)),
+    [visibleItems, filter, balanceItemIds]
   )
-  const filterCounts = useMemo(() => countByItemFilter(items, balanceItemIds), [items, balanceItemIds])
+  const filterCounts = useMemo(() => countByItemFilter(visibleItems, balanceItemIds), [visibleItems, balanceItemIds])
   const statuses = useMemo(() => items.map((item) => item.status), [items])
 
   const replaceQuery = useCallback((mutate: (params: URLSearchParams) => void) => {
@@ -193,12 +215,17 @@ export function OpsBundleWorkspace({
     (id: string) => {
       const target = items.find((item) => item.id === id)
       if (!target) return
+      // 걸러 보기에 없는 항목(다른 항목의 「연결」·오류 요약에서 옮겨 온 경우)이면 목록에서 보이도록 걸러 보기를 끈다.
+      if (activeTrend && !activeTrend.itemIds.includes(id)) {
+        setTrendDismissed(true)
+        replaceQuery((params) => params.delete(TREND_PARAM))
+      }
       // 지금 탭에 없는 항목(다른 항목의 「연결」·오류 요약에서 옮겨 온 경우)이면 목록에서 보이도록 「전체」로 바꾼다.
       if (!matchesItemFilter(target, filter, balanceItemIds)) setFilter('all')
       replaceQuery((params) => params.set(ITEM_PARAM, id))
       requestAnimationFrame(() => document.getElementById(opsItemRowId(id))?.scrollIntoView({ block: 'nearest' }))
     },
-    [items, filter, balanceItemIds, replaceQuery]
+    [items, filter, balanceItemIds, replaceQuery, activeTrend]
   )
 
   const selectByPosition = useCallback(
@@ -208,6 +235,11 @@ export function OpsBundleWorkspace({
     },
     [items, selectItem]
   )
+
+  const clearTrendFilter = useCallback(() => {
+    setTrendDismissed(true)
+    replaceQuery((params) => params.delete(TREND_PARAM))
+  }, [replaceQuery])
 
   const closeDrawer = useCallback(() => replaceQuery((params) => params.delete(DRAWER_PARAM)), [replaceQuery])
 
@@ -234,7 +266,8 @@ export function OpsBundleWorkspace({
   const customNotices = notices?.(ctx) ?? null
   const panelNode = panel?.(ctx) ?? null
   const balanceNoticeShown = balanceView.available && (balanceView.failed || balanceView.totals.warn + balanceView.totals.info > 0)
-  const hasNotices = bundleFormatErrors.length > 0 || balanceNoticeShown || Boolean(customNotices) || transitionFailed
+  const hasNotices =
+    bundleFormatErrors.length > 0 || balanceNoticeShown || Boolean(customNotices) || transitionFailed || activeTrend !== null
 
   return (
     <div className="@container space-y-4">
@@ -244,6 +277,17 @@ export function OpsBundleWorkspace({
         <div className="space-y-3">
           <OpsFormatErrorSummary errors={bundleFormatErrors} onSelectItem={selectByPosition} />
           <OpsBalanceBundleNotice view={balanceView} isSample={isSample} onShowItems={() => setFilter('balance')} />
+          {activeTrend && (
+            <Alert>
+              <IconFilter className="size-4" aria-hidden="true" />
+              <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="break-keep wrap-break-word">{trendFilterNotice(activeTrend.label, visibleItems.length)}</span>
+                <Button type="button" variant="outline" size="sm" onClick={clearTrendFilter}>
+                  전체 보기
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           {customNotices}
           {transitionFailed && (
             <Alert variant="warning">

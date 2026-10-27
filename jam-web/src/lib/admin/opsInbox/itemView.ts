@@ -187,6 +187,16 @@ export function matchesItemFilter(item: Filterable, filter: OpsItemFilter, balan
   }
 }
 
+/**
+ * 트렌드 걸러 보기(`?trend=`, 티켓 20261026_2033 2회차): 목록을 주어진 항목 ID로 좁힌다. 순서는 그대로다.
+ * `ids`가 없으면(걸러 보기 꺼짐) 목록을 그대로 돌려준다.
+ */
+export function narrowItemsToIds<T extends { id: string }>(items: readonly T[], ids: readonly string[] | null | undefined): readonly T[] {
+  if (!ids) return items
+  const allowed = new Set(ids)
+  return items.filter((item) => allowed.has(item.id))
+}
+
 export function countByItemFilter(items: readonly Filterable[], balanceItemIds?: ReadonlySet<string>): Record<OpsItemFilter, number> {
   return {
     all: items.length,

@@ -33,6 +33,7 @@ import {
   IconScale,
   IconClipboardList,
   IconChartBar,
+  IconTrendingUp,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -50,6 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/ops-inbox', label: '운영플랜', icon: IconInbox },
       { href: '/admin/ops-schedule', label: '일정표', icon: IconCalendarWeek },
       { href: '/admin/today', label: '투데이', icon: IconNews },
+      { href: '/admin/ops-trends', label: '트렌드 레이더', icon: IconTrendingUp },
       { href: '/admin/ops-patterns', label: '패턴 사전', icon: IconBooks },
     ],
   },
