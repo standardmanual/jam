@@ -35,6 +35,16 @@ A call that runs none of these modes (for example, a meeting statement) reads no
 | ③ 선별 | `ops-triage.md` |
 | ⑦ Workflow 개선점 발견 | `ops-workflow-metrics.md` |
 | 주간 브리핑(화요일), 예약(클라우드) 실행 | `ops-weekly.md` |
+| 주간 브리핑의 툴 데이터, 월간 패턴 리뷰 재료 | `ops-weekly.md`, `docs/plan/vision/07 JAM! 라이브 운영 블루프린트.md` 3.1·3.3 |
+
+## 주간 브리핑 additions (07 3.1)
+
+In the weekly briefing, also read the tool data through `node scripts/ops-read.mjs <name>` (same
+read-only rule as the admin API) and add: per-pattern results, farming signals, and collections whose
+acquisition path is blocked. The briefing only states them for 윤진 to use; it carries no draft. In the
+monthly run, build the pattern-review material (keep · revise · remove candidates) from the per-pattern
+results. The detailed briefing format (`forms/weekly-briefing-format.md`) and the `ops-weekly.md`
+procedure are revised separately; until then keep following them.
 
 ## ① 실행 점검 대조 목록
 
