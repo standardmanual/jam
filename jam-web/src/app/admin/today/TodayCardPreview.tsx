@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import TodayCard from '@/components/today/TodayCard'
 import type { CardView } from '@/lib/today/cardView'
@@ -13,6 +14,10 @@ import type { CardView } from '@/lib/today/cardView'
  *
  * 계측 정보(`tracking`)가 없는 표시 데이터만 그린다 — 트래커·링크가 없어 어드민 미리보기가 노출·클릭 수치에 섞이지 않고
  * 눌러도 서비스 화면으로 이동하지 않는다. 내 순위 강조(`currentUserId`)도 넘기지 않는다.
+ *
+ * 선택 속성 `annotations`(티켓 20261026_2025 2회차, 홈피드 미리보기): 카드 순서와 같은 길이의 배열로, 칸이 있는 카드만 두른다.
+ * 승인 전 카드(`pending`)는 점선 테두리와 「승인 전」 표시를 두르고, `chips`가 있으면 카드 위에 이유 칩 줄을 올린다.
+ * 속성을 안 주거나 칸이 null이면 카드를 두르지 않고 지금과 똑같이 그린다. 카드는 어느 경우든 `TodayCard` 그대로다.
  */
 
 /** 미리보기로 고를 수 있는 기기 폭(px). */
@@ -39,6 +44,14 @@ export function previewScale(availableWidth: number, cardWidth: number): number 
   return Math.min(1, availableWidth / cardWidth)
 }
 
+/** 카드 하나를 두르는 표시. `pending`이 참이면 점선 테두리와 「승인 전」, `chips`가 있으면 카드 위 이유 칩 줄이다. */
+export interface PreviewCardAnnotation {
+  pending: boolean
+  chips?: ReactNode
+}
+
+export const PENDING_LABEL = '승인 전'
+
 function isPreviewDeviceWidth(value: number): value is PreviewDeviceWidth {
   return (PREVIEW_DEVICE_WIDTHS as readonly number[]).includes(value)
 }
@@ -46,10 +59,16 @@ function isPreviewDeviceWidth(value: number): value is PreviewDeviceWidth {
 export default function TodayCardPreview({
   views,
   defaultWidth = DEFAULT_PREVIEW_DEVICE_WIDTH,
+  annotations,
+  emptyMessage,
 }: {
   views: CardView[]
   /** 처음 고른 기기 폭. 기본은 360이다. */
   defaultWidth?: PreviewDeviceWidth
+  /** 카드 순서와 같은 길이. 칸이 null이거나 속성이 없으면 카드를 두르지 않는다. */
+  annotations?: readonly (PreviewCardAnnotation | null)[]
+  /** 카드가 0장일 때 판 안에 보일 문구. 없으면 빈 판이다. */
+  emptyMessage?: string
 }) {
   const [deviceWidth, setDeviceWidth] = useState<PreviewDeviceWidth>(defaultWidth)
   const frameRef = useRef<HTMLDivElement>(null)
@@ -118,9 +137,32 @@ export default function TodayCardPreview({
               ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left' } : {}),
             }}
           >
-            {views.map((view, index) => (
-              <TodayCard key={index} view={view} />
-            ))}
+            {views.length === 0 && emptyMessage && (
+              <p className="py-6 text-center text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{emptyMessage}</p>
+            )}
+            {views.map((view, index) => {
+              const annotation = annotations?.[index]
+              if (!annotation) return <TodayCard key={index} view={view} />
+              return (
+                <div
+                  key={index}
+                  data-preview-pending={annotation.pending ? '' : undefined}
+                  className={cn('flex flex-col gap-2', annotation.pending && 'rounded-2xl border border-dashed border-neutral-400 p-2')}
+                >
+                  {(annotation.pending || annotation.chips) && (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {annotation.pending && (
+                        <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700 break-keep wrap-break-word">
+                          {PENDING_LABEL}
+                        </span>
+                      )}
+                      {annotation.chips}
+                    </div>
+                  )}
+                  <TodayCard view={view} />
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

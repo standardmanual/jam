@@ -239,3 +239,38 @@ describe('TodayCardPreview — 유저 정보가 없는 미리보기는 배지 �
     expect(html.match(/grayscale/g)).toHaveLength(2)
   })
 })
+
+describe('TodayCardPreview — annotations (티켓 20261026_2025 2회차, 홈피드 미리보기)', () => {
+  const two = () => previewViews([LEGACY_CARDS[0].card, LEGACY_CARDS[3].card])
+
+  it('annotations를 주지 않거나 칸이 모두 null이면 지금과 똑같은 출력이다', () => {
+    const plain = renderToStaticMarkup(<TodayCardPreview views={two()} />)
+    expect(renderToStaticMarkup(<TodayCardPreview views={two()} annotations={[null, null]} />)).toBe(plain)
+    expect(plain).not.toContain('data-preview-pending')
+    expect(plain).not.toContain('승인 전')
+  })
+
+  it('승인 전 카드만 점선 테두리와 «승인 전» 표시를 두르고 나머지 카드는 두르지 않는다', () => {
+    const html = renderToStaticMarkup(<TodayCardPreview views={two()} annotations={[null, { pending: true }]} />)
+    expect(html.match(/data-preview-pending/g)).toHaveLength(1)
+    expect(html).toContain('border-dashed')
+    expect(html.match(/승인 전/g)).toHaveLength(1)
+    // 두른 카드도 서비스 카드 그대로다: 제목이 모두 그려진다
+    expect(html).toContain(LEGACY_CARDS[0].card.title)
+    expect(html).toContain(LEGACY_CARDS[3].card.title)
+  })
+
+  it('chips가 있으면 카드 위(같은 틀 안)에 칩 줄을 올린다', () => {
+    const html = renderToStaticMarkup(
+      <TodayCardPreview views={two()} annotations={[{ pending: false, chips: <span data-chip>이유 칩</span> }, null]} />,
+    )
+    expect(html).toContain('이유 칩</span>')
+    expect(html).not.toContain('data-preview-pending')
+    expect(html.indexOf('이유 칩')).toBeLessThan(html.indexOf(LEGACY_CARDS[0].card.title))
+  })
+
+  it('카드가 0장이면 emptyMessage를 판 안에 그린다', () => {
+    expect(renderToStaticMarkup(<TodayCardPreview views={[]} emptyMessage="이 날 보이는 카드가 없어요" />)).toContain('이 날 보이는 카드가 없어요')
+    expect(renderToStaticMarkup(<TodayCardPreview views={[]} />)).not.toContain('카드가 없어요')
+  })
+})
