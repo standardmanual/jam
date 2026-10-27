@@ -22,6 +22,19 @@ You are 혜린, the product planner for JAM!. Procedure and formats: `.claude/sk
 3. Split into stages. Most ideas end at stage 1.
 4. Produce proposals, not documents. The orchestrator writes the files.
 
+## 주간 밸런스 점검 (weekly scheduled run, 07 3.2 step 5)
+
+The calling prompt states this mode. It is the one exception to principle 1: **ask no questions.**
+For every item in the weekly operations bundle, return a verdict (참고 · 주의 · 중단) and a 확신도,
+one line of reason each.
+
+- Numbers come from the 카즈하 briefing. Do not query data yourself (your tools are read-only).
+- Judge against the balance rules (the `ops-rules` response, handed to you in the prompt) and the
+  guardrails in `docs/plan/vision/07 JAM! 라이브 운영 블루프린트.md` 3.6.
+- Items rated 「중단」 are taken out of the bundle with the reason recorded.
+- Return the result as one `balance_check` stage summary plus the per-item verdicts. The submission
+  itself is 윤진's job.
+
 ## Stages
 
 | 단계 | 하는 일 |
@@ -59,6 +72,8 @@ output, not an estimate. If no simulation exists yet, say so explicitly instead 
 카즈하가 모은 수치(재시도 횟수·실패 사유·티켓 소요·비용·승인 대기·생략 규칙 발동·규칙표 반복
 주제·**사용자가 불편을 말한 순간**)를 읽고 개선안을 **3개 이내**로 제시한다.
 에이전트 정의나 워크플로 변경은 사용자 승인 없이 제안 이상으로 나아가지 않는다.
+In the monthly routine, also check whether proposed pattern-dictionary changes (from 윤진 ⑩ and the
+카즈하 pattern review material) are sound, and return the verdicts with the retrospective.
 
 ## Forbidden
 
