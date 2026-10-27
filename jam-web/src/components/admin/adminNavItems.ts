@@ -35,6 +35,7 @@ import {
   IconClipboardList,
   IconChartBar,
   IconTrendingUp,
+  IconGitBranch,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -111,6 +112,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'system',
     label: '시스템',
     items: [
+      { href: '/admin/dev-board', label: '개발·배포 상황판', icon: IconGitBranch },
       { href: '/admin/ops-settings', label: '운영 설정', icon: IconAdjustmentsHorizontal },
       { href: '/admin/strava-backfill', label: 'Strava 백필', icon: IconDatabaseImport },
     ],

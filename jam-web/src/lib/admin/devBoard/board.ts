@@ -8,6 +8,7 @@
  *   - 정확한 규칙(main 색인이 있을 때): main 색인에서도 `CLOSED`이면 「배포됨」, 아니거나 main에 없으면 「staging 반영」.
  *   - 추정 규칙(main 색인이 없을 때): `closed` 날짜(KST)가 프로덕션 마지막 배포의 KST 날짜 이하이면 「배포됨」, 그 뒤면 「staging 반영」.
  *     마지막 배포 날짜도 모르면 「배포됨」을 정할 수 없어 모두 「staging 반영」이다.
+ *     `closed`가 빈 `CLOSED` 티켓은 배포 전후를 알 수 없어 어느 칸에도 넣지 않고 `undatedClosed`로 센다(티켓 3회차 보강).
  * - 「배포됨」은 `closed`가 최근 `DEPLOYED_WINDOW_DAYS`일(오늘 KST 날짜에서 14일 전 날짜 포함) 안인 것만 센다.
  * - 카드는 우선순위(P0→P3, 모르면 맨 뒤), 같으면 id 큰 것(최근), 같으면 경로순이다. 칸마다 `BOARD_COLUMN_LIMIT`장까지 담고 전체 개수를 따로 준다.
  * - 개발 요청은 「대기」 칸 맨 앞에 요청 카드로 합친다(번호 큰 것 먼저, 상한은 요청 카드를 포함해 센다).
@@ -35,7 +36,7 @@ export interface DeployEstimate {
 const PRIORITY_RANK: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 }
 
 /**
- * 한 티켓이 들어갈 칸. 보드에 넣지 않는 상태면 null.
+ * 한 티켓이 들어갈 칸. 보드에 넣지 않는 상태면 null(추정 규칙에서 `closed`가 빈 `CLOSED` 티켓도 null).
  * `estimate`가 있으면 추정 규칙(`mainEntry`는 무시), 없으면 정확한 규칙이다.
  */
 export function classifyTicket(
@@ -55,7 +56,9 @@ export function classifyTicket(
       return null
   }
   if (estimate) {
-    return stagingEntry.closed !== '' && stagingEntry.closed <= estimate.lastDeployKstDate ? 'deployed' : 'staged'
+    // 닫은 날짜가 없으면 배포 전인지 후인지 알 수 없어 어느 칸에도 넣지 않는다(개수는 buildColumns가 센다)
+    if (stagingEntry.closed === '') return null
+    return stagingEntry.closed <= estimate.lastDeployKstDate ? 'deployed' : 'staged'
   }
   return mainEntry?.status === 'CLOSED' ? 'deployed' : 'staged'
 }
@@ -134,6 +137,12 @@ export interface BuildColumnsOptions {
   requests: readonly BoardRequestInput[]
 }
 
+export interface BuiltColumns {
+  columns: BoardColumns
+  /** 추정 규칙에서 `closed` 날짜가 없어 어느 칸에도 넣지 못한 `CLOSED` 티켓 수 */
+  undatedClosed: number
+}
+
 /**
  * 보드 네 칸을 만든다. `main`이 null이면(main 색인이 없거나 못 읽음) 추정 규칙을 쓴다.
  * 개발 요청은 `status`가 있으면 `requested`인 것만 합친다.
@@ -142,7 +151,7 @@ export function buildColumns(
   staging: readonly TicketIndexEntry[],
   main: readonly TicketIndexEntry[] | null,
   { now, lastDeployKstDate, requests }: BuildColumnsOptions
-): BoardColumns {
+): BuiltColumns {
   const estimate: DeployEstimate | null = main === null && lastDeployKstDate ? { lastDeployKstDate } : null
   const findMain = main ? indexMainEntries(main) : () => undefined
 
@@ -150,9 +159,13 @@ export function buildColumns(
   const windowStart = today ? shiftDate(today, DEPLOYED_WINDOW_DAYS) : null
 
   const buckets: Record<BoardColumnKey, BoardCard[]> = { waiting: [], progress: [], staged: [], deployed: [] }
+  let undatedClosed = 0
   for (const entry of staging) {
     const column = classifyTicket(entry, findMain(entry), estimate)
-    if (column === null) continue
+    if (column === null) {
+      if (estimate && entry.status === 'CLOSED') undatedClosed += 1
+      continue
+    }
     if (column === 'deployed' && windowStart !== null && (entry.closed === '' || entry.closed < windowStart)) continue
     buckets[column].push(ticketCard(entry))
   }
@@ -169,7 +182,10 @@ export function buildColumns(
     cards: buckets[key].slice(0, BOARD_COLUMN_LIMIT),
     total: buckets[key].length,
   })
-  return { waiting: column('waiting'), progress: column('progress'), staged: column('staged'), deployed: column('deployed') }
+  return {
+    columns: { waiting: column('waiting'), progress: column('progress'), staged: column('staged'), deployed: column('deployed') },
+    undatedClosed,
+  }
 }
 
 /** 묶음마다 자손 전체(묶음 티켓 자신 제외)에서 끝남·진행·남음을 센다. */

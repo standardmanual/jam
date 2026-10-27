@@ -99,6 +99,30 @@ describe('loadDevBoard', () => {
     expect(snapshot.columns.staged.cards.map((c) => c.id)).toEqual(['20261016_2337', '20261016_2336'])
   })
 
+  it('추정 규칙에서 closed가 빈 완료 티켓은 undatedClosed로 세고, 정확한 규칙에서는 0이다', async () => {
+    const staging = JSON.stringify([
+      entry({ id: 'u1', status: 'CLOSED', closed: '' }),
+      entry({ id: 'u2', status: 'CLOSED', closed: '' }),
+      entry({ id: 'd1', status: 'CLOSED', closed: '2026-10-20' }),
+    ])
+    const withIndex = (mainIndex: string | null) =>
+      reader({
+        async readFile(path, ref) {
+          if (path.endsWith('_index.json')) {
+            if (ref === 'staging') return { state: 'ok', value: staging }
+            return mainIndex === null ? { state: 'missing' } : { state: 'ok', value: mainIndex }
+          }
+          return { state: 'ok', value: STATE_FILE }
+        },
+      })
+    const estimated = await loadDevBoard({ reader: withIndex(null), listRequests }, NOW)
+    expect(estimated.undatedClosed).toBe(2)
+    expect(estimated.columns.staged.cards.map((c) => c.id)).toEqual(['d1'])
+    const exact = await loadDevBoard({ reader: withIndex('[]'), listRequests }, NOW)
+    expect(exact.undatedClosed).toBe(0)
+    expect(exact.columns.staged.total).toBe(3)
+  })
+
   it('staging 색인만 실패하면 보드·묶음만 비고 나머지는 계산된다', async () => {
     const snapshot = await loadDevBoard(
       {
