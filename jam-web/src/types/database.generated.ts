@@ -2587,6 +2587,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_trend_sources: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          kind: string
+          location: string
+          name: string
+          no: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          kind: string
+          location?: string
+          name: string
+          no?: never
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          kind?: string
+          location?: string
+          name?: string
+          no?: never
+          updated_at?: string
+        }
+        Relationships: []
+      }
       poi: {
         Row: {
           category: string
