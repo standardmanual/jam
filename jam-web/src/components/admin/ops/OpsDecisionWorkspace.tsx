@@ -44,6 +44,8 @@ import { useItemImageProduction } from './useItemImageProduction'
  * - `detailEdit`: 직접 수정 양식 (`OpsItemEditForm`)
  * - `detailHistoryAction`: 「마지막 수정 되돌리기」(수정 내역이 있는 검토중 항목만, 확인창 없음)
  *
+ * `trendFilter`(티켓 20261026_2033 2회차)는 셸에 그대로 넘긴다 — 목록만 좁히고, 결정 패널의 승인 대상 건수와 「N건 승인하고 예약」은 좁히기와 상관없이 전체 항목 기준 그대로다(체크 상태를 바꾸지 않는다).
+ *
  * 체크 상태는 사람이 바꾼 것만 항목 수정 시각과 함께 기억하고 나머지는 항목에서 계산한다(`selection.ts`) — 서버 화면을 다시 읽어 항목이
  * 바뀌면 새 항목 기준의 기본 체크(검토중이면서 형식 오류 없음)로 저절로 돌아간다. 결정이 끝나면 토스트를 띄우고 `router.refresh()`로
  * 서버 화면을 다시 읽고, 항목 하나를 결정했으면 다음 결정 전 항목을 선택한다.
@@ -53,7 +55,7 @@ const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 type OpsDecisionWorkspaceProps = Pick<
   OpsBundleWorkspaceProps,
-  'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'stages' | 'isSample' | 'previewNames'
+  'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'stages' | 'isSample' | 'previewNames' | 'trendFilter'
 > & {
   /** 서버 로더가 센 예약 등록 요약(승인됨 수·예약할 항목 수). 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다. */
   execution: OpsBundleExecution
@@ -92,6 +94,7 @@ export function OpsDecisionWorkspace({
   execution,
   previewNames,
   week,
+  trendFilter,
 }: OpsDecisionWorkspaceProps) {
   const [overrides, setOverrides] = useState<CheckOverrides>({})
   const { decidable: reviewing, checked: reviewingChecked } = useMemo(() => splitByChecked(items, overrides), [items, overrides])
@@ -148,6 +151,7 @@ export function OpsDecisionWorkspace({
       isSample={isSample}
       makingItemIds={imageProduction.making}
       previewNames={previewNames}
+      trendFilter={trendFilter}
       previewAction={(item, ctx) => (
         <>
           <OpsMixTrialNotice item={item} />

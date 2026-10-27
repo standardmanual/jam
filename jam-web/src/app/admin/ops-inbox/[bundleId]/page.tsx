@@ -22,13 +22,17 @@ import { OpsSampleDeleteMenu } from '@/components/admin/ops/OpsSampleDeleteMenu'
 import { OpsStatusBadge } from '@/components/admin/ops/OpsStatusBadge'
 import { formatWeekRange } from '@/lib/admin/opsInbox/labels'
 import { getOpsBundleDetail } from '@/lib/admin/opsInbox/query'
+import { buildTrendFilter } from '@/lib/admin/opsTrends/radar'
+import { singleQueryParam } from '@/lib/searchParams'
 
 interface OpsBundleDetailPageProps {
   params: Promise<{ bundleId: string }>
+  searchParams: Promise<{ trend?: string | string[] }>
 }
 
-export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPageProps) {
+export default async function OpsBundleDetailPage({ params, searchParams }: OpsBundleDetailPageProps) {
   const { bundleId } = await params
+  const { trend } = await searchParams
   const detail = await getOpsBundleDetail(bundleId)
   if (!detail) notFound()
 
@@ -36,6 +40,8 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
   const range = formatWeekRange(bundle.week)
   const weekText = range ? `${range.label} (${range.range})` : '주차 없음'
   const title = bundle.title?.trim() ? bundle.title.trim() : null
+  // 트렌드 레이더의 「연결 항목 N건」으로 들어온 경우(`?trend=`): 그 트렌드에서 나온 항목만 걸러 보인다. 번호가 틀리거나 연결 항목이 없으면 무시한다(티켓 20261026_2033 2회차).
+  const trendFilter = buildTrendFilter(singleQueryParam(trend), bundle.trends, items)
 
   return (
     <div className="p-8">
@@ -74,6 +80,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
           execution={execution}
           week={bundle.week}
           previewNames={previewNames}
+          trendFilter={trendFilter}
         />
       </Suspense>
     </div>
