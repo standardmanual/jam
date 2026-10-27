@@ -3,11 +3,10 @@
  *
  * 저장소에 jsdom·testing-library가 없어(`parts.test.tsx`와 같은 방식) 서버 렌더(`renderToStaticMarkup`)로 그린 모양을 고정한다.
  * 버튼은 가짜로 바꿔 눌림 동작(`router.refresh`)을 붙잡아 직접 부른다.
- * 시험 묶음 1개 fixture로 켬·끔 두 벌을 같은 파이프라인(`computeWeekStatus`·`computeOpsSignals`·최근 이력)으로 만들어 그린다.
+ * 시험 묶음 1개 fixture로 켬·끔 두 벌을 같은 파이프라인(`computeOpsSignals`·최근 이력)으로 만들어 그린다.
  *
  * 지키는 것:
  * - 시험 켬: 숫자·신호·이력에 시험이 더해지고 「시험 N개 포함」과 줄마다 「시험」 칩이 붙는다. 끔: 모두 빠진다.
- * - 이번 주 상태 다섯 칸(실패 1 이상이면 붉은 테두리), 각주, 승인 대기 결정 링크, 빈 상태, 다음 주 줄
  * - 신호 13종은 한 구역에만, 중단 → 주의 → 참고, 뜬 신호 0 + 확인 안 함이면 「이상 없어요」 없음, 확인 안 함 3종과 `load_failed`
  * - 최근 이력은 최신 10건, 받은 기획함 상세와 같은 문장, 0건이면 「아직 기록이 없어요」
  * - 신호·결정 문장·에이전트 이름은 HTML로 해석되지 않는다, 칩은 아이콘 + 글자
@@ -41,15 +40,13 @@ vi.mock('@/components/admin/ui/button', async () => {
 import { OpsRecentDecisions } from '../OpsRecentDecisions'
 import { OpsSectionNotice } from '../OpsSectionNotice'
 import { OpsSignalPanel } from '../OpsSignalPanel'
-import { OpsWeekStatus } from '../OpsWeekStatus'
 import { decisionLineText } from '@/lib/admin/opsDecisions/line'
 import type { OpsRecentDecisionRecord } from '@/lib/admin/opsDecisions/read'
-import { computeWeekStatus, showsNextWeekRow, weekStartOf, zoneSignals } from '@/lib/admin/opsHome/homeView'
+import { zoneSignals } from '@/lib/admin/opsHome/homeView'
 import { OPS_SIGNAL_CATALOG, OPS_SIGNAL_KEYS, makeSignalResult, type OpsSignalOutcome } from '@/lib/admin/opsSignals/catalog'
 import { ACTION_METRIC_KEYS, type ActionCounts } from '@/lib/admin/opsSignals/actionSpike'
-import { buildDayCompositions, type SignalBundleInput } from '@/lib/admin/opsSignals/composition'
+import type { SignalBundleInput } from '@/lib/admin/opsSignals/composition'
 import { computeOpsSignals } from '@/lib/admin/opsSignals/compute'
-import { shiftDateStr } from '@/lib/admin/today-calendar'
 import {
   HEALTHY_FROM,
   HEALTHY_TO,
@@ -125,17 +122,9 @@ function visibleRecords(all: OpsRecentDecisionRecord[], includeSample: boolean):
   return all.filter((entry) => includeSample || !entry.isSample).slice(0, 10)
 }
 
-function datesFrom(start: string, count: number): string[] {
-  return Array.from({ length: count }, (_, i) => shiftDateStr(start, i))
-}
-
-/** 운영 홈 한 번의 계산: 호출부(②-c)가 `loadDayCompositions`·`loadOpsSignals`·`listRecentOpsDecisions`로 하는 일을 순수 함수로 재현한다. */
+/** 운영 홈 한 번의 계산: 호출부(②-c)가 `loadOpsSignals`·`listRecentOpsDecisions`로 하는 일을 순수 함수로 재현한다. */
 function buildHome(includeSample: boolean) {
   const all = [realBundle(), sampleBundle()]
-  const loaded = all.filter((bundle) => includeSample || !bundle.isSample)
-  const weekStart = weekStartOf(NOW)
-  const compositions = buildDayCompositions({ cards: [], missions: [], bundles: loaded }, datesFrom(weekStart, 14))
-  const week = computeWeekStatus({ bundles: loaded, compositions, weekStart, includeSample })
   const computed = computeOpsSignals(
     { cards: healthyCards(HEALTHY_FROM, HEALTHY_TO), missions: [], bundles: all, actions: quietActions(), collectionItemCounts: new Map() },
     { now: NOW, includeSample }
@@ -147,169 +136,8 @@ function buildHome(includeSample: boolean) {
     ],
     includeSample
   )
-  return { week, signals: computed.signals, records }
+  return { signals: computed.signals, records }
 }
-
-// ── 이번 주 상태 ─────────────────────────────────────────────────────────────────────────────────
-
-describe('OpsWeekStatus', () => {
-  it('끔: 다섯 칸 라벨과 숫자, 시험 표시 없음', () => {
-    const { week } = buildHome(false)
-    const out = flat(<OpsWeekStatus status={week} />)
-    for (const label of ['승인 대기', '예약 등록 대기', '예약됨', '게재중', '실패']) expect(out).toContain(label)
-    expect(out).toContain('이번 주 상태')
-    expect(out).toContain('9/28(월)~10/4(일)')
-    expect(out).not.toContain('시험')
-    expect(week.cells.waiting).toEqual({ count: 1, sample: 0 })
-    expect(week.cells.failed.count).toBe(0)
-  })
-
-  it('켬: 시험이 더해지고 시험이 있는 칸 아래에만 「시험 N개 포함」이 붙는다', () => {
-    const { week } = buildHome(true)
-    expect(week.cells.waiting).toEqual({ count: 2, sample: 1 })
-    expect(week.cells.failed).toEqual({ count: 1, sample: 1 })
-    const out = flat(<OpsWeekStatus status={week} includeSample />)
-    expect(out.match(/시험 1개 포함/g)).toHaveLength(2) // 승인 대기·실패 칸 두 곳(예약됨·게재중에는 없다)
-    expect(out).not.toContain('시험 0개')
-  })
-
-  it('끄고 켠 숫자가 다르다: 시험 묶음 항목이 합계에서 빠졌다 더해진다', () => {
-    const off = buildHome(false).week
-    const on = buildHome(true).week
-    expect(on.overlapping - off.overlapping).toBe(2)
-    expect(off.sampleInCells).toBe(0)
-    expect(on.sampleInCells).toBe(2)
-  })
-
-  it('실패가 1 이상이면 그 칸만 붉은 테두리다(연한 붉은 배경은 없다)', () => {
-    const off = flat(<OpsWeekStatus status={buildHome(false).week} />)
-    const on = flat(<OpsWeekStatus status={buildHome(true).week} includeSample />)
-    expect(off).not.toContain('border-destructive')
-    expect(on.match(/border-destructive/g)).toHaveLength(1)
-    expect(on).not.toContain('bg-red')
-    expect(on).not.toContain('bg-destructive')
-  })
-
-  it('숫자는 text-3xl 왼쪽 정렬, 5열·2열 격자, 칸은 링크가 아니고 style을 쓰지 않는다', () => {
-    const out = html(<OpsWeekStatus status={buildHome(false).week} />)
-    expect(out).toContain('text-3xl')
-    expect(out).not.toContain('text-center')
-    expect(out).toContain('grid-cols-2')
-    expect(out).toContain('lg:grid-cols-5')
-    expect(out).not.toContain('style=')
-    // 칸 안에는 링크가 없다(링크는 칸 밖의 결정하기 링크 하나뿐)
-    const cells = out.match(/<li\b[\s\S]*?<\/li>/g) ?? []
-    expect(cells).toHaveLength(5)
-    for (const cell of cells) expect(cell).not.toContain('<a ')
-  })
-
-  it('칸 라벨은 아이콘 + 글자다', () => {
-    const cells = html(<OpsWeekStatus status={buildHome(false).week} />).match(/<li\b[\s\S]*?<\/li>/g) ?? []
-    for (const cell of cells) {
-      expect(cell).toContain('aria-hidden="true"')
-      expect(cell).toMatch(/tabler-icon/)
-    }
-  })
-
-  it('승인 대기가 있으면 받은 기획함 「결정할 것」 탭으로 가는 링크가 있다. 시험을 켜면 sample=1이 붙는다', () => {
-    const off = html(<OpsWeekStatus status={buildHome(false).week} />)
-    expect(off).toContain('받은 기획함에서 결정하기')
-    expect(off).toContain('href="/admin/ops-inbox?tab=decide"')
-    const on = html(<OpsWeekStatus status={buildHome(true).week} includeSample />)
-    expect(on).toContain('href="/admin/ops-inbox?tab=decide&amp;sample=1"')
-  })
-
-  it('승인 대기가 0이면 결정 링크를 그리지 않는다', () => {
-    const week = computeWeekStatus({
-      bundles: [makeBundle([dropItem({ status: 'live' })], { week: '2026-W40' })],
-      compositions: buildDayCompositions({ cards: [], missions: [], bundles: [makeBundle([dropItem({ status: 'live' })])] }, datesFrom('2026-09-28', 7)),
-      weekStart: '2026-09-28',
-    })
-    expect(week.cells.waiting.count).toBe(0)
-    expect(flat(<OpsWeekStatus status={week} />)).not.toContain('받은 기획함에서 결정하기')
-  })
-
-  it('승인 대기·예약 등록 대기 칸에 속내 줄이 있다', () => {
-    const items = [dropItem({ status: 'arrived' }), dropItem({ status: 'reviewing' }), dropItem({ status: 'reviewing' }), dropItem({ status: 'approved' }), dropItem({ status: 'preparing' })]
-    const bundle = makeBundle(items, { week: '2026-W40' })
-    const week = computeWeekStatus({
-      bundles: [bundle],
-      compositions: buildDayCompositions({ cards: [], missions: [], bundles: [bundle] }, datesFrom('2026-09-28', 7)),
-      weekStart: '2026-09-28',
-    })
-    const out = flat(<OpsWeekStatus status={week} />)
-    expect(out).toContain('새로 도착 1 · 검토중 2')
-    expect(out).toContain('승인됨 1 · 준비중 1')
-  })
-
-  it('머리 오른쪽에 [일정표 보기 →]가 있고 시험 묶음 포함이면 sample=1을 이어 붙인다(티켓 20261006_1539 ③-d)', () => {
-    const { week } = buildHome(false)
-    const off = flat(<OpsWeekStatus status={week} />)
-    expect(off).toContain('href="/admin/ops-schedule"')
-    expect(off).toContain('일정표 보기')
-    // 이번 주 상태 머리 안(제목 뒤, 칸 앞)에 있다
-    expect(off.indexOf('일정표 보기')).toBeGreaterThan(off.indexOf('이번 주 상태'))
-    expect(off.indexOf('일정표 보기')).toBeLessThan(off.indexOf('text-3xl'))
-    const on = flat(<OpsWeekStatus status={week} includeSample />)
-    expect(on).toContain('href="/admin/ops-schedule?sample=1"')
-  })
-
-  it('이번 주에 올라온 기획이 없어도 [일정표 보기 →]는 머리에 남는다', () => {
-    const week = computeWeekStatus({ bundles: [], compositions: [], weekStart: '2026-09-28' })
-    expect(flat(<OpsWeekStatus status={week} />)).toContain('href="/admin/ops-schedule"')
-  })
-
-  it('이번 주에 올라온 기획이 없으면 빈 상태와 받은 기획함 링크다(칸은 그리지 않는다)', () => {
-    const week = computeWeekStatus({ bundles: [], compositions: [], weekStart: '2026-09-28' })
-    const out = flat(<OpsWeekStatus status={week} />)
-    expect(out).toContain('이번 주에 올라온 기획이 없어요')
-    expect(out).toContain('받은 기획함 보기')
-    expect(out).toContain('href="/admin/ops-inbox"')
-    expect(out).not.toContain('text-3xl')
-    expect(out).not.toContain('받은 기획함에서 결정하기')
-  })
-
-  it('각주: 종료·반려·취소와 공개 시각이 없는 항목·패턴 제안을 한 줄로 알린다. 해당 없으면 줄이 없다', () => {
-    const bundle = makeBundle(
-      [
-        dropItem({ status: 'ended' }),
-        dropItem({ status: 'ended' }),
-        dropItem({ status: 'rejected' }),
-        dropItem({ status: 'arrived', startsAt: null, endsAt: null }),
-        makeItem({ kind: 'pattern_proposal', status: 'reviewing' }),
-        dropItem({ status: 'live' }),
-      ],
-      { week: '2026-W40' }
-    )
-    const week = computeWeekStatus({
-      bundles: [bundle],
-      compositions: buildDayCompositions({ cards: [], missions: [], bundles: [bundle] }, datesFrom('2026-09-28', 7)),
-      weekStart: '2026-09-28',
-    })
-    const out = flat(<OpsWeekStatus status={week} />)
-    expect(out).toContain('이번 주 종료 2 · 반려 1 · 취소 0')
-    expect(out).toContain('공개 시각이 없는 항목 1개는 빠져 있어요')
-    expect(out).toContain('패턴 제안 1개는 빠져 있어요')
-    // 각주가 없는 기본 fixture
-    expect(flat(<OpsWeekStatus status={buildHome(false).week} />)).not.toContain('이번 주 종료')
-    expect(flat(<OpsWeekStatus status={buildHome(false).week} />)).not.toContain('빠져 있어요')
-  })
-
-  it('다음 주 줄은 nextWeek를 줄 때만 같은 다섯 칸을 작게 보인다', () => {
-    const { week } = buildHome(false)
-    expect(flat(<OpsWeekStatus status={week} />)).not.toContain('다음 주')
-    const next = computeWeekStatus({ bundles: [], compositions: [], weekStart: '2026-10-05' })
-    const out = flat(<OpsWeekStatus status={week} nextWeek={next} />)
-    expect(out).toContain('다음 주')
-    expect(out).toContain('10/5(월)~10/11(일)')
-    expect(out).toContain('승인 대기 0 · 예약 등록 대기 0 · 예약됨 0 · 게재중 0 · 실패 0')
-  })
-
-  it('다음 주 줄을 보일지는 금요일부터다(운영 홈이 showsNextWeekRow로 판정한다)', () => {
-    expect(showsNextWeekRow({ now: NOW, bundles: [], nextWeekCheckFromWeekday: 5 })).toBe(false)
-    expect(showsNextWeekRow({ now: new Date('2026-10-02T12:00:00+09:00'), bundles: [], nextWeekCheckFromWeekday: 5 })).toBe(true)
-  })
-})
 
 // ── 신호 패널 ────────────────────────────────────────────────────────────────────────────────────
 

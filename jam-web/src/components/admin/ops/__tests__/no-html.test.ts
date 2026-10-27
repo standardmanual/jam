@@ -54,7 +54,10 @@ describe('받은 기획함 화면 소스 계약', () => {
     // 운영 홈 부품(티켓 20261006_1340): 신호 문장·에이전트 이름·결정 문장이 섞여 들어오는 패널·이력·상태 칸도 같은 검사를 받는다
     expect(names).toContain('components/admin/ops/OpsSignalPanel.tsx')
     expect(names).toContain('components/admin/ops/OpsRecentDecisions.tsx')
-    expect(names).toContain('components/admin/ops/OpsWeekStatus.tsx')
+    // 운영 상황판(티켓 20261026_2023 2회차): 기획 제목·단계 기록 글이 카드·행 머리·셀에 그대로 들어오는 부품도 같은 검사를 받는다
+    expect(names).toContain('components/admin/ops/board/OpsMyTurn.tsx')
+    expect(names).toContain('components/admin/ops/board/OpsWeekFlowMap.tsx')
+    expect(names).toContain('components/admin/ops/board/OpsAgentRows.tsx')
     expect(names).toContain('components/admin/ops/OpsSectionNotice.tsx')
     // 일정표(티켓 20261006_1536): 운영 항목 제목이 칸·막대에 그대로 들어오는 화면과 주간 캘린더도 같은 검사를 받는다
     expect(names).toContain('app/admin/ops-schedule/page.tsx')
