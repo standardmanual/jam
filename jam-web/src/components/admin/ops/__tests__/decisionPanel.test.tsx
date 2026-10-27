@@ -25,6 +25,7 @@ vi.mock('next/navigation', () => ({
 
 import { OpsDecisionPanel } from '../OpsDecisionPanel'
 import { OpsDecisionWorkspace } from '../OpsDecisionWorkspace'
+import { OpsHomeFeedPreviewRow } from '../preview/OpsHomeFeedPreviewRow'
 
 const flat = (node: ReactElement) => renderToStaticMarkup(<TooltipProvider>{node}</TooltipProvider>).replace(/<!-- -->/g, '')
 
@@ -224,6 +225,38 @@ describe('OpsDecisionWorkspace에 끼운 결정 패널', () => {
     expect(out).not.toContain('기획 이유')
     expect(out).not.toContain('이번 기획의 핵심')
     expect(out).toContain('전체 선택')
+  })
+
+  it('바닥 줄: 체크한 항목 중 가장 이른 공개 시작 시각과 [홈피드로 보기]가 나온다', () => {
+    const items = [
+      item({ id: 'a', startsAt: '2026-12-31T09:00:00+09:00' }),
+      item({ id: 'b', position: 1, startsAt: '2026-12-30T09:00:00+09:00' }),
+      // 형식 오류가 있는 항목은 체크되지 않으므로 더 이른 시각이어도 쓰지 않는다
+      item({ id: 'c', position: 2, startsAt: '2026-12-01T09:00:00+09:00', formatErrors: ['items[2].kind: 틀려요.'] }),
+    ]
+    const out = flat(<OpsDecisionWorkspace {...props} items={items} week="2026-W53" />)
+    expect(out).toContain('공개 시작 12/30(수) 09:00')
+    expect(out).not.toContain('공개 시작 12/1(')
+    expect(out).toContain('>홈피드로 보기<')
+  })
+
+  it('체크한 항목에 공개 시각이 없으면 «공개 시작» 문구는 빠지고 버튼은 남는다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} items={[item({ id: 'a', startsAt: null })]} week="2026-W41" />)
+    expect(out).not.toContain('공개 시작')
+    expect(out).toContain('>홈피드로 보기<')
+  })
+
+  it('시트에는 이 묶음과 처음 보여줄 날짜를 넘긴다: 공개일, 없으면 묶음 주 월요일', () => {
+    const rowProps = (out: ReturnType<typeof OpsDecisionPanel>) => findAll(out, (el) => el.type === OpsHomeFeedPreviewRow)[0]?.props
+    const withDate = OpsDecisionPanel({
+      ...basePanelProps(),
+      items: [item({ id: 'a' })],
+      homeFeedPreview: { bundleId: 'bundle-1', startsAt: '2026-12-30T09:00:00+09:00', initialDate: '2026-12-30' },
+    })
+    expect(rowProps(withDate)).toEqual({ bundleId: 'bundle-1', startsAt: '2026-12-30T09:00:00+09:00', initialDate: '2026-12-30' })
+    // 주 월요일 대체는 값 계산 함수가 하고(homeFeedPreview.test.ts), 워크스페이스가 그 결과를 넘긴다 — 속성을 주지 않으면 바닥 줄이 없다
+    const without = OpsDecisionPanel({ ...basePanelProps(), items: [item({ id: 'a' })] })
+    expect(rowProps(without)).toBeUndefined()
   })
 
   it('항목이 없는 묶음에는 결정 패널이 없다', () => {

@@ -72,6 +72,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
           stages={bundle.stages}
           isSample={bundle.isSample}
           execution={execution}
+          week={bundle.week}
           previewNames={previewNames}
         />
       </Suspense>

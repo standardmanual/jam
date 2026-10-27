@@ -248,6 +248,20 @@ export function formatWeekRange(week: string | null | undefined): { label: strin
   return { label: `${weekNo}주차`, range: `${md(monday)}~${md(sunday)}` }
 }
 
+/**
+ * `YYYY-Www`의 월요일 날짜(`YYYY-MM-DD`). 홈피드 미리보기가 공개일을 모를 때 그 주부터 보여주려고 쓴다(티켓 20261026_2025 2회차).
+ * 형식이 틀리거나 그 해에 없는 주차면 null이다.
+ */
+export function weekMondayDate(week: string | null | undefined): string | null {
+  if (!week) return null
+  const match = WEEK_PATTERN.exec(week)
+  if (!match) return null
+  const year = Number(match[1])
+  const weekNo = Number(match[2])
+  if (weekNo < 1 || weekNo > isoWeeksInYear(year)) return null
+  return new Date(isoWeek1Monday(year) + (weekNo - 1) * 7 * DAY_MS).toISOString().slice(0, 10)
+}
+
 // ── KST 시각 표기 ────────────────────────────────────────────────────────────────────────────────
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const
