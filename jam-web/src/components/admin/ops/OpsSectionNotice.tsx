@@ -8,6 +8,7 @@ import {
   IconChartBar,
   IconChartLine,
   IconDatabase,
+  IconGitBranch,
   IconHistory,
   IconRecycle,
   IconShieldCheck,
@@ -39,6 +40,8 @@ const ICONS = {
   patterns: IconBooks,
   // 티켓 20261026_2027 3-1: 생태계 상황판(`/admin/ecosystem`)의 구역.
   ecosystem: IconRecycle,
+  // 티켓 20261026_2028 3회차: 개발·배포 상황판(`/admin/dev-board`)의 구역.
+  devboard: IconGitBranch,
 } as const satisfies Record<string, OpsIcon>
 
 export type OpsSectionNoticeIcon = keyof typeof ICONS

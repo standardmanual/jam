@@ -147,6 +147,15 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(activeNavGroupId('/admin/balance/dashboard')).toBe('balance')
   })
 
+  it('«개발·배포 상황판»은 «시스템» 그룹 맨 위에 한 번 있고 그 경로에서 자기 자신만 활성이다(티켓 20261026_2028 3회차)', () => {
+    const system = NAV_GROUPS.find((g) => g.id === 'system')
+    expect(system?.items[0]).toMatchObject({ href: '/admin/dev-board', label: '개발·배포 상황판' })
+    expect(system?.items[1]).toMatchObject({ href: '/admin/ops-settings', label: '운영 설정' })
+    expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/dev-board')).toHaveLength(1)
+    expect(mostSpecificActiveItem('/admin/dev-board')?.label).toBe('개발·배포 상황판')
+    expect(activeNavGroupId('/admin/dev-board')).toBe('system')
+  })
+
   it('미션과 게이트 미션은 콘텐츠 그룹에, 랭킹은 밸런스 그룹에, 어뷰징과 유저는 유저 그룹에 있다', () => {
     const content = NAV_GROUPS.find((g) => g.id === 'content')
     expect(content?.items.map((i) => i.href)).toContain('/admin/missions')
