@@ -136,13 +136,15 @@ export type TodayCardWithHref = TodayCardRow & {
  * @param userId 대상 유저
  * @param userCreatedAt users.created_at (new_user 태그 판정용, 있으면 전달)
  * @param now 기준 시각 (기본: 현재)
+ * @param userTribeId users.tribe_id (소속 트라이브 태그용, 호출부가 users 행을 읽었으면 전달. 생략하면 여기서 읽는다)
  */
 export async function getTodayCards(
   userId: string,
   userCreatedAt?: string | null,
   now: Date = new Date(),
+  userTribeId?: string | null,
 ): Promise<TodayCardWithHref[]> {
-  const tags = await computeUserExposureTags(userId, now, userCreatedAt)
+  const tags = await computeUserExposureTags(userId, now, userCreatedAt, userTribeId)
   const supabase = createServiceClient()
   const nowIso = now.toISOString()
 

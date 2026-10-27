@@ -15,6 +15,7 @@ import {
   type TodayListQuery,
   type TodayListRow,
 } from '@/lib/admin/today-list-query'
+import type { TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 /**
@@ -45,11 +46,16 @@ export default async function AdminTodayPage({ searchParams }: AdminTodayPagePro
     .select(TODAY_LIST_COLUMNS, { count: 'exact' }) as unknown as TodayListQuery<TodayListRow>
   query = applyTodayListQuery(query, params)
   const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
-  const { data: cardsRaw, count, error } = await query.range(from, to)
+  const [{ data: cardsRaw, count, error }, { data: tribesRaw }] = await Promise.all([
+    query.range(from, to),
+    // 노출조건의 tribe_<ID> 태그를 트라이브 이름으로 보이기 위한 목록(티켓 20261026_2030 2회차)
+    supabase.from('tribes').select('id, name, is_active').order('name'),
+  ])
   // 조회 오류를 빈 목록(「카드가 없어요」)으로 보이지 않게 던져 어드민 오류 화면으로 보낸다(티켓 20260925_1941)
   throwOnQueryError(error, 'today')
 
   const cards = (cardsRaw ?? []) as TodayListRow[]
+  const tribes = (tribesRaw ?? []) as TribeTagSource[]
   const total = count ?? 0
   const totalPages = totalPagesOf(total, ADMIN_LIST_PAGE_SIZE)
   const hasFilter = !!(params.q || params.template || params.imageSource)
@@ -85,7 +91,7 @@ export default async function AdminTodayPage({ searchParams }: AdminTodayPagePro
         </div>
 
         <Suspense>
-          <TodayCardTable cards={cards} selectedDate={selectedDate} totalCount={total} />
+          <TodayCardTable cards={cards} selectedDate={selectedDate} totalCount={total} tribes={tribes} />
         </Suspense>
 
         <DataTablePagination page={page} totalPages={totalPages} />

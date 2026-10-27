@@ -4,6 +4,7 @@ import TodayCardDetail, { type TodayCardDetailBadge } from '@/components/admin/t
 import { normalizeDateParam } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { toTodayRecipeOptions, TODAY_RECIPE_OPTION_COLUMNS, type TodayRecipeOptionRow } from '@/lib/admin/todayRecipeOptions'
+import type { TribeTagSource } from '@/lib/admin/todayTribeTags'
 import type { TodayCardRow } from '@/types/database'
 
 interface TodayCardDetailPageProps {
@@ -20,7 +21,7 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
   if (!data) notFound()
   const card = data as TodayCardRow
 
-  const [{ data: badgesRaw }, { data: missionRaw }, { data: itemBookRaw }, { data: rankingModeRaw }, { data: recipeRaw }] = await Promise.all([
+  const [{ data: badgesRaw }, { data: missionRaw }, { data: itemBookRaw }, { data: rankingModeRaw }, { data: recipeRaw }, { data: tribesRaw }] = await Promise.all([
     (card.badge_ids ?? []).length > 0
       ? supabase.from('badges').select('id, name').in('id', card.badge_ids ?? [])
       : Promise.resolve({ data: [] as TodayCardDetailBadge[] }),
@@ -34,12 +35,14 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
     card.recipe_id
       ? supabase.from('combination_recipes').select(TODAY_RECIPE_OPTION_COLUMNS).eq('id', card.recipe_id).single()
       : Promise.resolve({ data: null }),
+    supabase.from('tribes').select('id, name, is_active').order('name'),
   ])
 
   const linkedBadges = (badgesRaw ?? []) as TodayCardDetailBadge[]
   const missionTitle = (missionRaw as { title: string } | null)?.title
   const itemBookName = (itemBookRaw as { name: string } | null)?.name
   const rankingModeTitle = (rankingModeRaw as { title: string } | null)?.title
+  const tribes = (tribesRaw ?? []) as TribeTagSource[]
   const recipeLabel = recipeRaw ? toTodayRecipeOptions([recipeRaw as TodayRecipeOptionRow])[0].label : undefined
 
   return (
@@ -51,6 +54,7 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
         itemBookName={itemBookName}
         rankingModeTitle={rankingModeTitle}
         recipeLabel={recipeLabel}
+        tribes={tribes}
         returnDate={returnDate}
       />
     </div>

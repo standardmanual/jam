@@ -138,7 +138,7 @@ code:
 | `template_type` | 필수 | 문자열 | `badge_spotlight`·`progress_nudge`·`mission_spotlight`·`itembook_milestone`·`location_trend`·`drop_alert`·`editorial_article`·`ranking_board`·`recipe_reveal` 중 하나(`TODAY_TEMPLATE_OPTIONS`, DB CHECK) |
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다. 저장할 때 UTC ISO로 바꾼다(폼과 같다) |
 | `ends_at` | 필수 | ISO 8601 | 시간대가 붙어야 하고 `starts_at`보다 뒤여야 한다 |
-| `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값만, 중복 없이 |
+| `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값 또는 소속 트라이브 태그 `tribe_<트라이브 ID>`(`tribe_` + 소문자 UUID)만, 중복 없이 |
 | `layout_type` | 선택 | 문자열 | `large_thumbnail`·`badge_gallery`·`shortcut`·`banner`·`other`·`ranking_list` 중 하나(`TODAY_LAYOUT_OPTIONS`, DB CHECK). 없으면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`). **`mission_spotlight`는 최종 레이아웃(입력값 또는 생략 시 추천값)이 항상 `large_thumbnail`이어야 한다**(2026-09-26 사용자 결정, `content-automation/PRD.md` §8 미션 카드 규칙 — 대표 이미지가 있는 미션 소개 카드는 커버 이미지가 필수다). `SUGGESTED_LAYOUT_FOR.mission_spotlight`도 `large_thumbnail`이다 |
 | `subtitle` | 선택 | 문자열 | 한 줄. 줄바꿈·제어 문자 거절. 없으면 null |
 | `description` | 선택 | 문자열 | 게재용 설명문. 한 줄(줄바꿈·제어 문자 거절), 앞뒤 공백을 자른 뒤 공백 포함 40자 이하(`TODAY_DESCRIPTION_MAX_LENGTH`, 어드민 폼 `maxLength`와 같은 상수). 공백뿐이면 거절. `editorial_article`은 쓸 수 없다(본문이 있다). 없으면 null. `--dry-run` 요약의 「설명문」 줄로 확인한다(티켓 20260929_1335) |

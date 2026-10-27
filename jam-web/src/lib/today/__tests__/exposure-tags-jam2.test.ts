@@ -66,6 +66,7 @@ import {
   jamBalanceTag,
 } from '../exposure'
 import { INVENTORY_LOW_FREE_SLOTS } from '../exposureThresholds'
+import { isTribeTag } from '../exposureTribe'
 import { TODAY_EXPOSURE_TAG_OPTIONS } from '@/lib/admin/today-sections'
 
 const NEW_TAGS = [
@@ -286,7 +287,8 @@ describe('방출 태그 ↔ TODAY_EXPOSURE_TAG_OPTIONS 양쪽 대조 (JAM 2.0 �
   it('통합 경로로 방출된 모든 태그(기존 태그 포함)가 선택지에 있다', async () => {
     seed2()
     const tags = await computeUserExposureTags('u-opt', new Date('2026-10-27T03:00:00Z'), '2026-10-25T00:00:00Z')
-    for (const tag of tags) expect(optionValues.has(tag)).toBe(true)
+    // 소속 트라이브 태그(tribe_<ID>)는 목록에 없고 형식으로 검사한다 (티켓 20261026_2030 2회차)
+    for (const tag of tags) expect(optionValues.has(tag) || isTribeTag(tag)).toBe(true)
   })
 
   function seed2() {

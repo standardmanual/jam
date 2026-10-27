@@ -18,6 +18,7 @@
  *
  * 상수에 `as const`를 쓰지 않는다 — 스크립트 테스트가 상수에 타입 단언을 해서 읽기 전용 튜플이면 컴파일이 깨진다.
  */
+import { isTribeTag } from '@/lib/today/exposureTribe'
 import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
 import {
   SUGGESTED_LAYOUT_FOR,
@@ -186,13 +187,13 @@ export function validateCard(errors: string[], input: unknown): void {
   }
   checkOneLine(errors, 'card.region_label', card.region_label)
 
-  // 노출 조건 태그 — 폼 collectMissing과 같이 1개 이상, 허용 목록 안의 값.
+  // 노출 조건 태그 — 폼 collectMissing과 같이 1개 이상, 허용 목록 안의 값 또는 소속 트라이브 태그 형식(`tribe_<UUID>`, 티켓 20261026_2030 2회차).
   if (isPresent(card.exposure_tags)) {
     const tags = card.exposure_tags
     if (!Array.isArray(tags) || tags.length === 0) {
       errors.push('card.exposure_tags: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).')
     } else {
-      const invalid = tags.filter((tag) => typeof tag !== 'string' || !exposureTags.includes(tag))
+      const invalid = tags.filter((tag) => typeof tag !== 'string' || !(exposureTags.includes(tag) || isTribeTag(tag)))
       if (invalid.length > 0) {
         errors.push(`card.exposure_tags: 허용하지 않는 태그예요 — ${invalid.map(describeValue).join(', ')}. 허용 태그: ${EXPOSURE_TAGS.join(', ')}`)
       } else if (new Set(tags).size !== tags.length) {

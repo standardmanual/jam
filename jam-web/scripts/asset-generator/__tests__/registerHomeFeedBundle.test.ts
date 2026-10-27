@@ -283,6 +283,15 @@ describe('validateHomeFeedBundle — 카드 규칙(허용값·템플릿·기간)
     expect(errorsFor((raw) => (raw.card.exposure_tags = ['time_morning', 'weather_clear']))).toEqual([]);
   });
 
+  it('소속 트라이브 태그 tribe_<UUID>는 형식으로 받고 어긋난 값은 허용값 밖 문장으로 거절한다 (티켓 20261026_2030 2회차)', () => {
+    const tribeTag = 'tribe_11111111-1111-4111-8111-111111111111';
+    expect(errorsFor((raw) => (raw.card.exposure_tags = [tribeTag]))).toEqual([]);
+    expect(errorsFor((raw) => (raw.card.exposure_tags = ['all', tribeTag]))).toEqual([]);
+    expect(errorsFor((raw) => (raw.card.exposure_tags = ['tribe_abc'])).join('\n')).toContain('card.exposure_tags: 허용하지 않는 태그예요 — "tribe_abc"');
+    expect(errorsFor((raw) => (raw.card.exposure_tags = ['tribe_11111111-1111-4111-8111-11111111111A'])).join('\n')).toContain('허용하지 않는 태그예요');
+    expect(errorsFor((raw) => (raw.card.exposure_tags = [tribeTag, tribeTag]))).toContain('card.exposure_tags: 같은 태그를 두 번 넣을 수 없어요.');
+  });
+
   it('템플릿이 쓰지 않는 참조 필드는 조용히 버려지지 않게 거절한다', () => {
     const errors = errorsFor((raw) => {
       raw.card.template_type = 'drop_alert';

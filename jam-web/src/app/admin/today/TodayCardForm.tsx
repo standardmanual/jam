@@ -61,6 +61,7 @@ import {
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import { toKstLocalInputValue } from '@/lib/admin/kst-format'
 import type { TodayRecipeOption } from '@/lib/admin/todayRecipeOptions'
+import { orphanTribeTags, tribeTagOptions, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import { toCardView } from '@/lib/today/cardView'
@@ -92,6 +93,9 @@ interface TodayCardFormProps {
   /** recipe_reveal 카드가 연결할 수 있는 레시피 전체 목록(티켓 20261006_1218) — 「이름 · 공개 상태」 라벨은
    *  서버가 만들어 넘긴다(`lib/admin/todayRecipeOptions.ts`). 랭킹모드와 같은 방식(전체 목록, 검색 API 없음). */
   recipes: TodayRecipeOption[]
+  /** 노출조건 「트라이브」 묶음의 선택지 — 서버가 `tribes` 표에서 읽어 넘긴다(비활성 포함, 티켓 20261026_2030 2회차).
+   *  체크하면 태그 값은 `tribe_<트라이브 ID>`다(`lib/today/exposureTribe.ts`). 생략하면 빈 목록이다. */
+  tribes?: TribeTagSource[]
   /** 이미 카드에 연결된(badge_ids) 배지의 표시용 라벨 — 실제로 참조되는 id만 bounded 조회한
    *  결과다(수정 화면 전용, 20260826_011 A2와 동일 패턴). 생성 화면은 빈 배열로 시작한다. */
   badgeLabels: BadgeSearchResult[]
@@ -114,7 +118,7 @@ const FOCUS_ID = {
   endsAt: 'today-card-ends-at',
 } as const
 
-export default function TodayCardForm({ card, missions, itemBooks, rankingModes, recipes, badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
+export default function TodayCardForm({ card, missions, itemBooks, rankingModes, recipes, tribes = [], badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
   const router = useRouter()
   const isEdit = !!card
 
@@ -226,6 +230,9 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   function toggleTag(value: string) {
     setExposureTags((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]))
   }
+
+  // 트라이브 묶음 선택지 — 카드가 갖고 있는데 목록에 없는 트라이브 태그도 선택 상태로 보여 저장할 때 조용히 사라지지 않게 한다
+  const tribeOptions = [...tribeTagOptions(tribes), ...orphanTribeTags(exposureTags, tribes)]
 
   /** 저장 전 누락 목록 — 화면 위에서 아래 순서(기본 정보 → 노출 설정 → 게시 기간) */
   const collectMissing = (): { key: string; focusId: string }[] => {
@@ -729,6 +736,28 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
               </button>
             )
           })}
+        </div>
+        <div role="group" aria-labelledby="today-card-tribe-tags-label" data-testid="today-card-tribe-tags" className="flex flex-col gap-2 pt-1">
+          <p id="today-card-tribe-tags-label" className="text-sm font-medium text-foreground break-keep wrap-break-word">
+            트라이브
+          </p>
+          {tribeOptions.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground break-keep wrap-break-word">등록된 트라이브가 없어요</p>
+          ) : (
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {tribeOptions.map((t, index) => {
+                const checkboxId = `today-card-tribe-tag-${index}`
+                return (
+                  <div key={t.value} className="flex items-center gap-2.5">
+                    <Checkbox id={checkboxId} checked={exposureTags.includes(t.value)} onCheckedChange={() => toggleTag(t.value)} />
+                    <label htmlFor={checkboxId} className="cursor-pointer text-sm text-foreground break-keep wrap-break-word">
+                      {t.label}
+                    </label>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
         <FieldMessage id="today-card-exposure-tags-help">하나라도 해당하면 노출돼요(OR 매칭)</FieldMessage>
         {exposureTagsInvalid && (

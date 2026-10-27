@@ -200,12 +200,15 @@ code:
 | `jam_low` | 잼 잔액이 캡슐 필요량의 3분의 1 미만(`JAM_LOW_FRACTION`) |
 | `inventory_full` | 남은 칸(`max_slots - used_slots`)이 0 이하 |
 | `inventory_nearly_full` | 남은 칸이 1~3(`INVENTORY_LOW_FREE_SLOTS`, 밸런스 대시보드와 같은 값) |
+| `tribe_<트라이브 ID>` | 유저의 소속 트라이브(`users.tribe_id`)가 있으면 그 ID로 만든 태그 1개(소문자 UUID, `tribe_` + ID). 온보딩 전이라 트라이브가 없으면 붙지 않는다. 값은 UUID라 읽기 어려워 운영 화면(카드 폼·표·상세)이 트라이브 이름으로 보인다. 홈피드 미리보기의 가상 유저도 고른 트라이브로 이 태그를 가진다. 허용 목록에 없고 **형식으로 검증**한다(`tribe_` + 소문자 UUID 전체 일치, `isTribeTag`) |
 
-**JAM 2.0 태그(티켓 20261026_2030 1회차)**: 챕터·캡슐·잼·인벤토리 태그는 요청마다 4개 표를 읽어 계산한다. 한 유저는 챕터 구간 1개, 캡슐·잼·인벤토리 태그 각 0~1개를 가지고, 읽기 하나가 실패하면 로그만 남기고 그 태그만 빠진다. 경계값은 가정 값이며 `jam-web/src/lib/today/exposureThresholds.ts` 한 곳에 있다(오픈 뒤 실제 데이터로 맞춘다). 홈피드 미리보기의 가상 유저(`virtualViewer.ts`)는 개인 상태 태그를 넣지 않는 규칙이라 이 태그도 넣지 않는다. 소속 트라이브 태그는 2회차에서 다룬다.
+**JAM 2.0 태그(티켓 20261026_2030 1회차)**: 챕터·캡슐·잼·인벤토리 태그는 요청마다 4개 표를 읽어 계산한다. 한 유저는 챕터 구간 1개, 캡슐·잼·인벤토리 태그 각 0~1개를 가지고, 읽기 하나가 실패하면 로그만 남기고 그 태그만 빠진다. 경계값은 가정 값이며 `jam-web/src/lib/today/exposureThresholds.ts` 한 곳에 있다(오픈 뒤 실제 데이터로 맞춘다). 홈피드 미리보기의 가상 유저(`virtualViewer.ts`)는 개인 상태 태그를 넣지 않는 규칙이라 이 태그도 넣지 않는다. 
+
+**소속 트라이브 태그(티켓 20261026_2030 2회차)**: 트라이브 행은 JAM 2.0 오픈 때 운영 화면에서 새로 등록하고 켜기 때문에, 코드에 트라이브 목록이나 슬러그를 두지 않고 태그를 트라이브 ID에서 바로 만든다(`jam-web/src/lib/today/exposureTribe.ts`의 `tribeTagOf`·`isTribeTag`·`tribeIdOfTag`). 허용 태그 검증(운영 묶음 `opsInbox/validate.ts`, 등록 묶음 `registerChecks/homeFeedFields.ts`)은 선택지 목록의 값 **또는** 이 형식을 받는다. 홈 조회는 호출부가 `users.tribe_id`를 넘기면 다시 읽지 않고, 넘기지 않으면 한 번 읽는다. 읽기가 실패하면 그 태그만 빠진다. 가상 유저는 트라이브를 알 수 있는 조건이라 `virtualExposureTags`가 이 태그를 넣는다(개인 상태 태그와 다르다). 카드의 `tribe_id` 칸은 색 쌍을 고르는 용도 그대로이며 노출을 거르지 않는다.
 
 **날씨·특일 입력**: 요청 때 외부 API를 부르지 않는다. Vercel 크론 `/api/cron/external-inputs`가 매일 06:00 KST(`jam-web/vercel.json`의 `0 21 * * *` UTC)에 기상청 단기예보(서울 격자 60·127)와 특일정보를 받아 `external_input_daily`에 저장하고, 홈은 그 저장값만 읽는다. 날씨 구분은 오늘 예보에 강수가 있으면 `rain`, 없고 최고 33°C 이상 또는 최저 -12°C 이하면 `extreme`, 하늘 맑음이면 `clear`, 그 밖은 `mild`다. **저장값이 없거나 읽기에 실패하면 해당 태그만 조용히 빠진다**(홈이 깨지지는 않는다). 그래서 날씨·특일 태그만 단 카드는 저장이 실패한 날 아무에게도 보이지 않는다 — 요일마다 `all` 카드를 두는 운영 규칙의 이유다(content-automation PRD §8).
 
-근거: `jam-web/src/lib/today/exposure.ts`, `jam-web/src/lib/today/exposureThresholds.ts`, `jam-web/src/lib/inputs/weather.ts`·`holidays.ts`·`special-days-config.ts`·`daily-store.ts`, `jam-web/src/app/api/cron/external-inputs/route.ts`
+근거: `jam-web/src/lib/today/exposure.ts`, `jam-web/src/lib/today/exposureThresholds.ts`, `jam-web/src/lib/today/exposureTribe.ts`, `jam-web/src/lib/inputs/weather.ts`·`holidays.ts`·`special-days-config.ts`·`daily-store.ts`, `jam-web/src/app/api/cron/external-inputs/route.ts`
 
 노출 태그 값·라벨(`TODAY_EXPOSURE_TAG_OPTIONS`):
 
