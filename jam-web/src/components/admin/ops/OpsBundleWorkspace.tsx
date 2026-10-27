@@ -15,9 +15,10 @@
  * - `listHeader`: 목록 머리줄(「전체 선택」과 「결정할 것 12개 중 11개 선택」)
  * - `panel`: 알림 줄과 격자 사이의 결정 패널(이유 칩·이번 기획의 핵심·종류별로 고르기, 티켓 20261026_2024)
  * - `notices`: 알림 줄(래퍼가 지금 채우는 알림은 없다. 예약 등록은 단계 표시줄의 버튼과 요약창이 알리고 공개는 상태 맞추기가 잇는다)
- * - `detailFooter`: 상세 카드 아래 고정 줄(반려·수정·승인, 예약됨은 공개 전 취소, 게재중은 지금 종료)
- * - `detailEdit`: 상세의 「유저가 겪는 것」·「내용」 자리를 대신하는 편집 모드
- * - `detailHistoryAction`: 결정 기록 머리 오른쪽(「마지막 수정 되돌리기」)
+ * - `detailFooter`: 서랍 아래 고정 줄(검토중은 빼기·고치기·이대로 두기와 반려, 예약됨은 공개 전 취소, 게재중은 지금 종료)
+ * - `detailEdit`: 서랍의 「유저가 겪는 것」·「핵심 값」 자리를 대신하는 편집 모드
+ * - `detailHistoryAction`: 서랍 「결정 기록」 안쪽 위 오른쪽(「마지막 수정 되돌리기」)
+ * - `stages`(속성): 묶음 단계 기록. 서랍 「검수 결과」의 시각에 쓴다
  *
  * 처음 열 때 도착 항목이 있으면 「도착 → 검토중」 전환을 화면이 따로 한 번 요청한다(읽기 요청으로 상태를 바꾸지 않는다).
  * 서버는 그 묶음의 `status = 'arrived'` 항목만 바꾼다. 성공하면 서버 화면을 다시 읽고(`router.refresh()`), 실패하면 알림만
@@ -48,7 +49,7 @@ import {
   matchesItemFilter,
   type OpsItemFilter,
 } from '@/lib/admin/opsInbox/itemView'
-import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import type { OpsDecisionRecord, OpsItemRecord, OpsRoutineStageRecord } from '@/lib/admin/opsInbox/query'
 import {
   balanceItemIdSet,
   buildBalanceView,
@@ -98,6 +99,8 @@ export interface OpsBundleWorkspaceProps {
   decisions: readonly OpsDecisionRecord[]
   /** 밸런스 평가 결과(서버가 계산해 넘긴다). 없으면 밸런스를 표시하지 않는다. */
   balance?: OpsBundleBalance
+  /** 묶음의 에이전트 단계 기록. 항목 서랍 「검수 결과」의 시각에 쓴다(티켓 20261026_2024 2회차). */
+  stages?: readonly OpsRoutineStageRecord[]
   /** 시험 묶음이면 밸런스 알림에 「다른 묶음의 경고 계산에 들어가지 않아요」 안내가 붙는다. */
   isSample?: boolean
   barAction?: (ctx: OpsWorkspaceContext) => ReactNode
@@ -134,6 +137,7 @@ export function OpsBundleWorkspace({
   items,
   decisions,
   balance,
+  stages,
   isSample = false,
   barAction,
   rowLead,
@@ -307,6 +311,7 @@ export function OpsBundleWorkspace({
                         decisions={decisions}
                         onSelectItem={selectItem}
                         balance={itemBalanceInfoOf(balanceView, selectedItem.id)}
+                        stages={stages}
                         detailEdit={detailEdit ? (item) => detailEdit(item, ctx) : undefined}
                         detailFooter={detailFooter ? (item) => detailFooter(item, ctx) : undefined}
                         detailHistoryAction={detailHistoryAction ? (item) => detailHistoryAction(item, ctx) : undefined}

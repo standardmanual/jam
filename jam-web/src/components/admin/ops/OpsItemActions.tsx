@@ -17,6 +17,8 @@ import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
  * 항목 결정 줄 (티켓 20260930_1818, 채원 화면 설계 「행동 영역」). 상세 카드 아래 고정 줄 `detailFooter` 슬롯을 채운다.
  *
  * `[반려하기](테두리형·붉은 글) ··· [수정하기] [패턴 사전에 넣기]`는 **검토중 항목에만** 보인다. 그 밖의 상태는 버튼 자리에 안내 글만 둔다.
+ * 서랍 결정 줄(티켓 20261026_2024 2회차): `onExclude`·`onKeep`이 함께 오면 패턴 제안이 아닌 검토중 항목에는 주 줄 `[빼기] [고치기] [이대로 두기]`를 두고
+ * `[반려하기]`는 그 아래 보조 줄로 내린다. [고치기]는 [수정하기]와 같은 동작(수정 양식 열기)이고 이름만 다르다. 패턴 제안과 두 콜백이 없는 쓰는 곳은 위 줄 그대로다.
  * 개별 승인 버튼은 **패턴 제안에만** 있고 이름은 「패턴 사전에 넣기」다(승인 즉시 종료라 예약 대상이 아니다). 그 밖의 종류는 승인과 예약을
  * 단계 표시줄의 [N건 승인하고 예약]이 한 번에 하므로 개별 승인 버튼이 없다(티켓 20261026_2031).
  * 승인·반려는 확인창 뒤에만 실행된다. 실패는 창 안 인라인이고 창은 유지한다. 붉은 면은 반려 창의 확인 버튼 하나뿐이다.
@@ -136,9 +138,13 @@ interface OpsItemActionsProps {
   onDecided: (kind: 'approve' | 'reject', itemId: string, data: Record<string, unknown>) => void
   /** 그 사이 다른 곳에서 처리된 항목이라 409를 받았다(화면을 새로 읽는다). */
   onConflict: () => void
+  /** 「빼기」: 승인 대상에서 빼고 다음 항목으로 간다(체크 변경과 이동은 호출한 쪽이 한다). */
+  onExclude?: (item: OpsItemRecord) => void
+  /** 「이대로 두기」: 승인 대상으로 두고 다음 항목으로 간다. */
+  onKeep?: (item: OpsItemRecord) => void
 }
 
-export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict }: OpsItemActionsProps) {
+export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict, onExclude, onKeep }: OpsItemActionsProps) {
   const [dialog, setDialog] = useState<'approve' | 'reject' | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -169,35 +175,51 @@ export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict }: O
   }
 
   const summary = <p className="break-words font-medium text-foreground">{itemSummaryLine(item)}</p>
+  const startEdit = () => ctx.setDraft({ itemId: item.id, values: readEditableValues(item), baseUpdatedAt: item.updatedAt })
+  const rejectButton = (
+    <Button
+      type="button"
+      variant="outline"
+      className="border-destructive text-destructive hover:text-destructive"
+      disabled={editing}
+      onClick={() => open('reject')}
+    >
+      반려하기
+    </Button>
+  )
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="border-destructive text-destructive hover:text-destructive"
-          disabled={editing}
-          onClick={() => open('reject')}
-        >
-          반려하기
-        </Button>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={editing}
-            onClick={() => ctx.setDraft({ itemId: item.id, values: readEditableValues(item), baseUpdatedAt: item.updatedAt })}
-          >
-            수정하기
-          </Button>
-          {isPatternProposal && (
-            <Button type="button" disabled={editing} onClick={() => open('approve')}>
-              패턴 사전에 넣기
+      {onExclude && onKeep && !isPatternProposal ? (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button type="button" variant="outline" disabled={editing} onClick={() => onExclude(item)}>
+              빼기
             </Button>
-          )}
+            <Button type="button" variant="outline" disabled={editing} onClick={startEdit}>
+              고치기
+            </Button>
+            <Button type="button" disabled={editing} onClick={() => onKeep(item)}>
+              이대로 두기
+            </Button>
+          </div>
+          <div>{rejectButton}</div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {rejectButton}
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" disabled={editing} onClick={startEdit}>
+              수정하기
+            </Button>
+            {isPatternProposal && (
+              <Button type="button" disabled={editing} onClick={() => open('approve')}>
+                패턴 사전에 넣기
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
       {editing && <p className="mt-2 text-xs text-muted-foreground">수정 중이에요. 저장하거나 취소한 뒤 결정해 주세요</p>}
 
       {dialog === 'approve' && isPatternProposal && (

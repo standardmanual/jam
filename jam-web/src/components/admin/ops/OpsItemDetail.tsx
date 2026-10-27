@@ -16,9 +16,12 @@ import {
   userExperienceOf,
   worldReviewOf,
 } from '@/lib/admin/opsInbox/itemView'
+import { readOpsItemHighlight } from '@/lib/admin/opsInbox/rationaleRead'
+import { itemRationaleChips } from '@/lib/admin/opsBoard/rationale'
+import { keyValuesOf, reviewResultsOf, type ReviewState } from '@/lib/admin/opsBoard/drawerView'
 import { readDiff } from '@/lib/admin/opsInbox/edit'
 import { classifyActor, decisionLineText } from '@/lib/admin/opsDecisions/line'
-import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import type { OpsDecisionRecord, OpsItemRecord, OpsRoutineStageRecord } from '@/lib/admin/opsInbox/query'
 import {
   AGENT_BALANCE_TITLE,
   TOOL_CHECK_TITLE,
@@ -32,25 +35,32 @@ import { OpsDiffLines } from './OpsDiffLines'
 import { OpsStatusBadge } from './OpsStatusBadge'
 import { OpsItemFormatErrors } from './OpsFormatErrors'
 import { OpsBalanceItemWarnings } from './OpsBalanceWarnings'
+import { OpsRationaleChip, OpsRationaleChips } from './board/OpsRationaleChip'
 
 /**
- * 항목 상세 카드(티켓 20260930_1817, 채원 화면 설계 「항목 목록의 한 행」의 상세 카드 ①~⑦).
+ * 항목 서랍(상세 열, 티켓 20260930_1817 → 20261026_2024 2회차, 어드민 상황판 PRD §6.3 서랍 구조). 위에서 아래로:
  *
- * ① 종류·상태 칩·패턴 번호·손잡이 값 ② 형식 오류 ②′ 밸런스 경고 ③ 유저가 겪는 것 ④ 내용(문안·색·공개/종료 시각·대상·연결)
- * ⑤ 검수·판정(에이전트가 적은 밸런스 판정과 툴 점검) ⑥ 제출 원본(접힘) ⑦ 결정 기록.
+ * 1. 머리: 종류·상태·「핵심」 표시·패턴 번호·손잡이 값, 그 아래 이 항목의 이유 칩 전부
+ * 2. 「왜 이 기획?」: 이유마다 한 줄(칩 + 메모, 트렌드 출처 번호). 이유가 없으면 「적힌 이유가 없어요」
+ * 3. 형식 오류·밸런스 경고(②·②′)
+ * 4. 「유저가 겪는 것」 — 편집 모드(`detailEdit` 결과가 있을 때)이면 4·5번 자리를 편집 화면이 대신한다
+ * 5. 「핵심 값」: 공개 기간·대상·모양·조건·보상 한 줄씩(`keyValuesOf`)
+ * 6. 「검수 결과」: 윈터(세계관 검수)·혜린(밸런스 점검) 두 줄(`reviewResultsOf`), 아래 접힘 「검수 자세히」에 예전 검수·판정 문장
+ * 7. 접힘 셋(기본 접힘): 「내용 전체」(문안·색·시각·대상·연결), 「제출 원본」, 「결정 기록」
  *
  * 밸런스(`balance`, 티켓 20260930_1459): 이 항목의 경고 줄·확인한 규칙 수. 없으면 밸런스를 표시하지 않는다. 경고 블록은 줄이 있을 때만
- * 그리고, ⑤의 「툴 점검」 줄은 평가 결과가 있으면 늘 그린다(경고 없음·적용 규칙 없음·반려한 항목·평가 실패까지 말로 알린다).
+ * 그리고, 「검수 자세히」의 「툴 점검」 줄은 평가 결과가 있으면 늘 그린다(경고 없음·적용 규칙 없음·반려한 항목·평가 실패까지 말로 알린다).
+ * `stages`는 묶음 단계 기록이고 「검수 결과」의 시각(해당 단계 `endedAt`)에만 쓴다. 없으면 시각을 쓰지 않는다.
  *
  * 제출 문자열은 **React 텍스트 노드로만** 그린다(`dangerouslySetInnerHTML`을 쓰지 않는다). 색 견본은 값이
  * `HEX_COLOR_PATTERN`(`#rrggbb`)을 통과할 때만 `style`에 넣는다. `author`·`item_key`는 자기 신고라 제목으로 쓰지 않는다.
  *
  * 슬롯(1818이 client 래퍼에서 채운다. 함수라 서버 컴포넌트에서 넘길 수 없다):
- * - `detailEdit`: 결과가 있으면 ③ 유저가 겪는 것과 ④ 내용 자리를 **대신한다**(편집 모드는 그 자리에서 바뀐다).
- * - `detailFooter`: 카드 아래 고정 줄(반려·수정·승인 버튼). 비어 있으면 줄을 그리지 않는다.
- * - `detailHistoryAction`: ⑦ 결정 기록 머리의 오른쪽(「마지막 수정 되돌리기」). 비어 있으면 자리를 잡지 않는다.
+ * - `detailEdit`: 결과가 있으면 「유저가 겪는 것」과 「핵심 값」 자리를 **대신한다**(편집 모드는 그 자리에서 바뀐다).
+ * - `detailFooter`: 카드 아래 고정 줄(빼기·고치기·이대로 두기와 반려). 비어 있으면 줄을 그리지 않는다.
+ * - `detailHistoryAction`: 「결정 기록」 머리의 오른쪽(「마지막 수정 되돌리기」). 비어 있으면 자리를 잡지 않는다.
  *
- * ⑦ 결정 기록은 승인·반려·수정·수정 되돌림(「되돌림」 태그, 버튼 없음)·일괄 승인 표시와 사유, 수정 전후 차이 줄(`OpsDiffLines`)을 그린다.
+ * 결정 기록은 승인·반려·수정·수정 되돌림(「되돌림」 태그, 버튼 없음)·일괄 승인 표시와 사유, 수정 전후 차이 줄(`OpsDiffLines`)을 그린다.
  * 예약 등록의 `execute`(관리자가 예약 등록했어요)·`fail`(예약 등록에 실패했어요, 사유는 「실패 사유」)·`cancel`(관리자가 공개 전에 취소했어요, 사유는 「취소 사유」)도 같은 줄이다(티켓 20261002_1648).
  */
 
@@ -63,6 +73,8 @@ interface OpsItemDetailProps {
   onSelectItem: (id: string) => void
   /** 이 항목의 밸런스 평가 정보. 없으면 밸런스를 표시하지 않는다. */
   balance?: ItemBalanceInfo
+  /** 묶음의 에이전트 단계 기록. 「검수 결과」 줄의 시각에만 쓴다. */
+  stages?: readonly OpsRoutineStageRecord[]
   detailEdit?: (item: OpsItemRecord) => ReactNode
   detailFooter?: (item: OpsItemRecord) => ReactNode
   detailHistoryAction?: (item: OpsItemRecord) => ReactNode
@@ -328,12 +340,114 @@ function rawJson(value: unknown): string {
   }
 }
 
+const TEXT_CLASS = 'break-keep wrap-break-word'
+
+/** 「왜 이 기획?」: 이유마다 한 줄. 설명은 두 줄을 넘기지 않는다. */
+function WhyPlanned({ item }: { item: OpsItemRecord }) {
+  const rationales = itemRationaleChips(item)
+  return (
+    <section aria-label="왜 이 기획?">
+      <SectionTitle>왜 이 기획?</SectionTitle>
+      {rationales.length === 0 ? (
+        <p className={cn('text-sm text-muted-foreground', TEXT_CLASS)}>적힌 이유가 없어요</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {rationales.map((rationale, index) => (
+            <li key={`${rationale.kind}:${rationale.label}:${index}`} className="flex flex-wrap items-start gap-x-2 gap-y-0.5 text-sm">
+              <OpsRationaleChip kind={rationale.kind} label={rationale.label} />
+              {rationale.note && <span className={cn('line-clamp-2 min-w-0 flex-1 basis-40', TEXT_CLASS)}>{rationale.note}</span>}
+              {rationale.kind === 'trend' && rationale.sourceId !== null && (
+                <span className="shrink-0 text-xs text-muted-foreground">출처 {rationale.sourceId}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** 「핵심 값」: 한 칸에 한 줄. 읽을 수 있는 칸만 그리고, 하나도 없으면 안내 한 줄이다. */
+function KeyValues({ item }: { item: OpsItemRecord }) {
+  const rows = keyValuesOf(item)
+  return (
+    <section aria-label="핵심 값">
+      <SectionTitle>핵심 값</SectionTitle>
+      {rows.length === 0 ? (
+        <p className={cn('text-sm text-muted-foreground', TEXT_CLASS)}>읽을 수 있는 핵심 값이 없어요</p>
+      ) : (
+        <dl className="space-y-1 text-sm">
+          {rows.map((row) => (
+            <div key={row.label} className="flex gap-2">
+              <dt className={cn('w-16 shrink-0 text-muted-foreground', TEXT_CLASS)}>{row.label}</dt>
+              <dd className={cn('min-w-0 tabular-nums', TEXT_CLASS)}>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
+  )
+}
+
+const REVIEW_DOT_CLASS: Record<ReviewState, string> = {
+  pass: 'bg-emerald-600',
+  check: 'bg-amber-500',
+  none: 'bg-neutral-300',
+}
+
+/** 「검수 결과」: 윈터·혜린 두 줄. 점은 장식이고 상태는 글자로 읽힌다(색만 쓰지 않는다). 아래 접힘 「검수 자세히」에 예전 검수·판정 문장을 둔다. */
+function ReviewResults({
+  item,
+  stages,
+  balance,
+}: {
+  item: OpsItemRecord
+  stages: readonly OpsRoutineStageRecord[]
+  balance?: ItemBalanceInfo
+}) {
+  const results = reviewResultsOf({
+    item,
+    stages,
+    // 평가가 실패했거나 평가에서 뺀 상태(반려·취소 등)이면 점검 기록이 없는 것이다.
+    balanceLines: balance && !balance.failed && !isBalanceSkippedStatus(item.status) ? balance.lines : undefined,
+  })
+  return (
+    <section aria-label="검수 결과">
+      <SectionTitle>검수 결과</SectionTitle>
+      <ul className="space-y-1.5 text-sm">
+        {results.map((result) => (
+          <li key={result.agent}>
+            <p className={cn('flex flex-wrap items-center gap-x-2 gap-y-0.5', TEXT_CLASS)}>
+              <span className="font-medium">{result.title}</span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                <span aria-hidden="true" className={cn('inline-block size-2 shrink-0 rounded-full', REVIEW_DOT_CLASS[result.state])} />
+                {result.stateText}
+              </span>
+              {result.at && <span className="text-xs tabular-nums text-muted-foreground">{result.at}</span>}
+            </p>
+            {result.reason && <p className={cn('line-clamp-2 text-xs text-muted-foreground', TEXT_CLASS)}>{result.reason}</p>}
+          </li>
+        ))}
+      </ul>
+      <Accordion type="single" collapsible>
+        <AccordionItem value="review-detail" className="border-b-0">
+          <AccordionTrigger className="py-2 text-xs text-muted-foreground">검수 자세히</AccordionTrigger>
+          <AccordionContent>
+            <ReviewLines item={item} balance={balance} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </section>
+  )
+}
+
 export function OpsItemDetail({
   item,
   items,
   decisions,
   onSelectItem,
   balance,
+  stages = [],
   detailEdit,
   detailFooter,
   detailHistoryAction,
@@ -346,12 +460,14 @@ export function OpsItemDetail({
   const footerNode = detailFooter?.(item) ?? null
   const historyActionNode = detailHistoryAction?.(item) ?? null
   const itemDecisions = decisions.filter((decision) => decision.itemId === item.id || decision.itemId === null)
+  const rationaleChips = itemRationaleChips(item)
+  const highlighted = readOpsItemHighlight(item.edited ?? item.original)
 
   return (
     // `overflow-hidden`을 두지 않는다: 아래 고정 줄(`sticky bottom-0`)이 스크롤 하는 바깥 열을 기준으로 붙어야 한다.
     <Card>
       <div className="space-y-5 p-4">
-        {/* ① 종류·상태·패턴 번호·손잡이 값 */}
+        {/* 1. 머리: 종류·상태·핵심·패턴 번호·손잡이 값, 이유 칩 전부 */}
         <section aria-label="항목 요약" className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="inline-flex items-center gap-1.5 text-base font-semibold">
@@ -359,8 +475,14 @@ export function OpsItemDetail({
               {kindLabel(item.kind)}
             </h3>
             <OpsStatusBadge type="item" status={item.status} />
+            {highlighted && (
+              <span className="inline-flex items-center whitespace-nowrap rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground">
+                핵심
+              </span>
+            )}
             {item.patternNo && <span className="break-words text-xs text-muted-foreground">패턴 {item.patternNo}</span>}
           </div>
+          <OpsRationaleChips chips={rationaleChips.map((rationale) => ({ kind: rationale.kind, label: rationale.label }))} />
           {knobs && knobs.length > 0 && (
             <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               {knobs.map(({ key, text }) => (
@@ -372,15 +494,18 @@ export function OpsItemDetail({
           )}
         </section>
 
-        {/* ② 형식 오류 */}
+        {/* 2. 왜 이 기획? */}
+        <WhyPlanned item={item} />
+
+        {/* 3. 형식 오류 */}
         <OpsItemFormatErrors errors={item.formatErrors} />
 
-        {/* ②′ 밸런스 경고: 형식 오류 바로 아래. 줄이 있을 때만 그린다. 편집 중이면 저장하면 다시 확인한다고 알린다. */}
+        {/* 3. 밸런스 경고: 형식 오류 바로 아래. 줄이 있을 때만 그린다. 편집 중이면 저장하면 다시 확인한다고 알린다. */}
         {balance && <OpsBalanceItemWarnings lines={balance.lines} editing={editNode !== null} showRuleLink />}
 
         {editNode ?? (
           <>
-            {/* ③ 유저가 겪는 것 */}
+            {/* 4. 유저가 겪는 것 */}
             <section>
               <SectionTitle>유저가 겪는 것</SectionTitle>
               {experience ? (
@@ -390,48 +515,53 @@ export function OpsItemDetail({
               )}
             </section>
 
-            {/* ④ 내용 */}
-            <section className="space-y-3">
-              <SectionTitle>내용</SectionTitle>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-muted-foreground">문안</p>
-                <KeyValueLines value={itemField(item, 'copy')} />
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-muted-foreground">색</p>
-                <ColorLines value={itemField(item, 'colors')} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="mb-0.5 text-xs font-medium text-muted-foreground">공개 시각</p>
-                  <p className={cn('text-sm tabular-nums', !startsAt && 'text-muted-foreground')}>{startsAt ?? '없어요'}</p>
-                </div>
-                <div>
-                  <p className="mb-0.5 text-xs font-medium text-muted-foreground">종료 시각</p>
-                  <p className={cn('text-sm tabular-nums', !endsAt && 'text-muted-foreground')}>{endsAt ?? '없어요'}</p>
-                </div>
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-muted-foreground">대상</p>
-                <KeyValueLines value={itemField(item, 'segment')} />
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-muted-foreground">연결</p>
-                <LinkedItems item={item} items={items} onSelectItem={onSelectItem} />
-              </div>
-            </section>
+            {/* 5. 핵심 값 */}
+            <KeyValues item={item} />
           </>
         )}
 
-        {/* ⑤ 검수·판정 */}
-        <section>
-          <SectionTitle>검수와 판정</SectionTitle>
-          <ReviewLines item={item} balance={balance} />
-        </section>
+        {/* 6. 검수 결과 */}
+        <ReviewResults item={item} stages={stages} balance={balance} />
 
-        {/* ⑥ 제출 원본 */}
-        <Accordion type="single" collapsible>
-          <AccordionItem value="original" className="border-b-0">
+        {/* 7. 접힘 셋: 내용 전체 · 제출 원본 · 결정 기록 */}
+        <Accordion type="multiple">
+          {!editNode && (
+            <AccordionItem value="content">
+              <AccordionTrigger className="py-2 text-sm">내용 전체</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-muted-foreground">문안</p>
+                    <KeyValueLines value={itemField(item, 'copy')} />
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-muted-foreground">색</p>
+                    <ColorLines value={itemField(item, 'colors')} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="mb-0.5 text-xs font-medium text-muted-foreground">공개 시각</p>
+                      <p className={cn('text-sm tabular-nums', !startsAt && 'text-muted-foreground')}>{startsAt ?? '없어요'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-0.5 text-xs font-medium text-muted-foreground">종료 시각</p>
+                      <p className={cn('text-sm tabular-nums', !endsAt && 'text-muted-foreground')}>{endsAt ?? '없어요'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-muted-foreground">대상</p>
+                    <KeyValueLines value={itemField(item, 'segment')} />
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-muted-foreground">연결</p>
+                    <LinkedItems item={item} items={items} onSelectItem={onSelectItem} />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          <AccordionItem value="original">
             <AccordionTrigger className="py-2 text-sm">제출 원본 보기</AccordionTrigger>
             <AccordionContent>
               <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs">
@@ -439,20 +569,15 @@ export function OpsItemDetail({
               </pre>
             </AccordionContent>
           </AccordionItem>
-        </Accordion>
 
-        {/* ⑦ 결정 기록 */}
-        <section>
-          {historyActionNode ? (
-            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-              <h4 className="text-xs font-semibold text-muted-foreground">결정 기록</h4>
-              {historyActionNode}
-            </div>
-          ) : (
-            <SectionTitle>결정 기록</SectionTitle>
-          )}
-          <DecisionLog decisions={itemDecisions} />
-        </section>
+          <AccordionItem value="history" className="border-b-0">
+            <AccordionTrigger className="py-2 text-sm">결정 기록</AccordionTrigger>
+            <AccordionContent>
+              {historyActionNode && <div className="mb-1.5 flex justify-end">{historyActionNode}</div>}
+              <DecisionLog decisions={itemDecisions} />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
       {footerNode && <div className="sticky bottom-0 border-t border-border bg-background p-3">{footerNode}</div>}

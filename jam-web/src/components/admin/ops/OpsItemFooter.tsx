@@ -17,7 +17,7 @@ import type { ItemImageProduction } from './useItemImageProduction'
  *
  * - `useOpsItemResultHandlers`: 결정 요청이 끝난 뒤의 토스트와 화면 새로 읽기(수정 저장·되돌리기·승인·반려·공개 전 취소·지금 종료). 토스트 문장은 S3와 서랍이 같다.
  *   화면을 다시 읽는 방법(`onRefresh`)만 쓰는 쪽이 정한다 — S3는 `router.refresh()`(기본), 일정표 서랍은 서랍 자기 데이터도 다시 받는다.
- * - `OpsItemFooter`: 항목 상태에 따른 고정 줄. 예약됨이면 [공개 전 취소하기](`OpsCancelItem`), 게재중이고 지금 종료가 있는 종류면 [지금 종료하기](`OpsEndItem`), 그 밖에는 반려·수정·승인(`OpsItemActions`).
+ * - `OpsItemFooter`: 항목 상태에 따른 고정 줄. 예약됨이면 [공개 전 취소하기](`OpsCancelItem`), 게재중이고 지금 종료가 있는 종류면 [지금 종료하기](`OpsEndItem`), 그 밖에는 `OpsItemActions`(`onExclude`·`onKeep`이 있으면 빼기·고치기·이대로 두기와 반려, 없으면 반려·수정·승인).
  *   `statusNotice`가 글을 돌려주는 상태는 결정 줄 대신 그 글을 그린다(일정표 서랍의 「승인됨」·「도착」 안내).
  */
 
@@ -115,9 +115,13 @@ interface OpsItemFooterProps {
   imageProduction?: ItemImageProduction
   /** 글을 돌려주는 상태는 결정 줄 대신 그 글을 그린다. 없거나 null이면 아래 분기가 그린다. */
   statusNotice?: (item: OpsItemRecord) => ReactNode | null
+  /** 서랍의 「빼기」: 이 항목을 승인 대상에서 빼고 다음 항목으로 간다. 둘 다 있을 때만 서랍 결정 줄(빼기·고치기·이대로 두기)이 나온다. */
+  onExclude?: (item: OpsItemRecord) => void
+  /** 서랍의 「이대로 두기」: 이 항목을 승인 대상으로 두고 다음 항목으로 간다. */
+  onKeep?: (item: OpsItemRecord) => void
 }
 
-export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecided, imageProduction, statusNotice }: OpsItemFooterProps) {
+export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecided, imageProduction, statusNotice, onExclude, onKeep }: OpsItemFooterProps) {
   const notice = statusNotice?.(item) ?? null
   if (notice !== null) return <>{notice}</>
 
@@ -155,6 +159,8 @@ export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecid
         handlers.handleDecided(kind, () => onDecided?.(kind, itemId), data)
       }}
       onConflict={handlers.refresh}
+      onExclude={onExclude}
+      onKeep={onKeep}
     />
   )
 }

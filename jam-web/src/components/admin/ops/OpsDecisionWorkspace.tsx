@@ -19,6 +19,7 @@ import {
   type CheckOverrides,
 } from '@/lib/admin/opsInbox/selection'
 import type { OpsBundleExecution, OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import { nextDecidableItemId as nextDrawerItemId } from '@/lib/admin/opsBoard/drawerView'
 import { OpsBundleWorkspace, type OpsBundleWorkspaceProps } from './OpsBundleWorkspace'
 import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
@@ -37,7 +38,8 @@ import { useItemImageProduction } from './useItemImageProduction'
  * - `panel`: 결정 패널 머리 (`OpsDecisionPanel`, 티켓 20261026_2024). 이유 칩·이번 기획의 핵심·종류별로 고르기. 종류 체크는 아래 `overrides`를 항목마다 덮어쓴다(새 상태 없음)
  * - `rowLead`·`listHeader`: 행 체크박스와 「전체 선택 · 결정할 것 12개 중 11개 선택」. 패턴 제안은 예약 대상이 아니라 체크박스가 없다(항목 서랍에서 「패턴 사전에 넣기」로 처리한다)
  * - `detailFooter`: 항목 상태별 결정 줄(`OpsItemFooter`, 티켓 20261006_1537 ③-b가 `OpsItemActions`·`OpsCancelItem`·`OpsEndItem` 분기와 결과 처리를 일정표 서랍과 함께 쓰도록 옮겼다):
- *   「예약됨」 항목이면 안내와 [공개 전 취소하기] (티켓 20261002_1649), 「게재중」이고 지금 종료가 있는 종류면 안내와 [지금 종료하기] (티켓 20261006_1038 ⑪-b), 그 밖에는 반려·수정(패턴 제안은 「패턴 사전에 넣기」도)
+ *   「예약됨」 항목이면 안내와 [공개 전 취소하기] (티켓 20261002_1649), 「게재중」이고 지금 종료가 있는 종류면 안내와 [지금 종료하기] (티켓 20261006_1038 ⑪-b), 그 밖에는
+ *   검토중 항목에 [빼기]·[고치기]·[이대로 두기]와 보조 [반려하기](패턴 제안은 [수정하기]·[패턴 사전에 넣기]). [빼기]·[이대로 두기]는 아래 `overrides`를 바꾸고 `position` 순 다음 결정할 항목을 연다(티켓 20261026_2024 2회차)
  * - `detailEdit`: 직접 수정 양식 (`OpsItemEditForm`)
  * - `detailHistoryAction`: 「마지막 수정 되돌리기」(수정 내역이 있는 검토중 항목만, 확인창 없음)
  *
@@ -50,7 +52,7 @@ const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 type OpsDecisionWorkspaceProps = Pick<
   OpsBundleWorkspaceProps,
-  'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'isSample' | 'previewNames'
+  'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'stages' | 'isSample' | 'previewNames'
 > & {
   /** 서버 로더가 센 예약 등록 요약(승인됨 수·예약할 항목 수). 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다. */
   execution: OpsBundleExecution
@@ -82,6 +84,7 @@ export function OpsDecisionWorkspace({
   items,
   decisions,
   balance,
+  stages,
   isSample,
   execution,
   previewNames,
@@ -115,6 +118,12 @@ export function OpsDecisionWorkspace({
     void imageProduction.startMany(scheduledItemIds(data), items)
   }
 
+  /** 「빼기」·「이대로 두기」 뒤에 position 순으로 다음 결정할 항목을 연다. 자기밖에 없으면 그대로 둔다. */
+  const moveToNext = (current: OpsItemRecord, selectItem: (id: string) => void) => {
+    const next = nextDrawerItemId(items, current.id)
+    if (next) selectItem(next)
+  }
+
   const checkLabel = (item: OpsItemRecord): string => {
     const startsAt = formatKstDayTime(item.startsAt)
     return `${kindLabel(item.kind)}${startsAt ? ` ${startsAt}` : ''} 승인 대상으로 고르기`
@@ -127,6 +136,7 @@ export function OpsDecisionWorkspace({
       items={items}
       decisions={decisions}
       balance={balance}
+      stages={stages}
       isSample={isSample}
       makingItemIds={imageProduction.making}
       previewNames={previewNames}
@@ -201,6 +211,14 @@ export function OpsDecisionWorkspace({
           onDecided={(_kind, itemId) => {
             const next = nextDecidableItemId(items, itemId)
             if (next) ctx.selectItem(next)
+          }}
+          onExclude={(target) => {
+            setOverrides((current) => withCheck(current, target, false))
+            moveToNext(target, ctx.selectItem)
+          }}
+          onKeep={(target) => {
+            setOverrides((current) => withCheck(current, target, true))
+            moveToNext(target, ctx.selectItem)
           }}
         />
       )}
