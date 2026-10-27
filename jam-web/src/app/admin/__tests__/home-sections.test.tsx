@@ -5,10 +5,10 @@
  * `renderToStaticMarkup`으로 그려 모양을 고정한다. DB·읽기 함수는 모두 가짜로 바꾼다(실 DB에 닿지 않는다).
  *
  * 지키는 것:
- * - 이번 주 상태·신호·최근 이력·서비스 점검·주간 핵심 지표·배지 경제 흐름·통계 7구역 가운데 한 구역의 읽기를 던지게 하면 그 구역만 안내 카드 + [새로 고치기]이고 나머지는 그대로다
+ * - 운영 상황판·신호·최근 이력·서비스 점검·주간 핵심 지표·배지 경제 흐름·통계 7구역 가운데 한 구역의 읽기를 던지게 하면 그 구역만 안내 카드 + [새로 고치기]이고 나머지는 그대로다
  * - 구역 안의 일부 출처만 실패하면(제재 수·한쪽 그래프·지난주 지표·통계 한 칸) 그 칸의 기존 오류 표시만 남고 구역은 안내 카드가 되지 않는다
  * - 이상 신호 3장·KPI 2장·경제 추이(`?trend=`)·통계 4칸의 링크가 옛 화면과 같고, 「카드 편성 공백」은 없고 미션 공백이 서비스 점검 넷째 칸이다
- * - 이번 주 상태는 이번 주와 다음 주 14일치를 읽고, 다음 주 줄은 S7 기준 요일(`nextWeekCheckFromWeekday`)을 따른다
+ * - 운영 상황판은 내 차례 카드·주간 흐름 지도·에이전트 줄을 한 구역으로 묶고, 출처 하나라도 못 읽으면 구역 전체가 안내 카드다
  * - 시험 묶음 포함(`sample=1`)이 읽기와 링크에 이어진다
  * - 페이지·`_home` 소스에 `unstable_cache`·`revalidate`·주간 캘린더가 없고 `loading.tsx`가 없다
  */
@@ -58,15 +58,14 @@ const hoisted = vi.hoisted(() => {
       return query({ data: [], error: null })
     },
     calls: {
-      compositions: [] as Array<Record<string, unknown>>,
+      board: [] as Array<Record<string, unknown>>,
       signals: [] as Array<Record<string, unknown>>,
       recent: [] as Array<Record<string, unknown>>,
       kpi: 0,
     },
-    weekLoaded: { value: null as unknown },
+    boardLoaded: { value: null as unknown },
     signalsValue: { value: [] as unknown[] },
     recordsValue: { value: [] as unknown[] },
-    overrides: { value: {} as Record<string, unknown> },
   }
 })
 
@@ -85,11 +84,6 @@ function failIf(key: string) {
 }
 
 vi.mock('@/lib/admin/opsSignals/load', () => ({
-  loadDayCompositions: vi.fn(async (options: Record<string, unknown>) => {
-    hoisted.calls.compositions.push(options)
-    failIf('week')
-    return hoisted.weekLoaded.value ?? { bundles: [], compositions: [], sourceErrors: {} }
-  }),
   loadOpsSignals: vi.fn(async (options: Record<string, unknown>) => {
     hoisted.calls.signals.push(options)
     failIf('signal')
@@ -97,8 +91,12 @@ vi.mock('@/lib/admin/opsSignals/load', () => ({
   }),
 }))
 
-vi.mock('@/lib/admin/opsSignals/overrides', () => ({
-  loadSignalOverrides: vi.fn(async () => hoisted.overrides.value),
+vi.mock('@/lib/admin/opsBoard/load', () => ({
+  loadWeekFlowInputs: vi.fn(async (options: Record<string, unknown>) => {
+    hoisted.calls.board.push(options)
+    failIf('board')
+    return hoisted.boardLoaded.value ?? { bundles: [], starts: [], sourceErrors: [] }
+  }),
 }))
 
 vi.mock('@/lib/admin/opsDecisions/read', async (importOriginal) => ({
@@ -157,6 +155,7 @@ vi.mock('@/lib/admin/weeklyCardMetrics', async (importOriginal) => ({
 }))
 
 import {
+  BoardSection,
   KpiSection,
   RecentDecisionsSection,
   SECTION_NOTICE_TITLES,
@@ -165,22 +164,20 @@ import {
   SignalSection,
   StatsSection,
   TrendSection,
-  WeekStatusSection,
   startKpiWeekly,
 } from '../_home/sections'
 import { ServiceCheckRow } from '../DashboardSignals'
 import { trendHref } from '../EconomyTrend'
-import { buildDayCompositions } from '@/lib/admin/opsSignals/composition'
 import { makeSignalResult, type OpsSignalOutcome } from '@/lib/admin/opsSignals/catalog'
-import { shiftDateStr } from '@/lib/admin/today-calendar'
-import { makeBundle, makeItem, kst } from '@/lib/admin/opsSignals/__tests__/fixtures'
+import { kst } from '@/lib/admin/opsSignals/__tests__/fixtures'
+import { makeBundle as makeBoardBundle, makeItem as makeBoardItem, makeStart } from '@/lib/admin/opsBoard/__tests__/fixtures'
 
-const SECTION_KEYS = ['week', 'signal', 'history', 'service', 'kpi', 'trend', 'stats'] as const
+const SECTION_KEYS = ['board', 'signal', 'history', 'service', 'kpi', 'trend', 'stats'] as const
 type SectionKey = (typeof SECTION_KEYS)[number]
 
 /** 구역이 제대로 그려졌을 때 마크업에 있는 표식(안내 카드의 제목에는 없는 것). */
 const OK_MARKER: Record<SectionKey, string> = {
-  week: 'ops-week-status-heading',
+  board: 'ops-week-flow-heading',
   signal: 'ops-signal-panel-heading',
   history: 'ops-recent-decisions-heading',
   service: 'ops-service-check-heading',
@@ -204,7 +201,7 @@ async function renderAll(options: RenderOptions = {}): Promise<Record<SectionKey
   const includeSample = options.includeSample ?? false
   const kpi = startKpiWeekly()
   const elements: Record<SectionKey, ReactElement> = {
-    week: await WeekStatusSection({ includeSample }),
+    board: await BoardSection({ includeSample }),
     signal: await SignalSection({ includeSample }),
     history: await RecentDecisionsSection({ includeSample }),
     service: await ServiceCheckSection({ kpi }),
@@ -219,20 +216,17 @@ async function renderAll(options: RenderOptions = {}): Promise<Record<SectionKey
 
 /** 2026-10-01(목) 12:00 KST — 이번 주는 9/28(월)~10/4(일)이다. */
 const THURSDAY = new Date('2026-10-01T12:00:00+09:00')
-/** 2026-10-02(금) 12:00 KST — 다음 주 줄을 보기 시작하는 요일(기본 금요일)이다. */
-const FRIDAY = new Date('2026-10-02T12:00:00+09:00')
 
 beforeEach(() => {
   hoisted.fail.clear()
-  hoisted.calls.compositions.length = 0
+  hoisted.calls.board.length = 0
   hoisted.calls.signals.length = 0
   hoisted.calls.recent.length = 0
   hoisted.calls.kpi = 0
   hoisted.tablesRead.length = 0
-  hoisted.weekLoaded.value = null
+  hoisted.boardLoaded.value = null
   hoisted.signalsValue.value = []
   hoisted.recordsValue.value = []
-  hoisted.overrides.value = {}
   hoisted.counts.ops_bundles = 1
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(THURSDAY)
@@ -258,7 +252,7 @@ describe('구역별 격리 (완료 조건)', () => {
 
   /** 구역마다 그 구역의 읽기를 던지게 하는 키(`service`는 구역이 직접 읽는 셋을 모두 던진다). */
   const FAIL_KEY: Record<SectionKey, string> = {
-    week: 'week',
+    board: 'board',
     signal: 'signal',
     history: 'history',
     service: 'service',
@@ -344,86 +338,83 @@ describe('구역 안의 일부 출처만 실패하면 구역은 안내 카드가
   })
 })
 
-// ── 이번 주 상태 ─────────────────────────────────────────────────────────────────────────────────
+// ── 운영 상황판 ──────────────────────────────────────────────────────────────────────────────────
 
-/** 하루짜리 드랍 일정 항목(날짜 카드가 아니라 날짜 구성 신호에 끼어들지 않는다). */
-const dropItem = (over: Parameters<typeof makeItem>[0] = {}) => makeItem({ kind: 'drop_schedule', original: {}, ...over })
+/** 2026-10-01(목)이 속한 W40(9/28~10/4)에 받은 묶음. */
+const boardBundle = (statuses: string[], over: Parameters<typeof makeBoardBundle>[0] = {}) =>
+  makeBoardBundle({ id: 'bundle-a', week: '2026-W40', receivedAt: '2026-09-28T10:00:00+09:00', title: 'LP 리바이벌', statuses, ...over })
 
-function loadedWeek(bundles: ReturnType<typeof makeBundle>[]) {
-  const dates = Array.from({ length: 14 }, (_, i) => shiftDateStr('2026-09-28', i))
-  return {
-    bundles,
-    compositions: buildDayCompositions({ cards: [], missions: [], bundles }, dates),
-    sourceErrors: {},
-  }
-}
-
-describe('WeekStatusSection', () => {
-  it('이번 주와 다음 주 14일치를 한 번에 읽고(월요일부터 +13일) 시험 묶음 포함 값을 넘긴다', async () => {
-    await WeekStatusSection({ includeSample: true })
-    expect(hoisted.calls.compositions).toEqual([{ from: '2026-09-28', to: '2026-10-11', includeSample: true }])
-    hoisted.calls.compositions.length = 0
-    await WeekStatusSection({ includeSample: false })
-    expect(hoisted.calls.compositions).toEqual([{ from: '2026-09-28', to: '2026-10-11', includeSample: false }])
+describe('BoardSection', () => {
+  it('시험 묶음 포함 값과 지금 시각을 읽기에 넘긴다', async () => {
+    await BoardSection({ includeSample: true })
+    await BoardSection({ includeSample: false })
+    expect(hoisted.calls.board.map((call) => call.includeSample)).toEqual([true, false])
+    expect(hoisted.calls.board[0].now).toEqual(THURSDAY)
   })
 
-  it('읽은 묶음으로 다섯 칸을 센다', async () => {
-    hoisted.weekLoaded.value = loadedWeek([
-      makeBundle([dropItem({ status: 'arrived' }), dropItem({ status: 'reviewing' }), dropItem({ status: 'live' })], { week: '2026-W40' }),
-    ])
-    const out = flat(await WeekStatusSection({ includeSample: false }))
-    expect(out).toContain('새로 도착 1 · 검토중 1')
-    expect(out).toContain('받은 기획함에서 결정하기')
-    expect(out).toContain('9/28(월)~10/4(일)')
+  it('도착 항목이 있는 묶음은 내 차례 카드와 주간 흐름 정류장으로 같이 그려진다', async () => {
+    hoisted.boardLoaded.value = { bundles: [boardBundle(['arrived', 'reviewing', 'live'])], starts: [], sourceErrors: [] }
+    const out = flat(await BoardSection({ includeSample: false }))
+    expect(out).toContain('ops-my-turn-heading')
+    expect(out).toContain('결정하기')
+    expect(out).toContain('LP 리바이벌')
+    expect(out).toContain('href="/admin/ops-inbox/bundle-a"')
+    expect(out).toContain('40주차')
+    expect(out).toContain('2 · 결정 필요')
+    expect(out).toContain('1 · 게재 중')
+    // 에이전트 줄과 일정 띠
+    expect(out).toContain('ops-agent-rows-heading')
+    expect(out).toContain('예약 꺼짐')
   })
 
-  it('재료 하나라도 못 읽었으면(sourceErrors) 숫자를 틀리게 보이지 않고 안내 카드다', async () => {
-    hoisted.weekLoaded.value = { ...loadedWeek([]), sourceErrors: { cards: '카드 조회 실패(시험)' } }
-    const out = flat(await WeekStatusSection({ includeSample: false }))
-    expect(out).toContain(SECTION_NOTICE_TITLES.week)
-    expect(out).not.toContain('이번 주에 올라온 기획이 없어요')
+  it('출처 하나라도 못 읽었으면(sourceErrors) 숫자를 틀리게 보이지 않고 구역 전체가 안내 카드다', async () => {
+    hoisted.boardLoaded.value = { bundles: [boardBundle(['arrived'])], starts: [], sourceErrors: ['items'] }
+    const out = flat(await BoardSection({ includeSample: false }))
+    expect(out).toContain(SECTION_NOTICE_TITLES.board)
+    expect(out).toContain('새로 고치기')
+    expect(out).not.toContain('ops-my-turn-heading')
+    expect(out).not.toContain('내 차례인 일이 없어요')
   })
 
-  it('묶음을 못 읽었으면(null) 안내 카드다(「이번 주에 올라온 기획이 없어요」로 보이지 않는다)', async () => {
-    hoisted.weekLoaded.value = { bundles: null, compositions: [], sourceErrors: { bundles: '묶음 조회 실패(시험)' } }
-    const out = flat(await WeekStatusSection({ includeSample: false }))
-    expect(out).toContain(SECTION_NOTICE_TITLES.week)
-    expect(out).not.toContain('이번 주에 올라온 기획이 없어요')
-  })
-
-  it('이번 주에 올라온 기획이 없으면 빈 상태 + 받은 기획함 링크다', async () => {
-    const out = flat(await WeekStatusSection({ includeSample: false }))
-    expect(out).toContain('이번 주에 올라온 기획이 없어요')
+  it('올라온 기획이 없으면 내 차례는 한 줄 안내이고 지도는 빈 상태 + 받은 기획함 링크다', async () => {
+    const out = flat(await BoardSection({ includeSample: false }))
+    expect(out).toContain('내 차례인 일이 없어요')
+    expect(out).toContain('최근 5주에 올라온 기획이 없어요')
     expect(out).toContain('href="/admin/ops-inbox"')
   })
 
-  it('다음 주 줄: 목요일에는 없고(다음 주 기획도 안 왔을 때) 금요일부터 있다', async () => {
-    hoisted.weekLoaded.value = loadedWeek([makeBundle([dropItem({ status: 'arrived' })], { week: '2026-W40' })])
-    expect(flat(await WeekStatusSection({ includeSample: false }))).not.toContain('다음 주')
-    vi.setSystemTime(FRIDAY)
-    const friday = flat(await WeekStatusSection({ includeSample: false }))
-    expect(friday).toContain('다음 주')
-    expect(friday).toContain('10/5(월)~10/11(일)')
+  it('실패 항목은 문제 카드와 「문제 N」 정류장이 된다', async () => {
+    hoisted.boardLoaded.value = { bundles: [boardBundle(['scheduled', 'failed'])], starts: [], sourceErrors: [] }
+    const out = flat(await BoardSection({ includeSample: false }))
+    expect(out).toContain('확인하기')
+    expect(out).toContain('문제 1')
+    expect(out).toContain('1 · 진행 중')
   })
 
-  it('다음 주 줄의 기준 요일은 S7에서 바꾼 값(nextWeekCheckFromWeekday)을 따른다', async () => {
-    hoisted.weekLoaded.value = loadedWeek([makeBundle([dropItem({ status: 'arrived' })], { week: '2026-W40' })])
-    hoisted.overrides.value = { nextWeekCheckFromWeekday: 6 } // 토요일부터
-    vi.setSystemTime(FRIDAY)
-    expect(flat(await WeekStatusSection({ includeSample: false }))).not.toContain('다음 주')
-    vi.setSystemTime(new Date('2026-10-03T12:00:00+09:00'))
-    expect(flat(await WeekStatusSection({ includeSample: false }))).toContain('다음 주')
-  })
-
-  it('다음 주 기획이 이미 도착했으면 목요일에도 다음 주 줄이 있다', async () => {
-    hoisted.weekLoaded.value = loadedWeek([makeBundle([dropItem({ status: 'arrived', startsAt: kst('2026-10-07', '09:00'), endsAt: kst('2026-10-07', '23:00') })], { week: '2026-W41' })])
-    expect(flat(await WeekStatusSection({ includeSample: false }))).toContain('다음 주')
+  it('멈춘 루틴 시작 기록은 「기획함 열기」 문제 카드가 된다', async () => {
+    hoisted.boardLoaded.value = { bundles: [], starts: [makeStart({ startedAt: '2026-09-28T08:00:00+09:00', week: '2026-W40' })], sourceErrors: [] }
+    const out = flat(await BoardSection({ includeSample: false }))
+    expect(out).toContain('루틴이 멈췄어요')
+    expect(out).toContain('기획함 열기')
   })
 
   it('시험 묶음 포함이면 링크에 sample=1이 이어진다', async () => {
-    hoisted.weekLoaded.value = loadedWeek([makeBundle([dropItem({ status: 'arrived' })], { week: '2026-W40' })])
-    const out = flat(await WeekStatusSection({ includeSample: true }))
-    expect(out).toContain('href="/admin/ops-inbox?tab=decide&amp;sample=1"')
+    hoisted.boardLoaded.value = { bundles: [boardBundle(['arrived'], { isSample: true })], starts: [], sourceErrors: [] }
+    const out = flat(await BoardSection({ includeSample: true }))
+    expect(out).toContain('href="/admin/ops-inbox/bundle-a?sample=1"')
+  })
+
+  it('시험 묶음은 포함을 끄면 계산에서 빠진다', async () => {
+    hoisted.boardLoaded.value = { bundles: [boardBundle(['arrived'], { isSample: true })], starts: [], sourceErrors: [] }
+    const out = flat(await BoardSection({ includeSample: false }))
+    expect(out).toContain('내 차례인 일이 없어요')
+  })
+
+  it('항목 상태가 10개 밖이어도 던지지 않는다', async () => {
+    const bundle = boardBundle([])
+    bundle.items = [makeBoardItem('unknown_status', { bundleId: 'bundle-a' })]
+    hoisted.boardLoaded.value = { bundles: [bundle], starts: [], sourceErrors: [] }
+    await expect(BoardSection({ includeSample: false })).resolves.toBeDefined()
   })
 })
 

@@ -6,16 +6,20 @@ import { OpsRecentDecisions } from '@/components/admin/ops/OpsRecentDecisions'
 import { OpsSampleSwitch } from '@/components/admin/ops/OpsSampleSwitch'
 import { OpsSectionNotice } from '@/components/admin/ops/OpsSectionNotice'
 import { OpsSignalPanel } from '@/components/admin/ops/OpsSignalPanel'
-import { OpsWeekStatus } from '@/components/admin/ops/OpsWeekStatus'
+import { OpsAgentRows } from '@/components/admin/ops/board/OpsAgentRows'
+import { OpsMyTurn } from '@/components/admin/ops/board/OpsMyTurn'
+import { OpsWeekFlowMap } from '@/components/admin/ops/board/OpsWeekFlowMap'
 import { logQueryError } from '@/lib/admin/queryError'
 import { fetchContentGaps, type ContentGapSource, type MissionGapResult } from '@/lib/admin/contentGaps'
 import { listRecentOpsDecisions, type OpsRecentDecisionRecord } from '@/lib/admin/opsDecisions/read'
-import { computeWeekStatus, showsNextWeekRow, weekStartOf, type WeekStatus } from '@/lib/admin/opsHome/homeView'
-import { loadDayCompositions, loadOpsSignals, type LoadedOpsSignals } from '@/lib/admin/opsSignals/load'
-import { loadSignalOverrides } from '@/lib/admin/opsSignals/overrides'
-import { resolveThresholdValues } from '@/lib/admin/opsSignals/thresholds'
+import { agentRowsOf, weekStripOf } from '@/lib/admin/opsBoard/agentRows'
+import { loadWeekFlowInputs } from '@/lib/admin/opsBoard/load'
+import { computeMyTurn } from '@/lib/admin/opsBoard/myTurn'
+import { flowRowHrefs } from '@/lib/admin/opsBoard/rowLinks'
+import { computeWeekFlow } from '@/lib/admin/opsBoard/weekFlow'
+import { loadOpsSignals, type LoadedOpsSignals } from '@/lib/admin/opsSignals/load'
 import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS, type KpiWeeklyMetrics } from '@/lib/admin/kpiWeekly'
-import { shiftDateStr, kstDayBoundsIso, todayKstDateString } from '@/lib/admin/today-calendar'
+import { kstDayBoundsIso, todayKstDateString } from '@/lib/admin/today-calendar'
 import {
   trendDates,
   bucketDailyCounts,
@@ -49,7 +53,7 @@ import EconomyTrend, { type TrendSeries } from '../EconomyTrend'
 
 /** 구역별 조회 실패 제목. 받침에 따라 조사가 달라 문장으로 적는다. */
 export const SECTION_NOTICE_TITLES = {
-  week: '이번 주 상태를 불러오지 못했어요',
+  board: '운영 상황판을 불러오지 못했어요',
   signal: '신호를 불러오지 못했어요',
   history: '최근 이력을 불러오지 못했어요',
   service: '서비스 점검을 불러오지 못했어요',
@@ -67,40 +71,49 @@ function messageOf(error: unknown): string {
   return String(error)
 }
 
-// ── 이번 주 상태 ─────────────────────────────────────────────────────────────────────────────────
+// ── 운영 상황판 ──────────────────────────────────────────────────────────────────────────────────
 
 /**
- * 이번 주 상태. 다음 주 줄을 보일 수 있어 이번 주와 다음 주 14일치를 한 번에 읽는다(`computeWeekStatus`에 넘길 날짜 구성은 그 주 7일을 모두 담아야 한다).
- * 재료(카드·미션·묶음) 가운데 하나라도 못 읽으면 숫자가 틀려지므로 구역 전체가 안내 카드다.
+ * 운영 상황판(티켓 20261026_2023 2회차, 어드민 상황판 PRD §6): 내 차례 카드 줄 → 주간 흐름 지도 → 에이전트 줄·일정 띠를 한 구역으로 묶는다.
+ * 읽기는 `loadWeekFlowInputs`(1회차)가 하고, 계산은 `computeMyTurn`·`computeWeekFlow`·`agentRowsOf`가 한다.
+ * 출처 하나라도 못 읽으면 숫자가 틀려지므로 구역 전체가 안내 카드다(실패를 0이나 빈 상태로 보이지 않는다).
  */
-export async function WeekStatusSection({ includeSample }: { includeSample: boolean }) {
-  let view: { status: WeekStatus; nextWeek: WeekStatus | null }
+export async function BoardSection({ includeSample }: { includeSample: boolean }) {
+  let view: {
+    now: Date
+    cards: ReturnType<typeof computeMyTurn>
+    rows: ReturnType<typeof computeWeekFlow>
+    rowHrefs: ReturnType<typeof flowRowHrefs>
+    agents: ReturnType<typeof agentRowsOf>
+    strip: ReturnType<typeof weekStripOf>
+  }
   try {
     const now = new Date()
-    const weekStart = weekStartOf(now)
-    const [loaded, overrides] = await Promise.all([
-      loadDayCompositions({ from: weekStart, to: shiftDateStr(weekStart, 13), includeSample }),
-      loadSignalOverrides(createServiceClient()),
-    ])
-    const failedSources = Object.keys(loaded.sourceErrors)
-    if (loaded.bundles === null || failedSources.length > 0) {
-      throw new Error(`이번 주 상태의 재료를 읽지 못했어요: ${failedSources.join(', ')}`)
+    const loaded = await loadWeekFlowInputs({ includeSample, now })
+    if (loaded.sourceErrors.length > 0) {
+      throw new Error(`운영 상황판의 재료를 읽지 못했어요: ${loaded.sourceErrors.join(', ')}`)
     }
-    const input = { bundles: loaded.bundles, compositions: loaded.compositions, includeSample }
-    const status = computeWeekStatus({ ...input, weekStart })
-    const showNextWeek = showsNextWeekRow({
+    const input = { bundles: loaded.bundles, starts: loaded.starts, now, includeSample }
+    const rows = computeWeekFlow(input)
+    view = {
       now,
-      bundles: loaded.bundles,
-      nextWeekCheckFromWeekday: resolveThresholdValues(overrides).nextWeekCheckFromWeekday,
-      includeSample,
-    })
-    const nextWeek = showNextWeek ? computeWeekStatus({ ...input, weekStart: shiftDateStr(weekStart, 7) }) : null
-    view = { status, nextWeek }
+      cards: computeMyTurn(input),
+      rows,
+      rowHrefs: flowRowHrefs({ bundles: loaded.bundles, includeSample }),
+      agents: agentRowsOf({ thisWeek: rows[0], now }),
+      strip: weekStripOf(now),
+    }
   } catch (error) {
-    console.error('[admin/home] 이번 주 상태 구역 오류:', error)
-    return <OpsSectionNotice icon="week" title={SECTION_NOTICE_TITLES.week} />
+    console.error('[admin/home] 운영 상황판 구역 오류:', error)
+    return <OpsSectionNotice icon="week" title={SECTION_NOTICE_TITLES.board} />
   }
-  return <OpsWeekStatus status={view.status} nextWeek={view.nextWeek} includeSample={includeSample} />
+  return (
+    <div className="space-y-8">
+      <OpsMyTurn cards={view.cards} now={view.now} includeSample={includeSample} />
+      <OpsWeekFlowMap rows={view.rows} rowHrefs={view.rowHrefs} includeSample={includeSample} />
+      <OpsAgentRows agents={view.agents} strip={view.strip} />
+    </div>
+  )
 }
 
 // ── 신호 ─────────────────────────────────────────────────────────────────────────────────────────
