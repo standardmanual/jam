@@ -104,6 +104,16 @@ describe('produceItemImages', () => {
     expect(post).toHaveBeenCalledTimes(1)
   })
 
+  it('이미 이미지가 붙은 항목은 덮어쓰지 않고 skipped다', async () => {
+    const withImage = makeItem({
+      id: 'e',
+      original: { resource: { cover_image_url: 'https://x/old.webp' }, image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' } } },
+    })
+    expect(await produceItemImages('b1', ['e', 'a'], [...items, withImage], false)).toEqual({ done: 1, failed: 0, skipped: 1 })
+    expect(post).toHaveBeenCalledTimes(1)
+    expect(post.mock.calls[0][1]).toBe('a')
+  })
+
   it('시험 묶음은 렌더도 저장도 하지 않고 모두 skipped다', async () => {
     expect(await produceItemImages('b1', ['a', 'b'], items, true)).toEqual({ done: 0, failed: 0, skipped: 2 })
     expect(render).not.toHaveBeenCalled()

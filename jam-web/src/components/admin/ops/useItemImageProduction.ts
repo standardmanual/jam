@@ -11,6 +11,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { imageSpecToRenderArgs, imageKeyOfKind, readImageSpec } from '@/lib/admin/opsInbox/imageSpec'
+import { asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
 import { renderPresetToPngBlob } from '@/lib/admin/opsInbox/imageRender.client'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { postItemImage } from './imageClient'
@@ -70,8 +71,15 @@ export interface ProduceManyResult {
   skipped: number
 }
 
+/** 항목의 자원에 이미지 주소가 이미 있는가. 이미 붙은 이미지(에이전트가 제출한 것 등)를 예약 때 새로 만든 그림으로 덮어쓰지 않으려고 본다. */
+function hasResourceImage(item: OpsItemRecord): boolean {
+  const key = imageKeyOfKind(item.kind)
+  const value = key === null ? undefined : asRecord(itemField(item, 'resource'))?.[key]
+  return typeof value === 'string' && value.trim() !== ''
+}
+
 /**
- * 여러 항목의 이미지를 `itemIds` 순서대로 하나씩 만든다(병렬 아님). `items`에 없는 ID는 건너뛴 것으로 센다. 던지지 않는다.
+ * 여러 항목의 이미지를 `itemIds` 순서대로 하나씩 만든다(병렬 아님). `items`에 없는 ID와 이미 이미지가 붙은 항목은 건너뛴 것으로 센다. 던지지 않는다.
  */
 export async function produceItemImages(
   bundleId: string,
@@ -83,6 +91,10 @@ export async function produceItemImages(
   for (const itemId of itemIds) {
     const item = items.find((entry) => entry.id === itemId)
     if (!item) {
+      counts.skipped += 1
+      continue
+    }
+    if (hasResourceImage(item)) {
       counts.skipped += 1
       continue
     }
