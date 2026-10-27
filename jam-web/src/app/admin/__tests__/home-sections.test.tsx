@@ -5,9 +5,10 @@
  * `renderToStaticMarkup`으로 그려 모양을 고정한다. DB·읽기 함수는 모두 가짜로 바꾼다(실 DB에 닿지 않는다).
  *
  * 지키는 것:
- * - 운영 상황판·신호·최근 이력·서비스 점검·주간 핵심 지표·배지 경제 흐름·통계 7구역 가운데 한 구역의 읽기를 던지게 하면 그 구역만 안내 카드 + [새로 고치기]이고 나머지는 그대로다
- * - 구역 안의 일부 출처만 실패하면(제재 수·한쪽 그래프·지난주 지표·통계 한 칸) 그 칸의 기존 오류 표시만 남고 구역은 안내 카드가 되지 않는다
- * - 이상 신호 3장·KPI 2장·경제 추이(`?trend=`)·통계 4칸의 링크가 옛 화면과 같고, 「카드 편성 공백」은 없고 미션 공백이 서비스 점검 넷째 칸이다
+ * - 운영 상황판·신호·최근 이력·서비스 점검 4구역 가운데 한 구역의 읽기를 던지게 하면 그 구역만 안내 카드 + [새로 고치기]이고 나머지는 그대로다
+ * - 구역 안의 일부 출처만 실패하면(제재 수) 그 칸의 기존 오류 표시만 남고 구역은 안내 카드가 되지 않는다
+ * - 이상 신호 3장의 링크가 옛 화면과 같고, 「카드 편성 공백」은 없고 미션 공백이 서비스 점검 넷째 칸이다
+ * - 주간 핵심 지표·배지 경제 흐름·통계는 3-2에서 생태계 상황판으로 옮겼고 그 시험은 `ecosystem/__tests__/sections.test.tsx`가 본다
  * - 운영 상황판은 내 차례 카드·주간 흐름 지도·에이전트 줄을 한 구역으로 묶고, 출처 하나라도 못 읽으면 구역 전체가 안내 카드다
  * - 시험 묶음 포함(`sample=1`)이 읽기와 링크에 이어진다
  * - 페이지·`_home` 소스에 `unstable_cache`·`revalidate`·주간 캘린더가 없고 `loading.tsx`가 없다
@@ -49,8 +50,6 @@ const hoisted = vi.hoisted(() => {
     table(name: string) {
       hoisted.tablesRead.push(name)
       const boom = new Error(`${name} 조회 실패(시험)`)
-      if (['badges', 'poi', 'item_books', 'users'].includes(name) && fail.has('stats')) return query(boom, true)
-      if (name === 'badges' && fail.has('statsCell')) return query({ count: null, error: { message: '배지 수 조회 실패(시험)' } })
       if (name === 'user_suspensions' && (fail.has('service') || fail.has('shadow'))) return query(boom, true)
       if (name === 'poi_blocks' && fail.has('service')) return query(boom, true)
       if (name === 'ops_bundles' && fail.has('sampleCount')) return query({ count: null, error: { message: '시험 묶음 수 조회 실패(시험)' } })
@@ -125,26 +124,11 @@ vi.mock('@/lib/admin/kpiWeekly', async (importOriginal) => ({
     const index = hoisted.calls.kpi
     hoisted.calls.kpi += 1
     failIf('kpi')
-    // 두 번째 호출이 지난주 구간이다(`startKpiWeekly`가 이번 주 → 지난주 순서로 부른다).
-    if (index % 2 === 1) failIf('kpiLast')
     return {
       missionAchievers: { value: index % 2 === 0 ? 9 : 4, definition: '' },
       badgeIssuance: { issued: { value: index % 2 === 0 ? 120 : 100, definition: '' }, duplicate: { value: null, reason: '' } },
       stravaSyncFailures: { value: index % 2 === 0 ? 3 : 1, definition: '' },
     }
-  }),
-}))
-
-vi.mock('@/lib/admin/economyTrend', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/admin/economyTrend')>()),
-  fetchBadgeIssuanceDaily: vi.fn(async () => {
-    failIf('trend')
-    failIf('trendBadge')
-    return []
-  }),
-  fetchAmbientDropDaily: vi.fn(async () => {
-    failIf('trend')
-    return []
   }),
 }))
 
@@ -156,23 +140,19 @@ vi.mock('@/lib/admin/weeklyCardMetrics', async (importOriginal) => ({
 
 import {
   BoardSection,
-  KpiSection,
   RecentDecisionsSection,
   SECTION_NOTICE_TITLES,
   SampleSwitchSection,
   ServiceCheckSection,
   SignalSection,
-  StatsSection,
-  TrendSection,
-  startKpiWeekly,
 } from '../_home/sections'
+import { startKpiWeekly } from '@/lib/admin/kpiWeeklyPair'
 import { ServiceCheckRow } from '../DashboardSignals'
-import { trendHref } from '../EconomyTrend'
 import { makeSignalResult, type OpsSignalOutcome } from '@/lib/admin/opsSignals/catalog'
 import { kst } from '@/lib/admin/opsSignals/__tests__/fixtures'
 import { makeBundle as makeBoardBundle, makeItem as makeBoardItem, makeStart } from '@/lib/admin/opsBoard/__tests__/fixtures'
 
-const SECTION_KEYS = ['board', 'signal', 'history', 'service', 'kpi', 'trend', 'stats'] as const
+const SECTION_KEYS = ['board', 'signal', 'history', 'service'] as const
 type SectionKey = (typeof SECTION_KEYS)[number]
 
 /** 구역이 제대로 그려졌을 때 마크업에 있는 표식(안내 카드의 제목에는 없는 것). */
@@ -181,9 +161,6 @@ const OK_MARKER: Record<SectionKey, string> = {
   signal: 'ops-signal-panel-heading',
   history: 'ops-recent-decisions-heading',
   service: 'ops-service-check-heading',
-  kpi: 'ops-weekly-kpi-heading',
-  trend: 'aria-label="배지 경제 흐름"',
-  stats: 'aria-label="통계"',
 }
 
 const NOTICE_TITLE: Record<SectionKey, string> = { ...SECTION_NOTICE_TITLES }
@@ -193,10 +170,9 @@ const flat = (node: ReactElement) => renderToStaticMarkup(node).replace(/<!-- --
 
 interface RenderOptions {
   includeSample?: boolean
-  trend?: string
 }
 
-/** 운영 홈 7구역을 같은 조건으로 한 번씩 그린다(페이지가 구역마다 하는 일). */
+/** 운영 홈 4구역을 같은 조건으로 한 번씩 그린다(페이지가 구역마다 하는 일). */
 async function renderAll(options: RenderOptions = {}): Promise<Record<SectionKey, string>> {
   const includeSample = options.includeSample ?? false
   const kpi = startKpiWeekly()
@@ -205,9 +181,6 @@ async function renderAll(options: RenderOptions = {}): Promise<Record<SectionKey
     signal: await SignalSection({ includeSample }),
     history: await RecentDecisionsSection({ includeSample }),
     service: await ServiceCheckSection({ kpi }),
-    kpi: await KpiSection({ kpi }),
-    trend: await TrendSection({ trendParam: options.trend, includeSample }),
-    stats: await StatsSection(),
   }
   const out = {} as Record<SectionKey, string>
   for (const key of SECTION_KEYS) out[key] = flat(elements[key])
@@ -241,7 +214,7 @@ afterEach(() => {
 // ── 구역별 격리 ──────────────────────────────────────────────────────────────────────────────────
 
 describe('구역별 격리 (완료 조건)', () => {
-  it('아무것도 던지지 않으면 7구역이 모두 그려지고 안내 카드는 없다', async () => {
+  it('아무것도 던지지 않으면 4구역이 모두 그려지고 안내 카드는 없다', async () => {
     const out = await renderAll()
     for (const key of SECTION_KEYS) {
       expect(out[key], key).toContain(OK_MARKER[key])
@@ -256,9 +229,6 @@ describe('구역별 격리 (완료 조건)', () => {
     signal: 'signal',
     history: 'history',
     service: 'service',
-    kpi: 'kpi',
-    trend: 'trend',
-    stats: 'stats',
   }
 
   for (const key of SECTION_KEYS) {
@@ -280,13 +250,6 @@ describe('구역별 격리 (완료 조건)', () => {
     const out = await renderAll()
     expect(out.history).toContain('서버에 문제가 있었을 수 있어요. 새로 고쳐 다시 불러와 주세요')
   })
-
-  it('통계 안내 카드는 서비스 키 설정을 알린다(옛 「서비스 클라이언트 오류」 배너를 대신한다)', async () => {
-    hoisted.fail.add('stats')
-    const out = await renderAll()
-    expect(out.stats).toContain('SUPABASE_SERVICE_ROLE_KEY')
-    expect(out.stats).toContain(SECTION_NOTICE_TITLES.stats)
-  })
 })
 
 describe('구역 안의 일부 출처만 실패하면 구역은 안내 카드가 되지 않는다', () => {
@@ -300,42 +263,15 @@ describe('구역 안의 일부 출처만 실패하면 구역은 안내 카드가
     expect(out.service).toContain('미션 공백')
   })
 
-  it('서비스 점검: 주간 지표를 못 읽으면 Strava 칸만 오류 카드이고 주간 핵심 지표 구역은 안내 카드다', async () => {
+  it('서비스 점검: 주간 지표를 못 읽으면 Strava 칸만 오류 카드다', async () => {
     hoisted.fail.add('kpi')
     const out = await renderAll()
     expect(out.service).toContain('ops-service-check-heading')
     expect(out.service).toContain('Strava 동기화 실패 건수')
     expect(out.service).toContain('불러오지 못했어요 — kpi')
-    expect(out.kpi).toContain(SECTION_NOTICE_TITLES.kpi)
+    expect(out.service).not.toContain(SECTION_NOTICE_TITLES.service)
   })
 
-  it('주간 핵심 지표: 지난주만 못 읽으면 두 장은 그대로이고 「지난주 대비 비교 불가」다', async () => {
-    hoisted.fail.add('kpiLast')
-    const out = await renderAll()
-    expect(out.kpi).toContain('ops-weekly-kpi-heading')
-    expect(out.kpi).toContain('지난주 대비 비교 불가')
-    expect(out.kpi).not.toContain(SECTION_NOTICE_TITLES.kpi)
-  })
-
-  it('배지 경제 흐름: 한쪽 그래프만 못 읽으면 그 그래프만 오류 카드다', async () => {
-    hoisted.fail.add('trendBadge')
-    const out = await renderAll()
-    expect(out.trend).toContain('aria-label="배지 경제 흐름"')
-    expect(out.trend).not.toContain(SECTION_NOTICE_TITLES.trend)
-    expect(out.trend).toContain('불러오지 못했어요.')
-    expect(out.trend).toContain('일별 앰비언트 드랍량')
-    expect(out.trend).toContain('기간 내 없음')
-  })
-
-  it('통계: 한 칸만 못 읽으면 그 칸만 「—」이고 나머지 칸의 숫자는 그대로다', async () => {
-    hoisted.fail.add('statsCell')
-    const out = await renderAll()
-    expect(out.stats).not.toContain(SECTION_NOTICE_TITLES.stats)
-    expect(out.stats).toContain('—')
-    expect(out.stats).toContain('>34<')
-    expect(out.stats).toContain('>1,234<')
-    expect(out.stats).toContain('text-red-700')
-  })
 })
 
 // ── 운영 상황판 ──────────────────────────────────────────────────────────────────────────────────
@@ -517,38 +453,6 @@ describe('옛 화면과 같은 링크 (완료 조건)', () => {
     for (const key of SECTION_KEYS) expect(out[key]).not.toContain('카드 편성 공백')
   })
 
-  it('KPI 2장: 미션 달성자 수·배지 발급량이고 지난주 대비가 있다', async () => {
-    const out = (await renderAll()).kpi
-    expect(out).toContain('미션 달성자 수')
-    expect(out).toContain('배지 발급량')
-    expect(out.match(/지난주 대비/g)).toHaveLength(2)
-    expect(out).toContain('지난주 대비 +5')
-    expect(out).toContain('지난주 대비 +20')
-  })
-
-  it('경제 추이: 기간 전환 링크가 ?trend= 그대로이고 sample을 유지하며 week는 더하지 않는다(가정 8, 주간 캘린더는 일정표로 옮겼다)', async () => {
-    const plain = (await renderAll()).trend
-    expect(plain).toContain('href="/admin?trend=7"')
-    expect(plain).toContain('href="/admin?trend=30"')
-    const kept = (await renderAll({ includeSample: true })).trend
-    expect(kept).toContain('href="/admin?trend=7&amp;sample=1"')
-    expect(kept).toContain('href="/admin?trend=30&amp;sample=1"')
-    expect(trendHref(7)).toBe('/admin?trend=7')
-    expect(trendHref(30, true)).toBe('/admin?trend=30&sample=1')
-  })
-
-  it('경제 추이: ?trend=7이면 7일 보기가 현재이고 그 밖의 값은 30일이다', async () => {
-    const seven = (await renderAll({ trend: '7' })).trend
-    expect(seven).toMatch(/aria-current="true"[^>]*>7일/)
-    const other = (await renderAll({ trend: 'abc' })).trend
-    expect(other).toMatch(/aria-current="true"[^>]*>30일/)
-  })
-
-  it('통계 4칸: 링크가 같다', async () => {
-    const out = (await renderAll()).stats
-    for (const href of ['/admin/badges', '/admin/poi', '/admin/itembooks', '/admin/users']) expect(out).toContain(`href="${href}"`)
-    for (const label of ['배지', '장소', '컬렉션', '유저']) expect(out).toContain(`>${label}<`)
-  })
 })
 
 describe('빨간 카드 글자색 text-red-700 (승인 #17)', () => {
