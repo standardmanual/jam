@@ -19,6 +19,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/admin/ops-inbox/x',
   useSearchParams: () => new URLSearchParams(nav.search),
 }))
+// 서랍 상세의 접힘 안쪽 문장을 확인하므로 접힘을 모두 펼친 대체품을 쓴다(`accordionOpen.tsx`). 기본이 접힘이라는 사실은 `drawer.test.tsx`가 확인한다.
+vi.mock('@/components/admin/ui/accordion', () => import('./accordionOpen'))
 
 import { OpsStatusBadge } from '../OpsStatusBadge'
 import { OpsStageBar } from '../OpsStageBar'
@@ -43,6 +45,8 @@ const flat = (node: ReactElement) => html(node).replace(/<!-- -->/g, '')
 /** 확인창 껍데기 안쪽 부품은 Radix 창 문맥이 필요해 열린 창으로 감싸서 그린다(포털은 쓰지 않는다). */
 const inDialog = (node: ReactElement) => flat(<AlertDialog open>{node}</AlertDialog>)
 /** 글자로 그 버튼을 찾아 여는 태그부터 닫는 태그까지 돌려준다. */
+/** 제출 원본 상자(`<pre>`)를 뺀다 — 시험에서는 접힘을 펼쳐 두므로, 원본 JSON에 든 글이 다른 구역의 검사에 섞이지 않게 한다. */
+const withoutOriginal = (out: string): string => out.replace(/<pre[\s\S]*?<\/pre>/g, '')
 const buttonOf = (out: string, label: string): string => new RegExp(`<button[^>]*>${label}</button>`).exec(out)?.[0] ?? ''
 /** 여는 태그에 `disabled` 속성이 있는지(클래스 이름의 `disabled:`는 세지 않는다). */
 const isDisabled = (tag: string): boolean => /\sdisabled(=|\s|>)/.test(tag)
@@ -306,9 +310,9 @@ describe('OpsItemDetail', () => {
         {...base}
       />
     )
-    // (접힌 상자(Accordion)가 자기 CSS 변수용 style을 붙이므로 견본의 색 속성이 없는지를 본다)
+    // 견본의 색 속성도, 그 밖의 인라인 style도 없다(시험에서는 접힘을 펼친 대체품을 쓰므로 접힘 CSS 변수용 style도 없다)
     expect(bad).not.toContain('background-color')
-    expect(bad.match(/style="/g)).toHaveLength(1)
+    expect(bad).not.toContain('style="')
     // 값은 글자로만 보인다
     expect(bad).toContain('javascript:alert(1)')
   })
@@ -353,8 +357,8 @@ describe('OpsItemDetail', () => {
     )
     expect(out).toContain('미션 · 미션을 시작해요')
     expect(out).toContain('찾을 수 없는 연결이에요')
-    expect(out).not.toContain('mission-1')
-    expect(out).not.toContain('card-1')
+    expect(withoutOriginal(out)).not.toContain('mission-1')
+    expect(withoutOriginal(out)).not.toContain('card-1')
   })
 
   it('제출 원본은 접힌 상자에 글로 담긴다', () => {
@@ -403,8 +407,9 @@ describe('OpsItemDetail', () => {
     )
     expect(withSlots).toContain('승인하기')
     expect(withSlots).toContain('편집 모드예요')
-    // 편집 모드는 ③·④ 자리를 대신한다
-    expect(withSlots).not.toContain('우산 챙겨 달리기')
+    // 편집 모드는 「유저가 겪는 것」·「핵심 값」 자리를 대신하고 「내용 전체」 접힘도 그리지 않는다
+    expect(withoutOriginal(withSlots)).not.toContain('우산 챙겨 달리기')
+    expect(withoutOriginal(withSlots)).not.toContain('내용 전체')
   })
 
   it('종류가 허용값 밖이고 값이 비어도 죽지 않는다', () => {
@@ -1015,9 +1020,10 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
     expect(out).not.toContain('첫 사유')
   })
 
-  it('선택한 검토중 항목 아래에 [반려하기]·[수정하기]가 있고 개별 [승인하기]는 없다', () => {
+  it('선택한 검토중 항목 아래에 [빼기]·[고치기]·[이대로 두기]와 보조 [반려하기]가 있고 [수정하기]·개별 [승인하기]는 없다', () => {
     const out = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
-    for (const label of ['반려하기', '수정하기']) expect(out).toContain(`>${label}<`)
+    for (const label of ['빼기', '고치기', '이대로 두기', '반려하기']) expect(out).toContain(`>${label}<`)
+    expect(out).not.toContain('>수정하기<')
     expect(out).not.toContain('>승인하기<')
   })
 
@@ -1036,10 +1042,10 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
       expect(out).not.toContain('이 항목을 공개 전에 취소할까요?')
     })
 
-    it('검토중 항목을 고르면 [반려하기]·[수정하기]이고 취소 버튼은 없다', () => {
+    it('검토중 항목을 고르면 [빼기]·[고치기]·[이대로 두기]·[반려하기]이고 취소 버튼은 없다', () => {
       nav.search = 'item=a'
       const out = flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)
-      for (const label of ['반려하기', '수정하기']) expect(out).toContain(`>${label}<`)
+      for (const label of ['빼기', '고치기', '이대로 두기', '반려하기']) expect(out).toContain(`>${label}<`)
       expect(out).not.toContain('공개 전 취소하기')
       expect(out).not.toContain('예약된 항목이에요')
     })

@@ -27,6 +27,8 @@ import type { ScheduleDay, ScheduleItem, ScheduleMissionBar, ScheduleWeek } from
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
 }))
+// 서랍 상세의 접힘 안쪽 문장을 확인하므로 접힘을 모두 펼친 대체품을 쓴다(`accordionOpen.tsx`).
+vi.mock('@/components/admin/ui/accordion', () => import('./accordionOpen'))
 
 import {
   ItemDrawerView,

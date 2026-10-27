@@ -69,6 +69,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
           items={items}
           decisions={decisions}
           balance={balance}
+          stages={bundle.stages}
           isSample={bundle.isSample}
           execution={execution}
           previewNames={previewNames}

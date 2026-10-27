@@ -18,6 +18,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/admin/ops-inbox/x',
   useSearchParams: () => new URLSearchParams(nav.search),
 }))
+// 서랍 상세의 「검수 자세히」 안쪽(툴 점검 줄)을 확인하므로 접힘을 모두 펼친 대체품을 쓴다(`accordionOpen.tsx`).
+vi.mock('@/components/admin/ui/accordion', () => import('./accordionOpen'))
 
 import { OpsBalanceBundleNotice, OpsBalanceItemWarnings, OpsBalanceLine } from '../OpsBalanceWarnings'
 import { OpsBundleWorkspace } from '../OpsBundleWorkspace'
