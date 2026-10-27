@@ -86,7 +86,7 @@ basis:
 | `research-note` | `tags`(필수), `sources`(선택): 출처 목록, `confidence`(선택): 높음·보통·낮음 |
 | `report` | `period`(필수): `weekly`·`monthly`·`deploy`, `from`·`to`(필수): 대상 기간 |
 | `insight` | `status`(필수), `tags`(필수), `source`(선택): 공개 출처만, `confidence`(선택), `outcome`(조건부 필수): 채택이면 티켓 ID, 기각이면 사유 한 줄 |
-| `ticket` | 기존 `id`·`category`·`priority`·`status`·`created`·`closed`를 그대로 유지한다. 신규 선택 필드: `parent`(상위 티켓 ID), `specs`(영향받는 스펙 문서 경로 목록), `related` |
+| `ticket` | 기존 `id`·`category`·`priority`·`status`·`created`·`closed`를 그대로 유지한다. 신규 선택 필드: `parent`(상위 티켓 ID), `specs`(영향받는 스펙 문서 경로 목록), `related`, `origin`: `ops`(운영 상황판)·`eco`(생태계 상황판)·`other`(그 밖) — 어드민 개발 요청에서 만든 티켓에만 적고 기존 티켓은 소급하지 않는다(§7 확장 규칙 1) |
 | 그 외 | 없음 |
 
 **티켓 예외.** 티켓은 경로(`docs/tickets/p*/`)로 type을 판정하므로 기존 티켓 frontmatter를 고치지

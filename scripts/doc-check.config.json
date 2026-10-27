@@ -69,7 +69,8 @@
       "active": true,
       "statusSet": "ticket",
       "exempt": ["type", "description"],
-      "fields": ["id", "category", "priority", "created", "closed", "parent", "specs"]
+      "fields": ["id", "category", "priority", "created", "closed", "parent", "specs", "origin"],
+      "enums": { "origin": ["ops", "eco", "other"] }
     },
     "prd": { "active": true, "statusSet": "doc", "fields": ["code"] },
     "data-model": { "active": true, "statusSet": "doc", "fields": ["code"] },
