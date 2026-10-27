@@ -12,6 +12,7 @@ import {
   splitByChecked,
   withAllChecked,
   withCheck,
+  withItemsChecked,
   type SelectableItem,
 } from '../selection'
 
@@ -82,6 +83,21 @@ describe('승인할 것과 제외할 것', () => {
     expect(split.decidable.map((item) => item.id)).toEqual(['a', 'b'])
     expect(split.checked.map((item) => item.id)).toEqual(['a'])
     expect(split.excluded.map((item) => item.id)).toEqual(['b'])
+  })
+})
+
+describe('지정한 항목만 체크·해제 (티켓 20261026_2024)', () => {
+  it('목록에 든 항목만 바꾸고 나머지 기억은 그대로 둔다', () => {
+    const items = [make('a'), make('b'), make('c', { formatErrors: ['x: y'] })]
+    const off = withItemsChecked({}, items, ['a', 'b'], false)
+    expect(splitByChecked(items, off).checked).toEqual([])
+    const on = withItemsChecked(off, items, ['c'], true)
+    expect(splitByChecked(items, on).checked.map((item) => item.id)).toEqual(['c'])
+    expect(on.a).toEqual(off.a)
+  })
+
+  it('목록에 없는 ID는 무시한다', () => {
+    expect(withItemsChecked({}, [make('a')], ['zzz'], false)).toEqual({})
   })
 })
 

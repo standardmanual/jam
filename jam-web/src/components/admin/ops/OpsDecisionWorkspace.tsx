@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
+import { balanceItemIdSet, buildBalanceView } from '@/lib/admin/opsInbox/balance/view'
 import { findRevertTarget } from '@/lib/admin/opsInbox/edit'
 import { executeToast, readExecuteResult, scheduledItemIds } from '@/lib/admin/opsInbox/executeView'
 import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
@@ -14,6 +15,7 @@ import {
   splitByChecked,
   withAllChecked,
   withCheck,
+  withItemsChecked,
   type CheckOverrides,
 } from '@/lib/admin/opsInbox/selection'
 import type { OpsBundleExecution, OpsItemRecord } from '@/lib/admin/opsInbox/query'
@@ -22,6 +24,7 @@ import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsImageProduction } from './OpsImageProduction'
 import { OpsColorPairPicker } from './OpsColorPairPicker'
+import { OpsDecisionPanel } from './OpsDecisionPanel'
 import { OpsMixTrialNotice } from './OpsMixTrialNotice'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
 import { useItemImageProduction } from './useItemImageProduction'
@@ -31,6 +34,7 @@ import { useItemImageProduction } from './useItemImageProduction'
  *
  * 셸의 슬롯은 함수라 서버 컴포넌트에서 넘길 수 없다 — 그래서 client 래퍼가 슬롯 갈래를 채운다.
  * - `barAction`: 「N건 승인하고 예약」과 요약창 (`OpsExecuteBundle`, 티켓 20261026_2031). 승인과 예약을 한 버튼이 한다. 승인할 검토중 항목이나 승인됨 항목이 있을 때 나온다
+ * - `panel`: 결정 패널 머리 (`OpsDecisionPanel`, 티켓 20261026_2024). 이유 칩·이번 기획의 핵심·종류별로 고르기. 종류 체크는 아래 `overrides`를 항목마다 덮어쓴다(새 상태 없음)
  * - `rowLead`·`listHeader`: 행 체크박스와 「전체 선택 · 결정할 것 12개 중 11개 선택」. 패턴 제안은 예약 대상이 아니라 체크박스가 없다(항목 서랍에서 「패턴 사전에 넣기」로 처리한다)
  * - `detailFooter`: 항목 상태별 결정 줄(`OpsItemFooter`, 티켓 20261006_1537 ③-b가 `OpsItemActions`·`OpsCancelItem`·`OpsEndItem` 분기와 결과 처리를 일정표 서랍과 함께 쓰도록 옮겼다):
  *   「예약됨」 항목이면 안내와 [공개 전 취소하기] (티켓 20261002_1649), 「게재중」이고 지금 종료가 있는 종류면 안내와 [지금 종료하기] (티켓 20261006_1038 ⑪-b), 그 밖에는 반려·수정(패턴 제안은 「패턴 사전에 넣기」도)
@@ -89,6 +93,12 @@ export function OpsDecisionWorkspace({
   const checked = useMemo(() => reviewingChecked.filter((item) => item.kind !== PATTERN_PROPOSAL_KIND), [reviewingChecked])
   const checkedIds = useMemo(() => new Set(checked.map((item) => item.id)), [checked])
   const allChecked = decidable.length > 0 && checked.length === decidable.length
+  // 결정 패널의 「확인 필요」: 밸런스 경고가 붙은 항목과 형식 오류가 있는 항목의 합집합.
+  const needsCheckIds = useMemo(() => {
+    const ids = new Set(balanceItemIdSet(buildBalanceView(balance)))
+    for (const item of items) if (item.formatErrors.length > 0) ids.add(item.id)
+    return ids
+  }, [balance, items])
 
   const handlers = useOpsItemResultHandlers({ bundleId })
   const { refresh } = handlers
@@ -126,6 +136,16 @@ export function OpsDecisionWorkspace({
           <OpsColorPairPicker bundleId={bundleId} item={item} ctx={ctx} onFilled={handlers.handleColorFilled} onConflict={refresh} />
           <OpsImageProduction item={item} items={items} isSample={isSample ?? false} production={imageProduction} />
         </>
+      )}
+      panel={(ctx) => (
+        <OpsDecisionPanel
+          items={items}
+          needsCheckIds={needsCheckIds}
+          checkedIds={checkedIds}
+          approvableCount={checked.length + execution.readyCount}
+          onSetChecked={(itemIds, value) => setOverrides((current) => withItemsChecked(current, items, itemIds, value))}
+          onSelectItem={ctx.selectItem}
+        />
       )}
       barAction={() =>
         decidable.length > 0 || execution.approvedCount > 0 ? (
