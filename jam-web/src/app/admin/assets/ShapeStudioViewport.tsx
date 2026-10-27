@@ -82,7 +82,7 @@ const BRAND_LETTERS: Record<'J' | 'A' | 'M', { w: number; h: number; d: string }
   A: {
     w: 177,
     h: 205,
-    d: 'M94.6635 152.087L101.67 204.628H176.311L143.504 0H32.8075L0 204.628H74.6415L81.6479 152.087H94.6763H94.6635ZM88.1557 98.9574C68.7602 98.9574 53.0468 89.7381 53.0468 78.3578C53.0468 66.9775 68.773 57.7582 88.1557 57.7582C107.551 57.7582 123.265 66.9775 123.265 78.3578C123.265 89.7381 107.538 98.9574 88.1557 98.9574Z',
+    d: 'M176.311 204.628H109.868L101.643 152.087H74.655L66.444 204.628H0L32.807 0H143.504L176.311 204.628ZM77.685 114.25H100.202L88.944 58L77.685 114.25Z',
   },
   M: {
     w: 256,
@@ -93,7 +93,7 @@ const BRAND_LETTERS: Record<'J' | 'A' | 'M', { w: number; h: number; d: string }
 
 function brandLetterSvgMarkup(key: 'J' | 'A' | 'M'): string {
   const letter = BRAND_LETTERS[key]
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${letter.w}" height="${letter.h}" viewBox="0 0 ${letter.w} ${letter.h}"><path d="${letter.d}" fill="#000"/></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${letter.w}" height="${letter.h}" viewBox="0 0 ${letter.w} ${letter.h}"><path d="${letter.d}" fill="#000" fill-rule="evenodd"/></svg>`
 }
 
 function toCanvasLike(canvas: HTMLCanvasElement): CanvasLike {
