@@ -104,7 +104,7 @@ export async function refreshTodaySpecialDays(now: Date = new Date()): Promise<S
   return settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
 }
 
-function isSpecialDay(v: unknown): v is SpecialDay {
+export function isSpecialDay(v: unknown): v is SpecialDay {
   if (!v || typeof v !== 'object') return false
   const { name, type } = v as Record<string, unknown>
   return typeof name === 'string' && (type === 'holiday' || type === 'anniversary' || type === 'seasonal' || type === 'sundry')

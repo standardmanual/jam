@@ -88,7 +88,7 @@ export function normalizeWeatherItems(items: KmaForecastItem[], todayYmd: string
   return 'mild'
 }
 
-const WEATHER_KINDS: readonly string[] = ['clear', 'mild', 'rain', 'extreme']
+export const WEATHER_KINDS: readonly string[] = ['clear', 'mild', 'rain', 'extreme']
 
 let cache: { date: string; value: WeatherKind } | null = null
 
