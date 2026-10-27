@@ -51,12 +51,13 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(NAV_GROUPS.map((g) => g.label)).toEqual(['라이브', '유저', '콘텐츠', '밸런스', '디자인', '시스템'])
   })
 
-  it('라이브 그룹은 맨 위에 있고 운영플랜·일정표·투데이·패턴 사전을 담는다', () => {
+  it('라이브 그룹은 맨 위에 있고 운영플랜·일정표·투데이·트렌드 레이더·패턴 사전을 담는다', () => {
     expect(NAV_GROUPS[0].id).toBe('live')
     expect(NAV_GROUPS[0].items.map((i) => [i.href, i.label])).toEqual([
       ['/admin/ops-inbox', '운영플랜'],
       ['/admin/ops-schedule', '일정표'],
       ['/admin/today', '투데이'],
+      ['/admin/ops-trends', '트렌드 레이더'],
       ['/admin/ops-patterns', '패턴 사전'],
     ])
   })
@@ -71,6 +72,7 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(mostSpecificActiveItem('/admin/ops-schedule')?.href).toBe('/admin/ops-schedule')
     expect(mostSpecificActiveItem('/admin/ops-schedule')?.label).toBe('일정표')
     expect(mostSpecificActiveItem('/admin/ops-patterns')?.label).toBe('패턴 사전')
+    expect(mostSpecificActiveItem('/admin/ops-trends')?.label).toBe('트렌드 레이더')
   })
 
   it('운영 설정 경로에서는 운영 설정만 활성이고 헤더 제목이 「운영 설정」이다', () => {
