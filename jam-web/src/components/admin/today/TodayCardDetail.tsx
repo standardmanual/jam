@@ -283,7 +283,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
   )
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full">
       <TodayEditorShell
         header={
           <div>

@@ -43,7 +43,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
   const activeSlottedBadgeCount = slottedBadges.filter((b) => !b.deleted_at).length
 
   return (
-    <div className="space-y-8 p-4 md:p-8">
+    <div className="w-full space-y-8 p-4 md:p-8">
       {/* 뒤로가기 + 제목 */}
       <div className="space-y-3">
         <Link href="/admin/itembooks">

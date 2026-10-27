@@ -79,7 +79,7 @@ export default async function AdminRecipesPage({ searchParams }: AdminRecipesPag
   const totalPages = totalPagesOf(totalCount, ADMIN_LIST_PAGE_SIZE)
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">레시피</h1>

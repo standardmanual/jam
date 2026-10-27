@@ -19,7 +19,7 @@ export default function AdminError({
     error.message?.includes('SUPABASE_SERVICE_ROLE_KEY')
 
   return (
-    <div className="p-8 max-w-xl">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <h1 className="text-2xl font-bold mb-2 text-red-600">문제가 생겼어요</h1>
       <p className="text-muted-foreground mb-6 text-sm">페이지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
 

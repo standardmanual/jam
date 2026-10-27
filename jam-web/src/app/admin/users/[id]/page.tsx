@@ -100,7 +100,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
   const isAdmin = isAdminAccount(user)
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <Link href="/admin/users" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 유저 목록
@@ -112,7 +112,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
       </div>
 
       {/* 잼 포인트 지급/회수 (공용 폼 — /admin/points와 동일 실행 로직) */}
-      <div className="mb-8 max-w-xl">
+      <div className="mb-8 w-full">
         <UserGrantForm userId={user.id} username={user.username} />
       </div>
 
@@ -127,7 +127,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
       </div>
 
       {/* 계정 작업 — 목록에서 뺀 초기화·완전 삭제 */}
-      <div className="mb-8 max-w-xl bg-white border border-border rounded-2xl p-5 space-y-3">
+      <div className="mb-8 w-full bg-white border border-border rounded-2xl p-5 space-y-3">
         <h3 className="font-bold">계정 작업</h3>
         {isSelf ? (
           <p className="text-muted-foreground text-sm">본인 계정은 이 화면에서 초기화하거나 삭제할 수 없어요.</p>

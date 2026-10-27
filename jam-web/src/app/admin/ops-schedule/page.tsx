@@ -66,7 +66,7 @@ export default async function OpsSchedulePage({ searchParams }: OpsSchedulePageP
 
   return (
     <OpsSampleScope>
-      <div className="p-8">
+      <div className="w-full p-4 md:p-8 space-y-6">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
           <div>
             <h1 className="text-2xl font-bold">일정표</h1>

@@ -42,7 +42,7 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
   const categoryLabel = categories.find(c => c.slug === poi.category)?.label
 
   return (
-    <div className="space-y-8 p-4 md:p-8">
+    <div className="w-full space-y-8 p-4 md:p-8">
       {/* 뒤로가기 + 제목 */}
       <div className="space-y-3">
         <Link href="/admin/poi">

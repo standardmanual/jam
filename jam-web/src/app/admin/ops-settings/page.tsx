@@ -26,7 +26,7 @@ function SectionSkeleton() {
 
 export default function OpsSettingsPage() {
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">{SETTINGS_PAGE_TITLE}</h1>
         <p className="text-muted-foreground text-sm mt-1">{SETTINGS_PAGE_SUBTITLE}</p>
@@ -34,7 +34,7 @@ export default function OpsSettingsPage() {
 
       <OpsSettingsNav sections={OPS_SETTINGS_SECTIONS} />
 
-      <div className="max-w-3xl space-y-12">
+      <div className="w-full space-y-12">
         {OPS_SETTINGS_SECTIONS.map(({ id, title, description, Body }) => (
           <OpsSettingsSection key={id} id={id} title={title} description={description}>
             <Suspense fallback={<SectionSkeleton />}>

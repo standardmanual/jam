@@ -62,7 +62,7 @@ export function AdminRoleToggle({ userId, userName, initialIsAdmin, isWhiteliste
   }
 
   return (
-    <div className="rounded-2xl border border-border p-4 max-w-xl flex items-center justify-between gap-4">
+    <div className="rounded-2xl border border-border p-4 w-full flex items-center justify-between gap-4">
       <div>
         <p className="text-sm font-bold">어드민 권한</p>
         <p className="text-muted-foreground text-xs mt-0.5">

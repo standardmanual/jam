@@ -8,7 +8,7 @@ export default async function AdminBadgeMetricLabelsPage() {
   const labels = (labelsRaw ?? []) as BadgeMetricLabelRow[]
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">지표 라벨</h1>
         <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-pretty">

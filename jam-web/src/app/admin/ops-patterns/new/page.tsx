@@ -13,8 +13,8 @@ const PAGE_TITLE = '새 패턴 만들기'
 
 export default function OpsPatternNewPage() {
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-6xl">
+    <div className="w-full p-4 md:p-8 space-y-6">
+      <div className="w-full">
         <OpsPatternForm
           mode="create"
           initial={emptyDraft()}

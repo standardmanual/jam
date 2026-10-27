@@ -99,7 +99,7 @@ export default function AbusingClient({
   ]
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">어뷰징 정책 관리</h1>
@@ -147,7 +147,7 @@ export default function AbusingClient({
       {tab === 'suspensions' && (
         <div className="space-y-5">
           {/* 이용 정지 걸기 */}
-          <div className="bg-white border border-border rounded-2xl p-5 space-y-3 max-w-3xl">
+          <div className="w-full bg-white border border-border rounded-2xl p-5 space-y-3">
             <h3 className="text-sm font-semibold text-foreground">이용 정지 걸기</h3>
             <input
               value={suspendUserId}

@@ -1438,7 +1438,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         const details = (e.target as HTMLElement).closest('details')
         if (details && !details.open) details.open = true
       }}
-      className="mx-auto w-full max-w-6xl"
+      className="w-full"
     >
       <BadgeEditorShell
         header={

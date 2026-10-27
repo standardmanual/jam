@@ -864,7 +864,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   )
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-6xl">
+    <form onSubmit={handleSubmit} className="w-full">
       <TodayEditorShell
         header={header}
         railLabel="미리보기와 저장"

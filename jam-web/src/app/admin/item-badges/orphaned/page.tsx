@@ -39,7 +39,7 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
   const pageRows = allRows.slice(from, to + 1)
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">미소유 배지</h1>
         <p className="text-muted-foreground text-sm mt-1">

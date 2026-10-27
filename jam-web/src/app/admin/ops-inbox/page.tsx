@@ -28,7 +28,7 @@ export default async function OpsInboxPage({ searchParams }: OpsInboxPageProps) 
   const isEmpty = list.counts.all === 0
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">운영플랜</h1>
         <p className="text-muted-foreground text-sm mt-1">에이전트가 보낸 한 주 기획을 확인하고 승인해요</p>

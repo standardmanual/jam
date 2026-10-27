@@ -95,8 +95,8 @@ export default async function OpsPatternDetailPage({
 
   if (!pattern.ok || pattern.value === null) {
     return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-6xl space-y-4">
+      <div className="w-full p-4 md:p-8">
+        <div className="w-full space-y-4">
           <PatternBackLink />
           <OpsSectionNotice icon="patterns" title={PATTERN_LOAD_FAILED_TITLE} />
         </div>
@@ -106,8 +106,8 @@ export default async function OpsPatternDetailPage({
 
   const record = pattern.value
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-6xl">
+    <div className="w-full p-4 md:p-8">
+      <div className="w-full">
         <EditorShell
           railLabel="패턴 정보"
           header={<OpsPatternDetailHeader pattern={record} actions={<OpsPatternDetailActions pattern={record} />} />}

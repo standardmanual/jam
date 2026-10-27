@@ -82,10 +82,8 @@ export default function BackgroundGeneratorPreview({
   // 주변 UI를 투명 처리할지 결정한다. 없으면 배경 없는 화면과 똑같이 보인다.
   const themed = mode === 'color' && Boolean(backgroundColor)
 
-  // 2단 배치에서 설정 영역이 눌리지 않도록, 넓은 화면(xl↑)에서는 이 섹션만 폼 기본 폭
-  // (max-w-2xl)을 넘어 어드민 본문 가용 폭까지 넓힌다(사이드바 16rem + 여백 감안).
-  // 미리보기를 그리지 않는 호출부(배지 폼)는 넓힐 이유가 없다.
-  const widenClass = renderPreview ? 'xl:w-[calc(100vw-22rem)] xl:max-w-[1040px]' : ''
+  // 어드민 본문 가용 폭을 100% 채운다.
+  const widenClass = 'w-full'
   return (
     <div className={`border border-dashed border-purple-600/40 rounded-2xl p-5 space-y-5 bg-fuchsia-50 ${widenClass}`}>
       <div className="flex flex-col gap-1">

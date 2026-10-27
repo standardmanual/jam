@@ -26,7 +26,7 @@ export default async function EditBadgePage({ params }: { params: Promise<{ id: 
   const pointPolicy = await getBadgePointPolicy(supabase)
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       {/* 제목은 폼의 섹션 열 위에 둔다 — 오른쪽 레일이 페이지 맨 위에서 시작하도록(티켓 20260911_0901) */}
       <BadgeForm
         badge={data as BadgeRow}

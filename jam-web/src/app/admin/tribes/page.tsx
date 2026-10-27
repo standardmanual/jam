@@ -20,7 +20,7 @@ export default async function AdminTribesPage() {
   )
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">트라이브</h1>
         <Link

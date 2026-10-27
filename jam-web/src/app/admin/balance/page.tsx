@@ -31,7 +31,7 @@ function SectionSkeleton() {
 export default function BalanceSettingsPage() {
   const navSections = BALANCE_SECTIONS.map((section) => ({ id: section.binding.id, label: section.label }))
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-balance break-keep wrap-break-word">밸런스 설정</h1>
@@ -47,7 +47,7 @@ export default function BalanceSettingsPage() {
       <OpsSettingsNav sections={navSections} />
       <HashScrollKeeper />
 
-      <div className="max-w-4xl space-y-12">
+      <div className="w-full space-y-12">
         {BALANCE_SECTIONS.map(({ binding, title, description, Body }) => (
           <OpsSettingsSection key={binding.id} id={binding.id} title={title} description={description}>
             <Suspense fallback={<SectionSkeleton />}>

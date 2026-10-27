@@ -66,7 +66,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   )
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="w-full p-4 md:p-8 space-y-6">
       {/* 헤더 */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">배지</h1>

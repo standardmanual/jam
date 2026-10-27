@@ -38,7 +38,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
   const title = bundle.title?.trim() ? bundle.title.trim() : null
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Link
@@ -55,7 +55,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
           </div>
           {title && <p className="mt-1 text-sm text-muted-foreground break-keep wrap-break-word">{weekText}</p>}
           {bundle.hypothesis && (
-            <p className="text-muted-foreground text-sm mt-1 line-clamp-2 max-w-3xl break-words">가설 {bundle.hypothesis}</p>
+            <p className="text-muted-foreground text-sm mt-1 line-clamp-2 w-full break-words">가설 {bundle.hypothesis}</p>
           )}
         </div>
         {bundle.isSample && <OpsSampleDeleteMenu bundleId={bundle.id} itemCount={items.length} />}

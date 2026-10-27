@@ -23,7 +23,7 @@ export default async function AdminBadgeFamilyDetailPage({ params }: AdminBadgeF
   if (!family) notFound()
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="flex flex-col gap-1">
         <Link href="/admin/badge-families" className="text-sm text-muted-foreground underline underline-offset-4">
           ← 계열 관리

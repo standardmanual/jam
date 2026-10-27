@@ -251,7 +251,7 @@ export default function ActivityBadgeImagePage() {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-5xl">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">액티비티 배지</h1>
         <p className="text-muted-foreground text-sm mt-1">

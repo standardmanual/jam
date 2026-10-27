@@ -237,7 +237,7 @@ export default function ItemBookForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
+    <form onSubmit={handleSubmit} className="w-full space-y-5">
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
           {error}

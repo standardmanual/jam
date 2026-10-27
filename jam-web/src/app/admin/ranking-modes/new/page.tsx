@@ -9,7 +9,7 @@ export default async function NewRankingModePage() {
   const missions = await fetchRankingMissionOptions(supabase)
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <h1 className="mb-6 text-2xl font-bold">랭킹 규칙 추가</h1>
       <RankingModeForm missions={missions} initialTargetUsers={[]} />
     </div>

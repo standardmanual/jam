@@ -650,7 +650,7 @@ export default function AdminAssetsShapeStudioPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] flex-col overflow-hidden bg-[#eceeea] text-[#1e2322]">
+    <div className="flex w-full h-[calc(100dvh-64px)] flex-col overflow-hidden bg-[#eceeea] text-[#1e2322]">
       <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#e0e4df] bg-[#f8f9f6] px-6">
         <div className="flex items-center gap-2.5">
           <div className="grid h-[30px] w-[30px] place-items-center rounded-[9px] border border-[#a9bd8e] bg-[#d5edac]">

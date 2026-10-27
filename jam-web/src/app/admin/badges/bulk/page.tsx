@@ -28,7 +28,7 @@ export default async function AdminBadgeBulkPage({ searchParams }: AdminBadgeBul
   const { runs, error } = await fetchRecentBulkRuns()
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div>
         <Link href="/admin/badges" className="text-sm text-muted-foreground underline underline-offset-4">
           ← 배지

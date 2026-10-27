@@ -85,7 +85,7 @@ export default async function BalanceDashboardPage({ searchParams }: Props) {
   const tab = parseDashboardTab(params.tab)
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-balance break-keep wrap-break-word">밸런스 지표</h1>
         <p className="text-muted-foreground text-sm mt-1 text-pretty break-keep wrap-break-word">

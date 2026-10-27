@@ -162,7 +162,7 @@ export default function RankingModeForm({ mode, missions, initialTargetUsers }: 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="ranking-mode-title" className="text-sm font-medium text-foreground">
           제목

@@ -76,7 +76,7 @@ export default async function AdminMissionsPage({ searchParams }: AdminMissionsP
   const typeOptions = missionTypesForKind((summaryRaw ?? []) as MissionTypeSummaryRow[], params.kind)
 
   return (
-    <div className="space-y-6 p-4 md:p-8">
+    <div className="w-full space-y-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">미션</h1>

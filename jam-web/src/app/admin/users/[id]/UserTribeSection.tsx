@@ -73,7 +73,7 @@ export function UserTribeSection({ userId, view }: Props) {
         <h2 className="text-lg font-bold">트라이브</h2>
       </div>
 
-      <div className="mb-6 max-w-xl bg-white border border-border rounded-2xl p-5 space-y-4">
+      <div className="mb-6 w-full bg-white border border-border rounded-2xl p-5 space-y-4">
         <h3 className="font-bold">지금 트라이브</h3>
         {!current.ok ? (
           <ReadFailed subject="지금 트라이브를" />

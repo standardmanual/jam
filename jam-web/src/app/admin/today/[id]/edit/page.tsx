@@ -48,7 +48,7 @@ export default async function EditTodayCardPage({ params, searchParams }: EditTo
   const recipes = toTodayRecipeOptions((recipesRaw ?? []) as TodayRecipeOptionRow[])
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <TodayCardForm
         card={card}
         missions={missions}

@@ -37,7 +37,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const hasFilter = !!(params.q || params.tribeId || params.onboarding || params.ban)
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <h1 className="text-2xl font-bold">유저</h1>
 
       {/* 필터·표는 URL(useSearchParams)과 동기화하므로 Suspense로 감싼다 */}

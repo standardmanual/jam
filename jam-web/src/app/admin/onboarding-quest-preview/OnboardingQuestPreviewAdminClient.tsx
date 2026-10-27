@@ -64,7 +64,7 @@ export default function OnboardingQuestPreviewAdminClient({ current }: { current
   const currentLabel = current === null ? '미리보기 중이 아님' : STEP_LABELS[current]
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-xl">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">퀘스트 미리보기</h1>
         <p className="text-muted-foreground text-sm mt-1">

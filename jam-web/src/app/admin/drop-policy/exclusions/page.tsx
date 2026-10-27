@@ -109,7 +109,7 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
   const totalPages = totalPagesOf(totalCount, ADMIN_LIST_PAGE_SIZE)
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">드랍 제외</h1>
         <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-pretty">

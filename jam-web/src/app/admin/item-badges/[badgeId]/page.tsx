@@ -104,7 +104,7 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
 
   if (items.length === 0) {
     return (
-      <div className="p-4 md:p-8">
+      <div className="w-full p-4 md:p-8">
         {header}
         <div className="text-center py-12 text-muted-foreground text-sm">
           이 배지로 발급된 개체가 아직 없어요
@@ -248,7 +248,7 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
   const hasFilter = !!statusFilter || reissuedOnly
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       {header}
 
       <div className="space-y-4">

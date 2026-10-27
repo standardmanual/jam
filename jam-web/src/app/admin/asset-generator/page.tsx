@@ -266,7 +266,7 @@ export default function AssetGeneratorPage() {
   }, [])
 
   return (
-    <div className="max-w-[1400px] space-y-6 p-4 md:p-8">
+    <div className="w-full space-y-6 p-4 md:p-8">
       <h1 className="text-2xl font-bold md:text-3xl">에셋 제너레이터</h1>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">

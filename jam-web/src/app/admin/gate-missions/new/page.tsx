@@ -6,7 +6,7 @@ export default async function NewGateMissionPage() {
   const { families, rewardBadgeLabels, activityTypeLabels, existingAxes } = await loadGateMissionFormData()
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div>
         <Link href="/admin/gate-missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 게이트 미션 목록

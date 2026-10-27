@@ -55,7 +55,7 @@ export default async function AdminTodayPage({ searchParams }: AdminTodayPagePro
   const hasFilter = !!(params.q || params.template || params.imageSource)
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">투데이</h1>

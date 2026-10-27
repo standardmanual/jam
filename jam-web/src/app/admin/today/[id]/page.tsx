@@ -43,7 +43,7 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
   const recipeLabel = recipeRaw ? toTodayRecipeOptions([recipeRaw as TodayRecipeOptionRow])[0].label : undefined
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <TodayCardDetail
         card={card}
         linkedBadges={linkedBadges}

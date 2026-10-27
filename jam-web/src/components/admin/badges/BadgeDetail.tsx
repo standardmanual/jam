@@ -385,7 +385,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
   )
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full">
       <BadgeEditorShell
         header={
           <div>

@@ -81,7 +81,7 @@ export default async function AdminRankingModesPage({ searchParams }: AdminRanki
   const total = count ?? 0
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">랭킹</h1>

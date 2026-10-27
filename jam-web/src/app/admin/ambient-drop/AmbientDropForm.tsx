@@ -151,7 +151,7 @@ export default function AmbientDropForm({
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="w-full space-y-6">
       {/* 배포 트리거 — 예약 배포 스위치. 시각과 상호 배제 창은 밸런스 설정에서 바꾸고 여기서는 읽기만 한다 */}
       <section className="bg-white border border-border rounded-2xl p-6">
         <h2 className="font-bold mb-1">배포 트리거</h2>

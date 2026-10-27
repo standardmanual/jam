@@ -27,7 +27,7 @@ export default async function BadgeDetailPage({ params }: { params: Promise<{ id
   )
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <BadgeDetail
         badge={badge}
         tribeName={badge.tribe_id ? tribeMap.get(badge.tribe_id) : undefined}

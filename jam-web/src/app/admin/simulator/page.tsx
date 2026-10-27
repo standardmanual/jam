@@ -128,10 +128,10 @@ export default function SimulatorPage() {
   const selectedUser = users.find((u) => u.id === userId)
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <h1 className="text-2xl font-bold mb-8">시뮬레이터</h1>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 입력 패널 */}
         <div className="space-y-5">
           <div className="bg-white border border-border rounded-2xl p-5 space-y-4">

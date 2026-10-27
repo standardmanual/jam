@@ -62,7 +62,7 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
   const totalPages = totalPagesOf(count ?? 0, ADMIN_LIST_PAGE_SIZE)
 
   return (
-    <div className="space-y-6 p-4 md:p-8">
+    <div className="w-full space-y-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">검토 큐</h1>

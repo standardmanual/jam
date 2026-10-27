@@ -76,7 +76,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
   const emptyMessage = hasFilter ? '조건에 맞는 컬렉션이 없어요' : '등록된 컬렉션이 없어요'
 
   return (
-    <div className="space-y-6 p-4 md:p-8">
+    <div className="w-full space-y-6 p-4 md:p-8">
       {/* 헤더 */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold md:text-3xl">컬렉션</h1>

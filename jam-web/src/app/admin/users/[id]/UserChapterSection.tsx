@@ -40,7 +40,7 @@ export function UserChapterSection({ view }: Props) {
         </p>
       </div>
 
-      <div className="mb-6 max-w-xl bg-white border border-border rounded-2xl p-5">
+      <div className="mb-6 w-full bg-white border border-border rounded-2xl p-5">
         <h3 className="font-bold mb-3">지금 챕터</h3>
         {!current.ok ? (
           <ReadFailed subject="지금 챕터를" />
@@ -71,7 +71,7 @@ export function UserChapterSection({ view }: Props) {
         ) : ups.value.length === 0 ? (
           <p className="text-muted-foreground text-sm break-keep wrap-break-word">아직 오른 기록이 없어요.</p>
         ) : (
-          <div className="bg-white border border-border rounded-2xl p-2 max-w-xl">
+          <div className="bg-white border border-border rounded-2xl p-2 w-full">
             <Table>
               <TableHeader>
                 <TableRow>

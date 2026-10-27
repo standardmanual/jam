@@ -151,8 +151,8 @@ async function PatternsBody({ view, status }: ReturnType<typeof parsePatternList
 export default async function OpsPatternsPage({ searchParams }: { searchParams: SearchParamsPromise }) {
   const params = parsePatternListParams(pickSingleQueryParams(await searchParams))
   return (
-    <div className="p-8">
-      <div className="max-w-6xl">
+    <div className="w-full p-4 md:p-8 space-y-6">
+      <div className="w-full">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold">{PATTERN_PAGE_TITLE}</h1>

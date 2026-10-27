@@ -70,7 +70,7 @@ export default async function AdminPointsPage({ searchParams }: AdminPointsPageP
   }))
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="w-full p-4 md:p-8 space-y-8">
       <div>
         <h1 className="text-2xl font-bold">포인트</h1>
         <p className="text-muted-foreground text-sm mt-1">포인트 발행 현황 · 정합성 점검 · 유저 지급/회수</p>

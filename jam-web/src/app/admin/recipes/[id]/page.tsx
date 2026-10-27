@@ -46,7 +46,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
   const cardCount = references.error ? 0 : references.noticeTotal
 
   return (
-    <div className="p-8">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <Link href="/admin/recipes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 레시피

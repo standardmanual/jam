@@ -121,7 +121,7 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
   const serialLabel = `${item.serial_prefix ?? ''}${item.serial_number}`
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-3xl">
+    <div className="w-full p-4 md:p-8 space-y-6">
       <div>
         <Link
           href={`/admin/item-badges/${item.badge_id}`}

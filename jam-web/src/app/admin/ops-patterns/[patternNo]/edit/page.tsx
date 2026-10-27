@@ -38,8 +38,8 @@ export default async function OpsPatternEditPage({ params }: { params: Promise<{
 
   if (!loaded.ok || loaded.pattern === null) {
     return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-6xl space-y-4">
+      <div className="w-full p-4 md:p-8">
+        <div className="w-full space-y-4">
           <PatternBackLink />
           <OpsSectionNotice icon="patterns" title={PATTERN_LOAD_FAILED_TITLE} />
         </div>
@@ -49,8 +49,8 @@ export default async function OpsPatternEditPage({ params }: { params: Promise<{
 
   const record = loaded.pattern
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-6xl">
+    <div className="w-full p-4 md:p-8">
+      <div className="w-full">
         <OpsPatternForm
           key={record.updatedAt}
           mode="edit"

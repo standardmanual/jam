@@ -58,7 +58,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
 
   return (
     <OpsSampleScope>
-      <div className="p-8 max-w-6xl">
+      <div className="w-full p-4 md:p-8">
         <header className="mb-8 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
           <div>
             <h1 className="text-2xl font-bold">운영 홈</h1>
@@ -102,7 +102,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
             <h2 id="ops-shortcuts-heading" className="text-base font-semibold mb-4 text-foreground">
               빠른 실행
             </h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {SHORTCUTS.map((s) => (
                 <Link
                   key={s.label}
