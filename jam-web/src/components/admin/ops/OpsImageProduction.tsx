@@ -9,11 +9,11 @@ import { OPS_IMAGE_PRODUCTION_STATUSES } from '@/lib/admin/opsSignals/compositio
 import type { ItemImageProduction } from './useItemImageProduction'
 
 /**
- * 승인됨 항목의 [이미지 만들기]·다시 만들기 (티켓 20261007_1032 ③-b2, 상위 20261007_0946).
+ * 승인됨·준비중·예약됨 항목의 [이미지 만들기]·다시 만들기 (티켓 20261007_1032 ③-b2, 상위 20261007_0946).
  *
  * 서랍(`ReadyItemBody`)과 기획 상세(`OpsDecisionWorkspace`)가 카드 미리보기 바로 아래에 같은 부품을 놓는다. 결정 줄(`OpsItemFooter`)은 승인됨에서 안내 글이 대신하므로 그 밖에 둔다.
  * 이미지가 없으면 [이미지 만들기], 있으면 [이미지 다시 만들기](새 시드)다. 만드는 중에는 버튼이 잠기고 「만드는 중」을 보인다.
- * 아무것도 그리지 않는 경우: 시험 묶음, 승인됨·준비중이 아닌 항목(게재중·예약됨 포함), 이미지 칸이 없는 종류, 만들 지시(`image_spec.preset_id`)가 없는 항목.
+ * 아무것도 그리지 않는 경우: 시험 묶음, 승인됨·준비중·예약됨이 아닌 항목(게재중 포함), 이미지 칸이 없는 종류, 만들 지시(`image_spec.preset_id`)가 없는 항목.
  */
 
 export const IMAGE_MAKE_LABEL = '이미지 만들기'

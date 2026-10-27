@@ -51,6 +51,7 @@ import {
   readExecuteResult,
   readPrecheck,
   readyJamBadgeIds,
+  scheduledItemIds,
   type BadgePreviewView,
   type PrecheckView,
   type SummarySource,
@@ -487,6 +488,14 @@ describe('executeToast', () => {
   it('실행 응답의 approved 목록 길이를 읽는다. 없으면 0이다', () => {
     expect(readExecuteResult({ scheduled: ['a'], approved: ['a', 'b'] }).approved).toBe(2)
     expect(readExecuteResult({ scheduled: ['a'] }).approved).toBe(0)
+  })
+
+  it('scheduledItemIds는 scheduled 배열의 문자열만 돌려주고, 배열이 아니면 빈 배열이다', () => {
+    expect(scheduledItemIds({ scheduled: ['a', 'b'] })).toEqual(['a', 'b'])
+    expect(scheduledItemIds({ scheduled: ['a', 1, null, { id: 'x' }, 'c'] })).toEqual(['a', 'c'])
+    expect(scheduledItemIds({ scheduled: 'a' })).toEqual([])
+    expect(scheduledItemIds({ scheduled: 3 })).toEqual([])
+    expect(scheduledItemIds({})).toEqual([])
   })
 
   it('실패가 있으면 「N개를 예약 등록했고 M개는 실패했어요」', () => {

@@ -103,8 +103,8 @@ export const OPS_STOPPED_ITEM_STATUSES: readonly string[] = ['rejected', 'cancel
 /** 승인 전 상태: 도착·검토중·승인됨·준비중(A8). */
 export const OPS_PRE_APPROVAL_STATUSES: readonly string[] = ['arrived', 'reviewing', 'approved', 'preparing']
 
-/** 「이미지 제작 필요」를 보이는 상태: 승인됨·준비중. 도착·검토중은 아직 만들 때가 아니다(티켓 20261007_1031). */
-export const OPS_IMAGE_PRODUCTION_STATUSES: readonly string[] = ['approved', 'preparing']
+/** 「이미지 제작 필요」를 보이는 상태: 승인됨·준비중·예약됨. 도착·검토중은 아직 만들 때가 아니고, 승인하고 예약하면 곧바로 예약됨이라 예약됨도 만든다(티켓 20261026_2034). */
+export const OPS_IMAGE_PRODUCTION_STATUSES: readonly string[] = ['approved', 'preparing', 'scheduled']
 
 /** 날짜 구성이 세는 항목 상태인가(10개 안의 값이고 반려·취소·실패가 아니다). */
 export function isCountedItemStatus(status: string): boolean {
@@ -136,7 +136,7 @@ export function hasItemImage(item: ViewableItem): boolean {
 }
 
 /**
- * 「이미지 제작 필요」 표시(A8, 신호가 아니라 표시만 한다). 승인됨·준비중 항목(승인 직후 자동 제작이 끝나지 않았거나 실패한 것)의 모양이 이미지가 있는
+ * 「이미지 제작 필요」 표시(A8, 신호가 아니라 표시만 한다). 승인됨·준비중·예약됨 항목(승인 직후 자동 제작이 끝나지 않았거나 실패한 것)의 모양이 이미지가 있는
  * 모양(`hero`·`poster`·`square`)인데 이미지가 없으면 참이다. 모양을 읽을 수 없으면(「모름」) 거짓이다.
  */
 export function needsImageProduction(item: ViewableItem & { status: string }): boolean {

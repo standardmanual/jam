@@ -382,6 +382,11 @@ export function readExecuteResult(data: Record<string, unknown>): ExecuteResult 
   }
 }
 
+/** 실행 응답 `scheduled`에서 문자열 ID만 골라 돌려준다. 배열이 아니면 빈 배열이다(승인 뒤 이미지 자동 제작 대상, 티켓 20261026_2034). */
+export function scheduledItemIds(data: Record<string, unknown>): string[] {
+  return Array.isArray(data.scheduled) ? data.scheduled.filter((value): value is string => typeof value === 'string') : []
+}
+
 export interface ExecuteToast {
   /** 실패한 항목이나 건너뛴 항목이 있으면 `warning`이다. */
   level: 'success' | 'warning'

@@ -13,7 +13,7 @@ vi.mock('@/lib/admin/opsInbox/imageRender.client', () => ({ renderPresetToPngBlo
 vi.mock('../imageClient', () => ({ postItemImage: (...a: unknown[]) => post(...a) }))
 vi.mock('sonner', () => ({ toast: { warning: vi.fn() } }))
 
-import { produceItemImage } from '../useItemImageProduction'
+import { IMAGE_FAILED_AFTER_SCHEDULE_TOAST, produceItemImage, produceItemImages } from '../useItemImageProduction'
 
 function makeItem(overrides: Partial<OpsItemRecord> = {}): OpsItemRecord {
   return {
@@ -70,5 +70,52 @@ describe('produceItemImage', () => {
     await produceItemImage('b1', makeItem(), false)
     const seeds = render.mock.calls.map((c) => (c[0] as { seed: number }).seed)
     expect(seeds[0]).not.toBe(seeds[1])
+  })
+})
+
+describe('produceItemImages', () => {
+  const items = [makeItem({ id: 'a' }), makeItem({ id: 'b' }), makeItem({ id: 'c' })]
+
+  it('itemIds 순서대로 하나씩 순차로 만들고 건수를 센다', async () => {
+    const order: string[] = []
+    let running = 0
+    let maxRunning = 0
+    post.mockImplementation(async (_bundle: string, itemId: string) => {
+      running += 1
+      maxRunning = Math.max(maxRunning, running)
+      await Promise.resolve()
+      order.push(itemId)
+      running -= 1
+      return { ok: true, url: 'https://x/y.png' }
+    })
+    expect(await produceItemImages('b1', ['c', 'a', 'b'], items, false)).toEqual({ done: 3, failed: 0, skipped: 0 })
+    expect(order).toEqual(['c', 'a', 'b'])
+    expect(maxRunning).toBe(1)
+  })
+
+  it('실패와 건너뜀을 따로 센다(지시 없는 항목은 skipped)', async () => {
+    post.mockResolvedValueOnce({ ok: false, status: 409, message: 'x' })
+    const noSpec = makeItem({ id: 'd', original: {} })
+    expect(await produceItemImages('b1', ['a', 'd', 'b'], [...items, noSpec], false)).toEqual({ done: 1, failed: 1, skipped: 1 })
+  })
+
+  it('목록에 없는 ID는 건너뛴 것으로 센다', async () => {
+    expect(await produceItemImages('b1', ['zzz', 'a'], items, false)).toEqual({ done: 1, failed: 0, skipped: 1 })
+    expect(post).toHaveBeenCalledTimes(1)
+  })
+
+  it('시험 묶음은 렌더도 저장도 하지 않고 모두 skipped다', async () => {
+    expect(await produceItemImages('b1', ['a', 'b'], items, true)).toEqual({ done: 0, failed: 0, skipped: 2 })
+    expect(render).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  it('렌더가 던져도 던지지 않고 failed로 센다', async () => {
+    render.mockRejectedValue(new Error('폰트'))
+    expect(await produceItemImages('b1', ['a', 'b'], items, false)).toEqual({ done: 0, failed: 2, skipped: 0 })
+  })
+
+  it('실패 토스트 문장은 건수를 넣는다', () => {
+    expect(IMAGE_FAILED_AFTER_SCHEDULE_TOAST(2)).toBe('예약은 유지했어요. 이미지 2건을 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.')
   })
 })

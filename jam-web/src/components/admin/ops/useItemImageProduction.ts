@@ -5,8 +5,8 @@
  *
  * 항목 하나를 승인하면 `image_spec`으로 브라우저에서 PNG를 만들어 항목 이미지 API에 올린다(예약된 뒤라면 서버가 자원에도 붙인다).
  * 실패해도 승인은 그대로다 — 「이미지 제작 필요」는 이 훅의 상태가 아니라 항목 데이터(승인됨·준비중인데 이미지 칸이 빔)로 계산하니 새로 고쳐도 남는다.
- * 상태는 「만드는 중」 표시와 중복 시작 방지에만 쓴다. 시험 묶음은 렌더도 저장도 하지 않는다. 일괄 승인은 이 훅을 부르지 않는다.
- * `start`는 던지지 않는다. 시드는 매번 새로 뽑는다.
+ * 상태는 「만드는 중」 표시와 중복 시작 방지에만 쓴다. 시험 묶음은 렌더도 저장도 하지 않는다. 「승인하고 예약」은 응답의 예약된 항목들을 `startMany`로 순서대로 만든다(티켓 20261026_2034).
+ * `start`·`startMany`는 던지지 않는다. 시드는 매번 새로 뽑는다.
  */
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -17,11 +17,16 @@ import { postItemImage } from './imageClient'
 
 export const IMAGE_FAILED_TOAST = '승인은 유지했어요. 이미지를 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.'
 
+export const IMAGE_FAILED_AFTER_SCHEDULE_TOAST = (failed: number): string =>
+  `예약은 유지했어요. 이미지 ${failed}건을 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.`
+
 export interface ItemImageProduction {
   /** 지금 이미지를 만드는 중인 항목 ID. */
   making: ReadonlySet<string>
   /** 항목의 이미지를 만든다. 시험 묶음이거나 만들 지시가 없으면 아무것도 하지 않는다. 던지지 않는다. */
   start: (itemId: string, items: readonly OpsItemRecord[]) => Promise<void>
+  /** 여러 항목의 이미지를 순서대로 만든다. 이미 만드는 중인 ID는 뺀다. 시험 묶음이면 아무것도 하지 않는다. 던지지 않는다. */
+  startMany: (itemIds: readonly string[], items: readonly OpsItemRecord[]) => Promise<void>
 }
 
 interface Options {
@@ -59,6 +64,34 @@ export async function produceItemImage(
   }
 }
 
+export interface ProduceManyResult {
+  done: number
+  failed: number
+  skipped: number
+}
+
+/**
+ * 여러 항목의 이미지를 `itemIds` 순서대로 하나씩 만든다(병렬 아님). `items`에 없는 ID는 건너뛴 것으로 센다. 던지지 않는다.
+ */
+export async function produceItemImages(
+  bundleId: string,
+  itemIds: readonly string[],
+  items: readonly OpsItemRecord[],
+  isSample: boolean
+): Promise<ProduceManyResult> {
+  const counts: ProduceManyResult = { done: 0, failed: 0, skipped: 0 }
+  for (const itemId of itemIds) {
+    const item = items.find((entry) => entry.id === itemId)
+    if (!item) {
+      counts.skipped += 1
+      continue
+    }
+    const result = await produceItemImage(bundleId, item, isSample)
+    counts[result] += 1
+  }
+  return counts
+}
+
 export function useItemImageProduction({ bundleId, isSample, onDone }: Options): ItemImageProduction {
   const [making, setMaking] = useState<ReadonlySet<string>>(new Set())
   const inFlight = useRef(new Set<string>())
@@ -82,5 +115,24 @@ export function useItemImageProduction({ bundleId, isSample, onDone }: Options):
     [bundleId, isSample, onDone]
   )
 
-  return { making, start }
+  const startMany = useCallback(
+    async (itemIds: readonly string[], items: readonly OpsItemRecord[]) => {
+      if (isSample) return
+      const targets = itemIds.filter((id) => !inFlight.current.has(id))
+      if (targets.length === 0) return
+      for (const id of targets) inFlight.current.add(id)
+      setMaking(new Set(inFlight.current))
+      try {
+        const result = await produceItemImages(bundleId, targets, items, isSample)
+        if (result.failed > 0) toast.warning(IMAGE_FAILED_AFTER_SCHEDULE_TOAST(result.failed))
+      } finally {
+        for (const id of targets) inFlight.current.delete(id)
+        setMaking(new Set(inFlight.current))
+        onDone?.()
+      }
+    },
+    [bundleId, isSample, onDone]
+  )
+
+  return { making, start, startMany }
 }

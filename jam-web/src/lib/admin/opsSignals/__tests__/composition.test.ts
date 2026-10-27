@@ -213,8 +213,8 @@ describe('pickRepresentative — 대표 카드(가정 16, A9)', () => {
 describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
   const noImage = (shape: string) => cardOriginal({ shape, resource: {} })
 
-  it('승인됨·준비중 이미지 모양 항목에 이미지가 없으면 참이다', () => {
-    for (const status of ['approved', 'preparing']) {
+  it('승인됨·준비중·예약됨 이미지 모양 항목에 이미지가 없으면 참이다', () => {
+    for (const status of ['approved', 'preparing', 'scheduled']) {
       for (const shape of ['hero', 'poster', 'square']) {
         expect(needsImageProduction({ status, original: noImage(shape), edited: null }), `${status}/${shape}`).toBe(true)
       }
@@ -234,8 +234,8 @@ describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
     }
   })
 
-  it('도착·검토중, 승인 뒤 상태(예약·게재·종료)와 멈춘 상태는 표시하지 않는다', () => {
-    for (const status of ['arrived', 'reviewing', 'scheduled', 'live', 'ended', 'rejected', 'cancelled', 'failed']) {
+  it('도착·검토중, 게재·종료와 멈춘 상태는 표시하지 않는다', () => {
+    for (const status of ['arrived', 'reviewing', 'live', 'ended', 'rejected', 'cancelled', 'failed']) {
       expect(needsImageProduction({ status, original: noImage('hero'), edited: null }), status).toBe(false)
     }
   })

@@ -3,7 +3,8 @@
  *
  * - 승인됨·이미지 없음 → [이미지 만들기], 이미지 있음 → [이미지 다시 만들기]
  * - 만드는 중이면 버튼이 잠기고 「만드는 중」
- * - 시험 묶음·검토중·예약됨·게재중·`image_spec` 없음·이미지 칸 없는 종류는 아무것도 그리지 않는다
+ * - 승인됨·준비중·예약됨은 같다
+ * - 시험 묶음·검토중·게재중·`image_spec` 없음·이미지 칸 없는 종류는 아무것도 그리지 않는다
  * - 미리보기: 이미지가 빈 승인됨 항목은 「이미지 제작 필요」, 만드는 중이면 「이미지를 만드는 중이에요」
  */
 import { describe, it, expect, vi } from 'vitest'
@@ -34,7 +35,7 @@ function makeItem(over: Partial<OpsItemRecord> = {}, original: Record<string, un
 }
 
 function production(making: string[] = [], start = vi.fn()): ItemImageProduction {
-  return { making: new Set(making), start }
+  return { making: new Set(making), start, startMany: vi.fn() }
 }
 
 function html(item: OpsItemRecord, opts: { isSample?: boolean; making?: string[] } = {}): string {
@@ -47,6 +48,10 @@ describe('OpsImageProduction', () => {
   it('승인됨·이미지 없음이면 [이미지 만들기]', () => {
     expect(html(makeItem())).toContain(IMAGE_MAKE_LABEL)
     expect(html(makeItem({ status: 'preparing' }))).toContain(IMAGE_MAKE_LABEL)
+  })
+
+  it('예약됨·이미지 없음이어도 [이미지 만들기]가 보인다(티켓 20261026_2034)', () => {
+    expect(html(makeItem({ status: 'scheduled' }))).toContain(IMAGE_MAKE_LABEL)
   })
 
   it('이미지가 있으면 [이미지 다시 만들기]', () => {
@@ -65,8 +70,8 @@ describe('OpsImageProduction', () => {
     expect(html(makeItem(), { isSample: true })).toBe('')
   })
 
-  it('승인됨·준비중이 아니면 그리지 않는다', () => {
-    for (const status of ['arrived', 'reviewing', 'scheduled', 'live', 'rejected', 'ended']) {
+  it('승인됨·준비중·예약됨이 아니면 그리지 않는다', () => {
+    for (const status of ['arrived', 'reviewing', 'live', 'rejected', 'ended']) {
       expect(html(makeItem({ status }))).toBe('')
     }
   })
