@@ -46,6 +46,8 @@ export function OpsDecisionPanel({ items, needsCheckIds, checkedIds, approvableC
   const bundleChips = bundleRationaleChips(items)
   const highlights = highlightItems(items, needsCheckIds)
   const groups = kindGroups(items)
+  // 처음 열 때(도착 항목뿐)는 이유 칩·핵심·결정할 항목이 모두 비어 빈 카드가 잠깐 보이므로 그리지 않는다.
+  if (bundleChips.length === 0 && highlights.items.length === 0 && groups.length === 0) return null
 
   return (
     <section aria-label="결정 패널" className="space-y-4 rounded-lg border border-border bg-background p-4">

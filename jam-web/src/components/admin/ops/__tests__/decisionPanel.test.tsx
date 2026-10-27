@@ -127,6 +127,10 @@ describe('핵심 구역', () => {
     expect(panel({ items: [] })).toBeNull()
   })
 
+  it('도착 항목뿐이고 칩·핵심·결정할 항목이 모두 비면 빈 카드를 그리지 않는다', () => {
+    expect(panel({ items: [item({ id: 'x', status: 'arrived' })] })).toBeNull()
+  })
+
   it('핵심 줄을 누르면 그 항목이 선택된다', () => {
     const onSelectItem = vi.fn()
     const buttons = findAll(panel({ items: HIGHLIGHTED, onSelectItem }), (element) => element.type === 'button')
