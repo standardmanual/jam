@@ -14,13 +14,13 @@ import { Alert } from '@/components/admin/ui/alert'
 import { Badge } from '@/components/admin/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
+import { compareToTarget, DISPLAY_DIGITS, type TargetFit } from '@/lib/admin/balanceDashboard/fit'
 import { METRIC_SPECS, partSpec } from '@/lib/admin/balanceDashboard/targets'
 import type {
   Measurement,
   MetricPart,
   MetricPartSpec,
   MetricResult,
-  PartTarget,
   SampleUnit,
   ValueUnit,
 } from '@/lib/admin/balanceDashboard/types'
@@ -29,8 +29,8 @@ import { AdjustLinks } from './AdjustLinks'
 export const INSUFFICIENT_TEXT = '아직 데이터가 부족해요'
 export const NO_TARGET_TEXT = '목표 없음'
 
-/** 단위별로 보이는 소수 자릿수. 견줄 때도 보이는 자릿수로 맞춘 값을 써서 «주 1번»으로 보이는데 «낮아요»가 뜨지 않게 한다 */
-const DISPLAY_DIGITS: Record<ValueUnit, number> = { per_week: 2, per_month: 2, count_30d: 1, ratio: 3 }
+/** 견줌은 `lib/admin/balanceDashboard/fit.ts`로 옮겼다(티켓 20261026_2027). 기존 import 경로가 그대로 통하게 다시 내보낸다 */
+export { compareToTarget, type TargetFit }
 
 function trimmed(value: number, digits: number): string {
   return String(Number(value.toFixed(digits)))
@@ -60,19 +60,6 @@ export function formatSample(sampleUnit: SampleUnit, sample: number): string {
     case 'user_month':
       return `유저 합계 ${trimmed(sample, 1)}달 기준`
   }
-}
-
-export type TargetFit = 'below' | 'within' | 'above'
-
-/**
- * 값이 목표 범위 아래인지, 안인지, 위인지 본다. 범위의 양 끝은 안이지만, 목표가 `highExclusive`(«미만»)이면
- * 위쪽 끝은 밖이다. 보이는 자릿수로 맞춘 값으로 견준다
- */
-export function compareToTarget(unit: ValueUnit, value: number, target: PartTarget): TargetFit {
-  const shown = Number(value.toFixed(DISPLAY_DIGITS[unit]))
-  if (shown < target.low) return 'below'
-  if (target.highExclusive ? shown >= target.high : shown > target.high) return 'above'
-  return 'within'
 }
 
 const FIT_LABEL: Record<TargetFit, string> = {
