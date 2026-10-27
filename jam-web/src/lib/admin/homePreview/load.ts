@@ -5,7 +5,11 @@
  * 날마다 메모리에서 기간·노출 태그·정렬을 적용한다. 미션 소개 카드와 미션을 가리키는 랭킹 보드 카드는 가상 유저의 트라이브가 허용 트라이브가
  * 아니면 내린다(`filterMissionSpotlightCards`·`filterRankingBoardCardsByTribe`와 같은 `isMissionOpenToTribe` 규칙).
  *
- * 하지 않는 것: 유저별 참가·완료 판정(가상 유저에게는 참가·완료 이력이 없다), 유저 개인 상태 태그. 실제 유저가 보는 목록은 이 목록의 부분집합일 수 있다.
+ * 미션 소개 카드가 가리키는 미션 중 관리자가 수동으로 비노출한 것(`isMissionExposed`, 그날 기준 시각)은 뺀다 — 실제 홈 조회의
+ * `filterMissionSpotlightCards`와 같은 규칙이다(티켓 20261026_2025 2회차 보강).
+ *
+ * 하지 않는 것: 유저별 참가·완료 판정(가상 유저에게는 참가·완료 이력이 없다. 그래서 `resolveMissionVisibility`의 완료·잠금·숨김은 보지 않는다),
+ * 유저 개인 상태 태그. 실제 유저가 보는 목록은 이 목록의 부분집합일 수 있다.
  *
  * 승인 전 카드: 묶음(`bundleId`)의 `home_feed_card` 항목 중 도착·검토중인 것을 같은 노출 태그 규칙으로 걸러 실제 카드 뒤에 붙인다.
  *
@@ -14,7 +18,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
 import type { Json } from '@/types/database.generated'
-import type { TodayCardWithHref } from '@/lib/today/cards'
+import { fetchMissionsById, type TodayCardWithHref } from '@/lib/today/cards'
+import { isMissionExposed, type MissionExposureInput } from '@/lib/missions/visibility'
 import { cardIsLiveDuring, cardMatchesTags, sortHomeCards } from '@/lib/today/cardSelection'
 import { isClosedToViewerTribe, virtualExposureTags, type VirtualViewer } from '@/lib/today/virtualViewer'
 import { resolveShape } from '@/lib/today/shape'
@@ -136,6 +141,28 @@ function isTribeClosed(card: TodayCardRow, gates: TribeGates, viewer: HomePrevie
   return isClosedToViewerTribe(gates.allowedByMission.get(missionId), { ...viewer, weather: null, specialDays: [] })
 }
 
+/**
+ * 수동 비노출 미션을 가리키는 미션 소개 카드를 뺀다. `filterMissionSpotlightCards`(`lib/today/cards.ts`)의 앞부분과 같은 규칙이다:
+ * 읽은 미션이 하나도 없으면 카드를 그대로 두고, 하나라도 있으면 읽은 미션 중 `isMissionExposed`가 참인 미션을 가리키는 카드만 남긴다
+ * (미션 행을 못 찾은 카드는 뺀다). 유저별 판정(`resolveMissionVisibility`: 완료·잠금·숨김)은 가상 유저가 없어 하지 않는다.
+ */
+function filterExposedSpotlights<T extends TodayCardRow>(
+  cards: readonly T[],
+  missionsById: ReadonlyMap<string, MissionExposureInput & { id: string }>,
+  baseTime: Date,
+): T[] {
+  const missionIds = [...new Set(cards.filter(isSpotlightWithMission).map((c) => c.mission_id as string))]
+  if (missionIds.length === 0) return [...cards]
+  const missions = missionIds.map((id) => missionsById.get(id)).filter((m): m is MissionExposureInput & { id: string } => Boolean(m))
+  if (missions.length === 0) return [...cards]
+  const exposed = new Set(missions.filter((m) => isMissionExposed(m, baseTime)).map((m) => m.id))
+  return cards.filter((c) => !isSpotlightWithMission(c) || exposed.has(c.mission_id as string))
+}
+
+function isSpotlightWithMission(card: TodayCardRow): boolean {
+  return card.template_type === 'mission_spotlight' && Boolean(card.mission_id)
+}
+
 interface PendingItem {
   entry: PreviewEntry
   /** 승인 전 카드끼리의 순서: 항목 `resource.sort_order` 오름차순, 같으면 묶음 안 순서 */
@@ -230,10 +257,11 @@ export async function loadHomePreview(params: LoadHomePreviewParams): Promise<{ 
   if (error) fail('카드', error)
   const cards = (data ?? []) as TodayCardRow[]
 
-  const [gates, pending, storedInputs] = await Promise.all([
+  const [gates, pending, storedInputs, missionsById] = await Promise.all([
     loadTribeGates(supabase, cards),
     bundleId ? loadPendingItems(supabase, bundleId, now) : Promise.resolve([] as PendingItem[]),
     Promise.all(dates.map((date) => readDayInputs(date))),
+    fetchMissionsById(supabase, [...new Set(cards.filter(isSpotlightWithMission).map((c) => c.mission_id as string))]),
   ])
 
   const result = await Promise.all(
@@ -244,12 +272,12 @@ export async function loadHomePreview(params: LoadHomePreviewParams): Promise<{ 
       const tags = virtualExposureTags({ ...viewer, weather: usedWeather, specialDays: usedSpecial })
       const { startIso, endIso } = kstDayBoundsIso(date)
 
-      const live = sortHomeCards(
-        cards.filter(
-          (card) => cardIsLiveDuring(card, startIso, endIso) && cardMatchesTags(card.exposure_tags, tags) && !isTribeClosed(card, gates, viewer),
-        ),
+      const baseTime = previewBaseTime(date, now)
+      const candidates = cards.filter(
+        (card) => cardIsLiveDuring(card, startIso, endIso) && cardMatchesTags(card.exposure_tags, tags) && !isTribeClosed(card, gates, viewer),
       )
-      const resolved = await resolvePreviewCards(supabase, live, previewBaseTime(date, now))
+      const live = sortHomeCards(filterExposedSpotlights(candidates, missionsById, baseTime))
+      const resolved = await resolvePreviewCards(supabase, live, baseTime)
 
       const pendingToday = pending
         .map((item, order) => ({ item, order }))

@@ -9,10 +9,24 @@ import { NextRequest, NextResponse } from 'next/server'
 const fx = vi.hoisted(() => ({
   admin: true,
   load: vi.fn(),
+  tribes: { data: [] as { id: string; name: string }[] | null, error: null as { message: string } | null },
+  tribeOrder: vi.fn(),
 }))
 
 vi.mock('@/lib/admin/auth', () => ({
   requireAdmin: async () => (fx.admin ? null : NextResponse.json({ error: '어드민 권한이 필요합니다.' }, { status: 403 })),
+}))
+vi.mock('@/lib/supabase/server', () => ({
+  createServiceClient: () => ({
+    from: (table: string) => ({
+      select: () => ({
+        order: (column: string, options: unknown) => {
+          fx.tribeOrder(table, column, options)
+          return Promise.resolve(fx.tribes)
+        },
+      }),
+    }),
+  }),
 }))
 vi.mock('@/lib/admin/homePreview/load', () => ({ loadHomePreview: fx.load }))
 
@@ -28,6 +42,8 @@ beforeEach(() => {
   fx.admin = true
   fx.load.mockReset()
   fx.load.mockResolvedValue({ days: [] })
+  fx.tribeOrder.mockReset()
+  fx.tribes = { data: [], error: null }
 })
 
 describe('GET /api/admin/home-preview', () => {
@@ -73,7 +89,7 @@ describe('GET /api/admin/home-preview', () => {
     const res = await call(`?date=2026-10-05&days=3&tribe=${UUID}&time=time_night&weather=rain&special=holiday_today,anniversary_today&newUser=1&bundle=${UUID}`)
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual(payload)
+    expect(await res.json()).toEqual({ ...payload, tribes: [] })
     expect(res.headers.get('Cache-Control')).toBe('no-store')
     expect(fx.load).toHaveBeenCalledWith({
       fromDate: '2026-10-05',
@@ -92,6 +108,27 @@ describe('GET /api/admin/home-preview', () => {
       specialDays: undefined,
       newUser: false,
     })
+  })
+
+  it('special=none은 «특일 없음»으로 넘긴다(저장된 값을 쓰지 않는다)', async () => {
+    await call('?date=2026-10-05&special=none')
+    expect(fx.load.mock.calls[0][0].viewer.specialDays).toEqual([])
+  })
+
+  it('트라이브 목록을 이름순으로 읽어 응답에 싣는다', async () => {
+    fx.tribes = { data: [{ id: UUID, name: '러너' }], error: null }
+    const res = await call('?date=2026-10-05')
+    expect((await res.json()).tribes).toEqual([{ id: UUID, name: '러너' }])
+    expect(fx.tribeOrder).toHaveBeenCalledWith('tribes', 'name', { ascending: true })
+  })
+
+  it('트라이브 읽기가 실패하면 빈 배열이 아니라 500이다', async () => {
+    fx.tribes = { data: null, error: { message: 'secret detail' } }
+    const res = await call('?date=2026-10-05')
+    expect(res.status).toBe(500)
+    const body = JSON.stringify(await res.json())
+    expect(body).not.toContain('secret detail')
+    expect(body).not.toContain('tribes')
   })
 
   it('조회가 실패하면 500이고 내부 오류 문구를 응답에 싣지 않는다', async () => {
