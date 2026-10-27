@@ -1,21 +1,11 @@
 /**
- * 어드민 투데이 캘린더뷰(20260902_1028) — [미리보기] 버튼용 시뮬레이션 조회 (서버 사이드 전용).
+ * 어드민 미리보기용 카드 값 싣기 (서버 사이드 전용).
  *
- * `src/lib/today/cards.ts`의 `getTodayCards()`(유저向 실제 홈 화면 조회)와 같은 구조를
- * 따르되, 두 가지를 의도적으로 단순화한다(티켓 완료 기록의 "주요 의사결정" 참고):
- *   1. `exposure_tags` 개인화 매칭을 하지 않는다 — 어드민 미리보기에는 특정 유저 컨텍스트가
- *      없다. is_active + 날짜 구간만으로 필터링한다.
- *   2. `filterMissionSpotlightCards`(미션 참가/완료 여부에 따른 노출 제외)도 하지 않는다 —
- *      같은 이유로 유저별 참가 상태를 알 수 없다.
- * 즉 "이 날짜에 켜져 있는 카드 전체"를 보여주는 상한선 시뮬레이션이다. 실제 개별 유저가
- * 보는 목록은 개인화 조건에 따라 이 중 일부일 수 있다.
+ * 카드 행에 표시 데이터(`toCardView`)가 필요로 하는 자원 값을 홈 조회(`src/lib/today/cards.ts`의 `getTodayCards()`)와 같은 규칙·함수로 싣는다.
+ * 어떤 카드를 보일지(노출 판정)는 여기서 하지 않는다 — 홈피드 미리보기(`lib/admin/homePreview/load.ts`)가 `lib/today/cardSelection.ts`의 같은 규칙으로 고른다.
+ * (예전에는 이 파일에 날짜만 고르는 「켜진 카드 전부」 조회 `getAdminTodayPreviewCards`가 있었으나, 티켓 20261026_2025 2회차에서 홈피드 미리보기로 합쳐 없앴다.)
  *
- * `getTodayCards()`·`TodayCardStack.tsx`(유저向 로직·화면)는 변경하지 않는다 — 이 파일은 그 둘의
- * 타입(`TodayCardWithHref`, `ResolvedBadge`)과 순수 함수(`resolveTargetHref`)·자원 조회 함수
- * (`fetchMissionsById`·`fetchCollectionsById`)만 재사용하는 별도 조회 경로다.
- *
- * 표시 데이터(`toCardView`)가 필요로 하는 미션 값(`resolved_mission`)과 컬렉션 값(`resolved_collection`)은
- * 홈 조회와 같은 규칙으로 싣는다(티켓 20261001_2208). 레시피 값(`resolved_recipe`)도 홈과 같은 함수로 읽는다
+ * 미션 값(`resolved_mission`)과 컬렉션 값(`resolved_collection`)은 홈 조회와 같은 규칙으로 싣는다(티켓 20261001_2208). 레시피 값(`resolved_recipe`)도 홈과 같은 함수로 읽는다
  * (티켓 20261006_1218, 운영툴 PRD §6 「홈과 미리보기는 같은 값」). 배지는 보유 여부(`earned`)를 싣지 않는다 — 유저
  * 정보가 없는 미리보기라 표시 데이터가 컬러로 그린다. 레시피 공개 뒤 재료 타일도 그래서 슬롯마다 첫 후보로 고른다.
  */
@@ -38,38 +28,10 @@ import {
   type TodayCardWithHref,
   type ResolvedBadge,
 } from '@/lib/today/cards'
-import { kstDayBoundsIso, previewBaseTime } from './today-calendar'
-
-/**
- * 선택한 날짜(KST 달력 기준 'YYYY-MM-DD')에 실제 유저가 봤을/볼 투데이 카드 목록을
- * 시뮬레이션한다. 정렬은 `getTodayCards()`와 동일(sort_order asc, starts_at desc).
- * `now`는 기준 시각 규칙(`previewBaseTime`)의 「지금」이다 — 컬렉션 공개 판정의 기준 시각을 정한다.
- */
-export async function getAdminTodayPreviewCards(dateStr: string, now: Date = new Date()): Promise<TodayCardWithHref[]> {
-  const { startIso, endIso } = kstDayBoundsIso(dateStr)
-  const baseTime = previewBaseTime(dateStr, now)
-  const supabase = createServiceClient()
-
-  const { data, error } = await supabase
-    .from('today_cards')
-    .select('*')
-    .eq('is_active', true)
-    .lte('starts_at', endIso)
-    .gte('ends_at', startIso)
-    .order('sort_order', { ascending: true })
-    .order('starts_at', { ascending: false })
-
-  if (error) {
-    console.error('[getAdminTodayPreviewCards] 조회 오류:', error.message)
-    return []
-  }
-
-  return resolvePreviewCards(supabase, (data ?? []) as TodayCardRow[], baseTime)
-}
 
 /**
  * 카드 행에 표시 데이터용 자원 값(배지·랭킹·미션·컬렉션·레시피)과 이동 주소를 싣는다. 읽기는 카드 수와 상관없이 종류마다 한 번이다.
- * 날짜 미리보기(`getAdminTodayPreviewCards`)와 홈피드 미리보기(`lib/admin/homePreview/load.ts`)가 같은 규칙으로 싣도록 꺼냈다(티켓 20261026_2025).
+ * 홈피드 미리보기(`lib/admin/homePreview/load.ts`)가 쓴다(티켓 20261026_2025).
  * `baseTime`은 기준 시각 규칙(`previewBaseTime`)의 값이다 — 컬렉션·레시피 공개 판정의 기준 시각이다.
  */
 export async function resolvePreviewCards(

@@ -7,7 +7,8 @@ import { Checkbox } from '@/components/admin/ui/checkbox'
 import { balanceItemIdSet, buildBalanceView } from '@/lib/admin/opsInbox/balance/view'
 import { findRevertTarget } from '@/lib/admin/opsInbox/edit'
 import { executeToast, readExecuteResult, scheduledItemIds } from '@/lib/admin/opsInbox/executeView'
-import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
+import { formatKstDayTime, kindLabel, weekMondayDate } from '@/lib/admin/opsInbox/labels'
+import { earliestStartsAt, homeFeedInitialDate } from '@/lib/admin/opsInbox/homeFeedPreview'
 import {
   isDecidable,
   isItemChecked,
@@ -56,6 +57,8 @@ type OpsDecisionWorkspaceProps = Pick<
 > & {
   /** 서버 로더가 센 예약 등록 요약(승인됨 수·예약할 항목 수). 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다. */
   execution: OpsBundleExecution
+  /** 묶음의 대상 주차(`YYYY-Www`). 공개일을 모를 때 [홈피드로 보기]가 그 주 월요일부터 보여준다. 옛 묶음은 없을 수 있다. */
+  week?: string | null
 }
 
 /** 「마지막 수정 되돌리기」 버튼. 확인창 없이 바로 요청하고, 요청 중에는 다시 눌리지 않는다. */
@@ -88,6 +91,7 @@ export function OpsDecisionWorkspace({
   isSample,
   execution,
   previewNames,
+  week,
 }: OpsDecisionWorkspaceProps) {
   const [overrides, setOverrides] = useState<CheckOverrides>({})
   const { decidable: reviewing, checked: reviewingChecked } = useMemo(() => splitByChecked(items, overrides), [items, overrides])
@@ -102,6 +106,10 @@ export function OpsDecisionWorkspace({
     for (const item of items) if (item.formatErrors.length > 0) ids.add(item.id)
     return ids
   }, [balance, items])
+
+  // 결정 패널 바닥 줄: 체크한 항목 중 가장 이른 공개 시각과, 홈피드 미리보기가 처음 보여줄 날짜(공개일, 없으면 묶음 주 월요일, 그것도 없으면 오늘).
+  const previewStartsAt = useMemo(() => earliestStartsAt(checked), [checked])
+  const previewInitialDate = homeFeedInitialDate(previewStartsAt, weekMondayDate(week))
 
   const handlers = useOpsItemResultHandlers({ bundleId })
   const { refresh } = handlers
@@ -155,6 +163,7 @@ export function OpsDecisionWorkspace({
           approvableCount={checked.length + execution.readyCount}
           onSetChecked={(itemIds, value) => setOverrides((current) => withItemsChecked(current, items, itemIds, value))}
           onSelectItem={ctx.selectItem}
+          homeFeedPreview={{ bundleId, startsAt: previewStartsAt, initialDate: previewInitialDate }}
         />
       )}
       barAction={() =>

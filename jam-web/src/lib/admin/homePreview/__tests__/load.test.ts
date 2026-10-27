@@ -7,6 +7,7 @@
  * 3. 승인 전 카드는 실제 카드 뒤에 `pending`으로 붙고, 도착·검토중만 읽으며, 태그가 안 맞으면 빠진다.
  * 4. 날마다 카드 수 = `entries.length`, 모양별 개수의 합과 같다.
  * 5. 읽기가 실패하면 던진다(빈 목록으로 보이지 않는다).
+ * 6. 수동 비노출 미션을 가리키는 미션 소개 카드는 뺀다(2회차 보강, 실제 홈 조회 `filterMissionSpotlightCards`와 같은 규칙).
  *
  * 실행: cd jam-web && npx vitest run src/lib/admin/homePreview/__tests__/load.test.ts
  */
@@ -165,6 +166,54 @@ describe('loadHomePreview — 트라이브 조건', () => {
 
     const none = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })
     expect(ids(none.days[0])).toEqual(['common', 'spot-open'])
+  })
+})
+
+describe('loadHomePreview — 수동 비노출 미션 소개 카드', () => {
+  const mission = (id: string, over: Row = {}): Row => ({
+    id,
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: null,
+    reward_points: null,
+    reward_badge_ids: [],
+    image_url: null,
+    ...over,
+  })
+
+  beforeEach(() => {
+    fx.tables.today_cards = [
+      cardRow('common'),
+      cardRow('spot-shown', { template_type: 'mission_spotlight', mission_id: 'm-shown', sort_order: 1 }),
+      cardRow('spot-hidden', { template_type: 'mission_spotlight', mission_id: 'm-hidden', sort_order: 2 }),
+      cardRow('spot-later', { template_type: 'mission_spotlight', mission_id: 'm-later', sort_order: 3 }),
+      cardRow('spot-missing', { template_type: 'mission_spotlight', mission_id: 'm-missing', sort_order: 4 }),
+    ]
+    fx.tables.missions = [
+      mission('m-shown'),
+      mission('m-hidden', { exposure_mode: 'hidden' }),
+      mission('m-later', { exposure_mode: 'scheduled', exposure_at: '2026-10-07T00:00:00+09:00' }),
+    ]
+  })
+
+  it('수동 비노출 미션과 미션 행을 못 찾은 미션의 소개 카드는 빠진다', async () => {
+    const day = (await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })).days[0]
+    expect(ids(day)).toEqual(['common', 'spot-shown'])
+  })
+
+  it('노출 시각이 정해진 미션은 그날 기준 시각으로 판정해 날마다 다르다', async () => {
+    const { days } = await loadHomePreview({ fromDate: '2026-10-05', days: 4, viewer: VIEWER, now: NOW })
+    expect(days.map(ids)).toEqual([
+      ['common', 'spot-shown'],
+      ['common', 'spot-shown'],
+      ['common', 'spot-shown', 'spot-later'],
+      ['common', 'spot-shown', 'spot-later'],
+    ])
+  })
+
+  it('읽은 미션이 하나도 없으면 실제 홈 조회처럼 카드를 그대로 둔다', async () => {
+    fx.tables.missions = []
+    const day = (await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })).days[0]
+    expect(ids(day)).toEqual(['common', 'spot-shown', 'spot-hidden', 'spot-later', 'spot-missing'])
   })
 })
 

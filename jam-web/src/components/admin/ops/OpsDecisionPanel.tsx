@@ -9,11 +9,13 @@ import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { describeBundleItem } from '@/lib/admin/opsSignals/composition'
 import { OpsRationaleChips, kindChipEntries } from './board/OpsRationaleChip'
+import { OpsHomeFeedPreviewRow } from './preview/OpsHomeFeedPreviewRow'
 
 /**
  * 기획 상세의 결정 패널 머리 (티켓 20261026_2024 1회차, 어드민 상황판 PRD §6.3). `OpsBundleWorkspace`의 `panel` 슬롯에 들어간다.
  *
- * 위에서 아래로: 묶음 이유 칩 줄 → 「이번 기획의 핵심」(핵심 표시 항목, 없으면 「확인이 필요한 항목」) → 접힌 「종류별로 고르기」.
+ * 위에서 아래로: 묶음 이유 칩 줄 → 「이번 기획의 핵심」(핵심 표시 항목, 없으면 「확인이 필요한 항목」) → 접힌 「종류별로 고르기」
+ * → 바닥 줄(「공개 시작 …」과 [홈피드로 보기], 티켓 20261026_2025 2회차. `homeFeedPreview`를 주었을 때만).
  * 기획 제목은 페이지 머리가 이미 쓰므로 여기서 반복하지 않는다. 체크 상태는 래퍼(`OpsDecisionWorkspace`)가 들고 있고 이 컴포넌트는 그리기만 한다.
  * 항목이 하나도 없으면 아무것도 그리지 않는다. 새 필드(이유·핵심)가 없는 옛 묶음은 칩과 핵심 구역이 비고 「종류별로 고르기」만 남는다.
  */
@@ -38,9 +40,14 @@ interface OpsDecisionPanelProps {
   onSetChecked: (itemIds: readonly string[], checked: boolean) => void
   /** 핵심 줄을 눌렀을 때 그 항목을 고른다. */
   onSelectItem: (itemId: string) => void
+  /**
+   * 바닥 줄 [홈피드로 보기]에 넘길 값. 주면 바닥 줄을 그린다(티켓 20261026_2025 2회차).
+   * `startsAt`은 체크한 항목 중 가장 이른 공개 시각(없으면 null), `initialDate`는 시트가 처음 보여줄 날짜다.
+   */
+  homeFeedPreview?: { bundleId: string; startsAt: string | null; initialDate: string }
 }
 
-export function OpsDecisionPanel({ items, needsCheckIds, checkedIds, approvableCount, onSetChecked, onSelectItem }: OpsDecisionPanelProps) {
+export function OpsDecisionPanel({ items, needsCheckIds, checkedIds, approvableCount, onSetChecked, onSelectItem, homeFeedPreview }: OpsDecisionPanelProps) {
   if (items.length === 0) return null
 
   const bundleChips = bundleRationaleChips(items)
@@ -131,6 +138,8 @@ export function OpsDecisionPanel({ items, needsCheckIds, checkedIds, approvableC
           </AccordionItem>
         </Accordion>
       )}
+
+      {homeFeedPreview && <OpsHomeFeedPreviewRow {...homeFeedPreview} />}
     </section>
   )
 }

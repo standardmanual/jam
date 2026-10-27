@@ -17,6 +17,7 @@ import {
   formatKstDay,
   formatKstDayTime,
   formatWeekRange,
+  weekMondayDate,
   kindLabel,
   kstDateKey,
   parseFormatErrorPath,
@@ -58,6 +59,18 @@ describe('kindLabel', () => {
     // 객체 기본 속성 이름이 이름표로 새지 않는다
     expect(kindLabel('constructor')).toBe('종류 확인 필요')
     expect(kindLabel('toString')).toBe('종류 확인 필요')
+  })
+})
+
+describe('weekMondayDate (티켓 20261026_2025 2회차)', () => {
+  it('ISO 주차의 월요일 날짜를 돌려준다', () => {
+    expect(weekMondayDate('2026-W41')).toBe('2026-10-05')
+    expect(weekMondayDate('2026-W01')).toBe('2025-12-29')
+  })
+  it('형식이 틀리거나 없는 주차, 비어 있으면 null이다', () => {
+    expect(weekMondayDate('2025-W53')).toBeNull()
+    expect(weekMondayDate('2026-41')).toBeNull()
+    expect(weekMondayDate(null)).toBeNull()
   })
 })
 
