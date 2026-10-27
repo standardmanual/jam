@@ -68,6 +68,17 @@ export function withAllChecked(overrides: CheckOverrides, decidable: readonly Se
   return next
 }
 
+/** 지정한 항목(ID 목록)만 체크하거나 해제한다. 결정 패널의 「종류별로 고르기」가 쓴다(티켓 20261026_2024). 목록에 없는 ID는 무시한다. */
+export function withItemsChecked(
+  overrides: CheckOverrides,
+  items: readonly Pick<SelectableItem, 'id' | 'updatedAt'>[],
+  itemIds: readonly string[],
+  checked: boolean
+): CheckOverrides {
+  const targets = new Set(itemIds)
+  return items.filter((item) => targets.has(item.id)).reduce((next, item) => withCheck(next, item, checked), overrides)
+}
+
 /**
  * 결정을 마친 항목 다음으로 보여 줄 항목. 목록에 보이는 순서(공개 시각 날짜별)에서 그 항목 뒤의 첫 검토중 항목이고,
  * 뒤에 없으면 앞쪽의 첫 검토중 항목이다. 남은 검토중 항목이 없으면 null(선택을 그대로 둔다).
