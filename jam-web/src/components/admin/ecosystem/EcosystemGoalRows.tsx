@@ -14,7 +14,8 @@ import { StatusMark } from './StatusMark'
 
 function PartLine({ part }: { part: GoalPart }) {
   const valueText = formatHeadlineValue(part.unit, part.value)
-  const targetText = part.targetText ?? '목표 없음'
+  // 목표가 없는 칸은 «목표 없음»만 쓴다(앞에 «목표»를 또 붙이면 «목표 목표 없음»이 된다)
+  const targetLine = part.targetText ? `목표 ${part.targetText}` : '목표 없음'
   return (
     <li data-part-id={part.partId} data-status={part.status} className="space-y-1.5 py-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -24,10 +25,10 @@ function PartLine({ part }: { part: GoalPart }) {
       <p className="text-sm text-muted-foreground break-keep wrap-break-word">
         현재 <span className="font-semibold tabular-nums text-foreground">{valueText}</span>
         <span aria-hidden="true"> · </span>
-        목표 {targetText}
+        {targetLine}
       </p>
       {part.marker !== null ? (
-        <GoalBar marker={part.marker} status={part.status} label={`${part.label}: 현재 ${valueText}, 목표 ${targetText}`} />
+        <GoalBar marker={part.marker} status={part.status} label={`${part.label}: 현재 ${valueText}, ${targetLine}`} />
       ) : part.status === 'insufficient' ? (
         <p data-shortfall="" className="text-xs text-muted-foreground break-keep wrap-break-word">
           부족{part.shortfall ? ` · ${formatShortfall(part.shortfall)}` : ''}
