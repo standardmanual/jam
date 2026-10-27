@@ -7,34 +7,12 @@
  */
 import { POLICIES_DATA } from '@/lib/admin/policyDashboard/policiesData'
 import { PolicyDashboardClient } from '@/components/admin/policyDashboard/PolicyDashboardClient'
-import { getJamPolicy } from '@/lib/jam/policy'
-import { getAbusingPolicy } from '@/lib/abusing/policy'
-import { getCombinePolicy } from '@/lib/combine/policy'
-import { getInventoryPolicy } from '@/lib/inventory/policy'
-import { getAmbientDropConfig } from '@/lib/ambient-drop/config'
-import { getCapsulePolicy } from '@/lib/capsule/policy'
+import { loadPolicyLiveValues } from '@/lib/admin/policyDashboard/liveValues'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PolicyDashboardPage() {
-  const [jamRes, abusingRes, combineRes, inventoryRes, ambientRes, capsuleRes] =
-    await Promise.allSettled([
-      getJamPolicy(),
-      getAbusingPolicy(),
-      getCombinePolicy(),
-      getInventoryPolicy(),
-      getAmbientDropConfig(),
-      getCapsulePolicy(),
-    ])
-
-  const liveValues: Record<string, unknown> = {
-    ...(jamRes.status === 'fulfilled' ? jamRes.value : {}),
-    ...(abusingRes.status === 'fulfilled' ? abusingRes.value : {}),
-    ...(combineRes.status === 'fulfilled' ? combineRes.value : {}),
-    ...(inventoryRes.status === 'fulfilled' ? inventoryRes.value : {}),
-    ...(ambientRes.status === 'fulfilled' ? ambientRes.value : {}),
-    ...(capsuleRes.status === 'fulfilled' ? capsuleRes.value : {}),
-  }
+  const liveValues = await loadPolicyLiveValues()
 
   return (
     <div className="w-full p-4 md:p-8 space-y-6">

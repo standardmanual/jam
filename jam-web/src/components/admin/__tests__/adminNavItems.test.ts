@@ -120,10 +120,18 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(items.find((i) => i.href === '/admin/balance')?.label).toBe('밸런스')
   })
 
-  it('«정책 대시보드»는 «밸런스» 그룹 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1631, 20261022_2035 간결화)', () => {
+  it('«생태계 상황판»은 «밸런스» 그룹 맨 위에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261026_2027 3-1)', () => {
     const balance = NAV_GROUPS.find((g) => g.id === 'balance')
-    expect(balance?.items[0]).toMatchObject({ href: '/admin/policy-dashboard', label: '정책 대시보드' })
-    expect(balance?.items[1]).toMatchObject({ href: '/admin/balance', label: '밸런스' })
+    expect(balance?.items[0]).toMatchObject({ href: '/admin/ecosystem', label: '생태계 상황판' })
+    expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/ecosystem')).toHaveLength(1)
+    expect(mostSpecificActiveItem('/admin/ecosystem')?.label).toBe('생태계 상황판')
+    expect(activeNavGroupId('/admin/ecosystem')).toBe('balance')
+  })
+
+  it('«정책 대시보드»는 «밸런스» 그룹에서 생태계 상황판 다음에 있고 그 경로에서 자기 자신만 활성이다(티켓 20261022_1631, 20261022_2035 간결화)', () => {
+    const balance = NAV_GROUPS.find((g) => g.id === 'balance')
+    expect(balance?.items[1]).toMatchObject({ href: '/admin/policy-dashboard', label: '정책 대시보드' })
+    expect(balance?.items[2]).toMatchObject({ href: '/admin/balance', label: '밸런스' })
     expect(mostSpecificActiveItem('/admin/policy-dashboard')?.label).toBe('정책 대시보드')
     expect(mostSpecificActiveItem('/admin/balance')?.label).toBe('밸런스')
     expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/policy-dashboard')).toHaveLength(1)
@@ -131,7 +139,7 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
 
   it('«밸런스 지표»는 «밸런스» 바로 아래 같은 그룹에 한 번 있고, 그 경로에서는 자기 자신만 활성이다(티켓 20261022_1136 1회 b)', () => {
     const balance = NAV_GROUPS.find((g) => g.id === 'balance')
-    expect(balance?.items[2]).toMatchObject({ href: '/admin/balance/dashboard', label: '밸런스 지표' })
+    expect(balance?.items[3]).toMatchObject({ href: '/admin/balance/dashboard', label: '밸런스 지표' })
     expect(NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.href === '/admin/balance/dashboard')).toHaveLength(1)
     // 하위 경로라 «밸런스»도 접두어로 맞지만 더 구체적인 «밸런스 지표»만 고른다
     expect(mostSpecificActiveItem('/admin/balance/dashboard')?.label).toBe('밸런스 지표')

@@ -163,6 +163,9 @@ describe('goalRowsOf', () => {
     for (const part of capsule.parts) {
       expect(part.value).toBeNull()
       expect(part.marker).toBeNull()
+      // 화면이 «표본 N/M명»을 만들 사유가 칸에 실린다 (티켓 20261026_2027 3-1)
+      expect(part.shortfall).toMatchObject({ reason: 'sample', sample: 0 })
+      expect(part.sample).toBeUndefined()
     }
   })
 

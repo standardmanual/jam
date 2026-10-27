@@ -186,6 +186,16 @@ function balanceNode(base: NodeBase, keys: readonly BalanceMetricKey[], balance:
     statusKind,
     headline: { label: `${METRIC_SPECS[key].title} (${spec.label})`, value: ready ? measurement.value : null, unit: spec.unit },
     ...(ready ? { sample: { value: measurement.sample, unit: measurement.sampleUnit } } : {}),
+    ...(measurement.status === 'insufficient'
+      ? {
+          shortfall: {
+            reason: measurement.reason,
+            sample: measurement.sample,
+            minSample: measurement.minSample,
+            unit: measurement.sampleUnit,
+          },
+        }
+      : {}),
     ...(statuses.includes('error') ? { message: ECOSYSTEM_LOAD_FAILED_MESSAGE } : {}),
   }
 }

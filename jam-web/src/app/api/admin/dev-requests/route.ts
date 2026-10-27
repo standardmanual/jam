@@ -2,14 +2,15 @@
  * GET·POST /api/admin/dev-requests — 개발 요청 목록 읽기와 등록 (티켓 20261026_2027 1회차, 어드민 상황판 PRD §8)
  *
  * - GET 인증: 관리자 세션 또는 어드민 읽기 토큰(`requireAdminRead`, GET 전용). 쿼리 `status`는
- *   `requested`(기본)·`ticketed`·`dismissed`·`all`. 응답 `{ requests: [{ no, title, detail, origin, policyId, status, ticketId, createdAt }] }`.
+ *   `requested`(기본)·`ticketed`·`dismissed`·`all`. 응답 `{ requests: [{ id, no, title, detail, origin, policyId, status, ticketId, createdAt }] }`.
+ *   **`id`는 세션 요청에만 싣는다**(생태계 상황판이 열린 요청을 정책에 잇는 데 쓴다, 티켓 20261026_2027 3-1). 읽기 토큰 요청(`isAdminReadTokenRequest`)에는 싣지 않는다.
  * - POST(요청 등록): **관리자 세션만**(`getAdminUser()`가 없으면 403, 읽기 토큰은 보지 않는다). 본문은 16KB까지,
  *   검증 실패 400, 같은 정책의 열린 요청이 있으면 409, 성공 201 `{ request }`.
- * - 응답에 `created_by`와 행 `id`를 싣지 않는다(PATCH용 id는 등록 응답에만 싣는다). 오류 본문에 내부 메시지를 싣지 않는다
+ * - 응답에 `created_by`를 싣지 않는다. 행 `id`는 세션 GET과 등록 응답에만 싣는다(PATCH용). 오류 본문에 내부 메시지를 싣지 않는다
  *   (원문은 서버 로그에만 남긴다). 응답은 캐시하지 않는다.
  */
 import { NextResponse } from 'next/server'
-import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
+import { getAdminUser, isAdminReadTokenRequest, requireAdminRead } from '@/lib/admin/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DEV_REQUEST_MAX_BODY_BYTES, DEV_REQUEST_STATUSES, type DevRequestStatus } from '@/lib/admin/devRequests/constants'
 import { validateDevRequestCreate } from '@/lib/admin/devRequests/requests'
@@ -42,10 +43,12 @@ export async function GET(req: Request) {
     return badRequest('status는 requested · ticketed · dismissed · all 중 하나여야 해요. 값을 고쳐서 다시 요청해 주세요.')
   }
 
+  const withId = !isAdminReadTokenRequest(req)
   try {
     const requests = await listDevRequests(createServiceClient(), { status })
     return json({
-      requests: requests.map(({ no, title, detail, origin, policyId, status: state, ticketId, createdAt }) => ({
+      requests: requests.map(({ id, no, title, detail, origin, policyId, status: state, ticketId, createdAt }) => ({
+        ...(withId ? { id } : {}),
         no,
         title,
         detail,
