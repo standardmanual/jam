@@ -68,6 +68,16 @@ export function goalRowsOf(balanceData: BalanceDashboardData, policies: readonly
           value,
           unit: spec.unit,
           ...(measurement.status === 'ready' ? { sample: { value: measurement.sample, unit: measurement.sampleUnit } } : {}),
+          ...(measurement.status === 'insufficient'
+            ? {
+                shortfall: {
+                  reason: measurement.reason,
+                  sample: measurement.sample,
+                  minSample: measurement.minSample,
+                  unit: measurement.sampleUnit,
+                },
+              }
+            : {}),
           targetText: spec.target?.text ?? null,
           status,
           marker: value !== null && spec.target !== null ? markerOf(value, spec.target) : null,
