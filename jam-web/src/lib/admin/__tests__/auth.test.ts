@@ -34,7 +34,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
-import { hasAdminAccess, isAdminAccount } from '../auth'
+import { hasAdminAccess, isAdminAccount, isAdminReadTokenRequest } from '../auth'
 import { DEV_LOGIN_USER_EMAIL, DEV_LOGIN_USER_ID } from '@/lib/env/test-accounts'
 
 const DEV_ID = '00000000-0000-0000-0000-000000000001'
@@ -136,5 +136,42 @@ describe('isAdminAccount — 이번 변경 범위 밖(유저 일괄 처리 자�
     process.env.STAGING_MODE = 'true'
     delete process.env.ADMIN_EMAILS
     expect(isAdminAccount({ email: DEV_EMAIL, is_admin: true })).toBe(true)
+  })
+})
+
+describe('isAdminReadTokenRequest — 읽기 토큰으로 온 GET인지 가른다(티켓 20261026_2033)', () => {
+  const originalToken = process.env.ADMIN_API_READ_TOKEN
+
+  beforeEach(() => {
+    process.env.ADMIN_API_READ_TOKEN = 'read-token-abcdef'
+  })
+
+  afterEach(() => {
+    if (originalToken === undefined) delete process.env.ADMIN_API_READ_TOKEN
+    else process.env.ADMIN_API_READ_TOKEN = originalToken
+  })
+
+  const get = (token?: string, method = 'GET') =>
+    new Request('http://localhost/api/admin/x', {
+      method,
+      headers: token === undefined ? {} : { 'x-admin-read-token': token },
+    })
+
+  it('맞는 토큰을 단 GET이면 true', () => {
+    expect(isAdminReadTokenRequest(get('read-token-abcdef'))).toBe(true)
+  })
+
+  it('토큰이 없거나 틀리면 false', () => {
+    expect(isAdminReadTokenRequest(get())).toBe(false)
+    expect(isAdminReadTokenRequest(get('wrong'))).toBe(false)
+  })
+
+  it('환경변수가 없으면 false', () => {
+    delete process.env.ADMIN_API_READ_TOKEN
+    expect(isAdminReadTokenRequest(get('read-token-abcdef'))).toBe(false)
+  })
+
+  it('맞는 토큰이어도 GET이 아니면 false', () => {
+    expect(isAdminReadTokenRequest(get('read-token-abcdef', 'POST'))).toBe(false)
   })
 })

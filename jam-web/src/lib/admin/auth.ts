@@ -116,6 +116,15 @@ export async function requireAdminRead(req: Request): Promise<NextResponse | nul
 }
 
 /**
+ * GET 요청이 유효한 읽기 토큰을 달고 왔는지만 가른다(티켓 20261026_2033). 인증이 아니다 — 인증은 먼저
+ * `requireAdminRead`가 한다. 토큰 요청에는 관리자용 칸(`id`·`enabled` 등)을 빼고 돌려주는 라우트가 쓴다.
+ * 라우트 파일이 토큰 헤더 이름을 직접 다루지 않도록(`token-write-contract.test.ts` 3번) 여기에 둔다.
+ */
+export function isAdminReadTokenRequest(req: Request): boolean {
+  return req.method === 'GET' && isValidAdminReadToken(req.headers.get('x-admin-read-token'))
+}
+
+/**
  * 운영 묶음 제출 경로의 토큰 쓰기 예외 판정 (티켓 20260930_1816, 두 번째 경로 20261026_2032). 읽기 토큰으로 쓰기가
  * 허용되는 **유일한** 경우다 — 메서드가 `OPS_INBOX_METHOD`이고, 경로가 `OPS_INBOX_TOKEN_WRITE_PATHS`(제출 경로·루틴
  * 시작 기록 경로, 두 개)의 어느 하나와 **정확히 같고**(뒤에 `/`나 다른 글자가 붙으면 false, 접두사 비교를 쓰지 않는다),
