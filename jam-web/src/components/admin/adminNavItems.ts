@@ -31,6 +31,7 @@ import {
   IconBooks,
   IconShape,
   IconScale,
+  IconRecycle,
   IconClipboardList,
   IconChartBar,
   IconTrendingUp,
@@ -87,6 +88,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'balance',
     label: '밸런스',
     items: [
+      { href: '/admin/ecosystem', label: '생태계 상황판', icon: IconRecycle },
       { href: '/admin/policy-dashboard', label: '정책 대시보드', icon: IconClipboardList },
       { href: '/admin/balance', label: '밸런스', icon: IconScale },
       { href: '/admin/balance/dashboard', label: '밸런스 지표', icon: IconChartBar },
