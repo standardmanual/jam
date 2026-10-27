@@ -108,6 +108,8 @@ export interface DevBoardSnapshot {
   /** staging 색인을 못 읽으면 빈 배열 */
   bundles: BundleProgress[]
   columns: BoardColumns
+  /** 추정 규칙에서 `closed` 날짜가 없어 어느 칸에도 넣지 못한 완료 티켓 수. 정확한 규칙에서는 0 */
+  undatedClosed: number
   sources: Record<SourceKey, SourceState>
   /** main에 색인이 없어(또는 못 읽어) 「배포됨」을 마지막 배포 날짜로 추정했으면 true */
   estimatedDeployed: boolean

@@ -111,7 +111,7 @@ export async function loadDevBoard({ reader, listRequests }: LoadDevBoardDeps, n
   const estimatedDeployed = main.entries === null
 
   const stagingEntries = staging.entries ?? []
-  const columns = buildColumns(stagingEntries, main.entries, {
+  const { columns, undatedClosed } = buildColumns(stagingEntries, main.entries, {
     now,
     lastDeployKstDate: lastDeploy?.kstDate ?? null,
     requests,
@@ -138,6 +138,7 @@ export async function loadDevBoard({ reader, listRequests }: LoadDevBoardDeps, n
     },
     bundles: staging.entries ? bundleProgress(staging.entries, JAM2_BUNDLES) : [],
     columns,
+    undatedClosed,
     sources,
     estimatedDeployed,
   }

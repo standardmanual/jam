@@ -41,8 +41,12 @@ describe('classifyTicket', () => {
     expect(classifyTicket(before, undefined, estimate)).toBe('deployed')
   })
 
-  it('추정 규칙에서 closed가 비어 있으면 staging 반영이다', () => {
-    expect(classifyTicket(entry({ id: 'a', status: 'CLOSED', closed: '' }), undefined, { lastDeployKstDate: '2026-10-14' })).toBe('staged')
+  it('추정 규칙에서 closed가 비어 있으면 어느 칸에도 넣지 않는다', () => {
+    expect(classifyTicket(entry({ id: 'a', status: 'CLOSED', closed: '' }), undefined, { lastDeployKstDate: '2026-10-14' })).toBeNull()
+  })
+
+  it('정확한 규칙에서는 closed가 비어 있어도 staging 반영이다', () => {
+    expect(classifyTicket(entry({ id: 'a', status: 'CLOSED', closed: '' }), undefined, null)).toBe('staged')
   })
 })
 
@@ -54,17 +58,35 @@ describe('buildColumns', () => {
       entry({ id: 'a', status: 'CLOSED', closed: '2026-10-20' }),
       entry({ id: 'b', status: 'CLOSED', closed: '2026-10-14' }),
     ]
-    const exact = buildColumns(staging, [entry({ id: 'a', status: 'CLOSED' })], base)
+    const { columns: exact } = buildColumns(staging, [entry({ id: 'a', status: 'CLOSED' })], base)
     expect(exact.deployed.cards.map((c) => c.id)).toEqual(['a'])
     expect(exact.staged.cards.map((c) => c.id)).toEqual(['b'])
 
-    const estimated = buildColumns(staging, null, base)
+    const { columns: estimated } = buildColumns(staging, null, base)
     expect(estimated.deployed.cards.map((c) => c.id)).toEqual(['b'])
     expect(estimated.staged.cards.map((c) => c.id)).toEqual(['a'])
   })
 
+  it('추정 규칙에서 closed가 빈 완료 티켓은 칸에 넣지 않고 undatedClosed로 센다', () => {
+    const staging = [
+      entry({ id: 'a', status: 'CLOSED', closed: '' }),
+      entry({ id: 'b', status: 'CLOSED', closed: '' }),
+      entry({ id: 'c', status: 'CLOSED', closed: '2026-10-20' }),
+      entry({ id: 'd', status: 'OPEN', closed: '' }),
+    ]
+    const estimated = buildColumns(staging, null, base)
+    expect(estimated.undatedClosed).toBe(2)
+    expect(estimated.columns.staged.cards.map((c) => c.id)).toEqual(['c'])
+    expect(estimated.columns.deployed.total).toBe(0)
+    expect(estimated.columns.waiting.cards.map((c) => c.id)).toEqual(['d'])
+    // 정확한 규칙(main 색인 있음)에서는 센 것이 없고 staging 반영에 그대로 들어간다
+    const exact = buildColumns(staging, [], base)
+    expect(exact.undatedClosed).toBe(0)
+    expect(exact.columns.staged.total).toBe(3)
+  })
+
   it('마지막 배포 날짜도 모르면 추정으로 배포됨을 정하지 않는다', () => {
-    const columns = buildColumns([entry({ id: 'a', status: 'CLOSED', closed: '2026-10-14' })], null, { ...base, lastDeployKstDate: null })
+    const { columns: columns } = buildColumns([entry({ id: 'a', status: 'CLOSED', closed: '2026-10-14' })], null, { ...base, lastDeployKstDate: null })
     expect(columns.deployed.total).toBe(0)
     expect(columns.staged.total).toBe(1)
   })
@@ -76,7 +98,7 @@ describe('buildColumns', () => {
       entry({ id: 'late', status: 'CLOSED', closed: '2026-10-26' }),
       entry({ id: 'old-staged', status: 'CLOSED', closed: '2026-01-01' }),
     ]
-    const exact = buildColumns(staging, [
+    const { columns: exact } = buildColumns(staging, [
       entry({ id: 'in', status: 'CLOSED' }),
       entry({ id: 'out', status: 'CLOSED' }),
       entry({ id: 'late', status: 'CLOSED' }),
@@ -87,7 +109,7 @@ describe('buildColumns', () => {
   })
 
   it('우선순위(P0→P3, 모르면 맨 뒤), 같으면 id 큰 것 먼저 정렬한다', () => {
-    const columns = buildColumns(
+    const { columns: columns } = buildColumns(
       [
         entry({ id: '20261001_0001', priority: 'P2' }),
         entry({ id: '20261002_0001', priority: 'P2' }),
@@ -111,13 +133,13 @@ describe('buildColumns', () => {
 
   it('칸마다 30장까지만 담고 전체 개수는 따로 준다', () => {
     const staging = Array.from({ length: 45 }, (_, i) => entry({ id: `20261001_${String(i).padStart(4, '0')}` }))
-    const columns = buildColumns(staging, [], base)
+    const { columns: columns } = buildColumns(staging, [], base)
     expect(columns.waiting.cards).toHaveLength(BOARD_COLUMN_LIMIT)
     expect(columns.waiting.total).toBe(45)
   })
 
   it('개발 요청은 대기 맨 앞에 요청 카드로 합치고 상한에 함께 센다', () => {
-    const columns = buildColumns([entry({ id: 'p0', priority: 'P0' })], [], {
+    const { columns: columns } = buildColumns([entry({ id: 'p0', priority: 'P0' })], [], {
       ...base,
       requests: [
         { no: 3, title: '요청 3', origin: 'eco' },
@@ -129,7 +151,7 @@ describe('buildColumns', () => {
     expect(columns.waiting.total).toBe(3)
     expect(columns.waiting.cards[0]).toMatchObject({ kind: 'request', requestNo: 5, origin: 'ops', path: null })
 
-    const many = buildColumns(
+    const { columns: many } = buildColumns(
       Array.from({ length: 40 }, (_, i) => entry({ id: `t${i}` })),
       [],
       { ...base, requests: Array.from({ length: 5 }, (_, i) => ({ no: i + 1, title: 'r', origin: 'other' as const })) }
@@ -140,7 +162,7 @@ describe('buildColumns', () => {
   })
 
   it('카드 출처는 티켓 origin이 있을 때만 쓴다', () => {
-    const columns = buildColumns([entry({ id: 'a', origin: 'eco' }), entry({ id: 'b', origin: '' })], [], base)
+    const { columns: columns } = buildColumns([entry({ id: 'a', origin: 'eco' }), entry({ id: 'b', origin: '' })], [], base)
     const byId = Object.fromEntries(columns.waiting.cards.map((c) => [c.id, c.origin]))
     expect(byId).toEqual({ a: 'eco', b: null })
   })
@@ -154,13 +176,13 @@ describe('buildColumns', () => {
       entry({ id: 'dup', status: 'CLOSED', path: 'docs/a.md' }),
       entry({ id: 'dup', status: 'OPEN', path: 'docs/b.md' }),
     ]
-    const columns = buildColumns(staging, main, base)
+    const { columns: columns } = buildColumns(staging, main, base)
     expect(columns.deployed.cards.map((c) => c.path)).toEqual(['docs/a.md'])
     expect(columns.staged.cards.map((c) => c.path)).toEqual(['docs/b.md'])
   })
 
   it('폴더가 옮겨져 경로가 달라도 그 id가 main에 하나뿐이면 같은 티켓으로 본다', () => {
-    const columns = buildColumns(
+    const { columns: columns } = buildColumns(
       [entry({ id: 'moved', status: 'CLOSED', closed: '2026-10-20', path: 'docs/new.md' })],
       [entry({ id: 'moved', status: 'CLOSED', path: 'docs/old.md' })],
       base
