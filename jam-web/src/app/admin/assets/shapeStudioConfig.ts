@@ -417,7 +417,7 @@ export function buildGlyphSdf(
     ctx.translate(GT / 2 - ((x0 + x1) / 2) * sc, GT / 2 - ((y0 + y1) / 2) * sc)
     ctx.scale(sc, sc)
     ctx.fillStyle = '#000'
-    ctx.fill(new Path2D(g.d ?? ''))
+    ctx.fill(new Path2D(g.d ?? ''), 'evenodd')
     const px = ctx.getImageData(0, 0, GT, GT).data
     on = new Uint8Array(GT * GT)
     for (let i = 0; i < on.length; i++) {
@@ -537,7 +537,7 @@ export function drawPresetThumb(
     ctx.translate(S / 2 - ((x0 + x1) / 2) * sc, S / 2 - ((y0 + y1) / 2) * sc)
     ctx.scale(sc, sc)
     ctx.fillStyle = '#4f6a3b'
-    ctx.fill(new Path2D(g.d ?? ''))
+    ctx.fill(new Path2D(g.d ?? ''), 'evenodd')
     ctx.restore()
     return
   }
