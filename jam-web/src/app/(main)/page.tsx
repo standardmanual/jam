@@ -100,7 +100,8 @@ export default async function HomePage() {
   const displayName = (userProfile && getDisplayName(userProfile)) || user.email?.split('@')[0] || '러너'
 
   // ─── 투데이 카드 스택 (Phase 15) ─────────────────────────────────────
-  const todayCards = await getTodayCards(userId, userProfile?.created_at)
+  // 프로필을 읽었으면 소속 트라이브(tribe_id)를 넘겨 태그 계산이 users를 다시 읽지 않게 한다. 프로필 조회가 실패했으면 생략(undefined)해 거기서 읽는다.
+  const todayCards = await getTodayCards(userId, userProfile?.created_at, undefined, userProfile ? userProfile.tribe_id : undefined)
 
   return (
     <div className="min-h-full text-foreground">

@@ -58,6 +58,7 @@ import {
   type OpsPatternKnobKey,
 } from '@/lib/admin/opsPatterns/constants'
 import { TODAY_EXPOSURE_TAG_OPTIONS } from '@/lib/admin/today-sections'
+import { isTribeTag } from '@/lib/today/exposureTribe'
 import { isUuid } from '@/lib/admin/uuid'
 import { CARD_SHAPES, isCardShape } from '@/lib/today/shape'
 
@@ -199,6 +200,7 @@ export function validateWorldReview(review: unknown, path = 'world_review'): str
 // ── 카드 칸·뺀 항목 (티켓 20261001_1152) ─────────────────────────────────────────────────────────
 
 // registerHomeFeedBundle.mjs의 EXPOSURE_TAGS와 같은 원천(`today-sections.ts`)이다.
+// 소속 트라이브 태그 `tribe_<트라이브 ID>`는 목록에 없고 형식(`isTribeTag`)으로 받는다(티켓 20261026_2030 2회차).
 const EXPOSURE_TAGS: readonly string[] = TODAY_EXPOSURE_TAG_OPTIONS.map((option) => option.value)
 
 /**
@@ -209,7 +211,7 @@ export function validateExposureTags(value: unknown, path: string): string[] {
   if (!Array.isArray(value) || value.length === 0) {
     return [`${path}: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).`]
   }
-  const invalid = value.filter((tag) => typeof tag !== 'string' || !EXPOSURE_TAGS.includes(tag))
+  const invalid = value.filter((tag) => typeof tag !== 'string' || !(EXPOSURE_TAGS.includes(tag) || isTribeTag(tag)))
   if (invalid.length > 0) {
     return [`${path}: 허용하지 않는 태그예요 — ${invalid.map(describeValue).join(', ')}. 허용 태그: ${EXPOSURE_TAGS.join(', ')}`]
   }

@@ -169,6 +169,26 @@ describe('loadHomePreview — 트라이브 조건', () => {
   })
 })
 
+describe('loadHomePreview — 소속 트라이브 태그 카드 (티켓 20261026_2030 2회차)', () => {
+  beforeEach(() => {
+    fx.tables.today_cards = [
+      cardRow('common'),
+      cardRow('tribe-a-only', { exposure_tags: [`tribe_${TRIBE_A}`], sort_order: 1 }),
+    ]
+  })
+
+  it('가상 유저의 트라이브를 바꾸면 그 트라이브 태그 카드만 나타나고 사라진다', async () => {
+    const forA = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: { ...VIEWER, tribeId: TRIBE_A }, now: NOW })
+    expect(ids(forA.days[0])).toEqual(['common', 'tribe-a-only'])
+
+    const forB = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: { ...VIEWER, tribeId: TRIBE_B }, now: NOW })
+    expect(ids(forB.days[0])).toEqual(['common'])
+
+    const none = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })
+    expect(ids(none.days[0])).toEqual(['common'])
+  })
+})
+
 describe('loadHomePreview — 수동 비노출 미션 소개 카드', () => {
   const mission = (id: string, over: Row = {}): Row => ({
     id,

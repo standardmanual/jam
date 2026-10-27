@@ -501,6 +501,17 @@ describe('카드 칸 — exposure_tags (티켓 20261001_1152)', () => {
     expect(new Set([asString[0], unknownTag[0], duplicated[0]]).size).toBe(3)
   })
 
+  it('소속 트라이브 태그 tribe_<UUID>는 형식으로 받고, 어긋난 값은 허용값 밖 문장으로 거절한다 (티켓 20261026_2030 2회차)', () => {
+    const tribeTag = 'tribe_11111111-1111-4111-8111-111111111111'
+    expect(tagErrors({ exposure_tags: [tribeTag] })).toEqual([])
+    expect(tagErrors({ exposure_tags: ['all', tribeTag] })).toEqual([])
+    for (const bad of ['tribe_abc', 'tribe_', 'tribe_11111111-1111-4111-8111-11111111111', 'tribe_11111111-1111-4111-8111-11111111111A', 'tribe_gourmet']) {
+      const errors = tagErrors({ exposure_tags: ['all', bad] })
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toMatch(/^items\[0\]\.exposure_tags: 허용하지 않는 태그예요/)
+    }
+  })
+
   it('카드가 아닌 종류는 없어도 오류가 없고, 있으면 형식을 본다', () => {
     expect(tagErrors({ kind: 'recipe' }, ['exposure_tags'])).toEqual([])
     expect(tagErrors({ kind: 'recipe', exposure_tags: ['all'] })).toEqual([])
@@ -520,6 +531,10 @@ describe('카드 칸 — exposure_tags (티켓 20261001_1152)', () => {
     ['문자열이 아닌 원소', ['all', 5]],
     ['중복', ['all', 'all']],
     ['중복 + 허용값 밖', ['all', 'all', 'bogus']],
+    ['트라이브 태그(정상)', ['all', 'tribe_11111111-1111-4111-8111-111111111111']],
+    ['트라이브 태그(UUID 아님)', ['tribe_abc']],
+    ['트라이브 태그(대문자 UUID)', ['tribe_11111111-1111-4111-8111-11111111111A']],
+    ['트라이브 태그(중복)', ['tribe_11111111-1111-4111-8111-111111111111', 'tribe_11111111-1111-4111-8111-111111111111']],
   ]
 
   it.each(inputs)('등록 스크립트와 같은 문장: %s', (_label, value) => {

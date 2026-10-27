@@ -28,6 +28,14 @@ describe('virtualExposureTags — 태그 조합', () => {
     ])
   })
 
+  it('소속 트라이브가 있으면 tribe_<ID> 하나가 붙고, 없거나 UUID가 아니면 붙지 않는다 (티켓 20261026_2030 2회차)', () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    expect(virtualExposureTags({ ...BASE, tribeId: id })).toEqual(['all', 'time_morning', `tribe_${id}`])
+    expect(virtualExposureTags({ ...BASE, newUser: true, tribeId: id.toUpperCase() })).toEqual(['all', 'time_morning', 'new_user', `tribe_${id}`])
+    expect(virtualExposureTags({ ...BASE, tribeId: null })).toEqual(['all', 'time_morning'])
+    expect(virtualExposureTags({ ...BASE, tribeId: 'ranger' })).toEqual(['all', 'time_morning'])
+  })
+
   it('유저 개인 상태 태그는 넣지 않는다', () => {
     const tags = virtualExposureTags({ ...BASE, weather: 'mild', specialDays: ['seasonal_today'], newUser: true })
     expect(tags.filter((t) => t.startsWith('has_'))).toEqual([])

@@ -21,6 +21,7 @@ import {
   JAM_LOW_FRACTION,
   JAM_PLENTY_MULTIPLE,
 } from './exposureThresholds'
+import { tribeTagOf } from './exposureTribe'
 
 export type TimeOfDayTag =
   | 'time_dawn'
@@ -357,18 +358,33 @@ async function getUserInventory(userId: string): Promise<{ max_slots: number; us
   return data ? { max_slots: data.max_slots, used_slots: data.used_slots } : null
 }
 
+/** 유저의 소속 트라이브 ID. 조회 오류면 failed=true(트라이브 태그만 뺀다), 온보딩 전이면 tribeId=null */
+async function getUserTribeId(userId: string): Promise<{ failed: boolean; tribeId: string | null }> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('users')
+    .select('tribe_id')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error) console.error('[getUserTribeId] users 조회 오류:', error.message)
+  return { failed: !!error, tribeId: data?.tribe_id ?? null }
+}
+
 /**
  * 유저의 현재 노출조건 태그 집합을 계산한다.
  * 항상 'all' 과 시간대 태그를 포함하고, 자동계산 조건들을 만족하면 추가한다.
+ *
+ * @param userTribeId 호출부가 users 행을 이미 읽었다면 그 tribe_id(없으면 null). `undefined`일 때만 여기서 읽는다.
  */
 export async function computeUserExposureTags(
   userId: string,
   now: Date,
   userCreatedAt?: string | null,
+  userTribeId?: string | null,
 ): Promise<string[]> {
   const tags: string[] = ['all', timeOfDayTag(now)]
 
-  const [participating, endingSoon, itemBookProgress, staleDays, weather, specialDays, chapterNo, capsule, jamWallet, inventory] =
+  const [participating, endingSoon, itemBookProgress, staleDays, weather, specialDays, chapterNo, capsule, jamWallet, inventory, tribe] =
     await Promise.all([
       hasParticipatingMission(userId),
       hasEndingSoonMission(userId, now),
@@ -380,6 +396,7 @@ export async function computeUserExposureTags(
       getUserCapsule(userId),
       getJamBalance(userId),
       getUserInventory(userId),
+      userTribeId === undefined ? getUserTribeId(userId) : { failed: false, tribeId: userTribeId },
     ])
 
   if (participating) tags.push('has_participating_mission')
@@ -407,6 +424,10 @@ export async function computeUserExposureTags(
   if (jamTag) tags.push(jamTag)
   const inventoryTag = inventoryRoomTag(inventory)
   if (inventoryTag) tags.push(inventoryTag)
+
+  // 소속 트라이브 태그 (티켓 20261026_2030 2회차) — 소속이 있으면 tribe_<ID> 하나. 읽기가 실패하면 태그만 빠진다
+  const tribeTag = tribe.failed ? null : tribeTagOf(tribe.tribeId)
+  if (tribeTag) tags.push(tribeTag)
 
   return tags
 }
