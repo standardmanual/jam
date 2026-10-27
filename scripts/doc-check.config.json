@@ -4,7 +4,7 @@
   "scope": {
     "include": ["docs/"],
     "exclude": ["docs/tickets/modular/", "docs/tickets/_TEMPLATE.md", "docs/archive/",
-      "docs/operations/reports/", "docs/assets/", "**/CLAUDE.md", "**/AGENTS.md"]
+      "docs/operations/reports/", "docs/operations/trendresearch/", "docs/assets/", "**/CLAUDE.md", "**/AGENTS.md"]
   },
   "externalPrefixes": [],
   "codeSpanRoots": ["docs/", "jam-web/", "scripts/", ".claude/", ".githooks/"],

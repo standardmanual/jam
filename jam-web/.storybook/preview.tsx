@@ -36,7 +36,7 @@ const preview: Preview = {
   decorators: [
     // MODULAR 컴포넌트 렌더 컨텍스트: 최소 너비 + 토큰 상속 보장
     (Story: () => ReactNode) => (
-      <div style={{ minWidth: 320, fontFamily: 'var(--font-family-base)' }}>
+      <div style={{ minWidth: 320, fontFamily: 'var(--font-family-base)', textWrap: 'balance', wordBreak: 'keep-all' }}>
         <Story />
       </div>
     ),

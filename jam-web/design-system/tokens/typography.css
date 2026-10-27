@@ -7,6 +7,7 @@
  * 눈금만 남긴다. 자간은 새 시스템에서 모두 0이다.
  *
  * 서체(--font-family-base)는 티켓 20261015_2132에서 Noto Sans KR로 교체했다.
+ * 기본 텍스트 설정: 디자인 시스템(styles.css)과 서비스(globals.css) 전역에 text-wrap: balance, word-break: keep-all이 적용된다.
  */
 :root {
   --font-family-base: "Noto Sans KR", -apple-system, BlinkMacSystemFont,

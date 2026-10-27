@@ -420,6 +420,19 @@ body {
   color: var(--foreground);
   font-family: var(--font-family-base);
   -webkit-tap-highlight-color: transparent;
+  text-wrap: balance;
+  word-break: keep-all;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  text-wrap: balance;
+  word-break: keep-all;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────

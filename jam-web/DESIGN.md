@@ -58,6 +58,7 @@ accent-content 계열이다. 진행 상태 색은 글자로 쓰지 않는다. �
 
 **서체:** Noto Sans KR 하나(`--font-family-base`). 별도 display 서체 없이 굵기로 위계를 만든다.
 
+- **줄바꿈 및 텍스트 래핑:** 디자인 시스템 및 서비스 전역 기본값으로 `text-wrap: balance`와 `word-break: keep-all`이 적용된다.
 - **크기와 행간:** `--text-xs`부터 `--text-5xl`까지가 쌍(`--text-xs--line-height` 같은 이름)이다. 클래스에서는 Tailwind 기본
   유틸리티(`text-xs`~`text-5xl`)를 쓰고, 인라인 style과 CSS에서는 변수를 읽는다.
 - **굵기:** `font-normal`·`font-medium`·`font-semibold`·`font-bold` 네 단계를 쓴다. `font-extrabold`는 서비스가 쓰지 않는다.

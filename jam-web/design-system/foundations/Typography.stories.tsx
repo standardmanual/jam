@@ -32,7 +32,8 @@ function TypeRow({
           fontWeight: weight ?? undefined,
           color: 'var(--foreground)',
           marginBottom: 8,
-          wordBreak: 'break-word',
+          wordBreak: 'keep-all',
+          textWrap: 'balance',
         }}
       >
         {sample}
@@ -67,6 +68,7 @@ function LeadingRow({
           maxWidth: 420,
           marginBottom: 8,
           wordBreak: 'keep-all',
+          textWrap: 'balance',
           overflowWrap: 'break-word',
         }}
       >
@@ -105,6 +107,7 @@ function TypographyPage() {
       <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>
         클래스에서는 Tailwind 기본 유틸리티(<code style={{ color: 'var(--link)' }}>text-xs</code> ~ <code style={{ color: 'var(--link)' }}>text-5xl</code>)를 쓰고,
         인라인 style·CSS에서는 <code style={{ color: 'var(--link)' }}>--text-N</code> · <code style={{ color: 'var(--link)' }}>--text-N--line-height</code> 쌍을 쓴다.
+        디자인시스템과 서비스 전역 텍스트 설정으로 <code style={{ color: 'var(--link)' }}>text-wrap: balance</code>와 <code style={{ color: 'var(--link)' }}>word-break: keep-all</code>이 적용된다.
         자간은 모두 0이고 굵기는 400·500·600·700을 쓴다.
       </p>
       <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 40 }}>

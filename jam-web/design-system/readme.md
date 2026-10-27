@@ -17,7 +17,7 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 값은 이 문서에 적지 않는다. 원천은 `tokens/*.css`이고, 결정 이력과 화면 규칙은 `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md`다. 요약은 `jam-web/DESIGN.md`에 있다.
 
 * **팔레트(Palette)**: JAM 2.0 라이트 전용이다. 크림 바탕(`--background`) 위에 흰 카드(`--surface`)와 테두리(`--border`), 면 채우기 전용 초록 강조색(`--accent`), 강조 글자·선용 짙은 초록(`--link`). 원천은 `tokens/colors.css`다.
-* **타이포그래피(Type)**: Noto Sans KR. 서비스가 쓰는 굵기는 `font-normal`·`font-medium`·`font-semibold`·`font-bold`이고 자간은 모든 단계에서 0이다. 크기 눈금은 `tokens/typography.css`다.
+* **타이포그래피(Type)**: Noto Sans KR. 기본 텍스트 설정으로 `text-wrap: balance`와 `word-break: keep-all`이 적용된다. 서비스가 쓰는 굵기는 `font-normal`·`font-medium`·`font-semibold`·`font-bold`이고 자간은 모든 단계에서 0이다. 크기 눈금은 `tokens/typography.css`다.
 * **모서리 반경(Radius)**: Tailwind 기본 눈금이다(`tokens/radius.css`). 카드는 `rounded-2xl`, 버튼과 태그는 `rounded-full`, 입력창은 캡슐(`--field-radius`)이다.
 * **엘리베이션(Elevation)**: 그림자가 없다. 카드는 흰 면과 테두리로 구분한다(입력창 그림자만 예외, 문서 11의 5.7절).
 * **간격(Spacing)**: `tokens/spacing.css`의 눈금과 레이아웃 시맨틱 토큰이다.
