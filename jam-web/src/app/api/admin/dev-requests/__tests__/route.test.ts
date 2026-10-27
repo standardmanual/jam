@@ -3,7 +3,7 @@
  *
  * 저장소(`store`)는 메모리 안의 가짜로 바꾸고(저장소 자체는 `store.test.ts`가 시험한다) 인증·응답 모양만 시험한다.
  * 지키는 것:
- * - GET: 읽기 토큰·세션 모두 통과, 기본은 requested, status 쿼리 전달, 잘못된 status는 400, `created_by`·`id` 없음, 캐시 안 함
+ * - GET: 읽기 토큰·세션 모두 통과, 기본은 requested, status 쿼리 전달, 잘못된 status는 400, `created_by` 없음, `id`는 세션 응답에만, 캐시 안 함
  * - POST·PATCH: 읽기 토큰으로는 거부(403), 세션으로는 201·200, 400·404·409, 저장소 실패 500(내부 메시지 없음)
  *
  * 실행: cd jam-web && npx vitest run src/app/api/admin/dev-requests/__tests__/route.test.ts
@@ -136,6 +136,17 @@ describe('/api/admin/dev-requests', () => {
       })
       expect(JSON.stringify(body)).not.toContain('created_by')
       expect(h.listCalls[0]).toEqual({ status: 'requested' })
+    })
+
+    it('관리자 세션 응답에는 id가 있고, 읽기 토큰 응답에는 없다', async () => {
+      h.user = ADMIN
+      const session = await (await GET(request('GET'))).json()
+      expect(session.requests[0].id).toBe(ID)
+      expect(JSON.stringify(session)).not.toContain('created_by')
+
+      h.user = null
+      const token = await (await GET(request('GET', { token: true }))).json()
+      expect(token.requests[0]).not.toHaveProperty('id')
     })
 
     it('관리자 세션도 통과하고 status 쿼리를 저장소에 넘긴다', async () => {
