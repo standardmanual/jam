@@ -46,6 +46,7 @@ import {
 // — `@/lib/today/cards`를 값으로 import하면 next/headers까지 클라이언트 번들에 딸려 들어간다).
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import { formatKstYmdHm } from '@/lib/admin/kst-format'
+import { exposureTagDisplay, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import type { TodayCardRow } from '@/types/database'
 import { cn } from '@/lib/utils'
 
@@ -66,6 +67,8 @@ interface TodayCardDetailProps {
   recipeLabel?: string
   /** 저장·취소 후 돌아갈 목록 날짜('YYYY-MM-DD') — 캘린더뷰 맥락 보존(20260902_1028) */
   returnDate: string
+  /** `tribe_<ID>` 노출 태그를 트라이브 이름으로 보이는 목록(티켓 20261026_2030 2회차) */
+  tribes?: TribeTagSource[]
 }
 
 /** 값이 없을 때 표시 */
@@ -86,7 +89,7 @@ function contentTypeLabel(value: string): string {
   return TODAY_CONTENT_TYPE_OPTIONS.find((t) => t.value === value)?.label ?? value
 }
 
-export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, rankingModeTitle, recipeLabel, returnDate }: TodayCardDetailProps) {
+export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, rankingModeTitle, recipeLabel, returnDate, tribes = [] }: TodayCardDetailProps) {
   const router = useRouter()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -230,7 +233,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
     <TodaySectionCard {...sectionHeader('expose')}>
       <ReadOnlyGrid>
         <ReadOnlyItem label="노출조건 태그" span={3}>
-          {card.exposure_tags.length > 0 ? card.exposure_tags.map(exposureTagLabel).join(' · ') : <Empty />}
+          {card.exposure_tags.length > 0 ? card.exposure_tags.map((tag) => exposureTagDisplay(tag, tribes, exposureTagLabel)).join(' · ') : <Empty />}
         </ReadOnlyItem>
         <ReadOnlyItem label="이동 경로" span={3}>
           <span className="font-mono text-[13px]">{resolveTargetHref(card)}</span>

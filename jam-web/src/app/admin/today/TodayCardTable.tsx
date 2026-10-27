@@ -25,6 +25,7 @@ import {
 } from '@/components/admin/data-table/admin-fetch'
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import { TODAY_SELECT_ALL_CAP, type TodayListRow } from '@/lib/admin/today-list-query'
+import { exposureTagDisplay, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 
 interface TodayCardTableProps {
@@ -34,9 +35,13 @@ interface TodayCardTableProps {
   selectedDate: string
   /** 현재 필터 조건에 맞는 전체 건수 — 전체 선택 배너에 쓴다 */
   totalCount: number
+  /** 노출조건의 `tribe_<ID>` 태그를 트라이브 이름으로 보이는 데 쓰는 목록(티켓 20261026_2030 2회차) */
+  tribes?: TribeTagSource[]
 }
 
 type Status = '비활성' | '종료' | '예약' | '노출중'
+
+const EMPTY_TRIBES: TribeTagSource[] = []
 
 const columnHelper = createColumnHelper<DataTableFeatures, TodayListRow>()
 
@@ -76,7 +81,7 @@ function statusOf(c: TodayListRow, now: Date): Status {
  * 날짜(`date`)도 URL 필터 키라서 `useCrossPageSelection(filterKey)`가 날짜가 바뀔 때 선택을
  * 비우고, 쪽 번호는 `applyListParamPatch`가 1쪽으로 되돌린다.
  */
-export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTableProps) {
+export function TodayCardTable({ cards, selectedDate, totalCount, tribes = EMPTY_TRIBES }: TodayCardTableProps) {
   const router = useRouter()
   const { filterKey, filterQuery } = useListParams()
   const { sorting, onSortingChange } = useUrlSorting(HEADER_SORTS, [])
@@ -149,7 +154,7 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
           meta: { label: '노출조건' },
           cell: ({ getValue }) => (
             <span className="text-xs text-muted-foreground max-w-[180px] block truncate">
-              {getValue().join(', ')}
+              {getValue().map((tag) => exposureTagDisplay(tag, tribes)).join(', ')}
             </span>
           ),
         }),
@@ -193,7 +198,7 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
           ),
         }),
       ]),
-    [selectedDate]
+    [selectedDate, tribes]
   )
 
   const table = useTable({
