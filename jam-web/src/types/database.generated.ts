@@ -2367,6 +2367,48 @@ export type Database = {
           },
         ]
       }
+      ops_dev_requests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          detail: string
+          id: string
+          no: number
+          origin: string
+          policy_id: string | null
+          status: string
+          ticket_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          detail?: string
+          id?: string
+          no?: never
+          origin: string
+          policy_id?: string | null
+          status?: string
+          ticket_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          detail?: string
+          id?: string
+          no?: never
+          origin?: string
+          policy_id?: string | null
+          status?: string
+          ticket_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ops_pattern_common_rules: {
         Row: {
           body: string
