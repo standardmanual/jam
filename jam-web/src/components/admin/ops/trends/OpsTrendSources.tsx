@@ -48,6 +48,7 @@ const KIND_PLACEHOLDERS: Record<OpsTrendSourceKind, string> = {
   channel: '예: 채널 주소',
   search_trend: '예: 러닝화 추천',
   manual_upload: '비워도 돼요',
+  repo_folder: '목록에서 골라요',
 }
 
 function locationRequired(kind: OpsTrendSourceKind): boolean {
