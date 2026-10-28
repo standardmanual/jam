@@ -9,6 +9,8 @@ created: 2026-09-26
 # [Infra] `weekly-collect.mjs`의 출력 마스킹 대상에 서비스 롤 키를 넣고 자식 프로세스에 넘기는 환경변수를 점검한다
 
 > **연결 메모 (2026-09-30 티켓 20260930_1451 사용자 결정):** 20260930_1504가 루틴을 바꿀 때 함께 정리한다.
+>
+> **3회차 판정 (2026-10-28, 티켓 20260930_1504): 해당함, 닫지 않음.** `scripts/weekly-collect.mjs`의 마스킹 목록(`SECRET_ENV_KEYS`, 26행)은 아직 3종이고 `SUPABASE_SERVICE_ROLE_KEY`가 없다. 새 `ops-submit.mjs`·`ops-read.mjs`의 토큰 값 지우기(`scrub`)는 그 두 스크립트의 출력만 지우므로 이 티켓을 대신하지 못한다. 새 체계 문서(`ops-weekly.md`·카즈하 정의·`scheduled-jobs.md` 새 체계 소절)는 `weekly-collect.mjs`를 부르라고도, 폐기하라고도 적지 않았다(`grep -rn weekly-collect .claude docs/agents` 결과는 `scheduled-jobs.md` 4-1의 환경변수 설명 한 곳). 4회차에서 루틴 프롬프트에 이 스크립트를 넣을지 정할 때 함께 정한다. 예약 환경에는 서비스 롤 키를 두지 않으므로(`scheduled-jobs.md` 4-1) 지금 노출 경로는 없고 우선순위는 P3 그대로다.
 
 ## 핵심 요약
 
