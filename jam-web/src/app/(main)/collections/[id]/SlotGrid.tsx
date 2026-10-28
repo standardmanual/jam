@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import Button from '@/components/ui/Button'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
 import { d, t } from '@/lib/i18n'
 import { shouldOpenCandidateSheet } from '@/lib/itembook/tier-badge-slots'
 import type { BadgeRarity } from '@/types/database'
+import UnslotAllSheet, { toUnslotAllOutcome, type UnslotAllOutcome } from './UnslotAllSheet'
 
 export interface BadgeSlot {
   /**
@@ -67,6 +69,17 @@ interface SlotGridProps {
    * 켜지면 칸은 등급 칩 없이 그리고, «추가»는 후보가 1개여도 항상 선택 시트를 연다(첫 장착이 컬렉션 등급을 정하기 때문이다).
    */
   tierUndecided?: boolean
+  /**
+   * 이 컬렉션에 장착한 배지의 개수 — «모두 해제하기» 버튼을 그릴지 정한다(티켓 20261028_1420). 0이면 버튼이 없다.
+   * `badgeSlots`에서 `slot != null`을 세지 않고 page가 `user_item_book_slots` 전체 행 수를 내려보낸다: 소프트 삭제된 배지에 꽂힌
+   * 장착은 격자에 칸이 없어 칸 수로 세면 빠지는데, 이 장착이 바로 칸별 «해제»로 풀 수 없어 이 버튼이 있어야 하는 경우다.
+   * 개수는 화면 문구에 쓰지 않는다(격자에 보이는 칸 수와 어긋날 수 있다).
+   */
+  slotCount?: number
+  /** 컬렉션 등급이 정해졌는지(4등급 컬렉션) — 확인 시트 본문에 «등급도 풀려요» 줄을 붙인다 */
+  tierFixed?: boolean
+  /** 완성한 컬렉션인지 — 확인 시트 본문에 «완성 기록은 남아요» 줄을 붙인다 */
+  completed?: boolean
 }
 
 /** 칸의 안정 키 — 이름 묶음 키가 있으면 그것, 없으면 배지 id (`BadgeSlot.cellKey` 주석 참고) */
@@ -81,6 +94,9 @@ export default function SlotGrid({
   badgeLinkQuery = '',
   slotMode = false,
   tierUndecided = false,
+  slotCount = 0,
+  tierFixed = false,
+  completed = false,
 }: SlotGridProps) {
   const router = useRouter()
   /** 요청이 도는 칸의 키(`cellKeyOf`). 등급이 바뀌어 대표 배지 id가 달라져도 같은 칸으로 읽힌다 */
@@ -120,6 +136,12 @@ export default function SlotGrid({
    * 골랐을 때 호출할 API(POST vs PATCH)와 안내 문구만 이 값으로 갈린다.
    */
   const [swapSlotId, setSwapSlotId] = useState<string | null>(null)
+  /** «모두 해제하기» 확인 시트가 열려 있는지(티켓 20261028_1420) */
+  const [unslotAllOpen, setUnslotAllOpen] = useState(false)
+  /** 일괄 해제 요청이 도는 중 — 시트의 제출 중 표시·닫기 차단과 아래 `bulkBusy`가 본다 */
+  const [bulkRequesting, setBulkRequesting] = useState(false)
+  /** 일괄 해제 뒤 `router.refresh()`가 도착하기 전 — 이 사이에 옛 상태의 칸 버튼이 눌리지 않게 `bulkBusy`에 합친다 */
+  const [refreshing, startRefresh] = useTransition()
   const gridRef = useRef<HTMLDivElement | null>(null)
 
   /**
@@ -144,6 +166,9 @@ export default function SlotGrid({
 
   /** 장착 요청이 도는 중 — 시트 안의 행 억제·진행 표시·닫기 차단이 모두 이 값을 본다. */
   const sheetBusy = pendingCellKey != null
+
+  /** 일괄 해제가 진행 중이거나 그 결과 새로고침을 기다리는 중 — 트리거와 칸의 추가·해제·교체 버튼을 막는다 */
+  const bulkBusy = bulkRequesting || refreshing
 
   // 장착 모드로 진입하면 슬롯 그리드가 화면에 들어오게 한다(스토리 텍스트가 길어 스크롤이 필요)
   useEffect(() => {
@@ -301,6 +326,46 @@ export default function SlotGrid({
   }
 
   /**
+   * 일괄 해제 요청(티켓 20261028_1420) — 이 컬렉션에 장착한 배지를 모두 해제한다. `requestUnslot`과 같은 패턴이되 **결과를 시트에 넘긴다**
+   * (`UnslotAllOutcome`). 일괄 해제 오류는 그리드 상단 `error` 배너에 쓰지 않는다 — 사용자가 보고 있는 시트에서 알린다(`sheetError`와 같은 원칙).
+   * 빈칸 판정은 서버가 한다. 화면이 미리 계산하면 인벤토리 조회가 더 붙고 경합에서 어긋난다.
+   *
+   * 서버가 일부를 해제하고 멈췄거나 응답을 못 받은 채 처리됐을 수 있어, 성공뿐 아니라 실패·시간 초과·네트워크 오류 때도 새로고침한다.
+   * 새로고침은 `startRefresh`로 감싸 도착할 때까지 `bulkBusy`가 이어지게 한다. 로그인 만료는 서버를 부르지 않았으므로 새로고침하지 않는다.
+   * 던지지 않는다 — 실패는 `error` 결과로 돌려준다.
+   */
+  async function requestUnslotAll(): Promise<UnslotAllOutcome> {
+    setBulkRequesting(true)
+    try {
+      const token = await getToken()
+      if (!token) return { kind: 'error', message: d.itembooks.slotLoginRequired }
+      const res = await fetchWithTimeout(`/api/itembooks/${itemBookId}/slots`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const body = await res.json().catch(() => ({}))
+      startRefresh(() => router.refresh())
+      return toUnslotAllOutcome(res.ok, res.status, body)
+    } catch (e) {
+      startRefresh(() => router.refresh())
+      return {
+        kind: 'error',
+        message: e instanceof DOMException && e.name === 'AbortError' ? d.itembooks.slotTimeout : d.itembooks.networkError,
+      }
+    } finally {
+      setBulkRequesting(false)
+    }
+  }
+
+  /**
+   * 모두 해제에 성공해 시트가 닫힌 직후 — 포커스를 격자 래퍼로 옮긴다. 전부 해제되면 트리거가 사라지는데, 시트가 닫히며 돌려주는 이전 포커스(트리거)는
+   * 이미 문서에 없거나 비활성이라 포커스가 body로 떨어진다. 키보드·스크린리더 사용자가 격자 근처에서 이어 읽게 한다.
+   */
+  function handleUnslotAllDone() {
+    gridRef.current?.focus()
+  }
+
+  /**
    * 교체 시트 안의 «해제하기» 경로 — 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
    * 대체해 순수 해제 경로가 사라지는 회귀) 반영. 시트를 연 대상(`sheetView`)을 그대로
    * 쓴다 — 그리드 버튼과 달리 cellKey·slotId를 인자로 받지 않는다.
@@ -392,7 +457,8 @@ export default function SlotGrid({
   }
 
   return (
-    <div ref={gridRef}>
+    // tabIndex -1: 모두 해제에 성공했을 때 코드로 포커스를 받는 자리다(`handleUnslotAllDone`). 탭 순서에는 들어가지 않고 윤곽선도 그리지 않는다
+    <div ref={gridRef} tabIndex={-1} className="outline-none">
       {error && (
         <div className="mb-3 rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-muted">
           {error}
@@ -441,7 +507,7 @@ export default function SlotGrid({
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSwapButton(badgeSlot) }}
-                    disabled={pending}
+                    disabled={pending || bulkBusy}
                     className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--accent)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
                   >
                     {pending ? '…' : d.itembooks.swapButton}
@@ -450,7 +516,7 @@ export default function SlotGrid({
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(cellKey, slot!.id) }}
-                    disabled={pending}
+                    disabled={pending || bulkBusy}
                     className="block mx-auto px-3 py-1 text-xs rounded-full bg-[var(--background-inverse)] text-[var(--snow)] transition-all disabled:opacity-40"
                   >
                     {pending ? '…' : d.itembooks.unslotButton}
@@ -463,7 +529,7 @@ export default function SlotGrid({
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSlotButton(badgeSlot) }}
-                  disabled={pending}
+                  disabled={pending || bulkBusy}
                   className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--accent)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
                 >
                   {pending ? '…' : d.itembooks.slotButton}
@@ -473,6 +539,35 @@ export default function SlotGrid({
           )
         })}
       </div>
+
+      {/* 모두 해제하기 — 격자 바로 아래 한 줄(티켓 20261028_1420, 채원 판정). 본인 화면이고 장착이 하나라도 있을 때만 그린다.
+          `bg-surface!`: 이 화면은 배경 영상·이미지·색 테마가 흔해 투명 outline은 글자와 테두리가 사라진다. 흰 면 + 1px 테두리로
+          격자 카드와 같은 면 레시피를 쓴다(Button에 media용 면이 없어서 쓰는 절충). 눌러도 바로 해제하지 않고 확인 시트를 연다. */}
+      {!readOnly && slotCount > 0 && (
+        <Button
+          variant="outline"
+          fullWidth
+          className="mt-3 bg-surface! whitespace-nowrap"
+          disabled={sheetBusy || bulkBusy}
+          onClick={() => setUnslotAllOpen(true)}
+        >
+          {d.itembooks.unslotAll.button}
+        </Button>
+      )}
+
+      {/* 모두 해제하기 확인 시트 — 트리거와 달리 본인 화면이면 항상 그려 둔다. 성공 뒤 새로고침으로 트리거가 사라져도
+          시트가 같이 사라지지 않아 닫힘 트랜지션이 끝까지 간다. 레이어는 BottomSheet 포털 + z-50(기존 층 서열)이다. */}
+      {!readOnly && (
+        <UnslotAllSheet
+          open={unslotAllOpen}
+          submitting={bulkRequesting}
+          tierFixed={tierFixed}
+          completed={completed}
+          onClose={() => setUnslotAllOpen(false)}
+          request={requestUnslotAll}
+          onUnslotted={handleUnslotAllDone}
+        />
+      )}
 
       {/* 개체 선택 시트 — 같은 배지를 2개 이상 보유했을 때만 열린다(20260907_2059).
           레이어: BottomSheet가 document.body 포털 + z-50(시트·다이얼로그 층)이라
