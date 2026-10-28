@@ -6,9 +6,16 @@ import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
 import { d, t } from '@/lib/i18n'
+import { shouldOpenCandidateSheet } from '@/lib/itembook/tier-badge-slots'
 import type { BadgeRarity } from '@/types/database'
 
 export interface BadgeSlot {
+  /**
+   * 칸의 안정 키 — 4등급 컬렉션(`tier_mode`)에서 같은 이름의 4등급 배지를 한 칸으로 묶은 이름 묶음 키다
+   * (티켓 20261028_1408). 컬렉션 등급이 바뀌면 칸의 대표 배지 id가 달라지므로, 칸 `key`·시트가 열린 칸·진행 중 표시는
+   * 배지 id가 아니라 이 값으로 맞춘다. 없으면 `badge.id`를 쓴다(`tier_mode`가 꺼진 컬렉션).
+   */
+  cellKey?: string
   badge: {
     id: string
     name: string
@@ -28,6 +35,11 @@ export interface BadgeSlot {
     /** 만료 임박 칩("곧 만료")을 선택 시트에 띄우기 위한 값 — 만료가 코앞인 개체를 모르고
      *  장착하는 것을 막는다(20260907_2059). 만료 없는 개체는 null. */
     expires_at: string | null
+    /**
+     * 이 개체의 등급 — 컬렉션 등급이 아직 없어 한 칸의 후보에 등급이 다른 개체가 섞일 때만 채운다(티켓 20261028_1408).
+     * 시트 행이 이 값으로 등급 칩을 그린다. 키가 없으면 시트의 `rarity` prop을 쓴다.
+     */
+    rarity?: BadgeRarity | null
   }[]
   slot: {
     id: string
@@ -50,6 +62,16 @@ interface SlotGridProps {
    * 스크롤하고 아직 넣지 않은 칸을 짚어준다.
    */
   slotMode?: boolean
+  /**
+   * 4등급 컬렉션(`tier_mode`)인데 컬렉션 등급이 아직 없는 상태(티켓 20261028_1408). 아무것도 장착하지 않았다는 뜻이다.
+   * 켜지면 칸은 등급 칩 없이 그리고, «추가»는 후보가 1개여도 항상 선택 시트를 연다(첫 장착이 컬렉션 등급을 정하기 때문이다).
+   */
+  tierUndecided?: boolean
+}
+
+/** 칸의 안정 키 — 이름 묶음 키가 있으면 그것, 없으면 배지 id (`BadgeSlot.cellKey` 주석 참고) */
+function cellKeyOf(badgeSlot: BadgeSlot): string {
+  return badgeSlot.cellKey ?? badgeSlot.badge.id
 }
 
 export default function SlotGrid({
@@ -58,23 +80,30 @@ export default function SlotGrid({
   readOnly = false,
   badgeLinkQuery = '',
   slotMode = false,
+  tierUndecided = false,
 }: SlotGridProps) {
   const router = useRouter()
-  const [pendingBadgeId, setPendingBadgeId] = useState<string | null>(null)
+  /** 요청이 도는 칸의 키(`cellKeyOf`). 등급이 바뀌어 대표 배지 id가 달라져도 같은 칸으로 읽힌다 */
+  const [pendingCellKey, setPendingCellKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  /** 개체 선택 시트를 띄운 배지 id(후보가 2개 이상일 때만 설정된다) — 20260907_2059 */
-  const [selectingBadgeId, setSelectingBadgeId] = useState<string | null>(null)
+  /** 개체 선택 시트를 띄운 칸의 키(`cellKeyOf`; 후보가 2개 이상이거나 컬렉션 등급이 아직 없을 때만 설정된다) — 20260907_2059 */
+  const [selectingCellKey, setSelectingCellKey] = useState<string | null>(null)
   /**
    * **닫힘 트랜지션 동안에만 쓰는 폴백 스냅샷**(여는 순간의 `BadgeSlot`).
    *
    * `BottomSheet`는 `open=false` 이후에도 닫힘 트랜지션이 끝날 때까지 DOM에 남는데
-   * (`BottomSheet.tsx:195`), 그때 `selectingBadgeId`는 이미 null이라 최신값 조회가 실패한다.
+   * (`BottomSheet.tsx:195`), 그때 `selectingCellKey`는 이미 null이라 최신값 조회가 실패한다.
    * 그러면 제목과 후보 목록이 한꺼번에 비어 **내용 없는 시트가 쪼그라들며 내려간다.**
    * 이 스냅샷이 그 구간을 메운다.
    *
    * 열려 있는 동안에는 이 값을 쓰지 않는다 — 아래 `sheetView` 주석 참고.
    */
   const [sheetSlot, setSheetSlot] = useState<BadgeSlot | null>(null)
+  /**
+   * 여는 순간의 `tierUndecided` — 닫힘 트랜지션 동안만 쓰는 폴백이다(`sheetSlot`과 같은 이유). 장착이 성공해 시트가
+   * 닫히는 사이에 `router.refresh()` 결과로 `tierUndecided`가 꺼지면 내려가는 시트의 안내문만 툭 바뀌기 때문이다.
+   */
+  const [sheetTierUndecided, setSheetTierUndecided] = useState(false)
   /** 시트에서 방금 탭한 개체 id — 요청이 끝나기 전에 카드에 선택 톤을 바로 켠다(20260907_2059) */
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   /**
@@ -86,7 +115,7 @@ export default function SlotGrid({
   const [sheetError, setSheetError] = useState<string | null>(null)
   /**
    * 시트가 열린 목적을 구분한다 — null이면 "장착"(빈 슬롯 채우기), 슬롯 id가 있으면
-   * "교체"(이미 채워진 슬롯의 개체를 바꾸기, 20260910_0015). `selectingBadgeId`만으로는
+   * "교체"(이미 채워진 슬롯의 개체를 바꾸기, 20260910_0015). `selectingCellKey`만으로는
    * 두 흐름을 구분할 수 없다 — 같은 배지·같은 시트 마크업을 그대로 재사용하되, 개체를
    * 골랐을 때 호출할 API(POST vs PATCH)와 안내 문구만 이 값으로 갈린다.
    */
@@ -98,17 +127,23 @@ export default function SlotGrid({
    *
    * 스냅샷만 쓰면 열려 있는 동안에도 내용이 고정된다. 장착이 409로 실패한 뒤
    * `router.refresh()` 결과가 도착해도 시트는 옛 목록을 계속 그리고, 이미 사라진 후보를
-   * 계속 탭할 수 있었다. `selectingBadgeId`가 살아 있는 동안에는 `badgeSlots`에서 매번
+   * 계속 탭할 수 있었다. `selectingCellKey`가 살아 있는 동안에는 `badgeSlots`에서 매번
    * 다시 찾아 최신 상태를 따라간다.
    *
-   * 다시 열 때 이전 배지가 비치지 않는 이유: 여는 클릭이 `selectingBadgeId`와 스냅샷을 같은
-   * 핸들러에서 함께 세팅하므로, 시트가 다시 열리는 첫 렌더부터 새 배지다.
+   * **칸을 배지 id가 아니라 `cellKey`로 찾는 이유**(티켓 20261028_1408): 다른 기기에서 컬렉션 등급이 바뀌어 409
+   * `tier_mismatch`가 오면 새로고침 뒤 칸의 대표 배지 id가 달라진다. 배지 id로 찾으면 못 찾아 닫힘 스냅샷으로 떨어지고,
+   * 옛 등급 후보가 시트에 남아 틀린 행을 다시 눌러 같은 거절이 반복된다.
+   *
+   * 다시 열 때 이전 칸이 비치지 않는 이유: 여는 클릭이 `selectingCellKey`와 스냅샷을 같은
+   * 핸들러에서 함께 세팅하므로, 시트가 다시 열리는 첫 렌더부터 새 칸이다.
    */
   const sheetView =
-    (selectingBadgeId ? badgeSlots.find((bs) => bs.badge.id === selectingBadgeId) : null) ?? sheetSlot
+    (selectingCellKey ? badgeSlots.find((bs) => cellKeyOf(bs) === selectingCellKey) : null) ?? sheetSlot
+  /** 시트가 «컬렉션 등급 없음» 상태로 그려야 하는지 — 열려 있으면 최신값, 닫히는 중이면 여는 순간의 값 */
+  const sheetUndecided = selectingCellKey != null ? tierUndecided : sheetTierUndecided
 
   /** 장착 요청이 도는 중 — 시트 안의 행 억제·진행 표시·닫기 차단이 모두 이 값을 본다. */
-  const sheetBusy = pendingBadgeId != null
+  const sheetBusy = pendingCellKey != null
 
   // 장착 모드로 진입하면 슬롯 그리드가 화면에 들어오게 한다(스토리 텍스트가 길어 스크롤이 필요)
   useEffect(() => {
@@ -148,8 +183,8 @@ export default function SlotGrid({
    * 그리드 버튼에서 호출하면 그리드 상단 배너에, 선택 시트에서 호출하면 시트 안에 띄운다
    * (20260907_2059 — 시트를 먼저 닫으면 실패 배너가 화면 밖일 수 있었다).
    */
-  async function requestSlot(badgeId: string, inventoryItemId: string): Promise<string | null> {
-    setPendingBadgeId(badgeId)
+  async function requestSlot(cellKey: string, inventoryItemId: string): Promise<string | null> {
+    setPendingCellKey(cellKey)
     try {
       const token = await getToken()
       if (!token) return d.itembooks.slotLoginRequired
@@ -176,14 +211,14 @@ export default function SlotGrid({
         ? d.itembooks.slotTimeout
         : d.itembooks.networkError
     } finally {
-      setPendingBadgeId(null)
+      setPendingCellKey(null)
     }
   }
 
   /** 그리드의 «추가» 버튼 경로 — 실패 사유는 그리드 상단 배너에 띄운다(기존 동작). */
-  async function handleSlot(badgeId: string, inventoryItemId: string) {
+  async function handleSlot(cellKey: string, inventoryItemId: string) {
     setError(null)
-    setError(await requestSlot(badgeId, inventoryItemId))
+    setError(await requestSlot(cellKey, inventoryItemId))
   }
 
   /**
@@ -193,11 +228,11 @@ export default function SlotGrid({
    * (108/109/111이 반복해 온 "원자적 소유권 이전" 원칙, 20260910_0015 티켓 지적).
    */
   async function requestSwap(
-    badgeId: string,
+    cellKey: string,
     slotId: string,
     inventoryItemId: string
   ): Promise<string | null> {
-    setPendingBadgeId(badgeId)
+    setPendingCellKey(cellKey)
     try {
       const token = await getToken()
       if (!token) return d.itembooks.slotLoginRequired
@@ -222,7 +257,7 @@ export default function SlotGrid({
         ? d.itembooks.slotTimeout
         : d.itembooks.networkError
     } finally {
-      setPendingBadgeId(null)
+      setPendingCellKey(null)
     }
   }
 
@@ -231,8 +266,8 @@ export default function SlotGrid({
    * `requestSlot`/`requestSwap`과 같은 패턴이다. 그리드의 «해제» 버튼(그리드 배너)과
    * 교체 시트 안의 «해제하기» 보조 액션(시트 배너, 20260910_0015 후속)이 함께 쓴다.
    */
-  async function requestUnslot(badgeId: string, slotId: string): Promise<string | null> {
-    setPendingBadgeId(badgeId)
+  async function requestUnslot(cellKey: string, slotId: string): Promise<string | null> {
+    setPendingCellKey(cellKey)
     try {
       const token = await getToken()
       if (!token) return d.itembooks.slotLoginRequired
@@ -255,25 +290,25 @@ export default function SlotGrid({
         ? d.itembooks.slotTimeout
         : d.itembooks.networkError
     } finally {
-      setPendingBadgeId(null)
+      setPendingCellKey(null)
     }
   }
 
   /** 그리드의 «해제» 버튼 경로 — 실패 사유는 그리드 상단 배너에 띄운다(기존 동작). */
-  async function handleUnslot(badgeId: string, slotId: string) {
+  async function handleUnslot(cellKey: string, slotId: string) {
     setError(null)
-    setError(await requestUnslot(badgeId, slotId))
+    setError(await requestUnslot(cellKey, slotId))
   }
 
   /**
    * 교체 시트 안의 «해제하기» 경로 — 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
    * 대체해 순수 해제 경로가 사라지는 회귀) 반영. 시트를 연 대상(`sheetView`)을 그대로
-   * 쓴다 — 그리드 버튼과 달리 badgeId·slotId를 인자로 받지 않는다.
+   * 쓴다 — 그리드 버튼과 달리 cellKey·slotId를 인자로 받지 않는다.
    */
   async function handleSheetUnslot() {
-    if (!sheetView?.slot || pendingBadgeId) return
+    if (!sheetView?.slot || pendingCellKey) return
     setSheetError(null)
-    const failure = await requestUnslot(sheetView.badge.id, sheetView.slot.id)
+    const failure = await requestUnslot(cellKeyOf(sheetView), sheetView.slot.id)
     if (failure) {
       setSheetError(failure)
       return
@@ -281,18 +316,22 @@ export default function SlotGrid({
     closeSelectSheet()
   }
 
-  /** 후보가 1개면 즉시 장착, 2개 이상이면 일련번호가 보이는 선택 시트를 연다(20260907_2059). */
+  /**
+   * 후보가 1개면 즉시 장착, 2개 이상이면 일련번호가 보이는 선택 시트를 연다(20260907_2059).
+   * 컬렉션 등급이 아직 없으면 후보가 1개여도 항상 시트를 연다 — 이유와 판정은 `shouldOpenCandidateSheet` 참고(티켓 20261028_1408).
+   */
   function handleSlotButton(badgeSlot: BadgeSlot) {
-    if (badgeSlot.candidates.length === 1) {
-      handleSlot(badgeSlot.badge.id, badgeSlot.candidates[0].id)
+    if (!shouldOpenCandidateSheet(badgeSlot.candidates.length, tierUndecided)) {
+      handleSlot(cellKeyOf(badgeSlot), badgeSlot.candidates[0].id)
       return
     }
     setError(null)
     setSheetError(null)
     setSelectedCandidateId(null)
     setSheetSlot(badgeSlot)
+    setSheetTierUndecided(tierUndecided)
     setSwapSlotId(null)
-    setSelectingBadgeId(badgeSlot.badge.id)
+    setSelectingCellKey(cellKeyOf(badgeSlot))
   }
 
   /**
@@ -307,8 +346,9 @@ export default function SlotGrid({
     setSheetError(null)
     setSelectedCandidateId(null)
     setSheetSlot(badgeSlot)
+    setSheetTierUndecided(tierUndecided)
     setSwapSlotId(badgeSlot.slot.id)
-    setSelectingBadgeId(badgeSlot.badge.id)
+    setSelectingCellKey(cellKeyOf(badgeSlot))
   }
 
   /**
@@ -317,7 +357,7 @@ export default function SlotGrid({
    * 시트에서 그 값들만 툭 사라진다. 초기화는 `handleSlotButton`(=여는 순간)이 이미 하고 있다.
    */
   function closeSelectSheet() {
-    setSelectingBadgeId(null)
+    setSelectingCellKey(null)
   }
 
   /**
@@ -333,16 +373,16 @@ export default function SlotGrid({
   }
 
   /** 시트에서 개체를 골랐을 때 — 탭 즉시 선택 톤을 켜고, 성공해야만 시트를 닫는다. */
-  async function handleSelectCandidate(badgeId: string, inventoryItemId: string) {
+  async function handleSelectCandidate(cellKey: string, inventoryItemId: string) {
     // `.t-panel-slide`가 data-open="false"에서 pointer-events를 끊으므로 닫힘 트랜지션 동안
     // 행은 눌리지 않는다. 남는 창은 `BottomSheet`가 `setShown(false)`를 rAF로 미루는 **1프레임**
     // 뿐이지만, 그 사이의 탭도 이미 닫힌 시트의 탭이므로 무시한다.
-    if (!selectingBadgeId || pendingBadgeId) return
+    if (!selectingCellKey || pendingCellKey) return
     setSheetError(null)
     setSelectedCandidateId(inventoryItemId)
     const failure = swapSlotId
-      ? await requestSwap(badgeId, swapSlotId, inventoryItemId)
-      : await requestSlot(badgeId, inventoryItemId)
+      ? await requestSwap(cellKey, swapSlotId, inventoryItemId)
+      : await requestSlot(cellKey, inventoryItemId)
     if (failure) {
       setSheetError(failure)
       setSelectedCandidateId(null)
@@ -362,10 +402,11 @@ export default function SlotGrid({
       <div className="grid grid-cols-3 gap-2">
         {badgeSlots.map((badgeSlot) => {
           const { badge, candidates, slot } = badgeSlot
+          const cellKey = cellKeyOf(badgeSlot)
           const isSlotted = slot != null
           const isSlottable = !isSlotted && candidates.length > 0
           const isUndiscovered = !isSlotted && candidates.length === 0
-          const pending = pendingBadgeId === badge.id
+          const pending = pendingCellKey === cellKey
           // 장착된 칸은 "실제로 꽂힌 개체"를 배지 상세에 넘긴다 — 그러지 않으면 상세가
           // 임의의 대표 개체(최신 획득분)를 골라 다른 일련번호를 보여준다(20260907_2059).
           // (값이 비어 있으면 붙이지 않는다 — 상세는 `?item` 없이도 기존 폴백으로 동작한다)
@@ -375,10 +416,15 @@ export default function SlotGrid({
 
           return (
             <BadgeGridCard
-              key={badge.id}
+              // 칸 key를 cellKey로 안정시킨다 — 첫 장착으로 등급이 정해져 대표 배지가 바뀌어도 칸이 다시
+              // 마운트되지 않고 그림만 바뀐다(9칸이 한꺼번에 깜빡이지 않는다, 티켓 20261028_1408)
+              key={cellKey}
               name={badge.name}
               imageUrl={badge.image_url}
-              rarity={badge.rarity as BadgeRarity | null}
+              // 등급이 없는 상태의 칸은 칩을 그리지 않는다: `null`을 넘기면 `BadgeGridCard`가 내부에서
+              // `rarity ?? undefined`를 `RarityBadge`에 넘기고, `RarityBadge`는 undefined를 Common으로 보아
+              // 아무것도 그리지 않는다. 이 동작에 기대고 있으니 `RarityBadge`의 Common 규약을 바꾸면 여기도 확인한다.
+              rarity={tierUndecided ? null : (badge.rarity as BadgeRarity | null)}
               href={!isUndiscovered ? `/badges/${badge.id}${badgeLinkQuery}${itemQuery}` : undefined}
               earned={isSlotted}
               undiscovered={isUndiscovered}
@@ -403,7 +449,7 @@ export default function SlotGrid({
                 ) : (
                   <button
                     type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(cellKey, slot!.id) }}
                     disabled={pending}
                     className="block mx-auto px-3 py-1 text-xs rounded-full bg-[var(--background-inverse)] text-[var(--snow)] transition-all disabled:opacity-40"
                   >
@@ -436,15 +482,18 @@ export default function SlotGrid({
           (20260908, 세 번째 사용처 시점에 공용 컴포넌트로 추출 — 사용자 지시). 이 화면만
           요청 진행 중 상태(선택 표시·비활성화·진행 표시·에러 배너)가 있어 관련 prop을 넘긴다. */}
       <ItemCandidateSheet
-        open={selectingBadgeId != null}
+        open={selectingCellKey != null}
         onClose={handleSheetClose}
         badgeName={sheetView?.badge.name}
-        rarity={sheetView?.badge.rarity as BadgeRarity | null}
+        // 등급이 없는 상태에서는 후보마다 등급이 달라 시트 하나의 rarity를 줄 수 없다 — 생략하고 후보별 `rarity`를 쓴다
+        rarity={sheetUndecided ? undefined : (sheetView?.badge.rarity as BadgeRarity | null)}
         bodyText={
           sheetView
             ? swapSlotId
               ? d.itembooks.swapItemBody
-              : t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) })
+              : sheetUndecided
+                ? d.itembooks.selectTierBody
+                : t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) })
             : ''
         }
         candidates={sheetView?.candidates ?? []}
@@ -465,7 +514,7 @@ export default function SlotGrid({
         }
         onSelect={(candidate) => {
           if (!sheetView) return
-          void handleSelectCandidate(sheetView.badge.id, candidate.id)
+          void handleSelectCandidate(cellKeyOf(sheetView), candidate.id)
         }}
         // 교체 시트에서만 "해제하기" 보조 액션을 보여준다(장착 시트는 아직 채워진 슬롯이
         // 없으므로 해제할 대상 자체가 없다). 인터페이스 리뷰 지적(교체가 해제 자리를 완전히

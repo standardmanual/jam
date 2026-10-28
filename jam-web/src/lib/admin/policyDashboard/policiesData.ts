@@ -600,11 +600,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '인벤토리, 컬렉션, 믹스',
     title: '컬렉션 4등급 완성 체계',
     type: 'code_constant',
-    currentSpec: '컬렉션 내 9칸의 최저 등급(Common/Rare/Epic/Mystic)으로 완성 등급 판정',
-    codeLocation: 'jam-web/src/lib/collection/tier.ts',
-    userExperience: '동일한 컬렉션이라도 더 높은 등급의 배지로 채워 완성 등급을 업그레이드할 수 있어요.',
+    currentSpec:
+      '컬렉션의 등급은 처음 장착한 아이템 배지의 등급(Common/Rare/Epic/Mystic)으로 정해지고, 장착한 배지를 모두 해제하면 풀림. 그 뒤로는 같은 등급만 장착(서버가 tier_mismatch로 거절, 마이그레이션 222). 완성은 등급마다 따로 판정·기록(분모는 그 등급의 이름 수). 상세 화면은 정해진 등급의 이름 수만큼(보통 9칸)만 보이고, 등급이 없으면 이름마다 한 칸',
+    codeLocation: 'jam-web/src/lib/itembook/completion-basis.ts',
+    userExperience: '처음 장착한 배지의 등급으로 컬렉션 등급이 정해지고 그 등급의 9칸만 보여요. 장착한 배지를 모두 해제하면 다른 등급으로 다시 정할 수 있어요.',
     basisDoc: '운영 로직 8.3절',
-    ticketId: '20261016_2340',
+    ticketId: '20261028_1408',
     nodes: ['collection'],
   },
   {

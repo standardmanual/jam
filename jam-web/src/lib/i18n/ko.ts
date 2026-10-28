@@ -1631,6 +1631,16 @@ export const ko = {
      *  완전히 대체해 순수 해제 경로가 사라진 회귀)을 반영해 시트 안에 해제 경로를 되살린다. */
     swapSheetUnslotButton: '해제하기',
     processing: '처리 중',
+    /**
+     * 컬렉션 등급이 정해졌을 때 격자 위에 보이는 한 줄(본인 화면만, 티켓 20261028_1408).
+     * `{tier}`는 `getRarityLabel()`이 주는 영문 고정 표기(Common·Rare·Epic·Mystic)다 — 등급명은 한글로 옮기지 않는다.
+     */
+    tierFixedHint: '{tier} 등급으로 모으고 있어요. 장착한 배지를 모두 해제하면 다른 등급으로 다시 정할 수 있어요.',
+    /**
+     * 컬렉션 등급이 아직 없을 때의 장착 시트 안내문(티켓 20261028_1408). 첫 장착이 컬렉션 등급을 정하므로
+     * 후보가 1개여도 항상 이 시트를 거친다. `selectItemBody`와 달리 개수는 쓰지 않는다.
+     */
+    selectTierBody: '처음 장착하는 배지의 등급이 이 컬렉션의 등급이 돼요. 등급과 일련번호를 보고 골라 주세요.',
 
     // ── API 에러 메시지 — src/app/api/itembooks/[id]/slot/route.ts, itembooks/route.ts
     // (ADR 0001 서버-클라이언트 단일 진실 소스, 티켓 20260915_2239)
