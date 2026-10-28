@@ -628,18 +628,24 @@ export type Database = {
       }
       capsule_chapter_costs: {
         Row: {
+          advance_count: number | null
           chapter_no: number
           fill_amount: number
+          fill_amount_v2: number | null
           updated_at: string
         }
         Insert: {
+          advance_count?: number | null
           chapter_no: number
           fill_amount: number
+          fill_amount_v2?: number | null
           updated_at?: string
         }
         Update: {
+          advance_count?: number | null
           chapter_no?: number
           fill_amount?: number
+          fill_amount_v2?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -675,6 +681,73 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "capsule_opens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capsule_pending_rewards: {
+        Row: {
+          chapter_no: number | null
+          fill_amount: number
+          id: string
+          reached_at: string
+          slot: number
+          user_id: string
+        }
+        Insert: {
+          chapter_no?: number | null
+          fill_amount: number
+          id?: string
+          reached_at?: string
+          slot: number
+          user_id: string
+        }
+        Update: {
+          chapter_no?: number | null
+          fill_amount?: number
+          id?: string
+          reached_at?: string
+          slot?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capsule_pending_rewards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capsule_unseen_results: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          seen_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          seen_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          seen_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capsule_unseen_results_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1372,6 +1445,7 @@ export type Database = {
           serial_prefix: string | null
           slotted_in: string | null
           unlock_filled: number
+          unlock_points_required: number | null
           unlock_required: number | null
           unlocked_at: string | null
         }
@@ -1392,6 +1466,7 @@ export type Database = {
           serial_prefix?: string | null
           slotted_in?: string | null
           unlock_filled?: number
+          unlock_points_required?: number | null
           unlock_required?: number | null
           unlocked_at?: string | null
         }
@@ -1412,6 +1487,7 @@ export type Database = {
           serial_prefix?: string | null
           slotted_in?: string | null
           unlock_filled?: number
+          unlock_points_required?: number | null
           unlock_required?: number | null
           unlocked_at?: string | null
         }
@@ -1719,10 +1795,16 @@ export type Database = {
           locked_min_epic: number
           locked_min_mystic: number
           locked_min_rare: number
+          locked_points_common: number
+          locked_points_epic: number
+          locked_points_mystic: number
+          locked_points_rare: number
           locked_roll_probability: number
           mass_earn_alert_multiplier: number
           mass_earn_alert_no_history_amount: number
           mass_earn_alert_weeks: number
+          service_jam_daily_cap: number
+          service_jam_weekly_cap: number
           sync_item_bonus_jam_divisor: number
           sync_item_bonus_max_probability: number
           sync_item_bonus_rolls: number
@@ -1744,10 +1826,16 @@ export type Database = {
           locked_min_epic?: number
           locked_min_mystic?: number
           locked_min_rare?: number
+          locked_points_common?: number
+          locked_points_epic?: number
+          locked_points_mystic?: number
+          locked_points_rare?: number
           locked_roll_probability?: number
           mass_earn_alert_multiplier?: number
           mass_earn_alert_no_history_amount?: number
           mass_earn_alert_weeks?: number
+          service_jam_daily_cap?: number
+          service_jam_weekly_cap?: number
           sync_item_bonus_jam_divisor?: number
           sync_item_bonus_max_probability?: number
           sync_item_bonus_rolls?: number
@@ -1769,10 +1857,16 @@ export type Database = {
           locked_min_epic?: number
           locked_min_mystic?: number
           locked_min_rare?: number
+          locked_points_common?: number
+          locked_points_epic?: number
+          locked_points_mystic?: number
+          locked_points_rare?: number
           locked_roll_probability?: number
           mass_earn_alert_multiplier?: number
           mass_earn_alert_no_history_amount?: number
           mass_earn_alert_weeks?: number
+          service_jam_daily_cap?: number
+          service_jam_weekly_cap?: number
           sync_item_bonus_jam_divisor?: number
           sync_item_bonus_max_probability?: number
           sync_item_bonus_rolls?: number
@@ -1782,6 +1876,50 @@ export type Database = {
           sync_rarity_epic?: number
           sync_rarity_mystic?: number
           sync_rarity_rare?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      jam_service_daily: {
+        Row: {
+          amount: number
+          kst_date: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          kst_date: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          kst_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jam_service_daily_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_jam_rules: {
+        Row: {
+          amount: number
+          kind: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          kind: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          kind?: string
           updated_at?: string
         }
         Relationships: []
@@ -1796,6 +1934,7 @@ export type Database = {
           id: string
           reason: string
           source_activity_id: string | null
+          source_event_key: string | null
           user_id: string
         }
         Insert: {
@@ -1807,6 +1946,7 @@ export type Database = {
           id?: string
           reason: string
           source_activity_id?: string | null
+          source_event_key?: string | null
           user_id: string
         }
         Update: {
@@ -1818,6 +1958,7 @@ export type Database = {
           id?: string
           reason?: string
           source_activity_id?: string | null
+          source_event_key?: string | null
           user_id?: string
         }
         Relationships: [
@@ -3010,6 +3151,7 @@ export type Database = {
           id: string
           reason: string
           source_badge_id: string | null
+          source_inventory_item_id: string | null
           source_item_book_id: string | null
           source_mission_id: string | null
           user_id: string
@@ -3022,6 +3164,7 @@ export type Database = {
           id?: string
           reason: string
           source_badge_id?: string | null
+          source_inventory_item_id?: string | null
           source_item_book_id?: string | null
           source_mission_id?: string | null
           user_id: string
@@ -3034,11 +3177,19 @@ export type Database = {
           id?: string
           reason?: string
           source_badge_id?: string | null
+          source_inventory_item_id?: string | null
           source_item_book_id?: string | null
           source_mission_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "point_transactions_source_inventory_item_id_fkey"
+            columns: ["source_inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "point_transactions_source_badge_id_fkey"
             columns: ["source_badge_id"]
@@ -3911,18 +4062,21 @@ export type Database = {
       }
       user_chapters: {
         Row: {
+          capsule_full_count: number
           chapter_no: number | null
           total_score: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          capsule_full_count?: number
           chapter_no?: number | null
           total_score?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          capsule_full_count?: number
           chapter_no?: number | null
           total_score?: number
           updated_at?: string
