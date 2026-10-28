@@ -55,12 +55,6 @@ const AFTER_SHEET_MS = 140
 /** 오버레이가 내려간 뒤 빈 게이지를 잠깐 보여 주는 시간 */
 const AFTER_LEVEL_UP_MS = 260
 
-const LEVEL_UP_COPY = {
-  title: '축하합니다.',
-  body: '챕터레벨이 상승했습니다.',
-  close: '닫기',
-} as const
-
 /** 채우는 거리에 비례해 시간을 늘리되 너무 짧거나 길어지지 않게 한다 */
 function fillDurationMs(fromJam: number, toJam: number, capacity: number): number {
   const distance = Math.abs(toJam - fromJam) / capacity
@@ -83,7 +77,8 @@ export default function CapsuleFillModule({ capacity, initial, onChange, onBusyC
   const [sheetOpen, setSheetOpen] = useState(false)
   /** 시트를 열 때마다 올려 입력창이 기본값에서 다시 시작하게 한다 */
   const [sheetKey, setSheetKey] = useState(0)
-  const [overlayOrigin, setOverlayOrigin] = useState<OverlayOrigin | null>(null)
+  /** 챕터 오름 오버레이 — 열려 있는 동안만 값이 있다. 번호는 «닫기» 전이라 아직 오르지 않은 챕터에 1을 더한 값이다 */
+  const [overlay, setOverlay] = useState<{ origin: OverlayOrigin; chapterNo: number } | null>(null)
 
   const fillRef = useRef<HTMLSpanElement>(null)
   const aliveRef = useRef(true)
@@ -164,12 +159,15 @@ export default function CapsuleFillModule({ capacity, initial, onChange, onBusyC
     if (!rect) return Promise.resolve()
     return new Promise<void>((resolve) => {
       levelUpDoneRef.current = resolve
-      setOverlayOrigin({
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-        circle: gaugeCircleDiameter(GAUGE_HEIGHT_PX),
+      setOverlay({
+        origin: {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          circle: gaugeCircleDiameter(GAUGE_HEIGHT_PX),
+        },
+        chapterNo: capsuleRef.current.chapter + 1,
       })
     })
   }
@@ -214,7 +212,7 @@ export default function CapsuleFillModule({ capacity, initial, onChange, onBusyC
   }
 
   function handleLevelUpClosed() {
-    setOverlayOrigin(null)
+    setOverlay(null)
     levelUpDoneRef.current?.()
     levelUpDoneRef.current = null
   }
@@ -245,12 +243,10 @@ export default function CapsuleFillModule({ capacity, initial, onChange, onBusyC
         )}
       </BottomSheet>
 
-      {overlayOrigin && (
+      {overlay && (
         <LevelUpOverlay
-          origin={overlayOrigin}
-          title={LEVEL_UP_COPY.title}
-          body={LEVEL_UP_COPY.body}
-          closeLabel={LEVEL_UP_COPY.close}
+          origin={overlay.origin}
+          chapterNo={overlay.chapterNo}
           onDismiss={handleLevelUpDismiss}
           onClosed={handleLevelUpClosed}
         />

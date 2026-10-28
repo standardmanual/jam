@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@ds/components/buttons/Button'
+import { d, t } from '@/lib/i18n'
 import { prefersReducedMotion } from '@/lib/motion'
 import { pushMainScrollLock } from '@/lib/uiOverlay'
 import { GAUGE_ICON, JAM_ORANGE, JamBolt } from './JamGauge'
@@ -14,6 +15,9 @@ import { GAUGE_ICON, JAM_ORANGE, JamBolt } from './JamGauge'
  *   → 문구와 «닫기»가 차례로 나타난다 → «닫기»를 누르면 디졸브(투명도)로 닫힌다.
  * 호출부는 두 시점을 받는다. `onDismiss`는 «닫기»를 누른 즉시(디졸브 시작 전)라서, 이때 뒤의 게이지를 비워 두면
  * 디졸브가 비워진 게이지를 드러낸다. `onClosed`는 디졸브가 끝나 오버레이를 내려도 되는 시점이다.
+ *
+ * 문구: 서비스의 챕터 오름 카드와 같은 사전을 읽는다(`d.chapter.rise` — «축하해요!» / «챕터 N에 올랐어요», `d.common.close`).
+ * 이 문구는 UX Writing 가이드의 챕터 용어(«레벨» 금지, 2026-10-21 결정)를 따른다.
  *
  * 레이어: `document.body` 포털, z 60(최상위 피드백 층, `BadgeRevealOverlay`와 같은 층 — DESIGN_RENEWAL_SPEC의 z-index 체계).
  * 이 오버레이가 열린 동안 토스트를 띄우지 않는 호출부 규칙이 같은 층 동률을 피하게 한다.
@@ -32,9 +36,8 @@ export interface OverlayOrigin {
 
 interface Props {
   origin: OverlayOrigin
-  title: string
-  body: string
-  closeLabel: string
+  /** 오른 챕터 번호 */
+  chapterNo: number
   /** «닫기»를 눌렀을 때(디졸브 시작 전) */
   onDismiss: () => void
   /** 디졸브가 끝났을 때 */
@@ -59,8 +62,7 @@ function insetClip(origin: OverlayOrigin, viewportW: number, viewportH: number):
 
 const FULL_CLIP = 'inset(0px 0px 0px 0px round 0px)'
 
-export default function LevelUpOverlay({ origin, title, body, closeLabel, onDismiss, onClosed }: Props) {
-  const titleId = useId()
+export default function LevelUpOverlay({ origin, chapterNo, onDismiss, onClosed }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const boltRef = useRef<HTMLDivElement>(null)
@@ -189,7 +191,7 @@ export default function LevelUpOverlay({ origin, title, body, closeLabel, onDism
       ref={rootRef}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={titleId}
+      aria-label={t(d.chapter.rise.announce, { chapterNo })}
       className="fixed inset-0 flex items-center justify-center"
       style={{ zIndex: 60 }}
     >
@@ -211,22 +213,21 @@ export default function LevelUpOverlay({ origin, title, body, closeLabel, onDism
       </div>
 
       <div className="relative flex flex-col items-center gap-10 px-8 text-center">
-        <div className="flex flex-col gap-3">
-          <h2
-            id={titleId}
-            className="m-0 break-keep text-3xl font-bold leading-tight text-balance"
-            style={{ color: GAUGE_ICON, ...reveal(0) }}
-          >
-            {title}
-          </h2>
-          <p className="m-0 break-keep text-xl font-bold leading-snug text-balance" style={{ color: GAUGE_ICON, ...reveal(110) }}>
-            {body}
+        <div className="flex flex-col gap-2">
+          <p className="m-0 break-keep text-xl font-bold leading-snug text-balance" style={{ color: GAUGE_ICON, ...reveal(0) }}>
+            {d.chapter.rise.cheer}
           </p>
+          <h2
+            className="m-0 break-keep text-3xl font-bold leading-tight text-balance"
+            style={{ color: GAUGE_ICON, ...reveal(110) }}
+          >
+            {t(d.chapter.rise.title, { chapterNo })}
+          </h2>
         </div>
         <div ref={actionRef} className="w-full max-w-60" style={{ ...reveal(260), pointerEvents: phase === 'revealed' ? 'auto' : 'none' }}>
           {/* primary(초록)는 오렌지 바탕에서 색이 부딪혀서 중립색 secondary를 쓴다 */}
           <Button variant="secondary" fullWidth onClick={dismiss}>
-            {closeLabel}
+            {d.common.close}
           </Button>
         </div>
       </div>
