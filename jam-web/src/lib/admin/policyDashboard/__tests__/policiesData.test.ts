@@ -236,3 +236,17 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     }
   })
 })
+
+describe('컬렉션 4등급 완성 체계 항목 (티켓 20261028_1408)', () => {
+  const policy = POLICIES_DATA.find((p) => p.id === 'ch8-collection-4tiers')
+
+  it('코드 위치가 실재하고 실제 동작(처음 장착한 등급으로 고정, 모두 해제하면 풀림)을 적는다', () => {
+    const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+    expect(policy?.codeLocation).toBe('jam-web/src/lib/itembook/completion-basis.ts')
+    expect(existsSync(`${repoRoot}${policy?.codeLocation}`), '코드 위치가 실재해야 합니다').toBe(true)
+    expect(policy?.currentSpec).toContain('처음 장착한')
+    expect(policy?.currentSpec).toContain('모두 해제하면')
+    expect(policy?.currentSpec).not.toContain('최저 등급')
+    expect(policy?.userExperience).not.toContain('업그레이드')
+  })
+})
