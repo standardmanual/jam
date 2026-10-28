@@ -57,22 +57,22 @@ export function EcosystemLoopMap({ nodes, selected }: EcosystemLoopMapProps) {
 
       <div data-loop="field" className="space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground">필드 순환</h3>
-        <div className="flex flex-wrap items-stretch gap-y-3">
-          <div className="flex items-stretch">
-            <div className={`${CELL} space-y-2`}>
+        <div className="flex flex-wrap items-center gap-y-3">
+          <div className="flex items-center">
+            <div className={`${CELL} flex flex-col gap-2`}>
               {card('system_drop')}
               {card('user_drop')}
             </div>
           </div>
-          <div className="flex items-stretch">
+          <div className="flex items-center">
             <Arrow />
             <div className={CELL}>{card('checkin_point')}</div>
           </div>
-          <div className="flex items-stretch">
+          <div className="flex items-center">
             <Arrow />
             <div className={CELL}>{card('pickup')}</div>
           </div>
-          <div className="flex items-stretch">
+          <div className="flex items-center">
             <Arrow />
             <div className={CELL}>{card('inventory', true)}</div>
           </div>
