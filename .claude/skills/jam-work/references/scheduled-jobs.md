@@ -217,7 +217,7 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
 | 읽는 것 | 지난 주간 리포트 최대 4개 · 사용자 트렌드 자료와 켜진 트렌드 출처(`ops-read.mjs trend-sources`) · 패턴 사전·조합 뽑기·결정 기록·밸런스 규칙·아이템 경로(`ops-read.mjs`). 상한은 「저장 위치와 읽기 상한」 |
 | 반영 | 운영자가 운영툴에서 검토하고 「승인하고 예약」 한 번으로 승인과 예약 등록을 끝낸다(`docs/service/prd/content-automation/PRD.md` §11). 아래 옛 체계의 「반영」 칸(리포트 칸 체크, 슬랙 스레드 선택)은 새 체계에서 쓰지 않는다 |
 | 비용 | 임시 상한(4-11)은 이전 실행값과 직접 비교하지 않는다. 호출이 늘어나므로 첫 시험 실행의 「비용」 절 실측으로 다시 정한다 |
-| 상태 | 켜짐 (2026-10-28 사용자 승인으로 켬, 루틴 `trig_01LVVmr7eWsL1EKBfiRtn595`, 환경 `jam-ops`, 첫 정기 실행 2026-11-03(화) 09:00 KST). 끄려면 claude.ai에서 루틴을 끄거나 `RemoteTrigger update {"enabled": false}`를 보내고 이 칸을 `꺼짐`으로 고친 뒤 생성 파일을 다시 만든다. 생성기(`scripts/gen-scheduled-jobs.mjs`)와 리포트 점검(`scripts/ticket-dashboard.mjs`)이 절의 첫 「상태」 행만 읽는다 |
+| 상태 | 켜짐 (2026-10-28 사용자 승인으로 켬, 루틴 `trig_01LVVmr7eWsL1EKBfiRtn595`, 환경 `jam-ops`, 첫 정기 실행 2026-11-03(화) 09:00 KST). 끄려면 claude.ai에서 루틴을 끄거나 `RemoteTrigger update {"enabled": false}`를 보내고 이 칸을 `꺼짐`으로 고친 뒤 생성 파일을 다시 만든다. 켜고 끌 때 생성 파일이 바뀌므로 push 전에 `jam-web`의 일정 테스트(`src/lib/admin/__tests__/scheduled-routines.test.ts`, `src/app/admin/__tests__/home-sections.test.tsx`)를 돌려 기대값을 함께 맞춘다(2026-10-28 켤 때 놓쳐 CI가 깨졌다, 티켓 20261028_1444). 생성기(`scripts/gen-scheduled-jobs.mjs`)와 리포트 점검(`scripts/ticket-dashboard.mjs`)이 절의 첫 「상태」 행만 읽는다 |
 
 ### 옛 체계 주간 (7회차까지 유지)
 

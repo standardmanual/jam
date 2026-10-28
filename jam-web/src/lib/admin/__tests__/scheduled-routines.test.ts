@@ -109,7 +109,7 @@ describe('weeklyRoutineOccurrences — 커스텀 정의', () => {
 })
 
 describe('weeklyRoutineOccurrences — 실제 생성 파일(SCHEDULED_JOBS) 기준', () => {
-  // 주간·선별·주간 배포 승인·월간은 2026-10-07 예약 루틴 삭제로 꺼졌고, 데일리 미팅은 2026-10-24부터 JAM 2.0 완성까지 꺼 두었다(티켓 20261007_1956, 20261014_1647)
+  // 선별·주간 배포 승인은 2026-10-07 예약 루틴 삭제로 꺼졌고, 데일리 미팅은 2026-10-24부터 JAM 2.0 완성까지 꺼 두었다(티켓 20261007_1956, 20261014_1647). 주간·월간은 새 체계 루틴으로 2026-10-28에 다시 켰다(티켓 20260930_1504 7-A3)
   it('2026-10-12 주: 데일리 미팅이 월·수·금 20:00 꺼짐으로 나온다', () => {
     const occ = weeklyRoutineOccurrences('2026-10-12', SCHEDULED_JOBS)
     expect(occ.filter((o) => o.label === '데일리 미팅')).toEqual([
@@ -119,10 +119,10 @@ describe('weeklyRoutineOccurrences — 실제 생성 파일(SCHEDULED_JOBS) 기�
     ])
   })
 
-  it('2026-10-12 주: 주간(화 09:00)·선별(매일 06:00)·주간 배포 승인(목 15:00·23:59)은 꺼짐으로 나온다', () => {
+  it('2026-10-12 주: 주간(화 09:00)은 켜짐, 선별(매일 06:00)·주간 배포 승인(목 15:00·23:59)은 꺼짐으로 나온다', () => {
     const occ = weeklyRoutineOccurrences('2026-10-12', SCHEDULED_JOBS)
 
-    expect(occ.find((o) => o.label === '주간')).toEqual({ date: '2026-10-13', time: '09:00', label: '주간', enabled: false })
+    expect(occ.find((o) => o.label === '주간')).toEqual({ date: '2026-10-13', time: '09:00', label: '주간', enabled: true })
 
     const triage = occ.filter((o) => o.label === '선별')
     expect(triage).toHaveLength(7)
@@ -138,15 +138,15 @@ describe('weeklyRoutineOccurrences — 실제 생성 파일(SCHEDULED_JOBS) 기�
     expect(occ.some((o) => o.label === '월간')).toBe(false)
   })
 
-  it('2026-09-28 주: 10월 1일(목)에 월간 루틴이 09:00 꺼짐으로 나온다', () => {
+  it('2026-09-28 주: 10월 1일(목)에 월간 루틴이 09:00 켜짐으로 나온다', () => {
     const occ = weeklyRoutineOccurrences('2026-09-28', SCHEDULED_JOBS)
     expect(occ.filter((o) => o.label === '월간')).toEqual([
-      { date: '2026-10-01', time: '09:00', label: '월간', enabled: false },
+      { date: '2026-10-01', time: '09:00', label: '월간', enabled: true },
     ])
   })
 
-  it('켜진 루틴이 없다(데일리 미팅은 JAM 2.0 완성까지 꺼 둔 상태다)', () => {
-    expect(SCHEDULED_JOBS.filter((j) => j.enabled).map((j) => j.name)).toEqual([])
+  it('켜진 루틴은 주간·월간이다(선별·주간 배포 승인·데일리 미팅은 꺼 둔 상태다)', () => {
+    expect(SCHEDULED_JOBS.filter((j) => j.enabled).map((j) => j.name)).toEqual(['주간', '월간'])
     expect(SCHEDULED_JOBS.map((j) => j.name)).toContain('데일리 미팅')
   })
 })
