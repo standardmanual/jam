@@ -148,6 +148,13 @@ describe('EcosystemLoopMap', () => {
     expect(view).not.toContain('<svg')
   })
 
+  it('필드 순환은 2층 카드(시스템/유저 드랍) 높이 오버플로우 방지를 위해 items-center와 flex-col gap-2를 쓴다', () => {
+    const view = markup(null)
+    const field = view.split('data-loop="field"')[1]
+    expect(field).toContain('items-center')
+    expect(field).toContain('flex flex-col gap-2')
+  })
+
   it('선택하지 않으면 aria-current가 없고, 선택한 마디에만 붙는다', () => {
     expect(markup(null)).not.toContain('aria-current')
     const view = markup('capsule')
