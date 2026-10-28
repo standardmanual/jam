@@ -15,9 +15,10 @@ const REPO_ROOT = path.resolve(WEB_ROOT, '..');
 export const LOGO_SVG = path.join(REPO_ROOT, 'docs/assets/brand/jam_logo.svg');
 export const J_SVG = path.join(REPO_ROOT, 'docs/assets/brand/j.svg');
 
-// 기존 규격 유지 — TopNav의 width={2610} height={925}가 그대로 유효해야 한다.
+// 로고 PNG 규격 2610×865 — 원본 SVG(jam_logo.svg)의 viewBox와 같아서 로고가 캔버스를 가득 채운다.
+// 마스크 CSS(globals.css의 .jam-logo-mark aspect-ratio)와 배지 공유 이미지의 로고 비율도 이 값을 따른다.
 export const LOGO_W = 2610;
-export const LOGO_H = 925;
+export const LOGO_H = 865;
 // 아이콘 안 J의 높이 비율. 옛 아이콘 실측값(68.5%)을 시작값으로 쓴다. 답답해 보이면 여기만 줄인다.
 export const J_HEIGHT_RATIO = 0.685;
 export const ICO_SIZES = [16, 32, 48];
@@ -33,18 +34,12 @@ export const TARGETS = {
 };
 
 const BLACK = { r: 0, g: 0, b: 0, alpha: 1 };
-const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
 
-/** 로고 SVG를 높이 925로 렌더해 2610×925 투명 캔버스 가운데에 놓는다. color: 'black' | 'white'. */
+/** 로고 SVG를 2610×865 캔버스에 가득 채워 렌더한다(원본 비율이 캔버스와 같다). color: 'black' | 'white'. */
 export async function renderLogo(color) {
   const svg = fs.readFileSync(LOGO_SVG, 'utf8').replaceAll('fill="black"', `fill="${color}"`);
-  const { data, info } = await sharp(Buffer.from(svg), { density: 300 })
-    .resize({ height: LOGO_H })
-    .png()
-    .toBuffer({ resolveWithObject: true });
-  const left = Math.floor((LOGO_W - info.width) / 2);
-  return sharp({ create: { width: LOGO_W, height: LOGO_H, channels: 4, background: CLEAR } })
-    .composite([{ input: data, left, top: 0 }])
+  return sharp(Buffer.from(svg), { density: 300 })
+    .resize({ width: LOGO_W, height: LOGO_H })
     .png()
     .toBuffer();
 }
