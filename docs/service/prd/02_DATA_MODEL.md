@@ -507,6 +507,7 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 **장착 API 분기** (`jam-web/src/app/api/itembooks/[id]/slot/route.ts`)
 - POST(장착)·PATCH(교환)가 컬렉션의 `item_books.tier_mode`를 읽어 켜진 컬렉션은 `slot_item_into_book_tiered`·`swap_item_in_book_tiered`를, 꺼진 컬렉션은 옛 함수를 이전과 같은 인자로 부른다. DELETE(해제)는 `tier_mode`와 무관하게 옛 함수다.
 - 새 함수의 오류 `tier_mismatch`·`tier_mode_off`는 409, 교환의 `item_book_not_found`는 404로 응답한다.
+- 모두 해제는 별도 경로 `DELETE /api/itembooks/[id]/slots`(`jam-web/src/app/api/itembooks/[id]/slots/route.ts`, 티켓 20261028_1420)다. 요청한 유저가 이 컬렉션에 꽂은 장착 전부(소프트 삭제된 배지에 꽂힌 장착 포함, 다른 컬렉션·다른 유저는 제외)를 장착마다 `unslot_item_from_book`으로 순서대로 푼다. 새 SQL 함수는 없다. 해제하면 장착마다 인벤토리 칸을 하나씩 쓰므로 먼저 빈칸(`max_slots - used_slots`)이 장착 수 이상인지 확인하고, 모자라면 아무것도 풀지 않고 409와 `code: inventory_full`로 응답한다. 확인 뒤 경합으로 중간에 가득 차면 거기서 멈추고 같은 409에 푼 수(`released`)와 남은 수(`remaining`)를 싣는다(풀린 것을 되돌리지 않는다). 그 밖의 실패는 500에 같은 두 수를 싣는다. 성공은 `{ ok, released, remaining: 0 }`이고 장착이 없으면 해제 0개로 성공이다. 장착 해제는 완성 기록을 지우지 않는다.
 
 **조회 응답 필드** (`GET /api/itembooks`, `GET /api/users/[username]/itembooks`)
 - 기존 필드(`totalBadgeCount`·`slottedCount`·`isCompleted` 등)의 이름과 값은 그대로이고 `tierMode`·`tier`·`tiers`를 더했다.

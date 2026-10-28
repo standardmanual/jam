@@ -338,3 +338,87 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(hintTexts).toEqual([])
   })
 })
+
+// ── «모두 해제하기» 버튼에 내려보내는 값 (티켓 20261028_1420) ───────────────────────────────
+
+describe('컬렉션 상세 페이지 — 모두 해제하기에 내려보내는 값', () => {
+  let errorSpy: MockInstance
+
+  beforeEach(() => {
+    state.tables = {}
+    state.calls = []
+    state.notFoundCalls = 0
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    setBook(true)
+  })
+
+  afterEach(() => {
+    errorSpy.mockRestore()
+  })
+
+  it('장착 개수는 이 컬렉션의 장착 행 수이고 등급이 정해졌으면 tierFixed다', async () => {
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = [slotRow('이름1-rare'), slotRow('이름2-rare')]
+
+    const { gridProps } = await renderGrid()
+
+    expect(gridProps?.slotCount).toBe(2)
+    expect(gridProps?.tierFixed).toBe(true)
+    expect(gridProps?.completed).toBe(false)
+    expect(gridProps?.readOnly).toBe(false)
+  })
+
+  it('장착이 없으면 개수 0이고 tierFixed도 꺼져 있다', async () => {
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = []
+
+    const { gridProps } = await renderGrid()
+
+    expect(gridProps?.slotCount).toBe(0)
+    expect(gridProps?.tierFixed).toBe(false)
+  })
+
+  it('소프트 삭제된 배지에 꽂힌 장착만 있어도 개수에 센다 — 격자에는 장착된 칸이 하나도 없다', async () => {
+    const deleted = badgeRow('삭제된배지', 'rare', { deleted_at: '2026-10-20T00:00:00Z' })
+    state.tables.badges = [deleted, ...fullBookRows()]
+    state.tables.user_item_book_slots = [slotRow(deleted.id as string)]
+
+    const { gridProps } = await renderGrid()
+
+    // badgeSlots에서 slot != null을 세면 0이라 버튼이 사라진다 — 칸별 «해제»로 풀 수 없는 장착이 막다른 길이 된다
+    expect(gridProps?.badgeSlots.filter((s) => s.slot != null)).toHaveLength(0)
+    expect(gridProps?.slotCount).toBe(1)
+    expect(gridProps?.tierFixed).toBe(true)
+  })
+
+  it('옛 완성 기록이 있는 컬렉션은 completed다', async () => {
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = [slotRow('이름1-rare')]
+    state.tables.user_item_book_completions = [{ item_book_id: 'book-1' }]
+
+    const { gridProps } = await renderGrid()
+
+    expect(gridProps?.completed).toBe(true)
+  })
+
+  it('tier_mode가 꺼진 컬렉션은 개수만 있고 tierFixed는 꺼져 있다', async () => {
+    setBook(false)
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = [slotRow('이름1-rare')]
+
+    const { gridProps } = await renderGrid()
+
+    expect(gridProps?.slotCount).toBe(1)
+    expect(gridProps?.tierFixed).toBe(false)
+  })
+
+  it('타인 열람은 readOnly로 내려간다 — 그러면 SlotGrid가 개수와 관계없이 버튼을 그리지 않는다(SlotGrid.test.tsx)', async () => {
+    state.tables.users = [{ id: 'user-2', username: 'other' }]
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = [slotRow('이름1-epic')]
+
+    const { gridProps } = await renderGrid({ u: 'other' })
+
+    expect(gridProps?.readOnly).toBe(true)
+  })
+})
