@@ -300,7 +300,8 @@ describe('BoardSection', () => {
     expect(out).toContain('1 · 게재 중')
     // 에이전트 줄과 일정 띠
     expect(out).toContain('ops-agent-rows-heading')
-    expect(out).toContain('예약 꺼짐')
+    // 기준 시각 THURSDAY(2026-10-01 목) 다음의 주간 루틴은 화요일 09:00이다(주간 루틴이 켜진 실제 생성 파일 기준)
+    expect(out).toContain('화 09:00')
   })
 
   it('출처 하나라도 못 읽었으면(sourceErrors) 숫자를 틀리게 보이지 않고 구역 전체가 안내 카드다', async () => {
