@@ -41,3 +41,27 @@ describe('ItemCandidateRow 잠긴 변형', () => {
     expect(html).toContain('000005')
   })
 })
+
+describe('ItemCandidateRow 개체별 등급 (티켓 20261028_1408)', () => {
+  const base = { id: 'a', serial_number: 5, serial_prefix: 'ABCD', expires_at: null }
+
+  it('개체에 등급이 있으면 행의 rarity prop보다 우선해 그 등급의 칩을 그린다', () => {
+    const html = renderToStaticMarkup(
+      <ItemCandidateRow candidate={{ ...base, rarity: 'epic' }} rarity="rare" onClick={vi.fn()} />
+    )
+    expect(html).toContain('Epic')
+    expect(html).not.toContain('Rare')
+  })
+
+  it('개체에 등급 키가 없으면 지금처럼 rarity prop의 칩을 그린다(드랍·픽업 시트 회귀 방지)', () => {
+    const html = renderToStaticMarkup(<ItemCandidateRow candidate={base} rarity="rare" onClick={vi.fn()} />)
+    expect(html).toContain('Rare')
+  })
+
+  it('개체 등급이 Common이면 칩을 그리지 않는다', () => {
+    const html = renderToStaticMarkup(
+      <ItemCandidateRow candidate={{ ...base, rarity: 'common' }} rarity={undefined} onClick={vi.fn()} />
+    )
+    expect(html).not.toContain('Common')
+  })
+})
