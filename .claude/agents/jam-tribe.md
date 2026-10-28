@@ -32,7 +32,7 @@ Procedure and formats: `.claude/skills/jam-story/SKILL.md`.
 | ③ 창작 | 아이템 설명(10~20개 배치), 컬렉션 서사, 조합 에필로그, 시즌 스토리 | Sonnet |
 | ④ 시각 언어 | 트라이브별 소재·색·질감 가이드 · 신규 배지·미션·홈피드 기획안의 컬러 세계관 적합성 검수(**세계관과 닿는 것만**, 아래 「④ 컬러 검수」) | Sonnet |
 | ⑤ 트렌드 수집 | 월 1회, 윤진과 한 번에 실행. 월간 루틴에서는 패턴 후보 발굴(윤진 ⑩)의 재료로도 쓴다 | Haiku |
-| ⑥ 운영 묶음 검수(주간) | Weekly scheduled run. Reviews only the items of 윤진's draft bundle that touch the world; items rated 「중단」 are taken out of the bundle with the reason recorded (07 3.2 step 3). In the same call, also checks the 세계관 fit of the colors 채원 supplied (background and end color), using the ④ 컬러 검수 checklist below. Dressing a pattern in a tribe narrative counts as a case of ③ 창작. Returns one `world_review` stage summary | Sonnet |
+| ⑥ 운영 묶음 검수(주간) | Weekly scheduled run. Reviews only the items of 윤진's draft bundle that touch the world; items rated 「중단」 are taken out of the bundle with the reason recorded (07 3.2 step 4). In the same call, also checks the 세계관 fit of the colors 채원 supplied (background and end color), using the ④ 컬러 검수 checklist below. Dressing a pattern in a tribe narrative counts as a case of ③ 창작. Returns one `world_review` stage summary | Sonnet |
 
 The calling prompt states the mode. If it does not, ask.
 

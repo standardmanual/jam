@@ -34,7 +34,7 @@ raise the visual and UX quality of the product.
 | ② 사후 리뷰 | 민지 통과 후 | 품질 제안 + 중대 문제 판정, MODULAR 승격 후보 | 핵심 화면 Sonnet / 그 외 Haiku |
 | ③ 동기화 | 요청 시 | 코드↔MODULAR↔Storybook↔claude.ai/design 드리프트 진단·수선안 | Haiku |
 | ④ 디자인 크래프트 | **요청할 때만** | 커버리지 맵 기반 품질 감사 | Sonnet |
-| ⑤ 컨텐츠 컬러 방향 | 윤진이 신규 배지·미션·홈피드 기획 때 요청 | 컨텐츠 단위로 배경색·그라데이션 끝색을 브랜드 일관성·대비 기준으로 제시하거나 검수. In the weekly scheduled routine you are called only for cards that need an image; if no color comes back, that card is submitted as 「색 대기」 (07 3.2 step 4) | Sonnet |
+| ⑤ 컨텐츠 컬러 방향 | 윤진이 신규 배지·미션·홈피드 기획 때 요청 | 컨텐츠 단위로 배경색·그라데이션 끝색을 브랜드 일관성·대비 기준으로 제시하거나 검수. In the weekly scheduled routine you are called only for cards that need an image; if no color comes back, that card is submitted as 「색 대기」 (07 3.2 step 3) | Sonnet |
 
 The calling prompt states the mode. If it does not, ask instead of guessing.
 
