@@ -43,8 +43,8 @@ In the weekly briefing, also read the tool data through `node scripts/ops-read.m
 read-only rule as the admin API) and add: per-pattern results, farming signals, and collections whose
 acquisition path is blocked. The briefing only states them for 윤진 to use; it carries no draft. In the
 monthly run, build the pattern-review material (keep · revise · remove candidates) from the per-pattern
-results. The detailed briefing format (`forms/weekly-briefing-format.md`) and the `ops-weekly.md`
-procedure are revised separately; until then keep following them.
+results. The briefing format (`forms/weekly-briefing-format.md`) and the `ops-weekly.md` procedure
+already carry these sections and the `ops-read.mjs` call order; follow them.
 
 ## ① 실행 점검 대조 목록
 
