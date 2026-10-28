@@ -5,6 +5,7 @@
  * 지키는 것:
  * - GET: 읽기 토큰은 켜진 출처만·`no/name/kind/location`만(`id`·`enabled` 없음), 세션은 includeDisabled로 전부·`created_by` 없음
  * - POST·PATCH: 읽기 토큰으로는 거부(403), 세션으로는 201·200, 400·404·409, 저장소 실패 500(내부 메시지 없음)
+ * - 저장소 폴더 종류: POST는 허용 폴더면 201·목록 밖이면 400, PATCH는 저장소의 `folder_not_allowed`를 400으로 바꾼다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/admin/ops-trend-sources/__tests__/route.test.ts
  */
@@ -195,6 +196,25 @@ describe('/api/admin/ops-trend-sources', () => {
       expect((await res.json()).details.length).toBeGreaterThan(0)
     })
 
+    it('저장소 폴더는 허용 폴더면 201', async () => {
+      h.user = { id: 'admin-1', email: 'admin@example.com' }
+      const body = { name: '트렌드 리서치', kind: 'repo_folder', location: 'docs/operations/trendresearch/' }
+      h.createResult = { ok: true, source: { ...SAVED, ...body } }
+      const res = await POST(request('POST', { body }))
+      expect(res.status).toBe(201)
+      expect((await res.json()).source).toMatchObject({ kind: 'repo_folder', location: 'docs/operations/trendresearch/' })
+    })
+
+    it.each(['', 'docs/tickets/', '../x/', '/etc/', 'docs\\operations\\trendresearch\\'])(
+      '저장소 폴더의 위치가 「%s」이면 400이고 details에 위치 오류가 든다',
+      async (location) => {
+        h.user = { id: 'admin-1', email: 'admin@example.com' }
+        const res = await POST(request('POST', { body: { name: '트렌드 리서치', kind: 'repo_folder', location } }))
+        expect(res.status).toBe(400)
+        expect((await res.json()).details).toEqual(['location: 정해 둔 폴더 중에서 골라 주세요.'])
+      }
+    )
+
     it('JSON이 아니거나 8KB를 넘으면 400', async () => {
       h.user = { id: 'admin-1', email: 'admin@example.com' }
       expect((await POST(request('POST', { raw: '{not json' }))).status).toBe(400)
@@ -259,6 +279,23 @@ describe('/api/admin/ops-trend-sources', () => {
       const res = await patch(ID, { body: { location: '' } })
       expect(res.status).toBe(400)
       expect((await res.json()).details[0]).toContain('location')
+    })
+
+    it('저장소 폴더 출처의 위치가 허용 폴더 밖이면 400이고 details에 위치 오류가 든다', async () => {
+      h.user = { id: 'admin-1', email: 'admin@example.com' }
+      h.updateResult = { ok: false, code: 'folder_not_allowed' }
+      const res = await patch(ID, { body: { location: 'docs/tickets/' } })
+      expect(res.status).toBe(400)
+      expect((await res.json()).details).toEqual(['location: 정해 둔 폴더 중에서 골라 주세요.'])
+    })
+
+    it('저장소 폴더 출처의 위치를 허용 폴더로 바꾸면 200', async () => {
+      h.user = { id: 'admin-1', email: 'admin@example.com' }
+      const saved = { ...SAVED, kind: 'repo_folder', location: 'docs/operations/trendresearch/' }
+      h.updateResult = { ok: true, source: saved }
+      const res = await patch(ID, { body: { location: 'docs/operations/trendresearch/' } })
+      expect(res.status).toBe(200)
+      expect((await res.json()).source).toMatchObject({ kind: 'repo_folder', location: 'docs/operations/trendresearch/' })
     })
 
     it('저장 실패는 500이고 내부 메시지를 싣지 않는다', async () => {

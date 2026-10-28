@@ -4,6 +4,7 @@
  * 서비스 클라이언트는 메모리 안의 가짜다. 지키는 것:
  * - 목록: `no` 순, 끈 출처 제외 옵션, `lastReadAt` 계산(가장 늦은 묶음·문자열/숫자 번호·시험 묶음 제외·인용 없음 null)
  * - 등록·수정: 이름 중복은 `duplicate`, 없는 행은 `not_found`, 위치 비우기는 종류로 판정, `created_by`는 결과에 없음
+ * - 수정: 저장소 폴더 출처의 위치가 허용 폴더 밖이면 `folder_not_allowed`(저장 안 함), 허용 폴더면 저장, 다른 종류는 그대로
  * - 읽기·쓰기 실패는 던진다
  *
  * 실행: cd jam-web && npx vitest run src/lib/admin/opsTrends/__tests__/sourceStore.test.ts
@@ -263,5 +264,65 @@ describe('updateTrendSource', () => {
   it('쓰기 실패는 던진다', async () => {
     state.failTable = 'ops_trend_sources'
     await expect(updateTrendSource(fakeService(), 'x', { enabled: true })).rejects.toThrow()
+  })
+
+  describe('저장소 폴더(repo_folder) 출처', () => {
+    const FOLDER = 'docs/operations/trendresearch/'
+
+    it('허용 폴더 밖 위치로 바꾸면 folder_not_allowed이고 저장하지 않는다', async () => {
+      const row = source({ kind: 'repo_folder', location: FOLDER })
+      state.sources.push(row)
+      for (const location of ['docs/tickets/', '../x/', '/etc/', 'docs\\operations\\trendresearch\\']) {
+        expect(await updateTrendSource(fakeService(), row.id as string, { location })).toEqual({
+          ok: false,
+          code: 'folder_not_allowed',
+        })
+      }
+      expect(row.location).toBe(FOLDER)
+    })
+
+    it('허용 폴더 위치로는 저장하고, 이름·끄기와 함께 보내도 된다', async () => {
+      const row = source({ kind: 'repo_folder', location: FOLDER })
+      state.sources.push(row)
+      const result = await updateTrendSource(fakeService(), row.id as string, {
+        location: FOLDER,
+        name: '리서치 폴더',
+        enabled: false,
+      })
+      expect(result.ok).toBe(true)
+      if (result.ok) expect(result.source).toMatchObject({ kind: 'repo_folder', location: FOLDER, name: '리서치 폴더', enabled: false })
+    })
+
+    it('위치를 비우면 허용 폴더 검사보다 먼저 location_required다', async () => {
+      const row = source({ kind: 'repo_folder', location: FOLDER })
+      state.sources.push(row)
+      expect(await updateTrendSource(fakeService(), row.id as string, { location: '' })).toEqual({
+        ok: false,
+        code: 'location_required',
+      })
+      expect(row.location).toBe(FOLDER)
+    })
+
+    it('위치를 보내지 않는 수정(끄기·이름)은 위치를 건드리지 않고 그대로 된다', async () => {
+      const row = source({ kind: 'repo_folder', location: FOLDER })
+      state.sources.push(row)
+      const result = await updateTrendSource(fakeService(), row.id as string, { enabled: false })
+      expect(result.ok).toBe(true)
+      expect(row.location).toBe(FOLDER)
+    })
+
+    it('다른 종류는 허용 폴더 목록과 상관없이 위치를 바꿀 수 있다', async () => {
+      const tag = source({ kind: 'hashtag' })
+      state.sources.push(tag)
+      const result = await updateTrendSource(fakeService(), tag.id as string, { location: 'docs/tickets/' })
+      expect(result.ok).toBe(true)
+      expect(tag.location).toBe('docs/tickets/')
+    })
+
+    it('없는 행에 위치를 보내면 not_found, 종류 읽기 실패는 던진다', async () => {
+      expect(await updateTrendSource(fakeService(), 'nope', { location: FOLDER })).toEqual({ ok: false, code: 'not_found' })
+      state.failTable = 'ops_trend_sources'
+      await expect(updateTrendSource(fakeService(), 'x', { location: FOLDER })).rejects.toThrow()
+    })
   })
 })

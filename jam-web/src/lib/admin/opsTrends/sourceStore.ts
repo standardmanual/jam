@@ -4,13 +4,14 @@
  * - `listTrendSources`: 행을 `no` 순으로 읽고 `lastReadAt`을 계산해 붙인다. 칸을 따로 두지 않고, 최근 60일 묶음의
  *   `trends[].source_ids`에 그 출처 번호(`no`)가 든 묶음 중 가장 늦은 `received_at`을 쓴다(시험 묶음 `is_sample` 제외).
  * - `createTrendSource`·`updateTrendSource`: 이름 중복(`23505`)은 `duplicate`, 없는 행은 `not_found`로 돌려준다(던지지 않는다).
- *   종류가 직접 올린 자료가 아닌 출처의 위치를 비우려는 수정은 `location_required`다(패치에는 종류가 없어 여기서 확인한다).
+ *   종류가 직접 올린 자료가 아닌 출처의 위치를 비우려는 수정은 `location_required`, 저장소 폴더 출처의 위치를 허용 폴더
+ *   밖으로 바꾸려는 수정은 `folder_not_allowed`다(패치에는 종류가 없어 여기서 확인한다).
  * - 읽기·쓰기 실패는 호출부가 500으로 바꾸도록 던진다. 돌려주는 값에 `created_by`는 없다.
  * - 삭제는 없다. 묶음의 `source_ids`가 번호로 남아 있어서 끄기(`enabled=false`)로 대신한다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import type { OpsTrendSourceKind } from '@/lib/admin/opsTrends/constants'
-import type { TrendSourceCreateInput, TrendSourcePatchInput } from '@/lib/admin/opsTrends/sources'
+import { isTrendSourceFolder, type TrendSourceCreateInput, type TrendSourcePatchInput } from '@/lib/admin/opsTrends/sources'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -47,7 +48,7 @@ export interface TrendSourceWithLastRead extends TrendSource {
 
 export type TrendSourceWriteResult =
   | { ok: true; source: TrendSource }
-  | { ok: false; code: 'duplicate' | 'not_found' | 'location_required' }
+  | { ok: false; code: 'duplicate' | 'not_found' | 'location_required' | 'folder_not_allowed' }
 
 function toSource(row: SourceRow): TrendSource {
   return {
@@ -132,8 +133,8 @@ export async function updateTrendSource(
   id: string,
   patch: TrendSourcePatchInput
 ): Promise<TrendSourceWriteResult> {
-  // 위치를 비우는 수정만 현재 종류를 확인해야 한다(직접 올린 자료가 아니면 위치가 있어야 한다).
-  if (patch.location === '') {
+  // 위치를 바꾸는 수정은 현재 종류를 확인해야 한다(직접 올린 자료가 아니면 위치가 있어야 하고, 저장소 폴더는 허용 폴더여야 한다).
+  if (patch.location !== undefined) {
     const { data: current, error: readError } = await service
       .from('ops_trend_sources')
       .select('kind')
@@ -141,7 +142,12 @@ export async function updateTrendSource(
       .maybeSingle()
     if (readError) throw new Error(`트렌드 출처 조회 실패: ${readError.message}`)
     if (!current) return { ok: false, code: 'not_found' }
-    if ((current as { kind: string }).kind !== 'manual_upload') return { ok: false, code: 'location_required' }
+    const currentKind = (current as { kind: string }).kind
+    if (patch.location === '') {
+      if (currentKind !== 'manual_upload') return { ok: false, code: 'location_required' }
+    } else if (currentKind === 'repo_folder' && !isTrendSourceFolder(patch.location)) {
+      return { ok: false, code: 'folder_not_allowed' }
+    }
   }
 
   const { data, error } = await service
