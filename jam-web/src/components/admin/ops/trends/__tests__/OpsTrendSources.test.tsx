@@ -15,9 +15,12 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { NETWORK_ERROR_MESSAGE } from '@/components/admin/data-table/admin-fetch'
+import { OPS_TREND_SOURCE_FOLDERS } from '@/lib/admin/opsTrends/constants'
 import {
   OpsTrendSources,
+  SourceAddForm,
   TREND_SOURCE_EMPTY,
+  TREND_SOURCE_FOLDER_HINT,
   TREND_SOURCE_MANUAL_HINT,
   TREND_SOURCE_NEVER_READ,
   type OpsTrendSourceRow,
@@ -83,6 +86,34 @@ describe('OpsTrendSources 렌더', () => {
   })
 })
 
+describe('SourceAddForm 위치 칸', () => {
+  const form = (initialKind: OpsTrendSourceRow['kind']) =>
+    flat(<SourceAddForm initialKind={initialKind} onDone={vi.fn()} onCancel={vi.fn()} />)
+  const inputCount = (out: string) => (out.match(/<input/g) ?? []).length
+
+  it('저장소 폴더면 위치가 글자 입력이 아니라 폴더 선택이고 안내 한 줄이 나온다', () => {
+    const out = form('repo_folder')
+    expect(inputCount(out)).toBe(1) // 이름 입력만 남는다
+    expect(out).toContain('aria-labelledby="trend-source-location-label"')
+    expect(out).toContain('목록에서 골라요')
+    expect(out).not.toContain('placeholder="목록에서 골라요"')
+    expect(out).toContain('placeholder="예: 트렌드 리서치"')
+    expect(out).toContain(TREND_SOURCE_FOLDER_HINT)
+  })
+
+  it('폴더를 고르기 전에는 추가하기가 눌리지 않는다', () => {
+    expect(form('repo_folder')).toMatch(/<button[^>]*disabled=""[^>]*>추가하기<\/button>/)
+  })
+
+  it('다른 종류는 위치가 글자 입력이고 폴더 안내가 없다', () => {
+    const out = form('hashtag')
+    expect(inputCount(out)).toBe(2) // 이름 + 위치
+    expect(out).toContain('placeholder="예: #러닝크루"')
+    expect(out).not.toContain('trend-source-location-label')
+    expect(out).not.toContain(TREND_SOURCE_FOLDER_HINT)
+  })
+})
+
 describe('sourceClient', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -113,6 +144,13 @@ describe('sourceClient', () => {
     expect(url).toBe('/api/admin/ops-trend-sources')
     expect(init.method).toBe('POST')
     expect(JSON.parse(String(init.body))).toEqual({ name: '러닝', kind: 'hashtag', location: '#러닝' })
+  })
+
+  it('저장소 폴더 추가는 종류와 고른 폴더 경로를 그대로 보낸다', async () => {
+    const fetchMock = stubFetch(201, { source: {} })
+    await createTrendSourceRequest({ name: '트렌드 리서치', kind: 'repo_folder', location: OPS_TREND_SOURCE_FOLDERS[0] })
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(JSON.parse(String(init.body))).toEqual({ name: '트렌드 리서치', kind: 'repo_folder', location: 'docs/operations/trendresearch/' })
   })
 
   it('409는 서버 문장을 그대로 돌려준다', async () => {

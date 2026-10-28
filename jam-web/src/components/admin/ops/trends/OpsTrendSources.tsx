@@ -12,6 +12,7 @@ import { Switch } from '@/components/admin/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { formatKstDayTime } from '@/lib/admin/opsInbox/labels'
 import {
+  OPS_TREND_SOURCE_FOLDERS,
   OPS_TREND_SOURCE_KINDS,
   OPS_TREND_SOURCE_KIND_LABELS,
   OPS_TREND_SOURCE_MAX_LOCATION,
@@ -25,7 +26,7 @@ import { createTrendSourceRequest, setTrendSourceEnabledRequest } from './source
  *
  * - 표: 이름 · 종류 · 위치 · 마지막으로 읽은 시각(KST) · 켜짐 스위치. 스위치를 누르면 `PATCH`로 바로 켜고 끈다.
  *   요청 중에는 그 줄 스위치만 잠기고, 실패하면 되돌리고 표 위에 한 줄 오류를 보인다.
- * - 출처 추가: 이름 · 종류 · 위치. 직접 올린 자료는 위치를 비워도 된다. 서버가 돌려준 오류 문장(400 `details`·409)을 그대로 한 줄로 보인다.
+ * - 출처 추가: 이름 · 종류 · 위치. 직접 올린 자료는 위치를 비워도 되고, 저장소 폴더는 위치를 허용 폴더 목록에서 고른다(티켓 20261028_1427). 서버가 돌려준 오류 문장(400 `details`·409)을 그대로 한 줄로 보인다.
  * - 목록을 바꾸면 `router.refresh()`로 서버 화면을 다시 읽는다. 삭제는 없다(옛 묶음의 출처 번호가 남아 있어서 끄기로 대신한다).
  */
 
@@ -41,6 +42,7 @@ export interface OpsTrendSourceRow {
 
 export const TREND_SOURCE_NEVER_READ = '아직 읽지 않았어요'
 export const TREND_SOURCE_MANUAL_HINT = '파일 목록은 루틴이 제출에 싣는 값으로 보여요'
+export const TREND_SOURCE_FOLDER_HINT = '정해 둔 폴더 중에서 골라요. 루틴이 이 폴더의 안내 문서에 적힌 대로 읽어요'
 export const TREND_SOURCE_EMPTY = '등록한 출처가 없어요. 출처를 추가하면 루틴이 켜진 출처만 읽어요'
 const SWITCH_STATE = { on: '켜짐', off: '꺼짐' } as const
 const KIND_PLACEHOLDERS: Record<OpsTrendSourceKind, string> = {
@@ -51,13 +53,24 @@ const KIND_PLACEHOLDERS: Record<OpsTrendSourceKind, string> = {
   repo_folder: '목록에서 골라요',
 }
 
+const NAME_PLACEHOLDERS: Partial<Record<OpsTrendSourceKind, string>> = { repo_folder: '예: 트렌드 리서치' }
+
 function locationRequired(kind: OpsTrendSourceKind): boolean {
   return kind !== 'manual_upload'
 }
 
-function SourceAddForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+/** `initialKind`는 DOM 없이 종류별 첫 렌더를 테스트에서 고정하려고 열어 둔 값이다. 화면에서는 기본값만 쓴다. */
+export function SourceAddForm({
+  onDone,
+  onCancel,
+  initialKind = 'hashtag',
+}: {
+  onDone: () => void
+  onCancel: () => void
+  initialKind?: OpsTrendSourceKind
+}) {
   const [name, setName] = useState('')
-  const [kind, setKind] = useState<OpsTrendSourceKind>('hashtag')
+  const [kind, setKind] = useState<OpsTrendSourceKind>(initialKind)
   const [location, setLocation] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,14 +103,21 @@ function SourceAddForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
             maxLength={OPS_TREND_SOURCE_MAX_NAME}
             disabled={pending}
             onChange={(event) => setName(event.target.value)}
-            placeholder="예: 러닝 해시태그"
+            placeholder={NAME_PLACEHOLDERS[kind] ?? '예: 러닝 해시태그'}
           />
         </label>
         <div className="block space-y-1 text-sm font-medium">
           <span id="trend-source-kind-label" className="break-keep wrap-break-word">
             종류
           </span>
-          <Select value={kind} disabled={pending} onValueChange={(value) => setKind(value as OpsTrendSourceKind)}>
+          <Select
+            value={kind}
+            disabled={pending}
+            onValueChange={(value) => {
+              setKind(value as OpsTrendSourceKind)
+              setLocation('')
+            }}
+          >
             <SelectTrigger aria-labelledby="trend-source-kind-label">
               <SelectValue />
             </SelectTrigger>
@@ -110,19 +130,42 @@ function SourceAddForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
             </SelectContent>
           </Select>
         </div>
-        <label className="block space-y-1 text-sm font-medium">
-          <span className="break-keep wrap-break-word">위치</span>
-          <Input
-            value={location}
-            maxLength={OPS_TREND_SOURCE_MAX_LOCATION}
-            disabled={pending}
-            onChange={(event) => setLocation(event.target.value)}
-            placeholder={KIND_PLACEHOLDERS[kind]}
-          />
-        </label>
+        {kind === 'repo_folder' ? (
+          <div className="block space-y-1 text-sm font-medium">
+            <span id="trend-source-location-label" className="break-keep wrap-break-word">
+              위치
+            </span>
+            <Select value={location} disabled={pending} onValueChange={setLocation}>
+              <SelectTrigger aria-labelledby="trend-source-location-label">
+                <SelectValue placeholder={KIND_PLACEHOLDERS[kind]} />
+              </SelectTrigger>
+              <SelectContent>
+                {OPS_TREND_SOURCE_FOLDERS.map((folder) => (
+                  <SelectItem key={folder} value={folder}>
+                    {folder}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <label className="block space-y-1 text-sm font-medium">
+            <span className="break-keep wrap-break-word">위치</span>
+            <Input
+              value={location}
+              maxLength={OPS_TREND_SOURCE_MAX_LOCATION}
+              disabled={pending}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder={KIND_PLACEHOLDERS[kind]}
+            />
+          </label>
+        )}
       </div>
       {kind === 'manual_upload' && (
         <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_MANUAL_HINT}</p>
+      )}
+      {kind === 'repo_folder' && (
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_FOLDER_HINT}</p>
       )}
       {error && (
         <Alert variant="destructive">
