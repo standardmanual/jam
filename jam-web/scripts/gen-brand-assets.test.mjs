@@ -18,11 +18,15 @@ const read = (p) => fs.readFileSync(p);
 const px = ({ data, width }, x, y) => Array.from(data.subarray((y * width + x) * 4, (y * width + x) * 4 + 4));
 
 describe('브랜드 이미지 규격', () => {
-  it('로고 PNG는 2610×925 RGBA에 배경이 투명하고 색이 각각 흰색·검정이다', async () => {
+  it('로고 PNG는 2610×865 RGBA에 로고가 캔버스를 채우고 배경이 투명하며 색이 각각 흰색·검정이다', async () => {
     const white = await readRaw(read(TARGETS.logoWhite));
     const black = await readRaw(read(TARGETS.dsLogoBlack));
     for (const img of [white, black]) {
-      expect([img.width, img.height]).toEqual([2610, 925]);
+      expect([img.width, img.height]).toEqual([2610, 865]);
+      // 로고가 왼쪽·오른쪽 끝까지 닿는다(J의 왼쪽 변, M의 오른쪽 변)
+      expect(px(img, 0, 100)[3]).toBe(255);
+      expect(px(img, 2609, 600)[3]).toBe(255);
+      // M의 둥근 오른쪽 위 모서리 밖은 투명하다
       expect(px(img, 2609, 0)[3]).toBe(0);
     }
     // 가운데 줄에서 불투명 픽셀의 색을 확인한다

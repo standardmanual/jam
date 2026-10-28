@@ -32,7 +32,8 @@ const BLOCK_GAP = 63
 const ROW_BLOCK_HEIGHT = 85.5636
 /** 라벨 텍스트 시작 y가 값 텍스트 시작 y보다 아래로 내려간 오프셋(Figma "mt-61.56") */
 const LABEL_OFFSET_Y = 61.56
-const LOGO_WIDTH = 174.2336
+// 174.2336은 옛 로고의 Figma 칸 폭이다. 새 로고(2610:865) 비율이 눌리지 않도록 높이 72 기준으로 폭만 고쳤다(72×2610/865).
+const LOGO_WIDTH = 217.2486
 const LOGO_HEIGHT = 72
 const VALUE_FONT_SIZE = 50.858
 const LABEL_FONT_SIZE = 19.824
