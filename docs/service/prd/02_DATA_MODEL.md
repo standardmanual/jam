@@ -485,7 +485,7 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
     두 표 합산은 티켓 20261022_0939 1회).
 
 ### 4-2. 컬렉션 4등급 구조 (JAM 2.0) — 마이그레이션 222, 티켓 20261016_2340
-운영 로직 8.3절이 근거다. 마이그레이션 222는 2026-10-17에 적용됐고 `tier_mode`가 켜진 컬렉션은 아직 없다. 옛 객체(`slot_item_into_book`, `swap_item_in_book`, `unslot_item_from_book`, `user_item_book_completions`, `item_books.reward_points`·`reward_badge_id`)는 바꾸지 않고 새 객체를 덧붙인다. 옛 것을 지우는 축소는 묶음 6이다.
+운영 로직 8.3절이 근거다. 마이그레이션 222는 2026-10-17에 적용됐다. 옛 객체(`slot_item_into_book`, `swap_item_in_book`, `unslot_item_from_book`, `user_item_book_completions`, `item_books.reward_points`·`reward_badge_id`)는 바꾸지 않고 새 객체를 덧붙인다. 옛 것을 지우는 축소는 묶음 6이다.
 
 **구조 규칙**
 - **한 칸 묶기**: 같은 컬렉션(`badges.item_book_id`) 안에서 이름(`badges.name`)이 같은 아이템 배지 4장(`badges.rarity` = common·rare·epic·mystic)을 한 칸으로 본다. 묶음용 새 테이블은 없다. 어드민은 지금처럼 배지를 컬렉션에 넣기만 한다.
