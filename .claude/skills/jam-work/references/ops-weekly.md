@@ -15,6 +15,14 @@
 
 - 카드 반응 집계(어드민 `GET /api/admin/today/metrics`, 유형 ID별 노출·열람·후속 행동, 티켓 20260924_0004)를 브리핑 「지표」 절에 표로 넣는다. 윤진이 이 표를 전략 변경안·유형 리뷰의 입력으로 쓴다(티켓 20260923_2300·2301). 집계 API가 실패하면 "수집 실패"로 적고 윤진은 그 주 변경안을 내지 않는다.
 
+- 툴 데이터 읽기(새 체계, 티켓 20260930_1504): 아래 순서로 `node scripts/ops-read.mjs <이름>`을 부르고 응답을 브리핑 절에 옮긴다. 읽기 전용(GET)이고, 응답은 줄이지 않고 그대로 읽는다. 호출 하나가 실패하면 그 이름만 1회 재시도하고, 그래도 안 되면 맨 위 「수집 실패」에 적는다(`scheduled-jobs.md` 4-10). 절 이름은 `forms/weekly-briefing-format.md`가 정본이다.
+  1. `kpi-weekly` → 「지표」와 「파밍 신호」 (기본 최근 7일)
+  2. `today-metrics` → 「패턴별 결과」의 `byPattern` (기본 최근 7일)
+  3. `decisions` → 「패턴별 결과」의 `byPattern` (결정 기록 쪽)
+  4. `patterns` → 패턴 번호에 이름과 상태를 붙이는 용도(패턴 사전)
+  5. `item-paths --query onlyBlocked=true` → 「획득 경로가 막힌 컬렉션」
+  윤진이 읽는 `patterns-draw`·`rules`·`trend-sources`는 카즈하가 부르지 않는다. 월간 실행에서는 같은 읽기로 패턴 리뷰 재료(유지·수정·제거 후보)를 만든다(`jam-ops.md` 「주간 브리핑 additions」).
+
 ## Scheduled runs (weekly briefing)
 
 Specification: `.claude/skills/jam-work/references/scheduled-jobs.md`. In a scheduled cloud run you
