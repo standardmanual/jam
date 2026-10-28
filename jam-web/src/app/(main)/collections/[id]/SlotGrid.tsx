@@ -9,6 +9,12 @@ import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
 export interface BadgeSlot {
+  /**
+   * 칸의 안정 키 — 4등급 컬렉션(`tier_mode`)에서 같은 이름의 4등급 배지를 한 칸으로 묶은 이름 묶음 키다
+   * (티켓 20261028_1408). 컬렉션 등급이 바뀌면 칸의 대표 배지 id가 달라지므로, 칸 `key`·시트가 열린 칸·진행 중 표시는
+   * 배지 id가 아니라 이 값으로 맞춘다. 없으면 `badge.id`를 쓴다(`tier_mode`가 꺼진 컬렉션).
+   */
+  cellKey?: string
   badge: {
     id: string
     name: string
@@ -28,6 +34,11 @@ export interface BadgeSlot {
     /** 만료 임박 칩("곧 만료")을 선택 시트에 띄우기 위한 값 — 만료가 코앞인 개체를 모르고
      *  장착하는 것을 막는다(20260907_2059). 만료 없는 개체는 null. */
     expires_at: string | null
+    /**
+     * 이 개체의 등급 — 컬렉션 등급이 아직 없어 한 칸의 후보에 등급이 다른 개체가 섞일 때만 채운다(티켓 20261028_1408).
+     * 시트 행이 이 값으로 등급 칩을 그린다. 키가 없으면 시트의 `rarity` prop을 쓴다.
+     */
+    rarity?: BadgeRarity | null
   }[]
   slot: {
     id: string
