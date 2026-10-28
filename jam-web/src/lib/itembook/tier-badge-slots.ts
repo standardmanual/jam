@@ -130,3 +130,13 @@ export function buildBadgeSlots({
   }
   return slots
 }
+
+/**
+ * «추가» 버튼이 개체 선택 시트를 여는지(true) 바로 장착하는지(false).
+ * 후보가 2개 이상이면 일련번호로 골라야 해서 시트를 연다. **컬렉션 등급이 아직 없으면 후보가 1개여도 시트를 연다** —
+ * 첫 장착이 컬렉션 등급을 정하고(모두 해제하기 전에는 되돌릴 수 없다) 다른 등급 칸이 «???»로 바뀌므로, 등급 칩과 일련번호를
+ * 확인하고 장착하게 한다. 등급이 정해진 뒤에는 후보 1개를 바로 장착한다(티켓 20261028_1408, 사용자 승인 2026-10-28).
+ */
+export function shouldOpenCandidateSheet(candidateCount: number, tierUndecided: boolean): boolean {
+  return tierUndecided || candidateCount !== 1
+}

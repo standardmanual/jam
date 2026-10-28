@@ -1,9 +1,11 @@
 import { computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
+import { buildBadgeSlots } from '@/lib/itembook/tier-badge-slots'
 import { isItemBookLaunched } from '@/lib/itembook/visibility'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
+  BadgeRarity,
   BadgeRow,
   ItemBookRow,
   TribeRow,
@@ -14,9 +16,10 @@ import TopNav from '@/components/ui/TopNav'
 import { PinIcon, BookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Card } from '@ds/components/cards/Card'
+import { getRarityLabel } from '@ds/components/cards/RarityBadge'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import ItemBookHeroSection from './ItemBookHeroSection'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
@@ -101,15 +104,18 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   // 2) 배지 (아이템 + 체크인)
   // 소프트 삭제된 배지(badges.deleted_at)는 컬렉션 슬롯 목록에서 제외한다(20260824_007) —
   // 해당 슬롯만 빠지고 나머지 슬롯·완성도 계산은 그대로 유지된다.
+  // 조회에서는 삭제 배지를 빼지 않고 아래에서 걸러낸다(티켓 20261028_1408): 서버는 삭제된 배지에 꽂힌 슬롯의 등급도
+  // `tier_mismatch` 판정에 쓰므로, `computeBookCompletion`이 컬렉션 등급을 서버와 같게 읽으려면 삭제 배지가 필요하다.
   const { data: badgesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('*')
     .eq('item_book_id', id)
     .in('type', ['item', 'checkin'])
-    .is('deleted_at', null)
     .order('created_at', { ascending: true })
   if (badgesError) console.error('[collections/[id]/page] 아이템북 소속 배지 조회 실패', badgesError)
-  const allBookBadges = (badgesRaw ?? []) as BadgeRow[]
+  const fetchedBookBadges = (badgesRaw ?? []) as BadgeRow[]
+  // 칸 목록·체크인 배지·분모·분자는 계속 삭제 배지를 뺀다
+  const allBookBadges = fetchedBookBadges.filter((b) => !b.deleted_at)
   const badges = allBookBadges.filter((b) => b.type === 'item')
   const checkinBadges = allBookBadges.filter((b) => b.type === 'checkin')
   const badgeIds = badges.map((b) => b.id)
@@ -196,7 +202,9 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   // 유지한다. 노출 범위 정책을 바꾸려면 새 정책 결정이 필요하다 — 여기서 임의로 재해석하지 말 것.
   if (!isOwnBook && slots.length === 0) notFound()
 
-  const slotsMap = new Map(slots.map((s) => [s.badge_id, s]))
+  const slotByBadge = new Map(
+    slots.map((s) => [s.badge_id, { id: s.id, slotted_at: s.slotted_at, inventory_item_id: s.inventory_item_id }])
+  )
   // [20260907_2059] badge_id당 1개만 남기던 Map을 **미장착 후보 배열 전체**로 바꾼다.
   // 같은 배지를 여러 개 보유했을 때 어느 개체를 장착할지 사용자가 고를 수 있어야 하고,
   // 시트에는 각 후보의 일련번호가 표시돼야 한다. 정렬은 조회 시점의 obtained_at ASC를
@@ -218,22 +226,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     else inventoryCandidates.set(item.badge_id, [candidate])
   }
 
-  const badgeSlots: BadgeSlot[] = badges.map((badge) => {
-    const slot = slotsMap.get(badge.id)
-    return {
-      badge: {
-        id: badge.id,
-        name: badge.name,
-        image_url: badge.image_url,
-        rarity: badge.rarity,
-      },
-      candidates: inventoryCandidates.get(badge.id) ?? [],
-      slot: slot
-        ? { id: slot.id, slotted_at: slot.slotted_at, inventory_item_id: slot.inventory_item_id }
-        : null,
-    }
-  })
-
   const earnedCheckinBadgeIds = new Set(
     ((checkinEarnsRes.data ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
   )
@@ -244,13 +236,28 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     checkinBadgesByBook: new Map([[id, checkinBadgeIds]]),
     earnedCheckinBadgeIds,
   })
-  const bookCompletion = computeBookCompletion(allBookBadges, new Set<string>(), {
+  // 소프트 삭제 배지(`deleted_at`)도 그대로 넘긴다 — 분모·분자에서는 모듈이 빼고, 컬렉션 등급(`tier`) 판별에만 쓴다.
+  const tierMode = Boolean((book as { tier_mode?: boolean | null }).tier_mode)
+  const bookCompletion = computeBookCompletion(fetchedBookBadges, new Set<string>(), {
     filledByBook,
-    tierModeBookIds: (book as { tier_mode?: boolean | null }).tier_mode ? new Set([id]) : undefined,
+    tierModeBookIds: tierMode ? new Set([id]) : undefined,
   }).get(id)
   const totalBadgeCount = bookCompletion?.total ?? 0
   const slottedCount = bookCompletion?.filled ?? 0
   const isCompleted = isBookCompleted(new Set(completionRes.data != null ? [id] : []), id, bookCompletion)
+
+  // 칸 — 4등급 컬렉션은 이름 수만큼, 컬렉션 등급이 정해졌으면 그 등급의 배지로 그린다(티켓 20261028_1408).
+  // 컬렉션 등급은 여기서 새로 계산하지 않고 위 `computeBookCompletion`의 `tier`를 읽는다. `tier_mode`가 꺼진 컬렉션은 이전 모양 그대로다.
+  const badgeSlots: BadgeSlot[] = buildBadgeSlots({
+    badges,
+    candidatesByBadge: inventoryCandidates,
+    slotByBadge,
+    tierMode,
+    completion: bookCompletion,
+  })
+  const collectionTier = tierMode ? (bookCompletion?.tier ?? null) : null
+  // 안내 한 줄에 쓰는 등급 이름. 본인 화면에서 등급이 정해졌을 때만 보인다(타인 열람은 그 유저의 칸만 보여 준다)
+  const tierLabel = isOwnBook && collectionTier ? getRarityLabel(collectionTier as BadgeRarity) : null
 
   // [20260819_014] 배지 상세화면(20260819_011)과 동일한 원칙 — 배경은 이 고정 레이어 한 곳에서만
   // 그린다. 배경이 있는 컬렉션에서는 TopNav·본문을 투명하게 두어 아래 레이어가 그대로 비쳐 보이게
@@ -335,12 +342,20 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         {/* 아이템배지 슬롯 섹션 */}
         {badges.length > 0 && (
           <div className="flex flex-col gap-3">
+            {/* 컬렉션 등급 안내 한 줄 — 등급이 정해졌고 본인 화면일 때만. 박스·아이콘 없이 진행도 줄(ItemBookHeroSection의 mx-2)과
+                시작선을 맞춘 12px 보조 문구다. 등급이 없는 상태의 규칙은 선택 시트 안내문이 말한다. */}
+            {tierLabel && (
+              <p className="mx-2 text-xs text-muted text-left break-keep wrap-break-word text-balance">
+                {t(d.itembooks.tierFixedHint, { tier: tierLabel })}
+              </p>
+            )}
             <SlotGrid
               itemBookId={id}
               badgeSlots={badgeSlots}
               readOnly={!isOwnBook}
               badgeLinkQuery={!isOwnBook && subjectUsername ? `?u=${subjectUsername}` : ''}
               slotMode={slotMode}
+              tierUndecided={tierMode && !collectionTier}
             />
           </div>
         )}

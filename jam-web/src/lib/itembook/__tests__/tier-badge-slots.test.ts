@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { computeBookCompletion, type CompletionBadgeInput } from '../completion-basis'
 import {
   buildBadgeSlots,
+  shouldOpenCandidateSheet,
   type BadgeSlotCandidate,
   type BadgeSlotRecord,
   type BadgeSlotsBadge,
@@ -158,6 +159,15 @@ describe('buildBadgeSlots — 컬렉션 등급이 정해진 경우', () => {
     expect(mystic).toEqual(NAMES)
     expect(none).toEqual(NAMES)
   })
+
+  it('등급이 바뀌면 같은 cellKey의 대표 배지 id가 달라진다(시트·진행 표시는 cellKey로 찾는다)', () => {
+    const rare = run({ badges: fullBook(), slotted: ['이름1-rare'] }).slots[0]
+    const epic = run({ badges: fullBook(), slotted: ['이름1-epic'] }).slots[0]
+
+    expect(rare.cellKey).toBe(epic.cellKey)
+    expect(rare.badge.id).toBe('이름1-rare')
+    expect(epic.badge.id).toBe('이름1-epic')
+  })
 })
 
 describe('buildBadgeSlots — 컬렉션 등급이 없는 경우(아무것도 장착하지 않음)', () => {
@@ -283,5 +293,17 @@ describe('buildBadgeSlots — 입력이 비어 있는 경우', () => {
   it('아이템 배지가 없으면 칸이 없다', () => {
     const { slots } = run({ badges: [] })
     expect(slots).toEqual([])
+  })
+})
+
+describe('shouldOpenCandidateSheet — «추가» 버튼', () => {
+  it('컬렉션 등급이 없으면 후보가 1개여도 시트를 연다', () => {
+    expect(shouldOpenCandidateSheet(1, true)).toBe(true)
+    expect(shouldOpenCandidateSheet(3, true)).toBe(true)
+  })
+
+  it('컬렉션 등급이 정해졌으면 후보 1개는 바로 장착하고 2개 이상은 시트를 연다', () => {
+    expect(shouldOpenCandidateSheet(1, false)).toBe(false)
+    expect(shouldOpenCandidateSheet(2, false)).toBe(true)
   })
 })
