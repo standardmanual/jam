@@ -9,6 +9,8 @@ created: 2026-09-26
 # [Infra] 예약 루틴 환경에서 `pickPresetSource`가 서비스 롤 키 대체 경로로 빠질 수 있는지 확인한다
 
 > **연결 메모 (2026-09-30 티켓 20260930_1451 사용자 결정):** 20260930_1504가 루틴을 바꿀 때 함께 정리한다.
+>
+> **3회차 판정 (2026-10-28, 티켓 20260930_1504): 새 주간 루틴 경로에서는 해당하지 않음, 닫지 않음.** `pickPresetSource`(`jam-web/scripts/asset-generator/presetSource.mjs` 100~111행)는 `ADMIN_API_BASE_URL`·`ADMIN_API_READ_TOKEN`이 둘 다 있으면 읽기 API 경로를 쓰고, 아니면 `NEXT_PUBLIC_SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`가 둘 다 있을 때 서비스 롤 경로로 간다. 새 주간 루틴은 이미지와 프리셋을 만들지 않아(`scheduled-jobs.md` 4-12, 07 4.5) 이 함수를 부르지 않는다. 예약 환경에 서비스 롤 키를 두지 않는다는 문서 기준은 그대로이고(`scheduled-jobs.md` 4-1), 환경변수 값은 에이전트 도구로 읽을 수 없어 실제 환경 목록은 4회차 등록 때 사용자와 함께 한 번 확인한다. 윤진 ⑧의 세션 이미지 작업은 7회차까지 유지되는 대화형 경로라 이 티켓의 예약 환경 범위 밖이다.
 
 ## 핵심 요약
 
