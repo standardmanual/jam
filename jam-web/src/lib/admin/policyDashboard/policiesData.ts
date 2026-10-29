@@ -352,6 +352,21 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     },
     nodes: ['jam', 'capsule'],
   },
+  {
+    id: 'ch4-jam-condition-sum',
+    chapter: 4,
+    chapterTitle: '잼',
+    title: '잼 조건 배지·미션의 합산 기준 (활동 잼 + 서비스 활동 잼)',
+    type: 'code_constant',
+    currentSpec:
+      '지금까지 모은 잼 = 지갑 total_earned(활동 잼) + jam_service_daily 전체 합(서비스 활동 잼). 한 주 최고·기준을 넘긴 주의 횟수·이어진 주 = 날짜(KST)별로 jam_daily_earned와 jam_service_daily를 더한 뒤 월~일 주로 합산. 미션의 기간 동안 모은 잼 = 참가 뒤 기간 안에 정산된 활동의 잼 + 같은 기간에 지급된 서비스 활동 잼(원장 service_activity 양수 줄, 지급 시각 기준). 소멸(capsule_forfeit), 채움, 운영자 지급·회수 줄은 합계에 넣지 않고 지급량만 셈. 서비스 활동 잼이 지급되면 지금까지 모은 잼·한 주 최고·기준을 넘긴 주의 횟수·이어진 주 조건을 바로 판정. 표 읽기에 실패하면 값을 0으로 바꾸지 않고 그 지표만 건너뜀',
+    codeLocation: 'jam-web/src/lib/badge-engine/jamActionJamMetrics.ts',
+    userExperience:
+      '움직여서 받은 잼과 서비스에서 한 일로 받은 잼이 함께 쌓여 잼 조건 배지와 미션에 반영돼요. 캡슐에 채우거나 잼이 사라져도 받은 양은 줄지 않아요.',
+    basisDoc: '운영 로직 4.2절, 4.5절, 10.2절',
+    ticketId: '20261028_1736',
+    nodes: ['jam'],
+  },
 
   // =========================================================================
   // 5장. 캡슐
@@ -962,6 +977,19 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '버스를 타고 이동한 기록은 운동 속도나 거리 배지 평가에서 완전히 제외돼요.',
     basisDoc: '운영 로직 10.2절',
     ticketId: '20261018_1815',
+  },
+  {
+    id: 'ch10-jam-milestone-thresholds',
+    chapter: 10,
+    chapterTitle: '액티비티 배지',
+    title: '잼 이정표 배지 기준값 (7-1~7-4)',
+    type: 'pre_launch_pending',
+    currentSpec:
+      '지금까지 모은 잼(7-1, 5레벨) 1,100·5,500·22,000·55,000·110,000. 한 주에 모은 잼(7-2, 4등급) 230·360·880·1,250. 한 주에 230 이상 모은 주를 쌓은 횟수(7-3) 1·5·20주, 그런 주가 이어진 횟수(7-4) 2·3·4주. 모두 활동 잼과 서비스 활동 잼을 합산한 값이고, 값은 오픈 직전에 적용할 시드 SQL 245(7-1·7-2)와 248(7-3·7-4)에 있어 라이브 DB에는 아직 없음',
+    codeLocation: 'jam-web/supabase/migrations/245_seed_new_activity_badge_families.sql',
+    userExperience: '움직이거나 서비스에서 무언가를 해내며 받은 잼이 기준을 넘으면 노트, 녹음, 서약서, 쪽지 배지를 받아요.',
+    basisDoc: '운영 로직 10.5절, 19.2절',
+    ticketId: '20261028_1736',
   },
 
   // =========================================================================
