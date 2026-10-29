@@ -73,9 +73,9 @@ type RpcStep = { data: unknown; error: unknown }
 function fakeClient(pendings: PendingFixture[], steps: RpcStep[], readError?: string) {
   const orders: Array<[string, unknown]> = []
   let i = 0
-  const rpc = vi.fn(async (name: string) => {
+  const rpc = vi.fn(async (name: string, args?: unknown) => {
     order.calls.push(`rpc:${name}`)
-    if (name !== 'capsule_claim_pending') throw new Error(`예상하지 못한 RPC ${name}`)
+    if (name !== 'capsule_claim_pending') throw new Error(`예상하지 못한 RPC ${name} ${JSON.stringify(args)}`)
     return steps[Math.min(i++, steps.length - 1)]
   })
   const q: Record<string, unknown> = {}
