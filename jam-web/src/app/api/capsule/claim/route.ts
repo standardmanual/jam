@@ -13,11 +13,13 @@
  *  - 500: 그 밖의 오류. 내부 오류 원문은 싣지 않는다. 보상은 보류로 그대로 남는다.
  * 미션 보상 받기(`/api/missions/[id]/claim`)의 구조와 오류 매핑을 따른다.
  */
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { CapsuleError } from '@/lib/capsule/capsule'
 import { claimPendingCapsules } from '@/lib/capsule/claim'
+import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { jamTriggersForCapsuleOpen } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 
@@ -57,6 +59,9 @@ export async function POST() {
       return NextResponse.json({ error: d.capsule.claimNoPending, code: 'no_pending' }, { status: 409 })
     }
 
+    // JAM! 행동 지표(캡슐 연 횟수·다른 트라이브 아이템 종류 수) — 받은 보상도 열기 기록(`capsule_opens`)으로 남으므로 `/api/capsule/open`과 같은 판정을 응답 뒤에 한다.
+    // `runJamActionEvaluation`은 예외를 던지지 않아 받기 응답은 그대로다.
+    after(() => runJamActionEvaluation(user.id, jamTriggersForCapsuleOpen()))
     return NextResponse.json({
       claimed: result.claimed.map((c) => ({ openId: c.openId, chapterNo: c.chapterNo, items: c.items })),
       remainingPending: result.remainingPending,

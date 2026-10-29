@@ -17,7 +17,8 @@ import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 
-const state = vi.hoisted(() => ({ authenticated: true }))
+const state = vi.hoisted(() => ({ authenticated: true, afterCallbacks: [] as Array<() => unknown> }))
+const runJamActionMock = vi.hoisted(() => vi.fn())
 const claimMock = vi.hoisted(() => vi.fn())
 const serviceClient = vi.hoisted(() => ({ marker: 'service-role-client' }))
 
@@ -33,6 +34,13 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => serviceClient,
 }))
 vi.mock('@/lib/capsule/claim', () => ({ claimPendingCapsules: (...args: unknown[]) => claimMock(...args) }))
+vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
+  runJamActionEvaluation: (userId: string, triggers: readonly string[]) => runJamActionMock(userId, triggers),
+}))
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>()
+  return { ...actual, after: (cb: () => unknown) => void state.afterCallbacks.push(cb) }
+})
 
 import { CapsuleError } from '@/lib/capsule/capsule'
 import { POST } from '../route'
@@ -42,6 +50,8 @@ const CLAIMED = { pendingId: 'pending-1', openId: 'open-1', chapterNo: 2, items:
 
 beforeEach(() => {
   state.authenticated = true
+  state.afterCallbacks = []
+  runJamActionMock.mockReset()
   claimMock.mockReset()
   claimMock.mockResolvedValue({ pendingBefore: 1, claimed: [CLAIMED], remainingPending: 0, stopped: 'none' })
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -68,6 +78,21 @@ describe('POST /api/capsule/claim', () => {
       stopped: 'none',
     })
     expect(claimMock).toHaveBeenCalledWith(serviceClient, USER_ID)
+  })
+
+  it('받은 것이 있으면 응답 뒤에 캡슐 열기 지표(연 횟수·다른 트라이브 종류 수)를 판정하고, 받은 것이 없으면 판정하지 않는다', async () => {
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    expect(state.afterCallbacks).toHaveLength(1)
+    await state.afterCallbacks[0]()
+    expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, ['capsule_open_count', 'other_tribe_item_kinds_count'])
+
+    state.afterCallbacks = []
+    claimMock.mockResolvedValue({ pendingBefore: 0, claimed: [], remainingPending: 0, stopped: 'none' })
+    const none = await POST()
+    expect(none.status).toBe(409)
+    expect(state.afterCallbacks).toHaveLength(0)
   })
 
   it('일부만 받고 빈칸이 모자라 멈췄으면 200에 남은 보류 수와 freeSlots·neededSlots를 싣는다', async () => {
