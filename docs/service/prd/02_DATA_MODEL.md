@@ -73,6 +73,8 @@ code:
 [캡슐]          users ─1:1─ user_capsules (지금 캡슐: 필요량·채운 양)
                 users ─1:N─ capsule_opens (열 때마다 한 줄, append-only)
                 users ─1:N─ capsule_unseen_results (동기화에서 자동으로 열린 결과 중 아직 보지 않은 것)
+                users ─1:N─ capsule_pending_rewards (인벤토리가 차서 보류한 캡슐 보상, 유저당 최대 2개, 마이그레이션 300 표·302 함수)
+                jam_forfeit_weekly (뷰: jam_transactions의 capsule_forfeit 줄을 주 단위로 합침, 마이그레이션 302)
                 capsule_policy(싱글톤: 개수·확률·보정·퀘스트 전 값) / capsule_chapter_costs (챕터별 채울 양 두 가지·100% 횟수)
 
 [소셜]          users ─N:M(팔로우)─ users (user_follows)
@@ -1016,6 +1018,9 @@ SECURITY DEFINER(`search_path = public`), service_role만 실행한다(`anon`·`
 - 소식 3종의 문구·착지·만드는 곳은 `notification/PRD.md` §3(#50 정지됨, #51 정지 해제, #52 받지 않은 보상)이다. 정지됨·풀림 payload에는 **사유 글, 어드민 이메일, 상담 메모를 싣지 않는다.**
 - 피드 2종의 메타: `chapter_up` = `{ chapter_no }`(챕터 2 이상으로 새로 올랐을 때만, 한 번에 여러 챕터를 넘으면 가장 높은 챕터 한 건, 챕터 1 시작은 기록하지 않는다. `lib/chapter/rise.ts`). `collection_tier_completed` = `{ collection_id, collection_name, rarity }`(등급을 처음 완성했을 때만, 점수보다 먼저 기록한다. `lib/chapter/collection.ts`). 두 종류 모두 `strava_activity_id`를 비워 기록한다(§10 `user_activity_feed`). 컬렉션 메타에 `level`·`earn_count` 키를 쓰지 않는다(피드 렌더러가 읽어 Lv.N 칩·×N 필을 잘못 붙인다).
 
+#### notification_type 2종 — 마이그레이션 302, 티켓 20261028_1734 1회
+알림 종류 enum `notification_type`에 `capsule_nearly_full`·`capsule_jam_blocked`(36개 → 38개)를 `ADD VALUE IF NOT EXISTS`로 덧붙였다. 새 enum 값은 같은 트랜잭션에서 쓸 수 없어(55P04) 302의 함수는 알림 행을 만들지 않고 단계(`alertStage`)와 전환 표식(`blockedNow`)만 돌려주며, 행은 앱(`notifyCapsuleAlerts`)이 만든다. **적용 순서는 DDL 먼저, 코드 배포 나중**이다. 되돌림은 enum 값을 지울 수 없어 앱이 값을 만들지 않게 하고 값은 쓰지 않은 채로 두는 방식이다. 소식 2종의 문구·착지·발송 규칙은 `notification/PRD.md` §3의 «캡슐 — 2종»(#53·#54)이 원천이다.
+
 ---
 
 ## 9. 포인트 (JAM 포인트) — 신규 도메인
@@ -1090,10 +1095,11 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 #### jam_transactions
 append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5개:
 `activity_settlement`(+) / `capsule_fill`(-) / `locked_item_badge_fill`(-) / `admin_grant`(+) / `admin_deduct`(-). 사유별 부호와 필수 칸은 CHECK로 건다.
+마이그레이션 300이 CHECK에 사유 `capsule_forfeit`(-, `source_activity_id` NULL)을 더했고, 쓰는 곳은 `capsule_auto_fill`(마이그레이션 302)이다. 보류가 2개일 때 지갑 잔액 전액이 사라지는 줄이다(아래 9-4 «자동 채움 구조»). 300이 함께 더한 다른 사유(`service_activity`, `locked_unlock_cost`)는 아직 쓰는 곳이 없다(U5).
 `source_activity_id`는 `strava_activities.id` 값을 담지만 FK는 없다(활동이 지워져도 원장은 남아야 함). `reason='activity_settlement'`인 줄에 한해 부분 유일 인덱스가 걸려 같은 활동은 한 번만 정산된다. 운영자 지급·회수는 `admin_user_id`(FK 없음)·`admin_reason_label`(필수)·`admin_reason_note`(선택)를 담는다. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`).
 
-> 가진 양 변경은 전부 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note, p_earned_on)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다. 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
-> 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수와 채움은 가진 양만 바꾼다(운영 로직 4.5절).
+> 가진 양 변경은 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note, p_earned_on)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다(예외는 `capsule_forfeit` 하나다: `jam_apply`가 사유 5개만 알아서 `capsule_auto_fill`이 지갑 행 잠금 → 원장 한 줄 → 잔액 차감을 직접 쓴다. 이후 `jam_apply`가 바뀌면 이 경로가 빠질 수 있다). 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
+> 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수, 채움, 소멸(`capsule_forfeit`)은 가진 양만 바꾼다(운영 로직 4.5절).
 
 #### jam_policy — 마이그레이션 226, 티켓 20261017_1423
 잼 정산의 조정 값을 담는 한 행 싱글톤(`id = 1` 고정). `abusing_policy`·`inventory_policy`와 같은 패턴으로 RLS만 켜고 정책은 없어 service_role만 읽는다. 어드민 화면은 «밸런스 설정»(`/admin/balance`)이다: 강도·경보 여섯 칸은 «잼» 구역(7-1 1회), 동기화 칸과 `common_streak_threshold`·`locked_roll_probability` 열한 칸은 «동기화» 구역(7-1 2회, 캡슐 구역에는 «동기화와 같은 값이에요» 안내만 둔다), `locked_min_*` 네 칸은 «잠긴 아이템 배지» 구역(7-2 1회, 티켓 20261022_1133)이다. 같은 행을 쓰는 구역이 여럿이라 한 구역을 저장하면 이 행의 `updated_at`이 올라 다른 구역 화면의 수정 시각도 낡는다(편집하던 값은 화면이 지킨다). 동기화 구역의 열한 칸은 모두 확률 안내 페이지가 읽는 칸(`lib/probability/disclosure.ts`의 `JAM_COLUMNS`)이라 바꾸면 저장 전 확인창이 뜬다. 코드는 `src/lib/jam/policy.ts`의 `getJamPolicy`로만 읽으며, 조회 실패·비정상 값은 기본값(`DEFAULT_JAM_POLICY`)으로 대체하고 로그를 남긴다. 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다.
@@ -1186,7 +1192,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 `activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다. 편집 화면은 «밸런스 설정»의 «챕터» 구역이다(티켓 20261022_1133). 활동 12종마다 `points_per_unit`·`weekly_cap`·`over_cap_ratio`를 칸 이름 `rule:<활동>:points|cap|ratio`로 편집한다. 화면의 주간 상한 0은 «상한 없음»이고 이 표에는 NULL로 쓴다(읽을 때 NULL은 0으로 보인다). 저장하면 바뀐 행의 `updated_at`을 직접 올린다(갱신 트리거가 없다).
 
 #### user_chapters
-유저당 1개(첫 점수·시작 때 생성). `chapter_no`(NULL=퀘스트 전), `total_score`, `capsule_full_count`(INTEGER NOT NULL DEFAULT 0, CHECK 0 이상 — 지금 챕터에서 캡슐이 100%에 닿은 횟수, 챕터가 오르면 0으로 돌아간다. 마이그레이션 300, 티켓 20261028_1732. 세는 곳은 `capsule_open_counted`, 아래 9-4). 본인만 SELECT.
+유저당 1개(첫 점수·시작 때 생성). `chapter_no`(NULL=퀘스트 전), `total_score`, `capsule_full_count`(INTEGER NOT NULL DEFAULT 0, CHECK 0 이상 — 지금 챕터에서 캡슐이 100%에 닿은 횟수, 챕터가 오르면 0으로 돌아간다. 마이그레이션 300, 티켓 20261028_1732. 세는 곳은 `capsule_auto_fill`이고 캡슐이 100%에 처음 닿는 호출에서 센다. 마이그레이션 302 이전에는 `capsule_open_counted`가 열 때 셌다. 아래 9-4). 본인만 SELECT.
 
 #### chapter_score_events
 점수 기록(append-only). `activity_kind`, `source_id`(호출부가 정한 UUID, FK 없음), `occurred_on`(활동한 날 KST), `unit_amount`(호출된 양), `raw_score`(상한 적용 전), `counted_score`(실제로 센 점수). `UNIQUE (activity_kind, source_id)`로 같은 활동은 한 번만 센다. 본인만 SELECT.
@@ -1212,7 +1218,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | 활동 종류 | 호출 지점 | 원천 id | 날짜 | 상태 |
 |---|---|---|---|---|
 | `jam_earned` | `lib/jam/settlement.ts` `settleActivities`(정산 항목을 쌓은 직후, 오래된 활동부터) | `strava_activities.id`(`JamSettlementItem.activityId`) | 활동한 날(KST, `earnedOn`) | 연결됨(1회). 수량은 원장에 기록된 양이라 재정산도 같은 키다. **호출을 지웠다**(티켓 20261028_1733 3회): 동기화의 정산은 더 이상 이 활동의 점수를 쌓지 않는다 |
-| `capsule_open` | `lib/capsule/open.ts` `openCapsule`(`capsule_open` RPC 직후, 후속 처리 앞) | `capsule_opens.id`(`openId`) | 생략(오늘) | 연결됨(1회). **자동 채움이 부르는 `counted` 열기는 이 호출을 건너뛰고 챕터 횟수를 센다**(티켓 20261028_1733 2회, 아래 9-4). `counted`를 켜지 않는 옛 열기 경로는 그대로 점수를 쌓는다 |
+| `capsule_open` | `lib/capsule/open.ts` `openCapsule`(`capsule_open` RPC 직후, 후속 처리 앞) | `capsule_opens.id`(`openId`) | 생략(오늘) | 연결됨(1회). **자동 채움이 부르는 `counted` 열기는 이 호출을 건너뛴다**(티켓 20261028_1733 2회, 아래 9-4). 챕터 횟수는 열기가 아니라 `capsule_auto_fill`이 100%에 닿을 때 센다(마이그레이션 302). `counted`를 켜지 않는 옛 열기 경로는 그대로 점수를 쌓는다 |
 | `locked_item_badge_open` | `lib/inventory/lockedItemFill.ts` `openLockedItem`(`locked_item_open` RPC 직후) | 개체 id(`inventory_items.id`) | 생략 | 연결됨(1회) |
 | `drop` | `app/api/drops/route.ts` POST(성공 뒤 `after()` 콜백) | `poi_drops.id`(`drop_id`) | 생략 | 연결됨(1회). 유저 드랍만(시스템 드랍은 앰비언트 배치라 이 라우트를 거치지 않는다) |
 | `pickup` | `app/api/drops/[dropId]/pickup/route.ts`(성공 뒤 `after()` 콜백) | 경로의 `dropId` | 생략 | 연결됨(1회). `isSelfPickup`이면 세지 않고, 시스템 드랍과 잠긴 채 받은 픽업은 센다. 드랍과 픽업은 활동 종류가 달라 같은 드랍 id로도 키가 겹치지 않는다 |
@@ -1299,7 +1305,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
 운영 로직 5.2·5.4절이 근거다. 2026-10-18 공용 DB에 적용했다(232: 저장·설정·채우기, 233: 열기). 전부 덧붙이기이고 옛 객체의 뜻은 바꾸지 않았다. 새 표는 모두 RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
-동기화가 캡슐을 저절로 채우고 여는 구조(티켓 20261028_1733, 상위 20261028_1730)는 마이그레이션 300·301이 덧붙였다. 아래 «자동 채움 구조» 소절에 모았다. 232·233·234의 옛 객체와 옛 열은 그대로이고, 프로덕션 main이 옛 함수를 쓰기 때문에 지우지 않았다(정리는 U11).
+동기화가 캡슐을 저절로 채우고 여는 구조(티켓 20261028_1733, 상위 20261028_1730)는 마이그레이션 300·301이 덧붙였다. 아래 «자동 채움 구조» 소절에 모았다. 인벤토리가 차면 보상을 보류하고 둘째부터 잼이 사라지는 구조(티켓 20261028_1734)는 마이그레이션 302가 덧붙였고, «자동 채움 구조»와 «capsule_pending_rewards»·«jam_forfeit_weekly» 소절에 모았다. 232·233·234의 옛 객체와 옛 열은 그대로이고, 프로덕션 main이 옛 함수를 쓰기 때문에 지우지 않았다(정리는 U11).
 
 #### capsule_policy
 한 행 싱글톤(`id = 1`). 칸과 기본값: `guaranteed_count` 1, `bonus_count` 1, `bonus_probability` 0.2, `other_tribe_probability` 0.2, `rarity_common`/`_rare`/`_epic`/`_mystic` 70/22/6/2(합계 100, DB 제약 `capsule_policy_rarity_sum_100`), `pity_epic_threshold` 15(보정 1), `pre_quest_fill_amount` 5, `pre_quest_unlock_required` 5(퀘스트 전 첫 캡슐에서 반드시 나오는 잠긴 아이템 배지를 여는 데 필요한 양). Common 연속 보정(10번)과 잠길 확률은 동기화와 합산하는 값이라 `jam_policy`의 것을 그대로 쓴다. 코드는 `src/lib/capsule/policy.ts`의 `getCapsulePolicy`로 읽고, 조회 실패·비정상 칸은 기본값(`DEFAULT_CAPSULE_POLICY`)으로 대체하고 로그를 남긴다(등급 확률 네 칸은 묶음 단위). 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다. 편집 화면은 어드민 «밸런스 설정»의 «캡슐» 구역이다(`/admin/balance`, 티켓 20261022_1132 2회, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 열한 칸 모두 그 구역에서 편집하고 저장하면 `updated_at`을 직접 올린다(갱신 트리거가 없다). 이 가운데 확률 안내 페이지가 읽는 칸(`pre_quest_*` 두 칸 제외 아홉 칸, `lib/probability/disclosure.ts`의 `CAPSULE_COLUMNS`)을 바꾸면 저장 전 확인창이 뜬다.
@@ -1310,8 +1316,8 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | 열 | 내용 | 초기값 챕터 1~10 | 읽는 곳 |
 |---|---|---|---|
 | `fill_amount` | 옛 채울 양 | 90 / 100 / 110 / 120 / 135 / 150 / 165 / 180 / 200 / 220 | 옛 `capsule_get_or_create`(마이그레이션 234 이후는 `capsule_next_required`)가 캡슐이 생길 때 읽어 필요량을 고정한다. 옛 «채우기»·«열기» 경로가 쓴다 |
-| `fill_amount_v2` | 자동 채움의 채울 양. INTEGER, NULL 허용, CHECK 1 이상(마이그레이션 300) | 145 / 160 / 180 / 200 / 220 / 245 / 270 / 300 / 330 / 365 | 새 함수 `capsule_next_required_v2`·`capsule_auto_fill`·`capsule_open_counted` |
-| `advance_count` | 이 챕터에서 캡슐이 100%에 닿은 횟수가 이만큼이 되면 다음 챕터로 오른다. INTEGER, NULL 허용, CHECK 1 이상(마이그레이션 300) | 6 / 7 / 7 / 8 / 9 / 9 / 10 / 11 / 12 / NULL (챕터 10은 NULL) | `capsule_open_counted` |
+| `fill_amount_v2` | 자동 채움의 채울 양. INTEGER, NULL 허용, CHECK 1 이상(마이그레이션 300) | 145 / 160 / 180 / 200 / 220 / 245 / 270 / 300 / 330 / 365 | 새 함수 `capsule_next_required_v2`·`capsule_auto_fill`·`capsule_open_counted`·`capsule_hold_reward` |
+| `advance_count` | 이 챕터에서 캡슐이 100%에 닿은 횟수가 이만큼이 되면 다음 챕터로 오른다. INTEGER, NULL 허용, CHECK 1 이상(마이그레이션 300) | 6 / 7 / 7 / 8 / 9 / 9 / 10 / 11 / 12 / NULL (챕터 10은 NULL) | `capsule_auto_fill`(302부터. 301까지는 `capsule_open_counted`) |
 
 - 챕터가 표의 마지막보다 높으면 마지막 행의 양을 쓴다(`fill_amount_v2`는 값이 있는 마지막 행).
 - 앱은 이 표를 직접 읽지 않는다. 읽는 쪽은 위 DB 함수와 어드민 «밸런스 설정» 화면뿐이다.
@@ -1320,10 +1326,10 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 화면이 읽을 때 `fill_amount`·`fill_amount_v2` 값이 숫자가 아니거나, 챕터 1~9의 `advance_count`가 숫자가 아니면 기본값으로 바꿔 보이지 않고 구역 전체가 읽기 오류가 된다.
 
 #### user_capsules
-유저당 한 행(`user_id` PK). `required`(필요량, 캡슐이 생길 때 정해 고정), `filled`(채운 양, 0~`required`), `chapter_no`(만들 때의 챕터, NULL이면 퀘스트 전), `created_at`, `updated_at`. 처음 필요할 때 만든다(지연 생성).
+유저당 한 행(`user_id` PK). `required`(필요량, 캡슐이 생길 때 정해 고정), `filled`(채운 양, 0~`required`), `chapter_no`(만들 때의 챕터, NULL이면 퀘스트 전), `alert_stage`(SMALLINT NOT NULL DEFAULT 0, CHECK 0·70·80·90 — 지금 캡슐에서 마지막으로 알린 채움 단계. 보류가 하나일 때 채움이 단계에 처음 닿으면 `capsule_auto_fill`이 올리고, 캡슐이 열리거나 보류로 옮겨지면 0으로 돌린다. 마이그레이션 302), `created_at`, `updated_at`. 처음 필요할 때 만든다(지연 생성).
 
 #### capsule_opens
-열 때마다 한 줄(append-only): `opened_at`, `chapter_no`, `required`, `filled`, `items`(나온 개체 목록 JSONB). 캡슐 연 횟수는 이 표로 센다. `capsule_open`이 열 때마다 한 줄 쓴다.
+열 때마다 한 줄(append-only): `opened_at`, `chapter_no`, `required`, `filled`, `items`(나온 개체 목록 JSONB). 캡슐 연 횟수는 이 표로 센다. `capsule_open`이 열 때마다 한 줄 쓰고, 보류를 받는 `capsule_claim_pending`도 한 줄 쓴다(챕터와 채운 양은 보류에 남은 값).
 
 #### capsule_unseen_results
 동기화 중 저절로 열린 캡슐 결과 가운데 유저가 아직 보지 않은 것(마이그레이션 300, 티켓 20261028_1732). `id`(uuid PK), `user_id`(`users(id)` FK, 삭제 시 CASCADE), `payload`(JSONB, 기본 `{}`), `created_at`, `seen_at`(NULL이면 아직 보지 않음). `user_id`의 `seen_at IS NULL` 부분 인덱스. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
@@ -1331,6 +1337,14 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - `payload`는 `{ version: 1, events: [...] }`이다. `events`는 열린 순서 그대로이고, 하나가 캡슐 열기 하나다: `openId`, `items`(나온 개체. 잠긴 개체는 이름·그림 없이 등급과 여는 데 필요한 양), `next`(열자마자 생긴 다음 캡슐), `chapterNo`(횟수를 센 챕터, 센 게 없으면 null), `reachedChapters`(이번 열기로 오른 챕터 번호, 없으면 빈 배열), `chapterCount`(센 뒤의 횟수, 오르면 0, 센 게 없으면 null).
 - 기록을 쓰지 못해도 이미 확정된 열기를 되돌리지 않는다. 로그만 남긴다.
 - `seen_at`을 채우는 «봤어요» 처리와 화면에 내려주는 응답은 아직 없다(U8·U9).
+
+#### capsule_pending_rewards
+인벤토리 빈칸이 모자라 보류한 캡슐 보상(표는 마이그레이션 300, 쓰는 함수는 302, 티켓 20261028_1734). `id`(uuid PK), `user_id`(`users(id)` FK, 삭제 시 CASCADE), `slot`(SMALLINT, CHECK 1·2), `chapter_no`(INTEGER, NULL이면 퀘스트 전), `fill_amount`(INTEGER, CHECK 1 이상 — 보류될 때 캡슐의 필요량), `reached_at`(100%에 닿은 시각, 기본 `now()`), `UNIQUE (user_id, slot)`. 아이템 칸이 없다: 받을 때 추첨한다. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
+- 유저당 최대 2줄이다(slot 1·2). 줄을 만드는 곳은 `capsule_hold_reward`(가장 낮은 빈 slot), 지우는 곳은 `capsule_claim_pending`(받은 줄)이다. 줄을 바꾸는 두 함수는 캡슐 행을 먼저 잠가 직렬화된다.
+- 받는 순서는 `reached_at`, `slot` 순(오래된 것부터)이다. 이 순서는 호출하는 앱(`lib/capsule/claim.ts`)이 정한다. 함수는 넘겨받은 줄을 받는다.
+
+#### jam_forfeit_weekly (뷰)
+받을 수 없는 동안 사라진 잼의 주 단위 합(마이그레이션 302, `security_invoker`). `jam_transactions`에서 `reason = 'capsule_forfeit'`인 줄만 센다. 칸: `week_start_kst`(DATE, 그 주 월요일 KST), `user_count`(INTEGER, 그 주에 잼이 사라진 유저 수), `forfeited_amount`(BIGINT, 사라진 양의 합, 양수). `anon`·`authenticated`는 읽을 수 없고 service_role만 읽는다. 읽는 코드와 어드민 화면은 아직 없다. 목표 수치는 두지 않는다(오픈 뒤 4주 관찰).
 
 #### user_drop_state.capsule_epic_miss
 새 칸(INTEGER, 기본 0). Epic 이상이 나오지 않은 채 연 횟수(보정 1). `pity_epic_threshold` 이상이면 다음 캡슐은 Epic 이상이고, Epic 이상이 나오면 0이 된다. `capsule_open`이 갱신한다.
@@ -1342,19 +1356,22 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 > - API: `GET /api/capsule`(캡슐 상태, 이용 정지 중에도 허용), `POST /api/capsule/fill { amount? }`(양의 정수만, 이용 정지 중 403 `user_suspended`, 거절 400·409), `POST /api/capsule/open`(이용 정지 중 403, `not_full`·`insufficient_slots`·`no_tribe` 409, 그 밖의 오류 500). 응답 모양은 `src/lib/capsule/capsule-contract.ts`다. `openable`은 다 채웠고 인벤토리 빈칸이 나올 수 있는 최대 개수 이상일 때만 참이며, 못 여는 까닭(`not_full`·`no_free_slots`)과 `freeSlots`·`neededSlots`를 함께 싣는다.
 > - 채운 잼은 되돌리지 않는다. 마이그레이션을 되돌리면 원장(`jam_transactions`)의 `capsule_fill` 줄은 남지만 그 잼은 지갑으로 돌아오지 않는다.
 
-#### 자동 채움 구조 — 마이그레이션 300·301, 티켓 20261028_1732·1733 (운영 로직 5.2·12.2절)
-300이 새 열과 표를 더하고(이 구조가 쓰는 것은 `capsule_chapter_costs.fill_amount_v2`·`advance_count`, `user_chapters.capsule_full_count`, `capsule_unseen_results`다. 300의 나머지 표와 열은 U4~U6이 쓴다), 301이 아래 함수 셋을 더한다. 둘 다 공용 DB에 적용했다. 옛 함수(`capsule_next_required`·`capsule_get_or_create`·`capsule_fill`·`capsule_open`·`jam_apply`)의 인자와 동작은 바뀌지 않았다. 새 함수는 `SECURITY DEFINER`·`search_path=public`이고 service_role만 실행한다(`authenticated`·`anon` 실행 불가).
+#### 자동 채움 구조 — 마이그레이션 300·301·302, 티켓 20261028_1732·1733·1734 (운영 로직 5.2·12.2절)
+300이 새 열과 표를 더하고(이 구조가 쓰는 것은 `capsule_chapter_costs.fill_amount_v2`·`advance_count`, `user_chapters.capsule_full_count`, `capsule_unseen_results`다. 300의 나머지 표와 열은 U4~U6이 쓴다), 301이 아래 함수 셋을 더한다. 둘 다 공용 DB에 적용했다. 302(티켓 20261028_1734)는 `capsule_auto_fill`·`capsule_open_counted`를 같은 시그니처로 교체하고 새 함수 `capsule_hold_reward`·`capsule_claim_pending`, 열 `user_capsules.alert_stage`, 뷰 `jam_forfeit_weekly`, 알림 종류 값 2개(`capsule_nearly_full`·`capsule_jam_blocked`)를 더했고 2026-10-29에 공용 DB에 적용했다(적용 기록은 티켓 20261028_1734 1회차). 옛 함수(`capsule_next_required`·`capsule_get_or_create`·`capsule_fill`·`capsule_open`·`jam_apply`)의 인자와 동작은 바뀌지 않았다. 새 함수는 `SECURITY DEFINER`·`search_path=public`이고 service_role만 실행한다(`authenticated`·`anon` 실행 불가).
 - `capsule_next_required_v2(p_user_id) → (required, chapter_no)`: 새 캡슐의 필요량. 챕터가 없으면 `capsule_policy.pre_quest_fill_amount`, 있으면 그 챕터의 `fill_amount_v2`, 그 챕터 행에 값이 없으면 값이 있는 마지막 행의 `fill_amount_v2`.
-- `capsule_auto_fill(p_user_id) → jsonb {ok, applied, required, filled, full, balance, chapterNo}`: 이용 정지 확인 → 캡슐 행 잠금 → `filled = 0`이면 필요량을 v2로 맞춤 → 이미 가득이면 `applied = 0, full = true` → 아니면 «지갑 잔액과 남은 양 중 작은 만큼» `jam_apply(-n, 'capsule_fill')`로 빼고 `filled`를 올린다. 한 번에 캡슐 하나만 채운다. 잔액이 0이면 `applied = 0, full = false`로 정상 반환한다(오류가 아니고, 반복의 종료 신호다).
-- `capsule_open_counted(p_user_id, p_items jsonb) → jsonb {…capsule_open 결과, chapterNo, reachedChapters, chapterCount}`: 같은 트랜잭션에서 `capsule_open`을 부른 뒤, 열린 캡슐에 챕터가 있었고(퀘스트 전 첫 캡슐은 `chapter_no`가 NULL이라 세지 않는다) 유저의 챕터도 있으면 `user_chapters.capsule_full_count`를 1 올린다. `advance_count`에 닿으면 다음 챕터로 올리고(횟수 0, `chapter_ups` 한 줄) 열린 직후 다음 캡슐의 필요량을 v2로 덮어쓴다. `advance_count`가 NULL(챕터 10)이거나 다음 챕터 정의가 없으면 횟수만 올리고 멈춘다. 한 번의 열기로 챕터는 최대 한 번 오른다. `capsule_open`이 `ok = false`를 주면 그 결과를 그대로 돌려준다. `total_score`는 건드리지 않는다.
-  `chapterNo`는 횟수를 센 챕터(오르기 전), `chapterCount`는 센 뒤의 횟수(오르면 0)다. 세지 않았으면 둘 다 null이고 `reachedChapters`는 빈 배열이다.
+- `capsule_auto_fill(p_user_id) → jsonb {ok, applied, required, filled, full, balance, chapterNo, forfeited, pendingCount, alertStage, reachedChapters, chapterCount}`(302에서 교체. 301의 앞 일곱 키는 그대로): 이용 정지 확인 → 캡슐 행 잠금 → `filled = 0`이면 필요량을 v2로 맞춤 → 보류 수를 센다. 보류가 2개이면 채우지 않고 지갑 잔액 전액을 `jam_transactions`에 `capsule_forfeit`(음수) 한 줄로 쓰고 지갑에서 빼며 `forfeited`로 돌려준다(잔액 0이면 원장 줄 없음, `total_earned`는 줄이지 않음). 보류가 0~1개이면 «지갑 잔액과 남은 양 중 작은 만큼» `jam_apply(-n, 'capsule_fill')`로 빼고 `filled`를 올린다. 이번 호출로 `filled`가 `required`에 처음 닿으면 챕터 횟수 +1과 오름 판정을 하고 오른 챕터를 `reachedChapters`(빈 배열 또는 1개)로 돌려준다(퀘스트 전 캡슐은 세지 않고, `advance_count`가 NULL이거나 다음 챕터 정의가 없으면 횟수만 올리고 멈춘다). 보류가 정확히 1개이고 이번 호출에서 채웠을 때 채움 비율이 70·80·90%에 닿은 가장 높은 단계가 `alert_stage`보다 높으면 그 단계를 `alertStage`로 돌려주고 `alert_stage`를 올린다(비교는 정수 `filled*100 >= 단계*required`, 올리지 않았으면 null). 한 번에 캡슐 하나만 채운다. 잔액이 0이면 `applied = 0, full = false`로 정상 반환한다(반복의 종료 신호다). `pendingCount`는 이 호출이 본 보류 수, `chapterCount`는 호출이 끝난 시점의 `capsule_full_count`다.
+- `capsule_open_counted(p_user_id, p_items jsonb) → jsonb {…capsule_open 결과, chapterNo, reachedChapters, chapterCount}`(302에서 교체): 같은 트랜잭션에서 `capsule_open`을 부른 뒤 다음 캡슐의 필요량을 v2로 덮어쓰고 `alert_stage`를 0으로 돌린다. **더는 챕터 횟수를 세지 않는다**(`chapterNo`는 null, `reachedChapters`는 빈 배열, `chapterCount`는 지금 값. 이 세 키는 호출하는 TS가 읽어 남겼다). `capsule_open`이 `ok = false`를 주면 그 결과를 그대로 돌려준다. `total_score`는 건드리지 않는다. 301까지는 열 때 횟수와 오름을 처리했다.
+- `capsule_hold_reward(p_user_id) → jsonb {ok, slot, pendingCount, blockedNow, next{required, filled, chapterNo}}`(302, 새 함수): 이용 정지 확인(`user_suspended`) → 캡슐 행 잠금 → 가득 차지 않았으면 `not_full` → 보류가 이미 2개이면 `pending_full` → 가득 찬 캡슐을 `capsule_pending_rewards`의 가장 낮은 빈 slot에 옮기고(`chapter_no`, `fill_amount = required`, `reached_at = now()`) 캡슐을 v2의 새 캡슐로 바꾼다(`filled = 0`, `alert_stage = 0`). `blockedNow`는 이 호출 전 보류 1개에서 호출 뒤 2개가 된 경우만 true다(잼을 받을 수 없게 된 순간의 표식).
+- `capsule_claim_pending(p_user_id, p_pending_id, p_items jsonb) → jsonb {ok, openId, itemIds, items, pendingCount}`(302, 새 함수): 보류 한 줄을 받는다. 이용 정지 확인 → 항목 검사(`invalid_items`, `capsule_open`과 같다) → 캡슐 행 잠금 → 보류 줄 잠금(없으면 `pending_not_found`) → 인벤토리 잠금(`inventory_not_found`) → 빈칸이 `guaranteed_count + bonus_count`보다 적으면 아무것도 바꾸지 않고 `insufficient_slots`(`free`, `needed`) → 충분하면 `capsule_open`과 같은 방식으로 지급하고 `item_issue_log`(route `capsule`)·`user_drop_state`·`capsule_opens`(챕터와 채운 양은 보류의 값)를 쓰고 그 보류 줄을 지운다. 캡슐 자체(`filled`, `alert_stage`)는 바꾸지 않는다. `pendingCount`는 남은 보류 수다.
 
 앱 쪽 구현:
-- `lib/capsule/auto-fill.ts`의 `runCapsuleAutoFill`(던지지 않는 쪽)·`runCapsuleAutoFillOrThrow`: 한 라운드에 `capsule_auto_fill`을 부르고 가득 찼으면 `openCapsule({ counted: true })`로 연다. 최대 50라운드(`CAPSULE_AUTO_FILL_MAX_ROUNDS`)이고 멈춤 사유는 `wallet_empty`·`blocked`·`suspended`·`max_rounds`·`error`다. 열 수 없는 경우(`no_tribe`·`insufficient_slots`·`not_full` 등)는 오류가 아닌 `blocked`이고 채운 잼은 캡슐에 남는다. 가득 찬 채 남은 캡슐은 다음 라운드의 `capsule_auto_fill`이 `full = true`로 알려 주므로 맨 앞에서 먼저 열린다.
-- `lib/capsule/open.ts`의 `openCapsule`: `counted` 옵션이 켜지면 RPC가 `capsule_open_counted`로 바뀌고 `awardChapterScore('capsule_open')`을 건너뛴다. 챕터 오름이 있으면 `processChapterRise`(소식·피드·챕터 배지 판정)를 잇는다. `skipRiseBadgeEvaluation`을 켜면 오름 처리의 챕터 배지 판정만 건너뛴다(호출한 동기화의 끝 판정이 이어서 읽는다). 옵션이 없으면 응답 모양까지 옛 경로와 같다.
-- `lib/capsule/sync-auto-fill.ts`의 `runSyncCapsuleAutoFill`: 던지지 않는다. 자동 채움을 돌리고 열린 캡슐이 있으면 `capsule_unseen_results` 한 건을 쓴다.
-- `lib/strava/sync.ts`: 잼 정산(`settleActivities`) 직후에 `runSyncCapsuleAutoFill`을 부른다. 새 활동이 없는 동기화의 이른 반환 경로에서도 맨 앞에서 부른다. 열린 캡슐이 있으면 그 동기화의 끝 판정에 `chapter_reached`와 `jamTriggersForCapsuleOpen()`을 더한다.
-- 중복 방지: 잼 정산은 `jam_apply`의 활동 단위 유일성이 지킨다. 자동 채움은 지갑 잔액만 쓰므로 같은 동기화를 다시 보내면 잔액이 0이라 아무 일도 하지 않는다. 원장의 등식은 `받은 잼(+) = 캡슐에 채운 양(−, capsule_fill) + 지금 지갑`이다. 소멸은 아직 없다(U4).
+- `lib/capsule/auto-fill.ts`의 `runCapsuleAutoFill`(던지지 않는 쪽)·`runCapsuleAutoFillOrThrow`: 한 라운드에 `capsule_auto_fill`을 부르고, `reachedChapters`가 있으면 `processChapterRise`(소식·피드·챕터 배지 판정)를 잇고, 가득 찼으면 «열기 또는 보류»를 한다. 보류가 이미 있으면 열기를 시도하지 않고 `capsule_hold_reward`로 보류하고, 없으면 `openCapsule({ counted: true })`를 시도해 `insufficient_slots`일 때만 보류한다. 그 밖의 `CapsuleError`(`no_tribe` 등)는 오류가 아닌 `blocked` 멈춤이고 채운 잼은 캡슐에 남는다. 최대 50라운드(`CAPSULE_AUTO_FILL_MAX_ROUNDS`)이고 멈춤 사유는 `wallet_empty`·`blocked`·`suspended`·`max_rounds`·`error`다. 보류가 2개이면 DB가 지갑을 소멸시키고 `applied = 0`으로 돌아와 `wallet_empty`로 멈춘다. 결과에는 `holds`·`forfeitedTotal`·`alerts`(가득 차지 않은 응답의 `alertStage`만)·`blockedNow`가 더해졌다. 가득 찬 채 남은 캡슐은 다음 라운드의 `capsule_auto_fill`이 `full = true`로 알려 주므로 맨 앞에서 먼저 처리된다.
+- `lib/capsule/open.ts`의 `openCapsule`: `counted` 옵션이 켜지면 RPC가 `capsule_open_counted`로 바뀌고 `awardChapterScore('capsule_open')`을 건너뛴다. `processChapterRise`는 부르지 않는다(오름 처리는 `auto-fill.ts`가 `reachedChapters`로 부른다). 추첨·RPC 항목 변환·후속 처리는 `rollCapsuleItems`·`toRpcItems`·`recordOpenedItems`로 나뉘어 있고 보류 받기가 같은 추첨을 쓴다. 옵션이 없으면 응답 모양까지 옛 경로와 같다.
+- `lib/capsule/claim.ts`의 `claimPendingCapsules`와 `POST /api/capsule/claim`: 이용 정지 확인 → 보류를 `reached_at`·`slot` 순으로 읽기 → 보류마다 추첨 후 `capsule_claim_pending`. `insufficient_slots`에서 멈추고 받은 만큼만 받는다. 라우트는 401, 정지 403(`user_suspended`), 하나도 못 받고 빈칸 모자람 409(`insufficient_slots`, `freeSlots`·`neededSlots`), 받을 보류 없음 409(`no_pending`), `no_tribe`·`capsule_changed` 409, 그 밖은 500이다. 받은 것이 하나 이상이면 응답 뒤에 캡슐 연 횟수 지표를 다시 판정한다.
+- `lib/capsule/sync-auto-fill.ts`의 `runSyncCapsuleAutoFill`: 던지지 않는다. 자동 채움을 돌리고 열린 캡슐이 있으면 `capsule_unseen_results` 한 건을 쓰며, `notifyCapsuleAlerts`로 소식을 보낸다(`blockedNow`이면 `capsule_jam_blocked` 한 건만, 아니면 `alerts`의 단계마다 `capsule_nearly_full`. 소식 규칙은 [notification/PRD.md](notification/PRD.md) §3). 열기 없이 보류만 생긴 동기화는 `capsule_unseen_results`에 쓰지 않는다.
+- `lib/strava/sync.ts`: 잼 정산(`settleActivities`) 직후에 `runSyncCapsuleAutoFill`을 부른다. 새 활동이 없는 동기화의 이른 반환 경로에서도 맨 앞에서 부른다. 열린 캡슐이 있으면 그 동기화의 끝 판정에 `chapter_reached`와 `jamTriggersForCapsuleOpen()`을 더하고, 열기 없이 챕터만 오른 동기화(`chapterRose`)에는 `chapter_reached`만 더한다.
+- 중복 방지: 잼 정산은 `jam_apply`의 활동 단위 유일성이 지킨다. 자동 채움은 지갑 잔액만 쓰므로 같은 동기화를 다시 보내면 잔액이 0이라 아무 일도 하지 않는다. 원장의 등식은 `받은 잼(+) = 캡슐에 채운 양(−, capsule_fill) + 소멸한 양(−, capsule_forfeit) + 지금 지갑`이다(회수 `admin_deduct`는 따로 뺀다).
+- 보류와 잼 소멸의 규칙(최대 2개, 순서, 지갑 전액, 알림 단계)은 운영 로직 5.2절이 원천이고 이 문서는 DB 쪽 사실만 둔다. 이용 정지 중에는 `capsule_auto_fill`·`capsule_hold_reward`·`capsule_claim_pending`이 모두 `user_suspended`로 거절되어 소멸·보류·받기가 일어나지 않는다.
 - 옛 점수 장부는 두 곳에서만 쓰기를 멈췄다: `lib/jam/settlement.ts`(모은 잼)와 `counted` 열기(캡슐 열기). 나머지 점수 호출은 그대로이고 U5가 잼으로 바꾼다(위 9-3).
 
 ---

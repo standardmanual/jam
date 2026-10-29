@@ -65,7 +65,9 @@ CREATE TYPE notification_type AS ENUM (
   'inventory_slots_low',  -- 20261018_0056 마이그레이션 237. 남은 칸 3개 이하 단계 알림. payload { remaining_slots: 1|2|3(실제 남은 칸, 20261018_1613), max_slots }. 남은 칸 0개는 만들지 않는다
   'mission_participation_cancelled',  -- 20261019_1313 마이그레이션 251. ④ 미션. 트라이브 변경에 따른 참가 취소. payload { missions: [{ mission_id, title }] } — 개수는 배열 길이
   'chapter_up',  -- 20261019_1316 마이그레이션 255. 챕터 오름(챕터 2 이상으로 오를 때만). payload { chapter_no } — 한 번에 여러 챕터를 넘으면 가장 높은 챕터 하나
-  'tribe_changed'  -- 20261021_1247 마이그레이션 261. 어드민 트라이브 변경. payload { new_tribe_name } — 사유는 싣지 않는다(운영 기록은 user_tribe_changes에만)
+  'tribe_changed',  -- 20261021_1247 마이그레이션 261. 어드민 트라이브 변경. payload { new_tribe_name } — 사유는 싣지 않는다(운영 기록은 user_tribe_changes에만)
+  'capsule_nearly_full',  -- 20261028_1734 마이그레이션 302. 보류가 1개인 동안 다음 캡슐의 채움이 70·80·90%에 닿음. payload { stage: 70|80|90 }
+  'capsule_jam_blocked'  -- 20261028_1734 마이그레이션 302. 보류가 1개에서 2개가 되어 잼을 받을 수 없게 됨. payload {} (담을 값 없음)
 );
 
 CREATE TABLE public.notifications (
@@ -82,7 +84,7 @@ CREATE TABLE public.notifications (
 );
 ```
 
-> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 36값 중 9값 (실사용 27종)**
+> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 38값 중 9값 (실사용 29종)**
 >
 > | 값 | 사용 중단 시점 | 사유 |
 > |---|---|---|
@@ -90,7 +92,7 @@ CREATE TABLE public.notifications (
 > | `mutual_follow` | 2026-08-27 (20260827_014) | #27 맞팔은 자기 행동의 메아리다. 되팔로우당한 쪽에는 `followed`가 대신 나간다 |
 > | `badge_earned`·`rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·`points_earned`·`first_badge` | 2026-08-27 (20260827_014) | ① 보상 획득 6종을 활동 결산(`activity_recap`) 1종으로 재편 |
 >
-> **실제로 쓰는 종류는 27종**이다(28 − 9 + `activity_recap` 1 + `inventory_slots_low` 1 + `mission_participation_cancelled` 1 + `chapter_up` 1 + `tribe_changed` 1 + `suspension_started` 1 + `suspension_lifted` 1 + `reward_pending` 1 = 27). 마지막 세 값은 마이그레이션 270(티켓 20261021_1249 5회)이 더했다.
+> **실제로 쓰는 종류는 29종**이다(28 − 9 + `activity_recap` 1 + `inventory_slots_low` 1 + `mission_participation_cancelled` 1 + `chapter_up` 1 + `tribe_changed` 1 + `suspension_started` 1 + `suspension_lifted` 1 + `reward_pending` 1 + `capsule_nearly_full` 1 + `capsule_jam_blocked` 1 = 29). `suspension_started`·`suspension_lifted`·`reward_pending`은 마이그레이션 270(티켓 20261021_1249 5회)이, `capsule_nearly_full`·`capsule_jam_blocked`는 마이그레이션 302(티켓 20261028_1734)가 더했다.
 >
 > **DDL로 지우지 않는다.** Postgres에는 `ALTER TYPE … DROP VALUE`가 없고, 타입을 새로 만들어
 > 갈아끼우는 우회는 컬럼·인덱스·RLS를 전부 재생성해야 하는 위험한 작업이다. 해당 타입 소식은
@@ -102,7 +104,7 @@ CREATE TABLE public.notifications (
 > 죽은 코드다. `NotificationType`·`NotificationPayloadMap`·`buildNotificationMessage`·
 > `notificationTarget`·`TypeIcon`·`ko.ts`에서 전부 제거했다.
 >
-> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 27종만 노출해 컴파일러가 재사용을
+> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 29종만 노출해 컴파일러가 재사용을
 > 막는다. 만에 하나 이 타입의 행이 존재하면 렌더러의 `default` 분기가 받는다.
 >
 > **`default` 분기는 컴파일 타임 안전망을 겸한다 (2026-08-27 / 티켓 20260827_021).**
@@ -136,7 +138,7 @@ CREATE TABLE public.notifications (
 | 필드 | 설명 |
 |---|---|
 | `user_id` | **받는 사람.** 행위자가 아니다 |
-| `type` | ENUM 36값 중 **실사용 27종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
+| `type` | ENUM 38값 중 **실사용 29종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
 | `actor_user_id` | 아바타 탭 대상. 팔로우·픽업됨·팔로잉 활동에만 존재, 나머지는 NULL |
 | `actor_count` | 묶음 **고유 인원** — "**예린**님 외 **3명**"의 N. 기본 1. 병합 횟수가 아니라 `payload.actor_ids`의 고유 개수와 일치해야 한다 (§4-1) |
 | `group_key` | 묶음 병합 키. NULL이면 묶지 않는 소식 (§4 참고) |
@@ -454,6 +456,8 @@ SELECT로 존재를 확인해야 하고 그 확인과 INSERT 사이에 재시도
 | 31 팔로잉 미션 완료 | `following_mission_complete:{mission_id}:{YYYY-MM-DD}` | 다음 날 |
 | 41 동기화 지연 | `sync_stalled:{정체 시작 KST일자}` | **다시 동기화한 뒤 또 정체됐을 때** |
 | 42 인벤토리 포화 | `inventory_full:{YYYY-MM-DD}` | 7일 뒤 (배치가 최근 발송 이력을 확인) |
+| 53 캡슐 채움 단계 | 없음(`group_key` NULL, 항상 새 행) | `user_capsules.alert_stage`(0·70·80·90)가 단계를 기억한다. 보류가 1개인 동안 단계가 높아질 때만 알리고, 캡슐이 열리거나 보류로 옮겨지면 0으로 돌아가 다음 캡슐에서 다시 알린다 |
+| 54 잼을 받을 수 없음 | 없음(`group_key` NULL, 항상 새 행) | DB의 보류 1→2 전환(`capsule_hold_reward`의 `blockedNow`)이 한 번뿐인 사건이다. 받아서 줄었다가 다시 2개가 되면 새 사건이라 다시 나간다 |
 | 46 남은 칸 알림 | 없음(`group_key` NULL, 항상 새 행) | `inventory.slot_alert_stage`가 단계(0·3·1)를 기억한다. 단계가 나빠질 때만 알리고 좋아지면 낮춰 다시 알릴 수 있다 |
 
 > **#9·#41의 키에 날짜가 아니라 "상태의 시작 시점"이 들어간 이유.** 일자 키를 쓰면 상태가
@@ -510,6 +514,8 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 | `mission_participation_cancelled` | `{ missions: [{ mission_id, title }] }` — 한 번의 트라이브 변경으로 취소된 미션 전부. 개수는 배열 길이로 세고 `target_count`는 두지 않는다 |
 | `chapter_up` | `{ chapter_no }` — 오른 챕터 가운데 가장 높은 번호(2 이상). 챕터 이름·점수는 싣지 않는다(챕터는 숫자로만 표기한다) |
 | `tribe_changed` | `{ new_tribe_name }` — 바뀐 트라이브 이름. 사유(코드·메모)는 싣지 않는다. 이름이 비면 렌더러가 이름 없는 문장을 쓴다 |
+| `capsule_nearly_full` | `{ stage }` — 70·80·90 중 하나. 그 밖의 값이면 렌더러가 숫자 없는 문장을 쓴다. 잼 양과 보상 내용은 싣지 않는다 |
+| `capsule_jam_blocked` | `{}` — 담을 값이 없다 |
 | `followed` | `{ actor_ids: [...] }` — append. 2명까지 이름 나열에 필요 (§4-1) |
 | `sync_stalled` | `{ days: 3 }` |
 | `admin_points_changed` | `{ amount, direction: 'grant'\|'deduct', reason }` — `reason`은 **코드**다. 렌더 시 `adminReasonLabel()`을 반드시 경유할 것 |

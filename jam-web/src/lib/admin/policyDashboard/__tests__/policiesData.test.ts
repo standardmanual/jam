@@ -293,3 +293,58 @@ describe('캡슐 자동 채움과 챕터 100% 횟수 항목 (티켓 20261028_173
     expect(find('ch12-score-thresholds')?.currentSpec).toContain('모은 잼과 자동 채움 캡슐 열기는 점수를 쌓지 않고')
   })
 })
+
+describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)', () => {
+  const find = (id: string) => POLICIES_DATA.find((p) => p.id === id)
+  const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+  const IDS = [
+    'ch5-pending-reward',
+    'ch5-claim-pending',
+    'ch5-jam-forfeit',
+    'ch5-forfeit-weekly',
+    'ch5-capsule-alerts',
+    'ch16-suspension-capsule-hold',
+  ]
+
+  it('새 항목 6개가 있고 코드 위치가 실재한다', () => {
+    for (const id of IDS) {
+      const card = find(id)
+      expect(card, id).toBeDefined()
+      expect(card?.ticketId, id).toBe('20261028_1734')
+      expect(existsSync(`${repoRoot}${card?.codeLocation}`), `${id}의 코드 위치가 실재해야 합니다`).toBe(true)
+    }
+  })
+
+  it('보류는 최대 2개이고 보류가 있으면 새로 가득 찬 보상도 보류한다', () => {
+    expect(find('ch5-pending-reward')?.currentSpec).toContain('최대 2개')
+    expect(find('ch5-pending-reward')?.currentSpec).toContain('바로 보류')
+    expect(find('ch5-pending-reward')?.dbTable).toBe('capsule_pending_rewards')
+  })
+
+  it('받기는 오래된 것부터 빈칸이 닿는 만큼이고 보상을 포기하는 버튼이 없다', () => {
+    const spec = find('ch5-claim-pending')?.currentSpec ?? ''
+    expect(spec).toContain('오래된 보류')
+    expect(spec).toContain('포기하는 버튼은 없음')
+  })
+
+  it('소멸은 지갑 전액을 capsule_forfeit으로 기록하고 정지 중에는 소멸하지 않으며 주간 뷰가 집계한다', () => {
+    const spec = find('ch5-jam-forfeit')?.currentSpec ?? ''
+    expect(spec).toContain('지갑 잼 전액')
+    expect(spec).toContain('capsule_forfeit')
+    expect(spec).toContain('이용 정지 중에는')
+    expect(find('ch5-forfeit-weekly')?.dbTable).toBe('jam_forfeit_weekly')
+    expect(find('ch16-suspension-capsule-hold')?.currentSpec).toContain('user_suspended')
+  })
+
+  it('알림 단계는 70·80·90이고 보류가 하나일 때만이며 둘째 보류 소식은 한 건이다', () => {
+    const spec = find('ch5-capsule-alerts')?.currentSpec ?? ''
+    for (const text of ['70·80·90%', '보류가 정확히 1개인 동안만', '단계마다 최대 1회', '가장 높은 단계 하나', 'capsule_jam_blocked', 'capsule_nearly_full']) {
+      expect(spec, text).toContain(text)
+    }
+    expect(find('ch5-capsule-alerts')?.dbColumn).toBe('alert_stage')
+  })
+
+  it('챕터 횟수 카드는 100%에 닿는 시점에 센다고 적는다', () => {
+    expect(find('ch12-advance-count')?.currentSpec).toContain('100%에 처음 닿는 시점')
+  })
+})
