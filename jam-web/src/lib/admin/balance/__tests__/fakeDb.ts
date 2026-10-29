@@ -269,10 +269,19 @@ export function capsulePolicyRow(overrides: Row = {}): Row {
 }
 
 const CHAPTER_DEFAULT_FILL = [90, 100, 110, 120, 135, 150, 165, 180, 200, 220]
+const CHAPTER_DEFAULT_FILL_V2 = [145, 160, 180, 200, 220, 245, 270, 300, 330, 365]
+/** 챕터 10은 마지막이라 NULL이 정상이다. */
+const CHAPTER_DEFAULT_ADVANCE = [6, 7, 7, 8, 9, 9, 10, 11, 12, null]
 
-/** `capsule_chapter_costs` 챕터 1~10 행(마이그레이션 232 시드). 행마다 수정 시각을 따로 줄 수 있다. */
+/** `capsule_chapter_costs` 챕터 1~10 행(마이그레이션 232 시드 + 300의 `fill_amount_v2`·`advance_count`). 행마다 수정 시각을 따로 줄 수 있다. */
 export function chapterCostRows(stamp: string = CAPSULE_ROW_STAMP): Row[] {
-  return CHAPTER_DEFAULT_FILL.map((fill_amount, index) => ({ chapter_no: index + 1, fill_amount, updated_at: stamp }))
+  return CHAPTER_DEFAULT_FILL.map((fill_amount, index) => ({
+    chapter_no: index + 1,
+    fill_amount,
+    fill_amount_v2: CHAPTER_DEFAULT_FILL_V2[index],
+    advance_count: CHAPTER_DEFAULT_ADVANCE[index],
+    updated_at: stamp,
+  }))
 }
 
 export const TIER_REWARD_ROW_STAMP = '2026-10-22T01:10:00.25+00:00'

@@ -238,21 +238,30 @@ describe('BalanceSectionBody — 동기화 구역 (2회)', () => {
 describe('BalanceSectionBody — 캡슐 구역 (2회)', () => {
   const capsuleHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: CAPSULE_BINDING })).replace(/<!-- -->/g, '')
 
-  it('스물한 칸의 입력(저장된 값)과 여섯 묶음 제목, 등급 확률 합계 줄이 보인다', async () => {
+  it('마흔 칸의 입력(저장된 값)과 여덟 묶음 제목, 등급 확률 합계 줄이 보인다', async () => {
     const out = await capsuleHtml()
-    expect([...out.matchAll(/<input /g)]).toHaveLength(21)
+    expect([...out.matchAll(/<input /g)]).toHaveLength(40)
     expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual([
       '나오는 개수',
       '확률',
       '등급 확률',
       '보정',
       '퀘스트 전 캡슐',
-      '챕터별 채울 양',
+      '챕터별 채울 양 (동기화 자동 채움)',
+      '챕터별 100% 횟수 (다음 챕터로 오르는 횟수)',
+      '챕터별 채울 양 (옛 수동 채우기)',
     ])
     expect(out).toMatch(/id="balance-capsule-rarity_common"[^>]*value="70"/)
     expect(out).toMatch(/id="balance-capsule-bonus_probability"[^>]*value="0.2"/)
     expect(out).toMatch(/id="balance-capsule-chapter:1"[^>]*value="90"/)
     expect(out).toMatch(/id="balance-capsule-chapter:10"[^>]*value="220"/)
+    expect(out).toMatch(/id="balance-capsule-fill_v2:1"[^>]*value="145"/)
+    expect(out).toMatch(/id="balance-capsule-fill_v2:10"[^>]*value="365"/)
+    expect(out).toMatch(/id="balance-capsule-advance:1"[^>]*value="6"/)
+    expect(out).toMatch(/id="balance-capsule-advance:9"[^>]*value="12"/)
+    expect(out).not.toContain('balance-capsule-advance:10')
+    expect(out).toContain('챕터 10은 마지막이라 횟수가 없어요.')
+    expect(out).toContain('기본값 6번')
     expect(out).toContain('챕터 10')
     expect(out).toContain('기본값 220잼')
     expect(out).toMatch(/<p role="status"[^>]*>합계 100%<\/p>/)

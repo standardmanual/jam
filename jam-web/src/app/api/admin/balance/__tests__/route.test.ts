@@ -298,12 +298,22 @@ describe('캡슐 구역 (2회)', () => {
     h.user = ADMIN
   })
 
-  it('GET은 정책 열한 칸과 챕터 열 칸(chapter:N)의 값, 가장 늦은 수정 시각을 돌려준다', async () => {
+  it('GET은 정책 열한 칸과 챕터별 값(chapter:N, fill_v2:N, advance:N 1~9)의 값, 가장 늦은 수정 시각을 돌려준다', async () => {
     const res = await GET(getRequest(), params('capsule'))
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(Object.keys(body.values)).toHaveLength(21)
-    expect(body.values).toMatchObject({ guaranteed_count: 1, rarity_common: 70, 'chapter:1': 90, 'chapter:10': 220 })
+    expect(Object.keys(body.values)).toHaveLength(40)
+    expect(body.values).toMatchObject({
+      guaranteed_count: 1,
+      rarity_common: 70,
+      'chapter:1': 90,
+      'chapter:10': 220,
+      'fill_v2:1': 145,
+      'fill_v2:10': 365,
+      'advance:1': 6,
+      'advance:9': 12,
+    })
+    expect(body.values['advance:10']).toBeUndefined()
     expect(body.updatedAt).toBe(CAPSULE_ROW_STAMP)
   })
 
