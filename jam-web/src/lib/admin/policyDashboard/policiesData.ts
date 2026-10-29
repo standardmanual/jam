@@ -360,12 +360,93 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '동기화 자동 채움과 자동 열기',
     type: 'code_constant',
     currentSpec:
-      '동기화의 잼 정산 직후 «가득 찬 캡슐이 있으면 열기 → 지갑 잼으로 채우기 → 가득 차면 열기»를 지갑이 비거나 열 수 없을 때까지 되풀이 (한 동기화에 최대 50번, 남은 잼은 지갑에 남음). 열 수 없어 가득 찬 채 남은 캡슐은 다음 동기화의 맨 앞에서 가장 먼저 열림 (새 활동이 없는 동기화 포함). 같은 동기화를 다시 보내도 지갑 잔액이 0이라 한 번만 반영됨',
+      '동기화의 잼 정산 직후 «가득 찬 캡슐이 있으면 열기 → 지갑 잼으로 채우기 → 가득 차면 열기»를 지갑이 비거나 열 수 없을 때까지 되풀이 (한 동기화에 최대 50번, 남은 잼은 지갑에 남음). 인벤토리 빈칸이 모자라 열 수 없는 캡슐은 막히지 않고 보상이 보류됨 (아래 «보류» 항목). 트라이브 없음·아이템 항목 오류·캡슐이 방금 바뀜처럼 빈칸 외 이유로 못 연 캡슐은 가득 찬 채 남아 다음 동기화의 맨 앞에서 가장 먼저 열림 (새 활동이 없는 동기화 포함). 같은 동기화를 다시 보내도 지갑 잔액이 0이라 한 번만 반영됨',
     codeLocation: 'jam-web/src/lib/capsule/auto-fill.ts',
     userExperience:
       '동기화하면 받은 잼이 캡슐에 저절로 채워지고, 가득 차면 열기를 누르지 않아도 아이템 배지를 받아요. 넘친 잼은 다음 캡슐에 채워져요.',
     basisDoc: '운영 로직 5.2절',
     ticketId: '20261028_1733',
+    nodes: ['capsule'],
+  },
+  {
+    id: 'ch5-pending-reward',
+    chapter: 5,
+    chapterTitle: '캡슐',
+    title: '인벤토리가 차면 캡슐 보상 보류 (최대 2개)',
+    type: 'code_constant',
+    currentSpec:
+      '캡슐이 가득 차면 열기를 시도하고, 인벤토리 빈칸이 나올 수 있는 최대 개수(확정 + 보너스)보다 적으면(insufficient_slots) 보상을 보류함. 보류가 하나라도 있으면 새로 가득 찬 캡슐은 열기를 시도하지 않고 바로 보류해 순서를 지킴. 보류는 유저당 최대 2개(slot 1·2)이고 한 줄에 챕터·채운 양·닿은 시각만 있음 (아이템은 받을 때 추첨). 보류하면 그 캡슐은 비운 새 캡슐(필요량은 지금 챕터의 값)로 바뀜. 보류는 보상에만 걸려 챕터 횟수는 100%에 닿는 시점에 이미 센 상태임',
+    codeLocation: 'jam-web/src/lib/capsule/auto-fill.ts',
+    dbTable: 'capsule_pending_rewards',
+    userExperience:
+      '인벤토리에 자리가 없어도 가득 찬 캡슐의 보상은 사라지지 않고 못 받은 보상으로 남아요. 받기 버튼과 캡슐 아래 안내 화면은 아직 없어요.',
+    basisDoc: '운영 로직 5.2절, 6.4절',
+    ticketId: '20261028_1734',
+    nodes: ['capsule'],
+  },
+  {
+    id: 'ch5-claim-pending',
+    chapter: 5,
+    chapterTitle: '캡슐',
+    title: '보류된 캡슐 보상 받기',
+    type: 'code_constant',
+    currentSpec:
+      '오래된 보류(닿은 시각, slot 순서)부터 하나씩 받음. 받을 때 추첨하고(공개 기간 규칙이 받는 시점에 적용), 빈칸이 나올 수 있는 최대 개수 이상이면 지급하고 그 보류를 지움. 빈칸이 모자라면 거기서 멈추고 못 받은 보상은 보류로 남음 (한 번 눌러 가져올 수 있는 만큼 받음, 전부 아니면 전무가 아님). 보상을 포기하는 버튼은 없음. 이용 정지 중에는 받기도 막힘. 보류가 2개에서 줄면 다음 동기화부터 잼 채움이 다시 정상으로 돌아감. 받은 보상도 캡슐 연 횟수에 들어감',
+    codeLocation: 'jam-web/src/lib/capsule/claim.ts',
+    dbTable: 'capsule_pending_rewards',
+    userExperience:
+      '인벤토리에 자리를 만든 뒤 받기를 누르면 못 받은 보상을 오래된 것부터 빈칸이 닿는 만큼 가져와요. 받기 버튼 화면은 아직 없고 서버 API(POST /api/capsule/claim)만 있어요.',
+    basisDoc: '운영 로직 5.2절, 6.4절, 16.4절',
+    ticketId: '20261028_1734',
+    nodes: ['capsule'],
+  },
+  {
+    id: 'ch5-jam-forfeit',
+    chapter: 5,
+    chapterTitle: '캡슐',
+    title: '보류 2개일 때 잼 소멸',
+    type: 'code_constant',
+    currentSpec:
+      '보류가 2개인 동안은 캡슐을 채우지 않고, 그 동기화의 자동 채움 단계에서 지갑 잼 전액을 원장 사유 capsule_forfeit(음수)으로 소멸 기록함 (지갑 잔액이 0이면 원장 줄 없음). 모은 총량(total_earned)은 줄이지 않음. 이용 정지 중에는 자동 채움이 막혀 있어 소멸하지 않음. 원장 등식: 받은 잼 = 캡슐에 채운 양 + 소멸한 양 + 지금 지갑',
+    codeLocation: 'jam-web/supabase/migrations/302_capsule_pending_forfeit.sql',
+    dbTable: 'jam_transactions',
+    dbColumn: 'reason',
+    userExperience:
+      '못 받은 보상이 2개가 되면 그 뒤 들어오는 잼은 캡슐에 쌓이지 않고 사라져요. 못 받은 보상을 가져와 2개에서 줄이면 다시 잼이 모여요.',
+    basisDoc: '운영 로직 4.2절, 5.2절, 16.4절',
+    ticketId: '20261028_1734',
+    nodes: ['capsule', 'jam'],
+  },
+  {
+    id: 'ch5-forfeit-weekly',
+    chapter: 5,
+    chapterTitle: '캡슐',
+    title: '소멸 잼 주 단위 집계',
+    type: 'code_constant',
+    currentSpec:
+      '읽기 전용 뷰 jam_forfeit_weekly가 capsule_forfeit 줄을 주(KST 월~일)별로 소멸한 유저 수(user_count)와 소멸한 양(forfeited_amount)으로 합침. service_role만 읽을 수 있음. 목표 수치는 없고 오픈 뒤 4주를 관찰해 정함',
+    codeLocation: 'jam-web/supabase/migrations/302_capsule_pending_forfeit.sql',
+    dbTable: 'jam_forfeit_weekly',
+    userExperience: '유저가 직접 보는 화면은 없어요. 운영자가 사라진 잼이 얼마나 되는지 주 단위로 확인하는 데 써요.',
+    basisDoc: '운영 로직 4.5절, 5.2절',
+    ticketId: '20261028_1734',
+    nodes: ['capsule', 'jam'],
+  },
+  {
+    id: 'ch5-capsule-alerts',
+    chapter: 5,
+    chapterTitle: '캡슐',
+    title: '캡슐 채움 단계 알림 (70·80·90%)과 잼을 받을 수 없음 알림',
+    type: 'code_constant',
+    currentSpec:
+      '보류가 정확히 1개인 동안만 다음 캡슐의 채움이 70·80·90%에 닿을 때 소식 capsule_nearly_full(단계 payload)을 보냄. 단계는 user_capsules.alert_stage(0·70·80·90)에 두고 DB 함수가 행을 잠근 채 단계가 높아질 때만 돌려줘 캡슐 하나당 단계마다 최대 1회이고, 한 번에 건너뛰면 가장 높은 단계 하나만 보냄. 캡슐이 열리거나 보류로 옮겨지면 단계는 0으로 돌아감. 보류가 없을 때는 보내지 않음. 둘째 보류가 만들어지는 순간(1→2)에 capsule_jam_blocked 소식을 한 건 보내고, 그 동기화에서는 단계 알림을 함께 보내지 않음. 두 소식 모두 묶음 키 없이 새 행을 만들고(중복 방지는 DB), 착지는 홈(/). 소식 문구의 어체(현재 해요체)와 «쉬어도 잃지 않는다» 약속이 달라지는 설명을 둘 자리는 미확정',
+    codeLocation: 'jam-web/src/lib/capsule/sync-auto-fill.ts',
+    dbTable: 'user_capsules',
+    dbColumn: 'alert_stage',
+    userExperience:
+      '못 받은 보상이 1개일 때 캡슐이 70%, 80%, 90% 찼다는 소식이 단계마다 한 번 와요. 못 받은 보상이 2개가 되면 지금 들어오는 잼이 사라진다는 소식이 한 번 와요. 소식이 가리키는 받기 버튼은 아직 화면에 없어요.',
+    basisDoc: '운영 로직 5.2절, 15.4절',
+    ticketId: '20261028_1734',
     nodes: ['capsule'],
   },
   {
@@ -908,12 +989,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '챕터별 캡슐 100% 횟수 (다음 챕터로 오르는 횟수)',
     type: 'admin_link',
     currentSpec:
-      '기본값: 챕터 1(6) · 2(7) · 3(7) · 4(8) · 5(9) · 6(9) · 7(10) · 8(11) · 9(12번), 챕터 10은 횟수 없음. 캡슐이 열릴 때 지금 챕터의 횟수를 1 올리고 정해진 횟수에 닿으면 다음 챕터로 올라 횟수는 0으로 돌아감 (한 번의 열기로 챕터는 최대 한 번). 퀘스트 전 첫 캡슐은 세지 않음. 챕터 10은 횟수만 올리고 멈춤',
+      '기본값: 챕터 1(6) · 2(7) · 3(7) · 4(8) · 5(9) · 6(9) · 7(10) · 8(11) · 9(12번), 챕터 10은 횟수 없음. 자동 채움이 채우다 캡슐이 100%에 처음 닿는 시점에 지금 챕터의 횟수를 1 올리고 정해진 횟수에 닿으면 다음 챕터로 올라 횟수는 0으로 돌아감 (한 번의 100%로 챕터는 최대 한 번). 열기 시점이 아니라 닿는 시점에 세므로 인벤토리가 가득 차 보상이 보류돼도 센다. 퀘스트 전 첫 캡슐은 세지 않음. 챕터 10은 횟수만 올리고 멈춤',
     dbTable: 'capsule_chapter_costs',
     dbColumn: 'advance_count',
     userExperience: '챕터마다 정해진 횟수만큼 캡슐을 가득 채우면 다음 챕터로 올라요.',
     basisDoc: '운영 로직 12.2절, 12.4절',
-    ticketId: '20261028_1733',
+    ticketId: '20261028_1734',
     adminLink: {
       href: '/admin/balance#capsule',
     },
@@ -1104,6 +1185,20 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     userExperience: '이유를 알 수 없는 감점 대신 정당한 사유 고지와 함께 정지돼요.',
     basisDoc: '운영 로직 16.1절',
     ticketId: '20261021_1250',
+  },
+  {
+    id: 'ch16-suspension-capsule-hold',
+    chapter: 16,
+    chapterTitle: '어뷰징과 제재',
+    title: '이용 정지 중 캡슐 보류·잼 소멸·보류 받기',
+    type: 'code_constant',
+    currentSpec:
+      '이용 정지 중에는 캡슐 자동 채움, 보상 보류 만들기, 보류 받기 DB 함수가 모두 user_suspended로 거절됨. 자동 채움이 막혀 있어 지갑 잼도 소멸하지 않고 그대로 남으며, 보류는 그대로 둠. 정지가 풀리면 이어서 채우고 받을 수 있음. 정지를 건 시점부터 푼 시점까지 시작한 활동은 풀린 뒤에 동기화해도 정산하지 않음',
+    codeLocation: 'jam-web/supabase/migrations/302_capsule_pending_forfeit.sql',
+    userExperience:
+      '이용이 정지된 동안에는 못 받은 보상을 받을 수 없고, 가진 잼은 사라지지 않고 그대로 남아요. 정지 기간에 시작한 활동은 풀린 뒤에도 잼이 되지 않아요.',
+    basisDoc: '운영 로직 16.4절',
+    ticketId: '20261028_1734',
   },
   {
     id: 'ch16-vehicle-speed-filter',
