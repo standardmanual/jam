@@ -49,8 +49,8 @@ vi.mock('@/lib/notifications', async (importOriginal) => {
 vi.mock('@/lib/missions/rewards', () => ({
   grantMissionRewards: vi.fn(async () => ({ awardedBadgeIds: [], awardedBadgeNames: [], totalAwardedPoints: 0, pendingItemBadgeIds: [], pendingLockedBadgeIds: [] })),
 }))
-// 챕터 점수 «미션 완료»(티켓 20261019_1315 3회)는 `checker-complete.test.ts`가 고정한다 — 이 시험은 `rpc` 호출 목록·완료 판정을 보므로 점수 RPC를 섞지 않는다
-vi.mock('@/lib/chapter/score', () => ({ awardChapterScore: vi.fn(async () => ({ ok: true })) }))
+// 서비스 활동 잼 «미션 완료»(티켓 20261028_1735 3회)는 `checker-complete.test.ts`가 고정한다 — 이 시험은 `rpc` 호출 목록·완료 판정을 보므로 잼 지급 RPC를 섞지 않는다
+vi.mock('@/lib/jam/serviceActivity', () => ({ awardServiceJam: vi.fn(async () => ({ ok: true })) }))
 vi.mock('@/lib/strava/activity-history', () => ({
   getSignupAnchorDate: async () => null,
   getActivityHistory: async () => [],

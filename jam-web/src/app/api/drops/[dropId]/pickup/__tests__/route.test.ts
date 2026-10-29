@@ -9,9 +9,10 @@
  *  - (티켓 20261018_1812) 이용 정지 중이면 403 `user_suspended`이고 GPS 판정·RPC를 부르지 않는다. 꺼진 장소는 드랍이 없을 때와 같은 404이고,
  *    장소를 다시 켜면 줍는다. 자기 드랍 줍기는 허용이다. 잠긴 채 받은 개체는 이름·그림을 피드·소식에 싣지 않는다
  *  - 줍는 사람 판정이 거부돼도 놓은 사람 판정은 돈다
- *  - 챕터 점수 «픽업»(티켓 20261019_1315): 성공 뒤 같은 `after()` 콜백이 `chapter_add_score`를 (pickup, 경로의 드랍 id, 1)로 부른다. 자기 드랍을 자기가 주운 것은 세지 않고
- *    (예약하는 콜백도 없다), 시스템 드랍과 잠긴 채 받은 픽업은 센다. 응답 전에는 부르지 않고 실패 분기에서는 부르지 않으며 같은 픽업을 다시 보내도 같은 키다.
- *    점수 실패(RPC 오류·예외)와 판정 실패는 서로의 실행과 응답을 바꾸지 않는다.
+ *  - 서비스 활동 잼 «픽업»(티켓 20261028_1735 3회, 옛 챕터 점수 자리): 성공 뒤 같은 `after()` 콜백이 `jam_apply_service_activity`를 (pickup, `pickup:<경로의 드랍 id>`)로 부른다.
+ *    자기 드랍을 자기가 주운 것은 부르지 않고(예약하는 콜백도 없다), 시스템 드랍과 잠긴 채 받은 픽업은 부른다. 응답 전에는 부르지 않고 실패 분기에서는 부르지 않으며 같은 픽업을 다시 보내도 같은 키다.
+ *    옛 `chapter_add_score`는 더는 부르지 않는다. 규칙값 기본이 0이라 DB 함수가 `rule_zero`로 돌려주고 지급도 캡슐 채움도 없다(호출은 남는다).
+ *    잼 실패(RPC 오류·예외)와 판정 실패는 서로의 실행과 응답을 바꾸지 않는다.
  *
  * `after()`는 요청 범위 밖에서 부를 수 없다. 콜백을 모아 두었다가 테스트가 「응답이 끝난 뒤」를 직접 흉내 낸다
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
@@ -56,12 +57,12 @@ const state = vi.hoisted(() => ({
   /** 잠긴 개체 조회가 실패하는가 */
   lockLookupFails: false,
   gpsCalls: 0,
-  /** `pickup_drop` 호출 횟수 (챕터 점수 RPC는 세지 않는다) */
+  /** `pickup_drop` 호출 횟수 (서비스 활동 잼 RPC는 세지 않는다) */
   rpcCalls: 0,
-  /** `chapter_add_score` 호출 인자 */
+  /** `jam_apply_service_activity` 호출 인자 */
   scoreCalls: [] as Record<string, unknown>[],
-  /** 챕터 점수 RPC의 결과. `'throw'`면 예외를 던진다 */
-  scoreResult: { data: [{ score_added: 5, current_chapter: null, reached_chapters: [] }] as unknown, error: null as unknown } as
+  /** 서비스 활동 잼 RPC의 결과(기본: 픽업 규칙값 0 → `rule_zero`). `'throw'`면 예외를 던진다 */
+  scoreResult: { data: { ok: true, granted: 0, reason: 'rule_zero' } as unknown, error: null as unknown } as
     | { data: unknown; error: unknown }
     | 'throw',
   badgeReads: 0,
@@ -81,7 +82,7 @@ const blockPoiMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void
 const logAbusingEventMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<boolean>>(async () => true))
 const alertGpsSpoofMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<boolean>>(async () => true))
 
-// 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
+// 잼 지급 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -115,9 +116,9 @@ vi.mock('@/lib/supabase/server', () => ({
       return builder
     },
     rpc: async (fn: string, args: Record<string, unknown>) => {
-      if (fn === 'chapter_add_score') {
+      if (fn === 'jam_apply_service_activity') {
         state.scoreCalls.push(args)
-        if (state.scoreResult === 'throw') throw new Error('score network down')
+        if (state.scoreResult === 'throw') throw new Error('jam network down')
         return state.scoreResult
       }
       if (fn === 'pickup_drop') state.rpcCalls += 1
@@ -214,7 +215,7 @@ beforeEach(() => {
   state.gpsCalls = 0
   state.rpcCalls = 0
   state.scoreCalls = []
-  state.scoreResult = { data: [{ score_added: 5, current_chapter: null, reached_chapters: [] }], error: null }
+  state.scoreResult = { data: { ok: true, granted: 0, reason: 'rule_zero' }, error: null }
   state.badgeReads = 0
   state.afterCallbacks = []
   state.tablesTouched = []
@@ -509,7 +510,7 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
     expect(state.afterCallbacks).toHaveLength(0)
   })
 
-  it('403 GPS 조작 의심 — 행동 지표·챕터 점수 판정은 예약하지 않고 운영자 알림 한 건만 예약한다 (티켓 20261022_0940)', async () => {
+  it('403 GPS 조작 의심 — 행동 지표·서비스 활동 잼 판정은 예약하지 않고 운영자 알림 한 건만 예약한다 (티켓 20261022_0940)', async () => {
     state.gpsDetected = true
     const res = await POST(request(), params())
     expect(res.status).toBe(403)
@@ -715,24 +716,24 @@ describe('GPS 조작 의심 운영자 알림 (티켓 20261022_0940, 운영 로�
   })
 })
 
-describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
-  const SCORE_ARGS = { p_user_id: PICKER, p_activity_kind: 'pickup', p_source_id: 'drop-1', p_amount: 1 }
+describe('서비스 활동 잼 «픽업» (티켓 20261028_1735 3회)', () => {
+  const SCORE_ARGS = { p_user_id: PICKER, p_kind: 'pickup', p_event_key: 'pickup:drop-1' }
 
-  it('다른 유저의 드랍을 주우면 응답을 보낸 뒤 드랍 id를 원천으로 한 번 센다(날짜는 보내지 않는다)', async () => {
+  it('다른 유저의 드랍을 주우면 응답을 보낸 뒤 드랍 id를 원천으로 한 번 부른다(양·날짜는 보내지 않는다 — 값은 DB 설정이 갖는다)', async () => {
     const res = await POST(request(), params())
 
     expect(res.status).toBe(200)
     expect(state.afterCallbacks).toHaveLength(1)
-    expect(state.scoreCalls).toEqual([]) // 응답 전에는 세지 않는다
+    expect(state.scoreCalls).toEqual([]) // 응답 전에는 부르지 않는다
 
     await flushAfter()
     expect(state.scoreCalls).toEqual([SCORE_ARGS])
-    expect(Object.keys(state.scoreCalls[0])).not.toContain('p_occurred_on')
-    // 놓은 사람이 아니라 줍는 사람의 점수다
+    expect(Object.keys(state.scoreCalls[0]).sort()).toEqual(['p_event_key', 'p_kind', 'p_user_id'])
+    // 놓은 사람이 아니라 줍는 사람의 몫이다
     expect(state.scoreCalls.every((c) => c.p_user_id === PICKER)).toBe(true)
   })
 
-  it('시스템 드랍(놓은 사람 없음)을 주워도 센다', async () => {
+  it('시스템 드랍(놓은 사람 없음)을 주워도 부른다', async () => {
     state.drop = dropOf(null)
 
     await POST(request(), params())
@@ -741,7 +742,7 @@ describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
     expect(state.scoreCalls).toEqual([SCORE_ARGS])
   })
 
-  it('잠긴 채 받은 개체를 주워도 센다', async () => {
+  it('잠긴 채 받은 개체를 주워도 부른다', async () => {
     state.pickedLocked = true
 
     await POST(request(), params())
@@ -750,7 +751,7 @@ describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
     expect(state.scoreCalls).toEqual([SCORE_ARGS])
   })
 
-  it('자기 드랍을 자기가 주우면 세지 않는다(줍기는 허용이고 응답은 그대로다)', async () => {
+  it('자기 드랍을 자기가 주우면 부르지 않는다(줍기는 허용이고 응답은 그대로다)', async () => {
     state.drop = dropOf(PICKER)
 
     const res = await POST(request(), params())
@@ -771,7 +772,7 @@ describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
     expect(state.scoreCalls[1]).toEqual(state.scoreCalls[0])
   })
 
-  it('실패 분기(정지·이미 주워짐·인벤토리 가득·반경 밖 등)에서는 세지 않는다', async () => {
+  it('실패 분기(정지·이미 주워짐·인벤토리 가득·반경 밖 등)에서는 부르지 않는다', async () => {
     state.suspended = true
     await POST(request(), params())
     state.suspended = false
@@ -793,9 +794,9 @@ describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
     expect(state.scoreCalls).toEqual([])
   })
 
-  it('점수 RPC가 오류를 돌려줘도 응답은 같고 판정은 돌며 실패를 기록한다', async () => {
+  it('잼 RPC가 오류를 돌려줘도 응답은 같고 판정은 돌며 실패를 기록한다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    state.scoreResult = { data: null, error: { message: 'score rpc failed' } }
+    state.scoreResult = { data: null, error: { message: 'jam rpc failed' } }
 
     const res = await POST(request(), params())
     expect(res.status).toBe(200)
@@ -803,11 +804,11 @@ describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
 
     await flushAfter()
     expect(runJamActionMock).toHaveBeenCalledTimes(2)
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', PICKER, expect.objectContaining({ kind: 'pickup', sourceId: 'drop-1' }))
+    expect(logMock).toHaveBeenCalledWith('points', 'service_jam_failed', PICKER, expect.objectContaining({ kind: 'pickup', sourceId: 'drop-1' }))
     consoleError.mockRestore()
   })
 
-  it('점수 RPC가 예외를 던져도 응답은 같고 판정은 돈다', async () => {
+  it('잼 RPC가 예외를 던져도 응답은 같고 판정은 돈다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     state.scoreResult = 'throw'
 
@@ -819,7 +820,7 @@ describe('챕터 점수 «픽업» (티켓 20261019_1315)', () => {
     consoleError.mockRestore()
   })
 
-  it('판정이 거부돼도 점수는 센다', async () => {
+  it('판정이 거부돼도 잼 지급은 부른다', async () => {
     runJamActionMock.mockRejectedValue(new Error('판정 장애'))
 
     await POST(request(), params())

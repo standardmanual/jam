@@ -5,7 +5,7 @@
  * 체크인 배지 획득은 `sync.ts`가 `user_checkin_badge_earns`에만 기록한다(`user_activity_badges.
  * triggered_by_poi_id`는 레거시 경로에서만 채워진다). 그래서 이력만 있는 사용자의 미션이 달성돼야 한다.
  * DB는 테이블별 응답을 돌려주고 호출을 기록하는 대역이다 — `.eq`·`.in` 필터는 실제로 적용한다.
- * 완료 처리는 `mission_complete` RPC(티켓 20261019_1311)와 챕터 점수(`awardChapterScore`)를 거치므로 둘도 대역으로 바꾼다.
+ * 완료 처리는 `mission_complete` RPC(티켓 20261019_1311)와 서비스 활동 잼(`awardServiceJam`)를 거치므로 둘도 대역으로 바꾼다.
  *
  * 이 파일은 `__tests__/` 밖에 둔다 — 그 폴더는 vitest 제외 대상이고 `test:node`가 tsx로 돌려서
  * `vi.mock`이 깨진다.
@@ -100,7 +100,7 @@ vi.mock('@/lib/missions/rewards', () => ({
     pendingLockedBadgeIds: [],
   })),
 }))
-vi.mock('@/lib/chapter/score', () => ({ awardChapterScore: vi.fn(async () => ({ ok: true })) }))
+vi.mock('@/lib/jam/serviceActivity', () => ({ awardServiceJam: vi.fn(async () => ({ ok: true })) }))
 vi.mock('@/lib/strava/activity-history', () => ({
   getSignupAnchorDate: vi.fn(async () => null),
   getActivityHistory: vi.fn(async () => []),

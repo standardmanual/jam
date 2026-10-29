@@ -12,7 +12,7 @@ import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 import { isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
-import { awardChapterScore } from '@/lib/chapter/score'
+import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForDrop } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
@@ -410,14 +410,15 @@ export async function POST(req: NextRequest) {
 
   // JAM! 행동 지표(드랍한 아이템 수) — 응답을 보낸 뒤에 놓은 사람의 배지를 판정한다(티켓 20261001_0632).
   // 성공 분기에서만 예약한다. `runJamActionEvaluation`은 예외를 던지지 않아 드랍 응답은 그대로다.
-  // 챕터 점수 «드랍» (티켓 20261019_1315, 운영 로직 12.2절)도 같은 자리에서 센다. 이 라우트는 유저 드랍만 만들어서(시스템 드랍은 앰비언트 배치가 따로 놓는다)
-  // 드랍 점수 대상이 곧 이 라우트의 성공이다. 원천 id는 드랍 id(`poi_drops.id`)라 같은 드랍을 다시 보내도 한 번만 센다.
-  // `awardChapterScore`는 던지지 않고, 판정과 서로 영향을 주지 않게 `allSettled`로 함께 돌린다. 점수 실패는 응답을 바꾸지 않는다.
+  // 서비스 활동 잼 «드랍» (티켓 20261028_1735 3회, 옛 챕터 점수 자리)도 같은 자리에서 부른다. 이 라우트는 유저 드랍만 만들어서(시스템 드랍은 앰비언트 배치가 따로 놓는다)
+  // 드랍 대상이 곧 이 라우트의 성공이다. 원천 id는 드랍 id(`poi_drops.id`)라 같은 드랍을 다시 보내도 한 번만 지급한다.
+  // 규칙값 기본이 0이라 지금은 DB 함수가 `rule_zero`로 돌려주고 지급도 캡슐 채움도 없다(밸런스 설정에서 값을 올리면 켜지고 하루·주간 상한이 막는다). 호출은 남긴다.
+  // `awardServiceJam`은 던지지 않고, 판정과 서로 영향을 주지 않게 `allSettled`로 함께 돌린다. 잼 실패는 응답을 바꾸지 않는다.
   const dropId = result.drop_id
-  if (typeof dropId !== 'string') console.error(`[drops] 드랍 id가 없어 챕터 점수를 건너뜀 (userId: ${user.id})`)
+  if (typeof dropId !== 'string') console.error(`[drops] 드랍 id가 없어 서비스 활동 잼을 건너뜀 (userId: ${user.id})`)
   after(async () => {
     await Promise.allSettled([
-      typeof dropId === 'string' ? awardChapterScore(service, { userId: user.id, kind: 'drop', sourceId: dropId }) : Promise.resolve(),
+      typeof dropId === 'string' ? awardServiceJam(service, { userId: user.id, kind: 'drop', sourceId: dropId }) : Promise.resolve(),
       runJamActionEvaluation(user.id, jamTriggersForDrop()),
     ])
   })
