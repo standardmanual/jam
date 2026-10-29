@@ -352,6 +352,43 @@ describe('받지 않은 보상 소식 (reward_pending, 티켓 20261021_1249 6-3 
   })
 })
 
+describe('캡슐 소식 (capsule_nearly_full·capsule_jam_blocked, 티켓 20261028_1734 3회)', () => {
+  const NEARLY = view('capsule_nearly_full', { stage: 80 })
+  const BLOCKED = view('capsule_jam_blocked', {})
+
+  it('단계 소식은 퍼센트만 굵게 말하고 못 받은 보상을 가져오면 잼이 계속 들어온다는 사실과 받기 버튼을 알린다', () => {
+    const html = render([NEARLY])
+
+    expect(visibleText(html)).toContain('캡슐이 80% 찼어요. 아직 못 받은 보상이 1개 있으니')
+    expect(visibleText(html)).toContain('받기 버튼으로 가져오면 가득 차도 잼이 계속 들어와요')
+    expect(html).toContain('<strong class="font-bold">80%</strong>')
+    expect((html.match(/<strong/g) ?? []).length).toBe(1)
+  })
+
+  it('받을 수 없게 된 소식은 고정 문장이고 굵은 글자가 없다', () => {
+    const html = render([BLOCKED])
+
+    expect(visibleText(html)).toContain('캡슐이 가득 찼고 못 받은 보상이 2개라 지금 들어오는 잼은 사라져요')
+    expect(html).not.toContain('<strong')
+  })
+
+  it('두 소식 모두 누르면 홈으로 간다', () => {
+    expect(linkOf(render([NEARLY]))).toBe('/')
+    expect(linkOf(render([BLOCKED]))).toBe('/')
+  })
+
+  it('아이콘은 선물이고 경고면이나 아바타가 아니라 일반 아이콘 타일이다', () => {
+    for (const row of [NEARLY, BLOCKED]) {
+      const html = render([row])
+
+      expect(html).toContain(icon(GiftIcon))
+      expect(html).toContain('w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center')
+      expect(html).not.toContain('bg-warning')
+      expect(html).not.toContain(d.profile.avatarAlt)
+    }
+  })
+})
+
 describe('새 세 종류의 행이 함께 있을 때', () => {
   it('각 행이 자기 착지와 자기 아이콘을 가진다', () => {
     const html = render([

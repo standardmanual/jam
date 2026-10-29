@@ -13,7 +13,7 @@
  *    한 번에 50라운드(`max_rounds`, 남은 잼은 지갑에 남아 다음 동기화가 이어서 쓴다).
  *  - 열 수 없는 경우(`no_tribe` 등)는 오류가 아니라 «멈춤»이다. 잼은 캡슐에 채운 채 남고 다음 동기화가 다시 시도한다.
  *  - 알림 단계(`alertStage`)는 **가득 차지 않은** 응답의 값만 `alerts`에 모은다. 한 번에 70% 미만에서 100%로 차면 DB가 단계(90)와 `full`을 함께 돌려주는데, 그때는 단계를 무시하고
- *    보류 전환 결과(`blockedNow`)만 따른다. 알림을 실제로 보내는 일은 이 모듈의 일이 아니다(동기화 쪽, 티켓 3회차).
+ *    보류 전환 결과(`blockedNow`)만 따른다. 알림을 실제로 보내는 일은 이 모듈의 일이 아니다(`sync-auto-fill.ts`, 티켓 20261028_1734 3회).
  *  - 중복 방지는 따로 없다: 자동 채움은 지갑 잔액만 쓰므로 같은 동기화를 다시 보내면 잔액이 0이라 아무 일도 하지 않는다(정산 쪽 중복은 `jam_apply`의 활동 단위 유일성이 막는다).
  *
  * 던지는 쪽과 던지지 않는 쪽
@@ -78,6 +78,8 @@ export interface CapsuleAutoFillResult {
   alerts: number[]
   /** 이번 동기화에서 보류가 1개에서 2개가 된 적이 있다 — «잼을 받을 수 없게 된 순간» 알림 대상 */
   blockedNow: boolean
+  /** 이번 동기화에서 챕터 오름을 처리한 챕터 번호, 처리한 순서대로(열기 없이 보류만 생긴 오름도 담긴다). 오르지 않았으면 빈 배열 */
+  reachedChapters: number[]
   /** 돈 라운드 수 */
   rounds: number
   stopped: CapsuleAutoFillStop
@@ -184,6 +186,7 @@ export async function runCapsuleAutoFill(
     forfeitedTotal: 0,
     alerts: [],
     blockedNow: false,
+    reachedChapters: [],
     rounds: 0,
     stopped: 'max_rounds',
   }
@@ -207,6 +210,7 @@ export async function runCapsuleAutoFill(
 
       // 챕터 오름 판정은 이 호출에서 온다(캡슐이 100%에 처음 닿은 호출). 던지지 않는다.
       if (fill.reachedChapters.length > 0) {
+        result.reachedChapters.push(...fill.reachedChapters)
         await processChapterRise(
           { userId, reachedChapters: fill.reachedChapters },
           ...(options.skipRiseBadgeEvaluation === true ? [{ skipBadgeEvaluation: true }] : [])
