@@ -9,6 +9,7 @@
  *  ③ 채움(음수)·운영자 지급·회수 줄과 다른 유저의 줄은 합계에 넣지 않고
  *  ④ 정산되지 않은 활동은 0이며, 활동 id가 200개를 넘으면 나눠 읽고
  *  ⑤ 읽지 못하면 0으로 바꾸지 않고 던진다
+ *  ⑥ 서비스 활동 잼(`service_activity`, 티켓 20261028_1736)은 지급 시각(`created_at`)이 기간 안인 양수 줄만 더하고, 소멸·채움·운영자 조정은 세지 않는다
  * 를 고정한다. 모조 DB는 `eq`·`in`·`gte`·`lte`를 실제로 적용한다(`fakeSupabase.ts`).
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/jam-action-window-jam-metrics.test.ts
@@ -132,22 +133,22 @@ describe('readJamEarnedWithin — 정산되지 않은 활동과 활동이 없는
     expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(0)
   })
 
-  it('기간 안 활동이 없으면 0이고 잼 원장은 읽지 않는다', async () => {
+  it('기간 안 활동이 없으면 0이고 활동 정산 줄은 읽지 않는다 (서비스 활동 줄은 활동 id와 무관해 한 번 읽는다)', async () => {
     const db = makeFakeDb({ strava_activities: [activity('a1', BEFORE)], jam_transactions: [settlement('a1', 99)] })
     expect(await readJamEarnedWithin(db.client, U, WINDOW)).toBe(0)
-    expect(db.queried).toEqual(['strava_activities'])
+    expect(db.queried).toEqual(['strava_activities', 'jam_transactions'])
   })
 })
 
 describe('readJamEarnedWithin — 활동 id를 200개씩 나눠 읽는다', () => {
-  it('활동 450건이면 잼 원장을 3번(200·200·50) 읽고 합계는 전부 더한 값이다', async () => {
+  it('활동 450건이면 활동 정산 줄을 3번(200·200·50) 읽고(서비스 활동 줄 1번 별도) 합계는 전부 더한 값이다', async () => {
     const ids = Array.from({ length: 450 }, (_, n) => `a${n}`)
     const db = makeFakeDb({
       strava_activities: ids.map((id) => activity(id, INSIDE)),
       jam_transactions: ids.map((id) => settlement(id, 2)),
     })
     expect(await readJamEarnedWithin(db.client, U, WINDOW)).toBe(900)
-    expect(db.queried.filter((table) => table === 'jam_transactions')).toHaveLength(3)
+    expect(db.queried.filter((table) => table === 'jam_transactions')).toHaveLength(3 + 1)
   })
 
   it('활동 행이 한 페이지(1,000행)를 넘어도 끝까지 읽는다', async () => {
@@ -158,7 +159,7 @@ describe('readJamEarnedWithin — 활동 id를 200개씩 나눠 읽는다', () =
     })
     expect(await readJamEarnedWithin(db.client, U, WINDOW)).toBe(1200)
     expect(db.queried.filter((table) => table === 'strava_activities')).toHaveLength(2)
-    expect(db.queried.filter((table) => table === 'jam_transactions')).toHaveLength(6)
+    expect(db.queried.filter((table) => table === 'jam_transactions')).toHaveLength(6 + 1)
   })
 })
 
@@ -174,6 +175,87 @@ describe('readJamEarnedWithin — 걸러진 활동은 읽지 않는다 (티켓 2
       jam_transactions: [settlement('a-ok', 10), settlement('a-legacy', 20), settlement('a-filtered', 500)],
     })
     expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(30)
+  })
+})
+
+const SERVICE_AT = '2026-10-15T09:00:00.000Z' // 지급 시각 — 기간 안
+const service = (id: string, amount: number, createdAt: string, overrides: FakeRow = {}): FakeRow => ({
+  id,
+  user_id: U,
+  amount,
+  reason: 'service_activity',
+  source_activity_id: null,
+  created_at: createdAt,
+  ...overrides,
+})
+
+describe('readJamEarnedWithin — 서비스 활동 잼은 지급 시각이 기간 안인 양수 줄을 더한다 (티켓 20261028_1736)', () => {
+  it('활동 정산 합에 서비스 활동 잼을 더한다', async () => {
+    const { client } = makeFakeDb({
+      strava_activities: [activity('a1', INSIDE)],
+      jam_transactions: [settlement('a1', 40), service('s1', 5, SERVICE_AT), service('s2', 20, SERVICE_AT)],
+    })
+    expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(65)
+  })
+
+  it('활동이 하나도 없어도 서비스 활동 잼만으로 센다', async () => {
+    const { client } = makeFakeDb({ jam_transactions: [service('s1', 30, SERVICE_AT)] })
+    expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(30)
+  })
+
+  it('지급 시각이 기간 밖인 줄은 세지 않는다 — 하한·상한 경계는 포함이다', async () => {
+    const { client } = makeFakeDb({
+      jam_transactions: [
+        service('before', 1000, BEFORE),
+        service('at-from', 1, AT_FROM),
+        service('inside', 2, SERVICE_AT),
+        service('at-to', 4, AT_TO),
+        service('after', 1000, AFTER),
+      ],
+    })
+    expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(7)
+  })
+
+  it('상한이 없으면 하한 이후의 서비스 활동 잼을 전부 센다', async () => {
+    const { client } = makeFakeDb({
+      jam_transactions: [service('before', 1000, BEFORE), service('inside', 2, SERVICE_AT), service('after', 4, AFTER)],
+    })
+    expect(await readJamEarnedWithin(client, U, { fromIso: FROM })).toBe(6)
+  })
+
+  it('소멸(capsule_forfeit, 음수)·채움·운영자 조정 줄과 음수 service_activity 줄은 세지 않는다', async () => {
+    const { client } = makeFakeDb({
+      jam_transactions: [
+        service('ok', 10, SERVICE_AT),
+        service('forfeit', -50, SERVICE_AT, { reason: 'capsule_forfeit' }),
+        service('fill', -30, SERVICE_AT, { reason: 'capsule_fill' }),
+        service('locked-fill', -20, SERVICE_AT, { reason: 'locked_item_badge_fill' }),
+        service('grant', 500, SERVICE_AT, { reason: 'admin_grant' }),
+        service('deduct', -40, SERVICE_AT, { reason: 'admin_deduct' }),
+        service('negative', -7, SERVICE_AT),
+      ],
+    })
+    expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(10)
+  })
+
+  it('다른 유저의 서비스 활동 줄은 세지 않는다', async () => {
+    const { client } = makeFakeDb({
+      jam_transactions: [service('mine', 5, SERVICE_AT), service('theirs', 500, SERVICE_AT, { user_id: OTHER })],
+    })
+    expect(await readJamEarnedWithin(client, U, WINDOW)).toBe(5)
+  })
+
+  it('서비스 활동 줄이 한 페이지(1,000행)를 넘어도 끝까지 읽는다', async () => {
+    const db = makeFakeDb({
+      jam_transactions: Array.from({ length: 1200 }, (_, n) => service(`s${n}`, 1, SERVICE_AT)),
+    })
+    expect(await readJamEarnedWithin(db.client, U, WINDOW)).toBe(1200)
+    expect(db.queried.filter((table) => table === 'jam_transactions')).toHaveLength(2)
+  })
+
+  it('활동이 없어도 잼 원장 조회 오류는 0으로 바꾸지 않고 던진다', async () => {
+    const { client } = makeFakeDb({}, { errors: { jam_transactions: '원장 장애' } })
+    await expect(readJamEarnedWithin(client, U, WINDOW)).rejects.toThrow('원장 장애')
   })
 })
 

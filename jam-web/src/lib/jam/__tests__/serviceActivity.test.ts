@@ -8,8 +8,9 @@
  * - RPC 인자는 `{ p_user_id, p_kind, p_event_key }`뿐이다.
  * - 지급(granted > 0, duplicate 아님)일 때만 곧바로 자동 채움(`runSyncCapsuleAutoFill`)을 잇는다. 일부 지급(capped)도 채운다.
  *   `duplicate`(재전송)·`rule_zero`(규칙값 0)·`capped`(지급 0)는 채움을 부르지 않는다.
- * - 채움 결과에 열린 캡슐이나 챕터 오름이 있으면 JAM! 행동 지표(`capsule_open_count`·`other_tribe_item_kinds_count` + `chapter_reached`)를 응답 뒤(`after`)에 판정한다.
- *   열린 것은 없고 오름만 있으면 `chapter_reached`만, 둘 다 없으면 판정하지 않는다. 요청 범위 밖에서 `after`를 쓸 수 없으면 바로 기다려 판정한다.
+ * - 지급(granted > 0, duplicate 아님)이면 JAM! 행동 지표를 응답 뒤(`after`)에 판정한다. 잼 조건 주 키 4개(`jam_total_earned`·`jam_weekly_earned`·`jam_week_count`·`jam_week_streak`,
+ *   서비스 활동 잼이 잼 조건에 합산된다, 티켓 20261028_1736)는 항상 들어가고, 채움 결과에 열린 캡슐이 있으면 `capsule_open_count`·`other_tribe_item_kinds_count` + `chapter_reached`,
+ *   오름만 있으면 `chapter_reached`를 더한다. 채움이 던져도 잼 조건 4개는 판정한다. 요청 범위 밖에서 `after`를 쓸 수 없으면 바로 기다려 판정한다.
  * - 던지지 않는다. RPC 오류·계약 밖 응답·예외는 `console.error`와 `engine_decision_log`(`service_jam_failed`)에 남기고 `{ ok: false }`다.
  *   이용 정지(`user_suspended`)는 지급하지 않을 뿐 실패 기록이 없다. 채움·판정이 던져도 지급 결과는 그대로다.
  * - 반환은 `{ ok, granted, duplicate, capped }`다.
@@ -52,6 +53,8 @@ function fakeClient(result: { data: unknown; error: unknown } | (() => Promise<n
   const rpc = vi.fn(async () => (typeof result === 'function' ? result() : result))
   return { client: { rpc } as unknown as SupabaseClient, rpc }
 }
+
+const JAM_KEYS = ['jam_total_earned', 'jam_weekly_earned', 'jam_week_count', 'jam_week_streak']
 
 const fillStep = (extra: Partial<{ opened: boolean; chapterRose: boolean }> = {}) => ({
   autoFill: {},
@@ -196,7 +199,7 @@ describe('awardServiceJam — 지급 즉시 채움', () => {
 })
 
 describe('awardServiceJam — JAM! 행동 지표 판정', () => {
-  it('캡슐이 열렸으면 응답 뒤(after)에 chapter_reached + 캡슐 열기 지표를 판정한다', async () => {
+  it('캡슐이 열렸으면 응답 뒤(after)에 잼 조건 4개 + chapter_reached + 캡슐 열기 지표를 판정한다', async () => {
     autoFillMock.mockResolvedValue(fillStep({ opened: true }))
     const { client } = fakeClient()
 
@@ -207,26 +210,47 @@ describe('awardServiceJam — JAM! 행동 지표 판정', () => {
     expect(evaluationMock).not.toHaveBeenCalled()
     await (afterMock.mock.calls[0][0] as () => Promise<void>)()
     expect(evaluationMock).toHaveBeenCalledTimes(1)
-    expect(evaluationMock).toHaveBeenCalledWith(USER, ['chapter_reached', 'capsule_open_count', 'other_tribe_item_kinds_count'])
+    expect(evaluationMock).toHaveBeenCalledWith(USER, [...JAM_KEYS, 'chapter_reached', 'capsule_open_count', 'other_tribe_item_kinds_count'])
   })
 
-  it('열린 것은 없고 챕터만 올랐으면(보류만 생긴 오름) chapter_reached만 판정한다', async () => {
+  it('열린 것은 없고 챕터만 올랐으면(보류만 생긴 오름) 잼 조건 4개 + chapter_reached를 판정한다', async () => {
     autoFillMock.mockResolvedValue(fillStep({ chapterRose: true }))
     const { client } = fakeClient()
 
     await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
     await (afterMock.mock.calls[0][0] as () => Promise<void>)()
 
-    expect(evaluationMock).toHaveBeenCalledWith(USER, ['chapter_reached'])
+    expect(evaluationMock).toHaveBeenCalledWith(USER, [...JAM_KEYS, 'chapter_reached'])
   })
 
-  it('열린 캡슐도 챕터 오름도 없으면 판정하지 않는다', async () => {
+  it('열린 캡슐도 챕터 오름도 없어도 잼 조건 4개는 판정한다 (서비스 활동 잼이 잼 조건에 합산된다)', async () => {
     const { client } = fakeClient()
 
     await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
 
-    expect(afterMock).not.toHaveBeenCalled()
-    expect(evaluationMock).not.toHaveBeenCalled()
+    expect(afterMock).toHaveBeenCalledTimes(1)
+    await (afterMock.mock.calls[0][0] as () => Promise<void>)()
+    expect(evaluationMock).toHaveBeenCalledTimes(1)
+    expect(evaluationMock).toHaveBeenCalledWith(USER, JAM_KEYS)
+  })
+
+  it('채움이 던져도 잼 조건 4개는 판정한다', async () => {
+    autoFillMock.mockRejectedValue(new Error('채움 장애'))
+    const { client } = fakeClient()
+
+    await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
+    await (afterMock.mock.calls[0][0] as () => Promise<void>)()
+
+    expect(evaluationMock).toHaveBeenCalledWith(USER, JAM_KEYS)
+  })
+
+  it('일부 지급(capped인데 granted > 0)도 잼 조건 4개를 판정한다', async () => {
+    const { client } = fakeClient({ data: { ...GRANTED, granted: 7, capped: true }, error: null })
+
+    await awardServiceJam(client, { userId: USER, kind: 'collection_complete', sourceId: SOURCE })
+    await (afterMock.mock.calls[0][0] as () => Promise<void>)()
+
+    expect(evaluationMock).toHaveBeenCalledWith(USER, JAM_KEYS)
   })
 
   it('요청 범위 밖이라 after를 쓸 수 없으면(시험·배치) 바로 기다려 판정한다', async () => {
@@ -240,7 +264,7 @@ describe('awardServiceJam — JAM! 행동 지표 판정', () => {
 
     expect(result).toMatchObject({ ok: true, granted: 5 })
     expect(evaluationMock).toHaveBeenCalledTimes(1)
-    expect(evaluationMock).toHaveBeenCalledWith(USER, ['chapter_reached', 'capsule_open_count', 'other_tribe_item_kinds_count'])
+    expect(evaluationMock).toHaveBeenCalledWith(USER, [...JAM_KEYS, 'chapter_reached', 'capsule_open_count', 'other_tribe_item_kinds_count'])
   })
 
   it('판정이 던져도(예외) 지급 결과는 그대로다', async () => {

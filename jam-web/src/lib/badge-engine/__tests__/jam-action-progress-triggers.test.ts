@@ -14,6 +14,7 @@ import {
   JAM_SYNC_TRIGGERS,
   jamTriggersForCapsuleOpen,
   jamTriggersForLockedItemOpen,
+  jamTriggersForServiceJam,
   jamTriggersForSlot,
 } from '../jamActionProgressTriggers'
 import { JAM_ACTION_CONDITION_KEYS, JAM_ACTION_MODIFIER_KEYS } from '../jamActionBadges'
@@ -88,6 +89,18 @@ describe('jamTriggersForLockedItemOpen — 잠긴 아이템 배지를 열었을 
   })
 })
 
+describe('jamTriggersForServiceJam — 서비스 활동 잼이 지급됐을 때 (티켓 20261028_1736)', () => {
+  it('잼 조건 주 키 4개를 판정한다 — 보조 키(jam_week_min_earned)와 챕터·캡슐 지표는 넣지 않는다', () => {
+    expect(jamTriggersForServiceJam()).toEqual(['jam_total_earned', 'jam_weekly_earned', 'jam_week_count', 'jam_week_streak'])
+  })
+
+  it('부를 때마다 새 배열을 돌려준다 (호출부가 바꿔도 다음 호출에 새지 않는다)', () => {
+    const first = jamTriggersForServiceJam()
+    first.push('chapter_reached')
+    expect(jamTriggersForServiceJam()).toHaveLength(4)
+  })
+})
+
 describe('돌려주는 모든 키는 JAM! 행동 지표 키다', () => {
   it('모든 규칙의 키가 JAM_ACTION_CONDITION_KEYS에 있다', () => {
     const judged = new Set<string>(JAM_ACTION_CONDITION_KEYS)
@@ -97,6 +110,7 @@ describe('돌려주는 모든 키는 JAM! 행동 지표 키다', () => {
       ...jamTriggersForSlot(),
       ...jamTriggersForCapsuleOpen(),
       ...jamTriggersForLockedItemOpen(),
+      ...jamTriggersForServiceJam(),
     ]) {
       expect(judged.has(key), `${key}가 JAM_ACTION_CONDITION_KEYS에 없다`).toBe(true)
     }
