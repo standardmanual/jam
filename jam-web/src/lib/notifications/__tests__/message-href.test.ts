@@ -704,7 +704,7 @@ describe('④ 미션', () => {
 })
 
 describe('캡슐 알림 (티켓 20261028_1734 3회)', () => {
-  const REST = '아직 못 받은 보상이 1개 있으니 받기 버튼으로 비워 두면 가득 차도 잼이 계속 들어와요'
+  const REST = '아직 못 받은 보상이 1개 있으니 받기 버튼으로 가져오면 가득 차도 잼이 계속 들어와요'
 
   it('capsule_nearly_full: 단계(70·80·90)마다 퍼센트만 달라지고 그 숫자만 굵게 보인다', () => {
     for (const stage of [70, 80, 90]) {
@@ -726,7 +726,7 @@ describe('캡슐 알림 (티켓 20261028_1734 3회)', () => {
 
   it('capsule_jam_blocked: 담는 값 없이 고정 문장이다', () => {
     const v = view('capsule_jam_blocked', {})
-    expect(text(v)).toBe('캡슐이 가득 찼고 못 받은 보상이 2개라 지금 들어오는 잼은 사라져요. 받기 버튼으로 1개를 비우면 다시 잼을 모을 수 있어요')
+    expect(text(v)).toBe('캡슐이 가득 찼고 못 받은 보상이 2개라 지금 들어오는 잼은 사라져요. 받기 버튼으로 1개를 가져오면 다시 잼을 모을 수 있어요')
     expect(notificationTokens(v).some((token) => token.bold)).toBe(false)
     expect(missingMessageSlots(v)).toEqual([])
   })
@@ -734,7 +734,7 @@ describe('캡슐 알림 (티켓 20261028_1734 3회)', () => {
   it('capsule_jam_blocked: 잼이 사라진다는 사실을 한 번만 적고, 받을 수 있는 방법을 이어서 적는다(윈터 톤 확인 2026-10-29)', () => {
     const t = text(view('capsule_jam_blocked', {}))
     expect(t.match(/사라져요/g)).toHaveLength(1)
-    expect(t).toContain('받기 버튼으로 1개를 비우면')
+    expect(t).toContain('받기 버튼으로 1개를 가져오면')
   })
 
   it('두 소식 모두 서두르게 하는 말과 소비를 부추기는 말이 없다(운영 로직 18.2절)', () => {
