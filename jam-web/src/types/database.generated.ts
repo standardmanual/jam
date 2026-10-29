@@ -5130,6 +5130,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      jam_apply_service_activity: {
+        Args: { p_event_key: string; p_kind: string; p_user_id: string }
+        Returns: Json
+      }
       jam_fill_decide: {
         Args: { p_amount?: number | null; p_balance: number; p_remaining: number }
         Returns: Json
