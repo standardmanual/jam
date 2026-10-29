@@ -337,7 +337,7 @@ describe('MissionForm — 기록으로 세는 조건 입력 칸 (티켓 20261021
 
     expect(out).toContain('기간 동안 모은 잼')
     expect(out).toMatch(/id="mc-eng-jamPeriodEarned-suffix"[^>]*>잼</)
-    expect(out).toContain('참가한 뒤 미션 기간 안에 모은 잼만 세요. 참가 전에 모은 잼은 포함되지 않아요.')
+    expect(out).toContain('참가한 뒤 미션 기간 안에 받은 잼(움직여서 받은 잼 + 서비스에서 한 일로 받은 잼)을 합해요. 참가 전에 받은 잼과 사라진 잼은 포함되지 않아요.')
   })
 
   it('배지 기준으로 적힌 레지스트리 도움말은 미션 말로 바꿔 보인다 («발급»·«가입한 날부터» 없이)', () => {

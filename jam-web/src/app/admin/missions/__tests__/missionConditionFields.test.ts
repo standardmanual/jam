@@ -446,7 +446,7 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(JAM_PERIOD_EARNED_INPUT.min, 1)
     assert.strictEqual(JAM_PERIOD_EARNED_INPUT.max, 1000000)
     assert.strictEqual(JAM_PERIOD_EARNED_INPUT.step, 1)
-    assert.strictEqual(JAM_PERIOD_EARNED_INPUT.help, '참가한 뒤 미션 기간 안에 모은 잼만 세요. 참가 전에 모은 잼은 포함되지 않아요.')
+    assert.strictEqual(JAM_PERIOD_EARNED_INPUT.help, '참가한 뒤 미션 기간 안에 받은 잼(움직여서 받은 잼 + 서비스에서 한 일로 받은 잼)을 합해요. 참가 전에 받은 잼과 사라진 잼은 포함되지 않아요.')
   }],
   ['입력 범위: 수치 키 16개 가운데 13개는 1~1,000,000, 주간 활동일 1~7, 같은 장소 체크인 일수 1~3650, 새 체크인 배지 수 1~100000', () => {
     const range = (key: string) => [getConditionField(key)?.min, getConditionField(key)?.max]
