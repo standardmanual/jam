@@ -45,6 +45,9 @@ vi.mock('next/server', async (importOriginal) => {
 import { CapsuleError } from '@/lib/capsule/capsule'
 import { POST } from '../route'
 
+// counted 열기가 더하는 챕터 횟수 칸(라우트 응답 계약에 없다 — 응답에서 빠져야 한다)
+const COUNTED_EXTRA = { chapterNo: 3, reachedChapters: [], chapterCount: 5 }
+
 const OPENED = {
   openId: 'open-1',
   items: [
@@ -59,7 +62,7 @@ beforeEach(() => {
   state.afterCallbacks = []
   runJamActionMock.mockReset()
   openMock.mockReset()
-  openMock.mockResolvedValue(OPENED)
+  openMock.mockResolvedValue({ ...OPENED, ...COUNTED_EXTRA })
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -78,8 +81,9 @@ describe('POST /api/capsule/open', () => {
     const res = await POST()
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual(OPENED)
-    expect(openMock).toHaveBeenCalledWith(serviceClient, USER_ID)
+    expect(await res.json()).toEqual(OPENED) // counted 응답의 챕터 횟수 칸은 내려가지 않는다(응답 모양 유지)
+    // counted: true — 옛 capsule_open RPC·옛 챕터 점수 «캡슐 열기»를 타지 않는다(티켓 20261028_1735 3회)
+    expect(openMock).toHaveBeenCalledWith(serviceClient, USER_ID, { counted: true })
   })
 
   it('열기가 성공하면 응답 뒤에 캡슐 연 횟수·다른 트라이브 아이템 종류 수를 판정한다(티켓 20261018_1815)', async () => {
