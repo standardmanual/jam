@@ -241,9 +241,26 @@ export function jamPolicyRow(overrides: Row = {}): Row {
     locked_min_epic: 120,
     locked_min_mystic: 240,
     locked_roll_probability: '0.250',
+    service_jam_daily_cap: 40,
+    service_jam_weekly_cap: 100,
     updated_at: JAM_ROW_STAMP,
     ...overrides,
   }
+}
+
+export const SERVICE_JAM_RULE_ROW_STAMP = '2026-10-29T01:00:00.5+00:00'
+
+/** `service_jam_rules` 7행(마이그레이션 300 시드). 순서는 일부러 섞어 두어 읽기가 정렬하는지 가린다. */
+export function serviceJamRuleRows(stamp: string = SERVICE_JAM_RULE_ROW_STAMP): Row[] {
+  return [
+    { kind: 'pickup', amount: 0, updated_at: stamp },
+    { kind: 'mission_complete', amount: 20, updated_at: stamp },
+    { kind: 'locked_unlock', amount: 5, updated_at: stamp },
+    { kind: 'drop', amount: 0, updated_at: stamp },
+    { kind: 'collection_complete', amount: 30, updated_at: stamp },
+    { kind: 'badge_earned', amount: 5, updated_at: stamp },
+    { kind: 'combine_success', amount: 5, updated_at: stamp },
+  ]
 }
 
 export const CAPSULE_ROW_STAMP = '2026-10-22T01:05:00.5+00:00'
