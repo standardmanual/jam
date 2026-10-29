@@ -10,8 +10,9 @@
  *  - 소유권 확인보다 앞선 잠김 사전 조회는 없다 — `inventory_items`를 읽으면 시험이 실패한다
  *  - 이용 정지 중이면 403 `user_suspended`이고 위치·장소 검증·RPC 모두 부르지 않는다. DB 함수가 `user_suspended`로 거절해도 같은 403이다.
  *    정지 여부를 읽지 못하면 500이고 드랍하지 않는다.
- *  - 챕터 점수 «드랍»(티켓 20261019_1315): 성공 뒤 같은 `after()` 콜백이 `chapter_add_score`를 (drop, 드랍 id, 1)로 부른다. 응답을 보내기 전에는 부르지 않고,
- *    실패 분기에서는 부르지 않으며, 같은 드랍을 다시 보내도 같은 키다. 점수 실패(RPC 오류·예외)와 판정 실패는 서로의 실행과 응답을 바꾸지 않는다.
+ *  - 서비스 활동 잼 «드랍»(티켓 20261028_1735 3회, 옛 챕터 점수 자리): 성공 뒤 같은 `after()` 콜백이 `jam_apply_service_activity`를 (drop, `drop:<드랍 id>`)로 부른다.
+ *    응답을 보내기 전에는 부르지 않고, 실패 분기에서는 부르지 않으며, 같은 드랍을 다시 보내도 같은 키다. 옛 `chapter_add_score`는 더는 부르지 않는다.
+ *    규칙값 기본이 0이라 DB 함수가 `rule_zero`로 돌려주고 지급도 캡슐 채움도 없다(호출은 남는다). 잼 실패(RPC 오류·예외)와 판정 실패는 서로의 실행과 응답을 바꾸지 않는다.
  *
  * `after()`는 요청 범위 밖에서 부를 수 없다. 콜백을 모아 두었다가 테스트가 「응답이 끝난 뒤」를 직접 흉내 낸다
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
@@ -33,12 +34,12 @@ const state = vi.hoisted(() => ({
   rpcResult: { data: { ok: true, drop_id: 'drop-1' } as unknown, error: null as unknown },
   /** `inventory_items`를 읽은 횟수 — 잠김 사전 조회가 없어야 하므로 항상 0이어야 한다 */
   inventoryItemReads: 0,
-  /** `create_user_drop` 호출 횟수 (챕터 점수 RPC는 세지 않는다) */
+  /** `create_user_drop` 호출 횟수 (서비스 활동 잼 RPC는 세지 않는다) */
   rpcCalls: 0,
-  /** `chapter_add_score` 호출 인자 */
+  /** `jam_apply_service_activity` 호출 인자 */
   scoreCalls: [] as Record<string, unknown>[],
-  /** 챕터 점수 RPC의 결과. `'throw'`면 예외를 던진다 */
-  scoreResult: { data: [{ score_added: 5, current_chapter: null, reached_chapters: [] }] as unknown, error: null as unknown } as
+  /** 서비스 활동 잼 RPC의 결과(기본: 드랍 규칙값 0 → `rule_zero`). `'throw'`면 예외를 던진다 */
+  scoreResult: { data: { ok: true, granted: 0, reason: 'rule_zero' } as unknown, error: null as unknown } as
     | { data: unknown; error: unknown }
     | 'throw',
   poiReads: 0,
@@ -52,7 +53,7 @@ const state = vi.hoisted(() => ({
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
 const logMock = vi.hoisted(() => vi.fn())
 
-// 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
+// 잼 지급 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -77,9 +78,9 @@ vi.mock('@/lib/supabase/server', () => ({
       return builder
     },
     rpc: async (name: string, args: Record<string, unknown>) => {
-      if (name === 'chapter_add_score') {
+      if (name === 'jam_apply_service_activity') {
         state.scoreCalls.push(args)
-        if (state.scoreResult === 'throw') throw new Error('score network down')
+        if (state.scoreResult === 'throw') throw new Error('jam network down')
         return state.scoreResult
       }
       state.rpcCalls += 1
@@ -135,7 +136,7 @@ beforeEach(() => {
   state.inventoryItemReads = 0
   state.rpcCalls = 0
   state.scoreCalls = []
-  state.scoreResult = { data: [{ score_added: 5, current_chapter: null, reached_chapters: [] }], error: null }
+  state.scoreResult = { data: { ok: true, granted: 0, reason: 'rule_zero' }, error: null }
   state.poiReads = 0
   state.suspended = false
   state.suspensionReadFails = false
@@ -335,20 +336,20 @@ describe('이용 정지 (티켓 20261018_1812, 운영 로직 9.3절)', () => {
   })
 })
 
-describe('챕터 점수 «드랍» (티켓 20261019_1315)', () => {
-  const SCORE_ARGS = { p_user_id: USER_ID, p_activity_kind: 'drop', p_source_id: 'drop-1', p_amount: 1 }
+describe('서비스 활동 잼 «드랍» (티켓 20261028_1735 3회)', () => {
+  const SCORE_ARGS = { p_user_id: USER_ID, p_kind: 'drop', p_event_key: 'drop:drop-1' }
 
-  it('응답을 보낸 뒤 같은 after 콜백이 드랍 id를 원천으로 한 번 센다(날짜는 보내지 않는다)', async () => {
+  it('응답을 보낸 뒤 같은 after 콜백이 드랍 id를 원천으로 한 번 부른다(양·날짜는 보내지 않는다 — 값은 DB 설정이 갖는다)', async () => {
     const res = await POST(request(VALID_BODY))
 
     expect(res.status).toBe(200)
     expect(state.afterCallbacks).toHaveLength(1)
-    // 응답 전에는 세지 않는다
+    // 응답 전에는 부르지 않는다
     expect(state.scoreCalls).toEqual([])
 
     await flushAfter()
     expect(state.scoreCalls).toEqual([SCORE_ARGS])
-    expect(Object.keys(state.scoreCalls[0])).not.toContain('p_occurred_on')
+    expect(Object.keys(state.scoreCalls[0]).sort()).toEqual(['p_event_key', 'p_kind', 'p_user_id'])
     expect(runJamActionMock).toHaveBeenCalledTimes(1)
   })
 
@@ -361,7 +362,7 @@ describe('챕터 점수 «드랍» (티켓 20261019_1315)', () => {
     expect(state.scoreCalls[1]).toEqual(state.scoreCalls[0])
   })
 
-  it('실패 분기(정지·반경 밖·RPC 거절 등)에서는 세지 않는다', async () => {
+  it('실패 분기(정지·반경 밖·RPC 거절 등)에서는 부르지 않는다', async () => {
     state.suspended = true
     await POST(request(VALID_BODY))
     state.suspended = false
@@ -380,9 +381,9 @@ describe('챕터 점수 «드랍» (티켓 20261019_1315)', () => {
     expect(state.scoreCalls).toEqual([])
   })
 
-  it('점수 RPC가 오류를 돌려줘도 응답은 같고 판정은 돌며 실패를 기록한다', async () => {
+  it('잼 RPC가 오류를 돌려줘도 응답은 같고 판정은 돌며 실패를 기록한다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    state.scoreResult = { data: null, error: { message: 'score rpc failed' } }
+    state.scoreResult = { data: null, error: { message: 'jam rpc failed' } }
 
     const res = await POST(request(VALID_BODY))
     expect(res.status).toBe(200)
@@ -390,11 +391,11 @@ describe('챕터 점수 «드랍» (티켓 20261019_1315)', () => {
 
     await flushAfter()
     expect(runJamActionMock).toHaveBeenCalledTimes(1)
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER_ID, expect.objectContaining({ kind: 'drop', sourceId: 'drop-1' }))
+    expect(logMock).toHaveBeenCalledWith('points', 'service_jam_failed', USER_ID, expect.objectContaining({ kind: 'drop', sourceId: 'drop-1' }))
     consoleError.mockRestore()
   })
 
-  it('점수 RPC가 예외를 던져도 응답은 같고 판정은 돈다', async () => {
+  it('잼 RPC가 예외를 던져도 응답은 같고 판정은 돈다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     state.scoreResult = 'throw'
 
@@ -407,7 +408,7 @@ describe('챕터 점수 «드랍» (티켓 20261019_1315)', () => {
     consoleError.mockRestore()
   })
 
-  it('판정이 거부돼도 점수는 센다', async () => {
+  it('판정이 거부돼도 잼 지급은 부른다', async () => {
     runJamActionMock.mockRejectedValue(new Error('판정 장애'))
 
     await POST(request(VALID_BODY))
@@ -416,7 +417,7 @@ describe('챕터 점수 «드랍» (티켓 20261019_1315)', () => {
     expect(state.scoreCalls).toEqual([SCORE_ARGS])
   })
 
-  it('성공 응답에 드랍 id가 없으면 세지 않고 판정은 그대로 돈다', async () => {
+  it('성공 응답에 드랍 id가 없으면 부르지 않고 판정은 그대로 돈다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     state.rpcResult = { data: { ok: true }, error: null }
 

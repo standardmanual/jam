@@ -8,8 +8,8 @@
  *  - 앱이 더는 `user_mission_completions`에 직접 INSERT하지 않고 개수도 세지 않는다(상한 검사는 DB 함수 안에서 잠금과 함께)
  *  - 한 미션이 거절돼도 다음 미션의 완료는 이어진다
  *  - `parseMissionCompleteResult`가 응답 계약을 읽는 규칙
- *  - 챕터 점수 «미션 완료»(티켓 20261019_1315 3회) — 완료되면 완료 기록 id를 원천 id로 `mission_complete`를 한 번 세고, 보상 지급 앞에서 센다.
- *    `already_completed`·거절·계약 밖 응답에서는 세지 않는다. 점수 실패와 보상 지급 실패는 서로의 몫을 바꾸지 않는다
+ *  - 서비스 활동 잼 «미션 완료»(티켓 20261028_1735 3회, 옛 챕터 점수 자리) — 완료되면 완료 기록 id를 원천 id로 서비스 kind `mission_complete`를 한 번 부르고, 보상 지급 앞에서 부른다.
+ *    `already_completed`·거절·계약 밖 응답에서는 부르지 않는다. 잼 실패와 보상 지급 실패는 서로의 몫을 바꾸지 않는다
  *
  * 위치: `__tests__/`는 vitest에서 제외돼 있어(node assert 시험 전용, `checker-logic.test.ts`) 모킹이 필요한 이 파일은 옆에 둔다.
  * 실행: cd jam-web && npx vitest run src/lib/missions/checker-complete.test.ts
@@ -38,11 +38,11 @@ const defaultReward = vi.hoisted(() => ({
 const grantMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<typeof defaultReward>>(async () => defaultReward))
 const recordFeedEventMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
 const createNotificationMock = vi.hoisted(() => vi.fn(async () => {}))
-/** 챕터 점수 연결(`awardChapterScore`) — 호출 인자와 보상 지급과의 순서를 본다. 실제 RPC는 부르지 않는다 */
+/** 서비스 활동 잼 연결(`awardServiceJam`) — 호출 인자와 보상 지급과의 순서를 본다. 실제 RPC는 부르지 않는다 */
 const awardScoreMock = vi.hoisted(() =>
   vi.fn<(supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => Promise<{ ok: boolean }>>(async () => ({ ok: true })),
 )
-/** 점수 호출과 보상 지급이 불린 순서 */
+/** 잼 지급 호출과 보상 지급이 불린 순서 */
 const callOrder = vi.hoisted(() => [] as string[])
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -83,7 +83,7 @@ vi.mock('@/lib/notifications', async (importOriginal) => {
   return { ...actual, createNotification: createNotificationMock }
 })
 vi.mock('@/lib/missions/rewards', () => ({ grantMissionRewards: grantMock }))
-vi.mock('@/lib/chapter/score', () => ({ awardChapterScore: awardScoreMock }))
+vi.mock('@/lib/jam/serviceActivity', () => ({ awardServiceJam: awardScoreMock }))
 vi.mock('@/lib/strava/activity-history', () => ({
   getSignupAnchorDate: async () => null,
   getActivityHistory: async () => [],
@@ -144,7 +144,7 @@ beforeEach(() => {
   })
   awardScoreMock.mockReset()
   awardScoreMock.mockImplementation(async () => {
-    callOrder.push('awardChapterScore')
+    callOrder.push('awardServiceJam')
     return { ok: true }
   })
   recordFeedEventMock.mockClear()
@@ -164,7 +164,7 @@ function expectNotCompleted(result: Awaited<ReturnType<typeof checkMissions>>) {
   expect(grantMock).not.toHaveBeenCalled()
   expect(recordFeedEventMock).not.toHaveBeenCalled()
   expect(createNotificationMock).not.toHaveBeenCalled()
-  // 완료되지 않았으니 챕터 점수도 세지 않는다(already_completed·거절·계약 밖 응답 모두)
+  // 완료되지 않았으니 서비스 활동 잼도 부르지 않는다(already_completed·거절·계약 밖 응답 모두)
   expect(awardScoreMock).not.toHaveBeenCalled()
 }
 
@@ -267,8 +267,8 @@ describe('checkMissions — mission_complete 연결', () => {
   })
 })
 
-describe('checkMissions — 챕터 점수 «미션 완료» (티켓 20261019_1315 3회)', () => {
-  it('완료되면 완료 기록 id를 원천 id로 mission_complete를 1회 센다 — 날짜는 넘기지 않는다', async () => {
+describe('checkMissions — 서비스 활동 잼 «미션 완료» (티켓 20261028_1735 3회)', () => {
+  it('완료되면 완료 기록 id를 원천 id로 서비스 kind mission_complete를 1회 부른다 — 날짜·양은 넘기지 않는다', async () => {
     setMissions(['m1'])
     rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
 
@@ -281,12 +281,12 @@ describe('checkMissions — 챕터 점수 «미션 완료» (티켓 20261019_131
     expect(input).not.toHaveProperty('amount')
   })
 
-  it('점수는 보상 지급 앞에서 센다 — 보상 지급이 던져 건너뛰어도 점수는 이미 셌다', async () => {
+  it('잼 지급은 보상 지급 앞에서 부른다 — 보상 지급이 던져 건너뛰어도 잼 지급은 이미 불렸다', async () => {
     setMissions(['m1'])
     rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
 
     await checkMissions(USER, [ACTIVITY])
-    expect(callOrder).toEqual(['awardChapterScore', 'grantMissionRewards'])
+    expect(callOrder).toEqual(['awardServiceJam', 'grantMissionRewards'])
 
     callOrder.length = 0
     awardScoreMock.mockClear()
@@ -295,7 +295,7 @@ describe('checkMissions — 챕터 점수 «미션 완료» (티켓 20261019_131
     expect(awardScoreMock).toHaveBeenCalledTimes(1)
   })
 
-  it('미션마다 자기 완료 기록 id로 센다 — 서로 다른 키다', async () => {
+  it('미션마다 자기 완료 기록 id로 부른다 — 서로 다른 키다', async () => {
     setMissions(['m1', 'm2'])
     rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
     rpcReturns('m2', { ok: true, status: 'completed', completion_id: 'c2' })
@@ -306,7 +306,7 @@ describe('checkMissions — 챕터 점수 «미션 완료» (티켓 20261019_131
     expect(sources).toEqual(['c1', 'c2'])
   })
 
-  it('같은 미션의 완료를 다시 판정하면 already_completed라 다시 세지 않는다', async () => {
+  it('같은 미션의 완료를 다시 판정하면 already_completed라 다시 부르지 않는다', async () => {
     setMissions(['m1'])
     rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
     await checkMissions(USER, [ACTIVITY])
@@ -317,11 +317,11 @@ describe('checkMissions — 챕터 점수 «미션 완료» (티켓 20261019_131
     expect(awardScoreMock).toHaveBeenCalledTimes(1)
   })
 
-  it('점수가 실패해도 완료 기록·보상 지급·피드·소식은 그대로다', async () => {
+  it('잼 지급이 실패해도 완료 기록·보상 지급·피드·소식은 그대로다', async () => {
     setMissions(['m1'])
     rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
     awardScoreMock.mockImplementation(async () => {
-      callOrder.push('awardChapterScore')
+      callOrder.push('awardServiceJam')
       return { ok: false }
     })
 

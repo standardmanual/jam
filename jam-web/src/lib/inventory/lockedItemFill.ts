@@ -12,7 +12,7 @@
  *
  * 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다. 열기 성공 응답에만 `loadOpenedInfo`가 읽은 정보를 싣는다.
  *
- * 열기가 확정되면 챕터 점수를 센 다음 퀘스트 완료 처리를 부른다(티켓 20261021_1248, 운영 로직 2.2절). 실제 단계 ③ «잠긴 아이템 배지 열기»가 여기서 끝날 수 있고
+ * 열기가 확정되면 서비스 활동 잼(`locked_unlock`)을 지급한 다음 퀘스트 완료 처리를 부른다(티켓 20261021_1248, 운영 로직 2.2절). 실제 단계 ③ «잠긴 아이템 배지 열기»가 여기서 끝날 수 있고
  * (동기화로 받은 잠긴 개체를 열어도 된다), 실제 3단계가 다 끝났으면 챕터 1이 시작된다. 던지지 않고, 어떤 실패도 열기와 응답을 바꾸지 않는다(응답에 완료 배지를 싣지 않는다).
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
@@ -20,7 +20,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CAPSULE_ISSUE_ROUTE } from '@/lib/capsule/open'
-import { awardChapterScore } from '@/lib/chapter/score'
+import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { recordItemDroppedFeed } from '@/lib/drop-engine/issueFollowUp'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
@@ -222,10 +222,10 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
   }
 
   // 여기부터는 열기가 확정됐다. 정보를 읽지 못해도 열기를 실패로 돌려주지 않는다.
-  // 챕터 점수 «잠긴 아이템 배지 열기» (티켓 20261019_1315, 운영 로직 12.2절). 원천 id는 개체 id다 — 개체는 한 번만 열리고(두 번째는 `not_locked`)
-  // 같은 개체를 다시 보내도 한 번만 센다. 던지지 않는다(실패는 기록만 남는다).
-  await awardChapterScore(supabase, { userId, kind: 'locked_item_badge_open', sourceId: itemId })
-  // 퀘스트 실제 단계 ③ «잠긴 아이템 배지 열기»(티켓 20261021_1248). 점수 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
+  // 서비스 활동 잼 «잠긴 아이템 배지 열기» (티켓 20261028_1735 3회, 옛 챕터 점수 자리). 원천 id는 개체 id다 — 개체는 한 번만 열리고(두 번째는 `not_locked`)
+  // 같은 개체를 다시 보내도 한 번만 지급한다. 던지지 않는다(실패는 기록만 남는다).
+  await awardServiceJam(supabase, { userId, kind: 'locked_unlock', sourceId: itemId })
+  // 퀘스트 실제 단계 ③ «잠긴 아이템 배지 열기»(티켓 20261021_1248). 잼 지급 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
   try {
     await recordOnboardingQuestCompletion(supabase, userId)
   } catch (e) {

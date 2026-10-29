@@ -18,7 +18,7 @@ import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForPickup } from '@/lib/badge-engine/jamActionDropTriggers'
 import { PICKUP_BLOCK_CODE } from '@/lib/drop/pickup-block-contract'
 import { isSelfPickup } from '@/lib/drop/self-pickup'
-import { awardChapterScore } from '@/lib/chapter/score'
+import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { d, t } from '@/lib/i18n'
 
 // 20260915_2241 — ADR 0001에 따라 이 라우트의 `error` 필드는 `src/lib/i18n/ko.ts`의 drops
@@ -223,16 +223,17 @@ export async function POST(
   // 주워짐(`picked_up_by_user_count`)은 놓은 사람에게 발급·알림한다. 자기 드랍이면 예약하지 않는다.
   // `after()`로 미루는 이유: 이 라우트는 이미 왕복이 많고 두 유저 판정이 붙으며, 획득 알림이 알림함 결산뿐이라
   // 응답 뒤로 미뤄도 유저가 잃는 것이 없다. `allSettled`라 한쪽 판정이 거부돼도 다른 쪽은 끝까지 돈다.
-  // 챕터 점수 «픽업» (티켓 20261019_1315, 운영 로직 12.2절)도 같은 자리에서 센다. 자기 드랍을 자기가 주운 것은 세지 않고(`isSelfPickup`, 판정 트리거와 같은 기준),
-  // 시스템 드랍(놓은 사람 없음)을 줍는 것은 센다. 원천 id는 드랍 id(경로의 `dropId`)라 같은 픽업을 다시 보내도 한 번만 센다.
-  // 드랍 점수와 활동 종류가 달라 같은 드랍 id여도 키가 겹치지 않는다. `awardChapterScore`는 던지지 않고 점수 실패는 응답을 바꾸지 않는다.
+  // 서비스 활동 잼 «픽업» (티켓 20261028_1735 3회, 옛 챕터 점수 자리)도 같은 자리에서 부른다. 자기 드랍을 자기가 주운 것은 부르지 않고(`isSelfPickup`, 판정 트리거와 같은 기준),
+  // 시스템 드랍(놓은 사람 없음)을 줍는 것은 부른다. 원천 id는 드랍 id(경로의 `dropId`)라 같은 픽업을 다시 보내도 한 번만 지급한다.
+  // 드랍과 서비스 kind가 달라 같은 드랍 id여도 이벤트 키(`pickup:<id>`·`drop:<id>`)가 겹치지 않는다. 규칙값 기본이 0이라 지금은 `rule_zero`로 돌려받아 지급도 채움도 없다.
+  // `awardServiceJam`은 던지지 않고 잼 실패는 응답을 바꾸지 않는다.
   const jamTriggers = jamTriggersForPickup(user.id, drop.dropper_user_id)
   const scorePickup = !isSelfPickup(drop, user.id)
   if (scorePickup || jamTriggers.picker.length > 0 || jamTriggers.dropper.length > 0) {
     const dropperId = drop.dropper_user_id
     after(async () => {
       await Promise.allSettled([
-        scorePickup ? awardChapterScore(service, { userId: user.id, kind: 'pickup', sourceId: dropId }) : Promise.resolve(),
+        scorePickup ? awardServiceJam(service, { userId: user.id, kind: 'pickup', sourceId: dropId }) : Promise.resolve(),
         runJamActionEvaluation(user.id, jamTriggers.picker),
         dropperId ? runJamActionEvaluation(dropperId, jamTriggers.dropper) : Promise.resolve(),
       ])

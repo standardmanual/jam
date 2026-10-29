@@ -17,7 +17,7 @@
  * `completed_at`이 이미 있는 유저가 들어올 때마다(보상 재시도 분기 포함)도 같은 함수를 부른다. 옛 퀘스트 완료자도 다음 호출에서 챕터 1을 받는다.
  *
  * 호출 지점: 동기화(정산 1건 이상) · 연출의 마지막 단계 기록 · 건너뛰기 · **캡슐 열기와 잠긴 개체 열기가 확정된 뒤**(②③이 여기서 끝난다).
- * 열기 쪽 호출은 `awardChapterScore` 다음이라 퀘스트 전에 쌓인 점수가 챕터 1 시작 때 함께 계산된다.
+ * 잠긴 개체 열기 쪽 호출은 서비스 활동 잼 지급(`awardServiceJam`) 다음이다.
  *
  * DB 조회(`recordOnboardingQuestCompletion`)와 순수 판정(`shouldRecordQuestCompletion`,
  * `shouldGrantQuestReward`)을 분리해 후자만 단위 테스트로 고정한다 —
