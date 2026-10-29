@@ -65,6 +65,9 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'drop_picked_up':
     // 받지 않은 보상도 선물이라 같은 아이콘을 쓴다(티켓 20261021_1249 6-3 5회, 새 아이콘을 고르지 않았다)
     case 'reward_pending':
+    // 캡슐에서 받지 못한 보상 이야기라 받지 않은 보상과 같은 선물 아이콘을 쓴다(티켓 20261028_1734 3회, 새 아이콘을 고르지 않았다)
+    case 'capsule_nearly_full':
+    case 'capsule_jam_blocked':
       return <GiftIcon className={className} />
     case 'drop_spot_active':
       return <PinIcon className={className} />
@@ -91,7 +94,7 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'suspension_lifted':
       return <CheckCircleIcon className={className} />
     default:
-      // 27종 전수에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 파일을
+      // 29종 전수에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 파일을
       // 빠뜨리면 아래 호출이 컴파일 에러가 난다(20260827_021).
       unknownNotificationType(type)
       return <BellIcon className={className} />

@@ -167,6 +167,12 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       return single(id ? `/missions/${id}` : '/missions')
     }
 
+    // ── 캡슐 알림 — 캡슐은 홈에 있다(`CapsuleWidget`). 인벤토리 화면에는 캡슐이 없고, 받기와 안내 메시지도 캡슐 아래에 놓이므로(화면 반영은 U8) 홈으로 보낸다.
+    //    인벤토리 빈칸 소식(`inventory_full`)은 «비울 곳»이라 인벤토리로 가지만, 이 소식은 «캡슐을 볼 곳»이 먼저다(티켓 20261028_1734 3회) ──
+    case 'capsule_nearly_full':
+    case 'capsule_jam_blocked':
+      return single('/')
+
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       const count = Math.max(view.actorCount, idList(p, 'actor_ids').length, 1)

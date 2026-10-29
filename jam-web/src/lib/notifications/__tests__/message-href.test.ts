@@ -703,6 +703,51 @@ describe('④ 미션', () => {
   })
 })
 
+describe('캡슐 알림 (티켓 20261028_1734 3회)', () => {
+  const REST = '받지 못한 보상이 있어서 이 캡슐이 가득 차면 잼을 받을 수 없게 돼요. 받기로 보상을 받으면 계속 잼을 받을 수 있어요'
+
+  it('capsule_nearly_full: 단계(70·80·90)마다 퍼센트만 달라지고 그 숫자만 굵게 보인다', () => {
+    for (const stage of [70, 80, 90]) {
+      const v = view('capsule_nearly_full', { stage })
+      expect(text(v)).toBe(`캡슐이 ${stage}% 찼어요. ${REST}`)
+      expect(notificationTokens(v).filter((token) => token.bold).map((token) => token.text)).toEqual([`${stage}%`])
+      expect(missingMessageSlots(v)).toEqual([])
+    }
+  })
+
+  it('capsule_nearly_full: 단계가 비었거나 손상되면 숫자 없는 문장을 쓴다', () => {
+    for (const payload of [{}, { stage: 0 }, { stage: 50 }, { stage: 100 }, { stage: 'x' }, { stage: null }]) {
+      const v = view('capsule_nearly_full', payload)
+      expect(text(v)).toBe(`캡슐이 거의 찼어요. ${REST}`)
+      expect(notificationTokens(v).some((token) => token.bold)).toBe(false)
+      expect(missingMessageSlots(v)).toEqual([])
+    }
+  })
+
+  it('capsule_jam_blocked: 담는 값 없이 고정 문장이다', () => {
+    const v = view('capsule_jam_blocked', {})
+    expect(text(v)).toBe('캡슐이 가득 찼어요. 받지 못한 보상이 두 개라 지금은 잼을 받을 수 없어요. 받기로 보상을 받으면 다시 잼을 받을 수 있어요')
+    expect(notificationTokens(v).some((token) => token.bold)).toBe(false)
+    expect(missingMessageSlots(v)).toEqual([])
+  })
+
+  it('두 소식 모두 서두르게 하는 말과 소비를 부추기는 말이 없다(운영 로직 18.2절)', () => {
+    const all = [view('capsule_nearly_full', { stage: 90 }), view('capsule_jam_blocked', {})].map(text).join(' ')
+    for (const banned of ['지금 아니면', '얼른', '서두르', '놓치', '지금 바로', '뽑']) expect(all).not.toContain(banned)
+  })
+
+  it('착지는 캡슐이 있는 홈이다 — 단계나 payload와 상관없다', () => {
+    expect(notificationTarget(view('capsule_nearly_full', { stage: 80 }))).toEqual({ href: '/', avatarHref: null })
+    expect(notificationTarget(view('capsule_nearly_full', {}))).toEqual({ href: '/', avatarHref: null })
+    expect(notificationTarget(view('capsule_jam_blocked', {}))).toEqual({ href: '/', avatarHref: null })
+  })
+
+  it('경고 후보가 아니다 — 지난 사건의 기록이다', () => {
+    expect(isWarningNotification('capsule_nearly_full', { stage: 70 }, {})).toBe(false)
+    expect(isWarningNotification('capsule_jam_blocked', {}, {})).toBe(false)
+  })
+})
+
 describe('⑤⑥ 소셜', () => {
   it('#26 팔로우 — R14: 본인 닉네임을 부르지 않는다 (1명 / 2명 나열 / 3명+ 축약)', () => {
     expect(text(view('followed', { actor_ids: ['a1'] }, { actor: ACTOR }))).toBe(

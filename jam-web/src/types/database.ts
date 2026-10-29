@@ -1974,6 +1974,9 @@ export type NotificationType =
   | 'suspension_lifted'
   // 인벤토리 빈칸이 모자라 아직 받지 못한 미션 보상이 있어요(티켓 20261021_1249 6-3 5회, 마이그레이션 270)
   | 'reward_pending'
+  // 받지 못한 보상이 하나 있는 채로 다음 캡슐이 70%·80%·90%에 닿았어요·둘째 보상이 보류되어 잼을 받을 수 없게 됐어요(티켓 20261028_1734 3회, 마이그레이션 302)
+  | 'capsule_nearly_full'
+  | 'capsule_jam_blocked'
   // ⑤ 소셜(나에게) (1) — #27 맞팔(`mutual_follow`)은 20260827_014에서 제거됐다
   //    (자기 행동의 메아리. 되팔로우당한 쪽에는 `followed`가 대신 나간다)
   | 'followed'
