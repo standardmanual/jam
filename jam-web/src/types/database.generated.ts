@@ -4927,6 +4927,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      capsule_auto_fill: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       capsule_fill: {
         Args: { p_amount?: number | null; p_user_id: string }
         Returns: Json
@@ -4955,7 +4959,18 @@ export type Database = {
           required: number
         }[]
       }
+      capsule_next_required_v2: {
+        Args: { p_user_id: string }
+        Returns: {
+          chapter_no: number
+          required: number
+        }[]
+      }
       capsule_open: {
+        Args: { p_items: Json; p_user_id: string }
+        Returns: Json
+      }
+      capsule_open_counted: {
         Args: { p_items: Json; p_user_id: string }
         Returns: Json
       }
