@@ -1,8 +1,8 @@
 /**
- * 엔진 새 발급 → 챕터 점수 «배지 받기» 연결 (티켓 20261019_1315 2a회, 운영 로직 12.2절)
+ * 엔진 새 발급 → «배지 받기» 연결 (티켓 20261019_1315 2a회, 운영 로직 12.2절; 서비스 활동 잼 `badge_earned`로 전환: 티켓 20261028_1735 2회)
  *
- * `evaluateBadgesDetailed`가 `user_activity_badges`에 **새 행을 실제로 넣은** 발급마다 `chapter_add_score('badge_receive')`를 부르는지 고정한다.
- * 쿼리 빌더·반복형 RPC 모킹은 shadow-ban-gate.test.ts의 관례를 따르고, 점수 RPC와 이용 정지 조회를 더했다.
+ * `evaluateBadgesDetailed`가 `user_activity_badges`에 **새 행을 실제로 넣은** 발급마다 `jam_apply_service_activity('badge_earned')`를 부르는지 고정한다.
+ * 쿼리 빌더·반복형 RPC 모킹은 shadow-ban-gate.test.ts의 관례를 따르고, 서비스 활동 잼 RPC와 이용 정지 조회를 더했다. 지급 뒤 즉시 채움은 막아 둔다(`serviceActivity.test.ts`가 고정한다).
  *
  * 검증 대상:
  *  - 새로 발급한 배지는 (유저, 배지) 결정적 원천 id로 한 번 센다. 레벨형은 레벨마다, 반복형의 첫 획득도 센다
@@ -112,7 +112,7 @@ function makeRepeatBadge(id: string, rarity: BadgeRarity, repeatCount: number): 
 
 type EarnState = { earn_count: number; earn_history: BadgeEarnHistoryEntry[] }
 type InsertPayload = { badge_id: string; earn_count?: number; earn_history?: BadgeEarnHistoryEntry[] }
-type ScoreCall = { p_user_id: string; p_activity_kind: string; p_source_id: string; p_amount: number; p_occurred_on?: string }
+type ScoreCall = { p_user_id: string; p_kind: string; p_event_key: string }
 
 const state: {
   badges: BadgeRow[]
@@ -214,11 +214,11 @@ function mockSupabase() {
   }
 
   const rpc = (name: string, args: Record<string, unknown>) => {
-    if (name === 'chapter_add_score') {
+    if (name === 'jam_apply_service_activity') {
       state.scoreCalls.push(args as unknown as ScoreCall)
       if (state.scoreRpcThrows) throw new Error('점수 함수 예외')
       if (state.scoreRpcFails) return Promise.resolve({ data: null, error: { message: '점수 함수 오류' } })
-      return Promise.resolve({ data: [{ score_added: 10, current_chapter: null, reached_chapters: [] }], error: null })
+      return Promise.resolve({ data: { ok: true, granted: 5, ruleAmount: 5, capped: false, duplicate: false, dailyUsed: 5, weeklyUsed: 5, balance: 5 }, error: null })
     }
     if (name !== 'increment_activity_badge_earn') return Promise.resolve({ data: null, error: null })
     const badgeId = args.p_badge_id as string
@@ -245,6 +245,9 @@ vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabas
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => true) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
+vi.mock('@/lib/capsule/sync-auto-fill', () => ({
+  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true }),
+}))
 vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/policy')>()
@@ -258,13 +261,13 @@ beforeEach(() => {
 })
 
 function scoredSourceIds(): string[] {
-  return state.scoreCalls.map((c) => c.p_source_id)
+  return state.scoreCalls.map((c) => c.p_event_key.slice('badge_earned:'.length))
 }
 
 // ═══════════════════════════════════════════════════════════════════════
 
 describe('엔진 새 발급 → «배지 받기» 점수', () => {
-  it('새로 발급한 배지는 badge_receive 1단위로 한 번 센다 — 원천 id는 (유저, 배지) 결정적 id, 날짜는 보내지 않는다', async () => {
+  it('새로 발급한 배지는 badge_earned 서비스 활동 잼을 한 번 준다 — 이벤트 키는 badge_earned:(유저, 배지) 결정적 id', async () => {
     state.badges = [makeGradedBadge('G-common', 'common')]
     oneRun()
 
@@ -274,9 +277,8 @@ describe('엔진 새 발급 → «배지 받기» 점수', () => {
     expect(state.scoreCalls).toEqual([
       {
         p_user_id: USER_ID,
-        p_activity_kind: 'badge_receive',
-        p_source_id: deterministicSourceId('badge_receive', USER_ID, 'G-common'),
-        p_amount: 1,
+        p_kind: 'badge_earned',
+        p_event_key: `badge_earned:${deterministicSourceId('badge_receive', USER_ID, 'G-common')}`,
       },
     ])
   })
@@ -292,8 +294,8 @@ describe('엔진 새 발급 → «배지 받기» 점수', () => {
 
     expect(state.inserts).toHaveLength(2)
     expect(state.scoreCalls).toHaveLength(2)
-    expect(state.scoreCalls[0].p_activity_kind).toBe(state.scoreCalls[1].p_activity_kind)
-    expect(state.scoreCalls[0].p_source_id).toBe(state.scoreCalls[1].p_source_id)
+    expect(state.scoreCalls[0].p_kind).toBe(state.scoreCalls[1].p_kind)
+    expect(state.scoreCalls[0].p_event_key).toBe(state.scoreCalls[1].p_event_key)
   })
 
   it('레벨형은 레벨마다 새 행이라 레벨마다 다른 원천 id로 센다', async () => {
@@ -392,7 +394,7 @@ describe('엔진 새 발급 → 점수 실패는 발급을 막지 않는다', ()
     expect(state.inserts.map((p) => p.badge_id).sort()).toEqual(['G-a', 'G-b'])
     // 한 배지의 점수 실패가 다음 배지의 점수를 막지 않는다
     expect(state.scoreCalls).toHaveLength(2)
-    expect(logEngineMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER_ID, expect.objectContaining({ kind: 'badge_receive' }))
+    expect(logEngineMock).toHaveBeenCalledWith('points', 'service_jam_failed', USER_ID, expect.objectContaining({ kind: 'badge_earned' }))
   })
 })
 
@@ -425,7 +427,7 @@ function occurrenceId(badgeId: string, stravaId: number): string {
 }
 
 describe('이미 가진 반복형의 새 회차(increment 경로) → «배지 받기» 점수', () => {
-  it('늘어난 회차마다 (유저, 배지, 활동 id) 원천 id로 한 번씩 센다 — 회차 3건이면 서로 다른 키 3개, 수량 1, 날짜는 보내지 않는다', async () => {
+  it('늘어난 회차마다 (유저, 배지, 활동 id) 원천 id로 한 번씩 센다 — 회차 3건이면 서로 다른 키 3개', async () => {
     ownRepeatBadge()
 
     const { earned, counted } = await evaluateBadgesDetailed(USER_ID, newRuns(), { triggeredBy: 'strava_sync' })
@@ -433,8 +435,7 @@ describe('이미 가진 반복형의 새 회차(increment 경로) → «배지 �
     expect(earned).toEqual([]) // 회차는 발급이 아니다
     expect(counted).toEqual([{ id: 'REP-rare', name: '반복 러너', addedEarnCount: 3 }])
     expect(state.scoreCalls).toHaveLength(3)
-    expect(state.scoreCalls.every((c) => c.p_user_id === USER_ID && c.p_activity_kind === 'badge_receive' && c.p_amount === 1)).toBe(true)
-    expect(state.scoreCalls.every((c) => !('p_occurred_on' in c))).toBe(true)
+    expect(state.scoreCalls.every((c) => c.p_user_id === USER_ID && c.p_kind === 'badge_earned')).toBe(true)
     expect(new Set(scoredSourceIds()).size).toBe(3)
     expect([...scoredSourceIds()].sort()).toEqual([102, 103, 104].map((id) => occurrenceId('REP-rare', id)).sort())
   })
@@ -540,7 +541,7 @@ describe('이미 가진 반복형의 새 회차(increment 경로) → «배지 �
     expect(result.counted).toEqual([{ id: 'REP-rare', name: '반복 러너', addedEarnCount: 3 }])
     expect(state.earnState['REP-rare'].earn_count).toBe(4)
     expect(state.scoreCalls).toHaveLength(3) // 한 회차의 실패가 다음 회차를 막지 않는다
-    expect(logEngineMock.mock.calls.filter((c) => (c as unknown[])[1] === 'chapter_score_failed')).toHaveLength(3)
+    expect(logEngineMock.mock.calls.filter((c) => (c as unknown[])[1] === 'service_jam_failed')).toHaveLength(3)
   })
 })
 

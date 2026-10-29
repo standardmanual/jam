@@ -2,9 +2,9 @@
  * lib/chapter/badgeReceive — 챕터 점수 «배지 받기» 공용 함수 (티켓 20261019_1315 2a회)
  *
  * 고정하는 것:
- * - 새로 받은 액티비티·체크인 배지는 `badge_receive` 1점 단위로 센다. 원천 id는 (유저, 배지)로 만든 결정적 id라 같은 배지를 두 번 받아도
- *   (초기화·삭제 뒤 재획득 포함) 같은 (활동 종류, 원천 id)다. 날짜는 보내지 않는다(DB가 오늘로 센다).
- * - 세지 않는 것마다 DB(`chapter_add_score`)를 부르지 않는다: 아이템 배지, 숨김 배지, 팔로워·팔로잉·챕터 조건 배지, 이용 정지 유저,
+ * - 새로 받은 액티비티·체크인 배지는 서비스 활동 잼 `badge_earned`로 지급한다(티켓 20261028_1735 2회: 옛 `badge_receive` 점수에서 전환). 원천 id는 (유저, 배지)로 만든 결정적 id이고
+ *   이벤트 키는 `badge_earned:<원천 id>`라 같은 배지를 두 번 받아도(초기화·삭제 뒤 재획득 포함) 같은 (종류, 키)다.
+ * - 세지 않는 것마다 DB(`jam_apply_service_activity`)를 부르지 않는다: 아이템 배지, 숨김 배지, 팔로워·팔로잉·챕터 조건 배지, 이용 정지 유저,
  *   카탈로그 재평가 배치, 어드민 시뮬레이터(`admin_simulate`·`admin_test`), `dryRun`. 제외 키가 아닌 조건(잼·동기화 횟수)은 센다.
  * - 이용 정지 확인은 마지막 검사다(제외 규칙에 걸리면 조회하지 않는다). 확인이 실패하면 «정지 아님»으로 보지 않고 점수를 세지 않으며 기록을 남긴다.
  * - 어떤 실패도 던지지 않는다(RPC 오류·정지 확인 실패·잘못된 입력).
@@ -18,9 +18,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const logMock = vi.hoisted(() => vi.fn())
+const { logMock, autoFillMock } = vi.hoisted(() => ({ logMock: vi.fn(), autoFillMock: vi.fn() }))
 
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+// 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다. 여기서는 채움을 막고 서비스 활동 잼 RPC 인자만 본다
+vi.mock('@/lib/capsule/sync-auto-fill', () => ({ runSyncCapsuleAutoFill: (...args: unknown[]) => autoFillMock(...args) }))
 
 import {
   awardBadgeReceiveOccurrenceScores,
@@ -36,7 +38,15 @@ import { CATALOG_REEVALUATION_TRIGGER } from '@/lib/badge-engine/reevaluateCatal
 const USER = '11111111-1111-4111-8111-111111111111'
 const OTHER_USER = '33333333-3333-4333-8333-333333333333'
 const NATURAL: BadgeReceiveOrigin = { triggeredBy: 'strava_sync' }
-const OK_ROW = { score_added: 10, current_chapter: 1, reached_chapters: [] as number[] }
+const OK_GRANT = { ok: true, granted: 5, ruleAmount: 5, capped: false, duplicate: false, dailyUsed: 5, weeklyUsed: 5, balance: 5 }
+const EVENT_PREFIX = 'badge_earned:'
+
+/** 서비스 활동 잼 RPC 인자에서 원천 id를 꺼낸다(이벤트 키 `badge_earned:<원천 id>`) */
+function sourceIdOf(args: Record<string, unknown>): string {
+  const key = String(args.p_event_key)
+  expect(key.startsWith(EVENT_PREFIX)).toBe(true)
+  return key.slice(EVENT_PREFIX.length)
+}
 
 function activityBadge(overrides: Partial<BadgeReceiveBadge> = {}): BadgeReceiveBadge {
   return { id: 'badge-a', type: 'activity', is_hidden: false, condition_json: { total_count: 1 }, ...overrides }
@@ -51,7 +61,7 @@ interface FakeOptions {
 }
 
 function fakeClient(options: FakeOptions = {}) {
-  const rpc = vi.fn(async (_name: string, args: Record<string, unknown>) => options.rpcImpl?.(args) ?? options.rpcResult ?? { data: [OK_ROW], error: null })
+  const rpc = vi.fn(async (_name: string, args: Record<string, unknown>) => options.rpcImpl?.(args) ?? options.rpcResult ?? { data: OK_GRANT, error: null })
   const fromTables: string[] = []
   const from = vi.fn((table: string) => {
     fromTables.push(table)
@@ -75,6 +85,8 @@ function rpcArgsOf(rpc: ReturnType<typeof fakeClient>['rpc']): Record<string, un
 beforeEach(() => {
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
+  autoFillMock.mockReset()
+  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true })
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -85,16 +97,14 @@ describe('awardBadgeReceiveScore — 센다', () => {
     const outcome = await awardBadgeReceiveScore(client, { userId: USER, badge: activityBadge(), origin: NATURAL })
 
     expect(rpc).toHaveBeenCalledTimes(1)
-    expect(rpc).toHaveBeenCalledWith('chapter_add_score', {
+    expect(rpc).toHaveBeenCalledWith('jam_apply_service_activity', {
       p_user_id: USER,
-      p_activity_kind: 'badge_receive',
-      p_source_id: deterministicSourceId('badge_receive', USER, 'badge-a'),
-      p_amount: 1,
+      p_kind: 'badge_earned',
+      p_event_key: `badge_earned:${deterministicSourceId('badge_receive', USER, 'badge-a')}`,
     })
-    expect(Object.keys(rpcArgsOf(rpc)[0])).not.toContain('p_occurred_on')
     expect(outcome).toEqual({
       status: 'scored',
-      score: { ok: true, scoreAdded: 10, currentChapter: 1, reachedChapters: [] },
+      score: { ok: true, granted: 5, duplicate: false, capped: false },
     })
   })
 
@@ -104,7 +114,7 @@ describe('awardBadgeReceiveScore — 센다', () => {
     const outcome = await awardBadgeReceiveScore(client, { userId: USER, badge: { id: 'checkin-1', type: 'checkin' }, origin: NATURAL })
 
     expect(outcome.status).toBe('scored')
-    expect(rpcArgsOf(rpc)[0].p_source_id).toBe(deterministicSourceId('badge_receive', USER, 'checkin-1'))
+    expect(sourceIdOf(rpcArgsOf(rpc)[0])).toBe(deterministicSourceId('badge_receive', USER, 'checkin-1'))
   })
 
   it('is_hidden가 null이거나 condition_json이 null이어도 센다', async () => {
@@ -135,8 +145,8 @@ describe('awardBadgeReceiveScore — 센다', () => {
     await awardBadgeReceiveScore(client, { userId: USER, badge: activityBadge(), origin: { triggeredBy: 'mission_reward:m-1' } })
 
     const [first, second] = rpcArgsOf(rpc)
-    expect(first.p_activity_kind).toBe(second.p_activity_kind)
-    expect(first.p_source_id).toBe(second.p_source_id)
+    expect(first.p_kind).toBe(second.p_kind)
+    expect(first.p_event_key).toBe(second.p_event_key)
   })
 
   it('다른 배지·다른 유저는 다른 원천 id다', async () => {
@@ -146,7 +156,7 @@ describe('awardBadgeReceiveScore — 센다', () => {
     await awardBadgeReceiveScore(client, { userId: USER, badge: activityBadge({ id: 'badge-b' }), origin: NATURAL })
     await awardBadgeReceiveScore(client, { userId: OTHER_USER, badge: activityBadge({ id: 'badge-a' }), origin: NATURAL })
 
-    const ids = rpcArgsOf(rpc).map((a) => a.p_source_id)
+    const ids = rpcArgsOf(rpc).map(sourceIdOf)
     expect(new Set(ids).size).toBe(3)
   })
 
@@ -158,7 +168,7 @@ describe('awardBadgeReceiveScore — 센다', () => {
     }
 
     expect(rpc).toHaveBeenCalledTimes(3)
-    expect(new Set(rpcArgsOf(rpc).map((a) => a.p_source_id)).size).toBe(3)
+    expect(new Set(rpcArgsOf(rpc).map(sourceIdOf)).size).toBe(3)
   })
 })
 
@@ -256,13 +266,13 @@ describe('제외 상수', () => {
 })
 
 describe('awardBadgeReceiveScore — 실패는 던지지 않는다', () => {
-  it('점수 RPC가 오류여도 던지지 않고 failed다(기록은 점수 함수가 남긴다)', async () => {
+  it('점수 RPC가 오류여도 던지지 않고 failed다(기록은 서비스 활동 잼 지급 함수가 남긴다)', async () => {
     const { client } = fakeClient({ rpcResult: { data: null, error: { message: 'boom' } } })
 
     const outcome = await awardBadgeReceiveScore(client, { userId: USER, badge: activityBadge(), origin: NATURAL })
 
     expect(outcome).toEqual({ status: 'failed' })
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER, expect.objectContaining({ kind: 'badge_receive' }))
+    expect(logMock).toHaveBeenCalledWith('points', 'service_jam_failed', USER, expect.objectContaining({ kind: 'badge_earned' }))
   })
 
   it('이용 정지 확인이 실패하면 «정지 아님»으로 보지 않고 점수를 세지 않으며 기록을 남긴다', async () => {
@@ -323,7 +333,7 @@ function occurrenceKey(badgeId: string, activityId: number | string): string {
 }
 
 describe('awardBadgeReceiveScore — 반복형 회차(occurrenceActivityId)', () => {
-  it('회차 원천 id는 (유저, 배지, 활동 id)이고 수량 1, 날짜는 보내지 않는다 — 첫 획득의 (유저, 배지) id와 다르다', async () => {
+  it('회차 원천 id는 (유저, 배지, 활동 id)이고 이벤트 키에 kind가 붙는다 — 첫 획득의 (유저, 배지) id와 다르다', async () => {
     const { client, rpc } = fakeClient()
 
     const outcome = await awardBadgeReceiveScore(client, { userId: USER, badge: activityBadge(), origin: NATURAL, occurrenceActivityId: 123456789012 })
@@ -333,13 +343,11 @@ describe('awardBadgeReceiveScore — 반복형 회차(occurrenceActivityId)', ()
     expect(outcome.status).toBe('scored')
     expect(occurrence).toEqual({
       p_user_id: USER,
-      p_activity_kind: 'badge_receive',
-      p_source_id: occurrenceKey('badge-a', 123456789012),
-      p_amount: 1,
+      p_kind: 'badge_earned',
+      p_event_key: `badge_earned:${occurrenceKey('badge-a', 123456789012)}`,
     })
-    expect(Object.keys(occurrence)).not.toContain('p_occurred_on')
-    expect(occurrence.p_source_id).not.toBe(receipt.p_source_id)
-    expect(receipt.p_source_id).toBe(deterministicSourceId('badge_receive', USER, 'badge-a'))
+    expect(occurrence.p_event_key).not.toBe(receipt.p_event_key)
+    expect(sourceIdOf(receipt)).toBe(deterministicSourceId('badge_receive', USER, 'badge-a'))
   })
 
   it('같은 회차는 같은 키, 다른 회차·다른 배지·다른 유저는 다른 키다 (숫자 id와 같은 값의 문자열 id는 같은 회차)', async () => {
@@ -351,7 +359,7 @@ describe('awardBadgeReceiveScore — 반복형 회차(occurrenceActivityId)', ()
     await awardBadgeReceiveScore(client, { userId: USER, badge: activityBadge({ id: 'badge-b' }), origin: NATURAL, occurrenceActivityId: 101 })
     await awardBadgeReceiveScore(client, { userId: OTHER_USER, badge: activityBadge(), origin: NATURAL, occurrenceActivityId: 101 })
 
-    const ids = rpcArgsOf(rpc).map((a) => a.p_source_id)
+    const ids = rpcArgsOf(rpc).map(sourceIdOf)
     expect(ids[0]).toBe(ids[1])
     expect(new Set(ids).size).toBe(4)
   })
@@ -413,7 +421,7 @@ describe('awardBadgeReceiveScore — 반복형 회차(occurrenceActivityId)', ()
     const outcome = await awardBadgeReceiveScore(client, { userId: USER, badge: activityBadge(), origin: NATURAL, occurrenceActivityId: undefined })
 
     expect(outcome.status).toBe('scored')
-    expect(rpcArgsOf(rpc)[0].p_source_id).toBe(deterministicSourceId('badge_receive', USER, 'badge-a'))
+    expect(sourceIdOf(rpcArgsOf(rpc)[0])).toBe(deterministicSourceId('badge_receive', USER, 'badge-a'))
   })
 })
 
@@ -433,7 +441,7 @@ describe('awardBadgeReceiveOccurrenceScores — 여러 회차', () => {
 
     expect(result).toEqual({ scored: 3, failed: 0 })
     expect(rpc).toHaveBeenCalledTimes(3)
-    expect(new Set(rpcArgsOf(rpc).map((a) => a.p_source_id))).toEqual(new Set([101, 102, 103].map((id) => occurrenceKey('badge-a', id))))
+    expect(new Set(rpcArgsOf(rpc).map(sourceIdOf))).toEqual(new Set([101, 102, 103].map((id) => occurrenceKey('badge-a', id))))
   })
 
   it('같은 활동 id는(숫자·문자열이 섞여도) 한 번만 센다', async () => {
@@ -452,7 +460,7 @@ describe('awardBadgeReceiveOccurrenceScores — 여러 회차', () => {
     const result = await awardBadgeReceiveOccurrenceScores(client, input(ids))
 
     expect(result).toEqual({ scored: 23, failed: 0 })
-    expect(new Set(rpcArgsOf(rpc).map((a) => a.p_source_id)).size).toBe(23)
+    expect(new Set(rpcArgsOf(rpc).map(sourceIdOf)).size).toBe(23)
   })
 
   it('회차가 없으면 아무것도 부르지 않는다', async () => {
@@ -502,14 +510,14 @@ describe('awardBadgeReceiveOccurrenceScores — 여러 회차', () => {
   it('한 회차의 점수 실패는 다른 회차를 막지 않고, 실패마다 기록한다', async () => {
     const failing = occurrenceKey('badge-a', 102)
     const { client, rpc } = fakeClient({
-      rpcImpl: (args) => (args.p_source_id === failing ? { data: null, error: { message: 'boom' } } : { data: [OK_ROW], error: null }),
+      rpcImpl: (args) => (sourceIdOf(args) === failing ? { data: null, error: { message: 'boom' } } : { data: OK_GRANT, error: null }),
     })
 
     const result = await awardBadgeReceiveOccurrenceScores(client, input([101, 102, 103]))
 
     expect(result).toEqual({ scored: 2, failed: 1 })
     expect(rpc).toHaveBeenCalledTimes(3)
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER, expect.objectContaining({ kind: 'badge_receive', sourceId: failing }))
+    expect(logMock).toHaveBeenCalledWith('points', 'service_jam_failed', USER, expect.objectContaining({ kind: 'badge_earned', sourceId: failing }))
   })
 
   it('클라이언트가 던져도 던지지 않는다', async () => {

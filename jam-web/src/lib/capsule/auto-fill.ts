@@ -16,6 +16,13 @@
  *    보류 전환 결과(`blockedNow`)만 따른다. 알림을 실제로 보내는 일은 이 모듈의 일이 아니다(`sync-auto-fill.ts`, 티켓 20261028_1734 3회).
  *  - 중복 방지는 따로 없다: 자동 채움은 지갑 잔액만 쓰므로 같은 동기화를 다시 보내면 잔액이 0이라 아무 일도 하지 않는다(정산 쪽 중복은 `jam_apply`의 활동 단위 유일성이 막는다).
  *
+ * 재진입 방지 (티켓 20261028_1735 2회)
+ *  - 캡슐 보상으로 받은 아이템 배지가 컬렉션·미션을 완성하면 서비스 활동 잼이 지급되고(`awardServiceJam`), 그 지급도 곧바로 자동 채움을 부른다 — 자동 채움 안에서 같은 유저의 자동 채움이 또 불린다.
+ *  - 같은 서버 프로세스에서 한 유저의 자동 채움이 이미 돌고 있으면 안쪽 호출은 아무 일도 하지 않고 `stopped: 'busy'`(진행 분 없음)로 돌아온다.
+ *    바깥 루프가 라운드마다 지갑 잔액을 다시 읽어(`capsule_auto_fill`) 새로 들어온 잼을 이어서 채운다. DB 쪽은 캡슐 행 잠금이 직렬화한다.
+ *  - 건너뛴 안쪽 호출은 소식·«보지 않은 결과»를 만들 것이 없다(`opens`·`alerts`가 비어 있다). 잠금은 끝나면 반드시(`finally`) 풀린다.
+ *  - 이 잠금은 프로세스 안에서만 유효하다. 같은 프로세스의 다른 요청이 같은 유저를 동시에 돌려도 `busy`로 건너뛴다 — 지갑에 남은 잼은 다음 채움이 이어서 쓴다.
+ *
  * 던지는 쪽과 던지지 않는 쪽
  *  - `runCapsuleAutoFill`: **던지지 않는다.** 동기화가 부른다. 실패하면 `stopped: 'error'`와 `error`를 돌려주고 그때까지의 진행(`opens`·`holds`·`filledAmount` 등)은 그대로 담는다.
  *    이미 일어난 채움·열기·보류는 DB에서 되돌리지 않는다.
@@ -52,6 +59,8 @@ export type CapsuleAutoFillStop =
   | 'max_rounds'
   /** 예상 밖 실패(`error`) */
   | 'error'
+  /** 같은 서버 프로세스에서 이 유저의 자동 채움이 이미 돌고 있어 아무것도 하지 않았다(재진입 방지). 진행 분이 없다 */
+  | 'busy'
 
 /** 가득 찬 캡슐을 보류로 옮긴 기록 하나(`capsule_hold_reward` 응답 + 그 캡슐의 챕터) */
 export interface CapsuleAutoFillHold {
@@ -173,11 +182,40 @@ async function holdReward(supabase: SupabaseClient, userId: string, chapterNo: n
   return { kind: 'held', hold: { slot: r.slot, pendingCount: r.pendingCount, blockedNow: r.blockedNow, chapterNo } }
 }
 
-/** 던지지 않는다. 동기화가 정산 뒤에 부른다(파일 머리말). */
+/** 지금 자동 채움이 돌고 있는 유저. 같은 프로세스 안의 재진입 방지에 쓴다(파일 머리말) */
+const runningUsers = new Set<string>()
+
+/** 던지지 않는다. 동기화가 정산 뒤에 부른다(파일 머리말). 이 유저의 자동 채움이 이미 돌고 있으면 아무 일도 하지 않고 `stopped: 'busy'`로 돌아온다. */
 export async function runCapsuleAutoFill(
   supabase: SupabaseClient,
   userId: string,
   options: CapsuleAutoFillOptions = {}
+): Promise<CapsuleAutoFillResult> {
+  if (runningUsers.has(userId)) {
+    return {
+      filledAmount: 0,
+      opens: [],
+      holds: [],
+      forfeitedTotal: 0,
+      alerts: [],
+      blockedNow: false,
+      reachedChapters: [],
+      rounds: 0,
+      stopped: 'busy',
+    }
+  }
+  runningUsers.add(userId)
+  try {
+    return await runAutoFillRounds(supabase, userId, options)
+  } finally {
+    runningUsers.delete(userId)
+  }
+}
+
+async function runAutoFillRounds(
+  supabase: SupabaseClient,
+  userId: string,
+  options: CapsuleAutoFillOptions
 ): Promise<CapsuleAutoFillResult> {
   const result: CapsuleAutoFillResult = {
     filledAmount: 0,

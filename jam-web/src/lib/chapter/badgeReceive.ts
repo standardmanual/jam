@@ -18,7 +18,7 @@
  * (유저, 배지) id와 구분된다(JSON 배열 길이가 달라 우연히도 겹치지 않는다). 회차 여러 건은 `awardBadgeReceiveOccurrenceScores`가 한 번에 센다.
  * 제외 규칙(출처·유형·숨김·제외 조건 키·이용 정지)은 회차에도 그대로 적용된다.
  *
- * **절대 던지지 않는다.** 점수 쪽이 어떻게 되든 배지 발급과 응답은 그대로다. 점수 호출 실패는 `awardChapterScore`가 기록하고,
+ * **절대 던지지 않는다.** 점수 쪽이 어떻게 되든 배지 발급과 응답은 그대로다. 점수 호출 실패는 `awardServiceJam`이 기록하고,
  * 이 함수가 하는 이용 정지 확인이 실패하면 «정지 아님»으로 보지 않고(정지 중인 유저가 조회 실패 틈에 점수를 얻으면 안 된다) 점수를 세지 않은 채
  * 같은 방식으로 기록한다(같은 원천 id로 다시 보낼 수 있다).
  *
@@ -26,9 +26,9 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logEngineDecision } from '@/lib/engine-log'
+import { awardServiceJam, type AwardServiceJamResult } from '@/lib/jam/serviceActivity'
 import { getActiveSuspension } from '@/lib/suspension/suspension'
 import type { BadgeType } from '@/types/database'
-import { awardChapterScore, type AwardChapterScoreResult } from './score'
 import { deterministicSourceId } from './source-id'
 
 /** 점수에 들어가는 배지 유형. 아이템 배지는 뺀다 */
@@ -77,7 +77,7 @@ export interface AwardBadgeReceiveScoreInput {
 export type BadgeReceiveSkipReason = 'origin' | 'badge_type' | 'hidden' | 'excluded_condition' | 'suspended'
 
 export type BadgeReceiveScoreOutcome =
-  | { status: 'scored'; score: Extract<AwardChapterScoreResult, { ok: true }> }
+  | { status: 'scored'; score: Extract<AwardServiceJamResult, { ok: true }> }
   | { status: 'skipped'; reason: BadgeReceiveSkipReason }
   | { status: 'failed' }
 
@@ -150,7 +150,8 @@ export async function awardBadgeReceiveScore(supabase: SupabaseClient, input: Aw
     }
     if (suspended) return { status: 'skipped', reason: 'suspended' }
 
-    const score = await awardChapterScore(supabase, { userId, kind: 'badge_receive', sourceId })
+    // 점수 대신 서비스 활동 잼 `badge_earned`를 준다(티켓 20261028_1735 2회). 원천 id는 그대로라 이벤트 키는 `badge_earned:<원천 id>`다
+    const score = await awardServiceJam(supabase, { userId, kind: 'badge_earned', sourceId })
     return score.ok ? { status: 'scored', score } : { status: 'failed' }
   } catch (e) {
     // 위 호출은 스스로 던지지 않지만 이 함수의 약속이 «절대 던지지 않음»이다 — 기록하다 다시 던지지 않도록 한 번 더 감싼다

@@ -17,6 +17,9 @@
  *    화면에 내려주는 응답과 «봤어요» 처리(`seen_at`)는 이 모듈의 일이 아니다(U8·U9).
  *  - 기록 실패는 열기를 되돌리지 않는다(이미 확정됐다). 로그만 남기고 `unseenRecorded: false`로 알린다.
  *
+ * 호출 단위(티켓 20261028_1735 2회): 동기화뿐 아니라 서비스 활동 잼 지급 직후(`awardServiceJam`)에도 같은 단계를 부른다. 같은 유저의 자동 채움이 이미 돌고 있어 건너뛴 호출(`stopped: 'busy'`)은
+ *    열린 캡슐·알림 단계가 없으므로 기록도 소식도 만들지 않고 `opened`·`chapterRose`도 거짓이다.
+ *
  * 서버 전용이다(service_role 클라이언트로 쓴다).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
