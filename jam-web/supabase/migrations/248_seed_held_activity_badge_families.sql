@@ -24,7 +24,7 @@
 --   ② point_reward: 등급형 Common 10·Rare 20·Epic 50, 레벨형은 레벨마다 10, 단일(Common)은 10.
 --   ③ condition_json: 단계 값 키 하나(+ 보조 키). 1-4 {active_week_streak:N, active_week_min_days:3}, 2-2 {return_streak_weeks:N}, 3-4 {full_week_count:N}, 3-5 {full_season_year_count:N},
 --      5-1 {new_checkin_badge_count:N}(3·10·25·50·100), 5-2 {distinct_activity_type_count:N}, 5-4 {new_checkin_badge_count:1}, 5-5 {checkin_season_year_count:N},
---      7-3 {jam_week_count:N, jam_week_min_earned:200}, 7-4 {jam_week_streak:N, jam_week_min_earned:200}, 8-4 {dropped_item_picked_up_count:N}, 8-5 {pickup_item_count:N}(둘 다 1·5·30·50·100).
+--      7-3 {jam_week_count:N, jam_week_min_earned:230}, 7-4 {jam_week_streak:N, jam_week_min_earned:230}, 8-4 {dropped_item_picked_up_count:N}, 8-5 {pickup_item_count:N}(둘 다 1·5·30·50·100).
 --      3-2는 종목마다 계열 하나({activity_type:<종목>, time_range:{start:18:00,end:22:00}, total_count:N}, 값은 원고 4절 종목별 보정: 걷기·러닝·자전거 1·5·20·50, 트레일러닝 1·4·16·40, 등산 1·3·12·30).
 --      판정: 3-2는 메인 엔진(time_range + total_count, 시간대 안에서 활동한 «날»의 수로 센다), 나머지 12계열은 엔진 밖 파이프라인(jamActionBadges.ts)이 한다. 메인 엔진은 새 키만 든 조건을 항상 fail 처리한다.
 --   ④ activity_types·admin_category·family_key: 3-2는 activity_types=[종목]·admin_category NULL·family_key `<종목>:J3-2`.
@@ -129,12 +129,12 @@
 --     ('all:J5-5/common', '{"checkin_season_year_count":1}'::jsonb),
 --     ('all:J5-5/rare', '{"checkin_season_year_count":3}'::jsonb),
 --     ('all:J5-5/epic', '{"checkin_season_year_count":10}'::jsonb),
---     ('jam:J7-3/common', '{"jam_week_count":1,"jam_week_min_earned":200}'::jsonb),
---     ('jam:J7-3/rare', '{"jam_week_count":5,"jam_week_min_earned":200}'::jsonb),
---     ('jam:J7-3/epic', '{"jam_week_count":20,"jam_week_min_earned":200}'::jsonb),
---     ('jam:J7-4/common', '{"jam_week_streak":2,"jam_week_min_earned":200}'::jsonb),
---     ('jam:J7-4/rare', '{"jam_week_streak":3,"jam_week_min_earned":200}'::jsonb),
---     ('jam:J7-4/epic', '{"jam_week_streak":4,"jam_week_min_earned":200}'::jsonb),
+--     ('jam:J7-3/common', '{"jam_week_count":1,"jam_week_min_earned":230}'::jsonb),
+--     ('jam:J7-3/rare', '{"jam_week_count":5,"jam_week_min_earned":230}'::jsonb),
+--     ('jam:J7-3/epic', '{"jam_week_count":20,"jam_week_min_earned":230}'::jsonb),
+--     ('jam:J7-4/common', '{"jam_week_streak":2,"jam_week_min_earned":230}'::jsonb),
+--     ('jam:J7-4/rare', '{"jam_week_streak":3,"jam_week_min_earned":230}'::jsonb),
+--     ('jam:J7-4/epic', '{"jam_week_streak":4,"jam_week_min_earned":230}'::jsonb),
 --     ('jam:J8-4/Lv1', '{"dropped_item_picked_up_count":1}'::jsonb),
 --     ('jam:J8-4/Lv2', '{"dropped_item_picked_up_count":5}'::jsonb),
 --     ('jam:J8-4/Lv3', '{"dropped_item_picked_up_count":30}'::jsonb),
@@ -218,12 +218,12 @@ WITH new_rows (name, description, type, rarity, level, family_key, sort_order, c
     ('하늘빛이 다른 자리', '활판 골목 담벼락에 하늘 사진이 나란히 걸렸습니다. 한 줄로 놓고 보니 하늘빛이 저마다 다릅니다.', 'activity', 'common', NULL, 'all:J5-5', 505, '{"checkin_season_year_count":1}'::jsonb, ARRAY[]::text[], 10, 'explore', NULL, 'walking:A8', 1, 3),
     ('하늘빛이 다른 자리', '담벼락 앞에서 사람들이 사진 속 하늘을 들여다봅니다. 구름이 한쪽으로 쏠린 사진도 빼지 않았습니다.', 'activity', 'rare', NULL, 'all:J5-5', 505, '{"checkin_season_year_count":3}'::jsonb, ARRAY[]::text[], 20, 'explore', NULL, 'walking:A8', 2, 3),
     ('하늘빛이 다른 자리', '하늘빛은 찍은 대로 담벼락에 걸려 있습니다.', 'activity', 'epic', NULL, 'all:J5-5', 505, '{"checkin_season_year_count":10}'::jsonb, ARRAY[]::text[], 50, 'explore', NULL, 'walking:A8', 3, 3),
-    ('늘어 가는 서약서', '입양 칸의 물건에는 서약서가 따라옵니다. 교환회에서 주인을 못 찾은 물건에 서약서가 한 장 붙었습니다.', 'activity', 'common', NULL, 'jam:J7-3', 703, '{"jam_week_count":1,"jam_week_min_earned":200}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:P2', 1, 3),
-    ('늘어 가는 서약서', '서약서는 물건을 따라 건너갑니다. 교환회에서 입양 칸을 거친 물건은 서약서를 3장 단 채 새 주인에게 닿습니다.', 'activity', 'rare', NULL, 'jam:J7-3', 703, '{"jam_week_count":5,"jam_week_min_earned":200}'::jsonb, ARRAY[]::text[], 20, 'milestone', 'jam', 'walking:P2', 2, 3),
-    ('늘어 가는 서약서', '50년 된 가게의 입양 칸에는 서약서가 겹겹이 붙어 있습니다.', 'activity', 'epic', NULL, 'jam:J7-3', 703, '{"jam_week_count":20,"jam_week_min_earned":200}'::jsonb, ARRAY[]::text[], 50, 'milestone', 'jam', 'walking:P2', 3, 3),
-    ('이어 붙인 쪽지', '순자 할매의 쪽지가 오더북 뒤에 붙었습니다. 냄비 뚜껑에서 떼어 온 쪽지입니다.', 'activity', 'common', NULL, 'jam:J7-4', 704, '{"jam_week_streak":2,"jam_week_min_earned":200}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:S2', 1, 3),
-    ('이어 붙인 쪽지', '쪽지가 겹겹이 붙어 오더북 뒤가 두툼합니다. 소리는 한 장도 버리지 않습니다.', 'activity', 'rare', NULL, 'jam:J7-4', 704, '{"jam_week_streak":3,"jam_week_min_earned":200}'::jsonb, ARRAY[]::text[], 20, 'milestone', 'jam', 'walking:S2', 2, 3),
-    ('이어 붙인 쪽지', '오더북 뒤는 순자 할매의 쪽지로 빈틈이 없습니다.', 'activity', 'epic', NULL, 'jam:J7-4', 704, '{"jam_week_streak":4,"jam_week_min_earned":200}'::jsonb, ARRAY[]::text[], 50, 'milestone', 'jam', 'walking:S2', 3, 3),
+    ('늘어 가는 서약서', '입양 칸의 물건에는 서약서가 따라옵니다. 교환회에서 주인을 못 찾은 물건에 서약서가 한 장 붙었습니다.', 'activity', 'common', NULL, 'jam:J7-3', 703, '{"jam_week_count":1,"jam_week_min_earned":230}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:P2', 1, 3),
+    ('늘어 가는 서약서', '서약서는 물건을 따라 건너갑니다. 교환회에서 입양 칸을 거친 물건은 서약서를 3장 단 채 새 주인에게 닿습니다.', 'activity', 'rare', NULL, 'jam:J7-3', 703, '{"jam_week_count":5,"jam_week_min_earned":230}'::jsonb, ARRAY[]::text[], 20, 'milestone', 'jam', 'walking:P2', 2, 3),
+    ('늘어 가는 서약서', '50년 된 가게의 입양 칸에는 서약서가 겹겹이 붙어 있습니다.', 'activity', 'epic', NULL, 'jam:J7-3', 703, '{"jam_week_count":20,"jam_week_min_earned":230}'::jsonb, ARRAY[]::text[], 50, 'milestone', 'jam', 'walking:P2', 3, 3),
+    ('이어 붙인 쪽지', '순자 할매의 쪽지가 오더북 뒤에 붙었습니다. 냄비 뚜껑에서 떼어 온 쪽지입니다.', 'activity', 'common', NULL, 'jam:J7-4', 704, '{"jam_week_streak":2,"jam_week_min_earned":230}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:S2', 1, 3),
+    ('이어 붙인 쪽지', '쪽지가 겹겹이 붙어 오더북 뒤가 두툼합니다. 소리는 한 장도 버리지 않습니다.', 'activity', 'rare', NULL, 'jam:J7-4', 704, '{"jam_week_streak":3,"jam_week_min_earned":230}'::jsonb, ARRAY[]::text[], 20, 'milestone', 'jam', 'walking:S2', 2, 3),
+    ('이어 붙인 쪽지', '오더북 뒤는 순자 할매의 쪽지로 빈틈이 없습니다.', 'activity', 'epic', NULL, 'jam:J7-4', 704, '{"jam_week_streak":4,"jam_week_min_earned":230}'::jsonb, ARRAY[]::text[], 50, 'milestone', 'jam', 'walking:S2', 3, 3),
     ('바구니 속 한 짝', '분실물 바구니에 양말 한 짝을 두고 갔습니다. 돌아와 보니 누군가 짝을 맞춰 가져간 뒤였습니다.', 'activity', NULL, 1, 'jam:J8-4', 804, '{"dropped_item_picked_up_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 1, 5),
     ('바구니 속 한 짝', '양말 옆에 단추 하나도 두고 갔습니다.', 'activity', NULL, 2, 'jam:J8-4', 804, '{"dropped_item_picked_up_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 2, 5),
     ('바구니 속 한 짝', '양말이 빠진 바구니에 단추와 영수증이 남았습니다.', 'activity', NULL, 3, 'jam:J8-4', 804, '{"dropped_item_picked_up_count":30}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 3, 5),
