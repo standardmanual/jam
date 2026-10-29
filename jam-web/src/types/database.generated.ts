@@ -4914,6 +4914,7 @@ export type Database = {
           p_amount: number
           p_reason: string
           p_source_badge_id?: string
+          p_source_inventory_item_id?: string
           p_source_item_book_id?: string
           p_source_mission_id?: string
           p_user_id: string
@@ -4926,6 +4927,7 @@ export type Database = {
           id: string
           reason: string
           source_badge_id: string | null
+          source_inventory_item_id: string | null
           source_item_book_id: string | null
           source_mission_id: string | null
           user_id: string
@@ -5144,6 +5146,10 @@ export type Database = {
         Returns: Json
       }
       locked_item_open: {
+        Args: { p_item_id: string; p_user_id: string }
+        Returns: Json
+      }
+      locked_item_open_points: {
         Args: { p_item_id: string; p_user_id: string }
         Returns: Json
       }
