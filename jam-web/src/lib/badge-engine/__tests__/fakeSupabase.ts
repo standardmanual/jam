@@ -2,7 +2,7 @@
  * 메모리 표를 읽는 Supabase 클라이언트 모조 — 기간 필터(`gte`/`lte`)까지 실제로 적용한다 (티켓 20261019_1445)
  *
  * 지표 읽기 함수와 미션 판정 시험이 «어떤 행을 세는가»를 고정하려면 필터를 무시하는 모조로는 부족하다.
- * 이 모조는 `eq`·`in`·`is(col,null)`·`not(col,'is',null)`·`gte`·`lte`를 행에 적용하고, `select(..., {head:true})`는 개수만 돌려준다.
+ * 이 모조는 `eq`·`in`·`is(col,null)`·`not(col,'is',null)`·`gt`·`gte`·`lte`를 행에 적용하고, `select(..., {head:true})`는 개수만 돌려준다.
  * `maybeSingle()`·`single()`을 부르면 첫 행(없으면 null)만 돌려준다.
  * 시각 비교는 문자열이 아니라 `Date.parse`다(`...Z`와 `...+00:00` 표기가 달라도 같은 시각).
  * 시험 파일이 아니라 도우미라 `.test.` 이름을 쓰지 않는다.
@@ -62,6 +62,7 @@ export function makeFakeDb(tables: Record<string, FakeRow[]> = {}, options: Fake
     builder.single = builder.maybeSingle
     builder.not = (col: string, op: string, value: unknown) =>
       op === 'is' && value === null ? add((row) => !isNil(row[col])) : builder
+    builder.gt = (col: string, value: number) => add((row) => Number(row[col]) > value)
     builder.gte = (col: string, value: string) =>
       add((row) => !Number.isNaN(toMs(row[col])) && toMs(row[col]) >= Date.parse(value))
     builder.lte = (col: string, value: string) =>
