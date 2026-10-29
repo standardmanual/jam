@@ -8,6 +8,7 @@
  * - 보류 2개에서는 채움이 소멸(`forfeited`)시키고 `applied 0`으로 돌아와 `wallet_empty`로 멈춘다. 가득 찬 호출이 준 알림 단계는 무시한다.
  * - 지갑이 비어 가득 못 채우면 `wallet_empty`. 열 수 없으면(`CapsuleError`) 오류가 아니라 `blocked`. 이용 정지는 `suspended`. 예상 밖 실패는 던지지 않는 쪽은 `error`로 돌려주고
  *   그때까지의 진행분을 보존하며, 던지는 쪽은 던진다. 같은 동기화를 다시 보내면(지갑 0) 아무것도 하지 않는다. 50라운드 상한에서 멈춘다.
+ * - 재진입 방지(티켓 20261028_1735 2회): 같은 프로세스에서 한 유저의 자동 채움이 돌고 있으면 안쪽 호출은 아무 일도 하지 않고 `busy`(진행 분 없음)로 돌아온다. 끝나면(예외·실패 포함) 풀리고, 다른 유저는 막지 않는다.
  * 공용 DB는 호출하지 않는다 — 가짜 RPC와 가짜 열기만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/auto-fill.test.ts
@@ -447,5 +448,104 @@ describe('runCapsuleAutoFill — 챕터 오름 처리 위치 (이중 호출 없�
     const result = await runCapsuleAutoFill(client, USER_ID)
 
     expect(result.opens[0]).toMatchObject({ chapterNo: null, reachedChapters: [], chapterCount: 3 })
+  })
+})
+
+describe('runCapsuleAutoFill — 재진입 방지 (티켓 20261028_1735 2회)', () => {
+  const OTHER_USER_ID = '22222222-2222-4222-8222-222222222222'
+  const BUSY_RESULT = {
+    filledAmount: 0,
+    opens: [],
+    holds: [],
+    forfeitedTotal: 0,
+    alerts: [],
+    blockedNow: false,
+    reachedChapters: [],
+    rounds: 0,
+    stopped: 'busy',
+  }
+
+  it('바깥이 도는 동안 같은 유저의 안쪽 호출은 아무 일도 하지 않고 busy로 건너뛴다 (RPC·열기·오름 처리 없음, 소식 재료도 없음)', async () => {
+    const outer = fakeClient([
+      { ok: true, applied: 145, full: true },
+      { ok: true, applied: 0, full: false },
+    ])
+    const inner = fakeClient([{ ok: true, applied: 50, full: false }])
+    let innerResult: Awaited<ReturnType<typeof runCapsuleAutoFill>> | undefined
+    // 캡슐 보상이 컬렉션을 완성해 서비스 활동 잼이 지급되고, 그 지급이 자동 채움을 다시 부르는 순간을 흉내낸다
+    openMock.mockImplementationOnce(async () => {
+      innerResult = await runCapsuleAutoFill(inner.client, USER_ID)
+      return opened(1)
+    })
+
+    const result = await runCapsuleAutoFill(outer.client, USER_ID)
+
+    expect(innerResult).toEqual(BUSY_RESULT)
+    expect(inner.rpc).not.toHaveBeenCalled()
+    // 바깥은 영향을 받지 않고 라운드마다 지갑을 다시 읽어 이어서 채운다
+    expect(result.stopped).toBe('wallet_empty')
+    expect(result.opens.map((o) => o.openId)).toEqual(['open-1'])
+    expect(outer.rpc).toHaveBeenCalledTimes(2)
+    expect(riseMock).not.toHaveBeenCalled()
+  })
+
+  it('끝나면 풀려서 다시 돌 수 있다', async () => {
+    const first = fakeClient([{ ok: true, applied: 10, full: false }])
+    const second = fakeClient([{ ok: true, applied: 20, full: false }])
+
+    expect((await runCapsuleAutoFill(first.client, USER_ID)).stopped).toBe('wallet_empty')
+    const again = await runCapsuleAutoFill(second.client, USER_ID)
+
+    expect(again.stopped).toBe('wallet_empty')
+    expect(again.filledAmount).toBe(20)
+    expect(second.rpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('예상 밖 실패(error)로 끝나도 풀린다', async () => {
+    const failing = fakeClient([{ rpcError: '채움 장애' }])
+    const healthy = fakeClient([{ ok: true, applied: 5, full: false }])
+
+    expect((await runCapsuleAutoFill(failing.client, USER_ID)).stopped).toBe('error')
+    expect((await runCapsuleAutoFill(healthy.client, USER_ID)).stopped).toBe('wallet_empty')
+  })
+
+  it('멈춤(blocked·suspended)으로 일찍 끝나도 풀린다', async () => {
+    const blocked = fakeClient([{ ok: true, applied: 145, full: true }])
+    openMock.mockRejectedValueOnce(new CapsuleError('no_tribe'))
+    expect((await runCapsuleAutoFill(blocked.client, USER_ID)).stopped).toBe('blocked')
+
+    const suspended = fakeClient([{ ok: false, error: 'user_suspended' }])
+    expect((await runCapsuleAutoFill(suspended.client, USER_ID)).stopped).toBe('suspended')
+
+    const healthy = fakeClient([{ ok: true, applied: 5, full: false }])
+    expect((await runCapsuleAutoFill(healthy.client, USER_ID)).stopped).toBe('wallet_empty')
+  })
+
+  it('다른 유저의 자동 채움은 막지 않는다', async () => {
+    const outer = fakeClient([{ ok: true, applied: 145, full: true }, { ok: true, applied: 0, full: false }])
+    const other = fakeClient([{ ok: true, applied: 30, full: false }])
+    let otherResult: Awaited<ReturnType<typeof runCapsuleAutoFill>> | undefined
+    openMock.mockImplementationOnce(async () => {
+      otherResult = await runCapsuleAutoFill(other.client, OTHER_USER_ID)
+      return opened(1)
+    })
+
+    await runCapsuleAutoFill(outer.client, USER_ID)
+
+    expect(otherResult?.stopped).toBe('wallet_empty')
+    expect(otherResult?.filledAmount).toBe(30)
+  })
+
+  it('던지는 쪽(OrThrow)도 안쪽 busy는 오류가 아니라 던지지 않는다', async () => {
+    const outer = fakeClient([{ ok: true, applied: 145, full: true }, { ok: true, applied: 0, full: false }])
+    let innerResult: Awaited<ReturnType<typeof runCapsuleAutoFillOrThrow>> | undefined
+    openMock.mockImplementationOnce(async () => {
+      innerResult = await runCapsuleAutoFillOrThrow(fakeClient([{ ok: true, applied: 1, full: false }]).client, USER_ID)
+      return opened(1)
+    })
+
+    await runCapsuleAutoFill(outer.client, USER_ID)
+
+    expect(innerResult?.stopped).toBe('busy')
   })
 })

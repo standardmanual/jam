@@ -263,6 +263,19 @@ describe('runSyncCapsuleAutoFill — 소식과 챕터 오름', () => {
   })
 })
 
+describe('runSyncCapsuleAutoFill — 재진입으로 건너뛴 호출 (busy, 티켓 20261028_1735 2회)', () => {
+  it('안쪽 호출이 건너뛰었다(busy)는 사실은 기록도 소식도 만들지 않고, 열림·오름도 없다', async () => {
+    autoFillMock.mockResolvedValue(fillResult([], { stopped: 'busy', rounds: 0 }))
+    const { client, insert } = fakeClient()
+
+    const result = await runSyncCapsuleAutoFill(client, USER_ID)
+
+    expect(insert).not.toHaveBeenCalled()
+    expect(createNotificationMock).not.toHaveBeenCalled()
+    expect(result).toMatchObject({ opened: false, chapterRose: false, unseenRecorded: true })
+  })
+})
+
 describe('동기화 연결 (소스 검색)', () => {
   const source = readFileSync(path.resolve(__dirname, '../../strava/sync.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
