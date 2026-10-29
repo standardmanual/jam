@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES } from '@/lib/ambient-drop/schedule'
+import { CAPSULE_CHAPTER_DEFAULT_ADVANCE, CAPSULE_CHAPTER_DEFAULT_FILL_V2 } from '@/lib/admin/balance/capsule'
 import { INVENTORY_LOW_FREE_SLOTS, METRIC_SPECS, REACH_HORIZONS } from '@/lib/admin/balanceDashboard/targets'
 import { POLICIES_DATA } from '../policiesData'
 
@@ -248,5 +249,47 @@ describe('컬렉션 4등급 완성 체계 항목 (티켓 20261028_1408)', () => 
     expect(policy?.currentSpec).toContain('모두 해제하면')
     expect(policy?.currentSpec).not.toContain('최저 등급')
     expect(policy?.userExperience).not.toContain('업그레이드')
+  })
+})
+
+describe('캡슐 자동 채움과 챕터 100% 횟수 항목 (티켓 20261028_1733 4회)', () => {
+  const find = (id: string) => POLICIES_DATA.find((p) => p.id === id)
+  const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+
+  it('챕터별 채울 양 카드는 자동 채움 값(fill_amount_v2) 기본값을 적고 밸런스 설정 캡슐 구역으로 이어진다', () => {
+    const card = find('ch5-costs-by-chapter')
+    expect(card?.type).toBe('admin_link')
+    expect(card?.dbTable).toBe('capsule_chapter_costs')
+    expect(card?.dbColumn).toBe('fill_amount_v2')
+    expect(card?.adminLink?.href).toBe('/admin/balance#capsule')
+    for (const [index, fill] of CAPSULE_CHAPTER_DEFAULT_FILL_V2.entries()) {
+      expect(card?.currentSpec, `챕터 ${index + 1}`).toContain(`${index + 1}(${fill}`)
+    }
+    expect(card?.currentSpec).toContain('퀘스트 전 첫 캡슐은 5잼')
+  })
+
+  it('100% 횟수 카드는 advance_count 기본값(챕터 1~9)을 적고 챕터 10은 횟수 없음이라고 적으며 캡슐 구역으로 이어진다', () => {
+    const card = find('ch12-advance-count')
+    expect(card?.type).toBe('admin_link')
+    expect(card?.dbTable).toBe('capsule_chapter_costs')
+    expect(card?.dbColumn).toBe('advance_count')
+    expect(card?.adminLink?.href).toBe('/admin/balance#capsule')
+    for (const [index, advance] of CAPSULE_CHAPTER_DEFAULT_ADVANCE.entries()) {
+      expect(card?.currentSpec, `챕터 ${index + 1}`).toContain(`${index + 1}(${advance}`)
+    }
+    expect(card?.currentSpec).toContain('챕터 10은 횟수 없음')
+  })
+
+  it('자동 채움·보지 않은 결과 카드의 코드 위치가 실재한다', () => {
+    for (const id of ['ch5-auto-fill', 'ch5-unseen-result']) {
+      const card = find(id)
+      expect(card?.ticketId, id).toBe('20261028_1733')
+      expect(existsSync(`${repoRoot}${card?.codeLocation}`), `${id}의 코드 위치가 실재해야 합니다`).toBe(true)
+    }
+  })
+
+  it('점수 카드 두 개는 모은 잼이 더는 점수를 쌓지 않는다고 적는다', () => {
+    expect(find('ch12-jam-weekly-cap')?.currentSpec).toContain('점수에 반영되지 않음')
+    expect(find('ch12-score-thresholds')?.currentSpec).toContain('모은 잼과 자동 채움 캡슐 열기는 점수를 쌓지 않고')
   })
 })

@@ -1,6 +1,6 @@
 /**
  * 캡슐 구역 연결 (티켓 20261022_1132 2회) — `capsule_policy` id=1 행(열한 칸)과 `capsule_chapter_costs` 챕터 1~10행. 가짜 표로 지키는 것:
- * - 칸 정의: 정책 열한 칸 + 챕터 열 칸(`chapter:1`~`chapter:10`). «확률 안내에 반영되는 칸»은 확률 안내가 읽는 칸 목록(`CAPSULE_COLUMNS`)과 정확히 같고(퀘스트 전 두 칸과 챕터 칸은 아니다),
+ * - 칸 정의: 정책 열한 칸 + 챕터별 세 가지(자동 채움 채울 양 `fill_v2:1`~`fill_v2:10`, 100% 횟수 `advance:1`~`advance:9`(챕터 10은 NULL이라 칸이 없다), 옛 채울 양 `chapter:1`~`chapter:10`). «확률 안내에 반영되는 칸»은 확률 안내가 읽는 칸 목록(`CAPSULE_COLUMNS`)과 정확히 같고(퀘스트 전 두 칸과 챕터 칸은 아니다),
  *   기본값은 `DEFAULT_CAPSULE_POLICY`와 마이그레이션 232 시드(챕터별 채울 양)와 같다. 0개는 허용하고 챕터 채울 양은 1 이상이다
  * - 읽기: 두 표를 가공 없이 읽어 한 값 묶음으로 만든다. 구역 수정 시각은 정책 행과 챕터 행들 가운데 가장 늦은 것이다. 챕터 행이 비면 던진다. 열한 번째 챕터 행은 읽지도 않는다
  * - 쓰기(행 단위): 가장 늦은 수정 시각이 화면이 본 값과 같을 때만 시작하고, 행마다 방금 읽은 수정 시각이 같을 때만 갱신한다. 정책만·챕터만·둘 다 모두 되고,
@@ -18,17 +18,28 @@ import { DEFAULT_CAPSULE_POLICY, VALIDATORS } from '@/lib/capsule/policy'
 import { CAPSULE_COLUMNS } from '@/lib/probability/disclosure'
 import { activeZeroWarnings, checkFieldValue, draftFromValues, groupSums } from '../fields'
 import {
+  CAPSULE_ADVANCE_CHAPTER_COUNT,
+  CAPSULE_ADVANCE_GROUP,
+  CAPSULE_ADVANCE_KEYS,
   CAPSULE_BINDING,
   CAPSULE_CHAPTER_COUNT,
+  CAPSULE_CHAPTER_DEFAULT_ADVANCE,
   CAPSULE_CHAPTER_DEFAULT_FILL,
+  CAPSULE_CHAPTER_DEFAULT_FILL_V2,
+  CAPSULE_CHAPTER_GROUP,
   CAPSULE_CHAPTER_KEYS,
   CAPSULE_CHAPTER_SELECT,
   CAPSULE_FIELDS,
+  CAPSULE_FILL_V2_GROUP,
+  CAPSULE_FILL_V2_KEYS,
   CAPSULE_NO_ITEM_WARNING,
   CAPSULE_POLICY_KEYS,
   CAPSULE_POLICY_SELECT,
   CAPSULE_RARITY_KEYS,
+  advanceKey,
   chapterKey,
+  fillV2Key,
+  parseChapterColumnKey,
   parseChapterKey,
 } from '../capsule'
 import { BALANCE_HISTORY_FAILED_MESSAGE, BALANCE_INVALID_MESSAGE, saveBalanceSection } from '../save'
@@ -73,19 +84,34 @@ describe('챕터 칸 이름', () => {
     }
     expect(CAPSULE_CHAPTER_KEYS).toEqual(Array.from({ length: 10 }, (_, i) => `chapter:${i + 1}`))
   })
+
+  it('자동 채움 채울 양은 fill_v2:N(1~10), 100% 횟수는 advance:N(1~9)이고 옛 chapter:N과 겹치지 않는다', () => {
+    expect(fillV2Key(3)).toBe('fill_v2:3')
+    expect(advanceKey(3)).toBe('advance:3')
+    expect(CAPSULE_FILL_V2_KEYS).toEqual(Array.from({ length: 10 }, (_, i) => `fill_v2:${i + 1}`))
+    expect(CAPSULE_ADVANCE_KEYS).toEqual(Array.from({ length: 9 }, (_, i) => `advance:${i + 1}`))
+    expect(CAPSULE_ADVANCE_CHAPTER_COUNT).toBe(9)
+    expect(parseChapterColumnKey('chapter:3')).toEqual({ chapterNo: 3, column: 'fill_amount' })
+    expect(parseChapterColumnKey('fill_v2:10')).toEqual({ chapterNo: 10, column: 'fill_amount_v2' })
+    expect(parseChapterColumnKey('advance:9')).toEqual({ chapterNo: 9, column: 'advance_count' })
+    // 챕터 10은 advance_count가 NULL이 정상이라 칸이 없다
+    for (const key of ['advance:10', 'advance:0', 'advance:11', 'fill_v2:0', 'fill_v2:11', 'fill_v2:01', 'advance:', 'fillv2:1', 'chapter:11']) {
+      expect(parseChapterColumnKey(key), key).toBeNull()
+    }
+  })
 })
 
 describe('캡슐 칸 정의', () => {
-  it('정책 열한 칸 다음에 챕터 열 칸이 오고 칸 이름은 겹치지 않는다', () => {
-    expect(CAPSULE_FIELDS.map((def) => def.key)).toEqual([...CAPSULE_POLICY_KEYS, ...CAPSULE_CHAPTER_KEYS])
-    expect(CAPSULE_FIELDS).toHaveLength(11 + CAPSULE_CHAPTER_COUNT)
+  it('정책 열한 칸 다음에 자동 채움 채울 양 열 칸, 100% 횟수 아홉 칸, 옛 채울 양 열 칸이 오고 칸 이름은 겹치지 않는다', () => {
+    expect(CAPSULE_FIELDS.map((def) => def.key)).toEqual([...CAPSULE_POLICY_KEYS, ...CAPSULE_FILL_V2_KEYS, ...CAPSULE_ADVANCE_KEYS, ...CAPSULE_CHAPTER_KEYS])
+    expect(CAPSULE_FIELDS).toHaveLength(11 + CAPSULE_CHAPTER_COUNT + CAPSULE_ADVANCE_CHAPTER_COUNT + CAPSULE_CHAPTER_COUNT)
     expect(new Set(CAPSULE_FIELDS.map((def) => def.key)).size).toBe(CAPSULE_FIELDS.length)
   })
 
   it('«확률 안내에 반영되는 칸»이 확률 안내가 읽는 capsule_policy 칸 목록과 정확히 같다', () => {
     const affecting = CAPSULE_FIELDS.filter((def) => def.affectsDisclosure).map((def) => def.key)
     expect(affecting.sort()).toEqual([...CAPSULE_COLUMNS].sort())
-    for (const key of ['pre_quest_fill_amount', 'pre_quest_unlock_required', ...CAPSULE_CHAPTER_KEYS]) {
+    for (const key of ['pre_quest_fill_amount', 'pre_quest_unlock_required', ...CAPSULE_CHAPTER_KEYS, ...CAPSULE_FILL_V2_KEYS, ...CAPSULE_ADVANCE_KEYS]) {
       expect(byKey[key].affectsDisclosure, key).toBe(false)
     }
   })
@@ -103,18 +129,59 @@ describe('캡슐 칸 정의', () => {
     CAPSULE_CHAPTER_KEYS.forEach((key, index) => expect(byKey[key].defaultValue, key).toBe(seed[index][1]))
   })
 
+  it('자동 채움 채울 양과 100% 횟수의 기본값이 마이그레이션 300 시드와 같다(챕터 10의 횟수는 NULL)', () => {
+    const sql = readFileSync(join(process.cwd(), 'supabase/migrations/300_capsule_auto_fill_expand.sql'), 'utf8')
+    const block = sql.slice(sql.indexOf('FROM (VALUES'), sql.indexOf(') AS v(chapter_no, advance_count, fill_amount_v2)'))
+    const seed = [...block.matchAll(/\((\d+),\s*(\d+|NULL::INTEGER),\s*(\d+)\)/g)].map((match) => ({
+      chapterNo: Number(match[1]),
+      advance: match[2].startsWith('NULL') ? null : Number(match[2]),
+      fillV2: Number(match[3]),
+    }))
+    expect(seed).toHaveLength(CAPSULE_CHAPTER_COUNT)
+    expect(CAPSULE_CHAPTER_DEFAULT_FILL_V2).toEqual(seed.map((row) => row.fillV2))
+    expect(seed[CAPSULE_CHAPTER_COUNT - 1].advance).toBeNull()
+    expect(CAPSULE_CHAPTER_DEFAULT_ADVANCE).toEqual(seed.slice(0, CAPSULE_ADVANCE_CHAPTER_COUNT).map((row) => row.advance))
+    CAPSULE_FILL_V2_KEYS.forEach((key, index) => expect(byKey[key].defaultValue, key).toBe(seed[index].fillV2))
+    CAPSULE_ADVANCE_KEYS.forEach((key, index) => expect(byKey[key].defaultValue, key).toBe(seed[index].advance))
+  })
+
   it('읽기에 넘기는 칸 목록이 정책 칸과 updated_at뿐이다', () => {
     expect(CAPSULE_POLICY_SELECT.split(',').map((column) => column.trim())).toEqual([...CAPSULE_POLICY_KEYS, 'updated_at'])
-    expect(CAPSULE_CHAPTER_SELECT).toBe('chapter_no, fill_amount, updated_at')
+    expect(CAPSULE_CHAPTER_SELECT).toBe('chapter_no, fill_amount, fill_amount_v2, advance_count, updated_at')
   })
 
   it('등급 확률 네 칸만 합 100 묶음이다', () => {
     expect(CAPSULE_FIELDS.filter((def) => def.sumTo === 100).map((def) => def.key)).toEqual([...CAPSULE_RARITY_KEYS])
   })
 
-  it('챕터 칸은 «챕터별 채울 양» 묶음이고 1 이상 정수(잼)다', () => {
+  it('자동 채움 채울 양 칸은 «동기화 자동 채움» 묶음이고, 100% 횟수 칸은 «100% 횟수» 묶음이며 모두 1 이상 정수다', () => {
+    for (const key of CAPSULE_FILL_V2_KEYS) {
+      expect(byKey[key].group, key).toBe(CAPSULE_FILL_V2_GROUP)
+      expect(byKey[key].unit, key).toBe('잼')
+    }
+    for (const key of CAPSULE_ADVANCE_KEYS) {
+      expect(byKey[key].group, key).toBe(CAPSULE_ADVANCE_GROUP)
+      expect(byKey[key].unit, key).toBe('번')
+      expect(byKey[key].hint, key).toContain('100%에 이만큼 닿으면 다음 챕터로 올라요.')
+    }
+    expect(byKey['advance:9'].hint).toContain('챕터 10은 마지막이라 횟수가 없어요.')
+    expect(byKey['advance:10']).toBeUndefined()
+    for (const key of [...CAPSULE_FILL_V2_KEYS, ...CAPSULE_ADVANCE_KEYS]) {
+      expect(checkFieldValue(byKey[key], 0), key).not.toBeNull()
+      expect(checkFieldValue(byKey[key], 1), key).toBeNull()
+      expect(checkFieldValue(byKey[key], 365), key).toBeNull()
+      expect(checkFieldValue(byKey[key], 6.5), key).not.toBeNull()
+      expect(CAPSULE_BINDING.validators?.[key]?.(0), key).toBe(false)
+      expect(CAPSULE_BINDING.validators?.[key]?.(1.5), key).toBe(false)
+      expect(CAPSULE_BINDING.validators?.[key]?.(6), key).toBe(true)
+    }
+    expect(byKey['fill_v2:1'].label).toBe('챕터 1')
+    expect(byKey['advance:1'].label).toBe('챕터 1')
+  })
+
+  it('챕터 칸은 «옛 수동 채우기» 묶음이고 1 이상 정수(잼)다', () => {
     for (const key of CAPSULE_CHAPTER_KEYS) {
-      expect(byKey[key].group, key).toBe('챕터별 채울 양')
+      expect(byKey[key].group, key).toBe(CAPSULE_CHAPTER_GROUP)
       expect(byKey[key].unit, key).toBe('잼')
       expect(checkFieldValue(byKey[key], 0), key).not.toBeNull()
       expect(checkFieldValue(byKey[key], 1), key).toBeNull()
@@ -171,6 +238,8 @@ describe('캡슐 «모두 0» 경고와 합계', () => {
     draftFromValues(CAPSULE_FIELDS, {
       ...Object.fromEntries(CAPSULE_POLICY_KEYS.map((key) => [key, DEFAULT_CAPSULE_POLICY[key]])),
       ...Object.fromEntries(CAPSULE_CHAPTER_KEYS.map((key, index) => [key, CAPSULE_CHAPTER_DEFAULT_FILL[index]])),
+      ...Object.fromEntries(CAPSULE_FILL_V2_KEYS.map((key, index) => [key, CAPSULE_CHAPTER_DEFAULT_FILL_V2[index]])),
+      ...Object.fromEntries(CAPSULE_ADVANCE_KEYS.map((key, index) => [key, CAPSULE_CHAPTER_DEFAULT_ADVANCE[index]])),
       ...overrides,
     })
 
@@ -190,7 +259,7 @@ describe('캡슐 «모두 0» 경고와 합계', () => {
 })
 
 describe('CAPSULE_BINDING.read', () => {
-  it('정책 열한 칸(NUMERIC 문자열 포함)과 챕터 열 칸을 한 값 묶음으로 읽는다', async () => {
+  it('정책 열한 칸(NUMERIC 문자열 포함)과 챕터별 세 가지 값을 한 값 묶음으로 읽는다', async () => {
     const snapshot = await CAPSULE_BINDING.read(db.client)
     expect(snapshot.values).toEqual({
       guaranteed_count: 1,
@@ -204,6 +273,25 @@ describe('CAPSULE_BINDING.read', () => {
       pity_epic_threshold: 15,
       pre_quest_fill_amount: 5,
       pre_quest_unlock_required: 5,
+      'fill_v2:1': 145,
+      'fill_v2:2': 160,
+      'fill_v2:3': 180,
+      'fill_v2:4': 200,
+      'fill_v2:5': 220,
+      'fill_v2:6': 245,
+      'fill_v2:7': 270,
+      'fill_v2:8': 300,
+      'fill_v2:9': 330,
+      'fill_v2:10': 365,
+      'advance:1': 6,
+      'advance:2': 7,
+      'advance:3': 7,
+      'advance:4': 8,
+      'advance:5': 9,
+      'advance:6': 9,
+      'advance:7': 10,
+      'advance:8': 11,
+      'advance:9': 12,
       'chapter:1': 90,
       'chapter:2': 100,
       'chapter:3': 110,
@@ -235,11 +323,21 @@ describe('CAPSULE_BINDING.read', () => {
     expect(values['chapter:2']).toBe(999)
   })
 
+  it('챕터 10의 advance_count는 NULL이 정상이라 던지지 않고 값 묶음에도 넣지 않는다', async () => {
+    expect(chapterRow(10)!.advance_count).toBeNull()
+    const { values } = await CAPSULE_BINDING.read(db.client)
+    expect(values['advance:10']).toBeUndefined()
+    expect(values['fill_v2:10']).toBe(365)
+    // 값이 들어 있어도 이 구역은 챕터 10의 횟수를 읽지 않는다
+    chapterRow(10)!.advance_count = 13
+    expect((await CAPSULE_BINDING.read(db.client)).values['advance:10']).toBeUndefined()
+  })
+
   it('열한 번째 챕터 행은 읽지도 않고 그 수정 시각도 구역 수정 시각에 넣지 않는다', async () => {
-    db.tables.capsule_chapter_costs.push({ chapter_no: 11, fill_amount: 240, updated_at: '2026-10-23T00:00:00+00:00' })
+    db.tables.capsule_chapter_costs.push({ chapter_no: 11, fill_amount: 240, fill_amount_v2: 400, advance_count: null, updated_at: '2026-10-23T00:00:00+00:00' })
     const snapshot = await CAPSULE_BINDING.read(db.client)
     expect(snapshot.values['chapter:11']).toBeUndefined()
-    expect(Object.keys(snapshot.values)).toHaveLength(21)
+    expect(Object.keys(snapshot.values)).toHaveLength(40)
     expect(snapshot.updatedAt).toBe(CAPSULE_ROW_STAMP)
   })
 
@@ -259,6 +357,14 @@ describe('CAPSULE_BINDING.read', () => {
     await expect(CAPSULE_BINDING.read(db.client)).rejects.toThrow('챕터 4 값을 숫자로 읽을 수 없음')
 
     chapterRow(4)!.fill_amount = 120
+    chapterRow(4)!.fill_amount_v2 = null
+    await expect(CAPSULE_BINDING.read(db.client)).rejects.toThrow('챕터 4 fill_amount_v2 값을 숫자로 읽을 수 없음')
+
+    chapterRow(4)!.fill_amount_v2 = 200
+    chapterRow(4)!.advance_count = null
+    await expect(CAPSULE_BINDING.read(db.client)).rejects.toThrow('챕터 4 advance_count 값을 숫자로 읽을 수 없음')
+
+    chapterRow(4)!.advance_count = 8
     db.readErrors.capsule_chapter_costs = 'boom'
     await expect(CAPSULE_BINDING.read(db.client)).rejects.toThrow('챕터별 채울 양 조회 실패: boom')
 
@@ -284,6 +390,32 @@ describe('CAPSULE_BINDING.write — 행 단위 갱신', () => {
     expect(chapterRow(3)).toMatchObject({ fill_amount: 115, updated_at: NEXT })
     expect(chapterRow(2)).toMatchObject({ fill_amount: 100, updated_at: CAPSULE_ROW_STAMP })
     expect(policyRow().updated_at).toBe(CAPSULE_ROW_STAMP)
+  })
+
+  it('한 챕터의 세 칸을 함께 바꾸면 그 행 갱신 한 번으로 쓰고, 다른 챕터의 값은 그대로다', async () => {
+    const res = await CAPSULE_BINDING.write(db.client, writeInput({ 'advance:3': 8, 'fill_v2:3': 185, 'chapter:3': 115 }))
+    expect(res).toEqual({ ok: true, updatedAt: NEXT })
+    expect(db.updates).toEqual([{ advance_count: 8, fill_amount_v2: 185, fill_amount: 115, updated_at: NEXT }])
+    expect(chapterRow(3)).toMatchObject({ advance_count: 8, fill_amount_v2: 185, fill_amount: 115, updated_at: NEXT })
+    expect(chapterRow(2)).toMatchObject({ advance_count: 7, fill_amount_v2: 160, fill_amount: 100, updated_at: CAPSULE_ROW_STAMP })
+  })
+
+  it('100% 횟수만 바꾸면 advance_count 열만 갱신하고 챕터 10 행은 건드리지 않는다', async () => {
+    const res = await CAPSULE_BINDING.write(db.client, writeInput({ 'advance:9': 13, 'advance:10': 14 }))
+    expect(res).toEqual({ ok: true, updatedAt: NEXT })
+    expect(db.updates).toEqual([{ advance_count: 13, updated_at: NEXT }])
+    expect(chapterRow(9)).toMatchObject({ advance_count: 13, fill_amount_v2: 330, fill_amount: 200 })
+    expect(chapterRow(10)).toMatchObject({ advance_count: null, updated_at: CAPSULE_ROW_STAMP })
+  })
+
+  it('두 챕터의 새 열을 바꾸다 둘째 행에서 막히면 앞서 쓴 행의 바꾼 열이 이전 값과 이전 수정 시각으로 돌아온다', async () => {
+    db.beforeUpdate = (nth) => {
+      if (nth === 2) chapterRow(5)!.updated_at = '2026-10-22T01:30:00+00:00'
+    }
+    const res = await CAPSULE_BINDING.write(db.client, writeInput({ 'advance:3': 8, 'fill_v2:3': 185, 'advance:5': 10 }))
+    expect(res).toEqual({ ok: false, reason: 'conflict' })
+    expect(chapterRow(3)).toMatchObject({ advance_count: 7, fill_amount_v2: 180, fill_amount: 110, updated_at: CAPSULE_ROW_STAMP })
+    expect(chapterRow(5)!.advance_count).toBe(9)
   })
 
   it('정책과 챕터 여러 행을 한 번에 바꾼다(정책 먼저, 챕터는 번호 순서)', async () => {
@@ -367,12 +499,15 @@ describe('CAPSULE_BINDING.write — 행 단위 갱신', () => {
   })
 
   it('이 구역의 칸이 아닌 값(잼·동기화 칸, 11번째 챕터)은 본문에 있어도 쓰지 않는다', async () => {
-    await CAPSULE_BINDING.write(db.client, writeInput({ guaranteed_count: 2, common_streak_threshold: 1, locked_roll_probability: 0.5, 'chapter:11': 1 }))
+    await CAPSULE_BINDING.write(
+      db.client,
+      writeInput({ guaranteed_count: 2, common_streak_threshold: 1, locked_roll_probability: 0.5, 'chapter:11': 1, 'fill_v2:11': 1, 'advance:10': 1 })
+    )
     expect(db.updates).toEqual([{ guaranteed_count: 2, updated_at: NEXT }])
   })
 
   it('쓸 칸이 하나도 없으면 error다', async () => {
-    expect(await CAPSULE_BINDING.write(db.client, writeInput({ 'chapter:11': 1 }))).toEqual({ ok: false, reason: 'error', message: '바꿀 칸이 없음' })
+    expect(await CAPSULE_BINDING.write(db.client, writeInput({ 'chapter:11': 1, 'advance:10': 1 }))).toEqual({ ok: false, reason: 'error', message: '바꿀 칸이 없음' })
     expect(db.updates).toEqual([])
   })
 })
@@ -396,6 +531,39 @@ describe('캡슐 구역 저장 (공용 저장을 지난다)', () => {
       affects_disclosure: false,
       changed_by: ACTOR,
     })
+  })
+
+  it('100% 횟수와 자동 채움 채울 양을 바꾸면 advance:3·fill_v2:3 칸 이름으로 이력에 남고 확률 안내 반영 표시는 없다', async () => {
+    const out = await save({ 'advance:3': 8, 'fill_v2:3': 185 }, { note: '3챕터 횟수 조정' })
+    expect(out.ok).toBe(true)
+    if (!out.ok) return
+    expect([...out.changes].sort((a, b) => a.field.localeCompare(b.field))).toEqual([
+      { field: 'advance:3', from: 7, to: 8 },
+      { field: 'fill_v2:3', from: 180, to: 185 },
+    ])
+    expect(out.affectsDisclosure).toBe(false)
+    expect(out.values['advance:3']).toBe(8)
+    expect(out.values['advance:4']).toBe(8)
+    expect(chapterRow(3)).toMatchObject({ advance_count: 8, fill_amount_v2: 185, fill_amount: 110 })
+    expect(historyRows()).toHaveLength(1)
+    expect(historyRows()[0]).toMatchObject({ section_key: 'capsule', note: '3챕터 횟수 조정', affects_disclosure: false })
+  })
+
+  it('100% 횟수 0·소수와 챕터 10의 횟수(advance:10)는 거절한다', async () => {
+    const out = await save({ 'advance:3': 0, 'advance:4': 1.5, 'advance:10': 14, 'fill_v2:5': 0 })
+    expect(out).toMatchObject({ ok: false, status: 400, error: BALANCE_INVALID_MESSAGE })
+    if (out.ok) return
+    expect(Object.keys(out.fieldErrors ?? {}).sort()).toEqual(['advance:10', 'advance:3', 'advance:4', 'fill_v2:5'])
+    expect(out.fieldErrors?.['advance:10']).toBe('알 수 없는 칸이에요.')
+    expect(db.updates).toEqual([])
+  })
+
+  it('이력을 쓰지 못하면 새 열의 값도 원래대로 돌아온다', async () => {
+    db.writeErrors.balance_setting_changes = 'boom'
+    const out = await save({ 'advance:3': 8, 'fill_v2:3': 185 })
+    expect(out).toMatchObject({ ok: false, status: 500 })
+    expect(chapterRow(3)).toMatchObject({ advance_count: 7, fill_amount_v2: 180, updated_at: CAPSULE_ROW_STAMP })
+    expect((await CAPSULE_BINDING.read(db.client)).updatedAt).toBe(CAPSULE_ROW_STAMP)
   })
 
   it('정책과 챕터를 함께 바꾸면 한 줄 이력에 모두 남고 확률 안내 반영 표시가 켜진다', async () => {
