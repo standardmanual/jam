@@ -1018,6 +1018,9 @@ SECURITY DEFINER(`search_path = public`), service_role만 실행한다(`anon`·`
 - 소식 3종의 문구·착지·만드는 곳은 `notification/PRD.md` §3(#50 정지됨, #51 정지 해제, #52 받지 않은 보상)이다. 정지됨·풀림 payload에는 **사유 글, 어드민 이메일, 상담 메모를 싣지 않는다.**
 - 피드 2종의 메타: `chapter_up` = `{ chapter_no }`(챕터 2 이상으로 새로 올랐을 때만, 한 번에 여러 챕터를 넘으면 가장 높은 챕터 한 건, 챕터 1 시작은 기록하지 않는다. `lib/chapter/rise.ts`). `collection_tier_completed` = `{ collection_id, collection_name, rarity }`(등급을 처음 완성했을 때만, 점수보다 먼저 기록한다. `lib/chapter/collection.ts`). 두 종류 모두 `strava_activity_id`를 비워 기록한다(§10 `user_activity_feed`). 컬렉션 메타에 `level`·`earn_count` 키를 쓰지 않는다(피드 렌더러가 읽어 Lv.N 칩·×N 필을 잘못 붙인다).
 
+#### notification_type 2종 — 마이그레이션 302, 티켓 20261028_1734 1회
+알림 종류 enum `notification_type`에 `capsule_nearly_full`·`capsule_jam_blocked`(36개 → 38개)를 `ADD VALUE IF NOT EXISTS`로 덧붙였다. 새 enum 값은 같은 트랜잭션에서 쓸 수 없어(55P04) 302의 함수는 알림 행을 만들지 않고 단계(`alertStage`)와 전환 표식(`blockedNow`)만 돌려주며, 행은 앱(`notifyCapsuleAlerts`)이 만든다. **적용 순서는 DDL 먼저, 코드 배포 나중**이다. 되돌림은 enum 값을 지울 수 없어 앱이 값을 만들지 않게 하고 값은 쓰지 않은 채로 두는 방식이다. 소식 2종의 문구·착지·발송 규칙은 `notification/PRD.md` §3의 «캡슐 — 2종»(#53·#54)이 원천이다.
+
 ---
 
 ## 9. 포인트 (JAM 포인트) — 신규 도메인
