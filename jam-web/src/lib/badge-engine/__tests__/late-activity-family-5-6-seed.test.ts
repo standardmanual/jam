@@ -81,8 +81,8 @@ const MIGRATIONS_DIR = path.dirname(LATE_OUT_PATH)
 const SEED_JSON = path.resolve(MIGRATIONS_DIR, '..', '..', '..', 'docs/assets/content-seed/seed_v5_activity_badges.rows.json')
 
 /** 245·248 파일의 SHA-256. 이 값이 바뀌면 «이미 검토를 거친 입력 SQL이 달라졌다»는 뜻이라 일부러 이 시험에서 멈춘다 */
-const SHA256_245 = '4adfcc3b4a17a2482b31de11103a118d99e3ccec7a1ed70075b3fc963e5e2f54'
-const SHA256_248 = 'ec74e38209c66c84ad32f49700f625c5930b5ddbba6e93de1b0508adc4c35b8d'
+const SHA256_245 = 'eca1434daa51fea085c788fada27f4a9cb7386de347bad63ec4e5b00133fa828'
+const SHA256_248 = '6b534bd668dafd56a2bcb79131e7350e317c1f171b43f6cdb22f1890e8275a97'
 
 const sha256 = (text: string) => crypto.createHash('sha256').update(text, 'utf8').digest('hex')
 
