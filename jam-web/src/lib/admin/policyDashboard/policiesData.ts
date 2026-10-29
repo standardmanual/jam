@@ -332,6 +332,27 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     nodes: ['jam'],
   },
 
+  {
+    id: 'ch4-service-jam',
+    chapter: 4,
+    chapterTitle: '잼',
+    title: '서비스 활동 잼 (종류별 고정값과 하루·주간 상한)',
+    type: 'admin_link',
+    currentSpec:
+      '기본값: 잠긴 아이템 배지 열기 5 · 배지 받기 5 · 믹스 성공(등급 올리기 포함) 5 · 미션 완료 20 · 컬렉션 완성(등급 무관) 30 · 드랍 0 · 픽업 0잼. 한 유저가 받는 양은 하루(KST) 40잼, 주간(월~일 KST) 100잼까지이고 상한 0은 «상한 없음»이 아니라 지급 0. 상한에 걸리면 남은 만큼만 일부 지급하고 남은 양이 0이면 줄을 만들지 않음. 종류별 값이 0이면 지급 없음. 같은 활동은 이벤트 키(종류:원천 id)로 한 번만 지급됨. 이용 정지 중에는 지급하지 않음. 캡슐 가득 참은 종류에 없음. 원장 사유 service_activity로 구분해 남기고 모은 총량(total_earned)은 바꾸지 않음. 지급량이 0보다 크면 지급 직후 캡슐 자동 채움(채움 → 100%면 열기 또는 보류 → 보류 2개면 소멸 → 단계 알림 → 보지 않은 캡슐 결과 기록)을 이어서 돌림. 보상으로 생긴 잼도 같은 규칙으로 채우고, 같은 서버 프로세스에서 한 유저의 자동 채움이 돌고 있으면 안쪽 호출은 건너뜀',
+    dbTable: 'service_jam_rules',
+    dbColumn: 'amount',
+    codeLocation: 'jam-web/src/lib/jam/serviceActivity.ts',
+    userExperience:
+      '배지를 받거나 미션을 완료하면 잼이 생기고 그 잼이 곧바로 캡슐을 채워요. 하루 40잼, 한 주 100잼까지 받아요.',
+    basisDoc: '운영 로직 4.5절, 12.2절, 19.1절',
+    ticketId: '20261028_1735',
+    adminLink: {
+      href: '/admin/balance#servicejam',
+    },
+    nodes: ['jam', 'capsule'],
+  },
+
   // =========================================================================
   // 5장. 캡슐
   // =========================================================================
@@ -662,13 +683,19 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch7-locked-open-score',
     chapter: 7,
     chapterTitle: '잠긴 아이템 배지',
-    title: '잠김 해금 시 챕터 점수 가산',
-    type: 'code_constant',
-    currentSpec: '잠긴 배지 1개 해금 시 챕터 점수 10점 가산 (locked_item_badge_open)',
-    codeLocation: 'jam-web/src/lib/chapter/score.ts',
-    userExperience: '잠긴 배지를 열 때마다 챕터 점수 10점을 얻어요.',
-    basisDoc: '운영 로직 7.2절, 12.2절',
-    ticketId: '20261019_1315',
+    title: '잠김 해금 시 서비스 활동 잼 지급',
+    type: 'admin_link',
+    currentSpec:
+      '잠긴 배지 1개를 열면 서비스 활동 잼 locked_unlock 값(기본 5잼)을 지급하고 지급 직후 캡슐을 채움. 같은 개체는 한 번만 지급 (이벤트 키 locked_unlock:<인벤토리 개체 id>). 하루·주간 상한과 이용 정지 규칙은 «서비스 활동 잼» 항목을 따름. 챕터 점수는 더 이상 쌓지 않음',
+    dbTable: 'service_jam_rules',
+    dbColumn: 'amount',
+    codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
+    userExperience: '잠긴 배지를 열면 잼 5개가 생겨 캡슐을 바로 채워요.',
+    basisDoc: '운영 로직 4.5절, 7.2절',
+    ticketId: '20261028_1735',
+    adminLink: {
+      href: '/admin/balance#servicejam',
+    },
     nodes: ['item_badge'],
   },
   {
@@ -1006,12 +1033,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '챕터 1~10 누적 요구 점수표',
     type: 'admin_link',
     currentSpec:
-      '기본값: 1(0) · 2(1,000) · 3(2,300) · 4(3,800) · 5(5,700) · 6(8,500) · 7(11,500) · 8(15,000) · 9(19,000) · 10(23,000점). 모은 잼과 자동 채움 캡슐 열기는 점수를 쌓지 않고, 나머지 활동의 점수는 아직 쌓임',
+      '기본값: 1(0) · 2(1,000) · 3(2,300) · 4(3,800) · 5(5,700) · 6(8,500) · 7(11,500) · 8(15,000) · 9(19,000) · 10(23,000점). 모든 활동이 점수를 쌓지 않음 (모은 잼·캡슐 열기가 먼저 멈추고, 나머지 활동은 서비스 활동 잼으로 바뀌며 멈춤). 챕터는 캡슐 100% 횟수로 오르고 이 점수표와 활동별 점수 칸은 후속 정리(U11)에서 지움',
     dbTable: 'chapter_definitions',
     dbColumn: 'required_score',
-    userExperience: '점수가 쌓이는 활동은 줄어들었고, 챕터는 주로 캡슐을 가득 채운 횟수로 올라요.',
+    userExperience: '챕터 점수는 더 이상 쌓이지 않고, 챕터는 캡슐을 가득 채운 횟수로 올라요.',
     basisDoc: '운영 로직 12.2절, 12.4절',
-    ticketId: '20261028_1733',
+    ticketId: '20261028_1735',
     adminLink: {
       href: '/admin/balance#chapter',
     },
@@ -1023,12 +1050,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '모은 잼 챕터 점수 주간 상한선 (300점)',
     type: 'admin_link',
     currentSpec:
-      '기본값: 주 300잼까지 1:1 반영, 300잼 초과분은 0.5배율로 감속 반영. 동기화의 잼 정산이 점수를 쌓지 않게 되어 지금은 이 설정이 점수에 반영되지 않음',
+      '기본값: 주 300잼까지 1:1 반영, 300잼 초과분은 0.5배율로 감속 반영. 동기화의 잼 정산이 점수를 쌓지 않게 되어 지금은 이 설정이 점수에 반영되지 않음 (다른 활동의 점수도 멈춰 챕터 점수는 어디서도 쌓이지 않음. 칸 삭제는 후속 정리(U11))',
     dbTable: 'chapter_score_rules',
     dbColumn: 'weekly_cap',
     userExperience: '모은 잼은 챕터 점수로 쌓이지 않아요. 잼은 캡슐을 채우는 데 쓰이고, 가득 찬 횟수가 챕터를 올려요.',
     basisDoc: '운영 로직 12.2절',
-    ticketId: '20261028_1733',
+    ticketId: '20261028_1735',
     adminLink: {
       href: '/admin/balance#chapter',
     },

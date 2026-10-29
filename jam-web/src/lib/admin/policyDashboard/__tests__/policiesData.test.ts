@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES } from '@/lib/ambient-drop/schedule'
+import { SERVICE_JAM_DEFAULT_AMOUNTS, SERVICE_JAM_DEFAULT_CAPS } from '@/lib/admin/balance/serviceJam'
 import { CAPSULE_CHAPTER_DEFAULT_ADVANCE, CAPSULE_CHAPTER_DEFAULT_FILL_V2 } from '@/lib/admin/balance/capsule'
 import { INVENTORY_LOW_FREE_SLOTS, METRIC_SPECS, REACH_HORIZONS } from '@/lib/admin/balanceDashboard/targets'
 import { POLICIES_DATA } from '../policiesData'
@@ -81,6 +82,9 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     // 챕터 구역
     expect(hrefOf('ch12-score-thresholds')).toBe('/admin/balance#chapter')
     expect(hrefOf('ch12-jam-weekly-cap')).toBe('/admin/balance#chapter')
+    // 서비스 활동 잼 구역
+    expect(hrefOf('ch4-service-jam')).toBe('/admin/balance#servicejam')
+    expect(hrefOf('ch7-locked-open-score')).toBe('/admin/balance#servicejam')
     // 인벤토리 구역(옛 «인벤토리 최대치» 화면은 없앴다, 티켓 20261022_1134)
     expect(hrefOf('ch8-inventory-max-slots')).toBe('/admin/balance#inventory')
   })
@@ -290,7 +294,74 @@ describe('캡슐 자동 채움과 챕터 100% 횟수 항목 (티켓 20261028_173
 
   it('점수 카드 두 개는 모은 잼이 더는 점수를 쌓지 않는다고 적는다', () => {
     expect(find('ch12-jam-weekly-cap')?.currentSpec).toContain('점수에 반영되지 않음')
-    expect(find('ch12-score-thresholds')?.currentSpec).toContain('모은 잼과 자동 채움 캡슐 열기는 점수를 쌓지 않고')
+    expect(find('ch12-score-thresholds')?.currentSpec).toContain('모든 활동이 점수를 쌓지 않음')
+  })
+})
+
+describe('서비스 활동 잼 항목 (티켓 20261028_1735 4회)', () => {
+  const find = (id: string) => POLICIES_DATA.find((p) => p.id === id)
+  const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+
+  it('서비스 활동 잼 카드는 4장에 있고 service_jam_rules를 밸런스 설정 «서비스 활동 잼» 구역으로 잇는다', () => {
+    const card = find('ch4-service-jam')
+    expect(card?.chapter).toBe(4)
+    expect(card?.type).toBe('admin_link')
+    expect(card?.dbTable).toBe('service_jam_rules')
+    expect(card?.adminLink?.href).toBe('/admin/balance#servicejam')
+    // 값이 아홉 칸이라 한 칸만 읽어 보이지 않는다
+    expect(card?.adminLink?.liveField).toBeUndefined()
+    expect(card?.ticketId).toBe('20261028_1735')
+    expect(existsSync(`${repoRoot}${card?.codeLocation}`), '코드 위치가 실재해야 합니다').toBe(true)
+  })
+
+  it('기본 고정값 7종과 하루·주간 상한은 설정 구역의 기본값과 같다', () => {
+    const spec = find('ch4-service-jam')?.currentSpec ?? ''
+    const A = SERVICE_JAM_DEFAULT_AMOUNTS
+    for (const text of [
+      `잠긴 아이템 배지 열기 ${A.locked_unlock}`,
+      `배지 받기 ${A.badge_earned}`,
+      `믹스 성공(등급 올리기 포함) ${A.combine_success}`,
+      `미션 완료 ${A.mission_complete}`,
+      `컬렉션 완성(등급 무관) ${A.collection_complete}`,
+      `드랍 ${A.drop}`,
+      `픽업 ${A.pickup}잼`,
+      `하루(KST) ${SERVICE_JAM_DEFAULT_CAPS.service_jam_daily_cap}잼`,
+      `주간(월~일 KST) ${SERVICE_JAM_DEFAULT_CAPS.service_jam_weekly_cap}잼`,
+    ]) {
+      expect(spec, text).toContain(text)
+    }
+  })
+
+  it('상한 0은 «지급 0»이고 일부 지급·한 번만 지급·이용 정지·지급 직후 채움·재진입 건너뜀을 적는다', () => {
+    const spec = find('ch4-service-jam')?.currentSpec ?? ''
+    for (const text of [
+      '상한 0은 «상한 없음»이 아니라 지급 0',
+      '남은 만큼만 일부 지급',
+      '한 번만 지급',
+      '이용 정지 중에는 지급하지 않음',
+      '캡슐 가득 참은 종류에 없음',
+      '지급 직후 캡슐 자동 채움',
+      '안쪽 호출은 건너뜀',
+    ]) {
+      expect(spec, text).toContain(text)
+    }
+  })
+
+  it('잠김 해금 카드는 서비스 활동 잼 5잼을 적고 챕터 점수 가산 문구가 남아 있지 않다', () => {
+    const card = find('ch7-locked-open-score')
+    expect(card?.currentSpec).toContain('locked_unlock')
+    expect(card?.currentSpec).toContain('기본 5잼')
+    expect(card?.adminLink?.href).toBe('/admin/balance#servicejam')
+    expect(`${card?.title} ${card?.userExperience}`).not.toContain('챕터 점수')
+    expect(card?.currentSpec).not.toContain('10점 가산')
+  })
+
+  it('챕터 점수 카드 두 개는 모든 활동의 점수 쌓기가 멈췄고 삭제는 후속 정리라고 적는다', () => {
+    for (const id of ['ch12-score-thresholds', 'ch12-jam-weekly-cap']) {
+      expect(find(id)?.currentSpec, id).toContain('U11')
+      expect(find(id)?.ticketId, id).toBe('20261028_1735')
+    }
+    expect(find('ch12-score-thresholds')?.currentSpec).not.toContain('나머지 활동의 점수는 아직 쌓임')
   })
 })
 

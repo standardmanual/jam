@@ -3,7 +3,7 @@
  * **구역을 더하는 일은 구역 연결 객체(`lib/admin/balance/<구역>.ts`) 하나, 구역 본문 컴포넌트 하나, 이 배열 한 줄이다.**
  * 화면(`app/admin/balance/page.tsx`)과 구역 이동 링크(`OpsSettingsNav`)와 저장 라우트(`/api/admin/balance/[section]`)가 이 배열 하나를 읽는다.
  *
- * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회), 인벤토리(`inventory`, 7-3 1회), 어뷰징(`abusing`, 7-3 2회), 시스템 드랍(`ambient`, 7-3 3회), 배지와 포인트(`badgepoints`, 7-4 1회).
+ * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회), 인벤토리(`inventory`, 7-3 1회), 어뷰징(`abusing`, 7-3 2회), 시스템 드랍(`ambient`, 7-3 3회), 배지와 포인트(`badgepoints`, 7-4 1회), 서비스 활동 잼(`servicejam`, 티켓 20261028_1735 4회, 「잼」 바로 뒤).
  */
 import type { ReactElement } from 'react'
 import { AbusingSection } from '@/components/admin/balance/AbusingSection'
@@ -15,6 +15,7 @@ import { CollectionSection } from '@/components/admin/balance/CollectionSection'
 import { InventorySection } from '@/components/admin/balance/InventorySection'
 import { JamSection } from '@/components/admin/balance/JamSection'
 import { LockedSection } from '@/components/admin/balance/LockedSection'
+import { ServiceJamSection } from '@/components/admin/balance/ServiceJamSection'
 import { SyncSection } from '@/components/admin/balance/SyncSection'
 import { ABUSING_BINDING } from './abusing'
 import { AMBIENT_BINDING } from './ambient'
@@ -25,6 +26,7 @@ import { COLLECTION_BINDING } from './collection'
 import { INVENTORY_BINDING } from './inventory'
 import { JAM_BINDING } from './jam'
 import { LOCKED_BINDING } from './locked'
+import { SERVICE_JAM_BINDING } from './serviceJam'
 import { SYNC_BINDING } from './sync'
 import type { BalanceSectionBinding } from './types'
 
@@ -51,6 +53,16 @@ export const BALANCE_SECTIONS: readonly BalanceSectionDef[] = [
       '경보는 운영 알림 전용이며 자동으로 제재하지 않아요.',
     ],
     Body: JamSection,
+  },
+  {
+    binding: SERVICE_JAM_BINDING,
+    label: '서비스 활동 잼',
+    title: '서비스 활동 잼',
+    description: [
+      '배지 받기·잠긴 아이템 배지 열기·믹스 성공·미션 완료·컬렉션 완성·드랍·픽업 같은 서비스 활동이 줄 때 받는 잼의 종류별 고정값과, 유저 한 명이 하루·한 주에 받을 수 있는 상한이에요.',
+      '상한이 0이면 «상한 없음»이 아니라 서비스 활동으로 받는 잼이 없어요. 종류별 값이 0인 활동은 잼을 주지 않아요. 같은 활동은 한 번만 주고, 저장하면 다음에 받는 잼부터 적용돼요.',
+    ],
+    Body: ServiceJamSection,
   },
   {
     binding: SYNC_BINDING,

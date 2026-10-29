@@ -1095,14 +1095,28 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 #### jam_transactions
 append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5개:
 `activity_settlement`(+) / `capsule_fill`(-) / `locked_item_badge_fill`(-) / `admin_grant`(+) / `admin_deduct`(-). 사유별 부호와 필수 칸은 CHECK로 건다.
-마이그레이션 300이 CHECK에 사유 `capsule_forfeit`(-, `source_activity_id` NULL)을 더했고, 쓰는 곳은 `capsule_auto_fill`(마이그레이션 302)이다. 보류가 2개일 때 지갑 잔액 전액이 사라지는 줄이다(아래 9-4 «자동 채움 구조»). 300이 함께 더한 다른 사유(`service_activity`, `locked_unlock_cost`)는 아직 쓰는 곳이 없다(U5).
+마이그레이션 300이 CHECK에 사유 `capsule_forfeit`(-, `source_activity_id` NULL)을 더했고, 쓰는 곳은 `capsule_auto_fill`(마이그레이션 302)이다. 보류가 2개일 때 지갑 잔액 전액이 사라지는 줄이다(아래 9-4 «자동 채움 구조»). 300이 함께 더한 사유 `service_activity`(+, `source_event_key` 필수, `source_activity_id` NULL)는 마이그레이션 303의 `jam_apply_service_activity`가 쓴다(아래 «서비스 활동 잼»). 300이 함께 더한 `locked_unlock_cost`는 `jam_transactions`가 아니라 `point_transactions`의 사유다(300의 10항, 잠긴 열기 포인트 차감).
 `source_activity_id`는 `strava_activities.id` 값을 담지만 FK는 없다(활동이 지워져도 원장은 남아야 함). `reason='activity_settlement'`인 줄에 한해 부분 유일 인덱스가 걸려 같은 활동은 한 번만 정산된다. 운영자 지급·회수는 `admin_user_id`(FK 없음)·`admin_reason_label`(필수)·`admin_reason_note`(선택)를 담는다. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`).
 
 > 가진 양 변경은 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note, p_earned_on)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다(예외는 `capsule_forfeit` 하나다: `jam_apply`가 사유 5개만 알아서 `capsule_auto_fill`이 지갑 행 잠금 → 원장 한 줄 → 잔액 차감을 직접 쓴다. 이후 `jam_apply`가 바뀌면 이 경로가 빠질 수 있다). 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
-> 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수, 채움, 소멸(`capsule_forfeit`)은 가진 양만 바꾼다(운영 로직 4.5절).
+> 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수, 채움, 소멸(`capsule_forfeit`), 서비스 활동 잼(`service_activity`)은 가진 양만 바꾼다(운영 로직 4.5절). 서비스 활동 잼을 모은 양에 합산할지는 후속 티켓 U5b가 정한다.
+
+#### 서비스 활동 잼 — 마이그레이션 300·303, 티켓 20261028_1735 (운영 로직 4.2·4.4·4.5절)
+규칙(무엇이 얼마를 주는지, 상한, 즉시 채움)은 운영 로직 4.2절이 원천이고 값은 4.4절이다. 이 문서는 DB와 앱 쪽 사실만 둔다.
+- `service_jam_rules`(300): `kind`(PK, CHECK 7종 `locked_unlock`·`badge_earned`·`combine_success`·`mission_complete`·`collection_complete`·`drop`·`pickup`), `amount`(INTEGER, 0 이상, 0이면 주지 않음), `updated_at`. RLS만 켜고 정책은 없어 service_role만 읽고 쓴다. 캡슐 가득 참은 종류에 없다. 편집 화면은 «밸런스 설정»의 «서비스 활동 잼» 구역이다(`/admin/balance#servicejam`).
+- `jam_policy.service_jam_daily_cap`·`service_jam_weekly_cap`(300): 하루(KST)·주간(월~일, KST) 상한. INTEGER, 0 이상. **0은 «상한 없음»이 아니라 지급 0**이다(함수가 `LEAST(규칙값, 하루 남은 양, 주간 남은 양)`을 쓰고 남은 양이 0 이하면 아무것도 쓰지 않는다). 칸 이름 그대로 같은 구역에서 편집한다.
+- `jam_service_daily`(300): `(user_id, kst_date)` PK, `amount`(0 이상). 서비스 활동으로 받은 잼의 날짜별 합이고 하루·주간 상한 판정에 쓴다. 주간 합은 그 주 월요일부터 오늘까지의 행을 더한다. service_role 전용.
+- `jam_transactions.source_event_key`(300): 사유 `service_activity`일 때 필수이고 `(user_id, source_event_key)`에 부분 유일 인덱스(`jam_transactions_service_event_uniq`)가 걸려 같은 키는 한 유저에 한 번만 적립된다.
+- 함수 `jam_apply_service_activity(p_user_id, p_kind, p_event_key) → jsonb`(303, SECURITY DEFINER, service_role만 실행). 옛 `jam_apply`는 사유를 5개로 하드코딩하고 `source_event_key` 인자가 없어 쓸 수 없으므로 시그니처를 바꾸지 않고 새 함수를 더했다.
+  순서: 이용 정지(`user_suspended`) → 입력 확인(`invalid_input`) → 지갑 행 생성·`FOR UPDATE` → 같은 키가 이미 있으면 `duplicate`와 기존 양 → 규칙값 0이면 `rule_zero` → 상한으로 지급량을 줄이고 0 이하면 `capped`(쓰는 것 없음) → 지급 시 원장 한 줄 + 지갑 증가 + `jam_service_daily` 가산.
+  `total_earned`는 바꾸지 않고 캡슐도 채우지 않는다. 잠그는 행은 지갑 행 하나뿐이다.
+  - 1회차 롤백 드라이런에서 확인한 것: 같은 이벤트 재전송, 드랍→줍기 60건 반복(값 5로 올린 상태)이 하루 상한에서 멈춤, 상한 부분 지급, 주간 경계(KST 월요일), 이용 정지 중 지급 없음, 원장 합 = 지갑 잔액. 같은 계정의 동시 호출은 실행으로 확인하지 못했다.
+- 앱: `lib/jam/serviceActivity.ts`의 `awardServiceJam(supabase, { userId, kind, sourceId })`는 던지지 않는다. 이벤트 키는 `<서비스 kind>:<원천 id>`(원천 id는 점수 때 쓰던 id 그대로, 빈 id는 던진다)이고, 지급이 0보다 크고 재전송이 아닐 때만 `runSyncCapsuleAutoFill`로 곧바로 채운다. 실패는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='service_jam_failed'`)에 남고 같은 원천 id로 다시 보낼 수 있다.
+  챕터 점수 종류와의 대응(`ChapterScoreKind` → 서비스 kind): `locked_item_badge_open`→`locked_unlock`, `badge_receive`→`badge_earned`, `mix_success`→`combine_success`, `mission_complete`→`mission_complete`, `collection_complete_*` 4종→`collection_complete`, `drop`→`drop`, `pickup`→`pickup`. `jam_earned`·`capsule_open`은 대상이 아니다.
+- 호출 지점은 아래 9-3의 «점수 호출 지점과 원천 id» 표의 열 곳과 같다(`jam-web/src/lib/chapter/__tests__/score-wiring.test.ts`가 소스 검색으로 고정한다).
 
 #### jam_policy — 마이그레이션 226, 티켓 20261017_1423
-잼 정산의 조정 값을 담는 한 행 싱글톤(`id = 1` 고정). `abusing_policy`·`inventory_policy`와 같은 패턴으로 RLS만 켜고 정책은 없어 service_role만 읽는다. 어드민 화면은 «밸런스 설정»(`/admin/balance`)이다: 강도·경보 여섯 칸은 «잼» 구역(7-1 1회), 동기화 칸과 `common_streak_threshold`·`locked_roll_probability` 열한 칸은 «동기화» 구역(7-1 2회, 캡슐 구역에는 «동기화와 같은 값이에요» 안내만 둔다), `locked_min_*` 네 칸은 «잠긴 아이템 배지» 구역(7-2 1회, 티켓 20261022_1133)이다. 같은 행을 쓰는 구역이 여럿이라 한 구역을 저장하면 이 행의 `updated_at`이 올라 다른 구역 화면의 수정 시각도 낡는다(편집하던 값은 화면이 지킨다). 동기화 구역의 열한 칸은 모두 확률 안내 페이지가 읽는 칸(`lib/probability/disclosure.ts`의 `JAM_COLUMNS`)이라 바꾸면 저장 전 확인창이 뜬다. 코드는 `src/lib/jam/policy.ts`의 `getJamPolicy`로만 읽으며, 조회 실패·비정상 값은 기본값(`DEFAULT_JAM_POLICY`)으로 대체하고 로그를 남긴다. 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다.
+잼 정산의 조정 값을 담는 한 행 싱글톤(`id = 1` 고정). `abusing_policy`·`inventory_policy`와 같은 패턴으로 RLS만 켜고 정책은 없어 service_role만 읽는다. 어드민 화면은 «밸런스 설정»(`/admin/balance`)이다: 강도·경보 여섯 칸은 «잼» 구역(7-1 1회), 동기화 칸과 `common_streak_threshold`·`locked_roll_probability` 열한 칸은 «동기화» 구역(7-1 2회, 캡슐 구역에는 «동기화와 같은 값이에요» 안내만 둔다), `locked_min_*` 네 칸은 «잠긴 아이템 배지» 구역(7-2 1회, 티켓 20261022_1133), `service_jam_daily_cap`·`service_jam_weekly_cap` 두 칸은 «서비스 활동 잼» 구역(티켓 20261028_1735 4회)이다. 같은 행을 쓰는 구역이 여럿이라 한 구역을 저장하면 이 행의 `updated_at`이 올라 다른 구역 화면의 수정 시각도 낡는다(편집하던 값은 화면이 지킨다). 동기화 구역의 열한 칸은 모두 확률 안내 페이지가 읽는 칸(`lib/probability/disclosure.ts`의 `JAM_COLUMNS`)이라 바꾸면 저장 전 확인창이 뜬다. 코드는 `src/lib/jam/policy.ts`의 `getJamPolicy`로만 읽으며, 조회 실패·비정상 값은 기본값(`DEFAULT_JAM_POLICY`)으로 대체하고 로그를 남긴다. 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다.
 
 | 칸 | 기본값 | 뜻 |
 |---|---|---|
@@ -1117,6 +1131,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `sync_rarity_common` / `_rare` / `_epic` / `_mystic` | 84 / 13 / 2.5 / 0.5 | 동기화 등급 확률(퍼센트). 네 칸 합계는 100이고 DB 제약(`jam_policy_sync_rarity_sum_100`)이 지킨다 |
 | `common_streak_threshold` | 10 | Common이 이 횟수만큼 연속이면 다음은 Rare 이상(`user_drop_state.common_streak`, 동기화와 캡슐 합산) |
 | `locked_min_common` / `_rare` / `_epic` / `_mystic` | 30 / 60 / 120 / 240 | 잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값. 배지에 값이 없을 때 이 값을 쓴다. 1 이상 정수 (마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.4절). 편집 화면은 «밸런스 설정»의 «잠긴 아이템 배지» 구역이다(티켓 20261022_1133). 이미 잠긴 개체의 `unlock_required`는 배정 때 고정돼 바뀌지 않는다 |
+| `service_jam_daily_cap` / `service_jam_weekly_cap` | 40 / 100 | 서비스 활동으로 받는 잼의 하루(KST)·주간(월~일, KST) 상한. 0 이상 정수, **0이면 지급 0**(마이그레이션 300, 위 «서비스 활동 잼») |
 | `locked_roll_probability` | 0.25 | 동기화·캡슐에서 나온 아이템 배지가 잠긴 채 배정될 확률(0~1). 0이면 무작위로는 절대 잠기지 않고 1이면 늘 잠긴다 |
 
 **아이템 발급 정책의 대체 규칙**(`getJamPolicy`): 위 10칸 가운데 하나라도 비정상이거나 등급 확률 합계가 100이 아니면(오차 0.001 미만은 허용) **10칸 전체**를 기본값으로 대체하고 로그를 한 번 남긴다. 한 칸만 바꾸면 합계가 어긋나기 때문이다. 강도·경보 칸과 잠김 칸 5개(`locked_*`)는 이 대체와 상관없이 칸 단위로 대체한다. 판정은 순수 함수 `src/lib/drop-engine/syncIssue.ts`(개수 `rollItemCount`, 등급 `rollRarity`, 후보 `pickItemBadge`, 후보 없는 등급을 한 등급씩 내리는 `pickWithRarityFallback`)이고 정책을 인자로 받는다. 동기화는 잼 정산 뒤 `src/lib/drop-engine/syncIssueRun.ts`의 `issueSyncItemBadges`로 이 값들을 읽어 발급한다(규칙은 `BADGE_ENGINE_UNIFIED.md` §3.0). 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다.
@@ -1207,6 +1222,8 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 > - 점수 가산을 부를지 말지(챕터 배지·포인트 조건 배지 제외, 자기 드랍 줍기 제외, 이용 정지 중 차단)는 부르는 쪽 책임이다.
 
 #### 점수 호출 지점과 원천 id (티켓 20261019_1315)
+> **상태** (티켓 20261028_1735, 2026-10-29): 아래 표의 `jam_earned`·`capsule_open`은 앞서 멈췄고(티켓 20261028_1733), 나머지 열 곳 호출은 `awardChapterScore` 대신 `awardServiceJam`을 부른다(원천 id·호출 위치는 그대로, 운영 로직 12.2절 상태). `awardChapterScore`를 부르는 곳은 `lib/capsule/open.ts`의 옛(non-counted) 열기 분기 한 곳뿐이고 `/api/capsule/open` 라우트는 `counted: true`로 불러 그 분기를 쓰지 않는다. `chapter_add_score`·`chapter_score_rules`·`chapter_score_events`는 삭제 전(U11)이다. 표의 «연결됨»은 점수를 연결했을 때의 기록이다.
+
 앱은 `src/lib/chapter/score.ts`의 `awardChapterScore(supabase, { userId, kind, sourceId, amount, occurredOn })` 하나로 `chapter_add_score`를 부른다. 활동 종류 12종은 `src/lib/chapter/kinds.ts`(221의 초기값과 같은지 시험이 고정), 점수 값은 코드에 두지 않고 `chapter_score_rules`가 갖는다.
 - **던지지 않는다.** RPC 오류·계약 밖 응답·예외는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='chapter_score_failed'`, 페이로드에 종류·원천 id·수량·날짜·오류)에 남기고 `{ ok: false }`를 돌려준다. 본 동작(정산·열기·드랍·픽업)과 응답은 점수 실패로 바뀌지 않는다. 같은 원천 id로 다시 보낼 수 있다(자동 보정은 티켓 20261020_1010).
 - `p_occurred_on`은 값이 없으면 키째 생략한다(null을 보내지 않는다). 수량이 1 미만이면 부르지 않는다.
@@ -1372,7 +1389,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - `lib/strava/sync.ts`: 잼 정산(`settleActivities`) 직후에 `runSyncCapsuleAutoFill`을 부른다. 새 활동이 없는 동기화의 이른 반환 경로에서도 맨 앞에서 부른다. 열린 캡슐이 있으면 그 동기화의 끝 판정에 `chapter_reached`와 `jamTriggersForCapsuleOpen()`을 더하고, 열기 없이 챕터만 오른 동기화(`chapterRose`)에는 `chapter_reached`만 더한다.
 - 중복 방지: 잼 정산은 `jam_apply`의 활동 단위 유일성이 지킨다. 자동 채움은 지갑 잔액만 쓰므로 같은 동기화를 다시 보내면 잔액이 0이라 아무 일도 하지 않는다. 원장의 등식은 `받은 잼(+) = 캡슐에 채운 양(−, capsule_fill) + 소멸한 양(−, capsule_forfeit) + 지금 지갑`이다(회수 `admin_deduct`는 따로 뺀다).
 - 보류와 잼 소멸의 규칙(최대 2개, 순서, 지갑 전액, 알림 단계)은 운영 로직 5.2절이 원천이고 이 문서는 DB 쪽 사실만 둔다. 이용 정지 중에는 `capsule_auto_fill`·`capsule_hold_reward`·`capsule_claim_pending`이 모두 `user_suspended`로 거절되어 소멸·보류·받기가 일어나지 않는다.
-- 옛 점수 장부는 두 곳에서만 쓰기를 멈췄다: `lib/jam/settlement.ts`(모은 잼)와 `counted` 열기(캡슐 열기). 나머지 점수 호출은 그대로이고 U5가 잼으로 바꾼다(위 9-3).
+- 옛 점수 장부는 쓰기를 모두 멈췄다: `lib/jam/settlement.ts`(모은 잼)와 `counted` 열기(캡슐 열기)는 티켓 20261028_1733에서, 나머지 열 곳은 서비스 활동 잼 지급으로 바뀌며(티켓 20261028_1735) 멈췄다(위 9-3 상태 표시). 서비스 활동 잼을 받은 직후의 채움은 같은 `runSyncCapsuleAutoFill`이고, 같은 유저의 자동 채움이 이미 돌고 있는 프로세스에서는 안쪽 호출을 건너뛴다(`lib/capsule/auto-fill.ts`의 유저별 잠금, 멈춤 사유 `busy`).
 
 ---
 
