@@ -77,3 +77,12 @@ export function jamTriggersForCapsuleOpen(): JamActionTrigger[] {
 export function jamTriggersForLockedItemOpen(): JamActionTrigger[] {
   return ['locked_item_open_count']
 }
+
+/**
+ * 서비스 활동 잼이 지급되면 잼 조건 주 키 4개를 다시 본다 (티켓 20261028_1736 1회, 동작 설계 6).
+ * 서비스 활동 잼은 동기화 밖(배지 받기·컬렉션 완성·믹스 등)에서 지급되고, 잼 조건은 서비스 활동 잼을 합산해 세므로(`jamActionJamMetrics.ts`)
+ * 서비스 활동으로 문턱을 넘어도 다음 동기화까지 배지가 오지 않는 것을 막는다. 지급이 0이거나 중복 재전송이면 값이 그대로라 부르지 않는다(호출부 `lib/jam/serviceActivity.ts`).
+ */
+export function jamTriggersForServiceJam(): JamActionTrigger[] {
+  return ['jam_total_earned', 'jam_weekly_earned', 'jam_week_count', 'jam_week_streak']
+}

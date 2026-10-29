@@ -5,8 +5,9 @@
  * 값(종류별 고정값)과 하루·주간 상한은 DB 설정 행이 갖고 있어 코드에 두지 않는다. 호출부는 «무슨 종류가, 어떤 원천으로»만 넘긴다.
  *
  * 지급 즉시 채움: 지급량이 0보다 크고 이미 지급한 키의 재전송이 아닐 때만 곧바로 캡슐 자동 채움(`runSyncCapsuleAutoFill` — 채움·열기 또는 보류·소멸·단계 알림·
- * «보지 않은 캡슐 결과» 기록)을 잇는다. 지갑 잔액은 사용자에게 보이는 개념이 아니라 서버 안의 임시 보관이라서다. 열린 캡슐이 있거나 챕터가 올랐으면 응답 뒤에
- * JAM! 행동 지표(`jamTriggersForCapsuleOpen()` + `chapter_reached`)를 판정한다. 자동 채움은 챕터 배지 판정을 건너뛰고 돌기 때문에(`skipRiseBadgeEvaluation`) 여기서 이어서 읽는다.
+ * «보지 않은 캡슐 결과» 기록)을 잇는다. 지갑 잔액은 사용자에게 보이는 개념이 아니라 서버 안의 임시 보관이라서다. 응답 뒤에 JAM! 행동 지표를 판정한다 —
+ * 잼 조건 주 키 4개(`jamTriggersForServiceJam()`, 서비스 활동 잼이 잼 조건에 합산된다, 티켓 20261028_1736)는 항상, 열린 캡슐이 있거나 챕터가 올랐으면
+ * `jamTriggersForCapsuleOpen()` + `chapter_reached`도 더한다. 자동 채움은 챕터 배지 판정을 건너뛰고 돌기 때문에(`skipRiseBadgeEvaluation`) 여기서 이어서 읽는다.
  * 중복 재전송(`duplicate`)·규칙값 0(`rule_zero`)·상한에 걸려 지급이 0인 경우(`capped`)는 채움을 부르지 않는다.
  *
  * 이벤트 키는 `<서비스 kind>:<기존 원천 id>`다. 원천 id는 챕터 점수 때 쓰던 것을 그대로 쓰므로 같은 일을 다시 보내도 같은 키다(유저별 유일, DB가 막는다).
@@ -27,7 +28,7 @@
  */
 import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { jamTriggersForCapsuleOpen } from '@/lib/badge-engine/jamActionProgressTriggers'
+import { jamTriggersForCapsuleOpen, jamTriggersForServiceJam } from '@/lib/badge-engine/jamActionProgressTriggers'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
 import type { ChapterScoreKind } from '@/lib/chapter/kinds'
 import { logEngineDecision } from '@/lib/engine-log'
@@ -151,19 +152,22 @@ async function scheduleJamActionEvaluation(userId: string, triggers: readonly Ja
   }
 }
 
-/** 지급 직후 캡슐을 채우고, 열린 캡슐이나 챕터 오름이 있으면 행동 지표를 판정한다. 던지지 않는다 */
+/**
+ * 지급 직후 캡슐을 채우고, 행동 지표를 판정한다. 던지지 않는다.
+ * 판정 목록은 항상 잼 조건 주 키 4개(`jamTriggersForServiceJam()`)를 포함한다 — 서비스 활동 잼이 잼 조건에 합산되기 때문이다(티켓 20261028_1736).
+ * 열린 캡슐이나 챕터 오름이 있으면 챕터·캡슐 지표를 더한다. 자동 채움이 던져도 잼 조건 판정은 건너뛰지 않는다.
+ */
 async function fillCapsuleAfterGrant(supabase: SupabaseClient, userId: string): Promise<void> {
+  const triggers: JamActionTrigger[] = [...jamTriggersForServiceJam()]
   try {
     const { runSyncCapsuleAutoFill } = await loadAutoFill()
     const step = await runSyncCapsuleAutoFill(supabase, userId)
-    const triggers: JamActionTrigger[] = [
-      ...(step.opened || step.chapterRose ? (['chapter_reached'] as const) : []),
-      ...(step.opened ? jamTriggersForCapsuleOpen() : []),
-    ]
-    if (triggers.length > 0) await scheduleJamActionEvaluation(userId, triggers)
+    if (step.opened || step.chapterRose) triggers.push('chapter_reached')
+    if (step.opened) triggers.push(...jamTriggersForCapsuleOpen())
   } catch (e) {
     console.error(`[service-jam] 지급 뒤 캡슐 채움 예외 — 잼은 지갑에 남는다 (userId: ${userId}):`, e)
   }
+  await scheduleJamActionEvaluation(userId, triggers)
 }
 
 /** 서비스 활동 잼을 지급하고 곧바로 캡슐을 채운다. 던지지 않는다 — 실패하면 기록만 남기고 `{ ok: false }`다. */
