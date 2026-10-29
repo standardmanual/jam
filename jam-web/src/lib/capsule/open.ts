@@ -12,6 +12,9 @@
  *    **캡슐을 열어 나온 아이템 배지는 피드에 올리지 않는다**(운영 로직 15.3절, 2026-10-10 사용자 결정). 열린 개체도 `skipFeed`로 피드를 건너뛴다(티켓 20261021_1249 6-3 5회). 이미 올라간 옛 피드 행은 그대로 둔다.
  *    캡슐에는 대상 활동이 없어 활동 결산 알림은 보내지 않는다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다.
  *  - 열기가 확정되면 챕터 점수 «캡슐 열기»를 센다(`lib/chapter/score.ts`, 원천 id = 열기 기록 id, 티켓 20261019_1315). 점수 실패는 기록만 남고 열기와 응답을 바꾸지 않는다.
+ *    **`counted` 옵션(티켓 20261028_1733 2회)**: 동기화 자동 채움이 부르는 열기다. RPC는 `capsule_open_counted`(열기와 같은 트랜잭션에서 챕터 횟수 +1·오름 판정·다음 캡슐 필요량 v2)이고,
+ *    옛 점수 «캡슐 열기»는 세지 않는다(횟수가 대신한다). 오름이 있으면(`reachedChapters`) `processChapterRise`로 소식·피드·챕터 배지 판정을 잇고, 응답에 `chapterNo`·`reachedChapters`·`chapterCount`를 더 싣는다.
+ *    `counted`를 켜지 않으면 지금까지와 똑같다(옛 `capsule_open`과 점수 — 프로덕션 main이 쓰는 경로).
  *  - 그 다음 퀘스트 완료 처리를 부른다(티켓 20261021_1248, 운영 로직 2.2절). 실제 단계 ② «캡슐 열기»가 여기서 끝날 수 있고, 실제 3단계가 다 끝났으면 챕터 1이 시작된다.
  *    점수 다음이라 퀘스트 전에 쌓인 점수가 챕터 1 시작 때 함께 계산된다. 던지지 않고, 어떤 실패도 열기와 응답을 바꾸지 않는다(응답에 완료 배지를 싣지 않는다).
  *  - 다른 트라이브를 고를 때는 후보 배지가 있는 트라이브만 대상이다(`tribesWithCandidates`, 티켓 20261021_1248). 후보가 없는 트라이브가 뽑혀 개체가 비는 일을 없앤다.
@@ -20,6 +23,7 @@
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { processChapterRise } from '@/lib/chapter/rise'
 import { awardChapterScore } from '@/lib/chapter/score'
 import { fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import { recordIssuedRewards } from '@/lib/drop-engine/issueFollowUp'
@@ -46,7 +50,24 @@ export const CAPSULE_ISSUE_ROUTE = 'capsule'
 export interface OpenCapsuleOptions {
   rand?: Rand
   now?: Date
+  /**
+   * 참이면 동기화 자동 채움용 열기다: RPC `capsule_open_counted`, 옛 챕터 점수 생략, 오름 처리 연결, 응답에 챕터 횟수 정보를 더한다.
+   * 기본은 거짓이다(옛 `capsule_open`과 점수).
+   */
+  counted?: boolean
 }
+
+/** `counted` 열기가 응답에 더하는 챕터 횟수 정보 */
+export interface CapsuleCountedInfo {
+  /** 횟수를 센 챕터(오르기 전). 센 게 없으면(퀘스트 전 캡슐 등) null */
+  chapterNo: number | null
+  /** 이번 열기로 오른 챕터 번호 목록(최대 한 칸). 오르지 않았으면 빈 배열 */
+  reachedChapters: number[]
+  /** 센 뒤의 횟수(오르면 0). 센 게 없으면 null */
+  chapterCount: number | null
+}
+
+export type CountedCapsuleOpenPayload = CapsuleOpenPayload & CapsuleCountedInfo
 
 type CapsuleBadge = IssueBadge & {
   name: string
@@ -67,6 +88,24 @@ interface CapsuleOpenResult {
   openId?: string
   items?: DbOpenedItem[]
   next?: { required?: number; filled?: number }
+  chapterNo?: unknown
+  reachedChapters?: unknown
+  chapterCount?: unknown
+}
+
+/**
+ * `capsule_open_counted`의 챕터 정보를 읽는다. 열기는 이미 확정된 뒤라 던지지 않고, 모양이 틀린 칸은 «센 게 없음»으로 본다.
+ * 오른 챕터 번호는 1 이상의 정수만 받는다.
+ */
+function toCountedInfo(result: CapsuleOpenResult): CapsuleCountedInfo {
+  const reached = Array.isArray(result.reachedChapters)
+    ? (result.reachedChapters as unknown[]).filter((n): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1)
+    : []
+  return {
+    chapterNo: typeof result.chapterNo === 'number' ? result.chapterNo : null,
+    reachedChapters: reached,
+    chapterCount: typeof result.chapterCount === 'number' ? result.chapterCount : null,
+  }
 }
 
 /** 열기 거절 코드를 `CapsuleError`로 바꾼다. DB 함수가 돌려주는 코드만 받고, 모르는 코드는 일반 오류다. */
@@ -157,8 +196,21 @@ function toOpenedItem(planned: RolledCapsuleItem<CapsuleBadge>, db: DbOpenedItem
 
 /**
  * 캡슐을 연다. 던지는 것: `UserSuspendedError`(정지), `CapsuleError`(`not_full`·`insufficient_slots`·`no_tribe`·DB 거절), 그 밖의 일반 오류.
+ * `counted: true`면 챕터 횟수 정보가 응답에 더해진다(파일 머리말).
  */
-export async function openCapsule(supabase: SupabaseClient, userId: string, options: OpenCapsuleOptions = {}): Promise<CapsuleOpenPayload> {
+export async function openCapsule(
+  supabase: SupabaseClient,
+  userId: string,
+  options: OpenCapsuleOptions & { counted: true }
+): Promise<CountedCapsuleOpenPayload>
+export async function openCapsule(supabase: SupabaseClient, userId: string, options?: OpenCapsuleOptions): Promise<CapsuleOpenPayload>
+export async function openCapsule(
+  supabase: SupabaseClient,
+  userId: string,
+  options: OpenCapsuleOptions = {}
+): Promise<CapsuleOpenPayload | CountedCapsuleOpenPayload> {
+  const counted = options.counted === true
+  const rpcName = counted ? 'capsule_open_counted' : 'capsule_open'
   const rand = options.rand ?? Math.random
   const now = options.now ?? new Date()
 
@@ -200,7 +252,7 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
   }
   if (rolled.items.length === 0) throw new Error('캡슐에서 나올 아이템 배지 후보가 하나도 없어 열지 않았다')
 
-  const { data: rpcData, error: rpcError } = await supabase.rpc('capsule_open', {
+  const { data: rpcData, error: rpcError } = await supabase.rpc(rpcName, {
     p_user_id: userId,
     p_items: rolled.items.map((item) => ({
       badge_id: item.badge.id,
@@ -211,7 +263,7 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
       unlock_required: item.lock.unlockRequired,
     })),
   })
-  if (rpcError) throw new Error(`capsule_open RPC 오류: ${rpcError.message}`)
+  if (rpcError) throw new Error(`${rpcName} RPC 오류: ${rpcError.message}`)
   const result = rpcData as CapsuleOpenResult | null
   if (result?.ok === false) throw toOpenError(result)
   if (
@@ -221,13 +273,19 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
     typeof result.next?.required !== 'number' ||
     typeof result.next.filled !== 'number'
   ) {
-    throw new Error('capsule_open이 해석할 수 없는 응답을 돌려줬다')
+    throw new Error(`${rpcName}이 해석할 수 없는 응답을 돌려줬다`)
   }
 
   // 여기부터는 열기가 확정됐다. 어떤 실패도 열기를 되돌리지 않는다.
   // 챕터 점수 «캡슐 열기» (티켓 20261019_1315, 운영 로직 12.2절). 후속 처리(`recordIssuedRewards`) 결과와 무관하게 먼저 센다.
   // 원천 id는 열기 기록 id(`capsule_opens.id`)라 같은 열기를 다시 보내도 한 번만 센다. 던지지 않는다(실패는 기록만 남는다).
-  await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
+  // counted 열기는 점수 대신 횟수를 센다(같은 트랜잭션, DB 함수가 이미 했다). 오름이 있었으면 소식·피드·챕터 배지 판정을 잇는다(던지지 않는다).
+  const countedInfo = counted ? toCountedInfo(result) : null
+  if (countedInfo) {
+    await processChapterRise({ userId, reachedChapters: countedInfo.reachedChapters })
+  } else {
+    await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
+  }
   // 퀘스트 실제 단계 ② «캡슐 열기»(티켓 20261021_1248). 점수 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
   try {
     await recordOnboardingQuestCompletion(supabase, userId)
@@ -274,5 +332,6 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
     console.error(`[capsule-open] 판정 로그 실패 — 열기는 유지한다 (userId: ${userId}):`, e)
   }
 
-  return { openId: result.openId, items, next: { required: result.next.required, filled: result.next.filled } }
+  const payload: CapsuleOpenPayload = { openId: result.openId, items, next: { required: result.next.required, filled: result.next.filled } }
+  return countedInfo ? { ...payload, ...countedInfo } : payload
 }

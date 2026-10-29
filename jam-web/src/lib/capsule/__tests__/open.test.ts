@@ -15,6 +15,8 @@
  * - 퀘스트 완료 처리(티켓 20261021_1248): 열기가 확정된 직후 챕터 점수 다음에 `(supabase, userId)`로 한 번 부른다. 거절·추첨 전에 막힌 경우에는 부르지 않고,
  *   완료 처리가 던져도 열기와 응답은 그대로다. 응답에는 완료 배지를 싣지 않는다. 실제 판정은 `onboarding-quest/__tests__`가 고정한다(여기서는 가짜).
  * - 다른 트라이브 추첨 대상(티켓 20261021_1248): 후보 배지가 있는 트라이브만이다. 후보 없는 비활성 트라이브가 뽑혀 첫 캡슐이 열리지 않는 일이 없다.
+ * - `counted` 옵션(티켓 20261028_1733 2회): RPC가 `capsule_open_counted`, 옛 점수 `chapter_add_score`는 부르지 않고, 오름이 있으면 `processChapterRise`로 잇는다.
+ *   응답에 `chapterNo`·`reachedChapters`·`chapterCount`가 더해진다. `counted`가 없으면 옛 경로 그대로다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트·가짜 RPC·결정적 난수만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/open.test.ts
@@ -35,6 +37,7 @@ const feedMock = vi.hoisted(() => vi.fn())
 const logMock = vi.hoisted(() => vi.fn())
 const badgesRef = vi.hoisted(() => ({ rows: [] as unknown[] }))
 const completionMock = vi.hoisted(() => vi.fn())
+const riseMock = vi.hoisted(() => vi.fn())
 const realFollowUp = vi.hoisted(() => ({ fn: null as null | ((...args: never[]) => unknown) }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -81,6 +84,12 @@ vi.mock('@/lib/onboarding-quest/completion', () => ({
   recordOnboardingQuestCompletion: async (...args: unknown[]) => {
     order.calls.push('quest_completion')
     return completionMock(...args)
+  },
+}))
+vi.mock('@/lib/chapter/rise', () => ({
+  processChapterRise: async (...args: unknown[]) => {
+    order.calls.push('rise')
+    return riseMock(...args)
   },
 }))
 vi.mock('@/lib/points', () => ({ awardPoints: (...args: unknown[]) => awardPointsMock(...args) }))
@@ -234,6 +243,8 @@ beforeEach(() => {
   logMock.mockResolvedValue(undefined)
   completionMock.mockReset()
   completionMock.mockResolvedValue(null)
+  riseMock.mockReset()
+  riseMock.mockResolvedValue(undefined)
   badgesRef.rows = [mkBadge('common'), mkBadge('epic')]
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -685,5 +696,88 @@ describe('openCapsule — 다른 트라이브는 후보 배지가 있는 트라�
     await openCapsule(client, USER_ID, { rand: seq(...OTHER_TRIBE_FIRST) })
 
     expect(followUpMock.mock.calls[0][0]).toMatchObject({ tribeName: '트라이브-B' })
+  })
+})
+
+describe('openCapsule — counted 옵션 (티켓 20261028_1733 2회)', () => {
+  const countedRpc = (extra: Record<string, unknown>): Result => ({
+    data: { ...(OK_RPC.data as Record<string, unknown>), ...extra },
+    error: null,
+  })
+
+  it('RPC는 capsule_open_counted이고 옛 capsule_open·점수 chapter_add_score는 부르지 않는다', async () => {
+    const { client, rpc } = fakeClient({ rpc: countedRpc({ chapterNo: 3, reachedChapters: [], chapterCount: 2 }) })
+
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })
+
+    const names = rpc.mock.calls.map(([name]) => name)
+    expect(names).toContain('capsule_open_counted')
+    expect(names).not.toContain('capsule_open')
+    expect(names).not.toContain('chapter_add_score')
+    expect(rpc).toHaveBeenCalledWith('capsule_open_counted', expect.objectContaining({ p_user_id: USER_ID }))
+  })
+
+  it('오름이 없으면 오름 처리에 빈 목록을 넘기고, 응답에 챕터 횟수 정보를 더한다', async () => {
+    const { client } = fakeClient({ rpc: countedRpc({ chapterNo: 3, reachedChapters: [], chapterCount: 2 }) })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })
+
+    expect(riseMock).toHaveBeenCalledWith({ userId: USER_ID, reachedChapters: [] })
+    expect(payload).toMatchObject({ openId: 'open-1', next: { required: 120, filled: 0 }, chapterNo: 3, reachedChapters: [], chapterCount: 2 })
+  })
+
+  it('챕터가 올랐으면 오른 챕터를 오름 처리에 넘긴다 — 열기 확정 뒤, 퀘스트 완료·후속 처리보다 앞이다', async () => {
+    followUpMock.mockImplementation(async () => {
+      order.calls.push('followUp')
+    })
+    const { client } = fakeClient({ rpc: countedRpc({ chapterNo: 3, reachedChapters: [4], chapterCount: 0 }) })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })
+
+    expect(riseMock).toHaveBeenCalledTimes(1)
+    expect(riseMock).toHaveBeenCalledWith({ userId: USER_ID, reachedChapters: [4] })
+    expect(payload).toMatchObject({ chapterNo: 3, reachedChapters: [4], chapterCount: 0 })
+    expect(order.calls.indexOf('rise')).toBeGreaterThan(order.calls.indexOf('rpc:capsule_open_counted'))
+    expect(order.calls.indexOf('rise')).toBeLessThan(order.calls.indexOf('quest_completion'))
+    expect(order.calls.indexOf('rise')).toBeLessThan(order.calls.indexOf('followUp'))
+  })
+
+  it('퀘스트 전 캡슐은 센 게 없다 — chapterNo·chapterCount는 null이고 모양이 틀린 값은 걸러 낸다', async () => {
+    stateMock.mockResolvedValue(stateOf({ required: 5, filled: 5 }, null))
+    const { client } = fakeClient({ rpc: countedRpc({ chapterNo: null, reachedChapters: [0, 'x', 2.5, 5], chapterCount: null }) })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })
+
+    expect(payload).toMatchObject({ chapterNo: null, reachedChapters: [5], chapterCount: null })
+  })
+
+  it('counted 응답 필드가 없어도 열기는 유지된다(빈 값으로 읽는다)', async () => {
+    const { client } = fakeClient({ rpc: OK_RPC })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })
+
+    expect(payload).toMatchObject({ chapterNo: null, reachedChapters: [], chapterCount: null })
+  })
+
+  it('DB가 거절하면 CapsuleError이고 오름 처리를 하지 않는다. RPC 오류 문구에는 counted 함수 이름이 쓰인다', async () => {
+    const rejected = fakeClient({ rpc: { data: { ok: false, error: 'not_full' }, error: null } })
+    const error = await openCapsule(rejected.client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true }).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(CapsuleError)
+    expect((error as CapsuleError).code).toBe('not_full')
+
+    const broken = fakeClient({ rpc: { data: null, error: { message: 'boom' } } })
+    await expect(openCapsule(broken.client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })).rejects.toThrow('capsule_open_counted RPC 오류: boom')
+
+    expect(riseMock).not.toHaveBeenCalled()
+  })
+
+  it('counted를 켜지 않으면 응답에 챕터 정보가 없고 오름 처리는 점수 경로를 거친다(옛 경로 그대로)', async () => {
+    const { client, rpc } = fakeClient({ rpc: OK_RPC })
+
+    const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
+
+    expect(Object.keys(payload).sort()).toEqual(['items', 'next', 'openId'])
+    expect(rpc.mock.calls.map(([name]) => name)).toContain('chapter_add_score')
+    expect(riseMock).not.toHaveBeenCalled()
   })
 })
