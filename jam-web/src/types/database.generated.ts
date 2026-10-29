@@ -4027,6 +4027,7 @@ export type Database = {
       }
       user_capsules: {
         Row: {
+          alert_stage: number
           chapter_no: number | null
           created_at: string
           filled: number
@@ -4035,6 +4036,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          alert_stage?: number
           chapter_no?: number | null
           created_at?: string
           filled?: number
@@ -4043,6 +4045,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          alert_stage?: number
           chapter_no?: number | null
           created_at?: string
           filled?: number
@@ -4859,7 +4862,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      jam_forfeit_weekly: {
+        Row: {
+          forfeited_amount: number | null
+          user_count: number | null
+          week_start_kst: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       activate_theme_preset: {
@@ -4931,6 +4941,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      capsule_claim_pending: {
+        Args: { p_items: Json; p_pending_id: string; p_user_id: string }
+        Returns: Json
+      }
       capsule_fill: {
         Args: { p_amount?: number | null; p_user_id: string }
         Returns: Json
@@ -4938,6 +4952,7 @@ export type Database = {
       capsule_get_or_create: {
         Args: { p_user_id: string }
         Returns: {
+          alert_stage: number
           chapter_no: number | null
           created_at: string
           filled: number
@@ -4951,6 +4966,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      capsule_hold_reward: {
+        Args: { p_user_id: string }
+        Returns: Json
       }
       capsule_next_required: {
         Args: { p_user_id: string }
@@ -5304,6 +5323,8 @@ export type Database = {
         | "suspension_started"
         | "suspension_lifted"
         | "reward_pending"
+        | "capsule_nearly_full"
+        | "capsule_jam_blocked"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -5481,6 +5502,8 @@ export const Constants = {
         "suspension_started",
         "suspension_lifted",
         "reward_pending",
+        "capsule_nearly_full",
+        "capsule_jam_blocked",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },

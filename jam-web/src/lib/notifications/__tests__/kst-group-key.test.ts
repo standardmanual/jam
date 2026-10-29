@@ -148,11 +148,11 @@ describe('bumps_badge 파생 — ① 보상 획득(활동 결산)만 false', () 
     expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(27)
   })
 
-  // 앱이 쓰는 27종이 전부 DB enum에 있어야 한다(마이그레이션 270 포함). 생성 타입의 enum은 레거시 값 9개를 더 갖고 있어 36개다(티켓 20261021_1249 6-3 5회)
+  // 앱이 쓰는 27종이 전부 DB enum에 있어야 한다(마이그레이션 270 포함). 생성 타입의 enum은 레거시 값 9개를 더 갖고 있어 36개다(티켓 20261021_1249 6-3 5회). 마이그레이션 302가 capsule_nearly_full·capsule_jam_blocked를 더해 38개다(티켓 20261028_1734 1회, 앱 분류에 넣는 것은 3회)
   it('쓰는 27종이 모두 생성 타입의 notification_type 값에 있다 — 새 종류를 마이그레이션 없이 더했을 때 잡힌다', () => {
     const dbValues: readonly string[] = Constants.public.Enums.notification_type
     for (const type of [...REWARD_TYPES, ...OTHER_TYPES]) expect(dbValues, type).toContain(type)
-    expect(dbValues).toHaveLength(36)
+    expect(dbValues).toHaveLength(38)
   })
 })
 
