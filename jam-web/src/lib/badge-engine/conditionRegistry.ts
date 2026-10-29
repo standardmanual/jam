@@ -2314,7 +2314,7 @@ export const CONDITION_FIELDS = [
       section: 'meta',
       label: '지금까지 모은 잼',
       placeholder: '1000',
-      help: '활동으로 모은 잼의 총량이에요. 캡슐이나 잠긴 아이템 배지를 채워 잼을 써도 줄지 않아요.',
+      help: '움직여서 받은 잼과 서비스에서 한 일로 받은 잼을 합한 총량이에요. 캡슐이나 잠긴 아이템 배지를 채워 잼을 써도 줄지 않고, 사라진 잼은 세지 않아요.',
     }),
   }),
   field({
@@ -2334,7 +2334,7 @@ export const CONDITION_FIELDS = [
       section: 'meta',
       label: '한 주에 모은 잼',
       placeholder: '300',
-      help: '월요일부터 일요일까지(한국 시간) 활동한 날 기준으로 모은 잼을 합쳐, 가장 많이 모은 한 주로 판정해요.',
+      help: '월요일부터 일요일까지(한국 시간) 날짜별로 받은 잼을 합쳐, 가장 많이 모은 한 주로 판정해요. 움직여서 받은 잼과 서비스에서 한 일로 받은 잼을 함께 세고, 사라진 잼은 세지 않아요.',
     }),
   }),
   field({
@@ -2556,7 +2556,7 @@ export const CONDITION_FIELDS = [
   }),
   field({
     key: 'jam_week_count',
-    label: '잼을 채워 모은 주',
+    label: '잼을 모은 주',
     unit: '주',
     role: 'meta',
     input: 'integer',
@@ -2569,14 +2569,14 @@ export const CONDITION_FIELDS = [
     detail: (c) => `한 주(월~일, 한국 시간)에 잼 ${c.jam_week_min_earned ?? 1} 이상 모은 주 ${c.jam_week_count}주 이상`,
     form: integerForm('jamWeekCount', {
       section: 'meta',
-      label: '잼을 채워 모은 주',
+      label: '잼을 모은 주',
       placeholder: '5',
-      help: '한 주(월~일)에 모은 잼이 «한 주 최소 잼» 이상이면 그 주를 채운 주로 보고, 채운 주의 수로 판정해요.',
+      help: '한 주(월~일)에 모은 잼이 «한 주 최소 잼» 이상이면 기준을 넘긴 주로 보고, 기준을 넘긴 주의 수로 판정해요.',
     }),
   }),
   field({
     key: 'jam_week_streak',
-    label: '잼을 채워 모은 주의 연속',
+    label: '잼을 모은 주의 연속',
     unit: '주',
     role: 'meta',
     input: 'integer',
@@ -2590,7 +2590,7 @@ export const CONDITION_FIELDS = [
       `한 주(월~일, 한국 시간)에 잼 ${c.jam_week_min_earned ?? 1} 이상 모은 주가 ${c.jam_week_streak}주 이상 연속`,
     form: integerForm('jamWeekStreak', {
       section: 'meta',
-      label: '잼을 채워 모은 주의 연속',
+      label: '잼을 모은 주의 연속',
       placeholder: '3',
       help: '한 주(월~일)에 모은 잼이 «한 주 최소 잼» 이상인 주가 가장 길게 이어진 주 수로 판정해요.',
     }),
@@ -2613,7 +2613,7 @@ export const CONDITION_FIELDS = [
       section: 'meta',
       label: '한 주 최소 잼',
       placeholder: '200',
-      help: '잼을 채워 모은 주(또는 그 연속)와 함께 써요. 비워 두면 1잼으로 봐요.',
+      help: '잼을 모은 주(또는 그 연속)와 함께 써요. 비워 두면 1잼으로 봐요. 주마다 움직여서 받은 잼과 서비스에서 한 일로 받은 잼을 합해 비교하고, 사라진 잼은 세지 않아요.',
     }),
   }),
 ] as const
@@ -2893,7 +2893,7 @@ export const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
   // 티켓 20261019_0542 — 연속으로 채운 주(`active_week_streak`)의 보조 키. 신규 키라 실적이 0건이다. 짝 없이 저장되면 발급 경로가
   // 후보로 보지 않아 영원히 발급되지 않으므로 저장 시점에 막는다.
   'active_week_min_days',
-  // 티켓 20261019_0542 2회 — 잼을 채워 모은 주(`jam_week_count`)·그 연속(`jam_week_streak`)의 보조 키. 신규 키라 실적이 0건이다. 둘 중 하나는 있어야 한다(OR).
+  // 티켓 20261019_0542 2회 — 잼을 모은 주(`jam_week_count`)·그 연속(`jam_week_streak`)의 보조 키. 신규 키라 실적이 0건이다. 둘 중 하나는 있어야 한다(OR).
   'jam_week_min_earned',
 ]
 

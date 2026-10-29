@@ -206,7 +206,7 @@ describe('생성기 — 보류 13계열의 번호 대조와 행 규칙', () => {
     expect(keysOf('3-2')).toEqual(['activity_type,time_range,total_count'])
     for (const r of rows.filter((x) => x.number === '1-4')) expect((r.condition_json as { active_week_min_days: number }).active_week_min_days).toBe(3)
     for (const r of rows.filter((x) => x.number === '7-3' || x.number === '7-4')) {
-      expect((r.condition_json as { jam_week_min_earned: number }).jam_week_min_earned).toBe(200)
+      expect((r.condition_json as { jam_week_min_earned: number }).jam_week_min_earned).toBe(230)
     }
     for (const r of rows.filter((x) => x.number === '3-2')) {
       expect((r.condition_json as { time_range: unknown }).time_range).toEqual({ start: '18:00', end: '22:00' })
@@ -291,8 +291,8 @@ describe('생성기 — 보류 13계열의 번호 대조와 행 규칙', () => {
     const brokenAux = manuscript.replace('| Common | 카메라 좌판 | 주 3일 이상 활동 2주 연속 |', '| Common | 카메라 좌판 | 주 4일 이상 활동 2주 연속 |')
     expect(brokenAux).not.toBe(manuscript)
     expect(build(brokenAux)).toThrow(/번호 대조 1-4.*보조 값/)
-    // 7-3의 «200 이상»이 바뀐다
-    const brokenJam = manuscript.replace('한 주에 모은 잼 200 이상 1주', '한 주에 모은 잼 300 이상 1주')
+    // 7-3의 «230 이상»이 바뀐다
+    const brokenJam = manuscript.replace('한 주에 모은 잼 230 이상 1주', '한 주에 모은 잼 300 이상 1주')
     expect(brokenJam).not.toBe(manuscript)
     expect(build(brokenJam)).toThrow(/번호 대조 7-3.*보조 값/)
     // 2-2의 «7일 이상 휴식»이 바뀌면 엔진 상수(7일)와의 어긋남을 다시 판단하도록 던진다
@@ -685,8 +685,8 @@ async function issueFor(trigger: string, owned: string[] = []): Promise<string[]
 function setMetric(number: string, value: number) {
   const trigger = TRIGGER_OF_NUMBER[number]
   if (trigger === 'active_week_streak') mocks.fetchRecognizedActivities.mockResolvedValue(activeWeeksActivities(value, 3))
-  else if (trigger === 'jam_week_count') mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(value, 200, 2))
-  else if (trigger === 'jam_week_streak') mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(value, 200, 1))
+  else if (trigger === 'jam_week_count') mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(value, 230, 2))
+  else if (trigger === 'jam_week_streak') mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(value, 230, 1))
   else mocks.computers[COMPUTER_OF[trigger]].mockResolvedValue(value)
 }
 
@@ -752,13 +752,13 @@ describe('엔진 평가 — 활동·체크인·드랍·잼 12계열(실제 발�
     expect(await issueFor('active_week_streak')).toEqual([])
   })
 
-  it('7-3·7-4: 한 주에 잼 200 미만(199)인 주는 세지 않고, 7-3은 건너뛴 주도 쌓아 세고 7-4는 이어진 주만 센다', async () => {
-    mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(6, 199, 1))
+  it('7-3·7-4: 한 주에 잼 230 미만(229)인 주는 세지 않고, 7-3은 건너뛴 주도 쌓아 세고 7-4는 이어진 주만 센다', async () => {
+    mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(6, 229, 1))
     expect(await issueFor('jam_week_count')).toEqual([])
     expect(await issueFor('jam_week_streak')).toEqual([])
 
     // 한 주씩 건너뛴 5주: 쌓은 주는 5(Rare까지), 연속은 1(받지 않는다)
-    mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(5, 200, 2))
+    mocks.fetchDailyEarnedRows.mockResolvedValue(jamEarnedRows(5, 230, 2))
     expect(await issueFor('jam_week_count')).toEqual(['jam:J7-3#rare'])
     expect(await issueFor('jam_week_streak')).toEqual([])
   })

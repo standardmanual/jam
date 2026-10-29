@@ -199,12 +199,12 @@ export const FAMILY_DEFS = {
   '7-3': {
     key: 'jam_week_count', parse: 'pattern', scope: 'jam', branch: 'milestone', image: 'walking:P2',
     pattern: /^한 주에 모은 잼 (?<aux>\d+) 이상 (?:누적 )?(?<value>\d+)주$/,
-    aux: { key: 'jam_week_min_earned', expected: 200 },
+    aux: { key: 'jam_week_min_earned', expected: 230 },
   },
   '7-4': {
     key: 'jam_week_streak', parse: 'pattern', scope: 'jam', branch: 'milestone', image: 'walking:S2',
     pattern: /^한 주에 모은 잼 (?<aux>\d+) 이상 (?<value>\d+)주 연속$/,
-    aux: { key: 'jam_week_min_earned', expected: 200 },
+    aux: { key: 'jam_week_min_earned', expected: 230 },
   },
   '8-4': { key: 'dropped_item_picked_up_count', parse: 'int', scope: 'jam', branch: 'jam_activity', image: 'walking:K1' },
   '8-5': { key: 'pickup_item_count', parse: 'int', scope: 'jam', branch: 'jam_activity', image: 'walking:K3' },
@@ -623,7 +623,7 @@ function pushHeldHeader({ push, rows, fams, numbersUsed, imageTable, fileName })
   push('--   ② point_reward: 등급형 Common 10·Rare 20·Epic 50, 레벨형은 레벨마다 10, 단일(Common)은 10.')
   push('--   ③ condition_json: 단계 값 키 하나(+ 보조 키). 1-4 {active_week_streak:N, active_week_min_days:3}, 2-2 {return_streak_weeks:N}, 3-4 {full_week_count:N}, 3-5 {full_season_year_count:N},')
   push('--      5-1 {new_checkin_badge_count:N}(3·10·25·50·100), 5-2 {distinct_activity_type_count:N}, 5-4 {new_checkin_badge_count:1}, 5-5 {checkin_season_year_count:N},')
-  push('--      7-3 {jam_week_count:N, jam_week_min_earned:200}, 7-4 {jam_week_streak:N, jam_week_min_earned:200}, 8-4 {dropped_item_picked_up_count:N}, 8-5 {pickup_item_count:N}(둘 다 1·5·30·50·100).')
+  push('--      7-3 {jam_week_count:N, jam_week_min_earned:230}, 7-4 {jam_week_streak:N, jam_week_min_earned:230}, 8-4 {dropped_item_picked_up_count:N}, 8-5 {pickup_item_count:N}(둘 다 1·5·30·50·100).')
   push('--      3-2는 종목마다 계열 하나({activity_type:<종목>, time_range:{start:18:00,end:22:00}, total_count:N}, 값은 원고 4절 종목별 보정: 걷기·러닝·자전거 1·5·20·50, 트레일러닝 1·4·16·40, 등산 1·3·12·30).')
   push('--      판정: 3-2는 메인 엔진(time_range + total_count, 시간대 안에서 활동한 «날»의 수로 센다), 나머지 12계열은 엔진 밖 파이프라인(jamActionBadges.ts)이 한다. 메인 엔진은 새 키만 든 조건을 항상 fail 처리한다.')
   push('--   ④ activity_types·admin_category·family_key: 3-2는 activity_types=[종목]·admin_category NULL·family_key `<종목>:J3-2`.')

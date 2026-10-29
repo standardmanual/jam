@@ -173,7 +173,7 @@ export const JAM_PERIOD_EARNED_INPUT = {
   max: 1000000,
   step: 1,
   placeholder: '300',
-  help: '참가한 뒤 미션 기간 안에 모은 잼만 세요. 참가 전에 모은 잼은 포함되지 않아요.',
+  help: '참가한 뒤 미션 기간 안에 받은 잼(움직여서 받은 잼 + 서비스에서 한 일로 받은 잼)을 합해요. 참가 전에 받은 잼과 사라진 잼은 포함되지 않아요.',
 } as const
 
 /**

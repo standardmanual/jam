@@ -419,3 +419,32 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
     expect(find('ch12-advance-count')?.currentSpec).toContain('100%에 처음 닿는 시점')
   })
 })
+
+describe('잼 조건 합산·기준값 카드 (티켓 20261028_1736 2회)', () => {
+  const find = (id: string) => POLICIES_DATA.find((p) => p.id === id)
+  const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+
+  it('합산 카드는 4장에 있고 활동 잼과 서비스 활동 잼을 더하며 소멸·채움·운영자 조정은 세지 않는다고 적는다', () => {
+    const card = find('ch4-jam-condition-sum')
+    expect(card?.chapter).toBe(4)
+    expect(card?.ticketId).toBe('20261028_1736')
+    expect(card?.nodes).toContain('jam')
+    for (const text of ['total_earned', 'jam_service_daily', 'jam_daily_earned', 'service_activity', 'capsule_forfeit', '운영자 지급·회수']) {
+      expect(card?.currentSpec, text).toContain(text)
+    }
+    expect(existsSync(`${repoRoot}${card?.codeLocation}`), '코드 위치가 실재해야 합니다').toBe(true)
+  })
+
+  it('잼 이정표 카드는 확정 기준값을 적고 옛 값을 남기지 않으며 오픈 전 적용 대기로 둔다', () => {
+    const card = find('ch10-jam-milestone-thresholds')
+    expect(card?.chapter).toBe(10)
+    expect(card?.type).toBe('pre_launch_pending')
+    for (const text of ['1,100·5,500·22,000·55,000·110,000', '230·360·880·1,250', '1·5·20주', '2·3·4주', '230 이상']) {
+      expect(card?.currentSpec, text).toContain(text)
+    }
+    for (const old of ['1,000·5,000', '200·330', '830·1,200', '200 이상']) {
+      expect(card?.currentSpec, old).not.toContain(old)
+    }
+    expect(existsSync(`${repoRoot}${card?.codeLocation}`), '코드 위치가 실재해야 합니다').toBe(true)
+  })
+})
