@@ -10,7 +10,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/admin/opsTrends/__tests__/sourceStore.test.ts
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { createTrendSource, listTrendSources, updateTrendSource } from '../sourceStore'
+import { createTrendSource, deleteTrendSource, listTrendSources, updateTrendSource } from '../sourceStore'
 
 type Row = Record<string, unknown>
 
@@ -42,7 +42,7 @@ function fakeService() {
   const make = (table: string) => {
     const rows = () => (table === 'ops_trend_sources' ? state.sources : state.bundles)
     const filters: Array<(r: Row) => boolean> = []
-    let mode: 'select' | 'insert' | 'update' = 'select'
+    let mode: 'select' | 'insert' | 'update' | 'delete' = 'select'
     let payload: Row = {}
     let sortKey: string | null = null
     let ascending = true
@@ -62,6 +62,13 @@ function fakeService() {
         return { data: [row], error: null }
       }
       let matched = rows().filter((r) => filters.every((f) => f(r)))
+      if (mode === 'delete') {
+        const toDelete = [...matched]
+        if (table === 'ops_trend_sources') {
+          state.sources = state.sources.filter((s) => !toDelete.includes(s))
+        }
+        return { data: toDelete, error: null }
+      }
       if (mode === 'update') {
         if (
           payload.name !== undefined &&
@@ -88,6 +95,10 @@ function fakeService() {
 
     const builder: Record<string, unknown> = {
       select: () => builder,
+      delete: () => {
+        mode = 'delete'
+        return builder
+      },
       insert: (p: Row) => {
         mode = 'insert'
         payload = p
@@ -323,6 +334,26 @@ describe('updateTrendSource', () => {
       expect(await updateTrendSource(fakeService(), 'nope', { location: FOLDER })).toEqual({ ok: false, code: 'not_found' })
       state.failTable = 'ops_trend_sources'
       await expect(updateTrendSource(fakeService(), 'x', { location: FOLDER })).rejects.toThrow()
+    })
+  })
+
+  describe('deleteTrendSource', () => {
+    it('있는 행을 삭제하면 { ok: true }이고 목록에서 빠진다', async () => {
+      const row = source({ name: '삭제할 출처' })
+      state.sources.push(row)
+      const res = await deleteTrendSource(fakeService(), row.id as string)
+      expect(res).toEqual({ ok: true })
+      expect(state.sources.some((s) => s.id === row.id)).toBe(false)
+    })
+
+    it('없는 행을 삭제하면 { ok: false, code: "not_found" }이다', async () => {
+      const res = await deleteTrendSource(fakeService(), 'not-exists')
+      expect(res).toEqual({ ok: false, code: 'not_found' })
+    })
+
+    it('삭제 실패 시 오류를 던진다', async () => {
+      state.failTable = 'ops_trend_sources'
+      await expect(deleteTrendSource(fakeService(), 'some-id')).rejects.toThrow('트렌드 출처 삭제 실패')
     })
   })
 })

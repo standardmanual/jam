@@ -1,16 +1,17 @@
 /**
- * PATCH /api/admin/ops-trend-sources/[id] — 트렌드 출처 수정·켜기·끄기 (티켓 20261026_2033 1회차, 어드민 상황판 PRD §6.4)
+ * PATCH /api/admin/ops-trend-sources/[id] — 트렌드 출처 수정·켜기·끄기
+ * DELETE /api/admin/ops-trend-sources/[id] — 트렌드 출처 삭제
  *
  * **관리자 세션만** 통과한다(`getAdminUser()`가 없으면 403, 읽기 토큰은 보지 않는다). `id`가 UUID가 아니면 404,
- * 검증 실패 400(종류가 직접 올린 자료가 아닌데 위치를 비우는 경우, 저장소 폴더 출처의 위치가 허용 폴더 밖인 경우 포함), 이름 중복 409, 없는 행 404, 성공 200 `{ source }`.
- * 삭제 경로는 없다. 옛 묶음의 `source_ids`가 번호로 남아 있어서 끄기로 대신한다. 오류 본문에 내부 메시지를 싣지 않는다.
+ * 검증 실패 400(종류가 직접 올린 자료가 아닌데 위치를 비우는 경우, 저장소 폴더 출처의 위치가 허용 폴더 밖인 경우 포함), 이름 중복 409, 없는 행 404, 성공 200 `{ source }` (DELETE는 `{ ok: true }`).
+ * 오류 본문에 내부 메시지를 싣지 않는다.
  */
 import { NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { OPS_TREND_SOURCE_MAX_BODY_BYTES } from '@/lib/admin/opsTrends/constants'
 import { TREND_SOURCE_FOLDER_ERROR, validateTrendSourcePatch } from '@/lib/admin/opsTrends/sources'
-import { updateTrendSource } from '@/lib/admin/opsTrends/sourceStore'
+import { deleteTrendSource, updateTrendSource } from '@/lib/admin/opsTrends/sourceStore'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -65,5 +66,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   } catch (error) {
     console.error('[admin/ops-trend-sources] 출처 수정 실패:', error)
     return NextResponse.json({ error: '출처를 수정하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: '어드민 권한이 필요합니다.' }, { status: 403 })
+
+  const { id } = await params
+  if (!UUID_PATTERN.test(id)) return notFound()
+
+  try {
+    const result = await deleteTrendSource(createServiceClient(), id)
+    if (!result.ok) {
+      return notFound()
+    }
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('[admin/ops-trend-sources] 출처 삭제 실패:', error)
+    return NextResponse.json({ error: '출처를 삭제하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' }, { status: 500 })
   }
 }

@@ -30,6 +30,7 @@ const h = vi.hoisted(() => ({
   failWrite: false,
   createResult: null as Record<string, unknown> | null,
   updateResult: null as Record<string, unknown> | null,
+  deleteResult: null as Record<string, unknown> | null,
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -51,10 +52,14 @@ vi.mock('@/lib/admin/opsTrends/sourceStore', () => ({
     if (h.failWrite) throw new Error('relation secret_table exploded')
     return h.updateResult
   },
+  deleteTrendSource: async () => {
+    if (h.failWrite) throw new Error('relation secret_table exploded')
+    return h.deleteResult
+  },
 }))
 
 import { GET, POST } from '../route'
-import { PATCH } from '../[id]/route'
+import { PATCH, DELETE } from '../[id]/route'
 import { OPS_TREND_SOURCE_MAX_BODY_BYTES } from '@/lib/admin/opsTrends/constants'
 
 const TOKEN = 'test-admin-read-token-abcdef'
@@ -92,6 +97,10 @@ function patch(id: string, options: Parameters<typeof request>[1] = {}) {
   return PATCH(request('PATCH', options), { params: Promise.resolve({ id }) })
 }
 
+function del(id: string, options: Parameters<typeof request>[1] = {}) {
+  return DELETE(request('DELETE', options), { params: Promise.resolve({ id }) })
+}
+
 describe('/api/admin/ops-trend-sources', () => {
   const saved: Record<string, string | undefined> = {}
   let consoleError: ReturnType<typeof vi.spyOn>
@@ -107,6 +116,7 @@ describe('/api/admin/ops-trend-sources', () => {
     h.failWrite = false
     h.createResult = { ok: true, source: { ...SAVED, lastReadAt: undefined } }
     h.updateResult = { ok: true, source: { ...SAVED, enabled: false } }
+    h.deleteResult = { ok: true }
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
@@ -302,6 +312,39 @@ describe('/api/admin/ops-trend-sources', () => {
       h.user = { id: 'admin-1', email: 'admin@example.com' }
       h.failWrite = true
       const res = await patch(ID, { body: { enabled: false } })
+      expect(res.status).toBe(500)
+      expect(JSON.stringify(await res.json())).not.toContain('secret_table')
+    })
+  })
+
+  describe('DELETE', () => {
+    it('세션이 없으면 403', async () => {
+      expect((await del(ID)).status).toBe(403)
+    })
+
+    it('UUID가 아닌 id는 404', async () => {
+      h.user = { id: 'admin-1', email: 'admin@example.com' }
+      expect((await del('not-a-uuid')).status).toBe(404)
+    })
+
+    it('없는 행이면 404', async () => {
+      h.user = { id: 'admin-1', email: 'admin@example.com' }
+      h.deleteResult = { ok: false, code: 'not_found' }
+      expect((await del(ID)).status).toBe(404)
+    })
+
+    it('세션으로 삭제하면 200 { ok: true }', async () => {
+      h.user = { id: 'admin-1', email: 'admin@example.com' }
+      h.deleteResult = { ok: true }
+      const res = await del(ID)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ ok: true })
+    })
+
+    it('삭제 실패는 500이고 내부 메시지를 싣지 않는다', async () => {
+      h.user = { id: 'admin-1', email: 'admin@example.com' }
+      h.failWrite = true
+      const res = await del(ID)
       expect(res.status).toBe(500)
       expect(JSON.stringify(await res.json())).not.toContain('secret_table')
     })

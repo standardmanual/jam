@@ -4,6 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconPlus } from '@tabler/icons-react'
 import { Alert, AlertDescription } from '@/components/admin/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/admin/ui/alert-dialog'
 import { Button } from '@/components/admin/ui/button'
 import { Card } from '@/components/admin/ui/card'
 import { Input } from '@/components/admin/ui/input'
@@ -19,7 +27,12 @@ import {
   OPS_TREND_SOURCE_MAX_NAME,
   type OpsTrendSourceKind,
 } from '@/lib/admin/opsTrends/constants'
-import { createTrendSourceRequest, setTrendSourceEnabledRequest } from './sourceClient'
+import {
+  createTrendSourceRequest,
+  deleteTrendSourceRequest,
+  setTrendSourceEnabledRequest,
+  updateTrendSourceRequest,
+} from './sourceClient'
 
 /**
  * 내가 등록한 출처 (티켓 20261026_2033 2회차, 어드민 상황판 PRD §6.4). 트렌드 레이더 위쪽 구역이다.
@@ -184,12 +197,130 @@ export function SourceAddForm({
   )
 }
 
+export function SourceEditForm({
+  source,
+  onDone,
+  onCancel,
+}: {
+  source: OpsTrendSourceRow
+  onDone: () => void
+  onCancel: () => void
+}) {
+  const [name, setName] = useState(source.name)
+  const [location, setLocation] = useState(source.location)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const missing = name.trim() === '' || (locationRequired(source.kind) && location.trim() === '')
+
+  const submit = async () => {
+    setPending(true)
+    setError(null)
+    const result = await updateTrendSourceRequest(source.id, { name, location })
+    setPending(false)
+    if (result.ok) onDone()
+    else setError(result.message)
+  }
+
+  return (
+    <form
+      aria-label="출처 수정"
+      className="space-y-3 rounded-lg border border-border bg-card p-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!missing && !pending) void submit()
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold break-keep wrap-break-word">
+          출처 {source.no} 수정
+        </h4>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,3fr)]">
+        <label className="block space-y-1 text-sm font-medium">
+          <span className="break-keep wrap-break-word">이름</span>
+          <Input
+            value={name}
+            maxLength={OPS_TREND_SOURCE_MAX_NAME}
+            disabled={pending}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={NAME_PLACEHOLDERS[source.kind] ?? '예: 러닝 해시태그'}
+          />
+        </label>
+        <div className="block space-y-1 text-sm font-medium">
+          <span className="break-keep wrap-break-word">종류</span>
+          <div className="flex h-9 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+            {OPS_TREND_SOURCE_KIND_LABELS[source.kind]}
+          </div>
+        </div>
+        {source.kind === 'repo_folder' ? (
+          <div className="block space-y-1 text-sm font-medium">
+            <span id="trend-source-edit-location-label" className="break-keep wrap-break-word">
+              위치
+            </span>
+            <Select value={location} disabled={pending} onValueChange={setLocation}>
+              <SelectTrigger aria-labelledby="trend-source-edit-location-label">
+                <SelectValue placeholder={KIND_PLACEHOLDERS[source.kind]} />
+              </SelectTrigger>
+              <SelectContent>
+                {OPS_TREND_SOURCE_FOLDERS.map((folder) => (
+                  <SelectItem key={folder} value={folder}>
+                    {folder}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <label className="block space-y-1 text-sm font-medium">
+            <span className="break-keep wrap-break-word">위치</span>
+            <Input
+              value={location}
+              maxLength={OPS_TREND_SOURCE_MAX_LOCATION}
+              disabled={pending}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder={KIND_PLACEHOLDERS[source.kind]}
+            />
+          </label>
+        )}
+      </div>
+      {source.kind === 'manual_upload' && (
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_MANUAL_HINT}</p>
+      )}
+      {source.kind === 'repo_folder' && (
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_FOLDER_HINT}</p>
+      )}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription className="break-keep wrap-break-word">{error}</AlertDescription>
+        </Alert>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={missing || pending}>
+          {pending ? '저장하는 중' : '저장하기'}
+        </Button>
+        <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+          취소
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 export function OpsTrendSources({ sources }: { sources: readonly OpsTrendSourceRow[] }) {
   const router = useRouter()
   const [adding, setAdding] = useState(false)
+  const [editingSource, setEditingSource] = useState<OpsTrendSourceRow | null>(null)
+  const [deletingSource, setDeletingSource] = useState<OpsTrendSourceRow | null>(null)
+  const [deletePending, setDeletePending] = useState(false)
   const [overrides, setOverrides] = useState<Record<string, boolean>>({})
   const [lockedIds, setLockedIds] = useState<ReadonlySet<string>>(new Set())
   const [toggleError, setToggleError] = useState<string | null>(null)
+
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
 
   const toggle = async (source: OpsTrendSourceRow, next: boolean) => {
     setToggleError(null)
@@ -213,8 +344,33 @@ export function OpsTrendSources({ sources }: { sources: readonly OpsTrendSourceR
     setToggleError(result.message)
   }
 
-  const addButton = !adding && (
-    <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+  const handleDelete = async () => {
+    if (!deletingSource) return
+    setDeletePending(true)
+    setToggleError(null)
+    const result = await deleteTrendSourceRequest(deletingSource.id)
+    setDeletePending(false)
+    if (result.ok) {
+      if (editingSource?.id === deletingSource.id) {
+        setEditingSource(null)
+      }
+      setDeletingSource(null)
+      router.refresh()
+    } else {
+      setToggleError(result.message)
+      setDeletingSource(null)
+    }
+  }
+
+  const addButton = !adding && !editingSource && (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={() => {
+        setEditingSource(null)
+        setAdding(true)
+      }}
+    >
       <IconPlus aria-hidden="true" />
       출처 추가
     </Button>
@@ -245,14 +401,25 @@ export function OpsTrendSources({ sources }: { sources: readonly OpsTrendSourceR
                   <TableHead>위치</TableHead>
                   <TableHead className="whitespace-nowrap">마지막으로 읽은 시각</TableHead>
                   <TableHead className="whitespace-nowrap">사용</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">관리</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sources.map((source) => {
                   const enabled = overrides[source.id] ?? source.enabled
                   const lastRead = formatKstDayTime(source.lastReadAt)
+                  const isEditing = editingSource?.id === source.id
                   return (
-                    <TableRow key={source.id} className={enabled ? undefined : 'text-muted-foreground'}>
+                    <TableRow
+                      key={source.id}
+                      className={
+                        isEditing
+                          ? 'bg-muted/50'
+                          : enabled
+                            ? undefined
+                            : 'text-muted-foreground'
+                      }
+                    >
                       <TableCell className="tabular-nums whitespace-nowrap">{source.no}</TableCell>
                       <TableCell className="font-medium break-keep wrap-break-word">{source.name}</TableCell>
                       <TableCell className="whitespace-nowrap">{OPS_TREND_SOURCE_KIND_LABELS[source.kind]}</TableCell>
@@ -268,13 +435,41 @@ export function OpsTrendSources({ sources }: { sources: readonly OpsTrendSourceR
                         <div className="flex items-center gap-2">
                           <Switch
                             checked={enabled}
-                            disabled={lockedIds.has(source.id)}
+                            disabled={lockedIds.has(source.id) || deletePending}
                             aria-label={`${source.name} 사용`}
                             onCheckedChange={(value) => void toggle(source, value)}
                           />
                           <span aria-hidden="true" className="min-w-8 whitespace-nowrap text-sm">
                             {enabled ? SWITCH_STATE.on : SWITCH_STATE.off}
                           </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`${source.name} 수정`}
+                            disabled={lockedIds.has(source.id) || deletePending}
+                            onClick={() => {
+                              setAdding(false)
+                              setEditingSource(source)
+                            }}
+                          >
+                            수정
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`${source.name} 삭제`}
+                            disabled={lockedIds.has(source.id) || deletePending}
+                            onClick={() => setDeletingSource(source)}
+                          >
+                            삭제
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -296,6 +491,52 @@ export function OpsTrendSources({ sources }: { sources: readonly OpsTrendSourceR
           }}
         />
       )}
+
+      {editingSource && (
+        <SourceEditForm
+          source={editingSource}
+          onCancel={() => setEditingSource(null)}
+          onDone={() => {
+            setEditingSource(null)
+            router.refresh()
+          }}
+        />
+      )}
+
+      <AlertDialog
+        open={Boolean(deletingSource)}
+        onOpenChange={(open) => !open && !deletePending && setDeletingSource(null)}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>출처 삭제</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-1">
+              <span>&apos;{deletingSource?.name}&apos; 출처를 삭제할까요?</span>
+              <span className="block text-xs text-muted-foreground">
+                삭제 후에는 루틴이 이 출처를 읽지 않으며, 목록에서 완전히 제거됩니다.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deletePending}
+              onClick={() => setDeletingSource(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deletePending}
+              onClick={() => void handleDelete()}
+            >
+              {deletePending ? '삭제하는 중...' : '삭제'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 /**
- * 트렌드 출처 쓰기 요청 호출 (티켓 20261026_2033 2회차) — `POST /api/admin/ops-trend-sources`(등록),
- * `PATCH /api/admin/ops-trend-sources/[id]`(켜기·끄기).
+ * 트렌드 출처 쓰기 요청 호출 — `POST /api/admin/ops-trend-sources`(등록),
+ * `PATCH /api/admin/ops-trend-sources/[id]`(수정·켜기·끄기), `DELETE /api/admin/ops-trend-sources/[id]`(삭제).
  *
  * `patternClient.ts`처럼 **던지지 않고** 결과를 돌려준다. 실패 문장은 서버가 준 것을 그대로 한 줄로 만든다
  * (400은 `details`가 있으면 그 문장들, 없으면 `error`). 응답을 받지 못하면 고정 문장이다.
@@ -14,6 +14,12 @@ export interface TrendSourceCreateBody {
   name: string
   kind: OpsTrendSourceKind
   location: string
+}
+
+export interface TrendSourceUpdateBody {
+  name?: string
+  location?: string
+  enabled?: boolean
 }
 
 const FALLBACK_ERROR = '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
@@ -35,10 +41,20 @@ export function errorLineOf(data: unknown): string {
   return typeof error === 'string' && error.trim() !== '' ? error : FALLBACK_ERROR
 }
 
-async function send(url: string, method: 'POST' | 'PATCH', body: unknown): Promise<TrendSourceRequestResult> {
+async function send(
+  url: string,
+  method: 'POST' | 'PATCH' | 'DELETE',
+  body?: unknown
+): Promise<TrendSourceRequestResult> {
   let res: Response
   try {
-    res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const headers: Record<string, string> = {}
+    let reqBody: string | undefined
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json'
+      reqBody = JSON.stringify(body)
+    }
+    res = await fetch(url, { method, headers, body: reqBody })
   } catch {
     return { ok: false, status: 0, message: NETWORK_ERROR_MESSAGE }
   }
@@ -53,4 +69,15 @@ export function createTrendSourceRequest(body: TrendSourceCreateBody): Promise<T
 
 export function setTrendSourceEnabledRequest(id: string, enabled: boolean): Promise<TrendSourceRequestResult> {
   return send(trendSourceUrl(id), 'PATCH', { enabled })
+}
+
+export function updateTrendSourceRequest(
+  id: string,
+  body: TrendSourceUpdateBody
+): Promise<TrendSourceRequestResult> {
+  return send(trendSourceUrl(id), 'PATCH', body)
+}
+
+export function deleteTrendSourceRequest(id: string): Promise<TrendSourceRequestResult> {
+  return send(trendSourceUrl(id), 'DELETE')
 }

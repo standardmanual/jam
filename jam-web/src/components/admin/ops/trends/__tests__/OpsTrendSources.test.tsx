@@ -19,13 +19,21 @@ import { OPS_TREND_SOURCE_FOLDERS } from '@/lib/admin/opsTrends/constants'
 import {
   OpsTrendSources,
   SourceAddForm,
+  SourceEditForm,
   TREND_SOURCE_EMPTY,
   TREND_SOURCE_FOLDER_HINT,
   TREND_SOURCE_MANUAL_HINT,
   TREND_SOURCE_NEVER_READ,
   type OpsTrendSourceRow,
 } from '../OpsTrendSources'
-import { createTrendSourceRequest, errorLineOf, setTrendSourceEnabledRequest, trendSourceUrl } from '../sourceClient'
+import {
+  createTrendSourceRequest,
+  deleteTrendSourceRequest,
+  errorLineOf,
+  setTrendSourceEnabledRequest,
+  trendSourceUrl,
+  updateTrendSourceRequest,
+} from '../sourceClient'
 
 const flat = (node: ReactElement) => renderToStaticMarkup(node).replace(/<!-- -->/g, '')
 
@@ -83,6 +91,39 @@ describe('OpsTrendSources 렌더', () => {
 
   it('추가 양식은 누르기 전에는 닫혀 있다', () => {
     expect(flat(<OpsTrendSources sources={[row()]} />)).not.toContain('aria-label="출처 추가"')
+  })
+
+  it('각 행에 관리 열과 수정·삭제 버튼이 제공된다', () => {
+    const out = flat(<OpsTrendSources sources={[row()]} />)
+    expect(out).toContain('관리')
+    expect(out).toContain('aria-label="러닝 해시태그 수정"')
+    expect(out).toContain('aria-label="러닝 해시태그 삭제"')
+  })
+})
+
+describe('SourceEditForm 수정 양식', () => {
+  it('기존 이름과 위치가 입력되어 있고 종류는 읽기 전용으로 표시된다', () => {
+    const out = flat(<SourceEditForm source={row()} onDone={vi.fn()} onCancel={vi.fn()} />)
+    expect(out).toContain('aria-label="출처 수정"')
+    expect(out).toContain('출처 1 수정')
+    expect(out).toContain('value="러닝 해시태그"')
+    expect(out).toContain('value="#러닝"')
+    expect(out).toContain('해시태그')
+    expect(out).toContain('저장하기')
+    expect(out).toContain('취소')
+  })
+
+  it('저장소 폴더 종류는 위치가 폴더 선택기로 나온다', () => {
+    const out = flat(
+      <SourceEditForm
+        source={row({ kind: 'repo_folder', location: OPS_TREND_SOURCE_FOLDERS[0], name: '트렌드 문서' })}
+        onDone={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(out).toContain('저장소 폴더')
+    expect(out).toContain('aria-labelledby="trend-source-edit-location-label"')
+    expect(out).toContain(TREND_SOURCE_FOLDER_HINT)
   })
 })
 
@@ -169,6 +210,25 @@ describe('sourceClient', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))))
     const result = await setTrendSourceEnabledRequest('abc', true)
     expect(result).toEqual({ ok: false, status: 0, message: NETWORK_ERROR_MESSAGE })
+  })
+
+  it('수정은 PATCH /[id]에 변경할 필드를 보낸다', async () => {
+    const fetchMock = stubFetch(200, { source: {} })
+    const result = await updateTrendSourceRequest('abc-123', { name: '새 이름', location: '#새태그' })
+    expect(result).toEqual({ ok: true })
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe(trendSourceUrl('abc-123'))
+    expect(init.method).toBe('PATCH')
+    expect(JSON.parse(String(init.body))).toEqual({ name: '새 이름', location: '#새태그' })
+  })
+
+  it('삭제는 DELETE /[id]를 보낸다', async () => {
+    const fetchMock = stubFetch(200, { ok: true })
+    const result = await deleteTrendSourceRequest('abc-123')
+    expect(result).toEqual({ ok: true })
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe(trendSourceUrl('abc-123'))
+    expect(init.method).toBe('DELETE')
   })
 
   it('본문을 읽을 수 없는 실패는 일반 문장이다', () => {

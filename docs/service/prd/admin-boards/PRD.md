@@ -177,19 +177,20 @@ related:
   - **하지 않은 것:** 유저별 참가·완료 판정, 새 지점 표시, 기간을 7일보다 길게 고르는 일.
 
 ### 6.4 트렌드 레이더
-- **구현됨(DB·API): 티켓 20261026_2033 1회차** (화면은 아래 「구현됨(화면)」). 테이블 `ops_trend_sources`(마이그레이션 296)와 API 세 개다. 코드는 `lib/admin/opsTrends/`(`constants.ts`, 검증 `sources.ts`, 저장 `sourceStore.ts`)와 `app/api/admin/ops-trend-sources/`다.
-  - **테이블:** `id`(UUID), `no`(자동 증가 출처 번호, 유일 — 루틴과 화면의 「출처 N」), `name`(앞뒤 공백 제외 1~60자, 공백·대소문자를 무시하고 유일), `kind`(`hashtag`·`channel`·`search_trend`·`manual_upload`), `location`(300자 이내, 직접 올린 자료만 비워도 됨), `enabled`, `created_at`, `updated_at`, `created_by`(응답에 싣지 않음). RLS만 켜고 정책이 없어 service_role만 접근한다.
-  - **삭제 없음:** 끄기(`enabled=false`)로 대신한다. 옛 묶음의 `source_ids`가 번호로 남아 있기 때문이다.
+- **구현됨(DB·API): 티켓 20261026_2033 1회차, 수정·삭제 티켓 20261029_2110** (화면은 아래 「구현됨(화면)」). 테이블 `ops_trend_sources`(마이그레이션 296, 298)와 API 네 개다. 코드는 `lib/admin/opsTrends/`(`constants.ts`, 검증 `sources.ts`, 저장 `sourceStore.ts`)와 `app/api/admin/ops-trend-sources/`다.
+  - **테이블:** `id`(UUID), `no`(자동 증가 출처 번호, 유일 — 루틴과 화면의 「출처 N」), `name`(앞뒤 공백 제외 1~60자, 공백·대소문자를 무시하고 유일), `kind`(`hashtag`·`channel`·`search_trend`·`manual_upload`·`repo_folder`), `location`(300자 이내, 직접 올린 자료만 비워도 됨), `enabled`, `created_at`, `updated_at`, `created_by`(응답에 싣지 않음). RLS만 켜고 정책이 없어 service_role만 접근한다.
+  - **출처 삭제:** `DELETE /api/admin/ops-trend-sources/[id]`로 행을 삭제한다(티켓 20261029_2110). 이전 묶음의 `source_ids`가 지워진 번호를 가리켜도 레이더 화면은 「출처 N」으로 자연스럽게 표시한다.
   - **「마지막으로 읽은 시각」:** 칸을 두지 않고 읽을 때 계산한다. 최근 60일 묶음의 `trends[].source_ids`에 그 `no`가 든 묶음 중 가장 늦은 `received_at`이고, 없으면 `null`이다. 시험 묶음(`is_sample`)은 뺀다.
   - **`GET /api/admin/ops-trend-sources`:** 관리자 세션 또는 읽기 토큰. 읽기 토큰은 **켜진 출처만** `{ sources: [{ no, name, kind, location }] }`(`includeDisabled` 무시). 관리자 세션은 기본이 켜진 출처이고 `?includeDisabled=true`이면 전부 `{ sources: [{ id, no, name, kind, location, enabled, lastReadAt, createdAt }] }`.
   - **`POST /api/admin/ops-trend-sources`:** 관리자 세션만(읽기 토큰은 403). 본문 `{ name, kind, location? }` 8KB까지. 검증 실패 400(+`details`), 이름 중복 409, 성공 201 `{ source }`. 직접 올린 자료가 아닌 종류는 `location`이 비면 400.
   - **`PATCH /api/admin/ops-trend-sources/[id]`:** 관리자 세션만. 본문 `enabled`·`name`·`location` 중 하나 이상(종류는 바꿀 수 없다). `id`가 UUID가 아니거나 없는 행이면 404, 검증 실패 400(직접 올린 자료가 아닌 출처의 위치를 비우는 경우 포함), 이름 중복 409, 성공 200 `{ source }`.
+  - **`DELETE /api/admin/ops-trend-sources/[id]`:** 관리자 세션만(읽기 토큰은 403). `id`가 UUID가 아니거나 없는 행이면 404, 성공 시 200 `{ ok: true }`.
   - **오류:** 저장소 실패는 500이고 고정 문장 하나만 싣는다(원문은 서버 로그 `[admin/ops-trend-sources]`에만 남는다).
-- **구현됨(화면): 티켓 20261026_2033 2회차.** 새 페이지 `/admin/ops-trends`(사이드바 「라이브」의 「트렌드 레이더」, 「일정표」·「투데이」 다음 「패턴 사전」 앞)다. 머리 오른쪽에 운영 홈과 같은 시험 묶음 스위치(`?sample=1`)를 두고, 위쪽 「내가 등록한 출처」와 아래쪽 「읽은 트렌드」를 따로 읽어 한쪽을 못 읽으면 그 구역만 안내 카드다. 계산은 `lib/admin/opsTrends/radar.ts`(`readBundleTrends`·`trendLinkedItemIds`·`collectRadar`·`buildTrendFilter`), 읽기는 `radarLoad.ts`, 화면 부품은 `components/admin/ops/trends/`(`OpsTrendSources`·`OpsTrendRadar`·`OpsTrendSparkline`)다.
-  - **출처 관리:** 표(번호·이름·종류 글자·위치·마지막으로 읽은 시각(KST, 없으면 「아직 읽지 않았어요」)·켜짐 스위치). 스위치는 누르면 `PATCH`로 바로 켜고 끄며, 요청 중에는 그 줄만 잠기고 실패하면 되돌리고 한 줄 오류를 보인다. [출처 추가]는 이름·종류·위치 양식이고 직접 올린 자료는 위치를 비워도 된다. 서버가 돌려준 오류 문장(400 `details`, 409)을 그대로 한 줄로 보인다. 삭제는 없다.
+- **구현됨(화면): 티켓 20261026_2033 2회차, 수정·삭제 티켓 20261029_2110.** 새 페이지 `/admin/ops-trends`(사이드바 「라이브」의 「트렌드 레이더」, 「일정표」·「투데이」 다음 「패턴 사전」 앞)다. 머리 오른쪽에 운영 홈과 같은 시험 묶음 스위치(`?sample=1`)를 두고, 위쪽 「내가 등록한 출처」와 아래쪽 「읽은 트렌드」를 따로 읽어 한쪽을 못 읽으면 그 구역만 안내 카드다. 계산은 `lib/admin/opsTrends/radar.ts`(`readBundleTrends`·`trendLinkedItemIds`·`collectRadar`·`buildTrendFilter`), 읽기는 `radarLoad.ts`, 화면 부품은 `components/admin/ops/trends/`(`OpsTrendSources`·`OpsTrendRadar`·`OpsTrendSparkline`)다.
+  - **출처 관리:** 표(번호·이름·종류 글자·위치·마지막으로 읽은 시각(KST, 없으면 「아직 읽지 않았어요」)·켜짐 스위치·관리(수정/삭제 버튼)). 스위치는 누르면 `PATCH`로 바로 켜고 끄며, 요청 중에는 그 줄만 잠기고 실패하면 되돌리고 한 줄 오류를 보인다. [출처 추가]는 이름·종류·위치 양식이고 직접 올린 자료는 위치를 비워도 된다. [수정]은 이름·위치를 변경할 수 있는 양식(`SourceEditForm`)을 열어 `PATCH`를 호출한다. [삭제]는 확인 대화상자(`AlertDialog`)로 확인 후 `DELETE`를 호출해 행을 삭제한다.
   - **읽은 트렌드:** 최근 14일에 받은 묶음의 `trends[]`를 받은 시각 내림차순으로 모은다. 위에 「반영 N · 보류 N · 자동 제외 N」 요약 줄(점+글자), 카드에 이름·한 줄 요약·출처 칩(「출처 N · 이름」, 목록에서 이름을 못 찾으면 「출처 N」)·추이 막대(`series`가 있을 때, SVG 속성만 사용)·결과 칩(자동 제외는 범주 한 줄)·받은 기획 제목과 시각이 나온다. 모양이 틀린 원소는 뺀다. 시험 묶음은 시험 포함이 켜졌을 때만 읽고 센다. 14일 안에 트렌드가 없으면 「최근 14일에 읽은 트렌드가 없어요」다.
   - **연결 항목 걸러 보기:** 반영(`used`) 트렌드에 「연결 항목 N건」 링크(`/admin/ops-inbox/{묶음 행 ID}?trend={트렌드 번호}`, 시험 포함 중이면 `sample=1`)가 붙는다. 연결 항목은 그 묶음 항목 중 기획 이유 `trend`의 `source_id`가 트렌드의 `source_ids`에 드는 항목이고 반려·취소 항목은 뺀다. 기획 상세는 `?trend=`를 읽어 목록과 탭 숫자를 그 항목으로 좁히고 알림 줄에 「「이름」 트렌드에서 나온 항목 N건만 보고 있어요」와 [전체 보기](쿼리의 `trend`를 지운다)를 둔다. 번호가 틀리거나 연결 항목이 없으면 걸러 보기를 열지 않는다. 결정 패널의 승인 대상 건수와 「N건 승인하고 예약」은 좁히기와 상관없이 전체 항목 기준 그대로다.
-  - **하지 않은 것:** 루틴이 출처를 읽는 쪽(주간 루틴 티켓 20260930_1504), 출처 삭제, 서랍의 「출처 N」을 출처 이름으로 바꾸는 일, 운영 홈에 레이더 요약 구역을 더하는 일.
+  - **하지 않은 것:** 루틴이 출처를 읽는 쪽(주간 루틴 티켓 20260930_1504), 서랍의 「출처 N」을 출처 이름으로 바꾸는 일, 운영 홈에 레이더 요약 구역을 더하는 일.
 - **내가 등록한 출처:** 이름, 종류(해시태그·채널·검색어 추이·직접 올린 자료), 위치(주소나 검색어), 켜짐 여부. 운영자가 어드민에서 추가·끄기를 한다. 직접 올린 자료는 `docs/operations/inbox/trends/`의 파일이다. 출처마다 마지막 루틴이 읽었는지 표시한다.
 - **읽은 트렌드:** 묶음의 `trends[]`(§5.4)를 최근 14일 기준으로 모아 보인다. 이름, 요약, 추이(있을 때), 결과(반영 N건·보류·자동 제외와 범주).
 - 반영 결과를 누르면 그 트렌드에서 나온 항목만 걸러 결정 패널을 연다.

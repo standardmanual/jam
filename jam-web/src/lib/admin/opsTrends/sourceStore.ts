@@ -7,7 +7,7 @@
  *   종류가 직접 올린 자료가 아닌 출처의 위치를 비우려는 수정은 `location_required`, 저장소 폴더 출처의 위치를 허용 폴더
  *   밖으로 바꾸려는 수정은 `folder_not_allowed`다(패치에는 종류가 없어 여기서 확인한다).
  * - 읽기·쓰기 실패는 호출부가 500으로 바꾸도록 던진다. 돌려주는 값에 `created_by`는 없다.
- * - 삭제는 없다. 묶음의 `source_ids`가 번호로 남아 있어서 끄기(`enabled=false`)로 대신한다.
+ * - 삭제: `deleteTrendSource`는 행을 삭제하고 없는 행은 `not_found`를 돌려준다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import type { OpsTrendSourceKind } from '@/lib/admin/opsTrends/constants'
@@ -162,4 +162,21 @@ export async function updateTrendSource(
   }
   if (!data) return { ok: false, code: 'not_found' }
   return { ok: true, source: toSource(data as SourceRow) }
+}
+
+export async function deleteTrendSource(
+  service: ServiceClient,
+  id: string
+): Promise<{ ok: true } | { ok: false; code: 'not_found' }> {
+  const { data, error } = await service
+    .from('ops_trend_sources')
+    .delete()
+    .eq('id', id)
+    .select('id')
+    .maybeSingle()
+  if (error) {
+    throw new Error(`트렌드 출처 삭제 실패: ${error.message}`)
+  }
+  if (!data) return { ok: false, code: 'not_found' }
+  return { ok: true }
 }
