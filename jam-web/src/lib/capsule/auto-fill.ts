@@ -29,6 +29,8 @@ export const CAPSULE_AUTO_FILL_MAX_ROUNDS = 50
 export interface CapsuleAutoFillOptions {
   rand?: Rand
   now?: Date
+  /** 열기마다의 챕터 오름 처리에서 챕터 배지 판정을 건너뛴다. 동기화 끝 판정이 이어서 읽는 호출부만 켠다(`OpenCapsuleOptions.skipRiseBadgeEvaluation`) */
+  skipRiseBadgeEvaluation?: boolean
 }
 
 export type CapsuleAutoFillStop =
@@ -103,7 +105,12 @@ export async function runCapsuleAutoFill(
       }
 
       try {
-        result.opens.push(await openCapsule(supabase, userId, { counted: true, rand: options.rand, now: options.now }))
+        result.opens.push(await openCapsule(supabase, userId, {
+          counted: true,
+          rand: options.rand,
+          now: options.now,
+          ...(options.skipRiseBadgeEvaluation === true ? { skipRiseBadgeEvaluation: true } : {}),
+        }))
       } catch (e) {
         if (e instanceof UserSuspendedError) {
           result.stopped = 'suspended'

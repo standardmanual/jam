@@ -742,6 +742,17 @@ describe('openCapsule — counted 옵션 (티켓 20261028_1733 2회)', () => {
     expect(order.calls.indexOf('rise')).toBeLessThan(order.calls.indexOf('followUp'))
   })
 
+  it('skipRiseBadgeEvaluation을 켜면 오름 처리에 챕터 배지 판정 생략을 넘기고, 끄면 옵션 없이 부른다 (동기화 끝 판정이 이어서 읽는 경우)', async () => {
+    const { client } = fakeClient({ rpc: countedRpc({ chapterNo: 3, reachedChapters: [4], chapterCount: 0 }) })
+
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true, skipRiseBadgeEvaluation: true })
+    expect(riseMock).toHaveBeenLastCalledWith({ userId: USER_ID, reachedChapters: [4] }, { skipBadgeEvaluation: true })
+
+    riseMock.mockClear()
+    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true, skipRiseBadgeEvaluation: false })
+    expect(riseMock).toHaveBeenLastCalledWith({ userId: USER_ID, reachedChapters: [4] })
+  })
+
   it('퀘스트 전 캡슐은 센 게 없다 — chapterNo·chapterCount는 null이고 모양이 틀린 값은 걸러 낸다', async () => {
     stateMock.mockResolvedValue(stateOf({ required: 5, filled: 5 }, null))
     const { client } = fakeClient({ rpc: countedRpc({ chapterNo: null, reachedChapters: [0, 'x', 2.5, 5], chapterCount: null }) })

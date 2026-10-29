@@ -163,7 +163,9 @@ describe('서버 전용 모듈은 클라이언트 컴포넌트에서 가져오�
     expect(clientFiles.length, '크롤러가 클라이언트 파일을 찾지 못했다').toBeGreaterThan(0)
 
     for (const entry of clientFiles) {
-      const { files } = crawl(entry)
+      // 타입만 가져오는 `import type`은 컴파일 때 지워져 번들에 들어가지 않으므로 사슬에서 뺀다. 동기화(`lib/strava/sync.ts`)가 캡슐 자동 채움을 가져오게 되면서(티켓 20261028_1733 3회),
+      // 어드민 미션 표(`MissionTable.tsx`)가 `import type`으로만 가져오는 목록 질의 → 미션 판정 → … → 동기화 사슬이 정적 크롤에 잡혔다. 값 import 사슬만 본다.
+      const { files } = crawl(entry, { skipTypeOnly: true })
       for (const file of files) {
         expect(rel(file), `${rel(entry)}가 서버 전용 캡슐 모듈을 끌어온다`).not.toMatch(/lib\/capsule\/(capsule|policy|open)\.ts$/)
       }

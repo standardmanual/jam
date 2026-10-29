@@ -13,8 +13,11 @@
  *     상한, 미래 날짜 거절)을 그대로 옮긴 가짜 DB 위에서 **실제 연결 함수**를 돌린다.
  *     - 8종 활동(12종 활동 종류)을 같은 일로 두 번 보내도 한 번만 세어진다 / 서로 다른 일은 키가 겹치지 않는다
  *     - 제외 규칙 종합(발급 지점들이 쓰는 자연 발급 트리거는 세고, 제외 대상은 DB에 기록이 남지 않는다)
- *     - 모은 잼 주 300점 초과분 절반은 DB가 처리한다 — 앱은 활동한 날(`earnedOn`)을 정확히 넘긴다(주 경계, 늦은 동기화)
+ *     - 모은 잼은 정산이 점수를 부르지 않는다 — 어떤 정산·재정산·점수 장애에서도 점수 줄이 생기지 않는다
  *     - 점수 RPC가 실패해도(오류·예외·계약 밖 응답) 본 동작의 결과는 같고, 같은 원천 id로 다시 보내면 한 번만 세어진다
+ *
+ * **모은 잼(`jam_earned`)은 더 세지 않는다**(티켓 20261028_1733 3회): 잼 정산은 챕터 점수를 부르지 않고, 챕터는 캡슐이 가득 찬 횟수로 오른다. 점수표에는 종류가 남아 있어
+ * 12종 목록은 그대로이지만 세는 모듈이 없다(`STOPPED_SCORE_KINDS`). 캡슐 열기는 옛 경로(`counted` 아님)만 세고, 나머지 다섯 곳은 잼 지급 전환(U5) 전까지 그대로다.
  *
  * 지점별 세부(호출 인자·순서·응답 불변)는 각 지점의 시험이 고정한다. 공용 DB와 실제 RPC는 부르지 않는다.
  *
@@ -92,11 +95,16 @@ const DIRECT_SCORE_SITES: Record<string, string> = {
   'app/api/drops/[dropId]/pickup/route.ts': 'pickup',
   'lib/capsule/open.ts': 'capsule_open',
   'lib/inventory/lockedItemFill.ts': 'locked_item_badge_open',
-  'lib/jam/settlement.ts': 'jam_earned',
   'lib/missions/checker.ts': 'mission_complete',
   'lib/chapter/badgeReceive.ts': 'badge_receive',
   'lib/chapter/mix.ts': 'mix_success',
 }
+
+/**
+ * 점수표에는 있지만 더는 세는 모듈이 없는 종류 (티켓 20261028_1733 3회). «모은 잼»은 정산이 아니라 캡슐 횟수가 챕터를 올린다.
+ * 점수표의 행과 DB 함수는 그대로 둔다(프로덕션 main이 옛 경로를 쓴다) — 12종 목록에서 빼지 않는다.
+ */
+const STOPPED_SCORE_KINDS = ['jam_earned']
 
 /**
  * 다른 모듈이 이미 세는 종류를 같은 점수표 항목으로 한 번 더 세는 지점 (티켓 20261022_2119 2회).
@@ -125,14 +133,22 @@ describe('호출 지점 목록 — 소스 검색', () => {
       expect(literalKindOf(file), file).toBe(kind)
     }
     const direct = Object.values(DIRECT_SCORE_SITES)
-    // 직접 적은 8종은 서로 다른 모듈의 것이다(같은 종류를 두 파일이 세지 않는다)
+    // 직접 적은 7종은 서로 다른 모듈의 것이다(같은 종류를 두 파일이 세지 않는다)
     expect(new Set(direct).size).toBe(direct.length)
     // 나머지 4종(컬렉션 완성 등급별)은 변환 함수를 쓰는 collection.ts 하나가 만든다
     const collectionKinds = CHAPTER_SCORE_KINDS.filter((kind) => kind.startsWith('collection_complete_'))
     expect(collectionKinds).toHaveLength(4)
     expect(Object.keys(callSites('collectionCompleteKind')).sort()).toEqual(['lib/chapter/collection.ts'])
-    // 직접 적은 종류 ∪ 컬렉션 종류 = 활동 종류 12종
-    expect([...direct, ...collectionKinds].sort()).toEqual([...CHAPTER_SCORE_KINDS].sort())
+    // 직접 적은 종류 ∪ 컬렉션 종류 ∪ 멈춘 종류 = 활동 종류 12종
+    expect([...direct, ...collectionKinds, ...STOPPED_SCORE_KINDS].sort()).toEqual([...CHAPTER_SCORE_KINDS].sort())
+  })
+
+  it('잼 정산은 챕터 점수를 가져오지 않는다 — 모은 잼(jam_earned)을 세는 코드가 없다', () => {
+    expect(SOURCES.get('lib/jam/settlement.ts')).not.toMatch(/@\/lib\/chapter|awardChapterScore|chapter_add_score/)
+    for (const kind of STOPPED_SCORE_KINDS) {
+      const writers = [...SOURCES].filter(([file, source]) => file !== 'lib/chapter/kinds.ts' && new RegExp(`['"]${kind}['"]`).test(source)).map(([file]) => file)
+      expect(writers, kind).toEqual([])
+    }
   })
 
   it('배지 받기는 발급 지점 6곳이 공용 함수를 한 번씩 부르고, 엔진의 회차 점수는 두 경로(이미 가진 반복형·미보유 반복형의 첫 발급)에서만 부른다', () => {
@@ -332,7 +348,6 @@ function fakeClient(world: World): SupabaseClient {
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const USER_A = uuid(1)
 const USER_B = uuid(2)
-const ACT_1 = uuid(101)
 const OPEN_1 = uuid(201)
 const ITEM_1 = uuid(301)
 const MIX_1 = uuid(401)
@@ -391,11 +406,8 @@ describe('DB 모사가 221과 같다', () => {
 // ---------------------------------------------------------------------------------------------
 // 8종 활동 — 같은 일은 한 번, 다른 일은 키가 겹치지 않는다
 
-/** 8종 활동(활동 종류 12종)을 한 번씩 보낸다. 각 지점이 쓰는 키 규칙을 그대로 따른다 */
+/** 7종 활동(세는 활동 종류 11종)을 한 번씩 보낸다. 각 지점이 쓰는 키 규칙을 그대로 따른다 */
 async function sendEveryActivityOnce() {
-  // 모은 잼 — 정산 함수가 활동 id·양·활동한 날로 보낸다
-  world.activityIds[9001] = ACT_1
-  await settleActivities(client, USER_A, [walking(9001, '2026-10-21T01:00:00Z', 40)], DEFAULT_JAM_POLICY, NOW)
   // 캡슐 열기·잠긴 아이템 배지 열기 — 열기 기록 id·개체 id
   await awardChapterScore(client, { userId: USER_A, kind: 'capsule_open', sourceId: OPEN_1 })
   await awardChapterScore(client, { userId: USER_A, kind: 'locked_item_badge_open', sourceId: ITEM_1 })
@@ -419,21 +431,22 @@ async function sendEveryActivityOnce() {
 }
 
 /**
- * 한 번씩 보냈을 때의 기대: 16줄(잼 1, 캡슐 1, 잠긴 열기 1, 배지 받기 4, 컬렉션 5, 믹스 1, 미션 1, 드랍 1, 픽업 1), 활동 종류 12종 모두.
- * 합계는 221 점수표 × 단위: A = 잼 40 + 캡슐 20 + 잠긴 열기 10 + 배지 받기 40 + 컬렉션 1600 + 믹스 20 + 미션 50 + 드랍 5 = 1785, B = 픽업 5
+ * 한 번씩 보냈을 때의 기대: 15줄(캡슐 1, 잠긴 열기 1, 배지 받기 4, 컬렉션 5, 믹스 1, 미션 1, 드랍 1, 픽업 1), 세는 활동 종류 11종 모두(모은 잼은 세지 않는다).
+ * 합계는 221 점수표 × 단위: A = 캡슐 20 + 잠긴 열기 10 + 배지 받기 40 + 컬렉션 1600 + 믹스 20 + 미션 50 + 드랍 5 = 1745, B = 픽업 5
  */
-const EXPECTED_ROWS = 16
-const EXPECTED_TOTAL_A = 40 + 20 + 10 + (10 + 10 + 20) + (100 + 200 + 400 + 800 + 100) + 20 + 50 + 5
+const EXPECTED_ROWS = 15
+const COUNTED_KINDS = CHAPTER_SCORE_KINDS.filter((kind) => !STOPPED_SCORE_KINDS.includes(kind))
+const EXPECTED_TOTAL_A = 20 + 10 + (10 + 10 + 20) + (100 + 200 + 400 + 800 + 100) + 20 + 50 + 5
 const EXPECTED_TOTAL_B = 5
 
-describe('8종 활동 — 같은 일을 두 번 보내도 한 번만 센다', () => {
-  it('한 번씩 보내면 일마다 한 줄이 쌓이고 12종 활동 종류를 모두 쓴다', async () => {
+describe('7종 활동 — 같은 일을 두 번 보내도 한 번만 센다', () => {
+  it('한 번씩 보내면 일마다 한 줄이 쌓이고 세는 11종 활동 종류를 모두 쓴다', async () => {
     await sendEveryActivityOnce()
 
     expect(world.dbErrors).toEqual([])
     expect(logMock).not.toHaveBeenCalled()
     expect(world.events).toHaveLength(EXPECTED_ROWS)
-    expect(new Set(world.events.map((e) => e.kind))).toEqual(new Set(CHAPTER_SCORE_KINDS))
+    expect(new Set(world.events.map((e) => e.kind))).toEqual(new Set(COUNTED_KINDS))
     expect(totalOf(USER_A)).toBe(EXPECTED_TOTAL_A)
     expect(totalOf(USER_B)).toBe(EXPECTED_TOTAL_B)
   })
@@ -604,70 +617,31 @@ describe('제외 규칙 종합 — DB에 기록이 남는가', () => {
 })
 
 // ---------------------------------------------------------------------------------------------
-// 모은 잼 — 주 300점 초과분 절반은 DB가 처리한다. 앱은 활동한 날을 정확히 넘긴다
+// 모은 잼 — 정산은 챕터 점수를 세지 않는다
 
-describe('모은 잼 — 활동한 날(earnedOn)이 DB의 주 경계에 맞게 넘어간다', () => {
+describe('모은 잼 — 정산은 챕터 점수를 세지 않는다 (티켓 20261028_1733 3회)', () => {
   async function settle(targets: JamSettleTarget[]) {
     for (const t of targets) world.activityIds[t.stravaId] = uuid(1000 + t.stravaId)
     return settleActivities(client, USER_A, targets, DEFAULT_JAM_POLICY, NOW)
   }
 
-  it('일요일 KST 23:59:59와 월요일 KST 00:00:00 활동은 서로 다른 주로 센다 — 상한이 주마다 따로 적용된다', async () => {
-    // UTC 2026-10-18T14:59:59Z = KST 일요일 23:59:59, UTC 15:00:00Z = KST 월요일 00:00:00
-    await settle([walking(1, '2026-10-18T14:59:59Z', 250), walking(2, '2026-10-18T15:00:00Z', 100)])
+  it('잼은 원장에 들어가지만 점수 줄은 생기지 않는다 — 주 300점 상한을 넘는 양이어도 마찬가지다', async () => {
+    const result = await settle([walking(1, '2026-10-19T01:00:00Z', 250), walking(2, '2026-10-20T01:00:00Z', 100)])
 
+    expect(result.total).toBe(350)
+    expect(world.jamLines.size).toBe(2)
+    expect(world.events).toHaveLength(0)
     expect(world.dbErrors).toEqual([])
-    expect(world.events.map((e) => [e.occurredOn, e.raw, e.counted])).toEqual([
-      ['2026-10-18', 250, 250],
-      ['2026-10-19', 100, 100], // 새 주라 상한 안이다
-    ])
-    expect(totalOf(USER_A)).toBe(350)
+    expect(logMock).not.toHaveBeenCalled()
   })
 
-  it('같은 주 안에서는 300점까지 그대로, 넘는 부분은 절반이다 (오래된 활동부터)', async () => {
-    // 월요일 KST 10:00과 화요일 KST 10:00 — 같은 주
-    await settle([walking(1, '2026-10-19T01:00:00Z', 250), walking(2, '2026-10-20T01:00:00Z', 100)])
-
-    expect(world.events.map((e) => e.counted)).toEqual([250, 75]) // 둘째: 50은 그대로, 남은 50의 절반 25
-    expect(totalOf(USER_A)).toBe(325)
-  })
-
-  it('대상을 거꾸로 넘겨도 오래된 활동부터 센다', async () => {
-    await settle([walking(2, '2026-10-20T01:00:00Z', 100), walking(1, '2026-10-19T01:00:00Z', 250)])
-
-    expect(world.events.map((e) => [e.occurredOn, e.counted])).toEqual([
-      ['2026-10-19', 250],
-      ['2026-10-20', 75],
-    ])
-  })
-
-  it('늦게 동기화해도 동기화한 날이 아니라 활동한 날의 주로 센다', async () => {
-    // 지난주(10-12 월, 10-14 수)에 한 두 활동을 오늘(10-21 수) 동기화하고, 오늘 한 활동도 함께 동기화한다
-    await settle([walking(1, '2026-10-12T01:00:00Z', 250), walking(2, '2026-10-14T01:00:00Z', 100), walking(3, '2026-10-21T01:00:00Z', 100)])
-
-    expect(world.dbErrors).toEqual([])
-    expect(world.events.map((e) => [e.occurredOn, e.counted])).toEqual([
-      ['2026-10-12', 250],
-      ['2026-10-14', 75], // 지난주 안에서 상한을 넘는다
-      ['2026-10-21', 100], // 이번 주는 따로
-    ])
-    expect(totalOf(USER_A)).toBe(425)
-  })
-
-  it('시계가 어긋나 미래로 읽힌 활동은 오늘로 맞춰 보내 DB가 거절하지 않는다', async () => {
-    await settle([walking(1, '2026-10-22T05:00:00Z', 60)])
-
-    expect(world.dbErrors).toEqual([])
-    expect(world.events.map((e) => e.occurredOn)).toEqual(['2026-10-21'])
-  })
-
-  it('같은 활동을 다시 정산해도 한 번만 센다 (재동기화)', async () => {
+  it('같은 활동을 다시 정산해도 점수 줄은 없다 (재동기화)', async () => {
     const targets = [walking(1, '2026-10-19T01:00:00Z', 250), walking(2, '2026-10-20T01:00:00Z', 100)]
     await settle(targets)
     await settle(targets)
 
-    expect(world.events).toHaveLength(2)
-    expect(totalOf(USER_A)).toBe(325)
+    expect(world.jamLines.size).toBe(2)
+    expect(world.events).toHaveLength(0)
   })
 })
 
@@ -677,7 +651,7 @@ describe('모은 잼 — 활동한 날(earnedOn)이 DB의 주 경계에 맞게 �
 describe('점수 실패 — 본 동작의 결과는 그대로이고 같은 원천 id로 다시 보내면 한 번만 센다', () => {
   const FAILURES: FailureMode[] = ['rpc_error', 'throws', 'garbage']
 
-  it.each(FAILURES)('점수 RPC가 %s여도 잼 정산 결과(항목·합계)는 정상일 때와 같다', async (mode) => {
+  it.each(FAILURES)('점수 RPC가 %s여도 잼 정산 결과(항목·합계)는 정상일 때와 같고 점수 RPC는 아예 부르지 않는다', async (mode) => {
     const targets = [walking(1, '2026-10-19T01:00:00Z', 250), walking(2, '2026-10-20T01:00:00Z', 100)]
 
     const healthyWorld = newWorld()
@@ -690,7 +664,8 @@ describe('점수 실패 — 본 동작의 결과는 그대로이고 같은 원�
 
     expect(failing).toEqual(healthy)
     expect(world.events).toHaveLength(0)
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER_A, expect.objectContaining({ kind: 'jam_earned' }))
+    // 점수 RPC를 부르지 않으므로 실패 기록도 없다
+    expect(logMock).not.toHaveBeenCalled()
   })
 
   it.each(FAILURES)('점수 RPC가 %s여도 모든 점수 함수가 던지지 않고 실패를 돌려준다', async (mode) => {

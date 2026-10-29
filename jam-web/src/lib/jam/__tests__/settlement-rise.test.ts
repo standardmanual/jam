@@ -1,10 +1,10 @@
 /**
- * lib/jam/settlement — 잼 정산에서 난 챕터 오름의 처리 (티켓 20261019_1316)
+ * lib/jam/settlement — 잼 정산은 챕터 오름을 만들지 않는다 (티켓 20261019_1316 → 20261028_1733 3회에서 바뀜)
  *
  * 고정하는 것:
- * - 정산은 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이 이어서 읽는 호출이라, 모은 잼 점수로 챕터가 올라도 오름 처리에 챕터 배지 판정을
- *   건너뛰라고 알린다(`skipBadgeEvaluation`). 소식은 오름 처리가 그대로 보낸다 — 이 시험은 오름 처리가 불리는 모양만 본다.
- * - 오름이 없으면 오름 처리를 부르지 않는다. 오름 처리가 던져도 정산 항목·합계는 그대로다.
+ * - 정산은 챕터 점수를 부르지 않으므로 챕터가 오르지 않고, 오름 처리(`processChapterRise`)도 부르지 않는다. 점수 RPC가 올림 응답을 돌려주는 가짜여도 마찬가지다.
+ *   챕터 오름은 캡슐 열기(`lib/capsule/open.ts`의 `counted` 열기)가 만든다 — 그쪽 시험은 `lib/capsule/__tests__`.
+ * - 정산 항목·합계는 그대로다.
  * 공용 DB와 실제 오름 처리(소식·판정)는 부르지 않는다 — 가짜 클라이언트와 가짜 오름 처리만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/jam/__tests__/settlement-rise.test.ts
@@ -54,26 +54,15 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-describe('settleActivities — 챕터 오름 처리 (티켓 20261019_1316)', () => {
-  it('모은 잼 점수로 챕터가 오르면 오름 처리를 부르되 챕터 배지 판정은 건너뛰라고 알린다', async () => {
-    const result = await settleActivities(makeClient([2, 3]), 'user-1', [RUN], DEFAULT_JAM_POLICY, NOW)
+describe('settleActivities — 챕터 오름 처리를 부르지 않는다 (티켓 20261028_1733 3회)', () => {
+  it('점수 RPC가 오름을 돌려줄 수 있는 클라이언트여도 오름 처리를 부르지 않고 점수 RPC도 부르지 않는다', async () => {
+    const client = makeClient([2, 3])
+    const rpcSpy = vi.spyOn(client, 'rpc')
 
-    expect(riseMock).toHaveBeenCalledTimes(1)
-    expect(riseMock).toHaveBeenCalledWith({ userId: 'user-1', reachedChapters: [2, 3] }, { skipBadgeEvaluation: true })
-    expect(result.total).toBe(90)
-  })
-
-  it('오른 챕터가 없으면 오름 처리를 부르지 않는다', async () => {
-    await settleActivities(makeClient([]), 'user-1', [RUN], DEFAULT_JAM_POLICY, NOW)
+    const result = await settleActivities(client, 'user-1', [RUN], DEFAULT_JAM_POLICY, NOW)
 
     expect(riseMock).not.toHaveBeenCalled()
-  })
-
-  it('오름 처리가 던져도 정산 항목과 합계는 그대로다', async () => {
-    riseMock.mockRejectedValue(new Error('오름 처리 장애'))
-
-    const result = await settleActivities(makeClient([2]), 'user-1', [RUN], DEFAULT_JAM_POLICY, NOW)
-
+    expect(rpcSpy.mock.calls.map(([name]) => name)).toEqual(['jam_apply'])
     expect(result.total).toBe(90)
     expect(result.items).toEqual([{ stravaId: 1, activityId: 'act-1', amount: 90, earnedOn: '2026-09-12' }])
   })

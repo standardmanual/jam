@@ -88,6 +88,19 @@ describe('runCapsuleAutoFill — 반복', () => {
     for (const call of openMock.mock.calls) expect(call[2]).toMatchObject({ counted: true })
   })
 
+  it('skipRiseBadgeEvaluation은 켰을 때만 열기에 넘어간다 (동기화 끝 판정이 챕터 배지를 이어서 읽는 호출부용)', async () => {
+    const on = fakeClient([{ ok: true, applied: 145, full: true }, { ok: true, applied: 0, full: false }])
+    openMock.mockResolvedValueOnce(opened(1))
+    await runCapsuleAutoFill(on.client, USER_ID, { skipRiseBadgeEvaluation: true })
+    expect(openMock.mock.calls[0][2]).toMatchObject({ counted: true, skipRiseBadgeEvaluation: true })
+
+    openMock.mockClear()
+    const off = fakeClient([{ ok: true, applied: 145, full: true }, { ok: true, applied: 0, full: false }])
+    openMock.mockResolvedValueOnce(opened(1))
+    await runCapsuleAutoFill(off.client, USER_ID)
+    expect(openMock.mock.calls[0][2]).not.toHaveProperty('skipRiseBadgeEvaluation')
+  })
+
   it('지난번에 열지 못해 가득 찬 채 남은 캡슐은 잼을 쓰지 않고(applied 0) 맨 앞에서 먼저 열린다', async () => {
     const { client } = fakeClient([
       { ok: true, applied: 0, full: true },
