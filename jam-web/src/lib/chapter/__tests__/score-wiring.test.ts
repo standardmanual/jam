@@ -348,7 +348,6 @@ function fakeClient(world: World): SupabaseClient {
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const USER_A = uuid(1)
 const USER_B = uuid(2)
-const ACT_1 = uuid(101)
 const OPEN_1 = uuid(201)
 const ITEM_1 = uuid(301)
 const MIX_1 = uuid(401)
