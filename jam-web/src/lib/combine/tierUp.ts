@@ -27,7 +27,6 @@
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  */
-import { awardChapterScore } from '@/lib/chapter/score'
 import { burnMaterials, type InventorySlotState } from '@/lib/combine/burn'
 import { readUnlockRequired, type CombineResultBadge } from '@/lib/combine/index'
 import { getPendingCount } from '@/lib/combine/pending'
@@ -45,6 +44,7 @@ import {
 import { loadRollData } from '@/lib/capsule/open'
 import { isIssuableBook, pickItemBadge, pickWeighted, type IssueBadge, type IssueBook, type Rand } from '@/lib/drop-engine/syncIssue'
 import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
+import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { createServiceClient } from '@/lib/supabase/server'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import type { BadgeRarity } from '@/types/database'
@@ -278,8 +278,8 @@ export async function tierUp(userId: string, itemIds: string[], collectionId: st
     await followUpCombineResultPoints(supabase, userId, grantedItemIds)
   }
 
-  // ⑪ 챕터 점수 «믹스 성공» — 레시피 성공 기록이 없으므로 시도마다 새 UUID를 원천 id로 쓴다. 던지지 않는다(실패는 기록만 남는다).
-  await awardChapterScore(supabase, { userId, kind: 'mix_success', sourceId: crypto.randomUUID() })
+  // ⑪ 서비스 활동 잼 «믹스 성공» — 레시피 성공 기록이 없으므로 시도마다 새 UUID를 원천 id로 쓴다(이벤트 키 `combine_success:<UUID>`). 던지지 않는다(실패는 기록만 남는다).
+  await awardServiceJam(supabase, { userId, kind: 'combine_success', sourceId: crypto.randomUUID() })
 
   return result
 }

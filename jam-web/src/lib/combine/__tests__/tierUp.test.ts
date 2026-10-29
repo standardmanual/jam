@@ -7,7 +7,7 @@
  *     정한 등급의 후보가 없거나 소속 트라이브의 열린 컬렉션이 아니면 아래 등급으로 내려가지 않고 null이다
  *  3) 실행 — 소각 앞(개수·정지·받지 않은 결과·소유·잠김·재료 검사·고른 컬렉션 검사)의 거절은 소각·지급·점수가 없다. 고른 컬렉션에 재료 등급·바로 윗등급 아이템 배지가
  *     모두 있어야 하고(`collectionSupportsTierUp`, 믹스 화면 목록과 같은 판정, 티켓 20261025_2011) 한쪽만 있으면 `invalid_collection`이다. 성공하면 소각 → 지급(`combine_grant_results`,
- *     레시피 없음) → 후속 → 챕터 점수 «믹스 성공» 한 번(새 UUID). 빈칸이 모자라면 받지 않은 결과로 남기고, 잠긴 결과는 가린다. 지급 실패는 던진다
+ *     레시피 없음) → 후속 → 서비스 활동 잼 «믹스 성공» 한 번(새 UUID). 빈칸이 모자라면 받지 않은 결과로 남기고, 잠긴 결과는 가린다. 지급 실패는 던진다
  *
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/tierUp.test.ts
  */
@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   burnMaterials: vi.fn(),
   notifyInventorySlotsLow: vi.fn(),
   followUpCombineResultPoints: vi.fn(),
-  awardChapterScore: vi.fn(),
+  awardServiceJam: vi.fn(),
   readUnlockRequired: vi.fn(),
 }))
 
@@ -115,10 +115,10 @@ vi.mock('@/lib/combine/resultPointFollowUp', () => ({
     return mocks.followUpCombineResultPoints(...args)
   },
 }))
-vi.mock('@/lib/chapter/score', () => ({
-  awardChapterScore: (...args: unknown[]) => {
-    mocks.callOrder.push('awardChapterScore')
-    return mocks.awardChapterScore(...args)
+vi.mock('@/lib/jam/serviceActivity', () => ({
+  awardServiceJam: (...args: unknown[]) => {
+    mocks.callOrder.push('awardServiceJam')
+    return mocks.awardServiceJam(...args)
   },
 }))
 // 믹스 본체는 가져오지 않는다 — 등급 올리기는 «잠긴 결과의 필요한 양 읽기» 하나만 쓴다
@@ -535,7 +535,7 @@ beforeEach(() => {
   mocks.burnMaterials.mockResolvedValue({ ok: true, destroyedCount: 5 })
   mocks.notifyInventorySlotsLow.mockResolvedValue(undefined)
   mocks.followUpCombineResultPoints.mockResolvedValue(undefined)
-  mocks.awardChapterScore.mockResolvedValue({ ok: true, scoreAdded: 20, currentChapter: null, reachedChapters: [] })
+  mocks.awardServiceJam.mockResolvedValue({ ok: true, granted: 5, duplicate: false, capped: false })
   mocks.readUnlockRequired.mockResolvedValue([])
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -550,11 +550,11 @@ function expectNothingChanged() {
   expect(db.rpcCalls).toEqual([])
   expect(mocks.notifyInventorySlotsLow).not.toHaveBeenCalled()
   expect(mocks.followUpCombineResultPoints).not.toHaveBeenCalled()
-  expect(mocks.awardChapterScore).not.toHaveBeenCalled()
+  expect(mocks.awardServiceJam).not.toHaveBeenCalled()
 }
 
 describe('tierUp — 성공', () => {
-  it('Common 5개와 컬렉션을 내면 소각하고 고른 컬렉션의 결과 1개를 지급하고 챕터 점수를 한 번 센다 (난수 고정: 윗등급 굴림)', async () => {
+  it('Common 5개와 컬렉션을 내면 소각하고 고른 컬렉션의 결과 1개를 지급하고 서비스 활동 잼을 한 번 준다 (난수 고정: 윗등급 굴림)', async () => {
     // 등급 0.5 → rare(윗등급), 아이템 0.0 → 고른 컬렉션의 첫 Rare(own-r1)
     const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.5, 0.0), now: NOW })
 
@@ -602,21 +602,21 @@ describe('tierUp — 성공', () => {
     expect(same.success && same.resultBadges).toEqual([{ id: 'own-c1', name: '배지 own-c1', rarity: 'common', imageUrl: null }])
   })
 
-  it('챕터 점수 «믹스 성공»은 새 UUID를 원천 id로 한 번만 센다 — 시도마다 다른 id다', async () => {
+  it('서비스 활동 잼 «믹스 성공»(combine_success)은 새 UUID를 원천 id로 한 번만 준다 — 시도마다 다른 id다', async () => {
     await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.5, 0.0) })
     await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.5, 0.0) })
 
-    expect(mocks.awardChapterScore).toHaveBeenCalledTimes(2)
-    const [, first] = mocks.awardChapterScore.mock.calls[0] as [unknown, { userId: string; kind: string; sourceId: string }]
-    const [, second] = mocks.awardChapterScore.mock.calls[1] as [unknown, { userId: string; kind: string; sourceId: string }]
+    expect(mocks.awardServiceJam).toHaveBeenCalledTimes(2)
+    const [, first] = mocks.awardServiceJam.mock.calls[0] as [unknown, { userId: string; kind: string; sourceId: string }]
+    const [, second] = mocks.awardServiceJam.mock.calls[1] as [unknown, { userId: string; kind: string; sourceId: string }]
     expect(first.userId).toBe(USER)
-    expect(first.kind).toBe('mix_success')
+    expect(first.kind).toBe('combine_success')
     expect(first.sourceId).toMatch(UUID_PATTERN)
     expect(second.sourceId).toMatch(UUID_PATTERN)
     expect(second.sourceId).not.toBe(first.sourceId)
   })
 
-  it('순서: 컬렉션 검사·굴림(풀 읽기, 정책 읽기)은 소각보다 앞이고, 소각 → 지급 → 후속 → 챕터 점수다', async () => {
+  it('순서: 컬렉션 검사·굴림(풀 읽기, 정책 읽기)은 소각보다 앞이고, 소각 → 지급 → 후속 → 서비스 활동 잼이다', async () => {
     await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.5, 0.0) })
 
     expect(mocks.callOrder).toEqual([
@@ -629,7 +629,7 @@ describe('tierUp — 성공', () => {
       'rpc:combine_grant_results',
       'notifyInventorySlotsLow',
       'followUpCombineResultPoints',
-      'awardChapterScore',
+      'awardServiceJam',
     ])
   })
 
@@ -668,8 +668,8 @@ describe('tierUp — 성공', () => {
     expect(db.rpcCalls.map((c) => c.fnName)).toEqual(['combine_grant_results'])
   })
 
-  it('챕터 점수 쪽이 실패해도(ok: false) 응답은 성공 그대로다', async () => {
-    mocks.awardChapterScore.mockResolvedValue({ ok: false })
+  it('서비스 활동 잼 쪽이 실패해도(ok: false) 응답은 성공 그대로다', async () => {
+    mocks.awardServiceJam.mockResolvedValue({ ok: false })
 
     const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.5, 0.0) })
 
@@ -696,7 +696,7 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
     expect(mocks.burnMaterials).toHaveBeenCalledTimes(1)
     expect(mocks.notifyInventorySlotsLow).not.toHaveBeenCalled()
     expect(mocks.followUpCombineResultPoints).not.toHaveBeenCalled()
-    expect(mocks.awardChapterScore).toHaveBeenCalledTimes(1)
+    expect(mocks.awardServiceJam).toHaveBeenCalledTimes(1)
   })
 
   it('잠김으로 만든 배지가 나오면 이름·id·그림을 가리고 필요한 양을 싣는다', async () => {
@@ -1067,7 +1067,7 @@ describe('tierUp — 소각 뒤', () => {
 
     expect(result).toEqual({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
     expect(db.rpcCalls).toEqual([])
-    expect(mocks.awardChapterScore).not.toHaveBeenCalled()
+    expect(mocks.awardServiceJam).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -1085,6 +1085,6 @@ describe('tierUp — 소각 뒤', () => {
       '[tierUp] combine_grant_results 실패 — 재료만 소각되고 결과가 지급되지 않음:',
       expect.objectContaining({ userId: USER, materialItemIds: ITEM_IDS })
     )
-    expect(mocks.awardChapterScore).not.toHaveBeenCalled()
+    expect(mocks.awardServiceJam).not.toHaveBeenCalled()
   })
 })

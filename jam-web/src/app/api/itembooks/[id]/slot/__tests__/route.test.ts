@@ -62,9 +62,9 @@ const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: reado
 const runSlotRewardMock = vi.hoisted(() => vi.fn<(userId: string, itemBookId: string, completedTier?: string | null) => Promise<void>>())
 /** `after` 콜백 안에서 두 함수가 불린 순서 */
 const callOrder = vi.hoisted(() => [] as string[])
-/** 챕터 점수 연결 — 호출 인자를 본다. 실제 RPC는 부르지 않는다 */
+/** 서비스 활동 잼 지급(awardServiceJam) — 호출 인자를 본다. 실제 RPC는 부르지 않는다 */
 const awardScoreMock = vi.hoisted(() =>
-  vi.fn<(supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => Promise<{ ok: boolean }>>(),
+  vi.fn<(supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => Promise<{ ok: boolean; granted?: number; duplicate?: boolean; capped?: boolean }>>(),
 )
 /** 점수를 세지 못한 기록 — `engine_decision_log` 쓰기를 가로챈다 */
 const logMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>())
@@ -123,8 +123,8 @@ vi.mock('@/lib/supabase/server', () => ({
     },
   }),
 }))
-vi.mock('@/lib/chapter/score', () => ({
-  awardChapterScore: (supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => awardScoreMock(supabase, input),
+vi.mock('@/lib/jam/serviceActivity', () => ({
+  awardServiceJam: (supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => awardScoreMock(supabase, input),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
@@ -180,7 +180,7 @@ beforeEach(() => {
   state.completionReads = 0
   callOrder.length = 0
   awardScoreMock.mockReset()
-  awardScoreMock.mockResolvedValue({ ok: true })
+  awardScoreMock.mockResolvedValue({ ok: true, granted: 30, duplicate: false, capped: false })
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
   runJamActionMock.mockImplementation(async () => {
@@ -678,7 +678,7 @@ describe('챕터 점수 «컬렉션 완성» — 옛 컬렉션(tier_mode 꺼짐)
     await flushAfter()
     expect(awardScoreMock).toHaveBeenCalledTimes(1)
     const [, input] = awardScoreMock.mock.calls[0]
-    expect(input).toEqual({ userId: USER_ID, kind: 'collection_complete_common', sourceId: COMMON_SOURCE })
+    expect(input).toEqual({ userId: USER_ID, kind: 'collection_complete', sourceId: COMMON_SOURCE })
     expect(input).not.toHaveProperty('occurredOn')
     expect(input).not.toHaveProperty('amount')
   })
@@ -805,7 +805,7 @@ describe('챕터 점수 «컬렉션 완성» — 등급형(tier_mode 켜짐) (�
     return { data: { ok: true, slot: SLOT, tier: 'rare', completed_tier: completedTier }, error: null }
   }
 
-  it.each(['common', 'rare', 'epic', 'mystic'])('이번 장착으로 %s 등급을 새로 완성하면 그 등급 종류로 한 번 센다', async (tier) => {
+  it.each(['common', 'rare', 'epic', 'mystic'])('이번 장착으로 %s 등급을 새로 완성하면 collection_complete 한 종류로 등급별 원천 id를 한 번 준다', async (tier) => {
     state.book = TIER_BOOK
     state.rpc.slot_item_into_book_tiered = tierResult(tier)
 
@@ -815,7 +815,7 @@ describe('챕터 점수 «컬렉션 완성» — 등급형(tier_mode 켜짐) (�
     expect(awardScoreMock).toHaveBeenCalledTimes(1)
     expect(awardScoreMock.mock.calls[0][1]).toEqual({
       userId: USER_ID,
-      kind: `collection_complete_${tier}`,
+      kind: 'collection_complete',
       sourceId: deterministicSourceId('collection_complete', USER_ID, ITEM_BOOK_ID, tier),
     })
   })

@@ -16,8 +16,12 @@
  *     - 모은 잼은 정산이 점수를 부르지 않는다 — 어떤 정산·재정산·점수 장애에서도 점수 줄이 생기지 않는다
  *     - 점수 RPC가 실패해도(오류·예외·계약 밖 응답) 본 동작의 결과는 같고, 같은 원천 id로 다시 보내면 한 번만 세어진다
  *
+ * **서비스 활동 잼으로 넘어간 4곳**(티켓 20261028_1735 2회): 배지 받기(`badgeReceive.ts`)·컬렉션 완성(`collection.ts`)·믹스 성공(`mix.ts`)·등급 올리기(`tierUp.ts`)는 더는 `awardChapterScore`를 부르지 않고
+ * `awardServiceJam`(`lib/jam/serviceActivity.ts`)으로 `jam_apply_service_activity`를 부른다. 가짜 DB에는 이 함수를 같은 규칙(유저별 이벤트 키 유일, 재전송은 기존 양)으로 최소한만 옮겨 두었고,
+ * 하루·주간 상한과 규칙값 0은 DB 쪽 시험(303 드라이런)과 `serviceActivity.test.ts`의 몫이다. 미션·잠긴 열기·드랍·픽업은 3회차에 옮긴다(그때 이 파일을 전체 개편한다).
+ *
  * **모은 잼(`jam_earned`)은 더 세지 않는다**(티켓 20261028_1733 3회): 잼 정산은 챕터 점수를 부르지 않고, 챕터는 캡슐이 가득 찬 횟수로 오른다. 점수표에는 종류가 남아 있어
- * 12종 목록은 그대로이지만 세는 모듈이 없다(`STOPPED_SCORE_KINDS`). 캡슐 열기는 옛 경로(`counted` 아님)만 세고, 나머지 다섯 곳은 잼 지급 전환(U5) 전까지 그대로다.
+ * 12종 목록은 그대로이지만 세는 모듈이 없다(`STOPPED_SCORE_KINDS`). 캡슐 열기는 옛 경로(`counted` 아님)만 세고, 미션·잠긴 열기·드랍·픽업은 잼 지급 전환(U5) 3회차 전까지 그대로다.
  *
  * 지점별 세부(호출 인자·순서·응답 불변)는 각 지점의 시험이 고정한다. 공용 DB와 실제 RPC는 부르지 않는다.
  *
@@ -32,6 +36,10 @@ const logMock = vi.hoisted(() => vi.fn())
 
 // 점수 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+// 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다
+vi.mock('@/lib/capsule/sync-auto-fill', () => ({
+  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true }),
+}))
 
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import { settleActivities, type JamSettleTarget } from '@/lib/jam/settlement'
@@ -96,9 +104,18 @@ const DIRECT_SCORE_SITES: Record<string, string> = {
   'lib/capsule/open.ts': 'capsule_open',
   'lib/inventory/lockedItemFill.ts': 'locked_item_badge_open',
   'lib/missions/checker.ts': 'mission_complete',
-  'lib/chapter/badgeReceive.ts': 'badge_receive',
-  'lib/chapter/mix.ts': 'mix_success',
 }
+
+/** 서비스 활동 잼(`awardServiceJam`)으로 넘어간 지점 → 서비스 활동 종류 (티켓 20261028_1735 2회) */
+const SERVICE_JAM_SITES: Record<string, string> = {
+  'lib/chapter/badgeReceive.ts': 'badge_earned',
+  'lib/chapter/collection.ts': 'collection_complete',
+  'lib/chapter/mix.ts': 'combine_success',
+  'lib/combine/tierUp.ts': 'combine_success',
+}
+
+/** 서비스 활동 잼으로 넘어가 챕터 점수를 더는 쓰지 않는 챕터 점수 종류 6종 (배지 받기·믹스 성공·컬렉션 완성 4등급) */
+const MOVED_TO_SERVICE_JAM_KINDS = ['badge_receive', 'mix_success', 'collection_complete_common', 'collection_complete_rare', 'collection_complete_epic', 'collection_complete_mystic']
 
 /**
  * 점수표에는 있지만 더는 세는 모듈이 없는 종류 (티켓 20261028_1733 3회). «모은 잼»은 정산이 아니라 캡슐 횟수가 챕터를 올린다.
@@ -106,41 +123,38 @@ const DIRECT_SCORE_SITES: Record<string, string> = {
  */
 const STOPPED_SCORE_KINDS = ['jam_earned']
 
-/**
- * 다른 모듈이 이미 세는 종류를 같은 점수표 항목으로 한 번 더 세는 지점 (티켓 20261022_2119 2회).
- * 등급 올리기(`lib/combine/tierUp.ts`)는 레시피 성공 기록이 없어 «믹스 성공»(`mix_success`)을 시도마다 새로 만든 UUID를 원천 id로 센다.
- * 믹스는 성공 기록 행의 id를 원천 id로 쓰므로 두 원천 id가 겹치지 않아 이중 가산이 아니다. «종류마다 한 모듈» 검사에서는 뺀다.
- */
-const SHARED_KIND_SCORE_SITES: Record<string, string> = {
-  'lib/combine/tierUp.ts': 'mix_success',
-}
-
 describe('호출 지점 목록 — 소스 검색', () => {
   it('chapter_add_score RPC를 부르는 곳은 score.ts 하나다 (점수 가산의 유일한 경로)', () => {
     const files = [...SOURCES].filter(([, source]) => /rpc\(\s*['"]chapter_add_score['"]/.test(source)).map(([file]) => file)
     expect(files).toEqual(['lib/chapter/score.ts'])
   })
 
-  it('awardChapterScore를 부르는 파일과 횟수가 목록과 같다 — 파일마다 한 번, 컬렉션 완성은 collection.ts 한 곳', () => {
-    expect(callSites('awardChapterScore')).toEqual({
-      ...Object.fromEntries(Object.keys({ ...DIRECT_SCORE_SITES, ...SHARED_KIND_SCORE_SITES }).map((file) => [file, 1])),
-      'lib/chapter/collection.ts': 1,
-    })
+  it('awardChapterScore를 부르는 파일과 횟수가 목록과 같다 — 파일마다 한 번이고, 서비스 활동 잼으로 넘어간 4곳은 더는 부르지 않는다', () => {
+    expect(callSites('awardChapterScore')).toEqual(Object.fromEntries(Object.keys(DIRECT_SCORE_SITES).map((file) => [file, 1])))
+    for (const file of Object.keys(SERVICE_JAM_SITES)) {
+      expect(SOURCES.get(file), file).not.toMatch(/awardChapterScore|@\/lib\/chapter\/score/)
+    }
+  })
+
+  it('awardServiceJam을 부르는 파일과 횟수가 목록과 같다 — 4곳이 한 번씩, 자기 서비스 활동 종류를 리터럴로 적는다', () => {
+    expect(callSites('awardServiceJam')).toEqual(Object.fromEntries(Object.keys(SERVICE_JAM_SITES).map((file) => [file, 1])))
+    for (const [file, kind] of Object.entries(SERVICE_JAM_SITES)) {
+      const match = SOURCES.get(file)?.match(/awardServiceJam\([\s\S]{0,300}?kind:\s*'([a-z_]+)'/)
+      expect(match?.[1], file).toBe(kind)
+    }
   })
 
   it('직접 부르는 지점은 자기 활동 종류를 리터럴로 적고, 활동 종류 12종은 각각 한 모듈만 만든다', () => {
-    for (const [file, kind] of Object.entries({ ...DIRECT_SCORE_SITES, ...SHARED_KIND_SCORE_SITES })) {
+    for (const [file, kind] of Object.entries(DIRECT_SCORE_SITES)) {
       expect(literalKindOf(file), file).toBe(kind)
     }
     const direct = Object.values(DIRECT_SCORE_SITES)
-    // 직접 적은 7종은 서로 다른 모듈의 것이다(같은 종류를 두 파일이 세지 않는다)
+    // 직접 적은 5종은 서로 다른 모듈의 것이다(같은 종류를 두 파일이 세지 않는다)
     expect(new Set(direct).size).toBe(direct.length)
-    // 나머지 4종(컬렉션 완성 등급별)은 변환 함수를 쓰는 collection.ts 하나가 만든다
-    const collectionKinds = CHAPTER_SCORE_KINDS.filter((kind) => kind.startsWith('collection_complete_'))
-    expect(collectionKinds).toHaveLength(4)
-    expect(Object.keys(callSites('collectionCompleteKind')).sort()).toEqual(['lib/chapter/collection.ts'])
-    // 직접 적은 종류 ∪ 컬렉션 종류 ∪ 멈춘 종류 = 활동 종류 12종
-    expect([...direct, ...collectionKinds, ...STOPPED_SCORE_KINDS].sort()).toEqual([...CHAPTER_SCORE_KINDS].sort())
+    // 서비스 활동 잼으로 넘어간 6종(배지 받기·믹스 성공·컬렉션 완성 4등급)은 챕터 점수를 쓰는 모듈이 없다
+    expect(MOVED_TO_SERVICE_JAM_KINDS.filter((kind) => !(CHAPTER_SCORE_KINDS as readonly string[]).includes(kind))).toEqual([])
+    // 직접 적은 종류 ∪ 서비스 활동 잼으로 넘어간 종류 ∪ 멈춘 종류 = 활동 종류 12종
+    expect([...direct, ...MOVED_TO_SERVICE_JAM_KINDS, ...STOPPED_SCORE_KINDS].sort()).toEqual([...CHAPTER_SCORE_KINDS].sort())
   })
 
   it('잼 정산은 챕터 점수를 가져오지 않는다 — 모은 잼(jam_earned)을 세는 코드가 없다', () => {
@@ -221,12 +235,33 @@ interface ScoreEvent {
   counted: number
 }
 
+/** 서비스 활동 잼 지급 한 줄 — 가짜 DB의 `jam_apply_service_activity` 모사 */
+interface ServiceEvent {
+  userId: string
+  kind: string
+  eventKey: string
+  granted: number
+}
+
+/** 마이그레이션(U2) 시드의 종류별 고정값. 상한·규칙값 0은 이 가짜 DB의 관심 밖이다(303 드라이런과 serviceActivity.test.ts) */
+const SERVICE_AMOUNTS: Record<string, number> = {
+  locked_unlock: 5,
+  badge_earned: 5,
+  combine_success: 5,
+  mission_complete: 20,
+  collection_complete: 30,
+  drop: 0,
+  pickup: 0,
+}
+
 type FailureMode = 'none' | 'rpc_error' | 'throws' | 'garbage'
 
 interface World {
   /** 오늘(KST). 미래 날짜 거절 기준 */
   today: string
   events: ScoreEvent[]
+  /** 서비스 활동 잼 지급 줄 — (유저, 이벤트 키)가 유일하다 */
+  serviceEvents: ServiceEvent[]
   /** DB가 낸 예외 메시지 — 정상 경로에서는 비어 있어야 한다 */
   dbErrors: string[]
   suspended: Set<string>
@@ -243,6 +278,7 @@ function newWorld(): World {
   return {
     today: '2026-10-21',
     events: [],
+    serviceEvents: [],
     dbErrors: [],
     suspended: new Set(),
     activityIds: {},
@@ -295,6 +331,20 @@ function chapterAddScore(world: World, a: Record<string, unknown>): { data: unkn
   return { data: [{ score_added: counted, current_chapter: null, reached_chapters: [] }], error: null }
 }
 
+/** `jam_apply_service_activity`를 최소한으로 옮긴 것 — 같은 (유저, 이벤트 키)는 새로 쓰지 않고 `duplicate`와 기존 양을 돌려준다 */
+function jamApplyServiceActivity(world: World, a: Record<string, unknown>): { data: unknown; error: { message: string } | null } {
+  const userId = a.p_user_id as string
+  const kind = a.p_kind as string
+  const eventKey = a.p_event_key as string
+  if (!(kind in SERVICE_AMOUNTS) || !eventKey) return { data: { ok: false, error: 'invalid_input' }, error: null }
+  const existing = world.serviceEvents.find((e) => e.userId === userId && e.eventKey === eventKey)
+  if (existing) return { data: { ok: true, granted: existing.granted, duplicate: true }, error: null }
+  const granted = SERVICE_AMOUNTS[kind]
+  if (granted === 0) return { data: { ok: true, granted: 0, reason: 'rule_zero' }, error: null }
+  world.serviceEvents.push({ userId, kind, eventKey, granted })
+  return { data: { ok: true, granted, ruleAmount: granted, capped: false, duplicate: false }, error: null }
+}
+
 function fakeClient(world: World): SupabaseClient {
   return {
     from: (table: string) => {
@@ -333,11 +383,11 @@ function fakeClient(world: World): SupabaseClient {
         if (known === undefined) world.jamLines.set(activityId, args.p_amount as number)
         return { data: { amount: known ?? (args.p_amount as number), source_activity_id: activityId }, error: null }
       }
-      if (name !== 'chapter_add_score') throw new Error(`예상하지 못한 RPC: ${name}`)
+      if (name !== 'chapter_add_score' && name !== 'jam_apply_service_activity') throw new Error(`예상하지 못한 RPC: ${name}`)
       if (world.failure === 'throws') throw new Error('점수 RPC 네트워크 끊김')
       if (world.failure === 'rpc_error') return { data: null, error: { message: '점수 RPC 장애' } }
       if (world.failure === 'garbage') return { data: { unexpected: true }, error: null }
-      return chapterAddScore(world, args)
+      return name === 'chapter_add_score' ? chapterAddScore(world, args) : jamApplyServiceActivity(world, args)
     },
   } as unknown as SupabaseClient
 }
@@ -386,6 +436,8 @@ afterEach(() => {
 })
 
 const rowsOf = (kind: string, sourceId?: string) => world.events.filter((e) => e.kind === kind && (sourceId === undefined || e.sourceId === sourceId))
+const serviceRows = (kind: string) => world.serviceEvents.filter((e) => e.kind === kind)
+const serviceTotalOf = (userId: string) => world.serviceEvents.filter((e) => e.userId === userId).reduce((sum, e) => sum + e.granted, 0)
 const totalOf = (userId: string) => world.events.filter((e) => e.userId === userId).reduce((sum, e) => sum + e.counted, 0)
 
 describe('DB 모사가 221과 같다', () => {
@@ -431,16 +483,19 @@ async function sendEveryActivityOnce() {
 }
 
 /**
- * 한 번씩 보냈을 때의 기대: 15줄(캡슐 1, 잠긴 열기 1, 배지 받기 4, 컬렉션 5, 믹스 1, 미션 1, 드랍 1, 픽업 1), 세는 활동 종류 11종 모두(모은 잼은 세지 않는다).
- * 합계는 221 점수표 × 단위: A = 캡슐 20 + 잠긴 열기 10 + 배지 받기 40 + 컬렉션 1600 + 믹스 20 + 미션 50 + 드랍 5 = 1745, B = 픽업 5
+ * 한 번씩 보냈을 때의 기대
+ *  - 챕터 점수 5줄(캡슐 1, 잠긴 열기 1, 미션 1, 드랍 1, 픽업 1), 아직 점수를 세는 활동 종류 5종 모두. 합계는 221 점수표 × 단위: A = 캡슐 20 + 잠긴 열기 10 + 미션 50 + 드랍 5 = 85, B = 픽업 5
+ *  - 서비스 활동 잼 10줄(배지 받기 4, 컬렉션 완성 5, 믹스 1): A = 배지 5×4 + 컬렉션 30×5 + 믹스 5 = 175 (컬렉션은 등급과 관계없이 collection_complete 한 종류)
  */
-const EXPECTED_ROWS = 15
-const COUNTED_KINDS = CHAPTER_SCORE_KINDS.filter((kind) => !STOPPED_SCORE_KINDS.includes(kind))
-const EXPECTED_TOTAL_A = 20 + 10 + (10 + 10 + 20) + (100 + 200 + 400 + 800 + 100) + 20 + 50 + 5
+const EXPECTED_ROWS = 5
+const EXPECTED_SERVICE_ROWS = 10
+const COUNTED_KINDS = CHAPTER_SCORE_KINDS.filter((kind) => !STOPPED_SCORE_KINDS.includes(kind) && !MOVED_TO_SERVICE_JAM_KINDS.includes(kind))
+const EXPECTED_TOTAL_A = 20 + 10 + 50 + 5
 const EXPECTED_TOTAL_B = 5
+const EXPECTED_SERVICE_TOTAL_A = 5 * 4 + 30 * 5 + 5
 
 describe('7종 활동 — 같은 일을 두 번 보내도 한 번만 센다', () => {
-  it('한 번씩 보내면 일마다 한 줄이 쌓이고 세는 11종 활동 종류를 모두 쓴다', async () => {
+  it('한 번씩 보내면 일마다 한 줄이 쌓이고 아직 점수를 세는 5종과 서비스 활동 잼 3종을 모두 쓴다', async () => {
     await sendEveryActivityOnce()
 
     expect(world.dbErrors).toEqual([])
@@ -449,19 +504,24 @@ describe('7종 활동 — 같은 일을 두 번 보내도 한 번만 센다', ()
     expect(new Set(world.events.map((e) => e.kind))).toEqual(new Set(COUNTED_KINDS))
     expect(totalOf(USER_A)).toBe(EXPECTED_TOTAL_A)
     expect(totalOf(USER_B)).toBe(EXPECTED_TOTAL_B)
+    expect(world.serviceEvents).toHaveLength(EXPECTED_SERVICE_ROWS)
+    expect(new Set(world.serviceEvents.map((e) => e.kind))).toEqual(new Set(['badge_earned', 'collection_complete', 'combine_success']))
+    expect(serviceTotalOf(USER_A)).toBe(EXPECTED_SERVICE_TOTAL_A)
   })
 
   it('같은 일을 한 번 더 보내면 줄도 합계도 그대로다 (재동기화·재시도·재장착)', async () => {
     await sendEveryActivityOnce()
-    const snapshot = JSON.stringify(world.events)
+    const snapshot = JSON.stringify([world.events, world.serviceEvents])
 
     await sendEveryActivityOnce()
 
     expect(world.dbErrors).toEqual([])
     expect(world.events).toHaveLength(EXPECTED_ROWS)
-    expect(JSON.stringify(world.events)).toBe(snapshot)
+    expect(world.serviceEvents).toHaveLength(EXPECTED_SERVICE_ROWS)
+    expect(JSON.stringify([world.events, world.serviceEvents])).toBe(snapshot)
     expect(totalOf(USER_A)).toBe(EXPECTED_TOTAL_A)
     expect(totalOf(USER_B)).toBe(EXPECTED_TOTAL_B)
+    expect(serviceTotalOf(USER_A)).toBe(EXPECTED_SERVICE_TOTAL_A)
   })
 
   it('여러 번 동시에 보내도 한 번만 센다', async () => {
@@ -469,7 +529,9 @@ describe('7종 활동 — 같은 일을 두 번 보내도 한 번만 센다', ()
 
     expect(world.dbErrors).toEqual([])
     expect(world.events).toHaveLength(EXPECTED_ROWS)
+    expect(world.serviceEvents).toHaveLength(EXPECTED_SERVICE_ROWS)
     expect(totalOf(USER_A)).toBe(EXPECTED_TOTAL_A)
+    expect(serviceTotalOf(USER_A)).toBe(EXPECTED_SERVICE_TOTAL_A)
   })
 })
 
@@ -507,15 +569,16 @@ describe('키 충돌 없음 — 호출 지점들이 서로 다른 키를 쓴다'
 
     expect(world.dbErrors).toEqual([])
     expect(logMock).not.toHaveBeenCalled()
-    expect(world.events).toHaveLength(expected)
-    expect(new Set(world.events.map((e) => `${e.kind}:${e.sourceId}`)).size).toBe(expected)
+    expect(world.events).toHaveLength(0)
+    expect(world.serviceEvents).toHaveLength(expected)
+    expect(new Set(world.serviceEvents.map((e) => `${e.userId}:${e.eventKey}`)).size).toBe(expected)
   })
 
   it('옛 컬렉션이 센 common과 등급형으로 바뀐 뒤의 common은 같은 키다 — 같은 완성을 두 번 세지 않는다 (사용자 결정 4)', async () => {
     // 1) 등급형을 켜기 전 — 장착 전엔 완성 기록이 없었고 장착 후에 생겼다
     world.completions.add(`${USER_A}:${BOOK_3}`)
     await awardSlotCollectionScore(client, { userId: USER_A, itemBookId: BOOK_3, tierMode: false, completedTier: null, completedBefore: false })
-    expect(totalOf(USER_A)).toBe(100)
+    expect(serviceTotalOf(USER_A)).toBe(30)
 
     // 2) 같은 컬렉션이 등급형으로 바뀐 뒤 common 등급 완성
     await awardSlotCollectionScore(client, { userId: USER_A, itemBookId: BOOK_3, tierMode: true, completedTier: 'common', completedBefore: null })
@@ -523,12 +586,13 @@ describe('키 충돌 없음 — 호출 지점들이 서로 다른 키를 쓴다'
     await awardCollectionCompleteScore(client, { userId: USER_A, itemBookId: BOOK_3, tier: 'common' })
 
     expect(world.dbErrors).toEqual([])
-    expect(rowsOf('collection_complete_common')).toHaveLength(1)
-    expect(totalOf(USER_A)).toBe(100)
+    expect(serviceRows('collection_complete')).toHaveLength(1)
+    expect(serviceTotalOf(USER_A)).toBe(30)
 
-    // 새 등급(rare)은 새 완성이라 따로 센다
+    // 새 등급(rare)은 새 완성이라 따로 지급한다 — 등급이 달라도 서비스 활동 종류는 collection_complete 하나다
     await awardSlotCollectionScore(client, { userId: USER_A, itemBookId: BOOK_3, tierMode: true, completedTier: 'rare', completedBefore: null })
-    expect(totalOf(USER_A)).toBe(300)
+    expect(serviceRows('collection_complete')).toHaveLength(2)
+    expect(serviceTotalOf(USER_A)).toBe(60)
   })
 
   it('이미 완성한 유저의 옛 컬렉션 재장착은 소급 가산하지 않는다', async () => {
@@ -537,6 +601,7 @@ describe('키 충돌 없음 — 호출 지점들이 서로 다른 키를 쓴다'
     await awardSlotCollectionScore(client, { userId: USER_A, itemBookId: BOOK_3, tierMode: false, completedTier: null, completedBefore: true })
 
     expect(world.events).toHaveLength(0)
+    expect(world.serviceEvents).toHaveLength(0)
   })
 
   it('반복형의 첫 획득 키와 회차 키는 구분된다 — 첫 획득 하나 + 회차마다 하나', async () => {
@@ -546,7 +611,7 @@ describe('키 충돌 없음 — 호출 지점들이 서로 다른 키를 쓴다'
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: repeatable, origin: NATURAL, occurrenceActivityId: 102 })
 
     expect(world.dbErrors).toEqual([])
-    expect(rowsOf('badge_receive')).toHaveLength(3)
+    expect(serviceRows('badge_earned')).toHaveLength(3)
   })
 })
 
@@ -562,21 +627,21 @@ describe('제외 규칙 종합 — DB에 기록이 남는가', () => {
 
   it.each(NATURAL_TRIGGERS)('자연 발급 트리거(%s)는 센다', async (triggeredBy) => {
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: badge(uuid(831)), origin: { triggeredBy } })
-    expect(rowsOf('badge_receive')).toHaveLength(1)
+    expect(serviceRows('badge_earned')).toHaveLength(1)
   })
 
   it('체크인 배지는 센다 — 두 번째 이후는 호출 지점(isFirstEarn)이 부르지 않고, 혹시 불러도 (유저, 배지) 키라 한 번뿐이다', async () => {
     const checkin: BadgeReceiveBadge = { id: uuid(832), type: 'checkin' }
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: checkin, origin: NATURAL })
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: checkin, origin: NATURAL })
-    expect(rowsOf('badge_receive')).toHaveLength(1)
+    expect(serviceRows('badge_earned')).toHaveLength(1)
   })
 
   it('같은 배지를 초기화나 삭제 뒤 다시 받아도 점수는 다시 들어가지 않는다 (사용자 결정 2)', async () => {
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: badge(uuid(833)), origin: NATURAL })
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: badge(uuid(833)), origin: NATURAL })
-    expect(rowsOf('badge_receive')).toHaveLength(1)
-    expect(totalOf(USER_A)).toBe(10)
+    expect(serviceRows('badge_earned')).toHaveLength(1)
+    expect(serviceTotalOf(USER_A)).toBe(5)
   })
 
   const EXCLUDED: [string, BadgeReceiveBadge, { triggeredBy: string; dryRun?: boolean }, boolean][] = [
@@ -597,18 +662,18 @@ describe('제외 규칙 종합 — DB에 기록이 남는가', () => {
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: target, origin })
     await awardBadgeReceiveOccurrenceScores(client, { userId: USER_A, badge: target, origin, activityIds: [101] })
 
-    expect(rowsOf('badge_receive', undefined).length > 0).toBe(counted)
+    expect(serviceRows('badge_earned').length > 0).toBe(counted)
     expect(world.dbErrors).toEqual([])
   })
 
   it('이용 정지 중인 유저(정지된 드랍 주인이 받는 배지)는 세지 않고 풀리면 다시 센다', async () => {
     world.suspended.add(USER_A)
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: badge(uuid(861)), origin: NATURAL })
-    expect(world.events).toHaveLength(0)
+    expect(world.serviceEvents).toHaveLength(0)
 
     world.suspended.delete(USER_A)
     await awardBadgeReceiveScore(client, { userId: USER_A, badge: badge(uuid(861)), origin: NATURAL })
-    expect(rowsOf('badge_receive')).toHaveLength(1)
+    expect(serviceRows('badge_earned')).toHaveLength(1)
   })
 
   it('제외 조건 키는 팔로워·팔로잉·챕터 도달 셋이다 (포인트를 가리키는 조건 키는 지금 하나도 없다)', () => {
@@ -684,12 +749,14 @@ describe('점수 실패 — 본 동작의 결과는 그대로이고 같은 원�
     await expect(awardMixSuccessScore(client, USER_A, { id: MIX_1, is_recipe_first: true })).resolves.toBeUndefined()
 
     expect(world.events).toHaveLength(0)
+    expect(world.serviceEvents).toHaveLength(0)
   })
 
   it.each(FAILURES)('점수 RPC가 %s였다가 복구되면 같은 원천 id로 다시 보내 한 번만 센다', async (mode) => {
     world.failure = mode
     await sendEveryActivityOnce()
     expect(world.events).toHaveLength(0)
+    expect(world.serviceEvents).toHaveLength(0)
 
     world.failure = 'none'
     await sendEveryActivityOnce()
@@ -697,7 +764,9 @@ describe('점수 실패 — 본 동작의 결과는 그대로이고 같은 원�
 
     expect(world.dbErrors).toEqual([])
     expect(world.events).toHaveLength(EXPECTED_ROWS)
+    expect(world.serviceEvents).toHaveLength(EXPECTED_SERVICE_ROWS)
     expect(totalOf(USER_A)).toBe(EXPECTED_TOTAL_A)
+    expect(serviceTotalOf(USER_A)).toBe(EXPECTED_SERVICE_TOTAL_A)
   })
 
   it('실패 기록 자체가 거부돼도 점수 함수는 던지지 않는다', async () => {

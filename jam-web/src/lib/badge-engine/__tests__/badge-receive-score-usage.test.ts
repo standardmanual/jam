@@ -2,7 +2,7 @@
  * 사용량·행동 지표 배지 새 발급(`issueQualifyingBadges`) → 챕터 점수 «배지 받기» 연결 (티켓 20261019_1315 2a회, 운영 로직 12.2절)
  *
  * `issueQualifyingBadges`는 서비스 사용량(팔로워·팔로잉·동기화)·체크인 보유·JAM! 행동 지표 배지가 공유하는 발급 함수다.
- * `user_activity_badges`에 **새 행을 실제로 넣은** 발급마다 `chapter_add_score('badge_receive')`를 부르는지 고정한다.
+ * `user_activity_badges`에 **새 행을 실제로 넣은** 발급마다 서비스 활동 잼 `jam_apply_service_activity('badge_earned')`를 부르는지 고정한다(티켓 20261028_1735 2회에서 점수에서 전환).
  *
  * 검증 대상:
  *  - 새로 발급한 배지는 (유저, 배지) 결정적 원천 id로 센다. 레벨형 연속 발급은 레벨마다 센다
@@ -27,6 +27,10 @@ const logEngineMock = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('@/lib/points', () => ({ awardPoints: awardPointsMock }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: recordFeedEventMock }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
+// 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다
+vi.mock('@/lib/capsule/sync-auto-fill', () => ({
+  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true }),
+}))
 
 import { issueQualifyingBadges } from '../usageBadges'
 
@@ -102,10 +106,10 @@ function fakeClient(options: FakeOptions = {}) {
     return builder
   }
   const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
-    if (name !== 'chapter_add_score') return { data: null, error: null }
+    if (name !== 'jam_apply_service_activity') return { data: null, error: null }
     scoreCalls.push(args)
     if (options.scoreRpcFails) return { data: null, error: { message: '점수 함수 오류' } }
-    return { data: [{ score_added: 10, current_chapter: null, reached_chapters: [] }], error: null }
+    return { data: { ok: true, granted: 5, ruleAmount: 5, capped: false, duplicate: false, dailyUsed: 5, weeklyUsed: 5, balance: 5 }, error: null }
   })
   return { client: { from, rpc } as unknown as SupabaseClient, inserts, scoreCalls }
 }
@@ -143,9 +147,8 @@ describe('issueQualifyingBadges 새 발급 → «배지 받기» 점수', () => 
     expect(scoreCalls).toEqual([
       {
         p_user_id: USER,
-        p_activity_kind: 'badge_receive',
-        p_source_id: deterministicSourceId('badge_receive', USER, 'sync-badge'),
-        p_amount: 1,
+        p_kind: 'badge_earned',
+        p_event_key: `badge_earned:${deterministicSourceId('badge_receive', USER, 'sync-badge')}`,
       },
     ])
   })
@@ -159,8 +162,8 @@ describe('issueQualifyingBadges 새 발급 → «배지 받기» 점수', () => 
     const earned = await issue(client, levels)
 
     expect(earned.map((b) => b.id)).toEqual(['streak-lv1', 'streak-lv2', 'streak-lv3'])
-    expect(scoreCalls.map((c) => c.p_source_id)).toEqual(
-      ['streak-lv1', 'streak-lv2', 'streak-lv3'].map((id) => deterministicSourceId('badge_receive', USER, id))
+    expect(scoreCalls.map((c) => c.p_event_key)).toEqual(
+      ['streak-lv1', 'streak-lv2', 'streak-lv3'].map((id) => `badge_earned:${deterministicSourceId('badge_receive', USER, id)}`)
     )
   })
 
@@ -174,7 +177,7 @@ describe('issueQualifyingBadges 새 발급 → «배지 받기» 점수', () => 
     const earned = await issue(client, tiers)
 
     expect(earned.map((b) => b.id)).toEqual(['g-rare'])
-    expect(scoreCalls.map((c) => c.p_source_id)).toEqual([deterministicSourceId('badge_receive', USER, 'g-rare')])
+    expect(scoreCalls.map((c) => c.p_event_key)).toEqual([`badge_earned:${deterministicSourceId('badge_receive', USER, 'g-rare')}`])
   })
 })
 
@@ -231,7 +234,7 @@ describe('issueQualifyingBadges 새 발급 → 세지 않는 것', () => {
     ])
 
     expect(earned.map((b) => b.id).sort()).toEqual(['follow-badge', 'sync-badge'])
-    expect(scoreCalls.map((c) => c.p_source_id)).toEqual([deterministicSourceId('badge_receive', USER, 'sync-badge')])
+    expect(scoreCalls.map((c) => c.p_event_key)).toEqual([`badge_earned:${deterministicSourceId('badge_receive', USER, 'sync-badge')}`])
   })
 
   it('이용 정지 중인 유저가 받은 배지는 발급은 되지만 세지 않는다', async () => {
@@ -260,6 +263,6 @@ describe('issueQualifyingBadges 새 발급 → 점수 실패는 발급을 막지
     expect(scoreCalls).toHaveLength(2) // 한 배지의 점수 실패가 다음 배지의 점수를 막지 않는다
     expect(awardPointsMock).toHaveBeenCalledWith(USER, 30, 'badge_point_reward', { sourceBadgeId: 'a' })
     expect(recordFeedEventMock).toHaveBeenCalledTimes(2)
-    expect(logEngineMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER, expect.objectContaining({ kind: 'badge_receive' }))
+    expect(logEngineMock).toHaveBeenCalledWith('points', 'service_jam_failed', USER, expect.objectContaining({ kind: 'badge_earned' }))
   })
 })

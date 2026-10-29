@@ -15,8 +15,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isUuid } from '@/lib/admin/uuid'
+import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { recordChapterScoreFailure } from './failure'
-import { awardChapterScore } from './score'
 
 export interface MixSuccessRecord {
   id: string
@@ -48,7 +48,8 @@ export async function awardMixSuccessScore(supabase: SupabaseClient, userId: str
       await recordMixScoreFailure(userId, 'record_combine_success_with_id가 알려진 모양이 아닌 응답을 돌려줬다 (id가 UUID 문자열, is_recipe_first가 boolean이어야 한다)')
       return
     }
-    await awardChapterScore(supabase, { userId, kind: 'mix_success', sourceId: record.id })
+    // 점수 대신 서비스 활동 잼 `combine_success`를 준다(티켓 20261028_1735 2회). 이벤트 키는 `combine_success:<성공 기록 id>`다
+    await awardServiceJam(supabase, { userId, kind: 'combine_success', sourceId: record.id })
   } catch (e) {
     // 위 호출은 스스로 던지지 않지만 이 함수의 약속이 «절대 던지지 않음»이다
     await recordMixScoreFailure(userId, `믹스 성공 점수 처리 예외: ${e instanceof Error ? e.message : String(e)}`)

@@ -3,6 +3,9 @@
  *
  * 컬렉션을 완성한 순간 `collection_complete_<등급>`을 센다(common 100 ~ mystic 800은 DB 설정 행, 코드에 점수 상수를 두지 않는다).
  *
+ * **서비스 활동 잼으로 전환(티켓 20261028_1735 2회)**: 이제 점수 대신 `awardServiceJam`의 `collection_complete`(등급과 관계없이 한 종류)로 잼을 준다. 원천 id와 «새로 완성했는가» 판정은 그대로고,
+ * 이벤트 키는 `collection_complete:<아래 원천 id>`다. 챕터 오름은 점수가 아니라 캡슐 채움이 낸다(지급 뒤 즉시 채움). 아래 «점수»는 같은 자리의 옛 이름이다.
+ *
  * **원천 id**: 완성 기록 표(`user_item_book_completions`, `user_item_book_tier_completions`)에 id가 없어서 (유저, 컬렉션, 등급)으로 만든 결정적 id다
  * (`deterministicSourceId('collection_complete', userId, itemBookId, tier)`). 같은 완성을 다시 보내도 같은 키라 한 번만 센다.
  *
@@ -27,9 +30,9 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { awardServiceJam, type AwardServiceJamResult } from '@/lib/jam/serviceActivity'
 import { recordChapterScoreFailure } from './failure'
 import { CHAPTER_COLLECTION_TIERS, collectionCompleteKind, type ChapterCollectionTier } from './kinds'
-import { awardChapterScore, type AwardChapterScoreResult } from './score'
 import { deterministicSourceId } from './source-id'
 
 /** 등급형이 아닌 컬렉션이 세는 등급 */
@@ -76,7 +79,7 @@ async function recordCollectionCompleteFeed(supabase: SupabaseClient, userId: st
 }
 
 /** 컬렉션 완성 점수를 센다. 던지지 않는다 — 실패하면 기록만 남기고 `{ ok: false }`다. 새로 완성한 등급의 «컬렉션 완성» 피드도 같은 자리에서 기록한다(파일 머리말). */
-export async function awardCollectionCompleteScore(supabase: SupabaseClient, input: AwardCollectionCompleteInput): Promise<AwardChapterScoreResult> {
+export async function awardCollectionCompleteScore(supabase: SupabaseClient, input: AwardCollectionCompleteInput): Promise<AwardServiceJamResult> {
   const { userId, itemBookId, tier } = input
   try {
     // 등급 값이 계약(common·rare·epic·mystic) 밖이면 활동 종류를 정할 수 없다 — 다른 등급으로 대신 세지 않는다
@@ -91,9 +94,10 @@ export async function awardCollectionCompleteScore(supabase: SupabaseClient, inp
     }
     // 피드를 점수보다 먼저 기록한다 — 점수가 챕터를 올리면 «챕터 오름» 피드가 뒤따라 생기므로, 순서가 «컬렉션 완성» → «챕터 오름»으로 남는다
     await recordCollectionCompleteFeed(supabase, userId, itemBookId, tier)
-    return await awardChapterScore(supabase, {
+    // 점수 대신 서비스 활동 잼을 준다(티켓 20261028_1735 2회). 등급과 관계없이 `collection_complete` 한 종류이고, 원천 id는 등급까지 든 그대로라 이벤트 키는 `collection_complete:<원천 id>`다
+    return await awardServiceJam(supabase, {
       userId,
-      kind: collectionCompleteKind(tier),
+      kind: 'collection_complete',
       sourceId: collectionCompleteSourceId(userId, itemBookId, tier),
     })
   } catch (e) {

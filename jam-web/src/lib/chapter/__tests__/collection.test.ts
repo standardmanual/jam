@@ -1,7 +1,8 @@
 /**
- * lib/chapter/collection — 챕터 점수 «컬렉션 완성» (티켓 20261019_1315 3회, 사용자 결정 4)
+ * lib/chapter/collection — «컬렉션 완성» (티켓 20261019_1315 3회, 사용자 결정 4, 서비스 활동 잼 전환: 티켓 20261028_1735 2회)
  *
  * 고정하는 것:
+ * - 점수 대신 서비스 활동 잼 `collection_complete`(등급과 관계없이 한 종류)를 지급한다. 이벤트 키는 `collection_complete:<원천 id>`다.
  * - 원천 id는 (유저, 컬렉션, 등급)으로 만든 결정적 id다. 같은 완성을 다시 보내도 같고, 유저·컬렉션·등급이 다르면 달라진다.
  * - 등급형이 아닌 컬렉션(옛 컬렉션)은 등급 `common`으로 센다. 나중에 등급형이 되어 common 등급을 완성해도 같은 (kind, 원천 id)라 이중 가산이 없다.
  * - 등급 값이 common·rare·epic·mystic이 아니면 다른 등급으로 대신 세지 않고 점수 없이 `chapter_score_failed`로 남긴다.
@@ -18,10 +19,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const logMock = vi.hoisted(() => vi.fn())
+const { logMock, autoFillMock } = vi.hoisted(() => ({ logMock: vi.fn(), autoFillMock: vi.fn() }))
 const recordFeedEventMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+// 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다. 여기서는 채움을 막고 서비스 활동 잼 RPC 인자만 본다
+vi.mock('@/lib/capsule/sync-auto-fill', () => ({ runSyncCapsuleAutoFill: (...args: unknown[]) => autoFillMock(...args) }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: (...args: unknown[]) => recordFeedEventMock(...args) }))
 
 import {
@@ -39,7 +42,12 @@ const OTHER_USER = '99999999-9999-4999-8999-999999999999'
 const BOOK = '44444444-4444-4444-8444-444444444444'
 const OTHER_BOOK = '55555555-5555-4555-8555-555555555555'
 
-const OK_ROW = { score_added: 100, current_chapter: null, reached_chapters: [] }
+const OK_GRANT = { ok: true, granted: 30, ruleAmount: 30, capped: false, duplicate: false, dailyUsed: 30, weeklyUsed: 30, balance: 30 }
+
+/** 서비스 활동 잼 호출의 이벤트 키 */
+function eventKey(tier: string, userId = USER, bookId = BOOK): string {
+  return `collection_complete:${collectionCompleteSourceId(userId, bookId, tier as 'common')}`
+}
 
 interface FakeOptions {
   /** `user_item_book_completions` 조회 결과를 호출마다 차례로 돌려준다. 'error'면 조회 오류 */
@@ -53,7 +61,7 @@ const BOOK_NAME = '한강 컬렉션'
 
 function fakeClient(opts: FakeOptions = {}) {
   const reads = [...(opts.completionReads ?? [])]
-  const rpc = vi.fn(async () => opts.rpcResult ?? { data: [OK_ROW], error: null })
+  const rpc = vi.fn(async () => opts.rpcResult ?? { data: OK_GRANT, error: null })
   const from = vi.fn((table: string) => {
     if (table === 'item_books') {
       const bookBuilder = {
@@ -91,6 +99,8 @@ function rpcCalls(rpc: ReturnType<typeof fakeClient>['rpc']) {
 beforeEach(() => {
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
+  autoFillMock.mockReset()
+  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true })
   recordFeedEventMock.mockReset()
   recordFeedEventMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -135,7 +145,7 @@ describe('isChapterCollectionTier', () => {
 })
 
 describe('awardCollectionCompleteScore', () => {
-  it.each(['common', 'rare', 'epic', 'mystic'] as const)('%s 등급은 collection_complete_%s로 (유저, 컬렉션, 등급) id를 원천 id로 센다 — 수량 1, 날짜 생략', async (tier) => {
+  it.each(['common', 'rare', 'epic', 'mystic'] as const)('%s 등급도 collection_complete 한 종류로 (유저, 컬렉션, 등급) id를 원천 id로 지급한다 — 이벤트 키 collection_complete:<원천 id>', async (tier) => {
     const { client, rpc } = fakeClient()
 
     const result = await awardCollectionCompleteScore(client, { userId: USER, itemBookId: BOOK, tier })
@@ -143,12 +153,11 @@ describe('awardCollectionCompleteScore', () => {
     expect(result).toMatchObject({ ok: true })
     expect(rpcCalls(rpc)).toEqual([
       [
-        'chapter_add_score',
+        'jam_apply_service_activity',
         {
           p_user_id: USER,
-          p_activity_kind: `collection_complete_${tier}`,
-          p_source_id: collectionCompleteSourceId(USER, BOOK, tier),
-          p_amount: 1,
+          p_kind: 'collection_complete',
+          p_event_key: eventKey(tier),
         },
       ],
     ])
@@ -162,8 +171,8 @@ describe('awardCollectionCompleteScore', () => {
     await awardCollectionCompleteScore(client, { userId: USER, itemBookId: BOOK, tier: 'common' })
 
     const [first, second] = rpcCalls(rpc)
-    expect(first[1].p_activity_kind).toBe(second[1].p_activity_kind)
-    expect(first[1].p_source_id).toBe(second[1].p_source_id)
+    expect(first[1].p_kind).toBe(second[1].p_kind)
+    expect(first[1].p_event_key).toBe(second[1].p_event_key)
   })
 
   it('옛 컬렉션의 common과 등급형으로 바뀐 뒤의 common은 같은 (kind, 원천 id)다 — 이중 가산이 없다', async () => {
@@ -176,9 +185,9 @@ describe('awardCollectionCompleteScore', () => {
 
     expect(LEGACY_COLLECTION_TIER).toBe('common')
     const [legacy, tiered] = rpcCalls(rpc)
-    expect(legacy[1].p_activity_kind).toBe('collection_complete_common')
-    expect(tiered[1].p_activity_kind).toBe(legacy[1].p_activity_kind)
-    expect(tiered[1].p_source_id).toBe(legacy[1].p_source_id)
+    expect(legacy[1].p_kind).toBe('collection_complete')
+    expect(tiered[1].p_kind).toBe(legacy[1].p_kind)
+    expect(tiered[1].p_event_key).toBe(legacy[1].p_event_key)
   })
 
   it('알려진 등급이 아니면 다른 등급으로 대신 세지 않고 점수 없이 chapter_score_failed(sourceId null)를 남긴다', async () => {
@@ -207,9 +216,9 @@ describe('awardCollectionCompleteScore', () => {
 
     expect(logMock).toHaveBeenCalledWith(
       'points',
-      'chapter_score_failed',
+      'service_jam_failed',
       USER,
-      expect.objectContaining({ kind: 'collection_complete_rare', sourceId: collectionCompleteSourceId(USER, BOOK, 'rare') })
+      expect.objectContaining({ kind: 'collection_complete', sourceId: collectionCompleteSourceId(USER, BOOK, 'rare') })
     )
   })
 })
@@ -320,7 +329,7 @@ describe('awardSlotCollectionScore — 등급형', () => {
     await awardSlotCollectionScore(client, { userId: USER, itemBookId: BOOK, tierMode: true, completedTier: 'epic', completedBefore: null })
 
     expect(rpcCalls(rpc)).toHaveLength(1)
-    expect(rpcCalls(rpc)[0][1]).toMatchObject({ p_activity_kind: 'collection_complete_epic', p_source_id: collectionCompleteSourceId(USER, BOOK, 'epic') })
+    expect(rpcCalls(rpc)[0][1]).toMatchObject({ p_kind: 'collection_complete', p_event_key: eventKey('epic') })
     expect(completionReadTables(from)).toEqual([])
   })
 
@@ -350,8 +359,8 @@ describe('awardSlotCollectionScore — 옛 컬렉션(tier_mode 꺼짐)', () => {
 
     expect(rpcCalls(rpc)).toHaveLength(1)
     expect(rpcCalls(rpc)[0][1]).toMatchObject({
-      p_activity_kind: 'collection_complete_common',
-      p_source_id: collectionCompleteSourceId(USER, BOOK, 'common'),
+      p_kind: 'collection_complete',
+      p_event_key: eventKey('common'),
     })
   })
 
@@ -428,7 +437,7 @@ describe('awardSlotCollectionScore — 옛 컬렉션(tier_mode 꺼짐)', () => {
       awardSlotCollectionScore(client, { userId: USER, itemBookId: BOOK, tierMode: false, completedTier: null, completedBefore: false })
     ).resolves.toBeUndefined()
 
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', USER, expect.objectContaining({ kind: 'collection_complete_common' }))
+    expect(logMock).toHaveBeenCalledWith('points', 'service_jam_failed', USER, expect.objectContaining({ kind: 'collection_complete' }))
   })
 })
 
