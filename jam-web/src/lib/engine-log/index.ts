@@ -30,6 +30,8 @@ export type EngineDecisionEvent =
   | 'point_award_failed'
   /** 챕터 점수(`chapter_add_score`) 연결 실패 (engine='points', 티켓 20261019_1315). 같은 원천 id로 다시 보낼 수 있다 */
   | 'chapter_score_failed'
+  /** 서비스 활동 잼(`jam_apply_service_activity`) 지급 실패 (engine='points', 티켓 20261028_1735). 같은 원천 id로 다시 보낼 수 있다 */
+  | 'service_jam_failed'
   /** 챕터 오름 처리(소식·챕터 배지 판정) 실패 (engine='points', 티켓 20261019_1316). 한쪽이 실패해도 다른 쪽은 한다. 소식은 같은 묶음 키라 다시 보내도 한 건이다 */
   | 'chapter_rise_failed'
   /** 챕터 1 시작(`chapter_start`) 실패 (engine='points', 티켓 20261019_1316). 퀘스트 완료 처리가 다음에 불릴 때 다시 시도한다 */
