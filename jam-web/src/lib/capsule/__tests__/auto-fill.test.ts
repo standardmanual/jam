@@ -83,6 +83,7 @@ describe('runCapsuleAutoFill — 반복', () => {
       forfeitedTotal: 0,
       alerts: [],
       blockedNow: false,
+      reachedChapters: [],
       rounds: 1,
       stopped: 'wallet_empty',
     })
@@ -414,6 +415,21 @@ describe('runCapsuleAutoFill — 챕터 오름 처리 위치 (이중 호출 없�
 
     expect(riseMock).toHaveBeenCalledTimes(1)
     expect(riseMock).toHaveBeenCalledWith({ userId: USER_ID, reachedChapters: [5] })
+  })
+
+  it('처리한 오름은 결과의 reachedChapters에 순서대로 담긴다 — 열기 없이 보류만 생긴 오름도 담긴다(티켓 20261028_1734 3회)', async () => {
+    const { client } = fakeClient(
+      [
+        { ok: true, applied: 145, full: true, pendingCount: 1, chapterNo: 4, reachedChapters: [5] },
+        { ok: true, applied: 0, full: false, pendingCount: 2 },
+      ],
+      [held(2, 2, true)]
+    )
+
+    const result = await runCapsuleAutoFill(client, USER_ID)
+
+    expect(result.opens).toEqual([])
+    expect(result.reachedChapters).toEqual([5])
   })
 
   it('오름이 없는 호출에서는 오름 처리를 부르지 않는다', async () => {

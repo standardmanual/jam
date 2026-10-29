@@ -465,7 +465,7 @@ async function evaluateWithoutNewActivities(
   isFirstSync: boolean
 ): Promise<ProcessFetchedResult> {
   // 새 활동이 없어도 가득 찬 채 남은 캡슐(인벤토리를 비웠거나 트라이브를 고른 뒤)은 «다음 동기화의 맨 앞에서» 열려야 한다(티켓 20261028_1733 3회).
-  // 던지지 않는다. 열기마다의 챕터 배지 판정은 건너뛰므로 아래 판정에 `chapter_reached`를 더해 이어서 읽는다.
+  // 던지지 않는다. 챕터 오름 처리의 챕터 배지 판정은 건너뛰므로(열기 없이 보류만 생긴 오름도 같다, 티켓 20261028_1734 3회) 챕터가 올랐으면 아래 판정에 `chapter_reached`를 더해 이어서 읽는다.
   const capsuleStep = await runSyncCapsuleAutoFill(supabase, userId)
   const activityBadgeIds = isFirstSync
     ? await evaluateBadges(userId, [], { skipInitialSyncFlagUpdate: true })
@@ -477,7 +477,11 @@ async function evaluateWithoutNewActivities(
     await evaluateJamActionSafely(
       supabase,
       userId,
-      capsuleStep.opened ? [...JAM_EMPTY_SYNC_TRIGGERS, 'chapter_reached', ...jamTriggersForCapsuleOpen()] : JAM_EMPTY_SYNC_TRIGGERS
+      [
+        ...JAM_EMPTY_SYNC_TRIGGERS,
+        ...(capsuleStep.opened || capsuleStep.chapterRose ? (['chapter_reached'] as const) : []),
+        ...(capsuleStep.opened ? jamTriggersForCapsuleOpen() : []),
+      ]
     )
   ).map((b) => b.id)
   await notifyActivityBadgesEarned(supabase, userId, [...activityBadgeIds, ...jamBadgeIds], [])
