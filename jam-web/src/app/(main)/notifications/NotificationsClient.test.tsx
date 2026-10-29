@@ -356,11 +356,11 @@ describe('캡슐 소식 (capsule_nearly_full·capsule_jam_blocked, 티켓 202610
   const NEARLY = view('capsule_nearly_full', { stage: 80 })
   const BLOCKED = view('capsule_jam_blocked', {})
 
-  it('단계 소식은 퍼센트만 굵게 말하고 가득 차면 잼을 받을 수 없다는 사실과 받기를 알린다', () => {
+  it('단계 소식은 퍼센트만 굵게 말하고 못 받은 보상을 비워 두면 잼이 계속 들어온다는 사실과 받기 버튼을 알린다', () => {
     const html = render([NEARLY])
 
-    expect(visibleText(html)).toContain('캡슐이 80% 찼어요. 받지 못한 보상이 있어서 이 캡슐이 가득 차면 잼을 받을 수 없게 돼요')
-    expect(visibleText(html)).toContain('받기로 보상을 받으면 계속 잼을 받을 수 있어요')
+    expect(visibleText(html)).toContain('캡슐이 80% 찼어요. 아직 못 받은 보상이 1개 있으니')
+    expect(visibleText(html)).toContain('받기 버튼으로 비워 두면 가득 차도 잼이 계속 들어와요')
     expect(html).toContain('<strong class="font-bold">80%</strong>')
     expect((html.match(/<strong/g) ?? []).length).toBe(1)
   })
@@ -368,7 +368,7 @@ describe('캡슐 소식 (capsule_nearly_full·capsule_jam_blocked, 티켓 202610
   it('받을 수 없게 된 소식은 고정 문장이고 굵은 글자가 없다', () => {
     const html = render([BLOCKED])
 
-    expect(visibleText(html)).toContain('캡슐이 가득 찼어요. 받지 못한 보상이 두 개라 지금은 잼을 받을 수 없어요')
+    expect(visibleText(html)).toContain('캡슐이 가득 찼고 못 받은 보상이 2개라 지금 들어오는 잼은 사라져요')
     expect(html).not.toContain('<strong')
   })
 
