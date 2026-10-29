@@ -1099,7 +1099,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 `source_activity_id`는 `strava_activities.id` 값을 담지만 FK는 없다(활동이 지워져도 원장은 남아야 함). `reason='activity_settlement'`인 줄에 한해 부분 유일 인덱스가 걸려 같은 활동은 한 번만 정산된다. 운영자 지급·회수는 `admin_user_id`(FK 없음)·`admin_reason_label`(필수)·`admin_reason_note`(선택)를 담는다. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`).
 
 > 가진 양 변경은 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note, p_earned_on)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다(예외는 `capsule_forfeit` 하나다: `jam_apply`가 사유 5개만 알아서 `capsule_auto_fill`이 지갑 행 잠금 → 원장 한 줄 → 잔액 차감을 직접 쓴다. 이후 `jam_apply`가 바뀌면 이 경로가 빠질 수 있다). 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
-> 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수, 채움, 소멸(`capsule_forfeit`), 서비스 활동 잼(`service_activity`)은 가진 양만 바꾼다(운영 로직 4.5절). 서비스 활동 잼을 모은 양에 합산할지는 후속 티켓 U5b가 정한다.
+> 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수, 채움, 소멸(`capsule_forfeit`), 서비스 활동 잼(`service_activity`)은 가진 양만 바꾼다(운영 로직 4.5절). 두 표는 그대로 두고, 잼 조건 지표를 읽는 쪽이 `jam_service_daily`를 더해 합산한다(티켓 20261028_1736, 소멸한 잼은 세지 않는다).
 
 #### 서비스 활동 잼 — 마이그레이션 300·303, 티켓 20261028_1735 (운영 로직 4.2·4.4·4.5절)
 규칙(무엇이 얼마를 주는지, 상한, 즉시 채움)은 운영 로직 4.2절이 원천이고 값은 4.4절이다. 이 문서는 DB와 앱 쪽 사실만 둔다.

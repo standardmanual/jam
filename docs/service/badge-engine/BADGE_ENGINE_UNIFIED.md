@@ -353,8 +353,8 @@ badge-engine 밖의 세 번째 평가 경로.
 | `locked_item_pickup_count` | 정수 ≥1 | 픽업 **당시 잠겨 있던 서로 다른 개체** 수. 자기 드랍 제외, 같은 개체는 1. 「당시 잠김」은 기록이 없어 개체의 현재 `locked`와 `unlocked_at`·`poi_drops.picked_up_at`으로 가린다(잠김은 한 번 열면 되돌아오지 않는다) | 픽업 성공 뒤 줍는 사람 |
 | `other_tribe_item_kinds_count` | 정수 ≥1 | 지금 가진 개체(`inventory_id`가 내 인벤토리, `destroyed_at` 없음) 가운데 내 소속과 다른 트라이브 배지의 서로 다른 종류 수. 잠긴 개체도 센다. 내 소속이나 배지의 트라이브가 없으면 세지 않는다 | 캡슐 열기·픽업·믹스 성공 뒤 |
 | `cross_tribe_combine_success_count` | 정수 ≥1 | 믹스 성공 기록 중 재료가 `badges.tribe_id` 기준 2개 이상 트라이브에 걸친 행 수 | `POST /api/combine` 성공 뒤 |
-| `jam_total_earned` | 정수 ≥1 | 지금까지 모은 잼. `jam_wallets.total_earned`(가진 양이 아니다) | 동기화 끝 |
-| `jam_weekly_earned` | 정수 ≥1 | 월~일(KST) 한 주에 모은 잼의 역대 최고 주 값. `jam_daily_earned`를 주별로 합산(`kstWeekStartKey`) | 동기화 끝 |
+| `jam_total_earned` | 정수 ≥1 | 지금까지 모은 잼. `jam_wallets.total_earned`(가진 양이 아니다)에 `jam_service_daily.amount` 전체 합(서비스 활동 잼)을 더한다. 소멸한 잼은 세지 않는다 | 동기화 끝, 서비스 활동 잼 지급 직후 |
+| `jam_weekly_earned` | 정수 ≥1 | 월~일(KST) 한 주에 모은 잼의 역대 최고 주 값. `jam_daily_earned`와 `jam_service_daily`를 날짜별로 더한 뒤 주별로 합산(`kstWeekStartKey`) | 동기화 끝, 서비스 활동 잼 지급 직후 |
 | `chapter_reached` | 정수 ≥1 | 도달한 챕터 번호. `user_chapters.chapter_no`(없거나 NULL이면 0) | 동기화 끝 + 챕터 오름 직후. 챕터가 오르면 오름 처리(`lib/chapter/rise.ts`, 티켓 20261019_1316)가 `runJamActionEvaluation(userId, ['chapter_reached'])`로 바로 판정한다(챕터 1 시작 포함). 동기화 안의 잼 정산에서 난 오름만 동기화 끝 판정이 이어서 읽어 오름 직후 판정을 건너뛴다 |
 
 - 트리거 규칙은 `jamActionProgressTriggers.ts`(`JAM_SYNC_TRIGGERS` 17키, `jamTriggersForCapsuleOpen`, `jamTriggersForLockedItemOpen`),
@@ -391,9 +391,9 @@ KST 날짜다(`timeBands.ts`의 `kstDateKeyOfStart`). **체크인만 한 날은 
 | `new_checkin_badge_count` | 새로 받은 체크인 배지의 서로 다른 종류 수(5-1, 5-4는 값 1). 같은 배지를 다시 받거나 다른 장소에서 받아도 1종류 | `jamActionCheckinMetrics.ts` — `user_checkin_badge_earns`의 서로 다른 `badge_id` | 동기화 끝 |
 | `checkin_season_year_count` | 달력 연도(KST) 안에 봄(3~5월)·여름(6~8월)·가을(9~11월)·겨울(12·1·2월) 네 계절 모두에서 **새 체크인 배지**를 받은 해의 수(5-5) | 같은 파일 — 배지별로 처음 받은 줄(날짜가 가장 이른 줄)의 날짜로 계절·해를 센다. 다시 받은 줄은 다른 계절을 채우지 못한다 | 동기화 끝 |
 | `dropped_item_picked_up_count` | 내가 드랍한 서로 다른 아이템(`poi_drops`의 `dropper_user_id`가 나, `picked_up_by`가 다른 유저인 서로 다른 `inventory_item_id`) 수(8-4) | `jamActionDropMetrics.ts` — 왕복 드랍·픽업은 1아이템, 내가 줍은 것·미픽업·탈퇴한 줍는 사람은 제외 | 다른 유저가 픽업한 직후(놓은 사람에게, `jamTriggersForPickup`) |
-| `jam_week_count` | 월~일(KST) 한 주에 `jam_week_min_earned` 이상 잼을 모은 주의 수(7-3) | `jamActionJamMetrics.ts` — `jam_daily_earned`(KST 날짜별)를 주로 합산 | 동기화 끝 |
-| `jam_week_streak` | 그런 주가 바로 다음 주끼리 이어진 최장 주 수(7-4). 잼을 못 모은 주가 끼면 끊긴다 | 같은 파일 | 동기화 끝 |
-| `jam_week_min_earned` | **보조 키**(선택, 기본 1, 단독 저장 불가 — `jam_week_count`·`jam_week_streak` 중 하나와 함께). «채운 주»의 최소 모은 잼(7-3·7-4는 200). `USAGE_METRIC_CONDITION_KEYS`에서 빠지고 `JAM_ACTION_MODIFIER_KEYS`에 든다 | — | — |
+| `jam_week_count` | 월~일(KST) 한 주에 `jam_week_min_earned` 이상 잼을 모은 주의 수(7-3) | `jamActionJamMetrics.ts` — `jam_daily_earned`와 `jam_service_daily`(KST 날짜별)를 더해 주로 합산 | 동기화 끝, 서비스 활동 잼 지급 직후 |
+| `jam_week_streak` | 그런 주가 바로 다음 주끼리 이어진 최장 주 수(7-4). 잼을 못 모은 주가 끼면 끊긴다 | 같은 파일 | 동기화 끝, 서비스 활동 잼 지급 직후 |
+| `jam_week_min_earned` | **보조 키**(선택, 기본 1, 단독 저장 불가 — `jam_week_count`·`jam_week_streak` 중 하나와 함께). «기준을 넘긴 주»의 최소 모은 잼(7-3·7-4는 230). `USAGE_METRIC_CONDITION_KEYS`에서 빠지고 `JAM_ACTION_MODIFIER_KEYS`에 든다 | — | — |
 
 - 「새로 받은 체크인 배지」는 한 유저가 한 배지로 가진 방문 기록 가운데 **처음 받은 줄**이다(`record_checkin_earn`의 `is_first`와 같다, 마이그레이션 241).
   «처음»은 활동 시작 시각(`triggered_by_activity_date`, 없으면 `earned_at`)이 가장 이른 줄이다. 날짜는 KST이고 한 해는 달력 연도라 2025년 12월은
