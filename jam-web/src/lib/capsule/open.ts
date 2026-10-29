@@ -55,6 +55,11 @@ export interface OpenCapsuleOptions {
    * 기본은 거짓이다(옛 `capsule_open`과 점수).
    */
   counted?: boolean
+  /**
+   * 참이면 `counted` 열기의 챕터 오름 처리에서 챕터 배지 판정만 건너뛴다(소식·피드는 그대로). 호출한 동기화의 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이
+   * DB의 지금 챕터를 읽어 이어서 판정하는 경우에만 켠다(`rise.ts` 머리말 «이중 판정»; 티켓 20261028_1733 3회). `counted`가 아니면 쓰이지 않는다.
+   */
+  skipRiseBadgeEvaluation?: boolean
 }
 
 /** `counted` 열기가 응답에 더하는 챕터 횟수 정보 */
@@ -282,7 +287,11 @@ export async function openCapsule(
   // counted 열기는 점수 대신 횟수를 센다(같은 트랜잭션, DB 함수가 이미 했다). 오름이 있었으면 소식·피드·챕터 배지 판정을 잇는다(던지지 않는다).
   const countedInfo = counted ? toCountedInfo(result) : null
   if (countedInfo) {
-    await processChapterRise({ userId, reachedChapters: countedInfo.reachedChapters })
+    if (options.skipRiseBadgeEvaluation === true) {
+      await processChapterRise({ userId, reachedChapters: countedInfo.reachedChapters }, { skipBadgeEvaluation: true })
+    } else {
+      await processChapterRise({ userId, reachedChapters: countedInfo.reachedChapters })
+    }
   } else {
     await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
   }

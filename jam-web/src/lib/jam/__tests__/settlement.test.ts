@@ -7,9 +7,8 @@
  * - 배율은 정책 값을 따른다.
  * - 활동한 날(KST): UTC 15:00 전후 경계, 늦게 동기화해도 활동한 날로 넘긴다.
  * - 같은 활동을 두 번 정산해도 원장은 한 줄. 활동 하나가 실패해도 나머지는 정산, 던지지 않는다.
- * - 챕터 점수 «모은 잼»(티켓 20261019_1315): 정산된 활동마다 `chapter_add_score`를 (jam_earned, 활동 id, 원장에 기록된 양, 활동한 날 KST)로 부른다.
- *   오래된 활동부터 정산 직후에 부르고, 같은 활동을 두 번 보내도 같은 (종류, 원천)이다. 점수 실패(RPC 오류·예외)는 정산 항목·합계·던짐을 바꾸지 않고,
- *   정산이 안 된 활동(jam_apply 실패·잼 0)은 점수도 부르지 않는다.
+ * - 챕터 점수 «모은 잼»은 세지 않는다(티켓 20261028_1733 3회): 정산이 `chapter_add_score`를 부르지 않는다. 정산 순서는 오래된 활동부터이고,
+ *   같은 활동을 두 번 보내도 원장은 한 줄이다.
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/jam/__tests__/settlement.test.ts
@@ -115,11 +114,9 @@ interface Ledger {
   balance: number
   /** `jam_apply` 호출 인자 */
   rpcCalls: Record<string, unknown>[]
-  /** `chapter_add_score` 호출 인자 */
-  scoreCalls: Record<string, unknown>[]
-  /** 센 점수 — (활동 종류, 원천 id)당 한 줄. DB의 «같은 키는 한 번만 센다»를 흉내 낸다 */
-  scoreEvents: Map<string, { amount: number; occurredOn: string | undefined }>
-  /** 두 RPC가 불린 순서 */
+  /** `jam_apply`가 아닌 RPC 이름(챕터 점수가 다시 불리지 않는지 본다) */
+  otherRpcNames: string[]
+  /** `jam_apply`가 불린 순서 */
   order: string[]
 }
 
@@ -127,12 +124,8 @@ function makeLedgerClient(opts: {
   activityIds: Record<number, string>
   failFor?: Set<string>
   activitiesError?: boolean
-  /** 챕터 점수 RPC가 오류를 돌려준다 */
-  scoreError?: boolean
-  /** 챕터 점수 RPC가 예외를 던진다 */
-  scoreThrows?: boolean
 }): { supabase: SupabaseClient; ledger: Ledger } {
-  const ledger: Ledger = { lines: new Map(), balance: 0, rpcCalls: [], scoreCalls: [], scoreEvents: new Map(), order: [] }
+  const ledger: Ledger = { lines: new Map(), balance: 0, rpcCalls: [], otherRpcNames: [], order: [] }
   const supabase = {
     from: (table: string) => {
       expect(table).toBe('strava_activities')
@@ -149,19 +142,10 @@ function makeLedgerClient(opts: {
       return { select: () => chain }
     },
     rpc: async (name: string, args: Record<string, unknown>) => {
-      if (name === 'chapter_add_score') {
-        ledger.scoreCalls.push(args)
-        ledger.order.push(`score:${args.p_source_id as string}`)
-        if (opts.scoreThrows) throw new Error('score network down')
-        if (opts.scoreError) return { data: null, error: { message: 'score rpc failed' } }
-        const key = `${args.p_activity_kind as string}:${args.p_source_id as string}`
-        const known = ledger.scoreEvents.get(key)
-        if (!known) {
-          ledger.scoreEvents.set(key, { amount: args.p_amount as number, occurredOn: args.p_occurred_on as string | undefined })
-        }
-        return { data: [{ score_added: known?.amount ?? (args.p_amount as number), current_chapter: null, reached_chapters: [] }], error: null }
+      if (name !== 'jam_apply') {
+        ledger.otherRpcNames.push(name)
+        return { data: null, error: { message: 'unexpected rpc' } }
       }
-      expect(name).toBe('jam_apply')
       ledger.rpcCalls.push(args)
       ledger.order.push(`jam:${args.p_source_activity_id as string}`)
       const activityId = args.p_source_activity_id as string
@@ -318,11 +302,11 @@ describe('settleActivities', () => {
   })
 })
 
-describe('settleActivities — 챕터 점수 «모은 잼» (티켓 20261019_1315)', () => {
-  it('정산된 활동마다 jam_earned를 활동 id·원장에 기록된 양·활동한 날(KST)로 부른다', async () => {
+describe('settleActivities — 챕터 점수 «모은 잼»을 세지 않는다 (티켓 20261028_1733 3회)', () => {
+  it('정산된 활동이 있어도 chapter_add_score를 부르지 않고 실패 기록도 남기지 않는다', async () => {
     const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1', 2: 'act-2' } })
 
-    await settleActivities(
+    const result = await settleActivities(
       supabase,
       'user-1',
       [target(1), target(2, { jamActivityType: 'walking', sportType: 'Walk', type: 'Walk', startDate: '2026-09-12T15:00:00Z' })],
@@ -330,22 +314,13 @@ describe('settleActivities — 챕터 점수 «모은 잼» (티켓 20261019_131
       NOW
     )
 
-    expect(ledger.scoreCalls).toEqual([
-      { p_user_id: 'user-1', p_activity_kind: 'jam_earned', p_source_id: 'act-1', p_amount: 90, p_occurred_on: '2026-09-12' },
-      // UTC 15:00은 KST로 다음 날이다 — 주간 상한 계산이 활동한 날로 이뤄지게 날짜를 그대로 넘긴다
-      { p_user_id: 'user-1', p_activity_kind: 'jam_earned', p_source_id: 'act-2', p_amount: 30, p_occurred_on: '2026-09-13' },
-    ])
+    expect(result.total).toBe(120)
+    expect(ledger.rpcCalls).toHaveLength(2)
+    expect(ledger.otherRpcNames).toEqual([])
+    expect(logMock).not.toHaveBeenCalled()
   })
 
-  it('늦게 동기화해도 동기화한 날이 아니라 활동한 날로 보낸다', async () => {
-    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1' } })
-
-    await settleActivities(supabase, 'user-1', [target(1, { startDate: '2026-08-01T01:00:00Z' })], DEFAULT_JAM_POLICY, NOW)
-
-    expect(ledger.scoreCalls.map((c) => c.p_occurred_on)).toEqual(['2026-08-01'])
-  })
-
-  it('오래된 활동부터 정산하고, 활동마다 정산 직후에 점수를 부른다(주간 상한이 호출 순서를 따른다)', async () => {
+  it('오래된 활동부터 정산한다(원장 순서)', async () => {
     const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-new', 2: 'act-old' } })
 
     await settleActivities(
@@ -357,49 +332,15 @@ describe('settleActivities — 챕터 점수 «모은 잼» (티켓 20261019_131
       NOW
     )
 
-    expect(ledger.order).toEqual(['jam:act-old', 'score:act-old', 'jam:act-new', 'score:act-new'])
+    expect(ledger.order).toEqual(['jam:act-old', 'jam:act-new'])
   })
 
-  it('같은 활동을 두 번 정산해도 같은 (종류, 원천)이라 점수는 한 번만 센다', async () => {
+  it('같은 활동을 두 번 정산해도 원장은 한 줄이다', async () => {
     const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1' } })
 
     await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
     await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
 
-    expect(ledger.scoreCalls).toHaveLength(2)
-    expect(ledger.scoreCalls[1]).toEqual(ledger.scoreCalls[0])
-    expect(ledger.scoreEvents.size).toBe(1)
-  })
-
-  it('잼이 0인 활동·활동 id를 못 찾은 활동·jam_apply가 실패한 활동은 점수를 부르지 않는다', async () => {
-    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1', 3: 'act-3' }, failFor: new Set(['act-3']) })
-
-    await settleActivities(supabase, 'user-1', [target(1, { movingTimeSec: 59 }), target(2), target(3)], DEFAULT_JAM_POLICY, NOW)
-
-    expect(ledger.scoreCalls).toEqual([])
-    expect(ledger.order).toEqual(['jam:act-3'])
-  })
-
-  it('점수 RPC가 오류를 돌려줘도 정산 항목·합계는 그대로이고 실패를 기록한다', async () => {
-    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1', 2: 'act-2' }, scoreError: true })
-
-    const result = await settleActivities(supabase, 'user-1', [target(1), target(2)], DEFAULT_JAM_POLICY, NOW)
-
-    expect(result.total).toBe(180)
-    expect(result.items.map((i) => i.activityId)).toEqual(['act-1', 'act-2'])
-    expect(ledger.lines.size).toBe(2)
-    // 한 활동의 점수 실패가 다음 활동의 정산을 막지 않는다
-    expect(ledger.order).toEqual(['jam:act-1', 'score:act-1', 'jam:act-2', 'score:act-2'])
-    expect(logMock).toHaveBeenCalledTimes(2)
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', 'user-1', expect.objectContaining({ kind: 'jam_earned', sourceId: 'act-1' }))
-  })
-
-  it('점수 RPC가 예외를 던져도 정산 항목·합계는 그대로이고 던지지 않는다', async () => {
-    const { supabase } = makeLedgerClient({ activityIds: { 1: 'act-1' }, scoreThrows: true })
-
-    const result = await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
-
-    expect(result).toEqual({ total: 90, items: [{ stravaId: 1, activityId: 'act-1', amount: 90, earnedOn: '2026-09-12' }] })
-    expect(logMock).toHaveBeenCalledWith('points', 'chapter_score_failed', 'user-1', expect.objectContaining({ sourceId: 'act-1' }))
+    expect(ledger.lines.size).toBe(1)
   })
 })
