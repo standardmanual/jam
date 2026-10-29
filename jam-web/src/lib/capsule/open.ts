@@ -12,8 +12,9 @@
  *    **캡슐을 열어 나온 아이템 배지는 피드에 올리지 않는다**(운영 로직 15.3절, 2026-10-10 사용자 결정). 열린 개체도 `skipFeed`로 피드를 건너뛴다(티켓 20261021_1249 6-3 5회). 이미 올라간 옛 피드 행은 그대로 둔다.
  *    캡슐에는 대상 활동이 없어 활동 결산 알림은 보내지 않는다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다.
  *  - 열기가 확정되면 챕터 점수 «캡슐 열기»를 센다(`lib/chapter/score.ts`, 원천 id = 열기 기록 id, 티켓 20261019_1315). 점수 실패는 기록만 남고 열기와 응답을 바꾸지 않는다.
- *    **`counted` 옵션(티켓 20261028_1733 2회)**: 동기화 자동 채움이 부르는 열기다. RPC는 `capsule_open_counted`(열기와 같은 트랜잭션에서 챕터 횟수 +1·오름 판정·다음 캡슐 필요량 v2)이고,
- *    옛 점수 «캡슐 열기»는 세지 않는다(횟수가 대신한다). 오름이 있으면(`reachedChapters`) `processChapterRise`로 소식·피드·챕터 배지 판정을 잇고, 응답에 `chapterNo`·`reachedChapters`·`chapterCount`를 더 싣는다.
+ *    **`counted` 옵션(티켓 20261028_1733 2회, 20261028_1734 2회에서 바뀜)**: 동기화 자동 채움이 부르는 열기다. RPC는 `capsule_open_counted`(열기와 같은 트랜잭션에서 다음 캡슐 필요량 v2·알림 단계 0)이고,
+ *    옛 점수 «캡슐 열기»는 세지 않는다. 챕터 횟수와 오름 판정은 열기가 아니라 `capsule_auto_fill`이 캡슐이 100%에 닿는 시점에 하므로 **여기서는 오름 처리(`processChapterRise`)를 하지 않는다**
+ *    (`auto-fill.ts`가 한다 — 이중 호출 방지). 응답에는 `chapterNo`·`reachedChapters`·`chapterCount`를 모양 호환으로 싣는다(DB가 `reachedChapters`를 항상 빈 배열로 돌려준다).
  *    `counted`를 켜지 않으면 지금까지와 똑같다(옛 `capsule_open`과 점수 — 프로덕션 main이 쓰는 경로).
  *  - 그 다음 퀘스트 완료 처리를 부른다(티켓 20261021_1248, 운영 로직 2.2절). 실제 단계 ② «캡슐 열기»가 여기서 끝날 수 있고, 실제 3단계가 다 끝났으면 챕터 1이 시작된다.
  *    점수 다음이라 퀘스트 전에 쌓인 점수가 챕터 1 시작 때 함께 계산된다. 던지지 않고, 어떤 실패도 열기와 응답을 바꾸지 않는다(응답에 완료 배지를 싣지 않는다).
@@ -23,7 +24,6 @@
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { processChapterRise } from '@/lib/chapter/rise'
 import { awardChapterScore } from '@/lib/chapter/score'
 import { fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import { recordIssuedRewards } from '@/lib/drop-engine/issueFollowUp'
@@ -42,7 +42,7 @@ import {
   type CapsuleRarity,
 } from './capsule-contract'
 import { rollCapsule, tribesWithCandidates, type RolledCapsuleItem } from './capsuleRoll'
-import { getCapsulePolicy } from './policy'
+import { getCapsulePolicy, type CapsulePolicy } from './policy'
 
 /** 발급 기록(`item_issue_log.route`)에 쓰는 경로 값 */
 export const CAPSULE_ISSUE_ROUTE = 'capsule'
@@ -51,15 +51,10 @@ export interface OpenCapsuleOptions {
   rand?: Rand
   now?: Date
   /**
-   * 참이면 동기화 자동 채움용 열기다: RPC `capsule_open_counted`, 옛 챕터 점수 생략, 오름 처리 연결, 응답에 챕터 횟수 정보를 더한다.
+   * 참이면 동기화 자동 채움용 열기다: RPC `capsule_open_counted`, 옛 챕터 점수 생략, 응답에 챕터 횟수 정보를 더한다(오름 처리는 `auto-fill.ts`).
    * 기본은 거짓이다(옛 `capsule_open`과 점수).
    */
   counted?: boolean
-  /**
-   * 참이면 `counted` 열기의 챕터 오름 처리에서 챕터 배지 판정만 건너뛴다(소식·피드는 그대로). 호출한 동기화의 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이
-   * DB의 지금 챕터를 읽어 이어서 판정하는 경우에만 켠다(`rise.ts` 머리말 «이중 판정»; 티켓 20261028_1733 3회). `counted`가 아니면 쓰이지 않는다.
-   */
-  skipRiseBadgeEvaluation?: boolean
 }
 
 /** `counted` 열기가 응답에 더하는 챕터 횟수 정보 */
@@ -80,7 +75,7 @@ type CapsuleBadge = IssueBadge & {
   point_reward: number | null
 }
 
-interface DbOpenedItem {
+export interface DbOpenedItem {
   inventoryItemId?: string
   serialNumber?: number | null
 }
@@ -199,6 +194,96 @@ function toOpenedItem(planned: RolledCapsuleItem<CapsuleBadge>, db: DbOpenedItem
   }
 }
 
+type CapsuleRollData = Awaited<ReturnType<typeof loadRollData>>
+type CapsuleRolled = ReturnType<typeof rollCapsule<CapsuleBadge>>
+
+/**
+ * 추첨 한 번(조회 → 추첨 → 후보 없음 기록). 열기(`openCapsule`)와 보류 받기(`claim.ts`)가 같은 추첨을 쓰도록 꺼냈다(티켓 20261028_1734 2회).
+ * 나올 개체가 하나도 없으면 던진다 — 채운 잼이 개체 없이 사라지지 않게 한다. `no_tribe`는 `CapsuleError`.
+ */
+export async function rollCapsuleItems(
+  supabase: SupabaseClient,
+  userId: string,
+  params: { capsulePolicy: CapsulePolicy; preQuest: boolean; rand: Rand; now: Date }
+): Promise<{ data: CapsuleRollData; rolled: CapsuleRolled }> {
+  const jamPolicy = await getJamPolicy(supabase)
+  const data = await loadRollData(supabase, userId)
+
+  const rolled = rollCapsule<CapsuleBadge>(
+    {
+      policy: { ...params.capsulePolicy, ...jamPolicy },
+      tribeId: data.tribeId,
+      tribeIds: tribesWithCandidates(data.tribes.map((t) => t.id), data.tribeId, data.books, data.badges, params.now),
+      books: data.books,
+      badges: data.badges,
+      commonStreak: data.commonStreak,
+      epicMiss: data.epicMiss,
+      preQuest: params.preQuest,
+      now: params.now,
+    },
+    params.rand
+  )
+  for (const skip of rolled.skipped) {
+    console.warn(`[capsule-open] 후보 없음 — 개체 건너뜀 (userId: ${userId}, tribe: ${skip.tribeId}, 뽑힌 등급: ${skip.rolledRarity})`)
+    await logEngineDecision('drop', 'drop_attempt', userId, {
+      path: CAPSULE_ISSUE_ROUTE,
+      outcome: 'no_candidate',
+      tribeId: skip.tribeId,
+      rolledRarity: skip.rolledRarity,
+    })
+  }
+  if (rolled.items.length === 0) throw new Error('캡슐에서 나올 아이템 배지 후보가 하나도 없어 열지 않았다')
+  return { data, rolled }
+}
+
+/** 추첨 결과를 RPC `p_items` 모양으로 바꾼다(`capsule_open`·`capsule_open_counted`·`capsule_claim_pending` 공통) */
+export function toRpcItems(rolled: CapsuleRolled) {
+  return rolled.items.map((item) => ({
+    badge_id: item.badge.id,
+    rarity: item.rarity,
+    rolled_rarity: item.rolledRarity,
+    locked: item.lock.locked,
+    lock_reason: item.lock.lockReason,
+    unlock_required: item.lock.unlockRequired,
+  }))
+}
+
+/**
+ * 확정된 개체를 응답 모양으로 바꾸고 개체마다 후속 처리(포인트, `recordIssuedRewards`)를 한다. 후속 처리가 던져도 지급은 유지된다.
+ * 열기와 보류 받기가 같이 쓴다.
+ */
+export async function recordOpenedItems(
+  userId: string,
+  data: CapsuleRollData,
+  rolled: CapsuleRolled,
+  dbItems: readonly DbOpenedItem[]
+): Promise<CapsuleOpenedItem[]> {
+  const tribeNameOf = new Map(data.tribes.map((t) => [t.id, t.name]))
+  const items: CapsuleOpenedItem[] = []
+  for (const [index, planned] of rolled.items.entries()) {
+    const db = dbItems[index] ?? {}
+    items.push(toOpenedItem(planned, db))
+    if (!db.inventoryItemId) continue
+    try {
+      await recordIssuedRewards({
+        userId,
+        stravaId: null,
+        startDate: null,
+        tribeName: tribeNameOf.get(planned.tribeId) ?? '',
+        inventoryItemId: db.inventoryItemId,
+        badge: planned.badge,
+        rarity: planned.rarity,
+        locked: planned.lock.locked,
+        // 캡슐을 열어 나온 아이템 배지는 피드에 올리지 않는다(운영 로직 15.3절, 2026-10-10 사용자 결정 — 티켓 20261021_1249 6-3 5회에서 코드를 맞췄다). 포인트는 그대로 준다
+        skipFeed: true,
+      })
+    } catch (e) {
+      console.error(`[capsule-open] 후속 처리 실패 — 열기는 유지한다 (userId: ${userId}, badge_id: ${planned.badge.id}):`, e)
+    }
+  }
+  return items
+}
+
 /**
  * 캡슐을 연다. 던지는 것: `UserSuspendedError`(정지), `CapsuleError`(`not_full`·`insufficient_slots`·`no_tribe`·DB 거절), 그 밖의 일반 오류.
  * `counted: true`면 챕터 횟수 정보가 응답에 더해진다(파일 머리말).
@@ -229,44 +314,11 @@ export async function openCapsule(
     throw new CapsuleError('insufficient_slots', undefined, { freeSlots: status.freeSlots ?? 0, neededSlots: status.neededSlots ?? 0 })
   }
 
-  const jamPolicy = await getJamPolicy(supabase)
-  const data = await loadRollData(supabase, userId)
-
-  const rolled = rollCapsule<CapsuleBadge>(
-    {
-      policy: { ...capsulePolicy, ...jamPolicy },
-      tribeId: data.tribeId,
-      tribeIds: tribesWithCandidates(data.tribes.map((t) => t.id), data.tribeId, data.books, data.badges, now),
-      books: data.books,
-      badges: data.badges,
-      commonStreak: data.commonStreak,
-      epicMiss: data.epicMiss,
-      preQuest: chapterNo === null,
-      now,
-    },
-    rand
-  )
-  for (const skip of rolled.skipped) {
-    console.warn(`[capsule-open] 후보 없음 — 개체 건너뜀 (userId: ${userId}, tribe: ${skip.tribeId}, 뽑힌 등급: ${skip.rolledRarity})`)
-    await logEngineDecision('drop', 'drop_attempt', userId, {
-      path: CAPSULE_ISSUE_ROUTE,
-      outcome: 'no_candidate',
-      tribeId: skip.tribeId,
-      rolledRarity: skip.rolledRarity,
-    })
-  }
-  if (rolled.items.length === 0) throw new Error('캡슐에서 나올 아이템 배지 후보가 하나도 없어 열지 않았다')
+  const { data, rolled } = await rollCapsuleItems(supabase, userId, { capsulePolicy, preQuest: chapterNo === null, rand, now })
 
   const { data: rpcData, error: rpcError } = await supabase.rpc(rpcName, {
     p_user_id: userId,
-    p_items: rolled.items.map((item) => ({
-      badge_id: item.badge.id,
-      rarity: item.rarity,
-      rolled_rarity: item.rolledRarity,
-      locked: item.lock.locked,
-      lock_reason: item.lock.lockReason,
-      unlock_required: item.lock.unlockRequired,
-    })),
+    p_items: toRpcItems(rolled),
   })
   if (rpcError) throw new Error(`${rpcName} RPC 오류: ${rpcError.message}`)
   const result = rpcData as CapsuleOpenResult | null
@@ -284,15 +336,10 @@ export async function openCapsule(
   // 여기부터는 열기가 확정됐다. 어떤 실패도 열기를 되돌리지 않는다.
   // 챕터 점수 «캡슐 열기» (티켓 20261019_1315, 운영 로직 12.2절). 후속 처리(`recordIssuedRewards`) 결과와 무관하게 먼저 센다.
   // 원천 id는 열기 기록 id(`capsule_opens.id`)라 같은 열기를 다시 보내도 한 번만 센다. 던지지 않는다(실패는 기록만 남는다).
-  // counted 열기는 점수 대신 횟수를 센다(같은 트랜잭션, DB 함수가 이미 했다). 오름이 있었으면 소식·피드·챕터 배지 판정을 잇는다(던지지 않는다).
+  // counted 열기는 점수 대신 횟수를 세는데, 횟수와 오름 판정은 이제 열기가 아니라 `capsule_auto_fill`이 캡슐이 100%에 닿는 시점에 한다(티켓 20261028_1734 2회).
+  // 그래서 여기서는 오름 처리(`processChapterRise`)를 부르지 않는다 — 부르면 `runCapsuleAutoFill`의 오름 처리와 이중 호출이 된다.
   const countedInfo = counted ? toCountedInfo(result) : null
-  if (countedInfo) {
-    if (options.skipRiseBadgeEvaluation === true) {
-      await processChapterRise({ userId, reachedChapters: countedInfo.reachedChapters }, { skipBadgeEvaluation: true })
-    } else {
-      await processChapterRise({ userId, reachedChapters: countedInfo.reachedChapters })
-    }
-  } else {
+  if (!countedInfo) {
     await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
   }
   // 퀘스트 실제 단계 ② «캡슐 열기»(티켓 20261021_1248). 점수 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
@@ -302,29 +349,7 @@ export async function openCapsule(
     console.error(`[capsule-open] 퀘스트 완료 처리 실패 — 열기는 유지한다 (userId: ${userId}):`, e)
   }
 
-  const tribeNameOf = new Map(data.tribes.map((t) => [t.id, t.name]))
-  const items: CapsuleOpenedItem[] = []
-  for (const [index, planned] of rolled.items.entries()) {
-    const db = result.items[index] ?? {}
-    items.push(toOpenedItem(planned, db))
-    if (!db.inventoryItemId) continue
-    try {
-      await recordIssuedRewards({
-        userId,
-        stravaId: null,
-        startDate: null,
-        tribeName: tribeNameOf.get(planned.tribeId) ?? '',
-        inventoryItemId: db.inventoryItemId,
-        badge: planned.badge,
-        rarity: planned.rarity,
-        locked: planned.lock.locked,
-        // 캡슐을 열어 나온 아이템 배지는 피드에 올리지 않는다(운영 로직 15.3절, 2026-10-10 사용자 결정 — 티켓 20261021_1249 6-3 5회에서 코드를 맞췄다). 포인트는 그대로 준다
-        skipFeed: true,
-      })
-    } catch (e) {
-      console.error(`[capsule-open] 후속 처리 실패 — 열기는 유지한다 (userId: ${userId}, badge_id: ${planned.badge.id}):`, e)
-    }
-  }
+  const items = await recordOpenedItems(userId, data, rolled, result.items)
 
   // 열어서 받은 만큼 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
   await notifyInventorySlotsLow(userId, supabase)

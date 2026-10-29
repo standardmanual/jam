@@ -15,7 +15,7 @@
  * - 퀘스트 완료 처리(티켓 20261021_1248): 열기가 확정된 직후 챕터 점수 다음에 `(supabase, userId)`로 한 번 부른다. 거절·추첨 전에 막힌 경우에는 부르지 않고,
  *   완료 처리가 던져도 열기와 응답은 그대로다. 응답에는 완료 배지를 싣지 않는다. 실제 판정은 `onboarding-quest/__tests__`가 고정한다(여기서는 가짜).
  * - 다른 트라이브 추첨 대상(티켓 20261021_1248): 후보 배지가 있는 트라이브만이다. 후보 없는 비활성 트라이브가 뽑혀 첫 캡슐이 열리지 않는 일이 없다.
- * - `counted` 옵션(티켓 20261028_1733 2회): RPC가 `capsule_open_counted`, 옛 점수 `chapter_add_score`는 부르지 않고, 오름이 있으면 `processChapterRise`로 잇는다.
+ * - `counted` 옵션(티켓 20261028_1733 2회, 20261028_1734 2회에서 바뀜): RPC가 `capsule_open_counted`, 옛 점수 `chapter_add_score`는 부르지 않고, 오름 처리(`processChapterRise`)도 부르지 않는다(오름 판정은 `capsule_auto_fill`이 한다).
  *   응답에 `chapterNo`·`reachedChapters`·`chapterCount`가 더해진다. `counted`가 없으면 옛 경로 그대로다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트·가짜 RPC·결정적 난수만 쓴다.
  *
@@ -717,16 +717,17 @@ describe('openCapsule — counted 옵션 (티켓 20261028_1733 2회)', () => {
     expect(rpc).toHaveBeenCalledWith('capsule_open_counted', expect.objectContaining({ p_user_id: USER_ID }))
   })
 
-  it('오름이 없으면 오름 처리에 빈 목록을 넘기고, 응답에 챕터 횟수 정보를 더한다', async () => {
-    const { client } = fakeClient({ rpc: countedRpc({ chapterNo: 3, reachedChapters: [], chapterCount: 2 }) })
+  it('응답에 챕터 횟수 정보를 모양 호환으로 싣고, 오름 처리는 하지 않는다 (오름 판정은 capsule_auto_fill 몫 — 티켓 20261028_1734 2회)', async () => {
+    const { client } = fakeClient({ rpc: countedRpc({ chapterNo: null, reachedChapters: [], chapterCount: 2 }) })
 
     const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })
 
-    expect(riseMock).toHaveBeenCalledWith({ userId: USER_ID, reachedChapters: [] })
-    expect(payload).toMatchObject({ openId: 'open-1', next: { required: 120, filled: 0 }, chapterNo: 3, reachedChapters: [], chapterCount: 2 })
+    expect(riseMock).not.toHaveBeenCalled()
+    expect(order.calls).not.toContain('rise')
+    expect(payload).toMatchObject({ openId: 'open-1', next: { required: 120, filled: 0 }, chapterNo: null, reachedChapters: [], chapterCount: 2 })
   })
 
-  it('챕터가 올랐으면 오른 챕터를 오름 처리에 넘긴다 — 열기 확정 뒤, 퀘스트 완료·후속 처리보다 앞이다', async () => {
+  it('DB가 오른 챕터를 돌려줘도(옛 응답) 열기에서는 오름 처리를 부르지 않는다 — 이중 호출 방지, 퀘스트 완료·후속 처리는 그대로 이어진다', async () => {
     followUpMock.mockImplementation(async () => {
       order.calls.push('followUp')
     })
@@ -734,23 +735,10 @@ describe('openCapsule — counted 옵션 (티켓 20261028_1733 2회)', () => {
 
     const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true })
 
-    expect(riseMock).toHaveBeenCalledTimes(1)
-    expect(riseMock).toHaveBeenCalledWith({ userId: USER_ID, reachedChapters: [4] })
+    expect(riseMock).not.toHaveBeenCalled()
     expect(payload).toMatchObject({ chapterNo: 3, reachedChapters: [4], chapterCount: 0 })
-    expect(order.calls.indexOf('rise')).toBeGreaterThan(order.calls.indexOf('rpc:capsule_open_counted'))
-    expect(order.calls.indexOf('rise')).toBeLessThan(order.calls.indexOf('quest_completion'))
-    expect(order.calls.indexOf('rise')).toBeLessThan(order.calls.indexOf('followUp'))
-  })
-
-  it('skipRiseBadgeEvaluation을 켜면 오름 처리에 챕터 배지 판정 생략을 넘기고, 끄면 옵션 없이 부른다 (동기화 끝 판정이 이어서 읽는 경우)', async () => {
-    const { client } = fakeClient({ rpc: countedRpc({ chapterNo: 3, reachedChapters: [4], chapterCount: 0 }) })
-
-    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true, skipRiseBadgeEvaluation: true })
-    expect(riseMock).toHaveBeenLastCalledWith({ userId: USER_ID, reachedChapters: [4] }, { skipBadgeEvaluation: true })
-
-    riseMock.mockClear()
-    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS), counted: true, skipRiseBadgeEvaluation: false })
-    expect(riseMock).toHaveBeenLastCalledWith({ userId: USER_ID, reachedChapters: [4] })
+    expect(order.calls.indexOf('quest_completion')).toBeGreaterThan(order.calls.indexOf('rpc:capsule_open_counted'))
+    expect(order.calls).toContain('followUp')
   })
 
   it('퀘스트 전 캡슐은 센 게 없다 — chapterNo·chapterCount는 null이고 모양이 틀린 값은 걸러 낸다', async () => {
