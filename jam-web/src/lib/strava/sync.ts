@@ -464,13 +464,22 @@ async function evaluateWithoutNewActivities(
   userId: string,
   isFirstSync: boolean
 ): Promise<ProcessFetchedResult> {
+  // 새 활동이 없어도 가득 찬 채 남은 캡슐(인벤토리를 비웠거나 트라이브를 고른 뒤)은 «다음 동기화의 맨 앞에서» 열려야 한다(티켓 20261028_1733 3회).
+  // 던지지 않는다. 열기마다의 챕터 배지 판정은 건너뛰므로 아래 판정에 `chapter_reached`를 더해 이어서 읽는다.
+  const capsuleStep = await runSyncCapsuleAutoFill(supabase, userId)
   const activityBadgeIds = isFirstSync
     ? await evaluateBadges(userId, [], { skipInitialSyncFlagUpdate: true })
     : await evaluateBadges(userId, [])
   // JAM! 행동 지표 중 가입 경과일만 판정한다 — 날짜가 지나면 값이 바뀌는 지표는 이것뿐이라, 새 활동이 없는
   // 동기화에서도 따라잡는다(티켓 20261001_0633, R4). 오래 쉰 계정은 배지의 보조 키(최근 30일 활동일)가 막는다.
   // 획득은 결산과 earnedBadgeIds에 합치되, 반환의 `badges` 수에는 넣지 않는다(사용량 배지와 같다).
-  const jamBadgeIds = (await evaluateJamActionSafely(supabase, userId, JAM_EMPTY_SYNC_TRIGGERS)).map((b) => b.id)
+  const jamBadgeIds = (
+    await evaluateJamActionSafely(
+      supabase,
+      userId,
+      capsuleStep.opened ? [...JAM_EMPTY_SYNC_TRIGGERS, 'chapter_reached', ...jamTriggersForCapsuleOpen()] : JAM_EMPTY_SYNC_TRIGGERS
+    )
+  ).map((b) => b.id)
   await notifyActivityBadgesEarned(supabase, userId, [...activityBadgeIds, ...jamBadgeIds], [])
   return {
     badges: activityBadgeIds.length,

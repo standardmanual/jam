@@ -147,10 +147,10 @@ describe('동기화 연결 (소스 검색)', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
 
-  it('runSyncCapsuleAutoFill을 한 번만 부르고, 잼 정산(settleActivities) 뒤 아이템 배지 발급(issueSyncItemBadges) 앞이다', () => {
-    expect(source.match(/runSyncCapsuleAutoFill\(/g)).toHaveLength(1)
+  it('runSyncCapsuleAutoFill을 두 곳에서 부른다: 새 활동이 없는 이른 반환 경로와, 잼 정산(settleActivities) 뒤 아이템 배지 발급(issueSyncItemBadges) 앞', () => {
+    expect(source.match(/runSyncCapsuleAutoFill\(/g)).toHaveLength(2)
     const settle = source.indexOf('await settleActivities(')
-    const fill = source.indexOf('await runSyncCapsuleAutoFill(')
+    const fill = source.lastIndexOf('await runSyncCapsuleAutoFill(')
     const issue = source.indexOf('await issueSyncItemBadges(')
     expect(settle).toBeGreaterThan(-1)
     expect(fill).toBeGreaterThan(settle)
@@ -159,5 +159,15 @@ describe('동기화 연결 (소스 검색)', () => {
 
   it('열린 캡슐이 있을 때만 끝 판정에 jamTriggersForCapsuleOpen()을 더한다', () => {
     expect(source).toMatch(/capsuleStep\.opened\s*\?\s*\[\.\.\.JAM_SYNC_TRIGGERS,\s*\.\.\.jamTriggersForCapsuleOpen\(\)\]\s*:\s*JAM_SYNC_TRIGGERS/)
+  })
+
+  it('새 활동이 없는 이른 반환 경로도 자동 채움을 돌리고, 열렸으면 챕터 오름과 캡슐 열기 지표를 함께 판정한다', () => {
+    const start = source.indexOf('async function evaluateWithoutNewActivities(')
+    const end = source.indexOf('export async function processFetchedActivities(')
+    const idle = source.slice(start, end)
+    expect(idle).toContain('await runSyncCapsuleAutoFill(')
+    expect(idle).toMatch(
+      /capsuleStep\.opened\s*\?\s*\[\.\.\.JAM_EMPTY_SYNC_TRIGGERS,\s*'chapter_reached',\s*\.\.\.jamTriggersForCapsuleOpen\(\)\]\s*:\s*JAM_EMPTY_SYNC_TRIGGERS/
+    )
   })
 })
