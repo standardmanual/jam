@@ -202,19 +202,29 @@ code:
 다른 종류와 섞이면 이름을 나열하지 않는 총량 문형(«배지 N개를 획득했어요»)으로 간다. 연 때는 동기화로 받은 개체만 `item_dropped`를 올린다(사용자 결정 2026-10-26, 티켓 20261026_1031). 캡슐에서 나온 잠긴 개체는 열어도 올리지 않는다.
 
 **채우기와 열기**(티켓 20261018_0053, 운영 로직 7.2절): 규칙은 캡슐과 같다. 저장·함수는 `02_DATA_MODEL.md`(마이그레이션 235)가 원천이고 이 절은 API 계약만 고정한다.
-- `GET /api/inventory/items/[itemId]/lock`: 내 개체의 `locked`·`required`·`filled`·`remaining`·`balance`·`openable`(잠겨 있고 다 채움, 인벤토리 빈칸은 보지 않는다). 이름·그림·설명·컬렉션·트라이브·일련번호는 싣지 않는다. 이용 정지 중에도 허용한다.
+열기는 티켓 20261028_1737부터 **포인트를 내고 연다**(아래 «포인트로 열기»). 채우기 API와 함수는 화면이 바뀌는 U10과 함수를 지우는 U11까지 남는다. 그 사이 옛 화면의 «채운 뒤 열기»는 열 때 포인트를 쓴다.
+- `GET /api/inventory/items/[itemId]/lock`: 내 개체의 `locked`·`required`·`filled`·`remaining`·`balance`·`openable`(잠겨 있고 다 채움, 인벤토리 빈칸은 보지 않는다)와 `pointsRequired`·`pointBalance`(아래 «포인트로 열기»). 이름·그림·설명·컬렉션·트라이브·일련번호는 싣지 않는다. 이용 정지 중에도 허용한다.
 - `POST /api/inventory/items/[itemId]/fill { amount? }`: 한 번에 개체 하나. 기본값은 남은 양이고 가진 잼이 모자라면 가진 만큼, 줄여서 나눠 채울 수 있고, 남은 양보다 많이는 채울 수 없고, 채운 잼은 꺼낼 수 없다. 응답은 `applied`·`required`·`filled`·`remaining`·`balance`·`openable`이다.
   이용 정지 중 403(`user_suspended`), `already_full`·`exceeds_remaining`(남은 양 포함)·`invalid_amount` 400, `insufficient_jam`·`not_locked` 409, `item_not_found` 404.
-- `POST /api/inventory/items/[itemId]/open`: 다 채우면 같은 개체가 열린 상태가 된다(일련번호 그대로, 새로 뽑지 않음, 확률 없음). 인벤토리가 가득 차 있어도 열린다(이미 칸을 차지한다). 한 번 연 것은 다시 잠기지 않고, 동시에 두 번 열어도 한 번만 열린다(두 번째는 `not_locked` 409).
-  성공 응답에만 이름·그림·설명·등급·컬렉션·트라이브·일련번호와 준 포인트(`pointsAwarded`)를 싣는다. 열기는 확정됐고 정보 조회만 실패한 드문 경우 `item`은 null이다. 이용 정지 중 403, `not_full`(채운 양·필요량 포함)·`not_locked` 409, `item_not_found` 404.
+- `POST /api/inventory/items/[itemId]/open`: 필요한 포인트를 내고 같은 개체가 열린 상태가 된다(일련번호 그대로, 새로 뽑지 않음, 확률 없음). 채우기를 마칠 필요가 없다. 인벤토리가 가득 차 있어도 열린다(이미 칸을 차지한다). 한 번 연 것은 다시 잠기지 않고, 동시에 두 번 열어도 한 번만 열린다(두 번째는 `not_locked` 409).
+  성공 응답에만 이름·그림·설명·등급·컬렉션·트라이브·일련번호와 준 포인트(`pointsAwarded`)를 싣고, 낸 포인트(`pointsSpent`)와 연 뒤 잔액(`pointBalance`)은 이름·그림과 달리 항상 싣는다. 열기는 확정됐고 정보 조회만 실패한 드문 경우 `item`은 null이다.
+  이용 정지 중 403, `insufficient_points`(`required`·`balance` 포함)·`not_locked` 409, `item_not_found` 404.
 - 이용 정지 중에는 채우기와 열기를 막고 채운 양은 그대로 남는다. 트라이브가 바뀌어도 잠긴 개체와 채운 양은 그대로다.
-- 포인트: 배지 포인트는 열린 상태가 될 때 연 유저에게 한 번만 준다(`inventory_items.point_awarded_at`이 «이미 줬다» 기록). DB 안에서 주므로 포인트 알림(`notifyPointChange`)은 나가지 않는다.
+- 포인트: 배지 포인트는 열린 상태가 될 때 연 유저에게 한 번만 준다(`inventory_items.point_awarded_at`이 «이미 줬다» 기록). DB 안에서 주므로 포인트 알림(`notifyPointChange`)은 나가지 않는다. 열기에 드는 포인트는 아래 «포인트로 열기»다.
 - 이력: 채울 때마다 `filled`, 열 때 `unlocked`를 `inventory_item_events`에 남긴다.
 - 열 때의 소식과 피드(티켓 20261026_1031, 사용자 결정 2026-10-26): 열기 경로(`openLockedItem`)가 열기 확정 뒤 둘을 낸다. 포인트 소식은 `pointsAwarded`가 0보다 클 때 활동 결산의 «포인트» 꼬리로 한 번 낸다.
   활동 피드 `item_dropped`는 받을 때는 올리지 않았으므로(위 «가림 범위» ③) 동기화로 받은 개체만 연 때 한 번 올린다. 칸(`inventory_item_id`·`badge_id`·`badge_name`·`badge_image_url`·`rarity`·`poi_name`·`tribe_name`·`is_last_piece`,
   포인트를 준 경우 `point_reward`)은 열린 채 받은 개체의 피드와 같고(`recordItemDroppedFeed`), 시각은 연 때이며 활동에는 묶지 않는다. 포인트가 0이어도 올리고, 연 개체의 정보를 읽지 못하면 올리지 않는다.
   출처는 발급 기록 `item_issue_log`에서 개체 id로 가장 앞선 한 줄의 경로(`route`)를 읽어 가른다. `capsule`이면 올리지 않고(캡슐 개봉 결과는 피드에 올리지 않는다, 운영 로직 15.3절), `sync`이거나 발급 기록 행이 없으면(운영자가 지정한 개체 등) 올리며, 경로를 읽다가 오류가 나면 올리지 않고 기록만 남긴다. 포인트 소식은 출처와 무관하게 나간다.
   피드와 소식은 서로와 열기 응답에 영향을 주지 않는다. 두 번째 열기는 `not_locked`로 거절돼 한 번만 올라간다. 화면은 3-4에서 정한다.
+
+**포인트로 열기**(티켓 20261028_1737 1~3회, 운영 로직 7.2·14.1절): 잠긴 개체는 등급별 포인트를 내고 한 번에 연다. 저장·함수·트리거·원장 구조는 `02_DATA_MODEL.md` 3장 «잠긴 아이템 배지를 포인트로 여는 구조»(마이그레이션 300·304)가 원천이고 이 절은 앱 계약만 고정한다.
+- 필요한 포인트(`pointsRequired`)는 개체에 고정된 값이다. 개체에 값이 없고 잠겨 있으면 등급별 정책값(`jam_policy.locked_points_*`, 등급이 없으면 common)이고, 열린 개체는 null이다. 퀘스트의 첫 잠긴 배지는 0으로 고정되므로 포인트 없이 열린다.
+- 잔액(`pointBalance`)은 지갑이 없으면 0이다. 잔액이 모자라면 열리지 않고 `insufficient_points` 409(`required`·`balance`)이며 개체·잔액·원장이 그대로다. 필요한 포인트가 0이면 차감 줄이 없다.
+- 원장에는 «잠긴 배지 열기 −N»(사유 `locked_unlock_cost`, 개체 연결)과 «아이템 배지 획득 +M»(사유 `badge_point_reward`, 배지 포인트가 있고 아직 주지 않았을 때만) 두 줄이 남는다.
+- 열기가 확정된 뒤의 후속(서비스 활동 잼 `locked_unlock`, 퀘스트 완료 처리, 포인트 소식, 피드)은 위와 같고 `pointsAwarded`가 0보다 클 때만 포인트 소식이 나간다. 응답 계약은 `src/lib/inventory/lockedItemFill-contract.ts`다.
+- 어드민 «밸런스 설정» 잠긴 아이템 배지 구역에서 등급별 값을 바꾼다. 바꿔도 이미 배정된 개체의 값은 바뀌지 않는다.
+- 화면은 U10에서 바꾼다. 위 «잠긴 아이템 배지 화면»은 아직 채우기 기준이다.
 
 ### 잠긴 아이템 배지 화면 (티켓 20261018_0054 2회, 채원 판정 2026-10-18)
 

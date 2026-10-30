@@ -422,6 +422,32 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
     열린 개체의 항목은 그대로 이름·그림을 싣는다. 판정과 가린 메타는 `lib/activity-feed/lockedDrop.ts`가 단일 원천이다. 홈·`/feed` 피드는 `poi_drops`를 읽지 않고 `user_activity_feed`만 읽으며,
     잠긴 채 받은 개체는 받을 때·픽업할 때 피드 기록(`item_dropped`·`item_picked_up`)을 남기지 않으므로(`issueFollowUp`·픽업 라우트) 열기 전에는 이름이 실릴 행이 없다(연 때는 `openLockedItem`이 동기화로 받은 개체만 `item_dropped`를 올린다. 캡슐에서 나온 잠긴 개체는 열어도 올리지 않는다, 티켓 20261026_1031). 드랍 라우트(`POST /api/drops`)는 피드·소식을 기록하지 않는다.
   - 되돌림: 새 객체만 지운다. 채운 잼은 원장에 남아 지갑으로 돌아오지 않고, 열어서 준 포인트도 회수되지 않는다.
+- **잠긴 아이템 배지를 포인트로 여는 구조 (JAM 2.0, 마이그레이션 300·304, 티켓 20261028_1737, 운영 로직 7.2·14.1·14.2절)** — 잼 채우기 대신 포인트를 내고 한 번에 연다.
+  이 항목이 포인트로 여는 구조의 단일 원천이다(운영 로직·인벤토리 PRD·포인트 PRD는 이 항목을 가리킨다). 옛 `locked_item_fill`·`locked_item_open`과 칸 `unlock_required`·`unlock_filled`, `jam_policy.locked_min_*`는
+  화면이 바뀌는 U10과 함수를 지우는 U11까지 그대로 둔다(확장, 전환, 축소).
+  - 새 칸 `inventory_items.unlock_points_required`(integer, nullable, CHECK `>= 0`, 300): 여는 데 드는 포인트. **배정될 때 고정**하고 이후 정책이 바뀌어도 바뀌지 않는다. 열린 채 받은 개체와 고정 전 개체는 NULL이다.
+  - 새 칸 `jam_policy.locked_points_common` / `_rare` / `_epic` / `_mystic`(300): 등급별 여는 포인트. 기본 50 / 100 / 200 / 400, CHECK `>= 0`. 어드민 «밸런스 설정» 잠긴 아이템 배지 구역에서 바꾼다.
+  - 새 칸 `point_transactions.source_inventory_item_id`(uuid, FK `inventory_items(id)` ON DELETE SET NULL, 300): 사유 `locked_unlock_cost`(−) 줄이 가리키는 연 개체. 사유 CHECK에 `locked_unlock_cost`를 더했고
+    부분 유일 인덱스 `point_transactions_locked_unlock_cost_uniq`(`reason = 'locked_unlock_cost'`)가 개체마다 차감을 한 번만 허용한다.
+  - `award_points` 9번째 인자(304): `p_source_inventory_item_id UUID DEFAULT NULL`. 157과 같은 방식으로 8개 인자 시그니처를 먼저 지우고 9개 인자로 다시 만들어 오버로드는 하나만 남는다.
+    본문은 그대로이고 원장 열 하나만 더 쓴다. 기존 호출은 이름이나 위치로 부르던 그대로 동작한다(`admin_deduct_points`·`slot_item_into_book`은 8개 인자를 위치로 부르고, 9번째가 기본값이라 맞는다).
+  - **트리거** `trg_inventory_items_fix_unlock_points`(BEFORE INSERT OR UPDATE OF `locked`, 함수 `inventory_items_fix_unlock_points`, SECURITY DEFINER, 304): 잠긴 채로 되는 순간 `unlock_points_required`가 비어 있으면 값을 채운다.
+    값만 채우고 예외를 던지지 않으며, 이미 값이 있으면 건드리지 않는다. 잠금을 입히는 경로가 많아(`grant_inventory_item_locked`, 캡슐 세 함수, 보류 고르기, 미션·믹스 보상, 시스템 드랍) 경로마다 값을 넘기지 않고 이 한 곳에서 덮는다.
+    - **퀘스트의 첫 잠긴 배지는 0**: 그 유저에게 챕터가 아직 없고(`user_chapters`에 `chapter_no`가 있는 행이 없음) 이 개체 말고는 그 유저에게 `lock_reason`이 있는 개체가 없으면 0으로 고정한다.
+      «첫 하나»가 두 경로에서 동시에 생기지 않도록 유저 단위 트랜잭션 어드바이저리 잠금(`locked_first_free:<user_id>`)을 건다. 개체가 아직 유저에게 배정되지 않았으면(`inventory_id` NULL) 이 판정을 건너뛰고 정책값을 넣는다.
+      캡슐의 `preQuest`(챕터 없음)와 같은 조건이다. 한계: 버려졌거나 드랍된 개체도 «잠긴 적 있는 개체»로 센다.
+    - 그 밖에는 배지 등급별 `jam_policy.locked_points_*`(등급이 비면 common). 배지나 정책 행이 없으면 비워 둔다.
+  - 새 함수 `locked_item_open_points(p_user_id, p_item_id) → jsonb`(SECURITY DEFINER, `service_role`만 실행, 304): 한 트랜잭션에서 이용 정지 확인(`user_suspended`) → 개체 행 잠금(내 것이고 버려지거나 드랍되지 않은 개체가 아니면 `item_not_found`, 열린 개체면 `not_locked`)
+    → 지갑 행 잠금과 잔액 확인(모자라면 아무것도 바꾸지 않고 `insufficient_points`, `required`·`balance` 포함) → 차감 줄 `award_points(−N, 'locked_unlock_cost', 개체 연결)` → `locked = false`·`unlocked_at` →
+    획득 줄(배지 `point_reward`가 있고 `point_awarded_at`이 비었을 때만 `award_points(+M, 'badge_point_reward')`) → 이력(`unlocked`). 필요 포인트는 `unlock_points_required`, 비어 있으면 등급별 `locked_points_*`이고 0이면 차감 줄을 만들지 않는다.
+    이미 칸을 차지하므로 인벤토리가 가득 차 있어도 열 수 있다. 동시에 두 번 열어도 개체 행 잠금 때문에 두 번째는 `not_locked`다. 포인트 지급이 실패하면 열기 전체가 되돌려진다.
+    성공 응답은 `ok`·`itemId`·`badgeId`·`serialNumber`·`pointsAwarded`(획득 줄, 없으면 0)·`pointsSpent`(차감, 없으면 0)·`pointBalance`(연 뒤 잔액)다. DB 안에서 포인트를 주므로 `notifyPointChange` 알림은 이 경로에서 나가지 않는다.
+  - 잔액 방어: 지갑 잔액이 0 아래로 내려가지 못하게 하는 DB 제약(266)은 출시 뒤에 걸린다. 그 전에는 이 함수의 지갑 잠금과 잔액 확인이 유일한 방어다(`admin_deduct_points`와 같은 방식).
+  - 앱(`lib/inventory/lockedItemFill.ts` `openLockedItem`·`getLockedItemStatus`, 계약 `lockedItemFill-contract.ts`, 티켓 20261028_1737 2회): `POST /api/inventory/items/[itemId]/open`이 이 함수를 부르고 응답에 `pointsSpent`·`pointBalance`를 싣는다.
+    `insufficient_points`는 409이며 `required`·`balance`를 싣는다(옛 `not_full` 분기는 새 함수가 돌려주지 않는 죽은 경로이고 U11에서 정리한다). `GET .../lock`은 `pointsRequired`(개체에 고정된 값, 비었고 잠겨 있으면 등급별 정책값, 열린 개체는 null)와
+    `pointBalance`(지갑이 없으면 0)를 더 싣는다. 열기가 확정된 뒤 서비스 활동 잼(`locked_unlock`), 퀘스트 완료 처리, 포인트 소식, 피드는 그대로 이어진다.
+  - 권한: `locked_item_open_points`와 9개 인자 `award_points`는 `authenticated`·`anon` 실행이 막혀 있고 `service_role`만 실행한다.
+  - 되돌림 SQL은 304 파일 끝의 주석에 있다. 새 함수·트리거를 지우고 `award_points`를 8개 인자 본문으로 되돌린다. 이미 남은 차감 줄은 지워지지 않는다.
 
 ### custody_events (신규, 2026-08-29 — 티켓 20260829_2101)
 `InventoryItem` 한 개체의 점유(custody) 변화 이력(append-only). `Minted`/`UserDrop`/
@@ -944,7 +970,7 @@ JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득
 아이템 배지(`badges.type = 'item'`, 삭제되지 않음)만 처리하는 SECURITY DEFINER 함수(service_role만 실행). 이 미션에서 이미 기록된 배지는 건너뛰어 다시 불러도 중복 지급이 없다. **이미 가진 배지도 새 개체로 준다**(일련번호는 새로 매겨진다). 남은 배지가 **모두 들어갈 빈칸이 있으면 전부** `grant_inventory_item_locked`로 줘서 `claimed`로 기록하고 개체 이력(`inventory_item_events` `received`)을 남긴다. **모자라면 아무것도 주지 않고 전부** `pending`으로 기록한다(일부만 주지 않는다).
 - 반환: `{ok:true, status:'none'|'granted'|'pending', itemIds, pendingCount[, free, needed]}` / `{ok:false, error:'mission_not_found'|'inventory_not_found'}`.
 - 앱은 `grantMissionRewards`(`src/lib/missions/rewards.ts`)가 미션 완료 때 부른다. 액티비티 배지는 지금처럼 `user_activity_badges`에 넣고, 액티비티·아이템 외 유형(체크인 등)과 숨김 배지(`badges.is_hidden`)는 지급하지 않는다(경고만 남긴다). 반환 계약은 `src/lib/missions/claim-contract.ts`가 읽고, 계약 밖 응답은 성공으로 보지 않는다.
-- **포인트는 이 함수가 주지 않는다.** 아이템 배지의 포인트는 열린 개체를 받을 때 한 번, 잠긴 개체는 열 때(`locked_item_open`) 준다. 앱이 `granted` 결과의 개체 id로 `inventory_items.locked`·`point_awarded_at`을 읽어 열린 개체에만 `badge_point_reward`를 주고 `point_awarded_at`을 적는다(`src/lib/missions/itemRewardFollowUp.ts`). 남은 칸 알림도 이 후속이 부른다.
+- **포인트는 이 함수가 주지 않는다.** 아이템 배지의 포인트는 열린 개체를 받을 때 한 번, 잠긴 개체는 열 때(`locked_item_open_points`) 준다. 앱이 `granted` 결과의 개체 id로 `inventory_items.locked`·`point_awarded_at`을 읽어 열린 개체에만 `badge_point_reward`를 주고 `point_awarded_at`을 적는다(`src/lib/missions/itemRewardFollowUp.ts`). 남은 칸 알림도 이 후속이 부른다.
 - `pending` 결과는 `MissionRewardResult.pendingItemBadgeIds`(잠긴 배지는 `pendingLockedBadgeIds`에도)로 돌아가 `checkMissions`가 `MissionCheckResult.pendingItemBadgeIds`와 `mission_completed` 피드의 `pending_item_badge_ids`(잠긴 배지 제외)에 싣는다.
 
 #### mission_claim_item_rewards(p_user_id, p_mission_id) → jsonb
@@ -1029,7 +1055,8 @@ SECURITY DEFINER(`search_path = public`), service_role만 실행한다(`anon`·`
 유저당 1개. `balance`는 원장(point_transactions)에서 파생된 캐시값 — 직접 UPDATE 금지.
 
 ### point_transactions
-append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `admin_grant` / `admin_deduct` / `combine_fail_reward` / `combine_recipe_reward` / `item_book_completion_point_reward`(마이그레이션 157).
+append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `admin_grant` / `admin_deduct` / `combine_fail_reward` / `combine_recipe_reward` / `item_book_completion_point_reward`(마이그레이션 157) / `locked_unlock_cost`(−, 마이그레이션 300, 잠긴 아이템 배지 열기 차감).
+`source_inventory_item_id`는 `locked_unlock_cost` 줄이 연 개체를 가리키는 칸이다(마이그레이션 300). **포인트를 쓰는 곳은 지금 이 사유 하나**이고, 차감·획득 두 줄이 남는 구조와 9개 인자 `award_points`는 위 3장 «잠긴 아이템 배지를 포인트로 여는 구조»에 있다.
 
 ### point_treasury
 전체 발행/회수 총량 싱글톤 장부 — 어드민에서 유통량·월렛합·원장합 정합성 검사에 사용.
@@ -1062,7 +1089,7 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 | 아이템 배지: 동기화 지급·보류 고르기 | 열린 채 받을 때(잠긴 채 받으면 없음) | `lib/drop-engine/issueFollowUp.ts`(`recordIssuedRewards`) |
 | 아이템 배지: 미션 보상 | 열린 채 받을 때, `point_awarded_at`으로 중복 방지 | `lib/missions/itemRewardFollowUp.ts` |
 | 아이템 배지: **믹스 결과**(2회) | 열린 채 받을 때, `point_awarded_at`으로 중복 방지. 빈칸이 모자라 받지 않은 결과로 남으면 받을 때 | `lib/combine/resultPointFollowUp.ts` |
-| 아이템 배지: 잠긴 채 받은 개체 | 열 때 일련번호마다 한 번, `point_awarded_at`으로 중복 방지 | DB `locked_item_open`(마이그레이션 235) |
+| 아이템 배지: 잠긴 채 받은 개체 | 열 때 일련번호마다 한 번, `point_awarded_at`으로 중복 방지 | DB `locked_item_open_points`(마이그레이션 304, 옛 `locked_item_open`(235)은 U11까지 남음) |
 | 컬렉션 보상 배지(`item_books.reward_badge_id`, 등급 보상 배지 포함) | `user_activity_badges`에 **새로 넣을 때만**. 이미 보유·23505는 지급 없음, 보정분도 새로 넣을 때는 준다 | `lib/itembook/checker.ts`(`issueItemBookRewardBadges`, 동기화 보정과 장착 직후 발급이 함께 쓴다) |
 | 미션 보상 배지 | 미션 완료 때 | `lib/missions/rewards.ts` |
 | 퀘스트 완료 배지(「JAM!」) | «연출 끝 또는 건너뜀 AND 실제 3단계 완료»가 된 뒤 한 번, 건너뛰지 않은 유저에게만 | `lib/onboarding-quest/completion.ts` |
@@ -1131,6 +1158,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `sync_rarity_common` / `_rare` / `_epic` / `_mystic` | 84 / 13 / 2.5 / 0.5 | 동기화 등급 확률(퍼센트). 네 칸 합계는 100이고 DB 제약(`jam_policy_sync_rarity_sum_100`)이 지킨다 |
 | `common_streak_threshold` | 10 | Common이 이 횟수만큼 연속이면 다음은 Rare 이상(`user_drop_state.common_streak`, 동기화와 캡슐 합산) |
 | `locked_min_common` / `_rare` / `_epic` / `_mystic` | 30 / 60 / 120 / 240 | 잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값. 배지에 값이 없을 때 이 값을 쓴다. 1 이상 정수 (마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.4절). 편집 화면은 «밸런스 설정»의 «잠긴 아이템 배지» 구역이다(티켓 20261022_1133). 이미 잠긴 개체의 `unlock_required`는 배정 때 고정돼 바뀌지 않는다 |
+| `locked_points_common` / `_rare` / `_epic` / `_mystic` | 50 / 100 / 200 / 400 | 잠긴 아이템 배지를 포인트로 여는 비용의 등급별 값. 0 이상 정수, **0이면 포인트 없이 열림** (마이그레이션 300, 티켓 20261028_1737, 운영 로직 7.4절). 개체에 값이 고정되지 않았을 때와 새로 배정될 때 쓴다. 구조는 3장 «잠긴 아이템 배지를 포인트로 여는 구조» |
 | `service_jam_daily_cap` / `service_jam_weekly_cap` | 40 / 100 | 서비스 활동으로 받는 잼의 하루(KST)·주간(월~일, KST) 상한. 0 이상 정수, **0이면 지급 0**(마이그레이션 300, 위 «서비스 활동 잼») |
 | `locked_roll_probability` | 0.25 | 동기화·캡슐에서 나온 아이템 배지가 잠긴 채 배정될 확률(0~1). 0이면 무작위로는 절대 잠기지 않고 1이면 늘 잠긴다 |
 
@@ -1178,7 +1206,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `inventory_item_id` | 받아서 생긴 개체(받은 뒤에만) |
 | `created_at`·`resolved_at` | 생긴 때, 받은 때(8.5절) |
 
-함수: `combine_grant_results(p_user_id, p_recipe_id, p_badge_ids, p_locked)`는 결과 지급의 단일 경로다. 결과 개수 이상의 빈칸이 있으면 모두 기한 없이(`expires_at` NULL) 지급하고 `{status: 'granted', itemIds}`, 모자라면 일부만 주지 않고 전부 이 표에 남기며 `{status: 'pending', pendingCount, free, needed}`, 지급할 결과가 없으면 `{status: 'none'}`을 돌려준다. 삭제된 배지는 건너뛴다. `combine_claim_pending(p_user_id)`는 받지 않은 결과를 모두 받는다 — 모두 들어갈 빈칸이 있어야 하고(`insufficient_slots`, free·needed), 이용 정지 중이면 `user_suspended`, 받을 것이 없으면 `no_pending`이다. 인벤토리 행과 결과 행을 잠그고 `pending → claimed`로 바꾸므로 같은 결과를 두 번 지급하지 않는다. 앱은 두 함수를 한 번씩 부르기만 하고 빈칸을 나눠 세지 않는다(`lib/combine/index.ts`·`lib/combine/pending.ts`, API `GET·POST /api/combine/pending`). 받지 않은 결과가 있는 동안 새 믹스를 막는 것은 앱 코드의 몫이다(`/api/combine` 409 `pending_results_exist`). `/api/combine` 성공 응답에서 잠긴 채 지급된 결과(`resultBadges[].locked`)는 지급된 개체의 `inventory_items.unlock_required`를 읽어 선택 칸 `unlockRequired`로 싣는다(읽지 못하면 칸을 뺀다). **두 함수는 포인트를 주지 않는다.** 아이템 배지의 포인트는 열린 개체를 받을 때 한 번, 잠긴 개체는 열 때(`locked_item_open`) 준다. 앱이 새 개체를 준 뒤 `lib/combine/resultPointFollowUp.ts`의 `followUpCombineResultPoints`가 지급된 개체 id로 `inventory_items.locked`·`point_awarded_at`을 읽어 열린 개체에만 배지의 `point_reward`를 `badge_point_reward`로 주고 `point_awarded_at`을 적는다(믹스 성공은 `granted`일 때 `lib/combine/index.ts`가, 받지 않은 결과는 받을 때 `POST /api/combine/pending`이 부른다, 티켓 20261019_1314 2회). 응답의 `pointsAwarded`는 레시피 보상 포인트(`combine_recipe_reward`) 그대로이고 배지 포인트를 더하지 않는다.
+함수: `combine_grant_results(p_user_id, p_recipe_id, p_badge_ids, p_locked)`는 결과 지급의 단일 경로다. 결과 개수 이상의 빈칸이 있으면 모두 기한 없이(`expires_at` NULL) 지급하고 `{status: 'granted', itemIds}`, 모자라면 일부만 주지 않고 전부 이 표에 남기며 `{status: 'pending', pendingCount, free, needed}`, 지급할 결과가 없으면 `{status: 'none'}`을 돌려준다. 삭제된 배지는 건너뛴다. `combine_claim_pending(p_user_id)`는 받지 않은 결과를 모두 받는다 — 모두 들어갈 빈칸이 있어야 하고(`insufficient_slots`, free·needed), 이용 정지 중이면 `user_suspended`, 받을 것이 없으면 `no_pending`이다. 인벤토리 행과 결과 행을 잠그고 `pending → claimed`로 바꾸므로 같은 결과를 두 번 지급하지 않는다. 앱은 두 함수를 한 번씩 부르기만 하고 빈칸을 나눠 세지 않는다(`lib/combine/index.ts`·`lib/combine/pending.ts`, API `GET·POST /api/combine/pending`). 받지 않은 결과가 있는 동안 새 믹스를 막는 것은 앱 코드의 몫이다(`/api/combine` 409 `pending_results_exist`). `/api/combine` 성공 응답에서 잠긴 채 지급된 결과(`resultBadges[].locked`)는 지급된 개체의 `inventory_items.unlock_required`를 읽어 선택 칸 `unlockRequired`로 싣는다(읽지 못하면 칸을 뺀다). **두 함수는 포인트를 주지 않는다.** 아이템 배지의 포인트는 열린 개체를 받을 때 한 번, 잠긴 개체는 열 때(`locked_item_open_points`) 준다. 앱이 새 개체를 준 뒤 `lib/combine/resultPointFollowUp.ts`의 `followUpCombineResultPoints`가 지급된 개체 id로 `inventory_items.locked`·`point_awarded_at`을 읽어 열린 개체에만 배지의 `point_reward`를 `badge_point_reward`로 주고 `point_awarded_at`을 적는다(믹스 성공은 `granted`일 때 `lib/combine/index.ts`가, 받지 않은 결과는 받을 때 `POST /api/combine/pending`이 부른다, 티켓 20261019_1314 2회). 응답의 `pointsAwarded`는 레시피 보상 포인트(`combine_recipe_reward`) 그대로이고 배지 포인트를 더하지 않는다.
 
 #### sync_pending_items — 마이그레이션 229, 티켓 20261017_1425
 동기화로 받을 아이템 배지 전체가 인벤토리 빈칸보다 많을 때 지급하지 않고 모두 담아 두는 보류 목록(운영 로직 6.4절). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다. 동기화(`syncIssueRun.ts`)가 쓰고, 고르기(`resolve_sync_pending_items`)가 닫는다. 동기화 보류만 위한 작은 테이블이며 미션 보상·프로모션·믹스 결과의 «받지 않은 보상»은 그 기능을 만드는 묶음 3·5에서 같은 패턴으로 잇는다.
@@ -1236,7 +1264,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 |---|---|---|---|---|
 | `jam_earned` | `lib/jam/settlement.ts` `settleActivities`(정산 항목을 쌓은 직후, 오래된 활동부터) | `strava_activities.id`(`JamSettlementItem.activityId`) | 활동한 날(KST, `earnedOn`) | 연결됨(1회). 수량은 원장에 기록된 양이라 재정산도 같은 키다. **호출을 지웠다**(티켓 20261028_1733 3회): 동기화의 정산은 더 이상 이 활동의 점수를 쌓지 않는다 |
 | `capsule_open` | `lib/capsule/open.ts` `openCapsule`(`capsule_open` RPC 직후, 후속 처리 앞) | `capsule_opens.id`(`openId`) | 생략(오늘) | 연결됨(1회). **자동 채움이 부르는 `counted` 열기는 이 호출을 건너뛴다**(티켓 20261028_1733 2회, 아래 9-4). 챕터 횟수는 열기가 아니라 `capsule_auto_fill`이 100%에 닿을 때 센다(마이그레이션 302). `counted`를 켜지 않는 옛 열기 경로는 그대로 점수를 쌓는다 |
-| `locked_item_badge_open` | `lib/inventory/lockedItemFill.ts` `openLockedItem`(`locked_item_open` RPC 직후) | 개체 id(`inventory_items.id`) | 생략 | 연결됨(1회) |
+| `locked_item_badge_open` | `lib/inventory/lockedItemFill.ts` `openLockedItem`(`locked_item_open_points` RPC 직후) | 개체 id(`inventory_items.id`) | 생략 | 연결됨(1회) |
 | `drop` | `app/api/drops/route.ts` POST(성공 뒤 `after()` 콜백) | `poi_drops.id`(`drop_id`) | 생략 | 연결됨(1회). 유저 드랍만(시스템 드랍은 앰비언트 배치라 이 라우트를 거치지 않는다) |
 | `pickup` | `app/api/drops/[dropId]/pickup/route.ts`(성공 뒤 `after()` 콜백) | 경로의 `dropId` | 생략 | 연결됨(1회). `isSelfPickup`이면 세지 않고, 시스템 드랍과 잠긴 채 받은 픽업은 센다. 드랍과 픽업은 활동 종류가 달라 같은 드랍 id로도 키가 겹치지 않는다 |
 | `badge_receive` | 새 발급 6곳(엔진 새 발급 `lib/badge-engine/index.ts`·`usageBadges.ts` `issueQualifyingBadges`·미션 보상 `lib/missions/rewards.ts`·컬렉션 보상 `lib/itembook/checker.ts`·온보딩 완료 `lib/onboarding-quest/completion.ts`·체크인 첫 획득 `lib/strava/sync.ts`) → 공용 함수 `lib/chapter/badgeReceive.ts` | (유저, 배지) 결정적 id. 반복형의 새 회차는 (유저, 배지, 활동 id) | 생략 | 새 발급 6곳은 연결됨(2a회). 반복형의 새 회차는 엔진의 `increment` 경로와 첫 발급 경로(같은 평가의 나머지 새 회차)에 연결됨(2b회, `awardBadgeReceiveOccurrenceScores`) |
