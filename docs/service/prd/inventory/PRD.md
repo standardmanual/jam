@@ -273,5 +273,5 @@ code:
 
 > **구현 상태** (티켓 20261028_1734, 2026-10-29)
 > - 서버는 구현했다: 보류 만들기, 받기 API, 소식 2종(`capsule_nearly_full`·`capsule_jam_blocked`).
-> - 아직 없다(U8): 캡슐 아래 안내 메시지와 «받기» 버튼. 옛 캡슐 화면의 열기 판정은 빈칸 부족 이유 `no_free_slots`를 그대로 쓴다(`grep -rl no_free_slots jam-web/src` 결과에 `lib/capsule/capsule-view.ts`·`capsule-contract.ts`·`capsule.ts`·`open.ts`가 있다, 2026-10-29). 이 화면을 «보류» 안내로 바꾸는 것은 U8의 몫이다.
+> - 화면은 구현했다(티켓 20261028_1739, U8): 캡슐 아래 안내 영역과 «받기» 버튼. 옛 열기 API(`POST /api/capsule/open`)의 열기 판정은 빈칸 부족 이유 `no_free_slots`를 그대로 쓰지만 화면은 부르지 않고, 옛 API와 함수는 U11에서 정리한다.
 > - 합친 연출은 구현했다(티켓 20261028_1740, U9): 자동으로 열린 캡슐의 결과를 연출 한 번으로 보여 준다. 보류가 생긴 순간과 받기만을 위한 별도 연출은 없다(받기로 받은 아이템 배지는 `BadgeRevealOverlay`로 보인다).
