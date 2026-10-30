@@ -448,3 +448,34 @@ describe('잼 조건 합산·기준값 카드 (티켓 20261028_1736 2회)', () =
     expect(existsSync(`${repoRoot}${card?.codeLocation}`), '코드 위치가 실재해야 합니다').toBe(true)
   })
 })
+
+describe('잠긴 아이템 배지 여는 포인트 항목 (티켓 20261028_1737 3회)', () => {
+  const find = (id: string) => POLICIES_DATA.find((p) => p.id === id)
+  const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+
+  it('여는 포인트 카드는 jam_policy.locked_points_*를 잠긴 아이템 배지 구역으로 잇고 기본값 50·100·200·400을 적는다', () => {
+    const card = find('ch7-locked-min-requirements')
+    expect(card?.chapter).toBe(7)
+    expect(card?.type).toBe('admin_link')
+    expect(card?.dbTable).toBe('jam_policy')
+    expect(card?.dbColumn).toBe('locked_points_*')
+    expect(card?.adminLink?.href).toBe('/admin/balance#locked')
+    expect(card?.ticketId).toBe('20261028_1737')
+    expect(existsSync(`${repoRoot}${card?.codeLocation}`), '코드 위치가 실재해야 합니다').toBe(true)
+    const spec = card?.currentSpec ?? ''
+    for (const text of ['Common 50pt', 'Rare 100pt', 'Epic 200pt', 'Mystic 400pt', 'insufficient_points', 'locked_unlock_cost', 'badge_point_reward']) {
+      expect(spec, text).toContain(text)
+    }
+  })
+
+  it('잼 최소값(locked_min_*)이 U11까지 옛 채우기 방식으로 남는다는 사실을 같은 카드에 적는다', () => {
+    const spec = find('ch7-locked-min-requirements')?.currentSpec ?? ''
+    for (const text of ['locked_min_*', 'Common 30잼', 'U11']) expect(spec, text).toContain(text)
+  })
+
+  it('포인트 14장 카드는 차감 경로 두 곳과 유저가 포인트를 쓰는 곳을 적는다', () => {
+    expect(find('ch14-non-negative-wallet')?.currentSpec).toContain('locked_item_open_points')
+    expect(find('ch14-non-negative-wallet')?.currentSpec).toContain('admin_deduct_points')
+    expect(find('ch14-ledger-audit')?.currentSpec).toContain('locked_unlock_cost')
+  })
+})

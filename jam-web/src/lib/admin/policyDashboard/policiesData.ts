@@ -668,14 +668,17 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch7-locked-min-requirements',
     chapter: 7,
     chapterTitle: '잠긴 아이템 배지',
-    title: '등급별 해금 필요 잼 최소값',
+    title: '잠긴 아이템 배지 여는 포인트',
     type: 'admin_link',
-    currentSpec: '기본값: Common 30잼 · Rare 60잼 · Epic 120잼 · Mystic 240잼',
+    currentSpec:
+      '열 때 포인트를 내고 한 번에 엶. 기본값: Common 50pt · Rare 100pt · Epic 200pt · Mystic 400pt (locked_points_*, 0 이상 정수, 0이면 차감 줄 없음). 값은 아이템 배지가 유저에게 배정될 때 개체(inventory_items.unlock_points_required)에 고정되고 이후 설정을 바꿔도 이미 배정된 개체는 그대로이며, 고정된 값이 없는 개체는 등급별 설정값을 씀. 챕터가 아직 없는 유저의 첫 잠긴 아이템 배지는 0pt로 고정됨. 잔액이 모자라면 아무것도 바꾸지 않고 거절함 (insufficient_points, 409). 포인트 원장에는 차감 줄(locked_unlock_cost)과 아이템 배지 획득 줄(badge_point_reward)이 따로 남음. 잼을 채워 여는 옛 방식의 등급별 최소값(locked_min_*, 기본 Common 30잼 · Rare 60잼 · Epic 120잼 · Mystic 240잼)은 같은 구역에 U11까지 남아 있음',
     dbTable: 'jam_policy',
-    dbColumn: 'locked_min_*',
-    userExperience: '잠긴 배지는 등급에 따라 정해진 잼을 채워 열 수 있어요.',
-    basisDoc: '운영 로직 7.4절',
-    ticketId: '20261018_0051',
+    dbColumn: 'locked_points_*',
+    codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
+    userExperience:
+      '잠긴 배지를 열 때 등급에 따라 정해진 포인트를 내요. 포인트가 모자라면 열리지 않고, 퀘스트 전에 처음 받은 잠긴 배지는 포인트 없이 열려요.',
+    basisDoc: '운영 로직 7.2절, 7.4절, 14.1절',
+    ticketId: '20261028_1737',
     adminLink: {
       href: '/admin/balance#locked',
     },
@@ -701,7 +704,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '잠김 해금 시 서비스 활동 잼 지급',
     type: 'admin_link',
     currentSpec:
-      '잠긴 배지 1개를 열면 서비스 활동 잼 locked_unlock 값(기본 5잼)을 지급하고 지급 직후 캡슐을 채움. 같은 개체는 한 번만 지급 (이벤트 키 locked_unlock:<인벤토리 개체 id>). 하루·주간 상한과 이용 정지 규칙은 «서비스 활동 잼» 항목을 따름. 챕터 점수는 더 이상 쌓지 않음',
+      '잠긴 배지 1개의 열기가 확정되면(여는 포인트를 낸 뒤, 퀘스트 전 첫 배지처럼 0pt여도 같음) 서비스 활동 잼 locked_unlock 값(기본 5잼)을 지급하고 지급 직후 캡슐을 채움. 같은 개체는 한 번만 지급 (이벤트 키 locked_unlock:<인벤토리 개체 id>). 하루·주간 상한과 이용 정지 규칙은 «서비스 활동 잼» 항목을 따름. 챕터 점수는 더 이상 쌓지 않음',
     dbTable: 'service_jam_rules',
     dbColumn: 'amount',
     codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
@@ -1162,7 +1165,8 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '포인트',
     title: '포인트 지갑 음수 잔액 방지 가드',
     type: 'code_constant',
-    currentSpec: '회수나 차감 시 잔액 부족이면 예외 발생 (포인트 음수 불가)',
+    currentSpec:
+      '회수나 차감 시 잔액 부족이면 예외 발생 (포인트 음수 불가). 차감하는 곳은 어드민 회수(admin_deduct_points)와 잠긴 아이템 배지 열기(locked_item_open_points)이고, 둘 다 지갑 행을 잠그고 잔액을 확인해 모자라면 아무것도 바꾸지 않고 거절함. 모든 경로를 막는 DB 제약(balance >= 0)은 출시 뒤 마이그레이션 266으로 걸림',
     codeLocation: 'jam-web/src/lib/points/wallet.ts',
     userExperience: '내 포인트 지갑이 마이너스 상태로 떨어지지 않아요.',
     basisDoc: '운영 로직 14.1절',
@@ -1174,7 +1178,8 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '포인트',
     title: '모든 포인트 지급·회수 원장 불변 기록',
     type: 'code_constant',
-    currentSpec: 'point_ledger에 사유와 액터, 타임스탬프 영구 보존',
+    currentSpec:
+      'point_ledger에 사유와 액터, 타임스탬프 영구 보존. 유저가 포인트를 쓰는 곳은 잠긴 아이템 배지 열기 하나이고, 연 개체마다 차감 줄(locked_unlock_cost, source_inventory_item_id로 개체 연결, 개체당 한 번)과 획득 줄(badge_point_reward)이 따로 남음',
     codeLocation: 'jam-web/src/lib/points/ledger.ts',
     userExperience: '포인트 변동 내역이 한 건도 유실 없이 투명하게 관리돼요.',
     basisDoc: '운영 로직 14.2절',
