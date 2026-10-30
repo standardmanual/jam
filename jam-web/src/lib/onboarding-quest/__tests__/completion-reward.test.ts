@@ -11,7 +11,7 @@
  * `type`·`is_hidden`·`condition_json`을 함께 읽는다. 점수 쪽이 실패해도 완료 보상(포인트·피드)은 그대로다. 거르는 규칙은 `lib/chapter/__tests__/badge-receive.test.ts`가 고정한다.
  *
  * 챕터 1 시작(티켓 20261019_1316)은 이 파일의 관심사가 아니라 가짜로 막는다(`@/lib/chapter/start`). 시작 호출의 분기·순서는 `completion-chapter-start.test.ts`가 고정한다.
- * 실제 3단계 읽기(티켓 20261021_1248)도 가짜로 막는다(`../real-steps`). 이 파일에서 `hasActivity: true`는 «실제 3단계가 모두 끝났다»는 뜻이다 —
+ * 실제 2단계 읽기(티켓 20261021_1248)도 가짜로 막는다(`../real-steps`). 이 파일에서 `hasActivity: true`는 «실제 2단계가 모두 끝났다»는 뜻이다 —
  * 읽기 자체는 `real-steps.test.ts`, 완료 판정의 두 조건은 `completion.test.ts`가 고정한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/onboarding-quest/__tests__/completion-reward.test.ts
@@ -20,7 +20,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const { awardPointsMock, recordFeedEventMock, awardBadgeReceiveScoreMock, badgeSelects, readRealStepsMock } = vi.hoisted(() => ({
-  /** 실제 3단계 읽기의 가짜. `makeFakeSupabase`가 `hasActivity`에 맞춰 값을 정한다 */
+  /** 실제 2단계 읽기의 가짜. `makeFakeSupabase`가 `hasActivity`에 맞춰 값을 정한다 */
   readRealStepsMock: vi.fn(),
   awardPointsMock: vi.fn(async () => null),
   recordFeedEventMock: vi.fn(async () => {}),
@@ -70,10 +70,10 @@ const ALL_STEPS_DONE = {
 }
 
 /** `user_onboarding_quests`(행 상태 가변)·`user_activity_badges`·`badges` 3개 테이블만 지원하는 최소 페이크 supabase.
- *  실제 3단계 읽기(`readRealSteps`)는 `hasActivity`에 맞춰 가짜 값을 돌려주도록 정한다. */
+ *  실제 2단계 읽기(`readRealSteps`)는 `hasActivity`에 맞춰 가짜 값을 돌려주도록 정한다. */
 function makeFakeSupabase(opts: {
   questRow: { step_progress: Record<string, string>; skipped_at: string | null; completed_at: string | null; reward_granted_at: string | null }
-  /** 실제 3단계(첫 동기화·캡슐 열기·잠긴 개체 열기)가 모두 끝났는가 */
+  /** 실제 2단계(첫 동기화·잠긴 개체 열기)가 모두 끝났는가 */
   hasActivity: boolean
   badgeInsertError?: { code: string; message: string }
   /** 지정하면 그 횟수만큼만 배지 insert가 실패하고 이후엔 성공한다(재시도 검증용). */
@@ -82,7 +82,7 @@ function makeFakeSupabase(opts: {
 }): SupabaseClient {
   const state = { ...opts.questRow }
   const insertCalls: unknown[] = []
-  readRealStepsMock.mockResolvedValue({ sync: opts.hasActivity, capsuleOpened: opts.hasActivity, lockedOpened: opts.hasActivity })
+  readRealStepsMock.mockResolvedValue({ sync: opts.hasActivity, lockedOpened: opts.hasActivity })
 
   const from = (table: string) => {
     if (table === 'user_onboarding_quests') {
@@ -192,7 +192,7 @@ describe('recordOnboardingQuestCompletion — 완료 보상 지급(T7b)', () => 
     )
   })
 
-  it('연출 7단계를 다 마쳐도 실제 3단계가 끝나지 않았으면 완료도 보상도 없다 (티켓 20261021_1248)', async () => {
+  it('연출 7단계를 다 마쳐도 실제 2단계가 끝나지 않았으면 완료도 보상도 없다 (티켓 20261021_1248)', async () => {
     const supabase = makeFakeSupabase({
       questRow: { step_progress: ALL_STEPS_DONE, skipped_at: null, completed_at: null, reward_granted_at: null },
       hasActivity: false,

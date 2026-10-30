@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
   await ensureDevLoginTribe(serviceClient, DEV_USER_ID)
 
   // 5) 이 계정은 온보딩을 거치지 않아 퀘스트 행(`user_onboarding_quests`)이 없다. 행이 없으면 퀘스트 완료 처리가 바로 끝나
-  //    로컬·staging 확인 계정이 실제 3단계를 마쳐도 챕터 1을 받지 못한다(티켓 20261021_1248).
+  //    로컬·staging 확인 계정이 실제 2단계를 마쳐도 챕터 1을 받지 못한다(티켓 20261021_1248).
   //    `/api/onboarding/complete`와 같은 형태로 행이 없을 때만 만든다(`ignoreDuplicates` — 있으면 건드리지 않는다).
   //    위의 환경 게이트(isStagingOrDevEnv) 안에서만 도달하고, 실패해도 로그인은 막지 않는다.
   if (ONBOARDING_QUEST_ENABLED) {

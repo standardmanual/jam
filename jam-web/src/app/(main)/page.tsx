@@ -68,11 +68,10 @@ export default async function HomePage() {
   const leftStatusPromise: Promise<TodayLeftStatus> = showsStravaSyncCta(stravaView)
     ? Promise.resolve({ kind: 'strava_not_connected', href: '/api/strava/auth' })
     : getTodayLeftStatus(userId)
-  // «JAM! 시작하기» 카드는 실제 3단계와 캡슐 상태(가득 참·빈칸·필요한 잼·가진 잼)를 읽어 그린다(티켓 20261021_1248 2회).
-  // 캡슐 상태는 위에서 이미 시작한 조회(capsulePromise)를 받는다 — 같은 값을 두 번 읽지 않고 홈 응답을 늦추지 않는다.
+  // «JAM! 시작하기» 카드는 실제 2단계를 읽어 그린다(티켓 20261021_1248 2회). 캡슐 열기는 단계가 아니라 캡슐 상태를 넘기지 않는다(티켓 20261028_1738).
+  // 캡슐 위젯용 조회(capsulePromise)는 그대로 위젯이 쓴다.
   const onboardingQuestPromise = getOnboardingQuestCard(userId, {
     stravaConnected: stravaView === 'connected' || stravaView === 'unknown',
-    capsule: capsulePromise,
   })
   const onboardingQuestGatePromise = getOnboardingQuestGate(userId, 'home')
 

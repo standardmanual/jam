@@ -43,16 +43,16 @@ describe('resolvePreviewGate', () => {
 })
 
 describe('resolvePreviewCard', () => {
-  // 미리보기는 DB를 읽지 않으므로 실제 3단계는 «아무것도 안 했다»이고 지금 할 차례는 늘 ① Strava 동기화다(티켓 20261021_1248)
+  // 미리보기는 DB를 읽지 않으므로 실제 2단계는 «아무것도 안 했다»이고 지금 할 차례는 늘 ① Strava 동기화다(티켓 20261021_1248)
   const realOf = (stravaConnected: boolean) =>
     resolveRealStepsView({
-      steps: { sync: false, capsuleOpened: false, lockedOpened: false },
+      steps: { sync: false, lockedOpened: false },
       stravaConnected,
-      capsule: null,
+      pointBalance: null,
       lockedTarget: null,
     })
 
-  it('단계 키면 in_progress 상태(done은 그 단계 이전에 마친 단계 수)와 아무것도 안 한 실제 3단계를 돌려준다', () => {
+  it('단계 키면 in_progress 상태(done은 그 단계 이전에 마친 단계 수)와 아무것도 안 한 실제 2단계를 돌려준다', () => {
     expect(resolvePreviewCard('sync', { stravaConnected: false })).toEqual({
       kind: 'in_progress',
       done: 0,

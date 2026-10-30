@@ -1,8 +1,9 @@
 /**
- * «JAM! 시작하기» 카드 문구 사전 (티켓 20261021_1248 2회, 운영 로직 2.2절, UX 라이팅 가이드 §1.3·§3)
+ * «JAM! 시작하기» 카드 문구 사전 (티켓 20261021_1248 2회 · 2단계·포인트 기준 20261028_1738 1회, 운영 로직 2.2절, UX 라이팅 가이드 §1.3·§3)
  *
  * 고정하는 것:
- * - 유저 화면 문구 사전 `d` 어디에도 «퀘스트»가 없다. 예외는 관리자 전용 미리보기 띠(`d.onboardingQuest.preview`)뿐이다.
+ * - 유저 화면 문구 사전 `d` 어디에도 «퀘스트»가 없다. 예외는 관리자 전용 미리보기 띠(`d.onboardingQuest.preview`)와, 사용자가 직접 정한 건너뛰기 확인 문장
+ *   (`d.onboardingQuest.skip.confirmBody`, 티켓 20261028_1738)뿐이다.
  * - 카드 문구(`chipLabel`·`cardLabel`·`progress`·`real`·`skip`·연출 단계 이름)에는 «연습»·«과제»·«가이드»·«튜토리얼»·«온보딩»이 없다.
  * - 카드 안 버튼 문구에는 «시작하기»가 없다(칩 이름 «JAM! 시작하기»·완료 배지 이름 「JAM!」과 겹치지 않게).
  * - 새로 쓴 문구(`real`)는 한 문장이면 마침표가 없고 두 문장 이상이면 마침표로 끝난다. 엠대시와 이모지가 없다.
@@ -40,9 +41,13 @@ const real: Entry[] = []
 collectStrings(d.onboardingQuest.real, 'd.onboardingQuest.real', real)
 
 describe('유저 화면 문구 사전 — «퀘스트»', () => {
-  it('«퀘스트»는 관리자 미리보기 띠에만 있다', () => {
+  it('«퀘스트»는 관리자 미리보기 띠와 사용자가 정한 건너뛰기 확인 문장에만 있다', () => {
     const found = all.filter((e) => e.text.includes('퀘스트')).map((e) => e.path)
-    expect(found.sort()).toEqual(['d.onboardingQuest.preview.doneLabel', 'd.onboardingQuest.preview.stepLabel'])
+    expect(found.sort()).toEqual([
+      'd.onboardingQuest.preview.doneLabel',
+      'd.onboardingQuest.preview.stepLabel',
+      'd.onboardingQuest.skip.confirmBody',
+    ])
   })
 })
 
@@ -51,7 +56,8 @@ describe('«JAM! 시작하기» 카드 문구', () => {
     expect(d.onboardingQuest.chipLabel).toBe('JAM! 시작하기')
     expect(d.onboardingQuest.progress.demo).toBe('미리 해보기 {done}/{total}')
     expect(d.onboardingQuest.progress.real).toBe('내 활동으로 {done}/{total}')
-    expect(d.onboardingQuest.real.steps).toEqual({ sync: 'Strava 동기화', capsule: '캡슐 열기', locked: '잠긴 아이템 배지 열기' })
+    expect(d.onboardingQuest.real.listLabel).toBe('내 활동으로 2단계')
+    expect(d.onboardingQuest.real.steps).toEqual({ sync: 'Strava 동기화', locked: '잠긴 아이템 배지 열기' })
     expect(d.onboardingQuest.skip.entryLabel).toBe('미리 해보기 건너뛰기')
   })
 
@@ -69,10 +75,7 @@ describe('«JAM! 시작하기» 카드 문구', () => {
       d.onboardingQuest.skip.keepGoingButton,
       d.onboardingQuest.skip.skipButton,
       d.onboardingQuest.real.sync.connectCta,
-      d.onboardingQuest.real.capsule.fillCta,
-      d.onboardingQuest.real.capsule.openCta,
       d.onboardingQuest.real.locked.cta,
-      d.capsule.sheet.inventoryLink,
       d.today.syncButton,
     ]
     for (const label of buttons) expect(label).not.toContain('시작하기')
@@ -96,18 +99,26 @@ describe('«JAM! 시작하기» 카드 문구', () => {
     }
   })
 
-  it('건너뛰기 확인 시트 본문은 «JAM! 배지»와 «100 포인트»를 말하고 «퀘스트 클리어»·«100포인트»는 없다', () => {
-    const body = d.onboardingQuest.skip.confirmBody
-    expect(body).toContain('JAM! 배지')
-    expect(body).toContain('100 포인트')
-    expect(body).not.toContain('퀘스트 클리어')
-    expect(body).not.toContain('100포인트')
+  it('건너뛰기 확인 시트 본문은 사용자가 정한 한 문장이다', () => {
+    expect(d.onboardingQuest.skip.confirmBody).toBe('퀘스트를 건너뛸까요?')
   })
 
-  it('잼 안내는 «잼 {n}만큼»처럼 받침이 갈리는 조사를 피하고 열기를 부추기지 않는다', () => {
-    const shortage = d.onboardingQuest.real.shortage.capsule
-    expect(shortage).toBe('잼이 모자라요. 가진 잼은 {have}만큼, 필요한 잼은 {need}만큼이에요. 새 활동을 동기화하면 잼을 더 받아요.')
+  it('② 문구는 사용자가 확정한 그대로다: 개체를 알면 같은 문장, 모르면 «열어 보세요», 버튼은 «인벤토리 가기», 모자람은 «{need} 포인트가 필요해요»', () => {
+    expect(d.onboardingQuest.real.locked.description).toBe('잠긴 배지를 열 수 있어요')
+    expect(d.onboardingQuest.real.locked.descriptionGeneral).toBe('잠긴 배지를 열어 보세요')
+    expect(d.onboardingQuest.real.locked.cta).toBe('인벤토리 가기')
+    expect(d.onboardingQuest.real.shortage).toBe('{need} 포인트가 필요해요')
+  })
+
+  it('옛 캡슐·잼 안내 문구가 사전에 남아 있지 않고 열기를 부추기지 않는다', () => {
+    expect(d.onboardingQuest.real).not.toHaveProperty('capsule')
+    // ① 설명의 «잼과 배지»는 판정대로 남는다. 잼 안내가 사라졌는지는 ②와 모자람 문구로 본다
+    for (const entry of real.filter((e) => e.path.includes('.locked.') || e.path.includes('.shortage'))) {
+      expect(entry.text, entry.path).not.toContain('잼')
+    }
     for (const entry of real) {
+      expect(entry.text, entry.path).not.toContain('열러 가기')
+      expect(entry.text, entry.path).not.toContain('포인트 없이')
       expect(entry.text, entry.path).not.toContain('한 번만 더')
       expect(entry.text, entry.path).not.toContain('곧 좋은 게')
     }

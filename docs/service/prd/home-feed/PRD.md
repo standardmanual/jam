@@ -47,7 +47,7 @@ code:
 | 1 | 상단 바 | 공통 `TopNav`(로고) |
 | 2 | 이용 정지 배너 | 이용 정지 중인 유저에게만(전체 폭). 정지가 아니거나 조회가 실패하면 DOM에 없다. 아래 설명 |
 | 3 | 인사말 + 검색 | 「{이름}」 인사 한 줄과 검색 아이콘(→ `/search`) |
-| 4 | «JAM! 시작하기» 카드 | `user_onboarding_quests` 행이 있고 `completed_at`이 비어 있으며, «연출 끝 또는 건너뜀»과 «실제 3단계 완료»가 둘 다 되지는 않은 유저에게만. 아래 표 |
+| 4 | «JAM! 시작하기» 카드 | `user_onboarding_quests` 행이 있고 `completed_at`이 비어 있으며, «연출 끝 또는 건너뜀»과 «실제 2단계 완료»가 둘 다 되지는 않은 유저에게만. 아래 표 |
 | 5 | Strava 동기화 끊김 카드 | 토큰 갱신 실패·Strava 철회로 끊긴 유저에게만(전체 폭). 정상 연결·미연동·유저가 직접 끊은 경우·조회 실패에는 DOM에 없다. 아래 표 |
 | 6 | 오늘의 현황 스트립 | 2칸. 왼쪽 「내 진행도」, 오른쪽 「친구 활동」(아래 표) |
 | 7 | 캡슐 | 가로 알약 한 개. 누르면 시트가 떠서 그 안에서 채우기·열기를 한다. 아래 설명 |
@@ -60,45 +60,44 @@ code:
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/SuspensionBanner.tsx`, `jam-web/src/lib/suspension/home-banner.ts`, `jam-web/src/lib/strava/sync-flow.ts`(`suspended`), 문구 `jam-web/src/lib/i18n/ko.ts`(`suspension`)
 
-**«JAM! 시작하기» 카드**(티켓 20260927_2133, 상위 20260927_2123. 실제 3단계·카드 개편 20261021_1248 2회, 운영 로직 2.2절)는 신규 유저가 온보딩 2단계를
+**«JAM! 시작하기» 카드**(티켓 20260927_2133, 상위 20260927_2123. 실제 단계·카드 개편 20261021_1248 2회, 실제 2단계로 축소 20261028_1738 1회, 운영 로직 2.2절)는 신규 유저가 온보딩 2단계를
 마친 뒤 두 가지를 한 카드에서 보여 준다. 하나는 서비스 기능을 순서대로 직접 해 보는 연출 7단계(구역 라벨 «미리 해보기»)이고, 다른 하나는 유저가 자기 활동으로 하는
-실제 3단계(구역 라벨 «내 활동으로»)다. 유저 화면에는 이 과제를 가리키는 운영 용어(「퀘스트」)를 쓰지 않는다. 칩은 «JAM! 시작하기»다(사용자 결정, 2026-10-21).
-조건이 안 맞으면(스위치 꺼짐·행 없음·조회 실패·`completed_at` 있음) 자리 자체가 없고, **«연출 끝 또는 건너뜀»과 «실제 3단계 완료»가 둘 다 되면 카드가 사라진다.**
-완료 상태 구역은 없다 — 챕터 1은 실제 3단계를 마친 순간 시작하고 알림 없이 소식 한 건(`chapter_up`)으로만 알린다(사용자 결정 4).
+실제 2단계(구역 라벨 «내 활동으로»)다. 유저 화면에는 이 과제를 가리키는 운영 용어(「퀘스트」)를 쓰지 않는다. 칩은 «JAM! 시작하기»다(사용자 결정, 2026-10-21).
+조건이 안 맞으면(스위치 꺼짐·행 없음·조회 실패·`completed_at` 있음) 자리 자체가 없고, **«연출 끝 또는 건너뜀»과 «실제 2단계 완료»가 둘 다 되면 카드가 사라진다.**
+완료 상태 구역은 없다 — 챕터 1은 실제 2단계를 마친 순간 시작하고 알림 없이 소식 한 건(`chapter_up`)으로만 알린다(사용자 결정 4).
 
-**실제 3단계**는 순서와 무관하게 각자 독립이다(사용자 결정 2): ① Strava 동기화(걸러지지 않은 활동이 1건 이상), ② 캡슐 열기(열기 기록 1건 이상),
-③ 잠긴 아이템 배지 열기(`unlocked` 이력 1건 이상, 아무 잠긴 개체나 열어도 된다). 읽기는 `lib/onboarding-quest/real-steps.ts`(`readRealSteps`)다.
-**지금 할 차례**는 아직 안 한 첫 단계이고, 카드가 그리는 값(행 상태·잼 모자람·인벤토리 빈칸 모자람)은 순수 함수 `real-view.ts`가 정한다.
+**실제 2단계**는 순서와 무관하게 각자 독립이다(사용자 결정 2): ① Strava 동기화(걸러지지 않은 활동이 1건 이상),
+② 잠긴 아이템 배지 열기(`unlocked` 이력 1건 이상, 아무 잠긴 개체나 열어도 된다). 캡슐 열기는 단계가 아니다(첫 동기화가 첫 캡슐을 자동으로 채워 열어 준다).
+읽기는 `lib/onboarding-quest/real-steps.ts`(`readRealSteps`)다.
+**지금 할 차례**는 아직 안 한 첫 단계이고, 카드가 그리는 값(행 상태·포인트 모자람)은 순수 함수 `real-view.ts`가 정한다.
 실제 단계 기록을 읽지 못하면 틀린 체크를 보이지 않으려고 실제 목록을 그리지 않는다(연출 구역은 그대로 둔다, 연출이 이미 끝났다면 카드를 그리지 않는다).
 
 카드는 한 장(`Card`)이고 `role="group"` `aria-label="JAM! 시작하기"`다. 한 카드의 primary 버튼은 늘 하나이고 모두 `size="sm"`(44px)다.
-- **연출 중**: 첫 줄은 칩과 «미리 해보기 n/7», 아래에 진행 바 7칸, 연출 다음 단계의 제목·설명, 연출 CTA(펄스 유지), 구분선, «내 활동으로 3단계» 체크 목록(`<ol>`, 누를 수 없음,
-  행마다 체크 또는 빈 원)이다. 카드 밖에 텍스트 버튼 «미리 해보기 건너뛰기»가 있다. 연출 중에도 실제 진행이 체크된다. 연출이 남은 채 실제 3단계만 끝났으면 카드가 남고 세 행이 모두 체크다.
-- **연출 끝 또는 건너뜀**: 실제 구역이 위로 올라온다. 첫 줄은 칩과 «내 활동으로 n/3», 진행 바 3칸, 체크 목록(지금 할 차례 행은 굵은 제목과 설명, 남은 행은 한 줄 muted),
+- **연출 중**: 첫 줄은 칩과 «미리 해보기 n/7», 아래에 진행 바 7칸, 연출 다음 단계의 제목·설명, 연출 CTA(펄스 유지), 구분선, «내 활동으로 2단계» 체크 목록(`<ol>`, 누를 수 없음,
+  행마다 체크 또는 빈 원)이다. 카드 밖에 텍스트 버튼 «미리 해보기 건너뛰기»가 있다. 연출 중에도 실제 진행이 체크된다. 연출이 남은 채 실제 2단계만 끝났으면 카드가 남고 두 행이 모두 체크다.
+- **연출 끝 또는 건너뜀**: 실제 구역이 위로 올라온다. 첫 줄은 칩과 «내 활동으로 n/2», 진행 바 2칸, 체크 목록(지금 할 차례 행은 굵은 제목과 설명, 남은 행은 한 줄 muted),
   필요하면 `InlineNotice`, primary CTA 하나(펄스 없음)다. 건너뛴 유저는 연출 구역도 «건너뛰었어요» 표시도 건너뛰기 버튼도 없이 처음부터 이 모양이다.
 - 칩과 분수 라벨은 한 줄이고, 글자를 크게 키운 기기에서는 분수 라벨이 다음 줄로 내려가 가로로 넘치지 않는다(높이를 고정하지 않는다).
 - 체크 아이콘은 `--link` 선이고 아직 안 한 원의 테두리는 `--muted`다. 목록 행마다 «마쳤어요»·«지금 할 차례예요»·«아직이에요»를 스크린리더 전용 글자로 붙이고 분수는 «미리 해보기 7단계 중 3단계»처럼 읽힌다.
 
 | 상태 | 조건 | 표시·이동 |
 |---|---|---|
-| 연출 중 · sync 차례 | `skipped_at` 없음, 다음 단계가 `sync` | 연출 구역 + 실제 3단계 목록. 연출 CTA는 [동기화](상단 바 연출 동기화 버튼과 같은 컴포넌트 `OnboardingSyncButton`: 스피너 → 연출 배지 1장 → `sync` 단계 기록)이고 펄스 강조가 있다. 상단 바(`TopNav`) 중앙 슬롯은 Strava 연동 여부와 무관하게 연출 동기화 버튼으로 고정된다 |
-| 연출 중 · 그 외 차례 | `skipped_at` 없음, 다음 단계가 `bag`\|`pickup`\|`drop`\|`mix_fail`\|`mix_success`\|`browse` | 연출 구역 + 실제 3단계 목록. 연출 CTA는 [다음 단계] → 그 단계가 속한 실제 화면(`/inventory`·`/drops`·`/combine`·`/missions`, `STEP_SCREEN_MAP` 기준), 펄스 강조 |
+| 연출 중 · sync 차례 | `skipped_at` 없음, 다음 단계가 `sync` | 연출 구역 + 실제 2단계 목록. 연출 CTA는 [동기화](상단 바 연출 동기화 버튼과 같은 컴포넌트 `OnboardingSyncButton`: 스피너 → 연출 배지 1장 → `sync` 단계 기록)이고 펄스 강조가 있다. 상단 바(`TopNav`) 중앙 슬롯은 Strava 연동 여부와 무관하게 연출 동기화 버튼으로 고정된다 |
+| 연출 중 · 그 외 차례 | `skipped_at` 없음, 다음 단계가 `bag`\|`pickup`\|`drop`\|`mix_fail`\|`mix_success`\|`browse` | 연출 구역 + 실제 2단계 목록. 연출 CTA는 [다음 단계] → 그 단계가 속한 실제 화면(`/inventory`·`/drops`·`/combine`·`/missions`, `STEP_SCREEN_MAP` 기준), 펄스 강조 |
 | 실제 ① 연동 전 | 연출 끝 또는 건너뜀, 첫 동기화 전, Strava 미연동 | 설명 «가장 최근 활동 하나가 잼과 배지가 되어 돌아와요», [Strava 동기화하기] → `/api/strava/auth` |
 | 실제 ① 연동됨 | 첫 동기화 전, Strava 연동됨(활동 0건) | 설명 «Strava에 활동이 올라오면 동기화해서 잼과 배지를 획득해요», [동기화](실제 `SyncButton` — `POST /api/strava/sync`) |
-| 실제 ② 채우는 중 | 첫 동기화 뒤, 캡슐을 아직 안 열었고 가득 차지 않음 | 설명에 캡슐에 더 채울 잼(`{n}`, 가진 잼이 아니다), [캡슐 채우기] → 캡슐 시트를 바로 연다(`capsule-sheet-signal`) |
-| 실제 ② 가득 참 | 캡슐이 가득 찼고 인벤토리 빈칸이 충분함 | 설명 «캡슐이 가득 찼어요. 열어서 아이템 배지를 획득해요.», [캡슐 열기] → 캡슐 시트를 연다 |
-| 실제 ② 빈칸 모자람 | 캡슐이 가득 찼는데 인벤토리 빈칸이 모자람 | `InlineNotice`(캡슐 시트와 같은 어휘: 빈칸이 모자라요·지금 빈칸 n개 열려면 m개·채운 잼은 그대로), [인벤토리 보기] → `/inventory` |
-| 실제 ② 캡슐 상태를 못 읽음 | 캡슐 조회 실패 | 일반 설명과 [캡슐 열기]만 보이고 잼 안내는 없다 |
-| 실제 ③ 열러 가기 | 첫 동기화와 캡슐 열기를 마치고 잠긴 열기만 남음 | 설명에 잠긴 개체에 더 채울 잼, [열러 가기] → `/inventory/{itemId}`(깊은 링크). 연출 중 `/inventory` 목록은 연출 인벤토리라서 목록이 아니라 개체 하나로 보낸다. 개체를 못 읽었으면 일반 설명과 `/inventory` |
-| 잼 모자람 | ②에서 가진 잼 < 더 채울 잼, 또는 ③에서 가진 잼 < 그 개체에 더 채울 잼 | `InlineNotice`(경고색·아이콘 없음) 한 덩어리가 나오고 primary 버튼이 [동기화]로 바뀐다. 가진 잼이 필요한 잼과 같으면(여유 0) 미리 경고하지 않는다. Strava가 끊겨 있으면 [Strava 동기화하기] |
+| 실제 ② 개체를 앎 | 첫 동기화를 마치고 잠긴 열기만 남음, 열러 갈 개체를 읽음 | 설명 «잠긴 배지를 열 수 있어요»(필요 포인트가 0이든 N이든 같은 문장, 포인트 숫자는 카드에 없다), [인벤토리 가기] → `/inventory/{itemId}`(깊은 링크). 연출 중 `/inventory` 목록은 연출 인벤토리라서 목록이 아니라 개체 하나로 보낸다 |
+| 실제 ② 개체를 모름 | 개체 읽기 실패, 잠긴 개체 없음, 또는 필요 포인트가 빈 개체뿐 | 설명 «잠긴 배지를 열어 보세요», [인벤토리 가기] → `/inventory` |
+| 포인트 모자람 | ②에서 열러 갈 개체의 필요 포인트가 0보다 크고 가진 포인트 < 필요 포인트 | 위 ② 설명에 `InlineNotice`(경고색·아이콘 없음) «{need} 포인트가 필요해요»가 더해진다. primary 버튼은 그대로 [인벤토리 가기]다. 가진 포인트가 필요 포인트와 같으면(여유 0) 미리 경고하지 않고, 가진 포인트를 읽지 못해도 모자람을 단정하지 않는다 |
 
-열러 갈 잠긴 개체(`locked-target.ts`)는 **내가 지금 가진 잠긴 개체 가운데 열기까지 남은 잼이 가장 적은 것**이고 동점이면 먼저 얻은 것이다.
-캡슐에서 나온 개체인지 동기화로 받은 개체인지는 DB에 구분하는 값이 없어(둘 다 `obtained_by = 'drop'`) 가리지 않는다. 사용자 결정 2에 따라 아무 잠긴 개체를 열어도 ③이 체크된다.
+열러 갈 잠긴 개체(`locked-target.ts`)는 **내가 지금 가진 잠긴 개체 가운데 열기까지 드는 포인트(`inventory_items.unlock_points_required`)가 가장 적은 것**이고 동점이면 먼저 얻은 것(`obtained_at`), 그래도 같으면 id 순서다.
+DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 뒤로 보낸다. 가진 포인트(`point_wallets`, 행이 없으면 0)는 필요 포인트가 0보다 클 때만 읽는다.
+캡슐에서 나온 개체인지 동기화로 받은 개체인지는 DB에 구분하는 값이 없어(둘 다 `obtained_by = 'drop'`) 가리지 않는다. 사용자 결정 2에 따라 아무 잠긴 개체를 열어도 ②가 체크된다.
 
 **건너뛰기**(티켓 20260927_2131, 상위 20260927_2123 T8): 연출 중 카드(sync 포함) 아래에 좌측 정렬 텍스트 진입점 「미리 해보기 건너뛰기」가 있다. 누르면 시트(`detent="compact"`)로
-[계속하기]/[건너뛰기]를 확인받는다. 본문은 «미리 해보기를 건너뛰면 JAM! 배지와 100 포인트를 받을 수 없어요. 챕터 1은 내 활동으로 3단계를 마치면 시작해요. 이대로 건너뛸까요?»다.
+[계속하기]/[건너뛰기]를 확인받는다. 본문은 «퀘스트를 건너뛸까요?» 한 문장이다(사용자 결정, 티켓 20261028_1738).
 [건너뛰기] → `POST /api/onboarding-quest/skip`이 `skipped_at`을 기록하고(이미 7단계를 마쳤으면 서버가 거부) 완료 판정을 다시 확인한다 → 카드가 실제 구역으로 전환된다.
-건너뛰는 것은 연출 7단계뿐이다. 실제 3단계를 마치면 건너뛴 유저도 챕터 1을 받는다. 실제 구역 카드에는 진입점이 없다.
+건너뛰는 것은 연출 7단계뿐이다. 실제 2단계를 마치면 건너뛴 유저도 챕터 1을 받는다. 실제 구역 카드에는 진입점이 없다.
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipSheet.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/SyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/real-view.ts`, `jam-web/src/lib/onboarding-quest/real-steps.ts`, `jam-web/src/lib/onboarding-quest/locked-target.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 펄스 `jam-web/src/components/transitions.css`(`.jam-quest-pulse`), `jam-web/design-system/tokens/motion.css`(`--duration-quest-pulse`·`--ease-quest-pulse`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
@@ -155,8 +154,8 @@ code:
 - 서버 조회가 실패하면 투데이는 위젯을 그대로 그리고(초기값 없음), 위젯이 클라이언트에서 `GET /api/capsule`로 다시 가져온다.
 - 시트 본문 맨 아래(가진 잼 다음 줄)에 「확률 안내」 링크가 있다(티켓 20261021_1250, 운영 로직 18.3절). 채우는 중·열 수 있음·빈칸 모자람 세 상태에서 같은 자리에 보이고, 채우기 단계와 푸터, 열기 결과 오버레이에는 없다.
   숫자·퍼센트·아이콘 없이 이름만 쓰는 조용한 밑줄 링크이며, 누르면 시트를 닫고 `/probability`로 간다([확률 안내](../probability/PRD.md)).
-- 캡슐 본체 터치 말고도 «JAM! 시작하기» 카드의 «캡슐 채우기»·«캡슐 열기» 버튼이 시트를 연다. 카드는 브라우저 이벤트 하나(`capsule-sheet-signal`)로 «열어 달라»고만 알리고, 위젯은 캡슐을 누른 것과 같은 경로로 연다(조회에 실패한 상태면 다시 시도한다, 티켓 20261021_1248).
-- 채우기가 끝나거나 열기 결과를 닫으면 위젯이 `router.refresh()`로 서버 화면을 새로 읽는다. 같은 페이지의 «JAM! 시작하기» 카드가 캡슐 상태를 서버 값으로 읽기 때문이다. 열기 결과가 떠 있는 동안에는 새로 읽지 않는다.
+- «JAM! 시작하기» 카드에는 캡슐 버튼이 없다(티켓 20261028_1738). 캡슐 시트는 캡슐 본체를 눌러 연다. 시트를 여는 브라우저 이벤트(`capsule-sheet-signal`)는 위젯이 받는 구조로 남아 있다.
+- 채우기가 끝나거나 열기 결과를 닫으면 위젯이 `router.refresh()`로 서버 화면을 새로 읽는다. 열기 결과가 떠 있는 동안에는 새로 읽지 않는다. 카드는 캡슐 상태를 받지 않는다.
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsulePill`·`RadialCapsule`·`CapsuleWidget`·`CapsuleSheet`), `jam-web/src/components/jam/JamFillPanel.tsx`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-view.ts`·`capsule-sheet-signal.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
 

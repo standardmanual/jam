@@ -1,7 +1,7 @@
 /**
  * `shouldRecordQuestCompletion`·`shouldGrantQuestReward` 단위 테스트
  * (티켓 20260927_2129 T6, 20260927_2130 T7b, 상위 20260927_2123, 개편 20261021_1248).
- * DB에 닿지 않는 순수 함수만 검증한다. 완료 기록은 «연출 7단계를 마쳤거나 건너뜀 AND 실제 3단계 완료» 두 조건이 모두 될 때다.
+ * DB에 닿지 않는 순수 함수만 검증한다. 완료 기록은 «연출 7단계를 마쳤거나 건너뜀 AND 실제 2단계 완료» 두 조건이 모두 될 때다.
  * 지급 부수효과(DB 왕복)는 `completion-reward.test.ts`, 챕터 1 시작과 순서는 `completion-chapter-start.test.ts`에서 다룬다.
  */
 import { describe, it, expect } from 'vitest'
@@ -30,7 +30,7 @@ describe('shouldRecordQuestCompletion', () => {
     expect(shouldRecordQuestCompletion(null, true)).toBe(false)
   })
 
-  it('연출 7단계를 다 마쳤고 실제 3단계도 끝났으면 true', () => {
+  it('연출 7단계를 다 마쳤고 실제 2단계도 끝났으면 true', () => {
     const row = { step_progress: allStepsDone, skipped_at: null, completed_at: null }
     expect(shouldRecordQuestCompletion(row, true)).toBe(true)
   })
@@ -44,12 +44,12 @@ describe('shouldRecordQuestCompletion', () => {
     expect(shouldRecordQuestCompletion(row, true)).toBe(false)
   })
 
-  it('연출 도중(7단계 미완료·건너뛰지 않음)이면 실제 3단계를 먼저 마쳤어도 false — 완료는 연출이 끝나야 기록한다', () => {
+  it('연출 도중(7단계 미완료·건너뛰지 않음)이면 실제 2단계를 먼저 마쳤어도 false — 완료는 연출이 끝나야 기록한다', () => {
     const row = { step_progress: midProgress, skipped_at: null, completed_at: null }
     expect(shouldRecordQuestCompletion(row, true)).toBe(false)
   })
 
-  it('건너뛴 유저는 연출 7단계가 미완료여도 실제 3단계가 끝났으면 true (사용자 결정 1)', () => {
+  it('건너뛴 유저는 연출 7단계가 미완료여도 실제 2단계가 끝났으면 true (사용자 결정 1)', () => {
     const row = {
       step_progress: midProgress,
       skipped_at: '2026-09-28T00:00:00Z',
@@ -58,12 +58,12 @@ describe('shouldRecordQuestCompletion', () => {
     expect(shouldRecordQuestCompletion(row, true)).toBe(true)
   })
 
-  it('실제 3단계가 끝나지 않았으면 연출 7단계를 다 마쳤어도 false', () => {
+  it('실제 2단계가 끝나지 않았으면 연출 7단계를 다 마쳤어도 false', () => {
     const row = { step_progress: allStepsDone, skipped_at: null, completed_at: null }
     expect(shouldRecordQuestCompletion(row, false)).toBe(false)
   })
 
-  it('실제 3단계가 끝나지 않았으면 건너뛴 유저도 false', () => {
+  it('실제 2단계가 끝나지 않았으면 건너뛴 유저도 false', () => {
     const row = { step_progress: midProgress, skipped_at: '2026-09-28T00:00:00Z', completed_at: null }
     expect(shouldRecordQuestCompletion(row, false)).toBe(false)
   })
