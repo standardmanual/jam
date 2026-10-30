@@ -467,7 +467,9 @@ describe('BalanceSectionBody — 챕터 구역 (7-2 2회)', () => {
   it('안내에 «이미 오른 유저는 내려가지 않고 낮춘 기준은 다음 점수부터»가 있고, 걷은 점수 규칙 문구는 없다', () => {
     const out = renderToStaticMarkup(<ChapterNotice />).replace(/<!-- -->/g, '')
     expect(CHAPTER_RISEN_NOTICE).toContain('이미 오른 유저의 챕터는 내려가지 않아요')
-    expect(CHAPTER_RISEN_NOTICE).toContain('다음에 점수를 쌓을 때부터 적용돼요')
+    expect(CHAPTER_RISEN_NOTICE).toContain('캡슐이 100%에 닿은 횟수로 오르고')
+    expect(CHAPTER_RISEN_NOTICE).toContain('«다음 챕터까지» 게이지에만 쓰여요')
+    expect(CHAPTER_RISEN_NOTICE).not.toContain('점수를 쌓')
     expect(out).toContain(CHAPTER_RISEN_NOTICE)
     expect(out).not.toContain('U11')
     expect(out).not.toContain('포인트')
@@ -480,6 +482,9 @@ describe('BalanceSectionBody — 챕터 구역 (7-2 2회)', () => {
     expect(description).toContain('챕터 1은 퀘스트를 마치면 얻어서 필요한 점수가 0')
     expect(description).toContain('늘리거나 줄이지 않고 값만 바꾸며')
     expect(description).toContain('앞 챕터보다 커야 해요')
+    expect(description).toContain('캡슐이 100%에 닿은 횟수로 올라요')
+    expect(description).toContain('«다음 챕터까지» 게이지에만 쓰이는')
+    expect(description).not.toContain('점수를 쌓')
     expect(description).not.toContain('주간 상한')
   })
 
