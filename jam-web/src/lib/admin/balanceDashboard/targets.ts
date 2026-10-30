@@ -30,7 +30,7 @@ export const MONTH_DAYS = 30
 
 /** 지표 1: 완결 주 몇 개를 보나 */
 export const CAPSULE_WINDOW_WEEKS = 4
-/** 지표 1: 챕터 번호 범위(밸런스 설정 캡슐 구역의 `chapter:1`~`chapter:10`) */
+/** 지표 1: 챕터 번호 범위(밸런스 설정 캡슐 구역의 채울 양 `fill_v2:1`~`fill_v2:10`과 100% 횟수 `advance:1`~`advance:9`) */
 export const CAPSULE_CHAPTER_NUMBERS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 /** 지표 2: 챕터 1에 오른 뒤 며칠 안에 해당 챕터에 올랐나 */
@@ -125,13 +125,36 @@ const RARITY_PARTS: readonly MetricPartSpec[] = [
 ]
 
 /**
+ * 캡슐 열기 속도와 챕터 도달 속도를 움직이는 캡슐 구역의 칸(운영 로직 5.4절, 12.2절).
+ * 채울 양 `fill_v2:1~10`(`fill_amount_v2`)과 100% 횟수 `advance:1~9`(`advance_count`)다. 챕터 10은 다음 챕터가 없어 `advance_count`가 NULL이라 칸이 없다.
+ * 챕터는 캡슐이 100%에 닿은 횟수로만 오른다(점수로 오르지 않는다).
+ */
+const CAPSULE_SPEED_FIELD_KEYS: readonly string[] = [
+  ...CAPSULE_CHAPTER_NUMBERS.map((chapterNo) => `fill_v2:${chapterNo}`),
+  ...CAPSULE_CHAPTER_NUMBERS.filter((chapterNo) => chapterNo <= 9).map((chapterNo) => `advance:${chapterNo}`),
+]
+
+/**
+ * 서비스 활동 잼 구역의 칸. 서비스 활동 잼은 받는 즉시 캡슐을 채우므로(운영 로직 4.2절) 캡슐이 100%에 닿는 속도, 곧 챕터 도달 속도를 움직인다.
+ * 종류별 잼(`rule:<종류>:amount`)과 하루·주간 상한이다.
+ */
+const SERVICE_JAM_FIELD_KEYS: readonly string[] = [
+  ...['locked_unlock', 'badge_earned', 'combine_success', 'mission_complete', 'collection_complete', 'drop', 'pickup'].map(
+    (kind) => `rule:${kind}:amount`
+  ),
+  'service_jam_daily_cap',
+  'service_jam_weekly_cap',
+]
+
+/**
  * 이동 칸. 구역 키와 칸 키는 밸런스 설정 구역 연결의 정의와 같다(시험이 `BALANCE_SECTIONS`와 대조한다).
  * 월 아이템 배지(지표 3)는 동기화로 받는 개수와 캡슐로 받는 개수의 합이라 두 구역을 모두 가리킨다.
  */
 const ADJUST: Record<BalanceMetricKey, readonly AdjustTarget[]> = {
-  capsule_open: [{ sectionId: 'capsule', fieldKeys: CAPSULE_CHAPTER_NUMBERS.map((chapterNo) => `chapter:${chapterNo}`) }],
+  capsule_open: [{ sectionId: 'capsule', fieldKeys: CAPSULE_SPEED_FIELD_KEYS }],
   chapter_reach: [
-    { sectionId: 'chapter', fieldKeys: [2, 3, 4, 5, 6, 7, 8, 9, 10].map((chapterNo) => `required:${chapterNo}`) },
+    { sectionId: 'capsule', fieldKeys: CAPSULE_SPEED_FIELD_KEYS },
+    { sectionId: 'servicejam', fieldKeys: SERVICE_JAM_FIELD_KEYS },
   ],
   monthly_items: [
     { sectionId: 'sync', fieldKeys: ['sync_item_guaranteed'] },

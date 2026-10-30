@@ -216,12 +216,13 @@ describe('BalanceDashboardView — 바로 조정 링크', () => {
     }
   })
 
-  it('지표마다 이동 칸 정의와 같은 구역으로 간다. 월 아이템 배지만 동기화와 캡슐 두 구역이다', () => {
+  it('지표마다 이동 칸 정의와 같은 구역으로 간다. 월 아이템 배지는 동기화와 캡슐, 챕터 도달 속도는 캡슐과 서비스 활동 잼 두 구역이다', () => {
     for (const key of BALANCE_METRIC_KEYS) {
       expect(hrefsOf(key), key).toEqual(METRIC_SPECS[key].adjust.map((target) => `/admin/balance#${target.sectionId}`))
     }
     expect(hrefsOf('monthly_items')).toEqual(['/admin/balance#sync', '/admin/balance#capsule'])
-    for (const key of BALANCE_METRIC_KEYS.filter((other) => other !== 'monthly_items')) {
+    expect(hrefsOf('chapter_reach')).toEqual(['/admin/balance#capsule', '/admin/balance#servicejam'])
+    for (const key of BALANCE_METRIC_KEYS.filter((other) => other !== 'monthly_items' && other !== 'chapter_reach')) {
       expect(hrefsOf(key)).toHaveLength(1)
     }
   })
