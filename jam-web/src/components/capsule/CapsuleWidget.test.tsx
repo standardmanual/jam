@@ -38,6 +38,11 @@ const status = (over: Partial<CapsuleStatus> = {}): CapsuleStatus => ({
   balance: 777,
   openable: false,
   notOpenableReason: 'not_full',
+  pendingCount: 0,
+  jamBlocked: false,
+  alertStage: 0,
+  claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+  notice: 'none',
   ...over,
 })
 
