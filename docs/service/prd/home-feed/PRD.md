@@ -150,7 +150,7 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 - 안내 문구는 서버가 정한 `notice` 값으로 고른다. 화면은 개수나 단계로 다시 따지지 않는다.
 - 「받기」는 `POST /api/capsule/claim`을 부르고, 받는 동안 「받는 중」으로 비활성이다. 받은 뒤 상태는 응답으로 계산하지 않고 `GET /api/capsule`을 다시 불러 갱신한다. 받은 배지는 획득 연출 오버레이에 「아이템 배지 {n}개를 받았어요」와 함께 보인다. 거절·받을 것 없음은 서버가 준 문구의 토스트다.
 - 보지 않은 결과(`capsule_unseen_results`)는 이 위젯이 읽지 않는다.
-- 채우기·열기·바텀시트는 화면에서 없어졌다(옛 채우기·열기 API는 정리 티켓까지 남는다). 확률 안내 링크는 게이지 주변에 두지 않고 푸터의 「확률 안내」를 쓴다.
+- 채우기·열기·바텀시트는 화면에서 없어졌다(옛 채우기·열기 API는 정리 티켓까지 남는다). 시트를 여는 브라우저 이벤트(`capsule-sheet-signal`)와 옛 방사형 알약(`RadialCapsule`·`CapsulePill`)도 지웠다. 확률 안내 링크는 게이지 주변에 두지 않고 푸터의 「확률 안내」를 쓴다.
 - 서버 조회가 실패하면 투데이는 위젯을 그대로 그리고(초기값 없음), 위젯이 클라이언트에서 `GET /api/capsule`로 다시 가져온다.
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsuleGauge`·`CapsuleWidget`), `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-gauge.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)

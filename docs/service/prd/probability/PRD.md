@@ -1,6 +1,6 @@
 ---
 type: prd
-description: "확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다."
+description: "확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·믹스 화면), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다."
 tags: [등급, 드랍, Strava동기화]
 related:
   - "20261021_1250"
@@ -14,7 +14,6 @@ code:
   - "jam-web/src/lib/combine/tierUpOdds.ts"
   - "jam-web/src/app/(legal)/probability/page.tsx"
   - "jam-web/src/components/ui/Footer.tsx"
-  - "jam-web/src/components/capsule/CapsuleSheet.tsx"
   - "jam-web/src/proxy.ts"
 ---
 
@@ -105,10 +104,9 @@ code:
 |---|---|---|
 | 푸터 | 링크 열 맨 아래(위치기반서비스 이용약관 다음) | 「확률 안내」 |
 | 믹스 화면의 등급 올리기 | 등급 올리기 화면의 설명 아래(`TierUpPanel.tsx`). 쪽 맨 위로 열린다(등급 올리기 섹션으로 바로 가는 주소는 후속 티켓) | 「확률 안내」 |
-| 캡슐 시트 | 본문 맨 아래(가진 잼 다음 줄). 채우는 중·열 수 있음·빈칸 모자람에서 같은 자리이고 채우기 단계, 푸터, 열기 결과 오버레이에는 없다. 누르면 시트를 닫는다 | 「확률 안내」 |
 
 - 푸터는 로그인 화면과 `(legal)` 페이지에 없고 로그인 화면의 약관 동의 문장에도 링크가 없다. 로그아웃 방문자는 주소를 직접 알아야 한다(공개 경로이지만 입구는 없다).
-- 캡슐 시트 링크는 숫자·퍼센트·아이콘이 없는 조용한 밑줄 링크(`text-sm text-muted`, 44px 터치 영역)이다. 열기 결과 화면에 확률 링크를 두면 결과를 확률로 읽게 되므로 더하지 않는다.
+- 캡슐 시트가 없어지면서(티켓 20261028_1739) 캡슐 쪽 입구는 따로 두지 않고 푸터의 링크로 통합했다. 열기 결과 화면에 확률 링크를 두면 결과를 확률로 읽게 되므로 더하지 않는다.
 
 ## 5. 바뀐 날짜
 
@@ -161,4 +159,4 @@ code:
 - `jam-web/src/app/(legal)/probability/page.tierUp.test.tsx`: 등급 올리기 섹션의 자리·구성·표 마크업·사라진 문구·읽기 실패와 「확률이 없는 것」 문단.
 - `jam-web/src/lib/admin/balance/__tests__/collection.test.ts`: 어드민 윗등급 확률 칸이 확률 안내가 읽는 칸 목록(`COMBINE_COLUMNS`)과 같고 저장 때 확인창·이력의 확률 안내 반영 표시가 켜짐.
 - `jam-web/src/proxy.test.ts`: 로그아웃 요청이 `/probability`에서 307을 받지 않음.
-- `jam-web/src/components/ui/__tests__/Footer.test.tsx`, `jam-web/src/components/capsule/CapsuleSheet.test.tsx`: 입구 링크의 위치, 서식, 시트 닫힘.
+- `jam-web/src/components/ui/__tests__/Footer.test.tsx`: 입구 링크의 위치, 서식.

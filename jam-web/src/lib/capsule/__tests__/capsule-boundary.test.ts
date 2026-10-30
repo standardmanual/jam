@@ -181,8 +181,8 @@ describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모
     'lib/capsule/capsule-view.ts',
     'lib/jam/jam-fill.ts',
     'lib/suspension/suspended-block.ts',
-    'components/capsule/CapsulePill.tsx',
-    'components/capsule/CapsuleSheet.tsx',
+    'lib/capsule/capsule-gauge.ts',
+    'components/capsule/CapsuleGauge.tsx',
     'components/capsule/CapsuleWidget.tsx',
     'components/capsule/capsuleReveal.ts',
     'components/jam/JamFillPanel.tsx',
@@ -229,16 +229,17 @@ describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모
   })
 })
 
-describe('알약 모양은 CapsulePill.tsx 한 파일만 안다', () => {
-  // 알약 모양을 만드는 값(전체 둥근 모서리)이 위젯·시트에 나오면 모양이 바뀔 때 고칠 곳이 둘 이상이 된다
-  it.each(['components/capsule/CapsuleWidget.tsx', 'components/capsule/CapsuleSheet.tsx'])('%s에 알약 모서리·알약 높이 값이 없다', (file) => {
-    const code = readFileSync(join(srcRoot, file), 'utf8')
+describe('게이지 모양은 CapsuleGauge.tsx 한 파일만 안다', () => {
+  // 게이지 모양을 만드는 값(전체 둥근 모서리의 트랙·채움 색 토큰)이 위젯에 나오면 모양이 바뀔 때 고칠 곳이 둘 이상이 된다.
+  // 위젯의 로딩 Skeleton·오류 상자는 모양이 아니라 자리표시라 `rounded-full`·`radius-full`은 허용하고, 트랙·채움 색 토큰만 막는다.
+  it('CapsuleWidget.tsx에 트랙·채움 색 토큰이 없다', () => {
+    const code = readFileSync(join(srcRoot, 'components/capsule/CapsuleWidget.tsx'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '')
-    expect(code).not.toMatch(/rounded-full|radius-full|PILL_HEIGHT/)
+    expect(code).not.toMatch(/capsule-fill|capsule-track|capsule-ring/)
   })
 
-  it('CapsulePill.tsx에는 알약 모서리가 있다', () => {
-    expect(readFileSync(join(srcRoot, 'components/capsule/CapsulePill.tsx'), 'utf8')).toMatch(/rounded-full/)
+  it('CapsuleGauge.tsx에는 트랙·채움 색 토큰이 있다', () => {
+    expect(readFileSync(join(srcRoot, 'components/capsule/CapsuleGauge.tsx'), 'utf8')).toMatch(/--capsule-track[\s\S]*--capsule-fill/)
   })
 })
