@@ -7,43 +7,43 @@ import { Button } from '@ds/components/buttons/Button'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import LocalDate from '@/components/LocalDate'
-import JamBalance from '@/components/jam/JamBalance'
-import JamFillPanel from '@/components/jam/JamFillPanel'
 import SafeImage from '@/components/SafeImage'
-import BottomSheet from '@/components/ui/BottomSheet'
+import InlineNotice from '@/components/ui/InlineNotice'
 import SwapText from '@/components/ui/SwapText'
 import TopNav from '@/components/ui/TopNav'
 import { MedalIcon } from '@/components/ui/icons'
 import { useToast } from '@/components/ui/Toast'
-import { runLockedFill, runLockedOpen, type LockedItemEffect } from '@/lib/inventory/lockedItemFill-flow'
-import { lockedFillPercent, type LockedItemOpenPayload, type LockedItemRarity } from '@/lib/inventory/lockedItemFill-contract'
+import { runLockedOpen, type LockedItemEffect } from '@/lib/inventory/lockedItemFill-flow'
+import type { LockedItemOpenPayload, LockedItemRarity } from '@/lib/inventory/lockedItemFill-contract'
 import { d, t } from '@/lib/i18n'
 
 /**
- * 잠긴 아이템 배지 상세 — `/inventory/[itemId]`가 잠긴 개체일 때 그린다 (티켓 20261018_0054 2회, 채원 판정 2026-10-18)
+ * 잠긴 아이템 배지 상세 — `/inventory/[itemId]`가 잠긴 개체일 때 그린다 (티켓 20261018_0054 2회, 20261028_1741 1회, 채원 판정 2026-10-30)
  *
- * 열기 전에는 등급·필요한 양·채운 양·얻은 날과 경로만 보여 준다. 이름·그림·설명·컬렉션·트라이브·일련번호·배지 id는 이 컴포넌트가 받는 props에도
- * 없다(서버 페이지가 내리지 않는다, 운영 로직 7.3절). 채우기는 캡슐과 같은 `JamFillPanel`을 시트로 띄워 하고, 열기는 같은 화면에서 제자리로 바뀐다.
- *  - 제자리 전환: 타일이 그림으로(크로스페이드, 그림은 scale .96 → 1), 제목과 설명은 `SwapText`, 게이지·가진 잼 줄은 높이와 투명도로 접힌다.
- *    «잠김» 칩은 사라지고 등급 칩은 그대로다. 열린 뒤에는 일련번호·컬렉션·트라이브와 «배지 상세 보기» 링크를 보여 준다(배지 상세를 다시 만들지 않는다).
+ * 열기 전에는 등급·필요 포인트·가진 포인트·얻은 날과 경로만 보여 준다. 이름·그림·설명·컬렉션·트라이브·일련번호·배지 id는 이 컴포넌트가 받는 props에도
+ * 없다(서버 페이지가 내리지 않는다, 운영 로직 7.3절). 잼을 채우는 단계는 없고 «열기» 버튼 하나로 포인트를 내고 연다. 열기는 같은 화면에서 제자리로 바뀐다.
+ *  - 포인트 블록: 필요 포인트 N(>0)이면 «필요 포인트 / 가진 포인트» 두 줄을 보이고, 가진 포인트가 모자라면 `InlineNotice`로 까닭을 말하고 버튼을 막는다.
+ *    0이면 «포인트 없이 열 수 있어요» 한 줄만 두고 막지 않는다. null(정책값을 못 읽음)이면 블록을 그리지 않고 버튼도 그대로 둔다 — 서버가 판정한다.
+ *    게이지·분수·막대처럼 모으는 양으로 읽히는 표현은 쓰지 않는다. 포인트는 내는 값이다.
+ *  - 제자리 전환: 타일이 그림으로(크로스페이드, 그림은 scale .96 → 1), 제목과 설명은 `SwapText`, 포인트 블록은 높이와 투명도로 접힌다.
+ *    «잠김» 칩은 사라지고 등급 칩은 그대로다. 열린 뒤에는 일련번호·컬렉션·트라이브·낸 포인트·받은 포인트와 «배지 상세 보기» 링크를 보여 준다(배지 상세를 다시 만들지 않는다).
+ *    열기는 획득이 아니라서(운영 로직 7.2절) 낸 포인트와 배지 보상으로 받은 포인트를 두 줄로 나눈다.
  *  - 열기 응답의 `item`이 null이면(열기는 확정, 정보 조회만 실패) 전환 없이 `router.refresh()`로 서버 페이지의 리다이렉트에 맡긴다.
  *  - 이용 정지(403)는 일반 실패가 아니라 info 토스트다. 버튼은 미리 막지 않고 서버 응답으로 판단한다.
- * 상태가 서버 값과 어긋났을 수 있는 거절(`exceeds_remaining`·`not_locked` 등)은 안내 뒤 `router.refresh()`로 서버 값을 다시 읽는다.
+ *  - 서버가 `insufficient_points`로 거절하면 응답의 두 값을 화면 상태에 바로 넣어 모자람 상태로 바꾸고, info 토스트 뒤 `router.refresh()`로 서버 값을 다시 읽는다.
+ * 상태가 서버 값과 어긋났을 수 있는 그 밖의 거절(`not_locked` 등)도 안내 뒤 `router.refresh()`로 서버 값을 다시 읽는다.
  * 상세 안 텍스트는 크림 면 위라 보조 문구도 `--foreground`를 쓴다(`--muted`는 흰 면 위에서만).
  */
 
 export interface LockedItemDetailProps {
   itemId: string
   rarity: LockedItemRarity | null
-  /** 여는 데 필요한 잼 — 서버가 읽은 값 */
-  required: number
-  /** 지금까지 채운 잼 — 서버가 읽은 값 */
-  filled: number
-  /** 유저가 가진 잼 */
-  balance: number
+  /** 여는 데 필요한 포인트 — 서버가 읽은 값. 0이면 포인트 없이 열리고, null이면 정책값을 읽지 못한 것이라 화면이 말하지 않고 서버가 판정한다 */
+  pointsRequired: number | null
+  /** 유저가 가진 포인트 */
+  pointBalance: number
   /** 얻은 시각(ISO)과 경로 — 열기 전에도 보여 주는 값 */
   obtainedAt: string
   obtainedBy: string
@@ -64,12 +64,24 @@ const HERO_SIZE_PX = 160
 const CROSSFADE = 'transition-[opacity,transform] duration-[var(--duration-medium)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 const COLLAPSE = 'transition-[grid-template-rows,opacity] duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 
-export default function LockedItemDetail({ itemId, rarity, required, filled, balance, obtainedAt, obtainedBy }: LockedItemDetailProps) {
+/** 포인트 한 줄 — 라벨 옆에 바로 값을 붙인다. `JamBalance`와 같은 짜임이고, 값의 크기만 줄마다 다르다 */
+function PointRow({ label, value, strong }: { label: string; value: number; strong: boolean }) {
+  return (
+    <div className="flex items-baseline gap-2 break-keep wrap-break-word">
+      <dt className="text-base text-foreground">{label}</dt>
+      <dd className={`m-0 whitespace-nowrap font-bold tabular-nums ${strong ? 'text-2xl text-[color:var(--link)]' : 'text-base text-foreground'}`}>
+        {value.toLocaleString('ko-KR')}
+      </dd>
+    </div>
+  )
+}
+
+export default function LockedItemDetail({ itemId, rarity, pointsRequired, pointBalance, obtainedAt, obtainedBy }: LockedItemDetailProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [gauge, setGauge] = useState({ filled, balance })
-  const [fillOpen, setFillOpen] = useState(false)
-  const [pending, setPending] = useState<'fill' | 'open' | null>(null)
+  /** 화면이 보여 주는 포인트 값 — 서버가 준 값에서 시작하고, `insufficient_points` 거절 응답이 바로 덮어쓴다 */
+  const [pointsView, setPointsView] = useState({ required: pointsRequired, balance: pointBalance })
+  const [pending, setPending] = useState(false)
   const [opened, setOpened] = useState<LockedItemOpenPayload | null>(null)
   /** 크로스페이드 시작 신호 — 열린 직후 한 프레임 뒤에 켜서 전환이 보이게 한다 */
   const [revealed, setRevealed] = useState(false)
@@ -85,9 +97,10 @@ export default function LockedItemDetail({ itemId, rarity, required, filled, bal
   // 열린 뒤 화면은 개체 정보가 있을 때만 그린다(`item`이 null인 응답은 전환하지 않고 서버 페이지에 맡긴다)
   const view = opened !== null && opened.item !== null ? { payload: opened, item: opened.item } : null
   const isOpened = view !== null
-  const remaining = Math.max(0, required - gauge.filled)
-  const openable = remaining === 0
-  const hasJam = gauge.balance > 0
+  const { required, balance } = pointsView
+  /** 모자란 포인트 — 필요 포인트를 알고 0보다 클 때만 따진다. 0이나 null은 막지 않는다(서버가 최종 판정한다) */
+  const shortfall = required !== null && required > 0 && balance < required ? required - balance : 0
+  const blocked = shortfall > 0
 
   const applyEffect = useCallback(
     (effect: LockedItemEffect) => {
@@ -97,29 +110,11 @@ export default function LockedItemDetail({ itemId, rarity, required, filled, bal
     [router]
   )
 
-  async function handleConfirmFill(amount: number) {
-    if (pending) return
-    setPending('fill')
-    const outcome = await runLockedFill(itemId, amount)
-    setPending(null)
-
-    if (outcome.kind === 'filled') {
-      // 응답이 새 값이다 — 게이지가 차오르고 시트가 닫힌다
-      setGauge({ filled: outcome.payload.filled, balance: outcome.payload.balance })
-      setFillOpen(false)
-      return
-    }
-    toast(outcome.notice.message, outcome.notice.type)
-    // 거절이면 입력의 근거(남은 양·가진 잼)가 달라졌을 수 있다 — 시트를 닫고 서버 값을 다시 읽는다
-    if (outcome.effect !== 'none') setFillOpen(false)
-    applyEffect(outcome.effect)
-  }
-
   async function handleOpen() {
     if (pending) return
-    setPending('open')
+    setPending(true)
     const outcome = await runLockedOpen(itemId)
-    setPending(null)
+    setPending(false)
 
     if (outcome.kind === 'opened') {
       if (outcome.payload.item === null) {
@@ -132,12 +127,14 @@ export default function LockedItemDetail({ itemId, rarity, required, filled, bal
       frameRef.current = requestAnimationFrame(() => setRevealed(true))
       return
     }
+    // 포인트가 모자라다는 거절이면 응답의 값으로 바로 모자람 상태를 보인다. 서버 값을 다시 읽어 달라지면 key가 바뀌어 새 값에서 다시 시작한다
+    if (outcome.points) setPointsView({ required: outcome.points.required, balance: outcome.points.balance })
     toast(outcome.notice.message, outcome.notice.type)
     applyEffect(outcome.effect)
   }
 
   const title = view ? view.item.name : d.lockedItem.card.name
-  const description = view ? view.item.description : t(d.lockedItem.card.description, { n: required })
+  const description = view ? view.item.description : d.lockedItem.detail.description
   const displayRarity = view ? (view.item.rarity ?? rarity) : rarity
   const serialCode =
     view && view.payload.serialNumber !== null && view.payload.serialPrefix !== null
@@ -183,28 +180,27 @@ export default function LockedItemDetail({ itemId, rarity, required, filled, bal
           </p>
         )}
 
-        {/* 게이지와 가진 잼 줄 — 열리면 높이와 투명도로 접힌다 */}
-        <div
-          className={`grid ${COLLAPSE} ${isOpened ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}
-          aria-hidden={isOpened || undefined}
-        >
-          <div className="overflow-hidden">
-            <div className="flex flex-col gap-4">
-              {/* 게이지는 색과 외곽선만으로 읽히지 않게 같은 정보를 글자(스크린리더 이름)로도 준다. 진행 숫자와 퍼센트는 어디에도 없다 */}
-              <div role="img" aria-label={d.lockedItem.detail.gaugeAria[openable ? 'ready' : 'filling']}>
-                <ProgressBar
-                  outlined
-                  percent={lockedFillPercent(gauge.filled, required)}
-                  fillMode="track-gradient"
-                  trackColor="var(--background)"
-                  height={10}
-                  labelType="none"
-                />
-              </div>
-              <JamBalance balance={gauge.balance} />
+        {/* 포인트 블록 — 열리면 높이와 투명도로 접힌다. 필요 포인트를 모르면(null) 그리지 않는다 */}
+        {required !== null && (
+          <div
+            className={`grid ${COLLAPSE} ${isOpened ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}
+            aria-hidden={isOpened || undefined}
+          >
+            <div className="overflow-hidden">
+              {required === 0 ? (
+                <p className="m-0 break-keep wrap-break-word text-pretty text-base text-foreground">{d.lockedItem.detail.points.free}</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <dl className="m-0 flex flex-col gap-1">
+                    <PointRow label={d.lockedItem.detail.points.required} value={required} strong />
+                    <PointRow label={d.lockedItem.detail.points.balance} value={balance} strong={false} />
+                  </dl>
+                  {blocked && <InlineNotice>{t(d.lockedItem.detail.points.shortage, { short: shortfall.toLocaleString('ko-KR') })}</InlineNotice>}
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {view ? (
           <div className="flex flex-col gap-3">
@@ -219,6 +215,11 @@ export default function LockedItemDetail({ itemId, rarity, required, filled, bal
             {view.item.tribe && (
               <p className="m-0 break-keep wrap-break-word text-base text-foreground">{t(d.lockedItem.detail.opened.tribe, { name: view.item.tribe.name })}</p>
             )}
+            {view.payload.pointsSpent > 0 && (
+              <p className="m-0 break-keep wrap-break-word text-base text-foreground">
+                {t(d.lockedItem.detail.opened.spent, { points: view.payload.pointsSpent.toLocaleString('ko-KR') })}
+              </p>
+            )}
             {view.payload.pointsAwarded > 0 && (
               <p className="m-0 break-keep wrap-break-word text-base text-foreground">
                 {t(d.lockedItem.detail.opened.points, { points: view.payload.pointsAwarded.toLocaleString('ko-KR') })}
@@ -228,7 +229,7 @@ export default function LockedItemDetail({ itemId, rarity, required, filled, bal
         ) : null}
 
         <p className="m-0 break-keep wrap-break-word text-sm text-foreground">
-          {d.inventory.obtainedAt} <LocalDate iso={obtainedAt} korean={{ year: true }} /> · {obtainLabel(obtainedBy)}
+          {d.lockedItem.detail.obtainedAt} <LocalDate iso={obtainedAt} korean={{ year: true }} /> · {obtainLabel(obtainedBy)}
         </p>
 
         {view ? (
@@ -238,42 +239,19 @@ export default function LockedItemDetail({ itemId, rarity, required, filled, bal
           >
             {d.lockedItem.detail.opened.badgeLink}
           </Link>
-        ) : openable ? (
-          <Button variant="primary" fullWidth disabled={pending === 'open'} aria-busy={pending === 'open' || undefined} className="whitespace-nowrap" onClick={handleOpen}>
-            <SwapText value={pending === 'open' ? d.lockedItem.detail.opening : d.lockedItem.detail.openCta} />
-          </Button>
         ) : (
-          <>
-            <Button variant="primary" fullWidth disabled={!hasJam} className="whitespace-nowrap" onClick={() => setFillOpen(true)}>
-              {d.lockedItem.detail.fillCta}
-            </Button>
-            {!hasJam && (
-              <p className="m-0 break-keep wrap-break-word text-pretty text-sm text-foreground">{d.capsule.sheet.noJam}</p>
-            )}
-          </>
+          <Button
+            variant="primary"
+            fullWidth
+            disabled={pending || blocked}
+            aria-busy={pending || undefined}
+            className="whitespace-nowrap"
+            onClick={handleOpen}
+          >
+            <SwapText value={pending ? d.lockedItem.detail.opening : d.lockedItem.detail.openCta} />
+          </Button>
         )}
       </div>
-
-      {/* 채우기 입력은 캡슐과 같은 JamFillPanel이다 — 시트가 열릴 때마다 새로 그려 기본값에서 시작한다 */}
-      <BottomSheet
-        open={fillOpen}
-        onClose={() => {
-          if (!pending) setFillOpen(false)
-        }}
-        title={d.lockedItem.detail.fillTitle}
-        titleClassName="text-base break-keep wrap-break-word text-balance"
-      >
-        {fillOpen && (
-          <>
-            <JamFillPanel remaining={remaining} balance={gauge.balance} pending={pending === 'fill'} onConfirm={handleConfirmFill} />
-            <div className="px-6 pb-6">
-              <Button variant="ghost" fullWidth disabled={pending === 'fill'} className="whitespace-nowrap" onClick={() => setFillOpen(false)}>
-                {d.lockedItem.detail.cancel}
-              </Button>
-            </div>
-          </>
-        )}
-      </BottomSheet>
     </div>
   )
 }

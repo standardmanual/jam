@@ -34,7 +34,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
 
   // 잠긴 개체는 배지 상세로 보내지 않고 이 자리에서 그린다(티켓 20261018_0054 2회, 운영 로직 7.3절).
   // 배지 상세(`/badges/{badge_id}`)로 보내면 주소에 배지 id가 실려 이름·그림이 드러난다.
-  // 클라이언트로 내리는 props에는 등급·필요량·채운 양·가진 잼·얻은 날과 경로만 싣는다 — 배지 id·이름·그림·설명·일련번호는 싣지 않는다.
+  // 클라이언트로 내리는 props에는 등급·필요 포인트·가진 포인트·얻은 날과 경로만 싣는다 — 배지 id·이름·그림·설명·일련번호는 싣지 않는다.
   if (itemData.locked === true) {
     const service = createServiceClient()
     let status
@@ -45,9 +45,11 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
       if (err instanceof LockedItemError && err.code === 'item_not_found') notFound()
       throw err
     }
-    // 그사이 열렸다면 아래 리다이렉트가 맡는다. 잠겼는데 필요량이 없는 비정상 개체(DB 제약상 없다)는 이름이 드러나지 않게 404로 닫는다
-    if (status.locked && status.required === null) notFound()
-    if (status.locked && status.required !== null) {
+    // 그사이 열렸다면 아래 리다이렉트가 맡는다. 판정은 «잠겼는가»(`status.locked`)만 본다.
+    // 예전에는 잠겼는데 필요한 잼(`required`)이 없으면 비정상 개체로 보고 404로 닫았지만, 이 화면은 이제 잼이 아니라 `pointsRequired`로 말한다.
+    // 그 값의 null은 «정책값을 못 읽음»이지 비정상 개체가 아니므로(서버가 열 때 정책값으로 판정한다), 내 인벤토리의 잠긴 개체를 404로 숨기면 가진 배지가 사라진 것처럼 보인다.
+    // 기존 개체의 `unlock_required`는 U11 전까지 DB에 남아 있지만 이 화면은 읽지 않는다. 내 것이 아닌 개체(`item_not_found`)만 위에서 404다.
+    if (status.locked) {
       // 내가 이미 가진 개체의 등급 하나만 읽는다. 배지가 소프트 삭제(deleted_at)돼도 보유 개체는 그대로 보여야 하므로 deleted_at 필터를 두지 않는다.
       const { data: badgeRow, error: badgeError } = await service.from('badges').select('rarity').eq('id', itemData.badge_id).maybeSingle()
       if (badgeError) throw new Error(`badges 조회 실패: ${badgeError.message}`)
@@ -55,13 +57,12 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
 
       return (
         <LockedItemDetail
-          // 서버 값이 바뀌면(채우기 뒤 새로 읽기) 클라이언트 상태를 새 값에서 다시 시작한다
-          key={`${status.filled}:${status.required}:${status.balance}`}
+          // 서버 값이 바뀌면(열기 거절 뒤 새로 읽기) 클라이언트 상태를 새 값에서 다시 시작한다
+          key={`${status.pointsRequired ?? 'x'}:${status.pointBalance}`}
           itemId={itemId}
           rarity={rarity}
-          required={status.required}
-          filled={status.filled}
-          balance={status.balance}
+          pointsRequired={status.pointsRequired}
+          pointBalance={status.pointBalance}
           obtainedAt={itemData.obtained_at}
           obtainedBy={itemData.obtained_by}
         />
