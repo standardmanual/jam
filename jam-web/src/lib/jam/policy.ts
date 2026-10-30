@@ -1,7 +1,7 @@
 /**
  * 잼 정책 설정 로딩 (티켓 20261017_1423, 운영 로직 4.2·4.4·16.3절)
  *
- * `jam_policy` id=1 한 행 싱글톤(마이그레이션 226·227)을 읽는다. 강도 배율, 대량 수령 경보 기준, 동기화 아이템 배지 발급 값, 잠긴 아이템 배지의 최소값·잠길 확률이 들어 있다.
+ * `jam_policy` id=1 한 행 싱글톤(마이그레이션 226·227)을 읽는다. 강도 배율, 대량 수령 경보 기준, 동기화 아이템 배지 발급 값, 잠긴 아이템 배지의 최소값(잼)·여는 포인트·잠길 확률이 들어 있다.
  * service_role 클라이언트 전용이고 서버에서만 쓴다. `abusing/policy.ts`와 같은 패턴이다 — 조회가 실패하거나
  * 값이 비정상이면 기본값으로 대체하고 로그를 남긴다. 정산이 설정 조회 실패로 멈추면 안 되기 때문이다.
  */
@@ -43,6 +43,11 @@ export interface JamPolicy {
   locked_min_rare: number
   locked_min_epic: number
   locked_min_mystic: number
+  /** 잠긴 아이템 배지를 포인트로 여는 비용의 등급별 값 — 개체에 고정된 값이 없을 때와 새로 배정될 때 쓴다 (마이그레이션 300·304, 티켓 20261028_1737) */
+  locked_points_common: number
+  locked_points_rare: number
+  locked_points_epic: number
+  locked_points_mystic: number
   /** 동기화·캡슐에서 나온 아이템 배지가 잠긴 채 배정될 확률(0~1) */
   locked_roll_probability: number
 }
@@ -74,6 +79,11 @@ export const DEFAULT_JAM_POLICY: JamPolicy = {
   locked_min_rare: 60,
   locked_min_epic: 120,
   locked_min_mystic: 240,
+  // 마이그레이션 300 기본값(운영 로직 7.4절, 포인트)
+  locked_points_common: 50,
+  locked_points_rare: 100,
+  locked_points_epic: 200,
+  locked_points_mystic: 400,
   locked_roll_probability: 0.25,
 }
 
@@ -122,6 +132,10 @@ export const VALIDATORS: Record<keyof JamPolicy, (n: number) => boolean> = {
   locked_min_rare: (n) => Number.isInteger(n) && n >= 1,
   locked_min_epic: (n) => Number.isInteger(n) && n >= 1,
   locked_min_mystic: (n) => Number.isInteger(n) && n >= 1,
+  locked_points_common: (n) => Number.isInteger(n) && n >= 0,
+  locked_points_rare: (n) => Number.isInteger(n) && n >= 0,
+  locked_points_epic: (n) => Number.isInteger(n) && n >= 0,
+  locked_points_mystic: (n) => Number.isInteger(n) && n >= 0,
   locked_roll_probability: (n) => Number.isFinite(n) && n >= 0 && n <= 1,
 }
 

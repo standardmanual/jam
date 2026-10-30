@@ -214,7 +214,7 @@ export function inventoryRows(count: number, usedSlots = 0, maxSlots = 10): Row[
 export const JAM_ROW_STAMP = '2026-10-22T01:00:00.123456+00:00'
 
 /**
- * `jam_policy` id=1 행(마이그레이션 226·227·231 기본값). NUMERIC 칸(`mass_earn_alert_multiplier`·`sync_item_bonus_max_probability`·`sync_rarity_*`·`locked_roll_probability`)은
+ * `jam_policy` id=1 행(마이그레이션 226·227·231·300 기본값). NUMERIC 칸(`mass_earn_alert_multiplier`·`sync_item_bonus_max_probability`·`sync_rarity_*`·`locked_roll_probability`)은
  * 문자열로 내려오는 경우를 흉내 낸다.
  */
 export function jamPolicyRow(overrides: Row = {}): Row {
@@ -240,6 +240,10 @@ export function jamPolicyRow(overrides: Row = {}): Row {
     locked_min_rare: 60,
     locked_min_epic: 120,
     locked_min_mystic: 240,
+    locked_points_common: 50,
+    locked_points_rare: 100,
+    locked_points_epic: 200,
+    locked_points_mystic: 400,
     locked_roll_probability: '0.250',
     service_jam_daily_cap: 40,
     service_jam_weekly_cap: 100,
