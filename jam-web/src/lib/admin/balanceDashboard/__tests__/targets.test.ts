@@ -117,13 +117,13 @@ describe('이동 칸', () => {
     }
   })
 
-  it('티켓 표의 이동 구역과 같다. 월 아이템 배지만 동기화와 캡슐 두 구역이다', () => {
+  it('티켓 표의 이동 구역과 같다. 월 아이템 배지는 동기화와 캡슐, 챕터 도달 속도는 캡슐과 서비스 활동 잼 두 구역이다', () => {
     const sections = Object.fromEntries(
       BALANCE_METRIC_KEYS.map((key) => [key, METRIC_SPECS[key].adjust.map((target) => target.sectionId)])
     )
     expect(sections).toEqual({
       capsule_open: ['capsule'],
-      chapter_reach: ['chapter'],
+      chapter_reach: ['capsule', 'servicejam'],
       monthly_items: ['sync', 'capsule'],
       rarity_feel: ['sync'],
       collection_complete: ['collection'],
@@ -135,6 +135,32 @@ describe('이동 칸', () => {
     ])
     expect(METRIC_SPECS.collection_complete.adjust[0].fieldKeys).toEqual(['tier_up_probability'])
     expect(METRIC_SPECS.inventory_full.adjust[0].fieldKeys).toEqual(['max_slots'])
+  })
+
+  it('캡슐 열기·챕터 도달 속도는 옛 칸(chapter:N, required:N)이 아니라 채울 양 fill_v2:N(1~10)과 100% 횟수 advance:N(1~9)을 가리킨다', () => {
+    const speedKeys = [
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `fill_v2:${n}`),
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `advance:${n}`),
+    ]
+    expect(METRIC_SPECS.capsule_open.adjust.map((target) => target.fieldKeys)).toEqual([speedKeys])
+    expect(METRIC_SPECS.chapter_reach.adjust[0]).toEqual({ sectionId: 'capsule', fieldKeys: speedKeys })
+    expect(METRIC_SPECS.chapter_reach.adjust[1].sectionId).toBe('servicejam')
+    expect(METRIC_SPECS.chapter_reach.adjust[1].fieldKeys).toEqual([
+      'rule:locked_unlock:amount',
+      'rule:badge_earned:amount',
+      'rule:combine_success:amount',
+      'rule:mission_complete:amount',
+      'rule:collection_complete:amount',
+      'rule:drop:amount',
+      'rule:pickup:amount',
+      'service_jam_daily_cap',
+      'service_jam_weekly_cap',
+    ])
+    for (const key of ['capsule_open', 'chapter_reach'] as const) {
+      for (const target of METRIC_SPECS[key].adjust) {
+        for (const fieldKey of target.fieldKeys) expect(fieldKey, `${key}의 칸 ${fieldKey}`).not.toMatch(/^(chapter|required):/)
+      }
+    }
   })
 })
 
