@@ -672,12 +672,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '잠긴 아이템 배지 여는 포인트',
     type: 'admin_link',
     currentSpec:
-      '열 때 포인트를 내고 한 번에 엶. 기본값: Common 50pt · Rare 100pt · Epic 200pt · Mystic 400pt (locked_points_*, 0 이상 정수, 0이면 차감 줄 없음). 값은 아이템 배지가 유저에게 배정될 때 개체(inventory_items.unlock_points_required)에 고정되고 이후 설정을 바꿔도 이미 배정된 개체는 그대로이며, 고정된 값이 없는 개체는 등급별 설정값을 씀. 챕터가 아직 없는 유저의 첫 잠긴 아이템 배지는 0pt로 고정됨. 잔액이 모자라면 아무것도 바꾸지 않고 거절함 (insufficient_points, 409). 포인트 원장에는 차감 줄(locked_unlock_cost)과 아이템 배지 획득 줄(badge_point_reward)이 따로 남음. 잼을 채워 여는 옛 방식의 등급별 최소값(locked_min_*, 기본 Common 30잼 · Rare 60잼 · Epic 120잼 · Mystic 240잼)은 같은 구역에 U11까지 남아 있음',
+      '열 때 포인트를 내고 한 번에 엶. 기본값: Common 50pt · Rare 100pt · Epic 200pt · Mystic 400pt (locked_points_*, 0 이상 정수, 0이면 차감 줄 없음). 값은 아이템 배지가 유저에게 배정될 때 개체(inventory_items.unlock_points_required)에 고정되고 이후 설정을 바꿔도 이미 배정된 개체는 그대로이며, 고정된 값이 없는 개체는 등급별 설정값을 씀. 챕터가 아직 없는 유저의 첫 잠긴 아이템 배지는 0pt로 고정됨. 잔액이 모자라면 아무것도 바꾸지 않고 거절함 (insufficient_points, 409). 포인트 원장에는 차감 줄(locked_unlock_cost)과 아이템 배지 획득 줄(badge_point_reward)이 따로 남음. 잼을 채워 여는 옛 방식의 등급별 최소값(locked_min_*, 기본 Common 30잼 · Rare 60잼 · Epic 120잼 · Mystic 240잼)은 유저 화면(티켓 20261028_1741)이 읽지 않아 화면과 연결이 끊겼고, 같은 구역에 U11까지 남아 있음',
     dbTable: 'jam_policy',
     dbColumn: 'locked_points_*',
     codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
     userExperience:
-      '잠긴 배지를 열 때 등급에 따라 정해진 포인트를 내요. 포인트가 모자라면 열리지 않고, 퀘스트 전에 처음 받은 잠긴 배지는 포인트 없이 열려요.',
+      '잠긴 배지를 열 때 등급에 따라 정해진 포인트를 내요. 잠긴 배지 화면에는 필요 포인트와 가진 포인트가 보이고, 포인트가 모자라면 안내와 함께 열기 버튼이 막혀서 열리지 않아요. 퀘스트 전에 처음 받은 잠긴 배지는 포인트 없이 열려요.',
     basisDoc: '운영 로직 7.2절, 7.4절, 14.1절',
     ticketId: '20261028_1737',
     adminLink: {
