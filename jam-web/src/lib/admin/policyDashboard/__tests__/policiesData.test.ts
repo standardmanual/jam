@@ -287,9 +287,18 @@ describe('캡슐 자동 채움과 챕터 100% 횟수 항목 (티켓 20261028_173
   it('자동 채움·보지 않은 결과 카드의 코드 위치가 실재한다', () => {
     for (const id of ['ch5-auto-fill', 'ch5-unseen-result']) {
       const card = find(id)
-      expect(card?.ticketId, id).toBe('20261028_1733')
+      expect(card?.ticketId, id).toBe(id === 'ch5-auto-fill' ? '20261028_1733' : '20261028_1740')
       expect(existsSync(`${repoRoot}${card?.codeLocation}`), `${id}의 코드 위치가 실재해야 합니다`).toBe(true)
     }
+  })
+
+  it('합친 연출 카드는 제목 규칙과 «봤어요» 시점을 적고 코드 위치가 실재한다 (티켓 20261028_1740 4회)', () => {
+    const card = find('ch5-result-overlay')
+    expect(card?.ticketId).toBe('20261028_1740')
+    expect(card?.currentSpec).toContain('챕터 1은 오름이 아니라 시작')
+    expect(card?.currentSpec).toContain('획득한 배지 보기')
+    expect(card?.currentSpec).toContain('«봤어요»는')
+    expect(existsSync(`${repoRoot}${card?.codeLocation}`), '합친 연출 카드의 코드 위치가 실재해야 합니다').toBe(true)
   })
 
   it('점수 카드 두 개는 모은 잼이 더는 점수를 쌓지 않는다고 적는다', () => {
