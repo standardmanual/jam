@@ -15,6 +15,8 @@ import { getAdminQuestPreview } from '@/lib/onboarding-quest/preview'
 import QuestPreviewBanner from '@/components/QuestPreviewBanner'
 import { PAGE_GRADIENT_BACKGROUND } from '@/lib/pageBackground'
 import ChapterRiseWatcher from '@/components/chapter/ChapterRiseWatcher'
+import CapsuleResultProvider from '@/components/capsule/CapsuleResultProvider'
+import { readUnseenCapsuleResultOrNull } from '@/lib/capsule/unseen'
 import { parseChapterNo } from '@/lib/chapter/celebrate'
 import { hasTribe, TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
 
@@ -40,6 +42,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     questPreview,
     pendingItemsCount,
     { data: chapterRaw, error: chapterError },
+    unseenCapsuleResult,
   ] = await Promise.all([
     service
       .from('users')
@@ -66,6 +69,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     // 챕터 오름 축하 연출용 지금 챕터 번호(티켓 20261019_1317). 이 레이아웃은 화면을 열 때마다 돌아 **번호 한 칸만** 읽는다 —
     // 진행 비율은 읽지 않는다(챕터는 숫자로만 표기해 연출은 번호만 있으면 된다, 2026-10-21 결정). 챕터가 없으면(행 없음·NULL) 연출 대상이 아니다.
     service.from('user_chapters').select('chapter_no').eq('user_id', user.id).maybeSingle(),
+    // 아직 보지 않은 캡슐 결과(티켓 20261028_1740 3회, 사용자 결정: 연결 위치는 레이아웃). 여러 동기화의 결과를 하나로 합쳐 내려주고, 클라이언트는 따로 조회하지 않는다.
+    // 읽지 못하면 던지지 않고 로그만 남긴 뒤 null — 연출하지 않고 결과는 서버에 남아 다음에 다시 읽힌다(레이아웃이 깨지지 않는다).
+    // 챕터가 없는 유저도 결과를 볼 수 있어야 하므로 챕터 조건에 묶지 않는다.
+    readUnseenCapsuleResultOrNull(service, user.id),
   ])
   const profile = profileRaw as {
     username: string | null
@@ -100,6 +107,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <ToastProvider>
       <TopNavDataProvider value={{ username, avatarUrl, stravaState, hasUnreadNotifications }}>
         <PendingItemsPickerProvider initialPendingCount={pendingItemsCount}>
+          {/* 합친 연출(티켓 20261028_1740 3회) — children·챕터 오름 카드·나머지 오버레이를 모두 감싸 게이지와 카드가 같은 문맥을 읽는다 */}
+          <CapsuleResultProvider initialResult={unseenCapsuleResult} userId={user.id}>
           <div
             className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative"
             // 띠가 있을 때 TopNav의 안전영역 padding-top을 0으로 눌러 이중 여백을 없앤다 —
@@ -146,6 +155,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
                 높으면 다음에 앱을 열 때 한 번 띄운다. 목적지가 어디든 열리도록 레이아웃에 둔다 */}
             {chapterNo !== null && <ChapterRiseWatcher chapterNo={chapterNo} userId={user.id} />}
           </div>
+          </CapsuleResultProvider>
         </PendingItemsPickerProvider>
       </TopNavDataProvider>
     </ToastProvider>

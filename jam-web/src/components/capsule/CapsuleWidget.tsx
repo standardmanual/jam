@@ -24,7 +24,7 @@ import { d, t } from '@/lib/i18n'
  *    이용 정지는 안내가 없다(서버가 `notice: 'none'`을 준다. 홈은 `SuspensionBanner`가 알린다).
  *  - «받기»: `claim.available`일 때만 보인다. 빈칸이 모자라면 «받기» 대신 «인벤토리 보기»와 빈칸 덧줄을 둔다.
  *    받은 뒤 상태는 응답으로 계산하지 않고 `GET /api/capsule`을 다시 불러 갱신한다. 받은 배지는 `BadgeRevealOverlay`로 보인다.
- *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 결과 연출은 U9 몫이다.
+ *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 합친 연출은 레이아웃의 `CapsuleResultProvider`가 맡는다(티켓 20261028_1740 3회).
  * 이 컴포넌트를 감싸는 곳은 z-index를 주지 않는다(오버레이가 탭바에 가려진 2026-08-25 사고).
  */
 

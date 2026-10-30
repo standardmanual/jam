@@ -7,6 +7,7 @@
  * - 화면용 이벤트는 `openId`·`items`·`reachedChapters`만 싣는다(`buildCapsuleResultView`의 입력을 만족한다).
  * - 챕터 배지: 합친 `reachedChapters`의 챕터를 조건으로 하는 액티비티 배지 가운데 유저가 이미 가진 것만, 챕터가 낮은 순서로 싣는다. 오른 챕터가 없으면 조회하지 않는다.
  *   배지 조회가 실패(오류·예외)해도 결과는 내리고 `chapterBadges: []`다. 행 조회가 실패하면 던진다.
+ * - 레이아웃용 읽기(`readUnseenCapsuleResultOrNull`, 3회): 행 조회가 던져도 던지지 않고 로그만 남긴 뒤 null을 돌려준다. 성공하면 `readUnseenCapsuleResult`와 같은 값이다.
  * - «봤어요»: 본인의 아직 안 본 행만 `seen_at`을 채우고 바뀐 행 수를 돌려준다. 같은 요청을 두 번 보내면 두 번째는 0이다. 갱신이 실패하면 던진다.
  * 공용 DB는 호출하지 않는다 — 표별 가짜 클라이언트만 쓴다.
  *
@@ -19,7 +20,7 @@ vi.mock('@/lib/notifications', () => ({ createNotification: vi.fn() }))
 vi.mock('../auto-fill', () => ({ runCapsuleAutoFill: vi.fn() }))
 
 import { buildCapsuleResultView } from '../result-overlay-model'
-import { markUnseenCapsuleResultsSeen, readUnseenCapsuleResult } from '../unseen'
+import { markUnseenCapsuleResultsSeen, readUnseenCapsuleResult, readUnseenCapsuleResultOrNull } from '../unseen'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -206,6 +207,32 @@ describe('readUnseenCapsuleResult', () => {
       expect(result?.chapterBadges).toEqual([])
       expect(console.error).toHaveBeenCalled()
     })
+  })
+})
+
+describe('readUnseenCapsuleResultOrNull (레이아웃용)', () => {
+  it('성공하면 합친 결과를 그대로 돌려준다', async () => {
+    const { client } = fakeClient({ capsule_unseen_results: { data: [row('r1', [event(1)])] } })
+    const result = await readUnseenCapsuleResultOrNull(client, USER_ID)
+    expect(result?.ids).toEqual(['r1'])
+    expect(result?.events).toHaveLength(1)
+  })
+
+  it('읽을 행이 없으면 null이다', async () => {
+    const { client } = fakeClient({ capsule_unseen_results: { data: [] } })
+    await expect(readUnseenCapsuleResultOrNull(client, USER_ID)).resolves.toBeNull()
+  })
+
+  it('행 조회가 오류를 내도 던지지 않고 로그만 남긴 뒤 null이다', async () => {
+    const { client } = fakeClient({ capsule_unseen_results: { error: { message: 'boom' } } })
+    await expect(readUnseenCapsuleResultOrNull(client, USER_ID)).resolves.toBeNull()
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it('조회 자체가 예외를 던져도 null이다', async () => {
+    const { client } = fakeClient({ capsule_unseen_results: { throws: true } })
+    await expect(readUnseenCapsuleResultOrNull(client, USER_ID)).resolves.toBeNull()
+    expect(console.error).toHaveBeenCalled()
   })
 })
 

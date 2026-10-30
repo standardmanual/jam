@@ -7,6 +7,7 @@
  * 확인하는 것: ① 저장값보다 높으면 바로 한 번 띄우고 저장한다 ② 저장값이 없으면 연출 없이 저장만 한다
  * ③ 다른 오버레이가 열려 있으면 저장 없이 기다리고, 닫힌 뒤 다시 돌면 띄운다 ④ 저장소가 막혀 있으면 띄우지 않는다
  * ⑤ 같은 챕터로 효과가 다시 돌아도 한 번만 처리한다 ⑥ 띄울 때 네트워크를 부르지 않는다(챕터는 숫자로만 표기한다, 2026-10-21 결정).
+ * ⑦ 합친 연출이 진행 중이면(`resultPending`) 저장 없이 기다리고, 끝난 뒤 합친 연출이 저장한 챕터 이상이면 카드가 뜨지 않으며 더 높은 챕터면 뜬다(티켓 20261028_1740 3회).
  *
  * 실행: cd jam-web && npx vitest run src/components/chapter/__tests__/ChapterRiseWatcher.test.tsx
  */
@@ -17,6 +18,7 @@ const effects: (() => void | (() => void))[] = []
 const refHolder: { current: unknown } = { current: null }
 const setRise = vi.fn()
 const overlay = { hidden: false }
+const result = { pending: false }
 
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
@@ -32,6 +34,9 @@ vi.mock('react', async (importOriginal) => {
 })
 vi.mock('@/lib/uiOverlay', () => ({
   useTabBarHidden: () => overlay.hidden,
+}))
+vi.mock('@/components/capsule/capsuleResultContext', () => ({
+  useCapsuleResult: () => ({ resultPending: result.pending, gaugeHeld: false, registerGaugeFill: () => {} }),
 }))
 vi.mock('@/components/chapter/ChapterRiseOverlay', () => ({ default: () => null }))
 
@@ -62,6 +67,7 @@ beforeEach(() => {
   effects.length = 0
   refHolder.current = null
   overlay.hidden = false
+  result.pending = false
   setRise.mockReset()
   fetchMock.mockReset()
   storage = new MemoryStorage()
@@ -162,5 +168,51 @@ describe('ChapterRiseWatcher', () => {
     expect(setRise).toHaveBeenNthCalledWith(2, 5)
     expect(storage.map.get(chapterCelebratedKey('u1'))).toBe('5')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('합친 연출과 함께 쓸 때 (티켓 20261028_1740 3회)', () => {
+  it('합친 연출이 진행 중이면 저장 없이 기다린다', async () => {
+    storage.setItem(chapterCelebratedKey('u1'), '2')
+    result.pending = true
+
+    await renderAndRun(3)
+
+    expect(setRise).not.toHaveBeenCalled()
+    expect(storage.map.get(chapterCelebratedKey('u1'))).toBe('2')
+  })
+
+  it('합친 연출이 보여 준 챕터(저장값과 같음)는 연출이 끝난 뒤에도 카드로 또 뜨지 않는다', async () => {
+    storage.setItem(chapterCelebratedKey('u1'), '2')
+    result.pending = true
+    await renderAndRun(3)
+
+    // 합친 연출이 띄우기 직전에 보여 줄 챕터를 저장하고, 끝난 뒤 pending이 풀려 효과가 다시 돈다
+    storage.setItem(chapterCelebratedKey('u1'), '3')
+    result.pending = false
+    await renderAndRun(3)
+
+    expect(setRise).not.toHaveBeenCalled()
+    expect(storage.map.get(chapterCelebratedKey('u1'))).toBe('3')
+  })
+
+  it('합친 연출이 보여 주지 않은 더 높은 챕터는 끝난 뒤 카드가 뜬다', async () => {
+    storage.setItem(chapterCelebratedKey('u1'), '2')
+    result.pending = true
+    await renderAndRun(5)
+
+    storage.setItem(chapterCelebratedKey('u1'), '3')
+    result.pending = false
+    await renderAndRun(5)
+
+    expect(setRise).toHaveBeenCalledTimes(1)
+    expect(setRise).toHaveBeenCalledWith(5)
+    expect(storage.map.get(chapterCelebratedKey('u1'))).toBe('5')
+  })
+
+  it('합친 연출이 없으면(결과 없음) 기존처럼 바로 뜬다', async () => {
+    storage.setItem(chapterCelebratedKey('u1'), '2')
+    await renderAndRun(3)
+    expect(setRise).toHaveBeenCalledWith(3)
   })
 })

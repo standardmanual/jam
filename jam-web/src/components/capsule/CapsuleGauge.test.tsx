@@ -15,6 +15,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX, gaugeCircleDiameter } from './CapsuleGauge'
+import { CapsuleResultContext } from './capsuleResultContext'
 
 const LABEL = '캡슐, 채우는 중이에요'
 const render = (filled: number, required: number) => renderToStaticMarkup(<CapsuleGauge filled={filled} required={required} ariaLabel={LABEL} />)
@@ -86,5 +87,27 @@ describe('색과 모양', () => {
     const html = render(120, 300)
     expect(html).toContain('<svg')
     expect(html).toContain('aria-hidden="true"')
+  })
+})
+
+describe('합친 연출이 붙들 때 (티켓 20261028_1740 3회)', () => {
+  const held = (filled: number) =>
+    renderToStaticMarkup(
+      <CapsuleResultContext.Provider value={{ gaugeHeld: true, resultPending: true, registerGaugeFill: () => {} }}>
+        <CapsuleGauge filled={filled} required={300} ariaLabel={LABEL} />
+      </CapsuleResultContext.Provider>
+    )
+
+  it('붙들려 있으면 값과 상관없이 2% 원이고 전환이 없다', () => {
+    const circle = gaugeCircleDiameter(CAPSULE_GAUGE_HEIGHT_PX)
+    for (const filled of [0, 150, 300]) {
+      const html = held(filled)
+      expect(html).toContain(`width:calc(${circle}px + (100% - ${circle}px) * 0)`)
+      expect(html).toContain('transition:none')
+    }
+  })
+
+  it('붙들려도 숫자를 그리지 않는다', () => {
+    expect(textOf(held(150))).toBe('')
   })
 })

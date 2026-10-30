@@ -14,9 +14,10 @@ vi.mock('next/navigation', () => ({
 }))
 
 import BadgeRevealOverlay, { toCarouselItem, type RevealBadge } from '@/components/BadgeRevealOverlay'
-import { toRevealBadges } from './capsuleReveal'
+import { toChapterRevealBadge, toRevealBadges, toRevealRewards } from './capsuleReveal'
 import { d, t } from '@/lib/i18n'
-import type { CapsuleOpenedItem } from '@/lib/capsule/capsule-contract'
+import type { CapsuleChapterBadge, CapsuleOpenedItem } from '@/lib/capsule/capsule-contract'
+import { buildCapsuleResultView } from '@/lib/capsule/result-overlay-model'
 
 const OPENED: CapsuleOpenedItem[] = [
   { locked: false, inventoryItemId: 'i1', badgeId: 'b1', name: '바람의 깃', imageUrl: 'https://img.test/wind.png', rarity: 'rare', serialNumber: 7 },
@@ -88,5 +89,44 @@ describe('BadgeRevealOverlay', () => {
     expect(html).toContain(d.lockedItem.card.description)
     expect(html).not.toContain('<img')
     expect(html).not.toContain('바람의 깃')
+  })
+})
+
+describe('챕터 배지 변환 (티켓 20261028_1740 3회)', () => {
+  const CHAPTER_BADGE: CapsuleChapterBadge = {
+    id: 'cb-3',
+    name: '챕터 셋 배지',
+    description: '챕터 3에 올랐어요',
+    imageUrl: 'https://img.test/c3.png',
+    rarity: null,
+    level: 2,
+  }
+
+  it('이름·설명·그림·등급·레벨을 그대로 옮긴다', () => {
+    expect(toChapterRevealBadge(CHAPTER_BADGE)).toEqual({
+      id: 'cb-3',
+      name: '챕터 셋 배지',
+      description: '챕터 3에 올랐어요',
+      imageUrl: 'https://img.test/c3.png',
+      rarity: null,
+      level: 2,
+    })
+  })
+
+  it('보상 목록을 순서 그대로 옮긴다: 개체는 이벤트 순서, 챕터 배지는 맨 끝', () => {
+    const view = buildCapsuleResultView<CapsuleOpenedItem, CapsuleChapterBadge>(
+      [
+        { openId: 'o1', items: [OPENED[0]], reachedChapters: [3] },
+        { openId: 'o2', items: [OPENED[1]], reachedChapters: [] },
+      ],
+      [CHAPTER_BADGE]
+    )
+    const rewards = toRevealRewards(view!.rewards)
+    expect(rewards.map((r) => r.id)).toEqual(['i1', 'i2', 'cb-3'])
+    expect(rewards[1]).toMatchObject({ locked: true, name: '' })
+  })
+
+  it('보상이 없으면 빈 목록이다', () => {
+    expect(toRevealRewards([])).toEqual([])
   })
 })

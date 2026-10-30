@@ -9,6 +9,8 @@
  *  - 행이 없거나(퀘스트 전) 값이 손상됐거나(0·음수·소수·문자·NULL) 읽기에 실패하면 그려지지 않는다. 읽기 실패는 `console.error`로 남는다.
  *    읽기가 실패해도 레이아웃은 깨지지 않고 본문(children)과 탭 바가 그대로 나온다.
  *  - `user_chapters`에서 읽는 것은 `chapter_no` 한 칸뿐이고 세션 유저의 행만 읽는다(이름·진행 비율은 읽지 않는다 — 레이아웃은 화면을 열 때마다 돈다).
+ *  - 합친 연출(티켓 20261028_1740 3회): 보지 않은 결과를 세션 유저로 한 번 읽어 `CapsuleResultProvider`에 `initialResult`로 내리고, 본문·챕터 감시·나머지 오버레이를 모두 감싼다.
+ *    챕터가 없는 유저도 프로바이더는 그려진다. 읽기 실패는 던지지 않는 읽기(`readUnseenCapsuleResultOrNull`)가 null로 접어 레이아웃이 깨지지 않는다.
  *  - 비로그인은 `/login`으로 보내고 아무것도 읽지 않는다.
  *
  * 서버 컴포넌트를 함수로 불러 얻은 요소 트리를 읽는다. 클라이언트 자식은 구분되는 가짜 컴포넌트로 대신하고 Supabase는 기록형 가짜다.
@@ -30,6 +32,8 @@ const state = vi.hoisted(() => ({
   authenticated: true,
   chapter: { data: { chapter_no: 3 } as unknown, error: null as unknown },
   reads: [] as unknown[],
+  unseen: null as unknown,
+  unseenCalls: [] as unknown[][],
 }))
 
 vi.mock('next/navigation', () => ({
@@ -116,6 +120,17 @@ vi.mock('@/components/QuestPreviewBanner', () => ({
     return null
   },
 }))
+vi.mock('@/lib/capsule/unseen', () => ({
+  readUnseenCapsuleResultOrNull: async (...args: unknown[]) => {
+    state.unseenCalls.push(args)
+    return state.unseen
+  },
+}))
+vi.mock('@/components/capsule/CapsuleResultProvider', () => ({
+  default: function CapsuleResultProviderStub({ children }: { children?: ReactNode }) {
+    return children ?? null
+  },
+}))
 vi.mock('@/components/chapter/ChapterRiseWatcher', () => ({
   default: function ChapterRiseWatcherStub() {
     return null
@@ -124,6 +139,7 @@ vi.mock('@/components/chapter/ChapterRiseWatcher', () => ({
 
 import MainLayout from '../layout'
 import ChapterRiseWatcher from '@/components/chapter/ChapterRiseWatcher'
+import CapsuleResultProvider from '@/components/capsule/CapsuleResultProvider'
 import TabBar from '@/components/ui/TabBar'
 import StravaConnectReveal from '@/components/StravaConnectReveal'
 
@@ -171,6 +187,8 @@ beforeEach(() => {
   state.authenticated = true
   state.chapter = { data: { chapter_no: 3 }, error: null }
   state.reads = []
+  state.unseen = null
+  state.unseenCalls = []
   errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -276,6 +294,57 @@ describe('(main)/layout — user_chapters 읽기', () => {
   })
 })
 
+describe('(main)/layout — 합친 연출 프로바이더 배선', () => {
+  const RESULT = { ids: ['r1'], events: [{ openId: 'o1', items: [], reachedChapters: [3] }], chapterBadges: [] }
+
+  it('보지 않은 결과를 세션 유저로 한 번 읽어 프로바이더에 initialResult로 내린다', async () => {
+    state.unseen = RESULT
+
+    const providers = findByType(await renderLayout(), CapsuleResultProvider)
+
+    expect(providers).toHaveLength(1)
+    expect(providers[0].props.initialResult).toBe(RESULT)
+    expect(providers[0].props.userId).toBe(USER_ID)
+    expect(state.unseenCalls).toHaveLength(1)
+    expect(state.unseenCalls[0][1]).toBe(USER_ID)
+  })
+
+  it('본문·챕터 감시·탭 바·나머지 오버레이를 모두 감싼다', async () => {
+    const [provider] = findByType(await renderLayout(), CapsuleResultProvider)
+    const inside = provider.props.children as ReactNode
+
+    expect(hasChild(inside)).toBe(true)
+    expect(findByType(inside, ChapterRiseWatcher)).toHaveLength(1)
+    expect(findByType(inside, TabBar)).toHaveLength(1)
+    expect(findByType(inside, StravaConnectReveal)).toHaveLength(1)
+  })
+
+  it('결과가 없으면 null을 내린다(연출하지 않는다)', async () => {
+    const [provider] = findByType(await renderLayout(), CapsuleResultProvider)
+    expect(provider.props.initialResult).toBeNull()
+  })
+
+  it('챕터가 없는 유저도 프로바이더가 그려지고 결과를 받는다', async () => {
+    state.chapter = { data: null, error: null }
+    state.unseen = RESULT
+
+    const tree = await renderLayout()
+
+    expect(findByType(tree, ChapterRiseWatcher)).toHaveLength(0)
+    const [provider] = findByType(tree, CapsuleResultProvider)
+    expect(provider.props.initialResult).toBe(RESULT)
+  })
+
+  it('챕터를 읽지 못해도 프로바이더는 그려진다', async () => {
+    state.chapter = { data: null, error: { message: 'x' } }
+    state.unseen = RESULT
+
+    const [provider] = findByType(await renderLayout(), CapsuleResultProvider)
+
+    expect(provider.props.initialResult).toBe(RESULT)
+  })
+})
+
 describe('(main)/layout — 비로그인', () => {
   it('/login으로 보내고 아무것도 읽지 않는다', async () => {
     state.authenticated = false
@@ -283,5 +352,6 @@ describe('(main)/layout — 비로그인', () => {
     await expect(renderLayout()).rejects.toThrow('NEXT_REDIRECT:/login')
 
     expect(state.reads).toEqual([])
+    expect(state.unseenCalls).toEqual([])
   })
 })
