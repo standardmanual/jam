@@ -5,27 +5,14 @@
  * 화면·타이머를 모르는 순수 모듈이라 서버·클라이언트 어느 쪽에서도 쓴다.
  */
 
-/** 그래프에서 «비어 있음»을 나타내는 최소 눈금(%). 캡슐 잼 0%가 이 눈금에 대응한다 */
-export const GRAPH_MIN_PERCENT = 2
+import { GRAPH_MAX_PERCENT, GRAPH_MIN_PERCENT, graphPercentToFillRatio, jamPercentToGraphPercent } from '@/lib/capsule/capsule-gauge'
 
-/** 그래프 최대 눈금(%). 캡슐 잼 100%가 대응한다 */
-export const GRAPH_MAX_PERCENT = 100
+// 그래프 눈금 변환은 서비스 게이지와 함께 쓰므로 `lib/capsule/capsule-gauge.ts`로 옮겼다(티켓 20261028_1739 2회). 프로토타입은 같은 이름으로 다시 내보낸다.
+export { GRAPH_MAX_PERCENT, GRAPH_MIN_PERCENT, graphPercentToFillRatio, jamPercentToGraphPercent }
 
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min
   return Math.min(max, Math.max(min, value))
-}
-
-/** 캡슐 잼 비율(0~100%) → 그래프 눈금(2~100%). 잼 0%는 2%, 잼 100%는 100%다 */
-export function jamPercentToGraphPercent(jamPercent: number): number {
-  const p = clamp(jamPercent, 0, 100)
-  return GRAPH_MIN_PERCENT + ((GRAPH_MAX_PERCENT - GRAPH_MIN_PERCENT) * p) / 100
-}
-
-/** 그래프 눈금(2~100%) → 채움 정도(0~1). 2%가 0, 100%가 1이다. 2% 아래는 0으로 본다 */
-export function graphPercentToFillRatio(graphPercent: number): number {
-  const g = clamp(graphPercent, GRAPH_MIN_PERCENT, GRAPH_MAX_PERCENT)
-  return (g - GRAPH_MIN_PERCENT) / (GRAPH_MAX_PERCENT - GRAPH_MIN_PERCENT)
 }
 
 /** 캡슐에 든 잼 양 → 그래프 눈금. 용량이 0 이하이면 비어 있는 것으로 본다 */
