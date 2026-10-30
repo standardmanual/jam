@@ -1,12 +1,13 @@
 /**
  * 잠긴 아이템 배지 열기 API (티켓 20261018_0053, 운영 로직 7.2·7.3절)
  *
- * POST /api/inventory/items/[itemId]/open — 가득 찬 잠긴 개체를 연다. 같은 개체가 열린 상태가 되고(일련번호 그대로) 새로 뽑지 않는다.
- * 인벤토리 빈칸은 필요 없다(이미 칸을 차지한다). 배지에 포인트가 있으면 연 유저에게 한 번만 준다(DB 함수 안에서).
+ * POST /api/inventory/items/[itemId]/open — 잠긴 개체를 포인트를 내고 연다(티켓 20261028_1737 2회, DB 함수 `locked_item_open_points`). 같은 개체가 열린 상태가 되고(일련번호 그대로) 새로 뽑지 않는다.
+ * 인벤토리 빈칸은 필요 없다(이미 칸을 차지한다). 여는 포인트는 개체에 고정된 값이고 0이면(퀘스트의 첫 잠긴 배지) 내지 않는다. 배지에 포인트가 있으면 연 유저에게 한 번만 준다(DB 함수 안에서).
+ * 응답에는 낸 포인트 `pointsSpent`와 연 뒤 잔액 `pointBalance`를 싣는다.
  *
  * 세션으로 유저를 확인하고(401) 서비스 클라이언트로 부른다. 대상은 세션 유저의 개체뿐이라 본문은 읽지 않는다.
- * 이용 정지 중이면 403(`code: 'user_suspended'`)이고 열지 않는다. 채운 잼은 거절·오류에서 그대로 남는다.
- * 거절: `not_full`(응답에 채운 양 `filled`·필요한 양 `required`)·`not_locked` 409, `item_not_found` 404, 그 밖의 오류는 500이고 내부 오류 원문은 싣지 않는다.
+ * 이용 정지 중이면 403(`code: 'user_suspended'`)이고 열지 않는다. 포인트는 거절·오류에서 그대로 남는다.
+ * 거절: `insufficient_points`(응답에 필요한 포인트 `required`·가진 포인트 `balance`)·`not_full`(옛 함수 호환, 응답에 채운 양 `filled`·필요한 양 `required`)·`not_locked` 409, `item_not_found` 404, 그 밖의 오류는 500이고 내부 오류 원문은 싣지 않는다.
  * 열기 성공 응답에만 이름·그림 등 개체 정보를 싣는다. 거절 응답에는 싣지 않는다(7.3절).
  */
 import { after, NextResponse } from 'next/server'
@@ -52,6 +53,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ it
         code: err.code,
         ...(err.required !== undefined ? { required: err.required } : {}),
         ...(err.filled !== undefined ? { filled: err.filled } : {}),
+      }
+      return NextResponse.json(body, { status: 409 })
+    }
+    if (err instanceof LockedItemError && err.code === 'insufficient_points') {
+      const body: LockedItemErrorResponse = {
+        error: d.lockedItem.open.insufficientPoints,
+        code: err.code,
+        ...(err.required !== undefined ? { required: err.required } : {}),
+        ...(err.balance !== undefined ? { balance: err.balance } : {}),
       }
       return NextResponse.json(body, { status: 409 })
     }
