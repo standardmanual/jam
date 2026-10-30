@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 
-const calls = vi.hoisted(() => ({ order: [] as string[] }))
+const calls = vi.hoisted(() => ({ order: [] as string[], reads: [] as string[] }))
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -44,6 +44,12 @@ interface FakeOptions {
   wallet?: { data: unknown; error: unknown }
   /** 인벤토리 행. 생략하면 50칸 중 10칸 사용(빈칸 40) */
   inventory?: { data: unknown; error: unknown }
+  /** `capsule_pending_rewards` 그 유저 행들. 생략하면 보류 없음 */
+  pending?: { data: unknown; error: unknown }
+  /** 진행 중인 이용 정지 행. 생략하면 정지 아님 */
+  suspension?: { data: unknown; error: unknown }
+  /** `users.tribe_id`. 생략하면 트라이브 있음 */
+  tribe?: { data: unknown; error: unknown }
 }
 
 /** `capsule_policy` 행 — 기본값(개수 1 + 1이라 필요한 빈칸 2) */
@@ -62,6 +68,7 @@ const POLICY_ROW = {
 }
 
 function fakeClient(options: FakeOptions): { client: SupabaseClient; rpc: ReturnType<typeof vi.fn> } {
+  const read = (table: string) => calls.reads.push(table)
   const rpc = vi.fn(async (name: string) => {
     calls.order.push(`rpc:${name}`)
     return options.rpc?.[name] ?? { data: null, error: { message: `unexpected rpc ${name}` } }
@@ -69,6 +76,7 @@ function fakeClient(options: FakeOptions): { client: SupabaseClient; rpc: Return
   const client = {
     rpc,
     from: (table: string) => {
+      read(table)
       if (table === 'capsule_policy') {
         return { select: () => ({ eq: () => ({ single: async () => ({ data: POLICY_ROW, error: null }) }) }) }
       }
@@ -79,6 +87,15 @@ function fakeClient(options: FakeOptions): { client: SupabaseClient; rpc: Return
           }),
         }
       }
+      if (table === 'capsule_pending_rewards') {
+        return { select: () => ({ eq: async () => options.pending ?? { data: [], error: null } }) }
+      }
+      if (table === 'user_suspensions') {
+        return { select: () => ({ eq: () => ({ is: () => ({ maybeSingle: async () => options.suspension ?? { data: null, error: null } }) }) }) }
+      }
+      if (table === 'users') {
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => options.tribe ?? { data: { tribe_id: 't1' }, error: null } }) }) }
+      }
       expect(table).toBe('jam_wallets')
       return { select: () => ({ eq: () => ({ maybeSingle: async () => options.wallet ?? { data: null, error: null } }) }) }
     },
@@ -88,6 +105,7 @@ function fakeClient(options: FakeOptions): { client: SupabaseClient; rpc: Return
 
 beforeEach(() => {
   calls.order = []
+  calls.reads = []
   assertNotSuspendedMock.mockReset()
   assertNotSuspendedMock.mockResolvedValue(undefined)
 })
@@ -108,6 +126,11 @@ describe('getCapsuleStatus', () => {
       notOpenableReason: 'not_full',
       freeSlots: 40,
       neededSlots: 2,
+      pendingCount: 0,
+      jamBlocked: false,
+      alertStage: 0,
+      claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      notice: 'none',
     })
     expect(rpc).toHaveBeenCalledWith('capsule_get_or_create', { p_user_id: USER_ID })
   })
@@ -127,6 +150,11 @@ describe('getCapsuleStatus', () => {
       notOpenableReason: null,
       freeSlots: 40,
       neededSlots: 2,
+      pendingCount: 0,
+      jamBlocked: false,
+      alertStage: 0,
+      claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      notice: 'full_waiting',
     })
   })
 
@@ -196,6 +224,143 @@ describe('getCapsuleStatus', () => {
         USER_ID
       )
     ).rejects.toThrow('jam_wallets 조회 실패')
+  })
+})
+
+describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', () => {
+  const capsuleRow = (over: Record<string, unknown> = {}) => ({
+    capsule_get_or_create: { data: { required: 100, filled: 40, chapter_no: 3, alert_stage: 0, ...over }, error: null },
+  })
+  const rows = (n: number) => ({ data: Array.from({ length: n }, (_, i) => ({ id: `p${i}` })), error: null })
+  const status = (opts: FakeOptions) => getCapsuleStatus(fakeClient(opts).client, USER_ID)
+
+  it('보류가 없으면 pendingCount 0, 받을 수 없고 까닭도 없으며 안내는 none이다', async () => {
+    expect(await status({ rpc: capsuleRow() })).toMatchObject({
+      pendingCount: 0,
+      jamBlocked: false,
+      alertStage: 0,
+      claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      notice: 'none',
+    })
+  })
+
+  it('보류 1개와 단계 0이면 pending이고 빈칸이 충분하면 받을 수 있다', async () => {
+    expect(await status({ rpc: capsuleRow(), pending: rows(1) })).toMatchObject({
+      pendingCount: 1,
+      jamBlocked: false,
+      alertStage: 0,
+      claim: { available: true, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      notice: 'pending',
+    })
+  })
+
+  it.each([70, 80, 90] as const)('보류 1개와 저장된 단계 %i면 pending_nearly_full이고 단계를 그대로 싣는다', async (stage) => {
+    expect(await status({ rpc: capsuleRow({ alert_stage: stage }), pending: rows(1) })).toMatchObject({
+      pendingCount: 1,
+      alertStage: stage,
+      notice: 'pending_nearly_full',
+    })
+  })
+
+  it('저장된 단계가 70·80·90이 아니면 0으로 본다', async () => {
+    expect(await status({ rpc: capsuleRow({ alert_stage: 75 }), pending: rows(1) })).toMatchObject({ alertStage: 0, notice: 'pending' })
+  })
+
+  it('보류가 2개면 jamBlocked이고 저장된 단계가 있어도 alertStage는 0, 안내는 jam_blocked다', async () => {
+    expect(await status({ rpc: capsuleRow({ alert_stage: 90 }), pending: rows(2) })).toMatchObject({
+      pendingCount: 2,
+      jamBlocked: true,
+      alertStage: 0,
+      claim: { available: true, blockedReason: null },
+      notice: 'jam_blocked',
+    })
+  })
+
+  it('보류가 없으면 저장된 단계가 남아 있어도 alertStage는 0이다', async () => {
+    expect(await status({ rpc: capsuleRow({ alert_stage: 80 }) })).toMatchObject({ pendingCount: 0, alertStage: 0, notice: 'none' })
+  })
+
+  it('보류가 2개를 넘어도 2로 접는다', async () => {
+    expect(await status({ rpc: capsuleRow(), pending: rows(3) })).toMatchObject({ pendingCount: 2, jamBlocked: true })
+  })
+
+  it('보류는 없는데 채움이 필요량 이상이면 full_waiting이고, 덜 찼으면 none이다', async () => {
+    expect(await status({ rpc: capsuleRow({ required: 100, filled: 100 }) })).toMatchObject({ pendingCount: 0, notice: 'full_waiting' })
+    expect(await status({ rpc: capsuleRow({ required: 100, filled: 99 }) })).toMatchObject({ notice: 'none' })
+  })
+
+  it('보류가 있으면 가득 차 있어도 안내는 보류 쪽이다(full_waiting이 아니다)', async () => {
+    expect(await status({ rpc: capsuleRow({ required: 100, filled: 100 }), pending: rows(1) })).toMatchObject({ notice: 'pending' })
+  })
+
+  it('빈칸이 필요한 수보다 적으면 받을 수 없고 까닭은 no_slots다(빈칸 수와 필요한 수를 함께 싣는다)', async () => {
+    expect(await status({ rpc: capsuleRow(), pending: rows(1), inventory: { data: { used_slots: 49, max_slots: 50 }, error: null } })).toMatchObject({
+      claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
+      notice: 'pending',
+    })
+    // 빈칸이 필요한 수와 같으면 받을 수 있다
+    expect(await status({ rpc: capsuleRow(), pending: rows(1), inventory: { data: { used_slots: 48, max_slots: 50 }, error: null } })).toMatchObject({
+      claim: { available: true, blockedReason: null, freeSlots: 2, neededSlots: 2 },
+    })
+  })
+
+  it('소속 트라이브가 없으면 받을 수 없고 까닭은 no_tribe다(빈칸 모자람보다 먼저)', async () => {
+    expect(
+      await status({
+        rpc: capsuleRow(),
+        pending: rows(1),
+        tribe: { data: { tribe_id: null }, error: null },
+        inventory: { data: { used_slots: 50, max_slots: 50 }, error: null },
+      })
+    ).toMatchObject({ claim: { available: false, blockedReason: 'no_tribe' } })
+  })
+
+  it('이용 정지 중이면 받을 수 없고 까닭은 suspended이며 안내는 none이다(홈은 정지 배너가 알린다)', async () => {
+    const out = await status({
+      rpc: capsuleRow({ alert_stage: 80 }),
+      pending: rows(2),
+      suspension: { data: { id: 's1', reason: 'x', suspended_at: '2026-10-01T00:00:00Z' }, error: null },
+      tribe: { data: { tribe_id: null }, error: null },
+    })
+    expect(out).toMatchObject({ pendingCount: 2, jamBlocked: true, claim: { available: false, blockedReason: 'suspended' }, notice: 'none' })
+  })
+
+  it('이용 정지 중이어도 보류가 없으면 까닭 없이 받을 수 없다고만 알린다', async () => {
+    const out = await status({
+      rpc: capsuleRow({ required: 100, filled: 100 }),
+      suspension: { data: { id: 's1', reason: 'x', suspended_at: '2026-10-01T00:00:00Z' }, error: null },
+    })
+    expect(out).toMatchObject({ claim: { available: false, blockedReason: null }, notice: 'none' })
+  })
+
+  it('읽기 횟수를 고정한다: 캡슐 RPC 1회와 테이블 읽기 5개, 트라이브는 보류가 있고 정지가 아닐 때만 읽는다', async () => {
+    const base = ['jam_wallets', 'capsule_policy', 'inventory', 'capsule_pending_rewards', 'user_suspensions']
+
+    const none = fakeClient({ rpc: capsuleRow() })
+    await getCapsuleStatus(none.client, USER_ID)
+    expect([...calls.reads].sort()).toEqual([...base].sort())
+    expect(none.rpc).toHaveBeenCalledTimes(1)
+
+    calls.reads = []
+    await getCapsuleStatus(fakeClient({ rpc: capsuleRow(), pending: rows(1) }).client, USER_ID)
+    expect([...calls.reads].sort()).toEqual([...base, 'users'].sort())
+
+    calls.reads = []
+    await getCapsuleStatus(
+      fakeClient({
+        rpc: capsuleRow(),
+        pending: rows(1),
+        suspension: { data: { id: 's1', reason: 'x', suspended_at: '2026-10-01T00:00:00Z' }, error: null },
+      }).client,
+      USER_ID
+    )
+    expect([...calls.reads].sort()).toEqual([...base].sort())
+  })
+
+  it('보류·정지·트라이브를 읽지 못하면 «보류 없음»으로 내려가지 않고 던진다', async () => {
+    await expect(status({ rpc: capsuleRow(), pending: { data: null, error: { message: 'down' } } })).rejects.toThrow('capsule_pending_rewards 조회 실패')
+    await expect(status({ rpc: capsuleRow(), suspension: { data: null, error: { message: 'down' } } })).rejects.toThrow('user_suspensions 조회 실패')
+    await expect(status({ rpc: capsuleRow(), pending: rows(1), tribe: { data: null, error: { message: 'down' } } })).rejects.toThrow('users 조회 실패')
   })
 })
 

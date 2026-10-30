@@ -6,7 +6,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/capsule-client.test.ts
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchCapsule, fillCapsuleRequest, isKnownCapsuleRejectCode, openCapsuleRequest } from '../capsule-client'
+import { claimCapsule, fetchCapsule, fillCapsuleRequest, isKnownCapsuleRejectCode, openCapsuleRequest } from '../capsule-client'
 
 function respond(status: number, body: unknown): Response {
   return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -117,6 +117,39 @@ describe('openCapsuleRequest', () => {
   it('500은 실패다', async () => {
     stubFetch(respond(500, { error: '캡슐을 열지 못했어요.' }))
     expect(await openCapsuleRequest()).toEqual({ kind: 'failed' })
+  })
+})
+
+describe('claimCapsule', () => {
+  const PAYLOAD = { claimed: [{ openId: 'o1', chapterNo: 3, items: [] }], remainingPending: 0, stopped: 'none' }
+
+  it('POST /api/capsule/claim을 본문 없이 부르고 받은 결과를 돌려준다', async () => {
+    const fn = stubFetch(respond(200, PAYLOAD))
+    expect(await claimCapsule()).toEqual({ kind: 'ok', data: PAYLOAD })
+    expect(fn).toHaveBeenCalledWith('/api/capsule/claim', { method: 'POST' })
+  })
+
+  it('403 user_suspended는 suspended다', async () => {
+    stubFetch(respond(403, { error: '정지', code: 'user_suspended' }))
+    expect(await claimCapsule()).toEqual({ kind: 'suspended' })
+  })
+
+  it.each(['no_pending', 'insufficient_slots', 'no_tribe', 'capsule_changed'])('409 %s는 서버 문구와 코드를 싣는 rejected다', async (code) => {
+    const body = { error: '서버 문구', code, freeSlots: 1, neededSlots: 2 }
+    stubFetch(respond(409, body))
+    expect(await claimCapsule()).toEqual({ kind: 'rejected', status: 409, body })
+  })
+
+  it('알 수 없는 코드의 4xx와 코드 없는 500은 실패다', async () => {
+    stubFetch(respond(409, { error: '?', code: 'unknown' }))
+    expect(await claimCapsule()).toEqual({ kind: 'failed' })
+    stubFetch(respond(500, { error: '캡슐 보상을 받지 못했어요.' }))
+    expect(await claimCapsule()).toEqual({ kind: 'failed' })
+  })
+
+  it('네트워크 오류는 실패다(던지지 않는다)', async () => {
+    stubFetch(new TypeError('Failed to fetch'))
+    expect(await claimCapsule()).toEqual({ kind: 'failed' })
   })
 })
 

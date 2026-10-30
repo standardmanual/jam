@@ -1,7 +1,7 @@
 /**
  * 캡슐 클라이언트 fetch 래퍼 (티켓 20261018_0054 1회, 운영 로직 5.2절)
  *
- * 캡슐 위젯과 시트(`components/capsule/`)가 세 API(`GET /api/capsule`, `POST /api/capsule/fill`, `POST /api/capsule/open`)를 부르는 유일한 자리다.
+ * 캡슐 위젯과 시트(`components/capsule/`)가 네 API(`GET /api/capsule`, `POST /api/capsule/fill`, `POST /api/capsule/open`, `POST /api/capsule/claim`)를 부르는 유일한 자리다.
  * 응답을 «성공 / 이용 정지 / 거절 / 실패» 넷 중 하나로 접어 돌려주고, 호출부가 그에 맞춰 화면을 고른다.
  *  - 이용 정지: 403 + `code: 'user_suspended'`. 일반 실패가 아니라 안내(info)로 낸다(`strava/sync-flow`의 선례).
  *  - 거절: 서버가 알려진 `code`와 완성된 `error` 문구를 내린 4xx. 문구는 서버가 `d.capsule.*`로 완성해 내리므로 그대로 보여 준다(UX 라이팅 §4.0).
@@ -11,8 +11,11 @@
  * `@/lib/supabase/server`·`next/headers`는 정적·동적 어느 쪽으로도 가져오지 않는다(`__tests__/capsule-client-boundary.test.ts`가 검사한다).
  */
 import {
+  CAPSULE_CLAIM_ERROR_CODES,
   CAPSULE_FILL_ERROR_CODES,
   CAPSULE_OPEN_ERROR_CODES,
+  type CapsuleClaimErrorResponse,
+  type CapsuleClaimPayload,
   type CapsuleErrorCode,
   type CapsuleErrorResponse,
   type CapsuleFillPayload,
@@ -32,6 +35,9 @@ export type ApiCall<T, E> =
   | { kind: 'failed' }
 
 export type CapsuleCall<T> = ApiCall<T, CapsuleErrorResponse>
+
+/** 보류 받기 호출 결과 — 거절 코드가 채우기·열기와 달라(`no_pending`) 거절 모양이 따로다 */
+export type CapsuleClaimCall = ApiCall<CapsuleClaimPayload, CapsuleClaimErrorResponse>
 
 /** 알려진 캡슐 거절 코드인가(`user_suspended`는 따로 판별하므로 거절에서는 제외한다) */
 const KNOWN_REJECT_CODES: readonly string[] = [...new Set([...CAPSULE_FILL_ERROR_CODES, ...CAPSULE_OPEN_ERROR_CODES])].filter(
@@ -71,6 +77,12 @@ function isCapsuleRejectBody(body: unknown): body is CapsuleErrorResponse {
   return typeof error === 'string' && isKnownCapsuleRejectCode(code)
 }
 
+function isCapsuleClaimRejectBody(body: unknown): body is CapsuleClaimErrorResponse {
+  if (typeof body !== 'object' || body === null) return false
+  const { error, code } = body as { error?: unknown; code?: unknown }
+  return typeof error === 'string' && typeof code === 'string' && (CAPSULE_CLAIM_ERROR_CODES as readonly string[]).includes(code)
+}
+
 /** 지금 캡슐 상태. 캡슐이 없으면 서버가 만든다 */
 export function fetchCapsule(): Promise<CapsuleCall<CapsuleStatus>> {
   return callApi<CapsuleStatus, CapsuleErrorResponse>('/api/capsule', { method: 'GET', cache: 'no-store' }, isCapsuleRejectBody)
@@ -88,4 +100,9 @@ export function fillCapsuleRequest(amount: number): Promise<CapsuleCall<CapsuleF
 /** 캡슐 열기 */
 export function openCapsuleRequest(): Promise<CapsuleCall<CapsuleOpenPayload>> {
   return callApi<CapsuleOpenPayload, CapsuleErrorResponse>('/api/capsule/open', { method: 'POST' }, isCapsuleRejectBody)
+}
+
+/** 보류 받기 — 못 받은 보상을 오래된 순서로 받을 수 있는 만큼 받는다. 받은 뒤 상태는 응답으로 계산하지 않고 `fetchCapsule`을 다시 부른다 */
+export function claimCapsule(): Promise<CapsuleClaimCall> {
+  return callApi<CapsuleClaimPayload, CapsuleClaimErrorResponse>('/api/capsule/claim', { method: 'POST' }, isCapsuleClaimRejectBody)
 }

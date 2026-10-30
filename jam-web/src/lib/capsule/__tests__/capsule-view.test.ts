@@ -14,6 +14,11 @@ const status = (over: Partial<CapsuleStatus> = {}): CapsuleStatus => ({
   balance: 50,
   openable: false,
   notOpenableReason: 'not_full',
+  pendingCount: 0,
+  jamBlocked: false,
+  alertStage: 0,
+  claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+  notice: 'none',
   ...over,
 })
 
@@ -75,7 +80,8 @@ describe('withInsufficientSlots', () => {
 describe('statusAfterOpen', () => {
   it('다음 캡슐의 필요량·채운 양으로 옮기고 잼 잔액은 그대로다', () => {
     const next = statusAfterOpen(status({ filled: 300, remaining: 0, balance: 50, openable: true, notOpenableReason: null }), { required: 400, filled: 0 })
-    expect(next).toEqual({ required: 400, filled: 0, remaining: 400, balance: 50, openable: false, notOpenableReason: 'not_full' })
+    // 보류·안내 값은 이전 상태를 그대로 둔다 — 뒤따르는 GET /api/capsule 응답이 정한다
+    expect(next).toEqual({ ...status(), required: 400, filled: 0, remaining: 400, balance: 50, openable: false, notOpenableReason: 'not_full' })
     expect(capsuleViewStatus(next)).toBe('filling')
   })
 })

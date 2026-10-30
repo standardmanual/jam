@@ -6,8 +6,8 @@
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/capsule-flow.test.ts
  */
 import { describe, expect, it, vi } from 'vitest'
-import { runFill, runOpen } from '../capsule-flow'
-import type { CapsuleFillPayload, CapsuleOpenPayload } from '../capsule-contract'
+import { runClaim, runFill, runOpen } from '../capsule-flow'
+import type { CapsuleClaimPayload, CapsuleFillPayload, CapsuleOpenPayload } from '../capsule-contract'
 import { d, t } from '@/lib/i18n'
 
 const FILL_OK: CapsuleFillPayload = {
@@ -108,5 +108,103 @@ describe('문구 규칙', () => {
   it('열기를 부추기는 말과 낮은 등급을 낮추어 보는 말이 캡슐 화면 문구에 없다', () => {
     const all = JSON.stringify([d.capsule.title, d.capsule.pill, d.capsule.aria, d.capsule.sheet, d.capsule.fill, d.capsule.openResult])
     expect(all).not.toMatch(/한 번만 더|곧 좋은|꽝|대박|행운/)
+  })
+})
+
+describe('runClaim', () => {
+  const ITEM_A = { locked: false as const, inventoryItemId: 'i1', badgeId: 'b1', name: '바람의 깃', imageUrl: null, rarity: 'rare' as const, serialNumber: 7 }
+  const ITEM_B = { locked: true as const, inventoryItemId: 'i2', rarity: 'common' as const, unlockRequired: 60 }
+  const ITEM_C = { locked: false as const, inventoryItemId: 'i3', badgeId: 'b3', name: '구름', imageUrl: null, rarity: 'common' as const, serialNumber: null }
+
+  it('모두 받으면 받은 개체를 받은 순서대로 이어 붙이고 결과 문구와 다시 조회를 낸다', async () => {
+    const data: CapsuleClaimPayload = {
+      claimed: [
+        { openId: 'o1', chapterNo: 3, items: [ITEM_A, ITEM_B] },
+        { openId: 'o2', chapterNo: null, items: [ITEM_C] },
+      ],
+      remainingPending: 0,
+      stopped: 'none',
+    }
+    const request = vi.fn().mockResolvedValue({ kind: 'ok', data })
+    expect(await runClaim(request)).toEqual({
+      kind: 'claimed',
+      items: [ITEM_A, ITEM_B, ITEM_C],
+      message: t(d.capsule.openResult, { n: 3 }),
+      partial: false,
+      remainingPending: 0,
+      stopped: 'none',
+      refresh: true,
+    })
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it('일부만 받고 빈칸이 모자라 멈췄으면 partial이고 빈칸 수를 싣는다', async () => {
+    const data: CapsuleClaimPayload = {
+      claimed: [{ openId: 'o1', chapterNo: 3, items: [ITEM_A] }],
+      remainingPending: 1,
+      stopped: 'insufficient_slots',
+      freeSlots: 1,
+      neededSlots: 2,
+    }
+    expect(await runClaim(async () => ({ kind: 'ok', data }))).toEqual({
+      kind: 'claimed',
+      items: [ITEM_A],
+      message: t(d.capsule.openResult, { n: 1 }),
+      partial: true,
+      remainingPending: 1,
+      stopped: 'insufficient_slots',
+      slots: { freeSlots: 1, neededSlots: 2 },
+      refresh: true,
+    })
+  })
+
+  it('받은 뒤 예상 밖 실패로 멈췄어도 받은 것은 보여 주고 partial이다', async () => {
+    const data: CapsuleClaimPayload = { claimed: [{ openId: 'o1', chapterNo: 3, items: [ITEM_A] }], remainingPending: 1, stopped: 'error' }
+    expect(await runClaim(async () => ({ kind: 'ok', data }))).toMatchObject({ kind: 'claimed', partial: true, stopped: 'error', refresh: true })
+  })
+
+  it('빈칸 부족 거절은 서버 문구와 빈칸 수를 싣고 다시 조회한다', async () => {
+    const body = { error: d.capsule.claimInsufficientSlots, code: 'insufficient_slots' as const, freeSlots: 0, neededSlots: 2 }
+    expect(await runClaim(async () => ({ kind: 'rejected', status: 409, body }))).toEqual({
+      kind: 'notice',
+      notice: { message: d.capsule.claimInsufficientSlots, type: 'error' },
+      slots: { freeSlots: 0, neededSlots: 2 },
+      refresh: true,
+    })
+  })
+
+  it('받을 것 없음은 서버 문구를 그대로 보여 주고 다시 조회한다', async () => {
+    const body = { error: d.capsule.claimNoPending, code: 'no_pending' as const }
+    expect(await runClaim(async () => ({ kind: 'rejected', status: 409, body }))).toEqual({
+      kind: 'notice',
+      notice: { message: d.capsule.claimNoPending, type: 'error' },
+      refresh: true,
+    })
+  })
+
+  it('트라이브 없음·캡슐 바뀜 거절도 서버 문구와 다시 조회다', async () => {
+    for (const [code, error] of [['no_tribe', d.capsule.claimNoTribe], ['capsule_changed', d.capsule.changed]] as const) {
+      expect(await runClaim(async () => ({ kind: 'rejected', status: 409, body: { error, code } }))).toEqual({
+        kind: 'notice',
+        notice: { message: error, type: 'error' },
+        refresh: true,
+      })
+    }
+  })
+
+  it('이용 정지는 일반 실패가 아니라 info 안내이고 다시 조회하지 않는다', async () => {
+    expect(await runClaim(async () => ({ kind: 'suspended' }))).toEqual({
+      kind: 'notice',
+      notice: { message: d.suspension.capsuleClaimBlocked, type: 'info' },
+      refresh: false,
+    })
+  })
+
+  it('그 밖의 실패는 알려진 고정 문구다', async () => {
+    expect(await runClaim(async () => ({ kind: 'failed' }))).toEqual({
+      kind: 'notice',
+      notice: { message: d.capsule.claimFailed, type: 'error' },
+      refresh: false,
+    })
   })
 })

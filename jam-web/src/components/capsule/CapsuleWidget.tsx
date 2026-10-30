@@ -141,7 +141,8 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
 
     if (outcome.kind === 'filled') {
       // 응답이 새 상태다 — 게이지가 차오르고 시트는 본문 단계로 돌아간다
-      setCapsule(outcome.status)
+      // 채우기 응답은 옛 필드만 있다 — 보류·안내 값은 지금 상태 그대로 두고 옛 필드만 덮는다(위젯은 2회차에 다시 쓴다)
+      setCapsule((prev) => (prev ? { ...prev, ...outcome.status } : prev))
       setStep('main')
       // 같은 페이지의 «JAM! 시작하기» 카드가 채워진 캡슐을 서버 값으로 다시 읽는다
       router.refresh()

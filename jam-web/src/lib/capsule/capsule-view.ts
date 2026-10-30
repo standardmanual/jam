@@ -45,6 +45,7 @@ export function withInsufficientSlots(status: CapsuleStatus, body: Pick<CapsuleE
 export function statusAfterOpen(prev: CapsuleStatus, next: CapsuleOpenPayload['next']): CapsuleStatus {
   const remaining = Math.max(0, next.required - next.filled)
   return {
+    ...prev,
     required: next.required,
     filled: next.filled,
     remaining,

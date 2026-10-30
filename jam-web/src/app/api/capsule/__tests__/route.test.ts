@@ -37,7 +37,21 @@ vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
 
 import { GET } from '../route'
 
-const STATUS = { required: 110, filled: 30, remaining: 80, balance: 45, openable: false, notOpenableReason: 'not_full' }
+const STATUS = {
+  required: 110,
+  filled: 30,
+  remaining: 80,
+  balance: 45,
+  openable: false,
+  notOpenableReason: 'not_full',
+  freeSlots: 1,
+  neededSlots: 2,
+  pendingCount: 1,
+  jamBlocked: false,
+  alertStage: 80,
+  claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
+  notice: 'pending_nearly_full',
+}
 
 beforeEach(() => {
   state.authenticated = true
@@ -64,6 +78,20 @@ describe('GET /api/capsule', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual(STATUS)
     expect(getStatusMock).toHaveBeenCalledWith(serviceClient, USER_ID)
+  })
+
+  it('보류·안내 값(pendingCount·jamBlocked·alertStage·claim·notice)을 응답 본문에 모두 싣는다', async () => {
+    getStatusMock.mockResolvedValue(STATUS)
+
+    const body = await (await GET()).json()
+
+    expect(body).toMatchObject({
+      pendingCount: 1,
+      jamBlocked: false,
+      alertStage: 80,
+      claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
+      notice: 'pending_nearly_full',
+    })
   })
 
   it('이용 정지 확인을 하지 않는다', async () => {
