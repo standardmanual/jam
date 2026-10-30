@@ -2,13 +2,13 @@
  * 서비스 활동 잼 연결 종합 시험 (티켓 20261028_1735 3회 — 최종 형태. 이전: 챕터 점수 연결 종합 시험, 티켓 20261019_1315 3회, 운영 로직 12.2절)
  *
  * 서비스 활동 7종(잠긴 아이템 배지 열기·배지 받기·믹스 성공·미션 완료·컬렉션 완성·드랍·픽업)은 모두 `awardServiceJam`(`lib/jam/serviceActivity.ts`)으로
- * `jam_apply_service_activity`를 부른다. 옛 점수 장부(`awardChapterScore` → `chapter_add_score`)는 쓰기를 멈췄다(함수와 표는 프로덕션 main이 쓰므로 그대로 두고 삭제는 U11).
+ * `jam_apply_service_activity`를 부른다. 옛 점수 장부(`awardChapterScore` → `chapter_add_score`)는 쓰기를 멈췄고 호출부도 없다(함수·표·`score.ts` 삭제는 후속 회차).
  * 이 시험은 호출 지점들이 서로 다른 키를 쓰고, 같은 일에 한 번씩만 부르는가(키 충돌과 이중 호출 없음)를 한곳에서 고정한다.
  *
  * 구성
  *  1) 호출 지점 목록(소스 검색)
- *     - `chapter_add_score`를 부르는 파일은 `lib/chapter/score.ts` 하나이고, `awardChapterScore`를 부르는 곳은 옛 캡슐 열기(`counted` 아님) 경로 한 곳뿐이다.
- *       `/api/capsule/open` 라우트와 동기화 자동 채움은 둘 다 `openCapsule(…, { counted: true })`로 불러 옛 경로를 타지 않는다.
+ *     - `chapter_add_score`를 부르는 파일은 `lib/chapter/score.ts` 하나이고, `awardChapterScore`를 부르는 곳은 없다(옛 캡슐 열기의 비집계 경로를 티켓 20261028_1742 1회에서 걷었다).
+ *       `openCapsule`을 부르는 곳은 동기화 자동 채움 하나이고 RPC는 `capsule_open_counted`뿐이다.
  *     - `awardServiceJam`을 부르는 파일·횟수와 서비스 활동 종류 리터럴이 목록과 같다. 서비스 활동 종류 7종이 모두 어딘가에서 불린다. 배지 받기는 공용 함수 한 곳
  *       (`badgeReceive.ts`)과 그 공용 함수를 부르는 발급 지점 6곳 구조를 유지한다.
  *     - 점수 종류 12종은 전부 설명된다: 서비스 활동 대상 10종(컬렉션 4등급은 `collection_complete` 하나로 모여 서비스 활동 종류는 7종)과 이미 멈춘 `jam_earned`·`capsule_open`.
@@ -131,7 +131,7 @@ const SERVICE_JAM_SCORE_KINDS: ChapterScoreKind[] = [
 /**
  * 점수표에는 있지만 서비스 활동 잼 대상이 아니고 이미 멈춘 종류 (티켓 20261028_1733 3회, 20261028_1735 3회).
  * «모은 잼»은 정산이 아니라 캡슐 횟수가 챕터를 올리고, «캡슐 열기»는 횟수와 오름을 `capsule_auto_fill`이 센다.
- * 점수표의 행과 DB 함수는 그대로 둔다(프로덕션 main이 옛 경로를 쓴다, 삭제는 U11) — 12종 목록에서 빼지 않는다.
+ * 점수표의 행과 DB 함수는 이 회차에서 그대로 둔다(삭제는 후속 회차) — 12종 목록에서 빼지 않는다.
  */
 const STOPPED_SCORE_KINDS: ChapterScoreKind[] = ['jam_earned', 'capsule_open']
 
@@ -154,22 +154,20 @@ describe('호출 지점 목록 — 소스 검색', () => {
     expect(files).toEqual(['lib/chapter/score.ts'])
   })
 
-  it('awardChapterScore를 부르는 곳은 옛 캡슐 열기(counted 아님) 한 곳뿐이고, 서비스 활동 호출 지점은 점수 모듈을 가져오지 않는다', () => {
-    expect(callSites('awardChapterScore')).toEqual({ 'lib/capsule/open.ts': 1 })
-    // 그 한 곳은 counted 열기가 아닐 때만 부른다
-    expect(SOURCES.get('lib/capsule/open.ts')).toMatch(/if \(!countedInfo\) \{\s*await awardChapterScore\(/)
+  it('awardChapterScore를 부르는 곳은 없고, 서비스 활동 호출 지점은 점수 모듈을 가져오지 않는다', () => {
+    expect(callSites('awardChapterScore')).toEqual({})
     for (const file of Object.keys(SERVICE_JAM_SITES)) {
       expect(SOURCES.get(file), file).not.toMatch(/awardChapterScore|@\/lib\/chapter\/score/)
     }
     const importers = [...SOURCES].filter(([, source]) => /@\/lib\/chapter\/score['"]/.test(source)).map(([file]) => file)
-    expect(importers).toEqual(['lib/capsule/open.ts'])
+    expect(importers).toEqual([])
   })
 
-  it('openCapsule을 부르는 곳은 수동 열기 라우트와 자동 채움 둘뿐이고 둘 다 counted: true다 — 수동 열기도 옛 점수를 쌓지 않는다', () => {
-    expect(callSites('openCapsule')).toEqual({ 'app/api/capsule/open/route.ts': 1, 'lib/capsule/auto-fill.ts': 1 })
-    for (const file of ['app/api/capsule/open/route.ts', 'lib/capsule/auto-fill.ts']) {
-      expect(SOURCES.get(file), file).toMatch(/openCapsule\([\s\S]{0,120}?\{\s*counted:\s*true\b/)
-    }
+  it('openCapsule을 부르는 곳은 동기화 자동 채움 하나뿐이고, 열기 RPC는 capsule_open_counted 하나다 — 옛 capsule_open은 어디서도 부르지 않는다', () => {
+    expect(callSites('openCapsule')).toEqual({ 'lib/capsule/auto-fill.ts': 1 })
+    const oldOpen = [...SOURCES].filter(([, source]) => /rpc\(\s*['"]capsule_open['"]/.test(source)).map(([file]) => file)
+    expect(oldOpen).toEqual([])
+    expect(SOURCES.get('lib/capsule/open.ts')).toMatch(/rpcName = 'capsule_open_counted'/)
   })
 
   it('awardServiceJam을 부르는 파일과 횟수가 목록과 같다 — 파일마다 한 번이고, 자기 서비스 활동 종류를 리터럴로 적는다', () => {

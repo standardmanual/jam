@@ -1,9 +1,8 @@
 /**
- * 잠긴 아이템 배지 채우기·열기 계약 — 서버와 클라이언트가 함께 읽는 순수 타입·상수 (티켓 20261018_0053, 운영 로직 7.2·7.3절)
+ * 잠긴 아이템 배지 열기·조회 계약 — 서버와 클라이언트가 함께 읽는 순수 타입·상수 (티켓 20261018_0053, 운영 로직 7.2·7.3절)
  *
  * 서버 모듈(`lockedItemFill.ts`)과 분리한 이유: 잠긴 개체 화면(3-4)이 이 파일을 가져와도 `@/lib/supabase/server`·`next/headers`가
- * 번들에 끌려오지 않게 하기 위해서다. **이 파일은 아무것도 가져오지 않는다.** 채울 양의 상한은 캡슐과 같은 값을 쓰므로
- * 호출부(라우트)가 `CAPSULE_AMOUNT_MAX`(`@/lib/capsule/capsule-contract`)를 직접 가져온다.
+ * 번들에 끌려오지 않게 하기 위해서다. **이 파일은 아무것도 가져오지 않는다.**
  *
  * 응답 원칙(7.3절): 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다. 열린 뒤 열기 응답에만 싣는다.
  */
@@ -11,29 +10,16 @@
 /** 아이템 배지 등급 — 이 파일은 아무것도 가져오지 않아 `BadgeRarity`를 가져오지 않고 같은 값을 적는다 */
 export type LockedItemRarity = 'common' | 'rare' | 'epic' | 'mystic'
 
-/** 채우기가 거절되는 경우의 코드. DB 함수 `locked_item_fill`의 `error` 값과 같다. */
-export const LOCKED_ITEM_FILL_ERROR_CODES = [
-  'user_suspended',
-  'item_not_found',
-  'not_locked',
-  'already_full',
-  'invalid_amount',
-  'exceeds_remaining',
-  'insufficient_jam',
-] as const
-
-export type LockedItemFillErrorCode = (typeof LOCKED_ITEM_FILL_ERROR_CODES)[number]
-
 /**
  * 열기가 거절되는 경우의 코드. DB 함수 `locked_item_open_points`(마이그레이션 304)의 `error` 값은 `user_suspended`·`item_not_found`·`not_locked`·`insufficient_points`다.
- * `not_full`은 옛 함수 `locked_item_open`(U11에서 삭제) 호환을 위해 남긴다 — 새 함수는 돌려주지 않는다.
+ * `not_full`은 옛 함수 `locked_item_open` 호환을 위해 남긴 코드다 — 새 함수는 돌려주지 않는다.
  */
 export const LOCKED_ITEM_OPEN_ERROR_CODES = ['user_suspended', 'item_not_found', 'not_locked', 'not_full', 'insufficient_points'] as const
 
 export type LockedItemOpenErrorCode = (typeof LOCKED_ITEM_OPEN_ERROR_CODES)[number]
 
-/** 잠긴 개체 거절 코드 전체(채우기 + 열기 + 조회) */
-export type LockedItemErrorCode = LockedItemFillErrorCode | LockedItemOpenErrorCode
+/** 잠긴 개체 거절 코드 전체(열기 + 조회) */
+export type LockedItemErrorCode = LockedItemOpenErrorCode
 
 /** 개체 id가 UUID 모양인가 — 아니면 DB를 부르기 전에 `item_not_found`로 닫는다 */
 export function isLockedItemId(value: string): boolean {
@@ -58,19 +44,6 @@ export interface LockedItemStatus {
   /** 유저가 가진 포인트(포인트 지갑 잔액). 지갑 행이 없으면 0 */
   pointBalance: number
   /** 지금 열 수 있는지 — 잠겨 있고 다 채웠다. 인벤토리 빈칸은 보지 않는다 */
-  openable: boolean
-}
-
-/** 채우기 성공 응답 */
-export interface LockedItemFillPayload {
-  itemId: string
-  /** 이번에 실제로 채운 양(가진 잼이 모자라면 요청보다 적을 수 있다) */
-  applied: number
-  required: number
-  filled: number
-  remaining: number
-  balance: number
-  /** 이번 채우기로 다 찼는가 */
   openable: boolean
 }
 
@@ -106,8 +79,6 @@ export interface LockedItemOpenPayload {
 export interface LockedItemErrorResponse {
   error: string
   code: LockedItemErrorCode
-  /** `exceeds_remaining`일 때 채울 수 있는 남은 양 */
-  remaining?: number
   /** `not_full`일 때 필요한 양, `insufficient_points`일 때 여는 데 필요한 포인트 */
   required?: number
   /** `not_full`일 때 채운 양 */

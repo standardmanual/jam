@@ -1001,7 +1001,7 @@ export async function processFetchedActivities(
   // 없어 이번 배치를 못 보고, 호출이 세 번이면 배지 읽기도 세 번이다. 미션 완료·컬렉션 보정은 이 시점에
   // 이미 DB에 있다. 판정이 던져도 동기화는 계속된다(evaluateJamActionSafely).
   // 자동 채움으로 캡슐이 열렸으면 캡슐 열기 지표(연 횟수·다른 트라이브 아이템 종류 수)를 같은 판정에서 함께 다시 본다 — 열기 위치가 사용자 행동에서
-  // 동기화로 옮겨 갔을 뿐 판정 키는 `/api/capsule/open`과 같다(`jamTriggersForCapsuleOpen`). 열린 개체는 인벤토리에 이미 들어가 있다.
+  // 동기화로 옮겼다(옛 `/api/capsule/open`은 티켓 20261028_1742 1회에서 지웠다). 판정 키는 `jamTriggersForCapsuleOpen`이다. 열린 개체는 인벤토리에 이미 들어가 있다.
   const jamEarned = await evaluateJamActionSafely(
     supabase,
     userId,

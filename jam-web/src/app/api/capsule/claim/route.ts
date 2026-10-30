@@ -59,7 +59,7 @@ export async function POST() {
       return NextResponse.json({ error: d.capsule.claimNoPending, code: 'no_pending' }, { status: 409 })
     }
 
-    // JAM! 행동 지표(캡슐 연 횟수·다른 트라이브 아이템 종류 수) — 받은 보상도 열기 기록(`capsule_opens`)으로 남으므로 `/api/capsule/open`과 같은 판정을 응답 뒤에 한다.
+    // JAM! 행동 지표(캡슐 연 횟수·다른 트라이브 아이템 종류 수) — 받은 보상도 열기 기록(`capsule_opens`)으로 남으므로 동기화 자동 채움의 열기와 같은 판정(`jamTriggersForCapsuleOpen`)을 응답 뒤에 한다.
     // `runJamActionEvaluation`은 예외를 던지지 않아 받기 응답은 그대로다.
     after(() => runJamActionEvaluation(user.id, jamTriggersForCapsuleOpen()))
     return NextResponse.json({

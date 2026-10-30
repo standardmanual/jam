@@ -14,7 +14,7 @@
  * 3. `jamActionMetrics.ts`(또는 별도 파일)에 계산 함수 1개
  * 4. CHECK 키 확장 마이그레이션 1개(199 복사), `types/database.ts`·`conditionFormFields.ts`
  * 5. 호출 지점: 라우트는 `runJamActionEvaluation(userId, [키…])`(jamActionRoute.ts) — 믹스 `/api/combine`,
- *    드랍·픽업 라우트, 컬렉션 장착 `/api/itembooks/[id]/slot`(③의 `after()`), 캡슐 열기 `/api/capsule/open`·
+ *    드랍·픽업 라우트, 컬렉션 장착 `/api/itembooks/[id]/slot`(③의 `after()`), 캡슐 받기 `/api/capsule/claim`(옛 `/api/capsule/open`은 티켓 20261028_1742 1회에서 지움)·
  *    잠긴 개체 열기 `/api/inventory/items/[itemId]/open`(티켓 20261018_1815의 `after()`). 동기화는 `sync.ts`의
  *    `evaluateJamActionSafely`가 새 활동이 있을 때 `JAM_SYNC_TRIGGERS`, 없을 때 가입 경과일
  *    (`JAM_EMPTY_SYNC_TRIGGERS`)을 판정하고 획득 id를 결산에 합친다. 어느 호출 지점에 어떤 키를 넘기는지는

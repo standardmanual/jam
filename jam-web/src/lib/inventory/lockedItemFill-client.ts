@@ -1,7 +1,7 @@
 /**
  * 잠긴 아이템 배지 열기 클라이언트 fetch 래퍼 (티켓 20261018_0054 2회, 20261028_1741 1회, 운영 로직 7.2절)
  *
- * 잠긴 상세(`LockedItemDetail`)가 `POST /api/inventory/items/[itemId]/open`을 부르는 유일한 자리다. 채우기 호출은 화면이 쓰지 않아 없앴다(채우기 API는 U11까지 둔다). 응답을 캡슐과 같은
+ * 잠긴 상세(`LockedItemDetail`)가 `POST /api/inventory/items/[itemId]/open`을 부르는 유일한 자리다. 채우기 호출과 API는 티켓 20261028_1742 1회에서 걷었다. 응답을 캡슐과 같은
  * «성공 / 이용 정지 / 거절 / 실패» 넷 중 하나로 접어 돌려준다(접기는 `capsule-client`의 `callApi`를 그대로 쓴다).
  *  - 이용 정지: 403 + `code: 'user_suspended'`. 일반 실패가 아니라 안내(info)로 낸다.
  *  - 거절: 서버가 알려진 `code`와 완성된 `error` 문구를 내린 4xx. 문구는 서버가 `d.lockedItem.*`로 완성해 내리므로 그대로 보여 준다(UX 라이팅 §4.0).

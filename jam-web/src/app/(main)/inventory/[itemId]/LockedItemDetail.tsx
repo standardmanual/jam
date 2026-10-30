@@ -64,7 +64,7 @@ const HERO_SIZE_PX = 160
 const CROSSFADE = 'transition-[opacity,transform] duration-[var(--duration-medium)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 const COLLAPSE = 'transition-[grid-template-rows,opacity] duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 
-/** 포인트 한 줄 — 라벨 옆에 바로 값을 붙인다. `JamBalance`와 같은 짜임이고, 값의 크기만 줄마다 다르다 */
+/** 포인트 한 줄 — 라벨 옆에 바로 값을 붙인다. 값의 크기만 줄마다 다르다 */
 function PointRow({ label, value, strong }: { label: string; value: number; strong: boolean }) {
   return (
     <div className="flex items-baseline gap-2 break-keep wrap-break-word">

@@ -1,7 +1,7 @@
 /**
  * 캡슐 클라이언트 fetch 래퍼 (티켓 20261018_0054 1회, 운영 로직 5.2절)
  *
- * 캡슐 위젯과 시트(`components/capsule/`)가 여섯 API(`GET /api/capsule`, `POST /api/capsule/fill`, `POST /api/capsule/open`, `POST /api/capsule/claim`,
+ * 캡슐 위젯과 시트(`components/capsule/`)가 네 API(`GET /api/capsule`, `POST /api/capsule/claim`,
  * `GET /api/capsule/unseen`, `POST /api/capsule/unseen/seen`)를 부르는 유일한 자리다.
  * 응답을 «성공 / 이용 정지 / 거절 / 실패» 넷 중 하나로 접어 돌려주고, 호출부가 그에 맞춰 화면을 고른다.
  *  - 이용 정지: 403 + `code: 'user_suspended'`. 일반 실패가 아니라 안내(info)로 낸다(`strava/sync-flow`의 선례).
@@ -13,14 +13,11 @@
  */
 import {
   CAPSULE_CLAIM_ERROR_CODES,
-  CAPSULE_FILL_ERROR_CODES,
   CAPSULE_OPEN_ERROR_CODES,
   type CapsuleClaimErrorResponse,
   type CapsuleClaimPayload,
   type CapsuleErrorCode,
   type CapsuleErrorResponse,
-  type CapsuleFillPayload,
-  type CapsuleOpenPayload,
   type CapsuleSeenPayload,
   type CapsuleStatus,
   type CapsuleUnseenResponse,
@@ -43,9 +40,7 @@ export type CapsuleCall<T> = ApiCall<T, CapsuleErrorResponse>
 export type CapsuleClaimCall = ApiCall<CapsuleClaimPayload, CapsuleClaimErrorResponse>
 
 /** 알려진 캡슐 거절 코드인가(`user_suspended`는 따로 판별하므로 거절에서는 제외한다) */
-const KNOWN_REJECT_CODES: readonly string[] = [...new Set([...CAPSULE_FILL_ERROR_CODES, ...CAPSULE_OPEN_ERROR_CODES])].filter(
-  (code) => code !== 'user_suspended'
-)
+const KNOWN_REJECT_CODES: readonly string[] = CAPSULE_OPEN_ERROR_CODES.filter((code) => code !== 'user_suspended')
 
 export function isKnownCapsuleRejectCode(code: unknown): code is CapsuleErrorCode {
   return typeof code === 'string' && KNOWN_REJECT_CODES.includes(code)
@@ -89,20 +84,6 @@ function isCapsuleClaimRejectBody(body: unknown): body is CapsuleClaimErrorRespo
 /** 지금 캡슐 상태. 캡슐이 없으면 서버가 만든다 */
 export function fetchCapsule(): Promise<CapsuleCall<CapsuleStatus>> {
   return callApi<CapsuleStatus, CapsuleErrorResponse>('/api/capsule', { method: 'GET', cache: 'no-store' }, isCapsuleRejectBody)
-}
-
-/** 캡슐 채우기. `amount`는 양의 정수다(상한 판정은 서버가 한다) */
-export function fillCapsuleRequest(amount: number): Promise<CapsuleCall<CapsuleFillPayload>> {
-  return callApi<CapsuleFillPayload, CapsuleErrorResponse>(
-    '/api/capsule/fill',
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) },
-    isCapsuleRejectBody
-  )
-}
-
-/** 캡슐 열기 */
-export function openCapsuleRequest(): Promise<CapsuleCall<CapsuleOpenPayload>> {
-  return callApi<CapsuleOpenPayload, CapsuleErrorResponse>('/api/capsule/open', { method: 'POST' }, isCapsuleRejectBody)
 }
 
 /** 보류 받기 — 못 받은 보상을 오래된 순서로 받을 수 있는 만큼 받는다. 받은 뒤 상태는 응답으로 계산하지 않고 `fetchCapsule`을 다시 부른다 */
