@@ -1177,6 +1177,19 @@ export const ko = {
       submit: '채우기',
       submitting: '채우는 중',
     },
+    /**
+     * 합친 연출(`CapsuleResultOverlay`) 문구 — 티켓 20261028_1740 1회 (채원 사전 판정, 사용자 결정 2026-10-30).
+     * 챕터가 올랐을 때 쓰는 «축하해요!»·«챕터 N에 올랐어요»는 `d.chapter.rise`를, «닫기»는 `d.common.close`를 그대로 읽는다.
+     * `title`은 `widget.notice.fullWaiting`과 값이 같지만 위젯 상태 문구와 연출 제목이 따로 바뀔 수 있어 키를 나눴다.
+     */
+    result: {
+      /** 챕터가 오르지 않은 연출의 제목 */
+      title: '캡슐이 가득 찼어요',
+      /** 챕터가 오르지 않은 연출이 열릴 때 스크린리더에 읽어 주는 문장 */
+      announceFull: '캡슐이 가득 찼어요',
+      /** 보상이 있을 때만 나오는 버튼 */
+      viewRewards: '획득한 배지 보기',
+    },
   },
 
   /**
