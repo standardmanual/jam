@@ -112,13 +112,14 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch2-onboarding-quests',
     chapter: 2,
     chapterTitle: '가입, 트라이브, 온보딩',
-    title: '온보딩 실제 3단계 퀘스트',
+    title: '온보딩 실제 2단계 퀘스트',
     type: 'code_constant',
-    currentSpec: 'Strava 첫 동기화 → 캡슐 열기 → 잠긴 아이템 배지 열기',
-    codeLocation: 'jam-web/src/lib/onboarding/quest.ts',
-    userExperience: '기본 튜토리얼 3단계를 수행하며 첫 보상을 직접 수령해요.',
+    currentSpec:
+      'Strava 첫 동기화 → 잠긴 아이템 배지 열기. 캡슐은 첫 동기화가 저절로 채워 열고 단계가 아님. 첫 캡슐의 첫 개체는 반드시 잠기고 필요 포인트 0으로 고정돼 포인트 없이 열림. 두 단계를 마치면 챕터 1, 연출을 본 유저는 완료 배지 「JAM!」과 100포인트(건너뛴 유저는 챕터 1만)',
+    codeLocation: 'jam-web/src/lib/onboarding-quest/',
+    userExperience: '첫 동기화로 받은 캡슐에서 잠긴 배지를 열면 챕터 1이 시작돼요.',
     basisDoc: '운영 로직 2.2절',
-    ticketId: '20261021_1248',
+    ticketId: '20261028_1738',
   },
   {
     id: 'ch2-chapter1-start',
@@ -126,11 +127,11 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '가입, 트라이브, 온보딩',
     title: '온보딩 완료 시 챕터 1 자동 진입',
     type: 'code_constant',
-    currentSpec: '온보딩 퀘스트 완료 시 chapter_start() RPC로 챕터 1 부여',
+    currentSpec: '퀘스트의 실제 2단계(첫 동기화, 잠긴 아이템 배지 열기)를 마친 순간 chapter_start() RPC로 챕터 1 부여. 연출을 건너뛴 유저도 같음',
     codeLocation: 'jam-web/src/lib/chapter/start.ts',
     userExperience: '퀘스트를 마치면 점수와 무관하게 공식 챕터 1 유저가 돼요.',
     basisDoc: '운영 로직 2.2절, 12.2절',
-    ticketId: '20261019_1316',
+    ticketId: '20261028_1738',
   },
 
   // =========================================================================

@@ -178,7 +178,7 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
     setReveal(CLOSED_REVEAL)
     const next = nextAfterRevealRef.current
     nextAfterRevealRef.current = null
-    // 열기 결과를 닫은 뒤에 서버 화면을 새로 읽는다 — «JAM! 시작하기» 카드의 실제 단계(캡슐 열기·잠긴 아이템 배지)가 이 열기로 바뀐다
+    // 열기 결과를 닫은 뒤에 서버 화면을 새로 읽는다 — 인벤토리와 캡슐 상태가 이 열기로 바뀐다(«JAM! 시작하기» 카드는 캡슐 열기가 단계가 아니라 이 열기로 바뀌지 않는다)
     router.refresh()
     if (next) {
       // 게이지가 다음 캡슐의 값으로 옮겨 간다. 빈칸 수 같은 나머지는 이어지는 조회가 정한다
