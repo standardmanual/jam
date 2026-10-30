@@ -598,7 +598,7 @@ describe('openLockedItem — 퀘스트 완료 처리 (티켓 20261021_1248)', ()
     expect(completionMock).not.toHaveBeenCalled()
   })
 
-  it('채우기는 완료 처리와 무관하다 — 열기만 실제 단계 ③이다', async () => {
+  it('채우기는 완료 처리와 무관하다 — 열기만 실제 단계 ②다', async () => {
     const { client } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
 
     await fillLockedItem(client, USER_ID, ITEM_ID)

@@ -240,7 +240,7 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
   // 서비스 활동 잼 «잠긴 아이템 배지 열기» (티켓 20261028_1735 3회, 옛 챕터 점수 자리). 원천 id는 개체 id다 — 개체는 한 번만 열리고(두 번째는 `not_locked`)
   // 같은 개체를 다시 보내도 한 번만 지급한다. 던지지 않는다(실패는 기록만 남는다).
   await awardServiceJam(supabase, { userId, kind: 'locked_unlock', sourceId: itemId })
-  // 퀘스트 실제 단계 ③ «잠긴 아이템 배지 열기»(티켓 20261021_1248). 잼 지급 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
+  // 퀘스트 실제 단계 ② «잠긴 아이템 배지 열기»(티켓 20261021_1248). 잼 지급 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
   try {
     await recordOnboardingQuestCompletion(supabase, userId)
   } catch (e) {

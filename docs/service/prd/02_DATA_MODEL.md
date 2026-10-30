@@ -127,7 +127,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 (티켓 20261001_0633, [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리).
 
 ### user_onboarding_quests (신규)
-온보딩 퀘스트(1~7단계, 연출용) 유저별 진행 상태(마이그레이션 195, 티켓 20260927_2124/상위 20260927_2123). `user_id`(PK, `users(id)` FK, 유저 삭제 시 CASCADE), `step_progress`(단계 키 `sync`·`bag`·`pickup`·`mix_fail`·`mix_success`·`drop`·`browse` → 완료 시각 ISO 문자열 JSONB, 기본값 `{}`), `skipped_at`(건너뛰기 T8 시각, 있으면 완료 배지 불가), `completed_at`(«연출 7단계를 마쳤거나 건너뜀»과 «실제 3단계 완료»가 둘 다 된 시각 — 티켓 20261021_1248부터. 그 전에는 실제 첫 활동 유입 시각이었다), `reward_granted_at`(완료 배지·100P 지급 시각 T7, 멱등 기준), `created_at`. 실제 3단계는 이 표에 기록하지 않고 `strava_activities`·`capsule_opens`·`inventory_item_events`에서 읽는다(`lib/onboarding-quest/real-steps.ts`).
+온보딩 퀘스트(1~7단계, 연출용) 유저별 진행 상태(마이그레이션 195, 티켓 20260927_2124/상위 20260927_2123). `user_id`(PK, `users(id)` FK, 유저 삭제 시 CASCADE), `step_progress`(단계 키 `sync`·`bag`·`pickup`·`mix_fail`·`mix_success`·`drop`·`browse` → 완료 시각 ISO 문자열 JSONB, 기본값 `{}`), `skipped_at`(건너뛰기 T8 시각, 있으면 완료 배지 불가), `completed_at`(«연출 7단계를 마쳤거나 건너뜀»과 «실제 2단계 완료»가 둘 다 된 시각 — 티켓 20261021_1248부터. 그 전에는 실제 첫 활동 유입 시각이었다), `reward_granted_at`(완료 배지·100P 지급 시각 T7, 멱등 기준), `created_at`. 실제 2단계는 이 표에 기록하지 않고 `strava_activities`·`inventory_item_events`에서 읽는다(`lib/onboarding-quest/real-steps.ts`).
 
 행 생성 시점은 `POST /api/onboarding/complete`가 `onboarding_completed_at`을 처음 기록하는 순간(service_role, 이미 있으면 무시)이며, **기능 배포 이후 온보딩 2단계를 마친 신규 유저에게만** 만든다 — 기존 유저에게 소급 생성하지 않는다(백필 없음). 행의 존재 자체가 "퀘스트 대상"의 기준이다. 퀘스트 1~7단계는 연출용 데이터이고, 이 테이블 외의 실제 테이블(`inventory_items`·`poi_drops`·`user_activity_badges`·`point_transactions`)에는 퀘스트 때문에 행을 만들지 않는다.
 
