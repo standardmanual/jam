@@ -205,5 +205,51 @@ export interface CapsuleClaimPayload {
   neededSlots?: number
 }
 
+/**
+ * 보지 않은 캡슐 결과의 이벤트 하나 — 열기 하나(티켓 20261028_1740 2회). 합친 연출의 표시 모델(`buildCapsuleResultView`)이 읽는 필드만 싣는다
+ * (`openId`, `items`, `reachedChapters`). 서버가 기록한 이벤트(`CapsuleUnseenEvent`)에서 `next`·`chapterNo`·`chapterCount`를 뺀 모양이다.
+ */
+export interface CapsuleUnseenEventView {
+  openId: string
+  /** 나온 개체(나온 순서). 잠긴 개체는 이름·그림 없이 등급과 여는 데 필요한 양만 있다 */
+  items: CapsuleOpenedItem[]
+  /** 이번 열기로 오른 챕터 번호 목록. 오르지 않았으면 빈 배열 */
+  reachedChapters: number[]
+}
+
+/** 챕터 배지 — 합친 연출 보상 화면에 싣는다. 동기화 끝 판정이 이미 발급한 것만 온다 */
+export interface CapsuleChapterBadge {
+  /** `badges.id` */
+  id: string
+  name: string
+  description: string
+  imageUrl: string | null
+  rarity: CapsuleRarity | null
+  level: number | null
+}
+
+/** 보지 않은 결과를 하나로 합친 것 */
+export interface CapsuleUnseenResult {
+  /** «봤어요»로 돌려보낼 행 id(합친 행 전부). 깨져서 건너뛴 행은 들어 있지 않다 */
+  ids: string[]
+  /** 열린 순서대로 이어 붙인 이벤트(오래된 행부터, 행 안은 기록된 순서) */
+  events: CapsuleUnseenEventView[]
+  /** 합친 `reachedChapters`의 챕터 배지 중 이미 받은 것(챕터가 낮은 순서) */
+  chapterBadges: CapsuleChapterBadge[]
+}
+
+/** `GET /api/capsule/unseen` 응답. 보지 않은 결과가 없으면 `result`가 null이다 */
+export interface CapsuleUnseenResponse {
+  result: CapsuleUnseenResult | null
+}
+
+/** «봤어요» 한 번에 보낼 수 있는 id 수의 상한 — 합치는 읽기 상한과 같다 */
+export const CAPSULE_UNSEEN_MAX_IDS = 50
+
+/** `POST /api/capsule/unseen/seen` 응답. `marked`는 이번 요청으로 바뀐 행 수(이미 본 행·남의 행은 세지 않는다) */
+export interface CapsuleSeenPayload {
+  marked: number
+}
+
 /** 채울 양의 상한 — DB 함수 인자가 INTEGER라 이보다 크면 형식 오류다 */
 export const CAPSULE_AMOUNT_MAX = 2147483647
