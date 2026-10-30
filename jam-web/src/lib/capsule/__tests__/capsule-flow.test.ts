@@ -106,7 +106,7 @@ describe('runOpen', () => {
 
 describe('문구 규칙', () => {
   it('열기를 부추기는 말과 낮은 등급을 낮추어 보는 말이 캡슐 화면 문구에 없다', () => {
-    const all = JSON.stringify([d.capsule.title, d.capsule.pill, d.capsule.aria, d.capsule.sheet, d.capsule.fill, d.capsule.openResult])
+    const all = JSON.stringify([d.capsule.title, d.capsule.pill, d.capsule.aria, d.capsule.sheet, d.capsule.fill, d.capsule.openResult, d.capsule.claimResult, d.capsule.widget])
     expect(all).not.toMatch(/한 번만 더|곧 좋은|꽝|대박|행운/)
   })
 })
@@ -129,13 +129,14 @@ describe('runClaim', () => {
     expect(await runClaim(request)).toEqual({
       kind: 'claimed',
       items: [ITEM_A, ITEM_B, ITEM_C],
-      message: t(d.capsule.openResult, { n: 3 }),
+      message: t(d.capsule.claimResult, { n: 3 }),
       partial: false,
       remainingPending: 0,
       stopped: 'none',
       refresh: true,
     })
     expect(request).toHaveBeenCalledTimes(1)
+    expect(t(d.capsule.claimResult, { n: 3 })).toBe('아이템 배지 3개를 받았어요')
   })
 
   it('일부만 받고 빈칸이 모자라 멈췄으면 partial이고 빈칸 수를 싣는다', async () => {
@@ -149,7 +150,7 @@ describe('runClaim', () => {
     expect(await runClaim(async () => ({ kind: 'ok', data }))).toEqual({
       kind: 'claimed',
       items: [ITEM_A],
-      message: t(d.capsule.openResult, { n: 1 }),
+      message: t(d.capsule.claimResult, { n: 1 }),
       partial: true,
       remainingPending: 1,
       stopped: 'insufficient_slots',

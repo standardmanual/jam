@@ -99,7 +99,7 @@ export async function runOpen(request: () => Promise<CapsuleCall<CapsuleOpenPayl
 }
 
 /**
- * 보류 받기 결과를 화면 동작으로 옮긴다. 새 문구는 만들지 않는다 — 결과는 `d.capsule.openResult`(열기와 같은 결과 문구),
+ * 보류 받기 결과를 화면 동작으로 옮긴다. 결과는 `d.capsule.claimResult`(«아이템 배지 {n}개를 받았어요», 티켓 20261028_1739 2회),
  * 거절은 서버가 완성한 문구(`d.capsule.claimInsufficientSlots`·`claimNoPending`·`claimNoTribe`·`changed`)를 그대로, 이용 정지는 `d.suspension.capsuleClaimBlocked`(info),
  * 그 밖의 실패는 `d.capsule.claimFailed`다. 거절은 모두 보류 상태가 달라졌을 수 있어 다시 조회한다.
  */
@@ -112,7 +112,7 @@ export async function runClaim(request: () => Promise<CapsuleClaimCall> = claimC
       return {
         kind: 'claimed',
         items,
-        message: t(d.capsule.openResult, { n: items.length }),
+        message: t(d.capsule.claimResult, { n: items.length }),
         partial: stopped !== 'none' || remainingPending > 0,
         remainingPending,
         stopped,
