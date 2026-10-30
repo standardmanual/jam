@@ -17,8 +17,8 @@
  *    (`auto-fill.ts`가 한다 — 이중 호출 방지). 응답에는 `chapterNo`·`reachedChapters`·`chapterCount`를 모양 호환으로 싣는다(DB가 `reachedChapters`를 항상 빈 배열로 돌려준다).
  *    `counted`를 켜지 않으면 지금까지와 똑같다(옛 `capsule_open`과 점수 — 프로덕션 main이 쓰는 경로). **`/api/capsule/open` 라우트도 티켓 20261028_1735 3회부터 `counted: true`로 불러서
  *    라우트는 이 옛 경로를 더는 쓰지 않는다.** 옛 경로 코드의 삭제는 U11이다.
- *  - 그 다음 퀘스트 완료 처리를 부른다(티켓 20261021_1248, 운영 로직 2.2절). 실제 단계 ② «캡슐 열기»가 여기서 끝날 수 있고, 실제 3단계가 다 끝났으면 챕터 1이 시작된다.
- *    점수 다음이라 퀘스트 전에 쌓인 점수가 챕터 1 시작 때 함께 계산된다. 던지지 않고, 어떤 실패도 열기와 응답을 바꾸지 않는다(응답에 완료 배지를 싣지 않는다).
+ *  - 퀘스트 완료 처리는 부르지 않는다(티켓 20261028_1738). 캡슐 열기는 더 이상 퀘스트 단계가 아니다. 퀘스트는 첫 동기화와 잠긴 개체 열기 두 단계라
+ *    완료 판정은 동기화(`syncStravaActivities`)와 잠긴 개체 열기(`lockedItemFill.ts`)가 각각 부른다. 이 열기는 두 단계 어느 쪽의 기록도 바꾸지 않는다.
  *  - 다른 트라이브를 고를 때는 후보 배지가 있는 트라이브만 대상이다(`tribesWithCandidates`, 티켓 20261021_1248). 후보가 없는 트라이브가 뽑혀 개체가 비는 일을 없앤다.
  *  - 응답의 잠긴 개체는 이름·그림·일련번호 없이 등급과 여는 데 필요한 양만 싣는다.
  *
@@ -32,7 +32,6 @@ import type { IssueBadge, IssueBook, Rand } from '@/lib/drop-engine/syncIssue'
 import { logEngineDecision } from '@/lib/engine-log'
 import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { getJamPolicy } from '@/lib/jam/policy'
-import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import { CapsuleError, getCapsuleState } from './capsule'
 import {
@@ -343,13 +342,6 @@ export async function openCapsule(
   if (!countedInfo) {
     await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
   }
-  // 퀘스트 실제 단계 ② «캡슐 열기»(티켓 20261021_1248). 점수 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
-  try {
-    await recordOnboardingQuestCompletion(supabase, userId)
-  } catch (e) {
-    console.error(`[capsule-open] 퀘스트 완료 처리 실패 — 열기는 유지한다 (userId: ${userId}):`, e)
-  }
-
   const items = await recordOpenedItems(userId, data, rolled, result.items)
 
   // 열어서 받은 만큼 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.

@@ -8,7 +8,6 @@ import { CheckCircleIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import SyncButton from '@/components/SyncButton'
-import { requestCapsuleSheetOpen } from '@/lib/capsule/capsule-sheet-signal'
 import { d, t } from '@/lib/i18n'
 import { STEP_SCREEN_MAP, type OnboardingQuestScreen } from '@/lib/onboarding-quest/config'
 import type { RealCurrentStep, RealStepRow, RealStepsView } from '@/lib/onboarding-quest/real-view'
@@ -20,26 +19,26 @@ import QuestStartTracker from './QuestStartTracker'
 
 /**
  * «JAM! 시작하기» 홈 카드 (티켓 20260927_2133, 상위 20260927_2123 T1b · 경로 변경 20260928_0136 ·
- * 보상 문구 제거·CTA 버튼화 20260928_1537 · 실제 3단계 20261021_1248 2회).
+ * 보상 문구 제거·CTA 버튼화 20260928_1537 · 실제 3단계 20261021_1248 2회 · 실제 2단계와 포인트 기준 20261028_1738 1회).
  *
  * 채원 사전 판정 — 재사용. 신규 토큰·컴포넌트 없이 Card(기본 톤: 흰 면 + 1px 테두리)·LabelChip·ProgressBar·InlineNotice·icons.tsx·서비스
  * Button만으로 조립한다. 어두운 반전 면이 아니라서 글자는 `text-foreground`(Card가 깔아 상속)·`text-muted`·`text-link`다(티켓 20261015_2133).
  * 그라데이션·그림자·반투명 면·가운데 정렬이 없고 모든 글자는 왼쪽 정렬이다. 체크 아이콘은 `--link` 선이고 아직 안 한 원의 테두리는 `--muted`다.
  *
  * 한 카드, 두 구역이다. 위계는 «지금 할 일» 기준이고 한 카드의 primary 버튼은 늘 하나다.
- * - 연출 중(`in_progress`): 칩 + «미리 해보기 n/7», ProgressBar 7칸, 연출 다음 단계 제목·설명, primary CTA(펄스 유지), 구분선, «내 활동으로 3단계» 체크 목록
+ * - 연출 중(`in_progress`): 칩 + «미리 해보기 n/7», ProgressBar 7칸, 연출 다음 단계 제목·설명, primary CTA(펄스 유지), 구분선, «내 활동으로 2단계» 체크 목록
  *   (`<ol>`, 누를 수 없음), 카드 밖 «미리 해보기 건너뛰기». 실제 단계 기록을 읽지 못했으면(`real` null) 구분선과 목록을 그리지 않는다.
- * - 연출 끝 또는 건너뜀(`real`): 칩 + «내 활동으로 n/3», ProgressBar 3칸, 체크 목록(지금 할 차례 행은 굵은 제목과 설명), 필요하면 InlineNotice, primary CTA 하나(펄스 없음).
+ * - 연출 끝 또는 건너뜀(`real`): 칩 + «내 활동으로 n/2», ProgressBar 2칸, 체크 목록(지금 할 차례 행은 굵은 제목과 설명), 필요하면 InlineNotice, primary CTA 하나(펄스 없음).
  *   건너뛴 유저에게는 연출 구역도 «건너뛰었어요» 표시도 건너뛰기 버튼도 없다.
- * 완료 상태 구역은 없다 — 챕터 1은 소식 한 건으로 알린다(사용자 결정 4). 연출 끝/건너뜀과 실제 3단계가 둘 다 끝나면 카드가 사라진다(`status.ts`).
+ * 완료 상태 구역은 없다 — 챕터 1은 소식 한 건으로 알린다(사용자 결정 4). 연출 끝/건너뜀과 실제 2단계가 둘 다 끝나면 카드가 사라진다(`status.ts`).
  *
  * 카드 자체는 누르지 않고 CTA만 액션이다(MissionCard와 같은 패턴 — `<a>` 안에 `<button>`을 두지 않는다). CTA는 `size="sm"`(44px)이다.
  * - 연출 sync 차례: 연출 동기화 버튼(`OnboardingSyncButton`). 그 외 연출 차례: `STEP_SCREEN_MAP`이 가리키는 실제 화면으로 `router.push`.
  * - 실제 ① 연동 전: Strava 연결 길(`window.location.href = '/api/strava/auth'`, TopNav.tsx와 같은 코드). 연동됨: 실제 `SyncButton`.
- * - 실제 ② 캡슐: «캡슐 채우기»·«캡슐 열기»가 캡슐 시트를 바로 연다(`capsule-sheet-signal` 이벤트, 위젯이 받는다). 열기 뒤 카드는 위젯의 `router.refresh()`로 새로 읽힌다.
- *   인벤토리 빈칸이 모자라면 InlineNotice + «인벤토리 보기»(`/inventory`).
- * - 실제 ③ 잠긴 아이템 배지: «열러 가기»가 캡슐에서 나온 잠긴 개체의 깊은 링크 `/inventory/{itemId}`로 보낸다(연출 중 `/inventory` 목록은 연출 인벤토리라서).
- * - 잼이 실제로 모자랄 때만 InlineNotice(경고색·아이콘 없음)를 보이고 primary 버튼이 동기화로 바뀐다. 여유가 0이어도 미리 경고하지 않는다.
+ * - 실제 ② 잠긴 아이템 배지: «인벤토리 가기»가 열러 갈 잠긴 개체의 깊은 링크 `/inventory/{itemId}`로 보낸다(연출 중 `/inventory` 목록은 연출 인벤토리라서). 개체를 모르면 `/inventory`다.
+ *   버튼 글자는 어떤 경우에도 같다. 설명은 개체를 알면 «잠긴 배지를 열 수 있어요»(필요 포인트가 0이든 N이든 같은 문장, 포인트 숫자는 카드에 없다), 모르면 «잠긴 배지를 열어 보세요»다.
+ * - 가진 포인트가 필요 포인트보다 적을 때만 InlineNotice(경고색·아이콘 없음) «{need} 포인트가 필요해요»를 더한다. primary 버튼은 그대로 «인벤토리 가기»이고 여유가 0이어도 미리 경고하지 않는다.
+ *   캡슐 버튼과 잼·인벤토리 빈칸 안내는 없다(캡슐 열기는 단계가 아니다).
  *
  * 접근성: 카드 `role="group"`, 분수는 보이는 글자를 `aria-hidden`으로 두고 같은 뜻의 문장을 `sr-only`로 읽힌다. 목록 행마다 «마쳤어요»·«지금 할 차례예요»·«아직이에요»를
  * `sr-only` 글자로 붙이고 아이콘은 `aria-hidden`이다(색에만 기대지 않는다). 새·고치는 요소에는 `break-keep wrap-break-word`를 둔다(UX 라이팅 가이드 §3.2).
@@ -55,7 +54,7 @@ const SCREEN_PATH_MAP: Record<OnboardingQuestScreen, string> = {
 const CARD_CLASS = 'flex flex-col gap-4'
 // CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다
 const CTA_ROW_CLASS = 'flex'
-// 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — 연출 CTA 줄에만 쓴다. 실제 3단계의 버튼에는 붙이지 않는다(채원 사전 판정 20261021_1248).
+// 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — 연출 CTA 줄에만 쓴다. 실제 2단계의 버튼에는 붙이지 않는다(채원 사전 판정 20261021_1248).
 // rounded-full은 버튼의 --radius-full과 래퍼 반경을 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정).
 // self-start가 없으면 이 줄 자체가 카드 폭으로 늘어나 펄스 링이 카드 폭 전체에 그려진다(티켓 20260928_2137).
 const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-full jam-quest-pulse`
@@ -90,7 +89,7 @@ function Divider() {
   return <hr className="m-0 h-px border-0 bg-border" />
 }
 
-// ─── 실제 3단계 체크 목록 ───────────────────────────────────────────────────
+// ─── 실제 2단계 체크 목록 ───────────────────────────────────────────────────
 
 /** 마친 행은 `--link` 선 체크 아이콘, 아직 안 한 행은 `--muted` 테두리 원이다. 둘 다 24px 칸에 놓여 글자 시작선이 같다. */
 function StepMark({ done }: { done: boolean }) {
@@ -104,18 +103,11 @@ function StepMark({ done }: { done: boolean }) {
   )
 }
 
-/** 지금 할 차례 행의 설명 */
+/** 지금 할 차례 행의 설명 — ②는 개체를 알면 필요 포인트와 상관없이 같은 문장이다 */
 function currentDescription(current: RealCurrentStep): string {
   const copy = d.onboardingQuest.real
   if (current.step === 'sync') return current.stravaConnected ? copy.sync.descriptionConnected : copy.sync.description
-  if (current.step === 'capsule') {
-    if (current.stage === 'unknown') return copy.capsule.descriptionGeneral
-    if (current.stage === 'filling') return t(copy.capsule.description, { n: current.need ?? 0 })
-    return copy.capsule.descriptionReady
-  }
-  if (current.target === null) return copy.locked.descriptionGeneral
-  if (current.target.need === 0) return copy.locked.descriptionReady
-  return t(copy.locked.description, { n: current.target.need })
+  return current.target === null ? copy.locked.descriptionGeneral : copy.locked.description
 }
 
 function ChecklistRow({ row, description }: { row: RealStepRow; description: string | null }) {
@@ -138,7 +130,7 @@ function ChecklistRow({ row, description }: { row: RealStepRow; description: str
 }
 
 /**
- * «내 활동으로 3단계» 체크 목록(`<ol>`, 누를 수 없음). `emphasizeCurrent`가 참이면(실제 구역이 위로 올라온 카드) 지금 할 차례 행이
+ * «내 활동으로 2단계» 체크 목록(`<ol>`, 누를 수 없음). `emphasizeCurrent`가 참이면(실제 구역이 위로 올라온 카드) 지금 할 차례 행이
  * 굵은 제목과 설명을 갖고, 아니면(연출 중 카드 아래) 모든 행이 한 줄이다.
  */
 function RealChecklist({ real, emphasizeCurrent }: { real: RealStepsView; emphasizeCurrent: boolean }) {
@@ -157,22 +149,9 @@ function RealChecklist({ real, emphasizeCurrent }: { real: RealStepsView; emphas
 
 // ─── 실제 구역의 안내와 버튼 ────────────────────────────────────────────────
 
-/** 지금 할 차례 행 아래의 안내 한 덩어리. 잼 모자람은 실제로 모자랄 때만, 빈칸 모자람은 캡슐이 가득 찼을 때만 나온다. */
+/** 지금 할 차례 행 아래의 안내. 포인트가 실제로 모자랄 때만 나온다. */
 function currentNotice(current: RealCurrentStep): string | null {
-  const copy = d.onboardingQuest.real
-  if (current.step === 'capsule') {
-    if (current.stage === 'noSlots') {
-      // 캡슐 시트와 같은 어휘를 그대로 쓴다. 문장이 둘 이상이라 마침표로 끊는다
-      const parts = [
-        d.capsule.sheet.noSlotsTitle,
-        current.slots ? t(d.capsule.sheet.noSlotsCount, { free: current.slots.free, needed: current.slots.needed }) : null,
-        d.capsule.sheet.noSlotsKept,
-      ].filter((part): part is string => part !== null)
-      return `${parts.join('. ')}.`
-    }
-    if (current.shortage) return t(copy.shortage.capsule, { have: current.shortage.have, need: current.shortage.need })
-  }
-  if (current.step === 'locked' && current.shortage) return copy.shortage.locked
+  if (current.step === 'locked' && current.shortage) return t(d.onboardingQuest.real.shortage, { need: current.shortage.need })
   return null
 }
 
@@ -192,40 +171,21 @@ function ConnectButton() {
   )
 }
 
-/** 동기화 길 — 연동됨이면 실제 동기화 버튼, 연동 전이면 연결 길. 실제로 모자랄 때의 primary와 ① 차례의 primary가 같다. */
+/** ① 동기화 길 — 연동됨이면 실제 동기화 버튼, 연동 전이면 연결 길. */
 function SyncOrConnect({ stravaConnected, username }: { stravaConnected: boolean; username: string | null }) {
   return stravaConnected ? <SyncButton username={username} size="sm" /> : <ConnectButton />
 }
 
-function RealCta({ current, stravaConnected, username }: { current: RealCurrentStep; stravaConnected: boolean; username: string | null }) {
+function RealCta({ current, username }: { current: RealCurrentStep; username: string | null }) {
   const router = useRouter()
-  const copy = d.onboardingQuest.real
-
-  const shortage = current.step === 'sync' ? null : current.shortage
-  if (shortage) return <SyncOrConnect stravaConnected={stravaConnected} username={username} />
 
   if (current.step === 'sync') return <SyncOrConnect stravaConnected={current.stravaConnected} username={username} />
 
-  if (current.step === 'capsule') {
-    if (current.stage === 'noSlots') {
-      return (
-        <Button variant="primary" surface="sub" size="sm" className={BUTTON_LABEL_CLASS} onClick={() => router.push('/inventory')}>
-          {d.capsule.sheet.inventoryLink}
-        </Button>
-      )
-    }
-    return (
-      <Button variant="primary" surface="sub" size="sm" className={BUTTON_LABEL_CLASS} onClick={() => requestCapsuleSheetOpen()}>
-        {current.stage === 'filling' ? copy.capsule.fillCta : copy.capsule.openCta}
-      </Button>
-    )
-  }
-
-  // ③ — 개체를 알면 그 개체의 깊은 링크로, 모르면 인벤토리로 보낸다
+  // ② — 개체를 알면 그 개체의 깊은 링크로, 모르면 인벤토리로 보낸다. 포인트가 모자라도 버튼은 그대로다.
   const href = current.target ? `/inventory/${current.target.itemId}` : '/inventory'
   return (
     <Button variant="primary" surface="sub" size="sm" className={BUTTON_LABEL_CLASS} onClick={() => router.push(href)}>
-      {copy.locked.cta}
+      {d.onboardingQuest.real.locked.cta}
     </Button>
   )
 }
@@ -242,7 +202,7 @@ function RealCard({ real, username }: { real: RealStepsView; username: string | 
       {notice !== null && <InlineNotice>{notice}</InlineNotice>}
       {real.current && (
         <div className={CTA_ROW_CLASS}>
-          <RealCta current={real.current} stravaConnected={real.stravaConnected} username={username} />
+          <RealCta current={real.current} username={username} />
         </div>
       )}
     </Card>

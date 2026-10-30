@@ -3,9 +3,9 @@
  * DB에 닿지 않는 순수 함수만 검증한다 — 조회 래퍼(`getOnboardingQuestCard`)는 `getOnboardingQuestCard-real.test.ts`가 맡는다.
  *
  * 고정하는 것:
- * - 숨김 조건은 «연출 끝 또는 건너뜀 AND 실제 3단계 완료»(또는 `completed_at`)다.
- * - 연출이 남은 채 실제 3단계만 끝났으면 카드는 남는다(연출 구역 + 모두 체크된 목록).
- * - 연출이 끝났거나 건너뛰었고 실제 3단계가 남았으면 실제 구역 카드다.
+ * - 숨김 조건은 «연출 끝 또는 건너뜀 AND 실제 2단계 완료»(또는 `completed_at`)다.
+ * - 연출이 남은 채 실제 2단계만 끝났으면 카드는 남는다(연출 구역 + 모두 체크된 목록).
+ * - 연출이 끝났거나 건너뛰었고 실제 2단계가 남았으면 실제 구역 카드다.
  * - 실제 단계 기록을 읽지 못했으면(real = null) 연출 중에는 연출 구역만, 연출이 끝난 뒤에는 카드를 그리지 않는다.
  */
 import { describe, it, expect } from 'vitest'
@@ -17,15 +17,15 @@ const ALL_DEMO_STEPS = { sync: '1', bag: '1', pickup: '1', mix_fail: '1', mix_su
 
 function realView(steps: Partial<RealStepsProgress> = {}): RealStepsView {
   return resolveRealStepsView({
-    steps: { sync: false, capsuleOpened: false, lockedOpened: false, ...steps },
+    steps: { sync: false, lockedOpened: false, ...steps },
     stravaConnected: true,
-    capsule: null,
     lockedTarget: null,
+    pointBalance: null,
   })
 }
 
 const REAL_PARTIAL = realView({ sync: true })
-const REAL_DONE = realView({ sync: true, capsuleOpened: true, lockedOpened: true })
+const REAL_DONE = realView({ sync: true, lockedOpened: true })
 
 describe('resolveOnboardingQuestCard — 숨김', () => {
   it('행이 없으면 null(숨김)', () => {
@@ -40,12 +40,12 @@ describe('resolveOnboardingQuestCard — 숨김', () => {
     expect(state).toBeNull()
   })
 
-  it('연출을 끝냈고 실제 3단계도 끝났으면 null(숨김)', () => {
+  it('연출을 끝냈고 실제 2단계도 끝났으면 null(숨김)', () => {
     const state = resolveOnboardingQuestCard({ step_progress: ALL_DEMO_STEPS, skipped_at: null, completed_at: null }, REAL_DONE)
     expect(state).toBeNull()
   })
 
-  it('연출을 건너뛰었고 실제 3단계도 끝났으면 null(숨김)', () => {
+  it('연출을 건너뛰었고 실제 2단계도 끝났으면 null(숨김)', () => {
     const state = resolveOnboardingQuestCard({ step_progress: {}, skipped_at: '2026-09-27T02:00:00Z', completed_at: null }, REAL_DONE)
     expect(state).toBeNull()
   })
@@ -62,7 +62,7 @@ describe('resolveOnboardingQuestCard — 숨김', () => {
 })
 
 describe('resolveOnboardingQuestCard — 연출 진행 중(in_progress)', () => {
-  it('1단계만 마쳤으면 in_progress, done=1, nextStep은 다음 미완료 단계(bag), 실제 3단계를 함께 싣는다', () => {
+  it('1단계만 마쳤으면 in_progress, done=1, nextStep은 다음 미완료 단계(bag), 실제 2단계를 함께 싣는다', () => {
     const state = resolveOnboardingQuestCard(
       { step_progress: { sync: '2026-09-27T00:00:00Z' }, skipped_at: null, completed_at: null },
       REAL_PARTIAL
@@ -80,15 +80,15 @@ describe('resolveOnboardingQuestCard — 연출 진행 중(in_progress)', () => 
     expect(state).toEqual({ kind: 'in_progress', done: 1, total: 7, nextStep: 'bag', real: null })
   })
 
-  it('연출이 남은 채 실제 3단계만 끝났으면 카드는 남는다(실제 목록은 모두 체크)', () => {
+  it('연출이 남은 채 실제 2단계만 끝났으면 카드는 남는다(실제 목록은 모두 체크)', () => {
     const state = resolveOnboardingQuestCard({ step_progress: { sync: '1', bag: '1' }, skipped_at: null, completed_at: null }, REAL_DONE)
     expect(state).toMatchObject({ kind: 'in_progress', done: 2, nextStep: 'pickup' })
-    expect(state && 'real' in state ? state.real?.rows.map((r) => r.state) : null).toEqual(['done', 'done', 'done'])
+    expect(state && 'real' in state ? state.real?.rows.map((r) => r.state) : null).toEqual(['done', 'done'])
   })
 })
 
-describe('resolveOnboardingQuestCard — 연출 끝 또는 건너뜀, 실제 3단계 남음(real)', () => {
-  it('7단계를 다 채우고 completed_at이 없고 실제 3단계가 남았으면 real', () => {
+describe('resolveOnboardingQuestCard — 연출 끝 또는 건너뜀, 실제 2단계 남음(real)', () => {
+  it('7단계를 다 채우고 completed_at이 없고 실제 2단계가 남았으면 real', () => {
     const state = resolveOnboardingQuestCard({ step_progress: ALL_DEMO_STEPS, skipped_at: null, completed_at: null }, REAL_PARTIAL)
     expect(state).toEqual({ kind: 'real', real: REAL_PARTIAL })
   })

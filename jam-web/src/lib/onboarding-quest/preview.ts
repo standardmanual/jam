@@ -63,7 +63,7 @@ export function resolvePreviewGate(
  * 맞춘다 — 단계 키면 진행 중 카드(`done`은 그 단계 이전에 마친 단계 수), done이면 실제
  * `stravaConnected` 값을 그대로 실어 실제 구역 카드(`kind: 'real'`)를 돌려준다.
  *
- * 미리보기는 DB를 읽지 않으므로 실제 3단계는 «아무것도 안 했다»로 둔다(캡슐·잠긴 개체도 모름). 그래서 지금 할 차례는 늘 ① Strava 동기화다
+ * 미리보기는 DB를 읽지 않으므로 실제 2단계는 «아무것도 안 했다»로 둔다(잠긴 개체·가진 포인트도 모름). 그래서 지금 할 차례는 늘 ① Strava 동기화다
  * (티켓 20261021_1248 — 새 카드의 연출 구역과 첫 실제 행을 운영자가 확인하는 용도).
  */
 export function resolvePreviewCard(
@@ -71,10 +71,10 @@ export function resolvePreviewCard(
   { stravaConnected }: { stravaConnected: boolean }
 ): OnboardingQuestCardState {
   const real = resolveRealStepsView({
-    steps: { sync: false, capsuleOpened: false, lockedOpened: false },
+    steps: { sync: false, lockedOpened: false },
     stravaConnected,
-    capsule: null,
     lockedTarget: null,
+    pointBalance: null,
   })
   if (preview === DONE) {
     return { kind: 'real', real, preview: true }
