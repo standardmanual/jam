@@ -155,6 +155,7 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
   - 합친 연출이 보여 준 챕터는 기기의 «마지막으로 축하한 챕터»로 저장해 챕터 오름 카드가 또 띄우지 않는다. 더 높은 챕터가 있으면 카드가 뜬다. 카드는 합친 연출이 끝날 때까지 기다린다.
   - 「닫기」나 「획득한 배지 보기」를 누르면 «봤어요»(`POST /api/capsule/unseen/seen`)를 한 번 보낸다. 실패해도 화면은 진행하고 다음 접속에 다시 보인다. 닫으면 게이지가 2% 원에서 지금 값까지 차오르고 번개가 한 번 튄다(모션 줄이기는 이동 시간 0, 번개 없음). 「획득한 배지 보기」는 오버레이가 닫힌 뒤 획득 연출 캐러셀(캡슐 보상, 챕터 배지는 맨 끝)을 연다.
 - 채우기·열기·바텀시트는 화면에서 없어졌다(옛 채우기·열기 API는 정리 티켓까지 남는다). 시트를 여는 브라우저 이벤트(`capsule-sheet-signal`)와 옛 방사형 알약(`RadialCapsule`·`CapsulePill`)도 지웠다. 확률 안내 링크는 게이지 주변에 두지 않고 푸터의 「확률 안내」를 쓴다.
+- 게이지·합친 연출의 원형이던 프로토타입(`app/spike/capsule-fill`)과 옛 채우기 패널(`JamFillPanel`)은 지웠다(티켓 20261028_1740 4회차). 서비스 화면에는 쓰이지 않던 파일이라 동작은 바뀌지 않는다.
 - 서버 조회가 실패하면 투데이는 위젯을 그대로 그리고(초기값 없음), 위젯이 클라이언트에서 `GET /api/capsule`로 다시 가져온다.
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsuleGauge`·`CapsuleWidget`·`CapsuleResultProvider`·`CapsuleResultOverlay`), `jam-web/src/app/(main)/layout.tsx`, `jam-web/src/lib/capsule/unseen.ts`·`result-flow.ts`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-gauge.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)

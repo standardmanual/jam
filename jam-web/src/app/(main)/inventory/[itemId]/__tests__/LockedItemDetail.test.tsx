@@ -311,8 +311,8 @@ describe('LockedItemDetail — 문구와 소스', () => {
     expect(sourceCode()).not.toMatch(/InventoryItemHistorySheet|\/history/)
   })
 
-  it('채우기 부품(ProgressBar·JamBalance·JamFillPanel·BottomSheet)을 가져오지 않는다', () => {
-    expect(sourceCode()).not.toMatch(/ProgressBar|JamBalance|JamFillPanel|BottomSheet|lockedFillPercent|runLockedFill/)
+  it('채우기 부품(ProgressBar·JamBalance·BottomSheet)을 가져오지 않는다', () => {
+    expect(sourceCode()).not.toMatch(/ProgressBar|JamBalance|BottomSheet|lockedFillPercent|runLockedFill/)
   })
 
   it('보조 문구에 --muted 글자색을 쓰지 않는다(크림 면 위라 --foreground)', () => {

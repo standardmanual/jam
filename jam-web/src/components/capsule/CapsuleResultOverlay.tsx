@@ -22,7 +22,7 @@ import { pushMainScrollLock, pushTabBarHidden } from '@/lib/uiOverlay'
  *
  * 흐름: 채움이 있던 자리(`origin`)에서 시작해 `clip-path`가 오버레이 전체로 넓어진다(모서리 둥글기도 0으로 풀린다)
  *   → 문구와 버튼이 차례로 나타난다 → 버튼을 누르면 디졸브(투명도)로 닫힌다.
- * 프로토타입 `app/spike/capsule-fill/LevelUpOverlay.tsx`의 `Phase` 구조를 옮겼다(프로토타입 폴더는 4회차에 지워지므로 거기서 가져오지 않는다).
+ * 프로토타입 `LevelUpOverlay`(`app/spike/capsule-fill`, 4회차에 삭제)의 `Phase` 구조를 옮겼다.
  * 프로토타입과 달라진 점: ① 색은 토큰 ② 서비스 컬럼 폭(430px)에 맞추고 `origin`을 루트 기준 좌표로 바꾼다(`toRootOrigin`)
  * ③ `pushTabBarHidden` ④ 제목을 서버값(표시 모델)에서 받는다 ⑤ 버튼이 둘이라 Tab을 가두지 않고 둘 사이로 순환시킨다.
  *
