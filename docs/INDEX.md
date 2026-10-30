@@ -70,7 +70,7 @@ status: active
 - [ACTIVITY_BADGES.md](service/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
 - [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차, 등급별 보상 입력 규칙을 컨텐츠 입력자용으로 정리한 문서다.
 - [v5_badge_name_split.md](service/content/v5_badge_name_split.md) — v5 액티비티배지에서 종목마다 계열 이름을 다르게 짓는 이름 분화의 근거, 후보안, 승인 후 검증 결과를 기록한 문서다.
-- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·믹스 화면), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -206,7 +206,7 @@ status: active
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
 - [PRD.md](service/prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
-- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·믹스 화면), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -379,7 +379,7 @@ status: active
 
 **현재 서비스 (service)**
 
-- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·믹스 화면), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -915,7 +915,7 @@ status: active
 
 ### docs/service/prd/probability/
 
-- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·캡슐 시트), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
+- [PRD.md](service/prd/probability/PRD.md) — 확률 안내 페이지(/probability)가 보이는 값과 그 원천, 읽기 실패 규칙, 화면 구성, 입구(푸터·믹스 화면), 공개 경로, 바뀐 날짜 표를 코드 기준으로 정의한 PRD다. 값은 설정 표를 읽어 만들고 코드 상수 사본으로 대신하지 않는다.
 
 ### docs/service/prd/ranking-board/
 

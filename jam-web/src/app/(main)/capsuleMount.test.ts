@@ -16,6 +16,24 @@ import { describe, expect, it } from 'vitest'
 const source = readFileSync(join(__dirname, 'page.tsx'), 'utf8')
 const code = source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
+describe('투데이 챕터 글자와 캡슐 위젯 묶음', () => {
+  it('챕터 번호는 getMyChapter로 읽어 기존 Promise.all에 합치고, 챕터가 있을 때만 위젯 바로 위에 글자를 둔다', () => {
+    expect(code).toMatch(/getMyChapter\(createServiceClient\(\), userId\)/)
+    const all = code.slice(code.indexOf('await Promise.all(['), code.indexOf('])', code.indexOf('await Promise.all([')))
+    expect(all).toContain('chapterPromise')
+    const label = code.indexOf('d.chapter.line.chapter')
+    const widget = code.indexOf('<CapsuleWidget')
+    expect(label).toBeGreaterThan(-1)
+    expect(label).toBeLessThan(widget)
+    expect(code).toMatch(/myChapter\.ok && myChapter\.chapterNo !== null/)
+    expect(code).toMatch(/text-sm text-muted/)
+  })
+
+  it('확률 안내 링크를 이 묶음에 새로 만들지 않는다(푸터의 링크를 쓴다)', () => {
+    expect(code).not.toMatch(/\/probability|footerProbability|probabilityLink/)
+  })
+})
+
 describe('투데이 캡슐 위젯', () => {
   it('TodayStatusStrip 아래, TodayCardStack 위에 한 번 있다', () => {
     const strip = code.indexOf('<TodayStatusStrip')

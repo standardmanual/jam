@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type Ref } from 'react'
 import { prefersReducedMotion } from '@/lib/motion'
+import { JamBolt } from '@/components/capsule/CapsuleGauge'
 import { graphPercentToFillRatio } from './capsuleFillMath'
 
 /**
@@ -37,28 +38,8 @@ export function gaugeCircleDiameter(height: number): number {
   return height - (BORDER_PX + PADDING_PX) * 2
 }
 
-/** 번개 아이콘 — 채움 오른쪽 끝 원과 오버레이가 같은 모양을 쓴다 */
-export function JamBolt({ size, svgRef }: { size: number; svgRef?: Ref<SVGSVGElement> }) {
-  return (
-    <svg
-      ref={svgRef}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-      style={{ display: 'block', overflow: 'visible' }}
-    >
-      <path
-        d="M13.5 2.5 5 13.5h6l-1 8 8.5-11h-6l1-8Z"
-        fill={GAUGE_ICON}
-        stroke={GAUGE_ICON}
-        strokeWidth={1.6}
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
+// 번개 아이콘은 서비스 게이지(`CapsuleGauge`)가 갖는다(티켓 20261028_1739 2회). 챕터 오름 오버레이가 이 경로로 가져오므로 다시 내보낸다.
+export { JamBolt }
 
 interface Props {
   /** 그래프 눈금(2~100). 2가 캡슐 잼 0%다 */

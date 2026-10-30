@@ -96,6 +96,12 @@
   --progress-sweep: linear-gradient(90deg in oklab,
       var(--progress-short), var(--progress-done));
 
+  /* ── 확장: 캡슐 게이지 (티켓 20261028_1739) ───────────────── */
+  /* 어두운 트랙 위에 오렌지 채움이 차오르는 게이지 전용. 오렌지와 트랙 대비는 약 4.8:1, 흰 번개와 오렌지는 약 3.4:1(둘 다 계산값, 실측 아님)이다. */
+  --capsule-fill: #f94c31;                      /* 채움 면 */
+  --capsule-track: #19201c;                     /* 트랙 면 */
+  --capsule-ring: #0b0f0d;                      /* 트랙 바깥 테두리 */
+
   /* ── 확장: 탭바 아이콘 (재질은 materials.css) ─────────────── */
   --tabbar-icon: var(--base-neutral-900);
   --tabbar-icon-active: var(--accent);
