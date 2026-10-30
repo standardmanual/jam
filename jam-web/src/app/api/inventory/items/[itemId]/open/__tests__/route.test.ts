@@ -3,9 +3,9 @@
  *
  * 고정하는 것:
  * - 비로그인은 401이고 열지 않는다. 개체 id가 UUID가 아니면 404 `item_not_found`이고 DB를 부르지 않는다. 대상은 세션 유저뿐이다.
- * - 정상은 200과 같은 개체의 일련번호·준 포인트·열린 뒤의 개체 정보다.
+ * - 정상은 200과 같은 개체의 일련번호·준 포인트·낸 포인트·연 뒤 잔액·열린 뒤의 개체 정보다.
  * - 이용 정지는 403(`code: 'user_suspended'`, `d.suspension.lockedItemOpenBlocked`)이다. 앱 코드가 던진 경우와 DB 함수가 거절한 경우 모두다.
- * - 거절: `not_full`(채운 양·필요한 양 포함)·`not_locked` 409, `item_not_found` 404. 거절 응답에는 이름·그림·일련번호 등 개체를 알 수 있는 값이 없다(7.3절).
+ * - 거절: `insufficient_points`(필요한 포인트 `required`·가진 포인트 `balance` 포함)·`not_full`(옛 함수 호환, 채운 양·필요한 양 포함)·`not_locked` 409, `item_not_found` 404. 거절 응답에는 이름·그림·일련번호 등 개체를 알 수 있는 값이 없다(7.3절).
  *   그 밖의 오류는 500(`d.lockedItem.open.failed`)이고 원문 오류를 내려보내지 않는다.
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/inventory/items/[itemId]/open/__tests__/route.test.ts"
@@ -58,6 +58,8 @@ const OPENED = {
   serialNumber: 7,
   serialPrefix: 'ABCD',
   pointsAwarded: 50,
+  pointsSpent: 50,
+  pointBalance: 120,
   item: {
     name: '새벽의 첫 바퀴',
     imageUrl: 'https://img/x.png',
@@ -153,6 +155,25 @@ describe('POST /api/inventory/items/[itemId]/open', () => {
     expect(await res.json()).toEqual({ error: d.lockedItem.open.notFull, code: 'not_full', required: 100, filled: 60 })
   })
 
+  it('insufficient_points는 409이고 필요한 포인트·가진 포인트를 싣는다', async () => {
+    openMock.mockRejectedValue(new LockedItemError('insufficient_points', { required: 50, balance: 20 }))
+
+    const res = await post()
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: d.lockedItem.open.insufficientPoints, code: 'insufficient_points', required: 50, balance: 20 })
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('퀘스트의 첫 잠긴 배지처럼 낸 포인트가 0인 열기도 200이고 pointsSpent 0을 그대로 싣는다', async () => {
+    openMock.mockResolvedValue({ ...OPENED, pointsSpent: 0, pointBalance: 30 })
+
+    const res = await post()
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ pointsSpent: 0, pointBalance: 30 })
+  })
+
   it.each([
     ['not_locked', 409, d.lockedItem.notLocked],
     ['item_not_found', 404, d.lockedItem.itemNotFound],
@@ -167,6 +188,7 @@ describe('POST /api/inventory/items/[itemId]/open', () => {
 
   it.each([
     ['not_full', new LockedItemError('not_full', { required: 100, filled: 60 })],
+    ['insufficient_points', new LockedItemError('insufficient_points', { required: 50, balance: 20 })],
     ['not_locked', new LockedItemError('not_locked')],
     ['item_not_found', new LockedItemError('item_not_found')],
     ['user_suspended', new LockedItemError('user_suspended')],

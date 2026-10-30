@@ -1,8 +1,10 @@
 /**
  * 잠긴 아이템 배지 — 채우기·열기·조회 (티켓 20261018_0053, 운영 로직 7.2·7.3절)
  *
- * 채우기는 DB 함수 `locked_item_fill`(잼 원장 한 줄, 개체의 채운 양, 이력이 한 트랜잭션), 열기는 `locked_item_open`(같은 개체를 열린 상태로 바꾸고
- * 포인트를 한 번만 주고 이력을 남긴다)이 한다. 규칙은 캡슐 채우기와 같고, 열기에는 인벤토리 빈칸이 필요 없다. 앱은 정지 확인과 RPC 호출,
+ * 채우기는 DB 함수 `locked_item_fill`(잼 원장 한 줄, 개체의 채운 양, 이력이 한 트랜잭션)이 한다. 열기는 `locked_item_open_points`(마이그레이션 304, 티켓 20261028_1737)가 한다 —
+ * 잼을 채우지 않고 포인트를 내고 한 번에 연다. 같은 트랜잭션에서 포인트 지갑을 잠가 잔액을 확인하고(모자라면 `insufficient_points`, 아무것도 바꾸지 않음),
+ * 차감 줄(`locked_unlock_cost`)·열림·획득 줄(배지 포인트, 한 번만)·이력을 남긴다. 여는 포인트가 0이면(퀘스트의 첫 잠긴 배지) 차감 줄이 없다. 옛 `locked_item_open`은 U11까지 DB에 남아 있지만 이 파일은 부르지 않는다.
+ * 열기에는 인벤토리 빈칸이 필요 없다. 앱은 정지 확인과 RPC 호출,
  * 응답 모양 만들기만 한다. DB 안에서 포인트를 주므로 `awardPoints`의 알림(`notifyPointChange`)은 이 경로에서 나가지 않는다 — 그래서 열기 성공 뒤
  * 이 파일이 같은 포인트 소식(활동 결산의 «포인트» 꼬리)을 직접 낸다(티켓 20261026_1031).
  * 활동 피드도 이 파일이 올린다. 잠긴 채 받은 개체는 받을 때 포인트도 피드도 건너뛰므로(`recordIssuedRewards`, 7.3절 가림 원칙) 열 때가 `item_dropped`를 처음 올리는 때다.
@@ -41,18 +43,21 @@ export class LockedItemError extends Error {
   readonly code: LockedItemErrorCode
   /** `exceeds_remaining`일 때 채울 수 있는 남은 양 */
   readonly remaining?: number
-  /** `not_full`일 때 필요한 양 */
+  /** `not_full`일 때 필요한 양, `insufficient_points`일 때 여는 데 필요한 포인트 */
   readonly required?: number
   /** `not_full`일 때 채운 양 */
   readonly filled?: number
+  /** `insufficient_points`일 때 가진 포인트 */
+  readonly balance?: number
 
-  constructor(code: LockedItemErrorCode, detail?: { remaining?: number; required?: number; filled?: number }) {
+  constructor(code: LockedItemErrorCode, detail?: { remaining?: number; required?: number; filled?: number; balance?: number }) {
     super(`잠긴 개체 거절: ${code}`)
     this.name = 'LockedItemError'
     this.code = code
     this.remaining = detail?.remaining
     this.required = detail?.required
     this.filled = detail?.filled
+    this.balance = detail?.balance
   }
 }
 
@@ -62,6 +67,7 @@ interface RpcResult {
   remaining?: number
   required?: number
   filled?: number
+  balance?: number
 }
 
 /** DB 함수의 거절 응답을 `LockedItemError`로 바꿔 던진다. `allowed`에 없는 코드는 일반 오류다. */
@@ -70,8 +76,9 @@ function throwRejection(fn: string, result: RpcResult, allowed: readonly string[
   if (!allowed.includes(code)) throw new Error(`${fn}이 알 수 없는 거절 코드를 돌려줬다: ${String(result.error)}`)
   throw new LockedItemError(code as LockedItemErrorCode, {
     remaining: code === 'exceeds_remaining' ? result.remaining : undefined,
-    required: code === 'not_full' ? result.required : undefined,
+    required: code === 'not_full' || code === 'insufficient_points' ? result.required : undefined,
     filled: code === 'not_full' ? result.filled : undefined,
+    balance: code === 'insufficient_points' ? result.balance : undefined,
   })
 }
 
@@ -204,7 +211,7 @@ async function canPostOpenedFeed(supabase: SupabaseClient, userId: string, itemI
 }
 
 /**
- * 가득 찬 잠긴 개체를 연다. 인벤토리 빈칸은 필요 없고 새로 뽑지 않는다. 이용 정지 중이면 RPC를 부르기 전에 `UserSuspendedError`를 던진다.
+ * 잠긴 개체를 포인트를 내고 연다(채운 잼과 무관하다). 인벤토리 빈칸은 필요 없고 새로 뽑지 않는다. 이용 정지 중이면 RPC를 부르기 전에 `UserSuspendedError`를 던진다.
  * DB 함수의 거절은 `LockedItemError`다. 열기가 확정된 뒤 개체 정보를 읽지 못하면 열기를 되돌리지 않고 `item: null`로 돌려준다.
  * 열기가 확정되면 포인트 소식(`pointsAwarded`가 0보다 클 때)과 활동 피드 `item_dropped`(개체 정보를 읽었고 캡슐 출처가 아닐 때)를 한 번씩 낸다. 둘 다 서로와 열기 응답에 영향을 주지 않는다.
  * 캡슐에서 나온 잠긴 개체는 열어도 피드를 올리지 않는다(포인트 소식은 그대로 나간다). 동기화로 받은 개체와 발급 기록이 없는 개체만 올리고, 경로를 읽지 못해도 올리지 않는다.
@@ -212,13 +219,21 @@ async function canPostOpenedFeed(supabase: SupabaseClient, userId: string, itemI
 export async function openLockedItem(supabase: SupabaseClient, userId: string, itemId: string): Promise<LockedItemOpenPayload> {
   await assertNotSuspended(supabase, userId)
 
-  const { data, error } = await supabase.rpc('locked_item_open', { p_user_id: userId, p_item_id: itemId })
-  if (error) throw new Error(`locked_item_open RPC 오류: ${error.message}`)
+  const { data, error } = await supabase.rpc('locked_item_open_points', { p_user_id: userId, p_item_id: itemId })
+  if (error) throw new Error(`locked_item_open_points RPC 오류: ${error.message}`)
 
-  const result = data as (RpcResult & { badgeId?: string; serialNumber?: number | null; pointsAwarded?: number }) | null
-  if (result?.ok === false) throwRejection('locked_item_open', result, LOCKED_ITEM_OPEN_ERROR_CODES)
-  if (result?.ok !== true || typeof result.badgeId !== 'string' || typeof result.pointsAwarded !== 'number') {
-    throw new Error('locked_item_open이 해석할 수 없는 응답을 돌려줬다')
+  const result = data as
+    | (RpcResult & { badgeId?: string; serialNumber?: number | null; pointsAwarded?: number; pointsSpent?: number; pointBalance?: number })
+    | null
+  if (result?.ok === false) throwRejection('locked_item_open_points', result, LOCKED_ITEM_OPEN_ERROR_CODES)
+  if (
+    result?.ok !== true ||
+    typeof result.badgeId !== 'string' ||
+    typeof result.pointsAwarded !== 'number' ||
+    typeof result.pointsSpent !== 'number' ||
+    typeof result.pointBalance !== 'number'
+  ) {
+    throw new Error('locked_item_open_points가 해석할 수 없는 응답을 돌려줬다')
   }
 
   // 여기부터는 열기가 확정됐다. 정보를 읽지 못해도 열기를 실패로 돌려주지 않는다.
@@ -282,18 +297,38 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
     serialNumber: typeof result.serialNumber === 'number' ? result.serialNumber : null,
     serialPrefix,
     pointsAwarded: result.pointsAwarded,
+    pointsSpent: result.pointsSpent,
+    pointBalance: result.pointBalance,
     item: info,
   }
 }
 
 /**
- * 내 잠긴 개체의 채운 양·필요량·가진 잼·열 수 있는지. 내 것이 아니거나 버려지거나 드랍된 개체는 `LockedItemError('item_not_found')`다.
+ * 개체에 고정된 값이 비었을 때 쓰는 등급별 여는 포인트(`jam_policy.locked_points_*`). 등급이 비면 common 값이다(`locked_item_open_points`와 같다).
+ * 읽지 못하면 던진다. 정책 행이 없으면 null이다.
+ */
+async function loadPolicyPointsRequired(supabase: SupabaseClient, rarity: LockedItemRarity | null): Promise<number | null> {
+  const { data: policyRow, error: policyError } = await supabase
+    .from('jam_policy')
+    .select('locked_points_common, locked_points_rare, locked_points_epic, locked_points_mystic')
+    .eq('id', 1)
+    .maybeSingle()
+  if (policyError) throw new Error(`jam_policy 조회 실패: ${policyError.message}`)
+  const policy = policyRow as Record<string, number> | null
+  if (!policy) return null
+  const value = policy[`locked_points_${rarity ?? 'common'}`]
+  return typeof value === 'number' ? value : null
+}
+
+/**
+ * 내 잠긴 개체의 채운 양·필요량·가진 잼·여는 포인트·가진 포인트·열 수 있는지. 내 것이 아니거나 버려지거나 드랍된 개체는 `LockedItemError('item_not_found')`다.
+ * 여는 포인트(`pointsRequired`)는 개체에 고정된 `unlock_points_required`이고, 비어 있고 아직 잠겨 있으면 등급별 정책값이다(`locked_item_open_points`와 같은 규칙).
  * 이름·그림·설명·컬렉션·트라이브·일련번호는 읽지도 싣지도 않는다. 내 상태 보기라 이용 정지 중에도 막지 않는다. 읽지 못하면 던진다.
  */
 export async function getLockedItemStatus(supabase: SupabaseClient, userId: string, itemId: string): Promise<LockedItemStatus> {
   const { data: itemRow, error: itemError } = await supabase
     .from('inventory_items')
-    .select('id, inventory_id, locked, unlock_required, unlock_filled, destroyed_at, dropped_at')
+    .select('id, inventory_id, locked, unlock_required, unlock_filled, unlock_points_required, destroyed_at, dropped_at, badges(rarity)')
     .eq('id', itemId)
     .maybeSingle()
   if (itemError) throw new Error(`inventory_items 조회 실패: ${itemError.message}`)
@@ -302,6 +337,9 @@ export async function getLockedItemStatus(supabase: SupabaseClient, userId: stri
     locked: boolean
     unlock_required: number | null
     unlock_filled: number
+    unlock_points_required: number | null
+    /** 등급만 읽는다(정책값 고르기용). 응답에는 싣지 않는다 */
+    badges: { rarity: LockedItemRarity | null } | null
     destroyed_at: string | null
     dropped_at: string | null
   } | null
@@ -315,6 +353,17 @@ export async function getLockedItemStatus(supabase: SupabaseClient, userId: stri
   if (walletError) throw new Error(`jam_wallets 조회 실패: ${walletError.message}`)
   const balance = (wallet as { balance?: number } | null)?.balance ?? 0
 
+  const { data: pointWallet, error: pointWalletError } = await supabase.from('point_wallets').select('balance').eq('user_id', userId).maybeSingle()
+  if (pointWalletError) throw new Error(`point_wallets 조회 실패: ${pointWalletError.message}`)
+  const pointBalance = (pointWallet as { balance?: number } | null)?.balance ?? 0
+
+  const pointsRequired =
+    typeof item.unlock_points_required === 'number'
+      ? item.unlock_points_required
+      : item.locked
+        ? await loadPolicyPointsRequired(supabase, item.badges?.rarity ?? null)
+        : null
+
   const required = item.unlock_required
   const filled = item.unlock_filled
   return {
@@ -324,6 +373,8 @@ export async function getLockedItemStatus(supabase: SupabaseClient, userId: stri
     filled,
     remaining: required === null ? 0 : Math.max(0, required - filled),
     balance,
+    pointsRequired,
+    pointBalance,
     openable: item.locked && required !== null && filled >= required,
   }
 }

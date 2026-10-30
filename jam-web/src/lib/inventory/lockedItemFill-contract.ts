@@ -24,8 +24,11 @@ export const LOCKED_ITEM_FILL_ERROR_CODES = [
 
 export type LockedItemFillErrorCode = (typeof LOCKED_ITEM_FILL_ERROR_CODES)[number]
 
-/** 열기가 거절되는 경우의 코드. DB 함수 `locked_item_open`의 `error` 값과 같다. */
-export const LOCKED_ITEM_OPEN_ERROR_CODES = ['user_suspended', 'item_not_found', 'not_locked', 'not_full'] as const
+/**
+ * 열기가 거절되는 경우의 코드. DB 함수 `locked_item_open_points`(마이그레이션 304)의 `error` 값은 `user_suspended`·`item_not_found`·`not_locked`·`insufficient_points`다.
+ * `not_full`은 옛 함수 `locked_item_open`(U11에서 삭제) 호환을 위해 남긴다 — 새 함수는 돌려주지 않는다.
+ */
+export const LOCKED_ITEM_OPEN_ERROR_CODES = ['user_suspended', 'item_not_found', 'not_locked', 'not_full', 'insufficient_points'] as const
 
 export type LockedItemOpenErrorCode = (typeof LOCKED_ITEM_OPEN_ERROR_CODES)[number]
 
@@ -47,7 +50,7 @@ export function lockedFillPercent(filled: number | null | undefined, required: n
   return Math.min(100, (f / required) * 100)
 }
 
-/** 조회 응답 — 채운 양·필요량·가진 잼·열 수 있는지만 싣는다(이름·그림 등은 싣지 않는다) */
+/** 조회 응답 — 채운 양·필요량·가진 잼·여는 포인트·가진 포인트·열 수 있는지만 싣는다(이름·그림 등은 싣지 않는다) */
 export interface LockedItemStatus {
   itemId: string
   /** 아직 잠겨 있는가. 한 번 열린 개체는 false로 남는다 */
@@ -60,6 +63,10 @@ export interface LockedItemStatus {
   remaining: number
   /** 유저가 가진 잼 */
   balance: number
+  /** 여는 데 드는 포인트. 개체에 고정된 값(`unlock_points_required`)이고, 비어 있으면 등급별 정책값(`jam_policy.locked_points_*`)이다. 잠기지 않았고 값도 없으면 null */
+  pointsRequired: number | null
+  /** 유저가 가진 포인트(포인트 지갑 잔액). 지갑 행이 없으면 0 */
+  pointBalance: number
   /** 지금 열 수 있는지 — 잠겨 있고 다 채웠다. 인벤토리 빈칸은 보지 않는다 */
   openable: boolean
 }
@@ -97,6 +104,10 @@ export interface LockedItemOpenPayload {
   serialPrefix: string | null
   /** 이번 열기로 준 포인트. 줄 포인트가 없었거나 이미 준 개체면 0 */
   pointsAwarded: number
+  /** 이번 열기에 낸 포인트. 여는 포인트가 0이면(퀘스트의 첫 잠긴 배지) 0이다 */
+  pointsSpent: number
+  /** 연 뒤 포인트 잔액 */
+  pointBalance: number
   /** 개체 정보. 열기는 이미 확정됐고 정보 조회만 실패한 드문 경우에는 null이다 */
   item: LockedItemOpenedInfo | null
 }
@@ -107,8 +118,10 @@ export interface LockedItemErrorResponse {
   code: LockedItemErrorCode
   /** `exceeds_remaining`일 때 채울 수 있는 남은 양 */
   remaining?: number
-  /** `not_full`일 때 필요한 양 */
+  /** `not_full`일 때 필요한 양, `insufficient_points`일 때 여는 데 필요한 포인트 */
   required?: number
   /** `not_full`일 때 채운 양 */
   filled?: number
+  /** `insufficient_points`일 때 가진 포인트 */
+  balance?: number
 }

@@ -20,6 +20,8 @@ const OPEN_OK: LockedItemOpenPayload = {
   serialNumber: 7,
   serialPrefix: 'ABCD',
   pointsAwarded: 50,
+  pointsSpent: 50,
+  pointBalance: 120,
   item: { name: '새벽의 첫 바퀴', imageUrl: null, description: '새벽에 달린 기록', rarity: 'epic', collection: null, tribe: null },
 }
 
@@ -95,6 +97,14 @@ describe('runLockedOpen', () => {
     expect(await runLockedOpen(ITEM_ID, rejected('not_full'))).toEqual({
       kind: 'notice',
       notice: { message: '서버 문구:not_full', type: 'error' },
+      effect: 'refresh',
+    })
+  })
+
+  it('insufficient_points는 서버 문구를 보여 주고 서버 값을 다시 읽는다(필요한 포인트·가진 포인트는 응답 필드에 있다)', async () => {
+    expect(await runLockedOpen(ITEM_ID, rejected('insufficient_points'))).toEqual({
+      kind: 'notice',
+      notice: { message: '서버 문구:insufficient_points', type: 'error' },
       effect: 'refresh',
     })
   })
