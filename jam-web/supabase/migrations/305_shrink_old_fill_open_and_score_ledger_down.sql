@@ -1,7 +1,7 @@
 -- 305_shrink_old_fill_open_and_score_ledger_down.sql
 -- 305의 되돌림: 지운 함수·표를 지우기 직전 상태(2026-10-31 라이브 DB의 pg_get_functiondef·표 정의)로 다시 만든다 (티켓 20261028_1742 3회)
 --
--- 순서: 표(규칙 → 기록)와 12행 → 옛 함수 → capsule_get_or_create를 옛 v1 호출로 되돌림 → 권한.
+-- 순서: 표(규칙 → 기록)와 12행 → 옛 함수 → 권한. capsule_open·capsule_next_required·capsule_get_or_create는 이 파일이 건드리지 않았으므로 여기서 다루지 않는다.
 -- 되돌린 뒤 chapter_score_events는 비어 있다(지우기 전에도 0건이었다). 되돌림 정확도는 305 적용 전 드라이런에서 md5 대조로 실측한다.
 
 -- 1) 표 chapter_score_rules(12행)
@@ -62,56 +62,6 @@ GRANT SELECT, REFERENCES, TRIGGER, MAINTAIN ON public.chapter_score_events TO an
 COMMENT ON TABLE public.chapter_score_events IS '점수 기록(append-only). raw_score=상한 적용 전, counted_score=실제로 센 점수. (activity_kind, source_id)당 한 줄.';
 
 -- 3) 옛 함수
-CREATE OR REPLACE FUNCTION public.capsule_next_required(p_user_id uuid, OUT required integer, OUT chapter_no integer)
- RETURNS record
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-DECLARE
-  v_chapter INTEGER;
-  v_required INTEGER;
-BEGIN
-  SELECT uc.chapter_no INTO v_chapter FROM public.user_chapters uc WHERE uc.user_id = p_user_id;
-  IF v_chapter IS NULL THEN
-    SELECT pre_quest_fill_amount INTO v_required FROM public.capsule_policy WHERE id = 1;
-  ELSE
-    SELECT fill_amount INTO v_required FROM public.capsule_chapter_costs c WHERE c.chapter_no = v_chapter;
-    IF v_required IS NULL THEN
-      SELECT fill_amount INTO v_required FROM public.capsule_chapter_costs ORDER BY capsule_chapter_costs.chapter_no DESC LIMIT 1;
-    END IF;
-  END IF;
-  required := v_required;
-  chapter_no := v_chapter;
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.capsule_get_or_create(p_user_id uuid)
- RETURNS user_capsules
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-DECLARE
-  v_row public.user_capsules;
-  v_next RECORD;
-BEGIN
-  SELECT * INTO v_row FROM public.user_capsules WHERE user_id = p_user_id;
-  IF FOUND THEN
-    RETURN v_row;
-  END IF;
-
-  SELECT * INTO v_next FROM public.capsule_next_required(p_user_id);
-
-  INSERT INTO public.user_capsules (user_id, required, filled, chapter_no)
-    VALUES (p_user_id, v_next.required, 0, v_next.chapter_no)
-    ON CONFLICT (user_id) DO NOTHING;
-
-  SELECT * INTO v_row FROM public.user_capsules WHERE user_id = p_user_id;
-  RETURN v_row;
-END;
-$function$;
-
 CREATE OR REPLACE FUNCTION public.jam_fill_decide(p_remaining integer, p_balance bigint, p_amount integer DEFAULT NULL::integer)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -190,142 +140,6 @@ BEGIN
     'filled', v_cap.filled,
     'remaining', v_cap.required - v_cap.filled,
     'balance', COALESCE(v_balance, 0)
-  );
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.capsule_open(p_user_id uuid, p_items jsonb)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-DECLARE
-  v_policy RECORD;
-  v_cap public.user_capsules;
-  v_inv RECORD;
-  v_max_items INTEGER;
-  v_n INTEGER;
-  v_free INTEGER;
-  v_item JSONB;
-  v_grant JSONB;
-  v_item_id UUID;
-  v_serial INTEGER;
-  v_locked BOOLEAN;
-  v_rarity TEXT;
-  v_result JSONB := '[]'::jsonb;
-  v_item_ids UUID[] := ARRAY[]::UUID[];
-  v_streak INTEGER;
-  v_epic_miss INTEGER;
-  v_has_epic BOOLEAN := FALSE;
-  v_open_id UUID;
-  v_next RECORD;
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.user_suspensions WHERE user_id = p_user_id AND lifted_at IS NULL) THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'user_suspended');
-  END IF;
-
-  SELECT * INTO v_policy FROM public.capsule_policy WHERE id = 1;
-  v_max_items := v_policy.guaranteed_count + v_policy.bonus_count;
-
-  IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'invalid_items');
-  END IF;
-  v_n := jsonb_array_length(p_items);
-  IF v_n > v_max_items THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'invalid_items', 'max', v_max_items);
-  END IF;
-
-  PERFORM public.capsule_get_or_create(p_user_id);
-  SELECT * INTO v_cap FROM public.user_capsules WHERE user_id = p_user_id FOR UPDATE;
-  IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'capsule_changed');
-  END IF;
-  IF v_cap.filled < v_cap.required THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'not_full', 'required', v_cap.required, 'filled', v_cap.filled);
-  END IF;
-
-  SELECT * INTO v_inv FROM public.inventory WHERE user_id = p_user_id FOR UPDATE;
-  IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'inventory_not_found');
-  END IF;
-  v_free := GREATEST(0, v_inv.max_slots - v_inv.used_slots);
-  IF v_free < v_max_items THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'insufficient_slots', 'free', v_free, 'needed', v_max_items);
-  END IF;
-
-  SELECT COALESCE(common_streak, 0), COALESCE(capsule_epic_miss, 0) INTO v_streak, v_epic_miss
-    FROM public.user_drop_state WHERE user_id = p_user_id;
-  v_streak := COALESCE(v_streak, 0);
-  v_epic_miss := COALESCE(v_epic_miss, 0);
-
-  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
-  LOOP
-    v_locked := COALESCE((v_item->>'locked')::BOOLEAN, FALSE);
-    v_rarity := v_item->>'rarity';
-
-    v_grant := public.grant_inventory_item_locked(
-      v_inv.id,
-      (v_item->>'badge_id')::UUID,
-      'drop',
-      NULL,
-      v_locked,
-      v_item->>'lock_reason',
-      (v_item->>'unlock_required')::INTEGER
-    );
-    IF NOT COALESCE((v_grant->>'ok')::BOOLEAN, FALSE) THEN
-      RAISE EXCEPTION 'capsule_open_grant_failed: %', COALESCE(v_grant->>'reason', 'unknown');
-    END IF;
-
-    v_item_id := (v_grant->>'itemId')::UUID;
-    SELECT serial_number INTO v_serial FROM public.inventory_items WHERE id = v_item_id;
-
-    INSERT INTO public.item_issue_log
-      (user_id, inventory_item_id, route, source_activity_id, badge_id, rarity, rolled_rarity, locked, serial_number)
-    VALUES
-      (p_user_id, v_item_id, 'capsule', NULL, (v_item->>'badge_id')::UUID, v_rarity::public.badge_rarity,
-       NULLIF(v_item->>'rolled_rarity', '')::public.badge_rarity, v_locked, v_serial);
-
-    IF v_rarity = 'common' THEN
-      v_streak := v_streak + 1;
-    ELSE
-      v_streak := 0;
-    END IF;
-    IF v_rarity IN ('epic', 'mystic') THEN
-      v_has_epic := TRUE;
-    END IF;
-
-    v_item_ids := array_append(v_item_ids, v_item_id);
-    v_result := v_result || jsonb_build_array(jsonb_build_object(
-      'inventoryItemId', v_item_id,
-      'badgeId', v_item->>'badge_id',
-      'rarity', v_rarity,
-      'locked', v_locked,
-      'serialNumber', v_serial
-    ));
-  END LOOP;
-
-  v_epic_miss := CASE WHEN v_has_epic THEN 0 ELSE v_epic_miss + 1 END;
-  INSERT INTO public.user_drop_state (user_id, common_streak, capsule_epic_miss)
-    VALUES (p_user_id, v_streak, v_epic_miss)
-    ON CONFLICT (user_id) DO UPDATE
-      SET common_streak = EXCLUDED.common_streak, capsule_epic_miss = EXCLUDED.capsule_epic_miss, updated_at = now();
-
-  INSERT INTO public.capsule_opens (user_id, chapter_no, required, filled, items)
-    VALUES (p_user_id, v_cap.chapter_no, v_cap.required, v_cap.filled, v_result)
-    RETURNING id INTO v_open_id;
-
-  SELECT * INTO v_next FROM public.capsule_next_required(p_user_id);
-  UPDATE public.user_capsules
-     SET required = v_next.required, filled = 0, chapter_no = v_next.chapter_no, created_at = now(), updated_at = now()
-   WHERE user_id = p_user_id;
-
-  RETURN jsonb_build_object(
-    'ok', TRUE,
-    'openId', v_open_id,
-    'itemIds', to_jsonb(v_item_ids),
-    'items', v_result,
-    'next', jsonb_build_object('required', v_next.required, 'filled', 0)
   );
 END;
 $function$;
@@ -554,17 +368,13 @@ END;
 $function$;
 
 -- 4) 권한: service_role만 실행한다
-REVOKE ALL ON FUNCTION public.capsule_next_required(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.jam_fill_decide(integer, bigint, integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.capsule_fill(uuid, integer) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.capsule_open(uuid, jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.locked_item_fill(uuid, uuid, integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.locked_item_open(uuid, uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.chapter_add_score(uuid, text, uuid, integer, date) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.capsule_next_required(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.jam_fill_decide(integer, bigint, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.capsule_fill(uuid, integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.capsule_open(uuid, jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.locked_item_fill(uuid, uuid, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.locked_item_open(uuid, uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.chapter_add_score(uuid, text, uuid, integer, date) TO service_role;
