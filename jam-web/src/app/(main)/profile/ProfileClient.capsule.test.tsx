@@ -97,35 +97,42 @@ describe('프로필의 캡슐 위젯', () => {
   })
 })
 
-/** 가진 잼 한 줄 (티켓 20261026_1030) — 내 프로필의 포인트 행 아래. 값은 캡슐 위젯과 같은 서버 초기값이다. */
-describe('프로필의 가진 잼 줄', () => {
-  const plain = (html: string) => html.replace(/<[^>]*>/g, '')
+/** 가진 잼 줄 삭제 (티켓 20261028_1739 3회) — 새 게이지가 마지막 잼 양을 대신 보이므로 프로필은 잔액 숫자를 그리지 않는다. */
+describe('프로필에는 가진 잼 줄이 없다', () => {
   const label = d.capsule.sheet.balanceLabel
 
-  it('내 프로필에서 포인트 행 바로 아래, 캡슐 알약 위에 «가진 잼 N»이 보인다', () => {
+  it('내 프로필에서 잔액이 있어도 «가진 잼»과 잔액 숫자가 없다', () => {
     const html = render({ capsuleInitial: { ...CAPSULE, balance: 12345 } })
-    expect(plain(html)).toContain(`${label}12,345`)
-    const pointsAt = html.indexOf(d.profile.pointsAriaLabel)
-    const balanceAt = html.indexOf(label)
-    const capsuleAt = html.indexOf(d.capsule.aria.filling)
-    expect(pointsAt).toBeGreaterThan(-1)
-    expect(balanceAt).toBeGreaterThan(pointsAt)
-    expect(capsuleAt).toBeGreaterThan(balanceAt)
+    expect(html).not.toContain(label)
+    expect(html).not.toContain('12,345')
+    // 캡슐 위젯은 그대로 보인다
+    expect(html).toContain(d.capsule.aria.filling)
   })
 
-  it('잔액이 0이면 «가진 잼 0»이 보인다(줄을 숨기지 않는다)', () => {
-    expect(plain(render({ capsuleInitial: { ...CAPSULE, balance: 0 } }))).toContain(`${label}0`)
+  it('잔액이 0이어도 «가진 잼 0»을 그리지 않는다', () => {
+    expect(render({ capsuleInitial: { ...CAPSULE, balance: 0 } })).not.toContain(label)
   })
 
-  it('타인이 보는 프로필(prop 없음)에는 가진 잼 줄이 없다', () => {
-    expect(render({ isOwnProfile: false })).not.toContain(label)
+  it('잔액이 달라도 화면 마크업이 같다 — 프로필이 capsuleInitial.balance를 읽지 않는다', () => {
+    expect(render({ capsuleInitial: { ...CAPSULE, balance: 0 } })).toBe(
+      render({ capsuleInitial: { ...CAPSULE, balance: 99999 } }),
+    )
   })
 
-  it('방어: 타인 프로필에 prop이 실수로 와도 가진 잼 줄을 그리지 않는다', () => {
-    expect(render({ isOwnProfile: false, capsuleInitial: CAPSULE })).not.toContain(label)
+  it('타인이 보는 프로필에는 캡슐 위젯도 가진 잼도 없다', () => {
+    const html = render({ isOwnProfile: false })
+    expect(html).not.toContain(label)
+    expect(html).not.toContain(d.capsule.aria.filling)
+    expect(html).not.toContain(d.capsule.aria.loading)
   })
 
-  it('서버 조회가 실패해 null이거나 prop이 없으면(undefined) 줄이 없다 — 0으로 대신 그리지 않는다', () => {
+  it('방어: 타인 프로필에 prop이 실수로 와도 위젯과 가진 잼을 그리지 않는다', () => {
+    const html = render({ isOwnProfile: false, capsuleInitial: CAPSULE })
+    expect(html).not.toContain(label)
+    expect(html).not.toContain(d.capsule.aria.filling)
+  })
+
+  it('서버 조회가 실패해 null이거나 prop이 없으면(undefined) 가진 잼 줄이 없다', () => {
     expect(render({ capsuleInitial: null })).not.toContain(label)
     expect(render({})).not.toContain(label)
   })

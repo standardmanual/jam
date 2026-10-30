@@ -93,7 +93,7 @@ describe('내 프로필의 챕터 줄', () => {
     expect(html).not.toContain('data-chapter-line')
   })
 
-  it('챕터 줄은 캡슐 바로 위, 프로필 헤더와 통계 탭 사이에 있고 둘이 한 묶음(간격 8)이다', () => {
+  it('챕터 줄은 캡슐 바로 위, 프로필 헤더와 통계 탭 사이에 있고 둘이 한 묶음(간격 16)이다', () => {
     const html = render({ capsuleInitial: CAPSULE, chapterInitial: MINE })
     const editAt = html.indexOf(d.profile.editButton)
     const chapterAt = html.indexOf('data-chapter-line="mine"')
@@ -103,8 +103,16 @@ describe('내 프로필의 챕터 줄', () => {
     expect(chapterAt).toBeGreaterThan(editAt)
     expect(capsuleAt).toBeGreaterThan(chapterAt)
     expect(tabsAt).toBeGreaterThan(capsuleAt)
-    // 묶음 래퍼: 챕터 줄 앞의 여는 태그가 gap-2 세로 묶음이다
-    expect(html.slice(Math.max(0, chapterAt - 120), chapterAt)).toContain('flex flex-col gap-2')
+    // 묶음 래퍼: 챕터 줄 앞의 여는 태그가 gap-4(16px) 세로 묶음이다. 8px 간격(gap-2)이 아니다
+    expect(html.slice(Math.max(0, chapterAt - 120), chapterAt)).toContain('flex flex-col gap-4')
+    expect(html.slice(Math.max(0, chapterAt - 120), chapterAt)).not.toContain('flex flex-col gap-2')
+  })
+
+  it('챕터 줄(8px 막대)과 캡슐 게이지가 함께 있고, «챕터 N» 글자는 챕터 줄 하나뿐이다', () => {
+    const html = render({ capsuleInitial: CAPSULE, chapterInitial: MINE })
+    expect(html).toContain('data-chapter-gauge')
+    expect(html).toContain(d.capsule.aria.filling)
+    expect(html.split('>챕터 3<').length - 1).toBe(1)
   })
 
   it('캡슐 prop이 없어도 챕터 줄만 그려진다', () => {
