@@ -150,6 +150,19 @@ export async function readUnseenCapsuleResult(supabase: SupabaseClient, userId: 
 }
 
 /**
+ * 레이아웃용 읽기 — 읽지 못하면 던지지 않고 로그만 남긴 뒤 null을 돌려준다(연출하지 않는다, 티켓 20261028_1740 3회).
+ * 레이아웃은 모든 화면이 지나는 곳이라 이 조회 한 번의 실패가 화면 전체를 깨뜨리면 안 된다. 결과는 서버에 그대로 남아 다음에 다시 읽힌다.
+ */
+export async function readUnseenCapsuleResultOrNull(supabase: SupabaseClient, userId: string): Promise<CapsuleUnseenResult | null> {
+  try {
+    return await readUnseenCapsuleResult(supabase, userId)
+  } catch (e) {
+    console.error(`[capsule-unseen] 보지 않은 캡슐 결과 조회 실패 — 합친 연출을 건너뛴다 (userId: ${userId}):`, e)
+    return null
+  }
+}
+
+/**
  * 보지 않은 결과 행을 «봤어요»로 바꾼다. 본인의 행 가운데 아직 `seen_at`이 비어 있는 것만 바꾸므로, 이미 본 행·남의 행·없는 id는 건드리지 않고
  * 같은 요청을 두 번 보내도 두 번째는 0건이다. 바뀐 행 수를 돌려준다. 갱신이 실패하면 던진다.
  */

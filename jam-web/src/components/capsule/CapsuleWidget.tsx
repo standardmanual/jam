@@ -18,13 +18,14 @@ import { d, t } from '@/lib/i18n'
  * 캡슐 위젯 — 홈과 내 프로필이 같이 쓰는 클라이언트 컴포넌트 (티켓 20261028_1739 2회, 채원 사전 판정 2026-10-30)
  *
  * 서버가 준 초기값(`initial`)이 있으면 로딩 없이 바로 그리고, 없거나 조회가 실패하면 `GET /api/capsule`로 가져온다.
+ * `router.refresh()`로 새 초기값이 내려오면 상태가 그 값을 따라간다(동기화 직후 합친 연출을 닫은 게이지가 최신 값까지 차도록).
  * 위에서 아래로 `[게이지][안내 영역(조건부)]`이고 시트는 없다. 게이지를 눌러도 아무 일도 없다.
  *  - 로딩: MODULAR `Skeleton`(높이 72). 오류: 상자 자체가 «다시 시도» 버튼이다.
  *  - 안내 영역: 서버가 정해 준 `notice`로 간결 문구를 고른다(서비스 `InlineNotice`). 화면은 개수나 단계로 다시 따지지 않는다.
  *    이용 정지는 안내가 없다(서버가 `notice: 'none'`을 준다. 홈은 `SuspensionBanner`가 알린다).
  *  - «받기»: `claim.available`일 때만 보인다. 빈칸이 모자라면 «받기» 대신 «인벤토리 보기»와 빈칸 덧줄을 둔다.
  *    받은 뒤 상태는 응답으로 계산하지 않고 `GET /api/capsule`을 다시 불러 갱신한다. 받은 배지는 `BadgeRevealOverlay`로 보인다.
- *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 결과 연출은 U9 몫이다.
+ *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 합친 연출은 레이아웃의 `CapsuleResultProvider`가 맡는다(티켓 20261028_1740 3회).
  * 이 컴포넌트를 감싸는 곳은 z-index를 주지 않는다(오버레이가 탭바에 가려진 2026-08-25 사고).
  */
 
@@ -74,6 +75,17 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
   const [load, setLoad] = useState<'ready' | 'loading' | 'error'>(initial ? 'ready' : 'loading')
   const [claiming, setClaiming] = useState(false)
   const [reveal, setReveal] = useState<RevealState>(CLOSED_REVEAL)
+
+  // 동기화 뒤 `router.refresh()`로 서버가 새 초기값을 내려주면 그 값을 따라간다. 그러지 않으면 합친 연출을 닫을 때
+  // 게이지가 동기화 이전 값까지만 찬다. 렌더 중에 상태를 맞추는 방식이라 새 값이 첫 그리기에 바로 반영된다
+  const [followedInitial, setFollowedInitial] = useState(initial)
+  if (initial !== followedInitial) {
+    setFollowedInitial(initial)
+    if (initial) {
+      setCapsule(initial)
+      setLoad('ready')
+    }
+  }
 
   // 서버 초기값이 없을 때만 마운트 직후 한 번 가져온다
   useEffect(() => {

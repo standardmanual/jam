@@ -105,6 +105,12 @@ vi.mock('@/components/QuestPreviewBanner', () => ({
     return null
   },
 }))
+vi.mock('@/lib/capsule/unseen', () => ({ readUnseenCapsuleResultOrNull: async () => null }))
+vi.mock('@/components/capsule/CapsuleResultProvider', () => ({
+  default: function CapsuleResultProviderStub() {
+    return null
+  },
+}))
 vi.mock('@/components/chapter/ChapterRiseWatcher', () => ({
   default: function ChapterRiseWatcherStub() {
     return null

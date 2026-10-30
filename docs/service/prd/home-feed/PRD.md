@@ -149,11 +149,15 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 
 - 안내 문구는 서버가 정한 `notice` 값으로 고른다. 화면은 개수나 단계로 다시 따지지 않는다.
 - 「받기」는 `POST /api/capsule/claim`을 부르고, 받는 동안 「받는 중」으로 비활성이다. 받은 뒤 상태는 응답으로 계산하지 않고 `GET /api/capsule`을 다시 불러 갱신한다. 받은 배지는 획득 연출 오버레이에 「아이템 배지 {n}개를 받았어요」와 함께 보인다. 거절·받을 것 없음은 서버가 준 문구의 토스트다.
-- 보지 않은 결과(`capsule_unseen_results`)는 이 위젯이 읽지 않는다. 서버에는 읽는 길(`GET /api/capsule/unseen`: 안 본 행을 오래된 순서로 최대 50건 합쳐 이벤트와 이미 받은 챕터 배지를 내림)과 «봤어요» 처리(`POST /api/capsule/unseen/seen`)가 있고, 클라이언트 함수(`fetchUnseenResult`·`markUnseenSeen`)는 아직 어느 화면에도 연결되지 않았다(티켓 20261028_1740 3회차에서 연결한다).
+- 보지 않은 결과(`capsule_unseen_results`)는 이 위젯이 읽지 않는다. 합친 연출은 `(main)/layout.tsx`가 맡는다(티켓 20261028_1740 3회차). 레이아웃이 서버에서 안 본 행을 오래된 순서로 최대 50건 합쳐 한 번 읽고(`readUnseenCapsuleResultOrNull`: 이벤트와 이미 받은 챕터 배지를 내림, 읽지 못하면 로그만 남기고 연출하지 않음) `CapsuleResultProvider`에 내려준다. 클라이언트는 따로 조회하지 않고, 동기화 뒤 `router.refresh()`로 새 결과가 내려오면 한 번 더 띄운다. 이때 위젯도 서버가 새로 내려준 캡슐 값을 따라가므로, 연출을 닫은 게이지는 2% 원에서 동기화 이후의 최신 값까지 찬다. 챕터가 없는 유저도 본다.
+  - 연출은 결과가 있을 때 한 번이다. 연속 오름·여러 동기화가 쌓인 결과도 한 번이고, 같은 결과는 다시 띄우지 않는다. 제목은 오른 챕터가 있으면 가장 높은 챕터 문구, 없으면 「캡슐이 가득 찼어요」다. 결과가 없으면(채움만 한 경우) 연출 없이 게이지가 평소 진입 모션을 한다.
+  - 다른 오버레이가 열려 있으면 닫힌 뒤에 띄우고, 기다리는 동안 저장·«봤어요» 호출은 하지 않는다. 뜨는 동안 게이지는 2% 원으로 붙들리고, 오버레이는 게이지 채움 자리(게이지가 없는 화면은 화면 가운데 같은 크기 원)에서 번진다.
+  - 합친 연출이 보여 준 챕터는 기기의 «마지막으로 축하한 챕터»로 저장해 챕터 오름 카드가 또 띄우지 않는다. 더 높은 챕터가 있으면 카드가 뜬다. 카드는 합친 연출이 끝날 때까지 기다린다.
+  - 「닫기」나 「획득한 배지 보기」를 누르면 «봤어요»(`POST /api/capsule/unseen/seen`)를 한 번 보낸다. 실패해도 화면은 진행하고 다음 접속에 다시 보인다. 닫으면 게이지가 2% 원에서 지금 값까지 차오르고 번개가 한 번 튄다(모션 줄이기는 이동 시간 0, 번개 없음). 「획득한 배지 보기」는 오버레이가 닫힌 뒤 획득 연출 캐러셀(캡슐 보상, 챕터 배지는 맨 끝)을 연다.
 - 채우기·열기·바텀시트는 화면에서 없어졌다(옛 채우기·열기 API는 정리 티켓까지 남는다). 시트를 여는 브라우저 이벤트(`capsule-sheet-signal`)와 옛 방사형 알약(`RadialCapsule`·`CapsulePill`)도 지웠다. 확률 안내 링크는 게이지 주변에 두지 않고 푸터의 「확률 안내」를 쓴다.
 - 서버 조회가 실패하면 투데이는 위젯을 그대로 그리고(초기값 없음), 위젯이 클라이언트에서 `GET /api/capsule`로 다시 가져온다.
 
-근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsuleGauge`·`CapsuleWidget`), `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-gauge.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsuleGauge`·`CapsuleWidget`·`CapsuleResultProvider`·`CapsuleResultOverlay`), `jam-web/src/app/(main)/layout.tsx`, `jam-web/src/lib/capsule/unseen.ts`·`result-flow.ts`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-gauge.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
 
 ## 3. 카드 노출 규칙
 
