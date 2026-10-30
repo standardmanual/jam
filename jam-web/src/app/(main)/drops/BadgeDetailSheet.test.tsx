@@ -38,7 +38,6 @@ const locked: PickupDrop = {
   serial_prefix: 'ZZZZ',
   serial_number: 777,
   locked: true,
-  unlock_required: 12,
 }
 
 function render(drop: PickupDrop, extra: { notice?: string | null; pickupDisabled?: boolean } = {}) {
@@ -59,17 +58,17 @@ describe('BadgeDetailSheet 잠긴 변형', () => {
     expect(html).not.toContain('000777')
   })
 
-  it('카드에 장소 이름, 드랍한 사람, 필요한 양 한 줄, 픽업한 뒤의 일 한 줄이 있다', () => {
+  it('카드에 장소 이름, 드랍한 사람, 픽업한 뒤의 일 한 줄만 있다', () => {
     expect(html).toContain('성수역')
     expect(html).toContain('예린이(가) 드랍')
-    expect(html).toContain('여는 데 잼 12만큼 채워야 해요')
     expect(html).toContain(d.drops.pickupLockedHint)
+    expect(html.split(d.drops.pickupLockedHint).length - 1).toBe(1)
   })
 
-  it('필요한 양이 없는 비정상 응답이면 필요한 양 줄만 생략한다', () => {
-    const noRequired = render({ ...locked, unlock_required: null })
-    expect(noRequired).not.toContain('여는 데 잼')
-    expect(noRequired).toContain(d.drops.pickupLockedHint)
+  it('«잼»·필요한 양 서술이 없다(여는 비용은 줍고 나서 잠긴 상세에서 본다)', () => {
+    expect(html).not.toContain('잼')
+    expect(html).not.toContain('{n}')
+    expect(d.drops.pickupLockedHint).toContain('포인트')
   })
 
   it('열린 개체 시트에는 잠긴 변형의 문구가 없다(회귀 방지)', () => {

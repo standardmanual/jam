@@ -53,7 +53,6 @@ const TEXT_CLASS = 'm-0 break-keep wrap-break-word text-pretty'
 function ResultTile({ item }: { item: PendingResultView }) {
   const rarity = item.rarity as BadgeRarity
   if (item.locked) {
-    const hasRequired = Number.isFinite(item.unlockRequired) && (item.unlockRequired ?? 0) > 0
     return (
       <li className="flex min-w-0 flex-col items-center gap-1 p-2">
         <LockedTile size={64} />
@@ -61,11 +60,9 @@ function ResultTile({ item }: { item: PendingResultView }) {
           {d.lockedItem.card.name}
         </p>
         <RarityBadge rarity={rarity} />
-        {hasRequired && (
-          <p className="m-0 w-full break-keep wrap-break-word text-pretty text-center text-xs text-muted">
-            {t(d.lockedItem.card.description, { n: item.unlockRequired as number })}
-          </p>
-        )}
+        <p className="m-0 w-full break-keep wrap-break-word text-pretty text-center text-xs text-muted">
+          {d.lockedItem.card.description}
+        </p>
       </li>
     )
   }

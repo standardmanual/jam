@@ -10,7 +10,6 @@ import TopNav from '@/components/ui/TopNav'
 import { PackageIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
-import { lockedFillPercent } from '@/lib/inventory/lockedItemFill-contract'
 import { isInventorySlotsLow } from '@/lib/inventory/slots'
 
 type InventoryItemWithBadge = InventoryItemRow & {
@@ -55,7 +54,7 @@ export default async function InventoryPage() {
   const remainingSlots = Math.max(0, maxSlots - usedSlots)
 
   // 잠긴 개체는 이름·그림을 **여기서** 비운다(운영 로직 7.3절, 티켓 20261018_0054 2회). `item.badge`는 서버에서만 쓰이고, 클라이언트 컴포넌트로
-  // 내려가는 props와 RSC 페이로드에 이 값들이 실리면 화면에서 가려도 소용이 없다. 등급과 채운 비율만 싣는다.
+  // 내려가는 props와 RSC 페이로드에 이 값들이 실리면 화면에서 가려도 소용이 없다. 등급만 싣는다.
   const gridItems: InventoryGridItem[] = items.map((item) =>
     item.locked === true
       ? {
@@ -65,7 +64,6 @@ export default async function InventoryPage() {
           badgeRarity: item.badge.rarity,
           expiresAt: item.expires_at,
           locked: true,
-          fillPercent: lockedFillPercent(item.unlock_filled, item.unlock_required),
         }
       : {
           id: item.id,

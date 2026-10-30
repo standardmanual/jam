@@ -40,16 +40,6 @@ export function isLockedItemId(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
 }
 
-/**
- * 게이지의 채운 비율(0~100). 서버가 읽은 값(`unlock_filled`·`unlock_required`)을 그대로 비율로 옮길 뿐 새 규칙이 아니다.
- * 필요량이 없거나 0 이하면 0이다. 화면에 숫자로 내보내지 않는다(운영 로직 4.3절).
- */
-export function lockedFillPercent(filled: number | null | undefined, required: number | null | undefined): number {
-  if (typeof required !== 'number' || !(required > 0)) return 0
-  const f = typeof filled === 'number' && Number.isFinite(filled) ? Math.max(0, filled) : 0
-  return Math.min(100, (f / required) * 100)
-}
-
 /** 조회 응답 — 채운 양·필요량·가진 잼·여는 포인트·가진 포인트·열 수 있는지만 싣는다(이름·그림 등은 싣지 않는다) */
 export interface LockedItemStatus {
   itemId: string

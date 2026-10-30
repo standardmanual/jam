@@ -45,11 +45,11 @@ describe('toCarouselItem', () => {
     expect(toCarouselItem(item)).toBe(item)
   })
 
-  it('잠긴 항목은 가린 이름과 필요한 양 문구, 비운 그림으로 바꾼다', () => {
+  it('잠긴 항목은 가린 이름과 숫자 없는 일반 설명, 비운 그림으로 바꾸고 필요한 양은 싣지 않는다', () => {
     expect(toCarouselItem({ id: 'b', name: '', description: '', rarity: 'rare', locked: true, unlockRequired: 60 })).toEqual({
       id: 'b',
       name: d.lockedItem.card.name,
-      description: t(d.lockedItem.card.description, { n: 60 }),
+      description: d.lockedItem.card.description,
       imageUrl: null,
       rarity: 'rare',
       locked: true,
@@ -60,11 +60,6 @@ describe('toCarouselItem', () => {
     const out = toCarouselItem({ id: 'b', name: '비밀 이름', description: '비밀 설명', imageUrl: 'secret.png', rarity: 'epic', locked: true, unlockRequired: 30 })
     expect(JSON.stringify(out)).not.toMatch(/비밀|secret/)
     expect(out.imageUrl).toBeNull()
-  })
-
-  it('필요한 양이 없거나 0 이하면 설명 줄만 뺀다', () => {
-    expect(toCarouselItem({ id: 'b', name: '', description: '', rarity: 'common', locked: true }).description).toBe('')
-    expect(toCarouselItem({ id: 'b', name: '', description: '', rarity: 'common', locked: true, unlockRequired: 0 }).description).toBe('')
   })
 })
 
@@ -90,7 +85,7 @@ describe('BadgeRevealOverlay', () => {
   it('잠긴 채 나온 개체만 있으면 가린 문구와 잠금 타일만 그리고 그림은 DOM에 없다', () => {
     const html = render({ items: toRevealBadges([OPENED[1]]) })
     expect(html).toContain(d.lockedItem.card.name)
-    expect(html).toContain(t(d.lockedItem.card.description, { n: 60 }))
+    expect(html).toContain(d.lockedItem.card.description)
     expect(html).not.toContain('<img')
     expect(html).not.toContain('바람의 깃')
   })

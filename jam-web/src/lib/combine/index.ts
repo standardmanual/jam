@@ -82,8 +82,6 @@ export interface CombineResultBadge {
   name: string
   rarity: string
   locked?: true
-  /** 잠긴 결과를 여는 데 필요한 양(티켓 20261018_0055 2회). 열린 결과와 읽지 못한 경우에는 키가 없다 */
-  unlockRequired?: number
 }
 
 export type CombineResult =
@@ -93,7 +91,6 @@ export type CombineResult =
       /**
        * 지급된 결과 배지. 잠긴 채 나온 것은 `locked: true`이고 `id`·`name`을 빈 문자열로 가린다(운영 로직 7.3절).
        * 받지 않은 결과(`resultStatus: 'pending'`)와 지급할 결과가 없는 경우는 빈 배열이다.
-       * 잠긴 항목에는 선택 칸 `unlockRequired`(여는 데 필요한 양)가 실린다. 읽지 못하면 키가 없다.
        */
       resultBadges: CombineResultBadge[]
       pointsAwarded: number
@@ -423,27 +420,6 @@ interface GrantResultsOutcome {
 }
 
 /**
- * 지급된 개체의 «여는 데 필요한 양»을 `itemIds`와 같은 순서로 돌려준다(`combine_grant_results`가 입력 순서대로 개체 id를 준다).
- * 등급 올리기(`tierUp.ts`, 티켓 20261022_2119 2회)가 잠긴 결과의 필요한 양을 읽을 때도 쓴다.
- * 선택 칸이라 읽지 못하면 던지지 않고 빈 배열을 돌려준다 — 값을 추측해 채우지 않고 응답에서 칸을 뺀다(티켓 20261018_0055 2회).
- */
-export async function readUnlockRequired(supabase: ServiceClient, itemIds: string[]): Promise<(number | undefined)[]> {
-  if (itemIds.length === 0) return []
-  const { data, error } = await supabase.from('inventory_items').select('id, unlock_required').in('id', itemIds)
-  if (error) {
-    console.error('[combineRecipeAttempt] 잠긴 결과의 필요한 양 조회 실패 — 응답에서 unlockRequired를 뺀다:', error.message)
-    return []
-  }
-  const byId = new Map(
-    ((data ?? []) as { id: string; unlock_required: number | null }[]).map((r) => [r.id, r.unlock_required])
-  )
-  return itemIds.map((id) => {
-    const required = byId.get(id)
-    return typeof required === 'number' ? required : undefined
-  })
-}
-
-/**
  * 결과 배지를 `combine_grant_results` 한 번으로 지급한다(마이그레이션 236). 지급할 결과가 없으면 부르지 않는다.
  * RPC 오류·실패 응답이면 재료가 이미 소각된 뒤라 되돌릴 수 없으므로, 운영이 탐지할 수 있게 로그를 남기고 빈 결과로 이어 간다
  * (지금까지 «지급 실패 = 빈손 성공»과 같다). 삭제된 배지는 DB가 건너뛴다 — 응답도 조회된(삭제되지 않은) 배지만 싣는다.
@@ -506,19 +482,11 @@ async function grantResults(
   if (result.status === 'granted') {
     const isLocked = (b: RewardBadgeInfo) => recipe.reward_locked === true || b.always_locked === true
     const itemIds = Array.isArray(result.itemIds) ? result.itemIds : []
-    const unlockRequiredByIndex = grantable.some(isLocked) ? await readUnlockRequired(supabase, itemIds) : []
     return {
       status: 'granted',
-      resultBadges: grantable.map((b, index): CombineResultBadge => {
+      resultBadges: grantable.map((b): CombineResultBadge => {
         if (!isLocked(b)) return { id: b.id, name: b.name, rarity: b.rarity }
-        const unlockRequired = unlockRequiredByIndex[index]
-        return {
-          id: '',
-          name: '',
-          rarity: b.rarity,
-          locked: true as const,
-          ...(unlockRequired !== undefined ? { unlockRequired } : {}),
-        }
+        return { id: '', name: '', rarity: b.rarity, locked: true as const }
       }),
       recordedBadgeIds: grantable.map((b) => b.id),
       itemIds,

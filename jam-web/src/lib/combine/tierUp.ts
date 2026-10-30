@@ -28,7 +28,7 @@
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  */
 import { burnMaterials, type InventorySlotState } from '@/lib/combine/burn'
-import { readUnlockRequired, type CombineResultBadge } from '@/lib/combine/index'
+import type { CombineResultBadge } from '@/lib/combine/index'
 import { getPendingCount } from '@/lib/combine/pending'
 import { followUpCombineResultPoints } from '@/lib/combine/resultPointFollowUp'
 import { getCombinePolicy } from '@/lib/combine/policy'
@@ -260,9 +260,8 @@ export async function tierUp(userId: string, itemIds: string[], collectionId: st
       imageUrl: rolled.badge.image_url ?? null,
     }
     if (locked) {
-      // 잠긴 결과는 이름·그림·일련번호를 싣지 않는다(운영 로직 7.3절). 필요한 양은 DB가 정한 값을 개체에서 읽고, 읽지 못하면 칸을 뺀다.
-      const [unlockRequired] = await readUnlockRequired(supabase, grantedItemIds)
-      resultBadge = { id: '', name: '', rarity: rolled.rarity, imageUrl: null, locked: true, ...(unlockRequired !== undefined ? { unlockRequired } : {}) }
+      // 잠긴 결과는 이름·그림·일련번호를 싣지 않는다(운영 로직 7.3절).
+      resultBadge = { id: '', name: '', rarity: rolled.rarity, imageUrl: null, locked: true }
     }
     result = {
       success: true,

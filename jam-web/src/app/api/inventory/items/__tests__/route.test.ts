@@ -41,7 +41,7 @@ const openRow = {
   serial_number: 7,
   expires_at: null,
   locked: false,
-  unlock_required: null,
+  unlock_points_required: null,
   badges: { name: '바람의 깃', rarity: 'rare', image_url: 'https://img/open.png', deleted_at: null },
 }
 
@@ -53,6 +53,8 @@ const lockedRow = {
   serial_number: 3,
   expires_at: null,
   locked: true,
+  unlock_points_required: 300,
+  // 옛 «필요한 잼» 열 — 응답에 실리면 안 된다
   unlock_required: 60,
   badges: { name: '비밀 배지', rarity: 'rare', image_url: 'https://img/secret.png', deleted_at: null },
 }
@@ -78,7 +80,7 @@ describe('GET /api/inventory/items', () => {
       serial_number: 3,
       expires_at: null,
       locked: true,
-      unlock_required: 60,
+      unlock_points_required: 300,
     })
     const raw = JSON.stringify(body)
     for (const secret of ['비밀 배지', 'badge-secret', 'secret.png', 'SCR']) expect(raw).not.toContain(secret)

@@ -27,14 +27,12 @@ export interface OpenPendingItemView {
 
 /**
  * 잠긴 채 배정된 개체(티켓 20261018_0051, 운영 로직 7.3절). 서버가 어떤 아이템 배지인지 알 수 있는 값을 내리지 않는다:
- * `badgeId`·`name`은 빈 문자열, `imageUrl`은 null이고 등급(`rarity`)과 여는 데 필요한 양(`unlockRequired`)만 의미가 있다.
+ * `badgeId`·`name`은 빈 문자열, `imageUrl`은 null이고 등급(`rarity`)만 의미가 있다.
  * 고르기 화면은 이 값으로 잠금 타일 카드를 그린다.
  */
 export interface LockedPendingItemView {
   id: string
   locked: true
-  /** 여는 데 필요한 양. 배정 때 고정된다 */
-  unlockRequired: number
   rarity: 'common' | 'rare' | 'epic' | 'mystic'
   badgeId: ''
   name: ''

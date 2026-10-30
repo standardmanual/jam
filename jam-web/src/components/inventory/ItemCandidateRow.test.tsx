@@ -1,7 +1,7 @@
 /**
  * 개체 선택 시트 행의 잠긴 변형 (티켓 20261018_1817, 채원 사전 판정 2026-10-19)
  *
- * 저장소에 jsdom·testing-library가 없어 서버 렌더로 마크업만 고정한다. 잠긴 개체는 일련번호 자리에 «잼 N 필요»를 보이고
+ * 저장소에 jsdom·testing-library가 없어 서버 렌더로 마크업만 고정한다. 잠긴 개체는 일련번호 자리에 «N 포인트 필요»를 보이고
  * 일련번호·만료 칩은 DOM 어디에도 없다. 열린 개체는 지금까지와 같다.
  */
 import { describe, it, expect, vi } from 'vitest'
@@ -12,24 +12,38 @@ import { d } from '@/lib/i18n'
 const soon = new Date(Date.now() + 86_400_000).toISOString()
 
 describe('ItemCandidateRow 잠긴 변형', () => {
-  it('일련번호 자리에 필요한 양을 보이고 일련번호·만료 칩을 그리지 않는다', () => {
-    const html = renderToStaticMarkup(
+  const lockedRow = (points: number | null | undefined, extra: Record<string, unknown> = {}) =>
+    renderToStaticMarkup(
       <ItemCandidateRow
-        candidate={{ id: 'a', serial_number: 777, serial_prefix: 'ZZZZ', expires_at: soon, locked: true, unlock_required: 12 }}
+        candidate={{ id: 'a', serial_number: 777, serial_prefix: 'ZZZZ', expires_at: soon, locked: true, unlock_points_required: points, ...extra }}
         rarity="rare"
         onClick={vi.fn()}
       />
     )
-    expect(html).toContain('잼 12 필요')
+
+  it('양수면 일련번호 자리에 «N 포인트 필요»를 보이고 일련번호·만료 칩·«잼»을 그리지 않는다', () => {
+    const html = lockedRow(5)
+    expect(html).toContain('5 포인트 필요')
     expect(html).not.toContain('ZZZZ')
     expect(html).not.toContain('000777')
     expect(html).not.toContain(d.inventory.expiringSuffix)
+    expect(html).not.toContain('잼')
   })
 
-  it('필요한 양이 없는 비정상 응답이면 구분 줄을 생략한다', () => {
-    const html = renderToStaticMarkup(
-      <ItemCandidateRow candidate={{ id: 'a', serial_number: 0, serial_prefix: null, expires_at: null, locked: true, unlock_required: null }} rarity="rare" onClick={vi.fn()} />
-    )
+  it('천 단위는 쉼표로 끊는다', () => {
+    expect(lockedRow(1200)).toContain('1,200 포인트 필요')
+  })
+
+  it('0이면 «포인트 없이 열 수 있어요»를 보인다', () => {
+    const html = lockedRow(0)
+    expect(html).toContain(d.lockedItem.detail.points.free)
+    expect(html).not.toContain('포인트 필요')
+  })
+
+  it('값이 없으면(null) 등급 칩만 남기고 구분 줄을 그리지 않는다', () => {
+    const html = lockedRow(null)
+    expect(html).toContain('Rare')
+    expect(html).not.toContain('포인트')
     expect(html).not.toContain('필요')
   })
 

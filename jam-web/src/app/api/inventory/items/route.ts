@@ -27,7 +27,7 @@ export async function GET() {
       serial_number,
       expires_at,
       locked,
-      unlock_required,
+      unlock_points_required,
       badges ( name, rarity, image_url, deleted_at )
     `)
     .eq('inventory_id', inventoryId)
@@ -50,7 +50,7 @@ export async function GET() {
     serial_number: number
     expires_at: string | null
     locked: boolean | null
-    unlock_required: number | null
+    unlock_points_required: number | null
     badges: { name: string; rarity: string; image_url: string | null; deleted_at: string | null } | null
   }
 
@@ -71,7 +71,8 @@ export async function GET() {
           serial_number: row.serial_number,
           expires_at: row.expires_at,
           locked: true,
-          unlock_required: row.unlock_required,
+          // 개체 선택 시트 행의 구분 값 — 여는 비용은 포인트다(티켓 20261028_1741 2회)
+          unlock_points_required: row.unlock_points_required,
         }
       }
       return {

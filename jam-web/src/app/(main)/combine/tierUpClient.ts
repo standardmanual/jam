@@ -42,7 +42,6 @@ export interface TierUpResultBadge {
   rarity?: Rarity | null
   imageUrl?: string | null
   locked?: boolean
-  unlockRequired?: number
 }
 
 export interface TierUpSuccessResponse {

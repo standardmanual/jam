@@ -33,7 +33,9 @@ type Row = {
     serial_number: number
     expires_at: string | null
     locked: boolean | null
-    unlock_required: number | null
+    unlock_points_required: number | null
+    /** 옛 «필요한 잼» 열 — 응답에 실리면 안 된다 */
+    unlock_required?: number | null
   } | null
 }
 
@@ -103,7 +105,8 @@ function row(overrides: Partial<Row> & { locked: boolean }): Row {
       serial_number: SECRET_SERIAL,
       expires_at: null,
       locked,
-      unlock_required: locked ? 110 : null,
+      unlock_points_required: locked ? 110 : null,
+      unlock_required: locked ? 77 : null,
     },
     ...rest,
   }
@@ -185,8 +188,10 @@ describe('잠긴 개체 가림 (운영 로직 7.3절)', () => {
       serial_prefix: null,
       serial_number: null,
       locked: true,
-      unlock_required: 110,
+      unlock_points_required: 110,
     })
+    // 옛 «필요한 잼»(77)은 응답에 싣지 않는다 — 여는 비용은 포인트다
+    expect(drop).not.toHaveProperty('unlock_required')
   })
 
   it('직렬화한 응답 어디에도 원래 이름·그림·배지 id·일련번호가 없다', async () => {

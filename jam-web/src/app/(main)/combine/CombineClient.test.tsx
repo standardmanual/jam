@@ -507,12 +507,12 @@ describe('toMixRevealBadges — 잠긴 결과 변환 (티켓 20261018_0055 2회)
   })
 
   it('잠긴 결과는 빈 id로 상세를 찾지 않고 가린 항목이 된다 — 이름 없는 카드가 나오지 않는다', () => {
-    const [item] = toMixRevealBadges([{ id: '', name: '', rarity: 'rare', locked: true, unlockRequired: 300 }], rewardBadges)
-    expect(item).toEqual({ id: 'locked-0', name: '', description: '', rarity: 'rare', locked: true, unlockRequired: 300 })
+    const [item] = toMixRevealBadges([{ id: '', name: '', rarity: 'rare', locked: true }], rewardBadges)
+    expect(item).toEqual({ id: 'locked-0', name: '', description: '', rarity: 'rare', locked: true })
     expect('imageUrl' in item).toBe(false)
   })
 
-  it('필요한 양이 응답에 없으면 싣지 않는다 — 추측해 채우지 않는다', () => {
+  it('잠긴 결과 항목에는 필요한 양 키가 없다 — 여는 비용은 포인트라서 화면 연출이 싣지 않는다', () => {
     const [item] = toMixRevealBadges([{ id: '', name: '', rarity: 'epic', locked: true }], rewardBadges)
     expect('unlockRequired' in item).toBe(false)
   })
@@ -530,12 +530,13 @@ describe('toMixRevealBadges — 잠긴 결과 변환 (티켓 20261018_0055 2회)
 })
 
 describe('toPendingRevealBadges — 받은 결과를 연출 항목으로 (티켓 20261018_0055 2회)', () => {
-  it('잠긴 결과는 이름·그림을 싣지 않고 등급과 필요한 양만 싣는다', () => {
+  it('잠긴 결과는 이름·그림을 싣지 않고 등급만 싣는다', () => {
     const [locked, open] = toPendingRevealBadges([
-      { id: 'p1', badgeId: '', name: '', imageUrl: null, rarity: 'epic', locked: true, unlockRequired: 600, createdAt: '2026-10-18T00:00:00Z' },
-      { id: 'p2', badgeId: 'b2', name: '열린 배지', imageUrl: 'https://img/b2.png', rarity: 'rare', locked: false, unlockRequired: null, createdAt: '2026-10-18T00:00:00Z' },
+      { id: 'p1', badgeId: '', name: '', imageUrl: null, rarity: 'epic', locked: true, createdAt: '2026-10-18T00:00:00Z' },
+      { id: 'p2', badgeId: 'b2', name: '열린 배지', imageUrl: 'https://img/b2.png', rarity: 'rare', locked: false, createdAt: '2026-10-18T00:00:00Z' },
     ])
-    expect(locked).toMatchObject({ locked: true, rarity: 'epic', unlockRequired: 600, name: '' })
+    expect(locked).toMatchObject({ locked: true, rarity: 'epic', name: '' })
+    expect('unlockRequired' in locked).toBe(false)
     expect(open).toMatchObject({ id: 'b2', name: '열린 배지', imageUrl: 'https://img/b2.png', rarity: 'rare' })
     expect(open.locked).toBeUndefined()
   })
@@ -771,14 +772,14 @@ describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2�
       body: {
         success: true,
         resultStatus: 'granted',
-        resultBadges: [{ id: '', name: '', rarity: 'rare', locked: true, unlockRequired: 300 }],
+        resultBadges: [{ id: '', name: '', rarity: 'rare', locked: true }],
         pointsAwarded: 0,
       },
     }))
     const screen = createScreen(recipeFixture())
     const shown = screen.overlay(await screen.post())
     expect(shown.props.items).toEqual([
-      { id: 'locked-0', name: '', description: '', rarity: 'rare', locked: true, unlockRequired: 300 },
+      { id: 'locked-0', name: '', description: '', rarity: 'rare', locked: true },
     ])
     expect(shown.props.emptyMessage).toBeUndefined()
   })
@@ -850,8 +851,8 @@ describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2�
 
   // ── 받기 시트 ─────────────────────────────────────────────────────────────
 
-  const lockedPending = { id: 'p1', badgeId: '', name: '', imageUrl: null, rarity: 'epic', locked: true, unlockRequired: 600, createdAt: '2026-10-18T00:00:00Z' }
-  const openPending = { id: 'p2', badgeId: 'b2', name: '열린 배지', imageUrl: null, rarity: 'rare', locked: false, unlockRequired: null, createdAt: '2026-10-18T00:00:00Z' }
+  const lockedPending = { id: 'p1', badgeId: '', name: '', imageUrl: null, rarity: 'epic', locked: true, createdAt: '2026-10-18T00:00:00Z' }
+  const openPending = { id: 'p2', badgeId: 'b2', name: '열린 배지', imageUrl: null, rarity: 'rare', locked: false, createdAt: '2026-10-18T00:00:00Z' }
 
   it('배너의 «받기»를 누르면 시트가 열리고 목록과 지금 빈칸 수를 새로 읽는다', async () => {
     const fetchMock = stubFetch(() => ({ body: { pendingCount: 2, freeSlots: 5, items: [lockedPending, openPending] } }))
@@ -901,7 +902,7 @@ describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2�
     expect(shown.props.open).toBe(true)
     expect(shown.props.resultMessage).toBe(t(d.combine.claimedToast, { count: 2 }))
     const items = shown.props.items as { locked?: boolean; name: string; id: string }[]
-    expect(items[0]).toMatchObject({ locked: true, name: '', rarity: 'epic', unlockRequired: 600 })
+    expect(items[0]).toMatchObject({ locked: true, name: '', rarity: 'epic' })
     expect(items[1]).toMatchObject({ id: 'b2', name: '열린 배지' })
     expect(items[1].locked).toBeUndefined()
   })

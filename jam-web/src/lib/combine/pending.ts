@@ -38,8 +38,6 @@ export interface PendingResultView {
   imageUrl: string | null
   rarity: string
   locked: boolean
-  /** 잠긴 결과의 열기에 필요한 양. 열린 결과는 null이다 */
-  unlockRequired: number | null
   /** 생긴 때(ISO 8601) */
   createdAt: string
 }
@@ -69,7 +67,6 @@ interface PendingRow {
   id: string
   badge_id: string
   locked: boolean
-  unlock_required: number | null
   created_at: string
 }
 
@@ -84,7 +81,7 @@ interface BadgeRow {
 export async function listPendingResults(supabase: SupabaseClient, userId: string): Promise<PendingResultsPayload> {
   const { data: rows, error } = await supabase
     .from('combine_pending_results')
-    .select('id, badge_id, locked, unlock_required, created_at')
+    .select('id, badge_id, locked, created_at')
     .eq('user_id', userId)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
@@ -125,7 +122,6 @@ export async function listPendingResults(supabase: SupabaseClient, userId: strin
           imageUrl: null,
           rarity,
           locked: true,
-          unlockRequired: r.unlock_required,
           createdAt: r.created_at,
         }
       }
@@ -136,7 +132,6 @@ export async function listPendingResults(supabase: SupabaseClient, userId: strin
         imageUrl: badge?.image_url ?? null,
         rarity,
         locked: false,
-        unlockRequired: null,
         createdAt: r.created_at,
       }
     }),

@@ -142,7 +142,10 @@ describe('인벤토리 페이지 — 잠긴 개체는 이름·그림이 서버�
 
     const serialized = JSON.stringify(state.gridPropsRaw)
     const locked = state.gridProps?.items.find((item) => item.id === 'item-locked') as Record<string, unknown>
-    expect(locked).toMatchObject({ id: 'item-locked', badgeName: '', badgeImageUrl: null, badgeRarity: 'epic', locked: true, fillPercent: 25 })
+    expect(locked).toMatchObject({ id: 'item-locked', badgeName: '', badgeImageUrl: null, badgeRarity: 'epic', locked: true })
+    // 채운 비율은 더는 의미가 없어 그리드에 싣지 않는다(티켓 20261028_1741 2회)
+    expect(locked).not.toHaveProperty('fillPercent')
+    expect(serialized).not.toContain('fillPercent')
     for (const secret of ['새어 나가면 안 되는 이름', '새어 나가면 안 되는 설명', 'secret-badge.png', 'badge-secret', '4242', 'ZZZZ']) {
       expect(serialized, `그리드 props에 ${secret}이 실렸다`).not.toContain(secret)
     }
@@ -150,12 +153,12 @@ describe('인벤토리 페이지 — 잠긴 개체는 이름·그림이 서버�
     expect(serialized).toContain('살아있는 배지')
   })
 
-  it('필요량이 없는 비정상 개체는 게이지 0으로 접고 던지지 않는다', async () => {
+  it('옛 필요량·채운 양 열이 비어 있거나 남아 있어도 잠긴 개체는 같은 모양이다 — 던지지 않는다', async () => {
     state.inventory = { id: 'inv-1', used_slots: 1, max_slots: 50, inventory_items: [lockedItem('item-locked', { unlock_required: null, unlock_filled: 0 })] }
 
     await render()
 
-    expect(state.gridProps?.items[0]).toMatchObject({ locked: true, fillPercent: 0, badgeName: '' })
+    expect(state.gridProps?.items[0]).toEqual({ id: 'item-locked', badgeName: '', badgeImageUrl: null, badgeRarity: 'epic', expiresAt: null, locked: true })
   })
 
   it('locked가 false인 개체(열린 개체)는 이름과 그림을 그대로 싣는다', async () => {

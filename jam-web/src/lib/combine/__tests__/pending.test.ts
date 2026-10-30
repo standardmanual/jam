@@ -234,7 +234,6 @@ describe('listPendingResults', () => {
       imageUrl: null,
       rarity: 'epic',
       locked: true,
-      unlockRequired: 30,
       createdAt: '2026-10-18T00:00:00.000Z',
     })
     expect(payload.items[1]).toEqual({
@@ -244,10 +243,11 @@ describe('listPendingResults', () => {
       imageUrl: 'https://img/b.png',
       rarity: 'rare',
       locked: false,
-      unlockRequired: null,
       createdAt: '2026-10-18T01:00:00.000Z',
     })
     expect(JSON.stringify(payload.items[0])).not.toContain('비밀 이름')
+    // 여는 비용은 포인트라서 옛 «필요한 잼» 값(DB 열에는 30이 남아 있다)을 화면 경로로 내리지 않는다
+    expect(payload.items[0]).not.toHaveProperty('unlockRequired')
   })
 
   it('조회가 실패하면 던진다', async () => {
