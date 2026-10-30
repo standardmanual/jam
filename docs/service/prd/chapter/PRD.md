@@ -64,11 +64,11 @@ code:
 
 ## 3. 점수
 
-점수를 세는 일 열두 종류와 호출 지점은 [02_DATA_MODEL.md](../02_DATA_MODEL.md) 9-3절 「점수 호출 지점과 원천 id」다. 점수 값(1당 몇 점, 주간 상한)은 DB 설정 행이 갖고 있고 앱 코드에 상수로 두지 않는다.
+점수는 더 쌓이지 않는다(티켓 20261028_1733·1735). 점수를 세던 일 열두 종류와 옛 호출 지점은 [02_DATA_MODEL.md](../02_DATA_MODEL.md) 9-3절 「점수 호출 지점과 원천 id」에 기록으로 남아 있다. 점수를 쌓는 코드와 어드민의 점수 규칙 편집 칸은 티켓 20261028_1742 2회에서 지웠고, DB의 점수 표는 3회가 지운다.
 
 ## 4. 오름 처리
 
-챕터가 오른 순간(`chapter_add_score`나 `chapter_start`가 오른 챕터 목록을 돌려줄 때) `processChapterRise`(`lib/chapter/rise.ts`)가 한다.
+챕터가 오른 순간(`chapter_start`나 캡슐 자동 채움이 오른 챕터 목록을 돌려줄 때) `processChapterRise`(`lib/chapter/rise.ts`)가 한다.
 
 | 처리 | 규칙 |
 |---|---|
@@ -236,7 +236,7 @@ code:
 - **위치.** 배지 획득 히스토리 앞이다. 읽기는 `lib/admin/user-chapter-view.ts`의 `loadUserChapterView`, 그리는 쪽은 `UserChapterSection.tsx`다. 읽기 전용이다.
 - **지금 챕터.** 챕터 번호와 누적 점수. 챕터가 없는 유저(퀘스트 전: 행이 없거나 `chapter_no`가 NULL)는 «챕터 없음»이고, 퀘스트 전에 쌓인 점수가 있으면 그 점수를 보인다.
 - **오른 기록.** `chapter_ups`의 챕터와 오른 시각(한국 표준시). 이름 열은 없다. 한 번에 여러 챕터를 넘으면 챕터마다 한 줄이다.
-- **점수 기록.** `chapter_score_events` 최근 50건(최근순)과 전체 건수. 기록 시각, 활동한 날, 활동, 양, 상한 전 점수, 센 점수를 보이고 센 점수가 상한 전 점수보다 작으면 «(주간 상한)»을 붙인다. 활동 이름은 운영 로직 12.2절의 이름(`CHAPTER_SCORE_KIND_LABELS`, 12종)이고, 점수 규칙 행으로 더해져 사전에 없는 종류는 값 그대로 보인다.
+- **점수 기록은 없다.** `chapter_score_events` 최근 50건을 보이던 표는 티켓 20261028_1742 2회에서 걷었다(점수가 더는 쌓이지 않는다). 지금 챕터 칸의 누적 점수(`user_chapters.total_score`)는 남긴다.
 - **읽지 못함.** 구역마다 따로 읽고, 읽지 못한 구역은 `logQueryError`로 로그를 남기며 화면에 «읽지 못했어요»로 보인다. «아직 …이 없어요»(기록 없음)와 다른 문구다. 한 구역의 실패가 다른 구역이나 유저 상세 전체를 막지 않는다.
 - **확인한 것.** 읽기 규칙은 `lib/admin/__tests__/user-chapter-view.test.ts`, 서버 렌더는 `UserChapterSection.test.tsx`가 고정한다. 트라이브 삭제 가드는 `lib/admin/__tests__/tribe-reference-guards.test.ts`가 고정한다.
 - **아직 못 본 것.** 실제 어드민 화면에서의 모양(표 가로 폭)은 머지 뒤 로컬 어드민에서 확인한다.
