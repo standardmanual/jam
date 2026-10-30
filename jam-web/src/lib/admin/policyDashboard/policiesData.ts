@@ -416,7 +416,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     codeLocation: 'jam-web/src/lib/capsule/auto-fill.ts',
     dbTable: 'capsule_pending_rewards',
     userExperience:
-      '인벤토리에 자리가 없어도 가득 찬 캡슐의 보상은 사라지지 않고 못 받은 보상으로 남아요. 받기 버튼과 캡슐 아래 안내 화면은 아직 없어요.',
+      '인벤토리에 자리가 없어도 가득 찬 캡슐의 보상은 사라지지 않고 못 받은 보상으로 남아요. 홈과 프로필의 캡슐 아래에 «못 받은 보상이 1개 있어요» 안내와 «받기» 버튼이 보여요.',
     basisDoc: '운영 로직 5.2절, 6.4절',
     ticketId: '20261028_1734',
     nodes: ['capsule'],
@@ -432,7 +432,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     codeLocation: 'jam-web/src/lib/capsule/claim.ts',
     dbTable: 'capsule_pending_rewards',
     userExperience:
-      '인벤토리에 자리를 만든 뒤 받기를 누르면 못 받은 보상을 오래된 것부터 빈칸이 닿는 만큼 가져와요. 받기 버튼 화면은 아직 없고 서버 API(POST /api/capsule/claim)만 있어요.',
+      '인벤토리에 자리를 만든 뒤 홈이나 프로필의 캡슐 아래 «받기»를 누르면 못 받은 보상을 오래된 것부터 빈칸이 닿는 만큼 가져와요. 빈칸이 모자라면 «받기» 대신 빈칸 수와 «인벤토리 보기»가 보여요.',
     basisDoc: '운영 로직 5.2절, 6.4절, 16.4절',
     ticketId: '20261028_1734',
     nodes: ['capsule'],
@@ -449,7 +449,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     dbTable: 'jam_transactions',
     dbColumn: 'reason',
     userExperience:
-      '못 받은 보상이 2개가 되면 그 뒤 들어오는 잼은 캡슐에 쌓이지 않고 사라져요. 못 받은 보상을 가져와 2개에서 줄이면 다시 잼이 모여요.',
+      '못 받은 보상이 2개가 되면 그 뒤 들어오는 잼은 캡슐에 쌓이지 않고 사라져요. 이때 홈과 프로필의 캡슐 아래에 «지금은 잼을 받을 수 없어요» 안내가 떠요. 못 받은 보상을 가져와 2개에서 줄이면 다시 잼이 모여요.',
     basisDoc: '운영 로직 4.2절, 5.2절, 16.4절',
     ticketId: '20261028_1734',
     nodes: ['capsule', 'jam'],
@@ -481,9 +481,24 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     dbTable: 'user_capsules',
     dbColumn: 'alert_stage',
     userExperience:
-      '못 받은 보상이 1개일 때 캡슐이 70%, 80%, 90% 찼다는 소식이 단계마다 한 번 와요. 못 받은 보상이 2개가 되면 지금 들어오는 잼이 사라진다는 소식이 한 번 와요. 소식이 가리키는 받기 버튼은 아직 화면에 없어요.',
+      '못 받은 보상이 1개일 때 캡슐이 70%, 80%, 90% 찼다는 소식이 단계마다 한 번 와요. 못 받은 보상이 2개가 되면 지금 들어오는 잼이 사라진다는 소식이 한 번 와요. 소식이 가리키는 «받기» 버튼은 홈과 프로필의 캡슐 아래에 있어요.',
     basisDoc: '운영 로직 5.2절, 15.4절',
     ticketId: '20261028_1734',
+    nodes: ['capsule'],
+  },
+  {
+    id: 'ch5-gauge-notice',
+    chapter: 5,
+    chapterTitle: '캡슐',
+    title: '캡슐 게이지와 안내 영역',
+    type: 'code_constant',
+    currentSpec:
+      '홈과 내 프로필(타인 프로필에는 없음)의 캡슐 위젯은 게이지 한 줄과 필요할 때만 붙는 안내 영역이다. 게이지는 서버가 준 채운 양과 필요량의 비율까지 차오르고, 화면에 들어올 때마다 260ms 쉰 뒤 1,500ms 동안 진입 모션을 한다 (모션 줄이기를 켜면 즉시, 같은 화면에서 값이 바뀌면 700~1500ms 동안 지금 값에서 옮겨 감). 퍼센트와 진행 숫자는 화면에 쓰지 않고 숫자는 못 받은 보상 개수와 빈칸 수뿐이다. 안내 문구는 서버가 정한 종류 하나로 고른다: 못 받은 보상 1개(«못 받은 보상이 1개 있어요»), 70·80·90% 단계(«캡슐이 거의 찼어요»), 보류 2개(«지금은 잼을 받을 수 없어요»), 가득 찬 채 남음(«캡슐이 가득 찼어요»). 이용 정지 중에는 안내가 없다. 게이지를 눌러도 시트가 열리지 않고 채우기·열기 버튼도 없다. 확률 안내 입구는 푸터 링크 하나다',
+    codeLocation: 'jam-web/src/components/capsule/CapsuleWidget.tsx',
+    userExperience:
+      '홈과 프로필에서 캡슐이 마지막 잼 양까지 차오르는 모습을 보고, 못 받은 보상이 있거나 잼을 받을 수 없을 때만 캡슐 아래에 짧은 안내가 떠요. 안내에는 «받기» 버튼이 함께 보이고, 퍼센트나 진행 숫자는 보이지 않아요.',
+    basisDoc: '운영 로직 5.2절, 5.3절',
+    ticketId: '20261028_1739',
     nodes: ['capsule'],
   },
   {
