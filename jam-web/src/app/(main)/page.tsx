@@ -137,7 +137,7 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      {/* «JAM! 시작하기» 카드 (티켓 20260927_2133, 실제 3단계 20261021_1248) — 대상 유저에게만 렌더, 그 외엔 null */}
+      {/* «JAM! 시작하기» 카드 (티켓 20260927_2133, 실제 2단계 20261021_1248·20261028_1738) — 대상 유저에게만 렌더, 그 외엔 null */}
       <OnboardingQuestCard state={onboardingQuestCard} username={userProfile?.username ?? null} />
 
       {/* Strava 동기화 끊김 카드 (티켓 20261017_1422) — 오류로 끊긴 유저에게만 렌더, 그 외엔 DOM에 없다.

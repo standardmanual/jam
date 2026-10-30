@@ -155,7 +155,7 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 - 시트 본문 맨 아래(가진 잼 다음 줄)에 「확률 안내」 링크가 있다(티켓 20261021_1250, 운영 로직 18.3절). 채우는 중·열 수 있음·빈칸 모자람 세 상태에서 같은 자리에 보이고, 채우기 단계와 푸터, 열기 결과 오버레이에는 없다.
   숫자·퍼센트·아이콘 없이 이름만 쓰는 조용한 밑줄 링크이며, 누르면 시트를 닫고 `/probability`로 간다([확률 안내](../probability/PRD.md)).
 - «JAM! 시작하기» 카드에는 캡슐 버튼이 없다(티켓 20261028_1738). 캡슐 시트는 캡슐 본체를 눌러 연다. 시트를 여는 브라우저 이벤트(`capsule-sheet-signal`)는 위젯이 받는 구조로 남아 있다.
-- 채우기가 끝나거나 열기 결과를 닫으면 위젯이 `router.refresh()`로 서버 화면을 새로 읽는다. 열기 결과가 떠 있는 동안에는 새로 읽지 않는다. 카드는 캡슐 상태를 받지 않는다.
+- 채우기가 끝나거나 열기 결과를 닫으면 위젯이 `router.refresh()`로 서버 화면을 새로 읽는다. 열기 결과가 떠 있는 동안에는 새로 읽지 않는다. 카드는 캡슐 상태를 받지 않고, 캡슐 열기는 카드의 단계를 바꾸지 않는다.
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsulePill`·`RadialCapsule`·`CapsuleWidget`·`CapsuleSheet`), `jam-web/src/components/jam/JamFillPanel.tsx`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-view.ts`·`capsule-sheet-signal.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
 
