@@ -390,6 +390,8 @@ describe('커밋된 마이그레이션 파일', () => {
   it('파일 번호가 겹치지 않는다(전체 마이그레이션의 번호 접두어가 유일하다)', () => {
     const nums = fs
       .readdirSync(MIGRATIONS_DIR)
+      // 되돌림 짝 파일(`NNN_이름_down.sql`)은 본 파일과 번호를 나눈다(db-migration-rules.md §4의 둘째 형식)
+      .filter((f) => !f.endsWith('_down.sql'))
       .map((f) => f.match(/^(\d{3})_/)?.[1])
       .filter(Boolean)
       .filter((n) => Number(n) >= 271);
