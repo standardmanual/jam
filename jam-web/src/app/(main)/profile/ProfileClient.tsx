@@ -29,7 +29,6 @@ import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSect
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
-import JamBalance from '@/components/jam/JamBalance'
 import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
 import ChapterLine, { type MyChapterLineData, type PublicChapterLineData } from '@/components/chapter/ChapterLine'
 
@@ -658,11 +657,6 @@ export default function ProfileClient({
                 </Button>
               </div>
             )}
-
-            {/* 가진 잼 한 줄 (티켓 20261026_1030) — 포인트 행 바로 아래, 누를 수 없는 텍스트. 값은 캡슐 위젯과 같은 서버 초기값
-                (`capsuleInitial.balance`)이라 채우기·열기 뒤 router.refresh로 따라 바뀐다. 읽지 못함(null)·prop 없음(undefined)은 줄이 없고
-                (0으로 대신 그리지 않는다), 잔액 0은 «가진 잼 0»이다. `isOwnProfile`을 함께 걸어 타인 프로필에 prop이 와도 막는다. */}
-            {isOwnProfile && capsuleInitial != null && <JamBalance balance={capsuleInitial.balance} />}
           </div>
 
           {!isOwnProfile && (
@@ -683,12 +677,13 @@ export default function ProfileClient({
             다른 유저 프로필에서만 서버가 `publicChapter`를 내려주고, 읽지 못함(null)이거나 보일 조각이 없으면 줄이 없다. */}
         {!isOwnProfile && publicChapter && <ChapterLine variant="public" chapter={publicChapter} />}
 
-        {/* 챕터 줄 + 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 통계 탭 사이이고 «챕터 줄, 게이지, 캡슐»을 간격 8로 묶는다
-            (티켓 20261019_1317 사용자 결정 3: 캡슐 바로 위. 챕터에서 필요량으로 이어진다).
+        {/* 챕터 줄 + 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 통계 탭 사이이고 «챕터 줄, 캡슐 게이지, 안내 영역» 묶음의 간격은 16이다
+            (티켓 20261028_1739 3회: 8px 막대와 새 게이지를 둘 다 두고 간격만 넓힌다. 위젯 안의 게이지-안내 간격은 위젯이 정한다.
+            티켓 20261019_1317 사용자 결정 3: 캡슐 바로 위. 챕터에서 필요량으로 이어진다).
             챕터 줄은 `chapterInitial`이 값일 때만 — 퀘스트 전과 읽지 못함(null)은 줄을 그리지 않는다(사용자 결정 4).
             캡슐 위젯(티켓 20261018_0054)의 렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
         {isOwnProfile && (chapterInitial || capsuleInitial !== undefined) && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             {chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
             {capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} />}
           </div>
