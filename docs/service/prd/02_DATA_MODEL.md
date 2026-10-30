@@ -67,7 +67,7 @@ code:
                 users ─1:N─ sync_pending_items (동기화 중 가득 차 보류한 아이템 배지)
 
 [챕터]          users ─1:1─ user_chapters (지금 챕터·누적 점수)
-                users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)
+                users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)   [두 표 모두 마이그레이션 305에서 지웠다]
                 users ─1:N─ chapter_ups (오른 기록) ──> chapter_definitions (챕터별 필요 점수)
 
 [캡슐]          users ─1:1─ user_capsules (지금 캡슐: 필요량·채운 양)
@@ -368,7 +368,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
   전부 덧붙이기이고 기본값이 «열림»이라 옛 프로덕션 코드와 이미 있는 개체(적용 당시 1,343행, 잠긴 개체 0행)는 그대로다.
   - `locked`(boolean, 기본 false): 잠긴 개체인가. 한 번 열면 false가 되고 다시 잠기지 않는다.
   - `unlock_required`(integer, nullable): 여는 데 필요한 잼의 양. **배정될 때 고정**하고 이후 어드민이 배지 값을 바꿔도 바뀌지 않는다. 열린 채 받은 개체는 NULL.
-  - `unlock_filled`(integer, 기본 0): 지금까지 채운 양. `locked_item_fill`이 올린다(마이그레이션 235).
+  - `unlock_filled`(integer, 기본 0): 지금까지 채운 양. `locked_item_fill`이 올렸다(마이그레이션 235, 함수는 305에서 지웠다).
   - `lock_reason`(`badge_locked` 잠김으로 만든 배지 / `rolled` 잠긴 채 배정됨 / `designated` 운영자가 지정함): 연 뒤에도 이력으로 남는다.
   - `unlocked_at`(timestamptz, nullable): 연 시각.
   - CHECK `inventory_items_lock_consistent`: 잠긴 개체는 `unlock_required`·`lock_reason`이 있고 `unlock_filled <= unlock_required`, `unlocked_at`이 비어 있다.
@@ -391,7 +391,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
     - 앱: `POST /api/drops`·`POST /api/drops/[dropId]/pickup`은 DB 호출 전에 `assertNotSuspended`로 먼저 막고(403 `user_suspended`, 문구 `d.suspension.dropBlocked`·`pickupBlocked`) DB의 `user_suspended`도 같은 403으로 바꾼다. 드랍 성공 응답에 `lostFill`을 싣는다.
       픽업은 꺼진 장소를 드랍이 없을 때와 같은 404로 닫는다. `GET /api/drops/poi/[poiId]`는 꺼진 장소의 드랍을 내리지 않고(빈 목록), `GET /api/drops/[dropId]`와 함께 잠긴 개체의 이름·그림·설명·컬렉션·트라이브·일련번호·배지 id를 서버에서 비워
       `locked: true`·등급(`badge_rarity`)만 싣고, `GET /api/drops/poi/[poiId]`는 개체 선택 행의 구분 값으로 `unlock_points_required`를 더 싣는다(7.3절). 필요한 잼 값(`unlock_required`)은 티켓 20261028_1741 2회에서 응답에서 뺐다. 잠긴 채 받은 개체는 피드(`item_picked_up`)와 놓은 사람 소식(#13)에 이름·그림을 싣지 못하므로 남기지 않는다.
-      사라질 양을 미리 알리던 `GET /api/inventory/items/[itemId]/drop-loss`와 계약 파일(`src/lib/drop/drop-loss-contract.ts`)은 티켓 20261028_1741 2회에서 지웠다. 드랍 확인 시트에는 «채운 잼은 사라져요» 안내와 조회가 없고, 드랍 응답의 `lostFill`과 위 DB 함수는 U11 전까지 그대로 남는다.
+      사라질 양을 미리 알리던 `GET /api/inventory/items/[itemId]/drop-loss`와 계약 파일(`src/lib/drop/drop-loss-contract.ts`)은 티켓 20261028_1741 2회에서 지웠다. 드랍 확인 시트에는 «채운 잼은 사라져요» 안내와 조회가 없고, 드랍 응답의 `lostFill`과 위 DB 함수는 채움 칸이 남아 있는 동안 그대로 둔다(U11은 채움 칸을 지우지 않았다).
     - 자기 드랍 줍기는 허용이지만 챕터 점수·횟수에는 세지 않는다: 횟수 지표 4종은 조회 규칙으로 이미 자기 드랍을 빼므로 새 칸을 더하지 않았고, 같은 기준을 `isSelfPickup`(`src/lib/drop/self-pickup.ts`)에 한 곳으로 두어 챕터 점수(묶음 5)가 쓴다.
 - **시스템 드랍 잠긴 채 놓기 (JAM 2.0, 마이그레이션 240, 티켓 20261018_1813, 운영 로직 7.2·9.4절)** — 새 함수 하나만 덧붙인다. 옛 `mint_and_place_ambient_drop`(108)은 그대로다(옛 프로덕션 코드가 쓴다).
   - `mint_and_place_ambient_drop_locked(p_poi_id, p_badge_id, p_lock_reason, p_unlock_required)` → JSONB `{ok, drop_id, inventory_item_id}`. `SECURITY DEFINER`, `authenticated` 실행 권한 없음(서버만).
@@ -403,11 +403,11 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
   - 새 표 `inventory_item_events`(append-only, RLS만 켜고 클라이언트 정책 없음, service_role 전용): 개체가 거쳐 간 이력. `inventory_item_id`·`badge_id`(ON DELETE SET NULL), `serial_number`, `user_id`(그 일을 한 유저),
     `event_type`(`received`·`slotted`·`unslotted`·`dropped`·`picked_up`·`consumed`·`locked`·`filled`·`unlocked`), `amount`(filled일 때 그 번에 채운 양), `filled_after`(채운 뒤 누적), `points_awarded`(unlocked일 때 준 포인트), `created_at`.
     이번에는 `filled`·`unlocked`만 쓰고 나머지 종류는 묶음 4 이후가 이어 쓴다. 잠긴 아이템 배지를 연 횟수는 `event_type = 'unlocked'`를 세어 얻는다.
-  - 새 함수 `jam_fill_decide(p_remaining, p_balance, p_amount DEFAULT NULL) → jsonb`(IMMUTABLE, service_role만 실행): 얼마를 채울지 판정하는 읽기 전용 순수 함수다. `already_full`, `invalid_amount`, `exceeds_remaining`(남은 양 포함), `insufficient_jam` 순으로 검사하고
+  - (마이그레이션 305에서 지웠다) 새 함수 `jam_fill_decide(p_remaining, p_balance, p_amount DEFAULT NULL) → jsonb`(IMMUTABLE, service_role만 실행): 얼마를 채울지 판정하는 읽기 전용 순수 함수다. `already_full`, `invalid_amount`, `exceeds_remaining`(남은 양 포함), `insufficient_jam` 순으로 검사하고
     기본값은 남은 양, 가진 잼이 모자라면 가진 만큼이다. `capsule_fill`과 같은 규칙이고, 두 함수의 판정이 같은지는 롤백 실측이 같은 표로 비교한다. `capsule_fill`은 이 함수를 쓰지 않는다(캡슐 쪽 통일은 3-4 이후 필요하면).
-  - 새 함수 `locked_item_fill(p_user_id, p_item_id, p_amount DEFAULT NULL) → jsonb`(SECURITY DEFINER, service_role만 실행): 이용 정지 확인(`user_suspended`) → 개체 행 잠금(내 것이고 버려지거나 드랍되지 않은 개체가 아니면 `item_not_found`, 열린 개체면 `not_locked`)
+  - (마이그레이션 305에서 지웠다) 새 함수 `locked_item_fill(p_user_id, p_item_id, p_amount DEFAULT NULL) → jsonb`(SECURITY DEFINER, service_role만 실행): 이용 정지 확인(`user_suspended`) → 개체 행 잠금(내 것이고 버려지거나 드랍되지 않은 개체가 아니면 `item_not_found`, 열린 개체면 `not_locked`)
     → `jam_fill_decide` → `jam_apply(locked_item_badge_fill, 음수)` 한 줄 + `unlock_filled` 갱신 + 이력(`filled`) 한 줄이 한 트랜잭션. 성공하면 `applied`·`required`·`filled`·`remaining`·`balance`를 돌려준다.
-  - 새 함수 `locked_item_open(p_user_id, p_item_id) → jsonb`(SECURITY DEFINER, service_role만 실행): 이용 정지 확인 → 개체 행 잠금(`item_not_found`·`not_locked`) → 다 채웠는지 확인(`not_full`, `required`·`filled` 포함) → 같은 개체를 `locked = false`, `unlocked_at = now()`로 바꾼다(일련번호 그대로, 새로 뽑지 않음, 인벤토리 빈칸 불필요).
+  - (마이그레이션 305에서 지웠다) 새 함수 `locked_item_open(p_user_id, p_item_id) → jsonb`(SECURITY DEFINER, service_role만 실행): 이용 정지 확인 → 개체 행 잠금(`item_not_found`·`not_locked`) → 다 채웠는지 확인(`not_full`, `required`·`filled` 포함) → 같은 개체를 `locked = false`, `unlocked_at = now()`로 바꾼다(일련번호 그대로, 새로 뽑지 않음, 인벤토리 빈칸 불필요).
     배지에 `point_reward`가 있고 `point_awarded_at`이 비어 있으면 `award_points(badge_point_reward)`로 연 유저에게 한 번 주고 칸을 채운다. 이력(`unlocked`) 한 줄까지 한 트랜잭션이다. 동시에 두 번 열어도 행 잠금 때문에 두 번째는 `not_locked`다. 포인트 지급이 실패하면 열기 전체가 되돌려진다.
     성공하면 `itemId`·`badgeId`·`serialNumber`·`pointsAwarded`를 돌려준다. DB 안에서 포인트를 주므로 `awardPoints`의 알림(`notifyPointChange`)은 이 경로에서 나가지 않는다.
   - API(앱은 위 함수를 부르기만 한다, 응답 모양은 `src/lib/inventory/lockedItemFill-contract.ts`): `GET /api/inventory/items/[itemId]/lock`(채운 양·필요량·남은 양·잼·`openable`, 이용 정지 중에도 허용), `POST .../fill { amount? }`(양의 정수만, 이용 정지 중 403 `user_suspended`,
@@ -423,8 +423,8 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
     잠긴 채 받은 개체는 받을 때·픽업할 때 피드 기록(`item_dropped`·`item_picked_up`)을 남기지 않으므로(`issueFollowUp`·픽업 라우트) 열기 전에는 이름이 실릴 행이 없다(연 때는 `openLockedItem`이 동기화로 받은 개체만 `item_dropped`를 올린다. 캡슐에서 나온 잠긴 개체는 열어도 올리지 않는다, 티켓 20261026_1031). 드랍 라우트(`POST /api/drops`)는 피드·소식을 기록하지 않는다.
   - 되돌림: 새 객체만 지운다. 채운 잼은 원장에 남아 지갑으로 돌아오지 않고, 열어서 준 포인트도 회수되지 않는다.
 - **잠긴 아이템 배지를 포인트로 여는 구조 (JAM 2.0, 마이그레이션 300·304, 티켓 20261028_1737, 운영 로직 7.2·14.1·14.2절)** — 잼 채우기 대신 포인트를 내고 한 번에 연다.
-  이 항목이 포인트로 여는 구조의 단일 원천이다(운영 로직·인벤토리 PRD·포인트 PRD는 이 항목을 가리킨다). 옛 `locked_item_fill`·`locked_item_open`과 칸 `unlock_required`·`unlock_filled`, `jam_policy.locked_min_*`는
-  화면은 티켓 20261028_1741(U10)에서 바뀌어 유저 화면이 채움 칸을 읽지 않는다(연결이 끊겼다). 칸과 함수는 지우지 않고 U11까지 그대로 둔다(확장, 전환, 축소).
+  이 항목이 포인트로 여는 구조의 단일 원천이다(운영 로직·인벤토리 PRD·포인트 PRD는 이 항목을 가리킨다). 옛 `locked_item_fill`·`locked_item_open`은 U11 3회(마이그레이션 305)에서 지웠고, 칸 `unlock_required`·`unlock_filled`와 `jam_policy.locked_min_*`는 남아 있다. 이 칸들은
+  화면은 티켓 20261028_1741(U10)에서 바뀌어 유저 화면이 채움 칸을 읽지 않는다(연결이 끊겼다). 지우지 않고 잠긴 개체 드랍 경로 결정(티켓 20261030_0947)이 정할 때까지 그대로 둔다.
   - 새 칸 `inventory_items.unlock_points_required`(integer, nullable, CHECK `>= 0`, 300): 여는 데 드는 포인트. **배정될 때 고정**하고 이후 정책이 바뀌어도 바뀌지 않는다. 열린 채 받은 개체와 고정 전 개체는 NULL이다.
   - 새 칸 `jam_policy.locked_points_common` / `_rare` / `_epic` / `_mystic`(300): 등급별 여는 포인트. 기본 50 / 100 / 200 / 400, CHECK `>= 0`. 어드민 «밸런스 설정» 잠긴 아이템 배지 구역에서 바꾼다.
   - 새 칸 `point_transactions.source_inventory_item_id`(uuid, FK `inventory_items(id)` ON DELETE SET NULL, 300): 사유 `locked_unlock_cost`(−) 줄이 가리키는 연 개체. 사유 CHECK에 `locked_unlock_cost`를 더했고
@@ -444,7 +444,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
     성공 응답은 `ok`·`itemId`·`badgeId`·`serialNumber`·`pointsAwarded`(획득 줄, 없으면 0)·`pointsSpent`(차감, 없으면 0)·`pointBalance`(연 뒤 잔액)다. DB 안에서 포인트를 주므로 `notifyPointChange` 알림은 이 경로에서 나가지 않는다.
   - 잔액 방어: 지갑 잔액이 0 아래로 내려가지 못하게 하는 DB 제약(266)은 출시 뒤에 걸린다. 그 전에는 이 함수의 지갑 잠금과 잔액 확인이 유일한 방어다(`admin_deduct_points`와 같은 방식).
   - 앱(`lib/inventory/lockedItemFill.ts` `openLockedItem`·`getLockedItemStatus`, 계약 `lockedItemFill-contract.ts`, 티켓 20261028_1737 2회): `POST /api/inventory/items/[itemId]/open`이 이 함수를 부르고 응답에 `pointsSpent`·`pointBalance`를 싣는다.
-    `insufficient_points`는 409이며 `required`·`balance`를 싣는다(옛 `not_full` 분기는 새 함수가 돌려주지 않는 죽은 경로이고 U11에서 정리한다). `GET .../lock`은 `pointsRequired`(개체에 고정된 값, 비었고 잠겨 있으면 등급별 정책값, 열린 개체는 null)와
+    `insufficient_points`는 409이며 `required`·`balance`를 싣는다(옛 `not_full` 분기는 새 함수가 돌려주지 않는 죽은 경로이고 코드에 남아 있다). `GET .../lock`은 `pointsRequired`(개체에 고정된 값, 비었고 잠겨 있으면 등급별 정책값, 열린 개체는 null)와
     `pointBalance`(지갑이 없으면 0)를 더 싣는다. 열기가 확정된 뒤 서비스 활동 잼(`locked_unlock`), 퀘스트 완료 처리, 포인트 소식, 피드는 그대로 이어진다.
   - 권한: `locked_item_open_points`와 9개 인자 `award_points`는 `authenticated`·`anon` 실행이 막혀 있고 `service_role`만 실행한다.
   - 되돌림 SQL은 304 파일 끝의 주석에 있다. 새 함수·트리거를 지우고 `award_points`를 8개 인자 본문으로 되돌린다. 이미 남은 차감 줄은 지워지지 않는다.
@@ -1089,7 +1089,7 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 | 아이템 배지: 동기화 지급·보류 고르기 | 열린 채 받을 때(잠긴 채 받으면 없음) | `lib/drop-engine/issueFollowUp.ts`(`recordIssuedRewards`) |
 | 아이템 배지: 미션 보상 | 열린 채 받을 때, `point_awarded_at`으로 중복 방지 | `lib/missions/itemRewardFollowUp.ts` |
 | 아이템 배지: **믹스 결과**(2회) | 열린 채 받을 때, `point_awarded_at`으로 중복 방지. 빈칸이 모자라 받지 않은 결과로 남으면 받을 때 | `lib/combine/resultPointFollowUp.ts` |
-| 아이템 배지: 잠긴 채 받은 개체 | 열 때 일련번호마다 한 번, `point_awarded_at`으로 중복 방지 | DB `locked_item_open_points`(마이그레이션 304, 옛 `locked_item_open`(235)은 U11까지 남음) |
+| 아이템 배지: 잠긴 채 받은 개체 | 열 때 일련번호마다 한 번, `point_awarded_at`으로 중복 방지 | DB `locked_item_open_points`(마이그레이션 304, 옛 `locked_item_open`(235)은 마이그레이션 305에서 지웠다) |
 | 컬렉션 보상 배지(`item_books.reward_badge_id`, 등급 보상 배지 포함) | `user_activity_badges`에 **새로 넣을 때만**. 이미 보유·23505는 지급 없음, 보정분도 새로 넣을 때는 준다 | `lib/itembook/checker.ts`(`issueItemBookRewardBadges`, 동기화 보정과 장착 직후 발급이 함께 쓴다) |
 | 미션 보상 배지 | 미션 완료 때 | `lib/missions/rewards.ts` |
 | 퀘스트 완료 배지(「JAM!」) | «연출 끝 또는 건너뜀 AND 실제 2단계 완료»가 된 뒤 한 번, 건너뛰지 않은 유저에게만 | `lib/onboarding-quest/completion.ts` |
@@ -1157,7 +1157,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `sync_item_bonus_max_probability` | 0.25 | 보너스 한 번마다 확률의 상한(0~1) |
 | `sync_rarity_common` / `_rare` / `_epic` / `_mystic` | 84 / 13 / 2.5 / 0.5 | 동기화 등급 확률(퍼센트). 네 칸 합계는 100이고 DB 제약(`jam_policy_sync_rarity_sum_100`)이 지킨다 |
 | `common_streak_threshold` | 10 | Common이 이 횟수만큼 연속이면 다음은 Rare 이상(`user_drop_state.common_streak`, 동기화와 캡슐 합산) |
-| `locked_min_common` / `_rare` / `_epic` / `_mystic` | 30 / 60 / 120 / 240 | 잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값. 배지에 값이 없을 때 이 값을 쓴다. 1 이상 정수 (마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.4절). 편집 화면은 «밸런스 설정»의 «잠긴 아이템 배지» 구역이다(티켓 20261022_1133). 유저 화면은 티켓 20261028_1741(U10)부터 이 값을 보이지 않는다(여는 값은 `locked_points_*` 포인트다). 이 칸과 어드민 입력은 U11까지 남아 있다. 이미 잠긴 개체의 `unlock_required`는 배정 때 고정돼 바뀌지 않는다 |
+| `locked_min_common` / `_rare` / `_epic` / `_mystic` | 30 / 60 / 120 / 240 | 잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값. 배지에 값이 없을 때 이 값을 쓴다. 1 이상 정수 (마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.4절). 편집 화면은 «밸런스 설정»의 «잠긴 아이템 배지» 구역이다(티켓 20261022_1133). 유저 화면은 티켓 20261028_1741(U10)부터 이 값을 보이지 않는다(여는 값은 `locked_points_*` 포인트다). 이 칸과 어드민 입력은 남아 있다(잠긴 개체 드랍 경로 결정, 티켓 20261030_0947이 정한다). 이미 잠긴 개체의 `unlock_required`는 배정 때 고정돼 바뀌지 않는다 |
 | `locked_points_common` / `_rare` / `_epic` / `_mystic` | 50 / 100 / 200 / 400 | 잠긴 아이템 배지를 포인트로 여는 비용의 등급별 값. 0 이상 정수, **0이면 포인트 없이 열림** (마이그레이션 300, 티켓 20261028_1737, 운영 로직 7.4절). 개체에 값이 고정되지 않았을 때와 새로 배정될 때 쓴다. 구조는 3장 «잠긴 아이템 배지를 포인트로 여는 구조» |
 | `service_jam_daily_cap` / `service_jam_weekly_cap` | 40 / 100 | 서비스 활동으로 받는 잼의 하루(KST)·주간(월~일, KST) 상한. 0 이상 정수, **0이면 지급 0**(마이그레이션 300, 위 «서비스 활동 잼») |
 | `locked_roll_probability` | 0.25 | 동기화·캡슐에서 나온 아이템 배지가 잠긴 채 배정될 확률(0~1). 0이면 무작위로는 절대 잠기지 않고 1이면 늘 잠긴다 |
@@ -1231,20 +1231,20 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 #### chapter_definitions
 `chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지). 편집 화면은 어드민 «밸런스 설정»의 «챕터» 구역이다(`/admin/balance#chapter`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 챕터 2~10의 `required_score`만 칸 이름 `required:<챕터>`로 편집하고(앞 챕터보다 커야 하며 챕터 1은 0으로 고정), 저장하면 바뀐 행의 `updated_at`을 직접 올린다(갱신 트리거가 없다). 필요 점수를 낮추면 이미 점수가 넘은 유저는 바로 오르지 않고 다음에 점수가 쌓일 때 오른다(`chapter_add_score`만 챕터를 올린다). `user_chapters`·`chapter_ups`의 외래키가 이 표를 가리켜 유저가 있는 챕터는 지울 수 없으므로 줄이기는 만들지 않고, 행을 더하는 챕터 더하기는 후속 티켓 20261022_1718이다.
 
-#### chapter_score_rules
+#### chapter_score_rules (마이그레이션 305에서 지웠다)
 `activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다. 편집 화면(티켓 20261022_1133의 활동 12종 `rule:<활동>:points|cap|ratio` 칸)은 티켓 20261028_1742 2회에서 걷었다. 지금 코드는 이 표를 읽지도 쓰지도 않는다(삭제는 3회).
 
 #### user_chapters
 유저당 1개(첫 점수·시작 때 생성). `chapter_no`(NULL=퀘스트 전), `total_score`, `capsule_full_count`(INTEGER NOT NULL DEFAULT 0, CHECK 0 이상 — 지금 챕터에서 캡슐이 100%에 닿은 횟수, 챕터가 오르면 0으로 돌아간다. 마이그레이션 300, 티켓 20261028_1732. 세는 곳은 `capsule_auto_fill`이고 캡슐이 100%에 처음 닿는 호출에서 센다. 마이그레이션 302 이전에는 `capsule_open_counted`가 열 때 셌다. 아래 9-4). 본인만 SELECT.
 
-#### chapter_score_events
+#### chapter_score_events (마이그레이션 305에서 지웠다)
 점수 기록(append-only). `activity_kind`, `source_id`(호출부가 정한 UUID, FK 없음), `occurred_on`(활동한 날 KST), `unit_amount`(호출된 양), `raw_score`(상한 적용 전), `counted_score`(실제로 센 점수). `UNIQUE (activity_kind, source_id)`로 같은 활동은 한 번만 센다. 본인만 SELECT.
 
 #### chapter_ups
 오른 기록. `(user_id, chapter_no)` 복합 PK, `reached_at`. 한 번에 여러 챕터를 넘으면 챕터마다 한 줄. 본인만 SELECT.
 
 > 점수·챕터 변경은 전부 두 RPC(SECURITY DEFINER, service_role 전용)로만 처리한다.
-> - `chapter_add_score(p_user_id, p_activity_kind, p_source_id, p_amount, p_occurred_on)`: 점수 계산(주 월~일은 활동한 날 기준, 상한 안은 그대로·넘는 부분은 `over_cap_ratio`, 소수점 내림) + 점수 기록 + 누적 점수 반영 + 챕터가 있으면 올릴 수 있는 만큼 상승. 같은 `(활동 종류, 원천)`은 오류 없이 이미 센 결과를 돌려주고, 미래 날짜는 거절한다. 반환: `score_added`, `current_chapter`, `reached_chapters`.
+> - (마이그레이션 305에서 지웠다) `chapter_add_score(p_user_id, p_activity_kind, p_source_id, p_amount, p_occurred_on)`: 점수 계산(주 월~일은 활동한 날 기준, 상한 안은 그대로·넘는 부분은 `over_cap_ratio`, 소수점 내림) + 점수 기록 + 누적 점수 반영 + 챕터가 있으면 올릴 수 있는 만큼 상승. 같은 `(활동 종류, 원천)`은 오류 없이 이미 센 결과를 돌려주고, 미래 날짜는 거절한다. 반환: `score_added`, `current_chapter`, `reached_chapters`.
 > - `chapter_start(p_user_id)`: 챕터가 비어 있으면 챕터 1로 만들고 쌓인 점수로 오를 챕터까지 한 번에 올린다. 이미 챕터가 있으면 아무것도 하지 않는다. 같은 모양을 돌려준다(`score_added`=0).
 > - 챕터는 내려가지 않는다. 퀘스트 전 점수는 버리지 않고 쌓았다가 챕터 1 때 함께 계산한다(가정, SQL 실행 승인 전 재확인).
 > - 점수 가산을 부를지 말지(챕터 배지·포인트 조건 배지 제외, 자기 드랍 줍기 제외, 이용 정지 중 차단)는 부르는 쪽 책임이다.
@@ -1350,7 +1350,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 ### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
 운영 로직 5.2·5.4절이 근거다. 2026-10-18 공용 DB에 적용했다(232: 저장·설정·채우기, 233: 열기). 전부 덧붙이기이고 옛 객체의 뜻은 바꾸지 않았다. 새 표는 모두 RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
-동기화가 캡슐을 저절로 채우고 여는 구조(티켓 20261028_1733, 상위 20261028_1730)는 마이그레이션 300·301이 덧붙였다. 아래 «자동 채움 구조» 소절에 모았다. 인벤토리가 차면 보상을 보류하고 둘째부터 잼이 사라지는 구조(티켓 20261028_1734)는 마이그레이션 302가 덧붙였고, «자동 채움 구조»와 «capsule_pending_rewards»·«jam_forfeit_weekly» 소절에 모았다. 232·233·234의 옛 객체와 옛 열은 그대로이고, 프로덕션 main이 옛 함수를 쓰기 때문에 지우지 않았다(정리는 U11).
+동기화가 캡슐을 저절로 채우고 여는 구조(티켓 20261028_1733, 상위 20261028_1730)는 마이그레이션 300·301이 덧붙였다. 아래 «자동 채움 구조» 소절에 모았다. 인벤토리가 차면 보상을 보류하고 둘째부터 잼이 사라지는 구조(티켓 20261028_1734)는 마이그레이션 302가 덧붙였고, «자동 채움 구조»와 «capsule_pending_rewards»·«jam_forfeit_weekly» 소절에 모았다. 232·233·234의 옛 객체와 옛 열은 그대로이고, 프로덕션 main이 옛 함수를 쓰기 때문에 지우지 않았다. 그중 옛 채우기·열기 함수와 챕터 점수 표는 U11 3회(마이그레이션 305)가 지웠고, 나머지 옛 객체의 정리는 후속 티켓 20261031_0131이 이어 받는다.
 
 #### capsule_policy
 한 행 싱글톤(`id = 1`). 칸과 기본값: `guaranteed_count` 1, `bonus_count` 1, `bonus_probability` 0.2, `other_tribe_probability` 0.2, `rarity_common`/`_rare`/`_epic`/`_mystic` 70/22/6/2(합계 100, DB 제약 `capsule_policy_rarity_sum_100`), `pity_epic_threshold` 15(보정 1), `pre_quest_fill_amount` 5, `pre_quest_unlock_required` 5(퀘스트 전 첫 캡슐에서 반드시 나오는 잠긴 아이템 배지를 여는 데 필요한 양). Common 연속 보정(10번)과 잠길 확률은 동기화와 합산하는 값이라 `jam_policy`의 것을 그대로 쓴다. 코드는 `src/lib/capsule/policy.ts`의 `getCapsulePolicy`로 읽고, 조회 실패·비정상 칸은 기본값(`DEFAULT_CAPSULE_POLICY`)으로 대체하고 로그를 남긴다(등급 확률 네 칸은 묶음 단위). 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다. 편집 화면은 어드민 «밸런스 설정»의 «캡슐» 구역이다(`/admin/balance`, 티켓 20261022_1132 2회, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 열한 칸 모두 그 구역에서 편집하고 저장하면 `updated_at`을 직접 올린다(갱신 트리거가 없다). 이 가운데 확률 안내 페이지가 읽는 칸(`pre_quest_*` 두 칸 제외 아홉 칸, `lib/probability/disclosure.ts`의 `CAPSULE_COLUMNS`)을 바꾸면 저장 전 확인창이 뜬다.
@@ -1396,7 +1396,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 > 캡슐 변경은 세 RPC(SECURITY DEFINER, service_role 전용, `authenticated` 실행 권한 없음)로만 처리한다.
 > - `capsule_get_or_create(p_user_id) → user_capsules`: 없으면 그때의 챕터(`user_chapters.chapter_no`)로 필요량을 정해 만든다. 챕터가 없으면 `pre_quest_fill_amount`다. 필요량은 이후 챕터가 올라도 바뀌지 않는다.
-> - `capsule_fill(p_user_id, p_amount DEFAULT NULL) → jsonb`: 이용 정지 중이면 `user_suspended`로 거절하고, 캡슐 행을 잠근 뒤 `already_full`, `invalid_amount`, `exceeds_remaining`, `insufficient_jam` 순으로 검사한다. 기본값은 남은 양이고 가진 잼이 모자라면 가진 만큼 채운다. `jam_apply(capsule_fill, 음수)` 한 줄과 `filled` 갱신이 한 트랜잭션이다. 성공하면 `applied`·`required`·`filled`·`remaining`·`balance`를 돌려준다.
+> - (마이그레이션 305에서 지웠다) `capsule_fill(p_user_id, p_amount DEFAULT NULL) → jsonb`: 이용 정지 중이면 `user_suspended`로 거절하고, 캡슐 행을 잠근 뒤 `already_full`, `invalid_amount`, `exceeds_remaining`, `insufficient_jam` 순으로 검사한다. 기본값은 남은 양이고 가진 잼이 모자라면 가진 만큼 채운다. `jam_apply(capsule_fill, 음수)` 한 줄과 `filled` 갱신이 한 트랜잭션이다. 성공하면 `applied`·`required`·`filled`·`remaining`·`balance`를 돌려준다.
 > - `capsule_open(p_user_id, p_items JSONB) → jsonb`(233): 추첨은 앱이 하고 이 함수는 정해진 결과를 한 트랜잭션으로 확정한다. 순서는 이용 정지 확인(`user_suspended`) → 항목 검사(`invalid_items`, 항목 수는 0 이상 `guaranteed_count + bonus_count` 이하) → 캡슐 행 잠금과 가득 참 확인(`not_full`) → 인벤토리 행 잠금과 빈칸 확인(`inventory_not_found`, `insufficient_slots`와 지금 빈칸 `free`·필요한 빈칸 `needed`) → 개체마다 `grant_inventory_item_locked`와 `item_issue_log`(route `capsule`) → 보정 카운터(`common_streak`는 받은 순서대로, `capsule_epic_miss`는 Epic 이상이 있으면 0, 없으면 +1) → `capsule_opens` 한 줄 → 캡슐 행을 지우고 `capsule_get_or_create`로 다음 캡슐 생성(그때의 챕터로 필요량 고정). 항목은 `{badge_id, rarity, rolled_rarity?, locked, lock_reason, unlock_required}`이고, 성공하면 `openId`·`itemIds`·`items`(`inventoryItemId`, `badgeId`, `rarity`, `locked`, `serialNumber`)·`next`(`required`, `filled`)를 돌려준다. 한 단계라도 실패하면 전체가 되돌려진다. 되돌림은 함수만 지우며 이미 연 기록과 지급된 개체는 남는다.
 > - API: `GET /api/capsule`(캡슐 상태, 이용 정지 중에도 허용), `POST /api/capsule/fill { amount? }`와 `POST /api/capsule/open`(둘 다 티켓 20261028_1742 1회에서 코드와 라우트를 지웠다. 열기는 동기화 자동 채움 안의 `capsule_open_counted`만 남는다). 응답 모양은 `src/lib/capsule/capsule-contract.ts`다. `openable`은 다 채웠고 인벤토리 빈칸이 나올 수 있는 최대 개수 이상일 때만 참이며, 못 여는 까닭(`not_full`·`no_free_slots`)과 `freeSlots`·`neededSlots`를 함께 싣는다.
 > - 채운 잼은 되돌리지 않는다. 마이그레이션을 되돌리면 원장(`jam_transactions`)의 `capsule_fill` 줄은 남지만 그 잼은 지갑으로 돌아오지 않는다.

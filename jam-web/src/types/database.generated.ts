@@ -821,81 +821,6 @@ export type Database = {
         }
         Relationships: []
       }
-      chapter_score_events: {
-        Row: {
-          activity_kind: string
-          counted_score: number
-          created_at: string
-          id: string
-          occurred_on: string
-          raw_score: number
-          source_id: string
-          unit_amount: number
-          user_id: string
-        }
-        Insert: {
-          activity_kind: string
-          counted_score: number
-          created_at?: string
-          id?: string
-          occurred_on: string
-          raw_score: number
-          source_id: string
-          unit_amount: number
-          user_id: string
-        }
-        Update: {
-          activity_kind?: string
-          counted_score?: number
-          created_at?: string
-          id?: string
-          occurred_on?: string
-          raw_score?: number
-          source_id?: string
-          unit_amount?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chapter_score_events_activity_kind_fkey"
-            columns: ["activity_kind"]
-            isOneToOne: false
-            referencedRelation: "chapter_score_rules"
-            referencedColumns: ["activity_kind"]
-          },
-          {
-            foreignKeyName: "chapter_score_events_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chapter_score_rules: {
-        Row: {
-          activity_kind: string
-          over_cap_ratio: number
-          points_per_unit: number
-          updated_at: string
-          weekly_cap: number | null
-        }
-        Insert: {
-          activity_kind: string
-          over_cap_ratio?: number
-          points_per_unit: number
-          updated_at?: string
-          weekly_cap?: number | null
-        }
-        Update: {
-          activity_kind?: string
-          over_cap_ratio?: number
-          points_per_unit?: number
-          updated_at?: string
-          weekly_cap?: number | null
-        }
-        Relationships: []
-      }
       chapter_ups: {
         Row: {
           chapter_no: number
@@ -4947,10 +4872,6 @@ export type Database = {
         Args: { p_items: Json; p_pending_id: string; p_user_id: string }
         Returns: Json
       }
-      capsule_fill: {
-        Args: { p_amount?: number | null; p_user_id: string }
-        Returns: Json
-      }
       capsule_get_or_create: {
         Args: { p_user_id: string }
         Returns: {
@@ -5002,20 +4923,6 @@ export type Database = {
       combine_grant_results: {
         Args: { p_badge_ids: string[]; p_locked?: boolean; p_recipe_id: string | null; p_user_id: string }
         Returns: Json
-      }
-      chapter_add_score: {
-        Args: {
-          p_activity_kind: string
-          p_amount: number
-          p_occurred_on?: string
-          p_source_id: string
-          p_user_id: string
-        }
-        Returns: {
-          current_chapter: number
-          reached_chapters: number[]
-          score_added: number
-        }[]
       }
       chapter_start: {
         Args: { p_user_id: string }
@@ -5136,19 +5043,7 @@ export type Database = {
         Args: { p_event_key: string; p_kind: string; p_user_id: string }
         Returns: Json
       }
-      jam_fill_decide: {
-        Args: { p_amount?: number | null; p_balance: number; p_remaining: number }
-        Returns: Json
-      }
       jsonb_as_array: { Args: { p_value: Json }; Returns: Json }
-      locked_item_fill: {
-        Args: { p_amount?: number | null; p_item_id: string; p_user_id: string }
-        Returns: Json
-      }
-      locked_item_open: {
-        Args: { p_item_id: string; p_user_id: string }
-        Returns: Json
-      }
       locked_item_open_points: {
         Args: { p_item_id: string; p_user_id: string }
         Returns: Json
