@@ -65,7 +65,7 @@ describe('BadgeRevealOverlay summaryMessage — 헤더', () => {
   })
 
   it('resultMessage가 있으면 resultMessage가 이기고 요약은 그리지 않는다', () => {
-    const result = t(d.capsule.openResult, { n: 2 })
+    const result = t(d.capsule.claimResult, { n: 2 })
     const html = render({ resultMessage: result, summaryMessage: SUMMARY })
     expect(html).toContain(`>${result}</p>`)
     expect(html).not.toContain(SUMMARY)
@@ -86,7 +86,7 @@ describe('BadgeRevealOverlay summaryMessage — 라이브 리전', () => {
   })
 
   it('resultMessage가 있으면 라이브 리전은 지금처럼 resultMessage만 읽는다', () => {
-    const result = t(d.capsule.openResult, { n: 2 })
+    const result = t(d.capsule.claimResult, { n: 2 })
     expect(liveRegionText(render({ resultMessage: result, summaryMessage: SUMMARY }))).toBe(result)
   })
 

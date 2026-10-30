@@ -60,7 +60,7 @@ describe('서버 초기값이 있을 때', () => {
     const html = render()
     expect(textOf(html)).toBe('')
     expect(html).not.toContain('777')
-    expect(html).not.toContain(d.capsule.sheet.balanceLabel)
+    expect(html).not.toContain('가진 잼')
   })
 
   it('시트가 없고 위젯은 z-index를 가진 래퍼를 만들지 않는다', () => {

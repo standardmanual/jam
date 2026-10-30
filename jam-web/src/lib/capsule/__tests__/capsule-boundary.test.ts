@@ -180,7 +180,6 @@ describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모
   const ENTRIES = [
     'lib/capsule/capsule-client.ts',
     'lib/capsule/capsule-view.ts',
-    'lib/jam/jam-fill.ts',
     'lib/suspension/suspended-block.ts',
     'lib/capsule/capsule-gauge.ts',
     'components/capsule/CapsuleGauge.tsx',
@@ -189,7 +188,6 @@ describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모
     // 합친 연출(티켓 20261028_1740 1회)
     'lib/capsule/result-overlay-model.ts',
     'components/capsule/CapsuleResultOverlay.tsx',
-    'components/jam/JamBalance.tsx',
     // 잠긴 개체 화면(티켓 20261018_0054 2회)
     'lib/inventory/lockedItemFill-client.ts',
     'lib/inventory/lockedItemFill-flow.ts',

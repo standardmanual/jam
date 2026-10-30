@@ -71,7 +71,7 @@ describe('BadgeRevealOverlay', () => {
     )
 
   it('resultMessage를 주면 카드 위 한 줄과 라이브 리전에 같은 문구가 나온다', () => {
-    const message = t(d.capsule.openResult, { n: 2 })
+    const message = t(d.capsule.claimResult, { n: 2 })
     const html = render({ resultMessage: message })
     expect(html.split(message).length - 1).toBeGreaterThanOrEqual(2)
     expect(html).toContain(`>${message}</div>`)
