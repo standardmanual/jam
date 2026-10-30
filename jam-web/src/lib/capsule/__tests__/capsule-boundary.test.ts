@@ -99,6 +99,7 @@ const FORBIDDEN_FILES = [
   'lib/capsule/capsule.ts',
   'lib/capsule/policy.ts',
   'lib/capsule/open.ts',
+  'lib/capsule/unseen.ts',
   'lib/inventory/lockedItemFill.ts',
   'lib/suspension/suspension.ts',
   'lib/jam/policy.ts',

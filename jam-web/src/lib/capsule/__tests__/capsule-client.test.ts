@@ -6,7 +6,15 @@
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/capsule-client.test.ts
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { claimCapsule, fetchCapsule, fillCapsuleRequest, isKnownCapsuleRejectCode, openCapsuleRequest } from '../capsule-client'
+import {
+  claimCapsule,
+  fetchCapsule,
+  fetchUnseenResult,
+  fillCapsuleRequest,
+  isKnownCapsuleRejectCode,
+  markUnseenSeen,
+  openCapsuleRequest,
+} from '../capsule-client'
 
 function respond(status: number, body: unknown): Response {
   return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -150,6 +158,50 @@ describe('claimCapsule', () => {
   it('네트워크 오류는 실패다(던지지 않는다)', async () => {
     stubFetch(new TypeError('Failed to fetch'))
     expect(await claimCapsule()).toEqual({ kind: 'failed' })
+  })
+})
+
+describe('fetchUnseenResult', () => {
+  it('GET /api/capsule/unseen을 캐시 없이 부르고 결과를 돌려준다', async () => {
+    const body = { result: { ids: ['id-1'], events: [], chapterBadges: [] } }
+    const fn = stubFetch(respond(200, body))
+    expect(await fetchUnseenResult()).toEqual({ kind: 'ok', data: body })
+    expect(fn).toHaveBeenCalledWith('/api/capsule/unseen', { method: 'GET', cache: 'no-store' })
+  })
+
+  it('보지 않은 결과가 없으면 result가 null인 ok다', async () => {
+    stubFetch(respond(200, { result: null }))
+    expect(await fetchUnseenResult()).toEqual({ kind: 'ok', data: { result: null } })
+  })
+
+  it('401·500·네트워크 오류는 모두 실패다(던지지 않는다)', async () => {
+    stubFetch(respond(401, { error: '로그인이 필요해요' }))
+    expect(await fetchUnseenResult()).toEqual({ kind: 'failed' })
+    stubFetch(respond(500, { error: '불러오지 못했어요' }))
+    expect(await fetchUnseenResult()).toEqual({ kind: 'failed' })
+    stubFetch(new TypeError('Failed to fetch'))
+    expect(await fetchUnseenResult()).toEqual({ kind: 'failed' })
+  })
+})
+
+describe('markUnseenSeen', () => {
+  it('POST /api/capsule/unseen/seen에 ids를 JSON으로 보낸다', async () => {
+    const fn = stubFetch(respond(200, { marked: 2 }))
+    expect(await markUnseenSeen(['a', 'b'])).toEqual({ kind: 'ok', data: { marked: 2 } })
+    expect(fn).toHaveBeenCalledWith('/api/capsule/unseen/seen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ['a', 'b'] }),
+    })
+  })
+
+  it('400·500·네트워크 오류는 실패다', async () => {
+    stubFetch(respond(400, { error: '확인할 캡슐 결과를 알 수 없어요.' }))
+    expect(await markUnseenSeen(['a'])).toEqual({ kind: 'failed' })
+    stubFetch(respond(500, { error: '남기지 못했어요' }))
+    expect(await markUnseenSeen(['a'])).toEqual({ kind: 'failed' })
+    stubFetch(new TypeError('Failed to fetch'))
+    expect(await markUnseenSeen(['a'])).toEqual({ kind: 'failed' })
   })
 })
 
