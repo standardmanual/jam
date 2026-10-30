@@ -2,24 +2,17 @@
  * lib/admin/user-chapter-view — 어드민 유저 상세의 챕터 구역 읽기 (티켓 20261019_1318 2회)
  *
  * 고정하는 것:
- * - 지금 챕터·누적 점수, 오른 기록, 점수 기록 최근 50건(전체 건수 포함)을 읽는다.
+ * - 지금 챕터·누적 점수, 오른 기록을 읽는다. 점수 기록(`chapter_score_events`)은 읽지 않는다(티켓 20261028_1742 2회에서 걷었다).
  * - 챕터가 없는 유저(행 없음, chapter_no NULL)는 «기록 없음»이지 읽기 실패가 아니다.
  * - 구역마다 실패가 독립이다 — 읽지 못한 구역만 `{ ok: false }`이고 로그가 남으며 다른 구역은 그대로다. 던지지 않는다.
  * - 챕터는 숫자로만 표기한다(2026-10-21 결정): 이름 표를 읽지 않고 값에 이름이 없다.
- * - 활동 종류 12종은 모두 한글 이름이 있고, 사전에 없는 종류는 값 그대로 보인다.
  * 공용 DB는 부르지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/user-chapter-view.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { CHAPTER_SCORE_KINDS } from '@/lib/chapter/kinds'
-import {
-  CHAPTER_SCORE_KIND_LABELS,
-  USER_CHAPTER_SCORE_EVENT_LIMIT,
-  chapterScoreKindLabel,
-  loadUserChapterView,
-} from '../user-chapter-view'
+import { loadUserChapterView } from '../user-chapter-view'
 
 const USER = '11111111-1111-4111-8111-111111111111'
 
@@ -68,18 +61,10 @@ const happy = () => ({
     ],
     error: null,
   },
-  chapter_score_events: {
-    data: [
-      { id: 'e2', activity_kind: 'capsule_open', occurred_on: '2026-10-20', unit_amount: 1, raw_score: 20, counted_score: 20, created_at: '2026-10-20T01:00:00+00:00' },
-      { id: 'e1', activity_kind: 'jam_earned', occurred_on: '2026-10-19', unit_amount: 400, raw_score: 400, counted_score: 350, created_at: '2026-10-19T01:00:00+00:00' },
-    ],
-    error: null,
-    count: 120,
-  },
 })
 
 describe('loadUserChapterView — 정상', () => {
-  it('지금 챕터와 점수, 오른 기록, 점수 기록을 담는다', async () => {
+  it('지금 챕터와 점수, 오른 기록을 담는다', async () => {
     const { client } = fakeClient(happy())
     const view = await loadUserChapterView(client, USER)
 
@@ -92,29 +77,19 @@ describe('loadUserChapterView — 정상', () => {
         { chapterNo: 3, reachedAt: '2026-10-15T06:30:00+00:00' },
       ],
     })
-    expect(view.scoreEvents.ok && view.scoreEvents.value.total).toBe(120)
-    expect(view.scoreEvents.ok && view.scoreEvents.value.rows.map((r) => [r.id, r.kindLabel, r.rawScore, r.countedScore])).toEqual([
-      ['e2', '캡슐 열기', 20, 20],
-      ['e1', '모은 잼', 400, 350],
-    ])
     expect(errorSpy).not.toHaveBeenCalled()
   })
 
-  it('점수 기록은 최근 50건만, 최근순으로 읽고 전체 건수를 함께 센다', async () => {
+  it('점수 기록 표(chapter_score_events)는 읽지 않는다', async () => {
     const { client, calls } = fakeClient(happy())
     await loadUserChapterView(client, USER)
-    const events = calls.find((c) => c.table === 'chapter_score_events')!
-    expect(USER_CHAPTER_SCORE_EVENT_LIMIT).toBe(50)
-    expect(events.limit).toBe(50)
-    expect(events.select).toContain('counted_score')
-    expect(events.eq).toEqual([['user_id', USER]])
-    expect(events.order[0]).toEqual(['created_at', false])
+    expect(calls.some((c) => c.table === 'chapter_score_events')).toBe(false)
   })
 
   it('챕터는 숫자로만 표기한다 — 이름 표를 읽지 않고 값에 이름이 없다', async () => {
     const { client, calls } = fakeClient(happy())
     const view = await loadUserChapterView(client, USER)
-    expect(calls.map((c) => c.table).sort()).toEqual(['chapter_score_events', 'chapter_ups', 'user_chapters'])
+    expect(calls.map((c) => c.table).sort()).toEqual(['chapter_ups', 'user_chapters'])
     expect(JSON.stringify(view)).not.toContain('name')
   })
 
@@ -127,11 +102,10 @@ describe('loadUserChapterView — 정상', () => {
 
 describe('loadUserChapterView — 챕터가 없는 유저는 기록 없음이다', () => {
   it('user_chapters 행이 없으면 챕터 없음, 점수 0이고 읽기 실패가 아니다', async () => {
-    const { client } = fakeClient({ ...happy(), user_chapters: { data: null, error: null }, chapter_ups: { data: [], error: null }, chapter_score_events: { data: [], error: null, count: 0 } })
+    const { client } = fakeClient({ ...happy(), user_chapters: { data: null, error: null }, chapter_ups: { data: [], error: null } })
     const view = await loadUserChapterView(client, USER)
     expect(view.current).toEqual({ ok: true, value: { chapterNo: null, totalScore: 0 } })
     expect(view.ups).toEqual({ ok: true, value: [] })
-    expect(view.scoreEvents).toEqual({ ok: true, value: { rows: [], total: 0 } })
     expect(errorSpy).not.toHaveBeenCalled()
   })
 
@@ -146,11 +120,10 @@ describe('loadUserChapterView — 구역마다 실패가 독립이다', () => {
   it.each([
     ['user_chapters', 'current', 'users/detail/chapter'],
     ['chapter_ups', 'ups', 'users/detail/chapter-ups'],
-    ['chapter_score_events', 'scoreEvents', 'users/detail/chapter-score-events'],
   ] as const)('%s를 읽지 못하면 %s만 읽기 실패이고 로그를 남긴다', async (table, section, label) => {
     const { client } = fakeClient({ ...happy(), [table]: { data: null, error: { message: `${table} 실패` } } })
     const view = await loadUserChapterView(client, USER)
-    for (const key of ['current', 'ups', 'scoreEvents'] as const) {
+    for (const key of ['current', 'ups'] as const) {
       expect(view[key].ok).toBe(key !== section)
     }
     expect(errorSpy).toHaveBeenCalledTimes(1)
@@ -178,29 +151,5 @@ describe('loadUserChapterView — 구역마다 실패가 독립이다', () => {
     const view = await loadUserChapterView(client, USER)
     expect(view.current).toEqual({ ok: false })
     expect(view.ups).toEqual({ ok: false })
-    expect(view.scoreEvents.ok).toBe(true)
-  })
-})
-
-describe('활동 종류의 한글 이름', () => {
-  it('점수를 쌓는 12종 모두 이름이 있다', () => {
-    for (const kind of CHAPTER_SCORE_KINDS) {
-      expect(CHAPTER_SCORE_KIND_LABELS[kind], kind).toBeTruthy()
-      expect(chapterScoreKindLabel(kind)).toBe(CHAPTER_SCORE_KIND_LABELS[kind])
-    }
-    expect(Object.keys(CHAPTER_SCORE_KIND_LABELS).sort()).toEqual([...CHAPTER_SCORE_KINDS].sort())
-  })
-
-  it('운영 로직 12.2절의 활동 이름을 쓴다', () => {
-    expect(chapterScoreKindLabel('jam_earned')).toBe('모은 잼')
-    expect(chapterScoreKindLabel('locked_item_badge_open')).toBe('잠긴 아이템 배지 열기')
-    expect(chapterScoreKindLabel('collection_complete_epic')).toBe('컬렉션 완성 (Epic)')
-    expect(chapterScoreKindLabel('mix_success')).toBe('믹스 성공')
-  })
-
-  it('사전에 없는 종류(점수 규칙 행으로 더해진 종류)는 값 그대로 보인다', () => {
-    expect(chapterScoreKindLabel('brand_new_kind')).toBe('brand_new_kind')
-    // 객체 기본 속성 이름이 종류로 와도 사전 값으로 오해하지 않는다
-    expect(chapterScoreKindLabel('constructor')).toBe('constructor')
   })
 })

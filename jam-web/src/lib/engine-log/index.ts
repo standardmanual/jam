@@ -28,7 +28,7 @@ export type EngineDecisionEvent =
   | 'sync_result'
   | 'drop_attempt'
   | 'point_award_failed'
-  /** 챕터 점수(`chapter_add_score`) 연결 실패 (engine='points', 티켓 20261019_1315). 같은 원천 id로 다시 보낼 수 있다 */
+  /** 챕터 점수 «세지 못함» 기록(믹스·컬렉션·배지 받기의 지급 실패, 옛 `chapter_add_score` 연결 실패 포함) (engine='points', 티켓 20261019_1315). 같은 원천 id로 다시 보낼 수 있다 */
   | 'chapter_score_failed'
   /** 서비스 활동 잼(`jam_apply_service_activity`) 지급 실패 (engine='points', 티켓 20261028_1735). 같은 원천 id로 다시 보낼 수 있다 */
   | 'service_jam_failed'

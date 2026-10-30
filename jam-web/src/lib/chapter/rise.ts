@@ -1,7 +1,7 @@
 /**
  * 챕터 오름 처리 (티켓 20261019_1316, 운영 로직 12.1~12.3절)
  *
- * 챕터가 오른 순간(`chapter_add_score`·`chapter_start`가 `reachedChapters`를 돌려줄 때) 할 일을 한 곳에 둔다.
+ * 챕터가 오른 순간(`chapter_start` 등이 `reachedChapters`를 돌려줄 때) 할 일을 한 곳에 둔다.
  *  1) `reachedChapters`가 비어 있으면 아무것도 하지 않는다.
  *  2) 소식: 오른 챕터 가운데 **가장 높은 챕터**로 `chapter_up` 한 건만 보낸다. 한 번에 여러 챕터를 넘어도 한 건이다. 챕터 1을 받은 것(챕터 1만 오른 경우)도 보낸다 —
  *     챕터 1은 퀘스트 완료와 시점이 갈라져(실제 2단계를 마친 순간 시작하고, 완료 배지는 연출까지 끝난 뒤에 나가며 건너뛴 유저는 배지가 없다) 완료 보상이 알려 주지 못한다.
@@ -42,7 +42,7 @@ import { createNotification, scopedGroupKey } from '@/lib/notifications'
 
 export interface ChapterRiseInput {
   userId: string
-  /** `chapter_add_score`·`chapter_start`가 돌려준 «이번 호출로 오른 챕터 번호 목록» */
+  /** `chapter_start` 등이 돌려준 «이번 호출로 오른 챕터 번호 목록» */
   reachedChapters: readonly number[]
 }
 
