@@ -112,7 +112,7 @@ describe('runCapsuleAutoFill — 반복', () => {
     expect(riseMock).toHaveBeenCalledTimes(1)
     expect(rpc).toHaveBeenCalledTimes(4)
     expect(openMock).toHaveBeenCalledTimes(3)
-    for (const call of openMock.mock.calls) expect(call[2]).toMatchObject({ counted: true })
+    for (const call of openMock.mock.calls) expect(call[2]).not.toHaveProperty('counted')
   })
 
   it('skipRiseBadgeEvaluation은 켰을 때만 오름 처리에 챕터 배지 판정 생략으로 넘어간다 (동기화 끝 판정이 챕터 배지를 이어서 읽는 호출부용)', async () => {
@@ -248,7 +248,7 @@ describe('runCapsuleAutoFill — 보류 (티켓 20261028_1734 2회)', () => {
       ],
       [held(1, 1)]
     )
-    openMock.mockRejectedValueOnce(new CapsuleError('insufficient_slots', undefined, { freeSlots: 1, neededSlots: 2 }))
+    openMock.mockRejectedValueOnce(new CapsuleError('insufficient_slots', { freeSlots: 1, neededSlots: 2 }))
 
     const result = await runCapsuleAutoFill(client, USER_ID)
 
@@ -289,7 +289,7 @@ describe('runCapsuleAutoFill — 보류 (티켓 20261028_1734 2회)', () => {
       ],
       [held(1, 1), held(2, 2, true)]
     )
-    openMock.mockRejectedValueOnce(new CapsuleError('insufficient_slots', undefined, { freeSlots: 0, neededSlots: 2 }))
+    openMock.mockRejectedValueOnce(new CapsuleError('insufficient_slots', { freeSlots: 0, neededSlots: 2 }))
 
     const result = await runCapsuleAutoFill(client, USER_ID)
 

@@ -11,10 +11,7 @@ export type CapsuleNotOpenableReason = 'not_full' | 'no_free_slots'
 /** 아이템 배지 등급 — 이 파일은 아무것도 가져오지 않아 `BadgeRarity`를 가져오지 않고 같은 값을 적는다 */
 export type CapsuleRarity = 'common' | 'rare' | 'epic' | 'mystic'
 
-/**
- * 캡슐 상태의 옛 필드 — 채우기·열기 API(U11까지 살아 있다)가 돌려주는 모양이다.
- * 채우기 응답(`CapsuleFillPayload`)은 보류·안내를 읽지 않으므로 이 모양만 싣는다.
- */
+/** 캡슐 상태의 기본 필드 — `CapsuleStatus`가 보류·안내 값을 더해 확장한다 */
 export interface CapsuleBaseStatus {
   /** 이 캡슐이 생길 때 정해진 필요량(이후 고정) */
   required: number
@@ -77,27 +74,6 @@ export interface CapsuleStatus extends CapsuleBaseStatus {
   notice: CapsuleNoticeKind
 }
 
-/** 채우기 성공 응답: 옛 캡슐 상태에 이번에 채운 양을 더한다 */
-export interface CapsuleFillPayload extends CapsuleBaseStatus {
-  /** 이번에 실제로 채운 양(가진 잼이 모자라면 요청보다 적을 수 있다) */
-  applied: number
-}
-
-/**
- * 채우기가 거절되는 경우의 코드. DB 함수 `capsule_fill`의 `error` 값과 같다.
- * `capsule_changed`는 잠근 직후 캡슐 행이 없을 때(캡슐이 그사이 바뀐 경우)의 거절이고, 다시 시도하면 된다(티켓 20261026_1031).
- */
-export const CAPSULE_FILL_ERROR_CODES = [
-  'user_suspended',
-  'already_full',
-  'invalid_amount',
-  'exceeds_remaining',
-  'insufficient_jam',
-  'capsule_changed',
-] as const
-
-export type CapsuleFillErrorCode = (typeof CAPSULE_FILL_ERROR_CODES)[number]
-
 /**
  * 열기가 거절되는 경우의 코드. `no_tribe`는 앱이 추첨 전에 정하고, 나머지는 DB 함수 `capsule_open`의 `error` 값과 같다.
  * `capsule_changed`는 열기 중에 캡슐이 바뀐 경우이고, 다시 시도하면 된다(티켓 20261026_1031).
@@ -114,15 +90,13 @@ export const CAPSULE_OPEN_ERROR_CODES = [
 
 export type CapsuleOpenErrorCode = (typeof CAPSULE_OPEN_ERROR_CODES)[number]
 
-/** 캡슐 거절 코드 전체(채우기 + 열기) */
-export type CapsuleErrorCode = CapsuleFillErrorCode | CapsuleOpenErrorCode
+/** 캡슐 거절 코드 전체 */
+export type CapsuleErrorCode = CapsuleOpenErrorCode
 
-/** 채우기·열기 거절 응답(4xx)의 모양 */
+/** 캡슐 거절 응답(4xx)의 모양 */
 export interface CapsuleErrorResponse {
   error: string
   code: CapsuleErrorCode
-  /** `exceeds_remaining`일 때 채울 수 있는 남은 양 */
-  remaining?: number
   /** `insufficient_slots`일 때 지금 인벤토리 빈칸 수 */
   freeSlots?: number
   /** `insufficient_slots`일 때 열려면 필요한 빈칸 수 */
@@ -250,6 +224,3 @@ export const CAPSULE_UNSEEN_MAX_IDS = 50
 export interface CapsuleSeenPayload {
   marked: number
 }
-
-/** 채울 양의 상한 — DB 함수 인자가 INTEGER라 이보다 크면 형식 오류다 */
-export const CAPSULE_AMOUNT_MAX = 2147483647

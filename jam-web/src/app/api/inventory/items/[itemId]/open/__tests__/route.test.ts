@@ -201,12 +201,7 @@ describe('POST /api/inventory/items/[itemId]/open', () => {
     for (const key of REVEALING_KEYS) expect(body, `응답에 ${key}가 있다`).not.toHaveProperty(key)
   })
 
-  it('채우기 전용 거절 코드나 그 밖의 오류는 500이고 원문 오류를 내려보내지 않는다', async () => {
-    openMock.mockRejectedValue(new LockedItemError('insufficient_jam'))
-    const res1 = await post()
-    expect(res1.status).toBe(500)
-    expect(await res1.json()).toEqual({ error: d.lockedItem.open.failed })
-
+  it('그 밖의 오류는 500이고 원문 오류를 내려보내지 않는다', async () => {
     openMock.mockRejectedValue(new Error('locked_item_open RPC 오류: secret detail'))
     const res2 = await post()
     expect(res2.status).toBe(500)

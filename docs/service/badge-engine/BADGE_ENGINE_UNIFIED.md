@@ -348,7 +348,7 @@ badge-engine 밖의 세 번째 평가 경로.
 
 | 키 | 값 | 세는 것 | 판정 시점 |
 |---|---|---|---|
-| `capsule_open_count` | 정수 ≥1 | 캡슐을 연 횟수. `capsule_opens` 행 수 | `POST /api/capsule/open` 성공 뒤 `after()` |
+| `capsule_open_count` | 정수 ≥1 | 캡슐을 연 횟수. `capsule_opens` 행 수 | 동기화 자동 채움의 열기 뒤(`syncStravaActivities`, 옛 `POST /api/capsule/open`은 티켓 20261028_1742 1회에서 지움) |
 | `locked_item_open_count` | 정수 ≥1 | 잠긴 아이템 배지를 연 횟수. `inventory_item_events`의 `unlocked` 행 수 | `POST /api/inventory/items/[itemId]/open` 성공 뒤 `after()` |
 | `locked_item_pickup_count` | 정수 ≥1 | 픽업 **당시 잠겨 있던 서로 다른 개체** 수. 자기 드랍 제외, 같은 개체는 1. 「당시 잠김」은 기록이 없어 개체의 현재 `locked`와 `unlocked_at`·`poi_drops.picked_up_at`으로 가린다(잠김은 한 번 열면 되돌아오지 않는다) | 픽업 성공 뒤 줍는 사람 |
 | `other_tribe_item_kinds_count` | 정수 ≥1 | 지금 가진 개체(`inventory_id`가 내 인벤토리, `destroyed_at` 없음) 가운데 내 소속과 다른 트라이브 배지의 서로 다른 종류 수. 잠긴 개체도 센다. 내 소속이나 배지의 트라이브가 없으면 세지 않는다 | 캡슐 열기·픽업·믹스 성공 뒤 |

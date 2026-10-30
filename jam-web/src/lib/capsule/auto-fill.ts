@@ -5,7 +5,7 @@
  *  - 한 번의 «라운드» = `capsule_auto_fill` 호출(가득 찬 캡슐이면 잼을 쓰지 않고 `full: true`만 돌려준다) → `reachedChapters`가 있으면 `processChapterRise` →
  *    캡슐이 가득 찼으면 «열기 또는 보류». 그래서 지난번에 열지 못해 가득 찬 채 남은 캡슐이 **맨 앞에서 가장 먼저** 처리된다. 별도 대기표는 없다.
  *  - **챕터 오름 판정은 열기가 아니라 이 호출 결과에서 온다**(캡슐이 100%에 처음 닿는 호출이 횟수를 세고 오름을 판정한다, D9). 오름 처리는 여기서만 부른다 —
- *    `openCapsule({ counted: true })`는 부르지 않는다(이중 호출 방지). `skipRiseBadgeEvaluation`을 켜면 오름 처리의 챕터 배지 판정만 건너뛴다.
+ *    `openCapsule`은 오름 처리를 하지 않는다(이중 호출 방지). `skipRiseBadgeEvaluation`을 켜면 오름 처리의 챕터 배지 판정만 건너뛴다.
  *  - 가득 찼을 때: 보류가 이미 있으면(이번 호출이 돌려준 `pendingCount`, 응답에 없으면 이 루프에서 만든 보류까지 센 값) **열지 않고** `capsule_hold_reward`로 보류한다(순서를 지킨다).
  *    보류가 없으면 열기를 시도하고, 빈칸이 모자라(`insufficient_slots`) 못 열면 보류한다. 그 밖의 `CapsuleError`(`no_tribe` 등)는 `blocked` 멈춤이다(가득 찬 채 남는다).
  *  - 보류가 2개면 `capsule_auto_fill`이 채우지 않고 지갑 잼을 소멸시킨 뒤 `applied: 0`으로 돌아온다 → 가득 차지 않은 응답이라 `wallet_empty`로 멈춘다(`forfeitedTotal`에 쌓인다).
@@ -276,7 +276,7 @@ async function runAutoFillRounds(
       let needHold = knownPending >= 1
       if (!needHold) {
         try {
-          const opened = await openCapsule(supabase, userId, { counted: true, rand: options.rand, now: options.now })
+          const opened = await openCapsule(supabase, userId, { rand: options.rand, now: options.now })
           result.opens.push(
             reachedNow
               ? {

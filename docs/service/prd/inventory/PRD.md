@@ -202,17 +202,15 @@ code:
 ④ 결산 알림: 결산 `item_badges`에 이름·배지·등급 없이 `locked: true`로만 담고 문구는 «잠긴 아이템 배지를 받았어요»(여럿이면 «잠긴 아이템 배지 N개를 받았어요»)다.
 다른 종류와 섞이면 이름을 나열하지 않는 총량 문형(«배지 N개를 획득했어요»)으로 간다. 연 때는 동기화로 받은 개체만 `item_dropped`를 올린다(사용자 결정 2026-10-26, 티켓 20261026_1031). 캡슐에서 나온 잠긴 개체는 열어도 올리지 않는다.
 
-**채우기와 열기**(티켓 20261018_0053, 운영 로직 7.2절): 저장·함수는 `02_DATA_MODEL.md`(마이그레이션 235)가 원천이고 이 절은 API 계약만 고정한다.
-열기는 티켓 20261028_1737부터 **포인트를 내고 연다**(아래 «포인트로 열기»). 화면은 티켓 20261028_1741(U10)에서 바뀌어 **채우기를 부르지 않는다**. 채우기 API(`fill`)와 함수, 개체의 채운 양(`unlock_filled`)과 필요한 잼(`unlock_required`) 칸은 화면과 연결이 끊긴 채 함수를 지우는 U11까지 남아 있다. 그래서 아래 채우기 줄은 지금 서버에 있는 계약이다.
+**열기**(티켓 20261018_0053, 운영 로직 7.2절. 채우기 API는 티켓 20261028_1742 1회에서 지웠다): 저장·함수는 `02_DATA_MODEL.md`(마이그레이션 235)가 원천이고 이 절은 API 계약만 고정한다.
+열기는 티켓 20261028_1737부터 **포인트를 내고 연다**(아래 «포인트로 열기»). 화면은 티켓 20261028_1741(U10)에서 바뀌어 **채우기를 부르지 않았고**, 채우기 API(`POST /api/inventory/items/[itemId]/fill`)와 코드(`fillLockedItem`)는 티켓 20261028_1742 1회에서 지웠다. DB 함수 `locked_item_fill`과 개체의 채운 양(`unlock_filled`)·필요한 잼(`unlock_required`) 칸은 DB를 정리하는 후속 회차까지 남아 있다(코드는 부르지 않는다).
 - `GET /api/inventory/items/[itemId]/lock`: 내 개체의 `locked`·`required`·`filled`·`remaining`·`balance`·`openable`(잠겨 있고 다 채움, 인벤토리 빈칸은 보지 않는다)와 `pointsRequired`·`pointBalance`(아래 «포인트로 열기»). 잠긴 상세 서버 페이지는 이 가운데 `pointsRequired`·`pointBalance`만 화면에 내린다. 이름·그림·설명·컬렉션·트라이브·일련번호는 싣지 않는다. 이용 정지 중에도 허용한다.
-- `POST /api/inventory/items/[itemId]/fill { amount? }`: 한 번에 개체 하나. 기본값은 남은 양이고 가진 잼이 모자라면 가진 만큼, 줄여서 나눠 채울 수 있고, 남은 양보다 많이는 채울 수 없고, 채운 잼은 꺼낼 수 없다. 응답은 `applied`·`required`·`filled`·`remaining`·`balance`·`openable`이다.
-  이용 정지 중 403(`user_suspended`), `already_full`·`exceeds_remaining`(남은 양 포함)·`invalid_amount` 400, `insufficient_jam`·`not_locked` 409, `item_not_found` 404.
 - `POST /api/inventory/items/[itemId]/open`: 필요한 포인트를 내고 같은 개체가 열린 상태가 된다(일련번호 그대로, 새로 뽑지 않음, 확률 없음). 채우기를 마칠 필요가 없다. 인벤토리가 가득 차 있어도 열린다(이미 칸을 차지한다). 한 번 연 것은 다시 잠기지 않고, 동시에 두 번 열어도 한 번만 열린다(두 번째는 `not_locked` 409).
   성공 응답에만 이름·그림·설명·등급·컬렉션·트라이브·일련번호와 준 포인트(`pointsAwarded`)를 싣고, 낸 포인트(`pointsSpent`)와 연 뒤 잔액(`pointBalance`)은 이름·그림과 달리 항상 싣는다. 열기는 확정됐고 정보 조회만 실패한 드문 경우 `item`은 null이다.
   이용 정지 중 403, `insufficient_points`(`required`·`balance` 포함)·`not_locked` 409, `item_not_found` 404.
-- 이용 정지 중에는 열기(와 남아 있는 채우기 API)를 막고 개체는 그대로 닫혀 있다. 트라이브가 바뀌어도 잠긴 개체는 그대로다.
+- 이용 정지 중에는 열기를 막고 개체는 그대로 닫혀 있다. 트라이브가 바뀌어도 잠긴 개체는 그대로다.
 - 포인트: 배지 포인트는 열린 상태가 될 때 연 유저에게 한 번만 준다(`inventory_items.point_awarded_at`이 «이미 줬다» 기록). DB 안에서 주므로 포인트 알림(`notifyPointChange`)은 나가지 않는다. 열기에 드는 포인트는 아래 «포인트로 열기»다.
-- 이력: 열 때 `unlocked`를 `inventory_item_events`에 남긴다(채우기 API가 남아 있는 동안은 채울 때마다 `filled`도 남긴다).
+- 이력: 열 때 `unlocked`를 `inventory_item_events`에 남긴다(채우기 API를 지워 `filled`는 더 남기지 않는다).
 - 열 때의 소식과 피드(티켓 20261026_1031, 사용자 결정 2026-10-26): 열기 경로(`openLockedItem`)가 열기 확정 뒤 둘을 낸다. 포인트 소식은 `pointsAwarded`가 0보다 클 때 활동 결산의 «포인트» 꼬리로 한 번 낸다.
   활동 피드 `item_dropped`는 받을 때는 올리지 않았으므로(위 «가림 범위» ③) 동기화로 받은 개체만 연 때 한 번 올린다. 칸(`inventory_item_id`·`badge_id`·`badge_name`·`badge_image_url`·`rarity`·`poi_name`·`tribe_name`·`is_last_piece`,
   포인트를 준 경우 `point_reward`)은 열린 채 받은 개체의 피드와 같고(`recordItemDroppedFeed`), 시각은 연 때이며 활동에는 묶지 않는다. 포인트가 0이어도 올리고, 연 개체의 정보를 읽지 못하면 올리지 않는다.
@@ -273,5 +271,5 @@ code:
 
 > **구현 상태** (티켓 20261028_1734, 2026-10-29)
 > - 서버는 구현했다: 보류 만들기, 받기 API, 소식 2종(`capsule_nearly_full`·`capsule_jam_blocked`).
-> - 화면은 구현했다(티켓 20261028_1739, U8): 캡슐 아래 안내 영역과 «받기» 버튼. 옛 열기 API(`POST /api/capsule/open`)의 열기 판정은 빈칸 부족 이유 `no_free_slots`를 그대로 쓰지만 화면은 부르지 않고, 옛 API와 함수는 U11에서 정리한다.
+> - 화면은 구현했다(티켓 20261028_1739, U8): 캡슐 아래 안내 영역과 «받기» 버튼. 옛 열기 API(`POST /api/capsule/open`)와 채우기 API(`POST /api/capsule/fill`)는 코드에서 지웠다(티켓 20261028_1742 1회). 옛 DB 함수는 후속 회차에서 지운다.
 > - 합친 연출은 구현했다(티켓 20261028_1740, U9): 자동으로 열린 캡슐의 결과를 연출 한 번으로 보여 준다. 보류가 생긴 순간과 받기만을 위한 별도 연출은 없다(받기로 받은 아이템 배지는 `BadgeRevealOverlay`로 보인다).

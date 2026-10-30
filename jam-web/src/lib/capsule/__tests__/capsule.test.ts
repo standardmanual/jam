@@ -1,20 +1,16 @@
 /**
- * lib/capsule/capsule — 캡슐 상태 조회와 채우기 (티켓 20261018_0052 1회)
+ * lib/capsule/capsule — 캡슐 상태 조회 (티켓 20261018_0052 1회, 채우기는 20261028_1742 1회에서 걷음)
  *
  * 고정하는 것:
  * - 상태: `capsule_get_or_create`와 `jam_wallets` 잔액, 인벤토리 빈칸으로 `CapsuleStatus`를 만든다. 못 여는 까닭은 다 채우지 못함(`not_full`)이 먼저이고
  *   다 채웠어도 빈칸이 나올 수 있는 최대 개수(2)보다 적으면 `no_free_slots`(지금 빈칸·필요한 빈칸 포함)다. 지갑 행이 없으면 잔액 0, 인벤토리 행이 없으면 빈칸 0이다.
- *   RPC·조회 오류와 해석할 수 없는 응답은 던진다. 채우기 응답은 빈칸을 읽지 못해도 채우기를 실패로 돌려주지 않는다.
- * - 채우기: 이용 정지 확인(`assertNotSuspended`)이 RPC보다 먼저다. 정지 중이면 RPC를 부르지 않는다. 정지 여부를 읽지 못해도 RPC를 부르지 않는다.
- * - DB 함수의 거절 코드(`already_full`·`exceeds_remaining`·`invalid_amount`·`insufficient_jam`·`capsule_changed`·`user_suspended`)를 `CapsuleError`로 바꾼다.
- *   알 수 없는 코드와 RPC 오류는 일반 오류다.
+ *   RPC·조회 오류와 해석할 수 없는 응답은 던진다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/capsule.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { UserSuspendedError } from '@/lib/suspension/suspension'
 
 const calls = vi.hoisted(() => ({ order: [] as string[], reads: [] as string[] }))
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
@@ -35,7 +31,7 @@ vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
   }
 })
 
-import { CapsuleError, fillCapsule, getCapsuleStatus } from '../capsule'
+import { getCapsuleStatus } from '../capsule'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -361,115 +357,5 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
     await expect(status({ rpc: capsuleRow(), pending: { data: null, error: { message: 'down' } } })).rejects.toThrow('capsule_pending_rewards 조회 실패')
     await expect(status({ rpc: capsuleRow(), suspension: { data: null, error: { message: 'down' } } })).rejects.toThrow('user_suspensions 조회 실패')
     await expect(status({ rpc: capsuleRow(), pending: rows(1), tribe: { data: null, error: { message: 'down' } } })).rejects.toThrow('users 조회 실패')
-  })
-})
-
-describe('fillCapsule', () => {
-  const okResult = { ok: true, applied: 30, required: 110, filled: 60, remaining: 50, balance: 12 }
-
-  it('이용 정지 확인이 RPC보다 먼저고, 성공하면 채운 양과 캡슐 상태를 돌려준다', async () => {
-    const { client, rpc } = fakeClient({ rpc: { capsule_fill: { data: okResult, error: null } } })
-
-    expect(await fillCapsule(client, USER_ID, 30)).toEqual({
-      applied: 30,
-      required: 110,
-      filled: 60,
-      remaining: 50,
-      balance: 12,
-      openable: false,
-      notOpenableReason: 'not_full',
-      freeSlots: 40,
-      neededSlots: 2,
-    })
-    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:capsule_fill'])
-    expect(rpc).toHaveBeenCalledWith('capsule_fill', { p_user_id: USER_ID, p_amount: 30 })
-  })
-
-  it('양을 생략하면 null을 넘긴다(기본값은 DB가 남은 양으로 정한다)', async () => {
-    const { client, rpc } = fakeClient({ rpc: { capsule_fill: { data: okResult, error: null } } })
-
-    await fillCapsule(client, USER_ID)
-
-    expect(rpc).toHaveBeenCalledWith('capsule_fill', { p_user_id: USER_ID, p_amount: null })
-  })
-
-  it('다 채우면 열 수 있다고 알린다', async () => {
-    const { client } = fakeClient({
-      rpc: { capsule_fill: { data: { ok: true, applied: 5, required: 5, filled: 5, remaining: 0, balance: 0 }, error: null } },
-    })
-
-    const payload = await fillCapsule(client, USER_ID)
-
-    expect(payload.openable).toBe(true)
-    expect(payload.notOpenableReason).toBeNull()
-  })
-
-  it('다 채웠어도 빈칸이 모자라면 열 수 없다고 알린다', async () => {
-    const { client } = fakeClient({
-      rpc: { capsule_fill: { data: { ok: true, applied: 5, required: 5, filled: 5, remaining: 0, balance: 0 }, error: null } },
-      inventory: { data: { used_slots: 49, max_slots: 50 }, error: null },
-    })
-
-    expect(await fillCapsule(client, USER_ID)).toMatchObject({ openable: false, notOpenableReason: 'no_free_slots', freeSlots: 1, neededSlots: 2 })
-  })
-
-  it('채운 뒤 빈칸을 읽지 못해도 채우기는 성공으로 돌려주고, 빈칸 없이 다 채웠는지만 본다', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { client } = fakeClient({
-      rpc: { capsule_fill: { data: { ok: true, applied: 5, required: 5, filled: 5, remaining: 0, balance: 0 }, error: null } },
-      inventory: { data: null, error: { message: 'down' } },
-    })
-
-    const payload = await fillCapsule(client, USER_ID)
-
-    expect(payload).toEqual({ applied: 5, required: 5, filled: 5, remaining: 0, balance: 0, openable: true, notOpenableReason: null })
-  })
-
-  it('이용 정지 중이면 RPC를 부르지 않고 UserSuspendedError를 던진다', async () => {
-    assertNotSuspendedMock.mockRejectedValue(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
-    const { client, rpc } = fakeClient({ rpc: { capsule_fill: { data: okResult, error: null } } })
-
-    await expect(fillCapsule(client, USER_ID, 10)).rejects.toBeInstanceOf(UserSuspendedError)
-    expect(rpc).not.toHaveBeenCalled()
-  })
-
-  it('정지 여부를 읽지 못하면 RPC를 부르지 않고 그 오류를 던진다', async () => {
-    assertNotSuspendedMock.mockRejectedValue(new Error('user_suspensions 조회 실패: down'))
-    const { client, rpc } = fakeClient({ rpc: { capsule_fill: { data: okResult, error: null } } })
-
-    await expect(fillCapsule(client, USER_ID)).rejects.toThrow('user_suspensions 조회 실패')
-    expect(rpc).not.toHaveBeenCalled()
-  })
-
-  it.each(['user_suspended', 'already_full', 'invalid_amount', 'insufficient_jam', 'capsule_changed'] as const)('DB 거절 %s를 CapsuleError로 바꾼다', async (code) => {
-    const { client } = fakeClient({ rpc: { capsule_fill: { data: { ok: false, error: code }, error: null } } })
-
-    const error = await fillCapsule(client, USER_ID, 10).catch((e: unknown) => e)
-
-    expect(error).toBeInstanceOf(CapsuleError)
-    expect((error as CapsuleError).code).toBe(code)
-    expect((error as CapsuleError).remaining).toBeUndefined()
-  })
-
-  it('exceeds_remaining은 남은 양을 함께 싣는다', async () => {
-    const { client } = fakeClient({ rpc: { capsule_fill: { data: { ok: false, error: 'exceeds_remaining', remaining: 40 }, error: null } } })
-
-    const error = (await fillCapsule(client, USER_ID, 999).catch((e: unknown) => e)) as CapsuleError
-
-    expect(error.code).toBe('exceeds_remaining')
-    expect(error.remaining).toBe(40)
-  })
-
-  it('RPC 오류·알 수 없는 거절 코드·해석할 수 없는 응답은 일반 오류다', async () => {
-    const rpcError = fakeClient({ rpc: { capsule_fill: { data: null, error: { message: 'boom' } } } }).client
-    const unknownCode = fakeClient({ rpc: { capsule_fill: { data: { ok: false, error: 'mystery' }, error: null } } }).client
-    const malformed = fakeClient({ rpc: { capsule_fill: { data: { ok: true }, error: null } } }).client
-
-    const errors = await Promise.all([rpcError, unknownCode, malformed].map((c) => fillCapsule(c, USER_ID).catch((e: unknown) => e)))
-
-    for (const error of errors) {
-      expect(error).toBeInstanceOf(Error)
-      expect(error).not.toBeInstanceOf(CapsuleError)
-    }
   })
 })

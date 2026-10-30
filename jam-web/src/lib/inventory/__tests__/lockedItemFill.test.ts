@@ -1,11 +1,8 @@
 /**
- * lib/inventory/lockedItemFill — 잠긴 아이템 배지 채우기·열기·조회 (티켓 20261018_0053)
+ * lib/inventory/lockedItemFill — 잠긴 아이템 배지 열기·조회 (티켓 20261018_0053)
  *
  * 고정하는 것:
- * - 채우기: 이용 정지 확인(`assertNotSuspended`)이 RPC보다 먼저다. 정지 중이면 RPC를 부르지 않는다. 양을 생략하면 `p_amount: null`(남은 양 기본값),
- *   줄인 양은 그대로 넘긴다. DB 함수의 거절 코드(`already_full`·`exceeds_remaining`(남은 양 포함)·`invalid_amount`·`insufficient_jam`·`not_locked`·
- *   `item_not_found`·`user_suspended`)를 `LockedItemError`로 바꾼다. 알 수 없는 코드·열기 전용 코드·RPC 오류·해석할 수 없는 응답은 일반 오류다.
- *   성공 응답에는 개체를 알 수 있는 값(이름·그림·일련번호 등)이 없다.
+ * - 옛 채우기(`fillLockedItem`, RPC `locked_item_fill`)는 티켓 20261028_1742 1회에서 걷었다. 아래 머리말의 «채우기에는 부르지 않는다» 항목은 열기 쪽 규칙만 남는다.
  * - 열기(티켓 20261028_1737 2회): 포인트로 연다 — DB 함수 `locked_item_open_points`를 부른다(옛 `locked_item_open`은 부르지 않는다). 정지 확인이 RPC보다 먼저다.
  *   성공하면 같은 개체의 일련번호와 준 포인트(`pointsAwarded`)·낸 포인트(`pointsSpent`)·연 뒤 잔액(`pointBalance`), 열린 뒤의 개체 정보(이름·그림·설명·컬렉션·트라이브)를 싣는다.
  *   `insufficient_points`는 필요한 포인트(`required`)·가진 포인트(`balance`)를 싣고 뒤처리와 개체 정보 조회가 모두 나가지 않는다. 여는 포인트가 0이면(퀘스트의 첫 잠긴 배지) `pointsSpent` 0으로 열린다.
@@ -97,9 +94,8 @@ vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
 })
 
 import { recordIssuedRewards } from '@/lib/drop-engine/issueFollowUp'
-import { fillLockedItem, getLockedItemStatus, LockedItemError, openLockedItem } from '../lockedItemFill'
+import { getLockedItemStatus, LockedItemError, openLockedItem } from '../lockedItemFill'
 import {
-  LOCKED_ITEM_FILL_ERROR_CODES,
   LOCKED_ITEM_OPEN_ERROR_CODES,
   type LockedItemErrorResponse,
   type LockedItemOpenPayload,
@@ -182,94 +178,6 @@ beforeEach(() => {
   awardPointsMock.mockReset()
   awardPointsMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
-})
-
-const FILL_OK = { ok: true, applied: 30, required: 100, filled: 60, remaining: 40, balance: 12 }
-
-describe('fillLockedItem', () => {
-  it('양을 생략하면 p_amount null(남은 양 기본값)로 부르고 채운 결과만 싣는다', async () => {
-    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    const payload = await fillLockedItem(client, USER_ID, ITEM_ID)
-
-    expect(rpc).toHaveBeenCalledWith('locked_item_fill', { p_user_id: USER_ID, p_item_id: ITEM_ID, p_amount: null })
-    expect(payload).toEqual({ itemId: ITEM_ID, applied: 30, required: 100, filled: 60, remaining: 40, balance: 12, openable: false })
-  })
-
-  it('줄인 양은 그대로 넘긴다', async () => {
-    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    await fillLockedItem(client, USER_ID, ITEM_ID, 30)
-
-    expect(rpc).toHaveBeenCalledWith('locked_item_fill', { p_user_id: USER_ID, p_item_id: ITEM_ID, p_amount: 30 })
-  })
-
-  it('다 채운 응답은 openable true이고 개체를 알 수 있는 값을 싣지 않는다', async () => {
-    const full = { ok: true, applied: 40, required: 100, filled: 100, remaining: 0, balance: 0 }
-    const { client } = fakeClient({ rpc: { locked_item_fill: { data: { ...full, badgeId: BADGE_ID, serialNumber: 7, name: '비밀' }, error: null } } })
-
-    const payload = await fillLockedItem(client, USER_ID, ITEM_ID)
-
-    expect(payload.openable).toBe(true)
-    expect(Object.keys(payload).sort()).toEqual(['applied', 'balance', 'filled', 'itemId', 'openable', 'remaining', 'required'])
-  })
-
-  it('이용 정지 확인이 RPC보다 먼저이고, 정지 중이면 RPC를 부르지 않는다', async () => {
-    assertNotSuspendedMock.mockRejectedValue(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
-    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    await expect(fillLockedItem(client, USER_ID, ITEM_ID, 10)).rejects.toBeInstanceOf(UserSuspendedError)
-
-    expect(rpc).not.toHaveBeenCalled()
-    expect(calls.order).toEqual(['assertNotSuspended'])
-  })
-
-  it('정지 여부를 읽지 못해도 RPC를 부르지 않는다', async () => {
-    assertNotSuspendedMock.mockRejectedValue(new Error('user_suspensions 조회 실패: down'))
-    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    await expect(fillLockedItem(client, USER_ID, ITEM_ID)).rejects.toThrow('user_suspensions 조회 실패')
-
-    expect(rpc).not.toHaveBeenCalled()
-  })
-
-  it.each(['user_suspended', 'item_not_found', 'not_locked', 'already_full', 'invalid_amount', 'insufficient_jam'] as const)(
-    'DB 거절 %s는 같은 코드의 LockedItemError다',
-    async (code) => {
-      const { client } = fakeClient({ rpc: { locked_item_fill: { data: { ok: false, error: code }, error: null } } })
-
-      const err = await fillLockedItem(client, USER_ID, ITEM_ID, 10).catch((e) => e)
-
-      expect(err).toBeInstanceOf(LockedItemError)
-      expect(err.code).toBe(code)
-      expect(err.remaining).toBeUndefined()
-    }
-  )
-
-  it('exceeds_remaining은 남은 양을 싣는다', async () => {
-    const { client } = fakeClient({ rpc: { locked_item_fill: { data: { ok: false, error: 'exceeds_remaining', remaining: 40 }, error: null } } })
-
-    const err = await fillLockedItem(client, USER_ID, ITEM_ID, 999).catch((e) => e)
-
-    expect(err).toBeInstanceOf(LockedItemError)
-    expect(err.code).toBe('exceeds_remaining')
-    expect(err.remaining).toBe(40)
-  })
-
-  it('알 수 없는 코드·열기 전용 코드·RPC 오류·해석할 수 없는 응답은 일반 오류다', async () => {
-    const reject = (data: unknown, error: unknown = null) => fakeClient({ rpc: { locked_item_fill: { data, error } } }).client
-
-    const unknown = await fillLockedItem(reject({ ok: false, error: 'weird' }), USER_ID, ITEM_ID).catch((e) => e)
-    expect(unknown).not.toBeInstanceOf(LockedItemError)
-    expect(unknown.message).toContain('알 수 없는 거절 코드')
-
-    const openOnly = await fillLockedItem(reject({ ok: false, error: 'not_full' }), USER_ID, ITEM_ID).catch((e) => e)
-    expect(openOnly).not.toBeInstanceOf(LockedItemError)
-
-    await expect(fillLockedItem(reject(null, { message: 'boom' }), USER_ID, ITEM_ID)).rejects.toThrow('locked_item_fill RPC 오류')
-    await expect(fillLockedItem(reject(null), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
-    await expect(fillLockedItem(reject({ ok: true, applied: 1 }), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
-  })
 })
 
 const OPEN_OK = { ok: true, itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, pointsAwarded: 50, pointsSpent: 50, pointBalance: 120 }
@@ -522,14 +430,6 @@ describe('openLockedItem — 서비스 활동 잼 «잠긴 아이템 배지 열�
     expect(autoFillMock).not.toHaveBeenCalled()
   })
 
-  it('채우기는 잼 지급과 무관하다', async () => {
-    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    await fillLockedItem(client, USER_ID, ITEM_ID)
-
-    expect(rpc.mock.calls.map(([name]) => name)).toEqual(['locked_item_fill'])
-  })
-
   it('개체 정보 조회가 실패해도 잼은 준다(열기가 확정된 뒤의 일이다)', async () => {
     const { client, rpc } = fakeClient({
       rpc: { locked_item_open_points: { data: OPEN_OK, error: null } },
@@ -594,14 +494,6 @@ describe('openLockedItem — 퀘스트 완료 처리 (티켓 20261021_1248)', ()
 
     const broken = fakeClient({ rpc: { locked_item_open_points: { data: { ok: true }, error: null } } })
     await openLockedItem(broken.client, USER_ID, ITEM_ID).catch(() => {})
-
-    expect(completionMock).not.toHaveBeenCalled()
-  })
-
-  it('채우기는 완료 처리와 무관하다 — 열기만 실제 단계 ②다', async () => {
-    const { client } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    await fillLockedItem(client, USER_ID, ITEM_ID)
 
     expect(completionMock).not.toHaveBeenCalled()
   })
@@ -677,14 +569,6 @@ describe('openLockedItem — 포인트 소식 (티켓 20261026_1031)', () => {
 
     const broken = fakeClient({ rpc: { locked_item_open_points: { data: { ok: true }, error: null } } })
     await openLockedItem(broken.client, USER_ID, ITEM_ID).catch(() => {})
-
-    expect(recapMock).not.toHaveBeenCalled()
-  })
-
-  it('채우기는 소식을 내지 않는다', async () => {
-    const { client } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    await fillLockedItem(client, USER_ID, ITEM_ID)
 
     expect(recapMock).not.toHaveBeenCalled()
   })
@@ -922,17 +806,14 @@ describe('openLockedItem — 활동 피드 item_dropped (티켓 20261026_1031)',
       expect(feedMock).not.toHaveBeenCalled()
     })
 
-    it('거절(not_locked 포함)·정지·해석할 수 없는 응답과 채우기는 발급 경로를 읽지 않는다', async () => {
+    it('거절(not_locked 포함)·정지·해석할 수 없는 응답은 발급 경로를 읽지 않는다', async () => {
       const notLocked = fakeClient({ rpc: { locked_item_open_points: { data: { ok: false, error: 'not_locked' }, error: null } }, tables: INFO_TABLES })
       await openLockedItem(notLocked.client, USER_ID, ITEM_ID).catch(() => {})
 
       const broken = fakeClient({ rpc: { locked_item_open_points: { data: { ok: true }, error: null } }, tables: INFO_TABLES })
       await openLockedItem(broken.client, USER_ID, ITEM_ID).catch(() => {})
 
-      const fill = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } }, tables: INFO_TABLES })
-      await fillLockedItem(fill.client, USER_ID, ITEM_ID)
-
-      expect([...notLocked.reads, ...broken.reads, ...fill.reads]).not.toContain('item_issue_log')
+      expect([...notLocked.reads, ...broken.reads]).not.toContain('item_issue_log')
     })
   })
 
@@ -973,13 +854,6 @@ describe('openLockedItem — 활동 피드 item_dropped (티켓 20261026_1031)',
     expect(feedMock).toHaveBeenCalledTimes(1)
   })
 
-  it('채우기는 피드를 올리지 않는다', async () => {
-    const { client } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
-
-    await fillLockedItem(client, USER_ID, ITEM_ID)
-
-    expect(feedMock).not.toHaveBeenCalled()
-  })
 })
 
 const ITEM_ROW = {
@@ -1150,13 +1024,8 @@ describe('getLockedItemStatus', () => {
 
 // ── 계약(티켓 20261028_1737 2회) ───────────────────────────────────────────────────────────
 describe('잠긴 개체 계약', () => {
-  it('열기 거절 코드에 insufficient_points가 있고, 옛 함수 호환용 not_full도 남아 있다', () => {
+  it('열기 거절 코드에 insufficient_points가 있고, 옛 함수 호환용 not_full도 남아 있다 — 채우기 거절 코드는 없다', () => {
     expect([...LOCKED_ITEM_OPEN_ERROR_CODES].sort()).toEqual(['insufficient_points', 'item_not_found', 'not_full', 'not_locked', 'user_suspended'])
-  })
-
-  it('insufficient_points는 열기 전용이다 — 채우기 거절 코드에는 없다', () => {
-    expect(LOCKED_ITEM_FILL_ERROR_CODES).not.toContain('insufficient_points')
-    expect(LOCKED_ITEM_FILL_ERROR_CODES).toContain('insufficient_jam')
   })
 
   it('열기 응답과 조회 상태, 거절 응답이 포인트 필드를 가진다(타입 고정)', () => {
@@ -1260,10 +1129,8 @@ describe('열기 전에는 개체를 알 수 있는 값을 읽지도 싣지도 �
     expect(body).not.toMatch(/serial_number|badge_id|image_url|description/)
   })
 
-  it('채우기(fillLockedItem)는 개체 정보 표를 읽지 않고 RPC 응답의 개체 값을 옮기지 않는다', () => {
-    const body = bodyOf('fillLockedItem')
-    expect(body).not.toMatch(/from\(\s*['"](badges|item_books|tribes)['"]/)
-    expect(body).not.toMatch(/serialNumber|badgeId/)
+  it('옛 채우기(fillLockedItem)와 locked_item_fill RPC 호출은 코드에 없다 (티켓 20261028_1742 1회)', () => {
+    expect(source).not.toMatch(/function fillLockedItem|rpc\(\s*['"]locked_item_fill['"]/)
   })
 
   it('개체 정보 조회(loadOpenedInfo)는 열기 성공 뒤 한 곳에서만 불린다', () => {

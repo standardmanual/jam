@@ -1,8 +1,8 @@
 /**
- * 캡슐 — 상태 조회와 채우기 (티켓 20261018_0052, 운영 로직 5.2절)
+ * 캡슐 — 상태 조회 (티켓 20261018_0052, 운영 로직 5.2절)
  *
- * 캡슐 상태는 DB 함수 `capsule_get_or_create`(없으면 그때의 챕터로 필요량을 정해 만든다), 채우기는 `capsule_fill`(잼 원장 한 줄과
- * 캡슐 갱신이 한 트랜잭션)이 한다. 열기(추첨·지급·기록)는 `open.ts`다. 상태의 `openable`은 다 채웠는지(`filled >= required`)와
+ * 캡슐 상태는 DB 함수 `capsule_get_or_create`(없으면 그때의 챕터로 필요량을 정해 만든다)가 만든다. 채우기는 동기화 자동 채움(`auto-fill.ts`)이,
+ * 열기(추첨·지급·기록)는 `open.ts`가 한다. 옛 수동 채우기(`fillCapsule`)는 티켓 20261028_1742 1회에서 걷었다. 상태의 `openable`은 다 채웠는지(`filled >= required`)와
  * 인벤토리 빈칸이 나올 수 있는 최대 개수(`guaranteed_count + bonus_count`) 이상인지를 함께 본다(2회).
  *
  * 상태 조회(`getCapsuleStatus`)는 화면이 쓸 보류·안내 값(`pendingCount`·`jamBlocked`·`alertStage`·`claim`·`notice`)도 서버가 정해 싣는다(티켓 20261028_1739 1회).
@@ -11,35 +11,30 @@
  * 클라이언트가 쓸 타입·상수는 `capsule-contract.ts`에 있다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { assertNotSuspended, getActiveSuspension } from '@/lib/suspension/suspension'
+import { getActiveSuspension } from '@/lib/suspension/suspension'
 import {
-  CAPSULE_FILL_ERROR_CODES,
   type CapsuleAlertStage,
   type CapsuleBaseStatus,
   type CapsuleClaimBlockedReason,
   type CapsuleClaimState,
   type CapsuleErrorCode,
-  type CapsuleFillPayload,
   type CapsuleNoticeKind,
   type CapsuleStatus,
 } from './capsule-contract'
 import { getCapsulePolicy, type CapsulePolicy } from './policy'
 
-/** DB 함수가 채우기·열기를 거절했을 때(또는 앱이 열기 전에 막았을 때) 던진다. API 라우트가 상태 코드와 문구로 바꾼다. */
+/** DB 함수가 열기·받기를 거절했을 때(또는 앱이 열기 전에 막았을 때) 던진다. API 라우트가 상태 코드와 문구로 바꾼다. */
 export class CapsuleError extends Error {
   readonly code: CapsuleErrorCode
-  /** `exceeds_remaining`일 때 채울 수 있는 남은 양 */
-  readonly remaining?: number
   /** `insufficient_slots`일 때 지금 인벤토리 빈칸 수 */
   readonly freeSlots?: number
   /** `insufficient_slots`일 때 열려면 필요한 빈칸 수 */
   readonly neededSlots?: number
 
-  constructor(code: CapsuleErrorCode, remaining?: number, slots?: { freeSlots: number; neededSlots: number }) {
+  constructor(code: CapsuleErrorCode, slots?: { freeSlots: number; neededSlots: number }) {
     super(`캡슐 거절: ${code}`)
     this.name = 'CapsuleError'
     this.code = code
-    this.remaining = remaining
     this.freeSlots = slots?.freeSlots
     this.neededSlots = slots?.neededSlots
   }
@@ -213,51 +208,4 @@ export async function getCapsuleStatus(supabase: SupabaseClient, userId: string)
     claim: toClaimState(pendingCount, suspended, hasTribe, base.slots),
     notice: toNotice(pendingCount, alertStage, suspended, base.status.filled >= base.status.required),
   }
-}
-
-/**
- * 캡슐을 채운다. `amount`를 생략하면 남은 양이고, 가진 잼이 모자라면 가진 만큼 채운다.
- * 이용 정지 중이면 RPC를 부르기 전에 `UserSuspendedError`를 던진다. DB 함수의 거절은 `CapsuleError`로 바꿔 던진다.
- * RPC 오류나 해석할 수 없는 응답은 일반 `Error`다.
- */
-export async function fillCapsule(supabase: SupabaseClient, userId: string, amount?: number): Promise<CapsuleFillPayload> {
-  await assertNotSuspended(supabase, userId)
-
-  const { data, error } = await supabase.rpc('capsule_fill', { p_user_id: userId, p_amount: amount ?? null })
-  if (error) throw new Error(`capsule_fill RPC 오류: ${error.message}`)
-
-  const result = data as {
-    ok?: boolean
-    error?: string
-    remaining?: number
-    applied?: number
-    required?: number
-    filled?: number
-    balance?: number
-  } | null
-
-  if (result?.ok === false) {
-    const code = (CAPSULE_FILL_ERROR_CODES as readonly string[]).includes(result.error ?? '') ? (result.error as CapsuleErrorCode) : null
-    if (!code) throw new Error(`capsule_fill이 알 수 없는 거절 코드를 돌려줬다: ${String(result.error)}`)
-    throw new CapsuleError(code, code === 'exceeds_remaining' ? result.remaining : undefined)
-  }
-  if (
-    result?.ok !== true ||
-    typeof result.applied !== 'number' ||
-    typeof result.required !== 'number' ||
-    typeof result.filled !== 'number' ||
-    typeof result.balance !== 'number'
-  ) {
-    throw new Error('capsule_fill이 해석할 수 없는 응답을 돌려줬다')
-  }
-
-  // 채우기는 이미 끝났다. 빈칸을 읽지 못해도 채우기를 실패로 돌려주지 않고, 빈칸 없이(다 채웠는지만 보는) 상태를 돌려준다.
-  let slots: SlotCheck | undefined
-  try {
-    const needed = neededSlotsOf(await getCapsulePolicy(supabase))
-    slots = { free: await readFreeSlots(supabase, userId), needed }
-  } catch (e) {
-    console.error(`[capsule] 채우기 뒤 빈칸 조회 실패 — 빈칸 없이 상태를 돌려준다 (userId: ${userId}):`, e)
-  }
-  return { applied: result.applied, ...toStatus(result.required, result.filled, result.balance, slots) }
 }

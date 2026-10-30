@@ -2,7 +2,7 @@
  * 캡슐 열기 — 추첨 결과를 DB에 잇는 서버 모듈 (티켓 20261018_0052 2회, 운영 로직 5.2·6.6절)
  *
  * 순서: 이용 정지 확인 → 캡슐 상태와 빈칸 사전 확인(안 되면 **추첨하지 않는다**) → 정책·카운터·소속 트라이브·후보 조회 → 추첨(`capsuleRoll.ts`)
- * → RPC `capsule_open`(채운 양 확인·빈칸 확인·지급·발급 기록·열기 기록·보정 카운터·다음 캡슐이 한 트랜잭션) → 응답에 개체 정보를 채움 → 후속 처리.
+ * → RPC `capsule_open_counted`(채운 양 확인·빈칸 확인·지급·발급 기록·열기 기록·보정 카운터·다음 캡슐이 한 트랜잭션) → 응답에 개체 정보를 채움 → 후속 처리.
  *
  * 규칙
  *  - 사전 확인은 «추첨 난수와 후보 조회를 낭비하지 않기» 위한 것이고 최종 판정은 DB 함수가 한다. 사전 확인 뒤 경쟁으로 거절되어도 같은 `CapsuleError`다.
@@ -11,12 +11,10 @@
  *  - 후속 처리(포인트, `recordIssuedRewards`)는 열기가 확정된 뒤에 한다. 잠긴 개체는 포인트에서 빠진다(7.3절, 티켓 20261018_0051).
  *    **캡슐을 열어 나온 아이템 배지는 피드에 올리지 않는다**(운영 로직 15.3절, 2026-10-10 사용자 결정). 열린 개체도 `skipFeed`로 피드를 건너뛴다(티켓 20261021_1249 6-3 5회). 이미 올라간 옛 피드 행은 그대로 둔다.
  *    캡슐에는 대상 활동이 없어 활동 결산 알림은 보내지 않는다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다.
- *  - 열기가 확정되면 챕터 점수 «캡슐 열기»를 센다(`lib/chapter/score.ts`, 원천 id = 열기 기록 id, 티켓 20261019_1315). 점수 실패는 기록만 남고 열기와 응답을 바꾸지 않는다.
- *    **`counted` 옵션(티켓 20261028_1733 2회, 20261028_1734 2회에서 바뀜)**: 동기화 자동 채움이 부르는 열기다. RPC는 `capsule_open_counted`(열기와 같은 트랜잭션에서 다음 캡슐 필요량 v2·알림 단계 0)이고,
- *    옛 점수 «캡슐 열기»는 세지 않는다. 챕터 횟수와 오름 판정은 열기가 아니라 `capsule_auto_fill`이 캡슐이 100%에 닿는 시점에 하므로 **여기서는 오름 처리(`processChapterRise`)를 하지 않는다**
- *    (`auto-fill.ts`가 한다 — 이중 호출 방지). 응답에는 `chapterNo`·`reachedChapters`·`chapterCount`를 모양 호환으로 싣는다(DB가 `reachedChapters`를 항상 빈 배열로 돌려준다).
- *    `counted`를 켜지 않으면 지금까지와 똑같다(옛 `capsule_open`과 점수 — 프로덕션 main이 쓰는 경로). **`/api/capsule/open` 라우트도 티켓 20261028_1735 3회부터 `counted: true`로 불러서
- *    라우트는 이 옛 경로를 더는 쓰지 않는다.** 옛 경로 코드의 삭제는 U11이다.
+ *  - **열기는 집계 열기 하나뿐이다(티켓 20261028_1742 1회).** 동기화 자동 채움이 부르는 열기이고, RPC는 `capsule_open_counted`(열기와 같은 트랜잭션에서 다음 캡슐 필요량 v2·알림 단계 0)다.
+ *    옛 비집계 경로(RPC `capsule_open`과 챕터 점수 «캡슐 열기» `awardChapterScore`)는 걷었다. 챕터 횟수와 오름 판정은 열기가 아니라 `capsule_auto_fill`이 캡슐이 100%에 닿는 시점에 하므로
+ *    **여기서는 오름 처리(`processChapterRise`)를 하지 않는다**(`auto-fill.ts`가 한다 — 이중 호출 방지). 응답에는 `chapterNo`·`reachedChapters`·`chapterCount`를 싣는다
+ *    (DB가 `reachedChapters`를 항상 빈 배열로 돌려준다).
  *  - 퀘스트 완료 처리는 부르지 않는다(티켓 20261028_1738). 캡슐 열기는 더 이상 퀘스트 단계가 아니다. 퀘스트는 첫 동기화와 잠긴 개체 열기 두 단계라
  *    완료 판정은 동기화(`syncStravaActivities`)와 잠긴 개체 열기(`lockedItemFill.ts`)가 각각 부른다. 이 열기는 두 단계 어느 쪽의 기록도 바꾸지 않는다.
  *  - 다른 트라이브를 고를 때는 후보 배지가 있는 트라이브만 대상이다(`tribesWithCandidates`, 티켓 20261021_1248). 후보가 없는 트라이브가 뽑혀 개체가 비는 일을 없앤다.
@@ -25,7 +23,6 @@
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { awardChapterScore } from '@/lib/chapter/score'
 import { fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import { recordIssuedRewards } from '@/lib/drop-engine/issueFollowUp'
 import type { IssueBadge, IssueBook, Rand } from '@/lib/drop-engine/syncIssue'
@@ -50,14 +47,9 @@ export const CAPSULE_ISSUE_ROUTE = 'capsule'
 export interface OpenCapsuleOptions {
   rand?: Rand
   now?: Date
-  /**
-   * 참이면 동기화 자동 채움용 열기다: RPC `capsule_open_counted`, 옛 챕터 점수 생략, 응답에 챕터 횟수 정보를 더한다(오름 처리는 `auto-fill.ts`).
-   * 기본은 거짓이다(옛 `capsule_open`과 점수 — 라우트는 더는 쓰지 않는다, 삭제는 U11).
-   */
-  counted?: boolean
 }
 
-/** `counted` 열기가 응답에 더하는 챕터 횟수 정보 */
+/** 열기가 응답에 더하는 챕터 횟수 정보 */
 export interface CapsuleCountedInfo {
   /** 횟수를 센 챕터(오르기 전). 센 게 없으면(퀘스트 전 캡슐 등) null */
   chapterNo: number | null
@@ -112,10 +104,10 @@ function toCountedInfo(result: CapsuleOpenResult): CapsuleCountedInfo {
 function toOpenError(result: CapsuleOpenResult): Error {
   const code = result.error ?? ''
   if (!(CAPSULE_OPEN_ERROR_CODES as readonly string[]).includes(code)) {
-    return new Error(`capsule_open이 알 수 없는 거절 코드를 돌려줬다: ${code}`)
+    return new Error(`capsule_open_counted가 알 수 없는 거절 코드를 돌려줬다: ${code}`)
   }
   if (code === 'insufficient_slots') {
-    return new CapsuleError('insufficient_slots', undefined, { freeSlots: result.free ?? 0, neededSlots: result.needed ?? 0 })
+    return new CapsuleError('insufficient_slots', { freeSlots: result.free ?? 0, neededSlots: result.needed ?? 0 })
   }
   return new CapsuleError(code as CapsuleOpenErrorCode)
 }
@@ -236,7 +228,7 @@ export async function rollCapsuleItems(
   return { data, rolled }
 }
 
-/** 추첨 결과를 RPC `p_items` 모양으로 바꾼다(`capsule_open`·`capsule_open_counted`·`capsule_claim_pending` 공통) */
+/** 추첨 결과를 RPC `p_items` 모양으로 바꾼다(`capsule_open_counted`·`capsule_claim_pending` 공통) */
 export function toRpcItems(rolled: CapsuleRolled) {
   return rolled.items.map((item) => ({
     badge_id: item.badge.id,
@@ -286,21 +278,10 @@ export async function recordOpenedItems(
 
 /**
  * 캡슐을 연다. 던지는 것: `UserSuspendedError`(정지), `CapsuleError`(`not_full`·`insufficient_slots`·`no_tribe`·DB 거절), 그 밖의 일반 오류.
- * `counted: true`면 챕터 횟수 정보가 응답에 더해진다(파일 머리말).
+ * 응답에는 챕터 횟수 정보가 더해진다(파일 머리말).
  */
-export async function openCapsule(
-  supabase: SupabaseClient,
-  userId: string,
-  options: OpenCapsuleOptions & { counted: true }
-): Promise<CountedCapsuleOpenPayload>
-export async function openCapsule(supabase: SupabaseClient, userId: string, options?: OpenCapsuleOptions): Promise<CapsuleOpenPayload>
-export async function openCapsule(
-  supabase: SupabaseClient,
-  userId: string,
-  options: OpenCapsuleOptions = {}
-): Promise<CapsuleOpenPayload | CountedCapsuleOpenPayload> {
-  const counted = options.counted === true
-  const rpcName = counted ? 'capsule_open_counted' : 'capsule_open'
+export async function openCapsule(supabase: SupabaseClient, userId: string, options: OpenCapsuleOptions = {}): Promise<CountedCapsuleOpenPayload> {
+  const rpcName = 'capsule_open_counted'
   const rand = options.rand ?? Math.random
   const now = options.now ?? new Date()
 
@@ -311,7 +292,7 @@ export async function openCapsule(
   const { status, chapterNo } = await getCapsuleState(supabase, userId, capsulePolicy)
   if (status.notOpenableReason === 'not_full') throw new CapsuleError('not_full')
   if (status.notOpenableReason === 'no_free_slots') {
-    throw new CapsuleError('insufficient_slots', undefined, { freeSlots: status.freeSlots ?? 0, neededSlots: status.neededSlots ?? 0 })
+    throw new CapsuleError('insufficient_slots', { freeSlots: status.freeSlots ?? 0, neededSlots: status.neededSlots ?? 0 })
   }
 
   const { data, rolled } = await rollCapsuleItems(supabase, userId, { capsulePolicy, preQuest: chapterNo === null, rand, now })
@@ -334,14 +315,9 @@ export async function openCapsule(
   }
 
   // 여기부터는 열기가 확정됐다. 어떤 실패도 열기를 되돌리지 않는다.
-  // 챕터 점수 «캡슐 열기» (티켓 20261019_1315, 운영 로직 12.2절). 후속 처리(`recordIssuedRewards`) 결과와 무관하게 먼저 센다.
-  // 원천 id는 열기 기록 id(`capsule_opens.id`)라 같은 열기를 다시 보내도 한 번만 센다. 던지지 않는다(실패는 기록만 남는다).
-  // counted 열기는 점수 대신 횟수를 세는데, 횟수와 오름 판정은 이제 열기가 아니라 `capsule_auto_fill`이 캡슐이 100%에 닿는 시점에 한다(티켓 20261028_1734 2회).
+  // 챕터 횟수와 오름 판정은 열기가 아니라 `capsule_auto_fill`이 캡슐이 100%에 닿는 시점에 한다(티켓 20261028_1734 2회).
   // 그래서 여기서는 오름 처리(`processChapterRise`)를 부르지 않는다 — 부르면 `runCapsuleAutoFill`의 오름 처리와 이중 호출이 된다.
-  const countedInfo = counted ? toCountedInfo(result) : null
-  if (!countedInfo) {
-    await awardChapterScore(supabase, { userId, kind: 'capsule_open', sourceId: result.openId })
-  }
+  const countedInfo = toCountedInfo(result)
   const items = await recordOpenedItems(userId, data, rolled, result.items)
 
   // 열어서 받은 만큼 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
@@ -359,6 +335,5 @@ export async function openCapsule(
     console.error(`[capsule-open] 판정 로그 실패 — 열기는 유지한다 (userId: ${userId}):`, e)
   }
 
-  const payload: CapsuleOpenPayload = { openId: result.openId, items, next: { required: result.next.required, filled: result.next.filled } }
-  return countedInfo ? { ...payload, ...countedInfo } : payload
+  return { openId: result.openId, items, next: { required: result.next.required, filled: result.next.filled }, ...countedInfo }
 }

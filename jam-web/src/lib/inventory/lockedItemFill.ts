@@ -1,9 +1,9 @@
 /**
- * 잠긴 아이템 배지 — 채우기·열기·조회 (티켓 20261018_0053, 운영 로직 7.2·7.3절)
+ * 잠긴 아이템 배지 — 열기·조회 (티켓 20261018_0053, 운영 로직 7.2·7.3절)
  *
- * 채우기는 DB 함수 `locked_item_fill`(잼 원장 한 줄, 개체의 채운 양, 이력이 한 트랜잭션)이 한다. 열기는 `locked_item_open_points`(마이그레이션 304, 티켓 20261028_1737)가 한다 —
+ * 열기는 `locked_item_open_points`(마이그레이션 304, 티켓 20261028_1737)가 한다 —
  * 잼을 채우지 않고 포인트를 내고 한 번에 연다. 같은 트랜잭션에서 포인트 지갑을 잠가 잔액을 확인하고(모자라면 `insufficient_points`, 아무것도 바꾸지 않음),
- * 차감 줄(`locked_unlock_cost`)·열림·획득 줄(배지 포인트, 한 번만)·이력을 남긴다. 여는 포인트가 0이면(퀘스트의 첫 잠긴 배지) 차감 줄이 없다. 옛 `locked_item_open`은 U11까지 DB에 남아 있지만 이 파일은 부르지 않는다.
+ * 차감 줄(`locked_unlock_cost`)·열림·획득 줄(배지 포인트, 한 번만)·이력을 남긴다. 여는 포인트가 0이면(퀘스트의 첫 잠긴 배지) 차감 줄이 없다. 옛 잼 채우기(`fillLockedItem`)와 그 API는 티켓 20261028_1742 1회에서 걷었다.
  * 열기에는 인벤토리 빈칸이 필요 없다. 앱은 정지 확인과 RPC 호출,
  * 응답 모양 만들기만 한다. DB 안에서 포인트를 주므로 `awardPoints`의 알림(`notifyPointChange`)은 이 경로에서 나가지 않는다 — 그래서 열기 성공 뒤
  * 이 파일이 같은 포인트 소식(활동 결산의 «포인트» 꼬리)을 직접 낸다(티켓 20261026_1031).
@@ -28,21 +28,17 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import {
-  LOCKED_ITEM_FILL_ERROR_CODES,
   LOCKED_ITEM_OPEN_ERROR_CODES,
   type LockedItemErrorCode,
-  type LockedItemFillPayload,
   type LockedItemOpenedInfo,
   type LockedItemOpenPayload,
   type LockedItemRarity,
   type LockedItemStatus,
 } from './lockedItemFill-contract'
 
-/** DB 함수가 채우기·열기를 거절했을 때(또는 조회 대상 개체가 없을 때) 던진다. API 라우트가 상태 코드와 문구로 바꾼다. */
+/** DB 함수가 열기를 거절했을 때(또는 조회 대상 개체가 없을 때) 던진다. API 라우트가 상태 코드와 문구로 바꾼다. */
 export class LockedItemError extends Error {
   readonly code: LockedItemErrorCode
-  /** `exceeds_remaining`일 때 채울 수 있는 남은 양 */
-  readonly remaining?: number
   /** `not_full`일 때 필요한 양, `insufficient_points`일 때 여는 데 필요한 포인트 */
   readonly required?: number
   /** `not_full`일 때 채운 양 */
@@ -50,11 +46,10 @@ export class LockedItemError extends Error {
   /** `insufficient_points`일 때 가진 포인트 */
   readonly balance?: number
 
-  constructor(code: LockedItemErrorCode, detail?: { remaining?: number; required?: number; filled?: number; balance?: number }) {
+  constructor(code: LockedItemErrorCode, detail?: { required?: number; filled?: number; balance?: number }) {
     super(`잠긴 개체 거절: ${code}`)
     this.name = 'LockedItemError'
     this.code = code
-    this.remaining = detail?.remaining
     this.required = detail?.required
     this.filled = detail?.filled
     this.balance = detail?.balance
@@ -64,7 +59,6 @@ export class LockedItemError extends Error {
 interface RpcResult {
   ok?: boolean
   error?: string
-  remaining?: number
   required?: number
   filled?: number
   balance?: number
@@ -75,45 +69,10 @@ function throwRejection(fn: string, result: RpcResult, allowed: readonly string[
   const code = result.error ?? ''
   if (!allowed.includes(code)) throw new Error(`${fn}이 알 수 없는 거절 코드를 돌려줬다: ${String(result.error)}`)
   throw new LockedItemError(code as LockedItemErrorCode, {
-    remaining: code === 'exceeds_remaining' ? result.remaining : undefined,
     required: code === 'not_full' || code === 'insufficient_points' ? result.required : undefined,
     filled: code === 'not_full' ? result.filled : undefined,
     balance: code === 'insufficient_points' ? result.balance : undefined,
   })
-}
-
-/**
- * 잠긴 개체를 채운다. `amount`를 생략하면 남은 양이고, 가진 잼이 모자라면 가진 만큼 채운다.
- * 이용 정지 중이면 RPC를 부르기 전에 `UserSuspendedError`를 던진다. DB 함수의 거절은 `LockedItemError`로 바꿔 던진다.
- * RPC 오류나 해석할 수 없는 응답은 일반 `Error`다.
- */
-export async function fillLockedItem(supabase: SupabaseClient, userId: string, itemId: string, amount?: number): Promise<LockedItemFillPayload> {
-  await assertNotSuspended(supabase, userId)
-
-  const { data, error } = await supabase.rpc('locked_item_fill', { p_user_id: userId, p_item_id: itemId, p_amount: amount ?? null })
-  if (error) throw new Error(`locked_item_fill RPC 오류: ${error.message}`)
-
-  const result = data as (RpcResult & { applied?: number; balance?: number }) | null
-  if (result?.ok === false) throwRejection('locked_item_fill', result, LOCKED_ITEM_FILL_ERROR_CODES)
-  if (
-    result?.ok !== true ||
-    typeof result.applied !== 'number' ||
-    typeof result.required !== 'number' ||
-    typeof result.filled !== 'number' ||
-    typeof result.remaining !== 'number' ||
-    typeof result.balance !== 'number'
-  ) {
-    throw new Error('locked_item_fill이 해석할 수 없는 응답을 돌려줬다')
-  }
-  return {
-    itemId,
-    applied: result.applied,
-    required: result.required,
-    filled: result.filled,
-    remaining: result.remaining,
-    balance: result.balance,
-    openable: result.filled >= result.required,
-  }
 }
 
 /**
