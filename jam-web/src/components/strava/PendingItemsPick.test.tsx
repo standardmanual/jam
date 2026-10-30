@@ -161,22 +161,21 @@ describe('선택 단계', () => {
 })
 
 describe('잠긴 카드 가림 (티켓 20261018_0051 2회)', () => {
-  const lockedPayload = (unlockRequired: number | null = 60): PendingItemsPayload =>
+  const lockedPayload = (): PendingItemsPayload =>
     payload({
       items: [
         { id: 'p1', badgeId: 'secret-badge-id', name: '비밀 배지', imageUrl: 'https://img/secret.png', rarity: 'rare' },
-        ...(unlockRequired === null
-          ? []
-          : [{ id: 'p2', locked: true as const, unlockRequired, rarity: 'rare' as const, badgeId: '' as const, name: '' as const, imageUrl: null }]),
-        { id: 'p3', locked: true, unlockRequired: 30, rarity: 'common', badgeId: '', name: '', imageUrl: null },
+        { id: 'p2', locked: true, rarity: 'rare', badgeId: '', name: '', imageUrl: null },
+        { id: 'p3', locked: true, rarity: 'common', badgeId: '', name: '', imageUrl: null },
       ],
     })
 
-  it('잠긴 카드는 가린 이름과 필요한 양을 보이고 그림과 사람 모양 폴백을 그리지 않는다', () => {
-    const html = view({ payload: payload({ items: [{ id: 'p2', locked: true, unlockRequired: 60, rarity: 'rare', badgeId: '', name: '', imageUrl: null }] }) })
+  it('잠긴 카드는 가린 이름과 숫자 없는 일반 설명을 보이고 그림과 사람 모양 폴백을 그리지 않는다', () => {
+    const html = view({ payload: payload({ items: [{ id: 'p2', locked: true, rarity: 'rare', badgeId: '', name: '', imageUrl: null }] }) })
 
     expect(html).toContain(d.lockedItem.card.name)
-    expect(html).toContain(t(d.lockedItem.card.description, { n: 60 }))
+    expect(html).toContain(d.lockedItem.card.description)
+    expect(html).not.toContain('잼')
     expect(html).not.toContain('<img')
     // 잠금 타일은 DS 자물쇠 아이콘이고 사람 모양 폴백이 아니다
     expect(html).not.toContain('<circle')
@@ -191,20 +190,9 @@ describe('잠긴 카드 가림 (티켓 20261018_0051 2회)', () => {
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1)
   })
 
-  it('필요한 양이 없는 비정상 응답이면 설명 줄을 생략하고 이름만 보인다', () => {
-    const html = view({
-      payload: payload({
-        items: [{ id: 'p2', locked: true, unlockRequired: 0, rarity: 'common', badgeId: '', name: '', imageUrl: null }],
-      }),
-    })
-
-    expect(html).toContain(d.lockedItem.card.name)
-    expect(html).not.toContain('여는 데 잼')
-  })
-
   it('가림 문구가 d.lockedItem.card에 있고 «이름 없음» 같은 가짜 이름(???)을 쓰지 않는다', () => {
     expect(d.lockedItem.card.name).toBe('잠긴 아이템 배지')
-    expect(d.lockedItem.card.description).toContain('{n}')
+    expect(d.lockedItem.card.description).not.toContain('{n}')
     expect(view({ payload: lockedPayload() })).not.toContain('???')
   })
 })

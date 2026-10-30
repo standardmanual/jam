@@ -39,7 +39,6 @@ const open = (over: Partial<PendingResultView> = {}): PendingResultView => ({
   imageUrl: 'https://img.example/open-badge.png',
   rarity: 'rare',
   locked: false,
-  unlockRequired: null,
   createdAt: '2026-10-18T00:00:00Z',
   ...over,
 })
@@ -51,7 +50,6 @@ const locked = (over: Partial<PendingResultView> = {}): PendingResultView => ({
   imageUrl: null,
   rarity: 'epic',
   locked: true,
-  unlockRequired: 600,
   createdAt: '2026-10-18T00:00:00Z',
   ...over,
 })
@@ -121,10 +119,12 @@ describe('PendingResultsSheet', () => {
       expect(html).not.toContain(d.combine.pendingSheet.shortTitle)
     })
 
-    it('열린 결과는 이름이 보이고 잠긴 결과는 «잠긴 아이템 배지»와 필요한 양 줄이 보인다', () => {
+    it('열린 결과는 이름이 보이고 잠긴 결과는 «잠긴 아이템 배지»와 숫자 없는 일반 설명이 보인다', () => {
       expect(html).toContain('열린 배지 이름')
       expect(html).toContain(d.lockedItem.card.name)
-      expect(html).toContain(t(d.lockedItem.card.description, { n: 600 }))
+      expect(html).toContain(d.lockedItem.card.description)
+      expect(html).not.toContain('잼')
+      expect(html).not.toContain('{n}')
     })
 
     it('결과는 개별 선택 대상이 아니다 — 목록 안에 버튼이 없다', () => {
@@ -139,11 +139,6 @@ describe('PendingResultsSheet', () => {
     expect(html).not.toContain('secret.png')
     expect(html).not.toContain('secret-id')
     expect(html).toContain(d.lockedItem.card.name)
-  })
-
-  it('잠긴 결과의 필요한 양이 없으면 그 줄을 생략한다 — 기본값으로 채우지 않는다', () => {
-    const html = render(view({ items: [locked({ unlockRequired: null })] }))
-    expect(html).not.toContain('여는 데 잼')
   })
 
   describe('빈칸이 모자람', () => {

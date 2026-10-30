@@ -48,7 +48,6 @@ interface PendingRow {
   rarity: PendingItemView['rarity']
   /** 보류 때 정한 잠김. 읽지 못한 행(옛 응답)은 열린 것으로 본다 */
   locked?: boolean | null
-  unlock_required?: number | null
 }
 
 interface BadgeRow {
@@ -58,7 +57,7 @@ interface BadgeRow {
 }
 
 /**
- * 잠긴 보류를 고르기 화면에 내리는 모양 — 배지 id·이름·그림을 싣지 않고 `locked`·등급·필요한 양만 싣는다.
+ * 잠긴 보류를 고르기 화면에 내리는 모양 — 배지 id·이름·그림을 싣지 않고 `locked`·등급만 싣는다.
  * `badgeId`를 남기면 클라이언트가 그 id로 배지를 찾아 이름·그림을 알 수 있으므로 빈 문자열로 둔다(고르기는 보류 `id`로만 한다).
  */
 function toLockedView(row: PendingRow): LockedPendingItemView {
@@ -69,7 +68,6 @@ function toLockedView(row: PendingRow): LockedPendingItemView {
     imageUrl: null,
     rarity: row.rarity,
     locked: true,
-    unlockRequired: row.unlock_required ?? 0,
   }
 }
 
@@ -77,7 +75,7 @@ function toLockedView(row: PendingRow): LockedPendingItemView {
 export async function getPendingItems(supabase: SupabaseClient, userId: string): Promise<PendingItemsPayload> {
   const { data: rows, error } = await supabase
     .from('sync_pending_items')
-    .select('id, badge_id, rarity, locked, unlock_required')
+    .select('id, badge_id, rarity, locked')
     .eq('user_id', userId)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })

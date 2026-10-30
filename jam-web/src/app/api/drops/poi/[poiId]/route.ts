@@ -50,7 +50,7 @@ export async function GET(
     // 20260829_2101 개체정체성 모델의 poi_drops.inventory_item_id(현재 드랍이 가리키는
     // 개체). 관계명을 명시하지 않으면 PostgREST가 PGRST201로 거부해 목록 조회 자체가
     // 실패한다 — 여기서는 후자를 써야 하므로 명시적으로 지정한다.
-    .select(`id, badge_id, dropped_at, dropper_user_id, source, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at, locked, unlock_required )`)
+    .select(`id, badge_id, dropped_at, dropper_user_id, source, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at, locked, unlock_points_required )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
@@ -76,7 +76,7 @@ export async function GET(
       serial_number: number
       expires_at: string | null
       locked: boolean | null
-      unlock_required: number | null
+      unlock_points_required: number | null
     } | null
   }
   const rows = (data ?? []) as unknown as PoiDropRow[]
@@ -120,7 +120,8 @@ export async function GET(
         serial_number: null,
         expires_at: d.inventory_items.expires_at,
         locked: true,
-        unlock_required: d.inventory_items.unlock_required,
+        // 고르는 표면(개체 선택 시트 행)에서만 쓰는 구분 값이다. 줍기 시트는 이 값을 그리지 않는다(티켓 20261028_1741 2회)
+        unlock_points_required: d.inventory_items.unlock_points_required,
       }
     }
     return {

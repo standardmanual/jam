@@ -769,9 +769,9 @@ describe('CombineClient 등급 올리기 흐름', () => {
     })
 
     it('잠긴 결과가 오면 이름과 그림 없이 가린 카드로 받는다', () => {
-      const cards = toTierUpRevealBadges([{ id: '', name: '', rarity: 'epic', locked: true, unlockRequired: 30 }])
+      const cards = toTierUpRevealBadges([{ id: '', name: '', rarity: 'epic', locked: true }])
       expect(cards).toHaveLength(1)
-      expect(cards[0]).toMatchObject({ name: '', locked: true, rarity: 'epic', unlockRequired: 30 })
+      expect(cards[0]).toMatchObject({ name: '', locked: true, rarity: 'epic' })
     })
 
     it.each([

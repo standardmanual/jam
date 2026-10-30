@@ -51,12 +51,15 @@ export interface ItemCandidate {
   /** 만료 임박 칩("곧 만료")을 선택 시트에 띄우기 위한 값. 만료 없는 개체는 null. */
   expires_at: string | null
   /**
-   * 잠긴 개체(티켓 20261018_1817). true이면 일련번호와 만료 칩을 그리지 않고 «잼 N 필요»를 구분 값으로 보인다 —
+   * 잠긴 개체(티켓 20261018_1817). true이면 일련번호와 만료 칩을 그리지 않고 «N 포인트 필요»를 구분 값으로 보인다 —
    * 잠긴 개체는 어떤 아이템 배지인지 알 수 있는 값을 화면에 두지 않는다(운영 로직 7.3절). 이때 `serial_number`·`serial_prefix`는 쓰지 않는다.
    */
   locked?: boolean
-  /** 잠긴 개체가 열리는 데 필요한 잼. 필요한 양이 없는 비정상 응답이면 구분 줄을 생략한다 */
-  unlock_required?: number | null
+  /**
+   * 잠긴 개체를 여는 데 필요한 포인트(`inventory_items.unlock_points_required`, 배정 때 고정, 티켓 20261028_1741 2회).
+   * 같은 등급의 잠긴 개체끼리 고를 근거가 이 값뿐이라 선택 시트에서만 보인다. 0이면 «포인트 없이 열 수 있어요», null(정책값)이면 구분 줄을 생략한다
+   */
+  unlock_points_required?: number | null
   /**
    * 이 개체의 등급(티켓 20261028_1408). 시트 한 곳에 등급이 다른 개체가 섞이는 호출부(컬렉션 등급이 아직 없을 때의 장착 시트)만 채운다.
    * 값이 있으면 행의 `rarity` prop보다 우선한다. 키가 없으면(드랍·픽업 시트) 지금처럼 `rarity` prop을 쓴다.
@@ -88,7 +91,7 @@ export default function ItemCandidateRow({
 }: ItemCandidateRowProps) {
   const locked = candidate.locked === true
   const expiring = !locked && isExpiringSoon(candidate.expires_at)
-  const hasRequired = Number.isFinite(candidate.unlock_required) && (candidate.unlock_required ?? 0) > 0
+  const points = typeof candidate.unlock_points_required === 'number' && Number.isFinite(candidate.unlock_points_required) ? candidate.unlock_points_required : null
   const shownRarity = candidate.rarity ?? rarity
 
   return (
@@ -113,9 +116,9 @@ export default function ItemCandidateRow({
       <div className="flex flex-col items-start gap-1">
         <RarityBadge rarity={shownRarity ?? undefined} />
         {locked ? (
-          hasRequired && (
+          points !== null && (
             <p className="m-0 text-base font-bold text-foreground break-keep wrap-break-word">
-              {t(d.lockedItem.card.requiredChip, { n: candidate.unlock_required as number })}
+              {points > 0 ? t(d.lockedItem.card.requiredChip, { n: points.toLocaleString('ko-KR') }) : d.lockedItem.detail.points.free}
             </p>
           )
         ) : (

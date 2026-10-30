@@ -26,7 +26,6 @@ const mocks = vi.hoisted(() => ({
   notifyInventorySlotsLow: vi.fn(),
   followUpCombineResultPoints: vi.fn(),
   awardServiceJam: vi.fn(),
-  readUnlockRequired: vi.fn(),
 }))
 
 /** 가짜 DB — 쿼리 결과와 RPC 응답을 시험이 정한다 */
@@ -120,10 +119,6 @@ vi.mock('@/lib/jam/serviceActivity', () => ({
     mocks.callOrder.push('awardServiceJam')
     return mocks.awardServiceJam(...args)
   },
-}))
-// 믹스 본체는 가져오지 않는다 — 등급 올리기는 «잠긴 결과의 필요한 양 읽기» 하나만 쓴다
-vi.mock('@/lib/combine/index', () => ({
-  readUnlockRequired: (...args: unknown[]) => mocks.readUnlockRequired(...args),
 }))
 
 import { UserSuspendedError } from '@/lib/suspension/suspension'
@@ -536,7 +531,6 @@ beforeEach(() => {
   mocks.notifyInventorySlotsLow.mockResolvedValue(undefined)
   mocks.followUpCombineResultPoints.mockResolvedValue(undefined)
   mocks.awardServiceJam.mockResolvedValue({ ok: true, granted: 5, duplicate: false, capped: false })
-  mocks.readUnlockRequired.mockResolvedValue([])
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -699,31 +693,20 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
     expect(mocks.awardServiceJam).toHaveBeenCalledTimes(1)
   })
 
-  it('잠김으로 만든 배지가 나오면 이름·id·그림을 가리고 필요한 양을 싣는다', async () => {
+  it('잠김으로 만든 배지가 나오면 이름·id·그림을 가리고 필요한 양은 싣지 않는다', async () => {
     const locked = badge('own-c1', 'common', BOOK_OWN, { always_locked: true, image_url: 'https://cdn.example/own-c1.png' })
     setPool(BOOKS, [locked, badge('own-r1', 'rare', BOOK_OWN)])
-    mocks.readUnlockRequired.mockResolvedValue([5])
 
     const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.1, 0.0) })
 
     expect(result).toMatchObject({
       success: true,
       resultStatus: 'granted',
-      resultBadges: [{ id: '', name: '', rarity: 'common', imageUrl: null, locked: true, unlockRequired: 5 }],
+      resultBadges: [{ id: '', name: '', rarity: 'common', imageUrl: null, locked: true }],
     })
-    expect(mocks.readUnlockRequired).toHaveBeenCalledWith(expect.anything(), ['new-item-1'])
+    expect(result.success && 'unlockRequired' in result.resultBadges[0]).toBe(false)
     // 지급은 열린 채 요청한다 — 잠김은 DB가 배지(always_locked)로 정한다
     expect(db.rpcCalls[0].args.p_locked).toBe(false)
-  })
-
-  it('필요한 양을 읽지 못하면 unlockRequired 칸을 뺀다', async () => {
-    const locked = badge('own-c1', 'common', BOOK_OWN, { always_locked: true })
-    setPool(BOOKS, [locked, badge('own-r1', 'rare', BOOK_OWN)])
-    mocks.readUnlockRequired.mockResolvedValue([])
-
-    const result = await tierUp(USER, ITEM_IDS, BOOK_OWN, { rand: seq(0.1, 0.0) })
-
-    expect(result.success && result.resultBadges[0]).toEqual({ id: '', name: '', rarity: 'common', imageUrl: null, locked: true })
   })
 })
 

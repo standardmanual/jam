@@ -50,22 +50,24 @@ export interface RevealBadge {
   earnCount?: number
   /**
    * 잠긴 아이템 배지(티켓 20261018_0054, 운영 로직 7.3절). `true`이면 `name`·`description`·`imageUrl`을 무시하고
-   * 가린 이름(`d.lockedItem.card.name`)과 여는 데 필요한 양 문구, 그림 자리의 잠금 타일로 그린다.
+   * 가린 이름(`d.lockedItem.card.name`)과 «포인트로 열 수 있어요» 설명(`d.lockedItem.card.description`), 그림 자리의 잠금 타일로 그린다.
    * 호출부 실수로 이름·그림이 새지 않게 래퍼가 막는다. 서버도 잠긴 개체에는 이 값들을 내리지 않는다.
    */
   locked?: boolean
-  /** 잠긴 개체를 여는 데 필요한 잼. 없거나 0 이하이면 설명 줄을 생략한다 */
+  /**
+   * 캡슐 열기 결과(`capsuleReveal.ts`)가 아직 싣는 옛 «필요한 잼» 값. 오버레이는 읽지 않는다 — 여는 비용이 포인트로 바뀌었다(티켓 20261028_1741 2회).
+   * 캡슐 계약(`CapsuleOpenedItem.unlockRequired`)은 캡슐 티켓(U8)의 몫이라 남겼고, 그쪽이 정리되면 이 칸도 함께 지운다.
+   */
   unlockRequired?: number
 }
 
-/** 캐러셀 항목 — 잠긴 개체는 가린 이름과 필요한 양 문구로 바꾸고 그림을 비운다 */
+/** 캐러셀 항목 — 잠긴 개체는 가린 이름과 일반 설명 문구로 바꾸고 그림을 비운다 */
 export function toCarouselItem(item: RevealBadge): RevealBadge {
   if (item.locked !== true) return item
-  const hasRequired = Number.isFinite(item.unlockRequired) && (item.unlockRequired ?? 0) > 0
   return {
     id: item.id,
     name: d.lockedItem.card.name,
-    description: hasRequired ? t(d.lockedItem.card.description, { n: item.unlockRequired as number }) : '',
+    description: d.lockedItem.card.description,
     imageUrl: null,
     rarity: item.rarity,
     locked: true,

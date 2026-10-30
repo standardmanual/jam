@@ -20,12 +20,15 @@ import { d } from '@/lib/i18n'
 const SECRET_NAME = '새어 나가면 안 되는 이름'
 const SECRET_IMAGE = 'https://example.com/secret-badge.png'
 
+// 게이지만 두 구현이 다르다(티켓 20261028_1741 2회): 서비스 사본은 여는 비용이 채운 잼에서 포인트로 바뀌어 게이지를 걷어냈고,
+// MODULAR 원본(`design-system/`)은 이번 회차에 바꾸지 않아 게이지가 남아 있다. 가림 규칙 단언은 두 구현이 그대로 같다.
+// MODULAR 원본이 서비스를 따라오면(모드 ③ 동기화) 아래 `hasGauge`를 모두 false로 맞춘다.
 const implementations = [
-  { label: '서비스', render: (props: Record<string, unknown>) => renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" {...props} />) },
-  { label: 'MODULAR', render: (props: Record<string, unknown>) => renderToStaticMarkup(<DsBadgeGridCard rarity="epic" {...props} />) },
+  { label: '서비스', hasGauge: false, render: (props: Record<string, unknown>) => renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" {...props} />) },
+  { label: 'MODULAR', hasGauge: true, render: (props: Record<string, unknown>) => renderToStaticMarkup(<DsBadgeGridCard rarity="epic" {...props} />) },
 ]
 
-describe.each(implementations)('BadgeGridCard locked — $label', ({ render }) => {
+describe.each(implementations)('BadgeGridCard locked — $label', ({ render, hasGauge }) => {
   it('이름과 그림 URL이 넘어와도 DOM에 없고 가린 이름이 나온다', () => {
     const html = render({ locked: true, name: SECRET_NAME, imageUrl: SECRET_IMAGE, fillPercent: 40 })
     expect(html).not.toContain(SECRET_NAME)
@@ -34,12 +37,20 @@ describe.each(implementations)('BadgeGridCard locked — $label', ({ render }) =
     expect(html).toContain(d.lockedItem.card.name)
   })
 
-  it('잠금 타일(자물쇠)과 게이지가 있고 진행 수치 글자는 없다', () => {
+  it('잠금 타일(자물쇠)이 있고 진행 수치 글자는 없다', () => {
     const html = render({ locked: true, fillPercent: 40 })
     expect(html).toContain('<svg')
-    // 게이지 채움은 비율만 쓴다 — 40이 글자로 나오지 않는다
-    expect(html).toContain('--ds-progress-fill:40%')
     expect(html.replace(/<[^>]+>/g, '')).not.toMatch(/\d/)
+  })
+
+  it(hasGauge ? '게이지가 남아 있다(동기화 전 드리프트 — 서비스 쪽과 다름)' : '게이지가 없다 — progressbar 역할도 채움 변수도 그리지 않는다', () => {
+    const html = render({ locked: true, fillPercent: 40 })
+    if (hasGauge) {
+      expect(html).toContain('--ds-progress-fill:40%')
+    } else {
+      expect(html).not.toContain('--ds-progress-fill')
+      expect(html).not.toContain('role="progressbar"')
+    }
   })
 
   it('locked가 아니면 기존 모양 그대로이고 게이지가 없다', () => {
@@ -74,7 +85,7 @@ describe('BadgeGridCard 이름 줄 — 서비스', () => {
   })
 
   it('잠긴 카드의 이름 줄에도 같은 클래스가 있고 «잠긴 아이템 배지»가 잘리지 않도록 세 줄까지 허용한다', () => {
-    const cls = nameClass(renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" locked fillPercent={40} />))
+    const cls = nameClass(renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" locked />))
     expect(cls).toContain('break-keep')
     expect(cls).toContain('wrap-break-word')
     expect(cls).toContain('line-clamp-3')

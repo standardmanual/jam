@@ -32,8 +32,6 @@ export interface InventoryGridItem {
    * 실리면 화면에서 가려도 소용이 없다(호출부가 `''`·`null`을 넣는다). `badgeRarity`는 등급 칩으로 그린다.
    */
   locked?: boolean
-  /** `locked`일 때 게이지의 채운 비율(0~100). 서버가 `unlock_filled / unlock_required`로 계산한 값을 그대로 그린다 */
-  fillPercent?: number
 }
 
 interface InventoryGridProps {
@@ -105,7 +103,7 @@ export default function InventoryGrid({
 
         // 잠긴 개체는 이름·그림을 카드에 넘기지 않는다(카드도 막지만 호출부에서 먼저 끊는다) — 운영 로직 7.3절
         const identity = item.locked
-          ? { locked: true, fillPercent: item.fillPercent ?? 0 }
+          ? { locked: true }
           : { name: item.badgeName, imageUrl: item.badgeImageUrl }
 
         if (mode === 'navigate') {

@@ -10,12 +10,10 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Card } from '@ds/components/cards/Card'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LockedTile } from '@ds/components/cards/LockedTile'
-import { Skeleton } from '@ds/components/feedback/Skeleton'
 import { Carousel } from '@ds/components/navigation/Carousel'
 import type { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import type { ItemCandidate } from '@/components/inventory/ItemCandidateRow'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
-import InlineNotice from '@/components/ui/InlineNotice'
 import LocalDate from '@/components/LocalDate'
 import BadgeDetailSheet, { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { useRevealOnMount } from '@/components/transitions-pages'
@@ -27,8 +25,6 @@ import { trackEvent } from '@/lib/analytics/gtag'
 import { isLockedItemBody } from '@/lib/inventory/locked-item-block'
 import { isSuspendedBody } from '@/lib/suspension/suspended-block'
 import { pickupBlockKind } from '@/lib/drop/pickup-block-contract'
-import type { DropLossPayload } from '@/lib/drop/drop-loss-contract'
-import { dropLossText } from '@/lib/drop/drop-loss-text'
 
 // 20260820_018: 드랍(지도) POI 모달 캐러셀 개편
 // 기존 하단 고정 바텀시트를 대체하는 화면 중앙 모달 — 캐러셀 아이템 자체가
@@ -47,12 +43,12 @@ export interface InventoryItem {
   serial_number: number
   expires_at: string | null
   /**
-   * 잠긴 개체(티켓 20261018_1817). 서버(`/api/inventory/items`)가 이름·그림·일련번호 접두사를 비우고 이 값과 등급, 필요한 양만 싣는다.
+   * 잠긴 개체(티켓 20261018_1817). 서버(`/api/inventory/items`)가 이름·그림·일련번호 접두사를 비우고 이 값과 등급, 여는 데 필요한 포인트만 싣는다.
    * 열린 개체에는 이 키가 없다. 화면은 잠긴 개체의 이름·그림·일련번호를 어떤 props에도 넣지 않는다.
    */
   locked?: boolean
-  /** 잠긴 개체가 열리는 데 필요한 잼 */
-  unlock_required?: number | null
+  /** 잠긴 개체를 여는 데 필요한 포인트(배정 때 고정). 개체 선택 시트 행의 구분 값으로만 쓴다 */
+  unlock_points_required?: number | null
 }
 
 /** 같은 badge_id를 가진 드랍 후보 개체 묶음 — 20260908_0040. 잠긴 개체는 서버 합성 키 `locked:{등급}`로 등급별 한 묶음이 된다. */
@@ -66,7 +62,7 @@ interface DropGroup {
   items: InventoryItem[]
 }
 
-/** 드랍 확인 단계가 쓰는 개체 — 잠긴 개체는 `locked`로 사라질 양 블록과 [드랍] 비활성 조건을 가른다. */
+/** 드랍 확인 단계가 쓰는 개체 — 잠긴 개체는 `locked`로 이름·그림 대신 잠금 타일을 그린다. */
 type PendingDropItem = InventoryGridItem & { locked?: boolean }
 
 /** 드랍 목록 행이 쓰는 묶음 항목 */
@@ -88,10 +84,10 @@ function toGridItem(item: InventoryItem): PendingDropItem {
   }
 }
 
-/** 개체 선택 시트 행의 입력으로 변환한다. 잠긴 개체는 일련번호·만료일을 넘기지 않고 필요한 양만 넘긴다. */
-function toCandidate(item: { id: string; serial_number: number | null; serial_prefix: string | null; expires_at: string | null; locked?: boolean; unlock_required?: number | null }): ItemCandidate {
+/** 개체 선택 시트 행의 입력으로 변환한다. 잠긴 개체는 일련번호·만료일을 넘기지 않고 필요한 포인트만 넘긴다. */
+function toCandidate(item: { id: string; serial_number: number | null; serial_prefix: string | null; expires_at: string | null; locked?: boolean; unlock_points_required?: number | null }): ItemCandidate {
   if (item.locked === true) {
-    return { id: item.id, serial_number: 0, serial_prefix: null, expires_at: null, locked: true, unlock_required: item.unlock_required ?? null }
+    return { id: item.id, serial_number: 0, serial_prefix: null, expires_at: null, locked: true, unlock_points_required: item.unlock_points_required ?? null }
   }
   // 마이그레이션 이전 완료된 과거 드랍 등 원본 개체 연결이 소급되지 않은 극히 드문 레거시 데이터만 serial_number가 null일 수 있다.
   // ItemCandidate 셰이프는 number를 요구하므로 0으로 안전하게 폴백한다.
@@ -198,12 +194,6 @@ const INITIAL_WINDOW_SIZE = 3
 const WINDOW_STEP = 3
 
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
-
-/** 잠긴 개체 드랍 확인 단계가 그리는 사라질 양 상태 — 값은 서버(`drop-loss`)가 정하고 화면은 다시 계산하지 않는다 */
-interface DropLossView {
-  status: 'loading' | 'error' | 'ready'
-  lostFill: number
-}
 
 interface PoiCarouselModalProps {
   /** 반경 내 전체 POI 목록(정렬 순서는 무관 — 내부에서 거리순으로 재정렬한다) */
@@ -422,57 +412,11 @@ export default function PoiCarouselModal({
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [inventoryLoading, setInventoryLoading] = useState(false)
   const [pendingDropItem, setPendingDropItem] = useState<PendingDropItem | null>(null)
-  /**
-   * 잠긴 개체 드랍 확인 단계가 서버에서 읽은 사라질 양(티켓 20261018_1817). 어느 개체의 값인지 `id`를 함께 들고, 지금 확인 중인 개체와
-   * 다르면 «조회 중»으로 본다 — 개체를 바꿀 때 effect에서 상태를 비우지 않고 파생한다. 화면은 이 값을 다시 계산하지 않는다.
-   */
-  const [lossResult, setLossResult] = useState<{ id: string; status: 'ready' | 'error'; lostFill: number } | null>(null)
-  /** [다시 확인]을 누를 때마다 올려 조회 effect를 다시 돌린다 */
-  const [lossRetry, setLossRetry] = useState(0)
   const [dropping, setDropping] = useState(false)
   /** 그룹(같은 배지)의 개체가 2개 이상일 때 여는 개체 선택 시트의 대상 — 20260908_0040. */
   const [dropCandidateGroup, setDropCandidateGroup] = useState<DropGroup | null>(null)
   /** 픽업 목록 그룹(같은 배지를 여러 명이 드랍)의 개체 선택 시트 대상 — 20260908_0223. */
   const [pickupCandidateGroup, setPickupCandidateGroup] = useState<PickupGroup | null>(null)
-
-  // 잠긴 개체를 드랍 확인 단계로 가져오면 사라질 양을 읽는다. 열린 개체와 demoMode(잠긴 개체가 없다)는 읽지 않는다.
-  // setState는 응답 뒤 콜백에서만 부른다(react-hooks/set-state-in-effect). 개체를 바꾸거나 닫으면 늦게 온 응답은 버린다.
-  const pendingLockedId = pendingDropItem?.locked === true ? pendingDropItem.id : null
-  useEffect(() => {
-    if (!pendingLockedId || demoMode) return
-    let cancelled = false
-    const id = pendingLockedId
-    fetch(`/api/inventory/items/${id}/drop-loss`)
-      .then(async (res) => {
-        const json = (await res.json()) as Partial<DropLossPayload>
-        if (!res.ok || typeof json.lostFill !== 'number' || !Number.isFinite(json.lostFill)) throw new Error('drop-loss')
-        return json.lostFill
-      })
-      .then((lostFill) => {
-        if (!cancelled) setLossResult({ id, status: 'ready', lostFill })
-      })
-      .catch(() => {
-        if (!cancelled) setLossResult({ id, status: 'error', lostFill: 0 })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [pendingLockedId, demoMode, lossRetry])
-
-  /** 카드에 보일 사라질 양 상태 — 잠긴 개체가 아니면 null이다. 읽기 전·읽는 중은 `loading`이다. */
-  const dropLoss: DropLossView | null =
-    pendingDropItem?.locked !== true
-      ? null
-      : demoMode
-        ? { status: 'ready', lostFill: 0 }
-        : lossResult && lossResult.id === pendingDropItem.id
-          ? lossResult
-          : { status: 'loading', lostFill: 0 }
-
-  function retryDropLoss() {
-    setLossResult(null)
-    setLossRetry((n) => n + 1)
-  }
 
   // 카드가 바뀌면 이전 카드에서 진행 중이던 드랍 플로우를 초기화한다.
   // react.dev의 "prop 변경 시 렌더 중 state 조정" 패턴 — effect 없이 렌더 중
@@ -515,7 +459,6 @@ export default function PoiCarouselModal({
    */
   function handleSelectDropGroup(group: DropGroup) {
     if (group.items.length === 1) {
-      setLossResult(null)
       setPendingDropItem(toGridItem(group.items[0]))
       return
     }
@@ -524,15 +467,12 @@ export default function PoiCarouselModal({
 
   /** 개체 선택 시트에서 하나를 골랐을 때 — 기존 드랍 확인 단계로 넘기고 시트를 닫는다. */
   function handleSelectDropCandidate(item: InventoryItem) {
-    setLossResult(null)
     setPendingDropItem(toGridItem(item))
     setDropCandidateGroup(null)
   }
 
   async function executeDrop() {
     if (!activePoi || !pendingDropItem) return
-    // 잠긴 개체는 사라질 양을 읽어 보여 주기 전에는 드랍하지 않는다. 읽지 못했으면 막는다(티켓 20261018_1817).
-    if (dropLoss && dropLoss.status !== 'ready') return
     setDropping(true)
     // 20260927_2128: drop 연출은 실제 /api/drops POST·GA·재조회·onDropOrPickupSuccess를
     // 건너뛰고 onDropOverride만 호출한다. 실패(false)면 확인 단계를 그대로 유지한다(콜백이
@@ -805,8 +745,6 @@ export default function PoiCarouselModal({
                 showInventory={isActive && showInventory}
                 inventoryLoading={inventoryLoading}
                 pendingDropItem={isActive ? pendingDropItem : null}
-                dropLoss={isActive ? dropLoss : null}
-                onRetryDropLoss={isActive ? retryDropLoss : undefined}
                 dropping={dropping}
                 dropGridItems={dropGridItems}
                 onOpenInventory={isActive ? openInventory : undefined}
@@ -903,10 +841,6 @@ interface PoiCardProps {
   showInventory: boolean
   inventoryLoading: boolean
   pendingDropItem: PendingDropItem | null
-  /** 잠긴 개체 드랍 확인 단계의 사라질 양 상태. 잠긴 개체가 아니면 null이다 */
-  dropLoss: DropLossView | null
-  /** 사라질 양을 읽지 못했을 때 [다시 확인] */
-  onRetryDropLoss?: () => void
   dropping: boolean
   dropGridItems: DropGridItem[]
   onOpenInventory?: () => void
@@ -934,8 +868,6 @@ export function PoiCard({
   showInventory,
   inventoryLoading,
   pendingDropItem,
-  dropLoss,
-  onRetryDropLoss,
   dropping,
   dropGridItems,
   onOpenInventory,
@@ -1015,27 +947,6 @@ export function PoiCard({
             <p className="text-base text-center whitespace-pre-line">
               {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
             </p>
-            {/* 사라질 양 — 잠긴 개체만. 읽는 중에는 한 줄 Skeleton, 읽지 못하면 안내와 [다시 확인], 채운 양이 있을 때만 «사라져요» 블록. */}
-            {dropLoss?.status === 'loading' && (
-              <div role="status" aria-label={d.drops.dropLossChecking} className="w-full">
-                <Skeleton height={24} borderRadius="var(--radius-full)" />
-              </div>
-            )}
-            {dropLoss?.status === 'error' && (
-              <InlineNotice
-                className="w-full"
-                action={
-                  <Button variant="secondary" surface="main" fullWidth onClick={onRetryDropLoss}>
-                    {d.drops.dropLossRetry}
-                  </Button>
-                }
-              >
-                {d.drops.dropLossFailed}
-              </InlineNotice>
-            )}
-            {dropLoss?.status === 'ready' && dropLoss.lostFill > 0 && (
-              <InlineNotice className="w-full">{dropLossText(dropLoss.lostFill)}</InlineNotice>
-            )}
             <div className="flex gap-2 w-full">
               <Button fullWidth variant="secondary" surface="main" onClick={onCancelPending} disabled={dropping}>
                 {d.drops.cancel}
@@ -1045,12 +956,12 @@ export function PoiCard({
                   실제 버튼 반경과 일치한다. */}
               {questPulseStep === 'drop' ? (
                 <div className="w-full rounded-full jam-quest-pulse">
-                  <Button fullWidth surface="main" loading={dropping} disabled={dropLoss != null && dropLoss.status !== 'ready'} onClick={onConfirmDrop}>
+                  <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
                     {d.drops.dropButton}
                   </Button>
                 </div>
               ) : (
-                <Button fullWidth surface="main" loading={dropping} disabled={dropLoss != null && dropLoss.status !== 'ready'} onClick={onConfirmDrop}>
+                <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
                   {d.drops.dropButton}
                 </Button>
               )}

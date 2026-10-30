@@ -115,13 +115,12 @@ interface MixResultBadge {
   name: string
   rarity?: RevealBadge['rarity']
   locked?: boolean
-  unlockRequired?: number
 }
 
 /**
  * 순수 변환 — 믹스 응답의 결과 배지를 결과 캐러셀 항목으로 바꾼다. 열린 결과는 이미 로드해 둔 보상 배지 상세에서 찾고(API는
- * id·name·rarity만 준다), 잠긴 결과는 id가 비어 있어 상세를 찾을 수 없으므로 등급과(응답에 있으면) 필요한 양만 싣는다.
- * 잠긴 항목의 id는 캐러셀 키 용도의 합성 값이다. 필요한 양이 응답에 없으면 싣지 않는다 — 추측해 채우지 않는다(티켓 20261018_0055 2회).
+ * id·name·rarity만 준다), 잠긴 결과는 id가 비어 있어 상세를 찾을 수 없으므로 등급만 싣는다.
+ * 잠긴 항목의 id는 캐러셀 키 용도의 합성 값이다. 여는 데 드는 포인트는 싣지 않는다(티켓 20261028_1741 2회).
  */
 export function toMixRevealBadges(resultBadges: MixResultBadge[], rewardBadges: BadgeDetail[]): RevealBadge[] {
   return resultBadges.map((b, index): RevealBadge => {
@@ -132,7 +131,6 @@ export function toMixRevealBadges(resultBadges: MixResultBadge[], rewardBadges: 
         description: '',
         rarity: b.rarity,
         locked: true,
-        ...(typeof b.unlockRequired === 'number' ? { unlockRequired: b.unlockRequired } : {}),
       }
     }
     const detail = rewardBadges.find((rb) => rb.id === b.id)
@@ -169,7 +167,6 @@ export function toPendingRevealBadges(items: PendingResultView[]): RevealBadge[]
         description: '',
         rarity,
         locked: true,
-        ...(typeof item.unlockRequired === 'number' && item.unlockRequired > 0 ? { unlockRequired: item.unlockRequired } : {}),
       }
     }
     return { id: item.badgeId, name: item.name, description: '', imageUrl: item.imageUrl, rarity }

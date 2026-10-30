@@ -85,14 +85,15 @@ describe('InventoryGrid 잠긴 개체 (티켓 20261018_0054 2회)', () => {
     badgeImageUrl: null,
     badgeRarity: 'rare',
     locked: true,
-    fillPercent: 40,
   }
 
-  it('잠긴 개체는 가린 이름과 /inventory/[id] 링크로 그려지고 게이지 비율만 싣는다', () => {
+  it('잠긴 개체는 가린 이름과 /inventory/[id] 링크, 등급 칩으로 그려지고 게이지는 없다', () => {
     const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM, LOCKED_ITEM]} mode="navigate" />)
     expect(html).toContain(`href="/inventory/${LOCKED_ITEM.id}"`)
     expect(html).toContain('잠긴 아이템 배지')
-    expect(html).toContain('--ds-progress-fill:40%')
+    expect(html).toContain('Rare')
+    expect(html).not.toContain('--ds-progress-fill')
+    expect(html).not.toContain('role="progressbar"')
     // 일반 카드는 그대로다
     expect(html).toContain(REAL_ITEM.badgeName)
   })
@@ -111,7 +112,7 @@ describe('InventoryGrid 잠긴 개체 (티켓 20261018_0054 2회)', () => {
     expect(html).toContain('<button')
   })
 
-  it('locked가 없는 항목에는 게이지가 없다', () => {
+  it('locked가 없는 항목에도 게이지가 없다', () => {
     const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM]} mode="navigate" />)
     expect(html).not.toContain('--ds-progress-fill')
   })

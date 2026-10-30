@@ -37,12 +37,13 @@ export interface PickupDrop {
   serial_number: number | null
   expires_at: string | null
   /**
-   * 잠긴 개체(티켓 20261018_1817, 운영 로직 7.3절). 서버가 이름·그림·일련번호를 비우고 이 값과 등급, 필요한 양만 싣는다.
+   * 잠긴 개체(티켓 20261018_1817, 운영 로직 7.3절). 서버가 이름·그림·일련번호를 비우고 이 값과 등급만 싣는다.
    * 열린 개체에는 이 키가 없다(옛 응답 모양과 같다). 잠긴 개체는 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그린다.
+   * 여는 데 드는 포인트는 이 시트에서 보이지 않는다(티켓 20261028_1741 2회). 줍고 나서 잠긴 상세에서 본다.
    */
   locked?: boolean
-  /** 잠긴 개체가 열리는 데 필요한 잼. 필요한 양이 없는 비정상 응답이면 필요한 양 줄을 생략한다 */
-  unlock_required?: number | null
+  /** 같은 응답이 싣는 여는 데 필요한 포인트 — 이 시트는 그리지 않고 개체 선택 시트 행(`ItemCandidateRow`)만 구분 값으로 쓴다 */
+  unlock_points_required?: number | null
 }
 
 interface BadgeDetailSheetProps {
@@ -77,7 +78,6 @@ export default function BadgeDetailSheet({
   pickupDisabled = false,
 }: BadgeDetailSheetProps) {
   const locked = drop.locked === true
-  const hasRequired = Number.isFinite(drop.unlock_required) && (drop.unlock_required ?? 0) > 0
   const rarity = (KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
     ? (drop.badge_rarity as BadgeRarity)
     : 'common')
@@ -224,15 +224,10 @@ export default function BadgeDetailSheet({
               <ItemSerialCode code={drop.serial} height={40} />
             </div>
           )}
-          {/* 잠긴 개체: 일련번호 대신 필요한 양 한 줄과 픽업한 뒤의 일 한 줄. 필요한 양이 없는 비정상 응답이면 첫 줄을 생략한다. */}
+          {/* 잠긴 개체: 일련번호가 있던 자리에 픽업한 뒤의 일 한 줄 */}
           {locked && (
-            <div className="mt-3 pt-3 border-t border-foreground/10 flex flex-col gap-1">
-              {hasRequired && (
-                <p className="m-0 text-base text-foreground break-keep wrap-break-word text-pretty">
-                  {t(d.lockedItem.card.description, { n: drop.unlock_required as number })}
-                </p>
-              )}
-              <p className="m-0 text-sm text-muted break-keep wrap-break-word text-pretty">{d.drops.pickupLockedHint}</p>
+            <div className="mt-3 pt-3 border-t border-foreground/10">
+              <p className="m-0 text-base text-foreground break-keep wrap-break-word text-pretty">{d.drops.pickupLockedHint}</p>
             </div>
           )}
         </Card>

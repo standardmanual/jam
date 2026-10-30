@@ -140,7 +140,7 @@ describe('잠긴 개체 행과 드랍 확인 단계 (티켓 20261018_1817, 운�
       serial_number: 777,
       expires_at: '2099-01-01T00:00:00.000Z',
       locked: true,
-      unlock_required: required,
+      unlock_points_required: required,
     }
   }
 
@@ -188,8 +188,10 @@ describe('잠긴 개체 행과 드랍 확인 단계 (티켓 20261018_1817, 운�
   })
 })
 
-describe('잠긴 개체 드랍 확인 단계의 사라질 양 블록 (티켓 20261018_1817)', () => {
-  function renderConfirm(dropLoss: { status: 'loading' | 'error' | 'ready'; lostFill: number } | null, locked = true) {
+describe('잠긴 개체 드랍 확인 단계 (티켓 20261028_1741 2회)', () => {
+  // 새 흐름은 채운 양을 만들지 않으므로 잠긴 개체의 드랍 확인에는 조회·대기·안내가 없다. 저장소에 jsdom이 없어 서버 렌더로 마크업만 고정한다
+  // (조회 fetch 자체는 effect라 서버 렌더에서 돌지 않는다 — 조회 코드와 /drop-loss 경로는 파일째 없앴다).
+  function renderConfirm(locked: boolean, extra: { dropping?: boolean; questPulseStep?: 'pickup' | 'drop' } = {}) {
     return renderToStaticMarkup(
       <PoiCard
         poi={DEMO_PICKUP_POI}
@@ -199,49 +201,44 @@ describe('잠긴 개체 드랍 확인 단계의 사라질 양 블록 (티켓 202
         showInventory
         inventoryLoading={false}
         pendingDropItem={{ id: 'item-1', badgeName: locked ? d.lockedItem.card.name : '열린 배지', badgeImageUrl: null, badgeRarity: 'epic', locked }}
-        dropLoss={dropLoss}
-        dropping={false}
+        dropping={extra.dropping ?? false}
         dropGridItems={[]}
+        questPulseStep={extra.questPulseStep}
         onClose={vi.fn()}
       />
     )
   }
   const dropButtonDisabled = (html: string) => new RegExp(`<button[^>]*disabled[^>]*>(?:(?!</button>).)*${d.drops.dropButton}`).test(html)
 
-  it('조회 중에는 Skeleton이 보이고 [드랍]이 비활성이다', () => {
-    const html = renderConfirm({ status: 'loading', lostFill: 0 })
-    expect(html).toContain(d.drops.dropLossChecking)
+  it('잠긴 개체도 열리자마자 [드랍]을 누를 수 있고 대기 표시·읽기 실패·사라질 양 안내가 없다', () => {
+    const html = renderConfirm(true)
+    expect(dropButtonDisabled(html)).toBe(false)
+    expect(html).not.toContain('role="status"')
+    expect(html).not.toContain('채운 잼')
     expect(html).not.toContain('사라져요')
-    expect(dropButtonDisabled(html)).toBe(true)
+    expect(html).not.toContain('다시 확인')
+    expect(html).not.toContain('잼')
   })
 
-  it('읽지 못하면 안내와 [다시 확인]이 보이고 [드랍]이 비활성이다', () => {
-    const html = renderConfirm({ status: 'error', lostFill: 0 })
-    expect(html).toContain(d.drops.dropLossFailed)
-    expect(html).toContain(d.drops.dropLossRetry)
-    expect(dropButtonDisabled(html)).toBe(true)
+  it('보이는 것은 잠금 타일, 확인 문구, [취소]와 [드랍]뿐이고 확인 문구와 버튼 사이에 다른 블록이 끼지 않는다', () => {
+    const html = renderConfirm(true)
+    expect(html).toContain('그래도 드랍할까요?')
+    expect(html).toContain(d.drops.cancel)
+    expect(html).toContain(d.drops.dropButton)
+    const start = html.indexOf('그래도 드랍할까요?')
+    const between = html.slice(start, html.indexOf('<button', start))
+    expect(between).not.toContain('role="status"')
+    // 문구 끝(</p>) 바로 뒤에 버튼 행이 온다
+    expect(between).toBe('그래도 드랍할까요?</p><div class="flex gap-2 w-full">')
   })
 
-  it('채운 양이 있으면 «사라져요» 블록이 보이고 [드랍]을 누를 수 있다', () => {
-    const html = renderConfirm({ status: 'ready', lostFill: 3 })
-    expect(html).toContain('채운 잼 3은 사라져요. 돌려받을 수 없어요.')
+  it('열린 개체의 확인 단계도 같다(회귀 방지)', () => {
+    const html = renderConfirm(false)
     expect(dropButtonDisabled(html)).toBe(false)
   })
 
-  it('채운 양이 0이면 블록이 없다', () => {
-    const html = renderConfirm({ status: 'ready', lostFill: 0 })
-    expect(html).not.toContain('사라져요')
-    expect(dropButtonDisabled(html)).toBe(false)
-  })
-
-  it('열린 개체의 확인 단계에는 사라질 양 상태가 없고 [드랍]을 누를 수 있다', () => {
-    const html = renderConfirm(null, false)
-    expect(html).not.toContain(d.drops.dropLossChecking)
-    expect(dropButtonDisabled(html)).toBe(false)
-  })
-
-  it('잠긴 개체의 확인 단계에는 이름 자리에 «잠긴 아이템 배지»뿐이다', () => {
-    const html = renderConfirm({ status: 'ready', lostFill: 1 })
-    expect(html).toContain(d.lockedItem.card.name)
+  it('드랍 중에는 [드랍]이 loading 상태다', () => {
+    const html = renderConfirm(true, { dropping: true })
+    expect(html).toContain(d.drops.dropButton)
   })
 })
