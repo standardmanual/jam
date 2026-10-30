@@ -18,6 +18,7 @@ import { d, t } from '@/lib/i18n'
  * 캡슐 위젯 — 홈과 내 프로필이 같이 쓰는 클라이언트 컴포넌트 (티켓 20261028_1739 2회, 채원 사전 판정 2026-10-30)
  *
  * 서버가 준 초기값(`initial`)이 있으면 로딩 없이 바로 그리고, 없거나 조회가 실패하면 `GET /api/capsule`로 가져온다.
+ * `router.refresh()`로 새 초기값이 내려오면 상태가 그 값을 따라간다(동기화 직후 합친 연출을 닫은 게이지가 최신 값까지 차도록).
  * 위에서 아래로 `[게이지][안내 영역(조건부)]`이고 시트는 없다. 게이지를 눌러도 아무 일도 없다.
  *  - 로딩: MODULAR `Skeleton`(높이 72). 오류: 상자 자체가 «다시 시도» 버튼이다.
  *  - 안내 영역: 서버가 정해 준 `notice`로 간결 문구를 고른다(서비스 `InlineNotice`). 화면은 개수나 단계로 다시 따지지 않는다.
@@ -74,6 +75,17 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
   const [load, setLoad] = useState<'ready' | 'loading' | 'error'>(initial ? 'ready' : 'loading')
   const [claiming, setClaiming] = useState(false)
   const [reveal, setReveal] = useState<RevealState>(CLOSED_REVEAL)
+
+  // 동기화 뒤 `router.refresh()`로 서버가 새 초기값을 내려주면 그 값을 따라간다. 그러지 않으면 합친 연출을 닫을 때
+  // 게이지가 동기화 이전 값까지만 찬다. 렌더 중에 상태를 맞추는 방식이라 새 값이 첫 그리기에 바로 반영된다
+  const [followedInitial, setFollowedInitial] = useState(initial)
+  if (initial !== followedInitial) {
+    setFollowedInitial(initial)
+    if (initial) {
+      setCapsule(initial)
+      setLoad('ready')
+    }
+  }
 
   // 서버 초기값이 없을 때만 마운트 직후 한 번 가져온다
   useEffect(() => {
