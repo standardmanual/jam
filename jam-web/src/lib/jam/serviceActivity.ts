@@ -30,7 +30,6 @@ import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { jamTriggersForCapsuleOpen, jamTriggersForServiceJam } from '@/lib/badge-engine/jamActionProgressTriggers'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
-import type { ChapterScoreKind } from '@/lib/chapter/kinds'
 import { logEngineDecision } from '@/lib/engine-log'
 
 /** `service_jam_rules.activity_kind`와 같은 값 7종 */
@@ -45,27 +44,6 @@ export const SERVICE_JAM_KINDS = [
 ] as const
 
 export type ServiceJamKind = (typeof SERVICE_JAM_KINDS)[number]
-
-/**
- * 챕터 점수 종류 → 서비스 활동 종류. 컬렉션 완성은 등급과 관계없이 한 종류로 모은다.
- * 잼을 주지 않는 `jam_earned`·`capsule_open`은 표에 없다(대상 아님 → null). 종류를 더하면 이 표와 시험(`serviceActivity.test.ts`의 12종 점검)을 함께 고친다.
- */
-const SERVICE_KIND_BY_CHAPTER_KIND: Partial<Record<ChapterScoreKind, ServiceJamKind>> = {
-  locked_item_badge_open: 'locked_unlock',
-  badge_receive: 'badge_earned',
-  mix_success: 'combine_success',
-  mission_complete: 'mission_complete',
-  collection_complete_common: 'collection_complete',
-  collection_complete_rare: 'collection_complete',
-  collection_complete_epic: 'collection_complete',
-  collection_complete_mystic: 'collection_complete',
-  drop: 'drop',
-  pickup: 'pickup',
-}
-
-export function serviceJamKindOf(kind: ChapterScoreKind): ServiceJamKind | null {
-  return SERVICE_KIND_BY_CHAPTER_KIND[kind] ?? null
-}
 
 /** 이벤트 키: `<서비스 kind>:<기존 원천 id>`. 원천 id가 비면 같은 키로 모이므로 던진다(호출부 버그다) */
 export function serviceActivityEventKey(kind: ServiceJamKind, sourceId: string): string {

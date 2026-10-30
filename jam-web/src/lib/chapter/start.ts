@@ -21,7 +21,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logEngineDecision } from '@/lib/engine-log'
 import { processChapterRise } from './rise'
-import { toScoreRow } from './score'
+
+/** `chapter_start`가 돌려주는 표 모양 */
+interface ChapterStartRow {
+  score_added: number
+  current_chapter: number | null
+  reached_chapters: number[]
+}
+
+function toStartRow(data: unknown): ChapterStartRow | null {
+  const row: unknown = Array.isArray(data) ? data[0] : null
+  if (typeof row !== 'object' || row === null) return null
+  const r = row as Record<string, unknown>
+  if (typeof r.score_added !== 'number') return null
+  if (r.current_chapter !== null && typeof r.current_chapter !== 'number') return null
+  if (!Array.isArray(r.reached_chapters) || !r.reached_chapters.every((n) => typeof n === 'number')) return null
+  return { score_added: r.score_added, current_chapter: r.current_chapter, reached_chapters: r.reached_chapters as number[] }
+}
 
 export type StartChapterResult =
   | {
@@ -51,8 +67,8 @@ export async function startChapter(supabase: SupabaseClient, userId: string): Pr
       await recordStartFailure(userId, `chapter_start RPC 오류: ${error.message ?? String(error)}`)
       return { ok: false }
     }
-    // chapter_start는 chapter_add_score와 같은 표 모양을 돌려준다. 시작한 뒤에는 챕터가 비어 있을 수 없다
-    const row = toScoreRow(data)
+    // 시작한 뒤에는 챕터가 비어 있을 수 없다
+    const row = toStartRow(data)
     if (!row || row.current_chapter === null) {
       await recordStartFailure(userId, 'chapter_start가 해석할 수 없는 응답을 돌려줬다')
       return { ok: false }

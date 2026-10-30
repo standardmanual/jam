@@ -1,8 +1,8 @@
 /**
  * lib/chapter/rise — 순환 import 없음 (티켓 20261019_1316)
  *
- * 점수 함수(`score.ts`)가 오름 처리(`rise.ts`)를 가져오고, 오름 처리는 챕터 배지 판정 래퍼(`jamActionRoute`)를 쓴다. 래퍼는 `strava/sync.ts`를 가져오고
- * `sync.ts`는 잼 정산(`settlement.ts`)을 거쳐 다시 `score.ts`로 이어진다. `rise.ts`가 래퍼를 호출 시점에 `await import()`로 불러서 모듈 평가 시점의
+ * 챕터 시작(`start.ts`)이 오름 처리(`rise.ts`)를 가져오고, 오름 처리는 챕터 배지 판정 래퍼(`jamActionRoute`)를 쓴다. 래퍼는 `strava/sync.ts`를 가져오고
+ * `sync.ts`는 퀘스트 완료 처리를 거쳐 챕터 시작(`start.ts`)으로 이어진다(옛 점수 모듈 `score.ts`는 티켓 20261028_1742 2회에서 걷었다). `rise.ts`가 래퍼를 호출 시점에 `await import()`로 불러서 모듈 평가 시점의
  * 순환이 없다. 이 시험은 실제 모듈을 두 순서로 불러 어느 쪽도 비어 있는(undefined) 내보내기를 만나지 않는지, 오름 처리가 실제 래퍼 모듈을 불러오는지 본다.
  * 소스의 정적 import 순환 자체는 이 시험이 아니라 작업 중 import 그래프 검사기(타입 import·동적 import 제외)로 확인했다 — 순환 묶음 0개.
  *
@@ -29,28 +29,28 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-describe('score → rise → jamActionRoute → sync → settlement → score', () => {
-  it('점수 쪽에서 먼저 불러도 모든 내보내기가 함수로 채워져 있다', async () => {
-    const score = await import('../score')
+describe('start → rise → jamActionRoute → sync → 퀘스트 완료 → start', () => {
+  it('챕터 시작 쪽에서 먼저 불러도 모든 내보내기가 함수로 채워져 있다', async () => {
+    const start = await import('../start')
     const rise = await import('../rise')
     const route = await import('@/lib/badge-engine/jamActionRoute')
     const settlement = await import('@/lib/jam/settlement')
 
-    expect(typeof score.awardChapterScore).toBe('function')
+    expect(typeof start.startChapter).toBe('function')
     expect(typeof rise.processChapterRise).toBe('function')
     expect(typeof route.runJamActionEvaluation).toBe('function')
     expect(typeof settlement.settleActivities).toBe('function')
   })
 
-  it('판정 래퍼 쪽에서 먼저 불러도(동기화가 점수를 먼저 가져오는 순서) 모든 내보내기가 채워져 있다', async () => {
+  it('판정 래퍼 쪽에서 먼저 불러도(동기화가 챕터 시작을 먼저 가져오는 순서) 모든 내보내기가 채워져 있다', async () => {
     const route = await import('@/lib/badge-engine/jamActionRoute')
     const settlement = await import('@/lib/jam/settlement')
-    const score = await import('../score')
+    const start = await import('../start')
     const rise = await import('../rise')
 
     expect(typeof route.runJamActionEvaluation).toBe('function')
     expect(typeof settlement.settleActivities).toBe('function')
-    expect(typeof score.awardChapterScore).toBe('function')
+    expect(typeof start.startChapter).toBe('function')
     expect(typeof rise.processChapterRise).toBe('function')
   })
 

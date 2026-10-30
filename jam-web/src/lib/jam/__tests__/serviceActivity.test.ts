@@ -2,8 +2,7 @@
  * lib/jam/serviceActivity — 서비스 활동 잼 지급과 지급 즉시 채움 (티켓 20261028_1735 2회)
  *
  * 고정하는 것:
- * - 매핑: 챕터 점수 종류 12종 → 서비스 활동 종류. 컬렉션 완성 4등급은 `collection_complete` 하나로 모이고, `jam_earned`·`capsule_open`은 대상이 아니다(null).
- *   서비스 활동 종류 7종은 마이그레이션 300의 `service_jam_rules` CHECK와 같다.
+ * - 서비스 활동 종류 7종은 마이그레이션 300의 `service_jam_rules` CHECK와 같다.
  * - 이벤트 키는 `<서비스 kind>:<기존 원천 id>`다. 원천 id가 비면 던진다.
  * - RPC 인자는 `{ p_user_id, p_kind, p_event_key }`뿐이다.
  * - 지급(granted > 0, duplicate 아님)일 때만 곧바로 자동 채움(`runSyncCapsuleAutoFill`)을 잇는다. 일부 지급(capped)도 채운다.
@@ -22,7 +21,6 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { CHAPTER_SCORE_KINDS } from '@/lib/chapter/kinds'
 
 const { logMock, autoFillMock, evaluationMock, afterMock } = vi.hoisted(() => ({
   logMock: vi.fn(),
@@ -40,7 +38,6 @@ import {
   SERVICE_JAM_KINDS,
   awardServiceJam,
   serviceActivityEventKey,
-  serviceJamKindOf,
   type ServiceJamKind,
 } from '../serviceActivity'
 
@@ -76,32 +73,7 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-describe('매핑과 이벤트 키', () => {
-  it('챕터 점수 종류 → 서비스 활동 종류, 컬렉션 완성 4등급은 하나로 모인다', () => {
-    expect(serviceJamKindOf('locked_item_badge_open')).toBe('locked_unlock')
-    expect(serviceJamKindOf('badge_receive')).toBe('badge_earned')
-    expect(serviceJamKindOf('mix_success')).toBe('combine_success')
-    expect(serviceJamKindOf('mission_complete')).toBe('mission_complete')
-    for (const kind of ['collection_complete_common', 'collection_complete_rare', 'collection_complete_epic', 'collection_complete_mystic'] as const) {
-      expect(serviceJamKindOf(kind)).toBe('collection_complete')
-    }
-    expect(serviceJamKindOf('drop')).toBe('drop')
-    expect(serviceJamKindOf('pickup')).toBe('pickup')
-  })
-
-  it('모은 잼(jam_earned)·캡슐 열기(capsule_open)는 대상이 아니다(null)', () => {
-    expect(serviceJamKindOf('jam_earned')).toBeNull()
-    expect(serviceJamKindOf('capsule_open')).toBeNull()
-  })
-
-  it('챕터 점수 종류 12종 모두에 답이 있고, 나온 서비스 활동 종류는 7종 안이다', () => {
-    const mapped = CHAPTER_SCORE_KINDS.map((kind) => serviceJamKindOf(kind))
-    expect(mapped.filter((k) => k === null)).toHaveLength(2)
-    for (const kind of mapped) if (kind !== null) expect(SERVICE_JAM_KINDS).toContain(kind)
-    // 서비스 활동 종류 7종이 매핑에서 빠짐없이 나온다
-    expect(new Set(mapped.filter((k) => k !== null))).toEqual(new Set(SERVICE_JAM_KINDS))
-  })
-
+describe('종류와 이벤트 키', () => {
   it('서비스 활동 종류 7종은 마이그레이션 300의 service_jam_rules CHECK와 같다', () => {
     const migration = readFileSync(path.resolve(__dirname, '../../../../supabase/migrations/300_capsule_auto_fill_expand.sql'), 'utf8')
     const start = migration.indexOf('CREATE TABLE IF NOT EXISTS public.service_jam_rules')

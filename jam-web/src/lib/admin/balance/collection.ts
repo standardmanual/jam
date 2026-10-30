@@ -9,7 +9,7 @@
  *   - `tier_up_probability`: 등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률(마이그레이션 287, 티켓 20261023_1648 4회, 운영 로직 8.4절). 한 칸이고 재료 등급마다 따로 두지 않는다.
  *
  * 옛 «믹스 정책» 화면(`/admin/combine-policy`)을 이 구역으로 옮겼다. 확률 안내 페이지가 읽는 칸은 `tier_up_probability` 하나라(`COMBINE_COLUMNS`) 그 칸만 `affectsDisclosure`가 `true`이고
- * 저장 전에 확률 안내 확인창이 뜬다. 나머지 칸은 `false`다(가정 차). 「챕터 점수」(`chapter_score_rules.collection_complete_*`)와 이 구역의 「포인트」는 값이 같아도 다른 설정이다.
+ * 저장 전에 확률 안내 확인창이 뜬다. 나머지 칸은 `false`다(가정 차).
  *
  * **윗등급 확률은 화면에서 퍼센트(0~100, 소수 첫째 자리), DB에서 0~1이다.** 읽을 때 ×100, 쓸 때 ÷100으로 바꾸고(`fields.ts`의 `fractionToPercent`·`percentToFraction`) 이력 값도 화면 단위인 퍼센트로 남는다.
  * `combine_policy`는 한 행이라 두 칸을 함께 바꿔도 **한 번의 조건부 갱신**이다(수정 시각을 한 번만 올리므로 칸마다 따로 갱신하면 두 번째가 충돌한다).

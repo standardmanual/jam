@@ -22,8 +22,8 @@ import type { JamActionTrigger } from './jamActionBadges'
  * 보조 키(`signup_recent_active_days`·`active_week_min_days`·`jam_week_min_earned`)는 트리거가 아니라 짝 지표 배지를 거르거나 정하는 조건이라 넣지 않는다.
  *
  * 잼 2종(`jam_total_earned`·`jam_weekly_earned`)은 잼 정산(`settleActivities`)이 동기화 안에서 일어나므로 정산 뒤 여기서 본다.
- * 챕터(`chapter_reached`)는 챕터가 오른 직후에도 판정한다(티켓 20261019_1316) — 점수 호출(`chapter_add_score`, `lib/chapter/score.ts`)과 챕터 1 시작(`chapter_start`,
- * `lib/chapter/start.ts`)이 오름 처리(`lib/chapter/rise.ts`)를 부르고, 오름 처리가 `runJamActionEvaluation(userId, ['chapter_reached'])`를 부른다. 동기화 안의 잼 정산에서 난
+ * 챕터(`chapter_reached`)는 챕터가 오른 직후에도 판정한다(티켓 20261019_1316) — 챕터 1 시작(`chapter_start`,
+ * `lib/chapter/start.ts`)과 자동 채움이 오름 처리(`lib/chapter/rise.ts`)를 부르고, 오름 처리가 `runJamActionEvaluation(userId, ['chapter_reached'])`를 부른다. 동기화 안의 잼 정산에서 난
  * 오름은 정산 뒤 여기서 읽으므로 오름 직후 판정을 건너뛴다(이중 판정 규칙은 `rise.ts` 머리말). 오름 직후 판정이 실패해도 이 목록의 동기화 끝 판정이 다음 동기화에서 따라잡는다(티켓 20261018_1815 결정 10).
  */
 export const JAM_SYNC_TRIGGERS: readonly JamActionTrigger[] = [

@@ -4,7 +4,7 @@
  * `jam_policy` id=1 한 행 중 **두 묶음 8칸**만 편집한다.
  * - «여는 포인트»(`locked_points_*`, 포인트): 잠긴 아이템 배지를 포인트로 여는 비용의 등급별 값(마이그레이션 300, 0 이상 정수, 기본 50·100·200·400). 읽는 곳은 열기 DB 함수 `locked_item_open_points`·고정 트리거(마이그레이션 304)와
  *   `lib/inventory/lockedItemFill.ts`(`getLockedItemStatus`)다. 0이면 차감 줄이 없다.
- * - «등급별 최소값»(`locked_min_*`, 잼): 옛 채우기 방식에서 여는 데 필요한 양의 등급별 최소값(마이그레이션 231, 1 이상 정수). 옛 채우기 방식이 U11까지 남아 있어 지우지 않는다.
+ * - «등급별 최소값»(`locked_min_*`, 잼): 옛 채우기 방식에서 여는 데 필요한 양의 등급별 최소값(마이그레이션 231, 1 이상 정수). 옛 채우기 방식이 `20261030_0947`이 정할 때까지 남아 있어 지우지 않는다.
  *   읽는 곳은 `lib/drop-engine/lockAssignment.ts`(`minUnlockRequired`·`resolveUnlockRequired`)와 `lib/admin/badge-lock-guard.ts`다. 배지에 따로 정한 값이 있으면 그 값이 먼저다.
  * 잠길 확률(`locked_roll_probability`)은 동기화와 한 값이라 **동기화 구역에서 편집**하고 여기에는 안내만 둔다(가정 나, `LockedSection`).
  *

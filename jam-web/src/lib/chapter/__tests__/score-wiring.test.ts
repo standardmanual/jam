@@ -2,16 +2,15 @@
  * 서비스 활동 잼 연결 종합 시험 (티켓 20261028_1735 3회 — 최종 형태. 이전: 챕터 점수 연결 종합 시험, 티켓 20261019_1315 3회, 운영 로직 12.2절)
  *
  * 서비스 활동 7종(잠긴 아이템 배지 열기·배지 받기·믹스 성공·미션 완료·컬렉션 완성·드랍·픽업)은 모두 `awardServiceJam`(`lib/jam/serviceActivity.ts`)으로
- * `jam_apply_service_activity`를 부른다. 옛 점수 장부(`awardChapterScore` → `chapter_add_score`)는 쓰기를 멈췄고 호출부도 없다(함수·표·`score.ts` 삭제는 후속 회차).
+ * `jam_apply_service_activity`를 부른다. 옛 점수 장부(`awardChapterScore` → `chapter_add_score`)는 쓰기를 멈췄고 코드(`score.ts`)도 걷었다(티켓 20261028_1742 2회, DB 함수·표 삭제는 3회).
  * 이 시험은 호출 지점들이 서로 다른 키를 쓰고, 같은 일에 한 번씩만 부르는가(키 충돌과 이중 호출 없음)를 한곳에서 고정한다.
  *
  * 구성
  *  1) 호출 지점 목록(소스 검색)
- *     - `chapter_add_score`를 부르는 파일은 `lib/chapter/score.ts` 하나이고, `awardChapterScore`를 부르는 곳은 없다(옛 캡슐 열기의 비집계 경로를 티켓 20261028_1742 1회에서 걷었다).
+ *     - `chapter_add_score`를 부르는 파일과 `awardChapterScore`를 부르는 곳은 없다(옛 캡슐 열기의 비집계 경로는 티켓 20261028_1742 1회, 점수 모듈은 2회에서 걷었다).
  *       `openCapsule`을 부르는 곳은 동기화 자동 채움 하나이고 RPC는 `capsule_open_counted`뿐이다.
  *     - `awardServiceJam`을 부르는 파일·횟수와 서비스 활동 종류 리터럴이 목록과 같다. 서비스 활동 종류 7종이 모두 어딘가에서 불린다. 배지 받기는 공용 함수 한 곳
  *       (`badgeReceive.ts`)과 그 공용 함수를 부르는 발급 지점 6곳 구조를 유지한다.
- *     - 점수 종류 12종은 전부 설명된다: 서비스 활동 대상 10종(컬렉션 4등급은 `collection_complete` 하나로 모여 서비스 활동 종류는 7종)과 이미 멈춘 `jam_earned`·`capsule_open`.
  *     - **드랍·픽업은 호출이 남아 있되 규칙값이 0이라 잼이 없다**: 마이그레이션 300 시드가 `drop`·`pickup`을 0으로 두고, DB 함수는 `rule_zero`로 돌려줘 지급도 캡슐 채움도 없다.
  *       밸런스 설정에서 값을 올리면 켜지고 하루·주간 상한이 막는다(반복 파밍 시험은 303 드라이런과 `serviceActivity.test.ts`의 몫이다). 호출을 남긴 것은 값만 올리면 켜지게 하려는 것이다.
  *     목록이 어긋나면 이 시험이 깨진다 — 호출 지점을 더하거나 옮긴 사람이 키 충돌·이중 호출을 한 번 더 살피게 하려는 장치다.
@@ -43,7 +42,7 @@ vi.mock('@/lib/capsule/sync-auto-fill', () => ({
 }))
 
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
-import { SERVICE_JAM_KINDS, awardServiceJam, serviceJamKindOf } from '@/lib/jam/serviceActivity'
+import { SERVICE_JAM_KINDS, awardServiceJam } from '@/lib/jam/serviceActivity'
 import { settleActivities, type JamSettleTarget } from '@/lib/jam/settlement'
 import {
   BADGE_RECEIVE_EXCLUDED_CONDITION_KEYS,
@@ -52,7 +51,6 @@ import {
   type BadgeReceiveBadge,
 } from '../badgeReceive'
 import { awardCollectionCompleteScore, awardSlotCollectionScore } from '../collection'
-import { CHAPTER_SCORE_KINDS, type ChapterScoreKind } from '../kinds'
 import { awardMixSuccessScore } from '../mix'
 
 // ---------------------------------------------------------------------------------------------
@@ -114,27 +112,6 @@ const SERVICE_JAM_SITES: Record<string, string> = {
   'lib/missions/checker.ts': 'mission_complete',
 }
 
-/** 서비스 활동 잼 대상인 점수 종류 10종 (컬렉션 완성 4등급 포함) */
-const SERVICE_JAM_SCORE_KINDS: ChapterScoreKind[] = [
-  'locked_item_badge_open',
-  'badge_receive',
-  'mix_success',
-  'mission_complete',
-  'collection_complete_common',
-  'collection_complete_rare',
-  'collection_complete_epic',
-  'collection_complete_mystic',
-  'drop',
-  'pickup',
-]
-
-/**
- * 점수표에는 있지만 서비스 활동 잼 대상이 아니고 이미 멈춘 종류 (티켓 20261028_1733 3회, 20261028_1735 3회).
- * «모은 잼»은 정산이 아니라 캡슐 횟수가 챕터를 올리고, «캡슐 열기»는 횟수와 오름을 `capsule_auto_fill`이 센다.
- * 점수표의 행과 DB 함수는 이 회차에서 그대로 둔다(삭제는 후속 회차) — 12종 목록에서 빼지 않는다.
- */
-const STOPPED_SCORE_KINDS: ChapterScoreKind[] = ['jam_earned', 'capsule_open']
-
 /** 마이그레이션 300 `service_jam_rules` 시드의 종류별 고정값 — 값을 이 시험이 따로 정하지 않는다 */
 function seededServiceAmounts(): Record<string, number> {
   const migration = readFileSync(path.resolve(SRC, '../supabase/migrations/300_capsule_auto_fill_expand.sql'), 'utf8')
@@ -149,9 +126,10 @@ function seededServiceAmounts(): Record<string, number> {
 const SEEDED_SERVICE_AMOUNTS = seededServiceAmounts()
 
 describe('호출 지점 목록 — 소스 검색', () => {
-  it('chapter_add_score RPC를 부르는 곳은 score.ts 하나다 (옛 점수 장부의 유일한 경로)', () => {
+  it('chapter_add_score RPC를 부르는 곳은 없다 (옛 점수 장부의 코드를 걷었다)', () => {
     const files = [...SOURCES].filter(([, source]) => /rpc\(\s*['"]chapter_add_score['"]/.test(source)).map(([file]) => file)
-    expect(files).toEqual(['lib/chapter/score.ts'])
+    expect(files).toEqual([])
+    expect(SOURCES.has('lib/chapter/score.ts')).toBe(false)
   })
 
   it('awardChapterScore를 부르는 곳은 없고, 서비스 활동 호출 지점은 점수 모듈을 가져오지 않는다', () => {
@@ -183,16 +161,6 @@ describe('호출 지점 목록 — 소스 검색', () => {
     const counts = new Map<string, number>()
     for (const kind of used) counts.set(kind, (counts.get(kind) ?? 0) + 1)
     expect([...counts].filter(([, n]) => n > 1)).toEqual([['combine_success', 2]])
-  })
-
-  it('점수 종류 12종은 전부 설명된다 — 서비스 활동 대상 10종(서비스 종류 7종)과 이미 멈춘 jam_earned·capsule_open', () => {
-    expect([...SERVICE_JAM_SCORE_KINDS, ...STOPPED_SCORE_KINDS].sort()).toEqual([...CHAPTER_SCORE_KINDS].sort())
-    for (const kind of SERVICE_JAM_SCORE_KINDS) {
-      const serviceKind = serviceJamKindOf(kind)
-      expect(serviceKind, kind).not.toBeNull()
-      expect(SERVICE_JAM_KINDS, kind).toContain(serviceKind)
-    }
-    for (const kind of STOPPED_SCORE_KINDS) expect(serviceJamKindOf(kind), kind).toBeNull()
   })
 
   it('드랍·픽업은 호출이 남아 있지만 규칙값 시드가 0이라 잼이 없다 (밸런스에서 값을 올리면 켜진다)', () => {

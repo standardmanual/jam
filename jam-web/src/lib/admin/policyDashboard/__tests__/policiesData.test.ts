@@ -81,7 +81,6 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(hrefOf('ch7-locked-min-requirements')).toBe('/admin/balance#locked')
     // 챕터 구역
     expect(hrefOf('ch12-score-thresholds')).toBe('/admin/balance#chapter')
-    expect(hrefOf('ch12-jam-weekly-cap')).toBe('/admin/balance#chapter')
     // 서비스 활동 잼 구역
     expect(hrefOf('ch4-service-jam')).toBe('/admin/balance#servicejam')
     expect(hrefOf('ch7-locked-open-score')).toBe('/admin/balance#servicejam')
@@ -301,9 +300,10 @@ describe('캡슐 자동 채움과 챕터 100% 횟수 항목 (티켓 20261028_173
     expect(existsSync(`${repoRoot}${card?.codeLocation}`), '합친 연출 카드의 코드 위치가 실재해야 합니다').toBe(true)
   })
 
-  it('점수 카드 두 개는 모은 잼이 더는 점수를 쌓지 않는다고 적는다', () => {
-    expect(find('ch12-jam-weekly-cap')?.currentSpec).toContain('점수에 반영되지 않음')
+  it('점수표 카드는 모든 활동이 점수를 쌓지 않는다고 적고, 활동별 점수 규칙 카드(chapter_score_rules)는 없다', () => {
     expect(find('ch12-score-thresholds')?.currentSpec).toContain('모든 활동이 점수를 쌓지 않음')
+    expect(find('ch12-jam-weekly-cap')).toBeUndefined()
+    expect(POLICIES_DATA.some((p) => p.dbTable === 'chapter_score_rules')).toBe(false)
   })
 })
 
@@ -365,12 +365,12 @@ describe('서비스 활동 잼 항목 (티켓 20261028_1735 4회)', () => {
     expect(card?.currentSpec).not.toContain('10점 가산')
   })
 
-  it('챕터 점수 카드 두 개는 모든 활동의 점수 쌓기가 멈췄고 삭제는 후속 정리라고 적는다', () => {
-    for (const id of ['ch12-score-thresholds', 'ch12-jam-weekly-cap']) {
-      expect(find(id)?.currentSpec, id).toContain('U11')
-      expect(find(id)?.ticketId, id).toBe('20261028_1735')
-    }
-    expect(find('ch12-score-thresholds')?.currentSpec).not.toContain('나머지 활동의 점수는 아직 쌓임')
+  it('챕터 점수표 카드는 활동별 점수 규칙 칸과 점수 기록 코드를 걷었다고 적는다 (티켓 20261028_1742)', () => {
+    const card = find('ch12-score-thresholds')
+    expect(card?.currentSpec).toContain('활동별 점수 규칙 칸과 점수 기록 코드는 걷었고')
+    expect(card?.currentSpec).not.toContain('U11')
+    expect(card?.ticketId).toBe('20261028_1742')
+    expect(card?.adminLink?.href).toBe('/admin/balance#chapter')
   })
 })
 
@@ -477,9 +477,9 @@ describe('잠긴 아이템 배지 여는 포인트 항목 (티켓 20261028_1737 
     }
   })
 
-  it('잼 최소값(locked_min_*)이 U11까지 옛 채우기 방식으로 남는다는 사실을 같은 카드에 적는다', () => {
+  it('잼 최소값(locked_min_*)이 20261030_0947이 정할 때까지 옛 채우기 방식으로 남는다는 사실을 같은 카드에 적는다', () => {
     const spec = find('ch7-locked-min-requirements')?.currentSpec ?? ''
-    for (const text of ['locked_min_*', 'Common 30잼', 'U11']) expect(spec, text).toContain(text)
+    for (const text of ['locked_min_*', 'Common 30잼', '20261030_0947']) expect(spec, text).toContain(text)
   })
 
   it('포인트 14장 카드는 차감 경로 두 곳과 유저가 포인트를 쓰는 곳을 적는다', () => {

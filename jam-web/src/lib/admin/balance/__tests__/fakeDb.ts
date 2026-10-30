@@ -324,42 +324,12 @@ export function combinePolicyRow(overrides: Row = {}): Row {
 }
 
 export const CHAPTER_DEFINITION_ROW_STAMP = '2026-10-22T01:20:00.5+00:00'
-export const CHAPTER_RULE_ROW_STAMP = '2026-10-22T01:22:00+00:00'
 
 const CHAPTER_DEFAULT_REQUIRED = [0, 1000, 2300, 3800, 5700, 8500, 11500, 15000, 19000, 23000]
 
 /** `chapter_definitions` 챕터 1~10 행(마이그레이션 221 시드). 행마다 수정 시각을 따로 줄 수 있다. */
 export function chapterDefinitionRows(stamp: string = CHAPTER_DEFINITION_ROW_STAMP): Row[] {
   return CHAPTER_DEFAULT_REQUIRED.map((required_score, index) => ({ chapter_no: index + 1, required_score, updated_at: stamp }))
-}
-
-const CHAPTER_RULE_SEED: ReadonlyArray<[string, number, number | null]> = [
-  ['jam_earned', 1, 300],
-  ['capsule_open', 20, null],
-  ['locked_item_badge_open', 10, null],
-  ['badge_receive', 10, null],
-  ['collection_complete_common', 100, null],
-  ['collection_complete_rare', 200, null],
-  ['collection_complete_epic', 400, null],
-  ['collection_complete_mystic', 800, null],
-  ['mix_success', 20, null],
-  ['mission_complete', 50, null],
-  ['drop', 5, null],
-  ['pickup', 5, null],
-]
-
-/**
- * `chapter_score_rules` 활동 12행(마이그레이션 221 시드). NUMERIC 칸(`points_per_unit`·`over_cap_ratio`)은 문자열로 내려오는 경우를 흉내 낸다.
- * 행마다 수정 시각을 따로 줄 수 있다.
- */
-export function chapterScoreRuleRows(stamp: string = CHAPTER_RULE_ROW_STAMP): Row[] {
-  return CHAPTER_RULE_SEED.map(([activity_kind, points, weekly_cap]) => ({
-    activity_kind,
-    points_per_unit: points.toFixed(2),
-    weekly_cap,
-    over_cap_ratio: '0.500',
-    updated_at: stamp,
-  }))
 }
 
 export const ABUSING_ROW_STAMP = '2026-10-24T01:40:00.25+00:00'

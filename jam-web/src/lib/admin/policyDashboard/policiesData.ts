@@ -702,7 +702,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '잠긴 아이템 배지 여는 포인트',
     type: 'admin_link',
     currentSpec:
-      '열 때 포인트를 내고 한 번에 엶. 기본값: Common 50pt · Rare 100pt · Epic 200pt · Mystic 400pt (locked_points_*, 0 이상 정수, 0이면 차감 줄 없음). 값은 아이템 배지가 유저에게 배정될 때 개체(inventory_items.unlock_points_required)에 고정되고 이후 설정을 바꿔도 이미 배정된 개체는 그대로이며, 고정된 값이 없는 개체는 등급별 설정값을 씀. 챕터가 아직 없는 유저의 첫 잠긴 아이템 배지는 0pt로 고정됨. 잔액이 모자라면 아무것도 바꾸지 않고 거절함 (insufficient_points, 409). 포인트 원장에는 차감 줄(locked_unlock_cost)과 아이템 배지 획득 줄(badge_point_reward)이 따로 남음. 잼을 채워 여는 옛 방식의 등급별 최소값(locked_min_*, 기본 Common 30잼 · Rare 60잼 · Epic 120잼 · Mystic 240잼)은 유저 화면(티켓 20261028_1741)이 읽지 않아 화면과 연결이 끊겼고, 같은 구역에 U11까지 남아 있음',
+      '열 때 포인트를 내고 한 번에 엶. 기본값: Common 50pt · Rare 100pt · Epic 200pt · Mystic 400pt (locked_points_*, 0 이상 정수, 0이면 차감 줄 없음). 값은 아이템 배지가 유저에게 배정될 때 개체(inventory_items.unlock_points_required)에 고정되고 이후 설정을 바꿔도 이미 배정된 개체는 그대로이며, 고정된 값이 없는 개체는 등급별 설정값을 씀. 챕터가 아직 없는 유저의 첫 잠긴 아이템 배지는 0pt로 고정됨. 잔액이 모자라면 아무것도 바꾸지 않고 거절함 (insufficient_points, 409). 포인트 원장에는 차감 줄(locked_unlock_cost)과 아이템 배지 획득 줄(badge_point_reward)이 따로 남음. 잼을 채워 여는 옛 방식의 등급별 최소값(locked_min_*, 기본 Common 30잼 · Rare 60잼 · Epic 120잼 · Mystic 240잼)은 유저 화면(티켓 20261028_1741)이 읽지 않아 화면과 연결이 끊겼고, 같은 구역에 20261030_0947이 정할 때까지 남아 있음',
     dbTable: 'jam_policy',
     dbColumn: 'locked_points_*',
     codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
@@ -1095,29 +1095,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '챕터 1~10 누적 요구 점수표',
     type: 'admin_link',
     currentSpec:
-      '기본값: 1(0) · 2(1,000) · 3(2,300) · 4(3,800) · 5(5,700) · 6(8,500) · 7(11,500) · 8(15,000) · 9(19,000) · 10(23,000점). 모든 활동이 점수를 쌓지 않음 (모은 잼·캡슐 열기가 먼저 멈추고, 나머지 활동은 서비스 활동 잼으로 바뀌며 멈춤). 챕터는 캡슐 100% 횟수로 오르고 이 점수표와 활동별 점수 칸은 후속 정리(U11)에서 지움',
+      '기본값: 1(0) · 2(1,000) · 3(2,300) · 4(3,800) · 5(5,700) · 6(8,500) · 7(11,500) · 8(15,000) · 9(19,000) · 10(23,000점). 모든 활동이 점수를 쌓지 않음 (모은 잼·캡슐 열기가 먼저 멈추고, 나머지 활동은 서비스 활동 잼으로 바뀌며 멈춤). 챕터는 캡슐 100% 횟수로 오름. 활동별 점수 규칙 칸과 점수 기록 코드는 걷었고 (DB의 점수 표·함수는 후속 정리에서 지움), 이 점수표 값은 프로필 «다음 챕터까지»와 챕터 구역이 읽음',
     dbTable: 'chapter_definitions',
     dbColumn: 'required_score',
     userExperience: '챕터 점수는 더 이상 쌓이지 않고, 챕터는 캡슐을 가득 채운 횟수로 올라요.',
     basisDoc: '운영 로직 12.2절, 12.4절',
-    ticketId: '20261028_1735',
-    adminLink: {
-      href: '/admin/balance#chapter',
-    },
-  },
-  {
-    id: 'ch12-jam-weekly-cap',
-    chapter: 12,
-    chapterTitle: '챕터',
-    title: '모은 잼 챕터 점수 주간 상한선 (300점)',
-    type: 'admin_link',
-    currentSpec:
-      '기본값: 주 300잼까지 1:1 반영, 300잼 초과분은 0.5배율로 감속 반영. 동기화의 잼 정산이 점수를 쌓지 않게 되어 지금은 이 설정이 점수에 반영되지 않음 (다른 활동의 점수도 멈춰 챕터 점수는 어디서도 쌓이지 않음. 칸 삭제는 후속 정리(U11))',
-    dbTable: 'chapter_score_rules',
-    dbColumn: 'weekly_cap',
-    userExperience: '모은 잼은 챕터 점수로 쌓이지 않아요. 잼은 캡슐을 채우는 데 쓰이고, 가득 찬 횟수가 챕터를 올려요.',
-    basisDoc: '운영 로직 12.2절',
-    ticketId: '20261028_1735',
+    ticketId: '20261028_1742',
     adminLink: {
       href: '/admin/balance#chapter',
     },
