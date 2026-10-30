@@ -65,6 +65,10 @@ const lockedDefaults = {
   locked_min_rare: DEFAULT_JAM_POLICY.locked_min_rare,
   locked_min_epic: DEFAULT_JAM_POLICY.locked_min_epic,
   locked_min_mystic: DEFAULT_JAM_POLICY.locked_min_mystic,
+  locked_points_common: DEFAULT_JAM_POLICY.locked_points_common,
+  locked_points_rare: DEFAULT_JAM_POLICY.locked_points_rare,
+  locked_points_epic: DEFAULT_JAM_POLICY.locked_points_epic,
+  locked_points_mystic: DEFAULT_JAM_POLICY.locked_points_mystic,
   locked_roll_probability: DEFAULT_JAM_POLICY.locked_roll_probability,
 }
 
@@ -91,6 +95,10 @@ describe('DEFAULT_JAM_POLICY', () => {
       locked_min_rare: 60,
       locked_min_epic: 120,
       locked_min_mystic: 240,
+      locked_points_common: 50,
+      locked_points_rare: 100,
+      locked_points_epic: 200,
+      locked_points_mystic: 400,
       locked_roll_probability: 0.25,
     })
   })
@@ -127,6 +135,10 @@ describe('getJamPolicy', () => {
           locked_min_rare: '70',
           locked_min_epic: 130,
           locked_min_mystic: 250,
+          locked_points_common: 60,
+          locked_points_rare: '110',
+          locked_points_epic: 210,
+          locked_points_mystic: 410,
           locked_roll_probability: '0.300',
           updated_at: '2026-10-17T00:00:00Z',
         },
@@ -154,6 +166,10 @@ describe('getJamPolicy', () => {
       locked_min_rare: 70,
       locked_min_epic: 130,
       locked_min_mystic: 250,
+      locked_points_common: 60,
+      locked_points_rare: 110,
+      locked_points_epic: 210,
+      locked_points_mystic: 410,
       locked_roll_probability: 0.3,
     })
     expect(errorSpy).not.toHaveBeenCalled()
@@ -206,6 +222,17 @@ describe('getJamPolicy', () => {
       })
     )
     expect(policy).toEqual({ ...DEFAULT_JAM_POLICY, locked_min_epic: 150 })
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('여는 포인트 0은 정상 값이고(포인트 없이 열림), 음수·소수는 그 칸만 기본값으로 대체한다', async () => {
+    const policy = await getJamPolicy(
+      fakeClient({
+        data: { ...DEFAULT_JAM_POLICY, locked_points_common: 0, locked_points_rare: -1, locked_points_epic: 1.5, locked_points_mystic: 500 },
+        error: null,
+      })
+    )
+    expect(policy).toEqual({ ...DEFAULT_JAM_POLICY, locked_points_common: 0, locked_points_mystic: 500 })
     expect(errorSpy).toHaveBeenCalledTimes(1)
   })
 

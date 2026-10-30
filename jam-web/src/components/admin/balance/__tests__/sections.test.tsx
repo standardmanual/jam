@@ -71,9 +71,11 @@ import { COLLECTION_REWARD_NOTICE, COMBINE_FAIL_NOTICE, COMBINE_TIER_UP_NOTICE, 
 import { INVENTORY_APPLY_NOTICE_FALLBACK, InventoryNotice, InventorySection, inventoryApplyNotice } from '../InventorySection'
 import {
   LOCKED_AMOUNT_NOTICE,
+  LOCKED_POINTS_NOTICE,
   LOCKED_ROLL_NOTICE_LINK,
   LOCKED_ROLL_NOTICE_PREFIX,
   LockedAmountNotice,
+  LockedPointsNotice,
   LockedRollNotice,
   LockedSection,
 } from '../LockedSection'
@@ -308,10 +310,15 @@ describe('BalanceSectionBody — 캡슐 구역 (2회)', () => {
 describe('BalanceSectionBody — 잠긴 아이템 배지 구역 (7-2 1회)', () => {
   const lockedHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: LOCKED_BINDING })).replace(/<!-- -->/g, '')
 
-  it('네 칸의 입력(저장된 값)과 한 묶음 제목이 보이고, 합계 줄은 없다', async () => {
+  it('여덟 칸의 입력(저장된 값)과 두 묶음 제목이 보이고, 합계 줄은 없다', async () => {
     const out = await lockedHtml()
-    expect([...out.matchAll(/<input /g)]).toHaveLength(4)
-    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['등급별 최소값'])
+    expect([...out.matchAll(/<input /g)]).toHaveLength(8)
+    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['여는 포인트', '등급별 최소값'])
+    expect(out).toMatch(/id="balance-locked-locked_points_common"[^>]*value="50"/)
+    expect(out).toMatch(/id="balance-locked-locked_points_rare"[^>]*value="100"/)
+    expect(out).toMatch(/id="balance-locked-locked_points_epic"[^>]*value="200"/)
+    expect(out).toMatch(/id="balance-locked-locked_points_mystic"[^>]*value="400"/)
+    expect(out).toContain('기본값 400포인트')
     expect(out).toMatch(/id="balance-locked-locked_min_common"[^>]*value="30"/)
     expect(out).toMatch(/id="balance-locked-locked_min_rare"[^>]*value="60"/)
     expect(out).toMatch(/id="balance-locked-locked_min_epic"[^>]*value="120"/)
@@ -350,13 +357,23 @@ describe('BalanceSectionBody — 잠긴 아이템 배지 구역 (7-2 1회)', () 
     const out = renderToStaticMarkup(<LockedAmountNotice />).replace(/<!-- -->/g, '')
     expect(LOCKED_AMOUNT_NOTICE).toContain('따로 정해 둔 경우에는 그 값이 먼저')
     expect(LOCKED_AMOUNT_NOTICE).toContain('새 최소값보다 낮은 값이 남아 있을 수 있어요')
+    expect(LOCKED_AMOUNT_NOTICE).toContain('잼을 채워 여는 옛 방식')
     expect(out).toContain(LOCKED_AMOUNT_NOTICE)
     expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
   })
 
-  it('구역 본문은 위쪽 안내, 폼 뼈대(잠긴 구역 연결), 아래쪽 안내 순서다', () => {
+  it('여는 포인트 안내는 «배정될 때 고정»과 «0이면 포인트 없이 열림»을 알리고 줄바꿈 설정이 붙는다', () => {
+    const out = renderToStaticMarkup(<LockedPointsNotice />).replace(/<!-- -->/g, '')
+    expect(LOCKED_POINTS_NOTICE).toContain('배정될 때')
+    expect(LOCKED_POINTS_NOTICE).toContain('이미 배정된 아이템 배지의 여는 포인트는 그대로')
+    expect(LOCKED_POINTS_NOTICE).toContain('0으로 두면')
+    expect(out).toContain(LOCKED_POINTS_NOTICE)
+    expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
+  })
+
+  it('구역 본문은 위쪽 안내, 폼 뼈대(잠긴 구역 연결), 여는 포인트 안내, 최소값 안내 순서다', () => {
     const children = Children.toArray(LockedSection().props.children) as ReactElement<{ binding?: unknown }>[]
-    expect(children.map((child) => child.type)).toEqual([LockedRollNotice, BalanceSectionBody, LockedAmountNotice])
+    expect(children.map((child) => child.type)).toEqual([LockedRollNotice, BalanceSectionBody, LockedPointsNotice, LockedAmountNotice])
     expect(children[1].props.binding).toBe(LOCKED_BINDING)
   })
 })
