@@ -31,14 +31,14 @@ import {
  */
 
 /** 게이지 높이(px) — 로딩 자리(Skeleton)와 오류 상자도 같은 높이를 쓴다 */
-export const CAPSULE_GAUGE_HEIGHT_PX = 72
+export const CAPSULE_GAUGE_HEIGHT_PX = 36
 /** 테두리 두께(px) */
-const BORDER_PX = 3
+const BORDER_PX = 2
 /** 테두리 안쪽에서 채움까지의 간격(px) */
-const PADDING_PX = 3
+const PADDING_PX = 2
 /** 트랙 위 점의 위치(트랙 안쪽 너비 기준 %) */
 const DOT_POSITIONS = [20, 40, 60, 80] as const
-const DOT_SIZE_PX = 5
+const DOT_SIZE_PX = 3
 /** 번개와 흰 글자 색 */
 const GAUGE_ICON = '#FFFFFF'
 /** 번개 튐 — 이 컴포넌트 전용 수치라 모션 토큰을 새로 만들지 않는다 */
@@ -189,7 +189,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
         padding: PADDING_PX,
         background: 'var(--capsule-track)',
         border: `${BORDER_PX}px solid var(--capsule-ring)`,
-        boxShadow: '0 4px 0 rgba(25, 32, 28, 0.1)',
+        boxShadow: '0 2px 0 rgba(25, 32, 28, 0.1)',
       }}
     >
       {/* 트랙 안쪽 — 점과 채움의 기준 상자 */}

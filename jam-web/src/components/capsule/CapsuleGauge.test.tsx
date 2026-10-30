@@ -63,10 +63,10 @@ describe('진입 모션의 시작 자리', () => {
     expect(html).toContain('transition:none')
   })
 
-  it('높이는 72, 원 지름은 트랙 안쪽 높이다', () => {
-    expect(CAPSULE_GAUGE_HEIGHT_PX).toBe(72)
-    expect(gaugeCircleDiameter(72)).toBe(60)
-    expect(render(0, 300)).toContain('height:72px')
+  it('높이는 36, 원 지름은 트랙 안쪽 높이다', () => {
+    expect(CAPSULE_GAUGE_HEIGHT_PX).toBe(36)
+    expect(gaugeCircleDiameter(36)).toBe(28)
+    expect(render(0, 300)).toContain('height:36px')
   })
 })
 
