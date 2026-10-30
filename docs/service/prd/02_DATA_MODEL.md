@@ -1381,7 +1381,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 한 동기화에서 자동으로 열린 캡슐이 하나라도 있으면 한 건을 쓴다. 열린 게 없으면 쓰지 않는다. 쓰는 곳은 `lib/capsule/sync-auto-fill.ts`의 `runSyncCapsuleAutoFill`이다.
 - `payload`는 `{ version: 1, events: [...] }`이다. `events`는 열린 순서 그대로이고, 하나가 캡슐 열기 하나다: `openId`, `items`(나온 개체. 잠긴 개체는 이름·그림 없이 등급과 여는 데 필요한 양), `next`(열자마자 생긴 다음 캡슐), `chapterNo`(횟수를 센 챕터, 센 게 없으면 null), `reachedChapters`(이번 열기로 오른 챕터 번호, 없으면 빈 배열), `chapterCount`(센 뒤의 횟수, 오르면 0, 센 게 없으면 null).
 - 기록을 쓰지 못해도 이미 확정된 열기를 되돌리지 않는다. 로그만 남긴다.
-- `seen_at`을 채우는 «봤어요» 처리와 화면에 내려주는 응답은 아직 없다(U8·U9).
+- 화면 쪽은 티켓 20261028_1740(U9)이 구현했다. 읽기는 `lib/capsule/unseen.ts`의 `readUnseenCapsuleResult`(`GET /api/capsule/unseen`, 앱 레이아웃은 `readUnseenCapsuleResultOrNull`)이고, `seen_at IS NULL`인 행을 오래된 순서로 최대 50건 읽어 이벤트를 하나로 합친다. 깨진 행은 건너뛴다. 챕터 배지는 합친 `reachedChapters`에 해당하는 것 가운데 유저가 이미 받은 것만 싣는다. «봤어요»(`POST /api/capsule/unseen/seen`)가 읽어 간 행의 `seen_at`을 채운다.
 
 #### capsule_pending_rewards
 인벤토리 빈칸이 모자라 보류한 캡슐 보상(표는 마이그레이션 300, 쓰는 함수는 302, 티켓 20261028_1734). `id`(uuid PK), `user_id`(`users(id)` FK, 삭제 시 CASCADE), `slot`(SMALLINT, CHECK 1·2), `chapter_no`(INTEGER, NULL이면 퀘스트 전), `fill_amount`(INTEGER, CHECK 1 이상 — 보류될 때 캡슐의 필요량), `reached_at`(100%에 닿은 시각, 기본 `now()`), `UNIQUE (user_id, slot)`. 아이템 칸이 없다: 받을 때 추첨한다. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
