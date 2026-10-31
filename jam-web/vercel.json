@@ -26,6 +26,10 @@
     {
       "path": "/api/cron/ops-stop-signals",
       "schedule": "5 * * * *"
+    },
+    {
+      "path": "/api/cron/capsule-signals",
+      "schedule": "10 0 * * *"
     }
   ]
 }
