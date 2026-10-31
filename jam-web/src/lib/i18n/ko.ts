@@ -38,6 +38,8 @@ export const ko = {
     footerLocationTerms: '위치기반서비스 이용약관',
     /** 확률 안내 페이지(`/probability`)로 가는 푸터 링크. 페이지 제목·캡슐 시트 링크와 같은 말이다 (티켓 20261021_1250) */
     footerProbability: '확률 안내',
+    /** 문의 화면(`/voc`)으로 가는 푸터 링크. 상단 내비의 문의 버튼을 대신한다 (티켓 20261031_1302) */
+    footerInquiry: '문의',
     footerCopyright: '© 2026 Standard Manual',
     /** 여러 화면이 공유하는 범용 로딩 스피너(`LoadingSpinner`)의 보조기술 라벨 (티켓 20260915_2237) */
     loading: '불러오는 중',
@@ -2130,7 +2132,6 @@ export const ko = {
    * 대체하는 정식 버전). Google Sheets(Tally 연동)를 데이터 소스로 쓰는 문의/답변 피드.
    */
   voc: {
-    inquiryButton: '문의',
     pageTitle: '문의',
     inquireCta: '문의하기',
     sortLatest: '최신글',
