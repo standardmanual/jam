@@ -10,7 +10,7 @@
  * 6. 여러 레시피·미션 ID는 중복 없이 모은다
  * 7. 동기화·캡슐 길 — `listIssueCandidates`와 열림이 같고, 트라이브·등급이 없으면 닫힌다. 컬렉션·아이템 사유는 드랍 길과 같은 상수를 쓴다 (티켓 20261022_1136 2회)
  * 8. 등급 올리기 길 — 컬렉션에 바로 아래 또는 바로 위 등급의 아이템이 함께 나올 수 있을 때만 열린다. 네 등급의 모든 조합을 대조한다
- * 9. 잠긴 배지 — 어느 길이든 잠긴 채 받는 모습만 싣고 열림 판정에는 쓰지 않는다. 필요한 양은 `resolveUnlockRequired`와 같은 기준이다
+ * 9. 잠긴 배지 — 어느 길이든 잠긴 채 받는 모습만 싣고 열림 판정에는 쓰지 않는다. 필요 포인트는 배지 등급의 `jam_policy.locked_points_*`다
  * 10. 새 길은 드랍 길의 부분집합이라 아이템 상태(열림/막힘/드랍 제외)를 바꾸지 않는다(격자 대조)
  */
 import { describe, it, expect } from 'vitest'
@@ -25,7 +25,6 @@ import type {
 import { isItemBookDroppable } from '@/lib/itembook/visibility'
 import { isRecipeReleased } from '@/lib/combine/visibility'
 import { listIssueCandidates } from '@/lib/drop-engine/syncIssue'
-import { resolveUnlockRequired, type LockPolicy } from '@/lib/drop-engine/lockAssignment'
 import type { BadgeRarity } from '@/types/database'
 
 const NOW = new Date('2026-10-04T00:00:00.000Z')
@@ -46,7 +45,6 @@ function item(over: Partial<ItemPathItemInput> = {}): ItemPathItemInput {
     valid_until: null,
     rarity: 'common',
     always_locked: false,
-    unlock_required: null,
     ...over,
   }
 }
@@ -80,6 +78,7 @@ function run(opts: {
     items: [item(opts.item)],
     recipes: opts.recipes ?? [],
     missions: opts.missions ?? [],
+    lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
     now: opts.now ?? NOW,
   })
   return result.items[0]
@@ -387,6 +386,7 @@ describe('결과 범위와 컬렉션 요약', () => {
       ],
       recipes: [],
       missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     })
     expect(result.items.map((r) => r.itemId)).toEqual(['i1'])
@@ -403,6 +403,7 @@ describe('결과 범위와 컬렉션 요약', () => {
       ],
       recipes: [],
       missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     })
     expect(result.collections).toEqual([
@@ -426,6 +427,7 @@ describe('결과 범위와 컬렉션 요약', () => {
       items: [item({ id: 'a' }), item({ id: 'b' })],
       recipes: [],
       missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     })
     expect(result.collections[0]).toMatchObject({ total: 2, open: 0, blocked: 2 })
@@ -446,6 +448,7 @@ function runRarities(
     items: rarities.map((rarity) => item({ id: `i-${rarity}`, rarity, ...over.itemOver?.(rarity) })),
     recipes: [],
     missions: [],
+    lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
     now: NOW,
   })
   return Object.fromEntries(result.items.map((r) => [r.itemId.replace('i-', ''), r])) as Record<BadgeRarity, ItemPathResult>
@@ -506,7 +509,7 @@ describe('동기화·캡슐 길', () => {
                 for (const itemFrom of itemTimes) {
                   for (const itemUntil of itemTimes) {
                     const i = item({ drop_excluded: itemExcluded, valid_from: itemFrom, valid_until: itemUntil })
-                    const r = computeItemPaths({ collections: [c], items: [i], recipes: [], missions: [], now: NOW }).items[0]
+                    const r = computeItemPaths({ collections: [c], items: [i], recipes: [], missions: [], lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 }, now: NOW }).items[0]
                     const expectedOpen =
                       tribe_id !== null && listIssueCandidates({ tribeId: tribe_id, rarity: 'common', books: [c], badges: [i], now: NOW }).length > 0
                     expect(r.syncCapsule.open).toBe(expectedOpen)
@@ -579,6 +582,7 @@ describe('등급 올리기 길', () => {
       items: [item({ id: 'a', item_book_id: 'c1', rarity: 'common' }), item({ id: 'b', item_book_id: 'c2', rarity: 'rare' })],
       recipes: [],
       missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     })
     expect(result.items.map((r) => r.tierUp.open)).toEqual([false, false])
@@ -598,35 +602,35 @@ describe('등급 올리기 길', () => {
 })
 
 describe('잠긴 배지 — 길이 아니라 받는 모습', () => {
-  it('잠김으로 만들지 않은 아이템은 잠기지 않는다(필요한 양을 정해 둬도 싣지 않는다)', () => {
-    const r = run({ item: { always_locked: false, unlock_required: 5 } })
-    expect(r.lock).toEqual({ receivedLocked: false, unlockRequired: null })
+  const POINTS = { common: 50, rare: 100, epic: 200, mystic: 400 }
+
+  it('잠김으로 만들지 않은 아이템은 잠기지 않는다', () => {
+    const r = run({ item: { always_locked: false, rarity: 'rare' } })
+    expect(r.lock).toEqual({ receivedLocked: false, unlockPoints: null })
   })
 
-  it('잠김으로 만든 아이템은 잠긴 채 받고, 정한 필요한 양을 싣는다', () => {
-    const r = run({ item: { always_locked: true, unlock_required: 5 } })
-    expect(r.lock).toEqual({ receivedLocked: true, unlockRequired: 5 })
-  })
-
-  it('필요한 양을 정하지 않았으면 null(등급 기본값)이다', () => {
-    const r = run({ item: { always_locked: true, unlock_required: null } })
-    expect(r.lock).toEqual({ receivedLocked: true, unlockRequired: null })
-  })
-
-  it('필요한 양은 lockAssignment의 resolveUnlockRequired와 같은 기준으로 읽는다 — 양의 정수만 인정한다', () => {
-    const sentinel = -1
-    const policy: LockPolicy = {
-      locked_min_common: sentinel,
-      locked_min_rare: sentinel,
-      locked_min_epic: sentinel,
-      locked_min_mystic: sentinel,
-      locked_roll_probability: 0,
+  it('잠김으로 만든 아이템은 잠긴 채 받고, 이 배지 등급의 정책 포인트를 싣는다', () => {
+    for (const rarity of ['common', 'rare', 'epic', 'mystic'] as const) {
+      const r = run({ item: { always_locked: true, rarity } })
+      expect(r.lock, rarity).toEqual({ receivedLocked: true, unlockPoints: POINTS[rarity] })
     }
-    for (const value of [null, 0, -3, 1, 2.5, 7, Number.NaN]) {
-      const resolved = resolveUnlockRequired(value, 'common', policy)
-      const info = lockInfoOf({ always_locked: true, unlock_required: value })
-      expect(info.unlockRequired, `값 ${value}`).toBe(resolved === sentinel ? null : resolved)
-    }
+  })
+
+  it('등급이 비어 있으면 common의 포인트를 쓴다', () => {
+    const r = run({ item: { always_locked: true, rarity: null } })
+    expect(r.lock).toEqual({ receivedLocked: true, unlockPoints: 50 })
+  })
+
+  it('정책 값이 바뀌면 싣는 포인트도 바뀐다 — 0도 그대로 싣는다', () => {
+    expect(lockInfoOf({ always_locked: true, rarity: 'epic' }, { ...POINTS, epic: 0 })).toEqual({
+      receivedLocked: true,
+      unlockPoints: 0,
+    })
+  })
+
+  it('결과에 옛 «필요한 양(잼)» 칸이 없다', () => {
+    const r = run({ item: { always_locked: true } })
+    expect(r.lock).not.toHaveProperty('unlockRequired')
   })
 
   it('잠겨도 열림 판정은 달라지지 않는다 — 열린 길은 열린 채, 닫힌 길은 닫힌 채다', () => {

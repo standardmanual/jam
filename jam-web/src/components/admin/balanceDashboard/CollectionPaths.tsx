@@ -68,8 +68,8 @@ function ItemRow({ row }: { row: ItemPathRow }) {
         ) : (
           <span className="text-muted-foreground break-keep wrap-break-word">{NO_OPEN_PATH_TEXT}</span>
         )}
-        {row.lock.receivedLocked && (
-          <p className="mt-1 text-xs text-muted-foreground text-pretty break-keep wrap-break-word">{lockLabel(row.lock.unlockRequired)}</p>
+        {row.lock.receivedLocked && row.lock.unlockPoints !== null && (
+          <p className="mt-1 text-xs text-muted-foreground text-pretty break-keep wrap-break-word">{lockLabel(row.lock.unlockPoints)}</p>
         )}
       </TableCell>
       <TableCell className="min-w-64 align-top">

@@ -34,7 +34,7 @@
  * ## 잠긴 배지 (길이 아니다)
  *
  * 잠김으로 만든 아이템 배지(`always_locked`)는 어느 길로 얻어도 잠긴 채 받는다(`drop-engine/lockAssignment.ts`). 가용성이 아니라 «얻는 모습»이라 열림 판정에 더하지 않고
- * 결과의 `lock`에만 싣는다. 필요한 양(`unlock_required`)은 배지에 정한 값만 싣고, 없으면 null(등급 기본값)이다. 정책 표(`locked_min_*`)는 읽지 않는다.
+ * 결과의 `lock`에만 싣는다. 필요한 양은 포인트이고 이 배지 등급의 정책값(`jam_policy.locked_points_*`)이다. 배지에 정한 `unlock_required`(잼)와 `locked_min_*`은 비용에 쓰이지 않아 읽지 않는다.
  *
  * ## 그 밖의 규칙
  *
@@ -60,6 +60,7 @@ import {
   type ComputeItemPathsResult,
   type DropPath,
   type ItemLockInfo,
+  type LockedPointsByRarity,
   type ItemPathCollectionInput,
   type ItemPathItemInput,
   type ItemPathMissionInput,
@@ -157,11 +158,16 @@ function computeTierUpPath(
   return { open: false, reasons: [R.tierUpRarityPairMissing] }
 }
 
-/** 받는 모습 — 필요한 양은 양의 정수로 정한 값만 인정한다(`lockAssignment.resolveUnlockRequired`와 같은 기준, 시험이 둘을 맞춰 본다) */
-export function lockInfoOf(item: Pick<ItemPathItemInput, 'always_locked' | 'unlock_required'>): ItemLockInfo {
-  if (!item.always_locked) return { receivedLocked: false, unlockRequired: null }
-  const value = item.unlock_required
-  return { receivedLocked: true, unlockRequired: value !== null && Number.isInteger(value) && value >= 1 ? value : null }
+/**
+ * 받는 모습 — 필요 포인트는 이 배지 등급의 정책값(`jam_policy.locked_points_*`)이다. 등급이 비어 있으면 common으로 본다.
+ * 퀘스트 전 첫 개체만 개체가 잠기는 순간 0으로 정해지는 예외(마이그레이션 304)가 있지만, 그건 개체에서 정하는 값이라 배지 단위인 이 화면은 싣지 않는다.
+ */
+export function lockInfoOf(
+  item: Pick<ItemPathItemInput, 'always_locked' | 'rarity'>,
+  lockedPoints: LockedPointsByRarity,
+): ItemLockInfo {
+  if (!item.always_locked) return { receivedLocked: false, unlockPoints: null }
+  return { receivedLocked: true, unlockPoints: lockedPoints[item.rarity ?? 'common'] }
 }
 
 /** 레시피 닫힘 사유 — 공개 전 / 종료 */
@@ -268,7 +274,7 @@ function issuableRaritiesOf(
 
 /** 컬렉션별 아이템 얻을 길 계산. 입력 컬렉션에 속하지 않는 아이템과 소프트 삭제된 아이템은 결과에 없다 */
 export function computeItemPaths(input: ComputeItemPathsInput): ComputeItemPathsResult {
-  const { collections, items, recipes, missions, now } = input
+  const { collections, items, recipes, missions, lockedPoints, now } = input
   const nowIso = now.toISOString()
 
   const collectionById = new Map(collections.map((c) => [c.id, c]))
@@ -325,7 +331,7 @@ export function computeItemPaths(input: ComputeItemPathsInput): ComputeItemPaths
       mission,
       syncCapsule,
       tierUp,
-      lock: lockInfoOf(item),
+      lock: lockInfoOf(item, lockedPoints),
     })
   }
 

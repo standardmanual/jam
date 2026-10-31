@@ -1819,7 +1819,7 @@ stateDiagram-v2
     미션 `no_mission`·`mission_hidden`·`mission_not_exposed`·`mission_not_started`·`mission_ended`.
     `syncCapsule`·`tierUp`도 `{ open, reasons }`이고 `reasons`는 닫혔을 때만 채운다. 동기화·캡슐의 사유는 위 드랍 사유 여섯 개에 `collection_no_tribe`(컬렉션에 `tribe_id`가 없음)·`item_no_rarity`(아이템 배지에 등급이 없음)를 더한 것이고,
     등급 올리기의 사유는 아이템 배지가 발급 풀에 들지 못할 때 동기화·캡슐과 같은 사유, 풀에는 드는데 컬렉션에 바로 아래나 위 등급의 아이템 배지가 함께 나올 수 없을 때 `tier_up_rarity_pair_missing`이다.
-    `lock`은 `{ receivedLocked, unlockRequired }`로 «잠긴 채 받는 모습»이다(`badges.always_locked`, 정한 필요한 양은 `badges.unlock_required`이고 없으면 null=등급 기본값). 길이 아니라서 `status`에 쓰지 않는다.
+    `lock`은 `{ receivedLocked, unlockPoints }`로 «잠긴 채 받는 모습»이다(`badges.always_locked`, 필요 포인트는 이 배지 등급의 `jam_policy.locked_points_*`이고 잠기지 않으면 null). 길이 아니라서 `status`에 쓰지 않는다.
   - 판정은 기존 함수를 그대로 부른다: 동기화·캡슐은 `listIssueCandidates`(`drop-engine/syncIssue.ts`), 등급 올리기는 `issuableRaritiesByBook`·`collectionSupportsTierUp`(`combine/`). 두 길은 드랍 길의 부분집합이라 `status`는 길을 더하기 전과 같다.
 - **「드랍 제외」는 막힘과 다르다.** 컬렉션 또는 아이템이 `drop_excluded`이면 드랍 길이 닫히고, 다른 길도 없으면 상태가 `blocked`가 아니라 `drop_excluded`다(운영자가 일부러 드랍에서 뺀 것이라 「막힘」 신호로 세지 않는다).
   `onlyBlocked`에도 들어가지 않는다. 드랍 길은 활동 드랍 또는 앰비언트 드랍으로 보고 누적 조건(`condition_json`)은 보지 않으며, 드랍 제외를 앰비언트 드랍에도 적용하는 것으로 정의한다(사용자 결정, P2 20261005_1957 A. 앰비언트 쪽 코드는 그 티켓이 맞춘다).

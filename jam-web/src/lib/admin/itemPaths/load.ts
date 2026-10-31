@@ -12,6 +12,7 @@
  * | `badges` | `type = 'item'`이고 삭제되지 않은 것 중 위 컬렉션에 속한 것 | 활성 아이템만 3,600개가 넘어 1,000행 쪽 읽기가 꼭 필요하다 |
  * | `combination_recipes` | 전부 | 공개 중인지는 계산 함수가 가른다 |
  * | `missions` | 전부 | 노출·진행 중인지는 계산 함수가 가른다 |
+ * | `jam_policy` | id 1 한 행의 `locked_points_*` 네 칸 | 잠긴 배지의 등급별 필요 포인트 |
  *
  * ## 하나라도 읽지 못하면 던진다
  *
@@ -20,8 +21,12 @@
  *
  * ## 동기화·캡슐·등급 올리기 길에 더한 칸 (티켓 20261022_1136 2회)
  *
- * 컬렉션은 `tribe_id`(그 길이 푸는 트라이브), 아이템은 `rarity`(등급)·`always_locked`·`unlock_required`(잠긴 채 받는 모습)를 더 읽는다. 컬렉션의 `drop_excluded`·기간과
- * 아이템의 `drop_excluded`·기간은 원래 읽던 칸이다. 정책 표(잠김 최소값·확률)는 읽지 않는다.
+ * 컬렉션은 `tribe_id`(그 길이 푸는 트라이브), 아이템은 `rarity`(등급)·`always_locked`(잠긴 채 받는 모습)를 더 읽는다. 컬렉션의 `drop_excluded`·기간과
+ * 아이템의 `drop_excluded`·기간은 원래 읽던 칸이다.
+ *
+ * ## 잠긴 배지의 필요 포인트 (티켓 20261031_0458 2회)
+ *
+ * `jam_policy`(id 1)의 `locked_points_common·rare·epic·mystic` 네 칸만 더 읽는다. 배지에 정한 `unlock_required`(잼)는 비용에 쓰이지 않아 읽지 않는다.
  *
  * 관리자 ID(`updated_by` 등)는 select 목록에 없다.
  */
@@ -34,6 +39,7 @@ import type {
   ItemPathCollectionInput,
   ItemPathItemInput,
   ItemPathRecipeInput,
+  LockedPointsByRarity,
 } from './types'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
@@ -46,7 +52,8 @@ export type ItemPathInputs = Omit<ComputeItemPathsInput, 'now'>
 /** 읽는 칸 목록 */
 const COLLECTION_COLUMNS = 'id, tribe_id, is_active, valid_from, valid_until, drop_excluded'
 const ITEM_COLUMNS =
-  'id, item_book_id, deleted_at, drop_excluded, valid_from, valid_until, rarity, always_locked, unlock_required'
+  'id, item_book_id, deleted_at, drop_excluded, valid_from, valid_until, rarity, always_locked'
+const POLICY_COLUMNS = 'id, locked_points_common, locked_points_rare, locked_points_epic, locked_points_mystic'
 const RECIPE_COLUMNS = 'id, reward_badge_ids, valid_from, valid_until'
 const MISSION_COLUMNS = 'id, reward_badge_ids, starts_at, ends_at, exposure_mode, exposure_at'
 
@@ -57,6 +64,30 @@ interface MissionRow {
   ends_at: string | null
   exposure_mode: string | null
   exposure_at: string | null
+}
+
+interface PolicyRow {
+  id: number
+  locked_points_common: number | null
+  locked_points_rare: number | null
+  locked_points_epic: number | null
+  locked_points_mystic: number | null
+}
+
+/** 정책 한 행을 등급별 포인트로 바꾼다. 행이 없거나 값이 0 이상 정수가 아니면 던진다(기본값으로 바꿔 보이지 않는다) */
+function toLockedPoints(rows: readonly PolicyRow[]): LockedPointsByRarity {
+  const row = rows[0]
+  if (!row) throw new Error('[item-paths] jam_policy id=1 행이 없어요')
+  const points: LockedPointsByRarity = {
+    common: row.locked_points_common as number,
+    rare: row.locked_points_rare as number,
+    epic: row.locked_points_epic as number,
+    mystic: row.locked_points_mystic as number,
+  }
+  for (const [rarity, value] of Object.entries(points)) {
+    if (!Number.isInteger(value) || value < 0) throw new Error(`[item-paths] jam_policy locked_points_${rarity} 값이 올바르지 않아요`)
+  }
+  return points
 }
 
 /**
@@ -70,7 +101,7 @@ export async function loadItemPathInputs(supabase: ServiceClient, now: Date): Pr
     applyLaunchedItemBookFilter(supabase.from('item_books').select(COLLECTION_COLUMNS), nowIso)
   )
 
-  const [items, recipes, missionRows] = await Promise.all([
+  const [items, recipes, missionRows, policyRows] = await Promise.all([
     fetchAllRowsIn<ItemPathItemInput, string>(
       'item-paths:item-badges',
       'id',
@@ -82,12 +113,16 @@ export async function loadItemPathInputs(supabase: ServiceClient, now: Date): Pr
       supabase.from('combination_recipes').select(RECIPE_COLUMNS)
     ),
     fetchAllRows<MissionRow>('item-paths:missions', 'id', () => supabase.from('missions').select(MISSION_COLUMNS)),
+    fetchAllRows<PolicyRow>('item-paths:jam-policy', 'id', () =>
+      supabase.from('jam_policy').select(POLICY_COLUMNS).eq('id', 1)
+    ),
   ])
 
   return {
     collections,
     items,
     recipes,
+    lockedPoints: toLockedPoints(policyRows),
     missions: missionRows.map((row) => ({ ...row, exposure_mode: row.exposure_mode as MissionExposureMode | null })),
   }
 }

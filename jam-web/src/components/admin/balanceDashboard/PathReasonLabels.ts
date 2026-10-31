@@ -46,13 +46,9 @@ export const STATUS_LABELS: Record<ItemPathStatus, string> = {
 }
 
 /** 잠김으로 만든 아이템 배지가 어느 길로 얻어도 잠긴 채 받는다는 표시 */
-export const LOCKED_ON_RECEIVE_LABEL = '잠긴 채 받고 잼으로 열어요'
+export const LOCKED_ON_RECEIVE_LABEL = '잠긴 채 받고 포인트로 열어요'
 
-/** 필요한 양을 정하지 않은 잠긴 아이템 배지는 등급 기본값을 쓴다(정책 표의 값은 읽지 않는다) */
-export const DEFAULT_UNLOCK_REQUIRED_LABEL = '등급 기본값'
-
-/** 잠긴 채 받는 모습의 한 줄 — 정한 양이 있으면 «잼 N만큼», 없으면 «등급 기본값» */
-export function lockLabel(unlockRequired: number | null): string {
-  const amount = unlockRequired === null ? DEFAULT_UNLOCK_REQUIRED_LABEL : `잼 ${unlockRequired.toLocaleString('ko-KR')}만큼`
-  return `${LOCKED_ON_RECEIVE_LABEL} (필요한 양 ${amount})`
+/** 잠긴 채 받는 모습의 한 줄 — 이 배지 등급의 정책값 «필요한 포인트 N» */
+export function lockLabel(unlockPoints: number): string {
+  return `${LOCKED_ON_RECEIVE_LABEL} (필요한 포인트 ${unlockPoints.toLocaleString('ko-KR')})`
 }
