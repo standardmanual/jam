@@ -2,7 +2,7 @@
  * 밸런스 설정 «캡슐» 구역의 연결 (티켓 20261022_1132 2회, 운영 로직 5.2·5.4·19.1절)
  *
  * 두 표를 한 구역으로 편집한다.
- * - `capsule_policy` id=1 한 행: 확정·보너스 개수와 확률, 다른 트라이브 확률, 등급 확률 4칸(합 100), Epic 보정, 퀘스트 전 두 칸(열한 칸).
+ * - `capsule_policy` id=1 한 행: 확정·보너스 개수와 확률, 다른 트라이브 확률, 등급 확률 4칸(합 100), Epic 보정, 퀘스트 전 채울 양(열 칸).
  * - `capsule_chapter_costs` 챕터 1~10행: 챕터별 숫자 세 가지. **값만 바꾼다**(가정 자) — 챕터 번호를 늘리거나 줄이지 않는다(챕터 더하기는 7-2). 칸 이름은 이력에도 그대로 남는다.
  *   - `chapter:3` — 옛 열 `fill_amount`(옛 수동 채우기가 읽는다, 티켓 20261028_1733의 마지막 축소 단계까지 둔다)
  *   - `fill_v2:3` — `fill_amount_v2`(동기화 자동 채움이 읽는 채울 양, 145~365)
@@ -10,7 +10,8 @@
  *
  * Common 연속 보정(`common_streak_threshold`)과 잠길 확률(`locked_roll_probability`)은 동기화와 한 값이라 **동기화 구역에서 편집**하고 여기에는 안내만 둔다(가정 아, `CapsuleSection`).
  *
- * «확률 안내에 반영되는 칸»은 확률 안내 페이지가 읽는 칸 목록(`CAPSULE_COLUMNS`)에서 가져오고 여기에 다시 적지 않는다(단일 원천). 퀘스트 전 두 칸과 챕터별 채울 양은 페이지가 읽지 않는다.
+ * «확률 안내에 반영되는 칸»은 확률 안내 페이지가 읽는 칸 목록(`CAPSULE_COLUMNS`)에서 가져오고 여기에 다시 적지 않는다(단일 원천). 퀘스트 전 채울 양과 챕터별 채울 양은 페이지가 읽지 않는다.
+ * `pre_quest_unlock_required`(퀘스트 전 첫 잠긴 개체의 자리값)는 이 구역이 읽지도 쓰지도 않는다. 비용은 마이그레이션 304 트리거가 정하고, DB 열은 `inventory_items_lock_consistent` 제약 때문에 남아 있다(티켓 20261031_0458 3회).
  * 확정 개수와 보너스 개수는 0을 허용한다. 모두 0이면 경고만 보이고 막지 않는다(가정 바).
  *
  * **행 단위 설정이 공용 저장과 맞지 않는 곳을 이 연결 객체 안에서 처리한다.** 공용 저장(`saveBalanceSection`)은 구역마다 «값 묶음 하나 + 수정 시각 하나»를 가정하고 갱신을 `write` 한 번으로 맡기는데,
@@ -51,7 +52,6 @@ export const CAPSULE_POLICY_KEYS = [
   'rarity_mystic',
   'pity_epic_threshold',
   'pre_quest_fill_amount',
-  'pre_quest_unlock_required',
 ] as const satisfies readonly (keyof CapsulePolicy)[]
 
 export type CapsulePolicyKey = (typeof CAPSULE_POLICY_KEYS)[number]
@@ -186,7 +186,7 @@ function advanceField(chapterNo: number): BalanceFieldDef {
 
 /**
  * 칸 정의. 범위는 마이그레이션 232의 CHECK와 같다: 개수는 0 이상 정수(0 허용), 확률은 0~1(`NUMERIC(4,3)`, 소수 셋째 자리), 등급 확률은 0 이상(`NUMERIC(6,3)`)이고 합이 100이라 한 칸이 100을 넘을 수 없다,
- * Epic 보정·퀘스트 전 두 칸·챕터별 채울 양(옛·자동 채움)·챕터별 100% 횟수는 1 이상 정수(`fill_amount_v2`·`advance_count`의 CHECK는 NULL도 허용하지만 이 화면은 NULL로 바꾸지 않는다).
+ * Epic 보정·퀘스트 전 채울 양·챕터별 채울 양(옛·자동 채움)·챕터별 100% 횟수는 1 이상 정수(`fill_amount_v2`·`advance_count`의 CHECK는 NULL도 허용하지만 이 화면은 NULL로 바꾸지 않는다).
  */
 export const CAPSULE_FIELDS: readonly BalanceFieldDef[] = [
   policyField({
@@ -251,16 +251,6 @@ export const CAPSULE_FIELDS: readonly BalanceFieldDef[] = [
     min: 1,
     max: INTEGER_MAX,
   }),
-  policyField({
-    key: 'pre_quest_unlock_required',
-    label: '잠긴 아이템 배지를 여는 데 필요한 양',
-    unit: '잼',
-    hint: '퀘스트 전 첫 캡슐에서 반드시 나오는 잠긴 아이템 배지를 여는 데 필요한 양이에요.',
-    group: PRE_QUEST_GROUP,
-    decimals: 0,
-    min: 1,
-    max: INTEGER_MAX,
-  }),
   ...Array.from({ length: CAPSULE_CHAPTER_COUNT }, (_, index) => fillV2Field(index + 1)),
   ...Array.from({ length: CAPSULE_ADVANCE_CHAPTER_COUNT }, (_, index) => advanceField(index + 1)),
   ...Array.from({ length: CAPSULE_CHAPTER_COUNT }, (_, index) => chapterField(index + 1)),
@@ -274,7 +264,7 @@ type CapsulePolicyUpdate = Database['public']['Tables']['capsule_policy']['Updat
 
 /** 읽기에 쓰는 칸 목록(타입이 칸 이름을 알도록 글자 그대로 둔다. `CAPSULE_POLICY_KEYS`와 같아야 하고 시험이 지킨다). */
 export const CAPSULE_POLICY_SELECT =
-  'guaranteed_count, bonus_count, bonus_probability, other_tribe_probability, rarity_common, rarity_rare, rarity_epic, rarity_mystic, pity_epic_threshold, pre_quest_fill_amount, pre_quest_unlock_required, updated_at'
+  'guaranteed_count, bonus_count, bonus_probability, other_tribe_probability, rarity_common, rarity_rare, rarity_epic, rarity_mystic, pity_epic_threshold, pre_quest_fill_amount, updated_at'
 export const CAPSULE_CHAPTER_SELECT = 'chapter_no, fill_amount, fill_amount_v2, advance_count, updated_at'
 
 type ChapterUpdate = Database['public']['Tables']['capsule_chapter_costs']['Update']

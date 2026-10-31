@@ -1,6 +1,6 @@
 /**
- * 캡슐 구역 연결 (티켓 20261022_1132 2회) — `capsule_policy` id=1 행(열한 칸)과 `capsule_chapter_costs` 챕터 1~10행. 가짜 표로 지키는 것:
- * - 칸 정의: 정책 열한 칸 + 챕터별 세 가지(자동 채움 채울 양 `fill_v2:1`~`fill_v2:10`, 100% 횟수 `advance:1`~`advance:9`(챕터 10은 NULL이라 칸이 없다), 옛 채울 양 `chapter:1`~`chapter:10`). «확률 안내에 반영되는 칸»은 확률 안내가 읽는 칸 목록(`CAPSULE_COLUMNS`)과 정확히 같고(퀘스트 전 두 칸과 챕터 칸은 아니다),
+ * 캡슐 구역 연결 (티켓 20261022_1132 2회) — `capsule_policy` id=1 행(열 칸)과 `capsule_chapter_costs` 챕터 1~10행. 가짜 표로 지키는 것:
+ * - 칸 정의: 정책 열 칸 + 챕터별 세 가지(자동 채움 채울 양 `fill_v2:1`~`fill_v2:10`, 100% 횟수 `advance:1`~`advance:9`(챕터 10은 NULL이라 칸이 없다), 옛 채울 양 `chapter:1`~`chapter:10`). «확률 안내에 반영되는 칸»은 확률 안내가 읽는 칸 목록(`CAPSULE_COLUMNS`)과 정확히 같고(퀘스트 전 채울 양과 챕터 칸은 아니다),
  *   기본값은 `DEFAULT_CAPSULE_POLICY`와 마이그레이션 232 시드(챕터별 채울 양)와 같다. 0개는 허용하고 챕터 채울 양은 1 이상이다
  * - 읽기: 두 표를 가공 없이 읽어 한 값 묶음으로 만든다. 구역 수정 시각은 정책 행과 챕터 행들 가운데 가장 늦은 것이다. 챕터 행이 비면 던진다. 열한 번째 챕터 행은 읽지도 않는다
  * - 쓰기(행 단위): 가장 늦은 수정 시각이 화면이 본 값과 같을 때만 시작하고, 행마다 방금 읽은 수정 시각이 같을 때만 갱신한다. 정책만·챕터만·둘 다 모두 되고,
@@ -102,16 +102,16 @@ describe('챕터 칸 이름', () => {
 })
 
 describe('캡슐 칸 정의', () => {
-  it('정책 열한 칸 다음에 자동 채움 채울 양 열 칸, 100% 횟수 아홉 칸, 옛 채울 양 열 칸이 오고 칸 이름은 겹치지 않는다', () => {
+  it('정책 열 칸 다음에 자동 채움 채울 양 열 칸, 100% 횟수 아홉 칸, 옛 채울 양 열 칸이 오고 칸 이름은 겹치지 않는다', () => {
     expect(CAPSULE_FIELDS.map((def) => def.key)).toEqual([...CAPSULE_POLICY_KEYS, ...CAPSULE_FILL_V2_KEYS, ...CAPSULE_ADVANCE_KEYS, ...CAPSULE_CHAPTER_KEYS])
-    expect(CAPSULE_FIELDS).toHaveLength(11 + CAPSULE_CHAPTER_COUNT + CAPSULE_ADVANCE_CHAPTER_COUNT + CAPSULE_CHAPTER_COUNT)
+    expect(CAPSULE_FIELDS).toHaveLength(10 + CAPSULE_CHAPTER_COUNT + CAPSULE_ADVANCE_CHAPTER_COUNT + CAPSULE_CHAPTER_COUNT)
     expect(new Set(CAPSULE_FIELDS.map((def) => def.key)).size).toBe(CAPSULE_FIELDS.length)
   })
 
   it('«확률 안내에 반영되는 칸»이 확률 안내가 읽는 capsule_policy 칸 목록과 정확히 같다', () => {
     const affecting = CAPSULE_FIELDS.filter((def) => def.affectsDisclosure).map((def) => def.key)
     expect(affecting.sort()).toEqual([...CAPSULE_COLUMNS].sort())
-    for (const key of ['pre_quest_fill_amount', 'pre_quest_unlock_required', ...CAPSULE_CHAPTER_KEYS, ...CAPSULE_FILL_V2_KEYS, ...CAPSULE_ADVANCE_KEYS]) {
+    for (const key of ['pre_quest_fill_amount', ...CAPSULE_CHAPTER_KEYS, ...CAPSULE_FILL_V2_KEYS, ...CAPSULE_ADVANCE_KEYS]) {
       expect(byKey[key].affectsDisclosure, key).toBe(false)
     }
   })
@@ -143,6 +143,13 @@ describe('캡슐 칸 정의', () => {
     expect(CAPSULE_CHAPTER_DEFAULT_ADVANCE).toEqual(seed.slice(0, CAPSULE_ADVANCE_CHAPTER_COUNT).map((row) => row.advance))
     CAPSULE_FILL_V2_KEYS.forEach((key, index) => expect(byKey[key].defaultValue, key).toBe(seed[index].fillV2))
     CAPSULE_ADVANCE_KEYS.forEach((key, index) => expect(byKey[key].defaultValue, key).toBe(seed[index].advance))
+  })
+
+  it('퀘스트 전 잠금 필요량(pre_quest_unlock_required)은 칸 정의·정책 칸 목록·읽기 칸 목록 어디에도 없다', () => {
+    expect(byKey['pre_quest_unlock_required']).toBeUndefined()
+    expect((CAPSULE_POLICY_KEYS as readonly string[]).includes('pre_quest_unlock_required')).toBe(false)
+    expect(CAPSULE_POLICY_SELECT).not.toContain('pre_quest_unlock_required')
+    expect(CAPSULE_FIELDS.some((def) => def.key === 'pre_quest_unlock_required')).toBe(false)
   })
 
   it('읽기에 넘기는 칸 목록이 정책 칸과 updated_at뿐이다', () => {
@@ -191,12 +198,12 @@ describe('캡슐 칸 정의', () => {
     expect(byKey['chapter:3'].label).toBe('챕터 3')
   })
 
-  it('0개를 허용한다: 확정 개수·보너스 개수는 0이 통과하고, Epic 보정·퀘스트 전 두 칸은 0이 거절된다', () => {
+  it('0개를 허용한다: 확정 개수·보너스 개수는 0이 통과하고, Epic 보정·퀘스트 전 채울 양은 0이 거절된다', () => {
     for (const key of ['guaranteed_count', 'bonus_count']) {
       expect(checkFieldValue(byKey[key], 0), key).toBeNull()
       expect(checkFieldValue(byKey[key], -1), key).not.toBeNull()
     }
-    for (const key of ['pity_epic_threshold', 'pre_quest_fill_amount', 'pre_quest_unlock_required']) {
+    for (const key of ['pity_epic_threshold', 'pre_quest_fill_amount']) {
       expect(checkFieldValue(byKey[key], 0), key).not.toBeNull()
       expect(checkFieldValue(byKey[key], 1), key).toBeNull()
     }
@@ -259,7 +266,7 @@ describe('캡슐 «모두 0» 경고와 합계', () => {
 })
 
 describe('CAPSULE_BINDING.read', () => {
-  it('정책 열한 칸(NUMERIC 문자열 포함)과 챕터별 세 가지 값을 한 값 묶음으로 읽는다', async () => {
+  it('정책 열 칸(NUMERIC 문자열 포함)과 챕터별 세 가지 값을 한 값 묶음으로 읽는다', async () => {
     const snapshot = await CAPSULE_BINDING.read(db.client)
     expect(snapshot.values).toEqual({
       guaranteed_count: 1,
@@ -272,7 +279,6 @@ describe('CAPSULE_BINDING.read', () => {
       rarity_mystic: 2,
       pity_epic_threshold: 15,
       pre_quest_fill_amount: 5,
-      pre_quest_unlock_required: 5,
       'fill_v2:1': 145,
       'fill_v2:2': 160,
       'fill_v2:3': 180,
@@ -337,7 +343,7 @@ describe('CAPSULE_BINDING.read', () => {
     db.tables.capsule_chapter_costs.push({ chapter_no: 11, fill_amount: 240, fill_amount_v2: 400, advance_count: null, updated_at: '2026-10-23T00:00:00+00:00' })
     const snapshot = await CAPSULE_BINDING.read(db.client)
     expect(snapshot.values['chapter:11']).toBeUndefined()
-    expect(Object.keys(snapshot.values)).toHaveLength(40)
+    expect(Object.keys(snapshot.values)).toHaveLength(39)
     expect(snapshot.updatedAt).toBe(CAPSULE_ROW_STAMP)
   })
 
@@ -506,6 +512,12 @@ describe('CAPSULE_BINDING.write — 행 단위 갱신', () => {
     expect(db.updates).toEqual([{ guaranteed_count: 2, updated_at: NEXT }])
   })
 
+  it('pre_quest_unlock_required가 본문에 있어도 쓰지 않고 DB 값도 바뀌지 않는다', async () => {
+    await CAPSULE_BINDING.write(db.client, writeInput({ guaranteed_count: 2, pre_quest_unlock_required: 99 }))
+    expect(db.updates).toEqual([{ guaranteed_count: 2, updated_at: NEXT }])
+    expect(policyRow()).toMatchObject({ guaranteed_count: 2, pre_quest_unlock_required: 5 })
+  })
+
   it('쓸 칸이 하나도 없으면 error다', async () => {
     expect(await CAPSULE_BINDING.write(db.client, writeInput({ 'chapter:11': 1, 'advance:10': 1 }))).toEqual({ ok: false, reason: 'error', message: '바꿀 칸이 없음' })
     expect(db.updates).toEqual([])
@@ -637,6 +649,15 @@ describe('캡슐 구역 저장 (공용 저장을 지난다)', () => {
     expect(out).toMatchObject({ ok: false, status: 400 })
     if (out.ok) return
     expect(out.fieldErrors).toEqual({ common_streak_threshold: '알 수 없는 칸이에요.', locked_roll_probability: '알 수 없는 칸이에요.' })
+  })
+
+  it('pre_quest_unlock_required는 «알 수 없는 칸»으로 거절하고 아무것도 쓰지 않는다', async () => {
+    const out = await save({ pre_quest_unlock_required: 9 })
+    expect(out).toMatchObject({ ok: false, status: 400 })
+    if (out.ok) return
+    expect(out.fieldErrors).toEqual({ pre_quest_unlock_required: '알 수 없는 칸이에요.' })
+    expect(db.updates).toEqual([])
+    expect(policyRow()).toMatchObject({ pre_quest_unlock_required: 5 })
   })
 
   it('다른 사람이 먼저 바꿨으면(수정 시각 불일치) 409이고 이력이 없다', async () => {

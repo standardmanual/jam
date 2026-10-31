@@ -164,6 +164,7 @@ export function rollCapsule<B extends IssueBadge>(input: CapsuleRollInput<B>, ra
     commonStreak = pick.rarity === 'common' ? commonStreak + 1 : 0
 
     // 퀘스트 전 첫 캡슐은 나온 첫 개체를 반드시 잠근다. 난수를 쓰지 않는다.
+    // `unlockRequired`는 자리값이다(옛 제약 `inventory_items_lock_consistent` 때문에 값이 필요하다). 이 값은 어드민에서 편집하지 않고, 비용은 마이그레이션 304 트리거가 정한다.
     const lock: LockAssignment =
       input.preQuest && result.items.length === 0
         ? { locked: true, lockReason: 'rolled', unlockRequired: policy.pre_quest_unlock_required }

@@ -241,9 +241,10 @@ describe('BalanceSectionBody — 동기화 구역 (2회)', () => {
 describe('BalanceSectionBody — 캡슐 구역 (2회)', () => {
   const capsuleHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: CAPSULE_BINDING })).replace(/<!-- -->/g, '')
 
-  it('마흔 칸의 입력(저장된 값)과 여덟 묶음 제목, 등급 확률 합계 줄이 보인다', async () => {
+  it('서른아홉 칸의 입력(저장된 값)과 여덟 묶음 제목, 등급 확률 합계 줄이 보인다', async () => {
     const out = await capsuleHtml()
-    expect([...out.matchAll(/<input /g)]).toHaveLength(40)
+    expect([...out.matchAll(/<input /g)]).toHaveLength(39)
+    expect(out).not.toContain('pre_quest_unlock_required')
     expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual([
       '나오는 개수',
       '확률',
