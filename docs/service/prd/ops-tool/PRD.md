@@ -109,7 +109,7 @@ related:
 
 | 위치 | 필드 | 형식 | 허용값·원천 | 필수 | 없을 때 읽는 값 | 형식이 틀릴 때 읽는 값 |
 |---|---|---|---|---|---|---|
-| 항목 | `shape` | 문자열 | `hero`·`poster`·`square`·`brief`·`list`(`lib/today/shape.ts`의 `CARD_SHAPES`). 이미지가 있는 모양은 `hero`·`poster`·`square` | `kind`가 `home_feed_card`면 필수. 다른 종류는 값이 있을 때만 검사 | 모름 | 모름 |
+| 항목 | `shape` | 문자열 | `hero`·`poster`·`square`·`brief`·`list`·`dome`·`ticket`(`lib/today/shape.ts`의 `CARD_SHAPES`). 이미지가 있는 모양은 `hero`·`poster`·`square`·`dome`·`ticket` | `kind`가 `home_feed_card`면 필수. 다른 종류는 값이 있을 때만 검사 | 모름 | 모름 |
 | 항목 | `exposure_tags` | 문자열 배열(1개 이상, 중복 없음) | `jam-web/src/lib/admin/today-sections.ts`의 `TODAY_EXPOSURE_TAG_OPTIONS`(전원 `all`, 신규 `new_user` 등). 오류 문장은 홈피드 등록 묶음 검사와 같다 | `home_feed_card`면 필수. 다른 종류는 값이 있을 때만 검사 | 모름 | 모름 |
 | 항목 | `tribe_id` | UUID 문자열(null은 없음) | `tribes.id`. 형식 검사에 더해 제출·수정 때 `tribes` 목록에 있는지 본다 | 선택 | 없음(`null`) | 모름 |
 | 항목 | `pattern_no` | 문자열 | `^P[0-9]{2,}$`(`ops_patterns.pattern_no` CHECK와 같다). 제출·수정 때 패턴 사전에 있는지도 본다(보관 패턴 포함) | 선택 | 없음(`null`) | 모름 |
@@ -140,7 +140,7 @@ related:
 | `knobs` | 객체. `condition`·`place`·`time`·`reward`는 `{ open, closed }`, `tribe`는 `{ rule, example }`이고 네 값 모두 비어 있지 않은 문자열이다. 빠진 손잡이와 빠진 값은 각각 한 줄이다 | 필수 | 모름 | 모름 |
 | `menus` | 비어 있지 않은 문자열의 배열(빈 배열 허용) | 선택 | `[]` | 모름 |
 | `samples` | `{ no, name, role, impl }`의 배열. `no`는 1 이상의 정수, `name`은 비어 있지 않은 문자열, `role`은 `main`·`aux`·`related`(`OPS_PATTERN_SAMPLE_ROLES`), `impl`은 문자열(없거나 빈 값 허용) | 선택 | `[]` | 모름 |
-| `card_shapes` | `{ shape, note }`의 배열. `shape`는 `CARD_SHAPES` 5개 중 하나, `note`는 문자열(없거나 빈 값 허용) | 선택 | `[]` | 모름 |
+| `card_shapes` | `{ shape, note }`의 배열. `shape`는 `CARD_SHAPES` 7개 중 하나, `note`는 문자열(없거나 빈 값 허용) | 선택 | `[]` | 모름 |
 | `pitfalls` | 문자열(빈 값 허용) | 선택 | `''` | 모름 |
 
 - `resource`가 객체가 아니거나 `pattern`이 없으면 `items[n].resource.pattern: 필수 항목이 없어요(…)` 한 줄이다. `pattern`이 객체가 아니면 그 한 줄로 끝내고 안쪽은 보지 않는다.
@@ -239,7 +239,7 @@ related:
   대표가 되지 않는다」** 로 바꿨다(사용자 결정, 2026-09-30, 티켓 20260930_1453). 미션 소개 카드의 「항상 큰 카드」 규칙도 「이미지가 있는 모양」으로
   완화한다. 옛 요건의 출처는 0809가 아니라 티켓 20260926_1542(사용자 요청 「요일마다 큰 카드 1개 이상」을 전원 카드에 건다고 해석해 반영)와
   content-automation PRD §8 「요일별 큰 카드 규칙」이다. 1504 전환 전까지는 그 절차가 현재 절차로 돈다.
-- 이미지가 필요한 모양(`hero`·`poster`·`square`)의 항목에 이미지가 없으면 「이미지 제작 필요」로 표시만 한다. 승인을 막거나 카드 모양을 바꾸지 않는다
+- 이미지가 필요한 모양(`hero`·`poster`·`square`·`dome`·`ticket`)의 항목에 이미지가 없으면 「이미지 제작 필요」로 표시만 한다. 승인을 막거나 카드 모양을 바꾸지 않는다
   (사용자 결정, 2026-09-30, 티켓 20260930_1453). 카드 모양의 정의는 1453 「확정 설계」에 있고, 구현 뒤 홈피드 PRD로 옮긴다.
 - 전환 전 등록 뒤 점검(전원 카드가 없는 날을 찾는 SQL)은 content-automation PRD §8-2에 현재 절차로 남아 있다. 전환 뒤에는 같은 조건을 이 신호가
   승인 전에 보여 준다.
@@ -947,7 +947,7 @@ stateDiagram-v2
   **카드 → 레시피 쌍에는 이 검사도 공개 순서 검사도 없다**(⑫-b, 티켓 20261006_1218). 레시피 공개 카드는 레시피가 공개되기 전에 먼저 공개돼 예고할 수 있다(07 §4.5 예외). 두 쌍의 칸 이름이 같은 `recipe_id`라서
   `precheck.ts`의 `differsFromLinkedRecipe`는 가리키는 쪽이 JAM! 배지(`jam_badge`)일 때만 견준다.
 - 같은 기획 안에서 기간이 겹치는 같은 제목의 미션이 둘 이상이면 뒤 항목이 못 하는 항목이다(사용자 결정 2026-10-02, 구현됨: ⑥). 이미 있는 미션과의 겹침은 실행 때 등록 전 검증이 본다(§8.1).
-- 글자 수 상한(1453 확정 설계: `hero` 22·`poster` 18·`square` 22·`brief` 28·`list` 22자, 홈피드 PRD §6)은 경고만 한다(G15).
+- 글자 수 상한(1453 확정 설계: `hero` 22·`poster` 18·`square` 22·`brief` 28·`list` 22·`dome` 22·`ticket` 22자, 홈피드 PRD §6)은 경고만 한다(G15).
 - `pattern_no`가 사전 번호 형식(`^P[0-9]{2,}$`)이 아니면 카드의 `pattern_no` 칸을 비우고 경고한다(G11). 제출 때도 같은 형식을 보고 형식 오류로 남긴다(§3.1, 티켓 20261007_1745).
 - 표에 없는 `copy`·`resource` 키와 툴이 정하는 칸에 들어온 값은 경고만 한다(§8.4).
 
