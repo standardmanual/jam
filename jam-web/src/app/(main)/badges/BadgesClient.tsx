@@ -180,10 +180,8 @@ export default function BadgesClient({
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo />
 
-      {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀 */}
-      <div className="px-4 pt-6">
-        <h1 className="text-5xl break-keep wrap-break-word">{d.badges.title}</h1>
-      </div>
+      {/* 20261031_1821: 보이는 타이틀은 없애고, 스크린리더용 페이지 제목만 남긴다 */}
+      <h1 className="sr-only">{d.badges.title}</h1>
 
       {/* 탭 헤더 — Tabs sliding (16-tabs-sliding.md) */}
       <div className="px-4 py-4">
