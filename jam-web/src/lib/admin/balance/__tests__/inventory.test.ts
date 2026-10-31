@@ -84,7 +84,7 @@ describe('인벤토리 칸 정의', () => {
     expect(def.affectsDisclosure).toBe(false)
     expect(def.sumTo).toBeUndefined()
     expect(def.defaultValue).toBe(DEFAULT_INVENTORY_POLICY.max_slots)
-    expect(draftFromValues(INVENTORY_FIELDS, {})).toEqual({ max_slots: '50' })
+    expect(draftFromValues(INVENTORY_FIELDS, {})).toEqual({ max_slots: '10' })
   })
 
   it('0 이하·소수는 거절하고 1 이상 정수는 통과한다. 정의를 통과하는 값은 validators도 통과한다', () => {

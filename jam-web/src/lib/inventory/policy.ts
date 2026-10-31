@@ -9,11 +9,11 @@ import type { InventoryPolicyRow } from '@/types/database'
 export type InventoryPolicy = Pick<InventoryPolicyRow, 'max_slots'>
 
 /**
- * DB를 못 읽을 때 현재 컬럼 DEFAULT(001_initial_schema.sql:137)와 동일한 값으로
- * 재현하는 폴백값이다. "바람직한 값"이 아니라 "현행값의 미러" — src/lib/abusing/policy.ts
- * DEFAULT_POLICY 주석 참고.
+ * DB를 못 읽을 때 쓰는 폴백값이다. 운영 중인 값(10칸, 사용자 결정 2026-10-31)과 맞춘다.
+ * 컬럼 DEFAULT(001_initial_schema.sql:137)는 50이지만 운영 행(id=1)이 10이라, 폴백이 50이면
+ * DB를 못 읽을 때만 칸 수가 갑자기 늘어난다. src/lib/abusing/policy.ts DEFAULT_POLICY 주석 참고.
  */
-export const DEFAULT_INVENTORY_POLICY: InventoryPolicy = { max_slots: 50 }
+export const DEFAULT_INVENTORY_POLICY: InventoryPolicy = { max_slots: 10 }
 
 export async function getInventoryPolicy(): Promise<InventoryPolicy> {
   try {

@@ -5,7 +5,7 @@
  * 옛 «인벤토리 최대치» 화면(`/admin/inventory-policy`)과 그 API(`/api/admin/inventory-policy`)를 이 구역으로 옮겼다. 확률 안내 페이지가 읽는 칸이 아니라 확인창은 쓰지 않고,
  * 대신 구역 본문(`InventorySection`)이 «저장하면 전체 유저 N명의 인벤토리 최대치가 즉시 바뀌어요» 안내를 둔다(사용자 결정).
  *
- * 읽기는 **가공하지 않은 행**을 읽는다(비정상 값을 기본값 50으로 바꿔 보이지 않는다. 그래서 `getInventoryPolicy`의 폴백을 쓰지 않는다).
+ * 읽기는 **가공하지 않은 행**을 읽는다(비정상 값을 기본값 10으로 바꿔 보이지 않는다. 그래서 `getInventoryPolicy`의 폴백을 쓰지 않는다).
  *
  * 쓰기는 다른 구역과 달리 `updated_at` 조건부 갱신이 아니다. 저장은 기존 경로인 `updateInventoryMaxSlots`(RPC `set_inventory_max_slots`, 마이그레이션 129·181)를 그대로 거친다.
  * 이 RPC는 기존 유저 전원의 `inventory.max_slots`와 `inventory_policy` 행(`updated_at = now()`)을 한 트랜잭션에서 바꾸고 `updated_at` 조건을 받지 않는다.
