@@ -123,19 +123,14 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
     </>
   )
 
-  // 20260828_1548: 베타테스트 VOC 임시 채널 — 로고 옆에 작은 '문의' 버튼을 붙여 /voc로 이동.
-  // 로고가 노출되는 탭 최상위 화면(logo=true)에만 자연히 노출된다.
+  // 20260828_1548: 베타테스트 VOC 임시 채널로 로고 옆에 '문의' 버튼을 두었다.
+  // 20261031_1302: 그 입구를 푸터의 «문의» 링크(Footer.tsx)로 옮겼다. 로고만 남는다.
   const logoNode = logo ? (
-    <>
-      <Link href="/" aria-label="홈으로 이동" className="shrink-0">
-        {/* 로고 PNG는 흰색 한 색이라 크림 위 1.05:1이다 — 알파만 마스크로 쓰고 색은 --foreground(17.07:1)로 칠한다.
-            접근 가능한 이름은 바깥 Link의 aria-label이 맡는다. */}
-        <span aria-hidden="true" className="jam-logo-mark block h-[26px]" />
-      </Link>
-      <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
-        {d.voc.inquiryButton}
-      </Button>
-    </>
+    <Link href="/" aria-label="홈으로 이동" className="shrink-0">
+      {/* 로고 PNG는 흰색 한 색이라 크림 위 1.05:1이다 — 알파만 마스크로 쓰고 색은 --foreground(17.07:1)로 칠한다.
+          접근 가능한 이름은 바깥 Link의 aria-label이 맡는다. */}
+      <span aria-hidden="true" className="jam-logo-mark block h-[26px]" />
+    </Link>
   ) : null
 
   // 미연동 유저도 동기화 버튼을 항상 본다 — 누르면 스트라바 연결 플로우(OAuth 시작 라우트)로
