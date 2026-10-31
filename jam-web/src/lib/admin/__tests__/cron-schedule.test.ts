@@ -130,7 +130,7 @@ describe('cronOccurrenceId', () => {
 })
 
 describe('getWeeklyCronOccurrences', () => {
-  it('vercel.json의 crons 6개를 모두 변환한다(매일 3개 + 매시간 2개 + 10분마다 1개, 각 요일 7개)', () => {
+  it('vercel.json의 crons 7개를 모두 변환한다(매일 4개 + 매시간 2개 + 10분마다 1개, 각 요일 7개)', () => {
     const occ = getWeeklyCronOccurrences()
     const paths = new Set(occ.map((o) => o.path))
     expect(paths).toEqual(
@@ -141,10 +141,17 @@ describe('getWeeklyCronOccurrences', () => {
         '/api/cron/external-inputs',
         '/api/cron/ops-reconcile',
         '/api/cron/ops-stop-signals',
+        '/api/cron/capsule-signals',
       ])
     )
-    // 매일 실행 크론 3개(7개씩) + 매시간 크론 2개(14개) + 10분마다 크론 1개(7개) = 42개
-    expect(occ).toHaveLength(42)
+    // 매일 실행 크론 4개(7개씩) + 매시간 크론 2개(14개) + 10분마다 크론 1개(7개) = 49개
+    expect(occ).toHaveLength(49)
+  })
+
+  it('vercel.json의 capsule-signals 크론은 달력에서 「캡슐 운영 신호 요약」이 KST 09:10으로 보인다', () => {
+    const occ = getWeeklyCronOccurrences().filter((o) => o.path === '/api/cron/capsule-signals')
+    expect(occ).toHaveLength(7)
+    expect(occ.every((o) => o.label === '캡슐 운영 신호 요약' && o.hour === 9 && o.minute === 10 && !o.hourly)).toBe(true)
   })
 
   it('vercel.json의 ops-stop-signals 크론은 달력에서 「운영 중단 신호 점검」이 「매시간」 한 줄로 보인다', () => {
