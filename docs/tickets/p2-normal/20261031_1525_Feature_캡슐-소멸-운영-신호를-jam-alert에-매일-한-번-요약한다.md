@@ -51,7 +51,7 @@ specs:
 
 ### 문서
 
-- 크론 목록이 적힌 문서(`docs/agents/scheduled-jobs.md` 또는 `contract.json`이 가리키는 곳)에 새 크론을 한 줄 더한다. 같은 사실을 여러 곳에 적지 않는다.
+- 크론 목록이 적힌 `docs/service/prd/04_PROJECT_SPEC.md`(`api/cron/` 줄들)에 새 크론을 한 줄 더한다. 같은 사실을 여러 곳에 적지 않는다.
 - `docs/plan/jam2/10 JAM 2.0 서비스 운영 로직.md` 4.5절에 «`#jam-alert` 일일 요약으로 본다(2026-10-31 결정). 임계는 오픈 4주 뒤 정한다»를 한 줄 더한다.
 
 ## 구현 계획
