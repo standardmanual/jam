@@ -12,6 +12,15 @@ export const GRAPH_MIN_PERCENT = 2
 /** 그래프 최대 눈금(%). 캡슐 잼 100%가 대응한다 */
 export const GRAPH_MAX_PERCENT = 100
 
+/** 진입 모션: 트랙이 이만큼(0~1) 이상 보이면 «화면에 보인다»로 친다 (티켓 20261031_1806, IntersectionObserver threshold) */
+export const GAUGE_ENTRY_VISIBLE_RATIO = 0.5
+
+/**
+ * 진입 모션: 하단 플로팅 탭바가 가리는 높이(px). 관찰 영역의 아래쪽을 이만큼 줄여 «탭바 위쪽에서 절반 이상 보일 때»를 보임으로 친다.
+ * `TabBar.tsx`의 알약은 높이 49, 아래 여백 `max(10, safe-area + 16 - 32)`이라 윗면이 화면 아래에서 59~67px 위다. 여유를 두어 72로 잡는다.
+ */
+export const GAUGE_ENTRY_TABBAR_CLEARANCE_PX = 72
+
 /** 진입 모션: 화면에 들어온 뒤 채움이 시작되기까지의 쉼(ms) */
 export const GAUGE_ENTRY_DELAY_MS = 260
 

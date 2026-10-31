@@ -116,10 +116,10 @@ export default async function UserProfilePage({ params }: Props) {
   const isFollowing = !!isFollowingResult.data
 
   // 퀘스트 전(chapterNo null)과 읽지 못함(ok: false)은 줄을 그리지 않는다 — null로 접는다(사용자 결정 4, 티켓 20261019_1317).
-  // 점수는 응답에 없고, 다른 유저에게는 진행·다음 챕터 필드 자체를 만들지 않는다.
+  // 점수는 응답에 없고, 내 프로필은 챕터 번호만 내린다(막대·다음 챕터는 그리지 않는다, 티켓 20261031_1806). 다른 유저에게는 진행 필드 자체를 만들지 않는다.
   const chapterInitial: MyChapterLineData | null =
     myChapter?.ok && myChapter.chapterNo !== null
-      ? { chapterNo: myChapter.chapterNo, nextChapterNo: myChapter.nextChapterNo, progress: myChapter.progress }
+      ? { chapterNo: myChapter.chapterNo }
       : null
   const publicChapter: PublicChapterLineData | null = publicChapterResult?.ok
     ? { tribeName: publicChapterResult.tribe?.name ?? null, chapterNo: publicChapterResult.chapterNo }

@@ -29,7 +29,7 @@ describe('ChapterRiseOverlay', () => {
   it('점수·게이지·«다음 챕터까지»가 없다', () => {
     const html = render()
     expect(html).not.toContain('data-chapter-gauge')
-    expect(html).not.toContain(d.chapter.line.untilNext)
+    expect(html).not.toContain('다음 챕터까지')
     expect(html).not.toContain('%')
   })
 

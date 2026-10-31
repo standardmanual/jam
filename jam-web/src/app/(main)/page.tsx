@@ -13,7 +13,6 @@ import { loadHomeSuspensionBanner } from '@/lib/suspension/home-banner'
 import HomeViewTracker from './HomeViewTracker'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
-import { getMyChapter } from '@/lib/chapter/read'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getOnboardingQuestCard } from '@/lib/onboarding-quest/status'
@@ -43,8 +42,6 @@ export default async function HomePage() {
   // 무의미한 DB 조회 4건이 실행되던 문제를 제거한다(티켓 20260830_2104). 나머지 쿼리는
   // stravaConn과 무관하게 이미 병렬로 실행 중이므로 병렬화 이점은 그대로 유지된다.
   // 연결 상태 판정에 필요한 두 칸만 읽는다 — 행 전체를 읽지 않는다(토큰 칸을 가져오지 않는다).
-  // 챕터 번호(티켓 20261028_1739) — 게이지 위 «챕터 N» 글자. getMyChapter는 던지지 않고 읽지 못하면 { ok: false }를 준다(그때는 글자만 생략).
-  const chapterPromise = getMyChapter(createServiceClient(), userId)
   const stravaConnPromise = supabase
     .from('strava_connections')
     .select('disconnected_at, disconnect_reason')
@@ -86,7 +83,6 @@ export default async function HomePage() {
     onboardingQuestGate,
     suspension,
     capsuleInitial,
-    myChapter,
   ] = await Promise.all([
     profilePromise,
     rightStatusPromise,
@@ -95,7 +91,6 @@ export default async function HomePage() {
     onboardingQuestGatePromise,
     suspensionPromise,
     capsulePromise,
-    chapterPromise,
   ])
   if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
 
@@ -153,15 +148,10 @@ export default async function HomePage() {
           CMS와 역할 분리, 완료 기록 참고). */}
       <TodayStatusStrip left={leftStatus} right={rightStatus} />
 
-      {/* 챕터 글자 + 캡슐 위젯 (티켓 20261018_0054, 20261028_1739) — 현황 스트립 아래라 퀘스트 중에도 퀘스트 카드가 먼저 읽힌다.
-          «챕터 N»은 챕터가 있을 때만(퀘스트 전·읽지 못함은 글자 없음). 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
+      {/* 캡슐 위젯 (티켓 20261018_0054, 20261028_1739, 20261031_1806) — 현황 스트립 아래라 퀘스트 중에도 퀘스트 카드가 먼저 읽힌다.
+          홈에는 챕터 번호를 그리지 않는다. 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
           조회가 실패했으면 위젯이 직접 가져온다. 확률 안내 링크는 이 묶음에 두지 않는다(푸터의 «확률 안내»로 통합). */}
-      <div className="flex flex-col gap-2">
-        {myChapter.ok && myChapter.chapterNo !== null && (
-          <p className="m-0 text-sm text-muted break-keep wrap-break-word">{t(d.chapter.line.chapter, { chapterNo: myChapter.chapterNo })}</p>
-        )}
-        <CapsuleWidget initial={capsuleInitial} />
-      </div>
+      <CapsuleWidget initial={capsuleInitial} />
 
       {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
       <TodayCardStack cards={todayCards} currentUserId={userId} />
