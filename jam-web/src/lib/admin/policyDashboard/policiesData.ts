@@ -721,11 +721,13 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '잠긴 아이템 배지',
     title: '잠긴 상태 기능 제한 규정',
     type: 'code_constant',
-    currentSpec: '컬렉션 장착 불가, 믹스 재료 사용 불가. 잠긴 채로도 드랍과 픽업은 할 수 있음',
-    codeLocation: 'jam-web/src/lib/abusing/poi-block.ts',
-    userExperience: '잠긴 배지는 열기 전에도 장소에 내려놓을 수 있어요. 컬렉션에 장착하거나 믹스 재료로 쓰려면 먼저 열어야 해요.',
+    currentSpec:
+      '컬렉션 장착 불가, 믹스 재료 사용 불가. 잠긴 채로도 드랍과 픽업은 할 수 있음. 줍는 순간 필요 포인트가 0이면(퀘스트 전 첫 무료 배지) 그 배지 등급의 정책값으로 다시 정함 — 무료 혜택은 시스템이 직접 준 첫 개체에만 남고, 0보다 큰 값은 그대로 따라감',
+    codeLocation: 'jam-web/supabase/migrations/306_pickup_drop_refix_free_unlock_points.sql',
+    userExperience:
+      '잠긴 배지는 열기 전에도 장소에 내려놓을 수 있어요. 컬렉션에 장착하거나 믹스 재료로 쓰려면 먼저 열어야 해요. 처음 받은 무료 잠긴 배지를 다른 사람이 주우면 그 사람은 등급에 맞는 포인트를 내고 열어요.',
     basisDoc: '운영 로직 7.2절',
-    ticketId: '20261018_0657',
+    ticketId: '20261030_0947',
     nodes: ['item_badge'],
   },
   {
