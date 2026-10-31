@@ -233,6 +233,14 @@ export function validateOpsCardFields(raw: Record<string, unknown>, path: string
     errors.push(`${path}.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeShort(raw.shape)}). 허용값: ${CARD_SHAPES.join(', ')}`)
   }
 
+  // 에이전트 기획은 기사형 카드를 만들지 않는다(사용자 결정 2026-10-31, 티켓 20261031_2049).
+  const resource = raw.resource
+  if (isCard && typeof resource === 'object' && resource !== null && !Array.isArray(resource)) {
+    if ((resource as Record<string, unknown>).template_type === 'editorial_article') {
+      errors.push(`${path}.resource.template_type: 기사형 카드(editorial_article)는 기획하지 않아요. 다른 템플릿으로 바꿔 주세요.`)
+    }
+  }
+
   if (!isPresent(raw.exposure_tags)) {
     if (isCard) errors.push(`${path}.exposure_tags: 필수 항목이 없어요(노출 대상을 태그 배열로 적어 주세요. 전원이면 ["all"]).`)
   } else {

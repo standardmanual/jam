@@ -110,6 +110,7 @@ related:
 | 위치 | 필드 | 형식 | 허용값·원천 | 필수 | 없을 때 읽는 값 | 형식이 틀릴 때 읽는 값 |
 |---|---|---|---|---|---|---|
 | 항목 | `shape` | 문자열 | `hero`·`poster`·`square`·`brief`·`list`·`dome`·`ticket`(`lib/today/shape.ts`의 `CARD_SHAPES`). 이미지가 있는 모양은 `hero`·`poster`·`square`·`dome`·`ticket` | `kind`가 `home_feed_card`면 필수. 다른 종류는 값이 있을 때만 검사 | 모름 | 모름 |
+| 항목 | `resource.template_type` | 문자열 | `editorial_article`(기사형 카드)이면 형식 오류다(저장은 한다). 에이전트 기획은 기사형 카드를 만들지 않는다(사용자 결정 2026-10-31, 티켓 20261031_2049) | `kind`가 `home_feed_card`일 때만 검사 | 모름 | 모름 |
 | 항목 | `exposure_tags` | 문자열 배열(1개 이상, 중복 없음) | `jam-web/src/lib/admin/today-sections.ts`의 `TODAY_EXPOSURE_TAG_OPTIONS`(전원 `all`, 신규 `new_user` 등). 오류 문장은 홈피드 등록 묶음 검사와 같다 | `home_feed_card`면 필수. 다른 종류는 값이 있을 때만 검사 | 모름 | 모름 |
 | 항목 | `tribe_id` | UUID 문자열(null은 없음) | `tribes.id`. 형식 검사에 더해 제출·수정 때 `tribes` 목록에 있는지 본다 | 선택 | 없음(`null`) | 모름 |
 | 항목 | `pattern_no` | 문자열 | `^P[0-9]{2,}$`(`ops_patterns.pattern_no` CHECK와 같다). 제출·수정 때 패턴 사전에 있는지도 본다(보관 패턴 포함) | 선택 | 없음(`null`) | 모름 |

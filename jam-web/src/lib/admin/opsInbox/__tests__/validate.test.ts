@@ -463,6 +463,26 @@ describe('카드 칸 — shape (티켓 20261001_1152)', () => {
   })
 })
 
+describe('카드 칸 — 기사형 카드 제외 (티켓 20261031_2049)', () => {
+  const articleResult = (item: Record<string, unknown>) => validateOpsBundle(makeBundle({ items: [makeItem(item)] }))
+
+  it('홈피드 카드의 템플릿이 editorial_article이면 형식 오류다', () => {
+    const result = articleResult({ resource: { template_type: 'editorial_article' } })
+    expect(result.errors).toEqual([expect.stringContaining('items[0].resource.template_type: 기사형 카드(editorial_article)는 기획하지 않아요')])
+    expect(result.items[0].format_errors).toHaveLength(1)
+  })
+
+  it('다른 템플릿이거나 템플릿이 없으면 오류가 없다', () => {
+    expect(articleResult({ resource: { template_type: 'mission_spotlight' } }).errors).toEqual([])
+    expect(articleResult({ resource: {} }).errors).toEqual([])
+    expect(articleResult({}).errors).toEqual([])
+  })
+
+  it('카드가 아닌 종류는 이 규칙을 보지 않는다', () => {
+    expect(articleResult({ kind: 'mission', resource: { template_type: 'editorial_article' } }).errors).toEqual([])
+  })
+})
+
 describe('카드 칸 — exposure_tags (티켓 20261001_1152)', () => {
   function tagErrors(itemOverrides: Record<string, unknown>, removeKeys: string[] = []) {
     const item: Record<string, unknown> = makeItem(itemOverrides)
