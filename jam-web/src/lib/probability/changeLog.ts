@@ -157,7 +157,7 @@ function clauseOf(label: ColumnLabel, change: BalanceChange): string {
 
 /**
  * 저장 한 번의 바뀐 칸들을 문장 한 줄로 쓴다. 칸 순서는 구역의 칸 목록 순서다.
- * 표에 없는 칸(퀘스트 전 두 칸, 챕터별 채울 양 등)은 내부 이름을 보이지 않고, 전부 모르면 일반 문장, 일부만 모르면 끝에 «그 밖의 값도»를 붙인다.
+ * 표에 없는 칸(퀘스트 전 한 칸, 챕터별 채울 양 등)은 내부 이름을 보이지 않고, 전부 모르면 일반 문장, 일부만 모르면 끝에 «그 밖의 값도»를 붙인다.
  */
 export function describeChanges(sectionKey: string, changes: readonly BalanceChange[]): string {
   const section = Object.hasOwn(SECTION_COLUMNS, sectionKey) ? SECTION_COLUMNS[sectionKey] : undefined
