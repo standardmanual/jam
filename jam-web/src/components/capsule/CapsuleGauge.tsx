@@ -6,6 +6,8 @@ import { prefersReducedMotion } from '@/lib/motion'
 import {
   GAUGE_ENTRY_DELAY_MS,
   GAUGE_ENTRY_MS,
+  GAUGE_ENTRY_TABBAR_CLEARANCE_PX,
+  GAUGE_ENTRY_VISIBLE_RATIO,
   GRAPH_MIN_PERCENT,
   capsuleGraphPercent,
   gaugeMoveDurationMs,
@@ -22,7 +24,9 @@ import {
  * 퍼센트·진행 숫자는 어디에도 그리지 않는다(운영 로직 5.3절).
  *
  * 모션(채원 판정):
- *  - 진입: 화면에 들어올 때마다 한 번. 시작 눈금 2%, 끝은 `filled / required`. 260ms 쉰 뒤 1,500ms, `--ease-smooth-out`. 값이 0이면 모션이 없다.
+ *  - 진입: 한 방문에 한 번. 시작 눈금 2%, 끝은 `filled / required`. 260ms 쉰 뒤 1,500ms, `--ease-smooth-out`. 값이 0이면 모션이 없다.
+ *    시작 시점은 «마운트»가 아니라 «트랙이 절반 이상 보일 때»다(티켓 20261031_1806, 하단 탭바가 가리는 높이는 보임에서 뺀다).
+ *    이미 보이면 바로 260ms 뒤 시작하고, 시작하면 관찰자를 해제한다. `IntersectionObserver`가 없는 환경(시험·구형)에서는 즉시 시작한다.
  *  - 같은 화면에서 값이 바뀌면 처음부터 다시 돌지 않고 지금 값에서 새 값으로 700~1500ms 동안 옮겨 간다.
  *  - `prefers-reduced-motion`이면 쉼도 시간도 0이다.
  *  - 합친 연출(`CapsuleResultProvider`, 티켓 20261028_1740 3회)이 게이지를 붙들면(`gaugeHeld`) 값과 상관없이 2% 원으로 그리고 모션을 걸지 않는다.
@@ -101,6 +105,9 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
   // 처음 그리는 값은 늘 2%다. 진입 모션이 끝 눈금으로 옮긴다(값이 0이면 옮길 곳이 없어 그대로다)
   const [motion, setMotion] = useState<Motion>({ graph: GRAPH_MIN_PERCENT, durationMs: 0 })
   const enteredRef = useRef(false)
+  // 트랙이 화면에 보였는가 — 관찰자가 없는 환경에서는 처음부터 보인 것으로 친다. 서버 렌더 값은 그리기에 쓰이지 않는다
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(() => typeof window === 'undefined' || typeof window.IntersectionObserver === 'undefined')
   const shownRef = useRef(GRAPH_MIN_PERCENT)
   // 붙들렸다가 풀린 뒤 번개를 한 번 튀겨야 한다
   const pulseArmedRef = useRef(false)
@@ -129,6 +136,8 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
         enteredRef.current = true
         return
       }
+      // 아직 화면에 보이지 않았으면 기다린다 — 보이면 `visible`이 바뀌어 이 효과가 다시 돈다
+      if (!visible) return
       const timer = window.setTimeout(
         () => {
           enteredRef.current = true
@@ -161,7 +170,26 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
       )
     }, duration)
     return () => window.clearTimeout(timer)
-  }, [target, held])
+  }, [target, held, visible])
+
+  // 보임 관찰 — 트랙(바깥 상자)을 본다. 채움 요소는 2%에서 시작해 너비가 변하므로 기준으로 삼지 않는다. 보이면 해제한다
+  useEffect(() => {
+    if (visible || enteredRef.current) return
+    const track = trackRef.current
+    if (!track) return
+    const observer = new window.IntersectionObserver(
+      (entries) => {
+        // 부동소수 오차로 0.4999가 올 수 있어 백분율로 반올림해 견준다
+        if (entries.some((entry) => entry.isIntersecting && Math.round(entry.intersectionRatio * 100) >= GAUGE_ENTRY_VISIBLE_RATIO * 100)) {
+          observer.disconnect()
+          setVisible(true)
+        }
+      },
+      { threshold: GAUGE_ENTRY_VISIBLE_RATIO, rootMargin: `0px 0px -${GAUGE_ENTRY_TABBAR_CLEARANCE_PX}px 0px` }
+    )
+    observer.observe(track)
+    return () => observer.disconnect()
+  }, [visible])
 
   // 채움 요소를 바깥에 알린다 — 합친 연출이 이 자리에서 번져 나가고, 호출부의 `fillRef`도 그대로 받는다
   const setFillElement = useCallback(
@@ -180,6 +208,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
 
   return (
     <div
+      ref={trackRef}
       role="img"
       aria-label={ariaLabel}
       className="relative block w-full select-none rounded-full"

@@ -520,19 +520,19 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     expect(getMyChapterMock).toHaveBeenCalledTimes(1)
     expect(getMyChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
     expect(getPublicChapterMock).not.toHaveBeenCalled()
-    expect(props.chapterInitial).toEqual({ chapterNo: 7, nextChapterNo: 8, progress: 0.4242 })
+    expect(props.chapterInitial).toEqual({ chapterNo: 7 })
     expect('publicChapter' in props).toBe(false)
     // 응답의 ok 표지 같은 내부 모양은 화면으로 넘기지 않는다
     expect('ok' in (props.chapterInitial as object)).toBe(false)
   })
 
-  it('(l) 내 프로필: 마지막 챕터는 다음 챕터와 진행이 null로 내려간다', async () => {
+  it('(l) 내 프로필: 마지막 챕터도 챕터 번호만 내려간다', async () => {
     state.loginUserId = TARGET_USER_ID
     getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: 50, nextChapterNo: null, progress: null })
 
     const props = await renderPage('target')
 
-    expect(props.chapterInitial).toEqual({ chapterNo: 50, nextChapterNo: null, progress: null })
+    expect(props.chapterInitial).toEqual({ chapterNo: 50 })
   })
 
   it('(l) 내 프로필: 퀘스트 전(chapterNo null)은 chapterInitial이 null이다 — 줄을 그리지 않는다', async () => {

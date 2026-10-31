@@ -1,16 +1,14 @@
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { d, t } from '@/lib/i18n'
 
 /**
  * 프로필의 챕터 줄 (티켓 20261019_1317 1회, 채원 사전 판정 A·B)
  *
  * 한 컴포넌트가 내 프로필(`mine`)과 다른 유저 프로필(`public`) 두 모양을 맡는다.
- * - mine: «챕터 3» 줄 오른쪽에 «다음 챕터까지», 아래에 MODULAR `ProgressBar` 기본형(높이 8, 숫자 없음).
- *   마지막 챕터(`nextChapterNo`가 null)는 줄 오른쪽 라벨과 게이지를 함께 빼고 «마지막» 같은 문구도 두지 않는다(챕터가 늘 수 있다).
+ * - mine: 프로필 헤더의 표시 이름 위에 놓는 작은 글씨 «챕터 3» 한 줄(티켓 20261031_1806, 채원 사전 판정). 막대·«다음 챕터까지»는 없다.
  * - public: «트라이브 · 챕터 3» 한 줄. 게이지 없음. 없는 조각은 빼고 모두 없으면 아무것도 그리지 않는다.
  *
  * 챕터는 숫자로만 표기한다(2026-10-21 결정, 티켓 20261021_1539). 챕터 이름 조각은 없다.
- * 점수 숫자는 어디에도 그리지 않는다(운영 로직 12.3절). 게이지는 비율만 받고 숫자 라벨을 켜지 않는다.
+ * 점수 숫자는 어디에도 그리지 않는다(운영 로직 12.3절).
  * 서버가 읽은 값을 그대로 그린다 — 퀘스트 전과 읽지 못함은 호출부가 `null`을 넘겨 줄 자체를 두지 않는다(사용자 결정 4).
  * 긴 트라이브 이름은 줄여서(truncate) 320px에서 넘치지 않게 한다.
  */
@@ -18,10 +16,6 @@ import { d, t } from '@/lib/i18n'
 /** 내 프로필용 — `getMyChapter`가 `ok: true`이고 챕터가 있을 때의 값 */
 export interface MyChapterLineData {
   chapterNo: number
-  /** 다음 챕터 번호. 마지막 챕터면 null */
-  nextChapterNo: number | null
-  /** 다음 챕터까지의 비율(0~1). 마지막 챕터면 null */
-  progress: number | null
 }
 
 /** 다른 유저 프로필용 — 진행은 담지 않는다 */
@@ -58,24 +52,11 @@ export default function ChapterLine(props: Props) {
     )
   }
 
-  const { chapterNo, nextChapterNo, progress } = props.chapter
-  const label = t(d.chapter.line.chapter, { chapterNo })
-  const hasNext = nextChapterNo !== null && progress !== null
+  const label = t(d.chapter.line.chapter, { chapterNo: props.chapter.chapterNo })
 
   return (
-    <div data-chapter-line="mine" className="flex min-w-0 flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className={`m-0 min-w-0 truncate text-base font-bold text-foreground ${TEXT_BASE}`}>{label}</p>
-        {hasNext && (
-          <span className={`shrink-0 whitespace-nowrap text-sm text-muted ${TEXT_BASE}`}>{d.chapter.line.untilNext}</span>
-        )}
-      </div>
-      {hasNext && (
-        // 게이지는 비율만 보인다. 숫자가 없어 보조기술에는 앞의 «다음 챕터까지» 글이 전부라 장식으로 둔다.
-        <div data-chapter-gauge aria-hidden="true">
-          <ProgressBar percent={Math.round(progress * 100)} />
-        </div>
-      )}
-    </div>
+    <p data-chapter-line="mine" className={`m-0 min-w-0 truncate text-xs leading-tight text-muted ${TEXT_BASE}`}>
+      {label}
+    </p>
   )
 }

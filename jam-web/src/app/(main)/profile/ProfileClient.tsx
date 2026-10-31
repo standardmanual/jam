@@ -114,8 +114,9 @@ interface Props {
   capsuleInitial?: CapsuleStatus | null
   /**
    * 내 챕터 줄의 서버 값(티켓 20261019_1317). **내 프로필에서만 내려온다 — 타인이 보는 프로필에는 prop 자체가 없다(`undefined`).**
-   * 다음 챕터까지의 진행(게이지)이 들어 있어 `capsuleInitial`과 같은 방식으로 DOM과 RSC 페이로드에서 막는다.
+   * 챕터 번호만 담는다(막대·다음 챕터는 없다, 티켓 20261031_1806). 내 정보라 `capsuleInitial`과 같은 방식으로 DOM과 RSC 페이로드에서 막는다.
    * `null`은 «챕터가 없다(퀘스트 전)» 또는 «서버가 읽지 못했다»이고 둘 다 줄을 그리지 않는다(사용자 결정 4).
+   * 값이면 헤더의 표시 이름 위에 작은 글씨 «챕터 N» 한 줄로 그린다.
    */
   chapterInitial?: MyChapterLineData | null
   /**
@@ -616,6 +617,8 @@ export default function ProfileClient({
 
           {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
+            {/* 내 챕터 — 표시 이름 위 작은 글씨 한 줄(티켓 20261031_1806). 퀘스트 전·읽지 못함(null)은 줄 자체를 그리지 않는다 */}
+            {isOwnProfile && chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
             <Link
               href={`/${username}`}
               onClick={clearProfileHash}
@@ -677,17 +680,10 @@ export default function ProfileClient({
             다른 유저 프로필에서만 서버가 `publicChapter`를 내려주고, 읽지 못함(null)이거나 보일 조각이 없으면 줄이 없다. */}
         {!isOwnProfile && publicChapter && <ChapterLine variant="public" chapter={publicChapter} />}
 
-        {/* 챕터 줄 + 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 통계 탭 사이이고 «챕터 줄, 캡슐 게이지, 안내 영역» 묶음의 간격은 16이다
-            (티켓 20261028_1739 3회: 8px 막대와 새 게이지를 둘 다 두고 간격만 넓힌다. 위젯 안의 게이지-안내 간격은 위젯이 정한다.
-            티켓 20261019_1317 사용자 결정 3: 캡슐 바로 위. 챕터에서 필요량으로 이어진다).
-            챕터 줄은 `chapterInitial`이 값일 때만 — 퀘스트 전과 읽지 못함(null)은 줄을 그리지 않는다(사용자 결정 4).
+        {/* 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 통계 탭 사이이고 헤더와의 간격은 바깥 gap-6 하나다
+            (챕터는 헤더의 표시 이름 위로 옮겼다, 티켓 20261031_1806. 위젯 안의 게이지-안내 간격은 위젯이 정한다).
             캡슐 위젯(티켓 20261018_0054)의 렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
-        {isOwnProfile && (chapterInitial || capsuleInitial !== undefined) && (
-          <div className="flex flex-col gap-4">
-            {chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
-            {capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} />}
-          </div>
-        )}
+        {isOwnProfile && capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} />}
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
