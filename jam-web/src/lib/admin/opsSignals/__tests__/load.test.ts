@@ -913,7 +913,6 @@ describe('loadOpsSignals — 획득 경로가 막힌 컬렉션 (티켓 20261008_
     valid_until: null,
     rarity: 'common',
     always_locked: false,
-    unlock_required: null,
     ...over,
   })
   /** 아이템 유효기간이 지나 드랍 길이 닫힌 아이템(레시피·미션도 없어 막힘). */

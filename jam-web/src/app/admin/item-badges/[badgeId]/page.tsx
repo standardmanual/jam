@@ -22,10 +22,9 @@ type ListedItem = Pick<
   InventoryItemRow,
   'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'obtained_at' | 'destroyed_at' | 'inventory_id' | 'slotted_in'
 > & {
-  // 잠김 칸(마이그레이션 231, 티켓 20261018_0051) — 읽기 표시만 한다
+  // 잠김 칸(마이그레이션 231·300, 티켓 20261018_0051) — 읽기 표시만 한다
   locked: boolean | null
-  unlock_required: number | null
-  unlock_filled: number | null
+  unlock_points_required: number | null
   unlocked_at: string | null
 }
 
@@ -69,11 +68,20 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
   const { data: itemsRaw } = await supabase
     .from('inventory_items')
     .select(
-      'id, badge_id, serial_number, serial_prefix, obtained_at, destroyed_at, inventory_id, slotted_in, locked, unlock_required, unlock_filled, unlocked_at'
+      'id, badge_id, serial_number, serial_prefix, obtained_at, destroyed_at, inventory_id, slotted_in, locked, unlock_points_required, unlocked_at'
     )
     .eq('badge_id', badgeId)
 
   const items = (itemsRaw ?? []) as ListedItem[]
+
+  // 고정 전 개체의 필요 포인트는 이 배지 등급의 정책값이다. 읽지 못하면 잘못된 숫자를 보이지 않도록 던진다.
+  const { data: policyRaw, error: policyError } = await supabase
+    .from('jam_policy')
+    .select('locked_points_common, locked_points_rare, locked_points_epic, locked_points_mystic')
+    .eq('id', 1)
+    .single()
+  if (policyError || !policyRaw) throw new Error('[admin/item-badges] jam_policy 읽기 실패')
+  const policyPoints = policyRaw[`locked_points_${badge.rarity ?? 'common'}`]
 
   const header = (
     <div className="mb-6 space-y-3">
@@ -222,12 +230,10 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
       poiId,
       poiName,
       mintedAt: mintedAtByItem.get(item.id) ?? item.obtained_at,
-      lock: describeItemLock({
-        locked: item.locked,
-        unlockRequired: item.unlock_required,
-        unlockFilled: item.unlock_filled,
-        unlockedAt: item.unlocked_at,
-      }),
+      lock: describeItemLock(
+        { locked: item.locked, unlockPointsRequired: item.unlock_points_required, unlockedAt: item.unlocked_at },
+        policyPoints
+      ),
       isReissued,
       reissueAnomaly,
     }

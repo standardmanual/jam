@@ -6,7 +6,8 @@
  * 2. 컬렉션은 공개된 것 전부다 — 기간이 끝난 것은 싣고 비활성·공개 전은 뺀다. 아이템은 그 컬렉션 소속이고 삭제되지 않은 아이템 배지만 읽는다
  * 3. 표 하나라도 읽기에 실패하면 부분 결과 없이 던진다(조용히 「막힘」이 되지 않는다)
  * 4. select 목록에 관리자 ID 칸이 없다
- * 5. 동기화·캡슐·등급 올리기 길에 필요한 칸(tribe_id, rarity, always_locked, unlock_required)만 더 읽고 정책 표는 읽지 않는다 (티켓 20261022_1136 2회)
+ * 5. 동기화·캡슐·등급 올리기 길에 필요한 칸(tribe_id, rarity, always_locked)만 더 읽는다 (티켓 20261022_1136 2회)
+ * 6. 잠긴 배지의 필요 포인트로 jam_policy id 1의 locked_points_* 네 칸만 읽고, 읽지 못하거나 값이 올바르지 않으면 던진다. 배지의 unlock_required(잼)는 읽지 않는다 (티켓 20261031_0458 2회)
  */
 import { describe, it, expect } from 'vitest'
 import { loadItemPathInputs } from '../load'
@@ -104,8 +105,16 @@ class Query implements PromiseLike<Result> {
   }
 }
 
+const POLICY_ROW: Row = {
+  id: 1,
+  locked_points_common: 50,
+  locked_points_rare: 100,
+  locked_points_epic: 200,
+  locked_points_mystic: 400,
+}
+
 function makeDb(tables: Record<string, Row[]> = {}): FakeDb {
-  return { tables, failTable: null, selects: [], ranges: [], unordered: 0 }
+  return { tables: { jam_policy: [POLICY_ROW], ...tables }, failTable: null, selects: [], ranges: [], unordered: 0 }
 }
 
 function load(db: FakeDb, now: Date) {
@@ -142,7 +151,6 @@ function itemRow(id: string, bookId: string | null, over: Row = {}): Row {
     valid_until: null,
     rarity: 'common',
     always_locked: false,
-    unlock_required: null,
     ...over,
   }
 }
@@ -173,11 +181,11 @@ describe('loadItemPathInputs — 컬렉션·아이템 범위', () => {
     })
   })
 
-  it('동기화·캡슐·등급 올리기 길에 필요한 칸(컬렉션 tribe_id, 아이템 rarity·always_locked·unlock_required)을 그대로 담는다', async () => {
+  it('동기화·캡슐·등급 올리기 길에 필요한 칸(컬렉션 tribe_id, 아이템 rarity·always_locked)을 그대로 담는다', async () => {
     const db = makeDb({
       item_books: [book('c1'), book('no-tribe', { tribe_id: null })],
       badges: [
-        itemRow('i1', 'c1', { rarity: 'mystic', always_locked: true, unlock_required: 12 }),
+        itemRow('i1', 'c1', { rarity: 'mystic', always_locked: true }),
         itemRow('i2', 'c1', { rarity: null }),
       ],
     })
@@ -186,15 +194,22 @@ describe('loadItemPathInputs — 컬렉션·아이템 범위', () => {
       ['c1', 'tribe-1'],
       ['no-tribe', null],
     ])
-    expect(inputs.items[0]).toMatchObject({ rarity: 'mystic', always_locked: true, unlock_required: 12 })
-    expect(inputs.items[1]).toMatchObject({ rarity: null, always_locked: false, unlock_required: null })
+    expect(inputs.items[0]).toMatchObject({ rarity: 'mystic', always_locked: true })
+    expect(inputs.items[1]).toMatchObject({ rarity: null, always_locked: false })
   })
 
-  it('새 길에 필요한 칸만 더 읽고 정책 표(jam_policy·combine_policy)는 읽지 않는다', async () => {
+  it('새 길에 필요한 칸만 더 읽고 정책 표는 jam_policy의 여는 포인트 네 칸만 읽는다', async () => {
     const db = makeDb({ item_books: [book('c1')], badges: [itemRow('i1', 'c1')] })
     await load(db, NOW)
     const tables = new Set(db.selects.map((s) => s.table))
-    expect([...tables].sort()).toEqual(['badges', 'combination_recipes', 'item_books', 'missions'])
+    expect([...tables].sort()).toEqual(['badges', 'combination_recipes', 'item_books', 'jam_policy', 'missions'])
+    expect(db.selects.find((s) => s.table === 'jam_policy')?.columns).toEqual([
+      'id',
+      'locked_points_common',
+      'locked_points_rare',
+      'locked_points_epic',
+      'locked_points_mystic',
+    ])
     expect(db.selects.find((s) => s.table === 'item_books')?.columns).toEqual([
       'id',
       'tribe_id',
@@ -212,7 +227,6 @@ describe('loadItemPathInputs — 컬렉션·아이템 범위', () => {
       'valid_until',
       'rarity',
       'always_locked',
-      'unlock_required',
     ])
   })
 
@@ -318,7 +332,7 @@ describe('loadItemPathInputs — 읽기 실패', () => {
     missions: [],
   })
 
-  it.each(['item_books', 'badges', 'combination_recipes', 'missions'])(
+  it.each(['item_books', 'badges', 'combination_recipes', 'missions', 'jam_policy'])(
     '%s를 읽지 못하면 부분 결과 없이 던진다',
     async (table) => {
       const db = makeDb(full())
@@ -330,6 +344,22 @@ describe('loadItemPathInputs — 읽기 실패', () => {
   it('실패가 없으면 같은 데이터로 정상 결과를 돌려준다', async () => {
     const inputs = await load(makeDb(full()), NOW)
     expect(inputs.items.map((i) => i.id)).toEqual(['i1'])
+  })
+
+  it('정책 행의 여는 포인트를 등급별로 담는다', async () => {
+    const db = makeDb({ ...full(), jam_policy: [{ ...POLICY_ROW, locked_points_rare: 0, locked_points_mystic: 999 }] })
+    const inputs = await load(db, NOW)
+    expect(inputs.lockedPoints).toEqual({ common: 50, rare: 0, epic: 200, mystic: 999 })
+  })
+
+  it('정책 행이 없으면 기본값으로 바꾸지 않고 던진다', async () => {
+    const db = makeDb({ ...full(), jam_policy: [] })
+    await expect(load(db, NOW)).rejects.toThrow('jam_policy')
+  })
+
+  it.each([null, -1, 1.5])('여는 포인트가 %s이면 던진다', async (bad) => {
+    const db = makeDb({ ...full(), jam_policy: [{ ...POLICY_ROW, locked_points_epic: bad }] })
+    await expect(load(db, NOW)).rejects.toThrow('locked_points_epic')
   })
 })
 

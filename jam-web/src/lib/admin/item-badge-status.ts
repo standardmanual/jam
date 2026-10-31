@@ -105,30 +105,31 @@ export function deriveItemBadgeStatus(input: DeriveItemBadgeStatusInput): ItemBa
   return 'Orphaned'
 }
 
-/** 개체의 잠김 칸(마이그레이션 231, 티켓 20261018_0051) — 목록의 읽기 표시에 쓴다 */
+/** 개체의 잠김 칸(마이그레이션 231·300, 티켓 20261018_0051) — 목록의 읽기 표시에 쓴다 */
 export interface ItemLockInfo {
   locked: boolean | null
-  unlockRequired: number | null
-  unlockFilled: number | null
+  /** 개체에 고정된 여는 포인트(`inventory_items.unlock_points_required`). 고정 전 개체는 null */
+  unlockPointsRequired: number | null
   unlockedAt: string | null
 }
 
 export interface ItemLockDisplay {
-  /** 잠김: 아직 잠긴 개체, 열림: 처음부터 열린 개체, 연 개체: 잠겼다가 채워서 연 개체 */
+  /** 잠김: 아직 잠긴 개체, 열림: 처음부터 열린 개체, 연 개체: 잠겼다가 포인트로 연 개체 */
   state: 'locked' | 'open' | 'unlocked'
-  /** 화면에 그릴 문구. 잠긴 개체는 채운 양과 필요한 양을 함께 적는다(예: «잠김 30/60잼») */
+  /** 화면에 그릴 문구. 잠긴 개체는 필요한 포인트를 적는다(예: «잠김 · 필요 포인트 100») */
   label: string
 }
 
 /**
  * 개체의 잠김 상태를 화면 문구로 바꾼다(읽기 전용).
  * 잠금 칸을 읽지 못한 옛 행(`locked` null)은 열린 개체로 본다 — 231 이전 개체와 옛 지급 경로의 개체가 모두 열린 채다.
+ * 필요 포인트는 개체에 고정된 값이 먼저이고, 비어 있으면(고정 전 개체) 이 배지 등급의 정책값(`policyPoints`, `jam_policy.locked_points_*`)이다.
+ * 채운 양(`unlock_filled`)은 비용에 쓰이지 않아 읽지 않는다.
  */
-export function describeItemLock(info: ItemLockInfo): ItemLockDisplay {
+export function describeItemLock(info: ItemLockInfo, policyPoints: number): ItemLockDisplay {
   if (info.locked === true) {
-    const required = info.unlockRequired
-    const filled = info.unlockFilled ?? 0
-    return { state: 'locked', label: required ? `잠김 ${filled}/${required}잼` : '잠김' }
+    const points = info.unlockPointsRequired ?? policyPoints
+    return { state: 'locked', label: `잠김 · 필요 포인트 ${points.toLocaleString('ko-KR')}` }
   }
   if (info.unlockedAt) return { state: 'unlocked', label: '연 개체' }
   return { state: 'open', label: '열림' }

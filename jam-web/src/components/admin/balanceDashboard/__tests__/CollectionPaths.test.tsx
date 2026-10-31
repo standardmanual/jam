@@ -3,7 +3,7 @@
  * - 컬렉션마다 이름과 막힘·열림·드랍 제외·전체 개수가 보이고, 막힘이 있는 첫 컬렉션은 펼쳐져 아이템 표가 보인다
  * - 아이템마다 열린 길의 이름(드랍·믹스·미션·동기화·캡슐·등급 올리기)과 닫힌 길의 사유가 한국어 문구로 보이고, 사유 상수(영문)가 그대로 새지 않는다
  * - 기간 한정 운영이 끝나 얻을 길이 없는 아이템이 «막힘»과 «컬렉션 기간이 끝났어요»로 보인다
- * - 잠긴 채 받는 아이템은 «잠긴 채 받고 잼으로 열어요»와 필요한 양(정했으면 «잼 N만큼», 아니면 «등급 기본값»)이 보이고, 열린 아이템은 이 문구가 없다
+ * - 잠긴 채 받는 아이템은 «잠긴 채 받고 포인트로 열어요»와 필요한 포인트(배지 등급의 정책값)가 보이고, 열린 아이템은 이 문구가 없다
  * - 이름을 모르면 «이름을 모르는 …», 컬렉션이 없으면 빈 상태 문구
  * - 쪽이 둘 이상이면 이동 링크가 있고 탭 주소가 `?tab=paths`를 지킨다. 한국어 문구에는 줄바꿈 클래스(`break-keep`)가 붙는다
  * - 사유 문구는 모든 사유 상수에 있고 해요체다
@@ -59,7 +59,6 @@ const item = (over: Partial<ItemPathItemInput> = {}): ItemPathItemInput => ({
   valid_until: null,
   rarity: 'common',
   always_locked: false,
-  unlock_required: null,
   ...over,
 })
 
@@ -82,7 +81,7 @@ function viewsOf(
   input: { collections: ItemPathCollectionInput[]; items: ItemPathItemInput[]; missions?: ItemPathMissionInput[] },
   pathNames: PathNames,
 ): CollectionPathView[] {
-  const computed = computeItemPaths({ collections: input.collections, items: input.items, recipes: [], missions: input.missions ?? [], now: NOW })
+  const computed = computeItemPaths({ collections: input.collections, items: input.items, recipes: [], missions: input.missions ?? [], lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 }, now: NOW })
   const page = pickCollectionPage(computed.collections, 1)
   return buildCollectionPathViews(computed, page.collectionIds, pathNames)
 }
@@ -197,19 +196,22 @@ describe('CollectionPaths — 잠긴 채 받는 모습', () => {
       names({ c1: '컬렉션' }, { a: '잠긴 배지', z: '막힌 배지' }),
     )
 
-  it('필요한 양을 정했으면 «잼 N만큼»과 함께 보인다', () => {
-    const text = textOf(render(lockedViews({ always_locked: true, unlock_required: 12 })))
-    expect(text).toContain(`${LOCKED_ON_RECEIVE_LABEL} (필요한 양 잼 12만큼)`)
-    expect(lockLabel(12)).toBe('잠긴 채 받고 잼으로 열어요 (필요한 양 잼 12만큼)')
+  it('이 배지 등급의 정책 포인트가 «필요한 포인트 N»으로 보인다', () => {
+    const text = textOf(render(lockedViews({ always_locked: true, rarity: 'epic' })))
+    expect(text).toContain(`${LOCKED_ON_RECEIVE_LABEL} (필요한 포인트 200)`)
+    expect(lockLabel(1200)).toBe('잠긴 채 받고 포인트로 열어요 (필요한 포인트 1,200)')
   })
 
-  it('필요한 양을 정하지 않았으면 «등급 기본값»만 적는다', () => {
-    const text = textOf(render(lockedViews({ always_locked: true, unlock_required: null })))
-    expect(text).toContain(`${LOCKED_ON_RECEIVE_LABEL} (필요한 양 등급 기본값)`)
+  it('옛 «잼» 표기와 «등급 기본값»이 남지 않는다', () => {
+    const text = textOf(render(lockedViews({ always_locked: true })))
+    expect(text).toContain('필요한 포인트 50')
+    expect(text).not.toContain('잼')
+    expect(text).not.toContain('등급 기본값')
+    expect(text).not.toContain('필요한 양')
   })
 
   it('잠기지 않은 아이템에는 이 문구가 없다', () => {
-    const text = textOf(render(lockedViews({ always_locked: false, unlock_required: 12 })))
+    const text = textOf(render(lockedViews({ always_locked: false })))
     expect(text).not.toContain(LOCKED_ON_RECEIVE_LABEL)
   })
 

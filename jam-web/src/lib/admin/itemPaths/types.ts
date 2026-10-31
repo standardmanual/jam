@@ -23,7 +23,7 @@ export interface ItemPathCollectionInput {
 
 /**
  * 아이템 배지(`badges`, type='item') 행 — 소프트 삭제된 행(`deleted_at`)은 계산 대상에서 뺀다.
- * `rarity`·`always_locked`·`unlock_required`를 더한 칸까지 `syncIssue.ts`의 `IssueBadge`와 같아 그 함수에 그대로 넘긴다.
+ * `rarity`·`always_locked`를 더한 칸까지 `syncIssue.ts`의 `IssueBadge`와 같아 그 함수에 그대로 넘긴다.
  */
 export interface ItemPathItemInput {
   id: string
@@ -36,8 +36,6 @@ export interface ItemPathItemInput {
   rarity: BadgeRarity | null
   /** 「잠김으로 만듦」 — 어느 길로 얻어도 잠긴 채 받는다(`drop-engine/lockAssignment.ts`) */
   always_locked: boolean
-  /** 「여는 데 필요한 양」 — 정하지 않았으면 null이고, 그때는 등급 기본값을 쓴다 */
-  unlock_required: number | null
 }
 
 /** 믹스 레시피(`combination_recipes`) 행 */
@@ -129,14 +127,17 @@ export interface TierUpPath {
 
 /**
  * 받는 모습 — 길이 아니라 어느 길로 얻든 따라오는 성질이라 열림 판정에 쓰지 않는다.
- * 잠김으로 만든 아이템 배지는 잠긴 채 받고, 열 때 잼이 든다(`drop-engine/lockAssignment.ts`의 `badge_locked`).
+ * 잠김으로 만든 아이템 배지는 잠긴 채 받고, 열 때 포인트가 든다(`drop-engine/lockAssignment.ts`의 `badge_locked`).
  */
 export interface ItemLockInfo {
   /** `badges.always_locked` */
   receivedLocked: boolean
-  /** 배지에 정한 「여는 데 필요한 양」. 잠긴 채 받는데 정하지 않았으면 null이고 등급 기본값을 쓴다. 잠기지 않으면 늘 null */
-  unlockRequired: number | null
+  /** 여는 데 필요한 포인트 — 이 배지 등급의 정책값(`jam_policy.locked_points_*`). 잠기지 않으면 늘 null */
+  unlockPoints: number | null
 }
+
+/** 등급별 «여는 포인트» 정책값(`jam_policy.locked_points_*`) */
+export type LockedPointsByRarity = Record<BadgeRarity, number>
 
 export interface ItemPathResult {
   itemId: string
@@ -166,6 +167,8 @@ export interface ComputeItemPathsInput {
   items: readonly ItemPathItemInput[]
   recipes: readonly ItemPathRecipeInput[]
   missions: readonly ItemPathMissionInput[]
+  /** 등급별 여는 포인트 — 잠긴 아이템 배지의 필요 포인트로 싣는다 */
+  lockedPoints: LockedPointsByRarity
   /** 「지금」의 기준 시각 — 호출하는 쪽이 정해 넘긴다 */
   now: Date
 }

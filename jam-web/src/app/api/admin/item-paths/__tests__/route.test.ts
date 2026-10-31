@@ -142,7 +142,6 @@ function itemRow(id: string, bookId: string, over: Row = {}): Row {
     valid_until: null,
     rarity: 'common',
     always_locked: false,
-    unlock_required: null,
     updated_by: ADMIN_ID_VALUE,
     ...over,
   }
@@ -154,7 +153,16 @@ function itemRow(id: string, bookId: string, over: Row = {}): Row {
  * - c2-excl: 컬렉션이 드랍 제외다. x1은 다른 길이 없어 드랍 제외
  * - c3-open: 노출 중이다. o1은 드랍으로 열림
  */
+const POLICY_ROW = {
+  id: 1,
+  locked_points_common: 50,
+  locked_points_rare: 100,
+  locked_points_epic: 200,
+  locked_points_mystic: 400,
+}
+
 function fillTables() {
+  h.db.tables.jam_policy = [POLICY_ROW]
   h.db.tables.item_books = [
     bookRow('c3-open'),
     bookRow('c1-ended', { valid_until: PAST }),
@@ -239,7 +247,7 @@ describe('GET /api/admin/item-paths — 인증', () => {
   it('아이템마다 다섯 길(drop·mix·mission·syncCapsule·tierUp)과 잠긴 채 받는 모습(lock)이 실린다 — 티켓 20261022_1136 2회', async () => {
     h.db.tables.item_books = [bookRow('c1'), bookRow('c2-no-tribe', { tribe_id: null })]
     h.db.tables.badges = [
-      itemRow('a', 'c1', { rarity: 'common', always_locked: true, unlock_required: 8 }),
+      itemRow('a', 'c1', { rarity: 'common', always_locked: true }),
       itemRow('b', 'c1', { rarity: 'rare' }),
       itemRow('c', 'c2-no-tribe', { rarity: 'common' }),
     ]
@@ -257,9 +265,9 @@ describe('GET /api/admin/item-paths — 인증', () => {
       status: 'open',
       syncCapsule: { open: true, reasons: [] },
       tierUp: { open: true, reasons: [] },
-      lock: { receivedLocked: true, unlockRequired: 8 },
+      lock: { receivedLocked: true, unlockPoints: 50 },
     })
-    expect(byId.b).toMatchObject({ tierUp: { open: true }, lock: { receivedLocked: false, unlockRequired: null } })
+    expect(byId.b).toMatchObject({ tierUp: { open: true }, lock: { receivedLocked: false, unlockPoints: null } })
     // 소속 트라이브가 없는 컬렉션은 동기화·캡슐·등급 올리기가 닫히지만 드랍 길이 열려 있어 아이템은 열림이다
     expect(byId.c).toMatchObject({
       status: 'open',
@@ -366,7 +374,7 @@ describe('GET /api/admin/item-paths — 쪽 나누기', () => {
   })
 
   it('컬렉션이 하나도 없으면 빈 목록 200이다(오류 아님)', async () => {
-    h.db.tables = {}
+    h.db.tables = { jam_policy: [POLICY_ROW] }
     const res = await GET(request('', AUTH))
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ total: 0, collections: [], nextOffset: null })
@@ -415,7 +423,7 @@ describe('GET /api/admin/item-paths — onlyBlocked', () => {
 })
 
 describe('GET /api/admin/item-paths — 오류와 비노출', () => {
-  it.each(['item_books', 'badges', 'combination_recipes', 'missions'])(
+  it.each(['item_books', 'badges', 'combination_recipes', 'missions', 'jam_policy'])(
     '%s를 읽지 못하면 고정 문장 500이고 원문은 싣지 않는다',
     async (table) => {
       h.db.failTable = table

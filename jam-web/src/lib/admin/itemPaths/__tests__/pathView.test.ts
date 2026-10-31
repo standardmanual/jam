@@ -49,7 +49,6 @@ function item(over: Partial<ItemPathItemInput> = {}): ItemPathItemInput {
     valid_until: null,
     rarity: 'common',
     always_locked: false,
-    unlock_required: null,
     ...over,
   }
 }
@@ -141,6 +140,7 @@ describe('아이템 한 줄', () => {
       items: [item()],
       recipes: [],
       missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     }).items[0]
     const row = itemPathRowOf(result, '첫 숨결')
@@ -153,21 +153,22 @@ describe('아이템 한 줄', () => {
       { path: 'mission', reasons: ['no_mission'] },
       { path: 'tierUp', reasons: ['tier_up_rarity_pair_missing'] },
     ])
-    expect(row.lock).toEqual({ receivedLocked: false, unlockRequired: null })
+    expect(row.lock).toEqual({ receivedLocked: false, unlockPoints: null })
   })
 
   it('열린 길과 닫힌 길을 합치면 항상 다섯 길 전부다', () => {
     const result = computeItemPaths({
       collections: [collection({ valid_until: PAST })],
-      items: [item({ always_locked: true, unlock_required: 12 })],
+      items: [item({ always_locked: true, rarity: 'rare' })],
       recipes: [],
       missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     }).items[0]
     const row = itemPathRowOf(result, null)
     expect([...row.openPaths, ...row.closedPaths.map((c) => c.path)].sort()).toEqual([...PATH_KEYS].sort())
     expect(row.name).toBeNull()
-    expect(row.lock).toEqual({ receivedLocked: true, unlockRequired: 12 })
+    expect(row.lock).toEqual({ receivedLocked: true, unlockPoints: 100 })
   })
 })
 
@@ -186,6 +187,7 @@ describe('컬렉션 보기 모델', () => {
     ],
     recipes: [],
     missions: [mission(['e3'])],
+    lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
     now: NOW,
   })
 
@@ -214,6 +216,7 @@ describe('컬렉션 보기 모델', () => {
       ],
       recipes: [],
       missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     })
     const sameNames = names({}, { 'z-mystic': '검은 비닐봉지', 'a-epic': '검은 비닐봉지', 'm-common': '검은 비닐봉지', 'b-rare': '검은 비닐봉지' })
@@ -238,7 +241,7 @@ describe('컬렉션 보기 모델', () => {
   })
 
   it('아이템이 없는 컬렉션도 빈 목록으로 싣는다', () => {
-    const empty = computeItemPaths({ collections: [collection({ id: 'c0' })], items: [], recipes: [], missions: [], now: NOW })
+    const empty = computeItemPaths({ collections: [collection({ id: 'c0' })], items: [], recipes: [], missions: [], lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 }, now: NOW })
     expect(buildCollectionPathViews(empty, ['c0'], names())[0]).toMatchObject({ total: 0, blocked: 0, items: [] })
   })
 
