@@ -544,7 +544,7 @@ describe('BalanceSectionBody — 인벤토리 구역 (7-3 1회)', () => {
     expect([...out.matchAll(/<input /g)]).toHaveLength(1)
     expect(out).toMatch(/id="balance-inventory-max_slots"[^>]*value="10"/)
     expect(out).toContain('인벤토리 최대치')
-    expect(out).toContain('기본값 50개')
+    expect(out).toContain('기본값 10개')
     expect(out).not.toContain('<legend')
     expect(out).not.toContain('role="status"')
   })
