@@ -4,10 +4,21 @@
  * - 종류별 이미지 칸 이름·종류 판정
  * - `readImageSpec`: 수정본 우선, 객체가 아니면 null
  * - `imageSpecToRenderArgs`: `preset_id` 없으면 null, 값은 문자열만 남김
+ * - `stableImageSeed`·`previewRenderArgs`: 항목 ID의 고정 시드, 색이 없으면 임시 중립색(티켓 20261101_2149)
  * - `imageSpecWarnings`: 비어 있음·모양 틀림은 경고 문장, 제대로 된 값은 경고 없음
  */
 import { describe, it, expect } from 'vitest'
-import { imageKeyOfKind, imageSpecToRenderArgs, imageSpecWarnings, isImageKind, readImageSpec } from '../imageSpec'
+import {
+  PREVIEW_NEUTRAL_BG,
+  PREVIEW_NEUTRAL_END,
+  imageKeyOfKind,
+  imageSpecToRenderArgs,
+  imageSpecWarnings,
+  isImageKind,
+  previewRenderArgs,
+  readImageSpec,
+  stableImageSeed,
+} from '../imageSpec'
 
 describe('종류별 이미지 칸', () => {
   it('카드는 cover_image_url, 미션·배지·컬렉션은 image_url, 그 밖은 null이다', () => {
@@ -92,5 +103,47 @@ describe('imageSpecWarnings', () => {
     ])
     expect(imageSpecWarnings({ preset_id: 'p', bg: '#111111' }, PATH)).toEqual([expect.stringContaining('image_spec.end: 없어요')])
     expect(imageSpecWarnings({ preset_id: 'p', end: '#222222', bg: null }, PATH)).toEqual([expect.stringContaining('image_spec.bg: 없어요')])
+  })
+})
+
+describe('stableImageSeed', () => {
+  it('같은 항목 ID는 늘 같은 시드이고, 다른 ID는 (이 표본에서) 다른 시드다', () => {
+    expect(stableImageSeed('item-1')).toBe(stableImageSeed('item-1'))
+    expect(stableImageSeed('item-1')).not.toBe(stableImageSeed('item-2'))
+  })
+
+  it('0 이상 2^31 미만의 정수다', () => {
+    for (const id of ['', 'a', 'item-1', '3f2a9c1e-7b4d-4e0a-9d55-0a1b2c3d4e5f', '한글 아이디']) {
+      const seed = stableImageSeed(id)
+      expect(Number.isInteger(seed)).toBe(true)
+      expect(seed).toBeGreaterThanOrEqual(0)
+      expect(seed).toBeLessThan(0x80000000)
+    }
+  })
+})
+
+describe('previewRenderArgs', () => {
+  it('preset_id가 없으면 null이다', () => {
+    expect(previewRenderArgs(null, 'item-1')).toBeNull()
+    expect(previewRenderArgs({ bg: '#111111', end: '#222222' }, 'item-1')).toBeNull()
+  })
+
+  it('색이 모두 있으면 제작 인자와 같고 시드는 항목 ID의 고정 시드다', () => {
+    const spec = { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' } }
+    const out = previewRenderArgs(spec, 'item-1')
+    expect(out).toEqual({ args: imageSpecToRenderArgs(spec, stableImageSeed('item-1')), tempColor: false })
+  })
+
+  it('색이 없으면 임시 중립색으로 채우고 tempColor다. 실제 제작 인자(imageSpecToRenderArgs)는 그대로 빈 색이다', () => {
+    const spec = { preset_id: 'p1' }
+    const out = previewRenderArgs(spec, 'item-1')
+    expect(out?.tempColor).toBe(true)
+    expect(out?.args).toMatchObject({ bg: PREVIEW_NEUTRAL_BG, end: PREVIEW_NEUTRAL_END })
+    expect(imageSpecToRenderArgs(spec, 1)).toMatchObject({ bg: '', end: '' })
+  })
+
+  it('한쪽 색만 있으면 있는 색을 따르고 tempColor다', () => {
+    const out = previewRenderArgs({ preset_id: 'p1', bg: '#123456' }, 'item-1')
+    expect(out).toMatchObject({ tempColor: true, args: { bg: '#123456', end: '#123456' } })
   })
 })
