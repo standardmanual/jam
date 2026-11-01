@@ -398,9 +398,9 @@ describe('runHomeFeedRegister — --dry-run', () => {
     expect(logs.join('\n')).toContain('- 설명문: 이번 주 드랍 소식');
   });
 
-  it('description이 40자를 넘거나 줄바꿈이 있거나 기사 템플릿이면 종료 코드 1이다', async () => {
+  it('description이 60자를 넘거나 줄바꿈이 있거나 기사 템플릿이면 종료 코드 1이다', async () => {
     const cases: [string, (raw: Record<string, Record<string, unknown>>) => void, string][] = [
-      ['41자', (raw) => { raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined as unknown as string, description: '가'.repeat(41) }; }, 'card.description: 공백 포함 40자 이하여야 해요'],
+      ['61자', (raw) => { raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined as unknown as string, description: '가'.repeat(61) }; }, 'card.description: 공백 포함 60자 이하여야 해요'],
       ['줄바꿈', (raw) => { raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined as unknown as string, description: '첫 줄\n둘째 줄' }; }, 'card.description: 줄바꿈이나 제어 문자를 쓸 수 없어요'],
       ['기사', (raw) => { raw.card.description = '기사에는 못 넣어요'; }, 'card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요'],
     ];

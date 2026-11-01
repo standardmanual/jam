@@ -180,7 +180,7 @@ const meta: Meta<typeof TodayCard> = {
         component:
           '홈 「투데이」의 큰 이미지 모양(`hero`) — 티켓 20261001_1737(상위 20260930_1453 조각 b3). 위는 16:9 이미지 칸, 아래는 흰 본문이다: ' +
           '칩 줄(라벨 · 지역 핀 · 희귀도 · 기사는 줄 끝 게재일) · 제목 24px(2줄 말줄임) · 요약 16px · 필수 정보 14px 굵게(최대 2줄, 말줄임 없이 줄바꿈) · ' +
-          '설명문 14px(2줄 말줄임) · 끝 줄 「자세히 보기 →」(기사는 「기사 읽기 →」). 이미지가 없거나 깨져도 같은 16:9 칸에 자원 아이콘 판을 그려 높이가 같다. ' +
+          '설명문 14px(3줄 말줄임) · 끝 줄 「자세히 보기 →」(기사는 「기사 읽기 →」). 이미지가 없거나 깨져도 같은 16:9 칸에 자원 아이콘 판을 그려 높이가 같다. ' +
           '서비스 전용 컴포넌트라 MODULAR이 아니다(`TodayCard`가 모양을 고르고 `CardFrame`이 링크·계측·눌림·포커스를 맡는다).',
       },
     },
@@ -379,9 +379,9 @@ const LONG_SUBTITLE = '한강 둔치를 따라 달리는 가을 밤 러닝 챌�
 const LONG_DESCRIPTION =
   '완주하면 한정 배지와 포인트를 드려요. 코스는 여의도에서 반포까지이고, 중간에 쉬어 갈 수 있는 보급 지점이 세 곳 있어요. 비가 오면 일정이 바뀔 수 있어요.'
 
-/** 제목 22자 초과(2줄 말줄임) · 필수 정보 22자 초과(말줄임 없이 줄바꿈) · 요약·설명문 2줄 말줄임. */
+/** 제목 22자 초과(2줄 말줄임) · 필수 정보 22자 초과(말줄임 없이 줄바꿈) · 요약 2줄·설명문 3줄 말줄임. */
 export const LongText: Story = {
-  name: '긴 글 — 제목 2줄 말줄임 · 필수 정보 줄바꿈(말줄임 없음) · 요약·설명문 2줄 말줄임',
+  name: '긴 글 — 제목 2줄 말줄임 · 필수 정보 줄바꿈(말줄임 없음) · 요약 2줄·설명문 3줄 말줄임',
   render: () => (
     <div style={ROW_STYLE}>
       {[W360, W430].map((width) => (
@@ -408,10 +408,12 @@ export const LongText: Story = {
         expect(fact.scrollWidth).toBeLessThanOrEqual(fact.clientWidth)
       }
     }
-    // 요약·설명문은 각각 2줄까지만 보인다
+    // 요약은 2줄, 설명문은 3줄까지만 보인다
     const [, , clamped] = cardsOf(canvasElement)
-    for (const text of Array.from(clamped.querySelectorAll<HTMLElement>('p.line-clamp-2'))) {
-      expect(text.getBoundingClientRect().height).toBeLessThanOrEqual(parseFloat(getComputedStyle(text).lineHeight) * 2 + 1)
+    for (const [selector, lines] of [['p.line-clamp-2', 2], ['p.line-clamp-3', 3]] as const) {
+      for (const text of Array.from(clamped.querySelectorAll<HTMLElement>(selector))) {
+        expect(text.getBoundingClientRect().height).toBeLessThanOrEqual(parseFloat(getComputedStyle(text).lineHeight) * lines + 1)
+      }
     }
   },
 }

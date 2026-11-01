@@ -22,7 +22,7 @@ const SUBTITLE_CLASS =
 const FACT_CLASS =
   'text-sm font-bold text-foreground break-keep break-words'
 const DESCRIPTION_CLASS =
-  'text-sm text-muted line-clamp-2 break-keep break-words'
+  'text-sm text-muted line-clamp-3 break-keep break-words'
 
 describe('CardBody — 본문 칸', () => {
   it('안쪽 여백 24px, 그룹 사이 간격 12px의 세로 flex 칸이다', () => {
@@ -64,7 +64,7 @@ describe('CardFacts — 필수 정보', () => {
 })
 
 describe('CardDescription — 설명문', () => {
-  it('14px·text-muted·보통 굵기·2줄 말줄임이다', () => {
+  it('14px·text-muted·보통 굵기·3줄 말줄임이다', () => {
     const html = renderToStaticMarkup(<CardDescription description="설명문입니다" />)
     expect(html).toBe(`<p class="${DESCRIPTION_CLASS}">설명문입니다</p>`)
     expect(html).not.toContain('font-bold')
@@ -146,11 +146,11 @@ describe('hero·square·list가 같은 조각을 쓴다 — 같은 입력이면 
     for (const shape of SHAPES) expect(factsOf(render(shape))).toBe(hero)
   })
 
-  it('설명문은 hero와 list가 같고 square에는 없다(결정 15)', () => {
+  it('설명문이 같다(3줄 말줄임)', () => {
     const hero = descriptionOf(render('hero'))
     expect(hero).toBeDefined()
-    expect(descriptionOf(render('list'))).toBe(hero)
-    expect(descriptionOf(render('square'))).toBeUndefined()
+    expect(hero).toContain('line-clamp-3')
+    for (const shape of SHAPES) expect(descriptionOf(render(shape))).toBe(hero)
   })
 
   it('titleInImage면 이미지 모양 둘은 제목 그룹을 빼고(이 판단은 모양 쪽에 있다) 필수 정보는 남기며, list는 이미지 칸이 없어 제목을 늘 보인다', () => {

@@ -21,7 +21,7 @@ function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
     label: '미션',
     subtitle: '이번 주말 같이 달려요',
     facts: ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'],
-    description: '설명문은 정사각 카드에 없어요',
+    description: '설명문은 필수 정보 다음에 와요',
     href: '/missions/m1',
     imageUrl: IMAGE,
     publishedAt: '2026-10-05T03:00:00.000Z',
@@ -146,7 +146,8 @@ describe('SquareCard — 이미지 없음 자리 표시', () => {
     const html = render({ imageUrl: null })
     expect(html.match(/한강 러닝 챌린지/g)).toHaveLength(1)
     expect(html).toMatch(/<h3[^>]*>한강 러닝 챌린지<\/h3>/)
-    expect(html).not.toContain('line-clamp-3')
+    // 판 위 제목용 3줄 말줄임(`p`)이 없다 — 설명문의 3줄 말줄임과 구분해 판 위 제목 `p`만 본다
+    expect(html).not.toContain('text-base font-bold text-foreground line-clamp-3')
   })
 
   it('titleInImage 카드는 판 위에 제목을 그린다(16px bold·3줄 말줄임) — 본문에는 제목·요약이 없다', () => {
@@ -175,9 +176,27 @@ describe('SquareCard — 본문 글자 배치', () => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
   })
 
-  it('설명문·끝 줄·게재일은 값이 있어도 그리지 않는다(결정 15)', () => {
+  it('설명문은 필수 정보 다음에 14px text-muted·3줄 말줄임으로 그린다', () => {
+    const html = render()
+    expect(html).toContain(
+      '<p class="text-sm text-muted line-clamp-3 break-keep break-words">설명문은 필수 정보 다음에 와요</p>',
+    )
+    expect(html.indexOf('보상 300 포인트')).toBeLessThan(html.indexOf('설명문은 필수 정보 다음에 와요'))
+  })
+
+  it('titleInImage여도 설명문은 필수 정보 다음에 온다', () => {
+    const html = render({ titleInImage: true })
+    expect(html.indexOf('보상 300 포인트')).toBeGreaterThan(-1)
+    expect(html.indexOf('보상 300 포인트')).toBeLessThan(html.indexOf('설명문은 필수 정보 다음에 와요'))
+  })
+
+  it('설명문이 없거나 공백뿐으로 비어 있으면 그 줄이 사라진다', () => {
+    expect(render({ description: undefined })).not.toContain('line-clamp-3')
+    expect(render({ description: undefined })).not.toContain('text-sm text-muted')
+  })
+
+  it('끝 줄·게재일은 값이 있어도 그리지 않는다(결정 15)', () => {
     const html = render({ href: '/missions/m1' })
-    expect(html).not.toContain('설명문은 정사각 카드에 없어요')
     expect(html).not.toContain('자세히 보기')
     expect(html).not.toContain('기사 읽기')
     expect(html).not.toContain('→')

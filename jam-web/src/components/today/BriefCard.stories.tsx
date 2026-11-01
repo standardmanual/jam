@@ -432,6 +432,38 @@ export const FactLines: Story = {
   },
 }
 
+/** 설명문 — 윗줄 아래 카드 안쪽 폭 전체로 최대 3줄(티켓 20261101_1945). 최장 60자 사례는 360 기기에서 말줄임 없이 보여야 한다. 설명이 없으면 지금과 같은 모양이다. */
+const LONGEST_DESCRIPTION = '「따뜻한 한 냄비」 레시피가 공개됐어요. 재료 세 칸을 채워 믹스하면 한 단계 높은 등급이 나올 수 있어요.'
+
+export const Description: Story = {
+  name: '설명문 — 없음 · 60자 최장(360 · 430 · 320)',
+  render: () => (
+    <div style={{ display: 'flex', gap: 'var(--spacing-32)', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <Column width={W360}>
+        <Case caption="설명문 없음 — 지금과 같은 모양" view={MISSION} />
+        <Case caption="360 기기 — 60자 최장(말줄임 없이 3줄)" view={{ ...MISSION, description: LONGEST_DESCRIPTION }} />
+        <Case caption="href 없음 — › 없이 설명문은 그대로" view={{ ...MISSION, description: LONGEST_DESCRIPTION, href: undefined }} />
+      </Column>
+      <Column width={W430}>
+        <Case caption="430 기기 — 60자 최장" view={{ ...MISSION, description: LONGEST_DESCRIPTION }} />
+      </Column>
+      <Column width={W320}>
+        <Case caption="320 기기 — 60자 최장(3줄을 넘으면 말줄임, 후속 확인 대상)" view={{ ...MISSION, description: LONGEST_DESCRIPTION }} />
+      </Column>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const cards = cardsOf(canvasElement)
+    const none = cards[0].firstElementChild as HTMLElement
+    const longest = cards[1].firstElementChild as HTMLElement
+    expect(heightOf(longest)).toBeGreaterThan(heightOf(none))
+    // 360 기기: 60자가 말줄임 없이 다 보인다(보이는 높이와 전체 높이가 같다)
+    const description = longest.querySelector('p.line-clamp-3') as HTMLElement
+    expect(description.scrollHeight).toBeLessThanOrEqual(description.clientHeight + 1)
+    expectNoHorizontalOverflow(canvasElement)
+  },
+}
+
 /**
  * 제목 28자·필수 정보 15자 상한 실측용(확정 설계 3절 「구현 때 실측」). 328px·398px에서 각각 몇 줄이 되는지 눈으로 본다.
  * 줄바꿈이 생기는 것은 정상이다(`break-keep`은 어절 단위로 끊는다).

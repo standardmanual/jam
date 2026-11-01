@@ -47,9 +47,11 @@ afterEach(() => {
 })
 
 describe('BriefCard — 면(표면)', () => {
-  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 최소 높이 88px·가운데 정렬 가로 배치이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
+  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 최소 높이 88px·세로 가운데 정렬이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
     const html = render()
-    expect(html).toContain('min-h-[88px] flex items-center gap-3')
+    expect(html).toContain('min-h-[88px] flex flex-col justify-center')
+    // 가로 배치는 윗줄 div로 옮겼다
+    expect(html).toContain('<div class="flex items-center gap-3">')
     expect(html).toContain('background:var(--surface)')
     expect(html).toContain('border:1px solid var(--border)')
     expect(html).not.toContain('--background-inverse')
@@ -190,6 +192,40 @@ describe('BriefCard — 희귀도 칩 (JAM! 배지 1개 카드)', () => {
     const html = render({ resource: 'badge', rarity: 'rare', thumbnailUrl: 'https://cdn.example/a.png', thumbnailDimmed: true })
     const rarityChip = html.slice(html.indexOf('Rare') - 200, html.indexOf('Rare') + 10)
     expect(rarityChip).not.toContain('grayscale')
+  })
+})
+
+describe('BriefCard — 설명문', () => {
+  const DESCRIPTION = '「따뜻한 한 냄비」 레시피가 공개됐어요. 재료 세 칸을 채워 믹스하면 한 단계 높은 등급이 나올 수 있어요.'
+  const DESCRIPTION_P = `<p class="text-sm text-muted line-clamp-3 break-keep break-words">${DESCRIPTION}</p>`
+
+  it('윗줄 아래에 카드 안쪽 폭 전체로 14px text-muted·3줄 말줄임, 위 간격 8px로 그린다', () => {
+    const html = render({ description: DESCRIPTION })
+    expect(html).toContain(`<div class="mt-2">${DESCRIPTION_P}</div>`)
+    // 윗줄(썸네일·글자 열·›)이 먼저 끝난 뒤에 온다
+    expect(html.indexOf('›')).toBeLessThan(html.indexOf(DESCRIPTION_P))
+    expect(html.indexOf('flex-1 min-w-0')).toBeLessThan(html.indexOf(DESCRIPTION_P))
+  })
+
+  it('글자 열 안이 아니라 윗줄 div 밖에 있다', () => {
+    const html = render({ description: DESCRIPTION })
+    const topRowEnd = html.indexOf('›</span></div>')
+    expect(topRowEnd).toBeGreaterThan(-1)
+    expect(html.indexOf(DESCRIPTION_P)).toBeGreaterThan(topRowEnd)
+  })
+
+  it('href가 없어도 설명문은 그대로 보인다', () => {
+    const html = render({ description: DESCRIPTION, href: undefined })
+    expect(html).not.toContain('›')
+    expect(html).toContain(DESCRIPTION_P)
+  })
+
+  it('설명문이 없으면 줄과 간격이 함께 사라진다(빈 값·undefined가 같은 출력)', () => {
+    const html = render()
+    expect(html).not.toContain('mt-2')
+    expect(html).not.toContain('line-clamp-3')
+    expect(render({ description: undefined })).toBe(html)
+    expect(render({ description: '' })).toBe(html)
   })
 })
 
