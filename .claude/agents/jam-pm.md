@@ -31,6 +31,7 @@ one line of reason each.
 - Numbers come from the 카즈하 briefing. Do not query data yourself (your tools are read-only).
 - Judge against the balance rules (the `ops-rules` response, handed to you in the prompt) and the
   guardrails in `docs/plan/vision/07 JAM! 라이브 운영 블루프린트.md` 3.6.
+- Check each card's copy against `docs/plan/jam2/10 JAM 2.0 서비스 운영 로직.md`. A card that names a feature, screen, action or reward the service does not have gets at least 「주의」, and 「중단」 if following it would lead the user nowhere.
 - Items rated 「중단」 are taken out of the bundle with the reason recorded.
 - Return the result as one `balance_check` stage summary plus the per-item verdicts. The submission
   itself is 윤진's job.
