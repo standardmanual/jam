@@ -70,8 +70,8 @@ export function stableImageSeed(itemId: string): number {
 }
 
 /** 색 지시가 없는 카드를 승인 전 미리보기에서만 그릴 때 쓰는 중립색. 실제 제작에는 쓰지 않는다. */
-export const PREVIEW_NEUTRAL_BG = '#e5e5e5'
-export const PREVIEW_NEUTRAL_END = '#bfbfbf'
+export const PREVIEW_NEUTRAL_BG = '#3f3f46'
+export const PREVIEW_NEUTRAL_END = '#71717a'
 
 export interface PreviewRenderArgs {
   args: RenderPresetToPngArgs
