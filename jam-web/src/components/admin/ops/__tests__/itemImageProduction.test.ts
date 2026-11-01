@@ -1,7 +1,7 @@
 /**
  * 승인 직후 이미지 자동 제작 (티켓 20261007_1031)
  *
- * 지키는 것: 시험 묶음·이미지 칸 없는 종류·`preset_id` 없음은 렌더도 저장도 하지 않는다 / 있으면 렌더 → 저장을 부르고 시드는 호출마다 다르다 /
+ * 지키는 것: 시험 묶음·이미지 칸 없는 종류·`preset_id` 없음은 렌더도 저장도 하지 않는다 / 있으면 렌더 → 저장을 부르고 시드는 첫 제작은 고정 시드(다시 만들기만 새 시드) /
  * 렌더·저장이 실패해도 던지지 않고 `failed` / 일괄 승인 부품은 이 제작을 부르지 않는다.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,8 @@ vi.mock('@/lib/admin/opsInbox/imageRender.client', () => ({ renderPresetToPngBlo
 vi.mock('../imageClient', () => ({ postItemImage: (...a: unknown[]) => post(...a) }))
 vi.mock('sonner', () => ({ toast: { warning: vi.fn() } }))
 
-import { IMAGE_FAILED_AFTER_SCHEDULE_TOAST, produceItemImage, produceItemImages } from '../useItemImageProduction'
+import { previewRenderArgs, readImageSpec, stableImageSeed } from '@/lib/admin/opsInbox/imageSpec'
+import { IMAGE_FAILED_AFTER_SCHEDULE_TOAST, produceItemImage, produceItemImages, seedForStart } from '../useItemImageProduction'
 
 function makeItem(overrides: Partial<OpsItemRecord> = {}): OpsItemRecord {
   return {
@@ -65,11 +66,29 @@ describe('produceItemImage', () => {
     expect(await produceItemImage('b1', makeItem(), false)).toBe('failed')
   })
 
-  it('시드를 정하지 않으면 호출마다 새로 뽑는다', async () => {
+  it('시드를 정하지 않으면 항목 ID의 고정 시드다(승인 전 미리보기와 같은 무늬, 티켓 20261101_2149)', async () => {
     await produceItemImage('b1', makeItem(), false)
     await produceItemImage('b1', makeItem(), false)
     const seeds = render.mock.calls.map((c) => (c[0] as { seed: number }).seed)
-    expect(seeds[0]).not.toBe(seeds[1])
+    expect(seeds[0]).toBe(seeds[1])
+    expect(seeds[0]).toBe(stableImageSeed('item-1'))
+    expect(previewRenderArgs(readImageSpec(makeItem()), 'item-1')?.args.seed).toBe(seeds[0])
+  })
+})
+
+describe('seedForStart', () => {
+  const withImage = makeItem({ original: { resource: { cover_image_url: 'https://x/y.png' }, image_spec: { preset_id: 'p1' } } })
+
+  it('이미지가 없는 첫 제작은 같은 항목이면 늘 같은 고정 시드다', () => {
+    expect(seedForStart(makeItem())).toBe(stableImageSeed('item-1'))
+    expect(seedForStart(makeItem())).toBe(seedForStart(makeItem()))
+  })
+
+  it('이미지가 있는 「다시 만들기」는 새 무작위 시드를 쓴다 — 고정 시드와 다르다', () => {
+    const random = vi.fn(() => 12345)
+    expect(seedForStart(withImage, random)).toBe(12345)
+    expect(random).toHaveBeenCalledTimes(1)
+    expect(seedForStart(withImage, random)).not.toBe(stableImageSeed('item-1'))
   })
 })
 

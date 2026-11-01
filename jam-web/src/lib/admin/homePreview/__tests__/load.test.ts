@@ -287,6 +287,20 @@ describe('loadHomePreview — 날마다 판정', () => {
 })
 
 describe('loadHomePreview — 승인 전 카드', () => {
+  it('승인 전 카드는 이미지 지시(image_spec)를 싣고 실제 카드는 싣지 않는다 — 화면이 저장 없이 바로 그리는 데 쓴다(티켓 20261101_2149)', async () => {
+    const spec = { preset_id: 'p1', bg: '#111111', end: '#222222' }
+    fx.tables.today_cards = [cardRow('live')]
+    fx.tables.ops_bundle_items = [
+      pendingRow('with-spec', { original: { ...(pendingRow('x').original as Row), image_spec: spec } }),
+      pendingRow('no-spec'),
+    ]
+    const day = (await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, bundleId: BUNDLE, now: NOW })).days[0]
+    const byId = Object.fromEntries(day.entries.map((e) => [e.id, e]))
+    expect(byId['with-spec'].imageSpec).toEqual(spec)
+    expect(byId['no-spec'].imageSpec).toBeNull()
+    expect(byId.live.imageSpec).toBeUndefined()
+  })
+
   it('승인 전 카드는 실제 카드 뒤에 pending으로 붙고 기획 이유를 싣는다', async () => {
     fx.tables.today_cards = [cardRow('live', { sort_order: 99 })]
     fx.tables.ops_bundle_items = [pendingRow('p-late', { position: 1, original: { ...(pendingRow('x').original as Row), resource: { template_type: 'editorial_article', sort_order: 5 } } }), pendingRow('p-first', { position: 2 })]

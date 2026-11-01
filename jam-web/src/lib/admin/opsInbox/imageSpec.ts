@@ -57,6 +57,45 @@ export function imageSpecToRenderArgs(spec: ImageSpec | null, seed: number): Ren
 }
 
 /**
+ * 항목 ID에서 만든 고정 시드(FNV-1a 32비트, 양의 정수). 같은 ID는 늘 같은 값이다.
+ * 승인 전 미리보기와 첫 이미지 제작이 같은 시드를 써서 무늬가 같다(티켓 20261101_2149). 「다시 만들기」만 새 무작위 시드를 쓴다.
+ */
+export function stableImageSeed(itemId: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < itemId.length; i += 1) {
+    hash ^= itemId.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash & 0x7fffffff
+}
+
+/** 색 지시가 없는 카드를 승인 전 미리보기에서만 그릴 때 쓰는 중립색. 실제 제작에는 쓰지 않는다. */
+export const PREVIEW_NEUTRAL_BG = '#e5e5e5'
+export const PREVIEW_NEUTRAL_END = '#bfbfbf'
+
+export interface PreviewRenderArgs {
+  args: RenderPresetToPngArgs
+  /** `bg`·`end` 가운데 하나라도 비어 임시 색을 채웠는가 */
+  tempColor: boolean
+}
+
+/**
+ * 승인 전 미리보기용 제작 인자. 시드는 항목 ID의 고정 시드다. `preset_id`가 없으면 null이다.
+ * 색이 비면 임시 중립색을 채운다(한쪽만 비면 있는 쪽을 따른다). 실제 제작 규칙(`imageSpecToRenderArgs`)은 바꾸지 않는다.
+ */
+export function previewRenderArgs(spec: ImageSpec | null, itemId: string): PreviewRenderArgs | null {
+  const base = imageSpecToRenderArgs(spec, stableImageSeed(itemId))
+  if (!base) return null
+  const bg = base.bg.trim()
+  const end = base.end.trim()
+  if (bg !== '' && end !== '') return { args: base, tempColor: false }
+  return {
+    args: { ...base, bg: bg || end || PREVIEW_NEUTRAL_BG, end: end || bg || PREVIEW_NEUTRAL_END },
+    tempColor: true,
+  }
+}
+
+/**
  * `image_spec` 원값의 경고 문장. 값이 없거나 비어 있으면 「비어 있어요」 한 줄, 있으면 모양이 틀린 칸마다 한 줄이다.
  * 오류가 아니라 경고다 — 호출부가 `errors`에 넣지 않는다.
  */

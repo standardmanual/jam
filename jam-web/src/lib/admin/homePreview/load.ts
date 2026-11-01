@@ -31,6 +31,7 @@ import { readDayInputs, type DayInputs } from '@/lib/admin/homePreview/dayInputs
 import { itemToPreviewCard } from '@/lib/admin/opsInbox/cardPreview'
 import { asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
 import { readOpsItemRationales } from '@/lib/admin/opsInbox/rationaleRead'
+import { readImageSpec, type ImageSpec } from '@/lib/admin/opsInbox/imageSpec'
 import { kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { OPS_HOME_FEED_CARD_KIND } from '@/lib/admin/opsInbox/constants'
 import type { OpsRationaleKind } from '@/lib/admin/opsInbox/constants'
@@ -66,6 +67,8 @@ export interface PreviewEntry {
   card: TodayCardWithHref
   /** 기획 이유. 승인 전 카드만 있다 */
   rationale: { kind: OpsRationaleKind; label: string }[]
+  /** 이미지 지시(`image_spec`). 승인 전 카드에만 있고, 저장된 이미지가 없을 때 화면이 바로 그리는 데 쓴다(티켓 20261101_2149). */
+  imageSpec?: ImageSpec | null
 }
 
 export interface DayPreview {
@@ -209,7 +212,7 @@ function toPendingItem(row: ItemRow, now: Date): PendingItem | null {
   const sortOrder = typeof resource.sort_order === 'number' && Number.isFinite(resource.sort_order) ? resource.sort_order : 0
   const rationale = readOpsItemRationales(row.edited ?? row.original).map(({ kind, label }) => ({ kind, label }))
   return {
-    entry: { source: 'pending', id: row.id, card: { ...card, sort_order: sortOrder }, rationale },
+    entry: { source: 'pending', id: row.id, card: { ...card, sort_order: sortOrder }, rationale, imageSpec: readImageSpec(item) },
     sortOrder,
     startsAt: card.starts_at,
     endsAt: card.ends_at,

@@ -6,11 +6,11 @@
  * 항목 하나를 승인하면 `image_spec`으로 브라우저에서 PNG를 만들어 항목 이미지 API에 올린다(예약된 뒤라면 서버가 자원에도 붙인다).
  * 실패해도 승인은 그대로다 — 「이미지 제작 필요」는 이 훅의 상태가 아니라 항목 데이터(승인됨·준비중인데 이미지 칸이 빔)로 계산하니 새로 고쳐도 남는다.
  * 상태는 「만드는 중」 표시와 중복 시작 방지에만 쓴다. 시험 묶음은 렌더도 저장도 하지 않는다. 「승인하고 예약」은 응답의 예약된 항목들을 `startMany`로 순서대로 만든다(티켓 20261026_2034).
- * `start`·`startMany`는 던지지 않는다. 시드는 매번 새로 뽑는다.
+ * `start`·`startMany`는 던지지 않는다. 시드는 이미지가 없을 때(첫 제작)는 항목 ID의 고정 시드라 승인 전 미리보기와 같은 무늬가 되고, 「이미지 다시 만들기」는 새로 뽑는다(티켓 20261101_2149).
  */
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { imageSpecToRenderArgs, imageKeyOfKind, readImageSpec } from '@/lib/admin/opsInbox/imageSpec'
+import { imageSpecToRenderArgs, imageKeyOfKind, readImageSpec, stableImageSeed } from '@/lib/admin/opsInbox/imageSpec'
 import { asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
 import { renderPresetToPngBlob } from '@/lib/admin/opsInbox/imageRender.client'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
@@ -37,7 +37,7 @@ interface Options {
   onDone?: () => void
 }
 
-function newSeed(): number {
+export function newSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff)
 }
 
@@ -45,13 +45,13 @@ export type ProduceResult = 'skipped' | 'done' | 'failed'
 
 /**
  * 이미지 한 장을 만들어 올린다(훅과 분리해 단독으로 시험한다). 시험 묶음·이미지 칸이 없는 종류·`preset_id`가 없는 항목은 아무것도 하지 않고 `skipped`다.
- * 렌더나 업로드가 실패하면 `failed`다. 던지지 않는다.
+ * 렌더나 업로드가 실패하면 `failed`다. 던지지 않는다. 시드를 넘기지 않으면 항목 ID의 고정 시드다(승인 전 미리보기와 같은 무늬).
  */
 export async function produceItemImage(
   bundleId: string,
   item: OpsItemRecord,
   isSample: boolean,
-  seed: number = newSeed()
+  seed: number = stableImageSeed(item.id)
 ): Promise<ProduceResult> {
   if (isSample || imageKeyOfKind(item.kind) === null) return 'skipped'
   const args = imageSpecToRenderArgs(readImageSpec(item), seed)
@@ -76,6 +76,11 @@ function hasResourceImage(item: OpsItemRecord): boolean {
   const key = imageKeyOfKind(item.kind)
   const value = key === null ? undefined : asRecord(itemField(item, 'resource'))?.[key]
   return typeof value === 'string' && value.trim() !== ''
+}
+
+/** [이미지 만들기]·[다시 만들기]의 시드. 이미지가 이미 있으면 「다시 만들기」라 새 무작위 시드, 없으면 첫 제작이라 항목 ID의 고정 시드다. */
+export function seedForStart(item: OpsItemRecord, random: () => number = newSeed): number {
+  return hasResourceImage(item) ? random() : stableImageSeed(item.id)
 }
 
 /**
@@ -116,7 +121,7 @@ export function useItemImageProduction({ bundleId, isSample, onDone }: Options):
       inFlight.current.add(itemId)
       setMaking(new Set(inFlight.current))
       try {
-        const result = await produceItemImage(bundleId, item, isSample)
+        const result = await produceItemImage(bundleId, item, isSample, seedForStart(item))
         if (result === 'failed') toast.warning(IMAGE_FAILED_TOAST)
       } finally {
         inFlight.current.delete(itemId)
