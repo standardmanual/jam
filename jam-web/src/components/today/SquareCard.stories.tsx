@@ -168,7 +168,7 @@ const meta: Meta<typeof TodayCard> = {
       description: {
         component:
           '홈 「투데이」의 정사각 큰 카드 모양(`square`) — 티켓 20261001_2013(상위 20260930_1453 조각 b4). 위는 카드 폭 가득한 1:1 이미지 칸, 아래는 흰 본문이다: ' +
-          '칩 줄(라벨 · 지역 핀 · 희귀도) · 제목 24px(2줄 말줄임) · 요약 16px(선택) · 필수 정보 14px 굵게(최대 2줄, 말줄임 없이 줄바꿈). 설명문·끝 줄은 없다. ' +
+          '칩 줄(라벨 · 지역 핀 · 희귀도) · 제목 24px(2줄 말줄임) · 요약 16px(선택) · 필수 정보 14px 굵게(최대 2줄, 말줄임 없이 줄바꿈) · 설명문 14px `text-muted`(3줄 말줄임, 티켓 20261101_1945). 끝 줄은 없다. ' +
           '이미지는 자르지 않는다(`object-contain`) — 1:1이 아니면 어두운 판 위에 레터박스가 되고 이미지 위에는 아무것도 얹지 않는다. ' +
           '이미지가 없거나 깨져도 같은 1:1 칸에 자원 아이콘 판을 그려 높이가 같다. ' +
           '서비스 전용 컴포넌트라 MODULAR이 아니다(`TodayCard`가 모양을 고르고 `CardFrame`이 링크·계측·눌림·포커스를 맡는다).',
@@ -322,6 +322,31 @@ export const FactLines: Story = {
     const [zero, one, two] = cardsOf(canvasElement).map(heightOf)
     expect(one).toBeGreaterThan(zero)
     expect(two).toBeGreaterThan(one)
+    expectNoHorizontalOverflow(canvasElement)
+    expectSquare(canvasElement)
+  },
+}
+
+// ─── 4-2. 설명문 ──────────────────────────────────────────────────────────
+
+const LONGEST_DESCRIPTION = '「따뜻한 한 냄비」 레시피가 공개됐어요. 재료 세 칸을 채워 믹스하면 한 단계 높은 등급이 나올 수 있어요.'
+
+/** 설명문은 필수 정보 다음에 14px `text-muted`로 3줄까지 그린다(`titleInImage`여도 같다). 60자 최장 사례가 말줄임 없이 보여야 한다. */
+export const Description: Story = {
+  name: '설명문 — 없음 · 60자 최장 · titleInImage',
+  render: () => (
+    <Column width={W360}>
+      <Case caption="설명문 없음" view={MISSION} />
+      <Case caption="60자 최장 — 필수 정보 다음, 말줄임 없이 3줄" view={{ ...MISSION, description: LONGEST_DESCRIPTION }} />
+      <Case caption="titleInImage — 제목 그룹 없이 필수 정보 다음에 설명문" view={{ ...MISSION, titleInImage: true, description: LONGEST_DESCRIPTION }} />
+    </Column>
+  ),
+  play: async ({ canvasElement }) => {
+    const [none, longest, inImage] = cardsOf(canvasElement)
+    expect(heightOf(longest)).toBeGreaterThan(heightOf(none))
+    expect(inImage.textContent).toContain('레시피가 공개됐어요')
+    const description = longest.querySelector('p.line-clamp-3') as HTMLElement
+    expect(description.scrollHeight).toBeLessThanOrEqual(description.clientHeight + 1)
     expectNoHorizontalOverflow(canvasElement)
     expectSquare(canvasElement)
   },

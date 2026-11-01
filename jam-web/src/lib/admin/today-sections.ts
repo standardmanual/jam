@@ -106,11 +106,11 @@ export const SUGGESTED_LAYOUT_FOR: Record<TodayCardTemplateType, TodayCardLayout
 }
 
 /**
- * 게재용 설명문(`today_cards.description`) 길이 상한 — 공백 포함 40자, 줄바꿈 불가(티켓 20260929_1335).
+ * 게재용 설명문(`today_cards.description`) 길이 상한 — 공백 포함 60자, 줄바꿈 불가(티켓 20260929_1335, 60자 상향은 티켓 20261101_1945).
  * 어드민 폼(`maxLength`·글자 수 표시)과 등록 묶음(`registerHomeFeedBundle.mjs` 검증)이 이 상수 한 곳을 쓴다.
- * 화면은 14px로 2줄까지 보여 준다(`components/today/`의 `hero`·`list` 모양).
+ * 화면은 14px로 3줄까지 보여 준다(`components/today/`의 `hero`·`square`·`list`·`brief`·`ticket`·돔 기본형. `poster`와 돔 포스터형은 설명문을 그리지 않는다).
  */
-export const TODAY_DESCRIPTION_MAX_LENGTH = 40
+export const TODAY_DESCRIPTION_MAX_LENGTH = 60
 
 export interface TodayTemplateFields {
   badges?: boolean

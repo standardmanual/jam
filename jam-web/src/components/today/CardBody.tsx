@@ -12,6 +12,7 @@ import type { ReactNode } from 'react'
  * - 옅은 글자는 `text-muted` 한 단계로 통일한다(흰 면 위 5.74:1). 불투명도로 글자색을 만들지 않는다(티켓 20261015_2133).
  * - 본문은 전부 왼쪽 정렬이다.
  * - `brief`의 본문은 이 조각이 아니다: 제목이 16px이고 필수 정보도 보통 굵기 `text-muted`인 작은 카드라서 별개 본문이다.
+ *   설명문 한 줄만 이 조각(`CardDescription`)을 쓴다(티켓 20261101_1945).
  */
 
 /** 본문 칸 — 안쪽 여백 24px, 그룹 사이 간격 12px. 카드 면(`Card`)의 안쪽 여백은 인라인 `style`로 0을 주고 이 칸이 가진다. */
@@ -55,11 +56,11 @@ export function CardFacts({ facts }: { facts?: readonly string[] }) {
   )
 }
 
-/** 설명문(14px `text-muted`, 2줄 말줄임). 필수 정보를 이기지 않게 `text-muted` + 보통 굵기다. */
+/** 설명문(14px `text-muted`, 3줄 말줄임). 필수 정보를 이기지 않게 `text-muted` + 보통 굵기다. */
 export function CardDescription({ description }: { description?: string }) {
   if (!description) return null
   return (
-    <p className="text-sm text-muted line-clamp-2 break-keep break-words">
+    <p className="text-sm text-muted line-clamp-3 break-keep break-words">
       {description}
     </p>
   )

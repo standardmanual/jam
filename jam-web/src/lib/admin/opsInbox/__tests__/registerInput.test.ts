@@ -558,10 +558,17 @@ describe('toTodayCardRegisterInput · 검사 문장의 경로 매핑(결정 7)',
     expect(wrong.errors[0].message).toContain('card.shape: 허용되지 않는 카드 모양이에요')
   })
 
+  it('설명문은 60자까지 통과하고 61자부터 copy.description 오류다', () => {
+    expect(toCard(cardItem({ copy: { title: '제목', description: '가'.repeat(60) } })).errors).toEqual([])
+    const over = toCard(cardItem({ copy: { title: '제목', description: '가'.repeat(61) } }))
+    expect(over.payload).toBeNull()
+    expect(paths(over.errors)).toEqual(['copy.description'])
+  })
+
   it('resource 칸·copy 칸 오류가 각자의 경로로 나온다', () => {
     const result = toCard(
       cardItem({
-        copy: { title: '제목', description: '가'.repeat(41) },
+        copy: { title: '제목', description: '가'.repeat(61) },
         resource: { template_type: 'mission_spotlight', layout_type: 'banner', mission_id: 'not-a-uuid', sort_order: 1.5 },
       })
     )

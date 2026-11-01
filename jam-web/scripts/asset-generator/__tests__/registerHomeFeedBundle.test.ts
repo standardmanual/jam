@@ -492,17 +492,17 @@ describe('validateHomeFeedBundle — 게재용 설명문(card.description, 티�
     };
   };
 
-  it('기사가 아닌 템플릿은 40자 이하 한 줄 설명문을 받는다', () => {
+  it('기사가 아닌 템플릿은 60자 이하 한 줄 설명문을 받는다', () => {
     expect(errorsFor((raw) => dropAlert(raw, '가'.repeat(TODAY_DESCRIPTION_MAX_LENGTH)))).toEqual([]);
   });
 
-  it('상한은 어드민 폼과 같은 상수(40)다', () => {
-    expect(TODAY_DESCRIPTION_MAX_LENGTH).toBe(40);
+  it('상한은 어드민 폼과 같은 상수(60)다', () => {
+    expect(TODAY_DESCRIPTION_MAX_LENGTH).toBe(60);
   });
 
-  it('41자부터는 거절한다', () => {
+  it('61자부터는 거절한다', () => {
     const errors = errorsFor((raw) => dropAlert(raw, '가'.repeat(TODAY_DESCRIPTION_MAX_LENGTH + 1)));
-    expect(errors).toContain('card.description: 공백 포함 40자 이하여야 해요(받은 값: 41자).');
+    expect(errors).toContain('card.description: 공백 포함 60자 이하여야 해요(받은 값: 61자).');
   });
 
   it('줄바꿈·제어 문자가 있으면 거절한다', () => {

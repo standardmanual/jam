@@ -143,7 +143,7 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
     expect(html).toContain('<h3 class="text-2xl text-foreground line-clamp-2')
     expect(html).toContain('mt-1 text-base text-muted line-clamp-2')
     expect(html.match(/font-bold/g)).toHaveLength(2)
-    expect(html).toContain('text-sm text-muted line-clamp-2')
+    expect(html).toContain('text-sm text-muted line-clamp-3')
   })
 
   it('값이 없는 그룹은 그 그룹만 사라진다(칩 줄 + 제목 + 타일 줄만 남는다)', () => {
@@ -152,7 +152,7 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
     expect(html).toContain('<ul')
     expect(html).not.toContain('font-bold')
     expect(html).not.toContain('mt-1 text-base')
-    expect(html).not.toContain('line-clamp-2 break-keep break-words">설명문')
+    expect(html).not.toContain('line-clamp-3 break-keep break-words">설명문')
     expect(html).not.toContain('전체 보기')
   })
 

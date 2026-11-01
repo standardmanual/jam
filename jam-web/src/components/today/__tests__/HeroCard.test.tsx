@@ -144,7 +144,7 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     const html = render({ imageUrl: null })
     expect(html.match(/한강 러닝 챌린지/g)).toHaveLength(1)
     expect(html).toMatch(/<h3[^>]*>한강 러닝 챌린지<\/h3>/)
-    expect(html).not.toContain('line-clamp-3')
+    expect(html).not.toContain('text-base font-bold text-foreground line-clamp-3')
   })
 
   it('titleInImage 카드는 판 위에 제목을 그린다(16px bold·3줄 말줄임) — 본문에는 제목·요약이 없다', () => {
@@ -243,10 +243,10 @@ describe('HeroCard — 본문 글자 배치', () => {
     expect(factsBlock).not.toContain('<svg')
   })
 
-  it('설명문은 14px·text-muted·보통 굵기·2줄 말줄임이다(필수 정보를 이기지 않는다)', () => {
+  it('설명문은 14px·text-muted·보통 굵기·3줄 말줄임이다(필수 정보를 이기지 않는다)', () => {
     const html = render()
     expect(html).toContain(
-      '<p class="text-sm text-muted line-clamp-2 break-keep break-words">한강공원 코스를 달리면 보상을 드려요</p>',
+      '<p class="text-sm text-muted line-clamp-3 break-keep break-words">한강공원 코스를 달리면 보상을 드려요</p>',
     )
   })
 
@@ -255,7 +255,7 @@ describe('HeroCard — 본문 글자 배치', () => {
     expect(html).toContain('<h3')
     expect(html).not.toContain('mt-1')
     expect(html).not.toContain('font-bold')
-    expect(html).not.toContain('line-clamp-2 break-keep break-words">한강공원')
+    expect(html).not.toContain('line-clamp-3 break-keep break-words">한강공원')
     expect(html.match(/<p /g)).toHaveLength(1) // 끝 줄 하나
   })
 })

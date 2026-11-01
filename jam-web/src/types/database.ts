@@ -1269,8 +1269,8 @@ export interface TodayCardRow {
    *  20260925_1413 완성 후) 중 하나, NULL이면 기존 seed SQL 등록 카드(미상).
    *  라벨 매핑은 `lib/admin/contentImageSource.ts` 참조. */
   image_source: string | null
-  /** 게재용 설명문(마이그레이션 197, 티켓 20260929_1335). 40자 이하·줄바꿈 없음, 부제 아래에 표시한다.
-   *  editorial_article은 쓰지 않고 shortcut 레이아웃은 화면에 그리지 않는다. NULL·공백이면 표시 없음. */
+  /** 게재용 설명문(마이그레이션 197, 티켓 20260929_1335). 60자 이하·줄바꿈 없음, 부제 아래에 표시한다.
+   *  editorial_article은 쓰지 않고 poster·포스터형 dome은 화면에 그리지 않는다. NULL·공백이면 표시 없음. */
   description: string | null
   /** 카드 모양(마이그레이션 206, 티켓 20261001_1203). hero·poster·square·brief·list 중 하나, NULL이면 옛 카드라
    *  `resolveShape`(`lib/today/shape.ts`)가 템플릿·레이아웃으로 판정한다. DB 행에는 항상 있지만, 손으로 만드는 값
