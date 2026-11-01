@@ -183,7 +183,7 @@ test('실제 원고: P07·P06·P14·걸침 구현', () => {
   const by = (no) => patterns.find((p) => p.pattern_no === no)
   assert.deepEqual(by('P07').card_shapes, [
     { shape: 'brief', note: '드랍·예보' },
-    { shape: 'hero', note: '힌트나 목격담을 기사로 쓸 때는 `hero`' },
+    { shape: 'dome', note: '힌트나 목격담을 이미지로 알릴 때, 문을 여는 아치 구도' },
   ])
   assert.deepEqual(by('P06').card_shapes, [])
   assert.deepEqual(patterns.filter((p) => p.status === 'paused').map((p) => [p.pattern_no, p.pause_reason]), [['P14', '필요한 기능 O12·O14 대기']])

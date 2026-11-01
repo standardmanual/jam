@@ -873,7 +873,7 @@ describe('tierUp — 소각 앞의 거절 (재료·지급·점수 모두 그대�
   it.each([
     ['꺼진 컬렉션', { is_active: false }],
     ['드랍 제외 컬렉션', { drop_excluded: true }],
-    ['공개 전 컬렉션', { valid_from: '2026-11-01T00:00:00.000Z' }],
+    ['공개 전 컬렉션', { valid_from: '2099-01-01T00:00:00.000Z' }],
     ['공개가 끝난 컬렉션', { valid_until: '2026-10-01T00:00:00.000Z' }],
   ])('%s은 invalid_collection이다 (열린 컬렉션만 고를 수 있다)', async (_label, overrides) => {
     setPool([...BOOKS, book('book-closed', T_OWN, overrides)], [...pool(), badge('closed-c1', 'common', 'book-closed'), badge('closed-r1', 'rare', 'book-closed')])
@@ -994,7 +994,7 @@ describe('tierUp — 재료 등급과 바로 윗등급이 모두 있는 컬렉�
   it.each([
     ['삭제된 배지', { deleted_at: '2026-10-01T00:00:00.000Z' }],
     ['드랍 제외 배지', { drop_excluded: true }],
-    ['공개 전 배지', { valid_from: '2026-11-01T00:00:00.000Z' }],
+    ['공개 전 배지', { valid_from: '2099-01-01T00:00:00.000Z' }],
     ['공개가 끝난 배지', { valid_until: '2026-10-01T00:00:00.000Z' }],
   ])('윗등급 배지가 %s뿐이면 윗등급이 없는 것으로 보고 invalid_collection이다', async (_label, overrides) => {
     setSplitPool(
