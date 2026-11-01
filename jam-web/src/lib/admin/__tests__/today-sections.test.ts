@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   TODAY_FIELDS_FOR,
+  SUGGESTED_LAYOUT_FOR,
   TODAY_CONTENT_TYPE_OPTIONS,
   computeTodaySectionStatuses,
   todayTemplateFields,
@@ -26,6 +27,7 @@ const ALL_TEMPLATES: TodayCardTemplateType[] = [
   'editorial_article',
   'ranking_board',
   'recipe_reveal',
+  'content_intro',
 ]
 
 const base: TodaySectionSnapshot = {
@@ -50,9 +52,12 @@ describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_ale
   it('recipe_reveal은 레시피 입력 칸이 있어 참조 컨텐츠 섹션을 보인다(티켓 20261006_1218)', () => {
     expect(visibleTodaySections('recipe_reveal')).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
   })
+  it('content_intro는 연결 칸이 없어 참조 컨텐츠 섹션을 숨긴다(설명문·이동 주소는 다른 섹션에 있다, 티켓 20261101_2054)', () => {
+    expect(visibleTodaySections('content_intro')).toEqual(['class', 'basic', 'expose', 'period'])
+  })
   it('그 외 8개 템플릿은 참조 컨텐츠 섹션을 포함한 5개 섹션을 모두 보인다', () => {
     for (const t of ALL_TEMPLATES) {
-      if (t === 'drop_alert') continue
+      if (t === 'drop_alert' || t === 'content_intro') continue
       expect(visibleTodaySections(t)).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
     }
   })
@@ -92,6 +97,12 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   })
   it('recipe_reveal은 설명문·레시피·이동경로를 받는다(이동경로를 비우면 기본 /combine, 티켓 20261006_1218)', () => {
     expect(todayTemplateFields('recipe_reveal')).toEqual({ description: true, recipe: true, targetHref: true })
+  })
+  it('content_intro는 설명문·이동 주소 칸만 열린다 — 배지·미션·컬렉션·지역·랭킹·레시피 칸이 없다(티켓 20261101_2054)', () => {
+    expect(todayTemplateFields('content_intro')).toEqual({ description: true, targetHref: true })
+  })
+  it('content_intro를 고르면 추천 노출 형태는 shortcut이다', () => {
+    expect(SUGGESTED_LAYOUT_FOR.content_intro).toBe('shortcut')
   })
   it('처음 보는 템플릿 값은 던지지 않고 빈 칸 목록을 돌려준다(어드민 상세·폼이 그 카드 하나 때문에 오류 화면이 되지 않는다)', () => {
     const unknown = 'future_template' as TodayCardTemplateType
@@ -330,6 +341,27 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'recipe_reveal', recipeId: '', targetHref: '   ' })
     expect(p.recipe_id).toBeNull()
     expect(p.target_href).toBeNull()
+  })
+  it('content_intro — 이동 주소와 설명문만 저장하고 연결 칸은 값이 있어도 비운다(티켓 20261101_2054)', () => {
+    const p = buildTodayCardSavePayload({
+      ...baseValues,
+      templateType: 'content_intro',
+      targetHref: '  /missions  ',
+      missionId: 'm1',
+      itemBookId: 'ib1',
+      rankingModeId: 'rm1',
+      recipeId: 'r1',
+      regionLabel: '성수동',
+      bodyMarkdown: '본문',
+    })
+    expect(p.target_href).toBe('/missions')
+    expect(p.badge_ids).toEqual([])
+    expect(p.mission_id).toBeNull()
+    expect(p.item_book_id).toBeNull()
+    expect(p.ranking_mode_id).toBeNull()
+    expect(p.recipe_id).toBeNull()
+    expect(p.region_label).toBeNull()
+    expect(p.body_markdown).toBeNull()
   })
   it('recipe_reveal이 아닌 템플릿은 recipeId가 있어도 recipe_id를 null로 비운다', () => {
     for (const t of ALL_TEMPLATES.filter((x) => x !== 'recipe_reveal')) {

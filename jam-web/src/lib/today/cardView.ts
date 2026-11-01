@@ -44,6 +44,7 @@ const LABEL_BY_TEMPLATE: Record<TodayCardTemplateType, string> = {
   editorial_article: d.todayCard.editorialArticle,
   ranking_board: d.todayCard.rankingBoard,
   recipe_reveal: d.todayCard.recipeReveal,
+  content_intro: d.todayCard.contentIntro,
 }
 
 // ─── 필수 정보 줄 ──────────────────────────────────────────────────────────

@@ -477,6 +477,17 @@ describe('toTodayCardRegisterInput · 연결 칸(결정 8)', () => {
     expect(result.payload).toMatchObject({ target_href: '/combine', recipe_id: null })
   })
 
+  it('컨텐츠 소개 카드(content_intro)는 이동 주소(target_href)가 있으면 통과하고 없으면 오류가 난다(티켓 20261101_2054)', () => {
+    const ok = toCard(cardItem({ resource: { template_type: 'content_intro', target_href: '/missions' } }))
+    expect(ok.errors).toEqual([])
+    expect(ok.payload).toMatchObject({ template_type: 'content_intro', target_href: '/missions', mission_id: null, recipe_id: null })
+    expect(ok.linkFields).toEqual([])
+
+    const missing = toCard(cardItem({ resource: { template_type: 'content_intro' } }))
+    expect(missing.payload).toBeNull()
+    expect(missing.errors[0].message).toContain('content_intro 템플릿은 이 참조가 있어야 카드가 의미가 있어요')
+  })
+
   it('badge_ids는 resource 값 뒤에 연결 배지를 더한다', () => {
     const result = toCard(cardItem({ resource: { template_type: 'badge_spotlight', badge_ids: [UUID_A] } }), { badge_ids: [UUID_B, UUID_C] })
     expect(result.errors).toEqual([])

@@ -130,12 +130,12 @@ code:
 `title`·`template_type`·`starts_at`·`ends_at`)에 어드민 폼의 필수 검사(노출 조건 태그 1개 이상, `TodayCardForm.tsx`의 `collectMissing`)를
 더한 것이다. 어드민 생성 API(`api/admin/today/route.ts` POST)는 본문을 검증 없이 insert하므로 **API에는 재사용할 검증 함수가 없다.**
 규칙의 원천은 폼·`lib/admin/today-sections.ts` 상수·DB CHECK 제약이고, 허용값 목록은 그 상수에서 뽑는다(테스트가 DB CHECK
-마이그레이션 158(노출 형태)·183(컨텐츠 유형)·217(템플릿)과 대조한다). 이 규칙을 코드로 옮긴 원본은 `jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`다(`bundleRules.ts`의 보조 함수를 쓴다).
+마이그레이션 158(노출 형태)·183(컨텐츠 유형)·310(템플릿)과 대조한다). 이 규칙을 코드로 옮긴 원본은 `jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`다(`bundleRules.ts`의 보조 함수를 쓴다).
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
 | `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 앞뒤 공백은 잘라서 저장한다 |
-| `template_type` | 필수 | 문자열 | `badge_spotlight`·`progress_nudge`·`mission_spotlight`·`itembook_milestone`·`location_trend`·`drop_alert`·`editorial_article`·`ranking_board`·`recipe_reveal` 중 하나(`TODAY_TEMPLATE_OPTIONS`, DB CHECK) |
+| `template_type` | 필수 | 문자열 | `badge_spotlight`·`progress_nudge`·`mission_spotlight`·`itembook_milestone`·`location_trend`·`drop_alert`·`editorial_article`·`ranking_board`·`recipe_reveal`·`content_intro` 중 하나(`TODAY_TEMPLATE_OPTIONS`, DB CHECK — 마이그레이션 310) |
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다. 저장할 때 UTC ISO로 바꾼다(폼과 같다) |
 | `ends_at` | 필수 | ISO 8601 | 시간대가 붙어야 하고 `starts_at`보다 뒤여야 한다 |
 | `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값 또는 소속 트라이브 태그 `tribe_<트라이브 ID>`(`tribe_` + 소문자 UUID)만, 중복 없이 |
@@ -168,6 +168,7 @@ code:
 | `editorial_article` | `body_markdown`, `mission_id`, `item_book_id`, `target_href`(본문 끝 CTA 버튼의 목적지) |
 | `ranking_board` | `ranking_mode_id`, `target_href` |
 | `recipe_reveal` | `recipe_id`, `target_href`(비우면 기본 `/combine`) |
+| `content_intro` | `target_href`(연결 칸 없음, 티켓 20261101_2054) |
 
 **꼭 있어야 하는 참조.** 어드민 폼은 참조를 강제하지 않지만, 자동 경로는 사람이 화면을 보며 채우지 않으므로 빈 카드가 실수로 등록되지
 않게 이 스크립트가 아래 규칙을 더했다(**스크립트 자체 규칙**이며 폼·DB에는 없다). 목록 중 하나 이상이 채워져 있어야 한다.
@@ -182,6 +183,7 @@ code:
 | `editorial_article` | `body_markdown` |
 | `ranking_board` | `ranking_mode_id` |
 | `recipe_reveal` | 없음(레시피 칸이 비어 있어도 카드가 그려진다 — 레시피 줄 없이) |
+| `content_intro` | `target_href`(연결 칸이 없는 카드라 눌러서 갈 곳이 이 주소뿐이다) |
 | `drop_alert` | 없음 |
 
 스크립트가 정하는 값(묶음에서 받지 않는다): `id`, `cover_image_url`(`?v=` 캐시 무효화 쿼리 포함 — 홈피드의 대표 이미지 컬럼은 `image_url`이

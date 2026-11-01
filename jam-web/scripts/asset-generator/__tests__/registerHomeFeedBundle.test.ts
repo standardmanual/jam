@@ -124,6 +124,37 @@ describe('validateHomeFeedBundle — 통과', () => {
     expect(validate(raw).errors).toEqual([]);
   });
 
+  it('컨텐츠 소개 카드(content_intro)는 이동 주소(target_href)가 있으면 통과하고 없으면 오류가 난다(티켓 20261101_2054)', () => {
+    const raw = validRaw();
+    raw.card = {
+      title: '이번 주 이야기',
+      template_type: 'content_intro',
+      description: '설명문 한 줄',
+      target_href: '/missions',
+      exposure_tags: ['all'],
+      starts_at: '2026-10-05T00:00:00+09:00',
+      ends_at: '2026-10-12T00:00:00+09:00',
+    };
+    expect(validate(raw).errors).toEqual([]);
+
+    delete raw.card.target_href;
+    expect(validate(raw).errors).toEqual(['card.target_href: content_intro 템플릿은 이 참조가 있어야 카드가 의미가 있어요.']);
+  });
+
+  it('컨텐츠 소개 카드(content_intro)는 배지·미션 같은 연결 필드를 받지 않는다', () => {
+    const raw = validRaw();
+    raw.card = {
+      title: '이번 주 이야기',
+      template_type: 'content_intro',
+      target_href: '/missions',
+      mission_id: MISSION_ID,
+      exposure_tags: ['all'],
+      starts_at: '2026-10-05T00:00:00+09:00',
+      ends_at: '2026-10-12T00:00:00+09:00',
+    };
+    expect(validate(raw).errors.some((e: string) => e.startsWith('card.mission_id:'))).toBe(true);
+  });
+
   it('참조를 채운 미션 소개·배지 소개·진행 알림 카드도 통과한다', () => {
     const raw = validRaw();
     Object.assign(raw.card, { template_type: 'mission_spotlight', mission_id: MISSION_ID, body_markdown: undefined, target_href: '/missions/x' });
@@ -142,8 +173,8 @@ describe('validateHomeFeedBundle — 통과', () => {
 });
 
 describe('허용값 목록 — today-sections.ts·DB CHECK와 갈라지지 않는다', () => {
-  it('템플릿 목록은 today_cards_template_type_check(마이그레이션 217, recipe_reveal을 더한 최신 정의)와 같다', () => {
-    expect([...TEMPLATE_TYPES].sort()).toEqual(checkValues('217_today_cards_recipe_reveal.sql', 'today_cards_template_type_check').sort());
+  it('템플릿 목록은 today_cards_template_type_check(마이그레이션 310, content_intro를 더한 최신 정의)와 같다', () => {
+    expect([...TEMPLATE_TYPES].sort()).toEqual(checkValues('310_today_cards_content_intro.sql', 'today_cards_template_type_check').sort());
   });
 
   it('노출 형태 목록은 today_cards_layout_type_check(마이그레이션 286, dome·ticket을 더한 최신 정의)와 같다', () => {

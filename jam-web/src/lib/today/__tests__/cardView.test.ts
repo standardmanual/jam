@@ -43,13 +43,14 @@ describe('resourceOfTemplate — 템플릿 → 자원 대응', () => {
     ['progress_nudge', 'auto'],
     ['location_trend', 'auto'],
     ['recipe_reveal', 'recipe'],
+    ['content_intro', 'auto'],
   ] as const)('%s → %s', (template, resource) => {
     expect(resourceOfTemplate(template)).toBe(resource)
   })
 
   it('자원 8개 모두 대응하는 템플릿이 있다(recipe는 recipe_reveal이 맡는다, 티켓 20261006_1217)', () => {
     const mapped = (
-      ['mission_spotlight', 'drop_alert', 'badge_spotlight', 'editorial_article', 'ranking_board', 'itembook_milestone', 'progress_nudge', 'location_trend', 'recipe_reveal'] as const
+      ['mission_spotlight', 'drop_alert', 'badge_spotlight', 'editorial_article', 'ranking_board', 'itembook_milestone', 'progress_nudge', 'location_trend', 'recipe_reveal', 'content_intro'] as const
     ).map(resourceOfTemplate)
     expect([...new Set(mapped)].sort()).toEqual([...CARD_RESOURCES].sort())
   })
@@ -677,6 +678,7 @@ describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', 
     'progress_nudge',
     'location_trend',
     'recipe_reveal',
+    'content_intro',
   ] as const
 
   it.each(TEMPLATES)('%s: 계측 정보(tracking)가 없어도 카드의 템플릿을 늘 싣는다', (templateType) => {
@@ -697,6 +699,36 @@ describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', 
     expect(nudge.resource).toBe('auto')
     expect(trend.resource).toBe('auto')
     expect(nudge.template).not.toBe(trend.template)
+  })
+})
+
+describe('toCardView — 컨텐츠 소개 카드 (티켓 20261101_2054)', () => {
+  const introCard = (overrides: Partial<TodayCardWithHref> = {}) =>
+    makeCard({
+      template_type: 'content_intro',
+      layout_type: 'shortcut',
+      title: '이번 주 소식',
+      description: '설명문 한 줄',
+      target_href: '/missions',
+      resolved_href: '/missions',
+      ...overrides,
+    })
+
+  it.each(['hero', 'poster', 'square', 'brief', 'dome', 'ticket'] as const)(
+    '%s: 칩 줄 라벨은 「소개」이고 자원 줄(facts)이 비어 있다',
+    (shape) => {
+      const view = toCardView(introCard({ shape }), { now: NOW })
+      expect(view.shape).toBe(shape)
+      expect(view.resource).toBe('auto')
+      expect(view.template).toBe('content_intro')
+      expect(view.label).toBe('소개')
+      expect(view.facts).toBeUndefined()
+      expect(view.href).toBe('/missions')
+    },
+  )
+
+  it('게재일(publishedAt)이 붙지 않는다 — 기사 자원이 아니다', () => {
+    expect(toCardView(introCard({ shape: 'hero' }), { now: NOW }).publishedAt).toBeUndefined()
   })
 })
 

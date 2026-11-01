@@ -1228,6 +1228,8 @@ export type TodayCardTemplateType =
   | 'ranking_board'
   /** 레시피 공개 카드(티켓 20261006_1217). DB CHECK(`today_cards_template_type_check`)는 마이그레이션 217(티켓 20261006_1218)이 이 값을 더했다. */
   | 'recipe_reveal'
+  /** 미션·배지·컬렉션에 연결하지 않고 서비스 컨텐츠를 소개하는 카드(티켓 20261101_2054). DB CHECK는 마이그레이션 310이 이 값을 더한다. */
+  | 'content_intro'
 
 /** 카드가 화면에 어떤 형태로 노출될지 — template_type(콘텐츠 종류)과 별개 축 */
 export type TodayCardLayoutType =
