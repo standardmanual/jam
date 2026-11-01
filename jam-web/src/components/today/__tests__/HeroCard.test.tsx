@@ -140,6 +140,19 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     expect(nudge).not.toContain(pin)
   })
 
+  it('컨텐츠 소개 카드는 이미지가 없으면 모래시계가 아니라 정보 아이콘이고, 끝 줄은 「자세히 보기」다(티켓 20261101_2054)', () => {
+    const info = iconMarkup({ resource: 'auto', template: 'content_intro' }, 'w-8 h-8 text-muted')
+    const hourglass = iconMarkup({ resource: 'auto', template: 'progress_nudge' }, 'w-8 h-8 text-muted')
+    expect(info).not.toBe(hourglass)
+
+    const html = render({ resource: 'auto', template: 'content_intro', label: '소개', facts: undefined, imageUrl: null })
+    expect(html).toContain(info)
+    expect(html).not.toContain(hourglass)
+    expect(html).toContain('소개')
+    expect(html).toContain('자세히 보기')
+    expect(html).not.toContain('기사 읽기')
+  })
+
   it('일반 카드는 판 위에 아이콘만 둔다 — 같은 제목이 한 카드에 두 번 보이지 않는다', () => {
     const html = render({ imageUrl: null })
     expect(html.match(/한강 러닝 챌린지/g)).toHaveLength(1)

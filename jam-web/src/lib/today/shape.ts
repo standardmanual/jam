@@ -139,6 +139,9 @@ const RESOURCE_BY_TEMPLATE: Record<TodayCardTemplateType, CardResource> = {
   progress_nudge: 'auto',
   location_trend: 'auto',
   recipe_reveal: 'recipe',
+  // 자원 줄이 없는 유형이라 `auto`로 둔다 — 새 자원 값·아이콘 자산을 더하지 않는다. `mission_id` 칸이 없어 기간 줄도 나오지 않는다.
+  // 아이콘은 `resourceIconOf`가 템플릿 값으로 갈라 정보 아이콘을 그린다(티켓 20261101_2054).
+  content_intro: 'auto',
 }
 
 /**

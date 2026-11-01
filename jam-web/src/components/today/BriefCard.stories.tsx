@@ -114,6 +114,15 @@ const RECIPE = brief({
   href: '/combine',
 })
 
+/** 컨텐츠 소개 카드(`content_intro`) — 자원 줄이 없고 64px 칸에는 모래시계가 아니라 정보 아이콘이 그려진다(티켓 20261101_2054). */
+const CONTENT_INTRO = brief({
+  resource: 'auto',
+  template: 'content_intro',
+  label: d.todayCard.contentIntro,
+  title: '이번 주 JAM! 이야기',
+  href: '/missions',
+})
+
 // ─── 배치 도우미 ───────────────────────────────────────────────────────────
 
 const STACK_STYLE: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }
@@ -232,6 +241,30 @@ export const RecipeReveal: Story = {
     // 모르는 템플릿은 64px 칸이 비어 있어도 카드 높이는 최소 88px을 지킨다
     expect(heightOf(unknown)).toBeGreaterThanOrEqual(88)
     expect(unknown.querySelector('.w-16 svg')).toBeNull()
+  },
+}
+
+// ─── 1-2. 컨텐츠 소개 ──────────────────────────────────────────────────────
+
+/** 칩 「소개」 · 정보 아이콘 · 자원 줄 없음. 설명문이 없으면 윗줄만 남고, 있으면 카드 폭 전체로 아래에 깔린다. */
+export const ContentIntro: Story = {
+  name: '컨텐츠 소개 — 칩 「소개」 · 정보 아이콘, 설명문 없음 · 있음',
+  render: () => (
+    <Column width={W360}>
+      <Case caption="설명문 없음 — 윗줄만 (정보 아이콘, 자원 줄 없음)" view={CONTENT_INTRO} />
+      <Case
+        caption="설명문 있음 — 카드 폭 전체 14px 3줄"
+        view={{ ...CONTENT_INTRO, description: '러너들이 이번 주에 가장 많이 찾은 코스와 미션을 한곳에 모았어요.' }}
+      />
+    </Column>
+  ),
+  play: async ({ canvasElement }) => {
+    expectNoHorizontalOverflow(canvasElement)
+    const [plain, withDescription] = cardsOf(canvasElement)
+    expect(plain.textContent).toContain('소개')
+    expect(plain.querySelector('.w-16 svg')).not.toBeNull()
+    expect(plain.querySelectorAll('p')).toHaveLength(0)
+    expect(heightOf(withDescription)).toBeGreaterThan(heightOf(plain))
   },
 }
 

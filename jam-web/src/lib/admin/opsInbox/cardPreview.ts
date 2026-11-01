@@ -27,6 +27,7 @@ const TEMPLATE_TYPES: readonly TodayCardTemplateType[] = [
   'editorial_article',
   'ranking_board',
   'recipe_reveal',
+  'content_intro',
 ]
 const LAYOUT_TYPES: readonly TodayCardLayoutType[] = ['large_thumbnail', 'badge_gallery', 'shortcut', 'banner', 'other', 'ranking_list']
 

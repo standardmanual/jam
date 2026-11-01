@@ -157,6 +157,22 @@ describe('기록 모양 = 화면 모양 — 저장된 shape', () => {
   })
 })
 
+describe('기록 모양 = 화면 모양 — 컨텐츠 소개 카드(content_intro, 티켓 20261101_2054)', () => {
+  it.each(['hero', 'poster', 'square', 'brief', 'dome', 'ticket'] as const)('%s로 저장된 카드는 화면도 기록도 그 모양이고 칩 라벨이 「소개」다', async (shape) => {
+    const card = cardRow({ template_type: 'content_intro', layout_type: 'shortcut', shape, cover_image_url: 'https://cdn.example/cover.png', resolved_href: '/missions' })
+    const drawn = toCardView(card, { now: NOW, tracking: true })
+    expect(await recordedShape(card)).toBe(shape)
+    expect(drawn.shape).toBe(shape)
+    expect(drawn.label).toBe('소개')
+    expect(drawn.facts).toBeUndefined()
+  })
+
+  it('shape가 비고 shortcut인 옛 형식 카드도 화면과 기록이 같다', async () => {
+    const card = cardRow({ template_type: 'content_intro', layout_type: 'shortcut', resolved_href: '/missions' })
+    expect(await recordedShape(card)).toBe(toCardView(card, { now: NOW }).shape)
+  })
+})
+
 describe('허용 차이 — badge_ids가 전부 삭제된 배지인 타일형 list (홈피드 PRD §9)', () => {
   it('화면은 조회된 배지가 없어 brief, 기록은 badge_ids가 있어 list다(이벤트 경로에 배지 조회를 더하지 않기 위한 차이)', async () => {
     const card = cardRow({ layout_type: 'badge_gallery', badge_ids: ['gone'], resolved_badges: [] })

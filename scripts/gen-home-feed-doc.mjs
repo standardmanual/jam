@@ -233,6 +233,9 @@ export function genDestinations(targetHrefMod) {
   add('recipe_reveal', '레시피 유무와 무관(공개 전·후 같다, 레시피별 주소는 없다)', { recipe_id: '{id}' })
   add('recipe_reveal', 'target_href 명시', { target_href: '{target_href}' })
 
+  add('content_intro', 'target_href 명시(등록 검사가 필수로 요구한다)', { target_href: '{target_href}' })
+  add('content_intro', 'target_href 없음(안전망)', {})
+
   add('ranking_board', '미션 참가자 대상 맥락 있음', {}, { rankingModeTargetMissionId: '{id}' })
   add('ranking_board', '미션 참가자 대상 맥락 없음(수동 지정 유저 대상)', {}, {})
   add('ranking_board', 'target_href 명시', { target_href: '{target_href}' })

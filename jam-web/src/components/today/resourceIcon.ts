@@ -3,6 +3,7 @@ import {
   BookIcon,
   FlaskIcon,
   HourglassIcon,
+  InfoIcon,
   MedalIcon,
   NewspaperIcon,
   PackageIcon,
@@ -46,7 +47,12 @@ export type ResourceIconView = Pick<CardView, 'resource' | 'template'>
 export function resourceIconOf(view: ResourceIconView, props: SVGProps<SVGSVGElement> = {}): ReactElement | null {
   // `auto`는 진행 알림(`progress_nudge`)과 지역 트렌드(`location_trend`)를 한 값으로 묶는다. 지역 값(`regionLabel`)이 있다고 핀을 그리면 진행 알림 카드에
   // 지역이 들어 있을 때도 핀이 되므로, 표시 데이터의 템플릿 구분 값으로 가른다: 지역 트렌드만 핀이고 그 밖(진행 알림, 구분 값이 없는 직접 만든 표시 데이터)은 모래시계다.
+  // 컨텐츠 소개(`content_intro`)도 `auto`지만 진행 알림이 아니라서 모래시계가 내용과 어긋난다: 기존 정보 아이콘을 그린다(티켓 20261101_2054).
   const Icon: ComponentType<SVGProps<SVGSVGElement>> | undefined =
-    view.resource === 'auto' && view.template === 'location_trend' ? PinIcon : RESOURCE_ICON[view.resource]
+    view.resource === 'auto' && view.template === 'location_trend'
+      ? PinIcon
+      : view.resource === 'auto' && view.template === 'content_intro'
+        ? InfoIcon
+        : RESOURCE_ICON[view.resource]
   return Icon ? createElement(Icon, props) : null
 }

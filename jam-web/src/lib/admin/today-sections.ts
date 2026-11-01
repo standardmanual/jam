@@ -78,6 +78,7 @@ export const TODAY_TEMPLATE_OPTIONS: readonly { value: TodayCardTemplateType; la
   { value: 'editorial_article', label: '에디토리얼 기사 (editorial_article)' },
   { value: 'ranking_board', label: '랭킹보드 (ranking_board)' },
   { value: 'recipe_reveal', label: '레시피 공개 (recipe_reveal)' },
+  { value: 'content_intro', label: '컨텐츠 소개 (content_intro)' },
 ]
 
 export const TODAY_LAYOUT_OPTIONS: readonly { value: TodayCardLayoutType; label: string }[] = [
@@ -103,6 +104,8 @@ export const SUGGESTED_LAYOUT_FOR: Record<TodayCardTemplateType, TodayCardLayout
   ranking_board: 'ranking_list',
   // 재료 타일을 그리는 목록 모양(`list`)이 기본이다(홈피드 PRD 자원 표). 공개 예고를 `poster`로 그릴지는 카드의 모양(`shape`)이 정한다
   recipe_reveal: 'badge_gallery',
+  // 미션·배지·컬렉션에 연결하지 않는 소개 카드라 짧은 바로가기 모양이 기본이다(티켓 20261101_2054)
+  content_intro: 'shortcut',
 }
 
 /**
@@ -142,6 +145,8 @@ export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields
   ranking_board: { description: true, rankingMode: true, targetHref: true },
   // 카드 자신의 이동 경로는 기본 /combine이다(`resolveTargetHref`, 운영자가 지정한 주소가 있으면 그쪽, 티켓 20261006_1218).
   recipe_reveal: { description: true, recipe: true, targetHref: true },
+  // 연결 칸(배지·미션·컬렉션·지역·랭킹·레시피) 없이 설명문과 이동 주소만 받는다(티켓 20261101_2054)
+  content_intro: { description: true, targetHref: true },
 }
 
 /** 모르는 템플릿이 받는 칸 — 어떤 칸도 받지 않는다(빈 목록) */
