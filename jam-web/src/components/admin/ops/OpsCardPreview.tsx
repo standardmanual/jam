@@ -5,7 +5,12 @@
  * 표시 데이터에 계측 정보가 없어 노출·클릭 기록과 링크를 남기지 않는다. 저장 전 초안(`draft`)을 덮어 그려서 문안을 바꾸면 바로 바뀐다.
  * 색은 카드 틀에 반영하지 않는다(색은 이미지에 구워진다) — `colors.*` 값을 견본 칩으로만 보여 준다(결정 Q9).
  * 기기 폭 선택이 항목을 옮겨도 남도록 항목 ID로 `key`를 걸지 않는다.
+ *
+ * 승인 전(제작 대상 상태가 아닌) 카드에 저장된 이미지가 없고 `image_spec.preset_id`가 있으면 저장 없이 브라우저에서 바로 그려 보인다
+ * (`useDraftImagePreview`, 티켓 20261101_2149). 시드는 항목 ID의 고정 시드라 승인 뒤 첫 제작 이미지와 같다. 카드 데이터는 바꾸지 않는다.
  */
+'use client'
+
 import { OpsKindPreview } from '@/components/admin/ops/OpsKindPreview'
 import TodayCardPreview from '@/app/admin/today/TodayCardPreview'
 import { previewOf } from '@/lib/admin/opsInbox/cardPreview'
@@ -17,12 +22,17 @@ import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { OPS_IMAGE_PRODUCTION_STATUSES } from '@/lib/admin/opsSignals/composition'
 import { isImageShape } from '@/lib/today/shape'
+import { previewRenderArgs, readImageSpec } from '@/lib/admin/opsInbox/imageSpec'
+import { useDraftImagePreview, type DraftImageRequest } from './useDraftImagePreview'
 
 export const PREVIEW_NOT_CARD_TEXT = '이 종류의 미리보기는 곧 열려요'
 export const PREVIEW_IMAGE_PENDING_TEXT = '이미지는 승인 뒤 만들어요'
 export const PREVIEW_IMAGE_NEEDED_TEXT = '이미지 제작 필요'
 export const PREVIEW_IMAGE_MAKING_TEXT = '이미지를 만드는 중이에요'
 export const PREVIEW_COLOR_LABEL = '색 견본'
+export const PREVIEW_IMAGE_DRAWING_TEXT = '이미지를 그리는 중이에요'
+export const PREVIEW_IMAGE_DRAWN_TEXT = '승인하면 이 이미지로 만들어요'
+export const PREVIEW_IMAGE_TEMP_COLOR_TEXT = '색이 정해지지 않아 임시 색으로 보여요'
 
 export interface OpsCardPreviewProps {
   item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'> & { status?: string; itemKey?: string | null }
@@ -41,21 +51,41 @@ export function OpsCardPreview({ item, draft, making = false, previewNames, bund
     names: previewNames,
     bundleBadgeNames: item.kind === 'recipe' ? bundleBadgeNamesOf(item.itemKey, bundleItems ?? []) : [],
   })
+  const merged = draft ? applyDraftToItem(item, draft) : item
+
+  // 승인 전 홈피드 카드: 저장된 이미지가 없고 지시(`preset_id`)가 있을 때만 그린다. 그 밖에는 요청이 비어 렌더를 부르지 않는다.
+  const storedMissing = preview?.type === 'card' && isImageShape(preview.view.shape) && 'imageUrl' in preview.view && !preview.view.imageUrl
+  const beforeProduction = !item.status || !OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)
+  const drawn = storedMissing && beforeProduction ? previewRenderArgs(readImageSpec(merged), item.id) : null
+  const requests: DraftImageRequest[] = drawn ? [{ id: item.id, args: drawn.args, tempColor: drawn.tempColor }] : []
+  const drafts = useDraftImagePreview(requests)
+
   if (!preview) return <p className="text-sm text-muted-foreground">{PREVIEW_NOT_CARD_TEXT}</p>
 
-  const merged = draft ? applyDraftToItem(item, draft) : item
+  const draftState = drawn ? drafts.get(item.id) : undefined
+  const view = preview.type === 'card' && draftState?.url ? { ...preview.view, imageUrl: draftState.url } : null
   const colors = entriesOf(itemField(merged, 'colors')) ?? []
   const imageMissing =
     preview.type === 'card'
-      ? isImageShape(preview.view.shape) && 'imageUrl' in preview.view && !preview.view.imageUrl
+      ? storedMissing
       : preview.type === 'recipe' || preview.type === 'drop'
         ? false
         : !preview.imageUrl
+  const drawnNotice = !drawn
+    ? null
+    : draftState?.status === 'failed'
+      ? null
+      : draftState?.status === 'ready'
+        ? draftState.tempColor
+          ? PREVIEW_IMAGE_TEMP_COLOR_TEXT
+          : PREVIEW_IMAGE_DRAWN_TEXT
+        : PREVIEW_IMAGE_DRAWING_TEXT
 
   return (
     <div className="space-y-2">
-      {preview.type === 'card' ? <TodayCardPreview views={[preview.view]} /> : <OpsKindPreview preview={preview} />}
-      {imageMissing && (
+      {preview.type === 'card' ? <TodayCardPreview views={[view ?? preview.view]} /> : <OpsKindPreview preview={preview} />}
+      {drawnNotice && <p className="text-xs text-muted-foreground break-keep wrap-break-word">{drawnNotice}</p>}
+      {imageMissing && !drawnNotice && (
         <p className="text-xs text-muted-foreground">
           {item.status && OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)
             ? making

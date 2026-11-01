@@ -5,9 +5,12 @@ import { Button } from '@/components/admin/ui/button'
 import { Switch } from '@/components/admin/ui/switch'
 import TodayCardPreview, { type PreviewCardAnnotation } from '@/app/admin/today/TodayCardPreview'
 import { formatKstDateLabel, previewBaseTime } from '@/lib/admin/today-calendar'
-import { toCardView } from '@/lib/today/cardView'
+import { toCardView, type CardView } from '@/lib/today/cardView'
+import { previewRenderArgs } from '@/lib/admin/opsInbox/imageSpec'
+import { isImageShape } from '@/lib/today/shape'
 import { cn } from '@/lib/utils'
 import { OpsRationaleChips } from '../board/OpsRationaleChip'
+import { useDraftImagePreview, type DraftImageRequest, type DraftImageSnapshot } from '../useDraftImagePreview'
 import { HomePreviewConditionsRow } from './HomePreviewConditions'
 import { HomePreviewWeekStrip } from './HomePreviewWeekStrip'
 import {
@@ -71,6 +74,30 @@ export function annotationsFor(day: DayPreview, showRationale: boolean): (Previe
   })
 }
 
+/**
+ * 선택한 날의 승인 전 카드 가운데 저장된 이미지가 없고 이미지 지시(`preset_id`)가 있는 카드의 그리기 요청(티켓 20261101_2149).
+ * 시드는 항목 ID의 고정 시드다. 같은 항목이 여러 날에 나와도 요청은 한 번만 만든다.
+ */
+export function draftImageRequestsFor(day: DayPreview | undefined): DraftImageRequest[] {
+  if (!day) return []
+  const requests: DraftImageRequest[] = []
+  for (const entry of day.entries) {
+    if (entry.source !== 'pending' || entry.card.cover_image_url || requests.some((r) => r.id === entry.id)) continue
+    const drawn = previewRenderArgs(entry.imageSpec ?? null, entry.id)
+    if (drawn) requests.push({ id: entry.id, args: drawn.args, tempColor: drawn.tempColor })
+  }
+  return requests
+}
+
+/** 그려진 이미지를 해당 승인 전 카드의 표시 데이터에 넣는다. 그려지지 않았으면(그리는 중·실패·대상 아님) 그대로다. */
+export function withDraftImages(views: readonly CardView[], day: DayPreview, drafts: DraftImageSnapshot): CardView[] {
+  return views.map((view, index) => {
+    const entry = day.entries[index]
+    const url = entry && entry.source === 'pending' ? drafts.get(entry.id)?.url : null
+    return url && isImageShape(view.shape) && 'imageUrl' in view && !view.imageUrl ? { ...view, imageUrl: url } : view
+  })
+}
+
 export function HomePreviewPanelView({
   fromDate,
   onFromDateChange,
@@ -94,6 +121,9 @@ export function HomePreviewPanelView({
     const now = previewBaseTime(day.date)
     return day.entries.map((entry) => toCardView(entry.card, { now }))
   }, [day])
+  const requests = useMemo(() => draftImageRequestsFor(day), [day])
+  const drafts = useDraftImagePreview(requests)
+  const shownViews = useMemo(() => (day ? withDraftImages(views, day, drafts) : views), [views, day, drafts])
   const annotations = useMemo(() => (day ? annotationsFor(day, showRationale) : []), [day, showRationale])
 
   return (
@@ -137,7 +167,7 @@ export function HomePreviewPanelView({
             )}
           </div>
 
-          <TodayCardPreview views={views} annotations={annotations} emptyMessage={EMPTY_DAY_TEXT} />
+          <TodayCardPreview views={shownViews} annotations={annotations} emptyMessage={EMPTY_DAY_TEXT} />
         </div>
       )}
     </div>
