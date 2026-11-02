@@ -21,7 +21,7 @@
   3. `decisions` → 「패턴별 결과」의 `byPattern` (결정 기록 쪽)
   4. `patterns` → 패턴 번호에 이름과 상태를 붙이는 용도(패턴 사전)
   5. `item-paths --query onlyBlocked=true` → 「획득 경로가 막힌 컬렉션」
-  윤진이 읽는 `patterns-draw`·`rules`·`trend-sources`는 카즈하가 부르지 않는다. 월간 실행에서는 같은 읽기로 패턴 리뷰 재료(유지·수정·제거 후보)를 만든다(`jam-ops.md` 「주간 브리핑 additions」).
+  윤진이 읽는 `patterns-draw`·`rules`·`trend-sources`·`places`(장소 카테고리 요약·목록)·`badges`(액티비티 배지 계열별 획득 수)는 카즈하가 부르지 않는다. 월간 실행에서는 같은 읽기로 패턴 리뷰 재료(유지·수정·제거 후보)를 만든다(`jam-ops.md` 「주간 브리핑 additions」).
 
 ## Scheduled runs (weekly briefing)
 

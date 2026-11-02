@@ -1884,6 +1884,14 @@ stateDiagram-v2
 - **오류:** 조회 실패는 500이고 고정 문장 하나만 싣는다(원문은 서버 로그 `[admin/ops-patterns/draw]`에만 남는다).
 - **성능.** 항목은 기간 조건 없이 승인 이후 상태 전체를 읽는다(`lastUsedAt` 때문이다). 쪽당 1000행씩 이어 읽어 잘리지 않는다. 항목이 많아져 응답이 느려지면 세는 일을 DB 쪽으로 옮기는 마이그레이션이 필요하다.
 
+### 11.15 장소 재료 읽기 `GET /api/admin/ops-places` (구현됨: 티켓 [20261102_1602](../../../tickets/p2-normal/20261102_1602_API_윤진이-장소와-배지-재료를-읽는-읽기-API-두-개를-만든다.md))
+
+주제 패턴의 재료 `places`·`place-stats`를 읽는다. 읽기 토큰·관리자 세션, GET만 있다(`ops-read.mjs places`). 쿼리 없이 부르면 카테고리 요약 `{ totalPlaces, categories: [{ slug, label, placeCount, checkinBadgeCount, dropCount, pickupCount }] }`(장소 수 합계 = `poi` 행 수), `category=<slug>`를 주면 그 카테고리 장소 목록(`q`·`limit` 1~100 기본 30·`offset`·`sort=drops|name` 기본 drops). 드랍 수는 `poi_drops` 전체, 픽업 수는 그중 `picked_up_at`이 있는 것이다. 좌표·주소·드랍한 유저·주운 유저는 읽지도 싣지도 않는다. 형식 오류는 400, 없는 카테고리는 404, 원천 하나라도 읽지 못하면 500(고정 문장)이다. 구현은 `jam-web/src/lib/admin/opsPlaces/`다.
+
+### 11.16 액티비티 배지 재료 읽기 `GET /api/admin/ops-badges` (구현됨: 티켓 [20261102_1602](../../../tickets/p2-normal/20261102_1602_API_윤진이-장소와-배지-재료를-읽는-읽기-API-두-개를-만든다.md))
+
+주제 패턴의 재료 `badges`를 읽는다. 읽기 토큰·관리자 세션, GET만 있다(`ops-read.mjs badges`). 응답은 계열 목록 `{ total, limit, offset, nextOffset, families: [{ family, name, tiers: [{ tier, conditionSummary, earnedCount }], hidden }] }`이다(`family` 이름 포함 검색, `limit` 1~100 기본 30, `offset`). 숨김·삭제 배지는 싣지 않는다. `earnedCount`는 `user_activity_badges`를 배지별로 센 값이고 유저 ID는 읽지도 싣지도 않는다. 조건 요약은 어드민 목록 칩 문구(`formatConditionChipEntries`)를 「 · 」로 이은 한 줄이다. 형식 오류는 400, 원천 하나라도 읽지 못하면 500(고정 문장)이다. 구현은 `jam-web/src/lib/admin/opsBadges/`다.
+
 ## 12. 안전장치 (07 4.9)
 
 - 제출 토큰으로는 받은 기획함에만 쓸 수 있다. 토큰이 새더라도 승인 없이는 아무것도 실행되지 않는다.
