@@ -145,8 +145,9 @@ describe('weeklyRoutineOccurrences — 실제 생성 파일(SCHEDULED_JOBS) 기�
     ])
   })
 
-  it('켜진 루틴은 주간·월간이다(선별·주간 배포 승인·데일리 미팅은 꺼 둔 상태다)', () => {
-    expect(SCHEDULED_JOBS.filter((j) => j.enabled).map((j) => j.name)).toEqual(['주간', '월간'])
+  it('켜진 루틴은 주간·월간·트렌드 수집이다(선별·주간 배포 승인·데일리 미팅은 꺼 둔 상태다)', () => {
+    // 트렌드 수집은 2026-11-02에 켰다(티켓 20261102_1410).
+    expect(SCHEDULED_JOBS.filter((j) => j.enabled).map((j) => j.name)).toEqual(['주간', '월간', '트렌드 수집'])
     expect(SCHEDULED_JOBS.map((j) => j.name)).toContain('데일리 미팅')
   })
 })
