@@ -1,0 +1,104 @@
+name: ingest-muse-notes
+
+# Muse 수집함 저장소의 파일을 검사해 jam의 주제 폴더 notes/로 가져온다 (티켓 20261102_1500).
+# 트렌드 수집은 외부 AI(Muse)가 하고, Muse의 GitHub 연결은 수집함 저장소 하나에만 허용한다. 수집함의 글은 웹 문서를
+# 읽은 외부 AI의 출력이라 믿을 수 없는 입력이다. 이 워크플로가 그 문 앞의 검사이고, 통과한 파일만 staging에 올린다.
+# 검사 규칙은 scripts/ingest-muse-notes.mjs가 정본이다(위치·이름·주제·크기·날짜·의심스러운 문장).
+#
+# 일요일 20:30 KST에 돈다(Muse 반복 작업은 그 전에 끝나게 잡는다). 월요일 05:00 트렌드 작성 루틴이 notes/를 읽는다.
+# 거절한 파일이 있으면 작업이 실패로 끝나 GitHub가 알림을 보낸다. 통과한 파일은 그래도 올린다.
+on:
+  schedule:
+    - cron: "30 11 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "검사만 하고 저장소에 쓰지 않는다"
+        type: boolean
+        default: false
+
+# staging에 notes/를 커밋해야 하므로 이 워크플로만 쓰기 권한을 받는다. 수집함 저장소는 읽기만 한다.
+permissions:
+  contents: write
+
+concurrency:
+  group: ingest-muse-notes
+  cancel-in-progress: false
+
+env:
+  INBOX_REPO: standardmanual/jam-trend-inbox
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 수집함 저장소 확인
+        id: inbox
+        run: |
+          if git ls-remote --exit-code "https://github.com/${INBOX_REPO}.git" HEAD >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "수집함 저장소(${INBOX_REPO})가 아직 없습니다. 건너뜁니다." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: jam 체크아웃 (staging)
+        if: steps.inbox.outputs.exists == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: 수집함 체크아웃 (읽기 전용, 이력 없이 최신만)
+        if: steps.inbox.outputs.exists == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.INBOX_REPO }}
+          path: _inbox
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Node 설정
+        if: steps.inbox.outputs.exists == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: 검사와 반입
+        id: ingest
+        if: steps.inbox.outputs.exists == 'true'
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          flag=""
+          if [ "$DRY_RUN" = "true" ]; then flag="--dry-run"; fi
+          set +e
+          node scripts/ingest-muse-notes.mjs --inbox _inbox $flag | tee "$RUNNER_TEMP/ingest.md"
+          code=${PIPESTATUS[0]}
+          set -e
+          cat "$RUNNER_TEMP/ingest.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          # 사용법 오류(2)는 바로 실패시킨다. 거절(1)은 아래에서 커밋을 마친 뒤 실패시킨다.
+          if [ "$code" -ge 2 ]; then exit "$code"; fi
+
+      - name: 색인 갱신과 커밋
+        if: steps.inbox.outputs.exists == 'true' && inputs.dry_run != true
+        run: |
+          rm -rf _inbox
+          node scripts/gen-doc-index.mjs
+          if [ -z "$(git status --porcelain docs)" ]; then
+            echo "가져올 새 파일이 없습니다."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/operations/trendresearch docs/INDEX.md
+          git commit -m "트렌드 반입: $(date -u -d '+9 hours' +%Y-%m-%d) (Muse 수집함, 검사 통과분)"
+          git pull --rebase origin staging
+          git push origin HEAD:staging
+
+      - name: 거절한 파일이 있으면 실패로 끝낸다
+        if: steps.inbox.outputs.exists == 'true' && steps.ingest.outputs.code == '1'
+        run: |
+          echo "거절한 파일이 있습니다. 요약을 확인하고 수집함에서 파일을 고치거나 지우세요." >&2
+          exit 1
