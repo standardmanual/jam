@@ -15,7 +15,7 @@ The topic table, each topic's cycle in days and the entry format live only in th
 do not copy them here. Before the web sources, read the user's own files in `<group>/<topic>/notes/` for each topic you are
 collecting (only names starting with `YYYY-MM-DD_`; the README is not a source). The read limits live only in
 `scheduled-jobs.md` 「저장 위치와 읽기 상한」. Read the `description` lines first and open only the relevant bodies.
-- Monthly: per-topic collection is done outside this repository by the external AI Muse, and the weekly writing routine turns its notes into `latest.md`; neither happens here. Before the general sweep, read each
+- Monthly: per-topic collection and writing of `latest.md` are done by the Karina session from the Gmail label 「JAM」 (user decision 2026-11-02); the Monday routine only clears expired entries, so neither collecting nor writing happens in this run. Before the general sweep, read each
   topic's `latest.md` and `notes/` as context and build on them instead of repeating them. Write
   `트렌드 리서치 자료: 주제 N개 읽음, 사용자 자료 N개(파일명)` or `트렌드 리서치 자료: 없음` as the first line of 「트렌드 노트」, and put all
   material through the same 소재 카드 and issue filter as any other source.

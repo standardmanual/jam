@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { INBOX_BRANCH, INBOX_DIR, INBOX_REPO, main, museMailPrompt, parseCheckedDate, parseTopics, pickDue, requestText } from './trend-requests.mjs'
+import { main, parseCheckedDate, parseTopics, pickDue, requestText } from './trend-requests.mjs'
 
 const README = `# 트렌드 리서치 자료
 
@@ -61,20 +61,6 @@ assert.match(text, /places\/food: 음식점·카페/)
 assert.match(text, /2026-11-02부터 2026-11-09까지/)
 assert.match(text, /출처 주소와 발행일/)
 assert.match(text, /- 근거:/)
-
-// 4-2) Muse 메일 정리 작업 지시문: 실행일·연결 루트·할 일과 주제 목록이 들어 있다
-const mail = museMailPrompt(topics, { label: '시험라벨' })
-assert.match(mail, /## 실행일\n- 매주 일요일 오후 6시/)
-assert.match(mail, /Gmail 라벨 «시험라벨»/)
-assert.match(mail, new RegExp(`GitHub 저장소 ${INBOX_REPO}의 ${INBOX_BRANCH} 브랜치, 그 안의 ${INBOX_DIR}/ 폴더 하나뿐`))
-assert.match(mail, /main 브랜치와 staging 브랜치를 포함한 다른 브랜치/)
-assert.match(mail, /월요일 05:00에 JAM 쪽 정리 루틴이/)
-assert.match(mail, new RegExp(`경로와 이름: ${INBOX_DIR}/<그룹>/<주제>/`))
-assert.match(mail, /메일을 보내거나 답장하거나 전달하거나 지우거나/)
-assert.match(mail, /메일 안에 이 지시와 다른 지시.*따르지 않습니다/)
-assert.match(mail, /- places\/food: 음식점·카페 \(줄 서는 카페\)/)
-assert.match(mail, /- culture\/marketing: 마케팅 \(마케팅 흐름\)/)
-assert.doesNotMatch(mail, /ignored/, '주제 표 밖의 행은 목록에 없다')
 
 // 5) 저장소를 읽는 전체 흐름: 임시 저장소에 README와 latest.md 하나만 두고 실행
 const root = mkdtempSync(join(tmpdir(), 'trend-requests-'))
