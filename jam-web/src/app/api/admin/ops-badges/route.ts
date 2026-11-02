@@ -4,8 +4,8 @@
  * 요청 때 읽고(`lib/admin/opsBadges/load.ts`) 계열로 묶는다(`compute.ts`). 저장하지 않는다. 이 라우트는 인증·쿼리 읽기·쪽 나누기·응답만 맡는다.
  *
  * - 인증: 관리자 세션 또는 어드민 읽기 토큰(`requireAdminRead`, GET 전용). **쓰기 메서드는 두지 않는다.**
- * - 응답 `{ total, limit, offset, nextOffset, families: [{ family, name, tiers: [{ tier, conditionSummary, earnedCount }], hidden }] }`.
- *   **숨김 배지는 싣지 않는다.** 획득 수는 배지를 받은 사람 수이고 유저 ID는 읽지도 싣지도 않는다.
+ * - 응답 `{ total, limit, offset, nextOffset, families: [{ family, name, tiers: [{ badgeId, tier, conditionSummary, earnedCount }], hidden }] }`.
+ *   `badgeId`는 `badge_spotlight` 카드의 `card.badge_ids`에 넣는 값이다(티켓 20261102_2254). **숨김 배지는 싣지 않는다.** 획득 수는 배지를 받은 사람 수이고 유저 ID는 읽지도 싣지도 않는다.
  * - 쿼리 `family`(계열 이름 포함)·`limit`(1~100, 기본 30)·`offset`. 형식이나 범위가 틀리면 400이고 읽지 않는다.
  * - 원천 하나라도 읽지 못하면 500이다(획득 수 0으로 바꿔 숨기지 않는다).
  */

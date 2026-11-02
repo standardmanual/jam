@@ -3,6 +3,7 @@
  *
  * - 계열 묶기·단계 이름·정렬은 어드민 계열 화면과 같은 함수를 쓴다(`groupBadgesIntoFamilies`·`slotLabelOf`).
  * - **숨김 배지(`is_hidden`)는 입력에서 걸러 응답에 없다.** 계열의 배지가 모두 숨김이면 계열 자체가 없다.
+ * - 단계 항목마다 `badgeId`(배지 행 UUID)를 싣는다. 숨김 배지는 입력에서 이미 빠지므로 숨김 배지 ID는 나가지 않는다.
  * - 획득 수는 `user_activity_badges`에서 그 배지를 받은 행 수(받은 사람 수)다. 유저 ID는 입력에 없다.
  * - 조건 요약은 어드민 목록의 칩 문구(`formatConditionChipEntries`)를 「 · 」로 이은 한 줄이다. 미션 보상 배지는 칩이 없어 「미션 완료 시 지급」이다.
  */
@@ -14,6 +15,8 @@ import type { BadgeCondition } from '@/types/database'
 export type OpsBadgeInput = FamilyBadge & { is_hidden: boolean }
 
 export interface OpsBadgeTier {
+  /** 이 단계 배지 행의 UUID. 윤진이 `badge_spotlight` 카드의 `card.badge_ids`에 넣는다 (티켓 20261102_2254) */
+  badgeId: string
   tier: string
   conditionSummary: string
   earnedCount: number
@@ -51,6 +54,7 @@ export function buildBadgeFamilies(
     tiers: [...family.variants]
       .sort((a, b) => familySlotRank(a) - familySlotRank(b))
       .map((badge) => ({
+        badgeId: badge.id,
         tier: slotLabelOf(badge),
         conditionSummary: summarizeCondition(badge.condition_json),
         earnedCount: earnedByBadge.get(badge.id) ?? 0,

@@ -71,13 +71,21 @@ describe('buildBadgeFamilies', () => {
     const families = buildBadgeFamilies(badges, earned)
     const running = families.find((f) => f.family === 'running_master')
     expect(running?.tiers).toEqual([
-      { tier: 'Common', conditionSummary: '10회', earnedCount: 12 },
-      { tier: 'Rare', conditionSummary: '30회', earnedCount: 3 },
+      { badgeId: 'b-common', tier: 'Common', conditionSummary: '10회', earnedCount: 12 },
+      { badgeId: 'b-rare', tier: 'Rare', conditionSummary: '30회', earnedCount: 3 },
     ])
     expect(families.find((f) => f.family === 'streak')?.tiers[0]).toMatchObject({
       conditionSummary: '7일 연속',
       earnedCount: 0,
     })
+  })
+
+  it('단계마다 해당 배지 행의 ID를 싣고 숨김 배지 ID는 어디에도 없다 (티켓 20261102_2254)', () => {
+    const families = buildBadgeFamilies(badges, earned)
+    const ids = families.flatMap((f) => f.tiers.map((t) => t.badgeId)).sort()
+    expect(ids).toEqual(['b-common', 'b-rare', 's-1'])
+    expect(JSON.stringify(families)).not.toContain('b-hidden')
+    expect(JSON.stringify(families)).not.toContain('h-only')
   })
 
   it('계열 모양은 { family, name, tiers, hidden:false }뿐이고 유저 칸이 없다', () => {
