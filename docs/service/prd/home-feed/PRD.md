@@ -166,7 +166,7 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 
 1. 유저의 현재 태그를 계산한다(§4).
 2. `today_cards`에서 `is_active = true`이고 `starts_at ≤ 지금 ≤ ends_at`이며 `exposure_tags`가 유저 태그와 **하나라도 겹치는**(OR) 카드를 읽는다. `all`은 모든 유저가 가지므로 `all`이 붙은 카드는 기간 안이면 모두에게 보인다.
-3. 정렬은 `sort_order` 오름차순, 같으면 `starts_at` 내림차순이다.
+3. 정렬은 두 묶음이다(티켓 20261102_1720). ① **새 카드**: 노출이 시작된 지 24시간이 안 된 카드(`지금 − starts_at < 24시간`)가 맨 앞에 오고 `starts_at` 내림차순이다. ② **나머지**: 유저와 KST 날짜를 씨앗(`${유저ID}:${KST 날짜}`)으로 한 하루 단위 결정적 섞기다(`씨앗 + 카드 ID`의 FNV-1a 32비트 해시 순). 같은 유저는 하루 안에 새로고침해도 순서가 같고, 날짜가 바뀌거나 다른 유저가 보면 순서가 바뀐다. `sort_order`는 순서에 쓰지 않는다(같은 카드가 매일 맨 위에 고정되는 것을 없애기 위해). 키가 같을 때만 `sort_order` 오름차순, 그다음 카드 ID 순이라 입력 순서와 무관하게 결과가 같다.
 4. `mission_spotlight` 카드 중 가리키는 미션이 이 유저에게 공개 상태가 아닌 것(어드민 수동 비노출, 이미 완료, 잠김·숨김)을 뺀다. 판정은 미션 목록·상세·참가 API와 같은 `isMissionExposed`·`resolveMissionVisibility`이며 `open`인 미션만 남는다. `mission_id`가 없는 미션 카드는 그대로 둔다. 같은 단계에서, 참가할 수 있는 트라이브가 정해진 미션을 가리키는 `ranking_board` 카드는 보는 유저가 대상 트라이브가 아니면 뺀다(`filterRankingBoardCardsByTribe`, 미션 목록에서 숨기는 규칙과 같다. 카드를 눌러 미션으로 가면 404가 나는 상황을 없앤다). 트라이브 접근을 읽지 못하면 미션 참가자 대상 랭킹 보드 카드를 내린다. 수동 지정 유저 대상과 허용 트라이브가 없는 공통 미션 카드는 그대로 둔다(티켓 20261019_1400).
 5. 카드의 `badge_ids`를 배지 정보로 바꾸고, 유저가 그 배지를 **이미 가졌는지**(활동·미션·컬렉션 보상, 체크인, 인벤토리 세 곳)를 함께 붙인다. 삭제된 배지는 빠진다. 보유 조회가 실패해도 카드는 노출되고 그 배지가 미보유로 그려진다.
 6. `ranking_board` 카드는 랭킹모드 순위를 미리 계산해 붙인다. 미션 참가자 대상 순위에서는 이용 정지 중인 유저를 뺀다(보는 유저 본인은 정지 중이어도 자기 화면에는 남고, 정지가 풀리면 다시 포함된다. 읽지 못하면 그 보드는 빈 순위다). 조건에 «기간 동안 모은 잼»이 든 미션은 모은 양이 홈 방문자 전원에게 드러나지 않도록 순위를 빈 결과로 돌려주고, 화면은 「아직 랭킹이 없어요」를 그린다(티켓 20261019_1400, 20261019_1445). 랭킹모드 행(`ranking_modes`)은 위 4번의 트라이브 거름과 이 순위 계산이 한 번만 읽어 나눠 쓴다. 읽지 못하면 카드는 그대로 두고 순위는 붙이지 않는다(티켓 20261019_1445 4회).
@@ -174,7 +174,7 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 
 - 노출 수 상한은 없다. 조건에 맞는 카드는 모두 쌓인다.
 - 조회가 실패하면 카드 0장(영역 숨김)으로 처리한다.
-- 어드민 미리보기는 같은 규칙(`lib/today/cardSelection.ts`의 기간·태그 겹침·정렬 함수)을 쓴다. 2번과 3번을 바꾸면 이 파일도 함께 바꾼다. 미리보기의 날씨·특일 태그는 «오늘» 값이 아니라 고른 날짜에 저장된 값(`external_input_daily`)을 읽고, 저장된 값이 없는 날은 그 태그를 넣지 않는다(`lib/admin/homePreview/dayInputs.ts`, 티켓 20261026_2025).
+- 어드민 미리보기는 같은 규칙(`lib/today/cardSelection.ts`의 기간·태그 겹침·정렬 함수)을 쓴다. 2번과 3번을 바꾸면 이 파일도 함께 바꾼다. 미리보기의 섞기 씨앗은 가상 유저에 ID가 없어 `preview:{고른 날짜}`이고 «지금»은 그날의 기준 시각이라, 순서는 날짜마다 달라지고 실제 유저 한 명의 홈 순서와 같지는 않다. 미리보기의 날씨·특일 태그는 «오늘» 값이 아니라 고른 날짜에 저장된 값(`external_input_daily`)을 읽고, 저장된 값이 없는 날은 그 태그를 넣지 않는다(`lib/admin/homePreview/dayInputs.ts`, 티켓 20261026_2025).
 
 근거: `jam-web/src/lib/today/cardSelection.ts`(`cardIsLiveDuring`·`cardMatchesTags`·`sortHomeCards`), `jam-web/src/lib/today/cards.ts`(`getTodayCards`·`filterMissionSpotlightCards`·`filterRankingBoardCardsByTribe`·`fetchBadgesById`·`fetchRankingBoardData`), `jam-web/src/lib/ranking/rankingDataSource.ts`(`computeMissionParticipantsResult`)
 

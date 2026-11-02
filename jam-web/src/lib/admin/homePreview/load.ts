@@ -279,7 +279,8 @@ export async function loadHomePreview(params: LoadHomePreviewParams): Promise<{ 
       const candidates = cards.filter(
         (card) => cardIsLiveDuring(card, startIso, endIso) && cardMatchesTags(card.exposure_tags, tags) && !isTribeClosed(card, gates, viewer),
       )
-      const live = sortHomeCards(filterExposedSpotlights(candidates, missionsById, baseTime))
+      // 홈과 같은 정렬 규칙. 가상 유저에는 id가 없어 고정 문자열을 씨앗에 쓴다 — 날짜마다 순서가 달라진다(티켓 20261102_1720).
+      const live = sortHomeCards(filterExposedSpotlights(candidates, missionsById, baseTime), { seed: `preview:${date}`, now: baseTime })
       const resolved = await resolvePreviewCards(supabase, live, baseTime)
 
       const pendingToday = pending

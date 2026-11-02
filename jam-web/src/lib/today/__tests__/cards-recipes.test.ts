@@ -75,6 +75,11 @@ import { toCardView } from '../cardView'
 const NOW = new Date('2026-10-05T03:00:00Z')
 const USER = 'u1'
 
+/** 홈 정렬은 유저·날짜 씨앗으로 섞이므로(티켓 20261102_1720) 순서가 주제가 아닌 시험은 카드 id 순으로 받는다 */
+async function getCardsById(...args: Parameters<typeof getTodayCards>) {
+  return (await getTodayCards(...args)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
 function cardRow(overrides: Row): Row {
   return {
     id: 'c',
@@ -149,7 +154,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
       slotRow('r1', 1, ['a1', 'a2']),
       slotRow('r1', 2, ['b1', 'b2']),
     ]
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toEqual({
       state: 'released',
@@ -170,7 +175,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
     fx.tables.user_activity_badges = [{ user_id: USER, badge_id: 'a2' }, { user_id: USER, badge_id: 'b2' }]
     fx.tables.inventory_items = [{ badge_id: 'd1' }]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toMatchObject({
       tiles: [
@@ -184,7 +189,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['a1', 'a2'])]
     fx.tables.user_activity_badges = [{ user_id: 'someone-else', badge_id: 'a2' }]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toMatchObject({ tiles: [{ id: 'a1', earned: false }] })
   })
@@ -192,7 +197,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
   it('삭제된 후보는 건너뛴다 — 첫 후보가 삭제돼 있으면 다음 후보가 대표다', async () => {
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['gone', 'a2'])]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toMatchObject({ tiles: [{ id: 'a2', earned: false }] })
   })
@@ -200,7 +205,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
   it('후보가 전부 삭제된 슬롯은 타일만 빠지고 재료 수에는 든다', async () => {
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['a1']), slotRow('r1', 2, ['gone1', 'gone2'])]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toMatchObject({ state: 'released', ingredient_count: 2 })
     expect(card.resolved_recipe?.state === 'released' && card.resolved_recipe.tiles.map((t) => t.id)).toEqual(['a1'])
@@ -210,7 +215,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
     fx.tables.combination_recipes = [recipeRow('r1', { valid_from: NOW.toISOString(), valid_until: null })]
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['a1'])]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe?.state).toBe('released')
   })
@@ -219,7 +224,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['a1']), slotRow('r1', 2, ['b1'])]
     fx.tables.user_activity_badges = [{ user_id: USER, badge_id: 'b1' }]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
     const view = toCardView(card, { now: NOW, tracking: true })
 
     expect(card.resolved_href).toBe('/combine')
@@ -244,7 +249,7 @@ describe('getTodayCards — 공개 전 레시피 (재료 수·공개 시각만)'
   })
 
   it('재료 수와 공개 시각 두 값뿐이다 — 이름·슬롯 후보·보상 값이 응답에 없다(객체 키 단위)', async () => {
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toEqual({ state: 'scheduled', ingredient_count: 3, release_at: '2026-10-12T09:00:00Z' })
     expect(Object.keys(card.resolved_recipe ?? {}).sort()).toEqual(['ingredient_count', 'release_at', 'state'])
@@ -254,14 +259,14 @@ describe('getTodayCards — 공개 전 레시피 (재료 수·공개 시각만)'
   })
 
   it('후보 배지를 읽지도 않는다(배지 조회가 없다)', async () => {
-    await getTodayCards(USER, null, NOW)
+    await getCardsById(USER, null, NOW)
 
     expect(count('badges')).toBe(0)
     expect(count('user_activity_badges')).toBe(0)
   })
 
   it('홈 표시 데이터까지 이어 보면 brief이고 「재료 3개」·「공개 10월 12일」 두 줄이다(KST)', async () => {
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
     const view = toCardView(card, { now: NOW, tracking: true })
 
     expect(view.shape).toBe('brief')
@@ -272,7 +277,7 @@ describe('getTodayCards — 공개 전 레시피 (재료 수·공개 시각만)'
   it('공개 시각을 해석할 수 없으면 공개 전(fail-closed)이고 공개일 줄만 생략된다', async () => {
     fx.tables.combination_recipes = [recipeRow('r1', { valid_from: 'not-a-date' })]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
     const view = toCardView(card, { now: NOW })
 
     expect(card.resolved_recipe).toMatchObject({ state: 'scheduled' })
@@ -289,7 +294,7 @@ describe('getTodayCards — 레시피 줄이 없는 경우', () => {
     ]
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['a1']), slotRow('r2', 1, ['a1'])]
 
-    const cards = await getTodayCards(USER, null, NOW)
+    const cards = await getCardsById(USER, null, NOW)
 
     expect(cards.map((c) => c.resolved_recipe)).toEqual([null, null])
     expect(count('combination_recipe_slots')).toBe(0)
@@ -298,7 +303,7 @@ describe('getTodayCards — 레시피 줄이 없는 경우', () => {
   it('레시피 행이 없으면(삭제됨) null이다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a', recipe_id: 'gone' })]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toBeNull()
   })
@@ -306,7 +311,7 @@ describe('getTodayCards — 레시피 줄이 없는 경우', () => {
   it('recipe_id가 비었거나 없으면(null·undefined·빈 문자열) 레시피 테이블을 읽지 않고 null이다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a', recipe_id: null }), cardRow({ id: 'b' }), cardRow({ id: 'c', recipe_id: '' })]
 
-    const cards = await getTodayCards(USER, null, NOW)
+    const cards = await getCardsById(USER, null, NOW)
 
     expect(cards.map((c) => c.resolved_recipe)).toEqual([null, null, null])
     expect(fx.reads.map((r) => r.table)).toEqual(['today_cards'])
@@ -316,7 +321,7 @@ describe('getTodayCards — 레시피 줄이 없는 경우', () => {
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'badge_spotlight', layout_type: 'other', recipe_id: 'r1' })]
     fx.tables.combination_recipes = [recipeRow('r1')]
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toBeNull()
     expect(fx.reads.map((r) => r.table)).toEqual(['today_cards'])
@@ -335,7 +340,7 @@ describe('getTodayCards — 읽기 횟수', () => {
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['a1']), slotRow('r1', 2, ['b1']), slotRow('r2', 1, ['c1'])]
     fx.tables.badges = ['a1', 'b1', 'c1', 'solo'].map((id) => badgeRow(id))
 
-    const cards = await getTodayCards(USER, null, NOW)
+    const cards = await getCardsById(USER, null, NOW)
 
     expect(count('combination_recipes')).toBe(1)
     expect(count('combination_recipe_slots')).toBe(1)
@@ -353,7 +358,7 @@ describe('getTodayCards — 읽기 횟수', () => {
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['open-a']), slotRow('r2', 1, ['hidden-a'])]
     fx.tables.badges = ['open-a', 'hidden-a'].map((id) => badgeRow(id))
 
-    const cards = await getTodayCards(USER, null, NOW)
+    const cards = await getCardsById(USER, null, NOW)
 
     const badgeRead = fx.reads.find((r) => r.table === 'badges')
     expect(badgeRead?.ins.id).toEqual(['open-a'])
@@ -366,7 +371,7 @@ describe('getTodayCards — 읽기 횟수', () => {
     fx.tables.combination_recipes = [recipeRow('r1')]
     fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['a1'])]
 
-    await getTodayCards(USER, null, NOW)
+    await getCardsById(USER, null, NOW)
 
     const recipeRead = fx.reads.find((r) => r.table === 'combination_recipes')
     expect(recipeRead?.columns).not.toContain('name')
@@ -385,7 +390,7 @@ describe('getTodayCards — 조회가 실패해도 카드와 홈은 막히지 �
   it('레시피 조회가 실패하면 카드는 남고 레시피 값만 null이다(오류를 기록한다)', async () => {
     fx.errors.combination_recipes = { message: 'boom' }
 
-    const cards = await getTodayCards(USER, null, NOW)
+    const cards = await getCardsById(USER, null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a', 'z'])
     expect(cards[0].resolved_recipe).toBeNull()
@@ -396,7 +401,7 @@ describe('getTodayCards — 조회가 실패해도 카드와 홈은 막히지 �
   it('슬롯 조회가 실패하면 재료 수를 알 수 없어 레시피 값이 null이다(공개 전·뒤 모두)', async () => {
     fx.errors.combination_recipe_slots = { message: 'boom' }
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toBeNull()
     expect(console.error).toHaveBeenCalledWith('[fetchRecipesById] 레시피 슬롯 조회 오류:', 'boom')
@@ -406,7 +411,7 @@ describe('getTodayCards — 조회가 실패해도 카드와 홈은 막히지 �
     fx.tables.badges = [badgeRow('a1')]
     fx.errors.user_activity_badges = { message: 'boom' }
 
-    const [card] = await getTodayCards(USER, null, NOW)
+    const [card] = await getCardsById(USER, null, NOW)
 
     expect(card.resolved_recipe).toMatchObject({ tiles: [{ id: 'a1', earned: false }] })
   })
@@ -416,7 +421,7 @@ describe('getTodayCards — 처음 보는 템플릿 값', () => {
   it('던지지 않고 카드 목록에 남는다(레시피·미션·컬렉션 값은 null이다)', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'future_template', layout_type: 'other', shape: null, recipe_id: 'r1' })]
 
-    const cards = await getTodayCards(USER, null, NOW)
+    const cards = await getCardsById(USER, null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a'])
     expect(cards[0]).toMatchObject({ resolved_recipe: null, resolved_mission: null, resolved_collection: null })
