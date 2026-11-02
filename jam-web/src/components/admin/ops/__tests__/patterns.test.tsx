@@ -68,6 +68,22 @@ describe('OpsPatternList — 목록', () => {
     expect(out).toContain('aria-current="page"')
   })
 
+  it('종류 거름: 전체·원리형·주제형 개수와 링크를 보이고, 주제형은 주제 이름표와 각도 개수를 보인다', () => {
+    const rows = [...ROWS, row('P19', { name: '달리기 소개', topic: 'sports/run', angleCount: 4 }), row('P21', { name: '장소', topic: 'places', angleCount: 2 })]
+    const all = flat(<OpsPatternList rows={rows} status="all" />)
+    expect(all).toContain('전체 <span class="ml-1 tabular-nums">5</span>')
+    expect(all).toContain('원리형 <span class="ml-1 tabular-nums">3</span>')
+    expect(all).toContain('주제형 <span class="ml-1 tabular-nums">2</span>')
+    expect(all).toContain('href="/admin/ops-patterns?kind=topic"')
+    expect(all).toContain('sports/run')
+    const topicOnly = flat(<OpsPatternList rows={rows} status="all" kind="topic" />)
+    expect(topicOnly).toContain('달리기 소개')
+    expect(topicOnly).not.toContain('P01 이름')
+    const principleOnly = flat(<OpsPatternList rows={rows} status="all" kind="principle" />)
+    expect(principleOnly).toContain('P01 이름')
+    expect(principleOnly).not.toContain('달리기 소개')
+  })
+
   it('기본(전체)은 보관을 숨기고, 보관 필터에서만 보인다', () => {
     expect(flat(<OpsPatternList rows={ROWS} status="all" />)).not.toContain('보관한 패턴')
     const archived = flat(<OpsPatternList rows={ROWS} status="archived" />)

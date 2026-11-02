@@ -93,6 +93,8 @@ function patternRow(patternNo: string, extra: Partial<Row> = {}): Row {
     card_shapes: [{ kind: 'badge' }],
     knobs: { condition: { open: 'a', closed: 'b' } },
     pitfalls: '함정',
+    topic: null,
+    angles: [],
     status: 'active',
     pause_reason: null,
     origin: 'seed',
@@ -227,6 +229,21 @@ describe('listOpsPatterns', () => {
     const patterns = await listOpsPatterns(service, { includeArchived: false })
     expect(patterns.map((p) => p.patternNo)).toEqual(['P09', 'P10', 'P20', 'P100'])
     expect(['P100', 'P10', 'P09'].sort(comparePatternNo)).toEqual(['P09', 'P10', 'P100'])
+  })
+
+  it('topic을 주면 정확히 일치하는 주제만, none이면 원리형(topic NULL)만 싣고, 안 주면 거르지 않는다', async () => {
+    db.tables.ops_patterns = [
+      patternRow('P02'),
+      patternRow('P19', { topic: 'sports/run' }),
+      patternRow('P20', { topic: 'sports/run-trail' }),
+      patternRow('P21', { topic: 'places' }),
+    ]
+    const nos = async (topic?: string) =>
+      (await listOpsPatterns(service, { includeArchived: false, topic })).map((p) => p.patternNo)
+    expect(await nos('sports/run')).toEqual(['P19'])
+    expect(await nos('none')).toEqual(['P02'])
+    expect(await nos('sports')).toEqual([])
+    expect(await nos()).toEqual(['P02', 'P19', 'P20', 'P21'])
   })
 
   it('테이블이 비어 있으면 빈 목록이다', async () => {
