@@ -23,8 +23,8 @@ export interface BadgeInputs {
 }
 
 export async function loadBadgeInputs(supabase: ServiceClient): Promise<BadgeInputs> {
-  const [badges, earns] = await Promise.all([
-    fetchAllRows<OpsBadgeInput>('ops-badges:badges', 'id', () =>
+  const [rawBadges, earns] = await Promise.all([
+    fetchAllRows('ops-badges:badges', 'id', () =>
       supabase
         .from('badges')
         .select(BADGE_COLUMNS)
@@ -37,6 +37,8 @@ export async function loadBadgeInputs(supabase: ServiceClient): Promise<BadgeInp
     ),
   ])
 
+  // 생성 타입의 `condition_json`은 Json이라 도메인 타입(BadgeCondition)과 모양만 다르다 — 계열 화면(`badge-families-query.ts`)과 같은 캐스팅이다.
+  const badges = rawBadges as unknown as OpsBadgeInput[]
   const earnedByBadge = new Map<string, number>()
   for (const earn of earns) earnedByBadge.set(earn.badge_id, (earnedByBadge.get(earn.badge_id) ?? 0) + 1)
   return { badges, earnedByBadge }
