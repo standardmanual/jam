@@ -613,7 +613,7 @@ describe('OpsItemActions — 항목 결정 줄', () => {
     const out = flat(<OpsItemActions bundleId="b" item={item} ctx={makeCtx()} onDecided={vi.fn()} onConflict={vi.fn()} />)
     for (const label of ['반려하기', '수정하기']) expect(out).toContain(label)
     expect(out).not.toContain('승인하기')
-    expect(out).not.toContain('패턴 사전에 넣기')
+    expect(out).not.toContain('패턴에 넣기')
     expect(buttonOf(out, '반려하기')).toContain('border-destructive')
     expect(buttonOf(out, '반려하기')).toContain('text-destructive')
     expect(out).not.toContain('bg-red-600')
@@ -621,10 +621,10 @@ describe('OpsItemActions — 항목 결정 줄', () => {
     expect(out).not.toContain('예약 등록하기')
   })
 
-  it('패턴 제안에는 개별 승인 버튼이 「패턴 사전에 넣기」로 남아 있다(티켓 20261026_2031)', () => {
+  it('패턴 제안에는 개별 승인 버튼이 「패턴에 넣기」로 남아 있다(티켓 20261026_2031)', () => {
     const item = makeItem({ status: 'reviewing', kind: 'pattern_proposal' })
     const out = flat(<OpsItemActions bundleId="b" item={item} ctx={makeCtx()} onDecided={vi.fn()} onConflict={vi.fn()} />)
-    for (const label of ['반려하기', '수정하기', '패턴 사전에 넣기']) expect(out).toContain(label)
+    for (const label of ['반려하기', '수정하기', '패턴에 넣기']) expect(out).toContain(label)
     expect(out).not.toContain('승인하기')
   })
 

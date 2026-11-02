@@ -219,9 +219,9 @@ describe('항목 서랍 — 결정 줄 (OpsItemActions)', () => {
     expect(out.indexOf('>이대로 두기<')).toBeLessThan(out.indexOf('>반려하기<'))
   })
 
-  it('패턴 제안은 지금과 같다: [반려하기][수정하기][패턴 사전에 넣기]', () => {
+  it('패턴 제안은 지금과 같다: [반려하기][수정하기][패턴에 넣기]', () => {
     const out = actions(makeItem({ kind: 'pattern_proposal' }), callbacks)
-    for (const label of ['반려하기', '수정하기', '패턴 사전에 넣기']) expect(out).toContain(`>${label}<`)
+    for (const label of ['반려하기', '수정하기', '패턴에 넣기']) expect(out).toContain(`>${label}<`)
     for (const label of ['빼기', '고치기', '이대로 두기']) expect(out).not.toContain(`>${label}<`)
   })
 

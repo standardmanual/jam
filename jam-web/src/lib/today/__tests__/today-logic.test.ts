@@ -23,7 +23,7 @@ function check(name: string, fn: () => void) {
   console.log(`  ✓ ${name}`)
 }
 
-// 시간대 태그 경계 (티켓 20261001_1201, 운영 패턴 사전의 시각 정의와 일치).
+// 시간대 태그 경계 (티켓 20261001_1201, 운영 패턴의 시각 정의와 일치).
 // night 22~05 / dawn 05~08 / morning 08~11 / afternoon 11~17 / evening 17~22 (KST)
 // KST 오프셋(+09:00)을 붙여 만든 시각으로 경계 직전·직후를 고정한다.
 function kstAt(hhmm: string): Date {

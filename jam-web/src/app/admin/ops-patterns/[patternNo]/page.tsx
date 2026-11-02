@@ -9,6 +9,7 @@ import {
   OpsPatternPitfallsSection,
   OpsPatternRail,
   OpsPatternResultSection,
+  OpsPatternAnglesSection,
   OpsPatternSamplesSection,
   OpsPatternSignals,
   OpsPatternSummarySection,
@@ -117,6 +118,7 @@ export default async function OpsPatternDetailPage({
               <OpsPatternSummarySection pattern={record} />
               <OpsPatternKnobsSection knobs={record.knobs} />
               <OpsPatternSamplesSection samples={record.samples} />
+              <OpsPatternAnglesSection angles={record.angles} />
               <OpsPatternPitfallsSection pitfalls={record.pitfalls} />
               <Suspense fallback={<SectionSkeleton />}>
                 <SignalsSection patternNo={record.patternNo} />

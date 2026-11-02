@@ -2,22 +2,28 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from '@/components/admin/ui/button'
+import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Textarea } from '@/components/admin/ui/textarea'
 import { useAdminPortalContainer } from '@/components/admin/data-table/use-admin-portal-container'
 import { OPS_PATTERN_KNOB_LABELS } from '@/lib/admin/opsInbox/labels'
 import {
+  OPS_PATTERN_ANGLE_NEEDS,
+  OPS_PATTERN_ANGLE_NEED_LABELS,
+  OPS_PATTERN_ANGLE_TYPES,
   OPS_PATTERN_KNOB_KEYS,
   OPS_PATTERN_KNOB_VALUE_FIELD_LABELS,
   OPS_PATTERN_KNOB_VALUE_KEYS,
   OPS_PATTERN_LIMITS,
   OPS_PATTERN_SAMPLE_ROLES,
   OPS_PATTERN_SAMPLE_ROLE_LABELS,
+  type OpsPatternAngleNeed,
+  type OpsPatternAngleType,
   type OpsPatternKnobKey,
   type OpsPatternSampleRole,
 } from '@/lib/admin/opsPatterns/constants'
-import { fieldDomId, type PatternDraft, type PatternDraftCardShape, type PatternDraftSample } from '@/lib/admin/opsPatterns/formDraft'
+import { fieldDomId, type PatternDraft, type PatternDraftAngle, type PatternDraftCardShape, type PatternDraftSample } from '@/lib/admin/opsPatterns/formDraft'
 import type { OpsPatternFieldErrors } from '@/lib/admin/opsPatterns/input'
 import { CARD_SHAPES, isCardShape } from '@/lib/today/shape'
 import { cn } from '@/lib/utils'
@@ -30,8 +36,9 @@ import { cn } from '@/lib/utils'
  * - 줄 목록(카드 모양·샘플)은 「더하기」「지우기」 버튼이 있고, 메뉴는 칩이다. 줄에는 안정 키가 없어 순서(index)를 키로 쓴다(입력 칸이 모두 제어 입력이라 문제없다).
  */
 
-const { nameMax, longTextMax, menuMax, menusMaxCount, samplesMaxCount, cardShapeNoteMax } = OPS_PATTERN_LIMITS
+const { nameMax, longTextMax, menuMax, menusMaxCount, samplesMaxCount, cardShapeNoteMax, topicMax, anglesMaxCount, angleTitleMax, angleNoteMax } = OPS_PATTERN_LIMITS
 export const PATTERN_NAME_MAX = nameMax
+export const PATTERN_TOPIC_MAX = topicMax
 export const PATTERN_LONG_TEXT_MAX = longTextMax
 
 export const REQUIRED_MARK_LABEL = '필수'
@@ -39,6 +46,8 @@ export const MENU_ADD_LABEL = '더하기'
 export const MENU_INPUT_LABEL = '쓰는 메뉴 이름'
 export const MENU_LIMIT_NOTE = `메뉴는 ${menusMaxCount}개까지 넣을 수 있어요`
 export const SAMPLES_LIMIT_NOTE = `샘플은 ${samplesMaxCount}개까지 넣을 수 있어요`
+export const ANGLES_LIMIT_NOTE = `샘플 각도는 ${anglesMaxCount}개까지 넣을 수 있어요`
+export const ANGLE_ADD_LABEL = '샘플 각도 더하기'
 export const CARD_SHAPE_ADD_LABEL = '카드 모양 더하기'
 export const SAMPLE_ADD_LABEL = '샘플 더하기'
 export const ROW_REMOVE_LABEL = '지우기'
@@ -171,6 +180,7 @@ export function PatternSelect<T extends string>({ path, label, value, options, o
 }
 
 const SAMPLE_ROLE_OPTIONS = OPS_PATTERN_SAMPLE_ROLES.map((role) => ({ value: role, label: OPS_PATTERN_SAMPLE_ROLE_LABELS[role] }))
+const ANGLE_TYPE_OPTIONS = OPS_PATTERN_ANGLE_TYPES.map((type) => ({ value: type, label: type }))
 const CARD_SHAPE_OPTIONS = CARD_SHAPES.map((shape) => ({ value: shape, label: shape }))
 
 // ── 쓰는 메뉴 (칩) ───────────────────────────────────────────────────────────────────────────────
@@ -448,6 +458,91 @@ export function SampleRows({ rows, errors, onChange }: SampleRowsProps) {
           {SAMPLE_ADD_LABEL}
         </Button>
         {full && <p className="text-xs text-muted-foreground">{SAMPLES_LIMIT_NOTE}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ── 샘플 각도 ───────────────────────────────────────────────────────────────────────────────────
+
+interface AngleRowsProps {
+  rows: PatternDraftAngle[]
+  errors: OpsPatternFieldErrors
+  onChange: (rows: PatternDraftAngle[]) => void
+}
+
+/** 샘플 각도 줄: 종류(Select)·제목·설명·필요한 재료(체크 모음). 서른 개가 차면 더하기가 꺼진다. 각도는 예시일 뿐이라 닫힌 목록이 아니다. */
+export function AngleRows({ rows, errors, onChange }: AngleRowsProps) {
+  const full = rows.length >= anglesMaxCount
+  const update = (index: number, patch: Partial<PatternDraftAngle>) => onChange(rows.map((row, at) => (at === index ? { ...row, ...patch } : row)))
+  const toggleNeed = (index: number, need: OpsPatternAngleNeed, on: boolean) => {
+    const current = rows[index].needs
+    update(index, { needs: on ? OPS_PATTERN_ANGLE_NEEDS.filter((candidate) => candidate === need || current.includes(candidate)) : current.filter((candidate) => candidate !== need) })
+  }
+  return (
+    <div className="min-w-0 space-y-3">
+      {rows.length > 0 && (
+        <ul className="space-y-3">
+          {rows.map((row, index) => (
+            <RowFrame key={index} title={`샘플 각도 ${index + 1}`} onRemove={() => onChange(rows.filter((_, at) => at !== index))}>
+              <div className="grid grid-cols-1 gap-3 @sm:grid-cols-[8rem_minmax(0,1fr)]">
+                <PatternSelect<OpsPatternAngleType>
+                  path={`angles.${index}.type`}
+                  label="종류"
+                  required
+                  value={row.type}
+                  options={ANGLE_TYPE_OPTIONS}
+                  error={errors[`angles.${index}.type`]}
+                  onChange={(type) => update(index, { type })}
+                />
+                <TextField
+                  path={`angles.${index}.title`}
+                  label="제목"
+                  required
+                  value={row.title}
+                  max={angleTitleMax}
+                  error={errors[`angles.${index}.title`]}
+                  onChange={(title) => update(index, { title })}
+                />
+              </div>
+              <TextField
+                path={`angles.${index}.note`}
+                label="설명"
+                required
+                rows={2}
+                value={row.note}
+                max={angleNoteMax}
+                error={errors[`angles.${index}.note`]}
+                onChange={(note) => update(index, { note })}
+              />
+              <fieldset id={fieldDomId(`angles.${index}.needs`)} className="min-w-0 space-y-1.5">
+                <legend className="text-sm font-medium">필요한 재료</legend>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {OPS_PATTERN_ANGLE_NEEDS.map((need) => {
+                    const checkId = `${fieldDomId(`angles.${index}.needs`)}-${need}`
+                    return (
+                      <div key={need} className="flex items-center gap-2">
+                        <Checkbox id={checkId} checked={row.needs.includes(need)} onCheckedChange={(checked) => toggleNeed(index, need, checked === true)} />
+                        <label htmlFor={checkId} className="text-sm break-keep">
+                          {OPS_PATTERN_ANGLE_NEED_LABELS[need]}
+                        </label>
+                      </div>
+                    )
+                  })}
+                </div>
+                <FieldError path={`angles.${index}.needs`} error={errors[`angles.${index}.needs`]} />
+              </fieldset>
+              <FieldError path={`angles.${index}`} error={errors[`angles.${index}`]} />
+            </RowFrame>
+          ))}
+        </ul>
+      )}
+      <FieldError path="angles" error={errors.angles} />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => onChange([...rows, { type: '', title: '', note: '', needs: [] }])}>
+          {ANGLE_ADD_LABEL}
+        </Button>
+        {full && <p className="text-xs text-muted-foreground">{ANGLES_LIMIT_NOTE}</p>}
       </div>
     </div>
   )

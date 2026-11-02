@@ -13,11 +13,14 @@ import { OPS_FIELD_UNKNOWN, readOpsItemPatternNo } from '@/lib/admin/opsInbox/fi
 import { asRecord } from '@/lib/admin/opsInbox/itemView'
 import { OPS_PATTERN_KNOB_LABELS, formatKstClock, kindLabel, kstDateKey } from '@/lib/admin/opsInbox/labels'
 import {
+  OPS_PATTERN_ANGLE_NEED_LABELS,
+  OPS_PATTERN_ANGLE_TYPES,
   OPS_PATTERN_KNOB_KEYS,
   OPS_PATTERN_KNOB_VALUE_FIELD_LABELS,
   OPS_PATTERN_KNOB_VALUE_KEYS,
   OPS_PATTERN_SAMPLE_ROLES,
   OPS_PATTERN_SAMPLE_ROLE_LABELS,
+  type OpsPatternAngleNeed,
   type OpsPatternKnobKey,
   type OpsPatternSampleRole,
 } from './constants'
@@ -27,6 +30,7 @@ import type { OpsTasteSignalRecord } from './read'
 export const PATTERN_FIELD_MISSING_TEXT = '적지 않았어요'
 export const SAMPLE_ROLE_UNKNOWN_TEXT = '역할 모름'
 export const CARD_SHAPE_UNKNOWN_TEXT = '목록에 없는 모양'
+export const ANGLE_TYPE_UNKNOWN_TEXT = '종류 모름'
 export const PATTERN_ORIGIN_UNKNOWN_TEXT = '출처 확인 필요'
 export const PATTERN_DETAIL_MISSING_TEXT = '–'
 
@@ -126,6 +130,47 @@ export function readCardShapeLines(cardShapes: unknown): CardShapeLine[] | null 
       note: orMissing(record?.note),
     }
   })
+}
+
+// ── 샘플 각도 ────────────────────────────────────────────────────────────────────────────────────
+
+export interface AngleLine {
+  /** 종류 이름. 목록(`OPS_PATTERN_ANGLE_TYPES`) 밖이면 「종류 모름」. */
+  type: string
+  title: string
+  note: string
+  /** 필요한 재료의 한국어 이름표. 목록 밖의 재료는 지우지 않고 받은 글자 그대로 둔다. */
+  needs: string[]
+}
+
+/** 샘플 각도 목록. `angles`가 배열이 아니면 `null`(구역 전체가 「적지 않았어요」). 깨진 항목은 숨기지 않고 그 칸만 「적지 않았어요」·「종류 모름」으로 남긴다. */
+export function readAngleLines(angles: unknown): AngleLine[] | null {
+  if (!Array.isArray(angles)) return null
+  return angles.map((entry): AngleLine => {
+    const record = asRecord(entry)
+    const type = textOf(record?.type)
+    const needs = Array.isArray(record?.needs) ? record.needs : []
+    return {
+      type: (OPS_PATTERN_ANGLE_TYPES as readonly string[]).includes(type) ? type : ANGLE_TYPE_UNKNOWN_TEXT,
+      title: orMissing(record?.title),
+      note: orMissing(record?.note),
+      needs: needs
+        .map((need) => textOf(need))
+        .filter((need) => need !== '')
+        .map((need) => OPS_PATTERN_ANGLE_NEED_LABELS[need as OpsPatternAngleNeed] ?? need),
+    }
+  })
+}
+
+export interface AngleGroup {
+  type: string
+  lines: AngleLine[]
+}
+
+/** 종류별 묶음. 순서는 소개·유도·미션·큐레이션·현황·회고·이야기, 「종류 모름」은 맨 뒤다. 줄이 없는 종류는 만들지 않고, 같은 종류 안은 읽은 순서를 지킨다. */
+export function groupAngleLines(lines: readonly AngleLine[]): AngleGroup[] {
+  const order: string[] = [...OPS_PATTERN_ANGLE_TYPES, ANGLE_TYPE_UNKNOWN_TEXT]
+  return order.map((type) => ({ type, lines: lines.filter((line) => line.type === type) })).filter((group) => group.lines.length > 0)
 }
 
 // ── 손잡이 ───────────────────────────────────────────────────────────────────────────────────────

@@ -1,8 +1,8 @@
 /**
- * 운영 패턴 사전 읽기 (티켓 20261001_2134, 상위 20260930_1503 ②, 운영툴 PRD §11.6). `GET /api/admin/ops-patterns`와
+ * 운영 패턴 읽기 (티켓 20261001_2134, 상위 20260930_1503 ②, 운영툴 PRD §11.6). `GET /api/admin/ops-patterns`와
  * `GET /api/admin/ops-patterns/[patternNo]`가 쓰고, 조합 뽑기·패턴 거르기(1153)가 같은 함수를 다시 쓴다.
  *
- * - 읽기만 한다. 패턴 사전 테이블 3개(`ops_patterns`·`ops_pattern_taste_signals`·`ops_pattern_common_rules`)는 서비스 롤 전용이라
+ * - 읽기만 한다. 패턴 테이블 3개(`ops_patterns`·`ops_pattern_taste_signals`·`ops_pattern_common_rules`)는 서비스 롤 전용이라
  *   서비스 클라이언트를 인자로 받는다(테스트는 가짜를 넘긴다).
  * - **관리자 ID(`updated_by`·`confirmed_by`)는 select 목록에서부터 뺀다.** 읽지도 돌려주지도 않는다 — 읽기 토큰으로 읽는 응답에 사용자 ID가
  *   나가지 않게 한다(티켓 20260930_1459 조각 B 게이트 발견물과 같은 원칙, PRD §10.1 「읽기 응답 규칙」).
@@ -21,13 +21,13 @@ import {
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export const OPS_PATTERN_LOAD_FAILED_MESSAGE = '패턴 사전을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+export const OPS_PATTERN_LOAD_FAILED_MESSAGE = '패턴을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 export const OPS_PATTERN_NO_INVALID_MESSAGE = '패턴 번호는 P01처럼 P 뒤에 숫자 두 자리 이상이어야 해요.'
 export const OPS_PATTERN_NOT_FOUND_MESSAGE = '찾을 수 없는 패턴이에요.'
 
 /** 읽는 칸 목록. `updated_by`·`confirmed_by`는 일부러 넣지 않는다. */
 export const OPS_PATTERN_COLUMNS =
-  'pattern_no, name, principle, user_experience, menus, samples, card_shapes, knobs, pitfalls, status, pause_reason, origin, origin_item_id, created_at, updated_at'
+  'pattern_no, name, principle, user_experience, menus, samples, card_shapes, knobs, pitfalls, topic, angles, status, pause_reason, origin, origin_item_id, created_at, updated_at'
 export const OPS_TASTE_SIGNAL_COLUMNS = 'id, pattern_no, name, reason, basis, evidence_decision_id, confirmed_at, sort_order, updated_at'
 export const OPS_COMMON_RULE_COLUMNS = 'rule_no, title, body, updated_at'
 
@@ -44,6 +44,10 @@ export interface OpsPatternRecord {
   cardShapes: Json
   knobs: Json
   pitfalls: string
+  /** 주제 패턴의 주제(`sports/run`). 원리형 패턴은 `null`. */
+  topic: string | null
+  /** 샘플 각도 `{ type, title, note, needs[] }[]`. JSONB는 그대로 넘긴다. 원리형 패턴은 빈 배열. */
+  angles: Json
   status: OpsPatternStatus
   /** 상태의 한국어 이름표(사용 중·쉬는 중·보관). */
   statusLabel: string
@@ -85,6 +89,8 @@ export interface OpsPatternRow {
   card_shapes: Json
   knobs: Json
   pitfalls: string
+  topic: string | null
+  angles: Json
   status: string
   pause_reason: string | null
   origin: string
@@ -125,6 +131,8 @@ export function toPatternRecord(row: OpsPatternRow): OpsPatternRecord {
     cardShapes: row.card_shapes,
     knobs: row.knobs,
     pitfalls: row.pitfalls,
+    topic: row.topic,
+    angles: row.angles,
     status,
     statusLabel: OPS_PATTERN_STATUS_LABELS[status] ?? row.status,
     pauseReason: row.pause_reason,
@@ -175,12 +183,28 @@ export function compareTasteSignals(a: OpsTasteSignalRecord, b: OpsTasteSignalRe
 
 // ── 읽기 ────────────────────────────────────────────────────────────────────────────────────────
 
-/** 패턴 목록(번호의 숫자 순서). `includeArchived`가 참일 때만 보관 패턴을 싣는다. 테이블이 비어 있으면 빈 목록이다. */
-export async function listOpsPatterns(service: ServiceClient, { includeArchived }: { includeArchived: boolean }): Promise<OpsPatternRecord[]> {
+/** 주제 거름 쿼리 값 «원리형만»(`topic` 칸이 NULL인 패턴). `none`은 주제 이름으로 쓰지 않는다는 약속이다. */
+export const OPS_PATTERN_TOPIC_NONE = 'none'
+
+/** 주제로 거른다: `none`은 원리형만, 그 밖의 글은 정확히 일치하는 주제만, `undefined`는 거르지 않는다. */
+export function filterPatternsByTopic<T extends { topic: string | null }>(patterns: readonly T[], topic: string | undefined): T[] {
+  if (topic === undefined) return [...patterns]
+  if (topic === OPS_PATTERN_TOPIC_NONE) return patterns.filter((pattern) => pattern.topic === null)
+  return patterns.filter((pattern) => pattern.topic === topic)
+}
+
+/**
+ * 패턴 목록(번호의 숫자 순서). `includeArchived`가 참일 때만 보관 패턴을 싣는다. 테이블이 비어 있으면 빈 목록이다.
+ * `topic`을 주면 그 주제만(`none`이면 원리형만) 싣는다(티켓 20261102_1600).
+ */
+export async function listOpsPatterns(
+  service: ServiceClient,
+  { includeArchived, topic }: { includeArchived: boolean; topic?: string }
+): Promise<OpsPatternRecord[]> {
   const query = service.from('ops_patterns').select(OPS_PATTERN_COLUMNS)
   const { data, error } = await (includeArchived ? query : query.neq('status', 'archived'))
   if (error) throw new Error(`패턴 조회 실패: ${error.message}`)
-  return (data ?? []).map(toPatternRecord).sort((a, b) => comparePatternNo(a.patternNo, b.patternNo))
+  return filterPatternsByTopic((data ?? []).map(toPatternRecord), topic).sort((a, b) => comparePatternNo(a.patternNo, b.patternNo))
 }
 
 /**
@@ -238,7 +262,7 @@ interface CountQuery extends PromiseLike<{ count: number | null; error: { messag
 }
 
 /**
- * 승인 대기 제안 건수(티켓 20261008_1400, 패턴 사전 화면의 「승인 대기 제안 N건」). 종류가 `pattern_proposal`이고 상태가 결정 전(도착·검토 중)이며
+ * 승인 대기 제안 건수(티켓 20261008_1400, 패턴 화면의 「승인 대기 제안 N건」). 종류가 `pattern_proposal`이고 상태가 결정 전(도착·검토 중)이며
  * 시험 묶음이 아닌 항목의 개수다. 조회 오류는 던진다(화면이 이 줄만 「읽지 못했어요」로 바꾼다 — 실패를 0건으로 보이지 않는다).
  */
 export async function countPendingPatternProposals(service: ServiceClient): Promise<number> {

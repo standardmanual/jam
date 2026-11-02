@@ -6,10 +6,15 @@
  */
 import { CARD_SHAPES, isCardShape, type CardShape } from '@/lib/today/shape'
 import {
+  OPS_PATTERN_ANGLE_NEEDS,
+  OPS_PATTERN_ANGLE_TYPES,
   OPS_PATTERN_LIMITS,
   OPS_PATTERN_SAMPLE_ROLES,
+  OPS_PATTERN_TOPIC_PATTERN,
   OPS_REJECTION_OFFSET_MAX,
   OPS_TASTE_LIMITS,
+  type OpsPatternAngleNeed,
+  type OpsPatternAngleType,
   type OpsPatternSampleRole,
 } from './constants'
 
@@ -36,6 +41,14 @@ export interface OpsPatternInputKnobs {
   tribe: { rule: string; example: string }
 }
 
+/** 주제 패턴의 샘플 각도 한 개(티켓 20261102_1600). `needs`는 윤진이 그 각도를 기획하려면 읽어야 하는 재료다. */
+export interface OpsPatternInputAngle {
+  type: OpsPatternAngleType
+  title: string
+  note: string
+  needs: OpsPatternAngleNeed[]
+}
+
 /** 패턴의 내용 칸 전체. 칸 이름은 `OpsPatternRecord`와 같고, `OpsPatternProposal`(패턴 제안 항목의 내용)과 같은 모양이라 ⑪이 변환 없이 넘긴다. */
 export interface OpsPatternInput {
   name: string
@@ -46,6 +59,12 @@ export interface OpsPatternInput {
   cardShapes: OpsPatternInputCardShape[]
   knobs: OpsPatternInputKnobs
   pitfalls: string
+  /**
+   * 주제(`sports/run`)와 샘플 각도(티켓 20261102_1600). 둘 다 선택이다. 보내지 않으면 만들기는 원리형(`null`·빈 배열)으로 만들고
+   * 고치기는 현재 값을 그대로 둔다 — 이 두 칸을 모르는 호출자가 고치기로 주제를 지우지 않게 한다. 빈 문자열 주제는 `null`로 정규화한다.
+   */
+  topic?: string | null
+  angles?: OpsPatternInputAngle[]
 }
 
 export type OpsPatternFieldErrors = Record<string, string>
@@ -193,8 +212,71 @@ export function validateOpsPatternInput(raw: unknown): { ok: true; value: OpsPat
     })
   ) as unknown as OpsPatternInputKnobs
 
+  // 주제 — 보냈을 때만 읽는다. 빈 문자열은 «주제 없음»(null)이다.
+  let topic: string | null | undefined
+  if (raw.topic !== undefined) {
+    if (raw.topic === null) topic = null
+    else if (typeof raw.topic !== 'string') errors.topic = '주제는 글로 적어 주세요.'
+    else {
+      const text = raw.topic.trim()
+      if (text === '') topic = null
+      else if (text.length > OPS_PATTERN_LIMITS.topicMax) errors.topic = `주제는 ${OPS_PATTERN_LIMITS.topicMax}자까지 적을 수 있어요.`
+      else if (!OPS_PATTERN_TOPIC_PATTERN.test(text)) errors.topic = '주제는 영문 소문자·숫자·/·-로만 적어 주세요. 예: sports/run'
+      else topic = text
+    }
+  }
+
+  // 샘플 각도 — 보냈을 때만 읽는다. 깨진 항목이 하나라도 있으면 줄 번호가 있는 오류로 거절한다.
+  let angles: OpsPatternInputAngle[] | undefined
+  if (raw.angles !== undefined && raw.angles !== null) {
+    angles = []
+    if (!Array.isArray(raw.angles)) errors.angles = '샘플 각도는 목록으로 보내 주세요.'
+    else {
+      const { anglesMaxCount, angleTitleMax, angleNoteMax } = OPS_PATTERN_LIMITS
+      if (raw.angles.length > anglesMaxCount) errors.angles = `샘플 각도는 ${anglesMaxCount}개까지 넣을 수 있어요.`
+      raw.angles.forEach((entry, index) => {
+        const at = `angles.${index}`
+        if (!isRecord(entry)) {
+          errors[at] = '샘플 각도 내용을 확인해 주세요.'
+          return
+        }
+        const type = entry.type
+        const typeOk = typeof type === 'string' && (OPS_PATTERN_ANGLE_TYPES as readonly string[]).includes(type)
+        if (!typeOk) errors[`${at}.type`] = `각도 종류는 ${OPS_PATTERN_ANGLE_TYPES.join('·')} 중에서 골라 주세요.`
+        const title = readRequiredText(entry.title, `${at}.title`, '각도 제목', angleTitleMax, errors)
+        const note = readRequiredText(entry.note, `${at}.note`, '각도 설명', angleNoteMax, errors)
+        const needs: OpsPatternAngleNeed[] = []
+        if (entry.needs !== undefined && entry.needs !== null) {
+          if (!Array.isArray(entry.needs)) errors[`${at}.needs`] = '필요한 재료는 목록으로 보내 주세요.'
+          else {
+            entry.needs.forEach((need) => {
+              if (typeof need !== 'string' || !(OPS_PATTERN_ANGLE_NEEDS as readonly string[]).includes(need)) {
+                errors[`${at}.needs`] = `필요한 재료는 ${OPS_PATTERN_ANGLE_NEEDS.join('·')} 중에서 골라 주세요.`
+              } else if (!needs.includes(need as OpsPatternAngleNeed)) needs.push(need as OpsPatternAngleNeed)
+            })
+          }
+        }
+        if (typeOk) angles!.push({ type: type as OpsPatternAngleType, title, note, needs })
+      })
+    }
+  }
+
   if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors }
-  return { ok: true, value: { name, principle, userExperience, menus, samples, cardShapes, knobs, pitfalls } }
+  return {
+    ok: true,
+    value: {
+      name,
+      principle,
+      userExperience,
+      menus,
+      samples,
+      cardShapes,
+      knobs,
+      pitfalls,
+      ...(topic !== undefined ? { topic } : {}),
+      ...(angles !== undefined ? { angles } : {}),
+    },
+  }
 }
 
 

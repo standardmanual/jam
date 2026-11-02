@@ -93,13 +93,13 @@ describe('postDecision', () => {
 describe('approveToastMessage (티켓 20261008_1845)', () => {
   it('패턴 제안을 승인해 사전에 넣었으면 넣은 번호를 알린다', () => {
     expect(approveToastMessage({ ok: true, status: 'ended', pattern: { patternNo: 'P19' }, patternSkipped: null })).toBe(
-      '승인했어요. 패턴 사전에 P19로 넣었어요'
+      '승인했어요. 패턴에 P19로 넣었어요'
     )
   })
 
   it('시험 묶음의 패턴 제안이면 사전에 넣지 않았다고 알린다', () => {
     expect(approveToastMessage({ ok: true, status: 'ended', pattern: null, patternSkipped: 'sample' })).toBe(
-      '승인했어요. 시험 묶음이라 패턴 사전에는 넣지 않았어요'
+      '승인했어요. 시험 묶음이라 패턴에는 넣지 않았어요'
     )
   })
 

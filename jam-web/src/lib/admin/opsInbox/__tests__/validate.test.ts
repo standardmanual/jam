@@ -750,7 +750,7 @@ describe('패턴 번호 — 사전 실재 (티켓 20261007_1745)', () => {
 
   it('형식은 맞지만 사전에 없는 번호(P99)는 오류이고 열에는 값이 그대로 남는다', () => {
     const result = resultOf({ pattern_no: 'P99' })
-    expect(result.errors).toEqual(['items[0].pattern_no: 패턴 사전에 없는 번호예요(받은 값: "P99"). 패턴 번호를 확인해 주세요.'])
+    expect(result.errors).toEqual(['items[0].pattern_no: 패턴에 없는 번호예요(받은 값: "P99"). 패턴 번호를 확인해 주세요.'])
     expect(result.items[0].pattern_no).toBe('P99')
     expect(result.items[0].format_errors).toEqual(result.errors)
   })

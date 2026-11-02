@@ -112,7 +112,7 @@ describe('OpsStatusBadge — 신호 칩 2종', () => {
   })
 })
 
-describe('OpsStatusBadge — 패턴 사전 칩 2종 (티켓 20261008_1400)', () => {
+describe('OpsStatusBadge — 패턴 칩 2종 (티켓 20261008_1400)', () => {
   it('패턴 상태: 사용 중 secondary·쉬는 중 neutral·보관 muted, 아이콘과 글자', () => {
     const active = flat(<OpsStatusBadge type="pattern-status" status="active" />)
     expect(active).toContain('사용 중')

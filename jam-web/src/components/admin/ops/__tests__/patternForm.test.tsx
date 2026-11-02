@@ -2,7 +2,7 @@
  * 패턴 만들기·고치기 폼의 렌더 (티켓 20261008_1617 ⑩a-2, 채원 판정 「⑩a 만들기·고치기·상태」)
  *
  * 저장소에 jsdom·testing-library가 없어(`patternDetail.test.tsx`와 같은 방식) 서버 렌더(`renderToStaticMarkup`)로 처음 그린 모양을 고정한다:
- * - 5구역과 레일 목차, 필수 표시, 저장 버튼 비활성(안 고침), 「바뀐 칸 0개」(고치기만), 안내 문장, 취소가 되돌아갈 링크, 번호·출처·상태 칸 없음
+ * - 6구역과 레일 목차, 필수 표시, 저장 버튼 비활성(안 고침), 「바뀐 칸 0개」(고치기만), 안내 문장, 취소가 되돌아갈 링크, 번호·출처·상태 칸 없음
  * - 칸 부품: 오류가 같은 칸 아래 붉은 글로 붙고 `aria-invalid`·`aria-describedby`로 이어진다, 글자 수는 상한 80%부터, 메뉴 10개·샘플 20개 상한
  * - 저장 실패 알림: 붉은 실패 / 고치기 충돌(+[최신 내용 불러오기]) / 만들기 충돌(버튼 없음)
  * 클릭으로 일어나는 저장·충돌·불러오기 흐름은 브라우저 동작이라 여기서 다루지 않는다(요청·응답 가르기는 `patternSubmit.test.ts`).
@@ -53,11 +53,11 @@ const header = <h1>머리</h1>
 describe('만들기 폼', () => {
   const out = flat(<OpsPatternForm mode="create" initial={emptyDraft()} header={header} />)
 
-  it('5구역이 순서대로 있고 레일 목차가 각 구역으로 이어진다', () => {
+  it('6구역이 순서대로 있고 레일 목차가 각 구역으로 이어진다', () => {
     const positions = PATTERN_FORM_SECTIONS.map((section) => out.indexOf(`id="pattern-form-section-${section.id}"`))
     expect(positions.every((position) => position > 0)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
-    expect(PATTERN_FORM_SECTIONS.map((section) => section.label)).toEqual(['기본', '메뉴와 카드 모양', '손잡이', '샘플', '주의점'])
+    expect(PATTERN_FORM_SECTIONS.map((section) => section.label)).toEqual(['기본', '메뉴와 카드 모양', '손잡이', '샘플', '샘플 각도', '주의점'])
     for (const section of PATTERN_FORM_SECTIONS) expect(out).toContain(`href="#pattern-form-section-${section.id}"`)
   })
 

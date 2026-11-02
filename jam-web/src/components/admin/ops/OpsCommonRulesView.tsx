@@ -10,7 +10,7 @@ import { OpsSectionNotice } from './OpsSectionNotice'
 import { OpsTasteSignalList } from './OpsTasteSignalEditor'
 
 /**
- * 패턴 사전의 「공통 규칙·취향 신호」 탭 (티켓 20261008_1400, 채원 판정 「⑨ 목록」 공통 탭). 읽기 모양에 줄 안 편집을 단다(티켓 20261008_1754 ⑩b-2): 규칙은 `OpsCommonRuleItem`, 취향 신호는 `OpsTasteSignalList`(근거 없이만 확정).
+ * 패턴의 「공통 규칙·취향 신호」 탭 (티켓 20261008_1400, 채원 판정 「⑨ 목록」 공통 탭). 읽기 모양에 줄 안 편집을 단다(티켓 20261008_1754 ⑩b-2): 규칙은 `OpsCommonRuleItem`, 취향 신호는 `OpsTasteSignalList`(근거 없이만 확정).
  *
  * - 공통 규칙: 번호·제목·본문(`whitespace-pre-wrap`, 길면 `line-clamp-3` + [전체 보기]). 모든 패턴에 적용되는 규칙이다.
  * - 공통 취향 신호: 어느 패턴에도 묶이지 않은 방향. [추정]/[확정] 칩 · 이름 · 이유.

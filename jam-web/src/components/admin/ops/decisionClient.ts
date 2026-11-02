@@ -56,8 +56,8 @@ export function decisionFailureMessage(status: number, error: string): string {
  */
 export function approveToastMessage(data: Record<string, unknown>): string {
   const patternNo = asRecord(data.pattern).patternNo
-  if (typeof patternNo === 'string' && patternNo !== '') return `승인했어요. 패턴 사전에 ${patternNo}로 넣었어요`
-  if (data.patternSkipped === 'sample') return '승인했어요. 시험 묶음이라 패턴 사전에는 넣지 않았어요'
+  if (typeof patternNo === 'string' && patternNo !== '') return `승인했어요. 패턴에 ${patternNo}로 넣었어요`
+  if (data.patternSkipped === 'sample') return '승인했어요. 시험 묶음이라 패턴에는 넣지 않았어요'
   return '승인했어요'
 }
 

@@ -104,7 +104,7 @@ const h = vi.hoisted(() => {
 
       if (this.mode === 'insert') {
         const list = Array.isArray(this.payload) ? this.payload : [this.payload]
-        // 패턴 사전의 유일 제약(번호·값이 있는 출처 항목)을 흉내 낸다.
+        // 패턴의 유일 제약(번호·값이 있는 출처 항목)을 흉내 낸다.
         if (this.table === 'ops_patterns') {
           for (const item of list) {
             if (rows.some((row) => row.pattern_no === item.pattern_no)) {
@@ -132,7 +132,7 @@ const h = vi.hoisted(() => {
           rows.push(row)
           return row
         })
-        // 패턴 사전 insert는 만든 행 전체를 돌려준다(PostgREST의 `.select(열 목록)`).
+        // 패턴 insert는 만든 행 전체를 돌려준다(PostgREST의 `.select(열 목록)`).
         if (this.table === 'ops_patterns') return { data: this.returning ? inserted.map((row) => ({ ...row })) : null, error: null }
         return { data: this.returning ? inserted.map((row) => ({ id: row.id })) : null, error: null }
       }
@@ -486,7 +486,7 @@ describe('패턴 제안 승인 (티켓 20261008_1845)', () => {
   it('형식이 맞지 않으면 400이고 상태·사전·결정 기록을 건드리지 않는다', async () => {
     seed([proposalItem(P1, 0, { ...PROPOSAL_PATTERN, name: '' })], { is_sample: false })
     const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
-    expect(out).toMatchObject({ ok: false, status: 400, error: '제안 내용 형식이 맞지 않아 패턴 사전에 넣을 수 없어요. 반려해 주세요.' })
+    expect(out).toMatchObject({ ok: false, status: 400, error: '제안 내용 형식이 맞지 않아 패턴에 넣을 수 없어요. 반려해 주세요.' })
     expect(item(P1).status).toBe('reviewing')
     expect(createdPatterns()).toHaveLength(0)
     expect(decisions()).toHaveLength(0)
@@ -527,7 +527,7 @@ describe('패턴 제안 승인 (티켓 20261008_1845)', () => {
     seed([proposalItem(P1, 0, { ...PROPOSAL_PATTERN, name: '가'.repeat(61) })], { is_sample: false })
     const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
     expect(out.status).toBe(400)
-    expect(out.error).toContain('패턴 사전 규칙에 맞지 않아요')
+    expect(out.error).toContain('패턴 규칙에 맞지 않아요')
     expect(out.error).toContain('60자까지')
     expect(item(P1).status).toBe('reviewing')
     expect(decisions()).toHaveLength(0)
@@ -868,7 +868,7 @@ describe('직접 수정', () => {
 })
 
 describe('패턴 번호·장소 카테고리 다시 검사 (티켓 20261007_1745)', () => {
-  const PATTERN_ERROR = 'items[0].pattern_no: 패턴 사전에 없는 번호예요(받은 값: "P99"). 패턴 번호를 확인해 주세요.'
+  const PATTERN_ERROR = 'items[0].pattern_no: 패턴에 없는 번호예요(받은 값: "P99"). 패턴 번호를 확인해 주세요.'
   const CATEGORY_ERROR = 'items[0].knobs.place_category: 없는 장소 카테고리예요 — "zoo". 카테고리 slug를 확인해 주세요.'
   const edit = () =>
     editItem(service, { bundleId: B, itemId: I1, actor: 'admin-1', values: { 'copy.title': '새 제목' }, expectedUpdatedAt: item(I1).updated_at })
