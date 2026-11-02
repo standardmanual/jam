@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity } from '@/types/database'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted, summarizeTiers } from '@/lib/itembook/completion-basis'
+import { buildBookRarities } from '@/lib/itembook/book-rarities'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 
 export async function GET(
@@ -94,13 +95,9 @@ export async function GET(
   if (completionsError) console.error('[api/users/[username]/itembooks] user_item_book_completions 조회 실패', completionsError)
   if (tierCompletionsError) console.error('[api/users/[username]/itembooks] user_item_book_tier_completions 조회 실패', tierCompletionsError)
 
-  const rarityByBook = new Map<string, BadgeRarity>()
   const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; name: string; rarity: BadgeRarity; deleted_at: string | null; created_at: string }[]
-  for (const b of bookBadges) {
-    if (b.type !== 'item') continue
-    // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
-    if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
-  }
+  // 컬렉션에 등록된 아이템 배지의 등급 목록 — 세 화면이 같은 함수를 쓴다(티켓 20261102_2300)
+  const raritiesByBook = buildBookRarities(bookBadges)
   // 분모·분자 — 완성 판정 단일 모듈(티켓 20261016_2340 2회-나). 분자는 컬렉션별 집합으로 센다.
   const checkinBadgesByBook = new Map<string, string[]>()
   for (const b of bookBadges) {
@@ -156,7 +153,7 @@ export async function GET(
       totalBadgeCount: completionByBook.get(book.id)?.total ?? 0,
       slottedCount: completionByBook.get(book.id)?.filled ?? 0,
       isCompleted: isBookCompleted(completedSet, book.id, completionByBook.get(book.id)),
-      rarity: rarityByBook.get(book.id) ?? 'common',
+      rarities: raritiesByBook.get(book.id) ?? [],
       // 새 필드(3회-나) — 옛 컬렉션은 tierMode false, tier null, tiers {}
       tierMode: tierModeBookIds.has(book.id),
       tier: completionByBook.get(book.id)?.tier ?? null,
