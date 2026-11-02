@@ -111,6 +111,11 @@ function modeRow(id: string, overrides: Row = {}): Row {
 
 const NOW = new Date('2026-10-20T03:00:00Z')
 
+/** 홈 정렬은 유저·날짜 씨앗으로 섞이므로(티켓 20261102_1720) 순서가 주제가 아닌 시험은 카드 id 순으로 받는다 */
+async function getCardsById(...args: Parameters<typeof getTodayCards>) {
+  return (await getTodayCards(...args)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
 beforeEach(() => {
   fx.tables = {}
   fx.errors = {}
@@ -143,7 +148,7 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
     seedBoards()
     fx.userTribeId = 't-other'
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual'])
   })
@@ -152,7 +157,7 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
     seedBoards()
     fx.userTribeId = 't-other'
 
-    await getTodayCards('viewer', null, NOW)
+    await getCardsById('viewer', null, NOW)
 
     expect(fx.rankingCalls.map(([modeId]) => modeId).sort()).toEqual(['mode-common', 'mode-manual'])
   })
@@ -161,7 +166,7 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
     seedBoards()
     fx.userTribeId = null
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual'])
   })
@@ -170,16 +175,16 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
     seedBoards()
     fx.userTribeId = 't-allowed'
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
-    expect(cards.map((c) => c.id)).toEqual(['card-tribe', 'card-common', 'card-manual'])
+    expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual', 'card-tribe'])
   })
 
   it('접근 판정은 보는 사람 id로, 미션 참가자 순위를 가리키는 미션만 묻는다', async () => {
     seedBoards()
     fx.userTribeId = 't-allowed'
 
-    await getTodayCards('viewer', null, NOW)
+    await getCardsById('viewer', null, NOW)
 
     expect(fx.tribeCalls).toHaveLength(1)
     expect(fx.tribeCalls[0][0]).toBe('viewer')
@@ -189,7 +194,7 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
   it('랭킹 보드 카드가 없으면 트라이브 접근을 읽지 않는다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'other', template_type: 'badge_spotlight', layout_type: 'other' })]
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['other'])
     expect(fx.tribeCalls).toEqual([])
@@ -199,7 +204,7 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
     fx.tables.today_cards = [cardRow({ id: 'card-manual', ranking_mode_id: 'mode-manual' })]
     fx.tables.ranking_modes = [modeRow('mode-manual', { target_type: 'manual_users', target_user_ids: ['u9'] })]
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['card-manual'])
     expect(fx.tribeCalls).toEqual([])
@@ -209,7 +214,7 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
     seedBoards()
     fx.tribeError = new Error('mission_allowed_tribes 조회 실패: boom')
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['card-manual'])
   })
@@ -220,7 +225,7 @@ describe('getTodayCards — 보는 사람 id를 순위 계산까지 내려보낸
     seedBoards()
     fx.userTribeId = 't-allowed'
 
-    await getTodayCards('viewer', null, NOW)
+    await getCardsById('viewer', null, NOW)
 
     expect(fx.rankingCalls).toHaveLength(3)
     for (const [, options] of fx.rankingCalls) expect(options).toEqual({ viewerUserId: 'viewer' })
@@ -234,7 +239,7 @@ describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 2026101
     seedBoards()
     fx.userTribeId = 't-allowed'
 
-    await getTodayCards('viewer', null, NOW)
+    await getCardsById('viewer', null, NOW)
 
     expect(rankingModeReads()).toBe(1)
   })
@@ -243,7 +248,7 @@ describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 2026101
     seedBoards()
     fx.userTribeId = 't-other'
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
     expect(rankingModeReads()).toBe(1)
     expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual'])
@@ -254,7 +259,7 @@ describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 2026101
   it('랭킹 보드 카드가 없으면 ranking_modes를 읽지 않는다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'other', template_type: 'badge_spotlight', layout_type: 'other' })]
 
-    await getTodayCards('viewer', null, NOW)
+    await getCardsById('viewer', null, NOW)
 
     expect(rankingModeReads()).toBe(0)
   })
@@ -264,10 +269,10 @@ describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 2026101
     fx.errors.ranking_modes = { message: 'connection reset' }
     fx.userTribeId = 't-other'
 
-    const cards = await getTodayCards('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
     expect(rankingModeReads()).toBe(1)
-    expect(cards.map((c) => c.id)).toEqual(['card-tribe', 'card-common', 'card-manual'])
+    expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual', 'card-tribe'])
     expect(fx.rankingCalls).toEqual([])
     expect(fx.tribeCalls).toEqual([])
     expect(cards.every((c) => c.resolved_ranking === null)).toBe(true)

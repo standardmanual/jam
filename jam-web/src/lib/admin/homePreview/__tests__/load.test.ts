@@ -135,6 +135,11 @@ function ids(day: { entries: { id: string }[] }): string[] {
   return day.entries.map((e) => e.id)
 }
 
+/** 홈 정렬은 유저·날짜 씨앗으로 섞이므로(티켓 20261102_1720) 순서가 주제가 아닌 시험은 이름순으로 비교한다 */
+function sortedIds(day: { entries: { id: string }[] }): string[] {
+  return ids(day).sort()
+}
+
 beforeEach(() => {
   fx.tables = {}
   fx.errors = {}
@@ -159,13 +164,13 @@ describe('loadHomePreview — 트라이브 조건', () => {
 
   it('같은 날짜에서 트라이브를 바꾸면 트라이브 전용 카드가 나타나고 사라진다', async () => {
     const forA = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: { ...VIEWER, tribeId: TRIBE_A }, now: NOW })
-    expect(ids(forA.days[0])).toEqual(['common', 'spot-a', 'spot-open', 'rank-a'])
+    expect(sortedIds(forA.days[0])).toEqual(['common', 'rank-a', 'spot-a', 'spot-open'])
 
     const forB = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: { ...VIEWER, tribeId: TRIBE_B }, now: NOW })
-    expect(ids(forB.days[0])).toEqual(['common', 'spot-open'])
+    expect(sortedIds(forB.days[0])).toEqual(['common', 'spot-open'])
 
     const none = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })
-    expect(ids(none.days[0])).toEqual(['common', 'spot-open'])
+    expect(sortedIds(none.days[0])).toEqual(['common', 'spot-open'])
   })
 })
 
@@ -179,7 +184,7 @@ describe('loadHomePreview — 소속 트라이브 태그 카드 (티켓 20261026
 
   it('가상 유저의 트라이브를 바꾸면 그 트라이브 태그 카드만 나타나고 사라진다', async () => {
     const forA = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: { ...VIEWER, tribeId: TRIBE_A }, now: NOW })
-    expect(ids(forA.days[0])).toEqual(['common', 'tribe-a-only'])
+    expect(sortedIds(forA.days[0])).toEqual(['common', 'tribe-a-only'])
 
     const forB = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: { ...VIEWER, tribeId: TRIBE_B }, now: NOW })
     expect(ids(forB.days[0])).toEqual(['common'])
@@ -217,23 +222,23 @@ describe('loadHomePreview — 수동 비노출 미션 소개 카드', () => {
 
   it('수동 비노출 미션과 미션 행을 못 찾은 미션의 소개 카드는 빠진다', async () => {
     const day = (await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })).days[0]
-    expect(ids(day)).toEqual(['common', 'spot-shown'])
+    expect(sortedIds(day)).toEqual(['common', 'spot-shown'])
   })
 
   it('노출 시각이 정해진 미션은 그날 기준 시각으로 판정해 날마다 다르다', async () => {
     const { days } = await loadHomePreview({ fromDate: '2026-10-05', days: 4, viewer: VIEWER, now: NOW })
-    expect(days.map(ids)).toEqual([
+    expect(days.map(sortedIds)).toEqual([
       ['common', 'spot-shown'],
       ['common', 'spot-shown'],
-      ['common', 'spot-shown', 'spot-later'],
-      ['common', 'spot-shown', 'spot-later'],
+      ['common', 'spot-later', 'spot-shown'],
+      ['common', 'spot-later', 'spot-shown'],
     ])
   })
 
   it('읽은 미션이 하나도 없으면 실제 홈 조회처럼 카드를 그대로 둔다', async () => {
     fx.tables.missions = []
     const day = (await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })).days[0]
-    expect(ids(day)).toEqual(['common', 'spot-shown', 'spot-hidden', 'spot-later', 'spot-missing'])
+    expect(sortedIds(day)).toEqual(['common', 'spot-hidden', 'spot-later', 'spot-missing', 'spot-shown'])
   })
 })
 
@@ -279,10 +284,14 @@ describe('loadHomePreview — 날마다 판정', () => {
     expect(ids(other)).toEqual([])
   })
 
-  it('꺼진 카드와 정렬: sort_order 오름차순', async () => {
-    fx.tables.today_cards = [cardRow('b', { sort_order: 2 }), cardRow('off', { is_active: false }), cardRow('a', { sort_order: 1 })]
-    const day = (await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })).days[0]
-    expect(ids(day)).toEqual(['a', 'b'])
+  it('꺼진 카드는 빠지고, 정렬은 홈과 같은 규칙(새 카드 우선 + 날짜별 섞기)이다 (티켓 20261102_1720)', async () => {
+    const fresh = cardRow('fresh', { starts_at: '2026-10-05T01:00:00Z', sort_order: 99 })
+    fx.tables.today_cards = [cardRow('b', { sort_order: 2 }), cardRow('off', { is_active: false }), cardRow('a', { sort_order: 1 }), fresh]
+    const run = async (fromDate: string) => ids((await loadHomePreview({ fromDate, days: 1, viewer: VIEWER, now: NOW })).days[0])
+    const first = await run('2026-10-05')
+    expect(first[0]).toBe('fresh')
+    expect([...first].sort()).toEqual(['a', 'b', 'fresh'])
+    expect(await run('2026-10-05')).toEqual(first)
   })
 })
 

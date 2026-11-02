@@ -4,7 +4,8 @@
  * 조회 규칙 (PRD/Phase15_02_DATA_MODEL.md §4):
  *   is_active = TRUE AND starts_at <= now <= ends_at
  *   AND exposure_tags && [유저태그 + 'all']  (배열 겹침 = OR 매칭)
- *   ORDER BY sort_order ASC, starts_at DESC
+ *   정렬: SQL은 sort_order ASC, starts_at DESC로 안정 입력만 만들고, 실제 순서는 `sortHomeCards`가 정한다
+ *   (새 카드 24시간 우선 + 유저·KST 날짜 씨앗의 하루 단위 섞기, 티켓 20261102_1720)
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { RankingModeRow, TodayCardRow } from '@/types/database'
@@ -18,6 +19,8 @@ import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInpu
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { recipeReleaseState } from '@/lib/combine/visibility'
 import { resourceOfTemplate } from './cardView'
+import { sortHomeCards } from './cardSelection'
+import { kstDateString } from '@/lib/notifications/kst'
 /**
  * 순수 함수라 서버 전용 의존이 없는 `targetHref.ts`로 옮겼다(티켓 20260911_1454) — 이 파일
  * 안(`getTodayCards` 등)에서 쓰기 위해 값으로 import하고, 기존 호출부가 그대로
@@ -173,7 +176,9 @@ export async function getTodayCards(
   // 랭킹모드는 아래 트라이브 거름과 순위 계산이 함께 쓰므로 한 번만 읽어 둘에 나눠 준다(티켓 20261019_1445 4회, 예전에는 같은 행을 두 번 읽었다).
   const rankingModes = await fetchRankingModesById(supabase, rankingModeIdsOf(spotlightFiltered))
   // 티켓 20261019_1400: 트라이브 제한 미션의 랭킹 보드 카드는 대상이 아닌 트라이브 유저에게 내리지 않는다(5-1 규칙과 같다).
-  const cards = await filterRankingBoardCardsByTribe(userId, spotlightFiltered, rankingModes)
+  const filteredCards = await filterRankingBoardCardsByTribe(userId, spotlightFiltered, rankingModes)
+  // 티켓 20261102_1720: 새 카드(24시간 이내)를 앞에 두고 나머지는 유저·KST 날짜 씨앗으로 하루 단위로 섞는다.
+  const cards = sortHomeCards(filteredCards, { seed: `${userId}:${kstDateString(now)}`, now })
   // 레시피 공개 카드의 레시피는 공개 뒤 재료 타일의 후보 배지 id를 알아야 배지 조회에 합칠 수 있어서 배지 조회보다 먼저 읽는다.
   // 레시피 공개 카드가 없으면 아무것도 읽지 않는다.
   const recipesById = await fetchRecipesById(supabase, recipeIdsToResolve(cards), now)

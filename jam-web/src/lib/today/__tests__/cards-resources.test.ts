@@ -134,6 +134,11 @@ function bookRow(id: string, name: string, overrides: Row = {}): Row {
 
 const NOW = new Date('2026-10-05T03:00:00Z')
 
+/** 홈 정렬은 유저·날짜 씨앗으로 섞이므로(티켓 20261102_1720) 순서가 주제가 아닌 시험은 카드 id 순으로 받는다 */
+async function getCardsById(...args: Parameters<typeof getTodayCards>) {
+  return (await getTodayCards(...args)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
 beforeEach(() => {
   fx.tables = {}
   fx.errors = {}
@@ -155,7 +160,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
       { id: 'i3', item_book_id: 'book1', type: 'item', drop_excluded: true },
     ]
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a', 'b'])
     expect(cards[0].resolved_mission).toEqual({
@@ -180,7 +185,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
     ]
     fx.tables.missions = [missionRow('m1')]
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards[0].resolved_mission).toMatchObject({ reward_points: 300 })
     expect(cards[1].resolved_mission).toBeNull()
@@ -201,7 +206,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
       bookRow('book2', '컬렉션 2'),
     ]
 
-    await getTodayCards('u1', null, NOW)
+    await getCardsById('u1', null, NOW)
 
     const count = (table: string) => fx.reads.filter((t) => t === table).length
     expect(count('today_cards')).toBe(1)
@@ -221,7 +226,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
       { id: 'b3', is_hidden: false },
     ]
 
-    const [card] = await getTodayCards('u1', null, NOW)
+    const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_mission).toMatchObject({ reward_badge_count: 2 })
   })
@@ -231,7 +236,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
     fx.tables.missions = [missionRow('m1', { reward_badge_ids: ['b1'] })]
     fx.tables.badges = [{ id: 'b1', is_hidden: true }]
 
-    const [card] = await getTodayCards('u1', null, NOW)
+    const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_mission).toMatchObject({ reward_badge_count: 0, reward_points: 300 })
   })
@@ -242,7 +247,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
     fx.errors.badges = { message: 'boom' }
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const [card] = await getTodayCards('u1', null, NOW)
+    const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_mission).toMatchObject({ reward_badge_count: 0 })
     errorSpy.mockRestore()
@@ -252,7 +257,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' })]
     fx.tables.missions = [missionRow('m1', { reward_badge_ids: [] })]
 
-    await getTodayCards('u1', null, NOW)
+    await getCardsById('u1', null, NOW)
 
     expect(fx.reads.filter((t) => t === 'badges')).toHaveLength(0)
   })
@@ -260,7 +265,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
   it('읽을 자원이 없으면 미션·컬렉션을 읽지 않는다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a' }), cardRow({ id: 'b', template_type: 'drop_alert', region_label: '한강' })]
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards).toHaveLength(2)
     expect(fx.reads).toEqual(['today_cards'])
@@ -271,7 +276,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'badge_spotlight', badge_ids: ['b1'], target_href: '/x' })]
     fx.tables.badges = [{ id: 'b1', name: '한강 러너', image_url: null, rarity: 'rare' }]
 
-    const [card] = await getTodayCards('u1', null, NOW)
+    const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_href).toBe('/x')
     expect(card.resolved_badges).toEqual([{ id: 'b1', name: '한강 러너', image_url: null, rarity: 'rare', earned: false }])
@@ -288,7 +293,7 @@ describe('getTodayCards — 미션 소개 카드 노출 판정은 이전과 같�
     ]
     fx.tables.missions = [missionRow('m1'), missionRow('m2', { exposure_mode: 'hidden' })]
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['open'])
   })
@@ -299,7 +304,7 @@ describe('getTodayCards — 미션 소개 카드 노출 판정은 이전과 같�
     ]
     fx.tables.missions = []
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a'])
     expect(cards[0].resolved_mission).toBeNull()
@@ -312,7 +317,7 @@ describe('getTodayCards — 미션 소개 카드 노출 판정은 이전과 같�
     ]
     fx.tables.missions = [missionRow('m1')]
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a'])
   })
@@ -325,7 +330,7 @@ describe('getTodayCards — 컬렉션은 공개된 것만 싣는다 (티켓 2026
     fx.tables.today_cards = [milestoneCard()]
     fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
 
-    await getTodayCards('u1', null, NOW)
+    await getCardsById('u1', null, NOW)
 
     expect(fx.itemBookOrFilters).toEqual([`valid_from.is.null,valid_from.lte.${NOW.toISOString()}`])
   })
@@ -334,7 +339,7 @@ describe('getTodayCards — 컬렉션은 공개된 것만 싣는다 (티켓 2026
     fx.tables.today_cards = [milestoneCard()]
     fx.tables.item_books = [bookRow('book1', '숨긴 컬렉션', { is_active: false })]
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a'])
     expect(cards[0].resolved_collection).toBeNull()
@@ -344,7 +349,7 @@ describe('getTodayCards — 컬렉션은 공개된 것만 싣는다 (티켓 2026
     fx.tables.today_cards = [milestoneCard()]
     fx.tables.item_books = [bookRow('book1', '곧 공개', { valid_from: '2026-10-06T00:00:00Z' })]
 
-    const [card] = await getTodayCards('u1', null, NOW)
+    const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_collection).toBeNull()
   })
@@ -359,7 +364,7 @@ describe('getTodayCards — 컬렉션은 공개된 것만 싣는다 (티켓 2026
       bookRow('book2', '기간 끝난 컬렉션', { valid_from: '2026-01-01T00:00:00Z', valid_until: '2026-09-01T00:00:00Z' }),
     ]
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards[0].resolved_collection?.name).toBe('지금 공개')
     expect(cards[1].resolved_collection?.name).toBe('기간 끝난 컬렉션')
@@ -375,7 +380,7 @@ describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 �
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'itembook_milestone', item_book_id: 'book1' })]
     fx.errors.item_books = { message: 'boom' }
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a'])
     expect(cards[0].resolved_collection).toBeNull()
@@ -386,7 +391,7 @@ describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 �
     fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
     fx.errors.badges = { message: 'boom' }
 
-    const [card] = await getTodayCards('u1', null, NOW)
+    const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_collection).toEqual({ name: '한강 컬렉션', item_count: null })
   })
@@ -395,7 +400,7 @@ describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 �
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'itembook_milestone', item_book_id: 'book1' })]
     fx.tables.item_books = [bookRow('book1', '빈 컬렉션')]
 
-    const [card] = await getTodayCards('u1', null, NOW)
+    const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_collection).toEqual({ name: '빈 컬렉션', item_count: 0 })
   })
@@ -404,7 +409,7 @@ describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 �
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'progress_nudge', layout_type: 'shortcut', mission_id: 'm1' })]
     fx.errors.missions = { message: 'boom' }
 
-    const cards = await getTodayCards('u1', null, NOW)
+    const cards = await getCardsById('u1', null, NOW)
 
     expect(cards.map((c) => c.id)).toEqual(['a'])
     expect(cards[0].resolved_mission).toBeNull()
