@@ -62,15 +62,16 @@ export default function CollectionGridCard({
           sizes="50vw"
           fallback={<BookIcon className="w-10 h-10 text-muted" />}
         />
-        {/* 태그 행: 등급(선택) + 완성 */}
+        {/* 태그 행: 완성(선택) → 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다.
+            좁은 폭(320px 2열)에서도 칩이 잘리지 않게 줄바꿈하고, 오른쪽 여백을 남긴다. */}
         {(rarity || completed) && (
-          <div className="absolute top-2 left-2 flex items-center gap-1">
-            {rarity && <RarityBadge rarity={rarity} />}
+          <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
             {completed && (
               <span className="bg-accent text-accent-foreground text-xs leading-none px-2 py-0.5 rounded-full font-bold">
                 {d.itembooks.completed}
               </span>
             )}
+            {rarity && <RarityBadge rarity={rarity} />}
           </div>
         )}
       </div>

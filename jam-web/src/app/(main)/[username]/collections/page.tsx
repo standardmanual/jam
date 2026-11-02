@@ -3,11 +3,12 @@ import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import SafeImage from '@/components/SafeImage'
-import type { ItemBookRow, TribeRow } from '@/types/database'
+import type { BadgeRarity, ItemBookRow, TribeRow } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
 import TopNav from '@/components/ui/TopNav'
 import { BookIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
 import { getDisplayName } from '@/lib/utils'
@@ -26,6 +27,7 @@ interface BookCard {
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
+  rarity: BadgeRarity
 }
 
 export default async function UserItemBooksPage({ params }: Props) {
@@ -108,10 +110,11 @@ export default async function UserItemBooksPage({ params }: Props) {
           .or(`valid_until.is.null,valid_until.gte.${now}`),
         service
           .from('badges')
-          .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
+          .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at, created_at')
           .in('item_book_id', bookIds)
           .in('type', [...COMPLETION_BADGE_TYPES])
-          .is('deleted_at', null),
+          .is('deleted_at', null)
+          .order('created_at', { ascending: true }),
         service
           .from('user_item_book_slots')
           .select('item_book_id, badge_id')
@@ -140,6 +143,13 @@ export default async function UserItemBooksPage({ params }: Props) {
         rarity: string | null
         deleted_at: string | null
       }[]
+      // 컬렉션 등급 — 컬렉션은 처음 등록한 아이템 배지와 같은 등급만 담으므로 최초 등록 배지의 등급이 곧 컬렉션 등급이다
+      // (`badges/page.tsx`·`api/users/[username]/itembooks`와 같은 규칙).
+      const rarityByBook = new Map<string, BadgeRarity>()
+      for (const b of bookBadges) {
+        if (!b.item_book_id || b.type !== 'item' || !b.rarity) continue
+        if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity as BadgeRarity)
+      }
       const checkinBadgesByBook = new Map<string, string[]>()
       for (const b of bookBadges) {
         if (b.type !== 'checkin' || !b.item_book_id) continue
@@ -180,6 +190,7 @@ export default async function UserItemBooksPage({ params }: Props) {
           totalBadgeCount: completionByBook.get(book.id)?.total ?? 0,
           slottedCount: completionByBook.get(book.id)?.filled ?? 0,
           isCompleted: isBookCompleted(completedSet, book.id, completionByBook.get(book.id)),
+          rarity: rarityByBook.get(book.id) ?? ('common' as BadgeRarity),
         }))
         // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).
         // 본인 열람(isOwnList)은 예외 없이 항상 노출.
@@ -204,7 +215,7 @@ export default async function UserItemBooksPage({ params }: Props) {
           />
         ) : (
           <div className="grid grid-cols-2 gap-4">
-            {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
+            {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted, rarity }) => {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
               return (
                 <Link key={book.id} href={`/collections/${book.id}`}>
@@ -220,10 +231,17 @@ export default async function UserItemBooksPage({ params }: Props) {
                         sizes="50vw"
                         fallback={<BookIcon className="w-8 h-8 text-muted" />}
                       />
-                      {isCompleted && (
-                        <span className="absolute top-1.5 right-1.5 text-xs leading-none px-2 py-1 rounded-full bg-background text-foreground">
-                          {d.itembooks.completed}
-                        </span>
+                      {/* 태그 행: 완성(선택) → 등급(Common이면 RarityBadge가 그리지 않으므로 빈 행이 남지 않게 여기서 거른다).
+                          썸네일이 86px까지 좁아지므로 줄바꿈한다. `CollectionGridCard`와 같은 순서다. */}
+                      {(isCompleted || rarity !== 'common') && (
+                        <div className="absolute top-1.5 left-1.5 right-1.5 flex flex-wrap items-center gap-1">
+                          {isCompleted && (
+                            <span className="text-xs leading-none px-2 py-1 rounded-full bg-background text-foreground">
+                              {d.itembooks.completed}
+                            </span>
+                          )}
+                          <RarityBadge rarity={rarity} />
+                        </div>
                       )}
                     </div>
                     <div className="min-w-0">

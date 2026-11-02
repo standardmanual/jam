@@ -11,7 +11,7 @@ export interface CollectionGridCardProps {
   total: number;
   /** true → 썸네일 좌상단에 "완성" 태그 표시. */
   completed?: boolean;
-  /** 최초 등록 아이템배지 기준 컬렉션 등급. 설정 시 썸네일 좌상단에 등급 태그 표시. */
+  /** 최초 등록 아이템배지 기준 컬렉션 등급(컬렉션은 같은 등급만 담으므로 하나). 설정 시 썸네일 좌상단에 등급 태그를 표시하고, 완성 태그가 있으면 그 뒤에 온다. 좁으면 줄바꿈한다. */
   rarity?: BadgeRarity;
   /** Link 모드 — <a href> 래핑. onClick과 상호 배타. */
   href?: string;

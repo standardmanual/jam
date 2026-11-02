@@ -95,15 +95,15 @@ export function CollectionGridCard({
             </svg>
           </span>
         )}
-        {/* 태그 행: 등급(선택) + 완성(선택) */}
+        {/* 태그 행: 완성(선택) → 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다. */}
         {(showRarity || completed) && (
-          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-            {showRarity && <RarityBadge rarity={rarity} />}
+          <div style={{ position: 'absolute', top: 8, left: 8, right: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
             {completed && (
               <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
                 완성
               </span>
             )}
+            {showRarity && <RarityBadge rarity={rarity} />}
           </div>
         )}
       </div>
