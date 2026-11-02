@@ -78,7 +78,7 @@ export function UserTribeSection({ userId, view }: Props) {
         {!current.ok ? (
           <ReadFailed subject="지금 트라이브를" />
         ) : current.value === null ? (
-          <p className="text-muted-foreground text-sm break-keep wrap-break-word text-pretty">
+          <p className="text-muted-foreground text-sm break-keep wrap-break-word text-balance">
             트라이브를 아직 고르지 않았어요. 유저가 직접 골라요.
           </p>
         ) : (
@@ -87,7 +87,7 @@ export function UserTribeSection({ userId, view }: Props) {
             {!options.ok ? (
               <ReadFailed subject="바꿀 수 있는 트라이브를" />
             ) : options.value.length === 0 ? (
-              <p className="text-muted-foreground text-sm break-keep wrap-break-word text-pretty">
+              <p className="text-muted-foreground text-sm break-keep wrap-break-word text-balance">
                 바꿀 수 있는 다른 활성 트라이브가 없어요.
               </p>
             ) : (

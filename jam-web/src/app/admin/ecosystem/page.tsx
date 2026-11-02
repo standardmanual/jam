@@ -42,7 +42,7 @@ export default async function EcosystemPage({ searchParams }: EcosystemPageProps
     <div className="w-full p-4 md:p-8">
       <header className="mb-8 space-y-2">
         <h1 className="text-2xl font-bold">생태계 상황판</h1>
-        <p className="text-sm text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="text-sm text-muted-foreground text-balance break-keep wrap-break-word">
           성장 순환과 필드 순환의 마디별 상태와 밸런스 목표 대비를 한눈에 봐요
         </p>
         <Suspense fallback={<Skeleton className="h-5 w-64" />}>

@@ -35,7 +35,7 @@ export default function BalanceSettingsPage() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-balance break-keep wrap-break-word">밸런스 설정</h1>
-          <p className="text-muted-foreground text-sm mt-1 text-pretty break-keep wrap-break-word">
+          <p className="text-muted-foreground text-sm mt-1 text-balance break-keep wrap-break-word">
             서비스의 밸런스 수치를 코드 수정 없이 바꿔요. 저장하면 staging과 프로덕션에 바로 반영되고, 바꾼 내용은 구역마다 최근 변경에 남아요.
           </p>
         </div>

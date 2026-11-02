@@ -245,7 +245,7 @@ export function OpsTasteSignalRow({ signal, patternNo, open, onOpen, onClose }: 
         {signal.confirmedDay && <span className="text-xs tabular-nums text-muted-foreground">{signal.confirmedDay}(KST)</span>}
         <span className={cn('font-medium', TEXT_CLASS)}>{signal.name}</span>
       </div>
-      <p className={cn('whitespace-pre-wrap text-sm text-muted-foreground text-pretty', TEXT_CLASS)}>{signal.reason}</p>
+      <p className={cn('whitespace-pre-wrap text-sm text-muted-foreground text-balance', TEXT_CLASS)}>{signal.reason}</p>
       {signal.hasEvidence && <p className={cn('text-xs text-muted-foreground', TEXT_CLASS)}>{TASTE_EVIDENCE_TEXT}</p>}
       <div>
         <Button

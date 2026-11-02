@@ -66,7 +66,7 @@ export function DeployStatusCards({ deploy }: { deploy: DeployStatus }) {
             {deploy.label}
           </p>
           {deploy.frozen && deploy.reason !== '' ? (
-            <p className="text-sm text-muted-foreground text-pretty break-keep wrap-break-word">{deploy.reason}</p>
+            <p className="text-sm text-muted-foreground text-balance break-keep wrap-break-word">{deploy.reason}</p>
           ) : null}
         </StatCard>
 
@@ -111,7 +111,7 @@ export function DeployStatusCards({ deploy }: { deploy: DeployStatus }) {
               {UNKNOWN_TEXT}
             </p>
           ) : (
-            <p className="text-lg font-semibold text-pretty break-keep wrap-break-word">{deploy.nextDeploy}</p>
+            <p className="text-lg font-semibold text-balance break-keep wrap-break-word">{deploy.nextDeploy}</p>
           )}
         </StatCard>
       </div>

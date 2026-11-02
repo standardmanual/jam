@@ -30,7 +30,7 @@ export function UserChapterSection({ view }: Props) {
     <section className="mb-10">
       <div className="mb-4">
         <h2 className="text-lg font-bold">챕터</h2>
-        <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-pretty">
+        <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-balance">
           점수 숫자는 어드민에게만 보여요.
         </p>
       </div>

@@ -346,7 +346,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
               {scopeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <p className="text-muted-foreground text-xs break-keep wrap-break-word text-pretty">
+          <p className="text-muted-foreground text-xs break-keep wrap-break-word text-balance">
             {form.scope === 'common'
               ? '모든 유저가 보고 참가해요.'
               : '고른 트라이브의 유저만 미션을 보고 참가해요. 트라이브를 정하지 않은 유저에게는 보이지 않아요.'}
@@ -373,7 +373,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
             </div>
           )}
           {editingId && (
-            <p className="text-muted-foreground text-xs break-keep wrap-break-word text-pretty">
+            <p className="text-muted-foreground text-xs break-keep wrap-break-word text-balance">
               이미 참가하거나 완료한 유저가 있으면 참가할 수 있는 트라이브를 줄일 수 없어요. 더하는 변경만 저장돼요.
             </p>
           )}
@@ -408,7 +408,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
           </Select>
           {frameNotice ? (
             <p
-              className={`text-xs mt-1 break-keep wrap-break-word text-pretty ${form.status_display_type === 'ranking' ? 'text-red-600' : 'text-amber-600'}`}
+              className={`text-xs mt-1 break-keep wrap-break-word text-balance ${form.status_display_type === 'ranking' ? 'text-red-600' : 'text-amber-600'}`}
             >
               {frameNotice}
             </p>
@@ -438,7 +438,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
             poiIdInitialLabel={poiLabel}
           />
           {showNightNotice && (
-            <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs break-keep wrap-break-word text-pretty">
+            <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs break-keep wrap-break-word text-balance">
               {NIGHT_SAFETY_NOTICE}
             </p>
           )}
@@ -480,7 +480,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
             />
             {/* 읽기 전용 — 잠금은 배지 양식에서 정하고, 이 미션에서만 일반 배지를 잠가서 주는 지정은 지원하지 않는다(5-3 결정 2) */}
             {lockedNotice && (
-              <p className="text-amber-700 text-xs mt-1.5 break-keep wrap-break-word text-pretty">{lockedNotice}</p>
+              <p className="text-amber-700 text-xs mt-1.5 break-keep wrap-break-word text-balance">{lockedNotice}</p>
             )}
           </div>
 
@@ -569,7 +569,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
       </div>
 
       {saveError && (
-        <p role="alert" className="text-red-600 text-sm break-keep wrap-break-word text-pretty">
+        <p role="alert" className="text-red-600 text-sm break-keep wrap-break-word text-balance">
           {saveError}
         </p>
       )}

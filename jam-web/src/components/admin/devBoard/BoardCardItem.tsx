@@ -18,7 +18,7 @@ export function BoardCardItem({ card }: { card: BoardCard }) {
         <p className="text-xs font-semibold text-sky-800 whitespace-nowrap break-keep">
           <span aria-hidden="true">＋ </span>요청 {card.requestNo}번
         </p>
-        <p className="text-sm font-medium text-pretty break-keep wrap-break-word">{card.title}</p>
+        <p className="text-sm font-medium text-balance break-keep wrap-break-word">{card.title}</p>
         {origin ? (
           <p data-origin={card.origin ?? ''} className="text-xs text-muted-foreground break-keep wrap-break-word">
             {origin}
@@ -30,7 +30,7 @@ export function BoardCardItem({ card }: { card: BoardCard }) {
   const meta = [card.priority, card.category].filter((part) => part !== '')
   return (
     <li data-kind="ticket" data-card-id={card.id} className="space-y-1 rounded-md border border-border bg-background p-3">
-      <p className="text-sm font-medium text-pretty break-keep wrap-break-word">{stripCategoryPrefix(card.title)}</p>
+      <p className="text-sm font-medium text-balance break-keep wrap-break-word">{stripCategoryPrefix(card.title)}</p>
       <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground break-keep wrap-break-word">
         {card.path ? (
           <a

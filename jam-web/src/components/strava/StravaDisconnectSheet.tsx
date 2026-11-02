@@ -66,7 +66,7 @@ export function StravaDisconnectSheetView({ open, submitting, onClose, onConfirm
     >
       <div className="flex flex-col gap-2 px-4 py-6 text-left">
         {copy.body.map((line) => (
-          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-pretty">
+          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-balance">
             {line}
           </p>
         ))}

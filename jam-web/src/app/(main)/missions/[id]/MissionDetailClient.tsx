@@ -176,7 +176,7 @@ function LockedRewardRow({ rarity, caption }: { rarity: BadgeRarity | null; capt
       <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
         <RarityBadge rarity={rarity} />
         <p className="max-w-full text-[16px] font-bold leading-[1.2] text-foreground truncate break-keep wrap-break-word">{d.lockedItem.card.name}</p>
-        {caption && <p className="text-[13px] leading-[1.3] text-muted break-keep wrap-break-word text-pretty">{caption}</p>}
+        {caption && <p className="text-[13px] leading-[1.3] text-muted break-keep wrap-break-word text-balance">{caption}</p>}
       </div>
     </div>
   )
@@ -397,7 +397,7 @@ export default function MissionDetailClient({
         {!claimed && pendingList.length > 0 && (
           <InfoCard>
             <SectionLabel>{d.missions.pendingCard.title}</SectionLabel>
-            <p className="text-[14px] leading-[1.43] text-muted break-keep wrap-break-word text-pretty">
+            <p className="text-[14px] leading-[1.43] text-muted break-keep wrap-break-word text-balance">
               {t(d.missions.pendingCard.intro, { count: pendingList.length })}
             </p>
             <div className="flex flex-col gap-3">

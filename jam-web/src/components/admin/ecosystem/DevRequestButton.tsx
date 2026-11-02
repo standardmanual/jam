@@ -102,7 +102,7 @@ export function DevRequestButton({ policyId, policyTitle, openRequest }: DevRequ
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="text-balance break-keep wrap-break-word">개발 요청</DialogTitle>
-          <DialogDescription className="text-pretty break-keep wrap-break-word">
+          <DialogDescription className="text-balance break-keep wrap-break-word">
             코드에 고정된 값이라 개발로 바꿔야 해요. 바꾸고 싶은 내용을 적어 주세요
           </DialogDescription>
         </DialogHeader>

@@ -32,8 +32,8 @@ export function BalanceHistory({ sectionId, entries, labels, units = {} }: Balan
       <h3 id={titleId} className={cn('text-sm font-semibold text-balance', TEXT)}>
         {HISTORY_TITLE}
       </h3>
-      {entries === null && <p className={cn('text-sm text-muted-foreground text-pretty', TEXT)}>{HISTORY_FAILED_MESSAGE}</p>}
-      {entries !== null && entries.length === 0 && <p className={cn('text-sm text-muted-foreground text-pretty', TEXT)}>{HISTORY_EMPTY_MESSAGE}</p>}
+      {entries === null && <p className={cn('text-sm text-muted-foreground text-balance', TEXT)}>{HISTORY_FAILED_MESSAGE}</p>}
+      {entries !== null && entries.length === 0 && <p className={cn('text-sm text-muted-foreground text-balance', TEXT)}>{HISTORY_EMPTY_MESSAGE}</p>}
       {entries !== null && entries.length > 0 && (
         <ul className="space-y-3">
           {entries.map((entry) => (
@@ -48,14 +48,14 @@ export function BalanceHistory({ sectionId, entries, labels, units = {} }: Balan
               </p>
               <ul className="space-y-0.5">
                 {entry.changes.map((change) => (
-                  <li key={change.field} className={cn('text-sm text-pretty', TEXT)}>
+                  <li key={change.field} className={cn('text-sm text-balance', TEXT)}>
                     {labels[change.field] ?? change.field}: {formatBalanceNumber(change.from)}
                     {units[change.field] ?? ''} → {formatBalanceNumber(change.to)}
                     {units[change.field] ?? ''}
                   </li>
                 ))}
               </ul>
-              {entry.note && <p className={cn('text-sm text-muted-foreground text-pretty', TEXT)}>메모: {entry.note}</p>}
+              {entry.note && <p className={cn('text-sm text-muted-foreground text-balance', TEXT)}>메모: {entry.note}</p>}
             </li>
           ))}
         </ul>

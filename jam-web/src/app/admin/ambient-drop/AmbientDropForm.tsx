@@ -155,7 +155,7 @@ export default function AmbientDropForm({
       {/* 배포 트리거 — 예약 배포 스위치. 시각과 상호 배제 창은 밸런스 설정에서 바꾸고 여기서는 읽기만 한다 */}
       <section className="bg-white border border-border rounded-2xl p-6">
         <h2 className="font-bold mb-1">배포 트리거</h2>
-        <p className="text-muted-foreground text-xs mb-4 break-keep wrap-break-word text-pretty">
+        <p className="text-muted-foreground text-xs mb-4 break-keep wrap-break-word text-balance">
           배포는 세 갈래예요. <strong className="text-foreground">예약 배포</strong>는 정해 둔
           시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 「지금
           배포」를 누른 그 자리에서 1회 배포해요. 두 갈래는 저장된 같은 설정값을 써요.{' '}
@@ -167,15 +167,15 @@ export default function AmbientDropForm({
           <Switch checked={values.auto_enabled} onCheckedChange={(checked) => set('auto_enabled', checked)} />
           <span className="text-sm">예약 배포 켜기</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 mb-4 break-keep wrap-break-word text-pretty">
+        <p className="text-xs text-muted-foreground mt-2 mb-4 break-keep wrap-break-word text-balance">
           켜면 저장된 설정값으로 매일 배포 시각에 자동 배포해요. 끄면 「지금 배포」로만 배포돼요.
         </p>
 
-        <p className="text-sm text-foreground break-keep wrap-break-word text-pretty">
+        <p className="text-sm text-foreground break-keep wrap-break-word text-balance">
           배포 시각{' '}
           <span className="font-semibold">{formatAmbientDropScheduleOption(values.schedule_hour_kst)}</span>
         </p>
-        <p className="text-xs text-muted-foreground mt-1 break-keep wrap-break-word text-pretty">{BALANCE_ONLY_NOTICE}</p>
+        <p className="text-xs text-muted-foreground mt-1 break-keep wrap-break-word text-balance">{BALANCE_ONLY_NOTICE}</p>
       </section>
 
       {/* 축 1: 카테고리 */}
@@ -213,9 +213,9 @@ export default function AmbientDropForm({
           <AxisModeToggle value={values.rarity_mode} onChange={(mode) => set('rarity_mode', mode)} />
         </div>
         {values.rarity_mode === 'explicit' ? (
-          <p className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">{RARITY_BALANCE_NOTICE}</p>
+          <p className="text-xs text-muted-foreground break-keep wrap-break-word text-balance">{RARITY_BALANCE_NOTICE}</p>
         ) : (
-          <p className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">실행 시점에 등급 분포 자체를 무작위로 생성해요.</p>
+          <p className="text-xs text-muted-foreground break-keep wrap-break-word text-balance">실행 시점에 등급 분포 자체를 무작위로 생성해요.</p>
         )}
       </section>
 

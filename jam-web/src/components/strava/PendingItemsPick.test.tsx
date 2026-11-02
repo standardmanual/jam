@@ -354,7 +354,7 @@ describe('문구와 스타일 규칙', () => {
     const html = view({ selected: ['p1', 'p2'], confirming: true })
 
     expect(html).toContain('break-keep wrap-break-word text-balance')
-    expect(html).toContain('break-keep wrap-break-word text-pretty')
+    expect(html).toContain('break-keep wrap-break-word text-balance')
   })
 })
 

@@ -25,7 +25,7 @@ export default function StravaDisconnectedCard() {
     <Card className="flex flex-col gap-2 text-left">
       <LabelChip className="self-start">{copy.chipLabel}</LabelChip>
       <p className="text-base font-bold break-keep wrap-break-word text-balance">{copy.card.title}</p>
-      <p className="text-base text-muted break-keep wrap-break-word text-pretty">{copy.card.body}</p>
+      <p className="text-base text-muted break-keep wrap-break-word text-balance">{copy.card.body}</p>
       <Button
         variant="primary"
         surface="main"

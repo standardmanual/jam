@@ -27,7 +27,7 @@ import type { TierUpCollectionOption, TierUpCollectionView } from './tierUpClien
  */
 
 /** 한국어 줄바꿈(UX 라이팅 §3.2) — 띄어쓰기 단위로만 끊고 긴 한 단어만 칸 밖으로 넘치지 않게 끊는다 */
-const KO_BREAK = 'break-keep wrap-break-word text-pretty'
+const KO_BREAK = 'break-keep wrap-break-word text-balance'
 
 const copy = d.combine.tierUp.collectionPicker
 

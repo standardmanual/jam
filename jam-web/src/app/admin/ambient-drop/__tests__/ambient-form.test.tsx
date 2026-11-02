@@ -82,7 +82,7 @@ describe('AmbientDropForm — 배포 시각은 읽기 전용 글자', () => {
     const out = render()
     const notice = new RegExp(`<p class="([^"]*)">${BALANCE_ONLY_NOTICE}</p>`).exec(out)
     expect(notice).not.toBeNull()
-    for (const c of ['break-keep', 'wrap-break-word', 'text-pretty']) expect(notice?.[1], c).toContain(c)
+    for (const c of ['break-keep', 'wrap-break-word', 'text-balance']) expect(notice?.[1], c).toContain(c)
   })
 })
 

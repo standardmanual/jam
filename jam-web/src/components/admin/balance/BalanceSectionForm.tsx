@@ -115,7 +115,7 @@ function BalanceField({ def, idBase, text, saved, error, disabled, onChange, onT
         {def.unit && <span className="text-sm text-muted-foreground whitespace-nowrap break-keep">{def.unit}</span>}
       </div>
       {def.hint && (
-        <p id={hintId} className={cn('text-xs text-muted-foreground text-pretty', TEXT)}>
+        <p id={hintId} className={cn('text-xs text-muted-foreground text-balance', TEXT)}>
           {def.hint}
         </p>
       )}
@@ -126,7 +126,7 @@ function BalanceField({ def, idBase, text, saved, error, disabled, onChange, onT
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className={cn('text-xs font-medium text-destructive text-pretty', TEXT)}>
+        <p id={errorId} role="alert" className={cn('text-xs font-medium text-destructive text-balance', TEXT)}>
           {error}
         </p>
       )}
@@ -145,7 +145,7 @@ function GroupSumLine({ sum }: { sum: BalanceGroupSum | undefined }) {
     )
   }
   return (
-    <p role="status" className={cn('text-xs font-medium text-destructive text-pretty', TEXT)}>
+    <p role="status" className={cn('text-xs font-medium text-destructive text-balance', TEXT)}>
       {sum.message}
     </p>
   )
@@ -230,7 +230,7 @@ export function BalanceSectionFormView(props: BalanceSectionFormViewProps) {
 
         {warnings.map((warning) => (
           <Alert key={warning} variant="warning" role="status">
-            <p className={cn('text-sm text-pretty', TEXT)}>{warning}</p>
+            <p className={cn('text-sm text-balance', TEXT)}>{warning}</p>
           </Alert>
         ))}
 
@@ -254,13 +254,13 @@ export function BalanceSectionFormView(props: BalanceSectionFormViewProps) {
         </div>
 
         {notice?.kind === 'success' && (
-          <p role="status" className={cn('text-sm font-medium text-emerald-700 text-pretty', TEXT)}>
+          <p role="status" className={cn('text-sm font-medium text-emerald-700 text-balance', TEXT)}>
             {notice.text}
           </p>
         )}
         {notice && notice.kind !== 'success' && (
           <Alert variant={notice.kind === 'conflict' ? 'warning' : 'destructive'} className="space-y-2">
-            <p className={cn('text-sm text-pretty', TEXT)}>{notice.text}</p>
+            <p className={cn('text-sm text-balance', TEXT)}>{notice.text}</p>
             {notice.kind === 'conflict' && (
               <Button type="button" variant="outline" size="sm" onClick={onReload}>
                 {RELOAD_LABEL}

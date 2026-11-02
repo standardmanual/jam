@@ -17,7 +17,7 @@ export const SHARED_VALUES_NOTICE_SUFFIX = '에서 바꿔 주세요.'
 export function SharedValuesNotice() {
   return (
     <Alert role="note">
-      <p className="text-sm text-pretty break-keep wrap-break-word">
+      <p className="text-sm text-balance break-keep wrap-break-word">
         {SHARED_VALUES_NOTICE_PREFIX}
         <a href={`#${SYNC_SECTION_ID}`} className="font-medium underline underline-offset-4">
           {SHARED_VALUES_NOTICE_LINK}

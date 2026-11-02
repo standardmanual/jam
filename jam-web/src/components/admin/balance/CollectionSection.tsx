@@ -22,9 +22,9 @@ export function CollectionNotice() {
   return (
     <Alert role="note">
       <div className="space-y-1">
-        <p className="text-sm text-pretty break-keep wrap-break-word">{COLLECTION_REWARD_NOTICE}</p>
-        <p className="text-sm text-pretty break-keep wrap-break-word">{COMBINE_FAIL_NOTICE}</p>
-        <p className="text-sm text-pretty break-keep wrap-break-word">{COMBINE_TIER_UP_NOTICE}</p>
+        <p className="text-sm text-balance break-keep wrap-break-word">{COLLECTION_REWARD_NOTICE}</p>
+        <p className="text-sm text-balance break-keep wrap-break-word">{COMBINE_FAIL_NOTICE}</p>
+        <p className="text-sm text-balance break-keep wrap-break-word">{COMBINE_TIER_UP_NOTICE}</p>
       </div>
     </Alert>
   )

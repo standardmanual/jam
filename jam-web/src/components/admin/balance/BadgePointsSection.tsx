@@ -15,7 +15,7 @@ export const BADGEPOINTS_NOTICE =
 export function BadgePointsNotice() {
   return (
     <Alert role="note">
-      <p className="text-sm text-pretty break-keep wrap-break-word">{BADGEPOINTS_NOTICE}</p>
+      <p className="text-sm text-balance break-keep wrap-break-word">{BADGEPOINTS_NOTICE}</p>
     </Alert>
   )
 }

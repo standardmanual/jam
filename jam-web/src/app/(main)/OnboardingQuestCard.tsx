@@ -65,7 +65,7 @@ const CHIP_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-x-2 gap-
 const PROGRESS_LABEL_CLASS = 'text-sm font-bold text-link whitespace-nowrap break-keep wrap-break-word [font-variant-numeric:tabular-nums]'
 // 어절 중간에서 끊기던 `[overflow-wrap:anywhere]`를 한국어 줄바꿈 규칙(§3.2)으로 바꿨다(티켓 20261021_1248)
 const TITLE_CLASS = 'text-base font-bold break-keep wrap-break-word text-balance'
-const DESC_CLASS = 'text-sm text-muted break-keep wrap-break-word text-pretty'
+const DESC_CLASS = 'text-sm text-muted break-keep wrap-break-word text-balance'
 const BUTTON_LABEL_CLASS = 'whitespace-nowrap break-keep'
 
 function Chip() {
