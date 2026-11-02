@@ -679,9 +679,16 @@ status: active
 
 - [README.md](operations/trendresearch/README.md) — 에이전트가 기획의 재료로 읽는 외부 자료를 주제별로 모은 하나뿐인 폴더의 구조, 주제 표, 쓰고 읽는 규칙을 안내한다.
 - [2026-10-27.md](operations/trendresearch/culture/events-seasons/archive/2026-10-27.md) — (description 없음)
+- [latest.md](operations/trendresearch/culture/events-seasons/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/culture/food-retail/latest.md) — (description 없음)
 - [2026-10-27.md](operations/trendresearch/culture/marketing/archive/2026-10-27.md) — (description 없음)
 - [2026-10-27.md](operations/trendresearch/culture/memes-slang/archive/2026-10-27.md) — (description 없음)
+- [latest.md](operations/trendresearch/culture/memes-slang/latest.md) — (description 없음)
 - [2026-10-27.md](operations/trendresearch/culture/misc/archive/2026-10-27.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/mountain/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/tourist_attraction/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/sports/run/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/sports/walk/latest.md) — (description 없음)
 
 **에이전트 (agents)**
 
@@ -733,13 +740,25 @@ status: active
 
 - [README.md](operations/trendresearch/README.md) — 에이전트가 기획의 재료로 읽는 외부 자료를 주제별로 모은 하나뿐인 폴더의 구조, 주제 표, 쓰고 읽는 규칙을 안내한다.
 
+### docs/operations/trendresearch/culture/events-seasons/
+
+- [latest.md](operations/trendresearch/culture/events-seasons/latest.md) — (description 없음)
+
 ### docs/operations/trendresearch/culture/events-seasons/archive/
 
 - [2026-10-27.md](operations/trendresearch/culture/events-seasons/archive/2026-10-27.md) — (description 없음)
 
+### docs/operations/trendresearch/culture/food-retail/
+
+- [latest.md](operations/trendresearch/culture/food-retail/latest.md) — (description 없음)
+
 ### docs/operations/trendresearch/culture/marketing/archive/
 
 - [2026-10-27.md](operations/trendresearch/culture/marketing/archive/2026-10-27.md) — (description 없음)
+
+### docs/operations/trendresearch/culture/memes-slang/
+
+- [latest.md](operations/trendresearch/culture/memes-slang/latest.md) — (description 없음)
 
 ### docs/operations/trendresearch/culture/memes-slang/archive/
 
@@ -748,6 +767,22 @@ status: active
 ### docs/operations/trendresearch/culture/misc/archive/
 
 - [2026-10-27.md](operations/trendresearch/culture/misc/archive/2026-10-27.md) — (description 없음)
+
+### docs/operations/trendresearch/places/mountain/
+
+- [latest.md](operations/trendresearch/places/mountain/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/places/tourist_attraction/
+
+- [latest.md](operations/trendresearch/places/tourist_attraction/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/sports/run/
+
+- [latest.md](operations/trendresearch/sports/run/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/sports/walk/
+
+- [latest.md](operations/trendresearch/sports/walk/latest.md) — (description 없음)
 
 ### docs/plan/jam2/
 
