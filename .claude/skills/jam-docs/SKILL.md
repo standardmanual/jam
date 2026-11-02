@@ -194,7 +194,7 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 | `docs/service/content/COMBINE_RECIPES.md` | 조합 레시피 |
 | `docs/service/content/TRIBES.md` | 트라이브(tribe) |
 | `docs/service/content/POI.md` | 장소(POI) |
-| `docs/service/content/OPS_PATTERNS.md` | 운영 패턴 사전 원고. 운영툴에 입력한 뒤에는 DB가 원천이고 이 문서는 사본이다(운영툴 PRD §10.1) |
+| `docs/service/content/OPS_PATTERNS.md` | 운영 패턴 원고. 운영툴에 입력한 뒤에는 DB가 원천이고 이 문서는 사본이다(운영툴 PRD §10.1) |
 
 **기존 파일 직접 수정** — 컨텐츠는 "현재 상태"가 원칙, 버전 이력은 티켓에 남긴다.
 
