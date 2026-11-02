@@ -502,7 +502,7 @@ git checkout staging
 
 > 신설: 티켓 20261102_1355·20261102_1410, 개정: 티켓 20261102_1420(사용자 지시 2026-11-02 «수집과 작성을 분리하자, 수집 AI는 Muse»). 이 루틴은 **작성**만 한다. 트렌드 **수집**은 외부 AI(Muse)가 하고, 결과는 주제 폴더의 `notes/`로 들어온다(폴더 README 5절). 이름이 「수집」인 것은 일정 표기와 루틴 이름을 그대로 두었기 때문이다.
 > 구조와 주제 표, 항목 형식은 `docs/operations/trendresearch/README.md`가 단일 원천이고, 이 절은 실행 방식만 정한다. 월간 루틴은 이 폴더를 읽기만 한다.
-> Muse는 Gmail 라벨 «JAM»의 새 메일을 주제별로 정리하고(일요일 18:00 KST 반복 작업, 지시문은 `scripts/trend-requests.mjs --muse-task`), 결과는 별도 수집함 저장소(`standardmanual/jam-trend-inbox`)에 쓰이고, GitHub Action `ingest-muse-notes`(일요일 20:30 KST, `.github/workflows/ingest-muse-notes.yml`)가 검사해 통과한 파일만 `notes/`로 옮긴다. 이 루틴은 그 뒤에 `notes/`를 읽는다.
+> Muse는 Gmail 라벨 «JAM»의 새 메일을 주제별로 정리하고(일요일 18:00 KST 반복 작업, 지시문은 `scripts/trend-requests.mjs --muse-task`), 결과는 jam의 전용 브랜치 `muse/inbox`(`muse-inbox/` 폴더)에 쓰이고, GitHub Action `ingest-muse-notes`(일요일 20:30 KST, `.github/workflows/ingest-muse-notes.yml`)가 그 폴더의 파일 내용만 꺼내 검사해 통과한 파일만 `notes/`로 옮긴다. 브랜치는 병합하지 않는다. 이 루틴은 그 뒤에 `notes/`를 읽는다.
 > 분리하는 이유: 이 환경의 웹 검색 도구는 미국 한정이라 한국어 자료가 얇았고, 기사 본문 읽기(WebFetch)는 허용 도메인 밖에서 막혔다(2026-11-02 정식 1회 실행).
 
 | 항목 | 내용 |

@@ -85,14 +85,16 @@ export function requestText(topic, today) {
 - 신뢰도: 높음 / 보통 / 낮음`
 }
 
-export const INBOX_REPO = 'standardmanual/jam-trend-inbox'
+export const INBOX_REPO = 'standardmanual/jam'
+export const INBOX_BRANCH = 'muse/inbox'
+export const INBOX_DIR = 'muse-inbox'
 export const GMAIL_LABEL = 'JAM'
 
 /**
  * Muse 주간 반복 작업의 지시문 한 편 (티켓 20261102_1500).
  * 수집은 Gmail 라벨의 새 메일을 읽어 주제별로 나누는 일이다. 주제 목록은 README 주제 표에서 만들어 표가 바뀌어도 어긋나지 않는다.
  */
-export function museMailPrompt(topics, { label = GMAIL_LABEL, repo = INBOX_REPO } = {}) {
+export function museMailPrompt(topics, { label = GMAIL_LABEL, repo = INBOX_REPO, branch = INBOX_BRANCH, dir = INBOX_DIR } = {}) {
   const list = topics.map((t) => `- ${t.group}/${t.slug}: ${t.name} (${t.look})`).join('\n')
   return `# JAM! 주간 트렌드 정리 (Muse 반복 작업)
 
@@ -102,8 +104,8 @@ export function museMailPrompt(topics, { label = GMAIL_LABEL, repo = INBOX_REPO 
 
 ## 연결 루트
 - 읽기: Gmail 라벨 «${label}»의 메일만 읽습니다. 메일을 보내거나 답장하거나 전달하거나 지우거나 라벨·읽음 표시를 바꾸지 않습니다.
-- 쓰기: GitHub 저장소 ${repo}의 main 브랜치 하나뿐입니다. 다른 저장소, 다른 브랜치, 아래에 적은 경로 밖에는 절대 쓰지 않습니다.
-- 이 뒤는 사람이 하지 않습니다. 일요일 20:30에 JAM 쪽 검사 프로그램이 저장한 파일을 검사해 가져가고, 월요일 05:00에 정리 루틴이 읽습니다.
+- 쓰기: GitHub 저장소 ${repo}의 ${branch} 브랜치, 그 안의 ${dir}/ 폴더 하나뿐입니다. main 브랜치와 staging 브랜치를 포함한 다른 브랜치, 그리고 ${dir}/ 밖의 경로에는 절대 쓰지 않습니다.
+- 이 뒤는 사람이 하지 않습니다. 일요일 20:30에 JAM 쪽 검사 프로그램이 ${dir}/ 폴더의 파일만 읽어 검사한 뒤 가져가고, 월요일 05:00에 정리 루틴이 읽습니다. 이 브랜치는 어디에도 병합하지 않습니다.
 
 ## 할 일
 1. 라벨 «${label}»에서 지난 8일 안에 온 메일을 모두 읽습니다.
@@ -122,7 +124,7 @@ export function museMailPrompt(topics, { label = GMAIL_LABEL, repo = INBOX_REPO 
 - 신뢰도: 높음 / 보통 / 낮음
 
 ## 저장 파일
-- 경로와 이름: <그룹>/<주제>/<오늘 날짜 YYYY-MM-DD>_muse-<주제를 하이픈으로 이은 짧은 한글 제목>.md (공백 없이, 예: places/convenience/2026-11-08_muse-편의점-신상.md)
+- 경로와 이름: ${dir}/<그룹>/<주제>/<오늘 날짜 YYYY-MM-DD>_muse-<주제를 하이픈으로 이은 짧은 한글 제목>.md (공백 없이, 예: ${dir}/places/convenience/2026-11-08_muse-편의점-신상.md)
 - 새 파일만 만듭니다. 있는 파일을 고치거나 지우지 않습니다.
 
 ## 지켜야 할 것
