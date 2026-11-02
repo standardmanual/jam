@@ -1,5 +1,4 @@
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
-import { buildBookRarities } from '@/lib/itembook/book-rarities'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
@@ -148,9 +147,13 @@ export default async function BadgesPage({ searchParams }: Props) {
       if (slotsError) console.error('[badges/page] user_item_book_slots 조회 실패', slotsError)
       if (completionsError) console.error('[badges/page] user_item_book_completions 조회 실패', completionsError)
 
+      const rarityByBook = new Map<string, BadgeRarity>()
       const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; name: string; rarity: BadgeRarity; deleted_at: string | null; created_at: string }[]
-      // 컬렉션에 등록된 아이템 배지의 등급 목록 — 세 화면이 같은 함수를 쓴다(티켓 20261102_2300)
-      const raritiesByBook = buildBookRarities(bookBadges)
+      for (const b of bookBadges) {
+        if (!b.item_book_id || b.type !== 'item') continue
+        // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
+        if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
+      }
       // 분모·분자 — 완성 판정 단일 모듈(티켓 20261016_2340 2회-나). 분자는 컬렉션별 집합으로 센다.
       const checkinBadgesByBook = new Map<string, string[]>()
       for (const b of bookBadges) {
@@ -175,7 +178,7 @@ export default async function BadgesPage({ searchParams }: Props) {
         const total = completion?.total ?? 0
         const owned = completion?.filled ?? 0
         const completed = isBookCompleted(completedSet, book.id, completion)
-        return { bookId: book.id, owned, total, completed, rarities: raritiesByBook.get(book.id) ?? [] }
+        return { bookId: book.id, owned, total, completed, rarity: rarityByBook.get(book.id) ?? 'common' }
       })
     }
   }

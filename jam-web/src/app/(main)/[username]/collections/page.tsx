@@ -1,15 +1,13 @@
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
-import { buildBookRarities } from '@/lib/itembook/book-rarities'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import SafeImage from '@/components/SafeImage'
-import type { BadgeRarity, ItemBookRow, TribeRow } from '@/types/database'
+import type { ItemBookRow, TribeRow } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
 import TopNav from '@/components/ui/TopNav'
 import { BookIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
 import { getDisplayName } from '@/lib/utils'
@@ -28,7 +26,6 @@ interface BookCard {
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
-  rarities: BadgeRarity[]
 }
 
 export default async function UserItemBooksPage({ params }: Props) {
@@ -143,8 +140,6 @@ export default async function UserItemBooksPage({ params }: Props) {
         rarity: string | null
         deleted_at: string | null
       }[]
-      // 컬렉션에 등록된 아이템 배지의 등급 목록 — 세 화면이 같은 함수를 쓴다(티켓 20261102_2300)
-      const raritiesByBook = buildBookRarities(bookBadges)
       const checkinBadgesByBook = new Map<string, string[]>()
       for (const b of bookBadges) {
         if (b.type !== 'checkin' || !b.item_book_id) continue
@@ -185,7 +180,6 @@ export default async function UserItemBooksPage({ params }: Props) {
           totalBadgeCount: completionByBook.get(book.id)?.total ?? 0,
           slottedCount: completionByBook.get(book.id)?.filled ?? 0,
           isCompleted: isBookCompleted(completedSet, book.id, completionByBook.get(book.id)),
-          rarities: raritiesByBook.get(book.id) ?? [],
         }))
         // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).
         // 본인 열람(isOwnList)은 예외 없이 항상 노출.
@@ -210,7 +204,7 @@ export default async function UserItemBooksPage({ params }: Props) {
           />
         ) : (
           <div className="grid grid-cols-2 gap-4">
-            {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted, rarities }) => {
+            {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
               return (
                 <Link key={book.id} href={`/collections/${book.id}`}>
@@ -226,13 +220,6 @@ export default async function UserItemBooksPage({ params }: Props) {
                         sizes="50vw"
                         fallback={<BookIcon className="w-8 h-8 text-muted" />}
                       />
-                      {/* 등록된 아이템 배지의 등급 칩 — 왼쪽 위. 완성 칩이 오른쪽 위에 있으면 그 폭만큼 비우고 줄바꿈한다.
-                          Common만 있으면 RarityBadge가 아무것도 그리지 않으므로 빈 행이 남지 않게 여기서 거른다. */}
-                      {rarities.some((r) => r !== 'common') && (
-                        <div className={`absolute top-1.5 left-1.5 flex flex-wrap items-center gap-1${isCompleted ? ' max-w-[calc(100%-3.5rem)]' : ' right-1.5'}`}>
-                          {rarities.map((r) => <RarityBadge key={r} rarity={r} />)}
-                        </div>
-                      )}
                       {isCompleted && (
                         <span className="absolute top-1.5 right-1.5 text-xs leading-none px-2 py-1 rounded-full bg-background text-foreground">
                           {d.itembooks.completed}

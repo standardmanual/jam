@@ -99,7 +99,7 @@ describe('GET /api/users/[username]/itembooks — 등급 필드(티켓 20261016_
         totalBadgeCount: 2,
         slottedCount: 1,
         isCompleted: false,
-        rarities: ['rare'],
+        rarity: 'rare',
         tierMode: false,
         tier: null,
         tiers: {},
@@ -118,11 +118,11 @@ describe('GET /api/users/[username]/itembooks — 등급 필드(티켓 20261016_
       ]
     })
 
-    it('꽂힌 등급을 tier로, 등급별 진행을 tiers로 돌려주고 rarities는 등록된 등급을 낮은 순으로 모은 목록이다', async () => {
+    it('꽂힌 등급을 tier로, 등급별 진행을 tiers로 돌려주고 기존 rarity 필드는 최초 등록 배지 등급 그대로다', async () => {
       tables.user_item_book_slots = [{ item_book_id: 'book', badge_id: 'r-a' }]
 
       const [b] = await callRaw()
-      expect(b).toMatchObject({ tierMode: true, tier: 'rare', rarities: ['common', 'rare'], isCompleted: true })
+      expect(b).toMatchObject({ tierMode: true, tier: 'rare', rarity: 'common', isCompleted: true })
       expect(b.tiers as Tiers).toEqual({
         common: { total: 2, filled: 0, complete: false, recorded: false },
         rare: { total: 1, filled: 1, complete: true, recorded: false },

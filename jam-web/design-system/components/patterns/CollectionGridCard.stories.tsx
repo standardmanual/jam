@@ -7,11 +7,11 @@ const meta: Meta<typeof CollectionGridCard> = {
   component: CollectionGridCard,
   parameters: {
     layout: 'centered',
-    docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스바 | 카운트]. 썸네일 좌상단에 완성 태그 → 등급 태그들(폭이 모자라면 줄바꿈).' } },
+    docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스바 | 카운트]. 썸네일 좌상단에 등급+완성 태그.' } },
   },
   argTypes: {
     completed: { control: 'boolean' },
-    rarities: { control: 'check', options: ['common', 'rare', 'epic', 'mystic'] },
+    rarity: { control: 'select', options: ['common', 'rare', 'epic', 'mystic'] },
     collected: { control: { type: 'number', min: 0 } },
     total: { control: { type: 'number', min: 1 } },
   },
@@ -36,7 +36,7 @@ export const OnCreamCanvas: Story = {
         display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8,
       }}
     >
-      <CollectionGridCard name="한강 러너 컬렉션" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarities={['rare']} />
+      <CollectionGridCard name="한강 러너 컬렉션" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarity="rare" />
       <CollectionGridCard name="이미지 없는 컬렉션" collected={0} total={10} />
     </div>
   ),
@@ -49,7 +49,7 @@ export const InProgress: Story = {
     imageUrl: SAMPLE_IMAGE,
     collected: 5,
     total: 10,
-    rarities: ['rare'],
+    rarity: 'rare',
   },
 };
 
@@ -61,7 +61,7 @@ export const Completed: Story = {
     collected: 10,
     total: 10,
     completed: true,
-    rarities: ['epic'],
+    rarity: 'epic',
   },
 };
 
@@ -76,56 +76,6 @@ export const CompletedNoRarity: Story = {
   },
 };
 
-export const MultiRarities: Story = {
-  name: '등급 여러 개 — Rare+Epic+Mystic (완성 아님)',
-  args: {
-    name: '한강 러너 컬렉션',
-    imageUrl: SAMPLE_IMAGE,
-    collected: 4,
-    total: 10,
-    rarities: ['rare', 'epic', 'mystic'],
-  },
-};
-
-export const CompletedWithRarities: Story = {
-  name: '완성 + 등급 3개 — 완성 칩 뒤에 등급 칩',
-  args: {
-    name: '한강 러너 컬렉션',
-    imageUrl: SAMPLE_IMAGE,
-    collected: 10,
-    total: 10,
-    completed: true,
-    rarities: ['rare', 'epic', 'mystic'],
-  },
-};
-
-export const WrapNarrow: Story = {
-  name: '좁은 폭(2열 320px) — 완성 + 등급 3개 줄바꿈',
-  render: () => (
-    <div style={{ width: 140 }}>
-      <CollectionGridCard
-        name="한강 러너 컬렉션"
-        imageUrl={SAMPLE_IMAGE}
-        collected={10}
-        total={10}
-        completed
-        rarities={['rare', 'epic', 'mystic']}
-      />
-    </div>
-  ),
-};
-
-export const CommonOnly: Story = {
-  name: 'Common만 — 칩 없음',
-  args: {
-    name: '도시 탐험가 컬렉션',
-    imageUrl: SAMPLE_IMAGE,
-    collected: 2,
-    total: 10,
-    rarities: ['common'],
-  },
-};
-
 export const Empty: Story = {
   name: '시작 전 (0/10) — Common',
   args: {
@@ -133,7 +83,7 @@ export const Empty: Story = {
     imageUrl: SAMPLE_IMAGE,
     collected: 0,
     total: 10,
-    rarities: ['common'],
+    rarity: 'common',
   },
 };
 
@@ -144,7 +94,7 @@ export const AlmostDone: Story = {
     imageUrl: SAMPLE_IMAGE,
     collected: 9,
     total: 10,
-    rarities: ['mystic'],
+    rarity: 'mystic',
   },
 };
 
@@ -155,7 +105,7 @@ export const NoImage: Story = {
     imageUrl: null,
     collected: 3,
     total: 8,
-    rarities: ['rare'],
+    rarity: 'rare',
   },
 };
 
@@ -163,10 +113,10 @@ export const Grid: Story = {
   name: '그리드 레이아웃 (4종)',
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 160px)', gap: 'var(--spacing-16)' }}>
-      <CollectionGridCard name="한강 러너" imageUrl={SAMPLE_IMAGE} collected={0} total={10} rarities={['common']} />
-      <CollectionGridCard name="도시 탐험가" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarities={['rare']} />
-      <CollectionGridCard name="마라톤 챌린저" imageUrl={SAMPLE_IMAGE} collected={9} total={10} rarities={['epic']} />
-      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarities={['mystic']} />
+      <CollectionGridCard name="한강 러너" imageUrl={SAMPLE_IMAGE} collected={0} total={10} rarity="common" />
+      <CollectionGridCard name="도시 탐험가" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarity="rare" />
+      <CollectionGridCard name="마라톤 챌린저" imageUrl={SAMPLE_IMAGE} collected={9} total={10} rarity="epic" />
+      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarity="mystic" />
     </div>
   ),
 };

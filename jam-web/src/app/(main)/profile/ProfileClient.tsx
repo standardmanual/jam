@@ -73,7 +73,7 @@ interface ItemBookItem {
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
-  rarities: BadgeRarity[]
+  rarity: BadgeRarity
 }
 
 // ─── 공통 조각 ───────────────────────────────────────────────────────────────
@@ -469,7 +469,7 @@ export default function ProfileClient({
               collected={book.slottedCount}
               total={book.totalBadgeCount}
               completed={book.isCompleted}
-              rarities={book.rarities}
+              rarity={book.rarity}
             />
           ))}
         </div>

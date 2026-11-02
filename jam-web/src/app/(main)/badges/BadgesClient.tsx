@@ -54,8 +54,7 @@ export interface ItemBookProgress {
   owned: number
   total: number
   completed: boolean
-  /** 등록된 아이템 배지의 등급 목록(Common → Mystic 순, 중복 없음) */
-  rarities: BadgeRarity[]
+  rarity: BadgeRarity
 }
 
 interface BadgesClientProps {
@@ -302,7 +301,7 @@ export default function BadgesClient({
           itemBooks.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
               {itemBooks.map((book) => {
-                const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false, rarities: [] as BadgeRarity[] }
+                const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false, rarity: 'common' as BadgeRarity }
                 return (
                   <CollectionGridCard
                     key={book.id}
@@ -312,7 +311,7 @@ export default function BadgesClient({
                     collected={progress.owned}
                     total={progress.total}
                     completed={progress.completed}
-                    rarities={progress.rarities}
+                    rarity={progress.rarity}
                   />
                 )
               })}

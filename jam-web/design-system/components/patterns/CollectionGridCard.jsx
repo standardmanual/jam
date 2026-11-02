@@ -2,7 +2,7 @@ import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
-// RarityBadge와 같은 축소 스케일(패딩 4px/9px, 폰트 8px) — "완성" 태그 뒤에 등급 태그가
+// RarityBadge와 같은 축소 스케일(패딩 4px/9px, 폰트 8px) — "완성" 태그가 등급 태그 옆에
 // 나란히 붙으므로 크기를 맞춘다.
 const TAG_STYLE = {
   display: 'inline-flex',
@@ -20,13 +20,13 @@ const TAG_STYLE = {
  * CollectionGridCard — 컬렉션(아이템북) 그리드 셀 패턴.
  *
  * 레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스 바 | 카운트]
- * 썸네일 좌상단: 완성 태그(선택) → 등급 태그들(선택). 폭이 모자라면 다음 줄로 내려간다.
+ * 썸네일 좌상단: 등급 태그(선택) + 완성 태그(선택)
  *
  * 면 (티켓 20261015_2133): BadgeGridCard와 같은 면 — --surface(흰) + 1px --border + 반경 --radius-2xl + 안쪽 여백 12, 그림자 없음.
  * 진행 바는 직접 그리지 않고 ProgressBar(트랙 --border, 필 --accent)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙이다.
  *
  * Props:
- *   rarities   — 컬렉션에 등록된 아이템 배지의 등급 목록 (선택, Common → Mystic 순·중복 없음). Common은 칩을 그리지 않는다
+ *   rarity     — 최초 등록 아이템배지 기준 컬렉션 등급 (선택)
  *   completed  — 완성 태그 표시
  *
  * 인터랙션 모드 (상호 배타):
@@ -40,7 +40,7 @@ export function CollectionGridCard({
   collected,
   total,
   completed = false,
-  rarities,
+  rarity,
   href,
   onClick,
   className = '',
@@ -49,8 +49,7 @@ export function CollectionGridCard({
 }) {
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
   const interactive = !!(href || onClick);
-  // 칩이 하나도 없는데 빈 행이 남지 않도록 컨테이너 조건에서 Common을 미리 거른다
-  const visibleRarities = (rarities ?? []).filter((r) => r !== 'common');
+  const showRarity = !!rarity && rarity !== 'common';
 
   const containerStyle = {
     display: 'flex',
@@ -96,15 +95,15 @@ export function CollectionGridCard({
             </svg>
           </span>
         )}
-        {/* 태그 행: 완성(선택) → 등급들. right: 8 + flexWrap이라 좁은 폭에서는 다음 줄로 내려간다 */}
-        {(completed || visibleRarities.length > 0) && (
-          <div style={{ position: 'absolute', top: 8, left: 8, right: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+        {/* 태그 행: 등급(선택) + 완성(선택) */}
+        {(showRarity || completed) && (
+          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {showRarity && <RarityBadge rarity={rarity} />}
             {completed && (
               <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
                 완성
               </span>
             )}
-            {visibleRarities.map((r) => <RarityBadge key={r} rarity={r} />)}
           </div>
         )}
       </div>

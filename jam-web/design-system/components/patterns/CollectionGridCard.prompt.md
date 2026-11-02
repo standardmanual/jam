@@ -20,21 +20,10 @@
   href="/collections/gangnam-park"
 />
 
-// 등록된 아이템 배지의 등급 칩 — 완성 칩이 먼저, 등급 칩이 그 뒤(Common은 그리지 않는다)
-<CollectionGridCard
-  name="한강 러너 컬렉션"
-  imageUrl="/collections/han-river.png"
-  collected={10}
-  total={10}
-  completed={true}
-  rarities={['rare', 'epic', 'mystic']}
-/>
-
 // 이미지 없음 (플레이스홀더)
 <CollectionGridCard name="미지의 컬렉션" collected={0} total={10} />
 ```
 
-칩은 썸네일 왼쪽 위(안쪽 여백 8px)에 놓이고 폭이 모자라면 다음 줄로 내려간다.
 그리드 레이아웃은 호출부에서 결정한다 (예: `grid-template-columns: repeat(2, 1fr)`).
 썸네일은 투명 배경이라 카드의 흰 면이 그대로 비친다 — 배지 이미지가 투명 PNG인 경우 자연스럽게 보임.
 진행 바는 `ProgressBar`(트랙 `--border`, 필 `--accent`, 높이 6px)를 쓴다.
