@@ -6,6 +6,7 @@ name: ingest-muse-notes
 # 검사하고(scripts/ingest-muse-notes.mjs: 위치·이름·주제·크기·날짜·의심스러운 문장), 통과한 것만 머리말을 붙여 staging에 올린다.
 # 그 브랜치에 muse-inbox/ 밖의 파일이 있으면 알린다(Muse가 다른 곳을 건드렸다는 신호다).
 #
+# 주의: GitHub는 schedule과 workflow_dispatch를 기본 브랜치(main)에 있는 파일로만 실행한다. 이 파일이 main에 올라가기 전에는 돌지 않는다(2026-11-02 확인).
 # 일요일 20:30 KST에 돈다(Muse 주간 작업은 일요일 18:00 KST). 월요일 05:00 트렌드 작성 루틴이 notes/를 읽는다.
 # 거절한 파일이나 muse-inbox/ 밖의 파일이 있으면 작업이 실패로 끝나 GitHub가 알림을 보낸다. 통과한 파일은 그래도 올린다.
 on:
@@ -59,7 +60,7 @@ jobs:
           git archive FETCH_HEAD "${INBOX_DIR}" 2>/dev/null | tar -x -C _inbox || true
           mkdir -p "_inbox/${INBOX_DIR}"
           # muse-inbox/ 밖의 경로가 브랜치에 있으면 알린다(검사 대상이 아니며 어디에도 병합하지 않는다).
-          outside="$(git ls-tree -r --name-only FETCH_HEAD | grep -v "^${INBOX_DIR}/" || true)"
+          outside="$(git -c core.quotepath=false ls-tree -r --name-only FETCH_HEAD | grep -v "^${INBOX_DIR}/" || true)"
           if [ -n "$outside" ]; then
             {
               echo "## 수집 브랜치에 ${INBOX_DIR}/ 밖의 파일이 있습니다"

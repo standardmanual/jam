@@ -124,7 +124,7 @@ docs/operations/trendresearch/
 ## 5. 쓰는 법
 
 1. **수집(Muse 주간 반복 작업, 일요일 18:00 KST)**: Muse가 Gmail 라벨 «JAM»에 지난 8일 안에 온 메일을 읽어 주제별 항목으로 정리하고, jam 저장소의 전용 브랜치 `muse/inbox`에 `muse-inbox/<그룹>/<주제>/YYYY-MM-DD_muse-제목.md`로 저장합니다. 지시문은 `node scripts/trend-requests.mjs --muse-task`가 이 README의 주제 표로 만들며, Muse 앱에 한 번 설정합니다. Muse의 Gmail 연결은 읽기 전용으로 둡니다. 이 브랜치는 어디에도 병합하지 않고, `staging`과 `main`에는 Muse가 쓰지 않는다는 것을 지시문이 못 박습니다. 다만 Muse의 GitHub 연결이 jam 전체 쓰기 권한을 갖는 구조라, 지시문을 어길 때 막을 장치는 없습니다(아래 7절).
-2. **반입(GitHub Action, 일요일 20:30 KST)**: `ingest-muse-notes` 워크플로가 `muse/inbox`의 `muse-inbox/` 폴더에서 파일 내용만 꺼내(브랜치는 병합하지 않습니다) 새 파일을 검사해 통과한 것만 머리말을 붙여 `<그룹>/<주제>/notes/`로 옮기고 staging에 커밋합니다. 검사는 위치와 이름, 주제 표에 있는 주제인지, 크기, 날짜, 의심스러운 문장입니다(규칙은 `scripts/ingest-muse-notes.mjs`가 정본). 거절한 파일이 있거나 `muse/inbox`에 `muse-inbox/` 밖의 파일이 있으면 워크플로가 실패로 끝나 GitHub가 알립니다.
+2. **반입(GitHub Action `ingest-muse-notes`, 일요일 20:30 KST, 현재 동작하지 않음: 예약 실행은 기본 브랜치 `main`에 있는 워크플로만 돌아서 `staging`에 있는 지금은 돌지 않습니다)**: `ingest-muse-notes` 워크플로가 `muse/inbox`의 `muse-inbox/` 폴더에서 파일 내용만 꺼내(브랜치는 병합하지 않습니다) 새 파일을 검사해 통과한 것만 머리말을 붙여 `<그룹>/<주제>/notes/`로 옮기고 staging에 커밋합니다. 검사는 위치와 이름, 주제 표에 있는 주제인지, 크기, 날짜, 의심스러운 문장입니다(규칙은 `scripts/ingest-muse-notes.mjs`가 정본). 거절한 파일이 있거나 `muse/inbox`에 `muse-inbox/` 밖의 파일이 있으면 워크플로가 실패로 끝나 GitHub가 알립니다.
 3. **작성(주간 작성 루틴, 월요일 05:00)**: `확인일`보다 새 `notes/`가 있는 주제만 골라 읽고 `latest.md`를 씁니다. 규칙은 `.claude/skills/jam-work/references/scheduled-jobs.md`의 「트렌드 수집」 절에 있습니다. `notes/`에 없는 사실은 쓰지 않습니다.
 4. **사용자가 직접 고른 자료**는 카리나에게 「트렌드 올려 줘」라고 요청하면 `notes/`에 올립니다.
     - 파일 이름은 `YYYY-MM-DD_제목.md`(날짜는 올린 날 KST, 제목은 한글과 하이픈)입니다. 같은 날 같은 제목이 있으면 끝에 `-2`를 붙입니다.
