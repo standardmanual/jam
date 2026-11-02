@@ -2741,6 +2741,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          gu: string | null
           id: string
           is_active: boolean
           latitude: number
@@ -2754,10 +2755,12 @@ export type Database = {
           pending_review: boolean
           poi_tier: number
           radius_meters: number
+          sido: string | null
         }
         Insert: {
           category?: string
           created_at?: string
+          gu?: string | null
           id?: string
           is_active?: boolean
           latitude: number
@@ -2771,10 +2774,12 @@ export type Database = {
           pending_review?: boolean
           poi_tier?: number
           radius_meters?: number
+          sido?: string | null
         }
         Update: {
           category?: string
           created_at?: string
+          gu?: string | null
           id?: string
           is_active?: boolean
           latitude?: number
@@ -2788,6 +2793,7 @@ export type Database = {
           pending_review?: boolean
           poi_tier?: number
           radius_meters?: number
+          sido?: string | null
         }
         Relationships: [
           {

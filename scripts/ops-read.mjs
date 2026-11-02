@@ -25,7 +25,7 @@ export const READ_TARGETS = {
   'item-paths': '/api/admin/item-paths', // 쿼리 limit·offset·onlyBlocked
   'kpi-weekly': '/api/admin/kpi/weekly', // 쿼리 days
   'today-metrics': '/api/admin/today/metrics', // 쿼리 from·to
-  places: '/api/admin/ops-places', // 쿼리 없음=카테고리 요약, category·q·limit·offset·sort=목록
+  places: '/api/admin/ops-places', // 쿼리 없음=카테고리 요약, category·q·limit·offset·sort=목록, groupBy=region=지역 집계, status·sido·gu=거름
   badges: '/api/admin/ops-badges', // 쿼리 family·limit·offset
 }
 

@@ -134,7 +134,7 @@ function request(query = '', headers: Record<string, string> = {}, method = 'GET
   return new Request(`http://localhost/api/admin/ops-badges${query}`, { method, headers })
 }
 
-type FamilyBody = { family: string; hidden: boolean; tiers: Array<{ tier: string; conditionSummary: string; earnedCount: number }> }
+type FamilyBody = { family: string; hidden: boolean; tiers: Array<{ badgeId: string; tier: string; conditionSummary: string; earnedCount: number }> }
 
 const saved: Record<string, string | undefined> = {}
 
@@ -190,10 +190,11 @@ describe('GET /api/admin/ops-badges — 계열 목록', () => {
     expect(families.every((f) => f.hidden === false)).toBe(true)
     const running = families.find((f) => f.family === 'running_master')
     expect(running?.tiers).toEqual([
-      { tier: 'Common', conditionSummary: '10회', earnedCount: 2 },
-      { tier: 'Rare', conditionSummary: '30회', earnedCount: 1 },
+      { badgeId: 'b-common', tier: 'Common', conditionSummary: '10회', earnedCount: 2 },
+      { badgeId: 'b-rare', tier: 'Rare', conditionSummary: '30회', earnedCount: 1 },
     ])
-    expect(families.find((f) => f.family === 'streak')?.tiers[0].earnedCount).toBe(0)
+    expect(families.find((f) => f.family === 'streak')?.tiers[0]).toMatchObject({ badgeId: 's-1', earnedCount: 0 })
+    expect(JSON.stringify(body)).not.toContain('b-hidden')
   })
 
   it('응답에 유저 ID가 없고 user_activity_badges에서 user_id를 읽지 않는다', async () => {
