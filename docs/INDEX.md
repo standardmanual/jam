@@ -12,7 +12,7 @@ status: active
 
 태그(`docs/DOCUMENT_SCHEMA.md` §6.2)별로 문서를 모았다. 한 주제 안에서 현재 서비스(service)·JAM 2.0(plan/jam2)·비전·마케팅·운영·에이전트·보관(archive) 순으로 나눠 보여 준다. 티켓은 넣지 않았다(`docs/tickets/`).
 
-주제: [배지](#배지) · [등급](#등급) · [컬렉션](#컬렉션) · [트라이브](#트라이브) · [체크인](#체크인) · [체크인배지](#체크인배지) · [드랍](#드랍) · [믹스](#믹스) · [인벤토리](#인벤토리) · [미션](#미션) · [포인트](#포인트) · [랭킹](#랭킹) · [알림](#알림) · [피드](#피드) · [프로필](#프로필) · [팔로우](#팔로우) · [Strava동기화](#strava동기화) · [어드민](#어드민) · [자전거](#자전거) · [걷기](#걷기) · [러닝](#러닝) · [트레일러닝](#트레일러닝) · [등산](#등산) · [리텐션](#리텐션) · [획득](#획득) · [어뷰징](#어뷰징) · [마케팅](#마케팅) · [시즌](#시즌) · [디자인시스템](#디자인시스템) · [계측](#계측) · [워크플로](#워크플로) · [JAM2.0](#jam20) · [주제 없음](#주제-없음)
+주제: [배지](#배지) · [등급](#등급) · [컬렉션](#컬렉션) · [트라이브](#트라이브) · [체크인](#체크인) · [체크인배지](#체크인배지) · [드랍](#드랍) · [믹스](#믹스) · [인벤토리](#인벤토리) · [미션](#미션) · [포인트](#포인트) · [랭킹](#랭킹) · [알림](#알림) · [피드](#피드) · [프로필](#프로필) · [팔로우](#팔로우) · [Strava동기화](#strava동기화) · [어드민](#어드민) · [자전거](#자전거) · [걷기](#걷기) · [러닝](#러닝) · [트레일러닝](#트레일러닝) · [등산](#등산) · [리텐션](#리텐션) · [획득](#획득) · [어뷰징](#어뷰징) · [마케팅](#마케팅) · [시즌](#시즌) · [디자인시스템](#디자인시스템) · [계측](#계측) · [워크플로](#워크플로) · [JAM2.0](#jam20) · [뉴스레터](#뉴스레터) · [메일](#메일) · [주제 없음](#주제-없음)
 
 ### 배지
 
@@ -651,6 +651,46 @@ status: active
 
 - [07 JAM! 라이브 운영 블루프린트.md](plan/vision/07%20JAM!%20라이브%20운영%20블루프린트.md) — [JAM 2.0] 에이전트가 정기 루틴으로 운영을 기획하고 사용자가 어드민 운영툴에서 결정·실행하는 라이브 운영 체계의 설계도. 승인 뒤 우선순위를 정해 개발한다
 
+### 뉴스레터
+
+**운영 (operations)**
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/events-seasons/notes/2026-11-02_메일-트렌드.md) — 11월 안에 끝나는 김장축제, 은행나무축제, 북페어, 대규모 할인 행사와 크리스마스 시즌 시작 신호
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/food-retail/notes/2026-11-02_메일-트렌드.md) — 떡지순례, 회크닉, 고디바 예약제, 홋카이도 카페 팝업 등 먹거리 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/marketing/notes/2026-11-02_메일-트렌드.md) — 밈 활용 판단 질문 4개, 페스티벌 불편 해결 마케팅, 지역 축제와 기업 거점 결합, IP 콜라보 굿즈 선발매
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/memes-slang/notes/2026-11-02_메일-트렌드.md) — 이거 제 이모지야, 체포하겠어 응원 밈, 전여친 감자칼 등 최근 일주일 밈
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/misc/notes/2026-11-02_메일-트렌드.md) — 브라우저 대학 부수기 게임, 링크로 들어가는 온라인 절, 2030 경량패딩 인기 등 주제 밖 발견
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/food/notes/2026-11-02_메일-트렌드.md) — 식사빵 전문 빵집, 구둣방을 개조한 카페, 가을 시즌 음료 카페, 오차즈케 식당 등 메일에서 모은 음식점·카페 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/nature/notes/2026-11-02_메일-트렌드.md) — 노래 속 가을 풍경을 따라가는 억새밭·항구·근대 가옥 코스 3곳
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/route/notes/2026-11-02_메일-트렌드.md) — 태안에서 울진까지 잇는 동서트레일 512km가 11월 30일까지 시범 개방 중
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/tourist_attraction/notes/2026-11-02_메일-트렌드.md) — 종로 까치호텔, 서울 단풍 시티투어버스, 한남 철거 앞 호텔 등 메일에서 모은 명소 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/train_subway/notes/2026-11-02_메일-트렌드.md) — 청량리역과 직접 연결된 롯데몰 벨리타운 청량리 개장과 러닝 특화 매장 입점 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/drop-pickup/notes/2026-11-02_메일-트렌드.md) — 방문 인증이나 체크인을 하면 보상을 주는 지자체·관광 이벤트 사례
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/item-collection/notes/2026-11-02_메일-트렌드.md) — 캐릭터 랜덤 띠부씰 콜라보, 한정판 리셀 시장 냉각, 카페 스티커 인증 문화 등 수집·굿즈 유행
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/tribe/notes/2026-11-02_메일-트렌드.md) — 한 편의 설화를 두 매장에 나눠 잇는 올리브영 경주 지역 서사 사례 (광고 메일)
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/sports/run/notes/2026-11-02_메일-트렌드.md) — 서촌에 러닝·스포츠 브랜드가 먼저 들어서며 상권이 바뀌고 있다는 분석
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/sports/walk/notes/2026-11-02_메일-트렌드.md) — 안양파빌리온 숲길을 손전등 들고 걷는 금요일 밤 도슨트 투어 소식
+
+### 메일
+
+**운영 (operations)**
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/events-seasons/notes/2026-11-02_메일-트렌드.md) — 11월 안에 끝나는 김장축제, 은행나무축제, 북페어, 대규모 할인 행사와 크리스마스 시즌 시작 신호
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/food-retail/notes/2026-11-02_메일-트렌드.md) — 떡지순례, 회크닉, 고디바 예약제, 홋카이도 카페 팝업 등 먹거리 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/marketing/notes/2026-11-02_메일-트렌드.md) — 밈 활용 판단 질문 4개, 페스티벌 불편 해결 마케팅, 지역 축제와 기업 거점 결합, IP 콜라보 굿즈 선발매
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/memes-slang/notes/2026-11-02_메일-트렌드.md) — 이거 제 이모지야, 체포하겠어 응원 밈, 전여친 감자칼 등 최근 일주일 밈
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/misc/notes/2026-11-02_메일-트렌드.md) — 브라우저 대학 부수기 게임, 링크로 들어가는 온라인 절, 2030 경량패딩 인기 등 주제 밖 발견
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/food/notes/2026-11-02_메일-트렌드.md) — 식사빵 전문 빵집, 구둣방을 개조한 카페, 가을 시즌 음료 카페, 오차즈케 식당 등 메일에서 모은 음식점·카페 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/nature/notes/2026-11-02_메일-트렌드.md) — 노래 속 가을 풍경을 따라가는 억새밭·항구·근대 가옥 코스 3곳
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/route/notes/2026-11-02_메일-트렌드.md) — 태안에서 울진까지 잇는 동서트레일 512km가 11월 30일까지 시범 개방 중
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/tourist_attraction/notes/2026-11-02_메일-트렌드.md) — 종로 까치호텔, 서울 단풍 시티투어버스, 한남 철거 앞 호텔 등 메일에서 모은 명소 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/train_subway/notes/2026-11-02_메일-트렌드.md) — 청량리역과 직접 연결된 롯데몰 벨리타운 청량리 개장과 러닝 특화 매장 입점 소식
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/drop-pickup/notes/2026-11-02_메일-트렌드.md) — 방문 인증이나 체크인을 하면 보상을 주는 지자체·관광 이벤트 사례
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/item-collection/notes/2026-11-02_메일-트렌드.md) — 캐릭터 랜덤 띠부씰 콜라보, 한정판 리셀 시장 냉각, 카페 스티커 인증 문화 등 수집·굿즈 유행
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/tribe/notes/2026-11-02_메일-트렌드.md) — 한 편의 설화를 두 매장에 나눠 잇는 올리브영 경주 지역 서사 사례 (광고 메일)
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/sports/run/notes/2026-11-02_메일-트렌드.md) — 서촌에 러닝·스포츠 브랜드가 먼저 들어서며 상권이 바뀌고 있다는 분석
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/sports/walk/notes/2026-11-02_메일-트렌드.md) — 안양파빌리온 숲길을 손전등 들고 걷는 금요일 밤 도슨트 투어 소식
+
 ### 주제 없음
 
 **현재 서비스 (service)**
@@ -682,11 +722,20 @@ status: active
 - [latest.md](operations/trendresearch/culture/events-seasons/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/culture/food-retail/latest.md) — (description 없음)
 - [2026-10-27.md](operations/trendresearch/culture/marketing/archive/2026-10-27.md) — (description 없음)
+- [latest.md](operations/trendresearch/culture/marketing/latest.md) — (description 없음)
 - [2026-10-27.md](operations/trendresearch/culture/memes-slang/archive/2026-10-27.md) — (description 없음)
 - [latest.md](operations/trendresearch/culture/memes-slang/latest.md) — (description 없음)
 - [2026-10-27.md](operations/trendresearch/culture/misc/archive/2026-10-27.md) — (description 없음)
+- [latest.md](operations/trendresearch/culture/misc/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/food/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/mountain/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/nature/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/route/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/tourist_attraction/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/train_subway/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/service/drop-pickup/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/service/item-collection/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/service/tribe/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/sports/run/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/sports/walk/latest.md) — (description 없음)
 
@@ -748,13 +797,29 @@ status: active
 
 - [2026-10-27.md](operations/trendresearch/culture/events-seasons/archive/2026-10-27.md) — (description 없음)
 
+### docs/operations/trendresearch/culture/events-seasons/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/events-seasons/notes/2026-11-02_메일-트렌드.md) — 11월 안에 끝나는 김장축제, 은행나무축제, 북페어, 대규모 할인 행사와 크리스마스 시즌 시작 신호
+
 ### docs/operations/trendresearch/culture/food-retail/
 
 - [latest.md](operations/trendresearch/culture/food-retail/latest.md) — (description 없음)
 
+### docs/operations/trendresearch/culture/food-retail/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/food-retail/notes/2026-11-02_메일-트렌드.md) — 떡지순례, 회크닉, 고디바 예약제, 홋카이도 카페 팝업 등 먹거리 소식
+
+### docs/operations/trendresearch/culture/marketing/
+
+- [latest.md](operations/trendresearch/culture/marketing/latest.md) — (description 없음)
+
 ### docs/operations/trendresearch/culture/marketing/archive/
 
 - [2026-10-27.md](operations/trendresearch/culture/marketing/archive/2026-10-27.md) — (description 없음)
+
+### docs/operations/trendresearch/culture/marketing/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/marketing/notes/2026-11-02_메일-트렌드.md) — 밈 활용 판단 질문 4개, 페스티벌 불편 해결 마케팅, 지역 축제와 기업 거점 결합, IP 콜라보 굿즈 선발매
 
 ### docs/operations/trendresearch/culture/memes-slang/
 
@@ -764,25 +829,105 @@ status: active
 
 - [2026-10-27.md](operations/trendresearch/culture/memes-slang/archive/2026-10-27.md) — (description 없음)
 
+### docs/operations/trendresearch/culture/memes-slang/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/memes-slang/notes/2026-11-02_메일-트렌드.md) — 이거 제 이모지야, 체포하겠어 응원 밈, 전여친 감자칼 등 최근 일주일 밈
+
+### docs/operations/trendresearch/culture/misc/
+
+- [latest.md](operations/trendresearch/culture/misc/latest.md) — (description 없음)
+
 ### docs/operations/trendresearch/culture/misc/archive/
 
 - [2026-10-27.md](operations/trendresearch/culture/misc/archive/2026-10-27.md) — (description 없음)
+
+### docs/operations/trendresearch/culture/misc/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/misc/notes/2026-11-02_메일-트렌드.md) — 브라우저 대학 부수기 게임, 링크로 들어가는 온라인 절, 2030 경량패딩 인기 등 주제 밖 발견
+
+### docs/operations/trendresearch/places/food/
+
+- [latest.md](operations/trendresearch/places/food/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/places/food/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/food/notes/2026-11-02_메일-트렌드.md) — 식사빵 전문 빵집, 구둣방을 개조한 카페, 가을 시즌 음료 카페, 오차즈케 식당 등 메일에서 모은 음식점·카페 소식
 
 ### docs/operations/trendresearch/places/mountain/
 
 - [latest.md](operations/trendresearch/places/mountain/latest.md) — (description 없음)
 
+### docs/operations/trendresearch/places/nature/
+
+- [latest.md](operations/trendresearch/places/nature/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/places/nature/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/nature/notes/2026-11-02_메일-트렌드.md) — 노래 속 가을 풍경을 따라가는 억새밭·항구·근대 가옥 코스 3곳
+
+### docs/operations/trendresearch/places/route/
+
+- [latest.md](operations/trendresearch/places/route/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/places/route/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/route/notes/2026-11-02_메일-트렌드.md) — 태안에서 울진까지 잇는 동서트레일 512km가 11월 30일까지 시범 개방 중
+
 ### docs/operations/trendresearch/places/tourist_attraction/
 
 - [latest.md](operations/trendresearch/places/tourist_attraction/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/places/tourist_attraction/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/tourist_attraction/notes/2026-11-02_메일-트렌드.md) — 종로 까치호텔, 서울 단풍 시티투어버스, 한남 철거 앞 호텔 등 메일에서 모은 명소 소식
+
+### docs/operations/trendresearch/places/train_subway/
+
+- [latest.md](operations/trendresearch/places/train_subway/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/places/train_subway/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/places/train_subway/notes/2026-11-02_메일-트렌드.md) — 청량리역과 직접 연결된 롯데몰 벨리타운 청량리 개장과 러닝 특화 매장 입점 소식
+
+### docs/operations/trendresearch/service/drop-pickup/
+
+- [latest.md](operations/trendresearch/service/drop-pickup/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/service/drop-pickup/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/drop-pickup/notes/2026-11-02_메일-트렌드.md) — 방문 인증이나 체크인을 하면 보상을 주는 지자체·관광 이벤트 사례
+
+### docs/operations/trendresearch/service/item-collection/
+
+- [latest.md](operations/trendresearch/service/item-collection/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/service/item-collection/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/item-collection/notes/2026-11-02_메일-트렌드.md) — 캐릭터 랜덤 띠부씰 콜라보, 한정판 리셀 시장 냉각, 카페 스티커 인증 문화 등 수집·굿즈 유행
+
+### docs/operations/trendresearch/service/tribe/
+
+- [latest.md](operations/trendresearch/service/tribe/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/service/tribe/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/service/tribe/notes/2026-11-02_메일-트렌드.md) — 한 편의 설화를 두 매장에 나눠 잇는 올리브영 경주 지역 서사 사례 (광고 메일)
 
 ### docs/operations/trendresearch/sports/run/
 
 - [latest.md](operations/trendresearch/sports/run/latest.md) — (description 없음)
 
+### docs/operations/trendresearch/sports/run/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/sports/run/notes/2026-11-02_메일-트렌드.md) — 서촌에 러닝·스포츠 브랜드가 먼저 들어서며 상권이 바뀌고 있다는 분석
+
 ### docs/operations/trendresearch/sports/walk/
 
 - [latest.md](operations/trendresearch/sports/walk/latest.md) — (description 없음)
+
+### docs/operations/trendresearch/sports/walk/notes/
+
+- [2026-11-02_메일-트렌드.md](operations/trendresearch/sports/walk/notes/2026-11-02_메일-트렌드.md) — 안양파빌리온 숲길을 손전등 들고 걷는 금요일 밤 도슨트 투어 소식
 
 ### docs/plan/jam2/
 
