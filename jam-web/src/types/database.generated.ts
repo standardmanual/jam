@@ -2561,6 +2561,7 @@ export type Database = {
       }
       ops_patterns: {
         Row: {
+          angles: Json
           card_shapes: Json
           created_at: string
           knobs: Json
@@ -2574,11 +2575,13 @@ export type Database = {
           principle: string
           samples: Json
           status: string
+          topic: string | null
           updated_at: string
           updated_by: string | null
           user_experience: string
         }
         Insert: {
+          angles?: Json
           card_shapes?: Json
           created_at?: string
           knobs?: Json
@@ -2592,11 +2595,13 @@ export type Database = {
           principle: string
           samples?: Json
           status?: string
+          topic?: string | null
           updated_at?: string
           updated_by?: string | null
           user_experience: string
         }
         Update: {
+          angles?: Json
           card_shapes?: Json
           created_at?: string
           knobs?: Json
@@ -2610,6 +2615,7 @@ export type Database = {
           principle?: string
           samples?: Json
           status?: string
+          topic?: string | null
           updated_at?: string
           updated_by?: string | null
           user_experience?: string
