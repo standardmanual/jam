@@ -65,6 +65,28 @@ try {
   assert.equal(r.status, 1, `리포트 폴더 안팎이 섞이면 차단되어야 한다:\n${r.stderr}`)
   git(['reset', '-q'], base)
 
+  // ③-2 트렌드 주제 폴더의 latest.md — 통과(티켓 20261102_1410)
+  const TREND = 'docs/operations/trendresearch'
+  stage([`${TREND}/places/food/latest.md`, 'docs/operations/reports/trends/2026-11-09.md'])
+  r = runHook()
+  assert.equal(r.status, 0, `주제 폴더의 latest.md는 통과해야 한다:\n${r.stderr}`)
+  git(['reset', '-q'], base)
+
+  // ③-3 같은 폴더의 README·notes·archive, 모르는 그룹, 깊은 경로 — 모두 차단
+  for (const p of [
+    `${TREND}/README.md`,
+    `${TREND}/places/food/notes/2026-11-02_메모.md`,
+    `${TREND}/places/food/archive/2026-10-27.md`,
+    `${TREND}/foo/bar/latest.md`,
+    `${TREND}/places/food/deep/latest.md`,
+    `${TREND}/places/latest.md`,
+  ]) {
+    stage([p])
+    r = runHook()
+    assert.equal(r.status, 1, `예약 루틴은 ${p}를 바꾸면 안 된다:\n${r.stderr}`)
+    git(['reset', '-q'], base)
+  }
+
   // ④ 일반 작성자 — 무관(폴더 밖이어도 통과)
   setAuthor(OTHER_EMAIL, 'standardmanual')
   stage(['jam-web/src/bar.ts'])

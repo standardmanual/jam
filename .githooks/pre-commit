@@ -38,8 +38,12 @@ esac
 #
 # 우회 변수는 두지 않는다 — 무인 실행이 스스로 우회 변수를 켜는 것은 이 방어를 무력화하는
 # 것과 같기 때문이다.
+#
+# 예외(티켓 20261102_1410, 사용자 허용 2026-11-02): 트렌드 수집 루틴이 갱신하는 주제 폴더의
+# latest.md 한 종류만 더 허용한다. README·notes·archive와 그 밖의 폴더 이름은 여전히 막는다.
 ROUTINE_AUTHOR_EMAIL="noreply@anthropic.com"
 ROUTINE_ALLOWED_PREFIX="docs/operations/reports/"
+ROUTINE_ALLOWED_FILE_REGEX='^docs/operations/trendresearch/(places|sports|service|culture)/[a-z0-9_-]+/latest\.md$'
 routine_author=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed -n 's/.*<\([^>]*\)>.*/\1/p')
 if [ "$routine_author" = "$ROUTINE_AUTHOR_EMAIL" ]; then
   routine_blocked=0
@@ -47,14 +51,16 @@ if [ "$routine_author" = "$ROUTINE_AUTHOR_EMAIL" ]; then
     case "$f" in
       "$ROUTINE_ALLOWED_PREFIX"*) ;;
       *)
-        echo "차단(pre-commit): 예약 루틴 작성자(${ROUTINE_AUTHOR_EMAIL})의 커밋이 ${ROUTINE_ALLOWED_PREFIX} 밖 파일을 바꿉니다." >&2
-        echo "  파일: $f" >&2
-        routine_blocked=1
+        if ! printf '%s' "$f" | grep -qE "$ROUTINE_ALLOWED_FILE_REGEX"; then
+          echo "차단(pre-commit): 예약 루틴 작성자(${ROUTINE_AUTHOR_EMAIL})의 커밋이 ${ROUTINE_ALLOWED_PREFIX} 밖 파일을 바꿉니다." >&2
+          echo "  파일: $f" >&2
+          routine_blocked=1
+        fi
         ;;
     esac
   done < <(git diff --cached --name-only -z)
   if [ "$routine_blocked" -eq 1 ]; then
-    echo "  무인 루틴은 ${ROUTINE_ALLOWED_PREFIX} 안만 쓸 수 있습니다. 우회 변수는 없습니다." >&2
+    echo "  무인 루틴은 ${ROUTINE_ALLOWED_PREFIX} 안과 트렌드 주제 폴더의 latest.md만 쓸 수 있습니다. 우회 변수는 없습니다." >&2
     exit 1
   fi
 fi
