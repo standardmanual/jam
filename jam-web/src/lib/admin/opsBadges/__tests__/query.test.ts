@@ -23,13 +23,14 @@ describe('parseBadgesQuery', () => {
 
 describe('parsePlacesQuery', () => {
   it('쿼리가 없으면 요약이다', () => {
-    expect(parsePlacesQuery(p(''))).toEqual({ mode: 'summary' })
+    expect(parsePlacesQuery(p(''))).toEqual({ mode: 'summary', filter: { status: 'active', sido: null, gu: null } })
   })
 
   it('category가 있으면 목록이고 기본값이 채워진다', () => {
     expect(parsePlacesQuery(p('category=mountain'))).toEqual({
       mode: 'list',
       query: { category: 'mountain', q: '', limit: 30, offset: 0, sort: 'drops' },
+      filter: { status: 'active', sido: null, gu: null },
     })
   })
 

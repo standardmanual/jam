@@ -6,6 +6,8 @@
  * - 쿼리 없음: 카테고리 요약, 장소 수 합계 = poi 행 수
  * - category 목록: 드랍·픽업 수, 정렬, 쪽 나누기, 잘못된 값은 400(읽지 않음), 없는 카테고리는 404
  * - 좌표·주소·유저 칸이 응답에 없다. 원천 하나라도 실패하면 고정 문장 500
+ * - 티켓 20261102_2254: 기본은 활성·검수 통과만 센다(비활성·검수 대기 수는 따로), status=all 합계 = poi 행 수, sido·gu 거름과 목록의 지역 칸,
+ *   groupBy=region 집계, 잘못된 status·groupBy는 400
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -78,12 +80,23 @@ const FAILED_MESSAGE = '장소 정보를 불러오지 못했어요. 잠시 뒤 �
 
 type Row = Record<string, unknown>
 
-function place(id: string, name: string, category: string, linked: string | null = null): Row {
+function place(
+  id: string,
+  name: string,
+  category: string,
+  linked: string | null = null,
+  over: Row = { sido: '서울특별시', gu: '관악구' }
+): Row {
   return {
     id,
     name,
     category,
     linked_badge_id: linked,
+    is_active: true,
+    pending_review: false,
+    sido: null,
+    gu: null,
+    ...over,
     lat: 37.5,
     lng: 127.0,
     address: '서울시 비밀구 1-1',
@@ -104,7 +117,9 @@ function fillTables() {
     place('p1', '관악산', 'mountain', 'b1'),
     place('p2', '북한산', 'mountain', 'b2'),
     place('p3', '가야산', 'mountain'),
-    place('p4', '강남역', 'subway', 'b4'),
+    place('p4', '강남역', 'subway', 'b4', { sido: '서울특별시', gu: '강남구' }),
+    place('p5', '닫힌 산', 'mountain', null, { is_active: false, sido: '경기도', gu: '성남시' }),
+    place('p6', '검수 대기 역', 'subway', null, { pending_review: true, is_active: false, sido: '서울특별시', gu: '강남구' }),
   ]
   h.db.tables.poi_drops = [
     drop('d1', 'p2'),
@@ -118,7 +133,7 @@ function request(query = '', headers: Record<string, string> = {}, method = 'GET
   return new Request(`http://localhost/api/admin/ops-places${query}`, { method, headers })
 }
 
-type PlaceBody = { id: string; dropCount: number; pickupCount: number; hasCheckinBadge: boolean }
+type PlaceBody = { id: string; sido: string | null; gu: string | null; dropCount: number; pickupCount: number; hasCheckinBadge: boolean }
 
 const saved: Record<string, string | undefined> = {}
 
@@ -168,13 +183,73 @@ describe('GET /api/admin/ops-places — 인증', () => {
 describe('GET /api/admin/ops-places — 카테고리 요약', () => {
   it('카테고리별 장소·체크인 배지·드랍·픽업 수를 싣고 장소 수 합계가 poi 행 수와 같다', async () => {
     const body = await (await GET(request('', AUTH))).json()
-    expect(body.totalPlaces).toBe(4)
+    expect(body).toMatchObject({ totalPlaces: 4, inactiveCount: 1, pendingReviewCount: 1 })
     expect(body.categories).toEqual([
-      { slug: 'mountain', label: '산', placeCount: 3, checkinBadgeCount: 2, dropCount: 3, pickupCount: 1 },
-      { slug: 'subway', label: '지하철역', placeCount: 1, checkinBadgeCount: 1, dropCount: 1, pickupCount: 0 },
+      {
+        slug: 'mountain',
+        label: '산',
+        placeCount: 3,
+        inactiveCount: 1,
+        pendingReviewCount: 0,
+        checkinBadgeCount: 2,
+        dropCount: 3,
+        pickupCount: 1,
+      },
+      {
+        slug: 'subway',
+        label: '지하철역',
+        placeCount: 1,
+        inactiveCount: 0,
+        pendingReviewCount: 1,
+        checkinBadgeCount: 1,
+        dropCount: 1,
+        pickupCount: 0,
+      },
     ])
-    const sum = (body.categories as Array<{ placeCount: number }>).reduce((n, c) => n + c.placeCount, 0)
+  })
+
+  it('status=all의 장소 수 합계는 poi 전체 행 수와 같다. inactive·pending은 그 상태만 센다', async () => {
+    const all = await (await GET(request('?status=all', AUTH))).json()
+    expect(all.totalPlaces).toBe(h.db.tables.poi.length)
+    const sum = (all.categories as Array<{ placeCount: number }>).reduce((n, c) => n + c.placeCount, 0)
     expect(sum).toBe(h.db.tables.poi.length)
+    const inactive = await (await GET(request('?status=inactive', AUTH))).json()
+    expect(inactive.totalPlaces).toBe(1)
+    const pending = await (await GET(request('?status=pending', AUTH))).json()
+    expect(pending.totalPlaces).toBe(1)
+  })
+
+  it('sido·gu로 거르면 그 지역의 수만 센다', async () => {
+    const body = await (await GET(request(`?sido=${encodeURIComponent('서울특별시')}&gu=${encodeURIComponent('강남구')}`, AUTH))).json()
+    expect(body).toMatchObject({ totalPlaces: 1, inactiveCount: 0, pendingReviewCount: 1 })
+  })
+})
+
+describe('GET /api/admin/ops-places — 지역별 집계', () => {
+  it('groupBy=region은 시·도, 시·군·구별 수를 싣고 좌표·주소·동이 없다', async () => {
+    const res = await GET(request('?groupBy=region', AUTH))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.totalPlaces).toBe(4)
+    expect(body.groups).toEqual([
+      { sido: '서울특별시', gu: '관악구', placeCount: 3, checkinBadgeCount: 2, dropCount: 3, pickupCount: 1 },
+      { sido: '서울특별시', gu: '강남구', placeCount: 1, checkinBadgeCount: 1, dropCount: 1, pickupCount: 0 },
+    ])
+    const text = JSON.stringify(body)
+    for (const secret of ['secret-user', 'naver-secret', '비밀구', '37.5']) expect(text).not.toContain(secret)
+  })
+
+  it('category를 함께 주면 그 카테고리만 세고, 없는 카테고리는 404다', async () => {
+    const body = await (await GET(request('?groupBy=region&category=subway', AUTH))).json()
+    expect(body.groups).toEqual([
+      { sido: '서울특별시', gu: '강남구', placeCount: 1, checkinBadgeCount: 1, dropCount: 1, pickupCount: 0 },
+    ])
+    expect((await GET(request('?groupBy=region&category=nowhere', AUTH))).status).toBe(404)
+  })
+
+  it('status=all이면 비활성·검수 대기 장소도 센다', async () => {
+    const body = await (await GET(request('?groupBy=region&status=all', AUTH))).json()
+    expect(body.totalPlaces).toBe(6)
   })
 })
 
@@ -190,7 +265,7 @@ describe('GET /api/admin/ops-places — 카테고리 장소 목록', () => {
     })
     const places = body.places as PlaceBody[]
     expect(places.map((p) => p.id)).toEqual(['p2', 'p1'])
-    expect(places[0]).toMatchObject({ dropCount: 2, pickupCount: 1, hasCheckinBadge: true })
+    expect(places[0]).toMatchObject({ dropCount: 2, pickupCount: 1, hasCheckinBadge: true, sido: '서울특별시', gu: '관악구' })
 
     const next = await (await GET(request('?category=mountain&limit=2&offset=2', AUTH))).json()
     expect((next.places as PlaceBody[]).map((p) => p.id)).toEqual(['p3'])
@@ -211,10 +286,25 @@ describe('GET /api/admin/ops-places — 카테고리 장소 목록', () => {
       '?category=mountain&sort=random',
       '?category=Mountain',
       '?limit=5',
+      '?status=deleted',
+      '?groupBy=gu',
+      '?groupBy=region&limit=5',
+      '?sido=',
     ]) {
       expect((await GET(request(bad, AUTH))).status, bad).toBe(400)
     }
     expect(h.db.reads).toBe(0)
+  })
+
+  it('기본 목록에는 비활성이 없고 status=all이면 지역 칸과 함께 나온다', async () => {
+    const def = await (await GET(request('?category=mountain', AUTH))).json()
+    expect(def.total).toBe(3)
+    const all = await (await GET(request('?category=mountain&status=all', AUTH))).json()
+    expect(all.total).toBe(4)
+    const closed = (all.places as PlaceBody[]).find((p) => p.id === 'p5')
+    expect(closed).toMatchObject({ sido: '경기도', gu: '성남시' })
+    const gyeonggi = await (await GET(request(`?category=mountain&status=all&sido=${encodeURIComponent('경기도')}`, AUTH))).json()
+    expect((gyeonggi.places as PlaceBody[]).map((p) => p.id)).toEqual(['p5'])
   })
 
   it('없는 카테고리는 404다', async () => {
@@ -230,7 +320,9 @@ describe('GET /api/admin/ops-places — 노출 범위와 실패', () => {
       expect(summary).not.toContain(secret)
       expect(list).not.toContain(secret)
     }
-    expect(h.db.selected.poi).toEqual(['id', 'name', 'category', 'linked_badge_id'])
+    expect(h.db.selected.poi).toEqual([
+      'id', 'name', 'category', 'linked_badge_id', 'is_active', 'pending_review', 'sido', 'gu',
+    ])
     expect(h.db.selected.poi_drops).toEqual(['id', 'poi_id', 'picked_up_at'])
   })
 
