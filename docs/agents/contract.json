@@ -116,7 +116,7 @@
       "docs/service/content/TRIBES.md",
       "docs/assets/content-seed/v5_seed_build.py",
       "docs/operations/reports",
-      "docs/operations/inbox/trends/README.md",
+      "docs/operations/trendresearch/README.md",
       "docs/agents/workflow/README.md",
       "jam-web/supabase/migrations/198_ops_inbox.sql",
       "jam-web/supabase/migrations/207_ops_rules.sql",

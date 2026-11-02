@@ -12,11 +12,16 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PROBE_REL = `jam-web/slop-probe-${process.pid}.txt`
 const BIN_REL = `jam-web/slop-probe-${process.pid}.bin`
-// 사용자 트렌드 자료 폴더는 원문을 고치지 않으므로 검사에서 빠져야 한다 (티켓 20260930_1518)
-const TREND_REL = `docs/operations/inbox/trends/2099-01-01_slop-probe-${process.pid}.md`
+// 트렌드 리서치 폴더의 notes/(사용자 원문)와 archive/(지난 회차)는 고치지 않으므로 검사에서 빠지고, 에이전트가 새로 쓰는 latest.md는 검사한다 (티켓 20260930_1518, 20261102_1355)
+const TREND_DIR = `docs/operations/trendresearch/culture/slop-probe-${process.pid}`
+const TREND_REL = `${TREND_DIR}/notes/2099-01-01_slop-probe.md`
+const TREND_ARCHIVE_REL = `${TREND_DIR}/archive/2099-01-01.md`
+const TREND_LATEST_REL = `${TREND_DIR}/latest.md`
 const PROBE = join(ROOT, PROBE_REL)
 const BIN = join(ROOT, BIN_REL)
 const TREND = join(ROOT, TREND_REL)
+const TREND_ARCHIVE = join(ROOT, TREND_ARCHIVE_REL)
+const TREND_LATEST = join(ROOT, TREND_LATEST_REL)
 // 7-6 컨텐츠 입력의 데이터 파일(백업 표·트라이브별 컨텐츠 마이그레이션, 짝짓기 데이터)은 옮겨 적은 데이터라 빠지고, 비슷한 이름의 다른 파일은 그대로 검사한다 (티켓 20261022_1137)
 const CONTENT_SQL_REL = `jam-web/supabase/migrations/999_tribe_content_probe_${process.pid}.sql`
 const BACKUP_SQL_REL = `jam-web/supabase/migrations/999_content_overwrite_backup.sql`
@@ -48,6 +53,13 @@ try {
   writeFileSync(TREND, '진짜 금칙어\n')
   const trend = run(TREND_REL)
   assert.equal(trend.status, 0, `사용자 트렌드 자료는 금칙어 검사에서 빠져야 한다: ${trend.stderr}`)
+  mkdirSync(dirname(TREND_ARCHIVE), { recursive: true })
+  writeFileSync(TREND_ARCHIVE, '진짜 금칙어\n')
+  const trendArchive = run(TREND_ARCHIVE_REL)
+  assert.equal(trendArchive.status, 0, `지난 회차 기록은 금칙어 검사에서 빠져야 한다: ${trendArchive.stderr}`)
+  writeFileSync(TREND_LATEST, '진짜 금칙어\n')
+  const trendLatest = run(TREND_LATEST_REL)
+  assert.equal(trendLatest.status, 1, '에이전트가 새로 쓰는 latest.md는 금칙어 검사를 받아야 한다')
 
   writeFileSync(CONTENT_SQL, "-- 진짜 궁극의 금칙어(옛 배지 이름과 원고 문구)\n")
   const content = run(CONTENT_SQL_REL)
@@ -66,7 +78,7 @@ try {
 } finally {
   rmSync(PROBE, { force: true })
   rmSync(BIN, { force: true })
-  rmSync(TREND, { force: true })
+  rmSync(join(ROOT, TREND_DIR), { recursive: true, force: true })
   rmSync(CONTENT_SQL, { force: true })
   rmSync(BACKUP_SQL, { force: true })
   rmSync(OTHER_SQL, { force: true })

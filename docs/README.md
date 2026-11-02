@@ -28,7 +28,7 @@ JAM!의 모든 문서는 이 폴더(`docs/`) 하나에 있습니다. 서비스 �
 | `plan/jam2/` | **JAM 2.0** 기획(서비스 재설계 정책, 트라이브 재구상, 새 서비스 운영 로직). 아직 서비스에 반영되지 않았다 | 덮어쓰기. 에이전트는 현재 서비스 사실의 근거로 쓰지 않는다 |
 | `marketing/` | 마케팅 플레이북·브랜드 보이스·콘텐츠 기획 레퍼런스·트렌드 노트 | 덮어쓰기 |
 | `operations/reports/` | 주간·월간·배포·선별 리포트 | 신규 추가만. 기존 파일을 고쳐 쓰지 않는다 |
-| `operations/inbox/trends/` | 사용자가 직접 넣는 트렌드 자료(사용법은 [그 폴더의 README](operations/inbox/trends/README.md)) | 신규 추가만. 올린 원문은 고치지 않는다. 에이전트는 재료로만 읽는다 |
+| `operations/trendresearch/` | 에이전트가 기획 재료로 읽는 트렌드 리서치 자료를 주제별로 모은 폴더(구조와 주제 표는 [그 폴더의 README](operations/trendresearch/README.md)) | `notes/`는 신규 추가만이고 올린 원문은 고치지 않는다. `archive/`는 만든 뒤 고치지 않고, `latest.md`는 월간 루틴이 교체한다. 에이전트는 재료로만 읽는다 |
 | `tickets/` | 실행 계획·작업 이력. 우선순위 폴더 아래에 둔다 | 신규 생성. 완료 후에도 지식베이스로 남는다 |
 | `agents/` | 에이전트 팀 운영 지도(`team-operations.md`)·오케스트레이터 규칙·계약(`contract.json`)·개발 프로세스 가드레일 | 덮어쓰기. 자동 생성 구간은 생성기로 고친다 |
 | `agents/workflow/` | 2026-09-22에 동결된 설계 원본 기록 | 읽기 전용. README.md 외 수정 금지 |

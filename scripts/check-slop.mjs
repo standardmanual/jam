@@ -3,7 +3,7 @@
 // origin/staging 대비 diff의 추가된 라인(커밋 전 워킹트리 포함)에서 찾는다 (티켓 20260918_0951, 20260924_0037).
 //
 // 검사 대상: jam-web/**, docs/** (단 docs/tickets/**·docs/archive/**·docs/assets/**·
-// docs/operations/inbox/trends/**와 7-6 컨텐츠 입력의 데이터 파일(CONTENT_DATA_FILE)은 제외 —
+// docs/operations/trendresearch/**/notes/**·**/archive/**와 7-6 컨텐츠 입력의 데이터 파일(CONTENT_DATA_FILE)은 제외 —
 // 티켓 본문은 작업 이력이고 보관·생성 산출물, 사용자가 넣은 자료 원문, 공용 DB 이름과 확인된 원고를 옮겨 적은
 // 데이터는 새로 쓰는 글이 아니다. 세계관·마케팅 문서도 docs/ 아래에 있어 검사 대상이다). 전체 파일이 아니라 diff의 추가 라인만 보는 이유는
 // 이미 승인된 기존 텍스트까지 매번 걸리면 게이트가 무의미해지기 때문이다.
@@ -102,8 +102,8 @@ function collectAddedLines() {
     !f.startsWith('docs/tickets/') &&
     !f.startsWith('docs/archive/') &&
     !f.startsWith('docs/assets/') &&
-    // 사용자가 넣은 트렌드 자료 원문은 고치지 않으므로 금칙어 검사에서 뺀다 (티켓 20260930_1518)
-    !f.startsWith('docs/operations/inbox/trends/') &&
+    // 사용자가 넣은 트렌드 자료 원문(notes/)과 지난 회차 기록(archive/)은 만든 뒤 고치지 않으므로 금칙어 검사에서 뺀다 (티켓 20260930_1518, 20261102_1355)
+    !/^docs\/operations\/trendresearch\/[^/]+\/[^/]+\/(notes|archive)\//.test(f) &&
     // 7-6 컨텐츠 입력의 데이터 파일은 새로 쓴 글이 아니라 옮겨 적은 데이터다(티켓 20261022_1137): 짝짓기 데이터는 공용 DB의
     // 옛 배지 이름(SQL이 옛 행을 찾는 키)이고, 컨텐츠 SQL은 그 이름과 사용자가 확인한 원고 문구를 그대로 담는다
     !CONTENT_DATA_FILE.test(f)

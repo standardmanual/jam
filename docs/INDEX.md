@@ -677,10 +677,11 @@ status: active
 
 **운영 (operations)**
 
-- [README.md](operations/inbox/trends/README.md) — 사용자가 넣는 트렌드 자료 폴더의 사용법과 루틴이 읽는 규칙을 안내한다.
-- [README.md](operations/trendresearch/README.md) — (description 없음)
-- [2026-10-27.md](operations/trendresearch/archive/2026-10-27.md) — (description 없음)
-- [latest.md](operations/trendresearch/latest.md) — (description 없음)
+- [README.md](operations/trendresearch/README.md) — 에이전트가 기획의 재료로 읽는 외부 자료를 주제별로 모은 하나뿐인 폴더의 구조, 주제 표, 쓰고 읽는 규칙을 안내한다.
+- [2026-10-27.md](operations/trendresearch/culture/events-seasons/archive/2026-10-27.md) — (description 없음)
+- [2026-10-27.md](operations/trendresearch/culture/marketing/archive/2026-10-27.md) — (description 없음)
+- [2026-10-27.md](operations/trendresearch/culture/memes-slang/archive/2026-10-27.md) — (description 없음)
+- [2026-10-27.md](operations/trendresearch/culture/misc/archive/2026-10-27.md) — (description 없음)
 
 **에이전트 (agents)**
 
@@ -728,18 +729,25 @@ status: active
 
 - [daily-meeting.md](operations/daily-meeting.md) — JAM 2.0 기간에 에이전트들이 매일 여는 데일리 미팅의 참석·안건·진행 방식·산출물·피드백 규칙을 정의한다.
 
-### docs/operations/inbox/trends/
-
-- [README.md](operations/inbox/trends/README.md) — 사용자가 넣는 트렌드 자료 폴더의 사용법과 루틴이 읽는 규칙을 안내한다.
-
 ### docs/operations/trendresearch/
 
-- [README.md](operations/trendresearch/README.md) — (description 없음)
-- [latest.md](operations/trendresearch/latest.md) — (description 없음)
+- [README.md](operations/trendresearch/README.md) — 에이전트가 기획의 재료로 읽는 외부 자료를 주제별로 모은 하나뿐인 폴더의 구조, 주제 표, 쓰고 읽는 규칙을 안내한다.
 
-### docs/operations/trendresearch/archive/
+### docs/operations/trendresearch/culture/events-seasons/archive/
 
-- [2026-10-27.md](operations/trendresearch/archive/2026-10-27.md) — (description 없음)
+- [2026-10-27.md](operations/trendresearch/culture/events-seasons/archive/2026-10-27.md) — (description 없음)
+
+### docs/operations/trendresearch/culture/marketing/archive/
+
+- [2026-10-27.md](operations/trendresearch/culture/marketing/archive/2026-10-27.md) — (description 없음)
+
+### docs/operations/trendresearch/culture/memes-slang/archive/
+
+- [2026-10-27.md](operations/trendresearch/culture/memes-slang/archive/2026-10-27.md) — (description 없음)
+
+### docs/operations/trendresearch/culture/misc/archive/
+
+- [2026-10-27.md](operations/trendresearch/culture/misc/archive/2026-10-27.md) — (description 없음)
 
 ### docs/plan/jam2/
 

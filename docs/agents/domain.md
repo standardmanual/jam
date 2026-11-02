@@ -39,7 +39,7 @@ JAM!/                          ← standardmanual/jam (Vercel에 배포되는 �
     ├── marketing/             ← 마케팅 플레이북·브랜드 보이스·트렌드 노트
     ├── operations/
     │   ├── reports/           ← 주간·월간·배포 리포트 (쌓기만 함)
-    │   └── inbox/trends/      ← 사용자가 넣는 트렌드 자료
+    │   └── trendresearch/     ← 주제별 트렌드 리서치 자료 (사용자 제출 + 에이전트 수집)
     ├── tickets/               ← 작업 이력 (신규 생성, 지식베이스로 계속 검색됨)
     ├── agents/                ← 에이전트 팀 설계
     ├── assets/                ← 이미지 제작물·프로토타입·브랜드 원본 (문서 검색 대상 아님)
