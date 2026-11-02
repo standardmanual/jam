@@ -15,7 +15,7 @@ export const AMBIENT_RARITY_RANDOM_NOTICE =
 export function AmbientRarityRandomNotice() {
   return (
     <Alert role="note">
-      <p className="text-sm text-pretty break-keep wrap-break-word">{AMBIENT_RARITY_RANDOM_NOTICE}</p>
+      <p className="text-sm text-balance break-keep wrap-break-word">{AMBIENT_RARITY_RANDOM_NOTICE}</p>
     </Alert>
   )
 }

@@ -74,7 +74,7 @@ export default function OnboardingQuestSkipSheet({ step }: OnboardingQuestSkipSh
           </div>
         }
       >
-        <p className="text-center text-base text-foreground break-keep wrap-break-word text-pretty px-4 py-6">
+        <p className="text-center text-base text-foreground break-keep wrap-break-word text-balance px-4 py-6">
           {d.onboardingQuest.skip.confirmBody}
         </p>
       </BottomSheet>

@@ -455,7 +455,7 @@ export default function ShapeStudioPanel({
                 >
                   + PNG / SVG 쉐입 추가
                 </Button>
-                <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-pretty">
+                <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
                   투명 배경 이미지는 불투명한 부분이, 흰 배경 이미지는 어두운 부분이 쉐입이 돼요.
                   파일을 캔버스에 끌어다 놓아도 됩니다. 추가한 쉐입은 이 탭을 닫으면 사라져요.
                 </p>
@@ -490,7 +490,7 @@ export default function ShapeStudioPanel({
                     )
                   })}
                 </div>
-                <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-pretty">
+                <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
                   체크한 항목만 &quot;랜덤 생성&quot;을 누를 때 바뀌어요. 선택한 쉐입에 맞는 항목이
                   표시됩니다.
                 </p>
@@ -506,7 +506,7 @@ export default function ShapeStudioPanel({
                 </div>
 
                 {isGlyphMode ? (
-                  <p className="mb-2.5 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-pretty">
+                  <p className="mb-2.5 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
                     로고 글자 쉐입은 세그먼트를 쓰지 않아요. 너비 슬라이더로 글자 크기를 조절하세요.
                   </p>
                 ) : (
@@ -529,7 +529,7 @@ export default function ShapeStudioPanel({
                         </Button>
                       ))}
                     </div>
-                    <p className="mt-2.5 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-pretty">
+                    <p className="mt-2.5 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
                       세그먼트는 위에서 아래로 쌓는 둥근 사각형 블록 하나예요. 블록마다 높이와
                       위·아래 모서리 둥글기를 조절하고, 블록을 합쳐 하나의 쉐입을 만듭니다.
                     </p>
@@ -1330,7 +1330,7 @@ export default function ShapeStudioPanel({
               </Button>
             )}
 
-            <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-pretty">
+            <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
               동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.
             </p>
           </section>

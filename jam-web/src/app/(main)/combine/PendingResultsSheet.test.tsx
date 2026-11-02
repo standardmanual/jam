@@ -191,7 +191,7 @@ describe('PendingResultsSheet', () => {
     const html = render(view({ freeSlots: 1, neededSlots: 3, items: [open(), open({ id: 'x2' }), locked()] }))
     expect(html).toContain('break-keep')
     expect(html).toContain('wrap-break-word')
-    expect(html).toContain('text-pretty')
+    expect(html).toContain('text-balance')
     expect(html).toContain('text-balance')
   })
 })

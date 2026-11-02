@@ -138,7 +138,7 @@ export default function TodayCardPreview({
             }}
           >
             {views.length === 0 && emptyMessage && (
-              <p className="py-6 text-center text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{emptyMessage}</p>
+              <p className="py-6 text-center text-sm text-muted-foreground break-keep wrap-break-word text-balance">{emptyMessage}</p>
             )}
             {views.map((view, index) => {
               const annotation = annotations?.[index]

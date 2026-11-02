@@ -23,7 +23,7 @@ export function inventoryApplyNotice(userCount: number | null): string {
 export function InventoryNotice({ userCount }: { userCount: number | null }) {
   return (
     <Alert role="note">
-      <p className="text-sm text-pretty break-keep wrap-break-word">{inventoryApplyNotice(userCount)}</p>
+      <p className="text-sm text-balance break-keep wrap-break-word">{inventoryApplyNotice(userCount)}</p>
     </Alert>
   )
 }

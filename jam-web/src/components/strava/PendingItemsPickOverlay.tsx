@@ -439,7 +439,7 @@ export function PendingItemsPickView({
               {d.syncPending.pick.fullTitle}
             </p>
             <p
-              className="m-0 break-keep wrap-break-word text-pretty"
+              className="m-0 break-keep wrap-break-word text-balance"
               style={{ color: 'var(--muted)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)' }}
             >
               {t(d.syncPending.pick.fullBody, { total })}
@@ -447,7 +447,7 @@ export function PendingItemsPickView({
             {errorText && (
               <p
                 role="alert"
-                className="m-0 break-keep wrap-break-word text-pretty"
+                className="m-0 break-keep wrap-break-word text-balance"
                 style={{ color: 'var(--foreground)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
               >
                 {errorText}
@@ -519,7 +519,7 @@ export function PendingItemsPickView({
               {t(d.syncPending.pick.title, { n: chooseCount })}
             </p>
             <p
-              className="m-0 break-keep wrap-break-word text-pretty"
+              className="m-0 break-keep wrap-break-word text-balance"
               style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
             >
               {t(d.syncPending.pick.subtitle, { total })}
@@ -542,7 +542,7 @@ export function PendingItemsPickView({
             {errorText && (
               <p
                 role="alert"
-                className="m-0 break-keep wrap-break-word text-pretty"
+                className="m-0 break-keep wrap-break-word text-balance"
                 style={{ color: 'var(--foreground)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
               >
                 {errorText}
@@ -560,7 +560,7 @@ export function PendingItemsPickView({
                 </p>
                 {unselected > 0 && (
                   <p
-                    className="m-0 break-keep wrap-break-word text-pretty"
+                    className="m-0 break-keep wrap-break-word text-balance"
                     style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
                   >
                     {t(d.syncPending.pick.unselectedNote, { count: unselected })}
@@ -587,7 +587,7 @@ export function PendingItemsPickView({
                 </p>
                 {unselected > 0 && (
                   <p
-                    className="m-0 break-keep wrap-break-word text-pretty"
+                    className="m-0 break-keep wrap-break-word text-balance"
                     style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
                   >
                     {t(d.syncPending.pick.confirmBody, { m: unselected })}

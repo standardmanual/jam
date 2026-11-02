@@ -136,7 +136,7 @@ describe('등급 올리기 입구 (탐색 화면)', () => {
     expect(subtitle).not.toBeNull()
     expect(subtitle![0]).toContain('break-keep')
     expect(subtitle![0]).toContain('wrap-break-word')
-    expect(subtitle![0]).toContain('text-pretty')
+    expect(subtitle![0]).toContain('text-balance')
     expect(subtitle![0]).not.toContain('truncate')
   })
 })

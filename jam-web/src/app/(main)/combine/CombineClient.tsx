@@ -206,7 +206,7 @@ export function RecipeDescription({ text }: { text: string }) {
       <p
         ref={ref}
         className={[
-          'm-0 w-full text-sm text-foreground whitespace-pre-line break-keep wrap-break-word text-pretty',
+          'm-0 w-full text-sm text-foreground whitespace-pre-line break-keep wrap-break-word text-balance',
           expanded ? '' : 'line-clamp-3',
         ]
           .filter(Boolean)
@@ -989,7 +989,7 @@ export default function CombineClient({
               <p className="m-0 text-base font-bold text-foreground break-keep wrap-break-word text-balance">
                 {t(d.combine.pendingBanner.title, { count: pendingCount })}
               </p>
-              <p className="m-0 text-sm text-muted break-keep wrap-break-word text-pretty">{d.combine.pendingBanner.body}</p>
+              <p className="m-0 text-sm text-muted break-keep wrap-break-word text-balance">{d.combine.pendingBanner.body}</p>
             </div>
             <Button variant="primary" className="ml-auto whitespace-nowrap" onClick={openPendingSheet}>
               {d.combine.pendingBanner.action}
@@ -1032,7 +1032,7 @@ export default function CombineClient({
             <div className="px-4 pt-4">
               <ListRowCard onClick={openTierUp} trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}>
                 <p className="m-0 text-base text-foreground break-keep wrap-break-word">{d.combine.tierUp.title}</p>
-                <p className="m-0 mt-0.5 text-sm text-muted break-keep wrap-break-word text-pretty">{d.combine.tierUp.entrySubtitle}</p>
+                <p className="m-0 mt-0.5 text-sm text-muted break-keep wrap-break-word text-balance">{d.combine.tierUp.entrySubtitle}</p>
               </ListRowCard>
             </div>
           )}
@@ -1135,7 +1135,7 @@ export default function CombineClient({
             </button>
             {/* 새 믹스가 막힌 이유 — 말 없이 막지 않는다. 읽혀야 하는 정보라 muted가 아니라 foreground로 둔다 */}
             {pendingBlocked && (
-              <p id="combine-pending-note" className="m-0 self-stretch text-sm text-foreground break-keep wrap-break-word text-pretty">
+              <p id="combine-pending-note" className="m-0 self-stretch text-sm text-foreground break-keep wrap-break-word text-balance">
                 {d.combine.pendingBlockedNote}
               </p>
             )}

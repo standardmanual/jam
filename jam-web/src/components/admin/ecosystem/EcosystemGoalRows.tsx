@@ -73,7 +73,7 @@ export function EcosystemGoalRows({ rows }: { rows: readonly GoalRow[] }) {
         <h2 id="eco-goal-heading" className="text-base font-semibold text-foreground">
           목표 대비
         </h2>
-        <p className="mt-1 text-xs text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="mt-1 text-xs text-muted-foreground text-balance break-keep wrap-break-word">
           밸런스 목표와 지금 값을 견줘요. 주의·중단은 위에 모여요
         </p>
       </div>

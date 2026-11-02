@@ -42,7 +42,7 @@ export function OpsCommonRuleConfirm({ pending, onConfirm, onCancel }: { pending
   return (
     <OpsConfirmPanel
       title={COMMON_RULE_CONFIRM_TITLE}
-      description={<p className={cn(TEXT_CLASS, 'text-pretty')}>{COMMON_RULE_CONFIRM_TEXT}</p>}
+      description={<p className={cn(TEXT_CLASS, 'text-balance')}>{COMMON_RULE_CONFIRM_TEXT}</p>}
       confirmLabel={COMMON_RULE_SAVE_LABEL}
       pendingLabel={COMMON_RULE_SAVING_LABEL}
       pending={pending}

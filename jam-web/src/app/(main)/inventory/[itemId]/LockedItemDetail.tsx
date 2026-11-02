@@ -175,7 +175,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
           <SwapText value={title} />
         </h1>
         {description !== '' && (
-          <p className="m-0 break-keep wrap-break-word text-pretty text-base text-foreground">
+          <p className="m-0 break-keep wrap-break-word text-balance text-base text-foreground">
             <SwapText value={description} />
           </p>
         )}
@@ -188,7 +188,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
           >
             <div className="overflow-hidden">
               {required === 0 ? (
-                <p className="m-0 break-keep wrap-break-word text-pretty text-base text-foreground">{d.lockedItem.detail.points.free}</p>
+                <p className="m-0 break-keep wrap-break-word text-balance text-base text-foreground">{d.lockedItem.detail.points.free}</p>
               ) : (
                 <div className="flex flex-col gap-3">
                   <dl className="m-0 flex flex-col gap-1">

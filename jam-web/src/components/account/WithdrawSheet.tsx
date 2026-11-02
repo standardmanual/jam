@@ -52,7 +52,7 @@ const INPUT_ID = 'withdraw-confirm-input'
 const HINT_ID = 'withdraw-confirm-hint'
 
 /** 문단과 문장 안내의 한국어 줄바꿈(가이드 3.2절) */
-const PROSE = 'break-keep wrap-break-word text-pretty'
+const PROSE = 'break-keep wrap-break-word text-balance'
 
 /**
  * 행 5줄 높이(py-1 8px + text-base 줄 높이 24px = 32px x 5). 스켈레톤이 이 높이를 미리 잡아 값이 도착해도 아래 내용이 밀리지 않는다.

@@ -29,7 +29,7 @@ export default function DevBoardPage() {
     <div className="w-full p-4 md:p-8">
       <header className="mb-8 space-y-2">
         <h1 className="text-2xl font-bold">개발·배포 상황판</h1>
-        <p className="text-sm text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="text-sm text-muted-foreground text-balance break-keep wrap-break-word">
           배포 현황과 JAM 2.0 묶음 진행, 개발 항목의 단계를 GitHub에서 읽어 보여줘요
         </p>
         <Suspense fallback={<Skeleton className="h-4 w-40" />}>

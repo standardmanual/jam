@@ -177,7 +177,7 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
   } else if (showSlotsAction) {
     action = (
       <div className="flex flex-col gap-2">
-        <p className="m-0 text-sm text-muted break-keep wrap-break-word text-pretty">
+        <p className="m-0 text-sm text-muted break-keep wrap-break-word text-balance">
           {t(d.capsule.widget.slots, { free: claim.freeSlots, needed: claim.neededSlots })}
         </p>
         <Button variant="outline" fullWidth onClick={() => router.push('/inventory')}>

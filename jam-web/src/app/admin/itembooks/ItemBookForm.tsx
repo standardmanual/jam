@@ -326,7 +326,7 @@ export default function ItemBookForm({
       {isTierMode ? (
         <div className="flex flex-col gap-1.5">
           <span className="text-sm text-foreground">완성 보상</span>
-          <FieldMessage className="break-keep wrap-break-word text-pretty">
+          <FieldMessage className="break-keep wrap-break-word text-balance">
             4등급 방식에서는 등급별 보상을 써요. 완성 보상 배지와 포인트 보상 칸은 접어 뒀고, 저장해 둔 값은 지우지 않아요.
           </FieldMessage>
         </div>

@@ -49,7 +49,7 @@ export interface OpsEvidencePickerProps {
 }
 
 const RADIO_CLASS = 'mt-1 size-4 shrink-0 accent-neutral-900'
-const TEXT_CLASS = 'break-keep wrap-break-word text-pretty'
+const TEXT_CLASS = 'break-keep wrap-break-word text-balance'
 
 function Option({
   name,

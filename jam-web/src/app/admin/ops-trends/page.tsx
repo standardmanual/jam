@@ -60,7 +60,7 @@ export default async function OpsTrendsPage({ searchParams }: { searchParams: Se
           <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold">{PAGE_TITLE}</h1>
-              <p className="mt-1 text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{PAGE_SUBTITLE}</p>
+              <p className="mt-1 text-sm text-muted-foreground break-keep wrap-break-word text-balance">{PAGE_SUBTITLE}</p>
             </div>
             <OpsSampleSwitch includeSample={includeSample} />
           </header>

@@ -172,7 +172,7 @@ export function HomePreviewConditionsRow({
       </div>
 
       {missingStored.length > 0 && (
-        <p role="status" className={cn('text-xs text-muted-foreground text-pretty', TEXT_CLASS)}>
+        <p role="status" className={cn('text-xs text-muted-foreground text-balance', TEXT_CLASS)}>
           {`저장된 값이 없어요: ${missingStored.join(', ')}. 위에서 직접 골라 볼 수 있어요.`}
         </p>
       )}

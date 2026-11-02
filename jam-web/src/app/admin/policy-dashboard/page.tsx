@@ -18,7 +18,7 @@ export default async function PolicyDashboardPage() {
     <div className="w-full p-4 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">정책 대시보드</h1>
-        <p className="text-muted-foreground text-sm mt-1 text-pretty break-keep wrap-break-word">
+        <p className="text-muted-foreground text-sm mt-1 text-balance break-keep wrap-break-word">
           서비스 운영 정책과 밸런스 기준을 한눈에 보고, 바꿀 값은 설정 화면에서 수정해요
         </p>
       </div>

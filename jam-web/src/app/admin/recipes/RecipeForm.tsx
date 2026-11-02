@@ -429,7 +429,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
             >
               보상 없음
             </label>
-            <p id="recipe-allow-no-reward-help" className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">
+            <p id="recipe-allow-no-reward-help" className="text-xs text-muted-foreground break-keep wrap-break-word text-balance">
               켜면 포인트와 보상 배지를 모두 비워도 저장돼요. 끄면 보상을 하나 이상 지정해야 해요.
             </p>
           </div>
@@ -450,7 +450,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
             >
               결과를 잠긴 채 지급
             </label>
-            <p id="recipe-reward-locked-help" className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">
+            <p id="recipe-reward-locked-help" className="text-xs text-muted-foreground break-keep wrap-break-word text-balance">
               켜면 이 레시피로 받는 아이템 배지가 잠긴 채 나와요. 끄면 열린 채 나와요.
             </p>
           </div>

@@ -34,7 +34,7 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
       <DialogContent container={themeContainer ?? undefined} className="max-w-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="break-keep wrap-break-word">홈피드 미리보기</DialogTitle>
-          <DialogDescription className="break-keep wrap-break-word text-pretty">
+          <DialogDescription className="break-keep wrap-break-word text-balance">
             선택한 날부터 7일을 유저 조건별로 미리 봐요. 날씨와 특일은 저장된 값을 쓰고, 저장되지 않은 날은 직접 골라 볼 수 있어요.
           </DialogDescription>
         </DialogHeader>

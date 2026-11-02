@@ -229,7 +229,7 @@ export default function MissionConditionSection({
           <div className="sm:col-span-2">
             <Alert variant="warning">
               <AlertDescription>
-                <p className={cn('text-xs text-amber-800/80 text-pretty', KO_TEXT)}>{DB_CONDITION_DROPPED_NOTICE}</p>
+                <p className={cn('text-xs text-amber-800/80 text-balance', KO_TEXT)}>{DB_CONDITION_DROPPED_NOTICE}</p>
               </AlertDescription>
             </Alert>
           </div>

@@ -242,7 +242,7 @@ export function UserTribeChangeForm({ userId, currentTribeName, options, reasons
           )}
           {preview.status === 'failed' && (
             <>
-              <p role="alert" className="text-red-600 break-keep wrap-break-word text-pretty">
+              <p role="alert" className="text-red-600 break-keep wrap-break-word text-balance">
                 {preview.message}
               </p>
               <button
@@ -327,7 +327,7 @@ export function UserTribeChangeForm({ userId, currentTribeName, options, reasons
           <AlertDialogHeader>
             <AlertDialogTitle className="break-keep wrap-break-word text-balance">트라이브를 바꿀까요?</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2 break-keep wrap-break-word text-pretty">
+              <div className="space-y-2 break-keep wrap-break-word text-balance">
                 <p className="text-foreground font-bold">
                   {currentTribeName} → {selectedTribe?.name ?? ''}
                 </p>

@@ -280,7 +280,7 @@ export default function ConditionSimulationPanel({
                 </p>
               )}
               {simResult.missionDbKeysPresent && simResult.missionDbKeysPresent.length > 0 && (
-                <p className="text-xs text-amber-800 break-keep wrap-break-word text-pretty">
+                <p className="text-xs text-amber-800 break-keep wrap-break-word text-balance">
                   이 조건에는 참가한 뒤 쌓인 기록으로 세는 조건({simResult.missionDbKeysPresent.join(', ')})이 포함돼 있어
                   이 시뮬레이션으로는 판정할 수 없어요. 실제 미션에서는 활동을 동기화할 때 판정해요.
                 </p>

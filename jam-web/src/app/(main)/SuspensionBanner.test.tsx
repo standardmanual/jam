@@ -69,7 +69,7 @@ describe('SuspensionBanner — 정지 중 기본 모습', () => {
     expect(html).toContain('break-keep')
     expect(html).toContain('wrap-break-word')
     expect(html).toContain('text-balance')
-    expect(html).toContain('text-pretty')
+    expect(html).toContain('text-balance')
   })
 })
 

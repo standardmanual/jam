@@ -38,7 +38,7 @@ export function EcosystemLoopMap({ nodes, selected }: EcosystemLoopMapProps) {
         <h2 id="eco-map-heading" className="text-base font-semibold text-foreground">
           순환 지도
         </h2>
-        <p className="mt-1 text-xs text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="mt-1 text-xs text-muted-foreground text-balance break-keep wrap-break-word">
           마디를 누르면 그 마디의 정책이 아래에 열려요
         </p>
       </div>

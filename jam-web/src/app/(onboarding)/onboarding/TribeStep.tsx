@@ -107,7 +107,7 @@ export default function TribeStep({
 
         {tribesState.kind === 'error' && (
           <div className="w-full flex flex-col items-center gap-4 py-4">
-            <p className={`text-base text-center text-muted text-pretty ${KO_BREAK}`}>
+            <p className={`text-base text-center text-muted text-balance ${KO_BREAK}`}>
               {d.onboarding.tribesLoadError}
             </p>
             <Button variant="outline" onClick={onRetry} className={`whitespace-nowrap ${KO_BREAK}`}>
@@ -118,7 +118,7 @@ export default function TribeStep({
 
         {tribesState.kind === 'ready' && tribes.length === 0 && (
           <div className="w-full flex flex-col items-center gap-4 py-4">
-            <p className={`text-base text-center text-muted text-pretty ${KO_BREAK}`}>
+            <p className={`text-base text-center text-muted text-balance ${KO_BREAK}`}>
               {d.onboarding.tribesEmptyError}
             </p>
             <Button variant="outline" onClick={onRetry} className={`whitespace-nowrap ${KO_BREAK}`}>
@@ -158,7 +158,7 @@ export default function TribeStep({
                     <span className={`block text-base font-bold ${KO_BREAK}`}>{tribe.name}</span>
                     {tribe.tagline && (
                       // 선택하면 면이 어두워지므로 글자는 --snow다(--muted는 어두운 면 위에서 작은 글자에 못 쓴다)
-                      <span className={`block text-sm line-clamp-2 text-pretty ${KO_BREAK} ${selected ? 'text-snow' : 'text-muted'}`}>
+                      <span className={`block text-sm line-clamp-2 text-balance ${KO_BREAK} ${selected ? 'text-snow' : 'text-muted'}`}>
                         {tribe.tagline}
                       </span>
                     )}
@@ -170,7 +170,7 @@ export default function TribeStep({
         )}
 
         {error && (
-          <p role="alert" className={`text-base text-center text-pretty ${KO_BREAK}`}>
+          <p role="alert" className={`text-base text-center text-balance ${KO_BREAK}`}>
             {error}
           </p>
         )}
