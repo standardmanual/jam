@@ -827,7 +827,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
               aria-describedby="today-card-sort-order-help"
               className="tabular-nums"
             />
-            <FieldMessage id="today-card-sort-order-help">작을수록 위에 노출돼요</FieldMessage>
+            <FieldMessage id="today-card-sort-order-help">홈 순서는 새 카드 먼저, 나머지는 날마다 섞여요. 이 값은 순서가 같을 때만 쓰여요</FieldMessage>
           </div>
           <div className="flex min-w-0 flex-col justify-end gap-1.5 pb-1.5">
             <div className="flex items-center gap-2.5">
