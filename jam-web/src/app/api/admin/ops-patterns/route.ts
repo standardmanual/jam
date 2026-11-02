@@ -6,7 +6,7 @@
  *
  * - GET 인증: 관리자 세션 또는 어드민 읽기 토큰(`requireAdminRead`, GET 전용).
  * - POST(패턴 만들기): **관리자 세션만** 통과한다(`getAdminUser()`가 없으면 403, 읽기 토큰은 보지 않는다). 본문은 패턴 내용 칸
- *   `{ name, principle, userExperience, menus, samples, cardShapes, knobs, pitfalls, topic?, angles? }`(주제·샘플 각도는 티켓 20261102_1600)이고 번호(P19~)·상태(`active`)·출처(`manual`)는 서버가 정한다.
+ *   `{ name, principle, userExperience, menus, samples, cardShapes, knobs, pitfalls, topic?, angles? }`(주제·샘플 각도는 티켓 20261102_1600)이고 번호(가장 큰 번호 다음, 지금은 P40~)·상태(`active`)·출처(`manual`)는 서버가 정한다.
  *   응답은 201 `{ pattern }`, 400 `{ error, fieldErrors? }`, 409(그사이 다른 패턴이 만들어짐), 500이다. 처리는 `write.ts`의 `createOpsPattern`이 한다.
  * - 쿼리 `topic=sports/run`은 그 주제 패턴만, `topic=none`은 원리형(주제 없음)만 싣는다(티켓 20261102_1600). 취향 신호·공통 규칙은 거르지 않는다.
  * - 쿼리 `includeArchived=true`일 때만 보관 패턴을 싣는다(기본은 사용 중·쉬는 중). 취향 신호는 보관한 패턴 것까지 싣는다.
