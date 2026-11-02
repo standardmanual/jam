@@ -87,6 +87,36 @@ try {
     git(['reset', '-q'], base)
   }
 
+  // ③-4 notes/의 새 muse- 파일 — 통과, 그러나 수정·삭제와 다른 이름은 차단(티켓 20261102_1500)
+  const notes = `${TREND}/culture/misc/notes`
+  stage([`${notes}/2026-11-09_muse-편의점-신상.md`, `${TREND}/places/food/latest.md`])
+  r = runHook()
+  assert.equal(r.status, 0, `notes/의 새 muse- 파일은 통과해야 한다:\n${r.stderr}`)
+  git(['reset', '-q'], base)
+
+  for (const p of [`${notes}/2026-11-09_메모.md`, `${notes}/muse-2026-11-09.md`, `${notes}/sub/2026-11-09_muse-a.md`, `${TREND}/places/notes/2026-11-09_muse-a.md`]) {
+    stage([p])
+    r = runHook()
+    assert.equal(r.status, 1, `예약 루틴은 ${p}를 바꾸면 안 된다:\n${r.stderr}`)
+    git(['reset', '-q'], base)
+  }
+
+  // 이미 있는 notes/ 파일의 수정과 삭제는 차단한다(일반 작성자가 먼저 올려 둔 뒤 루틴 작성자로 바꿔 시험)
+  const existing = `${notes}/2026-11-02_muse-옛것.md`
+  setAuthor(OTHER_EMAIL, 'standardmanual')
+  stage([existing])
+  git(['commit', '-q', '-m', 'seed'], base)
+  setAuthor(ROUTINE_EMAIL, 'Claude')
+  writeFileSync(join(base, existing), '수정한 내용\n')
+  git(['add', existing], base)
+  r = runHook()
+  assert.equal(r.status, 1, `기존 notes/ 파일의 수정은 차단되어야 한다:\n${r.stderr}`)
+  git(['reset', '-q', '--hard'], base)
+  git(['rm', '-q', existing], base)
+  r = runHook()
+  assert.equal(r.status, 1, `기존 notes/ 파일의 삭제는 차단되어야 한다:\n${r.stderr}`)
+  git(['reset', '-q', '--hard'], base)
+
   // ④ 일반 작성자 — 무관(폴더 밖이어도 통과)
   setAuthor(OTHER_EMAIL, 'standardmanual')
   stage(['jam-web/src/bar.ts'])

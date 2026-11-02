@@ -2089,5 +2089,5 @@
   {"id":"20261102_1355","title":"[Infra] 트렌드 자료 폴더를 하나로 합치고 주제별로 나눈다","status":"OPEN","category":"Infra","priority":"P2","parent":"","origin":"","created":"2026-11-02","closed":"","path":"docs/tickets/p2-normal/20261102_1355_Infra_트렌드-자료-폴더를-하나로-합치고-주제별로-나눈다.md"},
   {"id":"20261102_1410","title":"[Infra] 주간 트렌드 수집 루틴을 만든다","status":"OPEN","category":"Infra","priority":"P2","parent":"20261102_1355","origin":"","created":"2026-11-02","closed":"","path":"docs/tickets/p2-normal/20261102_1410_Infra_주간-트렌드-수집-루틴을-만든다.md"},
   {"id":"20261102_1440","title":"[Infra] 트렌드 수집은 Muse로, 작성은 주간 루틴으로 나눈다","status":"OPEN","category":"Infra","priority":"P2","parent":"20261102_1355","origin":"","created":"2026-11-02","closed":"","path":"docs/tickets/p2-normal/20261102_1440_Infra_트렌드-수집은-Muse로-작성은-주간-루틴으로-나눈다.md"},
-  {"id":"20261102_1500","title":"[Infra] Muse 수집 브랜치와 반입 Action을 만든다","status":"OPEN","category":"Infra","priority":"P2","parent":"20261102_1440","origin":"","created":"2026-11-02","closed":"","path":"docs/tickets/p2-normal/20261102_1500_Infra_Muse-수집함-저장소와-반입-Action을-만든다.md"}
+  {"id":"20261102_1500","title":"[Infra] Muse 수집 브랜치와 월요일 루틴의 반입 단계를 만든다","status":"OPEN","category":"Infra","priority":"P2","parent":"20261102_1440","origin":"","created":"2026-11-02","closed":"","path":"docs/tickets/p2-normal/20261102_1500_Infra_Muse-수집-브랜치와-월요일-루틴의-반입-단계를-만든다.md"}
 ]

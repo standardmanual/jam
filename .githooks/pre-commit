@@ -40,18 +40,26 @@ esac
 # 것과 같기 때문이다.
 #
 # 예외(티켓 20261102_1410, 사용자 허용 2026-11-02): 트렌드 수집 루틴이 갱신하는 주제 폴더의
-# latest.md 한 종류만 더 허용한다. README·notes·archive와 그 밖의 폴더 이름은 여전히 막는다.
+# latest.md 한 종류만 더 허용한다. README·archive와 그 밖의 폴더 이름은 여전히 막는다.
+# 두 번째 예외(티켓 20261102_1500, 사용자 허용 2026-11-02): 같은 루틴이 Muse 수집 브랜치(muse/inbox)에서 검사해 가져오는
+# 주제 폴더의 notes/YYYY-MM-DD_muse-제목.md **신규 파일**만 허용한다. 기존 notes 파일의 수정·삭제, muse- 로 시작하지 않는 이름은 막는다.
 ROUTINE_AUTHOR_EMAIL="noreply@anthropic.com"
 ROUTINE_ALLOWED_PREFIX="docs/operations/reports/"
 ROUTINE_ALLOWED_FILE_REGEX='^docs/operations/trendresearch/(places|sports|service|culture)/[a-z0-9_-]+/latest\.md$'
+ROUTINE_ALLOWED_NOTES_REGEX='^docs/operations/trendresearch/(places|sports|service|culture)/[a-z0-9_-]+/notes/[0-9]{4}-[0-9]{2}-[0-9]{2}_muse-[^/]+\.md$'
 routine_author=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed -n 's/.*<\([^>]*\)>.*/\1/p')
 if [ "$routine_author" = "$ROUTINE_AUTHOR_EMAIL" ]; then
   routine_blocked=0
+  routine_added=$(git diff --cached --name-only --diff-filter=A -z | tr '\0' '\n')
   while IFS= read -r -d '' f; do
     case "$f" in
       "$ROUTINE_ALLOWED_PREFIX"*) ;;
       *)
-        if ! printf '%s' "$f" | grep -qE "$ROUTINE_ALLOWED_FILE_REGEX"; then
+        if printf '%s' "$f" | grep -qE "$ROUTINE_ALLOWED_FILE_REGEX"; then
+          :
+        elif printf '%s' "$f" | grep -qE "$ROUTINE_ALLOWED_NOTES_REGEX" && printf '%s\n' "$routine_added" | grep -qxF -- "$f"; then
+          :
+        else
           echo "차단(pre-commit): 예약 루틴 작성자(${ROUTINE_AUTHOR_EMAIL})의 커밋이 ${ROUTINE_ALLOWED_PREFIX} 밖 파일을 바꿉니다." >&2
           echo "  파일: $f" >&2
           routine_blocked=1
@@ -60,7 +68,7 @@ if [ "$routine_author" = "$ROUTINE_AUTHOR_EMAIL" ]; then
     esac
   done < <(git diff --cached --name-only -z)
   if [ "$routine_blocked" -eq 1 ]; then
-    echo "  무인 루틴은 ${ROUTINE_ALLOWED_PREFIX} 안과 트렌드 주제 폴더의 latest.md만 쓸 수 있습니다. 우회 변수는 없습니다." >&2
+    echo "  무인 루틴은 ${ROUTINE_ALLOWED_PREFIX} 안, 트렌드 주제 폴더의 latest.md, 그 notes/의 새 muse- 파일만 쓸 수 있습니다. 우회 변수는 없습니다." >&2
     exit 1
   fi
 fi
