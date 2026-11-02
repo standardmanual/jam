@@ -69,14 +69,14 @@ function ItemRow({ row }: { row: ItemPathRow }) {
           <span className="text-muted-foreground break-keep wrap-break-word">{NO_OPEN_PATH_TEXT}</span>
         )}
         {row.lock.receivedLocked && row.lock.unlockPoints !== null && (
-          <p className="mt-1 text-xs text-muted-foreground text-pretty break-keep wrap-break-word">{lockLabel(row.lock.unlockPoints)}</p>
+          <p className="mt-1 text-xs text-muted-foreground text-balance break-keep wrap-break-word">{lockLabel(row.lock.unlockPoints)}</p>
         )}
       </TableCell>
       <TableCell className="min-w-64 align-top">
         {row.closedPaths.length > 0 ? (
           <ul className="space-y-1 text-xs text-muted-foreground">
             {row.closedPaths.map(({ path, reasons }) => (
-              <li key={path} className="text-pretty break-keep wrap-break-word">
+              <li key={path} className="text-balance break-keep wrap-break-word">
                 <span className="font-medium text-foreground">{PATH_LABELS[path]}</span>
                 {': '}
                 {reasons.map((reason) => PATH_REASON_LABELS[reason]).join(' · ')}
@@ -114,7 +114,7 @@ function CollectionItem({ view }: { view: CollectionPathView }) {
         </div>
       </AccordionTrigger>
       <AccordionContent>
-        <p className="mb-3 text-sm text-muted-foreground text-pretty break-keep wrap-break-word">{blockedSummary(view.blocked)}</p>
+        <p className="mb-3 text-sm text-muted-foreground text-balance break-keep wrap-break-word">{blockedSummary(view.blocked)}</p>
         {view.items.length === 0 ? (
           <p className="text-sm text-muted-foreground break-keep wrap-break-word">{NO_ITEMS_TEXT}</p>
         ) : (
@@ -148,7 +148,7 @@ export function CollectionPaths({ views, pageInfo, generatedAt }: CollectionPath
         <p className="text-xs text-muted-foreground break-keep wrap-break-word">
           {formatKstYmdHm(generatedAt)} 기준 · 컬렉션 {pageInfo.total}개 · {pageInfo.page}/{pageInfo.totalPages}쪽
         </p>
-        <p className="text-sm text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="text-sm text-muted-foreground text-balance break-keep wrap-break-word">
           얻을 길이 없는 아이템 배지가 많은 컬렉션부터 보여요. 잠긴 채 받는 아이템 배지는 어느 길로 얻어도 잠겨 있어서, 열린 길 아래에 따로 적어요.
         </p>
       </div>

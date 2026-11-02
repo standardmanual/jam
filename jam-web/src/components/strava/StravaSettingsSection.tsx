@@ -36,7 +36,7 @@ export default function StravaSettingsSection({ state, lastSyncedAt, onDisconnec
   return (
     <div className="flex flex-col gap-2">
       <p className="text-base text-muted break-keep wrap-break-word">{copy.label}</p>
-      <p className="text-base break-keep wrap-break-word text-pretty">{statusText}</p>
+      <p className="text-base break-keep wrap-break-word text-balance">{statusText}</p>
       {state === 'connected' && lastSyncedAt && (
         <p className="text-xs text-muted break-keep wrap-break-word">
           {d.auth.stravaLastSyncedLabel} <LocalDate iso={lastSyncedAt} korean={{ year: true, time: true }} />

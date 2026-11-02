@@ -227,7 +227,7 @@ export default function BadgeDetailSheet({
           {/* 잠긴 개체: 일련번호가 있던 자리에 픽업한 뒤의 일 한 줄 */}
           {locked && (
             <div className="mt-3 pt-3 border-t border-foreground/10">
-              <p className="m-0 text-base text-foreground break-keep wrap-break-word text-pretty">{d.drops.pickupLockedHint}</p>
+              <p className="m-0 text-base text-foreground break-keep wrap-break-word text-balance">{d.drops.pickupLockedHint}</p>
             </div>
           )}
         </Card>

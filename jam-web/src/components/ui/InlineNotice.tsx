@@ -24,7 +24,7 @@ export default function InlineNotice({
 }) {
   return (
     <div role="status" className={cn('flex flex-col gap-2 rounded-2xl bg-background-secondary px-4 py-3 text-left', className)}>
-      <p className="m-0 text-base text-foreground break-keep wrap-break-word text-pretty">{children}</p>
+      <p className="m-0 text-base text-foreground break-keep wrap-break-word text-balance">{children}</p>
       {action}
     </div>
   )

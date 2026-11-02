@@ -24,7 +24,7 @@ export const LOCKED_AMOUNT_NOTICE =
 export function LockedRollNotice() {
   return (
     <Alert role="note">
-      <p className="text-sm text-pretty break-keep wrap-break-word">
+      <p className="text-sm text-balance break-keep wrap-break-word">
         {LOCKED_ROLL_NOTICE_PREFIX}
         <a href={`#${SYNC_SECTION_ID}`} className="font-medium underline underline-offset-4">
           {LOCKED_ROLL_NOTICE_LINK}
@@ -36,11 +36,11 @@ export function LockedRollNotice() {
 }
 
 export function LockedPointsNotice() {
-  return <p className="text-xs text-muted-foreground text-pretty break-keep wrap-break-word">{LOCKED_POINTS_NOTICE}</p>
+  return <p className="text-xs text-muted-foreground text-balance break-keep wrap-break-word">{LOCKED_POINTS_NOTICE}</p>
 }
 
 export function LockedAmountNotice() {
-  return <p className="text-xs text-muted-foreground text-pretty break-keep wrap-break-word">{LOCKED_AMOUNT_NOTICE}</p>
+  return <p className="text-xs text-muted-foreground text-balance break-keep wrap-break-word">{LOCKED_AMOUNT_NOTICE}</p>
 }
 
 export function LockedSection() {

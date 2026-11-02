@@ -192,7 +192,7 @@ describe('ItemBookTierRewardsView — 한국어 줄바꿈', () => {
   it('제목·문단·라벨에 줄바꿈 클래스가 붙는다', () => {
     const out = render()
     expect(out).toMatch(/<h2[^>]*class="[^"]*break-keep wrap-break-word text-balance/)
-    expect(out).toMatch(/<p class="[^"]*break-keep wrap-break-word text-pretty/)
+    expect(out).toMatch(/<p class="[^"]*break-keep wrap-break-word text-balance/)
     expect(out).toMatch(/<button[^>]*class="[^"]*break-keep wrap-break-word whitespace-nowrap[^"]*"[^>]*>등급별 보상 저장/)
   })
 })

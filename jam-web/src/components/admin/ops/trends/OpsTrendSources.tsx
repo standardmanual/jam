@@ -175,10 +175,10 @@ export function SourceAddForm({
         )}
       </div>
       {kind === 'manual_upload' && (
-        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_MANUAL_HINT}</p>
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-balance">{TREND_SOURCE_MANUAL_HINT}</p>
       )}
       {kind === 'repo_folder' && (
-        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_FOLDER_HINT}</p>
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-balance">{TREND_SOURCE_FOLDER_HINT}</p>
       )}
       {error && (
         <Alert variant="destructive">
@@ -286,10 +286,10 @@ export function SourceEditForm({
         )}
       </div>
       {source.kind === 'manual_upload' && (
-        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_MANUAL_HINT}</p>
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-balance">{TREND_SOURCE_MANUAL_HINT}</p>
       )}
       {source.kind === 'repo_folder' && (
-        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_FOLDER_HINT}</p>
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word text-balance">{TREND_SOURCE_FOLDER_HINT}</p>
       )}
       {error && (
         <Alert variant="destructive">
@@ -386,7 +386,7 @@ export function OpsTrendSources({ sources }: { sources: readonly OpsTrendSourceR
 
       {sources.length === 0 ? (
         <Card className="flex flex-wrap items-center gap-3 p-5">
-          <p className="min-w-0 text-sm text-muted-foreground break-keep wrap-break-word text-pretty">{TREND_SOURCE_EMPTY}</p>
+          <p className="min-w-0 text-sm text-muted-foreground break-keep wrap-break-word text-balance">{TREND_SOURCE_EMPTY}</p>
           {addButton}
         </Card>
       ) : (

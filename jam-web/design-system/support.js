@@ -101,7 +101,7 @@
     html.sc-dc-streaming .sc-interp.sc-missing:nth-child(n+9 of .sc-interp.sc-missing)::before{animation:none;
       background:color-mix(in srgb,currentColor 8%,transparent)}
     .sc-placeholder-error{padding:4px 8px;font:11px/1.4 ui-monospace,monospace;
-      color:color-mix(in srgb,currentColor 70%,transparent);word-break:break-word}
+      color:color-mix(in srgb,currentColor 70%,transparent);word-break:keep-all;overflow-wrap:break-word}
     .sc-interp.sc-missing{display:inline-block;width:2em;height:1em;overflow:hidden;
       vertical-align:text-bottom;background:rgba(255,255,255,.3);border:1px solid rgba(0,0,0,.5);
       border-radius:2px;box-sizing:border-box;color:transparent;

@@ -375,10 +375,10 @@ JAM 디자인시스템(`styles.css`)과 서비스(`globals.css`)의 텍스트 �
 | 한국어가 들어가는 모든 텍스트(기본) | `word-break: keep-all` | `break-keep` | 띄어쓰기 단위로만 줄을 바꾼다 (디자인시스템·서비스 전역 기본 적용) |
 | 위와 항상 함께 | `overflow-wrap: break-word` | `wrap-break-word` | URL·긴 영문처럼 한 단어가 칸보다 길 때만 그 단어를 끊어 넘치지 않게 한다 |
 | 한 줄로 읽혀야 하는 짧은 라벨(버튼·칩·탭·배지 이름) | `white-space: nowrap` | `whitespace-nowrap` | 「숙소 예약 / 확정하기」처럼 라벨이 두 줄로 갈라지지 않게 한다 |
-| 제목·카드 제목·두세 줄 안내 문구 | `text-wrap: balance` | `text-balance` | 줄 길이를 고르게 맞춘다 (디자인시스템·서비스 전역 기본 적용) |
-| 여러 줄 본문 문단 | `text-wrap: pretty` | `text-pretty` | 마지막 줄에 한 어절만 남는 것을 막는다 |
+| 모든 텍스트(제목·카드 제목·안내 문구·여러 줄 본문 문단) | `text-wrap: balance` | `text-balance` | 줄 길이를 고르게 맞춘다 (디자인시스템·서비스 전역 기본 적용) |
 
 - 전역에 `text-wrap: balance`와 `word-break: keep-all`이 기본 적용되므로 별도 유틸리티 없이도 어절 단위 줄바꿈과 균형 배치가 동작한다.
+- 모든 텍스트에 balance가 기본이다. 본문 문단도 `text-pretty`로 바꾸지 않는다. 브라우저가 balance를 6줄(Chrome 계열)까지만 적용하므로 그보다 긴 문단은 평소처럼 채워진다.
 - `keep-all`만 쓰고 `wrap-break-word`를 빼지 않는다. 띄어쓰기 없는 긴 어절이나 URL이 칸 밖으로 넘친다.
 - `whitespace-nowrap`은 길이가 정해진 짧은 라벨에만 쓴다. 사용자 입력·DB 값처럼 길이를 모르는 문구에는 쓰지 않는다.
   쓸 때는 가장 좁은 화면(320px)에서 라벨이 넘치지 않는지 확인한다.

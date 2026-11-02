@@ -48,7 +48,7 @@ interface Props {
 }
 
 const TITLE_CLASS = 'text-base break-keep wrap-break-word text-balance'
-const TEXT_CLASS = 'm-0 break-keep wrap-break-word text-pretty'
+const TEXT_CLASS = 'm-0 break-keep wrap-break-word text-balance'
 
 function ResultTile({ item }: { item: PendingResultView }) {
   const rarity = item.rarity as BadgeRarity
@@ -60,7 +60,7 @@ function ResultTile({ item }: { item: PendingResultView }) {
           {d.lockedItem.card.name}
         </p>
         <RarityBadge rarity={rarity} />
-        <p className="m-0 w-full break-keep wrap-break-word text-pretty text-center text-xs text-muted">
+        <p className="m-0 w-full break-keep wrap-break-word text-balance text-center text-xs text-muted">
           {d.lockedItem.card.description}
         </p>
       </li>

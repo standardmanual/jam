@@ -172,11 +172,11 @@ describe('WithdrawSheetView — 문구와 순서', () => {
     expect(html).not.toMatch(/\p{Extended_Pictographic}/u)
   })
 
-  it('한국어 문단에 break-keep wrap-break-word text-pretty가 붙고, 행 값은 줄바꿈이 없다', () => {
+  it('한국어 문단에 break-keep wrap-break-word text-balance가 붙고, 행 값은 줄바꿈이 없다', () => {
     const html = markup()
     expect(html).toContain('break-keep')
     expect(html).toContain('wrap-break-word')
-    expect(html).toContain('text-pretty')
+    expect(html).toContain('text-balance')
     expect(html).toMatch(/<dd class="[^"]*whitespace-nowrap/)
     expect(html).toMatch(/<dt class="[^"]*shrink-0/)
   })

@@ -27,8 +27,8 @@ import {
  * 확률 숫자·퍼센트는 어디에도 쓰지 않는다 — 링크 이름 하나만 둔다(UX 라이팅 §3.3).
  */
 
-/** 한국어 줄바꿈(UX 라이팅 §3.2) — 문단은 `text-pretty`, 짧은 안내는 `text-balance`를 더한다 */
-const TEXT = 'text-sm text-foreground break-keep wrap-break-word text-pretty'
+/** 한국어 줄바꿈(UX 라이팅 §3.2) — 문단과 짧은 안내 모두 `text-balance`를 쓴다 */
+const TEXT = 'text-sm text-foreground break-keep wrap-break-word text-balance'
 const PARAGRAPH = `m-0 ${TEXT}`
 
 interface Props<T extends TierUpMaterial> {

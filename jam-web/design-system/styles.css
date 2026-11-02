@@ -7,6 +7,7 @@
 @import "tokens/materials.css";
 
 html { background: var(--background); color-scheme: light; }
+/* text-wrap·word-break는 상속되어 span·li·td·button 등 모든 요소에 적용된다 */
 body {
   margin: 0;
   background: var(--background);

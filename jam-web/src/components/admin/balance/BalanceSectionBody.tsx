@@ -21,7 +21,7 @@ export async function BalanceSectionBody({ binding }: { binding: BalanceSectionB
     console.error(`[admin/balance] ${binding.id} 구역 읽기 실패:`, error instanceof Error ? error.message : error)
     return (
       <Alert variant="destructive">
-        <p className="text-sm text-pretty break-keep wrap-break-word">{BALANCE_LOAD_FAILED_MESSAGE}</p>
+        <p className="text-sm text-balance break-keep wrap-break-word">{BALANCE_LOAD_FAILED_MESSAGE}</p>
       </Alert>
     )
   }

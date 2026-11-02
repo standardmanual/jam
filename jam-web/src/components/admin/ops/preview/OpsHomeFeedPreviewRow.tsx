@@ -44,7 +44,7 @@ export function OpsHomeFeedPreviewRow({ bundleId, startsAt, initialDate }: OpsHo
           >
             <SheetHeader>
               <SheetTitle className={TEXT_CLASS}>홈피드로 보기</SheetTitle>
-              <SheetDescription className={cn(TEXT_CLASS, 'text-pretty')}>
+              <SheetDescription className={cn(TEXT_CLASS, 'text-balance')}>
                 날짜와 유저 조건을 골라 이 기획이 승인된 뒤의 홈피드를 미리 봐요. 승인 전 카드는 점선으로 보여요.
               </SheetDescription>
             </SheetHeader>

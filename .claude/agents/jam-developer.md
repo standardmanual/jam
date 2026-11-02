@@ -57,7 +57,7 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    the relevant section instead of reading the whole file. If you change a string, also fix the test
    that asserts that string. Every element you create or modify that renders Korean text (service
    and admin) gets the line-break classes in §3.2 「한국어 줄바꿈」 (`break-keep` + `wrap-break-word`,
-   and per role `whitespace-nowrap` / `text-balance` / `text-pretty`).
+   and per role `whitespace-nowrap` / `text-balance`).
 7. No refactoring, abstraction, or extra features that the ticket did not ask for.
 8. **Screens follow 채원's design decision (`jam-designer`).** If the prompt carries a design
    decision, implement it as given. If UI work is needed and no decision was provided, stop and

@@ -64,11 +64,11 @@ export function EcosystemPolicyPanel({ nodeId, policies, liveValues, openRequest
       </h2>
 
       {groups === null ? (
-        <p className="text-sm text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="text-sm text-muted-foreground text-balance break-keep wrap-break-word">
           지도에서 마디를 누르면 그 마디의 정책이 여기에 열려요
         </p>
       ) : total === 0 ? (
-        <p className="text-sm text-muted-foreground text-pretty break-keep wrap-break-word">이 마디에 걸린 정책이 없어요</p>
+        <p className="text-sm text-muted-foreground text-balance break-keep wrap-break-word">이 마디에 걸린 정책이 없어요</p>
       ) : (
         <div className="space-y-4">
           <Group title="설정값" items={groups.changeable} liveValues={liveValues} openRequests={openRequests} />

@@ -33,7 +33,7 @@ export function AdjustLinks({ targets, sectionLabels }: AdjustLinksProps) {
     <div className="space-y-2" data-adjust-links="">
       <p className="text-sm font-medium break-keep wrap-break-word">바로 조정</p>
       {links.length > 1 && (
-        <p className="text-xs text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="text-xs text-muted-foreground text-balance break-keep wrap-break-word">
           이 지표는 아래 구역의 수치가 함께 정해요
         </p>
       )}

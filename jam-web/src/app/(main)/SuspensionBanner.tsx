@@ -47,7 +47,7 @@ export default function SuspensionBanner({ reason, suspendedAt }: { reason: stri
             </dd>
           </div>
         </dl>
-        <p className="text-base text-muted break-keep wrap-break-word text-pretty">{copy.bannerBody}</p>
+        <p className="text-base text-muted break-keep wrap-break-word text-balance">{copy.bannerBody}</p>
         <Button variant="primary" surface="main" fullWidth onClick={() => router.push('/voc')}>
           {d.voc.inquireCta}
         </Button>

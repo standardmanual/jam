@@ -64,8 +64,8 @@ export function BalanceProbabilityConfirmPanel({
       title={CONFIRM_TITLE}
       description={
         <div className="space-y-1">
-          <p className={cn('text-pretty', TEXT)}>{CONFIRM_NOTICE}</p>
-          <p className={cn('text-pretty', TEXT)}>{CONFIRM_PRODUCTION}</p>
+          <p className={cn('text-balance', TEXT)}>{CONFIRM_NOTICE}</p>
+          <p className={cn('text-balance', TEXT)}>{CONFIRM_PRODUCTION}</p>
         </div>
       }
       confirmLabel={CONFIRM_BUTTON}
@@ -78,7 +78,7 @@ export function BalanceProbabilityConfirmPanel({
       <section className="space-y-2">
         <h3 className={cn('text-sm font-semibold text-balance', TEXT)}>{CONFIRM_CHANGES_TITLE}</h3>
         <OpsDiffLines diff={lines.map((line) => ({ path: line.label, before: line.before, after: line.after }))} className="break-keep" />
-        {otherChangeCount > 0 && <p className={cn('text-sm text-muted-foreground text-pretty', TEXT)}>{otherChangesText(otherChangeCount)}</p>}
+        {otherChangeCount > 0 && <p className={cn('text-sm text-muted-foreground text-balance', TEXT)}>{otherChangesText(otherChangeCount)}</p>}
       </section>
       <div className="space-y-1.5">
         <label htmlFor={noteId} className={cn('text-sm font-medium', TEXT)}>

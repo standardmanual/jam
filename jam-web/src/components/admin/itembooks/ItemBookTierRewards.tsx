@@ -28,7 +28,7 @@ import { TIER_ORDER, type TierName } from '@/lib/itembook/tier-readiness'
  */
 
 const TEXT = 'break-keep wrap-break-word'
-const PARAGRAPH = `${TEXT} text-pretty`
+const PARAGRAPH = `${TEXT} text-balance`
 const LABEL = `${TEXT} whitespace-nowrap`
 const TITLE = `${TEXT} text-balance`
 

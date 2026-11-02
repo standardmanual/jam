@@ -15,7 +15,7 @@ export const CHAPTER_RISEN_NOTICE =
 export function ChapterNotice() {
   return (
     <Alert role="note">
-      <p className="text-sm text-pretty break-keep wrap-break-word">{CHAPTER_RISEN_NOTICE}</p>
+      <p className="text-sm text-balance break-keep wrap-break-word">{CHAPTER_RISEN_NOTICE}</p>
     </Alert>
   )
 }

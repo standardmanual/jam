@@ -665,7 +665,7 @@ export default function BadgeConditionSection({
         <Alert variant="warning">
           <AlertTitle className="text-sm break-keep wrap-break-word text-balance">충족 횟수를 세지 못하는 조건이 있어요</AlertTitle>
           <AlertDescription>
-            <p className="text-xs text-amber-800/80 break-keep wrap-break-word text-pretty">{repeatConditionWarning}</p>
+            <p className="text-xs text-amber-800/80 break-keep wrap-break-word text-balance">{repeatConditionWarning}</p>
           </AlertDescription>
         </Alert>
       )}

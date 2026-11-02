@@ -147,7 +147,7 @@ export function UnslotAllSheetView({
     >
       <div className="flex flex-col gap-2 px-6 pb-6 text-left">
         {lines.map((line) => (
-          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-pretty">
+          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-balance">
             {line}
           </p>
         ))}

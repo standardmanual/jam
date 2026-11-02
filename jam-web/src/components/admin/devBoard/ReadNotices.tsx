@@ -15,7 +15,7 @@ export function ReadNotices({ notices }: { notices: readonly ReadNotice[] }) {
           <span aria-hidden="true" className="font-semibold">
             !
           </span>
-          <span className="text-pretty">
+          <span className="text-balance">
             {notice.summary}({notice.cause}). {notice.fix}.
           </span>
         </li>

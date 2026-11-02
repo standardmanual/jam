@@ -49,7 +49,7 @@ function ColumnView({
             ) : null}
           </h3>
           {showEstimate ? (
-            <p className="text-xs text-muted-foreground text-pretty break-keep wrap-break-word">{ESTIMATED_NOTE}</p>
+            <p className="text-xs text-muted-foreground text-balance break-keep wrap-break-word">{ESTIMATED_NOTE}</p>
           ) : null}
         </header>
         {column.cards.length === 0 ? (
@@ -67,7 +67,7 @@ function ColumnView({
           </p>
         ) : null}
         {showUndated ? (
-          <p data-undated="" className="text-xs text-amber-700 text-pretty break-keep wrap-break-word">
+          <p data-undated="" className="text-xs text-amber-700 text-balance break-keep wrap-break-word">
             <span aria-hidden="true">▲ </span>
             {undatedNote(undatedClosed)}
           </p>
@@ -92,7 +92,7 @@ export function BoardColumns({
         <h2 id="dev-board-board-heading" className="text-base font-semibold text-foreground">
           개발 항목 보드
         </h2>
-        <p className="mt-1 text-xs text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="mt-1 text-xs text-muted-foreground text-balance break-keep wrap-break-word">
           티켓 번호를 누르면 GitHub의 티켓 문서가 새 탭에서 열려요
         </p>
       </div>

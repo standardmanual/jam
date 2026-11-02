@@ -16,7 +16,7 @@ export function BundleProgressList({ bundles }: { bundles: readonly BundleProgre
         <h2 id="dev-board-bundles-heading" className="text-base font-semibold text-foreground">
           JAM 2.0 묶음
         </h2>
-        <p className="mt-1 text-xs text-muted-foreground text-pretty break-keep wrap-break-word">
+        <p className="mt-1 text-xs text-muted-foreground text-balance break-keep wrap-break-word">
           묶음 티켓 아래 하위 티켓 전체를 세요
         </p>
       </div>

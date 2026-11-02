@@ -116,7 +116,7 @@ export function StravaDuplicateSheetView({
     >
       <div className="flex flex-col gap-2 px-6 pb-6 text-left">
         {body.map((line) => (
-          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-pretty">
+          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-balance">
             {line}
           </p>
         ))}

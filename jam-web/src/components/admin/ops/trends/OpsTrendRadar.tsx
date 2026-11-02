@@ -75,7 +75,7 @@ export function OpsTrendRadar({
     return (
       <Card className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
         <IconTrendingUp className="size-5 shrink-0" aria-hidden="true" />
-        <span className="break-keep wrap-break-word text-pretty">{TREND_RADAR_EMPTY}</span>
+        <span className="break-keep wrap-break-word text-balance">{TREND_RADAR_EMPTY}</span>
       </Card>
     )
   }
