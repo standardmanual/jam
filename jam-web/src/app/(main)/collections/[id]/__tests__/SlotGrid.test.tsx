@@ -1,7 +1,7 @@
 /**
  * 컬렉션 격자의 칸 표시 (티켓 20261028_1408)
  *
- * 등급이 정해진 칸은 그 등급의 칩을, 등급이 없는 칸(`tierUndecided`)은 칩을 그리지 않는다. 미보유 칸은 «???»·opacity-30·링크 없음이고
+ * 등급이 정해진 칸은 그 등급의 칩을, 등급이 없는 칸(`tierUndecided`)은 칩을 그리지 않는다. 미보유 칸은 회색 실루엣·실제 이름·흐림 없음·링크 없음이고
  * 버튼이 없다. 저장소에 jsdom·testing-library가 없어(vitest.config.ts `environment: 'node'`) 서버 렌더로 마크업만 고정한다 —
  * 시트를 여는 판정은 `shouldOpenCandidateSheet`(`lib/itembook/__tests__/tier-badge-slots.test.ts`)가 맡는다.
  *
@@ -45,13 +45,15 @@ describe('SlotGrid — 등급이 정해진 칸', () => {
     cell('이름3', 'rare'),
   ]
 
-  it('장착된 칸은 «해제», 후보가 있는 칸은 «추가», 미보유 칸은 «???»에 버튼이 없다', () => {
+  it('장착된 칸은 «해제», 후보가 있는 칸은 «추가», 미보유 칸은 이름이 보이고 버튼이 없다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} />)
 
     expect(count(html, '>해제<')).toBe(1)
     expect(count(html, '>추가<')).toBe(1)
-    expect(count(html, '>???<')).toBe(1)
-    expect(count(html, 'opacity-30')).toBe(1)
+    // 미보유 칸도 원래 이름을 그리고 «???»는 어디에도 없다. 카드 전체 흐림(opacity-30)도 걷었다
+    expect(count(html, '>이름3<')).toBe(1)
+    expect(html).not.toContain('???')
+    expect(html).not.toContain('opacity-30')
     // 미보유 칸은 링크가 없다 — 링크는 장착된 칸과 후보가 있는 칸 둘
     expect(count(html, 'href="/badges/')).toBe(2)
     expect(html).not.toContain('href="/badges/이름3-rare')
@@ -79,13 +81,14 @@ describe('SlotGrid — 등급이 없는 칸(tierUndecided)', () => {
     cell('이름2', 'common'),
   ]
 
-  it('등급 칩을 그리지 않고 가진 이름은 «추가», 못 가진 이름은 «???»다', () => {
+  it('등급 칩을 그리지 않고 가진 이름은 «추가», 못 가진 이름은 이름만 보인다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} tierUndecided />)
 
     expect(html).not.toContain('Rare')
     expect(html).not.toContain('Epic')
     expect(count(html, '>추가<')).toBe(1)
-    expect(count(html, '>???<')).toBe(1)
+    expect(count(html, '>이름2<')).toBe(1)
+    expect(html).not.toContain('???')
     // 가진 이름의 링크는 대표 배지 상세다
     expect(html).toContain('href="/badges/이름1-rare"')
   })

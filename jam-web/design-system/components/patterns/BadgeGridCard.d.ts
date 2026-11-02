@@ -22,7 +22,7 @@ export interface BadgeGridCardProps {
   onNavigate?: () => void;
   /** false → 썸네일 흑백+반투명 (미획득 배지). 기본값 true. */
   earned?: boolean;
-  /** true → ??? 표시 + 썸네일 흑백 (아이템북 미발견 배지). */
+  /** true → 썸네일을 이미지 윤곽의 회색 실루엣으로, 이름은 그대로 (아이템북 미발견 배지). `earned=false`가 함께 와도 실루엣이 이긴다. */
   undiscovered?: boolean;
   /** 선택 강조 링 (select 모드). */
   selected?: boolean;

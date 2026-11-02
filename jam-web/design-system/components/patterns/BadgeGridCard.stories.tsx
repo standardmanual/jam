@@ -102,13 +102,23 @@ export const Unearned: Story = {
 };
 
 export const Undiscovered: Story = {
-  name: '미발견 (??? 표시)',
+  name: '미발견 (회색 실루엣 + 이름)',
   args: {
-    name: '???',
+    name: '한강 마스터',
     imageUrl: SAMPLE_IMAGES.epic,
     rarity: 'epic',
     undiscovered: true,
     earned: false,
+  },
+  play: async ({ canvasElement }) => {
+    // earned=false가 함께 와도 실루엣이 이긴다(서비스 호출부의 실제 조합). 흐림 없음, 이름 공개, 등급 칩 없음
+    const img = canvasElement.querySelector('img')!;
+    expect(img.style.filter).toContain('brightness(0)');
+    expect(img.style.filter).not.toContain('grayscale');
+    expect(img.style.opacity).toBe('');
+    expect(img.alt).toBe('한강 마스터');
+    expect(canvasElement.textContent).toContain('한강 마스터');
+    expect(canvasElement.textContent).not.toContain('???');
   },
 };
 
@@ -190,7 +200,7 @@ export const Grid: Story = {
         { name: '한강 마스터', rarity: 'epic', earned: true },
         { name: '신화의 달리기', rarity: 'mystic', earned: true },
         { name: '미획득 배지', rarity: 'common', earned: false },
-        { name: '???', rarity: 'rare', earned: false, undiscovered: true },
+        { name: '미발견 배지', rarity: 'rare', earned: false, undiscovered: true },
         { name: '선택됨', rarity: 'epic', earned: true, selected: true },
         { name: '이미지 없음', rarity: 'mystic', earned: true, imageUrl: null },
       ] as const).map((props, i) => (
@@ -234,28 +244,35 @@ export const Interactive: Story = {
 };
 
 /**
- * 미획득·미발견 썸네일 — 원본 + grayscale(1) (2026-09-06 확정).
+ * 미획득 썸네일 — 원본 + grayscale(1) (2026-09-06 확정), 미발견만 실루엣 (티켓 20261102_1834).
  *
- * 미획득·미발견 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
+ * 미획득 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
  * 20260905_0036이 한때 실루엣으로 바꿨다가 2026-09-06 사용자 확정으로 되돌렸다 —
  * 외형을 감추는 것보다 어떤 배지인지 알아볼 수 있는 쪽을 택한다.
+ * 2026-11-02 사용자 지시로 미발견(`undiscovered`)만 예외가 됐다: 배지마다 자기 이미지의 윤곽을
+ * `brightness(0) invert(0.64)`로 회색 한 가지 색에 칠하고, 이름은 가리지 않는다.
+ * 되돌린 것이 아니라 «미발견만 실루엣, `earned=false`는 원본 그레이 유지»다.
  */
 export const GrayscaleWhenHidden: Story = {
-  name: '미획득·미발견 — 원본 이미지를 그레이로',
+  name: '미획득은 그레이, 미발견은 회색 실루엣',
   render: () => (
     <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
       <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned />
       <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned={false} />
-      <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" undiscovered />
+      <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned={false} undiscovered />
     </div>
   ),
   play: async ({ canvasElement }) => {
-    // 세 장 모두 **원본 이미지**를 쓴다(실루엣 폐기, 2026-09-06 확정). 감추는 건 색뿐이다.
+    // 세 장 모두 원본 이미지 한 장을 쓴다. 미획득은 grayscale, 미발견은 실루엣 필터(brightness(0) 포함)이고 흐림은 없다.
+    // 미발견은 earned=false와 함께 와도 실루엣이 이긴다.
     const imgs = canvasElement.querySelector('[data-testid="cards"]')!.querySelectorAll('img');
     expect(imgs.length).toBe(3);
     expect(imgs[0].style.filter).toBe('none');
     expect(imgs[1].style.filter).toBe('grayscale(1)');
-    expect(imgs[2].style.filter).toBe('grayscale(1)');
+    expect(imgs[2].style.filter).toContain('brightness(0)');
+    expect(imgs[2].style.filter).not.toContain('grayscale');
+    expect(imgs[2].style.opacity).toBe('');
+    expect(imgs[2].alt).toBe('동네 산책러');
   },
 };
 
