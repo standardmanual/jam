@@ -1,13 +1,14 @@
 /**
- * GET·POST /api/admin/ops-patterns — 운영 패턴 사전 목록 읽기(티켓 20261001_2134, 상위 20260930_1503 ②)와 패턴 만들기(티켓 20261008_1545 ⑩a-1), 운영툴 PRD §11.6
+ * GET·POST /api/admin/ops-patterns — 운영 패턴 목록 읽기(티켓 20261001_2134, 상위 20260930_1503 ②)와 패턴 만들기(티켓 20261008_1545 ⑩a-1), 운영툴 PRD §11.6
  *
  * 응답 `{ patterns, commonRules, tasteSignals }`. 에이전트(1504의 주간 루틴)가 한 번 호출로 사전 전체를 읽는다. 처리와 응답 칸은
  * `lib/admin/opsPatterns/read.ts`가 정한다. 이 라우트는 인증·쿼리 읽기·응답만 맡는다.
  *
  * - GET 인증: 관리자 세션 또는 어드민 읽기 토큰(`requireAdminRead`, GET 전용).
  * - POST(패턴 만들기): **관리자 세션만** 통과한다(`getAdminUser()`가 없으면 403, 읽기 토큰은 보지 않는다). 본문은 패턴 내용 칸
- *   `{ name, principle, userExperience, menus, samples, cardShapes, knobs, pitfalls }`이고 번호(P19~)·상태(`active`)·출처(`manual`)는 서버가 정한다.
+ *   `{ name, principle, userExperience, menus, samples, cardShapes, knobs, pitfalls, topic?, angles? }`(주제·샘플 각도는 티켓 20261102_1600)이고 번호(P19~)·상태(`active`)·출처(`manual`)는 서버가 정한다.
  *   응답은 201 `{ pattern }`, 400 `{ error, fieldErrors? }`, 409(그사이 다른 패턴이 만들어짐), 500이다. 처리는 `write.ts`의 `createOpsPattern`이 한다.
+ * - 쿼리 `topic=sports/run`은 그 주제 패턴만, `topic=none`은 원리형(주제 없음)만 싣는다(티켓 20261102_1600). 취향 신호·공통 규칙은 거르지 않는다.
  * - 쿼리 `includeArchived=true`일 때만 보관 패턴을 싣는다(기본은 사용 중·쉬는 중). 취향 신호는 보관한 패턴 것까지 싣는다.
  * - 테이블이 비어 있으면(시드 전) 세 목록이 모두 빈 배열이다(오류 아님).
  * - **응답에 관리자 ID(`updated_by`·`confirmed_by`)를 싣지 않는다**(`read.ts`가 읽지도 않는다).
@@ -25,18 +26,21 @@ export async function GET(req: Request) {
   const denied = await requireAdminRead(req)
   if (denied) return denied
 
-  const includeArchived = new URL(req.url).searchParams.get('includeArchived') === 'true'
+  const searchParams = new URL(req.url).searchParams
+  const includeArchived = searchParams.get('includeArchived') === 'true'
+  const topicParam = searchParams.get('topic')
+  const topic = topicParam === null || topicParam === '' ? undefined : topicParam
 
   try {
     const service = createServiceClient()
     const [patterns, commonRules, tasteSignals] = await Promise.all([
-      listOpsPatterns(service, { includeArchived }),
+      listOpsPatterns(service, { includeArchived, topic }),
       listOpsCommonRules(service),
       listOpsTasteSignals(service),
     ])
     return NextResponse.json({ patterns, commonRules, tasteSignals })
   } catch (error) {
-    console.error('[admin/ops-patterns] 패턴 사전 조회 실패:', error)
+    console.error('[admin/ops-patterns] 패턴 조회 실패:', error)
     return NextResponse.json({ error: OPS_PATTERN_LOAD_FAILED_MESSAGE }, { status: 500 })
   }
 }

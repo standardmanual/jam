@@ -9,9 +9,13 @@
 import { OPS_PATTERN_KNOB_LABELS } from '@/lib/admin/opsInbox/labels'
 import { isCardShape, type CardShape } from '@/lib/today/shape'
 import {
+  OPS_PATTERN_ANGLE_NEEDS,
+  OPS_PATTERN_ANGLE_TYPES,
   OPS_PATTERN_KNOB_KEYS,
   OPS_PATTERN_KNOB_VALUE_KEYS,
   OPS_PATTERN_SAMPLE_ROLES,
+  type OpsPatternAngleNeed,
+  type OpsPatternAngleType,
   type OpsPatternKnobKey,
   type OpsPatternSampleRole,
 } from './constants'
@@ -36,14 +40,26 @@ export interface PatternDraftCardShape {
 /** 손잡이 한 종류의 두 칸. 순서는 `OPS_PATTERN_KNOB_VALUE_KEYS`와 같다(열 수 있는 값·닫은 값, 트라이브는 규칙·예시). */
 export type PatternDraftKnob = [string, string]
 
+/** 샘플 각도 한 줄(티켓 20261102_1600). */
+export interface PatternDraftAngle {
+  /** 아직 고르지 않았으면 빈 글자. */
+  type: OpsPatternAngleType | ''
+  title: string
+  note: string
+  needs: OpsPatternAngleNeed[]
+}
+
 export interface PatternDraft {
   name: string
+  /** 주제 패턴의 주제. 원리형은 빈 글자(저장하면 NULL). */
+  topic: string
   principle: string
   userExperience: string
   menus: string[]
   cardShapes: PatternDraftCardShape[]
   knobs: Record<OpsPatternKnobKey, PatternDraftKnob>
   samples: PatternDraftSample[]
+  angles: PatternDraftAngle[]
   pitfalls: string
 }
 
@@ -53,7 +69,7 @@ function emptyKnobs(): Record<OpsPatternKnobKey, PatternDraftKnob> {
 
 /** 만들기 폼의 시작 값. */
 export function emptyDraft(): PatternDraft {
-  return { name: '', principle: '', userExperience: '', menus: [], cardShapes: [], knobs: emptyKnobs(), samples: [], pitfalls: '' }
+  return { name: '', topic: '', principle: '', userExperience: '', menus: [], cardShapes: [], knobs: emptyKnobs(), samples: [], angles: [], pitfalls: '' }
 }
 
 // ── 레코드 → 초안 ───────────────────────────────────────────────────────────────────────────────
@@ -68,7 +84,7 @@ function text(value: unknown): string {
 
 /** 읽어 온 패턴을 폼 값으로 바꾼다. JSONB가 깨져 있어도 던지지 않고 그 칸만 비운다. */
 export function draftFromRecord(
-  record: Pick<OpsPatternRecord, 'name' | 'principle' | 'userExperience' | 'menus' | 'samples' | 'cardShapes' | 'knobs' | 'pitfalls'>
+  record: Pick<OpsPatternRecord, 'name' | 'principle' | 'userExperience' | 'menus' | 'samples' | 'cardShapes' | 'knobs' | 'pitfalls' | 'topic' | 'angles'>
 ): PatternDraft {
   const menus = Array.isArray(record.menus) ? record.menus.filter((menu): menu is string => typeof menu === 'string') : []
 
@@ -84,6 +100,13 @@ export function draftFromRecord(
     return { shape: isCardShape(item.shape) ? item.shape : '', note: text(item.note) }
   })
 
+  const angles = (Array.isArray(record.angles) ? record.angles : []).map((entry): PatternDraftAngle => {
+    const item = isRecord(entry) ? entry : {}
+    const type = (OPS_PATTERN_ANGLE_TYPES as readonly unknown[]).includes(item.type) ? (item.type as OpsPatternAngleType) : ''
+    const needs = (Array.isArray(item.needs) ? item.needs : []).filter((need): need is OpsPatternAngleNeed => (OPS_PATTERN_ANGLE_NEEDS as readonly unknown[]).includes(need))
+    return { type, title: text(item.title), note: text(item.note), needs }
+  })
+
   const knobs = emptyKnobs()
   const knobsRaw = isRecord(record.knobs) ? record.knobs : {}
   for (const key of OPS_PATTERN_KNOB_KEYS) {
@@ -94,12 +117,14 @@ export function draftFromRecord(
 
   return {
     name: text(record.name),
+    topic: typeof record.topic === 'string' ? record.topic : '',
     principle: text(record.principle),
     userExperience: text(record.userExperience),
     menus,
     cardShapes,
     knobs,
     samples,
+    angles,
     pitfalls: text(record.pitfalls),
   }
 }
@@ -113,6 +138,7 @@ export function draftFromRecord(
 export function inputFromDraft(draft: PatternDraft): unknown {
   return {
     name: draft.name,
+    topic: draft.topic,
     principle: draft.principle,
     userExperience: draft.userExperience,
     menus: draft.menus,
@@ -127,6 +153,7 @@ export function inputFromDraft(draft: PatternDraft): unknown {
         return [key, { [first]: draft.knobs[key][0], [second]: draft.knobs[key][1] }]
       })
     ),
+    angles: draft.angles.map((angle) => ({ type: angle.type, title: angle.title, note: angle.note, needs: angle.needs })),
     pitfalls: draft.pitfalls,
   }
 }
@@ -135,11 +162,13 @@ export function inputFromDraft(draft: PatternDraft): unknown {
 
 export const FIELD_LABEL = {
   name: '이름',
+  topic: '주제',
   principle: '작동 원리',
   userExperience: '유저가 겪는 것',
   menus: '쓰는 메뉴',
   cardShapes: '카드 모양',
   samples: '샘플',
+  angles: '샘플 각도',
   pitfalls: '주의점',
 } as const
 
@@ -155,12 +184,14 @@ function same(a: unknown, b: unknown): boolean {
 function trimmed(draft: PatternDraft) {
   return {
     name: draft.name.trim(),
+    topic: draft.topic.trim(),
     principle: draft.principle.trim(),
     userExperience: draft.userExperience.trim(),
     menus: draft.menus.map((menu) => menu.trim()),
     cardShapes: draft.cardShapes.map((item) => ({ shape: item.shape, note: item.note.trim() })),
     knobs: OPS_PATTERN_KNOB_KEYS.map((key) => [key, draft.knobs[key].map((value) => value.trim())] as const),
     samples: draft.samples.map((sample) => ({ no: sample.no.trim(), name: sample.name.trim(), role: sample.role, impl: sample.impl.trim() })),
+    angles: draft.angles.map((angle) => ({ type: angle.type, title: angle.title.trim(), note: angle.note.trim(), needs: angle.needs })),
     pitfalls: draft.pitfalls.trim(),
   }
 }
@@ -171,6 +202,7 @@ export function changedFields(base: PatternDraft, draft: PatternDraft): string[]
   const after = trimmed(draft)
   const changed: string[] = []
   if (before.name !== after.name) changed.push(FIELD_LABEL.name)
+  if (before.topic !== after.topic) changed.push(FIELD_LABEL.topic)
   if (before.principle !== after.principle) changed.push(FIELD_LABEL.principle)
   if (before.userExperience !== after.userExperience) changed.push(FIELD_LABEL.userExperience)
   if (!same(before.menus, after.menus)) changed.push(FIELD_LABEL.menus)
@@ -179,27 +211,30 @@ export function changedFields(base: PatternDraft, draft: PatternDraft): string[]
     if (!same(values, after.knobs[index][1])) changed.push(knobFieldLabel(key))
   })
   if (!same(before.samples, after.samples)) changed.push(FIELD_LABEL.samples)
+  if (!same(before.angles, after.angles)) changed.push(FIELD_LABEL.angles)
   if (before.pitfalls !== after.pitfalls) changed.push(FIELD_LABEL.pitfalls)
   return changed
 }
 
 // ── 서버·검사 오류 경로 ─────────────────────────────────────────────────────────────────────────
 
-export type PatternFormSectionId = 'basic' | 'menus' | 'knobs' | 'samples' | 'pitfalls'
+export type PatternFormSectionId = 'basic' | 'menus' | 'knobs' | 'samples' | 'angles' | 'pitfalls'
 
 /** 오류 경로(`name`·`samples.2.role`·`knobs.place.open`)의 첫 마디가 놓인 구역. 모르는 경로는 `null`. */
 const SECTION_OF_ROOT: Record<string, PatternFormSectionId> = {
   name: 'basic',
+  topic: 'basic',
   principle: 'basic',
   userExperience: 'basic',
   menus: 'menus',
   cardShapes: 'menus',
   knobs: 'knobs',
   samples: 'samples',
+  angles: 'angles',
   pitfalls: 'pitfalls',
 }
 
-const ROOT_ORDER = ['name', 'principle', 'userExperience', 'menus', 'cardShapes', 'knobs', 'samples', 'pitfalls']
+const ROOT_ORDER = ['name', 'topic', 'principle', 'userExperience', 'menus', 'cardShapes', 'knobs', 'samples', 'angles', 'pitfalls']
 
 /** 칸의 DOM id. 오류 문장이 붙는 칸과 포커스 대상이 같은 규칙을 쓴다(`samples.2.role` → `pattern-field-samples-2-role`). */
 export function fieldDomId(path: string): string {

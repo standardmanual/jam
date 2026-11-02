@@ -7,6 +7,7 @@
  * - 읽기 토큰만으로 목록·상세가 읽힌다(관리자 세션도 된다). 토큰이 틀리거나 없고 세션도 없으면 403이고 사전 테이블을 읽지 않는다
  * - 목록: 기본은 보관 패턴을 빼고 `includeArchived=true`일 때만 싣는다. 취향 신호는 보관 패턴 것까지, 공통 규칙은 전부 싣는다. 비어 있으면 빈 목록이다
  * - 상세: 형식이 틀린 번호는 400(읽지 않는다), 없는 번호는 404, 보관 패턴도 번호로 읽으면 200이다. 취향 신호는 그 패턴 것만 싣는다
+ * - 목록 쿼리 `topic=<주제>`는 그 주제만, `topic=none`은 원리형만 싣고, 응답마다 `topic`·`angles` 칸이 있다(티켓 20261102_1600)
  * - 응답 본문 어디에도 `updated_by`·`confirmed_by`·`updatedBy`·`confirmedBy`와 그 값(관리자 ID)이 없다
  * - 조회가 실패하면 고정 문장 500이고 원문은 싣지 않는다
  * - 쓰기 메서드는 POST(목록)·PATCH(상세)뿐이다(쓰기 검증은 `write-route.test.ts`)
@@ -90,6 +91,8 @@ function patternRow(patternNo: string, extra: Record<string, unknown> = {}) {
     card_shapes: [],
     knobs: {},
     pitfalls: '',
+    topic: null,
+    angles: [],
     status: 'active',
     pause_reason: null,
     origin: 'seed',
@@ -218,6 +221,23 @@ describe('GET /api/admin/ops-patterns', () => {
     expect(h.db.patternReads).toBe(0)
   })
 
+  it('모든 패턴에 topic·angles 칸이 있고 topic 쿼리로 거른다(none은 원리형만)', async () => {
+    h.db.tables.ops_patterns.push(
+      patternRow('P19', { topic: 'sports/run', angles: [{ type: '소개', title: '제목', note: '설명', needs: ['places'] }] }),
+      patternRow('P20', { topic: 'sports/ride' })
+    )
+    const all = await (await GET(listRequest('', AUTH))).json()
+    for (const pattern of all.patterns) expect(pattern).toHaveProperty('topic')
+    for (const pattern of all.patterns) expect(Array.isArray(pattern.angles)).toBe(true)
+    const run = await (await GET(listRequest('?topic=sports/run', AUTH))).json()
+    expect(run.patterns.map((p: { patternNo: string }) => p.patternNo)).toEqual(['P19'])
+    expect(run.patterns[0].angles).toHaveLength(1)
+    const none = await (await GET(listRequest('?topic=none', AUTH))).json()
+    expect(none.patterns.map((p: { patternNo: string }) => p.patternNo)).toEqual(['P09', 'P10'])
+    const blank = await (await GET(listRequest('?topic=', AUTH))).json()
+    expect(blank.patterns).toHaveLength(4)
+  })
+
   it('테이블이 비어 있으면 빈 목록 200이다(오류 아님)', async () => {
     h.db.tables = {}
     const res = await GET(listRequest('?includeArchived=true', AUTH))
@@ -234,7 +254,7 @@ describe('GET /api/admin/ops-patterns', () => {
     const res = await GET(listRequest('', AUTH))
     expect(res.status).toBe(500)
     const body = await res.json()
-    expect(body.error).toBe('패턴 사전을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.')
+    expect(body.error).toBe('패턴을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     expect(JSON.stringify(body)).not.toContain('secret')
   })
 })
@@ -294,7 +314,7 @@ describe('GET /api/admin/ops-patterns/[patternNo]', () => {
     const res = await GET_DETAIL(detailRequest(AUTH), params('P10'))
     expect(res.status).toBe(500)
     const body = await res.json()
-    expect(body.error).toBe('패턴 사전을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.')
+    expect(body.error).toBe('패턴을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     expect(JSON.stringify(body)).not.toContain('secret')
   })
 })

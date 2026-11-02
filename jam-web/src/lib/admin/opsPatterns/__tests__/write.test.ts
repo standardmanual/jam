@@ -1,5 +1,5 @@
 /**
- * 운영 패턴 사전 쓰기 (티켓 20261008_1545, 상위 20260930_1503 ⑩a-1) — `write.ts`
+ * 운영 패턴 쓰기 (티켓 20261008_1545, 상위 20260930_1503 ⑩a-1) — `write.ts`
  *
  * 서비스 클라이언트는 메모리 DB(`fakePatternDb.ts`)로 바꾼다. 확인하는 것:
  * - 검사: 필수 3칸, 길이 상한, 메뉴·샘플 개수, 샘플 번호 중복·역할, 카드 모양, 손잡이 칸은 선택, 알 수 없는 키 버림, 앞뒤 공백 뗌
@@ -204,6 +204,87 @@ describe('validateOpsPatternInput', () => {
     expect(Object.keys(checked.value.samples[0]).sort()).toEqual(['impl', 'name', 'no', 'role'])
     expect(Object.keys(checked.value.knobs).sort()).toEqual(['condition', 'place', 'reward', 'time', 'tribe'])
     expect(checked.value.knobs.place).toEqual({ open: '열린', closed: '' })
+  })
+})
+
+describe('validateOpsPatternInput: 주제와 샘플 각도 (티켓 20261102_1600)', () => {
+  const angle = { type: '소개', title: '장소 한 곳', note: '한 곳을 소개한다', needs: ['places', 'trends'] }
+
+  it('안 보내면 topic·angles 키가 없다(고치기에서 «그대로 둔다»의 신호)', () => {
+    const checked = validateOpsPatternInput(validInput())
+    if (!checked.ok) throw new Error(JSON.stringify(checked.fieldErrors))
+    expect('topic' in checked.value).toBe(false)
+    expect('angles' in checked.value).toBe(false)
+  })
+
+  it('topic: 앞뒤 공백을 떼고, 빈 문자열·null은 NULL이다', () => {
+    const read = (topic: unknown) => {
+      const checked = validateOpsPatternInput(validInput({ topic }))
+      if (!checked.ok) throw new Error(JSON.stringify(checked.fieldErrors))
+      return checked.value.topic
+    }
+    expect(read(' sports/run ')).toBe('sports/run')
+    expect(read('')).toBeNull()
+    expect(read('   ')).toBeNull()
+    expect(read(null)).toBeNull()
+  })
+
+  it('topic: 영문 소문자·숫자·/·-만, 60자까지', () => {
+    expect(fieldErrorsOf(validInput({ topic: 'Sports/Run' })).topic).toContain('영문 소문자')
+    expect(fieldErrorsOf(validInput({ topic: '스포츠' })).topic).toContain('영문 소문자')
+    expect(fieldErrorsOf(validInput({ topic: 'a_b' })).topic).toContain('영문 소문자')
+    expect(fieldErrorsOf(validInput({ topic: 3 })).topic).toBe('주제는 글로 적어 주세요.')
+    expect(validateOpsPatternInput(validInput({ topic: 'a'.repeat(60) })).ok).toBe(true)
+    expect(fieldErrorsOf(validInput({ topic: 'a'.repeat(61) })).topic).toContain('60자')
+  })
+
+  it('angles: 정규 모양으로 읽고 needs는 비워도 되고 중복은 하나로 합친다', () => {
+    const checked = validateOpsPatternInput(
+      validInput({ angles: [{ ...angle, title: '  제목  ', needs: ['places', 'places'] }, { type: '회고', title: '회고', note: '돌아본다' }] })
+    )
+    if (!checked.ok) throw new Error(JSON.stringify(checked.fieldErrors))
+    expect(checked.value.angles).toEqual([
+      { type: '소개', title: '제목', note: '한 곳을 소개한다', needs: ['places'] },
+      { type: '회고', title: '회고', note: '돌아본다', needs: [] },
+    ])
+    const empty = validateOpsPatternInput(validInput({ angles: [] }))
+    expect(empty.ok && empty.value.angles).toEqual([])
+  })
+
+  it('angles: 종류 7값만 받는다', () => {
+    for (const type of ['소개', '유도', '미션', '큐레이션', '현황', '회고', '이야기']) {
+      expect(validateOpsPatternInput(validInput({ angles: [{ ...angle, type }] })).ok).toBe(true)
+    }
+    expect(fieldErrorsOf(validInput({ angles: [angle, { ...angle, type: '광고' }] }))['angles.1.type']).toContain('소개·유도·미션·큐레이션·현황·회고·이야기')
+  })
+
+  it('angles: 제목·설명은 필수이고 줄 번호가 오류 키다', () => {
+    const errors = fieldErrorsOf(validInput({ angles: [angle, { ...angle, title: '  ', note: '' }] }))
+    expect(errors['angles.1.title']).toBe('각도 제목을 적어 주세요.')
+    expect(errors['angles.1.note']).toBe('각도 설명을 적어 주세요.')
+    expect(Object.keys(errors).filter((key) => key.startsWith('angles.0'))).toEqual([])
+  })
+
+  it('angles: needs는 6값의 부분집합만, 배열이어야 한다', () => {
+    for (const need of ['places', 'place-stats', 'badges', 'item-paths', 'trends', 'kpi']) {
+      expect(validateOpsPatternInput(validInput({ angles: [{ ...angle, needs: [need] }] })).ok).toBe(true)
+    }
+    expect(fieldErrorsOf(validInput({ angles: [{ ...angle, needs: ['places', 'weather'] }] }))['angles.0.needs']).toContain('places·place-stats')
+    expect(fieldErrorsOf(validInput({ angles: [{ ...angle, needs: 'places' }] }))['angles.0.needs']).toBe('필요한 재료는 목록으로 보내 주세요.')
+  })
+
+  it('angles: 목록이 아니거나 항목이 객체가 아니거나 30개를 넘으면 오류', () => {
+    expect(fieldErrorsOf(validInput({ angles: '소개' })).angles).toBe('샘플 각도는 목록으로 보내 주세요.')
+    expect(fieldErrorsOf(validInput({ angles: [3] }))['angles.0']).toBe('샘플 각도 내용을 확인해 주세요.')
+    expect(validateOpsPatternInput(validInput({ angles: Array.from({ length: 30 }, () => angle) })).ok).toBe(true)
+    expect(fieldErrorsOf(validInput({ angles: Array.from({ length: 31 }, () => angle) })).angles).toContain('30개')
+  })
+
+  it('길이 상한: 제목 100자, 설명 500자', () => {
+    expect(validateOpsPatternInput(validInput({ angles: [{ ...angle, title: '가'.repeat(100), note: '가'.repeat(500) }] })).ok).toBe(true)
+    const errors = fieldErrorsOf(validInput({ angles: [{ ...angle, title: '가'.repeat(101), note: '가'.repeat(501) }] }))
+    expect(errors['angles.0.title']).toContain('100자')
+    expect(errors['angles.0.note']).toContain('500자')
   })
 })
 
@@ -429,6 +510,78 @@ describe('updateOpsPattern', () => {
     fakeDb.readError = 'relation secret'
     const outcome = await updateOpsPattern(service, 'P10', validInput(), { actor: ACTOR, expectedUpdatedAt: T1 })
     expect(outcome).toEqual({ ok: false, status: 500, error: PATTERN_SAVE_FAILED_MESSAGE })
+  })
+})
+
+describe('주제와 샘플 각도 쓰기 (티켓 20261102_1600)', () => {
+  const T1 = '2026-10-01T01:00:00+00:00'
+  const angles = [{ type: '소개', title: '장소 한 곳', note: '한 곳을 소개한다', needs: ['places'] }]
+
+  it('만들기: topic·angles를 저장하고 응답에 싣는다. 안 보내면 원리형(NULL·빈 배열)이다', async () => {
+    fakeDb.tables.ops_patterns = [patternRow('P18')]
+    const withTopic = await createOpsPattern(service, validInput({ topic: 'sports/run', angles }), { actor: ACTOR })
+    if (!withTopic.ok) throw new Error(withTopic.error)
+    expect(withTopic.pattern).toMatchObject({ patternNo: 'P19', topic: 'sports/run', angles })
+    expect(fakeDb.tables.ops_patterns.at(-1)).toMatchObject({ topic: 'sports/run', angles })
+
+    const principle = await createOpsPattern(service, validInput(), { actor: ACTOR })
+    if (!principle.ok) throw new Error(principle.error)
+    expect(principle.pattern).toMatchObject({ topic: null, angles: [] })
+  })
+
+  it('만들기: 잘못된 각도는 400과 줄 번호 오류이고 DB를 건드리지 않는다', async () => {
+    fakeDb.tables.ops_patterns = [patternRow('P18')]
+    const outcome = await createOpsPattern(service, validInput({ angles: [{ type: '광고', title: '', note: 'x', needs: ['weather'] }] }), { actor: ACTOR })
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) return
+    expect(outcome.status).toBe(400)
+    expect(Object.keys(outcome.fieldErrors ?? {}).sort()).toEqual(['angles.0.needs', 'angles.0.title', 'angles.0.type'])
+    expect(fakeDb.writeCalls).toBe(0)
+  })
+
+  it('고치기: topic·angles를 덮어쓴다', async () => {
+    fakeDb.tables.ops_patterns = [patternRow('P20', { topic: 'places', angles: [] })]
+    const outcome = await updateOpsPattern(service, 'P20', validInput({ topic: 'sports/ride', angles }), { actor: ACTOR, expectedUpdatedAt: T1 })
+    if (!outcome.ok) throw new Error(outcome.error)
+    expect(outcome.changed).toBe(true)
+    expect(fakeDb.tables.ops_patterns[0]).toMatchObject({ topic: 'sports/ride', angles })
+  })
+
+  it('고치기: 주제를 빈 문자열로 보내면 NULL로 지운다', async () => {
+    fakeDb.tables.ops_patterns = [patternRow('P20', { topic: 'places', angles })]
+    const outcome = await updateOpsPattern(service, 'P20', validInput({ topic: '', angles }), { actor: ACTOR, expectedUpdatedAt: T1 })
+    if (!outcome.ok) throw new Error(outcome.error)
+    expect(outcome.changed).toBe(true)
+    expect(fakeDb.tables.ops_patterns[0]).toMatchObject({ topic: null })
+  })
+
+  it('고치기: topic·angles를 안 보내면 현재 값을 그대로 둔다', async () => {
+    fakeDb.tables.ops_patterns = [patternRow('P20', { topic: 'places', angles })]
+    const outcome = await updateOpsPattern(service, 'P20', validInput({ name: '이름만 고침' }), { actor: ACTOR, expectedUpdatedAt: T1 })
+    if (!outcome.ok) throw new Error(outcome.error)
+    expect(outcome.pattern).toMatchObject({ name: '이름만 고침', topic: 'places', angles })
+    expect(fakeDb.tables.ops_patterns[0]).toMatchObject({ topic: 'places', angles })
+  })
+
+  it('고치기: 값이 같으면 변경 없음이다(키 순서·needs 순서와 무관하게 같은 JSON이면)', async () => {
+    const content = validInput()
+    const current = await createOpsPattern(service, { ...content, topic: 'places', angles }, { actor: ACTOR })
+    if (!current.ok) throw new Error(current.error)
+    const writes = fakeDb.writeCalls
+    const reordered = [{ needs: ['places'], note: '한 곳을 소개한다', title: '장소 한 곳', type: '소개' }]
+    const same = await updateOpsPattern(service, current.pattern.patternNo, { ...content, topic: 'places', angles: reordered }, { actor: ACTOR, expectedUpdatedAt: current.pattern.updatedAt })
+    if (!same.ok) throw new Error(same.error)
+    expect(same.changed).toBe(false)
+    expect(fakeDb.writeCalls).toBe(writes)
+
+    const changedAngles = await updateOpsPattern(
+      service,
+      current.pattern.patternNo,
+      { ...content, topic: 'places', angles: [{ ...angles[0], title: '다른 제목' }] },
+      { actor: ACTOR, expectedUpdatedAt: current.pattern.updatedAt }
+    )
+    if (!changedAngles.ok) throw new Error(changedAngles.error)
+    expect(changedAngles.changed).toBe(true)
   })
 })
 

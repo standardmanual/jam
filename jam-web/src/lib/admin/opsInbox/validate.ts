@@ -15,12 +15,12 @@
  * 호출한 쪽이 `tribes`를 조회해 `ctx.tribeIds`로 넘길 때만 본다(순수 함수라 DB를 부르지 않는다). 옛 형식 항목(`segment`만 있는
  * 항목)은 받아서 저장하고, 새 칸 오류만 붙는다. 칸을 읽는 쪽은 `fields.ts`다.
  *
- * 패턴 번호·지점 카테고리(티켓 20261007_1745): `pattern_no`는 `P01`처럼 `^P[0-9]{2,}$`여야 하고(숫자·`P-07`은 형식 오류), 패턴 사전에 있는 번호여야 한다.
+ * 패턴 번호·지점 카테고리(티켓 20261007_1745): `pattern_no`는 `P01`처럼 `^P[0-9]{2,}$`여야 하고(숫자·`P-07`은 형식 오류), 패턴에 있는 번호여야 한다.
  * `knobs.place_category`는 선택이며 값이 있으면 `poi_categories.slug` 문자열 배열이어야 한다(빈 배열은 허용, 나머지 `knobs`는 검사하지 않는다).
  * 사전·카테고리에 실제로 있는지는 호출한 쪽이 조회해 `ctx.patternNos`·`ctx.poiCategorySlugs`로 넘길 때만 본다. 어긋나도 저장·승인은 막지 않고
  * 형식 오류만 남긴다. 형식이 틀린 `pattern_no`는 항목의 `pattern_no` 열을 비워(null) 저장한다(제출 원본에는 그대로 남는다).
  *
- * 패턴 제안 내용 칸(티켓 20261007_1746): `kind`가 `pattern_proposal`인 항목만 `resource.pattern`을 본다(패턴 사전 한 행과 같은 모양, `validateOpsPatternProposal`).
+ * 패턴 제안 내용 칸(티켓 20261007_1746): `kind`가 `pattern_proposal`인 항목만 `resource.pattern`을 본다(패턴 한 행과 같은 모양, `validateOpsPatternProposal`).
  * 이름·작동 원리·유저가 겪는 것·손잡이 5종(`knobs`)이 필수이고, 메뉴·샘플·카드 모양·주의점은 선택이다. 정의되지 않은 키는 오류가 아니다(읽기 쪽이 버린다).
  * 틀려도 저장·승인은 막지 않고 형식 오류만 남긴다. 읽는 쪽은 `fields.ts`의 `readOpsPatternProposal`이다. 사전의 기존 이름과 겹치는지는 보지 않는다.
  *
@@ -68,7 +68,7 @@ const MAX_AUTHOR_LENGTH = 100
 
 /**
  * 검증이 밖에서 받는 재료. `tribeIds`는 `tribes`에 있는 트라이브 ID 전체(소문자)다 — 있으면 `tribe_id`가 그 안에 있는지까지 본다.
- * 없으면 형식(UUID)만 본다. `patternNos`는 패턴 사전(`ops_patterns`)의 번호 전체(보관 패턴 포함)이고, `poiCategorySlugs`는
+ * 없으면 형식(UUID)만 본다. `patternNos`는 패턴(`ops_patterns`)의 번호 전체(보관 패턴 포함)이고, `poiCategorySlugs`는
  * `poi_categories.slug` 전체다 — 각각 있으면 `pattern_no`·`knobs.place_category`가 그 안에 있는지까지 보고, 없으면 형식만 본다.
  */
 export interface OpsValidationContext {
@@ -385,7 +385,7 @@ function validatePatternCardShape(entry: unknown, at: string): string[] {
  * 패턴 제안 항목(`kind`가 `pattern_proposal`)의 내용 칸 `resource.pattern` 검사 (티켓 20261007_1746). `resource`는 항목의 `resource` 값이고
  * `path`는 항목 경로(`items[2]`)다. 부르는 쪽이 종류를 먼저 가른다 — 다른 종류의 `resource`는 보지 않는다.
  *
- * 칸은 패턴 사전 한 행과 같다. 필수는 `name`·`principle`·`user_experience`(비어 있지 않은 문자열)와 `knobs`(손잡이 5종)다.
+ * 칸은 패턴 한 행과 같다. 필수는 `name`·`principle`·`user_experience`(비어 있지 않은 문자열)와 `knobs`(손잡이 5종)다.
  * 선택은 `menus`(비어 있지 않은 문자열 배열)·`samples`(`{ no, name, role, impl }` 배열)·`card_shapes`(`{ shape, note }` 배열)·`pitfalls`(문자열)이고,
  * 없으면 오류가 아니다. 원소 오류는 `samples[2].role`처럼 원소마다 알린다. 정의되지 않은 키는 보지 않는다.
  * `resource`가 객체가 아니거나 `pattern`이 없으면 한 줄이고, `pattern`이 객체가 아니면 그 한 줄로 끝낸다.
@@ -672,7 +672,7 @@ function validateItem(
   }
   if (typeof raw.kind === 'string') kind = raw.kind
 
-  // pattern_no: 선택. 있으면 P01 형식이고 패턴 사전에 있는 번호여야 한다. 형식이 틀리면 열은 비우고(null) 원본에만 남긴다.
+  // pattern_no: 선택. 있으면 P01 형식이고 패턴에 있는 번호여야 한다. 형식이 틀리면 열은 비우고(null) 원본에만 남긴다.
   // 사전에 없는 번호는 열에 그대로 두고 오류만 남긴다(어느 쪽이든 저장·승인은 막지 않는다).
   let patternNo: string | null = null
   if (isPresent(raw.pattern_no)) {
@@ -682,7 +682,7 @@ function validateItem(
         `${path}.pattern_no: 패턴 번호는 P01처럼 P 뒤에 숫자 두 자리 이상이어야 해요(받은 값: ${describeShort(raw.pattern_no)}).`
       )
     } else if (ctx.patternNos && !ctx.patternNos.has(patternNo)) {
-      errors.push(`${path}.pattern_no: 패턴 사전에 없는 번호예요(받은 값: ${describeShort(patternNo)}). 패턴 번호를 확인해 주세요.`)
+      errors.push(`${path}.pattern_no: 패턴에 없는 번호예요(받은 값: ${describeShort(patternNo)}). 패턴 번호를 확인해 주세요.`)
     }
   }
 

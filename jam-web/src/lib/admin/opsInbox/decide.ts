@@ -9,7 +9,7 @@
  *   같은 항목을 동시에 두 번 승인해도 한 번만 반영되고 결정 기록도 1행이다.
  * - 결정 기록은 **insert만** 한다(뒤에 `slack_result` 열만 채운다, `notifyDecision`). 수정·삭제하지 않는다. 결정 기록 insert가
  *   실패하면 방금 바꾼 항목을 되돌리고 500이다(1816 라우트의 되돌림 방식).
- * - 패턴 제안(`kind = 'pattern_proposal'`) 승인은 같은 요청에서 패턴 사전에 새 패턴을 넣고 항목을 바로 「종료」로 닫는다(티켓 20261008_1845).
+ * - 패턴 제안(`kind = 'pattern_proposal'`) 승인은 같은 요청에서 새 패턴을 만들고 항목을 바로 「종료」로 닫는다(티켓 20261008_1845).
  *   사전 입력이 실패하면 상태를 검토중으로 되돌린다. 일괄 승인은 패턴 제안을 처리하지 않는다.
  * - 제출 원본(`original`)은 어떤 경우에도 건드리지 않는다. 수정은 수정본(`edited`)에만 쓴다.
  * - `actor`는 관리자 ID다(제출 라우트의 관리자 로그인 제출과 같은 규칙).
@@ -242,18 +242,18 @@ async function restoreStatus(service: ServiceClient, itemIds: string[], bundleId
 }
 
 const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
-const PATTERN_PROPOSAL_FORMAT_MESSAGE = '제안 내용 형식이 맞지 않아 패턴 사전에 넣을 수 없어요. 반려해 주세요.'
+const PATTERN_PROPOSAL_FORMAT_MESSAGE = '제안 내용 형식이 맞지 않아 패턴에 넣을 수 없어요. 반려해 주세요.'
 const PATTERN_NO_CONFLICT_MESSAGE = '그사이 다른 패턴이 만들어졌어요. 다시 승인해 주세요.'
 const PATTERN_PROPOSALS_ONLY_MESSAGE = '패턴 제안은 하나씩 승인해 주세요.'
 const PATTERN_FIELD_SUMMARY_LIMIT = 3
 
-/** 패턴 사전의 내용 검사가 돌려준 칸별 문장을 한 문장으로 모은다(앞의 몇 개만 싣는다). */
+/** 패턴의 내용 검사가 돌려준 칸별 문장을 한 문장으로 모은다(앞의 몇 개만 싣는다). */
 function summarizePatternFieldErrors(fieldErrors: Record<string, string> | undefined): string {
   const messages = Object.values(fieldErrors ?? {})
   const shown = messages.slice(0, PATTERN_FIELD_SUMMARY_LIMIT).join(' ')
   const rest = messages.length - PATTERN_FIELD_SUMMARY_LIMIT
   const detail = shown ? `${shown}${rest > 0 ? ` 외 ${rest}건.` : ''} ` : ''
-  return `제안 내용이 패턴 사전 규칙에 맞지 않아요. ${detail}반려해 주세요.`
+  return `제안 내용이 패턴 규칙에 맞지 않아요. ${detail}반려해 주세요.`
 }
 
 /**

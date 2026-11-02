@@ -75,9 +75,9 @@ describe('OpsItemFooter — 상태별 분기', () => {
     expect(out).not.toContain('승인하기')
   })
 
-  it('검토중 패턴 제안이면 「패턴 사전에 넣기」가 나온다', () => {
+  it('검토중 패턴 제안이면 「패턴에 넣기」가 나온다', () => {
     const out = footer(makeItem({ status: 'reviewing', kind: 'pattern_proposal' }))
-    expect(out).toContain('패턴 사전에 넣기')
+    expect(out).toContain('패턴에 넣기')
     expect(out).not.toContain('승인하기')
   })
 

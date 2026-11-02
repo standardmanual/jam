@@ -1,5 +1,5 @@
 /**
- * 운영 패턴 사전 쓰기 (티켓 20261008_1545, 상위 20260930_1503 ⑩a-1, 운영툴 PRD §11.6). `POST /api/admin/ops-patterns`(만들기)와
+ * 운영 패턴 쓰기 (티켓 20261008_1545, 상위 20260930_1503 ⑩a-1, 운영툴 PRD §11.6). `POST /api/admin/ops-patterns`(만들기)와
  * `PATCH /api/admin/ops-patterns/[patternNo]`(고치기·상태 바꾸기)가 쓰고, ⑪(패턴 제안 승인)이 `createOpsPattern`을 그대로 부른다.
  *
  * - 읽기 모양(`OpsPatternRecord`)과 읽기 함수는 `read.ts`를 다시 쓴다. 관리자 ID(`updated_by`)는 쓰기만 하고 응답에는 싣지 않는다.
@@ -25,6 +25,7 @@ export { validateOpsPatternInput } from './input'
 export type {
   OpsPatternFieldErrors,
   OpsPatternInput,
+  OpsPatternInputAngle,
   OpsPatternInputCardShape,
   OpsPatternInputKnobs,
   OpsPatternInputSample,
@@ -98,7 +99,10 @@ function sameContent(record: OpsPatternRecord, input: OpsPatternInput): boolean 
     canonicalJson(record.menus) === canonicalJson(input.menus) &&
     canonicalJson(record.samples) === canonicalJson(input.samples) &&
     canonicalJson(record.cardShapes) === canonicalJson(input.cardShapes) &&
-    canonicalJson(record.knobs) === canonicalJson(input.knobs)
+    canonicalJson(record.knobs) === canonicalJson(input.knobs) &&
+    // 주제·각도는 보냈을 때만 견준다(안 보내면 «그대로 둔다»라 같은 값이다).
+    (input.topic === undefined || record.topic === input.topic) &&
+    (input.angles === undefined || canonicalJson(record.angles) === canonicalJson(input.angles))
   )
 }
 
@@ -166,6 +170,8 @@ export async function createOpsPattern(service: ServiceClient, rawInput: unknown
       card_shapes: input.cardShapes as unknown as Json,
       knobs: input.knobs as unknown as Json,
       pitfalls: input.pitfalls,
+      topic: input.topic ?? null,
+      angles: (input.angles ?? []) as unknown as Json,
       status: 'active',
       pause_reason: null,
       origin,
@@ -233,6 +239,8 @@ export async function updateOpsPattern(
       card_shapes: input.cardShapes as unknown as Json,
       knobs: input.knobs as unknown as Json,
       pitfalls: input.pitfalls,
+      ...(input.topic !== undefined ? { topic: input.topic } : {}),
+      ...(input.angles !== undefined ? { angles: input.angles as unknown as Json } : {}),
       updated_at: new Date().toISOString(),
       updated_by: context.actor,
     })

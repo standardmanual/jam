@@ -27,6 +27,7 @@ import {
   OpsPatternPitfallsSection,
   OpsPatternRail,
   OpsPatternResultSection,
+  OpsPatternAnglesSection,
   OpsPatternSamplesSection,
   OpsPatternSignals,
   OpsPatternSummarySection,
@@ -79,7 +80,7 @@ describe('머리', () => {
   it('되돌아가기 링크·번호와 이름·상태 칩·출처 글자(칩 아님)를 보인다', () => {
     const out = flat(<OpsPatternDetailHeader pattern={pattern()} />)
     expect(out).toContain('href="/admin/ops-patterns"')
-    expect(out).toContain('패턴 사전')
+    expect(out).toContain('패턴')
     expect(out).toContain('<span class="tabular-nums">P03</span> 비 오는 날 카페')
     expect(out).toContain('사용 중')
     expect(out).toContain('tabler-icon-circle-check')
@@ -193,12 +194,13 @@ describe('요약·손잡이·샘플·주의점', () => {
   })
 
   it('구역 제목이 목차와 같은 순서·글자로 모두 있다', () => {
-    expect(PATTERN_DETAIL_SECTIONS.map((section) => section.label)).toEqual(['요약', '손잡이', '샘플', '주의점', '취향 신호', '사용 이력', '결과'])
+    expect(PATTERN_DETAIL_SECTIONS.map((section) => section.label)).toEqual(['요약', '손잡이', '샘플', '샘플 각도', '주의점', '취향 신호', '사용 이력', '결과'])
     const out = flat(
       <>
         <OpsPatternSummarySection pattern={pattern()} />
         <OpsPatternKnobsSection knobs={KNOBS} />
         <OpsPatternSamplesSection samples={pattern().samples} />
+        <OpsPatternAnglesSection angles={[]} />
         <OpsPatternPitfallsSection pitfalls="x" />
         <PatternSection id="signals">
           <OpsPatternSignals signals={[]} patternNo="P03" />

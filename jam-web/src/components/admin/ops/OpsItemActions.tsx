@@ -16,10 +16,10 @@ import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
 /**
  * 항목 결정 줄 (티켓 20260930_1818, 채원 화면 설계 「행동 영역」). 상세 카드 아래 고정 줄 `detailFooter` 슬롯을 채운다.
  *
- * `[반려하기](테두리형·붉은 글) ··· [수정하기] [패턴 사전에 넣기]`는 **검토중 항목에만** 보인다. 그 밖의 상태는 버튼 자리에 안내 글만 둔다.
+ * `[반려하기](테두리형·붉은 글) ··· [수정하기] [패턴에 넣기]`는 **검토중 항목에만** 보인다. 그 밖의 상태는 버튼 자리에 안내 글만 둔다.
  * 서랍 결정 줄(티켓 20261026_2024 2회차): `onExclude`·`onKeep`이 함께 오면 패턴 제안이 아닌 검토중 항목에는 주 줄 `[빼기] [고치기] [이대로 두기]`를 두고
  * `[반려하기]`는 그 아래 보조 줄로 내린다. [고치기]는 [수정하기]와 같은 동작(수정 양식 열기)이고 이름만 다르다. 패턴 제안과 두 콜백이 없는 쓰는 곳은 위 줄 그대로다.
- * 개별 승인 버튼은 **패턴 제안에만** 있고 이름은 「패턴 사전에 넣기」다(승인 즉시 종료라 예약 대상이 아니다). 그 밖의 종류는 승인과 예약을
+ * 개별 승인 버튼은 **패턴 제안에만** 있고 이름은 「패턴에 넣기」다(승인 즉시 종료라 예약 대상이 아니다). 그 밖의 종류는 승인과 예약을
  * 단계 표시줄의 [N건 승인하고 예약]이 한 번에 하므로 개별 승인 버튼이 없다(티켓 20261026_2031).
  * 승인·반려는 확인창 뒤에만 실행된다. 실패는 창 안 인라인이고 창은 유지한다. 붉은 면은 반려 창의 확인 버튼 하나뿐이다.
  */
@@ -214,7 +214,7 @@ export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict, onE
             </Button>
             {isPatternProposal && (
               <Button type="button" disabled={editing} onClick={() => open('approve')}>
-                패턴 사전에 넣기
+                패턴에 넣기
               </Button>
             )}
           </div>
@@ -230,10 +230,10 @@ export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict, onE
           description={
             <div className="space-y-2">
               {summary}
-              <p className="break-keep wrap-break-word">패턴 사전에 새 패턴이 들어가고 항목은 바로 끝나요. 기록이 남고 되돌릴 수 없어요.</p>
+              <p className="break-keep wrap-break-word">새 패턴이 만들어지고 항목은 바로 끝나요. 기록이 남고 되돌릴 수 없어요.</p>
             </div>
           }
-          confirmLabel="패턴 사전에 넣기"
+          confirmLabel="패턴에 넣기"
           pendingLabel="넣는 중"
           pending={pending}
           error={error}

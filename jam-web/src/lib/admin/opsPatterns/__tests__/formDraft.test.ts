@@ -37,6 +37,11 @@ const RECORD = {
     tribe: { rule: '한 트라이브만', example: '야행성' },
   },
   pitfalls: '비가 안 오면 비어 보여요',
+  topic: 'weather/rain',
+  angles: [
+    { type: '소개', title: '비 오는 날 카페', note: '한 곳을 소개한다', needs: ['places', 'trends'] },
+    { type: '유도', title: '우산 챙기고 출발', note: '오늘 나갈 이유를 준다', needs: [] },
+  ],
 }
 
 function clone(draft: PatternDraft): PatternDraft {

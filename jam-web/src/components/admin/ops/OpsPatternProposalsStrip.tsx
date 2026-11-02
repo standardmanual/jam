@@ -3,7 +3,7 @@ import { IconArrowRight } from '@tabler/icons-react'
 import { inboxListHref } from '@/lib/admin/opsHome/links'
 
 /**
- * 패턴 사전의 「승인 대기 제안」 줄 (티켓 20261008_1400, 채원 판정 「⑨ 목록」). 훅이 없는 서버 컴포넌트다.
+ * 패턴의 「승인 대기 제안」 줄 (티켓 20261008_1400, 채원 판정 「⑨ 목록」). 훅이 없는 서버 컴포넌트다.
  *
  * `count`는 받은 기획함에서 결정을 기다리는 `pattern_proposal` 항목 수(`countPendingPatternProposals`, 시험 묶음 제외)이고, 못 읽었으면 `null`이다.
  * 0건이면 muted 한 줄이고 링크가 없다. 못 읽었으면 0건으로 보이지 않고 「읽지 못했어요」를 알린다. 링크는 받은 기획함의 「결정할 것」 탭이다.

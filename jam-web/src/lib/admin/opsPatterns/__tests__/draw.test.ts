@@ -443,7 +443,7 @@ function fakeService(tables: Record<string, Array<Record<string, unknown>>>, fai
   return { service: { from: (table: string) => new Query(table) } as unknown as ServiceClient, calls }
 }
 
-describe('countOpsPatternUsage — 패턴 사전(S5)과 조합 뽑기가 같이 쓰는 세기', () => {
+describe('countOpsPatternUsage — 패턴(S5)과 조합 뽑기가 같이 쓰는 세기', () => {
   it('넘긴 번호는 한 번도 안 썼어도 0회·null로 돌려준다(상태는 보지 않는다)', () => {
     const counted = countOpsPatternUsage([row(1, { patternNo: 'P02' })], ['P01', 'P02', 'P03'], NOW)
     expect(counted.get('P01')).toEqual({ uses: 0, lastUsedAt: null })

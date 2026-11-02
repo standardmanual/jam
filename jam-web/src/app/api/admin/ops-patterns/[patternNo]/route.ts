@@ -1,5 +1,5 @@
 /**
- * GET·PATCH /api/admin/ops-patterns/[patternNo] — 운영 패턴 사전 상세 읽기(티켓 20261001_2134, 상위 20260930_1503 ②)와 고치기·상태 바꾸기(티켓 20261008_1545 ⑩a-1), 운영툴 PRD §11.6
+ * GET·PATCH /api/admin/ops-patterns/[patternNo] — 운영 패턴 상세 읽기(티켓 20261001_2134, 상위 20260930_1503 ②)와 고치기·상태 바꾸기(티켓 20261008_1545 ⑩a-1), 운영툴 PRD §11.6
  *
  * 응답 `{ pattern, tasteSignals }`(그 패턴의 취향 신호만, `sort_order` 순서). `patternNo`가 `P01` 형식이 아니면 400, 없는 번호면 404다.
  * 보관한 패턴도 번호로 직접 읽으면 돌려준다(번호와 기록은 남는다). 처리와 응답 칸은 `lib/admin/opsPatterns/read.ts`가 정한다.
@@ -27,7 +27,7 @@ import { PATTERN_MIXED_PATCH_MESSAGE, changeOpsPatternStatus, updateOpsPattern }
 /** 본문 상한(바이트). 긴 글 칸(2,000자)이 여러 개다. */
 const MAX_BODY_BYTES = 65_536
 /** 내용 고치기 본문의 칸. `status`와 함께 오면 섞인 요청이다. */
-const CONTENT_KEYS = ['name', 'principle', 'userExperience', 'menus', 'samples', 'cardShapes', 'knobs', 'pitfalls'] as const
+const CONTENT_KEYS = ['name', 'principle', 'userExperience', 'menus', 'samples', 'cardShapes', 'knobs', 'pitfalls', 'topic', 'angles'] as const
 
 export async function GET(req: Request, { params }: { params: Promise<{ patternNo: string }> }) {
   const denied = await requireAdminRead(req)

@@ -233,6 +233,8 @@ export function patternRow(patternNo: string, extra: Row = {}): Row {
     card_shapes: [],
     knobs: {},
     pitfalls: '',
+    topic: null,
+    angles: [],
     status: 'active',
     pause_reason: null,
     origin: 'seed',

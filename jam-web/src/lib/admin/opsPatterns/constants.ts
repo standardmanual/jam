@@ -1,5 +1,5 @@
 /**
- * 운영 패턴 사전의 고정 값 (티켓 20261001_2056, 상위 20260930_1503 ①, 순수 상수).
+ * 운영 패턴의 고정 값 (티켓 20261001_2056, 상위 20260930_1503 ①, 순수 상수).
  *
  * 값의 정본은 `docs/service/prd/ops-tool/PRD.md` §10.1이고, 테이블은 마이그레이션 `210_ops_patterns.sql`이다.
  * DB CHECK와 이 상수가 어긋나면 `__tests__/migration.test.ts`가 실패한다.
@@ -61,6 +61,27 @@ export const OPS_PATTERN_KNOB_VALUE_FIELD_LABELS: Record<string, string> = {
   example: '예시',
 }
 
+/** 주제 패턴의 샘플 각도 종류 7값(티켓 20261102_1600). `ops_patterns.angles[].type`. DB CHECK는 없고 앱이 검사한다. */
+export const OPS_PATTERN_ANGLE_TYPES = ['소개', '유도', '미션', '큐레이션', '현황', '회고', '이야기'] as const
+export type OpsPatternAngleType = (typeof OPS_PATTERN_ANGLE_TYPES)[number]
+
+/** 각도가 기획에 필요로 하는 재료 6종(`angles[].needs[]`): 장소 목록·장소별 집계·배지·얻을 길·트렌드·KPI. */
+export const OPS_PATTERN_ANGLE_NEEDS = ['places', 'place-stats', 'badges', 'item-paths', 'trends', 'kpi'] as const
+export type OpsPatternAngleNeed = (typeof OPS_PATTERN_ANGLE_NEEDS)[number]
+
+/** 재료 이름의 한국어 표기(상세 화면·폼 공용). */
+export const OPS_PATTERN_ANGLE_NEED_LABELS: Record<OpsPatternAngleNeed, string> = {
+  places: '장소 목록',
+  'place-stats': '장소별 집계',
+  badges: '배지',
+  'item-paths': '얻을 길',
+  trends: '트렌드',
+  kpi: 'KPI',
+}
+
+/** 주제 값 형식: 영문 소문자·숫자·`/`·`-`(예: `sports/run`). */
+export const OPS_PATTERN_TOPIC_PATTERN = /^[a-z0-9/-]+$/
+
 /**
  * 패턴을 쓸 때(만들기·고치기·상태 바꾸기) 지키는 길이 상한(티켓 20261008_1545 D2). 단위는 글자 수이고 앞뒤 공백을 뗀 뒤 센다.
  * 이름·긴 글 칸·쉬는 이유·메뉴 개수·샘플 개수는 사용자가 정했고, 메뉴 한 개·카드 모양 메모는 카리나 가정이다.
@@ -74,6 +95,12 @@ export const OPS_PATTERN_LIMITS = {
   samplesMaxCount: 20,
   cardShapeNoteMax: 200,
   pauseReasonMax: 200,
+  /** 주제(티켓 20261102_1600). */
+  topicMax: 60,
+  /** 샘플 각도 개수·제목·설명 상한(카리나 가정). */
+  anglesMaxCount: 30,
+  angleTitleMax: 100,
+  angleNoteMax: 500,
 } as const
 
 /**

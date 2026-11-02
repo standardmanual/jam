@@ -1,5 +1,5 @@
 /**
- * 운영 패턴 사전 읽기 (티켓 20261001_2134, 상위 20260930_1503 ②)
+ * 운영 패턴 읽기 (티켓 20261001_2134, 상위 20260930_1503 ②)
  *
  * 서비스 클라이언트는 메모리 안의 가짜 테이블로 바꾼다(실 DB에 접속하지 않는다). 가짜는 `select`에 적은 칸만 돌려주고 `eq`·`neq`를 적용하므로,
  * 읽는 칸 목록과 거르는 조건이 실제로 응답을 바꾸는지 본다. 지키는 것:
@@ -93,6 +93,8 @@ function patternRow(patternNo: string, extra: Partial<Row> = {}): Row {
     card_shapes: [{ kind: 'badge' }],
     knobs: { condition: { open: 'a', closed: 'b' } },
     pitfalls: '함정',
+    topic: null,
+    angles: [],
     status: 'active',
     pause_reason: null,
     origin: 'seed',
@@ -148,6 +150,8 @@ describe('읽는 칸 목록과 변환: 관리자 ID를 싣지 않는다', () => 
         'cardShapes',
         'knobs',
         'pitfalls',
+        'topic',
+        'angles',
         'status',
         'statusLabel',
         'pauseReason',
@@ -225,6 +229,21 @@ describe('listOpsPatterns', () => {
     const patterns = await listOpsPatterns(service, { includeArchived: false })
     expect(patterns.map((p) => p.patternNo)).toEqual(['P09', 'P10', 'P20', 'P100'])
     expect(['P100', 'P10', 'P09'].sort(comparePatternNo)).toEqual(['P09', 'P10', 'P100'])
+  })
+
+  it('topic을 주면 정확히 일치하는 주제만, none이면 원리형(topic NULL)만 싣고, 안 주면 거르지 않는다', async () => {
+    db.tables.ops_patterns = [
+      patternRow('P02'),
+      patternRow('P19', { topic: 'sports/run' }),
+      patternRow('P20', { topic: 'sports/run-trail' }),
+      patternRow('P21', { topic: 'places' }),
+    ]
+    const nos = async (topic?: string) =>
+      (await listOpsPatterns(service, { includeArchived: false, topic })).map((p) => p.patternNo)
+    expect(await nos('sports/run')).toEqual(['P19'])
+    expect(await nos('none')).toEqual(['P02'])
+    expect(await nos('sports')).toEqual([])
+    expect(await nos()).toEqual(['P02', 'P19', 'P20', 'P21'])
   })
 
   it('테이블이 비어 있으면 빈 목록이다', async () => {

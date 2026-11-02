@@ -1,5 +1,5 @@
 /**
- * 패턴 사전(S5) 목록·공통 탭·승인 대기 제안 줄의 렌더 (티켓 20261008_1400, 채원 판정 「⑨ 목록」)
+ * 패턴(S5) 목록·공통 탭·승인 대기 제안 줄의 렌더 (티켓 20261008_1400, 채원 판정 「⑨ 목록」)
  *
  * 저장소에 jsdom·testing-library가 없어(`home.test.tsx`와 같은 방식) 서버 렌더(`renderToStaticMarkup`)로 그린 모양을 고정한다.
  *
@@ -35,6 +35,8 @@ function row(patternNo: string, overrides: Partial<PatternListRow> = {}): Patter
   return {
     patternNo,
     name: `${patternNo} 이름`,
+    topic: null,
+    angleCount: 0,
     status: 'active',
     pauseReason: null,
     uses: 1,
@@ -66,6 +68,22 @@ describe('OpsPatternList — 목록', () => {
     expect(out).toContain('aria-current="page"')
   })
 
+  it('종류 거름: 전체·원리형·주제형 개수와 링크를 보이고, 주제형은 주제 이름표와 각도 개수를 보인다', () => {
+    const rows = [...ROWS, row('P19', { name: '달리기 소개', topic: 'sports/run', angleCount: 4 }), row('P21', { name: '장소', topic: 'places', angleCount: 2 })]
+    const all = flat(<OpsPatternList rows={rows} status="all" />)
+    expect(all).toContain('전체 <span class="ml-1 tabular-nums">5</span>')
+    expect(all).toContain('원리형 <span class="ml-1 tabular-nums">3</span>')
+    expect(all).toContain('주제형 <span class="ml-1 tabular-nums">2</span>')
+    expect(all).toContain('href="/admin/ops-patterns?kind=topic"')
+    expect(all).toContain('sports/run')
+    const topicOnly = flat(<OpsPatternList rows={rows} status="all" kind="topic" />)
+    expect(topicOnly).toContain('달리기 소개')
+    expect(topicOnly).not.toContain('P01 이름')
+    const principleOnly = flat(<OpsPatternList rows={rows} status="all" kind="principle" />)
+    expect(principleOnly).toContain('P01 이름')
+    expect(principleOnly).not.toContain('달리기 소개')
+  })
+
   it('기본(전체)은 보관을 숨기고, 보관 필터에서만 보인다', () => {
     expect(flat(<OpsPatternList rows={ROWS} status="all" />)).not.toContain('보관한 패턴')
     const archived = flat(<OpsPatternList rows={ROWS} status="archived" />)
@@ -81,9 +99,9 @@ describe('OpsPatternList — 목록', () => {
 
   it('표는 caption(sr-only)과 scope="col" 머리를 갖고, 40rem 미만에는 카드 목록으로 바뀐다', () => {
     const out = html(<OpsPatternList rows={ROWS} status="all" />)
-    expect(out).toContain('<caption class="sr-only">패턴 사전 목록</caption>')
-    expect(out.match(/scope="col"/g)?.length).toBe(7)
-    for (const heading of ['번호', '이름', '상태', '최근 4주', '마지막 사용', '샘플', '취향 신호']) expect(out).toContain(heading)
+    expect(out).toContain('<caption class="sr-only">패턴 목록</caption>')
+    expect(out.match(/scope="col"/g)?.length).toBe(8)
+    for (const heading of ['번호', '이름', '상태', '최근 4주', '마지막 사용', '샘플', '각도', '취향 신호']) expect(out).toContain(heading)
     expect(out).toContain('@max-[40rem]:hidden')
     expect(out).toContain('hidden divide-y divide-border @max-[40rem]:block')
     expect(out).toContain('tabular-nums')
@@ -146,12 +164,12 @@ describe('OpsPatternList — 목록', () => {
     expect(flat(<OpsPatternList rows={[row('P05', { status: 'weird' })]} status="all" />)).toContain('상태 확인 필요')
   })
 
-  it('빈 상태: 사전 0건은 「아직 패턴이 없어요」, 필터 0건은 「이 상태의 패턴이 없어요」 + [전체 보기]', () => {
+  it('빈 상태: 사전 0건은 「아직 패턴이 없어요」, 필터 0건은 「이 조건의 패턴이 없어요」 + [전체 보기]', () => {
     const empty = flat(<OpsPatternList rows={[]} status="all" />)
     expect(empty).toContain('아직 패턴이 없어요')
     expect(empty).not.toContain('<table')
     const filtered = flat(<OpsPatternList rows={[row('P01')]} status="paused" />)
-    expect(filtered).toContain('이 상태의 패턴이 없어요')
+    expect(filtered).toContain('이 조건의 패턴이 없어요')
     expect(filtered).toContain('전체 보기')
     expect(filtered).not.toContain('<table')
     expect(flat(<OpsPatternList rows={[row('P20', { status: 'archived' })]} status="all" />)).not.toContain('전체 보기')

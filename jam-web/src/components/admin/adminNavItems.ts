@@ -54,7 +54,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/ops-schedule', label: '일정표', icon: IconCalendarWeek },
       { href: '/admin/today', label: '투데이', icon: IconNews },
       { href: '/admin/ops-trends', label: '트렌드 레이더', icon: IconTrendingUp },
-      { href: '/admin/ops-patterns', label: '패턴 사전', icon: IconBooks },
+      { href: '/admin/ops-patterns', label: '패턴', icon: IconBooks },
     ],
   },
   {

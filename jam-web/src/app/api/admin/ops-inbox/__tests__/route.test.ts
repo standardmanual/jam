@@ -833,7 +833,7 @@ describe('POST /api/admin/ops-inbox', () => {
       expect(res.status).toBe(201)
       const json = await res.json()
       expect(json.format_errors).toHaveLength(1)
-      expect(json.format_errors[0]).toMatch(/^items\[0\]\.pattern_no: 패턴 사전에 없는 번호예요/)
+      expect(json.format_errors[0]).toMatch(/^items\[0\]\.pattern_no: 패턴에 없는 번호예요/)
       expect(h.state.tables.ops_bundle_items[0].pattern_no).toBe('P99')
       expect(h.state.tables.ops_bundle_items[0].format_errors).toEqual(json.format_errors)
     })

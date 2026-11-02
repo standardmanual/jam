@@ -74,7 +74,7 @@ export interface OpsPatternProposalKnobs {
   tribe: { rule: string; example: string }
 }
 
-/** 패턴 제안 항목의 내용. 칸 이름은 패턴 사전 레코드(`OpsPatternRecord`)와 같고, 승인 때 사전에 넣을 값이다. */
+/** 패턴 제안 항목의 내용. 칸 이름은 패턴 레코드(`OpsPatternRecord`)와 같고, 승인 때 사전에 넣을 값이다. */
 export interface OpsPatternProposal {
   name: string
   principle: string

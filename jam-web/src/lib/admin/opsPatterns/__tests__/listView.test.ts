@@ -1,5 +1,5 @@
 /**
- * 패턴 사전 목록 계산 (티켓 20261008_1400, 상위 20260930_1503 ⑨a)
+ * 패턴 목록 계산 (티켓 20261008_1400, 상위 20260930_1503 ⑨a)
  *
  * - 주소 값: `view`·`status`는 틀리면 기본값(patterns·all), 링크는 기본값을 쿼리에 넣지 않는다
  * - 표 줄: 사용 횟수는 `countOpsPatternUsage` 결과를 그대로 싣고, 못 읽은 재료는 0이 아니라 null이다
@@ -11,6 +11,7 @@ import {
   buildPatternRows,
   countByStatus,
   filterPatternRows,
+  filterPatternRowsByKind,
   parsePatternListParams,
   patternListHref,
   sampleCountOf,
@@ -28,6 +29,8 @@ function pattern(patternNo: string, overrides: Partial<OpsPatternRecord> = {}): 
     cardShapes: [],
     knobs: {},
     pitfalls: '',
+    topic: null,
+    angles: [],
     status: 'active',
     statusLabel: '사용 중',
     pauseReason: null,
@@ -45,13 +48,16 @@ function signal(id: string, patternNo: string | null, basis: 'estimate' | 'confi
 
 describe('parsePatternListParams / patternListHref', () => {
   it('없는 값·틀린 값은 기본값이다', () => {
-    expect(parsePatternListParams({})).toEqual({ view: 'patterns', status: 'all' })
-    expect(parsePatternListParams({ view: 'x', status: 'y' })).toEqual({ view: 'patterns', status: 'all' })
-    expect(parsePatternListParams({ view: '', status: '' })).toEqual({ view: 'patterns', status: 'all' })
+    expect(parsePatternListParams({})).toEqual({ view: 'patterns', status: 'all', kind: 'all' })
+    expect(parsePatternListParams({ view: 'x', status: 'y', kind: 'z' })).toEqual({ view: 'patterns', status: 'all', kind: 'all' })
+    expect(parsePatternListParams({ view: '', status: '', kind: '' })).toEqual({ view: 'patterns', status: 'all', kind: 'all' })
   })
 
   it('맞는 값은 그대로 읽는다', () => {
-    expect(parsePatternListParams({ view: 'common' })).toEqual({ view: 'common', status: 'all' })
+    expect(parsePatternListParams({ view: 'common' })).toEqual({ view: 'common', status: 'all', kind: 'all' })
+    for (const kind of ['all', 'principle', 'topic'] as const) {
+      expect(parsePatternListParams({ kind }).kind).toBe(kind)
+    }
     for (const status of ['all', 'active', 'paused', 'archived'] as const) {
       expect(parsePatternListParams({ status }).status).toBe(status)
     }
@@ -62,6 +68,9 @@ describe('parsePatternListParams / patternListHref', () => {
     expect(patternListHref({ view: 'patterns', status: 'all' })).toBe('/admin/ops-patterns')
     expect(patternListHref({ view: 'common' })).toBe('/admin/ops-patterns?view=common')
     expect(patternListHref({ status: 'paused' })).toBe('/admin/ops-patterns?status=paused')
+    expect(patternListHref({ kind: 'all' })).toBe('/admin/ops-patterns')
+    expect(patternListHref({ kind: 'topic' })).toBe('/admin/ops-patterns?kind=topic')
+    expect(patternListHref({ status: 'active', kind: 'principle' })).toBe('/admin/ops-patterns?status=active&kind=principle')
   })
 })
 
@@ -145,5 +154,33 @@ describe('countByStatus / filterPatternRows', () => {
     expect(filterPatternRows(rows, 'active').map((row) => row.patternNo)).toEqual(['P01', 'P02'])
     expect(filterPatternRows(rows, 'paused').map((row) => row.patternNo)).toEqual(['P03'])
     expect(filterPatternRows(rows, 'archived').map((row) => row.patternNo)).toEqual(['P04'])
+  })
+})
+
+describe('주제 이름표·각도 개수·종류 거름 (티켓 20261102_1600)', () => {
+  const ANGLES = [{ type: '소개' }, { type: '유도' }]
+
+  it('표 줄에 topic과 angleCount를 싣는다. 원리형은 topic null·0개, 깨진 angles는 null(모름)', () => {
+    const rows = buildPatternRows(
+      [
+        pattern('P01'),
+        pattern('P19', { topic: 'sports/run', angles: ANGLES }),
+        pattern('P20', { topic: 'places', angles: '망가짐' }),
+      ],
+      null,
+      null
+    )
+    expect(rows.map((row) => [row.topic, row.angleCount])).toEqual([
+      [null, 0],
+      ['sports/run', 2],
+      ['places', null],
+    ])
+  })
+
+  it('종류 거름: all은 그대로, principle은 topic 없는 줄, topic은 topic 있는 줄이고 순서를 지킨다', () => {
+    const rows = buildPatternRows([pattern('P01'), pattern('P19', { topic: 'a' }), pattern('P02'), pattern('P20', { topic: 'b' })], null, null)
+    expect(filterPatternRowsByKind(rows, 'all').map((row) => row.patternNo)).toEqual(['P01', 'P19', 'P02', 'P20'])
+    expect(filterPatternRowsByKind(rows, 'principle').map((row) => row.patternNo)).toEqual(['P01', 'P02'])
+    expect(filterPatternRowsByKind(rows, 'topic').map((row) => row.patternNo)).toEqual(['P19', 'P20'])
   })
 })

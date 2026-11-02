@@ -105,7 +105,7 @@ describe('submitPatternForm — 고치기', () => {
     expect(new Date(UPDATED_AT).toISOString()).not.toBe(UPDATED_AT)
     expect(body.name).toBe('비 오는 날 카페')
     expect(Object.keys(body).sort()).toEqual(
-      ['cardShapes', 'expectedUpdatedAt', 'knobs', 'menus', 'name', 'pitfalls', 'principle', 'samples', 'userExperience']
+      ['angles', 'cardShapes', 'expectedUpdatedAt', 'knobs', 'menus', 'name', 'pitfalls', 'principle', 'samples', 'topic', 'userExperience']
     )
   })
 

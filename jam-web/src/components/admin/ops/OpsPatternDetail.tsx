@@ -10,6 +10,8 @@ import {
   formatKstDateTime,
   originText,
   pauseReasonLine,
+  groupAngleLines,
+  readAngleLines,
   readCardShapeLines,
   readKnobLines,
   readSampleLines,
@@ -25,7 +27,7 @@ import { OpsTasteSignalList } from './OpsTasteSignalEditor'
 /**
  * 패턴 상세(S5 상세)의 표시 부품 (티켓 20261008_1435, 상위 20260930_1503 ⑨b, 채원 판정 「⑨ 상세」). 훅이 없는 표시 전용 부품이다 — 읽기는 페이지가 맡는다.
  *
- * 구역 순서 = 목차 순서: 요약 · 손잡이 · 샘플 · 주의점 · 취향 신호 · 사용 이력 · 결과. 사용 이력은 `OpsPatternUsage`가 그린다.
+ * 구역 순서 = 목차 순서: 요약 · 손잡이 · 샘플 · 샘플 각도 · 주의점 · 취향 신호 · 사용 이력 · 결과. 사용 이력은 `OpsPatternUsage`가 그린다.
  * JSONB(`samples`·`cardShapes`·`knobs`)가 깨져도 화면이 유지되고 칸마다 「적지 않았어요」·「역할 모름」·「목록에 없는 모양」으로 보인다(해석은 `detailView.ts`).
  * 사람이 쓴 글(이름·원리·이유·메모)은 텍스트 노드로만 그린다. 쓰기 버튼([수정하기]·[상태 바꾸기 ▾])은 머리의 `actions` 자리에 `OpsPatternDetailActions`가 들어간다(티켓 20261008_1617 ⑩a-2).
  * 수정한 사람은 어디에도 보이지 않는다.
@@ -37,6 +39,7 @@ export const PATTERN_DETAIL_SECTIONS = [
   { id: 'summary', label: '요약', description: '이 패턴이 무엇이고 유저가 무엇을 겪는지 적어요' },
   { id: 'knobs', label: '손잡이', description: '운영 묶음에서 바꿀 수 있는 값과 닫아 둔 값이에요' },
   { id: 'samples', label: '샘플', description: '이 패턴을 보여 주는 예시예요' },
+  { id: 'angles', label: '샘플 각도', description: '이 주제로 낼 수 있는 컨텐츠 예시예요. 닫힌 목록이 아니에요' },
   { id: 'pitfalls', label: '주의점', description: '쓸 때 조심할 점이에요' },
   { id: 'signals', label: '취향 신호', description: '이 패턴에 정리된 운영 취향이에요' },
   { id: 'usage', label: '사용 이력', description: '이 패턴으로 만든 항목 중 승인 이후 기록이에요' },
@@ -46,7 +49,7 @@ export const PATTERN_DETAIL_SECTIONS = [
 export type PatternSectionId = (typeof PATTERN_DETAIL_SECTIONS)[number]['id']
 
 export const PATTERN_RESULT_TEXT = '결과와 기록에서 봐요'
-export const PATTERN_DETAIL_BACK_LABEL = '패턴 사전'
+export const PATTERN_DETAIL_BACK_LABEL = '패턴'
 
 const SECTION_BY_ID = Object.fromEntries(PATTERN_DETAIL_SECTIONS.map((section) => [section.id, section])) as Record<
   PatternSectionId,
@@ -67,7 +70,7 @@ const MUTED_CLASS = 'text-sm text-muted-foreground'
 const BACK_LINK_CLASS =
   'inline-flex min-h-6 items-center gap-1 text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @max-[40rem]:min-h-11'
 
-/** 「← 패턴 사전」 되돌아가기 링크. 패턴을 못 읽은 화면도 쓴다. */
+/** 「← 패턴」 되돌아가기 링크. 패턴을 못 읽은 화면도 쓴다. */
 export function PatternBackLink() {
   return (
     <Link href={patternListHref()} className={BACK_LINK_CLASS}>
@@ -135,12 +138,15 @@ function menusOf(menus: unknown): string[] {
   return Array.isArray(menus) ? menus.filter((menu): menu is string => typeof menu === 'string' && menu.trim() !== '').map((menu) => menu.trim()) : []
 }
 
-export function OpsPatternSummarySection({ pattern }: { pattern: Pick<OpsPatternRecord, 'principle' | 'userExperience' | 'menus' | 'cardShapes'> }) {
+export function OpsPatternSummarySection({ pattern }: { pattern: Pick<OpsPatternRecord, 'topic' | 'principle' | 'userExperience' | 'menus' | 'cardShapes'> }) {
   const menus = menusOf(pattern.menus)
   const shapes = readCardShapeLines(pattern.cardShapes)
   return (
     <PatternSection id="summary">
       <ReadOnlyGrid>
+        <ReadOnlyItem label="주제" span={3}>
+          {pattern.topic ? <span className="break-all">{pattern.topic}</span> : <span className="text-muted-foreground">없음(원리형)</span>}
+        </ReadOnlyItem>
         <ReadOnlyItem label="작동 원리" span={3}>
           <LongText value={pattern.principle} />
         </ReadOnlyItem>
@@ -246,6 +252,55 @@ export function OpsPatternSamplesSection({ samples }: { samples: unknown }) {
   return (
     <PatternSection id="samples">
       <OpsPatternSamples samples={samples} />
+    </PatternSection>
+  )
+}
+
+export const PATTERN_ANGLES_EMPTY_TEXT = '샘플 각도가 없어요'
+
+/** 샘플 각도: 종류별 묶음(소개·유도·…), 줄마다 제목 · 설명 · 필요한 재료 이름표. `angles`가 배열이 아니면 「적지 않았어요」, 비었으면 「샘플 각도가 없어요」 한 줄이다. */
+export function OpsPatternAngles({ angles }: { angles: unknown }) {
+  const lines = readAngleLines(angles)
+  if (lines === null) return <p className={MUTED_CLASS}>{PATTERN_FIELD_MISSING_TEXT}</p>
+  if (lines.length === 0) return <p className={MUTED_CLASS}>{PATTERN_ANGLES_EMPTY_TEXT}</p>
+  return (
+    <div className="space-y-4">
+      {groupAngleLines(lines).map((group) => (
+        <section key={group.type} aria-label={group.type} className="space-y-2">
+          <h3 className="text-sm font-medium">
+            {group.type} <span className="ml-1 tabular-nums text-muted-foreground">{group.lines.length}</span>
+          </h3>
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {group.lines.map((line, index) => (
+              <li key={index} className="space-y-1 px-4 py-3">
+                <p className="text-sm font-medium break-keep wrap-break-word">
+                  <ValueText text={line.title} />
+                </p>
+                <p className="text-sm break-keep wrap-break-word">
+                  <ValueText text={line.note} />
+                </p>
+                {line.needs.length > 0 && (
+                  <ul aria-label="필요한 재료" className="flex flex-wrap gap-1 pt-1">
+                    {line.needs.map((need) => (
+                      <li key={need} className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground break-keep">
+                        {need}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+export function OpsPatternAnglesSection({ angles }: { angles: unknown }) {
+  return (
+    <PatternSection id="angles">
+      <OpsPatternAngles angles={angles} />
     </PatternSection>
   )
 }

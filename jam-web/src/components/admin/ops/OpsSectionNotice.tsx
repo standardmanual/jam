@@ -36,7 +36,7 @@ const ICONS = {
   kpi: IconChartBar,
   trend: IconChartLine,
   stats: IconDatabase,
-  // 티켓 20261008_1400: 패턴 사전(S5)의 구역.
+  // 티켓 20261008_1400: 패턴(S5)의 구역.
   patterns: IconBooks,
   // 티켓 20261026_2027 3-1: 생태계 상황판(`/admin/ecosystem`)의 구역.
   ecosystem: IconRecycle,

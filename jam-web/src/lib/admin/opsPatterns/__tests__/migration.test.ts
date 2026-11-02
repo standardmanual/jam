@@ -1,5 +1,5 @@
 /**
- * 패턴 사전 마이그레이션 210·211과 상수·생성 타입의 일치 (티켓 20261001_2056, 상위 20260930_1503 ①)
+ * 패턴 마이그레이션 210·211과 상수·생성 타입의 일치 (티켓 20261001_2056, 상위 20260930_1503 ①)
  *
  * 지키는 것:
  * - 210에 테이블 3개의 `CREATE TABLE`이 있고, 상태·출처·추정/확정 CHECK 값이 `constants.ts`와 같다
@@ -23,6 +23,7 @@ import {
 /** 마이그레이션 파일 이름. 번호가 밀리면 여기만 바꾼다. */
 const PATTERNS_MIGRATION = '210_ops_patterns.sql'
 const PATTERN_NO_MIGRATION = '211_today_pattern_no.sql'
+const TOPIC_ANGLES_MIGRATION = '311_ops_patterns_topic_angles.sql'
 
 const MIGRATIONS_DIR = join(__dirname, '../../../../../supabase/migrations')
 const GENERATED_TYPES = join(__dirname, '../../../../types/database.generated.ts')
@@ -82,7 +83,7 @@ function generatedRowKeys(block: string): string[] {
   return [...block.slice(rowStart, rowEnd).matchAll(/^ {10}([a-z_]+): /gm)].map((m) => m[1])
 }
 
-describe('마이그레이션 210 (패턴 사전 테이블 3개)', () => {
+describe('마이그레이션 210 (패턴 테이블 3개)', () => {
   const sql = readMigration(PATTERNS_MIGRATION)
   const code = withoutComments(sql)
 
@@ -173,8 +174,21 @@ describe('생성 타입(database.generated.ts)', () => {
 
   it.each(PATTERN_TABLES)('%s의 Row 칸이 마이그레이션 210의 칸과 같다', (table) => {
     const columns = sqlColumns(withoutComments(readMigration(PATTERNS_MIGRATION)), table)
+    // 311이 더한 칸(topic·angles)은 ops_patterns에만 붙는다.
+    if (table === 'ops_patterns') {
+      columns.push(...[...withoutComments(readMigration(TOPIC_ANGLES_MIGRATION)).matchAll(/ADD COLUMN IF NOT EXISTS (\w+)/g)].map((m) => m[1]))
+    }
     expect(columns.length).toBeGreaterThan(0)
     expect([...generatedRowKeys(generatedTableBlock(types, table))].sort()).toEqual([...columns].sort())
+  })
+
+  it('311은 topic(NULL 허용 TEXT)과 angles(JSONB 배열, 기본 빈 배열)를 더하고 되돌림 SQL이 있다', () => {
+    const sql = readMigration(TOPIC_ANGLES_MIGRATION)
+    const code = withoutComments(sql)
+    expect(code).toMatch(/ADD COLUMN IF NOT EXISTS topic\s+TEXT\s+NULL/)
+    expect(code).toMatch(/ADD COLUMN IF NOT EXISTS angles JSONB NOT NULL DEFAULT '\[\]'::jsonb/)
+    expect(code).toContain("jsonb_typeof(angles) = 'array'")
+    expect(sql).toContain('되돌림 SQL')
   })
 
   it.each(['today_cards', 'today_card_events'])('%s에 pattern_no가 Row는 필수 null 허용, Insert·Update는 선택이다', (table) => {

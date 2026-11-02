@@ -12,6 +12,7 @@ import {
   CARD_SHAPE_UNKNOWN_TEXT,
   PATTERN_FIELD_MISSING_TEXT,
   SAMPLE_ROLE_UNKNOWN_TEXT,
+  ANGLE_TYPE_UNKNOWN_TEXT,
   USAGE_PAGE_SIZE,
   formatKstDate,
   formatKstDateTime,
@@ -19,6 +20,8 @@ import {
   pageOfUsage,
   parseUsagePage,
   pauseReasonLine,
+  readAngleLines,
+  groupAngleLines,
   readCardShapeLines,
   readKnobLines,
   readSampleLines,
@@ -149,6 +152,37 @@ describe('카드 모양', () => {
   it('배열이 아니면 null이다', () => {
     expect(readCardShapeLines({})).toBeNull()
     expect(readCardShapeLines(undefined)).toBeNull()
+  })
+})
+
+describe('샘플 각도', () => {
+  it('종류·제목·설명·필요한 재료(한국어 이름표)로 읽고, 깨진 칸은 숨기지 않는다', () => {
+    const lines = readAngleLines([
+      { type: '소개', title: ' 제목 ', note: '설명', needs: ['places', 'kpi', 'weather', 3] },
+      { type: '광고', title: '', note: 7 },
+      'x',
+    ])
+    expect(lines).toEqual([
+      { type: '소개', title: '제목', note: '설명', needs: ['장소 목록', 'KPI', 'weather'] },
+      { type: ANGLE_TYPE_UNKNOWN_TEXT, title: PATTERN_FIELD_MISSING_TEXT, note: PATTERN_FIELD_MISSING_TEXT, needs: [] },
+      { type: ANGLE_TYPE_UNKNOWN_TEXT, title: PATTERN_FIELD_MISSING_TEXT, note: PATTERN_FIELD_MISSING_TEXT, needs: [] },
+    ])
+  })
+
+  it('배열이 아니면 null, 빈 배열이면 빈 목록이다', () => {
+    expect(readAngleLines({})).toBeNull()
+    expect(readAngleLines(undefined)).toBeNull()
+    expect(readAngleLines([])).toEqual([])
+  })
+
+  it('종류별로 묶고 순서는 소개 → 이야기, 종류 모름은 맨 뒤다. 줄이 없는 종류는 만들지 않는다', () => {
+    const line = (type: string, title: string) => ({ type, title, note: 'n', needs: [] })
+    const groups = groupAngleLines([line('이야기', 'c'), line(ANGLE_TYPE_UNKNOWN_TEXT, 'd'), line('소개', 'a'), line('소개', 'b')])
+    expect(groups.map((g) => [g.type, g.lines.map((l) => l.title)])).toEqual([
+      ['소개', ['a', 'b']],
+      ['이야기', ['c']],
+      [ANGLE_TYPE_UNKNOWN_TEXT, ['d']],
+    ])
   })
 })
 
