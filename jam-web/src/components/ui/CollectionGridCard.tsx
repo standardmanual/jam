@@ -18,8 +18,8 @@ export interface CollectionGridCardProps {
   total: number
   /** 완성 배지 표시 여부 */
   completed?: boolean
-  /** 최초 등록 아이템배지 기준 컬렉션 등급 */
-  rarity?: BadgeRarity
+  /** 컬렉션에 등록된 아이템 배지의 등급 목록(Common → Mystic 순, 중복 없음). Common은 칩을 그리지 않는다. */
+  rarities?: BadgeRarity[]
   /** 진행 바와 「수집/전체」 숫자를 숨긴다. 전체 슬롯 수를 아직 모르는 운영툴 미리보기용이다. 기본은 끔. */
   hideProgress?: boolean
   href?: string
@@ -37,13 +37,15 @@ export default function CollectionGridCard({
   collected,
   total,
   completed = false,
-  rarity,
+  rarities,
   hideProgress = false,
   href,
   onClick,
   className = '',
   children,
 }: CollectionGridCardProps) {
+  // 칩이 하나도 없는데 빈 행 div가 남지 않도록 컨테이너 조건에서 Common을 미리 거른다
+  const visibleRarities = (rarities ?? []).filter((r) => r !== 'common')
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0
   // 눌림은 공용 `.jam-press`(0.98배·80ms, 동작 줄이기 설정에서는 없음)다. 링크도 버튼도 아닌 카드에는 붙이지 않는다.
   const cls = [BASE, (href || onClick) && 'jam-press', className].filter(Boolean).join(' ')
@@ -62,15 +64,15 @@ export default function CollectionGridCard({
           sizes="50vw"
           fallback={<BookIcon className="w-10 h-10 text-muted" />}
         />
-        {/* 태그 행: 등급(선택) + 완성 */}
-        {(rarity || completed) && (
-          <div className="absolute top-2 left-2 flex items-center gap-1">
-            {rarity && <RarityBadge rarity={rarity} />}
+        {/* 태그 행: 완성(선택) → 등급들. right-2 + flex-wrap이라 좁은 폭에서는 다음 줄로 내려간다 */}
+        {(completed || visibleRarities.length > 0) && (
+          <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
             {completed && (
               <span className="bg-accent text-accent-foreground text-xs leading-none px-2 py-0.5 rounded-full font-bold">
                 {d.itembooks.completed}
               </span>
             )}
+            {visibleRarities.map((r) => <RarityBadge key={r} rarity={r} />)}
           </div>
         )}
       </div>

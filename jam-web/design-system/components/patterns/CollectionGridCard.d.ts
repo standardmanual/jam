@@ -9,10 +9,10 @@ export interface CollectionGridCardProps {
   collected: number;
   /** 전체 슬롯 수. */
   total: number;
-  /** true → 썸네일 좌상단에 "완성" 태그 표시. */
+  /** true → 썸네일 좌상단에 "완성" 태그 표시(등급 태그보다 앞). */
   completed?: boolean;
-  /** 최초 등록 아이템배지 기준 컬렉션 등급. 설정 시 썸네일 좌상단에 등급 태그 표시. */
-  rarity?: BadgeRarity;
+  /** 컬렉션에 등록된 아이템 배지의 등급 목록(Common → Mystic 순, 중복 없음). 완성 태그 뒤에 등급 태그를 순서대로 표시. Common은 그리지 않는다. */
+  rarities?: BadgeRarity[];
   /** Link 모드 — <a href> 래핑. onClick과 상호 배타. */
   href?: string;
   /** Button 모드 — <button> 래핑. href와 상호 배타. */
