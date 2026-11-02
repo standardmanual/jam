@@ -116,7 +116,7 @@
 | GA4 Data API | 활성 유저 · 가입 완료 · 온보딩 완료 · 드랍 · 픽업 · 믹스 성공 · 미션 참가 | `scripts/ga4-weekly-metrics.mjs` |
 | 어드민 집계 API | 미션 달성자 수 · 배지 발급량 · Strava 동기화 실패 · 믹스 실패·성공 포인트 지급(건수·합계) · 결과물 배지가 삭제된 레시피 수 | `/api/admin/kpi/weekly` (읽기 토큰) |
 | 어드민 읽기 API | 미션·배지·유저·배지 지표 라벨 등 운영 데이터 | `scripts/admin-api-read.mjs` (읽기 토큰) |
-| 어드민 읽기 API (기획 재료) | 켜진 트렌드 출처 · 조합 뽑기 · 운영 규칙 · 결정 기록 · 패턴 · 아이템 경로 · 주간 KPI · 오늘 지표 | `scripts/ops-read.mjs <이름> [--query key=value]` (읽기 토큰, GET만, 이름 8개 허용 목록, 응답을 줄이지 않고 그대로 출력) |
+| 어드민 읽기 API (기획 재료) | 켜진 트렌드 출처 · 조합 뽑기 · 운영 규칙 · 결정 기록 · 패턴 · 아이템 경로 · 주간 KPI · 오늘 지표 · 장소(`places`) · 액티비티 배지(`badges`) | `scripts/ops-read.mjs <이름> [--query key=value]` (읽기 토큰, GET만, 이름 10개 허용 목록, 응답을 줄이지 않고 그대로 출력) |
 | 받은 기획함 쓰기 | 운영 묶음 제출 · 루틴 시작 기록 | `scripts/ops-submit.mjs bundle\|start <파일.json>` (읽기 토큰, 두 경로의 POST만, 출력은 요약뿐) |
 | 저장소·배포 | 티켓 상태 · 배포 상태 | git, Vercel |
 

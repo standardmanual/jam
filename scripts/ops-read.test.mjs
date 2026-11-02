@@ -61,7 +61,7 @@ async function testEveryNameIsGetWithTokenAndPrintsBodyAsIs() {
   }
   assert.deepEqual(
     Object.keys(READ_TARGETS),
-    ['trend-sources', 'patterns-draw', 'rules', 'decisions', 'patterns', 'item-paths', 'kpi-weekly', 'today-metrics']
+    ['trend-sources', 'patterns-draw', 'rules', 'decisions', 'patterns', 'item-paths', 'kpi-weekly', 'today-metrics', 'places', 'badges']
   )
   await fake.close()
 }
