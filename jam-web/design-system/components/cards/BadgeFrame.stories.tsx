@@ -66,7 +66,7 @@ export const AllFrames: Story = {
           <BadgeFrame shape={shape} width={80} height={80}>
             <StarIcon />
           </BadgeFrame>
-          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6, maxWidth: 80, wordBreak: 'break-word' }}>
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6, maxWidth: 80, wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
             {shape}
           </div>
         </div>

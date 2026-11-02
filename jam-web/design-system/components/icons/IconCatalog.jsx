@@ -349,7 +349,8 @@ export function IconCatalog({ className = '', style = {} }) {
               lineHeight: 'var(--text-xs--line-height)',
               color: 'var(--muted)',
               textAlign: 'center',
-              wordBreak: 'break-word',
+              wordBreak: 'keep-all',
+              overflowWrap: 'break-word',
             }}
           >
             {name}
