@@ -48,9 +48,12 @@ export interface BadgeGridCardProps {
    * Link 이동 직전에 부수효과(예: 잔존 location.hash 제거)를 실행하고 싶을 때 사용한다.
    */
   onNavigate?: () => void
-  /** false = 썸네일 흑백+반투명 처리 (미획득 배지). 기본값 true. */
+  /** false = 썸네일 흑백+반투명 처리 (미획득 배지). 기본값 true. `undiscovered`가 함께 오면 그쪽이 이긴다. */
   earned?: boolean
-  /** true = ??? 표시 + 썸네일 흑백 (아이템북 미발견 배지). */
+  /**
+   * true = 썸네일을 이미지 바깥 윤곽의 회색 실루엣으로, 이름은 그대로 보여 준다(아이템북 미발견 배지, 티켓 20261102_1834).
+   * 등급 칩과 ×N은 그리지 않는다. `earned={false}`가 함께 와도(`SlotGrid`의 실제 조합) 실루엣이 이긴다.
+   */
   undiscovered?: boolean
   /** 선택 강조 링 (select 모드). */
   selected?: boolean
@@ -76,6 +79,12 @@ export interface BadgeGridCardProps {
 // 크림 바탕과 흰 면은 1.05:1이라 테두리가 경계를 맡는다. 면은 선택 여부로 한쪽만 고른다(아래 `containerCls`).
 const BASE =
   'flex flex-col items-center border border-border rounded-2xl p-3 overflow-hidden'
+
+// 미발견 실루엣 (티켓 20261102_1834) — 원본 <img> 한 장을 검정으로 만든 뒤(brightness-0, 알파는 그대로) 중립 400 단계로 올린다(invert-[.64]).
+// 0.64는 중립 400 단계와 같은 밝기다. 필터는 CSS 변수 색을 받지 못해 숫자로 적는다.
+// 래퍼가 아니라 <img>에만 건다: 래퍼에 걸면 대체 아이콘(MedalIcon)까지 검정으로 칠해지고 ×N 필 기준점과도 겹친다.
+// 2026-09-06 «미획득은 원본 그레이»를 되돌린 것이 아니다 — 미발견만 실루엣 예외이고 `earned={false}`는 grayscale을 그대로 쓴다.
+export const UNDISCOVERED_SILHOUETTE_CLASS = 'brightness-0 invert-[.64]'
 
 export default function BadgeGridCard({
   name = '',
@@ -110,7 +119,8 @@ export default function BadgeGridCard({
     .filter(Boolean)
     .join(' ')
 
-  const thumbDimmed = !earned || undiscovered
+  // 판정 순서: undiscovered(실루엣) > !earned(grayscale + opacity-40). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 실루엣이 사라진다
+  const thumbDimmed = !earned && !undiscovered
 
   const thumbnailCls = [
     'w-full aspect-square rounded-2xl overflow-hidden',
@@ -139,10 +149,10 @@ export default function BadgeGridCard({
           <div className={thumbnailCls}>
             <SafeImage
               src={imageUrl}
-              alt={undiscovered ? '???' : name}
+              alt={name}
               width={90}
               height={90}
-              className="w-full h-full object-contain p-1"
+              className={undiscovered ? `w-full h-full object-contain p-1 ${UNDISCOVERED_SILHOUETTE_CLASS}` : 'w-full h-full object-contain p-1'}
               fallback={<MedalIcon className="w-10 h-10 text-muted" />}
             />
           </div>
@@ -160,7 +170,7 @@ export default function BadgeGridCard({
       </div>
       <div className="flex flex-col items-center gap-1 pt-2 w-full">
         <p className={`text-sm font-bold text-foreground text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
-          {locked ? d.lockedItem.card.name : undiscovered ? '???' : name}
+          {locked ? d.lockedItem.card.name : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
         {showCount && (

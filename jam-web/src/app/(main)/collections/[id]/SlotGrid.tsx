@@ -28,7 +28,7 @@ export interface BadgeSlot {
   /**
    * 이 배지로 장착 가능한 **미장착 개체 후보 전체**(obtained_at ASC). 20260907_2059에서
    * 단수 `inventoryItem`을 배열로 바꿨다 — 같은 배지를 여러 개 보유했을 때 어느 개체를
-   * 넣을지 사용자가 골라야 하기 때문이다. 비어 있으면 미보유(`???`) 칸이다.
+   * 넣을지 사용자가 골라야 하기 때문이다. 비어 있으면 미보유(미발견) 칸이다.
    */
   candidates: {
     id: string
@@ -495,7 +495,6 @@ export default function SlotGrid({
               earned={isSlotted}
               undiscovered={isUndiscovered}
               highlighted={slotMode && !readOnly && isSlottable}
-              className={isUndiscovered ? 'opacity-30' : ''}
             >
               {/* 슬롯 해제/교체 버튼 — 같은 배지의 미장착 후보가 있으면 "교체"가 이 자리를
                   대신한다(20260910_0015). 교체는 장착 쪽에 가까운 양성 액션이라 장착과

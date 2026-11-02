@@ -216,7 +216,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.badgeSlots.every((s) => s.badge.rarity === 'rare')).toBe(true)
     expect(gridProps?.tierUndecided).toBe(false)
     expect(gridProps?.readOnly).toBe(false)
-    // Epic만 가진 이름3은 Rare 칸에 후보가 없어 «???» 칸이 된다
+    // Epic만 가진 이름3은 Rare 칸에 후보가 없어 미발견 칸이 된다
     expect(gridProps?.badgeSlots[1].candidates).toHaveLength(1)
     expect(gridProps?.badgeSlots[2].candidates).toHaveLength(0)
     expect(heroProps.totalBadgeCount).toBe(9)

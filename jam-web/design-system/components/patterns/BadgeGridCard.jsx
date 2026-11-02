@@ -7,6 +7,9 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
 /** 잠긴 카드의 이름 줄 — 서비스 `d.lockedItem.card.name`과 같은 문구다(이 DS 파일은 서비스 사전을 가져오지 않는다) */
 const LOCKED_NAME = '잠긴 아이템 배지';
 
+/** 미발견 실루엣 필터 — 검정으로 만든 뒤 중립 400 단계(약 #a3a3a3)로 올린다. 필터는 토큰을 못 쓴다 */
+const UNDISCOVERED_SILHOUETTE_FILTER = 'brightness(0) invert(0.64)';
+
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
  *
@@ -23,14 +26,21 @@ const LOCKED_NAME = '잠긴 아이템 배지';
  *
  * 상태:
  *   earned: false  → 썸네일을 원본 + grayscale(1)로 (미획득)
- *   undiscovered   → ??? 표시 + grayscale(1) (아이템북 미발견)
+ *   undiscovered   → 썸네일을 회색 실루엣으로, 이름은 그대로 (아이템북 미발견, 티켓 20261102_1834)
  *   selected       → 면을 --accent-soft로 채움 (선택 모드, 기본 면과 겹치지 않고 한쪽만)
  *
- * 미획득/미발견 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
+ * 미획득 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
  * 20260905_0036이 한때 실루엣(공통 SVG)으로 바꿨다 — grayscale은 그려진 뒤 걸리는 CSS
  * 필터라 원본 URL이 네트워크에 나가 「외형 비공개」가 성립하지 않는다는 이유였다.
  * **2026-09-06 사용자 확정으로 되돌렸다**: 외형을 감추는 것보다 어떤 배지인지 알아볼 수
  * 있는 쪽을 택한다(v5는 조건도 전면 공개한다).
+ *
+ * 미발견(`undiscovered`)만 예외다 (티켓 20261102_1834, 2026-11-02 사용자 지시). 되돌린 것이 아니라
+ * «미발견만 실루엣 예외, `earned=false`는 원본 그레이 유지»다. 폐기됐던 공통 SVG와 달리 배지마다 **자기 이미지의
+ * 가장 바깥 윤곽**을 딴다: 원본 `<img>` 하나에 `brightness(0) invert(0.64)`를 걸어 불투명 픽셀을 한 가지 회색으로 칠한다
+ * (알파는 그대로). 0.64는 중립 400 단계와 같은 밝기다 — 필터는 CSS 변수 색을 받지 못해 숫자로 적는다.
+ * 이름은 가리지 않고 그대로 보인다(수집 목표가 읽히도록). 판정 순서는 locked > undiscovered > !earned다
+ * (서비스 호출부는 미발견 칸에 `earned=false`도 함께 넘긴다).
  *
  * 잠김 (`locked`, 티켓 20261018_0054 2회) — 열기 전의 아이템 배지. 같은 면 위에서 썸네일 자리에 `LockedTile`,
  *   이름 줄은 가린 이름(«잠긴 아이템 배지»), 등급 칩 아래에 `ProgressBar outlined` 한 줄(높이 6, 숫자 없음)이 붙는다.
@@ -66,7 +76,8 @@ export function BadgeGridCard({
   style = {},
   children,
 }) {
-  const dimmed = !earned || undiscovered;
+  // 판정 순서: undiscovered(실루엣) > !earned(원본 + grayscale). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 실루엣이 사라진다
+  const thumbFilter = undiscovered ? UNDISCOVERED_SILHOUETTE_FILTER : !earned ? 'grayscale(1)' : 'none';
   const interactive = !!(href || onClick);
 
   const containerStyle = {
@@ -116,10 +127,10 @@ export function BadgeGridCard({
           {imageUrl ? (
             <img
               src={imageUrl}
-              alt={undiscovered ? '???' : name}
+              alt={name}
               style={{
                 width: '100%', height: '100%', objectFit: 'contain', padding: 4,
-                filter: dimmed ? 'grayscale(1)' : 'none',
+                filter: thumbFilter,
               }}
             />
           ) : (
@@ -157,7 +168,7 @@ export function BadgeGridCard({
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}>
-          {locked ? LOCKED_NAME : undiscovered ? '???' : name}
+          {locked ? LOCKED_NAME : name}
         </p>
         {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity} size="md" />)}
         {locked && (
