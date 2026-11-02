@@ -168,7 +168,7 @@ function isSpotlightWithMission(card: TodayCardRow): boolean {
 
 interface PendingItem {
   entry: PreviewEntry
-  /** 승인 전 카드끼리의 순서: 항목 `resource.sort_order` 오름차순, 같으면 묶음 안 순서 */
+  /** 승인 전 카드의 정렬 칸(홈과 같은 규칙에서 같은 키일 때만 쓴다) */
   sortOrder: number
   startsAt: string
   endsAt: string
@@ -283,15 +283,17 @@ export async function loadHomePreview(params: LoadHomePreviewParams): Promise<{ 
       const live = sortHomeCards(filterExposedSpotlights(candidates, missionsById, baseTime), { seed: `preview:${date}`, now: baseTime })
       const resolved = await resolvePreviewCards(supabase, live, baseTime)
 
-      const pendingToday = pending
-        .map((item, order) => ({ item, order }))
-        .filter(
-          ({ item }) =>
-            cardIsLiveDuring({ is_active: true, starts_at: item.startsAt, ends_at: item.endsAt }, startIso, endIso) &&
-            cardMatchesTags(item.tags, tags),
-        )
-        .sort((a, b) => a.item.sortOrder - b.item.sortOrder || a.order - b.order)
-        .map(({ item }) => item.entry)
+      // 승인 전 카드도 홈과 같은 정렬 규칙·같은 씨앗으로 순서를 정한다. 승인하면 이 카드들이 그대로 홈에 오르기 때문이다.
+      const pendingToday = sortHomeCards(
+        pending
+          .filter(
+            (item) =>
+              cardIsLiveDuring({ is_active: true, starts_at: item.startsAt, ends_at: item.endsAt }, startIso, endIso) &&
+              cardMatchesTags(item.tags, tags),
+          )
+          .map((item) => ({ id: item.entry.id, sort_order: item.sortOrder, starts_at: item.startsAt, entry: item.entry })),
+        { seed: `preview:${date}`, now: baseTime },
+      ).map(({ entry }) => entry)
 
       const entries: PreviewEntry[] = [
         ...resolved.map((card): PreviewEntry => ({ source: 'live', id: card.id, card, rationale: [] })),

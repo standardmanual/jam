@@ -338,7 +338,19 @@ describe('loadHomePreview — 승인 전 카드', () => {
     ]
     const { days } = await loadHomePreview({ fromDate: '2026-10-05', days: 5, viewer: VIEWER, bundleId: BUNDLE, now: NOW })
     const early = ['ok', 'reviewing']
-    expect(days.map(ids)).toEqual([early, early, early, early, ['ok', 'reviewing', 'later']])
+    // 순서는 날짜 씨앗으로 섞이므로 구성만 견준다
+    expect(days.map((day) => [...ids(day)].sort())).toEqual([early, early, early, early, ['later', 'ok', 'reviewing']])
+  })
+
+  it('승인 전 카드도 홈과 같이 날짜마다 순서가 달라지고, 같은 날은 늘 같다', async () => {
+    const long = { starts_at: '2026-09-01T00:00:00+09:00', ends_at: '2026-10-31T23:59:59+09:00' }
+    fx.tables.ops_bundle_items = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((id, i) =>
+      pendingRow(id, { position: i + 1, original: { ...(pendingRow('x').original as Row), ...long, resource: { template_type: 'editorial_article', sort_order: i } } }),
+    )
+    const run = () => loadHomePreview({ fromDate: '2026-10-05', days: 6, viewer: VIEWER, bundleId: BUNDLE, now: NOW })
+    const orders = (await run()).days.map((day) => ids(day).join(','))
+    expect(new Set(orders).size).toBeGreaterThan(1)
+    expect((await run()).days.map((day) => ids(day).join(','))).toEqual(orders)
   })
 
   it('시각이 항목에 없으면 행 칸을 쓰고, 종료가 없으면 시작한 날 하루다', async () => {

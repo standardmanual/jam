@@ -130,17 +130,13 @@ describe('sortHomeCards — 홈 정렬 (신규 우선 + 하루 단위 섞기)', 
     expect(ids(sortHomeCards([...cards].reverse(), options))).toEqual(ids(sortHomeCards(cards, options)))
   })
 
-  it('씨앗이 같은 키 충돌이면 sort_order 오름차순, 그다음 id로 정한다', () => {
+  it('같은 시각에 시작한 새 카드도 씨앗 순서로 섞이고, 같은 씨앗이면 입력 순서와 무관하게 같다', () => {
     const sameStart = '2026-11-02T01:00:00Z'
-    const sorted = sortHomeCards(
-      [
-        { id: 'b', sort_order: 1, starts_at: sameStart },
-        { id: 'c', sort_order: 0, starts_at: sameStart },
-        { id: 'a', sort_order: 1, starts_at: sameStart },
-      ],
-      { seed: 's', now: NOW },
-    )
-    expect(ids(sorted)).toEqual(['c', 'a', 'b'])
+    const cards = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => ({ id, sort_order: i, starts_at: sameStart }))
+    const first = ids(sortHomeCards(cards, { seed: 's1', now: NOW }))
+    expect(ids(sortHomeCards([...cards].reverse(), { seed: 's1', now: NOW }))).toEqual(first)
+    const tops = new Set(['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8'].map((seed) => ids(sortHomeCards(cards, { seed, now: NOW }))[0]))
+    expect(tops.size).toBeGreaterThan(1)
   })
 
   it('입력 배열을 바꾸지 않는다', () => {

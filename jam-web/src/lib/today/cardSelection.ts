@@ -65,7 +65,7 @@ export interface HomeSortOptions {
 
 /**
  * 홈 정렬 (티켓 20261102_1720). 두 묶음으로 나눈다.
- * ① 새 카드: 노출 시작 후 24시간이 안 된 카드. `starts_at` 내림차순.
+ * ① 새 카드: 노출 시작 후 24시간이 안 된 카드. `starts_at` 내림차순, 같은 시각이면 같은 씨앗 순서로 섞는다.
  * ② 나머지: `seed + card.id` 해시 순으로 하루 단위 결정적 섞기. `sort_order`는 순서에 쓰지 않는다(맨 위 고정을 없애기 위해).
  * 같은 키일 때만 `sort_order` 오름차순, 그다음 `id`로 정한다 — 입력 순서와 무관하게 같은 결과가 나온다.
  * 입력을 바꾸지 않는다.
@@ -75,15 +75,17 @@ export function sortHomeCards<T extends SortableHomeCard>(cards: readonly T[], o
   const byId = (a: T, b: T) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
   const tiebreak = (a: T, b: T) => a.sort_order - b.sort_order || byId(a, b)
 
-  const fresh: T[] = []
+  const fresh: Array<{ card: T; key: number }> = []
   const rest: Array<{ card: T; key: number }> = []
   for (const card of cards) {
     const age = nowMs - Date.parse(card.starts_at)
-    if (age >= 0 && age < NEW_CARD_WINDOW_MS) fresh.push(card)
-    else rest.push({ card, key: fnv1a32(`${options.seed}:${card.id}`) })
+    const entry = { card, key: fnv1a32(`${options.seed}:${card.id}`) }
+    if (age >= 0 && age < NEW_CARD_WINDOW_MS) fresh.push(entry)
+    else rest.push(entry)
   }
 
-  fresh.sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at) || tiebreak(a, b))
+  // 새 카드 안에서도 같은 시각에 시작한 카드는 씨앗 순서로 섞는다. 한꺼번에 등록한 카드가 늘 같은 순서로 나오지 않게 한다.
+  fresh.sort((a, b) => Date.parse(b.card.starts_at) - Date.parse(a.card.starts_at) || a.key - b.key || tiebreak(a.card, b.card))
   rest.sort((a, b) => a.key - b.key || tiebreak(a.card, b.card))
-  return [...fresh, ...rest.map(({ card }) => card)]
+  return [...fresh, ...rest].map(({ card }) => card)
 }
