@@ -11,6 +11,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { detectAndExcludeTransitSegments, type TransitDetectionPolicy } from '../transitSegment'
+import { judgeVehicleActivity } from '@/lib/abusing/vehicleFilter'
+import { DEFAULT_POLICY } from '@/lib/abusing/policy'
 import type { NormalizedActivity } from '@/types/strava'
 import fixture from './fixtures/subway-walk-20837068405.json'
 
@@ -81,5 +83,31 @@ describe('지하철 걷기 활동 (Strava 20837068405) 구간 감지 재현', ()
     expect(result.averageSpeedKmh).toBeGreaterThan(15)
     // 차량 속도 필터(평균 60km/h 초과)는 이 값을 걸러내지 못한다
     expect(result.averageSpeedKmh).toBeLessThan(fixture.policyAtCapture.vehicle_speed_filter_kmh)
+  })
+
+  // 티켓 20261103_1115: 새 판정이 이 자료를 거른다. 위 시험은 현재 감지 동작을 지키고, 아래는 보강한 판정을 지킨다.
+  describe('새 판정(judgeVehicleActivity)', () => {
+    const before = rawActivity()
+    const policy = {
+      vehicle_speed_filter_kmh: fixture.policyAtCapture.vehicle_speed_filter_kmh,
+      transit_ratio_filter_pct: DEFAULT_POLICY.transit_ratio_filter_pct,
+      walk_avg_max_speed_kmh: DEFAULT_POLICY.walk_avg_max_speed_kmh,
+    }
+
+    it('뺀 거리가 원래 거리의 약 68%라 교통수단 비율 규칙(50%)에 걸린다', () => {
+      const ratio = (before.distanceKm - result.distanceKm) / before.distanceKm
+      expect(ratio).toBeGreaterThan(0.67)
+      expect(ratio).toBeLessThan(0.69)
+      expect(judgeVehicleActivity({ before, after: result, policy })).toEqual({ filtered: true, reason: 'transit_ratio' })
+    })
+
+    it('비율 규칙이 없어도 남은 평균 18km/h가 걷기 상한(16km/h)에 걸린다', () => {
+      const noRatio = { ...policy, transit_ratio_filter_pct: 100 }
+      expect(judgeVehicleActivity({ before, after: result, policy: noRatio })).toEqual({ filtered: true, reason: 'walk_avg' })
+    })
+
+    it('시간 비율은 42%뿐이라 시간 기준이었다면 놓쳤을 활동이다', () => {
+      expect(result.transitExcludedSec! / before.movingTimeSec).toBeLessThan(0.5)
+    })
   })
 })

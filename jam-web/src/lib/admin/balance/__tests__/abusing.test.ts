@@ -3,7 +3,7 @@
  * 가짜 표(`fakeDb.ts`, 실 DB에는 접속하지 않는다)로 지키는 것:
  * - 칸 정의: 10칸이 `AbusingPolicy`의 키 전부이고 묶음 순서(이동 감지·차량·교통수단·종목 불일치·장소 블록)와 단위·기본값(`DEFAULT_POLICY`)이 맞으며 확률 안내에 반영되지 않는다
  * - 범위: 모두 정수 1 이상, 차량 속도 필터만 20 이상(`MIN_VEHICLE_SPEED_FILTER_KMH`), 종목 불일치 두 칸은 `MISMATCH_POLICY_KEYS`와 같은 칸이다. 0·소수·정수 한계 초과는 막힌다
- * - 읽기: 가공하지 않은 행에서 10칸을 숫자로 읽는다(읽기에 넘기는 칸 목록은 10칸과 `updated_at`뿐, 옛 배율 열은 읽지 않는다). 행이 없으면 기본값과 `ABUSING_NO_ROW_STAMP`, 조회 오류·숫자가 아닌 값은 던진다
+ * - 읽기: 가공하지 않은 행에서 10칸을 숫자로 읽는다(읽기에 넘기는 칸 목록은 12칸과 `updated_at`뿐, 옛 배율 열은 읽지 않는다). 행이 없으면 기본값과 `ABUSING_NO_ROW_STAMP`, 조회 오류·숫자가 아닌 값은 던진다
  * - 쓰기: `updated_at` 조건 갱신으로 바꾼 칸만 쓴다(옛 배율 열은 건드리지 않는다). 시각이 다르면 conflict. 행이 없던 때의 첫 저장은 update가 아니라 upsert로 행을 만든다
  * - 공용 저장(`saveBalanceSection`)을 지나면: 저장되고 칸 이름으로 이력에 남는다. 범위 밖 값은 쓰기 전에 막히고, 이력을 못 쓰면 이전 값과 수정 시각으로 되돌린다
  */
@@ -73,7 +73,7 @@ const field = (key: string) => {
 }
 
 describe('어뷰징 칸 정의', () => {
-  it('구역 키는 abusing이고 칸 10개는 AbusingPolicy의 키 전부이며 화면 순서를 따른다', () => {
+  it('구역 키는 abusing이고 칸 12개는 AbusingPolicy의 키 전부이며 화면 순서를 따른다', () => {
     expect(ABUSING_SECTION_ID).toBe('abusing')
     expect(ABUSING_BINDING.id).toBe('abusing')
     expect(ABUSING_FIELDS.map((def) => def.key)).toEqual([...ABUSING_BALANCE_KEYS])
@@ -81,6 +81,8 @@ describe('어뷰징 칸 정의', () => {
       'gps_max_speed_kmh',
       'gps_daily_distance_cap_km',
       'vehicle_speed_filter_kmh',
+      'transit_ratio_filter_pct',
+      'walk_avg_max_speed_kmh',
       'transit_walk_max_speed_kmh',
       'transit_run_max_speed_kmh',
       'transit_cycling_max_speed_kmh',
@@ -102,6 +104,11 @@ describe('어뷰징 칸 정의', () => {
       'transit_cycling_max_speed_kmh',
       'transit_segment_min_duration_sec',
     ])
+    expect(ABUSING_FIELDS.filter((def) => def.group === '차량').map((def) => def.key)).toEqual([
+      'vehicle_speed_filter_kmh',
+      'transit_ratio_filter_pct',
+      'walk_avg_max_speed_kmh',
+    ])
   })
 
   it('기본값은 DEFAULT_POLICY이고 단위가 있으며 확률 안내에는 반영되지 않고 합계 묶음이 없다', () => {
@@ -110,13 +117,15 @@ describe('어뷰징 칸 정의', () => {
       expect(def.affectsDisclosure, def.key).toBe(false)
       expect(def.sumTo, def.key).toBeUndefined()
       expect(def.decimals, def.key).toBe(0)
-      expect(def.max, def.key).toBe(INTEGER_MAX)
+      // 교통수단 비율은 % 값이라 100이 상한이다
+      expect(def.max, def.key).toBe(def.key === 'transit_ratio_filter_pct' ? 100 : INTEGER_MAX)
       expect(def.unit, def.key).toBeTruthy()
       expect(def.label, def.key).toBeTruthy()
       expect(def.hint, def.key).toBeTruthy()
     }
     expect(field('transit_segment_min_duration_sec').unit).toBe('초')
     expect(field('poi_block_hours').unit).toBe('시간')
+    expect(field('transit_ratio_filter_pct').unit).toBe('%')
     expect(field('gps_daily_distance_cap_km').unit).toBe('km')
     expect(draftFromValues(ABUSING_FIELDS, {})).toEqual(Object.fromEntries(Object.entries(DEFAULT_POLICY).map(([key, value]) => [key, String(value)])))
   })
@@ -147,13 +156,21 @@ describe('어뷰징 칸의 최소값 (사용자 결정 ①)', () => {
   })
 
   it('나머지 칸은 정수 1 이상이다. 0·음수·소수·정수 한계 초과는 막고 1은 통과한다', () => {
-    const others = ABUSING_FIELDS.filter((def) => def.key !== 'vehicle_speed_filter_kmh')
-    expect(others).toHaveLength(9)
+    const others = ABUSING_FIELDS.filter((def) => def.key !== 'vehicle_speed_filter_kmh' && def.key !== 'transit_ratio_filter_pct')
+    expect(others).toHaveLength(10)
     for (const def of others) {
       expect(def.min, def.key).toBe(1)
       for (const bad of [0, -1, 1.5, INTEGER_MAX + 1]) expect(checkFieldValue(def, bad), `${def.key} ${bad}`).not.toBeNull()
       for (const good of [1, def.defaultValue, INTEGER_MAX]) expect(checkFieldValue(def, good), `${def.key} ${good}`).toBeNull()
     }
+  })
+
+  it('교통수단 비율 상한은 1~100 정수다. 0·101·소수는 막고 1·50·100은 통과한다 (티켓 20261103_1115)', () => {
+    const def = field('transit_ratio_filter_pct')
+    expect(def.min).toBe(1)
+    expect(def.max).toBe(100)
+    for (const bad of [0, -1, 101, 50.5]) expect(checkFieldValue(def, bad), String(bad)).not.toBeNull()
+    for (const good of [1, 50, 100]) expect(checkFieldValue(def, good), String(good)).toBeNull()
   })
 })
 
@@ -265,9 +282,10 @@ describe('어뷰징 구역 저장 (공용 저장을 지난다)', () => {
     })
   })
 
-  it('10칸 모두 저장된다', async () => {
+  it('12칸 모두 저장된다', async () => {
     const next = Object.fromEntries(ABUSING_BALANCE_KEYS.map((key, index) => [key, 100 + index]))
     next.vehicle_speed_filter_kmh = 90
+    next.transit_ratio_filter_pct = 70
     const out = await save(next)
     expect(out.ok).toBe(true)
     for (const [key, value] of Object.entries(next)) expect(policyRow()[key], key).toBe(value)

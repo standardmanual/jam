@@ -1,12 +1,12 @@
 /**
  * 밸런스 설정 «어뷰징» 구역의 연결 (티켓 20261022_1134 2회, 운영 로직 16.2절·19.1절)
  *
- * `abusing_policy` id=1 한 행의 **기준값 10칸**을 편집한다: 이동 감지 2칸(`gps_*`), 차량 속도 필터 1칸, 교통수단 구간 감지 4칸(`transit_*`),
+ * `abusing_policy` id=1 한 행의 **기준값 12칸**을 편집한다: 이동 감지 2칸(`gps_*`), 차량 3칸(평균 속도 필터·교통수단 비율 상한·걷기·등산 평균 속도 상한, 뒤 둘은 마이그레이션 314·티켓 20261103_1115), 교통수단 구간 감지 4칸(`transit_*`),
  * 종목 불일치 2칸(`mismatch_*`), 장소 블록 유지 시간 1칸(`poi_block_hours`). 옛 어뷰징 화면의 «정책 설정» 탭(`/admin/abusing`)과 그 API(`PUT /api/admin/abusing/policy`)를
- * 이 구역으로 옮겼다. 이용 정지·장소 블록 탭은 제재 운영 도구라 옛 화면에 그대로 남는다. 열 정의는 마이그레이션 010·011·078·148·224이고 열 10개가 모두 `INTEGER NOT NULL`이다.
+ * 이 구역으로 옮겼다. 이용 정지·장소 블록 탭은 제재 운영 도구라 옛 화면에 그대로 남는다. 열 정의는 마이그레이션 010·011·078·148·224이고 열 12개가 모두 `INTEGER NOT NULL`이다.
  * 옛 섀도우밴 배율 8열은 화면과 코드에서 이미 빠졌고(티켓 20261021_1250) 열 정리는 출시 뒤 SQL 몫이라 이 구역은 읽지도 쓰지도 않는다. 확률 안내 페이지가 읽는 칸이 아니라 확인창은 없다.
  *
- * 칸의 범위(옛 저장 라우트와 달라진 점, 사용자 결정 ①): **모든 칸이 정수 1 이상**이고, 차량 속도 필터만 `MIN_VEHICLE_SPEED_FILTER_KMH`(20) 이상이다.
+ * 칸의 범위(옛 저장 라우트와 달라진 점, 사용자 결정 ①): **모든 칸이 정수 1 이상**이고, 차량 속도 필터만 `MIN_VEHICLE_SPEED_FILTER_KMH`(20) 이상, 교통수단 비율 상한만 100 이하다.
  * 옛 라우트는 0 이상 숫자를 받았지만 옛 입력칸이 `parseInt(...) || 기본값`으로 읽어 0이 기본값으로 바뀌었다(티켓 20261017_1506). 새 폼은 빈칸을 오류로 처리하고 최소값을 1로 둔다.
  * 종목 불일치 두 칸은 옛 라우트도 정수 1 이상이었다. 범위 규칙은 칸 정의(`min`·`decimals`)가 한 곳에서 갖고, 공용 저장(`save.ts`)이 서버에서 같은 정의로 한 번 더 건다.
  *
@@ -32,6 +32,8 @@ export const ABUSING_BALANCE_KEYS = [
   'gps_max_speed_kmh',
   'gps_daily_distance_cap_km',
   'vehicle_speed_filter_kmh',
+  'transit_ratio_filter_pct',
+  'walk_avg_max_speed_kmh',
   'transit_walk_max_speed_kmh',
   'transit_run_max_speed_kmh',
   'transit_cycling_max_speed_kmh',
@@ -91,6 +93,30 @@ export const ABUSING_FIELDS: readonly BalanceFieldDef[] = [
     min: MIN_VEHICLE_SPEED_FILTER_KMH,
     max: INTEGER_MAX,
     defaultValue: DEFAULT_POLICY.vehicle_speed_filter_kmh,
+    affectsDisclosure: false,
+  },
+  {
+    key: 'transit_ratio_filter_pct',
+    label: '교통수단 비율 상한',
+    unit: '%',
+    hint: '교통수단 구간으로 뺀 거리가 원래 거리의 이 비율 이상이면 활동 전체를 배지·아이템 드랍·미션 평가에서 제외해요. 100%를 넘길 수 없어요.',
+    group: VEHICLE_GROUP,
+    decimals: 0,
+    min: 1,
+    max: 100,
+    defaultValue: DEFAULT_POLICY.transit_ratio_filter_pct,
+    affectsDisclosure: false,
+  },
+  {
+    key: 'walk_avg_max_speed_kmh',
+    label: '걷기·등산 평균 속도 상한',
+    unit: 'km/h',
+    hint: '교통수단 구간을 뺀 뒤 평균 속도가 이 값을 넘는 걷기·등산 활동은 배지·아이템 드랍·미션 평가에서 제외해요. 20km 경보 세계기록 평균이 약 15.75km/h예요.',
+    group: VEHICLE_GROUP,
+    decimals: 0,
+    min: 1,
+    max: INTEGER_MAX,
+    defaultValue: DEFAULT_POLICY.walk_avg_max_speed_kmh,
     affectsDisclosure: false,
   },
   {
@@ -184,7 +210,7 @@ type AbusingPolicyUpdate = Database['public']['Tables']['abusing_policy']['Updat
 
 /** 읽기에 쓰는 칸 목록(타입이 칸 이름을 알도록 글자 그대로 둔다. `ABUSING_BALANCE_KEYS`와 같아야 하고 시험이 지킨다). */
 export const ABUSING_SELECT =
-  'gps_max_speed_kmh, gps_daily_distance_cap_km, vehicle_speed_filter_kmh, transit_walk_max_speed_kmh, transit_run_max_speed_kmh, transit_cycling_max_speed_kmh, transit_segment_min_duration_sec, mismatch_run_min_speed_kmh, mismatch_cycling_min_speed_kmh, poi_block_hours, updated_at'
+  'gps_max_speed_kmh, gps_daily_distance_cap_km, vehicle_speed_filter_kmh, transit_ratio_filter_pct, walk_avg_max_speed_kmh, transit_walk_max_speed_kmh, transit_run_max_speed_kmh, transit_cycling_max_speed_kmh, transit_segment_min_duration_sec, mismatch_run_min_speed_kmh, mismatch_cycling_min_speed_kmh, poi_block_hours, updated_at'
 
 /**
  * `abusing_policy` 행이 없을 때 읽기가 돌려주는 수정 시각. 공용 저장이 빈 글자를 거절하므로 자리를 채우는 값이고, DB가 받는 시각 형식이라

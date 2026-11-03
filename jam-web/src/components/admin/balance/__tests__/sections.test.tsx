@@ -607,12 +607,14 @@ describe('BalanceSectionBody — 어뷰징 구역 (7-3 2회)', () => {
 
   it('열 칸의 입력(저장된 값)이 다섯 묶음 제목 아래에 보이고 단위·기본값이 붙으며, 합계 줄은 없다', async () => {
     const out = await abusingHtml()
-    expect([...out.matchAll(/<input /g)]).toHaveLength(10)
+    expect([...out.matchAll(/<input /g)]).toHaveLength(12)
     for (const title of ['이동 감지', '차량', '교통수단', '종목 불일치', '장소 블록']) expect(out, title).toContain(`>${title}</legend>`)
     expect([...out.matchAll(/<legend/g)]).toHaveLength(5)
     expect(out).toMatch(/id="balance-abusing-gps_max_speed_kmh"[^>]*value="300"/)
     expect(out).toMatch(/id="balance-abusing-vehicle_speed_filter_kmh"[^>]*value="60"/)
     expect(out).toMatch(/id="balance-abusing-mismatch_run_min_speed_kmh"[^>]*value="6"/)
+    expect(out).toMatch(/id="balance-abusing-transit_ratio_filter_pct"[^>]*value="50"/)
+    expect(out).toMatch(/id="balance-abusing-walk_avg_max_speed_kmh"[^>]*value="16"/)
     expect(out).toMatch(/id="balance-abusing-poi_block_hours"[^>]*value="72"/)
     expect(out).toContain('기본값 60km/h')
     expect(out).toContain('기본값 72시간')
