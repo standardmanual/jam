@@ -51,6 +51,7 @@ import {
   Logo3DViewSection,
 } from './logo3d/Logo3DSections'
 import type { Logo3DSceneState } from './logo3d/logo3dConfig'
+import type { LoadedEngine } from './logo3d/logo3dEngineState'
 import type { Logo3DParams } from '@/lib/logo-3d/types'
 import {
   COLOR_LABELS,
@@ -154,7 +155,7 @@ interface ShapeStudioPanelProps {
   onImageLayerChange: (id: string, patch: Partial<ImageLayerConfig>) => void
   onTextLayerChange: (id: string, patch: Partial<TextLayerConfig>) => void
   onReplaceImageLayerAsset: (id: string, file: File) => void
-  onLoadPreset: (stageRatio: StageRatio, layers: OverlayLayerConfig[]) => void
+  onLoadPreset: (stageRatio: StageRatio, layers: OverlayLayerConfig[], engine: LoadedEngine | null) => void
   onChangeExportSize: (size: number) => void
   onExportPng: () => void
   onChangeVideoSize: (size: number) => void
@@ -498,6 +499,7 @@ export default function ShapeStudioPanel({
             <PresetPanel
               stageRatio={state.ratio}
               overlayLayers={overlayLayers}
+              engineScene={engineMode === '3d' ? logo3d.state : null}
               onLoadPreset={onLoadPreset}
             />
           </section>

@@ -25,6 +25,11 @@
  * 저장·불러오기 단계에서 미리 유형을 고를 수 있게 뒀다. 유형을 바꾸면 불러오기 목록도 그
  * 유형으로 다시 필터링되고, 불러온 프리셋을 덮어쓰다 다른 유형으로 잘못 바꾸지 않도록
  * 활성 프리셋 선택이 풀린다.
+ *
+ * 모드별 설정값(티켓 20261103_1736): 3D 모드에서 저장하면 `engineState`(JSON)와 올린 SVG(`engineSvg` 파일)를
+ * 함께 보내고, 불러올 때는 저장된 설정을 검증해 모드와 값을 되살린다(`resolveEngineLoad`). 깨진 설정은
+ * 무시하고 비율·레이어만 불러오며 경고를 한 줄 보인다. 이 화면은 설정을 직접 만들지 않고 호출부가 넘긴
+ * `engineScene`(지금 모드가 3D일 때만 값이 있다)을 저장 형식으로 바꿔 보낼 뿐이다.
  */
 import { useEffect, useState } from 'react'
 import { IconTrash } from '@tabler/icons-react'
@@ -51,13 +56,22 @@ import {
   type PresetTargetType,
   type StageRatio,
 } from '@/lib/asset-generator'
+import {
+  buildEngineState,
+  engineSvgOf,
+  resolveEngineLoad,
+  type LoadedEngine,
+} from '@/app/admin/assets/logo3d/logo3dEngineState'
+import type { Logo3DSceneState } from '@/app/admin/assets/logo3d/logo3dConfig'
 
 const MAX_NAME_LENGTH = 60
 
 interface PresetPanelProps {
   stageRatio: StageRatio
   overlayLayers: OverlayLayerConfig[]
-  onLoadPreset: (stageRatio: StageRatio, layers: OverlayLayerConfig[]) => void
+  /** 지금 모드가 3D일 때의 3D 설정. 다른 모드면 null — 설정 없이 저장한다. */
+  engineScene?: Logo3DSceneState | null
+  onLoadPreset: (stageRatio: StageRatio, layers: OverlayLayerConfig[], engine: LoadedEngine | null) => void
 }
 
 async function buildSaveFormData(
@@ -65,7 +79,8 @@ async function buildSaveFormData(
   stageRatio: StageRatio,
   targetType: PresetTargetType,
   overlayLayers: OverlayLayerConfig[],
-  presetId: string | null
+  presetId: string | null,
+  engineScene: Logo3DSceneState | null = null
 ): Promise<FormData> {
   const form = new FormData()
   form.append('name', name)
@@ -87,10 +102,25 @@ async function buildSaveFormData(
   }
 
   form.append('layers', JSON.stringify(overlayLayers))
+
+  if (engineScene) {
+    form.append('engineState', JSON.stringify(buildEngineState(engineScene)))
+    const svg = engineSvgOf(engineScene)
+    // 기본 로고(올린 파일 없음)는 저장하지 않는다. 올린 SVG만 파일로 보낸다.
+    if (svg) {
+      const blob = new Blob([svg.text], { type: 'image/svg+xml' })
+      if (blob.size > MAX_APPLY_IMAGE_BYTES) {
+        throw new Error(
+          `올린 SVG가 너무 커요(${(blob.size / 1024 / 1024).toFixed(1)}MB). ${MAX_APPLY_IMAGE_BYTES / 1024 / 1024}MB 이하만 저장할 수 있어요.`
+        )
+      }
+      form.append('engineSvg', blob, 'engine-3d.svg')
+    }
+  }
   return form
 }
 
-export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }: PresetPanelProps) {
+export default function PresetPanel({ stageRatio, overlayLayers, engineScene = null, onLoadPreset }: PresetPanelProps) {
   // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
   // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
   // 지정한다(ItemBookForm.tsx·ShaderLabSavePanel.tsx와 동일 패턴, 20260826_018).
@@ -100,6 +130,8 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
   const [presets, setPresets] = useState<AssetPresetSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 불러오기는 됐지만 일부(3D 설정·올린 SVG)를 되살리지 못했을 때의 안내(오류가 아니라 경고).
+  const [warning, setWarning] = useState<string | null>(null)
   const [name, setName] = useState('')
   // 저장할 대상 유형이자 "현재 작업 중인 콘텐츠 유형"이기도 하다 — 불러오기 목록을 이 값으로
   // 필터링한다(티켓 20260925_1405). 기본값 'badge'는 지금 이 화면을 쓰는 유일한 제작 경로다.
@@ -144,7 +176,7 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
     setSaving(true)
     setError(null)
     try {
-      const form = await buildSaveFormData(name.trim(), stageRatio, targetType, overlayLayers, presetId)
+      const form = await buildSaveFormData(name.trim(), stageRatio, targetType, overlayLayers, presetId, engineScene)
       const res = await fetch('/api/admin/asset-generator/presets', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '저장에 실패했어요.')
@@ -179,11 +211,14 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
   async function handleLoad(id: string) {
     setLoadingId(id)
     setError(null)
+    setWarning(null)
     try {
       const res = await fetch(`/api/admin/asset-generator/presets/${id}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '불러오기에 실패했어요.')
-      onLoadPreset(data.preset.stageRatio, data.preset.layers ?? [])
+      const resolved = await resolveEngineLoad(data.preset.engineState)
+      onLoadPreset(data.preset.stageRatio, data.preset.layers ?? [], resolved.engine)
+      setWarning(resolved.warning)
       setActivePresetId(data.preset.id)
       setName(data.preset.name)
       setTargetType(data.preset.targetType)
@@ -245,7 +280,14 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
         </Button>
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {engineScene && (
+        <p className="break-keep wrap-break-word text-xs text-muted-foreground">
+          3D 모드에서 저장하면 폰트·두께·색·시점 같은 3D 설정도 함께 저장돼요.
+        </p>
+      )}
+
+      {error && <p className="break-keep wrap-break-word text-xs text-destructive">{error}</p>}
+      {warning && <p className="break-keep wrap-break-word text-xs text-muted-foreground">{warning}</p>}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">불러오는 중…</p>

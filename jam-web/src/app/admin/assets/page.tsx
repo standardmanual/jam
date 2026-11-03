@@ -44,6 +44,7 @@ import {
   type Logo3DSceneState,
 } from './logo3d/logo3dConfig'
 import { DEFAULT_LOGO_SVG_LABEL } from './logo3d/logo3dDefaultSvg'
+import type { LoadedEngine } from './logo3d/logo3dEngineState'
 import { useLogo3DOutline } from './logo3d/useLogo3DOutline'
 import ShapeStudioPanel from './ShapeStudioPanel'
 import ShapeStudioViewport, { type ShapeStudioViewportHandle } from './ShapeStudioViewport'
@@ -622,8 +623,13 @@ export default function AdminAssetsShapeStudioPage() {
   }, [])
 
   const handleLoadPreset = useCallback(
-    (newStageRatio: StageRatio, newLayers: OverlayLayerConfig[]) => {
+    (newStageRatio: StageRatio, newLayers: OverlayLayerConfig[], engine: LoadedEngine | null) => {
       remember(stateRef.current)
+      // 3D 설정이 든 프리셋이면 모드를 3D로 바꾸고 값을 되살린다. 설정이 없으면 모드·3D 값은 그대로 둔다.
+      if (engine) {
+        setEngineMode(engine.mode)
+        setLogo3d(engine.scene)
+      }
       setState((prev) => ({ ...cloneState(prev), ratio: newStageRatio }))
       setOverlayLayers((prev) => {
         prev.forEach((l) => {
