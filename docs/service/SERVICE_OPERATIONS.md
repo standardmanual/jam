@@ -902,6 +902,9 @@ Strava 동기화 시:
      · 미션 진행 체크 (checkMissions)
 ```
 
+- **교통수단 비율·걷기 평균 상한**(티켓 20261103_1115): 같은 `vehicle_speed` 사유로 두 규칙이 더 걸러낸다. 판정은 `lib/abusing/vehicleFilter.ts`의 `judgeVehicleActivity` 한 곳이고 순서는 평균 속도 → 교통수단 비율 → 걷기·등산 평균 상한이다.
+  ① 구간 감지가 뺀 **거리**가 원래 거리의 `transit_ratio_filter_pct`%(기본 50) 이상이면 활동 전체를 거른다(다섯 종목 모두, 시간이 아니라 거리로 센다). ② 구간을 뺀 뒤 평균 속도가 `walk_avg_max_speed_kmh`(기본 16km/h)를 넘는 걷기·등산 활동을 거른다(러닝·자전거에는 없다). 16은 20km 경보 세계기록 평균(약 15.75km/h)보다 높은 값이다. 새 활동부터 적용하고 지난 활동은 다시 판정하지 않는다.
+
 - 임계값은 `getAbusingPolicy()`(정식 경로)로 읽는다. 못 읽거나 값이 0 이하면 기본값 60km/h로
   폴백하고 서버 로그를 남긴다 — 필터식이 "이하만 통과"라 임계값이 0이면 모든 활동이 탈락해
   배지·드랍·미션이 한꺼번에 멈추기 때문이다.
@@ -1022,6 +1025,8 @@ abusing_policy {
   transit_segment_min_duration_sec: 30   -- 교통수단 구간 판정 최소 연속 지속시간 (12-5)
   mismatch_run_min_speed_kmh:       6    -- 러닝 평균속도가 이보다 느리면 걷기(가벼움)로 계산 (양의 정수, 티켓 20261017_1421)
   mismatch_cycling_min_speed_kmh:   10   -- 자전거 평균속도가 이보다 느리면 걷기(가벼움)로 계산 (양의 정수, 티켓 20261017_1421)
+  transit_ratio_filter_pct:         50   -- 구간 감지가 뺀 거리가 원래 거리의 이 비율(%) 이상이면 활동 전체를 vehicle_speed로 제외 (1~100, 마이그레이션 314, 티켓 20261103_1115)
+  walk_avg_max_speed_kmh:           16   -- 구간을 뺀 뒤 평균속도가 이보다 빠른 걷기·등산 활동을 vehicle_speed로 제외 (양의 정수, 마이그레이션 314, 티켓 20261103_1115)
   updated_at
 }
 ```
@@ -1032,7 +1037,7 @@ abusing_policy {
 > 8칸, DB 값과 코드 기본값의 불일치 경고를 함께 지웠다.
 
 어드민 밸런스 설정(`/admin/balance`)의 «어뷰징» 구역에서 수정한다(`PUT /api/admin/balance/abusing`, 티켓 20261022_1134 2회).
-구역은 `DEFAULT_POLICY`의 10개 키만 칸으로 갖고 모르는 칸은 거절한다 — 열이 모두 `INTEGER`라 **모두 1 이상 정수**이고 상한은 DB 정수 한계뿐이다
+구역은 `DEFAULT_POLICY`의 12개 키만 칸으로 갖고 모르는 칸은 거절한다 — 열이 모두 `INTEGER`라 **모두 1 이상 정수**이고 상한은 DB 정수 한계뿐이다
 (차량 속도 필터는 하한 20). 옛 «정책 설정» 탭과 `PUT /api/admin/abusing/policy`(0 이상 숫자를 받았다)는 이 구역으로 옮기며 지웠다. 옛 배율 8종은 칸이 아니라 본문에 와도 거절한다.
 저장은 `updated_at` 조건 갱신이고(다르면 409) 변경 이력이 `balance_setting_changes`에 남는다. 저장 실패는 500이고 응답에 DB 오류 원문을 싣지 않는다.
 행이 없으면 구역은 `DEFAULT_POLICY`를 보이고 첫 저장이 행을 `upsert`로 만든다(옛 화면과 같다).
