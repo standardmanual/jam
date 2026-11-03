@@ -1,0 +1,71 @@
+-- 카피 고쳐 쓰기(권유 어미, 보상 문장 맺음, 느낌표, 장면)
+-- 티켓 20261103_1152: 새 카피 규칙(UX 라이팅 가이드라인 §2.6)에 맞춰 게재 중·예정 홈피드 카드 15장과 미션 4개의 문구를 고쳐 쓴다.
+-- 문구 칸만 바꾸고 노출 기간·대상·목적지·보상은 건드리지 않는다. 되돌림은 seed_copy_friend_voice_20261103_down.sql.
+-- 모든 문장이 한 블록 안에 있어 하나라도 현재 값이 다르면 전체가 되돌아간다.
+do $$
+declare n int;
+begin
+  update today_cards set description = '역 근처에 숨은 아이템 배지가 있어요. 지나는 길에 획득해 봐요.' where id = '260aa769-070d-483f-86da-60fa7fd3f7c3' and description = '역 근처에 숨겨진 아이템 배지를 찾아서 획득하세요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 260aa769-070d-483f-86da-60fa7fd3f7c3 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '활동 길에 처음 가는 역 두 곳을 지나가면 20포인트를 획득해요.' where id = '741d421c-6b16-4709-b2ed-7deaa4a28064' and description = '처음 가는 역 두 곳을 지나가면 20포인트를 획득해요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 741d421c-6b16-4709-b2ed-7deaa4a28064 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '요즘은 산, 편의점, 마트, 관공서에 아이템 배지가 많이 떨어져 있어요.' where id = '4c7902e5-f082-4ab4-8eb6-1f7ee28bb05d' and description = '산, 편의점, 마트, 관공서에 아이템 배지가 많이 발견되고 있어요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 4c7902e5-f082-4ab4-8eb6-1f7ee28bb05d 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '쌀쌀해지기 전에 10분 이상 걷고 동기화를 3번 하면 10포인트를 획득해요.' where id = '4e3d6299-f314-453e-b975-7580e3f2837b' and description = '10분 이상 걷고 동기화를 3번 하면 10포인트를 획득해요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 4e3d6299-f314-453e-b975-7580e3f2837b 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '이번 주에는 새 역 2곳과 새 산 1곳에 체크인해 봐요. 포인트도 받아요.' where id = '18a6efa0-cd8b-4534-823f-d86ac81d6d0b' and description = '새 역 2곳, 새 산 1곳에 체크인하고 포인트를 받아 가세요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 18a6efa0-cd8b-4534-823f-d86ac81d6d0b 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '칸이 모자라면 아이템 배지 하나를 드랍해 자리를 만들어 봐요.' where id = '464a990c-11bb-4d4f-b7fa-8a183f5e62ed' and description = '칸이 모자라면 아이템 배지 하나를 드랍해서 자리를 만드세요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 464a990c-11bb-4d4f-b7fa-8a183f5e62ed 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set title = '놓고, 줍고, 이어가기' where id = '626c1e62-1726-4b4c-a0e6-235f952e9b85' and title = '놓고, 줍고, 나누기';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.title 626c1e62-1726-4b4c-a0e6-235f952e9b85 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '아이템 배지를 드랍하고 다른 사람이 놓은 배지를 픽업한 뒤 동기화하면 10포인트를 획득해요.' where id = '626c1e62-1726-4b4c-a0e6-235f952e9b85' and description = '드랍 한 번, 픽업 한 번 그리고 동기화 한 번이면 10포인트 획득!';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 626c1e62-1726-4b4c-a0e6-235f952e9b85 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '각희산과 군산에서 체크인하고 숨겨진 아이템 배지도 획득해 봐요.' where id = 'a69966fb-b4ae-49ea-926e-9444cebeb141' and description = '각희산과 군산에서 체크인하고 숨겨진 아이템 배지도 획득하세요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description a69966fb-b4ae-49ea-926e-9444cebeb141 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '3시간을 채운 등산이면 「산에서의 하루」 배지를 획득해요.' where id = '59a0864f-9d15-4f18-88dd-0445614c4b90' and description = '3시간을 채운 등산이면 「산에서의 하루」 배지를 획득하세요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 59a0864f-9d15-4f18-88dd-0445614c4b90 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '토·일에 한 번에 10km 이상 달리고 동기화하면 「주말 장거리」 배지를 획득해요.' where id = '67735398-3097-428e-bf72-777c9289539e' and description = '토·일에 한 번에 10km 이상 달리고 동기화하면 「주말 장거리」 배지 획득!';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 67735398-3097-428e-bf72-777c9289539e 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '같은 등급 9종을 모두 장착하면 그 등급이 완성돼요. 100~800포인트를 획득해요.' where id = 'df6ae827-40ca-4c9b-a71b-0624fe2aab4d' and description = '같은 등급 9종을 모두 장착하면 그 등급 완성! 100~800포인트 획득.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description df6ae827-40ca-4c9b-a71b-0624fe2aab4d 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '겨울이 시작되는 날이에요. 새 역 2곳과 새 산 1곳에 체크인하면 포인트를 획득해요.' where id = '0bc05266-8632-45d8-9937-d14092c60808' and description = '오늘은 입동. 새 역 2곳, 새 산 1곳에 체크인하면 포인트를 획득해요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 0bc05266-8632-45d8-9937-d14092c60808 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '등급마다 하나씩, 믹스로 이어지는 아이템 배지가 있어요. 컬렉션에서 확인해 봐요.' where id = 'ec950464-2a8a-4ee5-98f7-a35978791b4e' and description = '등급마다 하나씩, 믹스로 이어지는 아이템 배지가 있어요. 컬렉션에서 확인하세요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description ec950464-2a8a-4ee5-98f7-a35978791b4e 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '활동 길에 처음 가는 산 한 곳을 지나가면 20포인트를 획득해요.' where id = '391b8638-5bee-4797-af59-3b243f05c5d5' and description = '처음 가는 산 한 곳을 지나가면 20포인트를 획득해요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 391b8638-5bee-4797-af59-3b243f05c5d5 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update today_cards set description = '역에서 체크인하면 체크인 배지를 획득해요. 동네 한 바퀴로 하나씩 모아 봐요.' where id = '79916e12-8ab3-4b84-ab53-20b4c91374c0' and description = '역에서 체크인하면 장소 배지를 획득해요. 동네 한 바퀴로 하나씩 모아 보세요.';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'today_cards.description 79916e12-8ab3-4b84-ab53-20b4c91374c0 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update missions set description = '쌀쌀해지기 전에 10분 이상 걷고 동기화해 봐요. 3번이면 10포인트를 획득해요.' where id = '662960dd-6506-4690-871b-8ab1e476622c' and description = '10분 이상 걷고 동기화하기, 딱 3번이면 10포인트 획득!';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'missions.description 662960dd-6506-4690-871b-8ab1e476622c 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update missions set title = '놓고, 줍고, 이어가기' where id = 'e66f802f-dd8c-4d4f-97f2-3cd1cec2a3cf' and title = '놓고, 줍고, 나누기';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'missions.title e66f802f-dd8c-4d4f-97f2-3cd1cec2a3cf 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update missions set description = '아이템 배지를 드랍하고 다른 사람이 놓은 배지를 픽업한 뒤 동기화하면 10포인트를 획득해요.' where id = 'e66f802f-dd8c-4d4f-97f2-3cd1cec2a3cf' and description = '드랍 한 번, 픽업 한 번 그리고 동기화 한 번이면 10포인트 획득!';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'missions.description e66f802f-dd8c-4d4f-97f2-3cd1cec2a3cf 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update missions set description = '활동 길에 처음 가는 역 두 곳을 지나가 봐요. 새 체크인 배지 2개를 획득하면 20포인트를 받아요.' where id = '0766b21d-b1e8-419e-ae77-5002ce9b08a3' and description = '처음 가는 역 두 곳을 활동 중에 지나가 보세요. 새 체크인 배지 2개면 20포인트 획득!';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'missions.description 0766b21d-b1e8-419e-ae77-5002ce9b08a3 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+  update missions set description = '활동 길에 처음 가는 산 한 곳을 지나가기만 해도 20포인트를 획득해요.' where id = '2998a5bd-87f0-4351-a34a-b15afcc3f4a2' and description = '처음 가는 산 한 곳, 활동 중에 지나가기만 해도 20포인트 획득!';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'missions.description 2998a5bd-87f0-4351-a34a-b15afcc3f4a2 현재 값이 예상과 다르다(갱신 %건)', n; end if;
+end $$;
