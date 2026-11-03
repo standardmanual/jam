@@ -63,11 +63,13 @@ export type Database = {
           soft_mystic_rate: number
           soft_rare_rate: number
           transit_cycling_max_speed_kmh: number
+          transit_ratio_filter_pct: number
           transit_run_max_speed_kmh: number
           transit_segment_min_duration_sec: number
           transit_walk_max_speed_kmh: number
           updated_at: string
           vehicle_speed_filter_kmh: number
+          walk_avg_max_speed_kmh: number
         }
         Insert: {
           gps_daily_distance_cap_km?: number
@@ -85,11 +87,13 @@ export type Database = {
           soft_mystic_rate?: number
           soft_rare_rate?: number
           transit_cycling_max_speed_kmh?: number
+          transit_ratio_filter_pct?: number
           transit_run_max_speed_kmh?: number
           transit_segment_min_duration_sec?: number
           transit_walk_max_speed_kmh?: number
           updated_at?: string
           vehicle_speed_filter_kmh?: number
+          walk_avg_max_speed_kmh?: number
         }
         Update: {
           gps_daily_distance_cap_km?: number
@@ -107,11 +111,13 @@ export type Database = {
           soft_mystic_rate?: number
           soft_rare_rate?: number
           transit_cycling_max_speed_kmh?: number
+          transit_ratio_filter_pct?: number
           transit_run_max_speed_kmh?: number
           transit_segment_min_duration_sec?: number
           transit_walk_max_speed_kmh?: number
           updated_at?: string
           vehicle_speed_filter_kmh?: number
+          walk_avg_max_speed_kmh?: number
         }
         Relationships: []
       }

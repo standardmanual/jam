@@ -1885,6 +1885,9 @@ export interface AbusingPolicyRow {
   transit_run_max_speed_kmh: number
   transit_cycling_max_speed_kmh: number
   transit_segment_min_duration_sec: number
+  /** 마이그레이션 314(티켓 20261103_1115) */
+  transit_ratio_filter_pct: number
+  walk_avg_max_speed_kmh: number
   updated_at: string
 }
 
