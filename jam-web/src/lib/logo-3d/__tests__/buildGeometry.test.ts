@@ -135,3 +135,49 @@ describe('buildLogoGeometry', () => {
     expect(built.warnings.length).toBe(1);
   });
 });
+
+/** 표면 전체(윗면·옆면·베벨) 삼각형 넓이의 합. 옆면이 빠지면 눈에 띄게 줄어든다. */
+function surfaceArea(g: BufferGeometry): number {
+  const pos = g.getAttribute('position');
+  const index = g.getIndex();
+  const triCount = (index ? index.count : pos.count) / 3;
+  const at = (i: number) => {
+    const v = index ? index.getX(i) : i;
+    return [pos.getX(v), pos.getY(v), pos.getZ(v)] as const;
+  };
+  let total = 0;
+  for (let t = 0; t < triCount; t++) {
+    const a = at(t * 3);
+    const b = at(t * 3 + 1);
+    const c = at(t * 3 + 2);
+    const ux = b[0] - a[0];
+    const uy = b[1] - a[1];
+    const uz = b[2] - a[2];
+    const vx = c[0] - a[0];
+    const vy = c[1] - a[1];
+    const vz = c[2] - a[2];
+    total += Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+  }
+  return total;
+}
+
+describe('여러 글자를 한 번에 만들어도 모든 글자의 옆면과 윗면이 있다', () => {
+  // 실제 폰트로 "JAM"을 만들면 첫 글자(J)만 옆면이 나오고 A·M의 옆면이 사라지던 결함의 회귀 시험
+  // (ExtrudeGeometry가 글자마다 옆면 그룹을 만드는데 첫 그룹만 가져오던 문제, 2026-11-03 로컬 실렌더에서 발견).
+  // 글자 하나씩 만든 표면 넓이의 합과, 세 글자를 나란히 놓고 한 번에 만든 표면 넓이가 같아야 한다.
+  const shifted = ALL_OUTLINES.map(([, outline], i) =>
+    outline.map((polygon) => ({
+      outer: polygon.outer.map(([x, y]) => [x + (i - 1) * 3, y] as [number, number]),
+      holes: polygon.holes.map((ring) => ring.map(([x, y]) => [x + (i - 1) * 3, y] as [number, number]))
+    }))
+  );
+  const together = buildLogoGeometry(shifted.flat(), DEFAULT_LOGO3D_PARAMS);
+  const separate = shifted.map((outline) => buildLogoGeometry(outline, DEFAULT_LOGO3D_PARAMS));
+
+  it.each(['frame', 'tile', 'backPlate'] as const)('%s: 표면 넓이가 글자별 합과 같다', (part) => {
+    const sum = separate.reduce((acc, g) => acc + surfaceArea(g[part]), 0);
+    // 함께 만들면 모서리 둥글림 한도를 글자 전체(M의 좁은 틈)에 맞춰 잡아 1% 안팎 차이가 난다. 옆면이 빠지면 수십 % 어긋난다.
+    expect(surfaceArea(together[part])).toBeGreaterThan(sum * 0.97);
+    expect(surfaceArea(together[part])).toBeLessThan(sum * 1.03);
+  });
+});

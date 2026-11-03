@@ -72,17 +72,20 @@ function withDelaunayLids(geometry: ExtrudeGeometry, input: LogoOutline, topZ: n
     for (const ring of [polygon.outer, ...polygon.holes]) rings.push(ring.map(([x, y]) => ({ x, y })));
   }
   const { result, solution } = triangulateD(rings, LID_DECIMALS, true);
+  // ExtrudeGeometry는 글자(Shape)마다 옆면 그룹을 하나씩 만든다 — 첫 그룹만 쓰면 둘째 글자부터 옆면이 사라진다.
   const lid = geometry.groups.find((g) => g.materialIndex === 0);
-  const sides = geometry.groups.find((g) => g.materialIndex === 1);
-  if (result !== TriangulateResult.success || solution.length === 0 || !lid || !sides) return geometry;
+  const sideGroups = geometry.groups.filter((g) => g.materialIndex === 1);
+  if (result !== TriangulateResult.success || solution.length === 0 || !lid || sideGroups.length === 0) return geometry;
 
   const pos = geometry.getAttribute('position');
   const uv = geometry.getAttribute('uv');
   const positions: number[] = [];
   const uvs: number[] = [];
-  for (let i = sides.start; i < sides.start + sides.count; i++) {
-    positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
-    if (uv) uvs.push(uv.getX(i), uv.getY(i));
+  for (const sides of sideGroups) {
+    for (let i = sides.start; i < sides.start + sides.count; i++) {
+      positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+      if (uv) uvs.push(uv.getX(i), uv.getY(i));
+    }
   }
   const lidStart = positions.length / 3;
   const push = (x: number, y: number, z: number) => {
