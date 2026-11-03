@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('asset_presets')
-    .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
+    .select('id, name, target_type, stage_ratio, layers, engine_state, created_by, created_at, updated_at')
     .eq('id', id)
     .maybeSingle()
   if (error) {

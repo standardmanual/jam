@@ -39,7 +39,7 @@ export function isStoredAssetUrl(assetUrl: unknown): boolean {
   return typeof assetUrl === 'string' && HTTP_URL.test(assetUrl);
 }
 
-function isAllowedAssetUrl(assetUrl: string, allowedHost: string | null): boolean {
+export function isAllowedAssetUrl(assetUrl: string, allowedHost: string | null): boolean {
   if (!allowedHost) return false;
   try {
     const url = new URL(assetUrl);

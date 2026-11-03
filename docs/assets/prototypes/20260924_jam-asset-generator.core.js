@@ -581,13 +581,14 @@ var AssetGeneratorCore = (() => {
     };
   }
   function toAssetPreset(row) {
-    var _a;
+    var _a, _b;
     return {
       id: row.id,
       name: row.name,
       targetType: row.target_type,
       stageRatio: row.stage_ratio,
       layers: deserializePresetLayers((_a = row.layers) != null ? _a : []),
+      engineState: (_b = row.engine_state) != null ? _b : null,
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at

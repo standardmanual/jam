@@ -13,6 +13,7 @@ import {
   type StageRatio,
 } from '@/lib/asset-generator'
 import { isStoredAssetUrl, validatePresetLayers } from '@/lib/asset-generator/presetValidate'
+import { ENGINE_SVG_FILE_NAME, parseEngineStateInput, type EngineState } from '@/lib/asset-generator/engineState'
 import type { Json } from '@/types/database.generated'
 
 /**
@@ -30,6 +31,11 @@ import type { Json } from '@/types/database.generated'
  * 이미지 레이어의 `assetUrl`이 이미 `http(s)://`로 시작하면(불러온 프리셋을 이미지를 바꾸지
  * 않고 다시 저장하는 경우) 다시 업로드하지 않고 그대로 둔다 — 그 값이 아니면(blob URL 등)
  * 같은 레이어 id의 파일 필드(`image_{layerId}`)가 요청에 있어야 한다.
+ *
+ * 모드별 설정값(티켓 20261103_1736): 폼 필드 `engineState`(JSON 문자열)가 있으면 검증해 `engine_state`
+ * 칸에 저장하고, 없으면 null로 비운다(덮어쓸 때도 마찬가지 — 지금 모드의 설정만 남긴다). 3D의 올린 SVG는
+ * 폼 파일 필드 `engineSvg`로 받아 `asset-generator/presets/{presetId}/engine-3d.svg`에 올리고
+ * `state.svgUrl`에 그 주소만 담는다(행에 큰 문자열을 넣지 않는다). 파일이 없으면 svgUrl·svgName을 뺀다.
  */
 
 const MAX_NAME_LENGTH = 60
@@ -124,6 +130,23 @@ export async function POST(req: NextRequest) {
   const layerError = validatePresetLayers(layers)
   if (layerError) return NextResponse.json({ error: layerError }, { status: 400 })
 
+  // 모드별 설정값도 파일을 쓰기 전에 검증한다. 필드가 없으면 설정 없음(null).
+  const engineStateRaw = form.get('engineState')
+  let engineState: EngineState | null = null
+  if (typeof engineStateRaw === 'string' && engineStateRaw.trim() !== '') {
+    const parsedEngine = parseEngineStateInput(engineStateRaw)
+    if (!parsedEngine.ok) return NextResponse.json({ error: parsedEngine.message }, { status: 400 })
+    engineState = parsedEngine.value
+  }
+  const engineSvgRaw = form.get('engineSvg')
+  const engineSvg = engineState && engineSvgRaw instanceof File && engineSvgRaw.size > 0 ? engineSvgRaw : null
+  if (engineSvg && engineSvg.size > MAX_APPLY_IMAGE_BYTES) {
+    return NextResponse.json(
+      { error: `올린 SVG가 너무 큽니다(${(engineSvg.size / 1024 / 1024).toFixed(1)}MB). 5MB 이하만 저장할 수 있습니다.` },
+      { status: 400 }
+    )
+  }
+
   // 이미지 레이어의 id도 경로에 들어간다. 업로드 전에 전부 검사해 일부만 올라가는 일을 막는다.
   if (layers.some((layer) => layer.type === 'image' && !isSafePresetPathSegment(layer.id))) {
     return NextResponse.json({ error: '레이어 ID 형식이 올바르지 않습니다.' }, { status: 400 })
@@ -176,6 +199,31 @@ export async function POST(req: NextRequest) {
     assetUrlByLayerId[overlayLayer.id] = publicUrl
   }
 
+  // 올린 SVG는 파일로 올리고 주소만 state에 담는다. 클라이언트가 보낸 svgUrl은 항상 버린다.
+  let engineStateToSave: EngineState | null = null
+  if (engineState) {
+    const state: EngineState['state'] = { ...engineState.state }
+    delete state.svgUrl
+    delete state.svgName
+    engineStateToSave = { ...engineState, state }
+    if (engineSvg) {
+      const svgPath = `asset-generator/presets/${presetId}/${ENGINE_SVG_FILE_NAME}`
+      const { error: svgUploadErr } = await supabase.storage
+        .from(APPLY_GENERATED_IMAGE_BUCKET)
+        .upload(svgPath, Buffer.from(await engineSvg.arrayBuffer()), { contentType: 'image/svg+xml', upsert: true })
+      if (svgUploadErr) {
+        console.error('[presets 3D SVG 업로드 오류]', svgUploadErr)
+        return NextResponse.json({ error: UPLOAD_ERROR_MESSAGE }, { status: 500 })
+      }
+      const {
+        data: { publicUrl: svgUrl },
+      } = supabase.storage.from(APPLY_GENERATED_IMAGE_BUCKET).getPublicUrl(svgPath)
+      state.svgUrl = svgUrl
+      if (engineState.state.svgName) state.svgName = engineState.state.svgName
+    }
+  }
+  const engineStateJson = engineStateToSave as unknown as Json | null
+
   const serializedLayers = serializePresetLayers(layers, assetUrlByLayerId)
 
   if (existingId) {
@@ -188,6 +236,7 @@ export async function POST(req: NextRequest) {
         // OverlayLayerConfig[]는 인덱스 시그니처가 없어 Json에 구조적으로 대입되지 않는다 — 이
         // 컬럼 하나만 좁혀서 캐스팅한다(shader-lab compositions route.ts와 같은 이유).
         layers: serializedLayers as unknown as Json,
+        engine_state: engineStateJson,
         updated_at: new Date().toISOString(),
       })
       .eq('id', existingId)
@@ -208,6 +257,7 @@ export async function POST(req: NextRequest) {
       target_type: targetType,
       stage_ratio: stageRatio,
       layers: serializedLayers as unknown as Json,
+      engine_state: engineStateJson,
       created_by: admin.id,
     })
     .select('id, name, stage_ratio, created_at, updated_at')

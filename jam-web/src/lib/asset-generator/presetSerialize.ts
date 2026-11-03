@@ -43,6 +43,7 @@ export function toAssetPreset(row: AssetPresetRow): AssetPreset {
     targetType: row.target_type as PresetTargetType,
     stageRatio: row.stage_ratio as StageRatio,
     layers: deserializePresetLayers((row.layers ?? []) as unknown as OverlayLayerConfig[]),
+    engineState: row.engine_state ?? null,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

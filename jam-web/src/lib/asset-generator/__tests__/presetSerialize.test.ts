@@ -171,6 +171,7 @@ describe('DB 행 → AssetPreset 변환 (티켓 20260925_0239)', () => {
     target_type: 'mission',
     stage_ratio: '4:5',
     layers: [makeTextLayer('t1', 'x'), makeImageLayer('i1', 'https://cdn.example.com/i1.png')] as unknown as AssetPresetRow['layers'],
+    engine_state: null,
     created_by: 'admin-1',
     created_at: '2026-09-25T00:00:00Z',
     updated_at: '2026-09-26T00:00:00Z',
@@ -189,6 +190,12 @@ describe('DB 행 → AssetPreset 변환 (티켓 20260925_0239)', () => {
     });
     expect(preset.layers.map((l) => l.id)).toEqual(['t1', 'i1']);
     expect((preset.layers[0] as TextLayerConfig).content).toBe('x');
+  });
+
+  it('engine_state는 engineState로 그대로 옮기고, 칸이 비어 있으면 null이다(티켓 20261103_1736)', () => {
+    const engine = { mode: '3d', version: 1, state: { zoom: 100 } };
+    expect(toAssetPreset({ ...row, engine_state: engine }).engineState).toEqual(engine);
+    expect(toAssetPreset(row).engineState).toBeNull();
   });
 
   it('layers가 null이면 빈 배열이다', () => {

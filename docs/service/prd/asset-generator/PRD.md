@@ -114,6 +114,7 @@ code:
   아니라 이 순서로 계산한다.
 - **저장하지 않는 것**: 리본 레이어 자체(색·크기·블러·회전·곡선·랜덤 속성값과 시드 전부). 이 값들은
   생성할 때마다(수동은 화면에서, 자동은 CLI 입력으로) 정한다.
+- **모드별 설정값(`engine_state`, 티켓 20261103_1736)**: 3D 모드에서 저장하면 입력(폰트 이름·굵기·글자열·입력 방식), 두께(`params` 전체), 색(팔레트·틀·타일), 시점(회전 x·y·z·줌·원근/등각)을 `{ "mode": "3d", "version": 1, "state": { ... } }`로 함께 저장하고, 불러오면 3D 모드로 바꿔 값을 되살린다. 배경·비율은 프리셋의 기존 필드·에셋 공통 상태가 맡아 중복 저장하지 않는다(배경은 Shape와 공유하는 상태라 이번에는 저장하지 않는다). 올린 SVG는 `asset-generator/presets/{presetId}/engine-3d.svg`로 올리고 `state.svgUrl`에 주소만 담으며, 기본 로고(올린 파일 없음)는 저장하지 않는다. Shape·Ribbon 값은 아직 저장하지 않는다(같은 형식에 `mode`를 늘려 담는다). 서버는 JSON 객체·32KB 이하·허용 `mode`·유한수를 검증하고, 불러올 때 알 수 없는 `mode`·`version`이나 깨진 값은 무시한 채 비율·레이어만 불러오며 경고를 한 줄 보인다. 칸이 비어 있는 기존 프리셋은 지금처럼 비율·레이어만 불러온다. 형식·검증은 `jam-web/src/lib/asset-generator/engineState.ts`가 단일 원천이다.
 - 프리셋의 이미지 원본은 프리셋 저장 시 저장소(`asset-generator/presets/{presetId}/…`)에 올리고, 프리셋은 그 경로를 가리킨다.
 - **로고를 교체할 때는 프리셋도 함께 바꾼다.** 프리셋의 로고는 코드가 아니라 DB 이미지 레이어(`layers[].assetUrl`)가 가리키는 저장소 파일이다. 코드의 글자 경로와 PNG만 바꾸면 자동 제작 이미지에는 옛 로고가 남는다(티켓 20261101_2136).
   자동 경로는 어드민 화면 없이 이 경로만으로 렌더링할 수 있어야 한다.
@@ -371,7 +372,7 @@ code:
 - `asset_presets`(마이그레이션 `185_asset_presets.sql`, `target_type` CHECK는 `187_asset_presets_target_type_expand.sql`로
   확장, 2026-09-25 jam-prod 적용 — 티켓 20260925_1405 완료 기록): `id`(uuid), `name`(text), `target_type`(text, CHECK
   `badge`·`mission`·`collection`·`home_feed` 4종), `stage_ratio`(text, CHECK `1:1`·`4:5`·`9:16`·`16:9` — `16:9`는 마이그레이션 `205_asset_presets_stage_ratio_16x9.sql`로 확장), `layers`(jsonb — 오버레이 레이어(이미지·텍스트)
-  목록과 순서를 담는다. 텍스트 레이어는 글자 내용(`content`)도 담고, 리본 레이어는 담지 않는다, §5), `created_by`(uuid, FK 없음 — 운영 편의
+  목록과 순서를 담는다. 텍스트 레이어는 글자 내용(`content`)도 담고, 리본 레이어는 담지 않는다, §5), `engine_state`(jsonb NULL — 모드별 설정값. 마이그레이션 `315_asset_presets_engine_state.sql`, §5), `created_by`(uuid, FK 없음 — 운영 편의
   데이터), `created_at`·`updated_at`. RLS 활성화·정책 없음(service_role 전용, 어드민 API가 `getAdminUser()`로
   이미 어드민만 통과시킨다). 이미지 레이어의 원본 파일은 `images` 버킷의
   `asset-generator/presets/{presetId}/{layerId}.{png|svg}` 경로에 함께 올라간다(직렬화·역직렬화 순수 함수는

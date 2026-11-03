@@ -153,6 +153,11 @@ export interface AssetPreset {
   targetType: PresetTargetType;
   stageRatio: StageRatio;
   layers: OverlayLayerConfig[];
+  /**
+   * 모드별 설정값(`asset_presets.engine_state`, 티켓 20261103_1736). 저장된 원본 JSON 그대로이고
+   * 검증은 읽는 쪽(`engineState.ts`의 `validateEngineState`)이 한다. 설정 없이 저장한 프리셋은 null.
+   */
+  engineState: unknown | null;
   /** 프리셋을 만든 어드민의 users.id */
   createdBy: string;
   createdAt: string;

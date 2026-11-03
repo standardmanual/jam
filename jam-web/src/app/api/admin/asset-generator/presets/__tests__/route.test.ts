@@ -779,3 +779,159 @@ describe('POST — 프리셋 저장 검증(티켓 20261007_1602)', () => {
     expect(uploadMock).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('POST — 모드별 설정값 engineState(티켓 20261103_1736)', () => {
+  const STORAGE_HOST = 'ceehnkzdbecxwzxrhhns.supabase.co'
+
+  function makeEngineState(overrides: Record<string, unknown> = {}) {
+    return {
+      mode: '3d',
+      version: 1,
+      state: {
+        source: 'svg',
+        fontFamily: 'Poppins',
+        fontWeight: 700,
+        text: 'JAM',
+        params: {
+          depth: 0.3,
+          frameWidth: 0.03,
+          frameFrontProtrusion: 0.016,
+          frameBevelRadius: 0.0145,
+          tileBevelRadius: 0.016,
+          tileThickness: 0.036,
+          cornerRadiusOuter: 0.05,
+          cornerRadiusInner: 0.04,
+          gap: 0.0012,
+        },
+        paletteId: 'steel-sky',
+        frameColor: '#9ba3ab',
+        tileColor: '#7cc4f0',
+        rotX: 14,
+        rotY: 22,
+        rotZ: 3,
+        zoom: 100,
+        view: 'perspective',
+        svgName: 'logo.svg',
+        ...overrides,
+      },
+    }
+  }
+
+  function baseForm() {
+    const form = new FormData()
+    form.append('name', '프리셋')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
+    form.append('layers', '[]')
+    return form
+  }
+
+  beforeEach(() => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '프리셋', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+  })
+
+  it('정상 값은 검증해 insert payload의 engine_state에 담는다', async () => {
+    const form = baseForm()
+    form.append('engineState', JSON.stringify(makeEngineState({ svgName: undefined })))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+    const payload = presetsBuilder.insertPayload as { engine_state: { mode: string; version: number; state: Record<string, unknown> } }
+    expect(payload.engine_state).toMatchObject({ mode: '3d', version: 1, state: { zoom: 100, view: 'perspective' } })
+    expect(payload.engine_state.state).not.toHaveProperty('svgUrl')
+    expect(uploadMock).not.toHaveBeenCalled()
+  })
+
+  it('올린 SVG는 프리셋 폴더에 올리고 state에는 주소만 담는다', async () => {
+    const form = baseForm()
+    form.append('engineState', JSON.stringify(makeEngineState()))
+    form.append('engineSvg', new File(['<svg></svg>'], 'engine-3d.svg', { type: 'image/svg+xml' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+    expect(uploadMock).toHaveBeenCalledTimes(1)
+    const [path, , options] = uploadMock.mock.calls[0] as unknown as [string, Buffer, { contentType: string }]
+    expect(path).toMatch(/^asset-generator\/presets\/[^/]+\/engine-3d\.svg$/)
+    expect(options.contentType).toBe('image/svg+xml')
+    const payload = presetsBuilder.insertPayload as { engine_state: { state: Record<string, unknown> } }
+    expect(payload.engine_state.state.svgUrl).toBe(`https://${STORAGE_HOST}/images/${path}`)
+    expect(payload.engine_state.state.svgName).toBe('logo.svg')
+    expect(JSON.stringify(payload.engine_state)).not.toContain('<svg')
+  })
+
+  it('클라이언트가 보낸 svgUrl은 파일이 없으면 버린다', async () => {
+    const form = baseForm()
+    form.append('engineState', JSON.stringify(makeEngineState({ svgUrl: `https://${STORAGE_HOST}/images/other.svg` })))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+    const payload = presetsBuilder.insertPayload as { engine_state: { state: Record<string, unknown> } }
+    expect(payload.engine_state.state).not.toHaveProperty('svgUrl')
+    expect(payload.engine_state.state).not.toHaveProperty('svgName')
+  })
+
+  it('engineState 칸이 없으면 engine_state는 null이다(기존 동작)', async () => {
+    const res = await POST(postReq(baseForm()))
+    expect(res.status).toBe(200)
+    expect((presetsBuilder.insertPayload as { engine_state: unknown }).engine_state).toBeNull()
+  })
+
+  async function expectRejected(form: FormData, messagePart: string) {
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toContain(messagePart)
+    expect(body.error).toMatch(/요\.$/)
+    expect(presetsBuilder.insert).not.toHaveBeenCalled()
+    expect(uploadMock).not.toHaveBeenCalled()
+  }
+
+  it('JSON이 아니면 400이다', async () => {
+    const form = baseForm()
+    form.append('engineState', '{not json')
+    await expectRejected(form, '3D 설정')
+  })
+
+  it('숫자가 유한수가 아니거나 알 수 없는 mode면 400이다', async () => {
+    const bad = baseForm()
+    bad.append('engineState', JSON.stringify(makeEngineState({ rotX: null })))
+    await expectRejected(bad, '3D 설정')
+    const unknown = baseForm()
+    unknown.append('engineState', JSON.stringify({ ...makeEngineState(), mode: 'cube' }))
+    await expectRejected(unknown, '모드나 버전')
+  })
+
+  it('32KB를 넘으면 400이고 파일을 올리지 않는다', async () => {
+    const form = baseForm()
+    form.append('engineState', JSON.stringify(makeEngineState({ text: 'x'.repeat(40 * 1024) })))
+    form.append('engineSvg', new File(['<svg></svg>'], 'engine-3d.svg', { type: 'image/svg+xml' }))
+    await expectRejected(form, '32KB')
+  })
+
+  it('저장소가 아닌 svgUrl이 들어 있으면 400이다', async () => {
+    const form = baseForm()
+    form.append('engineState', JSON.stringify(makeEngineState({ svgUrl: 'https://evil.com/a.svg' })))
+    await expectRejected(form, '3D 설정')
+  })
+
+  it('덮어쓸 때 engineState가 없으면 update payload의 engine_state를 null로 비운다', async () => {
+    let call = 0
+    presetsBuilder = makeQueryBuilder({ data: { id: 'existing-id' }, error: null })
+    fromMock.mockImplementation(() => {
+      call += 1
+      if (call === 1) return presetsBuilder
+      const updateBuilder = makeQueryBuilder({
+        data: { id: 'existing-id', name: '프리셋', stage_ratio: '1:1', created_at: 't1', updated_at: 't2' },
+        error: null,
+      })
+      presetsBuilder = updateBuilder
+      return updateBuilder
+    })
+    const form = baseForm()
+    form.append('id', 'existing-id')
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+    expect((presetsBuilder.updatePayload as { engine_state: unknown }).engine_state).toBeNull()
+  })
+})

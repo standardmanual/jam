@@ -94,6 +94,30 @@ describe('GET', () => {
     expect(body.preset).toMatchObject({ id: 'p1', targetType: 'home_feed' })
   })
 
+  it('engine_state를 select해 engineState로 돌려주고, 칸이 비어 있으면 null이다(티켓 20261103_1736)', async () => {
+    const engine = { mode: '3d', version: 1, state: { zoom: 120 } }
+    const row = {
+      id: 'p1',
+      name: '3D',
+      target_type: 'badge',
+      stage_ratio: '1:1',
+      layers: [],
+      created_by: 'admin-id',
+      created_at: 't1',
+      updated_at: 't1',
+    }
+    presetsBuilder = makeQueryBuilder({ data: { ...row, engine_state: engine }, error: null })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const withEngine = await (await GET(req(), params(P1))).json()
+    expect(withEngine.preset.engineState).toEqual(engine)
+    expect(presetsBuilder.select.mock.calls[0][0]).toContain('engine_state')
+
+    presetsBuilder = makeQueryBuilder({ data: { ...row, engine_state: null }, error: null })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const without = await (await GET(req(), params(P1))).json()
+    expect(without.preset.engineState).toBeNull()
+  })
+
   it('세션 없이 잘못된 토큰이면 403이고 DB를 조회하지 않는다(티켓 20260926_1203)', async () => {
     sessionUser = null
     const res = await GET(req({ 'x-admin-read-token': 'wrong-token' }), params(P1))
