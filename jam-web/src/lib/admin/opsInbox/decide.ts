@@ -33,6 +33,8 @@ import {
   computeEditDiff,
   computeRevertDiff,
   findRevertTarget,
+  hasScheduledCopyEdit,
+  isScheduledEditablePath,
   isTimePath,
   mergeItemForValidation,
   readDiff,
@@ -40,8 +42,11 @@ import {
   splitEditPath,
   type OpsEditDiffEntry,
 } from '@/lib/admin/opsInbox/edit'
+import type { ExecuteHandler, ExecuteHandlerRegistry } from '@/lib/admin/opsInbox/execute/handlers'
+import { EXECUTE_HANDLERS } from '@/lib/admin/opsInbox/execute/registry'
 import { OPS_FIELD_UNKNOWN, readOpsItemColorPending, readOpsItemTribeId, readOpsPatternProposal } from '@/lib/admin/opsInbox/fields'
 import { asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
+import { toMissionRegisterInput, toTodayCardRegisterInput, type OpsRegisterItem } from '@/lib/admin/opsInbox/registerInput'
 import { findApprovedPair } from '@/lib/admin/opsInbox/tribePalettes'
 import { editPathLabel, formatKstDayTime, kindLabel, splitFormatError } from '@/lib/admin/opsInbox/labels'
 import { formatDecisionMessage, postOpsSlack, type DecisionMessageInput } from '@/lib/admin/opsInbox/slack'
@@ -109,10 +114,12 @@ interface ItemRow {
   edited: Json | null
   format_errors: Json
   updated_at: string
+  /** 예약 등록이 만든 자원을 가리키는 키(`{ today_card_id }` 등). 예약됨 문안 수정이 자원 행을 찾는 데 쓴다. */
+  created_resource: Json | null
 }
 
 const ITEM_COLUMNS =
-  'id, bundle_id, position, item_key, kind, starts_at, ends_at, status, original, edited, format_errors, updated_at'
+  'id, bundle_id, position, item_key, kind, starts_at, ends_at, status, original, edited, format_errors, updated_at, created_resource'
 
 async function loadBundle(service: ServiceClient, bundleId: string, failMessage: string): Promise<BundleRow | DecisionFailure> {
   const { data, error } = await service.from('ops_bundles').select('id, is_sample, format_errors').eq('id', bundleId).maybeSingle()
@@ -533,6 +540,10 @@ interface EditedItemSave {
   reason: string | null
   actor: string
   failMessage: string
+  /** 항목이 이 상태일 때만 저장한다. 기본은 `reviewing`이고, 예약됨 문안 수정은 `scheduled`다. */
+  expectedStatus?: 'reviewing' | 'scheduled'
+  /** 항목의 공개·종료 시각 열을 그대로 둔다(예약됨 문안 수정은 시각을 바꾸지 않는다). */
+  keepSchedule?: boolean
 }
 
 /**
@@ -544,20 +555,21 @@ async function saveEditedItem(
   save: EditedItemSave
 ): Promise<{ ok: true; updatedAt: string; decisionId: string } | DecisionFailure> {
   const { bundle, item, newEdited, validated, expectedUpdatedAt, action, diff, reason, actor, failMessage } = save
+  const expectedStatus = save.expectedStatus ?? 'reviewing'
   const now = new Date().toISOString()
 
   const updated = await service
     .from('ops_bundle_items')
     .update({
       edited: newEdited,
-      starts_at: validated.starts_at,
-      ends_at: validated.ends_at,
+      starts_at: save.keepSchedule ? item.starts_at : validated.starts_at,
+      ends_at: save.keepSchedule ? item.ends_at : validated.ends_at,
       format_errors: validated.format_errors,
       updated_at: now,
     })
     .eq('id', item.id)
     .eq('bundle_id', bundle.id)
-    .eq('status', 'reviewing')
+    .eq('status', expectedStatus)
     .eq('updated_at', expectedUpdatedAt)
     .select('id')
   if (updated.error) {
@@ -615,10 +627,143 @@ async function loadValidationContext(service: ServiceClient, failMessage: string
   }
 }
 
+// ── 예약됨 문안 수정 (티켓 20261103_1446) ────────────────────────────────────────────────────────
+
+/** 예약됨 문안 수정이 쓰는 바깥 재료. 기본값은 실제 핸들러 레지스트리와 현재 시각이고, 테스트가 가짜를 넘긴다. */
+export interface ScheduledCopyDeps {
+  handlers?: ExecuteHandlerRegistry
+  now?: () => Date
+}
+
+const SCHEDULED_PATH_MESSAGE = '예약된 항목은 문안만 고칠 수 있어요. 표시된 칸은 고치지 않고 다시 저장해 주세요.'
+const SCHEDULED_PATH_FIELD_MESSAGE = '예약된 항목은 이 칸을 고칠 수 없어요.'
+const SCHEDULED_PUBLISHED_MESSAGE = '이미 공개된 항목이라 고칠 수 없어요.'
+const SCHEDULED_RESOURCE_MISSING_MESSAGE = '예약된 카드나 미션을 찾을 수 없어요. 화면을 새로 고쳐 확인해 주세요.'
+const SCHEDULED_NO_HANDLER_MESSAGE = '아직 연결하지 않은 종류예요.'
+const SCHEDULED_REVERT_OUTSIDE_MESSAGE = '예약되기 전에 한 수정은 여기서 되돌릴 수 없어요.'
+const SCHEDULED_ROLLBACK_FAILED_MESSAGE = '저장하지 못했고 원래 문안으로 되돌리지도 못했어요. 화면을 새로 고쳐 확인해 주세요.'
+
+/** 항목이 `created_resource`에 적어 둔 자원 ID. 없으면(시험 묶음의 `{ sample: true }` 포함) null이다. */
+function createdResourceId(item: ItemRow, handler: ExecuteHandler): string | null {
+  const value = asRecord(item.created_resource)?.[handler.resourceKey]
+  return typeof value === 'string' && value.trim() !== '' ? value : null
+}
+
+/** 차이의 문안 칸을 자원 행에 쓸 열 → 값으로 바꾼다(항상 「후」 값이다. 되돌림도 되돌린 뒤 값을 쓴다). */
+function copyFieldsOf(diff: readonly OpsEditDiffEntry[]): Record<string, string> {
+  const fields: Record<string, string> = {}
+  for (const entry of diff) {
+    const parts = splitEditPath(entry.path)
+    if (!parts || parts.root !== 'copy') continue
+    fields[parts.key] = entry.after ?? ''
+  }
+  return fields
+}
+
 /**
- * 직접 수정. 검토중 항목만 고치고 제출 원본은 바꾸지 않는다. 바뀐 칸은 차이 목록으로 결정 기록에 남긴다.
+ * 고친 문안이 카피 규칙(`copyRules.ts`)·한 줄·글자 수 검사를 넘는지 본다. `revalidateOpsItem`(제출 형식 검사)은 이 규칙을 돌리지 않고, 예약 등록 변환
+ * (`toTodayCardRegisterInput`·`toMissionRegisterInput`)이 `validateCard`·`validateMission`으로 돌린다. 같은 변환을 고친 항목에 돌려 **고친 문안 칸의 오류만** 모은다
+ * (다른 칸의 오류는 예약 때 이미 통과했거나 이 경로에서 고치지 않는 칸이다). 문장은 칸 이름 접두(`card.title:`)를 떼고 사유만 싣는다.
+ */
+function scheduledCopyRuleErrors(item: ItemRow, newEdited: Json | null, diff: readonly OpsEditDiffEntry[]): Record<string, string> {
+  const registerItem: OpsRegisterItem = {
+    original: item.original,
+    edited: newEdited,
+    kind: item.kind,
+    starts_at: item.starts_at,
+    ends_at: item.ends_at,
+    pattern_no: null,
+  }
+  const result =
+    item.kind === 'mission' ? toMissionRegisterInput(registerItem, { id: item.id }) : toTodayCardRegisterInput(registerItem, { id: item.id, actorId: '' })
+  const touched = new Set(diff.map((entry) => entry.path))
+  const fieldErrors: Record<string, string> = {}
+  for (const issue of result.errors) {
+    if (touched.has(issue.path) && !(issue.path in fieldErrors)) fieldErrors[issue.path] = splitFormatError(issue.message).reason
+  }
+  return fieldErrors
+}
+
+interface ScheduledResourceWrite {
+  /** 자원 행을 쓰기 전 값으로 돌려놓는다. 자원이 없어 쓰지 않았으면 null. 돌려놓았으면 true. */
+  undo: (() => Promise<boolean>) | null
+}
+
+/**
+ * 예약됨 항목의 자원 행(카드·미션)에 문안을 먼저 쓴다. 항목 수정본 저장은 이 뒤에 하고, 저장이 실패하면 `undo`로 되돌린다.
+ * 자원 ID가 없는 항목(시험 묶음)이거나 쓸 열이 없으면 쓰지 않는다. 핸들러가 `updateCopy`를 구현하지 않은 종류는 409다.
+ */
+async function writeScheduledResource(
+  service: ServiceClient,
+  item: ItemRow,
+  fields: Record<string, string>,
+  deps: ScheduledCopyDeps,
+  failMessage: string
+): Promise<ScheduledResourceWrite | DecisionFailure> {
+  const handler = (deps.handlers ?? EXECUTE_HANDLERS)[item.kind ?? '']
+  const updateCopy = handler?.updateCopy?.bind(handler)
+  if (!handler || !updateCopy) return fail(409, SCHEDULED_NO_HANDLER_MESSAGE)
+  const resourceId = createdResourceId(item, handler)
+  if (!resourceId || Object.keys(fields).length === 0) return { undo: null }
+
+  const nowOf = deps.now ?? (() => new Date())
+  let result: Awaited<ReturnType<typeof updateCopy>>
+  try {
+    result = await updateCopy(service, resourceId, fields, { now: nowOf() })
+  } catch (error) {
+    logError('예약된 자원 문안 수정 중 예외', error instanceof Error ? error : null)
+    return fail(500, failMessage)
+  }
+  if (!result.ok) {
+    if (result.code === 'published') return fail(409, SCHEDULED_PUBLISHED_MESSAGE)
+    if (result.code === 'missing') return fail(409, SCHEDULED_RESOURCE_MISSING_MESSAGE)
+    console.error(`${LOG} 예약된 자원 문안 수정 실패:`, result.failure.detail ?? result.failure.reason)
+    return fail(500, failMessage)
+  }
+  const previous = result.previous
+  return {
+    undo: async () => {
+      try {
+        const restored = await updateCopy(service, resourceId, previous, { now: nowOf() })
+        if (!restored.ok) console.error(`${LOG} 자원 문안 되돌림 실패:`, restored.failure.detail ?? restored.failure.reason)
+        return restored.ok
+      } catch (error) {
+        logError('자원 문안 되돌림 중 예외', error instanceof Error ? error : null)
+        return false
+      }
+    },
+  }
+}
+
+/**
+ * 수정본 저장이 실패한 뒤 자원 행을 원래 값으로 돌려놓는다. 돌려놓지 못하면 `#jam-alert`에 글을 남기고 새로 고침을 안내하는 500으로 바꾼다
+ * (자원 행과 수정본이 어긋난 채 남았을 수 있다).
+ */
+async function rollbackScheduledResource(
+  write: ScheduledResourceWrite,
+  item: Pick<ItemRow, 'kind' | 'starts_at'>,
+  isSample: boolean,
+  saveFailure: DecisionFailure
+): Promise<DecisionFailure> {
+  if (!write.undo) return saveFailure
+  if (await write.undo()) return saveFailure
+  try {
+    const text = `예약된 항목의 문안을 되돌리지 못했어요 · ${itemLabelOf(item)}\n수정본 저장이 실패한 뒤 카드나 미션 문안을 원래대로 돌리지 못했어요. 상황판 문안과 실제 문안이 다를 수 있어요`
+    await postOpsSlack('alert', isSample ? `[시험] ${text}` : text)
+  } catch (error) {
+    logError('문안 되돌림 실패 알림 중 예외', error instanceof Error ? error : null)
+  }
+  return fail(500, SCHEDULED_ROLLBACK_FAILED_MESSAGE)
+}
+
+/**
+ * 직접 수정. 검토중 항목을 고치고(예약됨 홈피드 카드·미션은 문안 칸만, 아래 «예약됨 문안 수정») 제출 원본은 바꾸지 않는다. 바뀐 칸은 차이 목록으로 결정 기록에 남긴다.
  * 고친 칸에 걸린 형식 오류는 저장을 막고(400, 칸별 문장), 그 밖의 오류는 항목·묶음 형식 오류를 새 결과로 바꾼다.
  * `expectedUpdatedAt`은 화면이 본 항목의 수정 시각이다 — 그 사이 바뀌었으면 409다.
+ *
+ * 예약됨 문안 수정(티켓 20261103_1446): 상태가 `scheduled`인 홈피드 카드·미션은 `copy.<키>`(종류별 `SCHEDULED_COPY_KEYS`)만 고칠 수 있고 다른 칸이 오면 400이다.
+ * 자원 행(`today_cards`·`missions`)의 같은 열을 먼저 고치고(공개 시각 전만, 지났으면 409) 수정본을 저장하며, 저장이 실패하면 자원 행을 원래 값으로 되돌린다.
+ * 항목은 `scheduled` 그대로이고 공개·종료 시각 열도 바꾸지 않는다.
  */
 export async function editItem(
   service: ServiceClient,
@@ -629,7 +774,8 @@ export async function editItem(
     values: unknown
     reason?: unknown
     expectedUpdatedAt: unknown
-  }
+  },
+  deps: ScheduledCopyDeps = {}
 ): Promise<DecisionOutcome> {
   const { bundleId, itemId, actor } = input
   if (typeof input.values !== 'object' || input.values === null || Array.isArray(input.values)) {
@@ -647,7 +793,16 @@ export async function editItem(
   if (isFailure(bundle)) return bundle
   const item = await loadItem(service, bundleId, itemId, EDIT_FAILED)
   if (isFailure(item)) return item
-  if (item.status !== 'reviewing') return fail(409, CONFLICT_MESSAGE)
+  const scheduled = item.status === 'scheduled' && hasScheduledCopyEdit(item.kind)
+  if (item.status !== 'reviewing' && !scheduled) return fail(409, CONFLICT_MESSAGE)
+  if (scheduled) {
+    const outside = Object.keys(input.values).filter((path) => !isScheduledEditablePath(item.kind, path))
+    if (outside.length > 0) {
+      return fail(400, SCHEDULED_PATH_MESSAGE, { fieldErrors: Object.fromEntries(outside.map((path) => [path, SCHEDULED_PATH_FIELD_MESSAGE])) })
+    }
+    // 자원 행을 쓰기 전에 화면이 본 항목이 그대로인지 먼저 본다(어긋나면 쓰지 않는다).
+    if (item.updated_at !== input.expectedUpdatedAt) return fail(409, CONFLICT_MESSAGE)
+  }
 
   let diff: OpsEditDiffEntry[]
   try {
@@ -682,6 +837,20 @@ export async function editItem(
     return fail(400, '고친 내용을 저장하지 못했어요. 표시된 칸을 확인해 주세요.', { fieldErrors })
   }
 
+  if (scheduled) {
+    const ruleErrors = scheduledCopyRuleErrors(item, newEdited, diff)
+    if (Object.keys(ruleErrors).length > 0) {
+      return fail(400, '고친 내용을 저장하지 못했어요. 표시된 칸을 확인해 주세요.', { fieldErrors: ruleErrors })
+    }
+  }
+
+  let resourceWrite: ScheduledResourceWrite | null = null
+  if (scheduled) {
+    const written = await writeScheduledResource(service, item, copyFieldsOf(diff), deps, EDIT_FAILED)
+    if (isFailure(written)) return written
+    resourceWrite = written
+  }
+
   const saved = await saveEditedItem(service, {
     bundle,
     item,
@@ -693,8 +862,9 @@ export async function editItem(
     reason,
     actor,
     failMessage: EDIT_FAILED,
+    ...(scheduled ? { expectedStatus: 'scheduled' as const, keepSchedule: true } : {}),
   })
-  if (!saved.ok) return saved
+  if (!saved.ok) return resourceWrite ? rollbackScheduledResource(resourceWrite, item, bundle.is_sample, saved) : saved
 
   return {
     ok: true,
@@ -810,12 +980,13 @@ export async function fillColor(
 
 /**
  * 마지막 수정 되돌리기. 그 항목의 결정 기록에서 되돌리지 않은 가장 최근 수정을 찾아 그 차이를 거꾸로 적용하고, `revert` 결정
- * 기록(`diff`는 이번에 실제로 바뀐 전 → 후)을 남긴다. 한 번에 한 단계이고 다시 하기는 없다. 검토중이 아니거나 되돌릴 수정이
- * 없으면 409다.
+ * 기록(`diff`는 이번에 실제로 바뀐 전 → 후)을 남긴다. 한 번에 한 단계이고 다시 하기는 없다. 검토중(예약됨 카드·미션은 예약됨 문안 수정,
+ * 티켓 20261103_1446)이 아니거나 되돌릴 수정이 없으면 409다. 예약됨 항목에서는 자원 행도 함께 되돌리고, 예약되기 전에 고친 칸이 대상이면 409다.
  */
 export async function revertLastEdit(
   service: ServiceClient,
-  input: { bundleId: string; itemId: string; actor: string }
+  input: { bundleId: string; itemId: string; actor: string },
+  deps: ScheduledCopyDeps = {}
 ): Promise<DecisionOutcome> {
   const { bundleId, itemId, actor } = input
 
@@ -823,7 +994,8 @@ export async function revertLastEdit(
   if (isFailure(bundle)) return bundle
   const item = await loadItem(service, bundleId, itemId, REVERT_FAILED)
   if (isFailure(item)) return item
-  if (item.status !== 'reviewing') return fail(409, CONFLICT_MESSAGE)
+  const scheduled = item.status === 'scheduled' && hasScheduledCopyEdit(item.kind)
+  if (item.status !== 'reviewing' && !scheduled) return fail(409, CONFLICT_MESSAGE)
 
   const history = await service
     .from('ops_decisions')
@@ -840,6 +1012,9 @@ export async function revertLastEdit(
   if (!target) return fail(409, '되돌릴 수정이 없어요.')
 
   const targetDiff = readDiff(target.diff)
+  if (scheduled && targetDiff.some((entry) => !isScheduledEditablePath(item.kind, entry.path))) {
+    return fail(409, SCHEDULED_REVERT_OUTSIDE_MESSAGE)
+  }
   const revertDiff = computeRevertDiff({ original: item.original, edited: item.edited }, targetDiff)
   const newEdited = applyDiff(item.original, item.edited, revertDiff, 'forward')
 
@@ -848,6 +1023,13 @@ export async function revertLastEdit(
   const ctx = await loadValidationContext(service, REVERT_FAILED)
   if (isFailure(ctx)) return ctx
   const validated = revalidateOpsItem(mergeItemForValidation(item.original, newEdited), item.position, keys, ctx)
+
+  let resourceWrite: ScheduledResourceWrite | null = null
+  if (scheduled) {
+    const written = await writeScheduledResource(service, item, copyFieldsOf(revertDiff), deps, REVERT_FAILED)
+    if (isFailure(written)) return written
+    resourceWrite = written
+  }
 
   const saved = await saveEditedItem(service, {
     bundle,
@@ -860,8 +1042,9 @@ export async function revertLastEdit(
     reason: null,
     actor,
     failMessage: REVERT_FAILED,
+    ...(scheduled ? { expectedStatus: 'scheduled' as const, keepSchedule: true } : {}),
   })
-  if (!saved.ok) return saved
+  if (!saved.ok) return resourceWrite ? rollbackScheduledResource(resourceWrite, item, bundle.is_sample, saved) : saved
 
   const labelPaths = revertDiff.length > 0 ? revertDiff : targetDiff
   return {

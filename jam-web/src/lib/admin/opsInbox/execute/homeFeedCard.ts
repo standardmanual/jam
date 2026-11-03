@@ -12,6 +12,7 @@
  * - `undo`는 노출·열람 기록을 확인한 뒤 ID로 지운다. 되돌림은 방금 만든 카드만 지우므로 공개 전 여부는 보지 않는다.
  * - `cancel`(티켓 20261002_1256, ④-b)은 예약된 카드를 공개 전에 지운다: 행을 다시 읽어 공개 시각이 지났으면 막고, 노출·열람 기록을 확인한 뒤,
  *   지울 때도 공개 시각 조건(`starts_at > now`)을 함께 건다(읽은 뒤 공개 시각이 지나는 경합).
+ * - `updateCopy`(티켓 20261103_1446)는 예약된 카드의 `title`·`subtitle`·`description`만 공개 전에 고친다(`copyColumns.ts`). 빈 `subtitle`·`description`은 만들 때와 같게 null로 저장한다.
  * - `end`(티켓 20261006_0950, ⑪-a)는 게재 중인 카드를 지금 끝낸다: 행을 다시 읽어 없으면 `missing`, `ends_at`이 지났으면 `alreadyEnded`(`observe`와 같은 경계: `지금 > ends_at`),
  *   공개 시각 전이면 `not_published`, 그 밖에는 `ends_at`을 지금으로 바꾼다(읽은 `ends_at`을 조건으로 건다). `is_active`는 보지 않는다(꺼진 카드도 끝낼 수 있다).
  * - `observe`(티켓 20261002_1813, ⑦-a)는 상태 맞추기가 카드의 지금 상태를 읽는다: 행이 없으면 `missing`, 있으면 `is_active`·`starts_at`·`ends_at`으로
@@ -22,9 +23,20 @@ import type { TodayCardRegisterPayload } from '@/lib/admin/opsInbox/registerInpu
 import { runHomeFeedDbChecks } from '@/lib/admin/registerChecks/homeFeed'
 import { findHomeFeedUndoReferences } from '@/lib/admin/registerChecks/references'
 import type { RegisterCheck } from '@/lib/admin/registerChecks/shared'
+import { updateCopyColumns } from './copyColumns'
 import { endError, endNotPublished, endResourceNow } from './endColumn'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient } from './handlers'
-import type { CancelResult, EndResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
+import type {
+  CancelResult,
+  EndResult,
+  ExecuteFailure,
+  ExecuteHandler,
+  ExecuteOutcome,
+  ExecutePrepared,
+  ExecuteServiceClient,
+  ResourceObservation,
+  UpdateCopyResult,
+} from './handlers'
 
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261002_1255 가정 3). */
 const HOME_FEED_CARD_MESSAGES = {
@@ -151,6 +163,15 @@ export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = 
     const reread = await service.from('today_cards').select('id').eq('id', resourceId).maybeSingle()
     if (reread.error) return failed(`삭제 뒤 카드 재조회 실패: ${reread.error.message}`)
     return reread.data ? published : { ok: true, missing: true }
+  },
+
+  async updateCopy(service: ExecuteServiceClient, resourceId, fields, { now }): Promise<UpdateCopyResult> {
+    // `buildTodayCardInsertPayload`와 같은 다듬기: 제목은 앞뒤 공백을 자르고, 부제·설명은 비면 null이다.
+    const normalized: Record<string, string | null> = {}
+    if (fields.title !== undefined) normalized.title = (fields.title ?? '').trim()
+    if (fields.subtitle !== undefined) normalized.subtitle = fields.subtitle?.trim() || null
+    if (fields.description !== undefined) normalized.description = fields.description?.trim() || null
+    return updateCopyColumns(service, { table: 'today_cards', label: '카드', resourceId, fields: normalized, now })
   },
 
   async end(service: ExecuteServiceClient, resourceId, { now }): Promise<EndResult> {

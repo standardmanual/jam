@@ -168,6 +168,7 @@ vi.mock('@/lib/admin/opsInbox/slack', async (importOriginal) => {
   return { ...actual, postOpsSlack: h.state.postOpsSlack }
 })
 
+import type { ExecuteHandlerRegistry } from '../execute/handlers'
 import { validateOpsBundle } from '../validate'
 import { readOpsItemColorPending } from '../fields'
 import { readImageSpec } from '../imageSpec'
@@ -1014,6 +1015,231 @@ describe('수정 되돌리기', () => {
     h.state.failOn.add('ops_decisions.insert')
     expect(failure(await revert()).status).toBe(500)
     expect(JSON.stringify(item(I1).edited)).toBe(edited)
+  })
+})
+
+describe('예약됨 문안 수정 (티켓 20261103_1446)', () => {
+  const RESOURCE_ID = 'res-card-1'
+  const NOW_FIXED = new Date('2026-10-04T00:00:00.000Z')
+  let store: Record<string, string | null>
+  let restoreFails = false
+  let publishedNow = false
+
+  /** 자원 행을 흉내 내는 가짜 `updateCopy`. 쓰기 전 값을 `previous`로 돌려주고, 켜 둔 스위치대로 공개됨·되돌림 실패를 낸다. */
+  const updateCopy = vi.fn(async (_service: unknown, id: string, fields: Record<string, string | null>) => {
+    if (publishedNow) return { ok: false as const, code: 'published' as const, failure: { reason: '공개 시각이 지나 문안을 고칠 수 없어요' } }
+    const restoring = updateCopy.mock.calls.length > 1 && restoreFails
+    if (restoring) return { ok: false as const, code: 'error' as const, failure: { reason: '실패', detail: 'boom secret detail' } }
+    expect(id).toBe(RESOURCE_ID)
+    const previous: Record<string, string | null> = {}
+    for (const key of Object.keys(fields)) previous[key] = store[key] ?? null
+    Object.assign(store, fields)
+    return { ok: true as const, previous }
+  })
+  const handlers = {
+    home_feed_card: { kind: 'home_feed_card', resourceKey: 'today_card_id', updateCopy },
+    mission: { kind: 'mission', resourceKey: 'mission_id', updateCopy },
+  } as unknown as ExecuteHandlerRegistry
+  const deps = () => ({ handlers, now: () => NOW_FIXED })
+
+  const scheduledCard = (overrides: Record<string, unknown> = {}) =>
+    makeItem(I1, 0, {
+      status: 'scheduled',
+      created_resource: { today_card_id: RESOURCE_ID },
+      original: makeOriginal({ copy: { title: '우산 챙겨 달리기', subtitle: '부제예요', description: '오늘은 비가 와요' } }),
+      ...overrides,
+    })
+  const edit = (values: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+    editItem(service, { bundleId: B, itemId: I1, actor: 'admin-1', values, expectedUpdatedAt: item(I1).updated_at, ...extra }, deps())
+  const revert = () => revertLastEdit(service, { bundleId: B, itemId: I1, actor: 'admin-2' }, deps())
+
+  beforeEach(() => {
+    updateCopy.mockClear()
+    store = { title: '우산 챙겨 달리기', subtitle: '부제예요', description: '오늘은 비가 와요' }
+    restoreFails = false
+    publishedNow = false
+    seed([scheduledCard()])
+  })
+
+  it('수정본과 자원 행의 같은 열이 함께 바뀌고, 제출 원본·상태·시각 열은 그대로다', async () => {
+    const snapshot = JSON.stringify(item(I1).original)
+    const startsAt = item(I1).starts_at
+    const endsAt = item(I1).ends_at
+    const out = success(await edit({ 'copy.title': '새 제목', 'copy.description': '새 설명이에요' }, { reason: '오타' }))
+
+    expect(out.ok).toBe(true)
+    expect(updateCopy).toHaveBeenCalledTimes(1)
+    expect(updateCopy.mock.calls[0].slice(1)).toEqual([RESOURCE_ID, { title: '새 제목', description: '새 설명이에요' }, { now: NOW_FIXED }])
+    expect(store).toEqual({ title: '새 제목', subtitle: '부제예요', description: '새 설명이에요' })
+    expect(JSON.stringify(item(I1).original)).toBe(snapshot)
+    expect(item(I1).edited).toEqual({ copy: { title: '새 제목', subtitle: '부제예요', description: '새 설명이에요' } })
+    expect(item(I1).status).toBe('scheduled')
+    expect(item(I1).starts_at).toBe(startsAt)
+    expect(item(I1).ends_at).toBe(endsAt)
+    expect(decisions('edit')).toHaveLength(1)
+    expect(decisions('edit')[0]).toMatchObject({
+      item_id: I1,
+      reason: '오타',
+      diff: [
+        { path: 'copy.title', before: '우산 챙겨 달리기', after: '새 제목' },
+        { path: 'copy.description', before: '오늘은 비가 와요', after: '새 설명이에요' },
+      ],
+    })
+    expect(out.slack).toMatchObject({ action: 'edit', changedLabels: ['문안 · title', '문안 · description'] })
+  })
+
+  it('미션도 같은 길이다', async () => {
+    seed([
+      makeItem(I1, 0, {
+        kind: 'mission',
+        status: 'scheduled',
+        created_resource: { mission_id: RESOURCE_ID },
+        original: makeOriginal({ kind: 'mission', copy: { title: '주말 러닝', condition_text: '30km 달리기' } }),
+      }),
+    ])
+    store = { title: '주말 러닝', condition_text: '30km 달리기' }
+    expect((await edit({ 'copy.condition_text': '주말에 30km를 달려요' })).ok).toBe(true)
+    expect(store.condition_text).toBe('주말에 30km를 달려요')
+    expect(item(I1).edited).toEqual({ copy: { title: '주말 러닝', condition_text: '주말에 30km를 달려요' } })
+  })
+
+  it('문안 이외의 칸이나 문안 목록 밖의 키를 보내면 400이고 아무것도 쓰지 않는다', async () => {
+    const before = JSON.stringify(item(I1))
+    for (const values of [
+      { starts_at: '2026-10-05T10:00:00+09:00' },
+      { user_experience: '새 문장' },
+      { 'colors.background': '#ffffff' },
+      { 'copy.body': '목록 밖 키' },
+      { 'copy.title': '새 제목', ends_at: '2026-10-07T09:00:00+09:00' },
+    ]) {
+      const out = failure(await edit(values))
+      expect(out.status).toBe(400)
+      expect(out.extra).toMatchObject({ fieldErrors: expect.any(Object) })
+    }
+    expect(updateCopy).not.toHaveBeenCalled()
+    expect(JSON.stringify(item(I1))).toBe(before)
+    expect(decisions()).toHaveLength(0)
+  })
+
+  it('카피 규칙을 어기면 400 칸별 문장이고 자원 행도 수정본도 바뀌지 않는다', async () => {
+    const out = failure(await edit({ 'copy.title': '지금 운동하세요' }))
+    expect(out.status).toBe(400)
+    expect(out.extra).toMatchObject({ fieldErrors: { 'copy.title': expect.stringContaining('하세요') } })
+    expect(updateCopy).not.toHaveBeenCalled()
+    expect(item(I1).edited).toBeNull()
+    expect(store.title).toBe('우산 챙겨 달리기')
+  })
+
+  it('설명의 느낌표와 조건 요약 제목도 400이고, 다른 칸이 아닌 고친 칸에만 문장이 붙는다', async () => {
+    const out = failure(await edit({ 'copy.description': '오늘은 달려요!', 'copy.title': '체크인 3곳' }))
+    expect(out.status).toBe(400)
+    expect(Object.keys((out.extra as { fieldErrors: Record<string, string> }).fieldErrors).sort()).toEqual(['copy.description', 'copy.title'])
+    expect(updateCopy).not.toHaveBeenCalled()
+    // 고치지 않은 칸의 규칙 위반(예약 때 통과한 옛 문안)은 막지 않는다
+    seed([scheduledCard({ original: makeOriginal({ copy: { title: '우산 챙겨 달리기', subtitle: '부제예요', description: '옛 문안이에요!' } }) })])
+    expect((await edit({ 'copy.title': '새 제목' })).ok).toBe(true)
+  })
+
+  it('공개 시각이 지났으면 409이고 수정본·결정 기록이 바뀌지 않는다', async () => {
+    publishedNow = true
+    const out = failure(await edit({ 'copy.title': '새 제목' }))
+    expect(out).toMatchObject({ status: 409, error: '이미 공개된 항목이라 고칠 수 없어요.' })
+    expect(item(I1).edited).toBeNull()
+    expect(decisions()).toHaveLength(0)
+  })
+
+  it.each(['cancelled', 'ended', 'failed', 'approved', 'rejected'])('상태가 %s이면 문안 수정을 받지 않는다(예약됨이 아님)', async (status) => {
+    seed([scheduledCard({ status })])
+    expect(failure(await edit({ 'copy.title': '새 제목' })).status).toBe(409)
+    expect(updateCopy).not.toHaveBeenCalled()
+    expect(store.title).toBe('우산 챙겨 달리기')
+  })
+
+  it('예약됨이어도 카드·미션이 아닌 종류는 409다', async () => {
+    seed([scheduledCard({ kind: 'jam_badge' })])
+    expect(failure(await edit({ 'copy.title': '새 제목' })).status).toBe(409)
+    expect(updateCopy).not.toHaveBeenCalled()
+  })
+
+  it('화면이 본 수정 시각과 다르면 자원 행을 쓰기 전에 409다', async () => {
+    const out = failure(await edit({ 'copy.title': '새 제목' }, { expectedUpdatedAt: '2026-09-30T00:00:00.000Z' }))
+    expect(out.status).toBe(409)
+    expect(updateCopy).not.toHaveBeenCalled()
+  })
+
+  it('수정본 저장이 실패하면 자원 행을 원래 값으로 되돌린다', async () => {
+    h.state.failOn.add('ops_bundle_items.update')
+    const out = failure(await edit({ 'copy.title': '새 제목' }))
+
+    expect(out.status).toBe(500)
+    expect(updateCopy).toHaveBeenCalledTimes(2)
+    expect(updateCopy.mock.calls[1].slice(1, 3)).toEqual([RESOURCE_ID, { title: '우산 챙겨 달리기' }])
+    expect(store.title).toBe('우산 챙겨 달리기')
+    expect(item(I1).edited).toBeNull()
+    expect(h.state.postOpsSlack).not.toHaveBeenCalled()
+  })
+
+  it('결정 기록 저장이 실패해도 항목과 자원 행이 모두 원래대로다', async () => {
+    h.state.failOn.add('ops_decisions.insert')
+    expect(failure(await edit({ 'copy.title': '새 제목' })).status).toBe(500)
+    expect(store.title).toBe('우산 챙겨 달리기')
+    expect(item(I1).edited).toBeNull()
+  })
+
+  it('되돌리기마저 실패하면 #jam-alert 글을 남기고 새로 고침을 안내한다. DB 원문은 싣지 않는다', async () => {
+    restoreFails = true
+    h.state.failOn.add('ops_bundle_items.update')
+    h.state.postOpsSlack.mockResolvedValue({ ok: true })
+    const out = failure(await edit({ 'copy.title': '새 제목' }))
+
+    expect(out.status).toBe(500)
+    expect(out.error).toContain('화면을 새로 고쳐')
+    expect(out.error).not.toContain('boom')
+    expect(h.state.postOpsSlack).toHaveBeenCalledTimes(1)
+    const [channel, text] = h.state.postOpsSlack.mock.calls[0]
+    expect(channel).toBe('alert')
+    expect(text).toContain('홈피드 카드')
+    expect(text).not.toContain('boom')
+  })
+
+  it('시험 묶음의 자원 없는 항목은 자원을 건드리지 않고 수정본만 고친다', async () => {
+    seed([scheduledCard({ created_resource: { sample: true } })])
+    expect((await edit({ 'copy.title': '새 제목' })).ok).toBe(true)
+    expect(updateCopy).not.toHaveBeenCalled()
+    expect(item(I1).edited).toEqual({ copy: { title: '새 제목', subtitle: '부제예요', description: '오늘은 비가 와요' } })
+  })
+
+  it('핸들러가 updateCopy를 구현하지 않은 종류는 409다', async () => {
+    const out = failure(
+      await editItem(
+        service,
+        { bundleId: B, itemId: I1, actor: 'admin-1', values: { 'copy.title': '새 제목' }, expectedUpdatedAt: item(I1).updated_at },
+        { handlers: { home_feed_card: { kind: 'home_feed_card', resourceKey: 'today_card_id' } } as unknown as ExecuteHandlerRegistry, now: () => NOW_FIXED }
+      )
+    )
+    expect(out).toMatchObject({ status: 409, error: '아직 연결하지 않은 종류예요.' })
+    expect(item(I1).edited).toBeNull()
+  })
+
+  it('되돌리기는 수정본과 자원 행을 함께 원래 문안으로 돌리고 revert가 남는다', async () => {
+    expect((await edit({ 'copy.title': '새 제목' })).ok).toBe(true)
+    const out = success(await revert())
+
+    expect(out.ok).toBe(true)
+    expect(updateCopy.mock.calls[1].slice(1, 3)).toEqual([RESOURCE_ID, { title: '우산 챙겨 달리기' }])
+    expect(store.title).toBe('우산 챙겨 달리기')
+    expect(item(I1).edited).toBeNull()
+    expect(item(I1).status).toBe('scheduled')
+    expect(decisions('revert')[0]).toMatchObject({ diff: [{ path: 'copy.title', before: '새 제목', after: '우산 챙겨 달리기' }] })
+  })
+
+  it('예약되기 전에 고친 칸(공개 시각)이 되돌림 대상이면 409이고 자원 행을 쓰지 않는다', async () => {
+    // 검토중에 시각을 고쳤고, 그 뒤 승인·예약된 항목을 흉내 낸다.
+    seed([scheduledCard({ status: 'reviewing' })])
+    expect((await edit({ starts_at: '2026-10-05T10:00:00+09:00' })).ok).toBe(true)
+    item(I1).status = 'scheduled'
+    expect(failure(await revert()).status).toBe(409)
+    expect(updateCopy).not.toHaveBeenCalled()
   })
 })
 
