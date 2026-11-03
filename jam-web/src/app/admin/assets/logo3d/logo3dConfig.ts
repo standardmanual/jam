@@ -1,5 +1,5 @@
 /**
- * 3D 로고 제너레이터 화면 — 상태 타입·기본값·순수 계산 (티켓 20261103_1352)
+ * 3D 로고 — 상태 타입·기본값·순수 계산 (티켓 20261103_1352, 에셋 3D 모드로 옮김: 티켓 20261103_1734)
  *
  * 형상은 `@/lib/logo-3d`(buildLogoGeometry), 입력 변환은 같은 폴더의 fontToOutline·svgToOutline이 맡는다.
  * 여기에는 캔버스·WebGL에 기대지 않는 계산만 둔다 — 스테이지 크기, 등각 카메라, 배경 칠하기 계획, 팔레트, 드래그·휠 계산.
@@ -14,7 +14,10 @@ export type { BackgroundMode, CanvasRatio }
 export type Logo3DSource = 'font' | 'svg'
 export type Logo3DView = 'perspective' | 'isometric'
 
-export type Logo3DState = {
+/**
+ * 3D 모드 고유 상태 — 입력·두께·색·시점. 배경·비율은 에셋 화면의 값(`ShapeStudioState`)을 쓰므로 여기에 없다.
+ */
+export type Logo3DSceneState = {
   // 입력
   source: Logo3DSource
   fontFamily: string
@@ -34,6 +37,10 @@ export type Logo3DState = {
   rotZ: number
   zoom: number
   view: Logo3DView
+}
+
+/** 별도 페이지(`/admin/logo-3d`)는 아직 자체 배경·비율을 들고 있다(티켓 20261103_1738에서 정리). */
+export type Logo3DState = Logo3DSceneState & {
   // 스테이지 (어드민 에셋의 bgMode·bgA·bgB·bgAngle과 같은 의미, 각도는 도)
   bgMode: BackgroundMode
   bgA: string
@@ -57,7 +64,7 @@ export const PALETTES: readonly Logo3DPalette[] = [
 /** 어드민 에셋 `INITIAL_STATE`의 배경 각도 기본값과 같다. */
 export const DEFAULT_BG_ANGLE = 0
 
-export const DEFAULT_LOGO3D_STATE: Logo3DState = {
+export const DEFAULT_LOGO3D_SCENE: Logo3DSceneState = {
   source: 'font',
   fontFamily: 'Poppins',
   fontWeight: 700,
@@ -73,11 +80,38 @@ export const DEFAULT_LOGO3D_STATE: Logo3DState = {
   rotZ: 3,
   zoom: 100,
   view: 'perspective',
+}
+
+export const DEFAULT_LOGO3D_STATE: Logo3DState = {
+  ...DEFAULT_LOGO3D_SCENE,
+  params: { ...DEFAULT_LOGO3D_SCENE.params },
   bgMode: 'gradient',
   bgA: '#d4eefc',
   bgB: '#5fb4ea',
   bgAngle: DEFAULT_BG_ANGLE,
   ratio: '1:1',
+}
+
+/**
+ * 상태 조각을 적용한다. 폰트·굵기·글자열을 건드리면 입력을 폰트로 돌린다(SVG 모드에서 글자를 고치면 바로 보이도록).
+ * 입력 종류를 같이 보냈으면 그 값을 따른다.
+ */
+export function applyLogo3DPatch<T extends Logo3DSceneState>(prev: T, patch: Partial<T>): T {
+  const touchesFont = 'fontFamily' in patch || 'fontWeight' in patch || 'text' in patch
+  return { ...prev, ...(touchesFont && !('source' in patch) ? { source: 'font' as const } : {}), ...patch }
+}
+
+/** 3D 미리보기가 쓰는 배경·비율 입력. 에셋 상태(`ShapeStudioState`)의 값을 그대로 고른다 — Shape 모드와 같은 값을 공유한다. */
+export function studioStageProps(studio: {
+  bgMode: BackgroundMode
+  bgA: string
+  bgB: string
+  bgAngle: number
+  grain: number
+  ratio: CanvasRatio
+}): { bgMode: BackgroundMode; bgA: string; bgB: string; bgAngle: number; grain: number; ratio: CanvasRatio } {
+  const { bgMode, bgA, bgB, bgAngle, grain, ratio } = studio
+  return { bgMode, bgA, bgB, bgAngle, grain, ratio }
 }
 
 export const ROTATION_RANGE = { min: -180, max: 180, step: 1 } as const
@@ -268,6 +302,44 @@ export function composeBackground(
     return { offset: t, color: mixHex(bgA, bgB, t * t * (3 - 2 * t)) }
   })
   return { kind: 'gradient', x0: cx - dx * half, y0: cy - dy * half, x1: cx + dx * half, y1: cy + dy * half, stops }
+}
+
+// ───── 그레인 ─────
+
+export const GRAIN_RANGE = { min: 0, max: 20 } as const
+
+/** 그레인 한 알의 크기(px). 에셋 셰이더(`ShapeStudioViewport`의 `uGrainPx`)와 같은 규칙이다. */
+export function grainCellPx(height: number): number {
+  return Math.max(1, Math.round(height / 700))
+}
+
+function fract(v: number): number {
+  return v - Math.floor(v)
+}
+
+/** 에셋 셰이더 `hash(vec2)`와 같은 식(시드 0). 0 이상 1 미만. */
+function grainHash(x: number, y: number): number {
+  let p0 = fract(x * 0.1031)
+  let p1 = fract(y * 0.1031)
+  let p2 = fract(x * 0.1031)
+  const d = p0 * (p1 + 33.33) + p1 * (p2 + 33.33) + p2 * (p0 + 33.33)
+  p0 += d
+  p1 += d
+  p2 += d
+  return fract((p0 + p1) * p2)
+}
+
+/**
+ * 한 칸(grain cell)의 잡음 값. 에셋 셰이더의 `n = (n1*.8 + n2*.4) * uGrain * .26`과 같은 식이다.
+ * `grainPct`는 0~20(%)이고, 반환값은 0~1 색 채널에 더하는 양이다.
+ */
+export function grainNoise(cellX: number, cellY: number, grainPct: number): number {
+  const n1 = grainHash(cellX, cellY) + grainHash(cellX + 37.7, cellY + 91.3) - 1
+  const n2 =
+    grainHash(Math.floor(cellX * 0.5) + 113.1, Math.floor(cellY * 0.5) + 7.9) +
+    grainHash(Math.floor(cellX * 0.5) + 61.3, Math.floor(cellY * 0.5) + 201.7) -
+    1
+  return (n1 * 0.8 + n2 * 0.4) * (grainPct / 100) * 0.26
 }
 
 // ───── 파일명 ─────

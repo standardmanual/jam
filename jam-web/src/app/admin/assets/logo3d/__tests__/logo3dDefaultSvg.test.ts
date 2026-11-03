@@ -8,7 +8,7 @@ import { svgToOutline } from '@/lib/logo-3d/svgOutline';
 import { DEFAULT_LOGO_SVG, DEFAULT_LOGO_SVG_LABEL } from '../logo3dDefaultSvg';
 import { logo3dFileName } from '../logo3dConfig';
 
-const LOGO_FILE = readFileSync(path.resolve(__dirname, '../../../../../design-system/assets/logo/jam-logo.svg'), 'utf8');
+const LOGO_FILE = readFileSync(path.resolve(__dirname, '../../../../../../design-system/assets/logo/jam-logo.svg'), 'utf8');
 
 const globals = globalThis as Record<string, unknown>;
 const original = { DOMParser: globals.DOMParser, XMLSerializer: globals.XMLSerializer };

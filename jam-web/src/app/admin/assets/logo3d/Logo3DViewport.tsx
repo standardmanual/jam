@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * 3D 로고 미리보기 뷰포트 (티켓 20261103_1352)
+ * 3D 로고 미리보기 뷰포트 (티켓 20261103_1352, 에셋 3D 모드로 옮김: 티켓 20261103_1734)
  *
  * `three`의 WebGLRenderer(alpha)로 틀(스틸)·타일(도자기)·바닥판을 그린다.
  * - 회전: 슬라이더가 정한 rotX·rotY·rotZ를 로고 그룹에 적용한다. 마우스 드래그는 같은 값을 `onRotate`로 올려
@@ -9,6 +9,8 @@
  * - 줌: 휠이 `onZoom`으로 같은 줌 상태를 바꾼다. 원근은 카메라 거리, 등각(직교)은 카메라 zoom으로 반영한다.
  * - 배경은 렌더러와 별개다. 미리보기는 뒤에 깐 2D 캔버스에 칠하고, PNG 저장은 저장 크기의 2D 캔버스에 칠한 뒤 3D 이미지를 얹는다.
  *   반사용 환경 맵은 배경과 상관없이 그대로다.
+ * - 배경·그레인·비율은 에셋 화면의 값을 받는다. 그레인은 배경에만 입힌다(3D 이미지 위에는 얹지 않는다).
+ * - 이 컴포넌트가 사라지면(모드 전환·화면 이동) 렌더러·환경 맵·형상의 geometry·material을 모두 `dispose`한다.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import {
@@ -42,6 +44,8 @@ import {
   composeBackground,
   fitBox,
   fitDistance,
+  grainCellPx,
+  grainNoise,
   orthoHalfExtent,
   stageSizeFor,
   zoomFromWheel,
@@ -72,6 +76,8 @@ type Props = {
   bgA: string
   bgB: string
   bgAngle: number
+  /** 에셋 그레인(0~20 %). 0이면 입히지 않는다. */
+  grain: number
   ratio: CanvasRatio
   loading: boolean
   onRotate: (rotX: number, rotY: number) => void
@@ -114,8 +120,32 @@ export function setLogoColors(meshes: LogoMeshes, frameColor: string, tileColor:
   ;(meshes.backPlate.material as MeshStandardMaterial).color.set(tileColor)
 }
 
-/** 배경 계획을 2D 캔버스에 칠한다. 투명이면 아무것도 칠하지 않는다. */
-export function paintBackground(ctx: CanvasRenderingContext2D, plan: BackgroundPlan, width: number, height: number): void {
+/** 칠해 둔 배경 위에 그레인을 더한다. 에셋 셰이더처럼 한 칸(`grainCellPx`)마다 같은 잡음을 R·G·B에 더한다. */
+function addGrain(ctx: CanvasRenderingContext2D, width: number, height: number, grainPct: number): void {
+  const cell = grainCellPx(height)
+  const image = ctx.getImageData(0, 0, width, height)
+  const data = image.data
+  for (let y = 0; y < height; y++) {
+    const cy = Math.floor(y / cell)
+    for (let x = 0; x < width; x++) {
+      const add = grainNoise(Math.floor(x / cell), cy, grainPct) * 255
+      const i = (y * width + x) * 4
+      data[i] += add
+      data[i + 1] += add
+      data[i + 2] += add
+    }
+  }
+  ctx.putImageData(image, 0, 0)
+}
+
+/** 배경 계획을 2D 캔버스에 칠한다. 투명이면 아무것도 칠하지 않는다. 그레인(%)이 있으면 칠한 배경에 더한다. */
+export function paintBackground(
+  ctx: CanvasRenderingContext2D,
+  plan: BackgroundPlan,
+  width: number,
+  height: number,
+  grainPct = 0
+): void {
   ctx.clearRect(0, 0, width, height)
   if (plan.kind === 'transparent') return
   if (plan.kind === 'solid') {
@@ -126,6 +156,7 @@ export function paintBackground(ctx: CanvasRenderingContext2D, plan: BackgroundP
     ctx.fillStyle = gradient
   }
   ctx.fillRect(0, 0, width, height)
+  if (grainPct > 0) addGrain(ctx, width, height, grainPct)
 }
 
 /** 대비가 있는 밝은·어두운 띠로 만든 스튜디오 환경. PMREM으로 반사용 맵을 만든다. */
@@ -179,7 +210,7 @@ type SceneRefs = {
 }
 
 const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DViewport(props, ref) {
-  const { geometry, frameColor, tileColor, rotX, rotY, rotZ, zoom, view, bgMode, bgA, bgB, bgAngle, ratio, loading } = props
+  const { geometry, frameColor, tileColor, rotX, rotY, rotZ, zoom, view, bgMode, bgA, bgB, bgAngle, grain, ratio, loading } = props
 
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasHostRef = useRef<HTMLDivElement>(null)
@@ -253,7 +284,13 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     const ctx = bg?.getContext('2d')
     if (!bg || !ctx) return
     const p = latest.current
-    paintBackground(ctx, composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, bg.width, bg.height), bg.width, bg.height)
+    paintBackground(
+      ctx,
+      composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, bg.width, bg.height),
+      bg.width,
+      bg.height,
+      p.grain
+    )
   }
 
   // 렌더러·씬 생성과 정리
@@ -379,7 +416,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
 
   useEffect(() => {
     paintPreviewBackground()
-  }, [bgMode, bgA, bgB, bgAngle])
+  }, [bgMode, bgA, bgB, bgAngle, grain])
 
   // 마우스 드래그 회전·휠 줌
   useEffect(() => {
@@ -437,7 +474,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       const ctx = out.getContext('2d')
       if (!ctx) throw new Error('이미지를 만들 캔버스를 열지 못했어요.')
       const p = latest.current
-      paintBackground(ctx, composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, width, height), width, height)
+      paintBackground(ctx, composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, width, height), width, height, p.grain)
       // WebGL 캔버스는 알파가 곱해진 상태라 그대로 얹으면 가장자리에 테두리가 생기지 않는다.
       ctx.drawImage(r.renderer.domElement, 0, 0)
 
