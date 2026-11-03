@@ -88,9 +88,9 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(hrefOf('ch8-inventory-max-slots')).toBe('/admin/balance#inventory')
   })
 
-  it('어뷰징 기준값 카드 8개는 모두 어뷰징 구역(/admin/balance#abusing)으로 이어진다. 옛 «정책 설정» 탭은 없앴다 (티켓 20261022_1134 2회)', () => {
+  it('어뷰징 기준값 카드 10개는 모두 어뷰징 구역(/admin/balance#abusing)으로 이어진다. 옛 «정책 설정» 탭은 없앴다 (티켓 20261022_1134 2회)', () => {
     const abusing = POLICIES_DATA.filter((p) => p.dbTable === 'abusing_policy')
-    expect(abusing.length).toBe(8)
+    expect(abusing.length).toBe(10)
     for (const p of abusing) {
       expect(p.adminLink?.href, p.id).toBe('/admin/balance#abusing')
     }

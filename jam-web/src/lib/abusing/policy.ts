@@ -29,6 +29,10 @@ export interface AbusingPolicy {
   mismatch_run_min_speed_kmh: number
   /** 자전거 평균 속도가 이 값(km/h)보다 느리면 걷기(가벼움)로 계산한다. 20261017_1421 */
   mismatch_cycling_min_speed_kmh: number
+  /** 교통수단 구간으로 뺀 거리가 원래 거리의 이 비율(%) 이상이면 활동 전체를 거른다. 1~100. 20261103_1115 */
+  transit_ratio_filter_pct: number
+  /** 구간을 뺀 뒤 평균 속도가 이 값(km/h)을 넘는 걷기·등산 활동을 거른다. 20261103_1115 */
+  walk_avg_max_speed_kmh: number
 }
 
 /**
@@ -38,6 +42,15 @@ export interface AbusingPolicy {
 export const MISMATCH_POLICY_KEYS = [
   'mismatch_run_min_speed_kmh',
   'mismatch_cycling_min_speed_kmh',
+] as const satisfies readonly (keyof AbusingPolicy)[]
+
+/**
+ * 차량 판정 두 칸(교통수단 비율·걷기 평균 상한) — 양수여야 한다. 0 이하이면 모든 활동이 걸러지는 규칙이 되므로 로더가 기본값으로 대체한다
+ * (티켓 20261103_1115). 종목 불일치 칸과 묶음이 달라 목록을 따로 둔다.
+ */
+export const VEHICLE_RULE_POLICY_KEYS = [
+  'transit_ratio_filter_pct',
+  'walk_avg_max_speed_kmh',
 ] as const satisfies readonly (keyof AbusingPolicy)[]
 
 /**
@@ -66,6 +79,10 @@ export const DEFAULT_POLICY: AbusingPolicy = {
   // 마이그레이션 224의 기본값과 같아야 한다(티켓 20261017_1421, 운영 로직 16.2절).
   mismatch_run_min_speed_kmh: 6,
   mismatch_cycling_min_speed_kmh: 10,
+  // 교통수단 구간이 거리의 절반 이상이면 활동 전체를 거르고, 걷기·등산 평균이 16km/h(20km 경보 세계기록 평균 약 15.75km/h보다 높음)를
+  // 넘으면 거른다. 마이그레이션 314의 기본값과 같아야 한다(티켓 20261103_1115, 운영 로직 16.2절).
+  transit_ratio_filter_pct: 50,
+  walk_avg_max_speed_kmh: 16,
 }
 
 /**
@@ -134,6 +151,17 @@ export async function getAbusingPolicy(client?: SupabaseClient): Promise<Abusing
       }
       // 종목 불일치 기준값은 양수여야 한다 — 0 이하이면 판정이 무의미해지므로 기본값으로 대체하고 로그를 남긴다
       if ((MISMATCH_POLICY_KEYS as readonly string[]).includes(key) && !(n > 0)) {
+        normalized[key] = fallback
+        fellBack.push(key)
+        continue
+      }
+      if ((VEHICLE_RULE_POLICY_KEYS as readonly string[]).includes(key) && !(n > 0)) {
+        normalized[key] = fallback
+        fellBack.push(key)
+        continue
+      }
+      // 교통수단 비율은 100을 넘을 수 없다 — 넘으면 어떤 활동도 걸리지 않는 값이라 기본값으로 대체한다
+      if (key === 'transit_ratio_filter_pct' && n > 100) {
         normalized[key] = fallback
         fellBack.push(key)
         continue

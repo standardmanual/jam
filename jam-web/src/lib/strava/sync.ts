@@ -39,6 +39,7 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { getAbusingPolicy, DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh } from '@/lib/abusing/policy'
+import { judgeVehicleActivity } from '@/lib/abusing/vehicleFilter'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 // JAM 2.0 잼 정산과 대량 수령 경보(티켓 20261017_1423) — 서버 전용 모듈. 이 파일에서만 부른다.
@@ -601,6 +602,8 @@ export async function processFetchedActivities(
   // 호출만 줄어든다. 스트림 조회 실패(null)는 fail-open으로 원본을 그대로 돌려준다(20260909_1012).
   const checkAbusingFilters = async (entry: { raw: StravaSummaryActivity; sourceMeta: SourceMeta }) => {
     let activity = normalizeActivity(entry.raw)
+    // 교통수단 비율 규칙이 «뺀 거리 / 원래 거리»를 보려면 감지 전 활동이 필요하다(티켓 20261103_1115)
+    const before = activity
     if (needsTransitStreams(activity, abusingPolicy)) {
       const streams = await getStreamsOnce(entry.raw)
       activity = detectAndExcludeTransitSegments(
@@ -619,8 +622,10 @@ export async function processFetchedActivities(
       ? { ...entry.sourceMeta, typeMismatchFrom: mismatch.changedFrom }
       : entry.sourceMeta
     // 걸러진 활동은 `vehicle_speed` 사유로 저장만 한다 — 체크인·드랍·배지·미션에 넣지 않는다.
-    const filterReason: FilterReason | null =
-      activity.averageSpeedKmh > vehicleSpeedFilterKmh ? 'vehicle_speed' : null
+    // 평균 속도·교통수단 비율·걷기 평균 상한 세 규칙을 judgeVehicleActivity 한 곳에서 본다. 사유는 `vehicle_speed` 하나다.
+    const filterReason: FilterReason | null = judgeVehicleActivity({ before, after: activity, policy: abusingPolicy }).filtered
+      ? 'vehicle_speed'
+      : null
     return { activity, sourceMeta, raw: entry.raw, filterReason }
   }
   type AbusingChecked = Awaited<ReturnType<typeof checkAbusingFilters>>

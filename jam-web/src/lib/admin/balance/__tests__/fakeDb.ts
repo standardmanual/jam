@@ -344,6 +344,8 @@ export function abusingPolicyRow(overrides: Row = {}): Row {
     gps_max_speed_kmh: 300,
     gps_daily_distance_cap_km: 3000,
     vehicle_speed_filter_kmh: 60,
+    transit_ratio_filter_pct: 50,
+    walk_avg_max_speed_kmh: 16,
     transit_walk_max_speed_kmh: 20,
     transit_run_max_speed_kmh: 27,
     transit_cycling_max_speed_kmh: 55,

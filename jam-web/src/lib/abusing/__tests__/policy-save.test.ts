@@ -51,6 +51,8 @@ const POST_115_ROW: Record<string, unknown> = {
   transit_segment_min_duration_sec: 30,
   mismatch_run_min_speed_kmh: 6,
   mismatch_cycling_min_speed_kmh: 10,
+  transit_ratio_filter_pct: 50,
+  walk_avg_max_speed_kmh: 16,
   updated_at: '2026-08-13T01:28:00.090694+00:00',
 }
 
@@ -136,6 +138,33 @@ describe('getAbusingPolicy — DEFAULT_POLICY 키만 돌려준다', () => {
     expect(String(spy.mock.calls[0][0])).toContain('mismatch_run_min_speed_kmh')
     expect(DEFAULT_POLICY.mismatch_run_min_speed_kmh).toBe(6)
     expect(DEFAULT_POLICY.mismatch_cycling_min_speed_kmh).toBe(10)
+    spy.mockRestore()
+  })
+
+  it('차량 판정 두 칸(교통수단 비율·걷기 평균 상한)은 DB 값을 읽고, 0 이하·100 초과·칸 없음은 기본값(50·16)으로 대체한다', async () => {
+    stub.row = { ...POST_115_ROW, transit_ratio_filter_pct: 40, walk_avg_max_speed_kmh: '12' }
+    const ok = await getAbusingPolicy()
+    expect(ok.transit_ratio_filter_pct).toBe(40)
+    expect(ok.walk_avg_max_speed_kmh).toBe(12)
+
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    for (const row of [
+      { transit_ratio_filter_pct: 0, walk_avg_max_speed_kmh: -1 },
+      { transit_ratio_filter_pct: 101, walk_avg_max_speed_kmh: 0 },
+    ]) {
+      stub.row = { ...POST_115_ROW, ...row }
+      const bad = await getAbusingPolicy()
+      expect(bad.transit_ratio_filter_pct).toBe(50)
+      expect(bad.walk_avg_max_speed_kmh).toBe(16)
+    }
+    // 마이그레이션 314 이전(칸이 없는 행)도 기본값으로 읽힌다
+    const legacy: Record<string, unknown> = { ...POST_115_ROW }
+    delete legacy.transit_ratio_filter_pct
+    delete legacy.walk_avg_max_speed_kmh
+    stub.row = legacy
+    const old = await getAbusingPolicy()
+    expect(old.transit_ratio_filter_pct).toBe(DEFAULT_POLICY.transit_ratio_filter_pct)
+    expect(old.walk_avg_max_speed_kmh).toBe(DEFAULT_POLICY.walk_avg_max_speed_kmh)
     spy.mockRestore()
   })
 
