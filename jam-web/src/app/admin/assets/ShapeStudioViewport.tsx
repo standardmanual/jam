@@ -11,30 +11,33 @@ import { Button } from '@/components/admin/ui/button'
 import {
   buildPath,
   buildStamp,
-  drawImageLayer,
   drawRibbonLayer,
-  drawTextLayer,
   fillBackground,
   type Canvas2DContextLike,
-  type CanvasFactory,
   type CanvasLike,
   type ImageLayerConfig,
   type OverlayLayerConfig,
   type PathTable,
   type RibbonLayerConfig,
   type TextLayerConfig,
-  type TextLayerFont,
 } from '@/lib/asset-generator'
 import {
   buildFontLoadKey,
   computeEffectiveStartColor,
   HEAD_POSITION_RANGE,
   isSystemDefaultFont,
-  loadFontInBrowser,
   resolveStageSize,
 } from '@/app/admin/asset-generator/assetGeneratorHelpers'
-import { createAssetLoadTracker } from '@/app/admin/asset-generator/assetLoadTracker'
 import type { AssetGeneratorViewportHandle } from '@/app/admin/asset-generator/AssetGeneratorViewport'
+import {
+  createRawCanvas,
+  drawOverlayLayersOnto,
+  makeCanvas,
+  normalizeSvgMarkup,
+  toCanvasLike,
+  toContextLike,
+  useOverlayAssets,
+} from './overlayStage'
 import {
   buildGlyphSdf,
   computeGeometry,
@@ -96,59 +99,6 @@ function brandLetterSvgMarkup(key: 'J' | 'A' | 'M'): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${letter.w}" height="${letter.h}" viewBox="0 0 ${letter.w} ${letter.h}"><path d="${letter.d}" fill="#000" fill-rule="evenodd"/></svg>`
 }
 
-function toCanvasLike(canvas: HTMLCanvasElement): CanvasLike {
-  return canvas as unknown as CanvasLike
-}
-
-function toContextLike(ctx: CanvasRenderingContext2D): Canvas2DContextLike {
-  return ctx as unknown as Canvas2DContextLike
-}
-
-function createRawCanvas(width: number, height: number): HTMLCanvasElement {
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(width))
-  canvas.height = Math.max(1, Math.round(height))
-  return canvas
-}
-
-const IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE = 2048
-const makeCanvas: CanvasFactory = (width, height) => toCanvasLike(createRawCanvas(width, height))
-
-function normalizeSvgMarkup(text: string, fallbackLongSide = 512): string {
-  let normalized = text
-  if (!/<svg[^>]*\sxmlns\s*=/i.test(normalized)) {
-    normalized = normalized.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"')
-  }
-  if (/xlink:/i.test(normalized) && !/xmlns:xlink\s*=/i.test(normalized)) {
-    normalized = normalized.replace(/<svg\b/i, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
-  }
-  try {
-    const doc = new DOMParser().parseFromString(normalized, 'image/svg+xml')
-    const root = doc.documentElement
-    if (root && root.nodeName.toLowerCase() === 'svg' && doc.getElementsByTagName('parsererror').length === 0) {
-      const widthAttr = root.getAttribute('width') || ''
-      const heightAttr = root.getAttribute('height') || ''
-      const width = Number.parseFloat(widthAttr)
-      const height = Number.parseFloat(heightAttr)
-      const viewBox = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number)
-      if (
-        (!(width > 0) || !(height > 0) || /%/.test(widthAttr + heightAttr)) &&
-        viewBox.length === 4 &&
-        viewBox[2] > 0 &&
-        viewBox[3] > 0
-      ) {
-        const scale = fallbackLongSide / Math.max(viewBox[2], viewBox[3])
-        root.setAttribute('width', String(viewBox[2] * scale))
-        root.setAttribute('height', String(viewBox[3] * scale))
-      }
-      normalized = new XMLSerializer().serializeToString(doc)
-    }
-  } catch {
-    // 파싱 실패 시 원문 유지
-  }
-  return normalized
-}
-
 function cropToAlphaBounds(source: HTMLCanvasElement): HTMLCanvasElement | null {
   const w = source.width
   const h = source.height
@@ -201,85 +151,6 @@ function loadImageFromBlob(blob: Blob, isSvg: boolean): Promise<HTMLCanvasElemen
     }
     img.src = url
   })
-}
-
-function loadImageLayerFromBlob(blob: Blob): Promise<HTMLCanvasElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(blob)
-    const img = new Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const iw = img.naturalWidth || IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE
-      const ih = img.naturalHeight || IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE
-      const canvas = createRawCanvas(iw, ih)
-      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-      resolve(canvas)
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('이미지로 읽지 못했어요. PNG 또는 SVG 파일인지 확인해 주세요.'))
-    }
-    img.src = url
-  })
-}
-
-async function loadImageLayerAsset(url: string): Promise<HTMLCanvasElement> {
-  const response = await fetch(url)
-  const blob = await response.blob()
-  const isSvg = blob.type === 'image/svg+xml' || blob.type === 'image/svg'
-  const normalized = isSvg
-    ? new Blob([normalizeSvgMarkup(await blob.text(), IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE)], {
-        type: 'image/svg+xml',
-      })
-    : blob
-  return loadImageLayerFromBlob(normalized)
-}
-
-function drawOverlayLayersOnto(
-  ctx: Canvas2DContextLike,
-  overlayLayers: OverlayLayerConfig[],
-  imageAssets: Record<string, CanvasLike>,
-  stageWidth: number,
-  stageHeight: number
-): void {
-  for (let i = overlayLayers.length - 1; i >= 0; i--) {
-    const overlayLayer = overlayLayers[i]
-    if (overlayLayer.type === 'image') {
-      const asset = imageAssets[overlayLayer.assetUrl]
-      if (!asset) continue
-      drawImageLayer(
-        ctx,
-        {
-          image: asset,
-          xPct: overlayLayer.xPct,
-          yPct: overlayLayer.yPct,
-          widthPct: overlayLayer.widthPct,
-          rotationDeg: overlayLayer.rotationDeg,
-          opacityPct: overlayLayer.opacityPct,
-          stageWidth,
-          stageHeight,
-          overlayColor: overlayLayer.overlayEnabled ? overlayLayer.overlayColor : undefined,
-        },
-        makeCanvas
-      )
-    } else {
-      drawTextLayer(ctx, {
-        content: overlayLayer.content,
-        font: overlayLayer.font,
-        sizePct: overlayLayer.sizePct,
-        letterSpacing: overlayLayer.letterSpacing,
-        lineHeight: overlayLayer.lineHeight,
-        align: overlayLayer.align,
-        color: overlayLayer.color,
-        xPct: overlayLayer.xPct,
-        yPct: overlayLayer.yPct,
-        rotationDeg: overlayLayer.rotationDeg,
-        opacityPct: overlayLayer.opacityPct,
-        stageWidth,
-        stageHeight,
-      })
-    }
-  }
 }
 
 function downloadBlob(blob: Blob, name: string) {
@@ -362,9 +233,10 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
     const ribbonStampRef = useRef<CanvasLike | null>(null)
     const [headPct, setHeadPct] = useState(0)
 
-    // 오버레이 레이어(이미지·구글 폰트) 로더 추적기 (Shape / Ribbon 양쪽 공통)
-    const imageTrackerRef = useRef(createAssetLoadTracker<CanvasLike>())
-    const fontTrackerRef = useRef(createAssetLoadTracker<true>())
+    // 오버레이 레이어(이미지·구글 폰트) 로더 추적기 (Shape / Ribbon 양쪽 공통). 로드가 끝나면 화면을 다시 그린다.
+    const { imageTrackerRef, fontTrackerRef } = useOverlayAssets(overlayLayers, () => {
+      if (rafIdRef.current === null) drawCompositeFrame()
+    })
 
     const [canvasMeta, setCanvasMeta] = useState('PREVIEW')
     const [glError, setGlError] = useState<string | null>(null)
@@ -428,69 +300,6 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
 
       void load()
     }, [ribbonLayer.source])
-
-    // 오버레이 이미지 레이어 로드
-    useEffect(() => {
-      const tracker = imageTrackerRef.current
-      const imageLayers = overlayLayers.filter((l): l is ImageLayerConfig => l.type === 'image')
-      const currentUrls = new Set(imageLayers.map((l) => l.assetUrl))
-      tracker.prune(currentUrls)
-
-      let cancelled = false
-      void tracker.loadMissing(
-        Array.from(currentUrls),
-        async (url) => {
-          const loaded = toCanvasLike(await loadImageLayerAsset(url))
-          return loaded
-        },
-        {
-          isCancelled: () => cancelled,
-          onError: (_url, e) =>
-            toast.error(e instanceof Error ? e.message : '이미지 레이어를 불러오지 못했어요.'),
-        }
-      ).then(() => {
-        if (!cancelled && rafIdRef.current === null) {
-          // 로드 완료 시 화면 갱신
-          drawCompositeFrame()
-        }
-      })
-      return () => {
-        cancelled = true
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- drawCompositeFrame은 ref를 통해 최신 상태를 읽는다
-    }, [overlayLayers])
-
-    // 오버레이 텍스트 레이어 구글 폰트 로드
-    useEffect(() => {
-      const fontsByKey = new Map<string, TextLayerFont>()
-      for (const l of overlayLayers) {
-        if (l.type !== 'text' || isSystemDefaultFont(l.font)) continue
-        fontsByKey.set(buildFontLoadKey(l.font), l.font)
-      }
-      let cancelled = false
-      void fontTrackerRef.current
-        .loadMissing(
-          Array.from(fontsByKey.keys()),
-          async (key) => {
-            await loadFontInBrowser(fontsByKey.get(key)!)
-            return true as const
-          },
-          {
-            isCancelled: () => cancelled,
-            onError: (_key, e) =>
-              toast.error(e instanceof Error ? e.message : '폰트를 불러오지 못했어요.'),
-          }
-        )
-        .then(() => {
-          if (!cancelled && rafIdRef.current === null) {
-            drawCompositeFrame()
-          }
-        })
-      return () => {
-        cancelled = true
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- drawCompositeFrame은 ref를 통해 최신 상태를 읽는다
-    }, [overlayLayers])
 
     // 리본 이동 곡선 재생성
     useEffect(() => {
@@ -798,7 +607,7 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
           )
         }
       },
-      [drawWebGLToCanvas]
+      [drawWebGLToCanvas, imageTrackerRef]
     )
 
     const renderLoop = useCallback(
@@ -939,7 +748,7 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
           }
         }
       }
-    }, [initGL, onStatusChange, requestDraw, resizeStage])
+    }, [fontTrackerRef, imageTrackerRef, initGL, onStatusChange, requestDraw, resizeStage])
 
     useEffect(() => {
       engineModeRef.current = engineMode
@@ -1178,7 +987,7 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
           recAbortRef.current = true
         },
       }),
-      [drawCompositeFrame, onExportBusyChange, onVideoRecordingChange, requestDraw, resizeStage]
+      [drawCompositeFrame, fontTrackerRef, imageTrackerRef, onExportBusyChange, onVideoRecordingChange, requestDraw, resizeStage]
     )
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
