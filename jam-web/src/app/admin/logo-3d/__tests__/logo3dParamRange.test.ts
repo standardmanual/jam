@@ -39,15 +39,10 @@ const frameBevel = LOGO3D_PARAM_RANGES.frameBevelRadius
 const widths = [frameWidth.min, frameWidth.max]
 const bevels = [frameBevel.min, frameBevel.max]
 
-describe.each(ALL_OUTLINES)('%s: 틀 폭 × 틀 베벨 경계 조합', (name, outline) => {
+describe.each(ALL_OUTLINES)('%s: 틀 폭 × 틀 베벨 경계 조합', (_name, outline) => {
   for (const w of widths) {
     for (const b of bevels) {
-      // 알려진 결함: M은 틀 폭 최소 × 베벨 최대에서 틀 윗면 삼각분할이 실패해 earcut으로 되돌아가고, 한 직선 위의
-      // 점 셋이 넓이 0인 삼각형(이음선)을 만든다(2026-11-03 실측: 이 조합의 윗면 삼각형 205개가 넓이/최장변² 2e-4 미만).
-      // 엔진(티켓 20261103_1350 범위)을 고치면 이 항목이 통과로 바뀌어 it.fails가 실패하니 그때 일반 it으로 되돌린다.
-      const knownDefect = name.startsWith('M') && w === frameWidth.min && b === frameBevel.max
-      const run = knownDefect ? it.fails : it
-      run(`틀 폭 ${w} × 틀 베벨 ${b}: 틀 윗면 삼각형의 넓이/최장변²가 ${MIN_QUALITY} 이상이다`, () => {
+      it(`틀 폭 ${w} × 틀 베벨 ${b}: 틀 윗면 삼각형의 넓이/최장변²가 ${MIN_QUALITY} 이상이다`, () => {
         const params: Logo3DParams = { ...DEFAULT_LOGO3D_PARAMS, frameWidth: w, frameBevelRadius: b }
         const built = buildLogoGeometry(outline, params)
         const q = topFaceQualities(built.frame)
