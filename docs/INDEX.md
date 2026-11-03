@@ -403,6 +403,7 @@ status: active
 - [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
 - [REGISTRATION_BUNDLE.md](service/prd/asset-generator/REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 배지 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
+- [PRD.md](service/prd/logo-3d/PRD.md) — 어드민 3D 로고 제너레이터(/admin/logo-3d)가 Google Fonts 글자나 SVG를 3D 로고 PNG로 만드는 화면 구성·입력·조절 항목·스테이지 3모드·저장 규칙과 실시간 렌더의 품질 한계를 정의한 PRD다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
 
 **JAM 2.0 (plan/jam2)**
@@ -494,6 +495,7 @@ status: active
 - [SPECIAL_DAYS.md](service/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
 - [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
+- [PRD.md](service/prd/logo-3d/PRD.md) — 어드민 3D 로고 제너레이터(/admin/logo-3d)가 Google Fonts 글자나 SVG를 3D 로고 PNG로 만드는 화면 구성·입력·조절 항목·스테이지 3모드·저장 규칙과 실시간 렌더의 품질 한계를 정의한 PRD다.
 
 **비전 (plan/vision)**
 
@@ -1084,6 +1086,10 @@ status: active
 ### docs/service/prd/inventory/
 
 - [PRD.md](service/prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
+
+### docs/service/prd/logo-3d/
+
+- [PRD.md](service/prd/logo-3d/PRD.md) — 어드민 3D 로고 제너레이터(/admin/logo-3d)가 Google Fonts 글자나 SVG를 3D 로고 PNG로 만드는 화면 구성·입력·조절 항목·스테이지 3모드·저장 규칙과 실시간 렌더의 품질 한계를 정의한 PRD다.
 
 ### docs/service/prd/notification/
 
