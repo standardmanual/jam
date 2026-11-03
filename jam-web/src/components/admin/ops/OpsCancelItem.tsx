@@ -33,6 +33,9 @@ import { itemSummaryLine } from './OpsItemActions'
  * 막는 항목이 있으면 확인 버튼이 꺼진다. 사유는 선택(500자)이고 비워도 된다. 되돌릴 수 없다는 것과 예약해 둔 자원도 지워진다는 것(시험 묶음은 지울 자원이
  * 없다는 것)을 마지막 줄로 알린다.
  *
+ * 홈피드 카드·미션이면 [공개 전 취소하기] 옆에 외곽선 [문안 고치기]가 더해진다(티켓 20261103_1446). 누르면 상세 카드가 문안만 고치는 편집 모드가 되고(`onEditCopy`),
+ * 고치는 동안에는 두 버튼이 꺼진다.
+ *
  * 실패는 창 안 인라인이고 창은 유지한다(미리 보기가 실패하면 확인 버튼을 끈다). 그사이 바뀐 항목(409)이거나 일부만 취소했으면 화면을 새로 읽는다
  * (`cancelNeedsRefresh`). 사전 점검과 마찬가지로 규칙은 서버가 판정하고, 이 파일은 응답을 읽어 그리기만 한다(`executeView.ts`).
  */
@@ -140,9 +143,16 @@ interface OpsCancelItemProps {
   onCancelled: (data: Record<string, unknown>) => void
   /** 그사이 바뀌었거나 일부만 취소해 화면을 새로 읽어야 한다. */
   onConflict: () => void
+  /** [문안 고치기]를 눌렀다(예약됨 카드·미션만 넘긴다. 없으면 버튼을 그리지 않는다). */
+  onEditCopy?: () => void
+  /** 이 항목을 지금 고치는 중이다. */
+  editing?: boolean
 }
 
-export function OpsCancelItem({ bundleId, item, items, isSample, onCancelled, onConflict }: OpsCancelItemProps) {
+export const EDIT_COPY_BUTTON = '문안 고치기'
+const EDITING_NOTICE = '수정 중이에요. 저장하거나 취소한 뒤 결정해 주세요'
+
+export function OpsCancelItem({ bundleId, item, items, isSample, onCancelled, onConflict, onEditCopy, editing = false }: OpsCancelItemProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<CancelPreviewView | null>(null)
@@ -192,11 +202,19 @@ export function OpsCancelItem({ bundleId, item, items, isSample, onCancelled, on
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">{CANCEL_GUIDANCE}</p>
-        <Button type="button" variant="outline" onClick={() => void openDialog()}>
-          {CANCEL_BUTTON}
-        </Button>
+        <p className="text-sm text-muted-foreground break-keep wrap-break-word">{CANCEL_GUIDANCE}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {onEditCopy && (
+            <Button type="button" variant="outline" className="whitespace-nowrap" disabled={editing} onClick={onEditCopy}>
+              {EDIT_COPY_BUTTON}
+            </Button>
+          )}
+          <Button type="button" variant="outline" className="whitespace-nowrap" disabled={editing} onClick={() => void openDialog()}>
+            {CANCEL_BUTTON}
+          </Button>
+        </div>
       </div>
+      {editing && <p className="mt-2 break-keep text-xs text-muted-foreground wrap-break-word">{EDITING_NOTICE}</p>}
 
       {open && (
         <OpsDialogShell open onOpenChange={(next) => !next && closeDialog()} pending={pending} wide>

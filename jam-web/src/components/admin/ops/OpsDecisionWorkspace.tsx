@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { balanceItemIdSet, buildBalanceView } from '@/lib/admin/opsInbox/balance/view'
-import { findRevertTarget } from '@/lib/admin/opsInbox/edit'
+import { canEditScheduledCopy, findRevertTarget, isScheduledEditablePath, readDiff } from '@/lib/admin/opsInbox/edit'
 import { executeToast, readExecuteResult, scheduledItemIds } from '@/lib/admin/opsInbox/executeView'
 import { formatKstDayTime, kindLabel, weekMondayDate } from '@/lib/admin/opsInbox/labels'
 import { earliestStartsAt, homeFeedInitialDate } from '@/lib/admin/opsInbox/homeFeedPreview'
@@ -19,7 +19,7 @@ import {
   withItemsChecked,
   type CheckOverrides,
 } from '@/lib/admin/opsInbox/selection'
-import type { OpsBundleExecution, OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import type { OpsBundleExecution, OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { nextDecidableItemId as nextDrawerItemId } from '@/lib/admin/opsBoard/drawerView'
 import { OpsBundleWorkspace, type OpsBundleWorkspaceProps } from './OpsBundleWorkspace'
 import { OpsExecuteBundle } from './OpsExecuteBundle'
@@ -30,6 +30,16 @@ import { OpsDecisionPanel } from './OpsDecisionPanel'
 import { OpsMixTrialNotice } from './OpsMixTrialNotice'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
 import { useItemImageProduction } from './useItemImageProduction'
+
+/**
+ * 이 항목에서 되돌릴 수정. 예약됨 항목은 예약되기 전에 고친 칸(시각·색 등)이 대상이면 되돌릴 수 없어 null이다(서버도 409로 막는다, 티켓 20261103_1446).
+ */
+function revertTargetOf(item: OpsItemRecord, decisions: readonly OpsDecisionRecord[]) {
+  const target = findRevertTarget(decisions.filter((decision) => decision.itemId === item.id))
+  if (!target) return null
+  if (item.status === 'scheduled' && readDiff(target.diff).some((entry) => !isScheduledEditablePath(item.kind, entry.path))) return null
+  return target
+}
 
 /**
  * 결정 슬롯을 채운 기획 상세 (티켓 20260930_1818). 기획 상세(S3) 페이지가 셸(`OpsBundleWorkspace`) 대신 이 래퍼를 그린다.
@@ -236,12 +246,12 @@ export function OpsDecisionWorkspace({
         />
       )}
       detailEdit={(item, ctx) =>
-        item.status === 'reviewing' && ctx.draft?.itemId === item.id ? (
+        (item.status === 'reviewing' || canEditScheduledCopy(item)) && ctx.draft?.itemId === item.id ? (
           <OpsItemEditForm bundleId={bundleId} item={item} ctx={ctx} onSaved={handlers.handleSaved} onConflict={refresh} />
         ) : null
       }
       detailHistoryAction={(item) =>
-        item.status === 'reviewing' && findRevertTarget(decisions.filter((decision) => decision.itemId === item.id)) ? (
+        (item.status === 'reviewing' || canEditScheduledCopy(item)) && revertTargetOf(item, decisions) ? (
           <RevertLastEditButton onRevert={() => handlers.revert(item.id)} />
         ) : null
       }

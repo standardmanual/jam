@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { canEditScheduledCopy, readScheduledEditableValues } from '@/lib/admin/opsInbox/edit'
 import { canEndItem, cancelToast, endToast } from '@/lib/admin/opsInbox/executeView'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
@@ -17,7 +18,7 @@ import type { ItemImageProduction } from './useItemImageProduction'
  *
  * - `useOpsItemResultHandlers`: 결정 요청이 끝난 뒤의 토스트와 화면 새로 읽기(수정 저장·되돌리기·승인·반려·공개 전 취소·지금 종료). 토스트 문장은 S3와 서랍이 같다.
  *   화면을 다시 읽는 방법(`onRefresh`)만 쓰는 쪽이 정한다 — S3는 `router.refresh()`(기본), 일정표 서랍은 서랍 자기 데이터도 다시 받는다.
- * - `OpsItemFooter`: 항목 상태에 따른 고정 줄. 예약됨이면 [공개 전 취소하기](`OpsCancelItem`), 게재중이고 지금 종료가 있는 종류면 [지금 종료하기](`OpsEndItem`), 그 밖에는 `OpsItemActions`(`onExclude`·`onKeep`이 있으면 빼기·고치기·이대로 두기와 반려, 없으면 반려·수정·승인).
+ * - `OpsItemFooter`: 항목 상태에 따른 고정 줄. 예약됨이면 [공개 전 취소하기](`OpsCancelItem`, 카드·미션은 [문안 고치기]가 옆에 더해진다, 티켓 20261103_1446), 게재중이고 지금 종료가 있는 종류면 [지금 종료하기](`OpsEndItem`), 그 밖에는 `OpsItemActions`(`onExclude`·`onKeep`이 있으면 빼기·고치기·이대로 두기와 반려, 없으면 반려·수정·승인).
  *   `statusNotice`가 글을 돌려주는 상태는 결정 줄 대신 그 글을 그린다(일정표 서랍의 「승인됨」·「도착」 안내).
  */
 
@@ -134,6 +135,12 @@ export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecid
         isSample={isSample}
         onCancelled={handlers.handleCancelled}
         onConflict={handlers.refresh}
+        onEditCopy={
+          canEditScheduledCopy(item)
+            ? () => ctx.setDraft({ itemId: item.id, values: readScheduledEditableValues(item), baseUpdatedAt: item.updatedAt })
+            : undefined
+        }
+        editing={ctx.draft?.itemId === item.id}
       />
     )
   }

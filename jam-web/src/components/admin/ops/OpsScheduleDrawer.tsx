@@ -7,6 +7,7 @@ import { IconAlertTriangle, IconArrowRight, IconEyeOff, IconSearch } from '@tabl
 import { Button } from '@/components/admin/ui/button'
 import { Skeleton } from '@/components/admin/ui/skeleton'
 import { buildBalanceView, itemBalanceInfoOf } from '@/lib/admin/opsInbox/balance/view'
+import { canEditScheduledCopy } from '@/lib/admin/opsInbox/edit'
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import { opsTargetHref } from '@/lib/admin/opsHome/links'
 import { splitItemKey } from '@/lib/admin/opsSchedule/drawerParams'
@@ -227,7 +228,7 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
         onSelectItem={onOpenItem}
         balance={itemBalanceInfoOf(balanceView, item.id)}
         detailEdit={(target) =>
-          target.status === 'reviewing' && draft?.itemId === target.id ? (
+          (target.status === 'reviewing' || canEditScheduledCopy(target)) && draft?.itemId === target.id ? (
             <OpsItemEditForm bundleId={detail.bundleId} item={target} ctx={ctx} onSaved={handlers.handleSaved} onConflict={handlers.refresh} />
           ) : null
         }
