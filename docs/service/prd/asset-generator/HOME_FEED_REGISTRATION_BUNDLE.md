@@ -134,14 +134,14 @@ code:
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
-| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 앞뒤 공백은 잘라서 저장한다 |
+| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 앞뒤 공백은 잘라서 저장한다. 카피 규칙(`copyRules.ts`)에 걸리면 거절: 「~하세요」(「해 주세요」 제외)·「도장」·500m·「장소/POI/지점/방문 배지」·「발견」·「찾아서」·「이웃」을 쓰면 거절(티켓 20261103_1236) |
 | `template_type` | 필수 | 문자열 | `badge_spotlight`·`progress_nudge`·`mission_spotlight`·`itembook_milestone`·`location_trend`·`drop_alert`·`editorial_article`·`ranking_board`·`recipe_reveal`·`content_intro` 중 하나(`TODAY_TEMPLATE_OPTIONS`, DB CHECK — 마이그레이션 310) |
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다. 저장할 때 UTC ISO로 바꾼다(폼과 같다) |
 | `ends_at` | 필수 | ISO 8601 | 시간대가 붙어야 하고 `starts_at`보다 뒤여야 한다 |
 | `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값 또는 소속 트라이브 태그 `tribe_<트라이브 ID>`(`tribe_` + 소문자 UUID)만, 중복 없이 |
 | `layout_type` | 선택 | 문자열 | `large_thumbnail`·`badge_gallery`·`shortcut`·`banner`·`other`·`ranking_list` 중 하나(`TODAY_LAYOUT_OPTIONS`, DB CHECK). 없으면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`). **`mission_spotlight`는 최종 레이아웃(입력값 또는 생략 시 추천값)이 항상 `large_thumbnail`이어야 한다**(2026-09-26 사용자 결정, `content-automation/PRD.md` §8 미션 카드 규칙 — 대표 이미지가 있는 미션 소개 카드는 커버 이미지가 필수다). `SUGGESTED_LAYOUT_FOR.mission_spotlight`도 `large_thumbnail`이다 |
-| `subtitle` | 선택 | 문자열 | 한 줄. 줄바꿈·제어 문자 거절. 없으면 null |
-| `description` | 선택 | 문자열 | 게재용 설명문. 한 줄(줄바꿈·제어 문자 거절), 앞뒤 공백을 자른 뒤 공백 포함 60자 이하(`TODAY_DESCRIPTION_MAX_LENGTH`, 어드민 폼 `maxLength`와 같은 상수). 공백뿐이면 거절. `editorial_article`은 쓸 수 없다(본문이 있다). 없으면 null. `--dry-run` 요약의 「설명문」 줄로 확인한다(티켓 20260929_1335) |
+| `subtitle` | 선택 | 문자열 | 한 줄. 줄바꿈·제어 문자 거절. 카피 규칙(`copyRules.ts`)에 걸리면 거절: 「~하세요」(「해 주세요」 제외)·「도장」·500m·「장소/POI/지점/방문 배지」·「발견」·「찾아서」·「이웃」을 쓰면 거절. 없으면 null |
+| `description` | 선택 | 문자열 | 게재용 설명문. 한 줄(줄바꿈·제어 문자 거절), 앞뒤 공백을 자른 뒤 공백 포함 60자 이하(`TODAY_DESCRIPTION_MAX_LENGTH`, 어드민 폼 `maxLength`와 같은 상수). 공백뿐이면 거절. `editorial_article`은 쓸 수 없다(본문이 있다). 없으면 null. `--dry-run` 요약의 「설명문」 줄로 확인한다(티켓 20260929_1335). 제목·부제와 같은 카피 규칙에 더해 느낌표(`!`)와 문장 끝의 「획득」·「보상」도 거절한다(티켓 20261103_1236) |
 | `badge_ids` | 선택 | UUID 배열 | 같은 id를 두 번 넣을 수 없다. 삭제되지 않은 배지가 실제로 있는지 DB를 읽어 확인한다. 없으면 `[]` |
 | `mission_id` | 선택 | UUID | `missions`에 있는지 DB를 읽어 확인한다 |
 | `item_book_id` | 선택 | UUID | `item_books`에 있는지 DB를 읽어 확인한다 |
@@ -213,6 +213,7 @@ code:
 | 허용값 밖 템플릿·노출 형태·컨텐츠 유형 | `card.template_type: badge_spotlight · … 중 하나여야 해요(받은 값: "weekly_recap").` |
 | 노출 태그 없음·허용 밖 태그 | `card.exposure_tags: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).` · `card.exposure_tags: 허용하지 않는 태그예요 — "sunny". 허용 태그: …` |
 | 설명문이 60자를 넘음 | `card.description: 공백 포함 60자 이하여야 해요(받은 값: 61자).` (줄바꿈이면 `card.description: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).`, 기사면 `card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요…`) |
+| 카피 규칙에 걸리는 문구 | `card.description: 설명에는 느낌표를 쓰지 않아요. …` · `card.title: 권유 자리에 「~하세요」를 쓰지 않아요. 같이 해 보자는 말투로 「~해 봐요」라고 써 주세요…` · `card.description: 문장을 「획득」·「보상」으로 끊지 않아요. 「10포인트를 획득해요」처럼 문장으로 맺어 주세요.` (규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`) |
 | 템플릿이 쓰지 않는 참조 | `card.mission_id: drop_alert 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.` |
 | 필요한 참조 없음 | `card.mission_id: mission_spotlight 템플릿은 이 참조가 있어야 카드가 의미가 있어요.` |
 | mission_spotlight인데 최종 레이아웃이 large_thumbnail이 아님 | `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: "shortcut").` |
