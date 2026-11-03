@@ -7,12 +7,15 @@
  * - 회전: 슬라이더가 정한 rotX·rotY·rotZ를 로고 그룹에 적용한다. 마우스 드래그는 같은 값을 `onRotate`로 올려
  *   슬라이더와 한 상태를 공유한다(카메라를 돌리는 OrbitControls는 슬라이더 값과 합칠 수 없어 쓰지 않았다).
  * - 줌: 휠이 `onZoom`으로 같은 줌 상태를 바꾼다. 원근은 카메라 거리, 등각(직교)은 카메라 zoom으로 반영한다.
- * - 배경은 렌더러와 별개다. 미리보기는 뒤에 깐 2D 캔버스에 칠하고, PNG 저장은 저장 크기의 2D 캔버스에 칠한 뒤 3D 이미지를 얹는다.
+ * - 보이는 화면은 2D 캔버스 한 장이다. three 렌더러(화면에 붙이지 않음)가 그린 3D 이미지를 `composeStage`가
+ *   배경 → 3D → 그레인 → 오버레이 레이어 순으로 쌓는다. PNG 저장·콘텐츠 적용도 같은 합성을 쓴다(티켓 20261103_1735).
  *   반사용 환경 맵은 배경과 상관없이 그대로다.
- * - 배경·그레인·비율은 에셋 화면의 값을 받는다. 그레인은 배경에만 입힌다(3D 이미지 위에는 얹지 않는다).
+ * - 배경·그레인·비율·오버레이 레이어는 에셋 화면의 값을 받는다. 그레인은 Shape 모드처럼 배경과 3D 이미지에 입히고 오버레이 아래다.
+ * - 에셋 화면의 뷰포트 핸들(`AssetGeneratorViewportHandle`)을 구현해 콘텐츠 적용 탭이 이 스테이지를 그대로 가져간다.
  * - 이 컴포넌트가 사라지면(모드 전환·화면 이동) 렌더러·환경 맵·형상의 geometry·material을 모두 `dispose`한다.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import {
   ACESFilmicToneMapping,
   BackSide,
@@ -37,30 +40,37 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three'
+import type { ImageLayerConfig, OverlayLayerConfig, TextLayerConfig } from '@/lib/asset-generator'
 import type { LogoGeometry } from '@/lib/logo-3d/buildGeometry'
+import { buildFontLoadKey, isSystemDefaultFont } from '@/app/admin/asset-generator/assetGeneratorHelpers'
+import type { AssetGeneratorViewportHandle } from '@/app/admin/asset-generator/AssetGeneratorViewport'
+import { drawOverlayLayersOnto, toContextLike, useOverlayAssets } from '../overlayStage'
 import {
   applyDragRotation,
   cameraPoseFor,
   composeBackground,
   fitBox,
   fitDistance,
-  grainCellPx,
-  grainNoise,
+  logo3dFileName,
   orthoHalfExtent,
   stageSizeFor,
   zoomFromWheel,
   type BackgroundMode,
-  type BackgroundPlan,
   type CanvasRatio,
   type Logo3DView,
 } from './logo3dConfig'
+import { composeStage, exportSizeFor } from './stageCompose'
 
 const PERSPECTIVE_FOV_DEG = 30
 const FALLBACK_RADIUS = 0.8
 
-export type Logo3DViewportHandle = {
-  /** 선택한 비율의 크기로 다시 그려 PNG Blob을 만든다. */
+const NO_LAYERS: OverlayLayerConfig[] = []
+
+export type Logo3DViewportHandle = AssetGeneratorViewportHandle & {
+  /** 선택한 비율의 고정 크기(`stageSizeFor`)로 다시 그려 PNG Blob을 만든다(별도 3D 로고 페이지용). */
   exportPng: (ratio: CanvasRatio) => Promise<Blob>
+  /** 에셋 Export 크기(긴 변)와 Canvas 비율로 배경·3D·그레인·오버레이를 합성해 PNG 파일로 저장한다. */
+  exportPngFile: (size: number) => Promise<void>
 }
 
 type Props = {
@@ -79,7 +89,12 @@ type Props = {
   /** 에셋 그레인(0~20 %). 0이면 입히지 않는다. */
   grain: number
   ratio: CanvasRatio
+  /** 3D 위에 합성할 오버레이 레이어(이미지·텍스트). 없으면 합성하지 않는다. */
+  overlayLayers?: OverlayLayerConfig[]
+  /** 저장 파일명에 쓰는 글자(폰트 글자열 또는 SVG 이름). */
+  fileLabel?: string
   loading: boolean
+  onExportBusyChange?: (busy: boolean) => void
   onRotate: (rotX: number, rotY: number) => void
   onZoom: (zoom: number) => void
 }
@@ -118,45 +133,6 @@ export function setLogoColors(meshes: LogoMeshes, frameColor: string, tileColor:
   ;(meshes.frame.material as MeshStandardMaterial).color.set(frameColor)
   ;(meshes.tile.material as MeshPhysicalMaterial).color.set(tileColor)
   ;(meshes.backPlate.material as MeshStandardMaterial).color.set(tileColor)
-}
-
-/** 칠해 둔 배경 위에 그레인을 더한다. 에셋 셰이더처럼 한 칸(`grainCellPx`)마다 같은 잡음을 R·G·B에 더한다. */
-function addGrain(ctx: CanvasRenderingContext2D, width: number, height: number, grainPct: number): void {
-  const cell = grainCellPx(height)
-  const image = ctx.getImageData(0, 0, width, height)
-  const data = image.data
-  for (let y = 0; y < height; y++) {
-    const cy = Math.floor(y / cell)
-    for (let x = 0; x < width; x++) {
-      const add = grainNoise(Math.floor(x / cell), cy, grainPct) * 255
-      const i = (y * width + x) * 4
-      data[i] += add
-      data[i + 1] += add
-      data[i + 2] += add
-    }
-  }
-  ctx.putImageData(image, 0, 0)
-}
-
-/** 배경 계획을 2D 캔버스에 칠한다. 투명이면 아무것도 칠하지 않는다. 그레인(%)이 있으면 칠한 배경에 더한다. */
-export function paintBackground(
-  ctx: CanvasRenderingContext2D,
-  plan: BackgroundPlan,
-  width: number,
-  height: number,
-  grainPct = 0
-): void {
-  ctx.clearRect(0, 0, width, height)
-  if (plan.kind === 'transparent') return
-  if (plan.kind === 'solid') {
-    ctx.fillStyle = plan.color
-  } else {
-    const gradient = ctx.createLinearGradient(plan.x0, plan.y0, plan.x1, plan.y1)
-    for (const stop of plan.stops) gradient.addColorStop(stop.offset, stop.color)
-    ctx.fillStyle = gradient
-  }
-  ctx.fillRect(0, 0, width, height)
-  if (grainPct > 0) addGrain(ctx, width, height, grainPct)
 }
 
 /** 대비가 있는 밝은·어두운 띠로 만든 스튜디오 환경. PMREM으로 반사용 맵을 만든다. */
@@ -211,10 +187,12 @@ type SceneRefs = {
 
 const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DViewport(props, ref) {
   const { geometry, frameColor, tileColor, rotX, rotY, rotZ, zoom, view, bgMode, bgA, bgB, bgAngle, grain, ratio, loading } = props
+  const overlayLayers = props.overlayLayers ?? NO_LAYERS
 
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasHostRef = useRef<HTMLDivElement>(null)
-  const bgCanvasRef = useRef<HTMLCanvasElement>(null)
+  const displayRef = useRef<HTMLCanvasElement>(null)
+  const exportingRef = useRef(false)
   const refs = useRef<SceneRefs | null>(null)
   const frameRequested = useRef(false)
   const latest = useRef(props)
@@ -269,34 +247,49 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     r.renderer.render(r.scene, camera)
   }
 
+  /** 오버레이 레이어를 (width, height) 기준으로 그린다. 위치·크기는 스테이지 대비 %라 미리보기와 저장이 같다. */
+  const drawOverlays = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    drawOverlayLayersOnto(
+      toContextLike(ctx),
+      latest.current.overlayLayers ?? NO_LAYERS,
+      imageTrackerRef.current.getValues(),
+      width,
+      height
+    )
+  }
+
+  /** 3D를 지금 상태로 그리고, 보이는 2D 캔버스에 배경·그레인·오버레이와 합성한다. */
+  const renderPreview = () => {
+    const r = refs.current
+    const display = displayRef.current
+    const ctx = display?.getContext('2d')
+    if (!r || !display || !ctx || display.width === 0) return
+    draw(r.size.width, r.size.height)
+    const p = latest.current
+    composeStage(ctx, {
+      width: display.width,
+      height: display.height,
+      background: composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, display.width, display.height),
+      logo: r.renderer.domElement,
+      grainPct: p.grain,
+      drawOverlays,
+    })
+  }
+
   const requestRender = () => {
     if (frameRequested.current) return
     frameRequested.current = true
     requestAnimationFrame(() => {
       frameRequested.current = false
-      const r = refs.current
-      if (r) draw(r.size.width, r.size.height)
+      renderPreview()
     })
   }
 
-  const paintPreviewBackground = () => {
-    const bg = bgCanvasRef.current
-    const ctx = bg?.getContext('2d')
-    if (!bg || !ctx) return
-    const p = latest.current
-    paintBackground(
-      ctx,
-      composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, bg.width, bg.height),
-      bg.width,
-      bg.height,
-      p.grain
-    )
-  }
+  // 오버레이 이미지·폰트를 불러오면 다시 합성한다
+  const { imageTrackerRef, fontTrackerRef } = useOverlayAssets(overlayLayers, requestRender)
 
   // 렌더러·씬 생성과 정리
   useEffect(() => {
-    const host = canvasHostRef.current
-    if (!host) return
     let renderer: WebGLRenderer
     try {
       renderer = new WebGLRenderer({ alpha: true, antialias: true })
@@ -308,10 +301,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     renderer.outputColorSpace = SRGBColorSpace
     renderer.toneMapping = ACESFilmicToneMapping
     renderer.toneMappingExposure = 1
-    renderer.domElement.style.width = '100%'
-    renderer.domElement.style.height = '100%'
-    renderer.domElement.style.display = 'block'
-    host.appendChild(renderer.domElement)
+    // 렌더러 캔버스는 화면에 붙이지 않는다 — 보이는 것은 합성한 2D 캔버스(`displayRef`)다.
 
     const scene = new Scene()
     const env = createStudioEnvironment(renderer)
@@ -344,7 +334,6 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       if (r.meshes) disposeLogoMeshes(r.meshes)
       r.env.dispose()
       r.renderer.dispose()
-      r.renderer.domElement.remove()
     }
   }, [])
 
@@ -404,19 +393,19 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       r.renderer.setSize(w, h, false)
       r.size = { width: w, height: h }
     }
-    const bg = bgCanvasRef.current
-    if (bg) {
-      bg.width = w
-      bg.height = h
+    const display = displayRef.current
+    if (display) {
+      display.width = w
+      display.height = h
     }
-    paintPreviewBackground()
     requestRender()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 사유: 상자 크기 변경만 반영한다
   }, [box])
 
   useEffect(() => {
-    paintPreviewBackground()
-  }, [bgMode, bgA, bgB, bgAngle, grain])
+    requestRender()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 사유: 배경·그레인·레이어 변경만 다시 합성한다(requestRender는 refs만 읽는다)
+  }, [bgMode, bgA, bgB, bgAngle, grain, overlayLayers])
 
   // 마우스 드래그 회전·휠 줌
   useEffect(() => {
@@ -458,33 +447,101 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     }
   }, [])
 
-  useImperativeHandle(ref, () => ({
-    exportPng: async (target: CanvasRatio) => {
-      const r = refs.current
-      if (!r) throw new Error('3D 화면이 아직 준비되지 않았어요.')
-      const { width, height } = stageSizeFor(target)
-      const previous = r.size
+  /** 저장 크기로 3D를 다시 그리고 배경·그레인·오버레이와 합성해 PNG Blob을 만든다. 끝나면 미리보기 크기로 되돌린다. */
+  const renderStageBlob = async (width: number, height: number): Promise<Blob> => {
+    const r = refs.current
+    if (!r) throw new Error('3D 화면이 아직 준비되지 않았어요.')
+    const out = document.createElement('canvas')
+    out.width = width
+    out.height = height
+    const ctx = out.getContext('2d')
+    if (!ctx) throw new Error('이미지를 만들 캔버스를 열지 못했어요.')
+    const previous = r.size
+    try {
       r.renderer.setPixelRatio(1)
       r.renderer.setSize(width, height, false)
       draw(width, height)
-
-      const out = document.createElement('canvas')
-      out.width = width
-      out.height = height
-      const ctx = out.getContext('2d')
-      if (!ctx) throw new Error('이미지를 만들 캔버스를 열지 못했어요.')
       const p = latest.current
-      paintBackground(ctx, composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, width, height), width, height, p.grain)
       // WebGL 캔버스는 알파가 곱해진 상태라 그대로 얹으면 가장자리에 테두리가 생기지 않는다.
-      ctx.drawImage(r.renderer.domElement, 0, 0)
-
-      r.renderer.setSize(previous.width, previous.height, false)
-      draw(previous.width, previous.height)
-
-      return new Promise<Blob>((resolve, reject) => {
-        out.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('PNG를 만들지 못했어요.'))), 'image/png')
+      composeStage(ctx, {
+        width,
+        height,
+        background: composeBackground(p.bgMode, p.bgA, p.bgB, p.bgAngle, width, height),
+        logo: r.renderer.domElement,
+        grainPct: p.grain,
+        drawOverlays,
       })
+    } finally {
+      r.renderer.setSize(previous.width, previous.height, false)
+      renderPreview()
+    }
+    return new Promise<Blob>((resolve, reject) => {
+      out.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('PNG를 만들지 못했어요.'))), 'image/png')
+    })
+  }
+
+  const exportPngFile = async (size: number): Promise<void> => {
+    const r = refs.current
+    if (!r || exportingRef.current) return
+    exportingRef.current = true
+    props.onExportBusyChange?.(true)
+    try {
+      if (!imageTrackerRef.current.isIdle()) {
+        toast.info('이미지를 불러오는 중이에요. 완료되면 자동으로 진행할게요.')
+        await imageTrackerRef.current.waitUntilIdle()
+      }
+      if (!fontTrackerRef.current.isIdle()) {
+        toast.info('폰트를 불러오는 중이에요. 완료되면 자동으로 진행할게요.')
+        await fontTrackerRef.current.waitUntilIdle()
+      }
+      const gl = r.renderer.getContext()
+      const max = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number
+      if (size > max) throw new Error(`이 기기의 최대 출력 크기는 ${max}px입니다.`)
+      const { width, height } = exportSizeFor(size, latest.current.ratio)
+      const blob = await renderStageBlob(width, height)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = logo3dFileName(latest.current.fileLabel ?? '', latest.current.ratio)
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+      toast(`${width} × ${height} PNG 저장 완료`)
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'PNG 저장에 실패했습니다.')
+    } finally {
+      exportingRef.current = false
+      props.onExportBusyChange?.(false)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({
+    // 콘텐츠 적용 탭이 쓰는 핸들 — 보이는 합성 캔버스를 그대로 돌려준다. 3D는 움직이지 않아 머리 위치·곡선이 없다.
+    getCanvas: () => displayRef.current,
+    getPathTotal: () => 0,
+    getHead: () => 0,
+    setHead: () => {},
+    drawAtHead: () => renderPreview(),
+    setExporting: () => {},
+    areImageAssetsReady: () => imageTrackerRef.current.isIdle(),
+    waitForImageAssets: () => imageTrackerRef.current.waitUntilIdle(),
+    getMissingImageAssetCount: () =>
+      (latest.current.overlayLayers ?? NO_LAYERS).filter(
+        (l): l is ImageLayerConfig => l.type === 'image' && !imageTrackerRef.current.has(l.assetUrl)
+      ).length,
+    areFontsReady: () => fontTrackerRef.current.isIdle(),
+    waitForFonts: () => fontTrackerRef.current.waitUntilIdle(),
+    getMissingFontCount: () =>
+      (latest.current.overlayLayers ?? NO_LAYERS).filter(
+        (l): l is TextLayerConfig =>
+          l.type === 'text' && !isSystemDefaultFont(l.font) && !fontTrackerRef.current.has(buildFontLoadKey(l.font))
+      ).length,
+    exportPng: (target: CanvasRatio) => {
+      const { width, height } = stageSizeFor(target)
+      return renderStageBlob(width, height)
     },
+    exportPngFile,
   }))
 
   return (
@@ -503,13 +560,14 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
           backgroundPosition: '0 0,0 8px,8px -8px,-8px 0',
         }}
       >
-        <canvas ref={bgCanvasRef} className="absolute inset-0 h-full w-full" aria-hidden="true" />
         <div
           ref={canvasHostRef}
           className="absolute inset-0 cursor-grab touch-none active:cursor-grabbing"
           role="img"
           aria-label="3D 로고 미리보기"
-        />
+        >
+          <canvas ref={displayRef} className="block h-full w-full" aria-hidden="true" />
+        </div>
         {loading && (
           <div className="absolute inset-0 grid place-items-center bg-white/50 text-xs text-[#1e2322] break-keep wrap-break-word">
             불러오는 중이에요...

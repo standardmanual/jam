@@ -1,6 +1,6 @@
 // 티켓 20261103_1734 — 에셋 3D 모드 연결부 시험.
-// 고정하는 것: 모드 목록·기능 제한, 배경 공유(Shape 값을 그대로 쓰고 모드를 바꿔도 유지), 입력 패치 규칙, 그레인 계산, 그레인이 배경에 입혀지는지.
-import { describe, expect, it, vi } from 'vitest'
+// 고정하는 것: 모드 목록·기능 제한, 배경 공유(Shape 값을 그대로 쓰고 모드를 바꿔도 유지), 입력 패치 규칙, 그레인 계산(합성 순서는 stageCompose.test.ts).
+import { describe, expect, it } from 'vitest'
 import {
   cloneState,
   ENGINE_MODE_OPTIONS,
@@ -10,14 +10,12 @@ import {
 } from '../../shapeStudioConfig'
 import {
   applyLogo3DPatch,
-  composeBackground,
   DEFAULT_LOGO3D_SCENE,
   DEFAULT_LOGO3D_STATE,
   grainCellPx,
   grainNoise,
   studioStageProps,
 } from '../logo3dConfig'
-import { paintBackground } from '../Logo3DViewport'
 
 describe('Mode 목록', () => {
   it('Shape · Ribbon 옆에 「3D (입체 로고)」가 있다', () => {
@@ -27,13 +25,13 @@ describe('Mode 목록', () => {
 })
 
 describe('engineModeSupports', () => {
-  it('3D 모드에서는 랜덤 생성·PNG 저장·동영상 저장·콘텐츠 적용을 막는다', () => {
-    expect(engineModeSupports('3d')).toEqual({ randomize: false, pngExport: false, videoExport: false, applyToContent: false })
+  it('3D 모드에서는 랜덤 생성·동영상 저장만 막는다(PNG 저장·콘텐츠 적용은 연결됨)', () => {
+    expect(engineModeSupports('3d')).toEqual({ randomize: false, videoExport: false })
   })
 
   it('Shape·Ribbon 모드는 전부 쓸 수 있다', () => {
     for (const mode of ['shape', 'ribbon'] as StudioEngineMode[]) {
-      expect(engineModeSupports(mode)).toEqual({ randomize: true, pngExport: true, videoExport: true, applyToContent: true })
+      expect(engineModeSupports(mode)).toEqual({ randomize: true, videoExport: true })
     }
   })
 })
@@ -100,37 +98,5 @@ describe('그레인', () => {
     expect(grainCellPx(500)).toBe(1)
     expect(grainCellPx(1400)).toBe(2)
     expect(grainCellPx(2048)).toBe(3)
-  })
-
-  it('paintBackground는 그레인이 있으면 칠한 배경의 픽셀을 바꾸고, 투명 배경에는 입히지 않는다', () => {
-    const size = 8
-    const make = () => {
-      const data = new Uint8ClampedArray(size * size * 4).fill(128)
-      const getImageData = vi.fn(() => ({ data }) as unknown as ImageData)
-      const putImageData = vi.fn()
-      const gradient = { addColorStop: vi.fn() }
-      const ctx = {
-        clearRect: vi.fn(),
-        fillRect: vi.fn(),
-        createLinearGradient: vi.fn(() => gradient),
-        fillStyle: '' as unknown,
-        getImageData,
-        putImageData,
-      }
-      return { ctx: ctx as unknown as CanvasRenderingContext2D, data, getImageData, putImageData }
-    }
-
-    const none = make()
-    paintBackground(none.ctx, composeBackground('solid', '#808080', '#000000', 0, size, size), size, size, 0)
-    expect(none.getImageData).not.toHaveBeenCalled()
-
-    const grained = make()
-    paintBackground(grained.ctx, composeBackground('solid', '#808080', '#000000', 0, size, size), size, size, 20)
-    expect(grained.putImageData).toHaveBeenCalledTimes(1)
-    expect(new Set(grained.data).size).toBeGreaterThan(1)
-
-    const transparent = make()
-    paintBackground(transparent.ctx, composeBackground('transparent', '#808080', '#000000', 0, size, size), size, size, 20)
-    expect(transparent.getImageData).not.toHaveBeenCalled()
   })
 })

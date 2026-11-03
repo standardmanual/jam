@@ -48,6 +48,8 @@ import type { AssetGeneratorViewportHandle } from './AssetGeneratorViewport'
 
 interface ApplyTabProps {
   viewportRef: React.RefObject<AssetGeneratorViewportHandle | null>
+  /** true면 정지 이미지로만 반영한다(움직이지 않는 스테이지 — 3D 모드). 반영 형식 선택을 숨긴다. */
+  imageOnly?: boolean
 }
 
 type ContentType = 'badge' | 'mission' | 'collection' | 'home_feed'
@@ -93,7 +95,7 @@ function warnIfFontsMissing(viewport: AssetGeneratorViewportHandle): void {
   if (missing > 0) toast.error(`텍스트 레이어 ${missing}개의 폰트를 불러오지 못해 기본 글꼴로 반영했어요.`)
 }
 
-export default function ApplyTab({ viewportRef }: ApplyTabProps) {
+export default function ApplyTab({ viewportRef, imageOnly = false }: ApplyTabProps) {
   // AlertDialog(Radix Portal)를 어드민 테마 스코프 노드에 붙인다(PresetPanel.tsx와 동일 패턴,
   // 20260826_018).
   const [themeContainer] = useState<HTMLElement | null>(() =>
@@ -108,7 +110,8 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
   const [collection, setCollection] = useState<ItemBookSearchResult | undefined>(undefined)
   const [cardId, setCardId] = useState('')
   const [card, setCard] = useState<TodayCardSearchResult | undefined>(undefined)
-  const [applyMode, setApplyMode] = useState<'image' | 'video'>('image')
+  const [chosenApplyMode, setApplyMode] = useState<'image' | 'video'>('image')
+  const applyMode = imageOnly ? 'image' : chosenApplyMode
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [applying, setApplying] = useState(false)
   const [progressLabel, setProgressLabel] = useState<string | null>(null)
@@ -312,7 +315,7 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
         )}
       </div>
 
-      {contentType === 'home_feed' && (
+      {contentType === 'home_feed' && !imageOnly && (
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-foreground">반영 형식</label>
           <div className="flex gap-2">

@@ -36,13 +36,14 @@ import {
   resolveStageSize,
 } from '@/app/admin/asset-generator/assetGeneratorHelpers'
 import type { Logo3DParams } from '@/lib/logo-3d/types'
-import Logo3DViewport from './logo3d/Logo3DViewport'
+import Logo3DViewport, { type Logo3DViewportHandle } from './logo3d/Logo3DViewport'
 import {
   applyLogo3DPatch,
   DEFAULT_LOGO3D_SCENE,
   studioStageProps,
   type Logo3DSceneState,
 } from './logo3d/logo3dConfig'
+import { DEFAULT_LOGO_SVG_LABEL } from './logo3d/logo3dDefaultSvg'
 import { useLogo3DOutline } from './logo3d/useLogo3DOutline'
 import ShapeStudioPanel from './ShapeStudioPanel'
 import ShapeStudioViewport, { type ShapeStudioViewportHandle } from './ShapeStudioViewport'
@@ -142,6 +143,7 @@ export default function AdminAssetsShapeStudioPage() {
   const [videoButtonLabel, setVideoButtonLabel] = useState(`동영상 저장 (${VIDEO_SEC}초)`)
 
   const viewportRef = useRef<ShapeStudioViewportHandle | null>(null)
+  const logo3dViewportRef = useRef<Logo3DViewportHandle | null>(null)
   const shapeFileInputRef = useRef<HTMLInputElement | null>(null)
   const customCountRef = useRef(0)
   const customPresetsRef = useRef<GlyphPreset[]>(customPresets)
@@ -695,6 +697,12 @@ export default function AdminAssetsShapeStudioPage() {
     [loadSvgFile]
   )
 
+  // PNG 저장은 활성 모드의 뷰포트가 에셋 Export 크기·Canvas 비율로 저장한다.
+  const handleExportPng = () => {
+    if (is3d) void logo3dViewportRef.current?.exportPngFile(exportSize)
+    else void viewportRef.current?.exportPng(exportSize)
+  }
+
   const handleShapeFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     e.target.value = ''
@@ -757,8 +765,8 @@ export default function AdminAssetsShapeStudioPage() {
           <Button
             type="button"
             size="sm"
-            disabled={exportBusy || !supports.pngExport}
-            onClick={() => viewportRef.current?.exportPng(exportSize)}
+            disabled={exportBusy}
+            onClick={handleExportPng}
             className="bg-[#1e2322] text-xs text-white hover:bg-[#40483f] whitespace-nowrap"
           >
             PNG 저장
@@ -770,6 +778,7 @@ export default function AdminAssetsShapeStudioPage() {
         {engineMode === '3d' ? (
           // 3D 모드에서는 Shape 뷰포트를 내리고 3D 뷰포트를 올린다. 3D 뷰포트가 내려갈 때 렌더러·형상을 dispose한다.
           <Logo3DViewport
+            ref={logo3dViewportRef}
             geometry={outline3d.geometry}
             frameColor={logo3d.frameColor}
             tileColor={logo3d.tileColor}
@@ -779,7 +788,16 @@ export default function AdminAssetsShapeStudioPage() {
             zoom={logo3d.zoom}
             view={logo3d.view}
             {...studioStageProps(state)}
+            overlayLayers={overlayLayers}
+            fileLabel={
+              logo3d.source === 'svg'
+                ? logo3d.svgName
+                  ? logo3d.svgName.replace(/\.svg$/i, '')
+                  : DEFAULT_LOGO_SVG_LABEL
+                : logo3d.text
+            }
             loading={outline3d.loading}
+            onExportBusyChange={setExportBusy}
             onRotate={handleLogo3dRotate}
             onZoom={handleLogo3dZoom}
           />
@@ -810,7 +828,7 @@ export default function AdminAssetsShapeStudioPage() {
         )}
 
         <ShapeStudioPanel
-          viewportRef={viewportRef}
+          viewportRef={is3d ? logo3dViewportRef : viewportRef}
           engineMode={engineMode}
           onChangeEngineMode={setEngineMode}
           logo3d={{
@@ -864,7 +882,7 @@ export default function AdminAssetsShapeStudioPage() {
           onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
           onLoadPreset={handleLoadPreset}
           onChangeExportSize={setExportSize}
-          onExportPng={() => viewportRef.current?.exportPng(exportSize)}
+          onExportPng={handleExportPng}
           onChangeVideoSize={setVideoSize}
           onExportVideo={() => viewportRef.current?.recordVideo(videoSize)}
           onCancelVideo={() => viewportRef.current?.cancelVideo()}

@@ -455,15 +455,9 @@ export default function ShapeStudioPanel({
 
       {screenTab === 'apply' ? (
         <section className="border-t border-[#e0e4df] px-5 py-4">
-          {supports.applyToContent ? (
-            <fieldset disabled={exportBusy} className="contents">
-              <ApplyTab viewportRef={viewportRef} />
-            </fieldset>
-          ) : (
-            <p className="text-[11px] leading-[1.6] text-[#6f766c] break-keep wrap-break-word text-balance">
-              3D 모드에서는 아직 콘텐츠에 적용할 수 없어요. Shape나 Ribbon 모드에서 적용해 주세요.
-            </p>
-          )}
+          <fieldset disabled={exportBusy} className="contents">
+            <ApplyTab viewportRef={viewportRef} imageOnly={engineMode === '3d'} />
+          </fieldset>
         </section>
       ) : (
         <fieldset disabled={exportBusy} className="contents">
@@ -1284,11 +1278,6 @@ export default function ShapeStudioPanel({
               </span>
             </div>
             <div className="flex flex-col gap-3">
-              {!supports.pngExport && (
-                <p className="text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
-                  3D 모드의 미리보기에는 레이어가 아직 합성되지 않아요.
-                </p>
-              )}
               <LayerSidebar
                 layers={overlayLayers}
                 selectedId={selectedOverlayLayerId}
@@ -1354,7 +1343,7 @@ export default function ShapeStudioPanel({
               </Select>
               <Button
                 type="button"
-                disabled={exportBusy || !supports.pngExport}
+                disabled={exportBusy}
                 onClick={onExportPng}
                 className="h-9 flex-1 bg-[#1e2322] text-xs text-white hover:bg-[#40483f] whitespace-nowrap"
               >
@@ -1395,9 +1384,9 @@ export default function ShapeStudioPanel({
             )}
 
             <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
-              {supports.pngExport
+              {supports.videoExport
                 ? '동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'
-                : '3D 모드의 PNG·동영상 저장은 아직 쓸 수 없어요. 준비되면 이 자리에서 저장할 수 있어요.'}
+                : '3D 모드의 동영상 저장은 아직 쓸 수 없어요. PNG 저장은 쓸 수 있어요.'}
             </p>
           </section>
         </fieldset>
