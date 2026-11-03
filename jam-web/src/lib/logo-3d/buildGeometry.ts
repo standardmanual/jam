@@ -42,6 +42,11 @@ const ROUND_LIMIT = 0.45;
 /** 베벨이 곡률 반지름·두께를 넘지 않도록 두는 여유 */
 const BEVEL_LIMIT = 0.95;
 const HALF_LIMIT = 0.49;
+/**
+ * 틀 윗면(평평한 띠)의 최소 폭. 베벨이 틀 폭의 절반에 가까우면 띠가 0에 가까워져 윗면 삼각형이 넓이 0으로 납작해진다.
+ * 값은 실측으로 정했다(티켓 20261103_1352 재작업): 이보다 크면 기본 틀 베벨(0.0145)이 깎여 기본 모양이 바뀐다.
+ */
+const MIN_LID_BAND = 0.0003;
 
 function toShapes(outline: LogoOutline): Shape[] {
   const v = (ring: Ring) => ring.map(([x, y]) => new Vector2(x, y));
@@ -204,7 +209,8 @@ export function buildLogoGeometry(outline: LogoOutline, params: Logo3DParams): L
       frameBevel = limit;
     }
   };
-  limitFrame(frameBevel, HALF_LIMIT * Math.min(frameWidth, minThickness(ring)), '틀 폭 또는 틀 고리 두께의 절반');
+  const frameSpan = Math.min(frameWidth, minThickness(ring));
+  limitFrame(frameBevel, Math.min(HALF_LIMIT * frameSpan, (frameSpan - MIN_LID_BAND) / 2), '틀 폭 또는 틀 고리 두께의 절반, 윗면 띠 폭 하한');
   limitFrame(frameBevel, HALF_LIMIT * depth, '압출 두께의 절반');
   if (outer.convex > 0) limitFrame(frameBevel, BEVEL_LIMIT * outer.convex, '바깥 윤곽 모서리 반지름');
   if (inner && inner.concave > 0) limitFrame(frameBevel, BEVEL_LIMIT * inner.concave, '틀 안쪽 윤곽 모서리 반지름');
