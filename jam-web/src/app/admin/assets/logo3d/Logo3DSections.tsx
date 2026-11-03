@@ -29,6 +29,7 @@ import {
   ROTATION_RANGE,
   TEXT_MAX_LENGTH,
   ZOOM_RANGE,
+  type Logo3DPalette,
   type Logo3DSceneState,
   type Logo3DView,
 } from './logo3dConfig'
@@ -322,7 +323,15 @@ export function Logo3DThicknessSection({
   )
 }
 
-export function Logo3DColorSection({ state, onChange }: { state: Logo3DSceneState; onChange: Logo3DSceneChange }) {
+export function Logo3DColorSection({
+  state,
+  onChange,
+  onSelectPalette,
+}: {
+  state: Logo3DSceneState
+  onChange: Logo3DSceneChange
+  onSelectPalette: (palette: Logo3DPalette) => void
+}) {
   return (
     <section className={SECTION}>
       <SectionHeader title="Color" caption="틀 · 타일 색" />
@@ -333,7 +342,7 @@ export function Logo3DColorSection({ state, onChange }: { state: Logo3DSceneStat
             type="button"
             variant="outline"
             aria-pressed={state.paletteId === p.id}
-            onClick={() => onChange({ paletteId: p.id, frameColor: p.frame, tileColor: p.tile })}
+            onClick={() => onSelectPalette(p)}
             className={cn(
               'h-auto flex-col gap-1 px-1 py-1.5 text-[10px] font-normal',
               state.paletteId === p.id ? 'border-[#8fae6c] bg-[#e5edd8]' : 'bg-white'

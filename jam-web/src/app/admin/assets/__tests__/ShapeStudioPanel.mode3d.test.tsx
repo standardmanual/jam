@@ -41,6 +41,7 @@ function render(engineMode: StudioEngineMode): string {
       warnings: [],
       loading: false,
       onChange: noop,
+      onSelectPalette: noop,
       onParamChange: noop,
       onSvgFile: noop,
       onResetZoom: noop,

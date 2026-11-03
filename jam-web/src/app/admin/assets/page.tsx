@@ -41,7 +41,11 @@ import Logo3DViewport, { type Logo3DViewportHandle } from './logo3d/Logo3DViewpo
 import {
   applyLogo3DPatch,
   DEFAULT_LOGO3D_SCENE,
+  initialStudioStateFor,
+  paletteScenePatch,
+  paletteStagePatch,
   studioStageProps,
+  type Logo3DPalette,
   type Logo3DSceneState,
 } from './logo3d/logo3dConfig'
 import { DEFAULT_LOGO_SVG_LABEL } from './logo3d/logo3dDefaultSvg'
@@ -136,7 +140,8 @@ function AssetsStudioFromQuery() {
 function AssetsStudio({ initialEngineMode }: { initialEngineMode: StudioEngineMode }) {
   const [engineMode, setEngineMode] = useState<StudioEngineMode>(initialEngineMode)
   const [state, setState] = useState<ShapeStudioState>(() => {
-    const s = cloneState(INITIAL_STATE)
+    // 3D로 처음 열 때만 공유 배경을 첫 팔레트(스틸 · 하늘)의 배경으로 시작한다.
+    const s = initialStudioStateFor(initialEngineMode, cloneState(INITIAL_STATE))
     if (s.width < 500) s.width = 500
     return s
   })
@@ -265,7 +270,7 @@ function AssetsStudio({ initialEngineMode }: { initialEngineMode: StudioEngineMo
 
   const handleReset = useCallback(() => {
     remember(stateRef.current)
-    setState(cloneState(INITIAL_STATE))
+    setState(initialStudioStateFor(engineMode, cloneState(INITIAL_STATE)))
     setRibbonLayer(INITIAL_RIBBON_LAYER)
     setLogo3d(DEFAULT_LOGO3D_SCENE)
     if (uploadedRibbonUrlRef.current) {
@@ -275,7 +280,7 @@ function AssetsStudio({ initialEngineMode }: { initialEngineMode: StudioEngineMo
     setUploadedRibbonFileName(null)
     viewportRef.current?.resetMotionTime()
     toast('처음 설정으로 돌아왔어요.')
-  }, [remember])
+  }, [engineMode, remember])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -700,6 +705,16 @@ function AssetsStudio({ initialEngineMode }: { initialEngineMode: StudioEngineMo
     setLogo3d((prev) => applyLogo3DPatch(prev, patch))
   }, [])
 
+  // 팔레트를 누르면 틀·타일과 함께 공유 배경 색·각도도 바뀐다(Shape의 그라데이션 프리셋과 같은 동작, 배경 방식은 그대로).
+  const handleSelectLogo3dPalette = useCallback(
+    (p: Logo3DPalette) => {
+      remember(stateRef.current)
+      setLogo3d((prev) => applyLogo3DPatch(prev, paletteScenePatch(p)))
+      setState((prev) => ({ ...cloneState(prev), ...paletteStagePatch(p) }))
+    },
+    [remember]
+  )
+
   const handleLogo3dParamChange = useCallback((key: keyof Logo3DParams, value: number) => {
     setLogo3d((prev) => ({ ...prev, params: { ...prev.params, [key]: value } }))
   }, [])
@@ -866,6 +881,7 @@ function AssetsStudio({ initialEngineMode }: { initialEngineMode: StudioEngineMo
             warnings: outline3d.warnings,
             loading: outline3d.loading,
             onChange: handleLogo3dChange,
+            onSelectPalette: handleSelectLogo3dPalette,
             onParamChange: handleLogo3dParamChange,
             onSvgFile: handleLogo3dSvgFile,
             onResetZoom: () => handleLogo3dZoom(DEFAULT_LOGO3D_SCENE.zoom),

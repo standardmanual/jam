@@ -50,7 +50,7 @@ import {
   Logo3DThicknessSection,
   Logo3DViewSection,
 } from './logo3d/Logo3DSections'
-import type { Logo3DSceneState } from './logo3d/logo3dConfig'
+import type { Logo3DPalette, Logo3DSceneState } from './logo3d/logo3dConfig'
 import type { LoadedEngine } from './logo3d/logo3dEngineState'
 import type { Logo3DParams } from '@/lib/logo-3d/types'
 import {
@@ -80,6 +80,7 @@ export interface Logo3DPanelBinding {
   warnings: string[]
   loading: boolean
   onChange: (patch: Partial<Logo3DSceneState>) => void
+  onSelectPalette: (palette: Logo3DPalette) => void
   onParamChange: (key: keyof Logo3DParams, value: number) => void
   onSvgFile: (file: File) => void
   onResetZoom: () => void
@@ -1260,7 +1261,7 @@ export default function ShapeStudioPanel({
                 onSvgFile={logo3d.onSvgFile}
               />
               <Logo3DThicknessSection state={logo3d.state} onParamChange={logo3d.onParamChange} />
-              <Logo3DColorSection state={logo3d.state} onChange={logo3d.onChange} />
+              <Logo3DColorSection state={logo3d.state} onChange={logo3d.onChange} onSelectPalette={logo3d.onSelectPalette} />
               <Logo3DViewSection
                 state={logo3d.state}
                 onChange={logo3d.onChange}

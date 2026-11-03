@@ -6,7 +6,7 @@
  * 스테이지 3모드와 비율은 어드민 에셋(`assets/shapeStudioConfig.ts`)의 `BackgroundMode`·`CanvasRatio`와 같은 형태다.
  */
 import { resolveStageSize } from '@/app/admin/asset-generator/assetGeneratorHelpers'
-import type { BackgroundMode, CanvasRatio } from '@/app/admin/assets/shapeStudioConfig'
+import type { BackgroundMode, CanvasRatio, StudioEngineMode } from '@/app/admin/assets/shapeStudioConfig'
 import { DEFAULT_LOGO3D_PARAMS, type Logo3DParams } from '@/lib/logo-3d/types'
 
 export type { BackgroundMode, CanvasRatio }
@@ -49,20 +49,48 @@ export type Logo3DState = Logo3DSceneState & {
   ratio: CanvasRatio
 }
 
-export type Logo3DPalette = { id: string; name: string; frame: string; tile: string }
+/** 팔레트: 틀(금속)·타일(도자기) 색과 어울리는 배경(그라데이션 두 색, 각도는 도). 팔레트를 누르면 공유 배경도 이 값으로 바뀐다. */
+export type Logo3DPalette = {
+  id: string
+  name: string
+  frame: string
+  tile: string
+  bgA: string
+  bgB: string
+  bgAngle: number
+}
 
-/** 프리셋 팔레트. 틀(금속) 색과 타일(도자기) 색의 쌍이다. 첫 항목이 기본값이다. */
+/** 프리셋 팔레트(채원 색 구성 판정, 티켓 20261103_1718). 첫 항목이 3D로 처음 열 때의 기본값이다. 각도 -45°는 좌상 → 우하다. */
 export const PALETTES: readonly Logo3DPalette[] = [
-  { id: 'steel-sky', name: '스틸 · 하늘', frame: '#9ba3ab', tile: '#7cc4f0' },
-  { id: 'steel-mint', name: '스틸 · 민트', frame: '#9ba3ab', tile: '#7fdcc0' },
-  { id: 'steel-rose', name: '스틸 · 로즈', frame: '#a3a0a6', tile: '#f4a3b8' },
-  { id: 'gold-cream', name: '골드 · 크림', frame: '#c9a24a', tile: '#f6ecd6' },
-  { id: 'graphite-lime', name: '그래파이트 · 라임', frame: '#4b5057', tile: '#c4e56a' },
-  { id: 'copper-navy', name: '코퍼 · 네이비', frame: '#b8764f', tile: '#3d5a9e' },
+  { id: 'steel-sky', name: '스틸 · 하늘', frame: '#9ba3ab', tile: '#a9e0ff', bgA: '#6ed3fe', bgB: '#29a3f3', bgAngle: -45 },
+  { id: 'steel-mint', name: '스틸 · 민트', frame: '#9ba3ab', tile: '#9ff0d6', bgA: '#8fe9d3', bgB: '#2fb8a0', bgAngle: -45 },
+  { id: 'steel-green', name: '스틸 · 그린', frame: '#9ba3ab', tile: '#7be39b', bgA: '#7ee6a0', bgB: '#1fae6a', bgAngle: -45 },
+  { id: 'steel-rose', name: '스틸 · 로즈', frame: '#a3a0a6', tile: '#ffc0d0', bgA: '#ffb3c8', bgB: '#ee6f95', bgAngle: -45 },
+  { id: 'gold-cream', name: '골드 · 크림', frame: '#c9a24a', tile: '#f6ecd6', bgA: '#35457a', bgB: '#141a3d', bgAngle: -45 },
+  { id: 'graphite-lime', name: '그래파이트 · 라임', frame: '#5d636b', tile: '#c4e56a', bgA: '#f1f0eb', bgB: '#cfc9b4', bgAngle: -45 },
+  { id: 'copper-navy', name: '코퍼 · 네이비', frame: '#b8764f', tile: '#5c7fd1', bgA: '#f6e7d6', bgB: '#e0b48f', bgAngle: -45 },
 ]
 
-/** 어드민 에셋 `INITIAL_STATE`의 배경 각도 기본값과 같다. */
-export const DEFAULT_BG_ANGLE = 0
+/** 팔레트의 틀·타일 색을 장면 상태 조각으로 바꾼다. 화면과 시험이 같은 함수를 쓴다. */
+export function paletteScenePatch(p: Logo3DPalette): Pick<Logo3DSceneState, 'paletteId' | 'frameColor' | 'tileColor'> {
+  return { paletteId: p.id, frameColor: p.frame, tileColor: p.tile }
+}
+
+/** 팔레트의 배경 값을 공유 배경 상태 조각으로 바꾼다(배경 방식 `bgMode`는 건드리지 않는다). */
+export function paletteStagePatch(p: Logo3DPalette): { bgA: string; bgB: string; bgAngle: number } {
+  return { bgA: p.bgA, bgB: p.bgB, bgAngle: p.bgAngle }
+}
+
+/**
+ * 에셋 화면을 처음 열 때(와 초기화할 때)의 공유 상태. 3D 모드면 배경 세 값만 첫 팔레트의 배경으로 덮고,
+ * 그 밖의 모드는 입력을 그대로 돌려준다. 모드를 전환할 때는 쓰지 않는다(전환은 배경을 바꾸지 않는다).
+ */
+export function initialStudioStateFor<T extends { bgA: string; bgB: string; bgAngle: number }>(
+  mode: StudioEngineMode,
+  base: T
+): T {
+  return mode === '3d' ? { ...base, ...paletteStagePatch(PALETTES[0]) } : base
+}
 
 export const DEFAULT_LOGO3D_SCENE: Logo3DSceneState = {
   source: 'font',
@@ -72,9 +100,7 @@ export const DEFAULT_LOGO3D_SCENE: Logo3DSceneState = {
   svgText: '',
   svgName: '',
   params: { ...DEFAULT_LOGO3D_PARAMS },
-  paletteId: PALETTES[0].id,
-  frameColor: PALETTES[0].frame,
-  tileColor: PALETTES[0].tile,
+  ...paletteScenePatch(PALETTES[0]),
   rotX: 14,
   rotY: 22,
   rotZ: 3,
@@ -86,9 +112,7 @@ export const DEFAULT_LOGO3D_STATE: Logo3DState = {
   ...DEFAULT_LOGO3D_SCENE,
   params: { ...DEFAULT_LOGO3D_SCENE.params },
   bgMode: 'gradient',
-  bgA: '#d4eefc',
-  bgB: '#5fb4ea',
-  bgAngle: DEFAULT_BG_ANGLE,
+  ...paletteStagePatch(PALETTES[0]),
   ratio: '1:1',
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INITIAL_STATE } from '@/app/admin/assets/shapeStudioConfig'
+import { cloneState, INITIAL_STATE } from '@/app/admin/assets/shapeStudioConfig'
 import { DEFAULT_LOGO3D_PARAMS } from '@/lib/logo-3d/types'
 import {
   applyDragRotation,
@@ -9,10 +9,13 @@ import {
   DEFAULT_LOGO3D_STATE,
   fitBox,
   fitDistance,
+  initialStudioStateFor,
   ISOMETRIC_ELEVATION_DEG,
   isometricCameraPose,
   logo3dFileName,
   orthoHalfExtent,
+  paletteScenePatch,
+  paletteStagePatch,
   PALETTES,
   RATIO_OPTIONS,
   stageSizeFor,
@@ -35,15 +38,68 @@ describe('기본값', () => {
     expect(s.bgMode).toBe('gradient')
   })
 
-  it('배경 방식·각도 기본값은 어드민 에셋과 같다', () => {
-    expect(DEFAULT_LOGO3D_STATE.bgAngle).toBe(INITIAL_STATE.bgAngle)
+  it('배경 방식은 어드민 에셋과 같고 배경 색·각도는 스틸 · 하늘 팔레트다', () => {
     expect(DEFAULT_LOGO3D_STATE.bgMode).toBe(INITIAL_STATE.bgMode)
+    expect(DEFAULT_LOGO3D_STATE.bgA).toBe('#6ed3fe')
+    expect(DEFAULT_LOGO3D_STATE.bgB).toBe('#29a3f3')
+    expect(DEFAULT_LOGO3D_STATE.bgAngle).toBe(-45)
+    expect(DEFAULT_LOGO3D_STATE.tileColor).toBe('#a9e0ff')
   })
 
-  it('기본 색은 첫 팔레트와 같고 팔레트는 여러 개다', () => {
-    expect(PALETTES.length).toBeGreaterThan(1)
-    expect(DEFAULT_LOGO3D_STATE.frameColor).toBe(PALETTES[0].frame)
-    expect(DEFAULT_LOGO3D_STATE.tileColor).toBe(PALETTES[0].tile)
+  it('기본 색·배경은 첫 팔레트와 어긋나지 않는다', () => {
+    const p = PALETTES[0]
+    expect(DEFAULT_LOGO3D_STATE).toMatchObject({
+      paletteId: p.id,
+      frameColor: p.frame,
+      tileColor: p.tile,
+      bgA: p.bgA,
+      bgB: p.bgB,
+      bgAngle: p.bgAngle,
+    })
+  })
+})
+
+describe('PALETTES', () => {
+  it('7종이 정해진 순서와 값이다', () => {
+    expect(PALETTES.map((p) => [p.id, p.name, p.frame, p.tile, p.bgA, p.bgB, p.bgAngle])).toEqual([
+      ['steel-sky', '스틸 · 하늘', '#9ba3ab', '#a9e0ff', '#6ed3fe', '#29a3f3', -45],
+      ['steel-mint', '스틸 · 민트', '#9ba3ab', '#9ff0d6', '#8fe9d3', '#2fb8a0', -45],
+      ['steel-green', '스틸 · 그린', '#9ba3ab', '#7be39b', '#7ee6a0', '#1fae6a', -45],
+      ['steel-rose', '스틸 · 로즈', '#a3a0a6', '#ffc0d0', '#ffb3c8', '#ee6f95', -45],
+      ['gold-cream', '골드 · 크림', '#c9a24a', '#f6ecd6', '#35457a', '#141a3d', -45],
+      ['graphite-lime', '그래파이트 · 라임', '#5d636b', '#c4e56a', '#f1f0eb', '#cfc9b4', -45],
+      ['copper-navy', '코퍼 · 네이비', '#b8764f', '#5c7fd1', '#f6e7d6', '#e0b48f', -45],
+    ])
+  })
+
+  it('paletteScenePatch는 틀·타일 색만, paletteStagePatch는 배경 세 값만 돌려준다', () => {
+    const p = PALETTES[2]
+    expect(paletteScenePatch(p)).toEqual({ paletteId: 'steel-green', frameColor: '#9ba3ab', tileColor: '#7be39b' })
+    expect(paletteStagePatch(p)).toEqual({ bgA: '#7ee6a0', bgB: '#1fae6a', bgAngle: -45 })
+  })
+
+  it('-45° 그라데이션은 시작점이 좌상, 끝점이 우하 쪽이다', () => {
+    const plan = composeBackground('gradient', '#6ed3fe', '#29a3f3', -45, 100, 100)
+    if (plan.kind !== 'gradient') throw new Error('gradient가 아니다')
+    expect(plan.x0).toBeLessThan(50)
+    expect(plan.y0).toBeLessThan(50)
+    expect(plan.x1).toBeGreaterThan(50)
+    expect(plan.y1).toBeGreaterThan(50)
+  })
+})
+
+describe('initialStudioStateFor', () => {
+  it('3d면 배경 세 값만 스틸 · 하늘 값으로 바꾸고 나머지는 그대로다', () => {
+    const base = cloneState(INITIAL_STATE)
+    const next = initialStudioStateFor('3d', base)
+    expect(next).toEqual({ ...base, bgA: '#6ed3fe', bgB: '#29a3f3', bgAngle: -45 })
+    expect(base.bgAngle).toBe(INITIAL_STATE.bgAngle)
+  })
+
+  it('shape·ribbon은 입력과 같다', () => {
+    const base = cloneState(INITIAL_STATE)
+    expect(initialStudioStateFor('shape', base)).toBe(base)
+    expect(initialStudioStateFor('ribbon', base)).toBe(base)
   })
 })
 
