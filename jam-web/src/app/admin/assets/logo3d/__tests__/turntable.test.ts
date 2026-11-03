@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { VIDEO_SEC } from '../../shapeStudioConfig'
 import { videoBitrate, videoSizeFor } from '../../videoRecording'
 import { wrapDegrees } from '../logo3dConfig'
-import { TURNTABLE_DEGREES, turntableProgress, turntableRotY } from '../turntable'
+import { TURNTABLE_DEGREES, VIDEO_FPS, turntableFrameCount, turntableFrameRotY, turntableRotY } from '../turntable'
 
 describe('turntableRotY', () => {
   it('0프레임은 지금 회전값 그대로 시작한다', () => {
@@ -39,25 +39,38 @@ describe('turntableRotY', () => {
   })
 })
 
-describe('turntableProgress', () => {
-  it('경과 시간 / 길이로 0~1을 만든다', () => {
-    expect(turntableProgress(0, VIDEO_SEC)).toBe(0)
-    expect(turntableProgress(VIDEO_SEC / 2, VIDEO_SEC)).toBe(0.5)
-    expect(turntableProgress(VIDEO_SEC, VIDEO_SEC)).toBe(1)
-    expect(turntableProgress(VIDEO_SEC + 3, VIDEO_SEC)).toBe(1)
-    expect(turntableProgress(-1, VIDEO_SEC)).toBe(0)
-  })
-
-  it('길이가 0 이하면 끝난 것으로 본다', () => {
-    expect(turntableProgress(1, 0)).toBe(1)
-  })
-
-  it('녹화 시작과 끝의 회전값이 같다(길이는 에셋 동영상 길이 VIDEO_SEC)', () => {
-    const start = 22
-    const first = turntableRotY(start, turntableProgress(0, VIDEO_SEC))
-    const last = turntableRotY(start, turntableProgress(VIDEO_SEC, VIDEO_SEC))
-    expect(wrapDegrees(last)).toBeCloseTo(wrapDegrees(first), 9)
+describe('프레임 번호 기준 회전 (티켓 20261103_2042)', () => {
+  it('총 프레임 수 N은 30 × VIDEO_SEC이다', () => {
+    expect(VIDEO_FPS).toBe(30)
     expect(VIDEO_SEC).toBe(15)
+    expect(turntableFrameCount(VIDEO_FPS, VIDEO_SEC)).toBe(450)
+  })
+
+  it('0번과 N번 프레임의 각도 차가 정확히 360°라 같은 자세다', () => {
+    const n = turntableFrameCount(VIDEO_FPS, VIDEO_SEC)
+    for (const start of [22, 0, -180, 180, -37]) {
+      const first = turntableFrameRotY(start, 0, n)
+      const last = turntableFrameRotY(start, n, n)
+      expect(first).toBe(start)
+      expect(last - first).toBe(TURNTABLE_DEGREES)
+      expect(wrapDegrees(last)).toBeCloseTo(wrapDegrees(first), 9)
+    }
+  })
+
+  it('각도는 프레임 번호 i에 비례해 일정하게 는다', () => {
+    const n = turntableFrameCount(VIDEO_FPS, VIDEO_SEC)
+    expect(turntableFrameRotY(0, n / 2, n)).toBe(180)
+    expect(turntableFrameRotY(0, n / 4, n)).toBe(90)
+    const frames = Array.from({ length: n + 1 }, (_, i) => turntableFrameRotY(22, i, n))
+    const steps = frames.slice(1).map((v, i) => v - frames[i])
+    for (const step of steps) expect(step).toBeCloseTo(360 / n, 9)
+  })
+
+  it('범위 밖 번호는 0~N으로 자르고, N이 0 이하여도 깨지지 않는다', () => {
+    expect(turntableFrameRotY(22, -3, 10)).toBe(22)
+    expect(turntableFrameRotY(22, 99, 10)).toBe(382)
+    expect(turntableFrameRotY(22, 0, 0)).toBe(382)
+    expect(turntableFrameCount(30, 0)).toBe(1)
   })
 })
 
