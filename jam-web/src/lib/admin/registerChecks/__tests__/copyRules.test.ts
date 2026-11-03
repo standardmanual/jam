@@ -59,8 +59,8 @@ describe('collectCopyErrors — 「획득」·「보상」으로 끝나는 문�
   })
 
   it('제목·부제는 이 규칙을 적용하지 않는다', () => {
-    expect(hits('title', '배지 획득')).toBe(0)
-    expect(hits('subtitle', '완료 보상')).toBe(0)
+    expect(hits('title', '완료 보상')).toBe(0)
+    expect(hits('subtitle', '배지 획득')).toBe(0)
   })
 })
 
@@ -89,6 +89,48 @@ describe('collectCopyErrors — 쓰지 않는 말', () => {
       expect(hits('description', text)).toBe(0)
     }
   )
+})
+
+describe('collectCopyErrors — 조건을 요약한 제목(제목만)', () => {
+  it.each(['새 역 체크인 2곳', '겨울 앞두고 걷기 3번', '걸어서 10km', '산 체크인 한 곳', '이번 주 산 체크인 한 곳', '새 장소 체크인'])(
+    '«%s»는 제목에서 걸린다',
+    (text) => {
+      expect(hits('title', text)).toBe(1)
+    }
+  )
+
+  it.each([
+    '지하철 역에서 만나는 행운',
+    '쌀쌀한 날의 짧은 산책',
+    '걷다 보면 어느새 10km',
+    '처음 오른 산에서의 한 걸음',
+    '주말엔 한 번',
+    '10km',
+    '활동 두 번이면 충분해요',
+    '걸어서 채워 볼까요',
+    '산에서 보내는 하루',
+    '오늘은 입동이에요',
+    '인벤토리가 꽉 찼다면 하나 드랍하고 가요',
+    '드랍하고',
+    '픽업하고',
+    '이어가기',
+    '입동 주간',
+    '처음 가는 곳으로',
+  ])('«%s»는 제목에서 걸리지 않는다', (text) => {
+    expect(hits('title', text)).toBe(0)
+  })
+
+  it('부제·설명에는 이 규칙을 적용하지 않는다', () => {
+    expect(hits('subtitle', '새 역 체크인 2곳')).toBe(0)
+    expect(hits('description', '새 역 체크인 2곳')).toBe(0)
+  })
+
+  it('오류 문장에 칸 이름과 고치는 방향이 들어간다', () => {
+    const [message] = collectCopyErrors('mission.', 'title', '새 역 체크인 2곳')
+    expect(message).toContain('mission.title: 제목이 조건을 요약한 말처럼 읽혀요.')
+    expect(message).toContain('지하철 역에서 만나는 행운')
+    expect(message).toContain('§2.6')
+  })
 })
 
 describe('collectCopyErrors — 입력 처리', () => {

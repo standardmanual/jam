@@ -134,7 +134,7 @@ code:
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
-| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 앞뒤 공백은 잘라서 저장한다. 카피 규칙(`copyRules.ts`)에 걸리면 거절: 「~하세요」(「해 주세요」 제외)·「도장」·500m·「장소/POI/지점/방문 배지」·「발견」·「찾아서」·「이웃」을 쓰면 거절(티켓 20261103_1236) |
+| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 앞뒤 공백은 잘라서 저장한다. 카피 규칙(`copyRules.ts`)에 걸리면 거절: 「~하세요」(「해 주세요」 제외)·「도장」·500m·「장소/POI/지점/방문 배지」·「발견」·「찾아서」·「이웃」을 쓰면 거절. 제목이 «조건을 요약한 말»(행동 이름+수량 「새 역 체크인 2곳」·「걷기 3번」, 이동 수단+거리 「걸어서 10km」, 고정 용어로 끝나는 「새 장소 체크인」)이면 거절(제목만, 부제·설명 제외, 티켓 20261103_1236) |
 | `template_type` | 필수 | 문자열 | `badge_spotlight`·`progress_nudge`·`mission_spotlight`·`itembook_milestone`·`location_trend`·`drop_alert`·`editorial_article`·`ranking_board`·`recipe_reveal`·`content_intro` 중 하나(`TODAY_TEMPLATE_OPTIONS`, DB CHECK — 마이그레이션 310) |
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다. 저장할 때 UTC ISO로 바꾼다(폼과 같다) |
 | `ends_at` | 필수 | ISO 8601 | 시간대가 붙어야 하고 `starts_at`보다 뒤여야 한다 |
@@ -213,7 +213,7 @@ code:
 | 허용값 밖 템플릿·노출 형태·컨텐츠 유형 | `card.template_type: badge_spotlight · … 중 하나여야 해요(받은 값: "weekly_recap").` |
 | 노출 태그 없음·허용 밖 태그 | `card.exposure_tags: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).` · `card.exposure_tags: 허용하지 않는 태그예요 — "sunny". 허용 태그: …` |
 | 설명문이 60자를 넘음 | `card.description: 공백 포함 60자 이하여야 해요(받은 값: 61자).` (줄바꿈이면 `card.description: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).`, 기사면 `card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요…`) |
-| 카피 규칙에 걸리는 문구 | `card.description: 설명에는 느낌표를 쓰지 않아요. …` · `card.title: 권유 자리에 「~하세요」를 쓰지 않아요. 같이 해 보자는 말투로 「~해 봐요」라고 써 주세요…` · `card.description: 문장을 「획득」·「보상」으로 끊지 않아요. 「10포인트를 획득해요」처럼 문장으로 맺어 주세요.` (규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`) |
+| 카피 규칙에 걸리는 문구 | `card.title: 제목이 조건을 요약한 말처럼 읽혀요. 「지하철 역에서 만나는 행운」처럼 장면이나 기대가 보이게 써 주세요(UX 라이팅 가이드라인 §2.6).` · `card.description: 설명에는 느낌표를 쓰지 않아요. …` · `card.title: 권유 자리에 「~하세요」를 쓰지 않아요. 같이 해 보자는 말투로 「~해 봐요」라고 써 주세요…` · `card.description: 문장을 「획득」·「보상」으로 끊지 않아요. 「10포인트를 획득해요」처럼 문장으로 맺어 주세요.` (규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`) |
 | 템플릿이 쓰지 않는 참조 | `card.mission_id: drop_alert 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.` |
 | 필요한 참조 없음 | `card.mission_id: mission_spotlight 템플릿은 이 참조가 있어야 카드가 의미가 있어요.` |
 | mission_spotlight인데 최종 레이아웃이 large_thumbnail이 아님 | `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: "shortcut").` |
