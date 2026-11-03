@@ -1,0 +1,103 @@
+/**
+ * 카피 규칙 검사(`copyRules.ts`)의 시험 — 규칙마다 걸리는 문장과 비슷하지만 안 걸리는 문장을 본다(티켓 20261103_1236).
+ */
+import { describe, expect, it } from 'vitest'
+import { collectCopyErrors } from '../copyRules'
+import type { CopyField } from '../copyRules'
+
+function hits(field: CopyField, value: string): number {
+  return collectCopyErrors('card.', field, value).length
+}
+
+describe('collectCopyErrors — 권유 「~하세요」', () => {
+  it.each(['30km에 도전해 보세요', '주말에 달리세요', '오늘도 힘내세요'])('%s는 제목·부제·설명 모두에서 걸린다', (text) => {
+    expect(hits('title', text)).toBe(1)
+    expect(hits('subtitle', text)).toBe(1)
+    expect(hits('description', text)).toBe(1)
+  })
+
+  it('「해 주세요」 요청 문장은 걸리지 않는다', () => {
+    expect(hits('description', '잠시 뒤 새로고침해 주세요')).toBe(0)
+  })
+
+  it('「해 봐요」는 걸리지 않는다', () => {
+    expect(hits('description', '30km에 도전해 봐요')).toBe(0)
+  })
+
+  it('오류 문장에 칸 이름과 대체 문구가 들어간다', () => {
+    const [message] = collectCopyErrors('mission.', 'description', '달려 보세요')
+    expect(message).toContain('mission.description:')
+    expect(message).toContain('~해 봐요')
+  })
+})
+
+describe('collectCopyErrors — 느낌표(설명만)', () => {
+  it.each(['10포인트를 받아요!', '10포인트를 받아요！'])('설명의 %s는 걸린다', (text) => {
+    expect(hits('description', text)).toBe(1)
+  })
+
+  it('제목·부제의 느낌표는 걸리지 않는다', () => {
+    expect(hits('title', '새 역에 가 봐요!')).toBe(0)
+    expect(hits('subtitle', '새 역에 가 봐요!')).toBe(0)
+  })
+
+  it('느낌표가 없는 설명은 걸리지 않는다', () => {
+    expect(hits('description', '새 역 2곳에 체크인하면 포인트를 받아요.')).toBe(0)
+  })
+})
+
+describe('collectCopyErrors — 「획득」·「보상」으로 끝나는 문장(설명만)', () => {
+  it.each(['딱 3번이면 10포인트 획득!', '10포인트 획득', '10포인트 획득.', '10포인트 획득 !', '완료 보상', '완료 보상.', '새 배지 획득. 다음 목표도 있어요'])(
+    '설명의 «%s»는 걸린다',
+    (text) => {
+      expect(collectCopyErrors('card.', 'description', text).some((e) => e.includes('「획득」·「보상」'))).toBe(true)
+    }
+  )
+
+  it.each(['10포인트를 획득해요', '획득한 배지를 모아 봐요', '보상을 받아요', '획득 후에 확인해요'])('설명의 «%s»는 걸리지 않는다', (text) => {
+    expect(hits('description', text)).toBe(0)
+  })
+
+  it('제목·부제는 이 규칙을 적용하지 않는다', () => {
+    expect(hits('title', '배지 획득')).toBe(0)
+    expect(hits('subtitle', '완료 보상')).toBe(0)
+  })
+})
+
+describe('collectCopyErrors — 쓰지 않는 말', () => {
+  it.each([
+    ['도장', '도장을 찍어 봐요'],
+    ['500m', '500m 안에 들어가 봐요'],
+    ['500 미터', '500미터 안에 들어가 봐요'],
+    ['장소 배지', '장소 배지를 모아 봐요'],
+    ['POI 배지', 'POI 배지를 모아 봐요'],
+    ['지점 배지', '지점 배지를 모아 봐요'],
+    ['방문 배지', '방문 배지를 모아 봐요'],
+    ['발견', '새 역을 발견해 봐요'],
+    ['찾아서', '새 역을 찾아서 가 봐요'],
+    ['이웃', '이웃과 함께 달려 봐요'],
+  ])('%s: «%s»는 제목·부제·설명 모두에서 걸린다', (_term, text) => {
+    expect(hits('title', text)).toBe(1)
+    expect(hits('subtitle', text)).toBe(1)
+    expect(hits('description', text)).toBe(1)
+  })
+
+  it.each(['10km를 달려 봐요', '500원을 받아요', '1,500m를 달려 봐요', '5000m를 달려 봐요', '500mg을 먹어 봐요', '체크인 배지를 모아 봐요', '배지를 획득해요'])(
+    '비슷하지만 «%s»는 걸리지 않는다',
+    (text) => {
+      expect(hits('title', text)).toBe(0)
+      expect(hits('description', text)).toBe(0)
+    }
+  )
+})
+
+describe('collectCopyErrors — 입력 처리', () => {
+  it('문자열이 아닌 값은 빈 배열을 돌려준다', () => {
+    expect(collectCopyErrors('card.', 'title', undefined)).toEqual([])
+    expect(collectCopyErrors('card.', 'title', 123)).toEqual([])
+  })
+
+  it('한 문구가 여러 규칙에 걸리면 규칙마다 오류를 낸다', () => {
+    expect(collectCopyErrors('card.', 'description', '도장을 찍어 보세요!')).toHaveLength(3)
+  })
+})

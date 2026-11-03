@@ -40,6 +40,7 @@ import {
   unknownKeys,
 } from './bundleRules'
 import type { PlainObject } from './bundleRules'
+import { collectCopyErrors } from './copyRules'
 
 export const MISSION_REQUIRED_FIELDS = ['title', 'description', 'mission_type', 'condition_json', 'starts_at']
 export const MISSION_OPTIONAL_FIELDS = [
@@ -98,6 +99,9 @@ export function validateMission(errors: string[], warnings: string[], input: unk
   if (isPresent(description) && !isNonEmptyString(description)) {
     errors.push('mission.description: 비어 있지 않은 문자열이어야 해요.')
   }
+  // 카피 규칙(티켓 20261103_1236) — 줄바꿈·제어 문자 오류가 이미 난 제목은 건너뛴다.
+  if (isNonEmptyString(title) && !hasControlOrLineBreak(title)) errors.push(...collectCopyErrors(prefix, 'title', title))
+  if (isNonEmptyString(description)) errors.push(...collectCopyErrors(prefix, 'description', description))
 
   let missionType: MissionType | null = null
   if (isPresent(mission_type)) {
