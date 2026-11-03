@@ -3,7 +3,7 @@
 /**
  * 3D 로고 설정 섹션 — Input·Thickness·Color·View (티켓 20261103_1352, 에셋 3D 모드로 옮김: 티켓 20261103_1734)
  *
- * 에셋 패널(`../ShapeStudioPanel.tsx`)과 별도 3D 화면(`/admin/logo-3d`)이 같은 섹션을 쓴다.
+ * 에셋 패널(`../ShapeStudioPanel.tsx`)의 3D 모드가 이 섹션을 쓴다(별도 3D 화면은 티켓 20261103_1738에서 걷어냈다).
  * 어드민 shadcn/ui 컴포넌트만 쓴다(네이티브 select 없음). 섹션 머리는 에셋 패널과 같은 형식(영문 제목 + 한글 설명)이다.
  */
 import { useMemo, useRef, useState } from 'react'

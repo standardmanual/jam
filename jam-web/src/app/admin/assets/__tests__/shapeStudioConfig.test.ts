@@ -12,6 +12,7 @@ import {
   INITIAL_RAND_TOGGLES,
   INITIAL_STATE,
   makeState,
+  parseEngineModeParam,
   randomizeState,
   SHAPE_PRESETS,
   validatePresetState,
@@ -135,5 +136,21 @@ describe('shapeStudioConfig', () => {
         segments: [],
       })
     ).toThrow('세그먼트는 1~4개여야 합니다.')
+  })
+})
+
+describe('parseEngineModeParam (티켓 20261103_1738)', () => {
+  it('shape·ribbon·3d는 그 모드로 연다', () => {
+    expect(parseEngineModeParam('shape')).toBe('shape')
+    expect(parseEngineModeParam('ribbon')).toBe('ribbon')
+    expect(parseEngineModeParam('3d')).toBe('3d')
+  })
+
+  it('없거나 알 수 없는 값은 무시하고 기본 모드(shape)로 연다', () => {
+    expect(parseEngineModeParam(null)).toBe('shape')
+    expect(parseEngineModeParam(undefined)).toBe('shape')
+    expect(parseEngineModeParam('')).toBe('shape')
+    expect(parseEngineModeParam('3D')).toBe('shape')
+    expect(parseEngineModeParam('video')).toBe('shape')
   })
 })

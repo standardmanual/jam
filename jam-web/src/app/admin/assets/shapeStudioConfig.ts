@@ -67,6 +67,15 @@ export const ENGINE_MODE_OPTIONS: readonly (readonly [StudioEngineMode, string])
 ]
 
 /**
+ * 주소의 `mode` 쿼리(`?mode=3d`)로 처음 열 모드를 정한다(티켓 20261103_1738).
+ * `shape`·`ribbon`·`3d`만 받고, 없거나 알 수 없는 값은 기본 모드(`shape`)로 둔다.
+ */
+export function parseEngineModeParam(value: string | null | undefined): StudioEngineMode {
+  const found = ENGINE_MODE_OPTIONS.find(([mode]) => mode === value)
+  return found ? found[0] : 'shape'
+}
+
+/**
  * 모드별로 쓸 수 있는 기능. 3D는 Overlay Layers 합성·PNG 저장·콘텐츠 적용(티켓 20261103_1735)과
  * 동영상 저장(로고가 한 바퀴 도는 턴테이블 영상, 티켓 20261103_1737)이 연결됐다. 랜덤 생성만 막는다.
  */

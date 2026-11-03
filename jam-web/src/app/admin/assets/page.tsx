@@ -8,7 +8,8 @@
  * 저장·불러오기(`PresetPanel`), 콘텐츠 바로 적용(`ApplyTab`)을 단일 화면에서 제공한다.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import {
@@ -58,6 +59,7 @@ import {
   INITIAL_RAND_TOGGLES,
   INITIAL_STATE,
   isGlyphPreset,
+  parseEngineModeParam,
   randomizeState,
   seg,
   SHAPE_PRESETS,
@@ -114,8 +116,25 @@ function applyRandomRibbon(
   }
 }
 
+/**
+ * 주소의 `?mode=`로 처음 모드를 정한다(옛 `/admin/logo-3d`가 `?mode=3d`로 들어온다, 티켓 20261103_1738).
+ * `useSearchParams`는 정적 페이지에서 Suspense 경계가 없으면 빌드가 실패한다(Next 문서) — 경계 안에서만 읽는다.
+ */
 export default function AdminAssetsShapeStudioPage() {
-  const [engineMode, setEngineMode] = useState<StudioEngineMode>('shape')
+  return (
+    <Suspense fallback={null}>
+      <AssetsStudioFromQuery />
+    </Suspense>
+  )
+}
+
+function AssetsStudioFromQuery() {
+  const searchParams = useSearchParams()
+  return <AssetsStudio initialEngineMode={parseEngineModeParam(searchParams.get('mode'))} />
+}
+
+function AssetsStudio({ initialEngineMode }: { initialEngineMode: StudioEngineMode }) {
+  const [engineMode, setEngineMode] = useState<StudioEngineMode>(initialEngineMode)
   const [state, setState] = useState<ShapeStudioState>(() => {
     const s = cloneState(INITIAL_STATE)
     if (s.width < 500) s.width = 500

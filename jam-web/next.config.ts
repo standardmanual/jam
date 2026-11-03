@@ -79,6 +79,13 @@ const nextConfig: NextConfig = {
         destination: '/badges',
         permanent: false,
       },
+      // 20261103_1738: 3D 로고 별도 화면을 걷어내고 에셋 화면의 3D 모드로 합쳤다. 북마크·공유한
+      // 옛 주소가 404가 되지 않도록 에셋 화면이 3D 모드로 열리게 임시(307) 이동시킨다.
+      {
+        source: '/admin/logo-3d',
+        destination: '/admin/assets?mode=3d',
+        permanent: false,
+      },
     ];
   },
 };

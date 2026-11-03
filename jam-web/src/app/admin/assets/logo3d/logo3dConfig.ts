@@ -39,7 +39,7 @@ export type Logo3DSceneState = {
   view: Logo3DView
 }
 
-/** 별도 페이지(`/admin/logo-3d`)는 아직 자체 배경·비율을 들고 있다(티켓 20261103_1738에서 정리). */
+/** 장면 상태에 배경·비율까지 합친 전체 상태. 에셋 화면은 배경·비율을 Shape와 공유하므로 이 타입은 시험의 기준값으로만 남아 있다(별도 화면 제거: 티켓 20261103_1738). */
 export type Logo3DState = Logo3DSceneState & {
   // 스테이지 (어드민 에셋의 bgMode·bgA·bgB·bgAngle과 같은 의미, 각도는 도)
   bgMode: BackgroundMode

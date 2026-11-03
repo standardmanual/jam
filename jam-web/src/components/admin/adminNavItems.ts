@@ -17,7 +17,6 @@ import {
   IconUserOff,
   IconPhoto,
   IconPhotoEdit,
-  IconCube,
   IconTag,
   IconDatabaseImport,
   IconBinaryTree,
@@ -107,7 +106,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/badge-image', label: '체크인 배지', icon: IconPhoto },
       { href: '/admin/activity-badge-image', label: '액티비티 배지', icon: IconPhotoEdit },
       { href: '/admin/assets', label: '에셋', icon: IconShape },
-      { href: '/admin/logo-3d', label: '3D 로고', icon: IconCube },
     ],
   },
   {

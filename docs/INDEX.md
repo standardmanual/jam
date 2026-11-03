@@ -26,7 +26,7 @@ status: active
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
 - [v5_badge_name_split.md](service/content/v5_badge_name_split.md) — v5 액티비티배지에서 종목마다 계열 이름을 다르게 짓는 이름 분화의 근거, 후보안, 승인 후 검증 결과를 기록한 문서다.
 - [ADMIN_PRD.md](service/prd/admin-ui/ADMIN_PRD.md) — 어드민의 배지·지점(POI)·컬렉션 관리, 시뮬레이터, 유저 조회 기능과 화면 구성, 기술 스펙을 정의한 어드민 PRD다.
-- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
+- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다. 에셋 화면의 3D 모드(Google Fonts·SVG를 3D 로고 PNG·동영상으로, ?mode=3d 진입)도 §16에 담는다.
 - [REGISTRATION_BUNDLE.md](service/prd/asset-generator/REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 배지 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/badge-share/PRD.md) — 배지 상세 페이지에서 배지를 이미지로 만들어 공유하거나 기기에 저장하는 기능의 플로우와 플랫폼별 동작을 정의한 PRD다.
 - [PRD.md](service/prd/chapter/PRD.md) — 챕터가 생기는 흐름, 오름 처리, 프로필이 쓸 읽기 함수와 응답 모양(점수 숫자 비노출), 프로필 챕터 줄과 오름 축하 카드와 소식 화면의 규칙, 어드민 유저 상세 챕터 구역의 규칙을 코드 기준으로 정의한 PRD다. 챕터는 트라이브와 상관없이 숫자로만 표기한다.
@@ -400,10 +400,9 @@ status: active
 - [REDESIGN.md](service/prd/admin-ui/REDESIGN.md) — 어드민을 shadcn/ui 디자인시스템으로 전환하는 원칙, 폴더 분리, 프리셋 값과 미리보기 예외를 정의한 PRD다.
 - [HOME_FEED_REGISTRATION_BUNDLE.md](service/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 홈피드 카드 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [MISSION_REGISTRATION_BUNDLE.md](service/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 미션 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
-- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
+- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다. 에셋 화면의 3D 모드(Google Fonts·SVG를 3D 로고 PNG·동영상으로, ?mode=3d 진입)도 §16에 담는다.
 - [REGISTRATION_BUNDLE.md](service/prd/asset-generator/REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 배지 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
-- [PRD.md](service/prd/logo-3d/PRD.md) — 어드민 3D 로고 제너레이터(/admin/logo-3d)가 Google Fonts 글자나 SVG를 3D 로고 PNG로 만드는 화면 구성·입력·조절 항목·스테이지 3모드·저장 규칙과 실시간 렌더의 품질 한계를 정의한 PRD다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
 
 **JAM 2.0 (plan/jam2)**
@@ -494,8 +493,7 @@ status: active
 
 - [SPECIAL_DAYS.md](service/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
 - [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
-- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
-- [PRD.md](service/prd/logo-3d/PRD.md) — 어드민 3D 로고 제너레이터(/admin/logo-3d)가 Google Fonts 글자나 SVG를 3D 로고 PNG로 만드는 화면 구성·입력·조절 항목·스테이지 3모드·저장 규칙과 실시간 렌더의 품질 한계를 정의한 PRD다.
+- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다. 에셋 화면의 3D 모드(Google Fonts·SVG를 3D 로고 PNG·동영상으로, ?mode=3d 진입)도 §16에 담는다.
 
 **비전 (plan/vision)**
 
@@ -1064,7 +1062,7 @@ status: active
 
 - [HOME_FEED_REGISTRATION_BUNDLE.md](service/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 홈피드 카드 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [MISSION_REGISTRATION_BUNDLE.md](service/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 미션 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
-- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
+- [PRD.md](service/prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지·미션·컬렉션·홈피드 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다. 에셋 화면의 3D 모드(Google Fonts·SVG를 3D 로고 PNG·동영상으로, ?mode=3d 진입)도 §16에 담는다.
 - [REGISTRATION_BUNDLE.md](service/prd/asset-generator/REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 배지 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 
 ### docs/service/prd/badge-share/
@@ -1086,10 +1084,6 @@ status: active
 ### docs/service/prd/inventory/
 
 - [PRD.md](service/prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
-
-### docs/service/prd/logo-3d/
-
-- [PRD.md](service/prd/logo-3d/PRD.md) — 어드민 3D 로고 제너레이터(/admin/logo-3d)가 Google Fonts 글자나 SVG를 3D 로고 PNG로 만드는 화면 구성·입력·조절 항목·스테이지 3모드·저장 규칙과 실시간 렌더의 품질 한계를 정의한 PRD다.
 
 ### docs/service/prd/notification/
 
