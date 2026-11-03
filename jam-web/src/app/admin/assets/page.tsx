@@ -847,6 +847,8 @@ function AssetsStudio({ initialEngineMode }: { initialEngineMode: StudioEngineMo
             onVideoRecordingChange={handleVideoRecordingChange}
             onRotate={handleLogo3dRotate}
             onZoom={handleLogo3dZoom}
+            canUndo={history.length > 0}
+            onUndo={handleUndo}
           />
         ) : (
           <ShapeStudioViewport
