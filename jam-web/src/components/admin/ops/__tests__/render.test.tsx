@@ -35,7 +35,7 @@ import { FormatErrorWarning, OpsItemActions, OpsRejectPanel, canSubmitRejectReas
 import { OPS_EDIT_STALE_MESSAGE, OpsItemEditForm } from '../OpsItemEditForm'
 import { OpsDecisionWorkspace } from '../OpsDecisionWorkspace'
 import { OpsSampleDeleteMenu } from '../OpsSampleDeleteMenu'
-import { readEditableValues } from '@/lib/admin/opsInbox/edit'
+import { readEditableValues, readScheduledEditableValues } from '@/lib/admin/opsInbox/edit'
 import type { OpsWorkspaceContext } from '../OpsBundleWorkspace'
 import type { OpsBundleExecution, OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 
@@ -696,6 +696,56 @@ describe('OpsItemEditForm — 직접 수정 양식', () => {
     expect(out).toContain('홈피드 카드')
   })
 
+  describe('예약됨 문안 수정 모드 (티켓 20261103_1446)', () => {
+    const scheduledCard = makeItem({
+      id: 'sched-1',
+      status: 'scheduled',
+      original: {
+        user_experience: '비 오는 월요일 아침',
+        copy: { title: '우산 챙겨 달리기', subtitle: '부제예요', description: '오늘은 가볍게 달려요', body_markdown: '본문' },
+        colors: { background: '#1a2b3c' },
+        starts_at: '2026-10-05T00:00:00.000Z',
+        ends_at: '2026-10-06T00:00:00.000Z',
+        segment: 'all',
+      },
+    })
+    const scheduledForm = (target: OpsItemRecord) =>
+      flat(
+        <OpsItemEditForm
+          bundleId="b"
+          item={target}
+          ctx={makeCtx({ draft: { itemId: target.id, values: readScheduledEditableValues(target), baseUpdatedAt: target.updatedAt } })}
+          onSaved={vi.fn()}
+          onConflict={vi.fn()}
+        />
+      )
+
+    it('문안 칸(제목·부제·설명)만 그리고 시각·색·대상·유저가 겪는 것·읽기 전용 목록은 그리지 않는다', () => {
+      const out = scheduledForm(scheduledCard)
+      for (const label of ['문안 · title', '문안 · subtitle', '문안 · description']) expect(out).toContain(label)
+      expect(out).not.toContain('문안 · body_markdown')
+      expect(out).not.toContain('유저가 겪는 것')
+      expect(out).not.toContain('type="datetime-local"')
+      expect(out).not.toContain('색 · background')
+      expect(out).not.toContain('고칠 수 없는 것')
+      expect(out).toContain('공개 시각 전까지 문안만 고칠 수 있어요. 저장하면 예약된 카드에도 바로 반영돼요.')
+      expect(out).toContain('카드 이미지 속 글자는 여기서 바뀌지 않아요')
+    })
+
+    it('미션은 달성 조건 문장 칸이 있고 이미지 글자 안내는 없다', () => {
+      const mission = makeItem({
+        id: 'sched-2',
+        kind: 'mission',
+        status: 'scheduled',
+        original: { copy: { title: '주말 러닝', description: '주말에 달려요', condition_text: '30km 달리기' } },
+      })
+      const out = scheduledForm(mission)
+      expect(out).toContain('문안 · condition_text')
+      expect(out).toContain('예약된 미션에도 바로 반영돼요')
+      expect(out).not.toContain('카드 이미지 속 글자')
+    })
+  })
+
   describe('패턴 제안 항목의 「제안 패턴」 줄 (티켓 20261007_1746)', () => {
     const knob = { open: '연 값', closed: '닫은 값' }
     const pattern = {
@@ -1048,6 +1098,26 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
       for (const label of ['빼기', '고치기', '이대로 두기', '반려하기']) expect(out).toContain(`>${label}<`)
       expect(out).not.toContain('공개 전 취소하기')
       expect(out).not.toContain('예약된 항목이에요')
+    })
+
+    it('예약됨 홈피드 카드·미션에는 [공개 전 취소하기] 옆에 [문안 고치기]가 있고 다른 종류에는 없다 (티켓 20261103_1446)', () => {
+      nav.search = 'item=s1'
+      expect(flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)).toContain('>문안 고치기<')
+
+      const mission = makeItem({ id: 'sm', position: 5, kind: 'mission', status: 'scheduled', original: { user_experience: '예약된 미션', copy: { title: '주말 러닝' } } })
+      nav.search = 'item=sm'
+      expect(flat(<OpsDecisionWorkspace {...props} items={[...withScheduled, mission]} decisions={[SUBMIT]} />)).toContain('>문안 고치기<')
+
+      const badge = makeItem({ id: 'sb', position: 6, kind: 'jam_badge', status: 'scheduled', original: { user_experience: '예약된 배지' } })
+      nav.search = 'item=sb'
+      const out = flat(<OpsDecisionWorkspace {...props} items={[...withScheduled, badge]} decisions={[SUBMIT]} />)
+      expect(out).toContain('>공개 전 취소하기<')
+      expect(out).not.toContain('>문안 고치기<')
+    })
+
+    it('게재 중 항목에는 [문안 고치기]가 없다 (티켓 20261103_1446)', () => {
+      nav.search = 'item=l1'
+      expect(flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)).not.toContain('문안 고치기')
     })
 
     it('승인됨 항목은 지금처럼 안내 글만 나오고 취소·지금 종료 버튼은 없다', () => {

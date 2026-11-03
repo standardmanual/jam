@@ -75,6 +75,14 @@ export type CancelResult =
   | { ok: false; code: 'published' | 'referenced' | 'error'; failure: ExecuteFailure }
 
 /**
+ * 예약된 자원의 문안 열 고치기 한 건의 결과(티켓 20261103_1446, §8.7). `ok`면 `previous`가 고치기 전 값이다(수정본 저장이 실패했을 때 되돌리는 근거).
+ * 실패의 `code`: `published`(공개 시각이 지났다)·`missing`(자원이 없다)은 409, `error`(읽기·쓰기 오류)는 500이다. `failure.detail`은 서버 로그에만 남긴다.
+ */
+export type UpdateCopyResult =
+  | { ok: true; previous: Record<string, string | null> }
+  | { ok: false; code: 'published' | 'missing' | 'error'; failure: ExecuteFailure }
+
+/**
  * 공개 뒤 「지금 종료」 한 건의 결과(티켓 20261006_0950 ⑪-a 가정 8, §8.7). `ok`면 자원이 이제 끝나 있다:
  * `ended`는 이번에 종료 시각을 지금으로 바꿨다는 뜻이고, `alreadyEnded`는 종료 시각이 이미 지나 있어 자원을 건드리지 않았다는 뜻(상태 맞추기가 아직 돌지 않음),
  * `missing`은 자원이 없다는 뜻(행 없음·배지 `deleted_at`)이다. 셋 다 항목을 「종료」로 닫는 성공이다.
@@ -164,6 +172,12 @@ export interface ExecuteHandler<P = unknown> {
    * 자원이 이미 없으면 성공(`missing: true`)이다. `now`는 공개 여부를 가르는 기준 시각이다.
    */
   cancel(service: ExecuteServiceClient, resourceId: string, context: { now: Date }): Promise<CancelResult>
+  /**
+   * 예약된 자원의 문안 열만 공개 전에 고친다(티켓 20261103_1446, §7.3·§8.7). `fields`는 열 이름 → 새 값(비울 수 있는 열은 `null`)이고 받는 열은 `SCHEDULED_COPY_KEYS`(`edit.ts`)와 같다.
+   * 자원을 읽어 공개 시각이 지났으면 건드리지 않고(`published`), 쓸 때도 `starts_at > now` 조건을 건다. 0행이면 다시 읽어 공개됐는지 없어졌는지 가른다.
+   * **선택 메서드다**: 없는 종류는 예약됨 문안 수정이 없다. 던지지 않고 `UpdateCopyResult`로 돌려준다.
+   */
+  updateCopy?(service: ExecuteServiceClient, resourceId: string, fields: Readonly<Record<string, string | null>>, context: { now: Date }): Promise<UpdateCopyResult>
   /**
    * 게재 중인 자원을 지금 끝낸다(티켓 20261006_0950 ⑪-a, §8.7). 자원을 다시 읽어 종료 시각이 이미 지났으면 건드리지 않고(`alreadyEnded`), 없으면 `missing`, 아직 공개 전이면 `not_published`이며,
    * 그 밖에는 종료 시각 칸을 `now`로 바꾼다. 쓸 때 읽은 값을 조건으로 걸어 읽은 뒤 바뀐 자원은 `changed`다(`endColumn.ts`). **선택 메서드다**: 없는 종류(드랍 예약)는 지금 종료가 없다.

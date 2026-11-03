@@ -27,11 +27,16 @@ import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
  * 「고칠 수 없어요」 툴팁을 단다(패턴 제안 항목은 제안 패턴 이름 줄이 더해진다, 티켓 20261007_1746). 고친 칸에는 「수정됨」 칩, 아래 「바뀌는 내용」에 바뀐 칸만 「문안 · body: 전 → 후」로 보인다.
  * 바뀐 게 없으면 [저장하기]가 비활성이다. 저장은 확인창 없이 바로이고, 400은 칸 아래 인라인이다.
  *
+ * 예약됨 카드·미션의 [문안 고치기](티켓 20261103_1446)는 같은 양식을 «문안만» 모드로 연다: 문안 칸과 바뀌는 내용·이유·저장만 보이고 나머지(유저가 겪는 것·색·시각·대상·읽기 전용 목록)는 그리지 않는다.
+ * 저장하면 항목의 수정본과 예약된 카드·미션의 같은 문안이 함께 바뀐다. 카드는 이미지 속 글자가 여기서 바뀌지 않는다는 한 줄을 알린다.
+ *
  * 편집 값은 셸의 `draft`에 둔다(티켓 20260930_1501이 미리보기에 물릴 수 있다). 이 양식은 초안이 이 항목의 것일 때만 그려진다.
  * 초안을 연 뒤 다른 곳에서 이 항목이 바뀌었으면(수정 시각이 달라졌으면) 저장을 막고 다시 열도록 안내한다.
  */
 
 export const OPS_CANNOT_EDIT_HINT = '고칠 수 없어요'
+export const OPS_SCHEDULED_COPY_HINT = '공개 시각 전까지 문안만 고칠 수 있어요.'
+export const OPS_SCHEDULED_IMAGE_TEXT_NOTICE = '카드 이미지 속 글자는 여기서 바뀌지 않아요'
 export const OPS_EDIT_STALE_MESSAGE = '수정하는 사이 다른 곳에서 이 항목이 바뀌었어요. 취소하고 다시 수정해 주세요.'
 
 function ChangedChip() {
@@ -142,6 +147,7 @@ export function OpsItemEditForm({ bundleId, item, ctx, onSaved, onConflict }: Op
 
   if (!draft || draft.itemId !== item.id) return null
 
+  const scheduledMode = item.status === 'scheduled'
   const values = draft.values
   const paths = Object.keys(values)
   const copyPaths = paths.filter((path) => path.startsWith('copy.'))
@@ -194,6 +200,11 @@ export function OpsItemEditForm({ bundleId, item, ctx, onSaved, onConflict }: Op
   return (
     <section aria-label="직접 수정" className="space-y-4">
       <h4 className="text-xs font-semibold text-muted-foreground">직접 수정</h4>
+      {scheduledMode && (
+        <p className="break-keep text-sm text-muted-foreground wrap-break-word">
+          {OPS_SCHEDULED_COPY_HINT} 저장하면 예약된 {item.kind === 'mission' ? '미션' : '카드'}에도 바로 반영돼요.
+        </p>
+      )}
 
       {stale && (
         <Alert variant="warning">
@@ -203,15 +214,17 @@ export function OpsItemEditForm({ bundleId, item, ctx, onSaved, onConflict }: Op
       )}
 
       {/* ⑤ 유저가 겪는 것 */}
-      <Field label={editPathLabel('user_experience')} htmlFor={idOf('user_experience')} changed={changed.has('user_experience')} error={errorOf('user_experience')}>
-        <Textarea
-          id={idOf('user_experience')}
-          value={valueOf('user_experience')}
-          onChange={(e) => setValue('user_experience', e.target.value)}
-          rows={3}
-          disabled={pending}
-        />
-      </Field>
+      {!scheduledMode && (
+        <Field label={editPathLabel('user_experience')} htmlFor={idOf('user_experience')} changed={changed.has('user_experience')} error={errorOf('user_experience')}>
+          <Textarea
+            id={idOf('user_experience')}
+            value={valueOf('user_experience')}
+            onChange={(e) => setValue('user_experience', e.target.value)}
+            rows={3}
+            disabled={pending}
+          />
+        </Field>
+      )}
 
       {/* ① 문안 */}
       {copyPaths.length > 0 && (
@@ -228,6 +241,9 @@ export function OpsItemEditForm({ bundleId, item, ctx, onSaved, onConflict }: Op
             </Field>
           ))}
         </fieldset>
+      )}
+      {scheduledMode && item.kind === 'home_feed_card' && (
+        <p className="break-keep text-xs text-muted-foreground wrap-break-word">{OPS_SCHEDULED_IMAGE_TEXT_NOTICE}</p>
       )}
 
       {/* ② 색 */}
@@ -259,20 +275,22 @@ export function OpsItemEditForm({ bundleId, item, ctx, onSaved, onConflict }: Op
       )}
 
       {/* ③ 시각 */}
-      <div className="grid grid-cols-1 gap-3 @[60rem]/center:grid-cols-2">
-        {(['starts_at', 'ends_at'] as const).map((path) => (
-          <Field key={path} label={editPathLabel(path)} htmlFor={idOf(path)} changed={changed.has(path)} error={errorOf(path)}>
-            <Input
-              id={idOf(path)}
-              type="datetime-local"
-              value={valueOf(path) ? toKstLocalInputValue(valueOf(path)) : ''}
-              onChange={(e) => setValue(path, kstLocalInputToIso(e.target.value))}
-              disabled={pending}
-              className="tabular-nums"
-            />
-          </Field>
-        ))}
-      </div>
+      {!scheduledMode && (
+        <div className="grid grid-cols-1 gap-3 @[60rem]/center:grid-cols-2">
+          {(['starts_at', 'ends_at'] as const).map((path) => (
+            <Field key={path} label={editPathLabel(path)} htmlFor={idOf(path)} changed={changed.has(path)} error={errorOf(path)}>
+              <Input
+                id={idOf(path)}
+                type="datetime-local"
+                value={valueOf(path) ? toKstLocalInputValue(valueOf(path)) : ''}
+                onChange={(e) => setValue(path, kstLocalInputToIso(e.target.value))}
+                disabled={pending}
+                className="tabular-nums"
+              />
+            </Field>
+          ))}
+        </div>
+      )}
 
       {/* ④ 대상 */}
       {segmentEditable && (
@@ -281,7 +299,7 @@ export function OpsItemEditForm({ bundleId, item, ctx, onSaved, onConflict }: Op
         </Field>
       )}
 
-      <ReadOnlyList rows={readOnlyRows(item, segmentEditable)} />
+      {!scheduledMode && <ReadOnlyList rows={readOnlyRows(item, segmentEditable)} />}
 
       {/* 바뀌는 내용 */}
       <div className="space-y-1.5" aria-live="polite">

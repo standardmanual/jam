@@ -64,6 +64,32 @@ export function isEditablePath(path: string): boolean {
   return (EDIT_SCALAR_PATHS as readonly string[]).includes(path) || splitEditPath(path) !== null
 }
 
+/**
+ * 예약됨 항목에서 고칠 수 있는 문안 칸 (티켓 20261103_1446). 예약 등록으로 만든 자원 행(`today_cards`·`missions`)의 같은 열과 일대일이다.
+ * 이 목록에 없는 종류·칸(시각·색·대상·「유저가 겪는 것」·이 목록 밖의 문안)은 예약된 뒤에 고치지 않는다.
+ */
+export const SCHEDULED_COPY_KEYS: Readonly<Record<string, readonly string[]>> = {
+  home_feed_card: ['title', 'subtitle', 'description'],
+  mission: ['title', 'description', 'condition_text'],
+}
+
+/** 이 종류가 예약됨에서 문안 수정을 여는 종류인지. */
+export function hasScheduledCopyEdit(kind: string | null | undefined): boolean {
+  return typeof kind === 'string' && Object.prototype.hasOwnProperty.call(SCHEDULED_COPY_KEYS, kind)
+}
+
+/** 예약됨 항목에서 고칠 수 있는 경로인지: `copy.<키>`이고 그 종류의 문안 칸 목록에 있을 때만 참이다. */
+export function isScheduledEditablePath(kind: string | null | undefined, path: string): boolean {
+  if (!hasScheduledCopyEdit(kind)) return false
+  const parts = splitEditPath(path)
+  return parts !== null && parts.root === 'copy' && SCHEDULED_COPY_KEYS[kind as string].includes(parts.key)
+}
+
+/** 이 항목에 [문안 고치기]를 여는지: 상태가 예약됨이고 종류가 홈피드 카드·미션일 때다. */
+export function canEditScheduledCopy(item: { status: string; kind: string | null | undefined }): boolean {
+  return item.status === 'scheduled' && hasScheduledCopyEdit(item.kind)
+}
+
 function timeValueOf(raw: unknown): string {
   return isIsoDateTime(raw) ? new Date(raw).toISOString() : ''
 }
@@ -90,6 +116,15 @@ export function readEditableValues(item: ViewableItem): Record<string, string> {
     for (const [key, value] of Object.entries(record)) {
       if (typeof value === 'string') values[`${root}.${key}`] = value
     }
+  }
+  return values
+}
+
+/** 예약됨 문안 수정 양식의 처음 값: `readEditableValues` 가운데 그 종류의 문안 칸(`SCHEDULED_COPY_KEYS`)만이다. */
+export function readScheduledEditableValues(item: ViewableItem & { kind: string | null | undefined }): Record<string, string> {
+  const values: Record<string, string> = {}
+  for (const [path, value] of Object.entries(readEditableValues(item))) {
+    if (isScheduledEditablePath(item.kind, path)) values[path] = value
   }
   return values
 }

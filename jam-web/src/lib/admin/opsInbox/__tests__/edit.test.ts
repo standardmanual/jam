@@ -4,19 +4,23 @@
  * - 고칠 수 없는 경로 거절, 바뀐 칸만 차이로 계산
  * - 앞뒤 적용: 최상위 키 덮어쓰기, 값이 원본과 같아지면 키 제거, 제출 원본은 그대로
  * - 되돌림 스택: 수정 2번 → 되돌림 → 되돌림
+ * - 예약됨 문안 수정(티켓 20261103_1446): 허용 경로 판정, 양식의 처음 값, 열리는 항목 판정
  */
 import { describe, it, expect } from 'vitest'
 import type { Json } from '@/types/database.generated'
 import {
   OpsEditError,
   applyDiff,
+  canEditScheduledCopy,
   computeEditDiff,
   computeRevertDiff,
   findRevertTarget,
   isEditablePath,
+  isScheduledEditablePath,
   mergeItemForValidation,
   readDiff,
   readEditableValues,
+  readScheduledEditableValues,
   replaceItemFormatErrors,
   splitEditPath,
   type OpsEditDiffEntry,
@@ -305,5 +309,44 @@ describe('readDiff', () => {
     ])
     expect(readDiff(null)).toEqual([])
     expect(readDiff({ path: 'x' })).toEqual([])
+  })
+})
+
+describe('예약됨 문안 수정 (티켓 20261103_1446)', () => {
+  it('카드는 제목·부제·설명, 미션은 제목·설명·달성 조건 문장의 copy 경로만 고칠 수 있다', () => {
+    for (const path of ['copy.title', 'copy.subtitle', 'copy.description']) expect(isScheduledEditablePath('home_feed_card', path)).toBe(true)
+    for (const path of ['copy.title', 'copy.description', 'copy.condition_text']) expect(isScheduledEditablePath('mission', path)).toBe(true)
+    // 종류별 목록 밖의 문안
+    expect(isScheduledEditablePath('home_feed_card', 'copy.condition_text')).toBe(false)
+    expect(isScheduledEditablePath('home_feed_card', 'copy.body_markdown')).toBe(false)
+    expect(isScheduledEditablePath('mission', 'copy.subtitle')).toBe(false)
+  })
+
+  it('문안 밖의 경로와 문안을 열지 않는 종류는 거절한다', () => {
+    for (const path of ['starts_at', 'ends_at', 'segment', 'user_experience', 'colors.background', 'copy.', 'copy']) {
+      expect(isScheduledEditablePath('home_feed_card', path), path).toBe(false)
+    }
+    expect(isScheduledEditablePath('jam_badge', 'copy.title')).toBe(false)
+    expect(isScheduledEditablePath(null, 'copy.title')).toBe(false)
+  })
+
+  it('[문안 고치기]는 예약됨 카드·미션에만 열린다', () => {
+    expect(canEditScheduledCopy({ status: 'scheduled', kind: 'home_feed_card' })).toBe(true)
+    expect(canEditScheduledCopy({ status: 'scheduled', kind: 'mission' })).toBe(true)
+    expect(canEditScheduledCopy({ status: 'scheduled', kind: 'recipe' })).toBe(false)
+    for (const status of ['reviewing', 'approved', 'live', 'ended', 'cancelled', 'failed', 'rejected']) {
+      expect(canEditScheduledCopy({ status, kind: 'home_feed_card' }), status).toBe(false)
+    }
+  })
+
+  it('양식의 처음 값은 수정본이 있으면 수정본 기준의 허용된 문안 칸뿐이다', () => {
+    const original: Json = {
+      user_experience: '비 오는 월요일',
+      starts_at: '2026-10-05T09:00:00+09:00',
+      colors: { background: '#1a2b3c' },
+      copy: { title: '원래 제목', subtitle: '부제', body_markdown: '본문' },
+    }
+    const edited: Json = { copy: { title: '고친 제목', subtitle: '부제', body_markdown: '본문' } }
+    expect(readScheduledEditableValues({ kind: 'home_feed_card', original, edited })).toEqual({ 'copy.title': '고친 제목', 'copy.subtitle': '부제' })
   })
 })
