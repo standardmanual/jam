@@ -500,7 +500,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
      `mismatch_cycling_min_speed_kmh`(기본 10km/h)보다 느리면 `jamActivityType`을 걷기(`walking`)로 바꿔 계산한다. 트레일러닝·등산·걷기는
      판정하지 않는다. 평균 속도는 1에서 구간을 뺀 뒤의 값이다. 바꾼 사실과 원래 종목은 `source_meta.typeMismatchFrom`(`running`·`cycling`)에
      남긴다. 걷기 «강도»(가벼움)를 잼에 반영하는 일은 이 단계에 없다(JAM 2.0 잼 강도 티켓). 기준값 두 칸은 `abusing_policy`에 있고 밸런스 설정의 «어뷰징» 구역에서 바꾼다.
-  3. **차량 속도**: 평균 속도가 `vehicle_speed_filter_kmh`를 넘으면 걸러진다(`vehicle_speed`).
+  3. **차량 판정**(`lib/abusing/vehicleFilter.ts`의 `judgeVehicleActivity`, 티켓 20261103_1115): 세 규칙 중 하나라도 걸리면 `vehicle_speed`로 걸러진다. 순서는 ① 평균 속도가 `vehicle_speed_filter_kmh`(60)를 넘는다 → ② 구간 감지가 뺀 거리가 원래 거리의 `transit_ratio_filter_pct`%(기본 50) 이상이다(다섯 종목, 거리 기준) → ③ 걷기·등산의 평균 속도가 `walk_avg_max_speed_kmh`(기본 16km/h)를 넘는다. 2에서 걷기로 바뀐 활동에도 ③이 걸린다. 지난 활동은 다시 판정하지 않는다.
 
   **걸러진 활동의 처리**: 버리지 않고 `strava_activities`에 `filter_reason`(NULL이면 인정)과 함께 저장한다 — 같은
   활동을 다음 동기화에서 다시 가져와 다시 거르는 낭비를 막고 `UNIQUE(user_id, strava_id)`를 그대로 쓰기 위해서다.
