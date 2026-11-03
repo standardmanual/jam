@@ -293,7 +293,9 @@ export default function Logo3DPanel({
             SVG 파일 올리기
           </Button>
           <p className="mt-1.5 text-[10px] text-[#7f8582] break-keep wrap-break-word">
-            {state.svgName ? `올린 파일: ${state.svgName}` : '채움이 있는 도형이 3D 로고가 돼요.'}
+            {state.svgName
+              ? `올린 파일: ${state.svgName}`
+              : '기본 로고(JAM!)를 보여 주고 있어요. SVG 파일을 올리면 바꿀 수 있어요.'}
           </p>
         </div>
       </section>

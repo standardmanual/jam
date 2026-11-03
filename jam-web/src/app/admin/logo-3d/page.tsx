@@ -17,6 +17,7 @@ import type { LogoOutline, Logo3DParams } from '@/lib/logo-3d/types'
 import Logo3DPanel from './Logo3DPanel'
 import Logo3DViewport, { type Logo3DViewportHandle } from './Logo3DViewport'
 import { DEFAULT_LOGO3D_STATE, logo3dFileName, type Logo3DState } from './logo3dConfig'
+import { DEFAULT_LOGO_SVG, DEFAULT_LOGO_SVG_LABEL } from './logo3dDefaultSvg'
 
 const TEXT_DEBOUNCE_MS = 300
 const MAX_SVG_BYTES = 5 * 1024 * 1024
@@ -120,7 +121,27 @@ export default function Logo3DPage() {
     }
   }, [source, fontFamily, fontWeight, debouncedText])
 
-  const current = source === 'svg' ? svgResult : fontResult
+  // SVG 모드에서 올린 파일이 없으면(svgText === '') 기본 JAM! 로고를 윤곽으로 바꿔 쓴다.
+  // 올린 파일이 있으면 만들지 않는다 — 기본 로고로 덮어쓰지 않는다. 처음 화면은 폰트 모드라 서버 렌더링 중에는
+  // 이 변환이 돌지 않고(DOMParser는 브라우저에만 있다), 가드로 한 번 더 막는다.
+  // 효과 안에서 setState로 채우면 react-hooks/set-state-in-effect 규칙에 걸려 렌더 중 파생값으로 둔다.
+  const { svgText } = state
+  const defaultSvgResult = useMemo(
+    () => (source === 'svg' && svgText === '' && typeof DOMParser !== 'undefined' ? svgToOutline(DEFAULT_LOGO_SVG) : null),
+    [source, svgText]
+  )
+
+  const current: InputResult =
+    source !== 'svg'
+      ? fontResult
+      : defaultSvgResult
+        ? {
+            outline: defaultSvgResult.error ? null : defaultSvgResult.outline,
+            warnings: defaultSvgResult.warnings,
+            // 올린 파일을 읽다 실패한 오류는 기본 로고 위에도 그대로 알린다.
+            error: svgResult.error ?? defaultSvgResult.error,
+          }
+        : svgResult
   const { outline, error } = current
 
   // 슬라이더를 끄는 동안은 이전 값으로 두었다가 한가해질 때 형상을 다시 만든다.
@@ -173,7 +194,8 @@ export default function Logo3DPage() {
     setSaving(true)
     try {
       const blob = await handle.exportPng(state.ratio)
-      const label = state.source === 'svg' ? state.svgName.replace(/\.svg$/i, '') : state.text
+      const label =
+        state.source === 'svg' ? (state.svgName ? state.svgName.replace(/\.svg$/i, '') : DEFAULT_LOGO_SVG_LABEL) : state.text
       downloadBlob(blob, logo3dFileName(label, state.ratio))
       toast('PNG를 저장했어요.')
     } catch (e) {
