@@ -19,6 +19,7 @@
  * 상수에 `as const`를 쓰지 않는다 — 스크립트 테스트가 상수에 타입 단언을 해서 읽기 전용 튜플이면 컴파일이 깨진다.
  */
 import { isTribeTag } from '@/lib/today/exposureTribe'
+import { collectCopyErrors } from './copyRules'
 import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
 import {
   SUGGESTED_LAYOUT_FOR,
@@ -188,6 +189,11 @@ export function validateCard(errors: string[], input: unknown): void {
     errors.push(`card.description: 공백 포함 ${TODAY_DESCRIPTION_MAX_LENGTH}자 이하여야 해요(받은 값: ${visibleLength(card.description.trim())}자).`)
   }
   checkOneLine(errors, 'card.region_label', card.region_label)
+  // 카피 규칙(티켓 20261103_1236) — 줄바꿈·제어 문자 오류가 이미 난 값은 건너뛴다.
+  for (const field of ['title', 'subtitle', 'description'] as const) {
+    const value = card[field]
+    if (isNonEmptyString(value) && !hasControlOrLineBreak(value)) errors.push(...collectCopyErrors('card.', field, value))
+  }
 
   // 노출 조건 태그 — 폼 collectMissing과 같이 1개 이상, 허용 목록 안의 값 또는 소속 트라이브 태그 형식(`tribe_<UUID>`, 티켓 20261026_2030 2회차).
   if (isPresent(card.exposure_tags)) {

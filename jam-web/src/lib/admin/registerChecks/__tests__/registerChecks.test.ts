@@ -767,11 +767,12 @@ describe('registerChecks 계약 — 서버에서 가져올 수 있어야 한다'
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts'))
   const NODE_BUILTINS = ['fs', 'path', 'os', 'child_process', 'crypto', 'url', 'util', 'stream', 'process']
 
-  it('모듈 열 개가 있다', () => {
+  it('모듈 열한 개가 있다', () => {
     expect(files.sort()).toEqual([
       'badge.ts',
       'bundleRules.ts',
       'collection.ts',
+      'copyRules.ts',
       'homeFeed.ts',
       'homeFeedFields.ts',
       'mission.ts',

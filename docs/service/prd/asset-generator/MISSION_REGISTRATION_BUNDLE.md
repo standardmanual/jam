@@ -104,8 +104,8 @@ docs/assets/mission-bundles/<묶음 ID>/
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
-| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 같은 제목의 미션과 기간이 겹치면 거절(DB 읽기) |
-| `description` | 필수 | 문자열 | 공백뿐이면 거절. 화면 문구는 [UX 라이팅 가이드](../../writing/UX_WRITING_GUIDELINE.md)를 따른다 |
+| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 같은 제목의 미션과 기간이 겹치면 거절(DB 읽기). 카피 규칙(`copyRules.ts`)에 걸리면 거절: 「~하세요」(「해 주세요」 제외)·「도장」·500m·「장소/POI/지점/방문 배지」·「발견」·「찾아서」·「이웃」을 쓰면 거절. 제목이 «조건을 요약한 말»(행동 이름+수량 「새 역 체크인 2곳」·「걷기 3번」, 이동 수단+거리 「걸어서 10km」, 고정 용어로 끝나는 「새 장소 체크인」)이면 거절(제목만, 부제·설명 제외, 티켓 20261103_1236) |
+| `description` | 필수 | 문자열 | 공백뿐이면 거절. 화면 문구는 [UX 라이팅 가이드](../../writing/UX_WRITING_GUIDELINE.md)를 따른다. 제목과 같은 카피 규칙에 더해 느낌표(`!`)와 문장 끝의 「획득」·「보상」도 거절한다(티켓 20261103_1236, 규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`) |
 | `mission_type` | 필수 | 문자열 | `distance`·`checkin`·`activity_count`·`item_collect`·`streak_days`·`duration_minutes`·`elevation_gain_m`·`engine_condition` 중 하나(DB CHECK와 어드민 폼과 같은 목록, `lib/admin/badge-labels.ts`의 `MISSION_TYPES`) |
 | `condition_json` | 필수 | 객체 | 어드민 저장 검증과 **같은 함수·같은 순서**로 판정한다: ① `checkMissionCondition`(모르는 키·평가 구현이 없는 키 거절, 오타 제안) → ② `checkMissionConditionValue`(유형별 필수 값이 비었거나 0 이하이면 거절 — 영구 미달성 방지). ①이 실패하면 ②는 하지 않는다. 판정에 영향이 없는 필드 고지(`warning`)는 등록을 막지 않고 dry-run의 «알아둘 점»에 보인다 |
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다 |
@@ -146,6 +146,7 @@ docs/assets/mission-bundles/<묶음 ID>/
 |---|---|
 | 필수 항목 누락 | `mission.title: 필수 항목이 없어요.` |
 | 작성자·제목·검수 사유에 줄바꿈·제어 문자 | `mission.title: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).` (`author`·`world_review.reason`도 같은 문장) |
+| 카피 규칙에 걸리는 문구 | `mission.title: 제목이 조건을 요약한 말처럼 읽혀요. 「지하철 역에서 만나는 행운」처럼 장면이나 기대가 보이게 써 주세요(UX 라이팅 가이드라인 §2.6).` · `mission.description: 설명에는 느낌표를 쓰지 않아요. …` · `mission.title: 권유 자리에 「~하세요」를 쓰지 않아요. …`(홈피드 카드와 같은 문장) |
 | 세계관 내용이 있는데 검수 안 함 | `world_review.winter_reviewed: 세계관과 닿는 미션(world_related=true)은 윈터 검수를 거쳐야 해서 true여야 해요.` |
 | 조건 키 오타 | `mission.condition_json: 조건 JSON을 저장하지 못했어요. 미션 조건에 없는 필드가 있어요 — distnace_km. …` (어드민과 같은 문장) |
 | 조건 값이 비었거나 0 이하 | `mission.condition_json: 조건 JSON을 저장하지 못했어요. 거리 값은 0보다 큰 숫자여야 하는데 …` |
