@@ -19,6 +19,8 @@ import type { LogoOutline, OutlinePolygon, Point, Ring } from './types';
 const PRECISION = 6;
 /** 둥근 연결의 호 근사 허용 오차(로고 높이 1 기준) */
 const ARC_TOLERANCE = 0.0003;
+/** 마주보는 벽을 평행으로 칠 기준(두 벽 법선의 내적). 뾰족한 꼭짓점을 틈으로 잘못 재지 않게 약 18도 이내만 평행으로 본다 */
+const PARALLEL = 0.95;
 /** 두께·틈 측정 때 변을 쪼개는 간격 */
 const SAMPLE_STEP = 0.02;
 
@@ -210,7 +212,7 @@ function minWallDistance(polygon: OutlinePolygon, side: 1 | -1): number {
         const f = edges[fi];
         // 마주보는 벽: 법선이 광선을 정면으로 마주 본다(틈) / 광선과 같은 방향이다(두께).
         const facing = f.nx * dirX + f.ny * dirY;
-        if (side === 1 ? facing < -0.7 : facing > 0.7) {
+        if (side === 1 ? facing < -PARALLEL : facing > PARALLEL) {
           const sx = f.bx - f.ax;
           const sy = f.by - f.ay;
           const denom = dirX * sy - dirY * sx;
@@ -345,6 +347,30 @@ export function cleanOutline(outline: LogoOutline, options: CleanRingOptions = D
     result.push({ outer, holes: polygon.holes.map((h) => cleanRing(h, options)).filter((h) => h.length > 0) });
   }
   return result;
+}
+
+/** 긴 변을 maxSegment 이하로 나눈다(변 위에 점을 더할 뿐 모양은 그대로). 삼각분할이 가늘고 긴 삼각형을 만들지 않게 점 간격을 고르게 한다. */
+export function resampleRing(ring: Ring, maxSegment: number): Ring {
+  const result: Point[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    result.push(a);
+    const pieces = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / maxSegment);
+    for (let k = 1; k < pieces; k++) {
+      const t = k / pieces;
+      result.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+  }
+  return result;
+}
+
+/** 윤곽의 모든 고리에 resampleRing을 적용한다. */
+export function resampleOutline(outline: LogoOutline, maxSegment: number): LogoOutline {
+  return outline.map((polygon) => ({
+    outer: resampleRing(polygon.outer, maxSegment),
+    holes: polygon.holes.map((hole) => resampleRing(hole, maxSegment))
+  }));
 }
 
 // ---------- 불리언 ----------

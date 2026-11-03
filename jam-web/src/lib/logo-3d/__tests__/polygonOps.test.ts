@@ -6,6 +6,7 @@ import {
   normalizeOutline,
   offsetOutline,
   outlineArea,
+  resampleRing,
   ringArea,
   roundCorners
 } from '../polygonOps';
@@ -176,5 +177,19 @@ describe('cleanRing', () => {
         [2, 0]
       ])
     ).toEqual([]);
+  });
+});
+
+describe('resampleRing', () => {
+  it('긴 변을 나누되 모양(넓이)은 그대로다', () => {
+    const square: Ring = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1]
+    ];
+    const out = resampleRing(square, 0.25);
+    expect(out).toHaveLength(16);
+    expect(ringArea(out)).toBeCloseTo(1, 12);
   });
 });
