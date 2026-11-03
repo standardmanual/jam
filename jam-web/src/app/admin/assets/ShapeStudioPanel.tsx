@@ -44,8 +44,19 @@ import LayerSidebar from '@/app/admin/asset-generator/LayerSidebar'
 import PresetPanel from '@/app/admin/asset-generator/PresetPanel'
 import TextLayerFields from '@/app/admin/asset-generator/TextLayerFields'
 import {
+  Logo3DColorSection,
+  Logo3DInputSection,
+  Logo3DNotices,
+  Logo3DThicknessSection,
+  Logo3DViewSection,
+} from './logo3d/Logo3DSections'
+import type { Logo3DSceneState } from './logo3d/logo3dConfig'
+import type { Logo3DParams } from '@/lib/logo-3d/types'
+import {
   COLOR_LABELS,
   drawPresetThumb,
+  ENGINE_MODE_OPTIONS,
+  engineModeSupports,
   GRADIENT_PRESETS,
   RAND_GLYPH_OPTS,
   RAND_SEG_OPTS,
@@ -61,9 +72,22 @@ import {
   type StudioEngineMode,
 } from './shapeStudioConfig'
 
+/** 3D 모드 전용 섹션이 쓰는 값과 핸들러(티켓 20261103_1734). 상태는 에셋 페이지가 들고 있는다. */
+export interface Logo3DPanelBinding {
+  state: Logo3DSceneState
+  error: string | null
+  warnings: string[]
+  loading: boolean
+  onChange: (patch: Partial<Logo3DSceneState>) => void
+  onParamChange: (key: keyof Logo3DParams, value: number) => void
+  onSvgFile: (file: File) => void
+  onResetZoom: () => void
+}
+
 interface ShapeStudioPanelProps {
   viewportRef: React.RefObject<AssetGeneratorViewportHandle | null>
   engineMode: StudioEngineMode
+  logo3d: Logo3DPanelBinding
   onChangeEngineMode: (mode: StudioEngineMode) => void
   state: ShapeStudioState
   presets: AnyShapePreset[]
@@ -243,6 +267,7 @@ export default function ShapeStudioPanel({
   viewportRef,
   engineMode,
   onChangeEngineMode,
+  logo3d,
   state,
   presets,
   glyphsMap,
@@ -297,18 +322,107 @@ export default function ShapeStudioPanel({
   const colorStartedRef = useRef<Record<string, boolean>>({})
 
   const effectiveRibbonStartColor = computeEffectiveStartColor(ribbonLayer)
+  const supports = engineModeSupports(engineMode)
+
+  // Background 섹션은 Shape와 3D 모드가 같은 값(bgMode·bgA·bgB·bgAngle·grain)으로 함께 쓴다.
+  const backgroundSection = (
+    <section className="border-t border-[#e0e4df] px-5 py-4">
+      <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold">
+        <span>Background</span>
+        <span className="text-[10px] font-normal text-[#7f8582] break-keep wrap-break-word">
+          배경 &amp; 질감
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2.5 text-[11px]">
+        <span className="whitespace-nowrap">배경 방식</span>
+        <Select
+          value={state.bgMode}
+          onValueChange={(v) => onChangeBgMode(v as BackgroundMode)}
+        >
+          <SelectTrigger aria-label="배경 방식" className="h-8 w-[140px] text-[11px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="gradient">Gradient</SelectItem>
+            <SelectItem value="solid">Solid</SelectItem>
+            <SelectItem value="transparent">Transparent</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+        {(
+          [
+            ['bgA', '배경 A'],
+            ['bgB', '배경 B'],
+          ] as const
+        ).map(([key, label]) => (
+          <label
+            key={key}
+            className="flex flex-col items-center gap-1 text-center text-[9px] text-[#7f8582]"
+          >
+            <Input
+              type="color"
+              aria-label={label}
+              value={state[key]}
+              onPointerDown={() => {
+                colorStartedRef.current[key] = false
+              }}
+              onChange={(e) => {
+                const commit = !colorStartedRef.current[key]
+                colorStartedRef.current[key] = true
+                onUpdateBgColor(key, e.target.value, commit)
+              }}
+              onBlur={() => {
+                colorStartedRef.current[key] = false
+              }}
+              className="h-[26px] w-full cursor-pointer rounded-[5px] border border-black/10 bg-transparent p-0"
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <RangeSliderRow
+          id="bgAngle"
+          label="배경 각도"
+          value={state.bgAngle}
+          min={-180}
+          max={180}
+          unit="°"
+          onChange={(v, commit) => onUpdateNumberParam('bgAngle', v, commit)}
+        />
+        <RangeSliderRow
+          id="grain"
+          label="그레인"
+          value={state.grain}
+          min={0}
+          max={20}
+          unit="%"
+          onChange={(v, commit) => onUpdateNumberParam('grain', v, commit)}
+        />
+      </div>
+    </section>
+  )
+
 
   return (
     <aside className="w-full overflow-y-auto border-t border-[#e0e4df] bg-[#f8f9f6] text-[#1e2322] lg:w-[352px] lg:shrink-0 lg:border-t-0 lg:border-l">
       <div className="flex items-center justify-between px-5 pt-[18px] pb-3">
         <h2 className="m-0 text-[15px] font-semibold tracking-[-0.3px] whitespace-nowrap">
-          {engineMode === 'shape' ? 'Shape Generator' : 'Ribbon Generator'}
+          {engineMode === 'shape' ? 'Shape Generator' : engineMode === 'ribbon' ? 'Ribbon Generator' : '3D Logo Generator'}
         </h2>
         <Badge
           variant="outline"
           className="border-[#dae1d2] px-1.5 py-0.5 text-[9px] font-normal text-[#87947a] whitespace-nowrap"
         >
-          {engineMode === 'shape' ? 'Segments + Metaball' : '2D Curve + Stamp'}
+          {engineMode === 'shape'
+            ? 'Segments + Metaball'
+            : engineMode === 'ribbon'
+              ? '2D Curve + Stamp'
+              : 'Extrude + Bevel'}
         </Badge>
       </div>
 
@@ -341,9 +455,15 @@ export default function ShapeStudioPanel({
 
       {screenTab === 'apply' ? (
         <section className="border-t border-[#e0e4df] px-5 py-4">
-          <fieldset disabled={exportBusy} className="contents">
-            <ApplyTab viewportRef={viewportRef} />
-          </fieldset>
+          {supports.applyToContent ? (
+            <fieldset disabled={exportBusy} className="contents">
+              <ApplyTab viewportRef={viewportRef} />
+            </fieldset>
+          ) : (
+            <p className="text-[11px] leading-[1.6] text-[#6f766c] break-keep wrap-break-word text-balance">
+              3D 모드에서는 아직 콘텐츠에 적용할 수 없어요. Shape나 Ribbon 모드에서 적용해 주세요.
+            </p>
+          )}
         </section>
       ) : (
         <fieldset disabled={exportBusy} className="contents">
@@ -354,12 +474,7 @@ export default function ShapeStudioPanel({
               <span className="text-[10px] font-normal text-[#7f8582]">생성 엔진</span>
             </div>
             <div className="flex gap-0.5 rounded-full bg-[#e5e8e1] p-1">
-              {(
-                [
-                  ['shape', 'Shape (WebGL)'],
-                  ['ribbon', 'Ribbon (2D 곡선)'],
-                ] as const
-              ).map(([modeKey, label]) => (
+              {ENGINE_MODE_OPTIONS.map(([modeKey, label]) => (
                 <Button
                   key={modeKey}
                   type="button"
@@ -843,88 +958,9 @@ export default function ShapeStudioPanel({
                 </div>
               </section>
 
-              {/* Shape 7. Background */}
-              <section className="border-t border-[#e0e4df] px-5 py-4">
-                <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold">
-                  <span>Background</span>
-                  <span className="text-[10px] font-normal text-[#7f8582] break-keep wrap-break-word">
-                    배경 &amp; 질감
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-2.5 text-[11px]">
-                  <span className="whitespace-nowrap">배경 방식</span>
-                  <Select
-                    value={state.bgMode}
-                    onValueChange={(v) => onChangeBgMode(v as BackgroundMode)}
-                  >
-                    <SelectTrigger aria-label="배경 방식" className="h-8 w-[140px] text-[11px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gradient">Gradient</SelectItem>
-                      <SelectItem value="solid">Solid</SelectItem>
-                      <SelectItem value="transparent">Transparent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-                  {(
-                    [
-                      ['bgA', '배경 A'],
-                      ['bgB', '배경 B'],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <label
-                      key={key}
-                      className="flex flex-col items-center gap-1 text-center text-[9px] text-[#7f8582]"
-                    >
-                      <Input
-                        type="color"
-                        aria-label={label}
-                        value={state[key]}
-                        onPointerDown={() => {
-                          colorStartedRef.current[key] = false
-                        }}
-                        onChange={(e) => {
-                          const commit = !colorStartedRef.current[key]
-                          colorStartedRef.current[key] = true
-                          onUpdateBgColor(key, e.target.value, commit)
-                        }}
-                        onBlur={() => {
-                          colorStartedRef.current[key] = false
-                        }}
-                        className="h-[26px] w-full cursor-pointer rounded-[5px] border border-black/10 bg-transparent p-0"
-                      />
-                      <span>{label}</span>
-                    </label>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <RangeSliderRow
-                    id="bgAngle"
-                    label="배경 각도"
-                    value={state.bgAngle}
-                    min={-180}
-                    max={180}
-                    unit="°"
-                    onChange={(v, commit) => onUpdateNumberParam('bgAngle', v, commit)}
-                  />
-                  <RangeSliderRow
-                    id="grain"
-                    label="그레인"
-                    value={state.grain}
-                    min={0}
-                    max={20}
-                    unit="%"
-                    onChange={(v, commit) => onUpdateNumberParam('grain', v, commit)}
-                  />
-                </div>
-              </section>
+              {backgroundSection}
             </>
-          ) : (
+          ) : engineMode === 'ribbon' ? (
             <>
               {/* Ribbon 1. Random */}
               <section className="border-t border-[#e0e4df] px-5 py-4">
@@ -1214,6 +1250,29 @@ export default function ShapeStudioPanel({
                 </label>
               </section>
             </>
+          ) : (
+            <>
+              {/* 3D 1~4. Input · Thickness · Color · View (Canvas 다음, Background 앞) */}
+              <Logo3DNotices
+                error={logo3d.error}
+                warnings={logo3d.warnings}
+                loading={logo3d.loading}
+              />
+              <Logo3DInputSection
+                state={logo3d.state}
+                onChange={logo3d.onChange}
+                onSvgFile={logo3d.onSvgFile}
+              />
+              <Logo3DThicknessSection state={logo3d.state} onParamChange={logo3d.onParamChange} />
+              <Logo3DColorSection state={logo3d.state} onChange={logo3d.onChange} />
+              <Logo3DViewSection
+                state={logo3d.state}
+                onChange={logo3d.onChange}
+                onResetZoom={logo3d.onResetZoom}
+              />
+              {/* 3D 5. Background — Shape와 같은 값 */}
+              {backgroundSection}
+            </>
           )}
 
           {/* 공통 Overlay Layers (이미지 · 텍스트 레이어) */}
@@ -1225,6 +1284,11 @@ export default function ShapeStudioPanel({
               </span>
             </div>
             <div className="flex flex-col gap-3">
+              {!supports.pngExport && (
+                <p className="text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
+                  3D 모드의 미리보기에는 레이어가 아직 합성되지 않아요.
+                </p>
+              )}
               <LayerSidebar
                 layers={overlayLayers}
                 selectedId={selectedOverlayLayerId}
@@ -1290,7 +1354,7 @@ export default function ShapeStudioPanel({
               </Select>
               <Button
                 type="button"
-                disabled={exportBusy}
+                disabled={exportBusy || !supports.pngExport}
                 onClick={onExportPng}
                 className="h-9 flex-1 bg-[#1e2322] text-xs text-white hover:bg-[#40483f] whitespace-nowrap"
               >
@@ -1311,7 +1375,7 @@ export default function ShapeStudioPanel({
               </Select>
               <Button
                 type="button"
-                disabled={exportBusy}
+                disabled={exportBusy || !supports.videoExport}
                 onClick={onExportVideo}
                 className="h-9 flex-1 bg-[#1e2322] text-xs text-white hover:bg-[#40483f] whitespace-nowrap"
               >
@@ -1331,7 +1395,9 @@ export default function ShapeStudioPanel({
             )}
 
             <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
-              동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.
+              {supports.pngExport
+                ? '동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'
+                : '3D 모드의 PNG·동영상 저장은 아직 쓸 수 없어요. 준비되면 이 자리에서 저장할 수 있어요.'}
             </p>
           </section>
         </fieldset>

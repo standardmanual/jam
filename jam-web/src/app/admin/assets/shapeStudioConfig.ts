@@ -57,7 +57,28 @@ export type GradientPreset = {
 
 export type CanvasRatio = '1:1' | '4:5' | '9:16' | '16:9'
 export type BackgroundMode = 'gradient' | 'solid' | 'transparent'
-export type StudioEngineMode = 'shape' | 'ribbon'
+export type StudioEngineMode = 'shape' | 'ribbon' | '3d'
+
+/** Mode 버튼 목록(순서 그대로 화면에 나온다). 티켓 20261103_1734에서 「3D」를 더했다. */
+export const ENGINE_MODE_OPTIONS: readonly (readonly [StudioEngineMode, string])[] = [
+  ['shape', 'Shape (WebGL)'],
+  ['ribbon', 'Ribbon (2D 곡선)'],
+  ['3d', '3D (입체 로고)'],
+]
+
+/**
+ * 모드별로 쓸 수 있는 기능. 3D는 Overlay Layers 합성·PNG 저장·콘텐츠 적용(티켓 20261103_1735)과
+ * 동영상 저장(티켓 20261103_1737)이 아직 연결되지 않아 막아 둔다.
+ */
+export function engineModeSupports(mode: StudioEngineMode): {
+  randomize: boolean
+  pngExport: boolean
+  videoExport: boolean
+  applyToContent: boolean
+} {
+  const is3d = mode === '3d'
+  return { randomize: !is3d, pngExport: !is3d, videoExport: !is3d, applyToContent: !is3d }
+}
 
 export type ShapeStudioState = {
   version: 2

@@ -27,7 +27,8 @@ code:
 | 형상 엔진 | `jam-web/src/lib/logo-3d/buildGeometry.ts` | 윤곽 → 틀·타일·바닥판 (티켓 20261103_1350) |
 | 입력 변환 | `jam-web/src/lib/logo-3d/fontOutline.ts`, `svgOutline.ts` | 폰트·SVG → 윤곽 (티켓 20261103_1351) |
 | 폰트 중계 | `GET /api/admin/logo-3d/font?family&weight` | 구글 폰트 TTF를 서버가 받아 흘려보냄 (어드민 로그인 필수) |
-| 화면 | `jam-web/src/app/admin/logo-3d/` | 페이지·설정 패널·뷰포트·설정 파일 (티켓 20261103_1352) |
+| 화면 | `jam-web/src/app/admin/logo-3d/` | 페이지·설정 패널 (티켓 20261103_1352) |
+| 3D 공용 코드 | `jam-web/src/app/admin/assets/logo3d/` | 뷰포트·설정 파일·설정 섹션·폰트/SVG 윤곽 훅. 에셋 화면의 「3D」 모드(Mode 세 번째)와 이 별도 화면이 같이 쓴다 (티켓 20261103_1734, 통합 정리는 20261103_1738) |
 
 메뉴는 어드민 사이드바 「디자인」 그룹의 「에셋」 바로 아래 「3D 로고」다. 로그인·권한은 기존 어드민 레이아웃이 확인한다.
 
@@ -37,7 +38,7 @@ code:
 ### 3.1 입력
 - 폰트 글자: 폰트 검색 드롭다운(정적 카탈로그 `googleFontsCatalog.json`), 굵기 100~900, 글자열(최대 24자). 글자열은 300ms 멈춘 뒤 반영한다.
 - SVG 파일: 업로드한 SVG 문자열을 브라우저 `DOMParser`로 읽는다(5MB 이하). 스크립트·외부 이미지 요소는 읽기 전에 지운다.
-- SVG 파일 모드를 고르고 올린 파일이 없으면 기본으로 JAM! 로고(`design-system/assets/logo/jam-logo.svg`와 같은 내용의 번들 상수 `logo3dDefaultSvg.ts`)를 3D로 보여 준다. SVG를 올리면 올린 파일로 바뀌고, 폰트 모드를 거쳐 돌아와도 올린 파일이 유지된다. 기본 로고의 PNG 파일명은 `logo-3d-jam-logo-{비율}.png`다(티켓 20261103_1712).
+- SVG 파일 모드를 고르고 올린 파일이 없으면 기본으로 JAM! 로고(`design-system/assets/logo/jam-logo.svg`와 같은 내용의 번들 상수 `assets/logo3d/logo3dDefaultSvg.ts`)를 3D로 보여 준다. SVG를 올리면 올린 파일로 바뀌고, 폰트 모드를 거쳐 돌아와도 올린 파일이 유지된다. 기본 로고의 PNG 파일명은 `logo-3d-jam-logo-{비율}.png`다(티켓 20261103_1712).
 - 둘 중 하나만 활성이다. 폰트·글자열을 건드리면 폰트로, SVG를 올리면 SVG로 전환된다.
 - 불러오는 동안 미리보기에 「불러오는 중이에요...」를 보이고, 실패하면 패널 위쪽 오류 영역에 `[현상] → [원인] → [해결책]` 문장을 보이며 **이전에 만든 3D 로고를 그대로 유지**한다.
 

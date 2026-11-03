@@ -35,11 +35,21 @@ import {
   removeImageLayer,
   resolveStageSize,
 } from '@/app/admin/asset-generator/assetGeneratorHelpers'
+import type { Logo3DParams } from '@/lib/logo-3d/types'
+import Logo3DViewport from './logo3d/Logo3DViewport'
+import {
+  applyLogo3DPatch,
+  DEFAULT_LOGO3D_SCENE,
+  studioStageProps,
+  type Logo3DSceneState,
+} from './logo3d/logo3dConfig'
+import { useLogo3DOutline } from './logo3d/useLogo3DOutline'
 import ShapeStudioPanel from './ShapeStudioPanel'
 import ShapeStudioViewport, { type ShapeStudioViewportHandle } from './ShapeStudioViewport'
 import {
   BUILTIN_GLYPHS,
   cloneState,
+  engineModeSupports,
   GLYPH_PRESETS,
   GT,
   hasActiveRandomOption,
@@ -109,6 +119,8 @@ export default function AdminAssetsShapeStudioPage() {
     if (s.width < 500) s.width = 500
     return s
   })
+  // 3D 모드 고유 상태(입력·두께·색·시점). 배경·그레인·비율은 위 state(Shape와 공유)를 쓴다.
+  const [logo3d, setLogo3d] = useState<Logo3DSceneState>(DEFAULT_LOGO3D_SCENE)
   const [history, setHistory] = useState<ShapeStudioState[]>([])
   const [randOn, setRandOn] = useState<RandomToggleState>(() => ({ ...INITIAL_RAND_TOGGLES }))
   const [customPresets, setCustomPresets] = useState<GlyphPreset[]>([])
@@ -135,6 +147,19 @@ export default function AdminAssetsShapeStudioPage() {
   const customPresetsRef = useRef<GlyphPreset[]>(customPresets)
   const uploadedRibbonUrlRef = useRef<string | null>(null)
   const imageLayerUrlsRef = useRef<Set<string>>(new Set())
+
+  // 폰트·SVG → 윤곽 → 3D 형상. 3D 모드가 아니면 폰트를 받지도 형상을 만들지도 않는다.
+  const is3d = engineMode === '3d'
+  const supports = engineModeSupports(engineMode)
+  const outline3d = useLogo3DOutline({
+    enabled: is3d,
+    source: logo3d.source,
+    fontFamily: logo3d.fontFamily,
+    fontWeight: logo3d.fontWeight,
+    text: logo3d.text,
+    svgText: logo3d.svgText,
+    params: logo3d.params,
+  })
 
   const stateRef = useRef<ShapeStudioState>(state)
   const randOnRef = useRef<RandomToggleState>(randOn)
@@ -208,6 +233,7 @@ export default function AdminAssetsShapeStudioPage() {
   }, [])
 
   const handleRandomizeActiveMode = useCallback(() => {
+    if (!engineModeSupports(engineModeRef.current).randomize) return
     if (engineModeRef.current === 'ribbon') {
       handleRandomizeRibbonAll()
     } else {
@@ -219,6 +245,7 @@ export default function AdminAssetsShapeStudioPage() {
     remember(stateRef.current)
     setState(cloneState(INITIAL_STATE))
     setRibbonLayer(INITIAL_RIBBON_LAYER)
+    setLogo3d(DEFAULT_LOGO3D_SCENE)
     if (uploadedRibbonUrlRef.current) {
       URL.revokeObjectURL(uploadedRibbonUrlRef.current)
       uploadedRibbonUrlRef.current = null
@@ -642,6 +669,32 @@ export default function AdminAssetsShapeStudioPage() {
     )
   }, [])
 
+  const handleLogo3dChange = useCallback((patch: Partial<Logo3DSceneState>) => {
+    setLogo3d((prev) => applyLogo3DPatch(prev, patch))
+  }, [])
+
+  const handleLogo3dParamChange = useCallback((key: keyof Logo3DParams, value: number) => {
+    setLogo3d((prev) => ({ ...prev, params: { ...prev.params, [key]: value } }))
+  }, [])
+
+  const handleLogo3dRotate = useCallback((rotX: number, rotY: number) => {
+    setLogo3d((prev) => ({ ...prev, rotX, rotY }))
+  }, [])
+
+  const handleLogo3dZoom = useCallback((zoom: number) => {
+    setLogo3d((prev) => ({ ...prev, zoom }))
+  }, [])
+
+  const { loadSvgFile } = outline3d
+  const handleLogo3dSvgFile = useCallback(
+    async (file: File) => {
+      setLogo3d((prev) => ({ ...prev, source: 'svg' }))
+      const loaded = await loadSvgFile(file)
+      if (loaded) setLogo3d((prev) => ({ ...prev, svgText: loaded.text, svgName: loaded.name }))
+    },
+    [loadSvgFile]
+  )
+
   const handleShapeFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     e.target.value = ''
@@ -669,7 +722,9 @@ export default function AdminAssetsShapeStudioPage() {
             <small className="hidden text-[10px] tracking-[0.4px] text-[#7f8582] sm:block whitespace-nowrap">
               {engineMode === 'shape'
                 ? 'Segment gradient generator · v2'
-                : '2D Ribbon curve generator · v2'}
+                : engineMode === 'ribbon'
+                  ? '2D Ribbon curve generator · v2'
+                  : '3D logo generator'}
             </small>
           </div>
         </div>
@@ -688,19 +743,21 @@ export default function AdminAssetsShapeStudioPage() {
           >
             초기화
           </Button>
+          {supports.randomize && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRandomizeActiveMode}
+              className="border-[#c3db9f] bg-[#d5edac] text-xs text-[#1e2322] hover:bg-[#c8e39c] whitespace-nowrap"
+            >
+              {engineMode === 'shape' ? '랜덤 생성' : '전체 무작위'}
+            </Button>
+          )}
           <Button
             type="button"
-            variant="outline"
             size="sm"
-            onClick={handleRandomizeActiveMode}
-            className="border-[#c3db9f] bg-[#d5edac] text-xs text-[#1e2322] hover:bg-[#c8e39c] whitespace-nowrap"
-          >
-            {engineMode === 'shape' ? '랜덤 생성' : '전체 무작위'}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={exportBusy}
+            disabled={exportBusy || !supports.pngExport}
             onClick={() => viewportRef.current?.exportPng(exportSize)}
             className="bg-[#1e2322] text-xs text-white hover:bg-[#40483f] whitespace-nowrap"
           >
@@ -710,34 +767,62 @@ export default function AdminAssetsShapeStudioPage() {
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <ShapeStudioViewport
-          ref={viewportRef}
-          engineMode={engineMode}
-          state={state}
-          ribbonLayer={ribbonLayer}
-          overlayLayers={overlayLayers}
-          glyphsMap={glyphsMap}
-          canUndo={history.length > 0}
-          onUndo={handleUndo}
-          onDropShapeFile={(file) => {
-            if (engineModeRef.current === 'ribbon') {
-              handleSelectRibbonFile(file)
-            } else {
-              void handleAddShapeFile(file)
-            }
-          }}
-          onStatusChange={setStatusText}
-          onExportBusyChange={setExportBusy}
-          onVideoRecordingChange={(rec, label) => {
-            setVideoRecording(rec)
-            setVideoButtonLabel(label)
-          }}
-        />
+        {engineMode === '3d' ? (
+          // 3D 모드에서는 Shape 뷰포트를 내리고 3D 뷰포트를 올린다. 3D 뷰포트가 내려갈 때 렌더러·형상을 dispose한다.
+          <Logo3DViewport
+            geometry={outline3d.geometry}
+            frameColor={logo3d.frameColor}
+            tileColor={logo3d.tileColor}
+            rotX={logo3d.rotX}
+            rotY={logo3d.rotY}
+            rotZ={logo3d.rotZ}
+            zoom={logo3d.zoom}
+            view={logo3d.view}
+            {...studioStageProps(state)}
+            loading={outline3d.loading}
+            onRotate={handleLogo3dRotate}
+            onZoom={handleLogo3dZoom}
+          />
+        ) : (
+          <ShapeStudioViewport
+            ref={viewportRef}
+            engineMode={engineMode}
+            state={state}
+            ribbonLayer={ribbonLayer}
+            overlayLayers={overlayLayers}
+            glyphsMap={glyphsMap}
+            canUndo={history.length > 0}
+            onUndo={handleUndo}
+            onDropShapeFile={(file) => {
+              if (engineModeRef.current === 'ribbon') {
+                handleSelectRibbonFile(file)
+              } else {
+                void handleAddShapeFile(file)
+              }
+            }}
+            onStatusChange={setStatusText}
+            onExportBusyChange={setExportBusy}
+            onVideoRecordingChange={(rec, label) => {
+              setVideoRecording(rec)
+              setVideoButtonLabel(label)
+            }}
+          />
+        )}
 
         <ShapeStudioPanel
           viewportRef={viewportRef}
           engineMode={engineMode}
           onChangeEngineMode={setEngineMode}
+          logo3d={{
+            state: logo3d,
+            error: outline3d.error,
+            warnings: outline3d.warnings,
+            loading: outline3d.loading,
+            onChange: handleLogo3dChange,
+            onParamChange: handleLogo3dParamChange,
+            onSvgFile: handleLogo3dSvgFile,
+            onResetZoom: () => handleLogo3dZoom(DEFAULT_LOGO3D_SCENE.zoom),
+          }}
           state={state}
           presets={allPresets}
           glyphsMap={glyphsMap}
