@@ -2,8 +2,9 @@
 id: "20261103_1736"
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-03
+closed: 2026-11-03
 parent: "20261103_1733"
 workType: db
 ---
@@ -55,14 +56,25 @@ workType: db
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`asset_presets`에 `engine_state JSONB NULL` 칸을 추가하고(마이그레이션 315), 프리셋이 3D 설정값을 저장·불러오게 했다. 저장 형식 `{ mode: '3d', version: 1, state }`와 검증(32KB, 허용 mode·version, 유한수, `#rrggbb`, `params` 전체 키, 저장소 호스트의 `svgUrl`)은 `lib/asset-generator/engineState.ts` 한 곳에 있다. POST는 `engineState`·`engineSvg`를 파일 업로드 전에 검증하고(실패 시 `[현상]→[원인]→[해결책]` 400), 올린 SVG는 `asset-generator/presets/{id}/engine-3d.svg`에 올려 주소만 담는다(클라이언트가 보낸 `svgUrl`은 버림). 단건 GET이 `engineState`를 돌려준다. `PresetPanel`은 3D 모드에서 설정을 보내고(기본 로고는 안 보냄) 안내 한 줄을 보이며, 불러올 때 `resolveEngineLoad`로 검증해 3D 모드와 값을 되살린다. 깨진 값은 무시하고 경고, 칸이 빈 기존 프리셋은 예전과 같다.
 
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/315_asset_presets_engine_state.sql (+ _down.sql)
+jam-web/src/types/database.generated.ts (asset_presets에 engine_state)
+jam-web/src/lib/asset-generator/{engineState.ts(신설), presetSerialize.ts, presetValidate.ts, types.ts}
+jam-web/src/app/api/admin/asset-generator/presets/route.ts, presets/[id]/route.ts
+jam-web/src/app/admin/asset-generator/PresetPanel.tsx, assets/ShapeStudioPanel.tsx, assets/page.tsx, assets/logo3d/logo3dEngineState.ts(신설)
+시험: engineState.test.ts, logo3dEngineState.test.ts, presets/route.test.ts, presets/[id]/route.test.ts, presetSerialize.test.ts
+docs/service/prd/asset-generator/PRD.md(§5·§12), docs/service/prd/02_DATA_MODEL.md, docs/assets/prototypes/20260924_jam-asset-generator.core.js(재생성)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전 항목 통과, CI `verify` success(run 41624936612), 게이트(민지) PASS
+- [x] **DB 실행(카리나, 머지 뒤 push 전)**: 실행 전 `preset_rows=4, engine_state 칸 0, 칸 8` → `DO` 블록 롤백 실측(칸 추가·되돌림 동작 후 예외로 전체 되돌림, 원상태 재확인) → `apply_migration 315_asset_presets_engine_state` → 실행 직후 `engine_state = jsonb / NULL 허용 / 기본값 없음`, `preset_rows=4`(변화 없음), 값 있는 행 0, 칸 9, RLS 켜짐
+- [x] **생성 타입 대조**: MCP `generate_typescript_types`의 `asset_presets` 블록(Row·Insert·Update·Relationships)이 저장소 `database.generated.ts`와 완전히 같음(`engine_state: Json | null`, Insert·Update는 선택) — 수정 없음
+- [x] **로컬 실렌더**: 3D 모드에서 회전 X 25·Y -15·줌 120·깊이 0.45로 시험 프리셋 저장 → DB에 같은 값으로 저장됨(mode 3d, version 1, 폰트 Poppins) → 새로 연 페이지(Shape 모드)에서 불러오자 3D 모드로 바뀌고 값이 그대로 되살아남 → 시험 프리셋 삭제(행·저장소 파일 0, 프리셋 4행으로 복귀), 콘솔 오류 없음
+- [ ] 올린 SVG가 있는 프리셋의 저장·불러오기(저장소 주소 직접 fetch의 CORS)는 확인하지 않았다 → 티켓 20261103_1705에 함께 둔다
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -72,10 +84,16 @@ workType: db
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | jam-developer, jam-reviewer(게이트) | 223,470 | 59,130 / 5,136 | 26분 23초 | 90 |
+| 합계 | 2 | 223,470 | 59,130 / 5,136 | 26분 23초 | 90 |
 
 ### 주요 의사결정 / 핵심 메모
+- 저장 형식에 표시용 `svgName`을 더했다. 허용 mode는 `3d` 하나다. 3D가 아닌 모드로 덮어쓰면 `engine_state`를 null로 비운다.
+- 배경은 Shape와 공유하는 에셋 상태라 저장하지 않았다(상위 티켓 결정, 잔여 이슈).
+- 실행 순서: 칸을 읽는 코드가 배포되기 전에 DB에 칸을 먼저 만들었다(공유 DB, 코드가 먼저 나가면 저장·조회가 500).
+- 생성 타입은 아현이 손으로 추가하고 카리나가 MCP 생성 결과와 대조했다(이 환경에 supabase CLI 없음).
 
 ### 잔여 이슈
--
+- 올린 SVG를 불러오지 못하면 입력 방식은 SVG인데 로고가 빈 상태가 될 수 있다(경고는 뜸) — `logo3dEngineState.ts` 55~62·98~102줄.
+- SVG가 있던 프리셋을 SVG 없이 덮어쓰면 저장소에 `engine-3d.svg`가 남는다(프리셋 삭제 때는 폴더째 지워짐).
+- 배경까지 프리셋에 담을지는 사용자 결정 대기.
