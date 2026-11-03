@@ -703,6 +703,12 @@ export default function AdminAssetsShapeStudioPage() {
     [loadSvgFile]
   )
 
+  // 동영상 녹화 상태·버튼 글자는 Shape·Ribbon·3D 뷰포트가 같은 자리로 올린다.
+  const handleVideoRecordingChange = (recording: boolean, label: string) => {
+    setVideoRecording(recording)
+    setVideoButtonLabel(label)
+  }
+
   // PNG 저장은 활성 모드의 뷰포트가 에셋 Export 크기·Canvas 비율로 저장한다.
   const handleExportPng = () => {
     if (is3d) void logo3dViewportRef.current?.exportPngFile(exportSize)
@@ -804,6 +810,7 @@ export default function AdminAssetsShapeStudioPage() {
             }
             loading={outline3d.loading}
             onExportBusyChange={setExportBusy}
+            onVideoRecordingChange={handleVideoRecordingChange}
             onRotate={handleLogo3dRotate}
             onZoom={handleLogo3dZoom}
           />
@@ -826,10 +833,7 @@ export default function AdminAssetsShapeStudioPage() {
             }}
             onStatusChange={setStatusText}
             onExportBusyChange={setExportBusy}
-            onVideoRecordingChange={(rec, label) => {
-              setVideoRecording(rec)
-              setVideoButtonLabel(label)
-            }}
+            onVideoRecordingChange={handleVideoRecordingChange}
           />
         )}
 
@@ -890,8 +894,8 @@ export default function AdminAssetsShapeStudioPage() {
           onChangeExportSize={setExportSize}
           onExportPng={handleExportPng}
           onChangeVideoSize={setVideoSize}
-          onExportVideo={() => viewportRef.current?.recordVideo(videoSize)}
-          onCancelVideo={() => viewportRef.current?.cancelVideo()}
+          onExportVideo={() => void (is3d ? logo3dViewportRef : viewportRef).current?.recordVideo(videoSize)}
+          onCancelVideo={() => (is3d ? logo3dViewportRef : viewportRef).current?.cancelVideo()}
         />
       </main>
 

@@ -67,15 +67,15 @@ export const ENGINE_MODE_OPTIONS: readonly (readonly [StudioEngineMode, string])
 ]
 
 /**
- * 모드별로 쓸 수 있는 기능. 3D는 Overlay Layers 합성·PNG 저장·콘텐츠 적용이 연결됐다(티켓 20261103_1735).
- * 동영상 저장(티켓 20261103_1737)은 아직 연결되지 않아 막아 둔다.
+ * 모드별로 쓸 수 있는 기능. 3D는 Overlay Layers 합성·PNG 저장·콘텐츠 적용(티켓 20261103_1735)과
+ * 동영상 저장(로고가 한 바퀴 도는 턴테이블 영상, 티켓 20261103_1737)이 연결됐다. 랜덤 생성만 막는다.
  */
 export function engineModeSupports(mode: StudioEngineMode): {
   randomize: boolean
   videoExport: boolean
 } {
   const is3d = mode === '3d'
-  return { randomize: !is3d, videoExport: !is3d }
+  return { randomize: !is3d, videoExport: true }
 }
 
 export type ShapeStudioState = {

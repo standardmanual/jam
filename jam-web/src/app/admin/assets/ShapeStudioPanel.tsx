@@ -1386,9 +1386,9 @@ export default function ShapeStudioPanel({
             )}
 
             <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
-              {supports.videoExport
-                ? '동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'
-                : '3D 모드의 동영상 저장은 아직 쓸 수 없어요. PNG 저장은 쓸 수 있어요.'}
+              {engineMode === '3d'
+                ? '동영상은 로고가 한 바퀴 도는 모습을 15초 동안 녹화해요. 지금 보이는 각도에서 시작해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'
+                : '동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'}
             </p>
           </section>
         </fieldset>

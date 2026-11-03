@@ -52,6 +52,7 @@ import {
   type ShapeStudioState,
   type StudioEngineMode,
 } from './shapeStudioConfig'
+import { downloadBlob, pickVideoType, videoBitrate, videoSizeFor } from './videoRecording'
 
 export interface ShapeStudioViewportHandle extends AssetGeneratorViewportHandle {
   exportPng: (size: number) => Promise<void>
@@ -151,29 +152,6 @@ function loadImageFromBlob(blob: Blob, isSvg: boolean): Promise<HTMLCanvasElemen
     }
     img.src = url
   })
-}
-
-function downloadBlob(blob: Blob, name: string) {
-  const a = document.createElement('a')
-  const url = URL.createObjectURL(blob)
-  a.href = url
-  a.download = name
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 10000)
-}
-
-function pickVideoType(): string {
-  const candidates = [
-    'video/mp4;codecs=avc1.42E01E',
-    'video/mp4',
-    'video/webm;codecs=vp9',
-    'video/webm;codecs=vp8',
-    'video/webm',
-  ]
-  if (typeof window === 'undefined' || !('MediaRecorder' in window)) return ''
-  return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? ''
 }
 
 const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioViewportProps>(
@@ -893,11 +871,7 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
           onExportBusyChange(true)
           onVideoRecordingChange(true, `녹화 중 0 / ${VIDEO_SEC}초`)
 
-          const [a, b] = stateRef.current.ratio.split(':').map(Number)
-          let w = a >= b ? longSide : Math.round((longSide * a) / b)
-          let h = a >= b ? Math.round((longSide * b) / a) : longSide
-          w -= w % 2
-          h -= h % 2
+          const { width: w, height: h } = videoSizeFor(longSide, stateRef.current.ratio)
 
           const prev = {
             w: canvas.width,
@@ -930,7 +904,7 @@ const ShapeStudioViewport = forwardRef<ShapeStudioViewportHandle, ShapeStudioVie
             stream = canvasWithStream.captureStream(30)
             const recorder = new MediaRecorder(stream, {
               mimeType: type,
-              videoBitsPerSecond: Math.round(w * h * 30 * 0.14),
+              videoBitsPerSecond: videoBitrate(w, h),
             })
             recorder.ondataavailable = (e) => {
               if (e.data && e.data.size > 0) chunks.push(e.data)

@@ -8,7 +8,7 @@
  * - Mode 버튼에 「3D (입체 로고)」가 있다.
  * - 3D 모드의 섹션 순서: Mode → Preset → Canvas → Input → Thickness → Color → View → Background → Overlay Layers → Export.
  * - Shape·Ribbon 모드에는 3D 전용 섹션이 없다. Background는 Shape와 3D에 있고 Ribbon에는 없다.
- * - 3D 모드에서 PNG 저장 버튼은 켜져 있고(티켓 20261103_1735) 동영상 저장 버튼만 비활성이다.
+ * - 3D 모드에서 PNG 저장(티켓 20261103_1735)·동영상 저장(티켓 20261103_1737) 버튼이 모두 켜져 있다.
  *
  * 실행: cd jam-web && npx vitest run src/app/admin/assets/__tests__/ShapeStudioPanel.mode3d.test.tsx
  */
@@ -108,7 +108,7 @@ describe('에셋 패널 3D 모드', () => {
     expect(sectionTitles(render('ribbon'))).not.toContain('Background')
   })
 
-  it('3D 모드에서는 PNG 저장 버튼이 켜져 있고 동영상 저장 버튼만 비활성이다', () => {
+  it('3D 모드에서는 PNG 저장·동영상 저장 버튼이 모두 켜져 있다', () => {
     const buttons = (html: string, label: RegExp) =>
       [...html.matchAll(/<button\b[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g)].map((m) => m[0]).filter((b) => label.test(b))
 
@@ -118,7 +118,8 @@ describe('에셋 패널 3D 모드', () => {
     expect(png).toHaveLength(1)
     expect(png[0]).not.toContain('disabled=""')
     expect(video).toHaveLength(1)
-    expect(video[0]).toContain('disabled')
+    expect(video[0]).not.toContain('disabled=""')
+    expect(html3d).toContain('로고가 한 바퀴 도는 모습')
     expect(html3d).not.toContain('3D 모드의 미리보기에는 레이어가 아직 합성되지 않아요')
 
     const htmlShape = render('shape')

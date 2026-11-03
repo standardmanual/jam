@@ -25,8 +25,8 @@ describe('Mode 목록', () => {
 })
 
 describe('engineModeSupports', () => {
-  it('3D 모드에서는 랜덤 생성·동영상 저장만 막는다(PNG 저장·콘텐츠 적용은 연결됨)', () => {
-    expect(engineModeSupports('3d')).toEqual({ randomize: false, videoExport: false })
+  it('3D 모드에서는 랜덤 생성만 막는다(PNG·동영상 저장·콘텐츠 적용은 연결됨)', () => {
+    expect(engineModeSupports('3d')).toEqual({ randomize: false, videoExport: true })
   })
 
   it('Shape·Ribbon 모드는 전부 쓸 수 있다', () => {

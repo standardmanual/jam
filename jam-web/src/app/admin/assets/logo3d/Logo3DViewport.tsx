@@ -64,7 +64,10 @@ import {
   type CanvasRatio,
   type Logo3DView,
 } from './logo3dConfig'
+import { VIDEO_SEC } from '../shapeStudioConfig'
+import { downloadBlob, pickVideoType, videoBitrate, videoSizeFor } from '../videoRecording'
 import { composeStage, exportSizeFor } from './stageCompose'
+import { turntableProgress, turntableRotY } from './turntable'
 
 const PERSPECTIVE_FOV_DEG = 30
 const FALLBACK_RADIUS = 0.8
@@ -76,7 +79,16 @@ export type Logo3DViewportHandle = AssetGeneratorViewportHandle & {
   exportPng: (ratio: CanvasRatio) => Promise<Blob>
   /** 에셋 Export 크기(긴 변)와 Canvas 비율로 배경·3D·그레인·오버레이를 합성해 PNG 파일로 저장한다. */
   exportPngFile: (size: number) => Promise<void>
+  /**
+   * 로고가 Y축으로 한 바퀴 도는 턴테이블 영상을 `VIDEO_SEC`초 동안 녹화해 저장한다(티켓 20261103_1737).
+   * 크기·녹화 형식은 Shape 모드와 같다(`videoRecording.ts`). 지금 회전값에서 시작해 같은 각도로 끝난다.
+   */
+  recordVideo: (longSide: number) => Promise<void>
+  cancelVideo: () => void
 }
+
+/** 녹화 중 카메라·회전을 고정해 두는 자세. 녹화 도중 슬라이더·드래그가 와도 영상은 이 값만 따른다. */
+type RecordingPose = { rotX: number; rotY: number; rotZ: number; zoom: number; view: Logo3DView }
 
 type Props = {
   geometry: LogoGeometry | null
@@ -100,6 +112,8 @@ type Props = {
   fileLabel?: string
   loading: boolean
   onExportBusyChange?: (busy: boolean) => void
+  /** 동영상 녹화 시작·끝과 버튼 글자(「녹화 중 3 / 15초」)를 알린다. */
+  onVideoRecordingChange?: (recording: boolean, label: string) => void
   onRotate: (rotX: number, rotY: number) => void
   onZoom: (zoom: number) => void
 }
@@ -296,6 +310,9 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
   const canvasHostRef = useRef<HTMLDivElement>(null)
   const displayRef = useRef<HTMLCanvasElement>(null)
   const exportingRef = useRef(false)
+  /** 녹화 중이면 고정한 자세(회전은 프레임마다 바뀜). 아니면 null — `draw`가 이 값을 우선한다. */
+  const recordingPoseRef = useRef<RecordingPose | null>(null)
+  const recAbortRef = useRef(false)
   const refs = useRef<SceneRefs | null>(null)
   const frameRequested = useRef(false)
   const latest = useRef(props)
@@ -305,13 +322,16 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
   const [box, setBox] = useState({ width: 0, height: 0 })
+  const boxRef = useRef(box)
+  boxRef.current = box
   const [webglError, setWebglError] = useState(false)
 
   /** 현재 상태로 카메라·그룹을 맞추고 한 번 그린다. */
   const draw = (width: number, height: number) => {
     const r = refs.current
     if (!r) return
-    const p = latest.current
+    // 녹화 중에는 슬라이더·드래그로 들어온 값이 아니라 고정한 자세를 쓴다
+    const p = recordingPoseRef.current ?? latest.current
     const aspect = width / height
     const pose = cameraPoseFor(p.view)
     r.spin.rotation.set(
@@ -432,6 +452,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     }
 
     return () => {
+      recAbortRef.current = true // 녹화 중에 화면이 사라지면 녹화를 멈춘다
       const r = refs.current
       refs.current = null
       if (!r) return
@@ -485,13 +506,14 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     return () => observer.disconnect()
   }, [ratio])
 
-  // 상자 크기가 바뀌면 렌더러·배경 캔버스 크기를 맞춘다
-  useEffect(() => {
+  /** 상자 크기에 맞춰 렌더러·합성 캔버스 크기를 정한다. 녹화가 끝나면 녹화 크기에서 이 크기로 되돌릴 때도 쓴다. */
+  const applyStageSize = () => {
+    const b = boxRef.current
+    if (b.width === 0) return
     const r = refs.current
-    if (box.width === 0) return
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    const w = Math.round(box.width * dpr)
-    const h = Math.round(box.height * dpr)
+    const w = Math.round(b.width * dpr)
+    const h = Math.round(b.height * dpr)
     if (r) {
       r.renderer.setPixelRatio(1)
       r.renderer.setSize(w, h, false)
@@ -503,6 +525,12 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       display.height = h
     }
     requestRender()
+  }
+
+  // 상자 크기가 바뀌면 렌더러·배경 캔버스 크기를 맞춘다. 녹화 중에는 녹화 크기를 지키고 끝난 뒤 맞춘다.
+  useEffect(() => {
+    if (recordingPoseRef.current) return
+    applyStageSize()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 사유: 상자 크기 변경만 반영한다
   }, [box])
 
@@ -517,6 +545,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     if (!el) return
     let last: { x: number; y: number } | null = null
     const down = (e: PointerEvent) => {
+      if (recordingPoseRef.current) return // 녹화 중에는 드래그로 돌리지 않는다
       last = { x: e.clientX, y: e.clientY }
       el.setPointerCapture(e.pointerId)
     }
@@ -533,6 +562,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     }
     const wheel = (e: WheelEvent) => {
       e.preventDefault()
+      if (recordingPoseRef.current) return // 녹화 중에는 휠 줌도 막는다
       const next = zoomFromWheel(zoomRef.current, e.deltaY)
       zoomRef.current = next
       latest.current.onZoom(next)
@@ -620,6 +650,116 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     }
   }
 
+  /**
+   * 턴테이블 동영상 저장. Shape 모드 `recordVideo`와 같은 길이(`VIDEO_SEC`)·크기 규칙·녹화 형식을 쓴다.
+   * 보이는 합성 캔버스를 녹화 크기로 키워 프레임마다 3D → 합성을 다시 그리고, 그 캔버스를 그대로 녹화한다.
+   * 형상(geometry)은 건드리지 않고 로고 그룹의 회전만 바꾸며, 끝나면 크기·자세를 원래대로 되돌린다.
+   */
+  const recordVideo = async (longSide: number): Promise<void> => {
+    const r = refs.current
+    const display = displayRef.current
+    if (!r || !display || exportingRef.current) return
+
+    const canvasWithStream = display as HTMLCanvasElement & { captureStream?: (frameRate?: number) => MediaStream }
+    if (typeof window === 'undefined' || !('MediaRecorder' in window) || !canvasWithStream.captureStream) {
+      toast('이 브라우저는 동영상 저장을 지원하지 않아요. Chrome에서 열어주세요.')
+      return
+    }
+    const type = pickVideoType()
+    if (!type) {
+      toast('지원되는 동영상 형식이 없어요.')
+      return
+    }
+
+    const onChange = props.onVideoRecordingChange
+    const idleLabel = `동영상 저장 (${VIDEO_SEC}초)`
+    exportingRef.current = true
+    recAbortRef.current = false
+    props.onExportBusyChange?.(true)
+    onChange?.(true, `녹화 중 0 / ${VIDEO_SEC}초`)
+
+    const { width: w, height: h } = videoSizeFor(longSide, latest.current.ratio)
+    const chunks: BlobPart[] = []
+    let stream: MediaStream | null = null
+    let raf = 0
+
+    try {
+      if (!imageTrackerRef.current.isIdle()) await imageTrackerRef.current.waitUntilIdle()
+      if (!fontTrackerRef.current.isIdle()) await fontTrackerRef.current.waitUntilIdle()
+      const gl = r.renderer.getContext()
+      const max = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number
+      if (Math.max(w, h) > max) throw new Error(`이 기기의 최대 출력 크기는 ${max}px입니다.`)
+
+      // 시작 자세를 고정한다 — 이 순간부터 슬라이더·드래그·휠 입력은 영상에 반영되지 않는다
+      const start: RecordingPose = {
+        rotX: latest.current.rotX,
+        rotY: latest.current.rotY,
+        rotZ: latest.current.rotZ,
+        zoom: latest.current.zoom,
+        view: latest.current.view,
+      }
+      recordingPoseRef.current = start
+      r.renderer.setPixelRatio(1)
+      r.renderer.setSize(w, h, false)
+      r.size = { width: w, height: h }
+      display.width = w
+      display.height = h
+      renderPreview()
+
+      stream = canvasWithStream.captureStream(30)
+      const recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: videoBitrate(w, h) })
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data)
+      }
+      const done = new Promise<void>((res) => {
+        recorder.onstop = () => res()
+      })
+      recorder.start(500)
+
+      const t0 = performance.now()
+      let shownSec = -1
+      await new Promise<void>((resolve) => {
+        const tick = () => {
+          const elapsed = (performance.now() - t0) / 1000
+          const progress = turntableProgress(elapsed, VIDEO_SEC)
+          recordingPoseRef.current = { ...start, rotY: turntableRotY(start.rotY, progress) }
+          renderPreview()
+          const sec = Math.min(VIDEO_SEC, Math.floor(elapsed))
+          if (sec !== shownSec) {
+            shownSec = sec
+            onChange?.(true, `녹화 중 ${sec} / ${VIDEO_SEC}초`)
+          }
+          if (progress >= 1 || recAbortRef.current || !refs.current) resolve()
+          else raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+      })
+      recorder.stop()
+      await done
+
+      if (recAbortRef.current) {
+        toast('녹화를 취소했어요.')
+      } else {
+        const blob = new Blob(chunks, { type: type.split(';')[0] })
+        if (!blob.size) throw new Error('녹화된 영상이 비어 있어요.')
+        const isMp4 = type.startsWith('video/mp4')
+        downloadBlob(blob, `${logo3dFileName(latest.current.fileLabel ?? '', latest.current.ratio).replace(/\.png$/i, '')}${isMp4 ? '.mp4' : '.webm'}`)
+        toast(`${w} × ${h} · ${VIDEO_SEC}초 ${isMp4 ? 'MP4' : 'WebM'} 저장 완료`)
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '동영상 저장에 실패했어요.')
+    } finally {
+      cancelAnimationFrame(raf)
+      if (stream) stream.getTracks().forEach((t) => t.stop())
+      recordingPoseRef.current = null
+      exportingRef.current = false
+      props.onExportBusyChange?.(false)
+      onChange?.(false, idleLabel)
+      // 녹화 크기에서 미리보기 크기로 되돌리고 원래 회전값으로 다시 그린다
+      if (refs.current) applyStageSize()
+    }
+  }
+
   useImperativeHandle(ref, () => ({
     // 콘텐츠 적용 탭이 쓰는 핸들 — 보이는 합성 캔버스를 그대로 돌려준다. 3D는 움직이지 않아 머리 위치·곡선이 없다.
     getCanvas: () => displayRef.current,
@@ -646,6 +786,10 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       return renderStageBlob(width, height)
     },
     exportPngFile,
+    recordVideo,
+    cancelVideo: () => {
+      recAbortRef.current = true
+    },
   }))
 
   return (
