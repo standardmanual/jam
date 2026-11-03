@@ -59,3 +59,14 @@ export const LOGO3D_PARAM_RANGES: Record<keyof Logo3DParams, Logo3DParamRange> =
   cornerRadiusInner: { min: 0.005, max: 0.1, step: 0.001 },
   gap: { min: 0, max: 0.01, step: 0.0001 }
 };
+
+/**
+ * 입력(폰트·SVG)을 윤곽으로 바꾼 결과 (티켓 20261103_1351).
+ * 실패해도 예외를 던지지 않는다 — `error`가 있으면 `outline`은 빈 배열이다.
+ * `error`는 [현상] → [원인] → [해결책] 순서의 한국어 문장이고, `warnings`는 결과는 나왔지만 일부를 건너뛴 사유다.
+ */
+export type OutlineResult = {
+  outline: LogoOutline;
+  warnings: string[];
+  error: string | null;
+};
