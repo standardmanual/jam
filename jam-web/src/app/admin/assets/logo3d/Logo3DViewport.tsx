@@ -17,26 +17,31 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  ACESFilmicToneMapping,
   BackSide,
   BoxGeometry,
   Color,
+  DataTexture,
   DirectionalLight,
   DoubleSide,
   Group,
+  LinearFilter,
+  LinearMipmapLinearFilter,
   Material,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
+  NeutralToneMapping,
   OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
   PMREMGenerator,
+  RepeatWrapping,
   Scene,
   SRGBColorSpace,
   Sphere,
   Texture,
+  Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three'
@@ -101,17 +106,119 @@ type Props = {
 
 export type LogoMeshes = { frame: Mesh; tile: Mesh; backPlate: Mesh }
 
-/** 형상마다 재질을 새로 만든다. 틀은 매트 스틸, 타일은 광택층이 있는 도자기다. */
+/** 환경 속 발광 면. `roll`(라디안)은 바라보는 축으로 돌려 반사 줄기를 대각선으로 눕힌다. */
+type Softbox = { w: number; h: number; pos: [number, number, number]; intensity: number; roll?: number }
+
+/**
+ * 조명·재질 값을 한 곳에 모은다(티켓 20261103_1718). 사용자 레퍼런스(선명한 파랑 배경, 넓은 대각선 반사 줄기가
+ * 있는 유약 타일, 베벨에 하이라이트 선이 있는 새틴 스틸 틀)에 맞춰 로컬 실렌더를 보며 정한 값이다.
+ * 질감은 밝은 소프트박스와 어두운 바탕의 대비에서 나온다 — 바탕을 밝히면 반사가 평평해진다.
+ */
+export const LOGO3D_LOOK = {
+  exposure: 1,
+  /** 환경 바탕(반사에 비치는 어두운 면)의 밝기 */
+  envBase: 0.05,
+  /**
+   * 반사에 비치는 밝은 면. 세기는 HDR 값이다. 면을 크게 하면 확산광이 늘어 타일 바탕색이 허옇게 뜨므로,
+   * 작고 아주 밝게 두어 확산광은 줄이고 반사만 또렷하게 한다.
+   */
+  softboxes: [
+    { w: 7, h: 2.2, pos: [-2, 9.5, 3], intensity: 30 },
+    { w: 1, h: 13, pos: [-9.5, 1, 3], intensity: 22 },
+    { w: 0.8, h: 11, pos: [9.5, 0, 1], intensity: 14 },
+    { w: 16, h: 0.6, pos: [0, -3, 9.5], intensity: 8 },
+    // 타일 유약의 반사광 띠 세 줄: 기본 각도(x 14°·y 22°)에서 타일 면이 비추는 방향(약 오른쪽 아래 앞쪽) 둘레에
+    // 대각선으로 눕혀 둔다. 타일 법선 맵(glaze)의 완만한 굴곡이 이 띠들을 면 위에 흐르듯 맺히게 한다.
+    { w: 26, h: 0.8, pos: [7.2, -5.5, 5.5], intensity: 6, roll: 0.6 },
+    { w: 26, h: 0.8, pos: [6.1, -3.6, 5.5], intensity: 11, roll: 0.6 },
+    { w: 26, h: 0.8, pos: [4.9, -1.8, 5.5], intensity: 6, roll: 0.6 },
+  ] as Softbox[],
+  /** 대비를 만드는 검은 면 */
+  darkPanels: [
+    { w: 5, h: 16, pos: [-6, 0, -9.5], intensity: 0 },
+    { w: 5, h: 16, pos: [6, 0, 9.5], intensity: 0 },
+    { w: 16, h: 4, pos: [0, 5, -9.5], intensity: 0 },
+  ] as Softbox[],
+  keyLight: { intensity: 1, position: [-2, 4, 5] as [number, number, number] },
+  frame: { metalness: 0.95, roughness: 0.3, envMapIntensity: 1.3 },
+  tile: { roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.1, specularIntensity: 0.8 },
+  /**
+   * 유약 표면 결. 완전히 평평한 면은 면 전체가 같은 밝기로 비쳐 질감이 없다. 완만한 굴곡(낮은 주파수)과
+   * 미세한 결(높은 주파수)을 법선 맵으로 주어 반사광이 흐르듯 맺히게 한다. 형상은 바꾸지 않는다.
+   */
+  glaze: { size: 256, waveAmp: 1, grainAmp: 0.02, strength: 1, normalScale: 0.18, clearcoatNormalScale: 0.22, repeat: 0.45 },
+  backPlate: { roughness: 0.5 },
+}
+
+/** 0~1 사이의 결정적 잡음(같은 칸이면 같은 값). 법선 맵이 매번 같게 나오도록 난수를 쓰지 않는다. */
+function hash2(x: number, y: number): number {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
+  return s - Math.floor(s)
+}
+
+/**
+ * 유약 결 법선 맵을 만든다. 높이를 이어 붙여도 이음매가 없도록 정수 주파수의 사인 합과 칸 단위 잡음으로 만들고,
+ * 이웃 높이 차이로 법선을 구한다(접선 공간, 0~255로 부호화).
+ */
+export function createGlazeNormalMap(look = LOGO3D_LOOK.glaze): DataTexture {
+  const { size, waveAmp, grainAmp, strength } = look
+  const height = new Float32Array(size * size)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size
+      const v = y / size
+      const wave =
+        0.55 * Math.sin(2 * Math.PI * (u + v)) + 0.35 * Math.sin(2 * Math.PI * (2 * u - v) + 1.3) + 0.2 * Math.sin(2 * Math.PI * (3 * v) + 0.7)
+      height[y * size + x] = waveAmp * wave + grainAmp * (hash2(x, y) - 0.5)
+    }
+  }
+  const at = (x: number, y: number) => height[((y + size) % size) * size + ((x + size) % size)]
+  const data = new Uint8Array(size * size * 4)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = ((at(x + 1, y) - at(x - 1, y)) / 2) * strength * (size / 64)
+      const dy = ((at(x, y + 1) - at(x, y - 1)) / 2) * strength * (size / 64)
+      const len = Math.hypot(dx, dy, 1)
+      const i = (y * size + x) * 4
+      data[i] = Math.round(((-dx / len) * 0.5 + 0.5) * 255)
+      data[i + 1] = Math.round(((-dy / len) * 0.5 + 0.5) * 255)
+      data[i + 2] = Math.round(((1 / len) * 0.5 + 0.5) * 255)
+      data[i + 3] = 255
+    }
+  }
+  const texture = new DataTexture(data, size, size)
+  texture.wrapS = RepeatWrapping
+  texture.wrapT = RepeatWrapping
+  texture.magFilter = LinearFilter
+  texture.minFilter = LinearMipmapLinearFilter
+  texture.generateMipmaps = true
+  texture.repeat.set(look.repeat, look.repeat)
+  texture.needsUpdate = true
+  return texture
+}
+
+/** 유약 법선 맵은 모든 형상이 같이 쓴다(형상을 바꿀 때마다 다시 만들지 않는다). 재질을 해제해도 텍스처는 남는다. */
+let sharedGlazeMap: DataTexture | null = null
+function glazeNormalMap(): DataTexture {
+  if (!sharedGlazeMap) sharedGlazeMap = createGlazeNormalMap()
+  return sharedGlazeMap
+}
+
+/** 형상마다 재질을 새로 만든다. 틀은 새틴(반무광) 스틸, 타일은 광택층이 있는 도자기다. */
 export function createLogoMeshes(geometry: LogoGeometry, frameColor: string, tileColor: string): LogoMeshes {
-  const frameMat = new MeshStandardMaterial({ color: frameColor, metalness: 0.95, roughness: 0.36 })
+  const look = LOGO3D_LOOK
+  const frameMat = new MeshStandardMaterial({ color: frameColor, ...look.frame })
+  const glaze = glazeNormalMap()
   const tileMat = new MeshPhysicalMaterial({
     color: tileColor,
     metalness: 0,
-    roughness: 0.3,
-    clearcoat: 1,
-    clearcoatRoughness: 0.07,
+    ...look.tile,
+    normalMap: glaze,
+    normalScale: new Vector2(look.glaze.normalScale, look.glaze.normalScale),
+    clearcoatNormalMap: glaze,
+    clearcoatNormalScale: new Vector2(look.glaze.clearcoatNormalScale, look.glaze.clearcoatNormalScale),
   })
-  const backMat = new MeshStandardMaterial({ color: tileColor, metalness: 0, roughness: 0.5 })
+  const backMat = new MeshStandardMaterial({ color: tileColor, metalness: 0, ...look.backPlate })
   return {
     frame: new Mesh(geometry.frame, frameMat),
     tile: new Mesh(geometry.tile, tileMat),
@@ -144,25 +251,21 @@ function createStudioEnvironment(renderer: WebGLRenderer): Texture {
     disposables.push(mesh.geometry, mesh.material as Material)
   }
 
-  add(new Mesh(new BoxGeometry(20, 20, 20), new MeshBasicMaterial({ color: new Color(0.16, 0.18, 0.21), side: BackSide })))
-  const panel = (w: number, h: number, pos: [number, number, number], intensity: number) => {
+  const base = LOGO3D_LOOK.envBase
+  add(new Mesh(new BoxGeometry(20, 20, 20), new MeshBasicMaterial({ color: new Color(base, base * 1.1, base * 1.3), side: BackSide })))
+  const panel = ({ w, h, pos, intensity, roll = 0 }: Softbox) => {
     const mesh = new Mesh(
       new PlaneGeometry(w, h),
       new MeshBasicMaterial({ color: new Color(intensity, intensity, intensity), side: DoubleSide, toneMapped: false })
     )
     mesh.position.set(...pos)
     mesh.lookAt(0, 0, 0)
+    if (roll) mesh.rotateZ(roll)
     add(mesh)
   }
-  // 밝은 띠: 위 소프트박스, 좌우 세로 띠, 앞쪽 낮은 띠
-  panel(12, 8, [0, 9.5, 2], 5)
-  panel(3, 14, [-9.5, 0, 2], 3.5)
-  panel(2, 14, [9.5, 0, -1], 2.5)
-  panel(14, 2, [0, -3, 9.5], 1.2)
-  // 어두운 띠: 대비를 만든다
-  panel(4, 16, [-6, 0, -9.5], 0.01)
-  panel(4, 16, [6, 0, 9.5], 0.01)
-  panel(16, 3, [0, 4.5, -9.5], 0.01)
+  // 밝은 면(소프트박스)과 어두운 면이 번갈아 비쳐야 금속·유약이 질감 있게 읽힌다
+  LOGO3D_LOOK.softboxes.forEach(panel)
+  LOGO3D_LOOK.darkPanels.forEach(panel)
 
   const pmrem = new PMREMGenerator(renderer)
   const target = pmrem.fromScene(envScene, 0.02)
@@ -243,7 +346,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       r.ortho.updateProjectionMatrix()
       camera = r.ortho
     }
-    r.light.position.set(2, 3, 4)
+    r.light.position.set(...LOGO3D_LOOK.keyLight.position)
     r.renderer.render(r.scene, camera)
   }
 
@@ -299,14 +402,15 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     }
     renderer.setClearColor(0x000000, 0)
     renderer.outputColorSpace = SRGBColorSpace
-    renderer.toneMapping = ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1
+    // ACES는 채도를 깎아 하늘색 타일이 탁해진다 — 색상·채도를 보존하는 Neutral을 쓴다
+    renderer.toneMapping = NeutralToneMapping
+    renderer.toneMappingExposure = LOGO3D_LOOK.exposure
     // 렌더러 캔버스는 화면에 붙이지 않는다 — 보이는 것은 합성한 2D 캔버스(`displayRef`)다.
 
     const scene = new Scene()
     const env = createStudioEnvironment(renderer)
     scene.environment = env
-    const light = new DirectionalLight(0xffffff, 0.9)
+    const light = new DirectionalLight(0xffffff, LOGO3D_LOOK.keyLight.intensity)
     scene.add(light)
     const spin = new Group()
     const offset = new Group()
