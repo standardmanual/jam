@@ -97,4 +97,13 @@ describe('녹화 중 「녹화 취소」 버튼', () => {
       }
     })
   }
+
+  it('녹화 중에는 화면 탭(제작·콘텐츠 적용)이 눌리지 않아 「녹화 취소」가 사라지지 않는다 (티켓 20261103_2223)', () => {
+    const html = renderRecording('shape')
+    for (const label of [/제작/, /콘텐츠 적용/]) {
+      const tabs = buttonHtml(html, label).filter((b) => /rounded-full/.test(b.html))
+      expect(tabs.length).toBeGreaterThan(0)
+      for (const t of tabs) expect(t.html).toContain('disabled=""')
+    }
+  })
 })
