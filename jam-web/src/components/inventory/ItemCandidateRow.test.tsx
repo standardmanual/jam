@@ -23,7 +23,7 @@ describe('ItemCandidateRow 잠긴 변형', () => {
 
   it('양수면 일련번호 자리에 «N 포인트 필요»를 보이고 일련번호·만료 칩·«잼»을 그리지 않는다', () => {
     const html = lockedRow(5)
-    expect(html).toContain('5 포인트 필요')
+    expect(html).toMatch(/<span class="text-point-text"[^>]*>5 포인트<\/span> 필요/)
     expect(html).not.toContain('ZZZZ')
     expect(html).not.toContain('000777')
     expect(html).not.toContain(d.inventory.expiringSuffix)
@@ -31,7 +31,7 @@ describe('ItemCandidateRow 잠긴 변형', () => {
   })
 
   it('천 단위는 쉼표로 끊는다', () => {
-    expect(lockedRow(1200)).toContain('1,200 포인트 필요')
+    expect(lockedRow(1200)).toMatch(/<span class="text-point-text"[^>]*>1,200 포인트<\/span> 필요/)
   })
 
   it('0이면 «포인트 없이 열 수 있어요»를 보인다', () => {

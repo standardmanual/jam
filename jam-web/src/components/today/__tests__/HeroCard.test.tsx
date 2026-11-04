@@ -197,6 +197,9 @@ describe('HeroCard — titleInImage', () => {
   })
 })
 
+/** 문장 속 포인트 조각(`PointText`의 `text-point-text` 칸)을 글자만 남기고 벗긴다 — 줄 글자 비교용 */
+const unpaint = (html: string) => html.replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1')
+
 describe('HeroCard — 본문 글자 배치', () => {
   it('칩 줄 → 제목 → 요약 → 필수 정보 → 설명문 → 끝 줄 순서다', () => {
     const html = render({ regionLabel: '성수동' })
@@ -206,7 +209,7 @@ describe('HeroCard — 본문 글자 배치', () => {
       html.indexOf('<h3'),
       html.indexOf('이번 주말 같이 달려요'),
       html.indexOf('기간 10월 12일'),
-      html.indexOf('보상 300 포인트'),
+      html.indexOf('>300 포인트</span>'),
       html.indexOf('한강공원 코스를'),
       html.indexOf('자세히 보기'),
     ]
@@ -230,7 +233,7 @@ describe('HeroCard — 본문 글자 배치', () => {
 
   it('필수 정보는 14px(--text-sm) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
-    const lines = [...html.matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
+    const lines = [...unpaint(html).matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
     expect(lines.map((m) => m[2])).toEqual(['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'])
     for (const [, className] of lines) {
       expect(className).toBe(
@@ -252,7 +255,7 @@ describe('HeroCard — 본문 글자 배치', () => {
 
   it('필수 정보 앞에 아이콘·불릿을 붙이지 않는다', () => {
     const html = render()
-    const factsBlock = html.slice(html.indexOf('기간 10월 12일') - 200, html.indexOf('보상 300 포인트') + 40)
+    const factsBlock = html.slice(html.indexOf('기간 10월 12일') - 200, html.indexOf('>300 포인트</span>') + 40)
     expect(factsBlock).not.toContain('<svg')
   })
 

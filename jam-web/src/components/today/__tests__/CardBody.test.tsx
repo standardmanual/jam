@@ -50,10 +50,15 @@ describe('CardTitleGroup — 제목과 요약', () => {
   })
 })
 
+/** 문장 속 포인트 조각(`PointText`의 `text-point-text` 칸)을 글자만 남기고 벗긴다 — 마크업 비교용 */
+const unpaint = (html: string) => html.replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1')
+
 describe('CardFacts — 필수 정보', () => {
   it('한 줄에 하나씩 14px(--text-sm) 굵게 text-foreground이고 말줄임 없이 줄바꿈한다', () => {
     const html = renderToStaticMarkup(<CardFacts facts={['기간 상시', '보상 300 포인트']} />)
-    expect(html).toBe(`<div><p class="${FACT_CLASS}">기간 상시</p><p class="${FACT_CLASS}">보상 300 포인트</p></div>`)
+    expect(unpaint(html)).toBe(`<div><p class="${FACT_CLASS}">기간 상시</p><p class="${FACT_CLASS}">보상 300 포인트</p></div>`)
+    // «N 포인트» 조각만 point-text 오렌지이고 앞 글자는 그대로다
+    expect(html).toContain(`보상 <span class="text-point-text" style="white-space:nowrap;color:var(--point-text)">300 포인트</span></p>`)
     for (const needle of ['text-muted', 'line-clamp', 'truncate', 'body-sm']) expect(html).not.toContain(needle)
   })
 
@@ -68,6 +73,12 @@ describe('CardDescription — 설명문', () => {
     const html = renderToStaticMarkup(<CardDescription description="설명문입니다" />)
     expect(html).toBe(`<p class="${DESCRIPTION_CLASS}">설명문입니다</p>`)
     expect(html).not.toContain('font-bold')
+  })
+
+  it('설명문 속 «N 포인트» 조각만 point-text 오렌지로 칠한다', () => {
+    const html = renderToStaticMarkup(<CardDescription description="완주하면 1,200 포인트를 드려요" />)
+    expect(html).toContain('완주하면 <span class="text-point-text"')
+    expect(html).toContain('>1,200 포인트</span>를 드려요</p>')
   })
 
   it('값이 없으면(undefined·빈 문자열) 아무것도 그리지 않는다', () => {
@@ -127,7 +138,7 @@ describe('hero·square·list가 같은 조각을 쓴다 — 같은 입력이면 
 
   /** 제목 그룹 = 본문 칸 안의 칩 줄 다음 `<div>…</div>`, 필수 정보 = `font-bold` 줄 묶음, 설명문 = 설명 글자가 든 `<p>` */
   const titleGroupOf = (html: string) => html.match(/<div><h3 .*?<\/h3>(?:<p [^>]*>[^<]*<\/p>)?<\/div>/)?.[0]
-  const factsOf = (html: string) => html.match(/<div>(?:<p class="[^"]*font-bold[^"]*">[^<]*<\/p>)+<\/div>/)?.[0]
+  const factsOf = (html: string) => unpaint(html).match(/<div>(?:<p class="[^"]*font-bold[^"]*">[^<]*<\/p>)+<\/div>/)?.[0]
   const descriptionOf = (html: string) => html.match(/<p class="[^"]*">설명문입니다<\/p>/)?.[0]
 
   it('본문 칸이 같다', () => {

@@ -170,7 +170,7 @@ describe('SquareCard — 본문 글자 배치', () => {
       html.indexOf('<h3'),
       html.indexOf('이번 주말 같이 달려요'),
       html.indexOf('기간 10월 12일'),
-      html.indexOf('보상 300 포인트'),
+      html.indexOf('>300 포인트</span>'),
     ]
     for (const position of positions) expect(position).toBeGreaterThan(-1)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
@@ -181,13 +181,13 @@ describe('SquareCard — 본문 글자 배치', () => {
     expect(html).toContain(
       '<p class="text-sm text-muted line-clamp-3 break-keep break-words">설명문은 필수 정보 다음에 와요</p>',
     )
-    expect(html.indexOf('보상 300 포인트')).toBeLessThan(html.indexOf('설명문은 필수 정보 다음에 와요'))
+    expect(html.indexOf('>300 포인트</span>')).toBeLessThan(html.indexOf('설명문은 필수 정보 다음에 와요'))
   })
 
   it('titleInImage여도 설명문은 필수 정보 다음에 온다', () => {
     const html = render({ titleInImage: true })
-    expect(html.indexOf('보상 300 포인트')).toBeGreaterThan(-1)
-    expect(html.indexOf('보상 300 포인트')).toBeLessThan(html.indexOf('설명문은 필수 정보 다음에 와요'))
+    expect(html.indexOf('>300 포인트</span>')).toBeGreaterThan(-1)
+    expect(html.indexOf('>300 포인트</span>')).toBeLessThan(html.indexOf('설명문은 필수 정보 다음에 와요'))
   })
 
   it('설명문이 없거나 공백뿐으로 비어 있으면 그 줄이 사라진다', () => {
@@ -240,7 +240,7 @@ describe('SquareCard — 본문 글자 배치', () => {
 
   it('필수 정보는 14px(--text-sm) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
-    const lines = [...html.matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
+    const lines = [...html.replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1').matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
     expect(lines.map((m) => m[2])).toEqual(['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'])
     for (const [, className] of lines) {
       expect(className).toBe(

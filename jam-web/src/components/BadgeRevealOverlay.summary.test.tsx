@@ -29,6 +29,7 @@ const HEADER_PANEL = 'border-radius:0 0 var(--radius-2xl) var(--radius-2xl)'
 interface RenderOptions {
   summaryMessage?: string
   resultMessage?: string
+  emptyMessage?: string
   items?: RevealBadge[]
   moreCount?: number
   open?: boolean
@@ -69,6 +70,28 @@ describe('BadgeRevealOverlay summaryMessage — 헤더', () => {
     const html = render({ resultMessage: result, summaryMessage: SUMMARY })
     expect(html).toContain(`>${result}</p>`)
     expect(html).not.toContain(SUMMARY)
+  })
+})
+
+describe('BadgeRevealOverlay — «N 포인트» 조각 색 (티켓 20261104_2319)', () => {
+  const POINT_SPAN = /<span class="text-point-text"[^>]*>1,240 포인트<\/span>/
+
+  it('헤더 패널 문구의 포인트 조각만 point-text 오렌지로 칠하고 음성 안내 문자열은 그대로 둔다', () => {
+    const summary = '이번에 1,240 포인트 받았어요'
+    const html = render({ summaryMessage: summary })
+    expect(html).toMatch(POINT_SPAN)
+    expect(html).toContain('이번에 <span class="text-point-text"')
+    expect(liveRegionText(html)).toBe(`배지 2개를 획득했어요. ${summary}`)
+  })
+
+  it('결과가 비었을 때 보여 주는 문구(emptyMessage)의 포인트 조각도 칠한다', () => {
+    const html = render({ items: [], emptyMessage: '1,240 포인트는 돌려드렸어요' })
+    expect(html).toMatch(POINT_SPAN)
+    expect(html).toContain('</span>는 돌려드렸어요</p>')
+  })
+
+  it('포인트 조각이 없는 문구는 칠하지 않는다', () => {
+    expect(render({ summaryMessage: SUMMARY })).not.toContain('text-point-text')
   })
 })
 

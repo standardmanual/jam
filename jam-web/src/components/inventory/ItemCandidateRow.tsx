@@ -5,7 +5,8 @@ import ListRowCard from '@/components/ui/ListRowCard'
 import LocalDate from '@/components/LocalDate'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 import type { BadgeRarity } from '@/types/database'
 
 // 20260908_0040: 장착 개체 선택 시트(20260907_2221)의 행을 공용 컴포넌트로 추출 —
@@ -118,7 +119,7 @@ export default function ItemCandidateRow({
         {locked ? (
           points !== null && (
             <p className="m-0 text-base font-bold text-foreground break-keep wrap-break-word">
-              {points > 0 ? t(d.lockedItem.card.requiredChip, { n: points.toLocaleString('ko-KR') }) : d.lockedItem.detail.points.free}
+              {points > 0 ? tPoint(d.lockedItem.card.requiredChip, { n: points.toLocaleString('ko-KR') }) : d.lockedItem.detail.points.free}
             </p>
           )
         ) : (

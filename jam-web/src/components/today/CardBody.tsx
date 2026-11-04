@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { pointify } from '@/lib/i18n/tPoint'
 
 /**
  * 카드 본문 공용 조각(기본 톤 Card의 흰 면 위) — 제목 그룹 · 필수 정보 · 설명문 · 끝 줄 (티켓 20261001_2104, 상위 20260930_1453 조각 b5).
@@ -49,7 +50,7 @@ export function CardFacts({ facts }: { facts?: readonly string[] }) {
           key={index}
           className="text-sm font-bold text-foreground break-keep break-words"
         >
-          {line}
+          {pointify(line)}
         </p>
       ))}
     </div>
@@ -61,7 +62,7 @@ export function CardDescription({ description }: { description?: string }) {
   if (!description) return null
   return (
     <p className="text-sm text-muted line-clamp-3 break-keep break-words">
-      {description}
+      {pointify(description)}
     </p>
   )
 }

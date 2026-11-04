@@ -8,6 +8,7 @@ import { LabelChip } from '@ds/components/cards/LabelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
+import { PointText } from '@ds/components/patterns/PointText'
 import LocalDate from '@/components/LocalDate'
 import SafeImage from '@/components/SafeImage'
 import InlineNotice from '@/components/ui/InlineNotice'
@@ -18,6 +19,7 @@ import { useToast } from '@/components/ui/Toast'
 import { runLockedOpen, type LockedItemEffect } from '@/lib/inventory/lockedItemFill-flow'
 import type { LockedItemOpenPayload, LockedItemRarity } from '@/lib/inventory/lockedItemFill-contract'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 
 /**
  * 잠긴 아이템 배지 상세 — `/inventory/[itemId]`가 잠긴 개체일 때 그린다 (티켓 20261018_0054 2회, 20261028_1741 1회, 채원 판정 2026-10-30)
@@ -69,8 +71,8 @@ function PointRow({ label, value, strong }: { label: string; value: number; stro
   return (
     <div className="flex items-baseline gap-2 break-keep wrap-break-word">
       <dt className="text-base text-foreground">{label}</dt>
-      <dd className={`m-0 whitespace-nowrap font-bold tabular-nums ${strong ? 'text-2xl text-[color:var(--link)]' : 'text-base text-foreground'}`}>
-        {value.toLocaleString('ko-KR')}
+      <dd className={`m-0 whitespace-nowrap font-bold tabular-nums ${strong ? 'text-2xl' : 'text-base'}`}>
+        <PointText value={value} unit="" />
       </dd>
     </div>
   )
@@ -195,7 +197,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
                     <PointRow label={d.lockedItem.detail.points.required} value={required} strong />
                     <PointRow label={d.lockedItem.detail.points.balance} value={balance} strong={false} />
                   </dl>
-                  {blocked && <InlineNotice>{t(d.lockedItem.detail.points.shortage, { short: shortfall.toLocaleString('ko-KR') })}</InlineNotice>}
+                  {blocked && <InlineNotice>{tPoint(d.lockedItem.detail.points.shortage, { short: shortfall.toLocaleString('ko-KR') })}</InlineNotice>}
                 </div>
               )}
             </div>
@@ -217,12 +219,12 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
             )}
             {view.payload.pointsSpent > 0 && (
               <p className="m-0 break-keep wrap-break-word text-base text-foreground">
-                {t(d.lockedItem.detail.opened.spent, { points: view.payload.pointsSpent.toLocaleString('ko-KR') })}
+                {tPoint(d.lockedItem.detail.opened.spent, { points: view.payload.pointsSpent.toLocaleString('ko-KR') })}
               </p>
             )}
             {view.payload.pointsAwarded > 0 && (
               <p className="m-0 break-keep wrap-break-word text-base text-foreground">
-                {t(d.lockedItem.detail.opened.points, { points: view.payload.pointsAwarded.toLocaleString('ko-KR') })}
+                {tPoint(d.lockedItem.detail.opened.points, { points: view.payload.pointsAwarded.toLocaleString('ko-KR') })}
               </p>
             )}
           </div>

@@ -19,6 +19,7 @@ import BadgeConditionCard from './BadgeConditionCard'
 import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeConditionText'
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 import { resolveStravaConnectionState } from '@/lib/strava/connection-state'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
@@ -609,8 +610,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           <Card>
             <p className="text-base text-foreground">
               {hasEarned
-                ? t(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
-                : t(d.badges.pointRewardPending, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
+                ? tPoint(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
+                : tPoint(d.badges.pointRewardPending, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
             </p>
           </Card>
         )}
