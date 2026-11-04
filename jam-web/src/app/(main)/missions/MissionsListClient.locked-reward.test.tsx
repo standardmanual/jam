@@ -109,6 +109,7 @@ describe('미션 목록 — 잠긴 보상 배지', () => {
     const text = rewardText(html)
     expect(text).not.toContain(LOCKED_NAME)
     expect(text).toContain('주말 러너 배지 + 300 포인트')
+    expect(html).toMatch(/text-point-text[^>]*>300 포인트<\/span>/)
   })
 
   it('보상이 아무것도 없으면 «없음»이다', () => {

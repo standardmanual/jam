@@ -402,6 +402,9 @@ describe('JAM! 시작하기 카드 — ② 잠긴 아이템 배지 열기', () =
     expect(html).toContain('role="status"')
     const text = textOf(html)
     expect(text).toContain('30 포인트가 필요해요')
+    // 포인트 조각만 point-text 오렌지, «가 필요해요»는 안내 글자색
+    expect(html).toContain('<span class="text-point-text"')
+    expect(html).toMatch(/text-point-text[^>]*>30 포인트<\/span>가 필요해요/)
     expect(text).toContain('잠긴 배지를 열 수 있어요')
     expect(buttonTexts(html)).toEqual(['인벤토리 가기'])
     // 옛 규칙 폐기: 모자라도 primary가 «동기화»로 바뀌지 않는다

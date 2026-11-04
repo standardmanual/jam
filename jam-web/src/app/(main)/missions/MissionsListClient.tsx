@@ -14,6 +14,7 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 import { missionStatusKind } from './missionStatusKind'
 
 export interface MissionListItem extends MissionRow {
@@ -127,7 +128,7 @@ function rewardNodes(m: MissionListItem, badgeNames: Record<string, RewardBadgeI
   })
   if (m.reward_points) {
     if (nodes.length > 0) nodes.push(<span key="sep-points"> + </span>)
-    nodes.push(<span key="points">{t(d.missions.rewardPoints, { points: m.reward_points.toLocaleString('ko-KR') })}</span>)
+    nodes.push(<span key="points">{tPoint(d.missions.rewardPoints, { points: m.reward_points.toLocaleString('ko-KR') })}</span>)
   }
   if (nodes.length === 0) nodes.push(<span key="none">{d.missions.rewardNone}</span>)
   return nodes

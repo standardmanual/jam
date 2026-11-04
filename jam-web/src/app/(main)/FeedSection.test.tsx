@@ -359,3 +359,27 @@ describe('상세 시트', () => {
     expect(visibleText(html)).toContain(d.common.detail)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 포인트 표기 — «값 포인트» 조각만 point-text 오렌지 (티켓 20261104_2319 2회차)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function pointPieces(html: string): string[] {
+  return Array.from(html.matchAll(/<span class="text-point-text"[^>]*>(.*?)<\/span>/g)).map((m) => m[1])
+}
+
+describe('피드의 포인트 표기', () => {
+  const MISSION = row('mission_completed', { mission_title: '주말 러너', reward_points: 300 })
+  const BADGE = row('badge_earned', { badge_name: '한강 러너', point_reward: 50 })
+
+  it('미션 완료 카드 부제는 «+300 포인트» 조각만 칠하고 문장 글자는 그대로다', () => {
+    const html = renderFeed([MISSION])
+    expect(pointPieces(html)).toEqual(['+300 포인트'])
+    expect(visibleText(html)).toContain('+300 포인트')
+  })
+
+  it('상세 시트의 보상 행은 두 곳 모두 값과 단위를 칠한다', () => {
+    expect(pointPieces(renderSheet(MISSION))).toEqual(['300 포인트'])
+    expect(pointPieces(renderSheet(BADGE))).toEqual(['+50 포인트'])
+  })
+})
