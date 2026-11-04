@@ -5,13 +5,14 @@
  * 버튼이 없다. 저장소에 jsdom·testing-library가 없어(vitest.config.ts `environment: 'node'`) 서버 렌더로 마크업만 고정한다 —
  * 시트를 여는 판정은 `shouldOpenCandidateSheet`(`lib/itembook/__tests__/tier-badge-slots.test.ts`)가 맡는다.
  *
- * «모두 해제하기» 버튼(티켓 20261028_1420)의 노출 조건도 여기서 고정한다: 본인 화면이고 장착 개수(`slotCount`)가 1 이상일 때만 격자 아래에 한 줄로 그린다.
+ * «모두 빼기» 버튼(티켓 20261028_1420)의 노출 조건도 여기서 고정한다: 본인 화면이고 장착 개수(`slotCount`)가 1 이상일 때만 격자 아래에 한 줄로 그린다.
  * 확인 시트(BottomSheet)는 서버 렌더에서 아무것도 그리지 않아(마운트 게이트) 시트 안의 문구·버튼은 `UnslotAllSheet.test.tsx`가 본다.
  * 요청 중 비활성(`bulkBusy`)은 상태 전이라 서버 렌더로는 볼 수 없다 — 요청 흐름은 `runUnslotAll`·`toUnslotAllOutcome` 시험이 맡는다.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/collections/[id]/__tests__/SlotGrid.test.tsx"
  */
 import { describe, it, expect, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
@@ -45,10 +46,10 @@ describe('SlotGrid — 등급이 정해진 칸', () => {
     cell('이름3', 'rare'),
   ]
 
-  it('장착된 칸은 «해제», 후보가 있는 칸은 «추가», 미보유 칸은 이름이 보이고 버튼이 없다', () => {
+  it('장착된 칸은 «빼기», 후보가 있는 칸은 «추가», 미보유 칸은 이름이 보이고 버튼이 없다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} />)
 
-    expect(count(html, '>해제<')).toBe(1)
+    expect(count(html, '>빼기<')).toBe(1)
     expect(count(html, '>추가<')).toBe(1)
     // 미보유 칸도 원래 이름을 그리고 «???»는 어디에도 없다. 카드 전체 흐림(opacity-30)도 걷었다
     expect(count(html, '>이름3<')).toBe(1)
@@ -69,9 +70,51 @@ describe('SlotGrid — 등급이 정해진 칸', () => {
   it('타인 열람(readOnly)은 버튼이 없다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} readOnly />)
 
-    expect(html).not.toContain('>해제<')
+    expect(html).not.toContain('>빼기<')
     expect(html).not.toContain('>추가<')
     expect(html).not.toContain('>교체<')
+  })
+})
+
+describe('SlotGrid — 칸 알약의 색은 tone으로 갈린다 (티켓 20261104_2153)', () => {
+  const pillOf = (html: string, label: string) => {
+    const match = html.match(new RegExp(`<button[^>]*class="([^"]*)"[^>]*>${label}</button>`))
+    return match?.[1] ?? ''
+  }
+  const allPills = () =>
+    renderToStaticMarkup(
+      <SlotGrid
+        itemBookId="book-1"
+        badgeSlots={[
+          cell('이름1', 'rare', { slot: slotted }),
+          cell('이름2', 'rare', { slot: slotted, candidates: [candidate('c1')] }),
+          cell('이름3', 'rare', { candidates: [candidate('c2')] }),
+        ]}
+      />,
+    )
+
+  it('«빼기»는 그레이(default 면 + foreground 글자), «교체»·«추가»는 accent 면이다', () => {
+    const html = allPills()
+
+    const unslot = pillOf(html, '빼기')
+    expect(unslot).toContain('bg-default')
+    expect(unslot).toContain('text-foreground')
+    expect(unslot).not.toContain('bg-accent')
+    expect(unslot).not.toContain('background-inverse')
+    for (const label of ['교체', '추가']) {
+      const pill = pillOf(html, label)
+      expect(pill, label).toContain('bg-accent')
+      expect(pill, label).toContain('text-accent-foreground')
+      expect(pill, label).not.toContain('bg-default')
+    }
+  })
+
+  it('셋은 같은 모양 클래스를 쓰고 SlotGrid에 손으로 쓴 알약 클래스가 남지 않는다', () => {
+    const html = allPills()
+
+    const shape = 'block mx-auto px-3 py-1 text-xs rounded-full whitespace-nowrap transition-all disabled:opacity-40'
+    for (const label of ['빼기', '교체', '추가']) expect(pillOf(html, label), label).toContain(shape)
+    expect(readFileSync(new URL('../SlotGrid.tsx', import.meta.url), 'utf-8')).not.toContain('rounded-full')
   })
 })
 
@@ -100,13 +143,13 @@ describe('SlotGrid — 등급이 없는 칸(tierUndecided)', () => {
   })
 })
 
-describe('SlotGrid — 모두 해제하기 버튼의 노출 조건 (티켓 20261028_1420)', () => {
+describe('SlotGrid — 모두 빼기 버튼의 노출 조건 (티켓 20261028_1420)', () => {
   const badgeSlots = [
     cell('이름1', 'rare', { slot: slotted }),
     cell('이름2', 'rare', { candidates: [candidate('c1')] }),
     cell('이름3', 'rare'),
   ]
-  const BUTTON = '>모두 해제하기<'
+  const BUTTON = '>모두 빼기<'
 
   it('본인 화면에서 장착이 하나라도 있으면 격자 바로 아래에 버튼이 한 번 보인다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} slotCount={1} />)
@@ -114,8 +157,9 @@ describe('SlotGrid — 모두 해제하기 버튼의 노출 조건 (티켓 20261
     expect(count(html, BUTTON)).toBe(1)
     // 격자의 마지막 칸 뒤에 있다
     expect(html.indexOf(BUTTON)).toBeGreaterThan(html.lastIndexOf('href="/badges/'))
-    // 흰 면 outline, 격자 폭 전체, 격자와 12px 간격, 라벨은 한 줄
-    expect(html).toContain('bg-surface!')
+    // 검정 채움(Button primary) — outline·흰 면 덮어쓰기는 없다. 격자 폭 전체, 격자와 12px 간격, 라벨은 한 줄
+    expect(html).toContain('bg-background-inverse')
+    expect(html).not.toContain('bg-surface!')
     expect(html).toContain('w-full')
     expect(html).toContain('mt-3')
     expect(html).toContain('whitespace-nowrap')
@@ -126,7 +170,7 @@ describe('SlotGrid — 모두 해제하기 버튼의 노출 조건 (티켓 20261
       renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} slotCount={0} />),
       renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} />),
     ]) {
-      expect(html).not.toContain('모두 해제하기')
+      expect(html).not.toContain('모두 빼기')
       expect(html).not.toContain('bg-surface!')
     }
   })
@@ -134,7 +178,7 @@ describe('SlotGrid — 모두 해제하기 버튼의 노출 조건 (티켓 20261
   it('타인 열람(readOnly)은 장착이 있어도 보이지 않는다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} slotCount={3} readOnly />)
 
-    expect(html).not.toContain('모두 해제하기')
+    expect(html).not.toContain('모두 빼기')
   })
 
   it('삭제된 배지에 꽂힌 장착만 남아 격자에 장착된 칸이 없어도 slotCount가 있으면 보인다', () => {
@@ -144,7 +188,7 @@ describe('SlotGrid — 모두 해제하기 버튼의 노출 조건 (티켓 20261
       <SlotGrid itemBookId="book-1" badgeSlots={noVisibleSlot} slotCount={1} tierFixed />,
     )
 
-    expect(count(html, '>해제<')).toBe(0)
+    expect(count(html, '>빼기<')).toBe(0)
     expect(count(html, BUTTON)).toBe(1)
   })
 })

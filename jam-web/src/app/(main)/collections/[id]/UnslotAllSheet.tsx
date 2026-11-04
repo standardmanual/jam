@@ -10,7 +10,7 @@ import { d } from '@/lib/i18n'
 import { INVENTORY_FULL_CODE } from '@/lib/inventory/locked-item-block'
 
 /**
- * 한 번의 «모두 해제하기» 요청 결과 — 서버 응답을 화면이 가를 세 가지로 줄인 값이다.
+ * 한 번의 «모두 빼기» 요청 결과 — 서버 응답을 화면이 가를 세 가지로 줄인 값이다.
  * - `ok`: 모두 해제했다(장착이 이미 없었던 경우 포함)
  * - `full`: 인벤토리 빈칸이 모자라다. 한 개도 해제하지 못했거나 중간에 가득 차 일부만 해제했다. `message`가 둘을 가른 문장이다
  * - `error`: 그 밖의 실패(로그인·시간 초과·네트워크·서버 오류)
@@ -80,7 +80,7 @@ interface UnslotAllSheetViewProps {
 const FOOTER_BUTTON = 'px-3! whitespace-nowrap'
 
 /**
- * «모두 해제하기» 확인 시트의 겉모습 (티켓 20261028_1420, 채원 사전 판정 2026-10-28).
+ * «모두 빼기» 확인 시트의 겉모습 (티켓 20261028_1420, 채원 사전 판정 2026-10-28).
  *
  * 재사용만 한다: BottomSheet(compact) + Button(secondary 취소, primary main 확정) + InlineNotice. 새 토큰·새 부품이 없다.
  * 확정을 danger로 칠하지 않는다 — 배지는 인벤토리로 돌아오고 완성 기록도 남아 잃는 것이 없다. 취소와 확정은 같은 폭·같은 높이다(가이드 5.2).
@@ -88,7 +88,7 @@ const FOOTER_BUTTON = 'px-3! whitespace-nowrap'
  *
  * 실패·빈칸 부족 안내는 푸터 맨 위에 InlineNotice 한 블록이다(`StravaDuplicateSheet` 선례). 안내가 보여도 확정은 계속 켜져 있다 —
  * 다른 탭에서 빈칸을 만들었을 수 있어 다시 누르면 재시도다. 링크는 빈칸이 모자란 안내에만 붙는다.
- * 제출 중에는 확정이 loading이고 라벨이 «해제하는 중»이며 취소와 시트 닫기가 막힌다. 닫힘 트랜지션은 BottomSheet가 DOM에 남겨 처리한다.
+ * 제출 중에는 확정이 loading이고 라벨이 «빼는 중»이며 취소와 시트 닫기가 막힌다. 닫힘 트랜지션은 BottomSheet가 DOM에 남겨 처리한다.
  */
 export function UnslotAllSheetView({
   open,
@@ -170,7 +170,7 @@ interface UnslotAllSheetProps {
 }
 
 /**
- * 컬렉션 상세의 «모두 해제하기» 확인 시트.
+ * 컬렉션 상세의 «모두 빼기» 확인 시트.
  *
  * 확정은 `requestUnslotAll`(SlotGrid, `DELETE /api/itembooks/[id]/slots`)이다. 성공이면 시트를 닫고 토스트를 띄운 뒤 `onUnslotted`를 부른다.
  * 실패·빈칸 부족이면 시트를 연 채 안내를 푸터에 세운다 — 실패는 화면 밖일 수 있는 배너가 아니라 사용자가 보고 있는 시트에서 알린다
