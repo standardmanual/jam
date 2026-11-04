@@ -6,7 +6,7 @@
  *    같은 계정 재연결은 토큰만 갱신하고 끊김을 지우며 first_sync_pending을 건드리지 않는다 · DB 쓰기가 실패하면 false이고,
  *    이전 연결 삭제가 실패하면 방금 넣은 새 행을 되돌린다(update 경로는 되돌릴 행이 없다) · 암호화가 실패하면 던지고 DB를 건드리지 않는다 ·
  *    로그에 토큰이 없다
- *  - `syncAfterConnect`: 던지지 않는다 · 이용 정지·트라이브 없음은 오류가 아니라 건너뜀으로 남긴다
+ *  - `syncAfterConnect`: 던지지 않는다 · 이용 정지·트라이브 없음·인벤토리 빈칸 모자람(20261105_0101)은 오류가 아니라 건너뜀으로 남긴다
  *  - `assessDuplicateOwner`: 일반·정상 → replaceable · 어드민(is_admin·화이트리스트)·이용 정지·유저 행 없음 → blocked · 읽지 못함 → unknown
  *
  * 공용 DB와 Strava는 부르지 않는다 — 가짜 클라이언트만 쓴다.
@@ -27,6 +27,7 @@ vi.mock('@/lib/strava/sync', () => ({ syncStravaActivities: (userId: string) => 
 import { assessDuplicateOwner, saveStravaConnection, syncAfterConnect } from '../connection-save'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { TribeRequiredError } from '@/lib/tribe/gate'
+import { CapsuleInventoryBlockedError } from '@/lib/capsule/receive-block'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 type Row = Record<string, unknown>
@@ -216,6 +217,15 @@ describe('syncAfterConnect', () => {
 
     expect(errorSpy).not.toHaveBeenCalled()
     expect(infoSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('캡슐이 가득 차고 빈칸이 모자라 막혀도 던지지 않고 오류가 아니라 건너뜀으로 남긴다(연결은 성공한다)', async () => {
+    mocks.sync.mockRejectedValueOnce(new CapsuleInventoryBlockedError(0, 2))
+
+    await expect(syncAfterConnect(USER_ID)).resolves.toBeUndefined()
+
+    expect(errorSpy).not.toHaveBeenCalled()
+    expect(infoSpy).toHaveBeenCalledTimes(1)
   })
 
   it('그 밖의 실패는 오류로 남기되 던지지 않는다(연결은 이미 끝났다)', async () => {

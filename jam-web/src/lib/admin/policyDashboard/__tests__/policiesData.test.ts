@@ -488,3 +488,22 @@ describe('잠긴 아이템 배지 여는 포인트 항목 (티켓 20261028_1737 
     expect(find('ch14-ledger-audit')?.currentSpec).toContain('locked_unlock_cost')
   })
 })
+
+describe('인벤토리 가득 참 잼 차단 항목 (티켓 20261105_0101)', () => {
+  const card = POLICIES_DATA.find((p) => p.id === 'ch5-inventory-full-block')
+  const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+
+  it('캡슐 챕터에 있고 코드 위치가 실재한다', () => {
+    expect(card).toBeDefined()
+    expect(card?.chapter).toBe(5)
+    expect(card?.ticketId).toBe('20261105_0101')
+    expect(existsSync(`${repoRoot}${card?.codeLocation}`)).toBe(true)
+  })
+
+  it('판정 함수·응답 코드와 먼저 적용되는 막힘의 순서를 적는다', () => {
+    const spec = card?.currentSpec ?? ''
+    for (const text of ['capsule_receive_blocked', 'capsule_inventory_blocked', 'user_suspended', 'tribe_required', 'sync_pending_items', '이 막힘 안내가 먼저']) {
+      expect(spec, text).toContain(text)
+    }
+  })
+})

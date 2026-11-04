@@ -25,6 +25,11 @@ const { createServiceClientMock, getActivitiesMock, evaluateBadgesMock } = vi.ho
 }))
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClientMock }))
+// 캡슐 받기 막힘(티켓 20261105_0101)은 sync-capsule-receive-block.test.ts가 맡는다 — 이 파일은 막히지 않은 유저로 본다.
+vi.mock('@/lib/capsule/receive-block', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/capsule/receive-block')>('@/lib/capsule/receive-block')
+  return { ...actual, readCapsuleReceiveBlocked: async () => ({ blocked: false, free: 50, needed: 2 }) }
+})
 vi.mock('@/lib/utils', () => ({
   // 실제 AES 복호화는 ENCRYPTION_KEY·정형화된 "iv:data" 문자열을 요구한다 — 이 파일은
   // 암/복호화 로직이 아니라 커서 계산을 검증하므로 항등 함수로 대체한다.

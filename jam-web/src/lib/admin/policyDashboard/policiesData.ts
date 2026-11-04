@@ -487,6 +487,22 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     nodes: ['capsule'],
   },
   {
+    id: 'ch5-inventory-full-block',
+    chapter: 5,
+    chapterTitle: '캡슐',
+    title: '인벤토리 가득 참 잼 차단 (동기화 입구)',
+    type: 'code_constant',
+    currentSpec:
+      '캡슐이 가득 차 있고(채운 양 ≥ 필요량) 인벤토리 빈칸이 필요 칸수(확정 + 보너스)보다 적으면 동기화를 입구에서 멈추고 409 capsule_inventory_blocked(빈칸 free·필요 칸수 needed)로 알림. 판정은 읽기 전용 DB 함수 capsule_receive_blocked가 단일 원천이고, 캡슐·인벤토리·정책 행을 읽지 못하면 막지 않음. 이용 정지(403 user_suspended)와 트라이브 없음(403 tribe_required)이 먼저 적용되고, 고르지 않은 보류 대기(409 sync_pending_items)와 겹치면 이 막힘 안내가 먼저 나옴. Strava 호출·토큰 복호화·last_synced_at 선점 앞에서 멈춰 활동 기록과 조회 커서가 움직이지 않고, 빈칸을 만든 뒤 다음 동기화가 이어서 가져옴. 콜백 직후 동기화가 막혀도 Strava 연결 저장은 성공함',
+    codeLocation: 'jam-web/src/lib/capsule/receive-block.ts',
+    dbTable: 'user_capsules',
+    userExperience:
+      '캡슐이 가득 찼는데 인벤토리에 자리가 없으면 동기화 버튼을 눌러도 «인벤토리가 가득 차서 잼을 얻을 수 없어요. 인벤토리를 정리하면 다시 동기화할 수 있어요.» 안내가 떠요. 자리를 만든 뒤 다시 누르면 그동안의 활동이 이어서 반영돼요.',
+    basisDoc: '운영 로직 5.2절, 6.4절',
+    ticketId: '20261105_0101',
+    nodes: ['capsule'],
+  },
+  {
     id: 'ch5-gauge-notice',
     chapter: 5,
     chapterTitle: '캡슐',

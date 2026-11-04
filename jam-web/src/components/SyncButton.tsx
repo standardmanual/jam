@@ -93,6 +93,9 @@ export default function SyncButton({
       } else if (flow.kind === 'suspended') {
         // 정지는 고장이 아니라 막힌 상태라 'error'가 아니라 'info'로 낸다(티켓 20261017_1426)
         toast(d.suspension.syncBlocked, 'info')
+      } else if (flow.kind === 'inventory_blocked') {
+        // 캡슐이 가득 차고 빈칸이 모자라 입구에서 멈췄다. 고장이 아니라 막힌 상태라 'info'로 낸다(티켓 20261105_0101)
+        toast(d.capsuleReceiveBlock.syncBlocked, 'info')
       } else if (flow.kind === 'ok') {
         const { data, pickedFirst } = flow
         const badges = data.earnedBadges ?? []

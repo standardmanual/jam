@@ -10,6 +10,8 @@ import { syncStravaActivities } from '@/lib/strava/sync'
 import { StravaDisconnectedError } from '@/lib/strava/connection-state'
 import { SyncPendingItemsError } from '@/lib/strava/pending-items'
 import { SYNC_PENDING_ITEMS_CODE } from '@/lib/strava/pending-items-contract'
+import { CapsuleInventoryBlockedError } from '@/lib/capsule/receive-block'
+import { CAPSULE_INVENTORY_BLOCKED_CODE, type CapsuleInventoryBlockedResponse } from '@/lib/capsule/receive-block-contract'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 import { TribeRequiredError } from '@/lib/tribe/gate'
@@ -54,6 +56,17 @@ export async function POST() {
     if (err instanceof UserSuspendedError) {
       const body: UserSuspendedResponse = { error: d.suspension.syncBlocked, code: USER_SUSPENDED_CODE }
       return NextResponse.json(body, { status: 403 })
+    }
+    // 캡슐이 가득 차고 인벤토리 빈칸이 필요 칸수보다 적으면 가져오기·정산 없이 409로 알린다 — 활동 기록은 그대로이고 빈칸을 만든 뒤 다음 동기화가 이어서 가져온다.
+    // 보류 고르기 대기와 겹치면 이 안내가 먼저다(서버가 먼저 던진다, 티켓 20261105_0101)
+    if (err instanceof CapsuleInventoryBlockedError) {
+      const body: CapsuleInventoryBlockedResponse = {
+        error: d.capsuleReceiveBlock.syncBlocked,
+        code: CAPSULE_INVENTORY_BLOCKED_CODE,
+        free: err.free,
+        needed: err.needed,
+      }
+      return NextResponse.json(body, { status: 409 })
     }
     // 고르지 않은 보류가 남아 있으면 가져오기·정산 없이 409로 알린다 — 화면(2회)이 고르기를 먼저 보여 준다 (티켓 20261017_1425)
     if (err instanceof SyncPendingItemsError) {

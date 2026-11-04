@@ -10,11 +10,14 @@
  * - 고르기가 떠 있는 동안 버튼 스피너를 끄고, 동기화를 다시 요청할 때 켠다.
  * - 403 + `code: 'tribe_required'` → 일반 실패가 아니라 `tribe_required`로 돌려준다(호출부가 트라이브 고르기 화면으로 보낸다, 티켓 20261021_1247).
  *
+ * - 409 + `code: 'capsule_inventory_blocked'` → 일반 실패가 아니라 `inventory_blocked`로 돌려준다. 고르기를 열지 않고 다시 요청하지 않는다(티켓 20261105_0101).
+ *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-flow.test.ts
  */
 import { describe, it, expect, vi } from 'vitest'
 import { runSyncFlow } from '../sync-flow'
 import { SYNC_PENDING_ITEMS_CODE } from '../pending-items-contract'
+import { CAPSULE_INVENTORY_BLOCKED_CODE } from '@/lib/capsule/receive-block-contract'
 import type { PickResult } from '../pending-pick'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 import { TRIBE_REQUIRED_CODE } from '@/lib/tribe/gate-contract'
@@ -189,6 +192,33 @@ describe('runSyncFlow — 403 tribe_required (티켓 20261021_1247)', () => {
     const t = setup([json(403, { error: 'x', code: USER_SUSPENDED_CODE })], [])
 
     await expect(t.run()).resolves.toEqual({ kind: 'suspended' })
+  })
+})
+
+describe('runSyncFlow — 409 capsule_inventory_blocked (티켓 20261105_0101)', () => {
+  const inventoryBlocked = () => json(409, { error: 'x', code: CAPSULE_INVENTORY_BLOCKED_CODE, free: 1, needed: 2 })
+
+  it('일반 실패가 아니라 inventory_blocked로 돌려주고 고르기를 열지 않으며 다시 요청하지 않는다', async () => {
+    const t = setup([inventoryBlocked(), json(200, { synced: 1 })], ['resolved'])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'inventory_blocked' })
+    expect(t.fetchSync).toHaveBeenCalledTimes(1)
+    expect(t.openPicker).not.toHaveBeenCalled()
+  })
+
+  it('고르기를 마친 뒤 다시 요청한 응답이 이 409여도 inventory_blocked다', async () => {
+    const t = setup([blocked(), inventoryBlocked()], ['resolved'])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'inventory_blocked' })
+    expect(t.fetchSync).toHaveBeenCalledTimes(2)
+    expect(t.openPicker).toHaveBeenCalledTimes(1)
+  })
+
+  it('보류 고르기 409는 그대로 고르기를 먼저 연다', async () => {
+    const t = setup([blocked(), json(200, { synced: 3 })], ['resolved'])
+
+    await expect(t.run()).resolves.toMatchObject({ kind: 'ok' })
+    expect(t.openPicker).toHaveBeenCalledTimes(1)
   })
 })
 

@@ -18,6 +18,7 @@ import {
 } from '@/lib/strava/connection-state'
 import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { countPendingItems, SyncPendingItemsError } from '@/lib/strava/pending-items'
+import { CapsuleInventoryBlockedError, readCapsuleReceiveBlocked } from '@/lib/capsule/receive-block'
 import { assertNotSuspended, getSuspensionPeriods } from '@/lib/suspension/suspension'
 import { assertHasTribe } from '@/lib/tribe/gate'
 import { isDuringSuspension } from '@/lib/suspension/suspension-contract'
@@ -1138,6 +1139,17 @@ export async function syncStravaActivities(
   // 이용 정지 중이면 동기화하지 않는다(티켓 20261017_1426, 운영 로직 16.4절). 가진 잼·아이템 배지·배지·포인트는 그대로 둔다.
   // 정지 여부를 읽지 못하면 던져 동기화하지 않는다. 수동 경로(/api/strava/sync)와 콜백 직후 동기화가 모두 이 함수를 지난다.
   await assertNotSuspended(supabase, userId)
+
+  // 캡슐이 가득 차고 인벤토리 빈칸이 필요 칸수보다 적으면 동기화하지 않는다(티켓 20261105_0101, 상위 20261105_0100). 이 지점은 토큰 복호화·Strava 호출·
+  // last_synced_at 선점 앞이라 활동 기록과 조회 커서가 움직이지 않고, 풀린 뒤 다음 동기화가 이어서 가져온다. 보류 고르기 대기와 겹치면 이 안내가 먼저다.
+  // 판정은 DB 함수 capsule_receive_blocked가 단일 원천이다. 읽지 못하면 던져 동기화하지 않는다.
+  const receiveBlock = await readCapsuleReceiveBlocked(supabase, userId)
+  if (receiveBlock.blocked) {
+    console.info(
+      `[syncStravaActivities] 캡슐이 가득 차 있고 인벤토리 빈칸 ${receiveBlock.free} < 필요 ${receiveBlock.needed}라 동기화하지 않음 (userId: ${userId})`,
+    )
+    throw new CapsuleInventoryBlockedError(receiveBlock.free, receiveBlock.needed)
+  }
 
   // 고르지 않은 보류가 있으면 동기화하지 않는다(티켓 20261017_1425, 운영 로직 6.4절). 새 보류가 더 쌓이면 한 번의 고르기가
   // 그것까지 «고르지 않음»으로 닫아 버리므로, 가져오기·정산 전에 막는다. 보류 개수를 읽지 못하면 던져 동기화하지 않는다.

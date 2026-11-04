@@ -6,6 +6,7 @@
  *  - 정상 동기화는 결과를 그대로 200으로 돌려준다
  *  - 연결이 끊긴 상태(StravaDisconnectedError)는 500이 아니라 409와 구분 값(`code`, `connectionState`)이다
  *  - 고르지 않은 보류가 남아 있으면(SyncPendingItemsError) 409와 구분 값(`code: 'sync_pending_items'`, `pendingCount`)이다 (티켓 20261017_1425)
+ *  - 캡슐이 가득 차고 인벤토리 빈칸이 모자라면(CapsuleInventoryBlockedError) 409와 구분 값(`code: 'capsule_inventory_blocked'`, `free`, `needed`)이다 (티켓 20261105_0101)
  *  - 이용 정지 중이면(UserSuspendedError) 403과 구분 값(`code: 'user_suspended'`)이다 (티켓 20261017_1426)
  *  - 트라이브를 고르지 않았으면(TribeRequiredError) 403과 구분 값(`code: 'tribe_required'`, `redirectTo: '/onboarding'`)이다 (티켓 20261021_1247)
  *  - 그 밖의 오류는 지금처럼 500이다 (트라이브를 읽지 못한 일반 오류도 403이 아니라 500이다)
@@ -16,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { d } from '@/lib/i18n'
 import { StravaDisconnectedError } from '@/lib/strava/connection-state'
 import { SyncPendingItemsError } from '@/lib/strava/pending-items'
+import { CapsuleInventoryBlockedError } from '@/lib/capsule/receive-block'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { TribeRequiredError } from '@/lib/tribe/gate'
 
@@ -91,6 +93,20 @@ describe('POST /api/strava/sync', () => {
       error: d.syncPending.syncBlocked,
       code: 'sync_pending_items',
       pendingCount: 3,
+    })
+  })
+
+  it('캡슐이 가득 차고 인벤토리 빈칸이 모자라면 409와 구분 값, 빈칸·필요 칸수로 알린다', async () => {
+    syncMock.mockRejectedValue(new CapsuleInventoryBlockedError(1, 2))
+
+    const res = await POST()
+
+    expect(res.status).toBe(409)
+    await expect(res.json()).resolves.toEqual({
+      error: d.capsuleReceiveBlock.syncBlocked,
+      code: 'capsule_inventory_blocked',
+      free: 1,
+      needed: 2,
     })
   })
 

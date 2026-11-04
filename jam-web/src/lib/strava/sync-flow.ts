@@ -8,6 +8,9 @@
  *    (호출부가 정지 안내를 'info'로 낸다, 티켓 20261017_1426). 고르기 뒤 다시 요청한 응답이 이 403이어도 같다.
  *  - 응답이 403 + `code: 'tribe_required'`이면 트라이브를 고르지 않아 동기화가 막힌 것이다. 'tribe_required'로 돌려준다
  *    (호출부가 트라이브 고르기 화면으로 보낸다, 티켓 20261021_1247). 실패 토스트가 아니다. 화면 게이트가 먼저 막으므로 보통 닿지 않는 경로다.
+ *  - 응답이 409 + `code: 'capsule_inventory_blocked'`이면 캡슐이 가득 차고 인벤토리 빈칸이 모자라 동기화가 입구에서 막힌 것이다. 'inventory_blocked'로 돌려준다
+ *    (호출부가 안내 토스트를 'info'로 낸다, 티켓 20261105_0101). 보류 고르기 409와 겹치면 서버가 이 응답을 먼저 내리므로 고르기를 열지 않는다.
+ *    고르기를 마친 뒤 다시 요청한 응답이 이 409여도 같다(고르기로 받아 빈칸이 줄어든 경우).
  *  - 응답이 200이고 `pendingItems`가 0보다 크면 이번 동기화에서 새로 보류가 생긴 것이다. 고르기를 결과 연출보다 먼저 보여 주고,
  *    마치든 «나중에»로 닫든 결과로 이어간다.
  *  - `pendingItems`가 없는 이전 응답에서는 기존 동작 그대로다.
@@ -15,6 +18,7 @@
  * 클라이언트·서버 경계: 순수 모듈이다. `pending-items-contract`(상수)·`suspended-block`(정지 403 판별)·`tribe/gate-contract`(트라이브 403 판별)와
  * `pending-pick`(타입)만 가져온다.
  */
+import { CAPSULE_INVENTORY_BLOCKED_CODE } from '@/lib/capsule/receive-block-contract'
 import { SYNC_PENDING_ITEMS_CODE } from '@/lib/strava/pending-items-contract'
 import { isSuspendedBlock } from '@/lib/suspension/suspended-block'
 import { isTribeRequiredBlock } from '@/lib/tribe/gate-contract'
@@ -27,6 +31,8 @@ export type SyncFlowResult<T> =
   | { kind: 'suspended' }
   /** 트라이브를 고르지 않아 동기화가 막혔다(403 `tribe_required`). 일반 실패가 아니다. */
   | { kind: 'tribe_required' }
+  /** 캡슐이 가득 차고 인벤토리 빈칸이 모자라 동기화가 막혔다(409 `capsule_inventory_blocked`). 일반 실패가 아니다. */
+  | { kind: 'inventory_blocked' }
   /** 동기화 응답이 실패했다(409 `sync_pending_items`가 아닌 오류) */
   | { kind: 'failed' }
   /** 동기화가 끝났다. `pickedFirst`는 응답에 새 보류가 있어 고르기를 먼저 보여 줬다는 뜻이다. */
@@ -48,8 +54,17 @@ async function isPendingItemsBlock(res: Response): Promise<boolean> {
   return body?.code === SYNC_PENDING_ITEMS_CODE
 }
 
+/** 409 + `code: 'capsule_inventory_blocked'`인가. 본문을 복제본으로 읽어 원본은 뒤의 판별이 다시 읽을 수 있게 둔다. */
+async function isInventoryBlock(res: Response): Promise<boolean> {
+  if (res.status !== 409) return false
+  const body = (await res.clone().json().catch(() => null)) as { code?: string } | null
+  return body?.code === CAPSULE_INVENTORY_BLOCKED_CODE
+}
+
 export async function runSyncFlow<T extends { pendingItems?: number }>(deps: Deps): Promise<SyncFlowResult<T>> {
   let res = await deps.fetchSync()
+
+  if (await isInventoryBlock(res)) return { kind: 'inventory_blocked' }
 
   if (await isPendingItemsBlock(res)) {
     deps.setLoading(false)
@@ -57,6 +72,7 @@ export async function runSyncFlow<T extends { pendingItems?: number }>(deps: Dep
     if (picked === 'dismissed') return { kind: 'blocked' }
     deps.setLoading(true)
     res = await deps.fetchSync()
+    if (await isInventoryBlock(res)) return { kind: 'inventory_blocked' }
     if (await isPendingItemsBlock(res)) return { kind: 'blocked' }
   }
 

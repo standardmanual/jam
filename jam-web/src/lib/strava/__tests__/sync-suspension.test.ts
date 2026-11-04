@@ -26,6 +26,11 @@ const { createServiceClientMock, getAllActivitiesMock, evaluateBadgesMock, issue
 }))
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClientMock }))
+// 캡슐 받기 막힘(티켓 20261105_0101)은 sync-capsule-receive-block.test.ts가 맡는다 — 이 파일은 막히지 않은 유저로 본다.
+vi.mock('@/lib/capsule/receive-block', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/capsule/receive-block')>('@/lib/capsule/receive-block')
+  return { ...actual, readCapsuleReceiveBlocked: async () => ({ blocked: false, free: 50, needed: 2 }) }
+})
 vi.mock('@/lib/utils', () => ({
   decrypt: vi.fn(async (v: string) => v),
   encrypt: vi.fn(async (v: string) => v),

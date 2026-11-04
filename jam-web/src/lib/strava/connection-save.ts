@@ -10,6 +10,7 @@ import { encrypt } from '@/lib/utils'
 import { syncStravaActivities } from '@/lib/strava/sync'
 import { getActiveSuspension, UserSuspendedError } from '@/lib/suspension/suspension'
 import { TribeRequiredError } from '@/lib/tribe/gate'
+import { CapsuleInventoryBlockedError } from '@/lib/capsule/receive-block'
 import { STRAVA_DISCONNECT_CLEARED } from '@/lib/strava/connection-state'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
@@ -125,6 +126,9 @@ export async function syncAfterConnect(userId: string): Promise<void> {
     } else if (err instanceof TribeRequiredError) {
       // 콜백이 이미 막았으므로 보통 닿지 않는다. 연결 저장 뒤 트라이브가 사라진 경합이면 오류가 아니라 건너뜀으로 남긴다 (티켓 20261021_1247)
       console.info('[JAM! Strava] 트라이브가 없어 즉시 동기화를 건너뜀 (연동은 성공)')
+    } else if (err instanceof CapsuleInventoryBlockedError) {
+      // 캡슐이 가득 차고 빈칸이 모자라 입구에서 멈춘 것이다. 오류가 아니라 건너뜀이고, 풀린 뒤 다음 동기화가 이어서 가져온다 (티켓 20261105_0101)
+      console.info('[JAM! Strava] 인벤토리 빈칸이 모자라 즉시 동기화를 건너뜀 (연동은 성공)')
     } else {
       console.error('[JAM! Strava] 즉시 동기화 실패 (연동은 성공):', err)
     }
