@@ -82,7 +82,7 @@ describe('채운 양의 숫자', () => {
     expect(html).toContain(`aria-label="${LABEL}"`)
   })
 
-  it('처음 그릴 때(닿기 전)와 붙들려 있는 동안 숫자는 투명하다', () => {
+  it('처음 그릴 때(채움이 시작하기 전)와 붙들려 있는 동안 숫자는 투명하다', () => {
     const heldHtml = (filled: number) =>
       renderToStaticMarkup(
         <CapsuleResultContext.Provider value={{ gaugeHeld: true, resultPending: true, registerGaugeFill: () => {} }}>
@@ -97,13 +97,23 @@ describe('채운 양의 숫자', () => {
     expect(heldHtml(200)).toContain(`width:calc(${circle}px + (100% - ${circle}px) * 0)`)
   })
 
-  it('팝인은 공유 PopInNumber(Number pop-in)로 닿은 뒤에 한 번 재생한다', () => {
+  it('팝인은 공유 PopInNumber(Number pop-in)로 채움이 움직이기 시작할 때 같이 한 번 재생한다', () => {
     const code = readFileSync(join(__dirname, 'CapsuleGauge.tsx'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '')
     expect(code).toContain("import PopInNumber from '@/components/ui/PopInNumber'")
     expect(code).toMatch(/<PopInNumber key=\{numberText\} value=\{numberText\} playOnMount \/>/)
     expect(code).toMatch(/const showNumber = numberReady && arrived/)
+  })
+
+  it('숫자는 채움이 닿기를 기다리지 않고 움직이기 시작하는 순간 켜진다(두 모션이 동시에 시작)', () => {
+    const code = readFileSync(join(__dirname, 'CapsuleGauge.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    // 켜는 타이머에 모션 시간(motion.durationMs)을 더하면 채움이 닿은 뒤에야 숫자가 나온다
+    expect(code).toMatch(/setNumberReady\(true\), 0\)/)
+    expect(code).not.toMatch(/setNumberReady\(true\), [^)]*durationMs/)
+    expect(code).toMatch(/\[arrived, numberText\]/)
   })
 })
 
