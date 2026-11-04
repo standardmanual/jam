@@ -46,6 +46,7 @@ const fillResult = (opens: CountedCapsuleOpenPayload[], extra: Record<string, un
   forfeitedTotal: 0,
   alerts: [],
   blockedNow: false,
+  inventoryBlocked: false,
   reachedChapters: [],
   rounds: opens.length + 1,
   stopped: 'wallet_empty',
