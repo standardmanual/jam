@@ -8,7 +8,7 @@ import { withoutHiddenRewardBadgeIds } from '@/lib/missions/reward-badges'
 import { splitRewardBadges, type RewardBadgeSourceRow } from '@/lib/missions/locked-rewards'
 import { usesNightCondition } from '@/lib/missions/condition-keys'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
-import { buildConditionBullets, conditionBulletKeys } from '@/lib/missions/conditionBullets'
+import { buildConditionBullets, conditionBulletKeys, needsCategoryNames } from '@/lib/missions/conditionBullets'
 import MissionDetailClient, { type PendingRewardInfo } from './MissionDetailClient'
 
 type Props = { params: Promise<{ id: string }> }
@@ -107,11 +107,24 @@ export default async function MissionDetailPage({ params }: Props) {
   const visibilityResult = resolveMissionVisibility(mission, visibilityContext)
   const locked = visibilityResult.visibility === 'locked' || visibilityResult.visibility === 'hidden'
 
-  // 달성 조건 불릿(티켓 20261104_2148) — 조건 키를 지표 라벨 표로 이어 서버에서 만든다. 하나라도 못 만들면 null이라 기존 표시로 간다.
+  // 달성 조건 불릿(티켓 20261104_2148, 확장 20261104_2321) — 조건 키를 지표 라벨 표로 이어 서버에서 만든다. 하나라도 못 만들면 null이라 기존 표시로 간다.
   const bulletKeys = conditionBulletKeys(mission.mission_type, mission.condition_json)
-  const conditionBullets = bulletKeys.length > 0
-    ? buildConditionBullets(mission.mission_type, mission.condition_json, await getMetricLabels(bulletKeys))
-    : null
+  let conditionBullets: string[] | null = null
+  if (bulletKeys.length > 0) {
+    const categoryLabels = new Map<string, string>()
+    if (needsCategoryNames(mission.mission_type, mission.condition_json)) {
+      // poi_categories는 RLS가 service role 전용이다. 읽지 못하면 맵을 비워 폴백 문구로 간다(오류 문구 없음)
+      const { data: categoryRows, error: categoryError } = await service.from('poi_categories').select('slug, label')
+      if (categoryError) console.error('[missions/[id]] poi_categories 조회 실패', categoryError)
+      for (const row of categoryRows ?? []) categoryLabels.set(row.slug, row.label)
+    }
+    conditionBullets = buildConditionBullets(
+      mission.mission_type,
+      mission.condition_json,
+      await getMetricLabels(bulletKeys),
+      categoryLabels,
+    )
+  }
 
   return (
     <MissionDetailClient
