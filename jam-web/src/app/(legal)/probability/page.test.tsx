@@ -132,6 +132,7 @@ describe('정상 — 구성과 값', () => {
     expect(text).toContain('JAM! 시작하기에서 여는 첫 캡슐잠긴 아이템 배지 1개가 반드시 나와요')
     const tribe = '다른 트라이브의 것이 나올 때는 받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.'
     expect(text).toContain(`나와요${tribe}`)
+    expect(text).toContain('내 트라이브에 받을 수 있는 아이템 배지가 없으면 다른 트라이브의 것이 나와요.')
     expect(text).toMatch(/Common70%Rare22%Epic6%Mystic2%이 확률은 처음 뽑는 등급이에요/)
   })
 
@@ -393,6 +394,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     expect(text).not.toContain('한 등급씩 낮춰서 무작위로 골라요.')
     expect(text).not.toContain('처음 뽑는 등급')
     expect(text).toContain('받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.')
+    expect(text).toContain('내 트라이브에 받을 수 있는 아이템 배지가 없으면 다른 트라이브의 것이 나와요.')
     expect(text).toContain('Common부터 Rare, Epic, Mystic 순서로 찾아서')
     expect(text).toContain('에는 확률이 없어요.')
     expect(text).toContain('확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
