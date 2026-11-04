@@ -33,9 +33,9 @@ export default function Footer() {
     // 20260818_002/003)가 뷰포트 전체를 덮을 때 전역 Footer가 그 아래로 가려지지 않도록 승격.
     //
     // 20260909_2319 Figma 반영 초안은 배경을 #2f2f2f로 하드코딩했으나, 실기기 확인 후
-    // 페이지 배경(부모 <main>의 bg-background)과 다른 톤으로 튀어 보인다는 피드백으로
-    // bg-transparent로 되돌렸다 — 이러면 Footer가 항상 부모 배경(화면마다 다를 수 있는
-    // "원색 풀블리드 배경")을 그대로 물려받아 이질감이 없다(원래 방식으로 복귀).
+    // 페이지 배경과 다른 톤으로 튀어 보인다는 피드백으로 bg-transparent로 되돌렸다.
+    // 지금도 배경을 칠하지 않는다 — 부모 <main>의 흰 면(--surface, 티켓 20261104_1642)을
+    // 그대로 물려받아 푸터와 맨 아래 로고가 본문과 한 장의 면이 된다.
     <footer className="relative z-10 flex flex-col items-start justify-center gap-6 py-6 px-4 bg-transparent">
       <span className="text-[15px] leading-[28px] font-normal text-foreground whitespace-pre-line">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 저작권 줄 위. 캡션 톤을 그대로 따르고
@@ -87,8 +87,12 @@ export default function Footer() {
           {d.common.footerInquiry}
         </Link>
       </div>
-      {/* 20260909_2319: 로고 이미지 제거, 저작권 텍스트만 남긴다(Figma 사양). */}
+      {/* 20260909_2319: 로고 이미지를 걷고 저작권 텍스트만 남겼다(Figma 사양). */}
       <span className="text-[15px] leading-[28px] font-normal text-foreground">{d.common.footerCopyright}</span>
+      {/* 20261104_1642: 저작권 아래, 푸터의 마지막 요소로 JAM! 로고를 열 폭 100%로 채운다. 새 이미지 없이
+          .jam-logo-mark(알파 마스크 + --foreground)를 쓴다. -mx-4로 푸터 px-4를 상쇄해 푸터 폭과 같게 한다
+          (items-start라 w-full만으로는 안쪽 폭에서 멈춘다). 장식이라 role="img"+aria-label만 둔다. */}
+      <div className="jam-logo-mark -mx-4 w-[calc(100%+2rem)]" role="img" aria-label="JAM!" />
     </footer>
   )
 }

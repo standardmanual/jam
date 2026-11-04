@@ -69,10 +69,16 @@ describe('TopNav 로고 — 마스크 + --foreground', () => {
 })
 
 describe('TopNav 헤더 면과 버튼', () => {
-  it('헤더 배경은 불투명 --background이고 호출부가 덮어쓰지 않으면 그대로다', () => {
+  it('헤더 배경은 불투명 --surface(흰색)이고 호출부가 덮어쓰지 않으면 그대로다(티켓 20261104_1642)', () => {
     const html = renderToStaticMarkup(<TopNav logo />)
-    expect(html).toContain('background:var(--background)')
+    expect(html).toContain('background:var(--surface)')
     expect(html).not.toContain('backdrop-filter')
+  })
+
+  it('호출부의 headerStyle.background가 흰색 기본값보다 우선한다(배지 상세 테마 배경)', () => {
+    const html = renderToStaticMarkup(<TopNav logo headerStyle={{ background: 'rgb(10, 20, 30)' }} />)
+    expect(html).toContain('background:rgb(10, 20, 30)')
+    expect(html).not.toContain('background:var(--surface)')
   })
 
   it('로고 옆에 문의 버튼이 없고(푸터 링크로 옮김) 동기화 유도 버튼은 인라인 덮어쓰기 없는 primary다', () => {
