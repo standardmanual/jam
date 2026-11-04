@@ -30,4 +30,17 @@ describe('PointText', () => {
     expect(renderToStaticMarkup(<PointText value="-300" />)).toContain('>-300 포인트<')
     expect(renderToStaticMarkup(<PointText value={5} unit="P" />)).toContain('>5 P<')
   })
+
+  it('unit=""이면 값만 그리고 값 뒤 공백도 붙이지 않는다 (inline·stacked 모두)', () => {
+    const inline = renderToStaticMarkup(<PointText value={1200} unit="" />)
+    expect(inline).toContain('>1,200<')
+    expect(inline).not.toContain('포인트')
+    expect(inline).toContain('color:var(--point-text)')
+    const stacked = renderToStaticMarkup(<PointText value={40} unit="" layout="stacked" />)
+    expect(stacked).toContain('>40<')
+    expect(stacked).not.toContain('포인트')
+    expect(stacked.match(/color:var\(--point-text\)/g)).toHaveLength(1)
+    expect(renderToStaticMarkup(<PointText value={0} unit="" />)).toContain('>0<')
+    expect(renderToStaticMarkup(<PointText value={null} unit="" />)).toBe('')
+  })
 })

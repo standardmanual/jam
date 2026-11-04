@@ -6,7 +6,7 @@ export interface PointTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'c
    * `null`/`undefined`면 아무것도 그리지 않는다. 0은 그린다(숨길지는 호출부가 정한다).
    */
   value: number | string | null | undefined;
-  /** 단위 글자. 기본 «포인트» */
+  /** 단위 글자. 기본 «포인트». 빈 문자열(`""`)이면 값만 그린다 */
   unit?: string;
   /**
    * `inline`(기본)은 문장 속 «값 포인트» 한 덩어리(줄바꿈 없음), `stacked`는 우측 보상 칸용 —

@@ -12,6 +12,8 @@ import React from 'react';
  *   inline  — 문장 속. «값 포인트» 한 덩어리를 줄바꿈 없이(nowrap) 칠한다. 앞뒤 조사는 호출부가 밖에 둔다.
  *
  * 값이 null/undefined면 아무것도 그리지 않는다. 0은 그린다(숨길지는 호출부가 정한다).
+ * `unit=""`(빈 문자열)이면 값만 그린다 — 라벨이 «포인트»를 이미 말하는 행(필요 포인트·가진 포인트 등)과
+ * 단위를 따로 두는 큰 잔액용이다(티켓 20261104_2319 3회차). 값 뒤 공백도 붙이지 않는다.
  * 숫자는 문자열(이미 포맷된 값)이면 그대로, 숫자면 `toLocaleString('ko-KR')` 한 곳에서 포맷한다.
  * 색만으로 «포인트임»을 알리지 않는다 — 숫자 옆에 항상 «포인트» 글자가 붙는다.
  * 버튼 안 포인트는 칠하지 않는다(호출부가 이 컴포넌트를 쓰지 않고 버튼 글자색을 따른다).
@@ -44,19 +46,21 @@ export function PointText({ value, unit = '포인트', layout = 'inline', classN
         >
           {text}
         </span>
-        <span
-          className="text-point-text"
-          style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', color: COLOR }}
-        >
-          {unit}
-        </span>
+        {unit !== '' && (
+          <span
+            className="text-point-text"
+            style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', color: COLOR }}
+          >
+            {unit}
+          </span>
+        )}
       </span>
     );
   }
 
   return (
     <span className={`text-point-text ${className}`.trim()} style={{ whiteSpace: 'nowrap', color: COLOR, ...style }} {...rest}>
-      {`${text} ${unit}`}
+      {unit === '' ? text : `${text} ${unit}`}
     </span>
   );
 }
