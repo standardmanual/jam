@@ -19,6 +19,7 @@ import { RARITY_LABEL } from '@/lib/rarity'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { formatMissionProgress } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -556,7 +557,7 @@ export default function MissionDetailClient({
                     <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
                   </div>
                 }
-                title={t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
+                title={tPoint(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
               />
             ) : null}
 

@@ -16,7 +16,7 @@ export interface ListRowCardProps {
   tone?: ListRowCardTone
   /** 40×40 아이콘 영역 — 크기·형태·배경 모두 호출부에서 결정 */
   icon?: ReactNode
-  title?: string
+  title?: ReactNode
   subtitle?: ReactNode
   trailing?: ReactNode
   /** 전체 텍스트 영역 커스텀 렌더링 — 제공 시 title/subtitle 무시 */
