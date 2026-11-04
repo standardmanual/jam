@@ -11,11 +11,15 @@
  */
 import { CONDITION_FIELDS } from '@/lib/badge-engine/conditionRegistry'
 import type { MetricLabel } from '@/lib/badge-engine/metricLabels'
+import { MISSION_ONLY_CONDITION_KEY_LIST } from '@/lib/missions/condition-keys'
 
 /** 카드가 따로 그리는 키 — 불릿에도 넣지 않고, 불릿을 막지도 않는다 */
 const SEPARATELY_RENDERED_KEYS = new Set(['activity_type'])
 
 const REGISTRY_ORDER: string[] = CONDITION_FIELDS.map((f) => f.key)
+
+/** 레지스트리에 없는 미션 전용 키(`sync_count` 등, 티켓 20261104_2234) — 레지스트리 키 뒤에 이 목록 순서로 붙는다 */
+const MISSION_ONLY_ORDER: readonly string[] = MISSION_ONLY_CONDITION_KEY_LIST
 
 function isBulletMission(missionType: string, conditionJson: unknown): conditionJson is Record<string, unknown> {
   return (
@@ -27,7 +31,7 @@ function isBulletMission(missionType: string, conditionJson: unknown): condition
 }
 
 /**
- * 불릿 후보 키를 레지스트리 선언 순서로 돌려준다. 후보가 없거나 불릿 대상 미션이 아니면 빈 배열이다.
+ * 불릿 후보 키를 «레지스트리 선언 순서 → 미션 전용 키 목록 순서 → 그 밖의 키» 순으로 돌려준다. 후보가 없거나 불릿 대상 미션이 아니면 빈 배열이다.
  * 서버가 이 키로 라벨을 조회한다.
  */
 export function conditionBulletKeys(missionType: string, conditionJson: unknown): string[] {
@@ -36,9 +40,11 @@ export function conditionBulletKeys(missionType: string, conditionJson: unknown)
     (key) => conditionJson[key] != null && !SEPARATELY_RENDERED_KEYS.has(key),
   )
   const ordered = REGISTRY_ORDER.filter((key) => present.includes(key))
-  // 레지스트리에 없는 키는 순서를 알 수 없으니 끝에 붙이고, 아래 생성 단계에서 null로 처리한다
-  const unknown = present.filter((key) => !REGISTRY_ORDER.includes(key))
-  return [...ordered, ...unknown]
+  // 미션 전용 키는 레지스트리 키 뒤에 목록 순서로 붙인다. 라벨이 없으면 아래 생성 단계에서 null이 된다
+  const missionOnly = MISSION_ONLY_ORDER.filter((key) => present.includes(key) && !REGISTRY_ORDER.includes(key))
+  // 둘 다 아닌 키는 순서를 알 수 없으니 끝에 붙이고, 아래 생성 단계에서 null로 처리한다
+  const unknown = present.filter((key) => !REGISTRY_ORDER.includes(key) && !MISSION_ONLY_ORDER.includes(key))
+  return [...ordered, ...missionOnly, ...unknown]
 }
 
 /** 불릿 문자열 배열. 만들 수 없으면 `null`. */
@@ -55,7 +61,7 @@ export function buildConditionBullets(
   for (const key of keys) {
     const value = conditionJson[key]
     if (typeof value !== 'number' || !Number.isFinite(value)) return null
-    if (!REGISTRY_ORDER.includes(key)) return null
+    if (!REGISTRY_ORDER.includes(key) && !MISSION_ONLY_ORDER.includes(key)) return null
     const meta = labels.get(key)
     if (!meta || !meta.label.trim()) return null
     // 정수는 소수점 없이, 소수는 그대로(0.5km) — String(number)가 둘 다 그렇게 쓴다

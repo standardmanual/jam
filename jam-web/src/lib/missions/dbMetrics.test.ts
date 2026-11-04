@@ -378,6 +378,52 @@ describe('loadMissionDbMetrics — 날짜·체크인 5개 키', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
+// 동기화 횟수 — 미션 전용 DB 키 (티켓 20261104_2234)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('loadMissionDbMetrics — sync_count (동기화 횟수)', () => {
+  const syncEvent = (id: string, at: string, userId = U) => ({ id, user_id: userId, synced_at: at })
+  const window = { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: ENDS }
+
+  it('참가한 뒤 기간 안의 동기화만 센다 — 참가 전·종료 뒤·다른 유저의 기록은 뺀다', async () => {
+    const db = makeFakeDb({
+      user_sync_events: [
+        syncEvent('s1', T_BEFORE_START),
+        syncEvent('s2', T_AFTER_START_BEFORE_LATE_JOIN),
+        syncEvent('s3', T_INSIDE),
+        syncEvent('s4', '2026-10-17T00:00:00.000Z'),
+        syncEvent('s5', T_AFTER_END),
+        syncEvent('s6', T_INSIDE, OTHER),
+      ],
+    })
+    const result = await loadMissionDbMetrics(db.client, U, { sync_count: 1 }, window)
+    expect(result).toEqual({ sync_count: 2 })
+    expect(db.queried).toEqual(['user_sync_events'])
+  })
+
+  it('종료가 없으면(상시 미션) 상한 없이 센다', async () => {
+    const db = makeFakeDb({ user_sync_events: [syncEvent('s1', T_INSIDE), syncEvent('s2', T_AFTER_END)] })
+    const result = await loadMissionDbMetrics(db.client, U, { sync_count: 1 }, { ...window, endsAt: null })
+    expect(result.sync_count).toBe(2)
+  })
+
+  it('기록이 없으면 0이다', async () => {
+    const db = makeFakeDb({ user_sync_events: [] })
+    expect(await loadMissionDbMetrics(db.client, U, { sync_count: 1 }, window)).toEqual({ sync_count: 0 })
+  })
+
+  it('읽지 못하면 0으로 바꾸지 않고 던진다 (표 오류, 하한을 정할 수 없을 때도)', async () => {
+    const failing = makeFakeDb({}, { errors: { user_sync_events: '동기화 기록 장애' } })
+    await expect(loadMissionDbMetrics(failing.client, U, { sync_count: 1 }, window)).rejects.toThrow('동기화 기록 장애')
+    const noLower = makeFakeDb({ user_sync_events: [syncEvent('s1', T_INSIDE)] })
+    await expect(
+      loadMissionDbMetrics(noLower.client, U, { sync_count: 1 }, { joinedAt: null, startsAt: '깨진 값', endsAt: null })
+    ).rejects.toThrow('시작 시각을 정하지 못해')
+    expect(noLower.queried).toEqual([])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
 // 기간 동안 모은 잼 — 미션 전용 DB 키 (3-A회)
 // ═══════════════════════════════════════════════════════════════════════
 

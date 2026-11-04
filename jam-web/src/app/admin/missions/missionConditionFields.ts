@@ -130,12 +130,14 @@ export const MISSION_DB_FORM_GROUPS: readonly MissionDbFormGroup[] = [
     ],
   },
   { title: '잼', keys: ['jam_period_earned'] },
+  // 티켓 20261104_2234 — 참가한 뒤 기간 안의 동기화 횟수
+  { title: '동기화', keys: ['sync_count'] },
 ]
 
 /**
  * DB 기록으로 세는 키 가운데 폼이 입력 칸을 그리는 키 — 믹스·드랍·픽업·완료 수·캡슐·잠긴 개체·날짜·체크인 등 배지 조건과 이름이 같은
- * 19개와 미션 전용 `jam_period_earned`(기간 동안 모은 잼) 1개. 정본은 둘을 합친 `MISSION_DB_CONDITION_KEY_LIST`다.
- * 배지 쪽 19개는 라벨·단위·범위를 레지스트리 정의 그대로 읽고, 레지스트리에 없는 `jam_period_earned`만 이 파일이 정한다.
+ * 19개와 미션 전용 `jam_period_earned`(기간 동안 모은 잼)·`sync_count`(동기화 횟수) 2개. 정본은 둘을 합친 `MISSION_DB_CONDITION_KEY_LIST`다.
+ * 배지 쪽 19개는 라벨·단위·범위를 레지스트리 정의 그대로 읽고, 레지스트리에 없는 미션 전용 키 둘만 이 파일이 정한다.
  */
 export const MISSION_DB_FORM_KEYS: readonly MissionDbConditionKey[] = MISSION_DB_FORM_GROUPS.flatMap((group) => group.keys)
 
@@ -174,6 +176,21 @@ export const JAM_PERIOD_EARNED_INPUT = {
   step: 1,
   placeholder: '300',
   help: '참가한 뒤 미션 기간 안에 받은 잼(움직여서 받은 잼 + 서비스에서 한 일로 받은 잼)을 합해요. 참가 전에 받은 잼과 사라진 잼은 포함되지 않아요.',
+} as const
+
+/**
+ * 미션 전용 키 `sync_count`의 입력 칸 정의 (티켓 20261104_2234). 배지 조건 레지스트리에 이 키가 없어 라벨·단위·범위를 미션 쪽에서 정한다.
+ * 아래쪽(1 이상의 정수)은 서버 기준 값 검사와 같고, 위쪽 한계(1,000)는 도달할 수 없는 값이 저장되지 않도록 폼이 더한 것이다.
+ */
+export const SYNC_COUNT_INPUT = {
+  field: 'syncCount',
+  label: '동기화 횟수',
+  unit: '회',
+  min: 1,
+  max: 1000,
+  step: 1,
+  placeholder: '1',
+  help: '새 활동을 불러온 동기화만 세요. 참가한 뒤 미션 기간 안의 횟수예요.',
 } as const
 
 /**
@@ -231,7 +248,7 @@ export type MissionConditionFormFields = {
   avgHeartrateBpm: string
   avgWatts: string
   avgCadence: string
-  // ── DB 기록으로 세는 20종(티켓 20261021_1114 2회). 19개는 레지스트리 form.fields 그대로, jamPeriodEarned만 미션 쪽 이름 ──
+  // ── DB 기록으로 세는 21종(티켓 20261021_1114 2회). 19개는 레지스트리 form.fields 그대로, jamPeriodEarned·syncCount만 미션 쪽 이름 ──
   combineAttemptCount: string
   combineSuccessCount: string
   combineFailCount: string
@@ -256,6 +273,7 @@ export type MissionConditionFormFields = {
   checkinBadgeCountNames: string
   checkinBadgeCountCount: string
   jamPeriodEarned: string
+  syncCount: string
   // ── 단순 타입 전용(checkin/activity_count/item_collect) ──────────────────────────
   count: string
   poiId: string
@@ -326,6 +344,7 @@ export function emptyMissionConditionFields(): MissionConditionFormFields {
     checkinBadgeCountNames: '',
     checkinBadgeCountCount: '',
     jamPeriodEarned: '',
+    syncCount: '',
     count: '',
     poiId: '',
     badgeId: '',
@@ -413,9 +432,20 @@ export function writeJamPeriodEarned(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
 }
 
+/** `sync_count` 입력값 → `condition_json` 값(1 이상의 정수 칸이라 정수로 읽는다). 비어 있으면 undefined */
+export function readSyncCount(raw: string): number | undefined {
+  return int(raw)
+}
+
+/** `condition_json`의 `sync_count` → 입력값. `readSyncCount`의 역방향 */
+export function writeSyncCount(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
+}
+
 /** DB 기록 키 하나를 폼 입력값에서 `condition_json` 값으로 읽는다. 값이 없으면 undefined — 19개는 레지스트리 `form.read`를 그대로 쓴다 */
 function readDbKey(key: MissionDbConditionKey, fields: MissionConditionFormFields): unknown {
   if (key === 'jam_period_earned') return readJamPeriodEarned(fields.jamPeriodEarned)
+  if (key === 'sync_count') return readSyncCount(fields.syncCount)
   return getConditionField(key)?.form?.read(fields as unknown as ConditionFormValues)
 }
 
@@ -459,6 +489,10 @@ export function missionConditionFieldsFrom(condition: MissionCondition | null | 
     if (value === undefined) continue
     if (key === 'jam_period_earned') {
       fields.jamPeriodEarned = writeJamPeriodEarned(value)
+      continue
+    }
+    if (key === 'sync_count') {
+      fields.syncCount = writeSyncCount(value)
       continue
     }
     const meta = getConditionField(key)
@@ -726,6 +760,11 @@ function rangeSubjects(record: Record<string, unknown>): RangeSubject[] {
       subjects.push({ value: record[key], label, unit, min, max, integerOnly: true })
       continue
     }
+    if (key === 'sync_count') {
+      const { label, unit, min, max } = SYNC_COUNT_INPUT
+      subjects.push({ value: record[key], label, unit, min, max, integerOnly: true })
+      continue
+    }
     const meta = getConditionField(key)
     if (!meta) continue
     if (MISSION_DB_OBJECT_COUNT_KEYS.includes(key)) {
@@ -825,13 +864,19 @@ export function findMissionNonIntegerInputs(
     const simple = SIMPLE_TYPE_INTEGER_INPUTS[missionType]
     return simple ? directIntegerProblems([simple], fields) : []
   }
-  // 레지스트리에 입력 칸 정의가 없는 키(`day_of_week`·`jam_period_earned`)는 레지스트리 검사가 건너뛴다. 화면 순서는 위임 키 → 미션 전용 → 기록으로 세는 조건이다
+  // 레지스트리에 입력 칸 정의가 없는 키(`day_of_week`·`jam_period_earned`·`sync_count`)는 레지스트리 검사가 건너뛴다. 화면 순서는 위임 키 → 미션 전용 → 기록으로 세는 조건이다
   const values = fields as unknown as ConditionFormValues
   return [
     ...findNonIntegerFormInputs(values, MISSION_ENGINE_DELEGATED_KEYS),
     ...directIntegerProblems(MISSION_DIRECT_INTEGER_INPUTS, fields),
     ...findNonIntegerFormInputs(values, MISSION_DB_FORM_KEYS),
-    ...directIntegerProblems([{ field: JAM_PERIOD_EARNED_INPUT.field, label: JAM_PERIOD_EARNED_INPUT.label }], fields),
+    ...directIntegerProblems(
+      [
+        { field: JAM_PERIOD_EARNED_INPUT.field, label: JAM_PERIOD_EARNED_INPUT.label },
+        { field: SYNC_COUNT_INPUT.field, label: SYNC_COUNT_INPUT.label },
+      ],
+      fields
+    ),
   ]
 }
 

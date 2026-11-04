@@ -529,6 +529,16 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(evaluateEngineMissionCondition(cond, [], { combine_success_count: 2, jam_period_earned: 100 }), false, '활동 조건이 모자란데 통과했다')
     assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { combine_success_count: 2, jam_period_earned: 100 }), true)
   }],
+  // ── 동기화 횟수 (티켓 20261104_2234) — 다른 DB 키와 같은 «값 이상이면 충족» ──
+  ['sync_count: 동기화 횟수가 조건 이상이면 통과하고 미만이거나 값이 없으면 통과하지 않는다 (경계 포함, fail-closed)', () => {
+    const cond: MissionCondition = { sync_count: 2 }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { sync_count: 1 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { sync_count: 2 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { sync_count: 0 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, []), false)
+    assert.strictEqual(evaluateEngineMissionCondition({ drop_item_count: 1, sync_count: 1 }, [], { drop_item_count: 1 }), false, '동기화 값이 없는데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition({ drop_item_count: 1, sync_count: 1 }, [], { drop_item_count: 1, sync_count: 1 }), true)
+  }],
   ['jam_period_earned만 든 조건은 활동이 없어도 값만으로 판정한다 (배지엔진에 위임하지 않는다)', () => {
     assert.strictEqual(evaluateEngineMissionCondition({ jam_period_earned: 30 }, [], { jam_period_earned: 30 }), true)
     assert.strictEqual(evaluateEngineMissionCondition({ activity_type: 'running', jam_period_earned: 30 }, [], { jam_period_earned: 30 }), true)

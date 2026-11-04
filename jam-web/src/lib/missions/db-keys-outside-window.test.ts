@@ -1,5 +1,5 @@
 /**
- * DB 기록 조건 20개 키 종합 시험 — «참가 전·기간 밖 기록은 세지 않는다» (티켓 20261019_1445 4회)
+ * DB 기록 조건 21개 키 종합 시험 — «참가 전·기간 밖 기록은 세지 않는다» (티켓 20261019_1445 4회)
  *
  * 1·2·3-A회에서 키를 더할 때마다 읽기 함수·로더·판정 시험이 따로 생겼다. 이 파일은 그 시험들이 한곳에서 같은 약속을 지키는지 키마다 확인한다.
  *   A. 참가 전(시작 전, 시작 뒤 참가 전)·종료 뒤 기록만 있는 DB는 모든 키가 0이고, 그 값으로 판정하면 조건을 충족하지 못한다.
@@ -336,6 +336,20 @@ const CASES: Record<MissionDbConditionKey, MatrixCase> = {
     },
     expectedInside: 10,
   },
+  // 티켓 20261104_2234 — 동기화 기록(`user_sync_events`)의 시각이 기간 안인 행만 센다
+  sync_count: {
+    condition: { sync_count: 2 },
+    outside: { user_sync_events: outsideRows((id, at) => ({ id: `sync-${id}`, user_id: U, synced_at: at })) },
+    inside: {
+      user_sync_events: [
+        ...outsideRows((id, at) => ({ id: `sync-${id}`, user_id: U, synced_at: at })),
+        { id: 'sync-in-1', user_id: U, synced_at: INSIDE },
+        { id: 'sync-in-2', user_id: U, synced_at: '2026-10-17T03:00:00.000Z' },
+        { id: 'sync-other', user_id: OTHER, synced_at: INSIDE }, // 다른 유저의 동기화는 세지 않는다
+      ],
+    },
+    expectedInside: 2,
+  },
 }
 
 const KEYS = Object.keys(CASES) as MissionDbConditionKey[]
@@ -347,9 +361,9 @@ async function loadFor(key: MissionDbConditionKey, tables: Tables) {
   return { metrics, value: metrics[key], db }
 }
 
-describe('DB 기록 조건 20개 키 — 사례 목록', () => {
-  it('사례가 MISSION_DB_CONDITION_KEY_LIST 20개를 빠짐없이, 겹치지 않게 덮는다', () => {
-    expect(KEYS).toHaveLength(20)
+describe('DB 기록 조건 21개 키 — 사례 목록', () => {
+  it('사례가 MISSION_DB_CONDITION_KEY_LIST 21개를 빠짐없이, 겹치지 않게 덮는다', () => {
+    expect(KEYS).toHaveLength(21)
     expect([...KEYS].sort()).toEqual([...MISSION_DB_CONDITION_KEY_LIST].sort())
   })
 

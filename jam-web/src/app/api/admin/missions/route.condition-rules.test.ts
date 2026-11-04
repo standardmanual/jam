@@ -213,6 +213,8 @@ describe('POST /api/admin/missions — DB 기록 키 기준 값 검증 (티켓 2
   it.each([
     ['combine_success_count', 0],
     ['jam_period_earned', -5],
+    ['sync_count', 0],
+    ['sync_count', 1.5],
     ['capsule_open_count', 1.5],
     ['mission_complete_count', '3'],
     ['weekly_active_days', null],

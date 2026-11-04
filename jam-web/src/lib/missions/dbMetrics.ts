@@ -1,9 +1,9 @@
 /**
  * 미션 DB 기록 조건의 지표 읽기 (서버 사이드 전용, 티켓 20261019_1445 1·2회)
  *
- * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 20개
+ * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 21개
  * (`MISSION_DB_CONDITION_KEY_LIST`: 배지 조건과 이름이 같은 19개 — 믹스·드랍·픽업·미션/컬렉션 완료·캡슐 열기·잠긴 개체·트라이브를 넘는 믹스 +
- * 2회의 날짜·체크인 5개 — 와 미션 전용 `jam_period_earned` 1개)를 «참가한 뒤, 미션 기간 안»의 값으로 읽어 `{ 키: 값 }`을 돌려준다. 비교는 순수 함수 `evaluateEngineMissionCondition`이
+ * 2회의 날짜·체크인 5개 — 와 미션 전용 `jam_period_earned`·`sync_count` 2개)를 «참가한 뒤, 미션 기간 안»의 값으로 읽어 `{ 키: 값 }`을 돌려준다. 비교는 순수 함수 `evaluateEngineMissionCondition`이
  * 한다 — 이 파일은 읽기만 한다.
  *
  * ## 기간
@@ -28,6 +28,10 @@
  *    (`jam_transactions.created_at`)이 아니다 — 참가 전에 한 활동을 늦게 동기화해도 참가 뒤에 번 잼으로 섞이지 않게 하려는 것이다
  *    (사용자 결정 2). 여기에 서비스 활동 잼(`service_activity` 양수 줄)을 지급 시각(`created_at`)이 기간 안인 것만 더한다(활동 시작 시각이 없고 바로 지급된다,
  *    티켓 20261028_1736). 읽기는 `readJamEarnedWithin`이 한다. 소멸·채움·운영자 지급·회수 줄은 합계에 들지 않는다.
+ *
+ * ## 동기화 횟수 (티켓 20261104_2234)
+ *  - `sync_count`(미션 전용 키): `user_sync_events`에서 동기화 시각이 기간 안인 행의 수. 새 활동을 받은 동기화만 남는 기록이라 하루 카운터(`daily_sync_count`)와 같은 기준이다.
+ *    과거 동기화는 채우지 않았으므로 기록을 시작한 날 이전의 구간은 0이다.
  *
  * ## 날짜·체크인 키 (2회)
  *  - `weekly_active_days`·`same_spot_checkin_days`: 기간 밖 활동·체크인은 세지 않는다. 기간 경계의 주는 잘린 대로 센다.
@@ -71,9 +75,23 @@ import {
   countLockedItemOpens,
   countLockedItemPickups,
 } from '@/lib/badge-engine/jamActionItemMetrics'
-import type { MetricWindow } from '@/lib/badge-engine/jamActionWindow'
+import { applyMetricWindow, type MetricWindow } from '@/lib/badge-engine/jamActionWindow'
 import { dbConditionKeysIn, type MissionDbConditionKey } from '@/lib/missions/condition-keys'
 import { missionWindowIsoBounds, type MissionWindow } from '@/lib/missions/window'
+
+/**
+ * 기간 안의 동기화 횟수 — `user_sync_events`에서 `synced_at`이 기간 안인 행의 수 (티켓 20261104_2234).
+ * 새 활동을 받은 동기화만 남는 기록이다(`processFetchedActivities`가 미션 판정 앞에서 남긴다). 읽지 못하면 던진다.
+ */
+async function countSyncEvents(supabase: SupabaseClient, userId: string, window: MetricWindow): Promise<number> {
+  const { count, error } = await applyMetricWindow(
+    supabase.from('user_sync_events').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    'synced_at',
+    window
+  )
+  if (error) throw new Error(`[loadMissionDbMetrics] 동기화 기록 조회 오류: ${error.message ?? '알 수 없는 오류'}`)
+  return count ?? 0
+}
 
 /** 조건에 든 DB 키의 현재값. 조건에 없는 키는 들어 있지 않다 */
 export type MissionDbMetrics = Partial<Record<MissionDbConditionKey, number>>
@@ -164,6 +182,8 @@ const READERS: Record<MissionDbConditionKey, MetricReader> = {
   },
   // ── 미션 전용 DB 키 (3-A회) ──
   jam_period_earned: (s, u, w) => readJamEarnedWithin(s, u, w),
+  // 2회차 — 참가한 뒤 기간 안의 동기화 횟수
+  sync_count: (s, u, w) => countSyncEvents(s, u, w),
 }
 
 /**

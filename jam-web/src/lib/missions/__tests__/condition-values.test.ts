@@ -9,7 +9,7 @@
  *   - condition_json 부재(PATCH 부분 갱신)·비-객체는 이 함수의 책임이 아니므로 통과
  *     (형태 검증은 `checkMissionCondition`이 이미 막는다)
  *   - 프로덕션 45건 중 나머지(item_collect가 아닌) 39건 대표 조합은 그대로 통과
- *   - engine_condition의 DB 기록 키 20개 기준 값(티켓 20261019_1445 4회): 0 이하·소수·NaN·숫자가 아닌 값은 거부(현상 → 원인 → 해결책 문구),
+ *   - engine_condition의 DB 기록 키 21개 기준 값(티켓 20261019_1445 4회): 0 이하·소수·NaN·숫자가 아닌 값은 거부(현상 → 원인 → 해결책 문구),
  *     객체형 두 키는 안의 count를 본다, 기준 값이 없는 recipe_first_success는 건너뛴다
  *
  * 실행: `npx tsx src/lib/missions/__tests__/condition-values.test.ts` (node assert — 러너 불필요)
@@ -35,7 +35,7 @@ const PRODUCTION_FIXTURES: Array<[MissionType, MissionCondition]> = [
   ['distance', { distance_km: 30 }],
 ]
 
-/** DB 기록 키 가운데 값 자체가 기준 값(양의 정수)인 키 17개 — 레시피 키와 객체형 두 키를 뺀다 */
+/** DB 기록 키 가운데 값 자체가 기준 값(양의 정수)인 키 18개 — 레시피 키와 객체형 두 키를 뺀다 */
 const OBJECT_DB_KEYS = ['recipe_first_success', 'checkin_category_count', 'checkin_badge_count']
 const NUMERIC_DB_KEYS = MISSION_DB_CONDITION_KEY_LIST.filter((key) => !OBJECT_DB_KEYS.includes(key))
 /** 저장하면 안 되는 기준 값: 0 이하, 소수, NaN·무한대, 숫자가 아닌 값(글자·null·참거짓·객체·목록) */
@@ -107,12 +107,12 @@ const cases: Array<[string, () => void]> = [
   }],
 
   // ── engine_condition의 DB 기록 키 기준 값 (티켓 20261019_1445 4회) ───────────
-  ['DB 기록 키 20개 가운데 값 자체가 기준 값인 키는 17개, 객체형은 3개다 (키를 더하고 시험을 빠뜨리면 여기서 걸린다)', () => {
-    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 20)
-    assert.strictEqual(NUMERIC_DB_KEYS.length, 17)
+  ['DB 기록 키 21개 가운데 값 자체가 기준 값인 키는 18개, 객체형은 3개다 (키를 더하고 시험을 빠뜨리면 여기서 걸린다)', () => {
+    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 21)
+    assert.strictEqual(NUMERIC_DB_KEYS.length, 18)
     assert.ok(OBJECT_DB_KEYS.every((key) => (MISSION_DB_CONDITION_KEY_LIST as readonly string[]).includes(key)))
   }],
-  ['engine_condition + 숫자형 DB 키 17개 × 잘못된 기준 값(0·음수·소수·NaN·무한대·글자·null·참거짓·객체·목록) → 모두 거부', () => {
+  ['engine_condition + 숫자형 DB 키 18개 × 잘못된 기준 값(0·음수·소수·NaN·무한대·글자·null·참거짓·객체·목록) → 모두 거부', () => {
     for (const key of NUMERIC_DB_KEYS) {
       for (const bad of BAD_THRESHOLDS) {
         const { error, warning } = checkMissionConditionValue('engine_condition', { [key]: bad } as unknown as MissionCondition)
@@ -122,7 +122,7 @@ const cases: Array<[string, () => void]> = [
       }
     }
   }],
-  ['engine_condition + 숫자형 DB 키 17개 × 1 이상의 정수 → 통과 (1, 보통 값, 큰 값)', () => {
+  ['engine_condition + 숫자형 DB 키 18개 × 1 이상의 정수 → 통과 (1, 보통 값, 큰 값)', () => {
     for (const key of NUMERIC_DB_KEYS) {
       for (const good of [1, 3, 500, 1_000_000]) {
         assert.deepStrictEqual(
