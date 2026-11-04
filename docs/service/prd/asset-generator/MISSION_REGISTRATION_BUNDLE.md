@@ -105,7 +105,7 @@ docs/assets/mission-bundles/<묶음 ID>/
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
 | `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 같은 제목의 미션과 기간이 겹치면 거절(DB 읽기). 카피 규칙(`copyRules.ts`)에 걸리면 거절: 「~하세요」(「해 주세요」 제외)·「도장」·500m·「장소/POI/지점/방문 배지」·「발견」·「찾아서」·「이웃」을 쓰면 거절. 제목이 «조건을 요약한 말»(행동 이름+수량 「새 역 체크인 2곳」·「걷기 3번」, 이동 수단+거리 「걸어서 10km」, 고정 용어로 끝나는 「새 장소 체크인」)이면 거절(제목만, 부제·설명 제외, 티켓 20261103_1236) |
-| `description` | 필수 | 문자열 | 공백뿐이면 거절. 화면 문구는 [UX 라이팅 가이드](../../writing/UX_WRITING_GUIDELINE.md)를 따른다. 제목과 같은 카피 규칙에 더해 느낌표(`!`)와 문장 끝의 「획득」·「보상」도 거절한다(티켓 20261103_1236, 규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`) |
+| `description` | 필수 | 문자열 | 공백뿐이면 거절. 화면 문구는 [UX 라이팅 가이드](../../writing/UX_WRITING_GUIDELINE.md)를 따른다. 제목과 같은 카피 규칙에 더해 느낌표(`!`)와 문장 끝의 「획득」·「보상」도 거절한다(티켓 20261103_1236, 규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`). **미션 설명은 보상을 말하지 않는다**: `숫자 + 포인트·잼`(`10포인트`, `100잼`)과 「보상」이 들어가면 거절한다(티켓 20261104_2148, 홈피드 카드 설명에는 적용하지 않는다). 미션이 주는 재미를 유저 입장의 장면으로 쓴다 |
 | `mission_type` | 필수 | 문자열 | `distance`·`checkin`·`activity_count`·`item_collect`·`streak_days`·`duration_minutes`·`elevation_gain_m`·`engine_condition` 중 하나(DB CHECK와 어드민 폼과 같은 목록, `lib/admin/badge-labels.ts`의 `MISSION_TYPES`) |
 | `condition_json` | 필수 | 객체 | 어드민 저장 검증과 **같은 함수·같은 순서**로 판정한다: ① `checkMissionCondition`(모르는 키·평가 구현이 없는 키 거절, 오타 제안) → ② `checkMissionConditionValue`(유형별 필수 값이 비었거나 0 이하이면 거절 — 영구 미달성 방지). ①이 실패하면 ②는 하지 않는다. 판정에 영향이 없는 필드 고지(`warning`)는 등록을 막지 않고 dry-run의 «알아둘 점»에 보인다 |
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다 |
@@ -126,7 +126,7 @@ docs/assets/mission-bundles/<묶음 ID>/
 
 스크립트가 정하는 값(묶음에서 받지 않는다): `id`(등록 전에 정한 UUID), `image_url`(업로드한 WebP 공개 주소, `?v=` 캐시 무효화 쿼리
 포함), `image_source`(항상 `agent-generator`, 마이그레이션 188의 CHECK 허용값, PRD §10), `reward_type`·`reward_id`·`gated_badge_id`
-(항상 null). `condition_text`(달성 조건 문장, 마이그레이션 193)는 묶음이 받지 않는 칸이라 비워 둔다(NULL) — 필요하면 어드민 폼에서 채운다.
+(항상 null). `condition_text`(달성 조건 문장, 마이그레이션 193)는 묶음이 받지 않는 칸이라 비워 둔다(NULL) — 필요하면 어드민 폼에서 채운다. 달성 조건은 화면이 조건 데이터와 지표 라벨(`badge_metric_labels`)로 불릿을 만들어 그리므로(티켓 20261104_2148), `condition_text`는 라벨로 만들 수 없는 조건을 위한 예외 덮어쓰기용이다.
 `missionFields.ts`의 페이로드 코어는 서버가 `image_source`·`condition_text`를 정해 넘길 선택 인자를 받는다. 스크립트는 넘기지 않으므로 값은 위와 같다.
 
 ### 3.4 image
