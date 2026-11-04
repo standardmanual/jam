@@ -1032,16 +1032,19 @@ describe('RecipeRewardRow — 제목 굵기 (티켓 20261104_2242)', () => {
 })
 
 describe('RecipeRewardRow — 획득 포인트 표기 (티켓 20261104_2315)', () => {
-  it('포인트 숫자는 굵게, 그 아래 줄에 작은 글씨 «포인트»가 붙는다', () => {
+  it('포인트 숫자는 굵게, 그 아래 줄에 작은 글씨 «포인트»가 붙고 둘 다 --point-text 오렌지다', () => {
     const html = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={1200} />)
-    const num = /<span class="([^"]*)">1,200<\/span>/.exec(html)?.[1] ?? ''
-    expect(num).toContain('font-bold')
-    expect(num).toContain('text-base')
-    expect(num).toContain('text-warning')
-    const unit = /<span class="([^"]*)">포인트<\/span>/.exec(html)?.[1] ?? ''
-    expect(unit).toContain('text-xs')
-    expect(unit).toContain('text-warning')
-    expect(html).toContain('flex-col')
+    const num = /<span class="([^"]*)" style="([^"]*)">1,200<\/span>/.exec(html)
+    expect(num?.[1]).toContain('text-point-text')
+    expect(num?.[2]).toContain('font-weight:700')
+    expect(num?.[2]).toContain('font-size:var(--text-base)')
+    expect(num?.[2]).toContain('color:var(--point-text)')
+    const unit = /<span class="([^"]*)" style="([^"]*)">포인트<\/span>/.exec(html)
+    expect(unit?.[1]).toContain('text-point-text')
+    expect(unit?.[2]).toContain('font-size:var(--text-xs)')
+    expect(unit?.[2]).toContain('color:var(--point-text)')
+    expect(html).toContain('flex-direction:column')
+    expect(html).not.toContain('text-warning')
   })
 
   it('포인트가 0이면 숫자도 «포인트» 단위도 그리지 않는다', () => {
