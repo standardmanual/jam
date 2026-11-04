@@ -246,6 +246,7 @@ describe('미션 상세 — 보상 카드의 잠긴 보상 행', () => {
     expect(open).toBeGreaterThan(-1)
     expect(locked).toBeGreaterThan(open)
     expect(points).toBeGreaterThan(locked)
+    expect(html).toMatch(/text-point-text[^>]*>300 포인트<\/span>/)
   })
 
   it('잠긴 보상 행은 등급 칩과 «완료하면 획득해요»를 보이고 링크가 없다', () => {

@@ -7,6 +7,7 @@ import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/type
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
@@ -270,7 +271,7 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
 }
 
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <span className="shrink-0 text-base text-muted">{label}</span>
@@ -450,10 +451,10 @@ export function DetailSheet({
             <Row label={d.feed.rowRewardBadges} value={missionBadgeNames.join(', ')} />
           )}
           {item.event_type === 'mission_completed' && meta.reward_points && (
-            <Row label={d.feed.rowRewardPoints} value={t(d.feed.pointsValue, { points: Number(meta.reward_points).toLocaleString('ko-KR') })} />
+            <Row label={d.feed.rowRewardPoints} value={tPoint(d.feed.pointsValue, { points: Number(meta.reward_points).toLocaleString('ko-KR') })} />
           )}
           {item.event_type === 'badge_earned' && typeof meta.point_reward === 'number' && meta.point_reward > 0 && (
-            <Row label={d.feed.rowPoints} value={t(d.feed.pointsGained, { points: Number(meta.point_reward).toLocaleString('ko-KR') })} />
+            <Row label={d.feed.rowPoints} value={tPoint(d.feed.pointsGained, { points: Number(meta.point_reward).toLocaleString('ko-KR') })} />
           )}
           {/* 20260824_006 — 표시 기준을 created_at(획득 시각, 항상 정확)으로 변경.
               event_at(Strava 활동 시작 시각)은 로컬 벽시계 오해석 버그로 미래가 찍힐 수 있었다. */}
@@ -490,7 +491,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       return meta.poi_name ? String(meta.poi_name) : null
     }
     if (item.event_type === 'item_picked_up') return meta.poi_name ? String(meta.poi_name) : null
-    if (item.event_type === 'mission_completed' && meta.reward_points) return t(d.feed.rewardPoints, { points: Number(meta.reward_points).toLocaleString('ko-KR') })
+    if (item.event_type === 'mission_completed' && meta.reward_points) return tPoint(d.feed.rewardPoints, { points: Number(meta.reward_points).toLocaleString('ko-KR') })
     return null
   })()
   const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
@@ -667,7 +668,7 @@ function buildFeedEntries(rawItems: ActivityFeedRow[]): FeedEntry[] {
 // 20260905_0038 B — 여기 도달하는 items는 `collapseRepeatEarns`를 거친 뒤라 **배지 종류당 1건**이다.
 // 그래서 「배지 N개」의 N은 이벤트 수가 아니라 고유 배지 수다(반복 획득은 각 카드의 ×N이 말한다).
 // 문구를 바꾸지 않은 이유가 이것이다 — 접기 이후 숫자의 의미가 문구와 일치하게 됐다.
-function groupHeadline(items: ActivityFeedRow[]): string {
+function groupHeadline(items: ActivityFeedRow[]): ReactNode {
   const badgeCount = items.filter((i) => BADGE_EVENTS.has(i.event_type)).length
   // 활동 id가 실리는 기록 지점은 badge_earned·item_dropped 둘뿐이라 실제로는 항상
   // badgeCount === items.length다. 그 전제가 깨지면 총량을 「배지」라고 부를 수 없으므로
@@ -680,7 +681,7 @@ function groupHeadline(items: ActivityFeedRow[]): string {
     return sum + (typeof reward === 'number' ? reward : 0)
   }, 0)
   if (points > 0) {
-    return t(d.feed.groupBadgesWithPoints, { count: badgeCount, points: points.toLocaleString('ko-KR') })
+    return tPoint(d.feed.groupBadgesWithPoints, { count: badgeCount, points: points.toLocaleString('ko-KR') })
   }
   return t(d.feed.groupBadges, { count: badgeCount })
 }

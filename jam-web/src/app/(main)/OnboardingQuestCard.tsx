@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import SyncButton from '@/components/SyncButton'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 import { STEP_SCREEN_MAP, type OnboardingQuestScreen } from '@/lib/onboarding-quest/config'
 import type { RealCurrentStep, RealStepRow, RealStepsView } from '@/lib/onboarding-quest/real-view'
 import type { OnboardingQuestCardState } from '@/lib/onboarding-quest/status'
@@ -153,8 +154,8 @@ function RealChecklist({ real, emphasizeCurrent, lastRowTrailing }: { real: Real
 // ─── 실제 구역의 안내와 버튼 ────────────────────────────────────────────────
 
 /** 지금 할 차례 행 아래의 안내. 포인트가 실제로 모자랄 때만 나온다. */
-function currentNotice(current: RealCurrentStep): string | null {
-  if (current.step === 'locked' && current.shortage) return t(d.onboardingQuest.real.shortage, { need: current.shortage.need })
+function currentNotice(current: RealCurrentStep): ReactNode | null {
+  if (current.step === 'locked' && current.shortage) return tPoint(d.onboardingQuest.real.shortage, { need: current.shortage.need })
   return null
 }
 
