@@ -706,7 +706,7 @@
     },
     {
       "name": "--tabbar-icon-active",
-      "value": "var(--accent)",
+      "value": "var(--foreground)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },

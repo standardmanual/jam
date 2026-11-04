@@ -36,7 +36,7 @@ const PILL_HEIGHT = 41;
  *
  * v2 changes:
  *   - bottom offset now respects env(safe-area-inset-bottom) — iPhone home indicator clearance
- *   - Removed misleading "purple active" comment (active icon color is --tabbar-icon-active, which is --accent)
+ *   - Removed misleading "purple active" comment (active icon color is --tabbar-icon-active; it was --accent, now --foreground (DS black))
  *
  * 20260901_1521: 활성 점 제거, 배경 필에 슬라이딩 모션 추가(단일 pill +
  * offsetLeft/offsetWidth 측정 — 서비스 `src/components/ui/TabBar.tsx`도 함께 수정했다).

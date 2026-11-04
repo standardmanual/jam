@@ -105,7 +105,7 @@
 
   /* ── 확장: 탭바 아이콘 (재질은 materials.css) ─────────────── */
   --tabbar-icon: var(--base-neutral-900);
-  --tabbar-icon-active: var(--accent);
+  --tabbar-icon-active: var(--foreground);      /* 디자인시스템의 검정. 활성은 채운 아이콘+선택 필로 구분한다 (accent는 면 채우기 전용, 크림·흰 필 위 대비 2.37:1) */
 }
 
 /*

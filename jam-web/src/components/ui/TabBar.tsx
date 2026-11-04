@@ -283,7 +283,7 @@ export default function TabBar({ username }: TabBarProps) {
             }}
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
-            {/* 활성=--tabbar-icon-active(accent), 비활성=--tabbar-icon(검정 계열) */}
+            {/* 활성=--tabbar-icon-active(검정, --foreground), 비활성=--tabbar-icon(검정 계열) — 활성은 채운 아이콘+선택 필로 구분 */}
             <span className="relative" style={{ color: active ? 'var(--tabbar-icon-active)' : 'var(--tabbar-icon)' }}>
               {active ? tab.iconFill : tab.iconLine}
             </span>
