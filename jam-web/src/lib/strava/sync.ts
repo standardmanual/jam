@@ -977,6 +977,19 @@ export async function processFetchedActivities(
   // 아이템 배지 발급 **뒤**에 판정한다 — 아이템 수집 미션(`item_collect`)이 인벤토리의 보유 현황을 읽어서, 이번 동기화로 받은
   // 개체가 반영되기 전에 판정하면 한 번 늦게 달성된다. 이전에는 발급이 미션 판정 앞에 있었다. 거리·활동 수 미션은 이력 전체로
   // 판정하므로(`mergeActivityHistory`) 활동 기록 저장 뒤에 돌아도 같은 결과다.
+  // 동기화 기록 (티켓 20261104_2234) — 미션 전용 조건 `sync_count`(참가한 뒤 기간 안의 동기화 횟수)의 원천이다.
+  // 판정(`checkMissions`) **앞**에서 남긴다: 뒤에 두면 이번 동기화가 세어지지 않아 «동기화 N회» 미션이 한 번 늦게 완료된다.
+  // 이 지점은 새 활동을 받은 동기화만 도달한다(`evaluateWithoutNewActivities`는 `checkMissions`를 건너뛴다) — 하루 카운터와 같은 기준이다.
+  // 실패해도 동기화는 계속된다 — 기록만 포기하고 로그를 남긴다.
+  try {
+    const { error: syncEventError } = await supabase.from('user_sync_events').insert({ user_id: userId })
+    if (syncEventError) {
+      console.error(`[processFetchedActivities] 동기화 기록 저장 실패 (userId: ${userId}):`, syncEventError.message)
+    }
+  } catch (syncEventError) {
+    console.error(`[processFetchedActivities] 동기화 기록 저장 실패 (userId: ${userId}):`, syncEventError)
+  }
+
   const { completedMissionIds, awardedBadgeIds } = await checkMissions(userId, activitiesFiltered)
   earnedBadgeIds.push(...awardedBadgeIds)
   if (completedMissionIds.length > 0) {

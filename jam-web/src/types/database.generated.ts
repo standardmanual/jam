@@ -4673,6 +4673,32 @@ export type Database = {
           },
         ]
       }
+      user_sync_events: {
+        Row: {
+          id: number
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: never
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: never
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sync_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_tribe_changes: {
         Row: {
           cancelled_mission_count: number
