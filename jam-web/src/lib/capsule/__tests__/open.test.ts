@@ -630,6 +630,20 @@ describe('openCapsule — 다른 트라이브는 후보 배지가 있는 트라�
     expect(items[0]).toMatchObject({ badge_id: 'badge-common-B' })
   })
 
+  it('소속이 뽑혔는데 소속에 후보가 없어도 후보 있는 다른 트라이브에서 뽑혀 열린다 (티켓 20261104_2125)', async () => {
+    badgesRef.rows = [badgeOf('B')]
+    const { client, rpc } = fakeClient({ rpc: oneItemRpc, tribes: ['A', 'B'], bookTribes: ['B'] })
+
+    // 개수 0.5 / 소속 0.5 / common 0 / 소속에 후보 없음 → 다른 트라이브 고르기 0(B) / 후보 0 / 잠김 0.9
+    const payload = await openCapsule(client, USER_ID, { rand: seq(0.5, 0.5, 0, 0, 0, 0.9) })
+
+    const items = (rpc.mock.calls.find(([name]) => name === 'capsule_open_counted')?.[1] as { p_items: Array<Record<string, unknown>> }).p_items
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ badge_id: 'badge-common-B' })
+    expect(payload.openId).toBe('open-t')
+    expect(followUpMock.mock.calls[0][0]).toMatchObject({ tribeName: '트라이브-B' })
+  })
+
   it('후속 처리의 트라이브 이름은 전체 트라이브 표에서 찾는다(좁히기가 이름 조회를 줄이지 않는다)', async () => {
     badgesRef.rows = [badgeOf('B')]
     const { client } = fakeClient({ rpc: oneItemRpc, tribes: ['A', 'B', 'C'], bookTribes: ['B'] })

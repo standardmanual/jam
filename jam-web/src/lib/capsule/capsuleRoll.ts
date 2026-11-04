@@ -14,7 +14,8 @@
  *    Common 연속은 개체를 받을 때마다 **실제로 받은 등급**으로 이어 센다(DB 함수 `capsule_open`이 세는 방식과 같다).
  *  - 후보: 그 트라이브·등급의 활성이고 공개 기간 안인 아이템 배지 중 균등 무작위. 없으면 한 등급씩 내려 다시 뽑는다(`pickWithRarityFallback`).
  *  - 잠김: `assignLock`(경로 `capsule`). 퀘스트 전 캡슐(`preQuest`)은 **나온 첫 개체**를 반드시 잠근다(`rolled`, 필요한 양은 `pre_quest_unlock_required`).
- * 모든 등급에 후보가 없는 개체는 건너뛰고 `skipped`에 남긴다(호출부가 로그를 남긴다).
+ *  - 소속 재추첨: 소속이 뽑혔는데 모든 등급에 후보가 없으면, 후보가 있는 다른 트라이브 가운데 고르게 하나(난수 1번)를 골라 같은 처음 등급으로 다시 뽑는다.
+ * 그래도 모든 등급에 후보가 없는 개체는 건너뛰고 `skipped`에 남긴다(호출부가 로그를 남긴다).
  */
 import { assignLock, type LockAssignment, type LockPolicy } from '@/lib/drop-engine/lockAssignment'
 import {
@@ -85,7 +86,7 @@ const CANDIDATE_RARITIES: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'm
  * «다른 트라이브» 추첨 대상을 후보 배지가 있는 트라이브로 좁힌다 (티켓 20261021_1248).
  * 트라이브 표(`tribes`)에는 후보 배지가 없는 비활성 트라이브가 섞여 있어, 그대로 고르면 그 트라이브가 뽑혔을 때 개체가 비고 모든 개체가 비면 캡슐이 열리지 않는다.
  * 후보 판정은 발급과 같다(`listIssueCandidates` — 활성 컬렉션·공개 기간 안·드랍 제외 아님·삭제 아님). 소속 트라이브는 후보가 없어도 항상 남긴다
- * (소속으로 뽑히는 길을 없애지 않는다). 다른 트라이브 확률과 «나머지 트라이브 가운데 고르게» 규칙은 그대로고 후보 없는 트라이브만 대상에서 빠진다.
+ * (소속으로 뽑히는 길을 없애지 않는다. 소속에 후보가 없으면 `rollCapsule`이 다른 트라이브에서 다시 뽑는다). 다른 트라이브 확률과 «나머지 트라이브 가운데 고르게» 규칙은 그대로고 후보 없는 트라이브만 대상에서 빠진다.
  */
 export function tribesWithCandidates<B extends IssueBadge>(
   tribeIds: readonly string[],
@@ -156,7 +157,18 @@ export function rollCapsule<B extends IssueBadge>(input: CapsuleRollInput<B>, ra
     const epicPity = i === 0 && input.epicMiss >= policy.pity_epic_threshold
     const rolledRarity = rollCapsuleRarity(policy, { epicPity, commonStreak }, rand)
 
-    const pick = pickWithRarityFallback<B>({ tribeId, rolledRarity, books, badges, now }, rand)
+    let pickedTribeId = tribeId
+    let pick = pickWithRarityFallback<B>({ tribeId, rolledRarity, books, badges, now }, rand)
+    // 소속이 뽑혔는데 모든 등급에 후보가 없으면 후보가 있는 다른 트라이브에서 한 번 다시 뽑는다(처음 등급 유지, 티켓 20261104_2125).
+    // 새 난수는 이 경우에만 쓰므로 소속에 후보가 있는 경로의 난수 순서는 그대로다.
+    if (!pick && tribeId === input.tribeId) {
+      const others = input.tribeIds.filter((id) => id !== input.tribeId)
+      if (others.length > 0) {
+        const retryTribeId = others[Math.min(Math.floor(rand() * others.length), others.length - 1)]
+        pick = pickWithRarityFallback<B>({ tribeId: retryTribeId, rolledRarity, books, badges, now }, rand)
+        if (pick) pickedTribeId = retryTribeId
+      }
+    }
     if (!pick) {
       result.skipped.push({ tribeId, rolledRarity })
       continue
@@ -179,7 +191,7 @@ export function rollCapsule<B extends IssueBadge>(input: CapsuleRollInput<B>, ra
             rand
           )
 
-    result.items.push({ badge: pick.badge, tribeId, rarity: pick.rarity, rolledRarity: pick.rolledRarity, lock })
+    result.items.push({ badge: pick.badge, tribeId: pickedTribeId, rarity: pick.rarity, rolledRarity: pick.rolledRarity, lock })
   }
   return result
 }
