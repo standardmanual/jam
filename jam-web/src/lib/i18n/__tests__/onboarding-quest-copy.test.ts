@@ -58,7 +58,8 @@ describe('«JAM! 시작하기» 카드 문구', () => {
     expect(d.onboardingQuest.progress.real).toBe('내 활동으로 {done}/{total}')
     expect(d.onboardingQuest.real.listLabel).toBe('내 활동으로 2단계')
     expect(d.onboardingQuest.real.steps).toEqual({ sync: 'Strava 동기화', locked: '잠긴 아이템 배지 열기' })
-    expect(d.onboardingQuest.skip.entryLabel).toBe('미리 해보기 건너뛰기')
+    expect(d.onboardingQuest.skip.entryLabel).toBe('건너뛰기')
+    expect(d.onboardingQuest.skip.entryAriaLabel).toBe('미리 해보기 건너뛰기')
   })
 
   it('금지어(연습·과제·가이드·튜토리얼·온보딩)가 없다', () => {

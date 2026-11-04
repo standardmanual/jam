@@ -184,15 +184,16 @@ describe('JAM! 시작하기 카드 — 연출 중(연출 구역 + 실제 2단계
     }
   })
 
-  it('한 카드에 primary는 하나다 — 연출 CTA와 카드 안 건너뛰기 버튼(outline)뿐이다', () => {
+  it('한 카드에 primary는 하나다 — 연출 CTA(accent 면)와 카드 안 작은 검정 건너뛰기 버튼뿐이다', () => {
     const html = render(demo(1, 'bag'))
     expect(buttonTexts(html)).toEqual([d.onboardingQuest.continueButton, d.onboardingQuest.skip.entryLabel])
   })
 
-  it('목록 행은 누를 수 없다 — 행 안에 버튼이나 링크가 없다', () => {
+  it('목록 행은 누를 수 없다 — 행 자체는 버튼이나 링크가 아니고, 버튼은 마지막 행 끝의 건너뛰기 하나뿐이다', () => {
     const html = render(demo(1, 'bag'))
     const list = html.slice(html.indexOf('<ol'), html.indexOf('</ol>'))
-    expect(list).not.toContain('<button')
+    expect(list.match(/<button/g)).toHaveLength(1)
+    expect(list).toContain(`>${d.onboardingQuest.skip.entryLabel}</button>`)
     expect(list).not.toContain('<a ')
     expect(list).not.toContain('onclick')
   })
@@ -203,7 +204,9 @@ describe('JAM! 시작하기 카드 — 연출 CTA', () => {
     const html = render(demo(0, 'sync'))
     expect(buttonTexts(html)[0]).toBe(d.today.syncButton)
     expect(html).toContain('py-[9px]')
-    expect(html).not.toContain('calc(44px * var(--scale-compact))')
+    // 연출 CTA 자신은 xs가 아니다(건너뛰기 버튼만 xs)
+    const cta = html.slice(html.lastIndexOf('<button', html.indexOf(`>${d.today.syncButton}</button>`)), html.indexOf(`>${d.today.syncButton}</button>`))
+    expect(cta).not.toContain('calc(44px * var(--scale-compact))')
   })
 
   it('2~7단계: 「다음 단계」 버튼과 화살표 아이콘이 있다', () => {
@@ -230,30 +233,43 @@ describe('JAM! 시작하기 카드 — 연출 CTA', () => {
 describe('JAM! 시작하기 카드 — 건너뛰기 진입점(티켓 20260927_2131 T8)', () => {
   it.each(['sync', 'bag', 'browse'] as const)('연출 중(nextStep=%s)에는 «미리 해보기 건너뛰기»가 보인다', (nextStep) => {
     const html = render(demo(1, nextStep))
-    expect(html).toContain('미리 해보기 건너뛰기')
-    expect(d.onboardingQuest.skip.entryLabel).toBe('미리 해보기 건너뛰기')
+    expect(html).toContain(`aria-label="${d.onboardingQuest.skip.entryAriaLabel}"`)
+    expect(d.onboardingQuest.skip.entryLabel).toBe('건너뛰기')
   })
 
   it('실제 구역 카드(연출 끝 또는 건너뜀)에는 건너뛰기 진입점이 없다', () => {
     for (const [, state] of REAL_STATES) {
-      expect(render(state, 'runner')).not.toContain(d.onboardingQuest.skip.entryLabel)
+      expect(render(state, 'runner')).not.toContain(d.onboardingQuest.skip.entryAriaLabel)
     }
   })
 
-  it('진입 버튼은 카드 안 연출 CTA 아래, 우측 정렬의 outline 보조 버튼이다(티켓 20261104_1810)', () => {
-    const html = render(demo(1, 'bag'))
-    const cardEnd = html.lastIndexOf('</div>')
-    const entryAt = html.indexOf(d.onboardingQuest.skip.entryLabel)
-    expect(entryAt).toBeGreaterThan(html.indexOf(d.onboardingQuest.continueButton))
-    expect(entryAt).toBeLessThan(cardEnd)
-    // 카드(role=group)를 닫기 전에 있다 — 카드 밖 형제가 아니다
-    const group = html.slice(html.indexOf('role="group"'))
-    expect(group).toContain(d.onboardingQuest.skip.entryLabel)
-    const row = html.slice(html.lastIndexOf('<div', entryAt - 1), entryAt)
-    expect(row).toContain('justify-end')
-    expect(html.slice(html.lastIndexOf('<button', entryAt), entryAt)).toContain('border')
+  it('진입 버튼은 «잠긴 아이템 배지 열기» 행 오른쪽 끝의 작은 검정 버튼이다(2026-11-04)', () => {
+    const html = render(demo(1, 'bag', realView()))
+    const lockedRow = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0]).find((li) => li.includes(d.onboardingQuest.real.steps.locked))
+    expect(lockedRow).toBeDefined()
+    // 같은 행 안에 있고, 글자 뒤(오른쪽 끝)에 놓인다
+    expect(lockedRow).toContain(`>${d.onboardingQuest.skip.entryLabel}</button>`)
+    expect(lockedRow!.indexOf('<button')).toBeGreaterThan(lockedRow!.indexOf(d.onboardingQuest.real.steps.locked))
+    // 첫 행(Strava 동기화)에는 없다
+    const syncRow = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0]).find((li) => li.includes(d.onboardingQuest.real.steps.sync))
+    expect(syncRow).not.toContain('<button')
+    // 작은(xs) 검정 알약이다 — 연출 CTA의 accent 면(surface sub)이 아니다
+    const button = lockedRow!.slice(lockedRow!.indexOf('<button'), lockedRow!.indexOf('</button>'))
+    expect(button).toContain('min-height:calc(44px * var(--scale-compact))')
+    expect(button).toContain('bg-background-inverse')
+    expect(button).not.toContain('bg-accent')
+    // 보조기술에는 무엇을 건너뛰는지 알린다
+    expect(button).toContain(`aria-label="${d.onboardingQuest.skip.entryAriaLabel}"`)
     // 모달은 닫힌 채라 마크업에 없다
     expect(html).not.toContain('role="dialog"')
+  })
+
+  it('실제 단계 기록을 못 읽어 체크리스트가 없으면 오른쪽 정렬 행에 둔다', () => {
+    const html = render(demo(1, 'bag', null))
+    const button = html.slice(html.lastIndexOf('<button'))
+    expect(button).toContain(`>${d.onboardingQuest.skip.entryLabel}</button>`)
+    expect(html.slice(html.lastIndexOf('<div', html.lastIndexOf('<button')), html.lastIndexOf('<button'))).toContain('justify-end')
+    expect(html).not.toContain('<ol')
   })
 
   it('확인 시트 본문은 사용자가 정한 한 문장이다(티켓 20261028_1738)', () => {

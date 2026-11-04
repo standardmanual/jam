@@ -5,6 +5,7 @@ import { Card } from '@ds/components/cards/Card'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { CheckCircleIcon, ChevronRightIcon } from '@/components/ui/icons'
+import type { ReactNode } from 'react'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import SyncButton from '@/components/SyncButton'
@@ -110,13 +111,13 @@ function currentDescription(current: RealCurrentStep): string {
   return current.target === null ? copy.locked.descriptionGeneral : copy.locked.description
 }
 
-function ChecklistRow({ row, description }: { row: RealStepRow; description: string | null }) {
+function ChecklistRow({ row, description, trailing }: { row: RealStepRow; description: string | null; trailing?: ReactNode }) {
   const emphasized = description !== null
   const titleClass = emphasized
     ? 'text-base font-bold leading-6 text-foreground break-keep wrap-break-word'
     : `text-sm leading-6 break-keep wrap-break-word ${row.state === 'pending' ? 'text-muted' : 'text-foreground'}`
   return (
-    <li className="flex items-start gap-3">
+    <li className={`flex gap-3 ${trailing ? 'items-center' : 'items-start'}`}>
       <StepMark done={row.state === 'done'} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className={`m-0 ${titleClass}`}>
@@ -125,6 +126,7 @@ function ChecklistRow({ row, description }: { row: RealStepRow; description: str
         </p>
         {description !== null && <p className={`m-0 ${DESC_CLASS}`}>{description}</p>}
       </div>
+      {trailing}
     </li>
   )
 }
@@ -133,14 +135,15 @@ function ChecklistRow({ row, description }: { row: RealStepRow; description: str
  * «내 활동으로 2단계» 체크 목록(`<ol>`, 누를 수 없음). `emphasizeCurrent`가 참이면(실제 구역이 위로 올라온 카드) 지금 할 차례 행이
  * 굵은 제목과 설명을 갖고, 아니면(연출 중 카드 아래) 모든 행이 한 줄이다.
  */
-function RealChecklist({ real, emphasizeCurrent }: { real: RealStepsView; emphasizeCurrent: boolean }) {
+function RealChecklist({ real, emphasizeCurrent, lastRowTrailing }: { real: RealStepsView; emphasizeCurrent: boolean; lastRowTrailing?: ReactNode }) {
   return (
     <ol aria-label={d.onboardingQuest.real.listLabel} className="m-0 flex list-none flex-col gap-3 p-0">
-      {real.rows.map((row) => (
+      {real.rows.map((row, index) => (
         <ChecklistRow
           key={row.key}
           row={row}
           description={emphasizeCurrent && row.state === 'current' && real.current ? currentDescription(real.current) : null}
+          trailing={index === real.rows.length - 1 ? lastRowTrailing : undefined}
         />
       ))}
     </ol>
@@ -243,6 +246,7 @@ function DemoCard({ state }: { state: Extract<NonNullable<OnboardingQuestCardSta
   // GA4 onboarding_quest_start 계측 — 0/7(첫 렌더)이고 관리자 미리보기가 아닐 때만 마운트
   // (사용자 결정 2, 티켓 20260927_2132). nextStep==='sync'일 때만 done===0이 될 수 있다.
   const startTracker = state.done === 0 && !state.preview ? <QuestStartTracker /> : null
+  const skipEntry = <OnboardingQuestSkipModal step={state.nextStep} />
 
   return (
     <>
@@ -255,15 +259,16 @@ function DemoCard({ state }: { state: Extract<NonNullable<OnboardingQuestCardSta
           <p className={DESC_CLASS}>{step.description}</p>
         </div>
         <DemoCta nextStep={state.nextStep} />
-        {/* 건너뛰기 진입 버튼(티켓 20260927_2131 T8, 카드 안 우측 아래로 변경 20261104_1810, 채원 사전 판정) — 연출 CTA 바로 아래 행이다.
-            연출 진행 중 모든 단계(sync 포함)에서 보이고, 건너뛴 뒤에는 없다. 누르면 가운데 모달이 뜬다.
-            실제 체크리스트가 있으면 그 구분선 앞, 연출 구역의 끝에 둔다. GA4 onboarding_quest_skip 이벤트에 실릴 단계 키(nextStep)를 함께 넘긴다(티켓 20260927_2132). */}
-        <OnboardingQuestSkipModal step={state.nextStep} />
-        {state.real && (
+        {/* 건너뛰기 진입 버튼(티켓 20260927_2131 T8, 카드 안 버튼과 모달 20261104_1810, «잠긴 아이템 배지 열기» 행 오른쪽 끝의 작은 검정 버튼으로 변경 2026-11-04, 채원 사전 판정).
+            연출 진행 중 모든 단계(sync 포함)에서 보이고, 건너뛴 뒤에는 없다. 누르면 가운데 모달이 뜬다. 체크리스트가 없으면(실제 단계 기록을 못 읽음) 오른쪽 정렬 행에 둔다.
+            GA4 onboarding_quest_skip 이벤트에 실릴 단계 키(nextStep)를 함께 넘긴다(티켓 20260927_2132). */}
+        {state.real ? (
           <>
             <Divider />
-            <RealChecklist real={state.real} emphasizeCurrent={false} />
+            <RealChecklist real={state.real} emphasizeCurrent={false} lastRowTrailing={skipEntry} />
           </>
+        ) : (
+          <div className="flex justify-end">{skipEntry}</div>
         )}
       </Card>
     </>
