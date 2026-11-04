@@ -13,7 +13,7 @@ import { resolveStravaUiState } from '@/lib/strava/connection-state'
 import { hasUnread, latestBumpingNotificationAt } from '@/lib/notifications/feed'
 import { getAdminQuestPreview } from '@/lib/onboarding-quest/preview'
 import QuestPreviewBanner from '@/components/QuestPreviewBanner'
-import { PAGE_GRADIENT_BACKGROUND } from '@/lib/pageBackground'
+import { MAIN_PAGE_BACKGROUND } from '@/lib/pageBackground'
 import ChapterRiseWatcher from '@/components/chapter/ChapterRiseWatcher'
 import CapsuleResultProvider from '@/components/capsule/CapsuleResultProvider'
 import { readUnseenCapsuleResultOrNull } from '@/lib/capsule/unseen'
@@ -110,7 +110,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           {/* 합친 연출(티켓 20261028_1740 3회) — children·챕터 오름 카드·나머지 오버레이를 모두 감싸 게이지와 카드가 같은 문맥을 읽는다 */}
           <CapsuleResultProvider initialResult={unseenCapsuleResult} userId={user.id}>
           <div
-            className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative"
+            // 하단 pb는 탭 바(fixed) 높이 + 안전영역이다. main이 아니라 이 래퍼가 가져, 흰 면(main)은 푸터 로고에서 끝나고
+            // 그 아래 탭 바 구간은 body 크림이 비친다(티켓 20261104_1642).
+            className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative pb-[calc(5rem+env(safe-area-inset-bottom))]"
             // 띠가 있을 때 TopNav의 안전영역 padding-top을 0으로 눌러 이중 여백을 없앤다 —
             // 안전영역은 물리적 최상단인 띠가 진다(design-system/components/navigation/TopNav.jsx
             // `--topnav-safe-top` 폴백 참고, 티켓 20260928_0138 재작업 ①).
@@ -122,11 +124,11 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             {questPreview && <QuestPreviewBanner value={questPreview} />}
 
             {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정.
-                배경은 `--background` 단색이며(라이트 그라데이션 재설계는 티켓 20261015_2133), 값은
-                `@/lib/pageBackground`에 있다((legal) 레이아웃과 공용, 티켓 20260929_1400). */}
+                배경은 `--surface` 흰색 단색이며(티켓 20261104_1642), 값은 `@/lib/pageBackground`의
+                `MAIN_PAGE_BACKGROUND`다. (legal)·(onboarding)은 크림 `PAGE_GRADIENT_BACKGROUND`를 그대로 쓴다. */}
             <main
-              className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))]"
-              style={PAGE_GRADIENT_BACKGROUND}
+              className="flex-1 overflow-y-auto"
+              style={MAIN_PAGE_BACKGROUND}
             >
               {/* sticky footer 트릭: 컨텐츠 래퍼가 뷰포트 높이(dvh)를 항상 확보해, 컨텐츠가 짧아도
                   Footer가 화면 중간이 아닌 항상 그 아래로 밀려나게 한다.

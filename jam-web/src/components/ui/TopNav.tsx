@@ -26,10 +26,10 @@ import { d } from '@/lib/i18n'
  * 앵커 시맨틱은 사라지고 button 기반 프로그래매틱 이동으로 바뀐다(뒤로가기 버튼이라
  * 실사용 영향은 낮다고 판단 — 완료 기록 참고).
  *
- * - 배경: DS TopNav가 불투명 --background로 렌더하고 이 래퍼는 그대로 둔다(`headerStyle`을 넘기지 않으면
- *   변경 없음). 페이지 캔버스도 --background라 헤더와 본문은 같은 면이다. 배경을 바꿔야 하는 화면만
- *   `headerStyle`을 쓴다(예: 배지 상세의 테마 배경) / 텍스트: --foreground
- * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문이 같은 크림 면이라 구분선도 없다
+ * - 배경: 기본값은 불투명 --surface(흰색)다(티켓 20261104_1642) — (main) 페이지 면이 --surface라 헤더도 같은 면이다.
+ *   DS TopNav는 건드리지 않고 이 래퍼가 `headerStyle`의 기본 background만 채운다. 호출부가 넘긴
+ *   `headerStyle.background`가 있으면 그쪽이 이긴다(예: 배지 상세의 테마 배경) / 텍스트: --foreground
+ * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문이 같은 흰 면이라 구분선도 없다
  * - 뒤로가기: backHref가 있으면 router.push(backHref), 없으면 onBack ?? router.back()
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
  *
@@ -163,7 +163,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
       rightSlot={composedRightSlot}
       logo={logoNode}
       centerSlot={centerSlot}
-      headerStyle={headerStyle}
+      headerStyle={{ background: 'var(--surface)', ...headerStyle }}
     />
   )
 }
