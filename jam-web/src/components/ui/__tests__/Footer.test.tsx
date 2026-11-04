@@ -48,7 +48,9 @@ describe('Footer 링크', () => {
 
   it('저작권 줄 다음, 푸터의 마지막 요소가 푸터 안쪽 폭 100%의 JAM! 로고다(티켓 20261104_1642)', () => {
     const html = renderToStaticMarkup(<Footer />)
-    const logo = '<div class="jam-logo-mark w-full" role="img" aria-label="JAM!"></div>'
+    // 서버 렌더(모션 전)에서는 로고가 숨지 않고 제자리에 있다 — JS가 없어도 보인다
+    const logo =
+      '<div class="w-full overflow-hidden"><div class="jam-logo-mark w-full" role="img" aria-label="JAM!" style="transform:translateY(0);transition:none"></div></div>'
     expect(html.endsWith(`${logo}</footer>`)).toBe(true)
     expect(html.indexOf(d.common.footerCopyright)).toBeLessThan(html.indexOf(logo))
     // 푸터 좌우 패딩(px-4)을 넘지 않는다 — 음수 마진으로 뚫지 않는다

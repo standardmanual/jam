@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { d } from '@/lib/i18n'
+import FooterLogo from './FooterLogo'
 
 /**
  * 전역 하단 푸터.
@@ -92,8 +93,9 @@ export default function Footer() {
       {/* 20261104_1642: 저작권 아래, 푸터의 마지막 요소로 JAM! 로고를 서비스 영역의 좌우 패딩(px-4) 안쪽 폭 100%로 채운다.
           새 이미지 없이 .jam-logo-mark(알파 마스크 + --foreground)를 쓴다. items-start라 폭은 w-full로 정한다.
           로고 아래면이 페이지 맨 끝(브라우저 끝)에 닿도록 푸터 아래쪽 패딩과 (main)/layout의 하단 여백이 모두 0이다
-          (하단 탭 바는 fixed라 스크롤 끝에서 로고 아래쪽에 겹친다). 장식이라 role="img"+aria-label만 둔다. */}
-      <div className="jam-logo-mark w-full" role="img" aria-label="JAM!" />
+          (하단 탭 바는 fixed라 스크롤 끝에서 로고 아래쪽에 겹친다). 화면에 나타날 때 아래에서 위로 Ease In으로 올라온다
+          (`FooterLogo`). 라우트가 바뀌면 key로 새로 마운트해 그 화면에서도 다시 올라온다. */}
+      <FooterLogo key={pathname} />
     </footer>
   )
 }
