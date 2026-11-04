@@ -50,7 +50,7 @@ interface Props {
 type Tab = 'ongoing' | 'joined' | 'ended'
 type SortKey = 'newest' | 'oldest' | 'ending_soon'
 
-const NEW_MISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7일 이내 생성 = 신규
+const NEW_MISSION_WINDOW_MS = 2 * 24 * 60 * 60 * 1000 // 생성 후 2일 이내 = 신규 (2026-11-04 사용자 결정, 이전 7일)
 
 // 색상 토큰 — JAM 2.0 라이트(티켓 20261015_2134). 미션 목록 행은 크림 바탕 위 맨 행이다.
 // 썸네일은 흰 면 + 1px --border다(크림과 흰 면은 1.05:1이라 테두리가 경계를 맡는다).
@@ -65,9 +65,10 @@ const C_LOCKED_BADGE_BG = 'var(--border)'
 const C_LOCKED_BADGE_TEXT = 'var(--foreground)'
 // 썸네일 자물쇠 오버레이 전용 색. 썸네일 면이 흰색이라 --foreground다(40% 딤 아트 위 최악 6.29:1).
 const C_LOCK_GLYPH = 'var(--foreground)'
-// NEW·참가중 칩: --accent 면 + --accent-foreground(6.63:1)
-const C_NEW_BADGE_BG = 'var(--accent)'
+// NEW 칩: 주황 --warning 면 + --accent-foreground 검정 글자(2026-11-04 사용자 결정, 이전에는 초록 accent)
+const C_NEW_BADGE_BG = 'var(--warning)'
 const C_NEW_BADGE_TEXT = 'var(--accent-foreground)'
+// 참가중 칩: --accent 면 + --accent-foreground(6.63:1)
 const C_JOINED_BADGE_BG = 'var(--accent)'
 const C_JOINED_BADGE_TEXT = 'var(--accent-foreground)'
 const C_TITLE = 'var(--foreground)'
