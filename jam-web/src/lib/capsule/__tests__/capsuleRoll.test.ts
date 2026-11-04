@@ -233,13 +233,74 @@ describe('rollCapsule — 순서와 후보', () => {
     expect(result.items[0].rarity).toBe('common')
   })
 
-  it('모든 등급에 후보가 없는 개체는 건너뛰고 skipped에 남긴다', () => {
-    const badges = fullBadges.filter((b) => b.item_book_id !== 'book-A')
-
-    const result = rollCapsule(input({ badges }), seq(0.5, 0.5, 0.99).rand)
+  it('모든 등급에 후보가 없는 개체는 건너뛰고 skipped에 남긴다(어느 트라이브에도 후보가 없다)', () => {
+    // 개수 0.5, 소속 0.5, 등급 0.99(mystic) → 소속에 후보 없음 → 다른 트라이브 고르기 0 → 거기도 후보 없음
+    const result = rollCapsule(input({ badges: [] }), seq(0.5, 0.5, 0.99, 0).rand)
 
     expect(result.items).toEqual([])
     expect(result.skipped).toEqual([{ tribeId: 'A', rolledRarity: 'mystic' }])
+  })
+
+  describe('소속에 후보가 없으면 다른 트라이브에서 다시 뽑는다 (티켓 20261104_2125)', () => {
+    const noOwn = fullBadges.filter((b) => b.item_book_id !== 'book-A')
+
+    it('소속이 뽑혔는데 후보가 없으면 다른 트라이브에서 같은 처음 등급으로 뽑는다', () => {
+      // 개수 0.5, 소속 0.5, 등급 0.8(rare), 다시 뽑기 0(B), 후보 0, 잠김 0.9
+      const r = seq(0.5, 0.5, 0.8, 0, 0, 0.9)
+
+      const result = rollCapsule(input({ badges: noOwn }), r.rand)
+
+      expect(result.items).toHaveLength(1)
+      expect(result.items[0]).toMatchObject({ tribeId: 'B', rarity: 'rare', rolledRarity: 'rare' })
+      expect(result.items[0].badge.id).toBe('B-rare')
+      expect(result.skipped).toEqual([])
+      expect(r.left()).toBe(0)
+    })
+
+    it('다시 뽑기는 소속을 뺀 트라이브 가운데 고르게 고른다(마지막 경계는 마지막 트라이브)', () => {
+      const result = rollCapsule(input({ badges: noOwn }), seq(0.5, 0.5, 0, 0.999, 0, 0.9).rand)
+      expect(result.items[0].tribeId).toBe('E')
+    })
+
+    it('다시 뽑은 트라이브에서도 등급은 한 등급씩 내려간다', () => {
+      const badges = noOwn.filter((b) => !(b.item_book_id === 'book-B' && b.rarity === 'mystic'))
+      const result = rollCapsule(input({ badges }), seq(0.5, 0.5, 0.99, 0, 0, 0.9).rand)
+      expect(result.items[0]).toMatchObject({ tribeId: 'B', rolledRarity: 'mystic', rarity: 'epic' })
+    })
+
+    it('넘겨받은 트라이브에 소속뿐이면 다시 뽑지 않고(난수를 쓰지 않고) 건너뛴다', () => {
+      const r = seq(0.5, 0.5, 0.99)
+      const result = rollCapsule(input({ badges: noOwn, tribeIds: ['A'] }), r.rand)
+      expect(result.items).toEqual([])
+      expect(result.skipped).toEqual([{ tribeId: 'A', rolledRarity: 'mystic' }])
+    })
+
+    it('소속에 후보가 있으면 다시 뽑지 않아 난수 사용 순서가 그대로다', () => {
+      const r = seq(0.5, 0.5, 0, 0, 0.9)
+      const result = rollCapsule(input(), r.rand)
+      expect(result.items[0]).toMatchObject({ tribeId: 'A' })
+      expect(r.left()).toBe(0)
+    })
+
+    it('확률로 다른 트라이브가 뽑혔으면 지금처럼 그 트라이브를 쓴다(소속에 후보가 없어도 다시 뽑지 않는다)', () => {
+      // 개수 0.5, 다른 트라이브 0.1 → 첫째(B), 등급 0, 후보 0, 잠김 0.9
+      const r = seq(0.5, 0.1, 0, 0, 0, 0.9)
+      const result = rollCapsule(input({ badges: noOwn }), r.rand)
+      expect(result.items[0].tribeId).toBe('B')
+    })
+
+    it('다른 트라이브가 확률로 뽑혔는데 후보가 없으면 다시 뽑지 않고 건너뛴다', () => {
+      const badges = noOwn.filter((b) => b.item_book_id !== 'book-B')
+      const r = seq(0.5, 0.1, 0, 0)
+      const result = rollCapsule(input({ badges }), r.rand)
+      expect(result.items).toEqual([])
+      expect(result.skipped).toEqual([{ tribeId: 'B', rolledRarity: 'common' }])
+    })
+
+    it('퀘스트 전 캡슐이면 다시 뽑아 나온 첫 개체를 잠근다', () => {
+      const result = rollCapsule(input({ badges: noOwn, preQuest: true }), seq(0.5, 0.5, 0, 0, 0).rand)
+      expect(result.items[0]).toMatchObject({ tribeId: 'B', lock: { locked: true, lockReason: 'rolled' } })
+    })
   })
 })
 
