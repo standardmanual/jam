@@ -50,6 +50,7 @@ import type { LogoGeometry } from '@/lib/logo-3d/buildGeometry'
 import { buildFontLoadKey, isSystemDefaultFont } from '@/app/admin/asset-generator/assetGeneratorHelpers'
 import type { AssetGeneratorViewportHandle } from '@/app/admin/asset-generator/AssetGeneratorViewport'
 import { drawOverlayLayersOnto, toContextLike, useOverlayAssets } from '../overlayStage'
+import { Logo3DUndoFooter } from './Logo3DUndoFooter'
 import {
   applyDragRotation,
   cameraPoseFor,
@@ -116,6 +117,9 @@ type Props = {
   onVideoRecordingChange?: (recording: boolean, label: string) => void
   onRotate: (rotX: number, rotY: number) => void
   onZoom: (zoom: number) => void
+  /** 하단 「되돌리기」 버튼. 기록이 없으면 비활성. */
+  canUndo: boolean
+  onUndo: () => void
 }
 
 export type LogoMeshes = { frame: Mesh; tile: Mesh; backPlate: Mesh }
@@ -793,45 +797,48 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
   }))
 
   return (
-    <div ref={hostRef} className="relative flex min-h-[320px] min-w-0 flex-1 items-center justify-center overflow-hidden bg-[#eceeea]">
-      <div
-        className="relative overflow-hidden rounded-md shadow-sm"
-        style={{
-          width: box.width,
-          height: box.height,
-          backgroundColor: '#ffffff',
-          backgroundImage:
-            bgMode === 'transparent'
-              ? 'linear-gradient(45deg,#e4e6e2 25%,transparent 25%),linear-gradient(-45deg,#e4e6e2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e6e2 75%),linear-gradient(-45deg,transparent 75%,#e4e6e2 75%)'
-              : undefined,
-          backgroundSize: '16px 16px',
-          backgroundPosition: '0 0,0 8px,8px -8px,-8px 0',
-        }}
-      >
+    <div className="flex min-w-0 flex-1 flex-col bg-[#eceeea]">
+      <div ref={hostRef} className="relative flex min-h-[320px] min-w-0 flex-1 items-center justify-center overflow-hidden bg-[#eceeea]">
         <div
-          ref={canvasHostRef}
-          className="absolute inset-0 cursor-grab touch-none active:cursor-grabbing"
-          role="img"
-          aria-label="3D 로고 미리보기"
+          className="relative overflow-hidden rounded-md shadow-sm"
+          style={{
+            width: box.width,
+            height: box.height,
+            backgroundColor: '#ffffff',
+            backgroundImage:
+              bgMode === 'transparent'
+                ? 'linear-gradient(45deg,#e4e6e2 25%,transparent 25%),linear-gradient(-45deg,#e4e6e2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e6e2 75%),linear-gradient(-45deg,transparent 75%,#e4e6e2 75%)'
+                : undefined,
+            backgroundSize: '16px 16px',
+            backgroundPosition: '0 0,0 8px,8px -8px,-8px 0',
+          }}
         >
-          <canvas ref={displayRef} className="block h-full w-full" aria-hidden="true" />
+          <div
+            ref={canvasHostRef}
+            className="absolute inset-0 cursor-grab touch-none active:cursor-grabbing"
+            role="img"
+            aria-label="3D 로고 미리보기"
+          >
+            <canvas ref={displayRef} className="block h-full w-full" aria-hidden="true" />
+          </div>
+          {loading && (
+            <div className="absolute inset-0 grid place-items-center bg-white/50 text-xs text-[#1e2322] break-keep wrap-break-word">
+              불러오는 중이에요...
+            </div>
+          )}
+          {!loading && !geometry && !webglError && (
+            <div className="absolute inset-0 grid place-items-center px-6 text-center text-xs text-[#6f766c] break-keep wrap-break-word text-balance">
+              폰트를 고르고 글자를 입력하거나 SVG를 올리면 3D 로고가 보여요.
+            </div>
+          )}
+          {webglError && (
+            <div className="absolute inset-0 grid place-items-center px-6 text-center text-xs text-[#b42318] break-keep wrap-break-word text-balance">
+              3D 화면을 열지 못했어요. 이 브라우저에서 WebGL을 쓸 수 없어요. 다른 브라우저에서 다시 열어 주세요.
+            </div>
+          )}
         </div>
-        {loading && (
-          <div className="absolute inset-0 grid place-items-center bg-white/50 text-xs text-[#1e2322] break-keep wrap-break-word">
-            불러오는 중이에요...
-          </div>
-        )}
-        {!loading && !geometry && !webglError && (
-          <div className="absolute inset-0 grid place-items-center px-6 text-center text-xs text-[#6f766c] break-keep wrap-break-word text-balance">
-            폰트를 고르고 글자를 입력하거나 SVG를 올리면 3D 로고가 보여요.
-          </div>
-        )}
-        {webglError && (
-          <div className="absolute inset-0 grid place-items-center px-6 text-center text-xs text-[#b42318] break-keep wrap-break-word text-balance">
-            3D 화면을 열지 못했어요. 이 브라우저에서 WebGL을 쓸 수 없어요. 다른 브라우저에서 다시 열어 주세요.
-          </div>
-        )}
       </div>
+      <Logo3DUndoFooter canUndo={props.canUndo} onUndo={props.onUndo} />
     </div>
   )
 })
