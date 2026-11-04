@@ -60,6 +60,7 @@
   --color-danger: var(--danger);
   --color-default: var(--default);
   --color-default-soft: var(--default-soft);
+  --color-point-text: var(--point-text);
 
   /* shadcn 이름 — 어드민 전용. 값은 [data-admin-theme] 안에서만 정의된다 */
   --color-sidebar-ring: var(--sidebar-ring);
