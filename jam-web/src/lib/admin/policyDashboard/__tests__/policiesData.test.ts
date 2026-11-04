@@ -395,10 +395,14 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
     }
   })
 
-  it('보류는 최대 2개이고 보류가 있으면 새로 가득 찬 보상도 보류한다', () => {
-    expect(find('ch5-pending-reward')?.currentSpec).toContain('최대 2개')
-    expect(find('ch5-pending-reward')?.currentSpec).toContain('바로 보류')
-    expect(find('ch5-pending-reward')?.dbTable).toBe('capsule_pending_rewards')
+  it('인벤토리가 차면 보관하지 않고 inventory_blocked로 멈추며 새 보류를 만들지 않는다 (티켓 20261105_0103 T3)', () => {
+    const spec = find('ch5-pending-reward')?.currentSpec ?? ''
+    expect(spec).toContain('보관하지 않고')
+    expect(spec).toContain('inventory_blocked')
+    expect(spec).toContain('inventoryBlocked: true')
+    expect(spec).toContain('새 보류는 만들지 않음')
+    expect(spec).not.toContain('바로 보류')
+    expect(find('ch5-auto-fill')?.currentSpec).toContain('보관하지 않고')
   })
 
   it('받기는 오래된 것부터 빈칸이 닿는 만큼이고 보상을 포기하는 버튼이 없다', () => {
@@ -407,10 +411,11 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
     expect(spec).toContain('포기하는 버튼은 없음')
   })
 
-  it('소멸은 지갑 전액을 capsule_forfeit으로 기록하고 정지 중에는 소멸하지 않으며 주간 뷰가 집계한다', () => {
+  it('잼은 소멸하지 않고 capsule_forfeit 새 줄이 없으며 정지 중에는 채우지 않고 주간 뷰는 남아 있다 (티켓 20261105_0103 T3)', () => {
     const spec = find('ch5-jam-forfeit')?.currentSpec ?? ''
-    expect(spec).toContain('지갑 잼 전액')
+    expect(spec).toContain('소멸시키지 않음')
     expect(spec).toContain('capsule_forfeit')
+    expect(spec).toContain('새 줄이 만들어지지 않음')
     expect(spec).toContain('이용 정지 중에는')
     expect(find('ch5-forfeit-weekly')?.dbTable).toBe('jam_forfeit_weekly')
     expect(find('ch16-suspension-capsule-hold')?.currentSpec).toContain('user_suspended')
