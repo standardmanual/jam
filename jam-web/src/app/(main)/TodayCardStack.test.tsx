@@ -269,10 +269,12 @@ describe('TodayCardStack — 섹션 머리와 카드 0장', () => {
     expect(render([])).toBe('')
   })
 
-  it('카드가 있으면 섹션 머리(「투데이」·부제)가 먼저 나온다', () => {
+  it('섹션 머리(제목 「투데이」·부제 「오늘의 소식」)를 그리지 않고 카드부터 나온다', () => {
     const html = render([makeCard()])
-    expect(html).toContain('<h2')
-    expect(html.indexOf('<h2')).toBeLessThan(html.indexOf('data-tracker='))
+    expect(html).not.toContain('<h2')
+    expect(html).not.toContain('투데이')
+    expect(html).not.toContain('오늘의 소식')
+    expect(html).toContain('data-tracker=')
   })
 
   it('여러 장이 섞여 있어도 장마다 따로 가르고 순서를 지킨다', () => {

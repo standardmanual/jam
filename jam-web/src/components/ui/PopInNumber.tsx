@@ -18,26 +18,33 @@ function totalAnimationMs(): number {
  *
  * 마지막 두 글자에 data-stagger="1" / "2"를 붙여 1×/2× --digit-stagger 만큼
  * 뒤따라오게 합니다. 첫 렌더에서는 애니메이션하지 않습니다(값이 "바뀐" 게 아니므로).
+ * `playOnMount`를 주면 처음 나타날 때도 한 번 재생합니다(호출부가 나타날 시점에 맞춰 마운트하는 경우, 캡슐 게이지의 채운 양 숫자).
  *
  * 사용처: 팔로워 수, 포인트 잔액 등.
  */
 export default function PopInNumber({
   value,
   className,
+  playOnMount = false,
 }: {
   value: string | number
   className?: string
+  /** 처음 나타날 때도 재생한다(기본은 값이 바뀔 때만) */
+  playOnMount?: boolean
 }) {
   const text = String(value)
   const ref = useRef<HTMLSpanElement>(null)
   const prevRef = useRef(text)
+  const mountedRef = useRef(false)
   // 마지막으로 재시작한 애니메이션이 끝나는 예상 시각 — 그 전에 값이 또 바뀌면
   // 강제 재시작(classList remove→reflow→add)을 스킵하고 debounce한다.
   const animatingUntilRef = useRef(0)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (prevRef.current === text) return
+    const isFirstRun = !mountedRef.current
+    mountedRef.current = true
+    if (!(isFirstRun && playOnMount) && prevRef.current === text) return
     prevRef.current = text
     const el = ref.current
     if (!el) return
@@ -70,7 +77,7 @@ export default function PopInNumber({
     return () => {
       if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current)
     }
-  }, [text])
+  }, [text, playOnMount])
 
   const chars = text.split('')
 

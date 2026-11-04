@@ -1,10 +1,9 @@
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import TodayCard from '@/components/today/TodayCard'
 import { toCardView } from '@/lib/today/cardView'
-import { d } from '@/lib/i18n'
 
 /**
- * 투데이 카드 스택 (홈 화면 최상단). 카드 0개면 아무것도 렌더링하지 않는다.
+ * 투데이 카드 스택 (홈 화면). 카드 0개면 아무것도 렌더링하지 않는다. 제목 «투데이»·부제 «오늘의 소식»은 그리지 않는다(2026-11-04 사용자 요청, 티켓 20261104_1710).
  *
  * 모든 카드를 표시 데이터(`toCardView`, 계측 정보 `tracking` 포함)로 바꿔 새 틀(`TodayCard`)로 그린다. 모양은 `resolveShape`가 정한다 —
  * 저장된 `shape`가 있으면 그 값이고, 없는 옛 카드는 `layout_type` 대응표로 정한다(티켓 20261001_2244, 1453 조각 b7이 옛 렌더러를 지웠다).
@@ -23,11 +22,6 @@ export default function TodayCardStack({
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-3xl">{d.today.cardStackTitle}</h2>
-        <span className="text-xs text-muted">{d.today.cardStackSubtitle}</span>
-      </div>
-
       <div className="flex flex-col gap-4">
         {cards.map((card) => (
           <TodayCard key={card.id} view={toCardView(card, { tracking: true })} currentUserId={currentUserId} />

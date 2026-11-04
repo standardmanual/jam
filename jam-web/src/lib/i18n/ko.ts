@@ -279,7 +279,6 @@ export const ko = {
 
     // 투데이 카드 스택
     cardStackTitle: '투데이',
-    cardStackSubtitle: '오늘의 소식',
     cardReadArticle: '기사 읽기',
     cardReadMore: '자세히 보기',
     cardViewAll: '전체 보기',

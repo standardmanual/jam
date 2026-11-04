@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Ref } from 'react'
 import { useCapsuleResult } from '@/components/capsule/capsuleResultContext'
+import PopInNumber from '@/components/ui/PopInNumber'
 import { prefersReducedMotion } from '@/lib/motion'
 import {
   GAUGE_ENTRY_DELAY_MS,
@@ -26,7 +27,9 @@ import {
  * 퍼센트는 그리지 않는다. 채운 양(`filled`)의 숫자만 그리고(2026-11-04 사용자 결정, 이전에는 숫자를 그리지 않았다), 자리는 두 가지다.
  *  - 채운 비율이 50% 미만: 트랙 안쪽 오른쪽 끝, 오렌지 글자.
  *  - 채운 비율이 50% 이상: 채움 안쪽 왼쪽, 트랙 색 글자. 채움이 차오를 때 숫자도 번개 앞까지 같이 드러난다(번개를 덮지 않는다).
- *  숫자는 합친 연출이 게이지를 붙드는 동안 안쪽·바깥쪽 모두 보이지 않는다(2% 원 안에 들어가지 않고, 연출 전에 값이 드러나지 않게 한다).
+ *  숫자는 채움이 값에 닿은 뒤에 한 번 «팝인»한다(transitions.dev Number pop-in, 공유 `PopInNumber`: 각 자리가 블러와 함께 아래에서 들어오고 끝 두 자리가 뒤따른다, 2026-11-04 사용자 요청).
+ *  닿기 전에는 보이지 않고, 같은 화면에서 값이 바뀌면 새 값에 닿은 뒤 다시 팝인한다. 모션 줄이기에서는 전환 없이 바로 보인다.
+ *  합친 연출이 게이지를 붙드는 동안에는 안쪽·바깥쪽 모두 보이지 않는다(2% 원 안에 들어가지 않고, 연출 전에 값이 드러나지 않게 한다).
  *
  * 모션(채원 판정):
  *  - 진입: 한 방문에 한 번. 시작 눈금 2%, 끝은 `filled / required`. 260ms 쉰 뒤 1,500ms, `--ease-smooth-out`. 값이 0이면 모션이 없다.
@@ -110,6 +113,7 @@ interface Motion {
 
 export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: Props) {
   const target = capsuleGraphPercent(filled, required)
+  const numberText = capsuleNumberText(filled)
   const { gaugeHeld: held, registerGaugeFill } = useCapsuleResult()
   // 처음 그리는 값은 늘 2%다. 진입 모션이 끝 눈금으로 옮긴다(값이 0이면 옮길 곳이 없어 그대로다)
   const [motion, setMotion] = useState<Motion>({ graph: GRAPH_MIN_PERCENT, durationMs: 0 })
@@ -120,6 +124,8 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
   const shownRef = useRef(GRAPH_MIN_PERCENT)
   // 붙들렸다가 풀린 뒤 번개를 한 번 튀겨야 한다
   const pulseArmedRef = useRef(false)
+  // 채운 양 숫자를 보일 때가 되었는가 — 채움이 값에 닿은 뒤 켜진다(서버 렌더와 첫 그리기에서는 꺼져 있다)
+  const [numberReady, setNumberReady] = useState(false)
   const boltRef = useRef<SVGSVGElement>(null)
   // 붙들리는 순간 그려 둔 값도 2%로 되돌려 둔다 — 풀릴 때 «2% → 지금 값» 모션이 그 자리에서 시작해야 한다(렌더 중 갱신)
   const [wasHeld, setWasHeld] = useState(held)
@@ -181,6 +187,17 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
     return () => window.clearTimeout(timer)
   }, [target, held, visible])
 
+  // 숫자 팝인 시점 — 보이는 상태에서 그려 둔 눈금이 실제 값에 닿으면 그 이동이 끝나기를 기다렸다가 켠다. 값이 바뀌거나 붙들리면 꺼졌다가 다시 켜진다
+  const arrived = !held && visible && motion.graph === target
+  useEffect(() => {
+    if (!arrived) return
+    const timer = window.setTimeout(() => setNumberReady(true), prefersReducedMotion() ? 0 : motion.durationMs)
+    return () => {
+      window.clearTimeout(timer)
+      setNumberReady(false)
+    }
+  }, [arrived, motion.durationMs, numberText])
+
   // 보임 관찰 — 트랙(바깥 상자)을 본다. 채움 요소는 2%에서 시작해 너비가 변하므로 기준으로 삼지 않는다. 보이면 해제한다
   useEffect(() => {
     if (visible || enteredRef.current) return
@@ -216,7 +233,10 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
   const ratio = graphPercentToFillRatio(shownGraph)
   // 숫자 자리는 모션 중간값이 아니라 실제 값으로 정한다
   const placement = capsuleNumberPlacement(filled, required)
-  const numberText = capsuleNumberText(filled)
+  // 닿은 뒤에만 보인다. 켜진 채로 붙들리거나 값이 바뀌는 렌더에서는 효과가 꺼 주기 전에도 바로 숨긴다
+  const showNumber = numberReady && arrived
+  const numberContent = showNumber ? <PopInNumber key={numberText} value={numberText} playOnMount /> : numberText
+  const numberVisibility = showNumber ? undefined : 0
   const numberClass = 'whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'
 
   return (
@@ -251,14 +271,14 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
           />
         ))}
 
-        {/* 채운 비율 50% 미만: 트랙 안쪽 오른쪽 끝에 오렌지 숫자. 붙들려 있는 동안은 그리지 않는다 */}
-        {placement === 'outside' && !held && (
+        {/* 채운 비율 50% 미만: 트랙 안쪽 오른쪽 끝에 오렌지 숫자. 닿기 전·붙들려 있는 동안은 투명하다 */}
+        {placement === 'outside' && (
           <span
             data-capsule-number="outside"
             className={`absolute right-0 top-0 flex h-full items-center ${numberClass}`}
-            style={{ paddingRight: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-fill)', transform: `translateY(-${NUMBER_RISE_PX}px)` }}
+            style={{ paddingRight: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-fill)', transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: numberVisibility }}
           >
-            {numberText}
+            {numberContent}
           </span>
         )}
 
@@ -279,8 +299,8 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
               className="absolute left-0 top-0 block h-full overflow-hidden"
               style={{ width: `calc(100% - ${circle}px)` }}
             >
-              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)', transform: `translateY(-${NUMBER_RISE_PX}px)` }}>
-                {numberText}
+              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)', transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: numberVisibility }}>
+                {numberContent}
               </span>
             </span>
           )}

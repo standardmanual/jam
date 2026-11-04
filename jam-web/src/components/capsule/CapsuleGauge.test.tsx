@@ -82,17 +82,28 @@ describe('채운 양의 숫자', () => {
     expect(html).toContain(`aria-label="${LABEL}"`)
   })
 
-  it('붙들려 있는 동안 바깥쪽 숫자는 그리지 않고, 안쪽 숫자는 2% 원 안이라 보이지 않는다', () => {
+  it('처음 그릴 때(닿기 전)와 붙들려 있는 동안 숫자는 투명하다', () => {
     const heldHtml = (filled: number) =>
       renderToStaticMarkup(
         <CapsuleResultContext.Provider value={{ gaugeHeld: true, resultPending: true, registerGaugeFill: () => {} }}>
           <CapsuleGauge filled={filled} required={300} ariaLabel={LABEL} />
         </CapsuleResultContext.Provider>
       )
-    expect(heldHtml(120)).not.toContain('data-capsule-number')
-    const inside = heldHtml(200)
+    for (const html of [render(120, 300), render(200, 300), heldHtml(120), heldHtml(200)]) {
+      expect(html).toMatch(/opacity:0/)
+      expect(html).not.toContain('t-digit')
+    }
     const circle = gaugeCircleDiameter(CAPSULE_GAUGE_HEIGHT_PX)
-    expect(inside).toContain(`width:calc(${circle}px + (100% - ${circle}px) * 0)`)
+    expect(heldHtml(200)).toContain(`width:calc(${circle}px + (100% - ${circle}px) * 0)`)
+  })
+
+  it('팝인은 공유 PopInNumber(Number pop-in)로 닿은 뒤에 한 번 재생한다', () => {
+    const code = readFileSync(join(__dirname, 'CapsuleGauge.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    expect(code).toContain("import PopInNumber from '@/components/ui/PopInNumber'")
+    expect(code).toMatch(/<PopInNumber key=\{numberText\} value=\{numberText\} playOnMount \/>/)
+    expect(code).toMatch(/const showNumber = numberReady && arrived/)
   })
 })
 
@@ -172,7 +183,8 @@ describe('합친 연출이 붙들 때 (티켓 20261028_1740 3회)', () => {
     }
   })
 
-  it('붙들려 있으면 숫자가 글자로 나오지 않는다(바깥쪽은 그리지 않음, 안쪽은 너비 0)', () => {
-    expect(textOf(held(120))).toBe('')
+  it('붙들려 있으면 숫자가 보이지 않는다(투명, 안쪽은 너비 0)', () => {
+    expect(held(120)).toMatch(/opacity:0/)
+    expect(held(200)).toMatch(/opacity:0/)
   })
 })

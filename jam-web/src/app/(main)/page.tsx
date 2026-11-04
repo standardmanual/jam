@@ -137,6 +137,11 @@ export default async function HomePage() {
         </Link>
       </div>
 
+      {/* 캡슐 위젯 (티켓 20261018_0054, 20261028_1739, 20261031_1806, 위치 20261104_1710) — 인사말 줄 바로 아래, «JAM! 시작하기» 퀘스트 카드 위(2026-11-04 사용자 요청).
+          홈에는 챕터 번호를 그리지 않는다. 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
+          조회가 실패했으면 위젯이 직접 가져온다. 확률 안내 링크는 이 묶음에 두지 않는다(푸터의 «확률 안내»로 통합). */}
+      <CapsuleWidget initial={capsuleInitial} />
+
       {/* «JAM! 시작하기» 카드 (티켓 20260927_2133, 실제 2단계 20261021_1248·20261028_1738) — 대상 유저에게만 렌더, 그 외엔 null */}
       <OnboardingQuestCard state={onboardingQuestCard} username={userProfile?.username ?? null} />
 
@@ -147,11 +152,6 @@ export default async function HomePage() {
       {/* "오늘의 현황" 스트립 (신규) — 좌: 내 진행도 / 우: 친구 활동. 큐레이션 없음(today_cards
           CMS와 역할 분리, 완료 기록 참고). */}
       <TodayStatusStrip left={leftStatus} right={rightStatus} />
-
-      {/* 캡슐 위젯 (티켓 20261018_0054, 20261028_1739, 20261031_1806) — 현황 스트립 아래라 퀘스트 중에도 퀘스트 카드가 먼저 읽힌다.
-          홈에는 챕터 번호를 그리지 않는다. 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
-          조회가 실패했으면 위젯이 직접 가져온다. 확률 안내 링크는 이 묶음에 두지 않는다(푸터의 «확률 안내»로 통합). */}
-      <CapsuleWidget initial={capsuleInitial} />
 
       {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
       <TodayCardStack cards={todayCards} currentUserId={userId} />
