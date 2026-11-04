@@ -1320,9 +1320,13 @@ export default function ShapeStudioPanel({
               })()}
             </div>
           </section>
+        </fieldset>
+      )}
 
-          {/* 공통 Export */}
-          <section className="border-t border-[#e0e4df] px-5 py-4">
+      {/* 공통 Export — 녹화 중에도 「녹화 취소」가 눌려야 해서 바깥 fieldset 밖에 두고, 입력만 따로 막는다 */}
+      {screenTab !== 'apply' && (
+        <section className="border-t border-[#e0e4df] px-5 py-4">
+          <fieldset disabled={exportBusy} className="contents">
             <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold">
               <span>Export</span>
               <span className="text-[10px] font-normal text-[#7f8582] break-keep wrap-break-word">
@@ -1374,25 +1378,25 @@ export default function ShapeStudioPanel({
                 {videoButtonLabel}
               </Button>
             </div>
+          </fieldset>
 
-            {videoRecording && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancelVideo}
-                className="mt-2 h-8 w-full text-xs whitespace-nowrap"
-              >
-                녹화 취소
-              </Button>
-            )}
+          {videoRecording && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancelVideo}
+              className="mt-2 h-8 w-full text-xs whitespace-nowrap"
+            >
+              녹화 취소
+            </Button>
+          )}
 
-            <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
-              {engineMode === '3d'
-                ? '동영상은 로고가 한 바퀴 도는 모습을 15초 동안 녹화해요. 지금 보이는 각도에서 시작해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'
-                : '동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'}
-            </p>
-          </section>
-        </fieldset>
+          <p className="mt-2 text-[10px] leading-[1.6] text-[#8c9288] break-keep wrap-break-word text-balance">
+            {engineMode === '3d'
+              ? '동영상은 로고가 한 바퀴 도는 모습을 15초 동안 녹화해요. 지금 보이는 각도에서 시작해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'
+              : '동영상은 모션을 켠 상태로 15초 동안 녹화해요. 녹화 중에는 이 탭을 그대로 띄워 두세요.'}
+          </p>
+        </section>
       )}
     </aside>
   )
