@@ -7,6 +7,7 @@ import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { d, t } from '@/lib/i18n'
+import { pointify } from '@/lib/i18n/tPoint'
 
 /**
  * 배지 획득 연출 오버레이 — MODULAR `patterns/BadgeRevealCarousel`의 서비스 호출부 래퍼 (20260823_008).
@@ -216,7 +217,7 @@ export default function BadgeRevealOverlay({
               textAlign: 'center',
             }}
           >
-            {emptyMessage}
+            {emptyMessage ? pointify(emptyMessage) : emptyMessage}
           </p>
           <IconButton icon="close" label={d.common.close} surface="light" onClick={onClose} />
         </div>
@@ -249,7 +250,7 @@ export default function BadgeRevealOverlay({
                 className="m-0 break-keep wrap-break-word text-balance"
                 style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: 700 }}
               >
-                {headerMessage}
+                {headerMessage ? pointify(headerMessage) : headerMessage}
               </p>
             </div>
           ) : undefined

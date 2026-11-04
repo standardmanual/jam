@@ -35,8 +35,11 @@ function makeView(overrides: Partial<BriefCardView> = {}): BriefCardView {
 const render = (overrides: Partial<BriefCardView> = {}) => renderToStaticMarkup(<BriefCard view={makeView(overrides)} />)
 
 /** 필수 정보 줄(`<p>`)의 클래스와 글자 */
+/** 문장 속 포인트 조각(`PointText`의 `text-point-text` 칸)을 글자만 남기고 벗긴다 — 줄 글자 비교용 */
+const unpaint = (html: string) => html.replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1')
+
 function factParagraphs(html: string): { className: string; text: string }[] {
-  return [...html.matchAll(/<p class="([^"]*)">([^<]*)<\/p>/g)].map((m) => ({ className: m[1], text: m[2] }))
+  return [...unpaint(html).matchAll(/<p class="([^"]*)">([^<]*)<\/p>/g)].map((m) => ({ className: m[1], text: m[2] }))
 }
 
 const SLOT_ICON_CLASS = 'w-6 h-6 text-muted'
@@ -85,6 +88,13 @@ describe('BriefCard — 필수 정보', () => {
     const facts = ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'].slice(0, count)
     const lines = factParagraphs(render({ facts }))
     expect(lines.map((l) => l.text)).toEqual(facts)
+  })
+
+  it('필수 정보 속 «N 포인트» 조각만 point-text 오렌지로 칠한다', () => {
+    const html = render()
+    expect(html).toContain('보상 <span class="text-point-text"')
+    expect(html).toContain('>300 포인트</span> · 배지 1개</p>')
+    expect(html.match(/text-point-text/g)).toHaveLength(1)
   })
 
   it('14px(--text-sm)·옅은 글자 text-muted이고 말줄임 없이 줄바꿈한다(line-clamp·truncate 없음)', () => {

@@ -86,8 +86,11 @@ const released = (tiles: ResolvedBadge[]): ResolvedRecipe => ({
 const draw = (card: TodayCardWithHref) => renderToStaticMarkup(<TodayCard view={toCardView(card, { now: NOW, tracking: true })} />)
 
 /** 필수 정보 줄(`<p>`)의 글자 */
+/** 문장 속 포인트 조각(`PointText`의 `text-point-text` 칸)을 글자만 남기고 벗긴다 — 줄 글자 비교용 */
+const unpaint = (html: string) => html.replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1')
+
 const factTexts = (html: string, colorClass: string) =>
-  [...html.matchAll(new RegExp(`<p class="[^"]*${colorClass}[^"]*">([^<]*)</p>`, 'g'))].map((m) => m[1])
+  [...unpaint(html).matchAll(new RegExp(`<p class="[^"]*${colorClass}[^"]*">([^<]*)</p>`, 'g'))].map((m) => m[1])
 
 describe('공개 전 — brief (재료 수와 공개일만)', () => {
   const html = draw(makeCard({ resolved_recipe: scheduled }))
@@ -167,7 +170,10 @@ describe('공개 뒤 — poster·hero·square', () => {
     const html = draw(makeCard({ shape, cover_image_url: 'https://cdn.example/c.png', resolved_recipe: released([badge('a'), badge('b')]) }))
     expect(html).not.toContain('<ul')
     expect(html).toContain('재료 2개')
-    expect(html).toContain('보상 300 포인트 · 배지 1개')
+    expect(unpaint(html)).toContain('보상 300 포인트 · 배지 1개')
+    // 사진 위 막 카드(poster)는 흰 글자를 유지하고, 흰 면 위 카드(hero·square)만 포인트 조각을 칠한다
+    if (shape === 'poster') expect(html).not.toContain('text-point-text')
+    else expect(html).toContain('>300 포인트</span>')
   })
 })
 

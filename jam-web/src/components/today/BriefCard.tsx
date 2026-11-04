@@ -1,5 +1,6 @@
 import { Card } from '@ds/components/cards/Card'
 import type { BriefCardView } from '@/lib/today/cardView'
+import { pointify } from '@/lib/i18n/tPoint'
 import { CardDescription } from './CardBody'
 import CardChipRow from './CardChipRow'
 import CardThumb from './CardThumb'
@@ -50,7 +51,7 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
                   key={index}
                   className="text-sm text-muted break-keep break-words"
                 >
-                  {line}
+                  {pointify(line)}
                 </p>
               ))}
             </div>

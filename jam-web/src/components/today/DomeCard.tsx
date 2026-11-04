@@ -47,6 +47,7 @@ export default function DomeCard({ view }: { view: ImageCardView }) {
             </h3>
           )}
 
+          {/* 막 위 글자는 «포인트» 오렌지로 칠하지 않고 흰 글자를 유지한다(밝은 사진 위 대비가 최악 약 1.6:1, 티켓 20261104_2319) */}
           {facts.length > 0 && (
             <div>
               {facts.map((line, index) => (

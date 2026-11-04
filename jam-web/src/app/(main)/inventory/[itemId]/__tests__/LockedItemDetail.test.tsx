@@ -88,9 +88,12 @@ function render(overrides: Partial<LockedItemDetailProps> = {}, values: Record<n
   return renderToStaticMarkup(<LockedItemDetail {...BASE} {...overrides} />)
 }
 
-/** 화면에 보이는 글자만 */
+/** 화면에 보이는 글자만 — 문장 속 포인트 조각(`PointText`의 `text-point-text` 칸)은 앞뒤 글자와 붙여 읽는다 */
 function visibleText(html: string): string {
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
+  return html
+    .replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
 }
 
 /** 버튼 하나의 여는 태그 — 라벨 글자는 `SwapText` 안에 있어서 버튼 안 어딘가에 라벨이 있는 첫 버튼을 고른다 */
@@ -160,11 +163,14 @@ describe('LockedItemDetail — 포인트 블록', () => {
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).not.toMatch(/disabled/)
   })
 
-  it('필요 포인트는 큰 숫자(--link), 가진 포인트는 한 단계 낮춘 숫자로 그린다', () => {
+  it('필요 포인트는 24px 굵게, 가진 포인트는 16px 굵게 값만 오렌지(point-text)로 그린다', () => {
     const html = render()
-    expect(html).toMatch(/<dd class="[^"]*text-2xl[^"]*text-\[color:var\(--link\)\][^"]*">1,200<\/dd>/)
-    expect(html).toMatch(/<dd class="[^"]*text-base[^"]*text-foreground[^"]*">800<\/dd>/)
-    expect(html).not.toMatch(/<dd class="[^"]*text-2xl[^"]*">800<\/dd>/)
+    expect(html).toMatch(/<dd class="[^"]*font-bold[^"]*text-2xl"><span class="text-point-text"[^>]*>1,200<\/span><\/dd>/)
+    expect(html).toMatch(/<dd class="[^"]*font-bold[^"]*text-base"><span class="text-point-text"[^>]*>800<\/span><\/dd>/)
+    expect(html).not.toMatch(/<dd class="[^"]*text-2xl[^"]*"><span[^>]*>800<\/span>/)
+    expect(html).not.toContain('var(--link)')
+    // 값만 칠한다 — «포인트» 글자는 라벨이 말한다
+    expect(html).not.toContain('1,200 포인트</span>')
   })
 
   it('모자라면 같은 두 줄 아래에 모자란 만큼을 알리는 안내가 있고 «열기»가 막히며 라벨은 그대로다', () => {
@@ -246,6 +252,14 @@ describe('LockedItemDetail — 열린 뒤', () => {
     const html = openedHtml()
     expect(html).toContain('aria-hidden="true"')
     expect(html).toContain('grid-rows-[0fr]')
+  })
+
+  it('모자람 안내와 열린 뒤의 낸·받은 포인트 문장은 «N 포인트» 조각만 point-text로 칠한다', () => {
+    const short = render({ pointsRequired: 1200, pointBalance: 800 })
+    expect(short).toMatch(/<span class="text-point-text"[^>]*>400 포인트<\/span>가 모자라서/)
+    const opened = openedHtml()
+    expect(opened).toMatch(/<span class="text-point-text"[^>]*>1,200 포인트<\/span>를 냈어요/)
+    expect(opened).toMatch(/배지 보상으로 <span class="text-point-text"[^>]*>300 포인트<\/span>를 받았어요/)
   })
 
   it('낸 포인트와 받은 포인트를 따로 두 줄로 보이고 낸 포인트가 먼저다', () => {
