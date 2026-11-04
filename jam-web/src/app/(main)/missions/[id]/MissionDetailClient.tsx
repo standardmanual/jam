@@ -155,27 +155,21 @@ function InfoCard({ children, className = '' }: { children: React.ReactNode; cla
   )
 }
 
-/* ── 달성 조건 카드의 불릿 행 (티켓 20260927_0026) — primary: 조건·활동 종류, muted: 보조 문구 ── */
+/* ── 달성 조건 카드의 불릿 행 (티켓 20260927_0026) — 조건·활동 종류 모두 같은 위계 ── */
 function ConditionRow({
-  tone,
   breakKeep = false,
   children,
 }: {
-  tone: 'primary' | 'muted'
   /** 긴 조건 문장이 어절 단위로 접히게 한다 */
   breakKeep?: boolean
   children: React.ReactNode
 }) {
-  const muted = tone === 'muted'
   return (
-    <div className={`flex items-start gap-2 text-[14px] leading-[1.43] ${muted ? 'text-muted' : 'text-foreground'}`}>
-      <span
-        aria-hidden="true"
-        className={`text-base leading-[1.2] flex-shrink-0 mt-px ${muted ? 'opacity-50' : 'text-[var(--link)]'}`}
-      >
+    <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-foreground">
+      <span aria-hidden="true" className="text-base leading-[1.2] flex-shrink-0 mt-px text-[var(--link)]">
         •
       </span>
-      <span className={breakKeep ? 'break-keep' : undefined}>{children}</span>
+      <span className={breakKeep ? 'break-keep wrap-break-word' : undefined}>{children}</span>
     </div>
   )
 }
@@ -322,6 +316,12 @@ export default function MissionDetailClient({
   const goal = missionGoalText(mission.mission_type, condition)
   // 20260927_0026: 직접 쓴 조건 문장이 있으면 카드 첫 줄이 그 문장이다(빈 문자열·공백은 없는 것으로 본다)
   const conditionText = mission.condition_text?.trim() || null
+  const bullets = conditionBullets && conditionBullets.length > 0 ? conditionBullets : null
+  const activityTypeRow = condition.activity_type ? (
+    <ConditionRow>
+      {t(d.missions.conditionActivityType, { type: ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type })}
+    </ConditionRow>
+  ) : null
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
   const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect' || mission.mission_type === 'engine_condition'
@@ -572,19 +572,23 @@ export default function MissionDetailClient({
         <InfoCard>
           <SectionLabel>{d.missions.conditionTitle}</SectionLabel>
           <div className="flex flex-col gap-2">
-            {conditionBullets && conditionBullets.length > 0 ? (
-              conditionBullets.map((bullet) => (
-                <ConditionRow key={bullet} tone="primary">{bullet}</ConditionRow>
-              ))
-            ) : conditionText ? (
-              <ConditionRow tone="primary" breakKeep>{conditionText}</ConditionRow>
+            {bullets ? (
+              <>
+                {/* 활동 종류는 조건이 아니라 범위(한정어)라 불릿 위에 둔다 — 아래 숫자가 무엇의 숫자인지 먼저 읽힌다(채원 판정) */}
+                {activityTypeRow}
+                {bullets.map((bullet, index) => (
+                  <ConditionRow key={`${index}-${bullet}`} breakKeep>{bullet}</ConditionRow>
+                ))}
+              </>
             ) : (
-              <ConditionRow tone="primary">{goal.label} {goal.target}{goal.unit} 달성</ConditionRow>
-            )}
-            {condition.activity_type && (
-              <ConditionRow tone="primary">
-                {t(d.missions.conditionActivityType, { type: ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type })}
-              </ConditionRow>
+              <>
+                {conditionText ? (
+                  <ConditionRow breakKeep>{conditionText}</ConditionRow>
+                ) : (
+                  <ConditionRow>{goal.label} {goal.target}{goal.unit} 달성</ConditionRow>
+                )}
+                {activityTypeRow}
+              </>
             )}
           </div>
         </InfoCard>

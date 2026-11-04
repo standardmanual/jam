@@ -5,7 +5,7 @@
  * 실행: `npx tsx src/lib/missions/__tests__/conditionBullets.test.ts`
  */
 import assert from 'node:assert'
-import { buildConditionBullets, conditionBulletKeys } from '../conditionBullets'
+import { buildConditionBullets, conditionBulletKeys, needsCategoryNames } from '../conditionBullets'
 
 const labels = new Map([
   ['drop_item_count', { label: '아이템 배지 드랍', unit: '회' }],
@@ -13,6 +13,15 @@ const labels = new Map([
   ['distance_km', { label: '누적 거리', unit: 'km' }],
   ['month', { label: '해당 월', unit: null }],
   ['sync_count', { label: '동기화', unit: '회' }],
+  ['count', { label: '활동 횟수', unit: '회' }],
+  ['repeat_count', { label: '활동 횟수', unit: '회' }],
+  ['single_distance_km', { label: '한 번의 거리', unit: 'km' }],
+  ['checkin_category_count', { label: '체크인 배지', unit: '개' }],
+])
+
+const categories = new Map([
+  ['train_subway', '기차/지하철'],
+  ['mountain', '산'],
 ])
 
 const cases: [string, () => void][] = [
@@ -96,9 +105,69 @@ const cases: [string, () => void][] = [
     assert.strictEqual(buildConditionBullets('engine_condition', { drop_item_count: 1, jam_period_earned: 300 }, labels), null)
   }],
 
-  ['옛 유형은 null이다', () => {
-    assert.strictEqual(buildConditionBullets('distance', { distance_km: 5 }, labels), null)
-    assert.strictEqual(buildConditionBullets('activity_count', { count: 3 }, labels), null)
+  ['체크인 카테고리 객체는 «카테고리 이름 라벨 값단위»로 만들고 이름의 /는 ·로 바꾼다', () => {
+    assert.deepStrictEqual(
+      buildConditionBullets('engine_condition', { checkin_category_count: { count: 2, category: 'train_subway' } }, labels, categories),
+      ['기차·지하철 체크인 배지 2개'],
+    )
+    assert.deepStrictEqual(
+      buildConditionBullets('engine_condition', { checkin_category_count: { count: 1, category: 'mountain' } }, labels, categories),
+      ['산 체크인 배지 1개'],
+    )
+  }],
+
+  ['체크인 카테고리가 맵에 없거나 맵이 비어 있으면 null이다', () => {
+    const condition = { checkin_category_count: { count: 2, category: 'unknown_slug' } }
+    assert.strictEqual(buildConditionBullets('engine_condition', condition, labels, categories), null)
+    assert.strictEqual(buildConditionBullets('engine_condition', { checkin_category_count: { count: 2, category: 'mountain' } }, labels), null)
+  }],
+
+  ['체크인 카테고리 객체의 모양이 틀리면 null이다', () => {
+    assert.strictEqual(buildConditionBullets('engine_condition', { checkin_category_count: { count: '2', category: 'mountain' } }, labels, categories), null)
+    assert.strictEqual(buildConditionBullets('engine_condition', { checkin_category_count: { count: 2 } }, labels, categories), null)
+    assert.strictEqual(buildConditionBullets('engine_condition', { checkin_category_count: 2 }, labels, categories), null)
+  }],
+
+  ['체크인 카테고리 라벨이 없으면 null이다', () => {
+    const noLabel = new Map(labels)
+    noLabel.delete('checkin_category_count')
+    assert.strictEqual(
+      buildConditionBullets('engine_condition', { checkin_category_count: { count: 2, category: 'mountain' } }, noLabel, categories),
+      null,
+    )
+  }],
+
+  ['needsCategoryNames는 체크인 카테고리 객체가 있을 때만 참이다', () => {
+    assert.strictEqual(needsCategoryNames('engine_condition', { checkin_category_count: { count: 1, category: 'mountain' } }), true)
+    assert.strictEqual(needsCategoryNames('engine_condition', { drop_item_count: 1 }), false)
+    assert.strictEqual(needsCategoryNames('distance', { distance_km: 5 }), false)
+  }],
+
+  ['걷기 미션은 레지스트리 순서대로 한 번의 거리 → 활동 횟수 두 줄이고 activity_type은 빠진다', () => {
+    const walking = { repeat_count: 3, activity_type: 'walking', single_distance_km: 0.5 }
+    assert.deepStrictEqual(buildConditionBullets('engine_condition', walking, labels), ['한 번의 거리 0.5km', '활동 횟수 3회'])
+    assert.deepStrictEqual(conditionBulletKeys('engine_condition', walking), ['single_distance_km', 'repeat_count'])
+  }],
+
+  ['distance 유형은 «누적 거리 10km»이고 activity_type은 불릿에 들어가지 않는다', () => {
+    assert.deepStrictEqual(buildConditionBullets('distance', { distance_km: 10, activity_type: 'walking' }, labels), ['누적 거리 10km'])
+    assert.deepStrictEqual(conditionBulletKeys('distance', { distance_km: 10, activity_type: 'walking' }), ['distance_km'])
+  }],
+
+  ['activity_count 유형은 «활동 횟수 2회»다', () => {
+    assert.deepStrictEqual(buildConditionBullets('activity_count', { count: 2 }, labels), ['활동 횟수 2회'])
+  }],
+
+  ['옛 유형의 값이 숫자가 아니거나 라벨이 없으면 null이다', () => {
+    assert.strictEqual(buildConditionBullets('distance', { distance_km: '10' }, labels), null)
+    assert.strictEqual(buildConditionBullets('distance', {}, labels), null)
+    assert.strictEqual(buildConditionBullets('activity_count', { count: 2 }, new Map()), null)
+  }],
+
+  ['지원하지 않는 유형(checkin·item_collect·streak_days)은 null이다', () => {
+    assert.strictEqual(buildConditionBullets('checkin', { count: 3 }, labels), null)
+    assert.strictEqual(buildConditionBullets('item_collect', { count: 3, badge_id: 'x' }, labels), null)
+    assert.strictEqual(buildConditionBullets('streak_days', { streak_days: 3 }, labels), null)
   }],
 
   ['조건이 비었거나 activity_type뿐이면 null이다', () => {

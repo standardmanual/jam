@@ -4,7 +4,7 @@
  * - 우선순위: 지표 라벨 불릿(`conditionBullets`) > `condition_text` > 목표 유형별 문구.
  * - 불릿이 있으면 그 줄들만 그리고 `condition_text`·기존 「미션 완료 1 달성」 줄은 그리지 않는다.
  * - 값이 null·빈 문자열·공백이면 기존 표시(목표 유형별 문구)가 그대로 나온다.
- * - 활동 종류 줄은 세 경로 모두에서 나오고, 「참가한 뒤 조건을 달성하면…」 보조 문구 줄은 어느 경로에도 없다.
+ * - 활동 종류 줄은 세 경로 모두에서 나온다. 불릿이 있으면 불릿 앞, 폴백이면 문장 뒤(티켓 20261104_2321, 채원 판정). 그리고, 「참가한 뒤 조건을 달성하면…」 보조 문구 줄은 어느 경로에도 없다.
  *
  * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다
  * (`safeImageCallSites.test.tsx`와 같은 방식).
@@ -123,15 +123,51 @@ describe('MissionDetailClient 달성 조건 카드: 지표 라벨 불릿', () =>
     expect(html).not.toContain(HINT)
   })
 
-  it('불릿 행은 breakKeep 없이 줄마다 한 행이다', () => {
+  it('불릿 행은 어절 단위로 접히게 break-keep을 쓰고 줄마다 한 행이다', () => {
     const html = render(null, { conditionBullets: BULLETS })
     const first = html.indexOf(BULLETS[0])
-    expect(html.slice(first - 40, first)).not.toContain('break-keep')
+    expect(html.slice(first - 40, first)).toContain('break-keep')
   })
 
-  it('불릿이 있어도 활동 종류 줄은 뒤에 붙는다', () => {
+  it('불릿이 있으면 활동 종류 줄이 불릿 앞에 온다', () => {
     const html = render(null, { conditionBullets: BULLETS })
-    expect(html.indexOf('달리기 활동')).toBeGreaterThan(html.indexOf(BULLETS[1]))
+    expect(html.indexOf('달리기 활동')).toBeGreaterThan(-1)
+    expect(html.indexOf('달리기 활동')).toBeLessThan(html.indexOf(BULLETS[0]))
+  })
+
+  it('걷기 미션 화면은 걷기 활동 → 한 번의 거리 → 활동 횟수 순서다', () => {
+    const html = render(null, {
+      conditionBullets: ['한 번의 거리 0.5km', '활동 횟수 3회'],
+      conditionJson: { repeat_count: 3, activity_type: 'walking', single_distance_km: 0.5 },
+    })
+    const a = html.indexOf('걷기 활동')
+    const b = html.indexOf('한 번의 거리 0.5km')
+    const c = html.indexOf('활동 횟수 3회')
+    expect(a).toBeGreaterThan(-1)
+    expect(b).toBeGreaterThan(a)
+    expect(c).toBeGreaterThan(b)
+  })
+
+  it('활동 종류가 없는 미션은 불릿만 그린다', () => {
+    const html = render(null, { conditionBullets: ['활동 횟수 2회'], missionType: 'activity_count', conditionJson: { count: 2 } })
+    expect(html).toContain('활동 횟수 2회')
+    expect(html).not.toContain('활동 종류')
+  })
+
+  it('같은 문구 불릿 두 줄도 key 경고 없이 두 줄 모두 그려진다', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const html = render(null, { conditionBullets: ['활동 횟수 2회', '활동 횟수 2회'] })
+      expect(html.split('활동 횟수 2회').length - 1).toBe(2)
+      expect(errors).not.toHaveBeenCalled()
+    } finally {
+      errors.mockRestore()
+    }
+  })
+
+  it('불릿이 없으면 활동 종류 줄은 기존처럼 문장 뒤에 온다', () => {
+    const html = render(CONDITION_TEXT, { conditionBullets: null })
+    expect(html.indexOf('달리기 활동')).toBeGreaterThan(html.indexOf(CONDITION_TEXT))
   })
 
   it('불릿이 null이면 condition_text로 폴백한다', () => {
