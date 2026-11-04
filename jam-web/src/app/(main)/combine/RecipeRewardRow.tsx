@@ -2,6 +2,7 @@ import SafeImage from '@/components/SafeImage'
 import ListRowCard, { ListRowCardTitle } from '@/components/ui/ListRowCard'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LabelChip } from '@ds/components/cards/LabelChip'
+import { PointText } from '@ds/components/patterns/PointText'
 import { CoinIcon, PackageIcon } from '@/components/ui/icons'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
@@ -112,13 +113,8 @@ export default function RecipeRewardRow({
       <span className="text-xs text-muted break-keep wrap-break-word">{d.combine.noRewardLabel}</span>
     ) : undefined
 
-  // 획득 포인트: 숫자는 굵게, 줄을 바꿔 아래에 작은 글씨로 «포인트». 값과 단위 모두 주황이다(티켓 20261104_2315, 규칙: UX Writing 가이드 «포인트» 행). 주황은 미션 NEW 칩과 같은 `--warning` 토큰이다
-  const trailing = hasPoints ? (
-    <span className="flex flex-col items-center text-center">
-      <span className="text-base font-bold text-warning">{points.toLocaleString()}</span>
-      <span className="text-xs text-warning">{d.combine.pointsUnit}</span>
-    </span>
-  ) : undefined
+  // 획득 포인트: 숫자는 굵게, 줄을 바꿔 아래에 작은 글씨로 «포인트». 값과 단위의 색은 PointText 한 곳에서 `--point-text`로 정한다(티켓 20261104_2319, 규칙: UX Writing 가이드 «포인트» 행)
+  const trailing = hasPoints ? <PointText value={points} unit={d.combine.pointsUnit} layout="stacked" /> : undefined
 
   return (
     <ListRowCard icon={icon} trailing={trailing} onClick={onClick} className={className}>
