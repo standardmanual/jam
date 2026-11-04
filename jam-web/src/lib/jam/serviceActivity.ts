@@ -8,7 +8,7 @@
  * «보지 않은 캡슐 결과» 기록)을 잇는다. 지갑 잔액은 사용자에게 보이는 개념이 아니라 서버 안의 임시 보관이라서다. 응답 뒤에 JAM! 행동 지표를 판정한다 —
  * 잼 조건 주 키 4개(`jamTriggersForServiceJam()`, 서비스 활동 잼이 잼 조건에 합산된다, 티켓 20261028_1736)는 항상, 열린 캡슐이 있거나 챕터가 올랐으면
  * `jamTriggersForCapsuleOpen()` + `chapter_reached`도 더한다. 자동 채움은 챕터 배지 판정을 건너뛰고 돌기 때문에(`skipRiseBadgeEvaluation`) 여기서 이어서 읽는다.
- * 중복 재전송(`duplicate`)·규칙값 0(`rule_zero`)·상한에 걸려 지급이 0인 경우(`capped`)는 채움을 부르지 않는다.
+ * 중복 재전송(`duplicate`)·규칙값 0(`rule_zero`)·상한에 걸려 지급이 0인 경우(`capped`)·막혀서 거절된 경우(`blocked`)는 채움을 부르지 않는다.
  *
  * 이벤트 키는 `<서비스 kind>:<기존 원천 id>`다. 원천 id는 챕터 점수 때 쓰던 것을 그대로 쓰므로 같은 일을 다시 보내도 같은 키다(유저별 유일, DB가 막는다).
  *
@@ -17,6 +17,7 @@
  *  - `{ ok: true, granted, duplicate: true }` — 같은 키 재전송. `granted`는 기존 양. 채우지 않는다
  *  - `{ ok: true, granted: 0, reason: 'rule_zero' }` — 규칙값 0. 채우지 않는다
  *  - `{ ok: true, granted: 0, capped: true }` — 상한에 걸림. 채우지 않는다
+ *  - `{ ok: true, granted: 0, blocked: true }` — 캡슐이 가득 차고 인벤토리 빈칸이 모자라 막혀 있어 거절(마이그레이션 321). 오류가 아니라 실패 기록을 남기지 않고, 나중에 보충하지 않으며, 채우지 않는다
  *  - `{ ok: true, granted, capped, duplicate: false, ... }` — 지급(`capped`가 참이면 일부 지급). 채운다
  *  - 지급 뒤 규칙값을 0으로 내리고 같은 키를 다시 보내면 `rule_zero`가 아니라 `duplicate`와 기존 양이 온다(1회차 기록). 어느 쪽이든 채우지 않는다
  *
@@ -67,6 +68,8 @@ export type AwardServiceJamResult =
       duplicate: boolean
       /** 하루·주간 상한에 걸렸다(일부 지급이거나 지급 0) */
       capped: boolean
+      /** 막혀서(캡슐 가득 + 인벤토리 빈칸 부족) 거절했다. 지급 0이고 오류가 아니다 */
+      blocked: boolean
     }
   | { ok: false }
 
@@ -74,6 +77,7 @@ interface ParsedGrant {
   granted: number
   duplicate: boolean
   capped: boolean
+  blocked: boolean
 }
 
 /** 지급 응답을 읽는다. 해석하지 못하면 문자열(원인), 이용 정지면 'suspended' */
@@ -87,7 +91,7 @@ function parseGrant(data: unknown): ParsedGrant | 'suspended' | string {
   if (r.ok !== true || typeof r.granted !== 'number' || !Number.isInteger(r.granted) || r.granted < 0) {
     return 'jam_apply_service_activity가 해석할 수 없는 응답을 돌려줬다'
   }
-  return { granted: r.granted, duplicate: r.duplicate === true, capped: r.capped === true }
+  return { granted: r.granted, duplicate: r.duplicate === true, capped: r.capped === true, blocked: r.blocked === true }
 }
 
 /** 지급을 못 한 일을 남긴다(`console.error` + `engine_decision_log`). 던지지 않는다 */
@@ -173,7 +177,7 @@ export async function awardServiceJam(supabase: SupabaseClient, input: AwardServ
     // 새로 지급했을 때만 채운다 — 재전송·규칙값 0·상한 도달은 지갑이 그대로다
     if (parsed.granted > 0 && !parsed.duplicate) await fillCapsuleAfterGrant(supabase, userId)
 
-    return { ok: true, granted: parsed.granted, duplicate: parsed.duplicate, capped: parsed.capped }
+    return { ok: true, granted: parsed.granted, duplicate: parsed.duplicate, capped: parsed.capped, blocked: parsed.blocked }
   } catch (e) {
     await recordServiceJamFailure(userId, kind, String(sourceId), `서비스 활동 잼 예외: ${e instanceof Error ? e.message : String(e)}`)
     return { ok: false }

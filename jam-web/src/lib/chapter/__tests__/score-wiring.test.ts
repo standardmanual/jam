@@ -467,8 +467,8 @@ describe('키 충돌 없음 — 호출 지점들이 서로 다른 키를 쓴다'
   })
 
   it('값이 0인 드랍·픽업은 호출해도 지급이 없고 실패도 아니다 (rule_zero)', async () => {
-    await expect(awardServiceJam(client, { userId: USER_A, kind: 'drop', sourceId: DROP_1 })).resolves.toEqual({ ok: true, granted: 0, duplicate: false, capped: false })
-    await expect(awardServiceJam(client, { userId: USER_B, kind: 'pickup', sourceId: DROP_1 })).resolves.toEqual({ ok: true, granted: 0, duplicate: false, capped: false })
+    await expect(awardServiceJam(client, { userId: USER_A, kind: 'drop', sourceId: DROP_1 })).resolves.toEqual({ ok: true, granted: 0, duplicate: false, capped: false, blocked: false })
+    await expect(awardServiceJam(client, { userId: USER_B, kind: 'pickup', sourceId: DROP_1 })).resolves.toEqual({ ok: true, granted: 0, duplicate: false, capped: false, blocked: false })
 
     expect(world.serviceEvents).toHaveLength(0)
     expect(logMock).not.toHaveBeenCalled()

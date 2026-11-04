@@ -104,7 +104,7 @@ describe('awardBadgeReceiveScore — 센다', () => {
     })
     expect(outcome).toEqual({
       status: 'scored',
-      score: { ok: true, granted: 5, duplicate: false, capped: false },
+      score: { ok: true, granted: 5, duplicate: false, capped: false, blocked: false },
     })
   })
 

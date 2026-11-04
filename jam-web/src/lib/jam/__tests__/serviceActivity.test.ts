@@ -6,13 +6,14 @@
  * - 이벤트 키는 `<서비스 kind>:<기존 원천 id>`다. 원천 id가 비면 던진다.
  * - RPC 인자는 `{ p_user_id, p_kind, p_event_key }`뿐이다.
  * - 지급(granted > 0, duplicate 아님)일 때만 곧바로 자동 채움(`runSyncCapsuleAutoFill`)을 잇는다. 일부 지급(capped)도 채운다.
- *   `duplicate`(재전송)·`rule_zero`(규칙값 0)·`capped`(지급 0)는 채움을 부르지 않는다.
+ *   `duplicate`(재전송)·`rule_zero`(규칙값 0)·`capped`(지급 0)·`blocked`(막혀서 거절, 마이그레이션 321)는 채움을 부르지 않는다.
+ * - 막혀서 거절한 응답(`{ ok: true, granted: 0, blocked: true }`)은 오류가 아니라 실패 기록(`service_jam_failed`)을 남기지 않고 행동 지표도 판정하지 않는다.
  * - 지급(granted > 0, duplicate 아님)이면 JAM! 행동 지표를 응답 뒤(`after`)에 판정한다. 잼 조건 주 키 4개(`jam_total_earned`·`jam_weekly_earned`·`jam_week_count`·`jam_week_streak`,
  *   서비스 활동 잼이 잼 조건에 합산된다, 티켓 20261028_1736)는 항상 들어가고, 채움 결과에 열린 캡슐이 있으면 `capsule_open_count`·`other_tribe_item_kinds_count` + `chapter_reached`,
  *   오름만 있으면 `chapter_reached`를 더한다. 채움이 던져도 잼 조건 4개는 판정한다. 요청 범위 밖에서 `after`를 쓸 수 없으면 바로 기다려 판정한다.
  * - 던지지 않는다. RPC 오류·계약 밖 응답·예외는 `console.error`와 `engine_decision_log`(`service_jam_failed`)에 남기고 `{ ok: false }`다.
  *   이용 정지(`user_suspended`)는 지급하지 않을 뿐 실패 기록이 없다. 채움·판정이 던져도 지급 결과는 그대로다.
- * - 반환은 `{ ok, granted, duplicate, capped }`다.
+ * - 반환은 `{ ok, granted, duplicate, capped, blocked }`다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트와 목만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/jam/__tests__/serviceActivity.test.ts
@@ -99,14 +100,14 @@ describe('종류와 이벤트 키', () => {
 })
 
 describe('awardServiceJam — 지급과 응답', () => {
-  it('RPC에 p_user_id·p_kind·p_event_key만 보내고 {ok, granted, duplicate, capped}를 돌려준다', async () => {
+  it('RPC에 p_user_id·p_kind·p_event_key만 보내고 {ok, granted, duplicate, capped, blocked}를 돌려준다', async () => {
     const { client, rpc } = fakeClient()
 
     const result = await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
 
     expect(rpc).toHaveBeenCalledTimes(1)
     expect(rpc).toHaveBeenCalledWith('jam_apply_service_activity', { p_user_id: USER, p_kind: 'badge_earned', p_event_key: `badge_earned:${SOURCE}` })
-    expect(result).toEqual({ ok: true, granted: 5, duplicate: false, capped: false })
+    expect(result).toEqual({ ok: true, granted: 5, duplicate: false, capped: false, blocked: false })
     expect(logMock).not.toHaveBeenCalled()
   })
 
@@ -118,6 +119,7 @@ describe('awardServiceJam — 지급과 응답', () => {
       granted: 20,
       duplicate: false,
       capped: true,
+      blocked: false,
     })
   })
 })
@@ -141,9 +143,14 @@ describe('awardServiceJam — 지급 즉시 채움', () => {
   })
 
   it.each([
-    ['duplicate(같은 키 재전송 — 응답에는 granted만 있다)', { ok: true, granted: 5, duplicate: true }, { ok: true, granted: 5, duplicate: true, capped: false }],
-    ['rule_zero(규칙값 0)', { ok: true, granted: 0, reason: 'rule_zero', ruleAmount: 0 }, { ok: true, granted: 0, duplicate: false, capped: false }],
-    ['capped(상한에 걸려 지급 0)', { ok: true, granted: 0, capped: true, dailyUsed: 40 }, { ok: true, granted: 0, duplicate: false, capped: true }],
+    ['duplicate(같은 키 재전송 — 응답에는 granted만 있다)', { ok: true, granted: 5, duplicate: true }, { ok: true, granted: 5, duplicate: true, capped: false, blocked: false }],
+    ['rule_zero(규칙값 0)', { ok: true, granted: 0, reason: 'rule_zero', ruleAmount: 0 }, { ok: true, granted: 0, duplicate: false, capped: false, blocked: false }],
+    ['capped(상한에 걸려 지급 0)', { ok: true, granted: 0, capped: true, dailyUsed: 40 }, { ok: true, granted: 0, duplicate: false, capped: true, blocked: false }],
+    [
+      'blocked(캡슐 가득 + 인벤토리 빈칸 부족으로 거절 — 오류가 아니라 실패 기록·행동 지표 판정도 없다)',
+      { ok: true, granted: 0, blocked: true, ruleAmount: 20, duplicate: false, dailyUsed: 0, weeklyUsed: 0, balance: 12 },
+      { ok: true, granted: 0, duplicate: false, capped: false, blocked: true },
+    ],
   ])('%s는 채움을 부르지 않는다', async (_label, data, expected) => {
     const { client } = fakeClient({ data, error: null })
 
@@ -165,6 +172,7 @@ describe('awardServiceJam — 지급 즉시 채움', () => {
       granted: 5,
       duplicate: false,
       capped: false,
+      blocked: false,
     })
     expect(console.error).toHaveBeenCalled()
   })
