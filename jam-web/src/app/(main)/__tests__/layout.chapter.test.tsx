@@ -358,7 +358,7 @@ describe('(main)/layout — 비로그인', () => {
 })
 
 describe('(main)/layout — 흰 페이지 면 (티켓 20261104_1642)', () => {
-  it('main 배경은 MAIN_PAGE_BACKGROUND(--surface)이고 탭 바 여백은 main이 아니라 바깥 래퍼가 진다', async () => {
+  it('main 배경은 MAIN_PAGE_BACKGROUND(--surface)이고 하단 여백이 없어 푸터 로고가 페이지 맨 끝에 닿는다', async () => {
     const tree = await renderLayout()
     const [main] = findByType(tree, 'main')
     expect(main.props.style).toBe(MAIN_PAGE_BACKGROUND)
@@ -367,8 +367,8 @@ describe('(main)/layout — 흰 페이지 면 (티켓 20261104_1642)', () => {
 
     const wrappers = findByType(tree, 'div').filter((el) => String(el.props.className ?? '').includes('max-w-[430px]'))
     expect(wrappers).toHaveLength(1)
-    expect(String(wrappers[0].props.className)).toContain('pb-[calc(5rem+env(safe-area-inset-bottom))]')
-    // 탭 바 여백까지 흰 면이어야 하므로 바깥 래퍼도 같은 배경을 건다(서비스 열 전체가 흰색)
+    expect(String(wrappers[0].props.className)).not.toContain('pb-')
+    // 서비스 열 전체가 흰색이므로 바깥 래퍼도 같은 배경을 건다
     expect(wrappers[0].props.style).toMatchObject(MAIN_PAGE_BACKGROUND)
   })
 })

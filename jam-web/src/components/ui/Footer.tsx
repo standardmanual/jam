@@ -89,10 +89,11 @@ export default function Footer() {
       </div>
       {/* 20260909_2319: 로고 이미지를 걷고 저작권 텍스트만 남겼다(Figma 사양). */}
       <span className="text-[15px] leading-[28px] font-normal text-foreground">{d.common.footerCopyright}</span>
-      {/* 20261104_1642: 저작권 아래, 푸터의 마지막 요소로 JAM! 로고를 열 폭 100%로 채운다. 새 이미지 없이
-          .jam-logo-mark(알파 마스크 + --foreground)를 쓴다. -mx-4로 푸터 px-4를 상쇄해 푸터 폭과 같게 한다
-          (items-start라 w-full만으로는 안쪽 폭에서 멈춘다). 로고가 흰 면의 맨 아래에 붙도록 푸터 아래쪽 패딩은 0이다. 장식이라 role="img"+aria-label만 둔다. */}
-      <div className="jam-logo-mark -mx-4 w-[calc(100%+2rem)]" role="img" aria-label="JAM!" />
+      {/* 20261104_1642: 저작권 아래, 푸터의 마지막 요소로 JAM! 로고를 서비스 영역의 좌우 패딩(px-4) 안쪽 폭 100%로 채운다.
+          새 이미지 없이 .jam-logo-mark(알파 마스크 + --foreground)를 쓴다. items-start라 폭은 w-full로 정한다.
+          로고 아래면이 페이지 맨 끝(브라우저 끝)에 닿도록 푸터 아래쪽 패딩과 (main)/layout의 하단 여백이 모두 0이다
+          (하단 탭 바는 fixed라 스크롤 끝에서 로고 아래쪽에 겹친다). 장식이라 role="img"+aria-label만 둔다. */}
+      <div className="jam-logo-mark w-full" role="img" aria-label="JAM!" />
     </footer>
   )
 }

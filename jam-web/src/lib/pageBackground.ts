@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 
 /**
  * (main) 화면 배경 — `--surface`(흰 #ffffff) 단색이다(티켓 20261104_1642). 서비스 열(최대 430px) 전체, 곧 상단 내비부터
- * 푸터 로고와 그 아래 탭 바 여백까지가 한 장의 흰 면이다. 열 바깥(화면 밖 body)만 `--background` 크림이 비친다.
+ * 푸터 로고(아래면이 페이지 맨 끝에 닿는다)까지가 한 장의 흰 면이다. 열 바깥(화면 밖 body)만 `--background` 크림이 비친다.
  * (main)/layout.tsx가 바깥 래퍼와 `main`에 함께 건다. 새 색을 만들지 않고 기존 토큰을 쓴다.
  * (legal)·(onboarding)은 이 값을 쓰지 않고 아래 `PAGE_GRADIENT_BACKGROUND`(크림)를 그대로 쓴다.
  */

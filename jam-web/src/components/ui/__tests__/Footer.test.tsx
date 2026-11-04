@@ -46,11 +46,13 @@ describe('Footer 링크', () => {
     expect(found.find((l) => l.href === '/voc')?.className).toBe(probability?.className)
   })
 
-  it('저작권 줄 다음, 푸터의 마지막 요소가 열 폭 100%의 JAM! 로고다(티켓 20261104_1642)', () => {
+  it('저작권 줄 다음, 푸터의 마지막 요소가 푸터 안쪽 폭 100%의 JAM! 로고다(티켓 20261104_1642)', () => {
     const html = renderToStaticMarkup(<Footer />)
-    const logo = '<div class="jam-logo-mark -mx-4 w-[calc(100%+2rem)]" role="img" aria-label="JAM!"></div>'
+    const logo = '<div class="jam-logo-mark w-full" role="img" aria-label="JAM!"></div>'
     expect(html.endsWith(`${logo}</footer>`)).toBe(true)
     expect(html.indexOf(d.common.footerCopyright)).toBeLessThan(html.indexOf(logo))
+    // 푸터 좌우 패딩(px-4)을 넘지 않는다 — 음수 마진으로 뚫지 않는다
+    expect(html).not.toContain('-mx-4')
     // 새 이미지 파일을 직접 그리지 않고 CSS 마스크 클래스를 재사용한다
     expect(html).not.toContain('<img')
   })
