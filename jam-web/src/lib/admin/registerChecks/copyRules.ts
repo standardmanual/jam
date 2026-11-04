@@ -10,12 +10,16 @@
  */
 
 export type CopyField = 'title' | 'subtitle' | 'description'
+/** 문구를 쓰는 대상 — 카드(`card.`)와 미션(`mission.`)은 같은 규칙 목록을 쓰지만 일부 규칙은 한쪽에만 적용한다. */
+export type CopySubject = 'card' | 'mission'
 
 export interface CopyRule {
   /** 규칙 식별자(시험·로그용). */
   id: string
   /** 규칙을 적용하는 칸. 없으면 제목·부제·설명 모두. */
   fields?: readonly CopyField[]
+  /** 규칙을 적용하는 대상. 없으면 카드·미션 모두. */
+  subjects?: readonly CopySubject[]
   /** 문구가 규칙에 걸리는지. */
   pattern: RegExp
   /** 걸렸을 때 어떻게 고칠지 알리는 해요체 안내(칸 이름은 앞에 붙는다). */
@@ -45,7 +49,15 @@ export const COPY_RULES: readonly CopyRule[] = [
     fields: ['description'],
     // 문장 끝의 「획득」·「보상」 — 뒤에 공백·`!`·`.`만 붙은 것까지. 중간의 「획득한 배지」는 걸리지 않는다.
     pattern: /(?:획득|보상)(?:\s*[!！.]+(?=\s|$)|\s*$)/,
-    message: '문장을 「획득」·「보상」으로 끊지 않아요. 「10포인트를 획득해요」처럼 문장으로 맺어 주세요.',
+    message: '문장을 「획득」·「보상」으로 끊지 않아요. 「아이템 배지를 획득해요」처럼 문장으로 맺어 주세요.',
+  },
+  {
+    id: 'mission-description-reward',
+    subjects: ['mission'],
+    fields: ['description'],
+    // 보상 수량(`10포인트`·`100잼`)과 「보상」이라는 말. 보상은 화면이 따로 보여 주므로 미션 설명에서 말하지 않는다(티켓 20261104_2148).
+    pattern: /\d[\d,]*\s*(?:포인트|잼)|보상/,
+    message: '미션 설명에는 보상을 쓰지 않아요. 보상은 화면에 따로 보여 줘요. 미션이 주는 재미를 유저 입장의 장면으로 써 주세요.',
   },
   {
     id: 'title-condition-summary',
@@ -73,9 +85,11 @@ export const COPY_RULES: readonly CopyRule[] = [
  */
 export function collectCopyErrors(prefix: string, field: CopyField, value: unknown): string[] {
   if (typeof value !== 'string') return []
+  const subject: CopySubject = prefix.startsWith('mission') ? 'mission' : 'card'
   const errors: string[] = []
   for (const rule of COPY_RULES) {
     if (rule.fields && !rule.fields.includes(field)) continue
+    if (rule.subjects && !rule.subjects.includes(subject)) continue
     if (rule.pattern.test(value)) errors.push(`${prefix}${field}: ${rule.message}`)
   }
   return errors
