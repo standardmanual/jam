@@ -2031,6 +2031,8 @@ export const ko = {
     noRewardResult: '믹스를 마쳤어요. 이 레시피는 받는 보상이 없어요',
     /** 레시피 행 부제 — 보상 없음으로 정한 레시피 */
     noRewardLabel: '보상 없음',
+    /** 레시피 행·요약 바에서 보상 포인트 숫자 아래 작은 글씨로 붙는 단위(티켓 20261104_2315) */
+    pointsUnit: '포인트',
     /** 레시피 설명이 길 때 접고 펴는 버튼 */
     descriptionMore: '더 보기',
     descriptionLess: '접기',

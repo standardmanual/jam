@@ -1030,3 +1030,20 @@ describe('RecipeRewardRow — 제목 굵기 (티켓 20261104_2242)', () => {
     expect(count).not.toContain('font-bold')
   })
 })
+
+describe('RecipeRewardRow — 획득 포인트 표기 (티켓 20261104_2315)', () => {
+  it('포인트 숫자는 굵게, 그 아래 줄에 작은 글씨 «포인트»가 붙는다', () => {
+    const html = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={1200} />)
+    const num = /<span class="([^"]*)">1,200<\/span>/.exec(html)?.[1] ?? ''
+    expect(num).toContain('font-bold')
+    expect(num).toContain('text-base')
+    const unit = /<span class="([^"]*)">포인트<\/span>/.exec(html)?.[1] ?? ''
+    expect(unit).toContain('text-xs')
+    expect(html).toContain('flex-col')
+  })
+
+  it('포인트가 0이면 숫자도 «포인트» 단위도 그리지 않는다', () => {
+    const html = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={0} />)
+    expect(html).not.toContain('>포인트<')
+  })
+})

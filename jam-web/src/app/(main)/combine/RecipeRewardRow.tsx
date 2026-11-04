@@ -112,9 +112,11 @@ export default function RecipeRewardRow({
       <span className="text-xs text-muted break-keep wrap-break-word">{d.combine.noRewardLabel}</span>
     ) : undefined
 
+  // 획득 포인트: 숫자는 굵게, 줄을 바꿔 아래에 작은 글씨로 «포인트»(티켓 20261104_2315)
   const trailing = hasPoints ? (
-    <span className="text-base text-foreground">
-      {points.toLocaleString()}
+    <span className="flex flex-col items-center text-center">
+      <span className="text-base font-bold text-foreground">{points.toLocaleString()}</span>
+      <span className="text-xs text-muted">{d.combine.pointsUnit}</span>
     </span>
   ) : undefined
 
