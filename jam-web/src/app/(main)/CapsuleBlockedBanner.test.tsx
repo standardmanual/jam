@@ -67,17 +67,24 @@ describe('CapsuleBlockedBanner — 막힘 기본 모습', () => {
     expect(html.match(/text-danger/g)).toHaveLength(1)
   })
 
-  it('제목은 foreground, 본문은 muted이고 한국어 줄바꿈 클래스가 있다', () => {
+  it('카드는 반전 면이고 제목은 snow, 본문은 snow 80%이며 한국어 줄바꿈 클래스가 있고 text-balance는 없다', () => {
     const title = html.match(/<h2[^>]*>/)?.[0] ?? ''
-    expect(title).toContain('text-foreground')
+    expect(title).toContain('text-snow')
     expect(title).toContain('font-bold')
-    for (const cls of ['break-keep', 'wrap-break-word', 'text-balance']) expect(title).toContain(cls)
+    for (const cls of ['break-keep', 'wrap-break-word']) expect(title).toContain(cls)
     const body = html.match(/<p [^>]*>/)?.[0] ?? ''
-    expect(body).toContain('text-muted')
-    for (const cls of ['break-keep', 'wrap-break-word', 'text-balance']) expect(body).toContain(cls)
+    expect(body).toContain('text-snow/80')
+    for (const cls of ['break-keep', 'wrap-break-word']) expect(body).toContain(cls)
+    // 균형 맞춤이 줄을 일찍 꺾어 두세 줄로 좁아 보였다(2026-11-05 사용자 지적)
+    expect(title).not.toContain('text-balance')
+    expect(body).not.toContain('text-balance')
+    expect(html).toContain('var(--background-inverse)')
   })
 
-  it('버튼은 전체 폭이다', () => {
-    expect(html.match(/<button[^>]*>/)?.[0]).toMatch(/w-full/)
+  it('버튼은 작은 크기(sm)의 secondary이고 전체 폭이 아니다', () => {
+    const button = html.match(/<button[^>]*>/)?.[0] ?? ''
+    expect(button).toContain('bg-default')
+    expect(button).toContain('px-4 py-[9px]')
+    expect(button).not.toMatch(/w-full/)
   })
 })
