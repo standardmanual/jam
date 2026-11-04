@@ -71,6 +71,11 @@ describe('채운 양의 숫자', () => {
     expect(html.indexOf('data-capsule-number="inside"')).toBeGreaterThan(html.indexOf('background:var(--capsule-fill)'))
   })
 
+  it('숫자는 양쪽 자리 모두 1px 위로 올라가 트랙 가운데에 맞는다', () => {
+    expect(render(120, 300).match(/transform:translateY\(-1px\)/g)).toHaveLength(1)
+    expect(render(200, 300).match(/transform:translateY\(-1px\)/g)).toHaveLength(1)
+  })
+
   it('퍼센트 기호는 없고 aria-label에도 숫자가 없다', () => {
     const html = render(120, 300)
     expect(textOf(html)).not.toMatch(/%/)

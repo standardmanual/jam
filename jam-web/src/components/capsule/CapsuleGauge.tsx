@@ -50,6 +50,8 @@ const DOT_POSITIONS = [20, 40, 60, 80] as const
 const DOT_SIZE_PX = 3
 /** 숫자와 트랙·채움 가장자리 사이 간격(px) */
 const NUMBER_EDGE_GAP_PX = 14
+/** 숫자를 위로 올리는 양(px) — 글자 줄 상자의 가운데가 숫자 모양의 가운데보다 아래라 트랙 가운데에 맞추려고 올린다(2026-11-04 사용자 요청) */
+const NUMBER_RISE_PX = 1
 /** 번개와 흰 글자 색 */
 const GAUGE_ICON = '#FFFFFF'
 /** 번개 튐 — 이 컴포넌트 전용 수치라 모션 토큰을 새로 만들지 않는다 */
@@ -254,7 +256,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
           <span
             data-capsule-number="outside"
             className={`absolute right-0 top-0 flex h-full items-center ${numberClass}`}
-            style={{ paddingRight: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-fill)' }}
+            style={{ paddingRight: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-fill)', transform: `translateY(-${NUMBER_RISE_PX}px)` }}
           >
             {numberText}
           </span>
@@ -277,7 +279,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
               className="absolute left-0 top-0 block h-full overflow-hidden"
               style={{ width: `calc(100% - ${circle}px)` }}
             >
-              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)' }}>
+              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)', transform: `translateY(-${NUMBER_RISE_PX}px)` }}>
                 {numberText}
               </span>
             </span>
