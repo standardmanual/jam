@@ -27,7 +27,7 @@ interface StravaDisconnectSheetViewProps {
  * 끊기 확인 시트의 겉모습 (티켓 20261017_1422 2회, 채원 사전 판정 2026-10-17).
  *
  * 재사용만 한다: BottomSheet(compact) + Button(secondary 취소, danger 확정). 새 토큰·새 부품이 없다.
- * `OnboardingQuestSkipSheet`와 같은 버튼 배치이며 취소와 확정의 시각 무게는 같다(가이드 5.2).
+ * `OnboardingQuestSkipModal`(가운데 모달)과 같은 버튼 배치이며 취소와 확정의 시각 무게는 같다(가이드 5.2).
  * danger 글자는 `--foreground`다(흰 글자 3.57:1 금지 — Button 주석). 본문은 3문장이라 가운데가 아니라 왼쪽 정렬이다.
  * 제출 중 확정 버튼은 loading이고 라벨이 «동기화 끊는 중»이다(5.3). 닫힘 트랜지션은 BottomSheet가 DOM에 남겨 처리한다.
  */

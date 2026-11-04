@@ -62,7 +62,7 @@ code:
 
 **«JAM! 시작하기» 카드**(티켓 20260927_2133, 상위 20260927_2123. 실제 단계·카드 개편 20261021_1248 2회, 실제 2단계로 축소 20261028_1738 1회, 운영 로직 2.2절)는 신규 유저가 온보딩 2단계를
 마친 뒤 두 가지를 한 카드에서 보여 준다. 하나는 서비스 기능을 순서대로 직접 해 보는 연출 7단계(구역 라벨 «미리 해보기»)이고, 다른 하나는 유저가 자기 활동으로 하는
-실제 2단계(구역 라벨 «내 활동으로»)다. 유저 화면에는 이 과제를 가리키는 운영 용어(「퀘스트」)를 쓰지 않는다(건너뛰기 시트 본문 한 곳만 사용자 결정으로 예외, 아래 «건너뛰기»). 칩은 «JAM! 시작하기»다(사용자 결정, 2026-10-21).
+실제 2단계(구역 라벨 «내 활동으로»)다. 유저 화면에는 이 과제를 가리키는 운영 용어(「퀘스트」)를 쓰지 않는다(건너뛰기 모달 본문 한 곳만 사용자 결정으로 예외, 아래 «건너뛰기»). 칩은 «JAM! 시작하기»다(사용자 결정, 2026-10-21).
 조건이 안 맞으면(스위치 꺼짐·행 없음·조회 실패·`completed_at` 있음) 자리 자체가 없고, **«연출 끝 또는 건너뜀»과 «실제 2단계 완료»가 둘 다 되면 카드가 사라진다.**
 완료 상태 구역은 없다 — 챕터 1은 실제 2단계를 마친 순간 시작하고 알림 없이 소식 한 건(`chapter_up`)으로만 알린다(사용자 결정 4).
 
@@ -74,7 +74,7 @@ code:
 
 카드는 한 장(`Card`)이고 `role="group"` `aria-label="JAM! 시작하기"`다. 한 카드의 primary 버튼은 늘 하나이고 모두 `size="sm"`(44px)다.
 - **연출 중**: 첫 줄은 칩과 «미리 해보기 n/7», 아래에 진행 바 7칸, 연출 다음 단계의 제목·설명, 연출 CTA(펄스 유지), 구분선, «내 활동으로 2단계» 체크 목록(`<ol>`, 누를 수 없음,
-  행마다 체크 또는 빈 원)이다. 카드 밖에 텍스트 버튼 «미리 해보기 건너뛰기»가 있다. 연출 중에도 실제 진행이 체크된다. 연출이 남은 채 실제 2단계만 끝났으면 카드가 남고 두 행이 모두 체크다.
+  행마다 체크 또는 빈 원)이다. 카드 안 우측 아래(연출 CTA 바로 아래 행)에 보조 버튼 «미리 해보기 건너뛰기»가 있다(2026-11-04). 연출 중에도 실제 진행이 체크된다. 연출이 남은 채 실제 2단계만 끝났으면 카드가 남고 두 행이 모두 체크다.
 - **연출 끝 또는 건너뜀**: 실제 구역이 위로 올라온다. 첫 줄은 칩과 «내 활동으로 n/2», 진행 바 2칸, 체크 목록(지금 할 차례 행은 굵은 제목과 설명, 남은 행은 한 줄 muted),
   필요하면 `InlineNotice`, primary CTA 하나(펄스 없음)다. 건너뛴 유저는 연출 구역도 «건너뛰었어요» 표시도 건너뛰기 버튼도 없이 처음부터 이 모양이다.
 - 칩과 분수 라벨은 한 줄이고, 글자를 크게 키운 기기에서는 분수 라벨이 다음 줄로 내려가 가로로 넘치지 않는다(높이를 고정하지 않는다).
@@ -94,12 +94,12 @@ code:
 DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 뒤로 보낸다. 가진 포인트(`point_wallets`, 행이 없으면 0)는 필요 포인트가 0보다 클 때만 읽는다.
 캡슐에서 나온 개체인지 동기화로 받은 개체인지는 DB에 구분하는 값이 없어(둘 다 `obtained_by = 'drop'`) 가리지 않는다. 사용자 결정 2에 따라 아무 잠긴 개체를 열어도 ②가 체크된다.
 
-**건너뛰기**(티켓 20260927_2131, 상위 20260927_2123 T8): 연출 중 카드(sync 포함) 아래에 좌측 정렬 텍스트 진입점 「미리 해보기 건너뛰기」가 있다. 누르면 시트(`detent="compact"`)로
+**건너뛰기**(티켓 20260927_2131, 상위 20260927_2123 T8): 연출 중 카드(sync 포함) 안, 연출 CTA 바로 아래 행의 우측에 보조 버튼 「미리 해보기 건너뛰기」가 있다(`Button` outline sm. 한 카드의 primary는 연출 CTA 하나라서 이 버튼은 primary가 아니다. 이전에는 카드 밖 좌측 텍스트 링크였다, 티켓 20261104_1810). 실제 체크리스트가 함께 있으면 그 구분선 앞에 둔다. 누르면 하단 시트가 아니라 화면 가운데 모달(서비스 전용 `ConfirmModal`: 흰 카드 패널, 스크림 `--backdrop`, 투명도와 배율 250ms 열림·150ms 닫힘, Esc·스크림 탭으로 닫힘, 요청 중에는 닫히지 않음)로
 [계속하기]/[건너뛰기]를 확인받는다. 본문은 «퀘스트를 건너뛸까요?» 한 문장이다(사용자 결정, 티켓 20261028_1738).
 [건너뛰기] → `POST /api/onboarding-quest/skip`이 `skipped_at`을 기록하고(이미 7단계를 마쳤으면 서버가 거부) 완료 판정을 다시 확인한다 → 카드가 실제 구역으로 전환된다.
 건너뛰는 것은 연출 7단계뿐이다. 실제 2단계를 마치면 건너뛴 유저도 챕터 1을 받는다. 실제 구역 카드에는 진입점이 없다.
 
-근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipSheet.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/SyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/real-view.ts`, `jam-web/src/lib/onboarding-quest/real-steps.ts`, `jam-web/src/lib/onboarding-quest/locked-target.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 펄스 `jam-web/src/components/transitions.css`(`.jam-quest-pulse`), `jam-web/design-system/tokens/motion.css`(`--duration-quest-pulse`·`--ease-quest-pulse`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipModal.tsx`, `jam-web/src/components/ui/ConfirmModal.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/SyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/real-view.ts`, `jam-web/src/lib/onboarding-quest/real-steps.ts`, `jam-web/src/lib/onboarding-quest/locked-target.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 펄스 `jam-web/src/components/transitions.css`(`.jam-quest-pulse`), `jam-web/design-system/tokens/motion.css`(`--duration-quest-pulse`·`--ease-quest-pulse`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
 **Strava 동기화 끊김 카드**(티켓 20261017_1422)는 `strava_connections`의 연결 상태 판정(`resolveStravaUiState`) 결과로 그린다.
 흰 카드에 칩 「Strava 동기화」, 제목(「Strava 동기화가 끊겼어요」), 원인과 해결을 알리는 본문, 검정 알약 버튼

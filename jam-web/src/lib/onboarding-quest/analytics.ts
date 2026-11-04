@@ -39,7 +39,7 @@ export function trackQuestStepComplete(step: OnboardingQuestStepKey, response: S
   trackEvent(ONBOARDING_QUEST_STEP_COMPLETE_EVENT, { step, step_index: stepIndexOf(step) })
 }
 
-/** 건너뛰기 호출부(`OnboardingQuestSkipSheet.tsx`)가 성공 응답을 받은 자리에서 부른다. */
+/** 건너뛰기 호출부(`OnboardingQuestSkipModal.tsx`)가 성공 응답을 받은 자리에서 부른다. */
 export function trackQuestSkip(step: OnboardingQuestStepKey, response: SkipApiResponse): void {
   if (response.preview === true) return
   trackEvent(ONBOARDING_QUEST_SKIP_EVENT, { step, step_index: stepIndexOf(step) })

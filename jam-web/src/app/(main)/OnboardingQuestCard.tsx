@@ -13,7 +13,7 @@ import { STEP_SCREEN_MAP, type OnboardingQuestScreen } from '@/lib/onboarding-qu
 import type { RealCurrentStep, RealStepRow, RealStepsView } from '@/lib/onboarding-quest/real-view'
 import type { OnboardingQuestCardState } from '@/lib/onboarding-quest/status'
 import type { OnboardingQuestStepKey } from '@/types/database'
-import OnboardingQuestSkipSheet from './OnboardingQuestSkipSheet'
+import OnboardingQuestSkipModal from './OnboardingQuestSkipModal'
 import OnboardingSyncButton from './OnboardingSyncButton'
 import QuestStartTracker from './QuestStartTracker'
 
@@ -245,7 +245,7 @@ function DemoCard({ state }: { state: Extract<NonNullable<OnboardingQuestCardSta
   const startTracker = state.done === 0 && !state.preview ? <QuestStartTracker /> : null
 
   return (
-    <div className="flex flex-col gap-2">
+    <>
       {startTracker}
       <Card role="group" aria-label={d.onboardingQuest.cardLabel} className={CARD_CLASS}>
         <Header fraction={t(progress.demo, counts)} srFraction={t(progress.demoSr, counts)} />
@@ -255,6 +255,10 @@ function DemoCard({ state }: { state: Extract<NonNullable<OnboardingQuestCardSta
           <p className={DESC_CLASS}>{step.description}</p>
         </div>
         <DemoCta nextStep={state.nextStep} />
+        {/* 건너뛰기 진입 버튼(티켓 20260927_2131 T8, 카드 안 우측 아래로 변경 20261104_1810, 채원 사전 판정) — 연출 CTA 바로 아래 행이다.
+            연출 진행 중 모든 단계(sync 포함)에서 보이고, 건너뛴 뒤에는 없다. 누르면 가운데 모달이 뜬다.
+            실제 체크리스트가 있으면 그 구분선 앞, 연출 구역의 끝에 둔다. GA4 onboarding_quest_skip 이벤트에 실릴 단계 키(nextStep)를 함께 넘긴다(티켓 20260927_2132). */}
+        <OnboardingQuestSkipModal step={state.nextStep} />
         {state.real && (
           <>
             <Divider />
@@ -262,10 +266,7 @@ function DemoCard({ state }: { state: Extract<NonNullable<OnboardingQuestCardSta
           </>
         )}
       </Card>
-      {/* 건너뛰기 진입점(티켓 20260927_2131 T8, 채원 사전 판정) — Card 바깥의 형제 요소다. 연출 진행 중 모든 단계(sync 포함)에서 보이고, 건너뛴 뒤에는 없다.
-          GA4 onboarding_quest_skip 이벤트에 실릴 단계 키(nextStep)를 함께 넘긴다(티켓 20260927_2132). */}
-      <OnboardingQuestSkipSheet step={state.nextStep} />
-    </div>
+    </>
   )
 }
 

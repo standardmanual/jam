@@ -12,7 +12,7 @@
  * 이 테스트는 (1) 연출 중 카드의 구성(연출 구역 + 실제 2단계 체크 목록) (2) 연출이 끝났거나 건너뛴 카드의 구성(실제 구역이 위)
  * (3) 상태별 설명·안내·버튼 글자 (4) 버튼은 늘 하나이고 펄스는 연출 CTA에만 있는지 (5) 접근성 글자와 줄바꿈 클래스 (6) «퀘스트» 같은 금지어가 없는지를 고정한다.
  *
- * 카드가 클라이언트 컴포넌트 `OnboardingQuestSkipSheet`·`OnboardingSyncButton`·`SyncButton`을 자식으로 두므로
+ * 카드가 클라이언트 컴포넌트 `OnboardingQuestSkipModal`·`OnboardingSyncButton`·`SyncButton`을 자식으로 두므로
  * `OnboardingSyncButton.test.tsx`와 같은 방식으로 `next/navigation`·Toast를 목으로 대체한다. `QuestStartTracker`는 `useEffect`가
  * 정적 렌더에서 실행되지 않아 마운트 여부를 직접 관찰할 수 없으므로, 감지용 마커 문자열을 돌려주는 목으로 바꿔 "트리에 포함됐는가"만 검증한다.
  *
@@ -184,7 +184,7 @@ describe('JAM! 시작하기 카드 — 연출 중(연출 구역 + 실제 2단계
     }
   })
 
-  it('한 카드에 primary는 하나다 — 연출 CTA와 카드 밖 건너뛰기 버튼뿐이다', () => {
+  it('한 카드에 primary는 하나다 — 연출 CTA와 카드 안 건너뛰기 버튼(outline)뿐이다', () => {
     const html = render(demo(1, 'bag'))
     expect(buttonTexts(html)).toEqual([d.onboardingQuest.continueButton, d.onboardingQuest.skip.entryLabel])
   })
@@ -238,6 +238,22 @@ describe('JAM! 시작하기 카드 — 건너뛰기 진입점(티켓 20260927_21
     for (const [, state] of REAL_STATES) {
       expect(render(state, 'runner')).not.toContain(d.onboardingQuest.skip.entryLabel)
     }
+  })
+
+  it('진입 버튼은 카드 안 연출 CTA 아래, 우측 정렬의 outline 보조 버튼이다(티켓 20261104_1810)', () => {
+    const html = render(demo(1, 'bag'))
+    const cardEnd = html.lastIndexOf('</div>')
+    const entryAt = html.indexOf(d.onboardingQuest.skip.entryLabel)
+    expect(entryAt).toBeGreaterThan(html.indexOf(d.onboardingQuest.continueButton))
+    expect(entryAt).toBeLessThan(cardEnd)
+    // 카드(role=group)를 닫기 전에 있다 — 카드 밖 형제가 아니다
+    const group = html.slice(html.indexOf('role="group"'))
+    expect(group).toContain(d.onboardingQuest.skip.entryLabel)
+    const row = html.slice(html.lastIndexOf('<div', entryAt - 1), entryAt)
+    expect(row).toContain('justify-end')
+    expect(html.slice(html.lastIndexOf('<button', entryAt), entryAt)).toContain('border')
+    // 모달은 닫힌 채라 마크업에 없다
+    expect(html).not.toContain('role="dialog"')
   })
 
   it('확인 시트 본문은 사용자가 정한 한 문장이다(티켓 20261028_1738)', () => {

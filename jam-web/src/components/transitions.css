@@ -616,3 +616,46 @@
   .jam-press { transition: none; }
   .jam-press:active { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 프로젝트 확장 — 가운데 확인 모달 (티켓 20261104_1810, 채원 사전 판정)
+ * `ConfirmModal`이 쓴다. 값은 globals.css의 `--modal-*` 토큰이다(원문 스니펫이 아니라 이 프로젝트 확장이다).
+ * 패널은 이동·블러 없이 투명도와 배율만 바꾼다. 열려 있을 때만 탭을 받아 닫힘 전환 동안 뒷화면 탭을 먹지 않는다.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.t-modal {
+  opacity: 0;
+  transform: scale(var(--modal-scale-close));
+  pointer-events: none;
+  transition:
+    opacity   var(--modal-close-dur) var(--modal-ease),
+    transform var(--modal-close-dur) var(--modal-ease);
+  will-change: transform, opacity;
+}
+.t-modal[data-open="true"] {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  transition:
+    opacity   var(--modal-open-dur) var(--modal-ease),
+    transform var(--modal-open-dur) var(--modal-ease);
+}
+.t-modal-backdrop {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--modal-close-dur) var(--modal-ease);
+}
+.t-modal-backdrop[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity var(--modal-open-dur) var(--modal-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-modal,
+  .t-modal-backdrop { transition: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .t-modal-backdrop {
+    /* 스크림을 불투명한 반전 면으로 올린다 — `.t-panel-backdrop`과 같은 규칙 */
+    background-color: var(--background-inverse);
+  }
+}
