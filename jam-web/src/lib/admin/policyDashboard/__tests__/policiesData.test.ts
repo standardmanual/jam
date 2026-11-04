@@ -356,6 +356,13 @@ describe('서비스 활동 잼 항목 (티켓 20261028_1735 4회)', () => {
     }
   })
 
+  it('막혀 있으면 지급하지 않음(거절, 나중에 보충하지 않음)과 운영자 지급 예외를 적는다 (티켓 20261105_0102)', () => {
+    const spec = find('ch4-service-jam')?.currentSpec ?? ''
+    for (const text of ['지급하지 않음(거절, 나중에 보충하지 않음', 'capsule_receive_blocked', 'blocked', '실패 기록도 남기지 않음', '운영자 지급·회수는 이 함수를 지나지 않아 막히지 않음']) {
+      expect(spec, text).toContain(text)
+    }
+  })
+
   it('잠김 해금 카드는 서비스 활동 잼 5잼을 적고 챕터 점수 가산 문구가 남아 있지 않다', () => {
     const card = find('ch7-locked-open-score')
     expect(card?.currentSpec).toContain('locked_unlock')
@@ -510,5 +517,9 @@ describe('인벤토리 가득 참 잼 차단 항목 (티켓 20261105_0101)', () 
     for (const text of ['capsule_receive_blocked', 'capsule_inventory_blocked', 'user_suspended', 'tribe_required', 'sync_pending_items', '이 막힘 안내가 먼저']) {
       expect(spec, text).toContain(text)
     }
+  })
+
+  it('서비스 활동 잼 지급 거절을 적는다 (티켓 20261105_0102)', () => {
+    expect(card?.currentSpec ?? '').toContain('서비스 활동 잼(믹스·미션 완료·배지 받기 등) 지급도 같은 막힘 동안에는 거절됨')
   })
 })
