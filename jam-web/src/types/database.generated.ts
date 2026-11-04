@@ -4963,6 +4963,10 @@ export type Database = {
         Args: { p_items: Json; p_user_id: string }
         Returns: Json
       }
+      capsule_receive_blocked: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       combine_claim_pending: {
         Args: { p_user_id: string }
         Returns: Json
