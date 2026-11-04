@@ -10,6 +10,8 @@ import {
   GAUGE_ENTRY_VISIBLE_RATIO,
   GRAPH_MIN_PERCENT,
   capsuleGraphPercent,
+  capsuleNumberPlacement,
+  capsuleNumberText,
   gaugeMoveDurationMs,
   graphPercentToFillRatio,
 } from '@/lib/capsule/capsule-gauge'
@@ -21,7 +23,10 @@ import {
  * 그래프 2%가 지름이 트랙 안쪽 높이와 같은 원이고, 100%는 트랙 안쪽을 가득 채운다. 번개 아이콘은 채움의 오른쪽 끝 원 안에 붙어 같이 움직인다.
  *
  * 눌러도 아무 일도 없다 — `button`·`jam-press`·커서가 없고 접근성 역할은 `role="img"`다. 상태는 숫자 없는 `ariaLabel`로만 글자로 알린다.
- * 퍼센트·진행 숫자는 어디에도 그리지 않는다(운영 로직 5.3절).
+ * 퍼센트는 그리지 않는다. 채운 양(`filled`)의 숫자만 그리고(2026-11-04 사용자 결정, 이전에는 숫자를 그리지 않았다), 자리는 두 가지다.
+ *  - 채운 비율이 50% 미만: 트랙 안쪽 오른쪽 끝, 오렌지 글자.
+ *  - 채운 비율이 50% 이상: 채움 안쪽 왼쪽, 트랙 색 글자. 채움이 차오를 때 숫자도 번개 앞까지 같이 드러난다(번개를 덮지 않는다).
+ *  숫자는 합친 연출이 게이지를 붙드는 동안 안쪽·바깥쪽 모두 보이지 않는다(2% 원 안에 들어가지 않고, 연출 전에 값이 드러나지 않게 한다).
  *
  * 모션(채원 판정):
  *  - 진입: 한 방문에 한 번. 시작 눈금 2%, 끝은 `filled / required`. 260ms 쉰 뒤 1,500ms, `--ease-smooth-out`. 값이 0이면 모션이 없다.
@@ -43,6 +48,8 @@ const PADDING_PX = 2
 /** 트랙 위 점의 위치(트랙 안쪽 너비 기준 %) */
 const DOT_POSITIONS = [20, 40, 60, 80] as const
 const DOT_SIZE_PX = 3
+/** 숫자와 트랙·채움 가장자리 사이 간격(px) */
+const NUMBER_EDGE_GAP_PX = 14
 /** 번개와 흰 글자 색 */
 const GAUGE_ICON = '#FFFFFF'
 /** 번개 튐 — 이 컴포넌트 전용 수치라 모션 토큰을 새로 만들지 않는다 */
@@ -205,6 +212,10 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
   const shownGraph = held ? GRAPH_MIN_PERCENT : motion.graph
   const shownDurationMs = held ? 0 : motion.durationMs
   const ratio = graphPercentToFillRatio(shownGraph)
+  // 숫자 자리는 모션 중간값이 아니라 실제 값으로 정한다
+  const placement = capsuleNumberPlacement(filled, required)
+  const numberText = capsuleNumberText(filled)
+  const numberClass = 'whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'
 
   return (
     <div
@@ -238,6 +249,17 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
           />
         ))}
 
+        {/* 채운 비율 50% 미만: 트랙 안쪽 오른쪽 끝에 오렌지 숫자. 붙들려 있는 동안은 그리지 않는다 */}
+        {placement === 'outside' && !held && (
+          <span
+            data-capsule-number="outside"
+            className={`absolute right-0 top-0 flex h-full items-center ${numberClass}`}
+            style={{ paddingRight: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-fill)' }}
+          >
+            {numberText}
+          </span>
+        )}
+
         {/* 오렌지 채움: 너비 = 원 지름 + (트랙 안쪽 너비 - 원 지름) × 채움 정도 */}
         <span
           ref={setFillElement}
@@ -248,6 +270,18 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef }: P
             transition: shownDurationMs > 0 ? `width ${shownDurationMs}ms var(--ease-smooth-out)` : 'none',
           }}
         >
+          {/* 채운 비율 50% 이상: 채움 안쪽 왼쪽에 어두운 숫자. 번개 자리(원 지름)를 뺀 너비 안에서만 보여 2% 원일 때는 아무것도 보이지 않는다 */}
+          {placement === 'inside' && (
+            <span
+              data-capsule-number="inside"
+              className="absolute left-0 top-0 block h-full overflow-hidden"
+              style={{ width: `calc(100% - ${circle}px)` }}
+            >
+              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)' }}>
+                {numberText}
+              </span>
+            </span>
+          )}
           <span className="absolute right-0 top-0 grid h-full place-items-center" style={{ width: circle }}>
             <JamBolt size={Math.round(circle * 0.42)} svgRef={boltRef} />
           </span>

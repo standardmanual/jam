@@ -3,8 +3,13 @@
  *
  * 캡슐 잼 비율과 그래프 눈금(채움 모양의 눈금)을 오가는 변환, 진입·이동 모션 시간을 맡는다.
  * 화면·타이머를 모르는 순수 모듈이라 서버·클라이언트 어느 쪽에서도 쓴다. 아무것도 가져오지 않는다.
- * 수치(숫자·퍼센트)는 화면에 그리지 않는다. 이 값들은 게이지 모양을 정하는 표현 값이다.
+ * 채운 양의 숫자는 게이지가 그린다(2026-11-04 사용자 결정). 퍼센트는 그리지 않고, 이 모듈의 눈금 값은 게이지 모양을 정하는 표현 값이다.
  */
+
+/** 숫자 위치: 채운 비율(채운 양 ÷ 필요량)이 이 값 이상이면 채움 안쪽 왼쪽에, 미만이면 트랙 바깥쪽(채움 오른쪽 빈 자리의 오른쪽 끝)에 둔다 */
+export const CAPSULE_NUMBER_INSIDE_RATIO = 0.5
+
+export type CapsuleNumberPlacement = 'inside' | 'outside'
 
 /** 그래프에서 «비어 있음»을 나타내는 최소 눈금(%). 캡슐 잼 0%가 이 눈금에 대응한다 */
 export const GRAPH_MIN_PERCENT = 2
@@ -54,6 +59,17 @@ export function graphPercentToFillRatio(graphPercent: number): number {
 export function capsuleGraphPercent(filled: number, required: number): number {
   if (!(required > 0)) return GRAPH_MIN_PERCENT
   return jamPercentToGraphPercent((clamp(filled, 0, required) / required) * 100)
+}
+
+/** 채운 양과 필요량 → 숫자를 둘 자리. 필요량이 0 이하이거나 숫자가 아니면 바깥쪽이다 */
+export function capsuleNumberPlacement(filled: number, required: number): CapsuleNumberPlacement {
+  if (!(required > 0)) return 'outside'
+  return clamp(filled, 0, required) / required >= CAPSULE_NUMBER_INSIDE_RATIO ? 'inside' : 'outside'
+}
+
+/** 게이지에 쓰는 채운 양 글자. 소수는 버리고 음수·숫자가 아닌 값은 0이다 */
+export function capsuleNumberText(filled: number): string {
+  return String(Math.max(0, Math.floor(Number.isFinite(filled) ? filled : 0)))
 }
 
 /**
