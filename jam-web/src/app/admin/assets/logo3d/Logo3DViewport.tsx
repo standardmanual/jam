@@ -68,7 +68,7 @@ import {
 import { VIDEO_SEC } from '../shapeStudioConfig'
 import { downloadBlob, pickVideoType, videoBitrate, videoSizeFor } from '../videoRecording'
 import { composeStage, exportSizeFor } from './stageCompose'
-import { turntableProgress, turntableRotY } from './turntable'
+import { VIDEO_FPS, turntableFrameCount, turntableFrameRotY } from './turntable'
 
 const PERSPECTIVE_FOV_DEG = 30
 const FALLBACK_RADIUS = 0.8
@@ -685,7 +685,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     const { width: w, height: h } = videoSizeFor(longSide, latest.current.ratio)
     const chunks: BlobPart[] = []
     let stream: MediaStream | null = null
-    let raf = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
 
     try {
       if (!imageTrackerRef.current.isIdle()) await imageTrackerRef.current.waitUntilIdle()
@@ -710,7 +710,14 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       display.height = h
       renderPreview()
 
-      stream = canvasWithStream.captureStream(30)
+      // 프레임을 그릴 때마다 requestFrame()으로 한 장씩 밀어 넣는다. requestFrame이 없는 브라우저는 30fps 자동 캡처로 물러선다.
+      stream = canvasWithStream.captureStream(0)
+      let track = stream.getVideoTracks()[0] as (MediaStreamTrack & { requestFrame?: () => void }) | undefined
+      if (!track || typeof track.requestFrame !== 'function') {
+        stream.getTracks().forEach((t) => t.stop())
+        stream = canvasWithStream.captureStream(VIDEO_FPS)
+        track = undefined
+      }
       const recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: videoBitrate(w, h) })
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunks.push(e.data)
@@ -720,24 +727,27 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
       })
       recorder.start(500)
 
+      // 회전은 경과 시간이 아니라 프레임 번호(0~n)로 정한다. 다음 프레임까지는 rAF 대신 setTimeout으로 기다린다(숨겨진 창의 rAF 지연 회피).
+      const n = turntableFrameCount(VIDEO_FPS, VIDEO_SEC)
+      const interval = 1000 / VIDEO_FPS
       const t0 = performance.now()
       let shownSec = -1
-      await new Promise<void>((resolve) => {
-        const tick = () => {
-          const elapsed = (performance.now() - t0) / 1000
-          const progress = turntableProgress(elapsed, VIDEO_SEC)
-          recordingPoseRef.current = { ...start, rotY: turntableRotY(start.rotY, progress) }
-          renderPreview()
-          const sec = Math.min(VIDEO_SEC, Math.floor(elapsed))
-          if (sec !== shownSec) {
-            shownSec = sec
-            onChange?.(true, `녹화 중 ${sec} / ${VIDEO_SEC}초`)
-          }
-          if (progress >= 1 || recAbortRef.current || !refs.current) resolve()
-          else raf = requestAnimationFrame(tick)
+      for (let i = 0; i <= n; i++) {
+        recordingPoseRef.current = { ...start, rotY: turntableFrameRotY(start.rotY, i, n) }
+        renderPreview()
+        track?.requestFrame?.()
+        const sec = Math.min(VIDEO_SEC, Math.floor(i / VIDEO_FPS))
+        if (sec !== shownSec) {
+          shownSec = sec
+          onChange?.(true, `녹화 중 ${sec} / ${VIDEO_SEC}초`)
         }
-        raf = requestAnimationFrame(tick)
-      })
+        if (recAbortRef.current || !refs.current) break
+        // 마지막 프레임도 한 프레임 길이만큼 유지한 뒤 녹화를 멈춘다
+        const wait = Math.max(0, t0 + (i + 1) * interval - performance.now())
+        await new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, wait)
+        })
+      }
       recorder.stop()
       await done
 
@@ -753,7 +763,7 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     } catch (err) {
       toast(err instanceof Error ? err.message : '동영상 저장에 실패했어요.')
     } finally {
-      cancelAnimationFrame(raf)
+      clearTimeout(timer)
       if (stream) stream.getTracks().forEach((t) => t.stop())
       recordingPoseRef.current = null
       exportingRef.current = false
