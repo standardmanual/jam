@@ -112,11 +112,11 @@ export default function RecipeRewardRow({
       <span className="text-xs text-muted break-keep wrap-break-word">{d.combine.noRewardLabel}</span>
     ) : undefined
 
-  // 획득 포인트: 숫자는 굵게, 줄을 바꿔 아래에 작은 글씨로 «포인트»(티켓 20261104_2315)
+  // 획득 포인트: 숫자는 굵게, 줄을 바꿔 아래에 작은 주황 글씨로 «포인트»(티켓 20261104_2315, 주황은 사용자 지시 2026-11-04). 주황은 미션 NEW 칩과 같은 `--warning` 토큰이다
   const trailing = hasPoints ? (
     <span className="flex flex-col items-center text-center">
       <span className="text-base font-bold text-foreground">{points.toLocaleString()}</span>
-      <span className="text-xs text-muted">{d.combine.pointsUnit}</span>
+      <span className="text-xs text-warning">{d.combine.pointsUnit}</span>
     </span>
   ) : undefined
 
