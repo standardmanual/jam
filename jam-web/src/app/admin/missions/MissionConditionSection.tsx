@@ -27,6 +27,7 @@ import { FieldLabel, FieldMessage, SuffixInput } from '@/app/admin/badges/BadgeF
 import { cn } from '@/lib/utils'
 import {
   JAM_PERIOD_EARNED_INPUT,
+  SYNC_COUNT_INPUT,
   MISSION_DB_FORM_GROUPS,
   MISSION_DB_HELP_OVERRIDES,
   MISSION_DB_OBJECT_COUNT_FIELDS,
@@ -263,6 +264,7 @@ export default function MissionConditionSection({
   const dbGroupNodes = MISSION_DB_FORM_GROUPS.map((group, index) => {
     const nodes = group.keys.flatMap((key): ReactElement[] => {
       if (key === 'jam_period_earned') return [renderJamPeriodEarnedField(fields, setField)]
+      if (key === 'sync_count') return [renderSyncCountField(fields, setField)]
       const meta = getConditionField(key)
       const entries = (meta?.form?.controls ?? []).map(
         (control) => ({ meta, control, section: meta!.form!.section }) as ConditionFormEntry
@@ -738,6 +740,36 @@ function renderJamPeriodEarnedField(fields: MissionConditionFormFields, setField
         step={input.step}
         value={fields.jamPeriodEarned}
         onChange={(e) => setField('jamPeriodEarned', e.target.value)}
+        placeholder={input.placeholder}
+        suffix={input.unit}
+        autoComplete="off"
+      />
+      <FieldMessage className={KO_HELP}>{input.help}</FieldMessage>
+    </div>
+  )
+}
+
+/**
+ * 동기화 횟수(`sync_count`). 배지 조건 레지스트리에 없는 미션 전용 키라 입력 칸 정의를 미션 쪽에서 정했다(`SYNC_COUNT_INPUT`, 티켓 20261104_2234).
+ * 1 이상 정수 칸이고 도움말은 새 활동을 불러온 동기화만 센다는 말이다.
+ */
+function renderSyncCountField(fields: MissionConditionFormFields, setField: SetField) {
+  const input = SYNC_COUNT_INPUT
+  const domId = `mc-eng-${input.field}`
+  return (
+    <div key="sync_count" className="flex min-w-0 flex-col gap-1.5">
+      <FieldLabel htmlFor={domId} className={KO_TEXT}>
+        {input.label}
+      </FieldLabel>
+      <SuffixInput
+        id={domId}
+        type="number"
+        inputMode="numeric"
+        min={input.min}
+        max={input.max}
+        step={input.step}
+        value={fields.syncCount}
+        onChange={(e) => setField('syncCount', e.target.value)}
         placeholder={input.placeholder}
         suffix={input.unit}
         autoComplete="off"

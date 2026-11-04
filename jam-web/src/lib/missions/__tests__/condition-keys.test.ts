@@ -270,6 +270,7 @@ const cases: Array<[string, () => void]> = [
       checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 },
       // 티켓 20261019_1445 3-A — 미션 전용 DB 키(배지 레지스트리에는 없다)
       jam_period_earned: 1,
+      sync_count: 1,
     }
     for (const key of Object.keys(everyField)) {
       assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has(key), `허용 키에 없다: ${key}`)
@@ -294,18 +295,19 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `기온 키가 위임된다: ${key}`)
     }
   }],
-  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 10개(jam_period_earned 포함) + DB 기록 키 19개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
+  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 11개(jam_period_earned·sync_count 포함) + DB 기록 키 19개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
     for (const key of ENGINE_DELEGATED_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     const engineOnly = [...MISSION_ONLY_CONDITION_KEYS].filter((key) => key !== 'count' && key !== 'badge_id')
-    assert.strictEqual(engineOnly.length, 10)
+    assert.strictEqual(engineOnly.length, 11)
     assert.ok(engineOnly.includes('jam_period_earned'))
+    assert.ok(engineOnly.includes('sync_count'))
     for (const key of engineOnly) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('count'))
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('badge_id'))
     assert.strictEqual(ENGINE_DELEGATED_CONDITION_KEY_LIST.length, 26)
     assert.strictEqual(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.length, 19)
-    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 10 + 19, '위임 키·복합 조건 전용 키·DB 기록 키가 겹치거나 빠졌다')
+    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 11 + 19, '위임 키·복합 조건 전용 키·DB 기록 키가 겹치거나 빠졌다')
   }],
   ['DB 기록 키 19개: 믹스 4·드랍·픽업 4·완료 수 2·새 키 4·날짜·체크인 5이고 위임 키·기간 불가 키와 겹치지 않는다', () => {
     assert.deepStrictEqual([...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST].sort(), [
@@ -320,8 +322,8 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!(key in MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS), `기간 불가 키와 겹친다: ${key}`)
     }
   }],
-  ['미션 전용 DB 키: jam_period_earned는 배지 레지스트리에 없고, 배지 쪽 DB 키 목록(19개)이 아니라 합집합(20개)에만 있다', () => {
-    assert.deepStrictEqual([...MISSION_ONLY_DB_CONDITION_KEY_LIST], ['jam_period_earned'])
+  ['미션 전용 DB 키: jam_period_earned는 배지 레지스트리에 없고, 배지 쪽 DB 키 목록(19개)이 아니라 합집합(21개)에만 있다', () => {
+    assert.deepStrictEqual([...MISSION_ONLY_DB_CONDITION_KEY_LIST], ['jam_period_earned', 'sync_count'])
     // 레지스트리에 없는 키 — 있으면 미션 전용 목록에 두면 안 된다(AssertMissionOnlyKeysAreNotInRegistry가 컴파일로도 막는다)
     assert.ok(!ALL_CONDITION_KEYS.includes('jam_period_earned' as never), '배지 레지스트리에 있다')
     // 미션 전용 목록에도 있다 — 허용 키·판정 키 집합이 이 목록에서 나온다
@@ -331,9 +333,15 @@ const cases: Array<[string, () => void]> = [
     // 배지 레지스트리 쪽 DB 키 목록에는 섞이지 않는다 — 19개 그대로
     assert.ok(!(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST as readonly string[]).includes('jam_period_earned'))
     assert.strictEqual(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.length, 19)
-    // 합집합 = 19 + 1, 겹치지 않는다
-    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 20)
-    assert.strictEqual(new Set<string>(MISSION_DB_CONDITION_KEY_LIST).size, 20)
+    // 합집합 = 19 + 2, 겹치지 않는다
+    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 21)
+    assert.strictEqual(new Set<string>(MISSION_DB_CONDITION_KEY_LIST).size, 21)
+    // 티켓 20261104_2234 — sync_count도 같은 연결(레지스트리에 없고 미션 전용·허용·판정 집합에 든다)
+    assert.ok(!ALL_CONDITION_KEYS.includes('sync_count' as never), '배지 레지스트리에 있다')
+    assert.ok(MISSION_ONLY_CONDITION_KEYS.has('sync_count'))
+    assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has('sync_count'))
+    assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has('sync_count'))
+    assert.ok(isDbConditionKey('sync_count'))
     assert.deepStrictEqual(
       [...MISSION_DB_CONDITION_KEY_LIST].sort(),
       [...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST, ...MISSION_ONLY_DB_CONDITION_KEY_LIST].sort()
@@ -633,14 +641,14 @@ const cases: Array<[string, () => void]> = [
     assert.ok(!error!.includes('combine_success_count'), `판정하는 키까지 문제로 적었다: ${error}`)
   }],
   // ── 엔진 조건이 아닌 타입에 DB 기록 키가 들어간 경우 (티켓 20261019_1445 4회) ──────────────
-  ['엔진 조건이 아닌 타입 + DB 기록 키 20개 각각 → 저장은 허용하고 «이 타입은 판정하지 않는다»고 고지한다', () => {
+  ['엔진 조건이 아닌 타입 + DB 기록 키 21개 각각 → 저장은 허용하고 «이 타입은 판정하지 않는다»고 고지한다', () => {
     const valueOf = (key: string): unknown => {
       if (key === 'recipe_first_success') return { recipe_id: 'recipe' }
       if (key === 'checkin_category_count') return { category: 'train_subway', count: 3 }
       if (key === 'checkin_badge_count') return { checkin_badge_names: ['성수역'], count: 1 }
       return 3
     }
-    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 20)
+    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 21)
     const types: MissionType[] = ['distance', 'activity_count', 'checkin', 'item_collect', 'streak_days', 'duration_minutes', 'elevation_gain_m']
     for (const key of MISSION_DB_CONDITION_KEY_LIST) {
       for (const type of types) {

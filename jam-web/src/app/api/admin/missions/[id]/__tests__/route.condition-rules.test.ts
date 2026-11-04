@@ -217,6 +217,19 @@ describe('PATCH /api/admin/missions/[id] — DB 기록 키 기준 값 검증 (�
     expect((await res.json()).error).toContain('jam_period_earned')
   })
 
+  it('sync_count가 1 미만이거나 소수이면 400이고 저장하지 않는다 (티켓 20261104_2234)', async () => {
+    for (const value of [0, 1.5]) {
+      const res = await patch({
+        mission_type: 'engine_condition',
+        status_display_type: 'achievement',
+        condition_json: { sync_count: value },
+      })
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toContain('sync_count')
+    }
+    expect(state.updates).toHaveLength(0)
+  })
+
   it('조건을 건드리지 않는 수정은 기준 값을 보지 않는다 — 기존 행에 잘못된 값이 있어도 제목 수정은 막히지 않는다', async () => {
     existing({ mission_type: 'engine_condition', condition_json: { combine_success_count: 0 }, status_display_type: 'achievement' })
     const res = await patch({ title: '이름만 바꿈' })

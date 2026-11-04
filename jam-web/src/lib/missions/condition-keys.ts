@@ -68,7 +68,7 @@ export const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set(
  * ⚠️ 여기 키를 추가해도 「평가된다」는 뜻은 아니다 — fail-closed를 통과시킬 뿐이고,
  * 실제 판정은 `progressValue >= target` 경로나 엔진이 아는 필드만으로 이뤄진다.
  */
-const MISSION_ONLY_CONDITION_KEY_LIST = [
+export const MISSION_ONLY_CONDITION_KEY_LIST = [
   'count',
   'badge_id',
   // 티켓 20260906_2231 — `engine_condition` 타입 전용 어휘. 배지 조건 레지스트리에는 없다
@@ -92,6 +92,9 @@ const MISSION_ONLY_CONDITION_KEY_LIST = [
   // 미션 전용 키라 여기에 둔다. DB를 읽어 세는 키라서 `MISSION_ONLY_DB_CONDITION_KEY_LIST`에도 있다(아래).
   // 판정 키 집합(`ENGINE_CONDITION_JUDGED_KEYS`)에 이 목록이 통째로 들어가므로, 판정 구현(`dbMetrics.ts`·`engineCondition.ts`)과 같은 변경에서 더했다.
   'jam_period_earned',
+  // 티켓 20261104_2234 — 참가한 뒤 미션 기간 안의 동기화 횟수(새 활동을 받은 동기화만, `user_sync_events`). 같은 이유로 `MISSION_ONLY_DB_CONDITION_KEY_LIST`에도 있다.
+  // 달성 조건 불릿은 이 목록의 순서대로 레지스트리 키 뒤에 붙는다(`conditionBullets.ts`).
+  'sync_count',
 ] as const satisfies readonly (keyof MissionCondition)[]
 
 export type MissionOnlyConditionKey = (typeof MISSION_ONLY_CONDITION_KEY_LIST)[number]
@@ -193,6 +196,8 @@ export type EngineDelegatedDbConditionKey = (typeof ENGINE_DELEGATED_DB_CONDITIO
 export const MISSION_ONLY_DB_CONDITION_KEY_LIST = [
   // 참가한 뒤 기간 안에 모은 잼 — 정산된 활동의 시작 시각이 기간 안인 활동의 `activity_settlement` 잼만 센다
   'jam_period_earned',
+  // 참가한 뒤 기간 안의 동기화 횟수 — `user_sync_events`에서 동기화 시각이 기간 안인 행의 수(티켓 20261104_2234)
+  'sync_count',
 ] as const satisfies readonly MissionOnlyConditionKey[]
 
 export type MissionOnlyDbConditionKey = (typeof MISSION_ONLY_DB_CONDITION_KEY_LIST)[number]
@@ -237,7 +242,7 @@ export function isDbConditionKey(key: string): key is MissionDbConditionKey {
 const NON_ENGINE_MISSION_ONLY_KEYS: ReadonlySet<string> = new Set(['count', 'badge_id'])
 
 /**
- * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개) + 미션 전용 DB 키(`jam_period_earned` 1개) + DB 기록 키(19개).
+ * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개) + 미션 전용 DB 키(`jam_period_earned`·`sync_count` 2개) + DB 기록 키(19개).
  * 이 밖의 키는 저장은 되지만 판정에 쓰이지 않는다 — `checkMissionCondition`이 경고로 알린다.
  * `evaluateEngineMissionCondition`의 「알려진 필드가 하나라도 있는가」 검사(fail-closed)도 이 집합을 쓴다 —
  * 두 곳이 갈리면 «경고는 없는데 판정은 안 하는» 조건이 생긴다.
@@ -471,7 +476,7 @@ function ignoredDbKeysWarning(missionType: MissionType, condition: unknown): str
  *   엔진 위임 타입은 저장하면 그 미션이 영원히 달성되지 않으므로 막는 쪽이 맞다)
  * - `engine_condition`에 판정하지 않는 키(`ENGINE_CONDITION_JUDGED_KEYS` 밖)가 있으면 저장은 허용하고
  *   고지한다 — 5-2b가 판정을 만들지 않은 키(`active_week_streak`·`jam_week_count`·`total_count` 등)가 이 경로를 탄다
- * - `engine_condition`이 아닌 타입에 DB 기록 키(`MISSION_DB_CONDITION_KEY_LIST` 20개)가 있으면 저장은 허용하고
+ * - `engine_condition`이 아닌 타입에 DB 기록 키(`MISSION_DB_CONDITION_KEY_LIST` 21개)가 있으면 저장은 허용하고
  *   고지한다 — 그 타입은 DB 기록을 읽지 않아 키가 판정에 쓰이지 않는다(티켓 20261019_1445 4회)
  */
 export function checkMissionCondition(
@@ -589,6 +594,7 @@ const MISSION_ONLY_KEY_LABEL: Record<string, string> = {
   count: '목표 횟수',
   badge_id: '목표 배지',
   jam_period_earned: '기간 동안 모은 잼',
+  sync_count: '동기화 횟수',
 }
 
 function missionConditionValueLabel(key: string): string {
@@ -659,7 +665,7 @@ function describeThreshold(value: unknown): string {
 }
 
 /**
- * `engine_condition`의 DB 기록 키 20개(`MISSION_DB_CONDITION_KEY_LIST`) 기준 값 검사 (티켓 20261019_1445 4회).
+ * `engine_condition`의 DB 기록 키 21개(`MISSION_DB_CONDITION_KEY_LIST`) 기준 값 검사 (티켓 20261019_1445 4회).
  *
  * 검사 규칙이 없으면 0 이하의 값이 그대로 저장되고, 0이면 `actual >= 0`이라 첫 동기화에서 바로 완료된다(진행률의 목표도 0이 된다).
  * 소수나 숫자가 아닌 값은 비교가 어긋나거나(`"3"`은 숫자가 아니라 영원히 충족하지 못한다) 횟수로 셀 수 없다.

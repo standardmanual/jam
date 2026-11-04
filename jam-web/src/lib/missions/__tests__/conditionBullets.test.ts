@@ -12,6 +12,7 @@ const labels = new Map([
   ['pickup_item_count', { label: '아이템 배지 픽업', unit: '회' }],
   ['distance_km', { label: '누적 거리', unit: 'km' }],
   ['month', { label: '해당 월', unit: null }],
+  ['sync_count', { label: '동기화', unit: '회' }],
 ])
 
 const cases: [string, () => void][] = [
@@ -71,6 +72,28 @@ const cases: [string, () => void][] = [
       buildConditionBullets('engine_condition', { drop_item_count: 1, totally_unknown: 1 }, withUnknown),
       null,
     )
+  }],
+
+  ['미션 전용 키(sync_count)는 레지스트리 키 뒤에 붙는다 — 드랍 → 픽업 → 동기화 순', () => {
+    const condition = { sync_count: 1, pickup_item_count: 1, drop_item_count: 1 }
+    assert.deepStrictEqual(
+      buildConditionBullets('engine_condition', condition, labels),
+      ['아이템 배지 드랍 1회', '아이템 배지 픽업 1회', '동기화 1회'],
+    )
+    assert.deepStrictEqual(conditionBulletKeys('engine_condition', condition), ['drop_item_count', 'pickup_item_count', 'sync_count'])
+  }],
+
+  ['미션 전용 키에 라벨이 없으면 불릿 전체가 null이다', () => {
+    const withoutSyncLabel = new Map(labels)
+    withoutSyncLabel.delete('sync_count')
+    assert.strictEqual(
+      buildConditionBullets('engine_condition', { drop_item_count: 1, pickup_item_count: 1, sync_count: 1 }, withoutSyncLabel),
+      null,
+    )
+  }],
+
+  ['라벨이 없는 미션 전용 키(jam_period_earned)가 섞이면 null이다', () => {
+    assert.strictEqual(buildConditionBullets('engine_condition', { drop_item_count: 1, jam_period_earned: 300 }, labels), null)
   }],
 
   ['옛 유형은 null이다', () => {

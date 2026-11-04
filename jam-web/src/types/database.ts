@@ -910,6 +910,14 @@ export interface MissionCondition {
    * 모은 양은 그 미션 화면에서만 보이고 순위 기준으로 쓸 수 있다.
    */
   jam_period_earned?: number
+
+  // 2회차(티켓 20261104_2234): 새 미션 전용 키. 배지 조건 레지스트리에는 없다.
+
+  /**
+   * `engine_condition` 타입: 참가한 뒤 미션 기간 안의 동기화 횟수 ≥ 이 값. 새 활동을 받은 동기화만 센다(`user_sync_events`, 마이그레이션 317).
+   * 하루 카운터(`daily_sync_count`)와 같은 기준이다.
+   */
+  sync_count?: number
 }
 
 /** 게이트 미션의 단계 — 마스터 티켓 20260905_0026의 2단 게이트 표를 그대로 옮긴 두 값 */
