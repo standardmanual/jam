@@ -56,13 +56,8 @@ const LITERAL_COLOR =
 const ALLOWED_LITERAL: { file: string; line: RegExp; reason: string }[] = [
   {
     file: 'patterns/ItemSerialCode.jsx',
-    line: /radial-gradient\(120% 90% at 22% 12%, rgba\(255,255,255,0\.19\)/,
-    reason: '어두운 인장 면 자체의 재질(흰 하이라이트 19%) — 페이지 바탕에 따라 바뀌는 값이 아니고 위 글자는 --snow(최저 4.63:1)',
-  },
-  {
-    file: 'patterns/ItemSerialCode.jsx',
-    line: /var\(--base-neutral-600\) 0%, var\(--base-neutral-800\) 100%/,
-    reason: '인장 그라디언트 — 팔레트 단계 값이고 대응하는 역할 토큰이 없다',
+    line: /const PLATE_TEXT_COLOR = 'var\(--base-neutral-950\)'/,
+    reason: '메탈 플레이트는 테마와 무관한 재질이라 반전되는 역할 토큰 대신 팔레트 검정을 쓴다(플레이트 휘도 120~209에서 4.48:1 이상)',
   },
 ]
 
@@ -135,7 +130,7 @@ describe('MODULAR 컴포넌트 직접 색 잔존', () => {
     expect(raw).toMatch(/#fff/)
     expect(stripComments(raw)).not.toMatch(/#fff/)
     const serial = load('patterns/ItemSerialCode.jsx')
-    expect(serial).toMatch(/--base-neutral-600/)
+    expect(serial).toMatch(/--base-neutral-950/)
   })
 
   describe('리터럴 흰·검정·옛 빨강·Base 직접 참조가 없다', () => {

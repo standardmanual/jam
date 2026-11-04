@@ -10,7 +10,8 @@ const meta: Meta<typeof ItemSerialCode> = {
     docs: {
       description: {
         component:
-          '앞 4자(알파벳)는 카드 1장씩, 나머지(숫자)는 하나의 박스로 렌더링하는 일련번호 스탬프. ' +
+          '앞 4자(알파벳)는 카드 1장씩, 나머지(숫자)는 하나의 박스로 렌더링하는 일련번호 메탈 플레이트. ' +
+          '타일 면은 브러시드 메탈 질감 이미지 한 장을 5장이 이어 붙여 나눠 비추고 글자는 검정이다. ' +
           '숫자 자리는 마운트 시 transitions.dev "Spinning counter"(.t-reel)로 0-9를 스핀한 뒤 ' +
           '목표 숫자에 착지한다(20260903_1611). 알파벳 prefix 카드는 정적 텍스트 그대로 유지. ' +
           'prefers-reduced-motion에서는 스핀 없이 즉시 최종 값을 표시한다. ' +
