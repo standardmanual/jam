@@ -635,14 +635,8 @@ export default function MissionDetailClient({
             {d.missions.ctaEnded}
           </button>
         ) : participating ? (
-          /* 참가 중 (disabled) */
-          <button
-            disabled
-            className="w-full min-h-[56px] rounded-full text-[16px] font-bold leading-[1.5] cursor-default"
-            style={{ background: 'var(--surface)', color: 'var(--muted)' }}
-          >
-            {d.missions.tagJoined}
-          </button>
+          /* 참가 중: 위쪽 «참가중» 칩이 이미 알리므로 맨 아래에는 아무것도 그리지 않는다(티켓 20261104_2140). 이 분기를 지우면 아래 «참가하기»가 뜬다 */
+          null
         ) : isActive ? (
           /* 참가 전 → 참가하기 */
           confirming ? (
