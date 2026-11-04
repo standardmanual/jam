@@ -92,6 +92,46 @@ function timeLeft(endsAt: string | null): string {
   return `${h}시간 ${m}분 ${d.missions.timeLeftSuffix}`
 }
 
+/* ── 개수 서클 — 연속 일수·활동 횟수의 «나의 진행 상황» (티켓 20261104_2147)
+ * 프로그래스바·퍼센트 없이 목표 개수만큼 숫자 서클을 전부 그린다. 끝낸 칸은 --accent 채움, 지금 채울 칸은 --link 테두리,
+ * 남은 칸은 --background-secondary다. 단위 글자는 마지막 서클과 한 묶음(whitespace-nowrap)이라 줄이 넘치면 함께 내려간다. */
+function CountCircles({ total, done, unit, completed }: { total: number; done: number; unit: string; completed: boolean }) {
+  const filled = completed ? total : Math.min(total, Math.max(0, Math.floor(done)))
+  const circle = (i: number) => {
+    const isDone = i < filled
+    const isNow = !isDone && i === filled && !completed
+    return (
+      <span
+        key={i}
+        aria-hidden="true"
+        className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-[12px] font-bold tabular-nums leading-none flex-shrink-0 ${isNow ? 'border-2' : ''}`}
+        style={{
+          background:  isDone ? 'var(--accent)' : isNow ? 'transparent' : 'var(--background-secondary)',
+          borderColor: isNow ? 'var(--link)' : undefined,
+          color:       isDone ? 'var(--accent-foreground)' : isNow ? 'var(--link)' : 'var(--muted)',
+        }}
+      >
+        {i + 1}
+      </span>
+    )
+  }
+  return (
+    <div
+      role="img"
+      aria-label={t(d.missions.progressCirclesLabel, { total, done: filled, unit })}
+      className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5"
+    >
+      {Array.from({ length: Math.max(0, total - 1) }).map((_, i) => circle(i))}
+      {total > 0 && (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          {circle(total - 1)}
+          <span aria-hidden="true" className="text-[14px] leading-none text-muted">{unit}</span>
+        </span>
+      )}
+    </div>
+  )
+}
+
 /* ── 섹션 레이블 — 배지 상세 '획득 조건'과 동일한 토큰 ── */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -279,7 +319,7 @@ export default function MissionDetailClient({
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
   const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect' || mission.mission_type === 'engine_condition'
-  const isStreakType = mission.mission_type === 'streak_days'
+  const isCircleType = mission.mission_type === 'streak_days' || mission.mission_type === 'activity_count'
   // 티켓 20261019_1445 3-B: 달성은 완료 기록(isCompleted)으로만 판정한다. 예전에는 `|| progressValue >= 1`도 달성으로 봤지만, 복합 조건에
   // «기간 동안 모은 잼»(jam_period_earned) 같은 새 키가 있으면 진행값이 모은 양이라 1잼만 모아도 달성으로 그려졌다.
   const achieved = isCompleted
@@ -548,51 +588,18 @@ export default function MissionDetailClient({
           <InfoCard>
             <SectionLabel>{d.missions.myProgressTitle}</SectionLabel>
 
-            {mission.mission_type === 'engine_condition' ? (
-              /* 복합 조건 — 조건은 위 카드가 보여 주므로 상태만 한 문장으로 알린다 (20260927_0119) */
-              <p className={`text-[14px] leading-[1.43] ${achieved ? 'text-foreground' : 'text-muted'}`}>
-                {achieved ? d.missions.engineConditionAchieved : d.missions.engineConditionNotAchieved}
-              </p>
+            {isCircleType ? (
+              /* streak_days·activity_count — 프로그래스바 없이 숫자 서클과 단위만 (티켓 20261104_2147) */
+              <CountCircles total={goal.target} done={progressValue} unit={goal.unit} completed={isCompleted} />
             ) : isAchievementType ? (
-              /* 달성형 */
+              /* 달성형(체크인·아이템 픽업·복합 조건). 복합 조건은 «미션 완료» 라벨이 달성 조건 카드와 겹쳐 칩만 둔다 */
               <div className="flex items-center justify-between">
-                <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
+                {mission.mission_type !== 'engine_condition' && (
+                  <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
+                )}
                 <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-[var(--accent-content-green)] text-foreground' : 'bg-border text-foreground'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
-              </div>
-            ) : isStreakType ? (
-              /* streak_days — 프로그레스 바 + 일수 도트 */
-              <div className="flex flex-col gap-3">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[14px] leading-[1.43] text-muted">
-                    {goal.target}일 중 {isCompleted ? goal.target : Math.floor(progressValue)}일
-                  </span>
-                  <span className="text-[14px] font-bold text-foreground tabular-nums">
-                    {isCompleted ? '100' : Math.round(progressPct)}%
-                  </span>
-                </div>
-                <ProgressBar percent={isCompleted ? 100 : progressPct} />
-                <div className="flex gap-1.5 pt-1 flex-wrap">
-                  {Array.from({ length: goal.target }).map((_, i) => {
-                    const done  = i < (isCompleted ? goal.target : Math.floor(progressValue))
-                    const today = !done && i === Math.floor(progressValue) && !isCompleted
-                    return (
-                      <div
-                        key={i}
-                        // 20260816_012: "오늘" 링만 기능적 하이라이트로 보더 유지, 나머지는 배경톤 채움
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${today ? 'border' : ''}`}
-                        style={{
-                          background:  done ? 'var(--accent)' : today ? 'transparent' : 'var(--background-secondary)',
-                          borderColor: today ? 'var(--link)' : undefined,
-                          color:       done  ? 'var(--accent-foreground)' : today ? 'var(--link)' : 'var(--muted)',
-                        }}
-                      >
-                        {i + 1}
-                      </div>
-                    )
-                  })}
-                </div>
               </div>
             ) : (
               /* 수치 + 프로그레스 바 */

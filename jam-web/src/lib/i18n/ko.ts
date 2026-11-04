@@ -907,10 +907,8 @@ export const ko = {
     myProgressTitle: '나의 진행 상황',
     achieved: '달성',
     notAchieved: '미달성',
-    /** 20260927_0119: 복합 조건(engine_condition) 미션의 「나의 진행 상황」은 상태만 한 문장으로 알린다.
-     * 조건은 위의 「달성 조건」 카드가 이미 보여 주므로 라벨·칩으로 되풀이하지 않는다 */
-    engineConditionNotAchieved: '아직 미션을 달성하지 못했어요',
-    engineConditionAchieved: '미션을 달성했어요',
+    /** 개수 서클(연속 일수·활동 횟수)의 스크린리더 문장. 서클 숫자는 aria-hidden이라 이 한 문장이 진행 상황을 전한다(티켓 20261104_2147) */
+    progressCirclesLabel: '{total}{unit} 중 {done}{unit}',
     progressPct: '{pct}% 달성',
     /** 20260827_014 — 「JAM 포인트」·「1200P」 표기는 UX 가이드 §3 Bad. 「1,200 포인트」로 통일 */
     rewardPointsLine: '{points} 포인트',

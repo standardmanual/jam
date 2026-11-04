@@ -113,65 +113,64 @@ describe('MissionDetailClient 달성 조건 카드', () => {
 })
 
 /**
- * 「나의 진행 상황」 카드 (티켓 20260927_0119).
- * 복합 조건 미션은 상태를 한 문장으로만 알리고, 체크인·아이템 픽업 미션은 기존 라벨 + 칩을 유지한다.
- * 카드 구간만 잘라 본다(다른 자리의 「미션 완료」 문구와 섞이지 않게).
+ * 「나의 진행 상황」 카드 (티켓 20260927_0119, 20261104_2147).
+ * 연속 일수·활동 횟수는 프로그래스바·퍼센트 없이 숫자 서클과 단위만, 복합 조건은 달성·미달성 칩만(문장 없음),
+ * 체크인·아이템 픽업은 기존 라벨 + 칩을 유지한다. 카드 구간만 잘라 본다(다른 자리의 「미션 완료」 문구와 섞이지 않게).
  */
 function progressCard(html: string): string {
   const i = html.indexOf(d.missions.myProgressTitle)
   return i === -1 ? '' : html.slice(i)
 }
 
+const OLD_SENTENCES = ['아직 미션을 달성하지 못했어요', '미션을 달성했어요']
+
 describe('MissionDetailClient 나의 진행 상황 카드', () => {
-  it('복합 조건 + 참가 중 + 미완료: 한 문장만 나오고 「미션 완료」 라벨·「미달성」 칩은 없다', () => {
+  it('복합 조건 + 참가 중 + 미완료: 문장 없이 「미달성」 칩만 나오고 「미션 완료」 라벨도 없다', () => {
     const card = progressCard(render(CONDITION_TEXT, { participating: true }))
-    expect(card).toContain('아직 미션을 달성하지 못했어요')
+    for (const sentence of OLD_SENTENCES) expect(card).not.toContain(sentence)
+    expect(card).toContain('>미달성<')
     expect(card).not.toContain('미션 완료')
-    expect(card).not.toContain('미달성')
   })
 
-  it('복합 조건 + 완료: 「미션을 달성했어요」가 나오고 미완료 문장은 없다', () => {
+  it('복합 조건 + 완료: 「달성」 칩만 나온다', () => {
     const card = progressCard(render(CONDITION_TEXT, { completed: true }))
-    expect(card).toContain('미션을 달성했어요')
-    expect(card).not.toContain('아직 미션을 달성하지 못했어요')
+    expect(card).toContain('>달성<')
+    for (const sentence of OLD_SENTENCES) expect(card).not.toContain(sentence)
     expect(card).not.toContain('미션 완료')
   })
 
   // 티켓 20261019_1445 3-B: 달성은 완료 기록으로만 판정한다. 진행값이 1 이상이라는 이유만으로 달성으로 그리지 않는다.
   it('복합 조건 + 완료 기록이 없으면 진행값이 1 이상이어도 달성으로 그리지 않는다', () => {
     const card = progressCard(render(CONDITION_TEXT, { participating: true, progressValue: 1 }))
-    expect(card).toContain('아직 미션을 달성하지 못했어요')
-    expect(card).not.toContain('미션을 달성했어요')
+    expect(card).toContain('>미달성<')
+    expect(card).not.toContain('>달성<')
   })
 
   it('기간 동안 모은 잼 미션은 1잼만 모아도(진행값 1) 달성으로 그리지 않는다', () => {
     const card = progressCard(
       render(CONDITION_TEXT, { participating: true, progressValue: 1, conditionJson: { jam_period_earned: 500 } }),
     )
-    expect(card).toContain('아직 미션을 달성하지 못했어요')
-    expect(card).not.toContain('미션을 달성했어요')
+    expect(card).toContain('>미달성<')
+    expect(card).not.toContain('>달성<')
   })
 
   it('기간 동안 모은 잼 미션도 완료 기록이 있으면 달성으로 그린다', () => {
     const card = progressCard(
       render(CONDITION_TEXT, { completed: true, progressValue: 500, conditionJson: { jam_period_earned: 500 } }),
     )
-    expect(card).toContain('미션을 달성했어요')
-    expect(card).not.toContain('아직 미션을 달성하지 못했어요')
+    expect(card).toContain('>달성<')
   })
 
   it('체크인 미션은 기존 라벨과 「미달성」 칩을 그대로 그린다', () => {
     const card = progressCard(render(CONDITION_TEXT, { participating: true, missionType: 'checkin' }))
     expect(card).toContain(d.missions.goalCheckin)
     expect(card).toContain('미달성')
-    expect(card).not.toContain('아직 미션을 달성하지 못했어요')
   })
 
   it('아이템 픽업 미션도 기존 라벨과 칩을 유지하고, 완료하면 「달성」 칩이 나온다', () => {
     const card = progressCard(render(CONDITION_TEXT, { completed: true, missionType: 'item_collect', progressValue: 1 }))
     expect(card).toContain(d.missions.goalItemCollect)
     expect(card).toContain('>달성<')
-    expect(card).not.toContain('미션을 달성했어요')
   })
 
   it('아이템 픽업 미션도 완료 기록이 없으면 진행값이 1이어도 「미달성」 칩이다', () => {
@@ -182,5 +181,80 @@ describe('MissionDetailClient 나의 진행 상황 카드', () => {
 
   it('참가 전에는 진행 상황 카드를 그리지 않는다', () => {
     expect(render(CONDITION_TEXT)).not.toContain(d.missions.myProgressTitle)
+  })
+})
+
+/** 개수 서클: 연속 일수(일)와 활동 횟수(회) */
+describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
+  const streak = (progressValue: number, extra: { completed?: boolean; days?: number } = {}) =>
+    progressCard(
+      render(CONDITION_TEXT, {
+        participating: true,
+        missionType: 'streak_days',
+        progressValue,
+        conditionJson: { streak_days: extra.days ?? 7 },
+        completed: extra.completed,
+      }),
+    )
+  const circleCount = (card: string) => (card.match(/rounded-full inline-flex|inline-flex items-center justify-center/g) ?? []).length
+
+  it('연속 일수: 목표 개수만큼 서클이 모두 그려지고 단위 «일»이 마지막 서클 뒤에 붙는다', () => {
+    const card = streak(3)
+    for (let n = 1; n <= 7; n++) expect(card).toContain(`>${n}</span>`)
+    expect(card).not.toContain('>8</span>')
+    expect(card.indexOf('>7</span>')).toBeLessThan(card.indexOf('>일</span>'))
+    // 마지막 서클과 단위는 한 묶음이라 줄이 넘쳐도 함께 내려간다
+    expect(card).toMatch(/whitespace-nowrap[^>]*><span[^>]*>7<\/span><span[^>]*>일<\/span>/)
+  })
+
+  it('프로그래스바·퍼센트·«N일 중 N일» 문장이 없다', () => {
+    const card = streak(3)
+    expect(card).not.toContain('%')
+    expect(card).not.toContain('progressbar')
+    expect(card).not.toContain('7일 중 3일</span>')
+  })
+
+  it('끝낸 칸은 accent 채움, 지금 칸은 link 테두리, 남은 칸은 보조 면이다', () => {
+    const card = streak(3)
+    expect((card.match(/background:var\(--accent\)/g) ?? []).length).toBe(3)
+    expect((card.match(/border-color:var\(--link\)/g) ?? []).length).toBe(1)
+    expect((card.match(/background:var\(--background-secondary\)/g) ?? []).length).toBe(3)
+  })
+
+  it('달성하면 전부 채워지고 지금 칸이 없다', () => {
+    const card = streak(0, { completed: true })
+    expect((card.match(/background:var\(--accent\)/g) ?? []).length).toBe(7)
+    expect(card).not.toContain('border-color:var(--link)')
+  })
+
+  it('서클이 많아도(30일) 모두 그린다', () => {
+    const card = streak(12, { days: 30 })
+    expect(card).toContain('>30</span>')
+    expect(card).toContain('>일</span>')
+    expect(circleCount(card)).toBeGreaterThanOrEqual(30)
+  })
+
+  it('활동 횟수는 단위 «회»로 같은 서클을 그린다', () => {
+    const card = progressCard(
+      render(CONDITION_TEXT, { participating: true, missionType: 'activity_count', progressValue: 1, conditionJson: { count: 2 } }),
+    )
+    expect(card).toContain('>1</span>')
+    expect(card).toContain('>2</span>')
+    expect(card).toContain('>회</span>')
+    expect(card).not.toContain('%')
+  })
+
+  it('스크린리더에는 한 문장으로 알리고 서클 숫자는 숨긴다', () => {
+    expect(streak(3)).toContain('aria-label="7일 중 3일"')
+    const done = streak(0, { completed: true })
+    expect(done).toContain('aria-label="7일 중 7일"')
+  })
+
+  it('수치형(거리)은 기존 현재값·퍼센트·바 표시를 유지한다', () => {
+    const card = progressCard(
+      render(CONDITION_TEXT, { participating: true, missionType: 'distance', progressValue: 3.2, conditionJson: { distance_km: 10 } }),
+    )
+    expect(card).toContain('3.2km')
+    expect(card).toContain('32%')
   })
 })
