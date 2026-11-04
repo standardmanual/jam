@@ -8,8 +8,9 @@
  *    동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이 DB의 지금 챕터를 읽어 이어서 판정하고, 그 결과가 같은 동기화의 결산 알림에 실린다.
  *    건너뛰지 않으면 같은 판정이 두 번 돌고, 챕터 배지가 결산보다 먼저 별도 알림으로 나간다(발급 자체는 UNIQUE로 한 번뿐). 소식·피드는 오름 처리가 그대로 보낸다.
  *    새 활동이 없는 경로는 정상 경로의 `JAM_SYNC_TRIGGERS`를 거치지 않으므로, 챕터가 올랐는지(`chapterRose`)를 돌려줘 호출부가 `chapter_reached`를 끝 판정에 더하게 한다
- *    (열기 없이 보류만 생긴 동기화에서 챕터가 올라도 판정이 밀리지 않는다).
- *  - 캡슐 소식(`notifyCapsuleAlerts`): 자동 채움 뒤에 보낸다. 이번 동기화에서 보류가 1에서 2가 되었으면(`blockedNow`) `capsule_jam_blocked` 한 건만 보내고 단계 알림은 보내지 않는다
+ *    (열기가 인벤토리에 막혀 멈춘 동기화에서 챕터가 올라도 판정이 밀리지 않는다).
+ *  - 캡슐 소식(`notifyCapsuleAlerts`): 자동 채움 뒤에 보낸다. 보관이 없어져 `blockedNow`는 항상 false, `alerts`는 항상 빈 배열이라 지금은 아무것도 보내지 않는다(소식 정리는 T5).
+ *    아래는 정리 전의 규칙이다. 이번 동기화에서 보류가 1에서 2가 되었으면(`blockedNow`) `capsule_jam_blocked` 한 건만 보내고 단계 알림은 보내지 않는다
  *    (둘째 보류로 단계가 의미를 잃는다). 아니면 DB가 돌려준 단계(`alerts`, 70·80·90)마다 `capsule_nearly_full`을 보낸다. 중복 방지는 DB가 한다(`user_capsules.alert_stage`와 1→2 전환) —
  *    그래서 묶음 키 없이 새 행을 만든다. 받는 사람은 동기화한 본인뿐이다. 소식 발송은 실패해도 던지지 않고 동기화를 막지 않는다.
  *  - 열린 캡슐이 하나라도 있으면 `capsule_unseen_results`에 **한 동기화당 한 건**을 남긴다(열린 게 없으면 남기지 않는다). `payload.events`가 열린 순서 그대로의 이벤트다 —
@@ -129,7 +130,7 @@ export interface SyncCapsuleAutoFillResult {
   /** 자동으로 열린 캡슐이 있는가 — 동기화가 캡슐 열기 지표(`jamTriggersForCapsuleOpen`)를 다시 판정할지 정한다 */
   opened: boolean
   /**
-   * 이번 동기화에서 챕터가 올랐는가(열기 없이 보류만 생긴 오름 포함). 챕터 배지 판정을 건너뛰고 불렀으므로(`skipRiseBadgeEvaluation`),
+   * 이번 동기화에서 챕터가 올랐는가(열기가 막힌 채 챕터만 오른 경우 포함). 챕터 배지 판정을 건너뛰고 불렀으므로(`skipRiseBadgeEvaluation`),
    * 정상 경로의 `JAM_SYNC_TRIGGERS`를 거치지 않는 호출부(새 활동이 없는 경로)는 이 값이 참일 때 `chapter_reached`를 끝 판정에 더한다
    */
   chapterRose: boolean
