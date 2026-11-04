@@ -43,6 +43,11 @@ export type PendingRewardInfo =
 
 interface Props {
   mission: MissionRow
+  /**
+   * 달성 조건 카드의 불릿(티켓 20261104_2148) — 서버가 조건 키와 지표 라벨로 만든 `{라벨} {값}{단위}` 목록.
+   * 있으면 그것만 그리고, `null`·미지정이면 `condition_text`, 그것도 없으면 목표 유형별 문구로 간다.
+   */
+  conditionBullets?: string[] | null
   isParticipating: boolean
   isCompleted: boolean
   progressValue: number
@@ -292,6 +297,7 @@ export function resolveClaimOutcome(status: number, ok: boolean, raw: unknown): 
 
 export default function MissionDetailClient({
   mission,
+  conditionBullets = null,
   isParticipating,
   isCompleted,
   progressValue,
@@ -566,7 +572,11 @@ export default function MissionDetailClient({
         <InfoCard>
           <SectionLabel>{d.missions.conditionTitle}</SectionLabel>
           <div className="flex flex-col gap-2">
-            {conditionText ? (
+            {conditionBullets && conditionBullets.length > 0 ? (
+              conditionBullets.map((bullet) => (
+                <ConditionRow key={bullet} tone="primary">{bullet}</ConditionRow>
+              ))
+            ) : conditionText ? (
               <ConditionRow tone="primary" breakKeep>{conditionText}</ConditionRow>
             ) : (
               <ConditionRow tone="primary">{goal.label} {goal.target}{goal.unit} 달성</ConditionRow>
@@ -576,7 +586,6 @@ export default function MissionDetailClient({
                 {t(d.missions.conditionActivityType, { type: ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type })}
               </ConditionRow>
             )}
-            <ConditionRow tone="muted">{d.missions.conditionAutoCompleteHint}</ConditionRow>
           </div>
         </InfoCard>
 

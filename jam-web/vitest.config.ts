@@ -52,6 +52,7 @@ export default defineConfig({
       '**/lib/missions/__tests__/checker-logic.test.ts',
       '**/lib/missions/__tests__/condition-keys.test.ts',
       '**/lib/missions/__tests__/condition-values.test.ts',
+      '**/lib/missions/__tests__/conditionBullets.test.ts',
       '**/lib/missions/__tests__/dedupeReward.test.ts',
       '**/lib/missions/__tests__/engineCondition.test.ts',
       '**/lib/missions/__tests__/exposure-logic.test.ts',

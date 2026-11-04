@@ -1,9 +1,10 @@
 /**
- * 미션 상세 달성 조건 카드 표시 분기 (티켓 20260927_0026).
+ * 미션 상세 달성 조건 카드 표시 분기 (티켓 20260927_0026, 20261104_2148).
  *
- * - `condition_text`가 있으면 첫 줄이 그 문장이고, 기존 「미션 완료 1 달성」 줄은 그리지 않는다.
+ * - 우선순위: 지표 라벨 불릿(`conditionBullets`) > `condition_text` > 목표 유형별 문구.
+ * - 불릿이 있으면 그 줄들만 그리고 `condition_text`·기존 「미션 완료 1 달성」 줄은 그리지 않는다.
  * - 값이 null·빈 문자열·공백이면 기존 표시(목표 유형별 문구)가 그대로 나온다.
- * - 활동 종류 줄과 회색 보조 문구는 두 경우 모두 나온다.
+ * - 활동 종류 줄은 세 경로 모두에서 나오고, 「참가한 뒤 조건을 달성하면…」 보조 문구 줄은 어느 경로에도 없다.
  *
  * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다
  * (`safeImageCallSites.test.tsx`와 같은 방식).
@@ -26,7 +27,7 @@ import MissionDetailClient from './MissionDetailClient'
 import { d } from '@/lib/i18n'
 
 const CONDITION_TEXT = '4주 안에 10km 이상을 5:30/km보다 빠르게, 3번 달리기'
-const HINT = '참가한 뒤 조건을 달성하면 미션이 자동으로 끝나요'
+const HINT = '참가한 뒤 조건을 달성하면 미션이 자동으로 끝나요'  // 삭제된 문구 — 어디에도 나오지 않아야 한다
 
 function render(
   conditionText: string | null | undefined,
@@ -37,6 +38,7 @@ function render(
     missionType?: string
     progressValue?: number
     conditionJson?: Record<string, unknown>
+    conditionBullets?: string[] | null
   } = {},
 ) {
   // 화면이 읽는 필드만 채운 최소 픽스처
@@ -60,37 +62,33 @@ function render(
       isCompleted={state.completed ?? false}
       progressValue={state.progressValue ?? 0}
       rewardBadges={[]}
+      conditionBullets={state.conditionBullets}
       locked={state.locked ?? false}
     />
   )
 }
 
 describe('MissionDetailClient 달성 조건 카드', () => {
-  it('conditionAutoCompleteHint가 확정 문구다', () => {
-    expect(d.missions.conditionAutoCompleteHint).toBe(HINT)
-  })
-
   it('condition_text가 있으면 첫 줄에 그 문장을 쓰고 「미션 완료 1 달성」은 그리지 않는다', () => {
     const html = render(CONDITION_TEXT)
     expect(html).toContain(CONDITION_TEXT)
     expect(html).not.toContain('미션 완료 1 달성')
   })
 
-  it('조건 문장 > 활동 종류 > 보조 문구 순서로 세 줄이 나온다', () => {
+  it('조건 문장 다음에 활동 종류 줄이 나오고 보조 문구 줄은 없다', () => {
     const html = render(CONDITION_TEXT)
     const a = html.indexOf(CONDITION_TEXT)
     const b = html.indexOf('달리기 활동')
-    const c = html.indexOf(HINT)
     expect(a).toBeGreaterThan(-1)
     expect(b).toBeGreaterThan(a)
-    expect(c).toBeGreaterThan(b)
+    expect(html).not.toContain(HINT)
   })
 
   it('condition_text가 null이면 기존 표시(미션 완료 1 달성)가 그대로 나온다', () => {
     const html = render(null)
     expect(html).toContain('미션 완료 1 달성')
     expect(html).toContain('달리기 활동')
-    expect(html).toContain(HINT)
+    expect(html).not.toContain(HINT)
   })
 
   it('condition_text가 undefined(옛 데이터)이거나 빈 문자열·공백이어도 기존 표시가 나온다', () => {
@@ -109,6 +107,52 @@ describe('MissionDetailClient 달성 조건 카드', () => {
   it('불릿은 장식이라 aria-hidden이다', () => {
     const html = render(CONDITION_TEXT)
     expect(html).toContain('aria-hidden="true"')
+  })
+})
+
+/** 지표 라벨 불릿 (티켓 20261104_2148) */
+describe('MissionDetailClient 달성 조건 카드: 지표 라벨 불릿', () => {
+  const BULLETS = ['아이템 배지 드랍 1회', '아이템 배지 픽업 1회']
+
+  it('불릿이 있으면 불릿 줄만 그리고 condition_text·기존 줄·보조 문구는 그리지 않는다', () => {
+    const html = render(CONDITION_TEXT, { conditionBullets: BULLETS })
+    for (const b of BULLETS) expect(html).toContain(b)
+    expect(html.indexOf(BULLETS[0])).toBeLessThan(html.indexOf(BULLETS[1]))
+    expect(html).not.toContain(CONDITION_TEXT)
+    expect(html).not.toContain('미션 완료 1 달성')
+    expect(html).not.toContain(HINT)
+  })
+
+  it('불릿 행은 breakKeep 없이 줄마다 한 행이다', () => {
+    const html = render(null, { conditionBullets: BULLETS })
+    const first = html.indexOf(BULLETS[0])
+    expect(html.slice(first - 40, first)).not.toContain('break-keep')
+  })
+
+  it('불릿이 있어도 활동 종류 줄은 뒤에 붙는다', () => {
+    const html = render(null, { conditionBullets: BULLETS })
+    expect(html.indexOf('달리기 활동')).toBeGreaterThan(html.indexOf(BULLETS[1]))
+  })
+
+  it('불릿이 null이면 condition_text로 폴백한다', () => {
+    const html = render(CONDITION_TEXT, { conditionBullets: null })
+    expect(html).toContain(CONDITION_TEXT)
+    expect(html).not.toContain(HINT)
+  })
+
+  it('불릿이 null이고 condition_text도 없으면 「{라벨} {n}{단위} 달성」으로 폴백한다 (옛 유형 포함)', () => {
+    const html = render(null, { conditionBullets: null, missionType: 'distance', conditionJson: { distance_km: 5 } })
+    expect(html).toContain('5km 달성')
+    expect(html).not.toContain(HINT)
+  })
+
+  it('불릿이 빈 배열이어도 카드가 비지 않고 폴백으로 그린다', () => {
+    const html = render(null, { conditionBullets: [] })
+    expect(html).toContain('미션 완료 1 달성')
+  })
+
+  it('d.missions에 보조 문구 상수가 남아 있지 않다', () => {
+    expect(Object.keys(d.missions)).not.toContain('conditionAutoCompleteHint')
   })
 })
 

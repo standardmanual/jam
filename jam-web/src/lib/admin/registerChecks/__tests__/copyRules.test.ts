@@ -54,13 +54,46 @@ describe('collectCopyErrors — 「획득」·「보상」으로 끝나는 문�
     }
   )
 
-  it.each(['10포인트를 획득해요', '획득한 배지를 모아 봐요', '보상을 받아요', '획득 후에 확인해요'])('설명의 «%s»는 걸리지 않는다', (text) => {
+  it.each(['아이템 배지를 획득해요', '획득한 배지를 모아 봐요', '보상을 받아요', '획득 후에 확인해요'])('설명의 «%s»는 걸리지 않는다', (text) => {
     expect(hits('description', text)).toBe(0)
   })
 
   it('제목·부제는 이 규칙을 적용하지 않는다', () => {
     expect(hits('title', '완료 보상')).toBe(0)
     expect(hits('subtitle', '배지 획득')).toBe(0)
+  })
+})
+
+describe('collectCopyErrors — 미션 설명의 보상(미션 설명만)', () => {
+  const missionHits = (field: CopyField, value: string) =>
+    collectCopyErrors('mission.', field, value).filter((e) => e.includes('미션 설명에는 보상을 쓰지 않아요')).length
+
+  it.each(['동기화하면 10포인트를 받아요', '아이템 배지를 놓으면 100잼이 쌓여요', '1,000 포인트를 모아 봐요', '완료하면 보상이 있어요'])(
+    '미션 설명의 «%s»는 걸린다',
+    (text) => {
+      expect(missionHits('description', text)).toBe(1)
+    }
+  )
+
+  it('오류 문장에 칸 이름과 고치는 방향이 들어간다', () => {
+    const [message] = collectCopyErrors('mission.', 'description', '10포인트를 받아요')
+    expect(message).toContain('mission.description: 미션 설명에는 보상을 쓰지 않아요.')
+    expect(message).toContain('유저 입장의 장면')
+  })
+
+  it.each(['아이템 배지를 한 번 놓아 봐요', '포인트 지갑을 열어 봐요', '잼 한 병을 나눠 봐요'])('숫자 없는 «%s»는 걸리지 않는다', (text) => {
+    expect(missionHits('description', text)).toBe(0)
+  })
+
+  it('미션 제목·부제는 이 규칙을 적용하지 않는다', () => {
+    expect(missionHits('title', '10포인트')).toBe(0)
+    expect(missionHits('subtitle', '보상 안내')).toBe(0)
+  })
+
+  it('카드 설명은 영향받지 않는다', () => {
+    expect(hits('description', '동기화하면 10포인트를 받아요')).toBe(0)
+    expect(hits('description', '완료하면 100잼이 쌓여요')).toBe(0)
+    expect(hits('description', '보상을 받아요')).toBe(0)
   })
 })
 

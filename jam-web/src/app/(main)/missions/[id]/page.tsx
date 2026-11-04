@@ -7,6 +7,8 @@ import { isMissionOpenToUser } from '@/lib/missions/tribe-access'
 import { withoutHiddenRewardBadgeIds } from '@/lib/missions/reward-badges'
 import { splitRewardBadges, type RewardBadgeSourceRow } from '@/lib/missions/locked-rewards'
 import { usesNightCondition } from '@/lib/missions/condition-keys'
+import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
+import { buildConditionBullets, conditionBulletKeys } from '@/lib/missions/conditionBullets'
 import MissionDetailClient, { type PendingRewardInfo } from './MissionDetailClient'
 
 type Props = { params: Promise<{ id: string }> }
@@ -105,9 +107,16 @@ export default async function MissionDetailPage({ params }: Props) {
   const visibilityResult = resolveMissionVisibility(mission, visibilityContext)
   const locked = visibilityResult.visibility === 'locked' || visibilityResult.visibility === 'hidden'
 
+  // 달성 조건 불릿(티켓 20261104_2148) — 조건 키를 지표 라벨 표로 이어 서버에서 만든다. 하나라도 못 만들면 null이라 기존 표시로 간다.
+  const bulletKeys = conditionBulletKeys(mission.mission_type, mission.condition_json)
+  const conditionBullets = bulletKeys.length > 0
+    ? buildConditionBullets(mission.mission_type, mission.condition_json, await getMetricLabels(bulletKeys))
+    : null
+
   return (
     <MissionDetailClient
       mission={clientMission}
+      conditionBullets={conditionBullets}
       isParticipating={!!participation}
       isCompleted={!!completion}
       progressValue={participation?.progress_value ?? 0}
