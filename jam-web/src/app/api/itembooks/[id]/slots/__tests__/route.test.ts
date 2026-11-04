@@ -233,7 +233,7 @@ describe('인벤토리 빈칸이 모자라면 아무것도 해제하지 않는�
       expect(text).not.toMatch(/\d/)
       expect(text).not.toMatch(/슬롯|개체|소각/)
     }
-    expect(shortNotice).toContain('인벤토리 빈칸이 모자라서 해제하지 못했어요')
+    expect(shortNotice).toContain('인벤토리 빈칸이 모자라서 빼지 못했어요')
   })
 
   it('인벤토리 행이 없으면 404이고 해제하지 않는다', async () => {
@@ -257,7 +257,7 @@ describe('해제 도중 경합으로 가득 차면 멈추고 해제한 수를 �
 
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({
-      error: '2개를 해제했지만 인벤토리 빈칸이 모자라 나머지 2개는 장착된 채로 남았어요. 인벤토리에서 드랍하거나 믹스해 빈칸을 만든 뒤 다시 해제해 주세요.',
+      error: '2개를 뺐지만 인벤토리 빈칸이 모자라 나머지 2개는 장착된 채로 남았어요. 인벤토리에서 드랍하거나 믹스해 빈칸을 만든 뒤 다시 빼 주세요.',
       released: 2,
       remaining: 2,
       code: INVENTORY_FULL_CODE,

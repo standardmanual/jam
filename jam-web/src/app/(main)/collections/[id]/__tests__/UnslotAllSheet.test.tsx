@@ -1,8 +1,8 @@
 /**
- * 컬렉션 상세의 «모두 해제하기» 확인 시트 (티켓 20261028_1420, 채원 사전 판정 2026-10-28)
+ * 컬렉션 상세의 «모두 빼기» 확인 시트 (티켓 20261028_1420, 채원 사전 판정 2026-10-28)
  *
  * - 겉모습(`UnslotAllSheetView`): 제목, 본문 1~3줄(등급이 정해졌으면 등급 줄, 완성 컬렉션이면 완성 기록 줄), 취소(secondary)와 확정(primary main) 한 쌍이
- *   같은 폭·같은 클래스, 제출 중 상태(확정 loading·«해제하는 중», 취소 disabled, 시트 닫기 막힘), 취소는 닫기만 한다
+ *   같은 폭·같은 클래스, 제출 중 상태(확정 loading·«빼는 중», 취소 disabled, 시트 닫기 막힘), 취소는 닫기만 한다
  * - 안내: 푸터 맨 위 InlineNotice 한 블록이고, «인벤토리 보기» 링크(`/inventory`)는 빈칸이 모자란 안내에만 붙는다. 안내가 보여도 확정은 켜져 있다
  * - 흐름(`runUnslotAll`): 성공이면 `onSuccess`, 빈칸 부족이면 링크가 있는 안내, 그 밖의 실패면 링크 없는 안내, 진행 중 중복 탭은 서버를 한 번만 부른다
  * - 응답 해석(`toUnslotAllOutcome`): 409와 `code`로만 빈칸 부족을 가른다
@@ -100,7 +100,7 @@ describe('UnslotAllSheetView — 문구와 본문', () => {
   it('제목과 첫 본문은 항상 보이고, 등급·완성 줄은 조건이 없으면 보이지 않는다', () => {
     const html = markup()
 
-    expect(html).toContain('장착한 배지를 모두 해제할까요?')
+    expect(html).toContain('장착한 배지를 모두 뺄까요?')
     expect(html).toContain('이 컬렉션에 장착한 배지가 모두 인벤토리로 돌아와요.')
     expect(html).not.toContain(copy.bodyTier)
     expect(html).not.toContain(copy.bodyCompleted)
@@ -161,7 +161,7 @@ describe('UnslotAllSheetView — 버튼', () => {
     expect(rest).toEqual([])
     expect(labelOf(cancel)).toBe('취소')
     expect(cancel.props.variant).toBe('secondary')
-    expect(labelOf(confirm)).toBe('모두 해제하기')
+    expect(labelOf(confirm)).toBe('모두 빼기')
     expect(confirm.props.variant).toBe('primary')
     expect(confirm.props.surface).toBe('main')
     // danger가 없다 — 배지는 인벤토리로 돌아오고 완성 기록도 남는다
@@ -200,11 +200,11 @@ describe('UnslotAllSheetView — 버튼', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 
-  it('제출 중이면 확정이 loading이고 라벨이 «해제하는 중»이며 취소가 막힌다', () => {
+  it('제출 중이면 확정이 loading이고 라벨이 «빼는 중»이며 취소가 막힌다', () => {
     const [cancel, confirm] = buttonsOf(viewElement({ submitting: true }))
 
     expect(confirm.props.loading).toBe(true)
-    expect(labelOf(confirm)).toBe('해제하는 중')
+    expect(labelOf(confirm)).toBe('빼는 중')
     expect(cancel.props.disabled).toBe(true)
   })
 
@@ -233,7 +233,7 @@ describe('UnslotAllSheetView — 안내', () => {
     const html = markup({ notice: { message: copy.shortNotice, inventoryLink: true } })
 
     expect(html).toContain('role="status"')
-    expect(html).toContain('인벤토리 빈칸이 모자라서 해제하지 못했어요')
+    expect(html).toContain('인벤토리 빈칸이 모자라서 빼지 못했어요')
     expect(html).toContain('href="/inventory"')
     expect(html).toContain('>인벤토리 보기<')
     expect(html).toContain('min-h-11')
@@ -244,7 +244,7 @@ describe('UnslotAllSheetView — 안내', () => {
   it('일반 실패 안내는 링크가 없다', () => {
     const html = markup({ notice: { message: copy.failed, inventoryLink: false } })
 
-    expect(html).toContain('해제하지 못했어요. 잠시 뒤 다시 시도해 주세요.')
+    expect(html).toContain('빼지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     expect(html).not.toContain('href="/inventory"')
     expect(html).not.toContain('인벤토리 보기')
   })
@@ -333,7 +333,7 @@ describe('toUnslotAllOutcome — 응답 해석', () => {
   })
 
   it('409와 code(inventory_full)면 서버 문구 그대로 빈칸 부족이다 — 일부 해제 문구도 같다', () => {
-    const partial = '2개를 해제했지만 인벤토리 빈칸이 모자라 나머지 2개는 장착된 채로 남았어요.'
+    const partial = '2개를 뺐지만 인벤토리 빈칸이 모자라 나머지 2개는 장착된 채로 남았어요.'
 
     expect(toUnslotAllOutcome(false, 409, { error: partial, released: 2, remaining: 2, code: INVENTORY_FULL_CODE })).toEqual({
       kind: 'full',

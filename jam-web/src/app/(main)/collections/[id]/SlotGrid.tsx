@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import Button from '@/components/ui/Button'
+import SlotActionPill from './SlotActionPill'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
 import { d, t } from '@/lib/i18n'
 import { shouldOpenCandidateSheet } from '@/lib/itembook/tier-badge-slots'
@@ -70,9 +71,9 @@ interface SlotGridProps {
    */
   tierUndecided?: boolean
   /**
-   * 이 컬렉션에 장착한 배지의 개수 — «모두 해제하기» 버튼을 그릴지 정한다(티켓 20261028_1420). 0이면 버튼이 없다.
+   * 이 컬렉션에 장착한 배지의 개수 — «모두 빼기» 버튼을 그릴지 정한다(티켓 20261028_1420). 0이면 버튼이 없다.
    * `badgeSlots`에서 `slot != null`을 세지 않고 page가 `user_item_book_slots` 전체 행 수를 내려보낸다: 소프트 삭제된 배지에 꽂힌
-   * 장착은 격자에 칸이 없어 칸 수로 세면 빠지는데, 이 장착이 바로 칸별 «해제»로 풀 수 없어 이 버튼이 있어야 하는 경우다.
+   * 장착은 격자에 칸이 없어 칸 수로 세면 빠지는데, 이 장착이 바로 칸별 «빼기»로 풀 수 없어 이 버튼이 있어야 하는 경우다.
    * 개수는 화면 문구에 쓰지 않는다(격자에 보이는 칸 수와 어긋날 수 있다).
    */
   slotCount?: number
@@ -136,7 +137,7 @@ export default function SlotGrid({
    * 골랐을 때 호출할 API(POST vs PATCH)와 안내 문구만 이 값으로 갈린다.
    */
   const [swapSlotId, setSwapSlotId] = useState<string | null>(null)
-  /** «모두 해제하기» 확인 시트가 열려 있는지(티켓 20261028_1420) */
+  /** «모두 빼기» 확인 시트가 열려 있는지(티켓 20261028_1420) */
   const [unslotAllOpen, setUnslotAllOpen] = useState(false)
   /** 일괄 해제 요청이 도는 중 — 시트의 제출 중 표시·닫기 차단과 아래 `bulkBusy`가 본다 */
   const [bulkRequesting, setBulkRequesting] = useState(false)
@@ -167,7 +168,7 @@ export default function SlotGrid({
   /** 장착 요청이 도는 중 — 시트 안의 행 억제·진행 표시·닫기 차단이 모두 이 값을 본다. */
   const sheetBusy = pendingCellKey != null
 
-  /** 일괄 해제가 진행 중이거나 그 결과 새로고침을 기다리는 중 — 트리거와 칸의 추가·해제·교체 버튼을 막는다 */
+  /** 일괄 해제가 진행 중이거나 그 결과 새로고침을 기다리는 중 — 트리거와 칸의 추가·빼기·교체 버튼을 막는다 */
   const bulkBusy = bulkRequesting || refreshing
 
   // 장착 모드로 진입하면 슬롯 그리드가 화면에 들어오게 한다(스토리 텍스트가 길어 스크롤이 필요)
@@ -288,8 +289,8 @@ export default function SlotGrid({
 
   /**
    * 해제 요청 — 실패 사유를 문자열로 돌려주고(성공이면 null) 표시 위치는 호출부가 정한다.
-   * `requestSlot`/`requestSwap`과 같은 패턴이다. 그리드의 «해제» 버튼(그리드 배너)과
-   * 교체 시트 안의 «해제하기» 보조 액션(시트 배너, 20260910_0015 후속)이 함께 쓴다.
+   * `requestSlot`/`requestSwap`과 같은 패턴이다. 그리드의 «빼기» 버튼(그리드 배너)과
+   * 교체 시트 안의 «빼기» 보조 액션(시트 배너, 20260910_0015 후속)이 함께 쓴다.
    */
   async function requestUnslot(cellKey: string, slotId: string): Promise<string | null> {
     setPendingCellKey(cellKey)
@@ -319,7 +320,7 @@ export default function SlotGrid({
     }
   }
 
-  /** 그리드의 «해제» 버튼 경로 — 실패 사유는 그리드 상단 배너에 띄운다(기존 동작). */
+  /** 그리드의 «빼기» 버튼 경로 — 실패 사유는 그리드 상단 배너에 띄운다(기존 동작). */
   async function handleUnslot(cellKey: string, slotId: string) {
     setError(null)
     setError(await requestUnslot(cellKey, slotId))
@@ -366,7 +367,7 @@ export default function SlotGrid({
   }
 
   /**
-   * 교체 시트 안의 «해제하기» 경로 — 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
+   * 교체 시트 안의 «빼기» 경로 — 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
    * 대체해 순수 해제 경로가 사라지는 회귀) 반영. 시트를 연 대상(`sheetView`)을 그대로
    * 쓴다 — 그리드 버튼과 달리 cellKey·slotId를 인자로 받지 않는다.
    */
@@ -496,57 +497,57 @@ export default function SlotGrid({
               undiscovered={isUndiscovered}
               highlighted={slotMode && !readOnly && isSlottable}
             >
-              {/* 슬롯 해제/교체 버튼 — 같은 배지의 미장착 후보가 있으면 "교체"가 이 자리를
+              {/* 슬롯 빼기/교체 버튼 — 같은 배지의 미장착 후보가 있으면 "교체"가 이 자리를
                   대신한다(20260910_0015). 교체는 장착 쪽에 가까운 양성 액션이라 장착과
-                  같은 톤(--accent)을 쓴다 — 완료 기록의 판단 근거 참고. 후보가 없어
-                  단순 해제만 가능할 때는 20260910_0025가 정한 대로 그레이를 유지한다
-                  (장착=양성/primary, 해제=취소성/그레이 구분). */}
+                  같은 톤(accent)을 쓴다 — 완료 기록의 판단 근거 참고. 후보가 없어
+                  단순 빼기만 가능할 때는 취소성 액션이라 그레이(neutral)를 쓴다
+                  (장착=양성/accent, 빼기=취소성/그레이 구분, 티켓 20261104_2153). */}
               {isSlotted && !readOnly && (
                 candidates.length > 0 ? (
-                  <button
-                    type="button"
+                  <SlotActionPill
+                    tone="accent"
+                    pending={pending}
+                    disabled={bulkBusy}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSwapButton(badgeSlot) }}
-                    disabled={pending || bulkBusy}
-                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--accent)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
                   >
-                    {pending ? '…' : d.itembooks.swapButton}
-                  </button>
+                    {d.itembooks.swapButton}
+                  </SlotActionPill>
                 ) : (
-                  <button
-                    type="button"
+                  <SlotActionPill
+                    tone="neutral"
+                    pending={pending}
+                    disabled={bulkBusy}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(cellKey, slot!.id) }}
-                    disabled={pending || bulkBusy}
-                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[var(--background-inverse)] text-[var(--snow)] transition-all disabled:opacity-40"
                   >
-                    {pending ? '…' : d.itembooks.unslotButton}
-                  </button>
+                    {d.itembooks.unslotButton}
+                  </SlotActionPill>
                 )
               )}
 
               {/* 슬롯 장착 버튼 */}
               {isSlottable && !readOnly && (
-                <button
-                  type="button"
+                <SlotActionPill
+                  tone="accent"
+                  pending={pending}
+                  disabled={bulkBusy}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSlotButton(badgeSlot) }}
-                  disabled={pending || bulkBusy}
-                  className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--accent)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
                 >
-                  {pending ? '…' : d.itembooks.slotButton}
-                </button>
+                  {d.itembooks.slotButton}
+                </SlotActionPill>
               )}
             </BadgeGridCard>
           )
         })}
       </div>
 
-      {/* 모두 해제하기 — 격자 바로 아래 한 줄(티켓 20261028_1420, 채원 판정). 본인 화면이고 장착이 하나라도 있을 때만 그린다.
-          `bg-surface!`: 이 화면은 배경 영상·이미지·색 테마가 흔해 투명 outline은 글자와 테두리가 사라진다. 흰 면 + 1px 테두리로
-          격자 카드와 같은 면 레시피를 쓴다(Button에 media용 면이 없어서 쓰는 절충). 눌러도 바로 해제하지 않고 확인 시트를 연다. */}
+      {/* 모두 빼기 — 격자 바로 아래 한 줄(티켓 20261028_1420, 채원 판정). 본인 화면이고 장착이 하나라도 있을 때만 그린다.
+          화면의 유일한 primary라 검정 채움(Button primary)을 그대로 쓴다 — 어떤 배경 위에서도 보여 면 덮어쓰기가 필요 없다(티켓 20261104_2153).
+          눌러도 바로 빼지 않고 확인 시트를 연다. */}
       {!readOnly && slotCount > 0 && (
         <Button
-          variant="outline"
+          variant="primary"
           fullWidth
-          className="mt-3 bg-surface! whitespace-nowrap"
+          className="mt-3 whitespace-nowrap"
           disabled={sheetBusy || bulkBusy}
           onClick={() => setUnslotAllOpen(true)}
         >
@@ -554,7 +555,7 @@ export default function SlotGrid({
         </Button>
       )}
 
-      {/* 모두 해제하기 확인 시트 — 트리거와 달리 본인 화면이면 항상 그려 둔다. 성공 뒤 새로고침으로 트리거가 사라져도
+      {/* 모두 빼기 확인 시트 — 트리거와 달리 본인 화면이면 항상 그려 둔다. 성공 뒤 새로고침으로 트리거가 사라져도
           시트가 같이 사라지지 않아 닫힘 트랜지션이 끝까지 간다. 레이어는 BottomSheet 포털 + z-50(기존 층 서열)이다. */}
       {!readOnly && (
         <UnslotAllSheet
@@ -610,7 +611,7 @@ export default function SlotGrid({
           if (!sheetView) return
           void handleSelectCandidate(cellKeyOf(sheetView), candidate.id)
         }}
-        // 교체 시트에서만 "해제하기" 보조 액션을 보여준다(장착 시트는 아직 채워진 슬롯이
+        // 교체 시트에서만 "빼기" 보조 액션을 보여준다(장착 시트는 아직 채워진 슬롯이
         // 없으므로 해제할 대상 자체가 없다). 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
         // 대체해 순수 해제 경로가 사라지는 회귀) 반영 — 20260910_0015 후속.
         secondaryAction={

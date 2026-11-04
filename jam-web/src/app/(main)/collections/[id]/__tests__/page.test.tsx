@@ -187,7 +187,7 @@ async function renderGrid(searchParams: Record<string, string> = {}) {
   const gridProps = grid?.props as React.ComponentProps<typeof SlotGrid> | undefined
   const heroProps = hero.props as React.ComponentProps<typeof ItemBookHeroSection>
   const hint = findElements(tree, (el) => el.type === 'p' && textOf(el).includes('등급으로 모으고 있어요'))
-  return { tree, gridProps, heroProps, hintTexts: hint.map(textOf) }
+  return { tree, gridProps, heroProps, hintTexts: hint.map(textOf), hintClasses: hint.map((el) => String((el.props as { className?: string }).className ?? '')) }
 }
 
 describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
@@ -221,7 +221,19 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.badgeSlots[2].candidates).toHaveLength(0)
     expect(heroProps.totalBadgeCount).toBe(9)
     expect(heroProps.slottedCount).toBe(1)
-    expect(hintTexts).toEqual(['Rare 등급으로 모으고 있어요. 장착한 배지를 모두 해제하면 다른 등급으로 다시 정할 수 있어요.'])
+    expect(hintTexts).toEqual(['Rare 등급으로 모으고 있어요.\n장착한 배지를 모두 빼면 다른 등급으로 다시 정할 수 있어요.'])
+  })
+
+  it('등급 안내의 \n이 줄바꿈으로 보이도록 whitespace-pre-line을 준다 (티켓 20261104_2153)', async () => {
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = [slotRow('이름1-rare')]
+
+    const { hintTexts, hintClasses } = await renderGrid()
+
+    expect(hintTexts).toHaveLength(1)
+    expect(hintTexts[0].split('\n')).toEqual(['Rare 등급으로 모으고 있어요.', '장착한 배지를 모두 빼면 다른 등급으로 다시 정할 수 있어요.'])
+    expect(hintClasses[0]).toContain('whitespace-pre-line')
+    expect(hintClasses[0]).toContain('break-keep')
   })
 
   it('Common을 고정해도 안내에 등급 이름이 나온다', async () => {
@@ -231,7 +243,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     const { gridProps, hintTexts } = await renderGrid()
 
     expect(gridProps?.badgeSlots).toHaveLength(9)
-    expect(hintTexts).toEqual(['Common 등급으로 모으고 있어요. 장착한 배지를 모두 해제하면 다른 등급으로 다시 정할 수 있어요.'])
+    expect(hintTexts).toEqual(['Common 등급으로 모으고 있어요.\n장착한 배지를 모두 빼면 다른 등급으로 다시 정할 수 있어요.'])
   })
 
   it('아무것도 장착하지 않았으면 칸이 36개가 아니라 진행도 분모(9)와 같고 안내 한 줄이 없다', async () => {
@@ -251,7 +263,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.badgeSlots[1].candidates).toEqual([])
   })
 
-  it('장착을 모두 해제하면(슬롯 0개) 같은 자리의 등급 없는 칸으로 돌아온다', async () => {
+  it('장착을 모두 빼면(슬롯 0개) 같은 자리의 등급 없는 칸으로 돌아온다', async () => {
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = [slotRow('이름1-rare')]
     const fixed = await renderGrid()
@@ -339,9 +351,9 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
   })
 })
 
-// ── «모두 해제하기» 버튼에 내려보내는 값 (티켓 20261028_1420) ───────────────────────────────
+// ── «모두 빼기» 버튼에 내려보내는 값 (티켓 20261028_1420) ───────────────────────────────
 
-describe('컬렉션 상세 페이지 — 모두 해제하기에 내려보내는 값', () => {
+describe('컬렉션 상세 페이지 — 모두 빼기에 내려보내는 값', () => {
   let errorSpy: MockInstance
 
   beforeEach(() => {
@@ -385,7 +397,7 @@ describe('컬렉션 상세 페이지 — 모두 해제하기에 내려보내는 
 
     const { gridProps } = await renderGrid()
 
-    // badgeSlots에서 slot != null을 세면 0이라 버튼이 사라진다 — 칸별 «해제»로 풀 수 없는 장착이 막다른 길이 된다
+    // badgeSlots에서 slot != null을 세면 0이라 버튼이 사라진다 — 칸별 «빼기»로 풀 수 없는 장착이 막다른 길이 된다
     expect(gridProps?.badgeSlots.filter((s) => s.slot != null)).toHaveLength(0)
     expect(gridProps?.slotCount).toBe(1)
     expect(gridProps?.tierFixed).toBe(true)

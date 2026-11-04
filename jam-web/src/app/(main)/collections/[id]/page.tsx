@@ -345,7 +345,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
             {/* 컬렉션 등급 안내 한 줄 — 등급이 정해졌고 본인 화면일 때만. 박스·아이콘 없이 진행도 줄(ItemBookHeroSection의 mx-2)과
                 시작선을 맞춘 12px 보조 문구다. 등급이 없는 상태의 규칙은 선택 시트 안내문이 말한다. */}
             {tierLabel && (
-              <p className="mx-2 text-xs text-muted text-left break-keep wrap-break-word text-balance">
+              <p className="mx-2 text-xs text-muted text-left whitespace-pre-line break-keep wrap-break-word text-balance">
                 {t(d.itembooks.tierFixedHint, { tier: tierLabel })}
               </p>
             )}
@@ -356,8 +356,8 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
               badgeLinkQuery={!isOwnBook && subjectUsername ? `?u=${subjectUsername}` : ''}
               slotMode={slotMode}
               tierUndecided={tierMode && !collectionTier}
-              // «모두 해제하기»용 값(티켓 20261028_1420). 개수는 `badgeSlots`가 아니라 `slots` 전체로 센다 — 소프트 삭제된 배지에 꽂힌
-              // 장착은 칸이 없어 `badgeSlots`에서는 빠지는데, 칸별 «해제»로 풀 수 없는 그 장착이 이 버튼의 존재 이유다.
+              // «모두 빼기»용 값(티켓 20261028_1420). 개수는 `badgeSlots`가 아니라 `slots` 전체로 센다 — 소프트 삭제된 배지에 꽂힌
+              // 장착은 칸이 없어 `badgeSlots`에서는 빠지는데, 칸별 «빼기»로 풀 수 없는 그 장착이 이 버튼의 존재 이유다.
               slotCount={slots.length}
               tierFixed={Boolean(collectionTier)}
               completed={isCompleted}
