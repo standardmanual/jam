@@ -443,6 +443,7 @@ export default function ShapeStudioPanel({
               variant="ghost"
               size="sm"
               onClick={() => setScreenTab(tabKey)}
+              disabled={exportBusy}
               className={`h-7 flex-1 rounded-full px-2 text-[11px] ${
                 screenTab === tabKey
                   ? 'bg-white text-[#1e2322] shadow-xs hover:bg-white'
