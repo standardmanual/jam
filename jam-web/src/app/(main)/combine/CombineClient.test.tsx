@@ -1018,3 +1018,15 @@ describe('CombineClient — 믹서 칸 수와 설명 (티켓 20261018_0055 2회)
     expect(normal.props.rewardLocked).toBe(false)
   })
 })
+
+describe('RecipeRewardRow — 제목 굵기 (티켓 20261104_2242)', () => {
+  it('레시피 제목은 미션 목록 제목과 같은 굵은 글씨(ListRowCardTitle)로 그려지고 슬롯 개수는 굵지 않다', () => {
+    const html = renderToStaticMarkup(<RecipeRewardRow title="레시피 제목" slotCount={3} badges={[]} points={10} />)
+    const title = /<span class="([^"]*)">레시피 제목<\/span>/.exec(html)?.[1] ?? ''
+    expect(title).toContain('font-bold')
+    expect(title).toContain('text-base')
+    expect(title).toContain('truncate')
+    const count = /<span class="([^"]*)">3<\/span>/.exec(html)?.[1] ?? ''
+    expect(count).not.toContain('font-bold')
+  })
+})

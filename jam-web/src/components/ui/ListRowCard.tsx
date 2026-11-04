@@ -52,6 +52,15 @@ const TONE_CLASS: Record<ListRowCardTone, string> = {
   tint: 'bg-background-secondary',
 }
 
+/**
+ * 행 제목 한 줄 — 미션 목록 카드 제목(16px·700·`--foreground`)과 같은 모양이다(티켓 20261104_2242).
+ * `children`으로 텍스트 영역을 직접 그리는 행(제목 옆에 칩·숫자를 붙이는 레시피 행 등)은 제목을 따로 스타일하지 말고 이 컴포넌트를 쓴다.
+ * 그래야 같은 종류의 행이 어디에서 그려져도 제목 굵기가 같다. `title` prop 경로(보통 굵기)는 바꾸지 않았다 — 그 경로를 쓰는 다른 화면은 이번 범위 밖이다.
+ */
+export function ListRowCardTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <span className={['text-base font-bold text-foreground truncate', className].filter(Boolean).join(' ')}>{children}</span>
+}
+
 export default function ListRowCard({
   tone = 'default',
   icon,

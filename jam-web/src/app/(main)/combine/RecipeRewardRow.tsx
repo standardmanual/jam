@@ -1,5 +1,5 @@
 import SafeImage from '@/components/SafeImage'
-import ListRowCard from '@/components/ui/ListRowCard'
+import ListRowCard, { ListRowCardTitle } from '@/components/ui/ListRowCard'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { CoinIcon, PackageIcon } from '@/components/ui/icons'
@@ -121,9 +121,8 @@ export default function RecipeRewardRow({
   return (
     <ListRowCard icon={icon} trailing={trailing} onClick={onClick} className={className}>
       <p className="flex items-center gap-1 min-w-0">
-        <span className="text-base text-foreground truncate">
-          {title}
-        </span>
+        {/* 제목은 굵게 — 미션 목록과 같은 모양을 ListRowCardTitle 한 곳에서 받는다(티켓 20261104_2242) */}
+        <ListRowCardTitle>{title}</ListRowCardTitle>
         <span className="shrink-0 w-5 h-5 flex items-center justify-center text-xs leading-none text-[var(--muted)] bg-background rounded-full">
           {slotCount}
         </span>
