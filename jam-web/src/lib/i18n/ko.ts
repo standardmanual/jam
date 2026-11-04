@@ -912,15 +912,11 @@ export const ko = {
     engineConditionNotAchieved: '아직 미션을 달성하지 못했어요',
     engineConditionAchieved: '미션을 달성했어요',
     progressPct: '{pct}% 달성',
-    rewardSectionTitle: '보상',
     /** 20260827_014 — 「JAM 포인트」·「1200P」 표기는 UX 가이드 §3 Bad. 「1,200 포인트」로 통일 */
     rewardPointsLine: '{points} 포인트',
     /** 보상 배지 행 캡션(티켓 20260915_2244)
-     * 20260916_0856: rewardPointsCaption과 문형을 맞춰 "완료하면 ~해요"로 통일 */
+     * 20260916_0856: "완료하면 ~해요"로 통일. 포인트 행의 «완료하면 바로 받아요» 캡션은 티켓 20261104_2150에서 뺐다 */
     rewardBadgeCaption: '완료하면 획득해요',
-    /** 보상 포인트 행 캡션 — §1.3 "지급"은 어드민 전용이라 유저 화면에 쓰지 않는다(티켓 20260915_2244)
-     * 20260916_0856: rewardBadgeCaption과 문형을 맞춰 "완료하면 ~해요"로 통일 */
-    rewardPointsCaption: '완료하면 바로 받아요',
     statusViewButton: '미션 상황 보기',
     joinConfirmBody: '한번 참가하면 취소할 수 없어요. 참가할까요?',
     joinConfirmButton: '참가 확정',

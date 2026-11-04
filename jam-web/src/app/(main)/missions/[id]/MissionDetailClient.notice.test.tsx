@@ -257,15 +257,31 @@ describe('미션 상세 — 보상 카드의 잠긴 보상 행', () => {
     expect(html).not.toContain('href="/badges')
   })
 
-  it('잠긴 보상만 있어도 보상 카드가 그려진다', () => {
+  it('잠긴 보상만 있어도 보상 박스가 그려진다', () => {
     const html = render({ lockedRewardRarities: ['rare'] })
 
-    expect(html).toContain(d.missions.rewardSectionTitle)
     expect(html).toContain(LOCKED_NAME)
   })
 
-  it('보상이 아무것도 없으면 보상 카드가 없다', () => {
-    expect(render({})).not.toContain(d.missions.rewardSectionTitle)
+  it('보상이 아무것도 없으면 보상 박스가 없다', () => {
+    const html = render({})
+
+    expect(html).not.toContain(LOCKED_NAME)
+    expect(html).not.toContain(d.missions.rewardBadgeCaption)
+  })
+
+  it('보상 영역에 «보상» 레이블이나 «완료하면 바로 받아요» 문구가 없다', () => {
+    const html = render({ lockedRewardRarities: ['rare'] })
+
+    expect(html).not.toContain('>보상<')
+    expect(html).not.toContain('완료하면 바로 받아요')
+  })
+
+  it('보상 박스가 달성 조건 카드보다 위에 있다', () => {
+    const html = render({ lockedRewardRarities: ['rare'] })
+
+    expect(html.indexOf(LOCKED_NAME)).toBeGreaterThan(-1)
+    expect(html.indexOf(LOCKED_NAME)).toBeLessThan(html.indexOf(d.missions.conditionTitle))
   })
 
   it('잠긴 보상이 여러 개면 개수만큼 행이 있다', () => {

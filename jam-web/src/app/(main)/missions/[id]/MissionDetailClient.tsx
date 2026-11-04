@@ -465,6 +465,63 @@ export default function MissionDetailClient({
           </InfoCard>
         )}
 
+        {/* ── 보상 — 달성 조건 위. 레이블·바깥 흰 카드 없이 미색(tint) 박스(테두리 없음)로 보인다 (티켓 20261104_2150) ── */}
+        {(rewardBadges.length > 0 || lockedRewardRarities.length > 0 || mission.reward_points) && (
+          <div className="flex flex-col gap-2">
+            {rewardBadges.map((badge) => (
+              <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
+                {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
+                <Card tone="tint">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <SafeImage
+                        src={badge.image_url}
+                        alt={badge.name}
+                        width={52}
+                        height={52}
+                        className="w-[52px] h-[52px] object-contain"
+                        fallback={<span className="text-2xl">🏅</span>}
+                      />
+                    </div>
+                    <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+                      <RarityBadge rarity={badge.rarity} />
+                      <p className="text-[16px] font-bold leading-[1.2] text-foreground truncate">{badge.name}</p>
+                      <p className="text-[13px] leading-[1.3] text-muted">{d.missions.rewardBadgeCaption}</p>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+
+            {/* 잠긴 아이템 배지 보상 행: 이름·그림·링크 없이 잠금 타일 + 등급 칩 (운영 로직 7.3절) */}
+            {lockedRewardRarities.map((rarity, index) => (
+              <Card key={`locked-${index}`} tone="tint">
+                <LockedRewardRow rarity={rarity} caption={d.missions.rewardBadgeCaption} />
+              </Card>
+            ))}
+
+            {/* 포인트 보상 행: ListRowCard + 서클 CoinIcon. 캡션 없이 «N 포인트»만 둔다 */}
+            {mission.reward_points ? (
+              <ListRowCard
+                tone="tint"
+                icon={
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'var(--accent)' }}>
+                    <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
+                  </div>
+                }
+                title={t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
+              />
+            ) : null}
+
+            {mission.max_completions && (
+              <p className="text-xs text-muted">
+                {t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* ── 달성 조건 카드 ── */}
         <InfoCard>
           <SectionLabel>{d.missions.conditionTitle}</SectionLabel>
@@ -552,64 +609,6 @@ export default function MissionDetailClient({
                 </div>
                 <ProgressBar percent={isCompleted ? 100 : progressPct} />
               </div>
-            )}
-          </InfoCard>
-        )}
-
-        {/* ── 보상 카드 ── */}
-        {(rewardBadges.length > 0 || lockedRewardRarities.length > 0 || mission.reward_points) && (
-          <InfoCard>
-            <SectionLabel>{d.missions.rewardSectionTitle}</SectionLabel>
-
-            <div className="flex flex-col gap-3">
-              {rewardBadges.map((badge) => (
-                <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
-                  {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      <SafeImage
-                        src={badge.image_url}
-                        alt={badge.name}
-                        width={52}
-                        height={52}
-                        className="w-[52px] h-[52px] object-contain"
-                        fallback={<span className="text-2xl">🏅</span>}
-                      />
-                    </div>
-                    <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
-                      <RarityBadge rarity={badge.rarity} />
-                      <p className="text-[16px] font-bold leading-[1.2] text-foreground truncate">{badge.name}</p>
-                      <p className="text-[13px] leading-[1.3] text-muted">{d.missions.rewardBadgeCaption}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-
-              {/* 잠긴 아이템 배지 보상 행: 이름·그림·링크 없이 잠금 타일 + 등급 칩 (운영 로직 7.3절) */}
-              {lockedRewardRarities.map((rarity, index) => (
-                <LockedRewardRow key={`locked-${index}`} rarity={rarity} caption={d.missions.rewardBadgeCaption} />
-              ))}
-
-              {/* 포인트 보상 행: ListRowCard + 서클 CoinIcon */}
-              {mission.reward_points ? (
-                <ListRowCard
-                  tone="tint"
-                  icon={
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'var(--accent)' }}>
-                      <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
-                    </div>
-                  }
-                  title={t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
-                  subtitle={d.missions.rewardPointsCaption}
-                />
-              ) : null}
-            </div>
-
-            {mission.max_completions && (
-              <p className="text-xs text-muted">
-                {t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}
-              </p>
             )}
           </InfoCard>
         )}
