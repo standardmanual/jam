@@ -75,6 +75,9 @@ export function TopNav({
                       width: 44, height: 44, border: 'none', background: 'transparent',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: 'var(--foreground)', flexShrink: 0,
+                      // 제목이 chevron 바로 옆에 붙도록 오른쪽 여백을 당긴다(띄어쓰기 한 칸 정도). 터치 영역 44×44는 그대로 두려고
+                      // 버튼을 제목 위 층에 올린다(티켓 20261104_2131)
+                      marginRight: -17, position: 'relative', zIndex: 1,
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">
@@ -89,6 +92,9 @@ export function TopNav({
                       width: 44, height: 44, border: 'none', background: 'transparent',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: 'var(--foreground)', flexShrink: 0,
+                      // 제목이 chevron 바로 옆에 붙도록 오른쪽 여백을 당긴다(띄어쓰기 한 칸 정도). 터치 영역 44×44는 그대로 두려고
+                      // 버튼을 제목 위 층에 올린다(티켓 20261104_2131)
+                      marginRight: -17, position: 'relative', zIndex: 1,
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">

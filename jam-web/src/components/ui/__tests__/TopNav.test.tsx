@@ -96,3 +96,15 @@ describe('TopNav 헤더 면과 버튼', () => {
     expect(html).toContain('bg-surface border border-border')
   })
 })
+
+describe('TopNav 뒤로가기와 제목 간격 (티켓 20261104_2131)', () => {
+  it('뒤로가기 버튼은 오른쪽 여백을 17px 당겨 제목을 chevron 바로 옆에 붙이고, 터치 영역을 지키려고 제목 위 층에 놓는다', () => {
+    const html = renderToStaticMarkup(<TopNav title="미션" />)
+    const back = /<button[^>]*aria-label="뒤로"[^>]*>/.exec(html)?.[0] ?? ''
+    expect(back).toContain('margin-right:-17px')
+    expect(back).toContain('position:relative')
+    expect(back).toContain('z-index:1')
+    expect(back).toContain('width:44px')
+    expect(html).toContain('미션')
+  })
+})
