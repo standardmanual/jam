@@ -486,8 +486,8 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       </span>
                     )}
 
-                    {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014) */}
-                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', color: C_REWARD, lineHeight: 'var(--text-xs--line-height)' }}>
+                    {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014). 보상 글자는 굵게(티켓 20261104_2316) */}
+                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', fontWeight: 700, color: C_REWARD, lineHeight: 'var(--text-xs--line-height)' }}>
                       {reward}
                     </span>
                   </div>

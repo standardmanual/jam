@@ -122,4 +122,12 @@ describe('미션 목록 — 잠긴 보상 배지', () => {
     expect(lockedSpan.includes('href=')).toBe(false)
     expect(lockedSpan.includes('<img')).toBe(false)
   })
+
+  it('보상 줄 글자는 굵게(700) 그려진다 (티켓 20261104_2316)', () => {
+    const html = render(item({ reward_badge_ids: [OPEN_ID], reward_points: 300 }))
+    const rewardLine = html.slice(html.lastIndexOf('<span', html.indexOf('주말 러너 배지')))
+    const wrapper = html.slice(html.lastIndexOf('display:flex;flex-wrap:wrap', html.indexOf('주말 러너 배지')))
+    expect(wrapper.slice(0, wrapper.indexOf('>'))).toContain('font-weight:700')
+    expect(rewardLine).toContain('주말 러너 배지')
+  })
 })
