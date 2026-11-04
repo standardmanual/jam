@@ -97,6 +97,20 @@ describe('프로필의 캡슐 위젯', () => {
   })
 })
 
+/** 프로필 잔액 (티켓 20261104_2319 3회차) — 값과 «포인트» 글자가 PointText 한 덩어리(point-text)로 그려진다. */
+describe('프로필의 포인트 잔액', () => {
+  it('값과 단위를 point-text로 그린다 (24px 굵게)', () => {
+    const html = render({ pointBalance: 1200 })
+    expect(html).toMatch(/<span class="text-point-text text-2xl font-bold tabular-nums"[^>]*>1,200 포인트<\/span>/)
+    expect(html).not.toContain('--link)] tabular-nums')
+  })
+
+  it('0도 그리고, 값이 null이면 그리지 않는다', () => {
+    expect(render({ pointBalance: 0 })).toContain('>0 포인트</span>')
+    expect(render({ pointBalance: null })).not.toContain('text-point-text')
+  })
+})
+
 /** 가진 잼 줄 삭제 (티켓 20261028_1739 3회) — 새 게이지가 마지막 잼 양을 대신 보이므로 프로필은 잔액 숫자를 그리지 않는다. */
 describe('프로필에는 가진 잼 줄이 없다', () => {
   const label = '가진 잼'

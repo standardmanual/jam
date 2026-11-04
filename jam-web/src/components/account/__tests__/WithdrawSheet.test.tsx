@@ -196,7 +196,9 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
     expect(html).toContain('>7개</dd>')
     expect(html).toContain('>20개</dd>')
     expect(html).toContain('>340</dd>')
-    expect(html).toContain('>1,200 포인트</dd>')
+    expect(html).toContain('>1,200 포인트</span></dd>')
+    // 포인트 행 값만 point-text로 칠한다 (티켓 20261104_2319 3회차)
+    expect(html).toContain('<span class="text-point-text"')
     expect(html).toContain('text-muted')
     expect(html).not.toContain('aria-busy="true"')
   })
@@ -211,14 +213,14 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
     expect(html.match(/<dt /g)).toHaveLength(5)
     expect(html.match(/>0개<\/dd>/g)).toHaveLength(3)
     expect(html).toContain('>0</dd>')
-    expect(html).toContain('>0 포인트</dd>')
+    expect(html).toContain('>0 포인트</span></dd>')
   })
 
   it('큰 수는 천 단위로 끊고 값은 한 줄이다', () => {
     const html = markup({
       summary: { status: 'ready', summary: { ...SUMMARY, pointBalance: 1234567, jamBalance: 98765 } },
     })
-    expect(html).toContain('>1,234,567 포인트</dd>')
+    expect(html).toContain('>1,234,567 포인트</span></dd>')
     expect(html).toContain('>98,765</dd>')
   })
 

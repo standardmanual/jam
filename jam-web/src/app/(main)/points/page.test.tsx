@@ -264,6 +264,25 @@ describe('포인트 화면 — 내역 행', () => {
     expect(text).not.toContain('--1,500')
   })
 
+  it('금액은 부호까지 point-text로 칠한다 — 차감도 같은 색이다 (티켓 20261104_2319)', async () => {
+    fetchMock.mockResolvedValue(
+      page([
+        item({ id: 'plus', title: '한강 러너', amount: 30 }),
+        item({ id: 'minus', title: d.points.reasonKindAdminAdjustment, amount: -1500, reason: 'admin_deduct' }),
+      ])
+    )
+    await mountAndLoad()
+
+    const html = renderHtml()
+
+    expect(html).toContain('>+30 포인트</span>')
+    expect(html).toContain('>−1,500 포인트</span>')
+    expect(html.match(/<span class="text-point-text"/g)).toHaveLength(2)
+    // 잔액 숫자 칸은 같은 토큰의 클래스를 직접 쓴다(자릿수 팝인 예외)
+    expect(html).toMatch(/<p class="[^"]*text-point-text[^"]*"/)
+    expect(html).not.toContain('--link')
+  })
+
   it('날짜와 시각이 KST로 보인다', async () => {
     fetchMock.mockResolvedValue(page([item({ created_at: '2026-10-20T01:30:00.000Z' })]))
     await mountAndLoad()

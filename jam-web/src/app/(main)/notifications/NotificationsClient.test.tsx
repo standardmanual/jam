@@ -106,6 +106,20 @@ describe('아이콘 마크업 전제', () => {
   })
 })
 
+describe('알림 문장 속 포인트 (티켓 20261104_2319 3회차)', () => {
+  it('«N 포인트» 조각만 point-text로 칠하고 문장의 나머지는 그대로 둔다', () => {
+    const html = render([view('admin_points_changed', { amount: 500, direction: 'grant', reason: null })])
+
+    expect(html).toContain('<span class="text-point-text"')
+    expect(Array.from(html.matchAll(/<span class="text-point-text"[^>]*>(.*?)<\/span>/g)).map((m) => m[1])).toEqual(['500 포인트'])
+    expect(visibleText(html)).toContain('500 포인트가 들어왔어요')
+  })
+
+  it('포인트가 없는 소식에는 point-text가 없다', () => {
+    expect(render([CHAPTER_UP])).not.toContain('text-point-text')
+  })
+})
+
 describe('챕터 오름 소식 (chapter_up)', () => {
   it('«축하해요! 챕터 3에 올랐어요»로 읽히고 챕터 번호만 굵게 보인다', () => {
     const html = render([CHAPTER_UP])

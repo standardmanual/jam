@@ -30,6 +30,7 @@ import { notificationSection, type NotificationSection } from '@/lib/notificatio
 import { unknownNotificationType } from '@/lib/notifications/types'
 import { formatRelativeTime, getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
+import { pointify } from '@/lib/i18n/tPoint'
 import { useTopNavData } from '@/lib/topNavData'
 import type { NotificationType } from '@/types/database'
 
@@ -159,10 +160,10 @@ function NotificationBody({ view }: { view: NotificationView }) {
       {tokens.map((token, i) =>
         token.bold ? (
           <strong key={i} className="font-bold">
-            {token.text}
+            {pointify(token.text)}
           </strong>
         ) : (
-          <Fragment key={i}>{token.text}</Fragment>
+          <Fragment key={i}>{pointify(token.text)}</Fragment>
         )
       )}
     </p>

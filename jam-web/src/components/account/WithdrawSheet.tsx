@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
@@ -10,6 +10,7 @@ import '@/components/transitions-pages.css'
 import { createClient } from '@/lib/supabase/client'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 import { ABUSE_LOG_RETENTION_MONTHS, CONFIRMATION_RETENTION_MONTHS } from '@/lib/account/retention'
 import { requestAccountDeletion, requestAccountSummary, runWithdraw } from '@/lib/account/withdraw-client'
 import {
@@ -69,12 +70,12 @@ const formatNumber = (n: number) => n.toLocaleString('ko-KR')
  */
 function SummaryRows({ summary }: { summary: AccountSummary }) {
   const copy = d.withdrawSheet
-  const rows: [string, string][] = [
+  const rows: [string, ReactNode][] = [
     [copy.rowActivityBadges, t(d.common.countItems, { count: formatNumber(summary.activityBadgeCount) })],
     [copy.rowCheckinBadges, t(d.common.countItems, { count: formatNumber(summary.checkinBadgeCount) })],
     [copy.rowItemBadges, t(d.common.countItems, { count: formatNumber(summary.itemCount) })],
     [copy.rowJam, formatNumber(summary.jamBalance)],
-    [copy.rowPoints, t(d.points.amountValue, { amount: formatNumber(summary.pointBalance) })],
+    [copy.rowPoints, tPoint(d.points.amountValue, { amount: formatNumber(summary.pointBalance) })],
   ]
   return (
     <dl className="flex flex-col">

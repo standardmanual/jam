@@ -9,6 +9,7 @@ import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
+import { PointText } from '@ds/components/patterns/PointText'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
@@ -552,7 +553,7 @@ export default function ProfileClient({
 
   // 통계바 = 슬라이딩 탭. 라벨은 "숫자 + 이름" 2줄 구성이라 ReactNode로 넘긴다.
   // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
-  // 숫자 색은 위 포인트 표시와 같은 강조색(--link, "jam-stat-number" 클래스)을
+  // 숫자 색은 강조색(--link, "jam-stat-number" 클래스, 포인트 표시는 20261104_2319부터 --point-text)을
   // 항상 쓴다 — 활성/pill-경유 상태에만 흰색으로 바뀌는 나머지 로직은 CSS
   // (transitions.css `.jam-stat-tabs`)가 aria-selected·data-pill-over 속성을 보고 처리한다
   // (data-pill-over는 SlidingTabs.tsx가 pill 애니메이션 중 실시간 겹침을 측정해 붙인다).
@@ -638,12 +639,11 @@ export default function ProfileClient({
                     aria-label={d.profile.pointsAriaLabel}
                     className="self-start -ml-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-full active:scale-95 transition-transform duration-100 cursor-pointer"
                   >
-                    <span className="text-2xl font-bold text-[color:var(--link)] tabular-nums">
-                      {pointBalance.toLocaleString('ko-KR')}
-                    </span>
-                    <span className="text-2xl font-bold text-[color:var(--link)]">
-                      {d.profile.pointBadgeLabel}
-                    </span>
+                    <PointText
+                      value={pointBalance}
+                      unit={d.profile.pointBadgeLabel}
+                      className="text-2xl font-bold tabular-nums"
+                    />
                     <ChevronRightIcon className="w-4 h-4 text-muted" />
                   </button>
                 ) : (

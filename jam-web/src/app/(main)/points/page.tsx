@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import type { PointHistoryItem } from '@/app/api/points/route'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
@@ -12,10 +12,12 @@ import { useDigitPopIn } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d, t } from '@/lib/i18n'
+import { tPoint } from '@/lib/i18n/tPoint'
 
-function formatAmount(n: number): string {
+// 금액 전체(부호 포함)를 PointText가 오렌지로 칠한다. 차감(−)도 같은 색이다(티켓 20261104_2319 3회차).
+function formatAmount(n: number): ReactNode {
   const sign = n > 0 ? '+' : '−'
-  return t(d.points.amountValue, { amount: `${sign}${Math.abs(n).toLocaleString('ko-KR')}` })
+  return tPoint(d.points.amountValue, { amount: `${sign}${Math.abs(n).toLocaleString('ko-KR')}` })
 }
 
 export default function PointsPage() {
@@ -81,7 +83,7 @@ export default function PointsPage() {
         <Card className="text-center py-8">
           <p className="text-xs uppercase text-muted mb-2">{d.points.balanceLabel}</p>
           <p
-            className="text-5xl font-bold text-[color:var(--link)]"
+            className="text-5xl font-bold text-point-text"
             aria-label={balanceDigits === null ? undefined : t(d.points.balanceAria, { amount: balanceDigits })}
           >
             {/* 자릿수 span은 훅이 명령형으로 생성한다 — 스크린리더에는 위 aria-label로 전달 */}
@@ -120,7 +122,6 @@ export default function PointsPage() {
           {!loading && !error && items.length > 0 && (
             <div className="flex flex-col gap-2">
               {items.map((it) => {
-                const positive = it.amount > 0
                 return (
                   <ListRowCard
                     key={it.id}
@@ -138,9 +139,7 @@ export default function PointsPage() {
                       </div>
                     }
                     trailing={
-                      <span className={`text-base font-bold ${positive ? 'text-[color:var(--link)]' : 'text-foreground'}`}>
-                        {formatAmount(it.amount)}
-                      </span>
+                      <span className="text-base font-bold">{formatAmount(it.amount)}</span>
                     }
                   />
                 )
