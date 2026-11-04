@@ -32,7 +32,7 @@ import React, { useEffect, useId, useState } from 'react';
  */
 
 const CORNER_RATIO = 0.12; // 48/400
-const NOTCH_RATIO = 0.09125; // 36.5/400
+const NOTCH_RATIO = 0.045625; // 18.25/400 — 양옆 반원 노치 반지름(옛 36.5/400의 절반, 티켓 20261104_2049)
 const TILE_WIDTH_RATIO = 0.7; // 280/400 — 알파벳 카드 1장 너비
 const FONT_RATIO = 0.5; // 200/400
 const GAP_RATIO = 0.025; // 10/400
