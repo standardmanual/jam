@@ -50,7 +50,7 @@ const STATUS = {
   jamBlocked: false,
   alertStage: 80,
   claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
-  notice: 'pending_nearly_full',
+  notice: 'blocked',
 }
 
 beforeEach(() => {
@@ -90,7 +90,7 @@ describe('GET /api/capsule', () => {
       jamBlocked: false,
       alertStage: 80,
       claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
-      notice: 'pending_nearly_full',
+      notice: 'blocked',
     })
   })
 

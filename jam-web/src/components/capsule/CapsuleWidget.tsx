@@ -21,9 +21,10 @@ import { d, t } from '@/lib/i18n'
  * `router.refresh()`로 새 초기값이 내려오면 상태가 그 값을 따라간다(동기화 직후 합친 연출을 닫은 게이지가 최신 값까지 차도록).
  * 위에서 아래로 `[게이지][안내 영역(조건부)]`이고 시트는 없다. 게이지를 눌러도 아무 일도 없다.
  *  - 로딩: MODULAR `Skeleton`(게이지와 같은 높이). 오류: 상자 자체가 «다시 시도» 버튼이다.
- *  - 안내 영역: 서버가 정해 준 `notice`로 간결 문구를 고른다(서비스 `InlineNotice`). 화면은 개수나 단계로 다시 따지지 않는다.
+ *  - 안내 영역: 서버가 정해 준 `notice`(막힘 한 종류, 티켓 20261105_0104)로 간결 문구를 고른다(서비스 `InlineNotice`). 화면은 따로 따지지 않는다.
  *    이용 정지는 안내가 없다(서버가 `notice: 'none'`을 준다. 홈은 `SuspensionBanner`가 알린다).
- *  - «받기»: `claim.available`일 때만 보인다. 빈칸이 모자라면 «받기» 대신 «인벤토리 보기»와 빈칸 덧줄을 둔다.
+ *    홈은 `hideBlockedAction`으로 빈칸 줄과 «인벤토리 보기»를 숨긴다(홈 상단 `CapsuleBlockedBanner`가 알린다). 프로필은 그대로 둔다.
+ *  - «받기»: `claim.available`일 때만 보인다(안내 문구가 없으면 버튼만, 제거는 T5). 빈칸이 모자라면 «받기» 대신 «인벤토리 보기»와 빈칸 덧줄을 둔다.
  *    받은 뒤 상태는 응답으로 계산하지 않고 `GET /api/capsule`을 다시 불러 갱신한다. 받은 배지는 `BadgeRevealOverlay`로 보인다.
  *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 합친 연출은 레이아웃의 `CapsuleResultProvider`가 맡는다(티켓 20261028_1740 3회).
  * 이 컴포넌트를 감싸는 곳은 z-index를 주지 않는다(오버레이가 탭바에 가려진 2026-08-25 사고).
@@ -39,36 +40,22 @@ const CLOSED_REVEAL: RevealState = { open: false, items: [], message: '' }
 
 /** 서버가 정한 안내 종류 → 간결 문구. 안내가 없으면 null */
 function noticeText(kind: CapsuleNoticeKind): string | null {
-  switch (kind) {
-    case 'pending':
-      return d.capsule.widget.notice.pending
-    case 'pending_nearly_full':
-      return d.capsule.widget.notice.pendingNearlyFull
-    case 'jam_blocked':
-      return d.capsule.widget.notice.jamBlocked
-    case 'full_waiting':
-      return d.capsule.widget.notice.fullWaiting
-    case 'none':
-      return null
-  }
+  return kind === 'blocked' ? d.capsule.widget.notice.blocked : null
 }
 
 /** 게이지의 스크린리더 이름 — 숫자 없이 상태만 알린다 */
 function gaugeAriaLabel(kind: CapsuleNoticeKind): string {
-  switch (kind) {
-    case 'pending':
-    case 'pending_nearly_full':
-      return d.capsule.widget.gaugeAria.pending
-    case 'jam_blocked':
-      return d.capsule.widget.gaugeAria.jamBlocked
-    case 'full_waiting':
-      return d.capsule.widget.gaugeAria.full
-    case 'none':
-      return d.capsule.aria.filling
-  }
+  return kind === 'blocked' ? d.capsule.widget.gaugeAria.blocked : d.capsule.aria.filling
 }
 
-export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | null }) {
+export default function CapsuleWidget({
+  initial,
+  hideBlockedAction = false,
+}: {
+  initial?: CapsuleStatus | null
+  /** 막힘 안내의 빈칸 줄과 «인벤토리 보기» 버튼을 숨기고 한 줄만 보인다. 홈은 상단 배너가 같은 말을 하므로 켠다(티켓 20261105_0104). 프로필은 끈다 */
+  hideBlockedAction?: boolean
+}) {
   const { toast } = useToast()
   const router = useRouter()
   const [capsule, setCapsule] = useState<CapsuleStatus | null>(initial ?? null)
@@ -165,7 +152,10 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
 
   const text = noticeText(capsule.notice)
   const { claim } = capsule
-  const showSlotsAction = !claim.available && claim.blockedReason === 'no_slots'
+  // 막힘 안내이거나 받을 보상이 빈칸 때문에 막혔을 때 빈칸 줄과 «인벤토리 보기»를 둔다.
+  // 홈에서는 막힘 안내일 때만 숨긴다(배너가 같은 말을 한다). 막힘이 아닌데 보상만 빈칸에 막힌 경우는 배너가 없으니 그대로 둔다
+  const blocked = capsule.notice === 'blocked'
+  const showSlotsAction = !claim.available && (blocked ? !hideBlockedAction : claim.blockedReason === 'no_slots')
 
   let action = null
   if (claim.available) {
@@ -191,7 +181,7 @@ export default function CapsuleWidget({ initial }: { initial?: CapsuleStatus | n
     <>
       <div className="flex w-full flex-col gap-3">
         <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} />
-        {text && <InlineNotice action={action}>{text}</InlineNotice>}
+        {text ? <InlineNotice action={action}>{text}</InlineNotice> : action}
       </div>
 
       <BadgeRevealOverlay

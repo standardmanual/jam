@@ -22,6 +22,7 @@ import {
   type CapsuleStatus,
 } from './capsule-contract'
 import { getCapsulePolicy, type CapsulePolicy } from './policy'
+import { readCapsuleReceiveBlocked } from './receive-block'
 
 /** DB 함수가 열기·받기를 거절했을 때(또는 앱이 열기 전에 막았을 때) 던진다. API 라우트가 상태 코드와 문구로 바꾼다. */
 export class CapsuleError extends Error {
@@ -178,23 +179,25 @@ function toClaimState(pendingCount: 0 | 1 | 2, suspended: boolean, hasTribe: boo
   }
 }
 
-/** 안내 영역이 고를 문구. 이용 정지 중에는 안내를 띄우지 않는다(홈은 정지 배너가 알린다). */
-function toNotice(pendingCount: 0 | 1 | 2, alertStage: CapsuleAlertStage, suspended: boolean, full: boolean): CapsuleNoticeKind {
+/**
+ * 안내 영역이 고를 문구. 막힘 판정은 `capsule_receive_blocked`(단일 원천)가 정하고 여기서 다시 따지지 않는다(티켓 20261105_0104 T4).
+ * 이용 정지 중에는 안내를 띄우지 않는다(홈은 정지 배너가 알린다).
+ */
+function toNotice(suspended: boolean, receiveBlocked: boolean): CapsuleNoticeKind {
   if (suspended) return 'none'
-  if (pendingCount === 2) return 'jam_blocked'
-  if (pendingCount === 1) return alertStage > 0 ? 'pending_nearly_full' : 'pending'
-  return full ? 'full_waiting' : 'none'
+  return receiveBlocked ? 'blocked' : 'none'
 }
 
 /**
  * 지금 캡슐 상태(`GET /api/capsule`). 캡슐이 없으면 만든다. 보류·안내 값은 서버가 정해 싣는다. 읽지 못하면 던진다.
- * 캡슐·잔액·정책·빈칸·보류 수·이용 정지는 함께 읽고, 소속 트라이브는 보류가 있고 정지가 아닐 때만 더 읽는다.
+ * 캡슐·잔액·정책·빈칸·보류 수·이용 정지·막힘 판정은 함께 읽고, 소속 트라이브는 보류가 있고 정지가 아닐 때만 더 읽는다.
  */
 export async function getCapsuleStatus(supabase: SupabaseClient, userId: string): Promise<CapsuleStatus> {
-  const [base, pendingCount, suspension] = await Promise.all([
+  const [base, pendingCount, suspension, receiveBlock] = await Promise.all([
     readCapsuleBase(supabase, userId),
     readPendingCount(supabase, userId),
     getActiveSuspension(supabase, userId),
+    readCapsuleReceiveBlocked(supabase, userId),
   ])
   const suspended = suspension !== null
   const hasTribe = pendingCount > 0 && !suspended ? await readHasTribe(supabase, userId) : true
@@ -206,6 +209,6 @@ export async function getCapsuleStatus(supabase: SupabaseClient, userId: string)
     jamBlocked: pendingCount === 2,
     alertStage,
     claim: toClaimState(pendingCount, suspended, hasTribe, base.slots),
-    notice: toNotice(pendingCount, alertStage, suspended, base.status.filled >= base.status.required),
+    notice: toNotice(suspended, receiveBlock.blocked),
   }
 }

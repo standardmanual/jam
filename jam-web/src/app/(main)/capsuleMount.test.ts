@@ -53,7 +53,7 @@ describe('투데이 캡슐 위젯', () => {
     expect(code).toMatch(/return null\s*\}\)/)
     const all = code.slice(code.indexOf('await Promise.all(['), code.indexOf('])', code.indexOf('await Promise.all([')))
     expect(all).toContain('capsulePromise')
-    expect(code).toContain('<CapsuleWidget initial={capsuleInitial} />')
+    expect(code).toContain('<CapsuleWidget initial={capsuleInitial} hideBlockedAction />')
   })
 
   it('위젯을 z-index가 있는 래퍼로 감싸지 않는다', () => {

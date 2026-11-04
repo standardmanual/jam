@@ -48,6 +48,9 @@ interface FakeOptions {
   tribe?: { data: unknown; error: unknown }
 }
 
+/** `capsule_receive_blocked` 기본 응답 — 막히지 않음 */
+const NOT_BLOCKED = { data: { blocked: false, free: 40, needed: 2 }, error: null }
+
 /** `capsule_policy` 행 — 기본값(개수 1 + 1이라 필요한 빈칸 2) */
 const POLICY_ROW = {
   guaranteed_count: 1,
@@ -67,6 +70,7 @@ function fakeClient(options: FakeOptions): { client: SupabaseClient; rpc: Return
   const read = (table: string) => calls.reads.push(table)
   const rpc = vi.fn(async (name: string) => {
     calls.order.push(`rpc:${name}`)
+    if (name === 'capsule_receive_blocked') return options.rpc?.[name] ?? NOT_BLOCKED
     return options.rpc?.[name] ?? { data: null, error: { message: `unexpected rpc ${name}` } }
   })
   const client = {
@@ -150,7 +154,7 @@ describe('getCapsuleStatus', () => {
       jamBlocked: false,
       alertStage: 0,
       claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
-      notice: 'full_waiting',
+      notice: 'none',
     })
   })
 
@@ -240,35 +244,35 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
     })
   })
 
-  it('보류 1개와 단계 0이면 pending이고 빈칸이 충분하면 받을 수 있다', async () => {
+  it('보류 1개와 단계 0이면 안내 none이고 빈칸이 충분하면 받을 수 있다', async () => {
     expect(await status({ rpc: capsuleRow(), pending: rows(1) })).toMatchObject({
       pendingCount: 1,
       jamBlocked: false,
       alertStage: 0,
       claim: { available: true, blockedReason: null, freeSlots: 40, neededSlots: 2 },
-      notice: 'pending',
+      notice: 'none',
     })
   })
 
-  it.each([70, 80, 90] as const)('보류 1개와 저장된 단계 %i면 pending_nearly_full이고 단계를 그대로 싣는다', async (stage) => {
+  it.each([70, 80, 90] as const)('보류 1개와 저장된 단계 %i면 단계를 그대로 싣고 안내는 none이다', async (stage) => {
     expect(await status({ rpc: capsuleRow({ alert_stage: stage }), pending: rows(1) })).toMatchObject({
       pendingCount: 1,
       alertStage: stage,
-      notice: 'pending_nearly_full',
+      notice: 'none',
     })
   })
 
   it('저장된 단계가 70·80·90이 아니면 0으로 본다', async () => {
-    expect(await status({ rpc: capsuleRow({ alert_stage: 75 }), pending: rows(1) })).toMatchObject({ alertStage: 0, notice: 'pending' })
+    expect(await status({ rpc: capsuleRow({ alert_stage: 75 }), pending: rows(1) })).toMatchObject({ alertStage: 0, notice: 'none' })
   })
 
-  it('보류가 2개면 jamBlocked이고 저장된 단계가 있어도 alertStage는 0, 안내는 jam_blocked다', async () => {
+  it('보류가 2개면 jamBlocked이고 저장된 단계가 있어도 alertStage는 0, 안내는 none이다', async () => {
     expect(await status({ rpc: capsuleRow({ alert_stage: 90 }), pending: rows(2) })).toMatchObject({
       pendingCount: 2,
       jamBlocked: true,
       alertStage: 0,
       claim: { available: true, blockedReason: null },
-      notice: 'jam_blocked',
+      notice: 'none',
     })
   })
 
@@ -280,19 +284,37 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
     expect(await status({ rpc: capsuleRow(), pending: rows(3) })).toMatchObject({ pendingCount: 2, jamBlocked: true })
   })
 
-  it('보류는 없는데 채움이 필요량 이상이면 full_waiting이고, 덜 찼으면 none이다', async () => {
-    expect(await status({ rpc: capsuleRow({ required: 100, filled: 100 }) })).toMatchObject({ pendingCount: 0, notice: 'full_waiting' })
-    expect(await status({ rpc: capsuleRow({ required: 100, filled: 99 }) })).toMatchObject({ notice: 'none' })
+  it('안내는 capsule_receive_blocked가 정한다: blocked면 blocked, 아니면 none이다(캡슐이 가득 차도 막히지 않았으면 none)', async () => {
+    const blocked = { capsule_receive_blocked: { data: { blocked: true, free: 1, needed: 2 }, error: null } }
+    expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 100 }), ...blocked } })).toMatchObject({ pendingCount: 0, notice: 'blocked' })
+    expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 100 }) } })).toMatchObject({ notice: 'none' })
+    expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 99 }) } })).toMatchObject({ notice: 'none' })
   })
 
-  it('보류가 있으면 가득 차 있어도 안내는 보류 쪽이다(full_waiting이 아니다)', async () => {
-    expect(await status({ rpc: capsuleRow({ required: 100, filled: 100 }), pending: rows(1) })).toMatchObject({ notice: 'pending' })
+  it('막힘이면 보류가 있어도 안내는 blocked 하나다', async () => {
+    const blocked = { capsule_receive_blocked: { data: { blocked: true, free: 0, needed: 2 }, error: null } }
+    expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 100 }), ...blocked }, pending: rows(2) })).toMatchObject({ notice: 'blocked' })
+  })
+
+  it('이용 정지 중이면 막혀 있어도 안내는 none이다', async () => {
+    const blocked = { capsule_receive_blocked: { data: { blocked: true, free: 0, needed: 2 }, error: null } }
+    const out = await status({
+      rpc: { ...capsuleRow({ required: 100, filled: 100 }), ...blocked },
+      suspension: { data: { id: 's1', reason: 'x', suspended_at: '2026-10-01T00:00:00Z' }, error: null },
+    })
+    expect(out).toMatchObject({ notice: 'none' })
+  })
+
+  it('막힘 판정을 읽지 못하면 던진다', async () => {
+    await expect(
+      status({ rpc: { ...capsuleRow(), capsule_receive_blocked: { data: null, error: { message: 'down' } } } })
+    ).rejects.toThrow('capsule_receive_blocked 호출 실패')
   })
 
   it('빈칸이 필요한 수보다 적으면 받을 수 없고 까닭은 no_slots다(빈칸 수와 필요한 수를 함께 싣는다)', async () => {
     expect(await status({ rpc: capsuleRow(), pending: rows(1), inventory: { data: { used_slots: 49, max_slots: 50 }, error: null } })).toMatchObject({
       claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
-      notice: 'pending',
+      notice: 'none',
     })
     // 빈칸이 필요한 수와 같으면 받을 수 있다
     expect(await status({ rpc: capsuleRow(), pending: rows(1), inventory: { data: { used_slots: 48, max_slots: 50 }, error: null } })).toMatchObject({
@@ -329,13 +351,14 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
     expect(out).toMatchObject({ claim: { available: false, blockedReason: null }, notice: 'none' })
   })
 
-  it('읽기 횟수를 고정한다: 캡슐 RPC 1회와 테이블 읽기 5개, 트라이브는 보류가 있고 정지가 아닐 때만 읽는다', async () => {
+  it('읽기 횟수를 고정한다: 캡슐 RPC 1회·막힘 판정 RPC 1회와 테이블 읽기 5개, 트라이브는 보류가 있고 정지가 아닐 때만 읽는다', async () => {
     const base = ['jam_wallets', 'capsule_policy', 'inventory', 'capsule_pending_rewards', 'user_suspensions']
 
     const none = fakeClient({ rpc: capsuleRow() })
     await getCapsuleStatus(none.client, USER_ID)
     expect([...calls.reads].sort()).toEqual([...base].sort())
-    expect(none.rpc).toHaveBeenCalledTimes(1)
+    expect(none.rpc).toHaveBeenCalledTimes(2)
+    expect(none.rpc).toHaveBeenCalledWith('capsule_receive_blocked', { p_user_id: USER_ID })
 
     calls.reads = []
     await getCapsuleStatus(fakeClient({ rpc: capsuleRow(), pending: rows(1) }).client, USER_ID)

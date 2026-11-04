@@ -37,18 +37,15 @@ export type CapsuleAlertStage = 0 | 70 | 80 | 90
 /** 보류 보상을 받을 수 없는 까닭. 이용 정지가 먼저고, 소속 트라이브 없음, 인벤토리 빈칸 모자람 순이다 */
 export type CapsuleClaimBlockedReason = 'no_slots' | 'suspended' | 'no_tribe'
 
-/** 캡슐 아래 안내 영역이 고를 문구. 서버가 하나로 정한다 */
+/**
+ * 캡슐 아래 안내 영역이 고를 문구. 서버가 하나로 정한다(티켓 20261105_0104 T4에서 «막힘» 한 종류로 정리).
+ * `blocked`는 캡슐이 가득 차고 인벤토리 빈칸이 필요 칸수보다 적어 동기화가 멈춘 상태이고, `capsule_receive_blocked`가 판정한다.
+ */
 export type CapsuleNoticeKind =
-  /** 보류도 단계도 없음(이용 정지 중에도 이 값 — 홈은 정지 배너가 알린다) */
+  /** 안내 없음(이용 정지 중에도 이 값 — 홈은 정지 배너가 알린다) */
   | 'none'
-  /** 보류 1개, 단계 0 */
-  | 'pending'
-  /** 보류 1개, 단계 70·80·90 */
-  | 'pending_nearly_full'
-  /** 보류 2개 — 새로 가득 차는 캡슐의 보상이 사라진다 */
-  | 'jam_blocked'
-  /** 보류는 없는데 채움이 필요량 이상으로 가득 찬 채 남아 있음 */
-  | 'full_waiting'
+  /** 캡슐이 가득 차고 빈칸이 모자라 잼 모으기가 멈춤 */
+  | 'blocked'
 
 /** 보류 보상 받기 버튼과 빈칸 줄을 위한 값 */
 export interface CapsuleClaimState {

@@ -4,7 +4,7 @@
  * 저장소에 jsdom이 없어 서버 렌더로 첫 화면을 검증한다.
  * - 서버 초기값이 있으면 로딩 없이 바로 게이지를 그린다. 시트·«가진 잼»·퍼센트가 없고, 게이지에 채운 양 숫자만 있다.
  * - 안내 영역은 서버가 준 `notice`로 간결 문구를 고른다. 퍼센트·진행 숫자는 쓰지 않는다.
- * - «받기»는 `claim.available`일 때, 빈칸이 모자라면 «인벤토리 보기»와 빈칸 덧줄이 보인다. 이용 정지는 안내가 없다.
+ * - 안내는 막힘 한 종류다. «받기»는 `claim.available`일 때, 막히면 «인벤토리 보기»와 빈칸 덧줄이 보이고 홈 전용 prop(`hideBlockedAction`)이면 숨긴다. 이용 정지는 안내가 없다.
  * - 초기값이 없으면 높이 72의 Skeleton이다.
  * - 위젯이 z-index를 가진 래퍼를 만들지 않는다.
  * 받기 호출의 결과 처리는 `runClaim`(capsule-flow.test.ts)이 고정한다.
@@ -70,63 +70,48 @@ describe('서버 초기값이 있을 때', () => {
   })
 })
 
-describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다', () => {
+describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다(막힘 한 종류, 티켓 20261105_0104)', () => {
   const CLAIM_OK = { available: true, blockedReason: null, freeSlots: 40, neededSlots: 2 } as const
+  const BLOCKED = { filled: 300, remaining: 0, notice: 'blocked', claim: { available: false, blockedReason: null, freeSlots: 1, neededSlots: 2 } } as const
 
-  it('보류 1개: «못 받은 보상이 1개 있어요»와 «받기»', () => {
-    const html = render({ pendingCount: 1, notice: 'pending', claim: CLAIM_OK })
-    expect(textOf(html)).toContain('못 받은 보상이 1개 있어요')
-    expect(textOf(html)).toContain('받기')
-    expect(html).toContain('role="status"')
-    expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.pending}"`)
-  })
-
-  it('보류 1개와 단계 70·80·90: «캡슐이 거의 찼어요»와 «받기»', () => {
-    for (const alertStage of [70, 80, 90] as const) {
-      const html = render({ pendingCount: 1, alertStage, notice: 'pending_nearly_full', claim: CLAIM_OK })
-      expect(textOf(html)).toContain('캡슐이 거의 찼어요')
-      expect(textOf(html)).toContain('받기')
-      // 단계 숫자는 화면에 나오지 않는다(게이지의 채운 양 숫자만 남는다)
-      expect(textOf(html).replace('120', '')).not.toMatch(/\d/)
-    }
-  })
-
-  it('잼을 받을 수 없음(보류 2개): «지금은 잼을 받을 수 없어요»와 «받기»', () => {
-    const html = render({ pendingCount: 2, jamBlocked: true, notice: 'jam_blocked', claim: CLAIM_OK })
-    expect(textOf(html)).toContain('지금은 잼을 받을 수 없어요')
-    expect(textOf(html)).toContain('받기')
-    expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.jamBlocked}"`)
-  })
-
-  it('빈칸이 모자라면 «받기»는 숨기고 «인벤토리 보기»와 빈칸 덧줄을 보인다', () => {
-    const html = render({
-      pendingCount: 1,
-      notice: 'pending',
-      claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 3 },
-    })
+  it('막힘: «캡슐이 가득 찼어요»와 빈칸 덧줄, «인벤토리 보기»가 보인다(프로필 기본)', () => {
+    const html = render(BLOCKED)
     const text = textOf(html)
-    expect(text).toContain('못 받은 보상이 1개 있어요')
-    expect(text).toContain(t(d.capsule.widget.slots, { free: 1, needed: 3 }))
+    expect(text).toContain(d.capsule.widget.notice.blocked)
+    expect(text).toContain(t(d.capsule.widget.slots, { free: 1, needed: 2 }))
     expect(text).toContain('인벤토리 보기')
-    expect(text).not.toMatch(/(^|[^은])받기/)
+    expect(html).toContain('role="status"')
+    expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
   })
 
-  it('잼을 받을 수 없는데 빈칸도 모자라면 «인벤토리 보기»다', () => {
-    const html = render({
-      pendingCount: 2,
-      jamBlocked: true,
-      notice: 'jam_blocked',
-      claim: { available: false, blockedReason: 'no_slots', freeSlots: 0, neededSlots: 2 },
-    })
-    expect(textOf(html)).toContain('지금은 잼을 받을 수 없어요')
+  it('막힘 + 홈 전용 prop: 한 줄만 보이고 빈칸 줄과 «인벤토리 보기» 버튼이 없다', () => {
+    const html = renderToStaticMarkup(<CapsuleWidget initial={status(BLOCKED)} hideBlockedAction />)
+    expect(textOf(html)).toBe('300캡슐이 가득 찼어요')
+    expect(html).not.toContain('<button')
+    expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
+  })
+
+  it('막힘이 아닌데 받을 보상이 빈칸에 막힌 경우는 홈 전용 prop이 있어도 «인벤토리 보기»를 둔다', () => {
+    const html = renderToStaticMarkup(
+      <CapsuleWidget
+        initial={status({ pendingCount: 1, notice: 'none', claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 3 } })}
+        hideBlockedAction
+      />,
+    )
+    expect(textOf(html)).toContain(t(d.capsule.widget.slots, { free: 1, needed: 3 }))
     expect(textOf(html)).toContain('인벤토리 보기')
   })
 
-  it('가득 찬 채 남음: 문구만 있고 버튼이 없다', () => {
-    const html = render({ filled: 300, remaining: 0, notice: 'full_waiting' })
-    expect(textOf(html)).toBe('300캡슐이 가득 찼어요')
-    expect(html).not.toContain('<button')
-    expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.full}"`)
+  it('받을 수 있는 보상이 있으면 안내 문구 없이 «받기»만 보인다(받기 제거는 T5)', () => {
+    const html = render({ pendingCount: 1, notice: 'none', claim: CLAIM_OK })
+    expect(textOf(html)).toContain('받기')
+    expect(html).not.toContain('role="status"')
+    expect(html).toContain(`aria-label="${d.capsule.aria.filling}"`)
+  })
+
+  it('옛 안내 4종 문구는 사전에 남아 있지 않다', () => {
+    expect(Object.keys(d.capsule.widget.notice)).toEqual(['blocked'])
+    expect(Object.keys(d.capsule.widget.gaugeAria)).toEqual(['blocked'])
   })
 
   it('이용 정지: 보류가 있어도 서버가 notice none을 주면 안내가 없다', () => {
@@ -140,13 +125,13 @@ describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다',
     expect(textOf(html)).toBe('120')
   })
 
-  it('소속 트라이브가 없어 받을 수 없으면 문구만 있고 버튼이 없다', () => {
+  it('소속 트라이브가 없어 받을 수 없으면 안내와 버튼이 없다', () => {
     const html = render({
       pendingCount: 1,
-      notice: 'pending',
+      notice: 'none',
       claim: { available: false, blockedReason: 'no_tribe', freeSlots: 40, neededSlots: 2 },
     })
-    expect(textOf(html)).toBe('120못 받은 보상이 1개 있어요')
+    expect(textOf(html)).toBe('120')
     expect(html).not.toContain('<button')
   })
 
