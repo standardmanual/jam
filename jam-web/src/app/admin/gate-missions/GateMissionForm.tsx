@@ -456,7 +456,7 @@ export default function GateMissionForm({ mission, existingAxes, families, rewar
             value={form.conditionText}
             onChange={(e) => setForm((f) => ({ ...f, conditionText: e.target.value }))}
           />
-          <p className="text-xs text-muted-foreground mt-1">미션 상세의 달성 조건 카드 첫 줄에 보여요. 비우면 목표 유형에 맞는 기본 문구가 나와요.</p>
+          <p className="text-xs text-muted-foreground mt-1">달성 조건은 지표 라벨로 만든 불릿이 먼저 보여요. 불릿을 만들 수 없을 때만 이 문장이 보여요.</p>
         </div>
 
         {/* 여는 축 */}

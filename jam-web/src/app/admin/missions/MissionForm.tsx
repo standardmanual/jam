@@ -329,7 +329,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
           <textarea value={form.conditionText} onChange={(e) => setForm((f) => ({ ...f, conditionText: e.target.value }))}
             rows={2}
             className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm resize-none" />
-          <p className="text-xs text-muted-foreground mt-1">미션 상세의 달성 조건 카드 첫 줄에 보여요. 비우면 목표 유형에 맞는 기본 문구가 나와요.</p>
+          <p className="text-xs text-muted-foreground mt-1">달성 조건은 지표 라벨로 만든 불릿이 먼저 보여요. 불릿을 만들 수 없을 때만 이 문장이 보여요.</p>
         </div>
 
         {/* 참가 대상 — 공통 미션 / 트라이브 미션 (티켓 20261019_1318, 운영 로직 13.2절) */}
