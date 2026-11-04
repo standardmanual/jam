@@ -1037,6 +1037,7 @@ describe('RecipeRewardRow — 획득 포인트 표기 (티켓 20261104_2315)', (
     const num = /<span class="([^"]*)">1,200<\/span>/.exec(html)?.[1] ?? ''
     expect(num).toContain('font-bold')
     expect(num).toContain('text-base')
+    expect(num).toContain('text-warning')
     const unit = /<span class="([^"]*)">포인트<\/span>/.exec(html)?.[1] ?? ''
     expect(unit).toContain('text-xs')
     expect(unit).toContain('text-warning')
