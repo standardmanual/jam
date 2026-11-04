@@ -3,13 +3,18 @@
 import React, { useEffect, useId, useState } from 'react';
 
 /**
- * ItemSerialCode — 아이템 배지 일련번호 스탬프 패턴.
+ * ItemSerialCode — 아이템 배지 일련번호 메탈 플레이트 패턴.
  * Figma: https://www.figma.com/design/1mSlxABxlyPQDBAdGNil8l (node 14:14)
  *
  * code의 앞 4자(알파벳 prefix)는 카드 1장씩, 나머지(숫자)는 하나의 넓은 박스로 렌더링한다.
  * 실제 데이터 포맷(docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3.13)은 4자리 대문자 prefix +
  * 6자리 zero-pad 숫자(예: ABCD000042)다. Figma 원본은 숫자 5자리(플레이스홀더)로 그려져
  * 있었지만, 숫자 박스는 글자 수에 맞춰 너비가 늘어나므로 실제 6자리 값도 그대로 대응한다.
+ *
+ * 타일 면은 브러시드 메탈 플레이트 질감 이미지(`/images/item-serial-plate.jpg`) 한 장이다.
+ * 타일 5장이 하나의 연속된 플레이트를 나눠 비추도록 타일마다 background-position을 어긋나게
+ * 준다(전체 폭 = backgroundSize, 타일 시작 x = 음수 position). 글자는 플레이트 위에 얹히므로
+ * 테마와 무관하게 팔레트 검정(--base-neutral-950)을 쓴다.
  *
  * 모든 치수는 height 하나로 비례 계산된다(BadgeFrame과 동일한 접근) — 서비스 어디에
  * 배치되든 height만 넘기면 동일한 비율로 스케일된다.
@@ -36,6 +41,8 @@ const NOTCH_RATIO = 0.09125; // 36.5/400
 const TILE_WIDTH_RATIO = 0.7; // 280/400 — 알파벳 카드 1장 너비
 const FONT_RATIO = 0.5; // 200/400
 const GAP_RATIO = 0.025; // 10/400
+const PLATE_SRC = '/images/item-serial-plate.jpg'; // 메탈 플레이트 질감(610×170 중앙부)
+const PLATE_TEXT_COLOR = 'var(--base-neutral-950)'; // 플레이트는 테마와 무관한 재질이라 반전 토큰 대신 팔레트 검정
 const PAD_INLINE_RATIO = 0.13;
 const DIGIT_ADVANCE_RATIO = 0.65;
 
@@ -112,7 +119,7 @@ function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize,
               fontWeight: 700,
               fontSize,
               lineHeight: 1,
-              color: 'var(--snow)',
+              color: PLATE_TEXT_COLOR,
             }}
           >
             {d}
@@ -227,7 +234,7 @@ function tilePath(w, h) {
   ].join(' ');
 }
 
-function TileShell({ width, height, children }) {
+function TileShell({ width, height, plate, children }) {
   return (
     <div
       style={{
@@ -236,10 +243,10 @@ function TileShell({ width, height, children }) {
         height,
         flexShrink: 0,
         clipPath: `path('${tilePath(width, height)}')`,
-        background: [
-          'radial-gradient(120% 90% at 22% 12%, rgba(255,255,255,0.19), rgba(255,255,255,0) 55%)',
-          'linear-gradient(160deg, var(--base-neutral-600) 0%, var(--base-neutral-800) 100%)',
-        ].join(', '),
+        backgroundImage: `url(${PLATE_SRC})`,
+        backgroundSize: `${plate.totalWidth}px ${height}px`,
+        backgroundPosition: `${-plate.offsetX}px 0`,
+        backgroundRepeat: 'no-repeat',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -250,10 +257,10 @@ function TileShell({ width, height, children }) {
   );
 }
 
-function Tile({ text, width, height }) {
+function Tile({ text, width, height, plate }) {
   const fontSize = height * FONT_RATIO;
   return (
-    <TileShell width={width} height={height}>
+    <TileShell width={width} height={height} plate={plate}>
       <span
         style={{
           fontFamily: 'var(--font-family-base)',
@@ -261,7 +268,7 @@ function Tile({ text, width, height }) {
           fontSize,
           lineHeight: 1,
           letterSpacing: fontSize * trackingRatioFor(fontSize),
-          color: 'var(--snow)',
+          color: PLATE_TEXT_COLOR,
           whiteSpace: 'nowrap',
         }}
       >
@@ -271,12 +278,12 @@ function Tile({ text, width, height }) {
   );
 }
 
-function DigitTile({ digits, width, height, animate }) {
+function DigitTile({ digits, width, height, plate, animate }) {
   // 릴 스트립은 애니메이션을 위해 0-9 셀 전체가 DOM에 존재하므로(시각적으로는 마스크로
   // 한 칸만 보임) textContent가 뒤섞인다. 릴 전체를 aria-hidden으로 접근성 트리에서
   // 제외하고(DigitReelGroup 내부), 실제 최종 숫자값만 스크린리더 전용 텍스트로 노출한다.
   return (
-    <TileShell width={width} height={height}>
+    <TileShell width={width} height={height} plate={plate}>
       <span className="sr-only">{digits}</span>
       <DigitReelGroup digits={digits} height={height} animate={animate} />
     </TileShell>
@@ -295,20 +302,25 @@ export function ItemSerialCode({ code, height = 160, animate = true, className =
     : 0;
   const numberWidth = Math.max(tileWidth, digitTextWidth + padInline * 2);
 
+  const gap = height * GAP_RATIO;
+  // 알파벳 4장 + 숫자 박스가 이어 붙은 전체 폭 — 플레이트 이미지를 이 폭에 맞춰 늘려 나눠 비춘다.
+  const totalWidth = tileWidth * 4 + gap * 4 + (digits.length > 0 ? numberWidth : -gap);
+  const plateFor = (index) => ({ totalWidth, offsetX: index * (tileWidth + gap) });
+
   return (
     <div
       className={className}
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: height * GAP_RATIO,
+        gap,
         ...style,
       }}
     >
       {letters.map((ch, i) => (
-        <Tile key={i} text={ch} width={tileWidth} height={height} />
+        <Tile key={i} text={ch} width={tileWidth} height={height} plate={plateFor(i)} />
       ))}
-      {digits.length > 0 && <DigitTile digits={digits} width={numberWidth} height={height} animate={animate} />}
+      {digits.length > 0 && <DigitTile digits={digits} width={numberWidth} height={height} plate={plateFor(4)} animate={animate} />}
     </div>
   );
 }
