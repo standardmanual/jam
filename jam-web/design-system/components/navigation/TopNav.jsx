@@ -111,6 +111,9 @@ export function TopNav({
                 letterSpacing: 'normal',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 color: 'var(--foreground)',
+                // 한글 글자 모양은 줄 상자 안에서 아래로 치우쳐 chevron보다 1px 낮게 보인다. 모양 중심을 chevron 중심에 맞춘다
+                // (실측: 글자 중심 29.0px, chevron 중심 28px, 티켓 20261104_2143)
+                position: 'relative', top: -1,
               }}>
                 {title}
               </h1>

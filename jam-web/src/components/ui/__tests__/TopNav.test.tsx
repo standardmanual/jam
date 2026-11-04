@@ -108,3 +108,12 @@ describe('TopNav 뒤로가기와 제목 간격 (티켓 20261104_2131)', () => {
     expect(html).toContain('미션')
   })
 })
+
+describe('TopNav 제목 세로 정렬 (티켓 20261104_2143)', () => {
+  it('제목은 chevron보다 낮게 보이는 한글 글자 중심을 맞추려고 1px 위로 올린다', () => {
+    const html = renderToStaticMarkup(<TopNav title="미션" />)
+    const h1 = /<h1[^>]*>/.exec(html)?.[0] ?? ''
+    expect(h1).toContain('position:relative')
+    expect(h1).toContain('top:-1px')
+  })
+})
