@@ -690,6 +690,11 @@ const Logo3DViewport = forwardRef<Logo3DViewportHandle, Props>(function Logo3DVi
     try {
       if (!imageTrackerRef.current.isIdle()) await imageTrackerRef.current.waitUntilIdle()
       if (!fontTrackerRef.current.isIdle()) await fontTrackerRef.current.waitUntilIdle()
+      // 로딩 대기 중 취소됐거나 화면이 사라졌으면 녹화기를 만들지 않고 바로 끝낸다(크기·자세는 finally가 복원)
+      if (recAbortRef.current || !refs.current) {
+        if (recAbortRef.current) toast('녹화를 취소했어요.')
+        return
+      }
       const gl = r.renderer.getContext()
       const max = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number
       if (Math.max(w, h) > max) throw new Error(`이 기기의 최대 출력 크기는 ${max}px입니다.`)
