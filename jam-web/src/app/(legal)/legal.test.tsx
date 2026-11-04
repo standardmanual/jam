@@ -32,7 +32,7 @@ describe('LegalTopNav', () => {
 })
 
 describe('LegalLayout', () => {
-  it('(main)과 같은 배경 상수(--background 단색)를 쓰고 430px 컬럼으로 감싼다', () => {
+  it('(onboarding)과 같은 크림 배경 상수(--background 단색)를 쓰고 430px 컬럼으로 감싼다', () => {
     const html = renderToStaticMarkup(
       <LegalLayout>
         <p>본문</p>

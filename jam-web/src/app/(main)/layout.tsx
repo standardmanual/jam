@@ -110,13 +110,17 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           {/* 합친 연출(티켓 20261028_1740 3회) — children·챕터 오름 카드·나머지 오버레이를 모두 감싸 게이지와 카드가 같은 문맥을 읽는다 */}
           <CapsuleResultProvider initialResult={unseenCapsuleResult} userId={user.id}>
           <div
-            // 하단 pb는 탭 바(fixed) 높이 + 안전영역이다. main이 아니라 이 래퍼가 가져, 흰 면(main)은 푸터 로고에서 끝나고
-            // 그 아래 탭 바 구간은 body 크림이 비친다(티켓 20261104_1642).
+            // 하단 pb는 탭 바(fixed) 높이 + 안전영역이다. main이 아니라 이 래퍼가 가져, 로고가 main의 맨 아래에 붙고
+            // 그 아래 탭 바 구간도 이 래퍼의 흰 배경이 칠한다(서비스 열 전체가 흰색, 티켓 20261104_1642).
             className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative pb-[calc(5rem+env(safe-area-inset-bottom))]"
             // 띠가 있을 때 TopNav의 안전영역 padding-top을 0으로 눌러 이중 여백을 없앤다 —
             // 안전영역은 물리적 최상단인 띠가 진다(design-system/components/navigation/TopNav.jsx
             // `--topnav-safe-top` 폴백 참고, 티켓 20260928_0138 재작업 ①).
-            style={questPreview ? ({ '--topnav-safe-top': '0px' } as CSSProperties) : undefined}
+            style={
+              questPreview
+                ? ({ ...MAIN_PAGE_BACKGROUND, '--topnav-safe-top': '0px' } as CSSProperties)
+                : MAIN_PAGE_BACKGROUND
+            }
           >
             {/* 관리자 전용 퀘스트 미리보기 띠 — null이면 DOM에 아예 없다(관리자가 아니거나
                 미리보기 중이 아닐 때). 문서 흐름 안에 두어 TopNav를 아래로 민다(fixed 오버레이

@@ -368,5 +368,7 @@ describe('(main)/layout — 흰 페이지 면 (티켓 20261104_1642)', () => {
     const wrappers = findByType(tree, 'div').filter((el) => String(el.props.className ?? '').includes('max-w-[430px]'))
     expect(wrappers).toHaveLength(1)
     expect(String(wrappers[0].props.className)).toContain('pb-[calc(5rem+env(safe-area-inset-bottom))]')
+    // 탭 바 여백까지 흰 면이어야 하므로 바깥 래퍼도 같은 배경을 건다(서비스 열 전체가 흰색)
+    expect(wrappers[0].props.style).toMatchObject(MAIN_PAGE_BACKGROUND)
   })
 })
