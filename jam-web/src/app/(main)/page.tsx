@@ -10,8 +10,6 @@ import OnboardingSyncButton from './OnboardingSyncButton'
 import StravaDisconnectedCard from '@/components/strava/StravaDisconnectedCard'
 import SuspensionBanner from './SuspensionBanner'
 import { loadHomeSuspensionBanner } from '@/lib/suspension/home-banner'
-import CapsuleBlockedBanner from './CapsuleBlockedBanner'
-import { loadHomeCapsuleBlockedBanner } from '@/lib/capsule/home-blocked-banner'
 import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import HomeViewTracker from './HomeViewTracker'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
@@ -55,12 +53,10 @@ export default async function HomePage() {
   // 이용 정지 배너 값(티켓 20261017_1426). 다른 조회와 함께 시작해 홈 응답을 늦추지 않는다.
   // user_suspensions는 service_role 전용이라 서비스 클라이언트로 읽는다. 조회가 실패하면 배너만 생략한다(던지지 않는다).
   const suspensionPromise = loadHomeSuspensionBanner(createServiceClient(), userId)
-  // 캡슐 막힘 배너 값(티켓 20261105_0104). 가득 찬 캡슐에 빈칸이 모자란 동안 계속 보이고, 풀리면 다음 읽기에서 사라진다.
-  // 조회가 실패하면 배너만 생략한다(던지지 않는다). 정지 배너가 있으면 그리지 않지만 조회는 함께 시작해 응답을 늦추지 않는다.
   // 따라잡기(티켓 20261105_1438 R2): 어떤 경로로 칸이 비었든 빈칸이 대기 보상 개수 이상이면 여기서 대기 보상을 자동으로 지급하고 남은 잼을 채운 뒤,
-  // 그 결과를 배너·캡슐 초기값이 읽게 한다. 던지지 않고, 대기 보상이 없으면 확인 한 번으로 끝난다.
+  // 그 결과를 캡슐 초기값이 읽게 한다. 던지지 않고, 대기 보상이 없으면 확인 한 번으로 끝난다.
+  // 막힘 판정은 캡슐 초기값의 `notice === 'blocked'` 하나다(티켓 20261105_1912). 홈이 따로 읽던 막힘 조회는 걷었다.
   const settlePromise = settleAfterSlotsFreed(createServiceClient(), userId)
-  const capsuleBlockedPromise = settlePromise.then(() => loadHomeCapsuleBlockedBanner(createServiceClient(), userId))
   // 캡슐 초기값(티켓 20261018_0054). 조회가 실패하면 null로 접고 던지지 않는다 — 위젯이 클라이언트에서 다시 가져오고 오류 상태를 보여 준다.
   // 캡슐이 없으면 서버가 이때 만든다(`capsule_get_or_create`).
   const capsulePromise = settlePromise.then(() => getCapsuleStatus(createServiceClient(), userId)).catch((err: unknown) => {
@@ -91,7 +87,6 @@ export default async function HomePage() {
     onboardingQuestCard,
     onboardingQuestGate,
     suspension,
-    capsuleBlocked,
     capsuleInitial,
   ] = await Promise.all([
     profilePromise,
@@ -100,7 +95,6 @@ export default async function HomePage() {
     onboardingQuestPromise,
     onboardingQuestGatePromise,
     suspensionPromise,
-    capsuleBlockedPromise,
     capsulePromise,
   ])
   if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
@@ -130,10 +124,6 @@ export default async function HomePage() {
           정지는 홈의 다른 모든 것보다 먼저 읽혀야 해서 인사말 줄 위, 컨테이너의 첫 자식이다. */}
       {suspension && <SuspensionBanner reason={suspension.reason} suspendedAt={suspension.suspendedAt} />}
 
-      {/* 캡슐 막힘 배너 (티켓 20261105_0104) — 막힌 유저에게만 렌더, 아니면 DOM에 없다. 정지와 겹치면 정지 배너만 그려
-          상시 배너는 최대 1개다. 위젯은 홈에서 빈칸 줄·«인벤토리 보기»를 숨긴다(같은 말이 반복되지 않게). */}
-      {!suspension && capsuleBlocked && <CapsuleBlockedBanner pending={capsuleBlocked.pending} shortfall={capsuleBlocked.shortfall} />}
-
       {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출
           전체 폭 검색바를 대체한다. 검색 폼 자체는 UserSearchBar가 그대로 유지하고
           `/search` 페이지에서 계속 쓰인다. */}
@@ -154,8 +144,8 @@ export default async function HomePage() {
 
       {/* 캡슐 위젯 (티켓 20261018_0054, 20261028_1739, 20261031_1806, 위치 20261104_1710) — 인사말 줄 바로 아래, «JAM! 시작하기» 퀘스트 카드 위(2026-11-04 사용자 요청).
           홈에는 챕터 번호를 그리지 않는다. 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
-          조회가 실패했으면 위젯이 직접 가져온다. 확률 안내 링크는 이 묶음에 두지 않는다(푸터의 «확률 안내»로 통합). */}
-      <CapsuleWidget initial={capsuleInitial} hideBlockedAction />
+          막힘이면 위젯이 게이지와 안내·«인벤토리 가기»를 한 카드로 그린다(티켓 20261105_1912). 정지 중에는 서버가 notice none을 줘 일반 게이지다. 조회가 실패했으면 위젯이 직접 가져온다. 확률 안내 링크는 이 묶음에 두지 않는다(푸터의 «확률 안내»로 통합). */}
+      <CapsuleWidget initial={capsuleInitial} blockedCard />
 
       {/* «JAM! 시작하기» 카드 (티켓 20260927_2133, 실제 2단계 20261021_1248·20261028_1738) — 대상 유저에게만 렌더, 그 외엔 null */}
       <OnboardingQuestCard state={onboardingQuestCard} username={userProfile?.username ?? null} />

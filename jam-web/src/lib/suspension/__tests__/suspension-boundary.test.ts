@@ -96,6 +96,7 @@ describe('서버 전용 suspension.ts는 서버 쪽에서만 가져온다', () =
     'lib/suspension/suspended-block.ts', // 동기화 흐름과 캡슐 클라이언트가 같이 쓰는 정지 403 판별(티켓 20261018_0054)
     'lib/capsule/capsule-client.ts',
     'components/capsule/CapsuleWidget.tsx',
+    'components/capsule/CapsuleBlockedCard.tsx', // 홈 막힘 카드(티켓 20261105_1912)
     CONTRACT,
   ]
 

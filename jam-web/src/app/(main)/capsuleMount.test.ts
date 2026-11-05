@@ -50,14 +50,14 @@ describe('투데이 캡슐 위젯', () => {
 
   it('서버 초기값은 실패하면 null로 접고, 기존 Promise.all에 합쳐진다', () => {
     expect(code).toMatch(/getCapsuleStatus\(createServiceClient\(\), userId\)\)\.catch\(/)
-    // 따라잡기(티켓 20261105_1438 R2): 대기 보상 자동 지급을 먼저 시도하고, 캡슐 초기값과 막힘 배너가 그 뒤에 읽는다
+    // 따라잡기(티켓 20261105_1438 R2): 대기 보상 자동 지급을 먼저 시도하고, 캡슐 초기값이 그 뒤에 읽는다. 막힘 판정은 초기값의 notice 하나다(티켓 20261105_1912)
     expect(code).toMatch(/const settlePromise = settleAfterSlotsFreed\(createServiceClient\(\), userId\)/)
     expect(code).toMatch(/settlePromise\.then\(\(\) => getCapsuleStatus\(/)
-    expect(code).toMatch(/settlePromise\.then\(\(\) => loadHomeCapsuleBlockedBanner\(/)
+    expect(code).not.toMatch(/loadHomeCapsuleBlockedBanner|CapsuleBlockedBanner|capsuleBlocked/)
     expect(code).toMatch(/return null\s*\}\)/)
     const all = code.slice(code.indexOf('await Promise.all(['), code.indexOf('])', code.indexOf('await Promise.all([')))
     expect(all).toContain('capsulePromise')
-    expect(code).toContain('<CapsuleWidget initial={capsuleInitial} hideBlockedAction />')
+    expect(code).toContain('<CapsuleWidget initial={capsuleInitial} blockedCard />')
   })
 
   it('위젯을 z-index가 있는 래퍼로 감싸지 않는다', () => {

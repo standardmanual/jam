@@ -24,7 +24,7 @@ import {
  * 그래프 2%가 지름이 트랙 안쪽 높이와 같은 원이고, 100%는 트랙 안쪽을 가득 채운다. 번개 아이콘은 채움의 오른쪽 끝 원 안에 붙어 같이 움직인다.
  *
  * 눌러도 아무 일도 없다 — `button`·`jam-press`·커서가 없고 접근성 역할은 `role="img"`다. 상태는 숫자 없는 `ariaLabel`로만 글자로 알린다.
- * `message`가 있으면(막힘) 숫자를 지우고 숫자와 같은 자리 규칙으로 그 문구를 보인다(채움 50% 미만이면 트랙 오른쪽 끝 오렌지 글자, 이상이면 채움 안쪽 왼쪽).
+ * `message`가 있으면(막힘) 채운 양과 상관없이 채움을 가득 채우고, 숫자를 지운 자리(채움 안쪽 왼쪽, 트랙 색 글자)에 그 문구를 보인다(티켓 20261105_1912).
  * 문구는 붙들리지 않았으면 바로 보이고 240ms 페이드만 건다(진입 모션·보임 관찰에 묶지 않는다, 티켓 20261105_1439).
  * 퍼센트는 그리지 않는다. 채운 양(`filled`)의 숫자만 그리고(2026-11-04 사용자 결정, 이전에는 숫자를 그리지 않았다), 자리는 두 가지다.
  *  - 채운 비율이 50% 미만: 트랙 안쪽 오른쪽 끝, 오렌지 글자.
@@ -116,7 +116,8 @@ interface Motion {
 }
 
 export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, message }: Props) {
-  const target = capsuleGraphPercent(filled, required)
+  // 문구가 있으면(막힘) 채운 양과 상관없이 가득 찬 것으로 그린다. 문구가 사라지면 실제 값으로 바뀌며 «값이 바뀜» 경로가 줄여 준다(티켓 20261105_1912)
+  const target = capsuleGraphPercent(message ? required : filled, required)
   const numberText = capsuleNumberText(filled)
   const { gaugeHeld: held, registerGaugeFill } = useCapsuleResult()
   // 처음 그리는 값은 늘 2%다. 진입 모션이 끝 눈금으로 옮긴다(값이 0이면 옮길 곳이 없어 그대로다)
@@ -237,8 +238,8 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
   const shownDurationMs = held ? 0 : motion.durationMs
   const ratio = graphPercentToFillRatio(shownGraph)
   // 숫자 자리는 모션 중간값이 아니라 실제 값으로 정한다
-  // 문구도 숫자와 같은 자리 규칙을 따른다. 막히면 대기 보상 때문에 새 캡슐(채움 0)이라 오른쪽 끝(outside)에 보이고, 채움이 50% 이상인 예외에서만 안쪽이다(티켓 20261105_1439)
-  const placement = capsuleNumberPlacement(filled, required)
+  // 문구가 있으면 채움이 가득이라 자리는 늘 채움 안쪽 왼쪽(inside)이다(티켓 20261105_1912). 숫자는 기존 자리 규칙을 따른다
+  const placement = message ? 'inside' : capsuleNumberPlacement(filled, required)
   // 숫자는 채움이 움직이기 시작한 뒤에만 보인다. 켜진 채로 붙들리거나 값이 바뀌는 렌더에서는 효과가 꺼 주기 전에도 바로 숨긴다
   const showNumber = numberReady && arrived
   const numberContent = message ?? (showNumber ? <PopInNumber key={numberText} value={numberText} playOnMount /> : numberText)

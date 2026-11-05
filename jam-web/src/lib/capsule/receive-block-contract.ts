@@ -29,11 +29,3 @@ export interface CapsuleInventoryBlockedResponse {
   free: number
   needed: number
 }
-
-/** 홈 막힘 배너(`CapsuleBlockedBanner`)가 받는 값 — 서버 로더(`home-blocked-banner.ts`)의 반환과 같은 모양이다(티켓 20261105_0104) */
-export interface HomeCapsuleBlockedBannerView {
-  /** 얻었지만 아직 넣지 못한 대기 보상 개수(`pending`, 최소 1) */
-  pending: number
-  /** 부족한 빈칸 수(`needed - free`, 최소 1) */
-  shortfall: number
-}

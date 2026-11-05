@@ -36,7 +36,7 @@ const motion = { reduced: false }
 vi.mock('@/lib/motion', () => ({ prefersReducedMotion: () => motion.reduced }))
 
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX, gaugeCircleDiameter } from './CapsuleGauge'
-import { findAll, mount, unmount } from './__tests__/hookRunner'
+import { findAll, mount, rerender, unmount } from './__tests__/hookRunner'
 import {
   GAUGE_ENTRY_DELAY_MS,
   GAUGE_ENTRY_MS,
@@ -102,6 +102,20 @@ describe('관찰자가 없는 환경', () => {
     vi.advanceTimersByTime(GAUGE_ENTRY_DELAY_MS)
     expect(fillStyle().width).toBe(widthAt(TARGET))
     expect(fillStyle().transition).toContain(`${GAUGE_ENTRY_MS}ms`)
+  })
+})
+
+describe('문구가 있으면 채운 양과 상관없이 가득 찬다(막힘, 티켓 20261105_1912)', () => {
+  it('채움 30이어도 끝 눈금이 가득이고, 문구가 사라지면 실제 값으로 줄어든다', () => {
+    vi.stubGlobal('window', { setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout })
+    const FULL = capsuleGraphPercent(REQUIRED, REQUIRED)
+    const LOW = capsuleGraphPercent(30, REQUIRED)
+    mount(CapsuleGauge, { filled: 30, required: REQUIRED, ariaLabel: '캡슐', message: '캡슐이 가득 찼어요' })
+    vi.advanceTimersByTime(GAUGE_ENTRY_DELAY_MS)
+    expect(fillStyle().width).toBe(widthAt(FULL))
+    rerender({ filled: 30, required: REQUIRED, ariaLabel: '캡슐' })
+    expect(fillStyle().width).toBe(widthAt(LOW))
+    expect(fillStyle().transition).toContain('width')
   })
 })
 

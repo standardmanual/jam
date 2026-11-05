@@ -150,10 +150,10 @@ describe('채움 요소 알리기', () => {
   })
 })
 
-describe('막힘 문구(티켓 20261105_1439)', () => {
+describe('막힘 문구(티켓 20261105_1439, 자리는 20261105_1912에서 늘 채움 안쪽)', () => {
   const messageProps = { filled: 0, required: REQUIRED, ariaLabel: '캡슐, 막혔어요', message: '캡슐이 가득 찼어요' }
   const messageStyle = () => {
-    const span = findAll((e) => e.type === 'span' && (e.props as { 'data-capsule-number'?: string })['data-capsule-number'] === 'outside')[0]
+    const span = findAll((e) => e.type === 'span' && String((e.props as { className?: string }).className ?? '').includes('text-base'))[0]
     return span.props.style as { opacity?: number }
   }
 

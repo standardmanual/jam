@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ds/components/buttons/Button'
 import { Skeleton } from '@ds/components/feedback/Skeleton'
+import CapsuleBlockedCard from '@/components/capsule/CapsuleBlockedCard'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'
 import { fetchCapsule } from '@/lib/capsule/capsule-client'
 import type { CapsuleNoticeKind, CapsuleStatus } from '@/lib/capsule/capsule-contract'
@@ -18,7 +19,8 @@ import { d, t } from '@/lib/i18n'
  *  - 로딩: MODULAR `Skeleton`(게이지와 같은 높이). 오류: 상자 자체가 «다시 시도» 버튼이다.
  *  - 안내 문구: 서버가 정해 준 `notice`(막힘 한 종류, 티켓 20261105_0104)로 간결 문구를 고른다. 게이지 안 숫자 자리에 보인다(숫자는 지운다, 2026-11-05 사용자 요청). 안내 영역에는 빈칸 줄과 «인벤토리 보기»만 남는다.
  *    이용 정지는 안내가 없다(서버가 `notice: 'none'`을 준다. 홈은 `SuspensionBanner`가 알린다).
- *    홈은 `hideBlockedAction`으로 빈칸 줄과 «인벤토리 보기»를 숨긴다(홈 상단 `CapsuleBlockedBanner`가 알린다). 프로필은 그대로 둔다.
+ *    홈은 `blockedCard`를 켜서 막힘일 때 게이지를 `CapsuleBlockedCard`(두 줄 안내와 «인벤토리 가기»를 한 카드로 묶음)로 감싸고 빈칸 줄과 «인벤토리 보기»는 그리지 않는다(티켓 20261105_1912). 프로필은 그대로 둔다.
+ *    막힘이면 게이지는 채운 양과 상관없이 가득 차고 문구가 채움 안쪽 왼쪽에 보인다. 풀리면 문구가 사라지고 남은 잼 값으로 줄며 숫자가 보인다.
  *  - «받기» 버튼은 없다(티켓 20261105_0105 T5). 대기 보상은 인벤토리 빈칸이 생기면 서버가 자동으로 지급한다. 대기 보상이 빈칸에 막혔을 때만 빈칸 덧줄과 «인벤토리 보기»를 둔다.
  *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 합친 연출은 레이아웃의 `CapsuleResultProvider`가 맡는다(티켓 20261028_1740 3회).
  * 이 컴포넌트를 감싸는 곳은 z-index를 주지 않는다(오버레이가 탭바에 가려진 2026-08-25 사고).
@@ -36,11 +38,11 @@ function gaugeAriaLabel(kind: CapsuleNoticeKind): string {
 
 export default function CapsuleWidget({
   initial,
-  hideBlockedAction = false,
+  blockedCard = false,
 }: {
   initial?: CapsuleStatus | null
-  /** 막힘 안내의 빈칸 줄과 «인벤토리 보기» 버튼을 숨기고 한 줄만 보인다. 홈은 상단 배너가 같은 말을 하므로 켠다(티켓 20261105_0104). 프로필은 끈다 */
-  hideBlockedAction?: boolean
+  /** 막힘이면 게이지를 안내·버튼과 한 카드로 묶고 빈칸 줄과 «인벤토리 보기»는 그리지 않는다. 홈만 켠다(티켓 20261105_1912). 프로필은 끄고 기존 구성을 그대로 둔다 */
+  blockedCard?: boolean
 }) {
   const router = useRouter()
   const [capsule, setCapsule] = useState<CapsuleStatus | null>(initial ?? null)
@@ -112,9 +114,13 @@ export default function CapsuleWidget({
   const text = noticeText(capsule.notice)
   const { claim } = capsule
   // 막힘 안내이거나 대기 보상이 빈칸 때문에 지급되지 못할 때 빈칸 줄과 «인벤토리 보기»를 둔다.
-  // 홈에서는 막힘 안내일 때만 숨긴다(배너가 같은 말을 한다). 막힘이 아닌데 보상만 빈칸에 막힌 경우는 배너가 없으니 그대로 둔다
+  // 홈의 막힘 카드는 같은 말을 안내와 «인벤토리 가기»로 하므로 이 경로를 그리지 않는다(아래에서 먼저 반환).
   const blocked = capsule.notice === 'blocked'
-  const showSlotsAction = blocked ? !hideBlockedAction : claim.blockedReason === 'no_slots'
+  const gauge = (
+    <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} message={text ?? undefined} />
+  )
+  if (blocked && blockedCard) return <CapsuleBlockedCard gauge={gauge} />
+  const showSlotsAction = blocked || claim.blockedReason === 'no_slots'
 
   const action = showSlotsAction ? (
     <div className="flex flex-col gap-2">
@@ -129,7 +135,7 @@ export default function CapsuleWidget({
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} message={text ?? undefined} />
+      {gauge}
       {action}
     </div>
   )

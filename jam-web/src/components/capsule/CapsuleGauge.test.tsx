@@ -43,17 +43,19 @@ describe('눌러도 동작이 없다', () => {
   })
 })
 
-describe('문구가 있으면 숫자 자리를 대신한다(막힘, 티켓 20261105_1439)', () => {
+describe('문구가 있으면 숫자 자리를 대신하고 늘 채움 안쪽에 둔다(막힘, 티켓 20261105_1912)', () => {
   const MSG = '캡슐이 가득 찼어요'
   const withMessage = (filled: number, required: number) =>
     renderToStaticMarkup(<CapsuleGauge filled={filled} required={required} ariaLabel={LABEL} message={MSG} />)
 
-  it('채움이 0이면 문구가 트랙 오른쪽 끝(outside)에 오렌지 글자로 보이고 숫자는 없다', () => {
-    const html = withMessage(0, 300)
-    expect(html).toMatch(/data-capsule-number="outside"[\s\S]*캡슐이 가득 찼어요/)
-    expect(html).not.toContain('data-capsule-number="inside"')
-    expect(textOf(html)).toBe(MSG)
-    expect(html).toContain('color:var(--capsule-fill)')
+  it('채움이 0이어도 문구는 채움 안쪽 왼쪽(inside)에 트랙 색 글자로 보이고 숫자는 없다', () => {
+    for (const filled of [0, 120, 300]) {
+      const html = withMessage(filled, 300)
+      expect(html).toMatch(/data-capsule-number="inside"[\s\S]*캡슐이 가득 찼어요/)
+      expect(html).not.toContain('data-capsule-number="outside"')
+      expect(textOf(html)).toBe(MSG)
+      expect(html).toContain('color:var(--capsule-track)')
+    }
   })
 
   it('보임 관찰자가 없는 서버 렌더 경로에서도 문구는 투명(opacity 0)이 아니다', () => {
@@ -64,20 +66,13 @@ describe('문구가 있으면 숫자 자리를 대신한다(막힘, 티켓 20261
 
   it('문구에는 글자 크기 text-base와 페이드 전환만 걸고 tabular-nums는 쓰지 않는다', () => {
     const html = withMessage(0, 300)
-    const span = html.match(/<span[^>]*data-capsule-number="outside"[^>]*>/)?.[0] ?? ''
+    const span = html.match(/<span class="[^"]*text-base[^"]*"[^>]*>/)?.[0] ?? ''
     expect(span).toContain('text-base')
     expect(span).not.toContain('tabular-nums')
     expect(span).not.toContain('text-xl')
     expect(span).toContain('transition-opacity')
     expect(span).toContain('motion-reduce:transition-none')
     expect(span).toContain('whitespace-nowrap')
-  })
-
-  it('채움이 50% 이상인 예외에서만 안쪽(inside)에 둔다', () => {
-    const html = withMessage(300, 300)
-    expect(html).toMatch(/data-capsule-number="inside"[\s\S]*캡슐이 가득 찼어요/)
-    expect(html).not.toContain('data-capsule-number="outside"')
-    expect(textOf(html)).toBe(MSG)
   })
 
   it('문구가 없으면 지금처럼 숫자를 그린다', () => {

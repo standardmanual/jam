@@ -4,7 +4,7 @@
  * 저장소에 jsdom이 없어 서버 렌더로 첫 화면을 검증한다.
  * - 서버 초기값이 있으면 로딩 없이 바로 게이지를 그린다. 시트·«가진 잼»·퍼센트가 없고, 게이지에 채운 양 숫자만 있다.
  * - 안내 영역은 서버가 준 `notice`로 간결 문구를 고른다. 퍼센트·진행 숫자는 쓰지 않는다.
- * - 안내는 막힘 한 종류다. 막히면 «인벤토리 보기»와 빈칸 덧줄이 보이고 홈 전용 prop(`hideBlockedAction`)이면 숨긴다. 이용 정지는 안내가 없다. «받기» 버튼은 어떤 상태에서도 없다.
+ * - 안내는 막힘 한 종류다. 막히면 «인벤토리 보기»와 빈칸 덧줄이 보이고, 홈 전용 prop(`blockedCard`)이면 게이지를 막힘 카드로 감싼다(티켓 20261105_1912). 이용 정지는 안내가 없다. «받기» 버튼은 어떤 상태에서도 없다.
  * - 초기값이 없으면 높이 72의 Skeleton이다.
  * - 위젯이 z-index를 가진 래퍼를 만들지 않는다.
  *
@@ -86,26 +86,48 @@ describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다(�
     expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
   })
 
-  it('막힘 + 채움 0(보류가 생긴 새 캡슐): 문구가 트랙 오른쪽 끝에 보이고 안쪽에는 없다', () => {
+  it('막힘 + 채움 0(보류가 생긴 새 캡슐): 문구가 채움 안쪽에 보인다(티켓 20261105_1912)', () => {
     const html = render({ ...BLOCKED, filled: 0, remaining: 300 })
-    expect(html).toMatch(/data-capsule-number="outside"[\s\S]*캡슐이 가득 찼어요/)
-    expect(html).not.toContain('data-capsule-number="inside"')
+    expect(html).toMatch(/data-capsule-number="inside"[\s\S]*캡슐이 가득 찼어요/)
+    expect(html).not.toContain('data-capsule-number="outside"')
     expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
     expect(d.capsule.widget.gaugeAria.blocked).toBe('캡슐, 얻은 아이템 배지를 넣지 못해 잼을 얻을 수 없어요')
   })
 
-  it('막힘 + 홈 전용 prop: 한 줄만 보이고 빈칸 줄과 «인벤토리 보기» 버튼이 없다', () => {
-    const html = renderToStaticMarkup(<CapsuleWidget initial={status(BLOCKED)} hideBlockedAction />)
-    expect(textOf(html)).toBe('캡슐이 가득 찼어요')
-    expect(html).not.toContain('<button')
+  it('막힘 + 홈 전용 prop: 게이지를 카드 하나로 감싸고 두 줄 안내와 «인벤토리 가기» 버튼 하나만 있다', () => {
+    const html = renderToStaticMarkup(<CapsuleWidget initial={status(BLOCKED)} blockedCard />)
+    const text = textOf(html)
+    expect(html.match(/<section/g)).toHaveLength(1)
+    expect(html.match(/role="img"/g)).toHaveLength(1)
+    expect(text).toContain(d.capsule.widget.notice.blocked)
+    expect(text).toContain(d.capsule.blockedBanner.line1)
+    expect(text).toContain(d.capsule.blockedBanner.line2)
+    expect(html.match(/<button/g)).toHaveLength(1)
+    expect(text).toContain('인벤토리 가기')
+    // 빈칸 덧줄·«인벤토리 보기»는 홈 막힘 카드에서 그리지 않는다
+    expect(text).not.toContain('인벤토리 보기')
+    expect(text).not.toContain(t(d.capsule.widget.slots, { free: 1, needed: 2 }))
     expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
+  })
+
+  it('홈 전용 prop이 있어도 막히지 않았으면(일반·이용 정지) 카드가 DOM에 없고 숫자 게이지만 있다', () => {
+    for (const html of [
+      renderToStaticMarkup(<CapsuleWidget initial={status()} blockedCard />),
+      renderToStaticMarkup(
+        <CapsuleWidget initial={status({ pendingCount: 1, notice: 'none', claim: { blockedReason: 'suspended', freeSlots: 40, neededSlots: 2 } })} blockedCard />,
+      ),
+    ]) {
+      expect(html).not.toContain('<section')
+      expect(html).not.toContain('<button')
+      expect(textOf(html)).toBe('120')
+    }
   })
 
   it('막힘이 아닌데 받을 보상이 빈칸에 막힌 경우는 홈 전용 prop이 있어도 «인벤토리 보기»를 둔다', () => {
     const html = renderToStaticMarkup(
       <CapsuleWidget
         initial={status({ pendingCount: 1, notice: 'none', claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 3 } })}
-        hideBlockedAction
+        blockedCard
       />,
     )
     expect(textOf(html)).toContain(t(d.capsule.widget.slots, { free: 1, needed: 3 }))
