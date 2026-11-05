@@ -218,4 +218,20 @@ describe('인벤토리 페이지 — 남은 칸 표시', () => {
     for (const word of ['장착', '믹스', '드랍']) expect(body).toContain(word)
     expect(html).toContain('인벤토리가 꽉 찼어요. 50개까지만 보관할 수 있어서 새 아이템 배지를 바로 받을 수 없어요')
   })
+
+  it('남은 칸이 0개일 때 안내 카드는 어두운 반전 면이고 «드랍하기»는 밝은 알약으로 /drops에 간다 (티켓 20261105_1953)', async () => {
+    state.inventory = withUsed(50)
+    const html = await render()
+    expect(html).toMatch(/<div class="mt-3 rounded-2xl px-4 py-3 bg-background-inverse border border-background-inverse">/)
+    expect(html).toMatch(/<p class="text-base text-snow /)
+    expect(html).toMatch(/<a class="[^"]*min-h-11[^"]*bg-default text-foreground[^"]*" href="\/drops">/)
+    expect(html).not.toContain('bg-surface border border-border')
+  })
+
+  it('가득 차지 않으면 반전 안내가 DOM에 없다', async () => {
+    state.inventory = withUsed(49)
+    const html = await render()
+    expect(html).not.toContain('bg-background-inverse')
+    expect(html).not.toContain('href="/drops"')
+  })
 })
