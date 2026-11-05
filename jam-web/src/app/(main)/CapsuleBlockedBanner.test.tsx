@@ -3,7 +3,8 @@
  *
  * 저장소에 jsdom·testing-library가 없어(`SuspensionBanner.test.tsx`와 같은 방식) 서버 렌더로 마크업만 고정한다. 가짜 props만 쓴다.
  *
- * 고정하는 것: 제목·본문(부족분 N)·«인벤토리 보기» 버튼이 문구 사전에서 나온다, N은 최소 1, 아이콘은 `text-danger`이고 `aria-hidden`이다,
+ * R3(티켓 20261105_1439): 제목은 대기 보상 개수 n, 본문은 부족분 k(최소 1)로 그린다.
+ * 고정하는 것: 제목(대기 개수 n)·본문(부족분 k)·«인벤토리 보기» 버튼이 문구 사전에서 나온다, N은 최소 1, 아이콘은 `text-danger`이고 `aria-hidden`이다,
  * 면·테두리를 붉게 칠하지 않는다(붉은색은 아이콘 하나), 닫기·칩·애니메이션·고정 위치가 없다, 줄바꿈 클래스, section·h2 접근성.
  * 막히지 않았을 때 DOM에 아무것도 없는 것과 정지와 겹침은 홈이 컴포넌트를 부르는 쪽(`page.tsx`)이라 `home-blocked-banner.test.ts`에서 고정한다.
  * /inventory 이동은 라우터 호출이라 서버 렌더로 누를 수 없어, 버튼이 하나이고 문구가 `cta`인 것까지만 확인한다.
@@ -20,17 +21,28 @@ vi.mock('next/navigation', () => ({
 import CapsuleBlockedBanner from './CapsuleBlockedBanner'
 import { d, t } from '@/lib/i18n'
 
-const render = (shortfall: number) => renderToStaticMarkup(<CapsuleBlockedBanner shortfall={shortfall} />)
+const render = (shortfall: number, pending = 2) => renderToStaticMarkup(<CapsuleBlockedBanner pending={pending} shortfall={shortfall} />)
 const textOf = (html: string) => html.replace(/<[^>]*>/g, '')
 
 describe('CapsuleBlockedBanner — 막힘 기본 모습', () => {
   const html = render(2)
 
-  it('제목·본문·버튼 문구가 윈터 제3안 그대로 보인다', () => {
-    const text = textOf(html)
-    expect(text).toContain('인벤토리가 가득 찼어요')
-    expect(text).toContain('캡슐을 열 빈칸이 모자라서 잼 모으기가 잠시 멈췄어요. 2칸만 더 비우면 바로 다시 모을 수 있어요.')
+  it('제목·본문·버튼 문구가 사용자 결정(2026-11-05) 그대로 보인다', () => {
+    const text = textOf(render(1, 2))
+    expect(text).toContain('아이템 배지 2개를 얻었어요')
+    expect(text).toContain('인벤토리가 가득 차서 넣지 못했어요. 1칸을 비우면 바로 들어와요. 그 전까지는 잼을 얻을 수 없어요.')
     expect(text).toContain('인벤토리 보기')
+    expect(text).not.toContain('잠시')
+  })
+
+  it('대기 1개에 빈칸 0개면 «1개»와 «1칸»이다', () => {
+    const text = textOf(render(1, 1))
+    expect(text).toContain('아이템 배지 1개를 얻었어요')
+    expect(text).toContain('1칸을 비우면')
+  })
+
+  it('대기 개수가 두 자리여도 제목에 그대로 들어간다', () => {
+    expect(textOf(render(1, 12))).toContain('아이템 배지 12개를 얻었어요')
   })
 
   it('버튼은 하나뿐이다(닫기·보조 버튼 없음)', () => {
@@ -38,14 +50,15 @@ describe('CapsuleBlockedBanner — 막힘 기본 모습', () => {
     expect(html).toContain(d.capsule.blockedBanner.cta)
   })
 
-  it('부족분 N을 본문에 넣는다', () => {
-    expect(textOf(render(5))).toContain(t(d.capsule.blockedBanner.body, { n: 5 }))
-    expect(textOf(render(5))).toContain('5칸만 더 비우면')
+  it('부족분 k를 본문에, 대기 개수 n을 제목에 넣는다', () => {
+    expect(textOf(render(5, 7))).toContain(t(d.capsule.blockedBanner.body, { k: 5 }))
+    expect(textOf(render(5, 7))).toContain(t(d.capsule.blockedBanner.title, { n: 7 }))
+    expect(textOf(render(5, 7))).toContain('5칸을 비우면')
   })
 
   it('부족분이 1 미만으로 들어와도 1칸으로 보인다', () => {
-    expect(textOf(render(0))).toContain('1칸만 더 비우면')
-    expect(textOf(render(-3))).toContain('1칸만 더 비우면')
+    expect(textOf(render(0))).toContain('1칸을 비우면')
+    expect(textOf(render(-3))).toContain('1칸을 비우면')
   })
 
   it('아이콘은 text-danger이고 스크린리더에서 숨긴다', () => {

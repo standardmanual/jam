@@ -66,7 +66,7 @@ code:
 면·테두리를 붉게 칠하지 않고 닫기 버튼·애니메이션이 없다. 빈칸을 만들고 홈으로 돌아오면 서버가 다시 판정해 배너가 사라지고 자리도 남지 않는다. 막힘 조회가 실패하면 홈은 그대로 열고 배너만 뺀다.
 같은 홈의 캡슐 위젯은 이때 게이지 안의 채운 양 숫자를 지우고 그 자리에 「캡슐이 가득 찼어요」를 넣는다. 보류가 생기면 채움이 0이라 숫자와 같은 규칙으로 트랙 오른쪽 끝에 오렌지 글자로 보이고(채움 50% 이상인 예외에서만 채움 안쪽 왼쪽), 진입 모션을 기다리지 않고 바로 보인다. 스크린리더 이름은 「캡슐, 얻은 아이템 배지를 넣지 못해 잼을 얻을 수 없어요」다. 게이지 아래 줄은 비우고 빈칸 줄과 「인벤토리 보기」도 숨긴다(내 프로필의 위젯은 숫자 자리 문구는 같고, 아래에 빈칸 줄과 「인벤토리 보기」가 남는다).
 
-근거: `jam-web/src/app/(main)/CapsuleBlockedBanner.tsx`, `jam-web/src/lib/capsule/home-blocked-banner.ts`, 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule.blockedBanner`)
+근거: `jam-web/src/app/(main)/CapsuleBlockedBanner.tsx`, `jam-web/src/lib/capsule/home-blocked-banner.ts`(대기 개수 `pending`과 부족분 `shortfall`을 함께 내려 줌), `jam-web/src/lib/capsule/receive-block-contract.ts`, 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule.blockedBanner`)
 
 **«JAM! 시작하기» 카드**(티켓 20260927_2133, 상위 20260927_2123. 실제 단계·카드 개편 20261021_1248 2회, 실제 2단계로 축소 20261028_1738 1회, 운영 로직 2.2절)는 신규 유저가 온보딩 2단계를
 마친 뒤 두 가지를 한 카드에서 보여 준다. 하나는 서비스 기능을 순서대로 직접 해 보는 연출 7단계(구역 라벨 «미리 해보기»)이고, 다른 하나는 유저가 자기 활동으로 하는

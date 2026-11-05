@@ -132,7 +132,7 @@ export default async function HomePage() {
 
       {/* 캡슐 막힘 배너 (티켓 20261105_0104) — 막힌 유저에게만 렌더, 아니면 DOM에 없다. 정지와 겹치면 정지 배너만 그려
           상시 배너는 최대 1개다. 위젯은 홈에서 빈칸 줄·«인벤토리 보기»를 숨긴다(같은 말이 반복되지 않게). */}
-      {!suspension && capsuleBlocked && <CapsuleBlockedBanner shortfall={capsuleBlocked.shortfall} />}
+      {!suspension && capsuleBlocked && <CapsuleBlockedBanner pending={capsuleBlocked.pending} shortfall={capsuleBlocked.shortfall} />}
 
       {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출
           전체 폭 검색바를 대체한다. 검색 폼 자체는 UserSearchBar가 그대로 유지하고
