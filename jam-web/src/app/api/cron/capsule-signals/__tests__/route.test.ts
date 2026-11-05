@@ -1,10 +1,10 @@
 /**
- * GET /api/cron/capsule-signals — 캡슐·소멸 운영 신호 일일 요약 크론 (티켓 20261031_1525)
+ * GET /api/cron/capsule-signals — 캡슐 운영 신호 일일 요약 크론 (티켓 20261031_1525)
  *
  * 읽기와 글 형식은 `lib/capsule/__tests__/dailySignals.test.ts`가 지킨다. 여기서는 라우트가 맡은 것만 본다:
  * - `CRON_SECRET`이 비었거나 헤더가 없거나 다르면 401이고 아무것도 읽지 않는다
  * - 슬랙에 올리면 200 sent, 슬랙 값이 없으면 200 none, 슬랙 실패는 500 failed
- * - 세 항목을 모두 못 읽으면 글을 올리지 않고 500
+ * - 두 항목을 모두 못 읽으면 글을 올리지 않고 500
  * - 본문은 개수와 상태만 싣고 글 내용·개인 값은 싣지 않는다
  * - GET만 export하고 maxDuration이 60 이하다
  *
@@ -32,7 +32,6 @@ const route = await import('../route')
 function loaded() {
   return {
     day: '2026-10-30',
-    forfeit: { users: 2, amount: 80, weekUsers: 3, weekAmount: 120 },
     opens: { total: 9, maxPerUser: 4 },
     pending: { pendingUsers: 5, blockedUsers: 1, totalUsers: 100 },
   }
@@ -78,7 +77,7 @@ describe('게시', () => {
     expect(h.post).toHaveBeenCalledTimes(1)
     expect(h.post.mock.calls[0][0]).toBe('alert')
     expect(h.post.mock.calls[0][1]).toContain('캡슐 운영 신호 · 어제 요약')
-    expect(await res.json()).toEqual({ ok: true, forfeitUsers: 2, openedCapsules: 9, pendingUsers: 5, post: 'sent' })
+    expect(await res.json()).toEqual({ ok: true, openedCapsules: 9, pendingUsers: 5, post: 'sent' })
   })
 
   it('슬랙 값이 없으면 200이고 post는 none이다', async () => {
@@ -96,15 +95,21 @@ describe('게시', () => {
   })
 
   it('일부만 못 읽었으면 «읽지 못했어요»로 적고 올린다', async () => {
-    h.read.mockResolvedValue({ ...loaded(), forfeit: null })
+    h.read.mockResolvedValue({ ...loaded(), opens: null })
     const res = await route.GET(request())
     expect(res.status).toBe(200)
-    expect(h.post.mock.calls[0][1]).toContain('잼 소멸: 읽지 못했어요')
-    expect((await res.json()).forfeitUsers).toBeNull()
+    expect(h.post.mock.calls[0][1]).toContain('한 번에 열린 캡슐 (하루 기준): 읽지 못했어요')
+    expect((await res.json()).openedCapsules).toBeNull()
   })
 
-  it('세 항목을 모두 못 읽으면 글을 올리지 않고 500이다', async () => {
-    h.read.mockResolvedValue({ day: '2026-10-30', forfeit: null, opens: null, pending: null })
+  it('글과 본문에 잼 소멸 신호가 없다 (티켓 20261105_0105 T5)', async () => {
+    const res = await route.GET(request())
+    expect(h.post.mock.calls[0][1]).not.toContain('소멸')
+    expect(await res.json()).not.toHaveProperty('forfeitUsers')
+  })
+
+  it('두 항목을 모두 못 읽으면 글을 올리지 않고 500이다', async () => {
+    h.read.mockResolvedValue({ day: '2026-10-30', opens: null, pending: null })
     const res = await route.GET(request())
     expect(res.status).toBe(500)
     expect(h.post).not.toHaveBeenCalled()

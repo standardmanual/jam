@@ -1,8 +1,8 @@
 /**
- * 캡슐·소멸 운영 신호 일일 요약 (티켓 20261031_1525)
+ * 캡슐 운영 신호 일일 요약 (티켓 20261031_1525, 잼 소멸 신호는 20261105_0105 T5에서 걷음)
  *
- * - 읽기: 어제(KST) 구간, 소멸 유저 수·잼 합, 열린 캡슐 총수·유저별 최댓값, 보류 유저 수·2개 유저 수·전체 유저 수, 항목별 독립 실패
- * - 글: 소멸 0은 «없음», 1 이상은 «참고»로 시작, 못 읽은 항목은 «읽지 못했어요», 유저 0명, 임계 숫자·개인 값 없음
+ * - 읽기: 어제(KST) 구간, 열린 캡슐 총수·유저별 최댓값, 보류 유저 수·2개 유저 수·전체 유저 수, 항목별 독립 실패. 소멸(`capsule_forfeit`·`jam_forfeit_weekly`)은 읽지 않는다
+ * - 글: 못 읽은 항목은 «읽지 못했어요», 유저 0명, 소멸 줄 없음, 임계 숫자·개인 값 없음
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/dailySignals.test.ts
  */
@@ -57,16 +57,8 @@ beforeEach(() => {
 })
 
 describe('readCapsuleDailySignals', () => {
-  it('어제(KST) 구간으로 소멸·열린 캡슐을 묻고 유저 수·합·최댓값을 센다', async () => {
+  it('어제(KST) 구간으로 열린 캡슐을 묻고 총수·유저별 최댓값과 보류 유저를 센다', async () => {
     const { service, calls } = fakeService({
-      jam_transactions: {
-        rows: [
-          { id: 'a', user_id: 'u1', amount: -30 },
-          { id: 'b', user_id: 'u1', amount: -20 },
-          { id: 'c', user_id: 'u2', amount: -50 },
-        ],
-      },
-      jam_forfeit_weekly: { single: { user_count: 5, forfeited_amount: 700 } },
       capsule_opens: {
         rows: [
           { id: '1', user_id: 'u1' },
@@ -87,51 +79,31 @@ describe('readCapsuleDailySignals', () => {
     const signals = await readCapsuleDailySignals(service, NOW)
 
     expect(signals.day).toBe('2026-10-30')
-    expect(signals.forfeit).toEqual({ users: 2, amount: 100, weekUsers: 5, weekAmount: 700 })
     expect(signals.opens).toEqual({ total: 4, maxPerUser: 3 })
     expect(signals.pending).toEqual({ pendingUsers: 2, blockedUsers: 1, totalUsers: 40 })
 
-    // 어제 KST 하루 = 10-29 15:00Z ~ 10-30 15:00Z, 주 시작은 그 주 월요일
-    const gte = calls.find((c) => c.table === 'jam_transactions' && c.method === 'gte')
-    const lt = calls.find((c) => c.table === 'jam_transactions' && c.method === 'lt')
-    expect(gte?.args).toEqual(['created_at', '2026-10-29T15:00:00.000Z'])
-    expect(lt?.args).toEqual(['created_at', '2026-10-30T15:00:00.000Z'])
-    expect(calls.find((c) => c.table === 'jam_forfeit_weekly' && c.method === 'eq')?.args).toEqual(['week_start_kst', '2026-10-26'])
-    expect(calls.find((c) => c.table === 'jam_transactions' && c.method === 'eq')?.args).toEqual(['reason', 'capsule_forfeit'])
+    // 어제 KST 하루 = 10-29 15:00Z ~ 10-30 15:00Z
+    const gte = calls.find((c) => c.table === 'capsule_opens' && c.method === 'gte')
+    const lt = calls.find((c) => c.table === 'capsule_opens' && c.method === 'lt')
+    expect(gte?.args).toEqual(['opened_at', '2026-10-29T15:00:00.000Z'])
+    expect(lt?.args).toEqual(['opened_at', '2026-10-30T15:00:00.000Z'])
   })
 
-  it('월요일 아침이면 어제(일요일)가 속한 지난 주를 본다', async () => {
-    const { service, calls } = fakeService({})
-    // 2026-11-02(월) 09:10 KST → 어제는 11-01(일), 그 주 월요일은 10-26
-    await readCapsuleDailySignals(service, new Date('2026-11-02T00:10:00Z'))
-    expect(calls.find((c) => c.table === 'jam_forfeit_weekly' && c.method === 'eq')?.args).toEqual(['week_start_kst', '2026-10-26'])
-  })
-
-  it('그 주에 소멸이 없으면(뷰에 행 없음) 주 누적을 0으로 본다', async () => {
-    const { service } = fakeService({ jam_transactions: { rows: [] }, jam_forfeit_weekly: { single: null } })
+  it('잼 소멸 표(jam_transactions·jam_forfeit_weekly)는 읽지 않고 결과에도 소멸 값이 없다 (티켓 20261105_0105 T5)', async () => {
+    const { service, calls } = fakeService({ capsule_opens: { rows: [] }, capsule_pending_rewards: { rows: [] }, users: { count: 1 } })
     const signals = await readCapsuleDailySignals(service, NOW)
-    expect(signals.forfeit).toEqual({ users: 0, amount: 0, weekUsers: 0, weekAmount: 0 })
-  })
-
-  it('주 누적만 못 읽으면 어제 값은 남기고 주 누적만 null이다', async () => {
-    const { service } = fakeService({
-      jam_transactions: { rows: [{ id: 'a', user_id: 'u1', amount: -10 }] },
-      jam_forfeit_weekly: { error: 'boom' },
-    })
-    const signals = await readCapsuleDailySignals(service, NOW)
-    expect(signals.forfeit).toEqual({ users: 1, amount: 10, weekUsers: null, weekAmount: null })
+    expect(calls.some((c) => c.table === 'jam_transactions' || c.table === 'jam_forfeit_weekly')).toBe(false)
+    expect(signals).not.toHaveProperty('forfeit')
   })
 
   it('한 항목이 실패해도 나머지는 읽는다', async () => {
     const { service } = fakeService({
-      jam_transactions: { error: 'boom' },
-      capsule_opens: { rows: [{ id: '1', user_id: 'u1' }] },
+      capsule_opens: { error: 'boom' },
       capsule_pending_rewards: { rows: [] },
       users: { count: 10 },
     })
     const signals = await readCapsuleDailySignals(service, NOW)
-    expect(signals.forfeit).toBeNull()
-    expect(signals.opens).toEqual({ total: 1, maxPerUser: 1 })
+    expect(signals.opens).toBeNull()
     expect(signals.pending).toEqual({ pendingUsers: 0, blockedUsers: 0, totalUsers: 10 })
   })
 
@@ -144,7 +116,6 @@ describe('readCapsuleDailySignals', () => {
 function signals(overrides: Partial<CapsuleDailySignals> = {}): CapsuleDailySignals {
   return {
     day: '2026-10-30',
-    forfeit: { users: 0, amount: 0, weekUsers: 0, weekAmount: 0 },
     opens: { total: 12, maxPerUser: 3 },
     pending: { pendingUsers: 5, blockedUsers: 1, totalUsers: 200 },
     ...overrides,
@@ -152,56 +123,40 @@ function signals(overrides: Partial<CapsuleDailySignals> = {}): CapsuleDailySign
 }
 
 describe('formatCapsuleDailySignals', () => {
-  it('소멸이 0이면 «없음»이고 «참고»가 붙지 않는다', () => {
+  it('열린 캡슐과 보류 유저 두 줄만 있고 소멸 줄이 없다', () => {
     const text = formatCapsuleDailySignals(signals())
     const lines = text.split('\n')
+    expect(lines).toHaveLength(3)
     expect(lines[0]).toBe('캡슐 운영 신호 · 어제 요약 (2026-10-30)')
-    expect(lines[1]).toBe('잼 소멸: 없음')
-    expect(text).not.toContain('참고')
-    expect(lines[2]).toContain('(하루 기준)')
-    expect(lines[2]).toContain('어제 열린 캡슐 12개')
-    expect(lines[2]).toContain('최댓값 3개')
-    expect(lines[3]).toContain('5명 / 전체 200명 (2.5%)')
-    expect(lines[3]).toContain('잼을 받을 수 없는 유저 1명')
-  })
-
-  it('소멸이 한 명이라도 있으면 그 줄이 «참고»로 시작한다', () => {
-    const text = formatCapsuleDailySignals(signals({ forfeit: { users: 1, amount: 1234, weekUsers: 3, weekAmount: 4567 } }))
-    const line = text.split('\n')[1]
-    expect(line.startsWith('참고')).toBe(true)
-    expect(line).toContain('1명, 1,234잼')
-    expect(line).toContain('어제가 속한 주 누적 3명, 4,567잼')
+    expect(text).not.toContain('소멸')
+    expect(lines[1]).toContain('(하루 기준)')
+    expect(lines[1]).toContain('어제 열린 캡슐 12개')
+    expect(lines[1]).toContain('최댓값 3개')
+    expect(lines[2]).toContain('5명 / 전체 200명 (2.5%)')
+    expect(lines[2]).toContain('잼을 받을 수 없는 유저 1명')
   })
 
   it('못 읽은 항목은 «읽지 못했어요»로 적고 나머지는 적는다', () => {
-    const text = formatCapsuleDailySignals(signals({ forfeit: null, opens: null }))
+    const text = formatCapsuleDailySignals(signals({ opens: null }))
     const lines = text.split('\n')
-    expect(lines[1]).toBe('잼 소멸: 읽지 못했어요')
-    expect(lines[2]).toContain('읽지 못했어요')
-    expect(lines[3]).toContain('5명 / 전체 200명')
-  })
-
-  it('주 누적만 못 읽었으면 그 말만 적는다', () => {
-    const text = formatCapsuleDailySignals(signals({ forfeit: { users: 2, amount: 10, weekUsers: null, weekAmount: null } }))
-    expect(text.split('\n')[1]).toContain('주 누적은 읽지 못했어요')
+    expect(lines[1]).toContain('읽지 못했어요')
+    expect(lines[2]).toContain('5명 / 전체 200명')
   })
 
   it('전체 유저가 0명이면 보류 유저 비율을 읽지 못했어요로 적는다', () => {
     const text = formatCapsuleDailySignals(signals({ pending: { pendingUsers: 0, blockedUsers: 0, totalUsers: 0 } }))
-    expect(text.split('\n')[3]).toBe('보류 유저 비율: 읽지 못했어요')
+    expect(text.split('\n')[2]).toBe('보류 유저 비율: 읽지 못했어요')
+  })
+
+  it('두 항목을 모두 못 읽었을 때만 isAllUnread다', () => {
+    expect(isAllUnread(signals({ opens: null, pending: null }))).toBe(true)
+    expect(isAllUnread(signals({ opens: null }))).toBe(false)
+    expect(isAllUnread(signals({ pending: null }))).toBe(false)
   })
 
   it('임계 말과 개인 값이 글에 없다', () => {
-    const text = formatCapsuleDailySignals(signals({ forfeit: { users: 4, amount: 100, weekUsers: 4, weekAmount: 100 } }))
+    const text = formatCapsuleDailySignals(signals())
     expect(text).not.toMatch(/임계|주의|중단|이상이면/)
     expect(text).not.toMatch(/@|[0-9a-f]{8}-[0-9a-f]{4}-/)
-  })
-})
-
-describe('isAllUnread', () => {
-  it('세 항목을 모두 못 읽었을 때만 참이다', () => {
-    expect(isAllUnread(signals({ forfeit: null, opens: null, pending: null }))).toBe(true)
-    expect(isAllUnread(signals({ forfeit: null, opens: null, pending: { pendingUsers: 0, blockedUsers: 0, totalUsers: 0 } }))).toBe(true)
-    expect(isAllUnread(signals({ forfeit: null, opens: null }))).toBe(false)
   })
 })
