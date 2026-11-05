@@ -9,8 +9,11 @@ import { d } from '@/lib/i18n'
 
 /** 카드를 게이지 높이의 절반만큼 위로 올려 윗부분을 게이지 뒤에 깐다 — 게이지와 카드가 한 덩어리로 붙어 보인다(시안) */
 const TUCK_PX = CAPSULE_GAUGE_HEIGHT_PX / 2
-/** 카드 가장자리·게이지 아래에서 안내 내용까지의 간격(px) — 좁게 잡은 안쪽 여백(2026-11-05 사용자 지정) */
-const CONTENT_GAP_PX = 14
+/** 카드 좌우 가장자리에서 안내 내용까지의 간격(px) — 좁게 잡은 안쪽 여백(2026-11-05 사용자 지정) */
+const SIDE_GAP_PX = 14
+/** 게이지 아래·카드 아래 가장자리에서 안내 내용까지의 간격(px) — 위아래가 넓어 보인다는 지적에 따라 이전(위 14·아래 25)의 절반으로 줄였다(2026-11-05 사용자 지정) */
+const TOP_GAP_PX = 7
+const BOTTOM_GAP_PX = 12
 
 /**
  * 홈 캡슐 막힘 카드 — 가득 찬 게이지 바로 아래에 놓이는 안내 카드 (티켓 20261105_1912, 채원 사전 판정 2026-11-05)
@@ -35,10 +38,11 @@ export default function CapsuleBlockedCard() {
         className="text-left"
         style={{
           marginTop: -TUCK_PX,
-          // 안쪽 여백: 좌우는 카드 가장자리에서 14px(테두리 1px 포함), 위쪽은 게이지 아래에서 14px를 띄운다(2026-11-05 사용자가 시안 위에 선으로 지정). 아래쪽은 카드 기본 여백 그대로다
-          paddingTop: `calc(${TUCK_PX}px + ${CONTENT_GAP_PX - 1}px)`,
-          paddingLeft: CONTENT_GAP_PX - 1,
-          paddingRight: CONTENT_GAP_PX - 1,
+          // 안쪽 여백(테두리 1px 포함): 좌우는 카드 가장자리에서 14px, 위쪽은 게이지 아래에서 7px, 아래쪽은 카드 아래 가장자리에서 12px 띄운다(2026-11-05 사용자 지정)
+          paddingTop: `calc(${TUCK_PX}px + ${TOP_GAP_PX - 1}px)`,
+          paddingBottom: BOTTOM_GAP_PX - 1,
+          paddingLeft: SIDE_GAP_PX - 1,
+          paddingRight: SIDE_GAP_PX - 1,
           // 위 두 모서리는 각지게 한다: 둥글면 게이지의 둥근 아래쪽 곡선과 카드 사이에 움푹 들어간 틈이 보인다(2026-11-05 사용자 지적)
           borderTopLeftRadius: 0,
           borderTopRightRadius: 0,
