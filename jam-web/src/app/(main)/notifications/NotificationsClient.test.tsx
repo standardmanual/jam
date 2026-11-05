@@ -467,3 +467,48 @@ describe('소식이 없을 때와 읽지 못했을 때', () => {
     expect(html).not.toContain('회수')
   })
 })
+
+describe('인벤토리 가득 참 소식의 어두운 반전 면 (티켓 20261105_1953)', () => {
+  const FULL = view('inventory_full', { max_slots: 50, used_slots: 50 })
+  const LOW = view('inventory_slots_low', { remaining_slots: 2, max_slots: 50 })
+
+  it('inventory_full 행만 반전 면이고 본문은 snow, 시각은 snow/70이다', () => {
+    const html = render([FULL])
+
+    expect(html).toContain('bg-background-inverse')
+    expect(html).toContain('border-background-inverse')
+    expect(html).toContain('text-snow')
+    expect(html).toContain('text-snow/70')
+    expect(html).not.toContain('bg-surface')
+  })
+
+  it('남은 칸 적음 행과 다른 종류 행은 흰 면 그대로다', () => {
+    const html = render([LOW, CHAPTER_UP])
+
+    expect(html).not.toContain('bg-background-inverse')
+    expect(html).not.toContain('text-snow')
+    expect(html).toContain('bg-surface')
+  })
+
+  it('반전 행과 흰 행이 함께 있어도 inventory_full 행만 어둡다', () => {
+    const html = render([FULL, LOW])
+
+    expect(html.match(/bg-background-inverse/g)).toHaveLength(1)
+    expect(html.match(/bg-surface/g)).toHaveLength(1)
+  })
+
+  it('문구와 링크 대상은 면이 바뀌어도 그대로다', () => {
+    const inverse = render([FULL])
+    const text = visibleText(inverse)
+
+    expect(text).toContain('인벤토리')
+    expect(linkOf(inverse)).toBe('/inventory')
+  })
+
+  it('경고 상태면 기존 --warning 칩이 어두운 면 위에 그대로 그려진다', () => {
+    const html = render([{ ...FULL, warning: true }])
+
+    expect(html).toContain('bg-warning')
+    expect(html).toContain('bg-background-inverse')
+  })
+})

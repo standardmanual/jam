@@ -145,7 +145,7 @@ function RowIcon({ view }: { view: NotificationView }) {
  * 문구 — **payload 슬롯만 볼드**. 컬러 강조는 쓰지 않는다(PRD §5).
  * 강조 지점을 소식마다 정의하지 않고 토크나이저 결과를 그대로 그린다.
  */
-function NotificationBody({ view }: { view: NotificationView }) {
+function NotificationBody({ view, inverse = false }: { view: NotificationView; inverse?: boolean }) {
   const tokens = notificationTokens(view)
   // 줄바꿈 — 두 속성이 각각 다른 일을 한다.
   //  · word-break: keep-all — CSS 기본값에서 한글은 **음절 단위로 아무 데서나** 끊긴다.
@@ -156,7 +156,7 @@ function NotificationBody({ view }: { view: NotificationView }) {
   //    공백 없는 긴 닉네임이 밖으로 삐져나오는 것을 막는 최후 수단이다.
   //    (anywhere는 이 목적에 과해서 일반 문장까지 끊는다 — 20260825 되돌림)
   return (
-    <p className="text-base text-foreground [word-break:keep-all] break-words">
+    <p className={`text-base ${inverse ? 'text-snow' : 'text-foreground'} [word-break:keep-all] break-words`}>
       {tokens.map((token, i) =>
         token.bold ? (
           <strong key={i} className="font-bold">
@@ -172,8 +172,11 @@ function NotificationBody({ view }: { view: NotificationView }) {
 
 function NotificationRow({ view }: { view: NotificationView }) {
   const { href, avatarHref } = notificationTarget(view)
+  // 인벤토리 가득 참 알림만 어두운 반전 면으로 그린다(티켓 20261105_1953). 남은 칸 적음 등 다른 종류는 흰 면 그대로.
+  const inverse = view.type === 'inventory_full'
+  const tone = inverse ? 'inverse' : 'default'
   const trailing = (
-    <span className="text-xs text-muted">
+    <span className={`text-xs ${inverse ? 'text-snow/70' : 'text-muted'}`}>
       {formatRelativeTime(view.updatedAt)}
     </span>
   )
@@ -187,6 +190,7 @@ function NotificationRow({ view }: { view: NotificationView }) {
     const actorName = (view.actor && getDisplayName({ username: view.actor.username, display_name: view.actor.displayName })) || d.profile.anonymous
     return (
       <ListRowCard
+        tone={tone}
         icon={
           <Link
             href={avatarHref}
@@ -200,18 +204,18 @@ function NotificationRow({ view }: { view: NotificationView }) {
       >
         {href ? (
           <Link href={href} className="block active:opacity-70 transition-opacity duration-100">
-            <NotificationBody view={view} />
+            <NotificationBody view={view} inverse={inverse} />
           </Link>
         ) : (
-          <NotificationBody view={view} />
+          <NotificationBody view={view} inverse={inverse} />
         )}
       </ListRowCard>
     )
   }
 
   return (
-    <ListRowCard icon={<RowIcon view={view} />} trailing={trailing} href={href ?? undefined}>
-      <NotificationBody view={view} />
+    <ListRowCard tone={tone} icon={<RowIcon view={view} />} trailing={trailing} href={href ?? undefined}>
+      <NotificationBody view={view} inverse={inverse} />
     </ListRowCard>
   )
 }

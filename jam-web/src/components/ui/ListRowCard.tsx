@@ -8,8 +8,12 @@ import type { ReactNode } from 'react'
  * - `default`: 흰 면(`--surface`) + 1px `--border`. 크림 페이지 바탕 위에 직접 놓는 행.
  * - `tint`: `--background-secondary`, 테두리 없음. **이미 카드(흰 면 + 테두리) 안에 들어간 행** 전용 — 카드 속 카드의 이중 테두리를 막는다.
  *   크림 바탕 위 단독 행으로 쓰지 않는다(경계가 보이지 않는다).
+ * - `inverse`: 어두운 반전 면(`--background-inverse`) + 같은 색 1px 테두리 + `--snow` 글자(티켓 20261105_1953). 경고성 안내 행 전용.
+ *   홈 막힘 카드의 `Card tone="inverse"`와 같은 값이고 박스 크기는 `default`와 같다.
+ *   `title`/`subtitle` 경로는 글자색이 `--foreground`·`--muted`로 고정이라 반전 면에서 읽히지 않는다 —
+ *   알림 행처럼 `children`으로 글자색을 직접 정하는 행에서만 쓴다.
  */
-export type ListRowCardTone = 'default' | 'tint'
+export type ListRowCardTone = 'default' | 'tint' | 'inverse'
 
 export interface ListRowCardProps {
   /** 행 면 톤. 기본 `default`(흰 면 + 1px 테두리) */
@@ -50,6 +54,7 @@ const BASE = 'flex items-center gap-4 rounded-2xl p-4'
 const TONE_CLASS: Record<ListRowCardTone, string> = {
   default: 'bg-surface border border-border',
   tint: 'bg-background-secondary',
+  inverse: 'bg-background-inverse border border-background-inverse text-snow',
 }
 
 /**
