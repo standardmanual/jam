@@ -68,6 +68,7 @@ const awardScoreMock = vi.hoisted(() =>
 )
 /** 점수를 세지 못한 기록 — `engine_decision_log` 쓰기를 가로챈다 */
 const logMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>())
+const settleMock = vi.hoisted(() => vi.fn<(supabase: unknown, userId: string) => Promise<void>>())
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
@@ -127,6 +128,9 @@ vi.mock('@/lib/jam/serviceActivity', () => ({
   awardServiceJam: (supabase: unknown, input: { userId: string; kind: string; sourceId: string }) => awardScoreMock(supabase, input),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+vi.mock('@/lib/capsule/settle-pending', () => ({
+  settleAfterSlotsFreed: (supabase: unknown, userId: string) => settleMock(supabase, userId),
+}))
 vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
   runJamActionEvaluation: (userId: string, triggers: readonly string[]) => runJamActionMock(userId, triggers),
 }))
@@ -221,6 +225,14 @@ describe('POST 성공 — after()로 보상 배지를 발급하고 완성한 컬
     expect(callOrder).toEqual(['runSlotRewardIssue', 'runJamActionEvaluation'])
   })
 
+  it('꽂으면 칸이 비므로 응답 직전에 대기 보상 자동 지급을 한 번 부른다(티켓 20261105_1438 R2) — 지급이 던지지 않아 응답은 그대로다', async () => {
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(201)
+    expect(settleMock).toHaveBeenCalledTimes(1)
+    expect(settleMock.mock.calls[0][1]).toBe(USER_ID)
+  })
+
   it('장착 RPC에는 기존과 같은 인자를 넘긴다', async () => {
     await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
     expect(state.rpcCalls).toEqual([
@@ -256,6 +268,12 @@ describe('POST 성공 — after()로 보상 배지를 발급하고 완성한 컬
 })
 
 describe('POST 실패 분기에서는 판정을 예약하지 않는다 — 응답은 그대로다', () => {
+  it('RPC가 거절하면 칸이 줄지 않았으므로 대기 보상 자동 지급을 부르지 않는다', async () => {
+    state.rpc.slot_item_into_book = { data: { ok: false, error: 'item_not_found' }, error: null }
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(settleMock).not.toHaveBeenCalled()
+  })
+
   it('401 인증 헤더 없음', async () => {
     const res = await POST(request('POST', { inventory_item_id: 'item-1' }, { auth: false }), PARAMS)
     expect(res.status).toBe(401)

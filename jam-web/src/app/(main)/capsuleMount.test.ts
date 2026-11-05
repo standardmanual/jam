@@ -49,7 +49,11 @@ describe('투데이 캡슐 위젯', () => {
   })
 
   it('서버 초기값은 실패하면 null로 접고, 기존 Promise.all에 합쳐진다', () => {
-    expect(code).toMatch(/getCapsuleStatus\(createServiceClient\(\), userId\)\.catch\(/)
+    expect(code).toMatch(/getCapsuleStatus\(createServiceClient\(\), userId\)\)\.catch\(/)
+    // 따라잡기(티켓 20261105_1438 R2): 대기 보상 자동 지급을 먼저 시도하고, 캡슐 초기값과 막힘 배너가 그 뒤에 읽는다
+    expect(code).toMatch(/const settlePromise = settleAfterSlotsFreed\(createServiceClient\(\), userId\)/)
+    expect(code).toMatch(/settlePromise\.then\(\(\) => getCapsuleStatus\(/)
+    expect(code).toMatch(/settlePromise\.then\(\(\) => loadHomeCapsuleBlockedBanner\(/)
     expect(code).toMatch(/return null\s*\}\)/)
     const all = code.slice(code.indexOf('await Promise.all(['), code.indexOf('])', code.indexOf('await Promise.all([')))
     expect(all).toContain('capsulePromise')

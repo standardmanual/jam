@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({ authenticated: true }))
 const getStatusMock = vi.hoisted(() => vi.fn())
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
 const serviceClient = vi.hoisted(() => ({ marker: 'service-role-client' }))
+const settleMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -27,6 +28,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
   createServiceClient: () => serviceClient,
 }))
+vi.mock('@/lib/capsule/settle-pending', () => ({ settleAfterSlotsFreed: (...args: unknown[]) => settleMock(...args) }))
 vi.mock('@/lib/capsule/capsule', () => ({
   getCapsuleStatus: (...args: unknown[]) => getStatusMock(...args),
 }))
@@ -57,6 +59,8 @@ beforeEach(() => {
   state.authenticated = true
   getStatusMock.mockReset()
   assertNotSuspendedMock.mockReset()
+  settleMock.mockReset()
+  settleMock.mockResolvedValue(undefined)
 })
 
 describe('GET /api/capsule', () => {
@@ -78,6 +82,23 @@ describe('GET /api/capsule', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual(STATUS)
     expect(getStatusMock).toHaveBeenCalledWith(serviceClient, USER_ID)
+  })
+
+  it('상태를 읽기 전에 대기 보상 자동 지급(따라잡기)을 먼저 하고, 지급이 끝난 뒤의 상태를 돌려준다 (티켓 20261105_1438 R2)', async () => {
+    getStatusMock.mockResolvedValue(STATUS)
+
+    await GET()
+
+    expect(settleMock).toHaveBeenCalledWith(serviceClient, USER_ID)
+    expect(settleMock.mock.invocationCallOrder[0]).toBeLessThan(getStatusMock.mock.invocationCallOrder[0])
+  })
+
+  it('비로그인이면 지급도 하지 않는다', async () => {
+    state.authenticated = false
+
+    await GET()
+
+    expect(settleMock).not.toHaveBeenCalled()
   })
 
   it('보류·안내 값(pendingCount·jamBlocked·alertStage·claim·notice)을 응답 본문에 모두 싣는다', async () => {

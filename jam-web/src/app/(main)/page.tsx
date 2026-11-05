@@ -12,6 +12,7 @@ import SuspensionBanner from './SuspensionBanner'
 import { loadHomeSuspensionBanner } from '@/lib/suspension/home-banner'
 import CapsuleBlockedBanner from './CapsuleBlockedBanner'
 import { loadHomeCapsuleBlockedBanner } from '@/lib/capsule/home-blocked-banner'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import HomeViewTracker from './HomeViewTracker'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
@@ -56,10 +57,13 @@ export default async function HomePage() {
   const suspensionPromise = loadHomeSuspensionBanner(createServiceClient(), userId)
   // 캡슐 막힘 배너 값(티켓 20261105_0104). 가득 찬 캡슐에 빈칸이 모자란 동안 계속 보이고, 풀리면 다음 읽기에서 사라진다.
   // 조회가 실패하면 배너만 생략한다(던지지 않는다). 정지 배너가 있으면 그리지 않지만 조회는 함께 시작해 응답을 늦추지 않는다.
-  const capsuleBlockedPromise = loadHomeCapsuleBlockedBanner(createServiceClient(), userId)
+  // 따라잡기(티켓 20261105_1438 R2): 어떤 경로로 칸이 비었든 빈칸이 대기 보상 개수 이상이면 여기서 대기 보상을 자동으로 지급하고 남은 잼을 채운 뒤,
+  // 그 결과를 배너·캡슐 초기값이 읽게 한다. 던지지 않고, 대기 보상이 없으면 확인 한 번으로 끝난다.
+  const settlePromise = settleAfterSlotsFreed(createServiceClient(), userId)
+  const capsuleBlockedPromise = settlePromise.then(() => loadHomeCapsuleBlockedBanner(createServiceClient(), userId))
   // 캡슐 초기값(티켓 20261018_0054). 조회가 실패하면 null로 접고 던지지 않는다 — 위젯이 클라이언트에서 다시 가져오고 오류 상태를 보여 준다.
   // 캡슐이 없으면 서버가 이때 만든다(`capsule_get_or_create`).
-  const capsulePromise = getCapsuleStatus(createServiceClient(), userId).catch((err: unknown) => {
+  const capsulePromise = settlePromise.then(() => getCapsuleStatus(createServiceClient(), userId)).catch((err: unknown) => {
     console.error('[home/page] 캡슐 조회 실패 — 위젯이 클라이언트에서 다시 가져온다', err)
     return null
   })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { runSlotRewardIssue } from '@/lib/itembook/slotReward'
 import { jamTriggersForSlot } from '@/lib/badge-engine/jamActionProgressTriggers'
@@ -184,6 +185,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       })(),
     ])
   })
+
+  // 꽂은 개체는 인벤토리 칸을 비우므로, 빈칸이 대기 보상 개수 이상이 됐으면 대기 보상을 자동으로 지급하고 남은 잼을 채운다(티켓 20261105_1438 R2). 던지지 않는다.
+  await settleAfterSlotsFreed(supabase, user.id)
 
   return NextResponse.json({ slot: result.slot }, { status: 201 })
 }

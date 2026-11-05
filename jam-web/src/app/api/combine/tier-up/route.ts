@@ -18,7 +18,8 @@
  * JAM! 행동 지표(`jamTriggersForCombineResult`)는 부르지 않는다 — 레시피 믹스의 지표다.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import { TIER_UP_MATERIAL_COUNT, tierUp, type TierUpFailReason } from '@/lib/combine/tierUp'
 import { d } from '@/lib/i18n'
 import { LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
@@ -85,6 +86,9 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ ...result, message: FAIL_REASON_MESSAGE[result.reason] ?? d.combine.genericFail })
   }
+
+  // 재료 소각(3개 → 결과 1개 등)이 인벤토리 칸을 비운다. 빈칸이 대기 보상 개수 이상이 됐으면 대기 보상을 자동으로 지급하고 남은 잼을 채운다(티켓 20261105_1438 R2). 던지지 않는다.
+  await settleAfterSlotsFreed(createServiceClient(), user.id)
 
   if (result.resultStatus === 'pending') {
     return NextResponse.json({ ...result, message: d.combine.resultPending })

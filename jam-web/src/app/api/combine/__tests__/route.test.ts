@@ -41,6 +41,7 @@ const hasAdminAccessMock = vi.hoisted(() =>
   vi.fn<(userId: string, email: string | null | undefined) => Promise<boolean>>()
 )
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
+const settleMock = vi.hoisted(() => vi.fn<(supabase: unknown, userId: string) => Promise<void>>())
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -52,6 +53,10 @@ vi.mock('@/lib/supabase/server', () => ({
     },
   }),
   createServiceClient: () => ({}),
+}))
+
+vi.mock('@/lib/capsule/settle-pending', () => ({
+  settleAfterSlotsFreed: (supabase: unknown, userId: string) => settleMock(supabase, userId),
 }))
 
 // 믹스 엔진은 결과만 돌려받도록 갈아끼우고, 결과→트리거 변환은 실제 구현을 쓴다
@@ -104,6 +109,24 @@ beforeEach(() => {
   combineMock.mockResolvedValue(SUCCESS)
   runJamActionMock.mockResolvedValue(undefined)
   hasAdminAccessMock.mockResolvedValue(false)
+  settleMock.mockResolvedValue(undefined)
+})
+
+describe('칸이 비면 대기 보상을 자동 지급한다 (티켓 20261105_1438 R2)', () => {
+  it('믹스 처리 뒤 응답 직전에 대기 보상 자동 지급을 그 유저로 한 번 부른다', async () => {
+    await POST(request(VALID_BODY))
+
+    expect(settleMock).toHaveBeenCalledTimes(1)
+    expect(settleMock.mock.calls[0][1]).toBe(USER_ID)
+    // 믹스 엔진이 끝난 뒤에 부른다
+    expect(combineMock.mock.invocationCallOrder[0]).toBeLessThan(settleMock.mock.invocationCallOrder[0])
+  })
+
+  it('믹스 엔진이 던지면(소각 전 정지 등) 부르지 않는다', async () => {
+    combineMock.mockRejectedValue(new Error('엔진 장애'))
+    await POST(request(VALID_BODY))
+    expect(settleMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('결과별로 판정할 지표', () => {

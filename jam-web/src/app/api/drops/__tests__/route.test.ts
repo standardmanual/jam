@@ -52,7 +52,11 @@ const state = vi.hoisted(() => ({
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
 const logMock = vi.hoisted(() => vi.fn())
+const settleMock = vi.hoisted(() => vi.fn<(supabase: unknown, userId: string) => Promise<void>>())
 
+vi.mock('@/lib/capsule/settle-pending', () => ({
+  settleAfterSlotsFreed: (supabase: unknown, userId: string) => settleMock(supabase, userId),
+}))
 // 잼 지급 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 
@@ -143,6 +147,7 @@ beforeEach(() => {
   state.afterCallbacks = []
   runJamActionMock.mockResolvedValue(undefined)
   logMock.mockResolvedValue(undefined)
+  settleMock.mockResolvedValue(undefined)
 })
 
 describe('성공 — after()로 놓은 사람의 drop_item_count를 판정한다', () => {
@@ -170,6 +175,22 @@ describe('성공 — after()로 놓은 사람의 drop_item_count를 판정한다
     // 콜백이 거부돼도 이미 보낸 응답에는 영향이 없다(테스트 헬퍼가 거부를 삼킨다)
     await flushAfter()
     expect(runJamActionMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('칸이 비면 대기 보상을 자동 지급한다 (티켓 20261105_1438 R2)', () => {
+  it('내려놓기가 성공하면 응답 직전에 대기 보상 자동 지급을 그 유저로 한 번 부른다', async () => {
+    const res = await POST(request(VALID_BODY))
+
+    expect(res.status).toBe(200)
+    expect(settleMock).toHaveBeenCalledTimes(1)
+    expect(settleMock.mock.calls[0][1]).toBe(USER_ID)
+  })
+
+  it('RPC가 거절하면(칸이 줄지 않았다) 부르지 않는다', async () => {
+    state.rpcResult = { data: { ok: false, error: 'item_not_found' }, error: null }
+    await POST(request(VALID_BODY))
+    expect(settleMock).not.toHaveBeenCalled()
   })
 })
 

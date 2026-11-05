@@ -19,6 +19,7 @@ import {
 import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { countPendingItems, SyncPendingItemsError } from '@/lib/strava/pending-items'
 import { CapsuleInventoryBlockedError, readCapsuleReceiveBlocked } from '@/lib/capsule/receive-block'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import { assertNotSuspended, getSuspensionPeriods } from '@/lib/suspension/suspension'
 import { assertHasTribe } from '@/lib/tribe/gate'
 import { isDuringSuspension } from '@/lib/suspension/suspension-contract'
@@ -1143,6 +1144,9 @@ export async function syncStravaActivities(
   // 캡슐이 가득 차고 인벤토리 빈칸이 필요 칸수보다 적으면 동기화하지 않는다(티켓 20261105_0101, 상위 20261105_0100). 이 지점은 토큰 복호화·Strava 호출·
   // last_synced_at 선점 앞이라 활동 기록과 조회 커서가 움직이지 않고, 풀린 뒤 다음 동기화가 이어서 가져온다. 보류 고르기 대기와 겹치면 이 안내가 먼저다.
   // 판정은 DB 함수 capsule_receive_blocked가 단일 원천이다. 읽지 못하면 던져 동기화하지 않는다.
+  // 막힘을 읽기 전에 따라잡기 지급을 한 번 시도한다(티켓 20261105_1438 R2): 빈칸이 대기 보상 개수 이상이면 지급하고 남은 잼을 채우므로, 풀린 유저는 막히지 않고 이어서 동기화한다.
+  // 던지지 않는다. 지급을 시도한 뒤에 막힘을 다시 읽는다.
+  await settleAfterSlotsFreed(supabase, userId)
   const receiveBlock = await readCapsuleReceiveBlocked(supabase, userId)
   if (receiveBlock.blocked) {
     console.info(

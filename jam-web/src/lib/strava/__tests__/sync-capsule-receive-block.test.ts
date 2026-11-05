@@ -7,6 +7,7 @@
  * - 막힘 판정을 읽지 못하면 «막히지 않음»으로 보지 않고 던진다.
  * - 이용 정지가 먼저 적용된다(정지 중이면 막힘 판정을 읽지 않는다).
  * - 막히지 않으면 평소대로 보류 확인으로 이어진다.
+ * - 막힘을 읽기 전에 대기 보상 자동 지급(`settleAfterSlotsFreed`)을 한 번 시도한다. 지급 뒤에 막힘을 읽으므로 풀린 유저는 막히지 않는다 (티켓 20261105_1438 R2).
  *
  * 실제 Strava·공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
@@ -15,7 +16,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const { createServiceClientMock, getAllActivitiesMock, refreshMock, readBlockedMock, assertNotSuspendedMock, countPendingMock } = vi.hoisted(() => ({
+const { createServiceClientMock, getAllActivitiesMock, refreshMock, readBlockedMock, assertNotSuspendedMock, countPendingMock, settleMock } = vi.hoisted(() => ({
+  settleMock: vi.fn(async () => {}),
   createServiceClientMock: vi.fn(),
   getAllActivitiesMock: vi.fn(),
   refreshMock: vi.fn(),
@@ -42,6 +44,7 @@ vi.mock('@/lib/strava/pending-items', async () => {
   const actual = await vi.importActual<typeof import('@/lib/strava/pending-items')>('@/lib/strava/pending-items')
   return { ...actual, countPendingItems: countPendingMock }
 })
+vi.mock('@/lib/capsule/settle-pending', () => ({ settleAfterSlotsFreed: settleMock }))
 vi.mock('@/lib/capsule/receive-block', async () => {
   const actual = await vi.importActual<typeof import('@/lib/capsule/receive-block')>('@/lib/capsule/receive-block')
   return { ...actual, readCapsuleReceiveBlocked: readBlockedMock }
@@ -94,6 +97,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   assertNotSuspendedMock.mockImplementation(async () => {})
   countPendingMock.mockImplementation(async () => 0)
+  settleMock.mockImplementation(async () => {})
   vi.spyOn(console, 'info').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -113,6 +117,30 @@ describe('syncStravaActivities — 캡슐이 가득 차고 빈칸이 모자라�
     expect(refreshMock).not.toHaveBeenCalled()
     expect(record.connectionUpdates).toEqual([])
     expect(record.tablesTouched).toEqual(['strava_connections'])
+  })
+
+  it('막힘을 읽기 전에 대기 보상 자동 지급을 시도하고, 지급 뒤의 판정으로 막힘을 정한다', async () => {
+    const { supabase } = makeFake()
+    createServiceClientMock.mockReturnValue(supabase)
+    readBlockedMock.mockResolvedValue({ blocked: true, free: 1, needed: 2 })
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toBeInstanceOf(CapsuleInventoryBlockedError)
+
+    expect(settleMock).toHaveBeenCalledTimes(1)
+    expect(settleMock).toHaveBeenCalledWith(supabase, USER_ID)
+    expect(settleMock.mock.invocationCallOrder[0]).toBeLessThan(readBlockedMock.mock.invocationCallOrder[0])
+  })
+
+  it('지급으로 풀렸으면(지급 뒤 판정이 막히지 않음) 막지 않고 보류 확인으로 이어진다', async () => {
+    const { supabase } = makeFake()
+    createServiceClientMock.mockReturnValue(supabase)
+    settleMock.mockImplementation(async () => {
+      readBlockedMock.mockResolvedValue({ blocked: false, free: 3, needed: 0 })
+    })
+    readBlockedMock.mockResolvedValue({ blocked: true, free: 2, needed: 2 })
+    countPendingMock.mockResolvedValue(1)
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toBeInstanceOf(SyncPendingItemsError)
   })
 
   it('보류 고르기 대기와 겹치면 이번 막힘이 먼저다(보류 개수를 읽지 않는다)', async () => {

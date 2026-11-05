@@ -20,7 +20,8 @@
  *    더해진다. 일반 믹스에는 이 키가 없다. 일반 유저가 공개 전 레시피를 보내면 `recipe_not_found`다.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import { hasAdminAccess } from '@/lib/admin/auth'
 import { combineRecipeAttempt, jamTriggersForCombineResult, MAX_ITEMS } from '@/lib/combine/index'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
@@ -97,6 +98,10 @@ export async function POST(req: NextRequest) {
   } catch (jamActionError) {
     console.error('[combine] JAM! 행동 지표 배지 평가 실패:', jamActionError)
   }
+
+  // 재료 소각은 인벤토리 칸을 비운다(결과 지급보다 재료가 많으면 순감). 빈칸이 대기 보상 개수 이상이 됐으면 대기 보상을 자동으로 지급하고 남은 잼을 채운다(티켓 20261105_1438 R2).
+  // 소각 전에 거절된 요청에서는 칸이 그대로라 대기 보상 확인 한 번으로 끝난다. 던지지 않으므로 아래 응답은 바뀌지 않는다.
+  await settleAfterSlotsFreed(createServiceClient(), user.id)
 
   // 잠긴 개체가 섞인 재료는 소각 전에 거절된다 — 장착·드랍과 같은 코드(`code`)와 409로 알린다(티켓 20261018_0051)
   if (!result.success && result.reason === LOCKED_ITEM_NOT_ALLOWED_CODE) {

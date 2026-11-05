@@ -26,6 +26,7 @@ const COLLECTION_ID = 'book-1'
 const state = vi.hoisted(() => ({ authenticated: true }))
 const tierUpMock = vi.hoisted(() => vi.fn<(userId: string, itemIds: string[], collectionId: string) => Promise<TierUpResult>>())
 const runJamActionMock = vi.hoisted(() => vi.fn())
+const settleMock = vi.hoisted(() => vi.fn<(supabase: unknown, userId: string) => Promise<void>>())
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -36,6 +37,10 @@ vi.mock('@/lib/supabase/server', () => ({
           : { data: { user: null }, error: { message: 'no session' } },
     },
   }),
+  createServiceClient: () => ({}),
+}))
+vi.mock('@/lib/capsule/settle-pending', () => ({
+  settleAfterSlotsFreed: (supabase: unknown, userId: string) => settleMock(supabase, userId),
 }))
 // 규칙 본체는 갈아끼운다 — 이 시험은 라우트의 입력 확인과 응답 변환만 본다
 vi.mock('@/lib/combine/tierUp', () => ({
@@ -67,6 +72,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   state.authenticated = true
   tierUpMock.mockResolvedValue(SUCCESS)
+  settleMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -131,6 +137,13 @@ describe('입력 확인', () => {
 })
 
 describe('성공', () => {
+  it('재료 소각으로 칸이 비므로 대기 보상 자동 지급을 그 유저로 한 번 부른다 (티켓 20261105_1438 R2)', async () => {
+    await POST(request(VALID_BODY))
+
+    expect(settleMock).toHaveBeenCalledTimes(1)
+    expect(settleMock.mock.calls[0][1]).toBe(USER_ID)
+  })
+
   it('엔진 결과를 그대로 내려준다', async () => {
     const res = await POST(request(VALID_BODY))
 
@@ -165,6 +178,12 @@ describe('성공', () => {
 })
 
 describe('거절', () => {
+  it('소각 전에 거절하면 대기 보상 자동 지급을 부르지 않는다', async () => {
+    tierUpMock.mockResolvedValue({ success: false, reason: 'locked_item_not_allowed', pointsAwarded: 0 } as unknown as TierUpResult)
+    await POST(request(VALID_BODY))
+    expect(settleMock).not.toHaveBeenCalled()
+  })
+
   it('이용 정지 중이면 403과 code user_suspended다', async () => {
     tierUpMock.mockRejectedValue(new UserSuspendedError({ reason: '운영 정책 위반', suspendedAt: '2026-10-01T00:00:00.000Z' }))
 

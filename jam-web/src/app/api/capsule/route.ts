@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,10 @@ export async function GET() {
   }
 
   try {
-    const status = await getCapsuleStatus(createServiceClient(), user.id)
+    // 따라잡기(티켓 20261105_1438 R2): 빈칸이 대기 보상 개수 이상이면 먼저 지급하고 채운 뒤 상태를 읽는다. 던지지 않는다.
+    const service = createServiceClient()
+    await settleAfterSlotsFreed(service, user.id)
+    const status = await getCapsuleStatus(service, user.id)
     return NextResponse.json(status)
   } catch (err) {
     console.error('[/api/capsule] 캡슐 조회 오류:', err)

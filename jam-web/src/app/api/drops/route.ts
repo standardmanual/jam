@@ -12,6 +12,7 @@ import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 import { isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForDrop } from '@/lib/badge-engine/jamActionDropTriggers'
@@ -422,6 +423,9 @@ export async function POST(req: NextRequest) {
       runJamActionEvaluation(user.id, jamTriggersForDrop()),
     ])
   })
+
+  // 내려놓은 개체는 인벤토리 칸을 비우므로(create_user_drop), 빈칸이 대기 보상 개수 이상이 됐으면 대기 보상을 자동으로 지급하고 남은 잼을 채운다(티켓 20261105_1438 R2). 던지지 않는다.
+  await settleAfterSlotsFreed(service, user.id)
 
   // `lostFill`: 잠긴 개체를 드랍하며 사라진 채운 양. 열린 개체이거나 채운 양이 없었으면 0이다.
   return NextResponse.json({ drop_id: result.drop_id, lostFill: result.lost_fill ?? 0 })
