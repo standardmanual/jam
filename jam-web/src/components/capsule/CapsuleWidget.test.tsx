@@ -94,7 +94,7 @@ describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다(�
     expect(d.capsule.widget.gaugeAria.blocked).toBe('캡슐, 얻은 아이템 배지를 넣지 못해 잼을 얻을 수 없어요')
   })
 
-  it('막힘 + 홈 전용 prop: 게이지를 카드 하나로 감싸고 두 줄 안내와 «인벤토리 가기» 버튼 하나만 있다', () => {
+  it('막힘 + 홈 전용 prop: 게이지 아래에 카드 하나가 놓이고 두 줄 안내와 «인벤토리 가기» 버튼 하나만 있다', () => {
     const html = renderToStaticMarkup(<CapsuleWidget initial={status(BLOCKED)} blockedCard />)
     const text = textOf(html)
     expect(html.match(/<section/g)).toHaveLength(1)

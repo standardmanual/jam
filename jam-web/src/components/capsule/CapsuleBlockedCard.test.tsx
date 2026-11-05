@@ -1,8 +1,8 @@
 /**
  * 홈 캡슐 막힘 카드(CapsuleBlockedCard) 렌더 (티켓 20261105_1912, 채원 사전 판정 2026-11-05)
  *
- * 저장소에 jsdom이 없어 서버 렌더로 마크업만 고정한다. 게이지는 가짜 자리표시자로 대신한다.
- * 고정하는 것: 게이지 + 두 줄 안내 + «인벤토리 가기» 버튼 하나, 제목·아이콘·숫자가 없다, 반전 면, 줄바꿈 클래스(text-balance 없음),
+ * 저장소에 jsdom이 없어 서버 렌더로 마크업만 고정한다. 게이지는 카드 밖(위젯)이 그린다.
+ * 고정하는 것: 두 줄 안내 + «인벤토리 가기» 버튼 하나, 제목·아이콘·숫자가 없다, 반전 면, 줄바꿈 클래스(text-balance 없음),
  * section의 aria-labelledby가 안내 문단 id를 가리킨다, 붉은색·그라디언트·고정 위치·z-index가 없다.
  * /inventory 이동은 라우터 호출이라 서버 렌더로 누를 수 없어 버튼이 하나이고 문구가 `cta`인 것까지만 확인한다.
  */
@@ -18,7 +18,7 @@ vi.mock('next/navigation', () => ({
 import CapsuleBlockedCard from './CapsuleBlockedCard'
 import { d } from '@/lib/i18n'
 
-const html = renderToStaticMarkup(<CapsuleBlockedCard gauge={<div data-testid="gauge" role="img" aria-label="게이지" />} />)
+const html = renderToStaticMarkup(<CapsuleBlockedCard />)
 const textOf = (value: string) => value.replace(/<[^>]*>/g, '')
 
 describe('CapsuleBlockedCard — 막힘 카드', () => {
@@ -34,8 +34,8 @@ describe('CapsuleBlockedCard — 막힘 카드', () => {
     expect(html).toMatch(/<span class="block text-snow\/80">배지를 받으려면 인벤토리를 비워주세요\.<\/span>/)
   })
 
-  it('게이지가 카드 안에 들어 있고 버튼은 «인벤토리 가기» 하나뿐이다', () => {
-    expect(html).toContain('data-testid="gauge"')
+  it('게이지는 카드 안에 없고 버튼은 «인벤토리 가기» 하나뿐이다', () => {
+    expect(html).not.toContain('role="img"')
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(html).toContain(`>${d.capsule.blockedBanner.cta}</button>`)
     expect(d.capsule.blockedBanner.cta).toBe('인벤토리 가기')

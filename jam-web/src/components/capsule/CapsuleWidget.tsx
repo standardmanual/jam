@@ -19,7 +19,7 @@ import { d, t } from '@/lib/i18n'
  *  - 로딩: MODULAR `Skeleton`(게이지와 같은 높이). 오류: 상자 자체가 «다시 시도» 버튼이다.
  *  - 안내 문구: 서버가 정해 준 `notice`(막힘 한 종류, 티켓 20261105_0104)로 간결 문구를 고른다. 게이지 안 숫자 자리에 보인다(숫자는 지운다, 2026-11-05 사용자 요청). 안내 영역에는 빈칸 줄과 «인벤토리 보기»만 남는다.
  *    이용 정지는 안내가 없다(서버가 `notice: 'none'`을 준다. 홈은 `SuspensionBanner`가 알린다).
- *    홈은 `blockedCard`를 켜서 막힘일 때 게이지를 `CapsuleBlockedCard`(두 줄 안내와 «인벤토리 가기»를 한 카드로 묶음)로 감싸고 빈칸 줄과 «인벤토리 보기»는 그리지 않는다(티켓 20261105_1912). 프로필은 그대로 둔다.
+ *    홈은 `blockedCard`를 켜서 막힘일 때 게이지 아래에 `CapsuleBlockedCard`(두 줄 안내와 «인벤토리 가기»를 한 카드로 묶음)를 놓고 빈칸 줄과 «인벤토리 보기»는 그리지 않는다. 게이지는 카드 밖에서 원래 가로 폭 그대로다(티켓 20261105_1912). 프로필은 그대로 둔다.
  *    막힘이면 게이지는 채운 양과 상관없이 가득 차고 문구가 채움 안쪽 왼쪽에 보인다. 풀리면 문구가 사라지고 남은 잼 값으로 줄며 숫자가 보인다.
  *  - «받기» 버튼은 없다(티켓 20261105_0105 T5). 대기 보상은 인벤토리 빈칸이 생기면 서버가 자동으로 지급한다. 대기 보상이 빈칸에 막혔을 때만 빈칸 덧줄과 «인벤토리 보기»를 둔다.
  *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 합친 연출은 레이아웃의 `CapsuleResultProvider`가 맡는다(티켓 20261028_1740 3회).
@@ -114,15 +114,16 @@ export default function CapsuleWidget({
   const text = noticeText(capsule.notice)
   const { claim } = capsule
   // 막힘 안내이거나 대기 보상이 빈칸 때문에 지급되지 못할 때 빈칸 줄과 «인벤토리 보기»를 둔다.
-  // 홈의 막힘 카드는 같은 말을 안내와 «인벤토리 가기»로 하므로 이 경로를 그리지 않는다(아래에서 먼저 반환).
+  // 홈의 막힘 카드는 같은 말을 안내와 «인벤토리 가기»로 하므로 이 줄 대신 카드를 둔다.
   const blocked = capsule.notice === 'blocked'
   const gauge = (
     <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} message={text ?? undefined} />
   )
-  if (blocked && blockedCard) return <CapsuleBlockedCard gauge={gauge} />
   const showSlotsAction = blocked || claim.blockedReason === 'no_slots'
 
-  const action = showSlotsAction ? (
+  const action = blocked && blockedCard ? (
+    <CapsuleBlockedCard />
+  ) : showSlotsAction ? (
     <div className="flex flex-col gap-2">
       <p className="m-0 text-sm text-muted break-keep wrap-break-word text-balance">
         {t(d.capsule.widget.slots, { free: claim.freeSlots, needed: claim.neededSlots })}
