@@ -4,12 +4,16 @@ import { useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ds/components/buttons/Button'
 import { Card } from '@ds/components/cards/Card'
+import { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'
 import { d } from '@/lib/i18n'
+
+/** 카드를 게이지 높이의 절반만큼 위로 올려 윗부분을 게이지 뒤에 깐다 — 게이지와 카드가 한 덩어리로 붙어 보인다(시안) */
+const TUCK_PX = CAPSULE_GAUGE_HEIGHT_PX / 2
 
 /**
  * 홈 캡슐 막힘 카드 — 가득 찬 게이지 바로 아래에 놓이는 안내 카드 (티켓 20261105_1912, 채원 사전 판정 2026-11-05)
  *
- * 게이지 아래에 따로 놓이는 알림 카드다(2026-11-05 사용자 결정: 게이지는 카드 밖에서 원래 가로 폭을 지킨다). 카드 안은 `[두 줄 안내 | «인벤토리 가기» 버튼]` 한 줄이다.
+ * 게이지와 같은 폭으로 게이지 바로 아래에 붙는 알림 카드다(2026-11-05 사용자 결정: 게이지는 카드 밖에서 원래 가로 폭을 지키고, 시안처럼 카드 윗부분이 게이지 뒤에 깔려 한 덩어리로 보인다). 게이지는 위치 지정(relative) 요소라 z-index 없이 카드 위에 그려진다. 카드 안은 `[두 줄 안내 | «인벤토리 가기» 버튼]` 한 줄이다.
  * 버튼은 항상 문구 오른쪽에 둔다(2026-11-05 사용자 결정, 시안과 같다). 좁은 폭에서는 버튼을 내리지 않고 안내 문구가 버튼 옆에서 줄을 꺾는다. 새 시각 부품이 아니라 기존 부품(Card inverse, Button secondary 소형)의 조합이다.
  * 홈 막힘 안내 한 곳에서만 쓰므로 MODULAR로 올리지 않는다. 제목·경고 아이콘·숫자(n개·k칸)·닫기·애니메이션이 없다.
  * 카드 안 글자는 반전 면 위라 snow, 둘째 줄은 snow 80%다. 안내에 text-balance를 쓰지 않는다(줄이 일찍 꺾인다는 2026-11-05 지적).
@@ -24,7 +28,11 @@ export default function CapsuleBlockedCard() {
 
   return (
     <section aria-labelledby={noteId}>
-      <Card tone="inverse" className="text-left">
+      <Card
+        tone="inverse"
+        className="text-left"
+        style={{ marginTop: -TUCK_PX, paddingTop: `calc(var(--layout-card-padding) + ${TUCK_PX}px)` }}
+      >
         <div className="flex flex-row items-center justify-between gap-3">
           <p id={noteId} className="m-0 min-w-0 flex-1 text-base text-snow break-keep wrap-break-word">
             <span className="block">{copy.line1}</span>
