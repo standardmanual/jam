@@ -443,7 +443,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '인벤토리가 차도 잼은 소멸하지 않음',
     type: 'code_constant',
     currentSpec:
-      '자동 채움은 지갑 잼을 소멸시키지 않음 (마이그레이션 322부터). 인벤토리가 차서 캡슐을 열지 못해도 지갑의 남은 잼은 그대로이고 원장 사유 capsule_forfeit의 새 줄이 만들어지지 않음. 응답 키 forfeited·pendingCount·alertStage는 옛 호출부를 위해 남기되 0·0·null로 고정함 (키 제거는 축소 단계). 이용 정지 중에는 자동 채움이 막혀 있어 채우지도 않음. 원장 등식: 받은 잼 = 캡슐에 채운 양 + 지금 지갑',
+      '자동 채움은 지갑 잼을 소멸시키지 않음 (마이그레이션 322부터). 인벤토리가 차서 캡슐을 열지 못해도 지갑의 남은 잼은 그대로이고 원장 사유 capsule_forfeit의 새 줄이 만들어지지 않음. 응답 키 forfeited·alertStage는 옛 호출부를 위해 남기되 0·null로 고정함. pendingCount는 대기 보상이 있을 때 그 줄 수이고 없으면 0임 (마이그레이션 323부터). 이용 정지 중에는 자동 채움이 막혀 있어 채우지도 않음. 원장 등식: 받은 잼 = 캡슐에 채운 양 + 지금 지갑',
     codeLocation: 'jam-web/supabase/migrations/322_capsule_auto_fill_inventory_block.sql',
     dbTable: 'jam_transactions',
     dbColumn: 'reason',
