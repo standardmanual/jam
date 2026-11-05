@@ -412,12 +412,12 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '인벤토리가 차면 먼저 추첨해 대기 보상으로 저장하고 멈춤',
     type: 'code_constant',
     currentSpec:
-      '캡슐이 가득 차면 먼저 추첨하고(트라이브·등급·잠김 규칙은 열기와 같음), 인벤토리 빈칸이 뽑힌 개수 이상이면 바로 지급함. 빈칸이 뽑힌 개수(1~2개)보다 적으면 지급하지 않고 뽑은 결과를 capsule_pending_rewards의 drawn_items에 저장(capsule_hold_rolled)하고 캡슐을 소진한 뒤 새 캡슐을 만들며, 자동 채움을 inventory_blocked로 멈추고 응답에 inventoryBlocked: true를 실음. 대기 보상은 한 캡슐분(1~2개)까지만 쌓이고, 있으면 capsule_auto_fill이 채우지 않고(pendingCount) 새 캡슐을 열지 않음. 지갑의 남은 잼은 줄지 않고 capsule_forfeit 줄도 새로 생기지 않으며 대기 보상은 기한 없이 남고 소멸하지 않음 (받기는 아래 «보류된 캡슐 보상 받기» 항목). 챕터 횟수는 100%에 닿는 시점에 이미 센 상태라 멈춰도 그대로임',
+      '캡슐이 가득 차면 먼저 추첨하고(트라이브·등급·잠김 규칙은 열기와 같음), 인벤토리 빈칸이 뽑힌 개수 이상이면 바로 지급함. 빈칸이 뽑힌 개수(1~2개)보다 적으면 지급하지 않고 뽑은 결과를 capsule_pending_rewards의 drawn_items에 저장(capsule_hold_rolled)하고 캡슐을 소진한 뒤 새 캡슐을 만들며, 자동 채움을 inventory_blocked로 멈추고 응답에 inventoryBlocked: true를 실음. 대기 보상은 한 캡슐분(1~2개)까지만 쌓이고, 있으면 capsule_auto_fill이 채우지 않고(pendingCount) 새 캡슐을 열지 않음. 지갑의 남은 잼은 줄지 않고 capsule_forfeit 줄도 새로 생기지 않으며 대기 보상은 기한 없이 남고 소멸하지 않음. 빈칸이 대기 개수(저장된 항목 수) 이상이 되면 사용자가 아무것도 누르지 않아도 자동으로 지급됨: 칸이 줄어드는 서버 경로(컬렉션에 꽂기·내려놓기·조합 소각)가 응답 직전에, 어떤 경로로 비었든 홈 조회·캡슐 상태 조회·동기화 입구가 따라잡기로 한 번 시도하며(settleAfterSlotsFreed), 빈칸이 모자라면 부분 지급 없이 그대로 남음. 지급은 저장된 항목 그대로(다시 추첨하지 않음)이고 DB 함수 capsule_claim_pending 한 번이 보류 줄 잠금으로 원자적이라 동시에 두 번 요청해도 한 번만 지급됨. 지급 직후 대기 보상이 더 없으면 지갑에 남은 잼으로 다음 캡슐을 자동 채움(챕터 오름·소식·보지 않은 결과는 기존 자동 채움 흐름 그대로). 이용 정지·소속 트라이브 없음이면 지급하지 않음. 지급 결과를 보여 주는 연출·토스트·소식은 없음 (수동 받기는 아래 «보류된 캡슐 보상 받기» 항목). 챕터 횟수는 100%에 닿는 시점에 이미 센 상태라 멈춰도 그대로임',
     codeLocation: 'jam-web/src/lib/capsule/auto-fill.ts',
     userExperience:
-      '인벤토리에 자리가 없으면 가득 찬 캡슐의 결과가 먼저 정해져 대기 보상으로 저장돼요. 지갑의 잼은 줄어들지 않고, 자리를 만들면 이어서 받을 수 있어요.',
+      '인벤토리에 자리가 없으면 가득 찬 캡슐의 결과가 먼저 정해져 대기 보상으로 저장돼요. 지갑의 잼은 줄어들지 않아요. 자리가 생기면 아무것도 누르지 않아도 대기 보상이 인벤토리에 들어오고, 남은 잼으로 다음 캡슐이 이어서 채워져요.',
     basisDoc: '운영 로직 5.2절, 6.4절',
-    ticketId: '20261028_1734',
+    ticketId: '20261105_1438',
     nodes: ['capsule'],
   },
   {
@@ -492,13 +492,13 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '인벤토리 가득 참 잼 차단 (동기화 입구)',
     type: 'code_constant',
     currentSpec:
-      '대기 보상(capsule_pending_rewards)이 있으면 동기화를 입구에서 멈추고 409 capsule_inventory_blocked(빈칸 free·필요 칸수 needed = 대기 개수)로 알림. DB 함수는 부족한 칸 수 shortfall(= max(0, 대기 개수 - 빈칸))도 돌려줌. 판정은 읽기 전용 DB 함수 capsule_receive_blocked가 단일 원천이고, 캡슐·인벤토리·정책 행을 읽지 못하면 막지 않음. 이용 정지(403 user_suspended)와 트라이브 없음(403 tribe_required)이 먼저 적용되고, 고르지 않은 보류 대기(409 sync_pending_items)와 겹치면 이 막힘 안내가 먼저 나옴. Strava 호출·토큰 복호화·last_synced_at 선점 앞에서 멈춰 활동 기록과 조회 커서가 움직이지 않고, 빈칸을 만든 뒤 다음 동기화가 이어서 가져옴. 콜백 직후 동기화가 막혀도 Strava 연결 저장은 성공함. 서비스 활동 잼(믹스·미션 완료·배지 받기 등) 지급도 같은 막힘 동안에는 거절됨(지급 0·blocked, 나중에 보충하지 않음, 실패 기록 없음). 운영자 지급·회수는 막지 않음',
+      '대기 보상(capsule_pending_rewards)이 있으면 동기화를 입구에서 멈추고 409 capsule_inventory_blocked(빈칸 free·필요 칸수 needed = 대기 개수)로 알림. DB 함수는 부족한 칸 수 shortfall(= max(0, 대기 개수 - 빈칸))도 돌려줌. 판정은 읽기 전용 DB 함수 capsule_receive_blocked가 단일 원천이고, 캡슐·인벤토리·정책 행을 읽지 못하면 막지 않음. 이용 정지(403 user_suspended)와 트라이브 없음(403 tribe_required)이 먼저 적용되고, 고르지 않은 보류 대기(409 sync_pending_items)와 겹치면 이 막힘 안내가 먼저 나옴. Strava 호출·토큰 복호화·last_synced_at 선점 앞에서 멈춰 활동 기록과 조회 커서가 움직이지 않고, 빈칸을 만든 뒤 다음 동기화가 이어서 가져옴. 막힘을 읽기 전에 대기 보상 자동 지급(settleAfterSlotsFreed)을 한 번 시도하고 그 뒤에 다시 읽으므로, 빈칸이 대기 개수 이상이면 지급된 뒤 막히지 않고 이어서 동기화함. 콜백 직후 동기화가 막혀도 Strava 연결 저장은 성공함. 서비스 활동 잼(믹스·미션 완료·배지 받기 등) 지급도 같은 막힘 동안에는 거절됨(지급 0·blocked, 나중에 보충하지 않음, 실패 기록 없음). 운영자 지급·회수는 막지 않음',
     codeLocation: 'jam-web/src/lib/capsule/receive-block.ts',
     dbTable: 'user_capsules',
     userExperience:
       '대기 보상이 있으면(캡슐이 가득 찼는데 인벤토리에 자리가 없었다면) 동기화 버튼을 눌러도 «잼 모으기가 잠시 멈췄어요. 인벤토리를 정리하면 다시 동기화할 수 있어요.» 안내가 떠요(홈에서는 맨 위 배너도 계속 보여요). 자리를 만든 뒤 다시 누르면 그동안의 활동이 이어서 반영돼요. 막혀 있는 동안 믹스나 미션 완료로 생기는 서비스 활동 잼은 받을 수 없고 나중에 채워지지도 않아요.',
     basisDoc: '운영 로직 5.2절, 6.4절',
-    ticketId: '20261105_0101',
+    ticketId: '20261105_1438',
     nodes: ['capsule'],
   },
   {

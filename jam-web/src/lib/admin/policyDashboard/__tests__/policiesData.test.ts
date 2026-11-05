@@ -397,7 +397,8 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
     for (const id of IDS) {
       const card = find(id)
       expect(card, id).toBeDefined()
-      expect(card?.ticketId, id).toBe('20261028_1734')
+      // 대기 보상 자동 지급(티켓 20261105_1438 R2)이 «대기 보상» 항목의 근거 티켓을 바꿨다
+      expect(card?.ticketId, id).toBe(id === 'ch5-pending-reward' ? '20261105_1438' : '20261028_1734')
       expect(existsSync(`${repoRoot}${card?.codeLocation}`), `${id}의 코드 위치가 실재해야 합니다`).toBe(true)
     }
   })
@@ -509,7 +510,8 @@ describe('인벤토리 가득 참 잼 차단 항목 (티켓 20261105_0101)', () 
   it('캡슐 챕터에 있고 코드 위치가 실재한다', () => {
     expect(card).toBeDefined()
     expect(card?.chapter).toBe(5)
-    expect(card?.ticketId).toBe('20261105_0101')
+    // 동기화 입구가 지급을 먼저 시도하도록 바뀌어(티켓 20261105_1438 R2) 근거 티켓이 바뀌었다
+    expect(card?.ticketId).toBe('20261105_1438')
     expect(existsSync(`${repoRoot}${card?.codeLocation}`)).toBe(true)
   })
 
