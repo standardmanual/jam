@@ -398,7 +398,9 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
       const card = find(id)
       expect(card, id).toBeDefined()
       // 대기 보상 자동 지급(티켓 20261105_1438 R2)이 «대기 보상» 항목의 근거 티켓을 바꿨다
-      expect(card?.ticketId, id).toBe(id === 'ch5-pending-reward' ? '20261105_1438' : '20261028_1734')
+      expect(card?.ticketId, id).toBe(
+        id === 'ch5-pending-reward' ? '20261105_1438' : id === 'ch5-claim-pending' ? '20261105_0105' : '20261028_1734'
+      )
       expect(existsSync(`${repoRoot}${card?.codeLocation}`), `${id}의 코드 위치가 실재해야 합니다`).toBe(true)
     }
   })
@@ -414,10 +416,13 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
     expect(find('ch5-auto-fill')?.currentSpec).toContain('대기 보상으로 저장하고 멈춤')
   })
 
-  it('받기는 오래된 것부터 빈칸이 닿는 만큼이고 보상을 포기하는 버튼이 없다', () => {
-    const spec = find('ch5-claim-pending')?.currentSpec ?? ''
+  it('대기 보상 지급은 오래된 것부터이고 받기 버튼·보상을 포기하는 버튼이 없다 (티켓 20261105_0105 T5)', () => {
+    const card = find('ch5-claim-pending')
+    const spec = card?.currentSpec ?? ''
     expect(spec).toContain('오래된 보류')
     expect(spec).toContain('포기하는 버튼은 없음')
+    expect(spec).toContain('settleAfterSlotsFreed')
+    expect(card?.userExperience).not.toContain('«받기»를 누르면')
   })
 
   it('잼은 소멸하지 않고 capsule_forfeit 새 줄이 없으며 정지 중에는 채우지 않고 주간 뷰는 남아 있다 (티켓 20261105_0103 T3)', () => {

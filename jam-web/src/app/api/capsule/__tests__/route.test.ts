@@ -51,7 +51,7 @@ const STATUS = {
   pendingCount: 1,
   jamBlocked: false,
   alertStage: 80,
-  claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
+  claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
   notice: 'blocked',
 }
 
@@ -110,7 +110,7 @@ describe('GET /api/capsule', () => {
       pendingCount: 1,
       jamBlocked: false,
       alertStage: 80,
-      claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
+      claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
       notice: 'blocked',
     })
   })

@@ -1,15 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ds/components/buttons/Button'
 import { Skeleton } from '@ds/components/feedback/Skeleton'
-import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
-import { useToast } from '@/components/ui/Toast'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'
-import { toRevealBadges } from '@/components/capsule/capsuleReveal'
 import { fetchCapsule } from '@/lib/capsule/capsule-client'
-import { runClaim } from '@/lib/capsule/capsule-flow'
 import type { CapsuleNoticeKind, CapsuleStatus } from '@/lib/capsule/capsule-contract'
 import { d, t } from '@/lib/i18n'
 
@@ -23,19 +19,10 @@ import { d, t } from '@/lib/i18n'
  *  - 안내 문구: 서버가 정해 준 `notice`(막힘 한 종류, 티켓 20261105_0104)로 간결 문구를 고른다. 게이지 안 숫자 자리에 보인다(숫자는 지운다, 2026-11-05 사용자 요청). 안내 영역에는 빈칸 줄과 «인벤토리 보기»만 남는다.
  *    이용 정지는 안내가 없다(서버가 `notice: 'none'`을 준다. 홈은 `SuspensionBanner`가 알린다).
  *    홈은 `hideBlockedAction`으로 빈칸 줄과 «인벤토리 보기»를 숨긴다(홈 상단 `CapsuleBlockedBanner`가 알린다). 프로필은 그대로 둔다.
- *  - «받기»: `claim.available`일 때만 보인다(안내 문구가 없으면 버튼만, 제거는 T5). 빈칸이 모자라면 «받기» 대신 «인벤토리 보기»와 빈칸 덧줄을 둔다.
- *    받은 뒤 상태는 응답으로 계산하지 않고 `GET /api/capsule`을 다시 불러 갱신한다. 받은 배지는 `BadgeRevealOverlay`로 보인다.
+ *  - «받기» 버튼은 없다(티켓 20261105_0105 T5). 대기 보상은 인벤토리 빈칸이 생기면 서버가 자동으로 지급한다. 대기 보상이 빈칸에 막혔을 때만 빈칸 덧줄과 «인벤토리 보기»를 둔다.
  *  - 보지 않은 결과(`capsule_unseen_results`)는 읽지 않는다. 합친 연출은 레이아웃의 `CapsuleResultProvider`가 맡는다(티켓 20261028_1740 3회).
  * 이 컴포넌트를 감싸는 곳은 z-index를 주지 않는다(오버레이가 탭바에 가려진 2026-08-25 사고).
  */
-
-interface RevealState {
-  open: boolean
-  items: RevealBadge[]
-  message: string
-}
-
-const CLOSED_REVEAL: RevealState = { open: false, items: [], message: '' }
 
 /** 서버가 정한 안내 종류 → 간결 문구. 안내가 없으면 null */
 function noticeText(kind: CapsuleNoticeKind): string | null {
@@ -55,12 +42,9 @@ export default function CapsuleWidget({
   /** 막힘 안내의 빈칸 줄과 «인벤토리 보기» 버튼을 숨기고 한 줄만 보인다. 홈은 상단 배너가 같은 말을 하므로 켠다(티켓 20261105_0104). 프로필은 끈다 */
   hideBlockedAction?: boolean
 }) {
-  const { toast } = useToast()
   const router = useRouter()
   const [capsule, setCapsule] = useState<CapsuleStatus | null>(initial ?? null)
   const [load, setLoad] = useState<'ready' | 'loading' | 'error'>(initial ? 'ready' : 'loading')
-  const [claiming, setClaiming] = useState(false)
-  const [reveal, setReveal] = useState<RevealState>(CLOSED_REVEAL)
 
   // 동기화 뒤 `router.refresh()`로 서버가 새 초기값을 내려주면 그 값을 따라간다. 그러지 않으면 합친 연출을 닫을 때
   // 게이지가 동기화 이전 값까지만 찬다. 렌더 중에 상태를 맞추는 방식이라 새 값이 첫 그리기에 바로 반영된다
@@ -91,15 +75,6 @@ export default function CapsuleWidget({
     }
   }, [initial])
 
-  /** 조용한 재조회 — 성공하면 상태를 바꾸고, 실패하면 지금 화면을 그대로 둔다 */
-  const refresh = useCallback(async () => {
-    const result = await fetchCapsule()
-    if (result.kind === 'ok') {
-      setCapsule(result.data)
-      setLoad('ready')
-    }
-  }, [])
-
   async function retryLoad() {
     setLoad('loading')
     const result = await fetchCapsule()
@@ -109,21 +84,6 @@ export default function CapsuleWidget({
     } else {
       setLoad('error')
     }
-  }
-
-  async function handleClaim() {
-    if (claiming) return
-    setClaiming(true)
-    const outcome = await runClaim()
-    setClaiming(false)
-
-    if (outcome.kind === 'claimed') {
-      setReveal({ open: true, items: toRevealBadges(outcome.items), message: outcome.message })
-    } else {
-      toast(outcome.notice.message, outcome.notice.type)
-    }
-    // 받은 뒤와 거절 뒤 모두 화면 값이 낡았을 수 있다 — 응답으로 계산하지 않고 다시 조회한다
-    if (outcome.refresh) void refresh()
   }
 
   if (load === 'loading' || (load === 'ready' && !capsule)) {
@@ -151,45 +111,26 @@ export default function CapsuleWidget({
 
   const text = noticeText(capsule.notice)
   const { claim } = capsule
-  // 막힘 안내이거나 받을 보상이 빈칸 때문에 막혔을 때 빈칸 줄과 «인벤토리 보기»를 둔다.
+  // 막힘 안내이거나 대기 보상이 빈칸 때문에 지급되지 못할 때 빈칸 줄과 «인벤토리 보기»를 둔다.
   // 홈에서는 막힘 안내일 때만 숨긴다(배너가 같은 말을 한다). 막힘이 아닌데 보상만 빈칸에 막힌 경우는 배너가 없으니 그대로 둔다
   const blocked = capsule.notice === 'blocked'
-  const showSlotsAction = !claim.available && (blocked ? !hideBlockedAction : claim.blockedReason === 'no_slots')
+  const showSlotsAction = blocked ? !hideBlockedAction : claim.blockedReason === 'no_slots'
 
-  let action = null
-  if (claim.available) {
-    action = (
-      <Button variant="primary" fullWidth disabled={claiming} onClick={() => void handleClaim()}>
-        {claiming ? d.capsule.widget.claiming : d.capsule.widget.claim}
+  const action = showSlotsAction ? (
+    <div className="flex flex-col gap-2">
+      <p className="m-0 text-sm text-muted break-keep wrap-break-word text-balance">
+        {t(d.capsule.widget.slots, { free: claim.freeSlots, needed: claim.neededSlots })}
+      </p>
+      <Button variant="outline" fullWidth onClick={() => router.push('/inventory')}>
+        {d.capsule.widget.inventory}
       </Button>
-    )
-  } else if (showSlotsAction) {
-    action = (
-      <div className="flex flex-col gap-2">
-        <p className="m-0 text-sm text-muted break-keep wrap-break-word text-balance">
-          {t(d.capsule.widget.slots, { free: claim.freeSlots, needed: claim.neededSlots })}
-        </p>
-        <Button variant="outline" fullWidth onClick={() => router.push('/inventory')}>
-          {d.capsule.widget.inventory}
-        </Button>
-      </div>
-    )
-  }
+    </div>
+  ) : null
 
   return (
-    <>
-      <div className="flex w-full flex-col gap-3">
-        <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} message={text ?? undefined} />
-        {action}
-      </div>
-
-      <BadgeRevealOverlay
-        open={reveal.open}
-        items={reveal.items}
-        profileHref="/profile"
-        resultMessage={reveal.message}
-        onClose={() => setReveal(CLOSED_REVEAL)}
-      />
-    </>
+    <div className="flex w-full flex-col gap-3">
+      <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} message={text ?? undefined} />
+      {action}
+    </div>
   )
 }

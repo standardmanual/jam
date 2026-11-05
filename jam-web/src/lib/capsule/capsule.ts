@@ -47,7 +47,7 @@ interface SlotCheck {
   needed: number
 }
 
-/** 열 때 나올 수 있는 최대 개수. DB 함수 `capsule_open`은 이제 뽑힌 개수로 거절하므로(323) 이 값은 보류 받기(`capsule_claim_pending`)와 화면 표시용이다. */
+/** 열 때 나올 수 있는 최대 개수. DB 함수 `capsule_open`은 이제 뽑힌 개수로 거절하므로(323) 이 값은 화면 표시용이다. */
 export function neededSlotsOf(policy: Pick<CapsulePolicy, 'guaranteed_count' | 'bonus_count'>): number {
   return policy.guaranteed_count + policy.bonus_count
 }
@@ -163,7 +163,7 @@ function toAlertStage(pendingCount: 0 | 1 | 2, stored: number): CapsuleAlertStag
   return stored === 70 || stored === 80 || stored === 90 ? stored : 0
 }
 
-/** 보류 받기 버튼과 빈칸 줄. 막힌 까닭은 이용 정지, 소속 트라이브 없음, 빈칸 모자람 순이다(`claim.ts`가 거절하는 순서와 같다). */
+/** 보류 보상이 지급되지 못하는 까닭과 빈칸 줄. 까닭은 이용 정지, 소속 트라이브 없음, 빈칸 모자람 순이다(`claim.ts`가 거절하는 순서와 같다). */
 function toClaimState(pendingCount: 0 | 1 | 2, suspended: boolean, hasTribe: boolean, slots: SlotCheck): CapsuleClaimState {
   let blockedReason: CapsuleClaimBlockedReason | null = null
   if (pendingCount > 0) {
@@ -172,7 +172,6 @@ function toClaimState(pendingCount: 0 | 1 | 2, suspended: boolean, hasTribe: boo
     else if (slots.free < slots.needed) blockedReason = 'no_slots'
   }
   return {
-    available: pendingCount > 0 && blockedReason === null,
     blockedReason,
     freeSlots: slots.free,
     neededSlots: slots.needed,

@@ -34,7 +34,7 @@ export interface CapsuleBaseStatus {
 /** 소식과 같은 «거의 찼어요» 단계(`user_capsules.alert_stage`). 0은 알리지 않음 */
 export type CapsuleAlertStage = 0 | 70 | 80 | 90
 
-/** 보류 보상을 받을 수 없는 까닭. 이용 정지가 먼저고, 소속 트라이브 없음, 인벤토리 빈칸 모자람 순이다 */
+/** 보류 보상이 지급되지 못하는 까닭. 이용 정지가 먼저고, 소속 트라이브 없음, 인벤토리 빈칸 모자람 순이다 */
 export type CapsuleClaimBlockedReason = 'no_slots' | 'suspended' | 'no_tribe'
 
 /**
@@ -47,10 +47,8 @@ export type CapsuleNoticeKind =
   /** 캡슐이 가득 차고 빈칸이 모자라 잼 모으기가 멈춤 */
   | 'blocked'
 
-/** 보류 보상 받기 버튼과 빈칸 줄을 위한 값 */
+/** 보류 보상이 빈칸에 막혔을 때 보이는 빈칸 줄을 위한 값 */
 export interface CapsuleClaimState {
-  /** 지금 받을 수 있는지. 보류가 없거나 막혔으면 false */
-  available: boolean
   /** 보류가 있는데 받을 수 없는 까닭. 보류가 없거나 받을 수 있으면 null */
   blockedReason: CapsuleClaimBlockedReason | null
   /** 지금 인벤토리 빈칸 수 */
@@ -145,51 +143,6 @@ export interface CapsuleHeldPayload {
   drawnCount: number
   /** 저장 직후의 새 캡슐 */
   next: { required: number; filled: number }
-}
-
-/**
- * 보류 받기(`POST /api/capsule/claim`)의 거절 코드. 서버 라우트가 내리는 4xx의 `code`와 같다.
- * `no_pending`은 받을 보류가 없을 때(이미 받았다), `insufficient_slots`는 하나도 받지 못했을 때(`freeSlots`·`neededSlots` 포함)다.
- * 이용 정지(403 `user_suspended`)는 따로 판별한다.
- */
-export const CAPSULE_CLAIM_ERROR_CODES = ['no_pending', 'insufficient_slots', 'no_tribe', 'capsule_changed'] as const
-
-export type CapsuleClaimErrorCode = (typeof CAPSULE_CLAIM_ERROR_CODES)[number]
-
-/** 보류 받기 거절 응답(4xx)의 모양 */
-export interface CapsuleClaimErrorResponse {
-  error: string
-  code: CapsuleClaimErrorCode
-  /** `insufficient_slots`일 때 지금 인벤토리 빈칸 수 */
-  freeSlots?: number
-  /** `insufficient_slots`일 때 받으려면 필요한 빈칸 수 */
-  neededSlots?: number
-}
-
-/** 받기가 멈춘 까닭. `none`은 받을 수 있는 보류를 모두 받았다, `insufficient_slots`는 빈칸이 모자라 멈췄다, `error`는 받은 뒤 예상 밖 실패가 났다 */
-export type CapsuleClaimStop = 'none' | 'insufficient_slots' | 'error'
-
-/** 받은 보류 하나 */
-export interface CapsuleClaimedReward {
-  /** 열기 기록 id(`capsule_opens.id`) */
-  openId: string
-  /** 보류가 만들어질 때의 챕터. 퀘스트 전 캡슐이면 null */
-  chapterNo: number | null
-  /** 나온 개체(열기 응답과 같은 모양) */
-  items: CapsuleOpenedItem[]
-}
-
-/** 보류 받기 성공 응답(200, 하나 이상 받음). 받은 뒤 상태는 이 응답으로 계산하지 않고 `GET /api/capsule`을 다시 부른다 */
-export interface CapsuleClaimPayload {
-  /** 받은 것, 받은 순서대로(오래된 보류부터) */
-  claimed: CapsuleClaimedReward[]
-  /** 남은 보류 수 */
-  remainingPending: number
-  stopped: CapsuleClaimStop
-  /** `stopped`가 `insufficient_slots`일 때 지금 빈칸 수 */
-  freeSlots?: number
-  /** `stopped`가 `insufficient_slots`일 때 받으려면 필요한 빈칸 수 */
-  neededSlots?: number
 }
 
 /**

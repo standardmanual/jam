@@ -129,7 +129,7 @@ describe('getCapsuleStatus', () => {
       pendingCount: 0,
       jamBlocked: false,
       alertStage: 0,
-      claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
       pendingItemCount: 0,
       shortfall: 0,
@@ -155,7 +155,7 @@ describe('getCapsuleStatus', () => {
       pendingCount: 0,
       jamBlocked: false,
       alertStage: 0,
-      claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
       pendingItemCount: 0,
       shortfall: 0,
@@ -243,7 +243,7 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
       pendingCount: 0,
       jamBlocked: false,
       alertStage: 0,
-      claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
     })
   })
@@ -253,7 +253,7 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
       pendingCount: 1,
       jamBlocked: false,
       alertStage: 0,
-      claim: { available: true, blockedReason: null, freeSlots: 40, neededSlots: 2 },
+      claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
     })
   })
@@ -275,7 +275,7 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
       pendingCount: 2,
       jamBlocked: true,
       alertStage: 0,
-      claim: { available: true, blockedReason: null },
+      claim: { blockedReason: null },
       notice: 'none',
     })
   })
@@ -323,12 +323,12 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
 
   it('빈칸이 필요한 수보다 적으면 받을 수 없고 까닭은 no_slots다(빈칸 수와 필요한 수를 함께 싣는다)', async () => {
     expect(await status({ rpc: capsuleRow(), pending: rows(1), inventory: { data: { used_slots: 49, max_slots: 50 }, error: null } })).toMatchObject({
-      claim: { available: false, blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
+      claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
       notice: 'none',
     })
     // 빈칸이 필요한 수와 같으면 받을 수 있다
     expect(await status({ rpc: capsuleRow(), pending: rows(1), inventory: { data: { used_slots: 48, max_slots: 50 }, error: null } })).toMatchObject({
-      claim: { available: true, blockedReason: null, freeSlots: 2, neededSlots: 2 },
+      claim: { blockedReason: null, freeSlots: 2, neededSlots: 2 },
     })
   })
 
@@ -340,7 +340,7 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
         tribe: { data: { tribe_id: null }, error: null },
         inventory: { data: { used_slots: 50, max_slots: 50 }, error: null },
       })
-    ).toMatchObject({ claim: { available: false, blockedReason: 'no_tribe' } })
+    ).toMatchObject({ claim: { blockedReason: 'no_tribe' } })
   })
 
   it('이용 정지 중이면 받을 수 없고 까닭은 suspended이며 안내는 none이다(홈은 정지 배너가 알린다)', async () => {
@@ -350,7 +350,7 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
       suspension: { data: { id: 's1', reason: 'x', suspended_at: '2026-10-01T00:00:00Z' }, error: null },
       tribe: { data: { tribe_id: null }, error: null },
     })
-    expect(out).toMatchObject({ pendingCount: 2, jamBlocked: true, claim: { available: false, blockedReason: 'suspended' }, notice: 'none' })
+    expect(out).toMatchObject({ pendingCount: 2, jamBlocked: true, claim: { blockedReason: 'suspended' }, notice: 'none' })
   })
 
   it('이용 정지 중이어도 보류가 없으면 까닭 없이 받을 수 없다고만 알린다', async () => {
@@ -358,7 +358,7 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
       rpc: capsuleRow({ required: 100, filled: 100 }),
       suspension: { data: { id: 's1', reason: 'x', suspended_at: '2026-10-01T00:00:00Z' }, error: null },
     })
-    expect(out).toMatchObject({ claim: { available: false, blockedReason: null }, notice: 'none' })
+    expect(out).toMatchObject({ claim: { blockedReason: null }, notice: 'none' })
   })
 
   it('읽기 횟수를 고정한다: 캡슐 RPC 1회·막힘 판정 RPC 1회와 테이블 읽기 5개, 트라이브는 보류가 있고 정지가 아닐 때만 읽는다', async () => {
