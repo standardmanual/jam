@@ -14,7 +14,7 @@ import type { HomeCapsuleBlockedBannerView } from '@/lib/capsule/receive-block-c
  * 부르지 않아 DOM에 없다(자리도 비우지 않는다). 이용 정지와 겹치면 홈이 정지 배너만 그린다(상시 배너 최대 1개).
  * 서버(홈 page.tsx)가 `loadHomeCapsuleBlockedBanner`로 읽은 부족분(`shortfall`)을 원시값으로 내려 준다.
  *
- * 새 컴포넌트·새 토큰 없이 기존 부품만 조합한다(`SuspensionBanner`와 같은 문법): Card(inverse 톤), AlertTriangleIcon, Button(secondary sm).
+ * 새 컴포넌트·새 토큰 없이 기존 부품만 조합한다(`SuspensionBanner`와 같은 문법): Card(inverse 톤), AlertTriangleIcon, Button(secondary xs, 홈 상단 «동기화» 버튼과 같은 크기).
  * 면·테두리를 붉게 칠하지 않고 붉은 포인트는 `--danger` 아이콘 하나다. 어두운 반전 면이라 글자는 snow, 본문은 snow 80%다.
  * 본문에 text-balance를 쓰지 않는다: 균형 맞춤이 줄을 일찍 꺾어 두세 줄로 좁아 보였다(2026-11-05 사용자 지적).
  * 닫기 버튼·칩·애니메이션이 없다. 아이콘은 장식이라 스크린리더에서 숨기고 의미는 제목과 본문이 전한다.
@@ -36,7 +36,7 @@ export default function CapsuleBlockedBanner({ shortfall }: HomeCapsuleBlockedBa
           </h2>
         </div>
         <p className="text-base text-snow/80 break-keep wrap-break-word">{t(copy.body, { n: Math.max(1, shortfall) })}</p>
-        <Button variant="secondary" size="sm" onClick={() => router.push('/inventory')}>
+        <Button variant="secondary" size="xs" onClick={() => router.push('/inventory')}>
           {copy.cta}
         </Button>
       </Card>

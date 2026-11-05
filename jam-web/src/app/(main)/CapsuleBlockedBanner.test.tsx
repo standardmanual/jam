@@ -81,10 +81,10 @@ describe('CapsuleBlockedBanner — 막힘 기본 모습', () => {
     expect(html).toContain('var(--background-inverse)')
   })
 
-  it('버튼은 작은 크기(sm)의 secondary이고 전체 폭이 아니다', () => {
+  it('버튼은 가장 작은 크기(xs, 홈 «동기화» 버튼과 같다)의 secondary이고 전체 폭이 아니다', () => {
     const button = html.match(/<button[^>]*>/)?.[0] ?? ''
     expect(button).toContain('bg-default')
-    expect(button).toContain('px-4 py-[9px]')
+    expect(button).toContain('min-height:calc(44px * var(--scale-compact))')
     expect(button).not.toMatch(/w-full/)
   })
 })
