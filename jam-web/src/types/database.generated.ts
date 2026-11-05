@@ -700,6 +700,7 @@ export type Database = {
       capsule_pending_rewards: {
         Row: {
           chapter_no: number | null
+          drawn_items: Json | null
           fill_amount: number
           id: string
           reached_at: string
@@ -708,6 +709,7 @@ export type Database = {
         }
         Insert: {
           chapter_no?: number | null
+          drawn_items?: Json | null
           fill_amount: number
           id?: string
           reached_at?: string
@@ -716,6 +718,7 @@ export type Database = {
         }
         Update: {
           chapter_no?: number | null
+          drawn_items?: Json | null
           fill_amount?: number
           id?: string
           reached_at?: string
@@ -4939,6 +4942,10 @@ export type Database = {
       }
       capsule_hold_reward: {
         Args: { p_user_id: string }
+        Returns: Json
+      }
+      capsule_hold_rolled: {
+        Args: { p_items: Json; p_user_id: string }
         Returns: Json
       }
       capsule_next_required: {
