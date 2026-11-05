@@ -5,7 +5,7 @@
  * 열기(추첨·지급·기록)는 `open.ts`가 한다. 옛 수동 채우기(`fillCapsule`)는 티켓 20261028_1742 1회에서 걷었다. 상태의 `openable`은 다 채웠는지(`filled >= required`)와
  * 인벤토리 빈칸이 나올 수 있는 최대 개수(`guaranteed_count + bonus_count`) 이상인지를 함께 본다(2회).
  *
- * 상태 조회(`getCapsuleStatus`)는 화면이 쓸 보류·안내 값(`pendingCount`·`jamBlocked`·`alertStage`·`claim`·`notice`)도 서버가 정해 싣는다(티켓 20261028_1739 1회).
+ * 상태 조회(`getCapsuleStatus`)는 화면이 쓸 보류·안내 값(`pendingCount`·`jamBlocked`·`claim`·`notice`)도 서버가 정해 싣는다(티켓 20261028_1739 1회).
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  * 클라이언트가 쓸 타입·상수는 `capsule-contract.ts`에 있다.
@@ -13,7 +13,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getActiveSuspension } from '@/lib/suspension/suspension'
 import {
-  type CapsuleAlertStage,
   type CapsuleBaseStatus,
   type CapsuleClaimBlockedReason,
   type CapsuleClaimState,
@@ -83,10 +82,8 @@ export interface CapsuleState {
   chapterNo: number | null
 }
 
-/** 옛 필드 + 보류·안내를 정하는 데 필요한 캡슐 행의 저장된 단계와 빈칸 */
+/** 옛 필드 + 보류·안내를 정하는 데 필요한 빈칸 */
 interface CapsuleBase extends CapsuleState {
-  /** `user_capsules.alert_stage`(저장된 값 그대로) */
-  storedAlertStage: number
   slots: SlotCheck
 }
 
@@ -99,13 +96,13 @@ async function readCapsuleBase(supabase: SupabaseClient, userId: string, policy?
     const { data, error } = await supabase.rpc('capsule_get_or_create', { p_user_id: userId })
     if (error) throw new Error(`capsule_get_or_create RPC 오류: ${error.message}`)
     const capsule = (Array.isArray(data) ? data[0] : data) as
-      | { required?: number; filled?: number; chapter_no?: number | null; alert_stage?: number }
+      | { required?: number; filled?: number; chapter_no?: number | null }
       | null
       | undefined
     if (!capsule || typeof capsule.required !== 'number' || typeof capsule.filled !== 'number') {
       throw new Error('capsule_get_or_create가 해석할 수 없는 응답을 돌려줬다')
     }
-    return capsule as { required: number; filled: number; chapter_no?: number | null; alert_stage?: number }
+    return capsule as { required: number; filled: number; chapter_no?: number | null }
   }
   const readBalance = async () => {
     const { data: wallet, error: walletError } = await supabase.from('jam_wallets').select('balance').eq('user_id', userId).maybeSingle()
@@ -124,7 +121,6 @@ async function readCapsuleBase(supabase: SupabaseClient, userId: string, policy?
   return {
     status: toStatus(capsule.required, capsule.filled, balance, slots),
     chapterNo: typeof capsule.chapter_no === 'number' ? capsule.chapter_no : null,
-    storedAlertStage: typeof capsule.alert_stage === 'number' ? capsule.alert_stage : 0,
     slots,
   }
 }
@@ -151,16 +147,6 @@ async function readHasTribe(supabase: SupabaseClient, userId: string): Promise<b
   const { data, error } = await supabase.from('users').select('tribe_id').eq('id', userId).maybeSingle()
   if (error) throw new Error(`users 조회 실패: ${error.message}`)
   return Boolean((data as { tribe_id?: string | null } | null)?.tribe_id)
-}
-
-/**
- * 저장된 알림 단계를 응답 값으로 옮긴다. 소식(`capsule_nearly_full`)을 만드는 규칙과 같다 — 단계(70·80·90)는 **보류가 정확히 1개인 동안에만** 의미가 있고,
- * `user_capsules.alert_stage`가 그 캡슐에서 마지막으로 알린 단계다(`302_capsule_pending_forfeit.sql`, `sync-auto-fill.ts`의 `notifyCapsuleAlerts`).
- * 보류가 1개가 아니면 0이고, 저장된 값이 70·80·90이 아니면 0이다.
- */
-function toAlertStage(pendingCount: 0 | 1 | 2, stored: number): CapsuleAlertStage {
-  if (pendingCount !== 1) return 0
-  return stored === 70 || stored === 80 || stored === 90 ? stored : 0
 }
 
 /** 보류 보상이 지급되지 못하는 까닭과 빈칸 줄. 까닭은 이용 정지, 소속 트라이브 없음, 빈칸 모자람 순이다(`claim.ts`가 거절하는 순서와 같다). */
@@ -201,12 +187,10 @@ export async function getCapsuleStatus(supabase: SupabaseClient, userId: string)
   const suspended = suspension !== null
   const hasTribe = pendingCount > 0 && !suspended ? await readHasTribe(supabase, userId) : true
 
-  const alertStage = toAlertStage(pendingCount, base.storedAlertStage)
   return {
     ...base.status,
     pendingCount,
     jamBlocked: pendingCount === 2,
-    alertStage,
     claim: toClaimState(pendingCount, suspended, hasTribe, base.slots),
     notice: toNotice(suspended, receiveBlock.blocked),
     pendingItemCount: receiveBlock.pending,

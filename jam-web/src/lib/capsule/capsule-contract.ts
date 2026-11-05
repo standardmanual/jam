@@ -31,9 +31,6 @@ export interface CapsuleBaseStatus {
   neededSlots?: number
 }
 
-/** 소식과 같은 «거의 찼어요» 단계(`user_capsules.alert_stage`). 0은 알리지 않음 */
-export type CapsuleAlertStage = 0 | 70 | 80 | 90
-
 /** 보류 보상이 지급되지 못하는 까닭. 이용 정지가 먼저고, 소속 트라이브 없음, 인벤토리 빈칸 모자람 순이다 */
 export type CapsuleClaimBlockedReason = 'no_slots' | 'suspended' | 'no_tribe'
 
@@ -63,8 +60,6 @@ export interface CapsuleStatus extends CapsuleBaseStatus {
   pendingCount: 0 | 1 | 2
   /** 보류가 2개라 잼이 사라지는 상태 */
   jamBlocked: boolean
-  /** 저장된 알림 단계. 보류가 1개가 아니면 0 */
-  alertStage: CapsuleAlertStage
   claim: CapsuleClaimState
   notice: CapsuleNoticeKind
   /** 대기 보상 개수 — 빈칸이 모자라 먼저 뽑아 저장한 결과의 개수 합(`capsule_receive_blocked`의 `pending`, 티켓 20261105_1437 R1) */

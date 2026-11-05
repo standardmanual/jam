@@ -472,17 +472,17 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch5-capsule-alerts',
     chapter: 5,
     chapterTitle: '캡슐',
-    title: '캡슐 채움 단계 알림 (70·80·90%)과 잼을 받을 수 없음 알림',
+    title: '캡슐 채움 단계 알림 (70·80·90%)과 잼을 받을 수 없음 알림은 보내지 않음',
     type: 'code_constant',
     currentSpec:
-      '보류가 정확히 1개인 동안만 다음 캡슐의 채움이 70·80·90%에 닿을 때 소식 capsule_nearly_full(단계 payload)을 보냄. 단계는 user_capsules.alert_stage(0·70·80·90)에 두고 DB 함수가 행을 잠근 채 단계가 높아질 때만 돌려줘 캡슐 하나당 단계마다 최대 1회이고, 한 번에 건너뛰면 가장 높은 단계 하나만 보냄. 캡슐이 열리거나 보류로 옮겨지면 단계는 0으로 돌아감. 보류가 없을 때는 보내지 않음. 둘째 보류가 만들어지는 순간(1→2)에 capsule_jam_blocked 소식을 한 건 보내고, 그 동기화에서는 단계 알림을 함께 보내지 않음. 두 소식 모두 묶음 키 없이 새 행을 만들고(중복 방지는 DB), 착지는 홈(/). 소식 문구의 어체(현재 해요체)와 «쉬어도 잃지 않는다» 약속이 달라지는 설명을 둘 자리는 미확정',
+      '소식 capsule_nearly_full(70·80·90% 단계)과 capsule_jam_blocked는 더는 보내지 않음 (티켓 20261105_0105). 동기화·서비스 활동 잼 지급 뒤 자동 채움은 캡슐 소식을 만들지 않고, 단계를 두던 user_capsules.alert_stage에도 쓰지 않음 (캡슐 상태 응답에서도 alertStage를 뺌). 막히는 순간은 홈 상단 배너가 대신 알림. 과거에 만들어진 두 종류의 소식 행은 알림 목록에 그대로 보이고(착지는 홈 /) 소식 종류(enum 값)는 지우지 않음',
     codeLocation: 'jam-web/src/lib/capsule/sync-auto-fill.ts',
     dbTable: 'user_capsules',
     dbColumn: 'alert_stage',
     userExperience:
-      '못 받은 보상이 1개일 때 캡슐이 70%, 80%, 90% 찼다는 소식이 단계마다 한 번 와요. 못 받은 보상이 2개가 되면 지금 들어오는 잼이 사라진다는 소식이 한 번 와요. 소식이 가리키는 «받기» 버튼은 홈과 프로필의 캡슐 아래에 있어요.',
+      '캡슐이 70%, 80%, 90% 찼다는 소식이나 잼이 사라진다는 소식은 더는 새로 오지 않아요. 인벤토리가 가득 차 막히면 홈 위쪽 배너가 알려요. 예전에 받은 소식은 알림 목록에 그대로 남아 있어요.',
     basisDoc: '운영 로직 5.2절, 15.4절',
-    ticketId: '20261028_1734',
+    ticketId: '20261105_0105',
     nodes: ['capsule'],
   },
   {

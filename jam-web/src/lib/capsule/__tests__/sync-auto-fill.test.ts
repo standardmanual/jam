@@ -7,9 +7,8 @@
  *   (같은 동기화를 다시 보내면 지갑이 비어 열린 게 없다).
  * - 기록이 실패(오류·예외)해도 던지지 않고 `unseenRecorded: false`로 알린다. 자동 채움이 실패(`stopped: 'error'`)해도 던지지 않고, 그때까지 열린 것은 기록한다.
  * - 동기화(`lib/strava/sync.ts`) 연결(소스 검색): 정산 직후 한 번 부르고, 열린 것이 있을 때만 끝 판정에 캡슐 열기 지표를 더한다.
- * - 캡슐 소식(티켓 20261028_1734 3회): 보류가 1에서 2가 된 동기화(`blockedNow`)는 `capsule_jam_blocked` 한 건만 보내고 단계 알림은 보내지 않는다. 아니면 DB가 돌려준 단계(`alerts`)마다
- *   `capsule_nearly_full`을 묶음 키 없이 보낸다. 둘 다 없으면 아무것도 보내지 않는다. 발송이 실패(null·예외)해도 던지지 않고 동기화를 막지 않는다. 받는 사람은 본인뿐이다.
- * - 챕터 오름(`chapterRose`): 열기 없이 보류만 생긴 동기화의 오름도 참이다(새 활동이 없는 경로가 `chapter_reached`를 끝 판정에 더한다).
+ * - 캡슐 소식은 보내지 않는다(티켓 20261105_0105 T5, 옛 `capsule_nearly_full`·`capsule_jam_blocked` 발송을 걷었다).
+ * - 챕터 오름(`chapterRose`): 열기 없이 대기 보상만 생긴 동기화의 오름도 참이다(새 활동이 없는 경로가 `chapter_reached`를 끝 판정에 더한다).
  * 공용 DB는 호출하지 않는다 — 가짜 자동 채움과 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/sync-auto-fill.test.ts
@@ -26,7 +25,7 @@ vi.mock('../auto-fill', () => ({ runCapsuleAutoFill: (...args: unknown[]) => aut
 const createNotificationMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/notifications', () => ({ createNotification: (...args: unknown[]) => createNotificationMock(...args) }))
 
-import { buildCapsuleUnseenPayload, notifyCapsuleAlerts, recordUnseenCapsuleResult, runSyncCapsuleAutoFill } from '../sync-auto-fill'
+import { buildCapsuleUnseenPayload, recordUnseenCapsuleResult, runSyncCapsuleAutoFill } from '../sync-auto-fill'
 import type { CountedCapsuleOpenPayload } from '../open'
 
 const opened = (n: number, extra: Partial<CountedCapsuleOpenPayload> = {}): CountedCapsuleOpenPayload => ({
@@ -42,10 +41,6 @@ const opened = (n: number, extra: Partial<CountedCapsuleOpenPayload> = {}): Coun
 const fillResult = (opens: CountedCapsuleOpenPayload[], extra: Record<string, unknown> = {}) => ({
   filledAmount: 0,
   opens,
-  holds: [],
-  forfeitedTotal: 0,
-  alerts: [],
-  blockedNow: false,
   inventoryBlocked: false,
   reachedChapters: [],
   rounds: opens.length + 1,
@@ -155,100 +150,22 @@ describe('runSyncCapsuleAutoFill', () => {
   })
 })
 
-describe('notifyCapsuleAlerts — 캡슐 소식 (티켓 20261028_1734 3회)', () => {
-  it('보류가 1에서 2가 된 동기화(blockedNow)는 capsule_jam_blocked 한 건만 보내고 단계 알림은 보내지 않는다', async () => {
-    const sent = await notifyCapsuleAlerts(USER_ID, { blockedNow: true, alerts: [70, 80] })
-
-    expect(createNotificationMock).toHaveBeenCalledTimes(1)
-    expect(createNotificationMock).toHaveBeenCalledWith({ userId: USER_ID, type: 'capsule_jam_blocked', payload: {} })
-    expect(sent).toEqual({ jamBlocked: true, nearlyFullStages: [] })
-  })
-
-  it('blockedNow가 아니면 alerts의 단계마다 capsule_nearly_full을 보낸다 — 단계가 payload.stage에 실린다', async () => {
-    const sent = await notifyCapsuleAlerts(USER_ID, { blockedNow: false, alerts: [70, 90] })
-
-    expect(createNotificationMock).toHaveBeenCalledTimes(2)
-    expect(createNotificationMock).toHaveBeenNthCalledWith(1, { userId: USER_ID, type: 'capsule_nearly_full', payload: { stage: 70 } })
-    expect(createNotificationMock).toHaveBeenNthCalledWith(2, { userId: USER_ID, type: 'capsule_nearly_full', payload: { stage: 90 } })
-    expect(sent).toEqual({ jamBlocked: false, nearlyFullStages: [70, 90] })
-  })
-
-  it('묶음 키를 넘기지 않는다 — 중복 방지는 DB(alert_stage, 1→2 전환)가 하므로 매번 새 행이다', async () => {
-    await notifyCapsuleAlerts(USER_ID, { blockedNow: false, alerts: [80] })
-    await notifyCapsuleAlerts(USER_ID, { blockedNow: true, alerts: [] })
-
-    for (const [input] of createNotificationMock.mock.calls) {
-      expect(input).not.toHaveProperty('groupKey')
-      expect(input).not.toHaveProperty('mode')
-    }
-  })
-
-  it('단계 하나는 소식 한 건이다 — 건너뛰어 가장 높은 단계 하나만 온 경우도 한 건', async () => {
-    await notifyCapsuleAlerts(USER_ID, { blockedNow: false, alerts: [80] })
-    expect(createNotificationMock).toHaveBeenCalledTimes(1)
-  })
-
-  it('blockedNow도 alerts도 없으면 아무것도 보내지 않는다', async () => {
-    const sent = await notifyCapsuleAlerts(USER_ID, { blockedNow: false, alerts: [] })
-
-    expect(createNotificationMock).not.toHaveBeenCalled()
-    expect(sent).toEqual({ jamBlocked: false, nearlyFullStages: [] })
-  })
-
-  it('70·80·90이 아닌 단계는 보내지 않는다', async () => {
-    await notifyCapsuleAlerts(USER_ID, { blockedNow: false, alerts: [50, 100, 70] })
-
-    expect(createNotificationMock).toHaveBeenCalledTimes(1)
-    expect(createNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ payload: { stage: 70 } }))
-  })
-
-  it('createNotification이 null을 돌려줘도(발송 실패) 던지지 않고, 성공한 것만 센다', async () => {
-    createNotificationMock.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'n-2' })
-
-    const sent = await notifyCapsuleAlerts(USER_ID, { blockedNow: false, alerts: [70, 80] })
-
-    expect(sent).toEqual({ jamBlocked: false, nearlyFullStages: [80] })
-    expect(console.error).toHaveBeenCalled()
-  })
-
-  it('createNotification이 던져도 삼킨다', async () => {
-    createNotificationMock.mockRejectedValue(new Error('rpc 장애'))
-
-    await expect(notifyCapsuleAlerts(USER_ID, { blockedNow: true, alerts: [] })).resolves.toEqual({ jamBlocked: false, nearlyFullStages: [] })
-  })
-})
-
-describe('runSyncCapsuleAutoFill — 소식과 챕터 오름', () => {
-  it('자동 채움 결과의 blockedNow·alerts로 본인에게 소식을 보낸다', async () => {
-    autoFillMock.mockResolvedValue(fillResult([], { blockedNow: true, alerts: [70] }))
-
-    await runSyncCapsuleAutoFill(fakeClient().client, USER_ID)
-
-    expect(createNotificationMock).toHaveBeenCalledTimes(1)
-    expect(createNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ userId: USER_ID, type: 'capsule_jam_blocked' }))
-  })
-
-  it('같은 동기화를 다시 보내 alerts·blockedNow가 비면 소식도 없다 — 단계 중복은 DB가 막는다', async () => {
-    autoFillMock.mockResolvedValue(fillResult([], { blockedNow: false, alerts: [] }))
+describe('runSyncCapsuleAutoFill — 소식을 보내지 않음과 챕터 오름', () => {
+  it('캡슐 소식(capsule_nearly_full·capsule_jam_blocked)을 보내지 않는다 — 막힌 동기화여도 마찬가지다 (티켓 20261105_0105 T5)', async () => {
+    autoFillMock.mockResolvedValue(fillResult([opened(1)], { stopped: 'inventory_blocked', inventoryBlocked: true }))
 
     await runSyncCapsuleAutoFill(fakeClient().client, USER_ID)
 
     expect(createNotificationMock).not.toHaveBeenCalled()
   })
 
-  it('소식 발송이 실패해도 던지지 않고 동기화 결과와 보지 않은 결과 기록은 그대로다', async () => {
-    createNotificationMock.mockRejectedValue(new Error('rpc 장애'))
-    autoFillMock.mockResolvedValue(fillResult([opened(1)], { alerts: [90] }))
-    const { client, insert } = fakeClient()
-
-    const result = await runSyncCapsuleAutoFill(client, USER_ID)
-
-    expect(insert).toHaveBeenCalledTimes(1)
-    expect(result).toMatchObject({ opened: true, unseenRecorded: true })
+  it('소스에 캡슐 소식 발송이 남아 있지 않다', () => {
+    const src = readFileSync(path.resolve(__dirname, '../sync-auto-fill.ts'), 'utf-8')
+    expect(src).not.toMatch(/createNotification\(|notifyCapsuleAlerts|type: 'capsule_(nearly_full|jam_blocked)'/)
   })
 
   it('chapterRose: 오른 챕터가 있으면 참이고, 열기 없이 보류만 생긴 오름도 참이다', async () => {
-    autoFillMock.mockResolvedValue(fillResult([], { reachedChapters: [3], holds: [{ slot: 1, pendingCount: 1, blockedNow: false, chapterNo: 2 }] }))
+    autoFillMock.mockResolvedValue(fillResult([], { reachedChapters: [3] }))
 
     const result = await runSyncCapsuleAutoFill(fakeClient().client, USER_ID)
 

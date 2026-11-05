@@ -5,7 +5,7 @@
  * - 한 라운드 = `capsule_auto_fill` → (`reachedChapters`가 있으면 오름 처리) → 가득 찼으면 열기. 가득 찬 채 남은 캡슐은 잼을 쓰지 않고 맨 앞에서 먼저 처리된다.
  * - 오름 처리(`processChapterRise`)는 채움 호출 결과에서만 부른다. 열기(`openCapsule`)는 오름 처리를 하지 않으므로 이중 호출이 없다.
  * - 열기가 대기 보상 저장(`held`)을 돌려주면 `inventory_blocked`로 멈춘다(`inventoryBlocked: true`). 지갑 잼은 그대로이고 그때까지 열린 캡슐은 `opens`에 합쳐 담긴다.
- *   채움 응답이 `pendingCount > 0`이면(이미 대기 보상이 있다) 열기를 시도하지 않고 같은 이유로 멈춘다. `capsule_hold_reward`는 부르지 않고, `holds`·`forfeitedTotal`·`alerts`·`blockedNow`는 항상 비어 있다(소비처가 T5까지 읽는다).
+ *   채움 응답이 `pendingCount > 0`이면(이미 대기 보상이 있다) 열기를 시도하지 않고 같은 이유로 멈춘다. `capsule_hold_reward`는 부르지 않는다.
  * - 지갑이 비어 가득 못 채우면 `wallet_empty`. 열 수 없으면(`CapsuleError`) 오류가 아니라 `blocked`. 이용 정지는 `suspended`. 예상 밖 실패는 던지지 않는 쪽은 `error`로 돌려주고
  *   그때까지의 진행분을 보존하며, 던지는 쪽은 던진다. 같은 동기화를 다시 보내면(지갑 0) 아무것도 하지 않는다. 50라운드 상한에서 멈춘다.
  * - 재진입 방지(티켓 20261028_1735 2회): 같은 프로세스에서 한 유저의 자동 채움이 돌고 있으면 안쪽 호출은 아무 일도 하지 않고 `busy`(진행 분 없음)로 돌아온다. 끝나면(예외·실패 포함) 풀리고, 다른 유저는 막지 않는다.
@@ -73,10 +73,6 @@ describe('runCapsuleAutoFill — 반복', () => {
     expect(result).toEqual({
       filledAmount: 130,
       opens: [],
-      holds: [],
-      forfeitedTotal: 0,
-      alerts: [],
-      blockedNow: false,
       inventoryBlocked: false,
       reachedChapters: [],
       rounds: 1,
@@ -242,10 +238,6 @@ describe('runCapsuleAutoFill — 빈칸이 모자라면 먼저 추첨해 저장�
     // 새 캡슐을 채우거나 열지 않는다. 보관 함수·소멸·알림 단계도 없다
     expect(calls).toEqual(['capsule_auto_fill', 'capsule_auto_fill', 'capsule_auto_fill'])
     expect(openMock).toHaveBeenCalledTimes(3)
-    expect(result.holds).toEqual([])
-    expect(result.forfeitedTotal).toBe(0)
-    expect(result.alerts).toEqual([])
-    expect(result.blockedNow).toBe(false)
     expect(result.error).toBeUndefined()
   })
 
@@ -296,10 +288,11 @@ describe('runCapsuleAutoFill — 빈칸이 모자라면 먼저 추첨해 저장�
     expect((await runCapsuleAutoFill(client, USER_ID)).inventoryBlocked).toBe(false)
   })
 
-  it('DB가 고정값 키(pendingCount 0·forfeited·alertStage)를 돌려줘도 소멸·단계 알림이 생기지 않는다', async () => {
+  it('DB가 옛 고정값 키(pendingCount 0·forfeited·alertStage)를 돌려줘도 결과에 소멸·단계 알림 필드가 없다', async () => {
     const { client } = fakeClient([{ ok: true, applied: 30, full: false, pendingCount: 0, forfeited: 0, alertStage: null }])
     const result = await runCapsuleAutoFill(client, USER_ID)
-    expect(result).toMatchObject({ stopped: 'wallet_empty', forfeitedTotal: 0, alerts: [], holds: [], blockedNow: false })
+    expect(result).toMatchObject({ stopped: 'wallet_empty' })
+    for (const key of ['forfeitedTotal', 'alerts', 'holds', 'blockedNow']) expect(result).not.toHaveProperty(key)
   })
 
   it('경쟁으로 열기가 insufficient_slots로 거절되면 blocked로 멈추고 캡슐은 가득 찬 채 남는다 (다음 동기화가 다시 시도한다)', async () => {
@@ -385,10 +378,6 @@ describe('runCapsuleAutoFill — 재진입 방지 (티켓 20261028_1735 2회)', 
   const BUSY_RESULT = {
     filledAmount: 0,
     opens: [],
-    holds: [],
-    forfeitedTotal: 0,
-    alerts: [],
-    blockedNow: false,
     inventoryBlocked: false,
     reachedChapters: [],
     rounds: 0,

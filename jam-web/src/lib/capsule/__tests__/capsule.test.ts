@@ -128,7 +128,6 @@ describe('getCapsuleStatus', () => {
       neededSlots: 2,
       pendingCount: 0,
       jamBlocked: false,
-      alertStage: 0,
       claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
       pendingItemCount: 0,
@@ -154,7 +153,6 @@ describe('getCapsuleStatus', () => {
       neededSlots: 2,
       pendingCount: 0,
       jamBlocked: false,
-      alertStage: 0,
       claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
       pendingItemCount: 0,
@@ -242,7 +240,6 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
     expect(await status({ rpc: capsuleRow() })).toMatchObject({
       pendingCount: 0,
       jamBlocked: false,
-      alertStage: 0,
       claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
     })
@@ -252,36 +249,24 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
     expect(await status({ rpc: capsuleRow(), pending: rows(1) })).toMatchObject({
       pendingCount: 1,
       jamBlocked: false,
-      alertStage: 0,
       claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
     })
   })
 
-  it.each([70, 80, 90] as const)('보류 1개와 저장된 단계 %i면 단계를 그대로 싣고 안내는 none이다', async (stage) => {
-    expect(await status({ rpc: capsuleRow({ alert_stage: stage }), pending: rows(1) })).toMatchObject({
-      pendingCount: 1,
-      alertStage: stage,
-      notice: 'none',
-    })
+  it('저장된 알림 단계(alert_stage)가 있어도 응답에 alertStage를 싣지 않는다 (티켓 20261105_0105 T5)', async () => {
+    const out = await status({ rpc: capsuleRow({ alert_stage: 80 }), pending: rows(1) })
+    expect(out).toMatchObject({ pendingCount: 1, notice: 'none' })
+    expect(out).not.toHaveProperty('alertStage')
   })
 
-  it('저장된 단계가 70·80·90이 아니면 0으로 본다', async () => {
-    expect(await status({ rpc: capsuleRow({ alert_stage: 75 }), pending: rows(1) })).toMatchObject({ alertStage: 0, notice: 'none' })
-  })
-
-  it('보류가 2개면 jamBlocked이고 저장된 단계가 있어도 alertStage는 0, 안내는 none이다', async () => {
+  it('보류가 2개면 jamBlocked이고 안내는 none이다', async () => {
     expect(await status({ rpc: capsuleRow({ alert_stage: 90 }), pending: rows(2) })).toMatchObject({
       pendingCount: 2,
       jamBlocked: true,
-      alertStage: 0,
       claim: { blockedReason: null },
       notice: 'none',
     })
-  })
-
-  it('보류가 없으면 저장된 단계가 남아 있어도 alertStage는 0이다', async () => {
-    expect(await status({ rpc: capsuleRow({ alert_stage: 80 }) })).toMatchObject({ pendingCount: 0, alertStage: 0, notice: 'none' })
   })
 
   it('보류가 2개를 넘어도 2로 접는다', async () => {

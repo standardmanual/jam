@@ -381,7 +381,7 @@ describe('서비스 활동 잼 항목 (티켓 20261028_1735 4회)', () => {
   })
 })
 
-describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)', () => {
+describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회, 20261105_0105 T5)', () => {
   const find = (id: string) => POLICIES_DATA.find((p) => p.id === id)
   const repoRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
   const IDS = [
@@ -399,7 +399,11 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
       expect(card, id).toBeDefined()
       // 대기 보상 자동 지급(티켓 20261105_1438 R2)이 «대기 보상» 항목의 근거 티켓을 바꿨다
       expect(card?.ticketId, id).toBe(
-        id === 'ch5-pending-reward' ? '20261105_1438' : id === 'ch5-claim-pending' ? '20261105_0105' : '20261028_1734'
+        id === 'ch5-pending-reward'
+          ? '20261105_1438'
+          : id === 'ch5-claim-pending' || id === 'ch5-capsule-alerts'
+            ? '20261105_0105'
+            : '20261028_1734'
       )
       expect(existsSync(`${repoRoot}${card?.codeLocation}`), `${id}의 코드 위치가 실재해야 합니다`).toBe(true)
     }
@@ -435,12 +439,14 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
     expect(find('ch16-suspension-capsule-hold')?.currentSpec).toContain('user_suspended')
   })
 
-  it('알림 단계는 70·80·90이고 보류가 하나일 때만이며 둘째 보류 소식은 한 건이다', () => {
-    const spec = find('ch5-capsule-alerts')?.currentSpec ?? ''
-    for (const text of ['70·80·90%', '보류가 정확히 1개인 동안만', '단계마다 최대 1회', '가장 높은 단계 하나', 'capsule_jam_blocked', 'capsule_nearly_full']) {
+  it('캡슐 채움 단계 알림과 잼을 받을 수 없음 알림은 더는 보내지 않고 과거 행은 남는다 (티켓 20261105_0105 T5)', () => {
+    const card = find('ch5-capsule-alerts')
+    const spec = card?.currentSpec ?? ''
+    for (const text of ['capsule_nearly_full', 'capsule_jam_blocked', '더는 보내지 않음', 'alert_stage', '그대로 보이고', '지우지 않음']) {
       expect(spec, text).toContain(text)
     }
-    expect(find('ch5-capsule-alerts')?.dbColumn).toBe('alert_stage')
+    expect(spec).not.toContain('단계마다 최대 1회')
+    expect(card?.userExperience).not.toContain('«받기» 버튼은')
   })
 
   it('챕터 횟수 카드는 100%에 닿는 시점에 센다고 적는다', () => {

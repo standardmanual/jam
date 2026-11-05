@@ -366,7 +366,7 @@ describe('받지 않은 보상 소식 (reward_pending, 티켓 20261021_1249 6-3 
   })
 })
 
-describe('캡슐 소식 (capsule_nearly_full·capsule_jam_blocked, 티켓 20261028_1734 3회)', () => {
+describe('캡슐 소식 — 과거 행 표시 (capsule_nearly_full·capsule_jam_blocked, 티켓 20261028_1734 3회, 더는 보내지 않음 20261105_0105)', () => {
   const NEARLY = view('capsule_nearly_full', { stage: 80 })
   const BLOCKED = view('capsule_jam_blocked', {})
 

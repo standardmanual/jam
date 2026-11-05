@@ -31,7 +31,7 @@ import { d } from '@/lib/i18n'
 import type { ActivityFeedRow } from '@/types/database'
 import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
 
-const CAPSULE: CapsuleStatus = { required: 300, filled: 120, remaining: 180, balance: 50, openable: false, notOpenableReason: 'not_full', pendingCount: 0, jamBlocked: false, alertStage: 0, claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 }, notice: 'none', pendingItemCount: 0, shortfall: 0 }
+const CAPSULE: CapsuleStatus = { required: 300, filled: 120, remaining: 180, balance: 50, openable: false, notOpenableReason: 'not_full', pendingCount: 0, jamBlocked: false, claim: { blockedReason: null, freeSlots: 40, neededSlots: 2 }, notice: 'none', pendingItemCount: 0, shortfall: 0 }
 
 type ProfileProps = Parameters<typeof ProfileClient>[0]
 

@@ -50,7 +50,6 @@ const STATUS = {
   neededSlots: 2,
   pendingCount: 1,
   jamBlocked: false,
-  alertStage: 80,
   claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
   notice: 'blocked',
 }
@@ -101,7 +100,7 @@ describe('GET /api/capsule', () => {
     expect(settleMock).not.toHaveBeenCalled()
   })
 
-  it('보류·안내 값(pendingCount·jamBlocked·alertStage·claim·notice)을 응답 본문에 모두 싣는다', async () => {
+  it('보류·안내 값(pendingCount·jamBlocked·claim·notice)을 응답 본문에 모두 싣는다', async () => {
     getStatusMock.mockResolvedValue(STATUS)
 
     const body = await (await GET()).json()
@@ -109,8 +108,7 @@ describe('GET /api/capsule', () => {
     expect(body).toMatchObject({
       pendingCount: 1,
       jamBlocked: false,
-      alertStage: 80,
-      claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
+          claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 2 },
       notice: 'blocked',
     })
   })

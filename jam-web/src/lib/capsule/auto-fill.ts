@@ -7,20 +7,19 @@
  *  - **챕터 오름 판정은 열기가 아니라 이 호출 결과에서 온다**(캡슐이 100%에 처음 닿는 호출이 횟수를 세고 오름을 판정한다, D9). 오름 처리는 여기서만 부른다 —
  *    `openCapsule`은 오름 처리를 하지 않는다(이중 호출 방지). `skipRiseBadgeEvaluation`을 켜면 오름 처리의 챕터 배지 판정만 건너뛴다.
  *  - 가득 찼을 때 열기를 시도한다. 빈칸이 뽑힌 개수보다 적으면 `openCapsule`이 **먼저 추첨한 결과를 대기 보상으로 저장**하고(`held: true`) 캡슐을 소진한다.
- *    이 라운드는 `inventory_blocked`로 멈춘다(`inventoryBlocked: true`). 지갑의 남은 잼은 그대로다. 그때까지 열린 캡슐(`opens`)은 합쳐서 보인다. 소멸과 알림 단계는 없다.
+ *    이 라운드는 `inventory_blocked`로 멈춘다(`inventoryBlocked: true`). 지갑의 남은 잼은 그대로다. 그때까지 열린 캡슐(`opens`)은 합쳐서 보인다. 소멸과 알림 단계는 없다(알림 단계 쓰기와 소식은 티켓 20261105_0105 T5에서 걷었다).
  *    대기 보상은 한 캡슐분(1~2개)까지만 쌓인다 — `capsule_auto_fill`이 `pendingCount > 0`을 돌려주면 채우지 않고 같은 이유로 멈춘다(새 캡슐을 채우거나 열지 않는다).
  *    그 밖의 `CapsuleError`(`no_tribe` 등)는 `blocked` 멈춤이다(가득 찬 채 남는다).
  *  - 멈추는 조건: 가득 못 채워서(`wallet_empty`, 지갑이 비었다) · 인벤토리가 차서(`inventory_blocked`) · 열 수 없어서(`blocked`) · 이용 정지(`suspended`) · 예상 밖 실패(`error`) ·
  *    한 번에 50라운드(`max_rounds`, 남은 잼은 지갑에 남아 다음 동기화가 이어서 쓴다).
  *  - 열 수 없는 경우(`no_tribe` 등)는 오류가 아니라 «멈춤»이다. 잼은 캡슐에 채운 채 남고 다음 동기화가 다시 시도한다.
- *  - `holds`·`forfeitedTotal`·`alerts`·`blockedNow`는 소비처(`sync-auto-fill.ts`)가 T5까지 읽으므로 필드만 두고 값을 빈 배열·0·false로 고정한다.
  *  - 중복 방지는 따로 없다: 자동 채움은 지갑 잔액만 쓰므로 같은 동기화를 다시 보내면 잔액이 0이라 아무 일도 하지 않는다(정산 쪽 중복은 `jam_apply`의 활동 단위 유일성이 막는다).
  *
  * 재진입 방지 (티켓 20261028_1735 2회)
  *  - 캡슐 보상으로 받은 아이템 배지가 컬렉션·미션을 완성하면 서비스 활동 잼이 지급되고(`awardServiceJam`), 그 지급도 곧바로 자동 채움을 부른다 — 자동 채움 안에서 같은 유저의 자동 채움이 또 불린다.
  *  - 같은 서버 프로세스에서 한 유저의 자동 채움이 이미 돌고 있으면 안쪽 호출은 아무 일도 하지 않고 `stopped: 'busy'`(진행 분 없음)로 돌아온다.
  *    바깥 루프가 라운드마다 지갑 잔액을 다시 읽어(`capsule_auto_fill`) 새로 들어온 잼을 이어서 채운다. DB 쪽은 캡슐 행 잠금이 직렬화한다.
- *  - 건너뛴 안쪽 호출은 소식·«보지 않은 결과»를 만들 것이 없다(`opens`·`alerts`가 비어 있다). 잠금은 끝나면 반드시(`finally`) 풀린다.
+ *  - 건너뛴 안쪽 호출은 소식·«보지 않은 결과»를 만들 것이 없다(`opens`가 비어 있다). 잠금은 끝나면 반드시(`finally`) 풀린다.
  *  - 이 잠금은 프로세스 안에서만 유효하다. 같은 프로세스의 다른 요청이 같은 유저를 동시에 돌려도 `busy`로 건너뛴다 — 지갑에 남은 잼은 다음 채움이 이어서 쓴다.
  *
  * 던지는 쪽과 던지지 않는 쪽
@@ -64,31 +63,11 @@ export type CapsuleAutoFillStop =
   /** 같은 서버 프로세스에서 이 유저의 자동 채움이 이미 돌고 있어 아무것도 하지 않았다(재진입 방지). 진행 분이 없다 */
   | 'busy'
 
-/** 가득 찬 캡슐을 보류로 옮긴 기록 하나. 보관이 없어져 더는 만들어지지 않는다(T5가 소비처를 정리할 때까지 타입만 남긴다) */
-export interface CapsuleAutoFillHold {
-  /** 보류가 들어간 칸(1 또는 2) */
-  slot: number
-  /** 이 보류를 만든 뒤의 보류 수 */
-  pendingCount: number
-  /** 이 보류로 보류가 1개에서 2개가 되어 잼을 받을 수 없게 됐다 */
-  blockedNow: boolean
-  /** 보류된 캡슐의 챕터. 퀘스트 전 캡슐이면 null */
-  chapterNo: number | null
-}
-
 export interface CapsuleAutoFillResult {
   /** 이번에 지갑에서 캡슐로 옮긴 잼의 합 */
   filledAmount: number
   /** 자동으로 열린 캡슐, 열린 순서대로. 그 캡슐이 같은 라운드의 채움에서 100%에 닿았다면 오름 정보(`chapterNo`·`reachedChapters`·`chapterCount`)는 닿은 호출의 값이다 */
   opens: CountedCapsuleOpenPayload[]
-  /** 항상 빈 배열이다(보관 없음) */
-  holds: CapsuleAutoFillHold[]
-  /** 항상 0이다(소멸 없음) */
-  forfeitedTotal: number
-  /** 항상 빈 배열이다(알림 단계 없음) */
-  alerts: number[]
-  /** 항상 false다 */
-  blockedNow: boolean
   /** 대기 보상이 있어 멈췄다(`stopped`가 `inventory_blocked`) */
   inventoryBlocked: boolean
   /** 이번 동기화에서 챕터 오름을 처리한 챕터 번호, 처리한 순서대로(열기 없이 보류만 생긴 오름도 담긴다). 오르지 않았으면 빈 배열 */
@@ -169,10 +148,6 @@ export async function runCapsuleAutoFill(
     return {
       filledAmount: 0,
       opens: [],
-      holds: [],
-      forfeitedTotal: 0,
-      alerts: [],
-      blockedNow: false,
       inventoryBlocked: false,
       reachedChapters: [],
       rounds: 0,
@@ -195,10 +170,6 @@ async function runAutoFillRounds(
   const result: CapsuleAutoFillResult = {
     filledAmount: 0,
     opens: [],
-    holds: [],
-    forfeitedTotal: 0,
-    alerts: [],
-    blockedNow: false,
     inventoryBlocked: false,
     reachedChapters: [],
     rounds: 0,
