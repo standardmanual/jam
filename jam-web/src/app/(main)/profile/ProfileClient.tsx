@@ -683,7 +683,7 @@ export default function ProfileClient({
         {/* 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 통계 탭 사이이고 헤더와의 간격은 바깥 gap-6 하나다
             (챕터는 헤더의 표시 이름 위로 옮겼다, 티켓 20261031_1806. 위젯 안의 게이지-안내 간격은 위젯이 정한다).
             캡슐 위젯(티켓 20261018_0054)의 렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
-        {isOwnProfile && capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} />}
+        {isOwnProfile && capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} blockedCard />}
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
