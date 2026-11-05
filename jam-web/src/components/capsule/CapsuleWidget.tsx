@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@ds/components/buttons/Button'
 import { Skeleton } from '@ds/components/feedback/Skeleton'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
-import InlineNotice from '@/components/ui/InlineNotice'
 import { useToast } from '@/components/ui/Toast'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'
 import { toRevealBadges } from '@/components/capsule/capsuleReveal'
@@ -21,7 +20,7 @@ import { d, t } from '@/lib/i18n'
  * `router.refresh()`로 새 초기값이 내려오면 상태가 그 값을 따라간다(동기화 직후 합친 연출을 닫은 게이지가 최신 값까지 차도록).
  * 위에서 아래로 `[게이지][안내 영역(조건부)]`이고 시트는 없다. 게이지를 눌러도 아무 일도 없다.
  *  - 로딩: MODULAR `Skeleton`(게이지와 같은 높이). 오류: 상자 자체가 «다시 시도» 버튼이다.
- *  - 안내 영역: 서버가 정해 준 `notice`(막힘 한 종류, 티켓 20261105_0104)로 간결 문구를 고른다(서비스 `InlineNotice`). 화면은 따로 따지지 않는다.
+ *  - 안내 문구: 서버가 정해 준 `notice`(막힘 한 종류, 티켓 20261105_0104)로 간결 문구를 고른다. 게이지 안 숫자 자리에 보인다(숫자는 지운다, 2026-11-05 사용자 요청). 안내 영역에는 빈칸 줄과 «인벤토리 보기»만 남는다.
  *    이용 정지는 안내가 없다(서버가 `notice: 'none'`을 준다. 홈은 `SuspensionBanner`가 알린다).
  *    홈은 `hideBlockedAction`으로 빈칸 줄과 «인벤토리 보기»를 숨긴다(홈 상단 `CapsuleBlockedBanner`가 알린다). 프로필은 그대로 둔다.
  *  - «받기»: `claim.available`일 때만 보인다(안내 문구가 없으면 버튼만, 제거는 T5). 빈칸이 모자라면 «받기» 대신 «인벤토리 보기»와 빈칸 덧줄을 둔다.
@@ -180,8 +179,8 @@ export default function CapsuleWidget({
   return (
     <>
       <div className="flex w-full flex-col gap-3">
-        <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} />
-        {text ? <InlineNotice action={action}>{text}</InlineNotice> : action}
+        <CapsuleGauge filled={capsule.filled} required={capsule.required} ariaLabel={gaugeAriaLabel(capsule.notice)} message={text ?? undefined} />
+        {action}
       </div>
 
       <BadgeRevealOverlay

@@ -80,13 +80,15 @@ describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다(�
     expect(text).toContain(d.capsule.widget.notice.blocked)
     expect(text).toContain(t(d.capsule.widget.slots, { free: 1, needed: 2 }))
     expect(text).toContain('인벤토리 보기')
-    expect(html).toContain('role="status"')
+    // 문구는 게이지 안 숫자 자리에 있고 숫자(300)는 지워진다(2026-11-05 사용자 요청)
+    expect(html).toMatch(/data-capsule-number="inside"[\s\S]*캡슐이 가득 찼어요/)
+    expect(text).not.toContain('300')
     expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
   })
 
   it('막힘 + 홈 전용 prop: 한 줄만 보이고 빈칸 줄과 «인벤토리 보기» 버튼이 없다', () => {
     const html = renderToStaticMarkup(<CapsuleWidget initial={status(BLOCKED)} hideBlockedAction />)
-    expect(textOf(html)).toBe('300캡슐이 가득 찼어요')
+    expect(textOf(html)).toBe('캡슐이 가득 찼어요')
     expect(html).not.toContain('<button')
     expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
   })

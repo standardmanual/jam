@@ -43,6 +43,26 @@ describe('눌러도 동작이 없다', () => {
   })
 })
 
+describe('문구가 있으면 숫자 자리를 대신한다(막힘, 2026-11-05 사용자 요청)', () => {
+  const html = renderToStaticMarkup(<CapsuleGauge filled={300} required={300} ariaLabel={LABEL} message="캡슐이 가득 찼어요" />)
+
+  it('숫자는 지우고 채움 안쪽 왼쪽에 문구를 그린다', () => {
+    expect(html).toMatch(/data-capsule-number="inside"[\s\S]*캡슐이 가득 찼어요/)
+    expect(html.replace(/<[^>]*>/g, '')).toBe('캡슐이 가득 찼어요')
+    expect(html).not.toContain('data-capsule-number="outside"')
+  })
+
+  it('문구는 아주 작은 채움 상태(50% 미만)에서도 안쪽에만 둔다', () => {
+    const low = renderToStaticMarkup(<CapsuleGauge filled={10} required={300} ariaLabel={LABEL} message="문구" />)
+    expect(low).toContain('data-capsule-number="inside"')
+    expect(low).not.toContain('data-capsule-number="outside"')
+  })
+
+  it('문구가 없으면 지금처럼 숫자를 그린다', () => {
+    expect(render(300, 300).replace(/<[^>]*>/g, '')).toBe('300')
+  })
+})
+
 describe('채운 양의 숫자', () => {
   it('50% 미만이면 트랙 오른쪽 끝에 오렌지 숫자 하나를 그린다', () => {
     for (const [filled, required] of [[0, 300], [120, 300], [149, 300]]) {
