@@ -31,7 +31,13 @@ export default function CapsuleBlockedCard() {
       <Card
         tone="inverse"
         className="text-left"
-        style={{ marginTop: -TUCK_PX, paddingTop: `calc(var(--layout-card-padding) + ${TUCK_PX}px)` }}
+        style={{
+          marginTop: -TUCK_PX,
+          paddingTop: `calc(var(--layout-card-padding) + ${TUCK_PX}px)`,
+          // 위 두 모서리는 각지게 한다: 둥글면 게이지의 둥근 아래쪽 곡선과 카드 사이에 움푹 들어간 틈이 보인다(2026-11-05 사용자 지적)
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0,
+        }}
       >
         <div className="flex flex-row items-center justify-between gap-3">
           <p id={noteId} className="m-0 min-w-0 flex-1 text-base text-snow break-keep wrap-break-word">
