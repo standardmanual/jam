@@ -28,7 +28,7 @@ describe('CapsuleBlockedBanner — 막힘 기본 모습', () => {
 
   it('제목·본문·버튼 문구가 윈터 제3안 그대로 보인다', () => {
     const text = textOf(html)
-    expect(text).toContain('인벤토리에 빈칸이 필요해요')
+    expect(text).toContain('인벤토리가 가득 찼어요')
     expect(text).toContain('캡슐을 열 빈칸이 모자라서 잼 모으기가 잠시 멈췄어요. 2칸만 더 비우면 바로 다시 모을 수 있어요.')
     expect(text).toContain('인벤토리 보기')
   })
