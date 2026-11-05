@@ -24,7 +24,8 @@ import {
  * 그래프 2%가 지름이 트랙 안쪽 높이와 같은 원이고, 100%는 트랙 안쪽을 가득 채운다. 번개 아이콘은 채움의 오른쪽 끝 원 안에 붙어 같이 움직인다.
  *
  * 눌러도 아무 일도 없다 — `button`·`jam-press`·커서가 없고 접근성 역할은 `role="img"`다. 상태는 숫자 없는 `ariaLabel`로만 글자로 알린다.
- * `message`가 있으면(막힘) 숫자를 지우고 같은 자리(채움 안쪽 왼쪽, 트랙 색 글자)에 그 문구를 보인다. 채움이 도착한 뒤 투명에서 나타난다.
+ * `message`가 있으면(막힘) 숫자를 지우고 숫자와 같은 자리 규칙으로 그 문구를 보인다(채움 50% 미만이면 트랙 오른쪽 끝 오렌지 글자, 이상이면 채움 안쪽 왼쪽).
+ * 문구는 붙들리지 않았으면 바로 보이고 240ms 페이드만 건다(진입 모션·보임 관찰에 묶지 않는다, 티켓 20261105_1439).
  * 퍼센트는 그리지 않는다. 채운 양(`filled`)의 숫자만 그리고(2026-11-04 사용자 결정, 이전에는 숫자를 그리지 않았다), 자리는 두 가지다.
  *  - 채운 비율이 50% 미만: 트랙 안쪽 오른쪽 끝, 오렌지 글자.
  *  - 채운 비율이 50% 이상: 채움 안쪽 왼쪽, 트랙 색 글자. 채움이 차오를 때 숫자도 번개 앞까지 같이 드러난다(번개를 덮지 않는다).
@@ -99,7 +100,7 @@ interface Props {
   ariaLabel: string
   /** 채움 요소 — U9 오버레이가 시작 자리를 잴 때 쓴다 */
   fillRef?: Ref<HTMLSpanElement>
-  /** 있으면 채운 양 숫자를 지우고 그 자리(채움 안쪽 왼쪽)에 이 문구를 보인다. 캡슐이 가득 차 막혔을 때 쓴다(2026-11-05 사용자 요청) */
+  /** 있으면 채운 양 숫자를 지우고 그 자리에 이 문구를 보인다. 캡슐이 가득 차 막혔을 때 쓴다(2026-11-05 사용자 요청) */
   message?: string
 }
 
@@ -236,14 +237,15 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
   const shownDurationMs = held ? 0 : motion.durationMs
   const ratio = graphPercentToFillRatio(shownGraph)
   // 숫자 자리는 모션 중간값이 아니라 실제 값으로 정한다
-  // 문구가 있으면 숫자가 아니라 문구이므로 늘 채움 안쪽에 둔다(막힘은 캡슐이 가득 찬 때라 채움이 트랙을 채운다)
-  const placement = message ? 'inside' : capsuleNumberPlacement(filled, required)
-  // 채움이 움직이기 시작한 뒤에만 보인다. 켜진 채로 붙들리거나 값이 바뀌는 렌더에서는 효과가 꺼 주기 전에도 바로 숨긴다
+  // 문구도 숫자와 같은 자리 규칙을 따른다. 막히면 대기 보상 때문에 새 캡슐(채움 0)이라 오른쪽 끝(outside)에 보이고, 채움이 50% 이상인 예외에서만 안쪽이다(티켓 20261105_1439)
+  const placement = capsuleNumberPlacement(filled, required)
+  // 숫자는 채움이 움직이기 시작한 뒤에만 보인다. 켜진 채로 붙들리거나 값이 바뀌는 렌더에서는 효과가 꺼 주기 전에도 바로 숨긴다
   const showNumber = numberReady && arrived
   const numberContent = message ?? (showNumber ? <PopInNumber key={numberText} value={numberText} playOnMount /> : numberText)
-  const numberVisibility = showNumber ? undefined : 0
+  // 문구는 진입 모션·보임 관찰에 묶지 않는다(값이 0이면 관찰자가 없어 arrived가 영원히 false라 숨은 채 남았다). 붙들린 동안만 숨기고 풀리면 페이드로 보인다
+  const numberVisibility = message ? (held ? 0 : undefined) : showNumber ? undefined : 0
   const numberClass = message
-    ? 'whitespace-nowrap text-base font-extrabold leading-none'
+    ? 'whitespace-nowrap text-base font-extrabold leading-none transition-opacity duration-[240ms] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
     : 'whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'
 
   return (
@@ -306,7 +308,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
               className="absolute left-0 top-0 block h-full overflow-hidden"
               style={{ width: `calc(100% - ${circle}px)` }}
             >
-              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)', transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: numberVisibility, transition: message ? 'opacity 240ms var(--ease-smooth-out)' : undefined }}>
+              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)', transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: numberVisibility }}>
                 {numberContent}
               </span>
             </span>

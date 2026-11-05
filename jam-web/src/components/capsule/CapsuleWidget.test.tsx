@@ -88,6 +88,14 @@ describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다(�
     expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
   })
 
+  it('막힘 + 채움 0(보류가 생긴 새 캡슐): 문구가 트랙 오른쪽 끝에 보이고 안쪽에는 없다', () => {
+    const html = render({ ...BLOCKED, filled: 0, remaining: 300 })
+    expect(html).toMatch(/data-capsule-number="outside"[\s\S]*캡슐이 가득 찼어요/)
+    expect(html).not.toContain('data-capsule-number="inside"')
+    expect(html).toContain(`aria-label="${d.capsule.widget.gaugeAria.blocked}"`)
+    expect(d.capsule.widget.gaugeAria.blocked).toBe('캡슐, 얻은 아이템 배지를 넣지 못해 잼을 얻을 수 없어요')
+  })
+
   it('막힘 + 홈 전용 prop: 한 줄만 보이고 빈칸 줄과 «인벤토리 보기» 버튼이 없다', () => {
     const html = renderToStaticMarkup(<CapsuleWidget initial={status(BLOCKED)} hideBlockedAction />)
     expect(textOf(html)).toBe('캡슐이 가득 찼어요')

@@ -149,3 +149,29 @@ describe('채움 요소 알리기', () => {
     expect(fillRef.current).toBeNull()
   })
 })
+
+describe('막힘 문구(티켓 20261105_1439)', () => {
+  const messageProps = { filled: 0, required: REQUIRED, ariaLabel: '캡슐, 막혔어요', message: '캡슐이 가득 찼어요' }
+  const messageStyle = () => {
+    const span = findAll((e) => e.type === 'span' && (e.props as { 'data-capsule-number'?: string })['data-capsule-number'] === 'outside')[0]
+    return span.props.style as { opacity?: number }
+  }
+
+  it('채움이 0이어도 시간이 흐르기 전부터 문구가 보인다(진입 모션·보임 관찰에 묶이지 않는다)', () => {
+    mount(CapsuleGauge, messageProps)
+    expect(messageStyle().opacity).toBeUndefined()
+    vi.advanceTimersByTime(5000)
+    rerender(messageProps)
+    expect(messageStyle().opacity).toBeUndefined()
+  })
+
+  it('붙들린 동안은 숨기고 풀리면 다시 보인다', () => {
+    ctx.gaugeHeld = true
+    mount(CapsuleGauge, messageProps)
+    expect(messageStyle().opacity).toBe(0)
+
+    ctx.gaugeHeld = false
+    rerender(messageProps)
+    expect(messageStyle().opacity).toBeUndefined()
+  })
+})
