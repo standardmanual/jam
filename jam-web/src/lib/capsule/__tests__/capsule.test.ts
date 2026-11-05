@@ -49,7 +49,7 @@ interface FakeOptions {
 }
 
 /** `capsule_receive_blocked` 기본 응답 — 막히지 않음 */
-const NOT_BLOCKED = { data: { blocked: false, free: 40, needed: 2 }, error: null }
+const NOT_BLOCKED = { data: { blocked: false, pending: 0, free: 40, needed: 0, shortfall: 0 }, error: null }
 
 /** `capsule_policy` 행 — 기본값(개수 1 + 1이라 필요한 빈칸 2) */
 const POLICY_ROW = {
@@ -131,6 +131,8 @@ describe('getCapsuleStatus', () => {
       alertStage: 0,
       claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
+      pendingItemCount: 0,
+      shortfall: 0,
     })
     expect(rpc).toHaveBeenCalledWith('capsule_get_or_create', { p_user_id: USER_ID })
   })
@@ -155,6 +157,8 @@ describe('getCapsuleStatus', () => {
       alertStage: 0,
       claim: { available: false, blockedReason: null, freeSlots: 40, neededSlots: 2 },
       notice: 'none',
+      pendingItemCount: 0,
+      shortfall: 0,
     })
   })
 
@@ -285,19 +289,25 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
   })
 
   it('안내는 capsule_receive_blocked가 정한다: blocked면 blocked, 아니면 none이다(캡슐이 가득 차도 막히지 않았으면 none)', async () => {
-    const blocked = { capsule_receive_blocked: { data: { blocked: true, free: 1, needed: 2 }, error: null } }
+    const blocked = { capsule_receive_blocked: { data: { blocked: true, pending: 2, free: 1, needed: 2, shortfall: 1 }, error: null } }
     expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 100 }), ...blocked } })).toMatchObject({ pendingCount: 0, notice: 'blocked' })
     expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 100 }) } })).toMatchObject({ notice: 'none' })
     expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 99 }) } })).toMatchObject({ notice: 'none' })
   })
 
+  it('대기 개수(pendingItemCount)와 부족분(shortfall)은 capsule_receive_blocked의 pending·shortfall을 그대로 싣는다 (티켓 20261105_1437 R1)', async () => {
+    const blocked = { capsule_receive_blocked: { data: { blocked: true, pending: 2, free: 0, needed: 2, shortfall: 2 }, error: null } }
+    expect(await status({ rpc: { ...capsuleRow(), ...blocked } })).toMatchObject({ notice: 'blocked', pendingItemCount: 2, shortfall: 2 })
+    expect(await status({ rpc: { ...capsuleRow() } })).toMatchObject({ pendingItemCount: 0, shortfall: 0 })
+  })
+
   it('막힘이면 보류가 있어도 안내는 blocked 하나다', async () => {
-    const blocked = { capsule_receive_blocked: { data: { blocked: true, free: 0, needed: 2 }, error: null } }
+    const blocked = { capsule_receive_blocked: { data: { blocked: true, pending: 2, free: 0, needed: 2, shortfall: 2 }, error: null } }
     expect(await status({ rpc: { ...capsuleRow({ required: 100, filled: 100 }), ...blocked }, pending: rows(2) })).toMatchObject({ notice: 'blocked' })
   })
 
   it('이용 정지 중이면 막혀 있어도 안내는 none이다', async () => {
-    const blocked = { capsule_receive_blocked: { data: { blocked: true, free: 0, needed: 2 }, error: null } }
+    const blocked = { capsule_receive_blocked: { data: { blocked: true, pending: 2, free: 0, needed: 2, shortfall: 2 }, error: null } }
     const out = await status({
       rpc: { ...capsuleRow({ required: 100, filled: 100 }), ...blocked },
       suspension: { data: { id: 's1', reason: 'x', suspended_at: '2026-10-01T00:00:00Z' }, error: null },

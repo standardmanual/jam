@@ -1,11 +1,11 @@
 /**
- * lib/capsule/auto-fill — 동기화 자동 채움 반복 (티켓 20261028_1733 2회, 20261105_0103 T3)
+ * lib/capsule/auto-fill — 동기화 자동 채움 반복 (티켓 20261028_1733 2회, 20261105_0103 T3, 20261105_1437 R1)
  *
  * 고정하는 것:
  * - 한 라운드 = `capsule_auto_fill` → (`reachedChapters`가 있으면 오름 처리) → 가득 찼으면 열기. 가득 찬 채 남은 캡슐은 잼을 쓰지 않고 맨 앞에서 먼저 처리된다.
  * - 오름 처리(`processChapterRise`)는 채움 호출 결과에서만 부른다. 열기(`openCapsule`)는 오름 처리를 하지 않으므로 이중 호출이 없다.
- * - 열기가 `insufficient_slots`면 보관하지 않고 `inventory_blocked`로 멈춘다(`inventoryBlocked: true`). 캡슐은 가득 찬 채 남고 지갑 잼은 그대로이며 그때까지 열린 캡슐은 `opens`에 합쳐 담긴다.
- *   `capsule_hold_reward`는 부르지 않고, `holds`·`forfeitedTotal`·`alerts`·`blockedNow`는 항상 비어 있다(소비처가 T5까지 읽는다).
+ * - 열기가 대기 보상 저장(`held`)을 돌려주면 `inventory_blocked`로 멈춘다(`inventoryBlocked: true`). 지갑 잼은 그대로이고 그때까지 열린 캡슐은 `opens`에 합쳐 담긴다.
+ *   채움 응답이 `pendingCount > 0`이면(이미 대기 보상이 있다) 열기를 시도하지 않고 같은 이유로 멈춘다. `capsule_hold_reward`는 부르지 않고, `holds`·`forfeitedTotal`·`alerts`·`blockedNow`는 항상 비어 있다(소비처가 T5까지 읽는다).
  * - 지갑이 비어 가득 못 채우면 `wallet_empty`. 열 수 없으면(`CapsuleError`) 오류가 아니라 `blocked`. 이용 정지는 `suspended`. 예상 밖 실패는 던지지 않는 쪽은 `error`로 돌려주고
  *   그때까지의 진행분을 보존하며, 던지는 쪽은 던진다. 같은 동기화를 다시 보내면(지갑 0) 아무것도 하지 않는다. 50라운드 상한에서 멈춘다.
  * - 재진입 방지(티켓 20261028_1735 2회): 같은 프로세스에서 한 유저의 자동 채움이 돌고 있으면 안쪽 호출은 아무 일도 하지 않고 `busy`(진행 분 없음)로 돌아온다. 끝나면(예외·실패 포함) 풀리고, 다른 유저는 막지 않는다.
@@ -225,12 +225,12 @@ describe('runCapsuleAutoFillOrThrow — 던지는 쪽', () => {
   })
 })
 
-describe('runCapsuleAutoFill — 인벤토리가 차면 멈춘다 (티켓 20261105_0103 T3)', () => {
-  const slotsShort = () => new CapsuleError('insufficient_slots', { freeSlots: 1, neededSlots: 2 })
+describe('runCapsuleAutoFill — 빈칸이 모자라면 먼저 추첨해 저장하고 멈춘다 (티켓 20261105_1437 R1)', () => {
+  const held = () => ({ held: true as const, drawnCount: 2, next: { required: 145, filled: 0 } })
 
-  it('N개째 캡슐이 insufficient_slots이면 보관하지 않고 inventory_blocked로 멈춘다 — 그때까지 연 캡슐은 합쳐서 남는다', async () => {
+  it('N개째 캡슐이 대기 보상으로 저장되면(held) inventory_blocked로 멈춘다 — 그때까지 연 캡슐은 합쳐서 남는다', async () => {
     const { client, calls } = fakeClient([{ ok: true, applied: 145, full: true }])
-    openMock.mockResolvedValueOnce(opened(1)).mockResolvedValueOnce(opened(2)).mockRejectedValueOnce(slotsShort())
+    openMock.mockResolvedValueOnce(opened(1)).mockResolvedValueOnce(opened(2)).mockResolvedValueOnce(held())
 
     const result = await runCapsuleAutoFill(client, USER_ID)
 
@@ -239,8 +239,9 @@ describe('runCapsuleAutoFill — 인벤토리가 차면 멈춘다 (티켓 202611
     expect(result.blockedCode).toBe('insufficient_slots')
     expect(result.opens.map((o) => o.openId)).toEqual(['open-1', 'open-2'])
     expect(result.rounds).toBe(3)
-    // 보관·소멸이 없다: capsule_hold_reward를 부르지 않고 관련 필드는 비어 있다
+    // 새 캡슐을 채우거나 열지 않는다. 보관 함수·소멸·알림 단계도 없다
     expect(calls).toEqual(['capsule_auto_fill', 'capsule_auto_fill', 'capsule_auto_fill'])
+    expect(openMock).toHaveBeenCalledTimes(3)
     expect(result.holds).toEqual([])
     expect(result.forfeitedTotal).toBe(0)
     expect(result.alerts).toEqual([])
@@ -248,25 +249,39 @@ describe('runCapsuleAutoFill — 인벤토리가 차면 멈춘다 (티켓 202611
     expect(result.error).toBeUndefined()
   })
 
-  it('막힌 캡슐은 가득 찬 채 남고 지갑 잼은 그대로다 — 막힌 라운드는 잼을 쓰지 않고(채움 호출 뒤 더 부르지 않는다) 멈춘다', async () => {
-    // 첫 호출이 이미 가득 찬 캡슐을 돌려준다(applied 0). 열기가 막히면 채움 RPC를 더 부르지 않으므로 지갑에 손대지 않는다
-    const { client, rpc } = fakeClient([{ ok: true, applied: 0, full: true, balance: 2640 }])
-    openMock.mockRejectedValueOnce(slotsShort())
+  it('저장 뒤 지갑 잼은 그대로다 — 저장한 라운드 뒤에 채움 RPC를 더 부르지 않는다 (opens에 held는 들어가지 않는다)', async () => {
+    const { client, rpc } = fakeClient([{ ok: true, applied: 145, full: true, balance: 2640 }])
+    openMock.mockResolvedValueOnce(held())
 
     const result = await runCapsuleAutoFill(client, USER_ID)
 
-    expect(result).toMatchObject({ stopped: 'inventory_blocked', inventoryBlocked: true, filledAmount: 0, opens: [], rounds: 1 })
+    expect(result).toMatchObject({ stopped: 'inventory_blocked', inventoryBlocked: true, filledAmount: 145, opens: [], rounds: 1 })
     expect(rpc).toHaveBeenCalledTimes(1)
   })
 
-  it('가득 찬 채 남은 캡슐은 다음 동기화의 맨 앞에서 다시 시도하고, 빈칸이 생겼으면 열고 이어서 채운다', async () => {
-    const blockedRun = fakeClient([{ ok: true, applied: 145, full: true }])
-    openMock.mockRejectedValueOnce(slotsShort())
-    expect((await runCapsuleAutoFill(blockedRun.client, USER_ID)).stopped).toBe('inventory_blocked')
+  it('이미 대기 보상이 있으면(pendingCount > 0) 열기를 시도하지 않고 같은 이유로 멈춘다', async () => {
+    const { client, rpc } = fakeClient([{ ok: true, applied: 0, full: false, pendingCount: 1 }])
 
+    const result = await runCapsuleAutoFill(client, USER_ID)
+
+    expect(result).toMatchObject({ stopped: 'inventory_blocked', inventoryBlocked: true, blockedCode: 'insufficient_slots', filledAmount: 0, opens: [], rounds: 1 })
+    expect(openMock).not.toHaveBeenCalled()
+    expect(rpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('대기 보상이 있으면 가득 찬 캡슐이 보여도 열지 않는다 (pendingCount가 먼저)', async () => {
+    const { client } = fakeClient([{ ok: true, applied: 0, full: true, pendingCount: 2 }])
+
+    const result = await runCapsuleAutoFill(client, USER_ID)
+
+    expect(result.stopped).toBe('inventory_blocked')
+    expect(openMock).not.toHaveBeenCalled()
+  })
+
+  it('대기 보상이 비워진 뒤 다음 동기화는 평소처럼 열고 이어서 채운다', async () => {
     const retry = fakeClient([
-      { ok: true, applied: 0, full: true },
-      { ok: true, applied: 40, full: false },
+      { ok: true, applied: 0, full: true, pendingCount: 0 },
+      { ok: true, applied: 40, full: false, pendingCount: 0 },
     ])
     openMock.mockResolvedValueOnce(opened(1))
     const result = await runCapsuleAutoFill(retry.client, USER_ID)
@@ -281,10 +296,19 @@ describe('runCapsuleAutoFill — 인벤토리가 차면 멈춘다 (티켓 202611
     expect((await runCapsuleAutoFill(client, USER_ID)).inventoryBlocked).toBe(false)
   })
 
-  it('DB가 옛 보류 키(pendingCount·forfeited·alertStage)를 고정값으로 돌려줘도 읽지 않는다 — 소멸·단계 알림이 생기지 않는다', async () => {
+  it('DB가 고정값 키(pendingCount 0·forfeited·alertStage)를 돌려줘도 소멸·단계 알림이 생기지 않는다', async () => {
     const { client } = fakeClient([{ ok: true, applied: 30, full: false, pendingCount: 0, forfeited: 0, alertStage: null }])
     const result = await runCapsuleAutoFill(client, USER_ID)
     expect(result).toMatchObject({ stopped: 'wallet_empty', forfeitedTotal: 0, alerts: [], holds: [], blockedNow: false })
+  })
+
+  it('경쟁으로 열기가 insufficient_slots로 거절되면 blocked로 멈추고 캡슐은 가득 찬 채 남는다 (다음 동기화가 다시 시도한다)', async () => {
+    const { client } = fakeClient([{ ok: true, applied: 145, full: true }])
+    openMock.mockRejectedValueOnce(new CapsuleError('insufficient_slots', { freeSlots: 0, neededSlots: 2 }))
+
+    const result = await runCapsuleAutoFill(client, USER_ID)
+
+    expect(result).toMatchObject({ stopped: 'blocked', blockedCode: 'insufficient_slots', inventoryBlocked: false })
   })
 
   it('열기가 빈칸 외 이유로 거절되면(no_tribe) inventory_blocked가 아니라 blocked로 멈춘다', async () => {
@@ -297,7 +321,7 @@ describe('runCapsuleAutoFill — 인벤토리가 차면 멈춘다 (티켓 202611
   })
 
   it('OrThrow도 inventory_blocked는 던지지 않고 같은 결과를 돌려준다', async () => {
-    openMock.mockRejectedValueOnce(slotsShort())
+    openMock.mockResolvedValueOnce(held())
     const result = await runCapsuleAutoFillOrThrow(fakeClient([{ ok: true, applied: 5, full: true }]).client, USER_ID)
     expect(result).toMatchObject({ stopped: 'inventory_blocked', inventoryBlocked: true })
   })

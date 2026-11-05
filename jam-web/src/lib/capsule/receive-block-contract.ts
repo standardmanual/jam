@@ -5,16 +5,21 @@
  * 번들에 끌려오지 않게 하기 위해서다(`pending-items-contract.ts`와 같은 이유). 이 파일은 아무것도 가져오지 않는다.
  */
 
-/** 캡슐이 가득 차고 인벤토리 빈칸이 필요 칸수보다 적어 동기화가 막혔을 때 `POST /api/strava/sync`가 409로 내려주는 `code` 값 */
+/** 대기 보상이 있어 동기화가 막혔을 때`POST /api/strava/sync`가 409로 내려주는 `code` 값 */
 export const CAPSULE_INVENTORY_BLOCKED_CODE = 'capsule_inventory_blocked'
 
 /** DB 함수 `capsule_receive_blocked`가 돌려주는 모양 */
 export interface CapsuleReceiveBlockedResult {
+  /** 대기 보상(`capsule_pending_rewards`)이 있다 */
   blocked: boolean
+  /** 대기 개수 — 빈칸이 모자라 먼저 뽑아 저장한 결과의 개수 합 */
+  pending: number
   /** 지금 인벤토리 빈칸 수 */
   free: number
-  /** 캡슐을 열 때 필요한 빈칸 수(확정 + 보너스) */
+  /** 대기 보상을 받으려면 필요한 빈칸 수(= `pending`) */
   needed: number
+  /** 더 비워야 하는 칸 수(`max(0, pending - free)`) */
+  shortfall: number
 }
 
 /** 막혔을 때의 409 응답 본문 */

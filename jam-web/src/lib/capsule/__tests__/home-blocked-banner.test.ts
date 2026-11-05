@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe('loadHomeCapsuleBlockedBanner', () => {
   it('막혔으면 부족분(필요 - 빈칸)을 돌려주고 capsule_receive_blocked 하나만 부른다', async () => {
-    const { client, rpc } = makeFake({ data: { blocked: true, free: 0, needed: 2 }, error: null })
+    const { client, rpc } = makeFake({ data: { blocked: true, pending: 2, free: 0, needed: 2, shortfall: 2 }, error: null })
 
     await expect(loadHomeCapsuleBlockedBanner(client, USER_ID)).resolves.toEqual({ shortfall: 2 })
     expect(rpc).toHaveBeenCalledTimes(1)
@@ -39,17 +39,17 @@ describe('loadHomeCapsuleBlockedBanner', () => {
   })
 
   it('빈칸이 하나 모자라면 1이다', async () => {
-    const { client } = makeFake({ data: { blocked: true, free: 1, needed: 2 }, error: null })
+    const { client } = makeFake({ data: { blocked: true, pending: 2, free: 1, needed: 2, shortfall: 1 }, error: null })
     await expect(loadHomeCapsuleBlockedBanner(client, USER_ID)).resolves.toEqual({ shortfall: 1 })
   })
 
   it('막혔는데 부족분이 0 이하로 계산돼도 최소 1이다', async () => {
-    const { client } = makeFake({ data: { blocked: true, free: 3, needed: 2 }, error: null })
+    const { client } = makeFake({ data: { blocked: true, pending: 2, free: 3, needed: 2, shortfall: 0 }, error: null })
     await expect(loadHomeCapsuleBlockedBanner(client, USER_ID)).resolves.toEqual({ shortfall: 1 })
   })
 
   it('막히지 않았으면 null이다', async () => {
-    const { client } = makeFake({ data: { blocked: false, free: 0, needed: 2 }, error: null })
+    const { client } = makeFake({ data: { blocked: false, pending: 0, free: 0, needed: 0, shortfall: 0 }, error: null })
     await expect(loadHomeCapsuleBlockedBanner(client, USER_ID)).resolves.toBeNull()
   })
 

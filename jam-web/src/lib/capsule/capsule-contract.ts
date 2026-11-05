@@ -69,6 +69,10 @@ export interface CapsuleStatus extends CapsuleBaseStatus {
   alertStage: CapsuleAlertStage
   claim: CapsuleClaimState
   notice: CapsuleNoticeKind
+  /** 대기 보상 개수 — 빈칸이 모자라 먼저 뽑아 저장한 결과의 개수 합(`capsule_receive_blocked`의 `pending`, 티켓 20261105_1437 R1) */
+  pendingItemCount: number
+  /** 대기 보상을 받으려고 더 비워야 하는 칸 수(`max(0, pendingItemCount - freeSlots)`) */
+  shortfall: number
 }
 
 /**
@@ -128,6 +132,18 @@ export interface CapsuleOpenPayload {
   /** 나온 개체(나온 순서) */
   items: CapsuleOpenedItem[]
   /** 열자마자 생긴 다음 캡슐 */
+  next: { required: number; filled: number }
+}
+
+/**
+ * 열기 대신 «먼저 추첨해 대기 보상으로 저장»한 응답 — 빈칸이 뽑힌 개수보다 적을 때 `openCapsule`이 돌려준다(티켓 20261105_1437 R1).
+ * 개체는 아직 지급되지 않았다(`items` 없음). 캡슐은 소진되어 새 캡슐(`next`)이 생겼고 지갑의 잼은 줄지 않았다.
+ */
+export interface CapsuleHeldPayload {
+  held: true
+  /** 저장된 대기 보상의 개수(뽑힌 개수) */
+  drawnCount: number
+  /** 저장 직후의 새 캡슐 */
   next: { required: number; filled: number }
 }
 

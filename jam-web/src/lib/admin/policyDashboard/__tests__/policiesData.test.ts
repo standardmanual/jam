@@ -402,14 +402,15 @@ describe('캡슐 보류·잼 소멸·알림 항목 (티켓 20261028_1734 4회)',
     }
   })
 
-  it('인벤토리가 차면 보관하지 않고 inventory_blocked로 멈추며 새 보류를 만들지 않는다 (티켓 20261105_0103 T3)', () => {
+  it('인벤토리가 모자라면 먼저 추첨해 대기 보상으로 저장하고 inventory_blocked로 멈춘다 (티켓 20261105_1437 R1)', () => {
     const spec = find('ch5-pending-reward')?.currentSpec ?? ''
-    expect(spec).toContain('보관하지 않고')
+    expect(spec).toContain('capsule_hold_rolled')
+    expect(spec).toContain('drawn_items')
     expect(spec).toContain('inventory_blocked')
     expect(spec).toContain('inventoryBlocked: true')
-    expect(spec).toContain('새 보류는 만들지 않음')
-    expect(spec).not.toContain('바로 보류')
-    expect(find('ch5-auto-fill')?.currentSpec).toContain('보관하지 않고')
+    expect(spec).toContain('소멸하지 않음')
+    expect(spec).not.toContain('새 보류는 만들지 않음')
+    expect(find('ch5-auto-fill')?.currentSpec).toContain('대기 보상으로 저장하고 멈춤')
   })
 
   it('받기는 오래된 것부터 빈칸이 닿는 만큼이고 보상을 포기하는 버튼이 없다', () => {
@@ -514,7 +515,7 @@ describe('인벤토리 가득 참 잼 차단 항목 (티켓 20261105_0101)', () 
 
   it('판정 함수·응답 코드와 먼저 적용되는 막힘의 순서를 적는다', () => {
     const spec = card?.currentSpec ?? ''
-    for (const text of ['capsule_receive_blocked', 'capsule_inventory_blocked', 'user_suspended', 'tribe_required', 'sync_pending_items', '이 막힘 안내가 먼저']) {
+    for (const text of ['capsule_receive_blocked', 'capsule_inventory_blocked', 'user_suspended', 'tribe_required', 'sync_pending_items', '이 막힘 안내가 먼저', '대기 보상', 'shortfall']) {
       expect(spec, text).toContain(text)
     }
   })

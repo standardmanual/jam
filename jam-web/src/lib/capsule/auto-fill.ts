@@ -1,13 +1,14 @@
 /**
- * 동기화 자동 채움 — 지갑 잼으로 캡슐을 채우고, 가득 차면 열고, 지갑이 빌 때까지 되풀이한다. 인벤토리가 차면 거기서 멈춘다 (티켓 20261105_0103 T3, 상위 20261105_0100)
+ * 동기화 자동 채움 — 지갑 잼으로 캡슐을 채우고, 가득 차면 열고, 지갑이 빌 때까지 되풀이한다. 빈칸이 모자라면 먼저 추첨해 대기 보상으로 저장하고 멈춘다 (티켓 20261105_0103 T3, 20261105_1437 R1, 상위 20261105_0100)
  *
  * 반복 구조
  *  - 한 번의 «라운드» = `capsule_auto_fill` 호출(가득 찬 캡슐이면 잼을 쓰지 않고 `full: true`만 돌려준다) → `reachedChapters`가 있으면 `processChapterRise` →
  *    캡슐이 가득 찼으면 열기. 그래서 지난번에 열지 못해 가득 찬 채 남은 캡슐이 **맨 앞에서 가장 먼저** 처리된다. 별도 대기표는 없다.
  *  - **챕터 오름 판정은 열기가 아니라 이 호출 결과에서 온다**(캡슐이 100%에 처음 닿는 호출이 횟수를 세고 오름을 판정한다, D9). 오름 처리는 여기서만 부른다 —
  *    `openCapsule`은 오름 처리를 하지 않는다(이중 호출 방지). `skipRiseBadgeEvaluation`을 켜면 오름 처리의 챕터 배지 판정만 건너뛴다.
- *  - 가득 찼을 때 열기를 시도한다. 빈칸이 모자라(`insufficient_slots`) 못 열면 **보관하지 않고** `inventory_blocked`로 멈춘다(`inventoryBlocked: true`).
- *    그 캡슐은 가득 찬 채 남고 지갑의 남은 잼은 그대로다. 그때까지 열린 캡슐(`opens`)은 합쳐서 보인다. 소멸과 알림 단계는 없다.
+ *  - 가득 찼을 때 열기를 시도한다. 빈칸이 뽑힌 개수보다 적으면 `openCapsule`이 **먼저 추첨한 결과를 대기 보상으로 저장**하고(`held: true`) 캡슐을 소진한다.
+ *    이 라운드는 `inventory_blocked`로 멈춘다(`inventoryBlocked: true`). 지갑의 남은 잼은 그대로다. 그때까지 열린 캡슐(`opens`)은 합쳐서 보인다. 소멸과 알림 단계는 없다.
+ *    대기 보상은 한 캡슐분(1~2개)까지만 쌓인다 — `capsule_auto_fill`이 `pendingCount > 0`을 돌려주면 채우지 않고 같은 이유로 멈춘다(새 캡슐을 채우거나 열지 않는다).
  *    그 밖의 `CapsuleError`(`no_tribe` 등)는 `blocked` 멈춤이다(가득 찬 채 남는다).
  *  - 멈추는 조건: 가득 못 채워서(`wallet_empty`, 지갑이 비었다) · 인벤토리가 차서(`inventory_blocked`) · 열 수 없어서(`blocked`) · 이용 정지(`suspended`) · 예상 밖 실패(`error`) ·
  *    한 번에 50라운드(`max_rounds`, 남은 잼은 지갑에 남아 다음 동기화가 이어서 쓴다).
@@ -50,7 +51,7 @@ export interface CapsuleAutoFillOptions {
 export type CapsuleAutoFillStop =
   /** 지갑 잼을 다 써서 지금 캡슐이 가득 차지 못했다(정상 종료) */
   | 'wallet_empty'
-  /** 인벤토리 빈칸이 모자라 가득 찬 캡슐을 열 수 없다. 보관하지 않는다 — 캡슐은 가득 찬 채, 지갑 잼은 그대로 남는다 */
+  /** 대기 보상이 있어 더 채우거나 열지 않는다(방금 저장했거나 이미 있었다). 지갑 잼은 그대로 남는다 */
   | 'inventory_blocked'
   /** 가득 찬 캡슐을 열 수 없다(`blockedCode`). 채운 잼은 캡슐에 남는다 */
   | 'blocked'
@@ -88,14 +89,14 @@ export interface CapsuleAutoFillResult {
   alerts: number[]
   /** 항상 false다 */
   blockedNow: boolean
-  /** 인벤토리 빈칸이 모자라 캡슐을 열지 못하고 멈췄다(`stopped`가 `inventory_blocked`) */
+  /** 대기 보상이 있어 멈췄다(`stopped`가 `inventory_blocked`) */
   inventoryBlocked: boolean
   /** 이번 동기화에서 챕터 오름을 처리한 챕터 번호, 처리한 순서대로(열기 없이 보류만 생긴 오름도 담긴다). 오르지 않았으면 빈 배열 */
   reachedChapters: number[]
   /** 돈 라운드 수 */
   rounds: number
   stopped: CapsuleAutoFillStop
-  /** `stopped`가 `blocked`일 때 멈춘 까닭. `inventory_blocked`일 때는 `insufficient_slots` */
+  /** `stopped`가 `blocked`일 때 멈춘 까닭. `inventory_blocked`일 때는 `insufficient_slots`(빈칸 부족으로 대기 보상이 있다) */
   blockedCode?: CapsuleOpenErrorCode | string
   /** `stopped`가 `error`일 때 그 오류 */
   error?: unknown
@@ -106,6 +107,7 @@ interface DbAutoFillResult {
   error?: string
   applied?: number
   full?: boolean
+  pendingCount?: unknown
   reachedChapters?: unknown
   chapterCount?: unknown
   chapterNo?: unknown
@@ -115,6 +117,8 @@ interface ParsedFill {
   suspended: boolean
   applied: number
   full: boolean
+  /** 이 유저의 대기 보상 줄 수. 1 이상이면 DB가 채우지 않았다 */
+  pendingCount: number
   reachedChapters: number[]
   chapterNo: number | null
   chapterCount: number | null
@@ -127,6 +131,7 @@ function parseFill(data: unknown): ParsedFill {
     suspended: false,
     applied: 0,
     full: false,
+    pendingCount: 0,
     reachedChapters: [],
     chapterNo: null,
     chapterCount: null,
@@ -142,6 +147,7 @@ function parseFill(data: unknown): ParsedFill {
     ...empty,
     applied: r.applied,
     full: r.full,
+    pendingCount: typeof r.pendingCount === 'number' && r.pendingCount > 0 ? r.pendingCount : 0,
     reachedChapters: Array.isArray(r.reachedChapters)
       ? (r.reachedChapters as unknown[]).filter((n): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1)
       : [],
@@ -212,6 +218,14 @@ async function runAutoFillRounds(
       }
       result.filledAmount += fill.applied
 
+      // 대기 보상이 이미 있으면 DB가 채우지 않았다(지갑·캡슐 그대로). 더 열지 않고 같은 이유로 멈춘다.
+      if (fill.pendingCount > 0) {
+        result.stopped = 'inventory_blocked'
+        result.inventoryBlocked = true
+        result.blockedCode = 'insufficient_slots'
+        return result
+      }
+
       // 챕터 오름 판정은 이 호출에서 온다(캡슐이 100%에 처음 닿은 호출). 던지지 않는다.
       if (fill.reachedChapters.length > 0) {
         result.reachedChapters.push(...fill.reachedChapters)
@@ -231,6 +245,13 @@ async function runAutoFillRounds(
 
       try {
         const opened = await openCapsule(supabase, userId, { rand: options.rand, now: options.now })
+        if ('held' in opened) {
+          // 빈칸이 뽑힌 개수보다 적어 결과를 대기 보상으로 저장했다. 캡슐은 소진됐고 지갑의 남은 잼은 그대로다 — 새 캡슐을 채우지 않고 멈춘다
+          result.stopped = 'inventory_blocked'
+          result.inventoryBlocked = true
+          result.blockedCode = 'insufficient_slots'
+          return result
+        }
         result.opens.push(
           reachedNow
             ? {
@@ -249,13 +270,6 @@ async function runAutoFillRounds(
         if (!(e instanceof CapsuleError)) throw e
         if (e.code === 'user_suspended') {
           result.stopped = 'suspended'
-          return result
-        }
-        if (e.code === 'insufficient_slots') {
-          // 보관하지 않는다. 캡슐은 가득 찬 채, 지갑의 남은 잼은 그대로 남고 다음 동기화의 맨 앞에서 다시 시도한다
-          result.stopped = 'inventory_blocked'
-          result.inventoryBlocked = true
-          result.blockedCode = e.code
           return result
         }
         // 가득 찬 캡슐이 남는다. 다음 동기화의 맨 앞에서 다시 시도한다

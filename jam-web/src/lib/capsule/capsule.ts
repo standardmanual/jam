@@ -47,7 +47,7 @@ interface SlotCheck {
   needed: number
 }
 
-/** 열 때 나올 수 있는 최대 개수 = 필요한 빈칸 수. DB 함수 `capsule_open`이 같은 값으로 거절한다. */
+/** 열 때 나올 수 있는 최대 개수. DB 함수 `capsule_open`은 이제 뽑힌 개수로 거절하므로(323) 이 값은 보류 받기(`capsule_claim_pending`)와 화면 표시용이다. */
 export function neededSlotsOf(policy: Pick<CapsulePolicy, 'guaranteed_count' | 'bonus_count'>): number {
   return policy.guaranteed_count + policy.bonus_count
 }
@@ -210,5 +210,7 @@ export async function getCapsuleStatus(supabase: SupabaseClient, userId: string)
     alertStage,
     claim: toClaimState(pendingCount, suspended, hasTribe, base.slots),
     notice: toNotice(suspended, receiveBlock.blocked),
+    pendingItemCount: receiveBlock.pending,
+    shortfall: receiveBlock.shortfall,
   }
 }

@@ -16,7 +16,7 @@ export type HomeCapsuleBlockedBanner = HomeCapsuleBlockedBannerView
 export async function loadHomeCapsuleBlockedBanner(supabase: SupabaseClient, userId: string): Promise<HomeCapsuleBlockedBanner | null> {
   try {
     const result = await readCapsuleReceiveBlocked(supabase, userId)
-    return result.blocked ? { shortfall: Math.max(1, result.needed - result.free) } : null
+    return result.blocked ? { shortfall: Math.max(1, result.shortfall) } : null
   } catch (error) {
     console.error('[home/page] 캡슐 막힘 조회 실패 — 배너를 생략한다', error)
     return null

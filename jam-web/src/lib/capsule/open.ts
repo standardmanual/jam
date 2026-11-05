@@ -1,11 +1,13 @@
 /**
  * 캡슐 열기 — 추첨 결과를 DB에 잇는 서버 모듈 (티켓 20261018_0052 2회, 운영 로직 5.2·6.6절)
  *
- * 순서: 이용 정지 확인 → 캡슐 상태와 빈칸 사전 확인(안 되면 **추첨하지 않는다**) → 정책·카운터·소속 트라이브·후보 조회 → 추첨(`capsuleRoll.ts`)
- * → RPC `capsule_open_counted`(채운 양 확인·빈칸 확인·지급·발급 기록·열기 기록·보정 카운터·다음 캡슐이 한 트랜잭션) → 응답에 개체 정보를 채움 → 후속 처리.
+ * 순서: 이용 정지 확인 → 캡슐 상태 사전 확인(다 채우지 못했으면 **추첨하지 않는다**) → 정책·카운터·소속 트라이브·후보 조회 → 추첨(`capsuleRoll.ts`)
+ * → 빈칸이 뽑힌 개수 이상이면 RPC `capsule_open_counted`(채운 양 확인·빈칸 확인·지급·발급 기록·열기 기록·보정 카운터·다음 캡슐이 한 트랜잭션) → 응답에 개체 정보를 채움 → 후속 처리.
+ * 빈칸이 뽑힌 개수보다 적으면 지급하지 않고 RPC `capsule_hold_rolled`로 **뽑은 결과를 대기 보상으로 저장**하고 캡슐을 소진한다(`held: true`, 티켓 20261105_1437 R1).
  *
  * 규칙
- *  - 사전 확인은 «추첨 난수와 후보 조회를 낭비하지 않기» 위한 것이고 최종 판정은 DB 함수가 한다. 사전 확인 뒤 경쟁으로 거절되어도 같은 `CapsuleError`다.
+ *  - 빈칸 사전 확인은 «뽑힌 개수» 기준이다(나올 수 있는 최대 개수가 아니다). 빈칸이 모자라도 추첨은 한다 — 그 결과를 저장해야 «배지 n개를 얻었다»고 말할 수 있다.
+ *    저장할 때 지갑은 건드리지 않는다(남은 잼은 지갑에 남는다). 사전 확인 뒤 경쟁으로 `capsule_open_counted`가 빈칸 부족으로 거절하면 `CapsuleError('insufficient_slots')`를 던지고 캡슐은 가득 찬 채 남는다(다음 동기화가 다시 시도한다).
  *  - 소속 트라이브(`users.tribe_id`)가 없으면 열 수 없다(`no_tribe`). 채운 잼은 그대로 남는다.
  *  - 모든 등급에 후보가 없어 나올 개체가 하나도 없으면 열지 않고 던진다(일반 오류) — 채운 잼이 개체 없이 사라지지 않게 한다.
  *  - 후속 처리(포인트, `recordIssuedRewards`)는 열기가 확정된 뒤에 한다. 잠긴 개체는 포인트에서 빠진다(7.3절, 티켓 20261018_0051).
@@ -33,6 +35,7 @@ import { assertNotSuspended } from '@/lib/suspension/suspension'
 import { CapsuleError, getCapsuleState } from './capsule'
 import {
   CAPSULE_OPEN_ERROR_CODES,
+  type CapsuleHeldPayload,
   type CapsuleOpenErrorCode,
   type CapsuleOpenedItem,
   type CapsuleOpenPayload,
@@ -98,6 +101,26 @@ function toCountedInfo(result: CapsuleOpenResult): CapsuleCountedInfo {
     reachedChapters: reached,
     chapterCount: typeof result.chapterCount === 'number' ? result.chapterCount : null,
   }
+}
+
+interface CapsuleHoldResult {
+  ok?: boolean
+  error?: string
+  pendingItemCount?: number
+  next?: { required?: number; filled?: number }
+}
+
+/**
+ * `capsule_hold_rolled` 거절 코드를 `CapsuleError`로 바꾼다. 열기와 같은 코드만 쓴다.
+ * `pending_exists`(그 사이 다른 호출이 대기를 만들었다)는 «다시 시도하면 된다»는 `capsule_changed`로 접는다 — 자동 채움은 다음 동기화 맨 앞에서 대기 보상을 보고 멈춘다.
+ */
+function toHoldError(result: CapsuleHoldResult): Error {
+  const code = result.error ?? ''
+  if (code === 'pending_exists') return new CapsuleError('capsule_changed')
+  if (!(CAPSULE_OPEN_ERROR_CODES as readonly string[]).includes(code)) {
+    return new Error(`capsule_hold_rolled가 알 수 없는 거절 코드를 돌려줬다: ${code}`)
+  }
+  return new CapsuleError(code as CapsuleOpenErrorCode)
 }
 
 /** 열기 거절 코드를 `CapsuleError`로 바꾼다. DB 함수가 돌려주는 코드만 받고, 모르는 코드는 일반 오류다. */
@@ -277,29 +300,75 @@ export async function recordOpenedItems(
 }
 
 /**
- * 캡슐을 연다. 던지는 것: `UserSuspendedError`(정지), `CapsuleError`(`not_full`·`insufficient_slots`·`no_tribe`·DB 거절), 그 밖의 일반 오류.
- * 응답에는 챕터 횟수 정보가 더해진다(파일 머리말).
+ * 뽑은 결과를 대기 보상으로 저장한다(`capsule_hold_rolled`: 보류 줄 저장·캡슐 소진·새 캡슐이 한 트랜잭션). 지갑은 건드리지 않는다.
+ * 개체는 지급되지 않으므로 포인트·발급 후속 처리와 «보지 않은 결과»는 만들지 않는다 — 받는 시점이 한다.
  */
-export async function openCapsule(supabase: SupabaseClient, userId: string, options: OpenCapsuleOptions = {}): Promise<CountedCapsuleOpenPayload> {
+async function holdRolledItems(
+  supabase: SupabaseClient,
+  userId: string,
+  rpcItems: ReturnType<typeof toRpcItems>,
+  chapterNo: number | null
+): Promise<CapsuleHeldPayload> {
+  const rpcName = 'capsule_hold_rolled'
+  const { data: rpcData, error: rpcError } = await supabase.rpc(rpcName, { p_user_id: userId, p_items: rpcItems })
+  if (rpcError) throw new Error(`${rpcName} RPC 오류: ${rpcError.message}`)
+  const result = rpcData as CapsuleHoldResult | null
+  if (result?.ok === false) throw toHoldError(result)
+  if (
+    result?.ok !== true ||
+    typeof result.pendingItemCount !== 'number' ||
+    typeof result.next?.required !== 'number' ||
+    typeof result.next.filled !== 'number'
+  ) {
+    throw new Error(`${rpcName}이 해석할 수 없는 응답을 돌려줬다`)
+  }
+
+  try {
+    await logEngineDecision('drop', 'drop_attempt', userId, {
+      path: CAPSULE_ISSUE_ROUTE,
+      outcome: 'held',
+      count: result.pendingItemCount,
+      preQuest: chapterNo === null,
+    })
+  } catch (e) {
+    console.error(`[capsule-open] 판정 로그 실패 — 보류는 유지한다 (userId: ${userId}):`, e)
+  }
+
+  return { held: true, drawnCount: result.pendingItemCount, next: { required: result.next.required, filled: result.next.filled } }
+}
+
+/**
+ * 캡슐을 연다. 빈칸이 뽑힌 개수보다 적으면 지급하지 않고 뽑은 결과를 대기 보상으로 저장해 `CapsuleHeldPayload`(`held: true`)를 돌려준다.
+ * 던지는 것: `UserSuspendedError`(정지), `CapsuleError`(`not_full`·`insufficient_slots`(경쟁으로 거절된 경우만)·`no_tribe`·DB 거절), 그 밖의 일반 오류.
+ * 열렸다면 응답에는 챕터 횟수 정보가 더해진다(파일 머리말).
+ */
+export async function openCapsule(
+  supabase: SupabaseClient,
+  userId: string,
+  options: OpenCapsuleOptions = {}
+): Promise<CountedCapsuleOpenPayload | CapsuleHeldPayload> {
   const rpcName = 'capsule_open_counted'
   const rand = options.rand ?? Math.random
   const now = options.now ?? new Date()
 
   await assertNotSuspended(supabase, userId)
 
-  // 사전 확인 — 안 되면 추첨하지 않는다
+  // 사전 확인 — 다 채우지 못했으면 추첨하지 않는다
   const capsulePolicy = await getCapsulePolicy(supabase)
   const { status, chapterNo } = await getCapsuleState(supabase, userId, capsulePolicy)
   if (status.notOpenableReason === 'not_full') throw new CapsuleError('not_full')
-  if (status.notOpenableReason === 'no_free_slots') {
-    throw new CapsuleError('insufficient_slots', { freeSlots: status.freeSlots ?? 0, neededSlots: status.neededSlots ?? 0 })
-  }
 
   const { data, rolled } = await rollCapsuleItems(supabase, userId, { capsulePolicy, preQuest: chapterNo === null, rand, now })
+  const rpcItems = toRpcItems(rolled)
+
+  // 빈칸이 뽑힌 개수보다 적으면 지급하지 않고 결과를 대기 보상으로 저장한다(빈칸을 읽지 못했다면 DB 함수가 판정한다)
+  if (typeof status.freeSlots === 'number' && status.freeSlots < rpcItems.length) {
+    return await holdRolledItems(supabase, userId, rpcItems, chapterNo)
+  }
 
   const { data: rpcData, error: rpcError } = await supabase.rpc(rpcName, {
     p_user_id: userId,
-    p_items: toRpcItems(rolled),
+    p_items: rpcItems,
   })
   if (rpcError) throw new Error(`${rpcName} RPC 오류: ${rpcError.message}`)
   const result = rpcData as CapsuleOpenResult | null
