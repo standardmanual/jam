@@ -1,13 +1,15 @@
 /**
- * 보류 보상 받기 — 가득 차서 보류된 캡슐 보상을 인벤토리 빈칸이 생겼을 때 받는다 (티켓 20261028_1734 2회, 상위 20261028_1730 D9)
+ * 대기 보상 지급 — 빈칸이 모자라 보류된 캡슐 보상을 인벤토리 빈칸이 생겼을 때 받는다 (티켓 20261028_1734 2회, 상위 20261028_1730 D9, 20261105_1438 R2)
  *
- * 순서: 이용 정지 확인 → 보류를 오래된 순서(`reached_at`, `slot`)로 읽기 → 보류마다 추첨(`rollCapsuleItems`, 열기와 같은 추첨) →
+ * 순서: 이용 정지 확인 → 보류를 오래된 순서(`reached_at`, `slot`)로 읽기 → 보류마다 지급 항목 정하기 →
  * RPC `capsule_claim_pending`(잠금·정지·빈칸 확인·지급·발급 기록·열기 기록·그 보류 줄 삭제가 한 트랜잭션) → 개체 응답과 후속 처리(`recordOpenedItems`, 열기와 같다).
  *
  * 규칙
  *  - 한 번에 받을 수 있는 만큼 받는다(전부 아니면 전무가 아니다). 빈칸이 모자라(`insufficient_slots`) 거절되면 **거기서 멈추고** 못 받은 보상은 보류로 남는다.
  *    DB는 아무것도 바꾸지 않고 돌려주므로 못 받은 보류와 그 뒤 보류는 그대로다. 오래된 보류를 건너뛰고 뒤 보류를 먼저 받지 않는다(순서를 지킨다).
- *  - 받을 때 추첨한다(공개 기간 규칙이 받는 시점에 적용된다). 추첨에 쓰는 보정 카운터는 보류마다 다시 읽는다 — 앞 보류를 받으면 바뀌기 때문이다.
+ *  - **저장된 추첨 결과(`drawn_items`, 마이그레이션 323)가 있는 보류는 다시 추첨하지 않고 그 항목 그대로 지급한다**(R2). DB가 저장된 항목으로 지급하고 빈칸이 «저장된 개수» 이상이면 받는다(324).
+ *    TS는 저장된 `badge_id`로 배지를 다시 읽어 `recordOpenedItems`가 받는 모양을 되살린다(`rebuildRolledFromDrawn`). 소속 트라이브가 없으면 지급하지 않는다(`no_tribe`).
+ *  - 저장된 항목이 없는 옛 보류(`drawn_items` NULL)는 받을 때 추첨한다(공개 기간 규칙이 받는 시점에 적용된다). 추첨에 쓰는 보정 카운터는 보류마다 다시 읽는다 — 앞 보류를 받으면 바뀌기 때문이다.
  *  - 그 보류를 다른 요청이 먼저 받았으면(`pending_not_found`) 건너뛴다. 이용 정지는 `CapsuleError('user_suspended')`로 던진다.
  *  - 이미 받은 보류가 있는 뒤에 나는 예상 밖 실패는 던지지 않고 `stopped: 'error'`로 돌려준다 — 받은 개체를 응답에서 잃지 않게 한다. 받은 것이 없을 때는 던진다.
  *  - 받은 뒤 남은 칸 알림을 한 번 검사한다(`notifyInventorySlotsLow`, 던지지 않는다).
@@ -22,7 +24,15 @@ import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import { CapsuleError } from './capsule'
 import { CAPSULE_OPEN_ERROR_CODES, type CapsuleOpenedItem } from './capsule-contract'
-import { CAPSULE_ISSUE_ROUTE, recordOpenedItems, rollCapsuleItems, toRpcItems, type DbOpenedItem } from './open'
+import {
+  CAPSULE_ISSUE_ROUTE,
+  rebuildRolledFromDrawn,
+  recordOpenedItems,
+  rollCapsuleItems,
+  toRpcItems,
+  type DbOpenedItem,
+  type StoredDrawnItem,
+} from './open'
 import { getCapsulePolicy } from './policy'
 
 export interface ClaimPendingOptions {
@@ -72,6 +82,8 @@ interface PendingRow {
   chapter_no: number | null
   fill_amount: number
   reached_at: string
+  /** 먼저 뽑아 저장한 결과(배열). NULL이면 옛 보류 */
+  drawn_items: unknown
 }
 
 interface DbClaimResult {
@@ -88,12 +100,24 @@ interface DbClaimResult {
 async function readPendings(supabase: SupabaseClient, userId: string): Promise<PendingRow[]> {
   const { data, error } = await supabase
     .from('capsule_pending_rewards')
-    .select('id, slot, chapter_no, fill_amount, reached_at')
+    .select('id, slot, chapter_no, fill_amount, reached_at, drawn_items')
     .eq('user_id', userId)
     .order('reached_at', { ascending: true })
     .order('slot', { ascending: true })
   if (error) throw new Error(`capsule_pending_rewards 조회 실패: ${error.message}`)
   return (data ?? []) as PendingRow[]
+}
+
+/** 저장된 추첨 결과가 있으면 그 항목, 옛 보류면 null */
+function storedItemsOf(pending: PendingRow): StoredDrawnItem[] | null {
+  return Array.isArray(pending.drawn_items) && pending.drawn_items.length > 0 ? (pending.drawn_items as StoredDrawnItem[]) : null
+}
+
+/** 소속 트라이브가 없으면 `no_tribe`로 던진다. 읽지 못하면 던진다. */
+async function assertHasTribe(supabase: SupabaseClient, userId: string): Promise<void> {
+  const { data, error } = await supabase.from('users').select('tribe_id').eq('id', userId).maybeSingle()
+  if (error) throw new Error(`users 조회 실패: ${error.message}`)
+  if (!(data as { tribe_id?: string | null } | null)?.tribe_id) throw new CapsuleError('no_tribe')
 }
 
 /**
@@ -123,18 +147,32 @@ export async function claimPendingCapsules(
 
   try {
     for (const pending of pendings) {
-      const { data, rolled } = await rollCapsuleItems(supabase, userId, {
-        capsulePolicy,
-        // 퀘스트 전 캡슐(챕터 없음)의 보상은 열기와 같이 첫 개체가 잠긴다
-        preQuest: pending.chapter_no === null,
-        rand,
-        now,
-      })
+      // 지급 항목: 저장된 추첨 결과가 있으면 다시 추첨하지 않고 그대로 쓴다(DB도 저장된 항목으로 지급하고 p_items는 무시한다). 옛 보류는 받을 때 추첨한다.
+      const stored = storedItemsOf(pending)
+      let data: Awaited<ReturnType<typeof rebuildRolledFromDrawn>>['data']
+      let rolled: Awaited<ReturnType<typeof rebuildRolledFromDrawn>>['rolled']
+      let rpcItems: unknown[]
+      if (stored) {
+        await assertHasTribe(supabase, userId)
+        ;({ data, rolled } = await rebuildRolledFromDrawn(supabase, stored))
+        rpcItems = []
+      } else {
+        const rolledNow = await rollCapsuleItems(supabase, userId, {
+          capsulePolicy,
+          // 퀘스트 전 캡슐(챕터 없음)의 보상은 열기와 같이 첫 개체가 잠긴다
+          preQuest: pending.chapter_no === null,
+          rand,
+          now,
+        })
+        data = rolledNow.data
+        rolled = rolledNow.rolled
+        rpcItems = toRpcItems(rolledNow.rolled)
+      }
 
       const { data: rpcData, error: rpcError } = await supabase.rpc('capsule_claim_pending', {
         p_user_id: userId,
         p_pending_id: pending.id,
-        p_items: toRpcItems(rolled),
+        p_items: rpcItems,
       })
       if (rpcError) throw new Error(`capsule_claim_pending RPC 오류: ${rpcError.message}`)
       const r = rpcData as DbClaimResult | null
@@ -172,6 +210,7 @@ export async function claimPendingCapsules(
           openId: r.openId,
           count: items.length,
           preQuest: pending.chapter_no === null,
+          stored: stored !== null,
         })
       } catch (e) {
         console.error(`[capsule-claim] 판정 로그 실패 — 받기는 유지한다 (userId: ${userId}):`, e)

@@ -1,5 +1,5 @@
 /**
- * lib/capsule/claim — 보류 보상 받기 (티켓 20261028_1734 2회)
+ * lib/capsule/claim — 보류 보상 받기 (티켓 20261028_1734 2회, 20261105_1438 R2)
  *
  * 고정하는 것:
  * - 이용 정지는 보류를 읽기 전에 막는다. 보류가 없으면 RPC·추첨 없이 빈 결과(`pendingBefore: 0`).
@@ -7,6 +7,7 @@
  * - 빈칸이 모자라(`insufficient_slots`) 거절되면 거기서 멈추고(`freeSlots`·`neededSlots`) 뒤 보류는 건드리지 않는다. 일부만 받은 뒤 멈추면 받은 것과 남은 수를 돌려준다.
  * - 퀘스트 전 보류(챕터 없음)는 `preQuest`로 추첨한다. 다른 요청이 먼저 받은 보류(`pending_not_found`)는 건너뛴다.
  * - 받은 것이 없을 때의 실패는 던지고, 받은 것이 있는 뒤의 실패는 `stopped: 'error'`로 돌려준다. 받은 뒤 남은 칸 알림을 한 번 검사한다.
+ * - 저장된 추첨 결과(`drawn_items`)가 있는 보류는 다시 추첨하지 않고 그 항목으로 지급한다(`rebuildRolledFromDrawn`, RPC에는 빈 `p_items`). 소속 트라이브가 없으면 지급하지 않는다(R2).
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트·가짜 추첨만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/capsule/__tests__/claim.test.ts
@@ -21,6 +22,7 @@ const USER_ID = '11111111-1111-4111-8111-111111111111'
 const order = vi.hoisted(() => ({ calls: [] as string[] }))
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
 const rollMock = vi.hoisted(() => vi.fn())
+const rebuildMock = vi.hoisted(() => vi.fn())
 const recordMock = vi.hoisted(() => vi.fn())
 const slotAlertMock = vi.hoisted(() => vi.fn())
 const logMock = vi.hoisted(() => vi.fn())
@@ -45,6 +47,10 @@ vi.mock('../open', () => ({
     order.calls.push('roll')
     return rollMock(...args)
   },
+  rebuildRolledFromDrawn: async (...args: unknown[]) => {
+    order.calls.push('rebuild')
+    return rebuildMock(...args)
+  },
   toRpcItems: () => [{ badge_id: 'badge-1' }],
   recordOpenedItems: async (...args: unknown[]) => {
     order.calls.push('record')
@@ -62,6 +68,7 @@ interface PendingFixture {
   chapter_no: number | null
   fill_amount: number
   reached_at: string
+  drawn_items?: unknown
 }
 
 const P1: PendingFixture = { id: 'pending-1', slot: 1, chapter_no: 2, fill_amount: 145, reached_at: '2026-10-29T01:00:00Z' }
@@ -70,7 +77,7 @@ const P2: PendingFixture = { id: 'pending-2', slot: 2, chapter_no: 2, fill_amoun
 type RpcStep = { data: unknown; error: unknown }
 
 /** 보류 조회(정렬 인자를 기록)와 `capsule_claim_pending` RPC가 차례로 돌려줄 응답 */
-function fakeClient(pendings: PendingFixture[], steps: RpcStep[], readError?: string) {
+function fakeClient(pendings: PendingFixture[], steps: RpcStep[], readError?: string, tribeId: string | null = 'tribe-1') {
   const orders: Array<[string, unknown]> = []
   let i = 0
   const rpc = vi.fn(async (name: string, args?: unknown) => {
@@ -90,6 +97,13 @@ function fakeClient(pendings: PendingFixture[], steps: RpcStep[], readError?: st
   const client = {
     rpc,
     from: (table: string) => {
+      if (table === 'users') {
+        const u: Record<string, unknown> = {}
+        u.select = () => u
+        u.eq = () => u
+        u.maybeSingle = async () => ({ data: { tribe_id: tribeId }, error: null })
+        return u
+      }
       if (table !== 'capsule_pending_rewards') throw new Error(`예상하지 못한 테이블 ${table}`)
       return q
     },
@@ -109,6 +123,8 @@ beforeEach(() => {
   assertNotSuspendedMock.mockResolvedValue(undefined)
   rollMock.mockReset()
   rollMock.mockResolvedValue({ data: { tribes: [] }, rolled: { items: [{ badge: { id: 'badge-1' } }] } })
+  rebuildMock.mockReset()
+  rebuildMock.mockResolvedValue({ data: { tribes: [] }, rolled: { items: [{ badge: { id: 'badge-stored' } }] } })
   recordMock.mockReset()
   recordMock.mockResolvedValue([{ locked: false, inventoryItemId: 'inv-1', badgeId: 'badge-1', name: '이름', imageUrl: null, rarity: 'common', serialNumber: 3 }])
   slotAlertMock.mockReset()
@@ -249,5 +265,77 @@ describe('claimPendingCapsules', () => {
 
     await expect(claimPendingCapsules(client, USER_ID)).rejects.toBeInstanceOf(CapsuleError)
     expect(rpc).not.toHaveBeenCalled()
+  })
+
+  describe('저장된 추첨 결과(drawn_items)가 있는 대기 보상 (티켓 20261105_1438 R2)', () => {
+    const DRAWN = [{ badge_id: 'badge-stored', rarity: 'rare', rolled_rarity: 'rare', locked: false, lock_reason: null, unlock_required: null }]
+    const STORED: PendingFixture = { ...P1, id: 'pending-stored', drawn_items: DRAWN }
+
+    it('다시 추첨하지 않고 저장된 항목을 되살려 지급한다 — RPC에는 빈 p_items를 넘기고 후속 처리는 되살린 개체로 한다', async () => {
+      const { client, rpc } = fakeClient([STORED], [claimed('open-1', 0)])
+
+      const result = await claimPendingCapsules(client, USER_ID)
+
+      expect(rollMock).not.toHaveBeenCalled()
+      expect(rebuildMock).toHaveBeenCalledWith(client, DRAWN)
+      expect(rpc).toHaveBeenCalledWith('capsule_claim_pending', { p_user_id: USER_ID, p_pending_id: 'pending-stored', p_items: [] })
+      expect(recordMock.mock.calls[0][2]).toEqual({ items: [{ badge: { id: 'badge-stored' } }] })
+      expect(result).toMatchObject({ pendingBefore: 1, remainingPending: 0, stopped: 'none' })
+      expect(result.claimed.map((c) => c.pendingId)).toEqual(['pending-stored'])
+      // 순서: 정지 확인 → 되살리기 → RPC → 후속 처리
+      expect(order.calls).toEqual(['assertNotSuspended', 'rebuild', 'rpc:capsule_claim_pending', 'record'])
+      expect(logMock).toHaveBeenCalledWith('drop', 'drop_attempt', USER_ID, expect.objectContaining({ outcome: 'claimed_pending', stored: true }))
+      expect(slotAlertMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('빈칸이 모자라면 DB가 거절하고 보류는 그대로 남는다 — 지급 후속 처리와 칸 알림을 하지 않는다', async () => {
+      const { client } = fakeClient([STORED], [rejected('insufficient_slots', { free: 0, needed: 1 })])
+
+      const result = await claimPendingCapsules(client, USER_ID)
+
+      expect(result).toMatchObject({ claimed: [], remainingPending: 1, stopped: 'insufficient_slots', freeSlots: 0, neededSlots: 1 })
+      expect(recordMock).not.toHaveBeenCalled()
+      expect(slotAlertMock).not.toHaveBeenCalled()
+    })
+
+    it('소속 트라이브가 없으면 지급하지 않는다(no_tribe) — 되살리기도 RPC도 하지 않는다', async () => {
+      const { client, rpc } = fakeClient([STORED], [claimed('open-1', 0)], undefined, null)
+
+      const e = await claimPendingCapsules(client, USER_ID).catch((err: unknown) => err)
+
+      expect(e).toBeInstanceOf(CapsuleError)
+      expect((e as CapsuleError).code).toBe('no_tribe')
+      expect(rebuildMock).not.toHaveBeenCalled()
+      expect(rpc).not.toHaveBeenCalled()
+    })
+
+    it('이용 정지면 지급하지 않는다 — 보류를 읽기 전에 막는다', async () => {
+      assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-29T00:00:00Z' }))
+      const { client, rpc } = fakeClient([STORED], [claimed('open-1', 0)])
+
+      await expect(claimPendingCapsules(client, USER_ID)).rejects.toBeInstanceOf(UserSuspendedError)
+      expect(rebuildMock).not.toHaveBeenCalled()
+      expect(rpc).not.toHaveBeenCalled()
+    })
+
+    it('되살리지 못하면(배지 없음) 던지고 RPC를 부르지 않아 보류가 그대로 남는다', async () => {
+      rebuildMock.mockRejectedValueOnce(new Error('저장된 대기 보상의 배지를 찾지 못했다'))
+      const { client, rpc } = fakeClient([STORED], [claimed('open-1', 0)])
+
+      await expect(claimPendingCapsules(client, USER_ID)).rejects.toThrow('배지를 찾지 못했다')
+      expect(rpc).not.toHaveBeenCalled()
+    })
+
+    it('저장된 항목이 NULL이거나 빈 배열인 옛 보류는 받을 때 추첨한다(기존 경로)', async () => {
+      const legacyNull: PendingFixture = { ...P1, id: 'legacy-null', drawn_items: null }
+      const legacyEmpty: PendingFixture = { ...P2, id: 'legacy-empty', drawn_items: [] }
+      const { client, rpc } = fakeClient([legacyNull, legacyEmpty], [claimed('open-1', 1), claimed('open-2', 0)])
+
+      await claimPendingCapsules(client, USER_ID)
+
+      expect(rebuildMock).not.toHaveBeenCalled()
+      expect(rollMock).toHaveBeenCalledTimes(2)
+      expect(rpc).toHaveBeenCalledWith('capsule_claim_pending', { p_user_id: USER_ID, p_pending_id: 'legacy-null', p_items: [{ badge_id: 'badge-1' }] })
+    })
   })
 })
