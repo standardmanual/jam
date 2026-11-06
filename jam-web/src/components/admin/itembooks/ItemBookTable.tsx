@@ -300,8 +300,8 @@ export function ItemBookTable({
         >
           {/* 컬렉션의 활성/비활성은 소속 아이템배지와 독립적이다(티켓 20260914_1729) */}
           {confirmAction === 'deactivate' && (
-            <p className="text-sm text-neutral-700">
-              비활성화하면 유저에게 더 이상 노출되지 않습니다. 소속 아이템배지에는 영향을 주지 않습니다.
+            <p className="text-sm text-neutral-700 break-keep wrap-break-word text-balance">
+              새 아이템 배지의 발급을 멈추고 둘러보기 목록에서 내려요. 이미 받은 사람에게는 계속 보여요.
             </p>
           )}
         </BulkConfirmDialog>

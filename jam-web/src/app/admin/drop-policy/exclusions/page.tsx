@@ -113,7 +113,7 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">드랍 제외</h1>
         <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-balance">
-          아이템배지와 컬렉션을 드랍 후보에서 제외해요. 화면 노출이나 유저 보유 이력에는 영향이 없어요
+          아이템배지와 컬렉션을 드랍 후보에서 제외해요. 새 개체가 드랍되는 것만 멈춰요. 목록과 화면은 그대로예요.
         </p>
       </div>
 

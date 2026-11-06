@@ -390,7 +390,7 @@ export default function ItemBookForm({
         </div>
         <FieldMessage id="itembook-period-help">
           설정하면 해당 기간에만 컬렉션이 노출돼요. 비워 두면 상시 노출이에요. 기간 밖이거나
-          비활성 상태면 컬렉션만 숨겨지고, 소속 아이템배지의 배정·활성 상태는 그대로 유지돼요.
+          비활성 상태여도 소속 아이템배지의 배정·활성 상태는 그대로 유지돼요.
         </FieldMessage>
         {(validFrom || validUntil) && (
           <button
@@ -410,6 +410,9 @@ export default function ItemBookForm({
         <Switch checked={isActive} onCheckedChange={handleActiveToggle} />
         <span className="text-sm">활성화</span>
       </label>
+      <FieldMessage className="break-keep wrap-break-word text-balance">
+        새 아이템 배지의 발급을 멈추고 둘러보기 목록에서 내려요. 이미 받은 사람에게는 계속 보여요.
+      </FieldMessage>
 
       {/* 배경 테마 — 컬렉션 상세화면 렌더링 (20260818_004) */}
       <div className="border border-border rounded-2xl p-5 space-y-4">
@@ -562,8 +565,8 @@ export default function ItemBookForm({
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>컬렉션을 비활성화할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              비활성화하면 유저에게 더 이상 보이지 않아요. 소속 아이템배지에는 영향을 주지 않아요.
+            <AlertDialogDescription className="break-keep wrap-break-word text-balance">
+              새 아이템 배지의 발급을 멈추고 둘러보기 목록에서 내려요. 이미 받은 사람에게는 계속 보여요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

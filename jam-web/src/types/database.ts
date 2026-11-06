@@ -230,7 +230,7 @@ export interface BadgeRow {
   deleted_at: string | null
   created_at: string
   /** 드랍 후보에서만 제외한다(마이그레이션 159, 티켓 20260911_2220). `deleted_at`(소프트 삭제)·
-   *  `item_book_id`가 가리키는 컬렉션의 `is_active`(화면 노출 자체 차단)와는 별개 — 이 값만
+   *  `item_book_id`가 가리키는 컬렉션의 `is_active`(새 발급 중단과 둘러보기 목록 내림)와는 별개 — 이 값만
    *  true면 보유자 화면·인벤토리 등 기존 노출은 그대로 두고 신규 드랍 후보에서만 뺀다. */
   drop_excluded: boolean
   /** 배지 상세화면 배경 테마 컬러값 (20260818_002 선행 구조). background_image_url과 상호 배타적 */
@@ -499,7 +499,7 @@ export interface ItemBookRow {
   /** 20260911_1259 — 이 컬렉션을 완성할 때 함께 지급하는 잼 포인트. 0이면 지급 없음. */
   reward_points: number
   /** 드랍 후보에서만 컬렉션 전체를 제외한다(마이그레이션 159, 티켓 20260911_2220).
-   *  `is_active`(화면 노출 자체 차단)와는 별개 — true여도 기존 노출·보유자 화면은 그대로 두고
+   *  `is_active`(새 발급 중단과 둘러보기 목록 내림)와는 별개 — true여도 기존 노출·보유자 화면은 그대로 두고
    *  신규 드랍 후보에서만 소속 배지 전체를 뺀다. */
   drop_excluded: boolean
   /** 컬렉션 노출 시작/종료 시각(마이그레이션 171, 티켓 20260914_1729). badges.valid_from/

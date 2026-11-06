@@ -5,9 +5,9 @@ import { getAdminUser } from '@/lib/admin/auth'
 /**
  * 컬렉션 전체 드랍 제외 토글 — 티켓 20260911_2220.
  *
- * `[id]/route.ts`의 PATCH(`{ is_active }`, 화면 노출 자체를 끄고 소속 배지를 연쇄
- * 소프트삭제하는 강한 토글)와는 완전히 별개다. 이 토글은 화면 노출·보유 이력을 그대로 두고
- * 활동 드랍의 컬렉션 조회(`item_books.drop_excluded = false` 조건, `lib/drop-engine/syncIssue.ts`)에서만
+ * `[id]/route.ts`의 PATCH(`{ is_active }`, 새 아이템 배지의 발급을 멈추고 둘러보기
+ * 목록에서 내리는 비활성 토글, 이미 받은 사람에게는 계속 보인다)와는 별개다. 이 토글은 새 개체가
+ * 드랍되는 것만 멈추고 목록과 화면·보유 이력은 그대로 두며, 활동 드랍의 컬렉션 조회(`item_books.drop_excluded = false` 조건, `lib/drop-engine/syncIssue.ts`)에서만
  * 이 컬렉션과 소속 배지 전체를 뺀다. 배지 개별 `drop_excluded`와는 별개 축이라 소속 배지의
  * 값은 건드리지 않는다. 되돌릴 수 있는 낮은 위험도의 값이라 확인 다이얼로그·캐스케이드
  * 소프트삭제를 거치지 않는다.
