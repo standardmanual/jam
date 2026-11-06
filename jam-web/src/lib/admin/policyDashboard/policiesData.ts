@@ -915,6 +915,21 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     nodes: ['user_drop', 'pickup'],
   },
   {
+    id: 'ch9-collection-inactive-keeps-issued-visible',
+    chapter: 9,
+    chapterTitle: '장소, 드랍과 픽업',
+    title: '컬렉션 비활성은 신규 발급만 막고 발급된 배지는 계속 보임',
+    type: 'code_constant',
+    currentSpec:
+      '어드민에서 컬렉션을 비활성하면 그 컬렉션 아이템 배지를 새로 만들어 발급하는 것(드랍 엔진·컬렉션 완성 판정)만 막힘. 이미 생성되어 서비스에 보이는 배지(파괴되지 않은 개체가 있거나 줍기 가능한 월드 드랍이 있는 배지)는 비활성이어도 읽기 정책(badges: 전체 읽기 허용, 판정 함수 badge_has_live_item)을 통과해 계속 보이고, 월드 드랍은 보기·줍기를 그대로 할 수 있음. 개체가 하나도 없는 비활성 컬렉션 배지는 그대로 숨음',
+    dbTable: 'badges',
+    codeLocation: 'jam-web/supabase/migrations/327_badges_visible_when_issued.sql',
+    userExperience: '컬렉션이 비활성이어도 이미 받은 아이템 배지는 계속 보이고, 월드에 놓인 배지도 그대로 주울 수 있어요.',
+    basisDoc: '운영 로직 9.3절',
+    ticketId: '20261106_1124',
+    nodes: ['user_drop', 'pickup'],
+  },
+  {
     id: 'ch9-ambient-schedule-hour',
     chapter: 9,
     chapterTitle: '장소, 드랍과 픽업',

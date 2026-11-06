@@ -283,7 +283,7 @@ RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role`
 (정책 이름의 «전체»는 이 변경 뒤 낡은 표기다).
 
 - **활동 배지는 공개 시각이 지나야 보인다.** `type`이 `activity`(JAM! 배지 포함)이면 `valid_from`이 비었거나 지금 이전이어야 한다. `type`이 `activity`가 아닌 배지(체크인·아이템)에는 이 조건이 걸리지 않는다.
-- **컬렉션 소속 배지는 그 컬렉션이 공개돼야 보인다.** `item_book_id`가 있는 배지(지금은 아이템 배지뿐)는 소속 `item_books`가 `is_active`이고 `valid_from`이 비었거나 지금 이전이어야 한다. 컬렉션 공개 조건은 서브쿼리에 직접 적혀 있다(`item_books` 정책 215와 같은 조건).
+- **컬렉션 소속 배지는 그 컬렉션이 공개돼야 보인다. 단 이미 발급된 배지는 예외다**(마이그레이션 327, 티켓 20261106_1124). `item_book_id`가 있는 배지(지금은 아이템 배지뿐)는 소속 `item_books`가 `is_active`이고 `valid_from`이 비었거나 지금 이전이면 보인다. 컬렉션 공개 조건은 서브쿼리에 직접 적혀 있다(`item_books` 정책 215와 같은 조건). 컬렉션 비활성은 신규 발급만 막는 뜻이라, 컬렉션이 공개되지 않았어도 `public.badge_has_live_item(badge_id)`가 참이면 그 배지는 보인다. 이 함수는 `STABLE`·`SECURITY DEFINER`(`search_path = public`)이고, 파괴되지 않은 `inventory_items` 개체(`destroyed_at IS NULL`, 보유·장착·소유자 없음 포함)가 있거나 `poi_drops.is_available = TRUE`인 월드 드랍이 있으면 참이다. `inventory_items`가 본인 것만 읽히는 정책이라 정책 안에서 직접 조회하면 타인 개체가 빠지기 때문에 함수로 조회한다. 실행 권한은 `PUBLIC`에서 회수하고 `anon`·`authenticated`·`service_role`에 준다. 조회가 느려지지 않도록 부분 인덱스 `idx_inventory_items_badge_live`(`inventory_items (badge_id) WHERE destroyed_at IS NULL`)와 `idx_poi_drops_badge_available`(`poi_drops (badge_id) WHERE is_available`)를 둔다. 개체가 하나도 없는 비활성·예약 컬렉션 배지는 그대로 숨는다.
 - **받아들이는 경계(2026-10-05 기준 해당 데이터 0건).** (가) 공개 시각을 보지 않고 배지를 주는 경로(미션 보상·조합 보상·컬렉션 완성 보상·온보딩 완료 배지·레거시 지점 연결 활동 배지)로 공개 전 활동 배지를 먼저 받은 유저는 공개 시각까지 세션 화면에서 그 배지를 보지 못한다.
   운영툴은 미션·컬렉션이 연결 배지보다 먼저 공개되는 것을 사전 점검에서 막는다(티켓 20260930_1500 ⑨·⑩). (나) 공개되지 않은 컬렉션 소속 아이템을 가진 유저는 인벤토리 화면에서 그 아이템을 보지 못한다(조합·드랍 시트는 service 조회라 보인다).
 - 정책에 넣지 않은 것: `deleted_at`(세션 화면이 쿼리·임베드에서 이미 거른다)과 `valid_until`(종료된 배지는 이미 받은 유저에게 계속 보인다).
