@@ -27,6 +27,11 @@ export interface ListRowProps
   leadBadge?: ReactNode;
   /** 있으면 lead(와 indicator)가 클릭 영역 밖의 별도 링크가 된다(알림 아바타의 2단 링크). 행 `href`와 함께 쓴다. */
   leadHref?: string;
+  /**
+   * `leadHref` lead 링크의 접근 가능한 이름(`aria-label`로 연결). 링크 안은 이미지·아이콘뿐이라 이 값이 없으면
+   * 스크린리더가 «링크, 이름 없음»으로 읽는다. `leadHref`를 주면 반드시 함께 준다(개발 모드에서 없으면 콘솔 경고).
+   */
+  leadLabel?: string;
   /** 문자열(12px muted, 최대 2줄) 또는 칩 줄(노드). */
   eyebrow?: ReactNode;
   /** eyebrow 줄 오른쪽(12px muted, 줄지 않음). eyebrow가 없으면 title 줄 오른쪽. */
@@ -49,7 +54,7 @@ export interface ListRowProps
   value?: ReactNode;
   /** 행 안쪽 오른쪽에 쉐브론을 그린다. `aria-expanded`가 함께 있으면 아래 향 쉐브론이 펼침에서 180도 돈다. */
   chevron?: boolean;
-  /** 클릭 영역 바깥 오른쪽 슬롯(팔로우 버튼 등). 안에 버튼을 넣어도 마크업이 유효하다. 바로 아래 자식 버튼·링크는 터치 영역이 44px 이상으로 늘어난다. */
+  /** 클릭 영역 바깥 오른쪽 슬롯(팔로우 버튼 등). 안에 버튼을 넣어도 마크업이 유효하다. 바로 아래 자식 버튼·링크는 터치 영역이 44px 이상으로 늘어난다. 행이 `disabled`면 `inert`가 걸려 키보드로도 눌리지 않는다. */
   trail?: ReactNode;
   /**
    * 선택됨. 안쪽 2px 링 + 쉐브론 자리 체크 아이콘으로 그린다.

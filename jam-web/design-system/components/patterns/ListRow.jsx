@@ -13,6 +13,8 @@ import { CheckIcon, ChevronRightIcon } from '../icons/IconCatalog.jsx';
  *   - 클릭 영역(href/onClick)은 indicator·lead·본문·value·chevron을 감싼다. trail은 그 바깥 형제라
  *     안에 버튼을 넣어도 마크업이 유효하다. 클릭 영역 안은 전부 <span>(phrasing)이라 <button> 안에서도 유효하다.
  *   - `leadHref`가 있으면 lead(와 indicator)는 클릭 영역 밖 형제로 나가 별도 링크가 된다(알림 아바타의 2단 링크).
+ *     링크 안은 장식뿐이라 접근 가능한 이름 `leadLabel`을 함께 넘겨야 한다(aria-label로 연결, 없으면 개발 모드 경고).
+ *   - 비활성(disabled)이면 trail 래퍼에 inert를 걸어 키보드로도 trail 버튼이 막힌다.
  *
  * 글자 위계: eyebrow·time·chip 12px(--text-xs), meta 14px(--text-sm), title·value 16px(--text-base).
  * 굵기는 아래 ROW_WEIGHT 한 곳에서 정한다. 위계는 크기보다 줄 위치·색·굵기로 나눈다.
@@ -204,6 +206,7 @@ export function ListRow({
   leadShape = 'tile',
   leadBadge,
   leadHref,
+  leadLabel,
   eyebrow,
   time,
   title,
@@ -233,6 +236,9 @@ export function ListRow({
   const hasLead = lead != null;
   const hasIndicator = indicator != null;
   const leadOutside = hasLead && !!leadHref;
+  if (leadOutside && !leadLabel && typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') {
+    console.warn('[MODULAR] ListRow: `leadHref`가 있는데 `leadLabel`이 없습니다. lead 링크 안은 장식 요소뿐이라 스크린리더가 «링크, 이름 없음»으로 읽습니다. `leadLabel`에 링크 이름(예: «runner_kim 프로필»)을 넘기세요.');
+  }
   const hasTrail = trail != null;
   const align = isMedia ? 'flex-start' : 'center';
   const lines = titleLines ?? (titleVariant === 'sentence' ? 2 : 1);
@@ -408,6 +414,7 @@ export function ListRow({
           {hasIndicator && <Indicator>{indicator}</Indicator>}
           <a
             href={leadHref}
+            aria-label={leadLabel || undefined}
             tabIndex={disabled ? -1 : undefined}
             style={{ display: 'block', color: 'inherit', textDecoration: 'none', borderRadius: 'var(--radius-full)', pointerEvents: disabled ? 'none' : undefined }}
           >
@@ -424,6 +431,8 @@ export function ListRow({
             padding: '0 var(--list-row-pad-x-proto) 0 var(--list-row-gap-proto)',
             pointerEvents: disabled ? 'none' : undefined,
           }}
+          // 비활성 행은 키보드(Tab·Enter)로도 trail 버튼이 눌리지 않게 inert로 막는다.
+          inert={disabled ? true : undefined}
         >
           {trail}
         </div>

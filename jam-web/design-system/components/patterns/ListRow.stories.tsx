@@ -51,6 +51,14 @@ const FollowButton = ({ label = '팔로우' }: { label?: string }) => (
   </button>
 );
 
+/** 순위 숫자: 눈에는 숫자, 스크린리더에는 «N위»로 읽힌다. */
+const Rank = ({ n }: { n: number }) => (
+  <>
+    <span aria-hidden="true">{n}</span>
+    <span className="sr-only">{n}위</span>
+  </>
+);
+
 const noop = () => {};
 
 // ── 계열 A: 활동 ───────────────────────────────────────────────
@@ -92,9 +100,12 @@ export const A2ActivityGroup: Story = {
           onClick={() => setOpen((v) => !v)}
         />
         {open && (
-          <div id="list-row-a2-panel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <ListRow tone="tint" lead={<MedalIcon />} title="한강 러너" meta="5km 러닝" value={<PointText value="+50" />} />
-            <ListRow tone="tint" lead={<MedalIcon />} title="아침 러너" meta="오전 7시 이전 러닝" value={<PointText value="+30" />} />
+          // tint는 카드 안 전용이라 펼침 패널을 흰 카드(면 + 1px 테두리)로 감싼다.
+          <div id="list-row-a2-panel">
+            <InCard>
+              <ListRow tone="tint" lead={<MedalIcon />} title="한강 러너" meta="5km 러닝" value={<PointText value="+50" />} />
+              <ListRow tone="tint" lead={<MedalIcon />} title="아침 러너" meta="오전 7시 이전 러닝" value={<PointText value="+30" />} />
+            </InCard>
           </div>
         )}
       </>
@@ -181,14 +192,32 @@ export const C1Person: Story = {
   ),
 };
 
+export const C2NotificationAvatar: Story = {
+  name: 'C2 알림 아바타 — round lead + leadHref + leadLabel(2단 링크)',
+  decorators: [withStack],
+  render: () => (
+    <ListRow
+      lead={<UserIcon />}
+      leadShape="round"
+      leadHref="#u/kim"
+      leadLabel="runner_kim 프로필"
+      eyebrow="새 팔로워"
+      time="방금"
+      title={<><ListRowEm>runner_kim</ListRowEm> 님이 팔로우했어요</>}
+      titleVariant="sentence"
+      href="#notification"
+    />
+  ),
+};
+
 export const C4Ranking: Story = {
   name: 'C4 순위 — indicator 숫자 + «나» 칩',
   decorators: [withStack],
   render: () => (
     <>
-      <ListRow tone="flat" separator indicator="1" lead={<UserIcon />} leadShape="round" title="runner_kim" value="42.3km" />
-      <ListRow tone="flat" separator indicator="2" lead={<UserIcon />} leadShape="round" title="jam_lee" value="39.8km" />
-      <ListRow tone="flat" indicator="3" lead={<UserIcon />} leadShape="round" title="나" chips={<ListRowChip tone="accent">나</ListRowChip>} value="31.0km" />
+      <ListRow tone="flat" separator indicator={<Rank n={1} />} lead={<UserIcon />} leadShape="round" title="runner_kim" value="42.3km" />
+      <ListRow tone="flat" separator indicator={<Rank n={2} />} lead={<UserIcon />} leadShape="round" title="jam_lee" value="39.8km" />
+      <ListRow tone="flat" indicator={<Rank n={3} />} lead={<UserIcon />} leadShape="round" title="han_river" chips={<ListRowChip tone="accent">나</ListRowChip>} value="31.0km" />
     </>
   ),
 };
@@ -212,9 +241,9 @@ export const ECheckList: Story = {
   decorators: [withStack],
   render: () => (
     <>
-      <ListRow tone="flat" indicator={<CheckIcon />} titleVariant="label" title="계정 연결" meta="Strava를 연결했어요" />
-      <ListRow tone="flat" indicator={<CheckIcon />} title="첫 러닝 기록" meta="지금 단계예요" />
-      <ListRow tone="flat" indicator={<span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: 'var(--radius-full)', border: '1.5px solid var(--border)', boxSizing: 'border-box' }} />} titleVariant="label" title="배지 받기" />
+      <ListRow tone="flat" indicator={<span aria-hidden="true"><CheckIcon /></span>} titleVariant="label" title={<><span className="sr-only">완료: </span>계정 연결</>} meta="Strava를 연결했어요" />
+      <ListRow tone="flat" indicator={<span aria-hidden="true"><CheckIcon /></span>} title={<><span className="sr-only">지금 할 차례: </span>첫 러닝 기록</>} meta="지금 단계예요" />
+      <ListRow tone="flat" indicator={<span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: 'var(--radius-full)', border: '1.5px solid var(--border)', boxSizing: 'border-box' }} />} titleVariant="label" title={<><span className="sr-only">아직: </span>배지 받기</>} />
     </>
   ),
 };
