@@ -836,7 +836,7 @@ export const FlatSelected: Story = {
             <ListRow key={id} tone="flat" separator lead={<MedalIcon />} title={name} meta="5km 러닝" onClick={noop} />
           ))}
         </div>
-        <Caption>로딩 — ListRowSkeleton도 selected를 지정하면 같은 여백과 모서리를 받는다</Caption>
+        <Caption>로딩 — ListRowSkeleton도 selected를 지정하면 같은 여백과 모서리를 받는다. 면이 없는 flat은 막대가 크림 바탕에 묻히지 않게 한 단계 어두운 색으로 채운다</Caption>
         <ListRowSkeleton tone="flat" selected={false} />
       </>
     );
