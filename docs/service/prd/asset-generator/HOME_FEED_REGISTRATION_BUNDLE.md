@@ -186,6 +186,8 @@ code:
 | `content_intro` | `target_href`(연결 칸이 없는 카드라 눌러서 갈 곳이 이 주소뿐이다) |
 | `drop_alert` | 없음 |
 
+**이동 목적지는 목록이 아니라 상세 화면.** 카드가 실제로 이동할 주소(명시한 `target_href`, 없으면 `resolveTargetHref`가 템플릿 규칙으로 정한 값)가 목록 루트 `/badges`·`/missions`·`/collections`이면 거절한다(쿼리·해시·끝 슬래시는 무시한다, 사용자 결정 2026-11-06, 티켓 20261106_1658). 소개한 컨텐츠 하나의 상세(`/badges/{id}`·`/missions/{id}`·`/collections/{id}`)나 숨은 아이템 배지·드랍을 알리는 `/drops`로 보낸다. 그래서 `target_href`가 없을 때 배지가 0개이거나 여러 개인 `badge_spotlight`·`location_trend`, 배지가 여러 개이거나 배지·미션이 모두 없는 `progress_nudge`는 거절된다(배지 1개이거나 `progress_nudge`에 미션만 있으면 통과). 예외 템플릿은 `ranking_board`·`drop_alert`·`recipe_reveal`·`editorial_article`이고, 이 검사는 필수 참조 오류가 이미 난 카드에는 겹쳐 내지 않는다. 어드민 폼으로 만드는 카드는 이 검사를 받지 않는다.
+
 스크립트가 정하는 값(묶음에서 받지 않는다): `id`, `cover_image_url`(`?v=` 캐시 무효화 쿼리 포함 — 홈피드의 대표 이미지 컬럼은 `image_url`이
 아니라 `cover_image_url`이다), `image_source`(항상 `agent-generator`, 마이그레이션 190의 CHECK 허용값, PRD §10).
 
@@ -216,6 +218,7 @@ code:
 | 카피 규칙에 걸리는 문구 | `card.title: 제목이 조건을 요약한 말처럼 읽혀요. 「지하철 역에서 만나는 행운」처럼 장면이나 기대가 보이게 써 주세요(UX 라이팅 가이드라인 §2.6).` · `card.description: 설명에는 느낌표를 쓰지 않아요. …` · `card.title: 권유 자리에 「~하세요」를 쓰지 않아요. 같이 해 보자는 말투로 「~해 봐요」라고 써 주세요…` · `card.description: 문장을 「획득」·「보상」으로 끊지 않아요. 「10포인트를 획득해요」처럼 문장으로 맺어 주세요.` (규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`) |
 | 템플릿이 쓰지 않는 참조 | `card.mission_id: drop_alert 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.` |
 | 필요한 참조 없음 | `card.mission_id: mission_spotlight 템플릿은 이 참조가 있어야 카드가 의미가 있어요.` |
+| 목록 화면으로 이어짐 | `card.target_href: 이 카드는 목록 화면(/badges)으로 이어져요. 목록 화면이 아니라 소개한 컨텐츠의 상세 화면(예: /badges/{배지 id})으로 보내 주세요. 숨은 아이템 배지나 드랍을 알리는 카드라면 /drops로 보내 주세요.` |
 | mission_spotlight인데 최종 레이아웃이 large_thumbnail이 아님 | `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: "shortcut").` |
 | 기간 순서 | `card.starts_at: ends_at보다 앞이어야 해요.` |
 | 이동 경로 형식 | `card.target_href: 앱 안 경로(/로 시작, 예: /missions/…)이거나 https 주소여야 해요(받은 값: "missions").` |
