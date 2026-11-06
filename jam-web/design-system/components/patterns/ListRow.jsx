@@ -281,7 +281,8 @@ export function ListRow({
     fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)',
     fontWeight: titleVariant === 'strong' ? ROW_WEIGHT.strong : ROW_WEIGHT.regular,
     color: isLabel ? t.muted : undefined,
-    textWrap: lines !== 1 ? 'balance' : undefined,
+    // `textWrap: undefined`를 넣지 않는다: 값이 비면 `white-space: nowrap`이 함께 만든 text-wrap-mode까지 지워져 1줄 말줄임이 풀린다.
+    ...(lines !== 1 ? { textWrap: 'balance' } : null),
   };
 
   const timeNode = hasTime ? (
@@ -335,7 +336,7 @@ export function ListRow({
           style={{
             ...clamp(metaLines), marginTop: lineGap, color: t.muted,
             fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)', fontWeight: ROW_WEIGHT.regular,
-            textWrap: metaLines > 1 ? 'balance' : undefined,
+            ...(metaLines > 1 ? { textWrap: 'balance' } : null),
           }}
         >
           {meta}
