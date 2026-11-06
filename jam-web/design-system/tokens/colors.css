@@ -40,12 +40,14 @@
   --background-inverse: var(--base-neutral-900);
   --surface: #ffffff;                           /* 카드. 크림 바탕 위에서는 1px --border와 함께 쓴다 (결정 7) */
   --surface-transparent: rgba(241, 240, 235, 0); /* 결정 3: 완전 투명 */
+  --surface-on-inverse: color-mix(in srgb, var(--snow) 15%, transparent); /* 반전 면 위 한 단계 밝은 면(썸네일 박스 등). --snow 15% */
 
   /* ── 글자 ─────────────────────────────────────────────────── */
   --foreground: var(--base-neutral-900);
   --muted: #666666;
   --link: #0e7a38;                              /* 크림 바탕 4.77:1 — 강조 글자·아이콘·선·포커스 링 */
   --snow: var(--base-snow);                     /* 반전 면(--background-inverse) 위 글자 */
+  --muted-on-inverse: color-mix(in srgb, var(--snow) 70%, transparent); /* 반전 면 위 보조 글자. --background-inverse 위 약 8.9:1(계산값, 티켓 20261106_2003) */
 
   /* ── 강조 ─────────────────────────────────────────────────── */
   --accent: #19b551;                            /* 면 채우기 전용. 크림 바탕 글자 대비 2.37:1 */
@@ -73,6 +75,7 @@
   --danger: #ff383c;
   --default: #e9e7e0;
   --default-soft: #e9e7e0;
+  --opacity-disabled: 0.4;                      /* 비활성 요소 투명도(범용). 현재 소비처는 ListRow뿐 */
 
   /* 포인트 글자색(티켓 20261104_2319): 값과 «포인트» 글자 모두 이 색이다. 새 색값을 만들지 않고 --accent-content-red(#ff4400)를 가리킨다.
      대비: 흰 면 3.45:1 · 크림 면 약 3.1:1 · 어두운 면(#1c1917) 위 약 4.98:1.

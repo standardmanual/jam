@@ -17,6 +17,7 @@ export function InboxIcon(props: IconProps): JSX.Element;
 export function ActivityIcon(props: IconProps): JSX.Element;
 export function CoinIcon(props: IconProps): JSX.Element;
 export function ChevronRightIcon(props: IconProps): JSX.Element;
+export function ChevronDownIcon(props: IconProps): JSX.Element;
 export function CloseIcon(props: IconProps): JSX.Element;
 export function HourglassIcon(props: IconProps): JSX.Element;
 export function PinIcon(props: IconProps): JSX.Element;

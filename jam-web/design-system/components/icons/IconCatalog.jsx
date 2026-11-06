@@ -164,6 +164,14 @@ export function ChevronRightIcon(props) {
   );
 }
 
+export function ChevronDownIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M5 9l7 7 7-7" />
+    </Svg>
+  );
+}
+
 export function CloseIcon(props) {
   return (
     <Svg {...props}>
@@ -298,6 +306,7 @@ export const ICON_ENTRIES = [
   { name: 'ActivityIcon', Icon: ActivityIcon },
   { name: 'CoinIcon', Icon: CoinIcon },
   { name: 'ChevronRightIcon', Icon: ChevronRightIcon },
+  { name: 'ChevronDownIcon', Icon: ChevronDownIcon },
   { name: 'CloseIcon', Icon: CloseIcon },
   { name: 'HourglassIcon', Icon: HourglassIcon },
   { name: 'PinIcon', Icon: PinIcon },

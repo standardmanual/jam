@@ -4,6 +4,8 @@
  * 티켓 20261015_2131: 클래스 문자열은 Tailwind 기본 유틸리티(p-4·gap-2 …)를 쓰고, 이 눈금은
  * 인라인 style·CSS·calc() 안처럼 클래스가 아닌 곳이 참조한다. 이름은 px 값이다(--spacing-16 = 16px).
  * Tailwind 단계 번호(p-4 = 16px)와 다르다. 클래스 안에서는 이 변수를 쓰지 않는다.
+ *
+ * 티켓 20261106_2003(3-2회차): ListRow 전용 치수 11종(--list-row-*)을 임시 -proto 변수에서 정식 토큰으로 올렸다.
  */
 :root {
   --spacing-4: 4px;
@@ -24,6 +26,19 @@
 
   /* Touch target minimum (iOS HIG) */
   --touch-target-min: 44px;
+
+  /* 컴포넌트 치수: ListRow — ListRow 전용이다. 다른 컴포넌트가 가져다 쓰지 않는다. */
+  --list-row-lead-size: 48px;
+  --list-row-indicator-size: 24px;
+  --list-row-gap: var(--spacing-12);
+  --list-row-padding-x: var(--spacing-16);
+  --list-row-padding-y: var(--spacing-12);
+  --list-row-line-gap: 2px;
+  --list-row-chip-padding: 2px 8px;
+  --list-row-selected-ring: 2px;
+  --list-row-lead-badge-offset: -6px;
+  --list-row-lead-badge-size: 20px;
+  --list-row-lead-badge-padding-x: 6px;
 
   /* Safe area — iOS home indicator clearance */
   --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);

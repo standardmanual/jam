@@ -936,6 +936,91 @@
       "value": "var(--base-white)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--surface-on-inverse",
+      "value": "color-mix(in srgb, var(--snow) 15%, transparent)",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--muted-on-inverse",
+      "value": "color-mix(in srgb, var(--snow) 70%, transparent)",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--opacity-disabled",
+      "value": "0.4",
+      "kind": "other",
+      "definedIn": "tokens/colors.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--list-row-lead-size",
+      "value": "48px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-indicator-size",
+      "value": "24px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-gap",
+      "value": "var(--spacing-12)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-padding-x",
+      "value": "var(--spacing-16)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-padding-y",
+      "value": "var(--spacing-12)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-line-gap",
+      "value": "2px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-chip-padding",
+      "value": "2px 8px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-selected-ring",
+      "value": "2px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-lead-badge-offset",
+      "value": "-6px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-lead-badge-size",
+      "value": "20px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--list-row-lead-badge-padding-x",
+      "value": "6px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
     }
   ],
   "themes": [],
