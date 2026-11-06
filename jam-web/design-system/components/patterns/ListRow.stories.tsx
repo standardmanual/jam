@@ -393,8 +393,12 @@ const widePage = { layout: 'padded' } as const;
 
 /** footer 한 줄: 등급 칩 + 이름. 조건 라벨 텍스트는 두지 않는다(프로토타입 검토 1번). */
 const RewardFooter = ({ rarity, name, more }: { rarity: 'common' | 'rare' | 'epic' | 'mystic'; name: string; more?: string }) => (
-  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm)' }}>
-    <RarityBadge rarity={rarity} size="md" /> {name}{more ? <span style={{ color: 'var(--muted)' }}> {more}</span> : null}
+  // 좁은 폭에서 «등급 칩 + 이름»과 보상 문구가 각각 한 덩어리로 줄바꿈한다(덩어리 안에서 쪼개지지 않고, 문구는 다음 줄로 내려간다).
+  <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2, fontSize: 'var(--text-sm)', wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+      <RarityBadge rarity={rarity} size="md" /> {name}
+    </span>
+    {more ? <span style={{ color: 'var(--muted)', minWidth: 0 }}>{more}</span> : null}
   </span>
 );
 
@@ -532,9 +536,9 @@ type MissionCase = {
 };
 
 const MISSION_CASES: MissionCase[] = [
-  { state: 'normal', title: '10km 러닝 챌린지', desc: '이번 주 안에 10km를 달려요', reward: '한강 러너 배지 · 50 포인트', time: 'D-5', rarity: 'rare', badgeName: '한강 러너' },
-  { state: 'joined', title: '주 3회 러닝', desc: '한 주에 세 번 달리면 완료돼요', reward: '꾸준 러너 배지 · 30 포인트', time: 'D-2', rarity: 'common', badgeName: '꾸준 러너' },
-  { state: 'locked', title: '하프 마라톤 도전', desc: '21km를 한 번에 달려요', condition: '10km 러닝 챌린지를 먼저 완료하면 열려요', reward: '한강 러너 배지 · 아이템 배지 2개 · 500 포인트', time: 'D-3', rarity: 'mystic', badgeName: '하프 완주', more: '외 2개' },
+  { state: 'normal', title: '10km 러닝 챌린지', desc: '이번 주 안에 10km를 달려요', reward: '한강 러너 배지 · 50 포인트', time: 'D-5', rarity: 'rare', badgeName: '한강 러너', more: '+50 포인트' },
+  { state: 'joined', title: '주 3회 러닝', desc: '한 주에 세 번 달리면 완료돼요', reward: '꾸준 러너 배지 · 30 포인트', time: 'D-2', rarity: 'common', badgeName: '꾸준 러너', more: '+30 포인트' },
+  { state: 'locked', title: '하프 마라톤 도전', desc: '21km를 한 번에 달려요', condition: '10km 러닝 챌린지를 먼저 완료하면 열려요', reward: '한강 러너 배지 · 아이템 배지 2개 · 500 포인트', time: 'D-3', rarity: 'mystic', badgeName: '한강 러너', more: '아이템 배지 2개 · +500 포인트' },
 ];
 
 const MISSION_STATE_LABEL = { normal: 'NEW', joined: '참가중', locked: '잠김' } as const;
@@ -641,7 +645,7 @@ const worstCases = (): WorstCase[] => [
   },
   {
     id: 'A4',
-    label: 'A4 알림 장문 — 아바타 2단 링크, title 2줄 말줄임',
+    label: 'A4 알림 장문 — 아바타 2단 링크, sentence는 줄 제한 없이 전부 보인다',
     node: (
       <ListRow
         {...AvatarLink}
@@ -715,7 +719,7 @@ const worstCases = (): WorstCase[] => [
         title="하프 마라톤 도전: 21km 완주"
         meta="10km 러닝 챌린지를 먼저 완료하면 열려요"
         metaLines={2}
-        footer={<RewardFooter rarity="mystic" name="하프 완주" more="외 아이템 배지 2개, 500 포인트" />}
+        footer={<RewardFooter rarity="mystic" name="하프 완주" more="아이템 배지 2개 · +500 포인트" />}
         href="#mission"
         chevron
       />
@@ -750,7 +754,7 @@ const worstCases = (): WorstCase[] => [
     node: (
       <>
         <ListRow tone="flat" separator indicator={<Rank n={12} />} lead={<UserIcon />} leadShape="round" title="runner_kim" value="42.3km" />
-        <ListRow tone="flat" indicator={<Rank n={13} />} lead={<UserIcon />} leadShape="round" title="han_river_seoul_runner_2026" titleSuffix={<ListRowChip tone="accent">나</ListRowChip>} value="1,042.3km" />
+        <ListRow tone="flat" indicator={<Rank n={13} />} lead={<UserIcon />} leadShape="round" title="han_river_seoul_runner_2026" titleLines={1} titleSuffix={<ListRowChip tone="accent">나</ListRowChip>} value="1,042.3km" />
       </>
     ),
   },
@@ -760,7 +764,7 @@ const worstCases = (): WorstCase[] => [
     node: (
       <>
         <ListRow tone="flat" separator lead={<UserIcon />} leadShape="round" title="runner_kim" value={<ListRowChip tone="accent">달성</ListRowChip>} />
-        <ListRow tone="flat" lead={<UserIcon />} leadShape="round" title="han_river_seoul_runner_2026" titleSuffix={<ListRowChip tone="accent">나</ListRowChip>} value={<ListRowChip>미달성</ListRowChip>} />
+        <ListRow tone="flat" lead={<UserIcon />} leadShape="round" title="han_river_seoul_runner_2026" titleLines={1} titleSuffix={<ListRowChip tone="accent">나</ListRowChip>} value={<ListRowChip>미달성</ListRowChip>} />
       </>
     ),
   },

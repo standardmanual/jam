@@ -93,8 +93,9 @@ const STATIC_CSS = `
 }
 `;
 
-/** 1줄은 말줄임, 2줄 이상은 줄 수로 자른다. */
+/** 1줄은 말줄임, 2줄 이상은 줄 수로 자른다. `0`은 줄 제한 없음(전체 표시). */
 function clamp(lines) {
+  if (lines === 0) return { display: 'block', overflowWrap: 'break-word' };
   const n = Math.min(3, Math.max(1, lines | 0));
   if (n === 1) return { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
   return { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: n, overflow: 'hidden' };
@@ -244,7 +245,8 @@ export function ListRow({
   }
   const hasTrail = trail != null;
   const align = isMedia ? 'flex-start' : 'center';
-  const lines = titleLines ?? (titleVariant === 'sentence' ? 2 : 1);
+  // sentence는 줄 제한이 없다(알림 문장은 정보 손실 금지). strong·label은 1줄 말줄임.
+  const lines = titleLines ?? (titleVariant === 'sentence' ? 0 : 1);
   const hasEyebrow = eyebrow != null && eyebrow !== '';
   const hasTime = time != null && time !== '';
   const expandable = ariaExpanded !== undefined;
@@ -279,7 +281,7 @@ export function ListRow({
     fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)',
     fontWeight: titleVariant === 'strong' ? ROW_WEIGHT.strong : ROW_WEIGHT.regular,
     color: isLabel ? t.muted : undefined,
-    textWrap: lines > 1 ? 'balance' : undefined,
+    textWrap: lines !== 1 ? 'balance' : undefined,
   };
 
   const timeNode = hasTime ? (
