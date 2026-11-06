@@ -60,6 +60,32 @@ vi.mock('../BadgesClient', () => ({ default: () => null }))
 
 import BadgesPage from '../page'
 
+/** 개체 하나를 가진 인벤토리 — 배지 `badge-off`는 컬렉션 `book-off`(꺼진 컬렉션)에 속한다 */
+function ownedOffBookState() {
+  state.tables.inventory = [
+    {
+      id: 'inv-1',
+      inventory_items: [
+        {
+          id: 'item-off',
+          badge_id: 'badge-off',
+          serial_number: 1,
+          expires_at: null,
+          dropped_at: null,
+          locked: false,
+          badge: { id: 'badge-off', name: '꺼진 컬렉션 배지', image_url: null, rarity: 'epic', deleted_at: null },
+        },
+      ],
+    },
+  ]
+  state.tables.badges = [
+    { id: 'badge-off', item_book_id: 'book-off', type: 'item', drop_excluded: false, name: '꺼진 컬렉션 배지', rarity: 'epic', deleted_at: null, created_at: '2026-10-01T00:00:00Z' },
+  ]
+  state.tables.item_books = [
+    { id: 'book-off', name: '꺼진 컬렉션', image_url: null, is_active: false, valid_from: null, valid_until: null },
+  ]
+}
+
 const OK_BADGE = { id: 'badge-ok', name: '살아있는 배지', type: 'activity', deleted_at: null }
 
 async function renderProps() {
@@ -134,5 +160,57 @@ describe('배지 목록 페이지 — 임베드 badge가 null인 행', () => {
     expect(props.itemBooks).toEqual([])
     expect(props.itemBookProgress).toEqual([])
     expect(state.inCalls.filter((c) => c.table === 'badges')).toHaveLength(0)
+  })
+})
+
+describe('배지 목록 페이지 — 꺼진 컬렉션 (티켓 20261106_1230, T4)', () => {
+  beforeEach(() => {
+    state.tables = {}
+    state.inCalls = []
+  })
+
+  it('내가 개체를 가진 꺼진 컬렉션이 진행도·완성 여부와 함께 컬렉션 탭 데이터에 들어간다', async () => {
+    ownedOffBookState()
+    state.tables.user_item_book_slots = [{ item_book_id: 'book-off', badge_id: 'badge-off' }]
+    state.tables.user_item_book_completions = [{ item_book_id: 'book-off' }]
+
+    const props = await renderProps()
+
+    expect((props.itemBooks as { id: string }[]).map((b) => b.id)).toEqual(['book-off'])
+    expect(props.itemBookProgress).toEqual([{ bookId: 'book-off', owned: 1, total: 1, completed: true, rarity: 'epic' }])
+  })
+
+  it('컬렉션 조회는 내가 가진 개체의 컬렉션 id로만 한다(가진 것이 없는 꺼진 컬렉션은 조회 대상이 아니다)', async () => {
+    ownedOffBookState()
+
+    await renderProps()
+
+    expect(state.inCalls.filter((c) => c.table === 'item_books' && c.column === 'id')).toEqual([
+      { table: 'item_books', column: 'id', ids: ['book-off'] },
+    ])
+  })
+
+  it('가진 개체가 없으면 컬렉션 조회를 하지 않고 컬렉션 탭 데이터가 비어 있다', async () => {
+    state.tables.inventory = [{ id: 'inv-1', inventory_items: [] }]
+    state.tables.item_books = [
+      { id: 'book-off', name: '꺼진 컬렉션', image_url: null, is_active: false, valid_from: null, valid_until: null },
+    ]
+
+    const props = await renderProps()
+
+    expect(props.itemBooks).toEqual([])
+    expect(props.itemBookProgress).toEqual([])
+    expect(state.inCalls.filter((c) => c.table === 'item_books')).toHaveLength(0)
+  })
+
+  it('잠긴 개체만 가진 꺼진 컬렉션은 나오지 않는다', async () => {
+    ownedOffBookState()
+    const inv = state.tables.inventory[0] as { inventory_items: { locked: boolean }[] }
+    inv.inventory_items[0].locked = true
+
+    const props = await renderProps()
+
+    expect(props.itemBooks).toEqual([])
+    expect(state.inCalls.filter((c) => c.table === 'item_books')).toHaveLength(0)
   })
 })

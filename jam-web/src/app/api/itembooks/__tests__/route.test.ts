@@ -1,13 +1,11 @@
 /**
- * GET /api/itembooks — 공개되지 않은 컬렉션은 목록에 나오지 않는다 (티켓 20260930_1516, 결정 E1·E2)
+ * GET /api/itembooks — 내 컬렉션 목록 (티켓 20260930_1516 결정 E1·E2, 20261106_1230 T4)
  *
  * 검증 대상:
- *  - 공개 전 컬렉션(비활성, `valid_from`이 미래)은 응답에 없다
+ *  - 꺼진 컬렉션(비활성, `valid_from`이 미래)도 내가 열린 개체를 가졌으면 나온다(T4: 공개됨 ∪ 내가 개체를 가진)
+ *  - 가진 것이 없는 꺼진 컬렉션은 응답에 없다
  *  - 기간이 끝난 컬렉션(`valid_until`이 과거)은 응답에 그대로 나온다 — 보유자는 계속 본다(E1)
- *  - 배지·슬롯·완성 조회는 걸러진 컬렉션 id로만 한다
- *
- * Supabase 모킹은 `item_books` 쿼리의 `eq`·`or` 조건을 행에 실제로 적용한다. 필터가 안 걸리면
- * 공개 전 컬렉션이 응답에 남아 테스트가 실패한다.
+ *  - 배지·슬롯·완성 조회는 내가 가진 컬렉션 id로만 한다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/itembooks/__tests__/route.test.ts
  */
@@ -144,21 +142,53 @@ afterEach(() => {
 })
 
 describe('GET /api/itembooks', () => {
-  it('공개 전 컬렉션(비활성·시작 전)은 응답에 없고, 기간이 끝난 컬렉션은 있다', async () => {
+  it('꺼진 컬렉션(비활성·시작 전)도 내가 개체를 가졌으면 나오고, 기간이 끝난 컬렉션도 나온다 (T4)', async () => {
     const res = await GET()
     expect(res.status).toBe(200)
+    const { itemBooks } = (await res.json()) as { itemBooks: { id: string }[] }
+
+    expect(itemBooks.map((b) => b.id)).toEqual(['book-live', 'book-ended', 'book-future', 'book-inactive'])
+  })
+
+  it('꺼진 컬렉션이 진행도·완성 여부와 함께 나온다 (T4)', async () => {
+    state.tables.badges = [...(state.tables.badges as Row[]), { id: 'badge-inactive-2', item_book_id: 'book-inactive', type: 'item', drop_excluded: false, deleted_at: null, name: 'b2', rarity: 'common' }]
+    state.tables.user_item_book_slots = [{ item_book_id: 'book-inactive', badge_id: 'badge-inactive', user_id: USER_ID }]
+    state.tables.user_item_book_completions = [{ item_book_id: 'book-inactive', user_id: USER_ID }]
+
+    const res = await GET()
+    const { itemBooks } = (await res.json()) as { itemBooks: { id: string; isCompleted: boolean; totalBadgeCount: number; slottedCount: number }[] }
+    const inactive = itemBooks.find((b) => b.id === 'book-inactive')
+
+    expect(inactive).toBeDefined()
+    expect(inactive?.isCompleted).toBe(true)
+    expect(inactive?.totalBadgeCount).toBe(2)
+    expect(inactive?.slottedCount).toBe(1)
+  })
+
+  it('가진 것이 없는 꺼진 컬렉션은 나오지 않는다 (T4)', async () => {
+    // 켜진 컬렉션의 개체만 가졌다 — 꺼진 컬렉션 소속 배지는 인벤토리에 없다
+    state.tables.inventory_items = [
+      { inventory_id: 'inv-1', badge_id: 'badge-live', locked: false },
+      { inventory_id: 'inv-1', badge_id: 'badge-ended', locked: false },
+    ]
+
+    const res = await GET()
     const { itemBooks } = (await res.json()) as { itemBooks: { id: string }[] }
 
     expect(itemBooks.map((b) => b.id)).toEqual(['book-live', 'book-ended'])
   })
 
-  it('배지·슬롯·완성 조회는 걸러진 컬렉션 id로만 한다', async () => {
+  it('배지·슬롯·완성 조회는 내가 가진 컬렉션 id로만 한다', async () => {
+    state.tables.inventory_items = [
+      { inventory_id: 'inv-1', badge_id: 'badge-live', locked: false },
+      { inventory_id: 'inv-1', badge_id: 'badge-inactive', locked: false },
+    ]
     await GET()
 
     const bookScopedIn = state.inCalls.filter((c) => c.column === 'item_book_id')
     expect(bookScopedIn.length).toBeGreaterThan(0)
     for (const call of bookScopedIn) {
-      expect(call.ids.sort()).toEqual(['book-ended', 'book-live'])
+      expect(call.ids.sort()).toEqual(['book-inactive', 'book-live'])
     }
   })
 
@@ -175,8 +205,8 @@ describe('GET /api/itembooks', () => {
     expect(itemBooks.map((b) => b.id)).toEqual(['book-ended'])
   })
 
-  it('모든 컬렉션이 공개 전이면 빈 목록을 돌려준다', async () => {
-    state.tables.item_books = [book('book-future', { valid_from: '2026-10-05T00:00:00+00:00' }), book('book-inactive', { is_active: false })]
+  it('가진 개체가 하나도 없으면 빈 목록을 돌려준다', async () => {
+    state.tables.inventory_items = []
 
     const res = await GET()
     expect(await res.json()).toEqual({ itemBooks: [] })

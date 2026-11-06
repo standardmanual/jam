@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted, summarizeTiers } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
-import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import type {
   InventoryRow,
   InventoryItemRow,
@@ -60,12 +59,10 @@ export async function GET() {
   const discoveredBookIds = Array.from(discoveredMap.keys())
   if (discoveredBookIds.length === 0) return NextResponse.json({ itemBooks: [] })
 
-  // 4) 공개된 아이템북만 — 공개 전(비활성·시작 전) 컬렉션은 목록에서 뺀다. 기간이 끝난 컬렉션은
-  //    보유자에게 계속 보인다(판정은 visibility.ts, 티켓 20260930_1516 결정 E1·E2).
-  const { data: booksRaw } = await applyLaunchedItemBookFilter(
-    supabase.from('item_books').select('*').in('id', discoveredBookIds),
-    new Date().toISOString()
-  )
+  // 4) 아이템북 조회 — 공개 여부로 거르지 않는다. 위 3)에서 «내가 연 개체를 가진 컬렉션»만 모았으므로 꺼진
+  //    컬렉션도 «공개됨 ∪ 내가 개체를 가진(발급 기록이 있는)» 집합에 이미 든다. 가진 것이 없는 꺼진 컬렉션은
+  //    3)에서 걸러져 나오지 않는다(판정은 visibility.ts, 티켓 20261106_1230).
+  const { data: booksRaw } = await supabase.from('item_books').select('*').in('id', discoveredBookIds)
   const books = (booksRaw ?? []) as ItemBookRow[]
   const bookIds = books.map((b) => b.id)
   if (bookIds.length === 0) return NextResponse.json({ itemBooks: [] })

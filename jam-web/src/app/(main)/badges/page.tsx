@@ -1,6 +1,5 @@
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
-import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
@@ -122,12 +121,10 @@ export default async function BadgesPage({ searchParams }: Props) {
     const bookIds = [...new Set(((ownedBadgesWithBook ?? []) as { id: string; item_book_id: string }[]).map((b) => b.item_book_id))]
 
     if (bookIds.length > 0) {
-      // 공개된 컬렉션만 — 공개 전(비활성·시작 전) 컬렉션은 탭에서 뺀다. 기간이 끝난 컬렉션은 계속 보인다
-      // (판정은 visibility.ts, 티켓 20261001_1205). 걸러진 id로만 아래 조회를 한다(`/api/itembooks`와 같은 방식).
-      const { data: booksRaw, error: booksError } = await applyLaunchedItemBookFilter(
-        supabase.from('item_books').select('*').in('id', bookIds),
-        new Date().toISOString()
-      )
+      // 공개 여부로 거르지 않는다 — bookIds는 «내가 연 개체를 가진 컬렉션»만 모은 것이라 꺼진 컬렉션도
+      // «공개됨 ∪ 내가 개체를 가진(발급 기록이 있는)» 집합에 든다. 가진 것이 없는 꺼진 컬렉션은 bookIds에 없어
+      // 나오지 않는다(판정은 visibility.ts, 티켓 20261106_1230). 걸러진 id로만 아래 조회를 한다(`/api/itembooks`와 같은 방식).
+      const { data: booksRaw, error: booksError } = await supabase.from('item_books').select('*').in('id', bookIds)
       if (booksError) console.error('[badges/page] item_books 조회 실패', booksError)
       books = (booksRaw ?? []) as ItemBookRow[]
     }
