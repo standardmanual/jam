@@ -1,4 +1,4 @@
-목록 행 한 골격. 활동·대상·사람·값·체크 목록을 슬롯 구성으로 만든다. 기존 `ListRowCard`와 공존하고(서비스는 아직 `ListRowCard`를 쓴다), 이 컴포넌트는 Storybook 전용 프로토타입 단계다. 자유 `children`은 없다.
+목록 행 한 골격. 활동·대상·사람·값·체크 목록을 슬롯 구성으로 만든다. 기존 `ListRowCard`와 공존한다(서비스는 아직 `ListRowCard`를 쓰고, 이 컴포넌트는 Storybook에서만 쓴다). 자유 `children`은 없다.
 
 구조는 `[indicator 24][lead 48] [본문: eyebrow·time / title / meta / chips / footer] [value][쉐브론·체크]` + 행 바깥 `trail`이다. 클릭 영역(`href`/`onClick`)은 trail을 뺀 전부를 감싼다.
 
@@ -40,8 +40,8 @@
 
 ## lead
 - 모양은 대상의 종류로 정한다. 배지·아이템·컬렉션·이벤트 종류 아이콘·미션 썸네일·장소는 `tile`(기본), 사람(아바타)과 포인트 코인은 `round`.
-- 크기는 CSS 변수 `--list-row-lead-size-proto`(48px) 하나다. prop은 없다. 이미지는 `alt=""`(장식)로 넘기면 `object-fit: cover`로 채워진다.
-- `leadBadge`(×N·개수)는 우하단. 검정 배경 + 흰 글씨 + 행 면 색 1px 테두리.
+- 크기는 CSS 변수 `--list-row-lead-size`(48px) 하나다. prop은 없다. 이미지는 `alt=""`(장식)로 넘기면 `object-fit: cover`로 채워진다.
+- `leadBadge`(×N·개수)는 우하단. 검정 배경 + 흰 글씨 + 행 면 색 1px 테두리. 위치·크기·좌우 여백은 `--list-row-lead-badge-offset`·`-size`·`-padding-x`.
 - `leadHref`를 주면 lead(와 indicator)가 클릭 영역 밖 별도 링크가 된다(알림 아바타 2단 링크). 링크 안은 장식뿐이라 **`leadLabel`(링크 이름 문자열, 예: «runner_kim 프로필»)을 반드시 함께 준다.** `aria-label`로 연결되고, 개발 모드에서 `leadHref`만 있고 `leadLabel`이 없으면 콘솔 경고가 난다.
 - 체크·순위 숫자는 썸네일이 아니라 상태 표지이므로 lead가 아니라 `indicator`(24px)에 넣는다.
 
@@ -53,11 +53,11 @@ eyebrow 줄 오른쪽에 붙는다. eyebrow가 없으면 title 줄 오른쪽이�
 - 긴 절대 날짜(«2026년 11월 6일 오후 3시 30분»)는 time 자리에 들어가지 않는다(time은 줄지 않아 title을 밀어낸다). 호출부가 긴 형식은 meta 줄로 내리고 time에는 짧은 형식(예: «11월 6일»)을 쓴다.
 
 ## 면(tone)과 상태
-- `default` 흰 면 + 1px `--border`. `tint`는 이미 카드 안에 들어간 행 전용이다. 크림 바탕 위 단독 행에 쓰지 않는다(이중 테두리). `inverse`는 경고 안내 행 전용. `flat`은 면 없음, `separator`로 구분선을 고른다.
+- `default` 흰 면 + 1px `--border`. `tint`는 이미 카드 안에 들어간 행 전용이다. 크림 바탕 위 단독 행에 쓰지 않는다(이중 테두리). `inverse`는 경고 안내 행 전용. `flat`은 면 없음(가로 0·모서리 0), `separator`로 구분선을 고른다. **`flat`에 `selected`를 지정하면(true·false 모두) 좌우 16 + 모서리 `--radius-2xl`이 자동으로 붙고 `separator`는 무시된다.** 선택된 행만 여백을 주면 목록이 출렁이므로 `selected`가 있는 모든 행에 준다. 호출부가 style로 덮어쓰지 않는다. `ListRowSkeleton`도 `selected`를 같은 규칙으로 받는다.
 - 선택됨은 안쪽 2px 링 + 쉐브론 자리 체크 한 가지다(색만으로 구분하지 않는다). 버튼이면 `aria-pressed`, 라디오로 쓰면 `role`과 `aria-checked`를 호출부가 넘긴다.
-- 비활성은 opacity 0.4에 클릭 차단이고 눌림도 없다. 눌림은 `--scale-press-card` 한 가지, hover는 없다. 포커스는 바깥 2px `--link` 아웃라인이다.
+- 비활성은 `--opacity-disabled`(0.4)에 클릭 차단이고 눌림도 없다. 눌림은 `--scale-press-card` 한 가지, hover는 없다. 포커스는 바깥 2px `--link` 아웃라인이다.
 - 라디오로 쓸 때 화살표 키 이동과 `tabindex`(선택된 행만 0, 나머지 -1)는 호출부가 처리한다. 컴포넌트는 `role`·`aria-checked` 전달과 선택 시각만 맡는다.
-- 펼침 행은 `aria-expanded`/`aria-controls`를 넘긴다. `chevron`을 함께 켜면 쉐브론이 180도 돈다(A2는 쉐브론을 그리지 않고 `aria-expanded`로만 알린다).
+- 펼침 행은 `aria-expanded`/`aria-controls`를 넘긴다. `chevron`을 함께 켜면 `ChevronDownIcon`(20px)이 감싼 span에서 180도 돈다(`prefers-reduced-motion`이면 회전 없음)(A2는 쉐브론을 그리지 않고 `aria-expanded`로만 알린다).
 - 로딩은 `ListRowSkeleton`. 빈 목록은 호출부가 `EmptyState`를 쓴다. 행 단위 빈·오류 상태는 없다.
 
 ## trail
@@ -76,4 +76,20 @@ indicator의 체크 아이콘·순위 숫자는 시각 표지라 스크린리더
 - 칩을 3개 넘기지 않는다. 칩 글자는 `--foreground`뿐이고 `--accent`·`--warning`은 면 채우기에만 쓴다(`ListRowChip`의 `tone`).
 - 한 행에서 색으로 강조하는 곳은 한 곳 이하다(title 굵기 · value 포인트색 · 칩 중 하나). 그림자·그라디언트·유리질 없음.
 - 본문을 가운데 정렬하지 않는다. `footer`는 media 변형 전용이고 클릭 영역 안이라 인터랙티브 요소를 넣지 않는다.
-- `-proto` CSS 변수 9종과 inverse 면 위 muted 색(`--muted-on-inverse` 후보)은 3단계에서 확정한다. 호출부에서 값을 직접 박지 않는다.
+- 호출부에서 치수·색 값을 직접 박지 않는다. 아래 토큰을 쓴다.
+
+## 토큰
+`--list-row-*` 11종은 `tokens/spacing.css`에 있고 ListRow 전용이다(다른 컴포넌트가 가져다 쓰지 않는다).
+
+| 토큰 | 값 | 쓰임 |
+|---|---|---|
+| `--list-row-lead-size` | 48px | lead 박스 |
+| `--list-row-indicator-size` | 24px | indicator 칸 |
+| `--list-row-gap` | `--spacing-12` | 클릭 영역 안 칸 사이 |
+| `--list-row-padding-x` / `-y` | `--spacing-16` / `--spacing-12` | 행 안쪽 여백(flat은 가로 0) |
+| `--list-row-line-gap` | 2px | 줄 사이 |
+| `--list-row-chip-padding` | 2px 8px | `ListRowChip` |
+| `--list-row-selected-ring` | 2px | 선택 링 |
+| `--list-row-lead-badge-offset` / `-size` / `-padding-x` | -6px / 20px / 6px | `leadBadge` |
+
+색과 투명도는 `tokens/colors.css`: `--muted-on-inverse`(`--snow` 70%, 반전 면 위 보조 글자, 약 8.9:1 계산값), `--surface-on-inverse`(`--snow` 15%, 반전 행 lead 박스), `--opacity-disabled`(0.4, 범용).

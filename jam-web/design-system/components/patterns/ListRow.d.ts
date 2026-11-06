@@ -9,15 +9,15 @@ export interface ListRowProps
   /**
    * 행 면. `default`는 흰 면 + 1px `--border`(크림 바탕 위), `tint`는 `--background-secondary` 테두리 없음
    * (이미 카드 안에 들어간 행 전용 — 크림 바탕 위 단독 행에 쓰지 않는다), `inverse`는 `--background-inverse` + `--snow`
-   * (경고 안내 행 전용), `flat`은 면 없음(세로 12 가로 0).
+   * (경고 안내 행 전용), `flat`은 면 없음(세로 12 가로 0). `flat`에 `selected`가 지정되면(true·false) 좌우 16 + 모서리 `--radius-2xl`이 자동으로 붙고 `separator`는 무시된다.
    */
   tone?: 'default' | 'tint' | 'inverse' | 'flat';
-  /** `tone="flat"`일 때만 아래 1px `--separator` 구분선을 그린다. */
+  /** `tone="flat"`일 때만 아래 1px `--separator` 구분선을 그린다. `selected`가 지정된 flat 행에서는 무시된다. */
   separator?: boolean;
   /** 24px 상태 표지 슬롯(체크 아이콘·순위 숫자). lead보다 왼쪽. */
   indicator?: ReactNode;
   /**
-   * 이미지·아이콘. 박스 크기는 CSS 변수 `--list-row-lead-size-proto`(48px) 하나로 정해지고 prop은 없다.
+   * 이미지·아이콘. 박스 크기는 CSS 변수 `--list-row-lead-size`(48px) 하나로 정해지고 prop은 없다.
    * 이미지는 `alt=""`(장식)로 넘기면 박스에 cover로 채워진다. 폴백 아이콘 색은 `--muted`.
    */
   lead?: ReactNode;
@@ -59,11 +59,13 @@ export interface ListRowProps
   /** 클릭 영역 바깥 오른쪽 슬롯(팔로우 버튼 등). 안에 버튼을 넣어도 마크업이 유효하다. 바로 아래 자식 버튼·링크는 터치 영역이 44px 이상으로 늘어난다. 행이 `disabled`면 `inert`가 걸려 키보드로도 눌리지 않는다. */
   trail?: ReactNode;
   /**
-   * 선택됨. 안쪽 2px 링 + 쉐브론 자리 체크 아이콘으로 그린다.
+   * 선택됨. 안쪽 2px 링(`--list-row-selected-ring`) + 쉐브론 자리 체크 아이콘으로 그린다.
+   * `tone="flat"`에서 이 prop을 지정하면(true·false 모두) 선택 여부와 관계없이 좌우 16 + 모서리 `--radius-2xl`이 자동으로 붙어
+   * 선택·미선택 전환 때 글자가 밀리지 않는다(호출부가 style로 덮어쓰지 않는다). 구분선은 그리지 않는다.
    * `onClick` 버튼이면 `aria-pressed`가 붙고, 라디오로 쓰면 호출부가 `role`과 `aria-checked`를 넘긴다.
    */
   selected?: boolean;
-  /** 비활성 — opacity 0.4, 클릭 차단, 눌림 없음. */
+  /** 비활성 — opacity `--opacity-disabled`(0.4), 클릭 차단, 눌림 없음. */
   disabled?: boolean;
   /** Link 모드(`<a>`). `onClick`과 함께 쓰면 링크에 클릭 핸들러도 붙는다. */
   href?: string;
@@ -71,7 +73,7 @@ export interface ListRowProps
   onClick?: (event: MouseEvent<HTMLElement>) => void;
   /** 행 바깥 면에 붙는다. `role`·`aria-*`·`data-*`는 클릭 영역으로 간다. */
   className?: string;
-  /** 행 바깥 면에 붙는다. `--list-row-*-proto` 변수를 덮어쓸 수 있다(스토리의 lead 40/48 비교). */
+  /** 행 바깥 면에 붙는다. `--list-row-*` 변수를 덮어쓸 수 있다(스토리의 lead 40/48 비교). */
   style?: CSSProperties;
 }
 
@@ -102,6 +104,8 @@ export function ListRowChip(props: ListRowChipProps): JSX.Element | null;
 export interface ListRowSkeletonProps {
   tone?: 'default' | 'tint' | 'flat';
   separator?: boolean;
+  /** 실제 행과 같은 규칙: `tone="flat"`에서 지정되면(true·false) 좌우 16 + 모서리 `--radius-2xl`, 구분선 없음. 값 자체는 쓰지 않는다. */
+  selected?: boolean;
   className?: string;
   style?: CSSProperties;
 }

@@ -33,7 +33,7 @@ const withStack = (Story: React.ComponentType) => (
 
 /** 상태 스토리의 섹션 이름표 */
 const Caption = ({ children }: { children: React.ReactNode }) => (
-  <p style={{ ...textBreak, margin: '8px 0 0', fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', color: 'var(--muted)' }}>{children}</p>
+  <p style={{ ...textBreak, margin: 'var(--spacing-8) 0 0', fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', color: 'var(--muted)' }}>{children}</p>
 );
 
 /** 카드 안(tint 전용 자리) */
@@ -46,7 +46,7 @@ const FollowButton = ({ label = '팔로우' }: { label?: string }) => (
   <button
     type="button"
     style={{
-      height: 32, padding: '0 12px', border: '1px solid var(--field-border)', borderRadius: 'var(--radius-full)',
+      height: 32, padding: '0 var(--spacing-12)', border: '1px solid var(--field-border)', borderRadius: 'var(--radius-full)',
       background: 'transparent', color: 'var(--foreground)', whiteSpace: 'nowrap', cursor: 'pointer',
       fontFamily: 'inherit', fontSize: 'var(--text-xs)', lineHeight: 1,
     }}
@@ -145,7 +145,7 @@ export const B2MissionList: Story = {
         title="10km 러닝 챌린지"
         meta="이번 주 안에 10km를 달려요"
         metaLines={2}
-        footer={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm)' }}><RarityBadge rarity="rare" size="md" /> 한강 러너</span>}
+        footer={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-4)', fontSize: 'var(--text-sm)' }}><RarityBadge rarity="rare" size="md" /> 한강 러너</span>}
         href="#mission"
         chevron
       />
@@ -156,7 +156,7 @@ export const B2MissionList: Story = {
         eyebrow={<ListRowChip>완료</ListRowChip>}
         title="첫 러닝 인증"
         meta="처음으로 러닝을 기록했어요"
-        footer={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm)' }}><RarityBadge rarity="common" size="md" /> 새싹 러너</span>}
+        footer={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-4)', fontSize: 'var(--text-sm)' }}><RarityBadge rarity="common" size="md" /> 새싹 러너</span>}
         href="#mission"
         chevron
       />
@@ -177,7 +177,7 @@ export const MediaVariant: Story = {
       title="여름 컬렉션"
       meta="파편을 모아 아이템 배지를 만들어요"
       metaLines={3}
-      footer={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm)' }}><RarityBadge rarity="mystic" size="md" /> 한여름 밤</span>}
+      footer={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-4)', fontSize: 'var(--text-sm)' }}><RarityBadge rarity="mystic" size="md" /> 한여름 밤</span>}
       href="#collection"
     />
   ),
@@ -300,7 +300,7 @@ export const Selected: Story = {
     return (
       <>
         <Caption>Tab으로 그룹에 들어가 화살표 키(위·아래·왼쪽·오른쪽)로 옮긴다. 선택된 행만 Tab 순서에 있다.</Caption>
-        <div ref={groupRef} role="radiogroup" aria-label="배지 선택" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div ref={groupRef} role="radiogroup" aria-label="배지 선택" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}>
           {options.map(([id, name], index) => (
             <ListRow
               key={id}
@@ -381,7 +381,7 @@ export const Loading: Story = {
 
 /** 비교 스토리의 나란히 배치. 좁은 화면에서는 세로로 쌓인다. */
 const Pair = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 24 }}>{children}</div>
+  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 'var(--spacing-24)' }}>{children}</div>
 );
 const Side = ({ label, children, width = 360 }: { label: string; children: React.ReactNode; width?: number }) => (
   <Frame width={width}>
@@ -391,11 +391,11 @@ const Side = ({ label, children, width = 360 }: { label: string; children: React
 );
 const widePage = { layout: 'padded' } as const;
 
-/** footer 한 줄: 등급 칩 + 이름. 조건 라벨 텍스트는 두지 않는다(프로토타입 검토 1번). */
+/** footer 한 줄: 등급 칩 + 이름. 조건 라벨 텍스트는 두지 않는다(2단계 검토 1번). */
 const RewardFooter = ({ rarity, name, more }: { rarity: 'common' | 'rare' | 'epic' | 'mystic'; name: string; more?: string }) => (
   // 좁은 폭에서 «등급 칩 + 이름»과 보상 문구가 각각 한 덩어리로 줄바꿈한다(덩어리 안에서 쪼개지지 않고, 문구는 다음 줄로 내려간다).
-  <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2, fontSize: 'var(--text-sm)', wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+  <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 'var(--spacing-8)', rowGap: 'var(--list-row-line-gap)', fontSize: 'var(--text-sm)', wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-4)', whiteSpace: 'nowrap' }}>
       <RarityBadge rarity={rarity} size="md" /> {name}
     </span>
     {more ? <span style={{ color: 'var(--muted)', minWidth: 0 }}>{more}</span> : null}
@@ -404,9 +404,9 @@ const RewardFooter = ({ rarity, name, more }: { rarity: 'common' | 'rare' | 'epi
 
 // 1. lead 40px 대 48px
 
-/** 40px 비교는 행 바깥 면 style로 --list-row-lead-size-proto를 덮어써서 만든다. */
+/** 40px 비교는 행 바깥 면 style로 --list-row-lead-size를 덮어써서 만든다. */
 const SizeCompareRows = ({ leadSize }: { leadSize?: string }) => {
-  const style = leadSize ? ({ '--list-row-lead-size-proto': leadSize } as React.CSSProperties) : undefined;
+  const style = leadSize ? ({ '--list-row-lead-size': leadSize } as React.CSSProperties) : undefined;
   return (
     <>
       <ListRow
@@ -431,7 +431,7 @@ export const SizeCompare: Story = {
   parameters: widePage,
   render: () => (
     <Pair>
-      <Side label="40px (--list-row-lead-size-proto 덮어쓰기)">
+      <Side label="40px (--list-row-lead-size 덮어쓰기)">
         <SizeCompareRows leadSize="40px" />
       </Side>
       <Side label="48px (기본)">
@@ -817,37 +817,27 @@ export const WorstCasesLargeText: Story = {
 // 5. flat + 선택됨
 
 export const FlatSelected: Story = {
-  name: '상태 — flat + 선택됨(링 + 체크)',
+  name: '상태 — flat + 선택됨(여백 16 + 모서리 + 링 + 체크)',
   decorators: [withStack],
   render: () => {
     const [picked, setPicked] = useState('b');
     const options = [['a', '한강 러너'], ['b', '아침 러너'], ['c', '야간 러너']];
     return (
       <>
-        <Caption>flat은 면·모서리·좌우 여백이 없어 안쪽 2px 링이 글자 가장자리에 닿는다. 아래 두 방식을 비교한다.</Caption>
-        <Caption>그대로 — 좌우 여백 0, 모서리 0</Caption>
-        <div role="radiogroup" aria-label="배지 선택(flat 그대로)" style={{ display: 'flex', flexDirection: 'column' }}>
+        <Caption>flat에 selected를 지정하면(true·false 모두) 좌우 16 + 모서리 --radius-2xl이 자동으로 붙는다. 선택·미선택 전환에 글자가 밀리지 않고, 구분선은 그리지 않는다.</Caption>
+        <div role="radiogroup" aria-label="배지 선택(flat + selected)" style={{ display: 'flex', flexDirection: 'column' }}>
           {options.map(([id, name]) => (
             <ListRow key={id} tone="flat" separator role="radio" aria-checked={picked === id} selected={picked === id} lead={<MedalIcon />} title={name} meta="5km 러닝" onClick={() => setPicked(id)} />
           ))}
         </div>
-        <Caption>대안 — 좌우 여백 16 + 모서리 --radius-2xl을 style로 덮어쓴다</Caption>
-        <div role="radiogroup" aria-label="배지 선택(flat 여백 덮어쓰기)" style={{ display: 'flex', flexDirection: 'column' }}>
+        <Caption>비교 — selected가 없는 flat은 가로 0 · 모서리 0이고 separator 구분선이 그려진다</Caption>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {options.map(([id, name]) => (
-            <ListRow
-              key={id}
-              tone="flat"
-              role="radio"
-              aria-checked={picked === id}
-              selected={picked === id}
-              style={{ '--list-row-pad-x-proto': 'var(--spacing-16)', borderRadius: 'var(--radius-2xl)' } as React.CSSProperties}
-              lead={<MedalIcon />}
-              title={name}
-              meta="5km 러닝"
-              onClick={() => setPicked(id)}
-            />
+            <ListRow key={id} tone="flat" separator lead={<MedalIcon />} title={name} meta="5km 러닝" onClick={noop} />
           ))}
         </div>
+        <Caption>로딩 — ListRowSkeleton도 selected를 지정하면 같은 여백과 모서리를 받는다</Caption>
+        <ListRowSkeleton tone="flat" selected={false} />
       </>
     );
   },

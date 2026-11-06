@@ -1,9 +1,9 @@
 import React from 'react';
 import { Skeleton } from '../feedback/Skeleton.jsx';
-import { CheckIcon, ChevronRightIcon } from '../icons/IconCatalog.jsx';
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/IconCatalog.jsx';
 
 /**
- * ListRow — 목록 행 한 골격. 티켓 20261106_1759(2단계 2-2회차, 상위 20261106_1750).
+ * ListRow — 목록 행 한 골격. 티켓 20261106_1759(2단계 2-2회차, 상위 20261106_1750), 토큰 정식화는 티켓 20261106_2003(3-2회차).
  *
  * 기존 `ListRowCard`(icon·title·subtitle·trailing·children)와 공존한다. 계열마다 마크업을 새로 짜지 않도록
  * 슬롯 구성만 바꿔서 활동(A)·대상(B)·사람(C)·값(D)·체크 목록(E) 다섯 계열을 한 골격에서 만든다.
@@ -21,11 +21,14 @@ import { CheckIcon, ChevronRightIcon } from '../icons/IconCatalog.jsx';
  * 글자 위계: eyebrow·time·chip 12px(--text-xs), meta 14px(--text-sm), title·value 16px(--text-base).
  * 굵기는 아래 ROW_WEIGHT 한 곳에서 정한다. 위계는 크기보다 줄 위치·색·굵기로 나눈다.
  *
- * lead 크기는 CSS 변수 `--list-row-lead-size-proto` 하나로 정한다(prop 없음). 스토리의 40/48 비교는 style로 덮어쓴다.
- * 아래 `-proto` 변수 9종은 3단계에서 확정할 임시 값이다. 신규 토큰은 만들지 않았다.
+ * 치수는 `tokens/spacing.css`의 `--list-row-*` 11종, 반전 면 글자·면은 `--muted-on-inverse`·`--surface-on-inverse`,
+ * 비활성 투명도는 `--opacity-disabled`에서 나온다. lead 크기는 `--list-row-lead-size` 하나로 정한다(prop 없음).
+ * 스토리의 40/48 비교처럼 호출부 style이 같은 이름으로 덮어쓸 수 있다.
  *
- * 승인 후보: 반전 면 위 muted 글자용 신규 토큰 `--muted-on-inverse`(--snow 70%, 약 8:1 추정).
- * 승인 전이라 inverse 톤 안에서 color-mix로 처리한다(MUTED_ON_INVERSE).
+ * flat 톤은 면이 없어 가로 여백 0이다. 다만 `selected`가 지정되면(true·false 모두) 선택 링이 글자에 닿지 않도록
+ * 좌우 16 + 모서리 `--radius-2xl`을 컴포넌트가 주고 `separator`는 무시한다(선택된 행만 주면 목록이 출렁인다).
+ *
+ * 스타일 블록(STATIC_CSS)은 React 19 `<style href precedence>`로 문서에 한 번만 들어간다(행마다 렌더해도 1개).
  *
  * 한 행에서 색으로 강조하는 곳은 한 곳 이하다. 그림자·그라디언트·유리질 없음(흰 면은 1px --border만).
  * 칩 글자는 항상 --foreground다(--accent·--warning은 면 채우기만).
@@ -33,22 +36,6 @@ import { CheckIcon, ChevronRightIcon } from '../icons/IconCatalog.jsx';
 
 /** 굵기 단일 소스. 행 안의 모든 글자 굵기는 여기서 나온다. */
 const ROW_WEIGHT = { regular: 400, strong: 700 };
-
-/** 반전 면(--background-inverse) 위 muted 글자. 승인 전 임시 처리(위 주석). */
-const MUTED_ON_INVERSE = 'color-mix(in srgb, var(--snow) 70%, transparent)';
-
-/** 임시 CSS 변수 기본값(-proto 9종). 호출부 style이 같은 이름으로 덮어쓸 수 있다. */
-const PROTO_VARS = {
-  '--list-row-lead-size-proto': '48px',
-  '--list-row-indicator-size-proto': '24px',
-  '--list-row-gap-proto': 'var(--spacing-12)',
-  '--list-row-pad-x-proto': 'var(--spacing-16)',
-  '--list-row-pad-y-proto': 'var(--spacing-12)',
-  '--list-row-line-gap-proto': '2px',
-  '--list-row-chip-pad-proto': '2px 8px',
-  '--list-row-selected-ring-proto': '2px',
-  '--list-row-disabled-opacity-proto': '0.4',
-};
 
 /**
  * 톤별 면. face는 leadBadge 가장자리 선(행 면 색), leadBg는 lead 박스 배경(행 면과 한 단계 다르게),
@@ -67,8 +54,8 @@ const TONES = {
   },
   inverse: {
     background: 'var(--background-inverse)', border: '1px solid var(--background-inverse)', radius: 'var(--radius-2xl)',
-    color: 'var(--snow)', muted: MUTED_ON_INVERSE, face: 'var(--background-inverse)',
-    leadBg: 'color-mix(in srgb, var(--snow) 15%, transparent)', ring: 'var(--snow)',
+    color: 'var(--snow)', muted: 'var(--muted-on-inverse)', face: 'var(--background-inverse)',
+    leadBg: 'var(--surface-on-inverse)', ring: 'var(--snow)',
   },
   flat: {
     background: 'transparent', border: '1px solid transparent', radius: 0,
@@ -101,11 +88,8 @@ function clamp(lines) {
   return { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: n, overflow: 'hidden' };
 }
 
-const DownChevron = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={20} height={20} aria-hidden="true" {...props}>
-    <path d="M5 9l7 7 7-7" />
-  </svg>
-);
+/** flat 톤에서 `selected`가 지정되면(true·false) 좌우 여백과 모서리를 컴포넌트가 준다. */
+const hasSelectedFrame = (tone, selected) => tone === 'flat' && selected !== undefined;
 
 /** 문장 속 핵심어를 굵게. 문장형 title(`titleVariant="sentence"`) 안에서 쓴다. */
 export function ListRowEm({ children, className = '', style = {} }) {
@@ -129,7 +113,7 @@ export function ListRowChip({ tone = 'neutral', children, className = '', style 
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
-        padding: 'var(--list-row-chip-pad-proto, 2px 8px)',
+        padding: 'var(--list-row-chip-padding)',
         borderRadius: 'var(--radius-full)',
         background: CHIP_TONES[tone] ?? CHIP_TONES.neutral,
         color: 'var(--foreground)',
@@ -148,7 +132,7 @@ function Lead({ lead, shape, badge, tone }) {
     <span
       style={{
         position: 'relative', display: 'block', flexShrink: 0,
-        width: 'var(--list-row-lead-size-proto)', height: 'var(--list-row-lead-size-proto)',
+        width: 'var(--list-row-lead-size)', height: 'var(--list-row-lead-size)',
       }}
     >
       <span
@@ -165,9 +149,9 @@ function Lead({ lead, shape, badge, tone }) {
       {badge != null && badge !== '' && (
         <span
           style={{
-            position: 'absolute', right: -6, bottom: -6, boxSizing: 'border-box',
+            position: 'absolute', right: 'var(--list-row-lead-badge-offset)', bottom: 'var(--list-row-lead-badge-offset)', boxSizing: 'border-box',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            minWidth: 20, height: 20, padding: '0 6px', whiteSpace: 'nowrap',
+            minWidth: 'var(--list-row-lead-badge-size)', height: 'var(--list-row-lead-badge-size)', padding: '0 var(--list-row-lead-badge-padding-x)', whiteSpace: 'nowrap',
             borderRadius: 'var(--radius-full)',
             background: 'var(--foreground)', color: 'var(--snow)', border: `1px solid ${t.face}`,
             fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: ROW_WEIGHT.strong, fontVariantNumeric: 'tabular-nums',
@@ -185,7 +169,7 @@ function Indicator({ children }) {
     <span
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        width: 'var(--list-row-indicator-size-proto)', minHeight: 'var(--list-row-indicator-size-proto)',
+        width: 'var(--list-row-indicator-size)', minHeight: 'var(--list-row-indicator-size)',
         fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)',
         fontWeight: ROW_WEIGHT.strong, fontVariantNumeric: 'tabular-nums',
       }}
@@ -251,24 +235,25 @@ export function ListRow({
   const hasTime = time != null && time !== '';
   const expandable = ariaExpanded !== undefined;
 
+  // flat + selected 지정: 좌우 16 + 모서리 radius-2xl, separator 무시. selected가 없는 flat은 가로 0·모서리 0.
+  const framed = hasSelectedFrame(tone, selected);
   const wrapperStyle = {
-    ...PROTO_VARS,
-    ...(tone === 'flat' ? { '--list-row-pad-x-proto': '0px' } : null),
+    ...(tone === 'flat' && !framed ? { '--list-row-padding-x': '0px' } : null),
     display: 'flex', alignItems: 'stretch', boxSizing: 'border-box', width: '100%',
-    background: t.background, border: t.border, borderRadius: t.radius,
-    borderBottom: tone === 'flat' && separator ? '1px solid var(--separator)' : t.border,
-    boxShadow: isSelected ? `inset 0 0 0 var(--list-row-selected-ring-proto) ${t.ring}` : 'inset 0 0 0 0 transparent',
+    background: t.background, border: t.border, borderRadius: framed ? 'var(--radius-2xl)' : t.radius,
+    borderBottom: tone === 'flat' && separator && !framed ? '1px solid var(--separator)' : t.border,
+    boxShadow: isSelected ? `inset 0 0 0 var(--list-row-selected-ring) ${t.ring}` : 'inset 0 0 0 0 transparent',
     color: t.color, fontFamily: 'var(--font-family-base)',
     wordBreak: 'keep-all', overflowWrap: 'break-word', textAlign: 'left',
-    opacity: disabled ? 'var(--list-row-disabled-opacity-proto)' : undefined,
+    opacity: disabled ? 'var(--opacity-disabled)' : undefined,
     ...style,
   };
 
   const hitStyle = {
     display: 'flex', alignItems: align, flex: '1 1 auto', minWidth: 0, boxSizing: 'border-box',
-    gap: 'var(--list-row-gap-proto)',
+    gap: 'var(--list-row-gap)',
     minHeight: 'var(--touch-target-min)',
-    padding: `var(--list-row-pad-y-proto) ${hasTrail ? 0 : 'var(--list-row-pad-x-proto)'} var(--list-row-pad-y-proto) ${leadOutside ? 'var(--list-row-gap-proto)' : 'var(--list-row-pad-x-proto)'}`,
+    padding: `var(--list-row-padding-y) ${hasTrail ? 0 : 'var(--list-row-padding-x)'} var(--list-row-padding-y) ${leadOutside ? 'var(--list-row-gap)' : 'var(--list-row-padding-x)'}`,
     margin: 0, border: 0, background: 'none', font: 'inherit', color: 'inherit', textAlign: 'left',
     textDecoration: 'none', borderRadius: 'inherit', appearance: 'none', WebkitAppearance: 'none',
     cursor: interactive ? 'pointer' : undefined,
@@ -296,7 +281,7 @@ export function ListRow({
     </span>
   ) : null;
 
-  const lineGap = 'var(--list-row-line-gap-proto)';
+  const lineGap = 'var(--list-row-line-gap)';
 
   const body = (
     <span style={{ display: 'block', flex: '1 1 0%', minWidth: 0 }}>
@@ -369,7 +354,10 @@ export function ListRow({
       ) : chevron ? (
         <span aria-hidden="true" style={{ alignSelf: 'center', flexShrink: 0, display: 'flex', color: t.muted }}>
           {expandable ? (
-            <DownChevron className="ds-list-row-chevron" data-expanded={ariaExpanded === true || ariaExpanded === 'true' ? 'true' : 'false'} />
+            // 회전은 감싼 span이 맡는다(아이콘 svg에 className을 걸면 IconCatalog의 Svg가 width·height를 지운다).
+            <span className="ds-list-row-chevron" data-expanded={ariaExpanded === true || ariaExpanded === 'true' ? 'true' : 'false'} style={{ display: 'flex' }}>
+              <ChevronDownIcon width={20} height={20} />
+            </span>
           ) : (
             <ChevronRightIcon width={20} height={20} />
           )}
@@ -412,12 +400,12 @@ export function ListRow({
 
   return (
     <div className={`ds-list-row ${className}`.trim()} data-interactive={interactive ? 'true' : 'false'} style={wrapperStyle}>
-      <style>{STATIC_CSS}</style>
+      <style href="ds-list-row" precedence="medium">{STATIC_CSS}</style>
       {leadOutside && (
         <div
           style={{
-            display: 'flex', alignItems: align, flexShrink: 0, gap: 'var(--list-row-gap-proto)',
-            padding: 'var(--list-row-pad-y-proto) 0 var(--list-row-pad-y-proto) var(--list-row-pad-x-proto)',
+            display: 'flex', alignItems: align, flexShrink: 0, gap: 'var(--list-row-gap)',
+            padding: 'var(--list-row-padding-y) 0 var(--list-row-padding-y) var(--list-row-padding-x)',
           }}
         >
           {hasIndicator && <Indicator>{indicator}</Indicator>}
@@ -438,7 +426,7 @@ export function ListRow({
           className="ds-list-row-trail"
           style={{
             display: 'flex', alignItems: 'center', alignSelf: 'center', flexShrink: 0,
-            padding: '0 var(--list-row-pad-x-proto) 0 var(--list-row-gap-proto)',
+            padding: '0 var(--list-row-padding-x) 0 var(--list-row-gap)',
             pointerEvents: disabled ? 'none' : undefined,
           }}
           // 비활성 행은 키보드(Tab·Enter)로도 trail 버튼이 눌리지 않게 inert로 막는다.
@@ -456,8 +444,9 @@ export function ListRow({
  * 로딩이 끝나도 레이아웃이 밀리지 않는다. 막대는 기존 Skeleton의 shimmer를 쓴다. Skeleton은 aria-hidden이므로
  * 로딩 안내는 호출부의 aria-live 영역이 맡는다.
  */
-export function ListRowSkeleton({ tone = 'default', separator = false, className = '', style = {} }) {
+export function ListRowSkeleton({ tone = 'default', separator = false, selected, className = '', style = {} }) {
   const t = TONES[tone] ?? TONES.default;
+  const framed = hasSelectedFrame(tone, selected);
   const lineBox = (height, bar, width) => (
     <span style={{ display: 'flex', alignItems: 'center', height }}>
       <Skeleton width={width} height={bar} borderRadius="var(--radius-full)" />
@@ -468,26 +457,25 @@ export function ListRowSkeleton({ tone = 'default', separator = false, className
       className={className}
       aria-hidden="true"
       style={{
-        ...PROTO_VARS,
-        ...(tone === 'flat' ? { '--list-row-pad-x-proto': '0px' } : null),
+            ...(tone === 'flat' && !framed ? { '--list-row-padding-x': '0px' } : null),
         display: 'flex', alignItems: 'center', boxSizing: 'border-box', width: '100%',
-        minHeight: 'var(--touch-target-min)', gap: 'var(--list-row-gap-proto)',
-        padding: 'var(--list-row-pad-y-proto) var(--list-row-pad-x-proto)',
-        background: t.background, border: t.border, borderRadius: t.radius,
-        borderBottom: tone === 'flat' && separator ? '1px solid var(--separator)' : t.border,
+        minHeight: 'var(--touch-target-min)', gap: 'var(--list-row-gap)',
+        padding: 'var(--list-row-padding-y) var(--list-row-padding-x)',
+        background: t.background, border: t.border, borderRadius: framed ? 'var(--radius-2xl)' : t.radius,
+        borderBottom: tone === 'flat' && separator && !framed ? '1px solid var(--separator)' : t.border,
         ...style,
       }}
     >
       <Skeleton
-        width="var(--list-row-lead-size-proto)" height="var(--list-row-lead-size-proto)"
+        width="var(--list-row-lead-size)" height="var(--list-row-lead-size)"
         borderRadius="var(--radius-2xl)" style={{ flexShrink: 0 }}
       />
       <span style={{ display: 'block', flex: '1 1 0%', minWidth: 0 }}>
         {lineBox('calc(var(--text-xs) * var(--text-xs--line-height))', 12, '30%')}
-        <span style={{ display: 'block', marginTop: 'var(--list-row-line-gap-proto)' }}>
+        <span style={{ display: 'block', marginTop: 'var(--list-row-line-gap)' }}>
           {lineBox('calc(var(--text-base) * var(--text-base--line-height))', 16, '65%')}
         </span>
-        <span style={{ display: 'block', marginTop: 'var(--list-row-line-gap-proto)' }}>
+        <span style={{ display: 'block', marginTop: 'var(--list-row-line-gap)' }}>
           {lineBox('calc(var(--text-sm) * var(--text-sm--line-height))', 14, '85%')}
         </span>
       </span>
