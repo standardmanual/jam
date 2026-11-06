@@ -117,7 +117,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
-import { listActiveBadgeIds } from '../active'
+import { listActiveBadgeIds, listActiveItemBookIds } from '../active'
 import { isoWeekOrdinal, pickRotating, selectCorpusForType } from '../select'
 import { verifyActiveTargets } from '../verify'
 
@@ -297,6 +297,15 @@ describe('selectCorpusForType — 자동 선택 후보 조회의 DB 오류 경�
   it('listActiveBadgeIds(`.select().is().or().or().order().range()`)가 오류를 던지면 selectCorpusForType까지 올라간다', async () => {
     forceErrorTable = 'badges'
     await expect(selectCorpusForType('T02', {})).rejects.toThrow('DB 조회 실패')
+  })
+})
+
+describe('listActiveItemBookIds — 꺼진 컬렉션은 가진 사람이 있어도 코퍼스에 없다 (티켓 20261106_1230 S5)', () => {
+  it('비활성 컬렉션과 소속 트라이브가 비활성인 컬렉션은 빠지고 활성 컬렉션만 남는다', async () => {
+    const ids = await listActiveItemBookIds()
+    expect(ids).toEqual(['book-active', 'book-desc-only'])
+    expect(ids).not.toContain('book-inactive')
+    expect(ids).not.toContain('book-tribe-inactive')
   })
 })
 
