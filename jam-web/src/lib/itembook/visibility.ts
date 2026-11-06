@@ -2,13 +2,14 @@
  * 컬렉션(`item_books`) 노출 판정 — 화면·API·드랍·완성 판정이 같은 조건을 쓰도록 한 곳에 모은다
  * (티켓 20260930_1516, 컬럼은 마이그레이션 171).
  *
- * 판정은 둘이다(사용자 결정 E1, 2026-10-01). 기간이 끝난 컬렉션을 이미 가진 유저에게는 계속 보여
+ * 판정은 셋이다(공개됨·노출 중은 사용자 결정 E1, 2026-10-01. 열람 가능은 티켓 20261106_1228). 기간이 끝난 컬렉션을 이미 가진 유저에게는 계속 보여
  * 주되, 새로 드랍하거나 완성 판정 대상으로 삼지는 않기 때문이다.
  *
  * | 판정 | 조건 | 쓰는 곳 |
  * |---|---|---|
  * | 공개됨(화면용) | `is_active` 그리고 (`valid_from`이 비었거나 지금 이전) | `/api/itembooks`, `/collections/[id]`, 장착 `/api/itembooks/[id]/slot`, `/badges` 컬렉션 탭, 배지 상세의 컬렉션 카드 |
  * | 노출 중(드랍·완성용) | 공개됨 그리고 (`valid_until`이 비었거나 지금 이후) | 앰비언트 드랍, 완성 판정(`checker.ts`), 완성 가능 소식(`completable.ts`) |
+ * | 열람 가능(상세 화면용) | 공개됨 또는 그 컬렉션에 발급 기록(`issued_item_books`)이 있다 | `/collections/[id]`의 404 판정만 |
  *
  * 순수 판정(`isItemBook*`)은 이미 읽어 온 행을 거를 때, 쿼리 헬퍼(`apply*ItemBookFilter`)는 DB에서
  * 읽을 때 쓴다. 둘의 조건은 같다. 시작·종료 시각은 경계값을 포함한다(`valid_from <= now <= valid_until`).
@@ -43,6 +44,15 @@ export function isItemBookDroppable(book: ItemBookVisibilityFields, nowIso: stri
   if (!isItemBookLaunched(book, nowIso)) return false
   if (book.valid_until && new Date(book.valid_until).getTime() < new Date(nowIso).getTime()) return false
   return true
+}
+
+/**
+ * 열람 가능 — 공개됐거나, 개체가 한 번이라도 만들어진 컬렉션(`issued_item_books`에 행이 있다).
+ * 꺼진 컬렉션도 개체를 가진 사람은 칸 전체를 볼 수 있어야 해서 컬렉션 상세의 404 판정에만 쓴다.
+ * 공개됨·노출 중 판정은 바꾸지 않는다(드랍·완성 판정과 어드민이 같은 함수를 쓴다)
+ */
+export function isItemBookViewable(book: ItemBookVisibilityFields, hasIssuedRecord: boolean, nowIso: string): boolean {
+  return isItemBookLaunched(book, nowIso) || hasIssuedRecord
 }
 
 /** Supabase 쿼리 빌더가 구조적으로 그대로 들어맞는 최소 인터페이스 */

@@ -9,12 +9,16 @@
  * 4등급 컬렉션(`tier_mode`)은 이름 수만큼의 칸을 그린다(티켓 20261028_1408): 등급이 정해졌으면 그 등급의 배지만, 아무것도 장착하지
  * 않았으면 등급 없는 칸이다. 모의 Supabase는 필터를 무시하므로 소프트 삭제 배지도 조회 결과에 그대로 들어온다.
  *
+ * 꺼진 컬렉션(비활성·시작 전)은 개체가 한 번이라도 만들어졌으면(`issued_item_books` 행) 열리고, 기록이 없으면 404다
+ * (티켓 20261106_1228). 켜진 컬렉션은 기록을 읽지 않는다.
+ *
  * 페이지 함수를 모의 Supabase로 직접 호출한다.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/collections/[id]/__tests__/page.test.tsx"
  */
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 
 type Row = Record<string, unknown>
 
@@ -69,7 +73,11 @@ vi.mock('next/navigation', async (importOriginal) => ({
   redirect: (to: string) => {
     throw new Error(`NEXT_REDIRECT:${to}`)
   },
+  // 아래 «꺼진 컬렉션» 시험이 SlotGrid를 서버 렌더로 그린다 — 그 안의 useRouter 대용
+  useRouter: () => ({ refresh: vi.fn() }),
 }))
+vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({}) }))
+vi.mock('@/components/ui/Toast', () => ({ useToast: () => ({ toast: vi.fn() }) }))
 
 import ItemBookDetailPage from '../page'
 import SlotGrid from '../SlotGrid'
@@ -432,5 +440,97 @@ describe('컬렉션 상세 페이지 — 모두 빼기에 내려보내는 값', 
     const { gridProps } = await renderGrid({ u: 'other' })
 
     expect(gridProps?.readOnly).toBe(true)
+  })
+})
+
+// ── 꺼진 컬렉션의 열람 (티켓 20261106_1228) ─────────────────────────────────────────────
+
+describe('컬렉션 상세 페이지 — 꺼진 컬렉션', () => {
+  let errorSpy: MockInstance
+
+  const offBook = (extra: Row = {}): Row[] => [
+    { id: 'book-1', name: '꺼진 컬렉션', description: null, image_url: null, story_text: null, is_active: false, valid_from: null, valid_until: null, tier_mode: false, tribe: null, ...extra },
+  ]
+
+  beforeEach(() => {
+    state.tables = {}
+    state.calls = []
+    state.notFoundCalls = 0
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.tables.inventory = [{ id: 'inventory-1' }]
+    state.tables.badges = NAMES.map((name) => badgeRow(name, 'common', { image_url: null }))
+  })
+
+  afterEach(() => {
+    errorSpy.mockRestore()
+  })
+
+  it('비활성 + 발급 기록 있음: 열리고 소속 배지 전체가 칸으로 그려진다', async () => {
+    state.tables.item_books = offBook()
+    state.tables.issued_item_books = [{ item_book_id: 'book-1', first_issued_at: '2026-11-01T00:00:00Z' }]
+
+    const { gridProps, heroProps } = await renderGrid()
+
+    expect(state.notFoundCalls).toBe(0)
+    expect(gridProps?.badgeSlots).toHaveLength(NAMES.length)
+    expect(heroProps.totalBadgeCount).toBe(NAMES.length)
+    expect(state.calls.filter((c) => c.table === 'issued_item_books' && c.method === 'maybeSingle')).toHaveLength(1)
+  })
+
+  it('시작 전(valid_from이 미래) + 발급 기록 있음도 열린다', async () => {
+    state.tables.item_books = offBook({ is_active: true, valid_from: '2999-01-01T00:00:00Z' })
+    state.tables.issued_item_books = [{ item_book_id: 'book-1', first_issued_at: '2026-11-01T00:00:00Z' }]
+
+    const { gridProps } = await renderGrid()
+
+    expect(gridProps?.badgeSlots).toHaveLength(NAMES.length)
+  })
+
+  it('가진 개체가 없는 칸은 켜진 컬렉션과 같이 회색 실루엣 + 이름이고 흐림·흑백·«???»가 없다', async () => {
+    state.tables.item_books = offBook()
+    state.tables.issued_item_books = [{ item_book_id: 'book-1', first_issued_at: '2026-11-01T00:00:00Z' }]
+    state.tables.badges = [badgeRow('이름1', 'common', { image_url: 'https://example.com/a.png' })]
+    state.tables.user_item_book_slots = []
+    state.tables.inventory_items = []
+
+    const { gridProps } = await renderGrid()
+    const html = renderToStaticMarkup(<SlotGrid {...(gridProps as React.ComponentProps<typeof SlotGrid>)} />)
+    const img = html.match(/<img[^>]*>/)?.[0] ?? ''
+
+    expect(img).toContain('brightness-0')
+    expect(img).toContain('invert-[.64]')
+    expect(img).not.toMatch(/\bgrayscale\b/)
+    expect(html).toContain('>이름1<')
+    expect(html).not.toContain('???')
+    expect(html).not.toContain('opacity-30')
+    expect(html).not.toContain('opacity-40')
+  })
+
+  it('비활성 + 발급 기록 없음: 지금처럼 404이고 소속 배지 조회까지 가지 않는다', async () => {
+    state.tables.item_books = offBook()
+    state.tables.issued_item_books = []
+
+    await expect(callPage()).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(state.notFoundCalls).toBe(1)
+    expect(state.calls.filter((c) => c.table === 'badges')).toHaveLength(0)
+  })
+
+  it('켜진 컬렉션은 발급 기록을 읽지 않고 열린다', async () => {
+    state.tables.item_books = offBook({ is_active: true })
+
+    await callPage()
+
+    expect(state.notFoundCalls).toBe(0)
+    expect(state.calls.filter((c) => c.table === 'issued_item_books')).toHaveLength(0)
+  })
+
+  it('기록이 있어도 타인 열람에서 그 사람의 슬롯이 0개이면 지금처럼 404다', async () => {
+    state.tables.item_books = offBook()
+    state.tables.issued_item_books = [{ item_book_id: 'book-1', first_issued_at: '2026-11-01T00:00:00Z' }]
+    state.tables.users = [{ id: 'user-2', username: 'other' }]
+    state.tables.user_item_book_slots = []
+
+    await expect(callPage({ u: 'other' })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 })

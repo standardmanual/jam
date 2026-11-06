@@ -1,7 +1,7 @@
 /**
  * 컬렉션 노출 판정 — 공개됨(화면용)·노출 중(드랍·완성용) (티켓 20260930_1516, 결정 E1)
  *
- * 두 판정 × 비활성·시작 전·기간 안·종료 후·기간 없음, 그리고 쿼리 헬퍼가 같은 조건을 건다.
+ * 세 판정(열람 가능은 티켓 20261106_1228) × 비활성·시작 전·기간 안·종료 후·기간 없음, 그리고 쿼리 헬퍼가 같은 조건을 건다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/itembook/__tests__/visibility.test.ts
  */
@@ -11,6 +11,7 @@ import {
   applyLaunchedItemBookFilter,
   isItemBookDroppable,
   isItemBookLaunched,
+  isItemBookViewable,
   pickLaunchedItemBook,
   type ItemBookVisibilityFields,
 } from '../visibility'
@@ -102,6 +103,34 @@ describe('pickLaunchedItemBook — 배지 상세의 컬렉션 카드(티켓 2026
   it('기간이 끝난 컬렉션도 계속 보인다(E1)', () => {
     const ended = withId({ valid_from: BEFORE, valid_until: '2026-09-30T12:00:00.000Z' })
     expect(pickLaunchedItemBook(ended, NOW)).toBe(ended)
+  })
+})
+
+describe('isItemBookViewable — 열람 가능(컬렉션 상세용, 티켓 20261106_1228)', () => {
+  it('공개된 컬렉션은 발급 기록이 없어도 열린다', () => {
+    expect(isItemBookViewable(book(), false, NOW)).toBe(true)
+    expect(isItemBookViewable(book({ valid_from: BEFORE, valid_until: '2026-09-30T12:00:00.000Z' }), false, NOW)).toBe(true)
+  })
+
+  it('꺼진 컬렉션은 발급 기록이 없으면 닫힌다', () => {
+    expect(isItemBookViewable(book({ is_active: false }), false, NOW)).toBe(false)
+    expect(isItemBookViewable(book({ valid_from: AFTER }), false, NOW)).toBe(false)
+  })
+
+  it('꺼진 컬렉션도 발급 기록이 있으면 열린다', () => {
+    expect(isItemBookViewable(book({ is_active: false }), true, NOW)).toBe(true)
+    expect(isItemBookViewable(book({ valid_from: AFTER }), true, NOW)).toBe(true)
+  })
+
+  it('열람 가능을 더해도 공개됨·노출 중 판정은 그대로다 — 발급 기록은 드랍·완성 판정에 영향이 없다', () => {
+    const off = book({ is_active: false })
+    expect(isItemBookViewable(off, true, NOW)).toBe(true)
+    expect(isItemBookLaunched(off, NOW)).toBe(false)
+    expect(isItemBookDroppable(off, NOW)).toBe(false)
+    expect(pickLaunchedItemBook({ id: 'b', ...off }, NOW)).toBeNull()
+    const { query, calls } = recordingQuery()
+    applyLaunchedItemBookFilter(query, NOW)
+    expect(calls).toHaveLength(2)
   })
 })
 

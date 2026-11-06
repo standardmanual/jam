@@ -1,7 +1,7 @@
 import { computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { buildBadgeSlots } from '@/lib/itembook/tier-badge-slots'
-import { isItemBookLaunched } from '@/lib/itembook/visibility'
+import { isItemBookLaunched, isItemBookViewable } from '@/lib/itembook/visibility'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
@@ -99,7 +99,20 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const book = bookRaw as unknown as ItemBookWithTribe
   // 공개 전 컬렉션(비활성·시작 전)은 없는 컬렉션과 같이 404다. 기간이 끝난 컬렉션은 보유자에게 계속
   // 보인다. 어드민 예외는 두지 않는다(티켓 20260930_1516 결정 E1·E3, 판정은 visibility.ts).
-  if (!isItemBookLaunched(book, new Date().toISOString())) notFound()
+  // 단 개체가 한 번이라도 만들어진 꺼진 컬렉션(`issued_item_books` 행 있음)은 열린다(티켓 20261106_1228).
+  // 켜진 컬렉션은 기록을 읽을 필요가 없어 읽지 않는다.
+  const nowIso = new Date().toISOString()
+  let hasIssuedRecord = false
+  if (!isItemBookLaunched(book, nowIso)) {
+    const { data: issuedRaw, error: issuedError } = await service
+      .from('issued_item_books')
+      .select('item_book_id')
+      .eq('item_book_id', id)
+      .maybeSingle()
+    if (issuedError) console.error('[collections/[id]/page] issued_item_books 조회 실패', issuedError)
+    hasIssuedRecord = !!issuedRaw
+  }
+  if (!isItemBookViewable(book, hasIssuedRecord, nowIso)) notFound()
 
   // 2) 배지 (아이템 + 체크인)
   // 소프트 삭제된 배지(badges.deleted_at)는 컬렉션 슬롯 목록에서 제외한다(20260824_007) —
