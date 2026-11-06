@@ -4,7 +4,7 @@ import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { runSlotRewardIssue } from '@/lib/itembook/slotReward'
 import { jamTriggersForSlot } from '@/lib/badge-engine/jamActionProgressTriggers'
-import { isItemBookLaunched, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
+import { isItemBookLaunched, isItemBookViewable, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { d } from '@/lib/i18n'
 import { findLockedItemIds, isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import { INVENTORY_FULL_CODE } from '@/lib/inventory/locked-item-block'
@@ -30,7 +30,7 @@ const SLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string }>
   not_owner: { status: 403, message: d.itembooks.notOwner },
   already_slotted: { status: 409, message: d.itembooks.alreadySlotted },
   badge_not_found: { status: 404, message: d.itembooks.badgeNotFound },
-  // 컬렉션이 없거나 공개되지 않았다 — RPC 코드가 아니라 아래 POST의 사전 확인이 쓴다(티켓 20260930_1516)
+  // 컬렉션이 없거나 열람할 수 없다 — RPC 코드가 아니라 아래 POST의 사전 확인이 쓴다(티켓 20260930_1516)
   item_book_not_found: { status: 404, message: d.itembooks.itemBookNotFound },
   wrong_item_book: { status: 400, message: d.itembooks.wrongItemBook },
   // 등급별 컬렉션(tier_mode) 장착 함수만 돌려주는 코드(티켓 20261016_2340, 마이그레이션 222)
@@ -104,9 +104,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: d.itembooks.slotMissingInventoryItemId }, { status: 400 })
   }
 
-  // 공개되지 않은 컬렉션(없음·비활성·시작 전)에는 장착할 수 없다 — 장착 RPC는 컬렉션 노출을 보지
+  // 열람할 수 없는 컬렉션(없음, 또는 공개 전이면서 개체가 만들어진 적 없음)에는 장착할 수 없다 — 장착 RPC는 컬렉션 노출을 보지
   // 않아, 이 확인이 없으면 주소를 직접 호출해 공개 전 컬렉션을 완성할 수 있다(티켓 20260930_1516).
   // 기간이 끝난 컬렉션은 보유자가 계속 쓸 수 있어 막지 않는다(결정 E1, 판정은 visibility.ts).
+  // 개체가 한 번이라도 만들어진 꺼진 컬렉션(`issued_item_books` 행 있음)도 막지 않는다 — 가진 개체를 꽂아 완성하면
+  // 완성 기록·포인트·보상·챕터 점수가 기간이 끝난 컬렉션과 똑같이 나간다(티켓 20261106_1229, 컬렉션 상세와 같은 판정).
+  // 켜진 컬렉션은 기록을 읽을 필요가 없어 읽지 않는다. 기록 조회가 실패하면 기록이 없는 것으로 보고 막는다(안전한 쪽).
   const { data: bookRaw, error: bookError } = await supabase
     .from('item_books')
     .select('is_active, valid_from, valid_until, tier_mode')
@@ -117,7 +120,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
   }
   const book = bookRaw as (ItemBookVisibilityFields & { tier_mode: boolean | null }) | null
-  if (!book || !isItemBookLaunched(book, new Date().toISOString())) {
+  const nowIso = new Date().toISOString()
+  let hasIssuedRecord = false
+  if (book && !isItemBookLaunched(book, nowIso)) {
+    const { data: issuedRaw, error: issuedError } = await supabase
+      .from('issued_item_books')
+      .select('item_book_id')
+      .eq('item_book_id', itemBookId)
+      .maybeSingle()
+    if (issuedError) console.error('[itembooks/slot] issued_item_books 조회 오류:', issuedError)
+    hasIssuedRecord = !!issuedRaw
+  }
+  if (!book || !isItemBookViewable(book, hasIssuedRecord, nowIso)) {
     const notFound = SLOT_ERROR_STATUS_MAP.item_book_not_found
     return NextResponse.json({ error: notFound.message }, { status: notFound.status })
   }

@@ -15,6 +15,9 @@
  *    RPC가 트리거 오류(`locked_item_cannot_be_slotted`)를 올려도 같은 코드로 바꾼다
  *  - 공개되지 않은 컬렉션(없음·비활성·시작 전)에는 404이고 장착 RPC를 부르지 않는다(티켓 20260930_1516).
  *    기간이 끝난 컬렉션은 보유자가 계속 쓸 수 있어 막지 않는다(결정 E1)
+ *  - 꺼진 컬렉션(비활성·시작 전)은 발급 기록(`issued_item_books`)이 있을 때만 장착할 수 있고, 기록이 없으면 404다. 기록은 꺼진 컬렉션일 때만 읽는다.
+ *    기록이 있는 꺼진 컬렉션도 완성 기록·보상 배지·챕터 점수가 기간이 끝난 컬렉션과 똑같이 나가고 재장착에 중복 지급이 없다.
+ *    DELETE·PATCH는 꺼진 컬렉션에서도 그대로 성공한다(티켓 20261106_1229)
  *  - 이용 정지 중이면 장착(POST)은 RPC 전에 403 `user_suspended`이고(`d.suspension.itemBookSlotBlocked`) 정지 조회가 실패하면 500이다. 해제·교체는 막지 않는다(티켓 20261019_1315 3회)
  *  - 챕터 점수 «컬렉션 완성»(티켓 20261019_1315 3회, 사용자 결정 4): 응답 뒤 `after()`에서 센다. 옛 컬렉션은 장착 전후 완성 기록으로 «이번에 새로 완성했는가»를 가려
  *    common으로 세고(이미 완성한 유저의 재장착은 세지 않음), 등급형은 `completed_tier`로 센다. 등급형으로 바뀐 뒤에도 같은 (kind, 원천 id)라 이중 가산이 없다.
@@ -43,6 +46,11 @@ const state = vi.hoisted(() => ({
   /** `item_books`에서 읽히는 행. null이면 컬렉션이 없다 */
   book: null as { is_active: boolean; valid_from: string | null; valid_until: string | null; tier_mode?: boolean } | null,
   bookError: null as { message: string } | null,
+  /** `issued_item_books`에 이 컬렉션의 발급 기록이 있는지(꺼진 컬렉션에서만 읽는다, 티켓 20261106_1229) */
+  issuedRecord: false,
+  issuedError: null as { message: string } | null,
+  /** 발급 기록 조회 횟수 */
+  issuedReads: 0,
   /** `inventory_items`에서 locked = true로 조회되는 행 */
   lockedRows: [] as { id: string }[],
   lockedError: null as { message: string } | null,
@@ -114,6 +122,18 @@ vi.mock('@/lib/supabase/server', () => ({
           Promise.resolve({ data: state.lockedRows, error: state.lockedError }).then(onFulfilled, onRejected)
         return lockedBuilder
       }
+      if (table === 'issued_item_books') {
+        const issuedBuilder = {
+          select: () => issuedBuilder,
+          eq: () => issuedBuilder,
+          maybeSingle: async () => {
+            state.issuedReads += 1
+            if (state.issuedError) return { data: null, error: state.issuedError }
+            return { data: state.issuedRecord ? { item_book_id: ITEM_BOOK_ID } : null, error: null }
+          },
+        }
+        return issuedBuilder
+      }
       if (table !== 'item_books') throw new Error(`예상하지 못한 테이블: ${table}`)
       const builder = {
         select: () => builder,
@@ -174,6 +194,9 @@ beforeEach(() => {
   state.afterCallbacks = []
   state.book = { is_active: true, valid_from: null, valid_until: null }
   state.bookError = null
+  state.issuedRecord = false
+  state.issuedError = null
+  state.issuedReads = 0
   state.lockedRows = []
   state.lockedError = null
   state.suspension = null
@@ -361,6 +384,14 @@ describe('POST — 공개되지 않은 컬렉션에는 장착할 수 없다(티�
     expect(state.rpcCalls.map((c) => c.name)).toEqual(['slot_item_into_book'])
   })
 
+  it('켜진 컬렉션과 기간이 끝난 컬렉션은 발급 기록을 읽지 않는다', async () => {
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    state.book = { is_active: true, valid_from: LONG_PAST, valid_until: LONG_PAST }
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(state.issuedReads).toBe(0)
+  })
+
   it('컬렉션 조회가 실패하면 500이고 장착 RPC를 부르지 않는다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     state.bookError = { message: 'db 장애' }
@@ -376,6 +407,150 @@ describe('POST — 공개되지 않은 컬렉션에는 장착할 수 없다(티�
     state.book = null
     const res = await POST(request('POST', {}), PARAMS)
     expect(res.status).toBe(400)
+  })
+})
+
+describe('POST — 꺼진 컬렉션도 발급 기록이 있으면 장착하고 완성 보상이 똑같이 나간다(티켓 20261106_1229)', () => {
+  const FAR_FUTURE = '2999-01-01T00:00:00+00:00'
+  const COMMON_SOURCE = deterministicSourceId('collection_complete', USER_ID, ITEM_BOOK_ID, 'common')
+  const OFF_BOOKS = [
+    ['비활성', { is_active: false, valid_from: null, valid_until: null }],
+    ['시작 전', { is_active: true, valid_from: FAR_FUTURE, valid_until: null }],
+  ] as const
+
+  it.each(OFF_BOOKS)('%s + 발급 기록 있음 → 201이고 장착 RPC를 부른다', async (_label, book) => {
+    state.book = { ...book }
+    state.issuedRecord = true
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ slot: SLOT })
+    expect(state.issuedReads).toBe(1)
+    expect(state.rpcCalls).toEqual([
+      { name: 'slot_item_into_book', args: { p_user_id: USER_ID, p_item_book_id: ITEM_BOOK_ID, p_inventory_item_id: 'item-1' } },
+    ])
+  })
+
+  it.each(OFF_BOOKS)('%s + 발급 기록 없음 → 404이고 장착 RPC·예약을 부르지 않는다', async (_label, book) => {
+    state.book = { ...book }
+    state.issuedRecord = false
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: d.itembooks.itemBookNotFound })
+    expect(state.issuedReads).toBe(1)
+    expect(state.rpcCalls).toHaveLength(0)
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('발급 기록 조회가 실패하면 기록이 없는 것으로 보고 404로 막는다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.book = { is_active: false, valid_from: null, valid_until: null }
+    state.issuedError = { message: 'db 장애' }
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(404)
+    expect(state.rpcCalls).toHaveLength(0)
+    consoleError.mockRestore()
+  })
+
+  it('컬렉션 행이 없으면 발급 기록을 읽지 않고 404다', async () => {
+    state.book = null
+    state.issuedRecord = true
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(404)
+    expect(state.issuedReads).toBe(0)
+  })
+
+  it('마지막 칸을 채워 완성하면 장착 RPC 한 번에 보상 배지 발급·챕터 점수·JAM! 판정이 응답 뒤에 한 번씩 나간다', async () => {
+    state.book = { is_active: false, valid_from: null, valid_until: null }
+    state.issuedRecord = true
+    state.completeOnSlot = true // 장착 RPC가 완성 기록·완성 포인트를 만든다
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+    expect(state.rpcCalls.map((c) => c.name)).toEqual(['slot_item_into_book'])
+    expect(state.afterCallbacks).toHaveLength(1)
+
+    await flushAfter()
+    expect(runSlotRewardMock).toHaveBeenCalledTimes(1)
+    expect(runSlotRewardMock).toHaveBeenCalledWith(USER_ID, ITEM_BOOK_ID)
+    expect(awardScoreMock).toHaveBeenCalledTimes(1)
+    expect(awardScoreMock.mock.calls[0][1]).toEqual({ userId: USER_ID, kind: 'collection_complete', sourceId: COMMON_SOURCE })
+    expect(runJamActionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('이미 완성한 컬렉션을 다시 채워도 챕터 점수를 다시 세지 않는다(원천 id가 같아 중복 지급 없음)', async () => {
+    state.book = { is_active: false, valid_from: null, valid_until: null }
+    state.issuedRecord = true
+    state.completionExists = true // 장착 전부터 완성 기록이 있다
+
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(awardScoreMock).not.toHaveBeenCalled()
+    // 보상 배지 발급은 한 번 호출되지만 발급 함수가 이미 받은 배지를 다시 주지 않는다(slotReward 자체 시험이 고정)
+    expect(runSlotRewardMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('켜진 컬렉션과 같은 호출 순서·인자다 — 꺼진 컬렉션이라고 다르게 부르지 않는다', async () => {
+    state.completeOnSlot = true
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+    const onCalls = {
+      rpc: state.rpcCalls.map((c) => c.name),
+      reward: runSlotRewardMock.mock.calls.slice(),
+      score: awardScoreMock.mock.calls.map((c) => c[1]),
+    }
+
+    vi.clearAllMocks()
+    state.rpcCalls = []
+    state.completionExists = false
+    state.book = { is_active: false, valid_from: null, valid_until: null }
+    state.issuedRecord = true
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(state.rpcCalls.map((c) => c.name)).toEqual(onCalls.rpc)
+    expect(runSlotRewardMock.mock.calls).toEqual(onCalls.reward)
+    expect(awardScoreMock.mock.calls.map((c) => c[1])).toEqual(onCalls.score)
+  })
+
+  it('등급형 꺼진 컬렉션도 새로 완성한 등급을 보상 배지 발급의 세 번째 인자로 넘기고 챕터 점수를 센다', async () => {
+    state.book = { is_active: false, valid_from: null, valid_until: null, tier_mode: true }
+    state.issuedRecord = true
+    state.rpc.slot_item_into_book_tiered = { data: { ok: true, slot: SLOT, tier: 'rare', completed_tier: 'rare' }, error: null }
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(res.status).toBe(201)
+    expect(state.rpcCalls.map((c) => c.name)).toEqual(['slot_item_into_book_tiered'])
+    expect(runSlotRewardMock).toHaveBeenCalledWith(USER_ID, ITEM_BOOK_ID, 'rare')
+    expect(awardScoreMock).toHaveBeenCalledTimes(1)
+    expect(awardScoreMock.mock.calls[0][1]).toEqual({
+      userId: USER_ID,
+      kind: 'collection_complete',
+      sourceId: deterministicSourceId('collection_complete', USER_ID, ITEM_BOOK_ID, 'rare'),
+    })
+  })
+
+  it('DELETE·PATCH는 꺼진 컬렉션에서도 그대로 성공하고 발급 기록을 읽지 않는다', async () => {
+    state.book = { is_active: false, valid_from: null, valid_until: null }
+    state.issuedRecord = false
+
+    const del = await DELETE(request('DELETE', { slot_id: 'slot-1' }), PARAMS)
+    const patch = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(del.status).toBe(200)
+    expect(patch.status).toBe(200)
+    expect(state.issuedReads).toBe(0)
+    expect(state.afterCallbacks).toHaveLength(0)
   })
 })
 
