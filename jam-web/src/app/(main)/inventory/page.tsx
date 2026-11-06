@@ -111,20 +111,13 @@ export default async function InventoryPage() {
         )}
 
         {/* 20260912_1940: 슬롯 포화 상시 안내 — 가득 찼을 때만 노출, 카드형 인셋(edge-to-edge 금지).
-            20261105_1953: 홈 막힘 카드와 같은 어두운 반전 면(--background-inverse + --snow) + 밝은 알약. 문구·링크 불변 */}
+            20261105_1953: 홈 막힘 카드와 같은 어두운 반전 면(--background-inverse + --snow).
+            20261106: 한 줄 문구만 남기고 «드랍하기» 버튼을 걷었다(사용자 결정) */}
         {remainingSlots === 0 && (
           <div
             className="mt-3 rounded-2xl px-4 py-3 bg-background-inverse border border-background-inverse"
           >
-            <p className="text-base text-snow break-keep wrap-break-word">
-              {t(d.inventory.fullNoticeBody, { max: maxSlots })}
-            </p>
-            <Link
-              href="/drops"
-              className="mt-3 inline-flex items-center justify-center min-h-11 rounded-full px-4 text-base bg-default text-foreground active:scale-95 transition-transform duration-100"
-            >
-              {d.inventory.fullNoticeCta}
-            </Link>
+            <p className="text-base text-snow break-keep wrap-break-word">{d.inventory.fullNoticeBody}</p>
           </div>
         )}
       </div>
