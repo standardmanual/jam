@@ -122,7 +122,7 @@ export default function CapsuleWidget({
   const showSlotsAction = blocked || claim.blockedReason === 'no_slots'
 
   const action = blocked && blockedCard ? (
-    <CapsuleBlockedCard />
+    <CapsuleBlockedCard pendingItemCount={capsule.pendingItemCount} />
   ) : showSlotsAction ? (
     <div className="flex flex-col gap-2">
       <p className="m-0 text-sm text-muted break-keep wrap-break-word text-balance">

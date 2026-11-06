@@ -95,13 +95,13 @@ describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다(�
   })
 
   it('막힘 + blockedCard(홈·프로필): 게이지 아래에 카드 하나가 놓이고 두 줄 안내와 «인벤토리 가기» 버튼 하나만 있다', () => {
-    const html = renderToStaticMarkup(<CapsuleWidget initial={status(BLOCKED)} blockedCard />)
+    const html = renderToStaticMarkup(<CapsuleWidget initial={status({ ...BLOCKED, pendingItemCount: 2 })} blockedCard />)
     const text = textOf(html)
     expect(html.match(/<section/g)).toHaveLength(1)
     expect(html.match(/role="img"/g)).toHaveLength(1)
     expect(text).toContain(d.capsule.widget.notice.blocked)
     expect(text).toContain(d.capsule.blockedBanner.line1)
-    expect(text).toContain(d.capsule.blockedBanner.line2)
+    expect(text).toContain(t(d.capsule.blockedBanner.line2, { count: 2 }))
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(text).toContain('인벤토리 가기')
     // 빈칸 덧줄·«인벤토리 보기»는 홈 막힘 카드에서 그리지 않는다

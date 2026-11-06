@@ -18,20 +18,31 @@ vi.mock('next/navigation', () => ({
 import CapsuleBlockedCard from './CapsuleBlockedCard'
 import { d } from '@/lib/i18n'
 
-const html = renderToStaticMarkup(<CapsuleBlockedCard />)
+const html = renderToStaticMarkup(<CapsuleBlockedCard pendingItemCount={2} />)
 const textOf = (value: string) => value.replace(/<[^>]*>/g, '')
 
 describe('CapsuleBlockedCard — 막힘 카드', () => {
   it('안내 두 줄이 사용자 확정 문구 그대로 보인다', () => {
     expect(d.capsule.blockedBanner.line1).toBe('인벤토리가 가득 찼어요.')
-    expect(d.capsule.blockedBanner.line2).toBe('배지를 받으려면 인벤토리를 비워주세요.')
+    expect(d.capsule.blockedBanner.line2).toBe('아이템 배지 {count}개를 받으려면 인벤토리를 비워주세요.')
     expect(textOf(html)).toContain('인벤토리가 가득 찼어요.')
-    expect(textOf(html)).toContain('배지를 받으려면 인벤토리를 비워주세요.')
+    expect(textOf(html)).toContain('아이템 배지 2개를 받으려면 인벤토리를 비워주세요.')
+  })
+
+  it('둘째 줄의 n은 받지 못한 배지 수이고, 0 이하이면 숫자 없는 문장이다', () => {
+    const one = textOf(renderToStaticMarkup(<CapsuleBlockedCard pendingItemCount={1} />))
+    expect(one).toContain('아이템 배지 1개를 받으려면 인벤토리를 비워주세요.')
+    for (const count of [0, -1]) {
+      const none = textOf(renderToStaticMarkup(<CapsuleBlockedCard pendingItemCount={count} />))
+      expect(none).toContain('아이템 배지를 받으려면 인벤토리를 비워주세요.')
+      expect(none).not.toMatch(/\d|\{count\}/)
+    }
+    expect(d.capsule.blockedBanner.line2NoCount).toBe('아이템 배지를 받으려면 인벤토리를 비워주세요.')
   })
 
   it('두 줄은 각각 별도 블록이라 문장 사이에서 끊긴다', () => {
     expect(html).toMatch(/<span class="block">인벤토리가 가득 찼어요\.<\/span>/)
-    expect(html).toMatch(/<span class="block text-snow\/80">배지를 받으려면 인벤토리를 비워주세요\.<\/span>/)
+    expect(html).toMatch(/<span class="block text-snow\/80">아이템 배지 2개를 받으려면 인벤토리를 비워주세요\.<\/span>/)
   })
 
   it('게이지는 카드 안에 없고 버튼은 «인벤토리 가기» 하나뿐이다', () => {
@@ -41,11 +52,12 @@ describe('CapsuleBlockedCard — 막힘 카드', () => {
     expect(d.capsule.blockedBanner.cta).toBe('인벤토리 가기')
   })
 
-  it('제목 요소·아이콘·숫자(n개·k칸)·옛 문구가 없다', () => {
+  it('제목 요소·아이콘·칸수(k칸)·옛 문구가 없고 숫자는 배지 수 하나뿐이다', () => {
     expect(html).not.toMatch(/<h\d/)
     expect(html).not.toContain('<svg')
-    expect(textOf(html)).not.toMatch(/\d|칸을 비우면|얻었어요|인벤토리 보기/)
-    expect(Object.keys(d.capsule.blockedBanner)).toEqual(['line1', 'line2', 'cta'])
+    expect(textOf(html)).not.toMatch(/칸을 비우면|얻었어요|인벤토리 보기|\d+칸/)
+    expect(textOf(html).match(/\d+/g)).toEqual(['2'])
+    expect(Object.keys(d.capsule.blockedBanner)).toEqual(['line1', 'line2', 'line2NoCount', 'cta'])
   })
 
   it('section의 aria-labelledby가 안내 문단 id를 가리킨다', () => {
