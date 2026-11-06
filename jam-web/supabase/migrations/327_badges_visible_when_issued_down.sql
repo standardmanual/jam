@@ -2,9 +2,10 @@
 -- 327을 되돌린다 (티켓 20261106_1124)
 --
 -- 하는 일 (한 트랜잭션)
---   1. 정책 `badges: 전체 읽기 허용`을 216의 조건으로 복원한다. 함수를 부르는 정책을 먼저 바꿔야 함수를 지울 수 있다.
---   2. 함수 `badge_has_live_item(uuid)`를 지운다.
---   3. 부분 인덱스 둘을 지운다.
+--   1. 정책 `badges: 전체 읽기 허용`을 216의 조건으로 복원한다. 발급 기록 표를 보는 정책을 먼저 바꿔야 표를 지울 수 있다.
+--   2. 트리거 `trg_inventory_items_mark_issued`를 지운다.
+--   3. 트리거 함수 `trg_inventory_items_mark_issued()`를 지운다.
+--   4. 표 `issued_item_badges`를 지운다(정책 포함).
 
 BEGIN;
 
@@ -25,9 +26,10 @@ CREATE POLICY "badges: 전체 읽기 허용" ON public.badges
     )
   );
 
-DROP FUNCTION IF EXISTS public.badge_has_live_item(uuid);
+DROP TRIGGER IF EXISTS trg_inventory_items_mark_issued ON public.inventory_items;
 
-DROP INDEX IF EXISTS public.idx_inventory_items_badge_live;
-DROP INDEX IF EXISTS public.idx_poi_drops_badge_available;
+DROP FUNCTION IF EXISTS public.trg_inventory_items_mark_issued();
+
+DROP TABLE IF EXISTS public.issued_item_badges;
 
 COMMIT;

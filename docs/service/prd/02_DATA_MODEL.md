@@ -283,11 +283,25 @@ RLS 켬 + 정책 없음 + `anon`·`authenticated` 권한 회수 = `service_role`
 (정책 이름의 «전체»는 이 변경 뒤 낡은 표기다).
 
 - **활동 배지는 공개 시각이 지나야 보인다.** `type`이 `activity`(JAM! 배지 포함)이면 `valid_from`이 비었거나 지금 이전이어야 한다. `type`이 `activity`가 아닌 배지(체크인·아이템)에는 이 조건이 걸리지 않는다.
-- **컬렉션 소속 배지는 그 컬렉션이 공개돼야 보인다. 단 이미 발급된 배지는 예외다**(마이그레이션 327, 티켓 20261106_1124). `item_book_id`가 있는 배지(지금은 아이템 배지뿐)는 소속 `item_books`가 `is_active`이고 `valid_from`이 비었거나 지금 이전이면 보인다. 컬렉션 공개 조건은 서브쿼리에 직접 적혀 있다(`item_books` 정책 215와 같은 조건). 컬렉션 비활성은 신규 발급만 막는 뜻이라, 컬렉션이 공개되지 않았어도 `public.badge_has_live_item(badge_id)`가 참이면 그 배지는 보인다. 이 함수는 `STABLE`·`SECURITY DEFINER`(`search_path = public`)이고, 파괴되지 않은 `inventory_items` 개체(`destroyed_at IS NULL`, 보유·장착·소유자 없음 포함)가 있거나 `poi_drops.is_available = TRUE`인 월드 드랍이 있으면 참이다. `inventory_items`가 본인 것만 읽히는 정책이라 정책 안에서 직접 조회하면 타인 개체가 빠지기 때문에 함수로 조회한다. 실행 권한은 `PUBLIC`에서 회수하고 `anon`·`authenticated`·`service_role`에 준다. 조회가 느려지지 않도록 부분 인덱스 `idx_inventory_items_badge_live`(`inventory_items (badge_id) WHERE destroyed_at IS NULL`)와 `idx_poi_drops_badge_available`(`poi_drops (badge_id) WHERE is_available`)를 둔다. 개체가 하나도 없는 비활성·예약 컬렉션 배지는 그대로 숨는다.
+- **컬렉션 소속 배지는 그 컬렉션이 공개돼야 보인다. 단 한 번이라도 발급된 배지는 예외다**(마이그레이션 327, 티켓 20261106_1124). `item_book_id`가 있는 배지(지금은 아이템 배지뿐)는 소속 `item_books`가 `is_active`이고 `valid_from`이 비었거나 지금 이전이면 보인다. 컬렉션 공개 조건은 서브쿼리에 직접 적혀 있다(`item_books` 정책 215와 같은 조건). 컬렉션 비활성은 신규 발급만 막는 뜻이라, 컬렉션이 공개되지 않았어도 `issued_item_badges`(아래 «발급 기록 표» 절)에 그 `badge_id`의 행이 있으면, 곧 그 배지의 개체가 한 번이라도 만들어졌으면 그 배지는 보인다. 정책은 이 표를 `EXISTS`로 보기만 한다. 정책 안에서 `inventory_items`를 직접 조회하면 본인 것만 읽히는 정책 때문에 타인 개체가 빠지고, 행마다 함수를 부르는 방식은 컬렉션 33개 조회를 2.0ms에서 9.7ms로, 배지 전체 읽기를 2ms에서 30ms로 늦춰(2026-11-06 측정) 작은 표를 두었다. 개체가 한 번도 만들어지지 않은 비활성·예약 컬렉션 배지는 그대로 숨는다. 개체가 모두 파괴(소모·만료)돼도 표의 행은 지우지 않아 배지는 계속 보인다.
 - **받아들이는 경계(2026-10-05 기준 해당 데이터 0건).** (가) 공개 시각을 보지 않고 배지를 주는 경로(미션 보상·조합 보상·컬렉션 완성 보상·온보딩 완료 배지·레거시 지점 연결 활동 배지)로 공개 전 활동 배지를 먼저 받은 유저는 공개 시각까지 세션 화면에서 그 배지를 보지 못한다.
   운영툴은 미션·컬렉션이 연결 배지보다 먼저 공개되는 것을 사전 점검에서 막는다(티켓 20260930_1500 ⑨·⑩). (나) 공개되지 않은 컬렉션 소속 아이템을 가진 유저는 인벤토리 화면에서 그 아이템을 보지 못한다(조합·드랍 시트는 service 조회라 보인다).
 - 정책에 넣지 않은 것: `deleted_at`(세션 화면이 쿼리·임베드에서 이미 거른다)과 `valid_until`(종료된 배지는 이미 받은 유저에게 계속 보인다).
 - `anon`에는 읽기·쓰기 정책이 없고 인증 유저에게도 쓰기 정책이 없다. 관리자 화면·관리자 API·배지·드랍 엔진·크론·프로필·조합·미션 API는 service 클라이언트라 정책을 거치지 않는다. 관리자 예외는 두지 않는다.
+
+#### 발급 기록 표 `issued_item_badges` — 마이그레이션 327, 티켓 20261106_1124
+
+«개체(`inventory_items`)가 한 번이라도 만들어진 배지»를 한 배지당 한 행으로 기록한다. `badges` 읽기 정책이 컬렉션이 비활성인 배지를 보일지 판정할 때 쓴다.
+
+| 컬럼 | 내용 |
+|---|---|
+| badge_id | PK, `badges(id)` FK(`ON DELETE CASCADE`) |
+| first_issued_at | 처음 기록된 시각(`timestamptz`, 기본 `now()`). 백필된 행은 적용 시각이다 |
+
+- RLS를 켜고 정책은 「issued_item_badges: 인증 유저 읽기」(`FOR SELECT TO authenticated USING (true)`) 하나뿐이다. 쓰기 정책은 없다(트리거와 `service_role`만 쓴다).
+- 채우는 경로: 적용 때 기존 `inventory_items.badge_id`를 `DISTINCT`로 백필했고(2026-11-06 기준 323행), 그 뒤로는 `inventory_items` `AFTER INSERT` 트리거 `trg_inventory_items_mark_issued`(트리거 함수는 `SECURITY DEFINER`, `search_path = public`, `ON CONFLICT DO NOTHING`, `PUBLIC` 실행 권한 회수)가 새 개체의 배지를 기록한다. 개체가 만들어지는 모든 경로(민트·시스템 드랍·조합·캡슐·어드민 재배정)가 `inventory_items` INSERT라 한 곳에서 잡는다.
+- 행은 지우지 않는다(한 번 보인 배지는 계속 보인다). 숨겨야 하는 요구가 생기면 이 표에서 행을 지우는 별도 규칙이 필요하다.
+- `inventory_items.badge_id`를 UPDATE로 바꾸는 경로는 없다(2026-11-06 확인). 생기면 트리거를 `AFTER UPDATE OF badge_id`로 넓혀야 한다.
 
 #### 배경 렌더링 우선순위
 
