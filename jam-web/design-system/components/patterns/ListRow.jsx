@@ -447,9 +447,11 @@ export function ListRow({
 export function ListRowSkeleton({ tone = 'default', separator = false, selected, className = '', style = {} }) {
   const t = TONES[tone] ?? TONES.default;
   const framed = hasSelectedFrame(tone, selected);
+  // `Skeleton`의 기본 채움은 `--background`(크림)라 면이 없는 flat 행(크림 바탕 위)에서는 막대가 바탕에 묻힌다. flat만 한 단계 어두운 색으로 채운다.
+  const fill = tone === 'flat' ? { background: 'var(--background-secondary)' } : null;
   const lineBox = (height, bar, width) => (
     <span style={{ display: 'flex', alignItems: 'center', height }}>
-      <Skeleton width={width} height={bar} borderRadius="var(--radius-full)" />
+      <Skeleton width={width} height={bar} borderRadius="var(--radius-full)" style={fill ?? undefined} />
     </span>
   );
   return (
@@ -457,7 +459,7 @@ export function ListRowSkeleton({ tone = 'default', separator = false, selected,
       className={className}
       aria-hidden="true"
       style={{
-            ...(tone === 'flat' && !framed ? { '--list-row-padding-x': '0px' } : null),
+        ...(tone === 'flat' && !framed ? { '--list-row-padding-x': '0px' } : null),
         display: 'flex', alignItems: 'center', boxSizing: 'border-box', width: '100%',
         minHeight: 'var(--touch-target-min)', gap: 'var(--list-row-gap)',
         padding: 'var(--list-row-padding-y) var(--list-row-padding-x)',
@@ -468,7 +470,7 @@ export function ListRowSkeleton({ tone = 'default', separator = false, selected,
     >
       <Skeleton
         width="var(--list-row-lead-size)" height="var(--list-row-lead-size)"
-        borderRadius="var(--radius-2xl)" style={{ flexShrink: 0 }}
+        borderRadius="var(--radius-2xl)" style={{ flexShrink: 0, ...fill }}
       />
       <span style={{ display: 'block', flex: '1 1 0%', minWidth: 0 }}>
         {lineBox('calc(var(--text-xs) * var(--text-xs--line-height))', 12, '30%')}
