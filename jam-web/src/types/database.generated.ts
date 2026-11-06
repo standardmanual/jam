@@ -1477,6 +1477,29 @@ export type Database = {
         }
         Relationships: []
       }
+      issued_item_badges: {
+        Row: {
+          badge_id: string
+          first_issued_at: string
+        }
+        Insert: {
+          badge_id: string
+          first_issued_at?: string
+        }
+        Update: {
+          badge_id?: string
+          first_issued_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issued_item_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: true
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_book_tier_default_rewards: {
         Row: {
           reward_points: number

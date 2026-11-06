@@ -62,7 +62,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.trg_inventory_items_mark_issued() FROM PUBLIC;
+-- Supabase가 새 함수에 기본으로 주는 anon·authenticated 실행 권한까지 회수한다(109번 패턴). 트리거는 실행 권한 없이도 돈다
+REVOKE ALL ON FUNCTION public.trg_inventory_items_mark_issued() FROM PUBLIC, anon, authenticated;
 
 CREATE TRIGGER trg_inventory_items_mark_issued
   AFTER INSERT ON public.inventory_items
