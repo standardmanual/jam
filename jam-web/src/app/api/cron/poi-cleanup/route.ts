@@ -9,6 +9,9 @@
  * ②연결 배지 소프트 삭제) 정리 로직과 원자적 개체 파괴를 expire_stale_poi_drops() RPC
  * 하나의 트랜잭션으로 처리한다(표준 불변식 참고 — 상태 변경과 같은 트랜잭션 내 이벤트 기록).
  *
+ * 20261106_1052: 세 번째 갈래로 비활성(또는 기간이 끝난) 컬렉션 배지의 미픽업 드랍도 같은 RPC가 소각하고 건수를 `closed_by_inactive_collection`으로 돌려준다
+ * (마이그레이션 326). 컬렉션을 끄는 순간에는 DB 트리거가 먼저 내리므로, 이 갈래는 안전망이자 기간 종료의 유일한 경로다.
+ *
  * 20260929_1327: 드랍 소각 뒤 보유기간(3개월)이 지난 abusing_logs 행도 함께 파기한다.
  * 파기 실패는 드랍 소각 결과를 무효로 만들지 않는다(로그 + 응답 필드로만 알린다).
  *
@@ -38,13 +41,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const result = data as { expired: number; orphaned_by_deleted_badge: number }
+  // closed_by_inactive_collection은 마이그레이션 326 적용 뒤에만 실린다. 적용 전 배포 구간에는 없으므로 0으로 읽는다
+  const result = data as { expired: number; orphaned_by_deleted_badge: number; closed_by_inactive_collection?: number }
+  const closedByInactiveCollection = result.closed_by_inactive_collection ?? 0
 
   if (result.expired > 0) {
     console.info(`[poi-cleanup] 만료 드랍 소각 — ${result.expired}건`)
   }
   if (result.orphaned_by_deleted_badge > 0) {
     console.info(`[poi-cleanup] 삭제된 배지 드랍 소각 — ${result.orphaned_by_deleted_badge}건`)
+  }
+  if (closedByInactiveCollection > 0) {
+    console.info(`[poi-cleanup] 비활성 컬렉션 드랍 소각 — ${closedByInactiveCollection}건`)
   }
 
   const purge = await purgeExpiredAbusingLogs()
@@ -61,6 +69,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     expired: result.expired,
     orphanedByDeletedBadge: result.orphaned_by_deleted_badge,
+    closedByInactiveCollection,
     purgedAbusingLogs: purge.deleted,
     ...(purge.error ? { abusingLogPurgeError: purge.error } : {}),
     purgedRetainedRecords: retainedPurge.deleted,

@@ -5,7 +5,8 @@
  * - `CRON_SECRET`이 비었거나 헤더가 없거나 다르면 401이고, 그 경우 RPC도 파기도 부르지 않는다(「Bearer undefined」가 통과하지 않는다)
  * - RPC 오류는 500이고 파기를 부르지 않는다
  * - 파기가 실패해도 드랍 소각 결과는 200으로 돌려주고 `abusingLogPurgeError`로만 알린다
- * - 응답은 `expired`·`orphanedByDeletedBadge`·`purgedAbusingLogs`·`purgedRetainedRecords`를 싣는다
+ * - 응답은 `expired`·`orphanedByDeletedBadge`·`closedByInactiveCollection`·`purgedAbusingLogs`·`purgedRetainedRecords`를 싣는다
+ * - 비활성 컬렉션 드랍 소각 건수(`closed_by_inactive_collection`, 티켓 20261106_1052): 0보다 크면 로그를 남기고, 0이거나 키가 없으면(326 적용 전 DB) 로그 없이 0으로 싣는다
  * - 보관 만료 보관 행 파기(`purgeExpiredRetainedRecords`, 티켓 20261021_1249 2회): 부정 이용 탐지 기록 파기가 실패해도 부르고,
  *   이 파기가 실패해도 200이며 `retainedRecordPurgeError`로만 알린다. 인증 실패와 RPC 오류 때는 부르지 않는다
  *
@@ -35,7 +36,7 @@ function requestWith(auth?: string): NextRequest {
 
 beforeEach(() => {
   vi.stubEnv('CRON_SECRET', SECRET)
-  rpc.mockReset().mockResolvedValue({ data: { expired: 3, orphaned_by_deleted_badge: 1 }, error: null })
+  rpc.mockReset().mockResolvedValue({ data: { expired: 3, orphaned_by_deleted_badge: 1, closed_by_inactive_collection: 4 }, error: null })
   purge.mockReset().mockResolvedValue({ deleted: 5, error: null })
   purgeRetained.mockReset().mockResolvedValue({ deleted: 2, error: null })
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -93,11 +94,32 @@ describe('만료 드랍 소각', () => {
   })
 })
 
+describe('비활성 컬렉션 드랍 소각 로그 (티켓 20261106_1052)', () => {
+  it('건수가 있으면 로그를 남긴다', async () => {
+    await GET(requestWith(`Bearer ${SECRET}`))
+    expect(console.info).toHaveBeenCalledWith('[poi-cleanup] 비활성 컬렉션 드랍 소각 — 4건')
+  })
+
+  it('건수가 0이면 로그를 남기지 않는다', async () => {
+    rpc.mockResolvedValue({ data: { expired: 3, orphaned_by_deleted_badge: 1, closed_by_inactive_collection: 0 }, error: null })
+    await GET(requestWith(`Bearer ${SECRET}`))
+    expect(console.info).not.toHaveBeenCalledWith(expect.stringContaining('비활성 컬렉션 드랍 소각'))
+  })
+
+  it('326 적용 전 DB처럼 키가 없으면 로그 없이 0으로 싣는다', async () => {
+    rpc.mockResolvedValue({ data: { expired: 3, orphaned_by_deleted_badge: 1 }, error: null })
+    const res = await GET(requestWith(`Bearer ${SECRET}`))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ closedByInactiveCollection: 0 })
+    expect(console.info).not.toHaveBeenCalledWith(expect.stringContaining('비활성 컬렉션 드랍 소각'))
+  })
+})
+
 describe('응답 계약', () => {
   it('성공하면 200이고 expired·orphanedByDeletedBadge·purgedAbusingLogs를 싣는다', async () => {
     const res = await GET(requestWith(`Bearer ${SECRET}`))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ expired: 3, orphanedByDeletedBadge: 1, purgedAbusingLogs: 5, purgedRetainedRecords: 2 })
+    expect(await res.json()).toEqual({ expired: 3, orphanedByDeletedBadge: 1, closedByInactiveCollection: 4, purgedAbusingLogs: 5, purgedRetainedRecords: 2 })
     expect(purge).toHaveBeenCalledTimes(1)
     expect(purgeRetained).toHaveBeenCalledTimes(1)
   })
@@ -109,6 +131,7 @@ describe('응답 계약', () => {
     expect(await res.json()).toEqual({
       expired: 3,
       orphanedByDeletedBadge: 1,
+      closedByInactiveCollection: 4,
       purgedAbusingLogs: 0,
       abusingLogPurgeError: 'purge boom',
       purgedRetainedRecords: 2,
@@ -128,6 +151,7 @@ describe('응답 계약', () => {
     expect(await res.json()).toEqual({
       expired: 3,
       orphanedByDeletedBadge: 1,
+      closedByInactiveCollection: 4,
       purgedAbusingLogs: 5,
       purgedRetainedRecords: 0,
       retainedRecordPurgeError: 'retained boom',
@@ -145,11 +169,11 @@ describe('응답 계약', () => {
   })
 
   it('소각 건이 0이어도 200이고 0을 그대로 싣는다', async () => {
-    rpc.mockResolvedValue({ data: { expired: 0, orphaned_by_deleted_badge: 0 }, error: null })
+    rpc.mockResolvedValue({ data: { expired: 0, orphaned_by_deleted_badge: 0, closed_by_inactive_collection: 0 }, error: null })
     purge.mockResolvedValue({ deleted: 0, error: null })
     purgeRetained.mockResolvedValue({ deleted: 0, error: null })
     const res = await GET(requestWith(`Bearer ${SECRET}`))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ expired: 0, orphanedByDeletedBadge: 0, purgedAbusingLogs: 0, purgedRetainedRecords: 0 })
+    expect(await res.json()).toEqual({ expired: 0, orphanedByDeletedBadge: 0, closedByInactiveCollection: 0, purgedAbusingLogs: 0, purgedRetainedRecords: 0 })
   })
 })

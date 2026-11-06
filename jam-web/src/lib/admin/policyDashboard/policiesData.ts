@@ -974,6 +974,20 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     },
     nodes: ['system_drop', 'user_drop'],
   },
+  {
+    id: 'ch9-inactive-collection-drop-close',
+    chapter: 9,
+    chapterTitle: '장소, 드랍과 픽업',
+    title: '컬렉션을 끄면 월드에 남은 미픽업 드랍도 내려간다',
+    type: 'code_constant',
+    currentSpec:
+      '컬렉션 is_active가 켜짐에서 꺼짐으로 바뀌는 순간 DB 트리거가 그 컬렉션 배지의 미픽업 드랍을 내린다. 매일 0시 정리가 전체를 한 번 더 거르며, 공개 기간이 끝난 컬렉션도 이때 내린다. 다시 켜도 복구하지 않는다. 유저가 가진 개체와 컬렉션 진행 기록은 그대로다.',
+    codeLocation: 'jam-web/src/app/api/cron/poi-cleanup/route.ts',
+    userExperience: '운영이 중단된 컬렉션의 아이템은 더 이상 장소에 놓여 있지 않아요.',
+    basisDoc: '운영 로직 9.3절',
+    ticketId: '20261106_1052',
+    nodes: ['system_drop', 'user_drop'],
+  },
 
   // =========================================================================
   // 10장. 액티비티 배지
