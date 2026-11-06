@@ -105,11 +105,6 @@ vi.mock('@/components/QuestPreviewBanner', () => ({
     return null
   },
 }))
-vi.mock('@/components/chapter/ChapterRiseWatcher', () => ({
-  default: function ChapterRiseWatcherStub() {
-    return null
-  },
-}))
 
 import MainLayout from '../layout'
 import TabBar from '@/components/ui/TabBar'

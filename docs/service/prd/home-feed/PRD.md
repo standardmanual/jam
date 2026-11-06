@@ -153,11 +153,11 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 
 - 안내 문구는 서버가 정한 `notice` 값(`none`·`blocked`)으로 고른다. 막힘 판정은 DB 함수 `capsule_receive_blocked` 하나가 정하고 화면은 다시 따지지 않는다. 옛 안내 4종(보류·거의 참·잼 받을 수 없음·가득 찬 채 남음)은 막힘 하나로 합쳤다(티켓 20261105_0104).
 - 「받기」 버튼과 `POST /api/capsule/claim`은 없다(티켓 20261105_0105 T5). 대기 보상은 인벤토리에 빈칸이 생기면 서버가 자동으로 지급하고(`settleAfterSlotsFreed`), 위젯은 지급 결과를 따로 연출하지 않는다. 막힘 안내는 홈의 막힘 카드와 프로필의 「인벤토리 보기」만 남는다.
-- 보지 않은 결과(`capsule_unseen_results`)는 이 위젯도 레이아웃도 읽지 않는다. 합친 연출(전체 화면 오렌지 퍼짐, 문구 화면, 배지 보상 화면)은 티켓 20261106_1028에서 걷었다(사용자 결정 2026-11-06). 캡슐이 열려도 연출 없이 게이지가 지금 값까지 일반 채움 모션으로 차오르고, 열린 배지는 인벤토리에서 확인한다. 챕터가 오르면 기존 챕터 오름 카드(`ChapterRiseWatcher`)가 기기에 저장된 «마지막으로 축하한 챕터»보다 높을 때 한 번 뜬다.
+- 보지 않은 결과(`capsule_unseen_results`)는 이 위젯도 레이아웃도 읽지 않는다. 합친 연출(전체 화면 오렌지 퍼짐, 문구 화면, 배지 보상 화면)은 티켓 20261106_1028에서 걷었다(사용자 결정 2026-11-06). 캡슐이 열려도 연출 없이 게이지가 지금 값까지 일반 채움 모션으로 차오르고, 열린 배지는 인벤토리에서 확인한다. 챕터가 올라도 전체 화면 카드는 뜨지 않는다(티켓 20261106_1104). 오름은 소식 화면의 «챕터 오름» 행과 프로필의 챕터 줄로만 보인다.
 - 게이지의 원형이던 프로토타입(`app/spike/capsule-fill`)과 옛 채우기 패널(`JamFillPanel`)은 지웠다(티켓 20261028_1740 4회차). 서비스 화면에는 쓰이지 않던 파일이라 동작은 바뀌지 않는다.
 - 서버 조회가 실패하면 투데이는 위젯을 그대로 그리고(초기값 없음), 위젯이 클라이언트에서 `GET /api/capsule`로 다시 가져온다.
 
-근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsuleGauge`·`CapsuleWidget`), `jam-web/src/components/chapter/ChapterRiseWatcher.tsx`, `jam-web/src/app/(main)/layout.tsx`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-gauge.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsuleGauge`·`CapsuleWidget`), `jam-web/src/app/(main)/layout.tsx`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-gauge.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
 
 ## 3. 카드 노출 규칙
 

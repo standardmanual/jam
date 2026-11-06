@@ -449,7 +449,7 @@ SELECT로 존재를 확인해야 하고 그 확인과 INSERT 사이에 재시도
 | 23 순위 상승 | `mission_rank_up:{mission_id}:{YYYY-MM-DD}` | 다음 날 다시 올랐을 때 |
 | 24 종료 결과 | `mission_ended:{mission_id}` | 없음 (미션당 1회) |
 | 47 트라이브 변경 참가 취소 | 1개: `mission_participation_cancelled:{mission_id}:{YYYY-MM-DD}`<br>2개+: `mission_participation_cancelled:group:{YYYY-MM-DD}:{지문}` | 같은 날 같은 미션 묶음은 한 번만, **다른 날 다시 취소되면 새로 만든다** (T2 배치가 아니라 앱이 트라이브 변경 때 만든다 — `notifyMissionParticipationCancelled`, 티켓 20261019_1313) |
-| 48 챕터 오름 | `chapter_up:{chapter_no}` + `once` | 같은 챕터 소식은 평생 한 번(챕터는 내려가지 않는다). 다음 챕터로 오르면 새 키다 (T2 배치가 아니라 앱이 챕터가 오른 직후에 만든다 — `processChapterRise`, 티켓 20261019_1316) |
+| 48 챕터 오름 | `chapter_up:{chapter_no}` + `once` | 같은 챕터 소식은 평생 한 번(챕터는 내려가지 않는다). 다음 챕터로 오르면 새 키다. 전체 화면 축하 카드는 없고 이 소식 행이 오름을 알리는 화면이다(티켓 20261106_1104) (T2 배치가 아니라 앱이 챕터가 오른 직후에 만든다 — `processChapterRise`, 티켓 20261019_1316) |
 | 49 어드민 트라이브 변경 | `tribe_changed:{user_tribe_changes.id}` + `once` | 변경 한 번에 한 건이다. 같은 유저를 다시 바꾸면 새 변경 기록 id라 새 소식이 쌓인다 (T2 배치가 아니라 앱이 변경이 성공한 직후에 만든다 — `changeUserTribe`, 티켓 20261021_1247) |
 | 29 팔로잉 희귀 배지 | `following_rare_badge:{badge_id}:{actor_id}` | 없음 |
 | 30 팔로잉 컬렉션 완성 | `following_collection_complete:{item_book_id}:{actor_id}` | 없음 |

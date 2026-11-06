@@ -590,7 +590,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '캡슐 개봉 결과 활동 피드 제외 원칙',
     type: 'code_constant',
     currentSpec: '캡슐 오픈 아이템 배지는 활동 피드에 게시하지 않음 (캡슐에서 나온 잠긴 개체를 연 때도 제외 — 동기화로 받은 잠긴 개체만 열 때 올림)',
-    codeLocation: 'jam-web/src/lib/chapter/celebrate.ts',
+    codeLocation: 'jam-web/src/lib/capsule/open.ts',
     userExperience: '캡슐을 자주 열어도 친구들의 피드가 도배되지 않아요. 캡슐에서 나온 잠긴 배지를 열 때도 피드에는 올라가지 않아요.',
     basisDoc: '운영 로직 5.3절, 15.3절',
     ticketId: '20261022_1021',

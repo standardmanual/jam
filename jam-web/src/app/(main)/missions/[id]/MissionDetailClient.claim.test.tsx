@@ -9,7 +9,7 @@
  *    이용 정지(서버 문구 안내) · 404·500·네트워크 오류(토스트, 다시 누를 수 있음).
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 훅 중 `useState`만 호출 순서대로 값을 보관하는 가짜로 바꾸고
- * 컴포넌트 함수를 직접 불러 요소 트리를 읽는다(`ChapterRiseWatcher.test.tsx`와 같은 방식). 누르기는 트리에서 찾은 버튼의 `onClick`을 부르고,
+ * 컴포넌트 함수를 직접 불러 요소 트리를 읽는다(`onboarding-logout.test.tsx`와 같은 방식). 누르기는 트리에서 찾은 버튼의 `onClick`을 부르고,
  * 상태가 바뀐 뒤에는 컴포넌트를 다시 불러 새 트리를 읽는다. `fetch`·토스트·라우터는 가짜로 대신한다.
  * 실제 마크업(DOM) — 잠긴 보상의 이름·그림·id가 없음 포함 — 은 `MissionDetailClient.notice.test.tsx`가 서버 렌더로 확인한다.
  *

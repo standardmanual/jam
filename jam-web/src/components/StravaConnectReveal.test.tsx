@@ -2,7 +2,7 @@
  * 처음 연동 직후 도착 화면 — 되읽기 응답의 잼 합계가 오버레이 헤더 한 줄로 간다 (티켓 20261026_1029)
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 훅(`useState`·`useRef`·`useEffect`·`useCallback`)을 칸 배열로 바꿔
- * 컴포넌트 함수를 직접 부른다(`ChapterRiseWatcher.test.tsx`와 같은 방식). 효과는 모아 두었다가 손으로 돌리고, `setState`는 칸을 갱신한다.
+ * 컴포넌트 함수를 직접 부른다(`onboarding-logout.test.tsx`와 같은 방식). 효과는 모아 두었다가 손으로 돌리고, `setState`는 칸을 갱신한다.
  * 효과가 끝난 뒤 컴포넌트를 한 번 더 불러 돌려받은 `BadgeRevealOverlay` 요소의 props를 읽는다. 오버레이·토스트·라우터·분석은 가짜다.
  * 오버레이가 실제로 그리는 헤더 한 줄과 라이브 리전은 `BadgeRevealOverlay.summary.test.tsx`가, 문구 접기는
  * `lib/strava/__tests__/sync-result.test.ts`가 고정한다.
