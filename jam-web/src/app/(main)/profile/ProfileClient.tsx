@@ -735,7 +735,7 @@ export default function ProfileClient({
         {/* Feed — 기본뷰(해시 없음)일 때, 본인/타인 관계없이 노출 (20260830_2115).
             데이터는 이미 대상 유저(target) 기준으로 조회돼 전달되므로 별도 분기 불필요. */}
         {!isTabView && (
-          <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} activityNames={activityNames} />
+          <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} activityNames={activityNames} hideHeader />
         )}
 
         {/* 로그아웃 — 본인만 */}

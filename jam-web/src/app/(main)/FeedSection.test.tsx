@@ -383,3 +383,18 @@ describe('피드의 포인트 표기', () => {
     expect(pointPieces(renderSheet(BADGE))).toEqual(['+50 포인트'])
   })
 })
+
+describe('FeedSection 머리 줄 (티켓 20261106_1734)', () => {
+  it('기본은 제목(최근 활동)과 개수 줄을 그린다 — 친구 활동 화면이 이 모양이다', () => {
+    const html = renderToStaticMarkup(<FeedSection feedItems={[CHAPTER]} />)
+    expect(visibleText(html)).toContain(d.feed.title)
+    expect(visibleText(html)).toContain('1개')
+  })
+
+  it('hideHeader면 제목·개수 줄이 화면에서 사라지고 제목은 스크린리더용으로만 남는다 — 내 프로필이 이 모양이다', () => {
+    const html = renderToStaticMarkup(<FeedSection feedItems={[CHAPTER]} hideHeader />)
+    expect(html).toContain(`<h2 class="sr-only">${d.feed.title}</h2>`)
+    expect(html).not.toContain('text-2xl text-foreground">' + d.feed.title)
+    expect(visibleText(html)).not.toContain('1개')
+  })
+})

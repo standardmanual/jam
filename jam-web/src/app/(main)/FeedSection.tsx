@@ -783,6 +783,8 @@ interface Props {
   /** 배지 상세 링크에 덧붙일 쿼리스트링. 예: `?u=username`. 기본값 없음 */
   badgeLinkQuery?: string
   title?: string
+  /** 제목·개수 줄을 화면에서 숨긴다(내 프로필). 제목은 스크린리더용 제목과 탭 이름으로 남는다 */
+  hideHeader?: boolean
   /**
    * 활동 묶음 카드 헤더에 쓸 활동 이름 맵. 키는 `strava_activity_id`의 문자열.
    * 옵셔널이다 — 안 넘기면 묶음은 이름 없이 헤드라인만으로 그려진다.
@@ -790,7 +792,7 @@ interface Props {
   activityNames?: Record<string, string>
 }
 
-export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.feed.title, activityNames }: Props) {
+export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.feed.title, hideHeader = false, activityNames }: Props) {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
@@ -825,12 +827,16 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl text-foreground">{title}</h2>
-        <span className="text-base text-muted">
-          {t(d.common.countItems, { count: filtered.length })}
-        </span>
-      </div>
+      {hideHeader ? (
+        <h2 className="sr-only">{title}</h2>
+      ) : (
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl text-foreground">{title}</h2>
+          <span className="text-base text-muted">
+            {t(d.common.countItems, { count: filtered.length })}
+          </span>
+        </div>
+      )}
       {/* 필터 탭 — Tabs sliding (16-tabs-sliding.md) */}
       <div className="mb-4">
         <SlidingTabs
