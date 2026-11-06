@@ -31,7 +31,7 @@ vi.mock('@/components/ui/TopNav', () => ({
 }))
 
 import NotificationsClient from './NotificationsClient'
-import { CheckCircleIcon, GiftIcon, LockIcon, MedalIcon, TargetIcon, UsersIcon } from '@/components/ui/icons'
+import { CheckCircleIcon, GiftIcon, LockIcon, MedalIcon, PackageIcon, TargetIcon, UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { NotificationView } from '@/lib/notifications/message'
 import type { NotificationType } from '@/types/database'
@@ -81,6 +81,14 @@ function visibleText(html: string): string {
   return html.replace(/<[^>]*>/g, '')
 }
 
+/** 굵은 글자 — ListRowEm이 그리는 마크업(굵기는 인라인 스타일) */
+function bold(text: string): string {
+  return `<strong class="" style="font-weight:700">${text}</strong>`
+}
+
+/** 종류별 아이콘 lead 박스 — 둥근 사각 + 기본 톤 면(ListRow가 준다) */
+const DEFAULT_TILE = 'border-radius:var(--radius-2xl);background:var(--background-secondary)'
+
 const CHAPTER_UP = view('chapter_up', { chapter_no: 3 })
 const ONE_CANCELLED = view('mission_participation_cancelled', { missions: [{ mission_id: 'm1', title: '한강 100km' }] })
 const MANY_CANCELLED = view('mission_participation_cancelled', {
@@ -125,7 +133,7 @@ describe('챕터 오름 소식 (chapter_up)', () => {
     const html = render([CHAPTER_UP])
 
     expect(visibleText(html)).toContain('축하해요! 챕터 3에 올랐어요')
-    expect(html).toContain('<strong class="font-bold">챕터 3</strong>')
+    expect(html).toContain(bold('챕터 3'))
     expect((html.match(/<strong/g) ?? []).length).toBe(1)
   })
 
@@ -171,7 +179,7 @@ describe('미션 참가 취소 소식 (mission_participation_cancelled)', () => 
     const html = render([ONE_CANCELLED])
 
     expect(visibleText(html)).toContain('트라이브가 바뀌어 「한강 100km」 미션 참가가 취소됐어요')
-    expect(html).toContain('<strong class="font-bold">한강 100km</strong>')
+    expect(html).toContain(bold('한강 100km'))
     expect((html.match(/<strong/g) ?? []).length).toBe(1)
   })
 
@@ -217,7 +225,7 @@ describe('어드민 트라이브 변경 소식 (tribe_changed, 티켓 20261021_1
     const html = render([TRIBE_CHANGED])
 
     expect(visibleText(html)).toContain('트라이브가 바뀌었어요. 이제 아스팔트 레인저 소속이에요. 이미 가진 배지와 잼, 챕터는 그대로예요')
-    expect(html).toContain('<strong class="font-bold">아스팔트 레인저</strong>')
+    expect(html).toContain(bold('아스팔트 레인저'))
     expect((html.match(/<strong/g) ?? []).length).toBe(1)
   })
 
@@ -271,7 +279,7 @@ describe('이용 정지 소식 (suspension_started, 티켓 20261021_1249 6-3 5�
   it('경고면이나 행위자 아바타가 아니라 일반 아이콘 타일로 그려진다', () => {
     const html = render([STARTED])
 
-    expect(html).toContain('w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center')
+    expect(html).toContain(DEFAULT_TILE)
     expect(html).not.toContain(`aria-label="${d.notifications.warningLabel}"`)
     expect(html).not.toContain(d.profile.avatarAlt)
     expect(html).not.toContain('bg-warning')
@@ -313,7 +321,7 @@ describe('이용 정지 해제 소식 (suspension_lifted, 티켓 20261021_1249 6
   it('경고면이나 행위자 아바타가 아니라 일반 아이콘 타일로 그려진다', () => {
     const html = render([LIFTED])
 
-    expect(html).toContain('w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center')
+    expect(html).toContain(DEFAULT_TILE)
     expect(html).not.toContain(`aria-label="${d.notifications.warningLabel}"`)
     expect(html).not.toContain(d.profile.avatarAlt)
     expect(html).not.toContain('bg-warning')
@@ -327,7 +335,7 @@ describe('받지 않은 보상 소식 (reward_pending, 티켓 20261021_1249 6-3 
     const html = render([PENDING])
 
     expect(visibleText(html)).toContain('한강 100km에서 받을 보상이 있어요. 인벤토리 빈칸이 모자라 아직 받지 못했어요')
-    expect(html).toContain('<strong class="font-bold">한강 100km</strong>')
+    expect(html).toContain(bold('한강 100km'))
     expect((html.match(/<strong/g) ?? []).length).toBe(1)
   })
 
@@ -359,7 +367,7 @@ describe('받지 않은 보상 소식 (reward_pending, 티켓 20261021_1249 6-3 
   it('경고면이나 행위자 아바타가 아니라 일반 아이콘 타일로 그려진다', () => {
     const html = render([PENDING])
 
-    expect(html).toContain('w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center')
+    expect(html).toContain(DEFAULT_TILE)
     expect(html).not.toContain(`aria-label="${d.notifications.warningLabel}"`)
     expect(html).not.toContain(d.profile.avatarAlt)
     expect(html).not.toContain('bg-warning')
@@ -375,7 +383,7 @@ describe('캡슐 소식 — 과거 행 표시 (capsule_nearly_full·capsule_jam_
 
     expect(visibleText(html)).toContain('캡슐이 80% 찼어요. 아직 못 받은 보상이 1개 있으니')
     expect(visibleText(html)).toContain('받기 버튼으로 가져오면 가득 차도 잼이 계속 들어와요')
-    expect(html).toContain('<strong class="font-bold">80%</strong>')
+    expect(html).toContain(bold('80%'))
     expect((html.match(/<strong/g) ?? []).length).toBe(1)
   })
 
@@ -396,7 +404,7 @@ describe('캡슐 소식 — 과거 행 표시 (capsule_nearly_full·capsule_jam_
       const html = render([row])
 
       expect(html).toContain(icon(GiftIcon))
-      expect(html).toContain('w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center')
+      expect(html).toContain(DEFAULT_TILE)
       expect(html).not.toContain('bg-warning')
       expect(html).not.toContain(d.profile.avatarAlt)
     }
@@ -468,33 +476,42 @@ describe('소식이 없을 때와 읽지 못했을 때', () => {
   })
 })
 
-describe('인벤토리 가득 참 소식의 어두운 반전 면 (티켓 20261105_1953)', () => {
+describe('인벤토리 가득 참 소식의 어두운 반전 면 (티켓 20261105_1953, 마크업은 ListRow 20261107_0010)', () => {
   const FULL = view('inventory_full', { max_slots: 50, used_slots: 50 })
   const LOW = view('inventory_slots_low', { remaining_slots: 2, max_slots: 50 })
 
-  it('inventory_full 행만 반전 면이고 본문은 snow, 시각은 snow/70이다', () => {
+  it('inventory_full 행만 반전 면이고 본문은 snow, 시각은 muted-on-inverse다', () => {
     const html = render([FULL])
 
-    expect(html).toContain('bg-background-inverse')
-    expect(html).toContain('border-background-inverse')
-    expect(html).toContain('text-snow')
-    expect(html).toContain('text-snow/70')
-    expect(html).not.toContain('bg-surface')
+    expect(html).toContain('background:var(--background-inverse)')
+    expect(html).toContain('border:1px solid var(--background-inverse)')
+    expect(html).toContain('color:var(--snow)')
+    expect(html).toContain('color:var(--muted-on-inverse)')
+    expect(html).not.toContain('background:var(--surface)')
+  })
+
+  it('반전 행의 lead 아이콘은 어두운 lead 면 위에서 보이도록 snow 색이다', () => {
+    const html = render([FULL])
+
+    expect(html).toContain('background:var(--surface-on-inverse)')
+    expect(html).toContain(renderToStaticMarkup(<PackageIcon className="w-5 h-5 text-snow" />))
+    expect(html).not.toContain(renderToStaticMarkup(<PackageIcon className="w-5 h-5 text-foreground" />))
   })
 
   it('남은 칸 적음 행과 다른 종류 행은 흰 면 그대로다', () => {
     const html = render([LOW, CHAPTER_UP])
 
-    expect(html).not.toContain('bg-background-inverse')
+    expect(html).not.toContain('background:var(--background-inverse)')
+    expect(html).not.toContain('color:var(--snow)')
     expect(html).not.toContain('text-snow')
-    expect(html).toContain('bg-surface')
+    expect(html).toContain('background:var(--surface)')
   })
 
   it('반전 행과 흰 행이 함께 있어도 inventory_full 행만 어둡다', () => {
     const html = render([FULL, LOW])
 
-    expect(html.match(/bg-background-inverse/g)).toHaveLength(1)
-    expect(html.match(/bg-surface/g)).toHaveLength(1)
+    expect(html.match(/background:var\(--background-inverse\)/g)).toHaveLength(1)
+    expect(html.match(/background:var\(--surface\)/g)).toHaveLength(1)
   })
 
   it('문구와 링크 대상은 면이 바뀌어도 그대로다', () => {
@@ -505,10 +522,73 @@ describe('인벤토리 가득 참 소식의 어두운 반전 면 (티켓 2026110
     expect(linkOf(inverse)).toBe('/inventory')
   })
 
-  it('경고 상태면 기존 --warning 칩이 어두운 면 위에 그대로 그려진다', () => {
+  it('경고 상태면 기존 --warning 면이 어두운 행 위에 그대로 그려진다', () => {
     const html = render([{ ...FULL, warning: true }])
 
     expect(html).toContain('bg-warning')
-    expect(html).toContain('bg-background-inverse')
+    expect(html).toContain('background:var(--background-inverse)')
+  })
+})
+
+describe('알림 행은 ListRow다 (티켓 20261107_0010)', () => {
+  const AVATAR_URL = 'https://example.test/a.png'
+  const FOLLOWED = view('followed', {}, {
+    actorCount: 1,
+    actor: { id: 'u1', username: 'kim', displayName: '김러너', avatarUrl: AVATAR_URL },
+  })
+  const LONG_NAME = view('followed', {}, {
+    actorCount: 1,
+    actor: { id: 'u2', username: 'a'.repeat(30), displayName: 'a'.repeat(30), avatarUrl: null },
+  })
+
+  it('아바타 행은 lead 링크와 본문 링크가 형제이고 <a> 안에 <a>가 없다', () => {
+    const html = render([FOLLOWED])
+    const anchors = [...html.matchAll(/<a [^>]*>[\s\S]*?<\/a>/g)].map((m) => m[0])
+
+    expect(anchors).toHaveLength(2)
+    for (const a of anchors) expect(a.slice(2).includes('<a ')).toBe(false)
+    expect(html.indexOf('class="ds-list-row-lead-link"')).toBeLessThan(html.indexOf('class="ds-list-row-hit"'))
+  })
+
+  it('lead 링크 이름은 avatarLinkLabel이고 아바타 이미지는 장식(alt="")이다', () => {
+    const html = render([FOLLOWED])
+
+    expect(html).toContain(`aria-label="${t(d.notifications.avatarLinkLabel, { name: '김러너' })}"`)
+    expect(html).toContain('alt=""')
+    expect(html).not.toContain(`alt="${d.profile.avatarAlt}"`)
+    expect(html).toContain('border-radius:var(--radius-full)')
+  })
+
+  it('아바타 이미지가 없으면 사람 아이콘으로 대체되고 lead 링크 이름은 그대로다', () => {
+    const html = render([LONG_NAME])
+
+    expect(html).toContain(icon(UserIcon))
+    expect(html).toContain(`aria-label="${t(d.notifications.avatarLinkLabel, { name: 'a'.repeat(30) })}"`)
+  })
+
+  it('제목은 줄 제한이 없고 시간은 제목 줄 오른쪽 끝에 12px muted로 붙는다', () => {
+    const html = render([FOLLOWED])
+
+    expect(html).not.toContain('-webkit-line-clamp')
+    expect(html).not.toContain('text-overflow:ellipsis')
+    expect(html).not.toContain('white-space:nowrap;color:var(--foreground)')
+    expect(html).toContain('flex-shrink:0;white-space:nowrap;color:var(--muted);font-size:var(--text-xs)')
+    expect(html).toContain('1시간 전')
+  })
+
+  it('경고 행은 lead 박스 전체를 --warning으로 채우고 아이콘은 --foreground다', () => {
+    const html = render([view('sync_stalled', {}, { warning: true })])
+
+    expect(html).toContain('role="img"')
+    expect(html).toContain(`aria-label="${d.notifications.warningLabel}"`)
+    expect(html).toContain('class="bg-warning w-full h-full flex items-center justify-center"')
+    expect(html).toContain('style="color:var(--foreground)"')
+  })
+
+  it('행에 개별 눌림 효과(opacity·scale 클래스)가 남아 있지 않다', () => {
+    const html = render([FOLLOWED, CHAPTER_UP])
+
+    expect(html).not.toContain('active:opacity-70')
+    expect(html).not.toContain('active:scale-95')
   })
 })

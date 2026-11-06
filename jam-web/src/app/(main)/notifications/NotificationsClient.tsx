@@ -2,10 +2,9 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow, ListRowEm } from '@/components/ui/ListRow'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import {
   ActivityIcon,
@@ -102,71 +101,59 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
   }
 }
 
-/** 40×40 아이콘 영역 — 아바타 / 경고 / 종류별 아이콘 */
-function RowIcon({ view }: { view: NotificationView }) {
+/**
+ * lead 안 내용 — 아바타 / 경고 / 종류별 아이콘. 48 박스와 면·모서리는 ListRow가 준다(티켓 20261107_0010).
+ * 클릭 영역 안이라 phrasing 요소(span·img·svg)만 쓴다.
+ */
+function RowIcon({ view, inverse }: { view: NotificationView; inverse: boolean }) {
+  // lead 박스 면이 반전 톤에서는 어두운 면(--surface-on-inverse)이라 아이콘을 --snow로 준다(--foreground면 보이지 않는다)
+  const iconColor = inverse ? 'text-snow' : 'text-foreground'
+
   if (view.warning) {
-    // 경고는 아이콘 칸의 --warning 면으로 표시하고 아이콘은 --foreground다(8.64:1). --warning 자체를
+    // 경고는 lead 박스 전체를 --warning 면으로 채우고 아이콘은 --foreground다(8.64:1). --warning 자체를
     // 흰 카드 위 아이콘·글자 색으로 쓰면 2.07:1이라 쓰지 않는다. 본문 텍스트에는 컬러를 쓰지 않는다(PRD §5).
+    // 모서리는 부모 lead 박스(overflow:hidden + radius)가 자른다.
     return (
-      <div
+      <span
         role="img"
         aria-label={d.notifications.warningLabel}
-        className="w-10 h-10 rounded-2xl bg-warning flex items-center justify-center"
+        className="bg-warning w-full h-full flex items-center justify-center"
       >
         <AlertTriangleIcon className="w-5 h-5" style={{ color: 'var(--foreground)' }} />
-      </div>
-    )
-  }
-
-  if (view.actor) {
-    return view.actor.avatarUrl ? (
-      <Image
-        src={view.actor.avatarUrl}
-        alt={d.profile.avatarAlt}
-        width={40}
-        height={40}
-        className="w-10 h-10 rounded-full object-cover"
-      />
-    ) : (
-      <span className="w-10 h-10 rounded-full bg-background-secondary text-foreground flex items-center justify-center">
-        <UserIcon className="w-5 h-5" />
       </span>
     )
   }
 
-  return (
-    <div className="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">
-      <TypeIcon type={view.type} className="w-5 h-5 text-foreground" />
-    </div>
-  )
+  if (view.actor) {
+    // 접근 가능한 이름은 lead 링크의 leadLabel이 맡아 이미지는 장식(alt="")이다. 크기·원형 자름은 ListRow가 한다.
+    return view.actor.avatarUrl ? (
+      <Image src={view.actor.avatarUrl} alt="" width={48} height={48} />
+    ) : (
+      <UserIcon className={`w-5 h-5 ${iconColor}`} />
+    )
+  }
+
+  return <TypeIcon type={view.type} className={`w-5 h-5 ${iconColor}`} />
 }
 
 /**
  * 문구 — **payload 슬롯만 볼드**. 컬러 강조는 쓰지 않는다(PRD §5).
  * 강조 지점을 소식마다 정의하지 않고 토크나이저 결과를 그대로 그린다.
+ * 클릭 영역 안이라 `<p>` 없이 조각 모음으로 돌려준다. 글자색은 ListRow 톤이 정한다.
+ * 줄바꿈(word-break: keep-all·overflow-wrap: break-word·min-width: 0)은 ListRow가 맡는다.
  */
-function NotificationBody({ view, inverse = false }: { view: NotificationView; inverse?: boolean }) {
+function NotificationBody({ view }: { view: NotificationView }) {
   const tokens = notificationTokens(view)
-  // 줄바꿈 — 두 속성이 각각 다른 일을 한다.
-  //  · word-break: keep-all — CSS 기본값에서 한글은 **음절 단위로 아무 데서나** 끊긴다.
-  //    ("'각성 상태의 동/공'을" 처럼) 어절 단위로 끊으려면 명시해야 한다.
-  //    BadgeRevealCarousel이 이미 쓰는 프로젝트 선례를 따른다.
-  //  · break-words(overflow-wrap: break-word) — 한 덩어리가 카드보다 길 때만 끊는다.
-  //    ListRowCard의 title/subtitle 경로에는 truncate가 있지만 children 경로는 무방비라,
-  //    공백 없는 긴 닉네임이 밖으로 삐져나오는 것을 막는 최후 수단이다.
-  //    (anywhere는 이 목적에 과해서 일반 문장까지 끊는다 — 20260825 되돌림)
   return (
-    <p className={`text-base ${inverse ? 'text-snow' : 'text-foreground'} [word-break:keep-all] break-words`}>
+    <>
       {tokens.map((token, i) =>
         token.bold ? (
-          <strong key={i} className="font-bold">
-            {pointify(token.text)}
-          </strong>
+          <ListRowEm key={i}>{pointify(token.text)}</ListRowEm>
         ) : (
           <Fragment key={i}>{pointify(token.text)}</Fragment>
         )
       )}
-    </p>
+    </>
   )
 }
 
@@ -174,49 +161,23 @@ function NotificationRow({ view }: { view: NotificationView }) {
   const { href, avatarHref } = notificationTarget(view)
   // 인벤토리 가득 참 알림만 어두운 반전 면으로 그린다(티켓 20261105_1953). 남은 칸 적음 등 다른 종류는 흰 면 그대로.
   const inverse = view.type === 'inventory_full'
-  const tone = inverse ? 'inverse' : 'default'
-  const trailing = (
-    <span className={`text-xs ${inverse ? 'text-snow/70' : 'text-muted'}`}>
-      {formatRelativeTime(view.updatedAt)}
-    </span>
-  )
 
-  // 2단 타겟(아바타 탭 → 사람 / 본문 탭 → 대상)이 필요한 행은 행 전체를 링크로 감싸지
-  // 않는다 — ListRowCard가 href를 받으면 <Link>로 감싸는데 그 안에 또 링크를 넣으면
-  // <a> 안의 <a>라 HTML상 무효다. icon·children 슬롯에 각각 링크를 넣는다.
-  if (avatarHref) {
-    // 아바타 링크는 이미지/아이콘뿐이라 접근 가능한 이름이 없다 — 스크린리더에 "링크"로만
-    // 읽히지 않도록 대상 이름을 붙인다.
-    const actorName = (view.actor && getDisplayName({ username: view.actor.username, display_name: view.actor.displayName })) || d.profile.anonymous
-    return (
-      <ListRowCard
-        tone={tone}
-        icon={
-          <Link
-            href={avatarHref}
-            aria-label={t(d.notifications.avatarLinkLabel, { name: actorName })}
-            className="block active:scale-95 transition-transform duration-100"
-          >
-            <RowIcon view={view} />
-          </Link>
-        }
-        trailing={trailing}
-      >
-        {href ? (
-          <Link href={href} className="block active:opacity-70 transition-opacity duration-100">
-            <NotificationBody view={view} inverse={inverse} />
-          </Link>
-        ) : (
-          <NotificationBody view={view} inverse={inverse} />
-        )}
-      </ListRowCard>
-    )
-  }
+  // 2단 타겟(아바타 탭 → 사람 / 본문 탭 → 대상)은 ListRow의 leadHref가 lead를 클릭 영역 밖 형제 링크로 빼서 만든다 —
+  // <a> 안의 <a>가 생기지 않는다. 아바타 링크는 그림뿐이라 접근 가능한 이름(leadLabel)에 대상 이름을 붙인다.
+  const actorName = (view.actor && getDisplayName({ username: view.actor.username, display_name: view.actor.displayName })) || d.profile.anonymous
 
   return (
-    <ListRowCard tone={tone} icon={<RowIcon view={view} />} trailing={trailing} href={href ?? undefined}>
-      <NotificationBody view={view} inverse={inverse} />
-    </ListRowCard>
+    <ListRow
+      tone={inverse ? 'inverse' : 'default'}
+      lead={<RowIcon view={view} inverse={inverse} />}
+      leadShape={view.actor && !view.warning ? 'round' : 'tile'}
+      leadHref={avatarHref ?? undefined}
+      leadLabel={avatarHref ? t(d.notifications.avatarLinkLabel, { name: actorName }) : undefined}
+      href={href ?? undefined}
+      title={<NotificationBody view={view} />}
+      titleVariant="sentence"
+      time={formatRelativeTime(view.updatedAt)}
+    />
   )
 }
 
