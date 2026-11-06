@@ -472,6 +472,8 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 
 카드를 누르면 가는 곳은 **유형 ID가 아니라 템플릿과 대상 필드**로 정해진다. 기사(`editorial_article`)는 항상 기사 상세로 가고, 그 밖의 템플릿은 `target_href`가 있으면 그 값, 없으면 템플릿 규칙을 따른다. 트라이브를 보여 주는 화면은 없다.
 
+**에이전트가 기획하는 카드는 소개한 컨텐츠 하나의 상세 화면으로 보낸다(사용자 결정 2026-11-06, 티켓 20261106_1658).** 아래 표의 «배지 0개»·«배지 여러 개»·«컬렉션 없음»·«미션 없음» 행처럼 목록 화면(`/badges`·`/missions`·`/collections`)으로 해석되는 입력은 코드의 안전망일 뿐이고, 에이전트 등록 경로(운영툴 묶음·등록 스크립트)는 이런 카드를 오류로 거절한다(`registerChecks/homeFeedFields.ts`). 어드민 폼으로 사람이 직접 만드는 카드는 이 검사를 받지 않는다.
+
 근거: `jam-web/src/lib/today/targetHref.ts`(`resolveTargetHref`·`resolveArticleCtaTarget`)
 
 <!-- BEGIN generated: destinations -->
