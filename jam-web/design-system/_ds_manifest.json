@@ -136,6 +136,10 @@
     {
       "name": "LockedTile",
       "sourcePath": "components/cards/LockedTile.jsx"
+    },
+    {
+      "name": "ListRow",
+      "sourcePath": "components/patterns/ListRow.jsx"
     }
   ],
   "startingPoints": [],
@@ -908,6 +912,30 @@
       "value": "1",
       "kind": "font",
       "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--capsule-fill",
+      "value": "#f94c31",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--capsule-track",
+      "value": "#19201c",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--capsule-ring",
+      "value": "#0b0f0d",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--capsule-fill-foreground",
+      "value": "var(--base-white)",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
     }
   ],
   "themes": [],
