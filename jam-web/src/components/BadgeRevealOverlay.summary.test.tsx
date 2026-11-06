@@ -2,7 +2,7 @@
  * 배지 연출 오버레이의 요약 한 줄(`summaryMessage`) — 헤더와 라이브 리전 (티켓 20261025_2050)
  *
  * 동기화로 배지를 받았을 때 «이번에 잼 {n}만큼 받았어요»를 카드 위 헤더 패널에 얹는다. 배지 개수 공지를 대신하지 않고 뒤에 잇는다.
- * `resultMessage`(캡슐 열기 결과)의 뜻은 바꾸지 않는다 — 그 쪽 시험은 `capsule/capsuleReveal.test.tsx`가 고정한다.
+ * `resultMessage`(캡슐 열기 결과)의 뜻은 바꾸지 않는다.
  *
  * 저장소에 jsdom이 없어(vitest `environment: 'node'`) 서버 렌더로 고정한다.
  *

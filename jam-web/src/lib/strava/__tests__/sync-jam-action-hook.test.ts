@@ -32,7 +32,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: vi.fn(async () => ({ autoFill: {}, unseenRecorded: true, ...mocks.capsuleStep })),
+  runSyncCapsuleAutoFill: vi.fn(async () => ({ autoFill: {}, ...mocks.capsuleStep })),
 }))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => {

@@ -118,7 +118,7 @@ const awardPointsMock = vi.hoisted(() => vi.fn())
 
 // 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다. 여기서는 채움을 막고 서비스 활동 잼 RPC 인자만 본다
 vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true }),
+  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false }),
 }))
 vi.mock('@/lib/points', () => ({
   awardPoints: (userId: string, amount: number, reason: string) => {

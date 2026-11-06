@@ -168,7 +168,7 @@ beforeEach(() => {
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
   autoFillMock.mockReset()
-  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true })
+  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false })
   completionMock.mockReset()
   completionMock.mockResolvedValue(null)
   recapMock.mockReset()

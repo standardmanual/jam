@@ -56,7 +56,7 @@ export interface RevealBadge {
    */
   locked?: boolean
   /**
-   * 캡슐 열기 결과(`capsuleReveal.ts`)가 아직 싣는 옛 «필요한 잼» 값. 오버레이는 읽지 않는다 — 여는 비용이 포인트로 바뀌었다(티켓 20261028_1741 2회).
+   * 캡슐 열기 결과(`CapsuleOpenedItem`)가 아직 싣는 옛 «필요한 잼» 값. 오버레이는 읽지 않는다 — 여는 비용이 포인트로 바뀌었다(티켓 20261028_1741 2회).
    * 캡슐 계약(`CapsuleOpenedItem.unlockRequired`)은 캡슐 티켓(U8)의 몫이라 남겼고, 그쪽이 정리되면 이 칸도 함께 지운다.
    */
   unlockRequired?: number

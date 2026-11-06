@@ -72,7 +72,7 @@ code:
 
 [캡슐]          users ─1:1─ user_capsules (지금 캡슐: 필요량·채운 양)
                 users ─1:N─ capsule_opens (열 때마다 한 줄, append-only)
-                users ─1:N─ capsule_unseen_results (동기화에서 자동으로 열린 결과 중 아직 보지 않은 것)
+                users ─1:N─ capsule_unseen_results (동기화에서 자동으로 열린 결과 중 아직 보지 않은 것 — 새 행은 더 쓰지 않음, 티켓 20261106_1028)
                 users ─1:N─ capsule_pending_rewards (인벤토리가 차서 보류한 캡슐 보상, 유저당 최대 2개, 마이그레이션 300 표·302 함수)
                 jam_forfeit_weekly (뷰: jam_transactions의 capsule_forfeit 줄을 주 단위로 합침, 마이그레이션 302. 2026-11-05부터 새 줄이 생기지 않는다)
                 capsule_policy(싱글톤: 개수·확률·보정·퀘스트 전 값) / capsule_chapter_costs (챕터별 채울 양 두 가지·100% 횟수)
@@ -1378,10 +1378,9 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 #### capsule_unseen_results
 동기화 중 저절로 열린 캡슐 결과 가운데 유저가 아직 보지 않은 것(마이그레이션 300, 티켓 20261028_1732). `id`(uuid PK), `user_id`(`users(id)` FK, 삭제 시 CASCADE), `payload`(JSONB, 기본 `{}`), `created_at`, `seen_at`(NULL이면 아직 보지 않음). `user_id`의 `seen_at IS NULL` 부분 인덱스. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
-- 한 동기화에서 자동으로 열린 캡슐이 하나라도 있으면 한 건을 쓴다. 열린 게 없으면 쓰지 않는다. 쓰는 곳은 `lib/capsule/sync-auto-fill.ts`의 `runSyncCapsuleAutoFill`이다.
+- **새 행을 쓰지 않는다**(티켓 20261106_1028, 합친 연출 제거). 이전에는 한 동기화에서 자동으로 열린 캡슐이 하나라도 있으면 `runSyncCapsuleAutoFill`이 한 건을 썼다. 표와 옛 행, 읽기·«봤어요» 라우트는 그대로 두고 정리는 후속 티켓이다. 아래 `payload` 모양은 남아 있는 옛 행을 읽을 때의 기준이다.
 - `payload`는 `{ version: 1, events: [...] }`이다. `events`는 열린 순서 그대로이고, 하나가 캡슐 열기 하나다: `openId`, `items`(나온 개체. 잠긴 개체는 이름·그림 없이 등급과 여는 데 필요한 양), `next`(열자마자 생긴 다음 캡슐), `chapterNo`(횟수를 센 챕터, 센 게 없으면 null), `reachedChapters`(이번 열기로 오른 챕터 번호, 없으면 빈 배열), `chapterCount`(센 뒤의 횟수, 오르면 0, 센 게 없으면 null).
-- 기록을 쓰지 못해도 이미 확정된 열기를 되돌리지 않는다. 로그만 남긴다.
-- 화면 쪽은 티켓 20261028_1740(U9)이 구현했다. 읽기는 `lib/capsule/unseen.ts`의 `readUnseenCapsuleResult`(`GET /api/capsule/unseen`, 앱 레이아웃은 `readUnseenCapsuleResultOrNull`)이고, `seen_at IS NULL`인 행을 오래된 순서로 최대 50건 읽어 이벤트를 하나로 합친다. 깨진 행은 건너뛴다. 챕터 배지는 합친 `reachedChapters`에 해당하는 것 가운데 유저가 이미 받은 것만 싣는다. «봤어요»(`POST /api/capsule/unseen/seen`)가 읽어 간 행의 `seen_at`을 채운다.
+- 화면 쪽은 티켓 20261028_1740(U9)이 구현했으나 티켓 20261106_1028에서 걷었다. 앱 레이아웃과 화면은 이 표를 읽지 않는다. 읽기 라우트는 남아 있고 그 동작은 다음과 같다. 읽기는 `lib/capsule/unseen.ts`의 `readUnseenCapsuleResult`(`GET /api/capsule/unseen`)이고, `seen_at IS NULL`인 행을 오래된 순서로 최대 50건 읽어 이벤트를 하나로 합친다. 깨진 행은 건너뛴다. 챕터 배지는 합친 `reachedChapters`에 해당하는 것 가운데 유저가 이미 받은 것만 싣는다. «봤어요»(`POST /api/capsule/unseen/seen`)가 읽어 간 행의 `seen_at`을 채운다.
 
 #### capsule_pending_rewards
 인벤토리 빈칸이 모자라 보류한 캡슐 보상(표는 마이그레이션 300, 쓰는 함수는 302, 티켓 20261028_1734). `id`(uuid PK), `user_id`(`users(id)` FK, 삭제 시 CASCADE), `slot`(SMALLINT, CHECK 1·2), `chapter_no`(INTEGER, NULL이면 퀘스트 전), `fill_amount`(INTEGER, CHECK 1 이상 — 보류될 때 캡슐의 필요량), `reached_at`(100%에 닿은 시각, 기본 `now()`), `UNIQUE (user_id, slot)`. 아이템 칸이 없다: 받을 때 추첨한다. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
@@ -1413,7 +1412,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - `lib/capsule/auto-fill.ts`의 `runCapsuleAutoFill`(던지지 않는 쪽)·`runCapsuleAutoFillOrThrow`: 한 라운드에 `capsule_auto_fill`을 부르고, `reachedChapters`가 있으면 `processChapterRise`(소식·피드·챕터 배지 판정)를 잇고, 가득 찼으면 «열기 또는 보류»를 한다. 보류가 이미 있으면 열기를 시도하지 않고 `capsule_hold_reward`로 보류하고, 없으면 `openCapsule({ counted: true })`를 시도해 `insufficient_slots`일 때만 보류한다. 그 밖의 `CapsuleError`(`no_tribe` 등)는 오류가 아닌 `blocked` 멈춤이고 채운 잼은 캡슐에 남는다. 최대 50라운드(`CAPSULE_AUTO_FILL_MAX_ROUNDS`)이고 멈춤 사유는 `wallet_empty`·`blocked`·`suspended`·`max_rounds`·`error`다. 보류가 2개이면 DB가 지갑을 소멸시키고 `applied = 0`으로 돌아와 `wallet_empty`로 멈춘다. 결과에는 `holds`·`forfeitedTotal`·`alerts`(가득 차지 않은 응답의 `alertStage`만)·`blockedNow`가 더해졌다. 가득 찬 채 남은 캡슐은 다음 라운드의 `capsule_auto_fill`이 `full = true`로 알려 주므로 맨 앞에서 먼저 처리된다.
 - `lib/capsule/open.ts`의 `openCapsule`: RPC는 `capsule_open_counted` 하나뿐이고(`counted` 옵션과 옛 `capsule_open` RPC·`awardChapterScore('capsule_open')` 분기는 티켓 20261028_1742 1회에서 지웠다) 점수는 세지 않는다. `processChapterRise`는 부르지 않는다(오름 처리는 `auto-fill.ts`가 `reachedChapters`로 부른다). 추첨·RPC 항목 변환·후속 처리는 `rollCapsuleItems`·`toRpcItems`·`recordOpenedItems`로 나뉘어 있고 보류 받기가 같은 추첨을 쓴다.
 - `lib/capsule/claim.ts`의 `claimPendingCapsules`(`POST /api/capsule/claim` 라우트는 티켓 20261105_0105 T5에서 지웠고 지급은 `settle-pending.ts`의 자동 지급만 부른다. 아래 라우트 응답 서술은 옛 동작이다): 이용 정지 확인 → 보류를 `reached_at`·`slot` 순으로 읽기 → 보류마다 추첨 후 `capsule_claim_pending`. `insufficient_slots`에서 멈추고 받은 만큼만 받는다. 라우트는 401, 정지 403(`user_suspended`), 하나도 못 받고 빈칸 모자람 409(`insufficient_slots`, `freeSlots`·`neededSlots`), 받을 보류 없음 409(`no_pending`), `no_tribe`·`capsule_changed` 409, 그 밖은 500이다. 받은 것이 하나 이상이면 응답 뒤에 캡슐 연 횟수 지표를 다시 판정한다.
-- `lib/capsule/sync-auto-fill.ts`의 `runSyncCapsuleAutoFill`: 던지지 않는다. 자동 채움을 돌리고 열린 캡슐이 있으면 `capsule_unseen_results` 한 건을 쓰며, 캡슐 소식은 보내지 않는다(옛 `notifyCapsuleAlerts`의 `capsule_jam_blocked`·`capsule_nearly_full` 발송은 티켓 20261105_0105 T5에서 지웠다. 과거 행 표시 기준은 [notification/PRD.md](notification/PRD.md) 53·54번). 열기 없이 보류만 생긴 동기화는 `capsule_unseen_results`에 쓰지 않는다.
+- `lib/capsule/sync-auto-fill.ts`의 `runSyncCapsuleAutoFill`: 던지지 않는다. 자동 채움을 돌리고 `opened`·`chapterRose`를 돌려줄 뿐 `capsule_unseen_results`에는 쓰지 않으며(티켓 20261106_1028), 캡슐 소식은 보내지 않는다(옛 `notifyCapsuleAlerts`의 `capsule_jam_blocked`·`capsule_nearly_full` 발송은 티켓 20261105_0105 T5에서 지웠다. 과거 행 표시 기준은 [notification/PRD.md](notification/PRD.md) 53·54번).
 - `lib/strava/sync.ts`: 잼 정산(`settleActivities`) 직후에 `runSyncCapsuleAutoFill`을 부른다. 새 활동이 없는 동기화의 이른 반환 경로에서도 맨 앞에서 부른다. 열린 캡슐이 있으면 그 동기화의 끝 판정에 `chapter_reached`와 `jamTriggersForCapsuleOpen()`을 더하고, 열기 없이 챕터만 오른 동기화(`chapterRose`)에는 `chapter_reached`만 더한다.
 - 중복 방지: 잼 정산은 `jam_apply`의 활동 단위 유일성이 지킨다. 자동 채움은 지갑 잔액만 쓰므로 같은 동기화를 다시 보내면 잔액이 0이라 아무 일도 하지 않는다. 원장의 등식은 `받은 잼(+) = 캡슐에 채운 양(−, capsule_fill) + 소멸한 양(−, capsule_forfeit) + 지금 지갑`이다(회수 `admin_deduct`는 따로 뺀다).
 - 대기 보상의 규칙(한 캡슐분, 먼저 추첨한 결과 저장, 칸이 비면 자동 지급)은 운영 로직 5.2절이 원천이고 이 문서는 DB 쪽 사실만 둔다. 보류 줄은 마이그레이션 323이 더한 `drawn_items`(JSONB)에 먼저 뽑은 결과를 담고, 저장 함수는 `capsule_hold_rolled`(323), 지급 함수는 `capsule_claim_pending`(324에서 저장된 항목으로 지급하고 빈칸 ≥ 항목 수일 때만 지급)이다. `capsule_hold_reward`(302)는 옛 함수로 남아 있다. 이용 정지 중에는 `capsule_auto_fill`·`capsule_hold_rolled`·`capsule_claim_pending`이 모두 `user_suspended`로 거절된다.

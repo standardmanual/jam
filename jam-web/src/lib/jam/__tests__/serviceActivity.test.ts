@@ -58,7 +58,6 @@ const fillStep = (extra: Partial<{ opened: boolean; chapterRose: boolean }> = {}
   autoFill: {},
   opened: false,
   chapterRose: false,
-  unseenRecorded: true,
   ...extra,
 })
 

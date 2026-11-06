@@ -86,7 +86,7 @@ beforeEach(() => {
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
   autoFillMock.mockReset()
-  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true })
+  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false })
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
