@@ -138,7 +138,7 @@ export default async function UserProfilePage({ params }: Props) {
 
   const inventoryId = (invResult.data as { id: string } | null)?.id
 
-  // 발견한 아이템북 수 = 인벤토리에 "현재 보유 중인"(드랍하지 않은) 아이템 배지가 연결된, 활성 상태인 아이템북 수
+  // 발견한 아이템북 수 = 인벤토리에 "현재 보유 중인"(드랍하지 않은) 아이템 배지가 연결된 아이템북 수(꺼졌거나 기간이 끝난 것도 센다, 티켓 20261106_1231)
   // + 타인 열람 시에는 아이템배지 슬롯이 1개 이상인 아이템북만
   // (/api/users/[username]/itembooks의 목록 필터 `isOwnList || book.slottedCount > 0`과 반드시
   //  일치시켜야 함 — 안 그러면 숫자와 목록이 어긋남. 20260824_016 정책, 20260903_1949에서 이 카운트에도 반영)
@@ -175,15 +175,12 @@ export default async function UserProfilePage({ params }: Props) {
         bookIdsForCount = bookIdsForCount.filter((id) => slottedBookIds.has(id))
       }
       if (bookIdsForCount.length > 0) {
-        // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
-        const now = new Date().toISOString()
+        // 컬렉션 개수 = 그 사람이 가진 개체가 있는 컬렉션(타인 열람은 슬롯이 있는 것만). is_active·노출 기간 조건은
+        // 걸지 않는다 — 컬렉션 탭 목록과 같은 기준이다(티켓 20261106_1231).
         const { count, error: countError } = await service
           .from('item_books')
           .select('*', { count: 'exact', head: true })
           .in('id', bookIdsForCount)
-          .eq('is_active', true)
-          .or(`valid_from.is.null,valid_from.lte.${now}`)
-          .or(`valid_until.is.null,valid_until.gte.${now}`)
         if (countError) console.error('[[username]/page] item_books 카운트 조회 실패', countError)
         itemBookCount = count ?? 0
       }

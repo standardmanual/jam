@@ -65,9 +65,9 @@ export async function GET(
   const bookIds = [...discoveredByBook.keys()]
   if (bookIds.length === 0) return NextResponse.json({ books: [] })
 
-  // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
-  // 소속 아이템배지의 활성 여부와는 독립적 — 컬렉션이 비활성/기간 밖이면 컬렉션만 숨긴다.
-  const now = new Date().toISOString()
+  // 컬렉션 노출 판정 = 그 사람이 가진 개체가 있는 컬렉션(bookIds). is_active·노출 기간 조건은 걸지 않는다 —
+  // 꺼졌거나 기간이 끝난 컬렉션도 가진 사람의 프로필에는 켜진 컬렉션과 똑같이 보인다(티켓 20261106_1231, 운영 로직 8.3절).
+  // 타인 열람에서 슬롯이 0개인 컬렉션을 숨기는 규칙은 아래 filter가 그대로 맡는다.
   const [
     { data: booksRaw, error: booksError },
     { data: bookBadgesRaw, error: bookBadgesError },
@@ -78,10 +78,7 @@ export async function GET(
       service
       .from('item_books')
       .select('id, name, image_url, tier_mode, tribe:tribes(name)')
-      .in('id', bookIds)
-      .eq('is_active', true)
-      .or(`valid_from.is.null,valid_from.lte.${now}`)
-      .or(`valid_until.is.null,valid_until.gte.${now}`),
+      .in('id', bookIds),
       service.from('badges').select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at, created_at').in('item_book_id', bookIds).in('type', [...COMPLETION_BADGE_TYPES]).is('deleted_at', null).order('created_at', { ascending: true }),
       service.from('user_item_book_slots').select('item_book_id, badge_id').eq('user_id', userId).in('item_book_id', bookIds),
       service.from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
