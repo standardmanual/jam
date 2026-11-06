@@ -11,6 +11,8 @@
  *  - 필터: 새 두 종류는 «전체» 탭에서만 보이고 배지·아이템·미션 탭에는 나오지 않는다. 활동 id가 없는 행이라 활동 묶음 카드에 섞이지 않는다.
  *  - 시트: 종류 라벨(muted), 제목 h2, 등급 칩(common 제외), 일시 행 하나, «닫기» 버튼만 있다(«상세» 버튼 없음). 제목이 비면 라벨이 h2 자리에 와서 `aria-labelledby`가 빈 h2를 가리키지 않는다.
  *
+ * 티켓 20261106_2252: 카드는 `ListRow`(서비스 사본)다. 마크업은 슬롯 스타일로 고정한다 — eyebrow(12px muted) `font-weight:400`, 제목(16px 굵게) `font-weight:700`.
+ *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/FeedSection.test.tsx"
  */
 import type { ReactNode } from 'react'
@@ -23,7 +25,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import FeedSection, { DetailSheet, EventIcon, feedTitle, matchesFilter } from './FeedSection'
+import FeedSection, { DetailSheet, EventIcon, eventLabelText, feedTitle, matchesFilter } from './FeedSection'
 import {
   BookIcon,
   CheckCircleIcon,
@@ -72,6 +74,11 @@ function renderSheet(item: ActivityFeedRow): string {
 function visibleText(html: string): string {
   return html.replace(/<[^>]*>/g, '')
 }
+
+/** ListRow 슬롯 조각 — eyebrow·시간은 굵기 400, 제목은 700으로 그려진다 */
+const eyebrowOf = (text: string) => `font-weight:400">${text}</span>`
+const titleOf = (text: string) => `font-weight:700">${text}</span>`
+const leadOf = (inner: string) => new RegExp(`class="ds-list-row-lead"[^>]*>${inner.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</span>`)
 
 function icon(Component: (props: { className?: string }) => ReactNode, className: string): string {
   return renderToStaticMarkup(<Component className={className} />)
@@ -175,20 +182,20 @@ describe('feedTitle', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('챕터 오름 카드', () => {
-  it('«챕터 오름» 라벨(muted) 아래 «챕터 3» 제목(foreground) 두 줄이다', () => {
+  it('«챕터 오름» 라벨(muted) 아래 «챕터 3» 제목(굵게) 두 줄이다', () => {
     const html = renderFeed([CHAPTER])
 
-    expect(html).toContain('text-base text-muted line-clamp-2 break-keep wrap-break-word">챕터 오름</p>')
-    expect(html).toContain('text-base text-foreground truncate break-keep wrap-break-word">챕터 3</p>')
+    expect(html).toContain(eyebrowOf('챕터 오름'))
+    expect(html).toContain(titleOf('챕터 3'))
     expect(html.indexOf('챕터 오름')).toBeLessThan(html.indexOf('챕터 3<'))
   })
 
-  it('왼쪽은 40x40 중립 타일 안의 메달 아이콘이다', () => {
+  it('왼쪽은 lead 박스 안의 메달 아이콘이다 — 타일 래퍼를 또 만들지 않는다', () => {
     const html = renderFeed([CHAPTER])
 
-    expect(html).toContain(
-      `<div class="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">${icon(MedalIcon, 'w-5 h-5 text-foreground')}</div>`
-    )
+    expect(html).toMatch(leadOf(icon(MedalIcon, 'w-5 h-5 text-foreground')))
+    expect(html).not.toContain('w-10 h-10')
+    expect(html).not.toContain('bg-background-secondary')
   })
 
   it('오른쪽에 상대 시각이 보이고 축하 문구·이모지·등급 칩이 없다', () => {
@@ -206,7 +213,8 @@ describe('챕터 오름 카드', () => {
 
       expect(visibleText(broken)).toContain('챕터 오름')
       expect(visibleText(broken)).not.toContain('챕터 0')
-      expect(broken).not.toContain('text-foreground truncate')
+      // 제목 줄(굵기 700)이 없고, 빈 제목 줄을 만들지 않는다
+      expect(broken).not.toContain('font-weight:700')
     }
   })
 })
@@ -215,11 +223,10 @@ describe('컬렉션 완성 카드', () => {
   it('«컬렉션 완성» 라벨 아래 컬렉션 이름이 한 줄 말줄임으로 보이고, 왼쪽은 책 아이콘 타일이다', () => {
     const html = renderFeed([COLLECTION_COMMON])
 
-    expect(html).toContain('text-base text-muted line-clamp-2 break-keep wrap-break-word">컬렉션 완성</p>')
-    expect(html).toContain('text-base text-foreground truncate break-keep wrap-break-word">한강 컬렉션</p>')
-    expect(html).toContain(
-      `<div class="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">${icon(BookIcon, 'w-5 h-5 text-foreground')}</div>`
-    )
+    expect(html).toContain(eyebrowOf('컬렉션 완성'))
+    expect(html).toContain(titleOf('한강 컬렉션'))
+    expect(html).toMatch(leadOf(icon(BookIcon, 'w-5 h-5 text-foreground')))
+    expect(html).toContain('white-space:nowrap')
   })
 
   it('common이면 등급 칩이 없다 — «Common»을 따로 그리지 않는다', () => {
@@ -250,7 +257,7 @@ describe('컬렉션 완성 카드', () => {
     const html = renderFeed([row('collection_tier_completed', { collection_name: '', rarity: 'rare' })])
 
     expect(visibleText(html)).toContain('컬렉션 완성')
-    expect(html).not.toContain('text-foreground truncate')
+    expect(html).not.toContain('text-overflow:ellipsis')
     expect(visibleText(html)).toContain('Rare')
   })
 })
@@ -261,8 +268,8 @@ describe('두 종류가 함께 있을 때', () => {
 
     expect(html).not.toContain('aria-expanded')
     expect(html).not.toContain('t-acc')
-    // 필터 탭 버튼 4개를 뺀 카드(`jam-press` 행)가 셋이다
-    expect((html.match(/jam-press/g) ?? []).length).toBe(3)
+    // 필터 탭 버튼 4개를 뺀 카드(ListRow 행)가 셋이다
+    expect((html.match(/class="ds-list-row"/g) ?? []).length).toBe(3)
   })
 
   it('«전체» 탭에서만 보인다 — 배지·아이템·미션 탭에는 나오지 않는다', () => {
@@ -283,6 +290,163 @@ describe('두 종류가 함께 있을 때', () => {
 
   it('피드가 비면 기존 빈 상태 안내가 보인다', () => {
     expect(visibleText(renderFeed([]))).toContain(d.feed.emptyTitle)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ListRow로 옮긴 활동 행·활동 묶음 행 (티켓 20261106_2252)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CHECKIN_REPEAT = row('badge_earned', { badge_id: 'b1', badge_name: '한강 체크인', poi_name: '반포', visit_count: 3 })
+const ACTIVITY_BADGE_REPEAT = row('badge_earned', { badge_id: 'b2', badge_name: '아침 러너', earn_count: 4 })
+
+describe('eventLabelText — 카드 라벨은 평문 문자열이다', () => {
+  it('첫 체크인·N번째 체크인·활동 배지 N번째·나머지 종류가 ko.ts 문구와 같다', () => {
+    expect(eventLabelText(row('badge_earned', { poi_name: '반포', visit_count: 1 }))).toBe(d.feed.eventCheckin)
+    expect(eventLabelText(CHECKIN_REPEAT)).toBe('3번째 체크인 했어요')
+    expect(eventLabelText(ACTIVITY_BADGE_REPEAT)).toBe('4번째 획득했어요')
+    expect(eventLabelText(row('badge_earned', {}))).toBe(d.feed.eventBadgeEarned)
+    expect(eventLabelText(row('item_dropped', { tribe_name: '아스팔트 레인저' }))).toBe(d.feed.eventItemEarned)
+    expect(eventLabelText(row('item_dropped', {}))).toBe(d.feed.eventItemDropped)
+    expect(eventLabelText(row('item_picked_up', {}))).toBe(d.feed.eventItemPickedUp)
+    expect(eventLabelText(row('mission_joined', {}))).toBe(d.feed.eventMissionJoined)
+    expect(eventLabelText(row('mission_completed', {}))).toBe(d.feed.eventMissionCompleted)
+    expect(eventLabelText(row('mission_cancelled', {}))).toBe(d.feed.eventMissionCancelled)
+    expect(eventLabelText(CHAPTER)).toBe(d.feed.eventChapterUp)
+    expect(eventLabelText(COLLECTION_COMMON)).toBe(d.feed.eventCollectionTierCompleted)
+  })
+})
+
+describe('활동 행(FeedCard) — ListRow', () => {
+  it('반복 획득: «N번째»는 숫자 강조 없이 한 덩어리 문장이고, 시간이 같은 줄 오른쪽에 있으며, ×N은 lead 모서리 필이다', () => {
+    const html = renderFeed([CHECKIN_REPEAT])
+
+    expect(html).toContain(eyebrowOf('3번째 체크인 했어요'))
+    expect(html).not.toContain('<strong')
+    // eyebrow 줄(space-between) 안에서 라벨 바로 뒤에 시간이 온다
+    expect(html).toMatch(/3번째 체크인 했어요<\/span><span style="flex-shrink:0;white-space:nowrap[^"]*">1시간 전<\/span>/)
+    expect(html).toMatch(/background:var\(--foreground\);color:var\(--snow\)[^>]*>×3<\/span>/)
+    // 옛 카드 모양(40×40 타일·18px 필·trailing 시각)이 남지 않는다
+    expect(html).not.toContain('w-10 h-10')
+    expect(html).not.toContain('min-w-[18px]')
+  })
+
+  it('활동 배지 반복(earn_count)도 ×N과 «N번째 획득했어요»가 붙는다', () => {
+    const html = renderFeed([ACTIVITY_BADGE_REPEAT])
+
+    expect(html).toContain(eyebrowOf('4번째 획득했어요'))
+    expect(html).toContain('>×4</span>')
+  })
+
+  it('배지 이미지는 장식(alt="")이고 제목은 본문 텍스트로 한 번만 읽힌다', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너', badge_image_url: '/badge.png' })])
+
+    expect(html).toContain('alt=""')
+    expect(html).not.toContain('alt="아침 러너"')
+    expect(html).toContain(titleOf('아침 러너'))
+  })
+
+  it('이미지가 없으면 폴백 이벤트 아이콘만 lead에 들어간다 — 래퍼 타일이 없다', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너' })])
+
+    expect(html).toMatch(leadOf(icon(MedalIcon, 'w-5 h-5 text-foreground')))
+  })
+
+  it('제목 줄은 1줄 말줄임 스타일이다(nowrap·ellipsis·hidden)', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아주 긴 배지 이름'.repeat(8) })])
+
+    expect(html).toContain(
+      'display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto;font-size:var(--text-base);line-height:var(--text-base--line-height);font-weight:700'
+    )
+  })
+
+  it('칩이 없으면 칩 줄을, 부제가 없으면 부제 줄을 그리지 않는다 — 빈 줄·여백이 없다', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너', rarity: 'common' })])
+
+    expect(html).not.toContain('margin-top:var(--spacing-4)')
+    expect(html).not.toContain('font-size:var(--text-sm)')
+  })
+
+  it('부제(장소)와 등급 칩이 있으면 제목 아래 부제 14px, 그 아래 칩 줄이다', () => {
+    const html = renderFeed([row('item_picked_up', { badge_name: '파편', poi_name: '반포 한강공원', rarity: 'rare' })])
+
+    expect(html).toContain('font-size:var(--text-sm)')
+    expect(visibleText(html)).toContain('반포 한강공원')
+    expect(html.indexOf('반포 한강공원')).toBeLessThan(html.indexOf('Rare'))
+    expect(html).toContain('margin-top:var(--spacing-4)')
+  })
+
+  it('«마지막 파편!»은 neutral 칩이고 퍼즐 아이콘이 앞에 온다 — 한 행에서 색 강조는 등급 칩 쪽뿐이다', () => {
+    const html = renderFeed([row('item_dropped', { badge_name: '파편', tribe_name: '아스팔트 레인저', is_last_piece: true })])
+
+    expect(html).toContain(d.feed.lastPiece)
+    expect(html).toMatch(/background:var\(--default-soft\)[^>]*><svg[^>]*class="w-3 h-3"/)
+    expect(html).not.toContain('var(--accent-soft)')
+    expect(html).not.toContain('var(--warning)')
+  })
+
+  it('행 안(lead)에는 div가 없다 — button 안에서 마크업이 유효하다', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너', badge_image_url: '/badge.png', earn_count: 2 })])
+    const hit = html.slice(html.indexOf('<button type="button" class="ds-list-row-hit"'), html.indexOf('</button>'))
+
+    expect(hit).not.toContain('<div')
+  })
+})
+
+describe('활동 묶음 행(ActivityGroupCard) — ListRow media', () => {
+  const A = row('badge_earned', { badge_id: 'b1', badge_name: '아침 러너', badge_image_url: '/a.png' }, { id: 'g-1', strava_activity_id: 77 })
+  const B = row('item_dropped', { badge_id: 'b2', badge_name: '파편', badge_image_url: null }, { id: 'g-2', strava_activity_id: 77 })
+  const renderGroup = (names?: Record<string, string>) =>
+    renderToStaticMarkup(<FeedSection feedItems={[A, B]} activityNames={names} />)
+
+  it('쉐브론 없이 aria-expanded=false와 aria-controls가 패널 id로 연결되고, 접힌 패널은 inert다', () => {
+    const html = renderGroup({ '77': '아침 한강 러닝' })
+    const controls = html.match(/aria-controls="([^"]+)"/)?.[1]
+
+    expect(html).toContain('aria-expanded="false"')
+    expect(controls).toBeTruthy()
+    expect(html).toContain(`id="${controls}" class="t-acc-panel"`)
+    expect(html).toMatch(/class="t-acc-panel-inner -mr-1" inert=""/)
+    // 쉐브론(ChevronRightIcon 경로)이 없다
+    expect(html).not.toContain('M9 5l7 7-7 7')
+    expect(html).not.toContain('t-acc-chevron')
+  })
+
+  it('media라 lead가 위쪽 정렬이고, 활동 이름은 eyebrow·헤드라인은 제목이다', () => {
+    const html = renderGroup({ '77': '아침 한강 러닝' })
+
+    expect(html).toContain('display:flex;align-items:flex-start;flex:1 1 auto')
+    expect(html).toContain(eyebrowOf('아침 한강 러닝'))
+    expect(html).toContain(titleOf(d.feed.groupBadges.replace('{count}', '2')))
+  })
+
+  it('활동 이름이 없으면 eyebrow 줄이 없고 시간이 제목 줄 오른쪽으로 간다', () => {
+    // 패널 안 활동 행에는 eyebrow가 있으므로 묶음 헤더(패널 앞)만 본다
+    const html = renderGroup().split('class="t-acc-panel"')[0]
+    const titleRow = html.slice(html.indexOf('align-items:baseline'))
+
+    expect(html).not.toContain('justify-content:space-between;gap:var(--spacing-8)')
+    expect(titleRow).toMatch(/font-weight:700">[^<]*<\/span><span style="flex-shrink:0;white-space:nowrap[^"]*">1시간 전<\/span>/)
+  })
+
+  it('썸네일 줄은 footer로 가고 aria-hidden이다', () => {
+    const html = renderGroup({ '77': '아침 한강 러닝' })
+
+    expect(html).toContain('<span style="display:block;margin-top:var(--spacing-8)"><span class="inline-flex items-center gap-1" aria-hidden="true">')
+  })
+
+  it('썸네일이 하나도 없으면 footer를 그리지 않는다', () => {
+    const noImage = (r: ActivityFeedRow) => ({ ...r, metadata: { ...(r.metadata as object), badge_image_url: null } }) as ActivityFeedRow
+    const html = renderToStaticMarkup(<FeedSection feedItems={[noImage(A), noImage(B)]} />)
+
+    expect(html).not.toContain('margin-top:var(--spacing-8)"><span class="inline-flex')
+  })
+
+  it('펼친 패널 안에는 같은 ListRow 행이 쌓인다', () => {
+    const html = renderGroup()
+
+    // 묶음 헤더 1 + 패널 안 활동 행 2
+    expect((html.match(/class="ds-list-row"/g) ?? []).length).toBe(3)
   })
 })
 
@@ -349,6 +513,12 @@ describe('상세 시트', () => {
     expect(h2?.[2]).toBe(label)
     expect(html.match(/aria-labelledby="([^"]+)"/)?.[1]).toBe(h2?.[1])
     expect(html).not.toContain('text-center text-base text-muted mb-1')
+  })
+
+  it('반복 체크인 시트는 «N번째» 숫자를 계속 강조한다 — 카드만 평문이다', () => {
+    const html = renderSheet(CHECKIN_REPEAT)
+
+    expect(html).toContain('<strong class="font-bold text-foreground">3</strong>')
   })
 
   it('기존 배지 획득 시트는 그대로다 — 라벨 줄, 배지 이름 h2, 상세 버튼', () => {

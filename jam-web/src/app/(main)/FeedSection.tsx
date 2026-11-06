@@ -12,7 +12,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import Button from '@/components/ui/Button'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import {
@@ -25,7 +25,6 @@ import {
   XCircleIcon,
   PuzzleIcon,
   InboxIcon,
-  ChevronRightIcon,
   ActivityIcon,
 } from '@/components/ui/icons'
 
@@ -116,6 +115,8 @@ export function EventIcon({ type, className }: { type: ActivityFeedEventType; cl
  * 20260905_0038 B — 체크인 전용(`CheckinCountBadge`)이었던 것을 **획득 횟수 공용**으로 넓혔다.
  * 액티비티 배지의 반복형도 같은 필을 쓴다(새 컴포넌트를 만들지 않는다). 두 축의 출처가 다르다:
  * 체크인은 `metadata.visit_count`, 액티비티 배지는 `metadata.earn_count`(hydrate가 채운다).
+ *
+ * 티켓 20261106_2252: 피드 카드는 `ListRow`의 `leadBadge`로 옮겨 갔고, 이 필은 **상세 시트(`DetailSheet`)만** 쓴다(시트는 4단계 1배치 범위 밖).
  */
 function EarnCountBadge({ count }: { count: number }) {
   return (
@@ -266,6 +267,29 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
         </>
       )
     }
+  }
+  return EVENT_LABEL[item.event_type]
+}
+
+
+/**
+ * 카드(`FeedCard`)용 라벨 — `eventLabel`과 같은 판정이되 **평문 문자열**이다(티켓 20261106_2252 판정 1).
+ * `ListRow`의 `eyebrow`는 문자열이면 한 덩어리 문장(최대 2줄)으로, ReactNode면 칩 줄로 그려진다.
+ * `eventLabel`의 «N번째» 숫자 `<strong>`을 그대로 넣으면 문장이 쪼개져 4px 간격이 끼므로 카드는 이 함수를 쓴다.
+ * 숫자 강조는 상세 시트(`DetailSheet`)가 `eventLabel`로 계속 맡는다. 문구는 ko.ts 템플릿을 `t()`로 채운다.
+ */
+export function eventLabelText(item: ActivityFeedRow): string {
+  if (item.event_type === 'item_dropped') {
+    const meta = item.metadata as Record<string, unknown>
+    return meta.tribe_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
+  }
+  const checkin = checkinInfo(item)
+  if (checkin) {
+    return checkin.visitCount <= 1 ? d.feed.eventCheckin : t(d.feed.eventCheckinRepeat, { visitCount: checkin.visitCount })
+  }
+  if (item.event_type === 'badge_earned') {
+    const earnCount = earnCountOf(item)
+    if (earnCount != null) return t(d.feed.eventBadgeEarnedRepeat, { count: earnCount })
   }
   return EVENT_LABEL[item.event_type]
 }
@@ -501,45 +525,39 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
   const earnCount = earnCountOf(item)
 
   return (
-    <ListRowCard
+    <ListRow
       onClick={onClick}
-      icon={
-        <div className="relative">
-          <SafeImage
-            src={badgeImage}
-            alt={title}
-            width={40}
-            height={40}
-            className="w-10 h-10 rounded-2xl object-cover"
-            fallback={
-              <div className="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">
-                <EventIcon type={item.event_type} className="w-5 h-5 text-foreground" />
-              </div>
-            }
-          />
-          {earnCount != null && <EarnCountBadge count={earnCount} />}
-        </div>
+      lead={
+        // 이미지는 제목이 본문에 이미 있어 장식(alt="")이다. 크기는 ListRow의 `.ds-list-row-lead img` 규칙이 48 박스에 채운다.
+        // 폴백 아이콘은 타일 래퍼 없이 아이콘만 둔다 — lead 박스가 이미 면과 모서리를 준다.
+        <SafeImage
+          src={badgeImage}
+          alt=""
+          width={48}
+          height={48}
+          fallback={<EventIcon type={item.event_type} className="w-5 h-5 text-foreground" />}
+        />
       }
-      trailing={
-        <span className="text-base text-muted">{formatRelativeTime(item.created_at)}</span>
+      leadBadge={earnCount != null ? `×${earnCount}` : undefined}
+      eyebrow={eventLabelText(item)}
+      time={formatRelativeTime(item.created_at)}
+      // 제목·부제·칩이 비면 빈 문자열·false가 아니라 undefined를 준다 — 빈 줄과 여백이 생기지 않는다.
+      title={title || undefined}
+      meta={sub || undefined}
+      chips={
+        badgeChip || isLastPiece ? (
+          <>
+            {badgeChip}
+            {isLastPiece && (
+              <ListRowChip tone="neutral" style={{ gap: 'var(--spacing-4)' }}>
+                <PuzzleIcon className="w-3 h-3" />
+                {d.feed.lastPiece}
+              </ListRowChip>
+            )}
+          </>
+        ) : undefined
       }
-    >
-      <p className="text-base text-muted line-clamp-2 break-keep wrap-break-word">{eventLabel(item)}</p>
-      {/* 제목이 비면(챕터 번호·컬렉션 이름 손상) 제목 줄을 그리지 않고 라벨 한 줄만 둔다 */}
-      {title && <p className="text-base text-foreground truncate break-keep wrap-break-word">{title}</p>}
-      {sub && <p className="text-base text-muted truncate">{sub}</p>}
-      {(badgeChip || isLastPiece) && (
-        <span className="inline-flex items-center gap-2 mt-1">
-          {badgeChip}
-          {isLastPiece && (
-            <span className="inline-flex items-center gap-1 text-xs leading-none px-2 py-1 rounded-full bg-background text-foreground">
-              <PuzzleIcon className="w-3 h-3" />
-              {d.feed.lastPiece}
-            </span>
-          )}
-        </span>
-      )}
-    </ListRowCard>
+    />
   )
 }
 
@@ -718,56 +736,46 @@ function ActivityGroupCard({
 
   return (
     <div className="t-acc" data-open={open}>
-      <ListRowCard
+      <ListRow
+        variant="media"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
-        icon={
-          <div className="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">
-            <ActivityIcon className="w-5 h-5 text-foreground" />
-          </div>
-        }
-        trailing={
-          <span className="inline-flex items-center gap-2">
-            <span className="text-base text-muted">
-              {formatRelativeTime(items[0].created_at)}
+        lead={<ActivityIcon className="w-5 h-5 text-foreground" />}
+        // 이름이 없으면 eyebrow를 주지 않는다 — ListRow가 시간을 제목 줄 오른쪽으로 옮긴다.
+        eyebrow={activityName || undefined}
+        time={formatRelativeTime(items[0].created_at)}
+        title={headline}
+        footer={
+          shownThumbs.length > 0 ? (
+            <span className="inline-flex items-center gap-1" aria-hidden="true">
+              {shownThumbs.map((src, i) => (
+                <SafeImage
+                  key={`${src}_${i}`}
+                  src={src}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 rounded-full object-cover"
+                  fallback={<span className="w-6 h-6 rounded-full bg-background-secondary" />}
+                />
+              ))}
+              {restCount > 0 && (
+                <span className="text-xs leading-none text-muted">
+                  {t(d.feed.groupMoreCount, { count: restCount })}
+                </span>
+              )}
             </span>
-            <ChevronRightIcon className="t-acc-chevron t-acc-chevron-right w-4 h-4 text-muted" />
-          </span>
+          ) : undefined
         }
-      >
-        {activityName && (
-          <p className="text-base text-muted truncate">
-            {activityName}
-          </p>
-        )}
-        <p className="text-base text-foreground truncate">{headline}</p>
-        {shownThumbs.length > 0 && (
-          <span className="inline-flex items-center gap-1 mt-1" aria-hidden="true">
-            {shownThumbs.map((src, i) => (
-              <SafeImage
-                key={`${src}_${i}`}
-                src={src}
-                alt=""
-                width={24}
-                height={24}
-                className="w-6 h-6 rounded-full object-cover"
-                fallback={<span className="w-6 h-6 rounded-full bg-background-secondary" />}
-              />
-            ))}
-            {restCount > 0 && (
-              <span className="text-xs leading-none text-muted">
-                {t(d.feed.groupMoreCount, { count: restCount })}
-              </span>
-            )}
-          </span>
-        )}
-      </ListRowCard>
+      />
       <div id={panelId} className="t-acc-panel">
         {/* 접힌 동안에도 DOM에 남아야 높이 트랜지션이 성립한다. 대신 inert로
             키보드 포커스·보조기술 노출에서 완전히 빼 유령 포커스를 막는다. */}
-        <div className="t-acc-panel-inner" inert={!open}>
-          <div className="flex flex-col gap-2 pt-2 pl-4">
+        {/* 패널 안 행의 포커스 링(밖으로 4px)이 overflow:hidden 가장자리에서 잘리지 않게 오른쪽·아래에 여백을 둔다.
+            오른쪽은 -mr-1로 잘림 상자를 넓히고 pr-1로 행 폭을 되돌려 묶음 행과 오른쪽 끝을 맞춘다(티켓 20261106_2252 판정 4). */}
+        <div className="t-acc-panel-inner -mr-1" inert={!open}>
+          <div className="flex flex-col gap-2 pt-2 pl-4 pr-1 pb-1">
             {items.map((item) => (
               <FeedCard key={item.id} item={item} onClick={() => onItemClick(item)} />
             ))}

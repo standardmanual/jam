@@ -91,15 +91,15 @@ describe('미등록 호스트 이미지 URL이어도 컴포넌트가 예외 없�
     expect(html).toContain(UNREGISTERED)
   })
 
-  it('FeedSection — 단건 카드(40px)와 활동 묶음 썸네일(24px)', () => {
+  it('FeedSection — 단건 카드(48px lead)와 활동 묶음 썸네일(24px)', () => {
     const feedItems = [
       feedRow('single', { metadata: { badge_id: 'b0', badge_name: '단건', badge_image_url: UNREGISTERED } }),
       feedRow('g1', { strava_activity_id: 1, metadata: { badge_id: 'b1', badge_name: '묶음1', badge_image_url: UNREGISTERED } }),
       feedRow('g2', { strava_activity_id: 1, metadata: { badge_id: 'b2', badge_name: '묶음2', badge_image_url: UNREGISTERED } }),
     ]
     const html = renderToStaticMarkup(<FeedSection feedItems={feedItems} />)
-    // 단건 카드 40px + 묶음 썸네일 24px×2 + 묶음을 펼쳤을 때의 카드 40px×2(접힌 패널도 DOM에 남는다)
-    expect(html).toContain('width="40"')
+    // 단건 카드 48px(ListRow lead) + 묶음 썸네일 24px×2 + 묶음을 펼쳤을 때의 카드 48px×2(접힌 패널도 DOM에 남는다)
+    expect(html).toContain('width="48"')
     expect(html).toContain('width="24"')
     expect(html).toContain(UNREGISTERED)
   })
