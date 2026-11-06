@@ -170,6 +170,15 @@ export function ChevronRightIcon(props: IconProps) {
   )
 }
 
+/** 펼침 쉐브론 — DS IconCatalog.jsx의 ChevronDownIcon과 같은 경로 값 */
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 9l7 7 7-7" />
+    </Svg>
+  )
+}
+
 export function CloseIcon(props: IconProps) {
   return (
     <Svg {...props}>
