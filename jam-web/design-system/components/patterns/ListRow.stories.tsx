@@ -451,14 +451,14 @@ type FeedCase = {
   time: string;
 };
 
-// 사용자가 보낸 프로필 피드 화면의 행 구성(파우치 아이템 픽업 1건 + 배지 획득 5건)을 호출부 형태로 옮겼다.
+// 사용자가 보낸 프로필 피드 화면(2026-11-06)의 행 6개를 그대로 옮겼다: 파우치 아이템 픽업 1건 + 배지 획득 5건(Lv 칩만 있고 등급 칩은 없다).
 const FEED_CASES: FeedCase[] = [
-  { icon: <PackageIcon />, label: '아이템 픽업', title: '파우치', sub: '서울숲 입구', rarity: 'rare', lastPiece: true, count: 2, time: '3분 전' },
-  { icon: <MedalIcon />, label: '배지 획득', title: '한강 러너', sub: '5km 러닝을 마쳤어요', rarity: 'rare', time: '1시간 전' },
-  { icon: <MedalIcon />, label: '배지 획득', title: '아침 러너', sub: '오전 7시 이전 러닝', rarity: 'common', time: '1시간 전' },
-  { icon: <MedalIcon />, label: '배지 획득', title: '누적 거리왕', rarity: 'epic', level: 12, time: '어제' },
-  { icon: <MedalIcon />, label: '배지 획득', title: '야간 러너', sub: '오후 9시 이후 러닝', rarity: 'common', time: '어제' },
-  { icon: <MedalIcon />, label: '배지 획득', title: '첫 러닝', rarity: 'common', time: '10월 30일' },
+  { icon: <PackageIcon />, label: '아이템 픽업', title: '파우치', sub: '이마트24 디저트랩서울숲점', rarity: 'common', time: '7시간 전' },
+  { icon: <MedalIcon />, label: '배지 획득', title: '봉투 속 한 장', rarity: 'common', level: 1, time: '7시간 전' },
+  { icon: <MedalIcon />, label: '배지 획득', title: '건너온 물건 칸', rarity: 'common', level: 1, time: '7시간 전' },
+  { icon: <MedalIcon />, label: '배지 획득', title: '건너온 물건 칸', rarity: 'common', level: 3, time: '7시간 전' },
+  { icon: <MedalIcon />, label: '배지 획득', title: '건너온 물건 칸', rarity: 'common', level: 2, time: '7시간 전' },
+  { icon: <MedalIcon />, label: '배지 획득', title: '입양 칸에서 온 물건', rarity: 'common', level: 5, time: '7시간 전' },
 ];
 
 /** 지금 모양(조사 A1): 40px 타일 + ×N 필, 줄마다 16px, 시간 16px muted, 등급·Lv 칩 8px. 인라인 마크업으로 재현한 비교용이다. */
