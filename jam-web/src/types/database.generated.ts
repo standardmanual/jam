@@ -1500,6 +1500,29 @@ export type Database = {
           },
         ]
       }
+      issued_item_books: {
+        Row: {
+          first_issued_at: string
+          item_book_id: string
+        }
+        Insert: {
+          first_issued_at?: string
+          item_book_id: string
+        }
+        Update: {
+          first_issued_at?: string
+          item_book_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issued_item_books_item_book_id_fkey"
+            columns: ["item_book_id"]
+            isOneToOne: true
+            referencedRelation: "item_books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_book_tier_default_rewards: {
         Row: {
           reward_points: number
