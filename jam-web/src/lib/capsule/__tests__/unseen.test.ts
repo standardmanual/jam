@@ -4,7 +4,7 @@
  * 고정하는 것:
  * - 읽기: `seen_at IS NULL`인 본인 행을 오래된 순서로 최대 50건 읽고, 이벤트를 행 순서·행 안 순서 그대로 이어 붙여 하나로 합친다. 읽을 행이 없으면 null.
  * - 깨진 행(version 불일치, events가 배열이 아님, 이벤트 모양 불일치)은 건너뛰고 로그만 남기며 `ids`에 넣지 않는다. 읽을 수 있는 행이 하나도 없으면 null.
- * - 화면용 이벤트는 `openId`·`items`·`reachedChapters`만 싣는다(`buildCapsuleResultView`의 입력을 만족한다).
+ * - 화면용 이벤트는 `openId`·`items`·`reachedChapters`만 싣는다(합친 연출이 쓰던 입력 모양 그대로다).
  * - 챕터 배지: 합친 `reachedChapters`의 챕터를 조건으로 하는 액티비티 배지 가운데 유저가 이미 가진 것만, 챕터가 낮은 순서로 싣는다. 오른 챕터가 없으면 조회하지 않는다.
  *   배지 조회가 실패(오류·예외)해도 결과는 내리고 `chapterBadges: []`다. 행 조회가 실패하면 던진다.
  * - 레이아웃용 읽기(`readUnseenCapsuleResultOrNull`, 3회): 행 조회가 던져도 던지지 않고 로그만 남긴 뒤 null을 돌려준다. 성공하면 `readUnseenCapsuleResult`와 같은 값이다.
@@ -19,7 +19,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 vi.mock('@/lib/notifications', () => ({ createNotification: vi.fn() }))
 vi.mock('../auto-fill', () => ({ runCapsuleAutoFill: vi.fn() }))
 
-import { buildCapsuleResultView } from '../result-overlay-model'
 import { markUnseenCapsuleResultsSeen, readUnseenCapsuleResult, readUnseenCapsuleResultOrNull } from '../unseen'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
@@ -112,10 +111,7 @@ describe('readUnseenCapsuleResult', () => {
     })
     const result = await readUnseenCapsuleResult(client, USER_ID)
     expect(result?.events[0]).toEqual({ openId: 'open-1', items: [ITEM, LOCKED], reachedChapters: [] })
-
-    const view = buildCapsuleResultView(result!.events, result!.chapterBadges)
-    expect(view?.titleKind).toBe('full')
-    expect(view?.rewardCount).toBe(2)
+    expect(result?.events).toHaveLength(1)
   })
 
   it('깨진 행은 건너뛰고 로그만 남기며 ids에 넣지 않는다', async () => {
@@ -172,7 +168,7 @@ describe('readUnseenCapsuleResult', () => {
       expect(result?.chapterBadges.map((b) => b.id)).toEqual(['badge-3'])
     })
 
-    it('여러 행의 오른 챕터를 합쳐 한 번에 조회하고 표시 모델은 가장 높은 챕터로 제목을 정한다', async () => {
+    it('여러 행의 오른 챕터를 합쳐 한 번에 조회한다', async () => {
       const { client, calls } = fakeClient({
         capsule_unseen_results: { data: [row('r1', [event(1, { reachedChapters: [2] })]), row('r2', [event(2, { reachedChapters: [3, 4] })])] },
         badges: { data: BADGE_ROWS },
@@ -180,9 +176,8 @@ describe('readUnseenCapsuleResult', () => {
       })
       const result = await readUnseenCapsuleResult(client, USER_ID)
       expect(calls.badges.filter((c) => c.method === 'in')).toHaveLength(1)
-      const view = buildCapsuleResultView(result!.events, result!.chapterBadges)
-      expect(view).toMatchObject({ titleKind: 'chapter', chapterNo: 4 })
-      expect(view?.rewards.at(-1)).toMatchObject({ kind: 'chapterBadge' })
+      expect(result?.events.flatMap((e) => e.reachedChapters)).toEqual([2, 3, 4])
+      expect(result?.chapterBadges.map((b) => b.id)).toEqual(['badge-3'])
     })
 
     it('오른 챕터가 없으면 배지를 조회하지 않는다', async () => {

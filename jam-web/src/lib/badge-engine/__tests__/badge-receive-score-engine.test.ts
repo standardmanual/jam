@@ -246,7 +246,7 @@ vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => true) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
 vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true }),
+  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false }),
 }))
 vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {

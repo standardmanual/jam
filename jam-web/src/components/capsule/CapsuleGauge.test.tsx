@@ -16,7 +16,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX, gaugeCircleDiameter } from './CapsuleGauge'
 import { capsuleNumberPlacement, capsuleNumberText } from '@/lib/capsule/capsule-gauge'
-import { CapsuleResultContext } from './capsuleResultContext'
 
 const LABEL = '캡슐, 채우는 중이에요'
 const render = (filled: number, required: number) => renderToStaticMarkup(<CapsuleGauge filled={filled} required={required} ariaLabel={LABEL} />)
@@ -119,19 +118,13 @@ describe('채운 양의 숫자', () => {
     expect(html).toContain(`aria-label="${LABEL}"`)
   })
 
-  it('처음 그릴 때(채움이 시작하기 전)와 붙들려 있는 동안 숫자는 투명하다', () => {
-    const heldHtml = (filled: number) =>
-      renderToStaticMarkup(
-        <CapsuleResultContext.Provider value={{ gaugeHeld: true, resultPending: true, registerGaugeFill: () => {} }}>
-          <CapsuleGauge filled={filled} required={300} ariaLabel={LABEL} />
-        </CapsuleResultContext.Provider>
-      )
-    for (const html of [render(120, 300), render(200, 300), heldHtml(120), heldHtml(200)]) {
+  it('처음 그릴 때(채움이 시작하기 전) 숫자는 투명하고 채움은 2% 원이다', () => {
+    for (const html of [render(120, 300), render(200, 300)]) {
       expect(html).toMatch(/opacity:0/)
       expect(html).not.toContain('t-digit')
     }
     const circle = gaugeCircleDiameter(CAPSULE_GAUGE_HEIGHT_PX)
-    expect(heldHtml(200)).toContain(`width:calc(${circle}px + (100% - ${circle}px) * 0)`)
+    expect(render(200, 300)).toContain(`width:calc(${circle}px + (100% - ${circle}px) * 0)`)
   })
 
   it('팝인은 공유 PopInNumber(Number pop-in)로 채움이 움직이기 시작할 때 같이 한 번 재생한다', () => {
@@ -210,28 +203,5 @@ describe('색과 모양', () => {
     const html = render(120, 300)
     expect(html).toContain('<svg')
     expect(html).toContain('aria-hidden="true"')
-  })
-})
-
-describe('합친 연출이 붙들 때 (티켓 20261028_1740 3회)', () => {
-  const held = (filled: number) =>
-    renderToStaticMarkup(
-      <CapsuleResultContext.Provider value={{ gaugeHeld: true, resultPending: true, registerGaugeFill: () => {} }}>
-        <CapsuleGauge filled={filled} required={300} ariaLabel={LABEL} />
-      </CapsuleResultContext.Provider>
-    )
-
-  it('붙들려 있으면 값과 상관없이 2% 원이고 전환이 없다', () => {
-    const circle = gaugeCircleDiameter(CAPSULE_GAUGE_HEIGHT_PX)
-    for (const filled of [0, 150, 300]) {
-      const html = held(filled)
-      expect(html).toContain(`width:calc(${circle}px + (100% - ${circle}px) * 0)`)
-      expect(html).toContain('transition:none')
-    }
-  })
-
-  it('붙들려 있으면 숫자가 보이지 않는다(투명, 안쪽은 너비 0)', () => {
-    expect(held(120)).toMatch(/opacity:0/)
-    expect(held(200)).toMatch(/opacity:0/)
   })
 })

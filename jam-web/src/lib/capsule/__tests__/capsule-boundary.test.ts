@@ -185,10 +185,6 @@ describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모
     'components/capsule/CapsuleGauge.tsx',
     'components/capsule/CapsuleWidget.tsx',
     'components/capsule/CapsuleBlockedCard.tsx', // 홈 막힘 카드(티켓 20261105_1912)
-    'components/capsule/capsuleReveal.ts',
-    // 합친 연출(티켓 20261028_1740 1회)
-    'lib/capsule/result-overlay-model.ts',
-    'components/capsule/CapsuleResultOverlay.tsx',
     // 잠긴 개체 화면(티켓 20261018_0054 2회)
     'lib/inventory/lockedItemFill-client.ts',
     'lib/inventory/lockedItemFill-flow.ts',

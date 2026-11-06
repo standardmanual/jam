@@ -38,7 +38,7 @@ const logMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 // 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다
 vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false, unseenRecorded: true }),
+  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false }),
 }))
 
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'

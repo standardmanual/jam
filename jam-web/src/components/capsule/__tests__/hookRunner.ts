@@ -1,7 +1,7 @@
 /**
  * 시험용 작은 훅 실행기 — 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 훅을 바꿔 컴포넌트 함수를 직접 부른다 (티켓 20261028_1740 3회)
  *
- * `CapsuleResultOverlay.test.tsx`가 쓰는 방식을 여러 시험이 나눠 쓰도록 뽑았다. 상태 갱신은 즉시 다시 그리고(렌더 중 갱신은 그리기를 한 번 더 한다),
+ * 여러 시험이 나눠 쓰는 공용 도구다. 상태 갱신은 즉시 다시 그리고(렌더 중 갱신은 그리기를 한 번 더 한다),
  * 효과는 의존 값이 바뀐 것만 정리 함수를 부른 뒤 다시 돌린다. 시험 파일에서는 이렇게 쓴다.
  *
  *   vi.mock('react', async (importOriginal) => (await import('./hookRunner')).mockReact(await importOriginal<typeof import('react')>()))

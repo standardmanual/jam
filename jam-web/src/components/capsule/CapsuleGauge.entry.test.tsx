@@ -30,8 +30,6 @@ vi.mock('react', async (importOriginal) => {
   }
 })
 
-const ctx = { gaugeHeld: false, resultPending: false, registerGaugeFill: vi.fn() }
-vi.mock('@/components/capsule/capsuleResultContext', () => ({ useCapsuleResult: () => ctx }))
 const motion = { reduced: false }
 vi.mock('@/lib/motion', () => ({ prefersReducedMotion: () => motion.reduced }))
 
@@ -84,8 +82,6 @@ function installObserver() {
 beforeEach(() => {
   vi.useFakeTimers()
   observers = []
-  ctx.gaugeHeld = false
-  ctx.registerGaugeFill = vi.fn()
   motion.reduced = false
 })
 afterEach(() => {
@@ -202,18 +198,6 @@ describe('값이 0', () => {
     expect(observers).toHaveLength(0)
     vi.advanceTimersByTime(5000)
     expect(fillStyle().width).toBe(widthAt(GRAPH_MIN_PERCENT))
-  })
-})
-
-describe('합친 연출이 붙들 때', () => {
-  it('붙들린 채로 보여도 2% 원이다', () => {
-    installObserver()
-    ctx.gaugeHeld = true
-    mount(CapsuleGauge, props)
-    expect(observers).toHaveLength(0)
-    vi.advanceTimersByTime(5000)
-    expect(fillStyle().width).toBe(widthAt(GRAPH_MIN_PERCENT))
-    expect(fillStyle().transition).toBe('none')
   })
 })
 
