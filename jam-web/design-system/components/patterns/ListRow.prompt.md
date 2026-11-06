@@ -13,9 +13,9 @@
 |---|---|
 | A 활동 | lead + eyebrow + time + title(sentence) + meta + chips + value. 묶음 행(A2)은 `leadBadge` ×N + `aria-expanded`, `chevron` 없음 |
 | B 대상 | lead + title + chips + meta + value. 미션 목록(B2)은 `variant="media"` + `tone="flat"` + eyebrow에 상태 칩 + footer |
-| C 사람 | lead(`round`) + title + trail(팔로우 버튼). 순위(C4)는 indicator(숫자) + lead + title + value + 칩 «나» |
+| C 사람 | lead(`round`) + title + trail(팔로우 버튼). 순위(C4)는 indicator(숫자) + lead + title + `titleSuffix`(칩 «나», 이름 옆) + value |
 | D 값 | title(`label`) + value, `tone="flat"`. value가 줄바꿈되고 오른쪽 정렬 |
-| E 체크 목록 | indicator(체크) + title(현재 단계 `strong`, 나머지 `label`) + meta |
+| E 체크 목록 | indicator(체크) + title(현재 단계 `strong`, 나머지 `label`) + meta. 표지는 완료만 체크 아이콘이고 현재·아직은 빈 원(`--muted` 선), 현재는 굵은 title과 meta로 구분 |
 
 ```jsx
 // A1 활동 — 핵심어만 굵게
@@ -45,8 +45,12 @@
 - `leadHref`를 주면 lead(와 indicator)가 클릭 영역 밖 별도 링크가 된다(알림 아바타 2단 링크). 링크 안은 장식뿐이라 **`leadLabel`(링크 이름 문자열, 예: «runner_kim 프로필»)을 반드시 함께 준다.** `aria-label`로 연결되고, 개발 모드에서 `leadHref`만 있고 `leadLabel`이 없으면 콘솔 경고가 난다.
 - 체크·순위 숫자는 썸네일이 아니라 상태 표지이므로 lead가 아니라 `indicator`(24px)에 넣는다.
 
+## titleSuffix
+title 오른쪽에 붙는 줄어들지 않는 인라인 노드다(순위 행의 «나» 칩). title이 말줄임될 때 suffix는 남고 title만 줄어든다. 칩 슬롯(title 아래 줄)과 달리 이름과 같은 줄에 놓인다. 칩 하나(`ListRowChip`)만 넣는다.
+
 ## time
 eyebrow 줄 오른쪽에 붙는다. eyebrow가 없으면 title 줄 오른쪽이다. 미디어 행에서 eyebrow에 칩 줄을 넣으면 남은 시간은 그 칩 줄 오른쪽 끝에 놓인다. 날짜 표기 규칙(상대·절대)은 컴포넌트가 아니라 호출부 문구 규칙이다.
+- 긴 절대 날짜(«2026년 11월 6일 오후 3시 30분»)는 time 자리에 들어가지 않는다(time은 줄지 않아 title을 밀어낸다). 호출부가 긴 형식은 meta 줄로 내리고 time에는 짧은 형식(예: «11월 6일»)을 쓴다.
 
 ## 면(tone)과 상태
 - `default` 흰 면 + 1px `--border`. `tint`는 이미 카드 안에 들어간 행 전용이다. 크림 바탕 위 단독 행에 쓰지 않는다(이중 테두리). `inverse`는 경고 안내 행 전용. `flat`은 면 없음, `separator`로 구분선을 고른다.

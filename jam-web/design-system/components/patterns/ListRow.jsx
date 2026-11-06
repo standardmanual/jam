@@ -16,6 +16,8 @@ import { CheckIcon, ChevronRightIcon } from '../icons/IconCatalog.jsx';
  *     링크 안은 장식뿐이라 접근 가능한 이름 `leadLabel`을 함께 넘겨야 한다(aria-label로 연결, 없으면 개발 모드 경고).
  *   - 비활성(disabled)이면 trail 래퍼에 inert를 걸어 키보드로도 trail 버튼이 막힌다.
  *
+ * `titleSuffix`는 title 오른쪽에 붙는 줄어들지 않는 인라인 노드(순위 행의 «나» 칩 등)다. title이 말줄임될 때 suffix는 남는다.
+ *
  * 글자 위계: eyebrow·time·chip 12px(--text-xs), meta 14px(--text-sm), title·value 16px(--text-base).
  * 굵기는 아래 ROW_WEIGHT 한 곳에서 정한다. 위계는 크기보다 줄 위치·색·굵기로 나눈다.
  *
@@ -78,7 +80,7 @@ const TONES = {
 const STATIC_CSS = `
 .ds-list-row{transition:transform var(--duration-micro,80ms) var(--ease-out,ease-out),box-shadow var(--duration-quick,150ms) var(--ease-out,ease-out)}
 .ds-list-row[data-interactive="true"]:has(.ds-list-row-hit:active){transform:scale(var(--scale-press-card,0.98))}
-.ds-list-row-hit:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.ds-list-row-hit:focus-visible,.ds-list-row-lead-link:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .ds-list-row-lead img{display:block;width:100%;height:100%;object-fit:cover}
 .ds-list-row-chevron{transition:transform var(--duration-fast,250ms) var(--ease-smooth-out,cubic-bezier(0.22,1,0.36,1))}
 .ds-list-row-chevron[data-expanded="true"]{transform:rotate(180deg)}
@@ -210,6 +212,7 @@ export function ListRow({
   eyebrow,
   time,
   title,
+  titleSuffix,
   titleVariant = 'strong',
   titleLines,
   meta,
@@ -319,6 +322,9 @@ export function ListRow({
           }}
         >
           <span style={titleStyle}>{title}</span>
+          {titleSuffix != null && titleSuffix !== '' && (
+            <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>{titleSuffix}</span>
+          )}
           {!hasEyebrow && timeNode}
         </span>
       )}
@@ -414,9 +420,10 @@ export function ListRow({
           {hasIndicator && <Indicator>{indicator}</Indicator>}
           <a
             href={leadHref}
+            className="ds-list-row-lead-link"
             aria-label={leadLabel || undefined}
             tabIndex={disabled ? -1 : undefined}
-            style={{ display: 'block', color: 'inherit', textDecoration: 'none', borderRadius: 'var(--radius-full)', pointerEvents: disabled ? 'none' : undefined }}
+            style={{ display: 'block', color: 'inherit', textDecoration: 'none', borderRadius: leadShape === 'round' ? 'var(--radius-full)' : 'var(--radius-2xl)', pointerEvents: disabled ? 'none' : undefined }}
           >
             <Lead lead={lead} shape={leadShape} badge={leadBadge} tone={tone} />
           </a>

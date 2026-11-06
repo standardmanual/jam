@@ -38,6 +38,8 @@ export interface ListRowProps
   time?: ReactNode;
   /** 16px 제목. 굵기·색은 `titleVariant`가 정한다. */
   title?: ReactNode;
+  /** title 줄 오른쪽에 붙는 줄어들지 않는 인라인 노드(순위 행의 «나» 칩 등). title이 말줄임될 때 suffix는 남고 title만 줄어든다. */
+  titleSuffix?: ReactNode;
   /** `strong`(기본, 굵게) · `sentence`(보통, 문장 — 핵심어는 `ListRowEm`) · `label`(보통 muted, 값 행·체크 목록). */
   titleVariant?: 'strong' | 'sentence' | 'label';
   /** title 줄 수 1~2. 기본은 `sentence` 2줄, 나머지 1줄. 넘치면 말줄임. */
