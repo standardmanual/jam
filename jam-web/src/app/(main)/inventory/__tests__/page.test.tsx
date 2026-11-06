@@ -193,7 +193,7 @@ describe('인벤토리 페이지 — 남은 칸 표시', () => {
     const html = await render()
     expect(html).toContain('46/50개 사용 중 · 4개 남음')
     expect(html).not.toContain('개만 남았어요')
-    expect(html).not.toContain(d.inventory.fullNoticeCta)
+    expect(html).not.toContain('드랍하기')
   })
 
   it.each([3, 2, 1])('남은 칸이 %i개이면 «N개만 남았어요»만 굵게 하고 줄을 foreground로 올리며 카드는 없다', async (remaining) => {
@@ -205,26 +205,29 @@ describe('인벤토리 페이지 — 남은 칸 표시', () => {
     // 줄 전체의 색은 --foreground이고 새 색(warning 등)은 쓰지 않는다
     expect(html).toMatch(/<p class="mt-1 text-sm text-foreground[^"]*">/)
     expect(html).not.toContain('--warning')
-    expect(html).not.toContain(d.inventory.fullNoticeCta)
+    expect(html).not.toContain('인벤토리가 꽉 찼어요.')
   })
 
-  it('남은 칸이 0개이면 평소 줄(0개 남음)에 안내 카드를 더하고 본문에 장착·믹스·드랍이 모두 들어 있다', async () => {
+  it('남은 칸이 0개이면 평소 줄(0개 남음)에 한 줄 안내 카드를 더한다 (2026-11-06 사용자 결정: 문구 한 줄, 버튼 없음)', async () => {
     state.inventory = withUsed(50)
     const html = await render()
     expect(html).toContain('50/50개 사용 중 · 0개 남음')
     expect(html).not.toContain('개만 남았어요')
-    expect(html).toContain(d.inventory.fullNoticeCta)
-    const body = d.inventory.fullNoticeBody
-    for (const word of ['장착', '믹스', '드랍']) expect(body).toContain(word)
-    expect(html).toContain('인벤토리가 꽉 찼어요. 50개까지만 보관할 수 있어서 새 아이템 배지를 바로 받을 수 없어요')
+    expect(d.inventory.fullNoticeBody).toBe('인벤토리가 꽉 찼어요.')
+    expect(html).toContain('인벤토리가 꽉 찼어요.')
+    // 원인·해결 문장과 «드랍하기» 버튼이 없다
+    expect(html).not.toContain('개까지만 보관할 수 있어서')
+    expect(html).not.toContain('자리를 비워 주세요')
+    expect(html).not.toContain('드랍하기')
+    expect('fullNoticeCta' in d.inventory).toBe(false)
   })
 
-  it('남은 칸이 0개일 때 안내 카드는 어두운 반전 면이고 «드랍하기»는 밝은 알약으로 /drops에 간다 (티켓 20261105_1953)', async () => {
+  it('남은 칸이 0개일 때 안내 카드는 어두운 반전 면이고 글자는 snow이며 링크·버튼이 없다 (티켓 20261105_1953)', async () => {
     state.inventory = withUsed(50)
     const html = await render()
-    expect(html).toMatch(/<div class="mt-3 rounded-2xl px-4 py-3 bg-background-inverse border border-background-inverse">/)
-    expect(html).toMatch(/<p class="text-base text-snow /)
-    expect(html).toMatch(/<a class="[^"]*min-h-11[^"]*bg-default text-foreground[^"]*" href="\/drops">/)
+    const card = html.match(/<div class="mt-3 rounded-2xl px-4 py-3 bg-background-inverse border border-background-inverse">.*?<\/div>/)?.[0] ?? ''
+    expect(card).toContain('text-snow')
+    expect(card).not.toMatch(/<a |<button|href="\/drops"/)
     expect(html).not.toContain('bg-surface border border-border')
   })
 
