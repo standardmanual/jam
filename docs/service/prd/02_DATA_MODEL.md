@@ -681,6 +681,14 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 필드만 비움). 미픽업 만료·소프트 삭제된 배지 정리는 `expire_stale_poi_drops()` RPC(cron이
 호출)가 개체 소각(`destroyed_at`)까지 함께 처리한다.
 
+**비활성 컬렉션의 미픽업 드랍 정리** (마이그레이션 326, 티켓 20261106_1052, 단일 원천): 컬렉션을 끄면(`item_books.is_active` true→false) 그 컬렉션 배지의
+`picked_up_at IS NULL`인 활성 드랍을 `close_unclaimed_drops_of_inactive_collections(p_item_book_id uuid DEFAULT NULL)`(`service_role` 전용)이 내린다.
+방식은 `expire_stale_poi_drops()`와 같다: `is_available=false`, 개체 `destroyed_at`·`inventory_id=NULL`, `custody_events 'Expire'`. 대상은 컬렉션이
+`is_active=false`이거나 `valid_until`이 지난 것이고, `item_book_id`가 NULL인 배지는 제외한다. 유저가 가진 개체·컬렉션 완성 기록은 건드리지 않는다.
+호출은 두 곳이다: ① `item_books`의 트리거 `trg_item_books_close_drops`가 true→false 전환에서만 그 컬렉션을 대상으로 부른다(false→true는 복구하지 않는다).
+② 매일 0시 `expire_stale_poi_drops()`가 기존 두 갈래 뒤에 전체(NULL)를 한 번 더 부른다(안전망이자 기간 종료의 유일한 경로). 반환 JSON에
+`closed_by_inactive_collection`이 더해지고 크론 응답은 `closedByInactiveCollection`으로 싣는다.
+
 **인덱스와 JAM! 행동 지표의 원천**: JAM! 카테고리 드랍·픽업 행동 지표 4종(`drop_item_count`·
 `pickup_item_count`·`pickup_from_user_count`·`picked_up_by_user_count`, 티켓 20261001_0632)이
 이 테이블을 읽는다 — 드랍 1건 = 1행이고, `inventory_item_id`가 있는 행의 **서로 다른 개체·유저 수**로
