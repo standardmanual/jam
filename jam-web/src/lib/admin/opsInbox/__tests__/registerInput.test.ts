@@ -223,7 +223,7 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
     const result = toCard(
       cardItem({
         copy: { title: '카피 제목' },
-        resource: { template_type: 'location_trend', title: '자원 제목', subtitle: '자원 부제', region_label: '한강' },
+        resource: { template_type: 'location_trend', title: '자원 제목', subtitle: '자원 부제', region_label: '한강', target_href: '/drops' },
       })
     )
     expect(result.errors).toEqual([])
@@ -478,9 +478,9 @@ describe('toTodayCardRegisterInput · 연결 칸(결정 8)', () => {
   })
 
   it('컨텐츠 소개 카드(content_intro)는 이동 주소(target_href)가 있으면 통과하고 없으면 오류가 난다(티켓 20261101_2054)', () => {
-    const ok = toCard(cardItem({ resource: { template_type: 'content_intro', target_href: '/missions' } }))
+    const ok = toCard(cardItem({ resource: { template_type: 'content_intro', target_href: `/missions/${UUID_A}` } }))
     expect(ok.errors).toEqual([])
-    expect(ok.payload).toMatchObject({ template_type: 'content_intro', target_href: '/missions', mission_id: null, recipe_id: null })
+    expect(ok.payload).toMatchObject({ template_type: 'content_intro', target_href: `/missions/${UUID_A}`, mission_id: null, recipe_id: null })
     expect(ok.linkFields).toEqual([])
 
     const missing = toCard(cardItem({ resource: { template_type: 'content_intro' } }))
@@ -489,7 +489,7 @@ describe('toTodayCardRegisterInput · 연결 칸(결정 8)', () => {
   })
 
   it('badge_ids는 resource 값 뒤에 연결 배지를 더한다', () => {
-    const result = toCard(cardItem({ resource: { template_type: 'badge_spotlight', badge_ids: [UUID_A] } }), { badge_ids: [UUID_B, UUID_C] })
+    const result = toCard(cardItem({ resource: { template_type: 'badge_spotlight', badge_ids: [UUID_A], target_href: `/badges/${UUID_A}` } }), { badge_ids: [UUID_B, UUID_C] })
     expect(result.errors).toEqual([])
     expect(result.payload?.badge_ids).toEqual([UUID_A, UUID_B, UUID_C])
     expect(result.linkFields).toEqual(['badge_ids'])
@@ -614,6 +614,7 @@ describe('toTodayCardRegisterInput · 페이로드(결정 1·2)', () => {
         copy: { title: '전체 칸', subtitle: '부제', description: '설명', region_label: '서울' },
         resource: {
           template_type: 'location_trend',
+          target_href: '/drops',
           cover_image_url: ' https://example.test/cards/cover.webp?v=1 ',
           title_in_image: true,
           content_type_id: 'T02',
@@ -1605,7 +1606,7 @@ describe('withoutLinkedFields · 등록 전 DB 검사용 사본(결정 8)', () =
   it('연결로 채운 단일 칸은 null로, 배열 칸은 연결 몫만 빼고 resource 몫은 남긴다', () => {
     const linkedIds = { mission_id: UUID_A, badge_ids: [UUID_B, UUID_C], item_book_id: UUID_A }
     const result = toCard(
-      cardItem({ resource: { template_type: 'progress_nudge', badge_ids: [UUID_A] } }),
+      cardItem({ resource: { template_type: 'progress_nudge', badge_ids: [UUID_A], target_href: `/missions/${UUID_A}` } }),
       { mission_id: UUID_A, badge_ids: [UUID_B, UUID_C] }
     )
     expect(result.payload).not.toBeNull()
@@ -1639,7 +1640,7 @@ describe('withoutLinkedFields · 등록 전 DB 검사용 사본(결정 8)', () =
 
   it('연결 배지가 대소문자만 다르게 들어와도 같은 ID로 뺀다', () => {
     const upper = UUID_B.toUpperCase()
-    const result = toCard(cardItem({ resource: { template_type: 'badge_spotlight', badge_ids: [UUID_A] } }), { badge_ids: [upper] })
+    const result = toCard(cardItem({ resource: { template_type: 'badge_spotlight', badge_ids: [UUID_A], target_href: `/badges/${UUID_A}` } }), { badge_ids: [upper] })
     const copy = withoutLinkedFields(result.payload!, result.linkFields, { badge_ids: [UUID_B] })
     expect(copy.badge_ids).toEqual([UUID_A])
   })

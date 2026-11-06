@@ -130,7 +130,7 @@ describe('validateHomeFeedBundle — 통과', () => {
       title: '이번 주 이야기',
       template_type: 'content_intro',
       description: '설명문 한 줄',
-      target_href: '/missions',
+      target_href: `/missions/${MISSION_ID}`,
       exposure_tags: ['all'],
       starts_at: '2026-10-05T00:00:00+09:00',
       ends_at: '2026-10-12T00:00:00+09:00',
@@ -146,7 +146,7 @@ describe('validateHomeFeedBundle — 통과', () => {
     raw.card = {
       title: '이번 주 이야기',
       template_type: 'content_intro',
-      target_href: '/missions',
+      target_href: `/missions/${MISSION_ID}`,
       mission_id: MISSION_ID,
       exposure_tags: ['all'],
       starts_at: '2026-10-05T00:00:00+09:00',
@@ -427,6 +427,76 @@ describe('validateHomeFeedBundle — 카드 규칙(허용값·템플릿·기간)
     expect(errorsFor((raw) => (raw.card.sort_order = 1.5))).toContain('card.sort_order: 정수여야 해요(받은 값: 1.5).');
     expect(errorsFor((raw) => (raw.card.is_active = 'false'))).toContain('card.is_active: true 또는 false여야 해요(받은 값: "false").');
     expect(errorsFor((raw) => (raw.card.sort_order = -3))).toEqual([]);
+  });
+});
+
+describe('validateHomeFeedBundle — 이동 목적지는 목록이 아니라 상세 화면(티켓 20261106_1658)', () => {
+  const BADGE_ID_2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  /** 템플릿과 참조만 바꾼 카드로 오류를 돌려준다. 예시 묶음의 카드 칸(이전 값)은 모두 지우고 시작한다. */
+  function listRootErrors(card: Record<string, unknown>): string[] {
+    const raw = validRaw();
+    raw.card = {
+      title: '이번 주 이야기',
+      exposure_tags: ['all'],
+      starts_at: '2026-10-05T00:00:00+09:00',
+      ends_at: '2026-10-12T00:00:00+09:00',
+      ...card,
+    };
+    return validate(raw).errors.filter((e: string) => e.includes('목록 화면'));
+  }
+
+  it('content_intro가 목록 루트(/badges·/missions·/collections)를 가리키면 오류이고 상세 주소는 통과한다', () => {
+    for (const root of ['/badges', '/missions', '/collections']) {
+      const errors = listRootErrors({ template_type: 'content_intro', target_href: root });
+      expect(errors, root).toHaveLength(1);
+      expect(errors[0]).toContain(`목록 화면(${root})`);
+      expect(errors[0]).toContain('상세 화면');
+    }
+    expect(listRootErrors({ template_type: 'content_intro', target_href: `/badges/${BADGE_ID}` })).toEqual([]);
+    expect(listRootErrors({ template_type: 'content_intro', target_href: `/missions/${MISSION_ID}` })).toEqual([]);
+  });
+
+  it('쿼리·해시·끝 슬래시가 붙어도 목록 루트로 본다', () => {
+    for (const href of ['/badges/', '/badges?tab=activity', '/badges#top', '/badges/?a=1#b']) {
+      expect(listRootErrors({ template_type: 'content_intro', target_href: href }), href).toHaveLength(1);
+    }
+  });
+
+  it('location_trend는 배지도 target_href도 없으면 오류이고, /drops나 배지 1개면 통과한다', () => {
+    expect(listRootErrors({ template_type: 'location_trend', region_label: '북한산' })).toHaveLength(1);
+    expect(listRootErrors({ template_type: 'location_trend', region_label: '북한산', target_href: '/drops' })).toEqual([]);
+    expect(listRootErrors({ template_type: 'location_trend', region_label: '북한산', badge_ids: [BADGE_ID] })).toEqual([]);
+  });
+
+  it('badge_spotlight는 배지 1개면 통과하고, 여러 개인데 target_href가 없으면 오류다', () => {
+    expect(listRootErrors({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID] })).toEqual([]);
+    expect(listRootErrors({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID, BADGE_ID_2] })).toHaveLength(1);
+    expect(listRootErrors({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID, BADGE_ID_2], target_href: `/badges/${BADGE_ID}` })).toEqual([]);
+  });
+
+  it('명시한 target_href가 목록 루트인 경우도 거절한다(다른 템플릿 포함)', () => {
+    expect(listRootErrors({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID], target_href: '/badges' })).toHaveLength(1);
+    expect(listRootErrors({ template_type: 'mission_spotlight', mission_id: MISSION_ID, layout_type: 'large_thumbnail', target_href: '/missions' })).toHaveLength(1);
+  });
+
+  it('필수 참조가 비어 이미 오류가 난 카드는 목록 오류를 겹쳐 내지 않는다', () => {
+    expect(listRootErrors({ template_type: 'badge_spotlight' })).toEqual([]);
+    expect(listRootErrors({ template_type: 'mission_spotlight', layout_type: 'large_thumbnail' })).toEqual([]);
+  });
+
+  it('ranking_board·drop_alert·recipe_reveal·editorial_article은 이 검사로 새 오류가 나지 않는다', () => {
+    expect(listRootErrors({ template_type: 'ranking_board', ranking_mode_id: MISSION_ID })).toEqual([]);
+    expect(listRootErrors({ template_type: 'drop_alert' })).toEqual([]);
+    expect(listRootErrors({ template_type: 'drop_alert', target_href: '/badges' })).toEqual([]);
+    expect(listRootErrors({ template_type: 'recipe_reveal', target_href: '/combine' })).toEqual([]);
+    expect(listRootErrors({ template_type: 'editorial_article', body_markdown: '본문', target_href: '/badges' })).toEqual([]);
+  });
+
+  it('오류 문구는 현상과 해결을 함께 말한다', () => {
+    const [message] = listRootErrors({ template_type: 'content_intro', target_href: '/badges' });
+    expect(message).toBe(
+      'card.target_href: 이 카드는 목록 화면(/badges)으로 이어져요. 목록 화면이 아니라 소개한 컨텐츠의 상세 화면(예: /badges/{배지 id})으로 보내 주세요. 숨은 아이템 배지나 드랍을 알리는 카드라면 /drops로 보내 주세요.'
+    );
   });
 });
 

@@ -153,7 +153,7 @@ describe('check — 가정 3 표의 고정 문장', () => {
     expect(await checkOf(db, cardItem({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID] }))).toBeNull()
     expect(await checkOf(db, cardItem({ template_type: 'ranking_board', ranking_mode_id: RANKING_ID }))).toBeNull()
     expect(await checkOf(db, cardItem({ template_type: 'recipe_reveal', recipe_id: RECIPE_ID }))).toBeNull()
-    expect(await checkOf(db, cardItem({ template_type: 'content_intro', target_href: '/missions' }))).toBeNull() // 연결 칸 없이 이동 주소만으로 통과한다(티켓 20261101_2054)
+    expect(await checkOf(db, cardItem({ template_type: 'content_intro', target_href: `/missions/${MISSION_ID}` }))).toBeNull() // 연결 칸 없이 이동 주소만으로 통과한다(티켓 20261101_2054)
     const dup = db.calls.find((call) => call.table === 'today_cards')
     expect(dup?.filters).toEqual([
       ['title', '가을 아침 러닝'],

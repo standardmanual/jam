@@ -19,8 +19,9 @@
  * 상수에 `as const`를 쓰지 않는다 — 스크립트 테스트가 상수에 타입 단언을 해서 읽기 전용 튜플이면 컴파일이 깨진다.
  */
 import { isTribeTag } from '@/lib/today/exposureTribe'
+import { resolveTargetHref } from '@/lib/today/targetHref'
 import { collectCopyErrors } from './copyRules'
-import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
+import type { TodayCardLayoutType, TodayCardRow, TodayCardTemplateType } from '@/types/database'
 import {
   SUGGESTED_LAYOUT_FOR,
   TODAY_CONTENT_TYPE_OPTIONS,
@@ -105,6 +106,45 @@ export const REQUIRED_REFERENCE_FIELDS: Record<TodayCardTemplateType, string[]> 
   recipe_reveal: [],
   // 이동 주소가 유일한 필수 참조다 — 연결 칸이 없는 카드라 주소가 없으면 눌러도 갈 곳이 없다(티켓 20261101_2054).
   content_intro: ['target_href'],
+}
+
+/**
+ * 이동 목적지가 목록 화면이면 안 되는 카드의 목록 루트(티켓 20261106_1658). 카드는 소개한 컨텐츠 하나의 상세 화면으로 보낸다.
+ * 이 목록 값이 «도착지가 목록 루트인가» 판정의 단일 원천이다.
+ */
+export const LIST_ROOT_PATHS: readonly string[] = ['/badges', '/missions', '/collections']
+
+/** 목록 루트 검사를 면제하는 템플릿 — 이동 주소가 목록 루트여도 되거나(수동 지정 유저 대상 폴백), 템플릿이 정한 고정 화면으로 간다. */
+export const LIST_ROOT_EXEMPT_TEMPLATES: readonly TodayCardTemplateType[] = ['ranking_board', 'drop_alert', 'recipe_reveal', 'editorial_article']
+
+const LIST_ROOT_DETAIL_EXAMPLE: Record<string, string> = {
+  '/badges': '/badges/{배지 id}',
+  '/missions': '/missions/{미션 id}',
+  '/collections': '/collections/{컬렉션 id}',
+}
+
+/** 쿼리·해시·끝 슬래시를 뗀 경로. 목록 루트 판정에만 쓴다. */
+function stripPathDecorations(href: string): string {
+  const path = href.split('#')[0].split('?')[0].trim()
+  return path.length > 1 ? path.replace(/\/+$/, '') : path
+}
+
+/**
+ * 카드가 실제로 보낼 이동 주소(`resolveTargetHref`)가 목록 루트면 그 루트를, 아니면 null을 돌려준다.
+ * 입력은 검사 전의 값이라 타입이 보장되지 않는다 — 형식이 맞는 칸만 `resolveTargetHref`에 넘긴다.
+ */
+export function findListRootDestination(card: PlainObject, templateType: TodayCardTemplateType): string | null {
+  if (LIST_ROOT_EXEMPT_TEMPLATES.includes(templateType)) return null
+  const row = {
+    id: '',
+    template_type: templateType,
+    badge_ids: Array.isArray(card.badge_ids) ? card.badge_ids.filter((id): id is string => typeof id === 'string') : [],
+    mission_id: typeof card.mission_id === 'string' && card.mission_id.length > 0 ? card.mission_id : null,
+    item_book_id: typeof card.item_book_id === 'string' && card.item_book_id.length > 0 ? card.item_book_id : null,
+    target_href: typeof card.target_href === 'string' ? card.target_href : null,
+  } as TodayCardRow
+  const path = stripPathDecorations(resolveTargetHref(row))
+  return LIST_ROOT_PATHS.includes(path) ? path : null
 }
 
 // 본문(body_markdown)만 줄바꿈·탭을 허용한다. SQL 값은 문자열 리터럴로만 들어가고 주석에는 쓰지 않는다.
@@ -252,6 +292,14 @@ export function validateCard(errors: string[], input: unknown): void {
     const required = REQUIRED_REFERENCE_FIELDS[templateType]
     if (required.length > 0 && !required.some((key) => isFilled(card[key]))) {
       errors.push(`card.${required.join(' 또는 card.')}: ${templateType} 템플릿은 이 참조가 있어야 카드가 의미가 있어요.`)
+    }
+    // 목록 화면으로 가는 카드 — 필수 참조가 비어 이미 오류가 난 카드는 같은 원인을 두 번 말하지 않는다.
+    const referenceMissing = required.length > 0 && !required.some((key) => isFilled(card[key]))
+    const listRoot = referenceMissing ? null : findListRootDestination(card, templateType)
+    if (listRoot !== null) {
+      errors.push(
+        `card.target_href: 이 카드는 목록 화면(${listRoot})으로 이어져요. 목록 화면이 아니라 소개한 컨텐츠의 상세 화면(예: ${LIST_ROOT_DETAIL_EXAMPLE[listRoot]})으로 보내 주세요. 숨은 아이템 배지나 드랍을 알리는 카드라면 /drops로 보내 주세요.`
+      )
     }
   }
 
