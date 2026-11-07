@@ -302,7 +302,7 @@ describe('표 마크업 — 의미 있는 표, 가로 스크롤 없음', () => {
 
   it('표 카드는 흰 면 + 테두리 둥근 카드이고, 값 칸은 오른쪽 정렬 tabular-nums다. 가로 스크롤 래퍼가 없다', async () => {
     const html = await render()
-    expect(html).toContain('rounded-2xl bg-surface border border-border px-4')
+    expect(html).toContain('rounded-2xl bg-card-bg px-4')
     expect(html).toContain('border-b border-border last:border-b-0')
     expect(html).toMatch(/<td class="[^"]*text-right[^"]*font-medium[^"]*tabular-nums/)
     expect(html).not.toContain('overflow-x')
@@ -496,7 +496,7 @@ describe('문구와 서식 규칙', () => {
     const html = articleOf(await render())
     expect(html).not.toMatch(/gradient|animate-|transition|--link|--accent|rarity|<svg|<img|progress|<canvas/i)
     // 크림 단색 바탕 위의 표 카드와 Note만 쓴다 — 카드 안 카드가 없다
-    expect(count(html, 'rounded-2xl bg-surface')).toBe(9)
+    expect(count(html, 'rounded-2xl bg-card-bg')).toBe(9)
   })
 
   it('제목 계층이 h1 → h2 → h3다', async () => {

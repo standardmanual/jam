@@ -75,10 +75,10 @@ export interface BadgeGridCardProps {
   children?: ReactNode
 }
 
-// 카드 면 레시피(티켓 20261015_2133): 흰 면(--surface) + 1px --border + 반경 16, 그림자 없음.
-// 크림 바탕과 흰 면은 1.05:1이라 테두리가 경계를 맡는다. 면은 선택 여부로 한쪽만 고른다(아래 `containerCls`).
+// 카드 면 레시피(티켓 20261107_2203): 카드 면(--card-bg) + 반경 16, 외곽선·그림자 없음.
+// 경계는 카드 사이 간격이 맡는다. 면은 선택 여부로 한쪽만 고른다(아래 `containerCls`).
 const BASE =
-  'flex flex-col items-center border border-border rounded-2xl p-3 overflow-hidden'
+  'flex flex-col items-center rounded-2xl p-3 overflow-hidden'
 
 // 미발견 실루엣 (티켓 20261102_1834) — 원본 <img> 한 장을 검정으로 만든 뒤(brightness-0, 알파는 그대로) 중립 400 단계로 올린다(invert-[.64]).
 // 0.64는 중립 400 단계와 같은 밝기다. 필터는 CSS 변수 색을 받지 못해 숫자로 적는다.
@@ -110,7 +110,7 @@ export default function BadgeGridCard({
     BASE,
     // 선택 면은 기본 면과 겹쳐 쓰지 않고 한쪽만 고른다 — 두 배경 유틸리티가 쌓이면 어느 쪽이 이기는지 CSS 순서에 좌우된다
     // (`ItemCandidateRow.tsx`의 선택 링 주석과 같은 이유). 선택 위 글자는 --foreground(--accent-soft 위 약 4.7:1 이상)다.
-    selected ? 'bg-accent-soft' : 'bg-surface',
+    selected ? 'bg-accent-soft' : 'bg-card-bg',
     isInteractive && 'active:scale-95 transition-transform duration-100',
     // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
     highlighted && 'shadow-[inset_0_0_0_2px_var(--link)]',

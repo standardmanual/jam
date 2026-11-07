@@ -79,7 +79,7 @@ export default function ItemCandidateSheet({
           {bodyText}
         </p>
         {error && (
-          <div className="rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-muted">
+          <div className="rounded-2xl bg-card-bg px-3 py-2 text-xs text-muted">
             {error}
           </div>
         )}

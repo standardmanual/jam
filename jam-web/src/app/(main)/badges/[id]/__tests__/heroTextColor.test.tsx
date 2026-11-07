@@ -48,7 +48,7 @@ describe('BadgeHeroSection 글자색', () => {
     expect(titleClass(html)).not.toContain('text-snow')
     expect(descriptionClass(html)).toContain('text-muted')
     expect(descriptionClass(html)).not.toContain('text-snow')
-    expect(html).toContain('bg-surface')
+    expect(html).toContain('bg-card-bg')
   })
 
   it('테마 배경이 깔리면 제목·설명이 모두 snow다', () => {

@@ -49,7 +49,7 @@ export default function RootError({
           <p className="text-left text-muted text-xs mt-4 break-all">{error.message}</p>
         )}
         {isEnvError && (
-          <div className="text-left bg-surface border border-border rounded-xl p-4 text-sm mt-4">
+          <div className="text-left bg-card-bg rounded-xl p-4 text-sm mt-4">
             <p className="font-semibold text-foreground mb-2">환경변수 설정 필요</p>
             <p className="text-muted text-xs">
               Vercel 프로젝트 Settings → Environment Variables 에서 아래 값을 추가하세요.

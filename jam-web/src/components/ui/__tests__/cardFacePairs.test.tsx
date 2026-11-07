@@ -97,10 +97,10 @@ describe('MODULAR Card — 면과 글자색 쌍', () => {
 })
 
 describe('ListRowCard 쌍 — 면·테두리·tint', () => {
-  it('서비스 default는 bg-surface + border border-border다', () => {
+  it('서비스 default는 bg-card-bg이고 외곽선이 없다(티켓 20261107_2203)', () => {
     const html = renderToStaticMarkup(<ServiceListRowCard title="제목" />)
-    expect(html).toContain('bg-surface')
-    expect(html).toContain('border border-border')
+    expect(html).toContain('bg-card-bg')
+    expect(html).not.toContain('border')
     expect(html).not.toContain('bg-background-secondary')
   })
 
@@ -122,7 +122,7 @@ describe('ListRowCard 쌍 — 면·테두리·tint', () => {
   })
 
   it('알 수 없는 tone은 default로 그린다(서비스·MODULAR 모두)', () => {
-    expect(renderToStaticMarkup(<ServiceListRowCard tone={'x' as 'default'} title="제목" />)).toContain('border border-border')
+    expect(renderToStaticMarkup(<ServiceListRowCard tone={'x' as 'default'} title="제목" />)).toContain('bg-card-bg')
     expect(renderToStaticMarkup(<DsListRowCard tone={'x' as 'default'} title="제목" />)).toContain(BORDER)
   })
 })
@@ -130,17 +130,17 @@ describe('ListRowCard 쌍 — 면·테두리·tint', () => {
 describe('BadgeGridCard 쌍 — 카드 면과 선택 면', () => {
   const props = { name: '배지', rarity: 'rare' as const }
 
-  it('서비스: 기본은 bg-surface + border, 선택은 bg-accent-soft 하나만(두 배경 유틸리티가 쌓이지 않는다)', () => {
+  it('서비스: 기본은 bg-card-bg(외곽선 없음), 선택은 bg-accent-soft 하나만(두 배경 유틸리티가 쌓이지 않는다)', () => {
     const base = renderToStaticMarkup(<ServiceBadgeGridCard {...props} />)
-    expect(base).toContain('bg-surface')
-    expect(base).toContain('border border-border')
+    expect(base).toContain('bg-card-bg')
+    expect(base).not.toContain('border-border')
     expect(base).not.toContain('bg-background ')
 
     const selected = renderToStaticMarkup(<ServiceBadgeGridCard {...props} selected />)
     expect(selected).toContain('bg-accent-soft')
-    expect(selected).toContain('border border-border')
-    // 카드 면 클래스(`bg-surface rounded-2xl` 앞 배경)가 선택 면과 겹치지 않는다
-    expect(selected.match(/<div class="([^"]*)"/)?.[1]).not.toMatch(/\bbg-surface\b/)
+    expect(selected).not.toContain('border-border')
+    // 카드 면 클래스(`bg-card-bg`)가 선택 면과 겹치지 않는다
+    expect(selected.match(/<div class="([^"]*)"/)?.[1]).not.toMatch(/\bbg-card-bg\b/)
   })
 
   it('MODULAR: 기본은 --surface + 1px --border, 선택은 --accent-soft이고 옛 빨강 리터럴이 없다', () => {
@@ -166,9 +166,9 @@ describe('BadgeGridCard 쌍 — 카드 면과 선택 면', () => {
 describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
   const props = { name: '컬렉션', collected: 3, total: 10 }
 
-  it('서비스: BadgeGridCard와 같은 면(bg-surface border border-border rounded-2xl p-3)이다', () => {
+  it('서비스: 카드 면(bg-card-bg rounded-2xl p-3, 외곽선 없음)이다', () => {
     const html = renderToStaticMarkup(<ServiceCollectionGridCard {...props} />)
-    expect(html).toContain('bg-surface border border-border rounded-2xl p-3')
+    expect(html).toContain('bg-card-bg rounded-2xl p-3')
   })
 
   it('MODULAR: 같은 면이고, 진행 바 트랙이 흰색 반투명이 아니라 ProgressBar 기본 트랙(--border)이다', () => {

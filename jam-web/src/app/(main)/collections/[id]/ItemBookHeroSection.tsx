@@ -76,7 +76,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           // `calc(100%-16px)`로 줄여야 마진을 더해도 부모 폭 안에 대칭으로 들어간다.
           'relative overflow-hidden w-[calc(100%-16px)] aspect-square rounded-2xl flex flex-col items-center p-6 mx-2',
           // 배경 애니메이션이 없을 때만 흰 면 + 1px 테두리다 — BadgeHeroSection과 같은 레시피(티켓 20261015_2133)
-          backgroundAnimation ? 'bg-transparent' : 'bg-surface border border-border',
+          backgroundAnimation ? 'bg-transparent' : 'bg-card-bg',
         ].join(' ')}
         style={backgroundAnimation ? { backgroundColor: backgroundAnimation.bgColor } : undefined}
       >

@@ -461,7 +461,7 @@ export default function SlotGrid({
     // tabIndex -1: 모두 해제에 성공했을 때 코드로 포커스를 받는 자리다(`handleUnslotAllDone`). 탭 순서에는 들어가지 않고 윤곽선도 그리지 않는다
     <div ref={gridRef} tabIndex={-1} className="outline-none">
       {error && (
-        <div className="mb-3 rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-muted">
+        <div className="mb-3 rounded-2xl bg-card-bg px-3 py-2 text-xs text-muted">
           {error}
         </div>
       )}

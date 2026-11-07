@@ -67,7 +67,7 @@ const PODIUM_CONFIG = [
   {
     rank: 1,
     barHeight: 130,
-    // --accent(#19b551)를 상단, 같은 색 45% 알파 톤(color-mix)을 하단에 둔 세로 그라디언트.
+    // --accent를 상단, 같은 색 45% 알파 톤(color-mix)을 하단에 둔 세로 그라디언트.
     // 2·3위도 같은 accent의 알파 단계다(55→25%, 40→18%). 한 화면에 빨강·초록을 섞지 않는다(티켓 20261015_2134).
     barGradient: 'linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent))',
     avatarSize: 60,

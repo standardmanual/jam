@@ -48,11 +48,11 @@ export interface ListRowCardProps {
   'aria-controls'?: string
 }
 
-// JAM 2.0 라이트(티켓 20261015_2133): 흰 면(bg-surface)과 크림 바탕은 1.05:1이라
-// 1px 테두리(border-border)가 경계를 맡는다. 그림자는 쓰지 않는다.
+// 컬러 개편 2회차(티켓 20261107_2203): 카드 면(--card-bg #F7F7F7)을 흰 바탕 위에 외곽선·그림자 없이 둔다.
+// 경계는 카드 사이 간격(gap)이 맡는다.
 const BASE = 'flex items-center gap-4 rounded-2xl p-4'
 const TONE_CLASS: Record<ListRowCardTone, string> = {
-  default: 'bg-surface border border-border',
+  default: 'bg-card-bg',
   tint: 'bg-background-secondary',
   inverse: 'bg-background-inverse border border-background-inverse text-snow',
 }

@@ -120,7 +120,7 @@ function ProbabilityTable({
   nowrapLabel?: boolean
 }) {
   return (
-    <div className="rounded-2xl bg-surface border border-border px-4">
+    <div className="rounded-2xl bg-card-bg px-4">
       <table className="w-full border-collapse">
         <caption className="sr-only">{caption}</caption>
         <tbody>

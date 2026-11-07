@@ -32,7 +32,7 @@ describe('ItemBookHeroSection 글자색', () => {
     expect(html).toContain('color:var(--muted)')
     expect(html).not.toContain('#FFFFFF')
     expect(html).not.toContain('#AAAAAA')
-    expect(html).toContain('bg-surface')
+    expect(html).toContain('bg-card-bg')
   })
 
   it('블롭 배경 위에서는 제목·설명·아이콘이 snow다', () => {

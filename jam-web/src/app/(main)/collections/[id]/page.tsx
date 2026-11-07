@@ -396,7 +396,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                 return (
                   <div
                     key={checkinBadge.id}
-                    className="flex flex-col items-center p-3 rounded-2xl gap-2 bg-surface border border-border"
+                    className="flex flex-col items-center p-3 rounded-2xl gap-2 bg-card-bg"
                   >
                     <div
                       className="w-[90px] h-[90px] rounded-2xl overflow-hidden flex items-center justify-center"

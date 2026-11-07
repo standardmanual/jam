@@ -405,7 +405,7 @@ export default function MissionDetailClient({
             필터는 컨테이너가 아니라 **이미지에만** 건다(BadgeHeroSection.tsx:46과 동일한 하우스 패턴).
             컨테이너에 걸면 카드 표면(bg-surface)까지 흐려져 캔버스와의 경계가 사라지고,
             SafeImage의 폴백 문구도 함께 딤돼 대비가 8.2:1 → 3.3:1로 떨어진다. */}
-        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-surface border border-border flex items-center justify-center">
+        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-card-bg flex items-center justify-center">
           <SafeImage
             src={mission.image_url}
             alt={t(d.missions.thumbnailAlt, { title: mission.title })}
@@ -638,7 +638,7 @@ export default function MissionDetailClient({
         {/* 미션 상황 보기 — 참가자만 */}
         {(participating || isCompleted) && (
           <Link href={`/missions/${mission.id}/status`}>
-            <div className="bg-surface border border-border rounded-2xl p-4 text-center text-base text-muted jam-press">
+            <div className="bg-card-bg rounded-2xl p-4 text-center text-base text-muted jam-press">
               {d.missions.statusViewButton}
             </div>
           </Link>
@@ -672,7 +672,7 @@ export default function MissionDetailClient({
                   {d.missions.joinConfirmBody}
                 </p>
                 <div className="flex gap-2">
-                  {/* 흰 Card 위 취소는 secondary(--default #e9e7e0), 확인은 primary다. 인라인 색 덮어쓰기는 없다 */}
+                  {/* Card 위 취소는 secondary(--btn-secondary), 확인은 primary다. 인라인 색 덮어쓰기는 없다 */}
                   <Button
                     fullWidth
                     variant="secondary"

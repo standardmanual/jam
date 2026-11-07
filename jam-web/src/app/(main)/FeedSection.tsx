@@ -459,7 +459,7 @@ export function DetailSheet({
           </div>
         )}
         {/* 크림 시트 위 행 묶음은 흰 면 + 1px border로 구분한다(티켓 20261015_2134). */}
-        <div className="rounded-2xl bg-surface border border-border px-4 py-2 mb-6">
+        <div className="rounded-2xl bg-card-bg px-4 py-2 mb-6">
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
           )}

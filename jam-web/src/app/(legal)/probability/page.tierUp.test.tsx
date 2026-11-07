@@ -224,7 +224,7 @@ describe('정상 — 표 마크업', () => {
 
   it('새 섹션을 다시 카드로 감싸지 않는다 — 표 카드 세 개뿐이고 색·그래프·애니메이션이 없다', async () => {
     const section = sectionOf(await render(), TITLE)
-    expect(count(section, 'rounded-2xl bg-surface')).toBe(3)
+    expect(count(section, 'rounded-2xl bg-card-bg')).toBe(3)
     expect(section).not.toMatch(/gradient|animate-|transition|--link|--accent|rarity|progress|text-center|font-bold|font-semibold/i)
   })
 

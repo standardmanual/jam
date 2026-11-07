@@ -15,16 +15,17 @@ describe('ListRowCard 톤', () => {
   it('inverse도 default와 같은 박스(rounded-2xl p-4, 1px 테두리)라 높이가 같다', () => {
     const inverse = renderToStaticMarkup(<ListRowCard tone="inverse">본문</ListRowCard>)
     const base = renderToStaticMarkup(<ListRowCard>본문</ListRowCard>)
-    for (const cls of ['rounded-2xl', 'p-4', 'gap-4', 'border']) {
+    for (const cls of ['rounded-2xl', 'p-4', 'gap-4']) {
       expect(inverse).toContain(cls)
       expect(base).toContain(cls)
     }
+    expect(inverse).toContain('border')
   })
 
-  it('톤을 주지 않으면 흰 면 + 1px --border다', () => {
+  it('톤을 주지 않으면 --card-bg 면이고 외곽선이 없다', () => {
     const html = renderToStaticMarkup(<ListRowCard>본문</ListRowCard>)
-    expect(html).toContain('bg-surface')
-    expect(html).toContain('border-border')
+    expect(html).toContain('bg-card-bg')
+    expect(html).not.toContain('border')
     expect(html).not.toContain('bg-background-inverse')
   })
 })
