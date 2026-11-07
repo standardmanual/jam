@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import LocalDate from '@/components/LocalDate'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
@@ -36,14 +36,17 @@ export function isExpiringSoon(expiresAt: string | null | undefined): boolean {
 /**
  * 선택 시트 행의 `ItemSerialCode` 높이(px). **행 폭 안에 들어가는지가 이 값의 제약이다.**
  *
- * 값의 근거(20260907_2059의 Chromium 실렌더 측정 + 20260907_2221의 행 폭 계산):
- *   - `ItemSerialCode` 총 폭 = height × 5.31 → height 40이면 212px
- *   - 가장 좁은 기기(320px 뷰포트)의 행 콘텐츠 폭 = 320 − 시트 좌우 패딩 32 − `ListRowCard`
- *     패딩 32 = **256px**. 212px가 여유 있게 들어간다
- *   - 40 아래로 내리지 않는 이유: `ItemSerialCode`의 자간 보간 하한이 fontSize 20(=height 40)
- *     이라 그 아래는 캘리브레이션 범위를 벗어난다. 서비스 실사용 최소값(드랍 시트)도 40이다
+ * 값의 근거(티켓 20261107_1946, 320px 뷰포트에서 `offsetWidth` 실측. 글꼴은 Noto Sans KR 대신 시스템 글꼴 폴백):
+ *   - `ItemSerialCode` 총 폭 = height × 약 5.31 → height 40이면 212.4px, height 28이면 약 149px
+ *   - 시트 좌우 패딩은 24씩이라 행 폭은 272px. `ListRow`의 본문 폭(번호가 쓸 수 있는 폭)은 상태마다 다르다
+ *       기본 238 / 선택(체크 아이콘이 32px 차지) 206 / 선택 + «처리 중» trail 159
+ *     옛 `ListRowCard`는 238 / 238 / 187이었다(선택 + «처리 중»은 40에서도 24.9px 넘쳤다)
+ *   - 가장 좁은 상태(선택 + «처리 중», 159px)에 들어가야 하므로 28로 낮췄다(약 149px, 10px 여유).
+ *     행을 고르는 순간 번호 크기가 바뀌면 안 되므로 상태와 상관없이 한 값을 쓴다
+ *   - 40 아래는 `ItemSerialCode`의 자간 보간 하한(fontSize 20 = height 40)을 벗어나 자간이 +8%로 고정된다.
+ *     캘리브레이션 범위 밖이라는 뜻이며, 글자 크기는 14px이다
  */
-export const SELECT_SERIAL_HEIGHT_PX = 40
+export const SELECT_SERIAL_HEIGHT_PX = 28
 
 export interface ItemCandidate {
   id: string
@@ -95,33 +98,22 @@ export default function ItemCandidateRow({
   const points = typeof candidate.unlock_points_required === 'number' && Number.isFinite(candidate.unlock_points_required) ? candidate.unlock_points_required : null
   const shownRarity = candidate.rarity ?? rarity
 
+  const pointsTitle =
+    locked && points !== null
+      ? points > 0
+        ? tPoint(d.lockedItem.card.requiredChip, { n: points.toLocaleString('ko-KR') })
+        : d.lockedItem.detail.points.free
+      : undefined
+  // `RarityBadge`는 Common·없음이면 null을 돌려준다. 그 요소를 eyebrow에 넘기면 ListRow가 «요소가 있다»고 보고
+  // 빈 줄과 title 위 간격을 만들므로, 칩이 실제로 그려질 때만 넘긴다.
+  const eyebrow = shownRarity && shownRarity !== 'common' ? <RarityBadge rarity={shownRarity} /> : undefined
+
   return (
-    <ListRowCard
-      onClick={onClick}
-      // `muted`는 시각 억제뿐 아니라 키보드 Tab/Enter도 막아야 한다(티켓 20260908_0055 #3) —
-      // `disabled`로 네이티브 차단, `className`의 `pointer-events-none`은 마우스 커서 억제용으로
-      // 남겨둔다(disabled 버튼도 클릭 자체는 막히지만 커서 모양은 className이 정한다).
-      disabled={muted}
-      // ListRowCard에는 선택 상태 시각이 없어(active:scale만 있다) 탭 즉시 반응이 사라진다 —
-      // 프라이머리 링으로 «지금 이 행»을 표시한다. 배경톤 대신 inset 링을 쓰는 이유: 카드
-      // 기본 배경(bg-surface)과 배경 유틸리티가 경합하지 않아 결과가 규칙 순서에
-      // 좌우되지 않는다.
-      className={[
-        selected ? 'shadow-[inset_0_0_0_2px_var(--link)]' : '',
-        muted ? 'opacity-40 pointer-events-none' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      trailing={trailing}
-    >
-      <div className="flex flex-col items-start gap-1">
-        <RarityBadge rarity={shownRarity ?? undefined} />
-        {locked ? (
-          points !== null && (
-            <p className="m-0 text-base font-bold text-foreground break-keep wrap-break-word">
-              {points > 0 ? tPoint(d.lockedItem.card.requiredChip, { n: points.toLocaleString('ko-KR') }) : d.lockedItem.detail.points.free}
-            </p>
-          )
+    <ListRow
+      eyebrow={eyebrow}
+      title={
+        locked ? (
+          pointsTitle
         ) : (
           <ItemSerialCode
             code={formatSerial(candidate)}
@@ -130,17 +122,27 @@ export default function ItemCandidateRow({
             // 자리라, "번호가 지금 확정되는 순간"을 연출하는 릴과 목적이 반대다(20260907_2059).
             animate={false}
           />
-        )}
-        {expiring && candidate.expires_at && (
-          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted">
+        )
+      }
+      chips={
+        expiring && candidate.expires_at ? (
+          <ListRowChip tone="neutral">
             <LocalDate
               iso={candidate.expires_at}
               options={{ month: 'numeric', day: 'numeric' }}
               suffix={d.inventory.expiringSuffix}
             />
-          </p>
-        )}
-      </div>
-    </ListRowCard>
+          </ListRowChip>
+        ) : undefined
+      }
+      // 고른 행만 selected를 넘긴다 — false를 넘기면 모든 행에 aria-pressed="false"가 붙어
+      // «고르면 실행되는» 행의 의미와 어긋난다.
+      selected={selected || undefined}
+      // `muted`는 시각 억제뿐 아니라 키보드 Tab/Enter도 막아야 한다(티켓 20260908_0055 #3) —
+      // ListRow의 disabled가 <button disabled>·투명도·trail inert를 함께 처리한다.
+      disabled={muted}
+      trail={trailing}
+      onClick={onClick}
+    />
   )
 }
