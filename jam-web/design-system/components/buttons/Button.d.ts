@@ -2,8 +2,8 @@ import type { ReactNode, MouseEventHandler, ButtonHTMLAttributes } from 'react';
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   /**
-   * primary(--accent) · secondary(--default) · danger(--danger, 글자 --foreground) ·
-   * outline(투명 + 1px --field-border) · ghost(글자만 --link).
+   * primary(--accent) · secondary(--btn-secondary) · danger(--danger, 글자 --snow) ·
+   * outline(외곽선 없음, secondary와 같은 면) · ghost(글자만 --link).
    */
   variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
   /**

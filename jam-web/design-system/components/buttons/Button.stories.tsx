@@ -27,7 +27,7 @@ export const Secondary: Story = {
 };
 
 export const Danger: Story = {
-  name: 'Danger (글자 --foreground, 흰 글자 3.57:1이라 쓰지 않음)',
+  name: 'Danger (--danger 검정 면 + --snow 글자. primary와 같은 면이라 문구·위치로 구분한다)',
   args: {
     variant: 'danger',
     children: '삭제',
@@ -35,7 +35,7 @@ export const Danger: Story = {
 };
 
 export const Outline: Story = {
-  name: 'Outline (투명 + 1px --field-border)',
+  name: 'Outline (외곽선 없음 — secondary와 같은 --btn-secondary 면)',
   args: {
     variant: 'outline',
     children: '버튼',

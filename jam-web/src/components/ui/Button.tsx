@@ -8,9 +8,9 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  *
  * variant (면 / 글자 / 1px 테두리)
  * - `primary`   : surface로 갈린다(아래)
- * - `secondary` : --default / --foreground / 투명. 한 영역에 primary는 하나, 나머지는 secondary
- * - `danger`    : --danger / --foreground / 투명. 흰 글자는 3.57:1이라 쓰지 않는다
- * - `outline`   : 투명 / --foreground / --field-border. 옛 「테두리 없는 보조 채움」은 `secondary`로 옮겼다
+ * - `secondary` : --btn-secondary / --foreground / 투명. 한 영역에 primary는 하나, 나머지는 secondary
+ * - `danger`    : --danger / --snow / 투명. --danger가 검정이라 글자는 --snow다(primary와 같은 면, 문구·위치로 구분)
+ * - `outline`   : --btn-secondary / --foreground / 투명. 외곽선이 없어 secondary와 같은 면이다(사용자 결정)
  * - `ghost`     : 투명 / --link / 투명
  * - `arrow`     : 화살표(→) 접두 텍스트 버튼. 배경·테두리 없음(투명 테두리), --foreground
  *
@@ -48,9 +48,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 /** 면·글자·테두리 색 클래스. 테두리 두께(1px)는 base 클래스의 `border`가 맡는다. */
 const colorClasses: Record<Exclude<ButtonVariant, 'primary'>, string> = {
-  secondary: 'text-foreground bg-default border-transparent',
-  danger: 'text-foreground bg-danger border-transparent',
-  outline: 'text-foreground bg-transparent border-field-border',
+  secondary: 'text-foreground bg-btn-secondary border-transparent',
+  danger: 'text-snow bg-danger border-transparent',
+  outline: 'text-foreground bg-btn-secondary border-transparent',
   ghost: 'text-link bg-transparent border-transparent',
   arrow: 'text-foreground bg-transparent border-transparent',
 }

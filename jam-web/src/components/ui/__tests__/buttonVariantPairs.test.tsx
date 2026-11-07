@@ -4,8 +4,8 @@
  * 서비스 `Button.tsx`(Tailwind 클래스)와 MODULAR `Button.jsx`(인라인 style)는 병존하는 쌍이다.
  * `npm run ds:check`는 색을 비교하지 못하므로, 이 파일이 변형별 토큰 한 표를 두 구현에 같이 대조한다.
  *
- * 변형 대응(결정 2): primary `--accent`, secondary `--default`, danger `--danger`(글자 `--foreground`, 흰 글자는
- * 3.57:1), outline 투명 + 1px `--field-border`, ghost 글자 `--link`.
+ * 변형 대응(티켓 20261107_2202): primary `--accent`(글자 `--accent-foreground`), secondary·outline `--btn-secondary`(외곽선 없음,
+ * 둘은 같은 면), danger `--danger`(글자 `--snow`), ghost 글자 `--link`.
  *
  * 확인하는 것
  * ① 변형별 면·글자·테두리 토큰이 서비스와 MODULAR에서 같다
@@ -37,9 +37,9 @@ const PAIRS: ReadonlyArray<{
   border: string
 }> = [
   { variant: 'primary', face: 'accent', text: 'accent-foreground', border: 'transparent' },
-  { variant: 'secondary', face: 'default', text: 'foreground', border: 'transparent' },
-  { variant: 'danger', face: 'danger', text: 'foreground', border: 'transparent' },
-  { variant: 'outline', face: 'transparent', text: 'foreground', border: 'field-border' },
+  { variant: 'secondary', face: 'btn-secondary', text: 'foreground', border: 'transparent' },
+  { variant: 'danger', face: 'danger', text: 'snow', border: 'transparent' },
+  { variant: 'outline', face: 'btn-secondary', text: 'foreground', border: 'transparent' },
   { variant: 'ghost', face: 'transparent', text: 'link', border: 'transparent' },
 ]
 
@@ -75,11 +75,9 @@ describe('변형별 면·글자·테두리 — 서비스와 MODULAR가 같은 �
     })
   }
 
-  it('danger 글자는 흰색이 아니라 --foreground다(흰 글자는 3.57:1)', () => {
-    expect(classesOf(renderService('danger'))).not.toContain('text-snow')
-    expect(classesOf(renderService('danger'))).not.toContain('text-white')
-    expect(renderDs('danger')).not.toContain('color:var(--snow)')
-    expect(renderDs('danger')).not.toContain('color:#fff')
+  it('danger 글자는 --snow다(--danger가 검정이라 --foreground 글자는 보이지 않는다)', () => {
+    expect(classesOf(renderService('danger'))).not.toContain('text-foreground')
+    expect(renderDs('danger')).not.toContain('color:var(--foreground)')
   })
 })
 
@@ -111,18 +109,17 @@ describe('서비스 surface="main" primary는 검정이다(사용자 결정 2026
 })
 
 describe('outline과 secondary의 뜻 (이름 재사용 함정)', () => {
-  it('outline은 외곽선이다: 투명 면 + field-border 테두리, 보조 채움이 아니다', () => {
+  it('outline은 외곽선이 없어 secondary와 같은 면이다(사용자 결정 2026-11-07)', () => {
     const outline = classesOf(renderService('outline'))
-    expect(outline).toContain('bg-transparent')
-    expect(outline).toContain('border-field-border')
-    for (const fill of ['bg-default', 'bg-surface', 'bg-background']) {
-      expect(outline).not.toContain(fill)
-    }
+    expect(outline).toContain('bg-btn-secondary')
+    expect(outline).toContain('border-transparent')
+    expect(outline).not.toContain('border-field-border')
+    expect(renderDs('outline')).toContain('background:var(--btn-secondary)')
   })
 
-  it('secondary는 --default 채움이고 테두리 색은 투명이다', () => {
+  it('secondary는 --btn-secondary 채움이고 테두리 색은 투명이다', () => {
     const secondary = classesOf(renderService('secondary'))
-    expect(secondary).toContain('bg-default')
+    expect(secondary).toContain('bg-btn-secondary')
     expect(secondary).toContain('border-transparent')
     expect(secondary).not.toContain('border-field-border')
   })

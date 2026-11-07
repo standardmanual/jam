@@ -10,7 +10,7 @@ const meta: Meta<typeof PointText> = {
     docs: {
       description: {
         component:
-          '포인트 «값 + 단위» 표기 — 티켓 20261104_2319. 값과 «포인트» 글자 모두 `--point-text`(= `--accent-content-red` #ff4400) 한 색이다. ' +
+          '포인트 «값 + 단위» 표기 — 티켓 20261104_2319. 값과 «포인트» 글자 모두 `--point-text`(#ff4400 리터럴) 한 색이다. ' +
           '`layout="stacked"`는 우측 보상 칸(굵은 숫자 16px 위, 작은 «포인트» 12px 아래), `inline`은 문장 속 한 덩어리(줄바꿈 없음)다. ' +
           '값이 `null`/`undefined`면 아무것도 그리지 않고 `0`은 그린다. `unit=""`이면 값만 그린다. 알려진 한계: 흰·크림 면 위 12~16px 글자는 대비 4.5:1에 못 미친다(3:1은 넘는다).',
       },

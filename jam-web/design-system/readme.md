@@ -28,7 +28,6 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 
 ## 의도적인 추가 사항 (Intentional additions)
 
-* **도형 태그 클라우드 (`ShapeTag`)** — 뱃지 및 인벤토리 화면의 뱃지/썸네일 상자, 컨텐츠 태그용. 인덱스별로 모양과 색상을 순환시켜 수집품 그리드가 정형화된 아이콘 그리드가 아닌 생기 넘치는 태그 클라우드로 읽히도록 했습니다.
 
 ## 소스로부터 1:1 재현 (Recreated 1:1 from source)
 
@@ -99,7 +98,7 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `tokens/` — 색상, 타이포그래피, 간격, 반경, 모션, 재질(materials), 폰트
 * `assets/logo/` — JAM! 워드마크, 블랙 + 화이트
 * `components/buttons/` — Button, IconButton
-* `components/cards/` — Card, RarityBadge, BadgeLevelChip(무한레벨형 Lv.N 칩), MissionCard, ShapeTag, BadgeFrame, LabelChip(카드 좌상단 라벨 필, tone default·inverse), LockedTile(잠긴 아이템 배지의 잠금 타일)
+* `components/cards/` — Card, RarityBadge, BadgeLevelChip(무한레벨형 Lv.N 칩), MissionCard, BadgeFrame, LabelChip(카드 좌상단 라벨 필, tone default·inverse), LockedTile(잠긴 아이템 배지의 잠금 타일)
 * `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion, Carousel(센터 포커스·무한 루프 카드 캐러셀)
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox

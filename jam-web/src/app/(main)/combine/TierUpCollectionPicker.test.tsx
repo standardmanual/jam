@@ -215,7 +215,7 @@ describe('TierUpCollectionSheetContent', () => {
     const [, forest, river] = out.split('role="radio"')
     expect(forest).toContain('숲속 산책 컬렉션')
     expect(forest).toContain('aria-checked="false"')
-    expect(forest).toContain('background:var(--surface)')
+    expect(forest).toContain('background:var(--card-bg)')
     expect(forest).not.toContain('text-snow')
     expect(river).toContain('한강 라이딩 컬렉션')
     expect(river).toContain('aria-checked="true"')

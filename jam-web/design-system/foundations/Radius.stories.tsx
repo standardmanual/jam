@@ -43,7 +43,7 @@ const RADIUS_STEPS: { token: string; desc: string; usage?: string }[] = [
   { token: '--radius-2xl', desc: '카드 surface', usage: 'Card 컴포넌트' },
   { token: '--radius-3xl', desc: '큰 둥글기' },
   { token: '--radius-4xl', desc: '가장 큰 단계' },
-  { token: '--radius-full', desc: '완전한 캡슐', usage: '버튼, ShapeTag, 탭바' },
+  { token: '--radius-full', desc: '완전한 캡슐', usage: '버튼, 탭바' },
   { token: '--field-radius', desc: '입력창 캡슐 (피그마 field/radius)', usage: 'Input, Select, Textarea' },
 ];
 

@@ -76,14 +76,15 @@ function RarityPair({ bg, fg, label }: { bg: string; fg: string; label: string }
   );
 }
 
-// 색 칩 (accent-content 등)
-function TagChip({ token }: { token: string }) {
+// 색 견본 칩
+function TagChip({ token, note }: { token: string; note?: string }) {
   const value = useTokenValue(token);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
       <div style={{ width: 32, height: 16, borderRadius: 9999, background: `var(${token})`, border: '1px solid var(--border)' }} />
       <code style={{ fontSize: 11, color: 'var(--link)' }}>{token}</code>
       <span style={{ fontSize: 11, color: 'var(--muted)' }}>{value}</span>
+      {note && <span style={{ fontSize: 11, color: 'var(--muted)' }}>· {note}</span>}
     </div>
   );
 }
@@ -111,17 +112,20 @@ function ColorsPage() {
       </p>
 
       <Section title="Semantic — Background">
-        <Swatch token="--background" desc="페이지 바탕" />
+        <Swatch token="--background" desc="서비스 열 바탕(흰색)" />
         <Swatch token="--background-secondary" desc="한 단계 어두운 배경 — tint Card 등" />
         <Swatch token="--background-inverse" desc="반전 배경 (검정 계열)" />
-        <Swatch token="--surface" desc="카드. 크림 바탕 위에서는 --border 테두리와 함께 쓴다(그림자 없음)" />
+        <Swatch token="--surface" desc="시트·모달 등 흰 면(그림자 없음)" />
+        <Swatch token="--page-bg" desc="서비스 열(430px) 바깥 바탕 — html·body" />
+        <Swatch token="--card-bg" desc="Card default 면. 외곽선 없음, 흰 바탕과 약 1.07:1이라 구분이 약하다" />
+        <Swatch token="--btn-secondary" desc="Button secondary·outline 면(둘은 같은 면). 카드 위 연한 면이 필요할 때도 이 값" />
         <Swatch token="--surface-transparent" desc="완전 투명한 바탕색" />
       </Section>
 
       <Section title="Semantic — Text">
         <Swatch token="--foreground" desc="기본 텍스트" />
         <Swatch token="--muted" desc="보조 텍스트" />
-        <Swatch token="--link" desc="강조 글자·아이콘·선·포커스 링" />
+        <Swatch token="--link" desc="링크·포커스 링. 본문 글자와 같은 검정이라 색만으로 링크를 구분하지 않는다" />
         <Swatch token="--snow" desc="반전 면 위 텍스트" />
         <Swatch token="--accent-foreground" desc="accent 면 위 텍스트" />
       </Section>
@@ -132,13 +136,12 @@ function ColorsPage() {
         <Swatch token="--accent-soft-hover" desc="accent-soft의 hover 면" />
       </Section>
 
-      <Section title="Accent Content (면 채우기 전용 · ShapeTag colorIndex 순환)">
-        <TagChip token="--accent-content-lightblue" />
-        <TagChip token="--accent-content-green" />
-        <TagChip token="--accent-content-yellow" />
-        <TagChip token="--accent-content-red" />
-        <TagChip token="--accent-content-pink" />
-        <TagChip token="--accent-content-blue" />
+      <Section title="강조색 5가지 (정의만 · 사용처 미지정 — 사용자가 따로 지정)">
+        <TagChip token="--jam-red" note="사용처 미지정" />
+        <TagChip token="--jam-yellow" note="사용처 미지정" />
+        <TagChip token="--jam-green" note="사용처 미지정" />
+        <TagChip token="--jam-purple" note="사용처 미지정" />
+        <TagChip token="--jam-blue" note="사용처 미지정" />
       </Section>
 
       <Section title="Semantic — Border & Overlay">
@@ -152,7 +155,7 @@ function ColorsPage() {
         <Swatch token="--success" desc="성공·다 채움 (가는 선·점·링)" />
         <Swatch token="--warning" desc="경고·모자람 — 계정·동기화·인벤토리 소식(가는 선·점·링)" />
         <Swatch token="--danger" desc="위험 — 안 읽은 소식 점" />
-        <Swatch token="--default" desc="중립 면 — 진행 트랙" />
+        <Swatch token="--default" desc="중립 면(#f5f5f5). 카드 면과 거의 같아 트랙에는 --progress-track을 쓴다" />
         <Swatch token="--default-soft" desc="중립 칩 배경" />
       </Section>
 

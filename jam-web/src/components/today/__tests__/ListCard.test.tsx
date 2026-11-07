@@ -118,7 +118,7 @@ const expectOrdered = (positions: number[]) => {
 describe('ListCard 타일형 — 면(표면)과 본문', () => {
   it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 안쪽 여백은 인라인 0이다(본문 24px은 본문 칸이 가진다)', () => {
     const html = render(tilesView())
-    expect(html).toMatch(/^<div[^>]*style="[^"]*background:var\(--surface\)[^"]*border:1px solid var\(--border\)[^"]*">/)
+    expect(html).toMatch(/^<div[^>]*style="[^"]*background:var\(--card-bg\)[^"]*border:1px solid transparent[^"]*">/)
     expect(html).not.toContain('--background-inverse')
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')

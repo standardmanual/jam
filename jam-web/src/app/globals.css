@@ -61,6 +61,15 @@
   --color-default: var(--default);
   --color-default-soft: var(--default-soft);
   --color-point-text: var(--point-text);
+  --color-card-bg: var(--card-bg);
+  --color-btn-secondary: var(--btn-secondary);
+  --color-page-bg: var(--page-bg);
+  /* 강조색 5가지: 매핑만 두고 서비스 코드에서는 쓰지 않는다(사용처는 사용자가 지정) */
+  --color-jam-red: var(--jam-red);
+  --color-jam-yellow: var(--jam-yellow);
+  --color-jam-green: var(--jam-green);
+  --color-jam-purple: var(--jam-purple);
+  --color-jam-blue: var(--jam-blue);
 
   /* shadcn 이름 — 어드민 전용. 값은 [data-admin-theme] 안에서만 정의된다 */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -412,13 +421,13 @@
 }
 
 html {
-  background: var(--background);
+  background: var(--page-bg);
   color-scheme: light;
 }
 
 /* text-wrap·word-break는 상속되어 span·li·td·button 등 모든 요소에 적용된다 */
 body {
-  background: var(--background);
+  background: var(--page-bg);
   color: var(--foreground);
   font-family: var(--font-family-base);
   -webkit-tap-highlight-color: transparent;

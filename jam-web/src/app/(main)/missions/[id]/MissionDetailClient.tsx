@@ -612,7 +612,7 @@ export default function MissionDetailClient({
                 {mission.mission_type !== 'engine_condition' && (
                   <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
                 )}
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-[var(--accent-content-green)] text-foreground' : 'bg-border text-foreground'}`}>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-btn-secondary text-foreground' : 'bg-border text-foreground'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>

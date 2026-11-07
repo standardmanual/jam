@@ -5,10 +5,10 @@ import React from 'react';
  * tone: 'default' | 'tint' | 'inverse'
  *
  * 면 레시피(JAM 2.0 라이트, 티켓 20261015_2133):
- *   - default: --surface(흰) + 1px --border. 크림 바탕(--background)과 흰 면은 1.05:1이라 테두리가 경계를 맡는다. 그림자는 쓰지 않는다.
- *   - tint:    --background-secondary(테두리 없음). 흰 카드 안 구획용이다. 크림 바탕 위 단독 카드로는 쓰지 않는다.
+ *   - default: --card-bg(#f7f7f7) 면 + 투명 1px 테두리. 외곽선은 보이지 않고 면으로만 구분한다(흰 바탕과 약 1.07:1이라 구분이 약하다). 테두리는 박스 크기를 지키려는 것이다. 그림자는 쓰지 않는다.
+ *   - tint:    --background-secondary(테두리 없음). 카드 안 구획용이다. 카드 면(#f7f7f7) 위에서는 #f5f5f5와 거의 같은 색이라, 카드 위 연한 면은 --btn-secondary를 쓴다.
  *   - inverse: --background-inverse(어두운 반전 면) + --snow 글자 + 1px 테두리(면과 같은 --background-inverse). 서비스 화면에서는
- *              선택 표시 같은 신호 용도뿐이다. 테두리는 색을 더하지 않고 크기만 고정한다: default는 1px --border라서,
+ *              선택 표시 같은 신호 용도뿐이다. 테두리는 색을 더하지 않고 크기만 고정한다: default는 1px 투명 테두리라서,
  *              inverse에 테두리가 없으면 선택으로 바뀔 때 카드 안쪽이 1px씩 움직인다(티켓 20261021_1247).
  *
  * 그 밖의 약속:
@@ -22,9 +22,9 @@ export function Card({ tone = 'default', children, className = '', style = {}, o
 
   const backgrounds = {
     default: {
-      background: 'var(--surface)',
+      background: 'var(--card-bg)',
       color: 'var(--foreground)',
-      border: '1px solid var(--border)',
+      border: '1px solid transparent',
     },
     tint: {
       background: 'var(--background-secondary)',

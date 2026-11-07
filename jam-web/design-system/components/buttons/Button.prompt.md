@@ -1,4 +1,4 @@
-Pill-shaped button in five variants — primary (`--accent`), secondary (`--default`), danger (`--danger`), outline (transparent + 1px `--field-border`), ghost (text-only `--link`) — for two surfaces (light/dark backgrounds). Every variant carries a 1px border (transparent except outline), so switching variants never changes the height (md = 52px).
+Pill-shaped button in five variants — primary (`--accent`), secondary (`--btn-secondary`), danger (`--danger` fill + `--snow` text), outline (same `--btn-secondary` fill, no outline — visually identical to secondary), ghost (text-only `--link`) — for two surfaces (light/dark backgrounds). Every variant carries a 1px border (always transparent), so switching variants never changes the height (md = 52px).
 
 ```jsx
 <Button variant="primary">드랍하러 가기</Button>
@@ -8,7 +8,7 @@ Pill-shaped button in five variants — primary (`--accent`), secondary (`--defa
 <Button variant="ghost">더보기 →</Button>
 ```
 
-One primary per area, everything else secondary. A primary + secondary pair sits in a footer as two equal-width buttons with a gap of 8. `danger` keeps `--foreground` text (white text is 3.57:1, below 4.5:1). Do not put a `secondary` button on a `Card tone="tint"` (`--background-secondary`) — it is the same #e9e7e0 as `--default`, so the pill disappears.
+One primary per area, everything else secondary. A primary + secondary pair sits in a footer as two equal-width buttons with a gap of 8. `danger` is a black fill like primary, so it carries `--snow` text and is told apart by wording and position, not color. On a `Card` default (#f7f7f7) a `secondary` pill (#e5e5e5) stays visible; do not rely on `--default` (#f5f5f5) for a pill on a card.
 
 Use `surface="dark"` only when placed on a `--background-inverse` (black) section — primary is a `--snow` fill with `--foreground` text, secondary is a transparent pill with a 1px `--snow` border and `--snow` text, ghost text is `--snow`. `danger` and `outline` have no dark value and fall back to the light one. On a light surface (`--background`, `--surface`) keep the default `surface="light"`; `dark` there makes the text near-white and unreadable. `fullWidth` stretches to container width. Minimum touch target 44px per iOS HIG.
 

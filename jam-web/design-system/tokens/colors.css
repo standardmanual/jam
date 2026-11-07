@@ -35,52 +35,53 @@
   --base-neutral-950: #0a0a0a;   /* 회색 단계를 끊지 않으려고 남긴다. 역할 토큰은 가리키지 않는다 */
 
   /* ── 배경·표면 ────────────────────────────────────────────── */
-  --background: #f1f0eb;
-  --background-secondary: #e9e7e0;
+  --background: #ffffff;                        /* 서비스 열(430px) 바탕 */
+  --background-secondary: #f5f5f5;
+  --page-bg: #e6e6e6;                           /* 서비스 열 바깥(html·body) 바탕 */
+  --card-bg: #f7f7f7;                           /* Card default 면. 외곽선 없이 면으로만 구분한다 */
+  --btn-secondary: #e5e5e5;                     /* Button secondary·outline 면. 카드 위 연한 면이 필요하면 이 값을 쓴다 */
   --background-inverse: var(--base-neutral-900);
-  --surface: #ffffff;                           /* 카드. 크림 바탕 위에서는 1px --border와 함께 쓴다 (결정 7) */
-  --surface-transparent: rgba(241, 240, 235, 0); /* 결정 3: 완전 투명 */
+  --surface: #ffffff;
+  --surface-transparent: rgba(255, 255, 255, 0); /* 완전 투명 */
   --surface-on-inverse: color-mix(in srgb, var(--snow) 15%, transparent); /* 반전 면 위 한 단계 밝은 면(썸네일 박스 등). --snow 15% */
 
   /* ── 글자 ─────────────────────────────────────────────────── */
   --foreground: var(--base-neutral-900);
   --muted: #666666;
-  --link: #0e7a38;                              /* 크림 바탕 4.77:1 — 강조 글자·아이콘·선·포커스 링 */
+  --link: var(--base-neutral-900);              /* 본문 글자와 같은 검정. 색만으로 링크를 구분하지 않는다 */
   --snow: var(--base-snow);                     /* 반전 면(--background-inverse) 위 글자 */
   --muted-on-inverse: color-mix(in srgb, var(--snow) 70%, transparent); /* 반전 면 위 보조 글자. --background-inverse 위 약 8.9:1(계산값, 티켓 20261106_2003) */
 
   /* ── 강조 ─────────────────────────────────────────────────── */
-  --accent: #19b551;                            /* 면 채우기 전용. 크림 바탕 글자 대비 2.37:1 */
-  --accent-foreground: var(--base-neutral-900); /* accent 면 위 글자 6.63:1 */
-  --accent-soft: rgba(25, 181, 81, 0.15);       /* 결정 2: accent 15% */
-  --accent-soft-hover: rgba(20, 147, 71, 0.2);  /* #149347 20% */
+  --accent: var(--base-neutral-900);            /* 면 채우기 전용 */
+  --accent-foreground: var(--snow);             /* accent 면 위 글자 */
+  --accent-soft: #f5f5f5;
+  --accent-soft-hover: #e5e5e5;
 
-  /* accent-content: 면 채우기에만 쓴다. 크림 바탕 대비 1.04~3.03:1(lightblue·green·yellow는 1.04~1.17:1)이라 선·점으로 쓰지 않는다 (5.2절) */
-  --accent-content-lightblue: #4bfcf9;
-  --accent-content-green: #4cff56;
-  --accent-content-yellow: #fff002;
-  --accent-content-red: #ff4400;
-  --accent-content-pink: #ff7bfd;
-  --accent-content-blue: #48a4fc;
+  /* 강조색 5가지: 정의만 한다. 소비처가 없고, 사용처는 사용자가 따로 지정한다.
+     Card·Button·진행 막대·상태색 어디에도 매핑하지 않는다. */
+  --jam-red: #FF1D1D;
+  --jam-yellow: #FEC100;
+  --jam-green: #5BEA07;
+  --jam-purple: #BA8AF7;
+  --jam-blue: #0695EC;
 
   /* ── 선·면 ────────────────────────────────────────────────── */
-  --border: #cfc9b4;
-  --field-border: #cfc9b4;
-  --separator: #cfc9b4;                         /* 결정 4: 구분선은 하나 */
+  --border: #e5e5e5;
+  --field-border: #e5e5e5;
+  --separator: #e5e5e5;                         /* 결정 4: 구분선은 하나 */
   --backdrop: rgba(0, 0, 0, 0.5);
 
   /* ── 상태 ─────────────────────────────────────────────────── */
-  --success: #17c964;
-  --warning: #f5a300;
-  --danger: #ff383c;
-  --default: #e9e7e0;
-  --default-soft: #e9e7e0;
+  --success: var(--base-neutral-900);
+  --warning: #525252;
+  --danger: var(--base-neutral-900);
+  --default: #f5f5f5;
+  --default-soft: #f5f5f5;
   --opacity-disabled: 0.4;                      /* 비활성 요소 투명도(범용). 현재 소비처는 ListRow뿐 */
 
-  /* 포인트 글자색(티켓 20261104_2319): 값과 «포인트» 글자 모두 이 색이다. 새 색값을 만들지 않고 --accent-content-red(#ff4400)를 가리킨다.
-     대비: 흰 면 3.45:1 · 크림 면 약 3.1:1 · 어두운 면(#1c1917) 위 약 4.98:1.
-     알려진 한계: 흰·크림 면 위 12~16px 글자는 4.5:1에 못 미친다(3:1은 넘는다). --warning(#f5a300)은 면·점·링용이라 글자에 쓰지 않는다. */
-  --point-text: var(--accent-content-red);
+  /* 포인트 글자색(티켓 20261104_2319): 값과 «포인트» 글자 모두 이 색이다. 리터럴 #ff4400. */
+  --point-text: #ff4400;
 
   /* ── 확장: 희귀도 ─────────────────────────────────────────── */
   --rarity-common: #666666;
@@ -94,12 +95,11 @@
   --rarity-mystic-foreground: var(--base-white);
 
   /* ── 확장: 진행 상태 (문서 5.2절) ─────────────────────────── */
-  /* 가는 선·점·링은 success·warning 계열, 면 채우기는 accent-content 계열을 직접 쓴다. */
-  --progress-short: var(--warning);             /* 모자람(채우는 중) */
-  --progress-done: var(--success);              /* 다 채움·획득 */
-  --progress-latest: var(--accent-content-blue); /* 방금 들어옴 */
-  --progress-latest-soft: rgba(72, 164, 252, 0.18);
-  --progress-track: var(--default);             /* 아직 손대지 않은 자리 */
+  --progress-short: #737373;                    /* 모자람(채우는 중) */
+  --progress-done: #171717;                     /* 다 채움·획득 */
+  --progress-latest: #525252;                   /* 방금 들어옴 */
+  --progress-latest-soft: rgba(82, 82, 82, 0.18);
+  --progress-track: #e5e5e5;                    /* 아직 손대지 않은 자리 */
   /* 채움 스윕: 트랙 전체에 깔고 clip-path로 잘라 「어디까지 넘어갔나」가 곧 진행도가 되게 한다. */
   --progress-sweep: linear-gradient(90deg in oklab,
       var(--progress-short), var(--progress-done));
@@ -113,7 +113,7 @@
 
   /* ── 확장: 탭바 아이콘 (재질은 materials.css) ─────────────── */
   --tabbar-icon: var(--base-neutral-900);
-  --tabbar-icon-active: var(--foreground);      /* 디자인시스템의 검정. 활성은 채운 아이콘+선택 필로 구분한다 (accent는 면 채우기 전용, 크림·흰 필 위 대비 2.37:1) */
+  --tabbar-icon-active: var(--foreground);      /* 디자인시스템의 검정. 활성은 채운 아이콘+선택 필로 구분한다  */
 }
 
 /*

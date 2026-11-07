@@ -23,7 +23,7 @@ const meta: Meta<typeof LabelChip> = {
           '`--foreground` 글자). 변형은 `tone`(`default` | `inverse`) 하나뿐이다 — `inverse`는 크림 바탕 위(기사 화면)용으로 ' +
           '`--background-inverse` 채움 + `--snow` 글자이고 나머지 모양은 같다(티켓 20261001_1737, 1248). ' +
           '`size` 변형은 없고 `self-start` 같은 배치는 호출부 `className`으로 넘긴다. `children`이 비어 있으면 아무것도 그리지 않는다. ' +
-          '`ShapeTag`(minHeight 44px·padding 10/16·태그 팔레트)·`RarityBadge`(등급 전용)·' +
+          '`RarityBadge`(등급 전용)·' +
           '`BadgeLevelChip`(Lv.N 전용)으로는 같은 픽셀이 나오지 않아 따로 뒀다.',
       },
     },
