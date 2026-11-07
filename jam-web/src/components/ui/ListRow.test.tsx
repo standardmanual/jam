@@ -181,6 +181,19 @@ describe('ListRowChip·ListRowEm', () => {
     }
   })
 
+  it('done·surface·surface-muted 톤은 면과 글자색을 함께 바꾼다', () => {
+    const done = render(<ListRowChip tone="done">칩</ListRowChip>)
+    const surface = render(<ListRowChip tone="surface">칩</ListRowChip>)
+    const muted = render(<ListRowChip tone="surface-muted">칩</ListRowChip>)
+
+    expect(done).toContain('background:var(--foreground)')
+    expect(done).toContain('color:var(--snow)')
+    expect(surface).toContain('background:var(--surface)')
+    expect(surface).toContain('color:var(--foreground)')
+    expect(muted).toContain('background:var(--surface)')
+    expect(muted).toContain('color:var(--muted)')
+  })
+
   it('빈 칩은 아무것도 그리지 않는다', () => {
     expect(render(<ListRowChip>{''}</ListRowChip>)).toBe('')
     expect(render(<ListRowChip>{null}</ListRowChip>)).toBe('')

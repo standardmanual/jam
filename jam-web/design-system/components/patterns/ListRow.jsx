@@ -97,14 +97,18 @@ export function ListRowEm({ children, className = '', style = {} }) {
 }
 
 const CHIP_TONES = {
-  neutral: 'var(--default-soft)',
-  accent: 'var(--accent-soft)',
-  warning: 'var(--warning)',
+  neutral: { bg: 'var(--default-soft)', fg: 'var(--foreground)' },
+  accent: { bg: 'var(--accent-soft)', fg: 'var(--foreground)' },
+  warning: { bg: 'var(--warning)', fg: 'var(--foreground)' },
+  done: { bg: 'var(--foreground)', fg: 'var(--snow)' },
+  surface: { bg: 'var(--surface)', fg: 'var(--foreground)' },
+  'surface-muted': { bg: 'var(--surface)', fg: 'var(--muted)' },
 };
 
 /**
  * 행 안 칩 한 크기(12px). 상태·만료·마지막 파편 같은 칩 복제를 대신한다.
- * 글자는 항상 --foreground다. accent·warning은 면 채우기에만 쓴다(선·점으로도 쓰지 않는다).
+ * 글자는 --foreground가 기본이다. done은 --snow, surface-muted는 --muted다. accent·warning은 면 채우기에만 쓴다(선·점으로도 쓰지 않는다).
+ * surface·surface-muted(흰 면)는 tint 행 위 전용이다.
  */
 export function ListRowChip({ tone = 'neutral', children, className = '', style = {} }) {
   if (children == null || children === '') return null;
@@ -115,8 +119,8 @@ export function ListRowChip({ tone = 'neutral', children, className = '', style 
         display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
         padding: 'var(--list-row-chip-padding)',
         borderRadius: 'var(--radius-full)',
-        background: CHIP_TONES[tone] ?? CHIP_TONES.neutral,
-        color: 'var(--foreground)',
+        background: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).bg,
+        color: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).fg,
         fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', fontWeight: ROW_WEIGHT.regular,
         ...style,
       }}

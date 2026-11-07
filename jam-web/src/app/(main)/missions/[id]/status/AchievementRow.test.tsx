@@ -31,15 +31,16 @@ describe('AchievementRow', () => {
     expect(html).toContain('data-interactive="false"')
   })
 
-  it('달성·미달성은 value 칩이다(달성은 accent, 미달성은 neutral)', () => {
-    expect(render({ achieved: true })).toContain('background:var(--accent-soft)')
+  it('달성·미달성은 value 칩이다(달성은 done 블랙 면, 미달성은 흰 면 + muted 글자)', () => {
+    expect(render({ achieved: true })).toContain('background:var(--foreground);color:var(--snow)')
     expect(render({ achieved: true })).toContain('>달성</span>')
-    expect(render({ achieved: false })).toContain('background:var(--default-soft)')
+    expect(render({ achieved: false })).toContain('background:var(--surface);color:var(--muted)')
     expect(render({ achieved: false })).toContain('>미달성</span>')
   })
 
   it('내 행에만 이름 옆 «나» 칩이 있고 이름 굵기·색은 모든 행이 같다', () => {
     expect(render({}, true)).toContain('>나</span>')
+    expect(render({ achieved: false }, true)).toContain('background:var(--surface);color:var(--foreground)')
     expect(render({}, false)).not.toContain('>나</span>')
     expect(render({}, true)).not.toContain('(나)')
     expect(render({}, true)).not.toContain('var(--link)')

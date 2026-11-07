@@ -314,9 +314,9 @@ export function AchievementRow({ e, highlight }: { e: AchievementEntry; highligh
       href={e.username ? `/${e.username}` : undefined}
       lead={<SimpleAvatar url={e.avatarUrl} />}
       title={e.displayName}
-      titleSuffix={highlight ? <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip> : undefined}
+      titleSuffix={highlight ? <ListRowChip tone="surface">{d.missions.statusMeChip}</ListRowChip> : undefined}
       value={
-        <ListRowChip tone={e.achieved ? 'accent' : 'neutral'}>
+        <ListRowChip tone={e.achieved ? 'done' : 'surface-muted'}>
           {e.achieved ? d.missions.achieved : d.missions.notAchieved}
         </ListRowChip>
       }

@@ -763,8 +763,8 @@ const worstCases = (): WorstCase[] => [
     label: 'C5 달성 행 — 이름 옆 «나» 칩 + 달성·미달성 칩',
     node: (
       <>
-        <ListRow tone="flat" separator lead={<UserIcon />} leadShape="round" title="runner_kim" value={<ListRowChip tone="accent">달성</ListRowChip>} />
-        <ListRow tone="flat" lead={<UserIcon />} leadShape="round" title="han_river_seoul_runner_2026" titleLines={1} titleSuffix={<ListRowChip tone="accent">나</ListRowChip>} value={<ListRowChip>미달성</ListRowChip>} />
+        <ListRow tone="tint" lead={<UserIcon />} leadShape="round" title="runner_kim" value={<ListRowChip tone="done">달성</ListRowChip>} />
+        <ListRow tone="tint" lead={<UserIcon />} leadShape="round" title="han_river_seoul_runner_2026" titleLines={1} titleSuffix={<ListRowChip tone="surface">나</ListRowChip>} value={<ListRowChip tone="surface-muted">미달성</ListRowChip>} />
       </>
     ),
   },

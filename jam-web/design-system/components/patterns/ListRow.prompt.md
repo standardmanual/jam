@@ -73,7 +73,7 @@ indicator의 체크 아이콘·순위 숫자는 시각 표지라 스크린리더
 
 ## 하지 않는 것
 - 자유 `children`을 받지 않는다. 슬롯에 없는 칸이 필요하면 계열을 늘리지 말고 설계 판정으로 올린다.
-- 칩을 3개 넘기지 않는다. 칩 글자는 `--foreground`뿐이고 `--accent`·`--warning`은 면 채우기에만 쓴다(`ListRowChip`의 `tone`).
+- 칩을 3개 넘기지 않는다. 칩 글자는 `--foreground`가 기본이고 예외는 `done`(`--snow`)·`surface-muted`(`--muted`)뿐이다. `--accent`·`--warning`은 면 채우기에만 쓴다(`ListRowChip`의 `tone`). `done`은 달성·완료 칩, 흰 면(`surface`·`surface-muted`)은 tint 행 전용이다.
 - 한 행에서 색으로 강조하는 곳은 한 곳 이하다(title 굵기 · value 포인트색 · 칩 중 하나). 그림자·그라디언트·유리질 없음.
 - 본문을 가운데 정렬하지 않는다. `footer`는 media 변형 전용이고 클릭 영역 안이라 인터랙티브 요소를 넣지 않는다.
 - 호출부에서 치수·색 값을 직접 박지 않는다. 아래 토큰을 쓴다.
