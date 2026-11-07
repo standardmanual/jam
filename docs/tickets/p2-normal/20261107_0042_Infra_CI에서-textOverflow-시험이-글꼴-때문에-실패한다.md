@@ -21,6 +21,12 @@ created: 2026-11-07
 - 시험이 `font.family: 'system-ui'`로 실제 캔버스에서 폭을 재므로, Actions 러너의 글꼴 환경이 바뀌었을 가능성이 높다(확인하지 않았다).
 - `verify.sh`는 실패한 단계의 로그를 CI에 남기지 않아 이름을 가리는 데 진단용 브랜치가 필요했다.
 
+## 원인 확인 (2026-11-07, 진단용 임시 브랜치 `claude/diag-0042-fonts`, 확인 뒤 삭제함)
+
+- 러너: Ubuntu 26.04.1 LTS, 이미지 버전 20261101.186.1. `fc-list | wc -l` = 53, **`fc-list :lang=ko` 결과 없음**(Lato·DejaVu·Liberation만 있음). `GlobalFonts.families`는 9개이고 한글 글꼴은 없다.
+- `@napi-rs/canvas`에서 `400 100px "system-ui"`로 `가나다`와 `ABC`를 그리면 `measureText.width`가 둘 다 373.55로 같고 **불투명 픽셀이 0개**다. 러너에서 `system-ui`가 실제 글꼴로 풀리지 않아 아무것도 그려지지 않는다. 그래서 «넘침이 있다»(`toBe(true)`) 단언 3건만 실패한다. 원인은 러너의 글꼴 환경이고 캔버스 라이브러리가 아니다.
+- 진단 방식: `claude/**` 브랜치에 `verify.yml`을 진단 단계(`fc-list`, 캔버스 폭·픽셀 출력)만 있는 것으로 바꿔 push하고 로그를 읽었다. `verify.sh`는 CI에서 실패 로그를 남기지 않아 이 방식이 필요했다.
+
 ## 구현 계획
 
 규모: 변경 파일 1~2개(시험 파일과 필요하면 `.github/workflows/verify.yml`·진단용 임시 브랜치 제외), 변경 줄 수 약 30줄 이내.

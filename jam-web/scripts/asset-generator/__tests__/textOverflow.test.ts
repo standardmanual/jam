@@ -1,11 +1,24 @@
 /**
  * asset-generator 텍스트 오른쪽 여백 넘침 검사 — 실제 캔버스 경계 검증 (티켓 20260926_2346, 경계 보강 20261007_1600)
  */
-import { describe, expect, it } from 'vitest';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { GlobalFonts } from '@napi-rs/canvas';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTextOverflowDetector } from '../textOverflow.mjs';
 
+// CI 러너(Ubuntu)에는 한글 글꼴이 없어 system-ui로는 한글이 그려지지 않는다(티켓 20261107_0042).
+// 저장소에 있는 Pretendard를 직접 등록해 쓰고, 글꼴 로더는 구글 폰트 다운로드(네트워크)를 하지 않게 비운다.
+vi.mock('../fonts.mjs', () => ({ createServerFontLoader: () => async () => {} }));
+
+const TEST_FONT = { family: 'JamTestPretendard', weight: 700 };
+beforeAll(() => {
+  const fontPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../badge-image-gen/fonts/Pretendard-Bold.ttf');
+  if (!GlobalFonts.registerFromPath(fontPath, TEST_FONT.family)) throw new Error(`시험용 글꼴을 등록하지 못했어요: ${fontPath}`);
+});
+
 const textLayer = (extra: Record<string, unknown> = {}) => ({
-  type: 'text', id: 't1', content: '기본', font: { family: 'system-ui', weight: 400 }, sizePct: 10, letterSpacing: 0, lineHeight: 1.2,
+  type: 'text', id: 't1', content: '기본', font: TEST_FONT, sizePct: 10, letterSpacing: 0, lineHeight: 1.2,
   align: 'left', color: '#000000', xPct: 5, yPct: 50, rotationDeg: 0, opacityPct: 100, ...extra,
 });
 const imageLayer = { type: 'image', id: 'i1', assetUrl: 'https://x.test/a.png', xPct: 50, yPct: 50, widthPct: 50, rotationDeg: 0, opacityPct: 100 };
