@@ -915,7 +915,10 @@ export const ko = {
     statusMeAchievement: '— 나 —',
     statusNoParticipants: '아직 참가자가 없어요',
     statusNoParticipantsBody: '가장 먼저 도전해보세요',
-    statusMeSuffix: ' (나)',
+    /** 순위·달성 행에서 내 행을 알리는 칩 글자(티켓 20261107_1947) */
+    statusMeChip: '나',
+    /** 순위 행의 순위 숫자를 스크린리더가 읽는 문구 */
+    statusRankLabel: '{rank}위',
     /** 받지 않은 미션 보상 받기 API 오류 문구(티켓 20261019_1313). 화면은 5-7이 만든다 */
     claim: {
       /** 받기 409 `no_pending` — 이미 받았다(중복 클릭, 다른 기기) */

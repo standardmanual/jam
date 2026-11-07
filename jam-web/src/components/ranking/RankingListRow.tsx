@@ -1,6 +1,7 @@
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { UserIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { d, t } from '@/lib/i18n'
 
 /**
  * 순위 행 하나 — 미션 상세 화면(`MissionStatusClient.tsx`)과 홈 피드 랭킹보드 카드가
@@ -10,13 +11,12 @@ import { ProgressBar } from '@ds/components/feedback/ProgressBar'
  * `formatMissionProgress(value, missionType)`를 직접 호출했는데, 랭킹보드는 지표에 따라
  * 값 포맷이 달라진다(거리·횟수·팔로워 수 등) — `formatValue`를 외부 주입받는 형태로 분리해
  * 도메인 결합을 없앴다(오케스트레이터 UI 재사용 판정 — MODULAR 승격은 이번 범위에서
- * 강제하지 않고, 재료(`ListRowCard`·`ProgressBar`)는 그대로 재사용한다).
+ * 강제하지 않고, 재료(`ListRow`·`ProgressBar`)는 그대로 재사용한다).
  *
- * `ListRowCard`는 MODULAR 원본이 아니라 서비스 로컬 포팅 사본(`@/components/ui/ListRowCard`)이다
- * — 그대로 재사용한다(새로 만들지 않는다). `ProgressBar`는 MODULAR 원본
- * (`@ds/components/feedback/ProgressBar`)을 그대로 쓴다.
+ * 행 골격은 서비스 사본 `ListRow`(`@/components/ui/ListRow`)다(티켓 20261107_1947, 목록 행 4단계 3-5배치).
+ * `ProgressBar`는 MODULAR 원본(`@ds/components/feedback/ProgressBar`)을 그대로 쓴다.
  *
- * **`'use client'`가 없다**(티켓 20261001_2104). 이 파일은 훅이 없고 안쪽 `ListRowCard`(클라이언트)에는 문자열·JSX만 넘긴다. 홈 `ListCard`는 서버 컴포넌트라
+ * **`'use client'`가 없다**(티켓 20261001_2104). 이 파일은 훅이 없고 안쪽 `ListRow`에는 문자열·JSX만 넘긴다. 홈 `ListCard`는 서버 컴포넌트라
  * 이 컴포넌트가 클라이언트 경계면 `formatValue` 함수 prop을 서버에서 클라이언트로 넘기게 되어 렌더 때 「Functions cannot be passed directly to Client Components」로
  * 실패한다(`tsc`·lint·`renderToStaticMarkup` 테스트에는 안 잡힌다). 지시어가 없으면 서버에서는 `formatValue`가 서버 안에서 호출되고, `MissionStatusClient`(클라이언트)에서는
  * 그대로 클라이언트 번들로 동작한다. 훅·이벤트 핸들러를 넣게 되면 지시어를 되살리고 `formatValue`를 함수 prop이 아닌 값으로 바꿔야 한다.
@@ -43,77 +43,52 @@ export interface RankingListRowProps {
 }
 
 /**
- * 순위 목록의 행 하나 — 순위 번호·아바타·이름·진행 바·값을 그린다(1·2·3위 강조 포디엄 없음).
+ * 순위 목록의 행 하나 — 순위 번호(indicator)·48 원형 아바타(lead)·이름·내 행 «나» 칩(titleSuffix)·진행 바(meta)·값(value)을 그린다(1·2·3위 강조 포디엄 없음).
  * 이 행은 늘 흰 카드(홈 `ListCard`, 미션 현황의 순위 카드) 안에 들어가므로 면은 `tone="tint"`(--background-secondary, 테두리 없음)다 —
  * 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133). 행 사이에는 호출부가 간격(gap 8)을 둔다.
+ *
+ * 내 행은 크기·색이 아니라 이름 옆 «나» 칩 하나로 알린다(색 강조 한 곳 규칙, 티켓 20261107_1947 사용자 승인).
+ * 클릭 영역(프로필 링크) 안은 phrasing만 쓴다 — 진행 바는 `as="span"`이고 장식이라 호출부 span 래퍼에 aria-hidden을 건다.
+ * 순위 숫자는 화면용 숫자(aria-hidden)와 «N위»(sr-only)를 함께 둔다.
  */
 export default function RankingListRow({ entry, maxValue, isMe, formatValue }: RankingListRowProps) {
   const fillRatio = maxValue > 0 ? Math.min(1, entry.value / maxValue) : 0
-  // 내 순위 행만 h4 토큰(24px)으로 확대 강조, 그 외에는 small 토큰(14px) 그대로
-  const emphasisFontSize = isMe ? 'var(--text-2xl)' : 'var(--text-sm)'
 
   return (
-    <ListRowCard
+    <ListRow
       tone="tint"
+      leadShape="round"
       href={entry.username ? `/${entry.username}` : undefined}
-      icon={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* 순위 번호 — 내 순위는 --link로 강조 */}
-          <span
-            style={{
-              fontSize: emphasisFontSize,
-              fontWeight: 'bold',
-              color: isMe ? 'var(--link)' : 'var(--muted)',
-              width: 20,
-              textAlign: 'center',
-            }}
-          >
-            {entry.rank}
-          </span>
-
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              backgroundColor: 'var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            {entry.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={entry.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <UserIcon className="w-[18px] h-[18px] text-[#666]" />
-            )}
-          </div>
-        </div>
+      indicator={
+        <>
+          <span aria-hidden="true">{entry.rank}</span>
+          <span className="sr-only">{t(d.missions.statusRankLabel, { rank: entry.rank })}</span>
+        </>
       }
-      trailing={
-        <span style={{ fontSize: emphasisFontSize, fontWeight: 'bold', color: isMe ? 'var(--link)' : 'var(--foreground)' }}>
-          {formatValue(entry.value)}
+      lead={
+        entry.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- 아바타는 외부 URL이고 크기는 lead 박스가 정한다(ListRow CSS)
+          <img src={entry.avatarUrl} alt="" />
+        ) : (
+          <UserIcon className="w-6 h-6" />
+        )
+      }
+      title={entry.displayName}
+      titleSuffix={isMe ? <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip> : undefined}
+      meta={
+        <span aria-hidden="true" className="block">
+          <ProgressBar
+            as="span"
+            percent={fillRatio * 100}
+            labelType="none"
+            height={6}
+            color="var(--accent)"
+            trackColor="var(--border)"
+            radius="3px"
+          />
         </span>
       }
-    >
-      <div className="flex flex-col gap-2">
-        <p
-          className="m-0 truncate"
-          style={{ fontSize: 'var(--text-sm)', fontWeight: isMe ? 'bold' : 'normal', color: 'var(--foreground)' }}
-        >
-          {entry.displayName}
-        </p>
-        <ProgressBar
-          percent={fillRatio * 100}
-          labelType="none"
-          height={6}
-          color="var(--accent)"
-          trackColor="var(--border)"
-          radius="3px"
-        />
-      </div>
-    </ListRowCard>
+      value={formatValue(entry.value)}
+    />
   )
 }

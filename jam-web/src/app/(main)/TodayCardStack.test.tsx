@@ -223,8 +223,9 @@ describe('TodayCardStack — 랭킹 행형만 카드 전체 링크가 없다', (
     expect(html).toContain('href="/runner2"')
     // 제목 링크 하나 + 행 링크 둘
     expect(html.match(/<a /g)).toHaveLength(3)
-    // 눌림은 제목 링크 하나와 순위 행 둘(행이 링크일 때 `ListRowCard`가 `.jam-press`를 붙인다) — 카드 전체에는 없다
-    expect(html.match(/jam-press/g)).toHaveLength(3)
+    // `.jam-press`는 제목 링크 하나뿐이고 카드 전체에는 없다. 순위 행 둘은 `ListRow`가 눌림을 처리한다(`data-interactive="true"`)
+    expect(html.match(/jam-press/g)).toHaveLength(1)
+    expect(html.replace(/<style[\s\S]*?<\/style>/g, '').match(/data-interactive="true"/g)).toHaveLength(2)
     expect(html).not.toContain('전체 보기')
   })
 
@@ -253,14 +254,14 @@ describe('TodayCardStack — 랭킹 행형만 카드 전체 링크가 없다', (
 describe('TodayCardStack — 홈에서 보는 사람(currentUserId)', () => {
   it('랭킹 행형은 currentUserId를 받아 내 순위 행만 강조한다', () => {
     const html = render([rankingCard()], 'u2')
-    // 내 순위 행의 순위 번호·값만 24px(--text-2xl) 레드(--link)다
-    expect(html.match(/font-size:var\(--text-2xl\)/g)).toHaveLength(2)
-    expect(html.match(/font-size:var\(--text-2xl\);font-weight:bold;color:var\(--link\)/g)).toHaveLength(2)
+    // 내 순위 행의 이름 옆에만 «나» 칩이 붙는다(크기·색 강조는 없다, 티켓 20261107_1947)
+    expect(html.match(/>나<\/span>/g)).toHaveLength(1)
+    expect(html).not.toContain('--text-2xl')
   })
 
   it('currentUserId가 없거나 목록에 없으면 강조가 없다', () => {
-    expect(render([rankingCard()])).not.toContain('--text-2xl')
-    expect(render([rankingCard()], 'someone-else')).not.toContain('--text-2xl')
+    expect(render([rankingCard()])).not.toContain('>나</span>')
+    expect(render([rankingCard()], 'someone-else')).not.toContain('>나</span>')
   })
 })
 
