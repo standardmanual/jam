@@ -103,9 +103,11 @@ describe('랭킹 행형 판단 — TodayCard의 링크 범위와 ListCard의 갈
     const html = renderToStaticMarkup(<TodayCard view={listView(resource)} />)
     expect(maxAnchorDepth(html)).toBe(1)
     if (isRankingRows(resource)) {
-      // 제목 링크 하나(미션 대상 랭킹이고 href가 있을 때) + 행 링크 둘, 눌림은 링크마다 하나(카드 전체에는 없다)
+      // 제목 링크 하나(미션 대상 랭킹이고 href가 있을 때) + 행 링크 둘. `.jam-press`는 제목 링크 하나이고(카드 전체에는 없다)
+      // 행 눌림은 `ListRow`가 처리한다(`data-interactive="true"`, 행마다 내보내는 `<style>`은 먼저 걷는다 — 티켓 20261107_1947)
       expect(html.match(/<a /g)).toHaveLength(3)
-      expect(html.match(/jam-press/g)).toHaveLength(3)
+      expect(html.match(/jam-press/g)).toHaveLength(1)
+      expect(html.replace(/<style[\s\S]*?<\/style>/g, '').match(/data-interactive="true"/g)).toHaveLength(2)
     } else {
       expect(html.match(/<a /g)).toHaveLength(1)
       expect(html.match(/jam-press/g)).toHaveLength(1)

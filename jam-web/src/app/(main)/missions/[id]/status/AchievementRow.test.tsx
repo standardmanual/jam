@@ -2,9 +2,18 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { AchievementRow } from './MissionStatusClient'
 
+interface AchievementEntryLike {
+  userId: string
+  displayName: string
+  username: string | null
+  avatarUrl: string | null
+  achieved: boolean
+  achievedAt: string | null
+}
+
 // 티켓 20261107_1947 — 달성 행을 `ListRow`로 옮겼다. `ListRow`는 행마다 `<style>`을 내보내므로 먼저 걷고 검사한다(티켓 20261107_1815).
-const entry = { userId: 'u1', displayName: '러너', username: 'runner', avatarUrl: null, achieved: true, achievedAt: null }
-const render = (e: Partial<typeof entry>, highlight = false) =>
+const entry: AchievementEntryLike = { userId: 'u1', displayName: '러너', username: 'runner', avatarUrl: null, achieved: true, achievedAt: null }
+const render = (e: Partial<AchievementEntryLike>, highlight = false) =>
   renderToStaticMarkup(<AchievementRow e={{ ...entry, ...e }} highlight={highlight} />).replace(/<style[\s\S]*?<\/style>/g, '')
 
 describe('AchievementRow', () => {
