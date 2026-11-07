@@ -2,7 +2,7 @@
 id: "20261107_2156"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-07
 parent: "20261106_1750"
 specs:
@@ -34,7 +34,7 @@ specs:
 2. `ProgressBar.d.ts`에 prop 설명을 더한다(기본 false, 켜는 이유: 클릭 영역·`<a>`·`<button>` 안 phrasing 요건).
 3. `ProgressBar.prompt.md`에 한 줄을 더한다(언제 켜는가).
 4. `ProgressBar.stories.tsx`에 새 Story를 더한다: `inline` 켜고 끈 모양이 같음을 나란히 보이고, `<a>` 안에 놓인 사례 하나를 둔다.
-5. `scripts/ds-sync-check.mjs`·매니페스트에 `ProgressBar`가 등록돼 있는지 확인하고 `npm run ds:check`가 오류 0이다.
+5. `jam-web/scripts/ds-sync-check.mjs`·매니페스트에 `ProgressBar`가 등록돼 있는지 확인하고 `npm run ds:check`가 오류 0이다.
 6. 기존 사용처의 시험이 통과한다(`LockedItemDetail.test.tsx`, `cardFacePairs.test.tsx` 등). 기존 호출부는 코드 변경이 없다.
 
 범위 밖: `RankingListRow`·`AchievementRow` 구현(3-5배치 본 티켓 20261107_1947), `ListRow`·`ListRowCard`, 진행 바 색·높이 값 변경.
@@ -70,6 +70,53 @@ specs:
 - staging에서 `ProgressBar`를 쓰는 화면(컬렉션 히어로, 미션 상세, 인벤토리, 온보딩 카드 등)이 그대로인지 확인한다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+
+- `ProgressBar`에 `as?: 'div' | 'span'`(기본 `'div'`)을 더했다. `'span'`이면 바깥 래퍼 3곳(라벨 없음·`labelPosition="top"`·라벨 inline)과 트랙, 채움 2갈래(solid·track-gradient)를 모두 `<span>`으로 그린다. `display:block`은 span 경로에서만 조건부 스프레드로 붙고(라벨 없는 바깥과 트랙), flex 래퍼와 채움에는 붙이지 않는다. div 경로의 스타일 키 순서와 마크업은 바뀌지 않는다. `role`·`aria-*`는 더하지 않았다.
+- `ProgressBar.d.ts`(`ProgressBarAs` 타입), `ProgressBar.prompt.md`(«추가 — span 렌더» 절), `ProgressBar.stories.tsx`(Story `AsSpan`, play 함수 단정)를 같은 뜻으로 갱신했다.
+- 새 시험 `src/components/ui/__tests__/ProgressBar.markup.test.tsx`(92건)를 추가했다.
+
+### 채원 사전 판정 (needsApproval: false)
+
+- 재사용이 아니라 **MODULAR 확장**이다(좁은 범위). 새 컴포넌트·새 토큰·서비스 전용 바는 없다.
+- prop 이름은 티켓 기본안 `inline`이 아니라 `as`로 정했다. 이 컴포넌트에 이미 `labelPosition="inline"`(라벨이 바 옆)이 있어 `inline`이 두 뜻이 되기 때문이다. `as="span"`은 «어떤 태그로 그리는가»를 그대로 말한다. 다른 컴포넌트로 확산시키지 않고 `ProgressBar` 한정으로 `prompt.md`에 적었다.
+- 접근성 속성(`role`·`aria-*`)은 이번에 더하지 않는다(읽기가 바뀌는 판단이라 별도 티켓).
+- 연결 범위: 「연결된 컴포넌트 — 서비스에 즉시 반영」. 서비스 사본이 없어 `@ds/components/feedback/ProgressBar`를 직접 import하는 호출부에 즉시 반영되고, 병존 구현이 아니다. 영향 호출부는 9개 파일 10곳(`OnboardingQuestCard` 2곳, `[username]/collections/page`, `TodayStatusStrip`, `ItemBookHeroSection`, `inventory/page`, `MissionDetailClient`, `MissionStatusClient`, `RankingListRow`, `CollectionGridCard`)이고 모두 `as`를 켜지 않는다. 티켓에 적었던 `DualAxisGauge`는 티켓 20261018_1817에서 이미 삭제됐다. `jam-web/scripts/ds-sync-check.mjs`에는 `ProgressBar`가 등록돼 있지 않고 병존 페어에도 없다.
+
+### 게이트 결과 (민지 WARN, 채원 사후 중대 문제 없음)
+
+- 브랜치 CI `verify` success(run 42375723854).
+- 불변 증명: 수정 전 코드에서 29개 조합(실제 호출 11개, 라벨 percent·fraction × inline·top, track-gradient, outlined, className, 폭 경계 0·100·음수·100 초과·total 0·없음)의 마크업을 뽑아 시험에 고정했고, 수정 후 29개가 한 글자도 다르지 않다(시험 92건 통과). 민지가 `ProgressBar.jsx`를 수정 전 버전으로 되돌려 기본 경로 58건이 통과하는 것까지 독립적으로 재현했다.
+- WARN 사유: Storybook `AsSpan`의 눈 확인을 하지 못했다(격리 워크트리 경로의 `!` 때문에 `storybook dev`가 스토리를 찾지 못함). Story play 함수의 단정(높이 6px·radius·채움 폭·`<div>` 부재)은 CI에서 돌지 않아 실행으로 검증된 적이 없다. 메인 트리에서도 확인하지 못했다(아래).
+- 사용자가 머지를 승인했다(2026-11-07).
+- 머지 중에 병렬 세션이 `origin/staging`에 컬러 개편 티켓 커밋(47a755ff5)을 올려 리뷰 브랜치가 최신 staging의 조상을 물지 않게 됐다. 임시 워크트리에서 최신 `origin/staging` 위에 같은 커밋을 cherry-pick해(문서만 달랐고 충돌 없음) 머지했다.
+
+### 변경된 파일
+
+```
+jam-web/design-system/components/feedback/ProgressBar.jsx
+jam-web/design-system/components/feedback/ProgressBar.d.ts
+jam-web/design-system/components/feedback/ProgressBar.prompt.md
+jam-web/design-system/components/feedback/ProgressBar.stories.tsx
+jam-web/src/components/ui/__tests__/ProgressBar.markup.test.tsx (신규)
+```
+
+### 테스트 결과
+- [x] 브랜치 CI `verify` success, `scripts/verify.sh` 전 항목 통과(아현 실행), `ds:check` 오류 0
+- [x] 기존 호출처 29개 조합 마크업 불변 증명(아현), 수정 전 코드 재현(민지)
+- [ ] Storybook `AsSpan` 눈 확인, play 함수 실행: 하지 못함. 메인 트리 개발 환경이 병렬 세션의 컬러 개편 작업 중이라 머지 코드가 반영된 Storybook을 띄우지 못했다
+- [ ] staging 화면 확인과 Vercel 배포 상태: push 뒤 확인
+
+### 주요 의사결정 / 핵심 메모
+
+- 이번 티켓은 `as`를 켜는 호출부가 없어 화면이 달라지지 않는다. 켜는 곳은 3-5배치 본 티켓(20261107_1947)의 `RankingListRow`다.
+- 후속으로 P3 티켓 셋을 올렸다: 20261107_2243(진행 바 접근성 `role`), 20261107_2244(`prefers-reduced-motion` 처리 없음), 20261107_2245(`AsSpan` Story 간격값을 토큰으로).
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1회차 | 4 | 224,120 | 25,300 / 7,932 | 20분 17초 | 82 |
+| 합계 | 4 | 224,120 | 25,300 / 7,932 | 20분 17초 | 82 |
