@@ -40,9 +40,8 @@ export function ListRowCard({
     display: 'flex',
     alignItems: 'center',
     gap: 'var(--spacing-16)',
-    // 흰 면과 크림 바탕은 1.05:1이라 1px --border가 경계를 맡는다(tint는 카드 안 행이라 테두리 없음). 그림자는 쓰지 않는다
-    background: isTint ? 'var(--background-secondary)' : 'var(--surface)',
-    border: isTint ? undefined : '1px solid var(--border)',
+    // 면은 --card-bg, 외곽선·그림자 없음(tint는 카드 안 행이라 구획 면, 티켓 20261107_2246)
+    background: isTint ? 'var(--background-secondary)' : 'var(--card-bg)',
     borderRadius: 'var(--radius-2xl)',
     padding: 'var(--spacing-16)',
     cursor: interactive ? 'pointer' : undefined,

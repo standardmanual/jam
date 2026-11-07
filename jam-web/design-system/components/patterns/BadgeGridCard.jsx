@@ -21,13 +21,12 @@ const UNDISCOVERED_SILHOUETTE_FILTER = 'brightness(0) invert(0.64)';
  *   - `count` — 반복 획득 횟수. 2 이상일 때만 썸네일 모서리에 «×N»을 붙인다.
  *     서비스 피드 카드의 카운터 필과 같은 시각 문법이다(새 표현을 만들지 않는다).
  *
- * 면 (티켓 20261015_2133): --surface(흰) + 1px --border + 반경 --radius-2xl, 그림자 없음.
- *   크림 바탕과 흰 면은 1.05:1이라 테두리가 경계를 맡는다. 서비스 `src/components/ui/BadgeGridCard.tsx`와 같은 값이다.
+ * 면 (티켓 20261107_2246): --card-bg + 반경 --radius-2xl, 외곽선·그림자 없음. 서비스 `src/components/ui/BadgeGridCard.tsx`와 같은 값이다.
  *
  * 상태:
  *   earned: false  → 썸네일을 원본 + grayscale(1)로 (미획득)
  *   undiscovered   → 썸네일을 회색 실루엣으로, 이름은 그대로 (아이템북 미발견, 티켓 20261102_1834)
- *   selected       → 면을 --accent-soft로 채움 (선택 모드, 기본 면과 겹치지 않고 한쪽만)
+ *   selected       → 블랙 2px 링(box-shadow, 레이아웃을 밀지 않음). 면은 그대로 --card-bg (선택 모드)
  *
  * 미획득 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
  * 20260905_0036이 한때 실루엣(공통 SVG)으로 바꿨다 — grayscale은 그려진 뒤 걸리는 CSS
@@ -84,16 +83,15 @@ export function BadgeGridCard({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    background: selected ? 'var(--accent-soft)' : 'var(--surface)',
-    border: '1px solid var(--border)',
+    background: 'var(--card-bg)',
     boxSizing: 'border-box',
     borderRadius: 'var(--radius-2xl)',
     padding: 'var(--spacing-12)',
     overflow: 'hidden',
-    // selected는 2px 보더가 아니라 면 채움(--accent-soft)으로 나타낸다 (기능적 의미 유지)
+    // selected는 면을 바꾸지 않고 블랙 2px 링으로 나타낸다(서비스 ring-2 ring-foreground와 같다, 새 색 없음)
     // highlighted: 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로
     // 배경톤만으로는 약해 별도로 inset 링을 준다(서비스와 동일).
-    boxShadow: highlighted ? 'inset 0 0 0 2px var(--link)' : undefined,
+    boxShadow: [selected && '0 0 0 2px var(--foreground)', highlighted && 'inset 0 0 0 2px var(--link)'].filter(Boolean).join(', ') || undefined,
     cursor: interactive ? 'pointer' : undefined,
     transition: interactive ? 'transform 100ms' : undefined,
     textDecoration: 'none',

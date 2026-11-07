@@ -1,8 +1,7 @@
 /**
  * 카드 면 레시피와 병존 쌍의 값 일치 (티켓 20261015_2133, 1회 카드 계열)
  *
- * 공통 Card default는 `--card-bg` + 투명 1px 테두리(티켓 20261107_2202), 그 밖의 카드는 `--surface`(흰) + `1px solid --border` + `--radius-2xl` + 그림자 없음.
- * 크림 바탕(`--background`)과 흰 면은 1.05:1이라 테두리가 없으면 카드가 보이지 않는다.
+ * 공통 Card default는 `--card-bg` + 투명 1px 테두리(티켓 20261107_2202), 목록·그리드 카드 3종은 `--card-bg` + 외곽선 없음(티켓 20261107_2246) + `--radius-2xl` + 그림자 없음.
  *
  * 확인하는 것
  * ① MODULAR `Card` 세 톤(default·tint·inverse)의 면과 글자색 쌍
@@ -35,7 +34,6 @@ import RankingListRow from '@/components/ranking/RankingListRow'
 import UserSearchBar from '@/app/(main)/UserSearchBar'
 import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
 
-const SURFACE = 'background:var(--surface)'
 const BORDER = 'border:1px solid var(--border)'
 // 공통 Card default(티켓 20261107_2202): --card-bg 면 + 투명 1px 테두리(박스 크기 유지)
 const CARD_FACE = 'background:var(--card-bg)'
@@ -113,8 +111,8 @@ describe('ListRowCard 쌍 — 면·테두리·tint', () => {
 
   it('MODULAR default·tint가 서비스와 같은 면·테두리 값이다', () => {
     const def = renderToStaticMarkup(<DsListRowCard title="제목" />)
-    expect(def).toContain(SURFACE)
-    expect(def).toContain(BORDER)
+    expect(def).toContain(CARD_FACE)
+    expect(def).not.toContain(BORDER)
 
     const tint = renderToStaticMarkup(<DsListRowCard tone="tint" title="제목" />)
     expect(tint).toContain('background:var(--background-secondary)')
@@ -123,43 +121,45 @@ describe('ListRowCard 쌍 — 면·테두리·tint', () => {
 
   it('알 수 없는 tone은 default로 그린다(서비스·MODULAR 모두)', () => {
     expect(renderToStaticMarkup(<ServiceListRowCard tone={'x' as 'default'} title="제목" />)).toContain('bg-card-bg')
-    expect(renderToStaticMarkup(<DsListRowCard tone={'x' as 'default'} title="제목" />)).toContain(BORDER)
+    expect(renderToStaticMarkup(<DsListRowCard tone={'x' as 'default'} title="제목" />)).toContain(CARD_FACE)
   })
 })
 
 describe('BadgeGridCard 쌍 — 카드 면과 선택 면', () => {
   const props = { name: '배지', rarity: 'rare' as const }
 
-  it('서비스: 기본은 bg-card-bg(외곽선 없음), 선택은 bg-accent-soft 하나만(두 배경 유틸리티가 쌓이지 않는다)', () => {
+  it('서비스: 면은 항상 bg-card-bg이고 선택은 블랙 2px 링(ring-2 ring-foreground)이다(티켓 20261107_2246)', () => {
     const base = renderToStaticMarkup(<ServiceBadgeGridCard {...props} />)
     expect(base).toContain('bg-card-bg')
     expect(base).not.toContain('border-border')
-    expect(base).not.toContain('bg-background ')
+    expect(base).not.toContain('ring-2')
 
     const selected = renderToStaticMarkup(<ServiceBadgeGridCard {...props} selected />)
-    expect(selected).toContain('bg-accent-soft')
+    expect(selected).toContain('bg-card-bg')
+    expect(selected).toContain('ring-2 ring-foreground')
+    expect(selected).not.toContain('bg-accent-soft')
     expect(selected).not.toContain('border-border')
-    // 카드 면 클래스(`bg-card-bg`)가 선택 면과 겹치지 않는다
-    expect(selected.match(/<div class="([^"]*)"/)?.[1]).not.toMatch(/\bbg-card-bg\b/)
   })
 
-  it('MODULAR: 기본은 --surface + 1px --border, 선택은 --accent-soft이고 옛 빨강 리터럴이 없다', () => {
+  it('MODULAR: 면은 항상 --card-bg(외곽선 없음), 선택은 블랙 2px 링이고 옛 빨강 리터럴이 없다', () => {
     const base = renderToStaticMarkup(<DsBadgeGridCard {...props} />)
-    expect(base).toContain(SURFACE)
-    expect(base).toContain(BORDER)
+    expect(base).toContain(CARD_FACE)
+    expect(base).not.toContain(BORDER)
     expect(base).not.toContain('box-shadow')
 
     const selected = renderToStaticMarkup(<DsBadgeGridCard {...props} selected />)
-    expect(selected).toContain('background:var(--accent-soft)')
-    expect(selected).toContain(BORDER)
+    expect(selected).toContain(CARD_FACE)
+    expect(selected).toContain('box-shadow:0 0 0 2px var(--foreground)')
+    expect(selected).not.toContain('accent-soft')
+    expect(selected).not.toContain(BORDER)
     expect(selected).not.toContain('232, 70, 31')
     expect(selected).not.toContain('232,70,31')
   })
 
-  it('MODULAR highlighted는 inset 2px --link 링이고 테두리는 그대로다', () => {
+  it('MODULAR highlighted는 inset 2px --link 링이고 외곽선은 없다', () => {
     const html = renderToStaticMarkup(<DsBadgeGridCard {...props} highlighted />)
     expect(html).toContain('box-shadow:inset 0 0 0 2px var(--link)')
-    expect(html).toContain(BORDER)
+    expect(html).not.toContain(BORDER)
   })
 })
 
@@ -173,8 +173,8 @@ describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
 
   it('MODULAR: 같은 면이고, 진행 바 트랙이 흰색 반투명이 아니라 ProgressBar 기본 트랙(--border)이다', () => {
     const html = renderToStaticMarkup(<DsCollectionGridCard {...props} />)
-    expect(html).toContain(SURFACE)
-    expect(html).toContain(BORDER)
+    expect(html).toContain(CARD_FACE)
+    expect(html).not.toContain(BORDER)
     expect(html).toContain('padding:var(--spacing-12)')
     expect(html).toContain('background:var(--border)')
     expect(html).not.toContain('rgba(255,255,255')

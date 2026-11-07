@@ -237,7 +237,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
         {view ? (
           <Link
             href={`/badges/${view.payload.badgeId}?item=${encodeURIComponent(itemId)}&from=inventory`}
-            className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)]"
+            className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)] underline underline-offset-2"
           >
             {d.lockedItem.detail.opened.badgeLink}
           </Link>
