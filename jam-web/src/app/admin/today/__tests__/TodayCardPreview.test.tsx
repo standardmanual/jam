@@ -140,7 +140,8 @@ describe('TodayCardPreview — 계측과 이동을 모두 끈다', () => {
       const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([card])} />)
       expect(html).not.toContain('data-tracker')
       expect(html).not.toContain('<a')
-      expect(html).not.toContain('href=')
+      // `ListRow`가 행마다 내보내는 `<style>`에 `href` 속성이 있어 먼저 걷는다(티켓 20261107_1947)
+      expect(html.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('href=')
       expect(html).not.toContain('jam-press')
     },
   )
@@ -157,7 +158,7 @@ describe('TodayCardPreview — 계측과 이동을 모두 끈다', () => {
     const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([ranking])} />)
     expect(html).toContain('김잼')
     expect(html).toContain('이잼')
-    expect(html).not.toContain('href=')
+    expect(html.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('href=')
   })
 
   it('표시 데이터에 계측 정보(tracking)가 없다', () => {
