@@ -458,7 +458,7 @@
     },
     {
       "name": "--background-secondary",
-      "value": "#f5f5f5",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -536,7 +536,7 @@
     },
     {
       "name": "--field-border",
-      "value": "#e5e5e5",
+      "value": "#8f8f8f",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -572,13 +572,13 @@
     },
     {
       "name": "--default",
-      "value": "#f5f5f5",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--default-soft",
-      "value": "#f5f5f5",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -638,19 +638,19 @@
     },
     {
       "name": "--progress-short",
-      "value": "#737373",
+      "value": "var(--base-neutral-500)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--progress-done",
-      "value": "#171717",
+      "value": "var(--base-neutral-900)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--progress-latest",
-      "value": "#525252",
+      "value": "var(--base-neutral-600)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -662,7 +662,7 @@
     },
     {
       "name": "--progress-track",
-      "value": "#e5e5e5",
+      "value": "var(--base-neutral-200)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },

@@ -36,7 +36,7 @@
 
   /* ── 배경·표면 ────────────────────────────────────────────── */
   --background: #ffffff;                        /* 서비스 열(430px) 바탕 */
-  --background-secondary: #f5f5f5;
+  --background-secondary: #e5e5e5;
   --page-bg: #e6e6e6;                           /* 서비스 열 바깥(html·body) 바탕 */
   --card-bg: #f7f7f7;                           /* Card default 면. 외곽선 없이 면으로만 구분한다 */
   --btn-secondary: #e5e5e5;                     /* Button secondary·outline 면. 카드 위 연한 면이 필요하면 이 값을 쓴다 */
@@ -68,7 +68,7 @@
 
   /* ── 선·면 ────────────────────────────────────────────────── */
   --border: #e5e5e5;
-  --field-border: #e5e5e5;
+  --field-border: #8f8f8f;
   --separator: #e5e5e5;                         /* 결정 4: 구분선은 하나 */
   --backdrop: rgba(0, 0, 0, 0.5);
 
@@ -76,8 +76,8 @@
   --success: var(--base-neutral-900);
   --warning: #525252;
   --danger: var(--base-neutral-900);
-  --default: #f5f5f5;
-  --default-soft: #f5f5f5;
+  --default: #e5e5e5;
+  --default-soft: #e5e5e5;
   --opacity-disabled: 0.4;                      /* 비활성 요소 투명도(범용). 현재 소비처는 ListRow뿐 */
 
   /* 포인트 글자색(티켓 20261104_2319): 값과 «포인트» 글자 모두 이 색이다. 리터럴 #ff4400. */
@@ -95,11 +95,11 @@
   --rarity-mystic-foreground: var(--base-white);
 
   /* ── 확장: 진행 상태 (문서 5.2절) ─────────────────────────── */
-  --progress-short: #737373;                    /* 모자람(채우는 중) */
-  --progress-done: #171717;                     /* 다 채움·획득 */
-  --progress-latest: #525252;                   /* 방금 들어옴 */
+  --progress-short: var(--base-neutral-500);                    /* 모자람(채우는 중) */
+  --progress-done: var(--base-neutral-900);                     /* 다 채움·획득 */
+  --progress-latest: var(--base-neutral-600);                   /* 방금 들어옴 */
   --progress-latest-soft: rgba(82, 82, 82, 0.18);
-  --progress-track: #e5e5e5;                    /* 아직 손대지 않은 자리 */
+  --progress-track: var(--base-neutral-200);                    /* 아직 손대지 않은 자리 */
   /* 채움 스윕: 트랙 전체에 깔고 clip-path로 잘라 「어디까지 넘어갔나」가 곧 진행도가 되게 한다. */
   --progress-sweep: linear-gradient(90deg in oklab,
       var(--progress-short), var(--progress-done));
