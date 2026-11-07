@@ -255,9 +255,10 @@ describe('RankingListRow — 카드 안 행이라 tint 면(테두리 없음)', (
         formatValue={(v) => `${v}km`}
       />,
     )
-    expect(html).toContain('bg-background-secondary')
-    expect(html).not.toContain('border-border')
-    expect(html).not.toContain('bg-surface')
+    // `ListRow`의 tint 톤: 면은 --background-secondary, 테두리는 투명, lead 면은 --surface
+    expect(html).toContain('background:var(--background-secondary);border:1px solid transparent')
+    expect(html).not.toContain('border:1px solid var(--border)')
+    expect(html).not.toContain('bg-background-secondary')
   })
 })
 

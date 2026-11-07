@@ -104,11 +104,13 @@ function maxAnchorDepth(html: string): number {
   return max
 }
 
+/** `ListRow`는 행마다 `<style>`을 함께 내보낸다 — 텍스트·`href=`·`data-*` 검사는 먼저 걷어야 맞다(티켓 20261107_1815) */
+const stripStyle = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, '')
 const anchors = (html: string) => html.match(/<a /g)?.length ?? 0
-/** 카드·제목 영역 링크(`CardLink`)의 눌림 개수 — 포커스 윤곽선 클래스가 함께 붙은 `.jam-press`만 센다. 순위 행(`ListRowCard`)의 눌림은 `rowPressCount`다. */
+/** 카드·제목 영역 링크(`CardLink`)의 눌림 개수 — 포커스 윤곽선 클래스가 함께 붙은 `.jam-press`만 센다. 순위 행(`ListRow`)의 눌림은 `rowPressCount`다. */
 const pressCount = (html: string) => html.match(/jam-press focus-visible/g)?.length ?? 0
-/** 링크인 순위 행 하나가 `.jam-press` 하나를 가진다(티켓 20261001_2244: 옛 `active:scale-[0.98]`를 `.jam-press`로 통일). 카드·제목 링크 눌림은 뺀다. */
-const rowPressCount = (html: string) => (html.match(/jam-press/g)?.length ?? 0) - pressCount(html)
+/** 링크인 순위 행 하나가 눌림 가능 표시(`data-interactive="true"`) 하나를 가진다 — `ListRow`가 눌림 규칙(`.ds-list-row`)을 처리한다(티켓 20261107_1947). */
+const rowPressCount = (html: string) => stripStyle(html).match(/data-interactive="true"/g)?.length ?? 0
 const positionsInOrder = (html: string, needles: string[]) => needles.map((needle) => html.indexOf(needle))
 const expectOrdered = (positions: number[]) => {
   for (const position of positions) expect(position).toBeGreaterThan(-1)
@@ -340,9 +342,13 @@ describe('ListCard 행형 — 본문과 순위 행', () => {
 
   it('긴 표시 이름도 한 줄 말줄임이다(행 컴포넌트가 truncate)', () => {
     const long = { ...entry(1, 'u1'), displayName: '아주아주아주아주아주아주아주아주아주아주 긴 표시 이름' }
-    expect(render(live(rankingView({ ranking: ranking({ entries: [long] }) })))).toContain('m-0 truncate')
+    const html = render(live(rankingView({ ranking: ranking({ entries: [long] }) })))
+    expect(html).toContain('overflow:hidden;text-overflow:ellipsis;white-space:nowrap')
+    expect(stripStyle(html)).toContain(long.displayName)
   })
 })
+
+const emphasizedChip = (html: string) => html.match(/>나<\/span>/g)?.length ?? 0
 
 describe('ListCard 행형 — 링크 구조', () => {
   it('미션 대상 랭킹(홈): 제목 영역만 링크이고 눌림은 그 링크 하나, 행은 각자 프로필 링크다', () => {
@@ -398,20 +404,26 @@ describe('ListCard 행형 — 링크 구조', () => {
     expect(html).not.toContain('data-tracker')
     expect(pressCount(html)).toBe(0)
     expect(html).not.toContain('--text-2xl')
+    expect(emphasizedChip(html)).toBe(0)
     // 순위 행은 링크 없이 그대로 보인다
     for (const name of ['이름1', '이름2', '이름3']) expect(html).toContain(name)
   })
 })
 
 describe('ListCard 행형 — 내 순위 강조', () => {
-  const emphasized = (html: string) => html.match(/font-size:var\(--text-2xl\);font-weight:bold;color:var\(--link\)/g)?.length ?? 0
+  // 내 행은 크기·색이 아니라 이름 옆 «나» 칩 하나로 알린다(티켓 20261107_1947)
+  const emphasized = (html: string) => html.match(/>나<\/span>/g)?.length ?? 0
 
   it.each([
-    ['1위', 'u1'],
-    ['중간', 'u2'],
-    ['마지막', 'u3'],
-  ])('홈에서 내 행이 %s이면 그 행의 순위·값만 24px 레드로 강조된다', (_label, userId) => {
-    expect(emphasized(render(live(rankingView()), userId))).toBe(2)
+    ['1위', 'u1', '이름1'],
+    ['중간', 'u2', '이름2'],
+    ['마지막', 'u3', '이름3'],
+  ])('홈에서 내 행이 %s이면 그 행의 이름 옆에만 «나» 칩이 붙는다', (_label, userId, name) => {
+    const html = render(live(rankingView()), userId)
+    expect(emphasized(html)).toBe(1)
+    expect(stripStyle(html)).toContain(`${name}</span><span style="flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="display:inline-flex`)
+    expect(html).not.toContain('--text-2xl')
+    expect(stripStyle(html)).not.toContain('style="color:var(--link)')
   })
 
   it('내가 목록에 없으면 강조가 없다', () => {
@@ -420,6 +432,63 @@ describe('ListCard 행형 — 내 순위 강조', () => {
 
   it('currentUserId가 없으면 강조가 없다(순위의 userId가 보는 사람 값이 아니다)', () => {
     expect(emphasized(render(live(rankingView())))).toBe(0)
+  })
+})
+
+describe('ListCard 행형 — 순위 행 마크업(ListRow, 티켓 20261107_1947)', () => {
+  const rowLink = (html: string, username: string) => html.match(new RegExp(`<a [^>]*href="/${username}"[^>]*>(.*?)</a>`))?.[1] ?? ''
+
+  it('클릭 영역(프로필 링크) 안에 <div>·<p>가 없다', () => {
+    const html = stripStyle(render(live(rankingView()), 'u2'))
+    for (const username of ['runner1', 'runner2', 'runner3']) {
+      const inner = rowLink(html, username)
+      expect(inner).not.toBe('')
+      expect(inner).not.toContain('<div')
+      expect(inner).not.toMatch(/<p[ >]/)
+    }
+  })
+
+  it('링크가 없는 행(username 없음)은 div 행이고 눌림 표시가 없다', () => {
+    // 미션 대상이 아닌 랭킹이라 제목 링크도 없다
+    const html = render(live(rankingView({ ranking: ranking({ metricType: 'badge_count', missionType: null, entries: [entry(1, 'u1', null)] }) })))
+    expect(anchors(html)).toBe(0)
+    expect(rowPressCount(html)).toBe(0)
+    expect(stripStyle(html)).toContain('data-interactive="false"')
+  })
+
+  it('순위 숫자는 화면에는 숫자(aria-hidden)이고 스크린리더에는 «N위»다', () => {
+    const html = stripStyle(render(live(rankingView())))
+    expect(html).toContain('<span aria-hidden="true">1</span><span class="sr-only">1위</span>')
+    expect(html).toContain('<span aria-hidden="true">3</span><span class="sr-only">3위</span>')
+  })
+
+  it('아바타는 장식이다: 이미지가 없으면 아이콘, 있으면 alt=""', () => {
+    const none = stripStyle(render(live(rankingView())))
+    expect(none).not.toContain('<img')
+    const withImg = stripStyle(
+      render(live(rankingView({ ranking: ranking({ entries: [{ ...entry(1, 'u1'), avatarUrl: 'https://example.com/a.png' }] }) }))),
+    )
+    expect(withImg).toContain('<img src="https://example.com/a.png" alt=""/>')
+  })
+
+  it('진행 바는 span이고 aria-hidden 래퍼 안에 있다(링크 안 phrasing + 장식)', () => {
+    const html = stripStyle(render(live(rankingView())))
+    expect(html).toContain('<span aria-hidden="true" class="block"><span class="" style="display:block;width:100%">')
+    expect(html.match(/aria-hidden="true" class="block"/g)).toHaveLength(3)
+  })
+
+  it('진행 비율은 값 ÷ 최댓값이고 0 이하 최댓값이면 채워지지 않는다', () => {
+    const html = stripStyle(render(live(rankingView({ ranking: ranking({ entries: [entry(1, 'u1'), entry(2, 'u2')] }) }))))
+    const widths = [...html.matchAll(/left:0;width:([\d.]+)%/g)].map((m) => Number(m[1]))
+    expect(widths).toHaveLength(2)
+    expect(widths[0]).toBe(100)
+    expect(widths[1]).toBeCloseTo((90 / 95) * 100, 5)
+  })
+
+  it('리터럴 색·고정 36 아바타가 없다', () => {
+    const html = render(live(rankingView()), 'u1')
+    expect(html).not.toMatch(/#[0-9a-fA-F]{3,6}/)
+    expect(html).not.toContain('width:36px')
   })
 })
 
