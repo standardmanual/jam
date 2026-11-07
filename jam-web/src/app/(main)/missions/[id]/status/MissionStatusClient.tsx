@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
@@ -302,54 +302,38 @@ function MyRankCard({
   )
 }
 
-/** 달성형 행 */
 /**
- * 달성형 행 — 20260825 리뉴얼: 랭킹형 `RankingListRow`와 같은 어휘(ListRowCard, `--border` 면 아바타,
- * 내 행만 `--link` 굵은 글씨 강조)로 통일. 옛 Card 행은 더 이상 쓰지 않는다.
+ * 달성형 행 — `ListRow`(티켓 20261107_1947, 목록 행 4단계 3-5배치): 랭킹형 `RankingListRow`와 같은 골격.
+ * 48 원형 아바타(lead) + 이름 + 내 행 «나» 칩(titleSuffix) + 달성·미달성 칩(value).
+ * 칩을 `trail`이 아니라 `value`에 둔 것은 행 전체를 프로필 링크 안에 두기 위해서다.
+ * 이 행은 늘 순위 카드(흰 면 + 테두리) 안이라 면은 tint다 — 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133).
  */
-function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
+/** 시험에서 마크업을 직접 확인하려고 내보낸다(티켓 20261107_1947) */
+export function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
-    <ListRowCard
+    <ListRow
       tone="tint"
+      leadShape="round"
       href={e.username ? `/${e.username}` : undefined}
-      // 이 행은 늘 순위 카드(흰 면 + 테두리) 안이라 면은 tint다 — 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133).
-      // 프로그래스바가 없어 한 줄짜리 행이라 기본 p-16(위아래 32px 간격)은 헐렁해 보인다 —
-      // 위아래 패딩만 좁혀 목록 간격을 줄인다.
-      className="!py-2"
-      icon={<SimpleAvatar url={e.avatarUrl} />}
-      trailing={
-        e.achieved ? (
-          <span className="text-xs leading-none px-2 py-1 rounded-full bg-btn-secondary text-foreground">
-            {d.missions.achieved}
-          </span>
-        ) : (
-          <span className="text-xs leading-none px-2 py-1 rounded-full bg-border text-foreground">
-            {d.missions.notAchieved}
-          </span>
-        )
+      lead={<SimpleAvatar url={e.avatarUrl} />}
+      title={e.displayName}
+      titleSuffix={highlight ? <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip> : undefined}
+      value={
+        <ListRowChip tone={e.achieved ? 'accent' : 'neutral'}>
+          {e.achieved ? d.missions.achieved : d.missions.notAchieved}
+        </ListRowChip>
       }
-    >
-      <p
-        className="text-sm leading-[var(--text-base--line-height)] truncate"
-        style={{ color: highlight ? 'var(--link)' : 'var(--foreground)', fontWeight: highlight ? 'bold' : 'normal' }}
-      >
-        {e.displayName}{highlight ? d.missions.statusMeSuffix : ''}
-      </p>
-    </ListRowCard>
+    />
   )
 }
 
-/** 소형 아바타 (달성형·개인형용) — 랭킹형 RankingListRow 아바타와 같은 `--border` 면 */
+/** 아바타 lead 안쪽 (달성형용) — 크기와 원형 면은 `ListRow`의 lead 박스(48, round)가 정한다 */
 function SimpleAvatar({ url }: { url: string | null }) {
   if (url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+    // eslint-disable-next-line @next/next/no-img-element -- 아바타는 외부 URL이고 크기는 lead 박스가 정한다(ListRow CSS)
+    return <img src={url} alt="" />
   }
-  return (
-    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--border)' }}>
-      <UserIcon className="w-[18px] h-[18px] text-muted" />
-    </div>
-  )
+  return <UserIcon className="w-6 h-6" />
 }
 
 // ────────────────────────────────────────────────────────────────
