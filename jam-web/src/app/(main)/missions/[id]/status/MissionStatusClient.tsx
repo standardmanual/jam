@@ -57,9 +57,9 @@ interface Props {
 }
 
 // ────────────────────────────────────────────────────────────────
-// 포디엄 설정값 (1위, 2위, 3위) — 20260825 리뉴얼: 앱 전역의 유일한 강조색인
-// --link·--accent(초록 계열) 하나로 통일. 1위만 강조, 2·3위는 중립톤으로 낮춰
-// "강조색은 하나만 쓴다"는 다른 화면들의 원칙을 그대로 따른다.
+// 포디엄 설정값 (1위, 2위, 3위) — 티켓 20261107_2246: 막대는 단색이다. 순위는 높이(130/90/60)와 명도 단계로만 말한다.
+// 1위 --foreground, 2위 --progress-short(#737373), 3위 --base-neutral-400(#a3a3a3).
+// 막대 위 글자는 면 대비를 지킨다: 1·2위는 --snow(약 17:1·4.7:1), 3위는 --foreground(약 7:1).
 // 폰트 크기는 모듈러 타이포 토큰 스케일(--text-3xl:28 / --text-2xl:24 /
 // --text-xs:12 / --text-xs:11)에 맞춘 값이다.
 // ────────────────────────────────────────────────────────────────
@@ -67,14 +67,11 @@ const PODIUM_CONFIG = [
   {
     rank: 1,
     barHeight: 130,
-    // --accent를 상단, 같은 색 45% 알파 톤(color-mix)을 하단에 둔 세로 그라디언트.
-    // 2·3위도 같은 accent의 알파 단계다(55→25%, 40→18%). 한 화면에 빨강·초록을 섞지 않는다(티켓 20261015_2134).
-    barGradient: 'linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent))',
+    barBg: 'var(--foreground)',
     avatarSize: 60,
-    avatarBg: 'var(--accent-soft)',
-    avatarBorder: 'var(--link)',
-    // 막대 위 순위·값 글자: 1위는 accent 면이라 --accent-foreground(6.63:1), 2·3위는 옅은 accent 알파 면이라 --foreground
-    barTextColor: 'var(--accent-foreground)',
+    avatarBg: 'var(--border)',
+    avatarBorder: 'var(--foreground)',
+    barTextColor: 'var(--snow)',
     barNumFontSize: 'var(--text-3xl)', // 28px — 가장 가까운 토큰
     usernameFontSize: 'var(--text-xs)', // 12px
     usernameBold: true,
@@ -82,11 +79,11 @@ const PODIUM_CONFIG = [
   {
     rank: 2,
     barHeight: 90,
-    barGradient: 'linear-gradient(180deg, color-mix(in srgb, var(--accent) 55%, transparent), color-mix(in srgb, var(--accent) 25%, transparent))',
+    barBg: 'var(--progress-short)',
     avatarSize: 48,
     avatarBg: 'var(--border)',
-    avatarBorder: null,
-    barTextColor: 'var(--foreground)',
+    avatarBorder: 'var(--progress-short)',
+    barTextColor: 'var(--snow)',
     barNumFontSize: 'var(--text-2xl)', // 24px
     usernameFontSize: 'var(--text-xs)', // 11px
     usernameBold: false,
@@ -94,10 +91,10 @@ const PODIUM_CONFIG = [
   {
     rank: 3,
     barHeight: 60,
-    barGradient: 'linear-gradient(180deg, color-mix(in srgb, var(--accent) 40%, transparent), color-mix(in srgb, var(--accent) 18%, transparent))',
+    barBg: 'var(--base-neutral-400)',
     avatarSize: 48,
     avatarBg: 'var(--border)',
-    avatarBorder: null,
+    avatarBorder: 'var(--base-neutral-400)',
     barTextColor: 'var(--foreground)',
     barNumFontSize: 'var(--text-2xl)',
     usernameFontSize: 'var(--text-xs)',
@@ -185,7 +182,7 @@ function PodiumColumn({
       <div style={{
         width: '100%',
         height: cfg.barHeight,
-        background: cfg.barGradient,
+        background: cfg.barBg,
         borderRadius: '10px 10px 0 0',
         display: 'flex',
         flexDirection: 'column',
@@ -515,7 +512,7 @@ export default function MissionStatusClient({
                 {d.missions.myProgressTitle}
               </span>
               {data.me.achieved ? (
-                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-btn-secondary text-foreground shrink-0">
+                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-foreground text-snow shrink-0">
                   {d.missions.achieved}
                 </span>
               ) : (

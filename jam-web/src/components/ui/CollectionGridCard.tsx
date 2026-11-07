@@ -28,7 +28,7 @@ export interface CollectionGridCardProps {
   children?: ReactNode
 }
 
-// 카드 면 레시피(티켓 20261015_2133): BadgeGridCard와 같은 면 — 흰 면(--surface) + 1px --border + 반경 16 + 안쪽 여백 12, 그림자 없음.
+// 카드 면 레시피(티켓 20261107_2246): BadgeGridCard와 같은 면 — --card-bg + 반경 16 + 안쪽 여백 12, 외곽선·그림자 없음.
 const BASE = 'flex flex-col gap-2 bg-card-bg rounded-2xl p-3'
 
 export default function CollectionGridCard({

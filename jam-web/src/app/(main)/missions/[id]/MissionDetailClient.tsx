@@ -469,7 +469,7 @@ export default function MissionDetailClient({
                   claimNotice.kind === 'short' ? (
                     <Link
                       href="/inventory"
-                      className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)]"
+                      className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)] underline underline-offset-2"
                     >
                       {d.missions.pendingCard.inventoryLink}
                     </Link>
@@ -612,7 +612,7 @@ export default function MissionDetailClient({
                 {mission.mission_type !== 'engine_condition' && (
                   <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
                 )}
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-btn-secondary text-foreground' : 'bg-border text-foreground'}`}>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-foreground text-snow' : 'bg-btn-secondary text-muted'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>

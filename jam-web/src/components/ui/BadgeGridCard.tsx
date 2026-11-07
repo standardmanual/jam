@@ -108,9 +108,9 @@ export default function BadgeGridCard({
 
   const containerCls = [
     BASE,
-    // 선택 면은 기본 면과 겹쳐 쓰지 않고 한쪽만 고른다 — 두 배경 유틸리티가 쌓이면 어느 쪽이 이기는지 CSS 순서에 좌우된다
-    // (`ItemCandidateRow.tsx`의 선택 링 주석과 같은 이유). 선택 위 글자는 --foreground(--accent-soft 위 약 4.7:1 이상)다.
-    selected ? 'bg-accent-soft' : 'bg-card-bg',
+    // 면은 항상 --card-bg이고, 선택은 블랙 2px 링(box-shadow라 레이아웃을 밀지 않는다)으로 말한다. 새 색을 만들지 않는다(티켓 20261107_2246).
+    'bg-card-bg',
+    selected && 'ring-2 ring-foreground',
     isInteractive && 'active:scale-95 transition-transform duration-100',
     // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
     highlighted && 'shadow-[inset_0_0_0_2px_var(--link)]',
