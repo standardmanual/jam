@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 
 /**
  * 행 면 톤 (티켓 20261015_2133).
- * - `default`: 흰 면(`--surface`) + 1px `--border`. 크림 페이지 바탕 위에 직접 놓는 행.
+ * - `default`: `--card-bg` 면, 외곽선 없음(티켓 20261107_2246).
  * - `tint`: `--background-secondary`, 테두리 없음. **이미 카드(흰 면 + 테두리) 안에 들어간 행** 전용 — 카드 속 카드의 이중 테두리를 막는다.
  *   크림 바탕 위 단독 행으로 쓰지 않는다(경계가 보이지 않는다).
  * - `inverse`: 어두운 반전 면(`--background-inverse`) + 같은 색 1px 테두리 + `--snow` 글자(티켓 20261105_1953). 경고성 안내 행 전용.

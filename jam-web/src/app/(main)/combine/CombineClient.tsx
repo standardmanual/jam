@@ -219,7 +219,7 @@ export function RecipeDescription({ text }: { text: string }) {
           type="button"
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}
-          className="min-h-11 text-sm whitespace-nowrap text-[color:var(--link)]"
+          className="min-h-11 text-sm whitespace-nowrap text-[color:var(--link)] underline underline-offset-2"
         >
           {expanded ? d.combine.descriptionLess : d.combine.descriptionMore}
         </button>
