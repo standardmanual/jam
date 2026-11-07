@@ -42,13 +42,13 @@ const CHIP_CLASS = `${CHIP_BASE_CLASS} bg-background text-foreground`
 /** 유형(카테고리) 칩 — 중립 면(흰 카드 안 구획 색) */
 const CATEGORY_CHIP_CLASS = `${CHIP_BASE_CLASS} bg-background-secondary text-foreground`
 /**
- * 상태 칩 색상 — 문의중=--danger, 확인중=--accent-content-blue, 답변완료=--accent-content-green.
- * 글자는 모두 --foreground다(각각 5.02·6.82·13.44:1). 티켓 20261015_2134.
+ * 상태 칩 색상 — 문의중=--danger(검정 면 + --snow 글자), 확인중=--btn-secondary, 답변완료=--default. 칩 안 문구가 상태를 말한다.
+ * 티켓 20261107_2202.
  */
 const STATUS_CHIP_CLASS: Record<string, string> = {
-  문의중: `${CHIP_BASE_CLASS} bg-danger text-foreground`,
-  확인중: `${CHIP_BASE_CLASS} bg-[color:var(--accent-content-blue)] text-foreground`,
-  답변완료: `${CHIP_BASE_CLASS} bg-[color:var(--accent-content-green)] text-foreground`,
+  문의중: `${CHIP_BASE_CLASS} bg-danger text-snow`,
+  확인중: `${CHIP_BASE_CLASS} bg-btn-secondary text-foreground`,
+  답변완료: `${CHIP_BASE_CLASS} bg-default text-foreground`,
 }
 
 // "심각도 {severity}/5" 템플릿에서 숫자 부분만 볼드+포인트 컬러로 강조한다

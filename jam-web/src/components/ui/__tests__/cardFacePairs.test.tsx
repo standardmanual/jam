@@ -1,7 +1,7 @@
 /**
  * 카드 면 레시피와 병존 쌍의 값 일치 (티켓 20261015_2133, 1회 카드 계열)
  *
- * 카드 면은 하나다: `--surface`(흰) + `1px solid --border` + `--radius-2xl` + 그림자 없음.
+ * 공통 Card default는 `--card-bg` + 투명 1px 테두리(티켓 20261107_2202), 그 밖의 카드는 `--surface`(흰) + `1px solid --border` + `--radius-2xl` + 그림자 없음.
  * 크림 바탕(`--background`)과 흰 면은 1.05:1이라 테두리가 없으면 카드가 보이지 않는다.
  *
  * 확인하는 것
@@ -37,12 +37,15 @@ import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
 
 const SURFACE = 'background:var(--surface)'
 const BORDER = 'border:1px solid var(--border)'
+// 공통 Card default(티켓 20261107_2202): --card-bg 면 + 투명 1px 테두리(박스 크기 유지)
+const CARD_FACE = 'background:var(--card-bg)'
+const CARD_BORDER = 'border:1px solid transparent'
 
 describe('MODULAR Card — 면과 글자색 쌍', () => {
   it('default는 흰 면 + 1px 테두리 + border-box이고 그림자가 없다', () => {
     const html = renderToStaticMarkup(<Card>내용</Card>)
-    expect(html).toContain(SURFACE)
-    expect(html).toContain(BORDER)
+    expect(html).toContain(CARD_FACE)
+    expect(html).toContain(CARD_BORDER)
     expect(html).toContain('box-sizing:border-box')
     expect(html).toContain('color:var(--foreground)')
     expect(html).not.toContain('box-shadow')
@@ -88,8 +91,8 @@ describe('MODULAR Card — 면과 글자색 쌍', () => {
 
   it('알 수 없는 tone은 default 면으로 그린다', () => {
     const html = renderToStaticMarkup(<Card tone={'unknown' as 'default'}>내용</Card>)
-    expect(html).toContain(SURFACE)
-    expect(html).toContain(BORDER)
+    expect(html).toContain(CARD_FACE)
+    expect(html).toContain(CARD_BORDER)
   })
 })
 
@@ -261,8 +264,8 @@ describe('RankingListRow — 카드 안 행이라 tint 면(테두리 없음)', (
 describe('직접 만들던 흰 카드 면은 공통 Card와 같은 값이다', () => {
   it('BadgeConditionCard — 흰 면 + 1px 테두리, 그림자 없음(옛 bg-surface rounded-2xl p-6 div를 Card로 교체)', () => {
     const html = renderToStaticMarkup(<BadgeConditionCard text="조건 문장" spec="누적 10회 이상" />)
-    expect(html).toContain(SURFACE)
-    expect(html).toContain(BORDER)
+    expect(html).toContain(CARD_FACE)
+    expect(html).toContain(CARD_BORDER)
     expect(html).toContain('padding:var(--layout-card-padding)')
     expect(html).toContain('flex flex-col gap-2')
     expect(html).not.toContain('bg-surface')

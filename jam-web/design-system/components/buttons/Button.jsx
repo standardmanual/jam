@@ -94,9 +94,9 @@ export function Button({
   const variants = {
     light: {
       primary:   { background: 'var(--accent)',  color: 'var(--accent-foreground)' },
-      secondary: { background: 'var(--default)', color: 'var(--foreground)' },
-      danger:    { background: 'var(--danger)',  color: 'var(--foreground)' },
-      outline:   { background: 'transparent',    color: 'var(--foreground)', borderColor: 'var(--field-border)' },
+      secondary: { background: 'var(--btn-secondary)', color: 'var(--foreground)' },
+      danger:    { background: 'var(--danger)',  color: 'var(--snow)' },
+      outline:   { background: 'var(--btn-secondary)', color: 'var(--foreground)' }, // 외곽선 없음 — secondary와 같은 면(사용자 결정)
       ghost:     { background: 'transparent',    color: 'var(--link)', padding: '13px 4px' },
     },
     dark: {

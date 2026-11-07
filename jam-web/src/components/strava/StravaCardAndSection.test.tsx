@@ -35,9 +35,9 @@ describe('StravaDisconnectedCard — 홈 끊김 카드', () => {
     expect(html).toContain(copy.card.cta)
   })
 
-  it('흰 Card(--surface + 1px --border) 위에 LabelChip과 검정 알약 버튼(primary main, 전체 폭)이다', () => {
-    expect(html).toContain('background:var(--surface)')
-    expect(html).toContain('border:1px solid var(--border)')
+  it('Card(--card-bg + 투명 1px 테두리) 위에 LabelChip과 검정 알약 버튼(primary main, 전체 폭)이다', () => {
+    expect(html).toContain('background:var(--card-bg)')
+    expect(html).toContain('border:1px solid transparent')
     expect(html).toMatch(/<span class="self-start"[^>]*>Strava 동기화<\/span>/)
     const button = /<button[^>]*>(?:(?!<\/button>).)*<\/button>/.exec(html)?.[0] ?? ''
     expect(button).toContain('bg-background-inverse')
@@ -105,8 +105,8 @@ describe('StravaSettingsSection — 프로필 설정 구획 세 상태', () => {
     expect(html).toContain(copy.disconnectButton)
     expect(html).not.toContain(copy.reconnectButton)
     const button = /<button[^>]*>동기화 끊기<\/button>/.exec(html)?.[0] ?? ''
-    expect(button).toContain('border-field-border')
-    expect(button).toContain('bg-transparent')
+    expect(button).toContain('border-transparent')
+    expect(button).toContain('bg-btn-secondary')
     expect(button).toContain('w-full')
   })
 
@@ -135,7 +135,7 @@ describe('StravaSettingsSection — 프로필 설정 구획 세 상태', () => {
   it('카드 틀이나 구분선을 만들지 않는다 — 기존 «라벨, 값» 구획과 같은 문법(text-base text-muted 라벨)', () => {
     const html = render('connected')
     expect(html).toContain('text-base text-muted')
-    expect(html).not.toContain('border-t')
+    expect(html).not.toMatch(/\bborder-t\b/)
     expect(html).not.toContain('background:var(--surface)')
   })
 })

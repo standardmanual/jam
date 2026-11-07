@@ -18,7 +18,7 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
             height: 20,
             width: `var(${token})`,
             maxWidth: '100%',
-            background: semantic ? 'var(--accent-content-blue)' : 'var(--accent)',
+            background: semantic ? 'var(--progress-latest)' : 'var(--accent)',
             borderRadius: 2,
           }}
         />

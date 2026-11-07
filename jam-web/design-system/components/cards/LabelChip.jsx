@@ -15,8 +15,7 @@ const TONES = {
  * (`px-2.5`=10px · `py-1.5`=6px, root 16px 기준) — 호출부 렌더가 픽셀 단위로 같아야 해서
  * 여기서 다듬지 않는다. `letterSpacing`·`minHeight`·`nowrap`·그림자는 일부러 넣지 않았다.
  *
- * 왜 기존 컴포넌트가 아닌가: `ShapeTag`는 minHeight 44px·padding 10/16·letterSpacing·태그
- * 팔레트가 붙어 있어 픽셀이 달라지고, `RarityBadge`는 등급 전용, `BadgeLevelChip`은 Lv.N 필
+ * 왜 기존 컴포넌트가 아닌가: `RarityBadge`는 등급 전용, `BadgeLevelChip`은 Lv.N 필
  * 전용이다.
  *
  * 변형은 `tone` 하나뿐이다(티켓 20261001_1737, 1248). `default`(기본)는 `--background-secondary` 채움 + `--foreground` 글자로

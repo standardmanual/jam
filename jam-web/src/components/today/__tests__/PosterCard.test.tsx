@@ -53,7 +53,7 @@ const CHIP_ROW_OPEN = '<div class="flex items-center gap-2">'
 describe('PosterCard — 면(표면)', () => {
   it('카드(default 색조)는 relative·overflow-hidden이고 안쪽 여백은 인라인 0이다(이미지가 카드 모서리까지 닿는다)', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="relative overflow-hidden" style="[^"]*background:var\(--surface\)[^"]*">/)
+    expect(html).toMatch(/^<div class="relative overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*">/)
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')
     expect(html).not.toContain('p-0')

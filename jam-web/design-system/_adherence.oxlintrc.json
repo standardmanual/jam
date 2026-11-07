@@ -90,10 +90,6 @@
         "message": "<RarityBadge> doesn't accept that prop. Declared props: rarity, size, className."
       },
       {
-        "selector": "JSXOpeningElement[name.name='ShapeTag'] > JSXAttribute > JSXIdentifier[name!=/^(?:shape|colorIndex|color|surface|children|style|className|key|ref|className|style|children)$/]",
-        "message": "<ShapeTag> doesn't accept that prop. Declared props: shape, colorIndex, color, surface, children, style, className."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='TabBar'] > JSXAttribute > JSXIdentifier[name!=/^(?:active|onChange|username|key|ref|className|style|children)$/]",
         "message": "<TabBar> doesn't accept that prop. Declared props: active, onChange, username."
       },
@@ -144,9 +140,6 @@
       "RarityBadge": {
         "replaces": []
       },
-      "ShapeTag": {
-        "replaces": []
-      },
       "TabBar": {
         "replaces": []
       },
@@ -162,12 +155,6 @@
     },
     "tokens": [
       "--accent",
-      "--accent-content-blue",
-      "--accent-content-green",
-      "--accent-content-lightblue",
-      "--accent-content-pink",
-      "--accent-content-red",
-      "--accent-content-yellow",
       "--accent-foreground",
       "--accent-soft",
       "--accent-soft-hover",
@@ -190,6 +177,8 @@
       "--base-snow",
       "--base-white",
       "--border",
+      "--btn-secondary",
+      "--card-bg",
       "--danger",
       "--default",
       "--default-soft",
@@ -208,6 +197,11 @@
       "--field-radius",
       "--font-family-base",
       "--foreground",
+      "--jam-blue",
+      "--jam-green",
+      "--jam-purple",
+      "--jam-red",
+      "--jam-yellow",
       "--layout-card-padding",
       "--layout-element-gap",
       "--layout-section-gap",
@@ -215,6 +209,7 @@
       "--leading-reading",
       "--link",
       "--muted",
+      "--page-bg",
       "--progress-done",
       "--progress-latest",
       "--progress-latest-soft",
@@ -337,6 +332,9 @@
       "--background-inverse": "color",
       "--surface": "color",
       "--surface-transparent": "color",
+      "--page-bg": "color",
+      "--card-bg": "color",
+      "--btn-secondary": "color",
       "--foreground": "color",
       "--muted": "color",
       "--link": "color",
@@ -345,12 +343,11 @@
       "--accent-foreground": "color",
       "--accent-soft": "color",
       "--accent-soft-hover": "color",
-      "--accent-content-lightblue": "color",
-      "--accent-content-green": "color",
-      "--accent-content-yellow": "color",
-      "--accent-content-red": "color",
-      "--accent-content-pink": "color",
-      "--accent-content-blue": "color",
+      "--jam-red": "color",
+      "--jam-yellow": "color",
+      "--jam-green": "color",
+      "--jam-purple": "color",
+      "--jam-blue": "color",
       "--border": "color",
       "--field-border": "color",
       "--separator": "color",

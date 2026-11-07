@@ -422,8 +422,8 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                     <span
                       className="inline-flex items-center px-2 py-1 rounded-full font-bold uppercase"
                       style={{
-                        background: earned ? 'var(--accent-content-green)' : 'var(--background-secondary)',
-                        color: earned ? 'var(--foreground)' : 'var(--muted)',
+                        background: earned ? 'var(--foreground)' : 'var(--background-secondary)',
+                        color: earned ? 'var(--snow)' : 'var(--muted)',
                         fontSize: '10px',
                       }}
                     >

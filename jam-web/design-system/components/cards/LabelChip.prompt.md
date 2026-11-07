@@ -4,7 +4,6 @@
 
 ## 왜 기존 컴포넌트가 아닌가
 
-- `ShapeTag` — minHeight 44px · padding 10/16 · letterSpacing · 태그 팔레트가 붙어 있다.
 - `RarityBadge` — 등급(Common~Mystic) 전용.
 - `BadgeLevelChip` — `Lv.N` 필 전용.
 

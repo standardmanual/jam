@@ -75,9 +75,9 @@ describe('CapsuleBlockedCard — 막힘 카드', () => {
     expect(html).not.toContain('text-balance')
   })
 
-  it('버튼은 소형 secondary(--default 면)이고 줄바꿈 없이 오른쪽에 놓이며 전체 폭이 아니다', () => {
+  it('버튼은 소형 secondary(--btn-secondary 면)이고 줄바꿈 없이 오른쪽에 놓이며 전체 폭이 아니다', () => {
     const button = html.match(/<button[^>]*>/)?.[0] ?? ''
-    expect(button).toContain('var(--default)')
+    expect(button).toContain('var(--btn-secondary)')
     expect(button).toContain('min-height:calc(44px * var(--scale-compact))')
     expect(button).toContain('whitespace-nowrap')
     expect(button).toContain('shrink-0')

@@ -55,8 +55,8 @@ describe('BriefCard — 면(표면)', () => {
     expect(html).toContain('min-h-[88px] flex flex-col justify-center')
     // 가로 배치는 윗줄 div로 옮겼다
     expect(html).toContain('<div class="flex items-center gap-3">')
-    expect(html).toContain('background:var(--surface)')
-    expect(html).toContain('border:1px solid var(--border)')
+    expect(html).toContain('background:var(--card-bg)')
+    expect(html).toContain('border:1px solid transparent')
     expect(html).not.toContain('--background-inverse')
     // Card가 주는 24px 기본 여백(--layout-card-padding)을 같은 인라인 style로 덮었다 — 클래스로는 덮이지 않는다
     expect(html).toContain('padding:var(--spacing-12) var(--spacing-16)')

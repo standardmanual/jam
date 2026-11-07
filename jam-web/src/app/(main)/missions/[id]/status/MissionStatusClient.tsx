@@ -319,7 +319,7 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
       icon={<SimpleAvatar url={e.avatarUrl} />}
       trailing={
         e.achieved ? (
-          <span className="text-xs leading-none px-2 py-1 rounded-full bg-[var(--accent-content-green)] text-foreground">
+          <span className="text-xs leading-none px-2 py-1 rounded-full bg-btn-secondary text-foreground">
             {d.missions.achieved}
           </span>
         ) : (
@@ -531,7 +531,7 @@ export default function MissionStatusClient({
                 {d.missions.myProgressTitle}
               </span>
               {data.me.achieved ? (
-                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-[var(--accent-content-green)] text-foreground shrink-0">
+                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-btn-secondary text-foreground shrink-0">
                   {d.missions.achieved}
                 </span>
               ) : (

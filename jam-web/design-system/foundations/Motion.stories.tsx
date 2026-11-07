@@ -89,7 +89,7 @@ function EaseRow({ token, desc }: { token: string; desc: string }) {
             top: 0,
             width: 32,
             height: 32,
-            background: 'var(--accent-content-blue)',
+            background: 'var(--progress-latest)',
             borderRadius: 'var(--radius-lg)',
             transition: playing ? `left 400ms var(${token})` : 'none',
           }}

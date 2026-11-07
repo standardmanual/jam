@@ -26,10 +26,6 @@
       "sourcePath": "components/cards/MissionCard.jsx"
     },
     {
-      "name": "ShapeTag",
-      "sourcePath": "components/cards/ShapeTag.jsx"
-    },
-    {
       "name": "EmptyState",
       "sourcePath": "components/feedback/EmptyState.jsx"
     },
@@ -456,13 +452,13 @@
     },
     {
       "name": "--background",
-      "value": "#f1f0eb",
+      "value": "#ffffff",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--background-secondary",
-      "value": "#e9e7e0",
+      "value": "#f5f5f5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -480,7 +476,7 @@
     },
     {
       "name": "--surface-transparent",
-      "value": "rgba(241, 240, 235, 0)",
+      "value": "rgba(255, 255, 255, 0)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -498,7 +494,7 @@
     },
     {
       "name": "--link",
-      "value": "#0e7a38",
+      "value": "var(--base-neutral-900)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -510,79 +506,43 @@
     },
     {
       "name": "--accent",
-      "value": "#19b551",
-      "kind": "color",
-      "definedIn": "tokens/colors.css"
-    },
-    {
-      "name": "--accent-foreground",
       "value": "var(--base-neutral-900)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
+      "name": "--accent-foreground",
+      "value": "var(--snow)",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
       "name": "--accent-soft",
-      "value": "rgba(25, 181, 81, 0.15)",
+      "value": "#f5f5f5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--accent-soft-hover",
-      "value": "rgba(20, 147, 71, 0.2)",
-      "kind": "color",
-      "definedIn": "tokens/colors.css"
-    },
-    {
-      "name": "--accent-content-lightblue",
-      "value": "#4bfcf9",
-      "kind": "color",
-      "definedIn": "tokens/colors.css"
-    },
-    {
-      "name": "--accent-content-green",
-      "value": "#4cff56",
-      "kind": "color",
-      "definedIn": "tokens/colors.css"
-    },
-    {
-      "name": "--accent-content-yellow",
-      "value": "#fff002",
-      "kind": "color",
-      "definedIn": "tokens/colors.css"
-    },
-    {
-      "name": "--accent-content-red",
-      "value": "#ff4400",
-      "kind": "color",
-      "definedIn": "tokens/colors.css"
-    },
-    {
-      "name": "--accent-content-pink",
-      "value": "#ff7bfd",
-      "kind": "color",
-      "definedIn": "tokens/colors.css"
-    },
-    {
-      "name": "--accent-content-blue",
-      "value": "#48a4fc",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--border",
-      "value": "#cfc9b4",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--field-border",
-      "value": "#cfc9b4",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--separator",
-      "value": "#cfc9b4",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -594,37 +554,37 @@
     },
     {
       "name": "--success",
-      "value": "#17c964",
+      "value": "var(--base-neutral-900)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--warning",
-      "value": "#f5a300",
+      "value": "#525252",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--danger",
-      "value": "#ff383c",
+      "value": "var(--base-neutral-900)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--default",
-      "value": "#e9e7e0",
+      "value": "#f5f5f5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--default-soft",
-      "value": "#e9e7e0",
+      "value": "#f5f5f5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--point-text",
-      "value": "var(--accent-content-red)",
+      "value": "#ff4400",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -678,31 +638,31 @@
     },
     {
       "name": "--progress-short",
-      "value": "var(--warning)",
+      "value": "#737373",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--progress-done",
-      "value": "var(--success)",
+      "value": "#171717",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--progress-latest",
-      "value": "var(--accent-content-blue)",
+      "value": "#525252",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--progress-latest-soft",
-      "value": "rgba(72, 164, 252, 0.18)",
+      "value": "rgba(82, 82, 82, 0.18)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--progress-track",
-      "value": "var(--default)",
+      "value": "#e5e5e5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -1021,6 +981,54 @@
       "value": "6px",
       "kind": "spacing",
       "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--page-bg",
+      "value": "#e6e6e6",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--card-bg",
+      "value": "#f7f7f7",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--btn-secondary",
+      "value": "#e5e5e5",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-red",
+      "value": "#FF1D1D",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-yellow",
+      "value": "#FEC100",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-green",
+      "value": "#5BEA07",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-purple",
+      "value": "#BA8AF7",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-blue",
+      "value": "#0695EC",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
     }
   ],
   "themes": [],
