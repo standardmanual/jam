@@ -5,7 +5,7 @@ import type { PointHistoryItem } from '@/app/api/points/route'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import Button from '@/components/ui/Button'
 import { CoinIcon } from '@/components/ui/icons'
 import { useDigitPopIn } from '@/components/transitions-pages'
@@ -123,24 +123,20 @@ export default function PointsPage() {
             <div className="flex flex-col gap-2">
               {items.map((it) => {
                 return (
-                  <ListRowCard
+                  <ListRow
                     key={it.id}
                     href={it.href ?? undefined}
-                    icon={
-                      <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center shrink-0">
-                        <CoinIcon className="w-5 h-5 text-muted" />
-                      </div>
-                    }
+                    lead={<CoinIcon className="w-5 h-5" />}
+                    leadShape="round"
                     title={it.title}
-                    subtitle={
-                      <div className="flex flex-col">
-                        {it.note && <span className="text-xs text-muted truncate">{it.note}</span>}
-                        <span className="text-xs text-muted">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
-                      </div>
+                    meta={
+                      <>
+                        {it.note ? <span className="block truncate">{it.note}</span> : undefined}
+                        <span className="block">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
+                      </>
                     }
-                    trailing={
-                      <span className="text-base font-bold">{formatAmount(it.amount)}</span>
-                    }
+                    metaLines={0}
+                    value={formatAmount(it.amount)}
                   />
                 )
               })}

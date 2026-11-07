@@ -165,9 +165,9 @@ function click(button: ReactElement<Record<string, unknown>> | undefined): Promi
   return (button!.props.onClick as () => Promise<void>)()
 }
 
-/** 태그를 걷어낸 화면 글자 */
+/** 태그를 걷어낸 화면 글자. ListRow가 행마다 내보내는 <style>은 CSS 글자가 남지 않게 먼저 걷는다 */
 function visibleText(html: string): string {
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
+  return html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
 }
 
 function expectNoAdminTerms(html: string) {
@@ -280,7 +280,8 @@ describe('포인트 화면 — 내역 행', () => {
     expect(html.match(/<span class="text-point-text"/g)).toHaveLength(2)
     // 잔액 숫자 칸은 같은 토큰의 클래스를 직접 쓴다(자릿수 팝인 예외)
     expect(html).toMatch(/<p class="[^"]*text-point-text[^"]*"/)
-    expect(html).not.toContain('--link')
+    // ListRow가 내보내는 <style>의 포커스 아웃라인(--link)은 빼고, 행 마크업에 링크 색이 없는지 본다
+    expect(html.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('--link')
   })
 
   it('날짜와 시각이 KST로 보인다', async () => {
@@ -324,6 +325,8 @@ describe('포인트 화면 — 내역 행', () => {
     expect(html).toContain('href="/badges/b1"')
     expect(html).toContain('href="/missions/m1"')
     expect((html.match(/<a /g) ?? []).length).toBe(2)
+    // 링크 없는 행은 눌러도 반응 없는 비인터랙티브 행이다(ListRow의 data-interactive)
+    expect((html.match(/data-interactive="false"/g) ?? []).length).toBe(1)
   })
 
   it('행 순서는 서버가 준 순서 그대로다', async () => {

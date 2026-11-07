@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import PoiEarnHistory, { type PoiEarnItem } from '../PoiEarnHistory'
 import { d } from '@/lib/i18n'
+import { formatKoreanDateTime } from '@/components/LocalDate'
 
 function earn(id: string, iso: string): PoiEarnItem {
   return {
@@ -22,6 +23,16 @@ function earn(id: string, iso: string): PoiEarnItem {
     triggered_by_activity_date: null,
     triggered_by_strava_id: null,
   }
+}
+
+/** ListRow가 행마다 내보내는 <style>의 CSS 글자를 먼저 걷는다 */
+function withoutStyle(html: string): string {
+  return html.replace(/<style[\s\S]*?<\/style>/g, '')
+}
+
+/** 행마다 하나인 클릭 영역(<button>…</button>) 안쪽 마크업 */
+function buttons(html: string): string[] {
+  return withoutStyle(html).match(/<button[\s\S]*?<\/button>/g) ?? []
 }
 
 function count(html: string, text: string): number {
@@ -44,6 +55,19 @@ describe('PoiEarnHistory — 방문 기록', () => {
     // 칩은 목록 끝 행에 있고, 최신 카드(첫 행)보다 뒤에 나온다
     expect(html.indexOf(d.badges.firstEarnedChip)).toBeGreaterThan(html.indexOf('총 3회'))
     expect(html.lastIndexOf('<button')).toBeLessThan(html.indexOf(d.badges.firstEarnedChip))
+  })
+
+  it('2번째부터의 행이 각각 날짜 제목을 가진 클릭 영역이고, 칩은 가장 오래된 행 안에만 있다', () => {
+    const html = renderToStaticMarkup(<PoiEarnHistory poiEarns={THREE} />)
+    const rows = buttons(html)
+    // 첫 기록은 카드라 클릭 영역이 아니다 — 행은 나머지 둘이다
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toContain(formatKoreanDateTime('2026-09-03T00:00:00Z', { year: true, time: true }))
+    expect(rows[1]).toContain(formatKoreanDateTime('2026-08-03T00:00:00Z', { year: true, time: true }))
+    expect(rows[0]).not.toContain(d.badges.firstEarnedChip)
+    expect(rows[1]).toContain(d.badges.firstEarnedChip)
+    // 클릭 영역 안은 phrasing 요소만 쓴다
+    for (const row of rows) expect(row).not.toMatch(/<(div|p)[\s>]/)
   })
 
   it('행이 하나뿐이면 그 카드에 칩이 붙는다', () => {

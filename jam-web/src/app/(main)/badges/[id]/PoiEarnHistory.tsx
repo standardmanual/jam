@@ -2,12 +2,11 @@
 
 import { useState } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
-import { ChevronRightIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 
 export type PoiEarnItem = {
@@ -82,20 +81,17 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
         <EarnCardContent e={first} isFirstEver={first.id === firstEverId} />
       </Card>
 
-      {/* 2번째부터 — ListRowCard (이미지 없음) */}
+      {/* 2번째부터 — lead 없는 ListRow(날짜 제목 + 쉐브론). 처음 받은 날 칩은 eyebrow */}
       {rest.map((e, i) => (
-        <ListRowCard
+        <ListRow
           key={e.id}
+          eyebrow={e.id === firstEverId ? <ListRowChip tone="neutral">{d.badges.firstEarnedChip}</ListRowChip> : undefined}
+          title={<LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />}
+          titleVariant="regular"
+          titleLines={2}
+          chevron
           onClick={() => setOpenIdx(i + 1)}
-          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
-        >
-          <div className="flex flex-col items-start gap-2">
-            {e.id === firstEverId && <LabelChip className="break-keep wrap-break-word whitespace-nowrap">{d.badges.firstEarnedChip}</LabelChip>}
-            <p className="text-base text-foreground">
-              <LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />
-            </p>
-          </div>
-        </ListRowCard>
+        />
       ))}
 
       {/* 기록 상세 바텀시트 */}

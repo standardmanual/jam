@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
-import { ChevronRightIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 
 export type ItemEarnEntry = {
@@ -72,18 +71,17 @@ export default function ItemEarnHistory({
         <ItemCardContent entry={first} />
       </Card>
 
-      {/* 2번째부터 — ListRowCard. 대표 serial은 위 ItemSerialCode가 이미 보여주므로,
+      {/* 2번째부터 — lead 없는 ListRow(날짜 제목 + 쉐브론). 대표 serial은 위 ItemSerialCode가 이미 보여주므로,
           이 줄은 개체 구분용으로 획득일을 보여준다(PoiEarnHistory의 같은 자리 관례 재사용). */}
       {rest.map((entry) => (
-        <ListRowCard
+        <ListRow
           key={entry.id}
+          title={<LocalDate iso={entry.obtained_at} korean={{ year: true }} />}
+          titleVariant="regular"
+          titleLines={2}
+          chevron
           onClick={() => setOpenId(entry.id)}
-          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
-        >
-          <p className="text-base text-foreground">
-            <LocalDate iso={entry.obtained_at} korean={{ year: true }} />
-          </p>
-        </ListRowCard>
+        />
       ))}
 
       {/* 이력 상세 바텀시트 */}
