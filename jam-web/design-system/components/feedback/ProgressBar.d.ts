@@ -7,6 +7,13 @@ export type ProgressBarLabelPosition = 'inline' | 'top';
  */
 export type ProgressBarFillMode = 'solid' | 'track-gradient';
 
+/**
+ * 'div'  — 기본. 기존 마크업 그대로.
+ * 'span' — 모든 요소(바깥·트랙·채움, 라벨 있을 때 래퍼 포함)를 span으로 그린다. `<a>`·`<button>`·`Link` 같은
+ *          클릭 영역 안(phrasing 요건)에 놓을 때 켠다. `ProgressBar` 한정 prop이다.
+ */
+export type ProgressBarAs = 'div' | 'span';
+
 /** 트랙 기준 그라데이션 기본값 — `--progress-short`(채우는 중) → `--progress-done`(다 채움) */
 export const PROGRESS_TRACK_GRADIENT: string;
 
@@ -39,6 +46,14 @@ export interface ProgressBarProps {
    * 기본 `trackColor`(`--border`)로는 외곽선이 안 보이므로 `trackColor`를 따로 정한다.
    */
   outlined?: boolean;
+  /**
+   * 어떤 태그로 그릴지. 기본 'div'(기존 마크업 그대로).
+   * 'span'은 `<a>`·`<button>`·`Link` 같은 클릭 영역 안(phrasing 요건)에 놓을 때 켠다.
+   * span 경로에서만 바깥·트랙에 `display:block`이 붙어 높이·폭이 div와 같다.
+   * `labelPosition`('inline'·'top')과 조합해도 래퍼는 flex를 유지하고 모양은 같다.
+   * `role`·`aria-*`는 더하지 않는다(태그만 바꾼다).
+   */
+  as?: ProgressBarAs;
   className?: string;
 }
 

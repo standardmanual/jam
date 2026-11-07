@@ -184,3 +184,60 @@ export const Outlined: Story = {
     expect(tracks[0].offsetHeight).toBe(10);
   },
 };
+
+/**
+ * as="span" — span으로 그리기 (티켓 20261107_2156).
+ *
+ * `as`(기본 'div')를 'span'으로 켜면 바깥·트랙·채움이 모두 span이 된다. `<a>`·`<button>`·`Link` 같은 클릭 영역 안(phrasing 요건)에 놓을 때 쓴다.
+ * 위 두 줄이 같은 모양이어야 한다(높이·radius·채움 폭이 같고 한 줄처럼 보인다). 맨 아래는 실제 쓰임이다 —
+ * 이름 한 줄과 6px 바가 세로로 쌓인 행을 `<a>` 안에 둔다. 링크 밑줄이 바에 번지지 않아야 한다.
+ * 이 prop은 `role`·`aria-*`를 더하지 않는다.
+ */
+export const AsSpan: Story = {
+  name: 'as="span" — div와 같은 모양, 클릭 영역 안에서 쓴다',
+  render: () => {
+    const label: React.CSSProperties = {
+      margin: 0,
+      textAlign: 'left',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--foreground)',
+    };
+    return (
+      <div data-testid="as-span" style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={label} className="break-keep wrap-break-word">div</p>
+        <div data-testid="as-div-bar">
+          <ProgressBar percent={60} labelType="none" height={6} radius="3px" />
+        </div>
+        <p style={label} className="break-keep wrap-break-word">span</p>
+        <div data-testid="as-span-bar">
+          <ProgressBar as="span" percent={60} labelType="none" height={6} radius="3px" />
+        </div>
+        <p style={label} className="break-keep wrap-break-word">span, 클릭 영역(a) 안</p>
+        <a
+          href="#"
+          data-testid="as-span-link"
+          style={{ display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--foreground)', textDecoration: 'underline' }}
+        >
+          <span style={label} className="break-keep wrap-break-word">러너 이름</span>
+          <ProgressBar as="span" percent={60} labelType="none" height={6} radius="3px" />
+        </a>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const divTrack = canvasElement.querySelector<HTMLElement>('[data-testid="as-div-bar"] > div > div');
+    const spanHost = canvasElement.querySelector<HTMLElement>('[data-testid="as-span-bar"]');
+    const spanTrack = spanHost?.querySelector<HTMLElement>(':scope > span > span') ?? null;
+    if (!divTrack || !spanTrack || !spanHost) throw new Error('바를 찾지 못했다');
+    // span이어도 높이가 살아 있다(display:block 누락이면 0이 된다)
+    expect(spanTrack.offsetHeight).toBe(6);
+    expect(spanTrack.offsetHeight).toBe(divTrack.offsetHeight);
+    expect(getComputedStyle(spanTrack).borderTopLeftRadius).toBe(getComputedStyle(divTrack).borderTopLeftRadius);
+    const divFill = divTrack.firstElementChild as HTMLElement;
+    const spanFill = spanTrack.firstElementChild as HTMLElement;
+    expect(spanFill.offsetWidth).toBe(divFill.offsetWidth);
+    // span 경로에는 div가 없다
+    expect(spanHost.querySelector('div')).toBeNull();
+    expect(canvasElement.querySelector('[data-testid="as-span-link"] div')).toBeNull();
+  },
+};
