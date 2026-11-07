@@ -313,7 +313,12 @@ describe('RecipeRewardRow — 공개 예정 줄 (티켓 20261001_1159)', () => {
     // --warning은 가는 선·점·면에만 쓰는 색이라 글자로 쓰면 흰 카드 위 2.07:1이다(티켓 20261015_2134).
     // 색을 hex로 직접 쓰지 않는다.
     expect(html.match(/whitespace-nowrap/g)).toHaveLength(2)
-    expect(html).toMatch(/<p class="[^"]*text-muted[^"]*"><span class="whitespace-nowrap">/)
+    // 날짜 줄은 phrasing(`<span>`)이고, 줄 전체가 text-xs이며 글자색은 ListRow의 meta(muted)에서 온다. 말줄임 클래스가 없다.
+    expect(html).toMatch(/<span class="flex flex-wrap gap-x-1 text-xs"><span class="whitespace-nowrap">/)
+    expect(html).toContain(`<span class="whitespace-nowrap">${RELEASE_LABEL}</span>`)
+    expect(html).not.toMatch(/<span class="[^"]*truncate[^"]*">(공개 예정|\d+월)/)
+    // meta는 줄 제한이 없다(metaLines=0) — 날짜가 말줄임·줄 수 제한에 걸리지 않는다
+    expect(html).not.toContain('-webkit-line-clamp')
     expect(html).not.toContain('var(--warning)')
     expect(html).not.toMatch(/#[0-9a-fA-F]{6}/)
   })
@@ -1019,15 +1024,79 @@ describe('CombineClient — 믹서 칸 수와 설명 (티켓 20261018_0055 2회)
   })
 })
 
-describe('RecipeRewardRow — 제목 굵기 (티켓 20261104_2242)', () => {
-  it('레시피 제목은 미션 목록 제목과 같은 굵은 글씨(ListRowCardTitle)로 그려지고 슬롯 개수는 굵지 않다', () => {
-    const html = renderToStaticMarkup(<RecipeRewardRow title="레시피 제목" slotCount={3} badges={[]} points={10} />)
-    const title = /<span class="([^"]*)">레시피 제목<\/span>/.exec(html)?.[1] ?? ''
-    expect(title).toContain('font-bold')
-    expect(title).toContain('text-base')
-    expect(title).toContain('truncate')
-    const count = /<span class="([^"]*)">3<\/span>/.exec(html)?.[1] ?? ''
-    expect(count).not.toContain('font-bold')
+describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
+  const badge = { id: 'b1', name: '결과 배지', image_url: 'https://example.com/b1.png', rarity: 'rare' as const }
+  const render = (props: Partial<React.ComponentProps<typeof RecipeRewardRow>> = {}) =>
+    renderToStaticMarkup(<RecipeRewardRow title="레시피 제목" slotCount={3} badges={[]} points={10} {...props} />)
+
+  it('제목은 굵게(700) 한 줄 말줄임이고 슬롯 개수는 제목 끝 칩(titleSuffix)이다', () => {
+    const html = render()
+    expect(html).toMatch(/text-overflow:ellipsis;white-space:nowrap[^"]*font-weight:700[^"]*">레시피 제목</)
+    // 슬롯 수 칩: 12px 보통 굵기, 제목 말줄임 바깥(줄어들지 않는 칸)
+    expect(html).toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:400[^"]*">3<\/span>/)
+  })
+
+  it('눌림 유무: onClick이 있으면 버튼(눌림), 없으면 표시 전용 요약바(눌림·cursor 없음)', () => {
+    const press = render({ onClick: () => {} })
+    expect(press).toContain('<button type="button"')
+    expect(press).toContain('data-interactive="true"')
+    const display = render()
+    expect(display).not.toContain('<button')
+    expect(display).toContain('data-interactive="false"')
+    expect(display).not.toContain('cursor:pointer')
+  })
+
+  it('배지 보상: lead는 tile 48 안 장식 이미지(alt 빈 값), eyebrow에 등급 칩, meta에 배지명(+N), 포인트가 value다', () => {
+    const html = render({ badges: [badge, { ...badge, id: 'b2' }, { ...badge, id: 'b3' }], points: 1200 })
+    expect(html).toMatch(/<img[^>]*alt=""/)
+    expect(html).toContain('border-radius:var(--radius-2xl);background')
+    expect(html.indexOf('Rare')).toBeLessThan(html.indexOf('레시피 제목'))
+    expect(html).toMatch(/<span class="block truncate">결과 배지 \+2<\/span>/)
+    expect(html.indexOf('결과 배지 +2')).toBeGreaterThan(html.indexOf('레시피 제목'))
+    expect(html).toContain('1,200')
+  })
+
+  it('포인트만: lead는 round 코인, eyebrow·배지명 줄이 없다', () => {
+    const html = render({ points: 500 })
+    expect(html).toContain('border-radius:var(--radius-full);background')
+    expect(html).not.toContain('block truncate')
+    expect(html).not.toContain('Rare')
+  })
+
+  it('보상 없음: «보상 없음» meta 한 줄이고 value가 없다', () => {
+    const html = render({ points: 0, noReward: true })
+    expect(html).toContain(d.combine.noRewardLabel)
+    expect(html).not.toContain('>포인트<')
+  })
+
+  it('잠김 칩은 배지 보상이 있을 때만 eyebrow에 붙는다 — 포인트만이면 붙지 않는다', () => {
+    expect(render({ badges: [badge], rewardLocked: true })).toContain(d.lockedItem.detail.chip)
+    expect(render({ rewardLocked: true })).not.toContain(d.lockedItem.detail.chip)
+  })
+
+  it('eyebrow는 그릴 칩이 있을 때만 만든다 — common 등급이고 잠기지 않았으면 eyebrow 자리가 없다', () => {
+    const common = { ...badge, rarity: 'common' as const }
+    const plain = render({ badges: [common], points: 0 })
+    expect(plain).not.toContain('inline-flex items-center gap-1')
+    const locked = render({ badges: [common], points: 0, rewardLocked: true })
+    expect(locked).toContain('inline-flex items-center gap-1')
+    expect(locked).toContain(d.lockedItem.detail.chip)
+  })
+
+  it('공개 예정만 있고 배지명 줄이 없으면 날짜 줄에 위쪽 여백(mt-1)을 주지 않는다', () => {
+    expect(render({ releaseAt: RELEASE_AT })).not.toContain('mt-1')
+    expect(render({ badges: [badge], releaseAt: RELEASE_AT })).toContain('mt-1')
+  })
+
+  it('클릭 영역 안에 div·p가 없다 — 행 본문은 span뿐이다', () => {
+    const html = render({ onClick: () => {}, badges: [badge], rewardLocked: true, releaseAt: RELEASE_AT })
+    const button = /<button[\s\S]*<\/button>/.exec(html)?.[0] ?? ''
+    expect(button).not.toBe('')
+    expect(button).not.toMatch(/<(div|p)[\s>]/)
+  })
+
+  it('한국어 줄바꿈은 ListRow의 keep-all이 맡는다', () => {
+    expect(render()).toContain('word-break:keep-all;overflow-wrap:break-word')
   })
 })
 

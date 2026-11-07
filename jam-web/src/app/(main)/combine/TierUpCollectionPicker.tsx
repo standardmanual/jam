@@ -5,8 +5,8 @@ import { getRarityLabel } from '@ds/components/cards/RarityBadge'
 import SafeImage from '@/components/SafeImage'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
-import ListRowCard from '@/components/ui/ListRowCard'
-import { BookIcon, CheckIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { ListRow } from '@/components/ui/ListRow'
+import { BookIcon, CheckIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { TierUpCollectionOption, TierUpCollectionView } from './tierUpClient'
 
@@ -15,7 +15,7 @@ import type { TierUpCollectionOption, TierUpCollectionView } from './tierUpClien
  * MODULAR 승격은 하지 않는다. Hook을 쓰지 않는 순수 표현이라 서버 렌더·요소 트리 읽기로 시험할 수 있다(`TribeStep`과 같은 방식).
  *
  * 선택 상태·시트 열림·제출은 `CombineClient`가 갖고, `TierUpPanel`은 이 컴포넌트를 슬롯 아래에 끼우기만 한다.
- * 구성은 새 부품 없이 기존 것을 조립한다: 닫힌 행은 믹스 입구와 같은 `ListRowCard`, 시트 줄은 `TribeStep`이 쓰는 단일 선택 관용구
+ * 구성은 새 부품 없이 기존 것을 조립한다: 닫힌 행은 믹스 입구와 같은 `ListRow`, 시트 줄은 `TribeStep`이 쓰는 단일 선택 관용구
  * (`Card` 기본형 + 고른 줄 `inverse`, `radiogroup`/`radio`), 읽기 실패는 `InlineNotice` + «다시 불러오기».
  *
  * 규칙
@@ -31,9 +31,9 @@ const KO_BREAK = 'break-keep wrap-break-word text-balance'
 
 const copy = d.combine.tierUp.collectionPicker
 
-/** 컬렉션 이미지 타일 — 이미지가 없거나 깨지면 책 아이콘. `size`는 한 변(px)이다 */
-function CollectionTile({ imageUrl, size }: { imageUrl: string | null; size: 40 | 48 }) {
-  const box = size === 40 ? 'w-10 h-10' : 'w-12 h-12'
+/** 컬렉션 이미지 타일(시트 줄 전용) — 이미지가 없거나 깨지면 책 아이콘. `size`는 한 변(px)이다 */
+function CollectionTile({ imageUrl, size }: { imageUrl: string | null; size: 48 }) {
+  const box = 'w-12 h-12'
   return (
     <div className={`${box} shrink-0 rounded-2xl bg-background-secondary flex items-center justify-center overflow-hidden`}>
       <SafeImage
@@ -84,19 +84,29 @@ export function TierUpCollectionRow({ view, submitting, onOpen, onRetry }: RowPr
         ? t(copy.none, { rarity: getRarityLabel(view.rarity) ?? '' })
         : (picked?.name ?? copy.unselected)
   const selectable = view.kind === 'ready'
-  // 이름은 2줄까지만 보이게 줄이지만, 정적 행의 이유 문장은 눌러 펼 수 없으므로 끝까지 보인다(360·390px에서 3줄이 되어도 잘리지 않는다)
-  const valueClamp = selectable ? 'line-clamp-2 ' : ''
 
+  // 이미지만 lead로 넘긴다 — 48 박스와 면은 ListRow가 준다(`CollectionTile`을 넣으면 박스가 이중이 된다).
+  // 이름은 2줄까지만 보이게 줄이지만, 정적 행의 이유 문장은 눌러 펼 수 없으므로 `sentence`로 끝까지 보인다(360·390px에서 3줄이 되어도 잘리지 않는다).
+  // 제출 중 잠금은 고를 수 있는 행에만 건다 — 정적 행은 예전처럼 흐려지지 않는다.
   return (
-    <ListRowCard
-      icon={<CollectionTile imageUrl={picked?.imageUrl ?? null} size={40} />}
+    <ListRow
+      lead={
+        <SafeImage
+          src={picked?.imageUrl ?? null}
+          alt=""
+          width={48}
+          height={48}
+          fallback={<BookIcon className="w-5 h-5 text-muted" />}
+        />
+      }
+      eyebrow={copy.label}
+      title={value}
+      titleVariant={selectable ? 'strong' : 'sentence'}
+      titleLines={selectable ? 2 : undefined}
+      chevron={selectable}
       onClick={selectable ? onOpen : undefined}
-      disabled={submitting}
-      trailing={selectable ? <ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" /> : undefined}
-    >
-      <p className={`m-0 text-sm text-muted ${KO_BREAK}`}>{copy.label}</p>
-      <p className={`m-0 text-base text-foreground ${valueClamp}${KO_BREAK}`}>{value}</p>
-    </ListRowCard>
+      disabled={submitting && selectable}
+    />
   )
 }
 

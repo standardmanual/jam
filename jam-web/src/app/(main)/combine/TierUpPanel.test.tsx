@@ -284,7 +284,7 @@ describe('TierUpPanel 받을 컬렉션', () => {
 
   it('확률 숫자·퍼센트는 어느 갈래에도 없다', () => {
     for (const collection of [READY, { kind: 'none', rarity: 'rare' }, { kind: 'error' }, { kind: 'needMaterial' }] as TierUpCollectionView[]) {
-      const visibleText = html({ collection }).replace(/<[^>]+>/g, ' ')
+      const visibleText = html({ collection }).replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ')
       expect(visibleText).not.toMatch(/\d\s*%|퍼센트/)
     }
   })

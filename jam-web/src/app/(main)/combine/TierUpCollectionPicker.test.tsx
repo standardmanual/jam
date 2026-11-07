@@ -26,8 +26,8 @@ function row(view: TierUpCollectionView, overrides: { submitting?: boolean; onOp
   )
 }
 
-/** 보이는 글자만 — 태그를 걷어 낸다 */
-const visibleText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+/** 보이는 글자만 — `ListRow`가 함께 내보내는 `<style>` 본문과 태그를 걷어 낸다 */
+const visibleText = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 
 type AnyElement = ReactElement<Record<string, unknown>>
 function findAll(node: ReactNode, predicate: (el: AnyElement) => boolean, found: AnyElement[] = []): AnyElement[] {
@@ -46,32 +46,36 @@ describe('TierUpCollectionRow — 갈래별 표현', () => {
   it('needMaterial: 정적 행(button 아님)에 라벨과 «재료를 넣으면 컬렉션을 고를 수 있어요»가 foreground 글자로 나온다', () => {
     const out = row({ kind: 'needMaterial' })
     expect(out).not.toContain('<button')
-    expect(out).not.toContain('w-4 h-4') // > 화살표(ChevronRightIcon)가 없다
+    expect(out).not.toContain('align-self:center;flex-shrink:0;display:flex;color:var(--muted)') // > 화살표(chevron 칸)가 없다
     expect(visibleText(out)).toBe('받을 컬렉션 재료를 넣으면 컬렉션을 고를 수 있어요')
-    const value = out.match(/<p class="[^"]*">재료를 넣으면 컬렉션을 고를 수 있어요<\/p>/)
-    expect(value).not.toBeNull()
-    expect(value![0]).toContain('text-foreground')
-    // 흐리게 하지 않는다 — 비활성 모양(opacity)도, 눌림(jam-press)도 없다
-    expect(out).not.toMatch(/opacity/)
-    expect(out).not.toContain('jam-press')
+    // 이유 문장은 sentence(보통 굵기 400, muted 색 아님)이다
+    expect(out).toMatch(/font-weight:400;text-wrap:balance">재료를 넣으면 컬렉션을 고를 수 있어요</)
+    // 흐리게 하지 않는다 — 비활성 모양(opacity)도, 눌림도 없다(표시 전용 행)
+    expect(out).toContain('data-interactive="false"')
+    expect(out).not.toMatch(/opacity:/)
+    expect(out).not.toContain('aria-disabled')
   })
 
   it('none: 정적 행에 «지금은 {등급} 아이템 배지로 받을 수 있는 컬렉션이 없어요. 다른 등급으로 해 보세요.»가 나온다', () => {
     const out = row({ kind: 'none', rarity: 'epic' })
     expect(out).not.toContain('<button')
-    expect(out).not.toContain('w-4 h-4')
+    expect(out).not.toContain('align-self:center;flex-shrink:0;display:flex;color:var(--muted)')
     expect(visibleText(out)).toBe('받을 컬렉션 지금은 Epic 아이템 배지로 받을 수 있는 컬렉션이 없어요. 다른 등급으로 해 보세요.')
-    expect(out).not.toMatch(/opacity/)
+    expect(out).not.toMatch(/opacity:/)
     expect(row({ kind: 'none', rarity: 'common' })).toContain('지금은 Common 아이템 배지로')
   })
 
   it('정적 행(needMaterial·none)의 이유 문장은 말줄임(line-clamp)이 없어 3줄이 되어도 끝까지 보인다 — 컬렉션 이름만 2줄까지다', () => {
     for (const view of [{ kind: 'needMaterial' }, { kind: 'none', rarity: 'epic' }] as const) {
       const out = row(view)
-      expect(out).not.toContain('line-clamp')
-      expect(out).toContain('break-keep')
+      // sentence는 줄 제한이 없다 — 줄 제한(-webkit-line-clamp)은 라벨(eyebrow) 한 곳에만 있다
+      expect(out.match(/-webkit-line-clamp/g)).toHaveLength(1)
+      expect(out).not.toMatch(/text-overflow:ellipsis/)
     }
-    expect(row({ kind: 'ready', choices: [FOREST], selectedId: 'forest' })).toContain('line-clamp-2')
+    const ready = row({ kind: 'ready', choices: [FOREST], selectedId: 'forest' })
+    // 컬렉션 이름은 strong(700) 2줄 제한이다: 라벨 clamp 1개 + 이름 clamp 1개
+    expect(ready.match(/-webkit-line-clamp:2/g)).toHaveLength(2)
+    expect(ready).toMatch(/font-weight:700;text-wrap:balance">숲속 산책 컬렉션</)
   })
 
   it('error: 행 대신 안내 블록(role status)과 «다시 불러오기» 버튼이 나오고 컬렉션이 없다고 말하지 않는다', () => {
@@ -97,27 +101,26 @@ describe('TierUpCollectionRow — 갈래별 표현', () => {
     const out = row({ kind: 'ready', choices: [FOREST, RIVER], selectedId: null })
     expect(out).toMatch(/<button type="button"/)
     expect(visibleText(out)).toBe('받을 컬렉션 컬렉션을 골라 주세요')
-    expect(out).toContain('jam-press')
-    // 40×40 타일에 밝은 면, 이미지가 없으므로 책 아이콘(타일 안 svg)
-    expect(out).toMatch(/<div class="w-10 h-10 shrink-0 rounded-2xl bg-background-secondary[^"]*"><svg/)
-    // 오른쪽 화살표(ChevronRightIcon, w-4 h-4)
-    expect(out).toMatch(/<div class="shrink-0 flex items-center"><svg[^>]*class="w-4 h-4/)
+    expect(out).toContain('data-interactive="true"')
+    // lead 박스는 ListRow가 주는 하나뿐이다(타일이 이중이 아니다). 이미지가 없으므로 박스 안에 책 아이콘
+    expect(out).toMatch(/class="ds-list-row-lead"[^>]*><svg[^>]*class="w-5 h-5 text-muted"/)
+    expect(out).not.toContain('w-10 h-10')
+    expect(out).not.toContain('w-12 h-12')
+    // 오른쪽 화살표(chevron 칸, 20px)
+    expect(out).toContain('align-self:center;flex-shrink:0;display:flex;color:var(--muted)"><svg')
   })
 
   it('ready·선택: 타일에 컬렉션 이미지, 값에 컬렉션 이름이 나온다(2줄까지)', () => {
     const out = row({ kind: 'ready', choices: [FOREST, RIVER], selectedId: 'forest' })
     expect(visibleText(out)).toBe('받을 컬렉션 숲속 산책 컬렉션')
     expect(out).toContain('forest.png')
-    const value = out.match(/<p class="[^"]*">숲속 산책 컬렉션<\/p>/)
-    expect(value).not.toBeNull()
-    expect(value![0]).toContain('line-clamp-2')
-    expect(value![0]).toContain('text-foreground')
+    expect(out).toMatch(/<img[^>]*alt=""/) // lead 이미지는 장식이다
   })
 
   it('ready·선택(이미지 없음): 이름은 나오고 타일은 책 아이콘이다', () => {
     const out = row({ kind: 'ready', choices: [FOREST, RIVER], selectedId: 'river' })
     expect(visibleText(out)).toBe('받을 컬렉션 한강 라이딩 컬렉션')
-    expect(out).toMatch(/<div class="w-10 h-10 shrink-0[^"]*"><svg/)
+    expect(out).toMatch(/class="ds-list-row-lead"[^>]*><svg[^>]*class="w-5 h-5 text-muted"/)
   })
 
   it('ready: 행을 누르면 onOpen을 부르고, 제출 중에는 버튼이 잠겨(disabled) 눌림 효과도 없다', () => {
@@ -128,8 +131,20 @@ describe('TierUpCollectionRow — 갈래별 표현', () => {
 
     const locked = row({ kind: 'ready', choices: [FOREST], selectedId: null }, { submitting: true })
     expect(locked).toContain('disabled=""')
-    expect(locked).not.toContain('jam-press')
-    expect(row({ kind: 'ready', choices: [FOREST], selectedId: null })).not.toContain('disabled=""')
+    expect(locked).toContain('opacity:var(--opacity-disabled)')
+    expect(locked).toContain('data-interactive="false"') // 눌림 변형이 붙지 않는다
+    const open = row({ kind: 'ready', choices: [FOREST], selectedId: null })
+    expect(open).not.toContain('disabled=""')
+    expect(open).not.toContain('opacity:var(--opacity-disabled)')
+  })
+
+  it('정적 행(needMaterial·none)은 제출 중에도 흐려지지 않는다', () => {
+    for (const view of [{ kind: 'needMaterial' }, { kind: 'none', rarity: 'rare' }] as const) {
+      const out = row(view, { submitting: true })
+      expect(out).not.toMatch(/opacity:/)
+      expect(out).not.toContain('aria-disabled')
+      expect(out).not.toContain('disabled=""')
+    }
   })
 
   it('정적 행(needMaterial·none)은 눌러도 아무 핸들러가 없다', () => {
@@ -139,7 +154,7 @@ describe('TierUpCollectionRow — 갈래별 표현', () => {
     }
   })
 
-  it('한국어를 그리는 요소는 break-keep과 wrap-break-word를 함께 쓰고 왼쪽 정렬이다', () => {
+  it('한국어 줄바꿈은 ListRow의 keep-all·overflow-wrap이 맡고 왼쪽 정렬이다', () => {
     const outs = [
       row({ kind: 'needMaterial' }),
       row({ kind: 'none', rarity: 'rare' }),
@@ -147,10 +162,7 @@ describe('TierUpCollectionRow — 갈래별 표현', () => {
       row({ kind: 'ready', choices: [FOREST], selectedId: 'forest' }),
     ]
     for (const out of outs) {
-      for (const tag of out.match(/<p class="[^"]*">[^<]+<\/p>/g) ?? []) {
-        expect(tag, tag).toContain('break-keep')
-        expect(tag, tag).toContain('wrap-break-word')
-      }
+      expect(out).toContain('word-break:keep-all;overflow-wrap:break-word;text-align:left')
       expect(out).not.toContain('text-center')
     }
     const error = row({ kind: 'error' })

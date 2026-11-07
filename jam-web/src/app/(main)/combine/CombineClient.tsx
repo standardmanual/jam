@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { SearchIcon, PackageIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { SearchIcon, PackageIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet, { type PendingSheetView } from './PendingResultsSheet'
 import BagItemCell from './BagItemCell'
@@ -1025,15 +1025,12 @@ export default function CombineClient({
         <>
           {/*
             등급 올리기 입구(티켓 20261022_2119 3회, 채원 판정) — 레시피가 아니라서 검색 결과에 걸리지 않게 검색창 위에 두고, 레시피 행의
-            아이콘 칸과 슬롯 개수 원을 쓰지 않는다. 받지 않은 결과가 있어도 눌린다(막는 것은 제출 버튼뿐). 온보딩 연출 모드에서는
+            lead(아이콘 칸)와 슬롯 개수 칩을 쓰지 않는다. 받지 않은 결과가 있어도 눌린다(막는 것은 제출 버튼뿐). 온보딩 연출 모드에서는
             레시피 하나만 보여야 하므로 그리지 않는다.
           */}
           {!demoMode && (
             <div className="px-4 pt-4">
-              <ListRowCard onClick={openTierUp} trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}>
-                <p className="m-0 text-base text-foreground break-keep wrap-break-word">{d.combine.tierUp.title}</p>
-                <p className="m-0 mt-0.5 text-sm text-muted break-keep wrap-break-word text-balance">{d.combine.tierUp.entrySubtitle}</p>
-              </ListRowCard>
+              <ListRow title={d.combine.tierUp.title} meta={d.combine.tierUp.entrySubtitle} metaLines={2} chevron onClick={openTierUp} />
             </div>
           )}
 

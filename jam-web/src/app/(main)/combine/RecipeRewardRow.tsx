@@ -1,7 +1,6 @@
 import SafeImage from '@/components/SafeImage'
-import ListRowCard, { ListRowCardTitle } from '@/components/ui/ListRowCard'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
-import { LabelChip } from '@ds/components/cards/LabelChip'
 import { PointText } from '@ds/components/patterns/PointText'
 import { CoinIcon, PackageIcon } from '@/components/ui/icons'
 import { formatKoreanDateTime } from '@/components/LocalDate'
@@ -42,22 +41,23 @@ interface Props {
 
 /**
  * 레시피 보상 요약 행 — 레시피 탐색 목록의 각 행과 믹서 상단 요약바가 완전히 같은 컴포넌트를
- * 공유한다(티켓 20260917_2014). `@/components/ui/ListRowCard`(서비스 구현)를 감싸는 얇은
- * 어댑터다 — MODULAR의 동명 컴포넌트(`design-system/components/patterns/ListRowCard.jsx`)는
- * 병존 구현(서비스에 반영되지 않음)이라 쓰지 않는다.
+ * 공유한다(티켓 20260917_2014). `@/components/ui/ListRow` 호출 한 번으로 그리는 서비스 전용 어댑터다
+ * (티켓 20261107_0011, 채원 판정). 치수·색은 ListRow가 주고 여기서는 값을 박지 않는다.
  *
  * 3케이스:
- * - 배지 + 포인트: icon=배지 이미지, subtitle=등급 칩+배지명, trailing=포인트 값
- * - 배지만: icon=배지 이미지, subtitle=등급 칩+배지명, trailing 없음
- * - 포인트만: icon=포인트 아이콘, subtitle 없음, trailing=포인트 값
+ * - 배지 + 포인트: lead=배지 이미지(tile), eyebrow=등급 칩, meta=배지명, value=포인트 값
+ * - 배지만: 위와 같고 value 없음
+ * - 포인트만: lead=코인(round), eyebrow·meta 없음, value=포인트 값
  *
- * 4번째 케이스(티켓 20261018_0055 2회): `noReward`면 중립 아이콘(`PackageIcon`)과 부제 «보상 없음»만 그린다.
- * `rewardLocked`면 배지 부제의 등급 칩 옆에 «잠김» 칩을 붙인다.
+ * 4번째 케이스(티켓 20261018_0055 2회): `noReward`면 중립 아이콘(`PackageIcon`)과 meta «보상 없음»만 그린다.
+ * `rewardLocked`면 배지 보상이 있을 때 eyebrow의 등급 칩 옆에 «잠김» 칩을 붙인다.
  *
- * `releaseAt`이 있으면 위 3케이스 어느 쪽이든 텍스트 영역 맨 아래에 「공개 예정」 줄을 하나 더 그린다.
+ * `releaseAt`이 있으면 위 어느 케이스든 meta 맨 아래에 「공개 예정」 줄을 하나 더 그린다.
  * 보상 배지가 여러 개면 대표(첫 번째)만 노출하고 "+N"을 붙인다.
- * 타이틀 우측에는 슬롯 개수를 회색 원형 배지 안 숫자로 표시한다 — `ListRowCard`의 `title`이
- * string만 받아 칩을 인라인으로 못 붙이므로 `children`(전체 커스텀 렌더링)으로 우회한다.
+ * 타이틀 끝에는 슬롯 개수를 `ListRowChip`으로 붙인다(`titleSuffix`).
+ *
+ * 칩을 title 아래 `chips`가 아닌 위 `eyebrow`에 두는 이유: ListRow는 eyebrow → title → meta → chips 순서로 그려서
+ * chips에 두면 배지명과 공개 예정 줄 아래로 내려가고, 배지명 앞에 한 줄로 두면 320px에서 배지명이 거의 가려진다.
  */
 export default function RecipeRewardRow({
   title,
@@ -76,64 +76,79 @@ export default function RecipeRewardRow({
   const extraCount = badges.length - 1
 
   const showNoReward = noReward && !hasBadges && !hasPoints
+  const showBadge = hasBadges && primary !== undefined
 
-  const icon =
-    hasBadges && primary ? (
-      <div className="relative w-10 h-10 rounded-full bg-background flex items-center justify-center overflow-hidden">
-        <SafeImage
-          src={primary.image_url}
-          alt={primary.name}
-          width={40}
-          height={40}
-          className="object-contain w-full h-full"
-          fallback={<PackageIcon className="w-5 h-5 text-muted" />}
-        />
-      </div>
-    ) : showNoReward ? (
-      <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center">
-        <PackageIcon className="w-5 h-5 text-muted" />
-      </div>
-    ) : (
-      <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center">
-        <CoinIcon className="w-5 h-5 text-muted" />
-      </div>
-    )
+  // 이미지는 장식이다(`alt=""`) — 배지 이름은 meta 글자에 이미 있다. 아이콘은 20px 글리프만 주고 48 박스·면은 ListRow가 준다.
+  const lead = showBadge ? (
+    <SafeImage
+      src={primary.image_url}
+      alt=""
+      width={48}
+      height={48}
+      fallback={<PackageIcon className="w-5 h-5 text-muted" />}
+    />
+  ) : showNoReward ? (
+    <PackageIcon className="w-5 h-5 text-muted" />
+  ) : (
+    <CoinIcon className="w-5 h-5 text-muted" />
+  )
+  const leadShape = !showBadge && !showNoReward ? 'round' : 'tile'
 
-  const subtitle =
-    hasBadges && primary ? (
-      <div className="flex items-center gap-1 min-w-0">
-        <RarityBadge rarity={primary.rarity} />
-        {rewardLocked && <LabelChip className="shrink-0">{d.lockedItem.detail.chip}</LabelChip>}
-        <span className="truncate">
-          {primary.name}
-          {extraCount > 0 ? ` +${extraCount}` : ''}
-        </span>
-      </div>
-    ) : showNoReward ? (
-      <span className="text-xs text-muted break-keep wrap-break-word">{d.combine.noRewardLabel}</span>
+  // eyebrow 노드를 만들기 전에 그릴 칩이 하나라도 있는지 먼저 판정한다 — 빈 노드를 넘기면 빈 줄이 남는다.
+  // 등급이 common·null이면 RarityBadge는 null을 돌려주므로 칩이 없을 수 있다.
+  const hasRarityChip = showBadge && primary.rarity != null && primary.rarity !== 'common'
+  const hasLockedChip = showBadge && rewardLocked
+  // 래퍼가 `items-center`인 이유: ListRow의 eyebrow 래퍼는 align-items가 기본(stretch)이라 8px 등급 칩이 12px 잠김 칩 높이로 늘어난다.
+  const eyebrow =
+    hasRarityChip || hasLockedChip ? (
+      <span className="inline-flex items-center gap-1">
+        {showBadge && <RarityBadge rarity={primary.rarity} />}
+        {hasLockedChip && <ListRowChip tone="neutral">{d.lockedItem.detail.chip}</ListRowChip>}
+      </span>
+    ) : undefined
+
+  // meta는 phrasing(`<span>`)만 쓴다 — 클릭 영역(`<button>`) 안이다. `metaLines={0}`이라 말줄임은 배지명 줄에만 직접 건다.
+  const badgeLine = showBadge ? (
+    <span className="block truncate">
+      {primary.name}
+      {extraCount > 0 ? ` +${extraCount}` : ''}
+    </span>
+  ) : showNoReward ? (
+    d.combine.noRewardLabel
+  ) : undefined
+  const releaseLine = releaseAt ? (
+    // 말줄임(truncate)을 쓰지 않는다 — 날짜가 정보라서다. 폭이 모자라면 두 조각 중 날짜 조각이
+    // 통째로 다음 줄로 내려간다(조각 안에서는 끊기지 않는다).
+    <span className={`flex flex-wrap gap-x-1 text-xs${badgeLine !== undefined ? ' mt-1' : ''}`}>
+      <span className="whitespace-nowrap">{d.combine.releaseScheduled} ·</span>
+      <span className="whitespace-nowrap">{formatKoreanDateTime(releaseAt, { time: true })}</span>
+    </span>
+  ) : undefined
+  const meta =
+    badgeLine !== undefined || releaseLine !== undefined ? (
+      <>
+        {badgeLine}
+        {releaseLine}
+      </>
     ) : undefined
 
   // 획득 포인트: 숫자는 굵게, 줄을 바꿔 아래에 작은 글씨로 «포인트». 값과 단위의 색은 PointText 한 곳에서 `--point-text`로 정한다(티켓 20261104_2319, 규칙: UX Writing 가이드 «포인트» 행)
-  const trailing = hasPoints ? <PointText value={points} unit={d.combine.pointsUnit} layout="stacked" /> : undefined
+  const value = hasPoints ? <PointText value={points} unit={d.combine.pointsUnit} layout="stacked" /> : undefined
 
   return (
-    <ListRowCard icon={icon} trailing={trailing} onClick={onClick} className={className}>
-      <p className="flex items-center gap-1 min-w-0">
-        {/* 제목은 굵게 — 미션 목록과 같은 모양을 ListRowCardTitle 한 곳에서 받는다(티켓 20261104_2242) */}
-        <ListRowCardTitle>{title}</ListRowCardTitle>
-        <span className="shrink-0 w-5 h-5 flex items-center justify-center text-xs leading-none text-[var(--muted)] bg-background rounded-full">
-          {slotCount}
-        </span>
-      </p>
-      {subtitle !== undefined && <div className="mt-0.5">{subtitle}</div>}
-      {releaseAt && (
-        // 말줄임(truncate)을 쓰지 않는다 — 날짜가 정보라서다. 폭이 모자라면 두 조각 중 날짜 조각이
-        // 통째로 다음 줄로 내려간다(조각 안에서는 끊기지 않는다).
-        <p className="mt-1 flex flex-wrap gap-x-1 text-xs text-muted">
-          <span className="whitespace-nowrap">{d.combine.releaseScheduled} ·</span>
-          <span className="whitespace-nowrap">{formatKoreanDateTime(releaseAt, { time: true })}</span>
-        </p>
-      )}
-    </ListRowCard>
+    <ListRow
+      lead={lead}
+      leadShape={leadShape}
+      eyebrow={eyebrow}
+      title={title}
+      titleVariant="strong"
+      titleLines={1}
+      titleSuffix={<ListRowChip tone="neutral">{slotCount}</ListRowChip>}
+      meta={meta}
+      metaLines={0}
+      value={value}
+      onClick={onClick}
+      className={className}
+    />
   )
 }

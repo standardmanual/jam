@@ -49,7 +49,7 @@ vi.mock('@/components/ui/Toast', () => ({
 
 import CombineClient, { toTierUpRevealBadges, type InventoryItemWithBadge } from './CombineClient'
 import TierUpPanel from './TierUpPanel'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import TopNav from '@/components/ui/TopNav'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
 import type { TierUpCollectionOption, TierUpCollectionView } from './tierUpClient'
@@ -111,8 +111,13 @@ describe('등급 올리기 입구 (탐색 화면)', () => {
     expect(html).toContain('등급 올리기')
     expect(html).toContain('같은 등급 5개를 넣고 새 아이템 배지 1개를 받아요')
     expect(html.indexOf('등급 올리기')).toBeLessThan(html.indexOf(d.combine.searchPlaceholder))
-    // 오른쪽 화살표만 있고 장식 아이콘 칸(왼쪽)은 없다
-    expect(html).not.toMatch(/<div class="shrink-0"><svg/)
+    // 오른쪽 화살표(chevron)만 있고 lead(왼쪽 아이콘 칸)와 슬롯 개수 칩은 없다 — 검색창 위 입구 구간만 본다
+    const entryHtml = html.slice(0, html.indexOf(d.combine.searchPlaceholder))
+    expect(entryHtml).not.toContain('class="ds-list-row-lead"')
+    expect(entryHtml).toContain('data-interactive="true"')
+    expect(entryHtml).toMatch(/aria-hidden="true" style="[^"]*color:var\(--muted\)"><svg/)
+    // 제목은 굵게(700)다
+    expect(entryHtml).toMatch(/font-weight:700[^"]*">등급 올리기</)
   })
 
   it('온보딩 연출 모드에서는 그리지 않는다', () => {
@@ -130,14 +135,15 @@ describe('등급 올리기 입구 (탐색 화면)', () => {
     expect(html).toContain(d.combine.noRecipes)
   })
 
-  it('입구 부제는 말줄임 없이 줄바꿈하고 한국어 줄바꿈 클래스를 쓴다', () => {
+  it('입구 부제는 최대 2줄이고, 한국어 줄바꿈은 ListRow의 keep-all이 맡는다', () => {
     const html = renderToStaticMarkup(<CombineClient items={[]} publicRecipes={[]} ownedConditionBadgeIds={[]} />)
-    const subtitle = html.match(/<p class="[^"]*">같은 등급 5개를 넣고 새 아이템 배지 1개를 받아요<\/p>/)
+    const subtitle = html.match(/<span style="[^"]*">같은 등급 5개를 넣고 새 아이템 배지 1개를 받아요<\/span>/)
     expect(subtitle).not.toBeNull()
-    expect(subtitle![0]).toContain('break-keep')
-    expect(subtitle![0]).toContain('wrap-break-word')
-    expect(subtitle![0]).toContain('text-balance')
-    expect(subtitle![0]).not.toContain('truncate')
+    // 2줄 제한(-webkit-line-clamp:2)이고 한 줄 말줄임(nowrap·ellipsis)이 아니다
+    expect(subtitle![0]).toContain('-webkit-line-clamp:2')
+    expect(subtitle![0]).not.toContain('text-overflow:ellipsis')
+    expect(subtitle![0]).toContain('text-wrap:balance')
+    expect(html).toContain('word-break:keep-all;overflow-wrap:break-word')
   })
 })
 
@@ -176,7 +182,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
       return CombineClient(props)
     }
     const panel = (tree: ReactNode) => findAll(tree, (el) => el.type === TierUpPanel)[0]
-    const entry = (tree: ReactNode) => findAll(tree, (el) => el.type === ListRowCard)[0]
+    const entry = (tree: ReactNode) => findAll(tree, (el) => el.type === ListRow)[0]
     const nav = (tree: ReactNode) => findAll(tree, (el) => el.type === TopNav)[0]
     const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
     const openTierUp = () => {

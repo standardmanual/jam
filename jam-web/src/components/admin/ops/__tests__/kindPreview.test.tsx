@@ -84,7 +84,8 @@ describe('OpsCardPreview 레시피·드랍 (티켓 20261007_1401)', () => {
     expect(out).toContain('비 맞은 러너')
     expect(out).toContain('(이름을 읽지 못함)')
     expect(out).toContain('30')
-    expect(out).not.toContain('href=')
+    // `ListRow`가 함께 내보내는 `<style data-href=...>`는 링크가 아니므로 빼고 센다
+    expect(out.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('href=')
     expect(out).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
   })
 
