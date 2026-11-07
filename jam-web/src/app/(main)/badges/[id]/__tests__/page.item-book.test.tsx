@@ -5,7 +5,7 @@
  *  - 꺼진 컬렉션 소속 배지는 이 화면 주인이 열린 개체를 가졌을 때만 카드가 나온다(링크 대상 `/collections/[id]`가 열린다).
  *  - 꺼진 컬렉션인데 가진 것이 없거나 잠긴 개체만 가졌으면 카드가 없다.
  *
- * 페이지 함수를 모의 Supabase로 직접 호출하고 요소 트리에서 `ListRowCard`를 찾는다.
+ * 페이지 함수를 모의 Supabase로 직접 호출하고 요소 트리에서 `ListRow`를 찾는다.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/badges/[id]/__tests__/page.item-book.test.tsx"
  */
@@ -125,7 +125,7 @@ afterEach(() => {
 
 describe('배지 상세 — 컬렉션 카드', () => {
   it('켜진 컬렉션은 가진 것이 없어도 카드가 나온다', async () => {
-    const cards = findAll(await call(), 'ListRowCard')
+    const cards = findAll(await call(), 'ListRow')
     expect(cards).toHaveLength(1)
     expect(cards[0].props.href).toBe(`/collections/${BOOK_ID}`)
   })
@@ -134,7 +134,7 @@ describe('배지 상세 — 컬렉션 카드', () => {
     state.tables.item_books = [book({ is_active: false })]
     state.tables.inventory_items = [item()]
 
-    const cards = findAll(await call(), 'ListRowCard')
+    const cards = findAll(await call(), 'ListRow')
     expect(cards).toHaveLength(1)
     expect(cards[0].props.title).toBe('새벽 컬렉션')
   })
@@ -143,19 +143,19 @@ describe('배지 상세 — 컬렉션 카드', () => {
     state.tables.item_books = [book({ valid_from: '2026-12-01T00:00:00+00:00' })]
     state.tables.inventory_items = [item()]
 
-    expect(findAll(await call(), 'ListRowCard')).toHaveLength(1)
+    expect(findAll(await call(), 'ListRow')).toHaveLength(1)
   })
 
   it('꺼진 컬렉션인데 가진 것이 없으면 카드가 없다', async () => {
     state.tables.item_books = [book({ is_active: false })]
 
-    expect(findAll(await call(), 'ListRowCard')).toHaveLength(0)
+    expect(findAll(await call(), 'ListRow')).toHaveLength(0)
   })
 
   it('꺼진 컬렉션인데 잠긴 개체만 가졌으면 카드가 없다(잠긴 개체는 컬렉션을 드러내지 않는다)', async () => {
     state.tables.item_books = [book({ is_active: false })]
     state.tables.inventory_items = [item({ locked: true })]
 
-    expect(findAll(await call(), 'ListRowCard')).toHaveLength(0)
+    expect(findAll(await call(), 'ListRow')).toHaveLength(0)
   })
 })

@@ -11,7 +11,7 @@ import TopNav from '@/components/ui/TopNav'
 import { LockIcon, CoinIcon, PackageIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LockedTile } from '@ds/components/cards/LockedTile'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
@@ -547,15 +547,16 @@ export default function MissionDetailClient({
               </Card>
             ))}
 
-            {/* 포인트 보상 행: ListRowCard + 서클 CoinIcon. 캡션 없이 «N 포인트»만 둔다 */}
+            {/* 포인트 보상 행: ListRow + 서클 lead. 캡션 없이 «N 포인트»만 둔다 */}
             {mission.reward_points ? (
-              <ListRowCard
+              <ListRow
                 tone="tint"
-                icon={
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                leadShape="round"
+                lead={
+                  <span className="w-full h-full flex items-center justify-center"
                     style={{ background: 'var(--accent)' }}>
                     <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
-                  </div>
+                  </span>
                 }
                 title={tPoint(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
               />

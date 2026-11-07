@@ -5,9 +5,9 @@ import { isItemBookViewable } from '@/lib/itembook/visibility'
 import { BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
-import { BookIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { BookIcon } from '@/components/ui/icons'
 import PoiMapButton from './PoiMapButton'
 import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
@@ -442,29 +442,24 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           <div className="relative z-10 flex flex-col gap-4 px-6 pt-3 pb-[40px]">
             {/* 속한 컬렉션 링크 */}
             {itemBook && (
-              <ListRowCard
+              <ListRow
                 href={`/collections/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
-                icon={
+                leadShape="tile"
+                lead={
                   /* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드다. next/image에 직접 넘기면
                      미등록 호스트 하나로 배지 상세 화면 전체가 500이 되므로 SafeImage로 렌더한다
-                     (20260824_005). 폴백은 이미지가 없을 때와 같은 BookIcon 플레이스홀더 —
-                     아이콘 자리가 비어 링크 행의 정렬이 무너지지 않는다. */
+                     (20260824_005). 폴백은 이미지가 없을 때 BookIcon — lead 박스(48px)는 ListRow가 주므로
+                     아이콘만 넘겨 박스가 이중이 되지 않고 행 정렬도 무너지지 않는다. */
                   <SafeImage
                     src={itemBook.image_url}
-                    alt={itemBook.name}
-                    width={44}
-                    height={44}
-                    className="w-full h-full object-contain p-1"
-                    containerClassName="w-11 h-11 rounded-2xl overflow-hidden shrink-0"
-                    fallback={
-                      <div className="w-11 h-11 rounded-2xl bg-background-secondary flex items-center justify-center shrink-0">
-                        <BookIcon className="w-5 h-5 text-[var(--muted)]" />
-                      </div>
-                    }
+                    alt=""
+                    width={48}
+                    height={48}
+                    fallback={<BookIcon className="w-5 h-5 text-muted" />}
                   />
                 }
                 title={itemBook.name}
-                trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
+                chevron
               />
             )}
 
