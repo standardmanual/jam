@@ -4,9 +4,9 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { getDisplayName } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import TopNav from '@/components/ui/TopNav'
-import { UserIcon, ChevronRightIcon, SearchIcon } from '@/components/ui/icons'
+import { UserIcon, SearchIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
@@ -119,20 +119,20 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             {results.map((u) => {
               const displayName = getDisplayName(u)
               return (
-                <ListRowCard
+                <ListRow
                   key={u.id}
                   href={`/${u.username}`}
-                  icon={
+                  lead={
                     u.avatar_url ? (
-                      <Image src={u.avatar_url} alt={displayName} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+                      <Image src={u.avatar_url} alt="" width={48} height={48} />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center">
-                        <UserIcon className="w-5 h-5 text-muted" />
-                      </div>
+                      <UserIcon className="w-5 h-5 text-muted" />
                     )
                   }
+                  leadShape="round"
                   title={displayName}
-                  trailing={<ChevronRightIcon className="w-4 h-4 text-muted" />}
+                  titleVariant="regular"
+                  chevron
                 />
               )
             })}

@@ -14,7 +14,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import PopInNumber from '@/components/ui/PopInNumber'
 import SwapText from '@/components/ui/SwapText'
@@ -286,7 +286,7 @@ export default function ProfileClient({
   // 헤더의 아바타·아이디 클릭 시 현재 프로필 URL(`/${username}`)로 이동한다.
   // 탭 해시(`#followers` 등)로 열려 있던 상태에서 자기 자신에게 다시 링크하면
   // pathname이 같아 해시가 지워지지 않고 남는다 — 이동 직전에 제거한다(20260902_0956,
-  // ListRowCard의 onNavigate와 동일한 패턴 20260902_0915).
+  // 팔로워·팔로잉 행의 ListRow onClick도 같은 함수를 쓴다 20260902_0915).
   const clearProfileHash = () => {
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
@@ -499,33 +499,29 @@ export default function ProfileClient({
     return (
       <div className="flex flex-col gap-2">
         {listData.map(u => (
-          <ListRowCard
+          <ListRow
             key={u.id}
             href={`/${u.username}`}
             // 팔로워/팔로잉 탭이 URL 해시로 열린 상태(예: /profile#followers)에서 다른 유저
             // 프로필로 이동하면, Next 클라이언트 라우팅이 pathname만 바꾸고 기존 해시는
             // 지우지 않아 /{username}#followers가 남는다. 이동 직전에 해시를 제거한다 (20260902_0915).
-            onNavigate={() => {
-              if (window.location.hash) {
-                window.history.replaceState(null, '', window.location.pathname + window.location.search)
-              }
-            }}
-            icon={
+            onClick={clearProfileHash}
+            lead={
               u.avatar_url ? (
-                <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+                <Image src={u.avatar_url} alt="" width={48} height={48} />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-muted" />
-                </div>
+                <UserIcon className="w-5 h-5 text-muted" />
               )
             }
+            leadShape="round"
             title={getDisplayName(u)}
-            trailing={
+            titleVariant="regular"
+            trail={
               u.id !== currentUserId ? (
                 <Button
                   surface="sub"
                   variant={listFollowStates[u.id] ? 'secondary' : 'primary'}
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleListFollow(u.id) }}
+                  onClick={() => handleListFollow(u.id)}
                   className="shrink-0 px-4 py-2 text-base"
                 >
                   {/* Text states swap (04-text-states-swap.md) */}

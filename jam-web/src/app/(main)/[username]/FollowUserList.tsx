@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { FollowButton } from './FollowButton'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import { UserIcon } from '@/components/ui/icons'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { getDisplayName } from '@/lib/utils'
@@ -56,9 +55,20 @@ export default function FollowUserList({
   return (
     <>
       {users.map((u) => (
-        <ListRowCard
+        <ListRow
           key={u.id}
-          trailing={
+          href={`/${u.username}`}
+          lead={
+            u.avatar_url ? (
+              <Image src={u.avatar_url} alt="" width={48} height={48} />
+            ) : (
+              <UserIcon className="w-5 h-5 text-muted" />
+            )
+          }
+          leadShape="round"
+          title={getDisplayName(u)}
+          titleVariant="regular"
+          trail={
             u.id !== currentUserId ? (
               <FollowButton
                 targetUserId={u.id}
@@ -67,18 +77,7 @@ export default function FollowUserList({
               />
             ) : undefined
           }
-        >
-          <Link href={`/${u.username}`} className="flex items-center gap-4 flex-1 min-w-0 active:opacity-70 transition-opacity">
-            {u.avatar_url ? (
-              <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center shrink-0">
-                <UserIcon className="w-4 h-4 text-muted" />
-              </div>
-            )}
-            <span className="text-base truncate">{getDisplayName(u)}</span>
-          </Link>
-        </ListRowCard>
+        />
       ))}
 
       <BadgeRevealOverlay
