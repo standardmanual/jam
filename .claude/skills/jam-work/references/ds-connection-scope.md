@@ -59,8 +59,8 @@ cd jam-web && npm run storybook   # http://localhost:6006
   DS만 고치면 서비스는 따라오지 않는다. 서비스 구현이 DS보다 기능이 많은 경우도 있으므로
   (`BottomSheet`의 드래그-투-클로즈, `Skeleton`의 cross-fade reveal) 단순 스왑도 위험하다.
 
-- **미도입 6종 — 스토리북 전용.** *(2026-09-14 실측 기준, `Accordion` 연결 확인으로 8→7, `Select` 연결 확인으로 7→6)*
-  `Checkbox` · `Input` · `Textarea` · `ModalToast` · `ShapeTag` · `BadgeFrame`
+- **미도입 5종 — 스토리북 전용.** *(2026-09-14 실측 기준, `Accordion` 연결 확인으로 8→7, `Select` 연결 확인으로 7→6, `ShapeTag` 제거로 6→5(2026-11-07 사용자 결정, 티켓 20261107_2202))*
+  `Checkbox` · `Input` · `Textarea` · `ModalToast` · `BadgeFrame`
   → 서비스에 대응 개념이 없다. 티켓 20260820_010에서 "유지/보류"로 확정됐으므로 **새로
   도입하려면 별도 판단이 필요하다** (임의로 서비스에 끌어다 쓰지 말 것).
 
