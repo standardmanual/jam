@@ -30,3 +30,12 @@ MissionStatusClient의 3px 임의값 등).
 - 기본 `trackColor`가 `--border`와 같은 색이라 외곽선만 켜서는 보이지 않는다. 트랙 면을 따로 정한다.
   서비스(캡슐·잠긴 아이템 배지)의 호출: `<ProgressBar outlined percent={n} fillMode="track-gradient" trackColor="var(--background)" height={10} labelType="none" />`.
 - 숫자가 필요한 자리에는 쓰지 않는다(`labelType="none"`로 둔다). 캡슐은 진행 수치를 화면에 내지 않는다.
+
+## 추가 — span 렌더 (티켓 20261107_2156)
+
+- `as` — `'div'`(기본, 예전과 완전히 동일) / `'span'`. `ProgressBar` 한정 prop이다(다른 컴포넌트로 확산하지 않는다).
+- **언제 켜는가.** 바가 `<a>`·`<button>`·`Link` 같은 클릭 영역 안에 놓일 때만 켠다. 이 안에는 `<div>`를 둘 수 없다(phrasing 요건).
+  예: 순위 행 `Link` 안에 이름 한 줄과 6px 바가 세로로 쌓이는 경우 — `<ProgressBar as="span" percent={n} labelType="none" height={6} radius="3px" />`.
+- 바깥·트랙·채움(라벨이 있으면 래퍼 포함)이 모두 span이 되고, span 경로에서만 바깥·트랙에 `display:block`이 붙는다.
+  채움은 절대 배치라 따로 붙지 않는다. 모양을 내는 값은 div와 같다.
+- 이 prop은 `role`·`aria-*`를 더하지 않는다. 태그만 바꾼다. 진행 바의 접근성 속성은 읽기가 바뀌는 판단이라 호출부 또는 별도 티켓에서 정한다.

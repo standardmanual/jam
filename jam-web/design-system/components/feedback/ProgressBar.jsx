@@ -45,8 +45,16 @@ export function ProgressBar({
   fillMode = 'solid',
   gradient = PROGRESS_TRACK_GRADIENT,
   outlined = false,
+  as = 'div',
   className = '',
 }) {
+  // [20261107_2156] `as="span"` — <a>·<button>·Link 같은 클릭 영역 안에 놓을 때 쓴다(phrasing 요건).
+  // 기본 'div'는 기존 마크업 그대로다. span 경로에서만 display:block을 더해(조건부 스프레드),
+  // div 경로의 스타일 키 순서와 마크업이 한 글자도 달라지지 않게 한다. role·aria-*는 더하지 않는다.
+  const isSpan = as === 'span';
+  const Tag = isSpan ? 'span' : 'div';
+  const blockStyle = isSpan ? { display: 'block' } : null;
+
   const computedPercent =
     percent != null
       ? percent
@@ -83,8 +91,9 @@ export function ProgressBar({
     ) : null;
 
   const bar = (
-    <div
+    <Tag
       style={{
+        ...blockStyle,
         flex: 1,
         position: 'relative',
         height,
@@ -99,7 +108,7 @@ export function ProgressBar({
         // 보여준다. `width: N%` + `background: 그라데이션`으로 하면 그라데이션이 fill 안에서
         // 압축돼, 진행률이 10%든 90%든 늘 같은 그림이 보인다(진행 감각이 사라진다).
         // 진행률은 --ds-progress-fill 하나로만 들어가고 clip-path가 그 값을 소비한다.
-        <div
+        <Tag
           style={{
             position: 'absolute',
             inset: 0,
@@ -111,7 +120,7 @@ export function ProgressBar({
           }}
         />
       ) : (
-        <div
+        <Tag
           style={{
             position: 'absolute',
             inset: 0,
@@ -124,26 +133,26 @@ export function ProgressBar({
           }}
         />
       )}
-    </div>
+    </Tag>
   );
 
   if (!label) {
-    return <div className={className} style={{ width: '100%' }}>{bar}</div>;
+    return <Tag className={className} style={{ ...blockStyle, width: '100%' }}>{bar}</Tag>;
   }
 
   if (labelPosition === 'top') {
     return (
-      <div className={className} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{label}</div>
+      <Tag className={className} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)', width: '100%' }}>
+        <Tag style={{ display: 'flex', justifyContent: 'flex-end' }}>{label}</Tag>
         {bar}
-      </div>
+      </Tag>
     );
   }
 
   return (
-    <div className={className} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-12)', width: '100%' }}>
+    <Tag className={className} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-12)', width: '100%' }}>
       {bar}
       {label}
-    </div>
+    </Tag>
   );
 }
