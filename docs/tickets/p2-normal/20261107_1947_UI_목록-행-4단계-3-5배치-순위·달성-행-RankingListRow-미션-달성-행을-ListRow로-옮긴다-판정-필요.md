@@ -2,7 +2,7 @@
 id: "20261107_1947"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-07
 parent: "20261106_1750"
 specs:
@@ -88,6 +88,65 @@ specs:
 - 판정 1~6 결과를 상위 티켓 «3배치 진행» 절에 기록하고 3배치를 닫는다. 문의 행(A9) 판정과 4배치(미션 목록)로 넘어간다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+
+- 순위 행(`RankingListRow`)을 `ListRow`(`tone="tint"`, `leadShape="round"`)로 옮겼다. 순위 숫자는 `indicator` 슬롯(숫자는 `aria-hidden`, 스크린리더는 sr-only «N위»), 아바타는 48 원형(`alt=""`, 이미지가 없으면 `UserIcon`), 이름 옆 `titleSuffix`에 «나» 칩(내 행만 `ListRowChip` accent), `meta`에 `<ProgressBar as="span">`(호출부 span 래퍼에 `aria-hidden`), 값은 `value`다. 비율·높이 6px·`radius="3px"`는 기존 그대로다. 36 원형 `div`, `text-[#666]` 같은 리터럴 색, `flex flex-col` 래퍼와 `<p>`를 걷었다.
+- 달성 행(`AchievementRow`)을 `ListRow`로 옮겼다. 48 아바타, 이름, 내 행 «나» 칩, 달성·미달성 `ListRowChip`은 `value` 슬롯(클릭 영역 안에 남겨 프로필 링크가 칩 위에서도 이어진다)이다. `!py-2`, `w-9 h-9`, `var(--link)`, `bg-[var(--accent-content-green)]`를 걷었다. 시험을 위해 `AchievementRow`를 export했다.
+- i18n: `d.missions.statusMeSuffix`(' (나)')를 지우고 `statusMeChip`('나')와 `statusRankLabel`('{rank}위')를 `ko.ts`에 추가했다. UX Writing 가이드에는 «나» 칩 전용 규정이 없어 기존 «나의 현황»과 맞췄다.
+- 시험: 신규 `AchievementRow.test.tsx`(6건), `ListCard.test.tsx`에 순위 행 마크업 7건 추가, `TodayCardStack`·`cardFacePairs`·`rankingRowsLink`·`TodayCardPreview` 시험을 새 마크업 기준으로 수정(`<style>`을 먼저 걷고 검사). 문서는 홈 피드 PRD(행형 절, 서버·클라이언트 경계 줄)와 상위 티켓 4단계 표.
+
+### 채원 사전 판정과 사용자 승인
+
+- 판정(경계): «현재 슬롯으로 된다»가 성립하지 않는다. 순위 숫자는 `indicator`로 되지만 진행 바가 `ProgressBar`의 `<div>` 마크업 때문에 클릭 영역 안에 들어가지 못했다. 선행 `ds` 티켓(20261107_2156, `ProgressBar`의 `as` prop)을 먼저 처리했다.
+- 승인 항목 4건을 사용자가 채원 추천대로 승인했다(2026-11-07): ①진행 바는 `ProgressBar`에 span 옵션을 더하는 (a)안 ②내 행 강조는 24px·`--link` 확대를 접고 «나» 칩 하나로 ③아바타 36→48, 달성 행 약 52→72px, 순위 행 약 60→72px, 달성 칩 색 변화 수용 ④선행 `ds`를 먼저 처리한 뒤 한 번에 구현.
+
+### 게이트 결과 (민지 WARN, 채원 사후 중대 문제 없음)
+
+- 브랜치 CI `verify` success(run 42380500274).
+- WARN 사유: ① 320px 실렌더 측정값이 없었다(아래에 기록). ② 홈 피드 PRD 452줄 «서버·클라이언트 경계»에 «안쪽 `ListRowCard`가 클라이언트다»가 남아 있었다(머지 때 카리나가 고쳤다).
+- 머지 도중 병렬 세션이 컬러 개편 2회차(44dfda3d4 등)와 3회차 티켓을 `origin/staging`에 올려, 최신 staging 위에 네 커밋을 다시 적용(cherry-pick)했다. `MissionStatusClient.tsx`와 `cardFacePairs.test.tsx`는 두 변경이 겹쳤지만 자동으로 합쳐졌고, 재적용한 커밋(`-r2` 브랜치)의 CI `verify`가 success로 끝났다.
+- 사용자가 머지를 승인했다(2026-11-07).
+
+### 실렌더 측정 (메인 트리 개발 서버, 폭 320px, 테스트 계정)
+
+- 미션 현황 달성 행(`/missions/e66f802f…/status`, 2행): 행 높이 74(안쪽 72 + 테두리 2), lead 48, 행 안 `<div>`·`<p>` 0개, 가로 넘침 없음(행 `scrollWidth`=`clientWidth` 236), 내 행(`232`)에만 «나» 칩이 붙고 달성 칩 자리에 «미달성»이 보인다. 이전 약 52에서 72로 커졌다.
+- **칩 색 확인(컬러 개편과 겹침)**: 병렬 세션의 컬러 개편(블랙·그레이·화이트)이 반영된 상태에서 «나» 칩(accent)과 «미달성» 칩(neutral)의 면 색이 모두 `rgb(245, 245, 245)`로 같다. 달성 칩(accent)도 같은 색이 될 가능성이 높아, «달성»과 «미달성»이 글자로만 구분된다. 정보는 문구가 전하므로 손실은 없지만 승인된 «달성 칩 색 변화»가 의도보다 더 크게 나타난 것이다(컬러 개편 결과와 겹침). 달성 상태의 행은 테스트 데이터에 없어 실제 화면은 확인하지 못했다.
+- 확인하지 못한 것: 순위 행(순위 숫자·진행 바·값)과 홈 `ListCard`, 5행 카드 높이, `TodayCardStack`의 높이 가정, 「이름 + 나 칩 + 긴 값」 최악 폭, 360·390px. 테스트 계정의 미션 4개가 모두 달성형이고 홈에 순위 카드가 없어 순위 행을 화면으로 볼 수 없었다. 순위 행의 구조·진행 바 span·`aria-hidden`·«N위»는 시험(`ListCard.test.tsx`)으로만 고정돼 있다.
+
+### 변경된 파일
+
+```
+jam-web/src/components/ranking/RankingListRow.tsx
+jam-web/src/app/(main)/missions/[id]/status/MissionStatusClient.tsx
+jam-web/src/lib/i18n/ko.ts
+jam-web/src/app/(main)/missions/[id]/status/AchievementRow.test.tsx (신규)
+jam-web/src/components/today/__tests__/ListCard.test.tsx
+jam-web/src/components/today/__tests__/rankingRowsLink.test.tsx
+jam-web/src/app/(main)/TodayCardStack.test.tsx
+jam-web/src/components/ui/__tests__/cardFacePairs.test.tsx
+jam-web/src/app/admin/today/__tests__/TodayCardPreview.test.tsx
+docs/service/prd/home-feed/PRD.md
+docs/tickets/p2-normal/20261106_1750_… (상위 티켓 4단계 표)
+```
+
+### 테스트 결과
+- [x] 브랜치 CI `verify` success, 재적용한 `-r2` 브랜치 CI success, `scripts/verify.sh` 전 항목 통과(아현 실행), `serviceLiteralColors` 통과
+- [x] 달성 행 320px 실렌더(높이·넘침·«나» 칩·마크업) 측정 완료
+- [ ] 순위 행 실렌더, 홈 `ListCard` 카드 높이, 달성 칩(달성 상태) 색, 360·390px: 측정하지 못함
+- [ ] staging 화면 확인과 Vercel 배포 상태: push 뒤 확인
+
+### 주요 의사결정 / 핵심 메모
+
+- 눈에 띄는 변화는 모두 승인된 것이다: 아바타 36→48, 달성 행 높이 약 52→72px, 순위 행 약 60→72px, 내 행 강조가 24px·링크색에서 «나» 칩으로, 달성 칩 색.
+- 후속 확인(카리나): 컬러 개편이 끝난 뒤 달성·미달성 칩이 색으로 구분되는지 다시 본다. 구분이 안 되면 `ListRowChip`의 accent 톤 값을 컬러 개편 쪽에서 정하게 한다(이 티켓은 토큰·공용 컴포넌트를 고치지 않는다).
+- 후속 후보: 순위 행 실렌더(순위형 미션이 있는 환경, 홈의 순위 카드)와 PRD 449·450줄의 «행 하나당 76px» 실측값(전환 전 값) 갱신.
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1회차(판정 단계에서 승인 대기로 정지) | 1 | 63,624 | 채원 사전 판정 단독 | 1분 51초 | 13 |
+| 2회차(승인 후 구현·게이트) | 3 | 287,921 | 33,522 / 20,525 | 22분 24초 | 98 |
+| 합계 | 4 | 351,545 | 33,522 / 20,525 | 24분 15초 | 111 |
