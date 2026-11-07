@@ -249,6 +249,7 @@ code:
 - 숫자 없는 «포인트로 열 수 있어요»(`d.lockedItem.card.description`): 보류 고르기 카드(위), 믹스 보류 결과 시트, 보상 리빌(`BadgeRevealOverlay`), 스트라바 보류 선택(`PendingItemsPickOverlay`).
 - 드랍 줍기 시트(`BadgeDetailSheet`): 잠긴 개체는 «픽업한 뒤에 포인트로 열 수 있어요» 한 줄만 보인다(`d.drops.pickupLockedHint`).
 - 같은 등급 잠긴 개체 중에서 고르는 선택 시트 행(`ItemCandidateRow`)만 «{n} 포인트 필요»(`requiredChip`)를 보인다. 0이면 «포인트 없이 열 수 있어요», 값을 모르면(null) 등급 칩만 보인다. 값은 `unlock_points_required`다.
+- 개체 선택 시트 행(`ItemCandidateRow`)은 `ListRow`로 그린다(티켓 20261107_1946). 선택한 행은 검정 2px 링과 오른쪽 체크 아이콘으로 표시하고, 만료 임박 칩은 중립 칩이며, 일련번호 높이는 320px에서 «선택 + 처리 중» 상태까지 잘리지 않도록 28px다.
 - 필요한 잼 값(`unlock_required`)은 줍기 응답·인벤토리 응답·믹스 응답·보류 조회에서 빠졌다. 캡슐 쪽 계약(`RevealBadge.unlockRequired`)은 캡슐 티켓(U8)이 정리할 때까지 남는다.
 
 **가림 보강**(열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어느 화면에도 보이지 않는다, 운영 로직 7.3절). 서버에서 잠긴 개체를 거르는 곳:
