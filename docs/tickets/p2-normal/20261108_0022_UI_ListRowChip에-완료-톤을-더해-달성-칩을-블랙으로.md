@@ -3,7 +3,7 @@ id: "20261108_0022"
 parent: "20261107_2201"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-08
 ---
 
@@ -43,3 +43,49 @@ created: 2026-11-08
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
+### 구현 내용 요약
+- `ListRowChip`의 톤 표(CHIP_TONES)를 면·글자 쌍으로 바꾸고 톤 세 개를 더했다.
+  - `done`: 블랙 면(`--foreground`)에 흰 글자(`--snow`). 달성 칩에 쓴다.
+  - `surface`: 흰 면(`--surface`)에 블랙 글자(`--foreground`). «나» 칩에 쓴다.
+  - `surface-muted`: 흰 면에 회색 글자(`--muted`). 미달성 칩에 쓴다.
+- 기존 `neutral`·`accent`·`warning`은 값을 그대로 두어 다른 소비처(FeedSection, PoiEarnHistory, RecipeRewardRow, ItemCandidateRow, RankingListRow)는 바뀌지 않는다.
+- 연결 범위: 병존 구현 부류. 디자인 시스템 원본(`ListRow.jsx`·`.d.ts`·`.prompt.md`·스토리)과 서비스(`src/components/ui/ListRow.tsx`)를 같은 커밋에서 같은 값으로 고쳤다.
+- 채원① 판정: MODULAR 확장(기존 ListRowChip에 톤 추가, 새 컴포넌트 없음). 새 토큰·새 색 값·`--jam-*` 없음.
+
+### 변경된 파일
+```
+jam-web/design-system/components/patterns/ListRow.d.ts
+jam-web/design-system/components/patterns/ListRow.jsx
+jam-web/design-system/components/patterns/ListRow.prompt.md
+jam-web/design-system/components/patterns/ListRow.stories.tsx
+jam-web/src/app/(main)/missions/[id]/status/AchievementRow.test.tsx
+jam-web/src/app/(main)/missions/[id]/status/MissionStatusClient.tsx
+jam-web/src/components/ui/ListRow.test.tsx
+jam-web/src/components/ui/ListRow.tsx
+```
+
+### 테스트 결과
+- [x] `scripts/verify.sh` 통과, CI 런 42387388810 성공 (커밋 24ea9d46d)
+- [x] 민지 게이트 PASS, 채원② 중대 문제 없음
+- [x] 메인 트리 실렌더(430px, 2026-11-08): tint 행(#e5e5e5) 위에서 미달성 칩은 흰 면·#666 글자, «나» 칩은 흰 면·#171717 글자로 행 면과 구분된다. «나»와 미달성 칩이 한 줄에 들어간다.
+- [ ] 달성(블랙) 칩은 테스트 계정 데이터에 달성자가 없어 화면으로 보지 못했다. 단위 시험(ListRow.test.tsx의 done 톤)으로만 확인했다.
+
+### 배포 정보
+- 배포일: 2026-11-08 (staging)
+- 환경: staging
+- 커밋: 24ea9d46d
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차(plan_only 정지) | 1 | 50,754 | — | 1분 20초 | 15 |
+| 2차(면제 후 구현) | 3 | 133,741 | 8,081 / 4,695 | 14분 23초 | 33 |
+| 합계 | 4 | 184,495 | 8,081 / 4,695 | 15분 43초 | 48 |
+
+### 주요 의사결정 / 핵심 메모
+- 1차 호출이 plan_only로 멈췄다. 사전 규모 판정에서 스토리·시험·prompt.md까지 포함한 8파일을 세지 않고 면제를 빠뜨린 것이 원인이다. 계획을 티켓에 옮기고 사용자 승인을 받아 `planOnlyWaiver`로 다시 호출했다.
+- «나» 칩과 미달성 칩은 둘 다 흰 면이고 글자색(블랙/회색)으로만 갈린다(사용자 결정).
+
+### 잔여 이슈
+- 리뷰 참고(티켓화하지 않음): 흰 면 톤은 tint 행 위에서만 보인다. 지금은 문서 설명으로만 제한하므로, 쓰는 곳이 늘면 장치로 막는 것을 검토한다. 칩 톤 조회 중복(ListRow.tsx:128)도 같은 때 정리한다.
