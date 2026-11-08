@@ -167,7 +167,6 @@ code:
   │     + 통합 활동 피드(본인/타인 공통, 대상 유저 기준). 해시 탭(#badge/#collections/
   │     #followers/#following) = 배지/컬렉션/팔로워/팔로잉 그리드
   ├── [username]/followers, /following
-  ├── [username]/collections — 타인 기준 진행도
   └── profile/edit — username 변경, 아바타 업로드, 탈퇴하기(확인 문구 입력 뒤 계정 삭제, 운영 로직 17장)
 
 [검색] search — 유저 검색 (username/email)

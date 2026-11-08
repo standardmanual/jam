@@ -1,7 +1,7 @@
 /**
  * 프로필 화면의 캡슐 위젯 노출 (티켓 20261018_0054 1회)
  *
- * 내 프로필(`isOwnProfile`이고 서버가 `capsuleInitial`을 내려준 경우)에서만 헤더와 통계 탭 사이에 캡슐 알약이 보이고,
+ * 내 프로필(`isOwnProfile`이고 서버가 `capsuleInitial`을 내려준 경우)에서만 헤더 아래(숫자 줄 다음)에 캡슐 알약이 보이고,
  * 타인이 보는 프로필에는 prop 자체가 없어 DOM에 알약이 없다. 서버 페이지가 타인에게 prop을 내리지 않는 것은
  * `[username]/__tests__/page.test.tsx`가 고정하고, 여기서는 그 prop이 없을 때 화면이 위젯을 그리지 않는지 본다.
  *
@@ -44,14 +44,17 @@ function render(over: Partial<ProfileProps> = {}): string {
     targetUserId: 'u1',
     followerCount: 0,
     followingCount: 0,
-    badgeCount: 0,
-    itemBookCount: 0,
     username: 'runner',
     currentUserId: 'u1',
     pointBalance: 100,
     ...over,
   }
   return renderToStaticMarkup(<ProfileClient {...props} />)
+}
+
+/** 태그를 걷어낸 글자(자릿수 팝인이 숫자를 span으로 쪼개므로 이어 붙여 본다) */
+function flat(html: string): string {
+  return html.replace(/<[^>]*>/g, '')
 }
 
 describe('프로필의 캡슐 위젯', () => {
@@ -85,29 +88,61 @@ describe('프로필의 캡슐 위젯', () => {
     expect(html).not.toContain(d.capsule.aria.loading)
   })
 
-  it('알약은 프로필 헤더와 통계 탭 사이에 있다', () => {
+  it('알약은 프로필 헤더(숫자 줄·편집 버튼) 아래에 있다', () => {
     const html = render({ capsuleInitial: CAPSULE })
     const capsuleAt = html.indexOf(d.capsule.aria.filling)
     const editAt = html.indexOf(d.profile.editButton)
-    const tabsAt = html.indexOf('jam-stat-tabs')
     expect(editAt).toBeGreaterThan(-1)
-    expect(tabsAt).toBeGreaterThan(-1)
     expect(capsuleAt).toBeGreaterThan(editAt)
-    expect(capsuleAt).toBeLessThan(tabsAt)
   })
 })
 
-/** 프로필 잔액 (티켓 20261104_2319 3회차) — 값과 «포인트» 글자가 PointText 한 덩어리(point-text)로 그려진다. */
-describe('프로필의 포인트 잔액', () => {
-  it('값과 단위를 point-text로 그린다 (24px 굵게)', () => {
-    const html = render({ pointBalance: 1200 })
-    expect(html).toMatch(/<span class="text-point-text text-2xl font-bold tabular-nums"[^>]*>1,200 포인트<\/span>/)
-    expect(html).not.toContain('--link)] tabular-nums')
+/** 숫자 줄 (티켓 20261108_1216) — 탭 카드 대신 «팔로워 N  팔로잉 N  포인트 N» 글자 줄이다. */
+describe('프로필의 숫자 줄', () => {
+  it('내 프로필은 팔로워·팔로잉·포인트와 편집 버튼, 타인 프로필은 팔로워·팔로잉만 보인다', () => {
+    const mine = flat(render({ followerCount: 12345, followingCount: 586, pointBalance: 1200 }))
+    expect(mine).toContain('팔로워12,345팔로잉586포인트1,200')
+    expect(mine).toContain(d.profile.editButton)
+    const others = flat(render({ isOwnProfile: false, followerCount: 7, followingCount: 3, pointBalance: null }))
+    expect(others).toContain('팔로워7팔로잉3')
+    expect(others).not.toContain('포인트')
   })
 
-  it('0도 그리고, 값이 null이면 그리지 않는다', () => {
-    expect(render({ pointBalance: 0 })).toContain('>0 포인트</span>')
-    expect(render({ pointBalance: null })).not.toContain('text-point-text')
+  it('백만부터 1.0M으로 줄이고, 잔액을 모르면 «–»다', () => {
+    expect(flat(render({ followerCount: 1_000_000 }))).toContain('팔로워1.0M')
+    expect(flat(render({ followingCount: 1_200_000 }))).toContain('팔로잉1.2M')
+    expect(flat(render({ pointBalance: null }))).toContain('포인트–')
+  })
+
+  it('통계 탭 카드가 없고, 기본 화면에서는 선택 표시가 없다', () => {
+    const html = render()
+    expect(html).not.toContain('jam-stat-tabs')
+    expect(html).not.toContain('aria-pressed="true"')
+    expect(html).toContain('aria-pressed="false"')
+  })
+
+  it('숫자와 라벨은 새 색 없이 기존 토큰만 쓴다', () => {
+    const html = render()
+    expect(html).toContain('text-muted')
+    expect(html).not.toContain('text-point-text')
+  })
+})
+
+describe('프로필 기본 화면', () => {
+  it('타인 프로필은 활동 피드 대신 배지 그리드(빈 상태 문구)가 보인다', () => {
+    const html = render({ isOwnProfile: false })
+    expect(html).toContain('러너님')
+    expect(html).toContain('아직')
+  })
+
+  it('타인 프로필에 배지가 있으면 배지 카드를 3열 그리드로 그린다', () => {
+    const feedItems = [{
+      id: 'f1', user_id: 'u2', event_type: 'badge_earned', created_at: '2026-11-01T00:00:00Z',
+      metadata: { badge_id: 'b1', badge_name: '한강 러너', badge_image_url: null, rarity: 'common' },
+    }] as unknown as ActivityFeedRow[]
+    const html = render({ isOwnProfile: false, feedItems })
+    expect(html).toContain('grid-cols-3')
+    expect(html).toContain('한강 러너')
   })
 })
 
