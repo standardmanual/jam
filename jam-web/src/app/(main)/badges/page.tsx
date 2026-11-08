@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import BadgesClient, { ItemBookProgress, CheckinBadgeItem } from './BadgesClient'
+import { pickHighestLevelPerFamily } from '@/lib/activity-feed/collapseLeveled'
 import { IN_CHUNK_SIZE } from '@/lib/notifications/batch/shared'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
@@ -76,11 +77,14 @@ export default async function BadgesPage({ searchParams }: Props) {
   // 20260906_2023: user_activity_badges는 원래 "타입 무관 소유권 통합 테이블"이지만,
   // 상위 쓰기 경로(admin/simulate 등)가 타입 분기를 놓치면 checkin 타입 배지가 여기 섞여
   // 들어올 수 있다. 화면 쪽 마지막 방어선으로 activity 타입만 노출한다.
-  const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = (
-    (earnedBadges ?? []) as unknown as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
+  // 레벨형은 «같은 배지가 레벨이 오르는 것»이라 계열당 최고 레벨 한 장만 보인다(티켓 20261108_1622).
+  const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = pickHighestLevelPerFamily(
+    (
+      (earnedBadges ?? []) as unknown as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
+    )
+      .filter((r) => r.badge && !r.badge.deleted_at && r.badge.type === 'activity')
+      .map((r) => ({ badge: r.badge, earned: r })),
   )
-    .filter((r) => r.badge && !r.badge.deleted_at && r.badge.type === 'activity')
-    .map((r) => ({ badge: r.badge, earned: r }))
 
   type RawInventoryItem = {
     id: string
