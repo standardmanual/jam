@@ -132,7 +132,6 @@ export const ko = {
     /** 잼 포인트 잔액. count는 toLocaleString('ko-KR') 처리된 문자열 */
     pointBalance: '{count} 포인트',
     pointBadgeLabel: '포인트',
-    pointsAriaLabel: '포인트 내역 보기',
     editButton: '편집',
     followButton: '팔로우',
     followingButton: '팔로잉',
@@ -147,8 +146,6 @@ export const ko = {
     // 빈 상태 (본인 시점 — 2인칭 행동 유도)
     emptyBadges: '아직 획득한 배지가 없어요',
     emptyBadgesBody: 'Strava를 동기화하고 활동하면 배지를 획득할 수 있어요',
-    emptyItembooks: '아직 발견한 컬렉션이 없어요',
-    emptyItembooksBody: '아이템 배지를 모아 컬렉션을 발견해보세요',
     emptyFollowers: '아직 팔로워가 없어요',
     emptyFollowersBody: '활동을 공유하면 팔로워가 늘어나요',
     emptyFollowing: '아직 팔로잉이 없어요',
@@ -157,15 +154,12 @@ export const ko = {
     // 빈 상태 (타인 시점 — 3인칭, {name} 보간. 20260903_2022)
     // 타인 프로필에서는 본인 시점 행동 유도가 성립하지 않아 body를 생략한다.
     emptyBadgesOther: '{name}님이 아직 획득한 배지가 없어요',
-    emptyItembooksOther: '{name}님이 아직 발견한 컬렉션이 없어요',
     emptyFollowersOther: EMPTY_FOLLOWERS_OTHER,
     emptyFollowingOther: EMPTY_FOLLOWING_OTHER,
   },
 
-  /** 프로필 통계바 탭 */
+  /** 프로필 숫자 줄 */
   tabs: {
-    badge: '배지',
-    itembooks: '컬렉션',
     followers: '팔로워',
     following: '팔로잉',
   },

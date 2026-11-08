@@ -8,22 +8,18 @@ import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
-import { Card } from '@ds/components/cards/Card'
-import { PointText } from '@ds/components/patterns/PointText'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
-import CollectionGridCard from '@/components/ui/CollectionGridCard'
+import { PointHistorySection } from '@/components/points/PointHistoryList'
+import { compactCount } from '@/lib/format/compactCount'
 import { ListRow } from '@/components/ui/ListRow'
-import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import PopInNumber from '@/components/ui/PopInNumber'
 import SwapText from '@/components/ui/SwapText'
 import {
   UserIcon,
   UsersIcon,
   MedalIcon,
-  BookIcon,
-  ChevronRightIcon,
 } from '@/components/ui/icons'
 import type { UserRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSection'
@@ -43,14 +39,16 @@ interface FollowResponse {
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
 
-type TabKey = 'badge' | 'collections' | 'followers' | 'following'
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'badge', label: d.tabs.badge },
-  { key: 'collections', label: d.tabs.itembooks },
-  { key: 'followers', label: d.tabs.followers },
-  { key: 'following', label: d.tabs.following },
-]
-const VALID_TABS = new Set<string>(['badge', 'collections', 'followers', 'following'])
+type TabKey = 'followers' | 'following' | 'points'
+/** 해시 이동 — 브라우저 뒤로가기가 목록을 되짚는다. 해시와 같은 id의 요소가 없어 스크롤은 움직이지 않는다 */
+function openTabHash(tab: TabKey) {
+  window.location.hash = tab
+}
+
+/** 해시가 열 수 있는 목록인가 — `#points`는 지갑이 본인 전용이라 타인 프로필에서는 무효(기본 화면으로 본다) */
+function isValidTab(hash: string, isOwnProfile: boolean): hash is TabKey {
+  return hash === 'followers' || hash === 'following' || (isOwnProfile && hash === 'points')
+}
 
 // ─── 피드 (본인 Feed 섹션용 UI는 ../FeedSection 공용 컴포넌트로 이전됨) ──────
 
@@ -64,17 +62,6 @@ interface FollowUser {
   display_name: string | null
   avatar_url: string | null
   isFollowing: boolean
-}
-
-interface ItemBookItem {
-  id: string
-  name: string
-  image_url: string | null
-  tribe: { name: string } | null
-  totalBadgeCount: number
-  slottedCount: number
-  isCompleted: boolean
-  rarity: BadgeRarity
 }
 
 // ─── 공통 조각 ───────────────────────────────────────────────────────────────
@@ -96,8 +83,6 @@ interface Props {
   targetUserId: string
   followerCount: number
   followingCount: number
-  badgeCount: number
-  itemBookCount: number
   username: string
   currentUserId: string
   /** 본인 프로필에서만 전달됨. 타인 프로필에서는 null. */
@@ -135,8 +120,6 @@ export default function ProfileClient({
   targetUserId,
   followerCount,
   followingCount,
-  badgeCount,
-  itemBookCount,
   username,
   currentUserId,
   pointBalance,
@@ -156,11 +139,10 @@ export default function ProfileClient({
 
   // ── 탭/해시 상태 ──────────────────────────────────────────────────────────
   const [hashFragment, setHashFragment] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<TabKey>('badge')
+  const [activeTab, setActiveTab] = useState<TabKey>('followers')
   const [tabLoading, setTabLoading] = useState(false)
   const [followersData, setFollowersData] = useState<FollowUser[] | null>(null)
   const [followingData, setFollowingData] = useState<FollowUser[] | null>(null)
-  const [itembooksData, setItembooksData] = useState<ItemBookItem[] | null>(null)
   const [listFollowStates, setListFollowStates] = useState<Record<string, boolean>>({})
   const fetchedRef = useRef<Set<TabKey>>(new Set())
 
@@ -222,9 +204,9 @@ export default function ProfileClient({
   })()
 
   // ── 탭뷰 여부 ─────────────────────────────────────────────────────────────
-  // 본인/타인 구분 없이 해시로만 판정: 해시 없으면 기본뷰(Feed, 본인은 Strava도),
-  // 유효 해시 있으면 탭콘텐츠 (20260830_2115 — 전역 적용, 진입 경로 무관)
-  const isTabView = VALID_TABS.has(hashFragment)
+  // 해시로만 판정: 해시 없으면 기본뷰(본인은 활동 피드, 타인은 배지 그리드 — 티켓 20261108_1216),
+  // 유효 해시 있으면 목록. 타인의 `#points`는 무효라 기본뷰다.
+  const isTabView = isValidTab(hashFragment, isOwnProfile)
 
   // ── 해시 동기화 (마운트·뒤로가기 포함) ────────────────────────────────────
   useEffect(() => {
@@ -253,11 +235,8 @@ export default function ProfileClient({
             for (const u of users) next[u.id] = u.isFollowing
             return next
           })
-        } else if (tab === 'collections') {
-          const res = await fetch(`/api/users/${username}/itembooks`)
-          const json = await res.json()
-          setItembooksData(json.books ?? [])
         }
+        // points는 PointHistorySection이 마운트될 때 스스로 불러온다
       } finally {
         setTabLoading(false)
       }
@@ -266,22 +245,19 @@ export default function ProfileClient({
     const sync = () => {
       const hash = window.location.hash.slice(1)
       setHashFragment(hash)
-      if (VALID_TABS.has(hash)) {
-        const tab = hash as TabKey
-        setActiveTab(tab)
-        fetchIfNeeded(tab)
+      if (isValidTab(hash, isOwnProfile)) {
+        setActiveTab(hash)
+        if (hash !== 'points') fetchIfNeeded(hash)
       }
     }
 
     sync()
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
-  }, [username])
+  }, [username, isOwnProfile])
 
   // ── 탭 클릭 — 해시 이동 (브라우저 뒤로가기 지원) ────────────────────────────
-  const handleTabClick = (tab: TabKey) => {
-    window.location.hash = tab
-  }
+  const handleTabClick = (tab: TabKey) => openTabHash(tab)
 
   // 헤더의 아바타·아이디 클릭 시 현재 프로필 URL(`/${username}`)로 이동한다.
   // 탭 해시(`#followers` 등)로 열려 있던 상태에서 자기 자신에게 다시 링크하면
@@ -291,6 +267,8 @@ export default function ProfileClient({
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
     }
+    // replaceState는 hashchange를 일으키지 않으므로 기본 화면 복귀를 상태로 직접 알린다(티켓 20261108_1216)
+    setHashFragment('')
   }
 
   // ── 리스트 내 팔로우 토글 ──────────────────────────────────────────────────
@@ -417,65 +395,39 @@ export default function ProfileClient({
 
   // 로딩 표시는 Skeleton loader and reveal(14-skeleton-reveal.md)이 담당하므로
   // 여기서는 실제 콘텐츠만 그린다.
-  const renderTabContent = () => {
-    if (activeTab === 'badge') {
-      if (badgeItems.length === 0) {
+  // 타인 프로필의 기본 화면 — 그 사람의 배지 그리드(티켓 20261108_1216). 데이터는 서버가 내려준 피드에서 온다.
+  const renderBadgeGrid = () => {
+  if (badgeItems.length === 0) {
+    return (
+      <EmptyState
+        icon={<MedalIcon className="w-8 h-8" />}
+        title={isOwnProfile ? d.profile.emptyBadges : t(d.profile.emptyBadgesOther, { name: subjectName })}
+        description={isOwnProfile ? d.profile.emptyBadgesBody : undefined}
+      />
+    )
+  }
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {badgeItems.map(({ item, count, level }) => {
+        const meta = item.metadata as Record<string, string>
         return (
-          <EmptyState
-            icon={<MedalIcon className="w-8 h-8" />}
-            title={isOwnProfile ? d.profile.emptyBadges : t(d.profile.emptyBadgesOther, { name: subjectName })}
-            description={isOwnProfile ? d.profile.emptyBadgesBody : undefined}
+          <BadgeGridCard
+            key={item.id}
+            onClick={() => handleCardClick(item)}
+            name={meta.badge_name}
+            imageUrl={meta.badge_image_url ?? null}
+            rarity={(meta.rarity as BadgeRarity | null) ?? null}
+            level={level}
+            count={count}
           />
         )
-      }
-      return (
-        <div className="grid grid-cols-3 gap-2">
-          {badgeItems.map(({ item, count, level }) => {
-            const meta = item.metadata as Record<string, string>
-            return (
-              <BadgeGridCard
-                key={item.id}
-                onClick={() => handleCardClick(item)}
-                name={meta.badge_name}
-                imageUrl={meta.badge_image_url ?? null}
-                rarity={(meta.rarity as BadgeRarity | null) ?? null}
-                level={level}
-                count={count}
-              />
-            )
-          })}
-        </div>
-      )
-    }
+      })}
+    </div>
+  )
+  }
 
-    if (activeTab === 'collections') {
-      if (itembooksData === null) return null
-      if (itembooksData.length === 0) {
-        return (
-          <EmptyState
-            icon={<BookIcon className="w-8 h-8" />}
-            title={isOwnProfile ? d.profile.emptyItembooks : t(d.profile.emptyItembooksOther, { name: subjectName })}
-            description={isOwnProfile ? d.profile.emptyItembooksBody : undefined}
-          />
-        )
-      }
-      return (
-        <div className="grid grid-cols-2 gap-2">
-          {itembooksData.map(book => (
-            <CollectionGridCard
-              key={book.id}
-              href={`/collections/${book.id}?u=${username}`}
-              name={book.name}
-              imageUrl={book.image_url ?? null}
-              collected={book.slottedCount}
-              total={book.totalBadgeCount}
-              completed={book.isCompleted}
-              rarity={book.rarity}
-            />
-          ))}
-        </div>
-      )
-    }
+  const renderTabContent = () => {
+    if (activeTab === 'points') return <PointHistorySection />
 
     const listData = activeTab === 'followers' ? followersData : followingData
     if (listData === null) return null
@@ -535,45 +487,39 @@ export default function ProfileClient({
     )
   }
 
-  // 20260905_0038 B — 「레벨 지표를 통계에 추가할지」 판단: **추가하지 않는다.**
-  // 이 통계바는 장식이 아니라 **탭 네비게이션(SlidingTabs)** 자체다. 지표를 하나 더하면
-  // 탭이 하나 더 생기고, 그 탭을 누르면 보여줄 콘텐츠가 없다(레벨은 배지별 값이라 목록이
-  // 아니라 각 카드의 Lv.N 칩이 말한다). 레벨 총합·최고 레벨 같은 유도 지표는 계열 단위로
-  // 봐야 의미가 있어 배지 트리(20260905_0037)의 자리다.
-  const statCounts: Record<TabKey, number> = {
-    badge: badgeCount,
-    collections: itemBookCount,
-    followers: followerCnt,
-    following: followingCount,
-  }
-
-  // 통계바 = 슬라이딩 탭. 라벨은 "숫자 + 이름" 2줄 구성이라 ReactNode로 넘긴다.
+  // 숫자 줄 — 인스타그램식 «팔로워 N  팔로잉 N  포인트 N»(티켓 20261108_1216). 탭 카드가 아니라 글자 줄이다.
+  // 선택 표시는 라벨 색 전환뿐이다(밑줄·면 없음). 해시가 없는 기본 화면에서는 아무것도 선택돼 있지 않다.
   // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
-  // 숫자 색은 강조색(--link, "jam-stat-number" 클래스, 포인트 표시는 20261104_2319부터 --point-text)을
-  // 항상 쓴다 — 활성/pill-경유 상태에만 흰색으로 바뀌는 나머지 로직은 CSS
-  // (transitions.css `.jam-stat-tabs`)가 aria-selected·data-pill-over 속성을 보고 처리한다
-  // (data-pill-over는 SlidingTabs.tsx가 pill 애니메이션 중 실시간 겹침을 측정해 붙인다).
-  // 이 화면(20260901)에서 "숫자는 항상 강조색"을 요청받아, 예전(20260831_2201)에 회색으로
-  // 우회했던 레드온레드 문제를 실측 겹침 기반으로 다시 해결했다 — 자세한 배경은
-  // SlidingTabs.tsx의 trackOverlap 주석 참고.
-  const statTabs: SlidingTabItem<TabKey>[] = TABS.map((tab) => {
-    return {
-      key: tab.key,
-      ariaLabel: tab.label,
-      label: (
-        <span className="flex flex-col items-center justify-center gap-1">
-          <span className="jam-stat-number text-2xl font-bold tabular-nums">
-            {tab.key === 'followers' ? (
-              <PopInNumber value={statCounts.followers} />
-            ) : (
-              statCounts[tab.key]
-            )}
-          </span>
-          <span className="text-xs leading-none font-bold">{tab.label}</span>
-        </span>
-      ),
-    }
-  })
+  const statItems: { key: TabKey; label: string; value: string }[] = [
+    { key: 'followers', label: d.tabs.followers, value: compactCount(followerCnt) },
+    { key: 'following', label: d.tabs.following, value: compactCount(followingCount) },
+    ...(isOwnProfile
+      ? [{ key: 'points' as const, label: d.profile.pointBadgeLabel, value: pointBalance === null ? '–' : compactCount(pointBalance) }]
+      : []),
+  ]
+  const statRow = (
+    <div className="flex flex-wrap items-center gap-x-5">
+      {statItems.map(({ key, label, value }) => {
+        const selected = isTabView && activeTab === key
+        return (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => handleTabClick(key)}
+            className="inline-flex items-baseline gap-1.5 min-h-11 whitespace-nowrap break-keep active:scale-95 transition-transform duration-100 motion-reduce:transition-none cursor-pointer"
+          >
+            <span className={`text-base transition-colors duration-150 motion-reduce:transition-none ${selected ? 'text-foreground' : 'text-muted'}`}>
+              {label}
+            </span>
+            <strong className="text-base font-bold tabular-nums text-foreground">
+              {key === 'followers' ? <PopInNumber value={value} /> : value}
+            </strong>
+          </button>
+        )
+      })}
+    </div>
+  )
 
   return (
     <div className="min-h-full text-foreground">
@@ -624,27 +570,11 @@ export default function ProfileClient({
               {(profile && getDisplayName(profile)) || d.profile.anonymous}
             </Link>
 
-            {/* 포인트 + 편집 — 같은 행에 나란히 배치되는 별개의 클릭 영역(20260909_2119).
-                포인트 버튼은 /points로, 편집 버튼은 /profile/edit로 이동한다. 서로의 터치
-                타겟을 침범하지 않도록 justify-between으로 간격을 둔다. */}
-            {isOwnProfile && (
+            {/* 숫자 줄 + 편집 — 같은 행에 나란히, 편집 버튼은 오른쪽 끝(20260909_2119, 20261108_1216).
+                타인 프로필은 팔로우 버튼이 헤더 오른쪽이라 숫자 줄만 이름 아래에 둔다. */}
+            {isOwnProfile ? (
               <div className="flex items-center justify-between gap-2">
-                {pointBalance !== null ? (
-                  <button
-                    onClick={() => router.push('/points')}
-                    aria-label={d.profile.pointsAriaLabel}
-                    className="self-start -ml-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-full active:scale-95 transition-transform duration-100 cursor-pointer"
-                  >
-                    <PointText
-                      value={pointBalance}
-                      unit={d.profile.pointBadgeLabel}
-                      className="text-2xl font-bold tabular-nums"
-                    />
-                    <ChevronRightIcon className="w-4 h-4 text-muted" />
-                  </button>
-                ) : (
-                  <span />
-                )}
+                {statRow}
                 <Button
                   surface="main"
                   variant="outline"
@@ -655,6 +585,8 @@ export default function ProfileClient({
                   {d.profile.editButton}
                 </Button>
               </div>
+            ) : (
+              statRow
             )}
           </div>
 
@@ -676,29 +608,10 @@ export default function ProfileClient({
             다른 유저 프로필에서만 서버가 `publicChapter`를 내려주고, 읽지 못함(null)이거나 보일 조각이 없으면 줄이 없다. */}
         {!isOwnProfile && publicChapter && <ChapterLine variant="public" chapter={publicChapter} />}
 
-        {/* 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 통계 탭 사이이고 헤더와의 간격은 바깥 gap-6 하나다
+        {/* 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 선택 영역(피드·목록) 사이이고 헤더와의 간격은 바깥 gap-6 하나다
             (챕터는 헤더의 표시 이름 위로 옮겼다, 티켓 20261031_1806. 위젯 안의 게이지-안내 간격은 위젯이 정한다).
             캡슐 위젯(티켓 20261018_0054)의 렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
         {isOwnProfile && capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} blockedCard />}
-
-        {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
-            기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
-            pill을 숨긴다.
-            onCard 팔레트는 밝은 카드 전제라 기본 톤(--surface)을 쓴다. 비활성 라벨은 --muted다(흰 면 위 5.74:1).
-            크림 바탕과의 경계는 카드 공통 1px --border가 맡는다(티켓 20261015_2133) — 여기서 따로 걸지 않는다. */}
-        <Card className="overflow-hidden" style={{ padding: 0 }}>
-          <SlidingTabs
-            items={statTabs}
-            value={isTabView ? activeTab : ('' as TabKey)}
-            onChange={handleTabClick}
-            variant="onCard"
-            size="xl"
-            shape="card"
-            outlined={false}
-            className="jam-stat-tabs"
-            aria-label={d.profile.title}
-          />
-        </Card>
 
         {/* 탭 콘텐츠 — 탭뷰일 때만.
             로딩은 Skeleton loader and reveal(14-skeleton-reveal.md)로 처리한다.
@@ -710,15 +623,9 @@ export default function ProfileClient({
               className={['t-skel', 'jam-skel-flow', tabLoading ? '' : 'is-revealed'].filter(Boolean).join(' ')}
               style={{ '--jam-skel-min-h': '280px' } as CSSProperties}
             >
-              <div
-                className="t-skel-skeleton is-pulsing grid grid-cols-3 gap-2 content-start"
-                aria-hidden="true"
-              >
+              <div className="t-skel-skeleton is-pulsing flex flex-col gap-2 content-start" aria-hidden="true">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[136px] rounded-2xl bg-background-inverse/15"
-                  />
+                  <div key={i} className="h-[72px] rounded-2xl bg-background-inverse/15" />
                 ))}
               </div>
               <div className="t-skel-content" aria-busy={tabLoading}>
@@ -728,11 +635,12 @@ export default function ProfileClient({
           </section>
         )}
 
-        {/* Feed — 기본뷰(해시 없음)일 때, 본인/타인 관계없이 노출 (20260830_2115).
-            데이터는 이미 대상 유저(target) 기준으로 조회돼 전달되므로 별도 분기 불필요. */}
-        {!isTabView && (
+        {/* 기본뷰(해시 없음) — 본인은 활동 피드, 타인은 그 사람의 배지 그리드(티켓 20261108_1216).
+            데이터는 이미 대상 유저(target) 기준으로 조회돼 전달되므로 별도 조회는 없다. */}
+        {!isTabView && isOwnProfile && (
           <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} activityNames={activityNames} hideHeader />
         )}
+        {!isTabView && !isOwnProfile && <section>{renderBadgeGrid()}</section>}
 
         {/* 로그아웃 — 본인만 */}
         {isOwnProfile && (

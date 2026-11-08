@@ -31,7 +31,6 @@ const CONSUMERS = [
   'lib/itembook/completable.ts',
   'app/(main)/badges/page.tsx',
   'app/(main)/collections/[id]/page.tsx',
-  'app/(main)/[username]/collections/page.tsx',
   'app/api/itembooks/route.ts',
   'app/api/users/[username]/itembooks/route.ts',
   'lib/today/status.ts',

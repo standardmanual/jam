@@ -46,8 +46,6 @@ function render(over: Partial<ProfileProps> = {}): string {
     targetUserId: 'u1',
     followerCount: 0,
     followingCount: 0,
-    badgeCount: 0,
-    itemBookCount: 0,
     username: 'runner',
     currentUserId: 'u1',
     pointBalance: 100,
@@ -93,13 +91,11 @@ describe('내 프로필의 챕터 줄', () => {
     expect(html).not.toContain('data-chapter-line')
   })
 
-  it('캡슐 위젯은 헤더와 통계 탭 사이에 남고 따로 감싸는 묶음(gap-4)이 없다', () => {
+  it('캡슐 위젯은 헤더 아래에 남고 따로 감싸는 묶음(gap-4)이 없다', () => {
     const html = render({ capsuleInitial: CAPSULE, chapterInitial: MINE })
     const editAt = html.indexOf(d.profile.editButton)
     const capsuleAt = html.indexOf(d.capsule.aria.filling)
-    const tabsAt = html.indexOf('jam-stat-tabs')
     expect(capsuleAt).toBeGreaterThan(editAt)
-    expect(tabsAt).toBeGreaterThan(capsuleAt)
     expect(html).not.toContain('flex flex-col gap-4')
   })
 
@@ -129,10 +125,8 @@ describe('다른 유저 프로필의 챕터 줄', () => {
     expect(html).not.toContain('다음 챕터까지')
     const followAt = html.indexOf(d.profile.followButton)
     const lineAt = html.indexOf('data-chapter-line="public"')
-    const tabsAt = html.indexOf('jam-stat-tabs')
     expect(followAt).toBeGreaterThan(-1)
     expect(lineAt).toBeGreaterThan(followAt)
-    expect(tabsAt).toBeGreaterThan(lineAt)
   })
 
   it('트라이브가 없으면 «챕터 3»만, 챕터가 없으면 트라이브만 보인다', () => {

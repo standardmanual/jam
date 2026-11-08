@@ -91,7 +91,7 @@ function singleResponse(table: string) {
   if (table === 'strava_connections') return { data: stravaRow, error: null }
   return { data: null, error: null }
 }
-function listResponse(table: string, eqs: [string, unknown][] = [], select?: string, ins: [string, unknown[]][] = []) {
+function listResponse(table: string, eqs: [string, unknown][] = []) {
   if (table === 'inventory_items' && eqs.some(([column, value]) => column === 'obtained_by' && value === 'drop')) {
     return { data: state.actDropRows, count: 0, error: null }
   }
@@ -132,7 +132,7 @@ function makeQuery(table: string) {
   }
   query.maybeSingle = async () => singleResponse(table)
   query.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-    Promise.resolve(listResponse(table, call.eqs, call.select, call.ins)).then(resolve, reject)
+    Promise.resolve(listResponse(table, call.eqs)).then(resolve, reject)
   return query
 }
 
