@@ -3,7 +3,7 @@
  *
  * 화면은 로드 뒤에만 그려지고(스피너 → 본문) 저장소에 jsdom이 없어, 이 화면은 소스를 읽어 판정이 정한 모양을 고정한다.
  * - 메일 링크(mailto)와 설명 캡션이 사라졌다
- * - 취소 아래에 일반 button이 있다: type="button", 가운데, text-sm text-muted 밑줄, 16px를 더 띄움(gap 16 + mt-4 = 약 32px), 최소 44px 높이, aria-haspopup="dialog"
+ * - 취소 아래에 일반 button이 있다: type="button", 가운데, text-sm text-muted 밑줄, 16px를 더 띄움(gap 8 + mt-4 = 약 24px), 최소 44px 높이, aria-haspopup="dialog"
  * - 누르면 탈퇴 시트가 열리고 시트는 이 화면이 렌더한다
  * - 저장은 기존 primary 알약, 취소는 기존 텍스트 버튼 그대로다(변경 없음)
  *
@@ -50,9 +50,9 @@ describe('프로필 편집 — 탈퇴하기 진입', () => {
     expect(entryButton).toContain('whitespace-nowrap')
   })
 
-  it('취소 아래로 16px를 더 띄운다 — 부모 gap-4 위에 mt-4', () => {
+  it('취소 아래로 16px를 더 띄운다 — 부모 gap-2 위에 mt-4', () => {
     expect(entryButton).toContain('mt-4')
-    expect(source).toMatch(/<div className="flex flex-col gap-4 mt-auto">/)
+    expect(source).toMatch(/<div className="flex flex-col gap-2 mt-auto">/)
   })
 
   it('누르면 시트가 열리고 시트를 이 화면이 렌더한다', () => {
