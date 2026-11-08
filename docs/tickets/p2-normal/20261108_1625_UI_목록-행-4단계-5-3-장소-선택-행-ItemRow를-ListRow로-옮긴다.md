@@ -2,9 +2,9 @@
 id: "20261108_1625"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-08
-closed: ""
+closed: 2026-11-08
 parent: "20261106_1750"
 specs:
   - jam-web/design-system/components/patterns/ListRow.jsx
@@ -84,4 +84,57 @@ specs:
 - 판정 1~5 결과를 상위 티켓에 기록한다.
 
 ---
-## 완료 기록 *(작업 후 작성)*
+## 완료 기록
+
+### 구현 내용 요약
+
+- `PoiCarouselModal.tsx`의 `ItemRow`를 `ListRow tone="tint"`로 바꿨다. 이름과 props 시그니처는 그대로고 드랍·픽업 호출부 두 곳과 목록 컨테이너는 바뀌지 않았다. lead 48(일반 행은 `SafeImage alt=""` + `MedalIcon` 폴백, 잠긴 행은 `LockedTile size={48}`), title `regular`, `chevron`을 쓴다.
+- 개수 표시는 `leadBadge` `×N`(count가 2 이상일 때만)이다. `countAriaText`가 있으면 `×N`은 `aria-hidden`이고 안내 문구는 `sr-only`로 알약 안에 들어간다.
+- `eyebrow`는 등급 칩(common 제외)과 만료 칩(`ListRowChip` neutral, 임박·비잠김일 때만)이 실제로 그려질 때만 넘기고 아니면 `undefined`다. common 행에 빈 칩 줄이 생기지 않는다.
+- 펄스는 `className="jam-quest-pulse"`로 `ListRow` 바깥 래퍼에 붙는다. 기존 펄스·`disabled` 단정은 수정 없이 통과했다.
+- 시험 3건 추가: 개수 2일 때 `×N` `aria-hidden`과 `sr-only` 문구, 개체 1개일 때 알약 없음, common 행 칩 줄 없음(rare는 있음).
+- 문서: 상위 티켓 5배치 표와 «5-3 판정 1~5 결과» 절. `docs/service/prd/`에는 이 행 모양 서술이 없어 PRD는 바꾸지 않았다.
+
+### 변경된 파일
+```
+jam-web/src/components/PoiCarouselModal.tsx
+jam-web/src/components/PoiCarouselModal.test.tsx
+docs/tickets/p2-normal/20261106_1750_…(상위 티켓)
+```
+추가 106줄, 삭제 63줄.
+
+### 채원 사전 판정 (needsApproval: false)
+
+- 재사용. `ListRow` 슬롯이 이 행을 이미 표현하고, 선례는 `ItemCandidateRow`(등급 칩 eyebrow, 만료 칩 neutral)다.
+- 판정 1 개수 표시: `×N` 검정 알약·우하단. 2026-09-08 `20260908_0217`의 «숫자만·원·우상단» 결정을 뒤집는다. 사용자가 정한 «1~5배치 규칙»의 직접 결과이고 `FeedSection`·`BadgeGridCard`와 같은 `×N` 관례라 새 승인 항목으로 올리지 않았고, 머지 승인 때 사용자에게 알렸다.
+- 판정 2 면 톤: `tint`(카드 안 행). 행 높이가 60에서 72로 커진다.
+- 판정 3 `disabled`: 픽업 행의 `disabled={!isActive}`는 도달하지 않는 분기다(916줄이 `!isActive`이면 행을 그리지 않음). 코드로 직접 확인했다. 지우지 않고 발견물 티켓으로 넘겼다.
+- 판정 4 펄스 반경: `tint` 반경이 `--radius-2xl`이라 예전 버튼과 같다. 5 쉐브론: 20으로 같다.
+- 매핑표 교정: 만료 칩은 `chips` 줄이 아니라 eyebrow 칩 줄(등급 칩 옆)로 보냈다.
+
+### 게이트·사후 리뷰
+
+- 민지 게이트 PASS(체크리스트 12항목 통과·해당없음). 채원② 사후 리뷰는 중대 문제 없음(Haiku 모델이 맡았다).
+- 머지: review 브랜치가 `origin/staging`보다 2커밋 뒤처져(두 커밋은 이 세 파일과 겹치지 않음) 커밋을 최신 staging 위로 옮겨 새 이름(`…-r2`)으로 push했다. CI `verify` 성공(`543e0708a`) 뒤 같은 커밋을 staging에 ff 머지했다.
+
+### 배포 정보
+- 배포일: 2026-11-08
+- 환경: staging(`stage.j-a-m.app`)
+- 커밋: `543e0708a`(구현)
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1회차 (채원①·구현·게이트·채원②) | 4 | 267,376 | 11,890 / 18,303 (채원① 14,373, 게이트+채원② 합산) | 20분 36초 | 70 |
+| 합계 | 4 | 267,376 | 11,890 / 18,303 | 20분 36초 | 70 |
+
+### 주요 의사결정 / 핵심 메모
+
+- 계획 반환 면제(`planOnlyWaiver`)를 첫 호출부터 넘겼다. 티켓에 파일 단위 계획이 있었고 변경 파일은 코드 1·시험 1·문서 1로 5개 이내였다. 줄 수는 diff 153줄로 경계(100줄) 위였지만 아현이 `plan_only`로 멈추지 않고 구현을 마쳤다.
+- 채원이 개수 표시 변경을 새 승인 항목으로 올리지 않은 판단에 동의했다. 다만 이전 결정을 뒤집는 일이라 머지 승인 요청에 한 줄로 알렸다.
+
+### 잔여 이슈
+
+- **320px 실렌더를 확인하지 못했다.** 이 행은 드랍·픽업 데이터가 있어야 보이는데 테스트 계정에 없다. 데이터 없이 띄우는 경로(온보딩 퀘스트 `QuestPickupScene`)는 계정의 퀘스트 단계를 바꿔야 해서 하지 않았다. 행 높이 72px와 개수 알약 위치는 코드 값 계산이다. 이 행이 실제로 보이는 때(퀘스트 단계 진입 등)에 확인한다.
+- 발견물 티켓: `20261108_1647`(죽은 `disabled` 분기), `20261108_1648`(시험의 `gap` 문자열 의존).
