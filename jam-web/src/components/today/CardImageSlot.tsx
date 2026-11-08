@@ -30,7 +30,7 @@ export type CardImageRatio = 'video' | 'poster' | 'square'
 
 const IMAGE_SIZES = '(min-width: 430px) 398px, calc(100vw - 32px)'
 
-const PLACEHOLDER_CONTENT = 'flex flex-col items-center justify-center gap-2 px-6 bg-background text-center'
+const PLACEHOLDER_CONTENT = 'flex flex-col items-center justify-center gap-2 px-4 bg-background text-center'
 
 const SLOT: Record<CardImageRatio, { box: string; image: string; placeholder: string }> = {
   video: {

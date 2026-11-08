@@ -22,7 +22,7 @@ export default function TodayCardStack({
 
   return (
     <section>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
         {cards.map((card) => (
           <TodayCard key={card.id} view={toCardView(card, { tracking: true })} currentUserId={currentUserId} />
         ))}

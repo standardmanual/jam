@@ -20,7 +20,7 @@ export default function PointsPage() {
     <div className="min-h-full text-foreground">
       <TopNav title={d.common.back} />
 
-      <div className="px-4 pt-4 pb-6 flex flex-col gap-6">
+      <div className="px-4 pt-4 pb-6 flex flex-col gap-5">
         {/* 잔액 카드 */}
         <Card className="text-center">
           <p className="text-xs uppercase text-muted mb-2">{d.points.balanceLabel}</p>
@@ -37,7 +37,7 @@ export default function PointsPage() {
         </Card>
 
         {/* 내역 */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <h2 className="text-xs uppercase text-muted px-1">{d.points.historyTitle}</h2>
 
           <PointHistoryList

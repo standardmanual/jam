@@ -19,7 +19,7 @@ const INTERNAL_IMAGE = '/badges/sample/s142.png'
 // 칸을 공용으로 빼기 전 HeroCard의 문자열(티켓 20261001_1737)
 const OLD_HERO_BOX = 'relative aspect-video overflow-hidden bg-background'
 const OLD_HERO_PLACEHOLDER =
-  'absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 bg-background text-center'
+  'absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 bg-background text-center'
 const OLD_HERO_TITLE =
   '<p class="text-base font-bold text-foreground line-clamp-3 break-keep break-words">한강 러닝 챌린지</p>'
 
