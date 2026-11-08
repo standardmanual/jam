@@ -86,11 +86,23 @@ export default async function FriendFeedPage() {
     }
   }
 
+  // 카드를 누르면 그 친구의 프로필로 간다(2026-11-08 사용자 요청). user_id → «/username» 맵을 읽는다.
+  // 조회가 실패하거나 아이디가 없는 친구는 맵에 없어 누를 수 없다.
+  const { data: friendRows, error: friendRowsError } = await service
+    .from('users')
+    .select('id, username')
+    .in('id', followingIds)
+  if (friendRowsError) console.error('[feed/page] users 조회 실패', friendRowsError)
+  const friendProfileHrefs: Record<string, string> = {}
+  for (const row of (friendRows ?? []) as { id: string; username: string | null }[]) {
+    if (row.username) friendProfileHrefs[row.id] = `/${row.username}`
+  }
+
   return (
     <div className="min-h-full text-foreground">
       <TopNav title={d.feed.friendFeedTitle} />
       <div className="px-4 pt-4 pb-8">
-        <FeedSection feedItems={feedItems} title={d.feed.friendFeedTitle} activityNames={activityNames} />
+        <FeedSection feedItems={feedItems} title={d.feed.friendFeedTitle} activityNames={activityNames} friendProfileHrefs={friendProfileHrefs} />
       </div>
     </div>
   )

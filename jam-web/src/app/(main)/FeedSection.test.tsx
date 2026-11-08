@@ -25,7 +25,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import FeedSection, { DetailSheet, EventIcon, eventLabelText, feedTitle, matchesFilter } from './FeedSection'
+import FeedSection, { DetailSheet, EventIcon, eventLabelText, feedTarget, feedTitle, goToFeedTarget, matchesFilter } from './FeedSection'
 import {
   BookIcon,
   CheckCircleIcon,
@@ -566,5 +566,53 @@ describe('FeedSection 머리 줄 (티켓 20261106_1734)', () => {
     expect(html).toContain(`<h2 class="sr-only">${d.feed.title}</h2>`)
     expect(html).not.toContain('text-2xl text-foreground">' + d.feed.title)
     expect(visibleText(html)).not.toContain('1개')
+  })
+})
+
+describe('피드 카드를 누르면 가는 곳 (feedTarget) — 바텀시트 대신 상세 페이지', () => {
+  it('배지 획득은 배지 상세로 가고 타인 프로필이면 ?u= 가 붙는다', () => {
+    const item = row('badge_earned', { badge_id: 'b9', badge_name: 'x' })
+    expect(feedTarget(item)).toEqual({ kind: 'href', href: '/badges/b9' })
+    expect(feedTarget(item, '?u=god')).toEqual({ kind: 'href', href: '/badges/b9?u=god' })
+  })
+
+  it('아이템 픽업과 아이템 드랍은 둘 다 그 아이템 배지의 상세로 간다 — 드랍은 지점 정보가 없다', () => {
+    expect(feedTarget(row('item_picked_up', { badge_id: 'i1' }))).toEqual({ kind: 'href', href: '/badges/i1' })
+    expect(feedTarget(row('item_dropped', { badge_id: 'i2', poi_name: '' }))).toEqual({ kind: 'href', href: '/badges/i2' })
+  })
+
+  it('미션 참여·완료·취소는 미션 상세로 간다', () => {
+    for (const t of ['mission_joined', 'mission_completed', 'mission_cancelled'] as const) {
+      expect(feedTarget(row(t, { mission_id: 'm1' }))).toEqual({ kind: 'href', href: '/missions/m1' })
+    }
+  })
+
+  it('컬렉션 완성은 컬렉션 상세로 간다', () => {
+    expect(feedTarget(COLLECTION_COMMON)).toEqual({ kind: 'href', href: '/collections/b1' })
+    expect(feedTarget(COLLECTION_COMMON, '?u=god')).toEqual({ kind: 'href', href: '/collections/b1?u=god' })
+  })
+
+  it('챕터 오름은 갈 페이지가 없어 «맨 위로»다', () => {
+    expect(feedTarget(CHAPTER)).toEqual({ kind: 'top' })
+  })
+
+  it('갈 곳의 id가 비어 있으면 null이고 아무 일도 하지 않는다', () => {
+    expect(feedTarget(row('badge_earned', { badge_id: '' }))).toBeNull()
+    expect(feedTarget(row('mission_joined', {}))).toBeNull()
+    expect(feedTarget(row('collection_tier_completed', { collection_name: 'x' }))).toBeNull()
+    const push = vi.fn()
+    goToFeedTarget(null, push)
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it('goToFeedTarget: href는 push하고, top은 창을 맨 위로 올린다', () => {
+    const push = vi.fn()
+    goToFeedTarget({ kind: 'href', href: '/badges/b9' }, push)
+    expect(push).toHaveBeenCalledWith('/badges/b9')
+    const scrollTo = vi.fn()
+    vi.stubGlobal('window', { scrollTo, matchMedia: () => ({ matches: false }) })
+    goToFeedTarget({ kind: 'top' }, push)
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+    vi.unstubAllGlobals()
   })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
@@ -58,6 +58,49 @@ const FILTER_TABS: SlidingTabItem<FilterTab>[] = [
 
 const BADGE_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 const MISSION_EVENTS = new Set<ActivityFeedEventType>(['mission_joined', 'mission_completed', 'mission_cancelled'])
+
+/**
+ * 피드 카드를 눌렀을 때 가는 곳(2026-11-08 사용자 요청: 바텀시트 대신 해당 콘텐츠의 상세 페이지로 보낸다).
+ *
+ * - 배지 획득·아이템 드랍·아이템 픽업: 그 배지의 상세(`/badges/{badge_id}`). 아이템 드랍은 지급 때 지점을 기록하지 않아(동기화·캡슐 지급이라 지점이 없다) 아이템 픽업과 같은 곳으로 간다.
+ * - 미션 참여·완료·취소: 미션 상세(`/missions/{mission_id}`).
+ * - 컬렉션 완성: 컬렉션 상세(`/collections/{collection_id}`).
+ * - 챕터 오름: 상세 페이지가 없어 내 프로필 맨 위로 올린다.
+ * - 갈 곳의 id가 비어 있으면 `null`이다(아무 일도 하지 않는다).
+ *
+ * `linkQuery`는 `?u=username` 같은 덧붙임 쿼리다(타인 프로필 기준으로 상세를 연다).
+ */
+export type FeedTarget = { kind: 'href'; href: string } | { kind: 'top' }
+
+export function feedTarget(item: ActivityFeedRow, linkQuery = ''): FeedTarget | null {
+  const meta = item.metadata as Record<string, unknown>
+  const idOf = (key: string): string | null => {
+    const v = meta[key]
+    return typeof v === 'string' && v !== '' ? v : null
+  }
+  if (item.event_type === 'chapter_up') return { kind: 'top' }
+  if (MISSION_EVENTS.has(item.event_type)) {
+    const id = idOf('mission_id')
+    return id ? { kind: 'href', href: `/missions/${id}` } : null
+  }
+  if (item.event_type === 'collection_tier_completed') {
+    const id = idOf('collection_id')
+    return id ? { kind: 'href', href: `/collections/${id}${linkQuery}` } : null
+  }
+  if (BADGE_EVENTS.has(item.event_type)) {
+    const id = idOf('badge_id')
+    return id ? { kind: 'href', href: `/badges/${id}${linkQuery}` } : null
+  }
+  return null
+}
+
+/** `feedTarget`이 정한 곳으로 간다. «맨 위»는 움직임 줄이기 설정이면 부드럽게 올리지 않고 바로 올린다. */
+export function goToFeedTarget(target: FeedTarget | null, push: (href: string) => void): void {
+  if (!target) return
+  if (target.kind === 'href') { push(target.href); return }
+  const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+}
 
 export function matchesFilter(item: ActivityFeedRow, tab: FilterTab): boolean {
   if (tab === 'all') return true
@@ -799,19 +842,17 @@ interface Props {
    * 옵셔널이다 — 안 넘기면 묶음은 이름 없이 헤드라인만으로 그려진다.
    */
   activityNames?: Record<string, string>
+  /**
+   * 친구 소식용. `user_id`별 친구 프로필 주소(예: `{ [userId]: '/username' }`). 넘기면 카드를 눌렀을 때 종류와 상관없이 그 친구의 프로필로 간다.
+   * 안 넘기면(내·타인 프로필) 카드는 `feedTarget`이 정한 상세 페이지로 간다.
+   */
+  friendProfileHrefs?: Record<string, string>
 }
 
-export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.feed.title, hideHeader = false, activityNames }: Props) {
+export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.feed.title, hideHeader = false, activityNames, friendProfileHrefs }: Props) {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
-  const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
-  // 상세 시트는 닫힘 트랜지션(Panel reveal) 동안 DOM에 남아야 하므로
-  // "열림 여부"와 "마운트 여부(selectedItem)"를 분리한다.
-  const [sheetOpen, setSheetOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-
-  const closeSheet = useCallback(() => setSheetOpen(false), [])
-  const handleSheetClosed = useCallback(() => setSelectedItem(null), [])
 
   // 필터 → 묶음 순서를 지킨다. 묶음은 표현 계층이라 필터 결과 안에서만 성립한다.
   const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
@@ -825,13 +866,14 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
     setVisibleCount(PAGE_SIZE) // 탭 전환 시 페이지네이션 초기화
   }
 
+  // 카드를 누르면 바텀시트를 열지 않고 해당 콘텐츠의 상세 페이지로 보낸다. 친구 소식(`friendProfileHrefs`)은 종류와 상관없이 그 친구의 프로필로 보낸다.
   const handleCardClick = (item: ActivityFeedRow) => {
-    if (MISSION_EVENTS.has(item.event_type)) {
-      const meta = item.metadata as Record<string, string>
-      if (meta.mission_id) { router.push(`/missions/${meta.mission_id}`); return }
+    const friendHref = friendProfileHrefs?.[item.user_id]
+    if (friendProfileHrefs) {
+      if (friendHref) router.push(friendHref)
+      return
     }
-    setSelectedItem(item)
-    setSheetOpen(true)
+    goToFeedTarget(feedTarget(item, badgeLinkQuery), router.push)
   }
 
   return (
@@ -890,15 +932,6 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
             </Button>
           )}
         </>
-      )}
-      {selectedItem && (
-        <DetailSheet
-          item={selectedItem}
-          open={sheetOpen}
-          onClose={closeSheet}
-          onClosed={handleSheetClosed}
-          badgeLinkQuery={badgeLinkQuery}
-        />
       )}
     </section>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useEffect, useRef, type CSSProperties } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -21,8 +21,8 @@ import {
   UsersIcon,
   MedalIcon,
 } from '@/components/ui/icons'
-import type { UserRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
-import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSection'
+import type { UserRow, ActivityFeedRow, BadgeRarity } from '@/types/database'
+import FeedSection, { earnCountOf, badgeLevelOf, feedTarget, goToFeedTarget } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
@@ -53,7 +53,6 @@ function isValidTab(hash: string, isOwnProfile: boolean): hash is TabKey {
 
 // ─── 피드 (본인 Feed 섹션용 UI는 ../FeedSection 공용 컴포넌트로 이전됨) ──────
 
-const MISSION_EVENTS = new Set<ActivityFeedEventType>(['mission_joined', 'mission_completed', 'mission_cancelled'])
 
 // ─── 타입 (탭 콘텐츠) ────────────────────────────────────────────────────────
 
@@ -147,11 +146,6 @@ export default function ProfileClient({
   const [listFollowStates, setListFollowStates] = useState<Record<string, boolean>>({})
   const fetchedRef = useRef<Set<TabKey>>(new Set())
 
-  const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
-  // 상세 시트는 Panel reveal 닫힘 트랜지션 동안 DOM에 남아 있어야 한다.
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const closeSheet = useCallback(() => setSheetOpen(false), [])
-  const handleSheetClosed = useCallback(() => setSelectedItem(null), [])
 
   // ── 배지 리빌 오버레이(팔로우로 배지 획득 시) — FollowButton.tsx(20260910_2056)와 동일 패턴,
   // 헤더 팔로우 버튼·팔로워/팔로잉 탭 리스트 두 호출부가 공유한다 (20260910_2132).
@@ -392,13 +386,9 @@ export default function ProfileClient({
     router.push('/login')
   }
 
+  // 타인 프로필의 배지 그리드 카드를 누르면 바텀시트 대신 그 배지의 상세 페이지로 간다(2026-11-08 사용자 요청). 피드 카드와 같은 판정(`feedTarget`)을 쓴다.
   const handleCardClick = (item: ActivityFeedRow) => {
-    if (MISSION_EVENTS.has(item.event_type)) {
-      const meta = item.metadata as Record<string, string>
-      if (meta.mission_id) { router.push(`/missions/${meta.mission_id}`); return }
-    }
-    setSelectedItem(item)
-    setSheetOpen(true)
+    goToFeedTarget(feedTarget(item, `?u=${username}`), router.push)
   }
 
   // ── 탭 콘텐츠 렌더 ────────────────────────────────────────────────────────
@@ -673,17 +663,6 @@ export default function ProfileClient({
           </Button>
         )}
       </div>
-
-      {/* 상세 시트 */}
-      {selectedItem && (
-        <DetailSheet
-          item={selectedItem}
-          open={sheetOpen}
-          onClose={closeSheet}
-          onClosed={handleSheetClosed}
-          badgeLinkQuery={`?u=${username}`}
-        />
-      )}
 
       {/* 배지 리빌 오버레이 — 헤더 팔로우 버튼·팔로워/팔로잉 탭 리스트 공용 (20260910_2132) */}
       <BadgeRevealOverlay
