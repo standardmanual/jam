@@ -133,8 +133,7 @@
  *
  * 기본 .t-skel / .t-skel-skeleton / .t-skel-content 및 pulse
  * 키프레임은 `src/components/transitions.css`에 이미 설치되어
- * 있으므로 여기서는 재정의하지 않습니다. 아래는 InventoryItemHistorySheet
- * 전용 로컬 확장(`--skel-min-h` + `.is-settled`)만 보유합니다.
+ * 있으므로 여기서는 재정의하지 않습니다. 아래는 로컬 확장(`--skel-min-h` + `.is-settled`)만 보유합니다.
  * ───────────────────────────────────────────────────────────── */
 
 /* 문서의 t-skel은 두 레이어를 모두 absolute로 깔기 때문에 래퍼가 높이를
