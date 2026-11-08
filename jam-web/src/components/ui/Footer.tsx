@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { d } from '@/lib/i18n'
@@ -24,6 +25,14 @@ import FooterLogo from './FooterLogo'
  * 화면이 짧아져 우려가 완화됐다고 판단해 제외 목록에서 뺐다(티켓 20260917_1203).
  */
 const FOOTER_EXCLUDED_PATHS = ['/drops', '/philosophy']
+
+const FOOTER_LINKS = [
+  { href: '/philosophy', label: () => d.common.footerPhilosophy },
+  { href: '/privacy', label: () => d.common.footerPrivacy },
+  { href: '/location-terms', label: () => d.common.footerLocationTerms },
+  { href: '/probability', label: () => d.common.footerProbability },
+  { href: '/voc', label: () => d.common.footerInquiry },
+]
 
 export default function Footer() {
   const pathname = usePathname()
@@ -56,37 +65,22 @@ export default function Footer() {
           20261021_1250: 확률 안내 링크를 맨 아래에 같은 스타일로 추가(운영 로직 18.3절). 방침·약관 두 법 문서가
           붙어 있는 묶음을 깨지 않으려고 끝에 둔다. 확률 안내 페이지는 (legal) 그룹이라 푸터가 없으므로 입구는 이 푸터와 캡슐 시트다.
           20261031_1302: 문의 링크(/voc)를 확률 안내 다음 줄에 같은 스타일로 추가. 상단 내비의 문의 버튼을 대신한다. */}
-      <div className="flex flex-col items-start gap-0">
-        <Link
-          href="/philosophy"
-          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
-        >
-          {d.common.footerPhilosophy}
-        </Link>
-        <Link
-          href="/privacy"
-          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
-        >
-          {d.common.footerPrivacy}
-        </Link>
-        <Link
-          href="/location-terms"
-          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
-        >
-          {d.common.footerLocationTerms}
-        </Link>
-        <Link
-          href="/probability"
-          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
-        >
-          {d.common.footerProbability}
-        </Link>
-        <Link
-          href="/voc"
-          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
-        >
-          {d.common.footerInquiry}
-        </Link>
+      {/* 2026-11-08 사용자 요청: 링크를 가로로 나열하고 사이를 작은 가운데점으로 구분한다.
+          폭이 모자라면 줄을 바꾼다(flex-wrap). 가운데점은 읽기 보조 기술에서 숨긴다. */}
+      <div className="flex flex-row flex-wrap items-center gap-x-2">
+        {FOOTER_LINKS.map((link, i) => (
+          <Fragment key={link.href}>
+            {i > 0 && (
+              <span aria-hidden="true" className="text-[15px] leading-[28px] text-[color:var(--muted-on-inverse)]">·</span>
+            )}
+            <Link
+              href={link.href}
+              className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+            >
+              {link.label()}
+            </Link>
+          </Fragment>
+        ))}
       </div>
       {/* 20260909_2319: 로고 이미지를 걷고 저작권 텍스트만 남겼다(Figma 사양). */}
       <span className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)]">{d.common.footerCopyright}</span>
