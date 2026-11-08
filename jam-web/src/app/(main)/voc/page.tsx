@@ -86,7 +86,7 @@ function VocCard({ item }: { item: VocItem }) {
 
       {/* 답변 — 상태=답변완료일 때만. 답변자는 실명 대신 고정된 JAM 로고로만 표시 */}
       {item.answer && (
-        <div className="mt-4 rounded-2xl bg-background-secondary p-4 flex flex-col gap-2">
+        <div className="mt-3 rounded-2xl bg-background-secondary p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             {/* 흰색 로고 PNG를 마스크로 쓰고 색은 --foreground로 칠한다(흰 카드 위 흰 로고는 사라진다). */}
             <span role="img" aria-label="JAM!" className="jam-logo-mark block shrink-0 h-4" />
@@ -156,7 +156,7 @@ export default function VocPage() {
     <div className="min-h-full text-foreground">
       <TopNav title={d.voc.pageTitle} />
 
-      <div className="px-4 pt-4 pb-6 flex flex-col gap-6">
+      <div className="px-4 pt-4 pb-6 flex flex-col gap-5">
         <Button
           surface="main"
           variant="primary"
