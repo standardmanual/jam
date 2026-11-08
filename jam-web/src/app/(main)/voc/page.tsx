@@ -169,7 +169,7 @@ export default function VocPage() {
         </Button>
 
         <section>
-          <div className="mb-4">
+          <div className="mb-3">
             <SlidingTabs items={SORT_TABS} value={sort} onChange={handleSortChange} outlined={false} aria-label={d.voc.sortAriaLabel} />
           </div>
 
