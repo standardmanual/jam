@@ -616,7 +616,6 @@ export const ko = {
     // 2026-11-06 사용자 결정: 안내는 한 줄만 남기고 원인·해결 경로 문장과 «드랍하기» 버튼을 걷었다. 방법은 화면의 다른 곳(장착·믹스·드랍)이 알려 준다
     fullNoticeBody: '인벤토리가 꽉 찼어요.',
 
-    obtainMethod: '획득 방법',
     obtainedAt: '획득일',
     expiresAt: '만료일',
     expiresNone: '없음',
@@ -625,34 +624,16 @@ export const ko = {
     expiringSoonTitle: '만료 임박',
     expiringSoonBody: '7일 이내에 이 아이템이 만료돼요',
 
-    historyTitle: '획득 이력',
-    historyError: '이력을 불러올 수 없어요',
-    historyEmpty: '이력이 없어요',
-    // §7.1 "~에 대한" 번역투 제거 (티켓 20260915_2243)
-    historyEmptyBody: '아직 이 아이템의 기록이 없어요',
-    historyUnknownUser: '알 수 없는 유저',
     obtainByDrop: '활동 드랍',
     obtainByDropEvent: '이벤트 드랍',
     obtainByPickup: '장소 픽업',
     obtainBySystem: '시스템 지급',
-    eventDropped: '장소 드랍',
-    eventPickedUp: '장소 픽업',
 
     /**
      * ADR 0001 — /api/inventory/items GET 500 응답 (티켓 20260915_2243)
      * 20260916_0844: [원인]이 빠져 있던 것을 보완 + 마침표 추가(§3 표기 규칙)
      */
     fetchFailed: '인벤토리를 불러오지 못했어요. 연결이 잠깐 끊겼을 수 있어요.',
-    /**
-     * ADR 0001 — /api/inventory/items/[itemId]/history GET 404 응답(아이템·소유 인벤토리 없음)
-     * 20260916_0844: [원인]이 빠져 있던 것을 보완
-     */
-    historyItemNotFound: '이 아이템을 더 이상 볼 수 없어요. 만료됐거나 다른 유저에게 갔을 수 있어요.',
-    /**
-     * ADR 0001 — /api/inventory/items/[itemId]/history GET 403 응답(다른 사용자의 아이템)
-     * 20260916_0844: "이력"→"기록"으로 용어 통일(historyEmptyBody와 일치)
-     */
-    historyForbidden: '이 아이템의 기록은 주인만 볼 수 있어요',
   },
 
   /**

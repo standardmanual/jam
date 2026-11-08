@@ -45,7 +45,6 @@ const FILES = [
   'app/(main)/collections/[id]/SlotGrid.tsx',
   'app/(main)/combine/CombineClient.tsx',
   'app/(main)/drops/DropsClient.tsx',
-  'app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx',
   'app/(main)/philosophy/page.tsx',
   'app/(legal)/location-terms/page.tsx',
   'app/(main)/voc/VocPagination.tsx',

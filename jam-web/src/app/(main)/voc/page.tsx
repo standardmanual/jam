@@ -123,7 +123,7 @@ export default function VocPage() {
   const [retryKey, setRetryKey] = useState(0)
   // data===null인 동안만 초기 로딩 상태 — 정렬/페이지 전환 시에는 이전 목록을 유지한 채
   // 백그라운드로 갱신한다(이펙트 본문에서 동기 setState를 피하려 setLoading을 따로 두지
-  // 않는다 — InventoryItemHistorySheet.tsx와 동일 패턴, react-hooks/set-state-in-effect).
+  // 않는다 — react-hooks/set-state-in-effect).
   const loading = data === null && !error
 
   useEffect(() => {
