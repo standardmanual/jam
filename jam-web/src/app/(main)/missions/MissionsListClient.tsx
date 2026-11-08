@@ -76,7 +76,7 @@ function rewardBadgeNode(id: string, badgeNames: Record<string, RewardBadgeInfo>
   if (!info) return t(d.missions.rewardBadgeCount, { count: 1 })
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-      {info.level != null ? <BadgeLevelChip level={info.level} /> : <RarityBadge rarity={info.rarity ?? undefined} />}
+      {info.level != null ? <BadgeLevelChip level={info.level} size="row" /> : <RarityBadge rarity={info.rarity ?? undefined} size="row" />}
       {t(d.missions.rewardBadgeName, { name: info.name })}
     </span>
   )
@@ -87,7 +87,7 @@ function rewardBadgeNode(id: string, badgeNames: Record<string, RewardBadgeInfo>
 function lockedRewardNode(rarity: BadgeRarity | null): React.ReactNode {
   return (
     <span className="break-keep wrap-break-word" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-      <RarityBadge rarity={rarity} />
+      <RarityBadge rarity={rarity} size="row" />
       {d.lockedItem.card.name}
     </span>
   )
@@ -167,7 +167,7 @@ function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.R
 function conditionBadgeNode(badge: { name: string; rarity: BadgeRarity }): React.ReactNode {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-      <RarityBadge rarity={badge.rarity} />
+      <RarityBadge rarity={badge.rarity} size="row" />
       {t(d.missions.rewardBadgeName, { name: badge.name })}
     </span>
   )
