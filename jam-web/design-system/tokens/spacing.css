@@ -5,6 +5,10 @@
  * 인라인 style·CSS·calc() 안처럼 클래스가 아닌 곳이 참조한다. 이름은 px 값이다(--spacing-16 = 16px).
  * Tailwind 단계 번호(p-4 = 16px)와 다르다. 클래스 안에서는 이 변수를 쓰지 않는다.
  *
+ * 티켓 20261108_1928(간격 1회차): 화면이 쓸 간격에 역할 이름을 붙였다(--page-x … --gap-actions). 클래스는 그대로 Tailwind
+ * 기본 유틸리티를 쓰고, 값과 클래스 대응표는 design-system/readme.md 「간격」 절과 Spacing.stories.tsx에 있다.
+ * 이 회차는 토큰만 더했고 참조하는 곳은 아직 없다.
+ *
  * 티켓 20261106_2003(3-2회차): ListRow 전용 치수 11종(--list-row-*)을 임시 -proto 변수에서 정식 토큰으로 올렸다.
  */
 :root {
@@ -12,7 +16,9 @@
   --spacing-8: 8px;
   --spacing-12: 12px;
   --spacing-16: 16px;
+  --spacing-20: 20px;
   --spacing-24: 24px;
+  /* 32·40·48·64·96: 화면은 직접 쓰지 않는다(5회차에서 검사) */
   --spacing-32: 32px;
   --spacing-40: 40px;
   --spacing-48: 48px;
@@ -23,6 +29,22 @@
   --layout-card-padding: var(--spacing-24);
   --layout-section-gap: var(--spacing-48);
   --layout-element-gap: var(--spacing-16);
+
+  /* 간격 역할 토큰 (티켓 20261108_1928) — 주석은 대응하는 Tailwind 기본 클래스 */
+  --page-x: var(--spacing-16); /* px-4 */
+  --page-top: var(--spacing-16); /* pt-4 */
+  --page-bottom: var(--spacing-24); /* pb-6 */
+  --gap-section: var(--spacing-20); /* gap-5 · space-y-5 */
+  --gap-section-lg: var(--spacing-24); /* gap-6 */
+  --gap-group: var(--spacing-12); /* gap-3 */
+  --gap-text: var(--spacing-8); /* gap-2 */
+  --gap-label: var(--spacing-4); /* gap-1 */
+  --gap-card: var(--spacing-8); /* gap-2 */
+  --gap-card-detail: var(--spacing-12); /* gap-3 */
+  --card-padding: var(--spacing-16); /* p-4 */
+  --card-padding-row: var(--spacing-12) var(--spacing-16); /* py-3 px-4 */
+  --gap-field: var(--spacing-16); /* gap-4 */
+  --gap-actions: var(--spacing-8); /* gap-2 */
 
   /* Touch target minimum (iOS HIG) */
   --touch-target-min: 44px;

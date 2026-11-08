@@ -108,6 +108,7 @@
  * 서비스 전용 :root 토큰. 색·글자·간격·반경은 위에서 import한 design-system/tokens/에 있다.
  * 클래스 문자열은 Tailwind 기본 유틸리티(p-4, text-base, rounded-2xl)를 쓰고, 인라인 style·CSS·
  * calc() 안처럼 클래스가 아닌 곳은 tokens/의 평문 눈금(var(--spacing-16), var(--text-base))을 쓴다.
+ * 간격 역할 이름(--page-x, --gap-section …)과 Tailwind 클래스 대응표는 design-system/readme.md 「간격」 절에 있다.
  */
 :root {
   /* elevation — 1px inset border만 (드롭섀도 금지, 상위 티켓 결정 7) */

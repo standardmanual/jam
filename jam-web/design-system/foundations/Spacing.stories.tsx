@@ -45,6 +45,48 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+// 티켓 20261108_1928: 역할 이름과 Tailwind 기본 클래스 대응. design-system/readme.md 「간격 역할 토큰과 클래스 대응」과 같은 표다.
+const ROLE_TOKENS: { token: string; className: string }[] = [
+  { token: '--page-x', className: 'px-4' },
+  { token: '--page-top', className: 'pt-4' },
+  { token: '--page-bottom', className: 'pb-6' },
+  { token: '--gap-section', className: 'gap-5 · space-y-5' },
+  { token: '--gap-section-lg', className: 'gap-6' },
+  { token: '--gap-group', className: 'gap-3' },
+  { token: '--gap-text', className: 'gap-2' },
+  { token: '--gap-label', className: 'gap-1' },
+  { token: '--gap-card', className: 'gap-2' },
+  { token: '--gap-card-detail', className: 'gap-3' },
+  { token: '--card-padding', className: 'p-4' },
+  { token: '--card-padding-row', className: 'py-3 px-4' },
+  { token: '--gap-field', className: 'gap-4' },
+  { token: '--gap-actions', className: 'gap-2' },
+];
+
+function RoleTokenTable() {
+  const cell = { padding: '8px 12px 8px 0', borderBottom: '1px solid var(--border)', textAlign: 'left' as const, fontSize: 12 };
+  return (
+    <table style={{ borderCollapse: 'collapse', width: '100%', maxWidth: 560 }}>
+      <thead>
+        <tr style={{ color: 'var(--muted)' }}>
+          <th style={cell}>이름</th>
+          <th style={cell}>값</th>
+          <th style={cell}>클래스</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ROLE_TOKENS.map(({ token, className }) => (
+          <tr key={token}>
+            <td style={cell}><code style={{ color: 'var(--link)' }}>{token}</code></td>
+            <td style={cell}>{useTokenValue(token) || '—'}</td>
+            <td style={cell}><code>{className}</code></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function SpacingPage() {
   return (
     <div style={{ padding: 32, background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)', fontFamily: 'var(--font-family-base)' }}>
@@ -60,12 +102,17 @@ function SpacingPage() {
         <SpacingRow token="--spacing-8" desc="소형 — 태그 내부, 버튼 아이콘 간격" />
         <SpacingRow token="--spacing-12" desc="컴팩트 — 리스트 아이템 간격" />
         <SpacingRow token="--spacing-16" desc="기본 — 카드 내부 요소 간격" />
+        <SpacingRow token="--spacing-20" desc="섹션 사이 — 역할 토큰 --gap-section의 값" />
         <SpacingRow token="--spacing-24" desc="중형 — 카드 패딩, 섹션 내 간격" />
-        <SpacingRow token="--spacing-32" desc="대형 — 주요 섹션 구분" />
-        <SpacingRow token="--spacing-40" desc="대형 — 구획 사이 간격" />
-        <SpacingRow token="--spacing-48" desc="섹션 간 — 페이지 레벨 구분" />
-        <SpacingRow token="--spacing-64" desc="특대 — hero 영역, 페이지 상단 여백" />
-        <SpacingRow token="--spacing-96" desc="최대 — 큰 여백" />
+        <SpacingRow token="--spacing-32" desc="대형 — 화면은 직접 쓰지 않는다(5회차에서 검사)" />
+        <SpacingRow token="--spacing-40" desc="대형 — 화면은 직접 쓰지 않는다(5회차에서 검사)" />
+        <SpacingRow token="--spacing-48" desc="섹션 간 — 화면은 직접 쓰지 않는다(5회차에서 검사)" />
+        <SpacingRow token="--spacing-64" desc="특대 — 화면은 직접 쓰지 않는다(5회차에서 검사)" />
+        <SpacingRow token="--spacing-96" desc="최대 — 화면은 직접 쓰지 않는다(5회차에서 검사)" />
+      </Section>
+
+      <Section title="역할 토큰 ↔ Tailwind 클래스 (화면은 클래스를 쓴다)">
+        <RoleTokenTable />
       </Section>
 
       <Section title="Layout Semantic (전역 조정 가능)">

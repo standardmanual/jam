@@ -20,11 +20,34 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 * **타이포그래피(Type)**: Noto Sans KR. 기본 텍스트 설정으로 `text-wrap: balance`와 `word-break: keep-all`이 적용된다. 서비스가 쓰는 굵기는 `font-normal`·`font-medium`·`font-semibold`·`font-bold`이고 자간은 모든 단계에서 0이다. 크기 눈금은 `tokens/typography.css`다.
 * **모서리 반경(Radius)**: Tailwind 기본 눈금이다(`tokens/radius.css`). 카드는 `rounded-2xl`, 버튼과 태그는 `rounded-full`, 입력창은 캡슐(`--field-radius`)이다.
 * **엘리베이션(Elevation)**: 그림자가 없다. 카드는 흰 면과 테두리로 구분한다(입력창 그림자만 예외, 문서 11의 5.7절).
-* **간격(Spacing)**: `tokens/spacing.css`의 눈금과 레이아웃 시맨틱 토큰이다.
+* **간격(Spacing)**: `tokens/spacing.css`의 눈금, 레이아웃 시맨틱 토큰, 역할 토큰이다. 역할 토큰과 클래스 대응은 아래 「간격 역할 토큰과 클래스 대응」 절에 있다.
 * **배경(Backgrounds)**: 플랫 컬러, 그라데이션 없음.
 * **호버/프레스(Hover/press)**: 버튼을 누르면 `--scale-press`만큼 줄어든다(`tokens/motion.css`). 색상이 어두워지는 호버 시스템은 추출되지 않았으며 최소한으로 유지됨.
 * **테두리(Borders)**: 카드와 외곽선 버튼에 쓴다. 규칙은 문서 11의 5.1·5.4절이다.
 
+
+### 간격 역할 토큰과 클래스 대응
+
+화면의 간격에 붙인 역할 이름이다. 클래스 문자열은 오른쪽 Tailwind 기본 유틸리티를 쓰고, 변수는 인라인 style·CSS·`calc()` 같은 클래스 밖에서만 쓴다. 클래스용 `@theme` 별칭은 만들지 않는다. 같은 표가 Storybook `MODULAR/Foundations/Spacing`에 있고, 원천은 `tokens/spacing.css`다(티켓 20261108_1928).
+
+| 이름 | 값(px) | 클래스 |
+|---|---|---|
+| `--page-x` | 16 | `px-4` |
+| `--page-top` | 16 | `pt-4` |
+| `--page-bottom` | 24 | `pb-6` |
+| `--gap-section` | 20 | `gap-5` · `space-y-5` |
+| `--gap-section-lg` | 24 | `gap-6` |
+| `--gap-group` | 12 | `gap-3` |
+| `--gap-text` | 8 | `gap-2` |
+| `--gap-label` | 4 | `gap-1` |
+| `--gap-card` | 8 | `gap-2` |
+| `--gap-card-detail` | 12 | `gap-3` |
+| `--card-padding` | 16 | `p-4` |
+| `--card-padding-row` | 12 16 | `py-3 px-4` |
+| `--gap-field` | 16 | `gap-4` |
+| `--gap-actions` | 8 | `gap-2` |
+
+`--spacing-32`·40·48·64·96은 화면이 직접 쓰지 않는다. `--layout-card-padding`(24)과 `--layout-section-gap`(48)은 이 표에 없는 기존 토큰이다.
 
 ## 의도적인 추가 사항 (Intentional additions)
 
