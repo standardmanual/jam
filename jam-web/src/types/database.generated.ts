@@ -406,6 +406,7 @@ export type Database = {
           drop_excluded: boolean
           drop_weight: number
           family_key: string | null
+          gaze_motion: string | null
           id: string
           image_gen_params: Json | null
           image_source: string | null
@@ -445,6 +446,7 @@ export type Database = {
           drop_excluded?: boolean
           drop_weight?: number
           family_key?: string | null
+          gaze_motion?: string | null
           id?: string
           image_gen_params?: Json | null
           image_source?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           drop_excluded?: boolean
           drop_weight?: number
           family_key?: string | null
+          gaze_motion?: string | null
           id?: string
           image_gen_params?: Json | null
           image_source?: string | null
@@ -1591,6 +1594,7 @@ export type Database = {
           description: string
           drop_condition_json: Json | null
           drop_excluded: boolean
+          gaze_motion: string | null
           id: string
           image_source: string | null
           image_url: string | null
@@ -1615,6 +1619,7 @@ export type Database = {
           description: string
           drop_condition_json?: Json | null
           drop_excluded?: boolean
+          gaze_motion?: string | null
           id?: string
           image_source?: string | null
           image_url?: string | null
@@ -1639,6 +1644,7 @@ export type Database = {
           description?: string
           drop_condition_json?: Json | null
           drop_excluded?: boolean
+          gaze_motion?: string | null
           id?: string
           image_source?: string | null
           image_url?: string | null

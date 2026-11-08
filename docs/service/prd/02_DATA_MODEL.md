@@ -533,6 +533,13 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 0행이다. `anon`에는 읽기·쓰기 정책이 없고 인증 유저에게도 쓰기 정책이 없다. 앱의 관리자 화면·관리자 API·서버 조회는
 service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개 전 컬렉션을 보여 주는 정책 예외는 두지 않는다.
 
+### item_books.gaze_motion · badges.gaze_motion (시선과 동작) — 마이그레이션 330, 티켓 20261108_1823
+
+- 두 칸 모두 `text`, NULL 허용이다. 화면과 엔진은 읽지 않는 기획 참고용 원고 문구다.
+- `badges.gaze_motion`: 아이템 배지 네 등급 설명을 잇는 한 문장. 같은 아이템의 등급 4행에 같은 값이 들어간다. JAM 2.0 원고(`docs/plan/jam2/tribe-rethink/manuscript/`의 01~05 원고) 6절의 아이템 450개(1800행)를 채웠다.
+- `item_books.gaze_motion`: 컬렉션의 아이템 9개를 하나의 시선으로 잇는 한 문장. 같은 원고 6.x절 머리의 «시선과 동작(컬렉션)» 50개를 채웠다.
+- 문구의 원본은 원고 문서다. 원고를 고치면 이 칸도 함께 고친다.
+
 ### user_item_book_slots / user_item_book_completions (신규)
 - `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)
   - `inventory_item_id`(NOT NULL): **어느 개체가 꽂혀 있는지의 정본.** UNIQUE 제약이 배지 단위라
