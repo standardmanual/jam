@@ -576,17 +576,18 @@ export default function ProfileClient({
 
         </div>
 
-        {/* 편집(본인)·팔로우/언팔로우(타인) 버튼 — 헤더 아래, 캡슐 바 위에 전체 폭 작은 버튼으로 둔다(2026-11-08 사용자 요청).
+        {/* 편집(본인)·팔로우/언팔로우(타인) 버튼 — 헤더 아래, 캡슐 바 위에 전체 폭 작은 버튼(xs, 약 31px)으로 둔다(2026-11-08 사용자 요청).
+            sm은 알약 모양의 기본 세로 여백(py-[13px])에 밀려 높이가 52px로 남으므로 쓰지 않는다.
             예전에는 편집이 숫자 줄 오른쪽, 팔로우가 헤더 오른쪽에 있어 숫자 줄 칸이 좁아져 줄이 바뀌었다. */}
         {isOwnProfile ? (
-          <Button surface="main" variant="outline" size="sm" fullWidth onClick={() => router.push('/profile/edit')}>
+          <Button surface="main" variant="outline" size="xs" fullWidth onClick={() => router.push('/profile/edit')}>
             {d.profile.editButton}
           </Button>
         ) : (
           <Button
             surface="sub"
             variant={following ? 'secondary' : 'primary'}
-            size="sm"
+            size="xs"
             fullWidth
             onClick={handleFollow}
             disabled={followLoading}
