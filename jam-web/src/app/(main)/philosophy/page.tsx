@@ -223,20 +223,20 @@ export default function PhilosophyPage() {
     <div className="min-h-full text-foreground">
       <TopNav title={PAGE_TITLE} />
 
-      <article className="px-4 pt-4 pb-6 flex flex-col gap-16">
+      <article className="px-4 pt-4 pb-6 flex flex-col gap-6">
         {/* Philosophy — 확정 원고(티켓 20260902_1347), 임의 수정·윤문 금지 */}
         <section>
           <h1 className="text-3xl font-medium">
             {PAGE_TITLE}
           </h1>
 
-          <div className="mt-12 flex flex-col gap-16">
+          <div className="mt-6 flex flex-col gap-6">
             {SECTIONS.map((section, i) => (
-              <section key={i} className="flex flex-col gap-4">
+              <section key={i} className="flex flex-col gap-2">
                 {section.heading && (
                   <h2 className={SECTION_HEADING_CLASS}>{section.heading}</h2>
                 )}
-                <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-3">
                   {section.paragraphs.map((paragraph, j) => (
                     // word-break: keep-all — CSS 기본값에서 한글은 음절 단위로 아무 데서나 끊긴다.
                     // 앱 컬럼이 좁아(한 줄 약 24자) 지정하지 않으면 문단마다 어절이 쪼개진다.

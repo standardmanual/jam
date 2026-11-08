@@ -257,7 +257,7 @@ export default function ProfileEditPage() {
     <div className="min-h-full text-foreground flex flex-col">
       <TopNav title={d.profile.title} />
 
-      <div className="flex-1 flex flex-col px-4 pt-4 pb-6 gap-8">
+      <div className="flex-1 flex flex-col px-4 pt-4 pb-6 gap-5">
         {/* 프로필 사진 */}
         <div className="flex flex-col items-center gap-4">
           <button
@@ -292,54 +292,57 @@ export default function ProfileEditPage() {
           />
         </div>
 
-        {/* 아이디 편집 */}
-        <div className={`t-input-wrap flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
-          <label className="text-base text-muted">{d.profileEdit.usernameLabel}</label>
-          <div
-            ref={inputShakeRef}
-            className={`t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
-          >
-            <span className="text-muted mr-1">@</span>
-            <input
-              type="text"
-              value={usernameInput}
-              onChange={handleUsernameChange}
-              placeholder={currentUsername ?? d.onboarding.usernamePlaceholder}
-              maxLength={30}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
-            />
-            {checkStatus === 'checking' && (
-              <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
-            )}
+        {/* 입력 두 칸 묶음 — 입력칸 → 다음 라벨 16 */}
+        <div className="flex flex-col gap-4">
+          {/* 아이디 편집 */}
+          <div className={`t-input-wrap flex flex-col gap-1${hasError ? ' is-error' : ''}`}>
+            <label className="text-base text-muted">{d.profileEdit.usernameLabel}</label>
+            <div
+              ref={inputShakeRef}
+              className={`t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
+            >
+              <span className="text-muted mr-1">@</span>
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={handleUsernameChange}
+                placeholder={currentUsername ?? d.onboarding.usernamePlaceholder}
+                maxLength={30}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
+              />
+              {checkStatus === 'checking' && (
+                <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
+              )}
+            </div>
+            {/* 메시지는 항상 마운트한 채 텍스트만 교체한다(빈 문자열 = 숨김, aria-live 영역 유지).
+                상시 자리는 두지 않는다 — 메시지가 있을 때만 입력칸 아래 4(mt-1)가 생긴다. */}
+            <p
+              ref={messageRef}
+              aria-live="polite"
+              className={`t-text-swap text-base px-1 text-muted${checkMessage ? ' mt-1' : ''}`}
+            >
+              {initialMessage}
+            </p>
           </div>
-          {/* 메시지는 항상 마운트한 채 텍스트만 교체한다(빈 문자열 = 숨김).
-              min-h-6로 자리를 잡아 스왑 중 레이아웃이 흔들리지 않게 한다. */}
-          <p
-            ref={messageRef}
-            aria-live="polite"
-            className="t-text-swap min-h-6 text-base px-1 text-muted"
-          >
-            {initialMessage}
-          </p>
-        </div>
 
-        {/* 이름 편집 — 20260830_0113: username과 동일한 커스텀 t-input 마크업을 재사용한다
-            (한 화면 안에서 입력 스타일이 갈라지지 않도록 — MODULAR Input 신규 도입 없음).
-            필수값이 아니고 중복확인·형식 에러가 없어 상태머신 없이 단순 controlled input이다. */}
-        <div className="t-input-wrap flex flex-col gap-2">
-          <label className="text-base text-muted">{d.profileEdit.nameLabel}</label>
-          <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow shadow-[inset_0_0_0_1px_var(--border)]">
-            <input
-              type="text"
-              value={nameInput}
-              onChange={handleNameChange}
-              placeholder={currentDisplayName ?? d.profileEdit.namePlaceholder}
-              maxLength={30}
-              className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
-            />
+          {/* 이름 편집 — 20260830_0113: username과 동일한 커스텀 t-input 마크업을 재사용한다
+              (한 화면 안에서 입력 스타일이 갈라지지 않도록 — MODULAR Input 신규 도입 없음).
+              필수값이 아니고 중복확인·형식 에러가 없어 상태머신 없이 단순 controlled input이다. */}
+          <div className="t-input-wrap flex flex-col gap-1">
+            <label className="text-base text-muted">{d.profileEdit.nameLabel}</label>
+            <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow shadow-[inset_0_0_0_1px_var(--border)]">
+              <input
+                type="text"
+                value={nameInput}
+                onChange={handleNameChange}
+                placeholder={currentDisplayName ?? d.profileEdit.namePlaceholder}
+                maxLength={30}
+                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
+              />
+            </div>
           </div>
         </div>
 
@@ -353,7 +356,7 @@ export default function ProfileEditPage() {
         )}
 
         {/* 저장 버튼 */}
-        <div className="flex flex-col gap-4 mt-auto">
+        <div className="flex flex-col gap-2 mt-auto">
           {saveError && (
             <p className="text-base text-center">{saveError}</p>
           )}
@@ -371,7 +374,7 @@ export default function ProfileEditPage() {
             {d.profileEdit.cancelButton}
           </button>
           {/* 티켓 20261021_1249 3회(채원 사전 판정): 탈퇴 진입. 바로 위 «취소»와 짝처럼 읽히지 않도록 일부러 작게, 밑줄로, 16px를 더 띄운다
-              (gap 16px + mt-4 16px = 약 32px). 설명 캡션은 두지 않는다 — 시트가 지워지는 것을 설명한다. 닫히면 포커스가 이 버튼으로 돌아온다. */}
+              (gap 8px + mt-4 16px = 약 24px). 설명 캡션은 두지 않는다 — 시트가 지워지는 것을 설명한다. 닫히면 포커스가 이 버튼으로 돌아온다. */}
           <button
             type="button"
             onClick={() => setWithdrawSheetOpen(true)}
