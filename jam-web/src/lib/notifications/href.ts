@@ -34,7 +34,7 @@ function profileHref(username: string | null | undefined): string | null {
  * 해시 엔트리를 쌓아, `TopNav`의 `<`(순수 `router.back()`)가 알림으로 안 돌아가고 그
  * 탭 히스토리를 되짚는 문제가 있었다. `ProfileClient`가 이 쿼리를 읽어 `TopNav`에
  * `backHref="/notifications"`를 조건부로 넘긴다.
- * `/{username}/followers`·`/collections`처럼 하위 경로가 붙는 링크(이미 자체
+ * `/{username}/followers`처럼 하위 경로가 붙는 링크(이미 자체
  * backHref를 정적으로 갖고 있음)에는 붙이지 않는다 — leaf 프로필 링크에만 적용한다.
  */
 function withNotifSource(href: string | null): string | null {
@@ -185,10 +185,12 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     // 약속한 나머지 소식을 보려면 대상이 아니라 사람이어야 한다
     case 'following_rare_badge':
       if (followingGrouped(p)) return single(withNotifSource(actorHref))
-      return single(actorHref ? `${actorHref}?from=notifications#badge` : null)
+      // 타인 프로필 기본 화면이 배지 리스트라 해시 없이 가도 배지가 먼저 보인다(티켓 20261108_1216)
+      return single(withNotifSource(actorHref))
     case 'following_collection_complete':
       if (followingGrouped(p)) return single(withNotifSource(actorHref))
-      return { href: actorHref ? `${actorHref}/collections` : null, avatarHref: withNotifSource(actorHref) }
+      // 프로필의 컬렉션 화면은 없어졌다(티켓 20261108_1216) — 그 사람 프로필 기본 화면으로 보낸다
+      return { href: withNotifSource(actorHref), avatarHref: withNotifSource(actorHref) }
     case 'following_mission_complete': {
       if (followingGrouped(p)) return single(withNotifSource(actorHref))
       const id = typeof p.mission_id === 'string' ? p.mission_id : ''
