@@ -16,7 +16,7 @@ JAM!의 UI는 **네 층**에 나뉘어 존재한다. 층이 갈라지면 `/jam-d
 | L4 업로드본 | claude.ai/design 프로젝트 `MODULAR` | 디자인 협업용 원격 사본 |
 
 L1과 L2는 **같은 컴포넌트를 각각 구현**한다(현재 9쌍: TabBar·Button·Toast·BottomSheet·
-SlidingTabs·TopNav·BadgeGridCard·ListRowCard·CollectionGridCard). 표현 방식도 다르다 —
+SlidingTabs·TopNav·BadgeGridCard·CollectionGridCard·ListRow). 표현 방식도 다르다 —
 L1은 Tailwind 유틸리티, L2는 인라인 style 객체. **그래서 텍스트 diff는 100% 오탐이다.**
 값을 정규화해 비교해야 한다(진단 스크립트가 그 일을 한다).
 

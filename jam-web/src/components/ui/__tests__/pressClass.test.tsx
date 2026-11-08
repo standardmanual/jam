@@ -4,7 +4,7 @@
  * 흩어져 있던 `active:scale-[0.98] transition-transform duration-100`을 `.jam-press`(0.98배·`--duration-micro` 80ms, 동작 줄이기 설정에서는 없음)로 모았다.
  * 눌림이 붙는 요소는 상자(inline이 아닌 요소)이어야 하고, 링크도 버튼도 아니거나 비활성(disabled)인 요소에는 붙이지 않는다.
  *
- * 확인하는 것: ① `ListRowCard`·`CollectionGridCard`가 눌림이 가능한 요소에만 `.jam-press`를 붙인다 ② 옛 문자열이 컴포넌트 출력에 없다
+ * 확인하는 것: ① `CollectionGridCard`가 눌림이 가능한 요소에만 `.jam-press`를 붙인다 ② 옛 문자열이 컴포넌트 출력에 없다
  * ③ 저장소의 소스 파일 어디에도 옛 문자열이 남지 않는다(정의 파일 `transitions.css`와 회귀 단언을 담은 테스트 파일만 예외).
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)와 파일 읽기로 확인한다.
@@ -20,38 +20,9 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import ListRowCard from '../ListRowCard'
 import CollectionGridCard from '../CollectionGridCard'
 
 const OLD_PRESS = 'active:scale-[0.98]'
-
-describe('ListRowCard — 눌림은 .jam-press다', () => {
-  it('링크 행에 붙고 옛 문자열은 없다', () => {
-    const html = renderToStaticMarkup(<ListRowCard title="제목" href="/somewhere" />)
-    expect(html).toContain('jam-press')
-    expect(html).toContain('cursor-pointer')
-    expect(html).not.toContain(OLD_PRESS)
-    expect(html).not.toContain('duration-100')
-  })
-
-  it('버튼 행에 붙는다', () => {
-    const html = renderToStaticMarkup(<ListRowCard title="제목" onClick={() => {}} />)
-    expect(html).toContain('jam-press')
-    expect(html).not.toContain(OLD_PRESS)
-  })
-
-  it('비활성(disabled) 버튼 행에는 붙지 않는다', () => {
-    const html = renderToStaticMarkup(<ListRowCard title="제목" onClick={() => {}} disabled />)
-    expect(html).not.toContain('jam-press')
-    expect(html).not.toContain(OLD_PRESS)
-  })
-
-  it('링크도 버튼도 아닌 행에는 붙지 않는다', () => {
-    const html = renderToStaticMarkup(<ListRowCard title="제목" />)
-    expect(html).not.toContain('jam-press')
-    expect(html).not.toContain(OLD_PRESS)
-  })
-})
 
 describe('CollectionGridCard — 눌림은 .jam-press다', () => {
   const props = { name: '컬렉션', imageUrl: null, collected: 1, total: 4 }

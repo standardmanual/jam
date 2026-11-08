@@ -94,10 +94,6 @@
       "sourcePath": "components/patterns/BadgeGridCard.jsx"
     },
     {
-      "name": "ListRowCard",
-      "sourcePath": "components/patterns/ListRowCard.jsx"
-    },
-    {
       "name": "CollectionGridCard",
       "sourcePath": "components/patterns/CollectionGridCard.jsx"
     },
