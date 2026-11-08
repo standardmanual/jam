@@ -657,7 +657,7 @@ combination_recipe_slots {
 }
 combine_policy {
   fail_reward_points: integer      -- 미매칭 시 지급하는 고정 포인트
-  tier_up_probability: numeric     -- 등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률(0 이상 1 이하, 기본 0.7). 나머지는 같은 등급
+  tier_up_probability: numeric     -- 등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률(0 이상 1 이하, 기본 0.7). 나머지는 같은 등급. Mystic 재료는 이 값과 무관하게 Mystic 100%
 }
 ```
 
@@ -668,6 +668,18 @@ combine_policy {
 재료를 소각하기 전에 `recipe_not_found`로 거절한다. 종료 시각은 선택이고(비우면 상시) 공개 뒤에도 바꾸거나
 지울 수 있다. 종료된 레시피로 이미 받은 보상은 그대로다. 레시피를 내리는 길은 종료 시각이고, 삭제도
 남는다(삭제 가드 포함).
+
+### 8-3. 등급 올리기 (레시피 없음)
+
+**관련 파일:** `src/lib/combine/tierUp.ts`, `src/lib/combine/tierUpOdds.ts`, `src/app/api/combine/tier-up/route.ts`
+
+레시피 행 없이 규칙 하나로 처리하는 믹스의 예외다. 규칙 정본은 코드 머리말(`tierUp.ts`)과 운영 로직 8.4절이다.
+
+- 재료: 같은 등급의 내 아이템 배지 6개, 중복 없음. 트라이브·컬렉션·아이템 이름은 상관없다. Mystic도 재료가 된다.
+- 유저는 컬렉션을 고르지 않는다(API는 `itemIds`만 받고 `collectionId`는 무시한다).
+- 결과 등급: 바로 위 등급이 `combine_policy.tier_up_probability`(기본 0.7), 재료 등급 그대로가 나머지다. Mystic 재료는 윗등급이 없어 Mystic 100%다.
+- 결과 아이템: 소속 트라이브의 활성 컬렉션(공개 기간 안) 전체에서 정한 등급의 아이템 배지마다 같은 확률로 정한다. 정한 등급의 후보가 없으면 아래 등급으로 내려가지 않는다.
+- 소각 전 거절: 트라이브의 활성 컬렉션 전체에 재료 등급과 바로 위 등급의 아이템 배지가 모두 없으면(Mystic 재료는 Mystic만) `no_candidate`로 거절한다. 굴린 뒤 정한 등급의 후보가 없을 때도 소각 전에 같은 사유로 거절한다. 거절은 재료·포인트·점수를 바꾸지 않는다.
 
 ---
 

@@ -874,7 +874,7 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 
 **JAM 2.0 등급 올리기는 레시피 행을 만들지 않는다 (티켓 20261022_2119, 7-7a)**: 등급 올리기는 `combination_recipes`·`combination_recipe_slots`에 행을 넣지 않고 규칙 하나로 처리한다(사용자 결정 2026-10-23).
 처음 계획한 레시피 1,350건(마이그레이션 283)은 공용 DB에 적용된 적 없이 폐기했고 파일을 지웠다. 이 기능으로 스키마는 바뀌지 않는다.
-규칙(재료 같은 등급 5개, 결과 등급은 확률로 정해짐, 아이템은 균등)은 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이다.
+규칙(재료 같은 등급 6개·Mystic 재료 허용, 컬렉션 선택 없음, 결과 등급은 확률로 정해짐, 아이템은 소속 트라이브의 활성 컬렉션 전체에서 균등)은 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이다.
 
 **삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200): `combination_recipes.id`를 FK로 참조하는
 테이블은 없다. 대신 삭제되지 않은(`deleted_at IS NULL`) 배지의 조건
@@ -889,7 +889,7 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 ### combine_policy (싱글톤)
 `fail_reward_points`(미매칭 시 지급할 고정 포인트)와 `tier_up_probability`(등급 올리기에서 결과 등급이 재료 등급의 바로 위일 확률) 두 칸이 있다. 트라이브 다양성 티어
 확률 정책·피티 카운터(`user_combine_state`)는 2026-09-10 폐기됐다.
-`tier_up_probability`는 마이그레이션 287(티켓 20261023_1648, 7-7b 1회)이 더한 `NUMERIC NOT NULL DEFAULT 0.7`이고 `CHECK`로 0 이상 1 이하만 받는다. 0.7이면 윗등급 70%, 같은 등급 30%다. 재료 등급마다 따로 두지 않는 한 칸이다. 이 칸은 서버 규칙(`getCombinePolicy`)·확률 안내(`COMBINE_COLUMNS`, 칸을 엄격하게 읽음)·어드민 칸이 읽고 쓴다(7-7b 2·4회). 코드의 `DEFAULT_COMBINE_POLICY.tier_up_probability`(0.7)가 칸이 없는 DB에서도 같은 값으로 움직이게 한다.
+`tier_up_probability`는 마이그레이션 287(티켓 20261023_1648, 7-7b 1회)이 더한 `NUMERIC NOT NULL DEFAULT 0.7`이고 `CHECK`로 0 이상 1 이하만 받는다. 0.7이면 윗등급 70%, 같은 등급 30%다. Common·Rare·Epic 재료가 같은 한 칸이고, Mystic 재료는 윗등급이 없어 이 칸과 무관하게 Mystic 100%다. 이 칸은 서버 규칙(`getCombinePolicy`)·확률 안내(`COMBINE_COLUMNS`, 칸을 엄격하게 읽음)·어드민 칸이 읽고 쓴다(7-7b 2·4회). 코드의 `DEFAULT_COMBINE_POLICY.tier_up_probability`(0.7)가 칸이 없는 DB에서도 같은 값으로 움직이게 한다.
 편집 화면은 어드민 «밸런스 설정»의 «컬렉션과 믹스» 구역이다(`/admin/balance#collection`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 지금 화면에서 고치는 칸은 `fail_reward_points`(0 이상 정수)와 `tier_up_probability`(화면은 퍼센트 0~100, DB는 0~1)이고, 저장하면 `updated_at`을 직접 올리며 변경 이력이 남는다. 두 칸을 함께 바꿔도 한 행이라 한 번의 갱신이다.
 옛 «믹스 정책» 화면(`/admin/combine-policy`)과 그 API는 없앴다. 정책 대시보드의 저장 라우트(`PUT /api/admin/policy-dashboard/field`)도 티켓 20261022_1717에서 없앴다. `lib/combine/policy.ts`의 `updateCombinePolicy`는 부르는 곳이 없어졌지만 함수와 시험은 남아 있다(삭제는 후속).
 
