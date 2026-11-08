@@ -798,6 +798,8 @@ export const ko = {
     tagNew: 'NEW',
     tagDone: '완료',
     tagJoined: '참가중',
+    /** 종료 탭에서 내가 참가한 미션의 상태 칩 */
+    tagJoinedEnded: '참가종료',
     tagUpcoming: '시작전',
     tagEnded: '종료됨',
     tagPermanent: '상시',

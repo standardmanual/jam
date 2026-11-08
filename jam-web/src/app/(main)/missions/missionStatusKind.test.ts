@@ -11,6 +11,17 @@ describe('missionStatusKind — 상단 상태 라벨 우선순위', () => {
     expect(missionStatusKind(f, true)).toBe('period')
   })
 
+  it('종료 탭에서 참가한 미션은 참가종료이고, 완료·잠김은 그대로 먼저다', () => {
+    expect(missionStatusKind({ ...f, joined: true }, true, true)).toBe('joinedEnded')
+    expect(missionStatusKind({ ...f, done: true, joined: true }, true, true)).toBe('done')
+    expect(missionStatusKind({ ...f, locked: true, joined: true }, true, true)).toBe('locked')
+  })
+
+  it('종료 탭에서도 참가하지 않은 미션은 기간 라벨이고, 진행 탭의 참가 미션은 참가중이다', () => {
+    expect(missionStatusKind(f, true, true)).toBe('period')
+    expect(missionStatusKind({ ...f, joined: true }, true, false)).toBe('joined')
+  })
+
   it('시작 전이어도 완료·잠김이 먼저다', () => {
     expect(missionStatusKind({ ...f, done: true }, false)).toBe('done')
     expect(missionStatusKind({ ...f, locked: true }, false)).toBe('locked')

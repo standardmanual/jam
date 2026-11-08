@@ -142,7 +142,9 @@ function periodText(m: MissionListItem, tab: Tab): string {
 // 우선순위 하나로 합친다(우선순위 판정은 missionStatusKind.ts). 잠긴 이유
 // 안내는 이 라벨이 아니라 아래 "조건" 행(lockedHintText 포함)이 맡는다.
 function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
-  switch (missionStatusKind(m, started)) {
+  switch (missionStatusKind(m, started, tab === 'ended')) {
+    case 'joinedEnded':
+      return <ListRowChip>{d.missions.tagJoinedEnded}</ListRowChip>
     case 'joined':
       return <ListRowChip tone="done">{d.missions.tagJoined}</ListRowChip>
     case 'done':
