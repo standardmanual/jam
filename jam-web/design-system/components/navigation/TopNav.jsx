@@ -78,6 +78,9 @@ export function TopNav({
                       // 제목이 chevron 바로 옆에 붙도록 오른쪽 여백을 당긴다(띄어쓰기 한 칸 정도). 터치 영역 44×44는 그대로 두려고
                       // 버튼을 제목 위 층에 올린다(티켓 20261104_2131)
                       marginRight: -17, position: 'relative', zIndex: 1,
+                      // 눈에 보이는 chevron 왼쪽 끝을 헤더 안쪽 여백(16)에 맞춘다. 버튼 왼쪽 끝 + 10(아이콘 여백) + 8.25(선 시작) = 18.25라
+                      // 왼쪽으로 18 당겨 오른쪽 슬롯의 16 여백과 좌우를 맞춘다. 터치 영역 44×44는 그대로다(티켓 20261108_1929)
+                      marginLeft: -18,
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">
@@ -95,6 +98,9 @@ export function TopNav({
                       // 제목이 chevron 바로 옆에 붙도록 오른쪽 여백을 당긴다(띄어쓰기 한 칸 정도). 터치 영역 44×44는 그대로 두려고
                       // 버튼을 제목 위 층에 올린다(티켓 20261104_2131)
                       marginRight: -17, position: 'relative', zIndex: 1,
+                      // 눈에 보이는 chevron 왼쪽 끝을 헤더 안쪽 여백(16)에 맞춘다. 버튼 왼쪽 끝 + 10(아이콘 여백) + 8.25(선 시작) = 18.25라
+                      // 왼쪽으로 18 당겨 오른쪽 슬롯의 16 여백과 좌우를 맞춘다. 터치 영역 44×44는 그대로다(티켓 20261108_1929)
+                      marginLeft: -18,
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">
