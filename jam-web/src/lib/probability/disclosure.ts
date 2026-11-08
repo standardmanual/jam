@@ -245,7 +245,8 @@ const RARITY_LABEL_BY_VALUE: Record<BadgeRarity, string> = {
  */
 export function buildTierUpDisclosure(tierUpProbability: number): TierUpDisclosure {
   return {
-    materials: TIER_UP_MATERIAL_RARITIES.map((material) => {
+    // Mystic 재료 표(Mystic 100%)는 확률 안내 개정(티켓 20261108 3회차)에서 더한다. 그 전에는 서버 규칙(Mystic 재료 허용)과 달리 Mystic 줄을 싣지 않는다.
+    materials: TIER_UP_MATERIAL_RARITIES.filter((material) => material !== 'mystic').map((material) => {
       const label = RARITY_LABEL_BY_VALUE[material]
       return {
         heading: `${label} ${TIER_UP_MATERIAL_COUNT}개를 넣으면`,

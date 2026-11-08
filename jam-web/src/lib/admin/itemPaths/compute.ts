@@ -12,7 +12,7 @@
  * | 믹스 | `isRecipeReleased`로 공개 중인 레시피의 `reward_badge_ids`에 그 아이템이 있다 |
  * | 미션 | `isMissionExposed`(노출) 그리고 `isMissionActive`(진행 중)인 미션의 `reward_badge_ids`에 그 아이템이 있다 |
  * | 동기화·캡슐 | `drop-engine/syncIssue.ts`의 `listIssueCandidates`(안에서 `isIssuableBook`)가 그 아이템을 후보로 돌려준다. 컬렉션의 `tribe_id`가 그 풀의 트라이브다 |
- * | 등급 올리기 | 위 동기화·캡슐 길이 열려 있고, 컬렉션이 `combine/tierUpCollections.ts`의 `issuableRaritiesByBook`과 `combine/tierUpOdds.ts`의 `collectionSupportsTierUp`으로 그 등급이 나올 재료 등급을 받는다 |
+ * | 등급 올리기 | 위 동기화·캡슐 길이 열려 있고, 컬렉션이 속한 트라이브의 활성 컬렉션 전체가 `combine/tierUpCollections.ts`의 `issuableRaritiesByBook`과 `combine/tierUpOdds.ts`의 `tribeSupportsTierUp`으로 그 등급이 나올 재료 등급을 받는다 |
  *
  * ## 드랍 길과 동기화·캡슐 길은 무엇이 같고 다른가
  *
@@ -26,9 +26,10 @@
  *
  * ## 등급 올리기 길
  *
- * 결과 등급은 재료 등급 그대로 또는 바로 위 등급이다(`combine/tierUp.ts`). 재료가 될 수 있는 등급은 Common·Rare·Epic이라 결과로 나올 수 있는 등급은 Common부터 Mystic까지다
- * (Common은 Common 재료의 «같은 등급» 결과). 어떤 아이템의 등급이 어떤 재료 등급(M)의 결과로 나올 수 있고, 컬렉션에서 지금 나올 수 있는 등급이 M과 M의 바로 윗등급을
- * 모두 갖고 있으면 열린다(믹스 화면 목록과 서버의 `invalid_collection` 검사가 같은 `collectionSupportsTierUp`을 쓴다). 윗등급 확률(`tier_up_probability`)은 읽지 않는다 —
+ * 결과 등급은 재료 등급 그대로 또는 바로 위 등급이다(`combine/tierUp.ts`). 재료가 될 수 있는 등급은 Common·Rare·Epic·Mystic이고 Mystic 재료의 결과는 Mystic뿐이다
+ * (윗등급 없음, 2026-11-08). 컬렉션을 유저가 고르지 않고 서버가 소속 트라이브의 활성 컬렉션 전체에서 뽑으므로, 판정 단위는 컬렉션이 아니라 **그 컬렉션이 속한 트라이브**다.
+ * 어떤 아이템의 등급이 어떤 재료 등급(M)의 결과로 나올 수 있고, 트라이브의 활성 컬렉션 전체에서 지금 나올 수 있는 등급이 M과 M의 바로 윗등급을
+ * 모두 갖고 있으면 열린다(서버의 시작 검사와 같은 `tribeSupportsTierUp`). 윗등급 확률(`tier_up_probability`)은 읽지 않는다 —
  * 0이나 1로 정하면 한쪽 결과가 안 나오지만 그건 가용성이 아니라 확률 설정이다.
  *
  * ## 잠긴 배지 (길이 아니다)
@@ -48,7 +49,7 @@
 import { isItemBookDroppable, isItemBookLaunched } from '@/lib/itembook/visibility'
 import { recipeReleaseState } from '@/lib/combine/visibility'
 import { issuableRaritiesByBook } from '@/lib/combine/tierUpCollections'
-import { TIER_UP_MATERIAL_RARITIES, collectionSupportsTierUp, tierUpUpperRarity } from '@/lib/combine/tierUpOdds'
+import { TIER_UP_MATERIAL_RARITIES, tribeSupportsTierUp, tierUpUpperRarity } from '@/lib/combine/tierUpOdds'
 import { listIssueCandidates } from '@/lib/drop-engine/syncIssue'
 import { isMissionExposed } from '@/lib/missions/visibility'
 import { isMissionActive } from '@/lib/missions/checker'
@@ -137,24 +138,24 @@ function computeSyncCapsulePath(
 
 /**
  * 등급 올리기의 결과로 이 등급이 나올 수 있는가 — 재료 등급(M)마다 결과는 M 또는 M의 바로 윗등급이고,
- * 컬렉션이 M으로 받을 수 있어야(`collectionSupportsTierUp`: M과 바로 윗등급이 모두 나올 수 있음) 한다.
+ * 트라이브가 M으로 시작할 수 있어야(`tribeSupportsTierUp`: M과 바로 윗등급이 모두 나올 수 있음) 한다. Mystic 재료(M = Mystic)의 결과는 Mystic뿐이다.
  */
-function tierUpReachable(rarity: BadgeRarity, collectionRarities: ReadonlySet<BadgeRarity>): boolean {
-  const available = [...collectionRarities]
+function tierUpReachable(rarity: BadgeRarity, tribeRarities: ReadonlySet<BadgeRarity>): boolean {
+  const available = [...tribeRarities]
   return TIER_UP_MATERIAL_RARITIES.some(
     (material) =>
-      (rarity === material || rarity === tierUpUpperRarity(material)) && collectionSupportsTierUp(available, material),
+      (rarity === material || rarity === tierUpUpperRarity(material)) && tribeSupportsTierUp(available, material),
   )
 }
 
-/** 등급 올리기 길 — 아이템이 발급 풀에 들고(동기화·캡슐 길이 열림) 컬렉션이 그 등급을 낼 재료 등급을 받아야 열린다 */
+/** 등급 올리기 길 — 아이템이 발급 풀에 들고(동기화·캡슐 길이 열림) 컬렉션의 트라이브가 그 등급을 낼 재료 등급을 받아야 열린다 */
 function computeTierUpPath(
   syncCapsule: SyncCapsulePath,
   item: ItemPathItemInput,
-  collectionRarities: ReadonlySet<BadgeRarity>,
+  tribeRarities: ReadonlySet<BadgeRarity>,
 ): TierUpPath {
   if (!syncCapsule.open || !item.rarity) return { open: false, reasons: syncCapsule.reasons }
-  if (tierUpReachable(item.rarity, collectionRarities)) return { open: true, reasons: [] }
+  if (tierUpReachable(item.rarity, tribeRarities)) return { open: true, reasons: [] }
   return { open: false, reasons: [R.tierUpRarityPairMissing] }
 }
 
@@ -243,10 +244,10 @@ export function summarizeCollection(
 }
 
 /**
- * 컬렉션마다 «지금 동기화·캡슐로 나올 수 있는 등급» — 등급 올리기 길이 쓴다. 소속 트라이브가 없는 컬렉션은 맵에 없다.
- * 믹스 화면의 목록과 서버가 쓰는 `issuableRaritiesByBook`을 컬렉션 하나씩 그대로 부른다.
+ * 트라이브마다 «지금 동기화·캡슐로 나올 수 있는 등급» — 등급 올리기 길이 쓴다. 트라이브의 활성 컬렉션 전체를 합친 등급이다.
+ * 소속 트라이브가 없는 컬렉션은 어느 트라이브에도 들지 않는다. 서버가 쓰는 `issuableRaritiesByBook`을 컬렉션 하나씩 그대로 불러 트라이브별로 합친다.
  */
-function issuableRaritiesOf(
+function issuableRaritiesOfTribe(
   collections: readonly ItemPathCollectionInput[],
   items: readonly ItemPathItemInput[],
   now: Date,
@@ -267,7 +268,10 @@ function issuableRaritiesOf(
       badges: itemsByBook.get(collection.id) ?? [],
       now,
     }).get(collection.id)
-    if (rarities) result.set(collection.id, rarities)
+    if (!rarities) continue
+    const merged = result.get(collection.tribe_id) ?? new Set<BadgeRarity>()
+    for (const rarity of rarities) merged.add(rarity)
+    result.set(collection.tribe_id, merged)
   }
   return result
 }
@@ -278,7 +282,7 @@ export function computeItemPaths(input: ComputeItemPathsInput): ComputeItemPaths
   const nowIso = now.toISOString()
 
   const collectionById = new Map(collections.map((c) => [c.id, c]))
-  const raritiesByCollection = issuableRaritiesOf(collections, items, now)
+  const raritiesByTribe = issuableRaritiesOfTribe(collections, items, now)
   const recipesByBadge = indexByRewardBadge(recipes)
   const missionsByBadge = indexByRewardBadge(missions)
 
@@ -290,7 +294,7 @@ export function computeItemPaths(input: ComputeItemPathsInput): ComputeItemPaths
 
     const drop = computeDropPath(collection, item, nowIso)
     const syncCapsule = computeSyncCapsulePath(collection, item, now, nowIso)
-    const tierUp = computeTierUpPath(syncCapsule, item, raritiesByCollection.get(collection.id) ?? new Set())
+    const tierUp = computeTierUpPath(syncCapsule, item, (collection.tribe_id ? raritiesByTribe.get(collection.tribe_id) : undefined) ?? new Set())
 
     const recipesOfItem = recipesByBadge.get(item.id) ?? []
     const openRecipeIds: string[] = []

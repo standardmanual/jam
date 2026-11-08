@@ -2,7 +2,7 @@
  * 확률 안내의 등급 올리기 표 데이터 (티켓 20261022_2119 4회, 20261023_1648 2회, 운영 로직 8.4·18.3절, 채원 사전 판정 2026-10-23)
  *
  * 고정하는 것:
- * - 기본 설정(`combine_policy.tier_up_probability` 0.7)에서 재료 등급별 표 값이 정확히 Common 5개 30/70, Rare 5개 30/70, Epic 5개 30/70이고
+ * - 기본 설정(`combine_policy.tier_up_probability` 0.7)에서 재료 등급별 표 값이 정확히 Common 6개 30/70, Rare 6개 30/70, Epic 6개 30/70이고
  *   줄은 «넣은 등급 그대로»가 먼저, «바로 위 등급»이 아래다. 표는 재료 등급마다 정확히 두 줄이다. 트라이브 표는 없다.
  * - 값은 읽은 설정에서 만든다: 0.5면 50/50, 0.333이면 66.7/33.3이 되고 문자열로 박힌 숫자가 없다. 1 - p의 부동소수 오차(0.30000000000000004)는 «30%»로 정리된다.
  * - 서버 굴림과 같은 함수: 표의 값이 `tierUpProbabilities`의 출력을 `formatFraction`으로 바꾼 것과 같다.
@@ -24,6 +24,9 @@ vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClie
 import { ALL_OK, CAPSULE_ROW, COMBINE_ROW, failed, fakeClient, ok, type Result } from './fixtures'
 import { DEFAULT_COMBINE_POLICY } from '@/lib/combine/policy'
 import { TIER_UP_MATERIAL_COUNT, TIER_UP_MATERIAL_RARITIES, tierUpProbabilities } from '@/lib/combine/tierUpOdds'
+
+/** 확률 안내가 싣는 재료 등급 — Mystic 표는 확률 안내 개정(티켓 20261108 3회차)에서 더한다 */
+const DISCLOSED_MATERIALS = TIER_UP_MATERIAL_RARITIES.filter((material) => material !== 'mystic')
 import { buildTierUpDisclosure, formatFraction, loadProbabilityDisclosure, type TierUpDisclosure, type TierUpMaterialDisclosure } from '../disclosure'
 
 const asMap = (rows: { label: string; value: string }[]) => Object.fromEntries(rows.map((r) => [r.label, r.value]))
@@ -46,14 +49,14 @@ beforeEach(() => {
 })
 
 describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»와 «바로 위 등급» 두 줄', () => {
-  it('Common, Rare, Epic 순서로 표가 세 개이고 Mystic은 재료가 아니다', async () => {
+  it('Common, Rare, Epic 순서로 표가 세 개이고 Mystic 재료 표는 3회차에서 더한다', async () => {
     const { materials } = await loadTierUp()
-    expect(materials.map((m) => m.heading)).toEqual(['Common 5개를 넣으면', 'Rare 5개를 넣으면', 'Epic 5개를 넣으면'])
-    expect(materials).toHaveLength(TIER_UP_MATERIAL_RARITIES.length)
+    expect(materials.map((m) => m.heading)).toEqual(['Common 6개를 넣으면', 'Rare 6개를 넣으면', 'Epic 6개를 넣으면'])
+    expect(materials).toHaveLength(DISCLOSED_MATERIALS.length)
     expect(materials.some((m) => m.heading.includes('Mystic'))).toBe(false)
   })
 
-  it('Common 5개: Common 30% / Rare 70% (낮은 등급이 먼저)', async () => {
+  it('Common 6개: Common 30% / Rare 70% (낮은 등급이 먼저)', async () => {
     const [common] = (await loadTierUp()).materials
     expect(common.rows).toEqual([
       { label: 'Common', value: '30%' },
@@ -61,7 +64,7 @@ describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»
     ])
   })
 
-  it('Rare 5개: Rare 30% / Epic 70%', async () => {
+  it('Rare 6개: Rare 30% / Epic 70%', async () => {
     const rare = (await loadTierUp()).materials[1]
     expect(rare.rows).toEqual([
       { label: 'Rare', value: '30%' },
@@ -69,7 +72,7 @@ describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»
     ])
   })
 
-  it('Epic 5개: Epic 30% / Mystic 70%', async () => {
+  it('Epic 6개: Epic 30% / Mystic 70%', async () => {
     const epic = (await loadTierUp()).materials[2]
     expect(epic.rows).toEqual([
       { label: 'Epic', value: '30%' },
@@ -85,17 +88,17 @@ describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»
     expect(labelsOf(materials[2])).not.toContain('Rare')
   })
 
-  it('표마다 caption이 «{등급} 아이템 배지 5개를 넣었을 때 받는 등급 확률»이다', async () => {
+  it('표마다 caption이 «{등급} 아이템 배지 6개를 넣었을 때 받는 등급 확률»이다', async () => {
     const { materials } = await loadTierUp()
     expect(materials.map((m) => m.caption)).toEqual([
-      'Common 아이템 배지 5개를 넣었을 때 받는 등급 확률',
-      'Rare 아이템 배지 5개를 넣었을 때 받는 등급 확률',
-      'Epic 아이템 배지 5개를 넣었을 때 받는 등급 확률',
+      'Common 아이템 배지 6개를 넣었을 때 받는 등급 확률',
+      'Rare 아이템 배지 6개를 넣었을 때 받는 등급 확률',
+      'Epic 아이템 배지 6개를 넣었을 때 받는 등급 확률',
     ])
   })
 
-  it('«5개»는 코드 상수 TIER_UP_MATERIAL_COUNT에서 온다', async () => {
-    expect(TIER_UP_MATERIAL_COUNT).toBe(5)
+  it('«6개»는 코드 상수 TIER_UP_MATERIAL_COUNT에서 온다', async () => {
+    expect(TIER_UP_MATERIAL_COUNT).toBe(6)
     const { materials } = await loadTierUp()
     for (const m of materials) {
       expect(m.heading).toContain(`${TIER_UP_MATERIAL_COUNT}개를 넣으면`)
@@ -165,7 +168,7 @@ describe('값은 읽은 설정에서 만든다 — 설정을 바꾸면 표가 �
 describe('서버 굴림과 같은 함수 — 표의 값이 tierUpProbabilities의 출력이다', () => {
   it.each([0, 0.2, 0.333, 0.5, 0.7, 0.9, 1])('윗등급 확률 %s', (p) => {
     const d = buildTierUpDisclosure(p)
-    TIER_UP_MATERIAL_RARITIES.forEach((material, i) => {
+    DISCLOSED_MATERIALS.forEach((material, i) => {
       const expected = tierUpProbabilities(material, p).map(([r, probability]) => ({
         label: r.charAt(0).toUpperCase() + r.slice(1),
         value: formatFraction(probability),

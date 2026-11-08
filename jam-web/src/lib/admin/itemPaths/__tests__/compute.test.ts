@@ -9,7 +9,7 @@
  * 5. 경계 시각 — 레시피 종료는 제외(`<`)·컬렉션 종료는 포함(`<=`), 기존 판정 함수와 같은 결과
  * 6. 여러 레시피·미션 ID는 중복 없이 모은다
  * 7. 동기화·캡슐 길 — `listIssueCandidates`와 열림이 같고, 트라이브·등급이 없으면 닫힌다. 컬렉션·아이템 사유는 드랍 길과 같은 상수를 쓴다 (티켓 20261022_1136 2회)
- * 8. 등급 올리기 길 — 컬렉션에 바로 아래 또는 바로 위 등급의 아이템이 함께 나올 수 있을 때만 열린다. 네 등급의 모든 조합을 대조한다
+ * 8. 등급 올리기 길 — 컬렉션이 속한 트라이브의 활성 컬렉션 전체에서 재료 등급과 바로 윗등급이 함께 나올 수 있을 때만 열린다(Mystic은 Mystic 재료로 늘 열린다). 네 등급의 모든 조합을 대조한다 (티켓 20261108_2321)
  * 9. 잠긴 배지 — 어느 길이든 잠긴 채 받는 모습만 싣고 열림 판정에는 쓰지 않는다. 필요 포인트는 배지 등급의 `jam_policy.locked_points_*`다
  * 10. 새 길은 드랍 길의 부분집합이라 아이템 상태(열림/막힘/드랍 제외)를 바꾸지 않는다(격자 대조)
  */
@@ -536,29 +536,34 @@ describe('등급 올리기 길', () => {
     expect(r.rare.tierUp).toEqual({ open: true, reasons: [] })
   })
 
-  it('한 등급만 나올 수 있는 컬렉션은 닫히고(tier_up_rarity_pair_missing) 동기화·캡슐 길은 그대로 열린다', () => {
+  it('한 등급만 나올 수 있는 트라이브는 닫히고(tier_up_rarity_pair_missing) 동기화·캡슐 길은 그대로 열린다', () => {
     const r = runRarities(['rare'])
     expect(r.rare.tierUp).toEqual({ open: false, reasons: ['tier_up_rarity_pair_missing'] })
     expect(r.rare.syncCapsule.open).toBe(true)
     expect(r.rare.status).toBe('open')
   })
 
-  it('이웃하지 않은 등급(Common과 Epic, Rare와 Mystic)은 짝이 아니라 닫힌다', () => {
+  it('이웃하지 않은 등급(Common과 Epic, Rare와 Mystic)은 짝이 아니라 닫힌다 — Mystic은 Mystic 재료로 열린다', () => {
     const a = runRarities(['common', 'epic'])
     expect(a.common.tierUp.open).toBe(false)
     expect(a.epic.tierUp.open).toBe(false)
     const b = runRarities(['rare', 'mystic'])
     expect(b.rare.tierUp.open).toBe(false)
-    expect(b.mystic.tierUp.open).toBe(false)
+    expect(b.mystic.tierUp.open).toBe(true)
   })
 
-  it('네 등급의 모든 조합 — 바로 아래 또는 바로 위 등급이 함께 나올 수 있는 아이템만 열린다', () => {
+  it('Mystic 아이템만 있는 트라이브도 열린다 — Mystic 재료 6개로 Mystic이 나온다(윗등급 조건 없음)', () => {
+    const r = runRarities(['mystic'])
+    expect(r.mystic.tierUp).toEqual({ open: true, reasons: [] })
+  })
+
+  it('네 등급의 모든 조합 — 바로 아래 또는 바로 위 등급이 함께 나올 수 있는 아이템만 열리고, Mystic은 늘 열린다', () => {
     for (let mask = 1; mask < 16; mask++) {
       const present = ORDER.filter((_, bit) => (mask & (1 << bit)) !== 0)
       const r = runRarities(present)
       for (const rarity of present) {
         const index = ORDER.indexOf(rarity)
-        const expected = present.includes(ORDER[index - 1]) || present.includes(ORDER[index + 1])
+        const expected = rarity === 'mystic' || present.includes(ORDER[index - 1]) || present.includes(ORDER[index + 1])
         expect(r[rarity].tierUp.open, `${present.join('+')} 중 ${rarity}`).toBe(expected)
       }
     }
@@ -576,7 +581,7 @@ describe('등급 올리기 길', () => {
     expect(r.rare.tierUp.reasons).toEqual(['tier_up_rarity_pair_missing'])
   })
 
-  it('다른 컬렉션의 아이템은 짝으로 세지 않는다', () => {
+  it('같은 트라이브의 다른 컬렉션 아이템은 짝으로 센다 — 트라이브의 활성 컬렉션 전체가 풀이다', () => {
     const result = computeItemPaths({
       collections: [collection({ id: 'c1' }), collection({ id: 'c2' })],
       items: [item({ id: 'a', item_book_id: 'c1', rarity: 'common' }), item({ id: 'b', item_book_id: 'c2', rarity: 'rare' })],
@@ -585,7 +590,33 @@ describe('등급 올리기 길', () => {
       lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     })
+    expect(result.items.map((r) => r.tierUp.open)).toEqual([true, true])
+  })
+
+  it('다른 트라이브의 컬렉션 아이템은 짝으로 세지 않는다', () => {
+    const result = computeItemPaths({
+      collections: [collection({ id: 'c1', tribe_id: 't1' }), collection({ id: 'c2', tribe_id: 't2' })],
+      items: [item({ id: 'a', item_book_id: 'c1', rarity: 'common' }), item({ id: 'b', item_book_id: 'c2', rarity: 'rare' })],
+      recipes: [],
+      missions: [],
+      lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
+      now: NOW,
+    })
     expect(result.items.map((r) => r.tierUp.open)).toEqual([false, false])
+  })
+
+  it('비활성·기간이 끝난 같은 트라이브 컬렉션의 아이템은 짝으로 세지 않는다', () => {
+    for (const over of [{ is_active: false }, { valid_until: PAST }, { drop_excluded: true }] as const) {
+      const result = computeItemPaths({
+        collections: [collection({ id: 'c1' }), collection({ id: 'c2', ...over })],
+        items: [item({ id: 'a', item_book_id: 'c1', rarity: 'common' }), item({ id: 'b', item_book_id: 'c2', rarity: 'rare' })],
+        recipes: [],
+        missions: [],
+        lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
+        now: NOW,
+      })
+      expect(result.items.find((r) => r.itemId === 'a')?.tierUp, JSON.stringify(over)).toEqual({ open: false, reasons: ['tier_up_rarity_pair_missing'] })
+    }
   })
 
   it('소속 트라이브가 없는 컬렉션은 닫힌다', () => {
