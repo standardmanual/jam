@@ -1,11 +1,11 @@
 /**
  * 카드 면 레시피와 병존 쌍의 값 일치 (티켓 20261015_2133, 1회 카드 계열)
  *
- * 공통 Card default는 `--card-bg` + 투명 1px 테두리(티켓 20261107_2202), 목록·그리드 카드 3종은 `--card-bg` + 외곽선 없음(티켓 20261107_2246) + `--radius-2xl` + 그림자 없음.
+ * 공통 Card default는 `--card-bg` + 투명 1px 테두리(티켓 20261107_2202), 그리드 카드 2종은 `--card-bg` + 외곽선 없음(티켓 20261107_2246) + `--radius-2xl` + 그림자 없음.
  *
  * 확인하는 것
  * ① MODULAR `Card` 세 톤(default·tint·inverse)의 면과 글자색 쌍
- * ② 병존 3쌍(ListRowCard·BadgeGridCard·CollectionGridCard)의 서비스·MODULAR 면·테두리·선택 면이 같은 값이다
+ * ② 병존 2쌍(BadgeGridCard·CollectionGridCard)의 서비스·MODULAR 면·테두리·선택 면이 같은 값이다
  *    (`npm run ds:check`는 색 쌍을 비교하지 못한다 — 이 파일이 그 자리를 맡는다)
  * ③ SlidingTabs 팔레트가 라이트 값이다(흰색 반투명 라벨이 크림 바탕에서 사라지던 것)
  * ④ UserSearchBar·RankingListRow의 면
@@ -22,8 +22,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { Card } from '@ds/components/cards/Card'
-import ServiceListRowCard from '../ListRowCard'
-import { ListRowCard as DsListRowCard } from '@ds/components/patterns/ListRowCard'
 import ServiceBadgeGridCard from '../BadgeGridCard'
 import { BadgeGridCard as DsBadgeGridCard } from '@ds/components/patterns/BadgeGridCard'
 import ServiceCollectionGridCard from '../CollectionGridCard'
@@ -91,37 +89,6 @@ describe('MODULAR Card — 면과 글자색 쌍', () => {
     const html = renderToStaticMarkup(<Card tone={'unknown' as 'default'}>내용</Card>)
     expect(html).toContain(CARD_FACE)
     expect(html).toContain(CARD_BORDER)
-  })
-})
-
-describe('ListRowCard 쌍 — 면·테두리·tint', () => {
-  it('서비스 default는 bg-card-bg이고 외곽선이 없다(티켓 20261107_2203)', () => {
-    const html = renderToStaticMarkup(<ServiceListRowCard title="제목" />)
-    expect(html).toContain('bg-card-bg')
-    expect(html).not.toContain('border')
-    expect(html).not.toContain('bg-background-secondary')
-  })
-
-  it('서비스 tint는 bg-background-secondary이고 테두리·bg-surface가 없다', () => {
-    const html = renderToStaticMarkup(<ServiceListRowCard tone="tint" title="제목" />)
-    expect(html).toContain('bg-background-secondary')
-    expect(html).not.toContain('border-border')
-    expect(html).not.toContain('bg-surface')
-  })
-
-  it('MODULAR default·tint가 서비스와 같은 면·테두리 값이다', () => {
-    const def = renderToStaticMarkup(<DsListRowCard title="제목" />)
-    expect(def).toContain(CARD_FACE)
-    expect(def).not.toContain(BORDER)
-
-    const tint = renderToStaticMarkup(<DsListRowCard tone="tint" title="제목" />)
-    expect(tint).toContain('background:var(--background-secondary)')
-    expect(tint).not.toContain('border:')
-  })
-
-  it('알 수 없는 tone은 default로 그린다(서비스·MODULAR 모두)', () => {
-    expect(renderToStaticMarkup(<ServiceListRowCard tone={'x' as 'default'} title="제목" />)).toContain('bg-card-bg')
-    expect(renderToStaticMarkup(<DsListRowCard tone={'x' as 'default'} title="제목" />)).toContain(CARD_FACE)
   })
 })
 

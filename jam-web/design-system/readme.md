@@ -102,7 +102,7 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion, Carousel(센터 포커스·무한 루프 카드 캐러셀)
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox
-* `components/patterns/` — BadgeGridCard(`locked` 잠김 카드 포함), ListRowCard, ListRow(목록 행 한 골격, 슬롯 구성으로 활동·대상·사람·값·체크 목록 계열을 만든다. 정식 정의. 새 화면은 ListRow를 쓰고 ListRowCard는 서비스 이식이 끝나면 폐기 예정), CollectionGridCard, BadgeRevealCarousel(선택 모드·위아래 슬롯·closeDisabled 포함), ItemSerialCode, PointText(포인트 값+«포인트» 글자를 `--point-text` 오렌지로 그림), MixerSlot (서비스 공통 UI 패턴)
+* `components/patterns/` — BadgeGridCard(`locked` 잠김 카드 포함), ListRow(목록 행 한 골격, 슬롯 구성으로 활동·대상·사람·값·체크 목록 계열을 만든다), CollectionGridCard, BadgeRevealCarousel(선택 모드·위아래 슬롯·closeDisabled 포함), ItemSerialCode, PointText(포인트 값+«포인트» 글자를 `--point-text` 오렌지로 그림), MixerSlot (서비스 공통 UI 패턴)
 * `components/icons/` — IconCatalog (라인 아이콘 세트 + 전체 카탈로그 그리드. 서비스
   `src/components/ui/icons.tsx`를 이식한 Storybook 전용 사본 — 서비스는 계속 원본을 단일
   소스로 쓴다, 20260828_2043)

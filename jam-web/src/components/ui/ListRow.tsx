@@ -10,7 +10,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from './icons'
  * 슬롯·prop 설명은 `ListRow.d.ts`·`ListRow.prompt.md` 참고.
  *
  * 서비스 쪽 차이(값은 같다):
- *  - 링크는 `<a>` 대신 `next/link`의 `Link`다(`ListRowCard`와 같다). `leadHref`도 같다.
+ *  - 링크는 `<a>` 대신 `next/link`의 `Link`다. `leadHref`도 같다.
  *  - 아이콘은 서비스 `icons.tsx`다. 크기는 `width`·`height` 대신 `w-5 h-5`(20px)로 맞춘다.
  *  - `ListRowSkeleton`은 서비스에 스켈레톤 부품이 없고 쓰이지 않아 넣지 않았다.
  *

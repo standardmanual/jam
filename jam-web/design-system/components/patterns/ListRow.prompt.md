@@ -1,4 +1,4 @@
-목록 행 한 골격. 활동·대상·사람·값·체크 목록을 슬롯 구성으로 만든다. 기존 `ListRowCard`와 공존한다(서비스는 아직 `ListRowCard`를 쓰고, 이 컴포넌트는 Storybook에서만 쓴다). 자유 `children`은 없다.
+목록 행 한 골격. 활동·대상·사람·값·체크 목록을 슬롯 구성으로 만든다. 서비스 목록 행의 단일 골격이다. 자유 `children`은 없다.
 
 구조는 `[indicator 24][lead 48] [본문: eyebrow·time / title / meta / chips / footer] [value][쉐브론·체크]` + 행 바깥 `trail`이다. 클릭 영역(`href`/`onClick`)은 trail을 뺀 전부를 감싼다.
 

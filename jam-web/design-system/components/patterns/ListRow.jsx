@@ -5,7 +5,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/IconCatal
 /**
  * ListRow — 목록 행 한 골격. 티켓 20261106_1759(2단계 2-2회차, 상위 20261106_1750), 토큰 정식화는 티켓 20261106_2003(3-2회차).
  *
- * 기존 `ListRowCard`(icon·title·subtitle·trailing·children)와 공존한다. 계열마다 마크업을 새로 짜지 않도록
+ * 서비스 목록 행의 단일 골격이다. 계열마다 마크업을 새로 짜지 않도록
  * 슬롯 구성만 바꿔서 활동(A)·대상(B)·사람(C)·값(D)·체크 목록(E) 다섯 계열을 한 골격에서 만든다.
  * 자유 `children` 경로는 두지 않는다.
  *

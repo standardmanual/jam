@@ -78,7 +78,7 @@ accent-content 계열이다. 진행 상태 색은 글자로 쓰지 않는다. �
 ## Elevation & Depth
 
 그림자가 없다. 카드는 흰 면(`--surface`)과 테두리(`--border`)만으로 크림 바탕에서 구분된다. 테두리가 없으면 카드가 보이지 않는다.
-카드 안의 구획(`ListRowCard tone="tint"`, 썸네일 칸, 라벨 칩)은 `--background-secondary` 면에 테두리가 없고, 크림 바탕 위
+카드 안의 구획(`ListRow tone="tint"`, 썸네일 칸, 라벨 칩)은 `--background-secondary` 면에 테두리가 없고, 크림 바탕 위
 단독 카드로는 쓰지 않는다(문서 11 5.1절). 어두운 반전 카드 톤은 선택 신호처럼 면이 어두워야 하는 곳에만 남는다.
 
 예외는 두 가지다. 그림자는 입력창만 남긴다. 블러는 탭바(`--tabbar-blur`)만 남기고, 화면 전환 모션과 블롭 배경 캔버스에만
@@ -99,8 +99,8 @@ accent-content 계열이다. 진행 상태 색은 글자로 쓰지 않는다. �
 
 ### Cards
 - **BadgeGridCard:** 그리드 셀 카드. 썸네일, 이름, RarityBadge 또는 레벨 칩 순서다.
-- **ListRowCard:** 리스트 행. `icon` / `title`+`subtitle` / `trailing` 3분할이다. `tone="default"`는 흰 면과 테두리로 크림 바탕 위에
-  놓고, `tone="tint"`는 이미 카드 안에 들어간 행 전용이다.
+- **ListRow:** 목록 행 한 골격. `[indicator][lead] [본문] [value][쉐브론·체크]` + 행 바깥 `trail`이다. 톤은 `default`·`tint`·`flat`·`inverse`이고,
+  `tone="default"`는 `--surface` 면과 1px `--border`로 크림 바탕 위에 놓고, `tone="tint"`는 이미 카드 안에 들어간 행 전용이다.
 - **ShapeTag:** 범용 칩. accent-content 6색을 인덱스로 순환한다. 글자는 항상 `--foreground`다.
 
 ### Buttons
@@ -119,7 +119,7 @@ accent-content 계열이다. 진행 상태 색은 글자로 쓰지 않는다. �
 - **Do** `--accent`는 면 채우기에만 쓰고 강조 글자·아이콘·선은 `--link`를 쓴다.
 - **Do** 카드는 `rounded-2xl`, 버튼과 태그는 `rounded-full`, 입력창은 `--field-radius`를 쓴다.
 - **Do** 자간을 두지 않고 굵기는 400·500·600·700 중에서 고른다.
-- **Do** 공유 컴포넌트(BadgeGridCard, ListRowCard, RarityBadge 등)의 시각 변경 전에 참조하는 모든 화면을 확인한다.
+- **Do** 공유 컴포넌트(BadgeGridCard, ListRow, RarityBadge 등)의 시각 변경 전에 참조하는 모든 화면을 확인한다.
 
 ### Don't:
 - **Don't** 다크 바탕이나 다크 테마를 만들지 않는다. 이 시스템은 라이트 전용이다.
