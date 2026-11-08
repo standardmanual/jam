@@ -98,11 +98,11 @@ export default function RecipeRewardRow({
   // 등급이 common·null이면 RarityBadge는 null을 돌려주므로 칩이 없을 수 있다.
   const hasRarityChip = showBadge && primary.rarity != null && primary.rarity !== 'common'
   const hasLockedChip = showBadge && rewardLocked
-  // 래퍼가 `items-center`인 이유: ListRow의 eyebrow 래퍼는 align-items가 기본(stretch)이라 8px 등급 칩이 12px 잠김 칩 높이로 늘어난다.
+  // 등급 칩은 `size="row"`라 잠김 칩(ListRowChip)과 같은 12px/20px다. 래퍼 `items-center`는 두 칩을 한 줄 중앙에 맞춘다.
   const eyebrow =
     hasRarityChip || hasLockedChip ? (
       <span className="inline-flex items-center gap-1">
-        {showBadge && <RarityBadge rarity={primary.rarity} />}
+        {showBadge && <RarityBadge rarity={primary.rarity} size="row" />}
         {hasLockedChip && <ListRowChip tone="neutral">{d.lockedItem.detail.chip}</ListRowChip>}
       </span>
     ) : undefined

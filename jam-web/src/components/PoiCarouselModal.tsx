@@ -1109,7 +1109,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
   const eyebrow =
     showRarity || (expiring && expiresAt) ? (
       <>
-        {showRarity && <RarityBadge rarity={rarityValue} />}
+        {showRarity && <RarityBadge rarity={rarityValue} size="row" />}
         {expiring && expiresAt && (
           <ListRowChip tone="neutral">
             <LocalDate iso={expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />

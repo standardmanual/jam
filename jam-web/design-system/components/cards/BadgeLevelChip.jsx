@@ -21,8 +21,12 @@ import React from 'react';
  * `size`를 넘기지 않는 서비스 5개 호출부는 렌더가 달라지지 않는다.
  */
 const SIZES = {
-  sm: { fontSize: '8px', padding: '4px 0' },
-  md: { fontSize: 'var(--text-xs)', padding: '5px 0' },
+  sm: { fontSize: '8px', padding: '4px 0', lineHeight: 1 },
+  md: { fontSize: 'var(--text-xs)', padding: '5px 0', lineHeight: 1 },
+  // row (티켓 20261106_2322) — ListRow 안 칩 전용, ListRowChip과 같은 12px/20px.
+  // 세로 2px은 --list-row-chip-padding(2px 8px)의 세로 값과 같다 — 이 칩은 가로 패딩을 0으로 두고
+  // width로 폭을 잡아서 토큰을 그대로 못 쓴다. 토큰의 세로 값을 바꾸면 여기도 같이 바꾼다.
+  row: { fontSize: 'var(--text-xs)', padding: '2px 0', lineHeight: 'var(--text-xs--line-height)' },
 };
 
 export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '', style = {} }) {
@@ -34,7 +38,7 @@ export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '',
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         width, padding: s.padding, borderRadius: 'var(--radius-full)',
-        fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
+        fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: 700,
         fontVariantNumeric: 'tabular-nums',
         color: 'var(--foreground)', background: 'var(--default-soft)',
         ...style,

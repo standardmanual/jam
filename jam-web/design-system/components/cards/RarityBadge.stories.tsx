@@ -174,3 +174,26 @@ export const Sizes: Story = {
     expect(getComputedStyle(md).paddingLeft).toBe('10px');
   },
 };
+
+/**
+ * 20261106_2322 — `row`. ListRow 안 칩 전용(12px 글자 · 줄높이 16px · 2/8 패딩 = 높이 20px).
+ * ListRowChip과 같은 높이라 한 줄에 놓아도 어긋나지 않는다. sm(16px)·md(22px)는 값이 그대로다.
+ */
+export const RowSize: Story = {
+  name: '20261106_2322 — size row (12px/20px), sm·md 높이 불변',
+  render: () => (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <span data-testid="sm"><RarityBadge rarity="epic" /></span>
+      <span data-testid="row"><RarityBadge rarity="epic" size="row" /></span>
+      <span data-testid="row-mystic"><RarityBadge rarity="mystic" size="row" /></span>
+      <span data-testid="md"><RarityBadge rarity="epic" size="md" /></span>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const el = (id: string) => canvasElement.querySelector(`[data-testid="${id}"] span`) as HTMLElement;
+    expect(getComputedStyle(el('row')).fontSize).toBe('12px');
+    expect(el('row').getBoundingClientRect().height).toBe(20);
+    expect(el('sm').getBoundingClientRect().height).toBe(16);
+    expect(el('md').getBoundingClientRect().height).toBe(22);
+  },
+};
