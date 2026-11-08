@@ -67,7 +67,7 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
 
   const supabase = createServiceClient()
   const [{ data }, { data: earnRows }] = await Promise.all([
-    supabase.from('badges').select('id, name, image_url, rarity, level, deleted_at').in('id', [...badgeIds]),
+    supabase.from('badges').select('id, name, image_url, rarity, level, family_key, deleted_at').in('id', [...badgeIds]),
     // 회차는 활동 배지(user_activity_badges)에만 있다. 체크인 배지의 반복은 예전부터
     // metadata.visit_count로 실려 오므로 여기서 건드리지 않는다.
     // earn_history: 반복 발급형 배지는 재발급돼도 피드 행이 새로 생기지 않는다(§ 파일 상단
@@ -81,7 +81,7 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
 
   const badgeMap = new Map(
     // rarity는 nullable이다(무한레벨형, 마이그레이션 130) — 티켓 20260905_0027 «경계 3곳» 중 하나.
-    ((data ?? []) as { id: string; name: string; image_url: string | null; rarity: string | null; level: number | null; deleted_at: string | null }[])
+    ((data ?? []) as { id: string; name: string; image_url: string | null; rarity: string | null; level: number | null; family_key: string | null; deleted_at: string | null }[])
       .map((b) => [b.id, b])
   )
   const earnCountMap = new Map(
@@ -140,6 +140,7 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
         badge_image_url: live.image_url ?? '',
         rarity: live.rarity,
         level: live.level,
+        family_key: live.family_key ?? null,
       }
 
       const history = key ? earnHistoryMap.get(key) : undefined

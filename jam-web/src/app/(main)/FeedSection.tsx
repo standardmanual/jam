@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, ty
 import { useRouter } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
+import { collapseLeveledBadgeBursts } from '@/lib/activity-feed/collapseLeveled'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
@@ -640,7 +641,7 @@ function collapseRepeatEarns(items: ActivityFeedRow[]): ActivityFeedRow[] {
 }
 
 function buildFeedEntries(rawItems: ActivityFeedRow[]): FeedEntry[] {
-  const items = collapseRepeatEarns(rawItems)
+  const items = collapseRepeatEarns(collapseLeveledBadgeBursts(rawItems))
   const buckets = new Map<number, ActivityFeedRow[]>()
   const entries: FeedEntry[] = []
 
