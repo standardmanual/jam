@@ -87,7 +87,7 @@ describe('hydrateFeedBadgeInfo — 반복 발급형 회차별 가상 피드 항�
 
     expect(result).toHaveLength(3)
     expect(result.map((r) => r.created_at)).toEqual([
-      '2026-08-01T00:00:00.000Z',
+      '2026-09-01T00:00:00.000Z',
       '2026-09-10T00:00:00.000Z',
       '2026-09-20T12:34:56.000Z',
     ])
@@ -102,6 +102,32 @@ describe('hydrateFeedBadgeInfo — 반복 발급형 회차별 가상 피드 항�
     expect(result.every((r) => r.metadata.earn_count === undefined)).toBe(true)
     // 배지 메타데이터는 최신값으로 갱신된다.
     expect(result.every((r) => r.metadata.badge_name === '이번 주의 약속')).toBe(true)
+  })
+
+  it('원본 행 created_at이 회차 시각보다 늦으면 첫 항목은 원본 시각, 이른 회차는 원본 시각, 늦은 회차는 회차 시각이다', async () => {
+    earnRowsResult = {
+      data: [
+        {
+          user_id: 'u-1',
+          badge_id: 'badge-1',
+          earn_count: 3,
+          earn_history: [
+            { earned_at: '2026-09-12T23:00:57Z', strava_activity_id: 111 },
+            { earned_at: '2026-09-13T00:00:00Z', strava_activity_id: 222 },
+            { earned_at: '2026-11-08T00:00:00Z', strava_activity_id: 333 },
+          ],
+        },
+      ],
+    }
+
+    const result = await hydrateFeedBadgeInfo([badgeEarnedItem({ created_at: '2026-11-07T05:57:00.000Z' })])
+
+    expect(result.map((r) => r.created_at)).toEqual([
+      '2026-11-07T05:57:00.000Z',
+      '2026-11-07T05:57:00.000Z',
+      '2026-11-08T00:00:00Z',
+    ])
+    expect(result.map((r) => r.strava_activity_id)).toEqual([111, 222, 333])
   })
 
   it('반복형이 아닌 배지(earn_history 1건)는 가상 항목도 1개만 생성돼 카드 수가 바뀌지 않는다', async () => {
