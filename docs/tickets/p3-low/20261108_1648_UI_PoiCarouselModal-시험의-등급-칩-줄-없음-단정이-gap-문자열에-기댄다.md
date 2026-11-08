@@ -2,9 +2,9 @@
 id: "20261108_1648"
 category: UI
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-11-08
-closed: ""
+closed: 2026-11-08
 parent: "20261106_1750"
 specs: []
 ---
@@ -29,4 +29,26 @@ specs: []
 - 변경 파일이 `scripts/verify.sh`를 통과한다.
 
 ---
-## 완료 기록 *(작업 후 작성)*
+## 완료 기록
+
+### 구현 내용 요약
+
+- `PoiCarouselModal.test.tsx`의 «common 행은 등급 칩 줄을 만들지 않는다»가 마크업 문자열 `gap:var(--spacing-4)`의 유무로 판정하던 것을, 칩의 등급 라벨 글자(`>Rare<`)의 유무로 바꿨다. rare 행에는 `>Rare<`가 있고 common 행에는 없다는 두 경우를 그대로 지킨다. 같은 모달의 다른 요소가 같은 `gap`을 쓰면 오탐하던 문제가 없어진다. 이유를 시험 주석에 적었다.
+
+### 변경된 파일
+```
+jam-web/src/components/PoiCarouselModal.test.tsx (5줄)
+```
+
+### 테스트 결과
+- `PoiCarouselModal.test.tsx` 21건 통과(새 단정 포함), eslint 통과.
+
+### 주요 의사결정 / 핵심 메모
+- 경미 수정(파일 1개)이라 직접 처리했다. 단정이 칩 라벨 글자에 기대므로 `RarityBadge` 라벨 문구(«Rare»)가 바뀌면 같이 고쳐야 한다. 라벨 헬퍼 `getRarityLabel`과 일치하는 Story(`label-helper-parity`)가 이미 있다.
+
+### 잔여 이슈
+- 없음.
+
+### 실행 지표
+
+에이전트 0(경미 수정 판정, 카리나 직접 처리). 별도 토큰 집계 없음.

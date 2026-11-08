@@ -2,9 +2,9 @@
 id: "20261108_1647"
 category: UI
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-11-08
-closed: ""
+closed: 2026-11-08
 parent: "20261106_1750"
 specs: []
 ---
@@ -29,4 +29,27 @@ specs: []
 - 변경 파일이 `scripts/verify.sh`를 통과한다.
 
 ---
-## 완료 기록 *(작업 후 작성)*
+## 완료 기록
+
+### 구현 내용 요약
+
+- `PoiCarouselModal.tsx`의 픽업 목록 `ItemRow`에 넘기던 `disabled={!isActive}`(1025줄)를 걷었다. 본문이 `!isActive ? null : …`(916줄)이라 비활성 카드에서는 행이 그려지지 않아 이 값은 한 번도 참이 되지 않았다. 그 뒤 `ItemRow`에 `disabled`를 넘기는 호출부가 없어 `ItemRowProps.disabled`, 함수 인자, `ListRow`로 넘기던 `disabled={disabled}`도 함께 걷었다.
+- 시험 `dropButtonDisabled`는 드랍 확인 버튼을 보는 것이라 이 변경과 무관하다.
+
+### 변경된 파일
+```
+jam-web/src/components/PoiCarouselModal.tsx (5줄)
+```
+
+### 테스트 결과
+- `PoiCarouselModal.test.tsx` 21건 통과, eslint 통과, `tsc --noEmit` 오류 없음.
+
+### 주요 의사결정 / 핵심 메모
+- 시작 전 `grep`으로 `disabled`를 넘기는 곳이 이 한 줄뿐임을 확인했다. 경미 수정(코드 5줄, 파일 1개)이라 직접 처리했다.
+
+### 잔여 이슈
+- 없음.
+
+### 실행 지표
+
+에이전트 0(경미 수정 판정, 카리나 직접 처리). 별도 토큰 집계 없음.
