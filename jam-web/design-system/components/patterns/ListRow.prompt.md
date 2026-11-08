@@ -6,6 +6,7 @@
 - eyebrow·time·chip 12px, meta 14px, title·value 16px(`--text-*`만 쓴다). 굵기는 파일 안 `ROW_WEIGHT` 한 곳(보통 400 · 굵게 700).
 - `titleVariant` `strong`(굵게, 기본) · `sentence`(보통, 문장 — 핵심어는 `ListRowEm`) · `label`(보통 muted, 값 행·체크 목록).
 - 줄 수: title 1줄 말줄임, `sentence`는 줄 제한이 없다(알림 문장은 정보가 잘리면 안 된다). `titleLines` 1~2로 직접 제한할 수 있고, `titleSuffix`를 쓰는 행은 `titleLines={1}`로 이름을 한 줄 말줄임한다. meta 기본 1줄, `metaLines` 1~3. eyebrow 문자열은 최대 2줄.
+- 값 행(`titleVariant="label"` + `value`)의 라벨은 정보라 잘리면 안 되므로 `titleLines={0}`(줄 제한 없음)을 쓴다. 값이 최대 폭 60%에 닿아도 라벨이 «체크인 장…»처럼 말줄임되지 않는다.
 - 줄어드는 순서는 title·eyebrow·meta가 먼저다. time·value·trail은 줄지 않는다(팔로우 행은 이름이 먼저 잘린다).
 
 ## 계열 5종 구성표

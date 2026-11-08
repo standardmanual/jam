@@ -5,6 +5,7 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { Input } from '@ds/components/forms/Input'
+import { ListRow } from '@/components/ui/ListRow'
 import { useSkeletonReveal } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { createClient } from '@/lib/supabase/client'
@@ -56,17 +57,17 @@ const HINT_ID = 'withdraw-confirm-hint'
 const PROSE = 'break-keep wrap-break-word text-balance'
 
 /**
- * 행 5줄 높이(py-1 8px + text-base 줄 높이 24px = 32px x 5). 스켈레톤이 이 높이를 미리 잡아 값이 도착해도 아래 내용이 밀리지 않는다.
+ * 행 5줄 높이(`ListRow` 값 행 위아래 12px x 2 + text-base 줄 높이 24px = 48px x 5). 스켈레톤이 이 높이를 미리 잡아 값이 도착해도 아래 내용이 밀리지 않는다.
  * 줄 높이에서 계산한 추정값이다 — 실제 높이는 머지 뒤 로컬에서 `offsetHeight`로 잰다(DESIGN_RENEWAL_SPEC z-index 규칙 5).
  */
-const SKELETON_MIN_HEIGHT = '160px'
+const SKELETON_MIN_HEIGHT = '240px'
 const SKELETON_ROWS = [0, 1, 2, 3, 4]
 
 const formatNumber = (n: number) => n.toLocaleString('ko-KR')
 
 /**
  * 지워지는 항목 다섯 줄. 0도 «0개»·«0 포인트»로 그대로 보인다 — 줄이 사라지면 그 항목은 안 지워지는 것으로 읽힌다.
- * 영수증 행이다: 왼쪽 muted 라벨, 오른쪽 foreground 값, 구분선과 큰 숫자 타일은 없다(`FeedSection`의 Row와 같은 문법).
+ * `ListRow` 값 행이다: 왼쪽 muted 라벨, 오른쪽 굵은 값, 구분선과 큰 숫자 타일은 없다.
  */
 function SummaryRows({ summary }: { summary: AccountSummary }) {
   const copy = d.withdrawSheet
@@ -78,14 +79,11 @@ function SummaryRows({ summary }: { summary: AccountSummary }) {
     [copy.rowPoints, tPoint(d.points.amountValue, { amount: formatNumber(summary.pointBalance) })],
   ]
   return (
-    <dl className="flex flex-col">
+    <div className="flex flex-col">
       {rows.map(([label, value]) => (
-        <div key={label} className="flex justify-between gap-4 py-1 text-base">
-          <dt className="shrink-0 text-muted">{label}</dt>
-          <dd className="whitespace-nowrap text-right text-foreground">{value}</dd>
-        </div>
+        <ListRow key={label} tone="flat" titleVariant="label" titleLines={0} title={label} value={value} />
       ))}
-    </dl>
+    </div>
   )
 }
 
@@ -110,10 +108,13 @@ function RemovedSection({ summary }: { summary: WithdrawSummaryState }) {
       >
         <div className="t-skel-skeleton is-pulsing" aria-hidden="true">
           {SKELETON_ROWS.map((row) => (
-            <div key={row} className="flex justify-between gap-4 py-1">
-              <div className="h-6 w-24 rounded-lg bg-foreground/15" />
-              <div className="h-6 w-16 rounded-lg bg-foreground/15" />
-            </div>
+            <ListRow
+              key={row}
+              tone="flat"
+              titleVariant="label"
+              title={<span className="block h-6 w-24 rounded-lg bg-foreground/15" />}
+              value={<span className="block h-6 w-16 rounded-lg bg-foreground/15" />}
+            />
           ))}
         </div>
         <div className="t-skel-content">

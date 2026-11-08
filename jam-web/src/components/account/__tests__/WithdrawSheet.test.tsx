@@ -172,13 +172,13 @@ describe('WithdrawSheetView — 문구와 순서', () => {
     expect(html).not.toMatch(/\p{Extended_Pictographic}/u)
   })
 
-  it('한국어 문단에 break-keep wrap-break-word text-balance가 붙고, 행 값은 줄바꿈이 없다', () => {
+  it('한국어 문단에 break-keep wrap-break-word text-balance가 붙고, 행 값은 ListRow 값 행이 줄바꿈을 정한다', () => {
     const html = markup()
     expect(html).toContain('break-keep')
     expect(html).toContain('wrap-break-word')
     expect(html).toContain('text-balance')
-    expect(html).toMatch(/<dd class="[^"]*whitespace-nowrap/)
-    expect(html).toMatch(/<dt class="[^"]*shrink-0/)
+    expect(html).not.toMatch(/<dd class="[^"]*whitespace-nowrap/)
+    expect(html).toContain('max-width:60%')
   })
 
   it('본문 가장자리는 제목과 같은 px-6이다', () => {
@@ -190,13 +190,16 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
   it('값이 오면 다섯 줄을 라벨 muted·값 foreground로 보인다', () => {
     const html = markup()
     for (const label of [copy.rowActivityBadges, copy.rowCheckinBadges, copy.rowItemBadges, copy.rowJam, copy.rowPoints]) {
-      expect(html, label).toContain(`>${label}</dt>`)
+      expect(html, label).toContain(`>${label}</span>`)
     }
-    expect(html).toContain('>12개</dd>')
-    expect(html).toContain('>7개</dd>')
-    expect(html).toContain('>20개</dd>')
-    expect(html).toContain('>340</dd>')
-    expect(html).toContain('>1,200 포인트</span></dd>')
+    expect(html).toContain('>12개</span>')
+    expect(html).toContain('>7개</span>')
+    expect(html).toContain('>20개</span>')
+    expect(html).toContain('>340</span>')
+    expect(html).toContain('>1,200 포인트</span></span>')
+    // dl/dt/dd를 걷고 ListRow 값 행(flat)으로 그린다
+    expect(html).not.toMatch(/<(dl|dt|dd)[ >]/)
+    expect(html).toContain('ds-list-row')
     // 포인트 행 값만 point-text로 칠한다 (티켓 20261104_2319 3회차)
     expect(html).toContain('<span class="text-point-text"')
     expect(html).toContain('text-muted')
@@ -210,18 +213,20 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
         summary: { ...SUMMARY, activityBadgeCount: 0, checkinBadgeCount: 0, itemCount: 0, jamBalance: 0, pointBalance: 0, stravaConnected: false },
       },
     })
-    expect(html.match(/<dt /g)).toHaveLength(5)
-    expect(html.match(/>0개<\/dd>/g)).toHaveLength(3)
-    expect(html).toContain('>0</dd>')
-    expect(html).toContain('>0 포인트</span></dd>')
+    // 스켈레톤 층 5줄과 별개로, 값 층(t-skel-content)에 5줄이 모두 있다
+    const content = html.slice(html.indexOf('t-skel-content'))
+    expect(content.match(/class="ds-list-row"/g)).toHaveLength(5)
+    expect(html.match(/>0개<\/span>/g)).toHaveLength(3)
+    expect(html).toContain('>0</span>')
+    expect(html).toContain('>0 포인트</span></span>')
   })
 
-  it('큰 수는 천 단위로 끊고 값은 한 줄이다', () => {
+  it('큰 수는 천 단위로 끊는다', () => {
     const html = markup({
       summary: { status: 'ready', summary: { ...SUMMARY, pointBalance: 1234567, jamBalance: 98765 } },
     })
-    expect(html).toContain('>1,234,567 포인트</span></dd>')
-    expect(html).toContain('>98,765</dd>')
+    expect(html).toContain('>1,234,567 포인트</span></span>')
+    expect(html).toContain('>98,765</span>')
   })
 
   it('Strava 동기화 줄은 연결 중일 때만 보인다', () => {
@@ -233,8 +238,9 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
     const html = markup({ summary: { status: 'loading' } })
     expect(html).toContain('aria-busy="true"')
     expect(html).toContain('t-skel-skeleton is-pulsing')
-    expect(html).toContain('--skel-min-h:160px')
-    expect(html.match(/h-6 w-24 rounded-lg bg-foreground\/15/g)).toHaveLength(5)
+    expect(html).toContain('--skel-min-h:240px')
+    expect(html.match(/block h-6 w-24 rounded-lg bg-foreground\/15/g)).toHaveLength(5)
+    expect(html.match(/block h-6 w-16 rounded-lg bg-foreground\/15/g)).toHaveLength(5)
     expect(html).not.toContain('<dl')
     expect(html).not.toContain(copy.stravaSync)
     // 로딩 중에도 탈퇴는 막지 않는다: 확인 문구를 채우면 버튼이 열린다
@@ -460,7 +466,8 @@ describe('WithdrawSheetView — 포커스 순서', () => {
     expect(region).toBeGreaterThanOrEqual(0)
     expect(html).toContain(`role="region" aria-label="${copy.title}"`)
     // 래퍼보다 앞에 포커스 가능한 요소가 없다(BottomSheet의 FOCUSABLE_SELECTOR 대상)
-    const before = html.slice(0, region)
+    // ListRow가 내보내는 <style data-href=...>는 포커스 요소가 아니므로 걷고 본다
+    const before = html.slice(0, region).replace(/<style[\s\S]*?<\/style>/g, '')
     expect(before).not.toMatch(/<button|<input|<select|<textarea|href=/)
     expect(region).toBeLessThan(html.indexOf('<input'))
   })
