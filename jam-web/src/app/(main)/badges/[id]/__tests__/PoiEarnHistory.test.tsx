@@ -79,4 +79,22 @@ describe('PoiEarnHistory — 방문 기록', () => {
   it('기록이 없으면 아무것도 그리지 않는다', () => {
     expect(renderToStaticMarkup(<PoiEarnHistory poiEarns={[]} />)).toBe('')
   })
+
+  it('첫 카드의 값 행은 라벨 다음에 값 순서로 나오고 긴 활동 이름이 말줄임 없이 전체로 나온다', () => {
+    const longName = '토요일 아침 한강공원 장거리 러닝 크루 정기 모임 달리기와 아주긴이름없는띄어쓰기구간'
+    const item: PoiEarnItem = {
+      ...earn('a', '2026-08-03T00:00:00Z'),
+      triggered_by_activity_name: longName,
+      triggered_by_distance_km: 10.5,
+    }
+    const html = withoutStyle(renderToStaticMarkup(<PoiEarnHistory poiEarns={[item]} />))
+    expect(html).toContain(longName)
+    expect(html).not.toContain('truncate')
+    expect(html).not.toContain('text-[14px]')
+    const order = [d.badges.earnedAt, d.badges.triggerActivity, longName, d.badges.triggerDistance].map((x) => html.indexOf(x))
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    // 값이 없는 행(활동 날짜)은 통째로 빠진다
+    expect(html).not.toContain(d.badges.triggerDate)
+  })
 })

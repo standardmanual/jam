@@ -20,36 +20,40 @@ export type PoiEarnItem = {
 
 function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEver?: boolean }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       {isFirstEver && <LabelChip className="self-start break-keep wrap-break-word whitespace-nowrap">{d.badges.firstEarnedChip}</LabelChip>}
-      <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--muted)]">{d.badges.earnedAt}</span>
-        <span className="text-[14px] text-foreground">
-          <LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />
-        </span>
+      <div className="flex flex-col -mb-3">
+        <ListRow
+          tone="flat"
+          titleVariant="label"
+          titleLines={0}
+          title={d.badges.earnedAt}
+          value={<LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />}
+        />
+        {e.triggered_by_activity_name && (
+          <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={e.triggered_by_activity_name} />
+        )}
+        {e.triggered_by_distance_km && (
+          <ListRow
+            tone="flat"
+            titleVariant="label"
+            titleLines={0}
+            title={d.badges.triggerDistance}
+            value={t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}
+          />
+        )}
+        {e.triggered_by_activity_date && (
+          <ListRow
+            tone="flat"
+            titleVariant="label"
+            titleLines={0}
+            title={d.badges.triggerDate}
+            value={<LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />}
+          />
+        )}
       </div>
-      {e.triggered_by_activity_name && (
-        <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--muted)]">{d.badges.triggerActivity}</span>
-          <span className="text-[14px] text-foreground truncate max-w-[180px] text-right">{e.triggered_by_activity_name}</span>
-        </div>
-      )}
-      {e.triggered_by_distance_km && (
-        <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--muted)]">{d.badges.triggerDistance}</span>
-          <span className="text-[14px] text-foreground">{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
-        </div>
-      )}
-      {e.triggered_by_activity_date && (
-        <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--muted)]">{d.badges.triggerDate}</span>
-          <span className="text-[14px] text-foreground">
-            <LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
-          </span>
-        </div>
-      )}
       {e.triggered_by_strava_id && (
-        <div className="mt-1">
+        <div className="mt-4">
           <StravaLink stravaId={e.triggered_by_strava_id} />
         </div>
       )}

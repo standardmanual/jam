@@ -634,40 +634,42 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 획득 정보 (획득한 경우) */}
         {earned && (
           <Card>
-            <p className="text-base font-bold text-foreground mb-4">{d.badges.earnInfoTitle}</p>
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-[var(--muted)]">{d.badges.earnedAt}</span>
-                <span className="text-sm text-foreground">
-                  <LocalDate iso={earned.earned_at} korean={{ year: true, time: true }} />
-                </span>
-              </div>
+            <p className="text-base font-bold text-foreground mb-1">{d.badges.earnInfoTitle}</p>
+            <div className="flex flex-col -mb-3">
+              <ListRow
+                tone="flat"
+                titleVariant="label"
+                titleLines={0}
+                title={d.badges.earnedAt}
+                value={<LocalDate iso={earned.earned_at} korean={{ year: true, time: true }} />}
+              />
               {earned.triggered_by_activity_name && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[var(--muted)]">{d.badges.triggerActivity}</span>
-                  <span className="text-sm text-foreground truncate max-w-[180px] text-right">{earned.triggered_by_activity_name}</span>
-                </div>
+                <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={earned.triggered_by_activity_name} />
               )}
               {earned.triggered_by_distance_km && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[var(--muted)]">{d.badges.triggerDistance}</span>
-                  <span className="text-sm text-foreground">{t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}</span>
-                </div>
+                <ListRow
+                  tone="flat"
+                  titleVariant="label"
+                  titleLines={0}
+                  title={d.badges.triggerDistance}
+                  value={t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}
+                />
               )}
               {earned.triggered_by_activity_date && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[var(--muted)]">{d.badges.triggerDate}</span>
-                  <span className="text-sm text-foreground">
-                    <LocalDate iso={earned.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
-                  </span>
-                </div>
-              )}
-              {earned.triggered_by_strava_id && (
-                <div className="mt-1">
-                  <StravaLink stravaId={earned.triggered_by_strava_id} />
-                </div>
+                <ListRow
+                  tone="flat"
+                  titleVariant="label"
+                  titleLines={0}
+                  title={d.badges.triggerDate}
+                  value={<LocalDate iso={earned.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />}
+                />
               )}
             </div>
+            {earned.triggered_by_strava_id && (
+              <div className="mt-4">
+                <StravaLink stravaId={earned.triggered_by_strava_id} />
+              </div>
+            )}
           </Card>
         )}
 

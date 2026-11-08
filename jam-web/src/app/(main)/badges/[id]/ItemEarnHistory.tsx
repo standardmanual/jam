@@ -16,21 +16,21 @@ export type ItemEarnEntry = {
 
 function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--muted)]">{d.inventory.obtainedAt}</span>
-        <span className="text-[14px] text-foreground">
-          <LocalDate iso={entry.obtained_at} korean={{ year: true }} />
-        </span>
-      </div>
-      <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--muted)]">{d.inventory.expiresAt}</span>
-        <span className="text-[14px] text-foreground">
-          {entry.expires_at
-            ? <LocalDate iso={entry.expires_at} korean={{ year: true }} />
-            : d.inventory.expiresNone}
-        </span>
-      </div>
+    <div className="flex flex-col -mb-3">
+      <ListRow
+        tone="flat"
+        titleVariant="label"
+        titleLines={0}
+        title={d.inventory.obtainedAt}
+        value={<LocalDate iso={entry.obtained_at} korean={{ year: true }} />}
+      />
+      <ListRow
+        tone="flat"
+        titleVariant="label"
+        titleLines={0}
+        title={d.inventory.expiresAt}
+        value={entry.expires_at ? <LocalDate iso={entry.expires_at} korean={{ year: true }} /> : d.inventory.expiresNone}
+      />
     </div>
   )
 }

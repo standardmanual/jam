@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import ItemEarnHistory, { type ItemEarnEntry } from '../ItemEarnHistory'
 import { formatKoreanDateTime } from '@/components/LocalDate'
+import { d } from '@/lib/i18n'
 
 function entry(id: string, iso: string): ItemEarnEntry {
   return { id, serial: `S-${id}`, obtained_at: iso, expires_at: null }
@@ -51,5 +52,13 @@ describe('ItemEarnHistory — 획득 이력', () => {
 
   it('항목이 없으면 아무것도 그리지 않는다', () => {
     expect(renderToStaticMarkup(<ItemEarnHistory items={[]} />)).toBe('')
+  })
+
+  it('첫 카드는 획득일 다음 만료일 순서로 나오고 만료가 없으면 «없음» 문구를 낸다', () => {
+    const html = withoutStyle(renderToStaticMarkup(<ItemEarnHistory items={[entry('a', '2026-08-03T00:00:00Z')]} />))
+    const order = [d.inventory.obtainedAt, d.inventory.expiresAt, d.inventory.expiresNone].map((x) => html.indexOf(x))
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(html).not.toContain('text-[14px]')
   })
 })
