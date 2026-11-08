@@ -58,9 +58,9 @@ describe('BriefCard — 면(표면)', () => {
     expect(html).toContain('background:var(--card-bg)')
     expect(html).not.toContain('border:')
     expect(html).not.toContain('--background-inverse')
-    // Card가 주는 24px 기본 여백(--layout-card-padding)을 같은 인라인 style로 덮었다 — 클래스로는 덮이지 않는다
+    // Card가 주는 16px 기본 여백(--card-padding)을 같은 인라인 style로 덮었다 — 클래스로는 덮이지 않는다
     expect(html).toContain('padding:var(--spacing-12) var(--spacing-16)')
-    expect(html).not.toContain('--layout-card-padding')
+    expect(html).not.toContain('--card-padding')
   })
 
   it('면에는 눌림(jam-press)이 없다 — 눌림 대상은 CardFrame의 링크 하나다', () => {

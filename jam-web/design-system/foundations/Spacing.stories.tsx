@@ -116,7 +116,7 @@ function SpacingPage() {
       </Section>
 
       <Section title="Layout Semantic (전역 조정 가능)">
-        <SpacingRow token="--layout-card-padding" desc="카드 내부 패딩 = --spacing-24" semantic />
+        <SpacingRow token="--layout-card-padding" desc="시트·모달·빈 상태 안쪽 여백 = --spacing-24" semantic />
         <SpacingRow token="--layout-section-gap" desc="페이지 섹션 간 간격 = --spacing-48" semantic />
         <SpacingRow token="--layout-element-gap" desc="카드 내 요소 간 간격 = --spacing-16" semantic />
       </Section>
@@ -142,7 +142,7 @@ function SpacingPage() {
       <Section title="사용 예시">
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {[
-            { label: '카드 패딩', token: '--layout-card-padding' },
+            { label: '시트·모달 여백', token: '--layout-card-padding' },
             { label: '요소 간격', token: '--layout-element-gap' },
             { label: '섹션 간격', token: '--layout-section-gap' },
           ].map(({ label, token }) => (

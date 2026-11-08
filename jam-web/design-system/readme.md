@@ -14,7 +14,7 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 
 ## 비주얼 기반 (Visual foundations)
 
-값은 이 문서에 적지 않는다. 원천은 `tokens/*.css`이고, 결정 이력과 화면 규칙은 `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md`다. 요약은 `jam-web/DESIGN.md`에 있다.
+간격 이름표(아래 표) 말고는 값을 이 문서에 적지 않는다. 원천은 `tokens/*.css`이고, 결정 이력과 화면 규칙은 `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md`다. 요약은 `jam-web/DESIGN.md`에 있다.
 
 * **팔레트(Palette)**: JAM 2.0 라이트 전용이다. 크림 바탕(`--background`) 위에 흰 카드(`--surface`)와 테두리(`--border`), 면 채우기 전용 초록 강조색(`--accent`), 강조 글자·선용 짙은 초록(`--link`). 원천은 `tokens/colors.css`다.
 * **타이포그래피(Type)**: Noto Sans KR. 기본 텍스트 설정으로 `text-wrap: balance`와 `word-break: keep-all`이 적용된다. 서비스가 쓰는 굵기는 `font-normal`·`font-medium`·`font-semibold`·`font-bold`이고 자간은 모든 단계에서 0이다. 크기 눈금은 `tokens/typography.css`다.
@@ -47,7 +47,7 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 | `--gap-field` | 16 | `gap-4` |
 | `--gap-actions` | 8 | `gap-2` |
 
-`--spacing-32`·40·48·64·96은 화면이 직접 쓰지 않는다. `--layout-card-padding`(24)과 `--layout-section-gap`(48)은 이 표에 없는 기존 토큰이다.
+`--spacing-32`·40·48·64·96은 화면이 직접 쓰지 않는다. `--layout-card-padding`(24)과 `--layout-section-gap`(48)은 이 표에 없는 기존 토큰이다. `Card`의 안쪽 여백은 `--card-padding`(16)이고, `--layout-card-padding`은 시트·모달·빈 상태의 안쪽 여백이 쓴다.
 
 ## 의도적인 추가 사항 (Intentional additions)
 

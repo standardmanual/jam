@@ -11,7 +11,7 @@ import React from 'react';
  *              선택 표시 같은 신호 용도뿐이다. default와 같이 테두리가 없어 박스 크기가 같다(티켓 20261108_1940).
  *
  * 그 밖의 약속:
- *   - padding prop 없음 — --layout-card-padding 토큰을 쓴다(호출부는 className·style로 덮는다)
+ *   - padding prop 없음 — --card-padding 토큰(16)을 쓴다(호출부는 className·style로 덮는다)
  *   - radius prop 없음 — 항상 --radius-2xl
  *   - ...rest spread로 className, data-*, aria-*를 통과시킨다
  *   - 테두리를 그리지 않는다
@@ -48,7 +48,7 @@ export function Card({ tone = 'default', children, className = '', style = {}, o
       } : undefined}
       style={{
         borderRadius: 'var(--radius-2xl)',
-        padding: 'var(--layout-card-padding)',
+        padding: 'var(--card-padding)',
         boxSizing: 'border-box',
         cursor: interactive ? 'pointer' : undefined,
         ...backgrounds[tone] ?? backgrounds.default,

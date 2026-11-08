@@ -31,7 +31,7 @@ import { FlaskIcon, MedalIcon } from '@/components/ui/icons'
 import type { CardViewTile, ListCardView } from '@/lib/today/cardView'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 
-const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
+const BODY_OPEN = '<div class="flex flex-col gap-3 p-4">'
 const TRACKING = { cardId: 'card-1', contentTypeId: 'T03', templateType: 'badge_spotlight', shape: 'list' } as const
 const RANKING_TRACKING = { cardId: 'card-2', contentTypeId: 'T08', templateType: 'ranking_board', shape: 'list' } as const
 const IMG = 'https://cdn.example/b.png'
@@ -118,12 +118,12 @@ const expectOrdered = (positions: number[]) => {
 }
 
 describe('ListCard 타일형 — 면(표면)과 본문', () => {
-  it('흰 카드(기본 톤, 흰 면, 외곽선 없음)이고 안쪽 여백은 인라인 0이다(본문 24px은 본문 칸이 가진다)', () => {
+  it('흰 카드(기본 톤, 흰 면, 외곽선 없음)이고 안쪽 여백은 인라인 0이다(본문 16px은 본문 칸이 가진다)', () => {
     const html = render(tilesView())
     expect(html).toMatch(/^<div[^>]*style="[^"]*background:var\(--card-bg\)[^"]*">/)
     expect(html).not.toContain('--background-inverse')
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
-    expect(html).not.toContain('--layout-card-padding')
+    expect(html).not.toContain('--card-padding')
     expect(html).toContain(BODY_OPEN)
   })
 
@@ -182,9 +182,9 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
 })
 
 describe('ListCard 타일형 — 타일 줄', () => {
-  it('스크롤 칸은 카드 좌우 끝까지 번지고(-mx·px 24px) 안쪽 목록은 타일 간격 8px의 가로 flex이며 w-max로 끝 여백이 스크롤 영역에 들어간다', () => {
+  it('스크롤 칸은 카드 좌우 끝까지 번지고(-mx·px 16px) 안쪽 목록은 타일 간격 8px의 가로 flex이며 w-max로 끝 여백이 스크롤 영역에 들어간다', () => {
     const html = render(tilesView())
-    expect(html).toContain('<div class="-mx-6 overflow-x-auto px-6"><ul class="flex w-max gap-2">')
+    expect(html).toContain('<div class="-mx-4 overflow-x-auto px-4"><ul class="flex w-max gap-2">')
   })
 
   it('타일은 목록(ul) 안의 li이고 64px(w-16)로 줄지 않는다', () => {

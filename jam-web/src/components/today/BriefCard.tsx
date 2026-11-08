@@ -15,7 +15,7 @@ import CardThumb from './CardThumb'
  * 설명문이 없으면 아랫줄과 간격이 함께 사라져 윗줄만 남는다(`justify-center`로 최소 높이 88px 안에서 세로 가운데). `poster`와 달리 `brief`는 설명문을 그린다.
  * 64px 칸의 그림·흑백·자원 아이콘 대체 규칙은 `CardThumb.tsx`에 있다(`list` 타일과 공용, 티켓 20261001_2104).
  *
- * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--layout-card-padding)` = 24px)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다.
+ * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--card-padding)` = 16px)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다.
  *   그래서 같은 인라인 `style`로 덮는다. 칸 64 + 위아래 12×2 = 최소 높이 88px와 맞아떨어진다.
  * - `--text-base`은 서비스에서 14px이 아니라 16px이다. 필수 정보 14px은 `--text-sm`이다.
  * - 옅은 글자는 `text-muted` 한 단계로 통일한다(흰 면 위 5.74:1). 불투명도로 글자색을 만들지 않는다(티켓 20261015_2133).

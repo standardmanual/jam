@@ -248,9 +248,9 @@ export const ChipRowCombinations: Story = {
     // 라벨·희귀도·게재일 칩 폭은 핀 길이와 상관없이 줄어들지 않는다
     const [badge360, article360] = cardsOf(canvasElement)
     expect(badge360.querySelectorAll('.truncate')).toHaveLength(1)
-    // 게재일은 줄 끝(카드 오른쪽 안쪽 여백 24px)에 붙는다
+    // 게재일은 줄 끝(카드 오른쪽 안쪽 여백 16px)에 붙는다
     const time = article360.querySelector<HTMLElement>('time')!
-    expect(time.getBoundingClientRect().right).toBeCloseTo(article360.getBoundingClientRect().right - 24, 0)
+    expect(time.getBoundingClientRect().right).toBeCloseTo(article360.getBoundingClientRect().right - 16, 0)
   },
 }
 

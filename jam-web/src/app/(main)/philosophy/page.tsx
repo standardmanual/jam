@@ -264,7 +264,7 @@ export default function PhilosophyPage() {
         {/* Contact — 강조색 카드 + mailto 필 버튼 */}
         <section className="flex flex-col gap-6">
           <h2 className={SECTION_HEADING_CLASS}>문의하기</h2>
-          <div className="flex flex-col gap-4 p-6 rounded-2xl bg-[var(--accent)]">
+          <div className="flex flex-col gap-4 p-4 rounded-2xl bg-[var(--accent)]">
             <p className="text-base leading-[var(--leading-reading)] text-[color:var(--accent-foreground)] [word-break:keep-all] break-words">
               여기서 답을 찾지 못했다면 이메일로 바로 물어보세요. 확인하는 대로 답장
               드릴게요.
