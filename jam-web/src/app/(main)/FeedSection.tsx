@@ -13,6 +13,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import Button from '@/components/ui/Button'
+import { Card } from '@ds/components/cards/Card'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -548,7 +549,18 @@ export function DetailSheet({
   )
 }
 
-function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => void }) {
+function FeedCard({
+  item,
+  onClick,
+  tone,
+  separator,
+}: {
+  item: ActivityFeedRow
+  onClick: () => void
+  /** 활동 묶음 패널 안에서만 'flat'을 준다. 안 주면 단건 카드 모양 그대로다. */
+  tone?: 'flat'
+  separator?: boolean
+}) {
   const meta = item.metadata as Record<string, string | number | boolean | null>
   const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
   const title = feedTitle(item)
@@ -571,6 +583,8 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
   return (
     <ListRow
       onClick={onClick}
+      tone={tone}
+      separator={separator}
       lead={
         // 이미지는 제목이 본문에 이미 있어 장식(alt="")이다. 크기는 ListRow의 `.ds-list-row-lead img` 규칙이 48 박스에 채운다.
         // 폴백 아이콘은 타일 래퍼 없이 아이콘만 둔다 — lead 박스가 이미 면과 모서리를 준다.
@@ -779,9 +793,17 @@ function ActivityGroupCard({
   const restCount = thumbs.length - shownThumbs.length
 
   return (
-    <div className="t-acc" data-open={open}>
+    <Card
+      className="t-acc"
+      data-open={open}
+      // 단건 카드(ListRow default)와 같은 흰 면 + 1px 테두리. 면은 이 한 장뿐이고 안쪽 행은 flat이다.
+      // overflow는 주지 않는다 — 안쪽 행의 포커스 링이 잘린다(잘림은 t-acc-panel-inner가 맡는다).
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: 0 }}
+    >
+      <div className="px-4">
       <ListRow
         variant="media"
+        tone="flat"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
@@ -813,20 +835,29 @@ function ActivityGroupCard({
           ) : undefined
         }
       />
+      </div>
       <div id={panelId} className="t-acc-panel">
         {/* 접힌 동안에도 DOM에 남아야 높이 트랜지션이 성립한다. 대신 inert로
             키보드 포커스·보조기술 노출에서 완전히 빼 유령 포커스를 막는다. */}
         {/* 패널 안 행의 포커스 링(밖으로 4px)이 overflow:hidden 가장자리에서 잘리지 않게 오른쪽·아래에 여백을 둔다.
             오른쪽은 -mr-1로 잘림 상자를 넓히고 pr-1로 행 폭을 되돌려 묶음 행과 오른쪽 끝을 맞춘다(티켓 20261106_2252 판정 4). */}
         <div className="t-acc-panel-inner -mr-1" inert={!open}>
-          <div className="flex flex-col gap-2 pt-2 pl-4 pr-1 pb-1">
-            {items.map((item) => (
-              <FeedCard key={item.id} item={item} onClick={() => onItemClick(item)} />
-            ))}
+          <div className="pl-4 pr-5 pb-1">
+            <div style={{ borderTop: '1px solid var(--separator)' }}>
+              {items.map((item, i) => (
+                <FeedCard
+                  key={item.id}
+                  item={item}
+                  tone="flat"
+                  separator={i < items.length - 1}
+                  onClick={() => onItemClick(item)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
 
