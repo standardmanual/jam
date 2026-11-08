@@ -28,6 +28,7 @@ import { useToast } from '@/components/ui/Toast'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
 import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
 import ChapterLine, { type MyChapterLineData, type PublicChapterLineData } from '@/components/chapter/ChapterLine'
+import { leveledFamilyKey } from '@/lib/activity-feed/collapseLeveled'
 
 /** `POST /api/follows` 응답 중 배지 리빌 연출에 필요한 조각(sync.ts EarnedBadgePayload와 동일 계약) */
 interface FollowResponse {
@@ -184,6 +185,19 @@ export default function ProfileClient({
     for (const item of feedItems) {
       if (item.event_type !== 'badge_earned') continue
       const badgeId = (item.metadata as Record<string, string>).badge_id
+      // 레벨형은 계열당 한 칸 — 같은 계열의 최고 레벨만 남기고 ×N을 붙이지 않는다(티켓 20261108_1622)
+      const level = badgeLevelOf(item)
+      if (level != null) {
+        const famKey = `#lv:${leveledFamilyKey(item.metadata as Record<string, unknown>)}`
+        const famIdx = indexById.get(famKey)
+        if (famIdx == null) {
+          indexById.set(famKey, result.length)
+          result.push({ item, count: null, level })
+        } else if (level > (result[famIdx].level ?? 0)) {
+          result[famIdx] = { item, count: null, level }
+        }
+        continue
+      }
       const idx = indexById.get(badgeId)
       if (idx != null) {
         rowsById.set(badgeId, (rowsById.get(badgeId) ?? 1) + 1)
