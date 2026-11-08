@@ -412,6 +412,21 @@ describe('활동 묶음 행(ActivityGroupCard) — ListRow media', () => {
     expect(html).not.toContain('t-acc-chevron')
   })
 
+  it('하위 항목은 헤더와 같은 Card 한 장 안에 있고, 각자 테두리 대신 구분선만 가진다 (티켓 20261108_1830)', () => {
+    const html = renderGroup({ '77': '아침 한강 러닝' })
+    const cardStart = html.indexOf('class="t-acc"')
+    const card = html.slice(html.lastIndexOf('<div', cardStart))
+
+    // 바깥 면은 하나(1px --border), 패널은 그 자손이다
+    expect(card.indexOf('border:1px solid var(--border)')).toBeLessThan(card.indexOf('class="t-acc-panel"'))
+    const panel = card.slice(card.indexOf('class="t-acc-panel"'))
+    // 패널 안 행은 flat이라 자기 면·--border 테두리가 없다
+    expect(panel).not.toContain('border:1px solid var(--border)')
+    expect(panel).not.toContain('var(--surface)')
+    // 마지막 항목을 뺀 첫 항목에만 구분선이 있다
+    expect(panel.match(/border-bottom:1px solid var\(--separator\)/g)).toHaveLength(1)
+  })
+
   it('media라 lead가 위쪽 정렬이고, 활동 이름은 eyebrow·헤드라인은 제목이다', () => {
     const html = renderGroup({ '77': '아침 한강 러닝' })
 
