@@ -2,8 +2,9 @@
 id: "20261108_1110"
 category: UI
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-11-08
+closed: 2026-11-08
 parent: "20261106_1750"
 specs:
   - jam-web/design-system/components/patterns/ListRow.jsx
@@ -68,4 +69,53 @@ specs:
 - 변경한 파일이 `scripts/verify.sh`를 통과한다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
+
+### 구현 내용 요약
+
+- `ListRowChip` `warning` 톤의 글자를 `--foreground`에서 `--snow`로 바꿨다(면 `--warning` `#525252`은 그대로). 원본 `ListRow.jsx` 102줄과 사본 `ListRow.tsx` 98줄에 같은 값으로 넣고, 주석(원본 34줄·110줄, 사본 106줄), `ListRow.d.ts` 94~95줄, `ListRow.prompt.md` 77줄을 새 값에 맞췄다. 새 색·토큰은 없고 `neutral`·`accent`·`done`·`surface`·`surface-muted`는 바뀌지 않았다.
+- 시험: `ListRow.test.tsx`에 `warning`이 `background: var(--warning)`·`color: var(--snow)`를 쓰고 `--foreground` 글자는 쓰지 않는다는 단정, `neutral`·`accent`는 `--foreground`를 유지한다는 단정을 더했다.
+- 서비스 화면에는 이 톤을 쓰는 곳이 없어 사용자에게 보이는 변화는 없다(시작 전 확인 결과 참고).
+
+### 변경된 파일
+```
+jam-web/design-system/components/patterns/ListRow.jsx
+jam-web/design-system/components/patterns/ListRow.d.ts
+jam-web/design-system/components/patterns/ListRow.prompt.md
+jam-web/src/components/ui/ListRow.tsx
+jam-web/src/components/ui/ListRow.test.tsx
+```
+추가 20줄, 삭제 8줄.
+
+### 확인 (머지 뒤 push 전)
+
+- 대비 계산: 면 `#525252` 위 글자 `#fcfcfc`는 **7.62:1**(아현·게이트 계산). 이전 `#171717`은 2.29:1이다.
+- **Storybook 실측**(로컬, `media 변형` Story): «곧 끝나요»(`warning`) 칩이 면 `rgb(82,82,82)`, 글자 `rgb(252,252,252)`, 계산 대비 **7.62:1**, 높이 20px이다. 같은 화면의 `neutral` 칩(«마지막 파편»)은 면 `rgb(229,229,229)`·글자 `rgb(23,23,23)`로 14.23:1, `done` 칩은 17.47:1이다.
+- `warning`을 쓰는 다른 Story 두 곳(«최악 사례» 626·750줄 근처)은 열어 보지 않았다. 같은 톤 정의라 같은 값이다.
+
+### 경로와 게이트
+
+- 경로 ②(가벼운 UI): 사용자가 글자색만 고치기로 결정(2026-11-08)해 채원 판정을 생략하고 아현 구현 → 민지 게이트로 돌렸다. 게이트 **WARN**(차단 아님): `design-system/` 컴포넌트가 바뀌었는데 Story 파일이 바뀌지 않았다는 점검 항목이다. 티켓 범위 6번에 «Story 코드 변경 없음, 글자색만 확인»으로 못박아 둔 범위이고, 위 Storybook 실측으로 확인했다. CI `verify` 성공(`2619a95607`).
+- 머지: 브랜치가 최신 `origin/staging` 위에 있어 옮기지 않고 ff 머지했다.
+
+### 배포 정보
+- 배포일: 2026-11-08
+- 환경: staging(`stage.j-a-m.app`)
+- 커밋: `2619a9560`
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1회차 (경로 ②, 구현·게이트) | 2 | 97,544 | 9,995 / 3,316 | 39분 49초 | 40 |
+| 합계 | 2 | 97,544 | 9,995 / 3,316 | 39분 49초 | 40 |
+
+### 주요 의사결정 / 핵심 메모
+
+- 시작 전에 `origin/staging` 코드로 전제를 확인해 «소비처 5곳»이 틀렸음을 찾았고(`warning` 톤을 쓰는 서비스 화면 없음), 사용자가 «글자색만 고친다»를 정했다. 우선순위는 P2에서 P3으로 낮췄다. 톤 삭제와 보류는 채택하지 않았다.
+- `warning`(회색 면 + `--snow`)과 `done`(검정 면 + `--snow`)은 모양이 비슷해 톤의 구분이 약하다. 범위 밖으로 두었다.
+
+### 잔여 이슈
+
+- Story 확인 중 발견: 같은 Story의 `RarityBadge` `MYSTIC` 칩(md, 22px)이 면 `rgb(255,45,135)` 위 흰 글자로 **대비 3.51:1**이라 4.5:1에 못 미친다. 다른 등급은 확인하지 않았다. 이 티켓 범위 밖이라 별도 P3 티켓 20261108_2136로 뺐다.
+- 아현이 로컬에서 전체 시험을 돌렸을 때 어드민 쪽 534건이 실패한 것은 워크트리 `node_modules` 링크 환경 문제로 보이며 CI에서는 재현되지 않았다. staging 대조는 하지 않았다.
