@@ -1,8 +1,8 @@
 import TopNav from '@/components/ui/TopNav'
-import ListRowCard from '@/components/ui/ListRowCard'
+import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
-import { BookIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { BookIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeHeroSection from '../../(main)/badges/[id]/BadgeHeroSection'
@@ -76,15 +76,11 @@ export default function ItemBadgeSerialSamplePage() {
 
       {/* desc-section — 소속 컬렉션 링크 (실제 페이지와 동일 구성) */}
       <div className="relative z-10 flex flex-col gap-4 px-6 pb-[40px]">
-        <ListRowCard
+        <ListRow
           href="#"
-          icon={
-            <div className="w-11 h-11 rounded-2xl bg-white/8 flex items-center justify-center shrink-0">
-              <BookIcon className="w-5 h-5 text-[var(--muted)]" />
-            </div>
-          }
+          lead={<BookIcon className="w-5 h-5 text-muted" />}
           title={mockItemBook.name}
-          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
+          chevron
         />
       </div>
     </div>

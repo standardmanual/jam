@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import Button from '@/components/ui/Button'
-import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { InboxIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
@@ -57,11 +57,10 @@ const [SEVERITY_PREFIX, SEVERITY_SUFFIX] = d.voc.severityLabel.split('{severity}
 
 function VocCard({ item }: { item: VocItem }) {
   return (
-    <ListRowCard
-      icon={<span className="text-base text-muted">#{item.number}</span>}
-    >
-      {/* 상태값, 날짜 — 유형(카테고리)은 별도 줄로 분리 */}
+    <Card>
+      {/* 문의 번호, 상태값, 날짜 — 유형(카테고리)은 별도 줄로 분리 */}
       <div className="flex flex-wrap items-center gap-2 mb-2">
+        <span className="text-xs leading-none text-muted whitespace-nowrap">#{item.number}</span>
         <span className={STATUS_CHIP_CLASS[item.status] ?? CHIP_CLASS}>{item.status}</span>
         <span className={CHIP_CLASS}>
           {SEVERITY_PREFIX}
@@ -101,7 +100,7 @@ function VocCard({ item }: { item: VocItem }) {
           </p>
         </div>
       )}
-    </ListRowCard>
+    </Card>
   )
 }
 
