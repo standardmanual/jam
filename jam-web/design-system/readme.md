@@ -47,6 +47,8 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 | `--gap-field` | 16 | `gap-4` |
 | `--gap-actions` | 8 | `gap-2` |
 
+눈금 밖 간격(임의 px, 32px 이상 단계, `--spacing-32` 이상 변수)은 `scripts/verify.sh`의 `spacing` 단계(`scripts/check-spacing.mjs`)가 기준선(`scripts/spacing-baseline.json`)보다 늘면 막는다. 위반을 고쳐 줄였다면 `node scripts/check-spacing.mjs --write-baseline`으로 기준선도 줄이고, 불가피한 예외는 같은 줄에 `spacing-allow: <사유>` 주석을 단다(티켓 20261108_2140).
+
 `--spacing-32`·40·48·64·96은 화면이 직접 쓰지 않는다. `--layout-card-padding`(24)과 `--layout-section-gap`(48)은 이 표에 없는 기존 토큰이다. `Card`의 안쪽 여백은 `--card-padding`(16)이고, `--layout-card-padding`은 시트·모달·빈 상태의 안쪽 여백이 쓴다.
 
 ## 의도적인 추가 사항 (Intentional additions)
