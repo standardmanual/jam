@@ -397,33 +397,33 @@ export default function ProfileClient({
   // 여기서는 실제 콘텐츠만 그린다.
   // 타인 프로필의 기본 화면 — 그 사람의 배지 그리드(티켓 20261108_1216). 데이터는 서버가 내려준 피드에서 온다.
   const renderBadgeGrid = () => {
-  if (badgeItems.length === 0) {
+    if (badgeItems.length === 0) {
+      return (
+        <EmptyState
+          icon={<MedalIcon className="w-8 h-8" />}
+          title={isOwnProfile ? d.profile.emptyBadges : t(d.profile.emptyBadgesOther, { name: subjectName })}
+          description={isOwnProfile ? d.profile.emptyBadgesBody : undefined}
+        />
+      )
+    }
     return (
-      <EmptyState
-        icon={<MedalIcon className="w-8 h-8" />}
-        title={isOwnProfile ? d.profile.emptyBadges : t(d.profile.emptyBadgesOther, { name: subjectName })}
-        description={isOwnProfile ? d.profile.emptyBadgesBody : undefined}
-      />
+      <div className="grid grid-cols-3 gap-2">
+        {badgeItems.map(({ item, count, level }) => {
+          const meta = item.metadata as Record<string, string>
+          return (
+            <BadgeGridCard
+              key={item.id}
+              onClick={() => handleCardClick(item)}
+              name={meta.badge_name}
+              imageUrl={meta.badge_image_url ?? null}
+              rarity={(meta.rarity as BadgeRarity | null) ?? null}
+              level={level}
+              count={count}
+            />
+          )
+        })}
+      </div>
     )
-  }
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      {badgeItems.map(({ item, count, level }) => {
-        const meta = item.metadata as Record<string, string>
-        return (
-          <BadgeGridCard
-            key={item.id}
-            onClick={() => handleCardClick(item)}
-            name={meta.badge_name}
-            imageUrl={meta.badge_image_url ?? null}
-            rarity={(meta.rarity as BadgeRarity | null) ?? null}
-            level={level}
-            count={count}
-          />
-        )
-      })}
-    </div>
-  )
   }
 
   const renderTabContent = () => {
