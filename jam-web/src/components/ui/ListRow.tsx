@@ -310,9 +310,6 @@ export function ListRow({
   const titleStyle: CSSProperties = {
     ...clamp(lines),
     minWidth: 0, flex: '1 1 auto',
-    // 값 행(label + value + titleLines 0): 라벨은 내용 폭으로 두고 최대 50%까지만. 값 때문에 꺾이지 않고, 상한을 넘는 긴 라벨만 줄바꿈된다.
-    // 라벨 50%와 값 칸 60%(아래 rightArea)의 합이 100%를 넘어도 값이 먼저 줄어든다.
-    ...(isLabel && hasValue && lines === 0 ? { width: 'max-content', maxWidth: '50%', flex: '0 0 auto' } : null),
     fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)',
     fontWeight: titleVariant === 'strong' ? ROW_WEIGHT.strong : ROW_WEIGHT.regular,
     color: isLabel ? t.muted : undefined,
@@ -333,8 +330,14 @@ export function ListRow({
 
   const lineGap = 'var(--list-row-line-gap)'
 
+  // 값 행(label + value + titleLines 0): 본문 칸(행의 직접 자식)을 라벨 내용 폭으로 두고 행 폭의 50%까지만 늘린다.
+  // 라벨은 값 때문에 꺾이지 않고, 50%를 넘는 긴 라벨만 줄바꿈된다. 라벨 50%와 값 칸 60%(아래 rightArea)의 합이 100%를 넘어도 값이 먼저 줄어든다.
+  const bodyStyle: CSSProperties = isLabel && hasValue && lines === 0
+    ? { display: 'block', flex: '0 1 auto', maxWidth: '50%', minWidth: 0 }
+    : { display: 'block', flex: '1 1 0%', minWidth: 0 };
+
   const body = (
-    <span style={{ display: 'block', flex: '1 1 0%', minWidth: 0 }}>
+    <span style={bodyStyle}>
       {hasEyebrow && (
         <span style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--spacing-8)' }}>
           {typeof eyebrow === 'string' ? (
