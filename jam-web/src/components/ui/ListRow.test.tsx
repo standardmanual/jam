@@ -251,6 +251,18 @@ describe('ListRowChip·ListRowEm', () => {
     expect(muted).toContain('color:var(--muted)')
   })
 
+  it('warning 톤은 --warning 면 위에 --snow 글자를 쓰고 neutral·accent는 --foreground를 유지한다', () => {
+    const warning = render(<ListRowChip tone="warning">칩</ListRowChip>)
+    const neutral = render(<ListRowChip>칩</ListRowChip>)
+    const accent = render(<ListRowChip tone="accent">칩</ListRowChip>)
+
+    expect(warning).toContain('background:var(--warning)')
+    expect(warning).toContain('color:var(--snow)')
+    expect(warning).not.toContain('color:var(--foreground)')
+    expect(neutral).toContain('color:var(--foreground)')
+    expect(accent).toContain('color:var(--foreground)')
+  })
+
   it('빈 칩은 아무것도 그리지 않는다', () => {
     expect(render(<ListRowChip>{''}</ListRowChip>)).toBe('')
     expect(render(<ListRowChip>{null}</ListRowChip>)).toBe('')

@@ -31,7 +31,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/IconCatal
  * 스타일 블록(STATIC_CSS)은 React 19 `<style href precedence>`로 문서에 한 번만 들어간다(행마다 렌더해도 1개).
  *
  * 한 행에서 색으로 강조하는 곳은 한 곳 이하다. 그림자·그라디언트·유리질 없음(흰 면은 외곽선도 없다).
- * 칩 글자는 항상 --foreground다(--accent·--warning은 면 채우기만).
+ * 칩 글자는 --foreground가 기본이다(warning은 어두운 면이라 --snow, --accent·--warning은 면 채우기만).
  */
 
 /** 굵기 단일 소스. 행 안의 모든 글자 굵기는 여기서 나온다. */
@@ -99,7 +99,7 @@ export function ListRowEm({ children, className = '', style = {} }) {
 const CHIP_TONES = {
   neutral: { bg: 'var(--default-soft)', fg: 'var(--foreground)' },
   accent: { bg: 'var(--accent-soft)', fg: 'var(--foreground)' },
-  warning: { bg: 'var(--warning)', fg: 'var(--foreground)' },
+  warning: { bg: 'var(--warning)', fg: 'var(--snow)' },
   done: { bg: 'var(--foreground)', fg: 'var(--snow)' },
   surface: { bg: 'var(--surface)', fg: 'var(--foreground)' },
   'surface-muted': { bg: 'var(--surface)', fg: 'var(--muted)' },
@@ -107,7 +107,7 @@ const CHIP_TONES = {
 
 /**
  * 행 안 칩 한 크기(12px). 상태·만료·마지막 파편 같은 칩 복제를 대신한다.
- * 글자는 --foreground가 기본이다. done은 --snow, surface-muted는 --muted다. accent·warning은 면 채우기에만 쓴다(선·점으로도 쓰지 않는다).
+ * 글자는 --foreground가 기본이다. done·warning은 --snow(어두운 면 위), surface-muted는 --muted다. accent·warning은 면 채우기에만 쓴다(선·점으로도 쓰지 않는다).
  * surface·surface-muted(흰 면)는 tint 행 위 전용이다.
  */
 export function ListRowChip({ tone = 'neutral', children, className = '', style = {} }) {
