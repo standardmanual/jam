@@ -21,7 +21,8 @@
  * 티켓 20260923_1237: 반복 발급형 배지는 재발급돼도 `user_activity_feed` 행이 새로
  * 생기지 않는다(위 `earn_count` 설명과 같은 근거). "최근 활동" 피드는 **활동 단위로 그
  * 활동에서 얻은 것을 보여주는 화면**이므로, 재발급 회차도 그 회차가 실제로 일어난 활동의
- * 그룹에 나타나야 한다. DB에 행을 추가하지 않고, `user_activity_badges.earn_history`
+ * 그룹에 나타나야 한다. 정렬 시각(created_at)은 활동 시작 시각이 아니라 획득 시각을 쓴다
+ * (티켓 20261108_1657). DB에 행을 추가하지 않고, `user_activity_badges.earn_history`
  * (회차별 `{earned_at, strava_activity_id}`)를 렌더 시점에 펼쳐 회차마다 **가상 피드
  * 항목**을 만든다. 각 가상 항목은 그 회차의 `strava_activity_id`를 가지므로
  * `FeedSection.tsx`의 기존 그룹핑(`strava_activity_id` 기준)이 자동으로 올바른 활동
@@ -33,6 +34,16 @@ import type { ActivityFeedRow, ActivityFeedEventType, BadgeEarnHistoryEntry } fr
 const BADGE_METADATA_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 
 /** `${user_id}:${badge_id}` — 친구 피드는 여러 유저의 행이 섞이므로 유저까지 키에 넣는다 */
+/**
+ * 가상 항목의 정렬 시각. earn_history.earned_at은 활동 시작 시각이라 지난 활동을 뒤늦게
+ * 동기화하면 오늘 받은 배지가 과거 자리로 밀린다. 첫 회차는 실제 피드 행이므로 원본 시각을,
+ * 그 뒤 회차는 최초 발급보다 앞설 수 없으니 둘 중 늦은 값을 쓴다.
+ */
+function virtualCreatedAt(itemCreatedAt: string, earnedAt: string, index: number): string {
+  if (index === 0) return itemCreatedAt
+  return new Date(earnedAt).getTime() > new Date(itemCreatedAt).getTime() ? earnedAt : itemCreatedAt
+}
+
 function earnKey(userId: string, badgeId: string): string {
   return `${userId}:${badgeId}`
 }
@@ -173,7 +184,7 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
       return history.map((entry, index) => ({
         ...item,
         id: `${item.id}::${index}`,
-        created_at: entry.earned_at,
+        created_at: virtualCreatedAt(item.created_at, entry.earned_at, index),
         strava_activity_id: entry.strava_activity_id ?? item.strava_activity_id,
         metadata: {
           ...restMeta,
