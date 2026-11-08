@@ -309,7 +309,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                 >
                   {m.image_url ? (
                     // 미션 그림은 조건 문구가 든 합성 이미지라 잘리면 안 된다 — 인라인 contain이 ListRow의 cover 규칙을 이긴다
-                    // eslint-disable-next-line @next/next/no-img-element
+                    // eslint-disable-next-line @next/next/no-img-element -- 외부 미션 그림 주소를 그대로 쓰는 48px 장식 썸네일이라 next/image 최적화 대상이 아니다
                     <img src={m.image_url} alt="" width={48} height={48} style={{ objectFit: 'contain' }} />
                   ) : (
                     <span style={{ display: 'block', width: '24px', height: '24px', background: 'var(--surface)', borderRadius: '4px' }} />
