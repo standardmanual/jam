@@ -42,7 +42,7 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
     expect(html).not.toContain('duration-100')
   })
 
-  it('셀은 기본 톤 카드 면 + 투명 1px 테두리다 — 어두운 반전 면·옅은 흰 글자가 없다 (티켓 20261015_2133)', () => {
+  it('셀은 기본 톤 카드 면이고 테두리가 없다 — 어두운 반전 면·옅은 흰 글자가 없다 (티켓 20261015_2133)', () => {
     const html = renderToStaticMarkup(
       <TodayStatusStrip
         left={{ kind: 'suggestion', text: '드랍 아이템 찾아보기', category: 'drops', href: '/drops' }}
@@ -50,7 +50,7 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
       />
     )
     expect(html.match(/background:var\(--card-bg\)/g)).toHaveLength(2)
-    expect(html.match(/border:1px solid transparent/g)).toHaveLength(2)
+    expect(html).not.toContain('border:1px solid')
     expect(html).not.toContain('--background-inverse')
     expect(html).not.toContain('text-snow')
     // 빈 셀 아이콘은 EmptyState와 같은 text-muted opacity-50(장식 아이콘)이다

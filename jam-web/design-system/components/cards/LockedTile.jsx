@@ -11,7 +11,7 @@ const LOCK_ICON_RATIO = 0.45;
  * `BadgeRevealCarousel`(고르기·결과 카드), `BadgeGridCard`(`locked`), 잠긴 상세(`LockedItemDetail`) 세 곳에서
  * 나와 한 컴포넌트로 모았다.
  *
- * 모양 — 한 변이 `size`인 정사각형, `--radius-2xl`, 면 `--background`, 1px `--border`, 가운데 `LockIcon`(`--muted`).
+ * 모양 — 한 변이 `size`인 정사각형, `--radius-2xl`, 면 `--card-bg`(흰색), 외곽선 없음, 가운데 `LockIcon`(`--muted`).
  * 차분한 중립 타일이다. 등급 색·그라데이션·글로우를 더하지 않는다(등급은 `RarityBadge` 칩 하나로만 전달한다).
  * 자물쇠는 장식이라 `aria-hidden`이다 — 잠겼다는 사실은 호출부의 «잠김» 문구가 글자로 전한다.
  *
@@ -32,8 +32,7 @@ export function LockedTile({ size = 90, className = '', style = {} }) {
         justifyContent: 'center',
         flexShrink: 0,
         borderRadius: 'var(--radius-2xl)',
-        background: 'var(--background)',
-        border: '1px solid var(--border)',
+        background: 'var(--card-bg)',
         color: 'var(--muted)',
         ...style,
       }}

@@ -341,7 +341,7 @@ export default function BottomSheet({
       {/* Backdrop — 스크림은 --backdrop(검정 50%)이다. 크림(--background) 반투명은 크림 바탕 위에서
           가려지는 느낌이 거의 없었다(티켓 20261015_2133). prefers-reduced-transparency 가드는
           .t-panel-backdrop(transitions.css)에 공용으로 정의(FeedSection·PoiCarouselModal과
-          공유)하고 blur는 두지 않는다. 시트 본체(아래 bg-[var(--background)])는 불투명 유지.
+          공유)하고 blur는 두지 않는다. 시트 본체(아래 bg-[var(--card-bg)])는 불투명 유지.
           pointer-events는 같은 파일의 .t-panel-backdrop[data-open]이 담당(20260908_0040). */}
       <div className="absolute inset-0 bg-backdrop t-panel-backdrop" data-open={shown} onClick={onClose} />
 
@@ -367,7 +367,7 @@ export default function BottomSheet({
         tabIndex={-1}
         className={[
           'relative rounded-t-2xl flex flex-col',
-          'bg-[var(--background)] text-foreground',
+          'bg-[var(--card-bg)] text-foreground',
           /* dvh(동적 뷰포트 높이) 사용 — iOS Safari는 vh를 주소창이 숨겨진
              상태의 레이아웃 뷰포트 기준으로 계산해서, 주소창이 보이는 상태로
              열리면 시트 하단과 실제 화면 하단 사이에 틈이 생겨 그 틈으로

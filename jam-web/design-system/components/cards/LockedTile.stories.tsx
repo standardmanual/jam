@@ -11,7 +11,7 @@ const meta: Meta<typeof LockedTile> = {
     docs: {
       description: {
         component:
-          '잠긴 아이템 배지의 «잠금 타일» — 티켓 20261018_0054 2회. 한 변 `size`, `--radius-2xl`, 면 `--background`, 1px `--border`, ' +
+          '잠긴 아이템 배지의 «잠금 타일» — 티켓 20261018_0054 2회. 한 변 `size`, `--radius-2xl`, 면 `--card-bg`(흰색), 외곽선 없음, ' +
           '가운데 `LockIcon`(`--muted`). 같은 모양이 BadgeRevealCarousel · BadgeGridCard(`locked`) · 잠긴 상세 세 곳에서 나온다. ' +
           '등급 색·그라데이션·글로우는 없다(등급은 칩 하나로만 전달). 장식이라 `aria-hidden`이다.',
       },
@@ -23,11 +23,11 @@ const meta: Meta<typeof LockedTile> = {
 export default meta;
 type Story = StoryObj<typeof LockedTile>;
 
-/** 흰 면(`--surface`) 위에서 크림 타일의 1px `--border`가 경계를 맡는다. */
+/** 회색 바탕(`--background`) 위에서 흰 타일이 면 대비로 구분된다(외곽선 없음). */
 export const Default: Story = {
   name: '기본 — 90px',
   render: () => (
-    <div data-testid="surface" style={{ background: 'var(--surface)', padding: 16 }}>
+    <div data-testid="surface" style={{ background: 'var(--background)', padding: 16 }}>
       <LockedTile size={90} />
     </div>
   ),
@@ -38,14 +38,14 @@ export const Default: Story = {
     expect(Math.round(tile.getBoundingClientRect().height)).toBe(90);
     expect(tile.getAttribute('aria-hidden')).toBe('true');
     expect(tile.querySelector('svg')).toBeTruthy();
-    expect(getComputedStyle(tile).borderTopWidth).toBe('1px');
+    expect(getComputedStyle(tile).borderTopWidth).toBe('0px');
   },
 };
 
 export const Sizes: Story = {
   name: '크기 — 56 · 90 · 144',
   render: () => (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, background: 'var(--surface)', padding: 16 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, background: 'var(--background)', padding: 16 }}>
       <LockedTile size={56} />
       <LockedTile size={90} />
       <LockedTile size={144} />

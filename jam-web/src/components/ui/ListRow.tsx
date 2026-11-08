@@ -39,8 +39,8 @@ interface ToneSpec {
  */
 const TONES: Record<ListRowTone, ToneSpec> = {
   default: {
-    background: 'var(--surface)', border: '1px solid var(--border)', radius: 'var(--radius-2xl)',
-    color: 'var(--foreground)', muted: 'var(--muted)', face: 'var(--surface)', leadBg: 'var(--background-secondary)',
+    background: 'var(--card-bg)', border: 'none', radius: 'var(--radius-2xl)',
+    color: 'var(--foreground)', muted: 'var(--muted)', face: 'var(--card-bg)', leadBg: 'var(--background-secondary)',
     ring: 'var(--foreground)',
   },
   tint: {

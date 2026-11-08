@@ -123,7 +123,7 @@ export function Accordion({ items = [], style = {}, className = '' }) {
         borderBottom: 'none',
         borderRadius: 'var(--radius-2xl)',
         overflow: 'hidden',
-        background: 'var(--background)',
+        background: 'var(--card-bg)',
         ...style,
       }}
     >

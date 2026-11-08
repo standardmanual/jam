@@ -504,14 +504,14 @@ describe('인벤토리 가득 참 소식의 어두운 반전 면 (티켓 2026110
     expect(html).not.toContain('background:var(--background-inverse)')
     expect(html).not.toContain('color:var(--snow)')
     expect(html).not.toContain('text-snow')
-    expect(html).toContain('background:var(--surface)')
+    expect(html).toContain('background:var(--card-bg)')
   })
 
   it('반전 행과 흰 행이 함께 있어도 inventory_full 행만 어둡다', () => {
     const html = render([FULL, LOW])
 
     expect(html.match(/background:var\(--background-inverse\)/g)).toHaveLength(1)
-    expect(html.match(/background:var\(--surface\)/g)).toHaveLength(1)
+    expect(html.match(/background:var\(--card-bg\)/g)).toHaveLength(1)
   })
 
   it('문구와 링크 대상은 면이 바뀌어도 그대로다', () => {

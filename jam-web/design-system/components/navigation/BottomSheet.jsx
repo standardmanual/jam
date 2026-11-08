@@ -86,9 +86,9 @@ export function BottomSheet({
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          // 패널은 크림(--background), 푸터는 흰 면(--surface) — 서비스 BottomSheet.tsx와 같은 쌍이다
+          // 패널과 푸터 모두 흰 면(--card-bg·--surface) — 서비스 BottomSheet.tsx와 같은 쌍이다
           // (티켓 20261015_2133). 스크림(--backdrop 검정 50%) 위에서 패널 경계는 3.94:1로 보인다.
-          background: 'var(--background)',
+          background: 'var(--card-bg)',
           borderRadius: 'var(--radius-2xl) var(--radius-2xl) 0 0',
           boxSizing: 'border-box',
           animation: 'ds-bottomsheet-in var(--duration-medium) var(--ease-bounce) both',

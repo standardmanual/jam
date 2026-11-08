@@ -796,9 +796,9 @@ function ActivityGroupCard({
     <Card
       className="t-acc"
       data-open={open}
-      // 단건 카드(ListRow default)와 같은 흰 면 + 1px 테두리. 면은 이 한 장뿐이고 안쪽 행은 flat이다.
+      // 면·테두리는 Card 기본값(흰 면, 외곽선 없음)을 쓴다. 안쪽 여백만 0이다 — 안쪽 행이 px-4를 맡는다.
       // overflow는 주지 않는다 — 안쪽 행의 포커스 링이 잘린다(잘림은 t-acc-panel-inner가 맡는다).
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: 0 }}
+      style={{ padding: 0 }}
     >
       <div className="px-4">
       <ListRow

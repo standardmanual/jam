@@ -22,7 +22,7 @@ const TAG_STYLE = {
  * 레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스 바 | 카운트]
  * 썸네일 좌상단: 등급 태그(선택) + 완성 태그(선택)
  *
- * 면 (티켓 20261015_2133): BadgeGridCard와 같은 면 — --surface(흰) + 1px --border + 반경 --radius-2xl + 안쪽 여백 12, 그림자 없음.
+ * 면 (티켓 20261015_2133): BadgeGridCard와 같은 면 — --card-bg(흰) 면, 외곽선 없음, 반경 --radius-2xl + 안쪽 여백 12, 그림자 없음.
  * 진행 바는 직접 그리지 않고 ProgressBar(트랙 --border, 필 --accent)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙이다.
  *
  * Props:

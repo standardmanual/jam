@@ -448,7 +448,7 @@
     },
     {
       "name": "--background",
-      "value": "#ffffff",
+      "value": "var(--base-neutral-100)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -986,7 +986,7 @@
     },
     {
       "name": "--card-bg",
-      "value": "#f7f7f7",
+      "value": "#ffffff",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },

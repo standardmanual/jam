@@ -54,7 +54,7 @@ eyebrow 줄 오른쪽에 붙는다. eyebrow가 없으면 title 줄 오른쪽이�
 - 긴 절대 날짜(«2026년 11월 6일 오후 3시 30분»)는 time 자리에 들어가지 않는다(time은 줄지 않아 title을 밀어낸다). 호출부가 긴 형식은 meta 줄로 내리고 time에는 짧은 형식(예: «11월 6일»)을 쓴다.
 
 ## 면(tone)과 상태
-- `default` 흰 면 + 1px `--border`. `tint`는 이미 카드 안에 들어간 행 전용이다. 크림 바탕 위 단독 행에 쓰지 않는다(이중 테두리). `inverse`는 경고 안내 행 전용. `flat`은 면 없음(가로 0·모서리 0), `separator`로 구분선을 고른다. **`flat`에 `selected`를 지정하면(true·false 모두) 좌우 16 + 모서리 `--radius-2xl`이 자동으로 붙고 `separator`는 무시된다.** 선택된 행만 여백을 주면 목록이 출렁이므로 `selected`가 있는 모든 행에 준다. 호출부가 style로 덮어쓰지 않는다. `ListRowSkeleton`도 `selected`를 같은 규칙으로 받는다.
+- `default` 흰 면(`--card-bg`), 외곽선 없음. `tint`는 이미 카드 안에 들어간 행 전용이다. 회색 바탕 위 단독 행에 쓰지 않는다(흰 카드 안 보조 면 전용). `inverse`는 경고 안내 행 전용. `flat`은 면 없음(가로 0·모서리 0), `separator`로 구분선을 고른다. **`flat`에 `selected`를 지정하면(true·false 모두) 좌우 16 + 모서리 `--radius-2xl`이 자동으로 붙고 `separator`는 무시된다.** 선택된 행만 여백을 주면 목록이 출렁이므로 `selected`가 있는 모든 행에 준다. 호출부가 style로 덮어쓰지 않는다. `ListRowSkeleton`도 `selected`를 같은 규칙으로 받는다.
 - 선택됨은 안쪽 2px 링 + 쉐브론 자리 체크 한 가지다(색만으로 구분하지 않는다). 버튼이면 `aria-pressed`, 라디오로 쓰면 `role`과 `aria-checked`를 호출부가 넘긴다.
 - 비활성은 `--opacity-disabled`(0.4)에 클릭 차단이고 눌림도 없다. 눌림은 `--scale-press-card` 한 가지, hover는 없다. 포커스는 바깥 2px `--link` 아웃라인이다.
 - 라디오로 쓸 때 화살표 키 이동과 `tabindex`(선택된 행만 0, 나머지 -1)는 호출부가 처리한다. 컴포넌트는 `role`·`aria-checked` 전달과 선택 시각만 맡는다.

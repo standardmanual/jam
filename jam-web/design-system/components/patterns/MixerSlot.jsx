@@ -8,7 +8,7 @@ import React from 'react';
  *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 --foreground 화살표 아이콘
  *            (추가 가능함을 나타냄, 티켓 20260917_2028 후속 조정)을 표시하고, 테두리를
  *            그레이(--muted) 3px로 굵게 표현해 잠긴 슬롯과 구분한다(티켓
- *            20260917_1828). 탭하면 채울 수 있다. 면이 크림(--background)이라 화살표를
+ *            20260917_1828). 탭하면 채울 수 있다. 면이 흰색(--card-bg)이라 화살표를
  *            흰색으로 두면 보이지 않는다(1.05:1) — 글자색 --foreground(17.07:1)를 쓴다.
  *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. '+' 텍스트를 흐리게 표시하고, 사선
  *            패턴 없이 불투명도만으로 empty와 구분한다(티켓 20260917_1828 — 사선 패턴
@@ -61,7 +61,7 @@ export function MixerSlot({
       : fillable
         ? '3px solid var(--muted)'
         : '1px dashed var(--border)',
-    background: filled ? 'var(--surface)' : 'var(--background)',
+    background: filled ? 'var(--surface)' : 'var(--card-bg)',
     color: 'var(--foreground)',
     opacity: locked ? 0.5 : 1,
     cursor: onClick ? 'pointer' : undefined,
