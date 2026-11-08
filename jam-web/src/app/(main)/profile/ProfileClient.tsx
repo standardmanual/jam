@@ -487,7 +487,7 @@ export default function ProfileClient({
     )
   }
 
-  // 숫자 줄 — 인스타그램식 «팔로워 N  팔로잉 N  포인트 N»(티켓 20261108_1216). 탭 카드가 아니라 글자 줄이다.
+  // 숫자 줄 — 인스타그램식 팔로워·팔로잉·포인트(티켓 20261108_1216). 탭 카드가 아니라 글자 줄이다.
   // 선택 표시는 라벨 색 전환뿐이다(밑줄·면 없음). 해시가 없는 기본 화면에서는 아무것도 선택돼 있지 않다.
   // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
   const statItems: { key: TabKey; label: string; value: string }[] = [
@@ -497,8 +497,10 @@ export default function ProfileClient({
       ? [{ key: 'points' as const, label: d.profile.pointBadgeLabel, value: pointBalance === null ? '–' : compactCount(pointBalance) }]
       : []),
   ]
+  // 2026-11-08 사용자 요청(인스타그램 참고 이미지): 숫자 위·라벨 아래로 쌓은 칸 세 개를 한 줄에 둔다.
+  // 칸 폭은 3등분(grid-cols-3)이고 타인 프로필은 두 칸만 채운다(칸 위치가 본인과 같다). 999,999도 한 칸에 들어간다.
   const statRow = (
-    <div className="flex flex-wrap items-center gap-x-5">
+    <div className="grid grid-cols-3 gap-x-2">
       {statItems.map(({ key, label, value }) => {
         const selected = isTabView && activeTab === key
         return (
@@ -507,14 +509,14 @@ export default function ProfileClient({
             type="button"
             aria-pressed={selected}
             onClick={() => handleTabClick(key)}
-            className="inline-flex items-baseline gap-1.5 min-h-11 whitespace-nowrap break-keep active:scale-95 transition-transform duration-100 motion-reduce:transition-none cursor-pointer"
+            className="flex flex-col items-start min-w-0 min-h-11 text-left whitespace-nowrap break-keep active:scale-95 transition-transform duration-100 motion-reduce:transition-none cursor-pointer"
           >
-            <span className={`text-base transition-colors duration-150 motion-reduce:transition-none ${selected ? 'text-foreground' : 'text-muted'}`}>
-              {label}
-            </span>
-            <strong className="text-base font-bold tabular-nums text-foreground">
+            <strong className="text-xl leading-tight font-bold tabular-nums text-foreground">
               {key === 'followers' ? <PopInNumber value={value} /> : value}
             </strong>
+            <span className={`text-sm transition-colors duration-150 motion-reduce:transition-none ${selected ? 'text-foreground' : 'text-muted'}`}>
+              {label}
+            </span>
           </button>
         )
       })}

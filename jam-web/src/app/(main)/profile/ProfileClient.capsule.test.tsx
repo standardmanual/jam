@@ -97,21 +97,21 @@ describe('프로필의 캡슐 위젯', () => {
   })
 })
 
-/** 숫자 줄 (티켓 20261108_1216) — 탭 카드 대신 «팔로워 N  팔로잉 N  포인트 N» 글자 줄이다. */
+/** 숫자 줄 (티켓 20261108_1216) — 탭 카드 대신 숫자 위·라벨 아래 칸을 한 줄에 둔다. */
 describe('프로필의 숫자 줄', () => {
   it('내 프로필은 팔로워·팔로잉·포인트와 편집 버튼, 타인 프로필은 팔로워·팔로잉만 보인다', () => {
     const mine = flat(render({ followerCount: 12345, followingCount: 586, pointBalance: 1200 }))
-    expect(mine).toContain('팔로워12,345팔로잉586포인트1,200')
+    expect(mine).toContain('12,345팔로워586팔로잉1,200포인트')
     expect(mine).toContain(d.profile.editButton)
     const others = flat(render({ isOwnProfile: false, followerCount: 7, followingCount: 3, pointBalance: null }))
-    expect(others).toContain('팔로워7팔로잉3')
+    expect(others).toContain('7팔로워3팔로잉')
     expect(others).not.toContain('포인트')
   })
 
   it('백만부터 1.0M으로 줄이고, 잔액을 모르면 «–»다', () => {
-    expect(flat(render({ followerCount: 1_000_000 }))).toContain('팔로워1.0M')
-    expect(flat(render({ followingCount: 1_200_000 }))).toContain('팔로잉1.2M')
-    expect(flat(render({ pointBalance: null }))).toContain('포인트–')
+    expect(flat(render({ followerCount: 1_000_000 }))).toContain('1.0M팔로워')
+    expect(flat(render({ followingCount: 1_200_000 }))).toContain('1.2M팔로잉')
+    expect(flat(render({ pointBalance: null }))).toContain('–포인트')
   })
 
   it('통계 탭 카드가 없고, 기본 화면에서는 선택 표시가 없다', () => {
