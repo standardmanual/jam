@@ -840,7 +840,7 @@ function ActivityGroupCard({
         {/* 접힌 동안에도 DOM에 남아야 높이 트랜지션이 성립한다. 대신 inert로
             키보드 포커스·보조기술 노출에서 완전히 빼 유령 포커스를 막는다. */}
         {/* 패널 안 행의 포커스 링(밖으로 4px)이 overflow:hidden 가장자리에서 잘리지 않게 오른쪽·아래에 여백을 둔다.
-            오른쪽은 -mr-1로 잘림 상자를 넓히고 pr-1로 행 폭을 되돌려 묶음 행과 오른쪽 끝을 맞춘다(티켓 20261106_2252 판정 4). */}
+            오른쪽은 -mr-1로 잘림 상자를 넓히고 pr-5(16+4)로 행 폭을 되돌려 헤더 px-4와 오른쪽 끝을 맞춘다(티켓 20261106_2252 판정 4, 20261108_1830). */}
         <div className="t-acc-panel-inner -mr-1" inert={!open}>
           <div className="pl-4 pr-5 pb-1">
             <div style={{ borderTop: '1px solid var(--separator)' }}>
