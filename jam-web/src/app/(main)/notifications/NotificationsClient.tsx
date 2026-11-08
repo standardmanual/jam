@@ -301,7 +301,7 @@ export default function NotificationsClient({
     <div className="min-h-full text-foreground">
       <TopNav title={d.notifications.title} />
 
-      <div className="px-4 pt-2 pb-10 flex flex-col gap-2">
+      <div className="px-4 pt-4 pb-6 flex flex-col gap-2">
         {initialFailed ? (
           // 조회 실패를 빈 상태로 보여주면 유저는 "내 소식이 사라졌다"로 읽는다.
           <EmptyState

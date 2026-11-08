@@ -223,7 +223,7 @@ export default function PhilosophyPage() {
     <div className="min-h-full text-foreground">
       <TopNav title={PAGE_TITLE} />
 
-      <article className="px-4 pt-16 pb-16 flex flex-col gap-16">
+      <article className="px-4 pt-4 pb-6 flex flex-col gap-16">
         {/* Philosophy — 확정 원고(티켓 20260902_1347), 임의 수정·윤문 금지 */}
         <section>
           <h1 className="text-3xl font-medium">

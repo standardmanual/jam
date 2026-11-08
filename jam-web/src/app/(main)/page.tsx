@@ -119,7 +119,7 @@ export default async function HomePage() {
         <TopNav logo />
       )}
 
-      <div className="px-4 pt-6 pb-8 flex flex-col gap-6">
+      <div className="px-4 pt-4 pb-6 flex flex-col gap-6">
       {/* 이용 정지 배너 (티켓 20261017_1426) — 정지 중인 유저에게만 렌더, 아니면 DOM에 없다.
           정지는 홈의 다른 모든 것보다 먼저 읽혀야 해서 인사말 줄 위, 컨테이너의 첫 자식이다. */}
       {suspension && <SuspensionBanner reason={suspension.reason} suspendedAt={suspension.suspendedAt} />}

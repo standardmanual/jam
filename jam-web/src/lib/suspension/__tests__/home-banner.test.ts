@@ -62,7 +62,7 @@ describe('홈 page.tsx 배선', () => {
   })
 
   it('배너가 컨테이너의 첫 자식이라 인사말 줄보다 위에 있다', () => {
-    const container = source.indexOf('px-4 pt-6 pb-8 flex flex-col gap-6')
+    const container = source.indexOf('px-4 pt-4 pb-6 flex flex-col gap-6')
     const banner = source.indexOf('<SuspensionBanner', container)
     const greeting = source.indexOf('d.todayStatus.greeting', container)
     expect(container).toBeGreaterThan(-1)

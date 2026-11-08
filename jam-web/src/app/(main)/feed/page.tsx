@@ -40,7 +40,7 @@ export default async function FriendFeedPage() {
     return (
       <div className="min-h-full text-foreground">
         <TopNav title={d.feed.friendFeedTitle} />
-        <div className="px-4 pt-4 pb-8">
+        <div className="px-4 pt-4 pb-6">
           <EmptyState
             icon={<UsersIcon className="w-8 h-8" />}
             title={d.todayStatus.noFollowing}
@@ -101,7 +101,7 @@ export default async function FriendFeedPage() {
   return (
     <div className="min-h-full text-foreground">
       <TopNav title={d.feed.friendFeedTitle} />
-      <div className="px-4 pt-4 pb-8">
+      <div className="px-4 pt-4 pb-6">
         <FeedSection feedItems={feedItems} title={d.feed.friendFeedTitle} activityNames={activityNames} friendProfileHrefs={friendProfileHrefs} />
       </div>
     </div>

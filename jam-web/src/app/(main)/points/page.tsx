@@ -20,7 +20,7 @@ export default function PointsPage() {
     <div className="min-h-full text-foreground">
       <TopNav title={d.common.back} />
 
-      <div className="px-4 pt-0 pb-10 flex flex-col gap-6">
+      <div className="px-4 pt-4 pb-6 flex flex-col gap-6">
         {/* 잔액 카드 */}
         <Card className="text-center py-8">
           <p className="text-xs uppercase text-muted mb-2">{d.points.balanceLabel}</p>
