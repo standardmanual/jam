@@ -564,13 +564,21 @@ export default function ProfileClient({
           {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
             {/* 내 챕터 — 표시 이름 위 작은 글씨 한 줄(티켓 20261031_1806). 퀘스트 전·읽지 못함(null)은 줄 자체를 그리지 않는다 */}
-            {/* 챕터 줄과 같은 행 오른쪽 끝에 편집 버튼(가장 작은 xs)을 둔다(2026-11-08 사용자 요청). 챕터가 없어도 버튼은 오른쪽 끝에 남는다 */}
+            {/* 챕터 줄과 같은 행 오른쪽 끝에 칩 크기의 편집 버튼을 둔다(2026-11-08 사용자 요청). 챕터가 없어도 버튼은 오른쪽 끝에 남는다 */}
             {isOwnProfile && (
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   {chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
                 </div>
-                <Button surface="main" variant="outline" size="xs" className="shrink-0" onClick={() => router.push('/profile/edit')}>
+                {/* 칩 크기(목록 칩과 같은 12px 글자·2px 8px 여백)로 줄인다(2026-11-08 사용자 요청). 테두리 1px만큼 여백을 뺀다 */}
+                <Button
+                  surface="main"
+                  variant="outline"
+                  size="xs"
+                  className="shrink-0"
+                  style={{ minHeight: 0, padding: '1px 7px', lineHeight: 'var(--text-xs--line-height)' }}
+                  onClick={() => router.push('/profile/edit')}
+                >
                   {d.profile.editButton}
                 </Button>
               </div>
