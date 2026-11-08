@@ -80,12 +80,12 @@ describe('미션 목록 NEW 칩', () => {
     expect(render(item(createdAgo(7 * 24 * HOUR - 1000)))).not.toContain(`>${d.missions.tagNew}<`)
   })
 
-  it('NEW 칩은 주황 --warning 면에 검정 글자이고 초록 accent 면이 아니다', () => {
+  it('NEW 칩은 ListRowChip done 톤(검정 면 + --snow 글자)이고 warning·accent 면이 아니다 (티켓 20261108_1020 사용자 결정 1)', () => {
     const html = render(item(createdAgo(HOUR)))
     const chip = html.slice(html.lastIndexOf('<span', html.indexOf(`>${d.missions.tagNew}<`)), html.indexOf(`>${d.missions.tagNew}<`))
 
-    expect(chip).toContain('background:var(--warning)')
-    expect(chip).toContain('color:var(--accent-foreground)')
+    expect(chip).toContain('color:var(--snow)')
+    expect(chip).not.toContain('var(--warning)')
     expect(chip).not.toContain('var(--accent)')
   })
 })

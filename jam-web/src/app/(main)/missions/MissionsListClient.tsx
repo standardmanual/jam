@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
 import type { ActivityType, BadgeRarity, MissionCondition, MissionRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
@@ -12,6 +11,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Select } from '@ds/components/forms/Select'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
@@ -53,29 +53,8 @@ type SortKey = 'newest' | 'oldest' | 'ending_soon'
 
 const NEW_MISSION_WINDOW_MS = 2 * 24 * 60 * 60 * 1000 // 생성 후 2일 이내 = 신규 (2026-11-04 사용자 결정, 이전 7일)
 
-// 색상 토큰 — JAM 2.0 라이트(티켓 20261015_2134). 미션 목록 행은 크림 바탕 위 맨 행이다.
-// 썸네일은 흰 면 + 1px --border다(크림과 흰 면은 1.05:1이라 테두리가 경계를 맡는다).
-const C_THUMBNAIL_BG = 'var(--surface)'
-const C_THUMBNAIL_BORDER = '1px solid var(--border)'
-const C_THUMBNAIL_RADIUS = '12px'
-// 중립 상태 칩(시작 전·기간·완료): --background-secondary + --muted(5.13:1)
-const C_STATUS_BADGE_BG = 'var(--background-secondary)'
-const C_STATUS_BADGE_TEXT = 'var(--muted)'
-// 잠김 칩: --border + --foreground(10.81:1). --muted는 --border 면 위 3.46:1이라 쓰지 않는다.
-const C_LOCKED_BADGE_BG = 'var(--border)'
-const C_LOCKED_BADGE_TEXT = 'var(--foreground)'
-// 썸네일 자물쇠 오버레이 전용 색. 썸네일 면이 흰색이라 --foreground다(40% 딤 아트 위 최악 6.29:1).
+// 썸네일 자물쇠 오버레이 전용 색. lead 바탕(--background-secondary)이 밝아 --foreground다(14:1).
 const C_LOCK_GLYPH = 'var(--foreground)'
-// NEW 칩: 주황 --warning 면 + --accent-foreground 검정 글자(2026-11-04 사용자 결정, 이전에는 초록 accent)
-const C_NEW_BADGE_BG = 'var(--warning)'
-const C_NEW_BADGE_TEXT = 'var(--accent-foreground)'
-// 참가중 칩: --accent 면 + --accent-foreground(6.63:1)
-const C_JOINED_BADGE_BG = 'var(--accent)'
-const C_JOINED_BADGE_TEXT = 'var(--accent-foreground)'
-const C_TITLE = 'var(--foreground)'
-const C_META_TEXT = 'var(--muted)'
-// 보상 줄 글자: 옛 빨강 대신 --link(크림 5.18:1)
-const C_REWARD = 'var(--link)'
 
 const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 
@@ -140,70 +119,6 @@ const TABS: SlidingTabItem<Tab>[] = [
   { key: 'ended', label: d.missions.tabEnded },
 ]
 
-// Figma mission-item-1: badge/new
-function NewBadge() {
-  return (
-    <span
-      style={{
-        background: C_NEW_BADGE_BG,
-        color: C_NEW_BADGE_TEXT,
-        fontSize: '10px',
-        fontWeight: 700,
-        lineHeight: 1,
-        padding: '3px 6px',
-        borderRadius: '999px',
-      }}
-    >
-      {d.missions.tagNew}
-    </span>
-  )
-}
-
-// Figma mission-item-1: badge/status
-// locked=true면 잠금 글리프 + 배경톤을 올린 변형 (20260825_028)
-function StatusBadge({ children, locked = false }: { children: React.ReactNode; locked?: boolean }) {
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '3px',
-        background: locked ? C_LOCKED_BADGE_BG : C_STATUS_BADGE_BG,
-        color: locked ? C_LOCKED_BADGE_TEXT : C_STATUS_BADGE_TEXT,
-        fontSize: '10px',
-        lineHeight: 1,
-        padding: '3px 6px',
-        borderRadius: '999px',
-      }}
-    >
-      {/* icons.tsx의 Svg는 strokeWidth 1.5 / viewBox 24 = 24px 렌더 전제다.
-          10px로 축소하면 실효 스트로크가 0.625px, 키홀은 0.83px라 형태가 서브픽셀로 뭉개진다.
-          호출부에서 strokeWidth를 보정해 10px에서도 자물쇠로 읽히게 한다. */}
-      {locked && <LockIcon className="w-2.5 h-2.5 shrink-0" strokeWidth={2.5} />}
-      {children}
-    </span>
-  )
-}
-
-// 참가중 태그 — 강조 스타일
-function JoinedBadge() {
-  return (
-    <span
-      style={{
-        background: C_JOINED_BADGE_BG,
-        color: C_JOINED_BADGE_TEXT,
-        fontSize: '10px',
-        fontWeight: 700,
-        lineHeight: 1,
-        padding: '3px 6px',
-        borderRadius: '999px',
-      }}
-    >
-      {d.missions.tagJoined}
-    </span>
-  )
-}
-
 // 기간 텍스트 — 완료 건은 완료일, ended 탭이면 tagEnded, 상시면 tagPermanent, 그 외 N일 N시간 남음
 function periodText(m: MissionListItem, tab: Tab): string {
   // 20260825_028: 완료한 상시 미션은 "종료됨"이 아니라 언제 완료했는지를 보여준다
@@ -229,15 +144,22 @@ function periodText(m: MissionListItem, tab: Tab): string {
 function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
   switch (missionStatusKind(m, started)) {
     case 'joined':
-      return <JoinedBadge />
+      return <ListRowChip tone="done">{d.missions.tagJoined}</ListRowChip>
     case 'done':
-      return <StatusBadge>{d.missions.tagDone}</StatusBadge>
+      return <ListRowChip>{d.missions.tagDone}</ListRowChip>
     case 'locked':
-      return <StatusBadge locked>{d.missions.tagLocked}</StatusBadge>
+      return (
+        <ListRowChip style={{ gap: 'var(--spacing-4)' }}>
+          {/* icons.tsx의 Svg는 strokeWidth 1.5 / viewBox 24 = 24px 렌더 전제다.
+              12px로 축소하면 실효 스트로크가 0.75px라 자물쇠 형태가 뭉개지므로 strokeWidth를 보정한다. */}
+          <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.25} />
+          {d.missions.tagLocked}
+        </ListRowChip>
+      )
     case 'upcoming':
-      return <StatusBadge>{d.missions.tagUpcoming}</StatusBadge>
+      return <ListRowChip>{d.missions.tagUpcoming}</ListRowChip>
     default:
-      return <StatusBadge>{periodText(m, tab)}</StatusBadge>
+      return <ListRowChip>{periodText(m, tab)}</ListRowChip>
   }
 }
 
@@ -364,157 +286,105 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
           description={emptyBody}
         />
       ) : (
-        <div className="flex flex-col gap-2">
+        <div>
           {list.map((m) => {
             const started = new Date(m.starts_at) <= new Date()
             const newMission = isNewMission(m.created_at)
             const reward = rewardNodes(m, rewardBadgeNames)
             // 20260825_028: 잠긴 미션은 상세 진입을 막고, 눌리면 잠금 사유를 토스트로 알린다.
-            // 카드 전체 딤(0.6)은 '시작전'과 픽셀 단위로 같아져 상태 구분이 사라지고
-            // 정작 읽어야 할 잠금 힌트의 대비까지 8.21:1 → 3.78:1로 떨어뜨린다.
-            // 그래서 잠김은 썸네일에만 grayscale+딤을 적용한다 — 미획득 배지를 표현하는
-            // 하우스 패턴(BadgeGridCard·BadgeHeroSection·MapView)과 같은 방식이다.
-            const card = (
+            // 딤(잠김 0.4·시작 전 0.6)은 글자에 걸면 --muted가 2.46:1로 떨어지고 잠금 힌트 대비도 깎이므로
+            // lead 안 이미지 래퍼에만 건다 — 미획득 배지를 표현하는 하우스 패턴과 같은 방식이다.
+            const lead = (
               <>
-                {/* Figma mission-item-1 카드 */}
-                <div
+                <span
                   style={{
                     display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'flex-start',
-                    padding: '12px 0',
-                    gap: '16px',
+                    width: '100%',
+                    height: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    filter: m.locked ? 'grayscale(1)' : undefined,
+                    opacity: m.locked ? 0.4 : !started ? 0.6 : 1,
                   }}
                 >
-                  {/* thumbnail — 잠김이면 grayscale + 딤 + 자물쇠 오버레이 */}
-                  <div
+                  {m.image_url ? (
+                    // 미션 그림은 조건 문구가 든 합성 이미지라 잘리면 안 된다 — 인라인 contain이 ListRow의 cover 규칙을 이긴다
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.image_url} alt="" width={48} height={48} style={{ objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ display: 'block', width: '24px', height: '24px', background: 'var(--surface)', borderRadius: '4px' }} />
+                  )}
+                </span>
+                {m.locked && (
+                  <span
                     style={{
-                      position: 'relative',
-                      width: '90px',
-                      height: '90px',
-                      minWidth: '90px',
-                      background: C_THUMBNAIL_BG,
-                      border: C_THUMBNAIL_BORDER,
-                      borderRadius: C_THUMBNAIL_RADIUS,
-                      overflow: 'hidden',
+                      position: 'absolute',
+                      inset: 0,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      color: C_LOCK_GLYPH,
                     }}
                   >
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        filter: m.locked ? 'grayscale(1)' : undefined,
-                        // 시작 전 딤(0.6)은 글자에 걸면 --muted가 2.46:1로 떨어지므로 썸네일에만 건다
-                        opacity: m.locked ? 0.4 : !started ? 0.6 : 1,
-                      }}
-                    >
-                      {m.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={m.image_url}
-                          alt={m.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        />
-                      ) : (
-                        <span style={{ display: 'block', width: '32px', height: '32px', background: 'var(--border)', borderRadius: '4px' }} />
-                      )}
-                    </div>
-                    {m.locked && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          // 오버레이 배경은 배지 아트를 0.4로 합성한 값이라 이미지마다 밝기가 다르다.
-                          // 썸네일 면이 흰색이라 --foreground로 둔다. 40% 딤 아트 위 최악 배경에서도
-                          // 6.29:1이라 WCAG 1.4.11(의미 전달 그래픽 3:1)을 지킨다.
-                          color: C_LOCK_GLYPH,
-                        }}
-                      >
-                        <LockIcon className="w-6 h-6" />
-                      </span>
-                    )}
-                  </div>
-
-                  {/* text-area */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                    {/* meta-row — 20260923_1353: 상태 라벨은 하나만(topStatusLabel), NEW만 별도 축으로 병기 */}
-                    <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center' }}>
-                      {newMission && <NewBadge />}
-                      {topStatusLabel(m, tab, started)}
-                    </div>
-
-                    {/* title */}
-                    <h3 style={{ fontSize: '16px', fontWeight: 700, color: C_TITLE, margin: 0, lineHeight: '1.25' }}>
-                      {m.title}
-                    </h3>
-
-                    {/* desc — 20260923_1353: 잠김 여부와 무관하게 항상 그대로 노출한다.
-                        잠김 안내는 더 이상 이 자리가 아니라 아래 "조건" 행이 맡는다. */}
-                    {m.description ? (
-                      <p
-                        style={{
-                          fontSize: '12px',
-                          lineHeight: '17px',
-                          color: C_META_TEXT,
-                          margin: 0,
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          whiteSpace: 'pre-line',
-                        }}
-                      >
-                        {m.description}
-                      </p>
-                    ) : null}
-
-                    {/* condition — locked일 때만 렌더. requiredBadge가 있으면 등급칩+배지명(중립색),
-                        없으면(v5 게이트 미션 등) lockedHintText()의 범용 안내 문구를 칩 없이
-                        그대로 남긴다 — 잠긴 이유를 알려주는 유일한 정보라 생략하면 안 된다. */}
-                    {m.locked && (
-                      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', color: 'var(--muted)', lineHeight: 'var(--text-xs--line-height)' }}>
-                        <span style={{ marginRight: 'var(--spacing-4)' }}>{d.missions.cardConditionLabel}</span>
-                        {m.requiredBadge ? conditionBadgeNode(m.requiredBadge) : lockedHintText(m)}
-                      </span>
-                    )}
-
-                    {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014). 보상 글자는 굵게(티켓 20261104_2318) */}
-                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', fontWeight: 700, color: C_REWARD, lineHeight: 'var(--text-xs--line-height)' }}>
-                      {reward}
-                    </span>
-                  </div>
-                </div>
+                    <LockIcon className="w-5 h-5" />
+                  </span>
+                )}
               </>
             )
 
-            return m.locked ? (
-              // 무반응은 "잠김"이 아니라 "터치가 씹혔다"로 읽힌다. 눌림 피드백을 주되
-              // 열린 카드(active:opacity-70)보다 얕게 잡아 '이동'이 아닌 '저항'으로 읽히게 한다.
-              // role 없는 div의 aria-disabled는 보조기술이 무시하므로 button으로 바꿔
-              // 포커스·상태 안내도 함께 살린다(실제 참가·진입은 여전히 불가).
-              <button
+            // 상태 칩은 항상 나오므로 eyebrow가 비는 경우는 없다. NEW는 생성 후 2일 이내에만 앞에 붙는다.
+            const eyebrow = (
+              <>
+                {newMission && <ListRowChip tone="done">{d.missions.tagNew}</ListRowChip>}
+                {topStatusLabel(m, tab, started)}
+              </>
+            )
+
+            // 잠긴 미션은 «조건» 줄 + 보상 줄, 열린 미션은 보상 줄만. 보상 줄 글자는 굵게(티켓 20261104_2318)이고 색은 행에서 상속한다.
+            // «조건» 줄: requiredBadge가 있으면 등급칩+배지명, 없으면(v5 게이트 미션 등) lockedHintText()의
+            // 범용 안내 문구 — 잠긴 이유를 알려주는 유일한 정보라 생략하면 안 된다.
+            const footer = (
+              <>
+                {m.locked && (
+                  <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', color: 'var(--muted)', lineHeight: 'var(--text-xs--line-height)' }}>
+                    <span style={{ marginRight: 'var(--spacing-4)' }}>{d.missions.cardConditionLabel}</span>
+                    {m.requiredBadge ? conditionBadgeNode(m.requiredBadge) : lockedHintText(m)}
+                  </span>
+                )}
+                <span
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    fontSize: 'var(--text-xs)',
+                    fontWeight: 700,
+                    lineHeight: 'var(--text-xs--line-height)',
+                    marginTop: m.locked ? 'var(--spacing-4)' : undefined,
+                  }}
+                >
+                  {reward}
+                </span>
+              </>
+            )
+
+            // 잠긴 행은 disabled 없이 onClick + aria-disabled다 — disabled는 행 전체 불투명도 0.4와 키보드 차단을 함께 걸어
+            // «썸네일만 흐림, 글자 대비 유지» 규칙과 토스트를 깬다. aria-disabled는 ListRow가 클릭 영역(button)으로 넘긴다.
+            return (
+              <ListRow
                 key={m.id}
-                type="button"
-                aria-disabled="true"
-                onClick={() => toast(lockedToastText(m), 'info')}
-                className="w-full text-left transition-transform active:scale-[0.99]"
-                style={{ transitionDuration: 'var(--duration-micro)' }}
-              >
-                {card}
-              </button>
-            ) : (
-              <Link key={m.id} href={`/missions/${m.id}`} className="active:opacity-70 transition-opacity duration-100">
-                {card}
-              </Link>
+                variant="media"
+                tone="flat"
+                separator
+                lead={lead}
+                eyebrow={eyebrow}
+                title={m.title}
+                meta={m.description || undefined}
+                metaLines={2}
+                footer={footer}
+                {...(m.locked
+                  ? { onClick: () => toast(lockedToastText(m), 'info'), 'aria-disabled': 'true' as const }
+                  : { href: `/missions/${m.id}` })}
+              />
             )
           })}
         </div>
