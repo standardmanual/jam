@@ -409,7 +409,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {(isOwnBadge || !hasEarned) && (
           <div
             className={[
-              'relative z-10 flex flex-col gap-4 px-4 pb-3',
+              'relative z-10 flex flex-col gap-5 px-4 pb-3',
               showSerial ? '' : 'pt-[32px]',
             ].join(' ')}
           >
@@ -439,7 +439,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* desc-section — 컬렉션 링크 또는 만료 임박 안내가 있을 때만 렌더링 */}
         {(itemBook || expiring) && (
-          <div className="relative z-10 flex flex-col gap-4 px-4 pt-3 pb-6">
+          <div className="relative z-10 flex flex-col gap-5 px-4 pt-3 pb-6">
             {/* 속한 컬렉션 링크 */}
             {itemBook && (
               <ListRow
@@ -506,7 +506,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
         {/* info-section */}
-        <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-4 pb-3">
+        <div className="relative z-10 flex flex-col gap-5 pt-[32px] px-4 pb-3">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
           {/* 획득 조건 문구는 ko.ts의 conditionCheckinBody 한 곳에서 관리한다(20260826_004) —
               이전에는 이 하드코딩과 i18n 키가 서로 다른 내용으로 갈라져 있었다. */}
@@ -522,7 +522,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         </div>
 
         {/* action-section */}
-        <div className="relative z-10 flex flex-col gap-4 pt-3 px-4 pb-6">
+        <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
           {badgeRow.patch_available && (
             <a
               href="#"
@@ -579,7 +579,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
       {/* info-section */}
-      <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-4 pb-3">
+      <div className="relative z-10 flex flex-col gap-5 pt-[32px] px-4 pb-3">
         {/* 획득 조건 다크 카드 */}
         <BadgeConditionCard
           text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name, badgeRow.id)}
@@ -618,7 +618,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       </div>
 
       {/* action-section */}
-      <div className="relative z-10 flex flex-col gap-4 pt-3 px-4 pb-6">
+      <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
         {/* 실물 패치 버튼 */}
         {badgeRow.patch_available && (
           <a

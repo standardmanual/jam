@@ -318,8 +318,8 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         headerStyle={topNavStyle}
       />
 
-      {/* 스크롤 컨테이너 — 외부: padding 16 / gap 12 */}
-      <div className="relative z-10 flex-1 flex flex-col px-4 pt-4 pb-6 gap-3">
+      {/* 스크롤 컨테이너 — 외부: padding 16 / 블록 사이 gap 20 */}
+      <div className="relative z-10 flex-1 flex flex-col px-4 pt-4 pb-6 gap-5">
 
         <ItemBookHeroSection
           book={{ name: book.name, description: book.description, image_url: book.image_url }}
@@ -380,7 +380,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
         {/* 체크인 배지 섹션 */}
         {checkinBadges.length > 0 && (
-          <div className={badges.length > 0 ? 'mt-4 flex flex-col gap-3' : 'flex flex-col gap-3'}>
+          <div className="flex flex-col gap-3">
             <p
               className="font-bold"
               style={{ color: 'var(--foreground)', fontSize: '16px', lineHeight: '1.2' }}
@@ -438,7 +438,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
         {/* 완성 배너 */}
         {isCompleted && (
-          <Card className="mt-4 text-center">
+          <Card className="text-center">
             <p
               className="font-bold mb-2"
               style={{ color: 'var(--foreground)', fontSize: '18px' }}

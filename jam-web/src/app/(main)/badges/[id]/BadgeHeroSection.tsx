@@ -79,7 +79,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
     // 위에서 그려지도록 승격. 승격하지 않으면 non-positioned 콘텐츠가 positioned 배경 레이어보다
     // 페인트 순서상 아래로 가려진다([20260818_002] 잔여 이슈, [20260818_003]에서 실색상 적용과
     // 함께 수정).
-    <div className="relative z-10 px-6 pt-0 pb-[32px]">
+    <div className="relative z-10 px-4 pt-0 pb-[32px]">
       {/* [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다 — overflow-hidden으로 라운드 안에
           가두고, 캔버스는 절대배치 최하단(z-0)에 두어 이미지·이름은 그 위(z-10)에 그대로 남는다.
           애니메이션이 카드 배경 자체가 되므로 bg-surface는 깔지 않는다.
