@@ -420,9 +420,13 @@
   --toggle-ease: cubic-bezier(0.34, 1.35, 0.64, 1);
 }
 
+/* 스크롤바 자리를 항상 비워 둔다. 데스크톱 브라우저에서 긴 화면은 스크롤바(약 15px)만큼 폭이 줄고,
+   고정 화면(드랍 지도)은 스크롤바가 없어 가운데 정렬 기준이 7.5px 오른쪽으로 쏠렸다(2026-11-08 사용자 제보).
+   휴대폰의 겹침 스크롤바에는 영향이 없다. */
 html {
   background: var(--page-bg);
   color-scheme: light;
+  scrollbar-gutter: stable;
 }
 
 /* text-wrap·word-break는 상속되어 span·li·td·button 등 모든 요소에 적용된다 */
