@@ -122,7 +122,7 @@ vi.mock('@/lib/jam/serviceActivity', () => ({
 }))
 
 import { UserSuspendedError } from '@/lib/suspension/suspension'
-import { collectionSupportsTierUp, tribeSupportsTierUp, tierUpUpperRarity } from '@/lib/combine/tierUpOdds'
+import { tribeSupportsTierUp, tierUpUpperRarity } from '@/lib/combine/tierUpOdds'
 import {
   isTierUpMaterialRarity,
   rollTierUp,
@@ -295,21 +295,6 @@ describe('tierUpProbabilities — 재료 등급별 결과 등급 확률', () => 
     expect(tierUpUpperRarity('common')).toBe('rare')
     expect(tierUpUpperRarity('rare')).toBe('epic')
     expect(tierUpUpperRarity('epic')).toBe('mystic')
-  })
-
-  it('collectionSupportsTierUp — 재료 등급과 바로 윗등급이 모두 있어야 true다 (한쪽만 있거나 두 칸 위·아래 등급만 있으면 false)', () => {
-    expect(collectionSupportsTierUp(['common', 'rare'], 'common')).toBe(true)
-    expect(collectionSupportsTierUp(['common', 'rare', 'epic', 'mystic'], 'common')).toBe(true)
-    expect(collectionSupportsTierUp(['rare', 'epic'], 'rare')).toBe(true)
-    expect(collectionSupportsTierUp(['epic', 'mystic'], 'epic')).toBe(true)
-    // 윗등급만, 재료 등급만, 비어 있음
-    expect(collectionSupportsTierUp(['rare'], 'common')).toBe(false)
-    expect(collectionSupportsTierUp(['common'], 'common')).toBe(false)
-    expect(collectionSupportsTierUp([], 'common')).toBe(false)
-    // 두 칸 위 등급이나 아래 등급은 바로 윗등급이 아니다
-    expect(collectionSupportsTierUp(['common', 'epic'], 'common')).toBe(false)
-    expect(collectionSupportsTierUp(['common', 'rare'], 'rare')).toBe(false)
-    expect(collectionSupportsTierUp(['epic'], 'epic')).toBe(false)
   })
 
   it('tribeSupportsTierUp — 재료 등급과 바로 윗등급이 모두 있어야 true다. Mystic 재료는 Mystic만 있으면 true다', () => {

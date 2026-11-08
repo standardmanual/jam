@@ -10,7 +10,7 @@
  * | 완성 가능 소식 `lib/itembook/completable.ts` | 여기 | - |
  * | 컬렉션 배치 알림 `lib/notifications/batch/collections.ts` | 여기 | - |
  * | 홈 투데이 컬렉션 카드 `lib/today/cards.ts` | - | `today/__tests__/cards-resources.test.ts` (비활성·공개 전은 resolved_collection null) |
- * | 티어 승급 후보 `lib/combine/tierUpCollections.ts` | - | `combine/__tests__/tierUpCollections.test.ts` (비활성 제외, 활성만 조회) |
+ * | 티어 승급 컬렉션별 등급 `lib/combine/tierUpCollections.ts` | - | `combine/__tests__/tierUpCollections.test.ts` (비활성 제외) |
  * | 콘텐츠 코퍼스 `lib/content-corpus/active.ts` | - | `content-corpus/__tests__/content-corpus.test.ts` (비활성 컬렉션 id·소속 배지 제외) |
  * | 판정 함수 | - | `itembook/__tests__/visibility.test.ts` (공개됨·노출 중은 발급 기록과 무관) |
  *

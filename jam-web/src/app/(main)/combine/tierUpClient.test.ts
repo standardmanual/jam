@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   TIER_UP_MATERIAL_COUNT,
-  buildTierUpCollectionView,
+  TIER_UP_MATERIAL_RARITIES,
   buildTierUpSheet,
   emptyTierUpSlots,
   fillTierUpSlot,
@@ -15,13 +15,12 @@ import {
   pickableTierUpIds,
   removeTierUpSlot,
   resolveTierUpSlots,
-  tierUpCollectionChoices,
   tierUpRarityNote,
   tierUpRejection,
   tierUpResultMessage,
   tierUpSubmitIds,
-  type TierUpCollectionOption,
   type TierUpMaterial,
+  type TierUpRequest,
 } from './tierUpClient'
 import { d } from '@/lib/i18n'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
@@ -34,8 +33,20 @@ function many(prefix: string, rarity: string | null, count: number): TierUpMater
   return Array.from({ length: count }, (_, i) => material(`${prefix}${i + 1}`, rarity))
 }
 
+describe('재료 규칙', () => {
+  it('재료는 6개이고 Mystic도 재료 등급이다 (낮은 순)', () => {
+    expect(TIER_UP_MATERIAL_COUNT).toBe(6)
+    expect(TIER_UP_MATERIAL_RARITIES).toEqual(['common', 'rare', 'epic', 'mystic'])
+  })
+
+  it('요청 본문에는 컬렉션 id 칸이 없다', () => {
+    const request: TierUpRequest = { itemIds: ['a'] }
+    expect(Object.keys(request)).toEqual(['itemIds'])
+  })
+})
+
 describe('groupTierUpMaterials', () => {
-  it('Common, Rare, Epic 순으로 묶고 Mystic과 등급 없는 개체는 뺀다', () => {
+  it('Common, Rare, Epic, Mystic 순으로 묶고 등급 없는 개체는 뺀다', () => {
     const items = [
       material('e1', 'epic'),
       material('m1', 'mystic'),
@@ -45,106 +56,116 @@ describe('groupTierUpMaterials', () => {
       material('c2', 'common'),
     ]
     const groups = groupTierUpMaterials(items)
-    expect(groups.map((g) => g.rarity)).toEqual(['common', 'rare', 'epic'])
+    expect(groups.map((g) => g.rarity)).toEqual(['common', 'rare', 'epic', 'mystic'])
     expect(groups[0].items.map((i) => i.id)).toEqual(['c1', 'c2'])
-    expect(groups.flatMap((g) => g.items.map((i) => i.id))).not.toContain('m1')
+    expect(groups[3].items.map((i) => i.id)).toEqual(['m1'])
     expect(groups.flatMap((g) => g.items.map((i) => i.id))).not.toContain('n1')
   })
 
   it('개체가 없는 등급은 묶음을 만들지 않는다', () => {
     expect(groupTierUpMaterials(many('r', 'rare', 2)).map((g) => g.rarity)).toEqual(['rare'])
-    expect(groupTierUpMaterials([material('m', 'mystic')])).toEqual([])
+    expect(groupTierUpMaterials([material('m', 'mystic')]).map((g) => g.rarity)).toEqual(['mystic'])
+    expect(groupTierUpMaterials([material('n', null)])).toEqual([])
     expect(groupTierUpMaterials([])).toEqual([])
   })
 })
 
 describe('hasEnoughTierUpGroup', () => {
-  it('5개 이상 가진 등급이 하나라도 있으면 참이다', () => {
-    expect(hasEnoughTierUpGroup(groupTierUpMaterials([...many('c', 'common', 4), ...many('r', 'rare', 5)]))).toBe(true)
+  it('6개 이상 가진 등급이 하나라도 있으면 참이다', () => {
+    expect(hasEnoughTierUpGroup(groupTierUpMaterials([...many('c', 'common', 5), ...many('r', 'rare', 6)]))).toBe(true)
+    expect(hasEnoughTierUpGroup(groupTierUpMaterials(many('m', 'mystic', 6)))).toBe(true)
   })
 
-  it('모든 등급이 5개 미만이면 거짓이다', () => {
-    expect(hasEnoughTierUpGroup(groupTierUpMaterials([...many('c', 'common', 4), ...many('r', 'rare', 3)]))).toBe(false)
+  it('모든 등급이 6개 미만이면 거짓이다', () => {
+    expect(hasEnoughTierUpGroup(groupTierUpMaterials([...many('c', 'common', 5), ...many('r', 'rare', 3)]))).toBe(false)
     expect(hasEnoughTierUpGroup([])).toBe(false)
   })
 })
 
 describe('담은 칸', () => {
-  it('빈 칸 5개로 시작한다', () => {
-    expect(emptyTierUpSlots()).toEqual([null, null, null, null, null])
+  it('빈 칸 6개로 시작한다', () => {
+    expect(emptyTierUpSlots()).toEqual([null, null, null, null, null, null])
     expect(emptyTierUpSlots()).toHaveLength(TIER_UP_MATERIAL_COUNT)
   })
 
   it('fillTierUpSlot: 지정한 칸에 담고, 같은 개체가 다른 칸에 있으면 그쪽에서 뺀다', () => {
     const once = fillTierUpSlot(emptyTierUpSlots(), 1, 'a')
-    expect(once).toEqual([null, 'a', null, null, null])
-    expect(fillTierUpSlot(once, 3, 'a')).toEqual([null, null, null, 'a', null])
+    expect(once).toEqual([null, 'a', null, null, null, null])
+    expect(fillTierUpSlot(once, 3, 'a')).toEqual([null, null, null, 'a', null, null])
   })
 
   it('removeTierUpSlot: 그 칸만 비운다', () => {
-    expect(removeTierUpSlot(['a', 'b', null, null, null], 0)).toEqual([null, 'b', null, null, null])
+    expect(removeTierUpSlot(['a', 'b', null, null, null, null], 0)).toEqual([null, 'b', null, null, null, null])
   })
 
   it('nextEmptyTierUpSlot: from 칸부터 한 바퀴 돌며 처음 만나는 빈 칸, 모두 차면 null', () => {
-    expect(nextEmptyTierUpSlot(['a', null, 'c', null, null], 2)).toBe(3)
-    expect(nextEmptyTierUpSlot(['a', null, 'c', 'd', 'e'], 2)).toBe(1)
-    expect(nextEmptyTierUpSlot(['a', 'b', 'c', 'd', 'e'], 0)).toBeNull()
+    expect(nextEmptyTierUpSlot(['a', null, 'c', null, null, null], 2)).toBe(3)
+    expect(nextEmptyTierUpSlot(['a', null, 'c', 'd', 'e', 'f'], 2)).toBe(1)
+    expect(nextEmptyTierUpSlot(['a', 'b', 'c', 'd', 'e', 'f'], 0)).toBeNull()
     // 마지막 칸 다음은 처음으로 돌아온다
-    expect(nextEmptyTierUpSlot([null, 'b', 'c', 'd', 'e'], 5)).toBe(0)
+    expect(nextEmptyTierUpSlot([null, 'b', 'c', 'd', 'e', 'f'], 6)).toBe(0)
   })
 
   it('resolveTierUpSlots: 목록에서 찾을 수 없는 개체는 빈 칸으로 본다(유령 칸 없음)', () => {
     const items = many('r', 'rare', 3)
-    const resolved = resolveTierUpSlots(['r1', 'gone', 'r3', null, null], items)
-    expect(resolved.map((item) => item?.id ?? null)).toEqual(['r1', null, 'r3', null, null])
+    const resolved = resolveTierUpSlots(['r1', 'gone', 'r3', null, null, null], items)
+    expect(resolved.map((item) => item?.id ?? null)).toEqual(['r1', null, 'r3', null, null, null])
   })
 })
 
 describe('lockedTierUpRarity / tierUpSubmitIds', () => {
   it('lockedTierUpRarity: 첫 재료의 등급으로 고정된다. 하나도 없으면 null', () => {
-    expect(lockedTierUpRarity([null, null, null, null, null])).toBeNull()
-    expect(lockedTierUpRarity([null, material('r1', 'rare'), null, null, null])).toBe('rare')
+    expect(lockedTierUpRarity([null, null, null, null, null, null])).toBeNull()
+    expect(lockedTierUpRarity([null, material('r1', 'rare'), null, null, null, null])).toBe('rare')
+    expect(lockedTierUpRarity([material('m1', 'mystic'), null, null, null, null, null])).toBe('mystic')
   })
 
-  it('tierUpSubmitIds: 같은 등급 5개가 서로 다른 개체로 찼을 때만 id를 칸 순서로 돌려준다', () => {
-    const five = many('e', 'epic', 5)
-    expect(tierUpSubmitIds(five)).toEqual(['e1', 'e2', 'e3', 'e4', 'e5'])
-    expect(tierUpSubmitIds(five.slice(0, 4))).toBeNull()
-    expect(tierUpSubmitIds([...five.slice(0, 4), null])).toBeNull()
+  it('tierUpSubmitIds: 같은 등급 6개가 서로 다른 개체로 찼을 때만 id를 칸 순서로 돌려준다', () => {
+    const six = many('e', 'epic', 6)
+    expect(tierUpSubmitIds(six)).toEqual(['e1', 'e2', 'e3', 'e4', 'e5', 'e6'])
+    expect(tierUpSubmitIds(six.slice(0, 5))).toBeNull()
+    expect(tierUpSubmitIds([...six.slice(0, 5), null])).toBeNull()
   })
 
-  it('다른 등급이 섞이거나 Mystic·등급 없음이 들어 있거나 같은 개체가 겹치면 제출할 수 없다', () => {
-    const four = many('r', 'rare', 4)
-    expect(tierUpSubmitIds([...four, material('c1', 'common')])).toBeNull()
-    expect(tierUpSubmitIds(many('m', 'mystic', 5))).toBeNull()
-    expect(tierUpSubmitIds(many('n', null, 5))).toBeNull()
-    expect(tierUpSubmitIds([...four, four[0]])).toBeNull()
+  it('Mystic 6개도 제출할 수 있다', () => {
+    expect(tierUpSubmitIds(many('m', 'mystic', 6))).toEqual(['m1', 'm2', 'm3', 'm4', 'm5', 'm6'])
+  })
+
+  it('다른 등급이 섞이거나 등급 없음이 들어 있거나 같은 개체가 겹치면 제출할 수 없다', () => {
+    const five = many('r', 'rare', 5)
+    expect(tierUpSubmitIds([...five, material('c1', 'common')])).toBeNull()
+    expect(tierUpSubmitIds([...many('m', 'mystic', 5), material('e1', 'epic')])).toBeNull()
+    expect(tierUpSubmitIds(many('n', null, 6))).toBeNull()
+    expect(tierUpSubmitIds([...five, five[0]])).toBeNull()
   })
 })
 
 describe('buildTierUpSheet', () => {
   const rare7 = many('r', 'rare', 7)
   const common3 = many('c', 'common', 3)
-  const groups = groupTierUpMaterials([...common3, ...rare7])
+  const mystic6 = many('m', 'mystic', 6)
+  const groups = groupTierUpMaterials([...common3, ...rare7, ...mystic6])
 
   it('넣을 수 있는 배지가 하나도 없으면 empty', () => {
-    expect(buildTierUpSheet([], [null, null, null, null, null])).toEqual({ kind: 'empty' })
+    expect(buildTierUpSheet([], [null, null, null, null, null, null])).toEqual({ kind: 'empty' })
   })
 
-  it('아직 아무것도 담지 않았으면 등급 묶음이고, 5개 미만 묶음은 셀이 모두 비활성이다', () => {
-    const view = buildTierUpSheet(groups, [null, null, null, null, null])
+  it('아직 아무것도 담지 않았으면 등급 묶음이고, 6개 미만 묶음은 셀이 모두 비활성이다', () => {
+    const view = buildTierUpSheet(groups, [null, null, null, null, null, null])
     expect(view.kind).toBe('groups')
     if (view.kind !== 'groups') return
     expect(view.groups.map((g) => [g.rarity, g.count, g.enough])).toEqual([
       ['common', 3, false],
       ['rare', 7, true],
+      ['mystic', 6, true],
     ])
     expect(view.groups[0].cells.every((cell) => cell.state === 'inactive')).toBe(true)
     expect(view.groups[1].cells.every((cell) => cell.state === 'active')).toBe(true)
+    expect(view.groups[2].cells.every((cell) => cell.state === 'active')).toBe(true)
   })
 
   it('첫 재료를 담은 뒤에는 그 등급의 셀만 한 묶음으로 보이고, 담은 셀은 사용 중이다', () => {
-    const view = buildTierUpSheet(groups, [rare7[0], rare7[1], null, null, null])
+    const view = buildTierUpSheet(groups, [rare7[0], rare7[1], null, null, null, null])
     expect(view.kind).toBe('locked')
     if (view.kind !== 'locked') return
     expect(view.rarity).toBe('rare')
@@ -153,15 +174,26 @@ describe('buildTierUpSheet', () => {
     expect(view.cells.filter((cell) => cell.state === 'active')).toHaveLength(5)
   })
 
-  it('pickableTierUpIds: 활성 셀의 개체만 담을 수 있다 — 5개 미만 묶음·다른 등급·사용 중은 담을 수 없다', () => {
-    const grouped = pickableTierUpIds(buildTierUpSheet(groups, [null, null, null, null, null]))
-    expect([...grouped].sort()).toEqual(rare7.map((i) => i.id).sort())
+  it('Mystic을 첫 재료로 담으면 Mystic만 활성이고 나머지 등급은 시트에 보이지 않는다', () => {
+    const view = buildTierUpSheet(groups, [mystic6[0], null, null, null, null, null])
+    expect(view.kind).toBe('locked')
+    if (view.kind !== 'locked') return
+    expect(view.rarity).toBe('mystic')
+    expect(view.cells.map((cell) => cell.item.id)).toEqual(mystic6.map((item) => item.id))
+    expect(pickableTierUpIds(view).has('m2')).toBe(true)
+    expect(pickableTierUpIds(view).has('r1')).toBe(false)
+  })
+
+  it('pickableTierUpIds: 활성 셀의 개체만 담을 수 있다 — 6개 미만 묶음·다른 등급·사용 중은 담을 수 없다', () => {
+    const grouped = pickableTierUpIds(buildTierUpSheet(groups, [null, null, null, null, null, null]))
+    expect([...grouped].sort()).toEqual([...rare7, ...mystic6].map((i) => i.id).sort())
     expect(grouped.has('c1')).toBe(false)
 
-    const locked = pickableTierUpIds(buildTierUpSheet(groups, [rare7[0], null, null, null, null]))
+    const locked = pickableTierUpIds(buildTierUpSheet(groups, [rare7[0], null, null, null, null, null]))
     expect(locked.has('r1')).toBe(false)
     expect(locked.has('r2')).toBe(true)
     expect(locked.has('c1')).toBe(false)
+    expect(locked.has('m1')).toBe(false)
 
     expect(pickableTierUpIds({ kind: 'empty' }).size).toBe(0)
   })
@@ -170,6 +202,7 @@ describe('buildTierUpSheet', () => {
 describe('tierUpRarityNote / tierUpResultMessage', () => {
   it('등급 안내는 등급 글자로 전한다', () => {
     expect(tierUpRarityNote('rare')).toBe('지금은 Rare 아이템 배지만 넣을 수 있어요')
+    expect(tierUpRarityNote('mystic')).toBe('지금은 Mystic 아이템 배지만 넣을 수 있어요')
   })
 
   it('윗등급이 나오면 그 사실만 말한다', () => {
@@ -182,6 +215,12 @@ describe('tierUpRarityNote / tierUpResultMessage', () => {
     expect(tierUpResultMessage('common', [{ rarity: 'common' }])).toBe(
       'Common 아이템 배지를 받았어요',
     )
+  })
+
+  it('Mystic 재료는 Mystic 결과가 같은 등급이라 «윗등급»을 말하지 않는다', () => {
+    const message = tierUpResultMessage('mystic', [{ rarity: 'mystic' }])
+    expect(message).toBe('Mystic 아이템 배지를 받았어요')
+    expect(message).not.toContain('윗등급')
   })
 
   it('응답에 등급이 없거나 비교할 수 없으면 등급을 지어내지 않는다', () => {
@@ -216,43 +255,24 @@ describe('tierUpRejection — 소각 전 거절', () => {
       expect(rejection.clearSlots).toBe(false)
     }
     expect(tierUpRejection(200, { success: false, reason: 'no_candidate' }).message).toBe(
-      '고른 컬렉션에서는 지금 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.',
+      '지금은 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 잠시 뒤에 다시 해 보세요.',
     )
   })
 
   it('서버가 message를 주면 그것을 먼저 쓴다', () => {
     expect(tierUpRejection(200, { success: false, reason: 'no_candidate', message: '서버 문구' }).message).toBe('서버 문구')
-    expect(tierUpRejection(200, { success: false, reason: 'invalid_collection', message: '서버 문구' }).message).toBe('서버 문구')
   })
 
-  it('invalid_collection은 info 안내이고 고른 컬렉션만 풀며 담은 칸은 그대로 두고 목록을 다시 읽는다', () => {
-    const rejection = tierUpRejection(200, { success: false, reason: 'invalid_collection' })
-    expect(rejection).toMatchObject({ tone: 'info', clearSlots: false, clearCollection: true, refresh: true, refreshPending: false })
-    expect(rejection.message).toBe('지금은 고를 수 없는 컬렉션이에요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.')
-  })
-
-  it('no_candidate도 같은 후속 동작을 한다 — 컬렉션만 풀고 목록을 다시 읽으며 문구는 그대로다', () => {
-    expect(tierUpRejection(200, { success: false, reason: 'no_candidate' })).toMatchObject({
+  it('no_candidate는 안내(info)이고 담은 칸을 그대로 둔다 - 컬렉션을 푸는 후속 동작이 없다', () => {
+    const rejection = tierUpRejection(200, { success: false, reason: 'no_candidate' })
+    expect(rejection).toEqual({
       tone: 'info',
       clearSlots: false,
-      clearCollection: true,
-      refresh: true,
+      refreshPending: false,
+      refresh: false,
       message: d.combine.tierUp.noCandidate,
     })
-  })
-
-  it('컬렉션을 풀지 않는 거절은 clearCollection이 거짓이다', () => {
-    for (const body of [
-      { success: false, reason: 'invalid_materials' },
-      { success: false, reason: 'invalid_count' },
-      { success: false, reason: 'items_not_found' },
-      { success: false, reason: 'something_new' },
-    ]) {
-      expect(tierUpRejection(200, body).clearCollection).toBe(false)
-    }
-    expect(tierUpRejection(409, { success: false, reason: 'pending_results_exist', code: 'pending_results_exist' }).clearCollection).toBe(false)
-    expect(tierUpRejection(409, { success: false, reason: 'locked_item_not_allowed', code: 'locked_item_not_allowed' }).clearCollection).toBe(false)
-    expect(tierUpRejection(403, { code: USER_SUSPENDED_CODE }).clearCollection).toBe(false)
+    expect(rejection).not.toHaveProperty('clearCollection')
   })
 
   it('items_not_found는 칸을 비우고 목록을 새로 받는다', () => {
@@ -293,89 +313,21 @@ describe('tierUpRejection — 소각 전 거절', () => {
       d.combine.tierUp.noCandidate,
       d.combine.tierUp.invalidMaterials,
       d.combine.tierUp.invalidCount,
-      d.combine.tierUp.invalidCollection,
     ].join('\n')
     expect(copies).not.toMatch(/%|퍼센트/)
     expect(copies).not.toMatch(/개체|후보|소각/)
+    expect(copies).not.toMatch(/컬렉션|5개/)
   })
 })
 
-function collection(id: string, name: string, rarities: TierUpCollectionOption['rarities'], imageUrl: string | null = null): TierUpCollectionOption {
-  return { id, name, imageUrl, rarities }
-}
-
-describe('tierUpCollectionChoices', () => {
-  const options = [
-    collection('a', '다 컬렉션', ['common', 'rare']),
-    collection('b', '가 컬렉션', ['common', 'rare', 'epic']),
-    collection('c', '나 컬렉션', ['rare', 'epic', 'mystic']),
-    collection('d', '라 컬렉션', ['epic', 'mystic']),
-    collection('e', '마 컬렉션', ['common']),
-    collection('f', '바 컬렉션', ['rare']),
-  ]
-  const ids = (list: TierUpCollectionOption[]) => list.map((option) => option.id)
-
-  it('Common 재료: Common과 Rare가 모두 있는 컬렉션만, 이름 가나다순', () => {
-    expect(ids(tierUpCollectionChoices(options, 'common'))).toEqual(['b', 'a'])
-  })
-
-  it('Rare 재료: Rare와 Epic이 모두 있는 컬렉션만', () => {
-    expect(ids(tierUpCollectionChoices(options, 'rare'))).toEqual(['b', 'c'])
-  })
-
-  it('Epic 재료: Epic과 Mystic이 모두 있는 컬렉션만', () => {
-    expect(ids(tierUpCollectionChoices(options, 'epic'))).toEqual(['c', 'd'])
-  })
-
-  it('같은 등급이 없는 컬렉션(윗등급만 있음)과 윗등급이 없는 컬렉션은 걸러진다', () => {
-    // d는 Epic·Mystic만 있어 Rare 재료로는 같은 등급(Rare)이 없고, e는 Common뿐인 옛 컬렉션이다
-    expect(ids(tierUpCollectionChoices(options, 'rare'))).not.toContain('d')
-    expect(ids(tierUpCollectionChoices(options, 'common'))).not.toContain('e')
-    expect(tierUpCollectionChoices([collection('x', 'X', ['common'])], 'common')).toEqual([])
-  })
-
-  it('이름은 한글 가나다순이고 원본 배열을 바꾸지 않는다', () => {
-    const shuffled = [collection('1', '하늘', ['rare', 'epic']), collection('2', '가을', ['rare', 'epic']), collection('3', '나무', ['rare', 'epic'])]
-    const before = ids(shuffled)
-    expect(tierUpCollectionChoices(shuffled, 'rare').map((option) => option.name)).toEqual(['가을', '나무', '하늘'])
-    expect(ids(shuffled)).toEqual(before)
-  })
-})
-
-describe('buildTierUpCollectionView — 다섯 갈래', () => {
-  const options = [collection('a', '가 컬렉션', ['common', 'rare']), collection('b', '나 컬렉션', ['common', 'rare'])]
-
-  it('목록을 읽지 못했으면(null) error — 재료가 있든 없든 «없다»고 하지 않는다', () => {
-    expect(buildTierUpCollectionView(null, null, null)).toEqual({ kind: 'error' })
-    expect(buildTierUpCollectionView(null, 'common', 'a')).toEqual({ kind: 'error' })
-  })
-
-  it('재료가 없으면 needMaterial이고 이전 선택을 그리지 않는다', () => {
-    expect(buildTierUpCollectionView(options, null, 'a')).toEqual({ kind: 'needMaterial' })
-    expect(buildTierUpCollectionView([], null, null)).toEqual({ kind: 'needMaterial' })
-  })
-
-  it('이 등급으로 고를 컬렉션이 없으면 none(등급)이다 — 빈 목록과 등급이 맞지 않는 목록 모두', () => {
-    expect(buildTierUpCollectionView([], 'rare', null)).toEqual({ kind: 'none', rarity: 'rare' })
-    expect(buildTierUpCollectionView(options, 'epic', 'a')).toEqual({ kind: 'none', rarity: 'epic' })
-  })
-
-  it('고를 수 있으면 ready이고, 선택이 없으면 selectedId가 null이다', () => {
-    const view = buildTierUpCollectionView(options, 'common', null)
-    expect(view).toMatchObject({ kind: 'ready', selectedId: null })
-    expect(view.kind === 'ready' && view.choices.map((choice) => choice.id)).toEqual(['a', 'b'])
-  })
-
-  it('고른 컬렉션이 지금 목록에 있으면 유지한다', () => {
-    expect(buildTierUpCollectionView(options, 'common', 'b')).toMatchObject({ kind: 'ready', selectedId: 'b' })
-  })
-
-  it('고른 컬렉션이 새 등급의 목록에 없으면 조용히 미선택으로 돌아간다', () => {
-    const mixed = [...options, collection('c', '다 컬렉션', ['rare', 'epic'])]
-    // Rare 재료로 c를 골랐다가 Common으로 바뀌면 c는 목록에 없다
-    expect(buildTierUpCollectionView(mixed, 'rare', 'c')).toMatchObject({ kind: 'ready', selectedId: 'c' })
-    expect(buildTierUpCollectionView(mixed, 'common', 'c')).toMatchObject({ kind: 'ready', selectedId: null })
-    // 목록에서 사라진 id(서버가 컬렉션을 닫았다)도 같다
-    expect(buildTierUpCollectionView(options, 'common', 'gone')).toMatchObject({ kind: 'ready', selectedId: null })
+describe('d.combine.tierUp 문구', () => {
+  it('6개 기준이고 컬렉션 선택·5개·확률 숫자 표현이 없다', () => {
+    const copy = JSON.stringify(d.combine.tierUp)
+    expect(copy).not.toMatch(/5개|받을 컬렉션|컬렉션 고르기|다른 컬렉션을 골라|%|퍼센트/)
+    expect(d.combine.tierUp).not.toHaveProperty('collectionPicker')
+    expect(d.combine.tierUp).not.toHaveProperty('invalidCollection')
+    expect(d.combine.tierUp.description).toContain('6개')
+    expect(d.combine.tierUp.description).toContain('Mystic 6개를 넣으면 Mystic을 받아요')
+    expect(d.combine.tierUp.groupShort).toBe('6개부터 넣을 수 있어요')
   })
 })

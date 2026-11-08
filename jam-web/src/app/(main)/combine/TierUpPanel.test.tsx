@@ -6,13 +6,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import TierUpPanel, { TierUpSheetContent } from './TierUpPanel'
-import { TierUpCollectionRow, TierUpCollectionSheetContent } from './TierUpCollectionPicker'
 import BottomSheet from '@/components/ui/BottomSheet'
 import {
   buildTierUpSheet,
   groupTierUpMaterials,
-  type TierUpCollectionOption,
-  type TierUpCollectionView,
   type TierUpMaterial,
 } from './tierUpClient'
 import { d } from '@/lib/i18n'
@@ -33,7 +30,7 @@ function many(prefix: string, rarity: string, count: number): TierUpMaterial[] {
   return Array.from({ length: count }, (_, i) => material(`${prefix}${i + 1}`, rarity))
 }
 
-const EMPTY_SLOTS: (TierUpMaterial | null)[] = [null, null, null, null, null]
+const EMPTY_SLOTS: (TierUpMaterial | null)[] = [null, null, null, null, null, null]
 
 function panel(overrides: Partial<Parameters<typeof TierUpPanel<TierUpMaterial>>[0]> = {}) {
   return (
@@ -52,12 +49,6 @@ function panel(overrides: Partial<Parameters<typeof TierUpPanel<TierUpMaterial>>
       onCloseSheet={noop}
       sheet={{ kind: 'empty' }}
       onPick={noop}
-      collection={{ kind: 'needMaterial' }}
-      collectionSheetOpen={false}
-      onOpenCollectionSheet={noop}
-      onCloseCollectionSheet={noop}
-      onPickCollection={noop}
-      onRetryCollections={noop}
       {...overrides}
     />
   )
@@ -68,14 +59,13 @@ function html(overrides: Partial<Parameters<typeof TierUpPanel<TierUpMaterial>>[
 }
 
 describe('TierUpPanel 본문 순서', () => {
-  it('설명, 확률 안내 링크, 슬롯 5칸, 등급 안내 줄, 받을 컬렉션 행, 버튼, 소각 안내가 위에서 아래로 나온다', () => {
+  it('설명, 확률 안내 링크, 슬롯 6칸, 등급 안내 줄, 버튼, 소각 안내가 위에서 아래로 나온다', () => {
     const out = html()
     const order = [
       d.combine.tierUp.description,
       d.capsule.sheet.probabilityLink,
       'grid grid-cols-3 gap-2',
       'aria-live="polite"',
-      d.combine.tierUp.collectionPicker.label,
       d.combine.tierUp.submit,
       d.combine.tierUp.burnNotice,
     ].map((needle) => out.indexOf(needle))
@@ -87,7 +77,8 @@ describe('TierUpPanel 본문 순서', () => {
     const out = html()
     expect(out).toContain('윗등급이 나오거나 같은 등급이 나와요')
     expect(out).not.toContain('운이 좋')
-    expect(out).toContain('Mystic은 넣을 수 없어요')
+    expect(out).toContain('Mystic 6개를 넣으면 Mystic을 받아요')
+    expect(out).not.toContain('Mystic은 넣을 수 없어요')
     expect(out).not.toContain('더 보기')
   })
 
@@ -100,17 +91,17 @@ describe('TierUpPanel 본문 순서', () => {
     expect(visibleText).not.toMatch(/\d\s*%|퍼센트/)
   })
 
-  it('슬롯은 5칸이고 3열(3+2) 그리드다', () => {
+  it('슬롯은 6칸이고 3열(3+3) 그리드다', () => {
     const out = html()
-    expect(out.match(/aria-label="슬롯 채우기"/g)).toHaveLength(5)
+    expect(out.match(/aria-label="슬롯 채우기"/g)).toHaveLength(6)
     expect(out).toContain('class="grid grid-cols-3 gap-2"')
   })
 
   it('담은 칸은 이름이 보이고 나머지는 빈 칸이다', () => {
-    const out = html({ slots: [material('a', 'rare'), null, material('b', 'rare'), null, null] })
+    const out = html({ slots: [material('a', 'rare'), null, material('b', 'rare'), null, null, null] })
     expect(out).toContain('배지 a')
     expect(out).toContain('배지 b')
-    expect(out.match(/aria-label="슬롯 채우기"/g)).toHaveLength(3)
+    expect(out.match(/aria-label="슬롯 채우기"/g)).toHaveLength(4)
     expect(out.match(/aria-label="슬롯에서 빼기"/g)).toHaveLength(2)
   })
 
@@ -118,11 +109,11 @@ describe('TierUpPanel 본문 순서', () => {
     const open = html()
     const locked = html({ noMaterials: true })
     expect(open).not.toContain('border:1px dashed')
-    expect(locked.match(/border:1px dashed/g)).toHaveLength(5)
+    expect(locked.match(/border:1px dashed/g)).toHaveLength(6)
   })
 
   it('제출 중에는 슬롯을 건드릴 수 없다 — 제거 버튼이 없고 칸 클릭 핸들러도 없다', () => {
-    const out = html({ slots: [material('a', 'rare'), null, null, null, null], submitting: true })
+    const out = html({ slots: [material('a', 'rare'), null, null, null, null, null], submitting: true })
     expect(out).not.toContain('aria-label="슬롯에서 빼기"')
     expect(out).not.toContain('cursor:pointer')
   })
@@ -138,7 +129,7 @@ describe('TierUpPanel 등급 안내 줄과 안내 블록', () => {
     expect(html({ rarityNote: '지금은 Rare 아이템 배지만 넣을 수 있어요' })).toContain('지금은 Rare 아이템 배지만 넣을 수 있어요')
   })
 
-  it('5개 이상 가진 등급이 없을 때만 안내 블록(role status)이 나온다', () => {
+  it('6개 이상 가진 등급이 없을 때만 안내 블록(role status)이 나온다', () => {
     expect(html({ showNoEnoughNotice: false })).not.toContain(d.combine.tierUp.noEnoughNotice)
     const out = html({ showNoEnoughNotice: true })
     expect(out).toContain(d.combine.tierUp.noEnoughNotice)
@@ -153,7 +144,7 @@ describe('TierUpPanel 제출 버튼', () => {
     return match ? match[0] : ''
   }
 
-  it('5개가 찼고 제출 중이 아니고 받지 않은 결과가 없을 때만 활성이다', () => {
+  it('6개가 찼고 제출 중이 아니고 받지 않은 결과가 없을 때만 활성이다', () => {
     expect(button({ canSubmit: true })).not.toContain('disabled=""')
     expect(button({ canSubmit: false })).toContain('disabled=""')
     expect(button({ canSubmit: true, submitting: true })).toContain('disabled=""')
@@ -179,9 +170,6 @@ describe('TierUpPanel 제출 버튼', () => {
   })
 })
 
-const FOREST: TierUpCollectionOption = { id: 'forest', name: '숲속 산책 컬렉션', imageUrl: null, rarities: ['common', 'rare'] }
-const RIVER: TierUpCollectionOption = { id: 'river', name: '한강 라이딩 컬렉션', imageUrl: null, rarities: ['common', 'rare'] }
-
 type AnyElement = ReactElement<Record<string, unknown>>
 function findAll(node: ReactNode, predicate: (el: AnyElement) => boolean, found: AnyElement[] = []): AnyElement[] {
   if (Array.isArray(node)) {
@@ -195,98 +183,36 @@ function findAll(node: ReactNode, predicate: (el: AnyElement) => boolean, found:
   return found
 }
 
-describe('TierUpPanel 받을 컬렉션', () => {
-  const READY: TierUpCollectionView = { kind: 'ready', choices: [FOREST, RIVER], selectedId: null }
-
-  it('슬롯과 등급 안내 줄 아래, 제출 버튼 위에 행이 있고 aria-live(polite) 래퍼 하나로 감싼다', () => {
-    const out = html({ collection: READY })
-    const order = ['grid grid-cols-3 gap-2', 'min-h-5', '<div aria-live="polite" class="mt-2">', '받을 컬렉션', d.combine.tierUp.submit].map((needle) =>
-      out.indexOf(needle),
-    )
-    expect(order.every((i) => i >= 0)).toBe(true)
-    expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(out.match(/<div aria-live="polite"/g)).toHaveLength(1)
+describe('TierUpPanel 컬렉션 선택 없음 (티켓 20261108_2322)', () => {
+  it('받을 컬렉션 행·고르기 문구·다시 불러오기가 어느 상태에도 없다', () => {
+    for (const overrides of [{}, { showNoEnoughNotice: true }, { submitting: true }, { rarityNote: '지금은 Rare 아이템 배지만 넣을 수 있어요' }]) {
+      const out = html(overrides)
+      expect(out).not.toContain('받을 컬렉션')
+      expect(out).not.toContain('컬렉션을 골라')
+      expect(out).not.toContain('컬렉션 고르기')
+      expect(out).not.toContain('다시 불러오기')
+    }
   })
 
-  it.each([
-    ['needMaterial', { kind: 'needMaterial' }, '재료를 넣으면 컬렉션을 고를 수 있어요'],
-    ['none', { kind: 'none', rarity: 'epic' }, '지금은 Epic 아이템 배지로 받을 수 있는 컬렉션이 없어요. 다른 등급으로 해 보세요.'],
-    ['error', { kind: 'error' }, d.combine.tierUp.collectionPicker.loadFailed],
-    ['ready', READY, d.combine.tierUp.collectionPicker.unselected],
-  ] as [string, TierUpCollectionView, string][])('%s 갈래는 이 문구를 그린다', (_name, collection, text) => {
-    expect(html({ collection })).toContain(text)
+  it('등급 안내 줄이 aria-live(polite) 하나뿐이다 — 컬렉션 행의 래퍼가 없다', () => {
+    expect(html().match(/aria-live="polite"/g)).toHaveLength(1)
+    expect(html({ showNoEnoughNotice: true }).match(/aria-live="polite"/g)).toHaveLength(1)
   })
 
-  it('5개 이상 가진 등급이 없어 안내 블록이 뜰 때는 행을 그리지 않는다(올릴 수 없는데 «재료를 넣으면»이라고 말하면 거짓이다)', () => {
-    const out = html({ showNoEnoughNotice: true, collection: { kind: 'needMaterial' } })
-    expect(out).toContain(d.combine.tierUp.noEnoughNotice)
-    expect(out).not.toContain('받을 컬렉션')
-    expect(out).not.toContain('재료를 넣으면 컬렉션을 고를 수 있어요')
-    expect(out).not.toContain('<div aria-live="polite"')
-  })
-
-  it('제출 중에는 행이 잠긴다(disabled)', () => {
-    const tree = TierUpPanel<TierUpMaterial>({ ...(panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]), collection: READY, submitting: true })
-    const rowEl = findAll(tree, (el) => el.type === TierUpCollectionRow)[0]
-    expect(rowEl.props.submitting).toBe(true)
-    expect(html({ collection: READY, submitting: true })).toMatch(/<button type="button" disabled=""[^>]*>[\s\S]*?받을 컬렉션/)
-  })
-
-  it('행의 열기·다시 불러오기와 시트의 줄 선택이 호출부 핸들러로 이어진다', () => {
-    const onOpen = vi.fn()
-    const onRetry = vi.fn()
-    const onPick = vi.fn()
-    const tree = TierUpPanel<TierUpMaterial>({
-      ...(panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]),
-      collection: READY,
-      collectionSheetOpen: true,
-      onOpenCollectionSheet: onOpen,
-      onRetryCollections: onRetry,
-      onPickCollection: onPick,
-    })
-    const rowEl = findAll(tree, (el) => el.type === TierUpCollectionRow)[0]
-    ;(rowEl.props.onOpen as () => void)()
-    ;(rowEl.props.onRetry as () => void)()
-    const content = findAll(tree, (el) => el.type === TierUpCollectionSheetContent)[0]
-    ;(content.props.onPick as (id: string) => void)('river')
-    expect(onOpen).toHaveBeenCalledTimes(1)
-    expect(onRetry).toHaveBeenCalledTimes(1)
-    expect(onPick).toHaveBeenCalledWith('river')
-  })
-
-  it('컬렉션 시트는 «컬렉션 고르기» 제목의 compact 시트이고 열림은 호출부가 정한다(재료 시트와 따로)', () => {
+  it('시트는 재료 시트 하나뿐이고 열림은 호출부가 정한다', () => {
     const base = panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]
     const sheets = (props: Parameters<typeof TierUpPanel<TierUpMaterial>>[0]) =>
       findAll(TierUpPanel<TierUpMaterial>(props), (el) => el.type === BottomSheet)
-    const closed = sheets({ ...base, collection: READY, sheetOpen: true, collectionSheetOpen: false })
-    expect(closed).toHaveLength(2)
-    const [material, collection] = closed
-    expect(material.props.title).toBe(d.combine.bagTitle)
-    expect(material.props.open).toBe(true)
-    expect(collection.props.title).toBe('컬렉션 고르기')
-    expect(collection.props.detent).toBe('compact')
-    expect(collection.props.open).toBe(false)
-
-    const open = sheets({ ...base, collection: READY, sheetOpen: false, collectionSheetOpen: true })
-    expect(open[0].props.open).toBe(false)
-    expect(open[1].props.open).toBe(true)
+    const closed = sheets({ ...base, sheetOpen: false })
+    expect(closed).toHaveLength(1)
+    expect(closed[0].props.title).toBe(d.combine.bagTitle)
+    expect(closed[0].props.open).toBe(false)
+    expect(sheets({ ...base, sheetOpen: true })[0].props.open).toBe(true)
   })
 
-  it('컬렉션 시트 본문은 ready일 때만 목록을 그린다', () => {
-    const base = panel().props as Parameters<typeof TierUpPanel<TierUpMaterial>>[0]
-    const contents = (collection: TierUpCollectionView) =>
-      findAll(TierUpPanel<TierUpMaterial>({ ...base, collection, collectionSheetOpen: true }), (el) => el.type === TierUpCollectionSheetContent)
-    expect(contents(READY)).toHaveLength(1)
-    expect(contents({ kind: 'needMaterial' })).toHaveLength(0)
-    expect(contents({ kind: 'error' })).toHaveLength(0)
-    expect(contents({ kind: 'none', rarity: 'rare' })).toHaveLength(0)
-  })
-
-  it('확률 숫자·퍼센트는 어느 갈래에도 없다', () => {
-    for (const collection of [READY, { kind: 'none', rarity: 'rare' }, { kind: 'error' }, { kind: 'needMaterial' }] as TierUpCollectionView[]) {
-      const visibleText = html({ collection }).replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ')
-      expect(visibleText).not.toMatch(/\d\s*%|퍼센트/)
-    }
+  it('확률 숫자·퍼센트가 어디에도 없다', () => {
+    const visibleText = html({ showNoEnoughNotice: true, pendingBlocked: true }).replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ')
+    expect(visibleText).not.toMatch(/\d\s*%|퍼센트/)
   })
 })
 
@@ -311,22 +237,26 @@ describe('TierUpPanel 한국어 줄바꿈 (UX 라이팅 §3.2)', () => {
 describe('TierUpSheetContent', () => {
   const rare7 = many('r', 'rare', 7)
   const common3 = many('c', 'common', 3)
-  const groups = groupTierUpMaterials([...common3, ...rare7])
+  const mystic6 = many('m', 'mystic', 6)
+  const groups = groupTierUpMaterials([...common3, ...rare7, ...mystic6])
   const render = (sheet: Parameters<typeof TierUpSheetContent<TierUpMaterial>>[0]['sheet']) =>
     renderToStaticMarkup(<TierUpSheetContent<TierUpMaterial> sheet={sheet} onPick={noop} />)
 
-  it('묶음 보기: 등급 글자와 개수를 제목으로 쓰고, 5개 미만 묶음은 이유 줄이 나온다', () => {
+  it('묶음 보기: 등급 글자와 개수를 제목으로 쓰고, 6개 미만 묶음은 이유 줄이 나온다', () => {
     const out = render(buildTierUpSheet(groups, EMPTY_SLOTS))
     expect(out).toContain('Common · 3개')
     expect(out).toContain('Rare · 7개')
+    expect(out).toContain('Mystic · 6개')
     expect(out.indexOf('Common · 3개')).toBeLessThan(out.indexOf('Rare · 7개'))
-    // 5개 미만인 Common 묶음에만 이유 줄이 한 번 나온다
+    expect(out.indexOf('Rare · 7개')).toBeLessThan(out.indexOf('Mystic · 6개'))
+    // 6개 미만인 Common 묶음에만 이유 줄이 한 번 나온다
     expect(out.split(d.combine.tierUp.groupShort)).toHaveLength(2)
     expect(out).toContain('<section aria-labelledby="tier-up-group-common"')
     expect(out).toContain('<h3 id="tier-up-group-rare"')
+    expect(out).toContain('<h3 id="tier-up-group-mystic"')
   })
 
-  it('묶음 보기: 5개 미만 묶음의 셀은 모두 비활성(opacity-40)이고 «사용 중» 라벨이 없다', () => {
+  it('묶음 보기: 6개 미만 묶음의 셀은 모두 비활성(opacity-40)이고 «사용 중» 라벨이 없다', () => {
     const out = render(buildTierUpSheet(groupTierUpMaterials(common3), EMPTY_SLOTS))
     expect(out.match(/opacity-40/g)).toHaveLength(3)
     expect(out.match(/disabled=""/g)).toHaveLength(3)
@@ -334,11 +264,20 @@ describe('TierUpSheetContent', () => {
   })
 
   it('등급 고정 보기: 묶음 제목 없이 위에 한 줄, 담은 셀은 «사용 중»이다', () => {
-    const out = render(buildTierUpSheet(groups, [rare7[0], rare7[1], null, null, null]))
+    const out = render(buildTierUpSheet(groups, [rare7[0], rare7[1], null, null, null, null]))
     expect(out).toContain('지금은 Rare 아이템 배지만 넣을 수 있어요')
     expect(out).not.toContain('<h3')
     expect(out).not.toContain('Common')
+    expect(out).not.toContain('Mystic')
     expect(out.split(d.combine.bagUsedLabel)).toHaveLength(3)
+  })
+
+  it('등급 고정 보기: Mystic을 첫 재료로 담으면 Mystic 안내 한 줄과 Mystic 셀만 나온다', () => {
+    const out = render(buildTierUpSheet(groups, [mystic6[0], null, null, null, null, null]))
+    expect(out).toContain('지금은 Mystic 아이템 배지만 넣을 수 있어요')
+    expect(out).not.toContain('Rare')
+    expect(out.split(d.combine.bagUsedLabel)).toHaveLength(2)
+    expect(out.match(/배지 m\d/g)).toHaveLength(6)
   })
 
   it('비어 있음: 안내 문구와 아이콘만 나온다', () => {
