@@ -260,3 +260,28 @@ describe('ListRowChip·ListRowEm', () => {
     expect(render(<ListRowEm>값</ListRowEm>)).toContain('style="font-weight:700">값</strong>')
   })
 })
+
+describe('값 행 값 칸 오른쪽 정렬', () => {
+  // 본문 칸이 내용 폭(flex 0 1 auto)이라 남는 폭을 채우지 않는다. 값 칸이 margin-left:auto로 행 오른쪽 끝에 붙어야 한다.
+  // 실화면(320px)에서 짧은 값이 라벨 바로 옆에 붙은 것을 재서 찾았고(값 오른쪽 끝이 행 끝에서 7~93px 떨어짐), 이 단정이 그 회귀를 막는다.
+  const valueStyle = (html: string, value: string) => html.match(new RegExp(`<span style="([^"]*)">${value}</span>`))?.[1] ?? ''
+
+  it('값 행(label + value + titleLines 0)의 값 칸은 margin-left:auto로 오른쪽 끝에 붙는다', () => {
+    const style = valueStyle(render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="활동 거리" value="42.44 km" />), '42.44 km')
+
+    expect(style).toContain('margin-left:auto')
+    expect(style).toContain('text-align:right')
+  })
+
+  it('titleLines 1·2·기본 값 행은 본문 칸이 남는 폭을 채우므로 값 칸에 margin-left:auto를 걸지 않는다', () => {
+    for (const lines of [1, 2, undefined]) {
+      const html = render(<ListRow tone="flat" titleVariant="label" titleLines={lines} title="라벨" value="값" />)
+
+      expect(valueStyle(html, '값')).not.toContain('margin-left')
+    }
+  })
+
+  it('label이 아닌 행의 값 칸에도 margin-left를 걸지 않는다', () => {
+    expect(valueStyle(render(<ListRow title="이름" value="값" />), '값')).not.toContain('margin-left')
+  })
+})

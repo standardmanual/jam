@@ -395,6 +395,8 @@ export function ListRow({
         <span
           style={{
             alignSelf: 'center', flexShrink: isLabel ? 1 : 0, minWidth: 0, maxWidth: isLabel ? '60%' : undefined,
+            // 값 행 규칙(본문 칸이 내용 폭이라 남는 폭을 채우지 않음)에서는 값을 행 오른쪽 끝으로 민다. 안 밀면 값이 라벨 바로 옆에 붙는다.
+            marginLeft: isLabel && lines === 0 ? 'auto' : undefined,
             whiteSpace: isLabel ? 'normal' : 'nowrap', textAlign: isLabel ? 'right' : undefined,
             fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: ROW_WEIGHT.strong,
           }}
