@@ -60,11 +60,3 @@ export function tribeSupportsTierUp(rarities: readonly BadgeRarity[], materialRa
   const upper = tierUpUpperRarity(materialRarity)
   return rarities.includes(materialRarity) && (upper === null || rarities.includes(upper))
 }
-
-/**
- * 순수 — 컬렉션 하나 단위 판정. 믹스 화면의 받을 컬렉션 목록(`tierUpClient.ts`)이 2회차에서 바뀔 때까지만 남긴다 — 서버는 쓰지 않는다.
- * 규칙은 `tribeSupportsTierUp`과 같다(재료 등급과 바로 윗등급이 모두 있어야 한다).
- */
-export function collectionSupportsTierUp(rarities: readonly BadgeRarity[], materialRarity: TierUpMaterialRarity): boolean {
-  return tribeSupportsTierUp(rarities, materialRarity)
-}

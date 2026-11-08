@@ -233,10 +233,10 @@ describe('거절', () => {
     expect(await res.json()).toEqual({ success: false, reason, pointsAwarded: 0, message })
   })
 
-  it('후보 없음 거절 문구는 message로 내려온다 (문구 자체의 개정은 2·3회차 범위다)', async () => {
+  it('후보 없음 거절 문구는 message로 내려온다', async () => {
     tierUpMock.mockResolvedValue({ success: false, reason: 'no_candidate', pointsAwarded: 0 })
     const noCandidate = await (await POST(request(VALID_BODY))).json()
-    expect(noCandidate.message).toBe('고른 컬렉션에서는 지금 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 다른 컬렉션을 골라 주세요.')
+    expect(noCandidate.message).toBe('지금은 받을 수 있는 아이템 배지가 없어요. 넣은 재료는 그대로 있어요. 잠시 뒤에 다시 해 보세요.')
   })
 
   it('엔진이 그 밖의 오류를 던지면 500이고 시스템 오류 문구를 그대로 내리지 않는다', async () => {

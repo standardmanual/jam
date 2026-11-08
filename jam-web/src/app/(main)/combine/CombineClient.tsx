@@ -17,7 +17,6 @@ import BagItemCell from './BagItemCell'
 import TierUpPanel from './TierUpPanel'
 import {
   TIER_UP_ENDPOINT,
-  buildTierUpCollectionView,
   buildTierUpSheet,
   emptyTierUpSlots,
   fillTierUpSlot,
@@ -32,7 +31,6 @@ import {
   tierUpRejection,
   tierUpResultMessage,
   tierUpSubmitIds,
-  type TierUpCollectionOption,
   type TierUpRequest,
   type TierUpResultBadge,
   type TierUpSlots,
@@ -93,11 +91,6 @@ interface Props {
    * 막는다. 온보딩 연출 모드에서는 서버가 0을 내리고, 클라이언트도 0으로 본다.
    */
   pendingCount?: number
-  /**
-   * 등급 올리기에서 고를 수 있는 컬렉션 — 서버(`page.tsx`)가 소속 트라이브의 열린 컬렉션을 읽어 내려준다(티켓 20261023_1648 3회). 화면은 재료 등급에 맞는 것만
-   * 걸러 보인다. `null`은 «읽지 못했다»(빈 배열 «읽었더니 없다»와 다르다). 온보딩 연출 중에는 서버가 조회를 건너뛰고 빈 배열을 내린다.
-   */
-  tierUpCollections?: TierUpCollectionOption[] | null
 }
 
 /** 받지 않은 결과 목록을 기다리는 최대 시간 — 넘으면 오류로 넘어가 «다시 불러오기»를 보인다 */
@@ -379,7 +372,6 @@ export default function CombineClient({
   ownedConditionBadgeIds,
   questStep = null,
   pendingCount: serverPendingCount = 0,
-  tierUpCollections = [],
 }: Props) {
   const [search, setSearch] = useState('')
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
@@ -408,20 +400,14 @@ export default function CombineClient({
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheet, setSheet] = useState<PendingSheetView>(INITIAL_SHEET)
   /**
-   * 등급 올리기(티켓 20261022_2119 3회) — 레시피 믹서(`selectedRecipeId`)와 같은 층의 분기다. 담은 칸은 개체 id 5칸이고, 재료 시트가 열려 있는 동안
-   * `tierUpTarget`이 다음에 채울 칸을 가리킨다(담을 때마다 다음 빈 칸으로 이어지고 5칸이 차면 시트가 닫힌다).
+   * 등급 올리기(티켓 20261022_2119 3회) — 레시피 믹서(`selectedRecipeId`)와 같은 층의 분기다. 담은 칸은 개체 id 6칸이고, 재료 시트가 열려 있는 동안
+   * `tierUpTarget`이 다음에 채울 칸을 가리킨다(담을 때마다 다음 빈 칸으로 이어지고 6칸이 차면 시트가 닫힌다).
    */
   const [tierUpOpen, setTierUpOpen] = useState(false)
   const [tierUpSlots, setTierUpSlots] = useState<TierUpSlots>(emptyTierUpSlots)
   const [tierUpSheetOpen, setTierUpSheetOpen] = useState(false)
   const [tierUpTarget, setTierUpTarget] = useState(0)
   const [tierUpLoading, setTierUpLoading] = useState(false)
-  /**
-   * 고른 컬렉션 id와 컬렉션 시트 열림 — 결과를 받은 뒤 같은 화면에 있는 동안은 고른 컬렉션을 유지하고(같은 컬렉션을 연달아 채우는 흐름) 화면을 나가면 비운다.
-   * 지금 목록에 없는 선택은 아래 `tierUpCollectionView`가 걸러 보이지도 제출되지도 않게 한다(여기 값은 지우지 않는다).
-   */
-  const [tierUpCollectionPick, setTierUpCollectionPick] = useState<string | null>(null)
-  const [tierUpCollectionSheetOpen, setTierUpCollectionSheetOpen] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -471,9 +457,6 @@ export default function CombineClient({
   const tierUpSheet = buildTierUpSheet(tierUpGroups, tierUpFilled)
   const tierUpLockedRarity = lockedTierUpRarity(tierUpFilled)
   const tierUpSubmitItemIds = tierUpSubmitIds(tierUpFilled)
-  const tierUpCollectionView = buildTierUpCollectionView(tierUpCollections, tierUpLockedRarity, tierUpCollectionPick)
-  /** 제출에 쓰는 컬렉션 — 재료가 없거나 새 등급의 목록에 없는 선택은 null이다 */
-  const tierUpCollectionId = tierUpCollectionView.kind === 'ready' ? tierUpCollectionView.selectedId : null
 
   function selectRecipe(recipeId: string) {
     setSelectedRecipeId(recipeId)
@@ -555,8 +538,6 @@ export default function CombineClient({
   function openTierUp() {
     setTierUpOpen(true)
     setTierUpSlots(emptyTierUpSlots())
-    setTierUpCollectionPick(null)
-    setTierUpCollectionSheetOpen(false)
     setResult(null)
   }
 
@@ -564,34 +545,16 @@ export default function CombineClient({
     setTierUpOpen(false)
     setTierUpSlots(emptyTierUpSlots())
     setTierUpSheetOpen(false)
-    setTierUpCollectionPick(null)
-    setTierUpCollectionSheetOpen(false)
   }
 
   function openTierUpSheet(slotIndex: number) {
     setTierUpTarget(slotIndex)
-    // 두 시트가 동시에 열리지 않게 한쪽을 열 때 다른 쪽을 닫는다
-    setTierUpCollectionSheetOpen(false)
     setTierUpSheetOpen(true)
   }
 
-  /** 컬렉션 시트를 연다 — 고를 목록이 있을 때(ready)만, 제출 중에는 열지 않는다 */
-  function openTierUpCollectionSheet() {
-    if (tierUpLoading || tierUpCollectionView.kind !== 'ready') return
-    setTierUpSheetOpen(false)
-    setTierUpCollectionSheetOpen(true)
-  }
-
-  /** 시트의 줄을 눌러 컬렉션을 고르고 시트를 바로 닫는다 — 확정은 화면의 «등급 올리기» 버튼이다. 지금 목록에 없는 id는 무시한다 */
-  function pickTierUpCollection(collectionId: string) {
-    if (tierUpCollectionView.kind !== 'ready' || !tierUpCollectionView.choices.some((choice) => choice.id === collectionId)) return
-    setTierUpCollectionPick(collectionId)
-    setTierUpCollectionSheetOpen(false)
-  }
-
   /**
-   * 재료 시트에서 개체를 담는다 — 누른 칸부터 다음 빈 칸으로 이어서 채우고 5칸이 차면 시트를 닫는다. 시트가 비활성으로 그린 개체
-   * (다른 등급, 5개 미만 묶음, 이미 담은 것)는 한 번 더 걸러 다른 등급이 섞인 제출이 화면에서 만들어지지 않게 한다.
+   * 재료 시트에서 개체를 담는다 — 누른 칸부터 다음 빈 칸으로 이어서 채우고 6칸이 차면 시트를 닫는다. 시트가 비활성으로 그린 개체
+   * (다른 등급, 6개 미만 묶음, 이미 담은 것)는 한 번 더 걸러 다른 등급이 섞인 제출이 화면에서 만들어지지 않게 한다.
    */
   function pickTierUpItem(itemId: string) {
     if (!pickableTierUpIds(tierUpSheet).has(itemId)) return
@@ -851,14 +814,13 @@ export default function CombineClient({
   }
 
   /**
-   * 등급 올리기 제출 — 요청은 `{ itemIds, collectionId }` 둘뿐이다(확률과 결과는 서버가 정한다). 소각 앞의 거절은 모두 토스트로 알리고 결과 오버레이를
-   * 열지 않으며 담은 칸을 그대로 둔다(`items_not_found`만 칸을 비운다). 고른 컬렉션으로는 받을 수 없다는 거절(`invalid_collection`·`no_candidate`)은
-   * 컬렉션만 풀고 목록을 다시 읽는다. 분석 이벤트는 보내지 않는다 — `combine_attempt` 같은 레시피 믹스 지표를
+   * 등급 올리기 제출 — 요청은 `{ itemIds }` 6개뿐이다(컬렉션·확률·결과는 서버가 정한다). 소각 앞의 거절은 모두 토스트로 알리고 결과 오버레이를
+   * 열지 않으며 담은 칸을 그대로 둔다(`items_not_found`만 칸을 비운다). 분석 이벤트는 보내지 않는다 — `combine_attempt` 같은 레시피 믹스 지표를
    * 섞지 않기 위해서다(티켓 가정 나).
    */
   async function handleTierUp() {
-    if (tierUpLoading || pendingBlocked || demoMode || !tierUpSubmitItemIds || !tierUpCollectionId) return
-    const body: TierUpRequest = { itemIds: tierUpSubmitItemIds, collectionId: tierUpCollectionId }
+    if (tierUpLoading || pendingBlocked || demoMode || !tierUpSubmitItemIds) return
+    const body: TierUpRequest = { itemIds: tierUpSubmitItemIds }
 
     setTierUpLoading(true)
     setResult(null)
@@ -874,7 +836,6 @@ export default function CombineClient({
         const rejection = tierUpRejection(res.status, data)
         toast(rejection.message, rejection.tone)
         if (rejection.clearSlots) setTierUpSlots(emptyTierUpSlots())
-        if (rejection.clearCollection) setTierUpCollectionPick(null)
         if (rejection.refreshPending) await refreshPendingCount()
         if (rejection.refresh) router.refresh()
         return
@@ -1004,7 +965,7 @@ export default function CombineClient({
           noMaterials={tierUpGroups.length === 0}
           rarityNote={tierUpLockedRarity ? tierUpRarityNote(tierUpLockedRarity) : null}
           showNoEnoughNotice={!hasEnoughTierUpGroup(tierUpGroups)}
-          canSubmit={!!tierUpSubmitItemIds && !!tierUpCollectionId}
+          canSubmit={!!tierUpSubmitItemIds}
           submitting={tierUpLoading}
           pendingBlocked={pendingBlocked}
           onOpenSheet={openTierUpSheet}
@@ -1014,12 +975,6 @@ export default function CombineClient({
           onCloseSheet={() => setTierUpSheetOpen(false)}
           sheet={tierUpSheet}
           onPick={pickTierUpItem}
-          collection={tierUpCollectionView}
-          collectionSheetOpen={tierUpCollectionSheetOpen && tierUpCollectionView.kind === 'ready'}
-          onOpenCollectionSheet={openTierUpCollectionSheet}
-          onCloseCollectionSheet={() => setTierUpCollectionSheetOpen(false)}
-          onPickCollection={pickTierUpCollection}
-          onRetryCollections={() => router.refresh()}
         />
       ) : !selectedRecipe ? (
         <>
