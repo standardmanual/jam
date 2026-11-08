@@ -290,11 +290,11 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
 })
 
 describe('표 마크업 — 의미 있는 표, 가로 스크롤 없음', () => {
-  it('표 아홉 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
+  it('표 열 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
     const html = await render()
-    // 동기화 2 + 캡슐 2 + 시스템 드랍 1 + 등급 올리기 3 + 바뀐 날짜 1
-    expect(count(html, '<table')).toBe(9)
-    expect(count(html, '<caption class="sr-only">')).toBe(9)
+    // 동기화 2 + 캡슐 2 + 시스템 드랍 1 + 등급 올리기 4 + 바뀐 날짜 1
+    expect(count(html, '<table')).toBe(10)
+    expect(count(html, '<caption class="sr-only">')).toBe(10)
     // 행마다 th 하나 + td 하나
     expect(count(html, '<th scope="row"')).toBe(count(html, '<td '))
     expect(count(html, '<th scope="row"')).toBeGreaterThanOrEqual(9)
@@ -376,8 +376,8 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
       // 가리킬 등급 표가 없으니 «이 확률은 처음 뽑는 등급이에요»도 남기지 않는다
       expect(textOf(section), title).not.toContain('처음 뽑는 등급')
     }
-    // 시스템 드랍 표, 등급 올리기 표 셋, 바뀐 날짜 표는 그대로다
-    expect(count(html, '<table')).toBe(5)
+    // 시스템 드랍 표, 등급 올리기 표 넷, 바뀐 날짜 표는 그대로다
+    expect(count(html, '<table')).toBe(6)
     expect(textOf(sectionOf(html, '시스템 드랍'))).toMatch(/Common100%/)
     expect(textOf(sectionOf(html, '등급 올리기'))).toContain('Rare30%Epic70%')
   })
@@ -496,7 +496,7 @@ describe('문구와 서식 규칙', () => {
     const html = articleOf(await render())
     expect(html).not.toMatch(/gradient|animate-|transition|--link|--accent|rarity|<svg|<img|progress|<canvas/i)
     // 크림 단색 바탕 위의 표 카드와 Note만 쓴다 — 카드 안 카드가 없다
-    expect(count(html, 'rounded-2xl bg-card-bg')).toBe(9)
+    expect(count(html, 'rounded-2xl bg-card-bg')).toBe(10)
   })
 
   it('제목 계층이 h1 → h2 → h3다', async () => {
