@@ -15,7 +15,7 @@ vi.mock('@/components/ui/Toast', () => ({
 }))
 
 import PoiCarouselModal, { PoiCard, toDemoDroppedPickup } from './PoiCarouselModal'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 import type { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { DEMO_PICKUP_POI, DEMO_PICKUP_DROP, DEMO_DROP_ITEM } from '@/lib/onboarding-quest/demo-data'
 
@@ -185,6 +185,40 @@ describe('잠긴 개체 행과 드랍 확인 단계 (티켓 20261018_1817, 운�
     const html = renderList([lockedDrop('l1', 'rare', 5), openDrop])
     expect(html.indexOf(openDrop.badge_name)).toBeGreaterThan(-1)
     expect(html.indexOf(openDrop.badge_name)).toBeLessThan(html.indexOf(d.lockedItem.card.name))
+  })
+})
+
+describe('아이템 행의 ListRow 배선 (티켓 20261108_1625)', () => {
+  const base: PickupDrop = { ...DEMO_PICKUP_DROP, id: 'r1', badge_id: 'badge-r', badge_name: '행 배지 이름', badge_rarity: 'common', serial: null }
+  function renderList(drops: PickupDrop[]) {
+    return renderToStaticMarkup(
+      <PoiCarouselModal
+        pois={[DEMO_PICKUP_POI]}
+        initialPoiId={DEMO_PICKUP_POI.id}
+        userLat={0}
+        userLng={0}
+        onClose={vi.fn()}
+        onCenterChange={vi.fn()}
+        onDropOrPickupSuccess={vi.fn()}
+        demoMode
+        initialDropsCache={{ [DEMO_PICKUP_POI.id]: drops }}
+      />
+    )
+  }
+
+  it('개체가 둘 이상이면 ×N 알약은 aria-hidden이고 개수 안내 문구가 따로 읽힌다', () => {
+    const html = renderList([base, { ...base, id: 'r2' }])
+    expect(html).toContain('<span aria-hidden="true">×2</span>')
+    expect(html).toContain(`<span class="sr-only">${t(d.drops.pickupAvailableCountAria, { count: '2' })}</span>`)
+  })
+
+  it('개체가 하나면 개수 알약이 없다', () => {
+    expect(renderList([base])).not.toContain('×1')
+  })
+
+  it('common 행은 등급 칩 줄을 만들지 않는다', () => {
+    expect(renderList([{ ...base, badge_rarity: 'rare' }])).toContain('gap:var(--spacing-4)')
+    expect(renderList([base])).not.toContain('gap:var(--spacing-4)')
   })
 })
 
