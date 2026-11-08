@@ -55,7 +55,7 @@ describe('PosterCard — 면(표면)', () => {
     const html = render()
     expect(html).toMatch(/^<div class="relative overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*">/)
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
-    expect(html).not.toContain('--layout-card-padding')
+    expect(html).not.toContain('--card-padding')
     expect(html).not.toContain('p-0')
   })
 
@@ -103,9 +103,9 @@ describe('PosterCard — 막', () => {
     expect(tokenFile('spacing.css')).toMatch(/--spacing-32:\s*32px/)
   })
 
-  it('막 좌우·아래 여백은 24px, 그룹 사이 간격은 12px이다(hero 본문과 같다)', () => {
+  it('막 좌우·아래 여백은 16px, 그룹 사이 간격은 12px이다(hero 본문과 같다)', () => {
     const scrim = scrimClassOf(render())
-    for (const cls of ['px-6', 'pb-6', 'gap-3', 'flex flex-col']) {
+    for (const cls of ['px-4', 'pb-4', 'gap-3', 'flex flex-col']) {
       expect(scrim).toContain(cls)
     }
   })

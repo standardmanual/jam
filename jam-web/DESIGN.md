@@ -71,7 +71,7 @@ accent-content 계열이다. 진행 상태 색은 글자로 쓰지 않는다. �
 않는다(문서 11 0.1절). 간격 눈금은 `--spacing-4`부터 `--spacing-96`까지이며 이름이 값을 따른다. Tailwind 단계 번호(`p-4`)와
 다르므로 클래스 안에서는 변수를 쓰지 않는다.
 
-시맨틱 토큰은 `--layout-card-padding`(카드 내부), `--layout-section-gap`(섹션 사이), `--layout-element-gap`(요소 사이)다.
+시맨틱 토큰은 `--layout-card-padding`(시트·모달·빈 상태 안쪽, 24), `--layout-section-gap`(섹션 사이), `--layout-element-gap`(요소 사이)다.
 터치 타겟 최소는 `--touch-target-min`, iOS 하단 안전영역은 `--spacing-safe-bottom`이다. 그리드형 화면은 촘촘하게,
 리스트형 화면은 카드 행 사이 여백으로 완화한다.
 

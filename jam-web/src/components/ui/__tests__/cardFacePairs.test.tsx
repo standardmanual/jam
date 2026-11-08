@@ -226,7 +226,7 @@ describe('직접 만들던 흰 카드 면은 공통 Card와 같은 값이다', (
     const html = renderToStaticMarkup(<BadgeConditionCard text="조건 문장" spec="누적 10회 이상" />)
     expect(html).toContain(CARD_FACE)
     expect(html).not.toContain('border:')
-    expect(html).toContain('padding:var(--layout-card-padding)')
+    expect(html).toContain('padding:var(--card-padding)')
     expect(html).toContain('flex flex-col gap-2')
     expect(html).not.toContain('bg-surface')
     expect(html).not.toContain('box-shadow')

@@ -31,7 +31,7 @@ function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
 
 const render = (overrides: Partial<ImageCardView> = {}) => renderToStaticMarkup(<SquareCard view={makeView(overrides)} />)
 
-const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
+const BODY_OPEN = '<div class="flex flex-col gap-3 p-4">'
 const bodyOf = (html: string) => html.slice(html.indexOf(BODY_OPEN) + BODY_OPEN.length)
 
 describe('SquareCard — 면(표면)', () => {
@@ -40,7 +40,7 @@ describe('SquareCard — 면(표면)', () => {
     expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*">/)
     expect(html).not.toContain('--background-inverse')
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
-    expect(html).not.toContain('--layout-card-padding')
+    expect(html).not.toContain('--card-padding')
     expect(html).not.toContain('p-0')
   })
 
@@ -55,7 +55,7 @@ describe('SquareCard — 면(표면)', () => {
     expect(bodyOf(html)).not.toContain('overflow-hidden')
   })
 
-  it('본문은 안쪽 여백 24px이고 그룹 사이 간격은 12px이다', () => {
+  it('본문은 안쪽 여백 16px이고 그룹 사이 간격은 12px이다', () => {
     expect(render()).toContain(BODY_OPEN)
   })
 })

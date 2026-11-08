@@ -14,7 +14,7 @@ import ListCard from '../ListCard'
 import SquareCard from '../SquareCard'
 import type { CardResource, ImageCardView, ListCardView } from '@/lib/today/cardView'
 
-const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
+const BODY_OPEN = '<div class="flex flex-col gap-3 p-4">'
 const H3_CLASS =
   'text-2xl text-foreground line-clamp-2 break-keep break-words'
 const SUBTITLE_CLASS =
@@ -25,7 +25,7 @@ const DESCRIPTION_CLASS =
   'text-sm text-muted line-clamp-3 break-keep break-words'
 
 describe('CardBody — 본문 칸', () => {
-  it('안쪽 여백 24px, 그룹 사이 간격 12px의 세로 flex 칸이다', () => {
+  it('안쪽 여백 16px, 그룹 사이 간격 12px의 세로 flex 칸이다', () => {
     expect(renderToStaticMarkup(<CardBody>안쪽</CardBody>)).toBe(`${BODY_OPEN}안쪽</div>`)
   })
 })

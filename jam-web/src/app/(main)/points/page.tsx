@@ -22,7 +22,7 @@ export default function PointsPage() {
 
       <div className="px-4 pt-4 pb-6 flex flex-col gap-6">
         {/* 잔액 카드 */}
-        <Card className="text-center py-8">
+        <Card className="text-center">
           <p className="text-xs uppercase text-muted mb-2">{d.points.balanceLabel}</p>
           <p
             className="text-5xl font-bold text-point-text"

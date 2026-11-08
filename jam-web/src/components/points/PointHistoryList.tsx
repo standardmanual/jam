@@ -93,7 +93,7 @@ export function PointHistoryList({ items, cursor, loading, loadingMore, error, o
       )}
 
       {!loading && error && (
-        <Card className="text-center py-8">
+        <Card className="text-center">
           <p className="text-base text-muted mb-4">{d.points.loadError}</p>
           <Button variant="secondary" surface="sub" onClick={onRetry}>
             {d.points.retry}

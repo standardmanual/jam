@@ -11,8 +11,8 @@ import CardImageSlot from './CardImageSlot'
  * 링크·계측·눌림·포커스 윤곽선은 모르고(`CardFrame`이 맡는다) 표시 데이터(`ImageCardView`) 값만 읽어 그린다.
  * 위는 16:9 이미지 칸, 아래는 흰 본문이다: 칩 줄 → 제목 · 요약 → 필수 정보 → 설명문 → 끝 줄. 본문은 전부 왼쪽 정렬이다.
  *
- * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--layout-card-padding)`)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다. 이미지가 카드 모서리까지
- *   닿아야 해서 같은 인라인 `style`로 0을 주고, 본문 24px은 본문 칸이 가진다. 이미지 모서리는 `Card`의 `overflow-hidden`이 자른다.
+ * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--card-padding)`)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다. 이미지가 카드 모서리까지
+ *   닿아야 해서 같은 인라인 `style`로 0을 주고, 본문 16px은 본문 칸이 가진다. 이미지 모서리는 `Card`의 `overflow-hidden`이 자른다.
  * - 눌림·hover를 안쪽에 더하지 않는다(`CardFrame`의 링크가 가진 `.jam-press` 하나뿐이다). `overflow-hidden`은 `Card`에만 걸어 포커스 윤곽선이 잘리지 않게 한다.
  * - `--text-base`은 서비스에서 14px이 아니라 16px이다. 필수 정보·설명문 14px은 `--text-sm`이다.
  * - 옅은 글자는 `text-muted` 한 단계로 통일한다(흰 면 위 5.74:1). 불투명도로 글자색을 만들지 않는다(티켓 20261015_2133).

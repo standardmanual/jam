@@ -10,14 +10,14 @@ import TodayCard from './TodayCard'
  * 목록(`list`) 모양 상태 행렬 (티켓 20261001_2104, 상위 20260930_1453 조각 b5).
  *
  * - 두 갈래다: 타일형(배지·재료 64px 가로 스크롤 타일)과 랭킹 행형(순위 행, 카드 전체 링크 없음). 같은 본문(칩 줄 → 제목 → 요약 → 필수 정보 → 설명문) 아래가 갈린다.
- * - 카드 폭은 뷰포트 에뮬레이션이 아니라 고정 폭 래퍼다: 360 기기 = 328px, 430 기기 = 398px, 320 기기 = 288px. 타일 줄 계산(왼쪽 24px부터, 타일 64px + 간격 8px, 오른쪽은
- *   카드 가장자리까지 번진다): k번째 타일의 왼쪽 가장자리 = 24 + 72k. 328px 폭에서 5번째가 312에서 시작해 16px 보이고 4개는 280px로 딱 맞아 스크롤이 없다.
- *   398px 폭은 6번째가 384에서 시작해 14px 보이고(5개는 352px라 350px 안쪽 폭을 2px 넘어 거의 스크롤이 없다), 288px 폭은 4번째가 240에서 시작해 48px 보인다.
+ * - 카드 폭은 뷰포트 에뮬레이션이 아니라 고정 폭 래퍼다: 360 기기 = 328px, 430 기기 = 398px, 320 기기 = 288px. 타일 줄 계산(왼쪽 16px부터, 타일 64px + 간격 8px, 오른쪽은
+ *   카드 가장자리까지 번진다): k번째 타일의 왼쪽 가장자리 = 16 + 72k. 328px 폭에서 5번째가 304에서 시작해 24px 보이고 4개는 280px라 스크롤이 없다.
+ *   398px 폭은 6번째가 376에서 시작해 22px 보이고(5개는 352px라 366px 안쪽 폭에 들어가 스크롤이 없다), 288px 폭은 4번째가 232에서 시작해 56px 보인다.
  *   다른 폭(예: 414 기기의 382px)에서는 잘림이 보장되지 않는다 — 확인하는 폭은 360·430·320뿐이다.
  * - 카드 높이 실측(Chromium, 2026-10-01 — 확정 설계의 추정치 대신 이 값을 쓴다): 328px 폭 타일형 값이 가득 찬 카드(요약·필수 정보 2줄·설명문·타일 줄·끝 줄) 370.8px(타일이 3개든
  *   12개든 같다), 328px 폭 행형 값이 가득 찬 카드(요약·설명문·순위 3행) 407.2px(순위 행 하나당 76px = 행 68px + 간격 8px, 1행 255.2px · 5행 559.2px · 10행 939.2px).
  *   최악 조합(긴 제목·요약·필수 정보·설명문)은 타일형 288px 폭 466px · 328px 폭 446px · 398px 폭 426px, 행형 10행 288px 폭 1086.5px · 328px 폭 1066.4px · 398px 폭 1046.4px.
- *   나머지 값은 각 Story 캡션에 적었다. 같은 폭에서 타일형과 행형 모두 높이가 타일 수·링크 유무와 무관하다.
+ *   높이 값은 본문 안쪽 여백이 24px이던 때의 실측이라 지금은 위아래 16px씩 합쳐 약 16px 작다(다시 재지 않았다). 나머지 값은 각 Story 캡션에 적었다. 같은 폭에서 타일형과 행형 모두 높이가 타일 수·링크 유무와 무관하다.
  * - 캔버스는 흰색(`--background`, #ffffff)이다. 카드 면은 `--card-bg`(#f7f7f7)이고 외곽선은 없다. 순위 행은 tint 면(`--background-secondary`, 테두리 없음)이라 흰 카드 안에서 구획으로 보인다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서 윤곽선이 보인다는 것은 서비스 증거가 아니다 —
  *   클래스 단언(`__tests__/CardFrame.test.tsx`)이 보증한다. 아래 `play`는 높이·가로 넘침·링크 수 같은 계산 스타일을 눈으로 확인할 때 쓰는 보조 단언이고 CI에서 실행되지 않는다
@@ -200,16 +200,16 @@ const sendBeaconOff: NonNullable<Story['beforeEach']> = () => {
 // ─── 1. 타일형 — 폭 경계 ──────────────────────────────────────────────────
 
 /**
- * 360 기기(카드 328px, 안쪽 280px): 3개는 다 들어와 스크롤이 없고 4개는 딱 맞는다(4×64 + 3×8 = 280). 5개부터 다섯째 타일이 가장자리에서 16px 잘려 보이고 스크롤이 된다.
+ * 360 기기(카드 328px, 안쪽 296px): 3개는 다 들어와 스크롤이 없고 4개도 들어온다(4×64 + 3×8 = 280). 5개부터 다섯째 타일이 가장자리에서 24px 보이다 잘리고 스크롤이 된다.
  * 캡션의 높이는 이 폭의 실측이다.
  */
 export const TilesAt360: Story = {
-  name: '타일형 360 — 3개(스크롤 없음) · 4개(딱 맞음) · 5개(잘린 다섯째 타일) · 8개 · 12개',
+  name: '타일형 360 — 3개(스크롤 없음) · 4개(들어옴) · 5개(잘린 다섯째 타일) · 8개 · 12개',
   render: () => (
     <Column width={W360}>
       <Case caption="3개 — 폭 안에 다 들어옴, 스크롤 없음" view={tileCard({ tiles: tiles(3) })} />
-      <Case caption="4개 — 280px로 딱 맞음, 스크롤 없음" view={tileCard({ tiles: tiles(4) })} />
-      <Case caption="5개 — 다섯째 타일이 가장자리에서 16px 잘려 보임" view={tileCard({ tiles: tiles(5) })} />
+      <Case caption="4개 — 280px로 안쪽 폭 296px 안에 들어옴, 스크롤 없음" view={tileCard({ tiles: tiles(4) })} />
+      <Case caption="5개 — 다섯째 타일이 가장자리에서 24px 보이다 잘림" view={tileCard({ tiles: tiles(5) })} />
       <Case caption="8개 — 스크롤, 카드 높이는 타일 수와 무관" view={tileCard({ tiles: tiles(8) })} />
       <Case caption="12개 — 스크롤, 카드 높이는 타일 수와 무관" view={tileCard({ tiles: tiles(12) })} />
     </Column>
@@ -227,7 +227,7 @@ export const TilesAt360: Story = {
       const fifth = tilesOf(card)[4].getBoundingClientRect()
       expect(fifth.left).toBeLessThan(lane.right)
       expect(fifth.right).toBeGreaterThan(lane.right)
-      expect(Math.round(lane.right - fifth.left)).toBe(16)
+      expect(Math.round(lane.right - fifth.left)).toBe(24)
     }
     // 타일 수가 달라도 카드 높이는 같다(한 줄 스크롤)
     expect(Math.abs(heightOf(five) - heightOf(twelve))).toBeLessThanOrEqual(1)
@@ -241,14 +241,14 @@ export const TilesAt360: Story = {
 }
 
 /**
- * 끝까지 밀면 마지막 타일 오른쪽에 24px 여백이 남는다. 안쪽 `ul`에 `w-max`가 없으면 칸의 오른쪽 `padding`이 스크롤 영역에 들어가지 않아 0px였고(Chromium 실측),
- * 마지막 `li`에 오른쪽 `margin`을 줘도 0px였다. `w-max`로 24px이 남는다.
+ * 끝까지 밀면 마지막 타일 오른쪽에 16px 여백이 남는다. 안쪽 `ul`에 `w-max`가 없으면 칸의 오른쪽 `padding`이 스크롤 영역에 들어가지 않아 0px였고(Chromium 실측),
+ * 마지막 `li`에 오른쪽 `margin`을 줘도 0px였다. `w-max`로 16px이 남는다.
  */
 export const TilesScrollEnd: Story = {
-  name: '타일형 360 — 끝까지 밀면 마지막 타일 오른쪽에 24px 여백',
+  name: '타일형 360 — 끝까지 밀면 마지막 타일 오른쪽에 16px 여백',
   render: () => (
     <Column width={W360}>
-      <Case caption="8개 — 끝까지 민 모습 (마지막 타일 오른쪽 24px)" view={tileCard({ tiles: tiles(8) })} />
+      <Case caption="8개 — 끝까지 민 모습 (마지막 타일 오른쪽 16px)" view={tileCard({ tiles: tiles(8) })} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
@@ -257,17 +257,17 @@ export const TilesScrollEnd: Story = {
     lane.scrollLeft = lane.scrollWidth
     await new Promise((resolve) => setTimeout(resolve, 100))
     const last = tilesOf(card).at(-1)!.getBoundingClientRect()
-    expect(Math.round(lane.getBoundingClientRect().right - last.right)).toBe(24)
+    expect(Math.round(lane.getBoundingClientRect().right - last.right)).toBe(16)
   },
 }
 
-/** 430 기기(카드 398px, 안쪽 350px): 5개는 352px라 거의 스크롤이 없고, 6개부터 여섯째 타일이 14px 잘려 보인다. */
+/** 430 기기(카드 398px, 안쪽 366px): 5개는 352px라 안쪽 폭에 들어가 스크롤이 없고, 6개부터 여섯째 타일이 22px 보이다 잘린다. */
 export const TilesAt430: Story = {
-  name: '타일형 430 — 5개(2px 넘침) · 6개(잘린 여섯째 타일)',
+  name: '타일형 430 — 5개(스크롤 없음) · 6개(잘린 여섯째 타일)',
   render: () => (
     <Column width={W430}>
-      <Case caption="5개 — 352px로 안쪽 폭 350px을 2px 넘음(단서가 사실상 없음)" view={tileCard({ tiles: tiles(5) })} />
-      <Case caption="6개 — 여섯째 타일이 가장자리에서 14px 잘려 보임" view={tileCard({ tiles: tiles(6) })} />
+      <Case caption="5개 — 352px로 안쪽 폭 366px 안에 들어옴, 스크롤 없음" view={tileCard({ tiles: tiles(5) })} />
+      <Case caption="6개 — 여섯째 타일이 가장자리에서 22px 보이다 잘림" view={tileCard({ tiles: tiles(6) })} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
@@ -278,17 +278,17 @@ export const TilesAt430: Story = {
     const sixth = tilesOf(six)[5].getBoundingClientRect()
     expect(sixth.left).toBeLessThan(lane.right)
     expect(sixth.right).toBeGreaterThan(lane.right)
-    expect(Math.round(lane.right - sixth.left)).toBe(14)
+    expect(Math.round(lane.right - sixth.left)).toBe(22)
   },
 }
 
-/** 320 기기(카드 288px, 안쪽 240px): 3개는 다 들어오고(208px), 4개부터 넷째 타일이 48px 보이다 잘린다. */
+/** 320 기기(카드 288px, 안쪽 256px): 3개는 다 들어오고(208px), 4개부터 넷째 타일이 56px 보이다 잘린다. */
 export const TilesAt320: Story = {
   name: '타일형 320 — 3개(스크롤 없음) · 4개(잘린 넷째 타일)',
   render: () => (
     <Column width={W320}>
       <Case caption="3개 — 208px, 스크롤 없음" view={tileCard({ tiles: tiles(3) })} />
-      <Case caption="4개 — 넷째 타일이 가장자리에서 48px 보이다 잘림" view={tileCard({ tiles: tiles(4) })} />
+      <Case caption="4개 — 넷째 타일이 가장자리에서 56px 보이다 잘림" view={tileCard({ tiles: tiles(4) })} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
@@ -299,7 +299,7 @@ export const TilesAt320: Story = {
     const lane = laneOf(four).getBoundingClientRect()
     const fourth = tilesOf(four)[3].getBoundingClientRect()
     expect(fourth.right).toBeGreaterThan(lane.right)
-    expect(Math.round(lane.right - fourth.left)).toBe(48)
+    expect(Math.round(lane.right - fourth.left)).toBe(56)
   },
 }
 
@@ -370,7 +370,7 @@ export const TileRecipeAndBadge: Story = {
 
 /**
  * 레시피 공개 카드의 공개 뒤 모습(티켓 20261006_1217). 타일은 슬롯마다 하나(대표 후보)이고 후보를 펼치지 않는다 — 가진 후보가 있는 슬롯은 컬러, 없는 슬롯은 첫 후보의 흑백이다.
- * 정보 줄은 「재료 N개」·「보상 …」, 타일 수는 재료 수와 같다. 328px 폭에서 4개는 딱 맞고 5개부터 잘려 보이며 슬롯 상한 10개까지 자르지 않는다.
+ * 정보 줄은 「재료 N개」·「보상 …」, 타일 수는 재료 수와 같다. 328px 폭에서 4개는 들어오고 5개부터 잘려 보이며 슬롯 상한 10개까지 자르지 않는다.
  * 타일이 하나도 없으면(레시피 줄 없음·후보 전부 삭제) `brief`로 그려져 이 Story의 맨 아래 카드가 보이지 않는다 — 그 모습은 `BriefCard`의 「레시피 공개 전」 Story에 있다.
  */
 export const RecipeRevealTiles: Story = {
@@ -423,7 +423,7 @@ export const RecipeRevealTiles: Story = {
     // 흑백은 이미지에만 걸리고 이름은 컬러다
     for (const el of Array.from(four.querySelectorAll('.grayscale'))) expect(el.tagName).toBe('IMG')
     expect(four.querySelectorAll('.grayscale')).toHaveLength(1)
-    // 4개는 280px 안쪽 폭에 딱 맞아 스크롤이 없고, 10개는 스크롤이다
+    // 4개는 280px라 안쪽 폭 296px에 들어와 스크롤이 없고, 10개는 스크롤이다
     expect(scrolls(four)).toBe(false)
     expect(scrolls(ten)).toBe(true)
     // 「+N」·「외 N개」가 없다

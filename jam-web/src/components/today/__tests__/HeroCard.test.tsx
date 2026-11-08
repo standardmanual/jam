@@ -40,9 +40,9 @@ describe('HeroCard — 면(표면)', () => {
     const html = render()
     expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*">/)
     expect(html).not.toContain('--background-inverse')
-    // Card가 주는 24px 기본 여백은 클래스(p-0)로는 덮이지 않아 같은 인라인 style로 덮는다
+    // Card가 주는 16px 기본 여백은 클래스(p-0)로는 덮이지 않아 같은 인라인 style로 덮는다
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
-    expect(html).not.toContain('--layout-card-padding')
+    expect(html).not.toContain('--card-padding')
     expect(html).not.toContain('p-0')
   })
 
@@ -59,8 +59,8 @@ describe('HeroCard — 면(표면)', () => {
     expect(html.slice(html.indexOf('flex flex-col gap-3'))).not.toContain('overflow-hidden')
   })
 
-  it('본문은 안쪽 여백 24px이고 그룹 사이 간격은 12px이다', () => {
-    expect(render()).toContain('<div class="flex flex-col gap-3 p-6">')
+  it('본문은 안쪽 여백 16px이고 그룹 사이 간격은 12px이다', () => {
+    expect(render()).toContain('<div class="flex flex-col gap-3 p-4">')
   })
 })
 
