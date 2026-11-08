@@ -94,3 +94,27 @@ export const Sizes: Story = {
     expect(getComputedStyle(md).paddingTop).toBe('5px');
   },
 };
+
+/**
+ * 20261106_2322 — `row`. ListRow 안 칩 전용(12px 글자 · 높이 20px). 폭 52px·가운데 정렬은
+ * 그대로라 Lv.128도 같은 폭 안에 들어간다. sm(16px)·md(22px)는 값이 그대로다.
+ */
+export const RowSize: Story = {
+  name: '20261106_2322 — size row (12px/20px), sm·md 높이 불변',
+  render: () => (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <span data-testid="sm"><BadgeLevelChip level={7} /></span>
+      <span data-testid="row"><BadgeLevelChip level={7} size="row" /></span>
+      <span data-testid="row-long"><BadgeLevelChip level={128} size="row" /></span>
+      <span data-testid="md"><BadgeLevelChip level={7} size="md" /></span>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const el = (id: string) => canvasElement.querySelector(`[data-testid="${id}"] span`) as HTMLElement;
+    expect(getComputedStyle(el('row')).fontSize).toBe('12px');
+    expect(el('row').getBoundingClientRect().height).toBe(20);
+    expect(el('row-long').getBoundingClientRect().width).toBe(52);
+    expect(el('sm').getBoundingClientRect().height).toBe(16);
+    expect(el('md').getBoundingClientRect().height).toBe(22);
+  },
+};

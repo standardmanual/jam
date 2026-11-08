@@ -106,7 +106,7 @@ export default function ItemCandidateRow({
       : undefined
   // `RarityBadge`는 Common·없음이면 null을 돌려준다. 그 요소를 eyebrow에 넘기면 ListRow가 «요소가 있다»고 보고
   // 빈 줄과 title 위 간격을 만들므로, 칩이 실제로 그려질 때만 넘긴다.
-  const eyebrow = shownRarity && shownRarity !== 'common' ? <RarityBadge rarity={shownRarity} /> : undefined
+  const eyebrow = shownRarity && shownRarity !== 'common' ? <RarityBadge rarity={shownRarity} size="row" /> : undefined
 
   return (
     <ListRow

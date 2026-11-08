@@ -257,7 +257,7 @@ export function badgeLevelOf(item: ActivityFeedRow): number | null {
  */
 function BadgeChip({ item }: { item: ActivityFeedRow }) {
   const level = badgeLevelOf(item)
-  if (level != null) return <BadgeLevelChip level={level} />
+  if (level != null) return <BadgeLevelChip level={level} size="row" />
   const meta = item.metadata as Record<string, unknown>
   const rarity = meta.rarity ? String(meta.rarity) : null
   // common은 RarityBadge가 내부에서 null을 반환해 시각적으로 아무것도 안 그린다(20260827_024).
@@ -265,7 +265,7 @@ function BadgeChip({ item }: { item: ActivityFeedRow }) {
   // 정확히 null로 받는다 — <RarityBadge/> JSX 객체 자체는 항상 참이라 이 필터 없이는
   // "렌더 안 됨"과 "값이 참"이 어긋난다(티켓 20260916_1720 재발).
   if (!rarity || rarity === 'common') return null
-  return <RarityBadge rarity={rarity as BadgeRarity} />
+  return <RarityBadge rarity={rarity as BadgeRarity} size="row" />
 }
 
 /**

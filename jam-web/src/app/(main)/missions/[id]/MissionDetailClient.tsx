@@ -210,7 +210,7 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
 
 /* ── 등급 칩 — 칩이 실제로 그려질 때만 eyebrow로 넘긴다(common·null이면 undefined라 빈 줄이 남지 않는다) ── */
 function rarityEyebrow(rarity: BadgeRarity | null) {
-  return rarity && rarity !== 'common' ? <RarityBadge rarity={rarity} /> : undefined
+  return rarity && rarity !== 'common' ? <RarityBadge rarity={rarity} size="row" /> : undefined
 }
 
 /* ── 잠긴 아이템 배지 한 건의 자리 — 이름·그림 없이 잠금 타일과 등급 칩만 (운영 로직 7.3절).

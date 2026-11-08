@@ -11,9 +11,9 @@ export interface RarityBadgeProps {
   rarity?: Rarity | null;
   /**
    * 칩 크기 (티켓 20260906_2140). `sm`(기본) = 8px 라벨 · 4/9 패딩 — **기존 렌더 그대로**라
-   * `size`를 넘기지 않는 서비스 호출부는 변화가 없다. `md` = 12px 라벨 · 5/10 패딩(배지 트리).
+   * `size`를 넘기지 않는 서비스 호출부는 변화가 없다. `md` = 12px 라벨 · 5/10 패딩(배지 트리). `row` = 12px 라벨 · 줄높이 16px · 2/8 패딩(높이 20px) — ListRow 안 칩 전용, ListRowChip과 높이가 같다(티켓 20261106_2322).
    */
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'row';
   className?: string;
 }
 
