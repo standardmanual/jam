@@ -466,7 +466,7 @@ export function DetailSheet({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="t-panel-slide relative w-full max-w-[430px] bg-background text-foreground rounded-t-2xl px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
+        className="t-panel-slide relative w-full max-w-[430px] bg-card-bg text-foreground rounded-t-2xl px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
       >

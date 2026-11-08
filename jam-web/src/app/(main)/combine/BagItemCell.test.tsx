@@ -8,7 +8,7 @@ import BagItemCell from './BagItemCell'
 import { d } from '@/lib/i18n'
 
 const noop = () => {}
-const BUTTON_BASE = 'flex flex-col items-center gap-1 p-2 rounded-2xl bg-background'
+const BUTTON_BASE = 'flex flex-col items-center gap-1 p-2 rounded-2xl bg-card-bg'
 const IMAGE_BOX = 'w-16 h-16 rounded-2xl bg-surface flex items-center justify-center overflow-hidden'
 
 function render(props: Partial<Parameters<typeof BagItemCell>[0]> = {}) {
