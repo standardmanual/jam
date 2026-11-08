@@ -20,7 +20,7 @@ export const Default: Story = {
 };
 
 /**
- * 회색 캔버스(--background, #f5f5f5) 위의 경계 확인용.
+ * 회색 캔버스(--background, #f0f0f0) 위의 경계 확인용.
  * 흰 카드(--card-bg)는 외곽선 없이 면 대비와 여백으로만 구분된다.
  * tint는 흰 카드 안 구획으로만 쓴다(흰 카드 안에 흰 카드를 겹치지 않는다).
  */

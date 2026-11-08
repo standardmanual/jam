@@ -448,7 +448,7 @@
     },
     {
       "name": "--background",
-      "value": "var(--base-neutral-100)",
+      "value": "#f0f0f0",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },

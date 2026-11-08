@@ -6,7 +6,7 @@
  *
  * 면: 스크림 `--backdrop`(검정 50%) / 패널 `--card-bg`(흰) / 푸터 `--surface`(흰) / 핸들 `--border`.
  * 바탕(--background) 반투명 스크림은 바탕 위에서 가려지는 느낌이 거의 없었다(시트와 스크림 경계 1.0x:1 → 3.94:1).
- * 패널·푸터 모두 흰 면이다. 패널은 --card-bg로 옮겼다(티켓 20261108_1940, 바탕이 #f5f5f5가 되어 시트는 흰색 유지).
+ * 패널·푸터 모두 흰 면이다. 패널은 --card-bg로 옮겼다(티켓 20261108_1940, 바탕이 회색(--background)이 되어 시트는 흰색 유지).
  *
  * 서비스 BottomSheet는 `document.body` 포털이라 서버 렌더가 안 되므로 소스에서 확인한다.
  * MODULAR BottomSheet는 서버 렌더(`renderToStaticMarkup`)로 확인한다(저장소에 jsdom이 없다).
