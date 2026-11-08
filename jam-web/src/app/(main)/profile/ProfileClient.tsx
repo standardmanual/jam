@@ -473,8 +473,9 @@ export default function ProfileClient({
                 <Button
                   surface="sub"
                   variant={listFollowStates[u.id] ? 'secondary' : 'primary'}
+                  size="xs"
                   onClick={() => handleListFollow(u.id)}
-                  className="shrink-0 px-4 py-2 text-base"
+                  className="shrink-0"
                 >
                   {/* Text states swap (04-text-states-swap.md) */}
                   <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
