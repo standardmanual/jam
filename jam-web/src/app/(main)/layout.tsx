@@ -93,7 +93,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         <PendingItemsPickerProvider initialPendingCount={pendingItemsCount}>
           <div
             // 하단 여백을 두지 않는다 — 푸터 로고의 아래면이 페이지 맨 끝(브라우저 끝)에 닿는다. 하단 탭 바(fixed)는
-            // 스크롤 끝에서 로고 아래쪽에 겹친다. 서비스 열 전체가 이 래퍼의 흰 배경이다(티켓 20261104_1642).
+            // 스크롤 끝에서 로고 아래쪽에 겹친다. 서비스 열 전체가 이 래퍼의 회색 바탕이다(티켓 20261104_1642, 20261108_1940).
             className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative bg-background"
             // 띠가 있을 때 TopNav의 안전영역 padding-top을 0으로 눌러 이중 여백을 없앤다 —
             // 안전영역은 물리적 최상단인 띠가 진다(design-system/components/navigation/TopNav.jsx
@@ -110,7 +110,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             {questPreview && <QuestPreviewBanner value={questPreview} />}
 
             {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정.
-                배경은 `--surface` 흰색 단색이며(티켓 20261104_1642), 값은 `@/lib/pageBackground`의
+                배경은 `--background` 흐린 그레이 단색이며(티켓 20261104_1642, 20261108_1940), 값은 `@/lib/pageBackground`의
                 `MAIN_PAGE_BACKGROUND`다. (legal)·(onboarding)은 크림 `PAGE_GRADIENT_BACKGROUND`를 그대로 쓴다. */}
             <main
               className="flex-1 overflow-y-auto"

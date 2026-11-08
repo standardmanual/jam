@@ -201,11 +201,11 @@ describe('(main)/layout — 비로그인', () => {
 })
 
 describe('(main)/layout — 흰 페이지 면 (티켓 20261104_1642)', () => {
-  it('main 배경은 MAIN_PAGE_BACKGROUND(--surface)이고 하단 여백이 없어 푸터 로고가 페이지 맨 끝에 닿는다', async () => {
+  it('main 배경은 MAIN_PAGE_BACKGROUND(--background)이고 하단 여백이 없어 푸터 로고가 페이지 맨 끝에 닿는다', async () => {
     const tree = await renderLayout()
     const [main] = findByType(tree, 'main')
     expect(main.props.style).toBe(MAIN_PAGE_BACKGROUND)
-    expect(MAIN_PAGE_BACKGROUND.background).toBe('var(--surface)')
+    expect(MAIN_PAGE_BACKGROUND.background).toBe('var(--background)')
     expect(String(main.props.className)).not.toContain('pb-')
 
     const wrappers = findByType(tree, 'div').filter((el) => String(el.props.className ?? '').includes('max-w-[430px]'))

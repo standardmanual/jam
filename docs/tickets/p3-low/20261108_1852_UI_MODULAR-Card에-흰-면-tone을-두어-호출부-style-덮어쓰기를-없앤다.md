@@ -2,7 +2,8 @@
 id: "20261108_1852"
 category: UI
 priority: P3
-status: OPEN
+status: CLOSED
+closed: 2026-11-08
 created: 2026-11-08
 parent: "20261108_1830"
 ---
@@ -24,3 +25,6 @@ parent: "20261108_1830"
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
+
+### 처리
+티켓 20261108_1940에서 Card default 면 자체가 흰색(`--card-bg` #ffffff)이 되고 외곽선이 없어져, 별도 tone이 필요 없어졌다. ActivityGroupCard의 style 덮어쓰기도 그 티켓에서 지웠다. 작업 없이 닫는다.
