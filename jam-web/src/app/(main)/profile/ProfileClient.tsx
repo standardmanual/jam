@@ -564,7 +564,17 @@ export default function ProfileClient({
           {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
             {/* 내 챕터 — 표시 이름 위 작은 글씨 한 줄(티켓 20261031_1806). 퀘스트 전·읽지 못함(null)은 줄 자체를 그리지 않는다 */}
-            {isOwnProfile && chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
+            {/* 챕터 줄과 같은 행 오른쪽 끝에 편집 버튼(가장 작은 xs)을 둔다(2026-11-08 사용자 요청). 챕터가 없어도 버튼은 오른쪽 끝에 남는다 */}
+            {isOwnProfile && (
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  {chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
+                </div>
+                <Button surface="main" variant="outline" size="xs" className="shrink-0" onClick={() => router.push('/profile/edit')}>
+                  {d.profile.editButton}
+                </Button>
+              </div>
+            )}
             <Link
               href={`/${username}`}
               onClick={clearProfileHash}
@@ -573,20 +583,16 @@ export default function ProfileClient({
               {(profile && getDisplayName(profile)) || d.profile.anonymous}
             </Link>
 
-            {/* 숫자 줄(티켓 20261108_1216). 편집·팔로우 버튼은 헤더 아래 전체 폭으로 옮겼다(2026-11-08 사용자 요청). */}
+            {/* 숫자 줄(티켓 20261108_1216). 팔로우 버튼은 헤더 아래 전체 폭, 편집 버튼은 챕터 줄 오른쪽 끝에 있다(2026-11-08 사용자 요청). */}
             {statRow}
           </div>
 
         </div>
 
-        {/* 편집(본인)·팔로우/언팔로우(타인) 버튼 — 헤더 아래, 캡슐 바 위에 전체 폭 작은 버튼(xs, 약 31px)으로 둔다(2026-11-08 사용자 요청).
+        {/* 팔로우/언팔로우(타인) 버튼 — 헤더 아래 전체 폭 작은 버튼(xs, 약 31px)으로 둔다(2026-11-08 사용자 요청). 편집 버튼은 챕터 줄 오른쪽 끝으로 옮겼다.
             sm은 알약 모양의 기본 세로 여백(py-[13px])에 밀려 높이가 52px로 남으므로 쓰지 않는다.
             예전에는 편집이 숫자 줄 오른쪽, 팔로우가 헤더 오른쪽에 있어 숫자 줄 칸이 좁아져 줄이 바뀌었다. */}
-        {isOwnProfile ? (
-          <Button surface="main" variant="outline" size="xs" fullWidth onClick={() => router.push('/profile/edit')}>
-            {d.profile.editButton}
-          </Button>
-        ) : (
+        {!isOwnProfile && (
           <Button
             surface="sub"
             variant={following ? 'secondary' : 'primary'}

@@ -66,9 +66,11 @@ describe('내 프로필의 챕터 줄', () => {
     const editAt = html.indexOf(d.profile.editButton)
     expect(chapterAt).toBeGreaterThan(-1)
     expect(nameAt).toBeGreaterThan(chapterAt)
-    expect(editAt).toBeGreaterThan(nameAt)
-    // 이름 열(flex-col gap-1)의 첫 자식이다
-    expect(html.slice(Math.max(0, chapterAt - 80), chapterAt)).toContain('flex-1 min-w-0 flex flex-col gap-1')
+    // 편집 버튼은 챕터 줄과 같은 행의 오른쪽 끝, 이름보다 앞이다
+    expect(editAt).toBeGreaterThan(chapterAt)
+    expect(nameAt).toBeGreaterThan(editAt)
+    // 이름 열(flex-col gap-1)의 첫 행 안에 있다
+    expect(html.slice(Math.max(0, chapterAt - 200), chapterAt)).toContain('flex-1 min-w-0 flex flex-col gap-1')
   })
 
   it('점수 숫자는 어디에도 없다', () => {
