@@ -88,11 +88,11 @@
   --rarity-rare: #00cc7a;                       /* 주 강조색과 구분되도록 지금 값 유지 (결정 6) */
   --rarity-epic: #f5a300;
   --rarity-mystic: #ff2d87;
-  /* 칩 위 글자. 값은 문서 4.2절 (common 5.74 · rare 9.92 · epic 10.12 · mystic 3.51 : 1) */
+  /* 칩 위 글자. 값은 문서 4.2절 (common 5.74 · rare 9.92 · epic 10.12 · mystic 5.98 : 1) */
   --rarity-common-foreground: var(--base-white);
   --rarity-rare-foreground: var(--base-black);
   --rarity-epic-foreground: var(--base-black);
-  --rarity-mystic-foreground: var(--base-white);
+  --rarity-mystic-foreground: var(--base-black);
 
   /* ── 확장: 진행 상태 (문서 5.2절) ─────────────────────────── */
   --progress-short: var(--base-neutral-500);                    /* 모자람(채우는 중) */
