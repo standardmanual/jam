@@ -570,39 +570,31 @@ export default function ProfileClient({
               {(profile && getDisplayName(profile)) || d.profile.anonymous}
             </Link>
 
-            {/* 숫자 줄 + 편집 — 같은 행에 나란히, 편집 버튼은 오른쪽 끝(20260909_2119, 20261108_1216).
-                타인 프로필은 팔로우 버튼이 헤더 오른쪽이라 숫자 줄만 이름 아래에 둔다. */}
-            {isOwnProfile ? (
-              <div className="flex items-center justify-between gap-2">
-                {statRow}
-                <Button
-                  surface="main"
-                  variant="outline"
-                  size="xs"
-                  onClick={() => router.push('/profile/edit')}
-                  className="shrink-0"
-                >
-                  {d.profile.editButton}
-                </Button>
-              </div>
-            ) : (
-              statRow
-            )}
+            {/* 숫자 줄(티켓 20261108_1216). 편집·팔로우 버튼은 헤더 아래 전체 폭으로 옮겼다(2026-11-08 사용자 요청). */}
+            {statRow}
           </div>
 
-          {!isOwnProfile && (
-            <Button
-              surface="sub"
-              variant={following ? 'secondary' : 'primary'}
-              onClick={handleFollow}
-              disabled={followLoading}
-              className="shrink-0 px-4 py-2 text-base"
-            >
-              {/* Text states swap (04-text-states-swap.md) */}
-              <SwapText value={following ? d.profile.followingButton : d.profile.followButton} />
-            </Button>
-          )}
         </div>
+
+        {/* 편집(본인)·팔로우/언팔로우(타인) 버튼 — 헤더 아래, 캡슐 바 위에 전체 폭 작은 버튼으로 둔다(2026-11-08 사용자 요청).
+            예전에는 편집이 숫자 줄 오른쪽, 팔로우가 헤더 오른쪽에 있어 숫자 줄 칸이 좁아져 줄이 바뀌었다. */}
+        {isOwnProfile ? (
+          <Button surface="main" variant="outline" size="sm" fullWidth onClick={() => router.push('/profile/edit')}>
+            {d.profile.editButton}
+          </Button>
+        ) : (
+          <Button
+            surface="sub"
+            variant={following ? 'secondary' : 'primary'}
+            size="sm"
+            fullWidth
+            onClick={handleFollow}
+            disabled={followLoading}
+          >
+            {/* Text states swap (04-text-states-swap.md) */}
+            <SwapText value={following ? d.profile.followingButton : d.profile.followButton} />
+          </Button>
+        )}
 
         {/* 다른 유저의 챕터 줄 (티켓 20261019_1317) — 헤더 아래 전폭 한 줄 «트라이브 · 챕터 3 · 단골». 게이지 없음.
             다른 유저 프로필에서만 서버가 `publicChapter`를 내려주고, 읽지 못함(null)이거나 보일 조각이 없으면 줄이 없다. */}
