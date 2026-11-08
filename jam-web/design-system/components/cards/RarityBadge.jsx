@@ -10,6 +10,7 @@ import React from 'react';
  * v3: chip shrunk to ~65% (8px text, 4px/9px padding) — literal px, not --text-xs
  *     (there's no type-scale token below caption; common no longer renders one at all)
  * v4 (티켓 20260905_0036): 미지 등급 값의 «조용한 Common 폴백»을 걷어냈다. 아래 resolveRarity 참고.
+ * v7 (티켓 20261106_2322): 행 안 칩 전용 size `row`(12px/20px) 추가. sm·md 값은 그대로.
  * v6 (티켓 20261015_2132): letterSpacing 제거 — JAM 2.0은 자간이 모두 0이다.
  *
  * 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 등급이 아닌 용도로 `--rarity-mystic`을 쓰는
@@ -66,8 +67,11 @@ export function getRarityLabel(rarity = 'common') {
  * 판독 불가라는 실측(등급이 그 화면의 핵심 정보인데 읽히지 않는다)에서 나왔다.
  */
 const SIZES = {
-  sm: { fontSize: '8px', padding: '4px 9px' },
-  md: { fontSize: 'var(--text-xs)', padding: '5px 10px' },
+  sm: { fontSize: '8px', padding: '4px 9px', lineHeight: 1 },
+  md: { fontSize: 'var(--text-xs)', padding: '5px 10px', lineHeight: 1 },
+  // row (티켓 20261106_2322) — ListRow 안 칩 전용. ListRowChip과 같은 12px/20px
+  // (글자 --text-xs, 줄높이 16px, 패딩 --list-row-chip-padding = 2px 8px)라 한 줄에서 높이가 맞는다.
+  row: { fontSize: 'var(--text-xs)', padding: 'var(--list-row-chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
 };
 
 export function RarityBadge({ rarity = 'common', size = 'sm', className = '' }) {
@@ -85,7 +89,7 @@ export function RarityBadge({ rarity = 'common', size = 'sm', className = '' }) 
       style={{
         display: 'inline-flex', alignItems: 'center',
         padding: s.padding, borderRadius: 'var(--radius-full)',
-        fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
+        fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: 700,
         textTransform: 'uppercase',
         color: c.text, background: c.bg,
       }}

@@ -20,3 +20,13 @@ Naming history: tiers 3 and 4 were renamed on 2026-08-31 (ticket 20260831_1115).
 ⚠️ 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 등급이 아닌 용도로 `--rarity-mystic`을 쓰는
 컴포넌트는 `forms/Checkbox.jsx`의 오류 테두리 하나다(Input·Select·Textarea는 `--danger`).
 값을 건드리면 그 표시가 함께 바뀐다.
+
+## size (티켓 20261106_2322)
+
+| size | 글자 | 높이 | 용도 |
+|---|---|---|---|
+| `sm` (기본) | 8px | 16px | 행 밖·인라인 칩 |
+| `md` | 12px | 22px | 배지 트리 |
+| `row` | 12px | 20px | `ListRow` 안 칩 전용. `ListRowChip`과 높이가 같다 |
+
+행 안(`eyebrow`·`chips` 슬롯)에서 `ListRowChip`과 한 줄에 놓이면 `size="row"`를 쓴다. `row`는 줄높이를 16px로 두고 패딩은 `--list-row-chip-padding`을 따른다.
