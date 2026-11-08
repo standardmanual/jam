@@ -131,8 +131,16 @@ else
   rm -f "$LOG_PREFIX.client-server-imports"
 fi
 
+# 서비스 화면 소스에 눈금 밖 간격(임의 px, 32px 이상 단계, 큰 눈금 변수)이 늘었는지 기준선과 견준다
+# (티켓 20261108_2140, 간격 5회차). 기준선은 scripts/spacing-baseline.json.
+if ! ( cd "$REPO_ROOT" && node scripts/check-spacing.mjs ) >"$LOG_PREFIX.spacing" 2>&1; then
+  FAILED+=("spacing")
+else
+  rm -f "$LOG_PREFIX.spacing"
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports"
+  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
