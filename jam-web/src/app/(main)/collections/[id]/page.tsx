@@ -82,7 +82,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const backHref =
     from === 'badge' && itemId ? `/inventory/${itemId}` :
     from === 'badges' ? '/badges#collection' :
-    subjectUsername ? `/${subjectUsername}#collections` :
+    subjectUsername ? `/${subjectUsername}` :
     null
 
   // 1) 아이템북 + 트라이브

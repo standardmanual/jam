@@ -67,11 +67,6 @@ const state = vi.hoisted(() => ({
   loginUserId: '' as string,
   targetRow: null as Record<string, unknown> | null,
   calls: [] as { table: string; select: string | undefined; eqs: [string, unknown][]; ins: [string, unknown[]][]; ors: string[] }[],
-  // 컬렉션 개수 통계(티켓 20261106_1231): 보유 개체(잠금 해제·드랍 안 한 것)의 배지 id, 그 배지의 컬렉션 id, 대상의 슬롯, DB에 있는 컬렉션 id
-  countOwnedBadgeIds: [] as string[],
-  countBadgeBooks: [] as { item_book_id: string }[],
-  countSlots: [] as { item_book_id: string }[],
-  existingBookIds: [] as string[],
   // poi_drops 조회가 돌려줄 행 — 놓은 드랍(dropper_user_id 조건)과 주운 드랍(picked_up_by 조건)을 따로 둔다
   droppedRows: [] as unknown[],
   pickedRows: [] as unknown[],
@@ -97,17 +92,6 @@ function singleResponse(table: string) {
   return { data: null, error: null }
 }
 function listResponse(table: string, eqs: [string, unknown][] = [], select?: string, ins: [string, unknown[]][] = []) {
-  // 컬렉션 개수 통계가 쓰는 네 조회 — 고른 열로 가른다(다른 조회와 겹치지 않는다)
-  if (table === 'inventory_items' && select === 'badge_id' && !eqs.some(([column]) => column === 'obtained_by')) {
-    return { data: state.countOwnedBadgeIds.map((badge_id) => ({ badge_id })), count: 0, error: null }
-  }
-  if (table === 'badges' && select === 'item_book_id') return { data: state.countBadgeBooks, count: 0, error: null }
-  if (table === 'user_item_book_slots' && select === 'item_book_id') return { data: state.countSlots, count: 0, error: null }
-  if (table === 'item_books') {
-    // 가짜는 필터를 적용하지 않는다 — 건 id 가운데 DB에 있는 컬렉션 수를 돌려준다
-    const ids = ins.filter(([column]) => column === 'id').flatMap(([, v]) => v)
-    return { data: null, count: ids.filter((id) => state.existingBookIds.includes(id as string)).length, error: null }
-  }
   if (table === 'inventory_items' && eqs.some(([column, value]) => column === 'obtained_by' && value === 'drop')) {
     return { data: state.actDropRows, count: 0, error: null }
   }
@@ -240,10 +224,6 @@ beforeEach(() => {
   state.loginUserId = LOGIN_USER_ID
   state.targetRow = userRow(TARGET_USER_ID)
   state.calls = []
-  state.countOwnedBadgeIds = []
-  state.countBadgeBooks = []
-  state.countSlots = []
-  state.existingBookIds = []
   state.droppedRows = []
   state.pickedRows = []
   state.poiDropsError = false
@@ -369,7 +349,7 @@ describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지',
 })
 
 /**
- * 잠긴 개체는 컬렉션 수·레거시 피드로 새지 않는다 (티켓 20261018_0054 2회, 운영 로직 7.3절)
+ * 잠긴 개체는 레거시 피드로 새지 않는다 (티켓 20261018_0054 2회, 운영 로직 7.3절)
  *
  * 잠긴 개체의 배지 id로 아이템북을 찾아 세면 «어떤 컬렉션의 배지를 얻었는지»가 드러나고, 피드 합성이 개체 행의 배지 이름·그림을 읽으면
  * 이름이 드러난다. 두 `inventory_items` 조회 모두 `locked = false`로 걸러야 한다(서버에서 거른다 — 화면에서 가리지 않는다).
@@ -382,8 +362,8 @@ describe('/{username} 프로필 페이지 — 잠긴 개체 가림', () => {
       await renderPage('target')
 
       const itemCalls = state.calls.filter((c) => c.table === 'inventory_items')
-      // 아이템북 카운트용 조회와 레거시 피드(활동 드랍)용 조회 둘이다
-      expect(itemCalls.length).toBe(2)
+      // 레거시 피드(활동 드랍)용 조회 하나다(컬렉션 수 조회는 프로필에서 없어졌다, 20261108_1216)
+      expect(itemCalls.length).toBe(1)
       for (const call of itemCalls) {
         expect(call.eqs, `${call.select} 조회에 locked=false가 없다`).toContainEqual(['locked', false])
       }
@@ -647,41 +627,5 @@ describe('/{username} 프로필 페이지 — 캡슐에서 나온 개체 제외'
     expect(feed.find((f) => f.id === 'legacy_actdrop_item-capsule-3')).toBeDefined()
     expect(errorLog).toHaveBeenCalled()
     errorLog.mockRestore()
-  })
-})
-
-/**
- * 컬렉션 개수 통계 — 꺼진·기간이 끝난·시작 전 컬렉션도 그 사람이 가졌으면 센다 (티켓 20261106_1231, 2단계 T5)
- * 목록(`/api/users/[username]/itembooks`, `collections/page`)과 같은 기준이어야 «프로필의 컬렉션 수 = 목록 항목 수»다.
- */
-describe('/{username} 프로필 페이지 — 컬렉션 개수 통계', () => {
-  // 켜진 컬렉션 하나, 꺼진·끝난·시작 전 컬렉션 각각 하나, 슬롯이 없는 컬렉션 하나(모두 개체를 가졌다)
-  const ALL_BOOKS = ['book-on', 'book-off', 'book-ended', 'book-future', 'book-noslot']
-  beforeEach(() => {
-    state.countOwnedBadgeIds = ['on-1', 'off-1', 'ended-1', 'future-1', 'noslot-1']
-    state.countBadgeBooks = ALL_BOOKS.map((item_book_id) => ({ item_book_id }))
-    state.countSlots = ['book-on', 'book-off', 'book-ended', 'book-future'].map((item_book_id) => ({ item_book_id }))
-    state.existingBookIds = ALL_BOOKS
-  })
-
-  it('(p) 타인 프로필: 꺼진·끝난·시작 전 컬렉션도 슬롯이 있으면 센다, 슬롯이 없는 컬렉션은 세지 않는다', async () => {
-    const props = await renderPage('target')
-    expect(props.itemBookCount).toBe(4)
-  })
-
-  it('(p) 타인 프로필: 컬렉션 조회에 is_active·노출 기간 조건을 걸지 않는다', async () => {
-    await renderPage('target')
-    const bookCalls = state.calls.filter((c) => c.table === 'item_books')
-    expect(bookCalls.length).toBeGreaterThan(0)
-    for (const c of bookCalls) {
-      expect(c.eqs.some(([column]) => column === 'is_active')).toBe(false)
-      expect(c.ors).toEqual([])
-    }
-  })
-
-  it('(p) 내 프로필: 슬롯과 상관없이 가진 컬렉션을 모두 센다(꺼진 것 포함)', async () => {
-    state.loginUserId = TARGET_USER_ID
-    const props = await renderPage('target')
-    expect(props.itemBookCount).toBe(5)
   })
 })

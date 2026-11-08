@@ -5,7 +5,7 @@
  * 일련번호를 후보로 나열하는 조회가 잠긴 개체를 걸러내지 않으면 «어떤 컬렉션의 배지를 얻었는지»나 일련번호가 드러난다.
  * 아래 조회들이 `inventory_items`를 읽을 때 `locked = false` 조건을 거는지(= 서버에서 거르는지) 확인한다. 화면에서 숨기는 방식이 아니다.
  *
- * 대상: 타인·내 컬렉션 목록(`/{username}/collections`), 컬렉션 상세의 장착 후보(`/collections/[id]`), 믹스 재료(`/combine`),
+ * 대상: 컬렉션 상세의 장착 후보(`/collections/[id]`), 믹스 재료(`/combine`),
  * 내 배지 목록의 컬렉션 발견 판정(`/badges`), `GET /api/itembooks`, `GET /api/users/[username]/itembooks`.
  * (`/{username}`의 카운트·레거시 피드는 `[username]/__tests__/page.test.tsx`, 배지 상세는 `badges/[id]/__tests__/page.locked.test.tsx`가 확인한다.)
  *
@@ -88,15 +88,6 @@ beforeEach(() => {
 })
 
 describe('잠긴 개체는 컬렉션·후보 조회에서 서버가 뺀다', () => {
-  it('/{username}/collections — 컬렉션 발견 판정에서 뺀다', async () => {
-    const { default: Page } = await import('../(main)/[username]/collections/page')
-
-    await Page({ params: Promise.resolve({ username: 'target' }) }).catch(() => undefined)
-
-    expect(selectCount('inventory_items')).toBe(1)
-    expect(lockedFilterCount('inventory_items')).toBe(1)
-  })
-
   it('GET /api/users/[username]/itembooks — 컬렉션 발견 판정에서 뺀다', async () => {
     const { GET } = await import('../api/users/[username]/itembooks/route')
 

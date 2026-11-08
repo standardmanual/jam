@@ -785,7 +785,7 @@ describe('⑤⑥ 소셜', () => {
         )
       )
     ).toBe('예린님이 Mystic 배지 별을 삼킨 바퀴를 획득했어요')
-    // 프로필 해시(#badge) 링크도 쿼리는 해시 앞에 붙는다(20260831_2201)
+    // 타인 프로필 기본 화면이 배지 리스트라 해시 없이 출처 쿼리만 붙는다(20261108_1216)
     expect(
       notificationTarget(
         view(
@@ -794,7 +794,7 @@ describe('⑤⑥ 소셜', () => {
           { actor: ACTOR }
         )
       ).href
-    ).toBe('/예린?from=notifications#badge')
+    ).toBe('/예린?from=notifications')
     expect(
       text(
         view(
@@ -833,7 +833,7 @@ describe('⑤⑥ 소셜', () => {
     const { template, vars } = buildNotificationMessage(v)
     expect(tokenizeMessage(template, vars).find((t) => t.text === '걸어온 거리 Lv.6')?.bold).toBe(true)
     // 착지 규칙은 등급형과 같다
-    expect(notificationTarget(v).href).toBe('/예린?from=notifications#badge')
+    expect(notificationTarget(v).href).toBe('/예린?from=notifications')
   })
 
   it('#29 아는 등급이 아닌 값은 Common으로 강등하지 않는다', () => {
@@ -1073,13 +1073,12 @@ describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
     expect(picked.avatarHref).toBe('/예린?from=notifications')
     expect(picked.href).toBe('/badges/b1')
 
-    // #30: 아바타 → 프로필 / 본문 → 그 사람의 컬렉션(하위 경로라 쿼리 없음 — 이미
-    // 자체 backHref를 정적으로 가진 라우트)
+    // #30: 아바타·본문 모두 그 사람 프로필 기본 화면(프로필의 컬렉션 화면은 없어졌다, 20261108_1216)
     const coll = notificationTarget(
       view('following_collection_complete', { item_book_id: 'k1' }, { actor: ACTOR })
     )
     expect(coll.avatarHref).toBe('/예린?from=notifications')
-    expect(coll.href).toBe('/예린/collections')
+    expect(coll.href).toBe('/예린?from=notifications')
 
     // #26 묶음은 2단 타겟이 아니라 내 팔로워 목록 한 곳으로 간다
     const many = notificationTarget(

@@ -80,11 +80,10 @@ export default async function UserProfilePage({ params }: Props) {
   const myChapterPromise = isOwnProfile ? getMyChapter(service, user.id) : Promise.resolve(undefined)
   const publicChapterPromise = isOwnProfile ? Promise.resolve(undefined) : getPublicChapter(service, subjectId)
 
-  // ─── 통계 (팔로워/팔로잉/뱃지 + isFollowing) ──────────────────
+  // ─── 통계 (팔로워/팔로잉 + isFollowing) ──────────────────
   const [
     followerCountResult,
     followingCountResult,
-    badgeCountResult,
     isFollowingResult,
     capsuleInitial,
     myChapter,
@@ -92,12 +91,6 @@ export default async function UserProfilePage({ params }: Props) {
   ] = await Promise.all([
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', subjectId),
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
-    // 소프트 삭제된 배지는 보유 개수에서 제외 (badges!inner + deleted_at 필터)
-    service
-      .from('user_activity_badges')
-      .select('*, badges!inner(deleted_at)', { count: 'exact', head: true })
-      .eq('user_id', subjectId)
-      .is('badges.deleted_at', null),
     isOwnProfile
       ? Promise.resolve({ data: null, error: null })
       : service.from('user_follows').select('id').eq('follower_id', user.id).eq('following_id', subjectId).maybeSingle(),
@@ -108,7 +101,6 @@ export default async function UserProfilePage({ params }: Props) {
 
   if (followerCountResult.error) console.error('[[username]/page] 팔로워 카운트 조회 실패', followerCountResult.error)
   if (followingCountResult.error) console.error('[[username]/page] 팔로잉 카운트 조회 실패', followingCountResult.error)
-  if (badgeCountResult.error) console.error('[[username]/page] 배지 카운트 조회 실패', badgeCountResult.error)
   if (isFollowingResult.error) console.error('[[username]/page] 팔로우 여부 조회 실패', isFollowingResult.error)
 
   const followerCount = followerCountResult.count ?? 0
@@ -137,55 +129,6 @@ export default async function UserProfilePage({ params }: Props) {
   if (invResult.error) console.error('[[username]/page] inventory 조회 실패', invResult.error)
 
   const inventoryId = (invResult.data as { id: string } | null)?.id
-
-  // 발견한 아이템북 수 = 인벤토리에 "현재 보유 중인"(드랍하지 않은) 아이템 배지가 연결된 아이템북 수(꺼졌거나 기간이 끝난 것도 센다, 티켓 20261106_1231)
-  // + 타인 열람 시에는 아이템배지 슬롯이 1개 이상인 아이템북만
-  // (/api/users/[username]/itembooks의 목록 필터 `isOwnList || book.slottedCount > 0`과 반드시
-  //  일치시켜야 함 — 안 그러면 숫자와 목록이 어긋남. 20260824_016 정책, 20260903_1949에서 이 카운트에도 반영)
-  let itemBookCount = 0
-  if (inventoryId) {
-    const { data: invItemsForCount, error: invItemsForCountError } = await service
-      .from('inventory_items')
-      .select('badge_id')
-      .eq('inventory_id', inventoryId)
-      .is('dropped_at', null)
-      // 잠긴 개체는 어떤 아이템 배지인지(→ 어느 컬렉션인지) 드러나므로 센 대상에서 뺀다(운영 로직 7.3절, 티켓 20261018_0054 2회). 열면 센다.
-      .eq('locked', false)
-    if (invItemsForCountError) console.error('[[username]/page] 아이템북 카운트용 inventory_items 조회 실패', invItemsForCountError)
-    const ownedBadgeIds = [...new Set(((invItemsForCount ?? []) as { badge_id: string }[]).map((i) => i.badge_id))]
-    if (ownedBadgeIds.length > 0) {
-      const { data: booksForCount, error: booksForCountError } = await service
-        .from('badges')
-        .select('item_book_id')
-        .in('id', ownedBadgeIds)
-        .eq('type', 'item')
-        .not('item_book_id', 'is', null)
-        .is('deleted_at', null)
-      if (booksForCountError) console.error('[[username]/page] 아이템북 카운트용 badges 조회 실패', booksForCountError)
-      let bookIdsForCount = [...new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id))]
-      // 타인 열람이면 슬롯이 0개인 아이템북을 제외한다(본인 열람은 예외 없이 전부 합산).
-      if (!isOwnProfile && bookIdsForCount.length > 0) {
-        const { data: slotsForCount, error: slotsForCountError } = await service
-          .from('user_item_book_slots')
-          .select('item_book_id')
-          .eq('user_id', subjectId)
-          .in('item_book_id', bookIdsForCount)
-        if (slotsForCountError) console.error('[[username]/page] 아이템북 카운트용 user_item_book_slots 조회 실패(슬롯 미확인분은 카운트에서 제외됨)', slotsForCountError)
-        const slottedBookIds = new Set(((slotsForCount ?? []) as { item_book_id: string }[]).map((s) => s.item_book_id))
-        bookIdsForCount = bookIdsForCount.filter((id) => slottedBookIds.has(id))
-      }
-      if (bookIdsForCount.length > 0) {
-        // 컬렉션 개수 = 그 사람이 가진 개체가 있는 컬렉션(타인 열람은 슬롯이 있는 것만). is_active·노출 기간 조건은
-        // 걸지 않는다 — 컬렉션 탭 목록과 같은 기준이다(티켓 20261106_1231).
-        const { count, error: countError } = await service
-          .from('item_books')
-          .select('*', { count: 'exact', head: true })
-          .in('id', bookIdsForCount)
-        if (countError) console.error('[[username]/page] item_books 카운트 조회 실패', countError)
-        itemBookCount = count ?? 0
-      }
-    }
-  }
 
   // 조건부 쿼리(inventoryId 유무)를 Promise.all 배열 안에 인라인 삼항식으로 두면
   // TS가 튜플 추론에 실패해 전체 결과 타입이 뒤섞이므로(never 오염), 변수로 분리한다.
@@ -382,13 +325,6 @@ export default async function UserProfilePage({ params }: Props) {
     legacyItems.push(makeFeedItem(`legacy_poibadge_${badgeId}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, earn_count: poiBadgeEarnCount.get(badgeId) ?? 1 }))
   }
 
-  // "배지" 통계 수 = 활동 배지 보유 수 + 체크인 배지 고유 종류 수(반복 획득은 1개로 카운트)
-  const poiBadgeCount = Array.from(poiBadgeFirstEarn.values()).filter((row) => {
-    const b = row.badges as { deleted_at: string | null } | null
-    return b && !b.deleted_at
-  }).length
-  const badgeCount = (badgeCountResult.count ?? 0) + poiBadgeCount
-
   // ─── 묶음 카드용 활동 이름 (20260827_018) ────────────────────────────
   // 피드가 활동 단위로 접히면 "어느 활동인지"가 카드의 앵커가 된다(케이스북의 유저
   // 멘탈모델 — "오늘 아침에 달린 그거, 뭐 받았지?"). non-null strava_activity_id를 모아
@@ -424,8 +360,6 @@ export default async function UserProfilePage({ params }: Props) {
       targetUserId={target.id}
       followerCount={followerCount}
       followingCount={followingCount}
-      badgeCount={badgeCount}
-      itemBookCount={itemBookCount}
       username={target.username ?? username}
       currentUserId={user.id}
       pointBalance={pointBalance}
