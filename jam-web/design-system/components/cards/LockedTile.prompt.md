@@ -17,7 +17,7 @@
 ## 규칙
 
 - props는 `size`(한 변 px, 기본 90) 하나뿐이다(`className`·`style`은 배치용). 변형 prop을 만들지 않는다.
-- 면 `--background`(크림), 1px `--border`, `--radius-2xl`, 자물쇠 `--muted`. **등급 색·그라데이션·글로우를 더하지 않는다** — 등급은 `RarityBadge` 칩 하나로만 전달한다.
+- 면 `--card-bg`(흰색), 외곽선 없음, `--radius-2xl`, 자물쇠 `--muted`. **등급 색·그라데이션·글로우를 더하지 않는다** — 등급은 `RarityBadge` 칩 하나로만 전달한다.
 - 자물쇠 크기는 `size`의 0.45배다.
 - 장식이라 `aria-hidden`이다. 잠겼다는 사실은 호출부가 «잠김» 문구(`LabelChip`)나 가린 이름 줄로 글자로 전달한다.
 - `maxWidth: 100%` + `aspectRatio: 1`이라 부모가 `size`보다 좁으면 정사각형을 유지한 채 줄어든다.

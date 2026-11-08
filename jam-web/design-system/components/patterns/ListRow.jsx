@@ -30,7 +30,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/IconCatal
  *
  * 스타일 블록(STATIC_CSS)은 React 19 `<style href precedence>`로 문서에 한 번만 들어간다(행마다 렌더해도 1개).
  *
- * 한 행에서 색으로 강조하는 곳은 한 곳 이하다. 그림자·그라디언트·유리질 없음(흰 면은 1px --border만).
+ * 한 행에서 색으로 강조하는 곳은 한 곳 이하다. 그림자·그라디언트·유리질 없음(흰 면은 외곽선도 없다).
  * 칩 글자는 항상 --foreground다(--accent·--warning은 면 채우기만).
  */
 
@@ -43,8 +43,8 @@ const ROW_WEIGHT = { regular: 400, strong: 700 };
  */
 const TONES = {
   default: {
-    background: 'var(--surface)', border: '1px solid var(--border)', radius: 'var(--radius-2xl)',
-    color: 'var(--foreground)', muted: 'var(--muted)', face: 'var(--surface)', leadBg: 'var(--background-secondary)',
+    background: 'var(--card-bg)', border: 'none', radius: 'var(--radius-2xl)',
+    color: 'var(--foreground)', muted: 'var(--muted)', face: 'var(--card-bg)', leadBg: 'var(--background-secondary)',
     ring: 'var(--foreground)',
   },
   tint: {

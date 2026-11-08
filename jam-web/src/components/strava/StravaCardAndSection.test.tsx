@@ -35,9 +35,9 @@ describe('StravaDisconnectedCard — 홈 끊김 카드', () => {
     expect(html).toContain(copy.card.cta)
   })
 
-  it('Card(--card-bg + 투명 1px 테두리) 위에 LabelChip과 검정 알약 버튼(primary main, 전체 폭)이다', () => {
+  it('Card(--card-bg, 테두리 없음) 위에 LabelChip과 검정 알약 버튼(primary main, 전체 폭)이다', () => {
     expect(html).toContain('background:var(--card-bg)')
-    expect(html).toContain('border:1px solid transparent')
+    expect(html).not.toContain('border:1px solid')
     expect(html).toMatch(/<span class="self-start"[^>]*>Strava 동기화<\/span>/)
     const button = /<button[^>]*>(?:(?!<\/button>).)*<\/button>/.exec(html)?.[0] ?? ''
     expect(button).toContain('bg-background-inverse')

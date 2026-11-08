@@ -4,9 +4,9 @@
  * 시트 구조를 쓰는 곳은 셋이다: 서비스 `BottomSheet.tsx`, 시트를 손으로 만든 `FeedSection.tsx`·`PoiCarouselModal.tsx`.
  * MODULAR `BottomSheet.jsx`는 서비스와 병존하는 쌍이다. `npm run ds:check`는 색을 비교하지 못한다.
  *
- * 면: 스크림 `--backdrop`(검정 50%) / 패널 `--background`(크림) / 푸터 `--surface`(흰) / 핸들 `--border`.
- * 크림(--background) 반투명 스크림은 크림 바탕 위에서 가려지는 느낌이 거의 없었다(시트와 스크림 경계 1.0x:1 → 3.94:1).
- * 서비스 패널은 크림 + 흰 푸터를 유지하고 MODULAR 패널을 `--background`로 맞췄다(사용자 승인 2026-10-16).
+ * 면: 스크림 `--backdrop`(검정 50%) / 패널 `--card-bg`(흰) / 푸터 `--surface`(흰) / 핸들 `--border`.
+ * 바탕(--background) 반투명 스크림은 바탕 위에서 가려지는 느낌이 거의 없었다(시트와 스크림 경계 1.0x:1 → 3.94:1).
+ * 패널·푸터 모두 흰 면이다. 패널은 --card-bg로 옮겼다(티켓 20261108_1940, 바탕이 #f5f5f5가 되어 시트는 흰색 유지).
  *
  * 서비스 BottomSheet는 `document.body` 포털이라 서버 렌더가 안 되므로 소스에서 확인한다.
  * MODULAR BottomSheet는 서버 렌더(`renderToStaticMarkup`)로 확인한다(저장소에 jsdom이 없다).
@@ -60,22 +60,22 @@ describe('핸들은 --border다(크림 위 흰색 반투명은 안 보인다)', 
   })
 })
 
-describe('패널은 크림, 푸터는 흰 면이다 — 서비스와 MODULAR가 같은 쌍', () => {
+describe('패널·푸터는 흰 면이다 — 서비스와 MODULAR가 같은 쌍', () => {
   const service = read(SHEETS['BottomSheet.tsx'])
 
-  it('서비스 패널은 --background, 푸터는 bg-surface다', () => {
-    expect(service).toContain('bg-[var(--background)] text-foreground')
+  it('서비스 패널은 --card-bg, 푸터는 bg-surface다', () => {
+    expect(service).toContain('bg-[var(--card-bg)] text-foreground')
     expect(service).toMatch(/className="shrink-0 px-4 pt-4 bg-surface"/)
   })
 
-  it('MODULAR 패널은 --background, 푸터는 --surface다', () => {
+  it('MODULAR 패널은 --card-bg, 푸터는 --surface다', () => {
     const html = renderToStaticMarkup(
       <DsBottomSheet open onClose={() => {}} title="제목" footer={<span>푸터</span>}>
         본문
       </DsBottomSheet>
     )
     const panel = /<div[^>]*role="dialog"[^>]*style="([^"]*)"/.exec(html)?.[1] ?? ''
-    expect(panel).toContain('background:var(--background)')
+    expect(panel).toContain('background:var(--card-bg)')
     expect(panel).not.toContain('background:var(--surface)')
 
     const footer = /<div[^>]*style="([^"]*background:var\(--surface\)[^"]*)"[^>]*><span>푸터<\/span>/.exec(html)

@@ -50,13 +50,13 @@ afterEach(() => {
 })
 
 describe('BriefCard — 면(표면)', () => {
-  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 최소 높이 88px·세로 가운데 정렬이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
+  it('흰 카드(기본 톤, 흰 면, 외곽선 없음)이고 최소 높이 88px·세로 가운데 정렬이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
     const html = render()
     expect(html).toContain('min-h-[88px] flex flex-col justify-center')
     // 가로 배치는 윗줄 div로 옮겼다
     expect(html).toContain('<div class="flex items-center gap-3">')
     expect(html).toContain('background:var(--card-bg)')
-    expect(html).toContain('border:1px solid transparent')
+    expect(html).not.toContain('border:')
     expect(html).not.toContain('--background-inverse')
     // Card가 주는 24px 기본 여백(--layout-card-padding)을 같은 인라인 style로 덮었다 — 클래스로는 덮이지 않는다
     expect(html).toContain('padding:var(--spacing-12) var(--spacing-16)')

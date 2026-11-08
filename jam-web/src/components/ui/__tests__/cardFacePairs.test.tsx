@@ -35,13 +35,13 @@ import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
 const BORDER = 'border:1px solid var(--border)'
 // 공통 Card default(티켓 20261107_2202): --card-bg 면 + 투명 1px 테두리(박스 크기 유지)
 const CARD_FACE = 'background:var(--card-bg)'
-const CARD_BORDER = 'border:1px solid transparent'
+
 
 describe('MODULAR Card — 면과 글자색 쌍', () => {
-  it('default는 흰 면 + 1px 테두리 + border-box이고 그림자가 없다', () => {
+  it('default는 흰 면이고 테두리·그림자가 없다(티켓 20261108_1940)', () => {
     const html = renderToStaticMarkup(<Card>내용</Card>)
     expect(html).toContain(CARD_FACE)
-    expect(html).toContain(CARD_BORDER)
+    expect(html).not.toContain('border:')
     expect(html).toContain('box-sizing:border-box')
     expect(html).toContain('color:var(--foreground)')
     expect(html).not.toContain('box-shadow')
@@ -60,35 +60,27 @@ describe('MODULAR Card — 면과 글자색 쌍', () => {
     expect(html).toContain('color:var(--snow)')
   })
 
-  // 티켓 20261021_1247 — inverse에 테두리가 없으면 default(1px --border)에서 선택으로 바뀔 때 카드가 2px 줄어 안쪽이 움직였다.
-  it('inverse는 면과 같은 색의 1px 테두리를 가진다(색을 더하지 않고 크기만 고정한다)', () => {
-    const html = renderToStaticMarkup(<Card tone="inverse">내용</Card>)
-    expect(html).toContain('border:1px solid var(--background-inverse)')
-    expect(html).toContain('box-sizing:border-box')
-    // 테두리 색이 면 색과 같아야 화면에서 새 선이 보이지 않는다
-    expect(html).not.toContain('border:1px solid var(--border)')
-  })
-
-  it('default와 inverse는 테두리 두께·box-sizing·여백·반경이 같아 톤이 바뀌어도 박스 크기가 같다', () => {
+  // 티켓 20261108_1940 — 모든 톤에서 외곽선을 걷어냈다. 박스 크기는 톤과 무관하게 같다.
+  it('default와 inverse는 테두리가 없고 box-sizing·여백·반경이 같아 톤이 바뀌어도 박스 크기가 같다', () => {
     const boxOf = (tone: 'default' | 'inverse') => {
       const html = renderToStaticMarkup(<Card tone={tone}>내용</Card>)
       const style = /style="([^"]*)"/.exec(html)?.[1] ?? ''
       const pick = (prop: string) => new RegExp(`(?:^|;)${prop}:([^;]*)`).exec(style)?.[1]
       return {
-        borderWidth: pick('border')?.split(' ')[0],
+        border: pick('border'),
         boxSizing: pick('box-sizing'),
         padding: pick('padding'),
         borderRadius: pick('border-radius'),
       }
     }
     expect(boxOf('inverse')).toEqual(boxOf('default'))
-    expect(boxOf('inverse').borderWidth).toBe('1px')
+    expect(boxOf('inverse').border).toBeUndefined()
   })
 
   it('알 수 없는 tone은 default 면으로 그린다', () => {
     const html = renderToStaticMarkup(<Card tone={'unknown' as 'default'}>내용</Card>)
     expect(html).toContain(CARD_FACE)
-    expect(html).toContain(CARD_BORDER)
+    expect(html).not.toContain('border:')
   })
 })
 
@@ -230,10 +222,10 @@ describe('RankingListRow — 카드 안 행이라 tint 면(테두리 없음)', (
 })
 
 describe('직접 만들던 흰 카드 면은 공통 Card와 같은 값이다', () => {
-  it('BadgeConditionCard — 흰 면 + 1px 테두리, 그림자 없음(옛 bg-surface rounded-2xl p-6 div를 Card로 교체)', () => {
+  it('BadgeConditionCard — 흰 면, 테두리·그림자 없음(옛 bg-surface rounded-2xl p-6 div를 Card로 교체)', () => {
     const html = renderToStaticMarkup(<BadgeConditionCard text="조건 문장" spec="누적 10회 이상" />)
     expect(html).toContain(CARD_FACE)
-    expect(html).toContain(CARD_BORDER)
+    expect(html).not.toContain('border:')
     expect(html).toContain('padding:var(--layout-card-padding)')
     expect(html).toContain('flex flex-col gap-2')
     expect(html).not.toContain('bg-surface')

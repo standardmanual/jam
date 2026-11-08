@@ -35,10 +35,10 @@
   --base-neutral-950: #0a0a0a;   /* 회색 단계를 끊지 않으려고 남긴다. 역할 토큰은 가리키지 않는다 */
 
   /* ── 배경·표면 ────────────────────────────────────────────── */
-  --background: #ffffff;                        /* 서비스 열(430px) 바탕 */
+  --background: var(--base-neutral-100);        /* 서비스 열(430px) 바탕 #f5f5f5. 카드·시트·모달 면은 --card-bg를 쓴다 */
   --background-secondary: #e5e5e5;
   --page-bg: #e6e6e6;                           /* 서비스 열 바깥(html·body) 바탕 */
-  --card-bg: #f7f7f7;                           /* Card default 면. 외곽선 없이 면으로만 구분한다 */
+  --card-bg: #ffffff;                           /* Card default 면, 시트·모달·ListRow 면. 외곽선 없이 면으로만 구분한다(바탕 --background #f5f5f5 위 흰 면) */
   --btn-secondary: #e5e5e5;                     /* Button secondary·outline 면. 카드 위 연한 면이 필요하면 이 값을 쓴다 */
   --background-inverse: var(--base-neutral-900);
   --surface: #ffffff;

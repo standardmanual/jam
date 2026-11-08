@@ -36,9 +36,9 @@ const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'template'>, classNam
 const IMAGE_BOX = 'relative aspect-video overflow-hidden bg-background'
 
 describe('HeroCard — 면(표면)', () => {
-  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
+  it('흰 카드(기본 톤, 흰 면, 외곽선 없음)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*border:1px solid transparent[^"]*">/)
+    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*">/)
     expect(html).not.toContain('--background-inverse')
     // Card가 주는 24px 기본 여백은 클래스(p-0)로는 덮이지 않아 같은 인라인 style로 덮는다
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)

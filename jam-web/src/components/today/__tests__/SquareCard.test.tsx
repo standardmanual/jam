@@ -35,9 +35,9 @@ const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
 const bodyOf = (html: string) => html.slice(html.indexOf(BODY_OPEN) + BODY_OPEN.length)
 
 describe('SquareCard — 면(표면)', () => {
-  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
+  it('흰 카드(기본 톤, 흰 면, 외곽선 없음)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*border:1px solid transparent[^"]*">/)
+    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--card-bg\)[^"]*">/)
     expect(html).not.toContain('--background-inverse')
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')

@@ -38,7 +38,7 @@ const Caption = ({ children }: { children: React.ReactNode }) => (
 
 /** 카드 안(tint 전용 자리) */
 const InCard = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-8)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}>{children}</div>
+  <div style={{ background: 'var(--card-bg)', borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-8)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}>{children}</div>
 );
 
 /** 작은 팔로우 버튼: 높이 32 · 글자 12 · 좌우 여백 12. 터치 영역은 trail 규칙이 44px로 넓힌다. */
@@ -104,7 +104,7 @@ export const A2ActivityGroup: Story = {
           onClick={() => setOpen((v) => !v)}
         />
         {open && (
-          // tint는 카드 안 전용이라 펼침 패널을 흰 카드(면 + 1px 테두리)로 감싼다.
+          // tint는 카드 안 전용이라 펼침 패널을 흰 카드(면, 외곽선 없음)로 감싼다.
           <div id="list-row-a2-panel">
             <InCard>
               <ListRow tone="tint" lead={<MedalIcon />} title="한강 러너" meta="5km 러닝" value={<PointText value="+50" />} />
@@ -467,7 +467,7 @@ const FEED_CASES: FeedCase[] = [
 
 /** 지금 모양(조사 A1): 40px 타일 + ×N 필, 줄마다 16px, 시간 16px muted, 등급·Lv 칩 8px. 인라인 마크업으로 재현한 비교용이다. */
 const LegacyFeedRow = ({ c }: { c: FeedCase }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, boxSizing: 'border-box', width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-2xl)', fontFamily: 'var(--font-family-base)', ...textBreak }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, boxSizing: 'border-box', width: '100%', background: 'var(--card-bg)', borderRadius: 'var(--radius-2xl)', fontFamily: 'var(--font-family-base)', ...textBreak }}>
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-2xl)', background: 'var(--background-secondary)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{c.icon}</div>
       {c.count != null && (

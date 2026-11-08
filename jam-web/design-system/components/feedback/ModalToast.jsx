@@ -78,7 +78,7 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
         aria-labelledby={labelId}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--background)',
+          background: 'var(--card-bg)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-2xl)',
           padding: 'var(--layout-card-padding)',

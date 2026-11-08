@@ -26,7 +26,7 @@ export function Skeleton({
         width,
         height,
         borderRadius: borderRadius ?? 'var(--radius-lg)',
-        background: 'var(--background)',
+        background: 'var(--card-bg)',
         overflow: 'hidden',
         position: 'relative',
         ...style,
