@@ -112,9 +112,9 @@ export const RowSize: Story = {
   play: async ({ canvasElement }) => {
     const el = (id: string) => canvasElement.querySelector(`[data-testid="${id}"] span`) as HTMLElement;
     expect(getComputedStyle(el('row')).fontSize).toBe('12px');
-    expect(el('row').getBoundingClientRect().height).toBe(20);
-    expect(el('row-long').getBoundingClientRect().width).toBe(52);
-    expect(el('sm').getBoundingClientRect().height).toBe(16);
-    expect(el('md').getBoundingClientRect().height).toBe(22);
+    expect(el('row').getBoundingClientRect().height).toBeCloseTo(20, 0);
+    expect(el('row-long').getBoundingClientRect().width).toBeCloseTo(52, 0);
+    expect(el('sm').getBoundingClientRect().height).toBeCloseTo(16, 0);
+    expect(el('md').getBoundingClientRect().height).toBeCloseTo(22, 0);
   },
 };

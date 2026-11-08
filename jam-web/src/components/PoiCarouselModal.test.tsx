@@ -217,8 +217,9 @@ describe('아이템 행의 ListRow 배선 (티켓 20261108_1625)', () => {
   })
 
   it('common 행은 등급 칩 줄을 만들지 않는다', () => {
-    expect(renderList([{ ...base, badge_rarity: 'rare' }])).toContain('gap:var(--spacing-4)')
-    expect(renderList([base])).not.toContain('gap:var(--spacing-4)')
+    // 칩이 그려졌는지는 등급 라벨 글자(RarityBadge 라벨 «Rare»)로 본다. 레이아웃 gap 문자열에 기대면 같은 모달의 다른 요소가 같은 gap을 쓸 때 오탐한다.
+    expect(renderList([{ ...base, badge_rarity: 'rare' }])).toContain('>Rare<')
+    expect(renderList([base])).not.toContain('>Rare<')
   })
 })
 

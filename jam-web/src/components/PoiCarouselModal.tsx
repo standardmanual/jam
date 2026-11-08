@@ -1022,7 +1022,6 @@ export function PoiCard({
                   expiresAt={group.locked ? null : earliestExpiry(group.items)}
                   locked={group.locked}
                   onClick={() => onSelectPickupGroup?.(group)}
-                  disabled={!isActive}
                   pulse={questPulseStep === 'pickup'}
                 />
               ))}
@@ -1062,7 +1061,6 @@ interface ItemRowProps {
   /** 미지 등급 값은 픽업 행과 동일하게 'common'으로 폴백한다(기존 관례 유지, 되돌리지 않음). */
   rarity: string | null
   onClick?: () => void
-  disabled?: boolean
   /**
    * 같은 배지를 여러 개(드랍 선택 행: 내 보유 개체 / 픽업 행: 이 지점에 드랍된 개체)
    * 가진 그룹일 때의 개수 — 1 이하면(undefined 포함) 서클이 그려지지 않는다. 20260908_0040에서
@@ -1098,7 +1096,7 @@ interface ItemRowProps {
  * badge_id 그룹핑돼 count·expiresAt을 함께 받는다 — 두 목록의 행 시각·규칙(개체 1개=서클
  * 없음, 2개 이상=서클)이 완전히 동일하다.
  */
-function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaText, expiresAt, locked = false, pulse = false }: ItemRowProps) {
+function ItemRow({ name, imageUrl, rarity, onClick, count, countAriaText, expiresAt, locked = false, pulse = false }: ItemRowProps) {
   const rarityValue = KNOWN_RARITIES.includes(rarity as BadgeRarity) ? (rarity as BadgeRarity) : 'common'
   const showCount = typeof count === 'number' && count > 1
   const expiring = !locked && isRowExpiringSoon(expiresAt)
@@ -1154,7 +1152,6 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
       titleVariant="regular"
       chevron
       onClick={onClick}
-      disabled={disabled}
       className={pulse ? 'jam-quest-pulse' : undefined}
     />
   )
