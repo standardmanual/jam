@@ -404,7 +404,7 @@ export default function MissionStatusClient({
         const meOutsideList = me !== null && !entries.some(e => e.userId === me.userId)
 
         return (
-          <div className="flex flex-col gap-4 px-4 pt-4 pb-6">
+          <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
             {/* TOP 3 포디엄 — InfoCard(bg-surface, radius-cards, p-6)로 다른 화면과 동일하게 카드화.
                 3명 미만이면 빈 슬롯 "—" 처리 */}
             {entries.length > 0 && (
@@ -469,7 +469,7 @@ export default function MissionStatusClient({
       {/* ── 달성형 타입 — 랭킹형과 동일하게 InfoCard(bg-surface / radius-cards / p-6)로
            섹션을 감싸고, 섹션 라벨 옆에 참가자 수를 병기한다 ── */}
       {data?.type === 'achievement' && (
-        <div className="flex flex-col gap-4 px-4 pt-4 pb-6">
+        <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
           {data.entries.length > 0 && (
             <Card>
               <div className="flex items-baseline justify-between mb-2">

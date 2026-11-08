@@ -98,7 +98,7 @@ export default function BadgeDetailPreviewFrame({
 
         <BadgeHeroSection badge={badge} hasEarned themedBackground={themed} backgroundAnimation={backgroundAnimation} />
 
-        <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+        <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-4 pb-[32px]">
           <BadgeConditionCard text={conditionText} />
         </div>
 

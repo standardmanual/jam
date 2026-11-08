@@ -150,7 +150,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 /* ── 다크 인포 카드 (20260816_012: 보더 제거, 페이지 캔버스보다 밝은 엘리베이션 배경으로 구분) ── */
 function InfoCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <Card className={`flex flex-col gap-4 ${className}`}>
+    <Card className={`flex flex-col gap-3 ${className}`}>
       {children}
     </Card>
   )
@@ -397,7 +397,7 @@ export default function MissionDetailClient({
     <div className="min-h-full text-foreground">
       <TopNav title={d.missions.backToDetail} backHref="/missions" />
 
-      <div className="flex flex-col px-4 pt-4 pb-6 gap-6">
+      <div className="flex flex-col px-4 pt-4 pb-6 gap-5">
 
         {/* 대표 이미지 — 1:1 정사각형.
             image_url은 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에
@@ -420,7 +420,7 @@ export default function MissionDetailClient({
         </div>
 
         {/* 히어로 섹션 */}
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-2">
           {/* 미션 상태 칩 */}
           <StatusChip isCompleted={isCompleted} participating={participating} locked={locked} />
 

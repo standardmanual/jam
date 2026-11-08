@@ -81,10 +81,10 @@ export default async function InventoryPage() {
 
       <div className="px-4 pt-4 pb-6">
       {/* 헤더 */}
-      <div className="mb-6">
+      <div className="mb-5">
         {/* 20261031_1821: 보이는 타이틀은 없애고, 스크린리더용 페이지 제목만 남긴다 */}
         <h1 className="sr-only">{d.inventory.title}</h1>
-        <div className="flex items-start justify-end mb-4">
+        <div className="flex items-start justify-end mb-5">
           <Link
             href="/combine"
             className="mt-1 inline-flex items-center justify-center min-h-11 rounded-full px-4 text-base bg-surface active:scale-95 transition-transform duration-100"
