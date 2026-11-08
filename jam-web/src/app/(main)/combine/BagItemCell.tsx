@@ -37,7 +37,7 @@ export default function BagItemCell({
       disabled={!active}
       onClick={onClick}
       className={[
-        'flex flex-col items-center gap-1 p-2 rounded-2xl bg-background',
+        'flex flex-col items-center gap-1 p-2 rounded-2xl bg-card-bg',
         active ? 'active:scale-95' : 'opacity-40',
         pulse ? 'jam-quest-pulse' : '',
       ]
