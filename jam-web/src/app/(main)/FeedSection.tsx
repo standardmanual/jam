@@ -296,13 +296,9 @@ export function eventLabelText(item: ActivityFeedRow): string {
 }
 
 
+/** 값 행(라벨 왼쪽 muted, 값 오른쪽 굵게). 라벨은 정보라 말줄임 없이 줄바꿈한다(`titleLines={0}`) */
 function Row({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <span className="shrink-0 text-base text-muted">{label}</span>
-      <span className="whitespace-nowrap text-base text-foreground text-right">{value}</span>
-    </div>
-  )
+  return <ListRow tone="flat" titleVariant="label" titleLines={0} title={label} value={value} />
 }
 
 /**
@@ -460,7 +456,7 @@ export function DetailSheet({
           </div>
         )}
         {/* 크림 시트 위 행 묶음은 흰 면 + 1px border로 구분한다(티켓 20261015_2134). */}
-        <div className="rounded-2xl bg-card-bg px-4 py-2 mb-6">
+        <div className="rounded-2xl bg-card-bg px-4 py-1 mb-6">
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
           )}
