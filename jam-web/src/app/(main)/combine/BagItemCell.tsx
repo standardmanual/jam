@@ -9,7 +9,7 @@ import { d } from '@/lib/i18n'
  * - `active`: 탭해서 담을 수 있음
  * - `used`: 다른 칸에 이미 담음 — 비활성 + «사용 중»
  * - `needed`: 아예 보유하지 않음 — 비활성 + 그레이스케일(미보유 전용)
- * - `inactive`: 지금은 담을 수 없음 — 비활성만. 이유는 셀 밖의 줄이 말한다(등급 올리기의 5개 미만 묶음)
+ * - `inactive`: 지금은 담을 수 없음 — 비활성만. 이유는 셀 밖의 줄이 말한다(등급 올리기의 6개 미만 묶음)
  */
 export type BagItemState = 'active' | 'used' | 'needed' | 'inactive'
 

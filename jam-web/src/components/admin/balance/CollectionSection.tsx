@@ -16,7 +16,7 @@ export const COLLECTION_REWARD_NOTICE =
 export const COMBINE_FAIL_NOTICE = '레시피에 맞지 않는 재료로 믹스하면 재료가 사라지고, 믹스 실패 포인트를 줘요.'
 
 export const COMBINE_TIER_UP_NOTICE =
-  '등급 올리기는 같은 등급 5개를 내면 윗등급 확률만큼 한 등급 위가, 나머지는 같은 등급이 나와요. 이 확률은 확률 안내 페이지에도 반영돼요.'
+  '등급 올리기는 같은 등급 6개를 내면 윗등급 확률만큼 한 등급 위가, 나머지는 같은 등급이 나와요. Mystic 6개는 이 확률과 상관없이 Mystic이 나와요. 이 확률은 확률 안내 페이지에도 반영돼요.'
 
 export function CollectionNotice() {
   return (

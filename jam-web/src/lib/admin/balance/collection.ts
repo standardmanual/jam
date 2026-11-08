@@ -111,7 +111,7 @@ export const COLLECTION_FIELDS: readonly BalanceFieldDef[] = [
     key: TIER_UP_PROBABILITY_KEY,
     label: '등급 올리기 윗등급 확률',
     unit: '%',
-    hint: '같은 등급 5개로 등급 올리기를 했을 때 한 등급 위가 나올 확률이에요. 나머지는 같은 등급이 나와요. Epic 5개가 Mystic이 될 확률도 같은 값이에요.',
+    hint: '같은 등급 6개로 등급 올리기를 했을 때 한 등급 위가 나올 확률이에요. 나머지는 같은 등급이 나와요. Epic 6개가 Mystic이 될 확률도 같은 값이에요. Mystic 6개는 이 값과 상관없이 Mystic이 나와요.',
     group: COMBINE_GROUP,
     decimals: 1,
     min: 0,
