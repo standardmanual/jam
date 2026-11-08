@@ -51,7 +51,7 @@ export interface LockedItemDetailProps {
   obtainedBy: string
 }
 
-/** 얻은 경로 문구 — 이력 시트(`InventoryItemHistorySheet`)와 같은 매핑이다 */
+/** 얻은 경로 문구 */
 function obtainLabel(obtainedBy: string): string {
   if (obtainedBy === 'drop') return d.inventory.obtainByDrop
   if (obtainedBy === 'drop_event') return d.inventory.obtainByDropEvent

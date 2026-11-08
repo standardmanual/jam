@@ -88,7 +88,7 @@ function SummaryRows({ summary }: { summary: AccountSummary }) {
 }
 
 /**
- * «지워지는 것» 묶음. 읽는 동안 스켈레톤 5줄이 pulse하다가 값이 오면 cross-fade한다(Skeleton reveal, `InventoryItemHistorySheet`와 같은 패턴).
+ * «지워지는 것» 묶음. 읽는 동안 스켈레톤 5줄이 pulse하다가 값이 오면 cross-fade한다(Skeleton reveal).
  * 읽기에 실패하면 오류 문구 없이 한 문장으로 바꾼다. 스켈레톤에서 전환되며 높이가 줄어드는 것은 허용한다.
  * Strava 동기화 줄은 연결돼 있을 때만, 페이드 층 밖에 둔다(층 높이가 5줄로 정해져 있어 안에 두면 페이드 동안 아래 묶음과 겹친다).
  */
