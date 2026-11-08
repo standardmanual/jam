@@ -295,8 +295,8 @@ export default function ProfileEditPage() {
         {/* 입력 두 칸 묶음 — 입력칸 → 다음 라벨 16 */}
         <div className="flex flex-col gap-4">
           {/* 아이디 편집 */}
-          <div className={`t-input-wrap flex flex-col gap-1${hasError ? ' is-error' : ''}`}>
-            <label className="text-base text-muted">{d.profileEdit.usernameLabel}</label>
+          <div className={`t-input-wrap flex flex-col${hasError ? ' is-error' : ''}`}>
+            <label className="text-base text-muted mb-1">{d.profileEdit.usernameLabel}</label>
             <div
               ref={inputShakeRef}
               className={`t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
@@ -318,7 +318,8 @@ export default function ProfileEditPage() {
               )}
             </div>
             {/* 메시지는 항상 마운트한 채 텍스트만 교체한다(빈 문자열 = 숨김, aria-live 영역 유지).
-                상시 자리는 두지 않는다 — 메시지가 있을 때만 입력칸 아래 4(mt-1)가 생긴다. */}
+                상시 자리는 두지 않는다 — 래퍼에 gap을 두면 빈 p도 gap을 차지하므로 라벨 아래 4는 label의 mb-1로 주고,
+                메시지가 있을 때만 입력칸 아래 4(mt-1)가 생긴다. */}
             <p
               ref={messageRef}
               aria-live="polite"
@@ -331,8 +332,8 @@ export default function ProfileEditPage() {
           {/* 이름 편집 — 20260830_0113: username과 동일한 커스텀 t-input 마크업을 재사용한다
               (한 화면 안에서 입력 스타일이 갈라지지 않도록 — MODULAR Input 신규 도입 없음).
               필수값이 아니고 중복확인·형식 에러가 없어 상태머신 없이 단순 controlled input이다. */}
-          <div className="t-input-wrap flex flex-col gap-1">
-            <label className="text-base text-muted">{d.profileEdit.nameLabel}</label>
+          <div className="t-input-wrap flex flex-col">
+            <label className="text-base text-muted mb-1">{d.profileEdit.nameLabel}</label>
             <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow shadow-[inset_0_0_0_1px_var(--border)]">
               <input
                 type="text"
