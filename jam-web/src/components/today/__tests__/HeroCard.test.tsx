@@ -114,7 +114,7 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     const html = render({ imageUrl: null })
     expect(html).not.toContain('<img')
     expect(html).toContain(
-      'class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 bg-background text-center"',
+      'class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 bg-background text-center"',
     )
     expect(html).not.toContain('gradient')
     expect(html).not.toContain('이미지 없음')

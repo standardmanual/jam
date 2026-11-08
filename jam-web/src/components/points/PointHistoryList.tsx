@@ -148,7 +148,7 @@ export function PointHistoryList({ items, cursor, loading, loadingMore, error, o
 export function PointHistorySection() {
   const h = usePointHistory()
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <PointHistoryList
         items={h.items}
         cursor={h.cursor}
