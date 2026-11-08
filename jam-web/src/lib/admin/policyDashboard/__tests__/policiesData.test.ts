@@ -152,13 +152,16 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(vehiclePolicy?.defaultValue).toBe(60)
   })
 
-  it('등급 올리기 카드는 «고른 컬렉션 안에서 균등, 바로 윗등급 70%·같은 등급 30%, 후보 없으면 소각 전 거절, 아래 등급으로 내려가지 않음» 규칙을 말한다 (티켓 20261023_1648 4회)', () => {
+  it('등급 올리기 카드는 «6개, 컬렉션 선택 없음, 트라이브 활성 컬렉션 전체에서 균등, 바로 윗등급 70%·같은 등급 30%, Mystic 재료는 Mystic 100%, 후보 없으면 소각 전 거절, 아래 등급으로 내려가지 않음» 규칙을 말한다 (티켓 20261108_2323 3회차)', () => {
     const rule = POLICIES_DATA.find((p) => p.id === 'ch8-tier-up-recipes')
     expect(rule?.type).toBe('code_constant')
     for (const text of [
-      '받을 컬렉션',
-      '고른 컬렉션 안에서',
-      '균등 추첨',
+      '아이템 배지 6개',
+      '컬렉션을 고르지 않음',
+      'Mystic도 재료가 되고',
+      'Mystic 100%',
+      '활성 컬렉션(공개 기간 안) 전체에서',
+      '같은 확률로 균등 추첨',
       '윗등급 확률(기본 70%)',
       '같은 등급이 나머지(기본 30%)',
       '소각하기 전에 거절',
@@ -167,12 +170,12 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     ]) {
       expect(rule?.currentSpec, text).toContain(text)
     }
-    // 7-7a의 옛 규칙 문구가 남아 있지 않다
-    for (const old of ['캡슐 등급 확률', '합이 100%', '열린 컬렉션에서 균등', '캡슐과 같은 굴림', '한 등급씩 낮춤', '다른 트라이브일 확률']) {
+    // 옛 규칙 문구(5개, 컬렉션 선택, Mystic 재료 제외)가 남아 있지 않다
+    for (const old of ['캡슐 등급 확률', '합이 100%', '열린 컬렉션에서 균등', '캡슐과 같은 굴림', '한 등급씩 낮춤', '다른 트라이브일 확률', '5개', '받을 컬렉션', '고른 컬렉션', 'Mystic은 재료 아님']) {
       expect(`${rule?.currentSpec} ${rule?.userExperience}`, old).not.toContain(old)
     }
-    expect(rule?.userExperience).toContain('받을 컬렉션을 고르면')
-    expect(rule?.ticketId).toBe('20261023_1648')
+    expect(rule?.userExperience).toContain('아이템 배지 6개를 내면 내 트라이브의 새 아이템 1개를 받아요')
+    expect(rule?.ticketId).toBe('20261108_2323')
   })
 
   it('등급 올리기 윗등급 확률 카드는 combine_policy.tier_up_probability를 밸런스 설정 «컬렉션과 믹스» 구역으로 잇는다 (티켓 20261023_1648 4회)', () => {
@@ -185,6 +188,9 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     // DB는 0~1, 화면은 %라 한 칸 실측값은 읽어 보이지 않는다(0.7이 70%로 읽히지 않는다)
     expect(card?.adminLink?.liveField).toBeUndefined()
     expect(card?.currentSpec).toContain('기본 70%')
+    expect(card?.currentSpec).toContain('Mystic 재료는 이 값과 무관하게 Mystic 100%')
+    expect(card?.userExperience).toContain('6개')
+    expect(card?.userExperience).not.toContain('5개')
     expect(card?.currentSpec).toContain('확률 안내 페이지')
   })
 
