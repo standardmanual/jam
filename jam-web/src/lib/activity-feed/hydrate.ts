@@ -33,7 +33,6 @@ import type { ActivityFeedRow, ActivityFeedEventType, BadgeEarnHistoryEntry } fr
 
 const BADGE_METADATA_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 
-/** `${user_id}:${badge_id}` — 친구 피드는 여러 유저의 행이 섞이므로 유저까지 키에 넣는다 */
 /**
  * 가상 항목의 정렬 시각. earn_history.earned_at은 활동 시작 시각이라 지난 활동을 뒤늦게
  * 동기화하면 오늘 받은 배지가 과거 자리로 밀린다. 첫 회차는 실제 피드 행이므로 원본 시각을,
@@ -44,6 +43,7 @@ function virtualCreatedAt(itemCreatedAt: string, earnedAt: string, index: number
   return new Date(earnedAt).getTime() > new Date(itemCreatedAt).getTime() ? earnedAt : itemCreatedAt
 }
 
+/** `${user_id}:${badge_id}` — 친구 피드는 여러 유저의 행이 섞이므로 유저까지 키에 넣는다 */
 function earnKey(userId: string, badgeId: string): string {
   return `${userId}:${badgeId}`
 }
