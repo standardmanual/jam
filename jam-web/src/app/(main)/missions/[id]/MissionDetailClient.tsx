@@ -208,40 +208,43 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   return null
 }
 
-/* ── 잠긴 아이템 배지 한 건의 자리 — 이름·그림 없이 잠금 타일과 등급 칩만 (운영 로직 7.3절) ── */
-function LockedRewardRow({ rarity, caption }: { rarity: BadgeRarity | null; caption?: string }) {
+/* ── 등급 칩 — 칩이 실제로 그려질 때만 eyebrow로 넘긴다(common·null이면 undefined라 빈 줄이 남지 않는다) ── */
+function rarityEyebrow(rarity: BadgeRarity | null) {
+  return rarity && rarity !== 'common' ? <RarityBadge rarity={rarity} /> : undefined
+}
+
+/* ── 잠긴 아이템 배지 한 건의 자리 — 이름·그림 없이 잠금 타일과 등급 칩만 (운영 로직 7.3절).
+    잠금 타일이 div라서 표시 전용 행으로만 쓴다. href·onClick·leadHref를 붙이지 않는다(잠긴 행은 클릭 불가 유지) ── */
+function LockedRewardRow({ rarity, caption, tone }: { rarity: BadgeRarity | null; caption?: string; tone: 'tint' | 'flat' }) {
   return (
-    <div className="flex items-center gap-4">
-      <LockedTile size={64} className="flex-shrink-0" />
-      <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
-        <RarityBadge rarity={rarity} />
-        <p className="max-w-full text-[16px] font-bold leading-[1.2] text-foreground truncate break-keep wrap-break-word">{d.lockedItem.card.name}</p>
-        {caption && <p className="text-[13px] leading-[1.3] text-muted break-keep wrap-break-word text-balance">{caption}</p>}
-      </div>
-    </div>
+    <ListRow
+      tone={tone}
+      lead={<LockedTile size={48} />}
+      eyebrow={rarityEyebrow(rarity)}
+      title={d.lockedItem.card.name}
+      meta={caption || undefined}
+    />
   )
 }
 
-/* ── 받을 보상 카드의 한 줄 — 열린 보상은 그림·이름·등급 칩, 잠긴 보상은 LockedRewardRow ── */
+/* ── 받을 보상 카드의 한 줄 — 열린 보상은 그림·등급 칩·이름, 잠긴 보상은 LockedRewardRow ── */
 function PendingRewardRow({ reward }: { reward: PendingRewardInfo }) {
-  if (reward.locked) return <LockedRewardRow rarity={reward.rarity} />
+  if (reward.locked) return <LockedRewardRow rarity={reward.rarity} tone="flat" />
   return (
-    <div className="flex items-center gap-4">
-      <div className="w-16 h-16 rounded-2xl bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <ListRow
+      tone="flat"
+      lead={
         <SafeImage
           src={reward.image_url}
-          alt={reward.name}
-          width={52}
-          height={52}
-          className="w-[52px] h-[52px] object-contain"
-          fallback={<PackageIcon className="w-6 h-6 text-muted" />}
+          alt=""
+          width={48}
+          height={48}
+          fallback={<PackageIcon className="w-5 h-5 text-muted" />}
         />
-      </div>
-      <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
-        <RarityBadge rarity={reward.rarity} />
-        <p className="max-w-full text-[16px] font-bold leading-[1.2] text-foreground truncate break-keep wrap-break-word">{reward.name}</p>
-      </div>
-    </div>
+      }
+      eyebrow={rarityEyebrow(reward.rarity)}
+      title={reward.name}
+    />
   )
 }
 
@@ -447,7 +450,7 @@ export default function MissionDetailClient({
             <p className="text-[14px] leading-[1.43] text-muted break-keep wrap-break-word text-balance">
               {t(d.missions.pendingCard.intro, { count: pendingList.length })}
             </p>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-0">
               {pendingList.map((reward, index) => (
                 <PendingRewardRow key={`${reward.locked ? 'locked' : reward.id}-${index}`} reward={reward} />
               ))}
@@ -515,36 +518,30 @@ export default function MissionDetailClient({
         {/* ── 보상 — 달성 조건 위. 레이블·바깥 흰 카드 없이 미색(tint) 박스(테두리 없음)로 보인다 (티켓 20261104_2150) ── */}
         {(rewardBadges.length > 0 || lockedRewardRarities.length > 0 || mission.reward_points) && (
           <div className="flex flex-col gap-2">
+            {/* 배지 보상 행: 행 전체가 /badges/{id} 링크. 등급 칩은 그려질 때만 eyebrow로 넘긴다 */}
             {rewardBadges.map((badge) => (
-              <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
-                {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
-                <Card tone="tint">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      <SafeImage
-                        src={badge.image_url}
-                        alt={badge.name}
-                        width={52}
-                        height={52}
-                        className="w-[52px] h-[52px] object-contain"
-                        fallback={<span className="text-2xl">🏅</span>}
-                      />
-                    </div>
-                    <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
-                      <RarityBadge rarity={badge.rarity} />
-                      <p className="text-[16px] font-bold leading-[1.2] text-foreground truncate">{badge.name}</p>
-                      <p className="text-[13px] leading-[1.3] text-muted">{d.missions.rewardBadgeCaption}</p>
-                    </div>
-                  </div>
-                </Card>
-              </Link>
+              <ListRow
+                key={badge.id}
+                tone="tint"
+                href={`/badges/${badge.id}`}
+                lead={
+                  <SafeImage
+                    src={badge.image_url}
+                    alt=""
+                    width={48}
+                    height={48}
+                    fallback={<span className="text-2xl">🏅</span>}
+                  />
+                }
+                eyebrow={rarityEyebrow(badge.rarity)}
+                title={badge.name}
+                meta={d.missions.rewardBadgeCaption}
+              />
             ))}
 
             {/* 잠긴 아이템 배지 보상 행: 이름·그림·링크 없이 잠금 타일 + 등급 칩 (운영 로직 7.3절) */}
             {lockedRewardRarities.map((rarity, index) => (
-              <Card key={`locked-${index}`} tone="tint">
-                <LockedRewardRow rarity={rarity} caption={d.missions.rewardBadgeCaption} />
-              </Card>
+              <LockedRewardRow key={`locked-${index}`} rarity={rarity} caption={d.missions.rewardBadgeCaption} tone="tint" />
             ))}
 
             {/* 포인트 보상 행: ListRow + 서클 lead. 캡션 없이 «N 포인트»만 둔다 */}

@@ -121,7 +121,7 @@ describe('미등록 호스트 이미지 URL이어도 컴포넌트가 예외 없�
     expect(html).not.toContain('width="112"')
   })
 
-  it('MissionDetailClient — 보상 배지 행(52px)', () => {
+  it('MissionDetailClient — 보상 배지 행(48px)', () => {
     // 이 테스트가 읽는 필드만 채운 최소 픽스처다 — 나머지 컬럼은 화면이 참조하지 않는다.
     const mission = {
       id: 'm1',
@@ -144,7 +144,7 @@ describe('미등록 호스트 이미지 URL이어도 컴포넌트가 예외 없�
         rewardBadges={[{ id: 'b1', name: '보상 배지', image_url: UNREGISTERED, rarity: 'common' }]}
       />
     )
-    expect(html).toContain('width="52"')
+    expect(html).toContain('width="48"')
     expect(html).toContain(UNREGISTERED)
   })
 })

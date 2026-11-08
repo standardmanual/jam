@@ -32,6 +32,9 @@ import type { BadgeRarity } from '@/types/database'
 const OPEN_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const LOCKED_NAME = d.lockedItem.card.name
 
+/** ListRow가 행마다 내보내는 <style>을 걷고 마크업만 검사한다 */
+const withoutStyle = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, '')
+
 interface State {
   participating?: boolean
   completed?: boolean
@@ -218,16 +221,42 @@ describe('미션 상세 — 받을 보상 카드', () => {
     expect(html).not.toContain('role="status"')
   })
 
-  it('보상 행의 긴 이름은 줄여서(truncate) 넘치지 않게 한다', () => {
+  it('보상 행의 긴 이름은 한 줄 말줄임으로 넘치지 않게 한다', () => {
     const longName = '아주아주아주아주아주아주아주아주아주아주아주아주 긴 이름의 배지'
-    const html = render({
+    const html = withoutStyle(render({
       completed: true,
       pendingRewards: [{ locked: false, id: OPEN_ID, name: longName, image_url: null, rarity: 'rare' }],
-    })
+    }))
 
-    const nameTag = html.slice(html.lastIndexOf('<p', html.indexOf(longName)), html.indexOf(longName))
-    expect(nameTag).toContain('truncate')
-    expect(nameTag).toContain('break-keep')
+    const nameTag = html.slice(html.lastIndexOf('<span', html.indexOf(longName)), html.indexOf(longName))
+    expect(nameTag).toContain('text-overflow:ellipsis')
+    expect(nameTag).toContain('white-space:nowrap')
+  })
+
+  it('열린 보상 행의 그림은 alt가 비어 있고 48px이다(이름은 글자로 읽힌다)', () => {
+    const html = withoutStyle(render({ completed: true, pendingRewards: [OPEN_PENDING] }))
+
+    expect(html).toMatch(/<img[^>]*alt=""[^>]*/)
+    expect(html).toMatch(/<img[^>]*width="48"/)
+    expect(html).not.toContain('alt="한강 러너 캡"')
+  })
+
+  it('등급이 common이거나 없으면 받을 보상 행에 등급 칩이 없다', () => {
+    for (const rarity of ['common', null] as const) {
+      const html = withoutStyle(render({
+        completed: true,
+        pendingRewards: [{ locked: false, id: OPEN_ID, name: '한강 러너 캡', image_url: null, rarity }],
+      }))
+      expect(html).toContain('한강 러너 캡')
+      expect(html).not.toMatch(/text-transform:uppercase/)
+    }
+  })
+
+  it('받을 보상 행은 flat 톤이라 행 사이에 박스가 없고 링크도 없다', () => {
+    const html = withoutStyle(render({ completed: true, pendingRewards: [OPEN_PENDING, LOCKED_PENDING] }))
+
+    expect(html).not.toContain('href="/badges')
+    expect(html).not.toContain('data-interactive="true"')
   })
 })
 
@@ -293,5 +322,32 @@ describe('미션 상세 — 보상 카드의 잠긴 보상 행', () => {
 
   it('잠긴 보상 행에 그림이 없다', () => {
     expect(render({ lockedRewardRarities: ['epic'] })).not.toContain('<img')
+  })
+})
+
+describe('미션 상세 — 보상 박스의 배지 보상 행', () => {
+  it('행 전체가 /badges/{id} 링크이고 그림 alt는 비어 있다', () => {
+    const html = withoutStyle(render({ rewardBadges: [OPEN_BADGE] }))
+
+    expect(html).toContain(`href="/badges/${OPEN_ID}"`)
+    expect(html).toContain('주말 러너')
+    expect(html).toContain(d.missions.rewardBadgeCaption)
+    expect(html).toContain('Rare')
+    expect(html).not.toContain('alt="주말 러너"')
+  })
+
+  it('등급이 common이면 등급 칩이 없다', () => {
+    const html = withoutStyle(render({ rewardBadges: [{ ...OPEN_BADGE, rarity: 'common' }] }))
+
+    expect(html).toContain('주말 러너')
+    expect(html).not.toMatch(/text-transform:uppercase/)
+  })
+
+  it('잠긴 보상 행은 링크·그림 없이 표시 전용이다', () => {
+    const html = withoutStyle(render({ lockedRewardRarities: ['epic'] }))
+
+    expect(html).not.toContain('href="/badges')
+    expect(html).not.toContain('<img')
+    expect(html).not.toContain('data-interactive="true"')
   })
 })
