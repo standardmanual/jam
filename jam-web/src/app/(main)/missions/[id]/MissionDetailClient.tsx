@@ -397,7 +397,7 @@ export default function MissionDetailClient({
     <div className="min-h-full text-foreground">
       <TopNav title={d.missions.backToDetail} backHref="/missions" />
 
-      <div className="flex flex-col px-6 pt-0 pb-10 gap-6">
+      <div className="flex flex-col px-4 pt-4 pb-6 gap-6">
 
         {/* 대표 이미지 — 1:1 정사각형.
             image_url은 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에

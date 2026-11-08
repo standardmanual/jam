@@ -257,7 +257,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
         />
       </div>
 
-      <div className="px-4 pb-8">
+      <div className="px-4 pb-6">
       {/* 필터 드롭다운 — 배지 탭과 동일한 스타일 */}
       <div className="flex gap-2 mb-4">
         <div className="flex-1 min-w-0">

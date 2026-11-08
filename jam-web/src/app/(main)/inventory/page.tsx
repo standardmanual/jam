@@ -79,7 +79,7 @@ export default async function InventoryPage() {
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo />
 
-      <div className="px-4 pt-6 pb-6">
+      <div className="px-4 pt-4 pb-6">
       {/* 헤더 */}
       <div className="mb-6">
         {/* 20261031_1821: 보이는 타이틀은 없애고, 스크린리더용 페이지 제목만 남긴다 */}

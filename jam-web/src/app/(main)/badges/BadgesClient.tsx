@@ -194,7 +194,7 @@ export default function BadgesClient({
         />
       </div>
 
-      <div className="px-4 pb-8">
+      <div className="px-4 pb-6">
         {/* 액티비티 배지 탭 */}
         {activeTab === 'activity' && (
           badges.length > 0 ? (
