@@ -35,10 +35,10 @@ export default function Footer() {
     //
     // 20260909_2319 Figma 반영 초안은 배경을 #2f2f2f로 하드코딩했으나, 실기기 확인 후
     // 페이지 배경과 다른 톤으로 튀어 보인다는 피드백으로 bg-transparent로 되돌렸다.
-    // 지금도 배경을 칠하지 않는다 — 부모 <main>의 흰 면(--surface, 티켓 20261104_1642)을
-    // 그대로 물려받아 푸터와 맨 아래 로고가 본문과 한 장의 면이 된다.
-    <footer className="relative z-10 flex flex-col items-start justify-center gap-6 pt-6 pb-0 px-4 bg-transparent">
-      <span className="text-[15px] leading-[28px] font-normal text-foreground whitespace-pre-line">{d.common.footerSlogan}</span>
+    // 2026-11-08 사용자 요청으로 네거티브로 바꿨다: 반전 면(--background-inverse) 위에
+    // 글자는 반전 면 보조 글자(--muted-on-inverse), 로고는 흰색(--snow, FooterLogo)이다.
+    <footer className="relative z-10 flex flex-col items-start justify-center gap-6 pt-6 pb-0 px-4 bg-background-inverse">
+      <span className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] whitespace-pre-line">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 저작권 줄 위. 캡션 톤을 그대로 따르고
           밑줄만 붙여 링크임을 알린다(과한 강조 금지).
           globals.css가 -webkit-tap-highlight-color를 전역으로 껐으므로 active 피드백을
@@ -59,37 +59,37 @@ export default function Footer() {
       <div className="flex flex-col items-start gap-0">
         <Link
           href="/philosophy"
-          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPhilosophy}
         </Link>
         <Link
           href="/privacy"
-          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPrivacy}
         </Link>
         <Link
           href="/location-terms"
-          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerLocationTerms}
         </Link>
         <Link
           href="/probability"
-          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerProbability}
         </Link>
         <Link
           href="/voc"
-          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerInquiry}
         </Link>
       </div>
       {/* 20260909_2319: 로고 이미지를 걷고 저작권 텍스트만 남겼다(Figma 사양). */}
-      <span className="text-[15px] leading-[28px] font-normal text-foreground">{d.common.footerCopyright}</span>
+      <span className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)]">{d.common.footerCopyright}</span>
       {/* 20261104_1642: 저작권 아래, 푸터의 마지막 요소로 JAM! 로고를 서비스 영역의 좌우 패딩(px-4) 안쪽 폭 100%로 채운다.
           새 이미지 없이 .jam-logo-mark(알파 마스크 + --foreground)를 쓴다. items-start라 폭은 w-full로 정한다.
           로고 아래면이 페이지 맨 끝(브라우저 끝)에 닿도록 푸터 아래쪽 패딩과 (main)/layout의 하단 여백이 모두 0이다

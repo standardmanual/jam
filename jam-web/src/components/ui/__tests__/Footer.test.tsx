@@ -50,7 +50,7 @@ describe('Footer 링크', () => {
     const html = renderToStaticMarkup(<Footer />)
     // 서버 렌더(모션 전)에서는 로고가 숨지 않고 제자리에 있다 — JS가 없어도 보인다
     const logo =
-      '<div class="w-full overflow-hidden"><div class="jam-logo-mark w-full" role="img" aria-label="JAM!" style="transform:translateY(0);transition:none"></div></div>'
+      '<div class="w-full overflow-hidden"><div class="jam-logo-mark w-full bg-[color:var(--snow)]" role="img" aria-label="JAM!" style="transform:translateY(0);transition:none"></div></div>'
     expect(html.endsWith(`${logo}</footer>`)).toBe(true)
     expect(html.indexOf(d.common.footerCopyright)).toBeLessThan(html.indexOf(logo))
     // 푸터 좌우 패딩(px-4)을 넘지 않는다 — 음수 마진으로 뚫지 않는다
