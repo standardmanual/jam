@@ -240,6 +240,19 @@ export const DValue: Story = {
   ),
 };
 
+export const DLongValue: Story = {
+  name: 'D 값 — 긴 값 + 짧은 라벨(라벨은 한 줄 고정)',
+  decorators: [(Story: React.ComponentType) => <Frame width={320}><Story /></Frame>],
+  render: () => (
+    <>
+      <Caption>값 행 라벨은 titleLines={0}을 쓰면 내용 폭(최대 50%)으로 고정된다. 긴 값은 값 칸에서만 줄바꿈된다.</Caption>
+      <ListRow tone="flat" separator titleVariant="label" titleLines={0} title="트리거 활동" value="2026 JTBC 서울 마라톤 Full" />
+      <Caption>라벨이 50%를 넘으면 그때만 라벨이 줄바꿈되고, 겹치지 않는다.</Caption>
+      <ListRow tone="flat" titleVariant="label" titleLines={0} title="이번 달 달린 총 거리와 누적 러닝 횟수" value="2026 JTBC 서울 마라톤 Full" />
+    </>
+  ),
+};
+
 /** 체크 목록의 «아직 안 함·지금 할 차례» 표지: 빈 원, 선은 --muted. 완료만 체크 아이콘이다. */
 const EmptyCircle = () => (
   <span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: 'var(--radius-full)', border: '1.5px solid var(--muted)', boxSizing: 'border-box' }} />
