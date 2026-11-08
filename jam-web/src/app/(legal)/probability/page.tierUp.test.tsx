@@ -6,8 +6,8 @@
  * 이 섹션의 시험은 이 파일에 모았다(병렬 세션과의 충돌을 줄이려는 배치다).
  *
  * 고정하는 것:
- * - 자리와 구성: 시스템 드랍 다음, 확률이 없는 것 앞. h2 → 소개 문단 → 표 3개(h3 «Common 6개를 넣으면»…) → 끝 Note 한 개. h3는 3개다.
- * - 값: 기본 설정(`combine_policy.tier_up_probability` 0.7)에서 재료 등급마다 «넣은 등급 그대로 30%» / «바로 윗등급 70%». 70% 줄을 강조하지 않는다.
+ * - 자리와 구성: 시스템 드랍 다음, 확률이 없는 것 앞. h2 → 소개 문단 → 표 4개(h3 «Common 6개를 넣으면»… «Mystic 6개를 넣으면») → 끝 Note 한 개. h3는 4개다.
+ * - 값: 기본 설정(`combine_policy.tier_up_probability` 0.7)에서 Common·Rare·Epic은 «넣은 등급 그대로 30%» / «바로 윗등급 70%», Mystic은 «Mystic 100%» 한 줄(확률 설정과 무관). 70% 줄을 강조하지 않는다.
  *   설정을 바꾸면 따라 바뀌고(0·1·0.5·0.333), 서버 굴림의 `tierUpProbabilities`와 같다. 0%·100% 줄을 지우지 않는다.
  * - 사라진 문구: 트라이브 표(h3 «받는 아이템 배지»), «캡슐의 등급 확률에서 … 비율을 다시 맞춘 값», 이 섹션의 «처음 뽑는 등급이에요»·«한 등급씩 낮춰서»·«넣은 등급보다 낮아지지는 않아요».
  *   낮춤 문장(`LOWERING_RULE`)은 동기화·캡슐·보정 장치 세 곳에만 남는다.
@@ -45,8 +45,8 @@ const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침�
 const TITLE = '등급 올리기'
 const LOWERING_RULE = '그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.'
 const INTRO =
-  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 넣고 받을 컬렉션을 고르면, 그 컬렉션의 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic은 넣을 수 없어요.'
-const PICK_NOTE = '등급이 정해지면 고른 컬렉션에서 그 등급으로 받을 수 있는 아이템 배지를 모두 같은 확률로 골라요.'
+  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 가득 채워 넣으면, 내 트라이브의 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic을 넣으면 Mystic이 나와요.'
+const PICK_NOTE = '등급이 정해지면 내 트라이브의 컬렉션 전체에서 그 등급으로 지금 받을 수 있는 아이템 배지를 모두 같은 확률로 골라요.'
 
 async function render(results: Record<string, Result> = ALL_OK): Promise<string> {
   createServiceClientMock.mockReturnValue(fakeClient(results).client)
@@ -80,30 +80,32 @@ beforeEach(() => {
 })
 
 describe('정상 — 자리와 구성', () => {
-  it('시스템 드랍 다음, 확률이 없는 것 앞에 있고 h1 → h2 → h3 계층이 유지된다. h3는 세 개다', async () => {
+  it('시스템 드랍 다음, 확률이 없는 것 앞에 있고 h1 → h2 → h3 계층이 유지된다. h3는 네 개다', async () => {
     const html = await render()
     const titles = [...html.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1])
     expect(titles.indexOf(TITLE)).toBe(titles.indexOf('시스템 드랍') + 1)
     expect(titles.indexOf('확률이 없는 것')).toBe(titles.indexOf(TITLE) + 1)
 
     const section = sectionOf(html, TITLE)
-    expect(count(section, '<h3')).toBe(3)
+    expect(count(section, '<h3')).toBe(4)
     expect(section).not.toContain('<h1')
     expect(section).not.toContain('<h4')
   })
 
-  it('소개 문단 → 소제목 세 개 → 끝 Note가 정해진 순서로 나온다', async () => {
+  it('소개 문단 → 소제목 네 개 → 끝 Note가 정해진 순서로 나온다', async () => {
     const text = textOf(sectionOf(await render(), TITLE))
-    const order = [INTRO, 'Common 6개를 넣으면', 'Rare 6개를 넣으면', 'Epic 6개를 넣으면', PICK_NOTE].map((needle) => text.indexOf(needle))
+    const order = [INTRO, 'Common 6개를 넣으면', 'Rare 6개를 넣으면', 'Epic 6개를 넣으면', 'Mystic 6개를 넣으면', PICK_NOTE].map((needle) => text.indexOf(needle))
     expect(order.every((i) => i >= 0)).toBe(true)
     expect(order).toEqual([...order].sort((a, b) => a - b))
   })
 
-  it('소개 문단은 컬렉션을 고른다는 말과 «바로 윗등급이 나오거나 같은 등급이 나와요»를 담은 세 문장이다', async () => {
+  it('소개 문단은 «내 트라이브의 새 아이템 배지»와 «바로 윗등급이 나오거나 같은 등급이 나와요», Mystic 규칙을 담은 세 문장이다', async () => {
     const section = sectionOf(await render(), TITLE)
     const [intro] = paragraphsOf(section)
     expect(intro).toBe(INTRO)
-    expect(intro).toContain('받을 컬렉션을 고르면')
+    expect(intro).toContain('내 트라이브의 새 아이템 배지를 받아요')
+    expect(intro).toContain('Mystic을 넣으면 Mystic이 나와요')
+    expect(intro).not.toContain('Mystic은 넣을 수 없어요')
     expect(intro).toContain('넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요')
     expect(intro.split(/(?<=요\.)\s/)).toHaveLength(3)
   })
@@ -111,17 +113,18 @@ describe('정상 — 자리와 구성', () => {
   it('소제목은 짧아서 320px에서 한 줄에 들어간다 — «아이템 배지»를 소제목에 붙이지 않고 트라이브 소제목이 없다', async () => {
     const section = sectionOf(await render(), TITLE)
     const headings = [...section.matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((m) => m[1])
-    expect(headings).toEqual(['Common 6개를 넣으면', 'Rare 6개를 넣으면', 'Epic 6개를 넣으면'])
+    expect(headings).toEqual(['Common 6개를 넣으면', 'Rare 6개를 넣으면', 'Epic 6개를 넣으면', 'Mystic 6개를 넣으면'])
     expect(headings.join()).not.toContain('받는 아이템 배지')
   })
 
-  it('재료 등급마다 두 줄 — 넣은 등급 그대로가 먼저(30%), 바로 윗등급이 아래(70%)다(기본 설정)', async () => {
+  it('Common·Rare·Epic은 두 줄(넣은 등급 그대로가 먼저 30%, 바로 윗등급이 아래 70%), Mystic은 한 줄(100%)이다(기본 설정)', async () => {
     const text = textOf(sectionOf(await render(), TITLE))
     expect(text).toContain('Common 6개를 넣으면Common30%Rare70%')
     expect(text).toContain('Rare 6개를 넣으면Rare30%Epic70%')
     expect(text).toContain('Epic 6개를 넣으면Epic30%Mystic70%')
-    // Mystic 재료 표는 없다
-    expect(text).not.toContain('Mystic 6개를 넣으면')
+    // Mystic은 윗등급이 없어 한 줄이다
+    expect(text).toContain('Mystic 6개를 넣으면Mystic100%')
+    expect(text).not.toContain('Mystic 6개를 넣으면Mystic100%Mystic')
   })
 
   it('끝 Note는 섹션 맨 끝에 한 번만 있다 — 표 아래마다 붙지 않고 Note를 쌓지 않는다', async () => {
@@ -135,12 +138,17 @@ describe('정상 — 자리와 구성', () => {
     expect(section.lastIndexOf('</table>')).toBeLessThan(section.indexOf('border-l-2'))
   })
 
-  it('컬렉션을 고른다는 말은 소개 문단에만, 같은 확률로 고른다는 말은 Note에만 있다(같은 설명을 되풀이하지 않는다)', async () => {
+  it('트라이브에서 받는다는 말은 소개 문단에, 같은 확률로 고른다는 말은 Note에만 있다. 컬렉션을 고른다는 말은 없다', async () => {
     const [intro, note] = paragraphsOf(sectionOf(await render(), TITLE))
-    expect(intro).toContain('컬렉션을 고르면')
+    expect(intro).toContain('내 트라이브')
     expect(intro).not.toContain('같은 확률')
     expect(note).toContain('같은 확률')
-    expect(note).not.toContain('컬렉션을 고르면')
+    expect(note).toContain('컬렉션 전체')
+    for (const text of [intro, note]) {
+      expect(text).not.toContain('고른 컬렉션')
+      expect(text).not.toContain('받을 컬렉션')
+      expect(text).not.toContain('컬렉션을 고르')
+    }
   })
 
   it('사라진 문구가 없다 — 트라이브 표, 캡슐 확률에서 다시 맞춘 값, 처음 뽑는 등급, 낮춤 문장', async () => {
@@ -155,6 +163,8 @@ describe('정상 — 자리와 구성', () => {
       '한 등급씩 낮춰서',
       '넣은 등급보다 낮아지지는 않아요',
       '받을 수 있는 아이템 배지가 여럿이면',
+      '받을 컬렉션',
+      '넣을 수 없어요',
     ]) {
       expect(text, gone).not.toContain(gone)
     }
@@ -173,25 +183,26 @@ describe('정상 — 자리와 구성', () => {
 })
 
 describe('정상 — 표 마크업', () => {
-  it('표 세 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
+  it('표 네 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
     const section = sectionOf(await render(), TITLE)
-    expect(count(section, '<table')).toBe(3)
+    expect(count(section, '<table')).toBe(4)
     const captions = [...section.matchAll(/<caption class="sr-only">([^<]*)<\/caption>/g)].map((m) => m[1])
     expect(captions).toEqual([
       'Common 아이템 배지 6개를 넣었을 때 받는 등급 확률',
       'Rare 아이템 배지 6개를 넣었을 때 받는 등급 확률',
       'Epic 아이템 배지 6개를 넣었을 때 받는 등급 확률',
+      'Mystic 아이템 배지 6개를 넣었을 때 받는 등급 확률',
     ])
-    // 행: 표마다 정확히 두 줄 — 2 + 2 + 2 = 6, 행마다 th 하나 + td 하나
-    expect(count(section, '<tr')).toBe(6)
-    expect(count(section, '<th scope="row"')).toBe(6)
-    expect(count(section, '<td ')).toBe(6)
+    // 행: Common·Rare·Epic은 두 줄, Mystic은 한 줄 — 2 + 2 + 2 + 1 = 7, 행마다 th 하나 + td 하나
+    expect(count(section, '<tr')).toBe(7)
+    expect(count(section, '<th scope="row"')).toBe(7)
+    expect(count(section, '<td ')).toBe(7)
   })
 
   it('값 칸은 오른쪽 정렬·tabular-nums이고 줄바꿈하지 않는다. 가로 스크롤 래퍼가 없다', async () => {
     const section = sectionOf(await render(), TITLE)
     const cells = cellsOf(section)
-    expect(cells.map((c) => c.text)).toEqual(['30%', '70%', '30%', '70%', '30%', '70%'])
+    expect(cells.map((c) => c.text)).toEqual(['30%', '70%', '30%', '70%', '30%', '70%', '100%'])
     for (const cell of cells) {
       expect(cell.cls, cell.text).toContain('text-right')
       expect(cell.cls, cell.text).toContain('tabular-nums')
@@ -217,14 +228,14 @@ describe('정상 — 표 마크업', () => {
   it('한국어를 그리는 모든 제목·문단·표 칸에 줄바꿈 클래스가 있다', async () => {
     const section = sectionOf(await render(), TITLE)
     const elements = [...section.matchAll(/<(h2|h3|p|th|td)\b([^>]*)>/g)]
-    // 섹션 조각은 h2 닫는 태그부터 시작하므로 h2 여는 태그는 세지 않는다: p 2 + h3 3 + th 6 + td 6
-    expect(elements).toHaveLength(17)
+    // 섹션 조각은 h2 닫는 태그부터 시작하므로 h2 여는 태그는 세지 않는다: p 2 + h3 4 + th 7 + td 7
+    expect(elements).toHaveLength(20)
     for (const [, tag, attrs] of elements) expect(attrs, `<${tag}>`).toContain('break-keep wrap-break-word')
   })
 
-  it('새 섹션을 다시 카드로 감싸지 않는다 — 표 카드 세 개뿐이고 색·그래프·애니메이션이 없다', async () => {
+  it('새 섹션을 다시 카드로 감싸지 않는다 — 표 카드 네 개뿐이고 색·그래프·애니메이션이 없다', async () => {
     const section = sectionOf(await render(), TITLE)
-    expect(count(section, 'rounded-2xl bg-card-bg')).toBe(3)
+    expect(count(section, 'rounded-2xl bg-card-bg')).toBe(4)
     expect(section).not.toMatch(/gradient|animate-|transition|--link|--accent|rarity|progress|text-center|font-bold|font-semibold/i)
   })
 
@@ -239,7 +250,7 @@ describe('정상 — 표 마크업', () => {
     expect(text).not.toMatch(/→|↑|⬆|▲/)
   })
 
-  it('문구에 «70%», «30%», «6개» 같은 숫자를 직접 쓰지 않는다 — 숫자는 표와 소제목에만 있다', async () => {
+  it('문구에 «70%», «30%», «100%», «6개» 같은 숫자를 직접 쓰지 않는다 — 숫자는 표와 소제목에만 있다', async () => {
     const [intro, note] = paragraphsOf(sectionOf(await render(), TITLE))
     expect(intro).not.toMatch(/\d/)
     expect(note).not.toMatch(/\d/)
@@ -253,6 +264,7 @@ describe('값은 읽은 설정에서 만든다 (combine_policy.tier_up_probabili
     expect(text).toContain('Common 6개를 넣으면Common60%Rare40%')
     expect(text).toContain('Rare 6개를 넣으면Rare60%Epic40%')
     expect(text).toContain('Epic 6개를 넣으면Epic60%Mystic40%')
+    expect(text).toContain('Mystic 6개를 넣으면Mystic100%')
     const cells = cellsOf(section).map((c) => c.text)
     expect(cells).not.toContain('70%')
     expect(cells).not.toContain('30%')
@@ -264,7 +276,8 @@ describe('값은 읽은 설정에서 만든다 (combine_policy.tier_up_probabili
     expect(text).toContain('Common 6개를 넣으면Common100%Rare0%')
     expect(text).toContain('Rare 6개를 넣으면Rare100%Epic0%')
     expect(text).toContain('Epic 6개를 넣으면Epic100%Mystic0%')
-    expect(count(section, '<tr')).toBe(6)
+    expect(text).toContain('Mystic 6개를 넣으면Mystic100%')
+    expect(count(section, '<tr')).toBe(7)
   })
 
   it('1이면 같은 등급 0% / 윗등급 100%이고 0% 줄을 지우지 않는다', async () => {
@@ -273,12 +286,13 @@ describe('값은 읽은 설정에서 만든다 (combine_policy.tier_up_probabili
     expect(text).toContain('Common 6개를 넣으면Common0%Rare100%')
     expect(text).toContain('Rare 6개를 넣으면Rare0%Epic100%')
     expect(text).toContain('Epic 6개를 넣으면Epic0%Mystic100%')
-    expect(count(section, '<tr')).toBe(6)
+    expect(text).toContain('Mystic 6개를 넣으면Mystic100%')
+    expect(count(section, '<tr')).toBe(7)
   })
 
   it('0.5이면 50% / 50%다', async () => {
     const cells = cellsOf(sectionOf(await render(withProbability(0.5)), TITLE)).map((c) => c.text)
-    expect(cells).toEqual(['50%', '50%', '50%', '50%', '50%', '50%'])
+    expect(cells).toEqual(['50%', '50%', '50%', '50%', '50%', '50%', '100%'])
   })
 
   it('0.333이면 «66.7% / 33.3%»로 소수 둘째 자리까지 정리된다(부동소수 꼬리가 없다)', async () => {
@@ -297,7 +311,7 @@ describe('값은 읽은 설정에서 만든다 (combine_policy.tier_up_probabili
   it('표의 값이 서버 굴림의 tierUpProbabilities 출력과 같다(페이지와 실제 결과의 함수가 하나다)', async () => {
     for (const p of [0, 0.2, 0.333, 0.5, 0.7, 1]) {
       const cells = cellsOf(sectionOf(await render(withProbability(p)), TITLE)).map((c) => c.text)
-      const expected = TIER_UP_MATERIAL_RARITIES.filter((material) => material !== 'mystic').flatMap((material) => tierUpProbabilities(material, p).map(([, prob]) => formatFraction(prob)))
+      const expected = TIER_UP_MATERIAL_RARITIES.flatMap((material) => tierUpProbabilities(material, p).map(([, prob]) => formatFraction(prob)))
       expect(cells, `p=${p}`).toEqual(expected)
     }
   })
@@ -362,7 +376,7 @@ describe('읽기 실패 — 소개 문단 + 안내 한 개 + 끝 Note뿐이고 �
     ]) {
       const html = await render(results)
       const section = sectionOf(html, TITLE)
-      expect(count(section, '<table')).toBe(3)
+      expect(count(section, '<table')).toBe(4)
       expect(count(section, 'role="status"')).toBe(0)
       expect(textOf(section)).toContain('Common 6개를 넣으면Common30%Rare70%')
       // 안내는 동기화·캡슐·보정 장치 세 곳뿐이다
@@ -377,7 +391,7 @@ describe('읽기 실패 — 소개 문단 + 안내 한 개 + 끝 Note뿐이고 �
     const html = await render({ ...ALL_OK, ambient_drop_config: failed })
     const section = sectionOf(html, TITLE)
     expect(count(html, 'role="status"')).toBe(1)
-    expect(count(section, '<table')).toBe(3)
+    expect(count(section, '<table')).toBe(4)
     expect(textOf(section)).toContain('Rare30%Epic70%')
   })
 

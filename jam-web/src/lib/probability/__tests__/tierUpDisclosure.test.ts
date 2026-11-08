@@ -2,8 +2,8 @@
  * 확률 안내의 등급 올리기 표 데이터 (티켓 20261022_2119 4회, 20261023_1648 2회, 운영 로직 8.4·18.3절, 채원 사전 판정 2026-10-23)
  *
  * 고정하는 것:
- * - 기본 설정(`combine_policy.tier_up_probability` 0.7)에서 재료 등급별 표 값이 정확히 Common 6개 30/70, Rare 6개 30/70, Epic 6개 30/70이고
- *   줄은 «넣은 등급 그대로»가 먼저, «바로 위 등급»이 아래다. 표는 재료 등급마다 정확히 두 줄이다. 트라이브 표는 없다.
+ * - 기본 설정(`combine_policy.tier_up_probability` 0.7)에서 재료 등급별 표 값이 정확히 Common 6개 30/70, Rare 6개 30/70, Epic 6개 30/70, Mystic 6개 Mystic 100%이고
+ *   줄은 «넣은 등급 그대로»가 먼저, «바로 위 등급»이 아래다. Common·Rare·Epic 표는 두 줄, Mystic 표는 윗등급이 없어 한 줄이다(확률 설정과 무관). 트라이브 표는 없다.
  * - 값은 읽은 설정에서 만든다: 0.5면 50/50, 0.333이면 66.7/33.3이 되고 문자열로 박힌 숫자가 없다. 1 - p의 부동소수 오차(0.30000000000000004)는 «30%»로 정리된다.
  * - 서버 굴림과 같은 함수: 표의 값이 `tierUpProbabilities`의 출력을 `formatFraction`으로 바꾼 것과 같다.
  * - 0과 1: 확률 0인 줄도 남는다(같은 등급 100% / 윗등급 0%, 같은 등급 0% / 윗등급 100%).
@@ -25,8 +25,8 @@ import { ALL_OK, CAPSULE_ROW, COMBINE_ROW, failed, fakeClient, ok, type Result }
 import { DEFAULT_COMBINE_POLICY } from '@/lib/combine/policy'
 import { TIER_UP_MATERIAL_COUNT, TIER_UP_MATERIAL_RARITIES, tierUpProbabilities } from '@/lib/combine/tierUpOdds'
 
-/** 확률 안내가 싣는 재료 등급 — Mystic 표는 확률 안내 개정(티켓 20261108 3회차)에서 더한다 */
-const DISCLOSED_MATERIALS = TIER_UP_MATERIAL_RARITIES.filter((material) => material !== 'mystic')
+/** 확률 안내가 싣는 재료 등급 — 서버가 받는 재료 등급 전부(Mystic 포함) */
+const DISCLOSED_MATERIALS = TIER_UP_MATERIAL_RARITIES
 import { buildTierUpDisclosure, formatFraction, loadProbabilityDisclosure, type TierUpDisclosure, type TierUpMaterialDisclosure } from '../disclosure'
 
 const asMap = (rows: { label: string; value: string }[]) => Object.fromEntries(rows.map((r) => [r.label, r.value]))
@@ -49,11 +49,10 @@ beforeEach(() => {
 })
 
 describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»와 «바로 위 등급» 두 줄', () => {
-  it('Common, Rare, Epic 순서로 표가 세 개이고 Mystic 재료 표는 3회차에서 더한다', async () => {
+  it('Common, Rare, Epic, Mystic 순서로 표가 네 개다', async () => {
     const { materials } = await loadTierUp()
-    expect(materials.map((m) => m.heading)).toEqual(['Common 6개를 넣으면', 'Rare 6개를 넣으면', 'Epic 6개를 넣으면'])
+    expect(materials.map((m) => m.heading)).toEqual(['Common 6개를 넣으면', 'Rare 6개를 넣으면', 'Epic 6개를 넣으면', 'Mystic 6개를 넣으면'])
     expect(materials).toHaveLength(DISCLOSED_MATERIALS.length)
-    expect(materials.some((m) => m.heading.includes('Mystic'))).toBe(false)
   })
 
   it('Common 6개: Common 30% / Rare 70% (낮은 등급이 먼저)', async () => {
@@ -80,9 +79,20 @@ describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»
     ])
   })
 
-  it('표는 재료 등급마다 정확히 두 줄이고 재료보다 낮은 등급 줄이 없다', async () => {
+  it('Mystic 6개: Mystic 100% 한 줄이다', async () => {
+    const mystic = (await loadTierUp()).materials[3]
+    expect(mystic.rows).toEqual([{ label: 'Mystic', value: '100%' }])
+  })
+
+  it('Mystic 표는 확률 설정을 바꿔도 Mystic 100% 한 줄이다', async () => {
+    for (const p of [0, 0.4, 1]) {
+      expect((await loadTierUp(withProbability(p))).materials[3].rows).toEqual([{ label: 'Mystic', value: '100%' }])
+    }
+  })
+
+  it('Common·Rare·Epic 표는 정확히 두 줄이고 재료보다 낮은 등급 줄이 없다', async () => {
     const { materials } = await loadTierUp()
-    for (const m of materials) expect(m.rows).toHaveLength(2)
+    for (const m of materials.slice(0, 3)) expect(m.rows).toHaveLength(2)
     expect(labelsOf(materials[1])).not.toContain('Common')
     expect(labelsOf(materials[2])).not.toContain('Common')
     expect(labelsOf(materials[2])).not.toContain('Rare')
@@ -94,6 +104,7 @@ describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»
       'Common 아이템 배지 6개를 넣었을 때 받는 등급 확률',
       'Rare 아이템 배지 6개를 넣었을 때 받는 등급 확률',
       'Epic 아이템 배지 6개를 넣었을 때 받는 등급 확률',
+      'Mystic 아이템 배지 6개를 넣었을 때 받는 등급 확률',
     ])
   })
 
@@ -115,15 +126,15 @@ describe('기본 설정(0.7) — 재료 등급마다 «넣은 등급 그대로»
   it('1 - p의 부동소수 오차(0.30000000000000004)가 «30%»로 정리된다', async () => {
     expect(1 - 0.7).not.toBe(0.3)
     const values = (await loadTierUp()).materials.flatMap((m) => m.rows.map((r) => r.value))
-    expect(values).toEqual(['30%', '70%', '30%', '70%', '30%', '70%'])
-    for (const v of values) expect(v).not.toMatch(/\d{3,}/)
+    expect(values).toEqual(['30%', '70%', '30%', '70%', '30%', '70%', '100%'])
+    for (const v of values.filter((v) => v !== '100%')) expect(v).not.toMatch(/\d{3,}/)
   })
 })
 
 describe('값은 읽은 설정에서 만든다 — 설정을 바꾸면 표가 따라 바뀐다', () => {
   it('0.5이면 모든 표가 50% / 50%다', async () => {
     const { materials } = await loadTierUp(withProbability(0.5))
-    for (const m of materials) expect(m.rows.map((r) => r.value)).toEqual(['50%', '50%'])
+    for (const m of materials.slice(0, 3)) expect(m.rows.map((r) => r.value)).toEqual(['50%', '50%'])
     expect(asMap(materials[0].rows)).toEqual({ Common: '50%', Rare: '50%' })
   })
 
@@ -146,7 +157,7 @@ describe('값은 읽은 설정에서 만든다 — 설정을 바꾸면 표가 �
 
   it('바뀌기 전 값은 남지 않는다 (0.7 → 0.4)', async () => {
     const values = (await loadTierUp(withProbability(0.4))).materials.flatMap((m) => m.rows.map((r) => r.value))
-    expect(values).toEqual(['60%', '40%', '60%', '40%', '60%', '40%'])
+    expect(values).toEqual(['60%', '40%', '60%', '40%', '60%', '40%', '100%'])
     expect(values).not.toContain('70%')
     expect(values).not.toContain('30%')
   })

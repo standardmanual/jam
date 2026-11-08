@@ -239,14 +239,14 @@ const RARITY_LABEL_BY_VALUE: Record<BadgeRarity, string> = {
 
 /**
  * 등급 올리기 표 — 재료 등급(`TIER_UP_MATERIAL_RARITIES` 순서)마다 «넣은 등급 그대로»와 «바로 위 등급» 두 줄을 만든다.
+ * Mystic 재료는 바로 위 등급이 없어 «Mystic 100%» 한 줄이다.
  * 확률은 서버 굴림이 쓰는 `tierUpProbabilities`로 만들어 페이지와 실제 결과가 갈라지지 않는다. 확률 0인 줄도 지우지 않는다.
  *
  * @param tierUpProbability `combine_policy.tier_up_probability` (0~1)
  */
 export function buildTierUpDisclosure(tierUpProbability: number): TierUpDisclosure {
   return {
-    // Mystic 재료 표(Mystic 100%)는 확률 안내 개정(티켓 20261108 3회차)에서 더한다. 그 전에는 서버 규칙(Mystic 재료 허용)과 달리 Mystic 줄을 싣지 않는다.
-    materials: TIER_UP_MATERIAL_RARITIES.filter((material) => material !== 'mystic').map((material) => {
+    materials: TIER_UP_MATERIAL_RARITIES.map((material) => {
       const label = RARITY_LABEL_BY_VALUE[material]
       return {
         heading: `${label} ${TIER_UP_MATERIAL_COUNT}개를 넣으면`,
