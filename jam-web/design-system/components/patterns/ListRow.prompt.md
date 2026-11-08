@@ -6,7 +6,7 @@
 - eyebrow·time·chip 12px, meta 14px, title·value 16px(`--text-*`만 쓴다). 굵기는 파일 안 `ROW_WEIGHT` 한 곳(보통 400 · 굵게 700).
 - `titleVariant` `strong`(굵게, 기본) · `sentence`(보통, 문장 — 핵심어는 `ListRowEm`) · `label`(보통 muted, 값 행·체크 목록).
 - 줄 수: title 1줄 말줄임, `sentence`는 줄 제한이 없다(알림 문장은 정보가 잘리면 안 된다). `titleLines` 1~2로 직접 제한할 수 있고, `titleSuffix`를 쓰는 행은 `titleLines={1}`로 이름을 한 줄 말줄임한다. meta 기본 1줄, `metaLines` 1~3. eyebrow 문자열은 최대 2줄.
-- 값 행(`titleVariant="label"` + `value`)의 라벨은 정보라 잘리면 안 되므로 `titleLines={0}`(줄 제한 없음)을 쓰고, 값이 있으면 라벨은 내용 폭(최대 50%)으로 고정되어 값 때문에 꺾이지 않는다. 라벨이 50%를 넘는 긴 라벨만 줄바꿈된다. `titleLines` 1·2를 명시한 행과 값 없는 `label` 행(체크 목록)에는 이 규칙이 켜지지 않는다.
+- 값 행(`titleVariant="label"` + `value`)의 라벨은 정보라 잘리면 안 되므로 `titleLines={0}`(줄 제한 없음)을 쓰고, 값이 있으면 본문 칸이 라벨 내용 폭(행 폭의 최대 50%)으로 고정되어 값 때문에 꺾이지 않는다. 라벨이 행 폭의 50%를 넘는 긴 라벨만 줄바꿈된다. 이 상한은 본문 칸에 걸려 있어 `meta`가 함께 오면 본문 칸이 meta 내용 폭까지 늘어난다(최대 50%). `titleLines` 1·2를 명시한 행과 값 없는 `label` 행(체크 목록)에는 이 규칙이 켜지지 않는다.
 - 줄어드는 순서는 title·eyebrow·meta가 먼저다. time·value·trail은 줄지 않는다(팔로우 행은 이름이 먼저 잘린다).
 
 ## 계열 5종 구성표

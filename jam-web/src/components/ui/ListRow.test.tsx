@@ -89,42 +89,53 @@ describe('한 줄 말줄임', () => {
   })
 })
 
-describe('값 행 라벨 폭', () => {
-  const LABEL_RULE = 'width:max-content;max-width:50%'
-  const titleSpan = (html: string, title: string) => html.match(new RegExp(`<span style="([^"]*)">${title}</span>`))?.[1] ?? ''
+describe('값 행 본문 칸 폭', () => {
+  // 규칙은 라벨 span이 아니라 본문 칸(행 hit의 직접 자식)에 건다. 라벨 span의 50%는 본문 칸 폭 기준이라 행 폭 기준이 안 된다(티켓 20261108_1817 재작업).
+  // 기하(라벨 한 줄·50% 상한)는 서버 렌더를 headless Chrome에서 재서 확인했고, 여기서는 그 결과를 만드는 스타일 값을 고정한다.
+  const bodyStyle = (html: string) => html.match(/<span style="(display:block;flex:[^"]*)">/)?.[1] ?? ''
+  const labelStyle = (html: string, title: string) => html.match(new RegExp(`<span style="([^"]*)">${title}</span>`))?.[1] ?? ''
+  const BODY_RULE = 'flex:0 1 auto;max-width:50%'
 
-  it('label + value + titleLines 0이면 라벨은 내용 폭(max-content)·최대 50%·고정(flex 0 0 auto)이다', () => {
-    const style = titleSpan(render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="트리거 활동" value="2026 JTBC 서울 마라톤 Full" />), '트리거 활동')
+  it('label + value + titleLines 0이면 본문 칸이 내용 폭(flex 0 1 auto)·행 폭의 최대 50%이다', () => {
+    const html = render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="트리거 활동" value="2026 JTBC 서울 마라톤 Full" />)
 
-    expect(style).toContain(LABEL_RULE)
-    expect(style).toContain('flex:0 0 auto')
-    expect(style).not.toContain('flex:1 1 auto')
+    expect(bodyStyle(html)).toContain(BODY_RULE)
+    expect(bodyStyle(html)).not.toContain('flex:1 1 0%')
   })
 
-  it('value가 없거나 빈 문자열인 label 행(체크 목록 E)은 줄바꿈을 유지하고 규칙이 켜지지 않는다', () => {
-    const none = titleSpan(render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="배지 받기" />), '배지 받기')
-    const empty = titleSpan(render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="배지 받기" value="" />), '배지 받기')
+  it('값 행 라벨 span에는 폭 규칙을 걸지 않고 기본(flex 1 1 auto, min-width 0)으로 둔다', () => {
+    const style = labelStyle(render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="트리거 활동" value="값" />), '트리거 활동')
 
-    for (const style of [none, empty]) {
-      expect(style).not.toContain('max-content')
-      expect(style).not.toContain('max-width:50%')
-      expect(style).toContain('flex:1 1 auto')
-    }
-  })
-
-  it('titleLines 1·2를 명시한 값 행에는 규칙이 켜지지 않는다', () => {
-    for (const lines of [1, 2] as const) {
-      const style = titleSpan(render(<ListRow tone="flat" titleVariant="label" titleLines={lines} title="라벨" value="값" />), '라벨')
-
-      expect(style).not.toContain('max-content')
-      expect(style).toContain('flex:1 1 auto')
-    }
-  })
-
-  it('titleLines를 안 준 값 행(기본 1줄·스켈레톤 포함)에도 규칙이 켜지지 않는다', () => {
-    const style = titleSpan(render(<ListRow tone="flat" titleVariant="label" title="라벨" value="값" />), '라벨')
-
+    expect(style).toContain('flex:1 1 auto')
+    expect(style).toContain('min-width:0')
     expect(style).not.toContain('max-content')
+    expect(style).not.toContain('max-width')
+  })
+
+  it('value가 없거나 빈 문자열인 label 행(체크 목록 E)은 본문 칸이 기존 그대로라 줄바꿈이 유지된다', () => {
+    for (const value of [undefined, '']) {
+      const html = render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="배지 받기" value={value} />)
+
+      expect(bodyStyle(html)).toContain('flex:1 1 0%')
+      expect(bodyStyle(html)).not.toContain('max-width:50%')
+    }
+  })
+
+  it('titleLines 1·2를 명시한 값 행과 titleLines 기본(스켈레톤 포함) 값 행에는 규칙이 켜지지 않는다', () => {
+    const cases = [
+      <ListRow key="1" tone="flat" titleVariant="label" titleLines={1} title="라벨" value="값" />,
+      <ListRow key="2" tone="flat" titleVariant="label" titleLines={2} title="라벨" value="값" />,
+      <ListRow key="d" tone="flat" titleVariant="label" title="라벨" value="값" />,
+    ]
+    for (const node of cases) {
+      expect(bodyStyle(render(node))).toContain('flex:1 1 0%')
+      expect(bodyStyle(render(node))).not.toContain('max-width:50%')
+    }
+  })
+
+  it('label이 아닌 행(strong·sentence)은 value가 있고 titleLines 0이어도 규칙이 켜지지 않는다', () => {
+    expect(bodyStyle(render(<ListRow title="제목" titleLines={0} value="값" />))).toContain('flex:1 1 0%')
+    expect(bodyStyle(render(<ListRow titleVariant="sentence" title="문장" value="값" />))).toContain('flex:1 1 0%')
   })
 
   it('값 칸은 60% 상한과 오른쪽 정렬을 그대로 유지한다', () => {
