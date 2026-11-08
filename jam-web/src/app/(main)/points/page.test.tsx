@@ -62,6 +62,7 @@ vi.mock('@/components/ui/TopNav', () => ({
 import PointsPage from './page'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import Button from '@/components/ui/Button'
+import { PointHistoryList, type PointHistoryListProps } from '@/components/points/PointHistoryList'
 import { d } from '@/lib/i18n'
 import type { PointHistoryItem } from '@/app/api/points/route'
 
@@ -137,6 +138,8 @@ function walk(node: unknown, visit: (element: ReactElement<Record<string, unknow
   if (!isValidElement(node)) return
   const element = node as ReactElement<Record<string, unknown>>
   visit(element)
+  // 내역 목록은 훅 없는 표시 컴포넌트라 직접 불러 안쪽 버튼(다시 시도·더 보기)까지 걷는다
+  if (element.type === PointHistoryList) walk(PointHistoryList(element.props as unknown as PointHistoryListProps), visit)
   for (const value of Object.values(element.props)) walk(value, visit)
 }
 
