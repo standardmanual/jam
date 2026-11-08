@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SafeImage from '@/components/SafeImage'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
-import { MedalIcon, ChevronRightIcon, PackageIcon } from '@/components/ui/icons'
+import { MedalIcon, PackageIcon } from '@/components/ui/icons'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Card } from '@ds/components/cards/Card'
@@ -1077,13 +1078,13 @@ interface ItemRowProps {
    */
   expiresAt?: string | null
   /**
-   * 잠긴 개체 행(티켓 20261018_1817, 운영 로직 7.3절) — 썸네일은 `LockedTile`(44), 이름 줄은 «잠긴 아이템 배지», 둘째 줄은 등급 칩뿐이다.
+   * 잠긴 개체 행(티켓 20261018_1817, 운영 로직 7.3절) — 썸네일은 `LockedTile`(48), 이름 줄은 «잠긴 아이템 배지», 둘째 줄은 등급 칩뿐이다.
    * 이름·그림·일련번호·만료 칩을 그리지 않는다(`name`·`imageUrl`·`expiresAt`을 읽지 않는다). 칩 «잠김»은 이름에 이미 있어 더하지 않는다.
    */
   locked?: boolean
   /**
-   * 온보딩 퀘스트 3·6단계 「지금 눌러야 할 곳」 펄스(티켓 20260928_1754) — true면 기존
-   * `rounded-2xl` 버튼 className에 `.jam-quest-pulse`를 병합한다(별도
+   * 온보딩 퀘스트 3·6단계 「지금 눌러야 할 곳」 펄스(티켓 20260928_1754) — true면 `ListRow`
+   * 바깥 면(`tone="tint"`, `--radius-2xl`)의 className에 `.jam-quest-pulse`를 병합한다(별도
    * 래퍼 없음, 반경 불일치 없음). 평소 픽업·드랍 목록에서는 전달되지 않는다.
    */
   pulse?: boolean
@@ -1102,65 +1103,59 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
   const showCount = typeof count === 'number' && count > 1
   const expiring = !locked && isRowExpiringSoon(expiresAt)
 
+  // `RarityBadge`는 common이면 null을 돌려준다. 그 요소를 eyebrow에 넘기면 ListRow가 «요소가 있다»고 보고
+  // 빈 줄과 title 위 간격을 만들므로(ItemCandidateRow와 같은 함정), 칩이 실제로 그려질 때만 노드를 넘긴다.
+  const showRarity = rarityValue !== 'common'
+  const eyebrow =
+    showRarity || (expiring && expiresAt) ? (
+      <>
+        {showRarity && <RarityBadge rarity={rarityValue} />}
+        {expiring && expiresAt && (
+          <ListRowChip tone="neutral">
+            <LocalDate iso={expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
+          </ListRowChip>
+        )}
+      </>
+    ) : undefined
+
+  // 개수 알약은 position:absolute라 sr-only 문구가 알약 안에 갇힌다. ×N은 aria-hidden으로 가리고
+  // 스크린리더용 문구(countAriaText)를 덧붙여 «개수 안내 → 이름 → 등급 → 만료» 순서로 읽힌다.
+  // countAriaText가 없으면 aria-hidden을 걸지 않고 ×N을 그대로 읽게 둔다.
+  const leadBadge = showCount ? (
+    countAriaText ? (
+      <>
+        <span aria-hidden="true">×{count}</span>
+        <span className="sr-only">{countAriaText}</span>
+      </>
+    ) : (
+      `×${count}`
+    )
+  ) : undefined
+
   return (
-    <button
+    <ListRow
+      tone="tint"
+      lead={
+        locked ? (
+          <LockedTile size={48} />
+        ) : (
+          <SafeImage
+            src={imageUrl}
+            alt=""
+            width={48}
+            height={48}
+            fallback={<MedalIcon className="w-5 h-5 text-muted" />}
+          />
+        )
+      }
+      leadBadge={leadBadge}
+      eyebrow={eyebrow}
+      title={locked ? d.lockedItem.card.name : name}
+      titleVariant="regular"
+      chevron
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center gap-4 px-4 py-2 rounded-2xl bg-background-secondary${disabled ? '' : ' jam-press'} text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
-    >
-      {/* 카운터 서클의 기준점 — BadgeGridCard의 카운터 필과 같은 이유로 relative를
-          overflow-hidden 밖(아이콘 wrapper)에 둔다: 아이콘 자체에 relative를 걸면
-          overflow-hidden이 모서리에 걸치는 서클을 잘라낸다. */}
-      <div className="relative flex-shrink-0">
-        {locked ? (
-          <div className="w-11 h-11">
-            <LockedTile size={44} />
-          </div>
-        ) : (
-          <div className="w-11 h-11 rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
-            <SafeImage
-              src={imageUrl}
-              alt={name}
-              width={44}
-              height={44}
-              className="w-full h-full object-contain p-0.5"
-              fallback={<MedalIcon className="w-5 h-5 text-muted" />}
-            />
-          </div>
-        )}
-        {showCount && (
-          // BadgeGridCard의 ×N 카운터 필과 같은 색 토큰(bg-surface + border)이지만
-          // 모양은 완전한 원(rounded-full)이고 접두어 없이 숫자만, 위치도 반대 코너
-          // (우측 상단)다 — 사용자 결정(20260908_0217).
-          // w-5 h-5로 폭·높이를 고정한다(min-w+px-1이 아님) — 두 자리 수(최대 보유 슬롯
-          // 50개라 실제로 나온다)에서 폭만 늘어나 알약 모양이 되는 걸 막는다. 인터랙션
-          // 리뷰가 렌더 확인으로 잡아낸 회귀(2026-09-08).
-          <span
-            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface border border-[color:var(--border)] text-[10px] leading-none font-bold text-foreground flex items-center justify-center"
-            aria-hidden="true"
-          >
-            {count}
-          </span>
-        )}
-        {/* 스크린리더용 — aria-label로 버튼 전체를 덮지 않는다. BadgeGridCard.tsx의
-            sr-only 관례와 동일하게 "덧붙이는" 방식이라, count>1이어도 이름·등급·만료 정보가
-            그대로 읽힌다(인터랙션 리뷰 지적 반영). */}
-        {showCount && countAriaText && <span className="sr-only">{countAriaText}</span>}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-base truncate">{locked ? d.lockedItem.card.name : name}</p>
-        {expiring && expiresAt ? (
-          <div className="flex items-center gap-2 mt-1">
-            <RarityBadge rarity={rarityValue} />
-            <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted">
-              <LocalDate iso={expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
-            </p>
-          </div>
-        ) : (
-          <RarityBadge rarity={rarityValue} className="mt-1" />
-        )}
-      </div>
-      <ChevronRightIcon className="w-5 h-5 text-muted shrink-0" />
-    </button>
+      className={pulse ? 'jam-quest-pulse' : undefined}
+    />
   )
 }
