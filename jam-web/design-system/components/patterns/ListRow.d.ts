@@ -42,8 +42,8 @@ export interface ListRowProps
   titleSuffix?: ReactNode;
   /** `strong`(기본, 굵게) · `sentence`(보통, 문장 — 핵심어는 `ListRowEm`) · `label`(보통 muted, 값 행·체크 목록). */
   titleVariant?: 'strong' | 'sentence' | 'label';
-  /** title 줄 수 1~2. 기본은 `sentence` 줄 제한 없음(알림 문장은 잘리지 않는다), 나머지 1줄. 지정하면 넘칠 때 말줄임. `titleSuffix`를 쓰면 `1`을 권장한다. */
-  titleLines?: 1 | 2;
+  /** title 줄 수 0~2. `0`은 줄 제한 없음(값 행 라벨 `label` + `value`는 `0`을 써서 내용 폭 최대 50%로 고정). 기본은 `sentence` 줄 제한 없음(알림 문장은 잘리지 않는다), 나머지 1줄. 지정하면 넘칠 때 말줄임. `titleSuffix`를 쓰면 `1`을 권장한다. */
+  titleLines?: 0 | 1 | 2;
   /** 14px muted 보조 줄. */
   meta?: ReactNode;
   /** meta 줄 수 1~3(기본 1). 넘치면 말줄임. */

@@ -265,6 +265,8 @@ export function ListRow({
   const isMedia = variant === 'media'
   const isSelected = selected === true
   const isLabel = titleVariant === 'label'
+  // 값 칸 렌더 조건과 라벨 폭 규칙이 같은 식을 쓴다(어긋나면 값 없는 행의 라벨이 고정 폭이 된다).
+  const hasValue = value != null && value !== ''
   const interactive = !disabled && !!(href || onClick)
   const hasLead = lead != null
   const hasIndicator = indicator != null
@@ -308,6 +310,9 @@ export function ListRow({
   const titleStyle: CSSProperties = {
     ...clamp(lines),
     minWidth: 0, flex: '1 1 auto',
+    // 값 행(label + value + titleLines 0): 라벨은 내용 폭으로 두고 최대 50%까지만. 값 때문에 꺾이지 않고, 상한을 넘는 긴 라벨만 줄바꿈된다.
+    // 라벨 50%와 값 칸 60%(아래 rightArea)의 합이 100%를 넘어도 값이 먼저 줄어든다.
+    ...(isLabel && hasValue && lines === 0 ? { width: 'max-content', maxWidth: '50%', flex: '0 0 auto' } : null),
     fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)',
     fontWeight: titleVariant === 'strong' ? ROW_WEIGHT.strong : ROW_WEIGHT.regular,
     color: isLabel ? t.muted : undefined,
@@ -383,7 +388,7 @@ export function ListRow({
 
   const rightArea = (
     <>
-      {value != null && value !== '' && (
+      {hasValue && (
         <span
           style={{
             alignSelf: 'center', flexShrink: isLabel ? 1 : 0, minWidth: 0, maxWidth: isLabel ? '60%' : undefined,
