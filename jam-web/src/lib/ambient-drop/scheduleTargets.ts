@@ -24,10 +24,11 @@
  * 다시 한다(실행기는 이 인자를 넘기지 않는다). 넘기지 않으면 동작이 이전과 같다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
-import { fetchAllRows, fetchAllRowsIn } from '@/lib/db/fetchAllRows'
+import { fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import { applyDroppableItemBookFilter, isItemBookDroppable } from '@/lib/itembook/visibility'
 import { resolveAmbientTargetCollections } from './collectionTarget'
 import { pickRandom } from './rarity'
+import { badgeValidityAt, countActiveByPoi, fetchActivePoiIds, fetchActiveSystemDrops } from './targetQueries'
 import type { AmbientDropSkipReason } from './index'
 import type { AmbientDropScheduleSpec } from './scheduleSpec'
 import type { BadgeRarity } from '@/types/database'
@@ -86,11 +87,6 @@ interface PoiRow {
   is_active: boolean
 }
 
-interface ActiveDropRow {
-  poi_id: string
-  id: string
-}
-
 interface BadgeRow {
   id: string
   type: string
@@ -112,18 +108,6 @@ interface BookRow {
 
 const BADGE_COLUMNS = 'id, type, rarity, deleted_at, item_book_id, valid_from, valid_until, drop_excluded'
 
-function validAt(b: { valid_from: string | null; valid_until: string | null }, atMs: number): 'ok' | 'not_yet' | 'expired' {
-  if (b.valid_from && new Date(b.valid_from).getTime() > atMs) return 'not_yet'
-  if (b.valid_until && new Date(b.valid_until).getTime() < atMs) return 'expired'
-  return 'ok'
-}
-
-function countActiveByPoi(rows: ActiveDropRow[]): Map<string, number> {
-  const counts = new Map<string, number>()
-  for (const row of rows) counts.set(row.poi_id, (counts.get(row.poi_id) ?? 0) + 1)
-  return counts
-}
-
 /** 지점 쪽 대상 — 지점 직접 선택이면 지정 id를, 종류+개수면 활성 지점 전체(종류 조건)를 읽는다 */
 async function loadPoiTargets(
   supabase: ServiceClient,
@@ -144,27 +128,16 @@ async function loadPoiTargets(
     }
     if (eligibleIds.length === 0) return { pois: [], excluded }
 
-    const active = await fetchAllRowsIn<ActiveDropRow, string>('poi_drops(active system)', 'id', eligibleIds, (chunk) =>
-      supabase.from('poi_drops').select('poi_id, id').eq('source', 'system').eq('is_available', true).in('poi_id', chunk)
-    )
-    const counts = countActiveByPoi(active)
+    const counts = countActiveByPoi(await fetchActiveSystemDrops(supabase, eligibleIds))
     return { pois: eligibleIds.map((id) => ({ id, activeSystemCount: counts.get(id) ?? 0 })), excluded }
   }
 
   // 종류+개수 — 정기 배포와 같은 조회(`index.ts`)
-  const category = spec.poiCategory
-  const poiRows = await fetchAllRows<{ id: string }>('poi', 'id', () => {
-    let q = supabase.from('poi').select('id').eq('is_active', true)
-    if (category) q = q.eq('category', category)
-    return q
-  })
-  if (poiRows.length === 0) return { pois: [], excluded: [] }
+  const poiIds = await fetchActivePoiIds(supabase, spec.poiCategory)
+  if (poiIds.length === 0) return { pois: [], excluded: [] }
 
-  const active = await fetchAllRows<ActiveDropRow>('poi_drops(active system)', 'id', () =>
-    supabase.from('poi_drops').select('poi_id, id').eq('source', 'system').eq('is_available', true)
-  )
-  const counts = countActiveByPoi(active)
-  return { pois: poiRows.map((p) => ({ id: p.id, activeSystemCount: counts.get(p.id) ?? 0 })), excluded: [] }
+  const counts = countActiveByPoi(await fetchActiveSystemDrops(supabase))
+  return { pois: poiIds.map((id) => ({ id, activeSystemCount: counts.get(id) ?? 0 })), excluded: [] }
 }
 
 interface ItemSide {
@@ -218,7 +191,7 @@ async function loadItemTargets(
         excluded.push({ id, reason: 'badge_without_collection' })
         continue
       }
-      const validity = validAt(b, atMs)
+      const validity = badgeValidityAt(b, atMs)
       if (validity !== 'ok') {
         excluded.push({ id, reason: validity === 'not_yet' ? 'badge_not_yet_valid' : 'badge_expired' })
         continue
@@ -298,7 +271,7 @@ async function loadItemTargets(
   for (const b of badgeRows) {
     if (!b.item_book_id) continue
     if (b.drop_excluded) continue
-    if (validAt(b, atMs) !== 'ok') continue
+    if (badgeValidityAt(b, atMs) !== 'ok') continue
     pool.push({ id: b.id, rarity: b.rarity, itemBookId: b.item_book_id })
   }
   return {

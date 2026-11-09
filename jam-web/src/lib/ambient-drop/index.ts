@@ -12,13 +12,14 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { logEngineDecision } from '@/lib/engine-log'
-import { fetchAllRows } from '@/lib/notifications/batch/shared'
+import { fetchAllRows, fetchAllRowsIn } from '@/lib/notifications/batch/shared'
 import { applyDroppableItemBookFilter } from '@/lib/itembook/visibility'
 import type { AmbientDropConfig } from './config'
 import { getAmbientDropConfig } from './config'
 import { resolveAmbientTargetCollections } from './collectionTarget'
 import { distributePoiSlots } from './placement'
 import { placeAmbientDrops } from './placeAmbientDrops'
+import { badgeValidityAt, countActiveByPoi, fetchActivePoiIds, fetchActiveSystemDrops, type ActiveSystemDropRow } from './targetQueries'
 import {
   fallbackPickBadge,
   pickRandom,
@@ -142,18 +143,14 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   // ── 대상 POI 조회 (카테고리 필터, "전체"면 무필터) ─────────────
   // 20260830_1620: is_active=false(운영 종료 지점)는 시스템이 새로 배치할 대상에서 제외한다.
   // 이미 배치돼 있던 시스템 드랍(source='system')은 건드리지 않는다 — 소급 회수하지 않음.
-  const { data: poiRows, error: poiRowsError } = await fetchAllRows<{ id: string }>('poi', 'id', () => {
-    let q = supabase.from('poi').select('id').eq('is_active', true)
-    if (effectiveCategorySlug) q = q.eq('category', effectiveCategorySlug)
-    return q
-  })
+  // 조회는 날짜 예약과 같은 함수를 쓴다(targetQueries.ts, 티켓 20261001_2130).
+  const { data: allPoiIds, error: poiRowsError } = await fetchActivePoiIds(supabase, effectiveCategorySlug, { fetchAllRows })
     .then((data) => ({ data, error: null as { message: string } | null }))
     .catch((err: unknown) => ({
-      data: [] as { id: string }[],
+      data: [] as string[],
       error: { message: err instanceof Error ? err.message : String(err) },
     }))
   if (poiRowsError) console.error('[ambient-drop] poi 조회 오류:', poiRowsError)
-  const allPoiIds = poiRows.map((p) => p.id)
 
   if (allPoiIds.length === 0) {
     const result: AmbientDropBatchResult = { ...baseResult, eligiblePoiCount: 0, spawned: 0, reason: 'no_eligible_poi' }
@@ -162,24 +159,15 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   }
 
   // ── 현재 활성 시스템 드랍 카운트 (POI별 — max_active_per_poi 초과분 배제) ──
-  // poi_id는 이 집계 자체가 POI별 카운트라 중복이 정상 — 유니크 tie-break가 아니다.
-  // poi_drops의 실제 PK는 id(migrations/004_phase7_user_drops.sql:5)이므로 select에 포함시켜
-  // orderBy: 'id'로 안정 정렬한다(select에 없는 컬럼으로 정렬하면 안정 정렬이 보장되지 않는다).
-  const { data: activeRows, error: activeRowsError } = await fetchAllRows<{ poi_id: string; id: string }>(
-    'poi_drops(active system)',
-    'id',
-    () => supabase.from('poi_drops').select('poi_id, id').eq('source', 'system').eq('is_available', true)
-  )
+  // 조회·집계는 날짜 예약과 같은 함수를 쓴다(targetQueries.ts — 정렬 키 설명도 거기에 있다).
+  const { data: activeRows, error: activeRowsError } = await fetchActiveSystemDrops(supabase, undefined, { fetchAllRows, fetchAllRowsIn })
     .then((data) => ({ data, error: null as { message: string } | null }))
     .catch((err: unknown) => ({
-      data: [] as { poi_id: string; id: string }[],
+      data: [] as ActiveSystemDropRow[],
       error: { message: err instanceof Error ? err.message : String(err) },
     }))
   if (activeRowsError) console.error('[ambient-drop] poi_drops(active system) 조회 오류:', activeRowsError)
-  const activeByPoi = new Map<string, number>()
-  for (const row of activeRows) {
-    activeByPoi.set(row.poi_id, (activeByPoi.get(row.poi_id) ?? 0) + 1)
-  }
+  const activeByPoi = countActiveByPoi(activeRows)
 
   const candidatePoiIds = allPoiIds.filter((id) => (activeByPoi.get(id) ?? 0) < config.max_active_per_poi)
 
@@ -222,11 +210,11 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
     }))
   if (badgeRowsError) console.error('[ambient-drop] badges(item) 조회 오류:', badgeRowsError)
 
-  const now = ranAt
+  // 유효기간은 문자열이 아니라 시각(ms)으로 비교한다 — 날짜 예약과 같은 함수(targetQueries.ts)
+  const nowMs = new Date(ranAt).getTime()
   const badgesByRarity: Record<BadgeRarity, { id: string }[]> = { common: [], rare: [], epic: [], mystic: [] }
   for (const b of badgeRows) {
-    if (b.valid_from && b.valid_from > now) continue
-    if (b.valid_until && b.valid_until < now) continue
+    if (badgeValidityAt(b, nowMs) !== 'ok') continue
     if (!b.rarity) continue  // 등급 없는 배지(무한레벨형)는 등급별 드랍 테이블에 자리가 없다
     badgesByRarity[b.rarity].push({ id: b.id })
   }
