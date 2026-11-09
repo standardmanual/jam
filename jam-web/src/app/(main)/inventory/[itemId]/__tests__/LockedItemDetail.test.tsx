@@ -73,9 +73,6 @@ const OPENED: LockedItemOpenPayload = {
   },
 }
 
-const SPENT_LINE = '1,200 포인트를 냈어요'
-const AWARDED_LINE = '배지 보상으로 300 포인트를 받았어요'
-
 /** 주석을 뺀 소스 — 주석에 적힌 설명 때문에 검사가 걸리지 않게 한다 */
 function sourceCode(): string {
   const source = readFileSync(fileURLToPath(new URL('../LockedItemDetail.tsx', import.meta.url)), 'utf8')
@@ -147,7 +144,7 @@ describe('LockedItemDetail — 열기 전', () => {
     const html = render()
     expect(html).not.toContain('<img')
     expect(html).not.toContain('/badges/')
-    expect(html).not.toContain(d.lockedItem.detail.opened.badgeLink)
+    expect(html).not.toContain('배지 상세 보기')
     expect(html).not.toContain('컬렉션 ')
     expect(html).not.toContain('트라이브 ')
   })
@@ -261,11 +258,11 @@ describe('LockedItemDetail — 포인트 블록', () => {
 })
 
 describe('LockedItemDetail — 열린 뒤', () => {
-  function openedHtml(overrides: Partial<LockedItemOpenPayload> = {}): string {
-    return render({}, { 2: { ...OPENED, ...overrides }, 3: true })
+  function openedHtml(): string {
+    return render({}, { 2: { ...OPENED }, 3: true })
   }
 
-  it('열면 이름·설명·컬렉션·트라이브와 «배지 상세 보기» 링크가 보이고 «잠김» 칩과 «열기» 버튼이 없다', () => {
+  it('열면 이름·설명·컬렉션이 보이고 «잠김» 칩과 보이는 «열기» 버튼이 없다', () => {
     const html = openedHtml()
     const text = visibleText(html)
     expect(text).toContain('새벽의 첫 바퀴')
@@ -273,12 +270,22 @@ describe('LockedItemDetail — 열린 뒤', () => {
     // 컬렉션은 일반 아이템 배지 상세와 같은 행(이름 + 쉐브론, 컬렉션 상세로 연결)이다
     expect(text).toContain('새벽 컬렉션')
     expect(html).toContain('href="/collections/c1"')
-    expect(text).toContain('트라이브 이른 새')
-    expect(html).toContain(`/badges/badge-1?item=${BASE.itemId}&amp;from=inventory`)
     expect(text).not.toContain(d.lockedItem.detail.chip)
     // 접힌 포인트 카드 안의 버튼은 남아 있어도 보이지 않고(aria-hidden) 눌리지 않는다(inert)
     expect(html).toMatch(/<div class="grid [^"]*grid-rows-\[0fr\][^"]*" aria-hidden="true" inert="">/)
     expect(html.match(/<button/g) ?? []).toHaveLength(1)
+  })
+
+  it('열린 뒤에는 트라이브·낸 포인트·받은 포인트 줄과 «배지 상세 보기» 링크를 두지 않는다(2026-11-09 사용자 지시)', () => {
+    const html = openedHtml()
+    const text = visibleText(html)
+    expect(text).not.toContain('트라이브')
+    expect(text).not.toContain('포인트를 냈어요')
+    expect(text).not.toContain('포인트를 받았어요')
+    expect(text).not.toContain('배지 상세 보기')
+    expect(html).not.toContain('/badges/')
+    // 다른 배지 상세와 같은 획득 정보 카드는 그대로 있다
+    expect(text).toContain(d.badges.earnInfoTitle)
   })
 
   it('포인트 블록은 접히고 보조기기에서 숨는다', () => {
@@ -287,44 +294,9 @@ describe('LockedItemDetail — 열린 뒤', () => {
     expect(html).toContain('grid-rows-[0fr]')
   })
 
-  it('모자람 안내와 열린 뒤의 낸·받은 포인트 문장은 «N 포인트» 조각만 point-text로 칠한다', () => {
+  it('모자람 안내는 «N 포인트» 조각만 point-text로 칠한다', () => {
     const short = render({ pointsRequired: 1200, pointBalance: 800 })
     expect(short).toMatch(/<span class="text-point-text"[^>]*>400 포인트<\/span>가 모자라서/)
-    const opened = openedHtml()
-    expect(opened).toMatch(/<span class="text-point-text"[^>]*>1,200 포인트<\/span>를 냈어요/)
-    expect(opened).toMatch(/배지 보상으로 <span class="text-point-text"[^>]*>300 포인트<\/span>를 받았어요/)
-  })
-
-  it('낸 포인트와 받은 포인트를 따로 두 줄로 보이고 낸 포인트가 먼저다', () => {
-    const text = visibleText(openedHtml())
-    expect(text).toContain(SPENT_LINE)
-    expect(text).toContain(AWARDED_LINE)
-    // 한 문장으로 합쳐 순이익처럼 읽히게 하지 않는다 — 두 줄은 각자 완결된 문장이다
-    expect(text.indexOf(SPENT_LINE) + SPENT_LINE.length).toBeLessThan(text.indexOf(AWARDED_LINE))
-  })
-
-  it('두 줄은 컬렉션·트라이브 뒤, «배지 상세 보기» 링크 앞에 놓인다', () => {
-    const text = visibleText(openedHtml())
-    expect(text.indexOf('트라이브 이른 새')).toBeLessThan(text.indexOf(SPENT_LINE))
-    expect(text.indexOf(AWARDED_LINE)).toBeLessThan(text.indexOf(d.lockedItem.detail.opened.badgeLink))
-  })
-
-  it('낸 포인트만 있으면 받은 포인트 줄이 없다', () => {
-    const text = visibleText(openedHtml({ pointsAwarded: 0 }))
-    expect(text).toContain(SPENT_LINE)
-    expect(text).not.toContain('포인트를 받았어요')
-  })
-
-  it('받은 포인트만 있으면 낸 포인트 줄이 없다(포인트 없이 열린 개체)', () => {
-    const text = visibleText(openedHtml({ pointsSpent: 0 }))
-    expect(text).toContain(AWARDED_LINE)
-    expect(text).not.toContain('포인트를 냈어요')
-  })
-
-  it('둘 다 0이면 두 줄 모두 없다', () => {
-    const text = visibleText(openedHtml({ pointsSpent: 0, pointsAwarded: 0 }))
-    expect(text).not.toContain('포인트를 냈어요')
-    expect(text).not.toContain('포인트를 받았어요')
   })
 
   it('열기 응답의 item이 null이면 전환하지 않고 열기 전 화면 그대로다(서버 페이지에 맡긴다)', () => {
@@ -359,10 +331,8 @@ describe('LockedItemDetail — 문구와 소스', () => {
     expect(text).toContain('획득 경로')
   })
 
-  it('낸 포인트·받은 포인트 문구는 열기를 포인트의 원인으로 읽히게 하지 않는다', () => {
-    expect(t(d.lockedItem.detail.opened.spent, { points: '1,200' })).toBe(SPENT_LINE)
-    expect(t(d.lockedItem.detail.opened.points, { points: '300' })).toBe(AWARDED_LINE)
-    expect(AWARDED_LINE).not.toMatch(/열어서|열면/)
+  it('열린 뒤 문구 키는 컬렉션 줄 하나뿐이다(트라이브·낸 포인트·받은 포인트·상세 링크 키는 지웠다)', () => {
+    expect(Object.keys(d.lockedItem.detail.opened)).toEqual(['collection'])
   })
 
   it('쓰지 않게 된 채우기 문구 키가 없다', () => {

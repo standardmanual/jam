@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ds/components/buttons/Button'
 import { Card } from '@ds/components/cards/Card'
@@ -32,8 +31,8 @@ import { tPoint } from '@/lib/i18n/tPoint'
  *    0이면 «포인트 없이 열 수 있어요» 한 줄만 두고 막지 않는다. null(정책값을 못 읽음)이면 블록을 그리지 않고 버튼도 그대로 둔다 — 서버가 판정한다.
  *    게이지·분수·막대처럼 모으는 양으로 읽히는 표현은 쓰지 않는다. 포인트는 내는 값이다.
  *  - 제자리 전환: 타일이 그림으로(크로스페이드, 그림은 scale .96 → 1), 제목과 설명은 `SwapText`, 포인트 블록은 높이와 투명도로 접힌다.
- *    «잠김» 칩은 사라지고 등급 칩은 그대로다. 열린 뒤에는 일련번호·컬렉션·트라이브·낸 포인트·받은 포인트와 «배지 상세 보기» 링크를 보여 준다(배지 상세를 다시 만들지 않는다).
- *    열기는 획득이 아니라서(운영 로직 7.2절) 낸 포인트와 배지 보상으로 받은 포인트를 두 줄로 나눈다. 열기 문구에는 «획득»을 쓰지 않지만, 받은 일시·경로를 말하는 «획득 정보» 카드는 다른 배지 상세와 같은 «획득» 표현이다(2026-11-09 사용자 결정).
+ *    «잠김» 칩은 사라지고 등급 칩은 그대로다. 열린 뒤에는 일반 아이템 배지 상세와 같이 일련번호·획득 정보 카드·컬렉션 행만 보여 준다(트라이브·낸 포인트·받은 포인트·«배지 상세 보기» 링크는 두지 않는다, 2026-11-09 사용자 지시).
+ *    열기는 획득이 아니라서(운영 로직 7.2절) 열기 문구에는 «획득»을 쓰지 않지만, 받은 일시·경로를 말하는 «획득 정보» 카드는 다른 배지 상세와 같은 «획득» 표현이다(2026-11-09 사용자 결정).
  *  - 열기 응답의 `item`이 null이면(열기는 확정, 정보 조회만 실패) 전환 없이 `router.refresh()`로 서버 페이지의 리다이렉트에 맡긴다.
  *  - 이용 정지(403)는 일반 실패가 아니라 info 토스트다. 버튼은 미리 막지 않고 서버 응답으로 판단한다.
  *  - 서버가 `insufficient_points`로 거절하면 응답의 두 값을 화면 상태에 바로 넣어 모자람 상태로 바꾸고, info 토스트 뒤 `router.refresh()`로 서버 값을 다시 읽는다.
@@ -264,46 +263,19 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
           </div>
         </Card>
 
-        {view ? (
-          <div className="flex flex-col gap-5">
-            {/* 속한 컬렉션 — 일반 상세와 같은 행(타일 lead + 이름 + 쉐브론, 컬렉션 상세로 연결) */}
-            {view.item.collection && (
-              <ListRow
-                href={`/collections/${view.item.collection.id}`}
-                leadShape="tile"
-                lead={<BookIcon className="h-5 w-5 text-foreground" />}
-                title={view.item.collection.name}
-                chevron
-              />
-            )}
-            <div className="flex flex-col gap-3">
-              {view.item.tribe && (
-                <p className="m-0 break-keep wrap-break-word text-base text-foreground">{t(d.lockedItem.detail.opened.tribe, { name: view.item.tribe.name })}</p>
-              )}
-              {view.payload.pointsSpent > 0 && (
-                <p className="m-0 break-keep wrap-break-word text-base text-foreground">
-                  {tPoint(d.lockedItem.detail.opened.spent, { points: view.payload.pointsSpent.toLocaleString('ko-KR') })}
-                </p>
-              )}
-              {view.payload.pointsAwarded > 0 && (
-                <p className="m-0 break-keep wrap-break-word text-base text-foreground">
-                  {tPoint(d.lockedItem.detail.opened.points, { points: view.payload.pointsAwarded.toLocaleString('ko-KR') })}
-                </p>
-              )}
-            </div>
-          </div>
-        ) : null}
+        {/* 속한 컬렉션 — 일반 상세와 같은 행(타일 lead + 이름 + 쉐브론, 컬렉션 상세로 연결) */}
+        {view?.item.collection && (
+          <ListRow
+            href={`/collections/${view.item.collection.id}`}
+            leadShape="tile"
+            lead={<BookIcon className="h-5 w-5 text-foreground" />}
+            title={view.item.collection.name}
+            chevron
+          />
+        )}
 
-        {view ? (
-          <Link
-            href={`/badges/${view.payload.badgeId}?item=${encodeURIComponent(itemId)}&from=inventory`}
-            className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)] underline underline-offset-2"
-          >
-            {d.lockedItem.detail.opened.badgeLink}
-          </Link>
-        ) : required === null ? (
-          openButton(false)
-        ) : null}
+        {/* 필요 포인트를 읽지 못해 포인트 카드가 없을 때만 맨 아래에 전체 폭 «열기» 버튼을 둔다 */}
+        {!view && required === null && openButton(false)}
       </div>
     </div>
   )
