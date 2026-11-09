@@ -67,6 +67,10 @@ export const LIST_ROW_STATIC_CSS = `
 .ds-list-row-lead img{display:block;width:100%;height:100%;object-fit:cover}
 .ds-list-row-chevron{transition:transform var(--duration-fast,250ms) var(--ease-smooth-out,cubic-bezier(0.22,1,0.36,1))}
 .ds-list-row-chevron[data-expanded="true"]{transform:rotate(180deg)}
+.ds-list-row-value-nowrap{white-space:nowrap}
+@media (max-width: 340px){
+.ds-list-row-value-nowrap{font-size:var(--text-sm)!important}
+}
 .ds-list-row-trail>:is(button,a,[role="button"]){position:relative}
 .ds-list-row-trail>:is(button,a,[role="button"])::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,var(--touch-target-min,44px));height:max(100%,var(--touch-target-min,44px));transform:translate(-50%,-50%)}
 @media (prefers-reduced-motion: reduce){
@@ -212,6 +216,12 @@ export interface ListRowProps extends Omit<HTMLAttributes<HTMLElement>, 'title' 
   chips?: ReactNode
   footer?: ReactNode
   value?: ReactNode
+  /**
+   * 값 행(label + value)에서 값을 한 줄로 고정한다 — 값 칸의 폭 제한(60%)을 풀고 줄바꿈하지 않는다.
+   * `2026-11-07 PM 05:38:33`처럼 중간에서 꺾이면 안 되는 일시 값에 쓴다(2026-11-10 사용자 지시, 티켓 20261110_0931).
+   * 라벨도 줄바꿈하지 않고, 340px 이하에서는 값 글자를 한 단계(text-sm) 줄여 한 줄에 맞춘다. 생략하면 지금과 같다.
+   */
+  valueNoWrap?: boolean
   chevron?: boolean
   trail?: ReactNode
   selected?: boolean
@@ -250,6 +260,7 @@ export function ListRow({
   chips,
   footer,
   value,
+  valueNoWrap = false,
   chevron = false,
   trail,
   selected,
@@ -333,7 +344,7 @@ export function ListRow({
   // 값 행(label + value + titleLines 0): 본문 칸(행의 직접 자식)을 라벨 내용 폭으로 두고 행 폭의 50%까지만 늘린다.
   // 라벨은 값 때문에 꺾이지 않고, 50%를 넘는 긴 라벨만 줄바꿈된다. 라벨 50%와 값 칸 60%(아래 rightArea)의 합이 100%를 넘어도 값이 먼저 줄어든다.
   const bodyStyle: CSSProperties = isLabel && hasValue && lines === 0
-    ? { display: 'block', flex: '0 1 auto', maxWidth: '50%', minWidth: 0 }
+    ? { display: 'block', flex: '0 1 auto', maxWidth: '50%', minWidth: 0, whiteSpace: valueNoWrap ? 'nowrap' : undefined }
     : { display: 'block', flex: '1 1 0%', minWidth: 0 };
 
   const body = (
@@ -393,11 +404,12 @@ export function ListRow({
     <>
       {hasValue && (
         <span
+          className={isLabel && valueNoWrap ? 'ds-list-row-value-nowrap' : undefined}
           style={{
-            alignSelf: 'center', flexShrink: isLabel ? 1 : 0, minWidth: 0, maxWidth: isLabel ? '60%' : undefined,
+            alignSelf: 'center', flexShrink: isLabel && !valueNoWrap ? 1 : 0, minWidth: 0, maxWidth: isLabel && !valueNoWrap ? '60%' : undefined,
             // 값 행 규칙(본문 칸이 내용 폭이라 남는 폭을 채우지 않음)에서는 값을 행 오른쪽 끝으로 민다. 안 밀면 값이 라벨 바로 옆에 붙는다.
             marginLeft: isLabel && lines === 0 ? 'auto' : undefined,
-            whiteSpace: isLabel ? 'normal' : 'nowrap', textAlign: isLabel ? 'right' : undefined,
+            whiteSpace: isLabel && !valueNoWrap ? 'normal' : 'nowrap', textAlign: isLabel ? 'right' : undefined,
             fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: ROW_WEIGHT.strong,
           }}
         >

@@ -375,7 +375,8 @@ describe('활동 행(FeedCard) — ListRow', () => {
   })
 
   it('칩이 없으면 칩 줄을, 부제가 없으면 부제 줄을 그리지 않는다 — 빈 줄·여백이 없다', () => {
-    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너', rarity: 'common' })])
+    // 컴포넌트가 함께 내보내는 <style>의 규칙은 마크업이 아니라서 걷어 내고 본다
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너', rarity: 'common' })]).replace(/<style[\s\S]*?<\/style>/g, '')
 
     expect(html).not.toContain('margin-top:var(--spacing-4)')
     expect(html).not.toContain('font-size:var(--text-sm)')

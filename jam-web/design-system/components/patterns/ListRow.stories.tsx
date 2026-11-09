@@ -255,6 +255,19 @@ export const DLongValue: Story = {
   ),
 };
 
+export const DValueNoWrap: Story = {
+  name: 'D 값 — 일시 값 한 줄 고정(valueNoWrap)',
+  decorators: [(Story: React.ComponentType) => <Frame width={320}><Story /></Frame>],
+  render: () => (
+    <>
+      <Caption>valueNoWrap은 값 칸의 60% 상한을 풀고 라벨과 값을 모두 한 줄로 둔다. 340px 이하 폭에서는 값 글자를 한 단계 줄여 한 줄에 맞춘다.</Caption>
+      <ListRow tone="flat" separator titleVariant="label" titleLines={0} title="획득 일시" value="2026-11-07 PM 05:38:33" valueNoWrap />
+      <Caption>valueNoWrap이 없으면 긴 값은 값 칸(최대 60%)에서 줄바꿈된다.</Caption>
+      <ListRow tone="flat" titleVariant="label" titleLines={0} title="획득 일시" value="2026-11-07 PM 05:38:33" />
+    </>
+  ),
+};
+
 /** 체크 목록의 «아직 안 함·지금 할 차례» 표지: 빈 원, 선은 --muted. 완료만 체크 아이콘이다. */
 const EmptyCircle = () => (
   <span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: 'var(--radius-full)', border: '1.5px solid var(--muted)', boxSizing: 'border-box' }} />

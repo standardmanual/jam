@@ -29,6 +29,7 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
           titleLines={0}
           title={d.badges.earnedAt}
           value={<LocalDate iso={e.earned_at} stamp />}
+          valueNoWrap
         />
         {e.triggered_by_activity_name && (
           <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={e.triggered_by_activity_name} />
@@ -49,6 +50,7 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
             titleLines={0}
             title={d.badges.triggerDate}
             value={<LocalDate iso={e.triggered_by_activity_date} stamp />}
+            valueNoWrap
           />
         )}
       </div>

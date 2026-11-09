@@ -42,7 +42,8 @@ describe('ListRow 슬롯 배치', () => {
   })
 
   it('title·meta·chips가 비면(undefined) 줄도 여백도 그리지 않는다', () => {
-    const html = render(<ListRow lead="L" eyebrow="라벨" />)
+    // 컴포넌트가 함께 내보내는 <style>의 규칙은 마크업이 아니라서 걷어 내고 본다
+    const html = render(<ListRow lead="L" eyebrow="라벨" />).replace(/<style[\s\S]*?<\/style>/g, '')
 
     expect(html).not.toContain('font-weight:700')
     expect(html).not.toContain('font-size:var(--text-sm)')
@@ -143,6 +144,21 @@ describe('값 행 본문 칸 폭', () => {
 
     expect(html).toContain('max-width:60%')
     expect(html).toContain('text-align:right')
+  })
+
+  it('valueNoWrap이면 값 칸의 60% 상한을 풀고 줄바꿈 없이 한 줄로 둔다', () => {
+    const html = render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="획득 일시" value="2026-11-07 PM 05:38:33" valueNoWrap />)
+    const valueStyle = html.match(/<span class="ds-list-row-value-nowrap" style="([^"]*)">2026-11-07 PM 05:38:33<\/span>/)?.[1] ?? ''
+
+    expect(valueStyle).toContain('white-space:nowrap')
+    expect(valueStyle).not.toContain('max-width')
+    expect(valueStyle).toContain('flex-shrink:0')
+    expect(valueStyle).toContain('text-align:right')
+    // 라벨 칸도 줄바꿈하지 않고, 값 칸에는 좁은 폭에서 글자를 줄이는 클래스가 붙는다
+    expect(html).toMatch(/max-width:50%;min-width:0;white-space:nowrap/)
+    expect(html).toContain('class="ds-list-row-value-nowrap"')
+    // 기본값은 그대로다
+    expect(render(<ListRow tone="flat" titleVariant="label" titleLines={0} title="라벨" value="값" />)).toContain('white-space:normal')
   })
 })
 
