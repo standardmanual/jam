@@ -41,9 +41,9 @@ export default async function CombinePage() {
 
   // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 공개 기간 안(공개 시각 ≤ 지금 < 종료 시각)인 레시피만
   // 공개로 취급한다. 공개 전·종료된 레시피는 목록·슬롯·보상 미리보기에서 모두 빠진다(티켓 20261001_1157·
-  // 20261002_0710). 슬롯·배지 조회는 아래 publicRecipeIds를 쓰므로 이 필터를 그대로 따라온다.
-  // 운영자(티켓 20261001_1159)는 공개 전 레시피까지 본다 — 그래서 `publicRecipeRows`·`publicRecipeIds`는
-  // 운영자에게는 «공개 전 레시피까지 포함한 목록»이다(이름은 일반 유저 기준으로 남아 있다). 종료된 레시피는
+  // 20261002_0710). 슬롯·배지 조회는 아래 visibleRecipeIds를 쓰므로 이 필터를 그대로 따라온다.
+  // 운영자(티켓 20261001_1159)는 공개 전 레시피까지 본다 — 그래서 `visibleRecipeRows`·`visibleRecipeIds`는
+  // «보는 사람에게 보이는 목록»이다(운영자는 공개 전 포함, 일반 유저는 공개 중만). 종료된 레시피는
   // 운영자에게도 없다(티켓 20261002_0710 G7): 지난 레시피에 「공개 예정」이 붙는 오류를 막고, 시험 믹스의
   // 목적(공개 전 확인)과 맞춘다.
   // 서버 정렬 순서는 그대로 둔다: 공개 뒤 일반 유저가 보게 될 순서와 같아야 한다.
@@ -66,17 +66,17 @@ export default async function CombinePage() {
     if (windowsError) console.error('[combine/page] 결과 배지 공개 기간 조회 실패', windowsError)
     resultBadgeWindows = (windowsRaw ?? []) as { id: string; valid_until: string | null }[]
   }
-  const publicRecipeRows = filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)
-  const publicRecipeIds = publicRecipeRows.map((r) => r.id)
+  const visibleRecipeRows = filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)
+  const visibleRecipeIds = visibleRecipeRows.map((r) => r.id)
 
   // 유저 화면이 레시피 선택형 플로우로 바뀌면서, 레시피는 슬롯 목록과 슬롯별 후보 배지
   // 상세(이름·이미지)까지 함께 내려줘야 슬롯 채우기 화면을 그릴 수 있다.
   const { data: slotsFullRaw, error: slotsError } =
-    publicRecipeIds.length > 0
+    visibleRecipeIds.length > 0
       ? await service
           .from('combination_recipe_slots')
           .select('*')
-          .in('recipe_id', publicRecipeIds)
+          .in('recipe_id', visibleRecipeIds)
           .order('slot_order', { ascending: true })
       : { data: [] as CombinationRecipeSlotRow[], error: null }
   if (slotsError) console.error('[combine/page] combination_recipe_slots 조회 실패', slotsError)
@@ -85,7 +85,7 @@ export default async function CombinePage() {
   // 슬롯 후보 배지 + 보상 배지를 한 번에 조회한다 — 보상 배지는 레시피 목록 미리보기
   // (아이콘+포인트)와 결과 캐러셀(BadgeRevealCarousel, name·image_url·rarity·description
   // 필요) 양쪽에 쓰인다(티켓 20260917_1655).
-  const rewardBadgeIds = [...new Set(publicRecipeRows.flatMap((r) => r.reward_badge_ids))]
+  const rewardBadgeIds = [...new Set(visibleRecipeRows.flatMap((r) => r.reward_badge_ids))]
   const allowedBadgeIds = [...new Set([...slotRows.flatMap((s) => s.allowed_badge_ids), ...rewardBadgeIds])]
   const { data: allowedBadgesRaw, error: allowedBadgesError } =
     allowedBadgeIds.length > 0
@@ -146,7 +146,7 @@ export default async function CombinePage() {
     slotsByRecipe.set(slot.recipe_id, list)
   }
 
-  const publicRecipes: RecipeWithSlots[] = publicRecipeRows.map((r) => ({
+  const publicRecipes: RecipeWithSlots[] = visibleRecipeRows.map((r) => ({
     ...r,
     // 공개 전(`scheduled`) 레시피에만 공개 시각을 넣는다 — 이미 공개된 레시피에 「공개 예정」이 붙지 않게
     // 서버가 `recipeReleaseState` 기준으로 정해 내려준다(일반 유저는 공개 전 행 자체가 없다).
