@@ -46,7 +46,7 @@ export default function Footer() {
     // 페이지 배경과 다른 톤으로 튀어 보인다는 피드백으로 bg-transparent로 되돌렸다.
     // 2026-11-08 사용자 요청으로 네거티브로 바꿨다: 반전 면(--background-inverse) 위에
     // 글자는 반전 면 보조 글자(--muted-on-inverse), 로고는 흰색(--snow, FooterLogo)이다.
-    <footer className="relative z-10 flex flex-col items-start justify-center gap-6 pt-6 pb-0 px-4 bg-background-inverse">
+    <footer data-jam-footer className="relative z-10 flex flex-col items-start justify-center gap-6 pt-6 pb-0 px-4 bg-background-inverse">
       <span className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] whitespace-pre-line">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 저작권 줄 위. 캡션 톤을 그대로 따르고
           밑줄만 붙여 링크임을 알린다(과한 강조 금지).
