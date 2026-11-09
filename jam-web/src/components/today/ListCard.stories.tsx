@@ -70,7 +70,7 @@ function tileCard(overrides: Partial<ListCardView> = {}): ListCardView {
     label: d.todayCard.badgeSpotlight,
     title: '성수동 골목 배지가 열렸어요',
     subtitle: '골목을 걸으며 모아 보세요',
-    facts: ['기간 상시', '보상 배지 8개'],
+    facts: ['상시', '배지 8개'],
     description: '걸음마다 하나씩 얻을 수 있는 배지예요',
     href: '/badges',
     tiles: tiles(8),
@@ -386,7 +386,7 @@ export const RecipeRevealTiles: Story = {
           title: '성수동 탐험가 레시피가 열렸어요',
           subtitle: undefined,
           description: undefined,
-          facts: ['재료 4개', '보상 300 포인트 · 배지 1개'],
+          facts: ['재료 4개', '300 포인트 · 배지 1개'],
           href: '/combine',
           tiles: [
             { name: '성수동 지도', imageUrl: SAMPLE[0], earned: true },
@@ -405,7 +405,7 @@ export const RecipeRevealTiles: Story = {
           title: '열 칸 레시피가 열렸어요',
           subtitle: undefined,
           description: undefined,
-          facts: ['재료 10개', '보상 배지 1개'],
+          facts: ['재료 10개', '배지 1개'],
           href: '/combine',
           tiles: tiles(10, (index) => index % 3 === 0),
         })}
@@ -521,8 +521,8 @@ export const TileFactLines: Story = {
   render: () => (
     <Column width={W360}>
       <Case caption="0줄 — 그 줄만 생략" view={tileCard({ facts: undefined })} />
-      <Case caption="1줄" view={tileCard({ facts: ['기간 상시'] })} />
-      <Case caption="2줄" view={tileCard({ facts: ['기간 상시', '보상 배지 8개'] })} />
+      <Case caption="1줄" view={tileCard({ facts: ['상시'] })} />
+      <Case caption="2줄" view={tileCard({ facts: ['상시', '배지 8개'] })} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
@@ -818,7 +818,7 @@ export const RankingTrackedVsPreview: Story = {
 
 const LONG_TITLE = '성수동에서 한강까지 이어지는 가을 밤 러닝 코스 배지 모음이 열렸어요'
 const LONG_SUBTITLE = '골목과 강변을 따라 걸으며 하나씩 모아 보는 배지로 가을 밤을 채워 보세요'
-const LONG_FACTS = ['한강 이북 둘레길 완주자를 위한 특별 컬렉션 시리즈', '보상 1,200,000 포인트 · 배지 12개 · 쿠폰']
+const LONG_FACTS = ['한강 이북 둘레길 완주자를 위한 특별 컬렉션 시리즈', '1,200,000 포인트 · 배지 12개 · 쿠폰']
 const LONG_DESCRIPTION = '한 번에 다 모으지 않아도 되고 천천히 걸을수록 더 많이 얻어요'
 
 const WORST_TILES = tileCard({

@@ -262,7 +262,7 @@ export const FactLines: Story = {
   render: () => (
     <Column width={W360}>
       <Case caption="0줄 — 그 줄만 생략" view={{ ...MISSION, facts: undefined }} />
-      <Case caption="1줄" view={{ ...MISSION, facts: ['기간 상시'] }} />
+      <Case caption="1줄" view={{ ...MISSION, facts: ['상시'] }} />
       <Case caption="2줄" view={MISSION} />
     </Column>
   ),
@@ -374,7 +374,7 @@ export const NoImage: Story = {
 // ─── 6. 긴 글 ─────────────────────────────────────────────────────────────
 
 const LONG_TITLE = '한강 둔치를 따라 달리는 가을 밤 러닝 챌린지에 함께할 러너를 모집해요'
-const LONG_FACTS = ['한강 이북 둘레길 완주자를 위한 특별 컬렉션 시리즈', '보상 1,200,000 포인트 · 배지 12개 · 쿠폰']
+const LONG_FACTS = ['한강 이북 둘레길 완주자를 위한 특별 컬렉션 시리즈', '1,200,000 포인트 · 배지 12개 · 쿠폰']
 const LONG_SUBTITLE = '한강 둔치를 따라 달리는 가을 밤 러닝 챌린지에 함께할 러너를 모집하니 놓치지 말고 지금 바로 신청해 보세요'
 const LONG_DESCRIPTION =
   '완주하면 한정 배지와 포인트를 드려요. 코스는 여의도에서 반포까지이고, 중간에 쉬어 갈 수 있는 보급 지점이 세 곳 있어요. 비가 오면 일정이 바뀔 수 있어요.'

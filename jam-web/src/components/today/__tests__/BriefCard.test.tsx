@@ -156,7 +156,7 @@ describe('BriefCard — 칩 줄', () => {
     expect(render({ regionLabel: undefined })).not.toContain('truncate')
   })
 
-  it('드랍은 지역 핀을 칩 줄에 그리지 않는다(필수 정보 「지역 ○○」 줄이 같은 값을 낸다)', () => {
+  it('드랍은 지역 핀을 칩 줄에 그리지 않는다(필수 정보의 지역 줄이 같은 값을 낸다)', () => {
     const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['한강공원'] })
     expect(html).not.toContain('truncate')
     expect(html.match(/한강공원/g)).toHaveLength(1)
