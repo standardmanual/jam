@@ -210,9 +210,9 @@ describe('BriefCard — 설명문', () => {
   const DESCRIPTION = '「따뜻한 한 냄비」 레시피가 공개됐어요. 재료 세 칸을 채워 믹스하면 한 단계 높은 등급이 나올 수 있어요.'
   const DESCRIPTION_P = `<p class="text-sm text-muted line-clamp-3 break-keep break-words">${DESCRIPTION}</p>`
 
-  it('윗줄 아래에 카드 안쪽 폭 전체로 14px text-muted·3줄 말줄임, 위 간격 8px로 그린다', () => {
+  it('윗줄 아래에 글자 열 시작선(왼쪽 76px = 썸네일 64 + 간격 12)에 맞춰 14px text-muted·3줄 말줄임, 위 간격 8px로 그린다', () => {
     const html = render({ description: DESCRIPTION })
-    expect(html).toContain(`<div class="mt-2">${DESCRIPTION_P}</div>`)
+    expect(html).toContain(`<div class="mt-2 pl-19">${DESCRIPTION_P}</div>`)
     // 윗줄(썸네일·글자 열·›)이 먼저 끝난 뒤에 온다
     expect(html.indexOf('›')).toBeLessThan(html.indexOf(DESCRIPTION_P))
     expect(html.indexOf('flex-1 min-w-0')).toBeLessThan(html.indexOf(DESCRIPTION_P))
@@ -234,6 +234,7 @@ describe('BriefCard — 설명문', () => {
   it('설명문이 없으면 줄과 간격이 함께 사라진다(빈 값·undefined가 같은 출력)', () => {
     const html = render()
     expect(html).not.toContain('mt-2')
+    expect(html).not.toContain('pl-19')
     expect(html).not.toContain('line-clamp-3')
     expect(render({ description: undefined })).toBe(html)
     expect(render({ description: '' })).toBe(html)
