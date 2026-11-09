@@ -8,7 +8,8 @@ import { canEndItem, cancelToast, endToast } from '@/lib/admin/opsInbox/executeV
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsCancelItem } from './OpsCancelItem'
-import { approveToastMessage, postDecision } from './decisionClient'
+import { postDecision } from './decisionClient'
+import { planDecidedSteps, planRevertResult, planToastResultSteps, type ResultStep } from './itemResultFlow'
 import { OpsEndItem } from './OpsEndItem'
 import { OpsItemActions } from './OpsItemActions'
 import type { ItemImageProduction } from './useItemImageProduction'
@@ -49,15 +50,17 @@ export function useOpsItemResultHandlers({ bundleId, onRefresh }: OpsItemResultO
   const router = useRouter()
   const refresh = () => (onRefresh ? onRefresh() : router.refresh())
 
-  const revert = async (itemId: string) => {
-    const result = await postDecision(bundleId, { action: 'revert', itemId })
-    if (result.ok) {
-      toast.success('수정을 되돌렸어요')
-      refresh()
-      return
+  /** 판정 함수(`itemResultFlow.ts`)가 돌려준 단계를 순서대로 실행한다. */
+  const run = (steps: ResultStep[], afterToast?: () => void) => {
+    for (const step of steps) {
+      if (step.type === 'refresh') refresh()
+      else if (step.type === 'afterToast') afterToast?.()
+      else toast[step.level](step.message)
     }
-    toast.error(result.error)
-    if (result.status === 409) refresh()
+  }
+
+  const revert = async (itemId: string) => {
+    run(planRevertResult(await postDecision(bundleId, { action: 'revert', itemId })))
   }
 
   const handleSaved = (itemId: string) => {
@@ -74,25 +77,17 @@ export function useOpsItemResultHandlers({ bundleId, onRefresh }: OpsItemResultO
   }
 
   const handleDecided = (kind: 'approve' | 'reject', afterToast?: () => void, data: Record<string, unknown> = {}) => {
-    toast.success(kind === 'approve' ? approveToastMessage(data) : '반려했어요')
-    afterToast?.()
-    refresh()
+    run(planDecidedSteps(kind, data), afterToast)
   }
 
   /** 공개 전 취소가 끝났을 때. 결과 문장은 `cancelToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
   const handleCancelled = (data: Record<string, unknown>) => {
-    const toastResult = cancelToast(data)
-    toast.success(toastResult.message)
-    if (toastResult.logWarning) toast.warning(toastResult.logWarning)
-    refresh()
+    run(planToastResultSteps(cancelToast(data)))
   }
 
   /** 지금 종료가 끝났을 때. 결과 문장은 `endToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
   const handleEnded = (data: Record<string, unknown>) => {
-    const toastResult = endToast(data)
-    toast.success(toastResult.message)
-    if (toastResult.logWarning) toast.warning(toastResult.logWarning)
-    refresh()
+    run(planToastResultSteps(endToast(data)))
   }
 
   /** 항목은 「종료」로 바뀌었는데 자원 종료를 되돌리지 못했을 때. 항목이 바뀌어 창이 사라지므로 서버 문장을 토스트로 보인다. */
