@@ -45,6 +45,19 @@ describe('StravaDisconnectedCard — 홈 끊김 카드', () => {
     expect(button).toContain('w-full')
   })
 
+  it('제목은 «동기화가 끊겼어요»이고 칩과 제목이 한 줄(가로 flex, gap 8px)에 놓인다', () => {
+    expect(copy.card.title).toBe('동기화가 끊겼어요')
+    expect(html).toMatch(
+      /<div class="flex flex-row gap-2"><span class="self-start"[^>]*>Strava 동기화<\/span><p class="[^"]*font-bold[^"]*">동기화가 끊겼어요<\/p><\/div>/,
+    )
+  })
+
+  it('버튼은 건너뛰기와 같은 작은 크기(xs)다', () => {
+    const button = /<button[^>]*>(?:(?!<\/button>).)*<\/button>/.exec(html)?.[0] ?? ''
+    expect(button).toContain('min-height:calc(44px * var(--scale-compact))')
+    expect(button).toContain('font-size:var(--text-xs)')
+  })
+
   it('본문은 왼쪽 정렬이고 한국어 줄바꿈 클래스를 갖는다', () => {
     expect(html).toContain('text-left')
     expect(html).toContain('break-keep')
