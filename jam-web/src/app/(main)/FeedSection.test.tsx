@@ -25,7 +25,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import FeedSection, { DetailSheet, EventIcon, eventLabelText, feedTarget, feedTitle, goToFeedTarget, matchesFilter } from './FeedSection'
+import FeedSection, { DetailSheet, EventIcon, eventLabelText, feedImageOf, feedTarget, feedTitle, goToFeedTarget, matchesFilter } from './FeedSection'
 import {
   BookIcon,
   CheckCircleIcon,
@@ -631,3 +631,68 @@ describe('피드 카드를 누르면 가는 곳 (feedTarget) — 바텀시트 �
     vi.unstubAllGlobals()
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 대표 이미지 — 미션·컬렉션 이벤트는 그 대상의 이미지를 쓰고, 활동 묶음 카드는 이미지 영역이 없다 (2026-11-09 사용자 지시)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('피드 행의 대표 이미지 (feedImageOf)', () => {
+  it('배지 → 미션 → 컬렉션 순으로 있는 값을 쓰고 없으면 null이다', () => {
+    expect(feedImageOf({ badge_image_url: '/b.png', mission_image_url: '/m.png' })).toBe('/b.png')
+    expect(feedImageOf({ mission_image_url: '/m.png' })).toBe('/m.png')
+    expect(feedImageOf({ collection_image_url: '/c.png' })).toBe('/c.png')
+    expect(feedImageOf({ badge_image_url: '', mission_image_url: null })).toBeNull()
+    expect(feedImageOf({})).toBeNull()
+  })
+
+  it('미션 참가 행은 미션 대표 이미지를 이미지 칸에 그리고, 이미지가 없으면 과녁 아이콘을 그린다', () => {
+    const withImage = renderFeed([row('mission_joined', { mission_id: 'm1', mission_title: '첫 산행', mission_image_url: 'https://example.com/m1.png' })])
+    const without = renderFeed([row('mission_joined', { mission_id: 'm2', mission_title: '첫 산행' })])
+
+    expect(withImage).toContain('m1.png')
+    expect(without).not.toContain('<img')
+    expect(without).toContain('<svg')
+  })
+
+  it('컬렉션 등급 완성 행은 컬렉션 대표 이미지를 쓴다', () => {
+    const html = renderFeed([row('collection_tier_completed', { collection_id: 'b1', collection_name: '한강 컬렉션', rarity: 'rare', collection_image_url: 'https://example.com/book.png' })])
+
+    expect(html).toContain('book.png')
+  })
+
+  it('상세 시트도 같은 이미지를 쓴다', () => {
+    const html = renderSheet(row('mission_joined', { mission_id: 'm1', mission_title: '첫 산행', mission_image_url: 'https://example.com/m1.png' }))
+
+    expect(html).toContain('m1.png')
+  })
+})
+
+describe('활동 묶음 카드 — 이미지 영역 없음 (2026-11-09 사용자 지시)', () => {
+  const A = row('badge_earned', { badge_id: 'b1', badge_name: '아침 러너', badge_image_url: '/a.png' }, { id: 'g-1', strava_activity_id: 77 })
+  const B = row('item_dropped', { badge_id: 'b2', badge_name: '파편', badge_image_url: null }, { id: 'g-2', strava_activity_id: 77 })
+
+  it('묶음 헤더에는 활동 아이콘 타일(lead)이 없고 글만 있다', () => {
+    // `ListRow`가 자기 CSS를 `<style>`로 함께 내보낸다 — 그 안의 클래스 이름은 화면 요소가 아니라서 걷고 본다
+    const html = renderToStaticMarkup(<FeedSection feedItems={[A, B]} activityNames={{ '77': '아침 한강 러닝' }} />).replace(/<style[\s\S]*?<\/style>/g, '')
+    const header = html.split('class="t-acc-panel"')[0]
+
+    expect(header).not.toContain('ds-list-row-lead')
+    expect(header).toContain('아침 한강 러닝')
+    expect(visibleText(header)).toContain(d.feed.groupBadges.replace('{count}', '2'))
+    // 헤드라인 아래 썸네일 줄(footer)은 그대로다
+    expect(header).toContain('inline-flex items-center gap-1')
+  })
+
+  it('묶음을 펼친 안의 개별 행은 이미지 칸을 그대로 둔다(이미지가 없으면 아이콘)', () => {
+    const html = renderToStaticMarkup(<FeedSection feedItems={[A, B]} />).replace(/<style[\s\S]*?<\/style>/g, '')
+    const panel = html.slice(html.indexOf('class="t-acc-panel"'))
+
+    expect((panel.match(/ds-list-row-lead/g) ?? []).length).toBe(2)
+  })
+
+  it('활동 묶음이 아닌 단건 행(이미지 없음)은 지금처럼 아이콘 칸을 그린다', () => {
+    const html = renderFeed([row('item_dropped', { badge_name: '핫도그', poi_name: '쌍용마트' })]).replace(/<style[\s\S]*?<\/style>/g, '')
+
+    expect(html).toContain('ds-list-row-lead')
+  })
+})
+

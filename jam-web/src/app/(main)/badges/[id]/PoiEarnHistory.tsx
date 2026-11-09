@@ -48,7 +48,7 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
             titleVariant="label"
             titleLines={0}
             title={d.badges.triggerDate}
-            value={<LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />}
+            value={<LocalDate iso={e.triggered_by_activity_date} korean={{ year: true, time: true }} />}
           />
         )}
       </div>
@@ -75,10 +75,8 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between">
-        <p className="text-[15px] font-bold text-foreground break-keep wrap-break-word text-balance">{d.badges.visitHistoryTitle}</p>
-        <span className="text-[13px] text-[var(--muted)]">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
-      </div>
+      {/* 제목만 둔다 — 오른쪽의 «총 N회»는 걷었다(2026-11-09 사용자 지시, 횟수는 히어로 카드의 방문 횟수 칩이 말한다) */}
+      <p className="text-[15px] font-bold text-foreground break-keep wrap-break-word text-balance">{d.badges.visitHistoryTitle}</p>
 
       {/* 최신(첫 번째) 기록 — 카드 형식 */}
       <Card>

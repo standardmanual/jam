@@ -530,10 +530,7 @@ export const ko = {
     conditionTitle: '획득 조건',
     /** 체크인 배지 획득 조건 — 이 한 문장이 유일한 정본이다(20260826_004).
      *  이전에는 배지 상세·컬렉션 힌트·빈 상태에 6가지 버전이 흩어져 있었다. */
-    conditionCheckinBody: '연결된 장소를 지나는 활동이 기록되면 자동으로 획득돼요. 체크인할 때마다 이력이 쌓여요.',
 
-    earnHistoryTitle: '획득 이력',
-    earnHistoryCount: '총 {count}회',
     /** 체크인 배지 상세 — 같은 장소를 다시 지날 때마다 쌓이는 기록. 아이템 배지의 «획득 이력»과 제목이 다르다(티켓 20261018_1817) */
     visitHistoryTitle: '방문 기록',
     /** 방문 기록에서 가장 오래된 행에 붙는 칩 */
@@ -546,7 +543,7 @@ export const ko = {
     triggerActivity: '트리거 활동',
     triggerDistance: '활동 거리',
     triggerDistanceValue: '{km} km',
-    triggerDate: '활동 일자',
+    triggerDate: '활동 일시',
     viewOnStrava: 'Strava에서 보기',
 
     connectedLocationTitle: '연결 위치',
@@ -575,7 +572,8 @@ export const ko = {
     notEarnedTitle: '아직 획득하지 못한 배지예요',
     notEarnedBody: '조건을 달성하면 자동으로 획득돼요',
 
-    checkinSafetyNotice: '이 배지는 표시된 위치 반경 {radius}m 안을 지나기만 해도 체크인돼요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
+    /** 체크인 배지 상세 하단 안내(2026-11-09 사용자 지시로 줄임). `{radius}`는 체크인 반경(m) */
+    checkinSafetyNotice: '표시된 위치 {radius}m 안을 지나기만 해도 체크인돼요. 가기 어려운 곳이면 알려 주세요.',
 
     filterActivityAll: '전체',
     filterRarityAll: '전체',
@@ -606,13 +604,6 @@ export const ko = {
     combineButton: '믹스하기',
     // §1.3 "인벤토리" 항목 — 내부 명칭 「슬롯」은 사용자 노출 화면에 쓰지 않는다 (티켓 20260915_2243)
     // 20260916_0844: 슬래시 앞뒤 공백 제거(§3 표기 규칙, "Lv.3" 등과 통일)
-    slotsDetail: '{used}/{max}개 사용 중 · {remaining}개 남음',
-    /**
-     * 남은 칸 1~3개일 때(티켓 20261018_0056). `{used}/{max}개 사용 중 · ` 뒤의 `{remaining}개만 남았어요` 구간만 굵게 보여 주려고
-     * 앞부분과 강조 구간을 나눠 둔다. 색은 더하지 않고 대비와 굵기로만 구분한다.
-     */
-    slotsDetailLowLead: '{used}/{max}개 사용 중 · ',
-    slotsDetailLowEmphasis: '{remaining}개만 남았어요',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
 
@@ -620,9 +611,8 @@ export const ko = {
     // 2026-11-06 사용자 결정: 안내는 한 줄만 남기고 원인·해결 경로 문장과 «드랍하기» 버튼을 걷었다. 방법은 화면의 다른 곳(장착·믹스·드랍)이 알려 준다
     fullNoticeBody: '인벤토리가 꽉 찼어요.',
 
-    obtainedAt: '획득일',
-    expiresAt: '만료일',
-    expiresNone: '없음',
+    obtainedAt: '획득 일시',
+    expiresAt: '만료 일시',
     expiringSuffix: ' 만료',
     rarity: '희귀도',
     expiringSoonTitle: '만료 임박',

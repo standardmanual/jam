@@ -16,6 +16,7 @@ import ItemEarnHistory from './ItemEarnHistory'
 import BadgeHeroSection from './BadgeHeroSection'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeConditionCard from './BadgeConditionCard'
+import VisitCountChip from '@/components/ui/VisitCountChip'
 import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeConditionText'
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
@@ -428,7 +429,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             {!hasEarned && (
               <Card className="text-center">
                 <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-                <p className="text-xs text-muted mt-1">{d.badges.notEarnedBody}</p>
               </Card>
             )}
           </div>
@@ -500,14 +500,17 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           }
         />
 
-        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
+        {/* 방문 횟수 칩 — 아이템 배지의 등급 칩과 같은 자리(카드 안 이름 바로 위)에 «×N»을 둔다. 2회 이상일 때만 그린다(2026-11-09 사용자 지시) */}
+        <BadgeHeroSection
+          badge={badgeRow}
+          hasEarned={hasEarned}
+          backgroundAnimation={badgeCardAnimation}
+          chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined}
+        />
 
-        {/* info-section */}
+        {/* info-section — 체크인 배지는 «획득 조건» 카드를 두지 않는다(2026-11-09 사용자 지시) */}
         <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-          {/* 획득 조건 문구는 ko.ts의 conditionCheckinBody 한 곳에서 관리한다(20260826_004) —
-              이전에는 이 하드코딩과 i18n 키가 서로 다른 내용으로 갈라져 있었다. */}
-          <BadgeConditionCard text={d.badges.conditionCheckinBody} />
           <PoiEarnHistory poiEarns={checkinEarns.map((e) => ({
             id: e.id,
             earned_at: e.earned_at,
@@ -534,7 +537,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           {!hasEarned && (
             <Card className="text-center">
               <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-              <p className="text-xs text-muted mt-1">{d.badges.notEarnedBody}</p>
             </Card>
           )}
 
@@ -662,7 +664,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   titleVariant="label"
                   titleLines={0}
                   title={d.badges.triggerDate}
-                  value={<LocalDate iso={earned.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />}
+                  value={<LocalDate iso={earned.triggered_by_activity_date} korean={{ year: true, time: true }} />}
                 />
               )}
             </div>
@@ -678,7 +680,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {!hasEarned && (
           <Card className="text-center">
             <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-            <p className="text-xs text-muted mt-1">{d.badges.notEarnedBody}</p>
           </Card>
         )}
       </div>

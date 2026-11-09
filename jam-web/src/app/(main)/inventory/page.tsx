@@ -4,13 +4,12 @@ import Link from 'next/link'
 import { InventoryRow, InventoryItemRow, BadgeRow } from '@/types/database'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import QuestBagGrid from './QuestBagGrid'
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import TopNav from '@/components/ui/TopNav'
 import { PackageIcon } from '@/components/ui/icons'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
-import { isInventorySlotsLow } from '@/lib/inventory/slots'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -92,23 +91,8 @@ export default async function InventoryPage() {
             {d.inventory.combineButton}
           </Link>
         </div>
-        {/* 슬롯 프로그레스 */}
-        <ProgressBar
-          percent={Math.min(100, (usedSlots / maxSlots) * 100)}
-          height={12}
-          labelType="none"
-        />
-        {/* 20261018_0056: 남은 칸 1~3개는 줄 전체를 --foreground로 올리고 «N개만 남았어요» 구간만 굵게 한다. 새 색·카드 없음 */}
-        {isInventorySlotsLow(remainingSlots) ? (
-          <p className="mt-1 text-sm text-foreground break-keep wrap-break-word">
-            {t(d.inventory.slotsDetailLowLead, { used: usedSlots, max: maxSlots })}
-            <span className="font-bold">{t(d.inventory.slotsDetailLowEmphasis, { remaining: remainingSlots })}</span>
-          </p>
-        ) : (
-          <p className="mt-1 text-sm text-[var(--muted)] break-keep wrap-break-word">
-            {t(d.inventory.slotsDetail, { used: usedSlots, max: maxSlots, remaining: remainingSlots })}
-          </p>
-        )}
+        {/* 슬롯 사용량 — 컬렉션 상세의 진행도 바와 같은 모양(바 오른쪽에 «사용/전체» 수치, 바 아래 문장 없음, 2026-11-09 사용자 지시) */}
+        <ProgressCountBar percent={Math.min(100, (usedSlots / maxSlots) * 100)} current={usedSlots} total={maxSlots} />
 
         {/* 20260912_1940: 슬롯 포화 상시 안내 — 가득 찼을 때만 노출, 카드형 인셋(edge-to-edge 금지).
             20261105_1953: 홈 막힘 카드와 같은 어두운 반전 면(--background-inverse + --snow).

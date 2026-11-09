@@ -3,11 +3,12 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ActivityFeedRow } from '@/types/database'
 import ProfileClient, { type ProfileClientProfile } from '../profile/ProfileClient'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
+import { attachFeedImages } from '@/lib/activity-feed/attachImages'
 import { isDropRowLocked, lockedDropFeedMeta, type DropRowLockInfo } from '@/lib/activity-feed/lockedDrop'
 import { fetchCapsuleIssuedItemIds } from '@/lib/activity-feed/capsuleItems'
 import { getWallet } from '@/lib/points'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
-import { getMyChapter, getPublicChapter } from '@/lib/chapter/read'
+import { getMyChapter, getMyTribeName, getPublicChapter } from '@/lib/chapter/read'
 import type { MyChapterLineData, PublicChapterLineData } from '@/components/chapter/ChapterLine'
 import { d, t } from '@/lib/i18n'
 
@@ -79,6 +80,8 @@ export default async function UserProfilePage({ params }: Props) {
   // 내 진행은 `capsuleInitial`처럼 내 프로필에서만 조회·전달한다(타인에게는 조회도 prop도 없어 RSC 페이로드에 실리지 않는다).
   const myChapterPromise = isOwnProfile ? getMyChapter(service, user.id) : Promise.resolve(undefined)
   const publicChapterPromise = isOwnProfile ? Promise.resolve(undefined) : getPublicChapter(service, subjectId)
+  // 내 챕터 줄 앞에 붙는 내 트라이브 이름(2026-11-09 사용자 지시). 읽지 못하면 null이라 챕터만 그려진다.
+  const myTribeNamePromise = isOwnProfile ? getMyTribeName(service, user.id) : Promise.resolve(undefined)
 
   // ─── 통계 (팔로워/팔로잉 + isFollowing) ──────────────────
   const [
@@ -88,6 +91,7 @@ export default async function UserProfilePage({ params }: Props) {
     capsuleInitial,
     myChapter,
     publicChapterResult,
+    myTribeName,
   ] = await Promise.all([
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', subjectId),
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
@@ -97,6 +101,7 @@ export default async function UserProfilePage({ params }: Props) {
     capsulePromise,
     myChapterPromise,
     publicChapterPromise,
+    myTribeNamePromise,
   ])
 
   if (followerCountResult.error) console.error('[[username]/page] 팔로워 카운트 조회 실패', followerCountResult.error)
@@ -111,7 +116,7 @@ export default async function UserProfilePage({ params }: Props) {
   // 점수는 응답에 없고, 내 프로필은 챕터 번호만 내린다(막대·다음 챕터는 그리지 않는다, 티켓 20261031_1806). 다른 유저에게는 진행 필드 자체를 만들지 않는다.
   const chapterInitial: MyChapterLineData | null =
     myChapter?.ok && myChapter.chapterNo !== null
-      ? { chapterNo: myChapter.chapterNo }
+      ? { chapterNo: myChapter.chapterNo, tribeName: myTribeName ?? null }
       : null
   const publicChapter: PublicChapterLineData | null = publicChapterResult?.ok
     ? { tribeName: publicChapterResult.tribe?.name ?? null, chapterNo: publicChapterResult.chapterNo }
@@ -346,7 +351,8 @@ export default async function UserProfilePage({ params }: Props) {
     }
   }
 
-  const allItems = [...feedItems, ...legacyItems]
+  // 미션·컬렉션 이벤트 행에 그 미션·컬렉션의 대표 이미지를 붙인다(2026-11-09 사용자 지시, `attachFeedImages`). 조회가 실패해도 행은 그대로다.
+  const allItems = await attachFeedImages([...feedItems, ...legacyItems])
   // 20260824_006 — 표시·정렬 기준을 created_at으로 통일한다. event_at을 쓰면 정렬
   // 순서와 화면에 보이는 상대시간이 서로 모순될 수 있다(표시값과 정렬 키가 달라서).
   allItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())

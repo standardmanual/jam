@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getMyChapter, getPublicChapter } from '../read'
+import { getMyChapter, getMyTribeName, getPublicChapter } from '../read'
 
 const USER = '11111111-1111-4111-8111-111111111111'
 const TRIBE_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -341,3 +341,30 @@ describe('읽지 못함은 «챕터 없음»과 구분된다', () => {
     expect(await getPublicChapter(client, USER)).toEqual(FAILED)
   })
 })
+
+describe('getMyTribeName — 내 챕터 줄 앞에 붙는 트라이브 이름 (2026-11-09 사용자 지시)', () => {
+  it('내 트라이브 이름만 돌려준다', async () => {
+    const { client, calls } = fakeClient({ users: userTribe(TRIBE_A) })
+    expect(await getMyTribeName(client, USER)).toBe('트라이브 A')
+    // 점수·챕터 표는 읽지 않는다
+    expect(calls.map((c) => c.table)).toEqual(['users'])
+  })
+
+  it('트라이브를 고르지 않았으면 null이다', async () => {
+    const { client } = fakeClient({ users: userTribe(null) })
+    expect(await getMyTribeName(client, USER)).toBeNull()
+  })
+
+  it('읽지 못하면 던지지 않고 null이며 console.error를 남긴다', async () => {
+    const { client } = fakeClient({ users: { data: null, error: { message: 'boom' } } })
+    expect(await getMyTribeName(client, USER)).toBeNull()
+    expect(errorSpy).toHaveBeenCalled()
+  })
+
+  it('getMyChapter의 응답 키는 그대로다(점수·진행 계약) — 트라이브 키가 섞이지 않는다', async () => {
+    const { client } = fakeClient({ user_chapters: userChapter(3, 2500), chapter_definitions: definitions })
+    const result = await getMyChapter(client, USER)
+    expect(Object.keys(result).sort()).toEqual(['chapterNo', 'nextChapterNo', 'ok', 'progress'])
+  })
+})
+

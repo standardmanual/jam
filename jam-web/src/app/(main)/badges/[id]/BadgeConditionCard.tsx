@@ -26,7 +26,7 @@ interface BadgeConditionCardProps {
    * **optional이다** — 표기할 조건이 없으면 넘기지 않거나 `null`을 넘기고,
    * 그러면 `text` 한 줄만 그린다. 그 경로가 실제로 쓰이는 곳:
    * 미션 보상(「'X' 미션을 완료하면…」) · 어드민 수동 발급 · 레지스트리가 모르는 키 ·
-   * 체크인 배지(`conditionCheckinBody`) · 어드민 미리보기.
+   * 어드민 미리보기. (체크인 배지 상세는 2026-11-09부터 이 카드를 두지 않는다.)
    */
   spec?: string | null
 }

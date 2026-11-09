@@ -27,7 +27,6 @@ import {
   XCircleIcon,
   PuzzleIcon,
   InboxIcon,
-  ActivityIcon,
 } from '@/components/ui/icons'
 
 const PAGE_SIZE = 20
@@ -442,7 +441,7 @@ export function DetailSheet({
 
   const meta = item.metadata as Record<string, string | number | null>
   const rarity = meta.rarity ? String(meta.rarity) : null
-  const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
+  const badgeImage = feedImageOf(meta)
   const title = feedTitle(item)
   const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
   const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
@@ -549,6 +548,18 @@ export function DetailSheet({
   )
 }
 
+/**
+ * 피드 행의 대표 이미지 — 배지 이벤트는 배지 그림, 미션 이벤트는 미션 대표 이미지, 컬렉션 이벤트는 컬렉션 대표 이미지다
+ * (`lib/activity-feed/attachImages.ts`가 미션·컬렉션 이미지를 붙인다, 2026-11-09 사용자 지시). 없으면 null이고 카드는 폴백 아이콘을 그린다.
+ */
+export function feedImageOf(meta: Record<string, unknown>): string | null {
+  for (const key of ['badge_image_url', 'mission_image_url', 'collection_image_url']) {
+    const value = meta[key]
+    if (typeof value === 'string' && value.length > 0) return value
+  }
+  return null
+}
+
 function FeedCard({
   item,
   onClick,
@@ -562,7 +573,7 @@ function FeedCard({
   separator?: boolean
 }) {
   const meta = item.metadata as Record<string, string | number | boolean | null>
-  const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
+  const badgeImage = feedImageOf(meta)
   const title = feedTitle(item)
   const sub = (() => {
     if (item.event_type === 'item_dropped') {
@@ -807,7 +818,7 @@ function ActivityGroupCard({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
-        lead={<ActivityIcon className="w-5 h-5 text-foreground" />}
+        // 활동 묶음 카드는 이미지 영역(활동 아이콘 타일)을 두지 않고 글만 보인다(2026-11-09 사용자 지시). 썸네일은 아래 footer에 있다.
         // 이름이 없으면 eyebrow를 주지 않는다 — ListRow가 시간을 제목 줄 오른쪽으로 옮긴다.
         eyebrow={activityName || undefined}
         time={formatRelativeTime(items[0].created_at)}

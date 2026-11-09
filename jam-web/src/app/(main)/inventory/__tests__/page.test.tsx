@@ -172,12 +172,12 @@ describe('인벤토리 페이지 — 잠긴 개체는 이름·그림이 서버�
 })
 
 /**
- * 남은 칸 표시 — 세 갈래 (티켓 20261018_0056, 채원 사전 판정)
- *  - 4개 이상: 평소 줄(--muted), 카드 없음
- *  - 1~3개: «N개만 남았어요» 줄(--foreground, 그 구간만 굵게), 카드 없음
- *  - 0개: 평소 줄 + 안내 카드(본문에 장착·믹스·드랍)
+ * 슬롯 사용량 표시 (티켓 20261018_0056, 2026-11-09 사용자 지시로 바꿈)
+ *  - 컬렉션 상세의 진행도 바와 같은 모양: 바(높이 16px) 오른쪽에 «사용/전체» 수치. 바 아래 문장(«N/50개 사용 중 · N개 남음»,
+ *    «N개만 남았어요»)은 없다. 남은 칸이 적을 때의 강조도 없다.
+ *  - 0개: 한 줄 안내 카드(본문에 장착·믹스·드랍)는 그대로다.
  */
-describe('인벤토리 페이지 — 남은 칸 표시', () => {
+describe('인벤토리 페이지 — 슬롯 사용량 표시', () => {
   beforeEach(() => {
     state.inventory = null
     state.gridProps = null
@@ -188,30 +188,30 @@ describe('인벤토리 페이지 — 남은 칸 표시', () => {
     return { id: 'inv-1', used_slots: used, max_slots: max, inventory_items: [inventoryItem('item-ok', OK_BADGE)] }
   }
 
-  it('남은 칸이 4개 이상이면 평소 줄이고 강조도 카드도 없다', async () => {
-    state.inventory = withUsed(46)
+  it.each([46, 47, 49, 50])('사용 %i개이면 바 오른쪽에 «%i/50» 수치만 보이고 바 아래 문장이 없다', async (used) => {
+    state.inventory = withUsed(used)
     const html = await render()
-    expect(html).toContain('46/50개 사용 중 · 4개 남음')
+    expect(html).toContain(`>${used}/50</span>`)
+    // 바 아래 문장과 남은 칸 강조는 없다
+    expect(html).not.toContain('개 사용 중')
+    expect(html).not.toContain('개 남음')
     expect(html).not.toContain('개만 남았어요')
     expect(html).not.toContain('드랍하기')
   })
 
-  it.each([3, 2, 1])('남은 칸이 %i개이면 «N개만 남았어요»만 굵게 하고 줄을 foreground로 올리며 카드는 없다', async (remaining) => {
-    state.inventory = withUsed(50 - remaining)
+  it('컬렉션 상세의 진행도 바와 같은 부품이다(바 16px + 13px 굵은 link 색 수치)', async () => {
+    state.inventory = withUsed(46)
     const html = await render()
-    expect(html).toContain(`<span class="font-bold">${remaining}개만 남았어요</span>`)
-    expect(html).toContain(`${50 - remaining}/50개 사용 중 · `)
-    expect(html).not.toContain('개 남음')
-    // 줄 전체의 색은 --foreground이고 새 색(warning 등)은 쓰지 않는다
-    expect(html).toMatch(/<p class="mt-1 text-sm text-foreground[^"]*">/)
-    expect(html).not.toContain('--warning')
-    expect(html).not.toContain('인벤토리가 꽉 찼어요.')
+    expect(html).toContain('height:16px')
+    expect(html).toMatch(/<span style="color:var\(--link\);font-size:13px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums">46\/50<\/span>/)
+    // 수치는 바 오른쪽(같은 줄, 바 다음)에 있다
+    expect(html.indexOf('height:16px')).toBeLessThan(html.indexOf('>46/50</span>'))
   })
 
-  it('남은 칸이 0개이면 평소 줄(0개 남음)에 한 줄 안내 카드를 더한다 (2026-11-06 사용자 결정: 문구 한 줄, 버튼 없음)', async () => {
+  it('남은 칸이 0개이면 수치(50/50) 아래에 한 줄 안내 카드를 더한다 (2026-11-06 사용자 결정: 문구 한 줄, 버튼 없음)', async () => {
     state.inventory = withUsed(50)
     const html = await render()
-    expect(html).toContain('50/50개 사용 중 · 0개 남음')
+    expect(html).toContain('>50/50</span>')
     expect(html).not.toContain('개만 남았어요')
     expect(d.inventory.fullNoticeBody).toBe('인벤토리가 꽉 찼어요.')
     expect(html).toContain('인벤토리가 꽉 찼어요.')

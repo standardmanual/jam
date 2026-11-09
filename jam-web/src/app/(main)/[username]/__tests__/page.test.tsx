@@ -83,6 +83,8 @@ const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>
 const getCapsuleStatusMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
 const getMyChapterMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
 const getPublicChapterMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
+/** 내 트라이브 이름(내 챕터 줄 앞에 붙는다, 2026-11-09 사용자 지시) */
+const getMyTribeNameMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<string | null>>())
 
 // 테이블별 응답 — 모르는 테이블은 빈 결과. strava_connections는 읽히면 토큰 행을 돌려준다.
 function singleResponse(table: string) {
@@ -159,6 +161,7 @@ vi.mock('@/lib/capsule/capsule', () => ({
 vi.mock('@/lib/chapter/read', () => ({
   getMyChapter: (client: unknown, userId: string) => getMyChapterMock(client, userId),
   getPublicChapter: (client: unknown, userId: string) => getPublicChapterMock(client, userId),
+  getMyTribeName: (client: unknown, userId: string) => getMyTribeNameMock(client, userId),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -238,6 +241,8 @@ beforeEach(() => {
   getMyChapterMock.mockResolvedValue(MY_CHAPTER)
   getPublicChapterMock.mockReset()
   getPublicChapterMock.mockResolvedValue(PUBLIC_CHAPTER)
+  getMyTribeNameMock.mockReset()
+  getMyTribeNameMock.mockResolvedValue(null)
 })
 
 describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지', () => {
@@ -528,7 +533,7 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     expect(getMyChapterMock).toHaveBeenCalledTimes(1)
     expect(getMyChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
     expect(getPublicChapterMock).not.toHaveBeenCalled()
-    expect(props.chapterInitial).toEqual({ chapterNo: 7 })
+    expect(props.chapterInitial).toEqual({ chapterNo: 7, tribeName: null })
     expect('publicChapter' in props).toBe(false)
     // 응답의 ok 표지 같은 내부 모양은 화면으로 넘기지 않는다
     expect('ok' in (props.chapterInitial as object)).toBe(false)
@@ -540,7 +545,33 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
 
     const props = await renderPage('target')
 
-    expect(props.chapterInitial).toEqual({ chapterNo: 50 })
+    expect(props.chapterInitial).toEqual({ chapterNo: 50, tribeName: null })
+  })
+
+  it('(l) 내 프로필: 내 트라이브 이름을 내 계정으로 읽어 챕터 줄에 함께 내리고, 타인 프로필은 부르지 않는다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    getMyTribeNameMock.mockResolvedValue('새벽러너스')
+
+    const mine = await renderPage('target')
+
+    expect(getMyTribeNameMock).toHaveBeenCalledTimes(1)
+    expect(getMyTribeNameMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+    expect(mine.chapterInitial).toEqual({ chapterNo: 7, tribeName: '새벽러너스' })
+
+    getMyTribeNameMock.mockClear()
+    state.loginUserId = 'someone-else'
+    await renderPage('target')
+    expect(getMyTribeNameMock).not.toHaveBeenCalled()
+  })
+
+  it('(l) 내 프로필: 챕터가 없으면(퀘스트 전) 트라이브가 있어도 줄을 그리지 않는다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    getMyTribeNameMock.mockResolvedValue('새벽러너스')
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, nextChapterNo: null, progress: null })
+
+    const props = await renderPage('target')
+
+    expect(props.chapterInitial).toBeNull()
   })
 
   it('(l) 내 프로필: 퀘스트 전(chapterNo null)은 chapterInitial이 null이다 — 줄을 그리지 않는다', async () => {

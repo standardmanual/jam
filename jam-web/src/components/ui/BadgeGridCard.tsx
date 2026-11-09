@@ -1,6 +1,7 @@
 'use client'
 
 import SafeImage from '@/components/SafeImage'
+import VisitCountChip from '@/components/ui/VisitCountChip'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
@@ -212,19 +213,8 @@ export default function BadgeGridCard({
           <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
         )}
         {!undiscovered && chip}
-        {!undiscovered && typeof visitCount === 'number' && visitCount > 1 && (
-          // 등급 칩(md: 글자 --text-xs, 패딩 5px 10px, 줄 높이 1)과 같은 크기. 읽는 문장은 sr-only가 맡는다
-          <>
-            <span
-              aria-hidden="true"
-              className="inline-flex items-center justify-center rounded-full font-bold tabular-nums text-foreground"
-              style={{ background: 'var(--default-soft)', fontSize: 'var(--text-xs)', padding: '5px 10px', lineHeight: 1 }}
-            >
-              ×{visitCount}
-            </span>
-            <span className="sr-only">{t(d.badges.visitCountAria, { count: String(visitCount) })}</span>
-          </>
-        )}
+        {/* 방문 횟수 칩 — 2회 이상일 때만 그린다(`VisitCountChip`, 상세 히어로 카드와 같은 부품) */}
+        {!undiscovered && <VisitCountChip count={visitCount} />}
       </div>
       {children && <div className="w-full mt-1">{children}</div>}
     </>

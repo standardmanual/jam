@@ -3,7 +3,7 @@ import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
 import { BookIcon } from '@/components/ui/icons'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeHeroSection from '../../(main)/badges/[id]/BadgeHeroSection'
 
@@ -53,21 +53,14 @@ export default function ItemBadgeSerialSamplePage() {
       {/* info-section — 획득 이력 (일련번호 행 제거, 날짜만) */}
       <div className="relative z-10 flex flex-col gap-4 px-6 pb-[32px]">
         <div className="flex flex-col gap-3">
-          <div className="flex items-baseline justify-between">
-            <p className="text-[15px] font-bold text-foreground">{d.badges.earnHistoryTitle}</p>
-            <span className="text-[13px] text-[var(--muted)]">{t(d.badges.earnHistoryCount, { count: 1 })}</span>
-          </div>
+          <p className="text-[15px] font-bold text-foreground">{d.badges.earnInfoTitle}</p>
           <Card>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <span className="text-[14px] text-[var(--muted)]">{d.inventory.obtainedAt}</span>
                 <span className="text-[14px] text-foreground">
-                  <LocalDate iso={mockItem.obtained_at} korean={{ year: true }} />
+                  <LocalDate iso={mockItem.obtained_at} korean={{ year: true, time: true }} />
                 </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] text-[var(--muted)]">{d.inventory.expiresAt}</span>
-                <span className="text-[14px] text-foreground">{d.inventory.expiresNone}</span>
               </div>
             </div>
           </Card>

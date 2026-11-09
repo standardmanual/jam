@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ActivityFeedRow } from '@/types/database'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
+import { attachFeedImages } from '@/lib/activity-feed/attachImages'
 import TopNav from '@/components/ui/TopNav'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { UsersIcon } from '@/components/ui/icons'
@@ -65,7 +66,8 @@ export default async function FriendFeedPage() {
     .limit(FEED_LIMIT)
   if (feedError) console.error('[feed/page] user_activity_feed 조회 실패', feedError)
 
-  const feedItems = await hydrateFeedBadgeInfo((feedRaw ?? []) as ActivityFeedRow[])
+  // 미션·컬렉션 이벤트 행에 그 미션·컬렉션의 대표 이미지를 붙인다(2026-11-09 사용자 지시).
+  const feedItems = await attachFeedImages(await hydrateFeedBadgeInfo((feedRaw ?? []) as ActivityFeedRow[]))
 
   // 묶음 카드용 활동 이름 — [username]/page.tsx와 동일 패턴(20260827_018).
   // Strava 활동 id는 전역 유일값이라 여러 유저의 활동이 섞여도 키 충돌이 없다.

@@ -5,7 +5,7 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 
 export type ItemEarnEntry = {
   id: string
@@ -17,20 +17,24 @@ export type ItemEarnEntry = {
 function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
   return (
     <div className="flex flex-col -mb-3">
+      {/* 일시는 모두 년월일시로 보인다(2026-11-09 사용자 지시: 배지 상세의 일시 표시를 한 형식으로 통일) */}
       <ListRow
         tone="flat"
         titleVariant="label"
         titleLines={0}
         title={d.inventory.obtainedAt}
-        value={<LocalDate iso={entry.obtained_at} korean={{ year: true }} />}
+        value={<LocalDate iso={entry.obtained_at} korean={{ year: true, time: true }} />}
       />
-      <ListRow
-        tone="flat"
-        titleVariant="label"
-        titleLines={0}
-        title={d.inventory.expiresAt}
-        value={entry.expires_at ? <LocalDate iso={entry.expires_at} korean={{ year: true }} /> : d.inventory.expiresNone}
-      />
+      {/* 만료가 없는 아이템 배지는 만료 일시 줄을 그리지 않는다(2026-11-09 사용자 지시) */}
+      {entry.expires_at && (
+        <ListRow
+          tone="flat"
+          titleVariant="label"
+          titleLines={0}
+          title={d.inventory.expiresAt}
+          value={<LocalDate iso={entry.expires_at} korean={{ year: true, time: true }} />}
+        />
+      )}
     </div>
   )
 }
@@ -61,10 +65,8 @@ export default function ItemEarnHistory({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between">
-        <p className="text-[15px] font-bold text-foreground">{d.badges.earnHistoryTitle}</p>
-        <span className="text-[13px] text-[var(--muted)]">{t(d.badges.earnHistoryCount, { count: items.length })}</span>
-      </div>
+      {/* 제목만 둔다 — 오른쪽의 «총 N회»는 걷었고 제목은 다른 배지 상세와 같은 «획득 정보»다(2026-11-09 사용자 지시) */}
+      <p className="text-[15px] font-bold text-foreground">{d.badges.earnInfoTitle}</p>
 
       {/* 히어로에 일련번호가 표시된 개체의 이력 — 카드 형식 */}
       <Card>
@@ -76,7 +78,7 @@ export default function ItemEarnHistory({
       {rest.map((entry) => (
         <ListRow
           key={entry.id}
-          title={<LocalDate iso={entry.obtained_at} korean={{ year: true }} />}
+          title={<LocalDate iso={entry.obtained_at} korean={{ year: true, time: true }} />}
           titleVariant="regular"
           titleLines={2}
           chevron

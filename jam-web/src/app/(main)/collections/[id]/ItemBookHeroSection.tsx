@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { BookIcon } from '@/components/ui/icons'
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
@@ -140,12 +140,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           `mt-2`(8px)을 더해 12+8=20px를 만든다. [20260917_1303] */}
       {/* mx-2 — 위 카드에 추가한 mx-2와 좌우 폭을 맞춰, 카드보다 진행도 바가 더 넓어 보이는
           어긋남을 막는다. */}
-      <div className="flex items-center gap-3 mt-2 mx-2">
-        <ProgressBar percent={pct} height={16} />
-        <span style={{ color: 'var(--link)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-          {slottedCount}/{totalBadgeCount}
-        </span>
-      </div>
+      <ProgressCountBar className="mt-2 mx-2" percent={pct} current={slottedCount} total={totalBadgeCount} />
     </>
   )
 }

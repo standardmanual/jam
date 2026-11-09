@@ -163,6 +163,21 @@ export async function getMyChapter(supabase: SupabaseClient, userId: string): Pr
 }
 
 /**
+ * 내 프로필 챕터 줄 앞에 붙는 내 트라이브 이름을 읽는다(2026-11-09 사용자 지시). 트라이브를 고르지 않았거나 읽지 못하면 null이다.
+ * 던지지 않는다 — 읽지 못해도 챕터 줄은 트라이브 없이 그려진다(읽기 실패는 `readTribe`가 `console.error`로 남긴다).
+ * `getMyChapter`의 응답 키는 점수·진행 계약이라 고정이고, 그래서 트라이브는 따로 읽는다.
+ */
+export async function getMyTribeName(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  try {
+    const tribe = await readTribe(supabase, userId)
+    return tribe.ok ? tribe.value?.name ?? null : null
+  } catch (e) {
+    console.error(`[chapter-read] 내 트라이브 읽기 실패 — userId: ${userId}: 예외: ${errorText(e)}`)
+    return null
+  }
+}
+
+/**
  * 다른 유저에게 보이는 트라이브와 챕터 번호를 읽는다. 진행(비율 포함)과 점수는 읽지도 돌려주지도 않는다.
  * 던지지 않는다 — 읽지 못하면 `{ ok: false }`다. 챕터가 없는 유저는 `chapterNo`가 null이다(트라이브는 그대로 돌려준다).
  */
