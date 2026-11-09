@@ -22,6 +22,9 @@ const state = vi.hoisted(() => ({
   /** 발급 기록(`item_issue_log`)의 첫 행 — 받은 경로 */
   issue: null as Row,
   issueError: null as { message: string } | null,
+  /** 미션 보상 기록(`mission_item_rewards`)의 행 — 개체가 미션 보상으로 받은 것인지 */
+  mission: null as Row,
+  missionError: null as { message: string } | null,
   status: null as unknown,
   statusError: null as unknown,
   detailProps: null as unknown,
@@ -49,7 +52,9 @@ vi.mock('@/lib/supabase/server', () => ({
         maybeSingle: async () =>
           table === 'item_issue_log'
             ? { data: state.issue, error: state.issueError }
-            : { data: state.badge, error: state.badgeError },
+            : table === 'mission_item_rewards'
+              ? { data: state.mission, error: state.missionError }
+              : { data: state.badge, error: state.badgeError },
       }
       return builder
     },
@@ -117,6 +122,8 @@ beforeEach(() => {
   state.badgeError = null
   state.issue = null
   state.issueError = null
+  state.mission = null
+  state.missionError = null
   state.status = LOCKED_STATUS
   state.statusError = null
   state.detailProps = null
@@ -142,7 +149,7 @@ describe('인벤토리 개체 페이지 — 잠긴 개체', () => {
     for (const secret of [BADGE_ID, 'badge_id', 'badgeId', '4242', 'ZZZZ', '새어 나가면 안 되는 이름', 'imageUrl', 'description']) {
       expect(serialized, `props에 ${secret}이 실렸다`).not.toContain(secret)
     }
-    expect(Object.keys(element.props).sort()).toEqual(['issueRoute', 'itemId', 'obtainedAt', 'obtainedBy', 'pointBalance', 'pointsRequired', 'rarity'])
+    expect(Object.keys(element.props).sort()).toEqual(['issueRoute', 'itemId', 'missionReward', 'obtainedAt', 'obtainedBy', 'pointBalance', 'pointsRequired', 'rarity'])
   })
 
   it('발급 기록의 경로(받은 경로 줄용)를 한 값만 내려보낸다 — 캡슐 개체를 활동 드랍과 가르는 값이다', async () => {
@@ -164,6 +171,23 @@ describe('인벤토리 개체 페이지 — 잠긴 개체', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const element = (await render()) as { props: Record<string, unknown> }
     expect(element.props.issueRoute).toBeNull()
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('미션 보상 기록에 개체가 있으면 missionReward가 true이고, 없거나 조회가 실패하면 false다', async () => {
+    state.item = lockedRow()
+    state.mission = { id: 'reward-1' }
+    expect(((await render()) as { props: Record<string, unknown> }).props.missionReward).toBe(true)
+
+    state.mission = null
+    expect(((await render()) as { props: Record<string, unknown> }).props.missionReward).toBe(false)
+
+    state.mission = { id: 'reward-1' }
+    state.missionError = { message: 'boom' }
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const element = (await render()) as { props: Record<string, unknown> }
+    expect(element.props.missionReward).toBe(false)
     expect(errorSpy).toHaveBeenCalled()
     errorSpy.mockRestore()
   })

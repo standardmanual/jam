@@ -53,12 +53,15 @@ export interface LockedItemDetailProps {
   obtainedBy: string
   /** 발급 기록(`item_issue_log.route`)의 경로. 캡슐에서 나온 개체를 활동 드랍과 가르는 값이다(없으면 `obtainedBy`로만 판단한다) */
   issueRoute?: string | null
+  /** 미션 보상으로 받은 개체인가(`mission_item_rewards`에 개체가 있음). 발급 기록이 없을 때 «미션 보상»으로 보인다 */
+  missionReward?: boolean
 }
 
 /** 획득 경로 문구 — 경로 키(`resolveObtainRoute`)마다 한 문구다 */
 const OBTAIN_ROUTE_LABEL: Record<ObtainRouteKey, string> = {
   capsule: d.inventory.obtainByCapsule,
   activity: d.inventory.obtainByDrop,
+  mission: d.inventory.obtainByMission,
   checkinPickup: d.inventory.obtainByPickup,
   event: d.inventory.obtainByDropEvent,
   system: d.inventory.obtainBySystem,
@@ -82,7 +85,7 @@ function PointCircle() {
   )
 }
 
-export default function LockedItemDetail({ itemId, rarity, pointsRequired, pointBalance, obtainedAt, obtainedBy, issueRoute = null }: LockedItemDetailProps) {
+export default function LockedItemDetail({ itemId, rarity, pointsRequired, pointBalance, obtainedAt, obtainedBy, issueRoute = null, missionReward = false }: LockedItemDetailProps) {
   const router = useRouter()
   const { toast } = useToast()
   /** 화면이 보여 주는 포인트 값 — 서버가 준 값에서 시작하고, `insufficient_points` 거절 응답이 바로 덮어쓴다 */
@@ -239,7 +242,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
               title={d.badges.earnedAt}
               value={<LocalDate iso={obtainedAt} korean={{ year: true, time: true }} />}
             />
-            <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.earnRoute} value={OBTAIN_ROUTE_LABEL[resolveObtainRoute(obtainedBy, issueRoute)]} />
+            <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.earnRoute} value={OBTAIN_ROUTE_LABEL[resolveObtainRoute(obtainedBy, issueRoute, missionReward)]} />
           </div>
         </Card>
 

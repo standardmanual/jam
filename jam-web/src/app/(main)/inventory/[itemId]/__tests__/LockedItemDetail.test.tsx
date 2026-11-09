@@ -446,6 +446,12 @@ describe('LockedItemDetail — 획득 경로 문구', () => {
     expect(routeText({ obtainedBy: 'drop', issueRoute: 'capsule' })).toContain(`${d.badges.earnRoute} 캡슐 열기 보상`)
   })
 
+  it('미션 보상으로 받은 개체는 «미션 보상»이고, 발급 기록이 있으면 발급 기록이 앞선다', () => {
+    expect(routeText({ obtainedBy: 'system_event', missionReward: true })).toContain(`${d.badges.earnRoute} 미션 보상`)
+    expect(routeText({ obtainedBy: 'drop', issueRoute: 'capsule', missionReward: true })).toContain(`${d.badges.earnRoute} 캡슐 열기 보상`)
+    expect(routeText({ obtainedBy: 'system_event' })).toContain(`${d.badges.earnRoute} 시스템 지급`)
+  })
+
   it('활동 동기화로 받은 개체는 «활동 동기화 드랍», 픽업은 «체크인 픽업»이다', () => {
     expect(routeText({ obtainedBy: 'drop', issueRoute: 'sync' })).toContain(`${d.badges.earnRoute} 활동 동기화 드랍`)
     expect(routeText({ obtainedBy: 'drop' })).toContain(`${d.badges.earnRoute} 활동 동기화 드랍`)
