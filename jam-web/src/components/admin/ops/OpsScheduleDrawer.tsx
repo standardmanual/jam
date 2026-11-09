@@ -27,6 +27,7 @@ import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
 import { useItemImageProduction } from './useItemImageProduction'
 import { OpsKindIcon, type OpsIcon } from './opsIcons'
 import { Chip, OpsStatusBadge } from './OpsStatusBadge'
+import { shouldDiscardScheduleResponse } from './itemResultFlow'
 import { fetchScheduleItem, type ScheduleItemOutcome } from './scheduleItemClient'
 
 /**
@@ -298,7 +299,7 @@ function OpsItemDrawer({ itemId, includeSample, onClose, onOpenItem, className }
   useEffect(() => {
     const controller = new AbortController()
     void fetchScheduleItem(itemId, controller.signal).then((result) => {
-      if (controller.signal.aborted || result.kind === 'aborted') return
+      if (shouldDiscardScheduleResponse(controller.signal.aborted, result)) return
       setOutcome(result)
     })
     return () => controller.abort()
