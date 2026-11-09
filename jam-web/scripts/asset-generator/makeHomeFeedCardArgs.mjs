@@ -85,7 +85,8 @@ export function parseMakeCardArgs(argv) {
     const layerFlag = isLayerFlagKey(key)
     if (!layerFlag && !VALUE_FLAGS.has(key)) throw new Error(`알 수 없는 인자예요: --${key}\n${MAKE_CARD_USAGE}`)
     const next = argv[i + 1]
-    if (next === undefined) throw new Error(`--${key} 값이 필요해요.`)
+    // 값 자리에 다른 인자가 오면 삼키지 않고 멈춘다(`--text01 --text02 설명`). 빈 문자열 값도 거절한다(renderArgs.mjs와 같은 규칙).
+    if (next === undefined || next === '' || next.startsWith('--')) throw new Error(`--${key} 값이 필요해요.`)
     if (layerFlag) layerEntries.push([key, next])
     else flags[key] = next
     i++
