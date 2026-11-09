@@ -180,6 +180,9 @@ function ColorsPage() {
         <Swatch token="--tabbar-selection" desc="선택된 탭의 필" />
         <Swatch token="--tabbar-icon" desc="비활성 아이콘" />
         <Swatch token="--tabbar-icon-active" desc="활성 아이콘" />
+        <Swatch token="--tabbar-background-inverse" desc="반전 면 — 푸터보다 밝은 불투명 면(snow 22%)" />
+        <Swatch token="--tabbar-selection-inverse" desc="반전 상태의 활성 필" />
+        <Swatch token="--tabbar-icon-inverse" desc="반전 상태의 비활성 아이콘(활성은 --snow)" />
       </Section>
 
       <Section title="Base Palette (컴포넌트 직접 참조 금지)">
