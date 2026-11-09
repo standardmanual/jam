@@ -135,14 +135,6 @@ function findElements(node: ReactNode, match: (el: ReactElement) => boolean, out
   return out
 }
 
-/** 트리 안의 문자열을 이어 붙인다(컴포넌트는 펼치지 않는다) */
-function textOf(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') return String(node)
-  if (Array.isArray(node)) return node.map(textOf).join('')
-  if (!isValidElement(node)) return ''
-  return textOf((node.props as { children?: ReactNode }).children)
-}
-
 const NAMES = Array.from({ length: 9 }, (_, i) => `이름${i + 1}`)
 const RARITIES = ['common', 'rare', 'epic', 'mystic'] as const
 
@@ -194,8 +186,7 @@ async function renderGrid(searchParams: Record<string, string> = {}) {
   const hero = findElements(tree, (el) => el.type === ItemBookHeroSection)[0]
   const gridProps = grid?.props as React.ComponentProps<typeof SlotGrid> | undefined
   const heroProps = hero.props as React.ComponentProps<typeof ItemBookHeroSection>
-  const hint = findElements(tree, (el) => el.type === 'p' && textOf(el).includes('등급으로 모으고 있어요'))
-  return { tree, gridProps, heroProps, hintTexts: hint.map(textOf), hintClasses: hint.map((el) => String((el.props as { className?: string }).className ?? '')) }
+  return { tree, gridProps, heroProps }
 }
 
 describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
@@ -213,12 +204,12 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     errorSpy.mockRestore()
   })
 
-  it('Rare를 처음 장착했으면 Rare 배지 9칸만 나오고 안내 한 줄이 한 번 보인다', async () => {
+  it('Rare를 처음 장착했으면 Rare 배지 9칸만 나오고 격자에 등급 고정을 알린다', async () => {
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = [slotRow('이름1-rare')]
     state.tables.inventory_items = [itemRow('이름2-rare', 1), itemRow('이름3-epic', 2)]
 
-    const { gridProps, heroProps, hintTexts } = await renderGrid()
+    const { gridProps, heroProps } = await renderGrid()
 
     expect(gridProps?.badgeSlots).toHaveLength(9)
     expect(gridProps?.badgeSlots.every((s) => s.badge.rarity === 'rare')).toBe(true)
@@ -229,42 +220,30 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.badgeSlots[2].candidates).toHaveLength(0)
     expect(heroProps.totalBadgeCount).toBe(9)
     expect(heroProps.slottedCount).toBe(1)
-    expect(hintTexts).toEqual(['Rare 등급으로 모으고 있어요.\n장착한 배지를 모두 빼면 다른 등급으로 다시 정할 수 있어요.'])
+    expect(gridProps?.tierFixed).toBe(true)
   })
 
-  it('등급 안내의 \n이 줄바꿈으로 보이도록 whitespace-pre-line을 준다 (티켓 20261104_2153)', async () => {
-    state.tables.badges = fullBookRows()
-    state.tables.user_item_book_slots = [slotRow('이름1-rare')]
-
-    const { hintTexts, hintClasses } = await renderGrid()
-
-    expect(hintTexts).toHaveLength(1)
-    expect(hintTexts[0].split('\n')).toEqual(['Rare 등급으로 모으고 있어요.', '장착한 배지를 모두 빼면 다른 등급으로 다시 정할 수 있어요.'])
-    expect(hintClasses[0]).toContain('whitespace-pre-line')
-    expect(hintClasses[0]).toContain('break-keep')
-  })
-
-  it('Common을 고정해도 안내에 등급 이름이 나온다', async () => {
+  it('Common을 고정해도 격자에 등급 고정을 알린다', async () => {
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = [slotRow('이름1-common')]
 
-    const { gridProps, hintTexts } = await renderGrid()
+    const { gridProps } = await renderGrid()
 
     expect(gridProps?.badgeSlots).toHaveLength(9)
-    expect(hintTexts).toEqual(['Common 등급으로 모으고 있어요.\n장착한 배지를 모두 빼면 다른 등급으로 다시 정할 수 있어요.'])
+    expect(gridProps?.tierFixed).toBe(true)
   })
 
-  it('아무것도 장착하지 않았으면 칸이 36개가 아니라 진행도 분모(9)와 같고 안내 한 줄이 없다', async () => {
+  it('아무것도 장착하지 않았으면 칸이 36개가 아니라 진행도 분모(9)와 같고 등급 고정 표시가 없다', async () => {
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = []
     state.tables.inventory_items = [itemRow('이름1-epic', 1), itemRow('이름1-rare', 2)]
 
-    const { gridProps, heroProps, hintTexts } = await renderGrid()
+    const { gridProps, heroProps } = await renderGrid()
 
     expect(gridProps?.badgeSlots).toHaveLength(9)
     expect(gridProps?.badgeSlots).toHaveLength(heroProps.totalBadgeCount)
     expect(gridProps?.tierUndecided).toBe(true)
-    expect(hintTexts).toEqual([])
+    expect(gridProps?.tierFixed).toBe(false)
     // 가진 이름은 낮은 등급 순 후보와 대표 그림, 못 가진 이름은 후보 없는 칸이다
     expect(gridProps?.badgeSlots[0].badge.id).toBe('이름1-rare')
     expect(gridProps?.badgeSlots[0].candidates.map((c) => c.rarity)).toEqual(['rare', 'epic'])
@@ -280,34 +259,33 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     const released = await renderGrid()
 
     expect(released.gridProps?.tierUndecided).toBe(true)
-    expect(released.hintTexts).toEqual([])
+    expect(released.gridProps?.tierFixed).toBe(false)
     expect(released.gridProps?.badgeSlots.map((s) => s.cellKey)).toEqual(fixed.gridProps?.badgeSlots.map((s) => s.cellKey))
   })
 
-  it('tier_mode가 꺼진 컬렉션은 이전과 같이 소속 아이템 배지 전부를 칸으로 그리고 안내가 없다', async () => {
+  it('tier_mode가 꺼진 컬렉션은 이전과 같이 소속 아이템 배지 전부를 칸으로 그리고 등급 고정 표시가 없다', async () => {
     setBook(false)
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = [slotRow('이름1-rare')]
 
-    const { gridProps, hintTexts } = await renderGrid()
+    const { gridProps } = await renderGrid()
 
     expect(gridProps?.badgeSlots).toHaveLength(36)
     expect(gridProps?.badgeSlots.every((s) => !('cellKey' in s))).toBe(true)
     expect(gridProps?.tierUndecided).toBe(false)
-    expect(hintTexts).toEqual([])
+    expect(gridProps?.tierFixed).toBe(false)
   })
 
-  it('타인 열람은 그 유저의 등급 기준 칸을 보여 주고 안내 한 줄이 없다', async () => {
+  it('타인 열람은 그 유저의 등급 기준 칸을 보여 준다', async () => {
     state.tables.users = [{ id: 'user-2', username: 'other' }]
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = [slotRow('이름1-epic')]
 
-    const { gridProps, hintTexts } = await renderGrid({ u: 'other' })
+    const { gridProps } = await renderGrid({ u: 'other' })
 
     expect(gridProps?.readOnly).toBe(true)
     expect(gridProps?.badgeSlots).toHaveLength(9)
     expect(gridProps?.badgeSlots.every((s) => s.badge.rarity === 'epic')).toBe(true)
-    expect(hintTexts).toEqual([])
   })
 
   it('타인 열람에서 슬롯이 0개이면 지금처럼 notFound다', async () => {
@@ -324,7 +302,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     state.tables.user_item_book_slots = [slotRow(deleted.id as string)]
     state.tables.inventory_items = [itemRow('이름1-rare', 1), itemRow('이름2-epic', 2)]
 
-    const { gridProps, heroProps, hintTexts } = await renderGrid()
+    const { gridProps, heroProps } = await renderGrid()
 
     expect(gridProps?.tierUndecided).toBe(false)
     expect(gridProps?.badgeSlots).toHaveLength(9)
@@ -335,8 +313,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     // 분모·분자는 삭제 배지를 계속 뺀다
     expect(heroProps.totalBadgeCount).toBe(9)
     expect(heroProps.slottedCount).toBe(0)
-    expect(hintTexts).toHaveLength(1)
-    expect(hintTexts[0]).toContain('Rare 등급으로')
+    expect(gridProps?.tierFixed).toBe(true)
   })
 
   it('삭제 배지를 조회에서 빼지 않고(.is 필터 없음) 화면 쪽에서 거른다', async () => {
@@ -348,14 +325,13 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(state.calls.filter((c) => c.table === 'badges' && c.method === 'is')).toHaveLength(0)
   })
 
-  it('등급 컬렉션에 아이템 배지가 하나도 없으면 안내 한 줄과 격자를 그리지 않는다', async () => {
+  it('등급 컬렉션에 아이템 배지가 하나도 없으면 격자를 그리지 않는다', async () => {
     state.tables.badges = []
     state.tables.user_item_book_slots = []
 
-    const { gridProps, hintTexts } = await renderGrid()
+    const { gridProps } = await renderGrid()
 
     expect(gridProps).toBeUndefined()
-    expect(hintTexts).toEqual([])
   })
 })
 

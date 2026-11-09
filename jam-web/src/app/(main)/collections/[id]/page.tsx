@@ -5,7 +5,6 @@ import { isItemBookLaunched, isItemBookViewable } from '@/lib/itembook/visibilit
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
-  BadgeRarity,
   BadgeRow,
   ItemBookRow,
   TribeRow,
@@ -16,10 +15,9 @@ import TopNav from '@/components/ui/TopNav'
 import { PinIcon, BookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Card } from '@ds/components/cards/Card'
-import { getRarityLabel } from '@ds/components/cards/RarityBadge'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import ItemBookHeroSection from './ItemBookHeroSection'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
@@ -269,8 +267,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     completion: bookCompletion,
   })
   const collectionTier = tierMode ? (bookCompletion?.tier ?? null) : null
-  // 안내 한 줄에 쓰는 등급 이름. 본인 화면에서 등급이 정해졌을 때만 보인다(타인 열람은 그 유저의 칸만 보여 준다)
-  const tierLabel = isOwnBook && collectionTier ? getRarityLabel(collectionTier as BadgeRarity) : null
 
   // [20260819_014] 배지 상세화면(20260819_011)과 동일한 원칙 — 배경은 이 고정 레이어 한 곳에서만
   // 그린다. 배경이 있는 컬렉션에서는 TopNav·본문을 투명하게 두어 아래 레이어가 그대로 비쳐 보이게
@@ -355,13 +351,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         {/* 아이템배지 슬롯 섹션 */}
         {badges.length > 0 && (
           <div className="flex flex-col gap-3">
-            {/* 컬렉션 등급 안내 한 줄 — 등급이 정해졌고 본인 화면일 때만. 박스·아이콘 없이 진행도 줄(ItemBookHeroSection의 mx-2)과
-                시작선을 맞춘 12px 보조 문구다. 등급이 없는 상태의 규칙은 선택 시트 안내문이 말한다. */}
-            {tierLabel && (
-              <p className="mx-2 text-xs text-muted text-left whitespace-pre-line break-keep wrap-break-word text-balance">
-                {t(d.itembooks.tierFixedHint, { tier: tierLabel })}
-              </p>
-            )}
             <SlotGrid
               itemBookId={id}
               badgeSlots={badgeSlots}

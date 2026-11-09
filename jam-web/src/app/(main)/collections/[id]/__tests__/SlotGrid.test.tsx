@@ -192,3 +192,29 @@ describe('SlotGrid — 모두 빼기 버튼의 노출 조건 (티켓 20261028_14
     expect(count(html, BUTTON)).toBe(1)
   })
 })
+
+describe('SlotGrid — 등급 고정 안내 한 줄 (티켓 20261109_0941)', () => {
+  const badgeSlots = [cell('이름1', 'rare', { slot: slotted }), cell('이름2', 'rare')]
+  const NOTE = '같은 등급 배지만 장착할 수 있어요.'
+
+  it('등급이 정해진 본인 화면이면 격자 아래에 한 줄이 한 번 보이고, 한번에 빼기 버튼보다 앞에 있다', () => {
+    const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} slotCount={1} tierFixed />)
+
+    expect(count(html, NOTE)).toBe(1)
+    expect(html.indexOf(NOTE)).toBeGreaterThan(html.lastIndexOf('href="/badges/'))
+    expect(html.indexOf(NOTE)).toBeLessThan(html.indexOf('>한번에 빼기<'))
+    // 등급 이름과 풀리는 방법은 말하지 않는다
+    expect(html).not.toContain('등급으로 모으고 있어요')
+    expect(html).not.toContain('다시 정할 수 있어요')
+  })
+
+  it('등급이 없거나(tierFixed 없음) 타인 열람(readOnly)이면 보이지 않는다', () => {
+    for (const html of [
+      renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} />),
+      renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} tierUndecided slotMode />),
+      renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} tierFixed readOnly />),
+    ]) {
+      expect(html).not.toContain(NOTE)
+    }
+  })
+})

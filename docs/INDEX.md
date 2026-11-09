@@ -727,15 +727,18 @@ status: active
 - [latest.md](operations/trendresearch/culture/memes-slang/latest.md) — (description 없음)
 - [2026-10-27.md](operations/trendresearch/culture/misc/archive/2026-10-27.md) — (description 없음)
 - [latest.md](operations/trendresearch/culture/misc/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/convenience/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/food/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/mountain/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/nature/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/park/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/route/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/tourist_attraction/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/train_subway/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/service/drop-pickup/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/service/item-collection/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/service/tribe/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/sports/hike/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/sports/run/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/sports/walk/latest.md) — (description 없음)
 
@@ -845,6 +848,10 @@ status: active
 
 - [2026-11-02_메일-트렌드.md](operations/trendresearch/culture/misc/notes/2026-11-02_메일-트렌드.md) — 브라우저 대학 부수기 게임, 링크로 들어가는 온라인 절, 2030 경량패딩 인기 등 주제 밖 발견
 
+### docs/operations/trendresearch/places/convenience/
+
+- [latest.md](operations/trendresearch/places/convenience/latest.md) — (description 없음)
+
 ### docs/operations/trendresearch/places/food/
 
 - [latest.md](operations/trendresearch/places/food/latest.md) — (description 없음)
@@ -864,6 +871,10 @@ status: active
 ### docs/operations/trendresearch/places/nature/notes/
 
 - [2026-11-02_메일-트렌드.md](operations/trendresearch/places/nature/notes/2026-11-02_메일-트렌드.md) — 노래 속 가을 풍경을 따라가는 억새밭·항구·근대 가옥 코스 3곳
+
+### docs/operations/trendresearch/places/park/
+
+- [latest.md](operations/trendresearch/places/park/latest.md) — (description 없음)
 
 ### docs/operations/trendresearch/places/route/
 
@@ -912,6 +923,10 @@ status: active
 ### docs/operations/trendresearch/service/tribe/notes/
 
 - [2026-11-02_메일-트렌드.md](operations/trendresearch/service/tribe/notes/2026-11-02_메일-트렌드.md) — 한 편의 설화를 두 매장에 나눠 잇는 올리브영 경주 지역 서사 사례 (광고 메일)
+
+### docs/operations/trendresearch/sports/hike/
+
+- [latest.md](operations/trendresearch/sports/hike/latest.md) — (description 없음)
 
 ### docs/operations/trendresearch/sports/run/
 

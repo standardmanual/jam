@@ -540,6 +540,14 @@ export default function SlotGrid({
         })}
       </div>
 
+      {/* 등급 고정 안내 — 컬렉션 등급이 정해진 본인 화면에서만 격자 바로 아래에 한 줄(티켓 20261109_0941). 박스·아이콘 없이 12px 보조 문구다.
+          등급이 아직 없는 상태의 규칙은 선택 시트 안내문이 말한다. */}
+      {!readOnly && tierFixed && (
+        <p className="mt-3 text-xs text-muted text-center break-keep wrap-break-word">
+          {d.itembooks.tierFixedNote}
+        </p>
+      )}
+
       {/* 모두 빼기 — 격자 바로 아래 한 줄(티켓 20261028_1420, 채원 판정). 본인 화면이고 장착이 하나라도 있을 때만 그린다.
           화면의 유일한 primary라 검정 채움(Button primary)을 그대로 쓴다 — 어떤 배경 위에서도 보여 면 덮어쓰기가 필요 없다(티켓 20261104_2153).
           눌러도 바로 빼지 않고 확인 시트를 연다. */}
