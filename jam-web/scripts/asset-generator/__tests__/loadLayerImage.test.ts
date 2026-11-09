@@ -93,6 +93,27 @@ describe('loadLayerImage URL 보호', () => {
     expect(r.data.equals(PNG)).toBe(true);
   });
 
+  it('리다이렉트 응답은 따라가지 않고 오류로 멈춘다(http·내부 주소 포함)', async () => {
+    for (const location of ['http://cdn.test/b.png', 'http://169.254.169.254/latest', 'https://other.test/b.png']) {
+      for (const status of [301, 302, 307, 308]) {
+        const calls: string[] = [];
+        const fetchImpl = async (u: string, init: { redirect?: string }) => {
+          calls.push(`${u}|${init.redirect}`);
+          return new Response(null, { status, headers: { location } });
+        };
+        const err = await loadLayerImage('https://cdn.test/a.png?token=SECRET', { fetchImpl }).then(() => new Error('통과하면 안 돼요'), (e) => e as Error);
+        expect(err.message).toContain('다른 주소로 넘겨져서');
+        expect(err.message).not.toContain('SECRET');
+        expect(calls).toEqual(['https://cdn.test/a.png?token=SECRET|manual']);
+      }
+    }
+  });
+
+  it('opaqueredirect 응답도 오류로 멈춘다', async () => {
+    const fetchImpl = async () => ({ ok: false, status: 0, type: 'opaqueredirect', headers: new Headers() });
+    await expect(loadLayerImage('https://cdn.test/a.png', { fetchImpl })).rejects.toThrow('다른 주소로 넘겨져서');
+  });
+
   it('시간이 초과되면 중단한다', async () => {
     const fetchImpl = (_u: string, init: { signal: AbortSignal }) =>
       new Promise<Response>((_res, rej) => init.signal.addEventListener('abort', () => rej(new Error('aborted'))));
