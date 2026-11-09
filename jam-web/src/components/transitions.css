@@ -496,7 +496,8 @@
 .jam-tabbar-pill {
   transition:
     transform var(--tabs-dur) var(--tabs-ease),
-    opacity var(--tabs-dur) var(--tabs-ease);
+    opacity var(--tabs-dur) var(--tabs-ease),
+    background-color var(--duration-fast) var(--ease-smooth-out);
   will-change: transform, opacity;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -528,6 +529,41 @@
     -webkit-backdrop-filter: none;
     background: var(--surface);
   }
+}
+
+/* 탭바 반전 상태(티켓 20261109_1153) — 캡슐 면을 «밝은 면 레이어»(.jam-tabbar-chrome)와
+ * «반전 면 레이어»(.jam-tabbar-chrome-inverse)로 나눠 겹치고 두 레이어의 opacity를 교차시킨다.
+ * background-color를 직접 보간하면 중간에 탁한 회색이 거쳐 가므로 보간하지 않는다.
+ * backdrop-filter blur 값도 보간하지 않는다 — 밝은 레이어에만 두고, 그 레이어의 opacity만 바뀐다
+ * (iOS Safari에서 blur 값을 보간하면 끊길 수 있다). 반전 면은 불투명이라 blur가 없다.
+ * 반전 면이 이미 불투명이라 투명도 줄이기 설정에서도 따로 바꿀 것이 없다(밝은 면만 --surface로 바뀐다).
+ * 레이어는 nav 안에서 가장 먼저 그려지고(DOM 순서) 필·아이콘 아래에 깔린다. 클릭은 통과시킨다.
+ * 아이콘 색은 TabBar.tsx가 인라인 color로 주고 .jam-tabbar-icon이 같은 길이·이징으로 보간한다. */
+.jam-tabbar-chrome,
+.jam-tabbar-chrome-inverse {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-smooth-out);
+}
+.jam-tabbar-chrome-inverse {
+  background: var(--tabbar-background-inverse);
+  opacity: 0;
+}
+.jam-tabbar[data-inverted="true"] .jam-tabbar-chrome {
+  opacity: 0;
+}
+.jam-tabbar[data-inverted="true"] .jam-tabbar-chrome-inverse {
+  opacity: 1;
+}
+.jam-tabbar-icon {
+  transition: color var(--duration-fast) var(--ease-smooth-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-tabbar-chrome,
+  .jam-tabbar-chrome-inverse,
+  .jam-tabbar-icon { transition: none !important; }
 }
 
 /* Skeleton reveal — 콘텐츠 높이가 가변인 영역용 변형.
