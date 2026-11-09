@@ -13,6 +13,7 @@ import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-dat
 import { filterRecipesWithLiveResults, filterReleasedRecipes, recipeReleaseState } from '@/lib/combine/visibility'
 import { hasAdminAccess } from '@/lib/admin/auth'
 import { getPendingCount } from '@/lib/combine/pending'
+import { selectInChunks } from '@/lib/combine/chunked-in'
 
 export default async function CombinePage() {
   const supabase = await createClient()
@@ -56,16 +57,12 @@ export default async function CombinePage() {
   // 소모되므로 결과가 나올 수 없는 레시피를 남겨 두면 재료만 잃는다. 믹스 시도(`combineRecipeAttempt`)도 같은 판정으로 소각 앞에서 거절한다.
   // 조회가 실패하면 목록을 막지 않는다 — 서버가 소각 앞에서 한 번 더 거절하므로 재료는 안전하다.
   const resultBadgeIds = [...new Set(releasedRecipes.flatMap((r) => r.reward_badge_ids ?? []))]
-  let resultBadgeWindows: { id: string; valid_until: string | null }[] = []
-  if (resultBadgeIds.length > 0) {
-    const { data: windowsRaw, error: windowsError } = await service
-      .from('badges')
-      .select('id, valid_until')
-      .in('id', resultBadgeIds)
-      .is('deleted_at', null)
-    if (windowsError) console.error('[combine/page] 결과 배지 공개 기간 조회 실패', windowsError)
-    resultBadgeWindows = (windowsRaw ?? []) as { id: string; valid_until: string | null }[]
-  }
+  // `.in()`에 ID가 수백 개 실리면 요청 주소가 헤더 한도를 넘으므로 묶음으로 나눠 조회한다(티켓 20261104_2316).
+  const { data: windowsRaw, error: windowsError } = await selectInChunks(resultBadgeIds, (chunk) =>
+    service.from('badges').select('id, valid_until').in('id', chunk).is('deleted_at', null),
+  )
+  if (windowsError) console.error('[combine/page] 결과 배지 공개 기간 조회 실패', windowsError)
+  const resultBadgeWindows = windowsRaw as { id: string; valid_until: string | null }[]
   const publicRecipeRows = filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)
   const publicRecipeIds = publicRecipeRows.map((r) => r.id)
 
@@ -87,14 +84,14 @@ export default async function CombinePage() {
   // 필요) 양쪽에 쓰인다(티켓 20260917_1655).
   const rewardBadgeIds = [...new Set(publicRecipeRows.flatMap((r) => r.reward_badge_ids))]
   const allowedBadgeIds = [...new Set([...slotRows.flatMap((s) => s.allowed_badge_ids), ...rewardBadgeIds])]
-  const { data: allowedBadgesRaw, error: allowedBadgesError } =
-    allowedBadgeIds.length > 0
-      ? await service
-          .from('badges')
-          .select('id, name, image_url, rarity, description')
-          .in('id', allowedBadgeIds)
-          .is('deleted_at', null)
-      : { data: [] as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description'>[], error: null }
+  // 레시피가 많으면 ID가 수백 개라 한 번에 `.in()`하면 헤더 한도를 넘는다 — 묶음으로 나눠 조회한다(티켓 20261104_2316).
+  const { data: allowedBadgesRaw, error: allowedBadgesError } = await selectInChunks(allowedBadgeIds, (chunk) =>
+    service
+      .from('badges')
+      .select('id, name, image_url, rarity, description')
+      .in('id', chunk)
+      .is('deleted_at', null),
+  )
   if (allowedBadgesError) console.error('[combine/page] 슬롯 후보·보상 배지 상세 조회 실패', allowedBadgesError)
   const badgeDetailMap = new Map(
     ((allowedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description'>[]).map((b) => [
@@ -109,20 +106,14 @@ export default async function CombinePage() {
     ...new Set(slotRows.filter((s) => s.badge_type !== 'item').flatMap((s) => s.allowed_badge_ids)),
   ]
   const [{ data: ownedActivityRaw, error: activityError }, { data: ownedCheckinRaw, error: checkinError }] =
-    conditionCandidateIds.length > 0
-      ? await Promise.all([
-          service
-            .from('user_activity_badges')
-            .select('badge_id')
-            .eq('user_id', user.id)
-            .in('badge_id', conditionCandidateIds),
-          service
-            .from('user_checkin_badge_earns')
-            .select('badge_id')
-            .eq('user_id', user.id)
-            .in('badge_id', conditionCandidateIds),
-        ])
-      : [{ data: [] as { badge_id: string }[], error: null }, { data: [] as { badge_id: string }[], error: null }]
+    await Promise.all([
+      selectInChunks(conditionCandidateIds, (chunk) =>
+        service.from('user_activity_badges').select('badge_id').eq('user_id', user.id).in('badge_id', chunk),
+      ),
+      selectInChunks(conditionCandidateIds, (chunk) =>
+        service.from('user_checkin_badge_earns').select('badge_id').eq('user_id', user.id).in('badge_id', chunk),
+      ),
+    ])
   if (activityError) console.error('[combine/page] user_activity_badges 조회 실패', activityError)
   if (checkinError) console.error('[combine/page] user_checkin_badge_earns 조회 실패', checkinError)
   const ownedConditionBadgeIds = [
@@ -180,11 +171,13 @@ export default async function CombinePage() {
     if (badgeIds.length > 0) {
       // 소프트 삭제된 배지(badges.deleted_at)는 조합 재료 목록에서 제외한다 —
       // badgeMap에 없으면 아래 filter(Boolean)로 해당 인벤토리 아이템만 조용히 빠진다.
-      const { data: badgesRaw, error: badgesError } = await service
-        .from('badges')
-        .select('id, name, image_url, rarity')
-        .in('id', badgeIds)
-        .is('deleted_at', null)
+      const { data: badgesRaw, error: badgesError } = await selectInChunks(badgeIds, (chunk) =>
+        service
+          .from('badges')
+          .select('id, name, image_url, rarity')
+          .in('id', chunk)
+          .is('deleted_at', null),
+      )
       if (badgesError) console.error('[combine/page] badges(조합 재료 상세) 조회 실패', badgesError)
 
       const badgeMap = new Map(
