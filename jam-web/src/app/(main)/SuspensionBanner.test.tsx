@@ -43,9 +43,34 @@ describe('SuspensionBanner — 정지 중 기본 모습', () => {
     expect(html).toContain('2026년 10월 17일')
   })
 
-  it('문의 버튼 문구는 기존 d.voc.inquireCta를 쓴다', () => {
-    expect(html).toContain(d.voc.inquireCta)
+  it('문의 버튼 문구는 배너 전용 키를 쓰고 d.voc.inquireCta는 «문의하기» 그대로다', () => {
+    expect(d.suspension.bannerInquireCta).toBe('문의')
+    expect(d.voc.inquireCta).toBe('문의하기')
+    expect(html).toMatch(/<button[^>]*>문의<\/button>/)
+    expect(html).not.toContain(d.voc.inquireCta)
     expect(html.match(/<button/g)).toHaveLength(1) // 버튼은 하나뿐(보조 버튼·닫기 없음)
+  })
+
+  it('문의 버튼은 건너뛰기와 같은 xs 크기(인라인 style, 높이 44px×compact)이고 가로를 채운다', () => {
+    const button = html.match(/<button[^>]*>/)?.[0] ?? ''
+    expect(button).toContain('w-full')
+    expect(button).toContain('min-height:calc(44px * var(--scale-compact))')
+  })
+
+  it('칩과 제목이 한 줄(가로 flex, gap-2)에 놓인다', () => {
+    expect(html).toMatch(/<div class="flex items-center gap-2"><span[^>]*>이용 정지<\/span><h2/)
+  })
+
+  it('사유·정지일은 라벨 왼쪽·값 오른쪽 가로 줄이고 라벨 폭이 같다', () => {
+    expect(html.match(/<div class="flex gap-\[18px\]">/g)).toHaveLength(2)
+    expect(html.match(/<dt class="w-\[39px\]/g)).toHaveLength(2)
+  })
+
+  it('본문은 \\n을 줄바꿈으로 보이는 whitespace-pre-line이고 삭제한 두 문장은 없다', () => {
+    expect(d.suspension.bannerBody).toContain('멈추고,\n이 기간에')
+    expect(html).toMatch(/<p class="[^"]*whitespace-pre-line/)
+    expect(JSON.stringify(d.suspension)).not.toContain('지금까지의 기록')
+    expect(d.suspension.bannerBody).not.toContain('해제 방법')
   })
 
   it('제목 id로 묶인 section이고 사유·정지일은 dl/dt/dd다', () => {
