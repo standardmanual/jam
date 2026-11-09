@@ -154,7 +154,7 @@ export default async function HomePage() {
           유저가 직접 끊은 경우는 알람 없이 미연동처럼 보인다(사용자 승인). */}
       {showsStravaDisconnectedCard(stravaView) && <StravaDisconnectedCard />}
 
-      {/* "오늘의 현황" 스트립 (신규) — 좌: 내 진행도 / 우: 친구 활동. 큐레이션 없음(today_cards
+      {/* "오늘의 현황" 스트립 (신규) — 좌: 진행상황 / 우: 팔로잉. 큐레이션 없음(today_cards
           CMS와 역할 분리, 완료 기록 참고). */}
       <TodayStatusStrip left={leftStatus} right={rightStatus} />
 

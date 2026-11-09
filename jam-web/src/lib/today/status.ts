@@ -1,7 +1,7 @@
 /**
  * JAM! 투데이 홈 "오늘의 현황" 스트립 데이터 조회 (서버 사이드 전용) — 티켓 20260830_2030
  *
- * 좌 슬롯(내 진행도)·우 슬롯(친구 활동)의 상태를 계산한다. `today_cards` CMS와 역할이
+ * 좌 슬롯(진행상황)·우 슬롯(팔로잉)의 상태를 계산한다. `today_cards` CMS와 역할이
  * 겹치지 않도록 **큐레이션(콘텐츠 선택)을 하지 않는다** — 신규 유저 안내는 코드에 정적으로
  * 박아둔 후보 풀에서 매 요청마다 랜덤 1개만 고른다(어드민 편집 대상 아님).
  *
@@ -16,7 +16,7 @@ import { getDisplayName } from '@/lib/utils'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 
-// ─── 좌: 내 진행도 ──────────────────────────────────────────────────────
+// ─── 좌: 진행상황 ──────────────────────────────────────────────────────
 
 export type TodayLeftStatus =
   /** 동기화를 시작하지 않았거나(none) 유저가 직접 끊은(disconnected_user) 상태 — CTA만 보인다.
@@ -254,7 +254,7 @@ export async function getTodayLeftStatus(userId: string): Promise<TodayLeftStatu
   return { kind: 'suggestion', text: pick.text, category: pick.category, href: pick.href }
 }
 
-// ─── 우: 친구 활동 ──────────────────────────────────────────────────────
+// ─── 우: 팔로잉 ──────────────────────────────────────────────────────
 
 export type TodayRightStatus =
   | { kind: 'no_following'; href: string }
