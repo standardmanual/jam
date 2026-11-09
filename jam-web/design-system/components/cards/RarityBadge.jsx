@@ -18,7 +18,10 @@ import React from 'react';
  * 값을 건드리면 그 표시가 함께 바뀐다.
  */
 const config = {
-  common: { label: 'Common', bg: 'var(--rarity-common)', text: 'var(--rarity-common-foreground)' },
+  // common의 칩 면은 레벨 칩(`BadgeLevelChip`)과 같다: --default-soft 면 + --foreground 글자(2026-11-09 사용자 지시).
+  // 토큰 `--rarity-common`·`--rarity-common-foreground` 값은 그대로다(BadgeFrame·Colors 스토리가 쓴다). Common 칩은 `showCommon`을
+  // 켠 화면에만 그려지므로 이 면이 바뀌어도 다른 등급과 다른 화면은 영향이 없다.
+  common: { label: 'Common', bg: 'var(--default-soft)', text: 'var(--foreground)' },
   rare:   { label: 'Rare',   bg: 'var(--rarity-rare)',   text: 'var(--rarity-rare-foreground)' },
   epic:   { label: 'Epic',   bg: 'var(--rarity-epic)',   text: 'var(--rarity-epic-foreground)' },
   mystic: { label: 'Mystic', bg: 'var(--rarity-mystic)', text: 'var(--rarity-mystic-foreground)' },
@@ -74,13 +77,14 @@ const SIZES = {
   row: { fontSize: 'var(--text-xs)', padding: 'var(--list-row-chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
 };
 
-export function RarityBadge({ rarity = 'common', size = 'sm', className = '' }) {
+export function RarityBadge({ rarity = 'common', size = 'sm', className = '', showCommon = false }) {
   // 등급 없음(null) — 무한레벨형은 등급 칩을 그리지 않는다(대신 `BadgeLevelChip`).
   // common과 같은 처리지만 이유가 다르다: common은 "노이즈 축소"(20260827_024),
   // null은 "등급이 존재하지 않음", 미지 값은 "등급을 모름"(개발 빌드에서 경고).
   const key = resolveRarity(rarity, 'RarityBadge');
   if (key == null) return null;
-  if (key === 'common') return null;
+  // `showCommon`(2026-11-09) — 액티비티 배지 목록처럼 Common도 칩으로 알려야 하는 화면만 켠다. 기본 false라 다른 화면은 그대로다.
+  if (key === 'common' && !showCommon) return null;
   const c = config[key];
   const s = SIZES[size] ?? SIZES.sm;
   return (

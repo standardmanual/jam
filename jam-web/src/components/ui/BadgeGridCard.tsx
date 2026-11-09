@@ -71,12 +71,24 @@ export interface BadgeGridCardProps {
    */
   locked?: boolean
   /**
-   * true = 이름을 연한 그레이(`--base-neutral-400`, #a3a3a3)로 그린다. 아직 장착하지 않은 칸(비어 있거나 넣을 수 있는 배지가
-   * 있는 칸)에서 장착된 칸과 이름 색으로 구분하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시, 처음에는 `text-muted`였다가
-   * «더 흐린 그레이»로 바꿨다). 썸네일 별·미발견 실루엣의 회색(중립 400)과 같은 단계다. 흰 면 위 대비는 약 2.5:1로 낮다 —
-   * 비활성 칸이라는 뜻이고 기본 false라 다른 화면은 그대로다.
+   * true = 이름을 연한 그레이로 그린다: `text-muted`(#666)에 `opacity-60`을 건다. 흰 카드 면 위에서 #a3a3a3(중립 400)과 같은 밝기라
+   * 썸네일 별·미발견 실루엣의 회색과 같은 단계다. 원시 색 토큰(`--base-*`)은 공통 컴포넌트에서 쓰지 않는 규칙이라(`commonLiteralColors`)
+   * 역할 토큰 + 불투명도로 만들었다. 아직 장착하지 않은 칸(비어 있거나 넣을 수 있는 배지가 있는 칸)에서 장착된 칸과 이름 색으로
+   * 구분하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시, 처음에는 `text-muted`였다가 «더 흐린 그레이»로 바꿨다).
+   * 흰 면 위 대비가 약 2.5:1로 낮다 — 비활성 칸이라는 뜻이고 기본 false라 다른 화면은 그대로다.
    */
   nameMuted?: boolean
+  /**
+   * 방문 횟수. 2 이상이면 이름 아래, 등급 칩 자리에 «×N» 칩을 그린다(체크인 배지 목록, 2026-11-09 사용자 지시).
+   * 1회는 칩을 그리지 않는다(사용자 지시). 썸네일 모서리의 «×N» 필(`count`)과 다른 표현이다 — 이쪽은 등급 칩과 같은 크기(md)의 칩이다.
+   * 면은 레벨 칩과 같은 `--default-soft`다. 기본값이 없어 다른 화면은 그대로다.
+   */
+  visitCount?: number | null
+  /**
+   * true = 등급이 Common인 배지도 `Common` 칩을 그린다. 기본 false — 다른 화면은 Common 칩을 그리지 않는다(노이즈 축소,
+   * 티켓 20260827_024). 액티비티 배지 목록이 켠다(2026-11-09 사용자 지시).
+   */
+  showCommonChip?: boolean
   /**
    * true = 등급 칩(`RarityBadge`·`BadgeLevelChip`)을 회색조(`grayscale`)로 그린다. 장착하지 않은 칸에서 이름·썸네일과 함께
    * 비활성으로 보이게 하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시). 칩의 면 색(`--rarity-*`)은 바꾸지 않고
@@ -115,6 +127,8 @@ export default function BadgeGridCard({
   highlighted = false,
   locked = false,
   nameMuted = false,
+  visitCount = null,
+  showCommonChip = false,
   chipGray = false,
   className = '',
   children,
@@ -151,7 +165,7 @@ export default function BadgeGridCard({
   const chipClass = chipGray ? 'grayscale' : ''
   const chip = level != null
     ? <BadgeLevelChip level={level} size="md" className={chipClass} />
-    : <RarityBadge rarity={rarity ?? undefined} size="md" className={chipClass} />
+    : <RarityBadge rarity={rarity ?? undefined} size="md" className={chipClass} showCommon={showCommonChip} />
 
   const content = (
     <>
@@ -190,7 +204,7 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-1 pt-2 w-full">
-        <p className={`text-sm font-bold ${nameMuted ? 'text-[color:var(--base-neutral-400)]' : 'text-foreground'} text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
+        <p className={`text-sm font-bold ${nameMuted ? 'text-muted opacity-60' : 'text-foreground'} text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
           {locked ? d.lockedItem.card.name : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
@@ -198,6 +212,19 @@ export default function BadgeGridCard({
           <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
         )}
         {!undiscovered && chip}
+        {!undiscovered && typeof visitCount === 'number' && visitCount > 1 && (
+          // 등급 칩(md: 글자 --text-xs, 패딩 5px 10px, 줄 높이 1)과 같은 크기. 읽는 문장은 sr-only가 맡는다
+          <>
+            <span
+              aria-hidden="true"
+              className="inline-flex items-center justify-center rounded-full font-bold tabular-nums text-foreground"
+              style={{ background: 'var(--default-soft)', fontSize: 'var(--text-xs)', padding: '5px 10px', lineHeight: 1 }}
+            >
+              ×{visitCount}
+            </span>
+            <span className="sr-only">{t(d.badges.visitCountAria, { count: String(visitCount) })}</span>
+          </>
+        )}
       </div>
       {children && <div className="w-full mt-1">{children}</div>}
     </>

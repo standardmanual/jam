@@ -23,6 +23,18 @@ export default meta;
 type Story = StoryObj<typeof RarityBadge>;
 
 export const Common: Story = { args: { rarity: 'common' } };
+/** `showCommon`을 켜면 Common도 칩으로 그린다 — 액티비티 배지 목록(2026-11-09). 기본값은 아무것도 그리지 않는다 */
+export const CommonShown: Story = {
+  name: 'Common 표시(showCommon)',
+  args: { rarity: 'common', showCommon: true, size: 'md' },
+  play: async ({ canvasElement }) => {
+    expect(canvasElement.textContent).toBe('Common');
+    // 면은 레벨 칩과 같다: --default-soft(#e5e5e5) 면 + --foreground(#171717) 글자
+    const chip = canvasElement.querySelector('span') as HTMLElement;
+    expect(getComputedStyle(chip).backgroundColor).toBe('rgb(229, 229, 229)');
+    expect(getComputedStyle(chip).color).toBe('rgb(23, 23, 23)');
+  },
+};
 export const Rare: Story = { args: { rarity: 'rare' } };
 export const Epic: Story = { args: { rarity: 'epic' } };
 export const Mystic: Story = { args: { rarity: 'mystic' } };

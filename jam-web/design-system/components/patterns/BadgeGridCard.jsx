@@ -62,6 +62,7 @@ export function BadgeGridCard({
   rarity = 'common',
   level = null,
   count = null,
+  visitCount = null,
   href,
   onClick,
   onNavigate,
@@ -169,6 +170,21 @@ export function BadgeGridCard({
           {locked ? LOCKED_NAME : name}
         </p>
         {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity} size="md" />)}
+        {/* 방문 횟수 칩(체크인 배지 목록, 2026-11-09) — 2회 이상일 때만, 등급 칩과 같은 크기(md). 면은 레벨 칩과 같은 --default-soft다. 서비스 `BadgeGridCard`와 같은 값이다 */}
+        {!undiscovered && typeof visitCount === 'number' && visitCount > 1 && (
+          <span
+            role="img"
+            aria-label={`${visitCount}번 방문했어요`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              padding: '5px 10px', borderRadius: 'var(--radius-full)',
+              fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+              color: 'var(--foreground)', background: 'var(--default-soft)',
+            }}
+          >
+            ×{visitCount}
+          </span>
+        )}
         {locked && (
           // 채운 비율은 게이지로만 보인다 — 숫자와 퍼센트는 화면에도 보조기술에도 싣지 않는다(운영 로직 4.3절)
           <div aria-hidden="true" style={{ width: '100%', paddingTop: 'var(--spacing-4)' }}>

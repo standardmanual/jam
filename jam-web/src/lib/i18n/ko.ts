@@ -508,6 +508,8 @@ export const ko = {
      * 필 자체는 aria-hidden이라 이 문장이 없으면 횟수가 스크린리더에 전달되지 않는다.
      */
     earnCountAria: '{count}번 획득했어요',
+    /** 체크인 배지 목록의 «×N» 칩을 읽는 문구(2026-11-09) — 체크인은 «획득»이 아니라 «방문»이다 */
+    visitCountAria: '{count}번 방문했어요',
     tabActivity: '액티비티',
     tabCheckin: '체크인',
     tabItembook: '컬렉션',

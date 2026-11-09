@@ -323,13 +323,15 @@ describe('SlotGrid — 장착하지 않은 칸의 배지 이름은 그레이다 
     />,
   )
 
-  it('장착된 칸은 foreground, 추가할 수 있는 칸과 빈 칸은 연한 그레이(중립 400)다', () => {
+  it('장착된 칸은 foreground, 추가할 수 있는 칸과 빈 칸은 연한 그레이(muted + opacity-60)다', () => {
     expect(nameClassOf(html, '이름1')).toContain('text-foreground')
-    expect(nameClassOf(html, '이름1')).not.toContain('base-neutral-400')
+    expect(nameClassOf(html, '이름1')).not.toContain('opacity-60')
     for (const name of ['이름2', '이름3']) {
-      expect(nameClassOf(html, name), name).toContain('text-[color:var(--base-neutral-400)]')
+      expect(nameClassOf(html, name), name).toContain('text-muted')
+      expect(nameClassOf(html, name), name).toContain('opacity-60')
       expect(nameClassOf(html, name), name).not.toContain('text-foreground')
-      expect(nameClassOf(html, name), name).not.toContain('text-muted')
+      // 원시 색 토큰(--base-*)을 직접 쓰지 않는다
+      expect(nameClassOf(html, name), name).not.toContain('base-neutral')
     }
   })
 })

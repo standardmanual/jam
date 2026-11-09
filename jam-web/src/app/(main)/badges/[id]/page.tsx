@@ -368,7 +368,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     const representativeSerial = activeItem
       ? `${activeItem.serial_prefix ?? '????'}${String(activeItem.serial_number).padStart(6, '0')}`
       : null
-    const showSerial = isOwnBadge && representativeSerial !== null
 
     return (
       <div className="min-h-full text-foreground" style={themedTextStyle}>
@@ -398,20 +397,18 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             샘플에서 검증된 height=50 재사용, 20260903_1423). 본인 뷰 + 현재 보유 중인 개체가
             있을 때만 노출한다. */}
         {isOwnBadge && representativeSerial && (
-          <div className="relative z-10 flex justify-center px-4 pb-[32px]">
+          <div className="relative z-10 flex justify-center px-4 pt-3 pb-[32px]">
             <ItemSerialCode code={representativeSerial} height={50} />
           </div>
         )}
 
         {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링.
-            위 ItemSerialCode가 이미 pb-[32px] 여백을 만들어두므로, 노출 중일 때는
-            pt-[32px]를 중복으로 더하지 않는다(dev-sample과 동일 간격). */}
+            위 위쪽 간격은 앞 블록이 만든다: 히어로 카드의 pb-5(20px, 다른 화면의 카드 사이 간격)와, 일련번호가 있으면
+            ItemSerialCode 블록의 pt-3·pb-[32px]다. 그래서 여기에는 위쪽 여백을 더하지 않는다(2026-11-09 사용자 지시, 이전에는
+            일련번호가 없을 때 pt-[32px]가 히어로의 pb-[32px]와 겹쳐 64px였다). */}
         {(isOwnBadge || !hasEarned) && (
           <div
-            className={[
-              'relative z-10 flex flex-col gap-5 px-4 pb-3',
-              showSerial ? '' : 'pt-[32px]',
-            ].join(' ')}
+            className="relative z-10 flex flex-col gap-5 px-4 pb-3"
           >
             {isOwnBadge && allItemInventory.length > 0 && (
               // activeItemId — 위 히어로에 일련번호가 크게 표시된 개체를 그대로 넘긴다.
@@ -506,7 +503,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
         {/* info-section */}
-        <div className="relative z-10 flex flex-col gap-5 pt-[32px] px-4 pb-3">
+        <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
           {/* 획득 조건 문구는 ko.ts의 conditionCheckinBody 한 곳에서 관리한다(20260826_004) —
               이전에는 이 하드코딩과 i18n 키가 서로 다른 내용으로 갈라져 있었다. */}
@@ -579,7 +576,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
       {/* info-section */}
-      <div className="relative z-10 flex flex-col gap-5 pt-[32px] px-4 pb-3">
+      <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
         {/* 획득 조건 다크 카드 */}
         <BadgeConditionCard
           text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name, badgeRow.id)}

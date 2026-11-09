@@ -15,6 +15,11 @@ export interface RarityBadgeProps {
    */
   size?: 'sm' | 'md' | 'row';
   className?: string;
+  /**
+   * true이면 `common`도 칩(`Common`)으로 그린다. 기본 false — Common은 기본 등급이라 칩을 그리지 않는다(노이즈 축소, 티켓 20260827_024).
+   * 액티비티 배지 목록처럼 Common도 알려야 하는 화면만 켠다(2026-11-09 사용자 지시). 면은 레벨 칩과 같은 `--default-soft` + `--foreground`다(`--rarity-common` 토큰 값은 그대로).
+   */
+  showCommon?: boolean;
 }
 
 export function RarityBadge(props: RarityBadgeProps): JSX.Element | null;

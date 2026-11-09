@@ -79,17 +79,19 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
     // 위에서 그려지도록 승격. 승격하지 않으면 non-positioned 콘텐츠가 positioned 배경 레이어보다
     // 페인트 순서상 아래로 가려진다([20260818_002] 잔여 이슈, [20260818_003]에서 실색상 적용과
     // 함께 수정).
-    <div className="relative z-10 px-4 pt-0 pb-[32px]">
+    // 아래 여백 pb-5(20px)는 다른 화면의 카드 사이 간격(`gap-5`)과 같다(2026-11-09 사용자 지시). 이전에는 pb-[32px]에 다음
+    // 영역의 pt-[32px]가 겹쳐 카드와 «획득 조건» 카드 사이가 64px였다.
+    <div className="relative z-10 px-4 pt-0 pb-5">
       {/* [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다 — overflow-hidden으로 라운드 안에
           가두고, 캔버스는 절대배치 최하단(z-0)에 두어 이미지·이름은 그 위(z-10)에 그대로 남는다.
           애니메이션이 카드 배경 자체가 되므로 bg-surface는 깔지 않는다.
-          [20260917_1211] 카드 전체(이미지+등급칩+이름+설명)를 1:1 비율로 묶는다 — 이전에는
-          이미지 서브블록만 aspect-square였고 설명은 카드 밖에 별도 문단으로 있었다. 이미지
-          200×200은 최우선으로 유지하고(flex-shrink-0), 공간이 부족하면 이미지가 아니라
-          요소 사이 간격(gap/pt)부터 줄인다. */}
+          [20260917_1211] 카드 전체(이미지+등급칩+이름+설명)를 한 카드로 묶는다 — 이전에는
+          이미지 서브블록만 aspect-square였고 설명은 카드 밖에 별도 문단으로 있었다.
+          2026-11-09 사용자 지시로 카드의 1:1 비율(aspect-square) 고정을 풀었다 — 카드 높이는 내용(이미지 200 +
+          칩·이름 + 설명 줄 수)이 정하고, 이미지와 글자 블록 사이는 gap-4가 띄운다. */}
       <div
         className={[
-          'relative overflow-hidden w-full aspect-square rounded-2xl flex flex-col items-center p-6',
+          'relative overflow-hidden w-full rounded-2xl flex flex-col items-center gap-4 p-6',
           // 테마·애니메이션 배경이 없을 때만 카드 면(--card-bg)이고 외곽선은 없다(티켓 20261107_2203)
           backgroundAnimation || themed ? 'bg-transparent' : 'bg-card-bg',
         ].join(' ')}
@@ -138,11 +140,13 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
             // [20260917_1211] 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을
             // 별도 줄로 그린다 — 원본 `\n`에만 반응하던 `whitespace-pre-line`으로는 실제 배지
             // 설명(마침표로 끝나는 문장 나열)에서 줄바꿈이 거의 일어나지 않았다.
+            // 설명 문단은 전역 `p { text-wrap: balance }`를 끄고 일반 줄바꿈으로 둔다(2026-11-09 사용자 지시). 전역 규칙이 레이어 밖(globals.css)이라
+            // 레이어 안의 유틸리티(`text-wrap`)는 지므로 중요도 접미사(`!`)를 붙인다.
             <div className="flex-shrink-0 flex flex-col gap-0.5">
               {splitDescriptionSentences(badge.description).map((sentence, index) => (
                 <p
                   key={index}
-                  className={`text-base text-center ${onMedia ? 'text-snow' : 'text-muted'}`}
+                  className={`text-base text-center text-wrap! ${onMedia ? 'text-snow' : 'text-muted'}`}
                 >
                   {sentence}
                 </p>

@@ -14,6 +14,8 @@ export interface BadgeGridCardProps {
   level?: number | null;
   /** 반복 획득 횟수. 2 이상일 때만 썸네일 모서리에 «×N»을 그린다. */
   count?: number | null;
+  /** 방문 횟수. 2 이상이면 이름 아래에 «×N» 칩(등급 칩과 같은 크기)을 그린다 — 체크인 배지 목록(2026-11-09). 1회는 그리지 않는다 */
+  visitCount?: number | null;
   /** Link 모드 — <a href> 래핑. onClick과 상호 배타. */
   href?: string;
   /** Button 모드 — <button> 래핑. href와 상호 배타. */

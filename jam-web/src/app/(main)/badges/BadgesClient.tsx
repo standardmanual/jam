@@ -233,6 +233,10 @@ export default function BadgesClient({
                       name={badge.name}
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
+                      // 무한레벨형 배지(등급 없음)는 등급 칩 자리에 Lv.N 칩을 그린다(2026-11-09 사용자 지시)
+                      level={badge.level}
+                      // Common 배지도 칩으로 알린다(2026-11-09 사용자 지시) — 다른 화면의 «Common 칩 없음» 규약은 그대로다
+                      showCommonChip
                       earned={!!earned}
                     />
                   ))}
@@ -276,7 +280,7 @@ export default function BadgesClient({
 
               {filteredCheckinBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
-                  {filteredCheckinBadges.map(({ badge }) => (
+                  {filteredCheckinBadges.map(({ badge, earnCount }) => (
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
@@ -284,6 +288,8 @@ export default function BadgesClient({
                       name={badge.name}
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
+                      // 이름 아래에 «×방문 횟수» 칩(2026-11-09 사용자 지시)
+                      visitCount={earnCount}
                     />
                   ))}
                 </div>

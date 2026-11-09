@@ -339,6 +339,29 @@ export const RepeatCount: Story = {
   },
 };
 
+export const VisitCount: Story = {
+  name: '방문 횟수 — 이름 아래 ×N 칩',
+  render: () => (
+    <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
+      <BadgeGridCard name="한 번 간 산" imageUrl={SAMPLE_IMAGES.common} rarity="common" visitCount={1} earned />
+      <BadgeGridCard name="세 번 간 산" imageUrl={SAMPLE_IMAGES.common} rarity="common" visitCount={3} earned />
+      <BadgeGridCard name="열두 번 간 산" imageUrl={SAMPLE_IMAGES.common} rarity="common" visitCount={12} earned />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const cards = canvasElement.querySelector('[data-testid="cards"]')!;
+    // 1회 카드에는 칩이 없다
+    expect(cards.children[0].textContent).not.toContain('×');
+    expect(cards.children[1].textContent).toContain('×3');
+    expect(cards.children[2].textContent).toContain('×12');
+    // 등급 칩(md)과 같은 크기: 글자 12px, 높이 22px
+    const chip = Array.from(cards.children[1].querySelectorAll('span')).find((el) => el.textContent === '×3') as HTMLElement;
+    expect(chip).toBeTruthy();
+    expect(getComputedStyle(chip).fontSize).toBe('12px');
+    expect(Math.round(chip.getBoundingClientRect().height)).toBe(22);
+  },
+};
+
 /**
  * 잠김 — 열기 전의 아이템 배지(티켓 20261018_0054 2회). 일반 카드와 같은 면, 썸네일 자리에 LockedTile, 이름 줄은 가린 이름,
  * 등급 칩 아래에 `ProgressBar outlined` 한 줄. 이름·그림은 넘기지 않는다.
