@@ -16,6 +16,7 @@ const meta: Meta<typeof TabBar> = {
       control: 'select',
       options: ['today', 'badges', 'drops', 'missions', 'inventory'],
     },
+    inverted: { control: 'boolean' },
   },
 };
 
@@ -96,6 +97,33 @@ export const Interactive: Story = {
         }}>
           현재 탭: <strong style={{ color: 'var(--link)' }}>{active}</strong>
         </p>
+      </div>
+    );
+  },
+};
+
+export const Inverted: Story = {
+  name: '반전 (어두운 면 위)',
+  args: { active: 'badges', inverted: true },
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background-inverse)', position: 'relative' }}><Story /></div>],
+};
+
+// 푸터 감지는 서비스의 일이다 — 여기서는 버튼이 그 판정을 흉내 내는 가상 재료다.
+export const InvertedToggle: Story = {
+  name: '반전 토글 (푸터 장면 흉내)',
+  render: () => {
+    const [inverted, setInverted] = useState(false);
+    const [active, setActive] = useState<TabKey>('badges');
+    return (
+      <div style={{ minHeight: 320, position: 'relative' }}>
+        <div style={{ height: 160, background: 'var(--background)', textAlign: 'center', paddingTop: 16 }}>
+          <button onClick={() => setInverted((v) => !v)} style={{ color: 'var(--link)', fontSize: 'var(--text-sm)' }}>
+            {inverted ? '밝은 면으로' : '푸터 위로'} (inverted={String(inverted)})
+          </button>
+          <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>푸터 감지는 서비스의 일이고, 이 버튼은 그 판정을 흉내 낸다.</p>
+        </div>
+        <div style={{ height: 160, background: 'var(--background-inverse)' }} />
+        <TabBar active={active} onChange={setActive} inverted={inverted} />
       </div>
     );
   },

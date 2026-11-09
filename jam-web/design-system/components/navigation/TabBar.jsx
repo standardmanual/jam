@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 /*
+ * 20261109_1310: 반전 상태(`inverted`) — 서비스 `src/components/ui/TabBar.tsx`·transitions.css(.jam-tabbar-*,
+ * 티켓 20261109_1153)와 같은 모양이다(병존 구현이라 함께 봐야 함). 캡슐 면을 «밝은 면»(.ds-tabbar-chrome)과
+ * «반전 면»(.ds-tabbar-chrome-inverse) 두 레이어로 나눠 opacity만 교차한다. background-color·blur는
+ * 보간하지 않는다(탁한 회색·iOS 끊김). 푸터 감지는 호출부의 일이라 controlled prop만 둔다.
+ *
  * 20260823_003: 재질(반투명 흰 필) — 기존 불투명 흰 필의 색은 그대로 두고 알파+blur만
  * 추가한다(--tabbar-background). 투명도 줄이기 설정에서는 불투명 흰 면(--surface)이다. TopNav는 이번 범위에서
  * 제외(기존 불투명 크롬 유지). 서비스 `src/components/ui/TabBar.tsx`(별도 Tailwind
@@ -14,7 +19,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
  * easing은 서비스 --tabs-dur(300ms)/--tabs-ease와 동일한 값을 이 DS 토큰(--ease-smooth-out)으로
  * 맞췄다.
  */
-const STATIC_CSS = `.ds-tabbar-chrome{background:var(--tabbar-background);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
+const STATIC_CSS = `.ds-tabbar-chrome,.ds-tabbar-chrome-inverse{position:absolute;inset:0;border-radius:inherit;pointer-events:none;transition:opacity var(--duration-fast) var(--ease-smooth-out)}.ds-tabbar-chrome-inverse{background:var(--tabbar-background-inverse);opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome{opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome-inverse{opacity:1}.ds-tabbar-icon{transition:color var(--duration-fast) var(--ease-smooth-out)}@media(prefers-reduced-motion:reduce){.ds-tabbar-chrome,.ds-tabbar-chrome-inverse,.ds-tabbar-icon{transition:none!important}}.ds-tabbar-chrome{background:var(--tabbar-background);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
 
 /*
  * 탭바 기하값은 Figma 원본(file UXcBEgFagmO5ARwH5F0mMW, node 11:218 "Tab Bar Buttons")
@@ -90,7 +95,7 @@ const tabs = [
   { key: 'inventory', label: '인벤토리' },
 ];
 
-export function TabBar({ active = 'today', onChange, username }) {
+export function TabBar({ active = 'today', onChange, username, inverted = false }) {
   const navRef = useRef(null);
   const pillRef = useRef(null);
   const tabRefs = useRef(new Map());
@@ -155,7 +160,7 @@ export function TabBar({ active = 'today', onChange, username }) {
   return (
     <>
     <style>{STATIC_CSS}</style>
-    <nav ref={navRef} className="ds-tabbar-chrome" data-username={username ?? undefined} style={{
+    <nav ref={navRef} className="ds-tabbar" data-inverted={inverted ? 'true' : 'false'} data-username={username ?? undefined} style={{
       position: 'fixed', left: '50%', transform: 'translateX(-50%)',
       /* v2: safe-area-inset-bottom prevents overlap with iPhone home indicator.
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
@@ -171,6 +176,9 @@ export function TabBar({ active = 'today', onChange, username }) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
     }}>
+      {/* 면 레이어 두 장 — DOM 맨 앞이라 필·아이콘 아래에 깔리고 클릭은 통과시킨다(20261109_1310). */}
+      <span aria-hidden="true" className="ds-tabbar-chrome" />
+      <span aria-hidden="true" className="ds-tabbar-chrome-inverse" />
       {/* 활성 탭 배경 필 — 단일 공유 pill을 활성 탭의 offsetLeft/offsetWidth 중앙으로
           translateX 이동시킨다(moveTo, 위 참고) — 탭 전환 시 스냅 대신 미끄러지는 모션이
           생긴다(20260901_1521). 양옆은 완전히 둥글고 위아래는 직선인 캡슐 모양 — 높이보다
@@ -184,7 +192,7 @@ export function TabBar({ active = 'today', onChange, username }) {
           position: 'absolute', top: '50%', left: 0,
           // 폭은 moveTo가 활성 탭 슬롯 실측값으로 매번 지정한다(위 상수 주석 참고).
           height: PILL_HEIGHT, borderRadius: 'var(--radius-full)',
-          background: 'var(--tabbar-selection)',
+          background: inverted ? 'var(--tabbar-selection-inverse)' : 'var(--tabbar-selection)',
           opacity: 0, transform: 'translate(0px, -50%)',
         }}
       />
@@ -208,7 +216,12 @@ export function TabBar({ active = 'today', onChange, username }) {
               cursor: 'pointer',
             }}
           >
-            <span style={{ position: 'relative', color: isActive ? 'var(--tabbar-icon-active)' : 'var(--tabbar-icon)' }}>
+            <span className="ds-tabbar-icon" style={{
+              position: 'relative',
+              color: inverted
+                ? (isActive ? 'var(--snow)' : 'var(--tabbar-icon-inverse)')
+                : (isActive ? 'var(--tabbar-icon-active)' : 'var(--tabbar-icon)'),
+            }}>
               {/* 20260901: today도 Material Symbols 좌표계로 교체돼 5개 탭 전부 동일
                   viewBox를 쓴다(20260827_026 당시엔 today만 예외였으나 두께 불일치로 정리). */}
               <svg viewBox="0 -960 960 960" fill="none" width={24} height={24}>
