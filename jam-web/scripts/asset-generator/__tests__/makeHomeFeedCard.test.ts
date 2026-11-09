@@ -132,6 +132,29 @@ describe('parseMakeCardArgs', () => {
     expect(() => parseMakeCardArgs([...REQUIRED, '--meta', '{"autor":"x"}'])).toThrow('알 수 없는 필드');
   });
 
+  it('값이 없거나 값 자리에 다른 --인자가 오면 값으로 삼키지 않고 멈춘다', () => {
+    expect(() => parseMakeCardArgs([...REQUIRED, '--seed'])).toThrow('--seed 값이 필요해요');
+    expect(() => parseMakeCardArgs([...REQUIRED, '--img01'])).toThrow('--img01 값이 필요해요');
+    expect(() => parseMakeCardArgs(swap('--text01', '--text02'))).toThrow('--text01 값이 필요해요');
+    expect(() => parseMakeCardArgs(swap('--preset', '--bg'))).toThrow('--preset 값이 필요해요');
+    expect(() => parseMakeCardArgs([...REQUIRED, '--seed', '--meta', '{}'])).toThrow('--seed 값이 필요해요');
+    expect(() => parseMakeCardArgs(swap('--out-dir', '--seed'))).toThrow('--out-dir 값이 필요해요');
+  });
+
+  it('빈 문자열 값은 레이어·일반 인자 모두 거절한다', () => {
+    expect(() => parseMakeCardArgs(swap('--text01', ''))).toThrow('--text01 값이 필요해요');
+    expect(() => parseMakeCardArgs([...REQUIRED, '--img01', ''])).toThrow('--img01 값이 필요해요');
+    expect(() => parseMakeCardArgs(swap('--preset', ''))).toThrow('--preset 값이 필요해요');
+    expect(() => parseMakeCardArgs(swap('--card', ''))).toThrow('--card 값이 필요해요');
+    expect(() => parseMakeCardArgs([...REQUIRED, '--seed', ''])).toThrow('--seed 값이 필요해요');
+    expect(() => parseMakeCardArgs([...REQUIRED, '--meta', ''])).toThrow('--meta 값이 필요해요');
+  });
+
+  it('값이 하이픈 하나로 시작하는 음수 시드와 한 글자 값은 그대로 받는다', () => {
+    expect(parseMakeCardArgs([...REQUIRED, '--seed', '-7']).seed).toBe(-7);
+    expect(parseMakeCardArgs(swap('--text01', '-')).values).toEqual({ text01: '-' });
+  });
+
   it('옛 인자 --text·--subtext는 새 인자 이름을 안내하는 오류다', () => {
     expect(() => parseMakeCardArgs([...REQUIRED, '--text', '제목'])).toThrow('--text·--subtext는 없어졌어요. 레이어 번호로 지정해 주세요: --text01, --text02');
     expect(() => parseMakeCardArgs([...REQUIRED, '--subtext', '설명'])).toThrow('없어졌어요');
