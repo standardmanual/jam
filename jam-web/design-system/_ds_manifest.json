@@ -681,6 +681,12 @@
       "definedIn": "tokens/colors.css"
     },
     {
+      "name": "--tabbar-icon-inverse",
+      "value": "var(--muted-on-inverse)",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
       "name": "--tabbar-background",
       "value": "rgba(255, 255, 255, 0.72)",
       "kind": "other",
@@ -697,6 +703,20 @@
     {
       "name": "--tabbar-selection",
       "value": "rgba(0, 0, 0, 0.08)",
+      "kind": "other",
+      "definedIn": "tokens/materials.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--tabbar-background-inverse",
+      "value": "color-mix(in srgb, var(--snow) 22%, var(--background-inverse))",
+      "kind": "other",
+      "definedIn": "tokens/materials.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--tabbar-selection-inverse",
+      "value": "var(--surface-on-inverse)",
       "kind": "other",
       "definedIn": "tokens/materials.css",
       "annotation": "other"
