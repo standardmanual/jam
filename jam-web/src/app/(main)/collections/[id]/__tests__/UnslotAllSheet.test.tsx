@@ -161,7 +161,7 @@ describe('UnslotAllSheetView — 버튼', () => {
     expect(rest).toEqual([])
     expect(labelOf(cancel)).toBe('취소')
     expect(cancel.props.variant).toBe('secondary')
-    expect(labelOf(confirm)).toBe('모두 빼기')
+    expect(labelOf(confirm)).toBe('한번에 빼기')
     expect(confirm.props.variant).toBe('primary')
     expect(confirm.props.surface).toBe('main')
     // danger가 없다 — 배지는 인벤토리로 돌아오고 완성 기록도 남는다

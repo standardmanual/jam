@@ -149,7 +149,7 @@ describe('SlotGrid — 모두 빼기 버튼의 노출 조건 (티켓 20261028_14
     cell('이름2', 'rare', { candidates: [candidate('c1')] }),
     cell('이름3', 'rare'),
   ]
-  const BUTTON = '>모두 빼기<'
+  const BUTTON = '>한번에 빼기<'
 
   it('본인 화면에서 장착이 하나라도 있으면 격자 바로 아래에 버튼이 한 번 보인다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} slotCount={1} />)
@@ -170,7 +170,7 @@ describe('SlotGrid — 모두 빼기 버튼의 노출 조건 (티켓 20261028_14
       renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} slotCount={0} />),
       renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} />),
     ]) {
-      expect(html).not.toContain('모두 빼기')
+      expect(html).not.toContain('한번에 빼기')
       expect(html).not.toContain('bg-surface!')
     }
   })
@@ -178,7 +178,7 @@ describe('SlotGrid — 모두 빼기 버튼의 노출 조건 (티켓 20261028_14
   it('타인 열람(readOnly)은 장착이 있어도 보이지 않는다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} slotCount={3} readOnly />)
 
-    expect(html).not.toContain('모두 빼기')
+    expect(html).not.toContain('한번에 빼기')
   })
 
   it('삭제된 배지에 꽂힌 장착만 남아 격자에 장착된 칸이 없어도 slotCount가 있으면 보인다', () => {

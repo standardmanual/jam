@@ -1563,14 +1563,14 @@ export const ko = {
      * `shortNotice`·`partialNotice`는 서버(`api/itembooks/[id]/slots`)가 완성해 `error`로 내려보내는 문장이다(ADR 0001).
      */
     unslotAll: {
-      button: '모두 빼기',
+      button: '한번에 빼기',
       title: '장착한 배지를 모두 뺄까요?',
       /** 시트 본문 — 첫 문장은 항상, 둘째는 컬렉션 등급이 정해졌을 때만, 셋째는 완성한 컬렉션일 때만 보인다 */
       bodyReturn: '이 컬렉션에 장착한 배지가 모두 인벤토리로 돌아와요.',
       bodyTier: '컬렉션 등급도 풀려서 다른 등급으로 다시 정할 수 있어요.',
       bodyCompleted: '완성 기록은 그대로 남아요.',
       cancel: '취소',
-      confirm: '모두 빼기',
+      confirm: '한번에 빼기',
       /** 제출 중 확정 버튼 라벨 — 이 화면의 버튼은 동사형이라 진행형도 동사형이다(UX Writing 가이드 5.3) */
       confirming: '빼는 중',
       successToast: '장착한 배지를 모두 뺐어요',
