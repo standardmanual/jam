@@ -14,6 +14,8 @@
  *    (직렬화한 prop·RSC 페이로드에 캡슐 값이 실리지 않는다 — 클라이언트에서 숨기는 방식이 아니다)
  *  - 챕터 줄(티켓 20261019_1317): 내 프로필은 `getMyChapter`로 읽어 `chapterInitial`을 내리고, 타인이 보는 프로필은 `getPublicChapter`만 불러 `publicChapter`를 내린다
  *    (내 진행·다음 챕터는 조회도 prop도 없어 RSC 페이로드에 실리지 않는다). 퀘스트 전과 읽지 못함은 null로 접는다
+ *  - Strava 활동 제목(티켓 20261008_1506): 본인 프로필에서만 `strava_activities`를 읽어 `activityNames`를 채우고,
+ *    타인이 보는 프로필은 조회도 하지 않아 `activityNames`가 비고 직렬화에도 제목이 없다
  *
  * 모킹한 DB 가짜는 select에서 고른 열을 무시하고 행 전체를 돌려준다 — 조회가 넓어졌을 때
  * prop에서 새는지까지 잡으려는 최악의 경우 흉내다.
@@ -77,6 +79,9 @@ const state = vi.hoisted(() => ({
   capsuleIssueRows: [] as unknown[],
   // true면 item_issue_log(캡슐 발급) 조회가 오류를 돌려준다
   capsuleIssueError: false,
+  // 피드 행(user_activity_feed)과 Strava 활동 행(strava_activities) — 활동 제목 노출 시험용
+  feedRows: [] as unknown[],
+  activityRows: [] as unknown[],
 }))
 
 const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>>())
@@ -107,6 +112,8 @@ function listResponse(table: string, eqs: [string, unknown][] = []) {
     if (eqs.some(([column]) => column === 'picked_up_by')) return { data: state.pickedRows, count: 0, error: null }
   }
   if (table === 'strava_connections') return { data: [stravaRow], count: 1, error: null }
+  if (table === 'user_activity_feed') return { data: state.feedRows, count: 0, error: null }
+  if (table === 'strava_activities') return { data: state.activityRows, count: 0, error: null }
   return { data: [], count: 0, error: null }
 }
 
@@ -233,6 +240,8 @@ beforeEach(() => {
   state.actDropRows = []
   state.capsuleIssueRows = []
   state.capsuleIssueError = false
+  state.feedRows = []
+  state.activityRows = []
   getWalletMock.mockReset()
   getWalletMock.mockResolvedValue(1234)
   getCapsuleStatusMock.mockReset()
@@ -658,5 +667,45 @@ describe('/{username} 프로필 페이지 — 캡슐에서 나온 개체 제외'
     expect(feed.find((f) => f.id === 'legacy_actdrop_item-capsule-3')).toBeDefined()
     expect(errorLog).toHaveBeenCalled()
     errorLog.mockRestore()
+  })
+})
+
+describe('/{username} 프로필 페이지 — Strava 활동 제목 노출 (티켓 20261008_1506)', () => {
+  const SECRET_TITLE = '비공개 집 앞 새벽 러닝 제목'
+
+  beforeEach(() => {
+    state.feedRows = [
+      {
+        id: 'feed-1',
+        user_id: TARGET_USER_ID,
+        event_type: 'badge_earned',
+        metadata: {},
+        strava_activity_id: 7001,
+        created_at: '2026-11-08T00:00:00Z',
+        event_at: '2026-11-08T00:00:00Z',
+      },
+    ]
+    state.activityRows = [{ strava_id: 7001, normalized: { name: SECRET_TITLE }, start_date: '2026-11-08T00:00:00Z' }]
+  })
+
+  it('(p) 다른 유저가 볼 때는 strava_activities를 읽지 않고 activityNames가 비며 직렬화에도 제목이 없다', async () => {
+    state.loginUserId = LOGIN_USER_ID
+    const props = await renderPage('target')
+
+    expect(props.isOwnProfile).toBe(false)
+    expect(props.activityNames).toEqual({})
+    expect(state.calls.filter((c) => c.table === 'strava_activities')).toHaveLength(0)
+    expect(JSON.stringify(props)).not.toContain(SECRET_TITLE)
+  })
+
+  it('(q) 본인 프로필은 지금처럼 활동 제목이 activityNames에 담긴다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    const props = await renderPage('target')
+
+    expect(props.isOwnProfile).toBe(true)
+    expect(props.activityNames).toEqual({ '7001': SECRET_TITLE })
+    const actCalls = state.calls.filter((c) => c.table === 'strava_activities')
+    expect(actCalls).toHaveLength(1)
+    expect(actCalls[0].eqs).toContainEqual(['user_id', TARGET_USER_ID])
   })
 })

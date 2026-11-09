@@ -334,11 +334,14 @@ export default async function UserProfilePage({ params }: Props) {
   // 피드가 활동 단위로 접히면 "어느 활동인지"가 카드의 앵커가 된다(케이스북의 유저
   // 멘탈모델 — "오늘 아침에 달린 그거, 뭐 받았지?"). non-null strava_activity_id를 모아
   // 1회 조회하고, 실패하거나 이름이 없으면 이름 없이 묶음만 유지한다.
+  // 활동 제목은 본인 프로필에서만 읽는다(티켓 20261008_1506, 2026-11-09 사용자 결정). 연동 스코프가
+  // `activity:read_all`이라 Strava에서 비공개로 둔 활동의 제목도 저장돼 있고, 그 공개 범위는 저장하지
+  // 않아 가려낼 수 없다. 다른 유저가 볼 때는 조회도 하지 않아 제목이 RSC 페이로드에 실리지 않는다.
   const activityIds = [...new Set(
     feedItems.map((f) => f.strava_activity_id).filter((v): v is number => typeof v === 'number')
   )]
   const activityNames: Record<string, string> = {}
-  if (activityIds.length > 0) {
+  if (isOwnProfile && activityIds.length > 0) {
     const { data: actRows, error: actRowsError } = await service
       .from('strava_activities')
       .select('strava_id, normalized, start_date')
