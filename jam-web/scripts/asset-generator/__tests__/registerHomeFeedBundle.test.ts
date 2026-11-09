@@ -582,10 +582,12 @@ describe('validateHomeFeedBundle — 이미지', () => {
 });
 
 describe('validateHomeFeedBundle — 게재용 설명문(card.description, 티켓 20260929_1335)', () => {
+  // 설명 문단을 그리는 템플릿(컨텐츠 소개, 티켓 20261109_1519)이다. 이름은 옛 테스트와 같은 호출 자리를 위해 유지한다.
   const dropAlert = (raw: RawBundle, description: unknown) => {
     raw.card = {
-      title: '드랍 알림',
-      template_type: 'drop_alert',
+      title: '컨텐츠 소개',
+      template_type: 'content_intro',
+      target_href: '/guide',
       exposure_tags: ['all'],
       starts_at: '2026-10-05T00:00:00+09:00',
       ends_at: '2026-10-12T00:00:00+09:00',
@@ -593,7 +595,7 @@ describe('validateHomeFeedBundle — 게재용 설명문(card.description, 티�
     };
   };
 
-  it('기사가 아닌 템플릿은 60자 이하 한 줄 설명문을 받는다', () => {
+  it('설명 문단을 그리는 템플릿은 60자 이하 한 줄 설명문을 받는다', () => {
     expect(errorsFor((raw) => dropAlert(raw, '가'.repeat(TODAY_DESCRIPTION_MAX_LENGTH)))).toEqual([]);
   });
 
@@ -616,11 +618,22 @@ describe('validateHomeFeedBundle — 게재용 설명문(card.description, 티�
     expect(errorsFor((raw) => dropAlert(raw, '   '))).toContain('card.description: 비어 있지 않은 문자열이어야 해요.');
   });
 
-  it('editorial_article은 설명문을 쓸 수 없다(본문이 있다)', () => {
+  it('설명 문단을 그리지 않는 템플릿(editorial_article)은 설명문을 쓸 수 없다', () => {
     const errors = errorsFor((raw) => {
       raw.card.description = '기사에는 넣을 수 없어요';
     });
-    expect(errors).toContain('card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.');
+    expect(errors).toContain(
+      'card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요(홈은 badge_spotlight·content_intro에서만 설명 문단을 그려요). 묶음에서 빼 주세요.'
+    );
+  });
+
+  it('홈이 설명 문단을 그리는 템플릿 목록을 단일 원천(DESCRIPTION_TEMPLATES)에서 읽는다 — 그 밖의 템플릿은 모두 거절한다(티켓 20261109_1519)', () => {
+    for (const template of ['mission_spotlight', 'drop_alert', 'ranking_board', 'recipe_reveal', 'itembook_milestone', 'progress_nudge', 'location_trend']) {
+      const errors = errorsFor((raw) => {
+        raw.card = { ...raw.card, template_type: template, description: '보이지 않는 설명' };
+      });
+      expect(errors.filter((e) => e.startsWith('card.description: ') && e.includes('이 필드를 쓰지 않아요')), template).toHaveLength(1);
+    }
   });
 });
 

@@ -370,7 +370,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     shape: layoutType === 'dome' ? 'dome' : layoutType === 'ticket' ? 'ticket' : null,
     title: title.trim() || '(제목 미입력)',
     subtitle: subtitle.trim() || null,
-    description: fields.description ? description.trim() || null : null,
+    description: description.trim() || null,
     cover_image_url: coverImageUrl.trim() || null,
     badge_ids: badgeIds,
     mission_id: missionId || null,
@@ -503,7 +503,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         <Input id="today-card-subtitle" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} autoComplete="off" />
       </div>
 
-      {/* 게재용 설명문(티켓 20260929_1335) — 기사 템플릿은 본문(body_markdown)이 있어 이 칸을 숨기고 저장 시 비운다. */}
+      {/* 게재용 설명문(티켓 20260929_1335) — 홈이 설명 문단을 그리는 템플릿(`showsDescription`)에서만 칸을 연다. 그 밖의 템플릿은 칸을 숨기고, 적어 둔 값은 저장할 때 지우지 않는다(티켓 20261109_1519). */}
       {fields.description && (
         <div className="flex flex-col gap-1.5">
           <FieldLabel htmlFor="today-card-description">설명문</FieldLabel>
@@ -519,7 +519,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
             {description.length}/{TODAY_DESCRIPTION_MAX_LENGTH}
           </FieldMessage>
           {layoutType === 'shortcut' && <FieldMessage>바로가기형은 화면에 보이지 않아요</FieldMessage>}
-          <FieldMessage>기사로 바꾸면 설명문은 저장할 때 삭제돼요</FieldMessage>
+          <FieldMessage>배지 소개·컨텐츠 소개 카드에서만 홈에 보여요. 다른 유형으로 바꾸면 이 칸이 숨겨지고 적은 문구는 지우지 않아요.</FieldMessage>
         </div>
       )}
 

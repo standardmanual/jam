@@ -390,12 +390,12 @@ describe('runHomeFeedRegister — --dry-run', () => {
 
   it('description이 있으면 요약의 카드 행에 그대로 보인다(insert 페이로드에 들어간다, 티켓 20260929_1335)', async () => {
     editBundle((raw) => {
-      raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined as unknown as string, description: '이번 주 드랍 소식' };
+      raw.card = { ...raw.card, template_type: 'content_intro', target_href: '/guide', body_markdown: undefined as unknown as string, description: '이번 주 소식' };
     });
     const { out, logs } = createOut();
     const code = await runHomeFeedRegister({ args: registerArgs(['--dry-run']), supabase: null, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
     expect(code).toBe(0);
-    expect(logs.join('\n')).toContain('- 설명문: 이번 주 드랍 소식');
+    expect(logs.join('\n')).toContain('- 설명문: 이번 주 소식');
   });
 
   it('description이 60자를 넘거나 줄바꿈이 있거나 기사 템플릿이면 종료 코드 1이다', async () => {
