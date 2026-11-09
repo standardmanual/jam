@@ -521,6 +521,13 @@ describe('카드 칸 — exposure_tags (티켓 20261001_1152)', () => {
     expect(new Set([asString[0], unknownTag[0], duplicated[0]]).size).toBe(3)
   })
 
+  it('허용값 밖 태그가 길면 값마다 60자에서 자른다 (티켓 20261007_1816)', () => {
+    const errors = tagErrors({ exposure_tags: ['all', 'y'.repeat(500), 'segment_vip'] })
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatch(/^items\[0\]\.exposure_tags: 허용하지 않는 태그예요 — "y{59}…, "segment_vip"\. 허용 태그: /)
+    expect(errors[0]).not.toContain('y'.repeat(100))
+  })
+
   it('소속 트라이브 태그 tribe_<UUID>는 형식으로 받고, 어긋난 값은 허용값 밖 문장으로 거절한다 (티켓 20261026_2030 2회차)', () => {
     const tribeTag = 'tribe_11111111-1111-4111-8111-111111111111'
     expect(tagErrors({ exposure_tags: [tribeTag] })).toEqual([])
@@ -840,6 +847,15 @@ describe('장소 카테고리 — knobs.place_category (티켓 20261007_1745)', 
     expect(errorsOf({ place_category: many })).toEqual([
       'items[0].knobs.place_category: 없는 장소 카테고리예요 — "a", "b", "c", "d", "e" 외 2개. 카테고리 slug를 확인해 주세요.',
     ])
+  })
+
+  it('없는 slug가 길면 값마다 60자에서 자른다 (티켓 20261007_1816)', () => {
+    const longSlug = 'x'.repeat(500)
+    const errors = errorsOf({ place_category: [longSlug, 'zoo'] })
+    expect(errors).toEqual([
+      `items[0].knobs.place_category: 없는 장소 카테고리예요 — "${'x'.repeat(59)}…, "zoo". 카테고리 slug를 확인해 주세요.`,
+    ])
+    expect(errors[0]).not.toContain('x'.repeat(100))
   })
 
   it('slug 목록 없이 부르면 형식만 본다(없는 slug도 통과)', () => {

@@ -213,7 +213,7 @@ export function validateExposureTags(value: unknown, path: string): string[] {
   }
   const invalid = value.filter((tag) => typeof tag !== 'string' || !(EXPOSURE_TAGS.includes(tag) || isTribeTag(tag)))
   if (invalid.length > 0) {
-    return [`${path}: 허용하지 않는 태그예요 — ${invalid.map(describeValue).join(', ')}. 허용 태그: ${EXPOSURE_TAGS.join(', ')}`]
+    return [`${path}: 허용하지 않는 태그예요 — ${invalid.map(describeShort).join(', ')}. 허용 태그: ${EXPOSURE_TAGS.join(', ')}`]
   }
   if (new Set(value).size !== value.length) return [`${path}: 같은 태그를 두 번 넣을 수 없어요.`]
   return []
@@ -290,7 +290,7 @@ export function validateOpsPlaceCategory(knobs: unknown, path: string, slugs?: R
   if (!slugs) return []
   const missing = value.filter((slug) => !slugs.has(slug))
   if (missing.length === 0) return []
-  const listed = missing.slice(0, MAX_LISTED_VALUES).map(describeValue).join(', ')
+  const listed = missing.slice(0, MAX_LISTED_VALUES).map(describeShort).join(', ')
   const rest = missing.length > MAX_LISTED_VALUES ? ` 외 ${missing.length - MAX_LISTED_VALUES}개` : ''
   return [`${at}: 없는 장소 카테고리예요 — ${listed}${rest}. 카테고리 slug를 확인해 주세요.`]
 }
