@@ -17,9 +17,9 @@ import { pointify } from '@/lib/i18n/tPoint'
  *   설명문 한 줄만 이 조각(`CardDescription`)을 쓴다(티켓 20261101_1945).
  */
 
-/** 본문 칸 — 안쪽 여백 16px, 그룹 사이 간격 12px. 카드 면(`Card`)의 안쪽 여백은 인라인 `style`로 0을 주고 이 칸이 가진다. */
+/** 본문 칸 — 안쪽 여백 16px, 그룹 사이 간격 8px. 카드 면(`Card`)의 안쪽 여백은 인라인 `style`로 0을 주고 이 칸이 가진다. */
 export function CardBody({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-3 p-4">{children}</div>
+  return <div className="flex flex-col gap-2 p-4">{children}</div>
 }
 
 /** 제목(h3, 24px, 2줄 말줄임) + 요약(16px `text-muted`, 2줄 말줄임, 선택). 요약은 제목 아래 4px이다. */

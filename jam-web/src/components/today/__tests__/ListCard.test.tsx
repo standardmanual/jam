@@ -31,7 +31,7 @@ import { FlaskIcon, MedalIcon } from '@/components/ui/icons'
 import type { CardViewTile, ListCardView } from '@/lib/today/cardView'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 
-const BODY_OPEN = '<div class="flex flex-col gap-3 p-4">'
+const BODY_OPEN = '<div class="flex flex-col gap-2 p-4">'
 const TRACKING = { cardId: 'card-1', contentTypeId: 'T03', templateType: 'badge_spotlight', shape: 'list' } as const
 const RANKING_TRACKING = { cardId: 'card-2', contentTypeId: 'T08', templateType: 'ranking_board', shape: 'list' } as const
 const IMG = 'https://cdn.example/b.png'
@@ -300,7 +300,8 @@ describe('ListCard 행형 — 본문과 순위 행', () => {
     for (const count of [1, 3, 10]) {
       const entries = Array.from({ length: count }, (_, i) => entry(i + 1, `u${i + 1}`))
       const html = render(live(rankingView({ ranking: ranking({ entries }) })))
-      expect(html).toContain('<div class="flex flex-col gap-2">')
+      // 제목 영역 칸(gap-2)과 순위 행 칸(gap-2), 두 개다
+      expect(html.match(/<div class="flex flex-col gap-2">/g)).toHaveLength(2)
       expect(html.match(/이름\d+/g)).toHaveLength(count)
     }
   })
@@ -506,7 +507,8 @@ describe('ListCard 행형 — 빈 상태', () => {
     expect(html).toContain(
       '<p class="text-base text-muted">아직 랭킹이 없어요</p>',
     )
-    expect(html).not.toContain('flex flex-col gap-2')
+    // 제목 영역 칸(gap-2) 하나뿐이고 순위 행 칸은 없다
+    expect(html.match(/<div class="flex flex-col gap-2">/g)).toHaveLength(1)
     expect(html).not.toContain('text-center')
     expect(html).not.toContain('<svg')
   })

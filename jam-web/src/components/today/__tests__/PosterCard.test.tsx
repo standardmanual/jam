@@ -103,9 +103,9 @@ describe('PosterCard — 막', () => {
     expect(tokenFile('spacing.css')).toMatch(/--spacing-32:\s*32px/)
   })
 
-  it('막 좌우·아래 여백은 16px, 그룹 사이 간격은 12px이다(hero 본문과 같다)', () => {
+  it('막 좌우·아래 여백은 16px, 그룹 사이 간격은 8px이다(hero 본문과 같다)', () => {
     const scrim = scrimClassOf(render())
-    for (const cls of ['px-4', 'pb-4', 'gap-3', 'flex flex-col']) {
+    for (const cls of ['px-4', 'pb-4', 'gap-2', 'flex flex-col']) {
       expect(scrim).toContain(cls)
     }
   })
