@@ -105,7 +105,18 @@ export const Interactive: Story = {
 export const Inverted: Story = {
   name: '반전 (어두운 면 위)',
   args: { active: 'badges', inverted: true },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background-inverse)', position: 'relative' }}><Story /></div>],
+  // 반전 면이 85% 반투명이라 뒤에 비치는 글자를 보이려고, 밝은 면과 어두운 푸터 면의 경계에 탭바가 걸치도록 둔다(티켓 20261109_1325).
+  decorators: [(Story) => (
+    <div style={{ height: '100vh', minHeight: 240, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div style={{ flex: 1, background: 'var(--background)', color: 'var(--foreground)', fontSize: 'var(--text-sm)', padding: 16, display: 'flex', alignItems: 'flex-end' }}>
+        밝은 면 위의 글자는 탭바 뒤에서 blur로 뭉개져 은은히 비친다.
+      </div>
+      <div style={{ height: 40, background: 'var(--background-inverse)', color: 'var(--muted-on-inverse)', fontSize: 'var(--text-sm)', padding: '8px 16px' }}>
+        어두운 푸터 위의 글자
+      </div>
+      <Story />
+    </div>
+  )],
 };
 
 // 푸터 감지는 서비스의 일이다 — 여기서는 버튼이 그 판정을 흉내 내는 가상 재료다.
