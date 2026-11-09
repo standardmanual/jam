@@ -632,6 +632,7 @@ export const ko = {
     obtainByCapsule: '캡슐 열기 보상',
     obtainByDrop: '활동 동기화 드랍',
     obtainByDropEvent: '이벤트 드랍',
+    obtainByMission: '미션 보상',
     obtainByPickup: '체크인 픽업',
     obtainBySystem: '시스템 지급',
 

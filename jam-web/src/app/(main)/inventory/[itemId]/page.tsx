@@ -67,6 +67,17 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
       if (issueError) console.error('[inventory/[itemId]] item_issue_log(받은 경로) 조회 실패', issueError)
       const issueRoute = (issueRow as { route: string } | null)?.route ?? null
 
+      // 미션 보상 — 미션 보상 지급은 받은 개체를 `mission_item_rewards.inventory_item_id`에 남긴다. 행이 있는지만 읽고 미션 id·이름은 읽지 않는다.
+      // 조회가 실패하면 false로 두어 기존 문구가 보이게 한다.
+      const { data: missionRow, error: missionError } = await service
+        .from('mission_item_rewards')
+        .select('id')
+        .eq('inventory_item_id', itemId)
+        .limit(1)
+        .maybeSingle()
+      if (missionError) console.error('[inventory/[itemId]] mission_item_rewards(받은 경로) 조회 실패', missionError)
+      const missionReward = !missionError && missionRow != null
+
       return (
         <LockedItemDetail
           // 서버 값이 바뀌면(열기 거절 뒤 새로 읽기) 클라이언트 상태를 새 값에서 다시 시작한다
@@ -78,6 +89,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
           obtainedAt={itemData.obtained_at}
           obtainedBy={itemData.obtained_by}
           issueRoute={issueRoute}
+          missionReward={missionReward}
         />
       )
     }

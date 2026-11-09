@@ -35,6 +35,13 @@ describe('resolveObtainRoute', () => {
     expect(resolveObtainRoute('뭔지 모르는 값', 'unknown')).toBe('system')
   })
 
+  it('미션 보상 기록이 있으면 mission이고, 발급 기록이 있으면 발급 기록이 앞선다', () => {
+    expect(resolveObtainRoute('system_event', null, true)).toBe('mission')
+    expect(resolveObtainRoute('system_event', null, false)).toBe('system')
+    expect(resolveObtainRoute('system_event', 'capsule', true)).toBe('capsule')
+    expect(resolveObtainRoute('system_event', 'sync', true)).toBe('activity')
+  })
+
   it('코드가 쓰는 경로 값과 같은 문자열을 본다', () => {
     expect(CAPSULE_ISSUE_ROUTE).toBe('capsule')
     expect(SYNC_ISSUE_ROUTE).toBe('sync')
@@ -45,6 +52,7 @@ describe('받은 경로 문구', () => {
   it('경로마다 맥락과 행위가 함께 읽히는 문구다', () => {
     expect(d.inventory.obtainByCapsule).toBe('캡슐 열기 보상')
     expect(d.inventory.obtainByDrop).toBe('활동 동기화 드랍')
+    expect(d.inventory.obtainByMission).toBe('미션 보상')
     expect(d.inventory.obtainByPickup).toBe('체크인 픽업')
     expect(d.inventory.obtainByDropEvent).toBe('이벤트 드랍')
     expect(d.inventory.obtainBySystem).toBe('시스템 지급')
