@@ -7,6 +7,7 @@
  *
  * - 관리자 로그인 세션만 통과한다(읽기 토큰은 proxy가 막는다).
  * - 이미지 칸이 없는 종류, 반려·취소·실패·종료 항목, 시험 묶음은 거절한다(시험 묶음은 자원이 없어 이미지를 저장하지 않는다).
+ * - 올린 뒤 항목이 막힌 상태가 됐거나 이미지 칸이 없으면 올린 두 파일을 지운다. 충돌(409)은 항목이 막힌 상태일 때만 지운다(같은 경로의 다른 업로드가 쓴 정상 파일 보호).
  * - 응답에는 DB·저장소 오류 원문을 싣지 않는다(고정 문장만, 원문은 서버 로그에 남는다).
  */
 import { NextResponse } from 'next/server'
@@ -15,12 +16,15 @@ import { isUuid } from '@/lib/admin/uuid'
 import { createServiceClient } from '@/lib/supabase/server'
 import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 import { convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
-import { applyItemImage, imageKeyOfKind, storagePathOf } from '@/lib/admin/opsInbox/image'
+import { applyItemImage, imageKeyOfKind, removeOpsImageFiles, storagePathOf } from '@/lib/admin/opsInbox/image'
 
 // 변환·업로드 두 번·DB 쓰기를 한 요청에서 끝낸다.
 export const maxDuration = 60
 
 const LOG = '[ops-inbox/image]'
+
+/** 이미지를 받지 않는 상태. 이 상태의 항목에는 올린 파일을 쓸 곳이 없다. */
+const BLOCKED_STATUSES = ['rejected', 'cancelled', 'failed', 'ended']
 
 const MESSAGES = {
   forbidden: '관리자 권한이 필요해요.',
@@ -80,7 +84,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bundleI
   }
   if (!item.data) return fail(404, MESSAGES.notFound)
   if (!imageKeyOfKind(item.data.kind)) return fail(409, MESSAGES.noImageField)
-  if (['rejected', 'cancelled', 'failed', 'ended'].includes(item.data.status)) return fail(409, MESSAGES.notAllowed)
+  if (BLOCKED_STATUSES.includes(item.data.status)) return fail(409, MESSAGES.notAllowed)
   if (bundle.data.is_sample) return fail(409, MESSAGES.sample)
   const paths = storagePathOf(item.data.kind, itemId)
   if (!paths) return fail(409, MESSAGES.noImageField)
@@ -114,11 +118,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ bundleI
       case 'not_found':
         return fail(404, MESSAGES.notFound)
       case 'not_allowed':
+        // 올린 직후 항목이 막힌 상태가 됐다. 쓸 곳이 없는 파일을 남기지 않는다(티켓 20261007_0952).
+        await removeOpsImageFiles(service, { kind: item.data.kind, itemId })
         return fail(409, MESSAGES.notAllowed)
       case 'no_image_field':
+        await removeOpsImageFiles(service, { kind: item.data.kind, itemId })
         return fail(409, MESSAGES.noImageField)
-      case 'conflict':
+      case 'conflict': {
+        // 같은 항목에 다른 업로드가 이긴 경우 같은 경로의 파일은 그쪽의 정상 파일일 수 있다.
+        // 항목이 막힌 상태일 때만 지우고, 유효한 상태이거나 다시 읽지 못하면 그대로 둔다.
+        const latest = await service.from('ops_bundle_items').select('status').eq('id', itemId).maybeSingle()
+        if (!latest.error && latest.data && BLOCKED_STATUSES.includes(latest.data.status)) {
+          await removeOpsImageFiles(service, { kind: item.data.kind, itemId })
+        }
         return fail(409, MESSAGES.conflict)
+      }
       default:
         return fail(500, MESSAGES.saveFailed)
     }

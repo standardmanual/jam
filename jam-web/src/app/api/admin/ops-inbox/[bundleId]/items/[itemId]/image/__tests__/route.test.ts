@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
   admin: { id: 'admin-1' } as { id: string } | null,
   db: null as unknown,
   upload: vi.fn(),
+  remove: vi.fn(),
 }))
 
 vi.mock('@/lib/admin/auth', () => ({ getAdminUser: async () => h.admin }))
@@ -24,7 +25,7 @@ vi.mock('@/lib/supabase/server', () => ({
     const db = h.db as FakeDb
     return {
       from: (table: string) => db.from(table),
-      storage: { from: () => ({ upload: h.upload, getPublicUrl: (path: string) => ({ data: { publicUrl: `https://cdn.test/images/${path}` } }) }) },
+      storage: { from: () => ({ upload: h.upload, remove: h.remove, getPublicUrl: (path: string) => ({ data: { publicUrl: `https://cdn.test/images/${path}` } }) }) },
     }
   },
 }))
@@ -55,6 +56,7 @@ async function call(file?: File | null, ids: { bundleId?: string; itemId?: strin
 beforeEach(() => {
   h.admin = { id: 'admin-1' }
   h.upload.mockReset().mockResolvedValue({ error: null })
+  h.remove.mockReset().mockResolvedValue({ error: null })
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -183,6 +185,34 @@ describe('image 라우트', () => {
       const { status, body } = await call(await pngFile())
       expect(status).toBe(409)
       expect(body.error).toContain('반려·취소·실패·종료')
+      // 올린 두 파일을 쓸 곳이 없으니 지운다(티켓 20261007_0952)
+      expect(h.remove).toHaveBeenCalledTimes(1)
+      expect(h.remove).toHaveBeenCalledWith([`ops-inbox/missions/${ITEM}.png`, `ops-inbox/missions/${ITEM}.webp`])
+    })
+
+    it('그사이 이미지 칸이 없는 종류가 되면 409 noImageField이고 올린 두 파일을 지운다', async () => {
+      const db = setup()
+      onApplyRead(db, (d) => { d.item(ITEM).kind = 'recipe' })
+      const { status, body } = await call(await pngFile())
+      expect(status).toBe(409)
+      expect(body.error).toBe('이미지를 쓰지 않는 종류예요.')
+      expect(h.remove).toHaveBeenCalledWith([`ops-inbox/missions/${ITEM}.png`, `ops-inbox/missions/${ITEM}.webp`])
+    })
+
+    it('계속 충돌하다 항목이 취소됐으면 409 conflict이고 올린 두 파일을 지운다', async () => {
+      const db = setup()
+      let n = 0
+      db.beforeRun = (c) => {
+        if (c.table === 'ops_bundle_items' && c.op === 'update') {
+          db.item(ITEM).updated_at = `2026-10-05T00:00:0${++n}.000Z`
+          if (n === 2) db.item(ITEM).status = 'cancelled'
+        }
+      }
+      const { status, body } = await call(await pngFile())
+      expect(status).toBe(409)
+      expect(body.error).toContain('그사이 항목이 바뀌었어요')
+      expect(h.remove).toHaveBeenCalledTimes(1)
+      expect(h.remove).toHaveBeenCalledWith([`ops-inbox/missions/${ITEM}.png`, `ops-inbox/missions/${ITEM}.webp`])
     })
 
     it('그사이 항목이 사라졌으면 404다', async () => {
@@ -200,6 +230,20 @@ describe('image 라우트', () => {
       const { status, body } = await call(await pngFile())
       expect(status).toBe(409)
       expect(body.error).toContain('그사이 항목이 바뀌었어요')
+      // 항목이 유효한 상태면 같은 경로의 파일은 다른 업로드가 쓴 정상 파일일 수 있어 지우지 않는다
+      expect(h.remove).not.toHaveBeenCalled()
+    })
+
+    it('충돌 뒤 항목 상태를 다시 읽지 못하면 파일을 지우지 않는다', async () => {
+      const db = setup()
+      let n = 0
+      db.beforeRun = (c) => {
+        if (c.table === 'ops_bundle_items' && c.op === 'update') db.item(ITEM).updated_at = `2026-10-05T00:00:0${++n}.000Z`
+      }
+      let selects = 0
+      db.failIf = (c) => c.table === 'ops_bundle_items' && c.op === 'select' && ++selects === 4
+      expect((await call(await pngFile())).status).toBe(409)
+      expect(h.remove).not.toHaveBeenCalled()
     })
 
     it('항목 저장이 DB 오류면 500 고정 문장이다. 원문은 응답에 없다', async () => {
@@ -210,6 +254,18 @@ describe('image 라우트', () => {
       expect(body.error).toContain('저장하지 못했어요')
       expect(JSON.stringify(body)).not.toContain('secret')
     })
+  })
+
+  it('같은 항목에 두 업로드가 동시에 와도 둘 다 upsert로 같은 경로에 올리고 파일은 지우지 않는다', async () => {
+    const db = setup()
+    const [a, b] = await Promise.all([call(await pngFile()), call(await pngFile())])
+    expect([a.status, b.status]).toEqual([200, 200])
+    expect(h.upload).toHaveBeenCalledTimes(4)
+    const paths = h.upload.mock.calls.map((args) => args[0])
+    expect(new Set(paths)).toEqual(new Set([`ops-inbox/missions/${ITEM}.png`, `ops-inbox/missions/${ITEM}.webp`]))
+    expect(h.upload.mock.calls.every((args) => args[2].upsert === true)).toBe(true)
+    expect(h.remove).not.toHaveBeenCalled()
+    expect(db.item(ITEM).edited).toEqual({ resource: { image_url: expect.stringContaining(`${ITEM}.webp`) } })
   })
 
   it('예약된 항목은 자원 행에도 쓴다', async () => {

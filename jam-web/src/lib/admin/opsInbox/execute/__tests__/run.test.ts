@@ -548,6 +548,10 @@ describe('등록 전 검증 단계', () => {
     expect(statusOf(db, ID.solo)).toBe('scheduled')
     expect(db.decisions('fail').map((row) => row.item_id)).toEqual([ID.badge, ID.mission, ID.card])
     expect(logged()).toMatch(/check detail|prepare detail/)
+    // 자원을 만들기 전에 실패해도 승인 상태에서 올린 그룹 항목의 파일은 남기지 않는다(티켓 20261007_0952).
+    expect(db.removedFiles.flatMap((entry) => entry.paths).sort()).toEqual(
+      [`badges/${ID.badge}`, `missions/${ID.mission}`, `today_cards/${ID.card}`].flatMap((base) => [`ops-inbox/${base}.png`, `ops-inbox/${base}.webp`]).sort()
+    )
   })
 
   it('시험 묶음은 검증까지 하고 자원은 만들지 않는다. created_resource는 { sample: true }다', async () => {
@@ -601,8 +605,24 @@ describe('생성 단계', () => {
     expect(result.body.failed.find((entry) => entry.id === ID.badge)?.reason).toBe('연결된 항목을 만들지 못해 함께 실패했어요')
     expect(JSON.stringify(result)).not.toContain('undo detail')
     expect(logged()).toContain('undo detail')
-    // 되돌린 배지의 이미지 파일만 정리한다. 되돌리지 못한 미션의 파일은 자원이 남아 있어 그대로 둔다(티켓 20261006_1801).
-    expect(db.removedFiles.map((entry) => entry.paths[0])).toEqual([`ops-inbox/badges/${ID.badge}.png`])
+    // 되돌린 배지와 자원을 만들지 못한 카드의 파일을 정리한다. 되돌리지 못한 미션의 파일은 자원이 남아 있어 그대로 둔다(티켓 20261006_1801·20261007_0952).
+    expect(db.removedFiles.map((entry) => entry.paths[0]).sort()).toEqual([`ops-inbox/badges/${ID.badge}.png`, `ops-inbox/today_cards/${ID.card}.png`].sort())
+    expect(db.removedFiles.some((entry) => entry.paths.some((path) => path.includes(ID.mission)))).toBe(false)
+  })
+
+  it('생성 중 실패하면 자원을 만들지 못한 항목과 함께 실패한 미생성 항목의 파일까지 두 파일씩 지운다', async () => {
+    // 생성 순서: 배지, 미션, 카드. 미션에서 실패하면 카드는 만들기 전이고 배지만 만들어졌다.
+    const { db, run } = setup(chain(), { mission: { failCreate: { reason: '미션을 만들지 못했어요' } } })
+    ok(await run([ID.card, ID.mission, ID.badge]))
+    const removed = db.removedFiles.flatMap((entry) => entry.paths).sort()
+    expect(removed).toEqual(
+      [ID.badge, ID.mission, ID.card]
+        .flatMap((id, i) => {
+          const prefix = ['badges', 'missions', 'today_cards'][i]
+          return [`ops-inbox/${prefix}/${id}.png`, `ops-inbox/${prefix}/${id}.webp`]
+        })
+        .sort()
+    )
   })
 
   it('서버가 ID를 정하는 종류(레시피)는 만든 ID를 대상 칸에 넣고 만든 직후 created_resource에 적는다', async () => {
