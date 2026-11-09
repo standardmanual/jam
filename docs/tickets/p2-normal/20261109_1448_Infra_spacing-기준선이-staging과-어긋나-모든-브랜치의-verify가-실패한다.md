@@ -15,7 +15,7 @@ created: 2026-11-09
 - 관련 파일:
   - `scripts/spacing-baseline.json`, `scripts/check-spacing.mjs`
   - `jam-web/src/app/(main)/badges/[id]/page.tsx` (기준선 6 → 현재 4, 기준선을 내린다)
-  - `jam-web/src/components/ui/InventoryItemHistorySheet.tsx` (기준선 1 → 현재 0, 기준선을 내린다)
+  - `jam-web/src/app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx` (기준선 1 → 현재 0, 기준선을 내린다)
   - `jam-web/src/app/(main)/badges/[id]/BadgeHeroSection.tsx` (기준선 1 → 현재 2, 94·95줄 근처)
   - `jam-web/src/components/ui/CollectionGridCard.tsx` (기준선 0 → 현재 1, 71줄 근처)
 
