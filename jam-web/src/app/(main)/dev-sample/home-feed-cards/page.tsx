@@ -1,16 +1,32 @@
+import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
+import Link from 'next/link'
+import TopNav from '@/components/ui/TopNav'
+import { SearchIcon } from '@/components/ui/icons'
+import CapsuleWidget from '@/components/capsule/CapsuleWidget'
+import StravaDisconnectedCard from '@/components/strava/StravaDisconnectedCard'
 import TodayCard from '@/components/today/TodayCard'
 import { toCardView } from '@/lib/today/cardView'
 import type { ResolvedBadge, TodayCardWithHref } from '@/lib/today/cards'
+import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
+import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
+import type { RealStepsView } from '@/lib/onboarding-quest/real-view'
+import type { OnboardingQuestCardState } from '@/lib/onboarding-quest/status'
 import { CARD_SHAPES, type CardShape } from '@/lib/today/shape'
+import { d, t } from '@/lib/i18n'
 import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
+import OnboardingQuestCard from '../../OnboardingQuestCard'
+import SuspensionBanner from '../../SuspensionBanner'
+import TodayStatusStrip from '../../TodayStatusStrip'
 
 /**
- * 샘플 전용 — 홈피드에 노출될 수 있는 카드 유형(template_type 10개) × 모양(shape 7개) 전체 조합과
- * 주요 변형(돔 포스터형·이미지 속 제목·이미지 없음·동영상·미보유 흑백·레시피 공개 전후·랭킹 빈 상태 등)을 한 화면에 그린다.
- * 링크가 없는 숨은 경로다(메뉴·홈 어디에도 연결하지 않는다). DB를 읽지 않고 손으로 만든 카드 행을 실제 변환(`toCardView`)과
- * 실제 렌더러(`TodayCard`)에 그대로 넣는다 — 홈과 같은 코드로 그려지므로 카드 디자인이 바뀌면 이 화면도 따라 바뀐다.
- * 계측 정보(`tracking`)를 싣지 않아 노출·클릭 기록이 남지 않고 카드 전체 링크도 걸리지 않는다.
+ * 샘플 전용 — 홈 화면(`(main)/page.tsx`)과 같은 틀(상단 내비·탭 바·푸터·여백) 안에 홈에 나올 수 있는 요소를 전부 그린다.
+ * 홈 상단 요소(이용 정지 배너·인사말·캡슐·Strava 끊김 카드·«JAM! 시작하기» 카드·오늘의 현황 스트립)의 상태별 모습과,
+ * 홈피드 카드 유형(template_type 10개) × 모양(shape 7개) 전체 조합, 주요 변형을 한 화면에 모은다.
+ * 링크가 없는 숨은 경로다(메뉴·홈 어디에도 연결하지 않는다). DB를 읽지 않고 손으로 만든 값을 실제 변환(`toCardView`)과
+ * 실제 컴포넌트에 그대로 넣는다 — 홈과 같은 코드로 그려지므로 디자인이 바뀌면 이 화면도 따라 바뀐다.
+ * 계측 정보(`tracking`)를 싣지 않아 카드의 노출·클릭 기록이 남지 않고 카드 전체 링크도 걸리지 않는다.
+ * 데이터를 바꾸는 버튼(연출 동기화 등)은 일부러 그리지 않는 상태만 골랐다 — 눌러도 이동만 일어난다.
  */
 
 export const metadata: Metadata = {
@@ -294,17 +310,12 @@ const SHAPE_NAMES: Record<CardShape, string> = {
   ticket: 'ticket · 펀칭 티켓',
 }
 
-/** 카드 하나를 캡션과 함께 그린다. 그려진 모양이 요청한 모양과 다르면(예: 타일 0개 list → brief) 캡션에 적는다. */
-function Sample({ caption, card }: { caption: string; card: TodayCardWithHref }) {
+/** 카드 하나를 짧은 이름표와 함께 그린다. */
+function Sample({ caption, card }: { caption?: string; card: TodayCardWithHref }) {
   const view = toCardView(card)
-  const requested = card.shape
-  const fellBack = requested && requested !== view.shape
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-[12px] text-[var(--muted)] px-1">
-        {caption}
-        {fellBack && <span className="text-[var(--danger,#d4380d)]">{` → 실제로는 ${view.shape}로 그려짐`}</span>}
-      </p>
+      {caption && <p className="text-[12px] text-[var(--muted)] px-1">{caption}</p>}
       <TodayCard view={view} currentUserId="u3" />
     </div>
   )
@@ -313,7 +324,6 @@ function Sample({ caption, card }: { caption: string; card: TodayCardWithHref })
 interface Variant {
   id: string
   title: string
-  note: string
   card: TodayCardWithHref
 }
 
@@ -323,7 +333,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-dome-poster',
       title: 'dome 포스터형',
-      note: 'layout_type = banner인 돔 카드. 이미지 위 어두운 막에 제목과 정보 줄을 얹는다.',
       card: row('content_intro', {
         ...TEMPLATES[9].base,
         shape: 'dome',
@@ -333,7 +342,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-title-in-image',
       title: '제목이 이미지 안에 있는 카드',
-      note: 'title_in_image = true. 본문 제목을 그리지 않는다(hero).',
       card: row('mission_spotlight', {
         ...TEMPLATES[0].base,
         shape: 'hero',
@@ -343,7 +351,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-title-in-image-poster',
       title: '제목이 이미지 안에 있는 포스터',
-      note: 'title_in_image = true(poster).',
       card: row('mission_spotlight', {
         ...TEMPLATES[0].base,
         shape: 'poster',
@@ -353,7 +360,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-no-image',
       title: '이미지 없음 · 자리 표시',
-      note: '커버도 배지도 없을 때 이미지 칸은 유지하고 자원 아이콘을 그린다.',
       card: row('drop_alert', {
         ...TEMPLATES[1].base,
         shape: 'hero',
@@ -365,7 +371,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-no-image-title',
       title: '이미지 없음 + 이미지 속 제목',
-      note: 'title_in_image인데 이미지가 없으면 판 위에 제목을 그린다.',
       card: row('mission_spotlight', {
         ...TEMPLATES[0].base,
         shape: 'hero',
@@ -378,7 +383,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-video',
       title: '동영상 커버',
-      note: 'cover_image_url이 mp4면 자동 재생(무음 반복)한다.',
       card: row('drop_alert', {
         ...TEMPLATES[1].base,
         shape: 'poster',
@@ -389,7 +393,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-badge-cover-dimmed',
       title: '커버 없음 · 첫 배지 그림 승격 (미보유 흑백)',
-      note: '커버가 없으면 첫 배지 그림을 이미지로 쓰고, 유저가 그 배지를 갖지 않았으면 흑백으로 그린다.',
       card: row('badge_spotlight', {
         ...TEMPLATES[2].base,
         shape: 'square',
@@ -399,7 +402,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-brief-thumb-dimmed',
       title: 'brief · 배지 썸네일 미보유 흑백',
-      note: '배지 1개 brief는 64px 칸에 배지 그림을 그리고, 미보유면 흑백이다.',
       card: row('badge_spotlight', {
         ...TEMPLATES[2].base,
         shape: 'brief',
@@ -409,7 +411,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-mission-ending',
       title: '미션 마감 임박 (남은 시간)',
-      note: '종료가 24시간 이내면 기간 대신 «N시간 남음»을 보인다.',
       card: row('mission_spotlight', {
         ...TEMPLATES[0].base,
         shape: 'hero',
@@ -419,7 +420,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-mission-ongoing',
       title: '상시 미션',
-      note: '종료일이 없으면 «상시» 기간 줄이다.',
       card: row('mission_spotlight', {
         ...TEMPLATES[0].base,
         shape: 'ticket',
@@ -430,7 +430,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-recipe-scheduled',
       title: '레시피 공개 전',
-      note: '공개 전에는 재료 수와 공개일만 보이고 타일이 없다(list → brief).',
       card: row('recipe_reveal', {
         ...TEMPLATES[8].base,
         shape: 'list',
@@ -444,7 +443,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-recipe-scheduled-hero',
       title: '레시피 공개 전 (hero)',
-      note: '같은 공개 전 레시피를 이미지 모양으로 그린 경우.',
       card: row('recipe_reveal', {
         ...TEMPLATES[8].base,
         shape: 'hero',
@@ -458,7 +456,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-ranking-empty',
       title: '랭킹 빈 상태',
-      note: '순위가 없으면 «아직 랭킹이 없어요».',
       card: row('ranking_board', {
         ...TEMPLATES[4].base,
         shape: 'list',
@@ -468,7 +465,6 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-list-many',
       title: 'list · 타일 8개 (가로 스크롤)',
-      note: '타일이 많으면 가로로 넘긴다.',
       card: row('itembook_milestone', {
         ...TEMPLATES[5].base,
         shape: 'list',
@@ -478,13 +474,11 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
     {
       id: 'v-minimal',
       title: '최소 카드 (제목만)',
-      note: '부제·설명·정보 줄이 모두 없을 때.',
       card: row('content_intro', { title: '제목만 있는 카드', shape: 'brief' }),
     },
     {
       id: 'v-legacy',
       title: '옛 카드 (shape 없음)',
-      note: 'shape가 NULL이면 layout_type으로 모양을 정한다. 아래는 banner + 커버 → poster.',
       card: row('drop_alert', {
         ...TEMPLATES[1].base,
         shape: null,
@@ -494,40 +488,193 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
   ]
 }
 
+// ─── 홈 상단 요소 샘플 값 ──────────────────────────────────────────────
+
+const CAPSULE_BASE: CapsuleStatus = {
+  required: 100,
+  filled: 42,
+  remaining: 58,
+  balance: 42,
+  openable: false,
+  notOpenableReason: 'not_full',
+  freeSlots: 12,
+  neededSlots: 3,
+  pendingCount: 0,
+  jamBlocked: false,
+  claim: { blockedReason: null, freeSlots: 12, neededSlots: 3 },
+  notice: 'none',
+  pendingItemCount: 0,
+  shortfall: 0,
+}
+
+const CAPSULES: { label: string; status: CapsuleStatus }[] = [
+  { label: '캡슐 · 채우는 중', status: CAPSULE_BASE },
+  {
+    label: '캡슐 · 가득 참(열 수 있음)',
+    status: { ...CAPSULE_BASE, filled: 100, remaining: 0, balance: 100, openable: true, notOpenableReason: null },
+  },
+  {
+    label: '캡슐 · 막힘(빈칸 부족)',
+    status: {
+      ...CAPSULE_BASE,
+      filled: 100,
+      remaining: 0,
+      balance: 100,
+      notOpenableReason: 'no_free_slots',
+      freeSlots: 1,
+      neededSlots: 3,
+      claim: { blockedReason: 'no_slots', freeSlots: 1, neededSlots: 3 },
+      notice: 'blocked',
+      pendingItemCount: 2,
+      shortfall: 1,
+    },
+  },
+]
+
+const REAL_SYNC: RealStepsView = {
+  rows: [
+    { key: 'sync', state: 'current' },
+    { key: 'locked', state: 'pending' },
+  ],
+  doneCount: 0,
+  total: 2,
+  current: { step: 'sync', stravaConnected: false },
+  stravaConnected: false,
+}
+
+const REAL_LOCKED: RealStepsView = {
+  rows: [
+    { key: 'sync', state: 'done' },
+    { key: 'locked', state: 'current' },
+  ],
+  doneCount: 1,
+  total: 2,
+  current: { step: 'locked', target: { itemId: 'sample-item', need: 300 }, shortage: { have: 120, need: 300 } },
+  stravaConnected: true,
+}
+
+const QUESTS: { label: string; state: OnboardingQuestCardState }[] = [
+  {
+    label: '«JAM! 시작하기» · 연출 진행 중(3/7)',
+    state: { kind: 'in_progress', done: 3, total: 7, nextStep: 'mix_fail', real: REAL_SYNC },
+  },
+  { label: '«JAM! 시작하기» · 내 활동 ① 연동 전', state: { kind: 'real', real: REAL_SYNC } },
+  { label: '«JAM! 시작하기» · 내 활동 ② 잠긴 아이템 배지(포인트 부족)', state: { kind: 'real', real: REAL_LOCKED } },
+]
+
+const STRIPS: { label: string; left: TodayLeftStatus; right: TodayRightStatus }[] = [
+  {
+    label: '현황 · 미션 진행 + 친구 활동 여럿',
+    left: { kind: 'progress', name: '10km, 걸어서 채워 볼까요', current: 6.4, total: 10, missionType: 'distance', href: '/missions' },
+    right: { kind: 'friend_activity', count: 3, href: '/feed', singleFriendName: null },
+  },
+  {
+    label: '현황 · 컬렉션 진행 + 친구 활동 한 명',
+    left: { kind: 'progress', name: '겨울잠의 안식처', current: 3, total: 8, missionType: null, href: '/collections' },
+    right: { kind: 'friend_activity', count: 1, href: '/feed', singleFriendName: '새벽러너' },
+  },
+  {
+    label: '현황 · 미션 제안 + 팔로잉 없음',
+    left: { kind: 'suggestion', text: '진행 중인 미션을 시작해 볼까요', category: 'missions', href: '/missions' },
+    right: { kind: 'no_following', href: '/search' },
+  },
+  {
+    label: '현황 · 드랍 제안 + 친구 활동 없음',
+    left: { kind: 'suggestion', text: '근처 드랍을 찾아볼까요', category: 'drops', href: '/drops' },
+    right: { kind: 'none' },
+  },
+  {
+    label: '현황 · Strava 미연동',
+    left: { kind: 'strava_not_connected', href: '/api/strava/auth' },
+    right: { kind: 'none' },
+  },
+]
+
+function Labeled({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-[12px] text-[var(--muted)] px-1">{label}</p>
+      {children}
+    </div>
+  )
+}
+
+function GroupTitle({ id, children }: { id: string; children: string }) {
+  return (
+    <h2 id={id} className="text-lg font-bold pt-3 scroll-mt-4 border-b border-[var(--border,#e5e5e5)] pb-2">
+      {children}
+    </h2>
+  )
+}
+
 export default function HomeFeedCardsSamplePage() {
   const TEMPLATES = buildTemplates()
   const VARIANTS = buildVariants(TEMPLATES)
   return (
-    <div className="min-h-dvh w-full max-w-[430px] mx-auto bg-background text-foreground">
-      <div className="px-4 pt-6 pb-16 flex flex-col gap-8">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-xl font-bold">홈피드 카드 전체 샘플</h1>
-          <p className="text-[13px] text-[var(--muted)] leading-relaxed">
-            유형 {TEMPLATES.length}개 × 모양 {CARD_SHAPES.length}개 = {TEMPLATES.length * CARD_SHAPES.length}장 조합과 변형{' '}
-            {VARIANTS.length}장이에요. 홈과 같은 변환·렌더러로 그리고, 데이터는 샘플 값이에요. 기록·링크는 없어요.
-          </p>
-          <nav className="flex flex-wrap gap-1.5 pt-1">
-            {TEMPLATES.map((tpl) => (
-              <a
-                key={tpl.template}
-                href={`#t-${tpl.template}`}
-                className="text-[12px] px-2.5 py-1 rounded-full bg-[var(--surface,#f2f2f2)]"
-              >
-                {tpl.name}
-              </a>
-            ))}
-            <a href="#variants" className="text-[12px] px-2.5 py-1 rounded-full bg-foreground text-background">
-              변형
+    <div className="min-h-full text-foreground">
+      <TopNav logo />
+
+      <div className="px-4 pt-4 pb-6 flex flex-col gap-5">
+        <nav className="flex flex-wrap gap-1.5">
+          <a href="#home-top" className="text-[12px] px-2.5 py-1 rounded-full bg-foreground text-background">
+            홈 상단
+          </a>
+          {TEMPLATES.map((tpl) => (
+            <a key={tpl.template} href={`#t-${tpl.template}`} className="text-[12px] px-2.5 py-1 rounded-full bg-[var(--surface,#f2f2f2)]">
+              {tpl.name}
             </a>
-          </nav>
-        </header>
+          ))}
+          <a href="#variants" className="text-[12px] px-2.5 py-1 rounded-full bg-foreground text-background">
+            변형
+          </a>
+        </nav>
+
+        <GroupTitle id="home-top">홈 상단</GroupTitle>
+
+        <Labeled label="이용 정지 배너">
+          <SuspensionBanner reason="커뮤니티 운영 정책 위반" suspendedAt={new Date().toISOString()} />
+        </Labeled>
+
+        <Labeled label="인사말 줄">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-base font-bold truncate">{t(d.todayStatus.greeting, { name: '러너' })}</p>
+            <Link
+              href="/search"
+              aria-label={d.today.searchAriaLabel}
+              className="w-11 h-11 -mr-1 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+            >
+              <span className="w-9 h-9 rounded-full bg-surface text-foreground flex items-center justify-center">
+                <SearchIcon className="w-4 h-4" />
+              </span>
+            </Link>
+          </div>
+        </Labeled>
+
+        {CAPSULES.map((c) => (
+          <Labeled key={c.label} label={c.label}>
+            <CapsuleWidget initial={c.status} blockedCard />
+          </Labeled>
+        ))}
+
+        {QUESTS.map((q) => (
+          <Labeled key={q.label} label={q.label}>
+            <OnboardingQuestCard state={q.state} username="sample" />
+          </Labeled>
+        ))}
+
+        <Labeled label="Strava 동기화 끊김 카드">
+          <StravaDisconnectedCard />
+        </Labeled>
+
+        {STRIPS.map((s) => (
+          <Labeled key={s.label} label={s.label}>
+            <TodayStatusStrip left={s.left} right={s.right} />
+          </Labeled>
+        ))}
 
         {TEMPLATES.map((tpl) => (
-          <section key={tpl.template} id={`t-${tpl.template}`} className="flex flex-col gap-4 scroll-mt-4">
-            <div className="border-b border-[var(--border,#e5e5e5)] pb-2">
-              <h2 className="text-lg font-bold">{tpl.name}</h2>
-              <p className="text-[12px] text-[var(--muted)]">template_type = {tpl.template}</p>
-            </div>
+          <section key={tpl.template} className="flex flex-col gap-2">
+            <GroupTitle id={`t-${tpl.template}`}>{tpl.name}</GroupTitle>
             {CARD_SHAPES.map((shape) => (
               <Sample
                 key={shape}
@@ -535,7 +682,6 @@ export default function HomeFeedCardsSamplePage() {
                 card={row(tpl.template, {
                   ...tpl.base,
                   shape,
-                  // 돔 기본형은 16:9, 포스터형은 아래 «변형»에 따로 둔다
                   layout_type: shape === 'ticket' ? 'ticket' : shape === 'dome' ? 'dome' : 'large_thumbnail',
                 })}
               />
@@ -543,16 +689,10 @@ export default function HomeFeedCardsSamplePage() {
           </section>
         ))}
 
-        <section id="variants" className="flex flex-col gap-6 scroll-mt-4">
-          <div className="border-b border-[var(--border,#e5e5e5)] pb-2">
-            <h2 className="text-lg font-bold">변형</h2>
-            <p className="text-[12px] text-[var(--muted)]">상태·데이터에 따라 달라지는 모습</p>
-          </div>
+        <section className="flex flex-col gap-2">
+          <GroupTitle id="variants">변형</GroupTitle>
           {VARIANTS.map((v) => (
-            <div key={v.id} className="flex flex-col gap-1">
-              <p className="text-[14px] font-bold px-1">{v.title}</p>
-              <Sample caption={v.note} card={v.card} />
-            </div>
+            <Sample key={v.id} caption={v.title} card={v.card} />
           ))}
         </section>
       </div>
