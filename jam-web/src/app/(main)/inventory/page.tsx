@@ -95,7 +95,7 @@ export default async function InventoryPage() {
         {/* 슬롯 프로그레스 */}
         <ProgressBar
           percent={Math.min(100, (usedSlots / maxSlots) * 100)}
-          height={6}
+          height={12}
           labelType="none"
         />
         {/* 20261018_0056: 남은 칸 1~3개는 줄 전체를 --foreground로 올리고 «N개만 남았어요» 구간만 굵게 한다. 새 색·카드 없음 */}

@@ -133,7 +133,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
       {/* mx-2 — 위 카드에 추가한 mx-2와 좌우 폭을 맞춰, 카드보다 진행도 바가 더 넓어 보이는
           어긋남을 막는다. */}
       <div className="flex items-center gap-3 mt-2 mx-2">
-        <ProgressBar percent={pct} />
+        <ProgressBar percent={pct} height={16} />
         <span style={{ color: 'var(--link)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
           {slottedCount}/{totalBadgeCount}
         </span>

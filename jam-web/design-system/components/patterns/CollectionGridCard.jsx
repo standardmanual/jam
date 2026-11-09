@@ -124,7 +124,7 @@ export function CollectionGridCard({
 
       {/* 진행 바 + 카운트 한 행 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
-        <ProgressBar percent={pct} height={6} />
+        <ProgressBar percent={pct} height={12} />
         <span style={{
           fontSize: 'var(--text-xs)',
           color: 'var(--link)',

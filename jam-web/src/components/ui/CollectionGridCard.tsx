@@ -82,7 +82,7 @@ export default function CollectionGridCard({
       {/* 진행 바 + 카운트 한 행 */}
       {!hideProgress && (
         <div className="flex items-center gap-2">
-          <ProgressBar percent={pct} height={6} />
+          <ProgressBar percent={pct} height={12} />
           <span className="text-xs text-[color:var(--link)] font-bold leading-none tabular-nums shrink-0">
             {collected}/{total}
           </span>
