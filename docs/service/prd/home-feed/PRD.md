@@ -110,8 +110,8 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipModal.tsx`, `jam-web/src/components/ui/ConfirmModal.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/SyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/real-view.ts`, `jam-web/src/lib/onboarding-quest/real-steps.ts`, `jam-web/src/lib/onboarding-quest/locked-target.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 펄스 `jam-web/src/components/transitions.css`(`.jam-quest-pulse`), `jam-web/design-system/tokens/motion.css`(`--duration-quest-pulse`·`--ease-quest-pulse`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
 **Strava 동기화 끊김 카드**(티켓 20261017_1422)는 `strava_connections`의 연결 상태 판정(`resolveStravaUiState`) 결과로 그린다.
-흰 카드에 칩 「Strava 동기화」, 제목(「Strava 동기화가 끊겼어요」), 원인과 해결을 알리는 본문, 검정 알약 버튼
-「Strava 다시 동기화하기」(→ `/api/strava/auth`) 순이다. 심각도는 면 색이 아니라 문구가 전달한다.
+흰 카드에 칩 「Strava 동기화」와 제목(「동기화가 끊겼어요」)을 한 줄(가로)로 놓고, 그 아래 원인과 해결을 알리는 본문, 전체 폭의
+작은(`size="xs"`) 검정 알약 버튼 「Strava 다시 동기화하기」(→ `/api/strava/auth`) 순이다. 작은 버튼은 사용자 결정이다(티켓 20261109_1419). 심각도는 면 색이 아니라 문구가 전달한다.
 
 | 연결 상태 | 끊김 카드 | 진행도 칸의 「Strava 동기화하면 시작해요」 | 상단 메뉴 가운데 버튼 |
 |---|---|---|---|

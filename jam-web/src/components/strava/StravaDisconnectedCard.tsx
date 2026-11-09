@@ -12,7 +12,8 @@ import { d } from '@/lib/i18n'
  * 유저가 직접 끊은 경우에는 DOM에 없다.
  *
  * 새 컴포넌트·새 토큰 없이 기존 부품만 조합한다: Card(기본 톤, 흰 면 + 1px 테두리), LabelChip,
- * Button(primary main = 검정 알약). 면을 빨강·노랑으로 칠하지 않고 심각도는 문구가 전달한다.
+ * Button(primary main = 검정 알약, size="xs"). 칩과 제목은 한 줄(가로)로 놓는다(캔버스 시안, 티켓 20261109_1419).
+ * 버튼의 xs는 44px 터치 타겟 규칙의 예외이고 본문 액션에 쓰는 것은 사용자 결정이다. 면을 빨강·노랑으로 칠하지 않고 심각도는 문구가 전달한다.
  * Strava 주황, 아이콘, 맥동·흔들림·입장 애니메이션을 쓰지 않는다(오류 상황에서 시선을 강제하지 않는다).
  * 누르는 중 피드백은 Button의 scale 축소를 그대로 쓴다.
  *
@@ -23,12 +24,15 @@ export default function StravaDisconnectedCard() {
 
   return (
     <Card className="flex flex-col gap-2 text-left">
-      <LabelChip className="self-start">{copy.chipLabel}</LabelChip>
-      <p className="text-base font-bold break-keep wrap-break-word text-balance">{copy.card.title}</p>
+      <div className="flex flex-row gap-2">
+        <LabelChip className="self-start">{copy.chipLabel}</LabelChip>
+        <p className="text-base font-bold break-keep wrap-break-word text-balance">{copy.card.title}</p>
+      </div>
       <p className="text-base text-muted break-keep wrap-break-word text-balance">{copy.card.body}</p>
       <Button
         variant="primary"
         surface="main"
+        size="xs"
         fullWidth
         onClick={() => {
           window.location.href = '/api/strava/auth'
