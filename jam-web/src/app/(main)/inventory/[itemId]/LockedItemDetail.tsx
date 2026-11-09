@@ -27,7 +27,7 @@ import { tPoint } from '@/lib/i18n/tPoint'
  * 잠긴 아이템 배지 상세 — `/inventory/[itemId]`가 잠긴 개체일 때 그린다 (티켓 20261018_0054 2회, 20261028_1741 1회, 채원 판정 2026-10-30)
  *
  * 열기 전에는 등급·필요 포인트·가진 포인트·얻은 날과 경로만 보여 준다. 이름·그림·설명·컬렉션·트라이브·일련번호·배지 id는 이 컴포넌트가 받는 props에도
- * 없다(서버 페이지가 내리지 않는다, 운영 로직 7.3절). 잼을 채우는 단계는 없고 «열기» 버튼 하나로 포인트를 내고 연다. 열기는 같은 화면에서 제자리로 바뀐다.
+ * 없다(서버 페이지가 내리지 않는다, 운영 로직 7.3절). 잼을 채우는 단계는 없고 «열기» 버튼 하나로 포인트를 내고 연다. 버튼은 필요 포인트 카드 오른쪽에 있다(2026-11-09 사용자 지시, 필요 포인트를 읽지 못해 카드가 없으면 맨 아래 전체 폭 버튼). 열기는 같은 화면에서 제자리로 바뀐다.
  *  - 포인트 블록: 필요 포인트 N(>0)이면 «필요 포인트 / 가진 포인트» 두 줄을 보이고, 가진 포인트가 모자라면 `InlineNotice`로 까닭을 말하고 버튼을 막는다.
  *    0이면 «포인트 없이 열 수 있어요» 한 줄만 두고 막지 않는다. null(정책값을 못 읽음)이면 블록을 그리지 않고 버튼도 그대로 둔다 — 서버가 판정한다.
  *    게이지·분수·막대처럼 모으는 양으로 읽히는 표현은 쓰지 않는다. 포인트는 내는 값이다.
@@ -150,6 +150,21 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
       ? `${view.payload.serialPrefix}${String(view.payload.serialNumber).padStart(6, '0')}`
       : null
 
+  /** «열기» 버튼 — 필요 포인트 카드가 있으면 그 카드 오른쪽에, 없으면(필요 포인트를 읽지 못함) 맨 아래에 놓는다 */
+  const openButton = (compact: boolean) => (
+    <Button
+      variant="primary"
+      size={compact ? 'sm' : 'md'}
+      fullWidth={!compact}
+      disabled={pending || blocked}
+      aria-busy={pending || undefined}
+      className="whitespace-nowrap"
+      onClick={handleOpen}
+    >
+      <SwapText value={pending ? d.lockedItem.detail.opening : d.lockedItem.detail.openCta} />
+    </Button>
+  )
+
   // 히어로 카드가 읽는 배지 값 — 일반 아이템 배지 상세(`BadgeHeroSection`)와 같은 카드를 쓴다. 이름·설명·칩·이미지는 아래 슬롯이 정하고
   // 배경 값은 비운다(잠긴 상세는 배경 테마가 없다). 열기 전에는 가린 이름·등급만 들어간다.
   const heroBadge = {
@@ -210,12 +225,14 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
           <div
             className={`grid ${COLLAPSE} ${isOpened ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}
             aria-hidden={isOpened || undefined}
+            // 접히는 동안 안의 «열기» 버튼이 키보드로 눌리지 않게 막는다
+            inert={isOpened ? true : undefined}
           >
             <div className="overflow-hidden">
               <div className="flex flex-col gap-3">
                 {/* 필요 포인트 — 미션·배지 상세의 포인트 보상 행과 같은 모양(tint 행 + 서클 + «N 포인트»)이다(2026-11-09 사용자 지시) */}
                 {required === 0 ? (
-                  <ListRow tone="tint" leadShape="round" lead={<PointCircle />} title={d.lockedItem.detail.points.free} />
+                  <ListRow tone="tint" leadShape="round" lead={<PointCircle />} title={d.lockedItem.detail.points.free} trail={openButton(true)} />
                 ) : (
                   <ListRow
                     tone="tint"
@@ -223,6 +240,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
                     lead={<PointCircle />}
                     title={tPoint(d.lockedItem.detail.points.requiredLine, { points: required.toLocaleString('ko-KR') })}
                     meta={t(d.lockedItem.detail.points.balanceLine, { balance: balance.toLocaleString('ko-KR') })}
+                    trail={openButton(true)}
                   />
                 )}
                 {blocked && <InlineNotice>{tPoint(d.lockedItem.detail.points.shortage, { short: shortfall.toLocaleString('ko-KR') })}</InlineNotice>}
@@ -283,18 +301,9 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
           >
             {d.lockedItem.detail.opened.badgeLink}
           </Link>
-        ) : (
-          <Button
-            variant="primary"
-            fullWidth
-            disabled={pending || blocked}
-            aria-busy={pending || undefined}
-            className="whitespace-nowrap"
-            onClick={handleOpen}
-          >
-            <SwapText value={pending ? d.lockedItem.detail.opening : d.lockedItem.detail.openCta} />
-          </Button>
-        )}
+        ) : required === null ? (
+          openButton(false)
+        ) : null}
       </div>
     </div>
   )

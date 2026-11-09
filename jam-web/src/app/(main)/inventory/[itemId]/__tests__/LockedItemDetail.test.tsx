@@ -7,7 +7,7 @@
  * (`LockedItemDetail`이 맨 먼저 부르는 `useState` 네 개의 순서: ① 포인트 값 ② 제출 중 ③ 열린 응답 ④ 크로스페이드 신호).
  *
  * 확인하는 것
- * ① 열기 전: 타일, 등급 칩, «잠김» 칩, 가린 이름, 설명, 얻은 날과 경로, «열기» 버튼 하나가 있다. 게이지·가진 잼·«채우기»·시트는 없다.
+ * ① 열기 전: 타일, 등급 칩, «잠김» 칩, 가린 이름, 설명, 얻은 날과 경로, «열기» 버튼 하나(필요 포인트 카드 오른쪽)가 있다. 게이지·가진 잼·«채우기»·시트는 없다.
  * ② 포인트 블록: 충분(같을 때 포함) / 모자람(안내 + 막힌 버튼) / 0(한 줄) / null(블록 없음, 버튼 활성) / 거절 응답으로 바뀐 값.
  * ③ 열기 전에는 이름·그림·컬렉션·트라이브·일련번호·배지 상세 링크가 없다.
  * ④ 열린 뒤: 낸 포인트와 받은 포인트가 각각 0보다 클 때만 따로 줄로 보이고, 순서는 낸 포인트가 먼저다.
@@ -191,9 +191,22 @@ describe('LockedItemDetail — 포인트 블록', () => {
     expect(html).toContain('role="status"')
     expect(visibleText(html)).toContain(SHORTAGE_400)
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).toMatch(/disabled/)
-    // 안내는 포인트 행 바로 아래, 버튼보다 위에 있다
-    expect(html.indexOf('포인트 필요')).toBeLessThan(html.indexOf('role="status"'))
-    expect(html.indexOf('role="status"')).toBeLessThan(html.indexOf('<button'))
+    // 버튼은 포인트 행 오른쪽에 있고, 안내는 그 행 바로 아래에 있다
+    expect(html.indexOf('포인트 필요')).toBeLessThan(html.indexOf('<button'))
+    expect(html.indexOf('<button')).toBeLessThan(html.indexOf('role="status"'))
+  })
+
+  it('«열기» 버튼은 필요 포인트 카드 안 오른쪽(trail 칸)에 있고 맨 아래 전체 폭 버튼은 없다', () => {
+    for (const pointsRequired of [1200, 0]) {
+      const html = withoutStyle(render({ pointsRequired, pointBalance: 5000 }))
+      const trail = html.match(/<div class="ds-list-row-trail"[^>]*>((?:(?!<\/div>)[\s\S])*)<\/div>/)
+      expect(trail, `필요 포인트 ${pointsRequired}: trail 칸이 없다`).not.toBeNull()
+      expect(trail![1]).toContain('<button')
+      expect(trail![1]).toContain(d.lockedItem.detail.openCta)
+      expect(html.match(/<button/g)).toHaveLength(1)
+      // 획득 정보 카드보다 위에 있다
+      expect(html.indexOf('<button')).toBeLessThan(html.indexOf(d.badges.earnInfoTitle))
+    }
   })
 
   it('모자람은 오류색·경고 아이콘 없이 문구로만 알린다', () => {
@@ -228,6 +241,9 @@ describe('LockedItemDetail — 포인트 블록', () => {
     expect(text).not.toContain(d.lockedItem.detail.points.free)
     expect(text).toContain(d.badges.earnInfoTitle)
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).not.toMatch(/disabled/)
+    // 카드가 없으니 버튼은 맨 아래(획득 정보 카드 뒤)에 전체 폭으로 놓인다
+    expect(html).not.toContain('class="ds-list-row-trail"')
+    expect(html.indexOf(d.badges.earnInfoTitle)).toBeLessThan(html.indexOf('<button'))
   })
 
   it('서버가 insufficient_points로 거절하면 응답의 값이 화면 상태에 들어가 모자람 상태가 된다(필요 포인트가 비어 있던 개체도)', () => {
@@ -260,7 +276,9 @@ describe('LockedItemDetail — 열린 뒤', () => {
     expect(text).toContain('트라이브 이른 새')
     expect(html).toContain(`/badges/badge-1?item=${BASE.itemId}&amp;from=inventory`)
     expect(text).not.toContain(d.lockedItem.detail.chip)
-    expect(html).not.toContain('<button')
+    // 접힌 포인트 카드 안의 버튼은 남아 있어도 보이지 않고(aria-hidden) 눌리지 않는다(inert)
+    expect(html).toMatch(/<div class="grid [^"]*grid-rows-\[0fr\][^"]*" aria-hidden="true" inert="">/)
+    expect(html.match(/<button/g) ?? []).toHaveLength(1)
   })
 
   it('포인트 블록은 접히고 보조기기에서 숨는다', () => {
