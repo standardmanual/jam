@@ -66,11 +66,12 @@ describe('SuspensionBanner — 정지 중 기본 모습', () => {
     expect(html.match(/<dt class="w-\[39px\]/g)).toHaveLength(2)
   })
 
-  it('본문은 \\n을 줄바꿈으로 보이는 whitespace-pre-line이고 삭제한 두 문장은 없다', () => {
+  it('본문은 \\n을 줄바꿈으로 보이는 whitespace-pre-line이고 마지막 줄이 문의로 해제를 알리는 안내다', () => {
     expect(d.suspension.bannerBody).toContain('멈추고,\n이 기간에')
+    expect(d.suspension.bannerBody.split('\n')).toHaveLength(3)
+    expect(d.suspension.bannerBody).toContain('\n정지 해제를 원하면 문의로 알려 주세요.')
     expect(html).toMatch(/<p class="[^"]*whitespace-pre-line/)
     expect(JSON.stringify(d.suspension)).not.toContain('지금까지의 기록')
-    expect(d.suspension.bannerBody).not.toContain('해제 방법')
   })
 
   it('제목 id로 묶인 section이고 사유·정지일은 dl/dt/dd다', () => {
