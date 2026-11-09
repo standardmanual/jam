@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { d } from '@/lib/i18n'
 import { useTabBarHidden } from '@/lib/uiOverlay'
 import { isPathActive } from '@/lib/isPathActive'
@@ -41,6 +41,7 @@ interface TabBarProps {
    * 푸터 위처럼 어두운 면 위에 얹힐 때 true — 캡슐 면·활성 필·아이콘이 한 번에 반전 색으로 바뀐다
    * (250ms 크로스페이드, transitions.css). 기본 false는 반전 이전과 같은 모양이다. 푸터 감지는
    * 이 컴포넌트의 일이 아니다(티켓 20261109_1154). 티켓 20261109_1153.
+   * 20261109_1154: 주어지면 이 값이 우선이고, 없으면 푸터 감지 값(`watchFooterContact`)을 쓴다.
    */
   inverted?: boolean
 }
@@ -127,12 +128,110 @@ const baseTabs = [
   },
 ]
 
-export default function TabBar({ username, inverted = false }: TabBarProps) {
+// 20261109_1154: 푸터 윗변이 탭바 세로 중간선에 닿으면 반전, 벗어나면 해제.
+// IntersectionObserver는 rootMargin을 만든 뒤 못 바꾸므로 «켜는 관찰자»와 «끄는 관찰자»를 따로 둔다.
+// 켜는 쪽 rootMargin은 뷰포트 하단에서 중간선까지 거리(실측)를 음수로 주고, 끄는 쪽은 그보다
+// FOOTER_RELEASE_GAP만큼 덜 줄여 되돌림 경계를 아래로 벌린다(경계에서 깜빡이지 않게).
+// 값은 판정이 바뀐 순간에만 바뀌고 스크롤 핸들러는 없다. 실렌더로 간격을 조정한다(카리나).
+export const FOOTER_SELECTOR = '[data-jam-footer]'
+export const FOOTER_RELEASE_GAP = 12
+
+/** 뷰포트 하단에서 탭바 세로 중간선까지의 거리(px, 반올림). safe-area에 따라 달라 상수로 두지 않는다. */
+export function measureMidlineDistance(nav: Element, viewportHeight: number): number {
+  const rect = nav.getBoundingClientRect()
+  return Math.max(0, Math.round(viewportHeight - (rect.top + rect.height / 2)))
+}
+
+export function footerRootMargin(distance: number): string {
+  return `0px 0px -${Math.max(0, distance)}px 0px`
+}
+
+interface FooterWatchEnv {
+  doc: Pick<Document, 'querySelector'>
+  win: Pick<Window, 'innerHeight' | 'addEventListener' | 'removeEventListener'>
+  createIntersectionObserver: (cb: IntersectionObserverCallback, init: IntersectionObserverInit) => IntersectionObserver
+  createResizeObserver: (cb: () => void) => Pick<ResizeObserver, 'observe' | 'disconnect'>
+}
+
+/**
+ * 푸터를 관찰해 반전 여부를 `onChange`로 알린다. 푸터가 없으면 즉시 `onChange(false)`를 부르고 아무것도 걸지 않는다.
+ * 기준선은 시작·ResizeObserver·resize 때만 다시 재고, 거리가 달라졌을 때만 관찰자를 새로 만든다.
+ * 돌려주는 함수는 모든 관찰을 해제한다. 호출자가 pathname·탭바 복귀마다 새로 부르면 현재 값이 다시 계산된다.
+ */
+export function watchFooterContact(
+  nav: Element,
+  onChange: (inverted: boolean) => void,
+  env: FooterWatchEnv = {
+    doc: document,
+    win: window,
+    createIntersectionObserver: (cb, init) => new IntersectionObserver(cb, init),
+    createResizeObserver: (cb) => new ResizeObserver(cb),
+  },
+): () => void {
+  const footer = env.doc.querySelector(FOOTER_SELECTOR)
+  if (!footer) {
+    onChange(false)
+    return () => {}
+  }
+
+  let engaged = false // 켜는 관찰자 기준 닿음
+  let released = true // 끄는 관찰자 기준 벗어남
+  let observers: IntersectionObserver[] = []
+  let distance = -1
+  let current: boolean | null = null
+
+  const emit = () => {
+    // 닿으면 켜고, 끄는 관찰자까지 벗어나야 끈다. 사이 구간에서는 이전 값을 지킨다.
+    const next = engaged ? true : released ? false : (current ?? false)
+    if (next === current) return
+    current = next
+    onChange(next)
+  }
+
+  const disconnect = () => {
+    observers.forEach((o) => o.disconnect())
+    observers = []
+  }
+
+  const connect = () => {
+    const dist = measureMidlineDistance(nav, env.win.innerHeight)
+    if (dist === distance) return
+    distance = dist
+    disconnect()
+    const engage = env.createIntersectionObserver((entries) => {
+      engaged = entries[entries.length - 1].isIntersecting
+      emit()
+    }, { rootMargin: footerRootMargin(dist) })
+    const release = env.createIntersectionObserver((entries) => {
+      released = !entries[entries.length - 1].isIntersecting
+      emit()
+    }, { rootMargin: footerRootMargin(dist - FOOTER_RELEASE_GAP) })
+    engage.observe(footer)
+    release.observe(footer)
+    observers = [engage, release]
+  }
+
+  connect()
+  const resizeObserver = env.createResizeObserver(connect)
+  resizeObserver.observe(nav)
+  env.win.addEventListener('resize', connect)
+
+  return () => {
+    resizeObserver.disconnect()
+    env.win.removeEventListener('resize', connect)
+    disconnect()
+  }
+}
+
+export default function TabBar({ username, inverted: invertedProp }: TabBarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const hidden = useTabBarHidden()
 
   const navRef = useRef<HTMLElement>(null)
+  // 푸터 감지 값. 판정한 경로를 함께 들고 있어 라우트가 바뀌면 첫 판정 전까지 false다(이전 페이지의 반전이 남지 않는다).
+  const [detected, setDetected] = useState({ pathname, value: false })
+  const inverted = invertedProp ?? (detected.pathname === pathname && detected.value)
   const pillRef = useRef<HTMLSpanElement>(null)
   const tabRefs = useRef(new Map<string, HTMLAnchorElement>())
   // 첫 페인트에서는 애니메이션 없이 스냅시켜야 한다 (SlidingTabs.tsx와 동일).
@@ -239,6 +338,14 @@ export default function TabBar({ username, inverted = false }: TabBarProps) {
       window.removeEventListener('resize', reposition)
     }
   }, [moveTo])
+
+  // 푸터 감지(20261109_1154) — pathname이 바뀌면 푸터를 다시 찾아 관찰자를 새로 만들고, 탭바가 숨었다
+  // 돌아오면(nav가 새로 생김) 현재 값을 다시 계산한다. 푸터가 없는 경로는 항상 false다.
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    return watchFooterContact(nav, (value) => setDetected({ pathname, value }))
+  }, [pathname, hidden])
 
   // 배지 공유 미리보기 같은 전체화면 오버레이가 열려 있는 동안은 물리적으로 렌더링하지 않는다
   // (z-index로 덮기만 하면 iOS Safari 동적 툴바 상태에 따라 살짝 비쳐 보이는 경우가 있었음).
