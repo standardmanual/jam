@@ -75,6 +75,12 @@ export interface BadgeGridCardProps {
    * 장착된 칸과 이름 색으로 구분하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시). 기본 false라 다른 화면은 그대로다.
    */
   nameMuted?: boolean
+  /**
+   * true = 등급 칩(`RarityBadge`·`BadgeLevelChip`)을 회색조(`grayscale`)로 그린다. 장착하지 않은 칸에서 이름·썸네일과 함께
+   * 비활성으로 보이게 하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시). 칩의 면 색(`--rarity-*`)은 바꾸지 않고
+   * 그려진 뒤 필터만 건다. 기본 false라 다른 화면은 마크업이 그대로다.
+   */
+  chipGray?: boolean
   className?: string
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
   children?: ReactNode
@@ -107,6 +113,7 @@ export default function BadgeGridCard({
   highlighted = false,
   locked = false,
   nameMuted = false,
+  chipGray = false,
   className = '',
   children,
 }: BadgeGridCardProps) {
@@ -137,6 +144,7 @@ export default function BadgeGridCard({
     .join(' ')
 
   const showCount = !locked && !undiscovered && typeof count === 'number' && count > 1
+  const chip = level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />
 
   const content = (
     <>
@@ -182,7 +190,7 @@ export default function BadgeGridCard({
         {showCount && (
           <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
         )}
-        {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />)}
+        {!undiscovered && (chipGray ? <span className="inline-flex grayscale">{chip}</span> : chip)}
       </div>
       {children && <div className="w-full mt-1">{children}</div>}
     </>

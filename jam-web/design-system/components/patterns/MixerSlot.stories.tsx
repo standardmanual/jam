@@ -61,9 +61,21 @@ export const Filled: Story = {
   play: async ({ canvasElement }) => {
     const remove = canvasElement.querySelector('[role="button"]') as HTMLElement;
     expect(remove).toBeTruthy();
-    // 제거 버튼은 반전 면(--background-inverse, #171717) + --snow(#fcfcfc) 글자다(17.47:1).
-    expect(getComputedStyle(remove).backgroundColor).toBe('rgb(23, 23, 23)');
-    expect(getComputedStyle(remove).color).toBe('rgb(252, 252, 252)');
+    // 눌리는 영역은 바깥 40px 박스이고, 보이는 원은 그 안의 24px다.
+    const circle = remove.firstElementChild as HTMLElement;
+    expect(remove.getBoundingClientRect().width).toBe(40);
+    expect(circle.getBoundingClientRect().width).toBe(24);
+    expect(circle.getBoundingClientRect().height).toBe(24);
+    // 원은 반전 면(--background-inverse, #171717) + --snow(#fcfcfc) 아이콘이다(17.47:1).
+    expect(getComputedStyle(circle).backgroundColor).toBe('rgb(23, 23, 23)');
+    expect(getComputedStyle(circle).color).toBe('rgb(252, 252, 252)');
+    // 슬롯 가장자리에서 6px 안쪽이다(오른쪽·위).
+    const slot = remove.parentElement as HTMLElement;
+    expect(Math.round(slot.getBoundingClientRect().right - circle.getBoundingClientRect().right)).toBe(6);
+    expect(Math.round(circle.getBoundingClientRect().top - slot.getBoundingClientRect().top)).toBe(6);
+    // 글자 «✕»가 아니라 «−» 아이콘이다.
+    expect(circle.textContent).toBe('');
+    expect(circle.querySelector('svg path')?.getAttribute('d')).toBe('M6 12h12');
   },
 };
 

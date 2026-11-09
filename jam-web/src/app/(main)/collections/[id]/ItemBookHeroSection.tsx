@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { BookIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
@@ -24,6 +25,11 @@ interface ItemBookHeroSectionProps {
    * 배지 상세(`BadgeHeroSection`)와 동일한 규약 — row에서 값을 뽑는 책임은 호출부에 있다.
    */
   backgroundAnimation?: BlobAnimationParams | null
+  /**
+   * 대표 이미지 카드와 진행도 바 **사이**에 놓는 내용. 컬렉션 상세가 완성 알림 카드를 여기에 넣는다
+   * (2026-11-09 사용자 지시: 완성 카드를 진행도 바 위로). 없으면 아무것도 그리지 않는다.
+   */
+  children?: ReactNode
 }
 
 /**
@@ -46,7 +52,7 @@ interface ItemBookHeroSectionProps {
  * BadgeHeroSection 자체 px-6=24px)로 카드 폭도 달라 보였던 문제는 이 컴포넌트의 카드에
  * `mx-2`(8px)를 더해 16+8=24px로 맞췄다.
  */
-export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCount, backgroundAnimation }: ItemBookHeroSectionProps) {
+export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCount, backgroundAnimation, children }: ItemBookHeroSectionProps) {
   const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
 
   // [20260901_1944] 애니메이션 모드에서는 전체 배경 레이어가 비므로 페이지가 걸던 텍스트 그림자
@@ -125,6 +131,8 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           )}
         </div>
       </div>
+
+      {children}
 
       {/* 진행도 바 + 카운트 인라인 — 카드 밖에 유지(사용자 명시 지시). 카드~진행도 바 세로 간격을
           20px로 맞춘다 — 부모(page.tsx)의 `flex flex-col gap-3`(12px)를 직접 바꾸면 진행도 바

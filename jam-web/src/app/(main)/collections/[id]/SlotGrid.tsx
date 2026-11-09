@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import Button from '@/components/ui/Button'
 import SlotActionPill from './SlotActionPill'
-import SlotRemoveButton from './SlotRemoveButton'
+import SlotCircleButton from './SlotCircleButton'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
 import { d, t } from '@/lib/i18n'
 import { shouldOpenCandidateSheet } from '@/lib/itembook/tier-badge-slots'
@@ -501,10 +501,12 @@ export default function SlotGrid({
               highlighted={slotMode && !readOnly && isSlottable}
               // 장착하지 않은 칸(빈 칸·넣을 수 있는 배지가 있는 칸)의 이름은 그레이로 장착된 칸과 구분한다(2026-11-09 사용자 지시)
               nameMuted={!isSlotted}
+              // 등급 칩도 같은 칸에서 회색조로 둔다(2026-11-09 사용자 지시)
+              chipGray={!isSlotted}
             >
               {/* 슬롯 교체 버튼 — 같은 배지의 미장착 후보가 있을 때만 그린다(20260910_0015). 교체는 장착 쪽에 가까운
                   양성 액션이라 장착과 같은 톤(accent)을 쓴다. «빼기»는 칸 아래 알약이 아니라 우측 상단 원 버튼이 맡는다
-                  (아래 `SlotRemoveButton`, 2026-11-09 사용자 지시). */}
+                  (아래 `SlotCircleButton`, 2026-11-09 사용자 지시). */}
               {isSlotted && !readOnly && candidates.length > 0 && (
                 <SlotActionPill
                   tone="accent"
@@ -515,26 +517,25 @@ export default function SlotGrid({
                   {d.itembooks.swapButton}
                 </SlotActionPill>
               )}
-
-              {/* 슬롯 장착 버튼 */}
-              {isSlottable && !readOnly && (
-                <SlotActionPill
-                  tone="accent"
-                  pending={pending}
-                  disabled={bulkBusy}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSlotButton(badgeSlot) }}
-                >
-                  {d.itembooks.slotButton}
-                </SlotActionPill>
-              )}
             </BadgeGridCard>
-            {/* 슬롯 빼기 — 장착된 본인 칸의 우측 상단 검은 원 안의 «−»(2026-11-09 사용자 지시). 교체 후보가 있는 칸에도 보인다 */}
+            {/* 칸 우측 상단의 검은 원 버튼(2026-11-09 사용자 지시). 장착된 본인 칸은 «−»(빼기, 교체 후보가 있는 칸에도 보인다),
+                장착하지 않았고 넣을 수 있는 본인 칸은 «+»(추가). «교체»는 칸 아래 알약 그대로다. */}
             {isSlotted && !readOnly && (
-              <SlotRemoveButton
+              <SlotCircleButton
+                icon="minus"
                 label={d.itembooks.unslotButton}
                 pending={pending}
                 disabled={bulkBusy}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(cellKey, slot!.id) }}
+              />
+            )}
+            {isSlottable && !readOnly && (
+              <SlotCircleButton
+                icon="plus"
+                label={d.itembooks.slotButton}
+                pending={pending}
+                disabled={bulkBusy}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSlotButton(badgeSlot) }}
               />
             )}
             </div>

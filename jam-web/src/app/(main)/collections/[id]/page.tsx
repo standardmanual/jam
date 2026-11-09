@@ -322,7 +322,22 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           slottedCount={slottedCount}
           totalBadgeCount={totalBadgeCount}
           backgroundAnimation={bookCardAnimation}
-        />
+        >
+          {/* 완성 알림 — 대표 카드와 진행도 바 사이(2026-11-09 사용자 지시: 진행도 바 위) */}
+          {isCompleted && (
+            <Card className="text-center">
+              <p
+                className="font-bold mb-2"
+                style={{ color: 'var(--foreground)', fontSize: '18px' }}
+              >
+                {d.itembooks.completedTitle}
+              </p>
+              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+                {d.itembooks.completedBody}
+              </p>
+            </Card>
+          )}
+        </ItemBookHeroSection>
 
         {/* 스토리 텍스트 */}
         {book.story_text && (
@@ -423,21 +438,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
               })}
             </div>
           </div>
-        )}
-
-        {/* 완성 배너 */}
-        {isCompleted && (
-          <Card className="text-center">
-            <p
-              className="font-bold mb-2"
-              style={{ color: 'var(--foreground)', fontSize: '18px' }}
-            >
-              {d.itembooks.completedTitle}
-            </p>
-            <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
-              {d.itembooks.completedBody}
-            </p>
-          </Card>
         )}
       </div>
     </div>

@@ -395,6 +395,9 @@ describe('컬렉션 상세 페이지 — 모두 빼기에 내려보내는 값', 
     const { gridProps } = await renderGrid()
 
     expect(gridProps?.completed).toBe(true)
+    // 완성 알림 카드는 하단이 아니라 Hero 안(대표 카드와 진행도 바 사이)에 그린다
+    const hero = findElements(await callPage(), (el) => el.type === ItemBookHeroSection)[0]
+    expect((hero.props as { children?: ReactNode }).children).toBeTruthy()
   })
 
   it('tier_mode가 꺼진 컬렉션은 개수만 있고 tierFixed는 꺼져 있다', async () => {

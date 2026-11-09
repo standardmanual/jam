@@ -14,7 +14,9 @@ import React from 'react';
  *            패턴 없이 불투명도만으로 empty와 구분한다(티켓 20260917_1828 — 사선 패턴
  *            제거). 탭해도 채울 배지가 없다는 뜻이라 상호작용은 호출부가 막는다(이
  *            컴포넌트는 시각만 담당 — onClick 자체는 그대로 전달된다).
- *   filled — 채운 배지 카드(썸네일+이름) + 우상단 제거 버튼(X 서클, 작고 어두운 네거티브 배경).
+ *   filled — 채운 배지 카드(썸네일+이름) + 우상단 제거 버튼. 컬렉션 칸의 «빼기»와 같은 모양이다:
+ *            검은 원(24px, --background-inverse) 안에 흰 «−» 아이콘, 가장자리에서 6px 안쪽(2026-11-09 사용자 지시,
+ *            이전에는 모서리에 걸친 16px «✕»). 눌리는 영역은 바깥 40px 박스가 맡는다.
  *
  * 완료 여부는 이 슬롯의 시각 상태만으로 표현한다 — 진행률 텍스트는 이 컴포넌트도,
  * 호출부도 별도로 그리지 않는다(티켓 확정 사항).
@@ -113,24 +115,36 @@ export function MixerSlot({
                   onRemove();
                 }
               }}
+              // 눌리는 영역 40px — 보이는 원(24px)은 가장자리에서 6px 안쪽이라 박스는 -2px에서 시작한다(6 - (40-24)/2)
               style={{
                 position: 'absolute',
-                top: -4,
-                right: -4,
-                width: 16,
-                height: 16,
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--background-inverse)',
-                color: 'var(--snow)',
+                top: -2,
+                right: -2,
+                width: 40,
+                height: 40,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 9,
-                lineHeight: 1,
                 cursor: 'pointer',
               }}
             >
-              ✕
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 'var(--radius-full)',
+                  background: 'var(--background-inverse)',
+                  color: 'var(--snow)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <path d="M6 12h12" />
+                </svg>
+              </span>
             </span>
           )}
         </>
