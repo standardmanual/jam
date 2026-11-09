@@ -267,7 +267,7 @@ export const ko = {
     syncFailed: 'Strava 동기화에 실패했어요. 잠시 후 다시 시도해 주세요.',
 
     // 유저 검색
-    searchPlaceholder: '아이디 또는 이메일로 유저 검색',
+    searchPlaceholder: '아이디 또는 이름으로 유저 검색',
     searchAriaLabel: '유저 검색',
     searchButton: '검색',
 
@@ -1433,7 +1433,7 @@ export const ko = {
 
   /** 유저 검색 결과 */
   search: {
-    promptTitle: '아이디 또는 이메일로 유저를 검색해보세요',
+    promptTitle: '아이디 또는 이름으로 유저를 검색해보세요',
     promptBody: '2자 이상 입력해 주세요',
     /**
      * §4.3 빈 상태 가이드 예시(`"{검색어}" 검색 결과가 없어요`)를 그대로 따른다.
@@ -1444,7 +1444,7 @@ export const ko = {
      * (티켓 20260916_1020, UX_WRITING_GUIDELINE.md §4.3 단서 참고).
      */
     emptyTitle: '"{query}" 검색 결과가 없어요',
-    emptyBody: '다른 아이디나 이메일로 다시 검색해보세요',
+    emptyBody: '다른 아이디나 이름으로 다시 검색해보세요',
     resultCount: '{count}명의 유저',
     /**
      * ADR 0001 — API route(`api/users/search/route.ts`)가 직접 참조해 완성한 문구를 그대로

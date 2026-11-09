@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import { d } from '@/lib/i18n'
+import { buildUserSearchFilter } from '@/lib/users/search-filter'
 
 interface UserSearchResult {
   id: string
@@ -40,15 +41,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [] })
   }
 
-  // 3. service role 클라이언트로 조회 (email로도 검색해야 하므로 RLS 우회)
+  // 3. service role 클라이언트로 조회 (username·display_name만 일치 대상 — email은 넣지 않는다)
   const service = createServiceClient()
-  const pattern = `%${sanitized}%`
 
   const { data, error } = await service
     .from('users')
     .select('id, username, display_name, avatar_url')
     .not('username', 'is', null)
-    .or(`username.ilike.${pattern},email.ilike.${pattern}`)
+    .or(buildUserSearchFilter(sanitized))
     .limit(30)
 
   if (error) {
@@ -79,6 +79,6 @@ export async function GET(req: NextRequest) {
       return a.username.localeCompare(b.username)
     })
 
-  // email은 응답에 절대 포함하지 않음 (검색 조건으로만 사용)
+  // email은 응답에 포함하지 않고, 검색 조건에도 쓰지 않는다
   return NextResponse.json({ results })
 }

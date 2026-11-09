@@ -11,6 +11,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
+import { buildUserSearchFilter } from '@/lib/users/search-filter'
 
 /**
  * ⚠️ `q`의 타입을 `string`으로 좁히지 말 것 — `?q=a&q=b`처럼 같은 키가 두 번 오면 Next가
@@ -31,7 +32,7 @@ interface UserSearchResult {
 /**
  * q로 users를 조회한다. (dev-api /api/users/search 와 동일 로직)
  * - username IS NOT NULL
- * - username ilike OR email ilike (email은 검색 조건으로만 사용, 절대 노출 금지)
+ * - username ilike OR display_name ilike (email은 조건에도 응답에도 쓰지 않는다)
  * - 정확 일치 우선 → username 오름차순
  * - LIMIT 30
  */
@@ -44,13 +45,12 @@ async function searchUsers(rawQuery: string): Promise<UserSearchResult[]> {
   if (sanitized.length < 2) return []
 
   const service = createServiceClient()
-  const pattern = `%${sanitized}%`
 
   const { data, error } = await service
     .from('users')
     .select('id, username, display_name, avatar_url')
     .not('username', 'is', null)
-    .or(`username.ilike.${pattern},email.ilike.${pattern}`)
+    .or(buildUserSearchFilter(sanitized))
     .limit(30)
   if (error) console.error('[search/page] 유저 검색 조회 실패', error)
 
