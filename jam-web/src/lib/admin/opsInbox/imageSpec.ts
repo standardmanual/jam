@@ -6,6 +6,8 @@
  */
 import { asRecord, itemField, type ViewableItem } from './itemView'
 import type { RenderPresetToPngArgs } from './imageRender.client'
+import { parseLayerKey } from '@/lib/asset-generator/layerKeys'
+import { getAllowedAssetHost, isAllowedAssetUrl } from '@/lib/asset-generator/presetValidate'
 
 /** 이미지 칸이 있는 종류 네 개와 항목 `resource`의 이미지 칸 이름. 카드는 `cover_image_url`, 미션·배지·컬렉션은 `image_url`이다. */
 export const IMAGE_KEY_BY_KIND = {
@@ -39,13 +41,37 @@ export function readImageSpec(item: ViewableItem): ImageSpec | null {
   return asRecord(itemField(item, 'image_spec')) as ImageSpec | null
 }
 
+/**
+ * 이미지 레이어 값이 이 프로젝트 저장소 밖의 주소를 가리키는가(티켓 20261007_1620). 제출 경로는 쓰기 토큰도 받으므로,
+ * 관리자 브라우저가 임의 외부 주소를 불러오지 않게 막는 기준이다. 저장소 호스트의 https 주소와 `/`로 시작하는 같은 출처 경로는 통과한다.
+ * `http(s)://`로 시작하는 다른 주소와 `//host`·`/\host`(브라우저가 외부 주소로 읽는 모양)만 밖의 주소로 본다.
+ * 저장소 호스트를 알 수 없으면(환경변수 없음) 모든 `http(s)://` 주소가 밖의 주소다.
+ */
+export function isForeignImageSource(value: string, allowedHost: string | null = getAllowedAssetHost()): boolean {
+  if (isAllowedAssetUrl(value, allowedHost)) return false
+  return /^https?:\/\//i.test(value) || /^[/\\]{2}/.test(value)
+}
+
+function isImageLayerKey(key: string): boolean {
+  return parseLayerKey(key)?.type === 'image'
+}
+
 /** 제작 인자로 바꾼다. `preset_id`가 없거나 문자열이 아니면 null(제작을 건너뛴다). `bg`·`end`가 없으면 빈 문자열로 둔다. */
-export function imageSpecToRenderArgs(spec: ImageSpec | null, seed: number): RenderPresetToPngArgs | null {
+export function imageSpecToRenderArgs(
+  spec: ImageSpec | null,
+  seed: number,
+  allowedHost: string | null = getAllowedAssetHost(),
+): RenderPresetToPngArgs | null {
   if (!spec || typeof spec.preset_id !== 'string' || spec.preset_id.trim() === '') return null
   const values = asRecord(spec.values)
   const strings: Record<string, string> = {}
   if (values) {
-    for (const [k, v] of Object.entries(values)) if (typeof v === 'string') strings[k] = v
+    for (const [k, v] of Object.entries(values)) {
+      if (typeof v !== 'string') continue
+      // 저장소 밖의 이미지 주소는 브라우저가 불러오지 않도록 값째 건너뛴다(그 레이어는 프리셋의 기본 이미지를 쓴다).
+      if (isImageLayerKey(k) && isForeignImageSource(v, allowedHost)) continue
+      strings[k] = v
+    }
   }
   return {
     presetId: spec.preset_id.trim(),
@@ -99,7 +125,7 @@ export function previewRenderArgs(spec: ImageSpec | null, itemId: string): Previ
  * `image_spec` 원값의 경고 문장. 값이 없거나 비어 있으면 「비어 있어요」 한 줄, 있으면 모양이 틀린 칸마다 한 줄이다.
  * 오류가 아니라 경고다 — 호출부가 `errors`에 넣지 않는다.
  */
-export function imageSpecWarnings(spec: unknown, path: string): string[] {
+export function imageSpecWarnings(spec: unknown, path: string, allowedHost: string | null = getAllowedAssetHost()): string[] {
   const label = `${path}.image_spec`
   if (spec === undefined || spec === null) return [`${label}: 비어 있어요. 이미지 지시가 없으면 이미지를 자동으로 만들지 않아요.`]
   const record = asRecord(spec)
@@ -120,6 +146,9 @@ export function imageSpecWarnings(spec: unknown, path: string): string[] {
     } else {
       for (const [k, v] of Object.entries(values)) {
         if (typeof v !== 'string') warnings.push(`${label}.values.${k}: 문자열이어야 해요.`)
+        else if (isImageLayerKey(k) && isForeignImageSource(v, allowedHost)) {
+          warnings.push(`${label}.values.${k}: JAM! 저장소의 이미지 주소가 아니에요. 보안상 이 값은 이미지에 쓰이지 않아요. 저장소에 올린 이미지 주소나 / 로 시작하는 경로를 적어 주세요.`)
+        }
       }
     }
   }

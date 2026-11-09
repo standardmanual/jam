@@ -14,6 +14,7 @@ import {
   imageKeyOfKind,
   imageSpecToRenderArgs,
   imageSpecWarnings,
+  isForeignImageSource,
   isImageKind,
   previewRenderArgs,
   readImageSpec,
@@ -55,6 +56,58 @@ describe('imageSpecToRenderArgs', () => {
       typeof imageSpecToRenderArgs
     >[0]
     expect(imageSpecToRenderArgs(spec, 7)).toEqual({ presetId: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' }, seed: 7 })
+  })
+})
+
+const PATH = 'items[0]'
+const HOST = 'abc.supabase.co'
+const OWN = `https://${HOST}/storage/v1/object/public/assets/a.png`
+
+describe('isForeignImageSource (티켓 20261007_1620)', () => {
+  it('저장소 https 주소와 같은 출처 경로는 통과한다', () => {
+    expect(isForeignImageSource(OWN, HOST)).toBe(false)
+    expect(isForeignImageSource('/images/a.png', HOST)).toBe(false)
+  })
+
+  it('다른 호스트·http·프로토콜 없는 외부 주소는 밖의 주소다', () => {
+    expect(isForeignImageSource('https://evil.example/a.png', HOST)).toBe(true)
+    expect(isForeignImageSource(`http://${HOST}/a.png`, HOST)).toBe(true)
+    expect(isForeignImageSource('//evil.example/a.png', HOST)).toBe(true)
+    expect(isForeignImageSource('/\\evil.example/a.png', HOST)).toBe(true)
+    expect(isForeignImageSource(`https://${HOST}.evil.example/a.png`, HOST)).toBe(true)
+  })
+
+  it('저장소 호스트를 모르면 모든 http(s) 주소가 밖의 주소다', () => {
+    expect(isForeignImageSource(OWN, null)).toBe(true)
+    expect(isForeignImageSource('/images/a.png', null)).toBe(false)
+  })
+})
+
+describe('imageSpecToRenderArgs — 외부 이미지 주소 (티켓 20261007_1620)', () => {
+  it('이미지 레이어의 외부 주소 값은 건너뛰고 저장소 주소·로컬 경로·텍스트 값은 남긴다', () => {
+    const spec = {
+      preset_id: 'p1',
+      bg: '#111111',
+      end: '#222222',
+      values: { img01: 'https://evil.example/a.png', img02: OWN, img03: '/images/a.png', text01: 'https://evil.example 글자' },
+    }
+    expect(imageSpecToRenderArgs(spec, 1, HOST)?.values).toEqual({ img02: OWN, img03: '/images/a.png', text01: 'https://evil.example 글자' })
+  })
+})
+
+describe('imageSpecWarnings — 외부 이미지 주소 (티켓 20261007_1620)', () => {
+  const base = { preset_id: 'p1', bg: '#111111', end: '#222222' }
+
+  it('이미지 레이어의 외부 주소마다 경고 한 줄을 낸다', () => {
+    const warnings = imageSpecWarnings({ ...base, values: { img01: 'https://evil.example/a.png', img02: '//evil.example/b.png' } }, PATH, HOST)
+    expect(warnings).toEqual([
+      expect.stringContaining('image_spec.values.img01: JAM! 저장소의 이미지 주소가 아니에요'),
+      expect.stringContaining('image_spec.values.img02: JAM! 저장소의 이미지 주소가 아니에요'),
+    ])
+  })
+
+  it('저장소 주소·로컬 경로·텍스트 값은 경고하지 않는다', () => {
+    expect(imageSpecWarnings({ ...base, values: { img01: OWN, img02: '/images/a.png', text01: 'https://evil.example' } }, PATH, HOST)).toEqual([])
   })
 })
 
