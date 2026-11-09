@@ -7,7 +7,7 @@ import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
 import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
-import { BookIcon } from '@/components/ui/icons'
+import { BookIcon, CoinIcon } from '@/components/ui/icons'
 import PoiMapButton from './PoiMapButton'
 import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
@@ -602,15 +602,19 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </div>
         )}
 
-        {/* 포인트 보상 */}
+        {/* 포인트 보상 — 미션 상세의 포인트 보상 행과 같은 모양이다(2026-11-09 사용자 지시): tint 행 + 서클 lead + «N 포인트».
+            획득 전후로 문구를 가르지 않는다. «지급했다»·«드렸다» 같은 표현을 쓰지 않고 값만 보인다. */}
         {badgeRow.point_reward > 0 && (
-          <Card>
-            <p className="text-base text-foreground">
-              {hasEarned
-                ? tPoint(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
-                : tPoint(d.badges.pointRewardPending, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
-            </p>
-          </Card>
+          <ListRow
+            tone="tint"
+            leadShape="round"
+            lead={
+              <span className="w-full h-full flex items-center justify-center" style={{ background: 'var(--accent)' }}>
+                <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
+              </span>
+            }
+            title={tPoint(d.badges.pointRewardLine, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
+          />
         )}
       </div>
 

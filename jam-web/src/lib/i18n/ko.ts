@@ -522,8 +522,8 @@ export const ko = {
     emptyItembookBody: '아이템배지를 획득하면 컬렉션이 나타납니다',
 
     // 상세 페이지
-    pointRewardEarned: '이 배지는 {points} 포인트를 함께 드렸어요',
-    pointRewardPending: '이 배지를 획득하면 {points} 포인트를 함께 드려요',
+    /** 배지 상세의 포인트 보상 행 — 미션 상세의 `missions.rewardPointsLine`과 같은 «N 포인트»다. 획득 전후로 가르지 않고 지급 표현을 쓰지 않는다(2026-11-09) */
+    pointRewardLine: '{points} 포인트',
 
     prerequisiteTitle: '선행 배지',
 
