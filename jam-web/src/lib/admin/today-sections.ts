@@ -121,7 +121,7 @@ export interface TodayTemplateFields {
   itemBook?: boolean
   region?: boolean
   body?: boolean
-  /** 게재용 설명문 입력 — editorial_article만 쓰지 않는다(본문은 body_markdown, 티켓 20260929_1335) */
+  /** 게재용 설명문 입력 — 설명 문단을 그리는 템플릿(`showsDescription`)만 쓴다(티켓 20260929_1335, 20261109_1519) */
   description?: boolean
   /** ranking_board 전용 — 연결할 랭킹모드 선택 입력(티켓 20260911_1440) */
   rankingMode?: boolean
@@ -130,21 +130,26 @@ export interface TodayTemplateFields {
   targetHref?: boolean
 }
 
-/** 템플릿별 노출 필드 매트릭스 (Phase15_02_DATA_MODEL §2) */
+/**
+ * 템플릿별 노출 필드 매트릭스 (Phase15_02_DATA_MODEL §2).
+ * 설명문(`description`) 칸은 홈이 설명 문단을 그리는 템플릿(`lib/today/shape.ts`의 `DESCRIPTION_TEMPLATES`·`showsDescription`)에만 연다
+ * — 그리지 않는 템플릿에 설명을 적어도 홈에 보이지 않아서다(티켓 20261109_1519). 이 파일은 `scripts/gen-home-feed-doc.mjs`가 노드로 직접 읽어
+ * `import type`만 쓸 수 있어 목록을 값으로 가져오지 못한다. 대신 `today-sections.test.ts`가 이 표의 설명문 칸이 `showsDescription`과 같은지 대조한다.
+ */
 export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields> = {
   badge_spotlight: { description: true, badges: true, targetHref: true },
-  progress_nudge: { description: true, badges: true, mission: true, targetHref: true },
-  mission_spotlight: { description: true, mission: true, targetHref: true },
-  itembook_milestone: { description: true, itemBook: true, targetHref: true },
-  location_trend: { description: true, badges: true, region: true, targetHref: true },
-  drop_alert: { description: true }, // target 고정 /drops
+  progress_nudge: { badges: true, mission: true, targetHref: true },
+  mission_spotlight: { mission: true, targetHref: true },
+  itembook_milestone: { itemBook: true, targetHref: true },
+  location_trend: { badges: true, region: true, targetHref: true },
+  drop_alert: {}, // target 고정 /drops
   // 카드 자신의 이동 경로(피드에서 눌렀을 때)는 항상 /today/{id}로 고정(resolveTargetHref).
   // 여기서 입력하는 mission/itemBook/targetHref는 기사 본문 끝 CTA 버튼의 목적지로 쓰인다
   // (우선순위 target_href → 컬렉션 → 미션, 티켓 20260924_0107).
   editorial_article: { body: true, mission: true, itemBook: true, targetHref: true },
-  ranking_board: { description: true, rankingMode: true, targetHref: true },
+  ranking_board: { rankingMode: true, targetHref: true },
   // 카드 자신의 이동 경로는 기본 /combine이다(`resolveTargetHref`, 운영자가 지정한 주소가 있으면 그쪽, 티켓 20261006_1218).
-  recipe_reveal: { description: true, recipe: true, targetHref: true },
+  recipe_reveal: { recipe: true, targetHref: true },
   // 연결 칸(배지·미션·컬렉션·지역·랭킹·레시피) 없이 설명문과 이동 주소만 받는다(티켓 20261101_2054)
   content_intro: { description: true, targetHref: true },
 }
@@ -348,7 +353,8 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
     shape: v.layoutType === 'dome' ? 'dome' : v.layoutType === 'ticket' ? 'ticket' : null,
     title: v.title.trim(),
     subtitle: v.subtitle.trim() || null,
-    description: fields.description ? v.description.trim() || null : null,
+    // 설명문은 템플릿이 쓰지 않아도 비우지 않는다 — 폼이 읽어 온 저장 값을 그대로 돌려준다(보이지 않을 뿐이다, 티켓 20261109_1519).
+    description: v.description.trim() || null,
     cover_image_url: v.coverImageUrl.trim() || null,
     badge_ids: fields.badges ? v.badgeIds : [],
     mission_id: fields.mission ? v.missionId || null : null,

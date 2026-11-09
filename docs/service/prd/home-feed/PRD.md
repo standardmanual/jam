@@ -258,14 +258,14 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 | 값 | 라벨 | 추천 레이아웃 | 입력 필드 |
 |---|---|---|---|
 | `badge_spotlight` | 배지 소개 (badge_spotlight) | 큰 썸네일형 — 커버 이미지 크게 | 설명문·배지·이동경로(target_href) |
-| `progress_nudge` | 진행 알림 (progress_nudge) | 바로가기형 — 이미지 없는 짧은 CTA | 설명문·배지·미션·이동경로(target_href) |
-| `mission_spotlight` | 미션 소개 (mission_spotlight) | 큰 썸네일형 — 커버 이미지 크게 | 설명문·미션·이동경로(target_href) |
-| `itembook_milestone` | 컬렉션 소식 (itembook_milestone) | 배너형 — 가로 띠 배너 | 설명문·컬렉션·이동경로(target_href) |
-| `location_trend` | 지역 트렌드 (location_trend) | 배지목록형 — 배지 갤러리/리스트 | 설명문·배지·지역·이동경로(target_href) |
-| `drop_alert` | 드랍 유도 (drop_alert) | 바로가기형 — 이미지 없는 짧은 CTA | 설명문 |
+| `progress_nudge` | 진행 알림 (progress_nudge) | 바로가기형 — 이미지 없는 짧은 CTA | 배지·미션·이동경로(target_href) |
+| `mission_spotlight` | 미션 소개 (mission_spotlight) | 큰 썸네일형 — 커버 이미지 크게 | 미션·이동경로(target_href) |
+| `itembook_milestone` | 컬렉션 소식 (itembook_milestone) | 배너형 — 가로 띠 배너 | 컬렉션·이동경로(target_href) |
+| `location_trend` | 지역 트렌드 (location_trend) | 배지목록형 — 배지 갤러리/리스트 | 배지·지역·이동경로(target_href) |
+| `drop_alert` | 드랍 유도 (drop_alert) | 바로가기형 — 이미지 없는 짧은 CTA | 없음 |
 | `editorial_article` | 에디토리얼 기사 (editorial_article) | 큰 썸네일형 — 커버 이미지 크게 | 본문·미션·컬렉션·이동경로(target_href) |
-| `ranking_board` | 랭킹보드 (ranking_board) | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) | 설명문·랭킹모드·이동경로(target_href) |
-| `recipe_reveal` | 레시피 공개 (recipe_reveal) | 배지목록형 — 배지 갤러리/리스트 | 설명문·레시피·이동경로(target_href) |
+| `ranking_board` | 랭킹보드 (ranking_board) | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) | 랭킹모드·이동경로(target_href) |
+| `recipe_reveal` | 레시피 공개 (recipe_reveal) | 배지목록형 — 배지 갤러리/리스트 | 레시피·이동경로(target_href) |
 | `content_intro` | 컨텐츠 소개 (content_intro) | 바로가기형 — 이미지 없는 짧은 CTA | 설명문·이동경로(target_href) |
 <!-- END generated: templates -->
 
@@ -394,7 +394,7 @@ DB가 정렬해 한 건만 읽고, 필요 포인트가 비어 있는 개체는 �
 | `other` | 기타 — 기본형 |
 <!-- END generated: layouts -->
 
-**게재용 설명문(`description`)**: 한 덩어리 문단으로 보이는 짧은 글이다(공백 포함 60자 이하, 줄바꿈 없음, 14px, 넘치면 3줄에서 말줄임). **설명 문단은 배지 소개(`badge_spotlight`)와 컨텐츠 소개(`content_intro`) 카드에서만 그린다**(티켓 20261109_1458, 사용자 결정). 그 밖의 템플릿은 `description` 값이 있어도 그리지 않으며, 이 판정은 `toCardView`(`DESCRIPTION_TEMPLATES`, `jam-web/src/lib/today/shape.ts`) 한 곳에서 한다. DB 칸과 운영 입력 칸, 등록 검증은 그대로다(설명이 보이지 않는 템플릿에도 값이 저장될 수 있다). 두 템플릿에서 모양별로는 `hero`·`square`·`brief`·`list`(타일형·행형 모두)·`ticket`·`dome`(기본형)에서 보이고 `poster`와 포스터형 `dome`(`layout_type`이 `banner`)은 설명문을 그리지 않는다 — 그래서 `poster`가 되는 옛 `banner` 카드의 설명문은 화면에 나오지 않는다. `brief`는 썸네일·글자 열·`›` 윗줄 아래에 놓되 글자 열의 왼쪽 시작선(썸네일 64px + 간격 12px = 76px 들여 쓰기, 360 기기에서 약 290px 폭)에 맞춰 60자가 3줄에 들어가게 하고, `square`는 `hero`처럼 필수 정보 다음에 놓는다. 360 미만 기기는 한 줄이 짧아 60자가 3줄째에서 말줄임될 수 있다(티켓 [20261101_1945](../../../tickets/p2-normal/20261101_1945_UI_짧은-소식과-정사각-카드에-설명문을-보이고-상한을-60자로-늘린다.md)). 값이 없거나 공백뿐이면 그 그룹만 사라진다. `editorial_article`은 본문(`body_markdown`)이 있어 쓰지 않는다: 어드민 폼은 이 템플릿에서 칸을 숨기고 저장할 때 비운다. 길이 상한은 어드민 폼과 등록 묶음이 같은 상수(`TODAY_DESCRIPTION_MAX_LENGTH`)를 쓴다(티켓 [20260929_1335](../../../tickets/p2-normal/20260929_1335_Feature_홈피드-카드에-게재용-설명문-칸-추가.md)).
+**게재용 설명문(`description`)**: 한 덩어리 문단으로 보이는 짧은 글이다(공백 포함 60자 이하, 줄바꿈 없음, 14px, 넘치면 3줄에서 말줄임). **설명 문단은 배지 소개(`badge_spotlight`)와 컨텐츠 소개(`content_intro`) 카드에서만 그린다**(티켓 20261109_1458, 사용자 결정). 그 밖의 템플릿은 `description` 값이 있어도 그리지 않으며, 이 판정은 `toCardView`(`DESCRIPTION_TEMPLATES`, `jam-web/src/lib/today/shape.ts`) 한 곳에서 한다. DB 칸은 그대로다. 어드민 카드 폼의 설명문 칸과 등록 검증(등록 묶음·운영툴 예약 등록)은 같은 기준(`showsDescription`)을 따른다: 설명이 보이지 않는 템플릿에서는 폼이 설명문 칸을 숨기고 등록 검증이 설명문을 거절한다(사용자 결정 2026-11-09, 티켓 20261109_1519). 이미 저장된 설명 값은 지우지 않으며, 폼에서 그 카드를 저장해도 값을 그대로 둔다(보이지 않을 뿐이다). 두 템플릿에서 모양별로는 `hero`·`square`·`brief`·`list`(타일형·행형 모두)·`ticket`·`dome`(기본형)에서 보이고 `poster`와 포스터형 `dome`(`layout_type`이 `banner`)은 설명문을 그리지 않는다 — 그래서 `poster`가 되는 옛 `banner` 카드의 설명문은 화면에 나오지 않는다. `brief`는 썸네일·글자 열·`›` 윗줄 아래에 놓되 글자 열의 왼쪽 시작선(썸네일 64px + 간격 12px = 76px 들여 쓰기, 360 기기에서 약 290px 폭)에 맞춰 60자가 3줄에 들어가게 하고, `square`는 `hero`처럼 필수 정보 다음에 놓는다. 360 미만 기기는 한 줄이 짧아 60자가 3줄째에서 말줄임될 수 있다(티켓 [20261101_1945](../../../tickets/p2-normal/20261101_1945_UI_짧은-소식과-정사각-카드에-설명문을-보이고-상한을-60자로-늘린다.md)). 값이 없거나 공백뿐이면 그 그룹만 사라진다. `editorial_article`은 본문(`body_markdown`)이 있어 쓰지 않는다. 길이 상한은 어드민 폼과 등록 묶음이 같은 상수(`TODAY_DESCRIPTION_MAX_LENGTH`)를 쓴다(티켓 [20260929_1335](../../../tickets/p2-normal/20260929_1335_Feature_홈피드-카드에-게재용-설명문-칸-추가.md)).
 
 **눌림과 칩**: 카드를 누르는 동안의 반응은 공용 클래스 `.jam-press`(누르면 0.98배, 80ms)다. 동작 줄이기 설정에서는 눌림이 없다. 홈에서는 링크로 감싸는 카드(카드 틀 `CardFrame`의 링크)·랭킹 행형의 제목 링크와 순위 행·현황 스트립 셀에 붙고, 홈 밖의 눌림 가능한 카드(미션 랭킹 화면 행, 컬렉션 카드, 미션 상세의 상황 보기 버튼 등)도 같은 클래스를 쓴다. 링크도 버튼도 아니거나 비활성인 요소에는 붙이지 않는다. 카드 좌상단 템플릿 칩은 MODULAR `LabelChip`이 그린다(티켓 [20261001_1458](../../../tickets/p2-normal/20261001_1458_UI_투데이-카드-틀과-짧은-소식-모양을-만든다.md), [20261001_2244](../../../tickets/p2-normal/20261001_2244_UI_투데이-옛-카드를-새-모양으로-전환하고-옛-렌더러를-지운다.md)).
 

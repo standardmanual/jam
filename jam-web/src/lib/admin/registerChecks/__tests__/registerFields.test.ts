@@ -86,7 +86,6 @@ describe('홈피드 카드 — 상수 재수출과 검사 결과', () => {
       {
         title: '  주말 미션  ',
         subtitle: '부제',
-        description: '게재용 설명문',
         template_type: 'mission_spotlight',
         mission_id: UUID_A,
         content_type_id: 'T01',
@@ -98,6 +97,8 @@ describe('홈피드 카드 — 상수 재수출과 검사 결과', () => {
         is_active: true,
       },
     ],
+    ['설명문을 그리는 컨텐츠 소개 카드', { ...exampleCard(), template_type: 'content_intro', description: '게재용 설명문', target_href: '/guide', badge_ids: undefined, body_markdown: undefined, layout_type: undefined }],
+    ['설명 문단을 그리지 않는 미션 카드에 설명문', { ...exampleCard(), template_type: 'mission_spotlight', mission_id: UUID_A, layout_type: 'large_thumbnail', description: '보이지 않는 설명', badge_ids: undefined, body_markdown: undefined }],
     ['객체가 아님(배열)', []],
     ['객체가 아님(문자열)', 'text'],
     ['빈 객체', {}],
@@ -109,7 +110,7 @@ describe('홈피드 카드 — 상수 재수출과 검사 결과', () => {
     ['줄바꿈이 섞인 제목과 긴 설명', { ...exampleCard(), title: '두\n줄', description: 'ㅇ'.repeat(41), target_href: '//evil.test' }],
   ]
 
-  const PASSING_CARDS = new Set(['예시 카드', '값을 많이 채운 미션 카드'])
+  const PASSING_CARDS = new Set(['예시 카드', '값을 많이 채운 미션 카드', '설명문을 그리는 컨텐츠 소개 카드'])
 
   it.each(cards)('%s: 묶음 검사가 내는 카드 오류와 validateCard의 오류가 같다', (name, card) => {
     const direct: string[] = []

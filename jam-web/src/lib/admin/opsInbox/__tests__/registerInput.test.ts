@@ -272,10 +272,10 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
     expect(paths(result.errors)).toEqual(expect.arrayContaining(['copy', 'resource']))
   })
 
-  it('resource 칸(layout_type·content_type_id·target_href·sort_order·description 등)을 payload에 싣는다', () => {
+  it('resource 칸(layout_type·content_type_id·target_href·sort_order 등)을 payload에 싣는다', () => {
     const result = toCard(
       cardItem({
-        copy: { title: '미션 카드', description: '한 줄 설명', subtitle: '부제' },
+        copy: { title: '미션 카드', subtitle: '부제' },
         resource: {
           template_type: 'mission_spotlight',
           layout_type: 'large_thumbnail',
@@ -294,7 +294,7 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
       content_type_id: 'T01',
       target_href: '/missions/abc',
       sort_order: 5,
-      description: '한 줄 설명',
+      description: null,
       subtitle: '부제',
     })
   })
@@ -570,21 +570,39 @@ describe('toTodayCardRegisterInput · 검사 문장의 경로 매핑(결정 7)',
   })
 
   it('설명문은 60자까지 통과하고 61자부터 copy.description 오류다', () => {
-    expect(toCard(cardItem({ copy: { title: '제목', description: '가'.repeat(60) } })).errors).toEqual([])
-    const over = toCard(cardItem({ copy: { title: '제목', description: '가'.repeat(61) } }))
+    const resource = { template_type: 'content_intro', target_href: '/guide' }
+    expect(toCard(cardItem({ copy: { title: '제목', description: '가'.repeat(60) }, resource })).errors).toEqual([])
+    const over = toCard(cardItem({ copy: { title: '제목', description: '가'.repeat(61) }, resource }))
     expect(over.payload).toBeNull()
     expect(paths(over.errors)).toEqual(['copy.description'])
+  })
+
+  it('설명문은 홈이 설명 문단을 그리는 배지 소개·컨텐츠 소개에서만 받고 payload에 싣는다(티켓 20261109_1519)', () => {
+    const intro = toCard(cardItem({ copy: { title: '제목', description: ' 한 줄 설명 ' }, resource: { template_type: 'content_intro', target_href: '/guide' } }))
+    expect(intro.errors).toEqual([])
+    expect(intro.payload).toMatchObject({ template_type: 'content_intro', description: '한 줄 설명' })
+    const badge = toCard(cardItem({ copy: { title: '제목', description: '한 줄 설명' }, resource: { template_type: 'badge_spotlight', badge_ids: [UUID_A] } }))
+    expect(badge.errors).toEqual([])
+    expect(badge.payload).toMatchObject({ template_type: 'badge_spotlight', description: '한 줄 설명' })
+  })
+
+  it('설명 문단을 그리지 않는 템플릿에 설명문을 적으면 copy.description 오류다(티켓 20261109_1519)', () => {
+    const result = toCard(cardItem({ copy: { title: '제목', description: '보이지 않는 설명' }, resource: { template_type: 'drop_alert' } }))
+    expect(result.payload).toBeNull()
+    expect(paths(result.errors)).toEqual(['copy.description'])
+    expect(result.errors[0].message).toContain('drop_alert 템플릿은 이 필드를 쓰지 않아요')
+    expect(result.errors[0].message).toContain('badge_spotlight·content_intro')
   })
 
   it('resource 칸·copy 칸 오류가 각자의 경로로 나온다', () => {
     const result = toCard(
       cardItem({
-        copy: { title: '제목', description: '가'.repeat(61) },
+        copy: { title: '두\n줄' },
         resource: { template_type: 'mission_spotlight', layout_type: 'banner', mission_id: 'not-a-uuid', sort_order: 1.5 },
       })
     )
     expect(result.payload).toBeNull()
-    expect(paths(result.errors).sort()).toEqual(['copy.description', 'resource.layout_type', 'resource.mission_id', 'resource.sort_order'])
+    expect(paths(result.errors).sort()).toEqual(['copy.title', 'resource.layout_type', 'resource.mission_id', 'resource.sort_order'])
   })
 
   it('이미지가 없어도 오류가 아니다(이미지는 보지 않는다)', () => {
@@ -611,7 +629,7 @@ describe('toTodayCardRegisterInput · 페이로드(결정 1·2)', () => {
     toCard(
       cardItem({
         pattern_no: 'P03',
-        copy: { title: '전체 칸', subtitle: '부제', description: '설명', region_label: '서울' },
+        copy: { title: '전체 칸', subtitle: '부제', region_label: '서울' },
         resource: {
           template_type: 'location_trend',
           target_href: '/drops',

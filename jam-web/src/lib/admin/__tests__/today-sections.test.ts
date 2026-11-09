@@ -15,6 +15,7 @@ import {
   type TodayCardFormValues,
 } from '../today-sections'
 import { resolveArticleCtaTarget } from '../../today/targetHref'
+import { showsDescription } from '../../today/shape'
 import type { TodayCardTemplateType, TodayCardRow } from '@/types/database'
 
 const ALL_TEMPLATES: TodayCardTemplateType[] = [
@@ -75,28 +76,28 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
     expect(todayTemplateFields('badge_spotlight')).toEqual({ description: true, badges: true, targetHref: true })
   })
   it('progress_nudge는 배지·미션·이동경로를 쓴다', () => {
-    expect(todayTemplateFields('progress_nudge')).toEqual({ description: true, badges: true, mission: true, targetHref: true })
+    expect(todayTemplateFields('progress_nudge')).toEqual({ badges: true, mission: true, targetHref: true })
   })
   it('mission_spotlight는 미션·이동경로만 쓴다', () => {
-    expect(todayTemplateFields('mission_spotlight')).toEqual({ description: true, mission: true, targetHref: true })
+    expect(todayTemplateFields('mission_spotlight')).toEqual({ mission: true, targetHref: true })
   })
   it('itembook_milestone은 컬렉션·이동경로만 쓴다', () => {
-    expect(todayTemplateFields('itembook_milestone')).toEqual({ description: true, itemBook: true, targetHref: true })
+    expect(todayTemplateFields('itembook_milestone')).toEqual({ itemBook: true, targetHref: true })
   })
   it('location_trend은 배지·지역·이동경로를 쓴다', () => {
-    expect(todayTemplateFields('location_trend')).toEqual({ description: true, badges: true, region: true, targetHref: true })
+    expect(todayTemplateFields('location_trend')).toEqual({ badges: true, region: true, targetHref: true })
   })
-  it('drop_alert는 참조 필드를 쓰지 않고 설명문만 쓴다(경로 고정 /drops)', () => {
-    expect(todayTemplateFields('drop_alert')).toEqual({ description: true })
+  it('drop_alert는 어떤 칸도 쓰지 않는다(경로 고정 /drops, 설명 문단도 그리지 않는다)', () => {
+    expect(todayTemplateFields('drop_alert')).toEqual({})
   })
   it('editorial_article은 본문·미션·컬렉션·이동경로를 쓴다(카드 자체 경로는 /today/{id} 고정, 나머지는 기사 CTA 대상, 티켓 20260924_0107)', () => {
     expect(todayTemplateFields('editorial_article')).toEqual({ body: true, mission: true, itemBook: true, targetHref: true })
   })
   it('ranking_board는 랭킹모드·이동경로를 쓴다(티켓 20260911_1440)', () => {
-    expect(todayTemplateFields('ranking_board')).toEqual({ description: true, rankingMode: true, targetHref: true })
+    expect(todayTemplateFields('ranking_board')).toEqual({ rankingMode: true, targetHref: true })
   })
-  it('recipe_reveal은 설명문·레시피·이동경로를 받는다(이동경로를 비우면 기본 /combine, 티켓 20261006_1218)', () => {
-    expect(todayTemplateFields('recipe_reveal')).toEqual({ description: true, recipe: true, targetHref: true })
+  it('recipe_reveal은 레시피·이동경로를 받는다(이동경로를 비우면 기본 /combine, 티켓 20261006_1218)', () => {
+    expect(todayTemplateFields('recipe_reveal')).toEqual({ recipe: true, targetHref: true })
   })
   it('content_intro는 설명문·이동 주소 칸만 열린다 — 배지·미션·컬렉션·지역·랭킹·레시피 칸이 없다(티켓 20261101_2054)', () => {
     expect(todayTemplateFields('content_intro')).toEqual({ description: true, targetHref: true })
@@ -113,7 +114,7 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
     const unknown = 'future_template' as TodayCardTemplateType
     expect(() => computeTodaySectionStatuses({ ...base, templateType: unknown, badgeCount: 2 })).not.toThrow()
     expect(computeTodaySectionStatuses({ ...base, templateType: unknown, badgeCount: 2 }).ref).toEqual({ tone: 'idle', text: '선택' })
-    // 모르는 템플릿은 어떤 참조 칸도 받지 않으므로 저장할 때 참조·설명문 값이 비워진다
+    // 모르는 템플릿은 어떤 참조 칸도 받지 않으므로 저장할 때 참조 값이 비워진다(설명문은 지우지 않는다)
     const payload = buildTodayCardSavePayload({
       templateType: unknown,
       layoutType: 'other',
@@ -136,12 +137,13 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
       sortOrder: '0',
       isActive: true,
     })
-    expect(payload).toMatchObject({ badge_ids: [], mission_id: null, region_label: null, description: null, target_href: null })
+    expect(payload).toMatchObject({ badge_ids: [], mission_id: null, region_label: null, description: '설명문', target_href: null })
   })
-  it('설명문 칸(티켓 20260929_1335)은 editorial_article만 쓰지 않는다', () => {
+  it('설명문 칸은 홈이 설명 문단을 그리는 템플릿(showsDescription)에만 열린다(티켓 20261109_1519)', () => {
     for (const t of ALL_TEMPLATES) {
-      expect(Boolean(todayTemplateFields(t).description)).toBe(t !== 'editorial_article')
+      expect(Boolean(todayTemplateFields(t).description), t).toBe(showsDescription(t))
     }
+    expect(ALL_TEMPLATES.filter((t) => todayTemplateFields(t).description)).toEqual(['badge_spotlight', 'content_intro'])
   })
   it('9개 템플릿 모두 매핑이 존재한다', () => {
     expect(Object.keys(TODAY_FIELDS_FOR).sort()).toEqual([...ALL_TEMPLATES].sort())
@@ -228,13 +230,9 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     expect(buildTodayCardSavePayload({ ...baseValues, description: '' }).description).toBeNull()
     expect(buildTodayCardSavePayload({ ...baseValues, description: '   ' }).description).toBeNull()
   })
-  it('설명문 — editorial_article은 값이 남아 있어도 null로 저장한다', () => {
-    const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'editorial_article', description: '남은 값' })
-    expect(p.description).toBeNull()
-  })
-  it('설명문 — 기사 외 템플릿은 모두 저장한다', () => {
-    for (const t of ALL_TEMPLATES.filter((x) => x !== 'editorial_article')) {
-      expect(buildTodayCardSavePayload({ ...baseValues, templateType: t, description: '설명' }).description).toBe('설명')
+  it('설명문 — 설명이 보이지 않는 템플릿이어도 저장된 값을 지우지 않는다(보이지 않을 뿐이다, 티켓 20261109_1519)', () => {
+    for (const t of ALL_TEMPLATES) {
+      expect(buildTodayCardSavePayload({ ...baseValues, templateType: t, description: '남은 값' }).description, t).toBe('남은 값')
     }
   })
   it('시작·종료 일시는 ISO 문자열로, 정렬 순서는 숫자로 변환한다', () => {
