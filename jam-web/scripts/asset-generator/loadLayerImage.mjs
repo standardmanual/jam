@@ -6,6 +6,7 @@
  * 형식은 확장자가 아니라 파일 내용(PNG 시그니처, `<svg` 태그)으로 판별한다 — URL 뒤에 쿼리가 붙어도 안전하다.
  * 반환: `{ data: Buffer, mimeType }` — `serverImageLoader`의 입력과 같은 모양이다.
  * URL은 https만 받고, 15초 시간 제한·5MB 상한(`Content-Length`와 스트리밍 양쪽)을 걸며, 오류 문구에는 주소의 쿼리·해시를 싣지 않는다(티켓 20261007_1601).
+ * 리다이렉트(3xx)는 따라가지 않고 오류로 멈춘다 — http·내부 주소로 넘어가는 우회를 막는다(티켓 20261007_1552).
  * `deps.fetchImpl`·`deps.timeoutMs`는 시험에서 네트워크를 대신하려는 자리다.
  */
 import fs from 'node:fs'
@@ -83,10 +84,14 @@ async function downloadImage(source, deps) {
   try {
     let response
     try {
-      response = await fetchImpl(source, { signal: controller.signal })
+      // 리다이렉트는 따라가지 않는다 — https 검사를 http·내부 주소로의 이동으로 우회하지 못하게 한다(티켓 20261007_1552).
+      response = await fetchImpl(source, { signal: controller.signal, redirect: 'manual' })
     } catch (e) {
       if (timedOut) throw new Error(`이미지를 내려받는 데 시간이 너무 오래 걸려요(${timeoutMs / 1000}초 초과): ${shown}`)
       throw new Error(`이미지를 내려받지 못했어요(${e instanceof Error ? e.message : String(e)}): ${shown}`)
+    }
+    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+      throw new Error(`이미지 주소가 다른 주소로 넘겨져서 내려받지 않았어요. 최종 이미지 주소를 직접 입력해 주세요: ${shown}`)
     }
     if (!response.ok) throw new Error(`이미지를 내려받지 못했어요(HTTP ${response.status}): ${shown}`)
     const declared = Number(response.headers?.get?.('content-length'))
