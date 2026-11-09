@@ -38,15 +38,17 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const STORAGE = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images'
+const CARD_COVER = '/dev-sample/card-cover.webp'
+
 const COVER = {
-  walk: `${STORAGE}/ops-inbox/today_cards/315404ce-31a2-4758-8661-a21d1b47091f.webp?v=1793669389268`,
-  collection: `${STORAGE}/ops-inbox/today_cards/d8443781-194a-4a04-a16a-096bafdb1dcf.webp?v=1793611221002`,
-  intro: `${STORAGE}/ops-inbox/today_cards/4589e1b0-0d94-415f-b14a-de67625977cd.webp?v=1793611202424`,
-  drop: `${STORAGE}/ops-inbox/today_cards/6377b1b0-527b-4911-ab3c-7289f3f2318e.webp?v=1793611212547`,
-  stroll: `${STORAGE}/ops-inbox/today_cards/578d143e-d260-4266-baa0-f8557ff6929d.webp?v=1793611209572`,
-  mountain: `${STORAGE}/ops-inbox/today_cards/d6050f14-33b5-4453-a5ba-1a6090daca60.webp?v=1793611219079`,
-  subway: `${STORAGE}/ops-inbox/today_cards/d08c9729-5940-471d-a9c4-319db3bd9f00.webp?v=1793611206271`,
-  salon: `${STORAGE}/missions/asset-generator/b1009708-3258-477d-9278-107ad2c67d12.webp?v=1790435221169`,
+  walk: CARD_COVER,
+  collection: CARD_COVER,
+  intro: CARD_COVER,
+  drop: CARD_COVER,
+  stroll: CARD_COVER,
+  mountain: CARD_COVER,
+  subway: CARD_COVER,
+  salon: CARD_COVER,
   video: `${STORAGE}/today_cards/asset-generator/e0000000-0000-4000-8000-000000000001.mp4?v=1792680584507`,
 }
 
