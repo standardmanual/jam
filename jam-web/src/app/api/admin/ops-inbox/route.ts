@@ -5,8 +5,8 @@
  * 경로**다(경로·메서드는 `opsInbox/constants.ts` 상수 하나를 proxy와 이 라우트가 함께 쓴다). 관리자 로그인
  * 세션으로도 낼 수 있다.
  *
- * 흐름: ① 인증 → ② 본문 1MB 확인 → ③ JSON 파싱 → ④ 트라이브·패턴 번호·지점 카테고리 목록 조회(실패하면 저장 없이 500) 뒤 필수 형식 검증(fatal이면 400) → ⑤ 최근 1시간 제출 수 확인(429)
- *  → ⑥ 같은 bundle_id 확인(같은 내용 200 / 다른 내용 409) → ⑦ 묶음·항목·결정 기록 저장(실패하면 묶음을 지워 되돌림)
+ * 흐름: ① 인증 → ② 본문 1MB 확인 → ③ JSON 파싱 → ④ 트라이브·패턴 번호·지점 카테고리 목록 조회(실패하면 저장 없이 500) 뒤 필수 형식 검증(fatal이면 400) → ⑤ 같은 bundle_id 확인(같은 내용 200 / 다른 내용 409)
+ *  → ⑥ 최근 1시간 제출 수 확인(429, 이미 받은 묶음의 재제출은 ⑤에서 끝나 상한에 걸리지 않는다) → ⑦ 묶음·항목·결정 기록 저장(실패하면 묶음을 지워 되돌림)
  *  → 같은 run_key의 루틴 시작 기록과 잇기(실패해도 제출은 성공, 티켓 20261026_2032) → ⑧ 201 → ⑨ 응답 뒤 슬랙 도착 글 게시(실패해도 제출은 성공, 결과는 결정 기록에 남긴다).
  *
  * 시간당 제출 수는 서버 인스턴스별 메모리가 아니라 DB(`ops_bundles.received_at`)로 센다.
@@ -116,7 +116,15 @@ export async function POST(req: Request) {
   const rawHash = computeRawHash(parsed)
   const summary = { bundle_id: bundle.bundle_id, item_count: items.length, format_errors: errors, warnings }
 
-  // ⑤ 최근 1시간 제출 수
+  // ⑤ 같은 bundle_id(상한보다 먼저 본다)
+  const found = await findBundleByBundleId(service, bundle.bundle_id)
+  if (found.error) {
+    console.error('[ops-inbox] 묶음 조회 실패:', found.error.message)
+    return serverError()
+  }
+  if (found.data) return respondToExisting(found.data, rawHash, summary)
+
+  // ⑥ 최근 1시간 제출 수(새로 저장할 때만 센다 — 이미 받은 묶음의 재제출은 위 ⑤에서 끝난다, 티켓 20261001_1412)
   const since = new Date(Date.now() - ONE_HOUR_MS).toISOString()
   const { count, error: countError } = await service
     .from('ops_bundles')
@@ -132,14 +140,6 @@ export async function POST(req: Request) {
       { status: 429 }
     )
   }
-
-  // ⑥ 같은 bundle_id
-  const found = await findBundleByBundleId(service, bundle.bundle_id)
-  if (found.error) {
-    console.error('[ops-inbox] 묶음 조회 실패:', found.error.message)
-    return serverError()
-  }
-  if (found.data) return respondToExisting(found.data, rawHash, summary)
 
   // ⑦ 묶음 → 항목 → 결정 기록
   const inserted = await service
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
     .single()
 
   if (inserted.error || !inserted.data) {
-    // 동시 제출: 같은 bundle_id를 다른 요청이 먼저 넣었다. ⑥과 같이 처리한다.
+    // 동시 제출: 같은 bundle_id를 다른 요청이 먼저 넣었다. ⑤와 같이 처리한다.
     if (inserted.error?.code === UNIQUE_VIOLATION) {
       const again = await findBundleByBundleId(service, bundle.bundle_id)
       if (again.data) return respondToExisting(again.data, rawHash, summary)
