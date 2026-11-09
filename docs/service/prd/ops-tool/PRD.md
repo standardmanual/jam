@@ -1512,7 +1512,7 @@ stateDiagram-v2
   `jam-web/supabase/migrations/198_ops_inbox.sql`이다(티켓 20260930_1816). 컬럼은 `docs/service/prd/02_DATA_MODEL.md` §12가 단일 원천이다.
   RLS는 켜고 정책은 만들지 않는다(서비스 롤 전용). 항목의 제출 원본(`original`)은 바꾸지 않고, 수정본(`edited`)은 티켓 1818이 채운다(§7.3). 만들어진 자원 ID(`created_resource`)는
   티켓 1500이 채우고 키 계약은 §8.5다. 결정 기록은 추가만 한다. 제출은 묶음 하나에 결정 기록 `submit` 1행을 남기고, 행위자는 토큰 제출이면
-  `token:<author>`, 관리자 로그인이면 관리자 ID다.
+  고정 값 `token:`(이름 없음, 티켓 20261001_1411 — 읽기 토큰을 모든 에이전트가 함께 쓰고 본문의 `author`는 자기 신고라 서버가 행위자로 쓰지 않는다. 이전 기록의 `token:<author>`는 그대로 남는다), 관리자 로그인이면 관리자 ID다.
 - **결정 기록 `action` 값.** 구현된 값은 `submit`·`approve`·`reject`·`edit`·`revert`와 `execute`·`fail`(티켓 20261002_1123, 예약 등록 실행), `cancel`(티켓 20261002_1256, 공개 전 취소),
   상태 맞추기(§8.6)가 남기는 `end`·`external_change`와 `cancel`·`fail`의 밖에서 지워짐·멈춘 준비중(티켓 20261002_1813, 크론 연결은 20261002_1814)이다. 지금 종료의 `end`는 ⑪-a가 붙였다(구현됨, 티켓 20261006_0950). `fail`의 드랍 놓침·건너뜀·실패는 ⑧-b가 붙였다(구현됨, 티켓 20261002_2306).
   `action`에는 CHECK가 없어 마이그레이션이 필요 없다(마이그레이션 198). 행위자는 관리자 ID이고, 상태 맞추기가 남기는 행은 `system:reconcile`이다.
@@ -1811,7 +1811,7 @@ stateDiagram-v2
   - `byPattern`: **쪽이 아니라 같은 기간 전체**의 패턴별 결정 집계다(`patternNo`·`action` 조건과 무관하다). 한 줄은 `{ patternNo, items, actions }`이고 `items`는 기간 안에 결정이 한 번이라도 있었던 항목 수, `actions`는 행동별 결정 행 수(없는 행동은 키가 없다)다. 비율 계산은 쓰는 쪽이 한다. 패턴 번호의 숫자 순서이고, 패턴이 없는 항목의 결정은 `patternNo: null` 한 줄로 맨 끝에 온다.
 - **묶음 단위 결정 제외.** 항목에 붙지 않은 결정(`item_id`가 없는 행)은 항목·묶음과의 inner join으로 목록과 집계에서 빠진다. 제출(`submit`)은 늘 묶음 단위 행이라(제출 라우트가 `item_id` 없이 남긴다) `action=submit`은 400이 아니라 빈 목록이다.
 - **시험 묶음은 항상 뺀다.** 시험 묶음(`is_sample`)의 기록은 `decisions`와 `byPattern` 어디에도 들어가지 않고, 이 조건을 끄는 쿼리는 받지 않는다. ⑫ 화면이 lib 함수를 직접 부를 때만 `includeSample` 옵션으로 켠다.
-- **비노출.** 응답에 `actor` 원문(관리자 ID·`token:<이름>`)·제출 원본(`raw`)·슬랙 결과(`slack_result`)를 싣지 않는다. `raw`·`slack_result`는 select 목록에 넣지 않는다. `actor`는 행위자 종류를 가르려면 읽어야 해서 select에 들어가지만 변환 함수가 곧바로 `actorType`·`agentName`으로 바꿔 버린다(`token:윤진` → `agent`·`윤진`, `system:`으로 시작하면 `system`, 그 밖은 `admin`). 에이전트 이름은 토큰 제출의 자기 신고 값이다.
+- **비노출.** 응답에 `actor` 원문(관리자 ID·`token:<이름>`)·제출 원본(`raw`)·슬랙 결과(`slack_result`)를 싣지 않는다. `raw`·`slack_result`는 select 목록에 넣지 않는다. `actor`는 행위자 종류를 가르려면 읽어야 해서 select에 들어가지만 변환 함수가 곧바로 `actorType`·`agentName`으로 바꿔 버린다(`token:` → `agent`·이름 없음, 이전 기록의 `token:윤진` → `agent`·`윤진`, `system:`으로 시작하면 `system`, 그 밖은 `admin`). 지금 제출은 이름 없는 `token:`만 남기고(티켓 20261001_1411), 이전 기록의 에이전트 이름은 토큰 제출의 자기 신고 값이다.
 - **오류:** 조회 실패는 500이고 고정 문장 하나만 싣는다(원문은 서버 로그 `[admin/ops-decisions]`에만 남는다).
 - **성능.** `ops_decisions`에는 `created_at` 인덱스가 없다. 기록이 많아지면 인덱스 마이그레이션이 필요하다.
 

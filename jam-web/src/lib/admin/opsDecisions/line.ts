@@ -14,7 +14,7 @@ import { truncateText } from '@/lib/admin/opsInbox/itemView'
 
 export type OpsActorType = 'admin' | 'agent' | 'system'
 
-/** 에이전트 토큰 제출의 행위자 접두사(`token:<에이전트 이름>`, `app/api/admin/ops-inbox/route.ts`가 붙인다). */
+/** 에이전트 토큰 제출의 행위자 접두사. 지금 제출은 이름 없는 `token:`(`OPS_TOKEN_ACTOR`)만 남기고, 티켓 20261001_1411 이전 기록의 `token:<에이전트 이름>`도 같은 접두사로 읽는다. */
 const AGENT_ACTOR_PREFIX = 'token:'
 /** 시스템 행위자 접두사(`system:reconcile` 등). 정본 값은 `OPS_RECONCILE_ACTOR`이고 앞으로 `system:` 아래에 값이 더 생길 수 있다. */
 const SYSTEM_ACTOR_PREFIX = OPS_RECONCILE_ACTOR.slice(0, OPS_RECONCILE_ACTOR.indexOf(':') + 1)
