@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import Button from '@/components/ui/Button'
 import SlotActionPill from './SlotActionPill'
+import SlotRemoveButton from './SlotRemoveButton'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
 import { d, t } from '@/lib/i18n'
 import { shouldOpenCandidateSheet } from '@/lib/itembook/tier-badge-slots'
@@ -482,10 +483,12 @@ export default function SlotGrid({
             : ''
 
           return (
+            // 칸 key를 cellKey로 안정시킨다 — 첫 장착으로 등급이 정해져 대표 배지가 바뀌어도 칸이 다시
+            // 마운트되지 않고 그림만 바뀐다(9칸이 한꺼번에 깜빡이지 않는다, 티켓 20261028_1408)
+            // 래퍼는 우측 상단 «빼기» 원 버튼의 기준점이다. 카드 전체가 링크라 버튼을 링크 안에 넣지 않고 형제로 둔다.
+            <div key={cellKey} className="relative flex">
             <BadgeGridCard
-              // 칸 key를 cellKey로 안정시킨다 — 첫 장착으로 등급이 정해져 대표 배지가 바뀌어도 칸이 다시
-              // 마운트되지 않고 그림만 바뀐다(9칸이 한꺼번에 깜빡이지 않는다, 티켓 20261028_1408)
-              key={cellKey}
+              className="w-full"
               name={badge.name}
               imageUrl={badge.image_url}
               // 등급이 없는 상태의 칸은 칩을 그리지 않는다: `null`을 넘기면 `BadgeGridCard`가 내부에서
@@ -496,32 +499,21 @@ export default function SlotGrid({
               earned={isSlotted}
               undiscovered={isUndiscovered}
               highlighted={slotMode && !readOnly && isSlottable}
+              // 장착하지 않은 칸(빈 칸·넣을 수 있는 배지가 있는 칸)의 이름은 그레이로 장착된 칸과 구분한다(2026-11-09 사용자 지시)
+              nameMuted={!isSlotted}
             >
-              {/* 슬롯 빼기/교체 버튼 — 같은 배지의 미장착 후보가 있으면 "교체"가 이 자리를
-                  대신한다(20260910_0015). 교체는 장착 쪽에 가까운 양성 액션이라 장착과
-                  같은 톤(accent)을 쓴다 — 완료 기록의 판단 근거 참고. 후보가 없어
-                  단순 빼기만 가능할 때는 취소성 액션이라 그레이(neutral)를 쓴다
-                  (장착=양성/accent, 빼기=취소성/그레이 구분, 티켓 20261104_2153). */}
-              {isSlotted && !readOnly && (
-                candidates.length > 0 ? (
-                  <SlotActionPill
-                    tone="accent"
-                    pending={pending}
-                    disabled={bulkBusy}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSwapButton(badgeSlot) }}
-                  >
-                    {d.itembooks.swapButton}
-                  </SlotActionPill>
-                ) : (
-                  <SlotActionPill
-                    tone="neutral"
-                    pending={pending}
-                    disabled={bulkBusy}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(cellKey, slot!.id) }}
-                  >
-                    {d.itembooks.unslotButton}
-                  </SlotActionPill>
-                )
+              {/* 슬롯 교체 버튼 — 같은 배지의 미장착 후보가 있을 때만 그린다(20260910_0015). 교체는 장착 쪽에 가까운
+                  양성 액션이라 장착과 같은 톤(accent)을 쓴다. «빼기»는 칸 아래 알약이 아니라 우측 상단 원 버튼이 맡는다
+                  (아래 `SlotRemoveButton`, 2026-11-09 사용자 지시). */}
+              {isSlotted && !readOnly && candidates.length > 0 && (
+                <SlotActionPill
+                  tone="accent"
+                  pending={pending}
+                  disabled={bulkBusy}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSwapButton(badgeSlot) }}
+                >
+                  {d.itembooks.swapButton}
+                </SlotActionPill>
               )}
 
               {/* 슬롯 장착 버튼 */}
@@ -536,6 +528,16 @@ export default function SlotGrid({
                 </SlotActionPill>
               )}
             </BadgeGridCard>
+            {/* 슬롯 빼기 — 장착된 본인 칸의 우측 상단 검은 원 안의 «−»(2026-11-09 사용자 지시). 교체 후보가 있는 칸에도 보인다 */}
+            {isSlotted && !readOnly && (
+              <SlotRemoveButton
+                label={d.itembooks.unslotButton}
+                pending={pending}
+                disabled={bulkBusy}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(cellKey, slot!.id) }}
+              />
+            )}
+            </div>
           )
         })}
       </div>

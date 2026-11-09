@@ -70,6 +70,11 @@ export interface BadgeGridCardProps {
    * 디자인 시스템 사본(`design-system/components/patterns/BadgeGridCard`)에는 게이지가 남아 있다(후속 동기화 몫).
    */
   locked?: boolean
+  /**
+   * true = 이름을 그레이(`text-muted`)로 그린다. 아직 장착하지 않은 칸(비어 있거나 넣을 수 있는 배지가 있는 칸)에서
+   * 장착된 칸과 이름 색으로 구분하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시). 기본 false라 다른 화면은 그대로다.
+   */
+  nameMuted?: boolean
   className?: string
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
   children?: ReactNode
@@ -101,6 +106,7 @@ export default function BadgeGridCard({
   selected = false,
   highlighted = false,
   locked = false,
+  nameMuted = false,
   className = '',
   children,
 }: BadgeGridCardProps) {
@@ -169,7 +175,7 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-1 pt-2 w-full">
-        <p className={`text-sm font-bold text-foreground text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
+        <p className={`text-sm font-bold ${nameMuted ? 'text-muted' : 'text-foreground'} text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
           {locked ? d.lockedItem.card.name : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}

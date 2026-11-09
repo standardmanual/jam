@@ -35,6 +35,9 @@ function cell(name: string, rarity: string, extra: Partial<BadgeSlot> = {}): Bad
 const candidate = (id: string) => ({ id, serial_number: 1, serial_prefix: 'AAAA', expires_at: null })
 const slotted = { id: 's1', slotted_at: '2026-10-28T00:00:00Z', inventory_item_id: 'inv-1' }
 
+/** 우측 상단 «빼기» 원 버튼 — 보이는 글자가 없어 접근 이름으로 센다 */
+const REMOVE = 'aria-label="빼기"'
+
 function count(html: string, text: string): number {
   return html.split(text).length - 1
 }
@@ -46,10 +49,12 @@ describe('SlotGrid — 등급이 정해진 칸', () => {
     cell('이름3', 'rare'),
   ]
 
-  it('장착된 칸은 «빼기», 후보가 있는 칸은 «추가», 미보유 칸은 이름이 보이고 버튼이 없다', () => {
+  it('장착된 칸은 우측 상단 «빼기» 원 버튼, 후보가 있는 칸은 «추가», 미보유 칸은 이름이 보이고 버튼이 없다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} />)
 
-    expect(count(html, '>빼기<')).toBe(1)
+    expect(count(html, REMOVE)).toBe(1)
+    // 칸 아래 «빼기» 알약은 없다
+    expect(html).not.toContain('>빼기<')
     expect(count(html, '>추가<')).toBe(1)
     // 미보유 칸도 원래 이름을 그리고 «???»는 어디에도 없다. 카드 전체 흐림(opacity-30)도 걷었다
     expect(count(html, '>이름3<')).toBe(1)
@@ -70,13 +75,13 @@ describe('SlotGrid — 등급이 정해진 칸', () => {
   it('타인 열람(readOnly)은 버튼이 없다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} readOnly />)
 
-    expect(html).not.toContain('>빼기<')
+    expect(html).not.toContain(REMOVE)
     expect(html).not.toContain('>추가<')
     expect(html).not.toContain('>교체<')
   })
 })
 
-describe('SlotGrid — 칸 알약의 색은 tone으로 갈린다 (티켓 20261104_2153)', () => {
+describe('SlotGrid — 칸 알약(교체·추가)의 색은 tone으로 갈린다 (티켓 20261104_2153)', () => {
   const pillOf = (html: string, label: string) => {
     const match = html.match(new RegExp(`<button[^>]*class="([^"]*)"[^>]*>${label}</button>`))
     return match?.[1] ?? ''
@@ -93,14 +98,9 @@ describe('SlotGrid — 칸 알약의 색은 tone으로 갈린다 (티켓 2026110
       />,
     )
 
-  it('«빼기»는 그레이(default 면 + foreground 글자), «교체»·«추가»는 accent 면이다', () => {
+  it('«교체»·«추가»는 accent 면이다', () => {
     const html = allPills()
 
-    const unslot = pillOf(html, '빼기')
-    expect(unslot).toContain('bg-default')
-    expect(unslot).toContain('text-foreground')
-    expect(unslot).not.toContain('bg-accent')
-    expect(unslot).not.toContain('background-inverse')
     for (const label of ['교체', '추가']) {
       const pill = pillOf(html, label)
       expect(pill, label).toContain('bg-accent')
@@ -109,11 +109,11 @@ describe('SlotGrid — 칸 알약의 색은 tone으로 갈린다 (티켓 2026110
     }
   })
 
-  it('셋은 같은 모양 클래스를 쓰고 SlotGrid에 손으로 쓴 알약 클래스가 남지 않는다', () => {
+  it('둘은 같은 모양 클래스를 쓰고 SlotGrid에 손으로 쓴 알약 클래스가 남지 않는다', () => {
     const html = allPills()
 
     const shape = 'block mx-auto px-3 py-1 text-xs rounded-full whitespace-nowrap transition-all disabled:opacity-40'
-    for (const label of ['빼기', '교체', '추가']) expect(pillOf(html, label), label).toContain(shape)
+    for (const label of ['교체', '추가']) expect(pillOf(html, label), label).toContain(shape)
     expect(readFileSync(new URL('../SlotGrid.tsx', import.meta.url), 'utf-8')).not.toContain('rounded-full')
   })
 })
@@ -188,7 +188,7 @@ describe('SlotGrid — 모두 빼기 버튼의 노출 조건 (티켓 20261028_14
       <SlotGrid itemBookId="book-1" badgeSlots={noVisibleSlot} slotCount={1} tierFixed />,
     )
 
-    expect(count(html, '>빼기<')).toBe(0)
+    expect(count(html, REMOVE)).toBe(0)
     expect(count(html, BUTTON)).toBe(1)
   })
 })
@@ -215,6 +215,73 @@ describe('SlotGrid — 등급 고정 안내 한 줄 (티켓 20261109_0941)', () 
       renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} tierFixed readOnly />),
     ]) {
       expect(html).not.toContain(NOTE)
+    }
+  })
+})
+
+describe('SlotGrid — 우측 상단 빼기 원 버튼 (2026-11-09 사용자 지시)', () => {
+  const removeOf = (html: string) => html.match(/<button[^>]*aria-label="빼기"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? ''
+
+  it('검은 원(background-inverse + snow 아이콘)이고 칸의 우측 상단에 놓인다', () => {
+    const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={[cell('이름1', 'rare', { slot: slotted })]} />)
+    const button = removeOf(html)
+
+    expect(button).toContain('rounded-full')
+    expect(button).toContain('bg-background-inverse')
+    expect(button).toContain('text-snow')
+    expect(button).toContain('absolute')
+    expect(button).toContain('top-2')
+    expect(button).toContain('right-2')
+    expect(button).toContain('<svg')
+    expect(button).toContain('M6 12h12')
+    // 버튼 안에 글자가 없다 — 이름은 접근 이름이 맡는다
+    expect(button.replace(/<svg[\s\S]*?<\/svg>/, '').replace(/<[^>]+>/g, '')).toBe('')
+  })
+
+  it('버튼은 링크 안이 아니라 링크와 같은 칸 래퍼 안의 형제다', () => {
+    const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={[cell('이름1', 'rare', { slot: slotted })]} />)
+
+    expect(html.indexOf(REMOVE)).toBeGreaterThan(html.indexOf('</a>'))
+    expect(html).toContain('class="relative flex"')
+  })
+
+  it('교체 후보가 있는 장착 칸에도 원 버튼과 «교체»가 함께 있다', () => {
+    const html = renderToStaticMarkup(
+      <SlotGrid itemBookId="book-1" badgeSlots={[cell('이름1', 'rare', { slot: slotted, candidates: [candidate('c1')] })]} />,
+    )
+
+    expect(count(html, REMOVE)).toBe(1)
+    expect(count(html, '>교체<')).toBe(1)
+  })
+
+  it('장착되지 않은 칸(빈 칸·추가할 수 있는 칸)에는 없다', () => {
+    const html = renderToStaticMarkup(
+      <SlotGrid itemBookId="book-1" badgeSlots={[cell('이름2', 'rare', { candidates: [candidate('c1')] }), cell('이름3', 'rare')]} />,
+    )
+
+    expect(html).not.toContain(REMOVE)
+  })
+})
+
+describe('SlotGrid — 장착하지 않은 칸의 배지 이름은 그레이다 (2026-11-09 사용자 지시)', () => {
+  const nameClassOf = (html: string, name: string) => html.match(new RegExp(`<p class="([^"]*)">${name}</p>`))?.[1] ?? ''
+  const html = renderToStaticMarkup(
+    <SlotGrid
+      itemBookId="book-1"
+      badgeSlots={[
+        cell('이름1', 'rare', { slot: slotted }),
+        cell('이름2', 'rare', { candidates: [candidate('c1')] }),
+        cell('이름3', 'rare'),
+      ]}
+    />,
+  )
+
+  it('장착된 칸은 foreground, 추가할 수 있는 칸과 빈 칸은 muted다', () => {
+    expect(nameClassOf(html, '이름1')).toContain('text-foreground')
+    expect(nameClassOf(html, '이름1')).not.toContain('text-muted')
+    for (const name of ['이름2', '이름3']) {
+      expect(nameClassOf(html, name), name).toContain('text-muted')
+      expect(nameClassOf(html, name), name).not.toContain('text-foreground')
     }
   })
 })

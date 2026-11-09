@@ -1,7 +1,8 @@
 import type { MouseEvent, ReactNode } from 'react'
 
 /**
- * 컬렉션 칸 안의 작은 알약 버튼 — «교체»·«추가»·«빼기» 세 곳이 같은 모양을 쓴다(티켓 20261104_2153, 채원 사전 판정).
+ * 컬렉션 칸 안의 작은 알약 버튼 — «교체»·«추가» 두 곳이 같은 모양을 쓴다(티켓 20261104_2153, 채원 사전 판정).
+ * «빼기»는 2026-11-09부터 칸 우측 상단의 원 버튼(`SlotRemoveButton`)이 맡아 `neutral` 호출부가 지금은 없다(tone 자체는 남겨 둔다).
  * 모양(크기·둥근 정도·전환)은 여기 한 곳에만 있고, 호출부는 색 의도(`tone`)만 고른다.
  * - `accent`: 장착 쪽 양성 행동(교체·추가). --accent 면 + --accent-foreground 글자
  * - `neutral`: 취소성 행동(빼기). --default 면 + --foreground 글자(`Button secondary`와 같은 쌍)

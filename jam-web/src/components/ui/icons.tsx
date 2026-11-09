@@ -179,6 +179,15 @@ export function ChevronDownIcon(props: IconProps) {
   )
 }
 
+/** 컬렉션 칸 빼기 버튼 */
+export function MinusIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 12h12" />
+    </Svg>
+  )
+}
+
 export function CloseIcon(props: IconProps) {
   return (
     <Svg {...props}>
