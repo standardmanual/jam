@@ -354,8 +354,15 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
 
 ### 4.1 staging push는 티켓당 한 번
 
+**사용자가 요청하기 전에는 push하지 않는다**(2026-11-10 사용자 지시). 로컬 커밋까지만 하고, push 요청이 오면
+쌓인 커밋을 한 번에 올린다. 아래 «티켓당 한 번» 규칙은 push 요청이 왔을 때의 묶음 단위다.
+
 **커밋할 때마다 push하지 않는다.** `origin/staging`에 push할 때마다 Vercel이 배포를 하나
 만들고, 그게 곧 Build CPU 청구다.
+
+**staging push는 커밋 메시지에 `[배포]`(또는 `[deploy]`)가 있을 때만 빌드한다**(`vercel-ignore.sh` 규칙 ③,
+티켓 20261110_0907). 표식이 없는 push는 코드가 바뀌었어도 빌드하지 않는다. 사용자가 staging 화면 확인을 요청하면
+빈 커밋(`git commit --allow-empty -m "[배포] …"`)을 더해 push한다. 이 빌드는 그때까지 쌓인 `jam-web/` 변경을 한 번에 배포한다.
 
 - 구현 커밋·문서 갱신·티켓 CLOSED를 **로컬에 다 쌓은 뒤** 마지막에 한 번 push한다
 - review 브랜치(`claude/jamwork-*`) push는 종전대로 자유롭게 한다 — `ignoreCommand`가

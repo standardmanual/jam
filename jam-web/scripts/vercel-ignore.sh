@@ -27,6 +27,12 @@
 #   문서 커밋이 섞였을 때 코드 변경이 배포되지 않는다 — 마커 방식은 건너뛴 구간을
 #   누적해서 비교하므로 그 사고가 구조적으로 불가능하다.
 #   판단 근거가 없으면(캐시 콜드 · 얕은 클론) 항상 빌드하는 쪽으로 넘어진다.
+#
+# 규칙 ③ (2026-11-10 사용자 지시, 티켓 20261110_0907): staging 브랜치 push는 커밋 메시지에
+#   «[배포]»(또는 «[deploy]»)가 있을 때만 빌드한다. 표식이 없는 push는 코드가 바뀌었어도 건너뛴다.
+#   push마다 도는 jam-stage 빌드가 Vercel 비용의 대부분이라서, 사용자가 화면을 확인하고 싶은 때만
+#   표식 있는 커밋(빈 커밋 `git commit --allow-empty -m "[배포] ..."`)을 올려 빌드한다. 표식 커밋의
+#   빌드는 규칙 ②로 이어지므로, 그때까지 쌓인 jam-web 변경이 한 번에 배포된다. main(jam 프로젝트)은 대상이 아니다.
 set -u
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
@@ -36,6 +42,23 @@ MARKER="$REPO_ROOT/jam-web/.next/cache/jam-last-built-sha"
 if [ "${VERCEL_ENV:-}" != "production" ]; then
   echo "[ignore] VERCEL_ENV=${VERCEL_ENV:-없음} — 프로덕션 대상이 아니므로 빌드를 건너뜁니다"
   exit 0
+fi
+
+# ③ staging 브랜치 push는 커밋 메시지에 표식이 있을 때만 빌드한다(표식이 있으면 ②로 이어서 판정)
+if [ "${VERCEL_GIT_COMMIT_REF:-}" = "staging" ]; then
+  COMMIT_MESSAGE="${VERCEL_GIT_COMMIT_MESSAGE:-}"
+  if [ -z "$COMMIT_MESSAGE" ]; then
+    COMMIT_MESSAGE="$(git log -1 --format=%B 2>/dev/null || true)"
+  fi
+  case "$COMMIT_MESSAGE" in
+    *"[배포]"*|*"[deploy]"*)
+      echo "[build] staging 커밋에 배포 표식이 있습니다 — 빌드 여부를 이어서 판정합니다"
+      ;;
+    *)
+      echo "[ignore] staging push는 커밋 메시지에 [배포]가 있을 때만 빌드합니다 — 건너뜁니다"
+      exit 0
+      ;;
+  esac
 fi
 
 # ② 직전 빌드 커밋을 모르면 안전하게 빌드한다

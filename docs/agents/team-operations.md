@@ -311,7 +311,7 @@ tags: [워크플로]
 | 민지가 읽기 명령에 `git checkout --detach`를 섞어 공유 작업 폴더의 HEAD를 `staging`에서 분리 (정의는 이미 금지, 제자리 복구로 유실 없음) | 2회 (2026-10-02, 두 번째는 권한 단계에서 거부됨) | 1차: 민지·채원 정의 frontmatter에 `PreToolUse` 훅(`scripts/guard-shared-head.mjs`)을 등록했으나 실제 호출에서 걸리지 않았다(2026-10-02, 2026-10-04 `git clean -n`이 그대로 실행됨, 원인 미확인). 2차: 워크플로 게이트의 민지·채원②와 `/jam-ship` 5단계의 민지를 격리 워크트리에서 불러 공유 폴더에 서지 않게 한다 (20261002_1905) |
 | 격리 워크트리에서 `git push`가 osxkeychain 자격 증명 프롬프트에 멈춤 | 1회 (2026-09-22) | `-c credential.helper=!gh auth git-credential`로 push (아현 정의 「CI stamp」) |
 | 아현 반환 요약이 30줄 형식을 세 건 연속 위반하고 diff 원문까지 포함 — 카리나·민지·채원② 세 곳에 실림 | 3회 | `DEV_RESULT.summary` 스키마 `maxLength: 3000` (20260922_0620 → 20260922_1755) |
-| 커밋마다 staging push → Vercel 배포 1,212개(20일), Build CPU $66.15 | 누적 (2026-09-06 실측) | 티켓당 push 1회, `jam-web/` 밖만 바뀐 push는 `vercel-ignore.sh`가 건너뜀 |
+| 커밋마다 staging push → Vercel 배포 1,212개(20일), Build CPU $66.15 | 누적 (2026-09-06 실측) | 티켓당 push 1회, `jam-web/` 밖만 바뀐 push는 `vercel-ignore.sh`가 건너뜀. 2026-11-10부터 staging push는 커밋 메시지에 `[배포]`가 있을 때만 빌드(규칙 ③)하고 push는 사용자 요청 때만 한다 |
 | 정의·`CLAUDE.md`·`SKILL.md`에 사고 경위·티켓 번호가 규칙과 섞여 호출마다 실림 | 누적 | 규칙만 남기고 경위는 이 표와 `jam-work/references/rationale.md`로 (20260922_1800) |
 
 **패턴이 보인다.** 프롬프트 규칙만으로 막은 것은 예외 없이 다시 뚫렸고, 훅으로 막은 것은 뚫리지
