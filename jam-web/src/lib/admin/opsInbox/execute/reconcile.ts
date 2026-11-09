@@ -7,6 +7,9 @@
  *
  * 지키는 규칙
  * - 공개를 일으키는 주체는 없다. 자원이 저절로 보이게 되면 항목 상태만 따라간다: 예약됨 → 게재중 → 종료는 결정 기록을 남기지 않는다(자원의 시각이 정한 일).
+ * - 방금 운영툴이 지운 자원은 외부 삭제로 보지 않는다(티켓 20261006_1528). 공개 전 취소는 자원을 지우기 직전에 항목의 `updated_at`을 갱신하므로, 자원이 없는 예약됨 항목은
+ *   읽은 시각 기준 `updated_at`이 5분(`CANCEL_GRACE_MS`) 이내면 이번 회차에 전이를 계획하지 않는다(실제 외부 삭제는 다음 10분 회차가 잡는다). 읽은 뒤 취소가 항목을 갱신했으면
+ *   취소로 가는 조건부 update가 0행이 되어 기록·알림 없이 건너뛴다.
  * - 자원이 운영툴 밖에서 지워졌으면 예약됨은 취소(`cancel`), 게재중은 종료(`end`)로 닫고 사유 「운영툴 밖에서 지워졌어요」를 남긴다. 자원 ID가 `created_resource`에 없는
  *   예약됨 항목도 같다(공개 전 취소와 같은 해석). 드랍이 놓이지 못하고 끝났으면(`failed`) 실패(`fail`)로 닫는다.
  * - 운영툴 밖에서 자원의 공개·종료 시각이 바뀌었거나 비활성이 됐으면 상태는 위 규칙대로 두고 `external_change`만 따로 남긴다. 되돌리지 않는다(G8). 그 항목의 가장 최근
@@ -59,6 +62,9 @@ const MESSAGES = {
 
 /** 「준비중」이 이 시간 넘게 이어지면 멈춘 것으로 본다(요청 60초 안에 끝나지 못함, §8.6). */
 const PREPARING_STALE_MS = 10 * 60 * 1000
+
+/** 공개 전 취소가 항목을 갱신한 뒤 이 시간 안에는 자원이 없어도 외부 삭제로 보지 않는다(취소가 자원을 지우는 도중일 수 있다). 크론 주기(10분)보다 짧다. */
+const CANCEL_GRACE_MS = 5 * 60 * 1000
 
 /** `.in()`에 한 번에 넘기는 ID 수. 주소가 길어져 요청이 막히지 않게 나눠 읽는다. */
 const IN_CHUNK = 100
@@ -219,16 +225,20 @@ function planSample(entry: ReconcileItem, nowMs: number): ReconcileTransition | 
 }
 
 /** 실제 묶음의 예약됨·게재중. 자원 읽기 결과와 견준다(§8.6 표). */
-function planObserved(entry: ReconcileItem, observation: ResourceObservation): { transition: ReconcileTransition | null; diff: ExternalDiff | null } {
+function planObserved(entry: ReconcileItem, observation: ResourceObservation, nowMs: number): { transition: ReconcileTransition | null; diff: ExternalDiff | null } {
   const scheduled = entry.item.status === 'scheduled'
   switch (observation.status) {
-    case 'missing':
+    case 'missing': {
+      // 방금 운영툴이 지우는 중일 수 있다. 유예 안의 예약됨 항목은 다음 회차로 미룬다.
+      const updatedMs = parseMs(entry.item.updated_at)
+      if (scheduled && updatedMs !== null && nowMs - updatedMs < CANCEL_GRACE_MS) return { transition: null, diff: null }
       return {
         transition: scheduled
           ? transition(entry, 'cancelled', { action: OPS_DECISION_ACTION_CANCEL, reason: OPS_RECONCILE_REASONS.deletedOutside })
           : transition(entry, 'ended', { action: OPS_DECISION_ACTION_END, reason: OPS_RECONCILE_REASONS.deletedOutside }),
         diff: null,
       }
+    }
     case 'failed':
       // 공개되지 못하고 끝나는 일은 예약됨에서만 생긴다.
       return {
@@ -270,7 +280,7 @@ export function planReconcile(items: readonly ReconcileItem[], observations: Rea
         // 자원 ID가 없는 예약됨 항목은 자원이 이미 없는 것으로 본다(공개 전 취소와 같은 해석).
         const observation: ResourceObservation | undefined = resourceIdOfItem(item) ? observations.get(item.id) : { status: 'missing' }
         if (!observation) continue
-        const read = planObserved(entry, observation)
+        const read = planObserved(entry, observation, nowMs)
         planned = read.transition
         // 같은 차이는 한 번만 남긴다.
         if (read.diff && diffKey(read.diff) !== diffKey(entry.lastExternalDiff)) plan.externalChanges.push({ item, isSample: entry.isSample, diff: read.diff })
@@ -456,7 +466,8 @@ async function applyTransition(ctx: ApplyContext, planned: ReconcileTransition):
   const { item } = planned
   let update = ctx.service.from('ops_bundle_items').update({ status: planned.to, updated_at: ctx.stamp }).eq('id', item.id).eq('status', planned.from)
   // 준비중은 읽은 뒤 실행 API가 다시 차지했을 수 있어 읽은 때의 `updated_at`도 건다.
-  if (planned.from === 'preparing') update = update.eq('updated_at', item.updated_at)
+  // 취소로 가는 전이도 같다: 읽은 뒤 공개 전 취소가 항목을 갱신했으면 0행이 되어 기록·알림 없이 건너뛴다(티켓 20261006_1528).
+  if (planned.from === 'preparing' || planned.to === 'cancelled') update = update.eq('updated_at', item.updated_at)
   const updated = await update.select('id')
   if (updated.error) throw new Error(updated.error.message)
   if (!updated.data || updated.data.length === 0) return null

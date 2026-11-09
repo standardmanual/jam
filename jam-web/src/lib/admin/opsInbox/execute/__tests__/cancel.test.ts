@@ -13,6 +13,7 @@
  *   카드 → 레시피 연결(⑫-b, 티켓 20261006_1218): 가리키는 카드를 함께 취소·게재 중 카드 409·운영툴 밖 카드 409
  * - 예약됨 드랍 취소(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러, 공개 전 취소(지우지 않고 「취소」 상태)·예정 시각이 지남·실행 시작·끝남(409)·밖에서 취소됨·없음·시험 묶음
  * - 예약됨 JAM! 배지 취소(⑨-a, 티켓 20261004_1756): 실제 배지 핸들러, 공개 전 취소·공개됨·참조 있음(409)·밖에서 지워짐·소프트 삭제·배지를 가리키는 미션·카드 함께 취소(카드→미션→배지 순)·시험 묶음
+ * - 취소와 상태 맞추기 경합(티켓 20261006_1528): 취소가 자원을 지우는 도중 맞추기가 돌아도 사용자 취소가 성공하고 `system:reconcile` 기록·`external_change`·#jam-alert 글이 없다
  * - 예약됨 컬렉션 취소(⑩-a, 티켓 20261004_2039): 실제 컬렉션 핸들러, 공개 전 취소·공개됨·참조 있음(아이템 배지 포함, 409)·밖에서 지워짐·컬렉션을 가리키는 카드 함께 취소(카드→컬렉션 순)·
  *   보상 배지와 함께 취소될 때 컬렉션이 먼저 지워짐(카드→컬렉션→배지 순)·시험 묶음
  */
@@ -28,6 +29,7 @@ vi.mock('@/lib/admin/opsInbox/slack', async (importOriginal) => {
 import type { CancelResult, ExecutableKind, ExecuteHandlerRegistry } from '../handlers'
 import { EXECUTE_HANDLERS } from '../registry'
 import { cancelItem, notifyCancel, previewCancel, type CancelFailure, type CancelSuccess } from '../cancel'
+import { notifyReconcile, reconcileOpsItems, type ReconcileSuccess } from '../reconcile'
 import { DB_SECRET, FakeDb, type FakeCall, type Row } from './fakeDb'
 import { LATER, NOW, fakeHandler, makeItem, type ItemSpec } from './fixtures'
 
@@ -106,7 +108,11 @@ const bad = (outcome: { ok: boolean }) => {
   return outcome as CancelFailure
 }
 
-const nonSelect = (db: FakeDb) => db.calls.filter((call) => call.op !== 'select')
+/** 취소 시작 표시(티켓 20261006_1528): 자원 단계 직전에 `updated_at`만 갱신하는 항목 update. 「아무것도 쓰지 않았다」를 볼 때는 뺀다. */
+const isTouch = (call: FakeCall) => call.table === 'ops_bundle_items' && call.op === 'update' && Object.keys(call.payload as object).join() === 'updated_at'
+const nonSelect = (db: FakeDb) => db.calls.filter((call) => call.op !== 'select' && !isTouch(call))
+/** 취소 시작 표시를 뺀 항목 쓰기. */
+const statusWrites = (db: FakeDb) => db.itemWrites().filter((call) => !isTouch(call))
 const statusOf = (db: FakeDb, id: string) => db.item(id).status
 const isCardDelete = (call: FakeCall) => call.table === 'today_cards' && call.op === 'delete'
 
@@ -159,7 +165,7 @@ describe('예약됨 카드 취소 — 실제 카드 핸들러(가정 2·4)', () 
   it('상태는 예약됨일 때만 바꾸는 조건부 update이고 같은 묶음으로 좁힌다', async () => {
     const { db, run } = setup([cardSpec()])
     ok(await run())
-    const update = db.itemWrites().find((call) => call.op === 'update')
+    const update = statusWrites(db).find((call) => call.op === 'update')
     expect(update?.payload).toEqual({ status: 'cancelled', updated_at: NOW.toISOString() })
     expect(update?.filters).toEqual([['bundle_id', B], ['status', 'scheduled'], ['id', [ID.card]]])
   })
@@ -354,7 +360,7 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     ])
     expect(result.slack.cancelledLabels).toEqual([CARD_LABEL, MISSION_LABEL])
     // 상태는 한 번의 조건부 update로 바꾼다
-    expect(db.itemWrites().filter((call) => call.op === 'update')).toHaveLength(1)
+    expect(statusWrites(db).filter((call) => call.op === 'update')).toHaveLength(1)
   })
 
   it('가리키는 대상은 그대로 둔다(카드를 취소해도 미션은 남는다)', async () => {
@@ -979,6 +985,114 @@ describe('예약됨 드랍 취소 — 실제 드랍 핸들러 (티켓 20261002_2
 })
 
 // ── JAM! 배지 취소 ───────────────────────────────────────────────────────────────────────────────
+
+describe('취소 도중 상태 맞추기가 돌아도 외부 삭제로 기록하지 않는다 (티켓 20261006_1528)', () => {
+  /**
+   * 자원을 지운 직후 상태 맞추기 한 회차를 돌리는 가짜 레지스트리. 지운 자원은 `observe`가 `missing`으로 읽는다.
+   * `reconcileAt`에 든 자원을 지울 때(지운 직후) 맞추기를 돌린다.
+   */
+  function racingRegistry(db: FakeDb, reconcileAt: string[]) {
+    const gone = new Set<string>()
+    const reconciles: ReconcileSuccess[] = []
+    let handlers: ExecuteHandlerRegistry = {}
+    handlers = Object.fromEntries(
+      (['home_feed_card', 'mission'] as const).map((kind) => [
+        kind,
+        {
+          ...fakeHandler(kind),
+          cancel: async (_service: unknown, resourceId: string): Promise<CancelResult> => {
+            gone.add(resourceId)
+            if (reconcileAt.includes(resourceId)) {
+              const outcome = await reconcileOpsItems(db.service, { handlers, now: () => NOW })
+              expect(outcome.ok).toBe(true)
+              reconciles.push(outcome as ReconcileSuccess)
+            }
+            return { ok: true, missing: false }
+          },
+          observe: async (_service: unknown, resourceId: string) => (gone.has(resourceId) ? { status: 'missing' as const } : fakeHandler(kind).observe!(_service as never, resourceId, { now: NOW })),
+        },
+      ])
+    ) as ExecuteHandlerRegistry
+    return { handlers, reconciles }
+  }
+
+  /** 사용자 취소 결과, 맞추기 결과, 결정 기록, 슬랙 글을 보내고 난 뒤 그 흔적을 확인한다. */
+  async function expectNoOutsideTrace(db: FakeDb, outcome: CancelSuccess, reconciles: ReconcileSuccess[]) {
+    expect(reconciles).toHaveLength(1)
+    for (const reconcile of reconciles) {
+      expect(reconcile.cancelled).toEqual([])
+      expect(reconcile.externalChanged).toEqual([])
+      expect(reconcile.errors).toBe(0)
+      await notifyReconcile(db.service, reconcile)
+    }
+    await notifyCancel(db.service, outcome.slack)
+
+    expect(db.decisions().filter((row) => row.actor === 'system:reconcile')).toEqual([])
+    expect(db.decisions().filter((row) => row.action === 'external_change')).toEqual([])
+    expect(db.decisions().every((row) => row.action === 'cancel' && row.actor === ACTOR)).toBe(true)
+    expect(h.postOpsSlack.mock.calls.filter(([channel]) => channel === 'alert')).toEqual([])
+    expect(h.postOpsSlack.mock.calls.map(([, text]) => String(text)).join('\n')).not.toContain('운영툴 밖에서')
+  }
+
+  it('단일 취소: 자원을 지운 직후 맞추기가 돌아도 사용자 취소는 성공하고 외부 삭제 기록·알림이 없다', async () => {
+    const { db } = setup([cardSpec()])
+    const race = racingRegistry(db, [CARD_RES])
+    const result = ok(
+      await cancelItem(db.service, { bundleId: B, itemId: ID.card, actor: ACTOR, reason: null }, { handlers: race.handlers, now: () => NOW })
+    )
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.card], missing: [] })
+    expect(statusOf(db, ID.card)).toBe('cancelled')
+    expect(db.decisions('cancel')).toHaveLength(1)
+    await expectNoOutsideTrace(db, result, race.reconciles)
+  })
+
+  it('그룹 취소: 두 번째 자원을 지우는 도중 맞추기가 돌아도 같다', async () => {
+    const { db } = setup([cardSpec({ links: ['mission'] }), missionSpec()])
+    const race = racingRegistry(db, [MISSION_RES])
+    const result = ok(
+      await cancelItem(db.service, { bundleId: B, itemId: ID.mission, actor: ACTOR, reason: null }, { handlers: race.handlers, now: () => NOW })
+    )
+
+    expect(result.body.cancelled).toEqual([ID.card, ID.mission])
+    expect(statusOf(db, ID.card)).toBe('cancelled')
+    expect(statusOf(db, ID.mission)).toBe('cancelled')
+    expect(db.decisions('cancel')).toHaveLength(2)
+    await expectNoOutsideTrace(db, result, race.reconciles)
+  })
+
+  it('실제 묶음은 자원 단계 직전에 취소 대상 예약됨 항목의 updated_at을 지금으로 갱신한다. 시험 묶음은 건드리지 않는다', async () => {
+    const rec: Recorder = { events: [] }
+    const { db, run } = setup([cardSpec({ links: ['mission'] }), missionSpec(), { id: ID.badge, key: 'badge', kind: 'jam_badge', status: 'scheduled' }], { handlers: fakeRegistry(rec) })
+    ok(await run(ID.mission))
+
+    const touch = db.itemWrites()[0]
+    expect(touch.payload).toEqual({ updated_at: NOW.toISOString() })
+    expect(touch.filters).toEqual([
+      ['bundle_id', B],
+      ['status', 'scheduled'],
+      ['id', [ID.card, ID.mission]],
+    ])
+    // 자원 삭제(가짜 핸들러 호출)보다 먼저다: 첫 쓰기가 갱신이고 그다음이 상태 변경이다.
+    expect(db.itemWrites().map((call) => Object.keys(call.payload as object))).toEqual([['updated_at'], ['status', 'updated_at']])
+    expect(db.item(ID.badge).updated_at).not.toBe(NOW.toISOString())
+
+    const sample = setup([cardSpec({ createdResource: { sample: true } })], { bundle: { is_sample: true } })
+    ok(await sample.run())
+    expect(sample.db.itemWrites().map((call) => Object.keys(call.payload as object))).toEqual([['status', 'updated_at']])
+  })
+
+  it('갱신이 실패해도 로그만 남기고 취소는 계속된다', async () => {
+    const rec: Recorder = { events: [] }
+    const { db, run } = setup([cardSpec()], { handlers: fakeRegistry(rec) })
+    db.failIf = (call) => call.table === 'ops_bundle_items' && call.op === 'update' && Object.keys(call.payload as object).join() === 'updated_at'
+    const result = ok(await run())
+
+    expect(result.body.cancelled).toEqual([ID.card])
+    expect(statusOf(db, ID.card)).toBe('cancelled')
+    expect(logged()).toContain('취소 시작 표시 저장 실패')
+  })
+})
 
 describe('예약됨 JAM! 배지 취소 — 실제 배지 핸들러 (티켓 20261004_1756)', () => {
   const BADGE_RES = uid(13)
