@@ -2,8 +2,9 @@
 id: "20261109_1448"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-09
+closed: 2026-11-09
 ---
 
 # [Infra] spacing 기준선이 staging과 어긋나 모든 브랜치의 verify가 실패한다
@@ -32,25 +33,31 @@ created: 2026-11-09
 - 화면 모양이 바뀌지 않는다(눈금 값 교체는 기존 값과 같거나 가장 가까운 눈금으로 하고, 바뀌면 사유를 적는다).
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+staging의 `node scripts/check-spacing.mjs` 실패를 한 번에 고쳤다(티켓 20261109_1146·1224·1448이 같은 원인이다). 위반이 줄어든 두 파일(`badges/[id]/page.tsx` 6→4, `InventoryItemHistorySheet.tsx` 1→0)은 기준선 숫자를 내렸다. 위반이 늘어난 두 파일 중 `BadgeHeroSection.tsx`는 위반으로 센 두 줄이 코드가 아니라 «pb-[32px]», «pt-[32px]»를 적은 주석이어서 주석 문구만 바꿔 기준선 1건이 0건이 됐다. `CollectionGridCard.tsx` 71줄의 `px-[9px]`는 디자인 시스템 사본의 `TAG_STYLE`과 같은 값이어서 같은 줄에 `spacing-allow` 사유 주석을 달았다. 화면 모양은 바뀌지 않는다.
 
 ### 변경된 파일
 ```
--
+scripts/spacing-baseline.json
+jam-web/src/app/(main)/badges/[id]/BadgeHeroSection.tsx (주석 문구)
+jam-web/src/components/ui/CollectionGridCard.tsx (spacing-allow 주석)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `node scripts/check-spacing.mjs` 통과, `eslint` 두 파일 오류 없음, `src/components/ui` 시험 19개 파일 310건 통과.
+- [ ] staging 최신 커밋의 CI `verify` 녹색은 push 뒤에 확인한다.
 
 ### 실행 지표
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1 | 카리나 직접 (경미 수정) | - | - / - | - | - |
+| 합계 |  | - | - / - | - | - |
 
 ### 주요 의사결정 / 핵심 메모
+- 위반을 기준선으로 덮은 것은 없다. 예외로 허용한 값은 `CollectionGridCard.tsx`의 `px-[9px]` 한 건이고 이유는 디자인 시스템 사본과 같은 값이기 때문이다.
+- 티켓 20261109_1146·1224는 1448과 같은 원인이라 함께 닫았다.
 
 ### 잔여 이슈
--
+- CI `verify` 녹색 확인은 push 뒤 카리나가 한다.

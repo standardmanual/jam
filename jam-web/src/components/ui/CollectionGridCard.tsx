@@ -68,7 +68,7 @@ export default function CollectionGridCard({
           <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
             {/* 완성 칩은 옆의 등급 칩(`RarityBadge` sm)과 같은 크기다: 글자 8px, 패딩 4px 9px, 줄 높이 1(높이 16px). 디자인 시스템 사본의 TAG_STYLE과 같은 값이다(2026-11-09 사용자 지시) */}
             {completed && (
-              <span className="bg-accent text-accent-foreground text-[8px] leading-none px-[9px] py-1 rounded-full font-bold">
+              <span className="bg-accent text-accent-foreground text-[8px] leading-none px-[9px] py-1 rounded-full font-bold" /* spacing-allow: 디자인 시스템 사본의 TAG_STYLE과 같은 9px */>
                 {d.itembooks.completed}
               </span>
             )}
