@@ -15,6 +15,8 @@
  * 4-1. 믹스 포인트(combine_fail_reward·combine_recipe_reward)는 사유별 건수·합계로 집계된다
  *    (티켓 20260924_1455). 원장 행이 1000건을 넘으면 페이지를 이어 읽는다
  * 4-2. 결과물 배지가 삭제됐거나 없는 레시피 수를 센다(재료·보상 배지 없는 포인트 전용 레시피는 유효)
+ * 4-3. 공개 전(valid_from이 집계 시각 이후) 레시피는 totalRecipes·invalidRecipes에 들지 않고
+ *    scheduledRecipes로 따로 센다(티켓 20261027_2224)
  * 5. 응답 어디에도 user_id 같은 개인 식별 값이 그대로 실리지 않는다(개수만 남는다)
  */
 import { vi } from 'vitest'
@@ -313,6 +315,29 @@ describe('computeKpiWeeklyMetrics', () => {
     expect(metrics.combineRecipeRewardBadges.invalidRecipes).toBe(2)
   })
 
+  it('공개 전(valid_from이 집계 시각 이후) 레시피는 totalRecipes에 넣지 않고 scheduledRecipes로 센다', async () => {
+    mockMissionRows.mockResolvedValue({ data: [], error: null })
+    mockBadgeCount.mockResolvedValue({ count: 0, error: null })
+    mockStravaSyncFailureCount.mockResolvedValue({ count: 0, error: null })
+    mockRecipes.mockResolvedValue({
+      data: [
+        { reward_badge_ids: ['b-live'], valid_from: null },
+        { reward_badge_ids: ['b-live'], valid_from: '2000-01-01T00:00:00.000Z' },
+        { reward_badge_ids: ['b-missing'], valid_from: '2999-01-01T00:00:00.000Z' },
+        { reward_badge_ids: ['b-live'], valid_from: '2999-01-01T00:00:00.000Z' },
+      ],
+      error: null,
+    })
+    mockLiveBadges.mockResolvedValue({ data: [{ id: 'b-live' }], error: null })
+
+    const metrics = await computeKpiWeeklyMetrics(range)
+    expect(metrics.combineRecipeRewardBadges).toMatchObject({
+      totalRecipes: 2,
+      scheduledRecipes: 2,
+      invalidRecipes: 0,
+    })
+  })
+
   it('결과물 배지가 하나도 없으면 배지 조회 없이 0을 반환한다', async () => {
     mockMissionRows.mockResolvedValue({ data: [], error: null })
     mockBadgeCount.mockResolvedValue({ count: 0, error: null })
@@ -320,7 +345,7 @@ describe('computeKpiWeeklyMetrics', () => {
     mockRecipes.mockResolvedValue({ data: [{ reward_badge_ids: [] }], error: null })
 
     const metrics = await computeKpiWeeklyMetrics(range)
-    expect(metrics.combineRecipeRewardBadges).toMatchObject({ totalRecipes: 1, invalidRecipes: 0 })
+    expect(metrics.combineRecipeRewardBadges).toMatchObject({ totalRecipes: 1, scheduledRecipes: 0, invalidRecipes: 0 })
     expect(mockLiveBadges).not.toHaveBeenCalled()
   })
 

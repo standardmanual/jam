@@ -93,6 +93,7 @@ export interface KpiWeeklyMetrics {
   }
   combineRecipeRewardBadges: {
     totalRecipes: number
+    scheduledRecipes: number
     invalidRecipes: number
     definition: string
   }
@@ -120,7 +121,7 @@ const DEFINITIONS = {
   combinePointsRecipe:
     "point_transactions.reason='combine_recipe_reward'이고 created_at이 기간 안인 행의 건수와 amount 합계(레시피 매칭 성공 포인트)",
   combineRecipeRewardBadges:
-    'combination_recipes.reward_badge_ids 중 badges 행이 없거나 deleted_at이 있는 배지를 하나라도 가진 레시피 수(현재 시점 스냅샷, 기간 무관)',
+    'totalRecipes는 combination_recipes 중 valid_from이 없거나 집계 시각 이전인 공개된 레시피 수, scheduledRecipes는 valid_from이 집계 시각 이후인 공개 전(예약) 레시피 수, invalidRecipes는 공개된 레시피 중 reward_badge_ids에 badges 행이 없거나 deleted_at이 있는 배지를 하나라도 가진 레시피 수(현재 시점 스냅샷, 기간 무관)',
 } as const
 
 type LedgerRow = { reason: string; amount: number }
@@ -148,18 +149,29 @@ async function fetchCombineLedgerRows(
   }
 }
 
-/** 결과물 배지가 삭제됐거나 없는 레시피 수를 센다. */
+/**
+ * 공개된 레시피 수·공개 전(예약) 레시피 수·결과물 배지가 삭제됐거나 없는 레시피 수를 센다.
+ * 공개 기준은 `valid_from`이 비었거나 집계 시각(`nowIso`) 이전인 것이다. 유효하지 않은 레시피 수는 공개된 레시피 안에서만 센다.
+ */
 async function countRecipesWithInvalidRewardBadges(
-  supabase: ReturnType<typeof createServiceClient>
-): Promise<{ totalRecipes: number; invalidRecipes: number }> {
+  supabase: ReturnType<typeof createServiceClient>,
+  nowIso: string
+): Promise<{ totalRecipes: number; scheduledRecipes: number; invalidRecipes: number }> {
   const { data: recipes, error } = await supabase
     .from('combination_recipes')
-    .select('reward_badge_ids')
+    .select('reward_badge_ids, valid_from')
   if (error) throw error
-  const recipeList = recipes ?? []
+  const allRecipes = recipes ?? []
+  const nowMs = new Date(nowIso).getTime()
+  const isScheduled = (r: { valid_from?: string | null }) =>
+    r.valid_from != null && new Date(r.valid_from).getTime() > nowMs
+  const recipeList = allRecipes.filter((r) => !isScheduled(r))
+  const scheduledRecipes = allRecipes.length - recipeList.length
 
   const badgeIds = [...new Set(recipeList.flatMap((r) => r.reward_badge_ids ?? []))]
-  if (badgeIds.length === 0) return { totalRecipes: recipeList.length, invalidRecipes: 0 }
+  if (badgeIds.length === 0) {
+    return { totalRecipes: recipeList.length, scheduledRecipes, invalidRecipes: 0 }
+  }
 
   const { data: badges, error: badgeError } = await supabase
     .from('badges')
@@ -172,7 +184,7 @@ async function countRecipesWithInvalidRewardBadges(
   const invalidRecipes = recipeList.filter((r) =>
     (r.reward_badge_ids ?? []).some((id) => !validIds.has(id))
   ).length
-  return { totalRecipes: recipeList.length, invalidRecipes }
+  return { totalRecipes: recipeList.length, scheduledRecipes, invalidRecipes }
 }
 
 /** 지표를 집계한다. 공용 프로덕션 DB이므로 읽기 쿼리만 쓴다. */
@@ -210,7 +222,7 @@ export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<Kp
       .lt('occurred_at', range.endIso)
       .eq('failure_type', DROP_ATTEMPT_FAILED),
     fetchCombineLedgerRows(supabase, range),
-    countRecipesWithInvalidRewardBadges(supabase),
+    countRecipesWithInvalidRewardBadges(supabase, range.endIso),
   ])
 
   if (missionRows.error) throw missionRows.error
