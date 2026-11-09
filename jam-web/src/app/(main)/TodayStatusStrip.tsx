@@ -2,17 +2,15 @@ import Link from 'next/link'
 import { Card } from '@ds/components/cards/Card'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
-import { PackageIcon, TargetIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { formatMissionProgress } from '@/lib/missions/format'
 import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
 
 /**
- * 투데이 홈 "오늘의 현황" 스트립 (티켓 20260830_2030) — 좌: 내 진행도 / 우: 친구 활동.
+ * 투데이 홈 "오늘의 현황" 스트립 (티켓 20260830_2030) — 좌: 진행상황 / 우: 팔로잉.
  *
  * MODULAR 재사용 판정(오케스트레이터 결정) — 신규 컴포넌트 없이 기존 Card(기본 톤: 흰 면 + 1px 테두리)·
- * ProgressBar·icons.tsx만으로 구성한다(티켓 20261015_2133: 어두운 반전 면을 걷고 글자는 `text-muted`로 맞췄다). EmptyState는 셀에 직접 넣지 않고(카드 여백·타이포
- * 규격 불일치) "아이콘 opacity 0.5 + 뮤트 톤" 시각 관례만 인라인으로 차용한다.
+ * ProgressBar만으로 구성한다(티켓 20261015_2133: 어두운 반전 면을 걷고 글자는 `text-muted`로 맞췄다). 빈 셀(suggestion·no_following)은 아이콘 없이 문구만 둔다(티켓 20261109_1429).
  */
 
 const CELL_CLASS =
@@ -55,28 +53,29 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
         <Card className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <p className="text-base font-bold">
-              <span className="break-words [overflow-wrap:anywhere]">{status.name}</span>{' '}
-              <span className="whitespace-nowrap tabular-nums">
+            <p className="text-base font-bold break-words [overflow-wrap:anywhere]">
+              {status.name}
+            </p>
+            {/* 티켓 20261109_1429: n/n은 진행 바 오른쪽에 text-xs로 둔다 */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <ProgressBar current={status.current} total={status.total} />
+              </div>
+              <span className="text-xs font-bold whitespace-nowrap tabular-nums">
                 {current}/{total}
               </span>
-            </p>
-            <ProgressBar current={status.current} total={status.total} />
+            </div>
           </div>
         </Card>
       </Link>
     )
   }
 
-  const Icon = status.category === 'missions' ? TargetIcon : PackageIcon
   return (
     <Link href={status.href} className="block h-full">
       <Card className={CELL_CLASS}>
         <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
         <div className={CELL_BODY_CLASS}>
-          <span className="text-muted opacity-50">
-            <Icon className="w-6 h-6" />
-          </span>
           <p className="text-base font-bold">
             {status.text}
           </p>
@@ -93,9 +92,6 @@ function RightCell({ status }: { status: Exclude<TodayRightStatus, { kind: 'none
         <Card className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.friendActivityLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <span className="text-muted opacity-50">
-              <UsersIcon className="w-6 h-6" />
-            </span>
             <p className="text-base font-bold">
               {d.todayStatus.noFollowing}
             </p>
