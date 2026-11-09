@@ -95,9 +95,9 @@ function ListRanking({ view, currentUserId }: { view: ListCardView; currentUserI
   const { ranking, href } = view
   const live = Boolean(view.tracking)
   const titleHref = live && ranking?.metricType === 'mission_progress' ? href : undefined
-  // 제목 영역 안쪽도 그룹 간격(12px)이 이어져야 해서 링크 안에 같은 세로 flex 칸을 둔다
+  // 제목 영역 안쪽도 그룹 간격(8px)이 이어져야 해서 링크 안에 같은 세로 flex 칸을 둔다
   const head = (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <ListHead view={view} />
     </div>
   )

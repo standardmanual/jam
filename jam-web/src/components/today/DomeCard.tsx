@@ -15,7 +15,7 @@ import CardImageSlot from './CardImageSlot'
  */
 
 const SCRIM_CLASS =
-  'absolute inset-x-0 bottom-0 flex flex-col gap-3 pt-8 px-4 pb-4 bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--base-black)_60%,transparent)_var(--spacing-32))]'
+  'absolute inset-x-0 bottom-0 flex flex-col gap-2 pt-8 px-4 pb-4 bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--base-black)_60%,transparent)_var(--spacing-32))]'
 
 const DOME_BORDER_RADIUS = '140px 140px var(--radius-2xl) var(--radius-2xl)'
 

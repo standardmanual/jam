@@ -56,11 +56,11 @@ describe('HeroCard — 면(표면)', () => {
   it('overflow-hidden은 카드(Card)에만 걸려 있다 — 이미지 칸 하나가 더 있을 뿐 본문에는 없다', () => {
     const html = render()
     expect(html.match(/overflow-hidden/g)).toHaveLength(2)
-    expect(html.slice(html.indexOf('flex flex-col gap-3'))).not.toContain('overflow-hidden')
+    expect(html.slice(html.indexOf('flex flex-col gap-2'))).not.toContain('overflow-hidden')
   })
 
-  it('본문은 안쪽 여백 16px이고 그룹 사이 간격은 12px이다', () => {
-    expect(render()).toContain('<div class="flex flex-col gap-3 p-4">')
+  it('본문은 안쪽 여백 16px이고 그룹 사이 간격은 8px이다', () => {
+    expect(render()).toContain('<div class="flex flex-col gap-2 p-4">')
   })
 })
 
@@ -73,7 +73,7 @@ describe('HeroCard — 이미지 칸', () => {
     const html = render(overrides)
     expect(html).toContain(`<div class="${IMAGE_BOX}">`)
     // 칸은 본문보다 앞에 있다
-    expect(html.indexOf(IMAGE_BOX)).toBeLessThan(html.indexOf('gap-3'))
+    expect(html.indexOf(IMAGE_BOX)).toBeLessThan(html.indexOf('gap-2'))
   })
 
   it('칸 안의 이미지는 칸을 채우고 object-cover이며 컬러다', () => {
@@ -91,7 +91,7 @@ describe('HeroCard — 이미지 칸', () => {
 
   it('이미지 위에는 아무것도 얹지 않는다(어두운 막·그림자·칩이 이미지 칸 안에 없다)', () => {
     const html = render({ label: '미션', rarity: 'epic' })
-    const box = html.slice(html.indexOf(IMAGE_BOX), html.indexOf('flex flex-col gap-3'))
+    const box = html.slice(html.indexOf(IMAGE_BOX), html.indexOf('flex flex-col gap-2'))
     expect(box).not.toContain('bg-black')
     expect(box).not.toContain('gradient')
     expect(box).not.toContain('shadow')

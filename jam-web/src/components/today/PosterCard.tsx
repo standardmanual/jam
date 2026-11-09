@@ -27,7 +27,7 @@ import CardImageSlot from './CardImageSlot'
 
 /** 막 — 글자 블록 아래쪽 정렬, 위 32px가 램프다(고정 길이 정지점, 위 설명 참고). 클래스 전체 문자열이어야 Tailwind가 읽는다. */
 const SCRIM_CLASS =
-  'absolute inset-x-0 bottom-0 flex flex-col gap-3 pt-8 px-4 pb-4 bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--base-black)_60%,transparent)_var(--spacing-32))]'
+  'absolute inset-x-0 bottom-0 flex flex-col gap-2 pt-8 px-4 pb-4 bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--base-black)_60%,transparent)_var(--spacing-32))]'
 
 export default function PosterCard({ view }: { view: ImageCardView }) {
   const facts = view.facts ?? []
