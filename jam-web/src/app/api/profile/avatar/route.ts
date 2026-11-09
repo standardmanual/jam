@@ -58,6 +58,14 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = createServiceClient()
 
+  // 교체 후 지울 이전 아바타 URL — 읽기에 실패하면 삭제만 건너뛴다 (티켓 20260929_1331)
+  const { data: prevRow } = await serviceClient
+    .from('users')
+    .select('avatar_url')
+    .eq('id', user.id)
+    .maybeSingle()
+  const prevAvatarUrl = prevRow?.avatar_url ?? null
+
   const { error: uploadError } = await serviceClient.storage
     .from('avatars')
     .upload(path, sanitized.buffer, { contentType, upsert: true })
@@ -80,5 +88,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: d.profileEdit.uploadError }, { status: 500 })
   }
 
+  // DB 갱신이 성공한 뒤에만 이전 객체를 지운다. 실패해도 응답은 성공이다.
+  const prevPath = extractOwnAvatarPath(prevAvatarUrl, publicUrl, path, user.id)
+  if (prevPath) {
+    try {
+      const { error: removeError } = await serviceClient.storage.from('avatars').remove([prevPath])
+      if (removeError) {
+        console.error('[profile/avatar] 이전 파일 삭제 오류:', removeError.message)
+      }
+    } catch (e) {
+      console.error('[profile/avatar] 이전 파일 삭제 오류:', e instanceof Error ? e.message : e)
+    }
+  }
+
   return NextResponse.json({ avatar_url: publicUrl })
+}
+
+/**
+ * 이전 avatar_url이 같은 버킷의 `{userId}/` 아래 객체일 때만 그 경로를 돌려준다.
+ * 외부 URL(구글 기본 이미지 등)·다른 이용자 경로·방금 올린 경로와 같은 경우는 null.
+ * 새 URL에서 경로를 뺀 접두(버킷 공개 주소)로 출처를 확인한다.
+ */
+function extractOwnAvatarPath(
+  prevUrl: string | null,
+  newPublicUrl: string,
+  newPath: string,
+  userId: string,
+): string | null {
+  if (!prevUrl || !newPublicUrl.endsWith(newPath)) return null
+  const prefix = newPublicUrl.slice(0, newPublicUrl.length - newPath.length)
+  if (!prevUrl.startsWith(prefix)) return null
+  const prevPath = prevUrl.slice(prefix.length).split(/[?#]/)[0]
+  if (!prevPath.startsWith(`${userId}/`) || prevPath.includes('..')) return null
+  if (prevPath === newPath) return null
+  return prevPath
 }
