@@ -358,7 +358,7 @@ async function writeCreatedResource(ctx: RunContext, item: ExecuteItem, key: str
 }
 
 /**
- * 그룹 실패를 정한다: 이번에 만든 자원을 역순으로 지우고, 항목마다 사유를 붙인다. 원인 항목(`culpritId`)은 자기 사유를, 나머지는
+ * 그룹 실패를 정한다: 이번에 만든 자원을 역순으로 지우고, 그룹 항목 전체의 이미지 파일을 정리하고(되돌리지 못한 항목 제외), 항목마다 사유를 붙인다. 원인 항목(`culpritId`)은 자기 사유를, 나머지는
  * 「함께 실패했어요」를 받는다(특정 항목 탓이 아니면 `null`: 모두 같은 사유). 응답에는 `reason`만 싣고 `detail`은 서버 로그에만 남긴다.
  */
 async function failGroup(
@@ -376,9 +376,12 @@ async function failGroup(
     if (undone) {
       undoFailedIds.add(entry.item.id)
       console.error(`${LOG} 되돌리지 못한 자원(${kindLabel(entry.item.kind)}):`, undone.detail ?? undone.reason)
-    } else {
-      await removeOpsImageFiles(ctx.service, { kind: entry.item.kind, itemId: entry.item.id })
     }
+  }
+  // 승인 상태에서 올린 파일은 자원을 만들었든 아니든(준비·사전검사 실패, 생성 실패, 함께 실패한 미생성 항목) 남기지 않는다.
+  // 되돌리지 못한 항목은 자원이 아직 그 파일을 가리킬 수 있어 지우지 않는다(티켓 20261007_0952).
+  for (const item of items) {
+    if (!undoFailedIds.has(item.id)) await removeOpsImageFiles(ctx.service, { kind: item.kind, itemId: item.id })
   }
 
   const failed = items.map((item): ItemReason => {
