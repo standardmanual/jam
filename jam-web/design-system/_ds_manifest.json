@@ -708,8 +708,15 @@
       "annotation": "other"
     },
     {
-      "name": "--tabbar-background-inverse",
+      "name": "--tabbar-background-inverse-solid",
       "value": "color-mix(in srgb, var(--snow) 22%, var(--background-inverse))",
+      "kind": "other",
+      "definedIn": "tokens/materials.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--tabbar-background-inverse",
+      "value": "color-mix(in srgb, var(--tabbar-background-inverse-solid) 85%, transparent)",
       "kind": "other",
       "definedIn": "tokens/materials.css",
       "annotation": "other"
