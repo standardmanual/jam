@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
@@ -49,9 +50,20 @@ interface BadgeHeroSectionProps {
    * 미리보기는 아직 저장되지 않은 편집 중 파라미터를 그대로 넘긴다.
    */
   backgroundAnimation?: BlobAnimationParams | null
+  /**
+   * 대표 이미지 자리를 통째로 바꾼다. 잠긴 아이템 배지 상세(`/inventory/[itemId]`)가 잠금 타일과 열린 뒤 그림의 크로스페이드를 여기에
+   * 넣는다(2026-11-09 사용자 지시: 잠긴 상세가 일반 상세와 같은 카드를 쓴다). 없으면 `badge.image_url`을 그린다 — 기존 그대로다.
+   */
+  imageSlot?: ReactNode
+  /** 등급·레벨 칩 옆에 더하는 칩(잠긴 상세의 «잠김» 칩). 없으면 칩 하나만 그린다 */
+  chipExtra?: ReactNode
+  /** 제목(h1) 안의 내용을 바꾼다(잠긴 상세의 `SwapText`). 없으면 `badge.name`이다 */
+  titleNode?: ReactNode
+  /** 설명 문단의 내용을 바꾼다(잠긴 상세의 `SwapText`). 없으면 `badge.description`을 마침표 기준으로 나눠 그린다 */
+  descriptionNode?: ReactNode
 }
 
-export default function BadgeHeroSection({ badge, hasEarned, themedBackground, backgroundAnimation }: BadgeHeroSectionProps) {
+export default function BadgeHeroSection({ badge, hasEarned, themedBackground, backgroundAnimation, imageSlot, chipExtra, titleNode, descriptionNode }: BadgeHeroSectionProps) {
   // [20260819_011] 배경은 상세화면의 고정 배경 레이어 "한 곳에서만" 그린다. hero 카드가 배경을
   // 한 번 더 그리면(기존 동작) 카드 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
   // 배율로 두 번 잘려 이음매가 보였다. 그래서 여기서는 배경을 그리지 않고, 배경이 있을 때는
@@ -103,7 +115,9 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       >
         {backgroundAnimation && <BlobAnimationBackground params={backgroundAnimation} />}
         <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
-          {badge.image_url ? (
+          {imageSlot !== undefined ? (
+            imageSlot
+          ) : badge.image_url ? (
             <div className="w-[200px] h-[200px] flex items-center justify-center">
               {/* 어드민 배지 상세 미리보기도 이 컴포넌트를 쓴다. 미등록 호스트 URL 하나로 화면 전체가
                   오류 화면이 되지 않도록 SafeImage로 렌더한다(티켓 20260925_2319). */}
@@ -133,10 +147,24 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
                 미지 값을 그리지 않으므로(티켓 20260905_0036) 그대로 넘기면 **칩이 조용히
                 사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
                 배지 카드(`BadgeGridCard`)가 같은 분기를 쓴다(티켓 20260905_0037). */}
-            {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />}
-            <h1 className={`text-3xl font-bold text-center ${onMedia ? 'text-snow' : 'text-foreground'}`}>{badge.name}</h1>
+            {chipExtra ? (
+              <div className="flex items-center gap-2">
+                {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />}
+                {chipExtra}
+              </div>
+            ) : badge.level != null ? (
+              <BadgeLevelChip level={badge.level} size="md" />
+            ) : (
+              <RarityBadge rarity={badge.rarity ?? undefined} size="md" />
+            )}
+            <h1 className={`text-3xl font-bold text-center ${onMedia ? 'text-snow' : 'text-foreground'}`}>{titleNode ?? badge.name}</h1>
           </div>
-          {badge.description && (
+          {descriptionNode ? (
+            // 설명 내용을 호출부가 정한다(잠긴 상세의 SwapText). 문단 모양은 아래 문장 나열과 같다.
+            <div className="flex-shrink-0 flex flex-col gap-0.5">
+              <p className={`text-base text-center text-wrap! ${onMedia ? 'text-snow' : 'text-muted'}`}>{descriptionNode}</p>
+            </div>
+          ) : badge.description && (
             // [20260917_1211] 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을
             // 별도 줄로 그린다 — 원본 `\n`에만 반응하던 `whitespace-pre-line`으로는 실제 배지
             // 설명(마침표로 끝나는 문장 나열)에서 줄바꿈이 거의 일어나지 않았다.

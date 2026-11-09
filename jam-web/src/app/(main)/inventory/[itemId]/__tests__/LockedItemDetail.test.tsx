@@ -88,9 +88,17 @@ function render(overrides: Partial<LockedItemDetailProps> = {}, values: Record<n
   return renderToStaticMarkup(<LockedItemDetail {...BASE} {...overrides} />)
 }
 
+/**
+ * `<style>` 요소를 뺀다 — `ListRow`(얻은 날·경로 행)가 자기 CSS를 `<style>`로 함께 그린다. 그 안의 `var(--link)`·`%` 같은 글자는
+ * 화면에 보이는 것도, 이 화면의 색 선택도 아니므로 마크업 검사에서 제외한다.
+ */
+function withoutStyle(html: string): string {
+  return html.replace(/<style[\s\S]*?<\/style>/g, '')
+}
+
 /** 화면에 보이는 글자만 — 문장 속 포인트 조각(`PointText`의 `text-point-text` 칸)은 앞뒤 글자와 붙여 읽는다 */
 function visibleText(html: string): string {
-  return html
+  return withoutStyle(html)
     .replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
@@ -111,12 +119,15 @@ beforeEach(() => {
 })
 
 describe('LockedItemDetail — 열기 전', () => {
-  it('타일·등급·잠김 칩·가린 이름·설명·얻은 날과 경로가 있다', () => {
+  it('타일·등급·잠김 칩·가린 이름·설명·획득 정보(일시·경로)가 있다', () => {
     const html = render()
     expect(html).toContain(d.lockedItem.card.name)
     expect(html).toContain(d.lockedItem.detail.chip)
     expect(html).toContain(d.lockedItem.detail.description)
-    expect(html).toContain(d.lockedItem.detail.obtainedAt)
+    // 다른 배지 상세와 같은 «획득 정보» 카드(획득 일시·획득 경로)다
+    expect(html).toContain(d.badges.earnInfoTitle)
+    expect(html).toContain(d.badges.earnedAt)
+    expect(html).toContain(d.badges.earnRoute)
     expect(html).toContain(d.inventory.obtainBySystem)
     expect(html).toContain('<svg')
   })
@@ -147,46 +158,49 @@ describe('LockedItemDetail — 열기 전', () => {
 })
 
 describe('LockedItemDetail — 포인트 블록', () => {
-  it('충분하면 «필요 포인트»·«가진 포인트» 두 줄과 활성 «열기»가 보이고 안내는 없다', () => {
+  it('충분하면 «N 포인트 필요» 행과 «보유 포인트 N» 보조 줄, 활성 «열기»가 보이고 안내는 없다', () => {
     const html = render({ pointsRequired: 1200, pointBalance: 5000 })
-    expect(html).toContain('<dl')
     const text = visibleText(html)
-    expect(text).toContain(`${d.lockedItem.detail.points.required} 1,200`)
-    expect(text).toContain(`${d.lockedItem.detail.points.balance} 5,000`)
+    expect(text).toContain('1,200 포인트 필요')
+    expect(text).toContain('보유 포인트 5,000')
     expect(html).not.toContain('role="status"')
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).not.toMatch(/disabled/)
   })
 
-  it('가진 포인트가 필요 포인트와 같아도 막지 않는다', () => {
+  it('보유 포인트가 필요 포인트와 같아도 막지 않는다', () => {
     const html = render({ pointsRequired: 1200, pointBalance: 1200 })
     expect(html).not.toContain('role="status"')
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).not.toMatch(/disabled/)
   })
 
-  it('필요 포인트는 24px 굵게, 가진 포인트는 16px 굵게 값만 오렌지(point-text)로 그린다', () => {
-    const html = render()
-    expect(html).toMatch(/<dd class="[^"]*font-bold[^"]*text-2xl"><span class="text-point-text"[^>]*>1,200<\/span><\/dd>/)
-    expect(html).toMatch(/<dd class="[^"]*font-bold[^"]*text-base"><span class="text-point-text"[^>]*>800<\/span><\/dd>/)
-    expect(html).not.toMatch(/<dd class="[^"]*text-2xl[^"]*"><span[^>]*>800<\/span>/)
+  it('필요 포인트는 포인트 보상 행과 같은 모양이다(tint 행 + 서클 코인 + 오렌지 «N 포인트»)', () => {
+    const html = withoutStyle(render())
+    // «N 포인트» 조각만 point-text로 칠한다 — «필요»는 부모 글자색이다
+    expect(html).toMatch(/<span class="text-point-text"[^>]*>1,200 포인트<\/span> 필요/)
+    // 서클 lead: --accent 면 + --accent-foreground 코인 아이콘 (미션·배지 상세 보상 행과 같은 값)
+    expect(html).toContain('background:var(--accent)')
+    expect(html).toContain('color:var(--accent-foreground)')
+    // 이전의 dl·dd 두 줄 표현이 아니다
+    expect(html).not.toContain('<dl')
+    expect(html).not.toContain('<dd')
     expect(html).not.toContain('var(--link)')
-    // 값만 칠한다 — «포인트» 글자는 라벨이 말한다
-    expect(html).not.toContain('1,200 포인트</span>')
   })
 
-  it('모자라면 같은 두 줄 아래에 모자란 만큼을 알리는 안내가 있고 «열기»가 막히며 라벨은 그대로다', () => {
+  it('모자라면 같은 행 아래에 모자란 만큼을 알리는 안내가 있고 «열기»가 막히며 라벨은 그대로다', () => {
     const html = render({ pointsRequired: 1200, pointBalance: 800 })
     expect(html).toContain('role="status"')
     expect(visibleText(html)).toContain(SHORTAGE_400)
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).toMatch(/disabled/)
-    // 안내는 두 줄 바로 아래, 버튼보다 위에 있다
-    expect(html.indexOf('</dl>')).toBeLessThan(html.indexOf('role="status"'))
+    // 안내는 포인트 행 바로 아래, 버튼보다 위에 있다
+    expect(html.indexOf('포인트 필요')).toBeLessThan(html.indexOf('role="status"'))
     expect(html.indexOf('role="status"')).toBeLessThan(html.indexOf('<button'))
   })
 
   it('모자람은 오류색·경고 아이콘 없이 문구로만 알린다', () => {
     const html = render({ pointsRequired: 1200, pointBalance: 800 })
     expect(html).not.toMatch(/text-(red|danger|error|destructive)|bg-(red|danger|error)/)
-    expect(html.match(/<svg/g)).toHaveLength(1) // 타일 하나뿐이다
+    // 경고 아이콘이 없다: 잠금 타일 하나와 포인트 행의 코인 아이콘 하나뿐이다
+    expect(html.match(/<svg/g)).toHaveLength(2)
   })
 
   it('화면에는 진행 숫자·퍼센트·분수가 없고 안내에 감정을 얹는 말도 없다', () => {
@@ -196,11 +210,11 @@ describe('LockedItemDetail — 포인트 블록', () => {
     expect(SHORTAGE_400).not.toMatch(/아쉽|조금만|곧|해 주세요/)
   })
 
-  it('필요 포인트가 0이면 «포인트 없이 열 수 있어요» 한 줄만 보이고 가진 포인트가 0이어도 막지 않는다', () => {
+  it('필요 포인트가 0이면 «포인트 없이 열 수 있어요» 한 줄만 보이고 보유 포인트가 0이어도 막지 않는다', () => {
     const html = render({ pointsRequired: 0, pointBalance: 0 })
     expect(visibleText(html)).toContain(d.lockedItem.detail.points.free)
-    expect(html).not.toContain('<dl')
-    expect(html).not.toContain(d.lockedItem.detail.points.balance)
+    expect(visibleText(html)).not.toContain('보유 포인트')
+    expect(visibleText(html)).not.toContain('포인트 필요')
     expect(html).not.toContain('role="status"')
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).not.toMatch(/disabled/)
   })
@@ -208,12 +222,11 @@ describe('LockedItemDetail — 포인트 블록', () => {
   it('필요 포인트를 모르면(null) 포인트 블록 전체를 그리지 않고 버튼은 활성이다', () => {
     const html = render({ pointsRequired: null, pointBalance: 0 })
     const text = visibleText(html)
-    expect(html).not.toContain('<dl')
     expect(html).not.toContain('role="status"')
-    expect(text).not.toContain(d.lockedItem.detail.points.required)
-    expect(text).not.toContain(d.lockedItem.detail.points.balance)
+    expect(text).not.toContain('포인트 필요')
+    expect(text).not.toContain('보유 포인트')
     expect(text).not.toContain(d.lockedItem.detail.points.free)
-    expect(text).toContain(d.lockedItem.detail.obtainedAt)
+    expect(text).toContain(d.badges.earnInfoTitle)
     expect(buttonTagWith(html, d.lockedItem.detail.openCta)).not.toMatch(/disabled/)
   })
 
@@ -241,7 +254,9 @@ describe('LockedItemDetail — 열린 뒤', () => {
     const text = visibleText(html)
     expect(text).toContain('새벽의 첫 바퀴')
     expect(text).toContain('새벽에 달린 기록')
-    expect(text).toContain('컬렉션 새벽 컬렉션')
+    // 컬렉션은 일반 아이템 배지 상세와 같은 행(이름 + 쉐브론, 컬렉션 상세로 연결)이다
+    expect(text).toContain('새벽 컬렉션')
+    expect(html).toContain('href="/collections/c1"')
     expect(text).toContain('트라이브 이른 새')
     expect(html).toContain(`/badges/badge-1?item=${BASE.itemId}&amp;from=inventory`)
     expect(text).not.toContain(d.lockedItem.detail.chip)
@@ -302,16 +317,34 @@ describe('LockedItemDetail — 열린 뒤', () => {
 })
 
 describe('LockedItemDetail — 문구와 소스', () => {
-  it('이 화면의 문구와 소스에 «획득»·«잠금»이 없다', () => {
-    expect(JSON.stringify(d.lockedItem.detail)).not.toMatch(/획득|잠금/)
-    expect(sourceCode()).not.toMatch(/획득|잠금/)
-    expect(visibleText(render())).not.toMatch(/획득|잠금/)
+  it('이 화면의 문구와 소스에 «잠금»이 없고, 열기 문구에는 «획득»·«얻었어요»가 없다', () => {
+    // 고정 용어는 «잠김»이다(«잠금» 아님)
+    expect(JSON.stringify(d.lockedItem.detail)).not.toMatch(/잠금/)
+    expect(sourceCode()).not.toMatch(/잠금/)
+    expect(visibleText(render())).not.toMatch(/잠금/)
+    // 열기는 유저가 하는 화면 동작이라 획득과 다른 개념이다(2026-11-09 사용자 결정): 열기 문구에는 «획득»·«얻었어요»를 쓰지 않는다.
+    // 받은 일시·경로를 말하는 «획득 정보» 카드(다른 배지 상세와 같은 표현)는 `d.badges`의 라벨이라 이 사전 밖이다.
+    const openingCopy = JSON.stringify([
+      d.lockedItem.detail.openCta,
+      d.lockedItem.detail.opening,
+      d.lockedItem.detail.openedToast,
+      d.lockedItem.detail.points,
+      d.lockedItem.detail.opened,
+    ])
+    expect(openingCopy).not.toMatch(/획득|얻었/)
+  })
+
+  it('획득 정보 카드는 다른 배지 상세와 같은 표현(획득 정보·획득 일시·획득 경로)을 쓴다', () => {
+    const text = visibleText(render())
+    expect(text).toContain('획득 정보')
+    expect(text).toContain('획득 일시')
+    expect(text).toContain('획득 경로')
   })
 
   it('낸 포인트·받은 포인트 문구는 열기를 포인트의 원인으로 읽히게 하지 않는다', () => {
     expect(t(d.lockedItem.detail.opened.spent, { points: '1,200' })).toBe(SPENT_LINE)
     expect(t(d.lockedItem.detail.opened.points, { points: '300' })).toBe(AWARDED_LINE)
-    expect(AWARDED_LINE).not.toMatch(/열어서|열면|획득/)
+    expect(AWARDED_LINE).not.toMatch(/열어서|열면/)
   })
 
   it('쓰지 않게 된 채우기 문구 키가 없다', () => {
@@ -332,5 +365,96 @@ describe('LockedItemDetail — 문구와 소스', () => {
   it('보조 문구에 --muted 글자색을 쓰지 않는다(크림 면 위라 --foreground)', () => {
     // 아이콘 폴백(MedalIcon)의 색은 글자가 아니라 장식이라 제외한다
     expect(sourceCode().replace(/<MedalIcon[^>]*\/>/g, '')).not.toMatch(/text-muted\b/)
+  })
+})
+
+describe('LockedItemDetail — 일반 아이템 배지 상세와 같은 구성 (2026-11-09 사용자 지시)', () => {
+  const openedHtml = () => render({}, { 2: { ...OPENED }, 3: true })
+
+  it('대표 이미지·칩·이름·설명이 일반 상세와 같은 카드(BadgeHeroSection) 안에 있다', () => {
+    const html = withoutStyle(render())
+    const card = html.slice(html.indexOf('rounded-2xl'), html.indexOf('</h1>'))
+
+    // 일반 상세 카드의 면과 구조: 흰 카드 면, 세로 고정(aspect-square) 없음
+    expect(html).toContain('bg-card-bg')
+    expect(html).not.toContain('aspect-square')
+    // 카드 안에 타일(svg), 등급 칩, «잠김» 칩, 이름이 이 순서로 있다
+    expect(card).toContain('<svg')
+    expect(html.indexOf('Rare')).toBeGreaterThan(html.indexOf('<svg'))
+    expect(html.indexOf(d.lockedItem.detail.chip)).toBeGreaterThan(html.indexOf('Rare'))
+    expect(html.indexOf(`>${d.lockedItem.card.name}<`)).toBeGreaterThan(html.indexOf(d.lockedItem.detail.chip))
+    expect(html).toMatch(/<h1 class="text-3xl font-bold text-center text-foreground">/)
+    // 설명은 일반 상세와 같은 문단이다(줄 균형을 끈 text-wrap!)
+    expect(html).toMatch(new RegExp(`<p class="text-base text-center text-wrap! text-muted">[^]*${d.lockedItem.detail.description}`))
+  })
+
+  it('«잠김» 칩은 등급 칩과 같은 줄에 나란히 놓인다', () => {
+    const html = withoutStyle(render())
+    const row = html.match(/<div class="flex items-center gap-2">((?:(?!<\/div>)[^])*)<\/div>/)?.[1] ?? ''
+
+    expect(row).toContain('Rare')
+    expect(row).toContain(d.lockedItem.detail.chip)
+  })
+
+  it('열기 전에는 «잠김» 칩이 있고, 등급이 없으면 «잠김» 칩만 있다', () => {
+    const html = withoutStyle(render({ rarity: null }))
+
+    expect(html).toContain(d.lockedItem.detail.chip)
+    expect(html).not.toContain('Rare')
+    expect(html).not.toContain('Epic')
+  })
+
+  it('획득 정보는 다른 배지 상세와 같은 카드 + 라벨·값 행이다', () => {
+    const html = withoutStyle(render())
+    const text = visibleText(html)
+
+    // 다른 배지 상세와 같은 카드: 제목 «획득 정보» + 라벨·값 행(획득 일시는 시각까지, 획득 경로)
+    expect(text).toContain(`${d.badges.earnInfoTitle} ${d.badges.earnedAt}`)
+    expect(text).toContain('오전')
+    expect(text).toContain(`${d.badges.earnRoute} ${d.inventory.obtainBySystem}`)
+    expect(html).toContain('ds-list-row')
+  })
+
+  it('열린 뒤 일련번호는 카드 바로 아래 가운데에, 컬렉션은 행으로 보인다', () => {
+    const html = withoutStyle(openedHtml())
+
+    // 일반 상세와 같은 일련번호 블록(가운데, pt-3 pb-[32px])이 카드 다음에 온다
+    expect(html).toContain('relative z-10 flex justify-center px-4 pt-3 pb-[32px]')
+    expect(html.indexOf('</h1>')).toBeLessThan(html.indexOf('pt-3 pb-[32px]'))
+    // 이름이 바뀌고 «잠김» 칩이 사라진다
+    expect(visibleText(html)).toContain('새벽의 첫 바퀴')
+    expect(visibleText(html)).not.toContain(d.lockedItem.detail.chip)
+    // 열린 뒤 등급은 열린 배지의 등급(Epic)이다
+    expect(html).toContain('Epic')
+  })
+
+  it('히어로를 일반 상세의 컴포넌트로 그린다 — 소스가 BadgeHeroSection을 가져온다', () => {
+    const src = sourceCode()
+
+    expect(src).toMatch(/import BadgeHeroSection from '..\/..\/badges\/\[id\]\/BadgeHeroSection'/)
+    expect(src).toContain('<BadgeHeroSection')
+    // 직접 그리던 칩·제목 마크업은 남지 않는다
+    expect(src).not.toContain('<RarityBadge')
+    expect(src).not.toContain('<h1')
+  })
+})
+
+describe('LockedItemDetail — 획득 경로 문구', () => {
+  const routeText = (overrides: Partial<LockedItemDetailProps>) => visibleText(render(overrides))
+
+  it('캡슐에서 나온 개체는 obtained_by가 drop이어도 «캡슐 열기 보상»이다', () => {
+    expect(routeText({ obtainedBy: 'drop', issueRoute: 'capsule' })).toContain(`${d.badges.earnRoute} 캡슐 열기 보상`)
+  })
+
+  it('활동 동기화로 받은 개체는 «활동 동기화 드랍», 픽업은 «체크인 픽업»이다', () => {
+    expect(routeText({ obtainedBy: 'drop', issueRoute: 'sync' })).toContain(`${d.badges.earnRoute} 활동 동기화 드랍`)
+    expect(routeText({ obtainedBy: 'drop' })).toContain(`${d.badges.earnRoute} 활동 동기화 드랍`)
+    expect(routeText({ obtainedBy: 'pickup' })).toContain(`${d.badges.earnRoute} 체크인 픽업`)
+  })
+
+  it('이벤트 드랍과 그 밖의 값은 «이벤트 드랍»·«시스템 지급»이고 이전의 «활동 드랍»은 쓰지 않는다', () => {
+    expect(routeText({ obtainedBy: 'drop_event' })).toContain(`${d.badges.earnRoute} 이벤트 드랍`)
+    expect(routeText({ obtainedBy: 'system_event' })).toContain(`${d.badges.earnRoute} 시스템 지급`)
+    expect(routeText({ obtainedBy: 'drop' })).not.toMatch(/활동 드랍/)
   })
 })

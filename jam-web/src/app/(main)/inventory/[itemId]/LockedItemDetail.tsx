@@ -4,19 +4,21 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ds/components/buttons/Button'
+import { Card } from '@ds/components/cards/Card'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
-import { PointText } from '@ds/components/patterns/PointText'
 import LocalDate from '@/components/LocalDate'
 import SafeImage from '@/components/SafeImage'
 import InlineNotice from '@/components/ui/InlineNotice'
+import { ListRow } from '@/components/ui/ListRow'
 import SwapText from '@/components/ui/SwapText'
 import TopNav from '@/components/ui/TopNav'
-import { MedalIcon } from '@/components/ui/icons'
+import { BookIcon, CoinIcon, MedalIcon } from '@/components/ui/icons'
+import BadgeHeroSection from '../../badges/[id]/BadgeHeroSection'
 import { useToast } from '@/components/ui/Toast'
 import { runLockedOpen, type LockedItemEffect } from '@/lib/inventory/lockedItemFill-flow'
+import { resolveObtainRoute, type ObtainRouteKey } from '@/lib/inventory/obtainRoute'
 import type { LockedItemOpenPayload, LockedItemRarity } from '@/lib/inventory/lockedItemFill-contract'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
@@ -31,7 +33,7 @@ import { tPoint } from '@/lib/i18n/tPoint'
  *    게이지·분수·막대처럼 모으는 양으로 읽히는 표현은 쓰지 않는다. 포인트는 내는 값이다.
  *  - 제자리 전환: 타일이 그림으로(크로스페이드, 그림은 scale .96 → 1), 제목과 설명은 `SwapText`, 포인트 블록은 높이와 투명도로 접힌다.
  *    «잠김» 칩은 사라지고 등급 칩은 그대로다. 열린 뒤에는 일련번호·컬렉션·트라이브·낸 포인트·받은 포인트와 «배지 상세 보기» 링크를 보여 준다(배지 상세를 다시 만들지 않는다).
- *    열기는 획득이 아니라서(운영 로직 7.2절) 낸 포인트와 배지 보상으로 받은 포인트를 두 줄로 나눈다.
+ *    열기는 획득이 아니라서(운영 로직 7.2절) 낸 포인트와 배지 보상으로 받은 포인트를 두 줄로 나눈다. 열기 문구에는 «획득»을 쓰지 않지만, 받은 일시·경로를 말하는 «획득 정보» 카드는 다른 배지 상세와 같은 «획득» 표현이다(2026-11-09 사용자 결정).
  *  - 열기 응답의 `item`이 null이면(열기는 확정, 정보 조회만 실패) 전환 없이 `router.refresh()`로 서버 페이지의 리다이렉트에 맡긴다.
  *  - 이용 정지(403)는 일반 실패가 아니라 info 토스트다. 버튼은 미리 막지 않고 서버 응답으로 판단한다.
  *  - 서버가 `insufficient_points`로 거절하면 응답의 두 값을 화면 상태에 바로 넣어 모자람 상태로 바꾸고, info 토스트 뒤 `router.refresh()`로 서버 값을 다시 읽는다.
@@ -49,36 +51,38 @@ export interface LockedItemDetailProps {
   /** 얻은 시각(ISO)과 경로 — 열기 전에도 보여 주는 값 */
   obtainedAt: string
   obtainedBy: string
+  /** 발급 기록(`item_issue_log.route`)의 경로. 캡슐에서 나온 개체를 활동 드랍과 가르는 값이다(없으면 `obtainedBy`로만 판단한다) */
+  issueRoute?: string | null
 }
 
-/** 얻은 경로 문구 */
-function obtainLabel(obtainedBy: string): string {
-  if (obtainedBy === 'drop') return d.inventory.obtainByDrop
-  if (obtainedBy === 'drop_event') return d.inventory.obtainByDropEvent
-  if (obtainedBy === 'pickup') return d.inventory.obtainByPickup
-  return d.inventory.obtainBySystem
+/** 획득 경로 문구 — 경로 키(`resolveObtainRoute`)마다 한 문구다 */
+const OBTAIN_ROUTE_LABEL: Record<ObtainRouteKey, string> = {
+  capsule: d.inventory.obtainByCapsule,
+  activity: d.inventory.obtainByDrop,
+  checkinPickup: d.inventory.obtainByPickup,
+  event: d.inventory.obtainByDropEvent,
+  system: d.inventory.obtainBySystem,
 }
 
-/** 큰 정사각 타일·그림의 한 변(px) */
-const HERO_SIZE_PX = 160
+/** 큰 정사각 타일·그림의 한 변(px) — 일반 배지 상세 카드의 대표 이미지(`BadgeHeroSection`)와 같은 200이다 */
+const HERO_SIZE_PX = 200
 
 /** 모션 — 토큰으로만 쓰고 reduced-motion이면 즉시 교체한다 */
 const CROSSFADE = 'transition-[opacity,transform] duration-[var(--duration-medium)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 const COLLAPSE = 'transition-[grid-template-rows,opacity] duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 
-/** 포인트 한 줄 — 라벨 옆에 바로 값을 붙인다. 값의 크기만 줄마다 다르다 */
-function PointRow({ label, value, strong }: { label: string; value: number; strong: boolean }) {
+/**
+ * 포인트 행의 서클 lead — 미션·배지 상세의 포인트 보상 행과 같은 서클이다(`--accent` 면 + `--accent-foreground` 코인 아이콘).
+ */
+function PointCircle() {
   return (
-    <div className="flex items-baseline gap-2 break-keep wrap-break-word">
-      <dt className="text-base text-foreground">{label}</dt>
-      <dd className={`m-0 whitespace-nowrap font-bold tabular-nums ${strong ? 'text-2xl' : 'text-base'}`}>
-        <PointText value={value} unit="" />
-      </dd>
-    </div>
+    <span className="flex h-full w-full items-center justify-center" style={{ background: 'var(--accent)' }}>
+      <CoinIcon className="h-5 w-5" style={{ color: 'var(--accent-foreground)' }} />
+    </span>
   )
 }
 
-export default function LockedItemDetail({ itemId, rarity, pointsRequired, pointBalance, obtainedAt, obtainedBy }: LockedItemDetailProps) {
+export default function LockedItemDetail({ itemId, rarity, pointsRequired, pointBalance, obtainedAt, obtainedBy, issueRoute = null }: LockedItemDetailProps) {
   const router = useRouter()
   const { toast } = useToast()
   /** 화면이 보여 주는 포인트 값 — 서버가 준 값에서 시작하고, `insufficient_points` 거절 응답이 바로 덮어쓴다 */
@@ -143,45 +147,61 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
       ? `${view.payload.serialPrefix}${String(view.payload.serialNumber).padStart(6, '0')}`
       : null
 
+  // 히어로 카드가 읽는 배지 값 — 일반 아이템 배지 상세(`BadgeHeroSection`)와 같은 카드를 쓴다. 이름·설명·칩·이미지는 아래 슬롯이 정하고
+  // 배경 값은 비운다(잠긴 상세는 배경 테마가 없다). 열기 전에는 가린 이름·등급만 들어간다.
+  const heroBadge = {
+    image_url: null,
+    name: title,
+    rarity: displayRarity,
+    description: '',
+    level: null,
+    background_color: null,
+    background_shader_id: null,
+    background_image_url: null,
+    background_animation: null,
+  }
+
   return (
     <div className="min-h-full text-foreground">
       <TopNav backHref="/inventory" />
 
-      <div className="flex flex-col gap-4 px-6 pb-10 pt-4">
-        {/* 히어로 — 이 화면에서 가운데 정렬은 타일 하나뿐이다. 타일과 그림이 같은 자리에서 크로스페이드한다 */}
-        <div className="relative mx-auto shrink-0" style={{ width: HERO_SIZE_PX, height: HERO_SIZE_PX }}>
-          <div className={`absolute inset-0 ${CROSSFADE} ${isOpened ? 'opacity-0' : 'opacity-100'}`}>
-            <LockedTile size={HERO_SIZE_PX} />
-          </div>
-          {view && (
-            <div className={`absolute inset-0 ${CROSSFADE} ${revealed ? 'scale-100 opacity-100' : 'scale-[0.96] opacity-0'}`}>
-              <SafeImage
-                src={view.item.imageUrl}
-                alt={view.item.name}
-                width={HERO_SIZE_PX}
-                height={HERO_SIZE_PX}
-                className="h-full w-full object-contain p-2"
-                fallback={<MedalIcon className="mx-auto h-16 w-16 text-muted" />}
-              />
+      {/* 일반 아이템 배지 상세와 같은 카드: 대표 이미지(타일 → 그림 크로스페이드), 등급 칩(+ «잠김» 칩), 이름, 설명이 한 카드에 있다 */}
+      <BadgeHeroSection
+        badge={heroBadge}
+        hasEarned
+        imageSlot={
+          <div className="relative shrink-0" style={{ width: HERO_SIZE_PX, height: HERO_SIZE_PX }}>
+            <div className={`absolute inset-0 ${CROSSFADE} ${isOpened ? 'opacity-0' : 'opacity-100'}`}>
+              <LockedTile size={HERO_SIZE_PX} />
             </div>
-          )}
+            {view && (
+              <div className={`absolute inset-0 ${CROSSFADE} ${revealed ? 'scale-100 opacity-100' : 'scale-[0.96] opacity-0'}`}>
+                <SafeImage
+                  src={view.item.imageUrl}
+                  alt={view.item.name}
+                  width={HERO_SIZE_PX}
+                  height={HERO_SIZE_PX}
+                  className="h-full w-full object-contain"
+                  fallback={<MedalIcon className="mx-auto h-16 w-16 text-muted" />}
+                />
+              </div>
+            )}
+          </div>
+        }
+        // 등급 칩은 열려도 그대로고, «잠김» 칩만 사라진다
+        chipExtra={isOpened ? undefined : <LabelChip>{d.lockedItem.detail.chip}</LabelChip>}
+        titleNode={<SwapText value={title} />}
+        descriptionNode={description !== '' ? <SwapText value={description} /> : undefined}
+      />
+
+      {/* 열린 뒤의 일련번호 — 일반 아이템 배지 상세와 같은 자리(카드 바로 아래, 가운데)와 간격이다 */}
+      {serialCode !== null && (
+        <div className="relative z-10 flex justify-center px-4 pt-3 pb-[32px]">
+          <ItemSerialCode code={serialCode} height={50} animate={false} />
         </div>
+      )}
 
-        {/* 등급 칩은 열려도 그대로고, «잠김» 칩만 사라진다 */}
-        <div className="flex items-center gap-2">
-          {displayRarity !== null && <RarityBadge rarity={displayRarity} size="md" />}
-          {!isOpened && <LabelChip>{d.lockedItem.detail.chip}</LabelChip>}
-        </div>
-
-        <h1 className="m-0 break-keep wrap-break-word text-balance text-2xl font-bold text-foreground">
-          <SwapText value={title} />
-        </h1>
-        {description !== '' && (
-          <p className="m-0 break-keep wrap-break-word text-balance text-base text-foreground">
-            <SwapText value={description} />
-          </p>
-        )}
-
+      <div className="relative z-10 flex flex-col gap-5 px-4 pb-6">
         {/* 포인트 블록 — 열리면 높이와 투명도로 접힌다. 필요 포인트를 모르면(null) 그리지 않는다 */}
         {required !== null && (
           <div
@@ -189,50 +209,69 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
             aria-hidden={isOpened || undefined}
           >
             <div className="overflow-hidden">
-              {required === 0 ? (
-                <p className="m-0 break-keep wrap-break-word text-balance text-base text-foreground">{d.lockedItem.detail.points.free}</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <dl className="m-0 flex flex-col gap-1">
-                    <PointRow label={d.lockedItem.detail.points.required} value={required} strong />
-                    <PointRow label={d.lockedItem.detail.points.balance} value={balance} strong={false} />
-                  </dl>
-                  {blocked && <InlineNotice>{tPoint(d.lockedItem.detail.points.shortage, { short: shortfall.toLocaleString('ko-KR') })}</InlineNotice>}
-                </div>
-              )}
+              <div className="flex flex-col gap-3">
+                {/* 필요 포인트 — 미션·배지 상세의 포인트 보상 행과 같은 모양(tint 행 + 서클 + «N 포인트»)이다(2026-11-09 사용자 지시) */}
+                {required === 0 ? (
+                  <ListRow tone="tint" leadShape="round" lead={<PointCircle />} title={d.lockedItem.detail.points.free} />
+                ) : (
+                  <ListRow
+                    tone="tint"
+                    leadShape="round"
+                    lead={<PointCircle />}
+                    title={tPoint(d.lockedItem.detail.points.requiredLine, { points: required.toLocaleString('ko-KR') })}
+                    meta={t(d.lockedItem.detail.points.balanceLine, { balance: balance.toLocaleString('ko-KR') })}
+                  />
+                )}
+                {blocked && <InlineNotice>{tPoint(d.lockedItem.detail.points.shortage, { short: shortfall.toLocaleString('ko-KR') })}</InlineNotice>}
+              </div>
             </div>
           </div>
         )}
 
+        {/* 획득 정보 — 다른 배지 상세와 같은 카드: 제목 한 줄 + 라벨·값 행(획득 일시, 획득 경로) */}
+        <Card>
+          <p className="mb-1 text-base font-bold text-foreground">{d.badges.earnInfoTitle}</p>
+          <div className="flex flex-col -mb-3">
+            <ListRow
+              tone="flat"
+              titleVariant="label"
+              titleLines={0}
+              title={d.badges.earnedAt}
+              value={<LocalDate iso={obtainedAt} korean={{ year: true, time: true }} />}
+            />
+            <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.earnRoute} value={OBTAIN_ROUTE_LABEL[resolveObtainRoute(obtainedBy, issueRoute)]} />
+          </div>
+        </Card>
+
         {view ? (
-          <div className="flex flex-col gap-3">
-            {serialCode !== null && (
-              <div className="flex justify-start">
-                <ItemSerialCode code={serialCode} height={50} animate={false} />
-              </div>
-            )}
+          <div className="flex flex-col gap-5">
+            {/* 속한 컬렉션 — 일반 상세와 같은 행(타일 lead + 이름 + 쉐브론, 컬렉션 상세로 연결) */}
             {view.item.collection && (
-              <p className="m-0 break-keep wrap-break-word text-base text-foreground">{t(d.lockedItem.detail.opened.collection, { name: view.item.collection.name })}</p>
+              <ListRow
+                href={`/collections/${view.item.collection.id}`}
+                leadShape="tile"
+                lead={<BookIcon className="h-5 w-5 text-foreground" />}
+                title={view.item.collection.name}
+                chevron
+              />
             )}
-            {view.item.tribe && (
-              <p className="m-0 break-keep wrap-break-word text-base text-foreground">{t(d.lockedItem.detail.opened.tribe, { name: view.item.tribe.name })}</p>
-            )}
-            {view.payload.pointsSpent > 0 && (
-              <p className="m-0 break-keep wrap-break-word text-base text-foreground">
-                {tPoint(d.lockedItem.detail.opened.spent, { points: view.payload.pointsSpent.toLocaleString('ko-KR') })}
-              </p>
-            )}
-            {view.payload.pointsAwarded > 0 && (
-              <p className="m-0 break-keep wrap-break-word text-base text-foreground">
-                {tPoint(d.lockedItem.detail.opened.points, { points: view.payload.pointsAwarded.toLocaleString('ko-KR') })}
-              </p>
-            )}
+            <div className="flex flex-col gap-3">
+              {view.item.tribe && (
+                <p className="m-0 break-keep wrap-break-word text-base text-foreground">{t(d.lockedItem.detail.opened.tribe, { name: view.item.tribe.name })}</p>
+              )}
+              {view.payload.pointsSpent > 0 && (
+                <p className="m-0 break-keep wrap-break-word text-base text-foreground">
+                  {tPoint(d.lockedItem.detail.opened.spent, { points: view.payload.pointsSpent.toLocaleString('ko-KR') })}
+                </p>
+              )}
+              {view.payload.pointsAwarded > 0 && (
+                <p className="m-0 break-keep wrap-break-word text-base text-foreground">
+                  {tPoint(d.lockedItem.detail.opened.points, { points: view.payload.pointsAwarded.toLocaleString('ko-KR') })}
+                </p>
+              )}
+            </div>
           </div>
         ) : null}
-
-        <p className="m-0 break-keep wrap-break-word text-sm text-foreground">
-          {d.lockedItem.detail.obtainedAt} <LocalDate iso={obtainedAt} korean={{ year: true }} /> · {obtainLabel(obtainedBy)}
-        </p>
 
         {view ? (
           <Link

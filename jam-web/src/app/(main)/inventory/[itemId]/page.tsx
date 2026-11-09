@@ -55,6 +55,18 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
       if (badgeError) throw new Error(`badges 조회 실패: ${badgeError.message}`)
       const rarity = (badgeRow as { rarity: LockedItemRarity | null } | null)?.rarity ?? null
 
+      // 받은 경로 — 캡슐에서 나온 개체는 `obtained_by`가 활동 드랍과 같은 `drop`이라, 발급 기록의 경로(`item_issue_log.route`)로 가른다.
+      // 경로 값 하나만 읽고 배지 id·이름은 읽지 않는다. 조회가 실패해도 화면은 `obtained_by`만으로 그린다(경로 줄의 정확도만 낮아진다).
+      const { data: issueRow, error: issueError } = await service
+        .from('item_issue_log')
+        .select('route')
+        .eq('inventory_item_id', itemId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (issueError) console.error('[inventory/[itemId]] item_issue_log(받은 경로) 조회 실패', issueError)
+      const issueRoute = (issueRow as { route: string } | null)?.route ?? null
+
       return (
         <LockedItemDetail
           // 서버 값이 바뀌면(열기 거절 뒤 새로 읽기) 클라이언트 상태를 새 값에서 다시 시작한다
@@ -65,6 +77,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
           pointBalance={status.pointBalance}
           obtainedAt={itemData.obtained_at}
           obtainedBy={itemData.obtained_by}
+          issueRoute={issueRoute}
         />
       )
     }

@@ -19,6 +19,9 @@ const state = vi.hoisted(() => ({
   inventoryCheck: { id: 'inv-1' } as Row,
   badge: { rarity: 'epic' } as Row,
   badgeError: null as { message: string } | null,
+  /** 발급 기록(`item_issue_log`)의 첫 행 — 받은 경로 */
+  issue: null as Row,
+  issueError: null as { message: string } | null,
   status: null as unknown,
   statusError: null as unknown,
   detailProps: null as unknown,
@@ -37,11 +40,16 @@ vi.mock('@/lib/supabase/server', () => ({
     },
   }),
   createServiceClient: () => ({
-    from: () => {
+    from: (table: string) => {
       const builder = {
         select: () => builder,
         eq: () => builder,
-        maybeSingle: async () => ({ data: state.badge, error: state.badgeError }),
+        order: () => builder,
+        limit: () => builder,
+        maybeSingle: async () =>
+          table === 'item_issue_log'
+            ? { data: state.issue, error: state.issueError }
+            : { data: state.badge, error: state.badgeError },
       }
       return builder
     },
@@ -107,6 +115,8 @@ beforeEach(() => {
   state.inventoryCheck = { id: 'inv-1' }
   state.badge = { rarity: 'epic' }
   state.badgeError = null
+  state.issue = null
+  state.issueError = null
   state.status = LOCKED_STATUS
   state.statusError = null
   state.detailProps = null
@@ -132,7 +142,30 @@ describe('인벤토리 개체 페이지 — 잠긴 개체', () => {
     for (const secret of [BADGE_ID, 'badge_id', 'badgeId', '4242', 'ZZZZ', '새어 나가면 안 되는 이름', 'imageUrl', 'description']) {
       expect(serialized, `props에 ${secret}이 실렸다`).not.toContain(secret)
     }
-    expect(Object.keys(element.props).sort()).toEqual(['itemId', 'obtainedAt', 'obtainedBy', 'pointBalance', 'pointsRequired', 'rarity'])
+    expect(Object.keys(element.props).sort()).toEqual(['issueRoute', 'itemId', 'obtainedAt', 'obtainedBy', 'pointBalance', 'pointsRequired', 'rarity'])
+  })
+
+  it('발급 기록의 경로(받은 경로 줄용)를 한 값만 내려보낸다 — 캡슐 개체를 활동 드랍과 가르는 값이다', async () => {
+    state.item = lockedRow({ obtained_by: 'drop' })
+    state.issue = { route: 'capsule' }
+
+    const element = (await render()) as { props: Record<string, unknown> }
+
+    expect(element.props.issueRoute).toBe('capsule')
+    expect(element.props.obtainedBy).toBe('drop')
+  })
+
+  it('발급 기록이 없으면 issueRoute는 null이고, 조회가 실패해도 화면은 그려진다', async () => {
+    state.item = lockedRow()
+    state.issue = null
+    expect(((await render()) as { props: Record<string, unknown> }).props.issueRoute).toBeNull()
+
+    state.issueError = { message: 'boom' }
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const element = (await render()) as { props: Record<string, unknown> }
+    expect(element.props.issueRoute).toBeNull()
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 
   it('잼 값(필요한 잼·채운 양·가진 잼)은 상세 props에 싣지 않는다', async () => {

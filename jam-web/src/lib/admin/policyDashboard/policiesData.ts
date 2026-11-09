@@ -707,7 +707,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     dbColumn: 'locked_points_*',
     codeLocation: 'jam-web/src/lib/inventory/lockedItemFill.ts',
     userExperience:
-      '잠긴 배지를 열 때 등급에 따라 정해진 포인트를 내요. 잠긴 배지 화면에는 필요 포인트와 가진 포인트가 보이고, 포인트가 모자라면 안내와 함께 열기 버튼이 막혀서 열리지 않아요. 퀘스트 전에 처음 받은 잠긴 배지는 포인트 없이 열려요.',
+      '잠긴 배지를 열 때 등급에 따라 정해진 포인트를 내요. 잠긴 배지 화면에는 필요 포인트와 보유 포인트가 보이고, 포인트가 모자라면 안내와 함께 열기 버튼이 막혀서 열리지 않아요. 퀘스트 전에 처음 받은 잠긴 배지는 포인트 없이 열려요.',
     basisDoc: '운영 로직 7.2절, 7.4절, 14.1절',
     ticketId: '20261028_1737',
     adminLink: {
