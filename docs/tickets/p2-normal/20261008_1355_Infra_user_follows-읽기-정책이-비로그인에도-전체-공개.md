@@ -53,7 +53,7 @@ jam-web/supabase/migrations/333_user_follows_select_authenticated_only_down.sql 
 
 ### 주요 의사결정 / 핵심 메모
 - 공용 DB라 실행 즉시 프로덕션에 반영됐다. 되돌림은 위 `_down` 파일이다.
-- 팔로우한 사람 수·팔로워 수를 세는 서버 코드(랭킹, 배지, 알림, 오늘의 현황)는 서버 키로 읽는지 로그인 세션 키로 읽는지를 하나씩 확인하지 않았다. 로그인 세션으로 읽는 곳은 영향이 없고, 비로그인 상태로 읽는 곳이 있으면 비게 된다.
+- 팔로우 수를 세는 서버 코드 중 랭킹(`rankingDataSource`)·오늘의 현황(`status.ts`)·사용 배지(`usageBadges.ts`)는 서버 키(`createServiceClient`)를 써서 이 정책과 무관하다. 알림 묶음(`notifications/batch/following.ts`)은 키 종류를 확인하지 못했다.
 
 ### 잔여 이슈
-- 비로그인 상태로 이 표를 읽는 코드가 있는지(예: 예약 작업이 anon 키를 쓰는 경우)는 후속 점검 대상이다.
+- `notifications/batch/following.ts`가 비로그인 키로 읽는지 확인하지 않았다(예약 작업이면 서버 키일 가능성이 높다).
