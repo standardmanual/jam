@@ -100,7 +100,7 @@ describe('공개 전 — brief (재료 수와 공개일만)', () => {
     expect(html).toContain(flask)
     expect(html).toContain('레시피 공개')
     expect(html).toContain('>새 레시피가 열려요</h3>')
-    expect(factTexts(html, 'text-muted')).toEqual(['재료 4개', '공개 10월 12일'])
+    expect(factTexts(html, 'font-bold')).toEqual(['재료 4개', '공개 10월 12일'])
     expect(html).toContain('›')
     // 카드 전체가 믹스 화면으로 가는 링크 하나다
     expect(html).toContain('href="/combine"')
@@ -147,9 +147,9 @@ describe('공개 뒤 — list 타일형', () => {
     expect(html).toContain(flask)
   })
 
-  it('정보 줄은 「재료 4개」·「보상 300 포인트 · 배지 1개」이고 「전체 보기」 끝 줄이 있다', () => {
-    expect(factTexts(html, 'font-bold')).toEqual(['재료 4개', '보상 300 포인트 · 배지 1개'])
-    expect(html).toContain('전체 보기')
+  it('정보 줄은 「재료 4개」·「300 포인트 · 배지 1개」이고 끝 줄은 없다(티켓 20261109_1458)', () => {
+    expect(factTexts(html, 'font-bold')).toEqual(['재료 4개', '300 포인트 · 배지 1개'])
+    expect(html).not.toContain('전체 보기')
     expect(html).toContain('href="/combine"')
   })
 
@@ -166,11 +166,11 @@ describe('공개 뒤 — list 타일형', () => {
 })
 
 describe('공개 뒤 — poster·hero·square', () => {
-  it.each(['poster', 'hero', 'square'] as const)('%s: 타일 줄 없이 정보 줄만 「재료 N개」·「보상 …」이다', (shape) => {
+  it.each(['poster', 'hero', 'square'] as const)('%s: 타일 줄 없이 정보 줄만 「재료 N개」·「300 포인트 …」이다', (shape) => {
     const html = draw(makeCard({ shape, cover_image_url: 'https://cdn.example/c.png', resolved_recipe: released([badge('a'), badge('b')]) }))
     expect(html).not.toContain('<ul')
     expect(html).toContain('재료 2개')
-    expect(unpaint(html)).toContain('보상 300 포인트 · 배지 1개')
+    expect(unpaint(html)).toContain('300 포인트 · 배지 1개')
     // 사진 위 막 카드(poster)는 흰 글자를 유지하고, 흰 면 위 카드(hero·square)만 포인트 조각을 칠한다
     if (shape === 'poster') expect(html).not.toContain('text-point-text')
     else expect(html).toContain('>300 포인트</span>')

@@ -47,7 +47,7 @@ function tilesView(overrides: Partial<ListCardView> = {}): ListCardView {
     title: '성수동 배지 모음',
     label: '배지 소개',
     subtitle: '성수동 골목을 걸으면 얻을 수 있어요',
-    facts: ['기간 상시', '보상 배지 3개'],
+    facts: ['상시', '배지 3개'],
     description: '설명문입니다',
     href: '/badges',
     tiles: [tile('성수동 탐험가'), tile('한강 러너'), tile('뚝섬 지킴이')],
@@ -133,10 +133,10 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
     for (const needle of ['jam-press', 'hover:', 'active:', 'transition']) expect(html).not.toContain(needle)
   })
 
-  it('칩 줄 → 제목 → 요약 → 필수 정보 → 설명문 → 타일 줄 → 끝 줄 순서다', () => {
+  it('칩 줄 → 제목 → 요약 → 필수 정보 → 설명문 → 타일 줄 순서다', () => {
     const html = render(tilesView())
     expectOrdered(
-      positionsInOrder(html, ['padding:6px 10px', '<h3', '성수동 골목을 걸으면', '기간 상시', '보상 배지 3개', '설명문입니다', '<ul', '전체 보기']),
+      positionsInOrder(html, ['padding:6px 10px', '<h3', '성수동 골목을 걸으면', '상시', '배지 3개', '설명문입니다', '<ul']),
     )
   })
 
@@ -155,7 +155,6 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
     expect(html).not.toContain('font-bold')
     expect(html).not.toContain('mt-1 text-base')
     expect(html).not.toContain('line-clamp-3 break-keep break-words">설명문')
-    expect(html).not.toContain('전체 보기')
   })
 
   it('titleInImage가 true여도 제목을 숨기지 않는다(이미지 칸이 없다)', () => {
@@ -264,10 +263,13 @@ describe('ListCard 타일형 — 타일 줄', () => {
   })
 })
 
-describe('ListCard 타일형 — 끝 줄과 링크·계측', () => {
-  it('href가 있을 때만 「전체 보기 →」이고 화살표는 aria-hidden이다', () => {
-    expect(render(tilesView())).toContain('전체 보기 <span aria-hidden="true">→</span>')
-    expect(render(tilesView({ href: undefined }))).not.toContain('전체 보기')
+describe('ListCard 타일형 — 끝 줄 없음과 링크·계측', () => {
+  it('href가 있어도 없어도 「전체 보기 →」를 그리지 않는다(티켓 20261109_1458)', () => {
+    for (const view of [tilesView(), tilesView({ href: undefined })]) {
+      const html = render(view)
+      expect(html).not.toContain('전체 보기')
+      expect(html).not.toContain('→')
+    }
   })
 
   it('링크가 있으면 카드 전체가 링크 하나이고 눌림도 하나다(클릭도 기록한다)', () => {
@@ -279,12 +281,12 @@ describe('ListCard 타일형 — 끝 줄과 링크·계측', () => {
     expect(html).toContain('href="/badges"')
   })
 
-  it('미리보기(tracking 없음)는 링크·트래커·눌림이 0개이고 href가 있으면 끝 줄만 보인다', () => {
+  it('미리보기(tracking 없음)는 링크·트래커·눌림이 0개다', () => {
     const html = render(tilesView())
     expect(anchors(html)).toBe(0)
     expect(html).not.toContain('data-tracker')
     expect(pressCount(html)).toBe(0)
-    expect(html).toContain('전체 보기')
+    expect(html).not.toContain('전체 보기')
   })
 })
 

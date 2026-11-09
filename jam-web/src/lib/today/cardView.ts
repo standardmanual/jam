@@ -21,6 +21,7 @@ import {
   resolveShape,
   resolveTitleInImage,
   resourceOfTemplate,
+  showsDescription,
   type CardResource,
   type CardShape,
   type ImageCardShape,
@@ -322,7 +323,8 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   if (regionLabel) base.regionLabel = regionLabel
   const subtitle = nonBlank(card.subtitle)
   if (subtitle) base.subtitle = subtitle
-  const description = nonBlank(card.description)
+  // 설명 문단은 배지 소개·컨텐츠 소개에서만 그린다(티켓 20261109_1458). 다른 템플릿은 값이 있어도 표시 데이터에 싣지 않는다
+  const description = showsDescription(card.template_type) ? nonBlank(card.description) : null
   if (description) base.description = description
   if (facts.length > 0) base.facts = facts
   if (card.resolved_href) base.href = card.resolved_href

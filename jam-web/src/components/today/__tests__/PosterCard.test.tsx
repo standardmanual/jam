@@ -192,13 +192,12 @@ describe('PosterCard — 막 위 글자 배치', () => {
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
 
-  it('필수 정보는 14px(--text-sm) snow·보통 굵기이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
+  it('필수 정보는 14px(--text-sm) snow·굵게이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
     const lines = [...scrimInnerOf(html).matchAll(/<p class="([^"]*)">([^<]*)<\/p>/g)]
     expect(lines.map((m) => m[2])).toEqual(['한강 컬렉션', '아이템 12개'])
     for (const [, className] of lines) {
-      expect(className).toBe('text-sm text-snow break-keep break-words')
-      expect(className).not.toContain('font-bold')
+      expect(className).toBe('text-sm font-bold text-snow break-keep break-words')
       expect(className).not.toContain('line-clamp')
       expect(className).not.toContain('truncate')
       // 서비스에서 --text-base은 16px이라 14px 자리에 쓰면 크기가 틀린다
@@ -254,7 +253,7 @@ describe('PosterCard — 막 위 글자 배치', () => {
   })
 
   it('드랍은 지역 값이 있어도 칩 줄에 핀을 그리지 않는다(필수 정보 「지역」 줄이 같은 값을 낸다)', () => {
-    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['지역 한강공원'] })
+    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['한강공원'] })
     expect(html).not.toContain('truncate')
     expect(html.match(/한강공원/g)).toHaveLength(1)
   })

@@ -26,7 +26,7 @@ function makeView(overrides: Partial<BriefCardView> = {}): BriefCardView {
     resource: 'mission',
     title: '한강 러닝 챌린지',
     label: '미션',
-    facts: ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'],
+    facts: ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'],
     href: '/missions/m1',
     ...overrides,
   }
@@ -53,8 +53,9 @@ describe('BriefCard — 면(표면)', () => {
   it('흰 카드(기본 톤, 흰 면, 외곽선 없음)이고 최소 높이 88px·세로 가운데 정렬이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
     const html = render()
     expect(html).toContain('min-h-[88px] flex flex-col justify-center')
-    // 가로 배치는 윗줄 div로 옮겼다
-    expect(html).toContain('<div class="flex items-center gap-3">')
+    // 가로 배치는 윗줄 div로 옮겼다. 썸네일·본문·›은 위 기준으로 정렬한다(티켓 20261109_1458)
+    expect(html).toContain('<div class="flex items-start gap-3">')
+    expect(html).not.toContain('<div class="flex items-center gap-3">')
     expect(html).toContain('background:var(--card-bg)')
     expect(html).not.toContain('border:')
     expect(html).not.toContain('--background-inverse')
@@ -85,24 +86,24 @@ describe('BriefCard — 면(표면)', () => {
 
 describe('BriefCard — 필수 정보', () => {
   it.each([[0], [1], [2]])('%i줄이면 그 수만큼 한 줄에 하나씩 그린다', (count) => {
-    const facts = ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'].slice(0, count)
+    const facts = ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'].slice(0, count)
     const lines = factParagraphs(render({ facts }))
     expect(lines.map((l) => l.text)).toEqual(facts)
   })
 
   it('필수 정보 속 «N 포인트» 조각만 point-text 오렌지로 칠한다', () => {
     const html = render()
-    expect(html).toContain('보상 <span class="text-point-text"')
+    expect(html).toContain('<span class="text-point-text"')
     expect(html).toContain('>300 포인트</span> · 배지 1개</p>')
     expect(html.match(/text-point-text/g)).toHaveLength(1)
   })
 
-  it('14px(--text-sm)·옅은 글자 text-muted이고 말줄임 없이 줄바꿈한다(line-clamp·truncate 없음)', () => {
+  it('14px(--text-sm)·굵게 text-foreground(본문색)이고 말줄임 없이 줄바꿈한다(line-clamp·truncate 없음)', () => {
     const lines = factParagraphs(render())
     expect(lines).toHaveLength(2)
     for (const line of lines) {
       expect(line.className).toBe(
-        'text-sm text-muted break-keep break-words',
+        'text-sm font-bold text-foreground break-keep break-words',
       )
       expect(line.className).not.toContain('line-clamp')
       expect(line.className).not.toContain('truncate')
@@ -156,7 +157,7 @@ describe('BriefCard — 칩 줄', () => {
   })
 
   it('드랍은 지역 핀을 칩 줄에 그리지 않는다(필수 정보 「지역 ○○」 줄이 같은 값을 낸다)', () => {
-    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['지역 한강공원'] })
+    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['한강공원'] })
     expect(html).not.toContain('truncate')
     expect(html.match(/한강공원/g)).toHaveLength(1)
   })

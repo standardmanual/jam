@@ -180,7 +180,7 @@ const meta: Meta<typeof TodayCard> = {
         component:
           '홈 「투데이」의 큰 이미지 모양(`hero`) — 티켓 20261001_1737(상위 20260930_1453 조각 b3). 위는 16:9 이미지 칸, 아래는 흰 본문이다: ' +
           '칩 줄(라벨 · 지역 핀 · 희귀도 · 기사는 줄 끝 게재일) · 제목 24px(2줄 말줄임) · 요약 16px · 필수 정보 14px 굵게(최대 2줄, 말줄임 없이 줄바꿈) · ' +
-          '설명문 14px(3줄 말줄임) · 끝 줄 「자세히 보기 →」(기사는 「기사 읽기 →」). 이미지가 없거나 깨져도 같은 16:9 칸에 자원 아이콘 판을 그려 높이가 같다. ' +
+          '설명문 14px(3줄 말줄임, 배지 소개·컨텐츠 소개만). 끝 줄은 없다. 이미지가 없거나 깨져도 같은 16:9 칸에 자원 아이콘 판을 그려 높이가 같다. ' +
           '서비스 전용 컴포넌트라 MODULAR이 아니다(`TodayCard`가 모양을 고르고 `CardFrame`이 링크·계측·눌림·포커스를 맡는다).',
       },
     },
@@ -197,7 +197,7 @@ export const ByResource: Story = {
   name: '자원별 대표 — 기사 · 미션 · 컬렉션 · 배지(컬러·흑백) · 드랍',
   render: () => (
     <Column width={W360}>
-      <Case caption="기사 — 칩 줄 끝 게재일 · 끝 줄 「기사 읽기 →」" view={ARTICLE} />
+      <Case caption="기사 — 칩 줄 끝 게재일" view={ARTICLE} />
       <Case caption="미션 — 필수 정보 2줄" view={MISSION} />
       <Case caption="컬렉션 — 이름 · 아이템 수" view={COLLECTION} />
       <Case caption="JAM! 배지 — 그림 승격(컬러) · 희귀도 칩 · 1:1 PNG가 16:9로 잘림" view={BADGE_PROMOTED} />
@@ -210,7 +210,7 @@ export const ByResource: Story = {
     expectSixteenByNine(canvasElement)
     const [article, , , , dimmed, drop] = cardsOf(canvasElement)
     expect(article.textContent).toContain('10월 5일')
-    expect(article.textContent).toContain(d.today.cardReadArticle)
+    expect(article.textContent).not.toContain('기사 읽기')
     // 흑백은 이미지에만 걸린다
     expect(dimmed.querySelectorAll('.grayscale')).toHaveLength(1)
     expect(dimmed.querySelector('.grayscale')?.tagName).toBe('IMG')
@@ -463,19 +463,19 @@ export const Tracked: Story = {
 
 /** 계측 정보가 없으면(운영툴 미리보기) 링크·트래커·눌림이 없다. `href`가 있으면 끝 줄만 보이고, 없으면 끝 줄도 없다. */
 export const Untracked: Story = {
-  name: '계측 없음(미리보기) — 링크 없음, href 있으면 끝 줄만 보임, href 없으면 끝 줄도 없음',
+  name: '계측 없음(미리보기) — 링크 없음, 끝 줄은 href와 상관없이 없음',
   render: () => (
     <Column width={W360}>
-      <Case caption="① href 있음 — 끝 줄 보임, 링크 없음" view={{ ...MISSION, href: '/missions/m1' }} />
-      <Case caption="② href 없음 — 끝 줄도 없음" view={{ ...MISSION, href: undefined }} />
+      <Case caption="① href 있음 — 끝 줄 없음, 링크 없음" view={{ ...MISSION, href: '/missions/m1' }} />
+      <Case caption="② href 없음 — 끝 줄 없음" view={{ ...MISSION, href: undefined }} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
     expect(canvasElement.querySelectorAll('a')).toHaveLength(0)
     expect(canvasElement.querySelectorAll('.jam-press')).toHaveLength(0)
     const [withHref, withoutHref] = cardsOf(canvasElement)
-    expect(withHref.textContent).toContain(d.today.cardReadMore)
-    expect(withoutHref.textContent).not.toContain(d.today.cardReadMore)
+    expect(withHref.textContent).not.toContain('자세히 보기')
+    expect(withoutHref.textContent).not.toContain('자세히 보기')
     expect(withoutHref.textContent).not.toContain('→')
   },
 }

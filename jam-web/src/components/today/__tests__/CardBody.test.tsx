@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { CardBody, CardDescription, CardEndLine, CardFacts, CardTitleGroup } from '../CardBody'
+import { CardBody, CardDescription, CardFacts, CardTitleGroup } from '../CardBody'
 import HeroCard from '../HeroCard'
 import ListCard from '../ListCard'
 import SquareCard from '../SquareCard'
@@ -55,10 +55,10 @@ const unpaint = (html: string) => html.replace(/<span class="text-point-text"[^>
 
 describe('CardFacts — 필수 정보', () => {
   it('한 줄에 하나씩 14px(--text-sm) 굵게 text-foreground이고 말줄임 없이 줄바꿈한다', () => {
-    const html = renderToStaticMarkup(<CardFacts facts={['기간 상시', '보상 300 포인트']} />)
-    expect(unpaint(html)).toBe(`<div><p class="${FACT_CLASS}">기간 상시</p><p class="${FACT_CLASS}">보상 300 포인트</p></div>`)
+    const html = renderToStaticMarkup(<CardFacts facts={['상시', '300 포인트']} />)
+    expect(unpaint(html)).toBe(`<div><p class="${FACT_CLASS}">상시</p><p class="${FACT_CLASS}">300 포인트</p></div>`)
     // «N 포인트» 조각만 point-text 오렌지이고 앞 글자는 그대로다
-    expect(html).toContain(`보상 <span class="text-point-text" style="white-space:nowrap;color:var(--point-text)">300 포인트</span></p>`)
+    expect(html).toContain(`<span class="text-point-text" style="white-space:nowrap;color:var(--point-text)">300 포인트</span></p>`)
     for (const needle of ['text-muted', 'line-clamp', 'truncate', 'body-sm']) expect(html).not.toContain(needle)
   })
 
@@ -87,14 +87,6 @@ describe('CardDescription — 설명문', () => {
   })
 })
 
-describe('CardEndLine — 끝 줄', () => {
-  it('라벨은 호출부가 주고 12px·text-muted이며 화살표는 aria-hidden이다', () => {
-    expect(renderToStaticMarkup(<CardEndLine label="전체 보기" />)).toBe(
-      '<p class="text-xs text-muted">전체 보기 <span aria-hidden="true">→</span></p>',
-    )
-  })
-})
-
 describe('hero·square·list가 같은 조각을 쓴다 — 같은 입력이면 같은 제목 그룹·필수 정보 HTML', () => {
   type Shape = 'hero' | 'square' | 'list'
   /** 세 모양이 함께 읽는 표시 데이터 값 */
@@ -113,7 +105,7 @@ describe('hero·square·list가 같은 조각을 쓴다 — 같은 입력이면 
     title: '한강 러닝 챌린지',
     label: '미션',
     subtitle: '이번 주말 같이 달려요',
-    facts: ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'],
+    facts: ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'],
     description: '설명문입니다',
     href: '/missions/m1',
   }

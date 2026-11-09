@@ -110,12 +110,12 @@ function expectOnlyFrame(html: string, frame: string) {
 }
 
 describe('TodayCardStack — shape가 NULL인 옛 카드는 대응표대로 새 모양이 된다 (1453 확정 설계 6절)', () => {
-  it('large_thumbnail은 hero다(링크 하나·눌림 하나·끝 줄)', () => {
+  it('large_thumbnail은 hero다(링크 하나·눌림 하나·끝 줄 없음)', () => {
     const html = render([makeCard({ layout_type: 'large_thumbnail' })])
     expectOnlyFrame(html, HERO_FRAME)
     expect(html).toContain(CARD_LINK)
     expect(html).toContain('href="/badges"')
-    expect(html).toContain('자세히 보기')
+    expect(html).not.toContain('자세히 보기')
     expect(html.match(/jam-press/g)).toHaveLength(1)
   })
 
@@ -150,11 +150,11 @@ describe('TodayCardStack — shape가 NULL인 옛 카드는 대응표대로 새 
     }
   })
 
-  it('badge_gallery는 list 타일형이다(배지가 있으면 타일 줄과 「전체 보기」, 없으면 brief)', () => {
+  it('badge_gallery는 list 타일형이다(배지가 있으면 타일 줄, 없으면 brief. 끝 줄 없음)', () => {
     const html = render([makeCard({ layout_type: 'badge_gallery', badge_ids: ['a', 'b'], resolved_badges: [badge('a'), badge('b')] })])
     expectOnlyFrame(html, TILE_LIST)
     expect(html).toContain('배지 a')
-    expect(html).toContain('전체 보기')
+    expect(html).not.toContain('전체 보기')
     expectOnlyFrame(render([makeCard({ layout_type: 'badge_gallery' })]), BRIEF_FRAME)
   })
 
@@ -165,7 +165,7 @@ describe('TodayCardStack — shape가 NULL인 옛 카드는 대응표대로 새 
     for (const frame of [BRIEF_FRAME, HERO_FRAME, POSTER_FRAME, SQUARE_FRAME]) expect(html).not.toContain(frame)
   })
 
-  it('기사는 레이아웃과 상관없이 hero이고 기사 화면으로 이동한다(「기사 읽기」·게재일)', () => {
+  it('기사는 레이아웃과 상관없이 hero이고 기사 화면으로 이동한다(게재일, 「기사 읽기」 끝 줄 없음)', () => {
     const html = render([
       makeCard({
         layout_type: 'other',
@@ -176,7 +176,7 @@ describe('TodayCardStack — shape가 NULL인 옛 카드는 대응표대로 새 
     ])
     expectOnlyFrame(html, HERO_FRAME)
     expect(html).toContain('href="/today/card-1"')
-    expect(html).toContain('기사 읽기')
+    expect(html).not.toContain('기사 읽기')
     expect(html).toContain('>10월 5일</time>')
   })
 

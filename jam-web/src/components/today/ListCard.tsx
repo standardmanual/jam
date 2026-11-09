@@ -5,7 +5,7 @@ import { formatRankingMetricValue } from '@/lib/ranking/format'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import type { ListCardView } from '@/lib/today/cardView'
 import { isRankingRows } from '@/lib/today/shape'
-import { CardBody, CardDescription, CardEndLine, CardFacts, CardTitleGroup } from './CardBody'
+import { CardBody, CardDescription, CardFacts, CardTitleGroup } from './CardBody'
 import CardChipRow from './CardChipRow'
 import { CardLink } from './CardFrame'
 import CardThumb from './CardThumb'
@@ -64,9 +64,6 @@ function ListTiles({ view }: { view: ListCardView }) {
           </ul>
         </div>
       )}
-
-      {/* 끝 줄 — 링크가 없는 카드(`href` 없음)는 말하지 않는다. 미리보기도 링크만 없을 뿐 `href`가 있으면 보인다 */}
-      {view.href && <CardEndLine label={d.today.cardViewAll} />}
     </CardBody>
   )
 }

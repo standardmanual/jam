@@ -20,7 +20,7 @@ function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
     title: '한강 러닝 챌린지',
     label: '미션',
     subtitle: '이번 주말 같이 달려요',
-    facts: ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'],
+    facts: ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'],
     description: '한강공원 코스를 달리면 보상을 드려요',
     href: '/missions/m1',
     imageUrl: IMAGE,
@@ -140,7 +140,7 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     expect(nudge).not.toContain(pin)
   })
 
-  it('컨텐츠 소개 카드는 이미지가 없으면 모래시계가 아니라 정보 아이콘이고, 끝 줄은 「자세히 보기」다(티켓 20261101_2054)', () => {
+  it('컨텐츠 소개 카드는 이미지가 없으면 모래시계가 아니라 정보 아이콘이고, 끝 줄은 없다(티켓 20261101_2054, 20261109_1458)', () => {
     const info = iconMarkup({ resource: 'auto', template: 'content_intro' }, 'w-8 h-8 text-muted')
     const hourglass = iconMarkup({ resource: 'auto', template: 'progress_nudge' }, 'w-8 h-8 text-muted')
     expect(info).not.toBe(hourglass)
@@ -149,7 +149,7 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     expect(html).toContain(info)
     expect(html).not.toContain(hourglass)
     expect(html).toContain('소개')
-    expect(html).toContain('자세히 보기')
+    expect(html).not.toContain('자세히 보기')
     expect(html).not.toContain('기사 읽기')
   })
 
@@ -185,7 +185,7 @@ describe('HeroCard — titleInImage', () => {
     // 제목은 이미지 alt에만 있다
     expect(html.match(/한강 러닝 챌린지/g)).toHaveLength(1)
     const chipRow = html.indexOf('>미션</span>')
-    const fact = html.indexOf('기간 10월 12일')
+    const fact = html.indexOf('10월 12일')
     expect(chipRow).toBeGreaterThan(-1)
     expect(chipRow).toBeLessThan(fact)
     // 칩 줄과 필수 정보 사이에 제목 그룹의 빈 칸이 없다
@@ -201,17 +201,16 @@ describe('HeroCard — titleInImage', () => {
 const unpaint = (html: string) => html.replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1')
 
 describe('HeroCard — 본문 글자 배치', () => {
-  it('칩 줄 → 제목 → 요약 → 필수 정보 → 설명문 → 끝 줄 순서다', () => {
+  it('칩 줄 → 제목 → 요약 → 필수 정보 → 설명문 순서다', () => {
     const html = render({ regionLabel: '성수동' })
     const positions = [
       html.indexOf('>미션</span>'),
       html.indexOf('성수동'),
       html.indexOf('<h3'),
       html.indexOf('이번 주말 같이 달려요'),
-      html.indexOf('기간 10월 12일'),
+      html.indexOf('10월 12일'),
       html.indexOf('>300 포인트</span>'),
       html.indexOf('한강공원 코스를'),
-      html.indexOf('자세히 보기'),
     ]
     for (const position of positions) expect(position).toBeGreaterThan(-1)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
@@ -234,7 +233,7 @@ describe('HeroCard — 본문 글자 배치', () => {
   it('필수 정보는 14px(--text-sm) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
     const lines = [...unpaint(html).matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
-    expect(lines.map((m) => m[2])).toEqual(['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'])
+    expect(lines.map((m) => m[2])).toEqual(['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'])
     for (const [, className] of lines) {
       expect(className).toBe(
         'text-sm font-bold text-foreground break-keep break-words',
@@ -248,14 +247,14 @@ describe('HeroCard — 본문 글자 배치', () => {
   })
 
   it.each([[0], [1], [2]])('필수 정보 %i줄이면 그 수만큼만 그린다', (count) => {
-    const facts = ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'].slice(0, count)
+    const facts = ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'].slice(0, count)
     const html = render({ facts: facts.length === 0 ? undefined : facts })
     expect(html.match(/font-bold/g)?.length ?? 0).toBe(count)
   })
 
   it('필수 정보 앞에 아이콘·불릿을 붙이지 않는다', () => {
     const html = render()
-    const factsBlock = html.slice(html.indexOf('기간 10월 12일') - 200, html.indexOf('>300 포인트</span>') + 40)
+    const factsBlock = html.slice(html.indexOf('10월 12일') - 200, html.indexOf('>300 포인트</span>') + 40)
     expect(factsBlock).not.toContain('<svg')
   })
 
@@ -272,27 +271,21 @@ describe('HeroCard — 본문 글자 배치', () => {
     expect(html).not.toContain('mt-1')
     expect(html).not.toContain('font-bold')
     expect(html).not.toContain('line-clamp-3 break-keep break-words">한강공원')
-    expect(html.match(/<p /g)).toHaveLength(1) // 끝 줄 하나
+    expect(html).not.toContain('<p ') // 끝 줄도 없다
   })
 })
 
-describe('HeroCard — 끝 줄', () => {
-  it('href가 있으면 「자세히 보기 →」(12px·text-muted)이고 화살표는 aria-hidden이다', () => {
-    expect(render()).toContain(
-      '<p class="text-xs text-muted">자세히 보기 <span aria-hidden="true">→</span></p>',
-    )
-  })
-
-  it('기사는 「기사 읽기 →」다', () => {
-    const html = render({ resource: 'article', label: '기사', facts: undefined, href: '/today/a1' })
-    expect(html).toContain('>기사 읽기 <span aria-hidden="true">→</span>')
+describe('HeroCard — 끝 줄 없음 (티켓 20261109_1458)', () => {
+  it.each([
+    ['href가 있는 일반 카드', {}],
+    ['기사', { resource: 'article' as const, label: '기사', facts: undefined, href: '/today/a1' }],
+    ['href가 없는 카드', { href: undefined }],
+  ])('%s: 「자세히 보기」·「기사 읽기」와 화살표를 그리지 않는다', (_name, overrides) => {
+    const html = render(overrides)
     expect(html).not.toContain('자세히 보기')
-  })
-
-  it('href가 없으면 이동한다는 암시를 주지 않으려고 그리지 않는다', () => {
-    const html = render({ href: undefined })
-    expect(html).not.toContain('자세히 보기')
+    expect(html).not.toContain('기사 읽기')
     expect(html).not.toContain('→')
+    expect(html).not.toContain('text-xs text-muted')
   })
 })
 
@@ -309,7 +302,7 @@ describe('HeroCard — 칩 줄', () => {
   })
 
   it('드랍은 지역 값이 있어도 칩 줄에 핀을 그리지 않는다', () => {
-    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['지역 한강공원'], description: undefined })
+    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['한강공원'], description: undefined })
     expect(html).not.toContain('truncate')
     expect(html.match(/한강공원/g)).toHaveLength(1)
   })

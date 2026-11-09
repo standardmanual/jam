@@ -235,7 +235,7 @@ export const ByResource: Story = {
     expect(drop.textContent?.match(/여의도 한강공원/g)).toHaveLength(1)
     // 요약·설명문·끝 줄은 어떤 카드에도 없다
     for (const card of cards) {
-      expect(card.textContent).not.toContain(d.today.cardReadMore)
+      expect(card.textContent).not.toContain('자세히 보기')
       expect(card.textContent).not.toContain('→')
     }
   },
@@ -570,7 +570,7 @@ export const Untracked: Story = {
     expect(canvasElement.querySelectorAll('a')).toHaveLength(0)
     expect(canvasElement.querySelectorAll('.jam-press')).toHaveLength(0)
     for (const card of cardsOf(canvasElement)) {
-      expect(card.textContent).not.toContain(d.today.cardReadMore)
+      expect(card.textContent).not.toContain('자세히 보기')
       expect(card.textContent).not.toContain('→')
     }
   },

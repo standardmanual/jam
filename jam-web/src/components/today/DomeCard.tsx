@@ -1,7 +1,6 @@
 import { Card } from '@ds/components/cards/Card'
-import { d } from '@/lib/i18n'
 import type { ImageCardView } from '@/lib/today/cardView'
-import { CardBody, CardDescription, CardEndLine, CardFacts, CardTitleGroup } from './CardBody'
+import { CardBody, CardDescription, CardFacts, CardTitleGroup } from './CardBody'
 import CardChipRow from './CardChipRow'
 import CardImageSlot from './CardImageSlot'
 
@@ -83,12 +82,6 @@ export default function DomeCard({ view }: { view: ImageCardView }) {
         <CardFacts facts={view.facts} />
 
         <CardDescription description={view.description} />
-
-        {view.href && (
-          <CardEndLine
-            label={view.resource === 'article' ? d.today.cardReadArticle : d.today.cardReadMore}
-          />
-        )}
       </CardBody>
     </Card>
   )

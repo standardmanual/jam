@@ -20,6 +20,8 @@ import {
   resolveShape,
   resolveTitleInImage,
   resourceOfTemplate,
+  showsDescription,
+  DESCRIPTION_TEMPLATES,
   type ShapeCardInput,
 } from '../shape'
 
@@ -265,5 +267,26 @@ describe('resolveTitleInImage — 이미지에 제목 있음 (1453 결정 6·12)
 
   it('NULL인 미션 소개가 아닌 옛 카드는 커버가 미션 이미지와 같아 보여도 false다', () => {
     expect(resolveTitleInImage({ template_type: 'badge_spotlight', cover_image_url: COVER, title_in_image: null }, COVER)).toBe(false)
+  })
+})
+
+describe('showsDescription — 설명 문단을 그리는 템플릿 (티켓 20261109_1458)', () => {
+  it('배지 소개와 컨텐츠 소개만 그린다', () => {
+    expect([...DESCRIPTION_TEMPLATES]).toEqual(['badge_spotlight', 'content_intro'])
+    expect(showsDescription('badge_spotlight')).toBe(true)
+    expect(showsDescription('content_intro')).toBe(true)
+  })
+
+  it.each([
+    'mission_spotlight',
+    'drop_alert',
+    'editorial_article',
+    'ranking_board',
+    'itembook_milestone',
+    'progress_nudge',
+    'location_trend',
+    'recipe_reveal',
+  ] as const)('%s는 그리지 않는다', (template) => {
+    expect(showsDescription(template)).toBe(false)
   })
 })
