@@ -20,3 +20,14 @@ offsetLeft/offsetWidth를 측정해 translateX로 이동한다(서비스 Sliding
 ```jsx
 <TabBar active="badges" onChange={setTab} username="jam_user" />
 ```
+
+20261109_1310: `inverted` prop 추가 — 푸터 위처럼 어두운 면 위일 때 `true`. 캡슐 면을 밝은 면
+(`.ds-tabbar-chrome`)과 반전 면(`.ds-tabbar-chrome-inverse`) 두 레이어로 나눠 opacity만 250ms로
+교차한다(background·blur는 보간하지 않는다). 반전 때 활성 아이콘 `--snow`, 비활성
+`--tabbar-icon-inverse`, 활성 필 `--tabbar-selection-inverse`이고 링·그림자는 없다. 서비스
+`src/components/ui/TabBar.tsx`·`transitions.css`(`.jam-tabbar-*`)가 같은 모양이라 함께 고쳐야
+한다. 푸터 감지는 디자인 시스템의 일이 아니다 — 호출부가 판정해 값만 넘긴다.
+
+```jsx
+<TabBar active="badges" onChange={setTab} inverted={overFooter} />
+```
