@@ -123,8 +123,10 @@
  * 어드민 안에서는 이 블록이 그 값을 덮는다(티켓 20261015_2131, 상위 티켓 결정 1).
  *
  * 어드민 포털(Select·Popover·Dialog 등)은 body 바로 아래에 그려지면 이 스코프 밖이라 서비스
- * 값을 받는다. 어드민 쪽 포털은 container를 [data-admin-theme] 노드로 지정한다
- * (`use-admin-portal-container`).
+ * 값을 받는다. 어드민 쪽 포털은 container를 [data-admin-theme] 노드로 지정하거나
+ * (`use-admin-portal-container`), container를 안 넘겨도 `components/admin/ui`의 포털 콘텐츠
+ * (AlertDialog·Dialog·Sheet·Select·Popover·DropdownMenu)가 자기 노드에 data-admin-theme를
+ * 걸어 같은 값을 되찾는다(티켓 20261015_2313).
  */
 [data-admin-theme] {
   --background: oklch(1 0 0);

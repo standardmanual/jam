@@ -75,6 +75,9 @@ const DropdownMenuContent = React.forwardRef<
   <DropdownMenuPrimitive.Portal container={container}>
     <DropdownMenuPrimitive.Content
       ref={ref}
+      // 포털이 container 없이 body 아래에 그려지면 [data-admin-theme] 밖이라 서비스 토큰을 받는다
+      // (티켓 20261015_2313). 콘텐츠 노드에 스코프를 직접 걸어 어드민 값을 되찾는다.
+      data-admin-theme=""
       sideOffset={sideOffset}
       className={cn(
         "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-neutral-200 bg-white p-1 text-neutral-900 shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin]",
