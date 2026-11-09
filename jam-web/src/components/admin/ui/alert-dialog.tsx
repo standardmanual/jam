@@ -50,6 +50,9 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
+      // 포털이 container 없이 body 아래에 그려지면 [data-admin-theme] 밖이라 서비스 토큰을 받는다
+      // (티켓 20261015_2313). 콘텐츠 노드에 스코프를 직접 걸어 어드민 값을 되찾는다.
+      data-admin-theme=""
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border border-border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className

@@ -28,6 +28,9 @@ const PopoverContent = React.forwardRef<
   <PopoverPrimitive.Portal container={container}>
     <PopoverPrimitive.Content
       ref={ref}
+      // 포털이 container 없이 body 아래에 그려지면 [data-admin-theme] 밖이라 서비스 토큰을 받는다
+      // (티켓 20261015_2313). 콘텐츠 노드에 스코프를 직접 걸어 어드민 값을 되찾는다.
+      data-admin-theme=""
       align={align}
       sideOffset={sideOffset}
       className={cn(
