@@ -10,6 +10,7 @@
  */
 import { buildPath } from './curve';
 import { formatLayerKey, getLayerKeys, parseLayerKey } from './layerKeys';
+import { isSameOriginPath } from './presetValidate';
 import { deriveRibbonFromSeed } from './random';
 import {
   buildStamp,
@@ -64,7 +65,7 @@ function assertCanonicalLayerKey(key: string) {
 }
 
 function isImageSourceFormat(value: string): boolean {
-  return value.startsWith('/') || /^https?:\/\/\S+$/i.test(value);
+  return isSameOriginPath(value) || /^https?:\/\/\S+$/i.test(value);
 }
 
 /** 프리셋 `layers`에 값 맵을 적용한다(`applyLayerValues.mjs`와 같은 규칙). 원본 배열은 바꾸지 않는다. */

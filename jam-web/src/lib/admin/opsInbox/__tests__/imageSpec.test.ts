@@ -77,6 +77,13 @@ describe('isForeignImageSource (티켓 20261007_1620)', () => {
     expect(isForeignImageSource(`https://${HOST}.evil.example/a.png`, HOST)).toBe(true)
   })
 
+  it('값 안에 낀 탭·개행은 브라우저가 지우므로 걷어낸 뒤 판정한다', () => {
+    for (const v of ['/\t/evil.example/a.png', '/\n/evil.example/a.png', '/\r/evil.example/a.png', '/\\\t/evil.example/a.png', '\t//evil.example/a.png', 'ht\ntps://evil.example/a.png']) {
+      expect(isForeignImageSource(v, HOST), JSON.stringify(v)).toBe(true)
+    }
+    expect(isForeignImageSource('/images/\ta.png', HOST)).toBe(false)
+  })
+
   it('저장소 호스트를 모르면 모든 http(s) 주소가 밖의 주소다', () => {
     expect(isForeignImageSource(OWN, null)).toBe(true)
     expect(isForeignImageSource('/images/a.png', null)).toBe(false)
@@ -93,6 +100,10 @@ describe('imageSpecToRenderArgs — 외부 이미지 주소 (티켓 20261007_162
     }
     expect(imageSpecToRenderArgs(spec, 1, HOST)?.values).toEqual({ img02: OWN, img03: '/images/a.png', text01: 'https://evil.example 글자' })
   })
+  it('탭·개행을 끼운 외부 주소도 건너뛴다', () => {
+    const spec = { preset_id: 'p1', bg: '#111111', end: '#222222', values: { img01: '/\t/evil.example/a.png', img02: '/\n/evil.example/b.png', img03: '/images/a.png' } }
+    expect(imageSpecToRenderArgs(spec, 1, HOST)?.values).toEqual({ img03: '/images/a.png' })
+  })
 })
 
 describe('imageSpecWarnings — 외부 이미지 주소 (티켓 20261007_1620)', () => {
@@ -104,6 +115,11 @@ describe('imageSpecWarnings — 외부 이미지 주소 (티켓 20261007_1620)',
       expect.stringContaining('image_spec.values.img01: JAM! 저장소의 이미지 주소가 아니에요'),
       expect.stringContaining('image_spec.values.img02: JAM! 저장소의 이미지 주소가 아니에요'),
     ])
+  })
+
+  it('탭·개행을 끼운 외부 주소도 경고한다', () => {
+    const warnings = imageSpecWarnings({ ...base, values: { img01: '/\t/evil.example/a.png' } }, PATH, HOST)
+    expect(warnings).toEqual([expect.stringContaining('image_spec.values.img01: JAM! 저장소의 이미지 주소가 아니에요')])
   })
 
   it('저장소 주소·로컬 경로·텍스트 값은 경고하지 않는다', () => {

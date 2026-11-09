@@ -268,6 +268,13 @@ describe('applyLayerValues — applyLayerValues.mjs와 같은 결과', () => {
     expect(() => applyLayerValues(layers, values)).toThrow(expected);
   });
 
+  it.each(['//evil.example/a.png', '/\\evil.example/a.png', '/\t/evil.example/a.png', '/\n/evil.example/a.png', '/\r/evil.example/a.png'])(
+    '브라우저가 외부 호스트로 읽는 이미지 값은 거절한다: %j',
+    (value) => {
+      expect(() => applyLayerValues(layers, { img01: value })).toThrow('이미지 파일의 절대 경로');
+    },
+  );
+
   it('원본 배열을 바꾸지 않는다', () => {
     const before = JSON.stringify(layers);
     applyLayerValues(layers, { text01: '바뀜' });

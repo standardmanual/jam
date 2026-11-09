@@ -7,7 +7,7 @@
 import { asRecord, itemField, type ViewableItem } from './itemView'
 import type { RenderPresetToPngArgs } from './imageRender.client'
 import { parseLayerKey } from '@/lib/asset-generator/layerKeys'
-import { getAllowedAssetHost, isAllowedAssetUrl } from '@/lib/asset-generator/presetValidate'
+import { getAllowedAssetHost, isAllowedAssetUrl, stripUrlControlChars } from '@/lib/asset-generator/presetValidate'
 
 /** 이미지 칸이 있는 종류 네 개와 항목 `resource`의 이미지 칸 이름. 카드는 `cover_image_url`, 미션·배지·컬렉션은 `image_url`이다. */
 export const IMAGE_KEY_BY_KIND = {
@@ -48,8 +48,10 @@ export function readImageSpec(item: ViewableItem): ImageSpec | null {
  * 저장소 호스트를 알 수 없으면(환경변수 없음) 모든 `http(s)://` 주소가 밖의 주소다.
  */
 export function isForeignImageSource(value: string, allowedHost: string | null = getAllowedAssetHost()): boolean {
-  if (isAllowedAssetUrl(value, allowedHost)) return false
-  return /^https?:\/\//i.test(value) || /^[/\\]{2}/.test(value)
+  // 브라우저는 값 안의 탭·개행을 지우고 읽으므로 걷어낸 값으로 판정한다(`/\t/evil.example` → `//evil.example`).
+  const v = stripUrlControlChars(value)
+  if (isAllowedAssetUrl(v, allowedHost)) return false
+  return /^https?:[/\\]{2}/i.test(v) || /^[/\\]{2}/.test(v)
 }
 
 function isImageLayerKey(key: string): boolean {
