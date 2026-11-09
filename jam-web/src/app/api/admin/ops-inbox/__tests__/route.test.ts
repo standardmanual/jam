@@ -514,6 +514,24 @@ describe('POST /api/admin/ops-inbox', () => {
       expect(res.status).toBe(201)
     })
 
+    it('상한이 찬 뒤에도 이미 받은 bundle_id의 같은 내용 재제출은 200(이미 받았어요)이다', async () => {
+      const body = makeBundle()
+      const first = await submit(body)
+      await flushAfter()
+      seedBundles(MAX_SUBMISSIONS_PER_HOUR, new Date())
+      const res = await submit(body)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toMatchObject({ status: 'duplicate', id: (await first.json()).id })
+    })
+
+    it('상한이 찬 뒤에도 이미 받은 bundle_id에 다른 내용을 보내면 429가 아니라 409다', async () => {
+      await submit(makeBundle())
+      await flushAfter()
+      seedBundles(MAX_SUBMISSIONS_PER_HOUR, new Date())
+      const res = await submit(makeBundle({ hypothesis: '바뀐 가설', items: [makeItem()] }))
+      expect(res.status).toBe(409)
+    })
+
     it('제출 수를 셀 수 없으면 500이다(제한을 건너뛰고 받지 않는다)', async () => {
       h.state.failCount = true
       const res = await submit(makeBundle())
