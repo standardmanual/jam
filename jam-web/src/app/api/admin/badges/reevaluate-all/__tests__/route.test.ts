@@ -9,12 +9,19 @@
  *  ⑤ 미리보기 성공은 읽기 전용 응답, 실패는 내부 오류 문장 없이 고정 문장 500
  *  ⑥ `dryRun`은 생략하면 true — 명시적 `false`만 실제 발급 경로(`reevaluateUsersForCatalog`)를 연다
  *
+ * 입력 검증 분기 고정 (티켓 20261001_1416·20261007_0950)
+ *  ⑦ JSON을 읽지 못하는 본문도 dryRun은 true로 남는다
+ *  ⑧ `includeUpcoming`이 불리언이 아니면 400
+ *  ⑨ `userIds`가 문자열 배열이 아니거나 빈 문자열을 담으면 400, 중복은 한 번만 평가
+ *  ⑩ 대상 유저 상한(MAX_TARGET_USERS_PER_CALL) 초과는 400, 상한 그대로는 통과
+ *
  * 실제 발급은 일어나지 않는다 — 평가 함수(`reevaluateUsersForCatalog`·`previewUpcomingJamBadges`)는 모의 함수이고
  * 대상 유저 조회(`users`)만 가짜 클라이언트로 돌려준다.
  * 실행: cd jam-web && npx vitest run src/app/api/admin/badges/reevaluate-all/__tests__/route.test.ts
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import { MAX_TARGET_USERS_PER_CALL } from '@/lib/badge-engine/reevaluateCatalog'
 
 const ADMIN = { id: '00000000-0000-4000-8000-0000000000aa', email: 'admin@jam.app' }
 
@@ -57,6 +64,19 @@ function post(body: unknown): NextRequest {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+}
+
+/** JSON이 아닌 본문을 그대로 보낸다 */
+function postRaw(raw: string): NextRequest {
+  return new NextRequest('https://j-a-m.app/api/admin/badges/reevaluate-all', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: raw,
+  })
+}
+
+function makeIds(count: number, prefix = 'user'): string[] {
+  return Array.from({ length: count }, (_, i) => `${prefix}-${i}`)
 }
 
 /** 입력 검증에서 걸러진 요청은 평가도 대상 유저 조회도 하지 않는다 */
@@ -245,5 +265,122 @@ describe('dryRun 기본값', () => {
     await POST(post({ dryRun: false }))
 
     expect(reevaluateMock).toHaveBeenCalledWith(expect.anything(), { dryRun: false, userIds: ['user-1', 'user-2'] })
+  })
+})
+
+describe('JSON 파싱 실패', () => {
+  it('본문을 읽지 못해도 dryRun은 true로 남아 실제 발급 경로가 열리지 않는다', async () => {
+    const res = await POST(postRaw('{ 깨진 JSON'))
+
+    expect(res.status).toBe(200)
+    expect(reevaluateMock).toHaveBeenCalledTimes(1)
+    expect(reevaluateMock).toHaveBeenCalledWith(expect.anything(), { dryRun: true, userIds: ['user-1', 'user-2'] })
+  })
+
+  it('본문이 비어 있어도 같다', async () => {
+    await POST(postRaw(''))
+
+    expect(reevaluateMock).toHaveBeenCalledWith(expect.anything(), { dryRun: true, userIds: ['user-1', 'user-2'] })
+  })
+})
+
+describe('includeUpcoming 형식', () => {
+  it.each([['"true"', 'true'], ['1', 1], ['null', null], ['객체', {}]])(
+    '불리언이 아니면(%s) 400이고 아무것도 돌지 않는다',
+    async (_label, value) => {
+      const res = await POST(post({ includeUpcoming: value }))
+
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toContain('includeUpcoming')
+      expectNothingRan()
+    }
+  )
+
+  it('dryRun: false와 같이 보내도 형식 오류가 먼저 걸러진다', async () => {
+    const res = await POST(post({ includeUpcoming: 'yes', dryRun: false }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('true 또는 false')
+    expectNothingRan()
+  })
+})
+
+describe('userIds 검증', () => {
+  it.each([
+    ['문자열', 'user-1'],
+    ['객체', { id: 'user-1' }],
+    ['숫자가 섞인 배열', ['user-1', 2]],
+    ['null이 섞인 배열', ['user-1', null]],
+    ['빈 문자열이 섞인 배열', ['user-1', '']],
+    ['공백뿐인 문자열이 섞인 배열', ['user-1', '   ']],
+  ])('%s이면 400이고 아무것도 돌지 않는다', async (_label, userIds) => {
+    const res = await POST(post({ userIds, dryRun: false }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('userIds는 문자열 배열이어야 합니다.')
+    expectNothingRan()
+  })
+
+  it('중복된 id는 한 번만 평가한다(처음 나온 순서 유지)', async () => {
+    await POST(post({ userIds: ['user-b', 'user-a', 'user-b', 'user-a', 'user-c'], dryRun: false }))
+
+    expect(reevaluateMock).toHaveBeenCalledWith(expect.anything(), {
+      dryRun: false,
+      userIds: ['user-b', 'user-a', 'user-c'],
+    })
+    expect(state.usersQueried).toBe(0)
+  })
+
+  it('빈 배열이면 전체 유저를 조회해 평가한다', async () => {
+    await POST(post({ userIds: [] }))
+
+    expect(state.usersQueried).toBe(1)
+    expect(reevaluateMock).toHaveBeenCalledWith(expect.anything(), { dryRun: true, userIds: ['user-1', 'user-2'] })
+  })
+})
+
+describe('대상 유저 상한', () => {
+  it('userIds가 상한을 넘으면 400이고 평가하지 않는다', async () => {
+    const res = await POST(post({ userIds: makeIds(MAX_TARGET_USERS_PER_CALL + 1), dryRun: false }))
+
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error).toContain(`${MAX_TARGET_USERS_PER_CALL + 1}명`)
+    expect(error).toContain(`상한 ${MAX_TARGET_USERS_PER_CALL}명`)
+    expectNothingRan()
+  })
+
+  it('userIds가 정확히 상한이면 통과한다', async () => {
+    const ids = makeIds(MAX_TARGET_USERS_PER_CALL)
+
+    const res = await POST(post({ userIds: ids, dryRun: false }))
+
+    expect(res.status).toBe(200)
+    expect(reevaluateMock).toHaveBeenCalledWith(expect.anything(), { dryRun: false, userIds: ids })
+  })
+
+  it('중복을 걷어낸 뒤의 수로 상한을 센다', async () => {
+    const ids = makeIds(MAX_TARGET_USERS_PER_CALL)
+
+    const res = await POST(post({ userIds: [...ids, ...ids] }))
+
+    expect(res.status).toBe(200)
+    expect(reevaluateMock).toHaveBeenCalledWith(expect.anything(), { dryRun: true, userIds: ids })
+  })
+
+  it('전체 유저 조회 결과가 상한을 넘어도 400이다', async () => {
+    state.users = makeIds(MAX_TARGET_USERS_PER_CALL + 1).map((id) => ({ id }))
+
+    const res = await POST(post({ dryRun: false }))
+
+    expect(res.status).toBe(400)
+    expect(reevaluateMock).not.toHaveBeenCalled()
+  })
+
+  it('includeUpcoming 미리보기에도 같은 상한이 걸린다', async () => {
+    const res = await POST(post({ includeUpcoming: true, userIds: makeIds(MAX_TARGET_USERS_PER_CALL + 1) }))
+
+    expect(res.status).toBe(400)
+    expectNothingRan()
   })
 })
