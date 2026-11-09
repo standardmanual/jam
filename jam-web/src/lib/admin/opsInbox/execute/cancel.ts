@@ -7,6 +7,8 @@
  *
  * 지키는 규칙
  * - 범위는 `cancelSetOf`(`groups.ts`)가 정한다. 가리키는 항목 가운데 게재 중·준비중 항목이 있으면 아무것도 지우지 않고 409다. 종류에 핸들러가 없어도 409다.
+ * - 실제 묶음은 자원 단계 직전에 취소 대상 「예약됨」 항목의 `updated_at`을 지금으로 갱신한다. 상태 맞추기가 방금 지운 자원을 외부 삭제로 오해하지 않게 하는 신호다
+ *   (티켓 20261006_1528). 갱신이 실패하면 로그만 남기고 계속한다.
  * - 시험 묶음은 자원 단계를 건너뛰고 상태만 바꾼다(`created_resource`가 `{ sample: true }`라 자원이 없다, §8.8).
  * - 실제 묶음은 되돌림 순서(`orderForUndo`, 가리키는 항목 먼저)로 핸들러의 `cancel`을 부르고 첫 실패에서 멈춘다. 첫 항목에서 실패하면 아무것도 지우지 않은 것이라
  *   공개됨·기록 있음은 409, 그 밖의 오류는 500이다. 앞 항목을 지운 뒤 실패하면 지운 항목만 「취소」로 두고 500 `{ error, cancelled }`와 `#jam-alert` 글을 남긴다.
@@ -203,6 +205,17 @@ export async function cancelItem(
     return fail(409, blockerMessage(plan.blockers), { blockers: plan.blockers.map(({ id, reason: why }) => ({ id, reason: why })) })
   }
   if (hasNoHandler(plan, handlers)) return fail(409, MESSAGES.noHandler)
+
+  // 상태 맞추기에 「지금 지우는 중」을 알린다. 자원을 지우기 전에 갱신해야 그 사이에 도는 맞추기가 외부 삭제로 읽지 않는다.
+  if (!plan.isSample) {
+    const touched = await service
+      .from('ops_bundle_items')
+      .update({ updated_at: now().toISOString() })
+      .eq('bundle_id', bundleId)
+      .eq('status', 'scheduled')
+      .in('id', plan.cancelIds)
+    if (touched.error) logError('취소 시작 표시 저장 실패(계속해요)', touched.error)
+  }
 
   // 자원 단계: 시험 묶음은 건너뛴다. 첫 실패에서 멈추고, 그 앞에서 지운 항목은 `done`에 남는다.
   const done: ExecuteItem[] = []

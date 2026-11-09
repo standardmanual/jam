@@ -211,6 +211,23 @@ describe('판정 — 예약됨·게재중과 읽은 자원 (가정 3, §8.6 표)
     expect(shape(planOne(entry(cardItem()), { status: 'missing' }))).toEqual(['scheduled', 'cancelled', 'cancel', OUTSIDE])
   })
 
+  // 티켓 20261006_1528: 공개 전 취소가 자원을 지우기 직전 항목을 갱신한다. 그 직후의 `missing`은 외부 삭제가 아니다.
+  it('예약됨 + 자원 없음이어도 항목이 5분 안에 갱신됐으면(방금 운영툴이 지움) 전이를 계획하지 않는다', () => {
+    expect(planOne(entry(cardItem({ updatedAt: at(-MINUTE) })), { status: 'missing' })).toEqual({ transitions: [], externalChanges: [] })
+    expect(planOne(entry(cardItem({ updatedAt: at(-5 * MINUTE + 1) })), { status: 'missing' }).transitions).toEqual([])
+    // 자원 ID가 없는 예약됨 항목도 같다
+    expect(planOne(entry(cardItem({ updatedAt: at(-MINUTE), createdResource: null }))).transitions).toEqual([])
+  })
+
+  it('예약됨 + 자원 없음이고 유예(5분)가 지났으면 기존대로 취소한다', () => {
+    expect(shape(planOne(entry(cardItem({ updatedAt: at(-5 * MINUTE) })), { status: 'missing' }))).toEqual(['scheduled', 'cancelled', 'cancel', OUTSIDE])
+    expect(shape(planOne(entry(cardItem({ updatedAt: at(-60 * MINUTE) })), { status: 'missing' }))).toEqual(['scheduled', 'cancelled', 'cancel', OUTSIDE])
+  })
+
+  it('게재중 + 자원 없음은 항목이 방금 갱신됐어도 유예 없이 종료한다(취소 신호는 예약됨에만 있다)', () => {
+    expect(shape(planOne(entry(cardItem({ status: 'live', updatedAt: at(-MINUTE) })), { status: 'missing' }))).toEqual(['live', 'ended', 'end', OUTSIDE])
+  })
+
   it('게재중 + 자원 없음 → 종료, end, 같은 사유', () => {
     expect(shape(planOne(entry(cardItem({ status: 'live' })), { status: 'missing' }))).toEqual(['live', 'ended', 'end', OUTSIDE])
   })
@@ -1728,8 +1745,9 @@ describe('실행 — 경합 (가정 5)', () => {
     })
   })
 
-  it('상태 변경은 항목 ID와 지금 상태를 함께 조건으로 건다', async () => {
+  it('상태 변경은 항목 ID와 지금 상태를 함께 조건으로 건다. 취소로 가는 전이는 읽은 때의 updated_at도 건다', async () => {
     const { db, run } = setup([cardItem()])
+    const readAt = String(db.item(ID.card).updated_at)
     ok(await run())
 
     const write = db.itemWrites()[0]
@@ -1737,7 +1755,22 @@ describe('실행 — 경합 (가정 5)', () => {
     expect(write.filters).toEqual([
       ['id', ID.card],
       ['status', 'scheduled'],
+      ['updated_at', readAt],
     ])
+  })
+
+  // 티켓 20261006_1528: 읽은 뒤 공개 전 취소가 항목을 갱신했다면 취소로 가는 전이는 0행이다(기록·알림 없음).
+  it('읽은 뒤 공개 전 취소가 항목을 갱신했으면 취소 전이는 0행이라 기록도 알림 재료도 남지 않는다', async () => {
+    const { db, run } = setup([cardItem()])
+    db.beforeRun = (call) => {
+      if (call.table === 'ops_bundle_items' && call.op === 'update') db.item(ID.card).updated_at = at(-1)
+    }
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.card)).toBe('scheduled')
+    expect(result.cancelled).toEqual([])
+    expect(db.decisions()).toEqual([])
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
   })
 })
 
