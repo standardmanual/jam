@@ -37,6 +37,12 @@ const PILL_HEIGHT = 41
  */
 interface TabBarProps {
   username: string | null
+  /**
+   * 푸터 위처럼 어두운 면 위에 얹힐 때 true — 캡슐 면·활성 필·아이콘이 한 번에 반전 색으로 바뀐다
+   * (250ms 크로스페이드, transitions.css). 기본 false는 반전 이전과 같은 모양이다. 푸터 감지는
+   * 이 컴포넌트의 일이 아니다(티켓 20261109_1154). 티켓 20261109_1153.
+   */
+  inverted?: boolean
 }
 
 const baseTabs = [
@@ -121,7 +127,7 @@ const baseTabs = [
   },
 ]
 
-export default function TabBar({ username }: TabBarProps) {
+export default function TabBar({ username, inverted = false }: TabBarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const hidden = useTabBarHidden()
@@ -246,11 +252,16 @@ export default function TabBar({ username }: TabBarProps) {
       // 높이 49px·가로 388px·좌우 패딩 4px(px-1)은 Figma 실측값(위 상수 주석 참고).
       // rounded-full은 nav 자기 높이의 절반(24.5px)으로 clamp되고, 필은 자기 높이의
       // 절반(20.5px)으로 clamp돼 두 호가 4px 간격의 동심원이 된다 — 의도된 동작이다.
-      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[49px] rounded-full jam-tabbar-chrome flex items-center justify-between px-1 z-40"
+      // 20261109_1153: 면은 두 겹(밝은 면 .jam-tabbar-chrome, 반전 면 .jam-tabbar-chrome-inverse)이라
+      // nav 자신은 배경 없이 data-inverted만 들고 있고 두 레이어 opacity를 교차시킨다(transitions.css).
+      data-inverted={inverted ? 'true' : 'false'}
+      className="jam-tabbar fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[49px] rounded-full flex items-center justify-between px-1 z-40"
       // 20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
       // 최소 여백 10px로 재조정(DS TabBar.jsx와 동일 공식).
       style={{ bottom: 'max(10px, calc(env(safe-area-inset-bottom) + 16px - 32px))' }}
     >
+      <span aria-hidden="true" className="jam-tabbar-chrome" />
+      <span aria-hidden="true" className="jam-tabbar-chrome-inverse" />
       {/* 활성 탭 배경 필 — 요청: "선택된 탭의 배경뒤에 활성 상태를 표현해줘".
           탭마다 조건부 렌더링하던 기존 방식 대신 단일 공유 pill을 두고 활성 탭의
           offsetLeft/offsetWidth 중앙으로 translateX 이동시킨다(moveTo, 위 참고) — 탭 전환 시
@@ -265,7 +276,7 @@ export default function TabBar({ username }: TabBarProps) {
         className="jam-tabbar-pill absolute top-1/2 left-0 rounded-full opacity-0"
         style={{
           height: PILL_HEIGHT,
-          background: 'var(--tabbar-selection)',
+          background: inverted ? 'var(--tabbar-selection-inverse)' : 'var(--tabbar-selection)',
           transform: 'translate(0px, -50%)',
         }}
       />
@@ -283,8 +294,16 @@ export default function TabBar({ username }: TabBarProps) {
             }}
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
-            {/* 활성=--tabbar-icon-active(검정, --foreground), 비활성=--tabbar-icon(검정 계열) — 활성은 채운 아이콘+선택 필로 구분 */}
-            <span className="relative" style={{ color: active ? 'var(--tabbar-icon-active)' : 'var(--tabbar-icon)' }}>
+            {/* 활성=--tabbar-icon-active(검정, --foreground), 비활성=--tabbar-icon(검정 계열) — 활성은 채운 아이콘+선택 필로 구분.
+                반전 상태(20261109_1153)에서는 활성=--snow, 비활성=--tabbar-icon-inverse. 활성 아이콘이 검정으로 남으면 어두운 면에서 사라진다 */}
+            <span
+              className="relative jam-tabbar-icon"
+              style={{
+                color: inverted
+                  ? active ? 'var(--snow)' : 'var(--tabbar-icon-inverse)'
+                  : active ? 'var(--tabbar-icon-active)' : 'var(--tabbar-icon)',
+              }}
+            >
               {active ? tab.iconFill : tab.iconLine}
             </span>
           </Link>

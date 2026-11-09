@@ -9,4 +9,9 @@
   --tabbar-background: rgba(255, 255, 255, 0.72); /* 항상 흰 필 */
   --tabbar-blur: 20px;
   --tabbar-selection: rgba(0, 0, 0, 0.08);        /* 선택된 탭의 필 */
+
+  /* 반전 상태(푸터 위, 티켓 20261109_1153). 기존 토큰의 별칭·합성이며 새 색 수치는 없다. */
+  /* 반전 면: 푸터(--background-inverse)보다 밝고 불투명한 어두운 회색. --snow 22%를 푸터 면 위에 합성했다(실렌더로 20~25% 안에서 조정) */
+  --tabbar-background-inverse: color-mix(in srgb, var(--snow) 22%, var(--background-inverse));
+  --tabbar-selection-inverse: var(--surface-on-inverse); /* 활성 필: 반전 면보다 한 단계 밝은 snow 15% */
 }

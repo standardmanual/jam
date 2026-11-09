@@ -114,16 +114,20 @@
   /* ── 확장: 탭바 아이콘 (재질은 materials.css) ─────────────── */
   --tabbar-icon: var(--base-neutral-900);
   --tabbar-icon-active: var(--foreground);      /* 디자인시스템의 검정. 활성은 채운 아이콘+선택 필로 구분한다  */
+  --tabbar-icon-inverse: var(--muted-on-inverse); /* 반전 상태의 비활성 아이콘. 활성은 --snow (티켓 20261109_1153) */
 }
 
 /*
  * prefers-contrast: more — 탭바 비활성 아이콘의 대비를 최고치로 올린다(Apple HIG §12).
- * 아이콘은 항상 흰 필(--tabbar-background) 위에 얹히므로 반전 글자(--snow)가 아니라
+ * 기본 상태의 아이콘은 흰 필(--tabbar-background) 위에 얹히므로 반전 글자(--snow)가 아니라
  * --foreground(검정)를 쓴다. --snow를 쓰면 흰 필 위에서 아이콘이 사라진다.
+ * 반전 상태(--tabbar-background-inverse 위, 티켓 20261109_1153)에서는 반대로 --foreground가
+ * 어두운 면 위에서 사라지므로 비활성 아이콘을 --snow로 올린다.
  */
 @media (prefers-contrast: more) {
   :root,
   [data-service-theme] {
     --tabbar-icon: var(--foreground);
+    --tabbar-icon-inverse: var(--snow);
   }
 }
