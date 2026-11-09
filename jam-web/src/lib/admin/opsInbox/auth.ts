@@ -7,7 +7,7 @@
  * 2. 관리자 로그인: 그 밖의 모든 요청은 `getAdminUser()`로 관리자 세션을 확인한다. 토큰이 맞아도 제출 경로가
  *    아니면 여기로 온다 — 세션이 없으면 거부된다.
  *
- * 토큰 제출의 행위자 이름(`token:<author>`)은 본문을 읽은 뒤 라우트가 붙인다. `author`는 자기 신고라
+ * 토큰 제출의 행위자는 고정 값 `OPS_TOKEN_ACTOR`(`token:`)다 — 요청 본문의 `author`로 정하지 않는다. `author`는 자기 신고라
  * 신뢰하지 않는다 — 권한 판단에 쓰지 않고 기록에만 남긴다.
  *
  * `docs/agents/contract.json`의 `deploy_gate.auth_wrappers`에 등록된 래퍼다(배포 게이트가 이 파일이 실제로

@@ -20,6 +20,7 @@ import {
   MAX_SUBMISSIONS_PER_HOUR,
   OPS_DECISION_ACTION_SUBMIT,
   OPS_ITEM_INITIAL_STATUS,
+  OPS_TOKEN_ACTOR,
 } from '@/lib/admin/opsInbox/constants'
 import { computeRawHash } from '@/lib/admin/opsInbox/rawHash'
 import { linkRoutineStartToBundle } from '@/lib/admin/opsInbox/routineStart'
@@ -111,7 +112,7 @@ export async function POST(req: Request) {
     return badRequest('제출 본문의 필수 형식이 맞지 않아요. details를 보고 고쳐서 다시 보내 주세요.', validation.fatal)
   }
   const { bundle, items, errors, warnings } = validation
-  const actor = auth.via === 'token' ? `token:${bundle.author}` : auth.adminId
+  const actor = auth.via === 'token' ? OPS_TOKEN_ACTOR : auth.adminId
   const rawHash = computeRawHash(parsed)
   const summary = { bundle_id: bundle.bundle_id, item_count: items.length, format_errors: errors, warnings }
 

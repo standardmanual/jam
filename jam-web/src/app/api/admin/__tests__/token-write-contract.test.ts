@@ -13,13 +13,19 @@
  * 5. 제출 경로 상수와 라우트 파일 위치가 같다
  * 6. 규칙 읽기·바꾸기(`ops-rules`, 티켓 20260930_1459 조각 B·C): 읽기(`GET`)는 `requireAdminRead`로 토큰이 되고, 바꾸기(`PATCH`)·신호 기준값 저장(`PATCH`)·
  *    기본값으로 되돌리기(`DELETE`)는 `getAdminUser()`로 관리자 세션만 통과한다 — 토큰 쓰기 예외가 늘지 않는다
+ * 7. 제출 라우트의 토큰 행위자는 고정 상수 `OPS_TOKEN_ACTOR`이고 본문의 `author`로 만들지 않는다(티켓 20261001_1411)
  *
  * 실행: cd jam-web && npx vitest run src/app/api/admin/__tests__/token-write-contract.test.ts
  */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
-import { OPS_INBOX_PATH, OPS_INBOX_TOKEN_WRITE_PATHS, OPS_ROUTINE_START_PATH } from '@/lib/admin/opsInbox/constants'
+import {
+  OPS_INBOX_PATH,
+  OPS_INBOX_TOKEN_WRITE_PATHS,
+  OPS_ROUTINE_START_PATH,
+  OPS_TOKEN_ACTOR,
+} from '@/lib/admin/opsInbox/constants'
 
 const SRC = join(process.cwd(), 'src')
 const API_ROOT = join(SRC, 'app/api')
@@ -181,6 +187,15 @@ describe('읽기 토큰의 쓰기 권한 — 제출 라우트와 루틴 시작 �
         expect(code, file).not.toMatch(TOKEN_WRITE_CHECKS)
       }
     })
+  })
+
+  it('제출 라우트의 행위자(actor)는 OPS_TOKEN_ACTOR 고정 값이고 author를 쓰지 않는다', () => {
+    const code = readCode(join(SRC, SUBMIT_ROUTE))
+    const actorLines = code.split('\n').filter((line) => /\bconst\s+actor\b/.test(line))
+    expect(actorLines).toHaveLength(1)
+    expect(actorLines[0]).toMatch(/\bOPS_TOKEN_ACTOR\b/)
+    expect(actorLines[0]).not.toMatch(/author/)
+    expect(OPS_TOKEN_ACTOR).toBe('token:')
   })
 
   it('제출 경로 상수가 /api/admin/ops-inbox이고 라우트 파일이 그 위치에 있다', () => {

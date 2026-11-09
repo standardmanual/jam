@@ -174,7 +174,7 @@ vi.mock('@/lib/admin/opsInbox/slack', async (importOriginal) => {
 
 import { POST } from '../route'
 import { computeRawHash } from '@/lib/admin/opsInbox/rawHash'
-import { MAX_ITEMS, MAX_SUBMISSIONS_PER_HOUR } from '@/lib/admin/opsInbox/constants'
+import { MAX_ITEMS, MAX_SUBMISSIONS_PER_HOUR, OPS_TOKEN_ACTOR } from '@/lib/admin/opsInbox/constants'
 
 const TOKEN = 'test-admin-read-token-abcdef'
 const URL_OK = 'http://localhost/api/admin/ops-inbox'
@@ -336,7 +336,7 @@ describe('POST /api/admin/ops-inbox', () => {
         bundle_id: json.id,
         item_id: null,
         action: 'submit',
-        actor: 'token:윤진',
+        actor: 'token:',
         slack_result: null,
       })
     })
@@ -417,6 +417,17 @@ describe('POST /api/admin/ops-inbox', () => {
       const res = await submit(makeBundle(), { url })
       expect(res.status).toBe(403)
       expect(h.state.tables.ops_bundles).toHaveLength(0)
+    })
+
+    it('토큰 제출의 행위자는 본문의 author를 속여도 고정 값이다(티켓 20261001_1411)', async () => {
+      for (const author of ['윤진', '다른-에이전트', 'admin-user-id', 'system:reconcile']) {
+        h.state.tables.ops_decisions = []
+        h.state.tables.ops_bundles = []
+        h.state.tables.ops_bundle_items = []
+        const res = await submit(makeBundle({ author, bundle_id: `spoof-${author}` }))
+        expect(res.status).toBe(201)
+        expect(h.state.tables.ops_decisions[0].actor).toBe(OPS_TOKEN_ACTOR)
+      }
     })
 
     it('관리자 로그인 세션으로도 낼 수 있고 행위자는 관리자 ID다', async () => {

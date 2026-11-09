@@ -21,6 +21,13 @@ export const OPS_ROUTINE_START_PATH = '/api/admin/ops-inbox/routine-start'
 /** 토큰 쓰기가 열리는 경로 전체. 이 목록에 **정확히 같은** 경로만 통과한다(토큰 쓰기 판정이 이 목록을 읽는다). 늘리려면 보안 점검이 필요하다. */
 export const OPS_INBOX_TOKEN_WRITE_PATHS: readonly string[] = [OPS_INBOX_PATH, OPS_ROUTINE_START_PATH]
 
+/**
+ * 토큰 제출의 결정 기록 행위자(`ops_decisions.actor`) — 티켓 20261001_1411.
+ * 읽기 토큰 하나를 모든 에이전트가 함께 쓰므로 서버는 누가 냈는지 알 수 없다. 제출 본문의 `author`는
+ * 자기 신고라 행위자로 쓰지 않고, 이 고정 값만 남긴다(관리자 로그인 제출은 관리자 ID).
+ */
+export const OPS_TOKEN_ACTOR = 'token:'
+
 /** 시작 기록 본문 상한(바이트). 한 줄짜리 기록이라 제출 본문(1MB)보다 훨씬 작다. */
 export const MAX_ROUTINE_START_BODY_BYTES = 16 * 1024
 
