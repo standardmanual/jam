@@ -1036,6 +1036,13 @@ describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
     expect(html).toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:400[^"]*">3<\/span>/)
   })
 
+  it('slotCount를 주지 않으면 제목 끝 칩이 없다(레시피 탐색 목록 행, 2026-11-10 사용자 지시)', () => {
+    const html = render({ slotCount: undefined, onClick: () => {} })
+    expect(html).toContain('레시피 제목')
+    expect(html).not.toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:400[^"]*">3<\/span>/)
+    expect(html).not.toMatch(/font-weight:400[^"]*">\d+<\/span>/)
+  })
+
   it('눌림 유무: onClick이 있으면 버튼(눌림), 없으면 표시 전용 요약바(눌림·cursor 없음)', () => {
     const press = render({ onClick: () => {} })
     expect(press).toContain('<button type="button"')

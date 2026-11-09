@@ -901,7 +901,6 @@ export default function CombineClient({
       <RecipeRewardRow
         key={recipe.id}
         title={recipeDisplayName(recipe)}
-        slotCount={recipe.slots.length}
         badges={recipe.rewardBadges}
         points={recipe.reward_points}
         releaseAt={recipe.releaseAt}

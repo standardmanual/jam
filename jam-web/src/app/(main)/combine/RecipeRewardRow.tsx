@@ -17,8 +17,11 @@ export interface RecipeRewardBadge {
 interface Props {
   /** 레시피 이름 — combination_recipes.name (마이그레이션 175, 티켓 20260917_1828) */
   title: string
-  /** 슬롯 개수 — 타이틀 우측에 회색 원형 배지 안 숫자로 표시 (티켓 20260917_2028 후속 조정) */
-  slotCount: number
+  /**
+   * 슬롯 개수 — 타이틀 우측에 회색 원형 배지 안 숫자로 표시 (티켓 20260917_2028 후속 조정).
+   * 생략하면 칩을 그리지 않는다. 레시피 탐색 목록 행은 생략한다(2026-11-10 사용자 지시, 티켓 20261110_0001)
+   */
+  slotCount?: number
   badges: RecipeRewardBadge[]
   points: number
   /** 지정하면 레시피 탐색 목록 행(클릭 가능). 생략하면 믹서 상단 요약바(표시 전용). */
@@ -54,7 +57,7 @@ interface Props {
  *
  * `releaseAt`이 있으면 위 어느 케이스든 meta 맨 아래에 「공개 예정」 줄을 하나 더 그린다.
  * 보상 배지가 여러 개면 대표(첫 번째)만 노출하고 "+N"을 붙인다.
- * 타이틀 끝에는 슬롯 개수를 `ListRowChip`으로 붙인다(`titleSuffix`).
+ * 타이틀 끝에는 슬롯 개수를 `ListRowChip`으로 붙인다(`titleSuffix`). 목록 행은 `slotCount`를 주지 않아 칩이 없고, 믹서 상단 요약바만 칩을 그린다.
  *
  * 칩을 title 아래 `chips`가 아닌 위 `eyebrow`에 두는 이유: ListRow는 eyebrow → title → meta → chips 순서로 그려서
  * chips에 두면 배지명과 공개 예정 줄 아래로 내려가고, 배지명 앞에 한 줄로 두면 320px에서 배지명이 거의 가려진다.
@@ -143,7 +146,7 @@ export default function RecipeRewardRow({
       title={title}
       titleVariant="strong"
       titleLines={1}
-      titleSuffix={<ListRowChip tone="neutral">{slotCount}</ListRowChip>}
+      titleSuffix={slotCount !== undefined ? <ListRowChip tone="neutral">{slotCount}</ListRowChip> : undefined}
       meta={meta}
       metaLines={0}
       value={value}
