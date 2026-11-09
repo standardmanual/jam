@@ -716,7 +716,7 @@
     },
     {
       "name": "--tabbar-background-inverse",
-      "value": "color-mix(in srgb, var(--tabbar-background-inverse-solid) 85%, transparent)",
+      "value": "color-mix(in srgb, var(--tabbar-background-inverse-solid) 75%, transparent)",
       "kind": "other",
       "definedIn": "tokens/materials.css",
       "annotation": "other"
