@@ -134,6 +134,84 @@ describe('image 라우트', () => {
     expect(h.upload).not.toHaveBeenCalled()
   })
 
+  it('빈 파일은 400 noFile이고, 정확히 5MB는 크기 검사를 통과한다(PNG가 아니라 변환에서 500)', async () => {
+    setup()
+    const empty = await call(new File([], 'e.png', { type: 'image/png' }))
+    expect(empty.status).toBe(400)
+    expect(empty.body.error).toBe('이미지 파일이 없어요.')
+    const exact = await call(new File([new Uint8Array(5 * 1024 * 1024)], 'c.png', { type: 'image/png' }))
+    expect(exact.status).toBe(500)
+    expect(exact.body.error).toContain('WebP로 바꾸지 못했어요')
+    expect(h.upload).not.toHaveBeenCalled()
+  })
+
+  it('묶음·항목 조회가 DB 오류면 500 고정 문장이고 올리지 않는다. 원문은 응답에 없다', async () => {
+    for (const table of ['ops_bundles', 'ops_bundle_items']) {
+      const db = setup()
+      db.failIf = (c) => c.table === table && c.op === 'select'
+      const { status, body } = await call(await pngFile())
+      expect(status).toBe(500)
+      expect(body.error).toContain('저장하지 못했어요')
+      expect(JSON.stringify(body)).not.toContain('secret')
+    }
+    expect(h.upload).not.toHaveBeenCalled()
+  })
+
+  it('WebP 업로드만 실패해도 500 고정 문장이고 항목에는 쓰지 않는다', async () => {
+    const db = setup()
+    h.upload.mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: { message: 'secret webp detail' } })
+    const { status, body } = await call(await pngFile())
+    expect(status).toBe(500)
+    expect(body.error).toContain('올리지 못했어요')
+    expect(JSON.stringify(body)).not.toContain('secret')
+    expect(h.upload).toHaveBeenCalledTimes(2)
+    expect(db.itemWrites()).toEqual([])
+  })
+
+  describe('업로드 뒤 applyItemImage 결과 변환', () => {
+    /** 라우트의 사전 조회(첫 항목 select)는 통과시키고, applyItemImage의 두 번째 항목 select 직전에 `mutate`를 건다. */
+    function onApplyRead(db: FakeDb, mutate: (db: FakeDb) => void) {
+      let selects = 0
+      db.beforeRun = (c) => {
+        if (c.table === 'ops_bundle_items' && c.op === 'select' && ++selects === 2) mutate(db)
+      }
+    }
+
+    it('그사이 반려됐으면 409 notAllowed다', async () => {
+      const db = setup()
+      onApplyRead(db, (d) => { d.item(ITEM).status = 'rejected' })
+      const { status, body } = await call(await pngFile())
+      expect(status).toBe(409)
+      expect(body.error).toContain('반려·취소·실패·종료')
+    })
+
+    it('그사이 항목이 사라졌으면 404다', async () => {
+      const db = setup()
+      onApplyRead(db, (d) => { d.tables.ops_bundle_items = [] })
+      expect((await call(await pngFile())).status).toBe(404)
+    })
+
+    it('계속 충돌하면 409 conflict다', async () => {
+      const db = setup()
+      let n = 0
+      db.beforeRun = (c) => {
+        if (c.table === 'ops_bundle_items' && c.op === 'update') db.item(ITEM).updated_at = `2026-10-05T00:00:0${++n}.000Z`
+      }
+      const { status, body } = await call(await pngFile())
+      expect(status).toBe(409)
+      expect(body.error).toContain('그사이 항목이 바뀌었어요')
+    })
+
+    it('항목 저장이 DB 오류면 500 고정 문장이다. 원문은 응답에 없다', async () => {
+      const db = setup()
+      db.failIf = (c) => c.table === 'ops_bundle_items' && c.op === 'update'
+      const { status, body } = await call(await pngFile())
+      expect(status).toBe(500)
+      expect(body.error).toContain('저장하지 못했어요')
+      expect(JSON.stringify(body)).not.toContain('secret')
+    })
+  })
+
   it('예약된 항목은 자원 행에도 쓴다', async () => {
     const db = setup({ status: 'scheduled', createdResource: { mission_id: 'res-1' } })
     db.tables.missions = [{ id: 'res-1' }]
