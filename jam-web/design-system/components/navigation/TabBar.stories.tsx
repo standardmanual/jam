@@ -105,7 +105,7 @@ export const Interactive: Story = {
 export const Inverted: Story = {
   name: '반전 (어두운 면 위)',
   args: { active: 'badges', inverted: true },
-  // 반전 면이 85% 반투명이라 뒤에 비치는 글자를 보이려고, 밝은 면과 어두운 푸터 면의 경계에 탭바가 걸치도록 둔다(티켓 20261109_1325).
+  // 반전 면이 75% 반투명이라 뒤에 비치는 글자를 보이려고, 밝은 면과 어두운 푸터 면의 경계에 탭바가 걸치도록 둔다(티켓 20261109_1325).
   decorators: [(Story) => (
     <div style={{ height: '100vh', minHeight: 240, display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <div style={{ flex: 1, background: 'var(--background)', color: 'var(--foreground)', fontSize: 'var(--text-sm)', padding: 16, display: 'flex', alignItems: 'flex-end' }}>

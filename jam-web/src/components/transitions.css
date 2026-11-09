@@ -535,7 +535,7 @@
  * «반전 면 레이어»(.jam-tabbar-chrome-inverse)로 나눠 겹치고 두 레이어의 opacity를 교차시킨다.
  * background-color를 직접 보간하면 중간에 탁한 회색이 거쳐 가므로 보간하지 않는다.
  * backdrop-filter blur 값도 보간하지 않는다 — 밝은 레이어에만 두고, 그 레이어의 opacity만 바뀐다
- * (iOS Safari에서 blur 값을 보간하면 끊길 수 있다). 반전 면은 85% 불투명이고(티켓 20261109_1325)
+ * (iOS Safari에서 blur 값을 보간하면 끊길 수 있다). 반전 면은 75% 불투명이고(티켓 20261109_1325)
  * 밝은 면과 같은 blur를 가져 뒤의 글자가 뭉개져 비친다.
  * 투명도 줄이기 설정에서는 밝은 면은 --surface로, 반전 면은 불투명 합성(--tabbar-background-inverse-solid)으로
  * 돌리고 blur를 끈다.
