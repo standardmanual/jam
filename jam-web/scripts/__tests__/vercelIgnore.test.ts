@@ -13,11 +13,10 @@ const SKIP_NOTICE = 'staging push는 커밋 메시지에 [배포]가 있을 때�
 
 function run(env: Record<string, string>) {
   const cwd = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
-  const result = spawnSync('bash', [SCRIPT], {
-    cwd,
-    encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', ...env },
-  })
+  // 로컬 셸의 VERCEL_* 값이 시험에 섞이지 않게 걷어 낸다
+  const base: NodeJS.ProcessEnv = { ...process.env }
+  for (const key of Object.keys(base)) if (key.startsWith('VERCEL')) delete base[key]
+  const result = spawnSync('bash', [SCRIPT], { cwd, encoding: 'utf8', env: { ...base, ...env } })
   return { code: result.status, out: `${result.stdout}${result.stderr}` }
 }
 
