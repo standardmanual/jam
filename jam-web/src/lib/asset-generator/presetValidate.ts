@@ -34,6 +34,20 @@ export function getAllowedAssetHost(supabaseUrl: string | undefined = process.en
   }
 }
 
+/**
+ * 브라우저의 URL 파서가 지우는 ASCII 탭·개행을 먼저 걷어낸다(티켓 20261007_1620). 값 안에 낀 탭·개행은 `new Image().src`가
+ * 읽을 때 사라지므로, `/\t/evil.example`이 `//evil.example`로 바뀌어 외부 호스트를 가리킨다. 판정은 걷어낸 값으로 한다.
+ */
+export function stripUrlControlChars(value: string): string {
+  return value.replace(/[\t\n\r]/g, '');
+}
+
+/** `/`로 시작하는 같은 출처 경로인가. 탭·개행을 걷어낸 뒤 `//host`·`/\host`(브라우저가 외부 주소로 읽는 모양)는 제외한다. */
+export function isSameOriginPath(value: string): boolean {
+  const v = stripUrlControlChars(value);
+  return v.startsWith('/') && !/^[/\\]{2}/.test(v);
+}
+
 /** 이미 저장된 주소(`http(s)://`로 시작)인지. 이 값만 다시 업로드하지 않고 그대로 두므로 호스트를 검사한다. */
 export function isStoredAssetUrl(assetUrl: unknown): boolean {
   return typeof assetUrl === 'string' && HTTP_URL.test(assetUrl);
