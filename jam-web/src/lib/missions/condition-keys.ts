@@ -689,6 +689,118 @@ function engineDbThresholdError(condition: Record<string, unknown>): string | nu
   return `조건 JSON을 저장하지 못했어요. DB 기록으로 세는 조건의 기준 값이 올바르지 않아요 — ${problems.join(', ')}. 이 값은 횟수나 개수, 잼의 양이라 1 이상의 정수여야 해요. 0 이하면 참가하자마자 달성되고, 소수나 숫자가 아닌 값은 비교할 수 없어 달성되지 않아요. 1 이상의 정수로 고쳐서 다시 저장해주세요.`
 }
 
+// ── 수치 범위 검사 (티켓 20261023_1613) ───────────────────────────────────
+// 어드민 폼(`missionConditionFields.ts`)과 서버 저장 검사(`checkMissionConditionValue`)가 같은 함수를 쓴다.
+// 폼이 이 파일을 import하므로 범위 검사는 순수 파일인 여기에 둔다(반대 방향은 순환).
+
+/**
+ * 저장 전에 입력 칸의 범위(레지스트리 `min`·`max`)를 검사하는 수치 위임 키 — 티켓 20261021_1114 1회가 입력 칸을 만든 키 가운데
+ * 수치를 받는 9개. 범위는 여기 다시 적지 않고 레지스트리 정의를 그대로 읽는다(배지 양식과 한 곳).
+ * 서버 저장 검사도 이 범위를 본다 — 양식을 거치지 않는 운영툴 등록 경로로도 도달할 수 없는 값(예: 서로 다른 시간대 9개)이 저장되지 않는다.
+ */
+export const MISSION_RANGE_CHECKED_KEYS = [
+  'season_count',
+  'season_count_all',
+  'distinct_time_bands',
+  'weekend_duration_hours',
+  'cumulative_duration_hours',
+  'max_speed_kmh',
+  'avg_heartrate_bpm',
+  'avg_watts',
+  'avg_cadence',
+] as const satisfies readonly EngineDelegatedConditionKey[]
+
+/**
+ * DB 기록 키 가운데 숫자를 받는 키 20개(`recipe_first_success`는 숫자가 없는 레시피 지정이라 뺀다).
+ * 서버 기준 값 검사(`engineDbThresholdError`)는 1 이상의 정수만 보고 위쪽 한계는 보지 않으므로, 위쪽 한계는 이 범위 검사가 맡는다.
+ */
+export const MISSION_DB_RANGE_CHECKED_KEYS: readonly MissionDbConditionKey[] = MISSION_DB_CONDITION_KEY_LIST.filter(
+  (key) => key !== 'recipe_first_success'
+)
+
+/** 레지스트리에 값 범위가 없는 객체형 두 키(`checkin_category_count`·`checkin_badge_count`)의 안쪽 `count` 입력 범위 */
+export const MISSION_DB_OBJECT_COUNT_RANGE = { min: 1, max: 1000000, step: 1 } as const
+
+/** 미션 전용 키 `jam_period_earned`의 값 범위 — 배지 조건 레지스트리에 이 키가 없어 미션 쪽에서 정한다. 위쪽 한계는 도달할 수 없는 값을 막는다 */
+export const JAM_PERIOD_EARNED_RANGE = { min: 1, max: 1000000, step: 1 } as const
+
+/** 미션 전용 키 `sync_count`의 값 범위 — 위쪽 한계는 도달할 수 없는 값을 막는다(티켓 20261104_2234) */
+export const SYNC_COUNT_RANGE = { min: 1, max: 1000, step: 1 } as const
+
+const JAM_PERIOD_EARNED_LABEL = { label: '기간 동안 모은 잼', unit: '잼' } as const
+const SYNC_COUNT_LABEL = { label: '동기화 횟수', unit: '회' } as const
+
+export function rangeText(min: number | undefined, max: number | undefined, unit: string): string {
+  if (min !== undefined && max !== undefined) return `${min}~${max}${unit}`
+  if (min !== undefined) return `${min}${unit} 이상`
+  return `${max}${unit} 이하`
+}
+
+/** 범위를 검사할 값 하나 — 라벨·단위·허용 범위와 입력된 값. `integerOnly`면 소수도 막는다 */
+export interface RangeSubject {
+  value: unknown
+  label: string
+  unit: string
+  min: number | undefined
+  max: number | undefined
+  integerOnly: boolean
+}
+
+/** 범위 검사 대상을 입력된 조건에서 뽑는다. 수치 위임 키 9개는 레지스트리 정의, DB 기록 키는 레지스트리(19개 중 17개)·객체형 안쪽 `count`·미션 전용 정의를 따른다 */
+export function rangeSubjects(record: Record<string, unknown>): RangeSubject[] {
+  const subjects: RangeSubject[] = []
+  for (const key of MISSION_RANGE_CHECKED_KEYS) {
+    const meta = getConditionField(key)
+    if (!meta) continue
+    subjects.push({ value: record[key], label: meta.label, unit: meta.unit ?? '', min: meta.min, max: meta.max, integerOnly: false })
+  }
+  for (const key of MISSION_DB_RANGE_CHECKED_KEYS) {
+    if (key === 'jam_period_earned') {
+      const { min, max } = JAM_PERIOD_EARNED_RANGE
+      subjects.push({ value: record[key], ...JAM_PERIOD_EARNED_LABEL, min, max, integerOnly: true })
+      continue
+    }
+    if (key === 'sync_count') {
+      const { min, max } = SYNC_COUNT_RANGE
+      subjects.push({ value: record[key], ...SYNC_COUNT_LABEL, min, max, integerOnly: true })
+      continue
+    }
+    const meta = getConditionField(key)
+    if (!meta) continue
+    if (DB_KEYS_WITH_COUNT_FIELD.has(key)) {
+      // 객체형 두 키는 레지스트리에 범위가 없어 안쪽 `count`에 같은 계열 키의 상한을 건다
+      const raw = record[key]
+      const count = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>).count : undefined
+      const { min, max } = MISSION_DB_OBJECT_COUNT_RANGE
+      subjects.push({ value: count, label: meta.label, unit: meta.unit ?? '', min, max, integerOnly: true })
+      continue
+    }
+    subjects.push({ value: record[key], label: meta.label, unit: meta.unit ?? '', min: meta.min, max: meta.max, integerOnly: true })
+  }
+  return subjects
+}
+
+/**
+ * 조건 JSON에서 허용 범위를 벗어난 값이 있으면 그 문제를 한 문장으로 돌려준다(없으면 null).
+ * 벗어난 키를 한 번에 모두 알린다. 숫자가 아닌 값은 이 검사의 대상이 아니다(형태는 다른 검사가 맡는다).
+ * DB 기록 키는 개수나 잼의 양이라 소수도 벗어난 값으로 본다(기준 값 검사와 같은 «1 이상의 정수»).
+ */
+export function missionConditionRangeError(condition: unknown): string | null {
+  if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return null
+  const record = condition as Record<string, unknown>
+  const problems: string[] = []
+  for (const { value, label, unit, min, max, integerOnly } of rangeSubjects(record)) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue
+    if (min === undefined && max === undefined) continue
+    const outOfRange = (min !== undefined && value < min) || (max !== undefined && value > max)
+    if (outOfRange || (integerOnly && !Number.isInteger(value))) {
+      problems.push(`${label} ${value}${unit}(허용 범위 ${rangeText(min, max, unit)}${integerOnly ? '의 정수' : ''})`)
+    }
+  }
+  if (problems.length === 0) return null
+  return `저장하지 못했어요. 허용 범위를 벗어난 조건이 있어요 — ${problems.join(', ')}. 범위를 벗어난 값은 달성할 수 없는 조건이 돼요. 범위 안의 값으로 고쳐서 다시 저장해 주세요.`
+}
+
 /**
  * 미션 저장 전 `condition_json`의 «값» 검증. 순수 함수 — API 라우트(POST/PATCH)가
  * `checkMissionCondition`(키) 다음에 이 함수(값)를 순서대로 호출해 연결한다.
@@ -704,6 +816,7 @@ function engineDbThresholdError(condition: Record<string, unknown>): string | nu
  *   아니라 자유 textarea로 입력하는 한 이 위험은 남는다 — 이 티켓(6건의 `null` 재발 방지)의
  *   범위 밖이라 후속 과제로 남긴다.
  * - `engine_condition`: 조건에 든 DB 기록 키의 기준 값이 1 이상의 정수가 아니면 거부(`engineDbThresholdError`, 티켓 20261019_1445 4회).
+ *   이어서 수치 위임 키 9개·DB 기록 키의 허용 범위(레지스트리 `min`·`max`)를 벗어나면 거부(`missionConditionRangeError`, 티켓 20261023_1613).
  *   그 밖의 필드 값은 검사하지 않는다.
  * - `condition`이 `undefined`(PATCH 부분 갱신)이거나 객체가 아니면 검사하지 않는다 — 형태
  *   검증은 `checkMissionCondition`의 책임이라 여기서 중복하지 않는다.
@@ -718,7 +831,9 @@ export function checkMissionConditionValue(
 
   if (missionType === 'engine_condition') {
     const thresholdError = engineDbThresholdError(condition as Record<string, unknown>)
-    return thresholdError ? { error: thresholdError, warning: null } : OK
+    if (thresholdError) return { error: thresholdError, warning: null }
+    const rangeError = missionConditionRangeError(condition)
+    return rangeError ? { error: rangeError, warning: null } : OK
   }
 
   const rule = MISSION_CONDITION_VALUE_RULE[missionType]

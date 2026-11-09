@@ -354,8 +354,17 @@ const cases: Array<[string, () => void]> = [
         assert.ok(error, `${key} ${bad}가 통과했다`)
         assert.ok(error.includes(label), `${key} 오류에 라벨이 없다`)
         assert.ok(error.includes(String(bad)), `${key} 오류에 입력값이 없다`)
+        // 서버 저장 검사도 같은 범위를 본다 — 양식을 거치지 않는 등록 경로의 최종 방어선 (티켓 20261023_1613)
+        assert.strictEqual(checkMissionConditionValue('engine_condition', { [key]: bad }).error, error, `${key} ${bad}를 서버가 통과시켰다`)
       }
     }
+  }],
+  ['서버 저장 검사: 위임 키 9개의 상한 초과를 이유와 함께 막고, 범위 안의 다른 키는 건드리지 않는다', () => {
+    const result = checkMissionConditionValue('engine_condition', { distinct_time_bands: 9, avg_watts: 100, distance_km: 10 })
+    assert.ok(result.error?.startsWith('저장하지 못했어요.'))
+    assert.ok(result.error?.includes('서로 다른 시간대 9개(허용 범위 2~6개)'), result.error ?? '')
+    assert.ok(!result.error?.includes('평균 파워'), '범위 안의 키가 섞였다')
+    assert.strictEqual(result.warning, null)
   }],
   ['입력 범위 오류는 문제 키를 한 번에 모두 알리고 단위를 붙인다', () => {
     const error = missionConditionRangeError({ avg_watts: 5000, distinct_time_bands: 9, distance_km: 10 })
@@ -677,7 +686,7 @@ const cases: Array<[string, () => void]> = [
       }
     }
   }],
-  ['범위를 검사하는 DB 기록 키 19개: 하한 아래(0)는 폼과 서버가 같이 막고, 상한 위는 폼만 막는다', () => {
+  ['범위를 검사하는 DB 기록 키 19개: 하한 아래(0)와 상한 위를 폼과 서버가 같이 막는다', () => {
     for (const key of MISSION_DB_RANGE_CHECKED_KEYS) {
       const [min, max] = dbBounds(key)
       const below = dbCondition(key, min - 1)
@@ -689,8 +698,8 @@ const cases: Array<[string, () => void]> = [
       assert.ok(error, `${key} ${max + 1}이 폼을 통과했다`)
       assert.ok(error.includes(String(max + 1)), `${key} 오류에 입력값이 없다`)
       assert.ok(error.includes(dbLabel(key)), `${key} 오류에 라벨이 없다`)
-      // 서버는 위쪽 한계를 보지 않는다 — 폼이 막지 않으면 도달할 수 없는 값이 저장된다 (서버 쪽 범위 검사는 티켓 20261023_1613)
-      assert.strictEqual(checkMissionConditionValue('engine_condition', above).error, null, `${key} 서버가 상한을 보기 시작했다 — 폼 검사와 합치는지 본다`)
+      // 서버도 위쪽 한계를 본다 — 양식을 거치지 않는 등록 경로로 도달할 수 없는 값이 저장되지 않는다 (티켓 20261023_1613)
+      assert.strictEqual(checkMissionConditionValue('engine_condition', above).error, error, `${key} 서버와 폼의 범위 판정이 어긋났다`)
     }
   }],
   ['DB 기록 키는 소수도 막는다 (서버 기준 값 검사와 같은 «1 이상의 정수»)', () => {

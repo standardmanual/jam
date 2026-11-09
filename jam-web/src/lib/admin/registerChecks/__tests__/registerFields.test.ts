@@ -17,6 +17,8 @@ import * as missionScript from '../../../../../scripts/asset-generator/registerM
 import { AGENT_IMAGE_SOURCE, CONTROL_OR_LINE_BREAK, UUID_PATTERN } from '../bundleRules'
 import * as homeFeedFields from '../homeFeedFields'
 import type { HomeFeedCardInput } from '../homeFeedFields'
+import { getConditionField } from '@/lib/badge-engine/conditionRegistry'
+import { MISSION_RANGE_CHECKED_KEYS } from '@/lib/missions/condition-keys'
 import * as missionFields from '../missionFields'
 import type { MissionInput } from '../missionFields'
 
@@ -274,6 +276,38 @@ describe('미션 — 상수 재수출과 검사 결과', () => {
     const badErrors: string[] = []
     missionFields.validateMission(badErrors, [], 7)
     expect(badErrors).toEqual(['mission: 객체여야 해요.'])
+  })
+
+  // 티켓 20261023_1613 — 양식을 거치지 않는 등록 경로에서도 위임 키의 수치 범위를 서버 검사가 본다.
+  it('engine_condition의 distinct_time_bands: 9(범위 2~6 밖)는 오류로 거절되고 이유가 들어간다', () => {
+    const errors: string[] = []
+    missionFields.validateMission(errors, [], {
+      ...exampleMission(),
+      mission_type: 'engine_condition',
+      condition_json: { distinct_time_bands: 9 },
+    })
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain('mission.condition_json: ')
+    expect(errors[0]).toContain('서로 다른 시간대')
+    expect(errors[0]).toContain('9')
+    expect(errors[0]).toContain('2~6')
+  })
+
+  it.each(MISSION_RANGE_CHECKED_KEYS)('engine_condition의 %s: 레지스트리 min·max 경계값은 통과하고 한 칸 밖은 거절된다', (key) => {
+    const meta = getConditionField(key)
+    if (meta?.min === undefined || meta.max === undefined) throw new Error(`${key} 레지스트리에 min·max가 없다`)
+    const run = (value: number) => {
+      const errors: string[] = []
+      missionFields.validateMission(errors, [], {
+        ...exampleMission(),
+        mission_type: 'engine_condition',
+        condition_json: { [key]: value },
+      })
+      return errors
+    }
+    expect(run(meta.min), `${key} 하한 ${meta.min}`).toEqual([])
+    expect(run(meta.max), `${key} 상한 ${meta.max}`).toEqual([])
+    expect(run(meta.max + 1).length, `${key} 상한 위`).toBe(1)
   })
 
   it('collectCheck는 오류·주의를 접두어와 함께 각 목록에 옮긴다', () => {

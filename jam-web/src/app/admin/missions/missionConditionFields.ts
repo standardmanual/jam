@@ -43,7 +43,13 @@ import {
 } from '@/lib/badge-engine/conditionRegistry'
 import {
   ENGINE_DELEGATED_CONDITION_KEY_LIST,
+  JAM_PERIOD_EARNED_RANGE,
   MISSION_DB_CONDITION_KEY_LIST,
+  MISSION_DB_OBJECT_COUNT_RANGE,
+  MISSION_DB_RANGE_CHECKED_KEYS,
+  MISSION_RANGE_CHECKED_KEYS,
+  SYNC_COUNT_RANGE,
+  missionConditionRangeError,
   type MissionDbConditionKey,
 } from '@/lib/missions/condition-keys'
 
@@ -153,12 +159,6 @@ export const MISSION_ENGINE_DB_PRESERVED_KEYS: readonly MissionDbConditionKey[] 
   (key) => !MISSION_DB_FORM_KEYS.includes(key)
 )
 
-/** 레지스트리에 값 범위가 없는 객체형 두 키(`checkin_category_count`·`checkin_badge_count`)의 안쪽 `count` 입력 범위 */
-export const MISSION_DB_OBJECT_COUNT_RANGE = { min: 1, max: 1000000, step: 1 } as const
-
-/** 안쪽 `count`를 받는 객체형 DB 기록 키 */
-const MISSION_DB_OBJECT_COUNT_KEYS: readonly MissionDbConditionKey[] = ['checkin_category_count', 'checkin_badge_count']
-
 /** 폼 칸 이름 → 안쪽 `count` 칸. 레지스트리 컨트롤의 범위가 비어 있어 칸을 그릴 때 이 범위를 건다 */
 export const MISSION_DB_OBJECT_COUNT_FIELDS: readonly string[] = ['checkinCategoryCountCount', 'checkinBadgeCountCount']
 
@@ -171,9 +171,7 @@ export const JAM_PERIOD_EARNED_INPUT = {
   field: 'jamPeriodEarned',
   label: '기간 동안 모은 잼',
   unit: '잼',
-  min: 1,
-  max: 1000000,
-  step: 1,
+  ...JAM_PERIOD_EARNED_RANGE,
   placeholder: '300',
   help: '참가한 뒤 미션 기간 안에 받은 잼(움직여서 받은 잼 + 서비스에서 한 일로 받은 잼)을 합해요. 참가 전에 받은 잼과 사라진 잼은 포함되지 않아요.',
 } as const
@@ -186,9 +184,7 @@ export const SYNC_COUNT_INPUT = {
   field: 'syncCount',
   label: '동기화 횟수',
   unit: '회',
-  min: 1,
-  max: 1000,
-  step: 1,
+  ...SYNC_COUNT_RANGE,
   placeholder: '1',
   help: '새 활동을 불러온 동기화만 세요. 참가한 뒤 미션 기간 안의 횟수예요.',
 } as const
@@ -703,103 +699,9 @@ export function unsupportedMissionConditionKeys(condition: MissionCondition | nu
   return keys
 }
 
-/**
- * 저장 전에 입력 칸의 범위(레지스트리 `min`·`max`)를 검사하는 수치 위임 키 — 티켓 20261021_1114 1회가 입력 칸을 만든 키 가운데
- * 수치를 받는 9개. 범위는 여기 다시 적지 않고 레지스트리 정의를 그대로 읽는다(배지 양식과 한 곳).
- * 서버 저장 검사(`checkMissionConditionValue`)는 위임 키의 범위를 보지 않아서, 도달할 수 없는 값(예: 서로 다른 시간대 9개)이
- * 이 검사가 없으면 그대로 저장된다.
- */
-export const MISSION_RANGE_CHECKED_KEYS = [
-  'season_count',
-  'season_count_all',
-  'distinct_time_bands',
-  'weekend_duration_hours',
-  'cumulative_duration_hours',
-  'max_speed_kmh',
-  'avg_heartrate_bpm',
-  'avg_watts',
-  'avg_cadence',
-] as const satisfies readonly MissionEngineDelegatedKey[]
-
-function rangeText(min: number | undefined, max: number | undefined, unit: string): string {
-  if (min !== undefined && max !== undefined) return `${min}~${max}${unit}`
-  if (min !== undefined) return `${min}${unit} 이상`
-  return `${max}${unit} 이하`
-}
-
-/** 범위를 검사할 값 하나 — 라벨·단위·허용 범위와 입력된 값. `integerOnly`면 소수도 막는다 */
-interface RangeSubject {
-  value: unknown
-  label: string
-  unit: string
-  min: number | undefined
-  max: number | undefined
-  integerOnly: boolean
-}
-
-/**
- * DB 기록 키 가운데 숫자를 받는 키 19개(`recipe_first_success`는 숫자가 없는 레시피 지정이라 뺀다) — 티켓 20261021_1114 2회가 입력 칸을 만든 키.
- * 서버 기준 값 검사(`checkMissionConditionValue`)는 1 이상의 정수만 보고 위쪽 한계는 보지 않는다. 그래서 이 검사가 없으면 입력 칸의 상한을
- * 넘는 값(예: 주간 활동일 8일)이 그대로 저장된다.
- */
-export const MISSION_DB_RANGE_CHECKED_KEYS: readonly MissionDbConditionKey[] = MISSION_DB_FORM_KEYS.filter(
-  (key) => key !== 'recipe_first_success'
-)
-
-/** 범위 검사 대상을 입력된 조건에서 뽑는다. 수치 위임 키 9개는 레지스트리 정의, DB 기록 키는 레지스트리(19개 중 17개)·객체형 안쪽 `count`·미션 전용 정의를 따른다 */
-function rangeSubjects(record: Record<string, unknown>): RangeSubject[] {
-  const subjects: RangeSubject[] = []
-  for (const key of MISSION_RANGE_CHECKED_KEYS) {
-    const meta = getConditionField(key)
-    if (!meta) continue
-    subjects.push({ value: record[key], label: meta.label, unit: meta.unit ?? '', min: meta.min, max: meta.max, integerOnly: false })
-  }
-  for (const key of MISSION_DB_RANGE_CHECKED_KEYS) {
-    if (key === 'jam_period_earned') {
-      const { label, unit, min, max } = JAM_PERIOD_EARNED_INPUT
-      subjects.push({ value: record[key], label, unit, min, max, integerOnly: true })
-      continue
-    }
-    if (key === 'sync_count') {
-      const { label, unit, min, max } = SYNC_COUNT_INPUT
-      subjects.push({ value: record[key], label, unit, min, max, integerOnly: true })
-      continue
-    }
-    const meta = getConditionField(key)
-    if (!meta) continue
-    if (MISSION_DB_OBJECT_COUNT_KEYS.includes(key)) {
-      // 객체형 두 키는 레지스트리에 범위가 없어 안쪽 `count`에 같은 계열 키의 상한을 건다
-      const raw = record[key]
-      const count = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>).count : undefined
-      const { min, max } = MISSION_DB_OBJECT_COUNT_RANGE
-      subjects.push({ value: count, label: meta.label, unit: meta.unit ?? '', min, max, integerOnly: true })
-      continue
-    }
-    subjects.push({ value: record[key], label: meta.label, unit: meta.unit ?? '', min: meta.min, max: meta.max, integerOnly: true })
-  }
-  return subjects
-}
-
-/**
- * 조립된 `condition_json`에서 입력 칸 범위를 벗어난 값이 있으면 그 문제를 한 문장으로 돌려준다(없으면 null).
- * 벗어난 키를 한 번에 모두 알린다. 숫자가 아닌 값은 이 검사의 대상이 아니다(폼은 늘 숫자를 만든다).
- * DB 기록 키는 개수나 잼의 양이라 소수도 벗어난 값으로 본다(서버 기준 값 검사와 같은 «1 이상의 정수»).
- */
-export function missionConditionRangeError(condition: unknown): string | null {
-  if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return null
-  const record = condition as Record<string, unknown>
-  const problems: string[] = []
-  for (const { value, label, unit, min, max, integerOnly } of rangeSubjects(record)) {
-    if (typeof value !== 'number' || !Number.isFinite(value)) continue
-    if (min === undefined && max === undefined) continue
-    const outOfRange = (min !== undefined && value < min) || (max !== undefined && value > max)
-    if (outOfRange || (integerOnly && !Number.isInteger(value))) {
-      problems.push(`${label} ${value}${unit}(허용 범위 ${rangeText(min, max, unit)}${integerOnly ? '의 정수' : ''})`)
-    }
-  }
-  if (problems.length === 0) return null
-  return `저장하지 못했어요. 허용 범위를 벗어난 조건이 있어요 — ${problems.join(', ')}. 범위 안의 값으로 고쳐서 다시 저장해 주세요.`
-}
+// 범위 검사(`missionConditionRangeError`·`MISSION_RANGE_CHECKED_KEYS`·`MISSION_DB_RANGE_CHECKED_KEYS`)는 서버 저장 검사도 쓰도록
+// `@/lib/missions/condition-keys`로 내렸다(티켓 20261023_1613). 기존 import 경로가 깨지지 않게 여기서 다시 내보낸다.
+export { MISSION_RANGE_CHECKED_KEYS, MISSION_DB_RANGE_CHECKED_KEYS, MISSION_DB_OBJECT_COUNT_RANGE, missionConditionRangeError }
 
 // ── 정수 칸 검사 (티켓 20261023_1748) ────────────────────────────────────
 

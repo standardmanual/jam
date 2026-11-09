@@ -15,7 +15,13 @@
  * 실행: `npx tsx src/lib/missions/__tests__/condition-values.test.ts` (node assert — 러너 불필요)
  */
 import assert from 'node:assert'
-import { MISSION_DB_CONDITION_KEY_LIST, checkMissionConditionValue } from '../condition-keys'
+import {
+  JAM_PERIOD_EARNED_RANGE,
+  MISSION_DB_CONDITION_KEY_LIST,
+  SYNC_COUNT_RANGE,
+  checkMissionConditionValue,
+} from '../condition-keys'
+import { getConditionField } from '@/lib/badge-engine/conditionRegistry'
 import type { MissionCondition, MissionType } from '@/types/database'
 
 const VALID_BADGE_ID = '00000000-0000-0000-0000-000000000001'
@@ -39,6 +45,12 @@ const PRODUCTION_FIXTURES: Array<[MissionType, MissionCondition]> = [
 const OBJECT_DB_KEYS = ['recipe_first_success', 'checkin_category_count', 'checkin_badge_count']
 const NUMERIC_DB_KEYS = MISSION_DB_CONDITION_KEY_LIST.filter((key) => !OBJECT_DB_KEYS.includes(key))
 /** 저장하면 안 되는 기준 값: 0 이하, 소수, NaN·무한대, 숫자가 아닌 값(글자·null·참거짓·객체·목록) */
+/** 키별 허용 상한 — 서버 저장 검사가 레지스트리 범위를 본다(티켓 20261023_1613). 범위가 없는 키는 큰 값 1,000,000까지 통과한다 */
+function upperLimitOf(key: string): number {
+  if (key === 'jam_period_earned') return JAM_PERIOD_EARNED_RANGE.max
+  if (key === 'sync_count') return SYNC_COUNT_RANGE.max
+  return getConditionField(key as never)?.max ?? 1_000_000
+}
 const BAD_THRESHOLDS: unknown[] = [0, -1, 0.5, 2.5, Number.NaN, Number.POSITIVE_INFINITY, '3', '', null, true, {}, [3]]
 
 const cases: Array<[string, () => void]> = [
@@ -122,9 +134,10 @@ const cases: Array<[string, () => void]> = [
       }
     }
   }],
-  ['engine_condition + 숫자형 DB 키 18개 × 1 이상의 정수 → 통과 (1, 보통 값, 큰 값)', () => {
+  ['engine_condition + 숫자형 DB 키 18개 × 1 이상의 정수 → 통과 (1, 보통 값, 그 키의 상한까지)', () => {
     for (const key of NUMERIC_DB_KEYS) {
-      for (const good of [1, 3, 500, 1_000_000]) {
+      const upper = upperLimitOf(key)
+      for (const good of [1, 3, 500, 1_000_000].filter((v) => v <= upper).concat(upper)) {
         assert.deepStrictEqual(
           checkMissionConditionValue('engine_condition', { [key]: good } as unknown as MissionCondition),
           { error: null, warning: null },
