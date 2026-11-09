@@ -34,7 +34,7 @@ export default function SlotCircleButton({ icon, label, pending = false, disable
       disabled={pending || disabled}
       className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background-inverse text-snow transition-all before:absolute before:-inset-2 disabled:opacity-40"
     >
-      <Icon className="h-3.5 w-3.5" strokeWidth={3} />
+      <Icon className="h-3.5 w-3.5" strokeWidth={4.5} />
     </button>
   )
 }

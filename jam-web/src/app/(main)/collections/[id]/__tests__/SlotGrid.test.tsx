@@ -323,12 +323,13 @@ describe('SlotGrid — 장착하지 않은 칸의 배지 이름은 그레이다 
     />,
   )
 
-  it('장착된 칸은 foreground, 추가할 수 있는 칸과 빈 칸은 muted다', () => {
+  it('장착된 칸은 foreground, 추가할 수 있는 칸과 빈 칸은 연한 그레이(중립 400)다', () => {
     expect(nameClassOf(html, '이름1')).toContain('text-foreground')
-    expect(nameClassOf(html, '이름1')).not.toContain('text-muted')
+    expect(nameClassOf(html, '이름1')).not.toContain('base-neutral-400')
     for (const name of ['이름2', '이름3']) {
-      expect(nameClassOf(html, name), name).toContain('text-muted')
+      expect(nameClassOf(html, name), name).toContain('text-[color:var(--base-neutral-400)]')
       expect(nameClassOf(html, name), name).not.toContain('text-foreground')
+      expect(nameClassOf(html, name), name).not.toContain('text-muted')
     }
   })
 })
@@ -344,19 +345,23 @@ describe('SlotGrid — 장착하지 않은 칸의 등급 칩은 회색조다 (20
       ]}
     />,
   )
-  /** 칩 글자(RARE·EPIC)를 감싼 가장 가까운 grayscale 래퍼가 있는지 */
-  const grayChip = (label: string) => new RegExp(`<span class="inline-flex grayscale"><span[^>]*>${label}</span></span>`).test(html)
+  /** 칩 글자(Rare·Epic)를 그린 `<span>` 태그 전체 */
+  const chipTag = (label: string) => html.match(new RegExp(`<span[^>]*>${label}</span>`))?.[0] ?? ''
 
-  it('추가할 수 있는 칸의 칩은 grayscale 래퍼 안에 있고, 장착된 칸의 칩은 아니다', () => {
-    expect(grayChip('Epic')).toBe(true)
-    expect(grayChip('Rare')).toBe(false)
-    expect(count(html, 'inline-flex grayscale')).toBe(1)
-    // 장착된 칸의 칩은 그대로 그려진다
-    expect(html).toContain('>Rare<')
+  it('추가할 수 있는 칸의 칩에는 grayscale이 걸리고, 장착된 칸의 칩에는 걸리지 않는다', () => {
+    expect(chipTag('Epic')).toContain('grayscale')
+    expect(chipTag('Rare')).not.toContain('grayscale')
+    expect(count(html, 'grayscale')).toBe(1 + count(html, 'grayscale opacity-40'))
   })
 
-  it('칩의 면 색은 바꾸지 않고 필터만 건다 — 칩 자체에는 grayscale이 없다', () => {
-    const chipTag = html.match(/<span[^>]*>Epic<\/span>/)?.[0] ?? ''
-    expect(chipTag).not.toContain('grayscale')
+  it('래퍼를 두지 않는다 — 칩이 아무것도 그리지 않는 칸(Common)에 빈 요소가 남지 않아 칸 높이가 같다', () => {
+    expect(html).not.toContain('inline-flex grayscale')
+    const common = renderToStaticMarkup(
+      <SlotGrid itemBookId="book-1" badgeSlots={[cell('이름4', 'common', { candidates: [candidate('c1')] })]} />,
+    )
+    const equipped = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={[cell('이름4', 'common', { slot: slotted })]} />)
+    // 이름 줄 바로 뒤에 칩 요소가 없다 — 장착 여부와 상관없이 같은 구조다
+    const tail = (h: string) => h.slice(h.indexOf('>이름4</p>') + '>이름4</p>'.length, h.indexOf('</a>'))
+    expect(tail(common)).toBe(tail(equipped))
   })
 })

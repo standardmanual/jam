@@ -71,8 +71,10 @@ export interface BadgeGridCardProps {
    */
   locked?: boolean
   /**
-   * true = 이름을 그레이(`text-muted`)로 그린다. 아직 장착하지 않은 칸(비어 있거나 넣을 수 있는 배지가 있는 칸)에서
-   * 장착된 칸과 이름 색으로 구분하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시). 기본 false라 다른 화면은 그대로다.
+   * true = 이름을 연한 그레이(`--base-neutral-400`, #a3a3a3)로 그린다. 아직 장착하지 않은 칸(비어 있거나 넣을 수 있는 배지가
+   * 있는 칸)에서 장착된 칸과 이름 색으로 구분하려고 컬렉션 상세가 쓴다(2026-11-09 사용자 지시, 처음에는 `text-muted`였다가
+   * «더 흐린 그레이»로 바꿨다). 썸네일 별·미발견 실루엣의 회색(중립 400)과 같은 단계다. 흰 면 위 대비는 약 2.5:1로 낮다 —
+   * 비활성 칸이라는 뜻이고 기본 false라 다른 화면은 그대로다.
    */
   nameMuted?: boolean
   /**
@@ -144,7 +146,12 @@ export default function BadgeGridCard({
     .join(' ')
 
   const showCount = !locked && !undiscovered && typeof count === 'number' && count > 1
-  const chip = level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />
+  // 회색조는 칩 자체에 `grayscale`을 걸어 만든다. 래퍼를 두면 Common처럼 칩이 아무것도 그리지 않을 때도 빈 래퍼가 남아
+  // 이름과 칩 사이 간격(gap-1)만큼 칸이 커진다(장착 상태와 칸 높이가 어긋났다).
+  const chipClass = chipGray ? 'grayscale' : ''
+  const chip = level != null
+    ? <BadgeLevelChip level={level} size="md" className={chipClass} />
+    : <RarityBadge rarity={rarity ?? undefined} size="md" className={chipClass} />
 
   const content = (
     <>
@@ -183,14 +190,14 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-1 pt-2 w-full">
-        <p className={`text-sm font-bold ${nameMuted ? 'text-muted' : 'text-foreground'} text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
+        <p className={`text-sm font-bold ${nameMuted ? 'text-[color:var(--base-neutral-400)]' : 'text-foreground'} text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
           {locked ? d.lockedItem.card.name : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
         {showCount && (
           <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
         )}
-        {!undiscovered && (chipGray ? <span className="inline-flex grayscale">{chip}</span> : chip)}
+        {!undiscovered && chip}
       </div>
       {children && <div className="w-full mt-1">{children}</div>}
     </>
