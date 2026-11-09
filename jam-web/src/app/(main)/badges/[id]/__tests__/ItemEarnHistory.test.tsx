@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import ItemEarnHistory, { type ItemEarnEntry } from '../ItemEarnHistory'
-import { formatKoreanDateTime } from '@/components/LocalDate'
+import { formatDateTimeStamp } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 
 function entry(id: string, iso: string): ItemEarnEntry {
@@ -35,8 +35,8 @@ describe('ItemEarnHistory — 획득 정보', () => {
     const html = withoutStyle(renderToStaticMarkup(<ItemEarnHistory items={THREE} activeItemId="c" />))
     const rows = html.match(/<button[\s\S]*?<\/button>/g) ?? []
     // 일시는 모두 년월일시다(2026-11-09 사용자 지시)
-    expect(rows[0]).toContain(formatKoreanDateTime('2026-09-03T00:00:00Z', { year: true, time: true }))
-    expect(rows[1]).toContain(formatKoreanDateTime('2026-08-03T00:00:00Z', { year: true, time: true }))
+    expect(rows[0]).toContain(formatDateTimeStamp('2026-09-03T00:00:00Z'))
+    expect(rows[1]).toContain(formatDateTimeStamp('2026-08-03T00:00:00Z'))
   })
 
   it('클릭 영역 안에 <p>·<div>가 없다', () => {
@@ -62,8 +62,8 @@ describe('ItemEarnHistory — 획득 정보', () => {
     const order = [d.inventory.obtainedAt, d.inventory.expiresAt].map((x) => html.indexOf(x))
     expect(order.every((i) => i >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(html).toContain(formatKoreanDateTime('2026-08-03T00:00:00Z', { year: true, time: true }))
-    expect(html).toContain(formatKoreanDateTime('2026-09-03T05:30:00Z', { year: true, time: true }))
+    expect(html).toContain(formatDateTimeStamp('2026-08-03T00:00:00Z'))
+    expect(html).toContain(formatDateTimeStamp('2026-09-03T05:30:00Z'))
     expect(html).not.toContain('text-[14px]')
   })
 

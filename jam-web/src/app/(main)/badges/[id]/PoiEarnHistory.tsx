@@ -28,7 +28,7 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
           titleVariant="label"
           titleLines={0}
           title={d.badges.earnedAt}
-          value={<LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />}
+          value={<LocalDate iso={e.earned_at} stamp />}
         />
         {e.triggered_by_activity_name && (
           <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={e.triggered_by_activity_name} />
@@ -48,7 +48,7 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
             titleVariant="label"
             titleLines={0}
             title={d.badges.triggerDate}
-            value={<LocalDate iso={e.triggered_by_activity_date} korean={{ year: true, time: true }} />}
+            value={<LocalDate iso={e.triggered_by_activity_date} stamp />}
           />
         )}
       </div>
@@ -88,7 +88,7 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
         <ListRow
           key={e.id}
           eyebrow={e.id === firstEverId ? <ListRowChip tone="neutral">{d.badges.firstEarnedChip}</ListRowChip> : undefined}
-          title={<LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />}
+          title={<LocalDate iso={e.earned_at} stamp />}
           titleVariant="regular"
           titleLines={2}
           chevron

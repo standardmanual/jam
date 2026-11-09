@@ -410,7 +410,7 @@ describe('LockedItemDetail — 일반 아이템 배지 상세와 같은 구성 (
 
     // 다른 배지 상세와 같은 카드: 제목 «획득 정보» + 라벨·값 행(획득 일시는 시각까지, 획득 경로)
     expect(text).toContain(`${d.badges.earnInfoTitle} ${d.badges.earnedAt}`)
-    expect(text).toContain('오전')
+    expect(text).toMatch(/\d{4}-\d{2}-\d{2} (AM|PM) \d{2}:\d{2}:\d{2}/)
     expect(text).toContain(`${d.badges.earnRoute} ${d.inventory.obtainBySystem}`)
     expect(html).toContain('ds-list-row')
   })

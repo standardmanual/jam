@@ -78,7 +78,6 @@ function visibleText(html: string): string {
 /** ListRow 슬롯 조각 — eyebrow·시간은 굵기 400, 제목은 700으로 그려진다 */
 const eyebrowOf = (text: string) => `font-weight:400">${text}</span>`
 const titleOf = (text: string) => `font-weight:700">${text}</span>`
-const leadOf = (inner: string) => new RegExp(`class="ds-list-row-lead"[^>]*>${inner.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</span>`)
 
 function icon(Component: (props: { className?: string }) => ReactNode, className: string): string {
   return renderToStaticMarkup(<Component className={className} />)
@@ -190,10 +189,10 @@ describe('챕터 오름 카드', () => {
     expect(html.indexOf('챕터 오름')).toBeLessThan(html.indexOf('챕터 3<'))
   })
 
-  it('왼쪽은 lead 박스 안의 메달 아이콘이다 — 타일 래퍼를 또 만들지 않는다', () => {
-    const html = renderFeed([CHAPTER])
+  it('대표 이미지가 없는 행이라 왼쪽 아이콘 칸 없이 글만 보인다', () => {
+    const html = renderFeed([CHAPTER]).replace(/<style[\s\S]*?<\/style>/g, '')
 
-    expect(html).toMatch(leadOf(icon(MedalIcon, 'w-5 h-5 text-foreground')))
+    expect(html).not.toContain('ds-list-row-lead')
     expect(html).not.toContain('w-10 h-10')
     expect(html).not.toContain('bg-background-secondary')
   })
@@ -220,12 +219,12 @@ describe('챕터 오름 카드', () => {
 })
 
 describe('컬렉션 완성 카드', () => {
-  it('«컬렉션 완성» 라벨 아래 컬렉션 이름이 한 줄 말줄임으로 보이고, 왼쪽은 책 아이콘 타일이다', () => {
-    const html = renderFeed([COLLECTION_COMMON])
+  it('«컬렉션 완성» 라벨 아래 컬렉션 이름이 한 줄 말줄임으로 보이고, 이미지가 없으면 왼쪽 칸이 없다', () => {
+    const html = renderFeed([COLLECTION_COMMON]).replace(/<style[\s\S]*?<\/style>/g, '')
 
     expect(html).toContain(eyebrowOf('컬렉션 완성'))
     expect(html).toContain(titleOf('한강 컬렉션'))
-    expect(html).toMatch(leadOf(icon(BookIcon, 'w-5 h-5 text-foreground')))
+    expect(html).not.toContain('ds-list-row-lead')
     expect(html).toContain('white-space:nowrap')
   })
 
@@ -318,14 +317,14 @@ describe('eventLabelText — 카드 라벨은 평문 문자열이다', () => {
 })
 
 describe('활동 행(FeedCard) — ListRow', () => {
-  it('반복 획득: «N번째»는 숫자 강조 없이 한 덩어리 문장이고, 시간이 같은 줄 오른쪽에 있으며, ×N은 lead 모서리 필이다', () => {
-    const html = renderFeed([CHECKIN_REPEAT])
+  it('반복 획득: «N번째»는 숫자 강조 없이 한 덩어리 문장이고, 시간이 같은 줄 오른쪽에 있으며, 이미지가 없으면 ×N은 칩이다', () => {
+    const html = renderFeed([CHECKIN_REPEAT]).replace(/<style[\s\S]*?<\/style>/g, '')
 
     expect(html).toContain(eyebrowOf('3번째 체크인 했어요'))
     expect(html).not.toContain('<strong')
     // eyebrow 줄(space-between) 안에서 라벨 바로 뒤에 시간이 온다
     expect(html).toMatch(/3번째 체크인 했어요<\/span><span style="flex-shrink:0;white-space:nowrap[^"]*">1시간 전<\/span>/)
-    expect(html).toMatch(/background:var\(--foreground\);color:var\(--snow\)[^>]*>×3<\/span>/)
+    expect(html).toContain('>×3</span>')
     // 옛 카드 모양(40×40 타일·18px 필·trailing 시각)이 남지 않는다
     expect(html).not.toContain('w-10 h-10')
     expect(html).not.toContain('min-w-[18px]')
@@ -346,10 +345,25 @@ describe('활동 행(FeedCard) — ListRow', () => {
     expect(html).toContain(titleOf('아침 러너'))
   })
 
-  it('이미지가 없으면 폴백 이벤트 아이콘만 lead에 들어간다 — 래퍼 타일이 없다', () => {
-    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너' })])
+  it('이미지가 없으면 아이콘 칸도 그리지 않고 글만 보인다 (2026-11-09 결정)', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너' })]).replace(/<style[\s\S]*?<\/style>/g, '')
 
-    expect(html).toMatch(leadOf(icon(MedalIcon, 'w-5 h-5 text-foreground')))
+    expect(html).not.toContain('ds-list-row-lead')
+    expect(html).not.toContain('<svg')
+    expect(html).toContain(titleOf('아침 러너'))
+  })
+
+  it('이미지가 없는 반복 행은 ×N을 lead 모서리 대신 칩으로 보인다', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너', earn_count: 4 })]).replace(/<style[\s\S]*?<\/style>/g, '')
+
+    expect(html).not.toContain('ds-list-row-lead')
+    expect(html).toContain('>×4</span>')
+  })
+
+  it('1번만 얻은 행은 이미지가 없어도 ×N 칩이 없다', () => {
+    const html = renderFeed([row('badge_earned', { badge_name: '아침 러너', earn_count: 1 })]).replace(/<style[\s\S]*?<\/style>/g, '')
+
+    expect(html).not.toContain('×1')
   })
 
   it('제목 줄은 1줄 말줄임 스타일이다(nowrap·ellipsis·hidden)', () => {
@@ -644,13 +658,13 @@ describe('피드 행의 대표 이미지 (feedImageOf)', () => {
     expect(feedImageOf({})).toBeNull()
   })
 
-  it('미션 참가 행은 미션 대표 이미지를 이미지 칸에 그리고, 이미지가 없으면 과녁 아이콘을 그린다', () => {
+  it('미션 참가 행은 미션 대표 이미지를 이미지 칸에 그리고, 이미지가 없으면 이미지 칸이 없다', () => {
     const withImage = renderFeed([row('mission_joined', { mission_id: 'm1', mission_title: '첫 산행', mission_image_url: 'https://example.com/m1.png' })])
     const without = renderFeed([row('mission_joined', { mission_id: 'm2', mission_title: '첫 산행' })])
 
     expect(withImage).toContain('m1.png')
     expect(without).not.toContain('<img')
-    expect(without).toContain('<svg')
+    expect(without.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('ds-list-row-lead')
   })
 
   it('컬렉션 등급 완성 행은 컬렉션 대표 이미지를 쓴다', () => {
@@ -682,17 +696,17 @@ describe('활동 묶음 카드 — 이미지 영역 없음 (2026-11-09 사용자
     expect(header).toContain('inline-flex items-center gap-1')
   })
 
-  it('묶음을 펼친 안의 개별 행은 이미지 칸을 그대로 둔다(이미지가 없으면 아이콘)', () => {
+  it('묶음을 펼친 안의 개별 행은 이미지가 있는 행만 이미지 칸을 둔다', () => {
     const html = renderToStaticMarkup(<FeedSection feedItems={[A, B]} />).replace(/<style[\s\S]*?<\/style>/g, '')
     const panel = html.slice(html.indexOf('class="t-acc-panel"'))
 
-    expect((panel.match(/ds-list-row-lead/g) ?? []).length).toBe(2)
+    expect((panel.match(/ds-list-row-lead/g) ?? []).length).toBe(1)
   })
 
-  it('활동 묶음이 아닌 단건 행(이미지 없음)은 지금처럼 아이콘 칸을 그린다', () => {
+  it('활동 묶음이 아닌 단건 행도 이미지가 없으면 이미지 칸이 없다', () => {
     const html = renderFeed([row('item_dropped', { badge_name: '핫도그', poi_name: '쌍용마트' })]).replace(/<style[\s\S]*?<\/style>/g, '')
 
-    expect(html).toContain('ds-list-row-lead')
+    expect(html).not.toContain('ds-list-row-lead')
   })
 })
 

@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import PoiEarnHistory, { type PoiEarnItem } from '../PoiEarnHistory'
 import { d } from '@/lib/i18n'
-import { formatKoreanDateTime } from '@/components/LocalDate'
+import { formatDateTimeStamp } from '@/components/LocalDate'
 
 function earn(id: string, iso: string): PoiEarnItem {
   return {
@@ -62,8 +62,8 @@ describe('PoiEarnHistory — 방문 기록', () => {
     const rows = buttons(html)
     // 첫 기록은 카드라 클릭 영역이 아니다 — 행은 나머지 둘이다
     expect(rows).toHaveLength(2)
-    expect(rows[0]).toContain(formatKoreanDateTime('2026-09-03T00:00:00Z', { year: true, time: true }))
-    expect(rows[1]).toContain(formatKoreanDateTime('2026-08-03T00:00:00Z', { year: true, time: true }))
+    expect(rows[0]).toContain(formatDateTimeStamp('2026-09-03T00:00:00Z'))
+    expect(rows[1]).toContain(formatDateTimeStamp('2026-08-03T00:00:00Z'))
     expect(rows[0]).not.toContain(d.badges.firstEarnedChip)
     expect(rows[1]).toContain(d.badges.firstEarnedChip)
     // 클릭 영역 안은 phrasing 요소만 쓴다

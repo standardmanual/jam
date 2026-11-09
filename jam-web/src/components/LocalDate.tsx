@@ -23,6 +23,10 @@ interface LocalDateProps {
    * Intl 표준 hour12 옵션은 '오후 03:30' 형태만 지원해 이 형식을 표현할 수 없어 별도로 조립한다.
    */
   korean?: KoreanDateTimeOptions
+  /**
+   * '2026-12-22 AM 02:22:33' 형식(배지 상세의 일시 표기)으로 표시한다. `korean`·`options`보다 우선한다.
+   */
+  stamp?: boolean
   suffix?: string
   fallback?: string
 }
@@ -63,6 +67,26 @@ export function formatKoreanDateTime(iso: string | null | undefined, korean: Kor
 }
 
 /**
+ * ISO 문자열을 '2026-12-22 AM 02:22:33'(KST, 12시간제, 시·분·초 두 자리) 형식으로 변환한다.
+ * 배지 상세의 «획득 일시»·«만료 일시»·«활동 일시»가 쓴다(2026-11-09 결정).
+ */
+export function formatDateTimeStamp(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h12',
+  }).formatToParts(new Date(iso))
+  const pick = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  return `${pick('year')}-${pick('month')}-${pick('day')} ${pick('dayPeriod')} ${pick('hour')}:${pick('minute')}:${pick('second')}`
+}
+
+/**
  * 날짜/시각을 KST 고정으로 표시한다 (티켓 20260830_2120 — React error #418 수정).
  *
  * 이전에는 `timeZone`을 지정하지 않아 `toLocaleString`이 실행 환경의 시스템 타임존을
@@ -78,8 +102,9 @@ export function formatKoreanDateTime(iso: string | null | undefined, korean: Kor
  * `korean` prop을 넘기면 §3 형식('7월 31일 금요일 오후 3시 30분')으로, 넘기지 않으면
  * 기존처럼 `options`를 그대로 `toLocaleString`에 전달한다.
  */
-export default function LocalDate({ iso, options, korean, suffix = '', fallback = '' }: LocalDateProps) {
+export default function LocalDate({ iso, options, korean, stamp, suffix = '', fallback = '' }: LocalDateProps) {
   if (!iso) return <>{fallback}</>
+  if (stamp) return <>{formatDateTimeStamp(iso)}{suffix}</>
   if (korean) return <>{formatKoreanDateTime(iso, korean)}{suffix}</>
   return <>{new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', ...options })}{suffix}</>
 }

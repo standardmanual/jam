@@ -597,26 +597,30 @@ function FeedCard({
       tone={tone}
       separator={separator}
       lead={
-        // 이미지는 제목이 본문에 이미 있어 장식(alt="")이다. 크기는 ListRow의 `.ds-list-row-lead img` 규칙이 48 박스에 채운다.
-        // 폴백 아이콘은 타일 래퍼 없이 아이콘만 둔다 — lead 박스가 이미 면과 모서리를 준다.
-        <SafeImage
-          src={badgeImage}
-          alt=""
-          width={48}
-          height={48}
-          fallback={<EventIcon type={item.event_type} className="w-5 h-5 text-foreground" />}
-        />
+        // 대표 이미지가 없는 행은 아이콘 타일도 두지 않고 글만 보인다(2026-11-09 결정). 이미지는 제목이 본문에 이미 있어 장식(alt="")이다.
+        // 크기는 ListRow의 `.ds-list-row-lead img` 규칙이 48 박스에 채운다. 이미지가 있는데 불러오지 못한 경우에만 아이콘을 폴백으로 쓴다.
+        badgeImage ? (
+          <SafeImage
+            src={badgeImage}
+            alt=""
+            width={48}
+            height={48}
+            fallback={<EventIcon type={item.event_type} className="w-5 h-5 text-foreground" />}
+          />
+        ) : undefined
       }
-      leadBadge={earnCount != null ? `×${earnCount}` : undefined}
+      leadBadge={badgeImage && earnCount != null ? `×${earnCount}` : undefined}
       eyebrow={eventLabelText(item)}
       time={formatRelativeTime(item.created_at)}
       // 제목·부제·칩이 비면 빈 문자열·false가 아니라 undefined를 준다 — 빈 줄과 여백이 생기지 않는다.
       title={title || undefined}
       meta={sub || undefined}
       chips={
-        badgeChip || isLastPiece ? (
+        badgeChip || isLastPiece || (!badgeImage && earnCount != null) ? (
           <>
             {badgeChip}
+            {/* lead가 없으면 «×N»을 얹을 자리가 없어 칩으로 옮긴다 */}
+            {!badgeImage && earnCount != null && <ListRowChip tone="neutral">{`×${earnCount}`}</ListRowChip>}
             {isLastPiece && (
               <ListRowChip tone="neutral" style={{ gap: 'var(--spacing-4)' }}>
                 <PuzzleIcon className="w-3 h-3" />

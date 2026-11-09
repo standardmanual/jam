@@ -570,7 +570,6 @@ export const ko = {
     shareErrorUnknownBody: '잠시 후 다시 시도해 주세요',
 
     notEarnedTitle: '아직 획득하지 못한 배지예요',
-    notEarnedBody: '조건을 달성하면 자동으로 획득돼요',
 
     /** 체크인 배지 상세 하단 안내(2026-11-09 사용자 지시로 줄임). `{radius}`는 체크인 반경(m) */
     checkinSafetyNotice: '표시된 위치 {radius}m 안을 지나기만 해도 체크인돼요. 가기 어려운 곳이면 알려 주세요.',

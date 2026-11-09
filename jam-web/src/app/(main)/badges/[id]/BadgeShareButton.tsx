@@ -72,9 +72,9 @@ const KNOWN_ERROR_REASONS: ShareErrorReason[] = [
 /** 사전 비활성화 사유 — 클릭 전에 판별 가능한 것만 다룬다(런타임 API 실패는 시트 내부 에러 상태로 별도 처리) */
 type DisabledReason = 'not-earned' | 'strava-disconnected'
 
-function disabledReasonCopy(reason: DisabledReason): { title: string; body: string } {
+function disabledReasonCopy(reason: DisabledReason): { title: string; body: string | null } {
   return reason === 'not-earned'
-    ? { title: d.badges.notEarnedTitle, body: d.badges.notEarnedBody }
+    ? { title: d.badges.notEarnedTitle, body: null }
     : { title: d.badges.shareErrorStravaDisconnectedTitle, body: d.badges.shareErrorStravaDisconnectedBody }
 }
 
@@ -379,9 +379,11 @@ export default function BadgeShareButton({
             <p className="text-sm font-bold text-[var(--snow)]">
               {disabledReasonCopy(disabledReason).title}
             </p>
-            <p className="mt-1 text-xs text-[var(--snow)]/70">
-              {disabledReasonCopy(disabledReason).body}
-            </p>
+            {disabledReasonCopy(disabledReason).body && (
+              <p className="mt-1 text-xs text-[var(--snow)]/70">
+                {disabledReasonCopy(disabledReason).body}
+              </p>
+            )}
           </div>
         )}
       </div>

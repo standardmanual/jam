@@ -644,7 +644,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 titleVariant="label"
                 titleLines={0}
                 title={d.badges.earnedAt}
-                value={<LocalDate iso={earned.earned_at} korean={{ year: true, time: true }} />}
+                value={<LocalDate iso={earned.earned_at} stamp />}
               />
               {earned.triggered_by_activity_name && (
                 <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={earned.triggered_by_activity_name} />
@@ -664,7 +664,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   titleVariant="label"
                   titleLines={0}
                   title={d.badges.triggerDate}
-                  value={<LocalDate iso={earned.triggered_by_activity_date} korean={{ year: true, time: true }} />}
+                  value={<LocalDate iso={earned.triggered_by_activity_date} stamp />}
                 />
               )}
             </div>
