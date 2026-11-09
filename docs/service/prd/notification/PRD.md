@@ -559,7 +559,7 @@ DS의 `TopNav`는 이미 4분할이다.
 `rightSlot`은 `avatarSlot` 바로 앞에 붙도록 설계돼 있어 **디자인 시스템 변경 없이** 원하는
 위치(동기화 버튼 ↔ 프로필 이미지 사이)가 나온다.
 
-**`rightSlot` 충돌 처리** — 배지 상세 화면의 공유 버튼이 이미 `rightSlot`을 쓴다. 서비스 래퍼
+**`rightSlot` 충돌 처리** — 배지 상세 화면의 공유 버튼은 예전에 `rightSlot`을 썼으나(2026-11-10부터 콘텐츠 맨 끝으로 옮김) 이 절의 합성 규칙은 그대로다. 서비스 래퍼
 (`src/components/ui/TopNav.tsx`)가 `centerSlot`·`avatarSlot`을 자동 주입하듯 합성한다.
 
 ```

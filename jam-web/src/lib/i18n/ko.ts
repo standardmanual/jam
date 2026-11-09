@@ -548,7 +548,7 @@ export const ko = {
 
     physicalPatchButton: '실물 패치 보기',
 
-    shareButtonLabel: '공유',
+    shareButtonLabel: '공유하기',
     shareActionShare: '공유하기',
     shareActionDownload: '저장하기',
     shareImageLoading: '공유 이미지를 준비하고 있어요',

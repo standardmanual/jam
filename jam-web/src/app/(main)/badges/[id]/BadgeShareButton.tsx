@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { IconButton } from '@ds/components/buttons/IconButton'
 import { Button } from '@ds/components/buttons/Button'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 import { Carousel } from '@ds/components/navigation/Carousel'
@@ -364,17 +363,25 @@ export default function BadgeShareButton({
   return (
     <>
       <div ref={wrapperRef} style={{ position: 'relative' }}>
-        <IconButton
-          icon="share"
-          label={d.badges.shareButtonLabel}
-          onClick={handleButtonClick}
-          disabled={isDisabled}
-        />
+        {/* 콘텐츠 맨 끝의 전체 폭 버튼(2026-11-10 사용자 지시, 이전에는 TopNav의 공유 아이콘). 막힌 사유를 안내 팝오버로 보이려고
+            네이티브 disabled를 쓰지 않고 aria-disabled와 흐린 모양만 준다 — 눌러야 사유가 뜬다. */}
+        {/* 흐린 모양은 버튼이 아니라 감싸는 칸에 준다 — 버튼 자신의 스타일이 opacity를 직접 정해서 className으로는 못 바꾼다. 팝오버는 이 칸 밖이라 흐려지지 않는다. */}
+        <div className={isDisabled ? 'opacity-40' : undefined}>
+          <Button
+            variant="primary"
+            fullWidth
+            onClick={handleButtonClick}
+            aria-disabled={isDisabled || undefined}
+            className="whitespace-nowrap"
+          >
+            {d.badges.shareButtonLabel}
+          </Button>
+        </div>
 
         {popoverOpen && disabledReason && (
           <div
             role="tooltip"
-            className="absolute right-0 top-[calc(100%+4px)] z-50 w-[220px] rounded-2xl bg-[var(--background-inverse)] p-3 text-left"
+            className="absolute left-1/2 bottom-[calc(100%+8px)] z-50 w-[220px] -translate-x-1/2 rounded-2xl bg-[var(--background-inverse)] p-3 text-left"
           >
             <p className="text-sm font-bold text-[var(--snow)]">
               {disabledReasonCopy(disabledReason).title}

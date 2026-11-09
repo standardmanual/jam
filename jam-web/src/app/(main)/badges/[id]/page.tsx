@@ -377,19 +377,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
           headerStyle={topNavStyle}
-          rightSlot={
-            isOwnBadge && (
-              <BadgeShareButton
-                badgeId={id}
-                badgeType="item"
-                imageUrl={badgeRow.image_url}
-                badgeName={badgeRow.name}
-                hasEarned={hasEarned}
-                stravaConnected={stravaConnected}
-                subjectUsername={subjectUsername ?? undefined}
-              />
-            )
-          }
         />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
@@ -469,6 +456,21 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             )}
           </div>
         )}
+
+        {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시: 상단 공유 아이콘을 여기로 옮김). 본인 배지에서만 보인다 */}
+        {isOwnBadge && (
+          <div className="relative z-10 px-4 pt-2 pb-6">
+            <BadgeShareButton
+              badgeId={id}
+              badgeType="item"
+              imageUrl={badgeRow.image_url}
+              badgeName={badgeRow.name}
+              hasEarned={hasEarned}
+              stravaConnected={stravaConnected}
+              subjectUsername={subjectUsername ?? undefined}
+            />
+          </div>
+        )}
       </div>
     )
   }
@@ -482,22 +484,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
           headerStyle={topNavStyle}
-          rightSlot={
-            isOwnBadge && (
-              <BadgeShareButton
-                badgeId={id}
-                badgeType="checkin"
-                imageUrl={badgeRow.image_url}
-                badgeName={badgeRow.name}
-                hasEarned={hasEarned}
-                stravaConnected={stravaConnected}
-                subjectUsername={subjectUsername ?? undefined}
-                // 체크인 배지의 회차는 방문 이력 행 수다 — 활동 배지의 earn_count와 같은 자리.
-                // 안 넘기면 반복 체크인의 ×N이 공유 카드에만 빠진다(게이트 리뷰 지적).
-                earnCount={checkinEarns.length > 0 ? checkinEarns.length : null}
-              />
-            )
-          }
         />
 
         {/* 방문 횟수 칩 — 아이템 배지의 등급 칩과 같은 자리(카드 안 이름 바로 위)에 «×N»을 둔다. 2회 이상일 때만 그린다(2026-11-09 사용자 지시) */}
@@ -543,6 +529,22 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           <p className="text-center text-base text-[var(--muted)] px-4">
             {t(d.badges.checkinSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
           </p>
+
+          {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시) */}
+          {isOwnBadge && (
+            <BadgeShareButton
+              badgeId={id}
+              badgeType="checkin"
+              imageUrl={badgeRow.image_url}
+              badgeName={badgeRow.name}
+              hasEarned={hasEarned}
+              stravaConnected={stravaConnected}
+              subjectUsername={subjectUsername ?? undefined}
+              // 체크인 배지의 회차는 방문 이력 행 수다 — 활동 배지의 earn_count와 같은 자리.
+              // 안 넘기면 반복 체크인의 ×N이 공유 카드에만 빠진다(게이트 리뷰 지적).
+              earnCount={checkinEarns.length > 0 ? checkinEarns.length : null}
+            />
+          )}
         </div>
       </div>
     )
@@ -556,23 +558,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         title={d.common.back}
         backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
         headerStyle={topNavStyle}
-        rightSlot={
-          isOwnBadge && (
-            <BadgeShareButton
-              badgeId={id}
-              badgeType="activity"
-              imageUrl={badgeRow.image_url}
-              badgeName={badgeRow.name}
-              hasEarned={hasEarned}
-              stravaConnected={stravaConnected}
-              subjectUsername={subjectUsername ?? undefined}
-              // 공유 카드의 Lv·×N 슬롯 (티켓 20260905_0038 B). 레벨은 배지 자체의 값,
-              // 횟수는 이 유저의 소유 행에서 온다 — 둘의 출처가 다르다.
-              level={badgeRow.level}
-              earnCount={earned?.earn_count ?? null}
-            />
-          )
-        }
       />
 
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
@@ -683,6 +668,23 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           <Card className="text-center">
             <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
           </Card>
+        )}
+
+        {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시) */}
+        {isOwnBadge && (
+          <BadgeShareButton
+            badgeId={id}
+            badgeType="activity"
+            imageUrl={badgeRow.image_url}
+            badgeName={badgeRow.name}
+            hasEarned={hasEarned}
+            stravaConnected={stravaConnected}
+            subjectUsername={subjectUsername ?? undefined}
+            // 공유 카드의 Lv·×N 슬롯 (티켓 20260905_0038 B). 레벨은 배지 자체의 값,
+            // 횟수는 이 유저의 소유 행에서 온다 — 둘의 출처가 다르다.
+            level={badgeRow.level}
+            earnCount={earned?.earn_count ?? null}
+          />
         )}
       </div>
     </div>
