@@ -39,6 +39,8 @@ export const dynamic = 'force-dynamic'
 
 const STORAGE = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images'
 const CARD_COVER = '/dev-sample/card-cover.webp'
+// square 모양은 이미지를 자르지 않고 칸에 맞추므로(1:1), 가로를 꽉 채우려면 정사각으로 자른 이미지를 쓴다
+const CARD_COVER_SQUARE = '/dev-sample/card-cover-square.webp'
 
 const COVER = {
   walk: CARD_COVER,
@@ -683,6 +685,8 @@ export default function HomeFeedCardsSamplePage() {
                 caption={SHAPE_NAMES[shape]}
                 card={row(tpl.template, {
                   ...tpl.base,
+                  cover_image_url:
+                    shape === 'square' && tpl.base.cover_image_url === CARD_COVER ? CARD_COVER_SQUARE : tpl.base.cover_image_url,
                   shape,
                   layout_type: shape === 'ticket' ? 'ticket' : shape === 'dome' ? 'dome' : 'large_thumbnail',
                 })}
