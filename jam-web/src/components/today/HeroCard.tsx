@@ -1,7 +1,6 @@
 import { Card } from '@ds/components/cards/Card'
-import { d } from '@/lib/i18n'
 import type { ImageCardView } from '@/lib/today/cardView'
-import { CardBody, CardDescription, CardEndLine, CardFacts, CardTitleGroup } from './CardBody'
+import { CardBody, CardDescription, CardFacts, CardTitleGroup } from './CardBody'
 import CardChipRow from './CardChipRow'
 import CardImageSlot from './CardImageSlot'
 
@@ -37,9 +36,6 @@ export default function HeroCard({ view }: { view: ImageCardView }) {
         <CardFacts facts={view.facts} />
 
         <CardDescription description={view.description} />
-
-        {/* 끝 줄 — 링크가 없는 카드(`href` 없음)는 「자세히 보기」라고 말하지 않는다. 미리보기도 링크만 없을 뿐 `href`가 있으면 보인다 */}
-        {view.href && <CardEndLine label={view.resource === 'article' ? d.today.cardReadArticle : d.today.cardReadMore} />}
       </CardBody>
     </Card>
   )

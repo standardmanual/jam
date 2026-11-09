@@ -20,7 +20,7 @@ function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
     title: '한강 러닝 챌린지',
     label: '미션',
     subtitle: '이번 주말 같이 달려요',
-    facts: ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'],
+    facts: ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'],
     description: '설명문은 필수 정보 다음에 와요',
     href: '/missions/m1',
     imageUrl: IMAGE,
@@ -116,7 +116,7 @@ describe('SquareCard — 이미지 alt와 titleInImage', () => {
     expect(html).not.toContain('이번 주말 같이 달려요')
     expect(html.match(/한강 러닝 챌린지/g)).toHaveLength(1)
     const chipRow = html.indexOf('>미션</span>')
-    const fact = html.indexOf('기간 10월 12일')
+    const fact = html.indexOf('10월 12일')
     expect(chipRow).toBeGreaterThan(-1)
     expect(chipRow).toBeLessThan(fact)
     // 칩 줄과 필수 정보 사이에 제목 그룹의 빈 칸이 없다
@@ -169,7 +169,7 @@ describe('SquareCard — 본문 글자 배치', () => {
       html.indexOf('성수동'),
       html.indexOf('<h3'),
       html.indexOf('이번 주말 같이 달려요'),
-      html.indexOf('기간 10월 12일'),
+      html.indexOf('10월 12일'),
       html.indexOf('>300 포인트</span>'),
     ]
     for (const position of positions) expect(position).toBeGreaterThan(-1)
@@ -241,7 +241,7 @@ describe('SquareCard — 본문 글자 배치', () => {
   it('필수 정보는 14px(--text-sm) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
     const lines = [...html.replace(/<span class="text-point-text"[^>]*>([^<]*)<\/span>/g, '$1').matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
-    expect(lines.map((m) => m[2])).toEqual(['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'])
+    expect(lines.map((m) => m[2])).toEqual(['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'])
     for (const [, className] of lines) {
       expect(className).toBe(
         'text-sm font-bold text-foreground break-keep break-words',
@@ -254,7 +254,7 @@ describe('SquareCard — 본문 글자 배치', () => {
   })
 
   it.each([[0], [1], [2]])('필수 정보 %i줄이면 그 수만큼만 그린다', (count) => {
-    const facts = ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'].slice(0, count)
+    const facts = ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'].slice(0, count)
     const html = render({ facts: facts.length === 0 ? undefined : facts })
     expect(html.match(/font-bold/g)?.length ?? 0).toBe(count)
   })
@@ -276,7 +276,7 @@ describe('SquareCard — 본문 글자 배치', () => {
   })
 
   it('드랍은 지역 값이 있어도 칩 줄에 핀을 그리지 않는다', () => {
-    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['지역 한강공원'] })
+    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['한강공원'] })
     expect(html).not.toContain('truncate')
     expect(html.match(/한강공원/g)).toHaveLength(1)
   })

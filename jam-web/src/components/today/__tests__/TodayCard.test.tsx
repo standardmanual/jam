@@ -158,12 +158,12 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
     expect(html).not.toContain('aspect-video')
   })
 
-  it('list는 목록 모양으로 그린다(타일형: 타일 줄 + 전체 보기 끝 줄)', () => {
+  it('list는 목록 모양으로 그린다(타일형: 타일 줄, 끝 줄 없음)', () => {
     const html = renderToStaticMarkup(<TodayCard view={listView({ href: '/badges' })} />)
     expect(html).toContain('<ul class="flex w-max gap-2">')
     expect(html).toContain('<h3')
     expect(html).toContain('성수동 배지 모음')
-    expect(html).toContain('전체 보기')
+    expect(html).not.toContain('전체 보기')
     expect(html).not.toContain('min-h-[88px]')
     expect(html).not.toContain('aspect-video')
   })
@@ -197,21 +197,21 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
 describe('TodayCard — hero의 접근·계측 틀', () => {
   const HERO_TRACKING = { cardId: 'card-2', contentTypeId: 'T01', templateType: 'mission_spotlight', shape: 'hero' } as const
 
-  it('계측 정보와 href가 있으면 틀이 트래커·링크를 걸고 눌림은 한 곳에만 있으며 끝 줄이 보인다', () => {
+  it('계측 정보와 href가 있으면 틀이 트래커·링크를 걸고 눌림은 한 곳에만 있다(끝 줄은 없다)', () => {
     const html = renderToStaticMarkup(<TodayCard view={heroView({ href: '/missions/m1', tracking: HERO_TRACKING })} />)
     expect(html).toContain('data-tracker="card-2"')
     expect(html).toContain('<a ')
     expect(html).toContain('href="/missions/m1"')
     expect(html.match(/jam-press/g)).toHaveLength(1)
-    expect(html).toContain('자세히 보기')
+    expect(html).not.toContain('자세히 보기')
   })
 
-  it('계측 정보가 없으면(미리보기) 링크·트래커·눌림이 없고, href가 있으면 끝 줄만 보인다', () => {
+  it('계측 정보가 없으면(미리보기) 링크·트래커·눌림이 없고, href가 있어도 끝 줄이 없다', () => {
     const html = renderToStaticMarkup(<TodayCard view={heroView({ href: '/missions/m1' })} />)
     expect(html).not.toContain('<a')
     expect(html).not.toContain('data-tracker')
     expect(html).not.toContain('jam-press')
-    expect(html).toContain('자세히 보기')
+    expect(html).not.toContain('자세히 보기')
   })
 
   it('href가 없으면 끝 줄도 없다', () => {
@@ -291,15 +291,15 @@ describe('TodayCard — list의 접근·계측 틀', () => {
     expect(html.match(/<a /g)).toHaveLength(1)
     expect(html).toContain('href="/badges"')
     expect(html.match(/jam-press/g)).toHaveLength(1)
-    expect(html).toContain('전체 보기')
+    expect(html).not.toContain('전체 보기')
   })
 
-  it('타일형 미리보기(tracking 없음): 링크·트래커·눌림이 없고 href가 있으면 끝 줄만 보인다', () => {
+  it('타일형 미리보기(tracking 없음): 링크·트래커·눌림이 없고 href가 있어도 끝 줄이 없다', () => {
     const html = renderToStaticMarkup(<TodayCard view={listView({ href: '/badges' })} />)
     expect(html).not.toContain('<a')
     expect(html).not.toContain('data-tracker')
     expect(html).not.toContain('jam-press')
-    expect(html).toContain('전체 보기')
+    expect(html).not.toContain('전체 보기')
   })
 
   it('타일형은 href가 없으면 링크도 끝 줄도 없다(트래커는 노출을 위해 남는다)', () => {

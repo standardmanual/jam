@@ -273,9 +273,6 @@ export const ko = {
 
     // 투데이 카드 스택
     cardStackTitle: '투데이',
-    cardReadArticle: '기사 읽기',
-    cardReadMore: '자세히 보기',
-    cardViewAll: '전체 보기',
   },
 
   /**
@@ -483,14 +480,14 @@ export const ko = {
     ctaViewMission: '미션 보기',
     ctaViewDetails: '자세히 보기',
     /** 카드 필수 정보 줄(티켓 20261001_1357, 1453 확정 설계 2절) — 아이콘 없이 글자로 쓰고, 값이 없는 줄은 만들지 않는다 */
-    factPeriod: '기간 {range}',
-    factPeriodRange: '{start}~{end}',
-    factPeriodOngoing: '기간 상시',
+    factPeriod: '{range}',
+    factPeriodRange: '{start} ~ {end}',
+    factPeriodOngoing: '상시',
     factMonthDay: '{month}월 {day}일',
-    factReward: '보상 {items}',
+    factReward: '{items}',
     factRewardPoints: '{points} 포인트',
     factRewardBadges: '배지 {count}개',
-    factPlace: '지역 {place}',
+    factPlace: '{place}',
     factItemCount: '아이템 {count}개',
     /** 레시피 공개 카드(티켓 20261006_1217) — 재료 수는 슬롯 수이고, 공개일은 공개 전 카드에만 있다 */
     factIngredientCount: '재료 {count}개',

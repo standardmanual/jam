@@ -76,51 +76,57 @@ describe('formatKstMonthDay — KST 기준 날짜', () => {
 })
 
 describe('buildFacts — 미션', () => {
+  it('정보 줄에 「기간」·「보상」 접두어가 없고 기간의 «~» 앞뒤에 공백이 있다(티켓 20261109_1458)', () => {
+    const lines = buildFacts('mission', { period, rewardPoints: 300, rewardBadgeCount: 1 }, NOW)
+    expect(lines).toEqual(['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'])
+    for (const line of lines) expect(line).not.toMatch(/^(기간|보상|지역) /)
+  })
+
   const period = { startsAt: '2026-10-12T00:00:00+09:00', endsAt: '2026-11-08T23:59:59+09:00' }
 
-  it('기간과 보상을 두 줄로 만든다(예: 기간 10월 12일~11월 8일, 보상 300 포인트 · 배지 1개)', () => {
+  it('기간과 보상을 두 줄로 만든다(예: 10월 12일 ~ 11월 8일, 300 포인트 · 배지 1개)', () => {
     expect(buildFacts('mission', { period, rewardPoints: 300, rewardBadgeCount: 1 }, NOW)).toEqual([
-      '기간 10월 12일~11월 8일',
-      '보상 300 포인트 · 배지 1개',
+      '10월 12일 ~ 11월 8일',
+      '300 포인트 · 배지 1개',
     ])
   })
 
-  it('종료가 없으면 「기간 상시」다', () => {
+  it('종료가 없으면 「상시」다', () => {
     expect(buildFacts('mission', { period: { startsAt: period.startsAt, endsAt: null }, rewardPoints: 300 }, NOW)).toEqual([
-      '기간 상시',
-      '보상 300 포인트',
+      '상시',
+      '300 포인트',
     ])
   })
 
   it('보상은 있는 것만 쓴다(포인트만, 배지만)', () => {
-    expect(buildFacts('mission', { period, rewardPoints: 300, rewardBadgeCount: 0 }, NOW)[1]).toBe('보상 300 포인트')
-    expect(buildFacts('mission', { period, rewardPoints: 0, rewardBadgeCount: 2 }, NOW)[1]).toBe('보상 배지 2개')
-    expect(buildFacts('mission', { period, rewardPoints: null, rewardBadgeCount: 1 }, NOW)[1]).toBe('보상 배지 1개')
+    expect(buildFacts('mission', { period, rewardPoints: 300, rewardBadgeCount: 0 }, NOW)[1]).toBe('300 포인트')
+    expect(buildFacts('mission', { period, rewardPoints: 0, rewardBadgeCount: 2 }, NOW)[1]).toBe('배지 2개')
+    expect(buildFacts('mission', { period, rewardPoints: null, rewardBadgeCount: 1 }, NOW)[1]).toBe('배지 1개')
   })
 
   it('포인트는 천 단위로 쉼표를 찍는다', () => {
-    expect(buildFacts('mission', { period, rewardPoints: 1500 }, NOW)[1]).toBe('보상 1,500 포인트')
+    expect(buildFacts('mission', { period, rewardPoints: 1500 }, NOW)[1]).toBe('1,500 포인트')
   })
 
   it('보상이 없으면 그 줄만 생략한다', () => {
-    expect(buildFacts('mission', { period, rewardPoints: 0, rewardBadgeCount: 0 }, NOW)).toEqual(['기간 10월 12일~11월 8일'])
-    expect(buildFacts('mission', { period }, NOW)).toEqual(['기간 10월 12일~11월 8일'])
+    expect(buildFacts('mission', { period, rewardPoints: 0, rewardBadgeCount: 0 }, NOW)).toEqual(['10월 12일 ~ 11월 8일'])
+    expect(buildFacts('mission', { period }, NOW)).toEqual(['10월 12일 ~ 11월 8일'])
   })
 
   it('기간 값이 없으면 기간 줄만 생략한다', () => {
-    expect(buildFacts('mission', { period: null, rewardPoints: 300 }, NOW)).toEqual(['보상 300 포인트'])
+    expect(buildFacts('mission', { period: null, rewardPoints: 300 }, NOW)).toEqual(['300 포인트'])
   })
 
   it('시작·종료 날짜는 KST 기준이다(종료 23:59:59 KST는 그날, 00:00 KST는 다음 날)', () => {
     const kstEndOfDay = buildFacts('mission', { period: { startsAt: '2026-10-11T15:00:00Z', endsAt: '2026-11-08T14:59:59Z' } }, NOW)
-    expect(kstEndOfDay).toEqual(['기간 10월 12일~11월 8일'])
+    expect(kstEndOfDay).toEqual(['10월 12일 ~ 11월 8일'])
     const kstNextDay = buildFacts('mission', { period: { startsAt: '2026-10-11T14:59:59Z', endsAt: '2026-11-08T15:00:00Z' } }, NOW)
-    expect(kstNextDay).toEqual(['기간 10월 11일~11월 9일'])
+    expect(kstNextDay).toEqual(['10월 11일 ~ 11월 9일'])
   })
 
   it('읽을 수 없는 날짜면 기간 줄을 만들지 않는다', () => {
     expect(buildFacts('mission', { period: { startsAt: 'x', endsAt: '2026-11-08T00:00:00+09:00' }, rewardPoints: 300 }, NOW)).toEqual([
-      '보상 300 포인트',
+      '300 포인트',
     ])
   })
 })
@@ -130,7 +136,7 @@ describe('buildFacts — 남은 시간 (종료 7일 이내, 기간 줄 대신)',
 
   it('7일 경계: 정확히 7일 남으면 「7일 남음」, 1밀리초라도 더 길면 기간을 쓴다', () => {
     expect(faces(7 * DAY)[0]).toBe('7일 남음')
-    expect(faces(7 * DAY + 1)[0]).toMatch(/^기간 /)
+    expect(faces(7 * DAY + 1)[0]).toMatch(/^\d+월 \d+일 ~ /)
   })
 
   it('24시간 경계: 24시간 이내는 시간, 그보다 길면 일 단위다(24시간 = 1일)', () => {
@@ -152,23 +158,23 @@ describe('buildFacts — 남은 시간 (종료 7일 이내, 기간 줄 대신)',
   })
 
   it('이미 끝났거나 지금 끝나는 기간은 남은 시간 대신 기간 줄을 쓴다', () => {
-    expect(faces(0)[0]).toMatch(/^기간 /)
-    expect(faces(-HOUR)[0]).toMatch(/^기간 /)
+    expect(faces(0)[0]).toMatch(/^\d+월 \d+일 ~ /)
+    expect(faces(-HOUR)[0]).toMatch(/^\d+월 \d+일 ~ /)
   })
 
   it('남은 시간은 기간 줄을 대신할 뿐이고 보상 줄은 그대로다(최대 2줄)', () => {
-    expect(faces(3 * DAY)).toEqual(['3일 남음', '보상 300 포인트'])
+    expect(faces(3 * DAY)).toEqual(['3일 남음', '300 포인트'])
   })
 
   it('KST 자정 직전 종료: 기준 시각이 KST 2026-10-05 23:59:59이고 종료가 10-12 23:59:59면 정확히 7일이다', () => {
     const now = new Date('2026-10-05T23:59:59+09:00')
     const period = { startsAt: '2026-10-01T00:00:00+09:00', endsAt: '2026-10-12T23:59:59+09:00' }
     expect(buildFacts('mission', { period }, now)).toEqual(['7일 남음'])
-    expect(buildFacts('mission', { period }, new Date(now.getTime() - 1))[0]).toMatch(/^기간 /)
+    expect(buildFacts('mission', { period }, new Date(now.getTime() - 1))[0]).toMatch(/^\d+월 \d+일 ~ /)
   })
 
   it('종료가 없는 상시 미션에는 남은 시간이 없다', () => {
-    expect(buildFacts('mission', { period: { startsAt: '2026-10-01T00:00:00+09:00', endsAt: null } }, NOW)).toEqual(['기간 상시'])
+    expect(buildFacts('mission', { period: { startsAt: '2026-10-01T00:00:00+09:00', endsAt: null } }, NOW)).toEqual(['상시'])
   })
 
   it('자동 카드가 가리키는 미션에도 같은 규칙이 적용된다', () => {
@@ -189,9 +195,9 @@ describe('buildFacts — 레시피 (티켓 20261006_1217)', () => {
   it('공개 뒤: 「재료 N개」와 보상(공개일은 이미 지나 줄에서 빠진다)', () => {
     expect(buildFacts('recipe', { ingredientCount: 4, rewardPoints: 300, rewardBadgeCount: 1 }, NOW)).toEqual([
       '재료 4개',
-      '보상 300 포인트 · 배지 1개',
+      '300 포인트 · 배지 1개',
     ])
-    expect(buildFacts('recipe', { ingredientCount: 3, rewardPoints: 0, rewardBadgeCount: 2 }, NOW)).toEqual(['재료 3개', '보상 배지 2개'])
+    expect(buildFacts('recipe', { ingredientCount: 3, rewardPoints: 0, rewardBadgeCount: 2 }, NOW)).toEqual(['재료 3개', '배지 2개'])
   })
 
   it('보상이 0이면 그 줄만 생략한다', () => {
@@ -220,7 +226,7 @@ describe('buildFacts — 레시피 (티켓 20261006_1217)', () => {
 
 describe('buildFacts — 그 밖의 자원', () => {
   it('드랍: 지역 한 줄(시각은 값이 없어 생략)', () => {
-    expect(buildFacts('drop', { place: '한강공원' }, NOW)).toEqual(['지역 한강공원'])
+    expect(buildFacts('drop', { place: '한강공원' }, NOW)).toEqual(['한강공원'])
   })
 
   it('드랍: 지역이 비었거나 공백이면 줄이 없다', () => {
@@ -371,6 +377,35 @@ describe('toCardView — 표시 데이터', () => {
     expect(bare.subtitle).toBeUndefined()
     expect(bare.description).toBeUndefined()
     expect(bare.href).toBeUndefined()
+  })
+
+  describe('설명 문단은 배지 소개·컨텐츠 소개에서만 싣는다(티켓 20261109_1458)', () => {
+    it.each(['badge_spotlight', 'content_intro'] as const)('%s: description 값을 싣는다', (template) => {
+      expect(toCardView(makeCard({ template_type: template, description: '설명문' })).description).toBe('설명문')
+    })
+
+    it.each([
+      'mission_spotlight',
+      'drop_alert',
+      'editorial_article',
+      'ranking_board',
+      'itembook_milestone',
+      'progress_nudge',
+      'location_trend',
+      'recipe_reveal',
+    ] as const)('%s: description 값이 있어도 싣지 않는다', (template) => {
+      const view = toCardView(makeCard({ template_type: template, description: '설명문' }))
+      expect(view.description).toBeUndefined()
+      expect(Object.keys(view)).not.toContain('description')
+    })
+
+    it.each(['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket'] as const)(
+      '%s: 모양과 무관하게 같은 판정이다',
+      (shape) => {
+        expect(toCardView(makeCard({ template_type: 'drop_alert', shape, description: '설명문' })).description).toBeUndefined()
+        expect(toCardView(makeCard({ template_type: 'badge_spotlight', shape, description: '설명문' })).description).toBe('설명문')
+      },
+    )
   })
 
   it('기준 시각을 넘기면 표시 데이터에 남기고, 안 넘기면 없다', () => {
@@ -529,7 +564,7 @@ describe('toCardView — 표시 데이터', () => {
       expect(view).toMatchObject({
         shape: 'square',
         resource: 'mission',
-        facts: ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'],
+        facts: ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'],
       })
     })
 
@@ -555,12 +590,12 @@ describe('toCardView — 표시 데이터', () => {
         }),
         { now: NOW },
       )
-      expect(view).toMatchObject({ shape: 'brief', resource: 'auto', facts: ['기간 상시'] })
+      expect(view).toMatchObject({ shape: 'brief', resource: 'auto', facts: ['상시'] })
     })
 
     it('드랍 카드: 필수 정보 지역 줄과 칩 줄 지역 핀', () => {
       const view = toCardView(makeCard({ template_type: 'drop_alert', layout_type: 'shortcut', region_label: '한강공원' }))
-      expect(view).toMatchObject({ shape: 'brief', resource: 'drop', facts: ['지역 한강공원'], regionLabel: '한강공원' })
+      expect(view).toMatchObject({ shape: 'brief', resource: 'drop', facts: ['한강공원'], regionLabel: '한강공원' })
     })
 
     it('컬렉션 카드: 이름과 아이템 수', () => {
@@ -816,7 +851,7 @@ describe('toCardView — 레시피 공개 카드 (티켓 20261006_1217)', () => 
       const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released(tiles) }), { tracking: true, now: NOW })
       expect(view.shape).toBe('list')
       if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view).toMatchObject({ resource: 'recipe', label: '레시피 공개', facts: ['재료 4개', '보상 300 포인트 · 배지 1개'], href: '/combine' })
+      expect(view).toMatchObject({ resource: 'recipe', label: '레시피 공개', facts: ['재료 4개', '300 포인트 · 배지 1개'], href: '/combine' })
       expect(view.tiles).toEqual([
         { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare', earned: true },
         { name: '배지 b', imageUrl: 'https://cdn.example/b.png', rarity: 'rare', earned: false },
@@ -854,12 +889,12 @@ describe('toCardView — 레시피 공개 카드 (티켓 20261006_1217)', () => 
     it('후보가 전부 삭제돼 타일이 하나도 없으면 brief다(재료 수는 슬롯 수 그대로)', () => {
       const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released([], { ingredient_count: 3 }) }), { now: NOW })
       expect(view.shape).toBe('brief')
-      expect(view.facts).toEqual(['재료 3개', '보상 300 포인트 · 배지 1개'])
+      expect(view.facts).toEqual(['재료 3개', '300 포인트 · 배지 1개'])
     })
 
     it.each(['poster', 'hero', 'square'] as const)('%s: 타일 줄 없이 정보 줄만 「재료 N개」·「보상 …」이다', (shape) => {
       const view = toCardView(recipeCard({ shape, cover_image_url: 'https://cdn.example/c.png', resolved_recipe: released(tiles) }), { now: NOW })
-      expect(view).toMatchObject({ shape, facts: ['재료 4개', '보상 300 포인트 · 배지 1개'] })
+      expect(view).toMatchObject({ shape, facts: ['재료 4개', '300 포인트 · 배지 1개'] })
       expect(view).not.toHaveProperty('tiles')
     })
   })

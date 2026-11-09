@@ -33,6 +33,17 @@ export const CARD_TITLE_MAX_LENGTH: Record<CardShape, number> = {
   ticket: 22,
 }
 
+/**
+ * 설명 문단을 그리는 템플릿(티켓 20261109_1458). 배지 소개와 컨텐츠 소개만 설명 문단을 그리고, 그 밖의 템플릿은 `description` 값이 있어도 그리지 않는다.
+ * DB 칸과 운영 입력 칸은 그대로이고, 그리는 쪽 판정은 `toCardView` 한 곳에서 이 함수로 한다.
+ */
+export const DESCRIPTION_TEMPLATES = ['badge_spotlight', 'content_intro'] as const satisfies readonly TodayCardTemplateType[]
+
+/** 이 템플릿의 카드가 설명 문단을 그리는지. */
+export function showsDescription(template: TodayCardTemplateType): boolean {
+  return (DESCRIPTION_TEMPLATES as readonly string[]).includes(template)
+}
+
 /** 이미지가 있는 모양 — 이미지 제작이 필요한 모양이다. */
 export const IMAGE_CARD_SHAPES = ['hero', 'poster', 'square', 'dome', 'ticket'] as const satisfies readonly CardShape[]
 

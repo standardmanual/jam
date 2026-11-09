@@ -542,10 +542,10 @@ export const TileGroups: Story = {
       <Case caption="요약 없음 — 빈 칸 없이 제목만" view={tileCard({ subtitle: undefined })} />
       <Case caption="설명문 없음" view={tileCard({ description: undefined })} />
       <Case
-        caption="모두 없음 — 칩 + 제목 + 타일 줄 + 끝 줄뿐"
+        caption="모두 없음 — 칩 + 제목 + 타일 줄뿐"
         view={tileCard({ subtitle: undefined, facts: undefined, description: undefined })}
       />
-      <Case caption="href 없음 — 「전체 보기 →」 없음(링크가 없는 카드는 말하지 않는다)" view={tileCard({ href: undefined })} />
+      <Case caption="href 없음 — 끝 줄 없음(href가 있어도 끝 줄은 없다)" view={tileCard({ href: undefined })} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
@@ -557,8 +557,8 @@ export const TileGroups: Story = {
     expect(heightOf(all)).toBeGreaterThan(heightOf(noDescription))
     expect(heightOf(noSubtitle)).toBeGreaterThan(heightOf(bare))
     expect(bare.querySelectorAll('p.font-bold')).toHaveLength(0)
-    expect(all.textContent).toContain(d.today.cardViewAll)
-    expect(noHref.textContent).not.toContain(d.today.cardViewAll)
+    expect(all.textContent).not.toContain('전체 보기')
+    expect(noHref.textContent).not.toContain('전체 보기')
     expectNoHorizontalOverflow(canvasElement)
   },
 }
@@ -786,9 +786,9 @@ export const Untracked: Story = {
     expect(canvasElement.querySelectorAll('.jam-press')).toHaveLength(0)
     const [tilesCard, rankingCardEl] = cardsOf(canvasElement)
     expect(scrolls(tilesCard)).toBe(true)
-    expect(tilesCard.textContent).toContain(d.today.cardViewAll)
+    expect(tilesCard.textContent).not.toContain('전체 보기')
     for (const span of Array.from(rankingCardEl.querySelectorAll<HTMLElement>('span'))) expect(span.style.fontSize).not.toBe('var(--text-2xl)')
-    expect(rankingCardEl.textContent).not.toContain(d.today.cardViewAll)
+    expect(rankingCardEl.textContent).not.toContain('전체 보기')
   },
 }
 

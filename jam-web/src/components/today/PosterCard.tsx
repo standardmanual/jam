@@ -49,13 +49,13 @@ export default function PosterCard({ view }: { view: ImageCardView }) {
         )}
 
         {/* 막 위 글자는 «포인트» 오렌지로 칠하지 않고 흰 글자를 유지한다(밝은 사진 위 대비가 최악 약 1.6:1, 티켓 20261104_2319) */}
-        {/* 필수 정보 — 아이콘·불릿 없이 글자로, 한 줄에 하나씩. 자르지 않고 줄바꿈한다(말줄임 없음). 보통 굵기다(확정 설계 3절 poster 열에 굵게 지정이 없다) */}
+        {/* 필수 정보 — 아이콘·불릿 없이 글자로, 한 줄에 하나씩. 자르지 않고 줄바꿈한다(말줄임 없음). 굵게 한다(티켓 20261109_1458, 다른 모양의 필수 정보와 같은 규칙이다) */}
         {facts.length > 0 && (
           <div>
             {facts.map((line, index) => (
               <p
                 key={index}
-                className="text-sm text-snow break-keep break-words"
+                className="text-sm font-bold text-snow break-keep break-words"
               >
                 {line}
               </p>
