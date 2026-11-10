@@ -10,8 +10,7 @@ import type {
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
-import { filterRecipesWithLiveResults, filterReleasedRecipes, recipeReleaseState } from '@/lib/combine/visibility'
-import { hasAdminAccess } from '@/lib/admin/auth'
+import { filterRecipesWithLiveResults, filterReleasedRecipes } from '@/lib/combine/visibility'
 import { getPendingCount } from '@/lib/combine/pending'
 import { selectInChunks } from '@/lib/combine/chunked-in'
 
@@ -25,16 +24,9 @@ export default async function CombinePage() {
   const [
     { data: invRaw, error: invError },
     { data: recipesRaw, error: recipesError },
-    isAdmin,
   ] = await Promise.all([
     service.from('inventory').select('id').eq('user_id', user.id).maybeSingle(),
     service.from('combination_recipes').select('*'),
-    // 운영자는 공개 전 레시피도 본다(티켓 20261001_1159). 판정 조회가 실패하면 일반 유저 화면과 같게
-    // 닫는다(fail-closed) — 같은 왕복에 실어 보내 응답 시간을 늘리지 않는다.
-    hasAdminAccess(user.id, user.email).catch((adminError: unknown) => {
-      console.error('[combine/page] 운영자 판정 실패 — 일반 유저 화면으로 처리합니다', adminError)
-      return false
-    }),
   ])
   // .maybeSingle()이라 무인벤토리는 error 없이 data null로 오고, 실제 쿼리 오류만 error로 잡힌다
   if (invError) console.error('[combine/page] inventory 조회 실패', invError)
@@ -43,17 +35,13 @@ export default async function CombinePage() {
   // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 공개 기간 안(공개 시각 ≤ 지금 < 종료 시각)인 레시피만
   // 공개로 취급한다. 공개 전·종료된 레시피는 목록·슬롯·보상 미리보기에서 모두 빠진다(티켓 20261001_1157·
   // 20261002_0710). 슬롯·배지 조회는 아래 visibleRecipeIds를 쓰므로 이 필터를 그대로 따라온다.
-  // 운영자(티켓 20261001_1159)는 공개 전 레시피까지 본다 — 그래서 `visibleRecipeRows`·`visibleRecipeIds`는
-  // «보는 사람에게 보이는 목록»이다(운영자는 공개 전 포함, 일반 유저는 공개 중만). 종료된 레시피는
-  // 운영자에게도 없다(티켓 20261002_0710 G7): 지난 레시피에 「공개 예정」이 붙는 오류를 막고, 시험 믹스의
-  // 목적(공개 전 확인)과 맞춘다.
-  // 서버 정렬 순서는 그대로 둔다: 공개 뒤 일반 유저가 보게 될 순서와 같아야 한다.
+  // 공개 예정 레시피는 어드민에서 분류 기준으로만 쓰고, 운영자를 포함해 유저 믹스 화면에는 보이지 않는다
+  // (2026-11-10 사용자 지시, 티켓 20261110_1030. 이전에는 운영자에게 공개 전 레시피를 보여 줬다, 티켓 20261001_1159).
+  // 서버 정렬 순서는 그대로 둔다.
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const releasedRecipes = isAdmin
-    ? recipes.filter((r) => recipeReleaseState(r) !== 'ended')
-    : filterReleasedRecipes(recipes)
+  const releasedRecipes = filterReleasedRecipes(recipes)
 
-  // 결과 아이템 배지의 공개 기간이 끝난 레시피는 운영자에게도 내린다(티켓 20261018_0055, 운영 로직 8.4절). 믹스는 실패해도 재료가
+  // 결과 아이템 배지의 공개 기간이 끝난 레시피는 목록에서 내린다(티켓 20261018_0055, 운영 로직 8.4절). 믹스는 실패해도 재료가
   // 소모되므로 결과가 나올 수 없는 레시피를 남겨 두면 재료만 잃는다. 믹스 시도(`combineRecipeAttempt`)도 같은 판정으로 소각 앞에서 거절한다.
   // 조회가 실패하면 목록을 막지 않는다 — 서버가 소각 앞에서 한 번 더 거절하므로 재료는 안전하다.
   const resultBadgeIds = [...new Set(releasedRecipes.flatMap((r) => r.reward_badge_ids ?? []))]
@@ -139,9 +127,6 @@ export default async function CombinePage() {
 
   const publicRecipes: RecipeWithSlots[] = visibleRecipeRows.map((r) => ({
     ...r,
-    // 공개 전(`scheduled`) 레시피에만 공개 시각을 넣는다 — 이미 공개된 레시피에 「공개 예정」이 붙지 않게
-    // 서버가 `recipeReleaseState` 기준으로 정해 내려준다(일반 유저는 공개 전 행 자체가 없다).
-    releaseAt: recipeReleaseState(r) === 'scheduled' ? (r.valid_from ?? null) : null,
     slots: (slotsByRecipe.get(r.id) ?? []).sort((a, b) => a.slot_order - b.slot_order),
     rewardBadges: r.reward_badge_ids
       .map((id) => badgeDetailMap.get(id))

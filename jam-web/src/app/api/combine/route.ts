@@ -16,13 +16,13 @@
  *  - 이용 정지 중이면 소각 전에 403 `{ error, code: 'user_suspended' }`로 막는다(티켓 20261018_0055)
  *  - 성공 응답에는 결과 지급 상태 `resultStatus`('granted'|'pending'|'none')가 있다. 빈칸이 모자라 결과를 받지 않은 상태로 남기면
  *    `pending`이고 `pendingCount`·`freeSlots`와 안내 `message`가 붙는다. 받기는 `POST /api/combine/pending`이다.
- *  - 시험 믹스(티켓 20261001_1159): 운영자가 공개 전 레시피를 믹스하면 위 응답에 `testMix: true`가
- *    더해진다. 일반 믹스에는 이 키가 없다. 일반 유저가 공개 전 레시피를 보내면 `recipe_not_found`다.
+ *  - 공개 전 레시피는 운영자를 포함해 누구도 믹스할 수 없다 — 보내면 `recipe_not_found`다(2026-11-10 사용자 지시, 티켓 20261110_1030).
+ *    이전에는 운영자의 시험 믹스(티켓 20261001_1159)를 허용해 응답에 `testMix: true`를 더했다. 엔진의 `allowUnreleased` 옵션은
+ *    남아 있지만 이 라우트는 넘기지 않는다.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
-import { hasAdminAccess } from '@/lib/admin/auth'
 import { combineRecipeAttempt, jamTriggersForCombineResult, MAX_ITEMS } from '@/lib/combine/index'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { d, t } from '@/lib/i18n'
@@ -69,17 +69,9 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // 운영자는 공개 전 레시피를 믹스할 수 있다(시험 믹스). 판정이 실패하면 일반 유저와 같게 닫는다(fail-closed).
-  let isAdmin = false
-  try {
-    isAdmin = await hasAdminAccess(user.id, user.email)
-  } catch (adminError) {
-    console.error('[combine] 운영자 판정 실패 — 일반 유저로 처리합니다:', adminError)
-  }
-
   let result: Awaited<ReturnType<typeof combineRecipeAttempt>>
   try {
-    result = await combineRecipeAttempt(user.id, recipeId, itemIds as string[], { allowUnreleased: isAdmin })
+    result = await combineRecipeAttempt(user.id, recipeId, itemIds as string[])
   } catch (attemptError) {
     // 이용 정지 중이면 소각 전에 던진다 — 재료·포인트가 그대로다. 정지 여부를 읽지 못해도 던지므로 아래에서 500으로 닫힌다.
     if (attemptError instanceof UserSuspendedError) {

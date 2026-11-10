@@ -11,8 +11,8 @@
  *  - 받지 않은 믹스 결과가 남아 엔진이 `pending_results_exist`를 돌려주면 `code`를 더해 409로 내린다. 이용 정지 중이면 엔진이 던지는
  *    `UserSuspendedError`를 403(`code: 'user_suspended'`)으로 바꾼다. 결과가 받지 않은 상태로 남은 성공(`resultStatus: 'pending'`)은
  *    빈손이 아니라 안내 문구를 붙이고, 보상 없음 레시피(`noReward`)의 빈손은 실패 문구를 붙이지 않는다. 믹스 칸 상한은 5다(티켓 20261018_0055)
- *  - 운영자 판정(`hasAdminAccess`)을 `allowUnreleased`로 믹스 엔진에 넘기고, 시험 믹스(`testMix`) 응답은
- *    키만 더해지며 지표 판정을 하지 않는다. 판정이 실패하면 일반 유저처럼 닫는다(티켓 20261001_1159)
+ *  - 운영자 판정을 하지 않고 `allowUnreleased`도 넘기지 않는다(공개 전 레시피는 운영자도 믹스할 수 없다, 티켓 20261110_1030).
+ *    엔진이 `testMix` 응답을 돌려주면 키만 더하고 지표 판정을 하지 않는 처리는 남아 있다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/combine/__tests__/route.test.ts
  */
@@ -266,31 +266,25 @@ describe('판정 없이 끝나는 요청', () => {
   })
 })
 
-describe('운영자 시험 믹스 (티켓 20261001_1159)', () => {
-  it('운영자 판정 결과를 allowUnreleased로 믹스 엔진에 넘긴다', async () => {
+describe('공개 전 레시피는 운영자도 믹스할 수 없다 (티켓 20261110_1030)', () => {
+  it('운영자 여부를 묻지 않고 allowUnreleased 옵션도 넘기지 않는다', async () => {
     hasAdminAccessMock.mockResolvedValue(true)
     await POST(request(VALID_BODY))
-    expect(hasAdminAccessMock).toHaveBeenCalledWith(USER_ID, USER_EMAIL)
-    expect(combineMock).toHaveBeenCalledWith(USER_ID, 'recipe-1', ['item-1', 'item-2'], { allowUnreleased: true })
+    expect(hasAdminAccessMock).not.toHaveBeenCalled()
+    // 모의 함수가 네 번째 인자(옵션)를 그대로 전달하므로 비어 있는지로 확인한다
+    expect(combineMock.mock.calls[0]?.slice(0, 3)).toEqual([USER_ID, 'recipe-1', ['item-1', 'item-2']])
+    expect(combineMock.mock.calls[0]?.[3]).toBeUndefined()
   })
 
-  it('운영자가 아니면 allowUnreleased: false로 넘긴다', async () => {
-    hasAdminAccessMock.mockResolvedValue(false)
-    await POST(request(VALID_BODY))
-    expect(combineMock).toHaveBeenCalledWith(USER_ID, 'recipe-1', ['item-1', 'item-2'], { allowUnreleased: false })
-  })
-
-  it('운영자 판정이 예외로 실패하면 일반 유저처럼 allowUnreleased: false로 닫고 믹스는 진행한다(fail-closed)', async () => {
-    hasAdminAccessMock.mockRejectedValue(new Error('조회 실패'))
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('공개 전 레시피를 보내면 운영자여도 recipe_not_found 응답이다', async () => {
+    combineMock.mockResolvedValue({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
     const res = await POST(request(VALID_BODY))
-    consoleError.mockRestore()
-    expect(res.status).toBe(200)
-    expect(combineMock).toHaveBeenCalledWith(USER_ID, 'recipe-1', ['item-1', 'item-2'], { allowUnreleased: false })
+    const body = await res.json()
+    expect(body.reason).toBe('recipe_not_found')
+    expect('testMix' in body).toBe(false)
   })
 
   it('시험 믹스 성공 응답은 기존 키에 testMix만 더해지고 지표 판정은 빈 목록이다', async () => {
-    hasAdminAccessMock.mockResolvedValue(true)
     combineMock.mockResolvedValue({ ...SUCCESS, testMix: true })
     const res = await POST(request(VALID_BODY))
     const body = await res.json()
@@ -300,7 +294,6 @@ describe('운영자 시험 믹스 (티켓 20261001_1159)', () => {
   })
 
   it('시험 믹스의 미매칭 응답도 message·위로 문구는 그대로이고 testMix만 더해진다', async () => {
-    hasAdminAccessMock.mockResolvedValue(true)
     combineMock.mockResolvedValue({ success: false, reason: 'no_recipe_match', pointsAwarded: 5, testMix: true })
     const res = await POST(request(VALID_BODY))
     const body = await res.json()
@@ -316,7 +309,6 @@ describe('운영자 시험 믹스 (티켓 20261001_1159)', () => {
   })
 
   it('일반 유저가 공개 전 레시피를 보내면 recipe_not_found 응답이고 testMix가 없다', async () => {
-    hasAdminAccessMock.mockResolvedValue(false)
     combineMock.mockResolvedValue({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
     const res = await POST(request(VALID_BODY))
     const body = await res.json()
