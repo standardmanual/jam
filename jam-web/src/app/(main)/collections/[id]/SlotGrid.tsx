@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button'
 import SlotActionPill from './SlotActionPill'
 import SlotCircleButton from '@/components/ui/SlotCircleButton'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import { shouldOpenCandidateSheet } from '@/lib/itembook/tier-badge-slots'
 import type { BadgeRarity } from '@/types/database'
 import UnslotAllSheet, { toUnslotAllOutcome, type UnslotAllOutcome } from './UnslotAllSheet'
@@ -592,15 +592,7 @@ export default function SlotGrid({
         badgeName={sheetView?.badge.name}
         // 등급이 없는 상태에서는 후보마다 등급이 달라 시트 하나의 rarity를 줄 수 없다 — 생략하고 후보별 `rarity`를 쓴다
         rarity={sheetUndecided ? undefined : (sheetView?.badge.rarity as BadgeRarity | null)}
-        bodyText={
-          sheetView
-            ? swapSlotId
-              ? d.itembooks.swapItemBody
-              : sheetUndecided
-                ? d.itembooks.selectTierBody
-                : t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) })
-            : ''
-        }
+        badgeImageUrl={sheetView?.badge.image_url}
         candidates={sheetView?.candidates ?? []}
         error={sheetError}
         busy={sheetBusy}

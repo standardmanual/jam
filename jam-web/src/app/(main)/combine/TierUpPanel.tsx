@@ -2,11 +2,11 @@
 
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { getRarityLabel } from '@ds/components/cards/RarityBadge'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import BottomSheet from '@/components/ui/BottomSheet'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { PackageIcon } from '@/components/ui/icons'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import BagItemCell from './BagItemCell'
 import {
   tierUpRarityNote,
@@ -91,10 +91,10 @@ export function TierUpSheetContent<T extends TierUpMaterial>({
         const headingId = `tier-up-group-${group.rarity}`
         return (
           <section key={group.rarity} aria-labelledby={headingId} className="flex flex-col gap-2">
-            <h3 id={headingId} className={PARAGRAPH}>
-              {t(d.combine.tierUp.groupTitle, { rarity: getRarityLabel(group.rarity) ?? '', count: group.count })}
+            {/* 묶음 제목은 등급 칩 하나다(캔버스 «JAM! 바텀시트» 08번, 티켓 20261110_2150). 개수와 «6개부터 넣을 수 있어요» 줄은 지웠다 */}
+            <h3 id={headingId} className="m-0 flex items-center">
+              <RarityBadge rarity={group.rarity} size="md" showCommon />
             </h3>
-            {!group.enough && <p className={PARAGRAPH}>{d.combine.tierUp.groupShort}</p>}
             <SheetCells cells={group.cells} onPick={onPick} />
           </section>
         )
@@ -173,7 +173,7 @@ export default function TierUpPanel<T extends TierUpMaterial>({
 
       {/* 재료 시트 — 칸 하나를 눌러 열고 6개까지 이어서 담는다. 6칸이 차면 호출부가 닫는다 */}
       <BottomSheet open={sheetOpen} onClose={onCloseSheet} title={d.combine.bagTitle}>
-        <div className="px-4 pt-2 pb-6">
+        <div className="px-6 py-6">
           <TierUpSheetContent sheet={sheet} onPick={onPick} />
         </div>
       </BottomSheet>

@@ -1,5 +1,5 @@
 /**
- * 피드(FeedSection)의 챕터 오름·컬렉션 완성 카드와 상세 시트 (티켓 20261021_1249 6-3 5회, 채원 사전 판정)
+ * 피드(FeedSection)의 챕터 오름·컬렉션 완성 카드 (티켓 20261021_1249 6-3 5회, 채원 사전 판정)
  *
  * 저장소에 jsdom·testing-library가 없어(`SuspensionBanner.test.tsx`와 같은 방식) 서버 렌더로 마크업만 고정한다. 가짜 props만 쓰며 공용 DB는 부르지 않는다.
  *
@@ -25,7 +25,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import FeedSection, { DetailSheet, EventIcon, eventLabelText, feedImageOf, feedTarget, feedTitle, goToFeedTarget, matchesFilter } from './FeedSection'
+import FeedSection, { EventIcon, eventLabelText, feedImageOf, feedTarget, feedTitle, goToFeedTarget, matchesFilter } from './FeedSection'
 import {
   BookIcon,
   CheckCircleIcon,
@@ -64,10 +64,6 @@ const COLLECTION_RARE = row('collection_tier_completed', { collection_id: 'b1', 
 
 function renderFeed(items: ActivityFeedRow[]): string {
   return renderToStaticMarkup(<FeedSection feedItems={items} />)
-}
-
-function renderSheet(item: ActivityFeedRow): string {
-  return renderToStaticMarkup(<DetailSheet item={item} open onClose={() => {}} onClosed={() => {}} badgeLinkQuery="" />)
 }
 
 /** 화면 글자만 — 태그를 걷어낸다 */
@@ -481,86 +477,6 @@ describe('활동 묶음 행(ActivityGroupCard) — ListRow media', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 상세 시트
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('상세 시트', () => {
-  it('챕터 오름: 112px 메달 타일, 라벨, 제목 h2, 일시 행 하나, 닫기 버튼만 있다', () => {
-    const html = renderSheet(CHAPTER)
-
-    expect(html).toContain(
-      `<div class="w-28 h-28 rounded-2xl bg-surface text-foreground flex items-center justify-center">${icon(MedalIcon, 'w-12 h-12')}</div>`
-    )
-    expect(html).toContain('text-center text-base text-muted mb-1 line-clamp-2 break-keep wrap-break-word">챕터 오름</p>')
-    expect(html).toMatch(/<h2 id="[^"]+" class="[^"]*text-balance">챕터 3<\/h2>/)
-    expect(html).toContain(d.feed.rowDate)
-    expect((html.match(new RegExp(`>${d.feed.rowDate}<`, 'g')) ?? []).length).toBe(1)
-    expect(visibleText(html)).toContain(d.common.close)
-    expect(visibleText(html)).not.toContain(d.common.detail)
-    expect((html.match(/<button/g) ?? []).length).toBe(1)
-  })
-
-  it('시트 안의 다른 행(장소·결과·보상·포인트)은 만들지 않는다', () => {
-    const text = visibleText(renderSheet(COLLECTION_RARE))
-
-    for (const label of [d.feed.rowPlace, d.feed.rowCheckinPlace, d.feed.rowResult, d.feed.rowRewardBadges, d.feed.rowRewardPoints, d.feed.rowPoints]) {
-      expect(text).not.toContain(label)
-    }
-  })
-
-  it('컬렉션 완성: 컬렉션 이름이 h2이고 common이면 등급 칩이 없다', () => {
-    const html = renderSheet(COLLECTION_COMMON)
-
-    expect(html).toMatch(/<h2 id="[^"]+" class="[^"]*">한강 컬렉션<\/h2>/)
-    expect(html).toContain(icon(BookIcon, 'w-12 h-12'))
-    expect(html).not.toContain('Common')
-    expect(visibleText(html)).toContain('컬렉션 완성')
-  })
-
-  it('컬렉션 완성: rare 이상이면 등급 칩이 제목 아래에 보인다', () => {
-    const html = renderSheet(COLLECTION_RARE)
-
-    expect(visibleText(html)).toContain('Rare')
-    expect(html.indexOf('</h2>')).toBeLessThan(html.indexOf('Rare'))
-  })
-
-  it('aria-labelledby는 제목 h2를 가리킨다', () => {
-    const html = renderSheet(CHAPTER)
-    const labelledBy = html.match(/aria-labelledby="([^"]+)"/)?.[1]
-    const h2Id = html.match(/<h2 id="([^"]+)"/)?.[1]
-
-    expect(labelledBy).toBeTruthy()
-    expect(labelledBy).toBe(h2Id)
-  })
-
-  it.each([
-    ['챕터 오름', row('chapter_up', { chapter_no: 0 }), '챕터 오름'],
-    ['컬렉션 완성', row('collection_tier_completed', { collection_name: '' }), '컬렉션 완성'],
-  ])('제목이 비면(%s) 라벨이 h2 자리에 와서 빈 h2를 가리키지 않고, muted 라벨 줄은 그리지 않는다', (_name, item, label) => {
-    const html = renderSheet(item)
-    const h2 = html.match(/<h2 id="([^"]+)"[^>]*>([^<]*)<\/h2>/)
-
-    expect(h2?.[2]).toBe(label)
-    expect(html.match(/aria-labelledby="([^"]+)"/)?.[1]).toBe(h2?.[1])
-    expect(html).not.toContain('text-center text-base text-muted mb-1')
-  })
-
-  it('반복 체크인 시트는 «N번째» 숫자를 계속 강조한다 — 카드만 평문이다', () => {
-    const html = renderSheet(CHECKIN_REPEAT)
-
-    expect(html).toContain('<strong class="font-bold text-foreground">3</strong>')
-  })
-
-  it('기존 배지 획득 시트는 그대로다 — 라벨 줄, 배지 이름 h2, 상세 버튼', () => {
-    const html = renderSheet(row('badge_earned', { badge_id: 'b1', badge_name: '첫 숨결', badge_image_url: null, rarity: 'rare' }))
-
-    expect(html).toContain('text-center text-base text-muted mb-1 line-clamp-2 break-keep wrap-break-word">배지 획득</p>')
-    expect(html).toMatch(/<h2 id="[^"]+" class="[^"]*">첫 숨결<\/h2>/)
-    expect(visibleText(html)).toContain(d.common.detail)
-  })
-})
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 포인트 표기 — «값 포인트» 조각만 point-text 오렌지 (티켓 20261104_2319 2회차)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -576,11 +492,6 @@ describe('피드의 포인트 표기', () => {
     const html = renderFeed([MISSION])
     expect(pointPieces(html)).toEqual(['+300 포인트'])
     expect(visibleText(html)).toContain('+300 포인트')
-  })
-
-  it('상세 시트의 보상 행은 두 곳 모두 값과 단위를 칠한다', () => {
-    expect(pointPieces(renderSheet(MISSION))).toEqual(['300 포인트'])
-    expect(pointPieces(renderSheet(BADGE))).toEqual(['+50 포인트'])
   })
 })
 
@@ -672,12 +583,6 @@ describe('피드 행의 대표 이미지 (feedImageOf)', () => {
     const html = renderFeed([row('collection_tier_completed', { collection_id: 'b1', collection_name: '한강 컬렉션', rarity: 'rare', collection_image_url: 'https://example.com/book.png' })])
 
     expect(html).toContain('book.png')
-  })
-
-  it('상세 시트도 같은 이미지를 쓴다', () => {
-    const html = renderSheet(row('mission_joined', { mission_id: 'm1', mission_title: '첫 산행', mission_image_url: 'https://example.com/m1.png' }))
-
-    expect(html).toContain('m1.png')
   })
 })
 

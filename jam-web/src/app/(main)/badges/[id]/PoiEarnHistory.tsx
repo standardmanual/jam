@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
+import { SHEET_VALUE_ROW_STYLE } from '@/components/ui/sheetClasses'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import { LabelChip } from '@ds/components/cards/LabelChip'
@@ -18,41 +19,38 @@ export type PoiEarnItem = {
   triggered_by_strava_id: number | null
 }
 
-function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEver?: boolean }) {
+/**
+ * 한 번의 획득 내용 — 페이지의 첫 카드와 시트가 같이 쓴다. `inSheet`이면 값 행의 위아래를 8px로 줄이고 행 사이에 가는 선을 긋는다
+ * (캔버스 «JAM! 바텀시트» 10번, 티켓 20261110_2150). 카드 안(`inSheet` 없음)은 지금대로다.
+ */
+function EarnCardContent({ e, isFirstEver = false, inSheet = false }: { e: PoiEarnItem; isFirstEver?: boolean; inSheet?: boolean }) {
+  const rows: { key: string; title: ReactNode; value: ReactNode; nowrap?: boolean }[] = [
+    { key: 'earned', title: d.badges.earnedAt, value: <LocalDate iso={e.earned_at} stamp stampBreak />, nowrap: true },
+    ...(e.triggered_by_activity_name ? [{ key: 'activity', title: d.badges.triggerActivity, value: e.triggered_by_activity_name }] : []),
+    ...(e.triggered_by_distance_km
+      ? [{ key: 'distance', title: d.badges.triggerDistance, value: t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km }) }]
+      : []),
+    ...(e.triggered_by_activity_date
+      ? [{ key: 'date', title: d.badges.triggerDate, value: <LocalDate iso={e.triggered_by_activity_date} stamp stampBreak />, nowrap: true }]
+      : []),
+  ]
   return (
     <div className="flex flex-col">
       {isFirstEver && <LabelChip className="self-start break-keep wrap-break-word whitespace-nowrap">{d.badges.firstEarnedChip}</LabelChip>}
-      <div className="flex flex-col -mb-3">
-        <ListRow
-          tone="flat"
-          titleVariant="label"
-          titleLines={0}
-          title={d.badges.earnedAt}
-          value={<LocalDate iso={e.earned_at} stamp stampBreak />}
-          valueNoWrap
-        />
-        {e.triggered_by_activity_name && (
-          <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={e.triggered_by_activity_name} />
-        )}
-        {e.triggered_by_distance_km && (
+      <div className={inSheet ? 'flex flex-col' : 'flex flex-col -mb-3'}>
+        {rows.map((row, i) => (
           <ListRow
+            key={row.key}
             tone="flat"
             titleVariant="label"
             titleLines={0}
-            title={d.badges.triggerDistance}
-            value={t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}
+            title={row.title}
+            value={row.value}
+            valueNoWrap={row.nowrap}
+            separator={inSheet && i < rows.length - 1}
+            style={inSheet ? SHEET_VALUE_ROW_STYLE : undefined}
           />
-        )}
-        {e.triggered_by_activity_date && (
-          <ListRow
-            tone="flat"
-            titleVariant="label"
-            titleLines={0}
-            title={d.badges.triggerDate}
-            value={<LocalDate iso={e.triggered_by_activity_date} stamp stampBreak />}
-            valueNoWrap
-          />
-        )}
+        ))}
       </div>
       {e.triggered_by_strava_id && (
         <div className="mt-4">
@@ -63,10 +61,6 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
   )
 }
 
-/**
- * 체크인 배지 상세의 «방문 기록». `poiEarns`는 최신순이라 마지막 행이 처음 받은 날이다.
- * 행이 하나뿐이면 그 한 행이 처음 받은 날이다.
- */
 export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
 
@@ -100,9 +94,9 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
 
       {/* 기록 상세 바텀시트 */}
       <BottomSheet open={openIdx !== null} onClose={() => setOpenIdx(null)}>
-        <div className="px-6 pt-2 pb-8">
+        <div className="px-6 pt-5 pb-6">
           {openIdx !== null && (
-            <EarnCardContent e={poiEarns[openIdx]} isFirstEver={poiEarns[openIdx].id === firstEverId} />
+            <EarnCardContent e={poiEarns[openIdx]} isFirstEver={poiEarns[openIdx].id === firstEverId} inSheet />
           )}
         </div>
       </BottomSheet>

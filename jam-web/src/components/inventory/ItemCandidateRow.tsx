@@ -1,10 +1,9 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { ListRow, ListRowChip } from '@/components/ui/ListRow'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import LocalDate from '@/components/LocalDate'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
-import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import { d } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
 import type { BadgeRarity } from '@/types/database'
@@ -75,6 +74,8 @@ interface ItemCandidateRowProps {
   candidate: ItemCandidate
   /** 무한레벨형 배지는 등급이 없다(마이그레이션 130) — null/undefined면 등급 칩을 그리지 않는다 */
   rarity: BadgeRarity | null | undefined
+  /** 카드 썸네일에 쓰는 배지 그림 — 같은 배지의 개체들이라 시트가 한 장을 모두에게 준다(없으면 메달 아이콘) */
+  imageUrl?: string | null
   /** 지금 고른 행(요청 진행 중이든 아니든) — 프라이머리 링으로 표시한다 */
   selected?: boolean
   /** 다른 행이 처리되는 동안 이 행을 눌러도 반응하지 않게 한다(시각적으로도 억제) */
@@ -84,10 +85,16 @@ interface ItemCandidateRowProps {
   onClick: () => void
 }
 
-/** 개체 선택 시트의 한 행 — 등급칩(위) + 일련번호(아래) + 만료 임박 칩. */
+/**
+ * 개체 선택 시트의 개체 한 장 — 인벤토리·컬렉션·배지 목록과 같은 `BadgeGridCard` 레이아웃이다(티켓 20261110_2150, 캔버스 «JAM! 바텀시트» 09번).
+ * 카드에는 배지 이름 대신(이름은 시트 제목이 말한다) 일련번호 칩이 오고 그 아래에 등급 칩이 붙는다. 3열 카드 안에는 일련번호 컴포넌트
+ * (`ItemSerialCode`, 폭이 높이의 약 5배)가 들어가지 않아 글자 칩으로 그린다. 잠긴 개체는 카드가 잠금 타일·이름을 그리고 «N 포인트 필요»가 이어진다.
+ * 선택은 카드 테두리(`selected`), 막힘은 흐림+클릭 차단(`muted`), 진행 표시는 `trailing`이다.
+ */
 export default function ItemCandidateRow({
   candidate,
   rarity,
+  imageUrl = null,
   selected = false,
   muted = false,
   trailing,
@@ -104,45 +111,35 @@ export default function ItemCandidateRow({
         ? tPoint(d.lockedItem.card.requiredChip, { n: points.toLocaleString('ko-KR') })
         : d.lockedItem.detail.points.free
       : undefined
-  // `RarityBadge`는 Common·없음이면 null을 돌려준다. 그 요소를 eyebrow에 넘기면 ListRow가 «요소가 있다»고 보고
-  // 빈 줄과 title 위 간격을 만들므로, 칩이 실제로 그려질 때만 넘긴다.
-  const eyebrow = shownRarity && shownRarity !== 'common' ? <RarityBadge rarity={shownRarity} size="row" /> : undefined
 
   return (
-    <ListRow
-      eyebrow={eyebrow}
-      title={
-        locked ? (
-          pointsTitle
-        ) : (
-          <ItemSerialCode
-            code={formatSerial(candidate)}
-            height={SELECT_SERIAL_HEIGHT_PX}
-            // 릴(슬롯머신) 연출은 끈다 — 이 화면은 "이미 가진 번호들을 읽고 비교해서 고르는"
-            // 자리라, "번호가 지금 확정되는 순간"을 연출하는 릴과 목적이 반대다(20260907_2059).
-            animate={false}
-          />
-        )
-      }
-      chips={
-        expiring && candidate.expires_at ? (
-          <ListRowChip tone="neutral">
-            <LocalDate
-              iso={candidate.expires_at}
-              options={{ month: 'numeric', day: 'numeric' }}
-              suffix={d.inventory.expiringSuffix}
-            />
-          </ListRowChip>
-        ) : undefined
-      }
-      // 고른 행만 selected를 넘긴다 — false를 넘기면 모든 행에 aria-pressed="false"가 붙어
-      // «고르면 실행되는» 행의 의미와 어긋난다.
-      selected={selected || undefined}
-      // `muted`는 시각 억제뿐 아니라 키보드 Tab/Enter도 막아야 한다(티켓 20260908_0055 #3) —
-      // ListRow의 disabled가 <button disabled>·투명도·trail inert를 함께 처리한다.
+    <BadgeGridCard
+      className={muted ? 'w-full opacity-40 pointer-events-none' : 'w-full'}
+      name={locked ? undefined : ''}
+      imageUrl={locked ? undefined : imageUrl}
+      rarity={null}
+      locked={locked}
+      selected={selected}
+      pressed={selected || undefined}
       disabled={muted}
-      trail={trailing}
       onClick={onClick}
-    />
+    >
+      <div className="flex flex-col items-center gap-1">
+        {locked ? (
+          pointsTitle ? <span className="text-xs text-foreground text-center break-keep wrap-break-word">{pointsTitle}</span> : null
+        ) : (
+          <span className="inline-flex rounded-full bg-background px-2 py-0.5 text-xs font-bold tracking-wider text-foreground">
+            {formatSerial(candidate)}
+          </span>
+        )}
+        {shownRarity && shownRarity !== 'common' && <RarityBadge rarity={shownRarity} size="md" />}
+        {expiring && candidate.expires_at && (
+          <span className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted text-center">
+            <LocalDate iso={candidate.expires_at} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
+          </span>
+        )}
+        {trailing}
+      </div>
+    </BadgeGridCard>
   )
 }

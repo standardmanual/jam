@@ -23,7 +23,6 @@ export function BottomSheet({
   detent = 'compact',
   footer,
   topGapPx,
-  footerBottomInset = 'tabbar',
   contentScrollable = true,
 }) {
   const panelRef = useRef(null);
@@ -61,7 +60,7 @@ export function BottomSheet({
 
   if (!open) return null;
 
-  const footerPaddingBottomPx = footerBottomInset === 'safe-area' ? 16 : 16 + 64 + 12;
+  // 캔버스 «JAM! 바텀시트» 기준(티켓 20261110_2150): footer 좌우 20 · 위 8 · 아래 20+안전영역. footerBottomInset은 값과 무관하게 같은 여백이다(deprecated).
 
   return (
     /* Overlay */
@@ -103,7 +102,7 @@ export function BottomSheet({
           width: 36, height: 4,
           borderRadius: 'var(--radius-full)',
           background: 'var(--border)',
-          margin: 'var(--layout-card-padding) auto 0',
+          margin: 'var(--spacing-12) auto 0',
           flexShrink: 0,
         }} aria-hidden="true" />
 
@@ -117,7 +116,7 @@ export function BottomSheet({
             <h2
               id={labelId}
               style={{
-                margin: 'var(--spacing-16) 0',
+                margin: 'var(--spacing-24) 0',
                 // 서비스(src/components/ui/BottomSheet.tsx)의 <h2> 가 기준이다:
                 // text-xl font-bold leading-6 (크고 굵은 제목, 티켓 20261110_2048)
                 fontSize: 'var(--text-xl)',
@@ -136,8 +135,8 @@ export function BottomSheet({
           <div
             style={{
               flexShrink: 0,
-              padding: 'var(--spacing-16)',
-              paddingBottom: `calc(${footerPaddingBottomPx}px + var(--spacing-safe-bottom))`,
+              padding: 'var(--spacing-8) var(--spacing-20)',
+              paddingBottom: 'calc(var(--spacing-20) + var(--spacing-safe-bottom))',
               background: 'var(--surface)',
             }}
           >

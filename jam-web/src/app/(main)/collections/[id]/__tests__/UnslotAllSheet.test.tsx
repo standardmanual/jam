@@ -159,7 +159,7 @@ describe('UnslotAllSheetView — 버튼', () => {
     expect(buttonsOf(viewElement()).some((b) => b.props.variant === 'danger')).toBe(false)
     for (const button of [cancel, confirm]) {
       expect(button.props.fullWidth).toBe(true)
-      expect(button.props.className).toBe('px-3! whitespace-nowrap')
+      expect(button.props.className).toBe('px-3! whitespace-nowrap py-[15px]!')
     }
   })
 

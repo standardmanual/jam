@@ -58,6 +58,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
   --color-default: var(--default);
   --color-default-soft: var(--default-soft);
   --color-point-text: var(--point-text);

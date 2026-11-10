@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import Link from 'next/link'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
+import { SHEET_BUTTON_CLASS, SHEET_TEXT_LEADING } from '@/components/ui/sheetClasses'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { useToast } from '@/components/ui/Toast'
 import { d } from '@/lib/i18n'
@@ -75,7 +76,7 @@ interface UnslotAllSheetViewProps {
 }
 
 /** 버튼 한 쌍의 공통 클래스. `StravaDisconnectSheet`의 푸터와 같다 */
-const FOOTER_BUTTON = 'px-3! whitespace-nowrap'
+const FOOTER_BUTTON = `px-3! whitespace-nowrap ${SHEET_BUTTON_CLASS}`
 
 /**
  * «모두 빼기» 확인 시트의 겉모습 (티켓 20261028_1420, 채원 사전 판정 2026-10-28).
@@ -142,9 +143,9 @@ export function UnslotAllSheetView({
         </div>
       }
     >
-      <div className="flex flex-col gap-2 px-6 pb-6 text-left">
+      <div className="flex flex-col gap-1 px-6 py-6 text-left">
         {lines.map((line) => (
-          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-balance">
+          <p key={line} className={`text-base ${SHEET_TEXT_LEADING} text-foreground break-keep wrap-break-word text-balance`}>
             {line}
           </p>
         ))}

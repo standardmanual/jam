@@ -52,11 +52,9 @@ interface BottomSheetProps {
    */
   topGapPx?: number
   /**
-   * footer의 아래쪽 여백 기준. 기본값 `'tabbar'`는 화면에 여전히 떠 있는 플로팅 탭바
-   * (safe-area+16px+64px+여유 12px)를 가리지 않도록 그 위에 여백을 둔다. 호출부가
-   * `pushTabBarHidden`(`@/lib/uiOverlay`)으로 탭바를 물리적으로 숨기는 화면이라면
-   * `'safe-area'`를 지정 — 탭바가 있던 자리까지 footer를 내려서 탭바의 원래 위치와
-   * footer 하단이 정확히 맞도록 한다.
+   * @deprecated 값과 무관하게 footer 아래 여백은 항상 `safe-area + 20px`다(티켓 20261110_2150, 캔버스 «JAM! 바텀시트»).
+   * 예전에는 `'tabbar'`(기본)가 플로팅 탭바(16+64+12px) 위로 footer를 올렸으나 시트가 탭바를 덮으므로 한 값으로 합쳤다.
+   * 호출부 호환을 위해 prop은 남겨 두며 후속 정리에서 지운다.
    */
   footerBottomInset?: 'tabbar' | 'safe-area'
   /**
@@ -69,10 +67,8 @@ interface BottomSheetProps {
   contentScrollable?: boolean
 }
 
-/** footer의 padding-bottom(safe-area 제외분) — `footerBottomInset='tabbar'`: 플로팅 탭바(16+64) 위 12px. */
-const FOOTER_PAD_TABBAR_PX = 16 + 64 + 12
-/** footer의 padding-bottom(safe-area 제외분) — `footerBottomInset='safe-area'`: 탭바가 있던 자리(16px). */
-const FOOTER_PAD_SAFE_AREA_PX = 16
+/** footer의 padding-bottom(safe-area 제외분). 캔버스 기준 20px이다(티켓 20261110_2150). */
+const FOOTER_PAD_BOTTOM_PX = 20
 
 /** 시트 제목 기본 서체 — 크고 굵게(20px·굵은 글씨·행간 24px). 피그마 시안 asset 52:28, 티켓 20261110_2048. MODULAR `BottomSheet.jsx`와 같은 값이다. */
 const TITLE_CLASS_DEFAULT = 'text-xl font-bold leading-6'
@@ -107,7 +103,6 @@ export default function BottomSheet({
   detent = 'compact',
   footer,
   topGapPx,
-  footerBottomInset = 'tabbar',
   contentScrollable = true,
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
@@ -258,11 +253,11 @@ export default function BottomSheet({
     if (!lingering) return
     const el = footerRef.current
     if (!el) return
-    const basePaddingPx = footerBottomInset === 'safe-area' ? FOOTER_PAD_SAFE_AREA_PX : FOOTER_PAD_TABBAR_PX
+    const basePaddingPx = FOOTER_PAD_BOTTOM_PX
     const resolvedPaddingPx = parseFloat(window.getComputedStyle(el).paddingBottom) || 0
     const safeAreaPx = Math.max(0, resolvedPaddingPx - basePaddingPx)
     return pushBottomOverlay(el.offsetHeight - safeAreaPx)
-  }, [lingering, footerBottomInset, hasFooter])
+  }, [lingering, hasFooter])
 
   // 시트가 화면에 떠 있는 동안 배경(main 스크롤 컨테이너)의 스크롤을 잠근다 — 배경이 스크롤되며
   // iOS Safari 동적 툴바가 접혔다 펴지면 dvh 기반 시트 높이가 함께 흔들리는 문제를 막는다.
@@ -398,7 +393,7 @@ export default function BottomSheet({
         </div>
 
         {hasHeader && (
-          <div className={headerClassName ?? 'px-6 pb-4 shrink-0'}>
+          <div className={headerClassName ?? 'px-6 pt-5 shrink-0'}>
             <h2
               id={titleId}
               className={titleClassName ?? TITLE_CLASS_DEFAULT}
@@ -415,19 +410,13 @@ export default function BottomSheet({
         {hasFooter ? (
           /* 스크롤 영역과 분리된 형제 요소 — flex-1인 위 스크롤 영역이 알아서
              줄어들기 때문에 콘텐츠 길이와 무관하게 항상 화면에 보인다.
-             footerBottomInset='tabbar'(기본값): 플로팅 탭바(safe-area+16px+64px) 높이 + 여유
-             12px을 padding-bottom에 더해 탭바를 가리지 않게 한다.
-             footerBottomInset='safe-area': 탭바를 `pushTabBarHidden`으로 물리적으로 숨기는
-             화면 전용 — 탭바의 원래 위치(safe-area+16px)까지 그대로 내려서 footer 하단이
-             탭바가 있던 자리와 정확히 맞도록 한다. */
+             여백(캔버스 기준, 티켓 20261110_2150): 좌우 20 · 위 8 · 아래 safe-area+20. */
           <div
             ref={footerRef}
             // 20260816_012: 상단 1px 구분선(hr 대체) 제거 → 스크롤 영역과 다른 배경톤으로 구분
-            className="shrink-0 px-4 pt-4 bg-surface"
+            className="shrink-0 px-5 pt-2 bg-surface"
             style={{
-              paddingBottom: `calc(env(safe-area-inset-bottom) + ${
-                footerBottomInset === 'safe-area' ? FOOTER_PAD_SAFE_AREA_PX : FOOTER_PAD_TABBAR_PX
-              }px)`,
+              paddingBottom: `calc(env(safe-area-inset-bottom) + ${FOOTER_PAD_BOTTOM_PX}px)`,
             }}
           >
             {footer}

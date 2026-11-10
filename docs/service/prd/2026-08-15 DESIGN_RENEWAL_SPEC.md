@@ -325,8 +325,8 @@ JAM!은 **모바일 전용 앱**이다.
 | `0`~`10` | 페이지 콘텐츠·섹션 | `badges/[id]/page.tsx`의 info/action 섹션, 지도 마커(인라인 `zIndex: 3~10`) |
 | `20` | 페이지 내 국소 오버레이 | (현재 1곳) |
 | `30` | 전체화면 모달(비 시트) | `PoiCarouselModal`, 어드민 `AdminSidebar` |
-| `40` | 고정 크롬 | `TabBar`, `FeedSection` 백드롭, 어드민 `AdminHeader` |
-| `50` | 시트·다이얼로그 오버레이 | `BottomSheet`, Radix `dialog`/`sheet`/`alert-dialog`/`select`, `FeedSection` 패널, `BadgeShareButton` |
+| `40` | 고정 크롬 | `TabBar`, 어드민 `AdminHeader` |
+| `50` | 시트·다이얼로그 오버레이 | `BottomSheet`, Radix `dialog`/`sheet`/`alert-dialog`/`select`, `BadgeShareButton` |
 | `60` | 최상위 피드백 | `Toast` 컨테이너, `BadgeRevealOverlay`(인라인 `OVERLAY_Z_INDEX = 60`) |
 | `9999` | 전역 라우팅 로더 | `NavigationLoader` |
 

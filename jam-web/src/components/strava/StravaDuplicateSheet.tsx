@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
+import { SHEET_BUTTON_CLASS, SHEET_TEXT_LEADING } from '@/components/ui/sheetClasses'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { d } from '@/lib/i18n'
@@ -32,7 +33,7 @@ interface StravaDuplicateSheetViewProps {
 }
 
 /** 버튼 한 쌍의 공통 클래스. `StravaDisconnectSheet`·`WithdrawSheet`의 푸터와 같다 */
-const FOOTER_BUTTON = 'px-3! whitespace-nowrap'
+const FOOTER_BUTTON = `px-3! whitespace-nowrap ${SHEET_BUTTON_CLASS}`
 
 /**
  * 중복 연결 안내 시트의 겉모습 (티켓 20261021_1249 4회, 채원 사전 판정 2026-10-22).
@@ -114,9 +115,9 @@ export function StravaDuplicateSheetView({
         )
       }
     >
-      <div className="flex flex-col gap-2 px-6 pb-6 text-left">
+      <div className="flex flex-col gap-1 px-6 py-6 text-left">
         {body.map((line) => (
-          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-balance">
+          <p key={line} className={`text-base ${SHEET_TEXT_LEADING} text-foreground break-keep wrap-break-word text-balance`}>
             {line}
           </p>
         ))}

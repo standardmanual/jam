@@ -76,6 +76,7 @@
   --success: var(--base-neutral-900);
   --warning: #525252;
   --danger: var(--base-neutral-900);
+  --danger-text: #d61f1f;                       /* 붉은 글자 전용(탈퇴 확인 문구 «탈퇴합니다»). 면·버튼·아이콘에는 쓰지 않는다. 흰 면 위 약 5.2:1, 티켓 20261110_2150(사용자 지시) */
   --default: #e5e5e5;
   --default-soft: #e5e5e5;
   --opacity-disabled: 0.4;                      /* 비활성 요소 투명도(범용). 현재 소비처는 ListRow뿐 */

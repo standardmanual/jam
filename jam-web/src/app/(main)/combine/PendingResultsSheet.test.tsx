@@ -112,17 +112,16 @@ describe('PendingResultsSheet', () => {
   describe('빈칸이 충분함', () => {
     const html = render(view())
 
-    it('결과 개수 안내, 빈칸 줄, «받기»가 있다', () => {
-      expect(html).toContain(t(d.combine.pendingSheet.intro, { count: 2 }))
-      expect(html).toContain(t(d.combine.pendingSheet.slots, { free: 5, needed: 2 }))
+    it('필요한 슬롯 줄(숫자는 굵게)과 «받기»가 있고 결과 개수 소개 문장은 없다 (티켓 20261110_2150)', () => {
+      expect(html).toContain(d.combine.pendingSheet.slotsLabel)
+      expect(html).toContain(`<b>${t(d.combine.pendingSheet.slotsCount, { needed: 2 })}</b>`)
       expect(html).toContain(d.combine.pendingSheet.claim)
       expect(html).not.toContain(d.combine.pendingSheet.shortTitle)
     })
 
-    it('열린 결과는 이름이 보이고 잠긴 결과는 «잠긴 아이템 배지»와 숫자 없는 일반 설명이 보인다', () => {
+    it('열린 결과는 이름이 보이고 잠긴 결과는 «잠긴 아이템 배지»만 보인다(카드가 잠금 타일과 고정 이름을 그린다)', () => {
       expect(html).toContain('열린 배지 이름')
       expect(html).toContain(d.lockedItem.card.name)
-      expect(html).toContain(d.lockedItem.card.description)
       expect(html).not.toContain('잼')
       expect(html).not.toContain('{n}')
     })

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
+import { SHEET_BUTTON_CLASS } from '@/components/ui/sheetClasses'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
@@ -64,7 +65,8 @@ interface BadgeDetailSheetProps {
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /** 스크롤 영역 아래 여백(safe-area 제외) — 플로팅 탭바(16+64) 위 12px. BottomSheet footer와 같은 관례. */
-const ACTION_BOTTOM_GAP_PX = 16 + 64 + 12
+/** 버튼 행 아래 여백(안전영역 제외) — 캔버스 «JAM! 바텀시트» 기준 20px(티켓 20261110_2150). 예전에는 플로팅 탭바(16+64+12) 위로 올렸다 */
+const ACTION_BOTTOM_GAP_PX = 20
 
 // 기존 /badges/[id] 페이지의 상세 레이아웃을 오버레이(시트) 형태로 재사용.
 // 페이지 이동이 아니라 /drops 위에 겹쳐 뜨므로 지도 상태가 보존된다.
@@ -161,20 +163,12 @@ export default function BadgeDetailSheet({
     <BottomSheet open onClose={onCancel} detent="full">
       <div
         ref={setContentEl}
-        className="px-4 pt-2 flex flex-col gap-6 min-h-full"
+        className="px-6 pt-2 flex flex-col gap-6 min-h-full"
         /* footer를 따로 분리하지 않고 한 페이지(스크롤 영역)로 구성.
            맨 아래 버튼까지 탭바(safe-area+16px+64px) 높이만큼 여백을 둬서,
            화면이 작아 다 안 보이면 스크롤해서 버튼을 볼 수 있게 한다. */
         style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${ACTION_BOTTOM_GAP_PX}px)` }}
       >
-        {/* 닫기 */}
-        <button
-          onClick={onCancel}
-          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-muted text-base active:scale-95 transition-transform duration-100"
-        >
-          &larr; {d.common.back}
-        </button>
-
         {/* 배지 이미지 (대형). 잠긴 개체는 이름·그림을 DOM 어디에도 두지 않고 잠금 타일과 고정 문구만 그린다(7.3절). */}
         <div className="flex flex-col items-center gap-4 py-4">
           {locked ? (
@@ -197,18 +191,17 @@ export default function BadgeDetailSheet({
             </h1>
             {locked ? (
               <div className="flex items-center justify-center gap-2">
-                <RarityBadge rarity={rarity} />
+                <RarityBadge rarity={rarity} size="md" />
                 <LabelChip>{d.lockedItem.detail.chip}</LabelChip>
               </div>
             ) : (
-              <RarityBadge rarity={rarity} />
+              <RarityBadge rarity={rarity} size="md" />
             )}
           </div>
         </div>
 
         {/* 드랍 컨텍스트 */}
         <Card>
-          <h2 className="text-xs uppercase text-muted mb-2">{d.badges.connectedLocationTitle}</h2>
           <p className="text-base text-foreground">
             {poiName}
           </p>
@@ -239,10 +232,10 @@ export default function BadgeDetailSheet({
             부모의 padding-bottom(탭바 높이만큼)이 이미 확보돼 있어
             스크롤 끝까지 내리면 탭바 위에서 항상 보이고 눌린다. */}
         <div ref={setActionsEl} className={notice ? 'flex gap-4' : 'mt-auto flex gap-4'}>
-          <Button fullWidth variant="secondary" surface="main" onClick={onCancel} disabled={pickingUp}>
+          <Button fullWidth variant="secondary" surface="main" className={SHEET_BUTTON_CLASS} onClick={onCancel} disabled={pickingUp}>
             {d.drops.cancel}
           </Button>
-          <Button fullWidth surface="main" loading={pickingUp} disabled={pickupDisabled} onClick={onPickup}>
+          <Button fullWidth surface="main" className={SHEET_BUTTON_CLASS} loading={pickingUp} disabled={pickupDisabled} onClick={onPickup}>
             {d.drops.pickupButton}
           </Button>
         </div>

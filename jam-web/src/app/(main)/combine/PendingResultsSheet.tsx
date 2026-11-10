@@ -2,15 +2,14 @@
 
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import SafeImage from '@/components/SafeImage'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import BottomSheet from '@/components/ui/BottomSheet'
+import { SHEET_BUTTON_CLASS } from '@/components/ui/sheetClasses'
 import SwapText from '@/components/ui/SwapText'
 import { PackageIcon } from '@/components/ui/icons'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Skeleton } from '@ds/components/feedback/Skeleton'
-import { LockedTile } from '@ds/components/cards/LockedTile'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { d, t } from '@/lib/i18n'
 // 타입만 가져온다 — `lib/combine/pending.ts`는 서버 전용이라 값을 가져오면 번들링에서 터진다.
 import type { PendingResultView } from '@/lib/combine/pending'
@@ -50,36 +49,17 @@ interface Props {
 const TITLE_CLASS = 'text-xl font-bold leading-6 break-keep wrap-break-word text-balance'
 const TEXT_CLASS = 'm-0 break-keep wrap-break-word text-balance'
 
+/** 받을 결과 한 장 — 인벤토리·컬렉션·배지 목록과 같은 `BadgeGridCard` 레이아웃이다(티켓 20261110_2150, 캔버스 «JAM! 바텀시트»). 잠긴 결과는 카드가 이름·그림을 숨긴다 */
 function ResultTile({ item }: { item: PendingResultView }) {
-  const rarity = item.rarity as BadgeRarity
-  if (item.locked) {
-    return (
-      <li className="flex min-w-0 flex-col items-center gap-1 p-2">
-        <LockedTile size={64} />
-        <p className="m-0 w-full break-keep wrap-break-word text-balance text-center text-xs text-foreground line-clamp-2">
-          {d.lockedItem.card.name}
-        </p>
-        <RarityBadge rarity={rarity} />
-        <p className="m-0 w-full break-keep wrap-break-word text-balance text-center text-xs text-muted">
-          {d.lockedItem.card.description}
-        </p>
-      </li>
-    )
-  }
   return (
-    <li className="flex min-w-0 flex-col items-center gap-1 p-2">
-      <div className="w-16 h-16 rounded-2xl bg-surface flex items-center justify-center overflow-hidden">
-        <SafeImage
-          src={item.imageUrl}
-          alt={item.name}
-          width={64}
-          height={64}
-          className="object-contain w-full h-full"
-          fallback={<PackageIcon className="w-6 h-6 text-muted" />}
-        />
-      </div>
-      <p className="m-0 w-full break-keep wrap-break-word text-balance text-center text-xs text-foreground line-clamp-2">{item.name}</p>
-      <RarityBadge rarity={rarity} />
+    <li className="flex min-w-0">
+      <BadgeGridCard
+        className="w-full"
+        name={item.locked ? undefined : item.name}
+        imageUrl={item.locked ? undefined : item.imageUrl}
+        rarity={item.rarity as BadgeRarity}
+        locked={item.locked}
+      />
     </li>
   )
 }
@@ -92,13 +72,13 @@ export default function PendingResultsSheet({ open, onClose, view, onClaim, onRe
   let footer: ReactNode
   if (status === 'loading') {
     footer = (
-      <Button variant="primary" fullWidth disabled className="whitespace-nowrap">
+      <Button variant="primary" fullWidth disabled className={`whitespace-nowrap ${SHEET_BUTTON_CLASS}`}>
         {d.combine.pendingSheet.claim}
       </Button>
     )
   } else if (empty) {
     footer = (
-      <Button variant="secondary" fullWidth className="whitespace-nowrap" onClick={onClose}>
+      <Button variant="secondary" fullWidth className={`whitespace-nowrap ${SHEET_BUTTON_CLASS}`} onClick={onClose}>
         {d.combine.pendingSheet.close}
       </Button>
     )
@@ -123,15 +103,15 @@ export default function PendingResultsSheet({ open, onClose, view, onClaim, onRe
   } else if (status === 'ready') {
     footer = (
       <div className="flex flex-col gap-3">
-        <p className={`${TEXT_CLASS} text-sm text-foreground`}>
-          {t(d.combine.pendingSheet.slots, { free: freeSlots, needed: neededSlots })}
+        <p className={`${TEXT_CLASS} text-sm text-foreground text-center`}>
+          {d.combine.pendingSheet.slotsLabel} <b>{t(d.combine.pendingSheet.slotsCount, { needed: neededSlots })}</b>
         </p>
         <Button
           variant="primary"
           fullWidth
           disabled={claiming}
           aria-busy={claiming || undefined}
-          className="whitespace-nowrap"
+          className={`whitespace-nowrap ${SHEET_BUTTON_CLASS}`}
           onClick={onClaim}
         >
           <SwapText value={claiming ? d.combine.pendingSheet.claiming : d.combine.pendingSheet.claim} />
@@ -142,7 +122,7 @@ export default function PendingResultsSheet({ open, onClose, view, onClaim, onRe
 
   return (
     <BottomSheet open={open} onClose={onClose} title={d.combine.pendingSheet.title} titleClassName={TITLE_CLASS} footer={footer}>
-      <div className="px-6 pt-2 pb-4" aria-busy={status === 'loading' || undefined}>
+      <div className="px-6 py-6" aria-busy={status === 'loading' || undefined}>
         {status === 'loading' && (
           <div className="grid grid-cols-3 gap-2">
             {[0, 1, 2].map((i) => (
@@ -153,21 +133,18 @@ export default function PendingResultsSheet({ open, onClose, view, onClaim, onRe
         {status === 'error' && (
           <div className="flex flex-col items-start gap-3">
             <p className={`${TEXT_CLASS} text-sm text-foreground`}>{d.combine.claim.loadFailed}</p>
-            <Button variant="ghost" className="whitespace-nowrap" onClick={onRetry}>
+            <Button variant="ghost" className={`whitespace-nowrap ${SHEET_BUTTON_CLASS}`} onClick={onRetry}>
               {d.combine.pendingSheet.retry}
             </Button>
           </div>
         )}
         {empty && <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.claim.noPending} />}
         {status === 'ready' && !empty && (
-          <div className="flex flex-col gap-3">
-            <p className={`${TEXT_CLASS} text-sm text-foreground`}>{t(d.combine.pendingSheet.intro, { count: items.length })}</p>
-            <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0">
-              {items.map((item) => (
-                <ResultTile key={item.id} item={item} />
-              ))}
-            </ul>
-          </div>
+          <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0">
+            {items.map((item) => (
+              <ResultTile key={item.id} item={item} />
+            ))}
+          </ul>
         )}
       </div>
     </BottomSheet>

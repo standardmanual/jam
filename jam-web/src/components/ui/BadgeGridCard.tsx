@@ -58,6 +58,10 @@ export interface BadgeGridCardProps {
   undiscovered?: boolean
   /** 선택 강조 링 (select 모드). */
   selected?: boolean
+  /** 고르면 실행되는 카드가 «지금 고른 것»임을 보조기술에 알린다(`aria-pressed`). `onClick` 카드에만 붙는다(티켓 20261110_2150) */
+  pressed?: boolean
+  /** `onClick` 카드를 막는다(`<button disabled>`) — 요청 중 다른 카드를 눌러도 반응하지 않게 할 때 쓴다 */
+  disabled?: boolean
   /**
    * 컬렉션 슬롯 장착 모드(`/collections/[id]?slot=1`)에서 "지금 넣을 수 있는 칸"을
    * 짚어준다(`SlotGrid.tsx`). `selected`(선택 상태)와 의미가 달라 별도 prop으로 둔다.
@@ -125,6 +129,8 @@ export default function BadgeGridCard({
   earned = true,
   undiscovered = false,
   selected = false,
+  pressed,
+  disabled = false,
   highlighted = false,
   locked = false,
   nameMuted = false,
@@ -221,6 +227,6 @@ export default function BadgeGridCard({
   )
 
   if (href) return <Link href={href} onClick={onNavigate} className={containerCls}>{content}</Link>
-  if (onClick) return <button type="button" onClick={onClick} className={containerCls}>{content}</button>
+  if (onClick) return <button type="button" onClick={onClick} disabled={disabled} aria-pressed={pressed} className={containerCls}>{content}</button>
   return <div className={containerCls}>{content}</div>
 }

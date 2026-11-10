@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
+import { SHEET_VALUE_ROW_STYLE } from '@/components/ui/sheetClasses'
 import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
@@ -14,29 +15,27 @@ export type ItemEarnEntry = {
   expires_at: string | null
 }
 
-function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
+/** 획득 내용 — 페이지의 첫 카드와 시트가 같이 쓴다. `inSheet`이면 값 행을 줄이고 행 사이에 가는 선을 긋는다(티켓 20261110_2150) */
+function ItemCardContent({ entry, inSheet = false }: { entry: ItemEarnEntry; inSheet?: boolean }) {
+  const rows = [
+    { key: 'obtained', title: d.inventory.obtainedAt, iso: entry.obtained_at },
+    ...(entry.expires_at ? [{ key: 'expires', title: d.inventory.expiresAt, iso: entry.expires_at }] : []),
+  ]
   return (
-    <div className="flex flex-col -mb-3">
-      {/* 일시는 모두 년월일시로 보인다(2026-11-09 사용자 지시: 배지 상세의 일시 표시를 한 형식으로 통일) */}
-      <ListRow
-        tone="flat"
-        titleVariant="label"
-        titleLines={0}
-        title={d.inventory.obtainedAt}
-        value={<LocalDate iso={entry.obtained_at} stamp stampBreak />}
-        valueNoWrap
-      />
-      {/* 만료가 없는 아이템 배지는 만료 일시 줄을 그리지 않는다(2026-11-09 사용자 지시) */}
-      {entry.expires_at && (
+    <div className={inSheet ? 'flex flex-col' : 'flex flex-col -mb-3'}>
+      {rows.map((row, i) => (
         <ListRow
+          key={row.key}
           tone="flat"
           titleVariant="label"
           titleLines={0}
-          title={d.inventory.expiresAt}
-          value={<LocalDate iso={entry.expires_at} stamp stampBreak />}
+          title={row.title}
+          value={<LocalDate iso={row.iso} stamp stampBreak />}
           valueNoWrap
+          separator={inSheet && i < rows.length - 1}
+          style={inSheet ? SHEET_VALUE_ROW_STYLE : undefined}
         />
-      )}
+      ))}
     </div>
   )
 }
@@ -90,8 +89,8 @@ export default function ItemEarnHistory({
 
       {/* 이력 상세 바텀시트 */}
       <BottomSheet open={openEntry !== null} onClose={() => setOpenId(null)}>
-        <div className="px-6 pt-2 pb-8">
-          {openEntry && <ItemCardContent entry={openEntry} />}
+        <div className="px-6 pt-5 pb-6">
+          {openEntry && <ItemCardContent entry={openEntry} inSheet />}
         </div>
       </BottomSheet>
     </div>

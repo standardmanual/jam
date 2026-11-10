@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import { collapseLeveledBadgeBursts } from '@/lib/activity-feed/collapseLeveled'
 import { formatRelativeTime } from '@/lib/utils'
-import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -15,7 +14,6 @@ import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
-import { formatKoreanDateTime } from '@/components/LocalDate'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { buildQueryHref, readEnumParam } from '@/lib/urlQueryState'
 import {
@@ -38,12 +36,6 @@ const PAGE_SIZE = 20
  * 알림 결산의 F2 임계값(활동 2건)과 같은 판단이다 — RECAP_CASEBOOK R9.
  */
 const GROUP_MIN_SIZE = 2
-
-/** 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — `BottomSheet.tsx`(20260908_0040)와 동일 정의.
- *  `DetailSheet`는 BottomSheet를 쓰지 않는 별도 시트 구현이라 접근성 로직을 이 파일에서
- *  자체적으로 갖는다(20260908_1754). */
-const FOCUSABLE_SELECTOR =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /** 묶음 카드 접힘 상태에 노출하는 대표 썸네일 최대 개수 */
 const GROUP_THUMB_MAX = 4
@@ -156,29 +148,6 @@ export function EventIcon({ type, className }: { type: ActivityFeedEventType; cl
   }
 }
 
-/**
- * 반복 획득 배지 썸네일 모서리에 붙는 작은 카운터 배지("×N").
- * 인터랙션 리뷰 발견 3(20260826_001) — 반복 획득 이벤트가 최초 획득과 시각적으로 완전히
- * 동일해 텍스트를 읽기 전까지 구분이 안 된다는 지적 반영. 신규 컴포넌트를 만들지 않고 기존
- * 하우스 스타일(ProfileClient.tsx의 아바타 모서리 버튼과 동일한 pill 배지 톤)만 재사용한다.
- *
- * 20260905_0038 B — 체크인 전용(`CheckinCountBadge`)이었던 것을 **획득 횟수 공용**으로 넓혔다.
- * 액티비티 배지의 반복형도 같은 필을 쓴다(새 컴포넌트를 만들지 않는다). 두 축의 출처가 다르다:
- * 체크인은 `metadata.visit_count`, 액티비티 배지는 `metadata.earn_count`(hydrate가 채운다).
- *
- * 티켓 20261106_2252: 피드 카드는 `ListRow`의 `leadBadge`로 옮겨 갔고, 이 필은 **상세 시트(`DetailSheet`)만** 쓴다(시트는 4단계 1배치 범위 밖).
- */
-function EarnCountBadge({ count }: { count: number }) {
-  return (
-    <span
-      className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center"
-      aria-hidden="true"
-    >
-      ×{count}
-    </span>
-  )
-}
-
 const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
   badge_earned: d.feed.eventBadgeEarned,
   item_dropped: d.feed.eventItemDropped,
@@ -191,7 +160,7 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
 }
 
 /**
- * 카드(`FeedCard`)와 상세 시트(`DetailSheet`)가 함께 쓰는 대상 이름 한 줄.
+ * 카드(`FeedCard`)가 쓰는 대상 이름 한 줄(상세 시트는 쓰지 않아 걷었다, 티켓 20261110_2150).
  * 예전에는 두 곳이 같은 삼항식(배지 이벤트면 `badge_name`, 아니면 `mission_title`)을 따로 갖고 있어 새 종류에서 어긋나기 쉬웠다(티켓 20261021_1249 6-3 5회).
  *
  * - 챕터 오름: `d.chapter.line.chapter`(«챕터 3»). 번호가 정수가 아니거나 1 미만이면 빈 문자열이다 — «챕터 0»을 그리지 않는다.
@@ -275,58 +244,10 @@ function BadgeChip({ item }: { item: ActivityFeedRow }) {
 }
 
 /**
- * item_dropped는 두 가지 출처를 하나의 이벤트 타입으로 공유한다:
- * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → tribe_name이 항상 채워짐 → "아이템 획득"
- * - 지점에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → tribe_name 없음 → "아이템 드랍"
- *
- * 체크인 배지 획득(badge_earned + poi_name·visit_count)만 짧은 라벨이 아니라 **문장**으로
- * 표시한다(20260826_004 사용자 확정) — 첫 획득은 "체크인 했어요", 두 번째부터는
- * "{N}번째 체크인 했어요". 나머지 5개 타입의 라벨은 건드리지 않는다. 반복 획득일 때는
- * "N번째" 숫자만 인라인으로 강조해 핵심 정보를 눈에 띄게 한다(인터랙션 리뷰 발견 4).
- */
-function eventLabel(item: ActivityFeedRow): ReactNode {
-  if (item.event_type === 'item_dropped') {
-    const meta = item.metadata as Record<string, unknown>
-    return meta.tribe_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
-  }
-  const checkin = checkinInfo(item)
-  if (checkin) {
-    if (checkin.visitCount <= 1) return d.feed.eventCheckin
-    // "{visitCount}번째 체크인 했어요" 템플릿을 {visitCount} 자리로 쪼개 숫자 부분만
-    // <strong>으로 감싼다 — 템플릿 자체는 ko.ts 한 곳에서 계속 관리한다.
-    const [prefix, suffix] = d.feed.eventCheckinRepeat.split('{visitCount}')
-    return (
-      <>
-        {prefix}
-        <strong className="font-bold text-foreground">{checkin.visitCount}</strong>
-        {suffix}
-      </>
-    )
-  }
-  // 반복 획득한 활동 배지 — 체크인과 같은 「N번째」 패턴(20260905_0038 B).
-  // ×N 필은 aria-hidden이라 보조기술에는 이 문장만이 회차를 전달한다.
-  if (item.event_type === 'badge_earned') {
-    const earnCount = earnCountOf(item)
-    if (earnCount != null) {
-      const [prefix, suffix] = d.feed.eventBadgeEarnedRepeat.split('{count}')
-      return (
-        <>
-          {prefix}
-          <strong className="font-bold text-foreground">{earnCount}</strong>
-          {suffix}
-        </>
-      )
-    }
-  }
-  return EVENT_LABEL[item.event_type]
-}
-
-
-/**
  * 카드(`FeedCard`)용 라벨 — `eventLabel`과 같은 판정이되 **평문 문자열**이다(티켓 20261106_2252 판정 1).
  * `ListRow`의 `eyebrow`는 문자열이면 한 덩어리 문장(최대 2줄)으로, ReactNode면 칩 줄로 그려진다.
  * `eventLabel`의 «N번째» 숫자 `<strong>`을 그대로 넣으면 문장이 쪼개져 4px 간격이 끼므로 카드는 이 함수를 쓴다.
- * 숫자 강조는 상세 시트(`DetailSheet`)가 `eventLabel`로 계속 맡는다. 문구는 ko.ts 템플릿을 `t()`로 채운다.
+ * 문구는 ko.ts 템플릿을 `t()`로 채운다. 숫자를 강조하던 `eventLabel`은 상세 시트와 함께 걷었다.
  */
 export function eventLabelText(item: ActivityFeedRow): string {
   if (item.event_type === 'item_dropped') {
@@ -344,215 +265,6 @@ export function eventLabelText(item: ActivityFeedRow): string {
   return EVENT_LABEL[item.event_type]
 }
 
-
-function Row({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <span className="shrink-0 text-base text-muted">{label}</span>
-      <span className="whitespace-nowrap text-base text-foreground text-right">{value}</span>
-    </div>
-  )
-}
-
-/**
- * 피드 상세 바텀시트.
- *
- * Panel reveal(07-panel-reveal.md) 적용 — 닫힘 트랜지션을 보여주려면 닫는
- * 즉시 언마운트하면 안 되므로, 부모는 `open`만 false로 바꾸고 `onClosed`
- * 콜백이 올 때 실제로 언마운트한다.
- */
-export function DetailSheet({
-  item,
-  open,
-  onClose,
-  onClosed,
-  badgeLinkQuery,
-}: {
-  item: ActivityFeedRow
-  open: boolean
-  onClose: () => void
-  onClosed: () => void
-  badgeLinkQuery: string
-}) {
-  const router = useRouter()
-  const [shown, setShown] = useState(false)
-  const sheetRef = useRef<HTMLDivElement>(null)
-  const titleId = useId()
-
-  useEffect(() => {
-    if (open) {
-      // 닫힌 상태로 한 프레임 마운트한 뒤 data-open을 올려야 트랜지션이 발화한다.
-      const raf = requestAnimationFrame(() => setShown(true))
-      return () => cancelAnimationFrame(raf)
-    }
-    const raf = requestAnimationFrame(() => setShown(false))
-    const timer = setTimeout(onClosed, cssDurationMs('--panel-close-dur', 350))
-    return () => {
-      cancelAnimationFrame(raf)
-      clearTimeout(timer)
-    }
-  }, [open, onClosed])
-
-  // 20260908_1754: 포커스 트랩·복귀·Escape 닫기 — `BottomSheet.tsx`(20260908_0040)와
-  // 같은 패턴. 이 시트는 BottomSheet를 쓰지 않는 별도 구현이라 여기서 직접 적용한다.
-  useEffect(() => {
-    if (!open) return
-    const sheetEl = sheetRef.current
-    const previouslyFocused = document.activeElement as HTMLElement | null
-
-    const focusFirst = () => {
-      const focusable = sheetEl?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-      const first = focusable?.[0]
-      if (first) first.focus()
-      else sheetEl?.focus()
-    }
-    focusFirst()
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-        return
-      }
-      if (e.key !== 'Tab' || !sheetEl) return
-
-      const focusable = Array.from(sheetEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-      if (focusable.length === 0) {
-        e.preventDefault()
-        sheetEl.focus()
-        return
-      }
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      const active = document.activeElement
-      if (e.shiftKey) {
-        if (active === first || !sheetEl.contains(active)) {
-          e.preventDefault()
-          last.focus()
-        }
-      } else {
-        if (active === last || !sheetEl.contains(active)) {
-          e.preventDefault()
-          first.focus()
-        }
-      }
-    }
-
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus()
-    }
-  }, [open, onClose])
-
-  const meta = item.metadata as Record<string, string | number | null>
-  const rarity = meta.rarity ? String(meta.rarity) : null
-  const badgeImage = feedImageOf(meta)
-  const title = feedTitle(item)
-  const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
-  const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
-  const missionBadgeNames = Array.isArray(rawBadgeNames) ? (rawBadgeNames as string[]) : []
-  const checkin = checkinInfo(item)
-  const earnCount = earnCountOf(item)
-  const level = badgeLevelOf(item)
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-backdrop z-40 t-panel-backdrop" data-open={shown} onClick={onClose} />
-      {/*
-        Panel reveal 래퍼. 시트 본체가 `-translate-x-1/2`로 가운데 정렬돼 있으면
-        `.t-panel-slide`의 transform과 충돌하므로, 가운데 정렬은 flex 래퍼가
-        맡고 시트 본체는 transform을 트랜지션에 온전히 넘긴다.
-      */}
-      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
-      <div
-        ref={sheetRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className="t-panel-slide relative w-full max-w-[430px] bg-card-bg text-foreground rounded-t-2xl px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
-        data-open={shown}
-        style={{ '--panel-translate-y': '100%' } as CSSProperties}
-      >
-        <div className="w-10 h-1 bg-border rounded-full mx-auto mb-6" />
-        <div className="flex justify-center mb-4">
-          <div className="relative">
-            <SafeImage
-              src={badgeImage}
-              alt={title}
-              width={112}
-              height={112}
-              className="w-28 h-28 rounded-2xl object-cover"
-              fallback={
-                <div className="w-28 h-28 rounded-2xl bg-surface text-foreground flex items-center justify-center">
-                  <EventIcon type={item.event_type} className="w-12 h-12" />
-                </div>
-              }
-            />
-            {earnCount != null && <EarnCountBadge count={earnCount} />}
-          </div>
-        </div>
-        {/* 제목이 비면 aria-labelledby가 빈 h2를 가리키지 않도록 종류 라벨을 h2 자리에 쓰고 muted 라벨 줄은 그리지 않는다(티켓 20261021_1249 6-3 5회) */}
-        {title ? (
-          <>
-            <p className="text-center text-base text-muted mb-1 line-clamp-2 break-keep wrap-break-word">{eventLabel(item)}</p>
-            <h2 id={titleId} className="text-center text-2xl text-foreground mb-4 break-keep wrap-break-word text-balance">{title}</h2>
-          </>
-        ) : (
-          <h2 id={titleId} className="text-center text-2xl text-foreground mb-4 break-keep wrap-break-word text-balance">{eventLabel(item)}</h2>
-        )}
-        {/* 레벨형은 등급이 없어 Lv.N 칩으로 갈라진다. 등급형 common은 기존대로 칩을 그리지 않는다. */}
-        {(level != null || (rarity && rarity !== 'common')) && (
-          <div className="flex justify-center mb-4">
-            <BadgeChip item={item} />
-          </div>
-        )}
-        {/* 크림 시트 위 행 묶음은 흰 면 + 1px border로 구분한다(티켓 20261015_2134). */}
-        <div className="rounded-2xl bg-card-bg px-4 py-2 mb-6">
-          {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
-            <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
-          )}
-          {/* 라벨이 "체크인 했어요"로 바뀌면서 문장에서 빠진 지점명을 상세에서 보존한다(20260826_004) */}
-          {checkin && <Row label={d.feed.rowCheckinPlace} value={checkin.poiName} />}
-          {item.event_type === 'mission_completed' && meta.target_value != null && Number(meta.target_value) > 0 && (
-            <Row
-              label={d.feed.rowResult}
-              value={t(d.feed.resultValue, { current: String(meta.final_progress_value ?? 0), target: String(meta.target_value) })}
-            />
-          )}
-          {item.event_type === 'mission_completed' && missionBadgeNames.length > 0 && (
-            <Row label={d.feed.rowRewardBadges} value={missionBadgeNames.join(', ')} />
-          )}
-          {item.event_type === 'mission_completed' && meta.reward_points && (
-            <Row label={d.feed.rowRewardPoints} value={tPoint(d.feed.pointsValue, { points: Number(meta.reward_points).toLocaleString('ko-KR') })} />
-          )}
-          {item.event_type === 'badge_earned' && typeof meta.point_reward === 'number' && meta.point_reward > 0 && (
-            <Row label={d.feed.rowPoints} value={tPoint(d.feed.pointsGained, { points: Number(meta.point_reward).toLocaleString('ko-KR') })} />
-          )}
-          {/* 20260824_006 — 표시 기준을 created_at(획득 시각, 항상 정확)으로 변경.
-              event_at(Strava 활동 시작 시각)은 로컬 벽시계 오해석 버그로 미래가 찍힐 수 있었다. */}
-          <Row label={d.feed.rowDate} value={formatKoreanDateTime(item.created_at, { year: true, time: true })} />
-        </div>
-        {isBadgeEvent ? (
-          <Button
-            surface="main"
-            variant="primary"
-            fullWidth
-            onClick={() => router.push(`/badges/${meta.badge_id}${badgeLinkQuery}`)}
-          >
-            {d.common.detail}
-          </Button>
-        ) : (
-          <Button surface="main" variant="primary" fullWidth onClick={onClose}>
-            {d.common.close}
-          </Button>
-        )}
-      </div>
-      </div>
-    </>
-  )
-}
 
 /**
  * 피드 행의 대표 이미지 — 배지 이벤트는 배지 그림, 미션 이벤트는 미션 대표 이미지, 컬렉션 이벤트는 컬렉션 대표 이미지다
@@ -788,7 +500,7 @@ function groupHeadline(items: ActivityFeedRow[]): ReactNode {
  *
  * 새 라우트·새 시트를 만들지 않는다 — 케이스북 R6("새 결산 화면을 만들지 않는다")이
  * 프로필 안에서도 유효하다. 펼치면 기존 FeedCard가 그대로 나오고, 카드를 누르면
- * 기존 DetailSheet가 뜬다.
+ * 카드의 이동 대상(`feedTarget`)으로 간다.
  */
 function ActivityGroupCard({
   items,

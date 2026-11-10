@@ -68,7 +68,8 @@ export interface RecipeSlotWithCandidates {
   id: string
   slot_order: number
   badge_type: CombineSlotBadgeType
-  candidates: Pick<BadgeRow, 'id' | 'name' | 'image_url'>[]
+  /** 등급은 가방 카드의 등급 칩에 쓴다(없으면 칩 없음). 서버(`page.tsx`)가 후보 배지 상세를 그대로 내려 주므로 실제로는 들어 있다 */
+  candidates: (Pick<BadgeRow, 'id' | 'name' | 'image_url'> & Partial<Pick<BadgeRow, 'rarity'>>)[]
 }
 
 /** 공개 레시피 + 슬롯 상세 + 보상 배지 상세(티켓 20260917_1655, 슬롯 기반 크래프팅 UI) */
@@ -250,6 +251,8 @@ interface BagRow {
   badgeId: string
   name: string
   imageUrl: string | null
+  /** 가방 카드의 등급 칩(Common이거나 없으면 칩 없음, 티켓 20261110_2150) */
+  rarity?: BadgeRow['rarity'] | null
   /** active: 탭해서 채울 수 있음 · used: 다른 슬롯에 이미 씀 · needed: 아예 보유하지 않음 */
   state: 'active' | 'used' | 'needed'
 }
@@ -534,7 +537,7 @@ export default function CombineClient({
       if (slot.badge_type === 'item') {
         const owned = itemsByBadgeId.get(candidate.id) ?? []
         if (owned.length === 0) {
-          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, state: 'needed' })
+          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, rarity: candidate.rarity ?? null, state: 'needed' })
           continue
         }
         for (const inv of owned) {
@@ -545,12 +548,13 @@ export default function CombineClient({
             badgeId: candidate.id,
             name: inv.badge.name,
             imageUrl: inv.badge.image_url,
+            rarity: inv.badge.rarity,
             state: usedElsewhere ? 'used' : 'active',
           })
         }
       } else {
         if (!ownedConditionSet.has(candidate.id)) {
-          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, state: 'needed' })
+          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, rarity: candidate.rarity ?? null, state: 'needed' })
           continue
         }
         const usedElsewhere = Object.entries(fills).some(([sId, f]) => sId !== slot.id && f.refId === candidate.id)
@@ -560,6 +564,7 @@ export default function CombineClient({
           badgeId: candidate.id,
           name: candidate.name,
           imageUrl: candidate.image_url,
+          rarity: candidate.rarity ?? null,
           state: usedElsewhere ? 'used' : 'active',
         })
       }
@@ -1199,7 +1204,7 @@ export default function CombineClient({
               여백은 앱 내 다른 BottomSheet 사용처와 동일하게 맞춘다
               (티켓 20260917_1828, 요구사항 4) — 이 시트만 좌우 패딩이 빠져 있었다.
             */}
-            <div className="px-4 pt-2 pb-6">
+            <div className="px-6 py-6">
               {bagRows.length === 0 ? (
                 <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.bagEmpty} />
               ) : (
@@ -1211,6 +1216,7 @@ export default function CombineClient({
                         key={row.key}
                         name={row.name}
                         imageUrl={row.imageUrl}
+                        rarity={row.rarity}
                         state={row.state}
                         pulse={pulseTarget?.type === 'bagRow' && pulseTarget.key === row.key}
                         onClick={() => bagSlot && active && fillSlot(bagSlot.id, row)}

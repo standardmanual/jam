@@ -26,7 +26,7 @@ vi.mock('@/components/ui/Toast', () => ({
 import SafeImage from '@/components/SafeImage'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import RecipeRewardRow from '@/app/(main)/combine/RecipeRewardRow'
-import FeedSection, { DetailSheet } from '@/app/(main)/FeedSection'
+import FeedSection from '@/app/(main)/FeedSection'
 import MissionDetailClient from '@/app/(main)/missions/[id]/MissionDetailClient'
 
 /** `next.config.ts`의 remotePatterns에 없는 호스트 — 어드민이 직접 넣을 수 있는 값이다 */
@@ -102,23 +102,6 @@ describe('미등록 호스트 이미지 URL이어도 컴포넌트가 예외 없�
     expect(html).toContain('width="48"')
     expect(html).toContain('width="24"')
     expect(html).toContain(UNREGISTERED)
-  })
-
-  it('FeedSection DetailSheet — 배지 이미지 112px', () => {
-    const item = feedRow('d1', { metadata: { badge_id: 'b1', badge_name: '상세', badge_image_url: UNREGISTERED } })
-    const html = renderToStaticMarkup(
-      <DetailSheet item={item} open onClose={() => {}} onClosed={() => {}} badgeLinkQuery="" />
-    )
-    expect(html).toContain('width="112"')
-    expect(html).toContain(UNREGISTERED)
-  })
-
-  it('FeedSection DetailSheet — 이미지가 없으면 이벤트 아이콘 폴백', () => {
-    const item = feedRow('d2', { metadata: { badge_id: 'b1', badge_name: '상세' } })
-    const html = renderToStaticMarkup(
-      <DetailSheet item={item} open onClose={() => {}} onClosed={() => {}} badgeLinkQuery="" />
-    )
-    expect(html).not.toContain('width="112"')
   })
 
   it('MissionDetailClient — 보상 배지 행(48px)', () => {

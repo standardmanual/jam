@@ -788,13 +788,7 @@ export default function PoiCarouselModal({
             ? (dropCandidateGroup.badgeRarity as BadgeRarity)
             : 'common'
         }
-        bodyText={
-          dropCandidateGroup
-            ? t(dropCandidateGroup.locked ? d.drops.selectDropLockedBody : d.drops.selectDropItemBody, {
-                count: String(dropCandidateGroup.items.length),
-              })
-            : ''
-        }
+        badgeImageUrl={dropCandidateGroup?.badgeImageUrl}
         candidates={(dropCandidateGroup?.items ?? []).map(toCandidate)}
         onSelect={(candidate) => {
           const item = dropCandidateGroup?.items.find((it) => it.id === candidate.id)
@@ -815,13 +809,7 @@ export default function PoiCarouselModal({
             ? (pickupCandidateGroup.badgeRarity as BadgeRarity)
             : 'common'
         }
-        bodyText={
-          pickupCandidateGroup
-            ? t(pickupCandidateGroup.locked ? d.drops.selectPickupLockedBody : d.drops.selectPickupItemBody, {
-                count: String(pickupCandidateGroup.items.length),
-              })
-            : ''
-        }
+        badgeImageUrl={pickupCandidateGroup?.badgeImageUrl}
         candidates={(pickupCandidateGroup?.items ?? []).map(toCandidate)}
         onSelect={(candidate) => {
           const drop = pickupCandidateGroup?.items.find((d) => d.id === candidate.id)

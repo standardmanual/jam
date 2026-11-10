@@ -132,14 +132,13 @@ const inputOf = (tree: ReactNode) => collect(expand(tree), (el) => el.type === I
 const labelOf = (button: El) => String(button.props.children)
 
 describe('WithdrawSheetView — 문구와 순서', () => {
-  it('제목, 첫 문단, 묶음 라벨, 확인 문구 라벨을 d.* 문구 그대로 위에서 아래로 그린다', () => {
+  it('제목, 첫 문단, 확인 문구 라벨을 d.* 문구 그대로 위에서 아래로 그린다 — 확인 문구 낱말만 붉은 글자다 (티켓 20261110_2150)', () => {
     const html = markup()
+    const [labelHead, labelTail] = copy.confirmLabel.split('{phrase}').map((part) => part.replace(/"/g, '&quot;'))
     const order = [
       copy.title,
       copy.intro,
-      copy.removedLabel,
-      copy.keptLabel,
-      t(copy.confirmLabel, { phrase: WITHDRAW_CONFIRM_PHRASE }).replace(/"/g, '&quot;'),
+      `${labelHead}<span class="text-danger-text">${WITHDRAW_CONFIRM_PHRASE}</span>${labelTail}`,
     ].map((text) => {
       const index = html.indexOf(text)
       expect(index, text).toBeGreaterThanOrEqual(0)
@@ -153,14 +152,12 @@ describe('WithdrawSheetView — 문구와 순서', () => {
     expect(html.indexOf(`>${copy.confirm}<`)).toBeGreaterThan(html.indexOf(`>${copy.cancel}<`))
   })
 
-  it('«남는 것» 문단 둘 — 보관 개월 수는 retention.ts 상수에서 끼워 넣는다', () => {
+  it('«지워지는 것»·«남는 것» 묶음 제목과 보관 안내 문단은 그리지 않는다 (캔버스 «JAM! 바텀시트» 05번, 사용자 결정)', () => {
     const html = markup()
-    expect(html).toContain(
-      `법에 따라 ${CONFIRMATION_RETENTION_MONTHS}개월, 부정 이용 탐지 기록은 ${ABUSE_LOG_RETENTION_MONTHS}개월 동안`
-    )
-    expect(html).toContain(copy.keptDrops)
-    expect(html).not.toContain('{confirmMonths}')
-    expect(html).not.toContain('{abuseMonths}')
+    expect(html).not.toContain(copy.removedLabel)
+    expect(html).not.toContain(copy.keptLabel)
+    expect(html).not.toContain(copy.keptDrops)
+    expect(html).not.toContain('법에 따라')
   })
 
   it('전부 왼쪽 정렬이고 장식 아이콘·그라디언트·이모지가 없다', () => {
@@ -182,7 +179,7 @@ describe('WithdrawSheetView — 문구와 순서', () => {
   })
 
   it('본문 가장자리는 제목과 같은 px-6이다', () => {
-    expect(markup()).toContain('px-6 pb-6')
+    expect(markup()).toContain('px-6 py-6')
   })
 })
 
@@ -190,7 +187,7 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
   it('값이 오면 다섯 줄을 라벨 muted·값 foreground로 보인다', () => {
     const html = markup()
     for (const label of [copy.rowActivityBadges, copy.rowCheckinBadges, copy.rowItemBadges, copy.rowJam, copy.rowPoints]) {
-      expect(html, label).toContain(`>${label}</span>`)
+      expect(html, label).toContain(`<strong class="font-bold">${label}</strong>`)
     }
     expect(html).toContain('>12개</span>')
     expect(html).toContain('>7개</span>')
@@ -202,7 +199,7 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
     expect(html).toContain('ds-list-row')
     // 포인트 행 값만 point-text로 칠한다 (티켓 20261104_2319 3회차)
     expect(html).toContain('<span class="text-point-text"')
-    expect(html).toContain('text-muted')
+    expect(html).toContain('color:var(--muted)')
     expect(html).not.toContain('aria-busy="true"')
   })
 
@@ -229,8 +226,8 @@ describe('WithdrawSheetView — 요약 세 상태', () => {
     expect(html).toContain('>98,765</span>')
   })
 
-  it('Strava 동기화 줄은 연결 중일 때만 보인다', () => {
-    expect(markup()).toContain(copy.stravaSync)
+  it('Strava 동기화 줄은 연결 중이어도 그리지 않는다 (캔버스 05번, 사용자 결정)', () => {
+    expect(markup()).not.toContain(copy.stravaSync)
     expect(markup({ summary: { status: 'ready', summary: { ...SUMMARY, stravaConnected: false } } })).not.toContain(copy.stravaSync)
   })
 
@@ -510,8 +507,8 @@ describe('WithdrawSheet — 토큰만 쓴다', () => {
     const code = codeOf('../WithdrawSheet.tsx')
     expect(code).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
     expect(code).not.toMatch(/rgba?\(/)
-    expect(code).not.toMatch(/text-white|bg-black|bg-white|border-white|text-red|bg-red|text-danger|text-foreground\/[0-9]/)
-    // 위험색은 버튼 변형과 Input state로만 쓴다(직접 적은 danger 클래스가 없다)
+    expect(code).not.toMatch(/text-white|bg-black|bg-white|border-white|text-red|bg-red|text-danger(?!-text)|text-foreground\/[0-9]/)
+    // 위험색은 버튼 변형과 Input state로만 쓴다(직접 적은 danger 클래스가 없다). 예외: 확인 문구 낱말 하나만 `text-danger-text`(붉은 글자 토큰)
     expect(code).not.toMatch(/bg-danger|border-danger/)
   })
 })

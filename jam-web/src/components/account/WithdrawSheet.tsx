@@ -6,13 +6,13 @@ import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { Input } from '@ds/components/forms/Input'
 import { ListRow } from '@/components/ui/ListRow'
+import { SHEET_BUTTON_CLASS, SHEET_TEXT_LEADING, SHEET_VALUE_ROW_STYLE } from '@/components/ui/sheetClasses'
 import { useSkeletonReveal } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { createClient } from '@/lib/supabase/client'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
-import { ABUSE_LOG_RETENTION_MONTHS, CONFIRMATION_RETENTION_MONTHS } from '@/lib/account/retention'
 import { requestAccountDeletion, requestAccountSummary, runWithdraw } from '@/lib/account/withdraw-client'
 import {
   WITHDRAWN_LOGIN_PATH,
@@ -80,8 +80,17 @@ function SummaryRows({ summary }: { summary: AccountSummary }) {
   ]
   return (
     <div className="flex flex-col">
-      {rows.map(([label, value]) => (
-        <ListRow key={label} tone="flat" titleVariant="label" titleLines={0} title={label} value={value} />
+      {rows.map(([label, value], i) => (
+        <ListRow
+          key={label}
+          tone="flat"
+          titleVariant="label"
+          titleLines={0}
+          title={<strong className="font-bold">{label}</strong>}
+          value={value}
+          separator={i < rows.length - 1}
+          style={SHEET_VALUE_ROW_STYLE}
+        />
       ))}
     </div>
   )
@@ -99,7 +108,6 @@ function RemovedSection({ summary }: { summary: WithdrawSummaryState }) {
 
   return (
     <section className="flex flex-col gap-2">
-      <h3 className={`text-sm text-muted ${PROSE}`}>{copy.removedLabel}</h3>
       <div
         ref={skelRef}
         className="t-skel"
@@ -119,29 +127,9 @@ function RemovedSection({ summary }: { summary: WithdrawSummaryState }) {
         </div>
         <div className="t-skel-content">
           {summary.status === 'ready' && <SummaryRows summary={summary.summary} />}
-          {summary.status === 'error' && <p className={`text-base text-foreground ${PROSE}`}>{copy.removedFallback}</p>}
+          {summary.status === 'error' && <p className={`text-base ${SHEET_TEXT_LEADING} text-foreground ${PROSE}`}>{copy.removedFallback}</p>}
         </div>
       </div>
-      {summary.status === 'ready' && summary.summary.stravaConnected && (
-        <p className={`text-base text-foreground ${PROSE}`}>{copy.stravaSync}</p>
-      )}
-    </section>
-  )
-}
-
-/** «남는 것» 묶음 — 보관 기간은 `retention.ts` 상수에서 끼워 넣는다 */
-function KeptSection() {
-  const copy = d.withdrawSheet
-  return (
-    <section className="flex flex-col gap-2">
-      <h3 className={`text-sm text-muted ${PROSE}`}>{copy.keptLabel}</h3>
-      <p className={`text-sm text-foreground ${PROSE}`}>
-        {t(copy.keptRecords, {
-          confirmMonths: CONFIRMATION_RETENTION_MONTHS,
-          abuseMonths: ABUSE_LOG_RETENTION_MONTHS,
-        })}
-      </p>
-      <p className={`text-sm text-foreground ${PROSE}`}>{copy.keptDrops}</p>
     </section>
   )
 }
@@ -169,6 +157,7 @@ function ConfirmPhraseField({
 }) {
   const copy = d.withdrawSheet
   const showMismatch = blurred && normalizeConfirmInput(phrase) !== '' && !isWithdrawConfirmed(phrase)
+  const confirmLabelParts = copy.confirmLabel.split('{phrase}')
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
@@ -178,8 +167,11 @@ function ConfirmPhraseField({
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={INPUT_ID} className={`text-base text-foreground ${PROSE}`}>
-        {t(copy.confirmLabel, { phrase: WITHDRAW_CONFIRM_PHRASE })}
+      <label htmlFor={INPUT_ID} className={`text-base ${SHEET_TEXT_LEADING} text-foreground ${PROSE}`}>
+        {/* 확인 문구만 붉은 글자(`--danger-text`, 티켓 20261110_2150). 문장 틀은 d.* 문구를 그대로 쓴다 */}
+        {confirmLabelParts[0]}
+        <span className="text-danger-text">{WITHDRAW_CONFIRM_PHRASE}</span>
+        {confirmLabelParts[1]}
       </label>
       <Input
         id={INPUT_ID}
@@ -248,7 +240,7 @@ export function WithdrawSheetView({
             <Button
               fullWidth
               variant="secondary"
-              className="px-3! whitespace-nowrap"
+              className={`px-3! whitespace-nowrap ${SHEET_BUTTON_CLASS}`}
               onClick={onClose}
               disabled={submitting}
             >
@@ -257,7 +249,7 @@ export function WithdrawSheetView({
             <Button
               fullWidth
               variant="danger"
-              className="px-3! whitespace-nowrap"
+              className={`px-3! whitespace-nowrap ${SHEET_BUTTON_CLASS}`}
               loading={submitting}
               disabled={!confirmed}
               onClick={onConfirm}
@@ -268,10 +260,9 @@ export function WithdrawSheetView({
         </div>
       }
     >
-      <div tabIndex={0} role="region" aria-label={copy.title} className="flex flex-col gap-6 px-6 pb-6 text-left">
-        <p className={`text-base text-foreground ${PROSE}`}>{copy.intro}</p>
+      <div tabIndex={0} role="region" aria-label={copy.title} className="flex flex-col gap-6 px-6 py-6 text-left">
+        <p className={`text-base ${SHEET_TEXT_LEADING} text-foreground ${PROSE}`}>{copy.intro}</p>
         <RemovedSection summary={summary} />
-        <KeptSection />
         <ConfirmPhraseField
           phrase={phrase}
           blurred={phraseBlurred}

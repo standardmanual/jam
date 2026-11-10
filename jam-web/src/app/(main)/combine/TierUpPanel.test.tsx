@@ -240,15 +240,13 @@ describe('TierUpSheetContent', () => {
   const render = (sheet: Parameters<typeof TierUpSheetContent<TierUpMaterial>>[0]['sheet']) =>
     renderToStaticMarkup(<TierUpSheetContent<TierUpMaterial> sheet={sheet} onPick={noop} />)
 
-  it('묶음 보기: 등급 글자와 개수를 제목으로 쓰고, 6개 미만 묶음은 이유 줄이 나온다', () => {
+  it('묶음 보기: 묶음 제목은 등급 칩 하나이고 개수·이유 줄은 없다 (캔버스 «JAM! 바텀시트» 08번, 티켓 20261110_2150)', () => {
     const out = render(buildTierUpSheet(groups, EMPTY_SLOTS))
-    expect(out).toContain('Common · 3개')
-    expect(out).toContain('Rare · 7개')
-    expect(out).toContain('Mystic · 6개')
-    expect(out.indexOf('Common · 3개')).toBeLessThan(out.indexOf('Rare · 7개'))
-    expect(out.indexOf('Rare · 7개')).toBeLessThan(out.indexOf('Mystic · 6개'))
-    // 6개 미만인 Common 묶음에만 이유 줄이 한 번 나온다
-    expect(out.split(d.combine.tierUp.groupShort)).toHaveLength(2)
+    expect(out.indexOf('Common')).toBeGreaterThan(-1)
+    expect(out.indexOf('Common')).toBeLessThan(out.indexOf('Rare'))
+    expect(out.indexOf('Rare')).toBeLessThan(out.indexOf('Mystic'))
+    expect(out).not.toContain('Common · 3개')
+    expect(out).not.toContain(d.combine.tierUp.groupShort)
     expect(out).toContain('<section aria-labelledby="tier-up-group-common"')
     expect(out).toContain('<h3 id="tier-up-group-rare"')
     expect(out).toContain('<h3 id="tier-up-group-mystic"')
@@ -257,7 +255,7 @@ describe('TierUpSheetContent', () => {
   it('묶음 보기: 6개 미만 묶음의 셀은 모두 비활성(opacity-40)이고 «사용 중» 라벨이 없다', () => {
     const out = render(buildTierUpSheet(groupTierUpMaterials(common3), EMPTY_SLOTS))
     expect(out.match(/opacity-40/g)).toHaveLength(3)
-    expect(out.match(/disabled=""/g)).toHaveLength(3)
+    expect(out).not.toContain('<button')
     expect(out).not.toContain(d.combine.bagUsedLabel)
   })
 

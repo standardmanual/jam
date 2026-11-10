@@ -1,7 +1,7 @@
 /**
  * BottomSheet 스크림·패널·푸터·핸들의 면 (티켓 20261015_2133, 2회 버튼·입력창·내비게이션)
  *
- * 시트 구조를 쓰는 곳은 셋이다: 서비스 `BottomSheet.tsx`, 시트를 손으로 만든 `FeedSection.tsx`·`PoiCarouselModal.tsx`.
+ * 시트 구조를 쓰는 곳은 둘이다: 서비스 `BottomSheet.tsx`, 시트를 손으로 만든 `PoiCarouselModal.tsx`(피드 상세 시트 `FeedSection.tsx`는 티켓 20261110_2150에서 걷었다).
  * MODULAR `BottomSheet.jsx`는 서비스와 병존하는 쌍이다. `npm run ds:check`는 색을 비교하지 못한다.
  *
  * 면: 스크림 `--backdrop`(검정 50%) / 패널 `--card-bg`(흰) / 푸터 `--surface`(흰) / 핸들 `--border`.
@@ -25,11 +25,10 @@ const scrimLine = (source: string) => source.split('\n').find((line) => /<div[^>
 
 const SHEETS = {
   'BottomSheet.tsx': 'components/ui/BottomSheet.tsx',
-  'FeedSection.tsx': 'app/(main)/FeedSection.tsx',
   'PoiCarouselModal.tsx': 'components/PoiCarouselModal.tsx',
 } as const
 
-describe('스크림은 세 곳 모두 --backdrop이다', () => {
+describe('스크림은 모든 시트가 --backdrop이다', () => {
   for (const [name, file] of Object.entries(SHEETS)) {
     it(`${name}: bg-backdrop이고 크림 반투명(bg-background/60·70)이 아니다`, () => {
       const line = scrimLine(read(file))
@@ -46,8 +45,8 @@ describe('스크림은 세 곳 모두 --backdrop이다', () => {
 })
 
 describe('핸들은 --border다(크림 위 흰색 반투명은 안 보인다)', () => {
-  it('서비스 BottomSheet.tsx·FeedSection.tsx 핸들이 bg-border이고 bg-white/20이 없다', () => {
-    for (const file of [SHEETS['BottomSheet.tsx'], SHEETS['FeedSection.tsx']]) {
+  it('서비스 BottomSheet.tsx 핸들이 bg-border이고 bg-white/20이 없다', () => {
+    for (const file of [SHEETS['BottomSheet.tsx']]) {
       const source = read(file)
       expect(source, file).toMatch(/w-10 h-1[^"]*bg-border|bg-border[^"]*w-10 h-1/)
       expect(source, file).not.toContain('bg-white/20')
@@ -65,7 +64,7 @@ describe('패널·푸터는 흰 면이다 — 서비스와 MODULAR가 같은 쌍
 
   it('서비스 패널은 --card-bg, 푸터는 bg-surface다', () => {
     expect(service).toContain('bg-[var(--card-bg)] text-foreground')
-    expect(service).toMatch(/className="shrink-0 px-4 pt-4 bg-surface"/)
+    expect(service).toMatch(/className="shrink-0 px-5 pt-2 bg-surface"/)
   })
 
   it('MODULAR 패널은 --card-bg, 푸터는 --surface다', () => {

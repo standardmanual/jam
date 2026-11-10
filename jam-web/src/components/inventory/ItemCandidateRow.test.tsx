@@ -86,22 +86,31 @@ describe('ItemCandidateRow 개체별 등급 (티켓 20261028_1408)', () => {
   })
 })
 
-describe('ItemCandidateRow ListRow 마크업 (티켓 20261107_1946)', () => {
+describe('ItemCandidateRow 카드 마크업 (티켓 20261110_2150, BadgeGridCard 3열)', () => {
   const open = { id: 'a', serial_number: 5, serial_prefix: 'ABCD', expires_at: null }
 
-  it('선택한 행은 aria-pressed="true"를 갖는다', () => {
-    const html = render(<ItemCandidateRow candidate={open} rarity="rare" selected onClick={vi.fn()} />)
-    expect(html).toContain('aria-pressed="true"')
+  it('개체는 BadgeGridCard 카드(버튼)이고 일련번호 칩이 이름 자리를 대신한다', () => {
+    const html = render(<ItemCandidateRow candidate={open} rarity="rare" onClick={vi.fn()} />)
+    expect(html.startsWith('<button type="button"')).toBe(true)
+    expect(html).toContain('ABCD000005')
+    expect(html).toContain('>Rare<')
   })
 
-  it('선택하지 않은 행에는 aria-pressed가 없다(고르면 실행되는 행이라 토글 의미를 주지 않는다)', () => {
+  it('선택한 카드는 aria-pressed="true"와 테두리 링을 갖는다', () => {
+    const html = render(<ItemCandidateRow candidate={open} rarity="rare" selected onClick={vi.fn()} />)
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).toContain('ring-2')
+  })
+
+  it('선택하지 않은 카드에는 aria-pressed가 없다(고르면 실행되는 카드라 토글 의미를 주지 않는다)', () => {
     const html = render(<ItemCandidateRow candidate={open} rarity="rare" onClick={vi.fn()} />)
     expect(html).not.toContain('aria-pressed')
   })
 
-  it('muted이면 <button disabled>라 클릭·Tab·Enter가 막힌다', () => {
+  it('muted이면 <button disabled>이고 흐리다 — 클릭·Tab·Enter가 막힌다', () => {
     const html = render(<ItemCandidateRow candidate={open} rarity="rare" muted onClick={vi.fn()} />)
     expect(html).toMatch(/<button[^>]*\sdisabled=""/)
+    expect(html).toContain('opacity-40')
     expect(render(<ItemCandidateRow candidate={open} rarity="rare" onClick={vi.fn()} />)).not.toMatch(/<button[^>]*\sdisabled/)
   })
 
@@ -123,16 +132,15 @@ describe('ItemCandidateRow ListRow 마크업 (티켓 20261107_1946)', () => {
     expect(html).not.toContain(d.inventory.expiringSuffix)
   })
 
-  it('Common이거나 등급이 없으면 등급 칩 줄 자체가 없다(빈 eyebrow 줄 방지)', () => {
+  it('Common이거나 등급이 없으면 등급 칩이 없다', () => {
     const none = render(<ItemCandidateRow candidate={open} rarity={undefined} onClick={vi.fn()} />)
     const common = render(<ItemCandidateRow candidate={open} rarity="common" onClick={vi.fn()} />)
     expect(none).toBe(common)
-    expect(none).not.toContain('margin-top:var(--list-row-line-gap)')
+    expect(none).not.toContain('>Common<')
   })
 
-  it('trailing은 trail 자리에 그려진다', () => {
+  it('trailing은 카드 안 일련번호·등급 칩 아래에 그려진다', () => {
     const html = render(<ItemCandidateRow candidate={open} rarity="rare" selected trailing={<span>처리 중</span>} onClick={vi.fn()} />)
-    expect(html).toContain('ds-list-row-trail')
-    expect(html).toContain('처리 중')
+    expect(html.indexOf('처리 중')).toBeGreaterThan(html.indexOf('ABCD000005'))
   })
 })

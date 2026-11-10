@@ -1961,11 +1961,11 @@ export const ko = {
     pendingBlockedNote: '받지 않은 믹스 결과를 받으면 믹스할 수 있어요',
     /** 받기 시트 */
     pendingSheet: {
-      title: '받지 않은 믹스 결과',
-      /** `{count}`는 받을 결과 개수 */
-      intro: '결과 {count}개를 한 번에 받아요',
-      /** 빈칸이 충분할 때 푸터 한 줄 */
-      slots: '인벤토리 빈칸 {free}개 · 필요한 빈칸 {needed}개',
+      // 피그마 캔버스 «JAM! 바텀시트» 06번에 맞췄다(티켓 20261110_2150): 제목을 바꾸고 소개 문장(intro)을 지웠다
+      title: '아직 인벤토리에 담지 않았어요!',
+      /** 빈칸이 충분할 때 푸터 한 줄 — 라벨과 굵은 숫자(`{needed}`는 받으려면 필요한 칸 수)를 나눠 쓴다 */
+      slotsLabel: '필요한 인벤토리 슬롯',
+      slotsCount: '{needed}개',
       shortTitle: '인벤토리 빈칸이 모자라요',
       shortCount: '지금 빈칸 {free}개, 받으려면 {needed}개가 필요해요',
       shortKept: '믹스 결과는 그대로 남아 있어요',

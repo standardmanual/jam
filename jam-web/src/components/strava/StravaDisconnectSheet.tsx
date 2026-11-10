@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
+import { SHEET_BUTTON_CLASS, SHEET_TEXT_LEADING } from '@/components/ui/sheetClasses'
 import { useToast } from '@/components/ui/Toast'
 import { d } from '@/lib/i18n'
 import { requestStravaDisconnect, runStravaDisconnect } from '@/lib/strava/disconnect-client'
@@ -46,7 +47,7 @@ export function StravaDisconnectSheetView({ open, submitting, onClose, onConfirm
           <Button
             fullWidth
             variant="secondary"
-            className="px-3! whitespace-nowrap"
+            className={`px-3! whitespace-nowrap ${SHEET_BUTTON_CLASS}`}
             onClick={onClose}
             disabled={submitting}
           >
@@ -55,7 +56,7 @@ export function StravaDisconnectSheetView({ open, submitting, onClose, onConfirm
           <Button
             fullWidth
             variant="danger"
-            className="px-3! whitespace-nowrap"
+            className={`px-3! whitespace-nowrap ${SHEET_BUTTON_CLASS}`}
             loading={submitting}
             onClick={onConfirm}
           >
@@ -64,9 +65,9 @@ export function StravaDisconnectSheetView({ open, submitting, onClose, onConfirm
         </div>
       }
     >
-      <div className="flex flex-col gap-2 px-4 py-6 text-left">
+      <div className="flex flex-col gap-1 px-6 py-6 text-left">
         {copy.body.map((line) => (
-          <p key={line} className="text-base text-foreground break-keep wrap-break-word text-balance">
+          <p key={line} className={`text-base ${SHEET_TEXT_LEADING} text-foreground break-keep wrap-break-word text-balance`}>
             {line}
           </p>
         ))}

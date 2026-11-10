@@ -1,70 +1,54 @@
-import SafeImage from '@/components/SafeImage'
-import { PackageIcon } from '@/components/ui/icons'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { d } from '@/lib/i18n'
+import type { BadgeRarity } from '@/types/database'
 
 /**
  * 내 배지 시트의 셀 하나 — 레시피 믹서 가방과 등급 올리기 재료 시트가 같이 쓴다(티켓 20261022_2119 3회).
- * `CombineClient.tsx`의 가방 셀을 그대로 옮긴 것이라 레시피 믹서의 렌더 결과는 한 글자도 달라지지 않는다(`BagItemCell.test.tsx`가 고정한다).
+ * 티켓 20261110_2150부터 인벤토리·컬렉션·배지 목록과 같은 `BadgeGridCard` 레이아웃으로 그린다(캔버스 «JAM! 바텀시트»).
  *
- * - `active`: 탭해서 담을 수 있음
- * - `used`: 다른 칸에 이미 담음 — 비활성 + «사용 중»
- * - `needed`: 아예 보유하지 않음 — 비활성 + 그레이스케일(미보유 전용)
- * - `inactive`: 지금은 담을 수 없음 — 비활성만. 이유는 셀 밖의 줄이 말한다(등급 올리기의 6개 미만 묶음)
+ * - `active`: 탭해서 담을 수 있음 — 카드가 버튼이다
+ * - `used`: 다른 칸에 이미 담음 — 눌리지 않고 카드 아래에 «사용 중»이 붙는다
+ * - `needed`: 아예 보유하지 않음 — 눌리지 않고 카드가 흐리며 그림이 그레이스케일이다(미보유 전용)
+ * - `inactive`: 지금은 담을 수 없음 — 눌리지 않고 카드가 흐리다. 이유는 셀 밖의 줄이 말한다(등급 올리기의 6개 미만 묶음)
+ *
+ * 등급 칩은 `rarity`를 줄 때만 그린다(Common이면 카드가 칩을 그리지 않는다). 등급 올리기 시트는 묶음 제목이 등급을 말하므로 주지 않는다.
  */
 export type BagItemState = 'active' | 'used' | 'needed' | 'inactive'
 
 export default function BagItemCell({
   name,
   imageUrl,
+  rarity = null,
   state,
   pulse = false,
   onClick,
 }: {
   name: string
   imageUrl: string | null
+  rarity?: BadgeRarity | null
   state: BagItemState
-  /** 온보딩 퀘스트 「지금 눌러야 할 요소」 펄스 */
   pulse?: boolean
   onClick: () => void
 }) {
   const active = state === 'active'
-  // 미보유 후보(needed)는 그레이스케일로만 표현한다(인벤토리·컬렉션 화면의 미획득 처리와 동일한
-  // grayscale+opacity 조합, 티켓 20260917_1828 — "필요" 텍스트는 제거).
-  const needed = state === 'needed'
+  const className = [
+    'w-full',
+    state === 'needed' || state === 'inactive' ? 'opacity-40' : '',
+    pulse ? 'jam-quest-pulse' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <button
-      type="button"
-      disabled={!active}
-      onClick={onClick}
-      className={[
-        'flex flex-col items-center gap-1 p-2 rounded-2xl bg-card-bg',
-        active ? 'active:scale-95' : 'opacity-40',
-        pulse ? 'jam-quest-pulse' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+    <BadgeGridCard
+      className={className}
+      name={name}
+      imageUrl={imageUrl}
+      rarity={rarity}
+      earned={state !== 'needed'}
+      onClick={active ? onClick : undefined}
     >
-      <div
-        className={[
-          'w-16 h-16 rounded-2xl bg-surface flex items-center justify-center overflow-hidden',
-          needed ? 'grayscale opacity-40' : '',
-        ].join(' ')}
-      >
-        <SafeImage
-          src={imageUrl}
-          alt={name}
-          width={64}
-          height={64}
-          className="object-contain w-full h-full"
-          fallback={<PackageIcon className="w-6 h-6 text-muted" />}
-        />
-      </div>
-      <p className="text-xs text-foreground text-center line-clamp-2">
-        {name}
-      </p>
-      {state === 'used' && (
-        <span className="text-xs text-muted">{d.combine.bagUsedLabel}</span>
-      )}
-    </button>
+      {state === 'used' && <span className="text-xs text-muted">{d.combine.bagUsedLabel}</span>}
+    </BadgeGridCard>
   )
 }

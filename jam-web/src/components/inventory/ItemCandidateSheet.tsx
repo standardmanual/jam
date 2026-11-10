@@ -17,7 +17,8 @@ export interface ItemCandidateSheetProps {
   badgeName: string | undefined
   /** 후보 전체에 공통인 등급 — 정규화(예: 미지 값→'common')는 호출부 책임이다. */
   rarity: BadgeRarity | null | undefined
-  bodyText: string
+  /** 카드 썸네일에 쓰는 배지 그림(같은 배지의 개체들이라 한 장을 모든 카드가 쓴다) */
+  badgeImageUrl?: string | null
   candidates: ItemCandidate[]
   onSelect: (candidate: ItemCandidate) => void
   /** 안내문과 후보 목록 사이에 보여줄 에러 배너 — 장착 시트만 쓴다(API 호출 실패, 20260907_2221). */
@@ -46,13 +47,14 @@ export interface ItemCandidateSheetProps {
  * 개체 선택 시트 — "같은 배지를 여러 개 보유했을 때 등급칩+일련번호로 구분해 고르는" 화면
  * 3곳(장착·드랍·픽업)이 공유한다. 헤더(제목 크기·상하 여백)와 본문 좌측 정렬을 이 컴포넌트
  * 한 곳에서 고정해, 이후 시트가 늘어나도 시각 사양이 벌어지지 않게 한다.
+ * 티켓 20261110_2150: 제목은 `BottomSheet` 기본(20px 굵게), 안내 문장은 지웠고, 개체는 `BadgeGridCard` 3열 카드로 그린다.
  */
 export default function ItemCandidateSheet({
   open,
   onClose,
   badgeName,
   rarity,
-  bodyText,
+  badgeImageUrl = null,
   candidates,
   onSelect,
   error,
@@ -67,28 +69,20 @@ export default function ItemCandidateSheet({
       open={open}
       onClose={onClose}
       title={badgeName}
-      // 배지 이름이 이 시트의 유일한 정체 정보라 존재감을 키운다(--text-2xl, 사용자 지시).
-      // 헤더 좌우 패딩(24)을 본문 컨테이너의 좌우 패딩과 맞춰 제목·본문 시작 위치를 맞춘다.
-      // 상단 여백(pt-8)은 핸들과 제목 사이 간격을 확보하고, 하단 여백(pb-8, 기본 16보다 좁힘)
-      // 은 제목과 본문 사이 간격을 줄인다.
-      headerClassName="px-6 pt-2 pb-2 shrink-0"
-      titleClassName="text-2xl font-bold"
     >
-      <div className="px-6 pb-4 flex flex-col gap-2">
-        <p className="text-xs text-[var(--muted)]">
-          {bodyText}
-        </p>
+      <div className="px-6 py-6 flex flex-col gap-2">
         {error && (
           <div className="rounded-2xl bg-card-bg px-3 py-2 text-xs text-muted">
             {error}
           </div>
         )}
-        <div className="flex flex-col gap-2" aria-busy={busy}>
+        <div className="grid grid-cols-3 gap-2" aria-busy={busy}>
           {candidates.map((candidate) => (
             <ItemCandidateRow
               key={candidate.id}
               candidate={candidate}
               rarity={rarity}
+              imageUrl={badgeImageUrl}
               selected={isSelected?.(candidate) ?? false}
               muted={isMuted?.(candidate) ?? false}
               trailing={renderTrailing?.(candidate)}

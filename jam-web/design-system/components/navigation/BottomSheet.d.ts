@@ -12,6 +12,7 @@ export interface BottomSheetProps {
   /** `detent="full"` 전용 — 화면 최상단에서 남길 여백(px). */
   topGapPx?: number;
   /** footer의 아래쪽 여백 기준. 기본값 `'tabbar'`. */
+  /** @deprecated 값과 무관하게 footer 아래 여백은 항상 안전영역 + 20px이다(티켓 20261110_2150). */
   footerBottomInset?: 'tabbar' | 'safe-area';
   /** 기본값 `true`는 콘텐츠 영역을 스크롤 가능하게 둔다. */
   contentScrollable?: boolean;

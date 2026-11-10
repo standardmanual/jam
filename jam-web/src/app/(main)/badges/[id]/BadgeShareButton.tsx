@@ -5,6 +5,7 @@ import { Button } from '@ds/components/buttons/Button'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 import { Carousel } from '@ds/components/navigation/Carousel'
 import BottomSheet from '@/components/ui/BottomSheet'
+import { SHEET_BUTTON_CLASS } from '@/components/ui/sheetClasses'
 import { useToast } from '@/components/ui/Toast'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { buildBadgeShareBlob, buildBadgeImageBlob, type BadgeShareStats } from './buildBadgeShareBlob'
@@ -409,6 +410,7 @@ export default function BadgeShareButton({
                 <Button
                   surface="light"
                   fullWidth
+                  className={SHEET_BUTTON_CLASS}
                   onClick={() => handleAction(activeItemState.blob, FILENAME_SUFFIX[activeKind])}
                 >
                   {d.badges.shareActionShare}
@@ -419,6 +421,7 @@ export default function BadgeShareButton({
                   surface="light"
                   variant="secondary"
                   fullWidth
+                  className={SHEET_BUTTON_CLASS}
                   onClick={() => handleSave(activeItemState.blob, FILENAME_SUFFIX[activeKind])}
                 >
                   {d.badges.shareActionDownload}
@@ -428,7 +431,7 @@ export default function BadgeShareButton({
           ) : undefined
         }
       >
-        <div className="h-full flex flex-col min-h-0 px-4">
+        <div className="h-full flex flex-col min-h-0 px-6 pt-4">
           {/*
             "기존 이미지(공유 카드)"·"배지 이미지" 2항목 캐러셀 (티켓 20260911_1102).
             MODULAR Carousel(센터 포커스, 좌우 peek)을 그대로 재사용 — 슬라이드 전환 시
