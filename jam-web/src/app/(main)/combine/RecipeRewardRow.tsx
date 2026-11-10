@@ -16,7 +16,10 @@ export interface RecipeRewardBadge {
 }
 
 interface Props {
-  /** 레시피 이름 — combination_recipes.name (마이그레이션 175, 티켓 20260917_1828) */
+  /**
+   * 보상 배지가 없을 때(포인트만·보상 없음) 쓰는 제목 — 레시피 이름(combination_recipes.name, 마이그레이션 175, 티켓 20260917_1828).
+   * 보상 배지가 있으면 제목은 대표 배지명이라 이 값은 쓰지 않는다(티켓 20261110_1250).
+   */
   title: string
   /**
    * 슬롯 개수 — 타이틀 우측에 회색 원형 배지 안 숫자로 표시 (티켓 20260917_2028 후속 조정).
@@ -54,19 +57,19 @@ interface Props {
  * (티켓 20261107_0011, 채원 판정). 치수·색은 ListRow가 주고 여기서는 값을 박지 않는다.
  *
  * 3케이스:
- * - 배지 + 포인트: lead=배지 이미지(tile), eyebrow=등급 칩, meta=배지명, value=포인트 값
+ * - 배지 + 포인트: lead=배지 이미지(tile), eyebrow=등급 칩, title=대표 배지명(+N), meta 없음, value=포인트 값
  * - 배지만: 위와 같고 value 없음
- * - 포인트만: lead=코인(round), eyebrow·meta 없음, value=포인트 값
+ * - 포인트만: lead=코인(round), title=레시피 이름, eyebrow·meta 없음, value=포인트 값
  *
- * 4번째 케이스(티켓 20261018_0055 2회): `noReward`면 중립 아이콘(`PackageIcon`)과 meta «보상 없음»만 그린다.
+ * 4번째 케이스(티켓 20261018_0055 2회): `noReward`면 중립 아이콘(`PackageIcon`)과 meta «보상 없음»만 그린다(title=레시피 이름).
  * `rewardLocked`면 배지 보상이 있을 때 eyebrow의 등급 칩 옆에 «잠김» 칩을 붙인다.
  *
  * `releaseAt`이 있으면 위 어느 케이스든 meta 맨 아래에 「공개 예정」 줄을 하나 더 그린다.
- * 보상 배지가 여러 개면 대표(첫 번째)만 노출하고 "+N"을 붙인다.
+ * 보상 배지가 여러 개면 대표(첫 번째)만 title에 노출하고 "+N"을 붙인다.
  * 타이틀 끝에는 슬롯 개수를 `ListRowChip`으로 붙인다(`titleSuffix`). 지금은 어느 호출부도 `slotCount`를 주지 않아 칩이 없다.
  *
  * 칩을 title 아래 `chips`가 아닌 위 `eyebrow`에 두는 이유: ListRow는 eyebrow → title → meta → chips 순서로 그려서
- * chips에 두면 배지명과 공개 예정 줄 아래로 내려가고, 배지명 앞에 한 줄로 두면 320px에서 배지명이 거의 가려진다.
+ * chips에 두면 제목과 공개 예정 줄 아래로 내려가고, 배지명 앞에 한 줄로 두면 320px에서 배지명이 거의 가려진다.
  */
 export default function RecipeRewardRow({
   title,
@@ -90,7 +93,7 @@ export default function RecipeRewardRow({
   // 눌림 행 안에는 링크를 둘 수 없다(버튼 안의 링크). 표시 전용 요약 행에서만 배지 상세로 연결한다
   const badgeHref = linkBadge && showBadge && !onClick ? `/badges/${primary.id}` : undefined
 
-  // 이미지는 장식이다(`alt=""`) — 배지 이름은 meta 글자에 이미 있다. 아이콘은 20px 글리프만 주고 48 박스·면은 ListRow가 준다.
+  // 이미지는 장식이다(`alt=""`) — 배지 이름은 제목 글자에 이미 있다. 아이콘은 20px 글리프만 주고 48 박스·면은 ListRow가 준다.
   const lead = showBadge ? (
     <SafeImage
       src={primary.image_url}
@@ -119,37 +122,34 @@ export default function RecipeRewardRow({
       </span>
     ) : undefined
 
-  // meta는 phrasing(`<span>`)만 쓴다 — 클릭 영역(`<button>`) 안이다. `metaLines={0}`이라 말줄임은 배지명 줄에만 직접 건다.
-  const badgeLine = showBadge ? (
-    <span className="block truncate">
-      {badgeHref ? (
-        // 링크는 글자 모양을 그대로 두고 밑줄만 더해 눌러 볼 수 있음을 알린다
-        <Link href={badgeHref} className="underline underline-offset-2">
-          {primary.name}
-          {extraCount > 0 ? ` +${extraCount}` : ''}
-        </Link>
-      ) : (
-        <>
-          {primary.name}
-          {extraCount > 0 ? ` +${extraCount}` : ''}
-        </>
-      )}
-    </span>
-  ) : showNoReward ? (
-    d.combine.noRewardLabel
-  ) : undefined
+  // 제목: 보상 배지가 있으면 대표 배지명(+N), 없으면 레시피 이름(티켓 20261110_1250). 말줄임은 ListRow가 건다(titleLines=1).
+  const badgeTitleText = showBadge ? `${primary.name}${extraCount > 0 ? ` +${extraCount}` : ''}` : undefined
+  const rowTitle =
+    badgeTitleText === undefined ? (
+      title
+    ) : badgeHref ? (
+      // 링크는 글자 모양을 그대로 두고 밑줄만 더해 눌러 볼 수 있음을 알린다
+      <Link href={badgeHref} className="underline underline-offset-2">
+        {badgeTitleText}
+      </Link>
+    ) : (
+      badgeTitleText
+    )
+
+  // meta는 phrasing(`<span>`)만 쓴다 — 클릭 영역(`<button>`) 안이다. 배지명은 제목으로 올라갔으므로 «보상 없음» 부제와 공개 예정 줄만 남는다.
+  const noRewardLine = showNoReward ? d.combine.noRewardLabel : undefined
   const releaseLine = releaseAt ? (
     // 말줄임(truncate)을 쓰지 않는다 — 날짜가 정보라서다. 폭이 모자라면 두 조각 중 날짜 조각이
     // 통째로 다음 줄로 내려간다(조각 안에서는 끊기지 않는다).
-    <span className={`flex flex-wrap gap-x-1 text-xs${badgeLine !== undefined ? ' mt-1' : ''}`}>
+    <span className={`flex flex-wrap gap-x-1 text-xs${noRewardLine !== undefined ? ' mt-1' : ''}`}>
       <span className="whitespace-nowrap">{d.combine.releaseScheduled} ·</span>
       <span className="whitespace-nowrap">{formatKoreanDateTime(releaseAt, { time: true })}</span>
     </span>
   ) : undefined
   const meta =
-    badgeLine !== undefined || releaseLine !== undefined ? (
+    noRewardLine !== undefined || releaseLine !== undefined ? (
       <>
-        {badgeLine}
+        {noRewardLine}
         {releaseLine}
       </>
     ) : undefined
@@ -164,7 +164,7 @@ export default function RecipeRewardRow({
       leadLabel={badgeHref ? primary?.name : undefined}
       leadShape={leadShape}
       eyebrow={eyebrow}
-      title={title}
+      title={rowTitle}
       titleVariant="strong"
       titleLines={1}
       titleSuffix={slotCount !== undefined ? <ListRowChip tone="neutral">{slotCount}</ListRowChip> : undefined}
