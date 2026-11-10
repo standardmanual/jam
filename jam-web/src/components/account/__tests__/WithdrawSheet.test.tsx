@@ -38,7 +38,6 @@ import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { Input } from '@ds/components/forms/Input'
 import { d, t } from '@/lib/i18n'
-import { ABUSE_LOG_RETENTION_MONTHS, CONFIRMATION_RETENTION_MONTHS } from '@/lib/account/retention'
 import { WITHDRAW_CONFIRM_PHRASE, type AccountSummary } from '@/lib/account/withdraw-contract'
 import WithdrawSheet, { WithdrawSheetView, type WithdrawSummaryState } from '../WithdrawSheet'
 

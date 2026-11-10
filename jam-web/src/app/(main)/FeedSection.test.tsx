@@ -486,7 +486,6 @@ function pointPieces(html: string): string[] {
 
 describe('피드의 포인트 표기', () => {
   const MISSION = row('mission_completed', { mission_title: '주말 러너', reward_points: 300 })
-  const BADGE = row('badge_earned', { badge_name: '한강 러너', point_reward: 50 })
 
   it('미션 완료 카드 부제는 «+300 포인트» 조각만 칠하고 문장 글자는 그대로다', () => {
     const html = renderFeed([MISSION])
