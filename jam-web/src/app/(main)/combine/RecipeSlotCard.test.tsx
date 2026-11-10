@@ -28,6 +28,16 @@ describe('RecipeSlotCard', () => {
     expect(html.match(/<button/g)).toHaveLength(1)
   })
 
+  it('채운 칸에만 등급 올리기와 같은 3px 회색 안쪽 테두리가 있다(addable·unowned에는 없다)', () => {
+    expect(render({ status: 'filled' })).toContain('ring-3 ring-inset ring-muted')
+    expect(render({ status: 'addable' })).not.toContain('ring-muted')
+    expect(render({ status: 'unowned' })).not.toContain('ring-muted')
+    // dense와 함께여도 둘 다 붙는다
+    const dense = render({ status: 'filled', dense: true })
+    expect(dense).toContain('p-2!')
+    expect(dense).toContain('ring-inset')
+  })
+
   it('unowned: 썸네일은 grayscale+opacity-40, 이름은 muted이고 버튼이 없다', () => {
     const html = render({ status: 'unowned' })
     expect(html).toContain('grayscale opacity-40')

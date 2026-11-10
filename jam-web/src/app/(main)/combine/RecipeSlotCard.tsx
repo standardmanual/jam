@@ -7,7 +7,7 @@ import { d, t } from '@/lib/i18n'
  * 서비스 전용 조립 조각이라 새 MODULAR 컴포넌트가 아니다. 칸 본체는 누르는 동작이 없고(`BadgeGridCard`를 비대화형으로 둔다)
  * 우측 상단 원 버튼만 누른다. 버튼은 카드 안이 아니라 형제로 둔다(컬렉션 `SlotGrid`의 래퍼 구조와 같다).
  *
- * - `filled`: 채운 개체를 선명하게 + «−»(누르면 비운다).
+ * - `filled`: 채운 개체를 선명하게 + «−»(누르면 비운다) + 3px 회색 테두리(등급 올리기 칸과 같은 모양, 채웠다는 신호).
  * - `addable`: 대표 후보를 선명하게 + «+»(활성 행이 하나면 바로 채우고, 여럿이면 호출부가 시트를 연다).
  * - `unowned`: 대표 후보를 흐리게(썸네일 grayscale + opacity-40, 이름 muted), 버튼 없음, 눌러도 아무 일 없음.
  * - `pulse`: 온보딩 퀘스트 펄스는 «+»에만 건다. «−»·`unowned`에는 걸리지 않는다.
@@ -38,10 +38,13 @@ export default function RecipeSlotCard({
   dense = false,
 }: RecipeSlotCardProps) {
   const unowned = status === 'unowned'
+  // 채운 칸은 등급 올리기의 채운·빈 칸(`MixerSlot`)과 같은 3px 회색 테두리(`--muted`)로 «채움»을 알린다(2026-11-10 사용자 지시).
+  // 안쪽 링(box-shadow inset)이라 칸 크기와 이미지 위치를 밀지 않는다.
+  const cardClassName = ['w-full', dense && 'p-2!', status === 'filled' && 'ring-3 ring-inset ring-muted'].filter(Boolean).join(' ')
   return (
     <div className="relative flex">
       <BadgeGridCard
-        className={dense ? 'w-full p-2!' : 'w-full'}
+        className={cardClassName}
         name={name}
         imageUrl={imageUrl}
         rarity={null}
