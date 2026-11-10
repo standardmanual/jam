@@ -22,7 +22,8 @@ interface BadgeShareButtonProps {
   /**
    * activity/poi 타입에서 이 배지 소유자(본인)가 스트라바에 연동돼 있는지(page.tsx가
    * `strava_connections` 테이블을 사전 조회해 내려줌). item 타입은 스트라바 데이터가
-   * 필요 없으므로 이 값과 무관하게 항상 공유 가능하다.
+   * 필요 없으므로 이 값과 무관하다. 끊겨 있으면 공유를 막지 않고, 스트라바 기록으로 만드는
+   * 공유 카드만 빼고 배지 이미지 한 장만 공유한다(사용자 지시 2026-11-11, 티켓 20261111_0801).
    */
   stravaConnected: boolean
   /** 다른 유저의 배지 상세를 보는 중이면(그 유저 기준 데이터 조회용) 그 유저의 username */
@@ -58,6 +59,8 @@ interface ShareState {
 }
 
 const SHARE_ITEM_KINDS: ShareItemKind[] = ['card', 'badge']
+/** 스트라바가 끊긴 activity/poi 배지 — 기록으로 만드는 공유 카드 없이 배지 이미지만 보인다 */
+const BADGE_ONLY_KINDS: ShareItemKind[] = ['badge']
 
 /** 저장/공유 파일명 접미사 — 항목에 따라 구분한다(티켓 20260911_1102 구현 계획 4). */
 const FILENAME_SUFFIX: Record<ShareItemKind, string> = { card: 'jam', badge: 'badge' }
@@ -68,15 +71,6 @@ const KNOWN_ERROR_REASONS: ShareErrorReason[] = [
   'strava_fetch_failed',
   'strava_activity_not_found',
 ]
-
-/** 사전 비활성화 사유 — 클릭 전에 판별 가능한 것만 다룬다(런타임 API 실패는 시트 내부 에러 상태로 별도 처리) */
-type DisabledReason = 'not-earned' | 'strava-disconnected'
-
-function disabledReasonCopy(reason: DisabledReason): { title: string; body: string | null } {
-  return reason === 'not-earned'
-    ? { title: d.badges.notEarnedTitle, body: null }
-    : { title: d.badges.shareErrorStravaDisconnectedTitle, body: d.badges.shareErrorStravaDisconnectedBody }
-}
 
 /**
  * 서버(`/api/badges/[id]/share-data`)가 이미 `d.badges.*`로 완성해 내려보낸 title/body가
@@ -118,8 +112,8 @@ function isIOS(): boolean {
  * activity/poi 타입은 서버 API(`/api/badges/[id]/share-data`)로 스트라바 페이스·시간을 조회한 뒤
  * `buildBadgeShareBlob`으로 투명 PNG를 생성한다. item 타입은 스트라바 조회 없이 바로 생성한다.
  *
- * 미획득 배지·스트라바 미연동(activity/poi만 해당)은 클릭 전에 판별 가능하므로 버튼을 사전
- * 비활성화하고, 클릭 시 작은 팝오버로 사유를 안내한다(호출자가 이 컴포넌트를 렌더링한다는 것은
+ * 미획득 배지는 클릭 전에 판별 가능하므로 버튼을 사전 비활성화하고, 클릭 시 작은 팝오버로
+ * 사유를 안내한다. 스트라바가 끊긴 activity/poi 배지는 막지 않고 배지 이미지만 공유한다(호출자가 이 컴포넌트를 렌더링한다는 것은
  * 이미 "본인 배지"라는 뜻 — 타인 배지에서의 미노출은 이 컴포넌트를 아예 렌더링하지 않는 방식으로
  * 호출부(`page.tsx`)에서 처리한다). 따라서 이 컴포넌트가 실제로 시트를 여는 시점에는 항상 이미지
  * 생성이 가능한 상태이고, 시트 내부의 "미획득" 상태 분기는 더 이상 필요 없다. 시트가 열린 뒤의
@@ -144,12 +138,10 @@ export default function BadgeShareButton({
   const cardObjectUrlRef = useRef<string | null>(null)
   const badgeObjectUrlRef = useRef<string | null>(null)
 
-  const disabledReason: DisabledReason | null = !hasEarned
-    ? 'not-earned'
-    : badgeType !== 'item' && !stravaConnected
-      ? 'strava-disconnected'
-      : null
-  const isDisabled = disabledReason !== null
+  const isDisabled = !hasEarned
+  // 공유 카드는 스트라바 기록(거리·페이스·시간)으로 만든다. 끊겨 있으면 그 카드를 빼고 배지 이미지만 낸다.
+  const cardAvailable = badgeType === 'item' || stravaConnected
+  const shareKinds = cardAvailable ? SHARE_ITEM_KINDS : BADGE_ONLY_KINDS
 
   /** 이미지 URL 자체가 없으면 두 항목 모두 생성 자체가 불가능하므로 state와 무관하게 에러로 본다. */
   const effectiveState: ShareState = imageUrl
@@ -164,7 +156,7 @@ export default function BadgeShareButton({
   const showCardLoader = useDebouncedLoading(effectiveState.card.kind === 'loading')
   const showBadgeLoader = useDebouncedLoading(effectiveState.badge.kind === 'loading')
 
-  const activeKind: ShareItemKind = SHARE_ITEM_KINDS[activeIndex] ?? 'card'
+  const activeKind: ShareItemKind = shareKinds[activeIndex] ?? shareKinds[0]
   const activeItemState = effectiveState[activeKind]
 
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -199,7 +191,7 @@ export default function BadgeShareButton({
       cardObjectUrlRef.current = null
     }
 
-    if (!imageUrl) return
+    if (!imageUrl || !cardAvailable) return
 
     let cancelled = false
 
@@ -239,7 +231,7 @@ export default function BadgeShareButton({
     return () => {
       cancelled = true
     }
-  }, [open, badgeType, badgeId, subjectUsername, imageUrl, level, earnCount])
+  }, [open, badgeType, badgeId, subjectUsername, imageUrl, level, earnCount, cardAvailable])
 
   // 배지 이미지 단독(300px 정사각형) 항목 — 통계 API 조회가 필요 없어 카드 생성과 독립적으로
   // 진행된다(티켓 20260911_1102). 하나가 아직 로딩 중이어도 다른 하나는 먼저 준비될 수 있다.
@@ -379,19 +371,12 @@ export default function BadgeShareButton({
           </Button>
         </div>
 
-        {popoverOpen && disabledReason && (
+        {popoverOpen && isDisabled && (
           <div
             role="tooltip"
             className="absolute left-1/2 bottom-[calc(100%+8px)] z-50 w-[220px] -translate-x-1/2 rounded-2xl bg-[var(--background-inverse)] p-3 text-left"
           >
-            <p className="text-sm font-bold text-[var(--snow)]">
-              {disabledReasonCopy(disabledReason).title}
-            </p>
-            {disabledReasonCopy(disabledReason).body && (
-              <p className="mt-1 text-xs text-[var(--snow)]/70">
-                {disabledReasonCopy(disabledReason).body}
-              </p>
-            )}
+            <p className="text-sm font-bold text-[var(--snow)]">{d.badges.notEarnedTitle}</p>
           </div>
         )}
       </div>
@@ -443,7 +428,7 @@ export default function BadgeShareButton({
           */}
           <div className="relative w-full flex-1 min-h-0">
             <Carousel
-              items={SHARE_ITEM_KINDS}
+              items={shareKinds}
               activeIndex={activeIndex}
               onActiveIndexChange={setActiveIndex}
               getItemKey={(kind: ShareItemKind) => kind}
