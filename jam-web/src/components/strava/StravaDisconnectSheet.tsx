@@ -28,7 +28,7 @@ interface StravaDisconnectSheetViewProps {
  *
  * 재사용만 한다: BottomSheet(compact) + Button(secondary 취소, danger 확정). 새 토큰·새 부품이 없다.
  * `OnboardingQuestSkipModal`(가운데 모달)과 같은 버튼 배치이며 취소와 확정의 시각 무게는 같다(가이드 5.2).
- * danger 글자는 `--foreground`다(흰 글자 3.57:1 금지 — Button 주석). 본문은 3문장이라 가운데가 아니라 왼쪽 정렬이다.
+ * danger 글자는 `--foreground`다(흰 글자 3.57:1 금지 — Button 주석). 본문은 여러 문장이라 가운데가 아니라 왼쪽 정렬이다.
  * 제출 중 확정 버튼은 loading이고 라벨이 «동기화 끊는 중»이다(5.3). 닫힘 트랜지션은 BottomSheet가 DOM에 남겨 처리한다.
  */
 export function StravaDisconnectSheetView({ open, submitting, onClose, onConfirm }: StravaDisconnectSheetViewProps) {
@@ -41,6 +41,8 @@ export function StravaDisconnectSheetView({ open, submitting, onClose, onConfirm
       onClose={submitting ? () => {} : onClose}
       detent="compact"
       title={copy.title}
+      // 피그마 시안(52:28): 제목은 20px 굵은 글씨, 행간 24px (티켓 20261110_2048). 헤더 여백은 기본값(px-6 pb-4) 그대로다
+      titleClassName="text-xl font-bold leading-6"
       footer={
         <div className="flex gap-4">
           <Button
