@@ -7,6 +7,7 @@ import { Button } from '../buttons/Button';
 // 핸들 --border. 서비스 BottomSheet.tsx와 같은 값이다. 본문 카드는 흰 면 + 1px --border다.
 // 20260901_1926: props API를 서비스 기준(onClose/detent/footer/topGapPx/footerBottomInset/
 // contentScrollable)으로 재정렬. 드래그투클로즈는 서비스 전용 기능이라 여전히 미구현.
+// 제목(티켓 20261110_2048): 크고 굵게 — 20px(--text-xl)·굵은 글씨·행간 24px. 서비스 BottomSheet.tsx의 기본값과 같다.
 const meta: Meta<typeof BottomSheet> = {
   title: 'MODULAR/Navigation/BottomSheet',
   component: BottomSheet,
