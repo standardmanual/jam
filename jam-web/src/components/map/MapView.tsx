@@ -92,6 +92,21 @@ const VIEWPORT_MARGIN_RATIO = 0.02
  */
 const VIEWPORT_STALE_TTL_MS = 90_000
 
+/** "내 위치" 버튼이 위치를 새로 조회할 때 기다리는 최대 시간(ms). 이 시간이 지나면 버튼을 다시 누를 수 있다 */
+const LOCATE_TIMEOUT_MS = 8_000
+/** 이 시간(ms) 안에 얻은 위치는 다시 조회하지 않고 재사용해도 된다 */
+const LOCATE_MAX_AGE_MS = 10_000
+/** 새로 조회한 위치가 알고 있던 위치와 이 값(도, 약 3m)보다 덜 다르면 지도를 한 번 더 움직이지 않는다 */
+const LOCATE_REFINE_MIN_DEGREES = 0.00003
+
+/**
+ * "내 위치" 버튼의 하단 위치 — 탭바(하단 위치 공식은 TabBar.jsx와 같다, 높이 49px) 윗면에서
+ * 18px 띄운다. 이전에는 안전 영역 + 96px로 고정돼 탭바와 37px 떨어져 있었고(375~430px 폭 실측),
+ * 그 간격의 절반으로 줄였다. 탭바 위치 공식을 그대로 따르므로 홈 인디케이터가 있는 기기에서도 간격이 같다.
+ */
+const LOCATE_BUTTON_BOTTOM =
+  'calc(max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px)) + 49px + 18px)'
+
 type MapsReadyCallback = () => void
 /**
  * 티켓 20260927_2126: `BADGE_FILL_PATH`를 export해 `QuestPickupScene.tsx`가 가져다 쓰면서
@@ -269,6 +284,11 @@ export default function MapView({
   const userMarkerRef = useRef<naver.maps.Marker | null>(null)
   const userCircleRef = useRef<naver.maps.Circle | null>(null)
   const [locating, setLocating] = useState(false)
+  // 부모가 실시간으로 감시하는 최신 위치 — 버튼을 누르면 조회 응답을 기다리지 않고 이 값으로 먼저 이동한다
+  const latestUserPosRef = useRef({ lat: userLat, lng: userLng })
+  useEffect(() => {
+    latestUserPosRef.current = { lat: userLat, lng: userLng }
+  }, [userLat, userLng])
 
   // 줌 레벨(마커 크기 배율 계산용). 초기 줌(17)과 동일한 값으로 시작한다.
   const [zoom, setZoom] = useState(17)
@@ -518,22 +538,40 @@ export default function MapView({
     })
   }, [badgeMarkers, badgeClusters, zoomScale])
 
-  // "내 위치로 돌아가기" 버튼 — 지도 회전 없이 위치만 재조회해 중심 이동 + 파란 점/서클 갱신
+  // 지도 중심을 주어진 좌표로 옮기고 파란 점/서클도 같은 자리로 갱신한다
+  const moveToUser = (lat: number, lng: number) => {
+    const map = mapInstanceRef.current
+    const naver = window.naver
+    if (!map || !naver?.maps) return
+    const latlng = new naver.maps.LatLng(lat, lng)
+    map.morph(latlng, map.getZoom())
+    userMarkerRef.current?.setPosition(latlng)
+    userCircleRef.current?.setCenter(latlng)
+  }
+
+  // "내 위치로 돌아가기" 버튼 — 부모가 감시 중인 최신 위치로 먼저 즉시 이동하고,
+  // 위치를 새로 조회해 눈에 띄게 달라졌을 때만 한 번 더 보정한다.
+  // (조회 응답을 기다리기만 하면 응답이 늦거나 없을 때 눌러도 아무 반응이 없고 버튼이 비활성으로 남는다)
   const handleLocateClick = () => {
-    if (!navigator.geolocation || locating) return
+    if (locating) return
+    const known = latestUserPosRef.current
+    moveToUser(known.lat, known.lng)
+    if (!navigator.geolocation) return
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false)
-        const map = mapInstanceRef.current
-        const naver = window.naver
-        if (!map || !naver?.maps) return
-        const latlng = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude)
-        map.morph(latlng, map.getZoom())
-        userMarkerRef.current?.setPosition(latlng)
-        userCircleRef.current?.setCenter(latlng)
+        const { latitude, longitude } = pos.coords
+        const drift = Math.max(
+          Math.abs(latitude - known.lat),
+          Math.abs(longitude - known.lng)
+        )
+        if (drift < LOCATE_REFINE_MIN_DEGREES) return
+        latestUserPosRef.current = { lat: latitude, lng: longitude }
+        moveToUser(latitude, longitude)
       },
-      () => setLocating(false)
+      () => setLocating(false),
+      { timeout: LOCATE_TIMEOUT_MS, maximumAge: LOCATE_MAX_AGE_MS }
     )
   }
 
@@ -556,7 +594,7 @@ export default function MapView({
         aria-label={d.map.myLocationButtonAriaLabel}
         disabled={locating}
         className="absolute right-4 z-10 w-11 h-11 rounded-full bg-surface border border-border flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
+        style={{ bottom: LOCATE_BUTTON_BOTTOM }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="text-muted">
           <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" />
