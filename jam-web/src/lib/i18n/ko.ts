@@ -878,12 +878,9 @@ export const ko = {
      * 20260916_0856: §5.1 단독 명사 CTA 금지 + §1.3 미션 상태 행("끝난")에 맞춰 재작성 */
     ctaEnded: '종료',
 
-    statusAchievementLabel: '달성 현황',
-    statusIndividualLabel: '나의 현황',
     statusParticipants: '참가자 {count}명',
     statusAllRanks: '전체 랭킹',
     statusLoadError: '불러오지 못했어요',
-    statusMeAchievement: '— 나 —',
     statusNoParticipants: '아직 참가자가 없어요',
     statusNoParticipantsBody: '가장 먼저 도전해보세요',
     /** 순위·달성 행에서 내 행을 알리는 칩 글자(티켓 20261107_1947) */

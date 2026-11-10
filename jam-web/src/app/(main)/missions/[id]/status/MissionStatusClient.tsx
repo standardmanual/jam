@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
-import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
@@ -27,27 +26,7 @@ interface RankingEntry {
   rank: number
 }
 
-interface AchievementEntry {
-  userId: string
-  /** 표시용 이름 — display_name 우선, 없으면 username, 그마저 없으면 '익명' (라우팅 불가) */
-  displayName: string
-  /** 라우팅용 원본 users.username 컬럼값 — 탈퇴 등으로 유저 레코드가 없으면 null */
-  username: string | null
-  avatarUrl: string | null
-  achieved: boolean
-  achievedAt: string | null
-}
-
-interface IndividualStatus {
-  progressValue: number
-  achieved: boolean
-  achievedAt: string | null
-}
-
-type StatusResponse =
-  | { type: 'ranking'; entries: RankingEntry[]; me: RankingEntry | null; totalParticipants: number }
-  | { type: 'achievement'; entries: AchievementEntry[]; me: AchievementEntry | null; totalParticipants: number }
-  | { type: 'individual'; me: IndividualStatus }
+type StatusResponse = { type: 'ranking'; entries: RankingEntry[]; me: RankingEntry | null; totalParticipants: number }
 
 interface Props {
   missionId: string
@@ -299,40 +278,6 @@ function MyRankCard({
   )
 }
 
-/**
- * 달성형 행 — `ListRow`(티켓 20261107_1947, 목록 행 4단계 3-5배치): 랭킹형 `RankingListRow`와 같은 골격.
- * 48 원형 아바타(lead) + 이름 + 내 행 «나» 칩(titleSuffix) + 달성·미달성 칩(value).
- * 칩을 `trail`이 아니라 `value`에 둔 것은 행 전체를 프로필 링크 안에 두기 위해서다.
- * 이 행은 늘 순위 카드(흰 면 + 테두리) 안이라 면은 tint다 — 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133).
- */
-/** 시험에서 마크업을 직접 확인하려고 내보낸다(티켓 20261107_1947) */
-export function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
-  return (
-    <ListRow
-      tone="tint"
-      leadShape="round"
-      href={e.username ? `/${e.username}` : undefined}
-      lead={<SimpleAvatar url={e.avatarUrl} />}
-      title={e.displayName}
-      titleSuffix={highlight ? <ListRowChip tone="surface">{d.missions.statusMeChip}</ListRowChip> : undefined}
-      value={
-        <ListRowChip tone={e.achieved ? 'done' : 'surface-muted'}>
-          {e.achieved ? d.missions.achieved : d.missions.notAchieved}
-        </ListRowChip>
-      }
-    />
-  )
-}
-
-/** 아바타 lead 안쪽 (달성형용) — 크기와 원형 면은 `ListRow`의 lead 박스(48, round)가 정한다 */
-function SimpleAvatar({ url }: { url: string | null }) {
-  if (url) {
-    // eslint-disable-next-line @next/next/no-img-element -- 아바타는 외부 URL이고 크기는 lead 박스가 정한다(ListRow CSS)
-    return <img src={url} alt="" />
-  }
-  return <UserIcon className="w-6 h-6" />
-}
-
 // ────────────────────────────────────────────────────────────────
 // 메인 컴포넌트
 // ────────────────────────────────────────────────────────────────
@@ -366,8 +311,7 @@ export default function MissionStatusClient({
   // (NavigationLoader와 동일한 SHOW_DELAY_MS/MIN_VISIBLE_MS/MAX_VISIBLE_MS 정책, 20260908_0544)
   const showLoader = useDebouncedLoading(loading)
 
-  const isMeInEntries = (userId: string) =>
-    data?.type !== 'individual' && data?.me?.userId === userId
+  const isMeInEntries = (userId: string) => data?.me?.userId === userId
 
   return (
     <div className="min-h-full text-foreground">
@@ -465,65 +409,6 @@ export default function MissionStatusClient({
           </div>
         )
       })()}
-
-      {/* ── 달성형 타입 — 랭킹형과 동일하게 InfoCard(bg-surface / radius-cards / p-6)로
-           섹션을 감싸고, 섹션 라벨 옆에 참가자 수를 병기한다 ── */}
-      {data?.type === 'achievement' && (
-        <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
-          {data.entries.length > 0 && (
-            <Card>
-              <div className="flex items-baseline justify-between mb-2">
-                <p className="m-0 text-[15px] font-bold text-foreground">{d.missions.statusAchievementLabel}</p>
-                <span className="text-xs text-muted">
-                  {t(d.missions.statusParticipants, { count: data.totalParticipants })}
-                </span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {data.entries.map(e => (
-                  <AchievementRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
-                ))}
-                {data.me && !data.entries.some(e => e.userId === data.me!.userId) && (
-                  <>
-                    <p className="text-xs text-muted text-center my-1">{d.missions.statusMeAchievement}</p>
-                    <AchievementRow e={data.me} highlight />
-                  </>
-                )}
-              </div>
-            </Card>
-          )}
-
-          {data.entries.length === 0 && !data.me && (
-            <EmptyState
-              icon={<UsersIcon className="w-8 h-8" />}
-              title={d.missions.statusNoParticipants}
-              description={d.missions.statusNoParticipantsBody}
-            />
-          )}
-        </div>
-      )}
-
-      {/* ── 개인형 타입 — 동일한 InfoCard 섹션 어휘. 참가자 수가 없어 라벨만 노출 ── */}
-      {data?.type === 'individual' && (
-        <div className="px-4 pt-4 pb-6">
-          <Card>
-            <p className="m-0 mb-4 text-[15px] font-bold text-foreground">{d.missions.statusIndividualLabel}</p>
-            <div className="flex items-center justify-between">
-              <span className="text-base text-muted">
-                {d.missions.myProgressTitle}
-              </span>
-              {data.me.achieved ? (
-                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-foreground text-snow shrink-0">
-                  {d.missions.achieved}
-                </span>
-              ) : (
-                <span className="text-base text-foreground shrink-0">
-                  {formatMissionProgress(data.me.progressValue, missionType)}
-                </span>
-              )}
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

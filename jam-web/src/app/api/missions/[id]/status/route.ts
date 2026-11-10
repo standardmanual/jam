@@ -24,24 +24,7 @@ interface RankingEntry {
   rank: number
 }
 
-interface AchievementEntry {
-  userId: string
-  /** 표시용 이름 — display_name 우선, 없으면 username, 그마저 없으면 '익명' (라우팅 불가) */
-  displayName: string
-  /** 라우팅용 원본 users.username 컬럼값 — 탈퇴 등으로 유저 레코드가 없으면 null */
-  username: string | null
-  avatarUrl: string | null
-  achieved: boolean
-  achievedAt: string | null
-}
-
-interface IndividualStatus {
-  progressValue: number
-  achieved: boolean
-  achievedAt: string | null
-}
-
-// GET /api/missions/[id]/status — 미션 상황(랭킹형/달성형). 참가자 전용(미참가 403).
+// GET /api/missions/[id]/status — 미션 상황(랭킹형만). 참가자 전용(미참가 403). 랭킹형이 아닌 미션은 «없는 미션»이다(티켓 20261111_0856).
 export async function GET(_req: Request, { params }: Params) {
   const { id: missionId } = await params
   const supabase = await createClient()
@@ -58,6 +41,8 @@ export async function GET(_req: Request, { params }: Params) {
     .maybeSingle() as { data: { id: string; status_display_type: MissionStatusDisplayType; visible_rank_count: number | null } | null }
 
   if (!missionRaw) return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
+  // 달성형·개인형은 상황 화면을 주지 않는다(상세에 «랭킹» 버튼이 없고 화면 페이지도 상세로 돌려보낸다, 티켓 20261111_0850). 참가자·정지 조회에 들어가기 전에 끊는다
+  if (missionRaw.status_display_type !== 'ranking') return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
 
   // 트라이브 제한 (티켓 20261019_1311) — 참가할 수 있는 트라이브가 아닌 미션은 «없는 미션»이다(존재를 알리지 않는다).
   // 이미 완료한 미션은 트라이브가 바뀌어도 본다. 접근을 읽지 못하면 보여 주지 않는다(fail-closed).
@@ -87,19 +72,6 @@ export async function GET(_req: Request, { params }: Params) {
 
   if (!myParticipation) {
     return NextResponse.json({ error: d.missions.statusForbidden }, { status: 403 })
-  }
-
-  // 개인형 — 티켓 20260813_001: 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환
-  if (missionRaw.status_display_type === 'individual') {
-    const [{ data: myParticipationFull }, { data: myCompletion }] = await Promise.all([
-      service.from('user_mission_participations').select('progress_value').eq('mission_id', missionId).eq('user_id', user.id).maybeSingle(),
-      service.from('user_mission_completions').select('completed_at').eq('mission_id', missionId).eq('user_id', user.id).maybeSingle(),
-    ])
-    const progressValue = (myParticipationFull as { progress_value: number } | null)?.progress_value ?? 0
-    const achievedAt = (myCompletion as { completed_at: string } | null)?.completed_at ?? null
-
-    const individual: IndividualStatus = { progressValue, achieved: achievedAt !== null, achievedAt }
-    return NextResponse.json({ type: 'individual', me: individual })
   }
 
   // 전체 참가자 + 완료자 조회
@@ -153,31 +125,6 @@ export async function GET(_req: Request, { params }: Params) {
   // 레코드가 없으면 null → 프런트에서 href를 붙이지 않는다).
   const usernameOf = (userId: string) => userMap.get(userId)?.username ?? null
   const avatarOf = (userId: string) => userMap.get(userId)?.avatar_url ?? null
-
-  if (missionRaw.status_display_type === 'achievement') {
-    // 달성형 — 순위 없음, 달성자 우선 정렬(먼저 달성한 순)
-    const all: AchievementEntry[] = participations.map((p) => {
-      const achievedAt = completionMap.get(p.userId) ?? null
-      return {
-        userId: p.userId,
-        displayName: nameOf(p.userId),
-        username: usernameOf(p.userId),
-        avatarUrl: avatarOf(p.userId),
-        achieved: achievedAt !== null,
-        achievedAt,
-      }
-    })
-    all.sort((a, b) => {
-      if (a.achieved !== b.achieved) return a.achieved ? -1 : 1
-      if (a.achieved && b.achieved) return (a.achievedAt ?? '').localeCompare(b.achievedAt ?? '')
-      return 0
-    })
-
-    const entries = all.slice(0, limit)
-    const me = all.find((e) => e.userId === user.id) ?? null
-
-    return NextResponse.json({ type: 'achievement', entries, me, totalParticipants })
-  }
 
   // 랭킹형 — isCompleted DESC, completedAt ASC, progressValue DESC
   const ranked: RankingEntry[] = participations
