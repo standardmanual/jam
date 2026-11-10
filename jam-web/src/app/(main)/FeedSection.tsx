@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import { collapseLeveledBadgeBursts } from '@/lib/activity-feed/collapseLeveled'
@@ -17,6 +17,7 @@ import { Card } from '@ds/components/cards/Card'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import { buildQueryHref, readEnumParam } from '@/lib/urlQueryState'
 import {
   MedalIcon,
   BookIcon,
@@ -48,6 +49,11 @@ const FOCUSABLE_SELECTOR =
 const GROUP_THUMB_MAX = 4
 
 type FilterTab = 'all' | 'badge' | 'mission' | 'activity_badge'
+
+/** 필터를 주소에 싣는 쿼리 키(`?feed=badge|mission|activity_badge`). 기본 `all`은 쿼리에서 뺀다. (티켓 20261110_1217) */
+const FEED_FILTER_QUERY_KEY = 'feed'
+const FILTER_KEYS: readonly FilterTab[] = ['all', 'badge', 'mission', 'activity_badge']
+const DEFAULT_FILTER: FilterTab = 'all'
 
 const FILTER_TABS: SlidingTabItem<FilterTab>[] = [
   { key: 'all', label: d.feed.filterAll },
@@ -897,7 +903,12 @@ interface Props {
 
 export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.feed.title, hideHeader = false, activityNames, friendProfileHrefs }: Props) {
   const router = useRouter()
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // 필터는 ?feed=에서 읽어 시작한다(알 수 없는 값은 전체). 프로필의 ?u= 등 다른 쿼리는 전환 때 그대로 보존한다.
+  const [activeFilter, setActiveFilter] = useState<FilterTab>(() =>
+    readEnumParam(searchParams, FEED_FILTER_QUERY_KEY, FILTER_KEYS, DEFAULT_FILTER),
+  )
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   // 필터 → 묶음 순서를 지킨다. 묶음은 표현 계층이라 필터 결과 안에서만 성립한다.
@@ -910,6 +921,11 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
   const handleFilterChange = (tab: FilterTab) => {
     setActiveFilter(tab)
     setVisibleCount(PAGE_SIZE) // 탭 전환 시 페이지네이션 초기화
+    // history를 쌓지 않고(replace) 새로고침·링크 공유·상세에서 돌아올 때 같은 필터가 유지되게 한다
+    router.replace(
+      buildQueryHref(pathname, searchParams, { [FEED_FILTER_QUERY_KEY]: tab === DEFAULT_FILTER ? null : tab }, window.location.hash),
+      { scroll: false },
+    )
   }
 
   // 카드를 누르면 바텀시트를 열지 않고 해당 콘텐츠의 상세 페이지로 보낸다. 친구 소식(`friendProfileHrefs`)은 종류와 상관없이 그 친구의 프로필로 보낸다.
