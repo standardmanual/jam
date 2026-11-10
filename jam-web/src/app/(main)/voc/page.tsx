@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
 import Button from '@/components/ui/Button'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -11,6 +12,7 @@ import { d } from '@/lib/i18n'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import type { VocItem, VocSortKey } from '@/app/api/voc/route'
 import VocPagination from './VocPagination'
+import { readVocQuery, vocPageHref, vocSortHref } from './vocQuery'
 
 /**
  * VOC CS 게시판 (티켓 20260828_1921).
@@ -111,9 +113,31 @@ interface VocResponse {
   totalCount: number
 }
 
+/**
+ * `useSearchParams`를 쓰는 부분은 Suspense 안에 둔다 — 이 페이지는 클라이언트 컴포넌트라 정적으로
+ * 미리 만들어지며, 경계가 없으면 프로덕션 빌드가 실패한다(Next 문서 use-search-params).
+ * 폴백은 상단 바만 그린다.
+ */
 export default function VocPage() {
-  const [sort, setSort] = useState<VocSortKey>('latest')
-  const [page, setPage] = useState(1)
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-full text-foreground">
+          <TopNav title={d.voc.pageTitle} />
+        </div>
+      }
+    >
+      <VocPageContent />
+    </Suspense>
+  )
+}
+
+function VocPageContent() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // 정렬·페이지는 주소(?sort=&page=)가 원천이다 — 페이지 이동은 history에 쌓여 뒤로가기가 이전 페이지로 돌아간다 (티켓 20261110_1217)
+  const { sort, page } = readVocQuery(searchParams)
   const [data, setData] = useState<VocResponse | null>(null)
   // ADR 0001 — 서버(api/voc/route.ts)가 완성한 메시지를 그대로 신뢰해 노출한다.
   // 서버 응답을 아예 받지 못한 경우(네트워크 단절 등)에만 d.voc.loadFailed로 폴백한다.
@@ -147,9 +171,14 @@ export default function VocPage() {
     }
   }, [sort, page, retryKey])
 
+  // 정렬 전환은 history를 쌓지 않고(replace) 1페이지로 돌아간다
   const handleSortChange = (key: VocSortKey) => {
-    setSort(key)
-    setPage(1) // 정렬 전환 시 1페이지로 리셋
+    router.replace(vocSortHref(pathname, searchParams, key), { scroll: false })
+  }
+
+  // 페이지 번호만 push로 쌓는다
+  const handlePageChange = (next: number) => {
+    router.push(vocPageHref(pathname, searchParams, next), { scroll: false })
   }
 
   return (
@@ -198,7 +227,7 @@ export default function VocPage() {
                   <VocCard key={item.number} item={item} />
                 ))}
               </div>
-              <VocPagination page={data.page} totalPages={data.totalPages} onChange={setPage} />
+              <VocPagination page={data.page} totalPages={data.totalPages} onChange={handlePageChange} />
             </>
           )}
         </section>
