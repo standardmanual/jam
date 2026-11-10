@@ -152,12 +152,12 @@ export function ActivityIcon(props: IconProps) {
   )
 }
 
-/** 포인트 */
+/** 포인트 — 원 안에 P(2026-11-10 사용자 지시, 이전에는 S) */
 export function CoinIcon(props: IconProps) {
   return (
     <Svg {...props}>
       <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      <path d="M14.2 9.2a2.8 2.8 0 00-2.2-1c-1.5 0-2.5.9-2.5 2s.9 1.7 2.5 2 2.5.9 2.5 2-1 2-2.5 2a2.8 2.8 0 01-2.2-1" />
+      <path d="M9.7 16V8.2h2.6a2.3 2.3 0 010 4.6H9.7" />
     </Svg>
   )
 }
