@@ -28,7 +28,7 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
           titleVariant="label"
           titleLines={0}
           title={d.badges.earnedAt}
-          value={<LocalDate iso={e.earned_at} stamp />}
+          value={<LocalDate iso={e.earned_at} stamp stampBreak />}
           valueNoWrap
         />
         {e.triggered_by_activity_name && (
@@ -49,7 +49,7 @@ function EarnCardContent({ e, isFirstEver = false }: { e: PoiEarnItem; isFirstEv
             titleVariant="label"
             titleLines={0}
             title={d.badges.triggerDate}
-            value={<LocalDate iso={e.triggered_by_activity_date} stamp />}
+            value={<LocalDate iso={e.triggered_by_activity_date} stamp stampBreak />}
             valueNoWrap
           />
         )}

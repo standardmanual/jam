@@ -27,6 +27,11 @@ interface LocalDateProps {
    * '2026-12-22 AM 02:22:33' 형식(배지 상세의 일시 표기)으로 표시한다. `korean`·`options`보다 우선한다.
    */
   stamp?: boolean
+  /**
+   * `stamp`와 함께 쓴다. 날짜와 시각을 각각 줄바꿈 없는 조각으로 감싸, 폭이 모자랄 때 둘 사이에서만 줄이 꺾이게 한다
+   * (`2026-11-07` / `PM 05:38:33`). 글자 모양은 그대로이고 한 줄로 들어가면 한 줄이다.
+   */
+  stampBreak?: boolean
   suffix?: string
   fallback?: string
 }
@@ -102,8 +107,18 @@ export function formatDateTimeStamp(iso: string | null | undefined): string {
  * `korean` prop을 넘기면 §3 형식('7월 31일 금요일 오후 3시 30분')으로, 넘기지 않으면
  * 기존처럼 `options`를 그대로 `toLocaleString`에 전달한다.
  */
-export default function LocalDate({ iso, options, korean, stamp, suffix = '', fallback = '' }: LocalDateProps) {
+export default function LocalDate({ iso, options, korean, stamp, stampBreak, suffix = '', fallback = '' }: LocalDateProps) {
   if (!iso) return <>{fallback}</>
+  if (stamp && stampBreak) {
+    const full = formatDateTimeStamp(iso)
+    const cut = full.indexOf(' ')
+    return (
+      <>
+        <span style={{ whiteSpace: 'nowrap' }}>{full.slice(0, cut)}</span> <span style={{ whiteSpace: 'nowrap' }}>{full.slice(cut + 1)}</span>
+        {suffix}
+      </>
+    )
+  }
   if (stamp) return <>{formatDateTimeStamp(iso)}{suffix}</>
   if (korean) return <>{formatKoreanDateTime(iso, korean)}{suffix}</>
   return <>{new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', ...options })}{suffix}</>

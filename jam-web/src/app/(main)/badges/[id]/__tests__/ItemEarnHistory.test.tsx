@@ -62,8 +62,10 @@ describe('ItemEarnHistory — 획득 정보', () => {
     const order = [d.inventory.obtainedAt, d.inventory.expiresAt].map((x) => html.indexOf(x))
     expect(order.every((i) => i >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(html).toContain(formatDateTimeStamp('2026-08-03T00:00:00Z'))
-    expect(html).toContain(formatDateTimeStamp('2026-09-03T05:30:00Z'))
+    // 값 행의 일시는 날짜와 시각이 줄바꿈 없는 두 조각이라(stampBreak) 태그를 걷고 보이는 글자로 대조한다
+    const text = html.replace(/<[^>]*>/g, '')
+    expect(text).toContain(formatDateTimeStamp('2026-08-03T00:00:00Z'))
+    expect(text).toContain(formatDateTimeStamp('2026-09-03T05:30:00Z'))
     expect(html).not.toContain('text-[14px]')
   })
 

@@ -260,8 +260,8 @@ export const DValueNoWrap: Story = {
   decorators: [(Story: React.ComponentType) => <Frame width={320}><Story /></Frame>],
   render: () => (
     <>
-      <Caption>valueNoWrap은 값 칸의 60% 상한을 풀고 라벨과 값을 모두 한 줄로 둔다. 340px 이하 폭에서는 값 글자를 한 단계 줄여 한 줄에 맞춘다.</Caption>
-      <ListRow tone="flat" separator titleVariant="label" titleLines={0} title="획득 일시" value="2026-11-07 PM 05:38:33" valueNoWrap />
+      <Caption>valueNoWrap은 값 칸의 60% 상한을 풀고 라벨과 값을 모두 한 줄로 둔다. 340px 이하 폭에서는 글자를 줄이지 않고, 값 안에 줄바꿈이 허용된 지점(아래 예는 날짜와 시간 사이)에서만 두 줄로 꺾는다.</Caption>
+      <ListRow tone="flat" separator titleVariant="label" titleLines={0} title="획득 일시" value={<><span style={{ whiteSpace: 'nowrap' }}>2026-11-07</span> <span style={{ whiteSpace: 'nowrap' }}>PM 05:38:33</span></>} valueNoWrap />
       <Caption>valueNoWrap이 없으면 긴 값은 값 칸(최대 60%)에서 줄바꿈된다.</Caption>
       <ListRow tone="flat" titleVariant="label" titleLines={0} title="획득 일시" value="2026-11-07 PM 05:38:33" />
     </>

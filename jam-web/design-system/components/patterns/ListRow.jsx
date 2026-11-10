@@ -73,7 +73,7 @@ const STATIC_CSS = `
 .ds-list-row-chevron[data-expanded="true"]{transform:rotate(180deg)}
 .ds-list-row-value-nowrap{white-space:nowrap}
 @media (max-width: 340px){
-.ds-list-row-value-nowrap{font-size:var(--text-sm)!important}
+.ds-list-row-value-nowrap{white-space:normal!important;flex-shrink:1!important}
 }
 .ds-list-row-trail>:is(button,a,[role="button"]){position:relative}
 .ds-list-row-trail>:is(button,a,[role="button"])::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,var(--touch-target-min,44px));height:max(100%,var(--touch-target-min,44px));transform:translate(-50%,-50%)}
@@ -297,7 +297,7 @@ export function ListRow({
   // 값 행(label + value + titleLines 0): 본문 칸(행의 직접 자식)을 라벨 내용 폭으로 두고 행 폭의 50%까지만 늘린다.
   // 라벨은 값 때문에 꺾이지 않고, 50%를 넘는 긴 라벨만 줄바꿈된다. 라벨 50%와 값 칸 60%(아래 rightArea)의 합이 100%를 넘어도 값이 먼저 줄어든다.
   const bodyStyle = isLabel && hasValue && lines === 0
-    ? { display: 'block', flex: '0 1 auto', maxWidth: '50%', minWidth: 0, whiteSpace: valueNoWrap ? 'nowrap' : undefined }
+    ? { display: 'block', flex: valueNoWrap ? '0 0 auto' : '0 1 auto', maxWidth: '50%', minWidth: 0, whiteSpace: valueNoWrap ? 'nowrap' : undefined }
     : { display: 'block', flex: '1 1 0%', minWidth: 0 };
 
   const body = (

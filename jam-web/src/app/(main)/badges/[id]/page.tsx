@@ -457,8 +457,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </div>
         )}
 
-        {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시: 상단 공유 아이콘을 여기로 옮김). 본인 배지에서만 보인다 */}
-        {isOwnBadge && (
+        {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시: 상단 공유 아이콘을 여기로 옮김). 본인이 획득한 배지에서만 보인다(미획득·타인 배지에는 두지 않는다) */}
+        {isOwnBadge && hasEarned && (
           <div className="relative z-10 px-4 pt-2 pb-6">
             <BadgeShareButton
               badgeId={id}
@@ -531,7 +531,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </p>
 
           {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시) */}
-          {isOwnBadge && (
+          {isOwnBadge && hasEarned && (
             <BadgeShareButton
               badgeId={id}
               badgeType="checkin"
@@ -629,7 +629,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 titleVariant="label"
                 titleLines={0}
                 title={d.badges.earnedAt}
-                value={<LocalDate iso={earned.earned_at} stamp />}
+                value={<LocalDate iso={earned.earned_at} stamp stampBreak />}
                 valueNoWrap
               />
               {earned.triggered_by_activity_name && (
@@ -650,7 +650,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   titleVariant="label"
                   titleLines={0}
                   title={d.badges.triggerDate}
-                  value={<LocalDate iso={earned.triggered_by_activity_date} stamp />}
+                  value={<LocalDate iso={earned.triggered_by_activity_date} stamp stampBreak />}
                   valueNoWrap
                 />
               )}
@@ -671,7 +671,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         )}
 
         {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시) */}
-        {isOwnBadge && (
+        {isOwnBadge && hasEarned && (
           <BadgeShareButton
             badgeId={id}
             badgeType="activity"

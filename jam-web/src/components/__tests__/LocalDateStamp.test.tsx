@@ -22,4 +22,16 @@ describe('formatDateTimeStamp: 배지 상세의 일시 형식', () => {
   it('LocalDate의 stamp 속성이 같은 형식을 그린다', () => {
     expect(renderToStaticMarkup(<LocalDate iso="2026-12-21T17:22:33Z" stamp />)).toBe('2026-12-22 AM 02:22:33')
   })
+
+  it('stampBreak는 같은 글자를 날짜와 시각 두 조각으로 나눠, 줄이 꺾일 때 둘 사이에서만 꺾이게 한다', () => {
+    const html = renderToStaticMarkup(<LocalDate iso="2026-12-21T17:22:33Z" stamp stampBreak />)
+
+    expect(html).toBe('<span style="white-space:nowrap">2026-12-22</span> <span style="white-space:nowrap">AM 02:22:33</span>')
+    // 글자는 stamp만 쓸 때와 같다
+    expect(html.replace(/<[^>]*>/g, '')).toBe('2026-12-22 AM 02:22:33')
+  })
+
+  it('stampBreak만 있고 stamp가 없으면 기존 경로 그대로다', () => {
+    expect(renderToStaticMarkup(<LocalDate iso="2026-12-21T17:22:33Z" stampBreak />)).not.toContain('nowrap')
+  })
 })

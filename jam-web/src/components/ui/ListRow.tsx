@@ -69,7 +69,7 @@ export const LIST_ROW_STATIC_CSS = `
 .ds-list-row-chevron[data-expanded="true"]{transform:rotate(180deg)}
 .ds-list-row-value-nowrap{white-space:nowrap}
 @media (max-width: 340px){
-.ds-list-row-value-nowrap{font-size:var(--text-sm)!important}
+.ds-list-row-value-nowrap{white-space:normal!important;flex-shrink:1!important}
 }
 .ds-list-row-trail>:is(button,a,[role="button"]){position:relative}
 .ds-list-row-trail>:is(button,a,[role="button"])::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,var(--touch-target-min,44px));height:max(100%,var(--touch-target-min,44px));transform:translate(-50%,-50%)}
@@ -219,7 +219,8 @@ export interface ListRowProps extends Omit<HTMLAttributes<HTMLElement>, 'title' 
   /**
    * 값 행(label + value)에서 값을 한 줄로 고정한다 — 값 칸의 폭 제한(60%)을 풀고 줄바꿈하지 않는다.
    * `2026-11-07 PM 05:38:33`처럼 중간에서 꺾이면 안 되는 일시 값에 쓴다(2026-11-10 사용자 지시, 티켓 20261110_0931).
-   * 라벨도 줄바꿈하지 않고, 340px 이하에서는 값 글자를 한 단계(text-sm) 줄여 한 줄에 맞춘다. 생략하면 지금과 같다.
+   * 라벨도 줄바꿈하지 않는다. 340px 이하에서는 글자를 줄이지 않고 값 안의 줄바꿈 가능 지점(예: `LocalDate`의 `stampBreak`가 나눈 날짜와 시간 사이)에서만
+   * 두 줄로 꺾는다. 생략하면 지금과 같다.
    */
   valueNoWrap?: boolean
   chevron?: boolean
@@ -344,7 +345,7 @@ export function ListRow({
   // 값 행(label + value + titleLines 0): 본문 칸(행의 직접 자식)을 라벨 내용 폭으로 두고 행 폭의 50%까지만 늘린다.
   // 라벨은 값 때문에 꺾이지 않고, 50%를 넘는 긴 라벨만 줄바꿈된다. 라벨 50%와 값 칸 60%(아래 rightArea)의 합이 100%를 넘어도 값이 먼저 줄어든다.
   const bodyStyle: CSSProperties = isLabel && hasValue && lines === 0
-    ? { display: 'block', flex: '0 1 auto', maxWidth: '50%', minWidth: 0, whiteSpace: valueNoWrap ? 'nowrap' : undefined }
+    ? { display: 'block', flex: valueNoWrap ? '0 0 auto' : '0 1 auto', maxWidth: '50%', minWidth: 0, whiteSpace: valueNoWrap ? 'nowrap' : undefined }
     : { display: 'block', flex: '1 1 0%', minWidth: 0 };
 
   const body = (

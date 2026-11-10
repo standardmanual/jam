@@ -257,7 +257,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
               titleVariant="label"
               titleLines={0}
               title={d.badges.earnedAt}
-              value={<LocalDate iso={obtainedAt} stamp />}
+              value={<LocalDate iso={obtainedAt} stamp stampBreak />}
               valueNoWrap
             />
             <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.earnRoute} value={OBTAIN_ROUTE_LABEL[resolveObtainRoute(obtainedBy, issueRoute, missionReward)]} />

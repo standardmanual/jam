@@ -23,7 +23,7 @@ function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
         titleVariant="label"
         titleLines={0}
         title={d.inventory.obtainedAt}
-        value={<LocalDate iso={entry.obtained_at} stamp />}
+        value={<LocalDate iso={entry.obtained_at} stamp stampBreak />}
         valueNoWrap
       />
       {/* 만료가 없는 아이템 배지는 만료 일시 줄을 그리지 않는다(2026-11-09 사용자 지시) */}
@@ -33,7 +33,7 @@ function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
           titleVariant="label"
           titleLines={0}
           title={d.inventory.expiresAt}
-          value={<LocalDate iso={entry.expires_at} stamp />}
+          value={<LocalDate iso={entry.expires_at} stamp stampBreak />}
           valueNoWrap
         />
       )}

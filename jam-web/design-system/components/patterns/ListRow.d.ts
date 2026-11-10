@@ -54,7 +54,7 @@ export interface ListRowProps
   footer?: ReactNode;
   /** 오른쪽 텍스트 값(16px 굵게, 줄지 않음, 세로 중앙). `titleVariant="label"` 행에서는 줄바꿈되고 오른쪽 정렬. */
   value?: ReactNode;
-  /** `titleVariant="label"` 값 행에서 값을 한 줄로 고정한다: 값 칸의 60% 상한을 풀고 라벨도 줄바꿈하지 않는다(340px 이하에서는 값 글자를 한 단계 줄인다). 일시처럼 중간에서 꺾이면 안 되는 값에 쓴다. 생략하면 지금과 같다. */
+  /** `titleVariant="label"` 값 행에서 값을 한 줄로 고정한다: 값 칸의 60% 상한을 풀고 라벨도 줄바꿈하지 않는다(340px 이하에서는 글자를 줄이지 않고, 값 안에 줄바꿈이 허용된 지점이 있으면 거기서만 두 줄로 꺾는다). 일시처럼 중간에서 꺾이면 안 되는 값에 쓴다. 생략하면 지금과 같다. */
   valueNoWrap?: boolean;
   /** 행 안쪽 오른쪽에 쉐브론을 그린다. `aria-expanded`가 함께 있으면 아래 향 쉐브론이 펼침에서 180도 돈다. */
   chevron?: boolean;

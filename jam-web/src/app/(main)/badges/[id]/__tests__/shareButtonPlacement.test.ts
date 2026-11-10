@@ -2,7 +2,7 @@
  * 공유 버튼 위치 (티켓 20261110_0856, 사용자 지시 2026-11-10)
  *
  * TopNav 오른쪽의 공유 아이콘을 없애고, 3타입(아이템·체크인·활동) 상세의 콘텐츠 맨 끝에 전체 폭 «공유하기» 버튼을 둔다.
- * 본인 배지에서만 보이는 조건(`isOwnBadge`)은 그대로다.
+ * 본인이 획득한 배지(`isOwnBadge && hasEarned`)에서만 보인다. 미획득 배지와 타인의 배지에는 버튼 자체를 그리지 않는다.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -16,8 +16,8 @@ describe('배지 상세의 공유 버튼 위치', () => {
     expect(page).not.toMatch(/rightSlot=\{[\s\S]{0,120}BadgeShareButton/)
   })
 
-  it('3타입 모두 본인 배지일 때 맨 끝에 공유 버튼을 그린다', () => {
-    const blocks = [...page.matchAll(/\{isOwnBadge && \(\s*(?:<div[^>]*>\s*)?<BadgeShareButton[\s\S]*?badgeType="(item|checkin|activity)"/g)]
+  it('3타입 모두 본인이 획득한 배지일 때만 맨 끝에 공유 버튼을 그린다', () => {
+    const blocks = [...page.matchAll(/\{isOwnBadge && hasEarned && \(\s*(?:<div[^>]*>\s*)?<BadgeShareButton[\s\S]*?badgeType="(item|checkin|activity)"/g)]
     expect(blocks.map((m) => m[1]).sort()).toEqual(['activity', 'checkin', 'item'])
     expect(page.match(/<BadgeShareButton/g)).toHaveLength(3)
   })
