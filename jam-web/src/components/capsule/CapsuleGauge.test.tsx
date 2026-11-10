@@ -59,7 +59,8 @@ describe('문구가 있으면 숫자 자리를 대신하고 늘 채움 안쪽에
 
   it('보임 관찰자가 없는 서버 렌더 경로에서도 문구는 투명(opacity 0)이 아니다', () => {
     for (const html of [withMessage(0, 300), withMessage(300, 300)]) {
-      expect(html).not.toMatch(/opacity:\s*0\b/)
+      // 알약 아이콘의 알갱이는 닫혀 있을 때 일부러 투명하다. 문구 영역만 본다
+      expect(html.replace(/<svg[\s\S]*?<\/svg>/, '')).not.toMatch(/opacity:\s*0\b/)
     }
   })
 
@@ -100,7 +101,7 @@ describe('채운 양의 숫자', () => {
     }
   })
 
-  it('안쪽 숫자는 번개 자리(원 지름)를 뺀 너비 안에서만 보이고 채움 안에 있다', () => {
+  it('안쪽 숫자는 알약 아이콘 자리(원 지름)를 뺀 너비 안에서만 보이고 채움 안에 있다', () => {
     const html = render(200, 300)
     const circle = gaugeCircleDiameter(CAPSULE_GAUGE_HEIGHT_PX)
     expect(html).toContain(`width:calc(100% - ${circle}px)`)
@@ -199,9 +200,17 @@ describe('색과 모양', () => {
     expect(html.match(/left:(20|40|60|80)%/g)).toHaveLength(4)
   })
 
-  it('번개 아이콘이 채움 끝 원 안에 있고 스크린리더에서 숨는다', () => {
+  it('알약 아이콘이 채움 끝 원 안에 있고 스크린리더에서 숨는다', () => {
     const html = render(120, 300)
     expect(html).toContain('<svg')
     expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain('data-capsule-pill="closed"')
+  })
+
+  it('처음 그릴 때는 가득 찬 값이어도 닫혀 있고 돌지 않는다(서버 렌더와 하이드레이션이 어긋나지 않게)', () => {
+    for (const html of [render(120, 300), render(300, 300)]) {
+      expect(html).toContain('data-capsule-pill="closed"')
+      expect(html).toContain('rotate(0deg)')
+    }
   })
 })

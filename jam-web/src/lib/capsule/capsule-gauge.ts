@@ -72,6 +72,18 @@ export function capsuleNumberText(filled: number): string {
   return String(Math.max(0, Math.floor(Number.isFinite(filled) ? filled : 0)))
 }
 
+/** 알약 아이콘이 채움이 차오르는 동안 한 바퀴 도는 데 드는 시간(ms) */
+export const GAUGE_SPIN_TURN_MS = 750
+
+/**
+ * 채움이 차오르는 시간(ms) 동안 알약 아이콘이 도는 바퀴 수. 750ms에 한 바퀴이고 최소 한 바퀴다.
+ * 정수 바퀴라 모션이 끝나면 아이콘이 처음 방향으로 돌아와 있다. 시간이 0 이하이면 돌지 않는다.
+ */
+export function capsuleSpinTurns(durationMs: number): number {
+  if (!(durationMs > 0)) return 0
+  return Math.max(1, Math.round(durationMs / GAUGE_SPIN_TURN_MS))
+}
+
 /**
  * 같은 화면에서 값이 바뀔 때의 이동 시간(ms). 옮길 거리에 비례해 늘리되 700~1500ms 안에 둔다.
  * 거리는 그래프 눈금의 차이(0~98)를 채움 정도로 환산해 잰다.
