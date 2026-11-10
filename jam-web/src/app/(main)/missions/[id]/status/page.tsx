@@ -31,6 +31,8 @@ export default async function MissionStatusPage({ params }: Props) {
   if (!missionRaw) notFound()
   // 미참가자는 미션 상황 진입 불가 → 상세로 돌려보냄
   if (!participation) redirect(`/missions/${missionId}`)
+  // 달성형·개인형은 상세에 «랭킹» 버튼이 없다. 알림(미션 종료·팔로잉 미션 완료)이나 직접 주소로 들어와도 상세로 돌려보낸다(티켓 20261111_0850)
+  if (missionRaw.status_display_type !== 'ranking') redirect(`/missions/${missionId}`)
 
   const mission = missionRaw as Pick<MissionRow, 'id' | 'title' | 'status_display_type' | 'mission_type'>
 
