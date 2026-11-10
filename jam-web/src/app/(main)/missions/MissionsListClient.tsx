@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { ActivityType, BadgeRarity, MissionCondition, MissionRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
@@ -16,6 +17,7 @@ import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
 import { missionStatusKind } from './missionStatusKind'
+import { buildQueryHref, readEnumParam } from '@/lib/urlQueryState'
 
 export interface MissionListItem extends MissionRow {
   joined: boolean
@@ -49,6 +51,9 @@ interface Props {
 }
 
 type Tab = 'ongoing' | 'joined' | 'ended'
+const MISSIONS_TAB_QUERY_KEY = 'tab'
+const TAB_KEYS: readonly Tab[] = ['ongoing', 'joined', 'ended']
+const DEFAULT_TAB: Tab = 'ongoing'
 type SortKey = 'newest' | 'oldest' | 'ending_soon'
 
 const NEW_MISSION_WINDOW_MS = 2 * 24 * 60 * 60 * 1000 // 생성 후 2일 이내 = 신규 (2026-11-04 사용자 결정, 이전 7일)
@@ -197,9 +202,22 @@ function lockedToastText(m: MissionListItem): string {
 
 export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }: Props) {
   const { toast } = useToast()
-  const [tab, setTab] = useState<Tab>('ongoing')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // 탭은 ?tab=에서 읽어 시작하고(알 수 없는 값은 진행중), 바꿀 때 같은 키로 주소에 쓴다 (티켓 20261110_1217)
+  const [tab, setTab] = useState<Tab>(() => readEnumParam(searchParams, MISSIONS_TAB_QUERY_KEY, TAB_KEYS, DEFAULT_TAB))
   const [sortKey, setSortKey] = useState<SortKey>('newest')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
+
+  // 탭 전환은 history를 쌓지 않는다(replace). 기본 탭(진행중)은 쿼리에서 뺀다.
+  const handleTabChange = (next: Tab) => {
+    setTab(next)
+    router.replace(
+      buildQueryHref(pathname, searchParams, { [MISSIONS_TAB_QUERY_KEY]: next === DEFAULT_TAB ? null : next }, window.location.hash),
+      { scroll: false },
+    )
+  }
 
   const activeFilterCount = activityFilter !== 'all' ? 1 : 0
 
@@ -253,7 +271,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
         <SlidingTabs
           items={TABS}
           value={tab}
-          onChange={setTab}
+          onChange={handleTabChange}
           outlined={false}
           aria-label={d.missions.title}
         />
