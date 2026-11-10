@@ -10,7 +10,7 @@ export function missionStatusKind(
 ): MissionStatusKind {
   if (m.done) return 'done'
   if (m.locked) return 'locked'
-  // 종료 탭의 미션은 더 이상 진행하지 않으므로 «참가중»이 아니라 «참가종료»로 알린다.
+  // 종료 탭의 미션은 더 이상 진행하지 않으므로 «참가중»이 아니라 «종료»로 알린다.
   if (m.joined && ended) return 'joinedEnded'
   if (m.joined) return 'joined'
   if (!started) return 'upcoming'
