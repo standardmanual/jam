@@ -1174,7 +1174,7 @@ export default function CombineClient({
 
           {/* 유의사항 — 버튼 아래 구역(사용자 지시 2026-11-10, 티켓 20261110_1757). 첫 줄은 이전에 버튼 아래 한 줄로 있던 재료 소각 안내(티켓 20260924_0813)다.
               확률·결과가 갈리는 내용은 싣지 않는다 */}
-          <section className="bg-surface px-4 py-6" aria-labelledby="combine-notice-title">
+          <section className="bg-background-secondary px-4 py-6" aria-labelledby="combine-notice-title">
             <h2 id="combine-notice-title" className="m-0 text-base font-semibold text-foreground">
               {d.combine.notice.title}
             </h2>
