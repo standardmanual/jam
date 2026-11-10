@@ -2,7 +2,7 @@
  * Strava 동기화 시트 두 개 (티켓 20261017_1422 2회, 채원 사전 판정 2026-10-17 → 20261021_1249 4회 2026-10-22)
  *
  * - 끊기 확인 시트: 문구, 버튼(취소 secondary · 확정 danger), 제출 중 상태(두 버튼 막힘·라벨·시트 닫기 막힘)
- * - 중복 안내 시트 offer 모양: 문구 3문장(왼쪽 정렬, px-6), 버튼은 «취소»(secondary)와 «그래도 연결하기»(danger) 하나씩이고 같은 폭,
+ * - 중복 안내 시트 offer 모양: 문구 2문단(왼쪽 정렬, px-6), 버튼은 «취소»(secondary)와 «그래도 연결하기»(danger) 하나씩이고 같은 폭,
  *   확인 문구 입력칸이 없다, 취소·시트 닫기가 같은 결과(닫기)이고 서버 호출이 없다, 제출 중에는 확정이 loading(«연결하는 중»)이고
  *   취소와 시트 닫기가 막힌다, 실패 안내(retry·restart)는 푸터 맨 위 한 블록이고 restart에서는 확정이 disabled이며 «Strava 다시 동기화하기»가 붙는다
  * - 중복 안내 시트 blocked 모양: 문구 2문장, 버튼은 «닫기»(secondary)와 «문의하기»(primary main)뿐이고 danger가 없다
@@ -149,10 +149,10 @@ describe('StravaDuplicateSheetView — 중복 연결 안내 시트', () => {
   const noticesOf = (tree: ReactNode) => collect(tree, (el) => el.type === InlineNotice)
 
   describe('offer 모양 (기존 계정이 일반·정상)', () => {
-    it('제목과 본문 3문장을 d.* 문구 그대로 그린다 — 문장마다 단락이고 왼쪽 정렬이며 제목과 같은 px-6이다', () => {
+    it('제목과 본문 2문단을 d.* 문구 그대로 그린다 — 문장마다 단락이고 왼쪽 정렬이며 제목과 같은 px-6이다', () => {
       const html = markup()
       expect(html).toContain(copy.title)
-      expect(copy.offerBody).toHaveLength(3)
+      expect(copy.offerBody).toHaveLength(2)
       for (const line of copy.offerBody) expect(html).toContain(`>${line}</p>`)
       expect(html).toContain('text-left')
       expect(html).not.toContain('text-center')

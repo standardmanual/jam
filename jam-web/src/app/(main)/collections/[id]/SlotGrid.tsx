@@ -572,7 +572,6 @@ export default function SlotGrid({
         <UnslotAllSheet
           open={unslotAllOpen}
           submitting={bulkRequesting}
-          tierFixed={tierFixed}
           completed={completed}
           onClose={() => setUnslotAllOpen(false)}
           request={requestUnslotAll}

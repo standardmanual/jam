@@ -1,7 +1,7 @@
 /**
  * 컬렉션 상세의 «모두 빼기» 확인 시트 (티켓 20261028_1420, 채원 사전 판정 2026-10-28)
  *
- * - 겉모습(`UnslotAllSheetView`): 제목, 본문 1~3줄(등급이 정해졌으면 등급 줄, 완성 컬렉션이면 완성 기록 줄), 취소(secondary)와 확정(primary main) 한 쌍이
+ * - 겉모습(`UnslotAllSheetView`): 제목, 본문 1~2줄(완성 컬렉션이면 완성 이력 줄), 취소(secondary)와 확정(primary main) 한 쌍이
  *   같은 폭·같은 클래스, 제출 중 상태(확정 loading·«빼는 중», 취소 disabled, 시트 닫기 막힘), 취소는 닫기만 한다
  * - 안내: 푸터 맨 위 InlineNotice 한 블록이고, «인벤토리 보기» 링크(`/inventory`)는 빈칸이 모자란 안내에만 붙는다. 안내가 보여도 확정은 켜져 있다
  * - 흐름(`runUnslotAll`): 성공이면 `onSuccess`, 빈칸 부족이면 링크가 있는 안내, 그 밖의 실패면 링크 없는 안내, 진행 중 중복 탭은 서버를 한 번만 부른다
@@ -62,7 +62,6 @@ const noop = () => {}
 interface ViewOptions {
   open?: boolean
   submitting?: boolean
-  tierFixed?: boolean
   completed?: boolean
   notice?: UnslotAllNotice | null
   onClose?: () => void
@@ -73,7 +72,6 @@ function viewElement(options: ViewOptions = {}) {
   return UnslotAllSheetView({
     open: true,
     submitting: false,
-    tierFixed: false,
     completed: false,
     notice: null,
     onClose: noop,
@@ -87,7 +85,6 @@ const markup = (options: ViewOptions = {}) =>
     <UnslotAllSheetView
       open
       submitting={false}
-      tierFixed={false}
       completed={false}
       notice={null}
       onClose={noop}
@@ -97,31 +94,26 @@ const markup = (options: ViewOptions = {}) =>
   )
 
 describe('UnslotAllSheetView — 문구와 본문', () => {
-  it('제목과 첫 본문은 항상 보이고, 등급·완성 줄은 조건이 없으면 보이지 않는다', () => {
+  it('제목과 첫 본문은 항상 보이고, 완성 이력 줄은 조건이 없으면 보이지 않는다 (피그마 시안, 티켓 20261110_2108)', () => {
     const html = markup()
 
-    expect(html).toContain('장착한 배지를 모두 뺄까요?')
-    expect(html).toContain('이 컬렉션에 장착한 배지가 모두 인벤토리로 돌아와요.')
-    expect(html).not.toContain(copy.bodyTier)
+    expect(html).toContain('배지를 모두 뺄까요?')
+    expect(html).toContain('장착한 배지가 모두 인벤토리로 돌아가요.')
     expect(html).not.toContain(copy.bodyCompleted)
     expect(html.match(/<p /g)).toHaveLength(1)
   })
 
-  it('등급이 정해졌으면(tierFixed) 등급 줄이, 완성한 컬렉션이면(completed) 완성 기록 줄이 붙는다 — 1~3줄', () => {
-    expect(markup({ tierFixed: true }).match(/<p /g)).toHaveLength(2)
-    expect(markup({ tierFixed: true })).toContain('컬렉션 등급도 풀려서 다른 등급으로 다시 정할 수 있어요.')
-    expect(markup({ completed: true }).match(/<p /g)).toHaveLength(2)
-    expect(markup({ completed: true })).toContain('완성 기록은 그대로 남아요.')
-
-    const html = markup({ tierFixed: true, completed: true })
-    expect(html.match(/<p /g)).toHaveLength(3)
-    // 순서: 인벤토리로 돌아옴 → 등급 풀림 → 완성 기록
-    expect(html.indexOf(copy.bodyReturn)).toBeLessThan(html.indexOf(copy.bodyTier))
-    expect(html.indexOf(copy.bodyTier)).toBeLessThan(html.indexOf(copy.bodyCompleted))
+  it('완성한 컬렉션이면(completed) 완성 이력 줄이 붙고, 등급 안내 줄은 없다 — 1~2줄', () => {
+    const html = markup({ completed: true })
+    expect(html.match(/<p /g)).toHaveLength(2)
+    expect(html).toContain('완성한 이력은 그대로 남아요.')
+    expect(html).not.toContain('등급도 풀려서')
+    // 순서: 인벤토리로 돌아옴 → 완성 이력
+    expect(html.indexOf(copy.bodyReturn)).toBeLessThan(html.indexOf(copy.bodyCompleted))
   })
 
   it('본문은 가운데 정렬이 아니라 왼쪽 정렬이고 한국어 줄바꿈 클래스를 갖는다', () => {
-    const html = markup({ tierFixed: true, completed: true })
+    const html = markup({ completed: true })
 
     expect(html).toContain('text-left')
     expect(html).not.toContain('text-center')
@@ -135,7 +127,6 @@ describe('UnslotAllSheetView — 문구와 본문', () => {
     const texts = [
       copy.title,
       copy.bodyReturn,
-      copy.bodyTier,
       copy.bodyCompleted,
       copy.cancel,
       copy.confirm,

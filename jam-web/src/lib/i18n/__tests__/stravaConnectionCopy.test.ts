@@ -93,11 +93,10 @@ describe('Strava 끊김·끊기·중복 안내 문구', () => {
     expect(c.settings.disconnectedByUser).not.toContain('끊겼어요')
   })
 
-  it('중복 안내 시트 offer는 현상, 결과, 시작 순의 3문장이다 (티켓 20261021_1249 4회)', () => {
+  it('중복 안내 시트 offer는 현상, 결과 순의 2문단이다 (피그마 시안으로 줄임, 티켓 20261110_2108)', () => {
     expect(c.duplicateSheet.offerBody).toEqual([
-      '이 Strava 계정은 이미 다른 JAM! 계정에 연결돼 있어요.',
-      '그래도 연결하면 그 계정은 삭제되고 복구할 수 없어요. 그 계정의 배지, 잼, 포인트는 이 계정으로 옮겨지지 않아요.',
-      '연결한 뒤 첫 동기화는 가장 최근 활동 1건부터 시작해요. 지금 계정의 기록은 그대로예요.',
+      '이미 다른 JAM! 계정에 연결돼 있어요.',
+      '그래도 연결하면 이전 계정이 삭제돼요. 또한 복구할 수 없어요.',
     ])
   })
 
@@ -107,16 +106,10 @@ describe('Strava 끊김·끊기·중복 안내 문구', () => {
     expect(c.duplicateSheet.blockedBody[0]).toBe(c.duplicateSheet.offerBody[0])
   })
 
-  it('중복 안내 시트 offer의 3번째 문장은 지금 계정이 초기화되는 뜻으로 읽히지 않는다', () => {
-    const third = c.duplicateSheet.offerBody[2]
-    expect(third).toContain('지금 계정의 기록은 그대로예요')
-    expect(third).not.toMatch(/처음부터|초기화|다시 쌓/)
-  })
-
   it('중복 안내 시트 blocked는 문의로 안내하고 막힌 까닭을 쓰지 않는다', () => {
     expect(c.duplicateSheet.blockedBody).toEqual([
-      '이 Strava 계정은 이미 다른 JAM! 계정에 연결돼 있어요.',
-      '지금은 이 계정으로 연결할 수 없어요. 확인이 필요하면 문의해 주세요.',
+      '이미 다른 JAM! 계정에 연결돼 있어요.',
+      '자세한 사항은 고객센터로 문의해 주세요.',
     ])
     expect(c.duplicateSheet.close).toBe('닫기')
     expect(c.replaceResult.blocked).not.toMatch(/어드민|관리자|정지/)

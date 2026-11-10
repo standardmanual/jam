@@ -67,8 +67,6 @@ interface UnslotAllSheetViewProps {
   open: boolean
   /** 서버 처리 중이면 취소가 막히고 확정이 loading이며 시트 닫기(바깥 탭·아래로 끌기·Escape)도 막힌다 */
   submitting: boolean
-  /** 컬렉션 등급이 정해졌는지 — 켜지면 본문에 «등급도 풀려요» 줄이 붙는다 */
-  tierFixed: boolean
   /** 완성한 컬렉션인지 — 켜지면 본문에 «완성 기록은 남아요» 줄이 붙는다 */
   completed: boolean
   notice: UnslotAllNotice | null
@@ -93,14 +91,13 @@ const FOOTER_BUTTON = 'px-3! whitespace-nowrap'
 export function UnslotAllSheetView({
   open,
   submitting,
-  tierFixed,
   completed,
   notice,
   onClose,
   onConfirm,
 }: UnslotAllSheetViewProps) {
   const copy = d.itembooks.unslotAll
-  const lines = [copy.bodyReturn, ...(tierFixed ? [copy.bodyTier] : []), ...(completed ? [copy.bodyCompleted] : [])]
+  const lines = [copy.bodyReturn, ...(completed ? [copy.bodyCompleted] : [])]
 
   return (
     <BottomSheet
@@ -160,7 +157,6 @@ interface UnslotAllSheetProps {
   open: boolean
   /** 요청이 도는 중 — 요청 함수가 SlotGrid에 있어 그 상태를 받는다 */
   submitting: boolean
-  tierFixed: boolean
   completed: boolean
   onClose: () => void
   /** 해제 요청. SlotGrid의 `requestUnslotAll`이다(해제 API 호출과 화면 새로고침은 거기서 한다) */
@@ -182,7 +178,6 @@ interface UnslotAllSheetProps {
 export default function UnslotAllSheet({
   open,
   submitting,
-  tierFixed,
   completed,
   onClose,
   request,
@@ -190,13 +185,13 @@ export default function UnslotAllSheet({
 }: UnslotAllSheetProps) {
   const copy = d.itembooks.unslotAll
   const [notice, setNotice] = useState<UnslotAllNotice | null>(null)
-  const [opened, setOpened] = useState({ wasOpen: open, tierFixed, completed })
+  const [opened, setOpened] = useState({ wasOpen: open, completed })
   const inFlight = useRef(false)
   const { toast } = useToast()
 
   // 닫힘에서 열림으로 바뀌는 렌더에서 안내를 지우고 본문 값을 붙잡는다(effect 없이 렌더 중에 맞춘다)
   if (open !== opened.wasOpen) {
-    setOpened({ wasOpen: open, tierFixed: open ? tierFixed : opened.tierFixed, completed: open ? completed : opened.completed })
+    setOpened({ wasOpen: open, completed: open ? completed : opened.completed })
     if (open) setNotice(null)
   }
 
@@ -217,7 +212,6 @@ export default function UnslotAllSheet({
     <UnslotAllSheetView
       open={open}
       submitting={submitting}
-      tierFixed={open ? tierFixed : opened.tierFixed}
       completed={open ? completed : opened.completed}
       notice={notice}
       onClose={onClose}
