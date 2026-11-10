@@ -1025,7 +1025,6 @@ export default function CombineClient({
           <div className="px-4 pt-4 pb-4">
             <RecipeRewardRow
               title={recipeDisplayName(selectedRecipe)}
-              slotCount={selectedRecipe.slots.length}
               badges={selectedRecipe.rewardBadges}
               points={selectedRecipe.reward_points}
               releaseAt={selectedRecipe.releaseAt}
