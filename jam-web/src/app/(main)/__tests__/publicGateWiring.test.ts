@@ -33,13 +33,12 @@ describe('/collections/[id] — 공개 전 컬렉션은 404', () => {
 
 describe('/combine — 레시피 공개 판정', () => {
   const code = pageCode('combine')
-  it('운영자는 종료만 빼고 공개 전을 포함하고, 일반 유저는 공개 중만 본다', () => {
-    expect(code).toContain(
-      "const releasedRecipes = isAdmin ? recipes.filter((r) => recipeReleaseState(r) !== 'ended') : filterReleasedRecipes(recipes)",
-    )
+  it('운영자도 일반 유저와 같이 공개 중인 레시피만 본다 (티켓 20261110_1030)', () => {
+    expect(code).toContain('const releasedRecipes = filterReleasedRecipes(recipes)')
+    expect(code).not.toContain('isAdmin')
   })
-  it('공개 전 행에만 releaseAt(valid_from)을 넣는다', () => {
-    expect(code).toContain("releaseAt: recipeReleaseState(r) === 'scheduled' ? (r.valid_from ?? null) : null")
+  it('공개 전 레시피를 구분하는 releaseAt을 내려보내지 않는다 (티켓 20261110_1030)', () => {
+    expect(code).not.toContain('releaseAt')
   })
   it('슬롯·보상 조회와 화면 목록이 같은 필터 결과(visibleRecipe*)를 따라온다', () => {
     expect(code).toContain('const visibleRecipeRows = filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)')
