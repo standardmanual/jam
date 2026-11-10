@@ -20,10 +20,12 @@ interface SlotCircleButtonProps {
   /** 해당 칸의 요청이 진행 중 — 비활성이 되고 반투명해진다 */
   pending?: boolean
   disabled?: boolean
+  /** 덧붙일 클래스 — 믹서 칸이 퀘스트 펄스(`jam-quest-pulse`)를 걸 때 쓴다. 기본값은 빈 문자열이라 컬렉션 칸은 그대로다 */
+  className?: string
   onClick: (e: MouseEvent<HTMLButtonElement>) => void
 }
 
-export default function SlotCircleButton({ icon, label, pending = false, disabled = false, onClick }: SlotCircleButtonProps) {
+export default function SlotCircleButton({ icon, label, pending = false, disabled = false, className = '', onClick }: SlotCircleButtonProps) {
   const Icon = icon === 'plus' ? PlusIcon : MinusIcon
   return (
     <button
@@ -32,7 +34,7 @@ export default function SlotCircleButton({ icon, label, pending = false, disable
       aria-busy={pending || undefined}
       onClick={onClick}
       disabled={pending || disabled}
-      className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background-inverse text-snow transition-all before:absolute before:-inset-2 disabled:opacity-40"
+      className={`absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background-inverse text-snow transition-all before:absolute before:-inset-2 disabled:opacity-40${className ? ` ${className}` : ''}`}
     >
       <Icon className="h-3.5 w-3.5" strokeWidth={4.5} />
     </button>

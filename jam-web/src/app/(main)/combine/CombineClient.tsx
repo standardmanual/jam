@@ -7,13 +7,13 @@ import { ListRow } from '@/components/ui/ListRow'
 import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
-import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { SearchIcon, PackageIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet, { type PendingSheetView } from './PendingResultsSheet'
 import BagItemCell from './BagItemCell'
+import RecipeSlotCard, { type RecipeSlotStatus } from './RecipeSlotCard'
 import TierUpPanel from './TierUpPanel'
 import {
   TIER_UP_ENDPOINT,
@@ -264,7 +264,7 @@ function recipeDisplayName(recipe: RecipeWithSlots): string {
 }
 
 /**
- * 순수 판정 — 가방 시트를 열 때 `mix_fail`을 기록할 차례인지. `demoMode`가 아니거나 이미
+ * 순수 판정 — 데모 모드의 첫 «+» 탭에서 `mix_fail`을 기록할 차례인지. `demoMode`가 아니거나 이미
  * 기록했으면 기록하지 않는다(티켓 20260927_2127, `screen-gate.ts`의 순수/DB 분리 패턴).
  */
 export function shouldRecordMixFail(demoMode: boolean, alreadyRecorded: boolean): boolean {
@@ -294,7 +294,7 @@ export function buildDemoCombineResult(recipe: RecipeWithSlots): {
 }
 
 /**
- * 순수 판정 — 펄스 판정에 쓸 단계. 가방을 처음 열어 `mix_fail`을 기록하면(`mixFailRecorded`)
+ * 순수 판정 — 펄스 판정에 쓸 단계. 칸의 «+»를 처음 눌러 `mix_fail`을 기록하면(`mixFailRecorded`)
  * 같은 화면에서 5단계로 이어지므로 `mix_success` 규칙으로 바꾼다(티켓 20260928_2155).
  */
 export function resolveQuestPulseStep(
@@ -327,15 +327,17 @@ function firstEmptySlot(
 
 /**
  * 순수 판정 — 온보딩 퀘스트 4~5단계(`mix_fail`·`mix_success`)에서 지금 반짝여야 할 요소
- * 하나를 고른다(티켓 20260928_1755, 채원 판정). 슬롯 펄스·제출 버튼 펄스·후보 행 펄스를
+ * 하나를 고른다(티켓 20260928_1755, 채원 판정). `slot` 대상은 그 칸의 «+» 버튼을 반짝이게 한다(티켓 20261110_1115).
+ * 슬롯 펄스·제출 버튼 펄스·후보 행 펄스를
  * 각각 독립 조건으로 산개하지 않고 이 함수 하나로 모아 상호 배타를 강제한다(craft_notes).
  *
  * - 퀘스트 차례가 아니거나(`questStep` null) 제출 중(`loading`)이면 항상 null.
  * - 레시피 미선택: 레시피 행(`mix_fail`·`mix_success` 공통, 사용자 승인 결정 1).
  * - `mix_fail` 선택 후: 첫 빈 슬롯(시트 열림 여부 무관, 완료 조건 원문). 빈 슬롯이 없으면 null —
- *   가방을 여는 순간 단계가 이미 기록되므로 제출 버튼까지 도달하는 경로를 정의하지 않는다.
+ *   «+»를 누르는 순간 단계가 이미 기록되므로 제출 버튼까지 도달하는 경로를 정의하지 않는다.
  * - `mix_success` 선택 후: 시트 열림 → 그 슬롯의 활성 후보 행 중 첫 번째(craft_notes 방어적 고정).
- *   시트 닫힘 + 빈 슬롯 있음 → 다음 빈 슬롯. 시트 닫힘 + `canSubmit` → 조합하기 버튼.
+ *   시트 닫힘 + 빈 슬롯 있음 → 다음 빈 슬롯의 «+»(활성 행 하나라 시트 없이 바로 채운 경우도 여기로 온다).
+ *   시트 닫힘 + `canSubmit` → 조합하기 버튼.
  */
 export function computeQuestPulseTarget(params: {
   questStep: 'mix_fail' | 'mix_success' | null
@@ -470,8 +472,8 @@ export default function CombineClient({
   }
 
   /**
-   * 탭한 슬롯의 후보 전체를 가방 목록 한 줄씩으로 만든다 — 보유 여부와 무관하게 후보 전체를
-   * 보여줘서, 잠긴 슬롯을 탭해도 "뭘 구해야 하는지"를 확인할 수 있게 한다(티켓 20260917_1655 개정).
+   * 슬롯의 후보 전체를 가방 목록 한 줄씩으로 만든다 — 보유 여부와 무관하게 후보 전체를
+   * 보여줘서 "뭘 구해야 하는지"를 확인할 수 있게 한다(티켓 20260917_1655 개정). 시트는 «+»가 후보 선택이 필요할 때만 연다.
    */
   function bagRowsFor(slot: RecipeSlotWithCandidates): BagRow[] {
     const rows: BagRow[] = []
@@ -572,12 +574,11 @@ export default function CombineClient({
   }
 
   /**
-   * 가방 시트는 기록 결과와 무관하게 연다(시트 오픈이 먼저) — `mix_fail` 기록은 연출
-   * 모드에서 처음 열 때 한 번만 시도한다(티켓 20260927_2127 사용자 결정 2). 실패하면
-   * 로컬 플래그를 되돌려 다음 슬롯 탭에서 재시도할 수 있게 한다.
+   * 데모 모드의 첫 «+» 탭에서 `mix_fail`을 한 번만 기록한다(티켓 20261110_1115, 이전에는 가방 시트를 여는 순간 기록했다).
+   * 시트 열기·바로 채움은 기록 결과를 기다리지 않는다(티켓 20260927_2127 사용자 결정 2). 실패하면
+   * 로컬 플래그를 되돌려 다음 «+» 탭에서 재시도할 수 있게 한다.
    */
-  async function openBagFor(slot: RecipeSlotWithCandidates) {
-    setBagSlotId(slot.id)
+  async function recordMixFailOnce() {
     if (!shouldRecordMixFail(demoMode, mixFailRecorded)) return
 
     setMixFailRecorded(true)
@@ -597,6 +598,18 @@ export default function CombineClient({
         toast(d.common.networkError, 'error')
       }
     }
+  }
+
+  /**
+   * 칸의 «+» — 쓸 수 있는 행(활성)이 정확히 하나면 시트 없이 바로 채우고, 둘 이상이면 가방 시트를 열어 고르게 한다.
+   * 활성 행이 없으면 «+» 자체가 그려지지 않으므로 여기까지 오지 않지만, 방어적으로 아무 일도 하지 않는다.
+   */
+  function addToSlot(slot: RecipeSlotWithCandidates) {
+    const activeRows = bagRowsFor(slot).filter((r) => r.state === 'active')
+    if (activeRows.length === 0) return
+    void recordMixFailOnce()
+    if (activeRows.length === 1) fillSlot(slot.id, activeRows[0])
+    else setBagSlotId(slot.id)
   }
 
   /** 화면이 낡아 배너가 없던 경우(409) — 서버의 지금 개수를 읽어 배너를 띄운다. 읽지 못하면 서버 값을 다시 받는다. */
@@ -917,7 +930,7 @@ export default function CombineClient({
   /** 아이템 슬롯이 있는 레시피에서만 재료 소각 안내를 보여준다(티켓 20260924_0813) */
   const hasItemSlot = selectedRecipe?.slots.some((s) => s.badge_type === 'item') ?? false
   /** 퀘스트 4~5단계 「지금 눌러야 할 요소」 펄스 — 판정은 computeQuestPulseTarget() 하나로 모은다.
-   * 가방을 처음 열어 mix_fail을 기록하면 화면 새로고침 없이 같은 화면에서 5단계로 이어지므로
+   * «+»를 처음 눌러 mix_fail을 기록하면 화면 새로고침 없이 같은 화면에서 5단계로 이어지므로
    * (상위 결정 23) 그때부터는 mix_success 규칙으로 판정한다(티켓 20260928_2155). */
   const pulseTarget = computeQuestPulseTarget({
     questStep: resolveQuestPulseStep(questStep, mixFailRecorded),
@@ -1042,23 +1055,28 @@ export default function CombineClient({
             <div className={selectedRecipe.slots.length > 4 ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-4 gap-2'}>
               {selectedRecipe.slots.map((slot) => {
                 const fill = fills[slot.id]
-                const hasOwnedCandidate =
-                  slot.badge_type === 'item'
-                    ? slot.candidates.some((c) => (itemsByBadgeId.get(c.id) ?? []).length > 0)
-                    : slot.candidates.some((c) => ownedConditionSet.has(c.id))
-                const status: 'empty' | 'locked' | 'filled' = fill ? 'filled' : hasOwnedCandidate ? 'empty' : 'locked'
+                // 대표 후보 — 쓸 수 있는 행의 첫 번째, 없으면 슬롯의 첫 후보를 흐리게 보여 준다(티켓 20261110_1115)
+                const activeRow = fill ? undefined : bagRowsFor(slot).find((r) => r.state === 'active')
+                const firstCandidate = slot.candidates[0]
+                const status: RecipeSlotStatus = fill ? 'filled' : activeRow ? 'addable' : 'unowned'
+                const shown = fill ?? activeRow
+                const shownName = shown?.name ?? firstCandidate?.name ?? ''
+                const shownImage = shown ? shown.imageUrl : (firstCandidate?.image_url ?? null)
 
-                const pulseSlot = pulseTarget?.type === 'slot' && pulseTarget.slotId === slot.id
+                // 펄스는 «+»가 그려지는 칸에만 건다 — 흐린 칸을 가리키면 반짝임이 허공에 뜬다
+                const pulseSlot = status === 'addable' && pulseTarget?.type === 'slot' && pulseTarget.slotId === slot.id
 
                 return (
-                  <MixerSlot
+                  <RecipeSlotCard
                     key={slot.id}
                     status={status}
-                    name={fill?.name}
-                    imageUrl={fill?.imageUrl}
-                    onClick={() => (fill ? undefined : openBagFor(slot))}
-                    onRemove={fill ? () => removeSlot(slot.id) : undefined}
-                    className={pulseSlot ? 'jam-quest-pulse' : ''}
+                    name={shownName}
+                    imageUrl={shownImage}
+                    loading={loading}
+                    dense={selectedRecipe.slots.length <= 4}
+                    pulse={pulseSlot}
+                    onAdd={() => addToSlot(slot)}
+                    onRemove={() => removeSlot(slot.id)}
                   />
                 )
               })}
@@ -1100,7 +1118,7 @@ export default function CombineClient({
           </div>
 
           {/*
-            가방 — 슬롯 하나를 지정해서 여는 시트. 빈 슬롯뿐 아니라 잠긴 슬롯을 탭해도 열리고,
+            가방 — 슬롯 하나를 지정해서 여는 시트. 칸의 «+»를 눌렀을 때 쓸 수 있는 행이 둘 이상일 때만 열리고,
             그 슬롯의 후보(slot.candidates) 전체를 보여준다(티켓 20260917_1655 개정) —
             슬롯 하나의 후보는 항상 같은 타입이라 타입 탭 구분은 없앴다.
           */}
