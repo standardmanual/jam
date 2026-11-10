@@ -999,7 +999,9 @@ export default function CombineClient({
   })
 
   return (
-    <div className="flex flex-col min-h-full text-foreground">
+    // 레시피 상세(믹서)에서는 루트가 뷰포트 높이를 채워, 맨 아래 유의사항 구역이 푸터까지 같은 회색으로 이어진다(티켓 20261110_1757).
+    // `min-h-full`은 부모가 높이를 정하지 않아 풀리지 않으므로(layout.tsx 주석) 뷰포트 단위 `min-h-dvh`를 쓴다
+    <div className={['flex flex-col text-foreground', selectedRecipe && !tierUpOpen ? 'min-h-dvh' : 'min-h-full'].join(' ')}>
       {/*
         티켓 20260917_1655: /combine은 인벤토리 하위 화면이라 points와 동일한 뒤로가기형 TopNav를
         쓴다. 믹서 화면에서는 뒤로가기가 라우트를 벗어나지 않고 먼저 레시피 탐색으로
@@ -1106,7 +1108,7 @@ export default function CombineClient({
           {/* 레시피 설명은 그리지 않는다(2026-11-10 사용자 지시, 티켓 20261110_1050). 이전에는 요약 행 아래에 3줄까지 보였다 */}
 
           {/* 믹서 슬롯 그리드 */}
-          <div className="flex-1 px-4 pb-6">
+          <div className="px-4 pb-6">
             {/* 5칸은 3열(3+2)로 둔다 — 5열은 360px에서 칸이 약 59px라 썸네일과 이름이 읽히지 않는다. 4칸 이하는 지금처럼 4열 */}
             <div className={selectedRecipe.slots.length > 4 ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-4 gap-2'}>
               {selectedRecipe.slots.map((slot) => {
@@ -1174,7 +1176,7 @@ export default function CombineClient({
 
           {/* 유의사항 — 버튼 아래 구역(사용자 지시 2026-11-10, 티켓 20261110_1757). 첫 줄은 이전에 버튼 아래 한 줄로 있던 재료 소각 안내(티켓 20260924_0813)다.
               확률·결과가 갈리는 내용은 싣지 않는다 */}
-          <section className="bg-background-secondary px-4 py-6" aria-labelledby="combine-notice-title">
+          <section className="flex-1 bg-background-secondary px-4 py-6" aria-labelledby="combine-notice-title">
             <h2 id="combine-notice-title" className="m-0 text-base font-semibold text-foreground">
               {d.combine.notice.title}
             </h2>

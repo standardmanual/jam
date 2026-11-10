@@ -7,7 +7,7 @@ import QuestBagGrid from './QuestBagGrid'
 import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import TopNav from '@/components/ui/TopNav'
-import { PackageIcon } from '@/components/ui/icons'
+import { GachaMachineIcon, PackageIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 
@@ -86,12 +86,14 @@ export default async function InventoryPage() {
         {/* 슬롯 사용량 — 컬렉션 상세의 진행도 바와 같은 모양(바 오른쪽에 «사용/전체» 수치, 바 아래 문장 없음, 2026-11-09 사용자 지시) */}
         <ProgressCountBar percent={Math.min(100, (usedSlots / maxSlots) * 100)} current={usedSlots} total={maxSlots} />
 
-        {/* 20261110: 믹스하기 버튼을 진행도 바 아래로 옮겼다(사용자 지시, 버튼 색은 그대로) */}
-        <div className="flex items-start justify-end mt-3">
+        {/* 20261110: 믹스하기 버튼을 진행도 바 아래로 옮겼다(사용자 지시, 버튼 색은 그대로).
+            같은 날 가로 중앙으로 옮기고 레시피 상세의 믹스하기 버튼과 같은 가차머신 아이콘을 글자 앞에 붙였다(사용자 지시, 티켓 20261110_1757) */}
+        <div className="flex items-start justify-center mt-3">
           <Link
             href="/combine"
-            className="inline-flex items-center justify-center min-h-11 rounded-full px-4 text-base bg-surface active:scale-95 transition-transform duration-100"
+            className="inline-flex items-center justify-center gap-2 min-h-11 rounded-full px-4 text-base bg-surface active:scale-95 transition-transform duration-100"
           >
+            <GachaMachineIcon className="w-5 h-5 shrink-0" />
             {d.inventory.combineButton}
           </Link>
         </div>

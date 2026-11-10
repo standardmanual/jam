@@ -128,10 +128,8 @@ export default function RecipeRewardRow({
     badgeTitleText === undefined ? (
       title
     ) : badgeHref ? (
-      // 링크는 글자 모양을 그대로 두고 밑줄만 더해 눌러 볼 수 있음을 알린다
-      <Link href={badgeHref} className="underline underline-offset-2">
-        {badgeTitleText}
-      </Link>
+      // 링크는 글자 모양을 그대로 둔다 — 밑줄은 쓰지 않는다(사용자 지시 2026-11-10, 티켓 20261110_1757)
+      <Link href={badgeHref}>{badgeTitleText}</Link>
     ) : (
       badgeTitleText
     )

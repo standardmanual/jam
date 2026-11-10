@@ -1154,9 +1154,10 @@ describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
     expect(html).not.toContain('결과 배지 +')
   })
 
-  it('linkBadge면 제목 자체가 배지 상세로 가는 밑줄 링크이고 +N도 링크 안에 있다, 눌림 행의 제목은 링크가 아니다 (티켓 20261110_1250)', () => {
+  it('linkBadge면 제목 자체가 배지 상세로 가는 링크이고 +N도 링크 안에 있으며 밑줄이 없다, 눌림 행의 제목은 링크가 아니다 (티켓 20261110_1250, 20261110_1757)', () => {
     const linked = render({ badges: [badge, { ...badge, id: 'b2' }], linkBadge: true })
-    expect(linked).toMatch(/<a [^>]*class="underline underline-offset-2"[^>]*>결과 배지 \+1<\/a>/)
+    expect(linked).toMatch(/<a [^>]*>결과 배지 \+1<\/a>/)
+    expect(linked).not.toContain('underline')
     expect(linked).not.toContain('레시피 제목')
     const pressed = render({ badges: [badge], linkBadge: true, onClick: () => {} })
     expect(pressed).not.toContain('<a ')
