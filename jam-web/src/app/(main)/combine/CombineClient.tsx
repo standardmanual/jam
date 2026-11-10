@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
 import { ListRow } from '@/components/ui/ListRow'
 import { useToast } from '@/components/ui/Toast'
@@ -40,6 +40,16 @@ import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 import { isLockedItemBody } from '@/lib/inventory/locked-item-block'
+import {
+  COMBINE_PATH,
+  closeAction,
+  markOpenedByPush,
+  recipeHref,
+  recipeOpenMethod,
+  resolveCombineView,
+  tierUpHref,
+  wasOpenedByPush,
+} from '@/lib/combine/navigation'
 import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
 import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 // 타입만 가져온다 — `lib/combine/pending.ts`는 서버 전용이라 값을 가져오면 번들링에서 터진다.
@@ -376,7 +386,6 @@ export default function CombineClient({
   pendingCount: serverPendingCount = 0,
 }: Props) {
   const [search, setSearch] = useState('')
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   const [fills, setFills] = useState<Record<string, SlotFill>>({})
   const [bagSlotId, setBagSlotId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -405,13 +414,44 @@ export default function CombineClient({
    * 등급 올리기(티켓 20261022_2119 3회) — 레시피 믹서(`selectedRecipeId`)와 같은 층의 분기다. 담은 칸은 개체 id 6칸이고, 재료 시트가 열려 있는 동안
    * `tierUpTarget`이 다음에 채울 칸을 가리킨다(담을 때마다 다음 빈 칸으로 이어지고 6칸이 차면 시트가 닫힌다).
    */
-  const [tierUpOpen, setTierUpOpen] = useState(false)
   const [tierUpSlots, setTierUpSlots] = useState<TierUpSlots>(emptyTierUpSlots)
   const [tierUpSheetOpen, setTierUpSheetOpen] = useState(false)
   const [tierUpTarget, setTierUpTarget] = useState(0)
   const [tierUpLoading, setTierUpLoading] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  /**
+   * 화면 전환의 단일 원천은 주소다(티켓 20261110_1215): 레시피 상세 `?recipe=<ID>`, 등급 올리기 `?view=tier-up`(둘이 겹치면 후자가 이긴다).
+   * 공개 목록에 없는 레시피 ID는 목록 화면이 나오고 아래 효과가 주소를 `/combine`으로 정리한다.
+   */
+  const view = resolveCombineView(
+    { recipe: searchParams.get('recipe'), view: searchParams.get('view') },
+    publicRecipes.map((r) => r.id),
+  )
+  const selectedRecipeId = view.recipeId
+  const tierUpOpen = view.kind === 'tierUp'
+  const needsUrlCleanup = view.needsCleanup
+
+  useEffect(() => {
+    if (needsUrlCleanup) router.replace(COMBINE_PATH)
+  }, [needsUrlCleanup, router])
+
+  // 브라우저·기기 뒤로가기처럼 핸들러를 거치지 않고 화면이 바뀌는 경우에도 채운 슬롯·시트를 비운다
+  // (렌더 중 상태 보정 — 화면을 가리키는 키가 바뀐 그 렌더에서 한 번만 돈다).
+  const viewKey = `${selectedRecipeId ?? ''}|${tierUpOpen}`
+  const [seenViewKey, setSeenViewKey] = useState(viewKey)
+  if (seenViewKey !== viewKey) {
+    setSeenViewKey(viewKey)
+    setFills({})
+    setBagSlotId(null)
+    setTierUpSlots(emptyTierUpSlots())
+    setTierUpSheetOpen(false)
+  }
+
+  // 화면을 떠나면 «목록에서 push로 열었다» 표시를 지운다(다음에 주소로 바로 열리면 앞 항목이 없을 수 있다).
+  useEffect(() => () => markOpenedByPush(false), [])
 
   /** 온보딩 퀘스트 4~5단계 연출 모드 — 실제 `/api/combine`·`trackEvent`·`router.refresh()`를 부르지 않는다. */
   const demoMode = questStep === 'mix_fail' || questStep === 'mix_success'
@@ -461,14 +501,27 @@ export default function CombineClient({
   const tierUpSubmitItemIds = tierUpSubmitIds(tierUpFilled)
 
   function selectRecipe(recipeId: string) {
-    setSelectedRecipeId(recipeId)
+    // 목록에서 열면 history를 쌓고, 이미 열린 상태에서 다른 레시피로 바꾸면 쌓지 않는다.
+    if (recipeOpenMethod(selectedRecipeId) === 'push') {
+      markOpenedByPush(true)
+      router.push(recipeHref(recipeId))
+    } else {
+      router.replace(recipeHref(recipeId))
+    }
     setFills({})
+    setBagSlotId(null)
     setResult(null)
   }
 
+  /** 상세·등급 올리기를 닫는다 — 목록에서 push로 열었으면 뒤로, 주소로 바로 열렸으면 목록 주소로 바꾼다. */
+  function closeToList() {
+    if (closeAction(wasOpenedByPush()) === 'back') router.back()
+    else router.replace(COMBINE_PATH)
+  }
+
   function closeMixer() {
-    setSelectedRecipeId(null)
     setFills({})
+    closeToList()
   }
 
   /**
@@ -538,15 +591,16 @@ export default function CombineClient({
   }
 
   function openTierUp() {
-    setTierUpOpen(true)
+    markOpenedByPush(true)
+    router.push(tierUpHref())
     setTierUpSlots(emptyTierUpSlots())
     setResult(null)
   }
 
   function closeTierUp() {
-    setTierUpOpen(false)
     setTierUpSlots(emptyTierUpSlots())
     setTierUpSheetOpen(false)
+    closeToList()
   }
 
   function openTierUpSheet(slotIndex: number) {

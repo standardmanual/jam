@@ -24,11 +24,50 @@ import { renderToStaticMarkup } from 'react-dom/server'
 const toastMock = vi.hoisted(() => vi.fn())
 const refreshMock = vi.hoisted(() => vi.fn())
 
+/**
+ * 주소(쿼리)와 history를 흉내 내는 `next/navigation` 모의 — 화면 상태의 원천이 주소라서(티켓 20261110_1215)
+ * `push`·`replace`·`back`이 `useSearchParams`가 읽는 값을 실제로 바꾼다.
+ */
+const navMock = vi.hoisted(() => {
+  const state = { entries: [''], index: 0 }
+  const queryOf = (url: string) => (url.includes('?') ? url.slice(url.indexOf('?') + 1) : '')
+  const push = vi.fn((url: string) => {
+    state.entries = [...state.entries.slice(0, state.index + 1), queryOf(url)]
+    state.index += 1
+  })
+  const replace = vi.fn((url: string) => {
+    state.entries[state.index] = queryOf(url)
+  })
+  const back = vi.fn(() => {
+    if (state.index > 0) state.index -= 1
+  })
+  return {
+    state,
+    push,
+    replace,
+    back,
+    search: () => state.entries[state.index],
+    /** 주소로 바로 열린 상태(링크·새로고침)로 시작한다 — 앞 항목이 없다 */
+    openDirect: (query: string) => {
+      state.entries = [query]
+      state.index = 0
+    },
+    reset: () => {
+      state.entries = ['']
+      state.index = 0
+      push.mockClear()
+      replace.mockClear()
+      back.mockClear()
+    },
+  }
+})
+
 /** 손으로 돌리는 훅 저장소 — `active`일 때만 `useState`·`useMemo`를 대신한다(티켓 20261001_1159). */
 const hooks = vi.hoisted(() => ({
   active: false,
   store: [] as unknown[],
   cursor: 0,
+  effects: [] as Array<() => void | (() => void)>,
 }))
 
 vi.mock('react', async (importOriginal) => {
@@ -47,19 +86,24 @@ vi.mock('react', async (importOriginal) => {
       return [hooks.store[index], set]
     },
     useMemo: (factory: () => unknown, deps: unknown[]) => (hooks.active ? factory() : actual.useMemo(factory, deps)),
+    useEffect: (effect: () => void | (() => void), deps?: unknown[]) => {
+      if (hooks.active) hooks.effects.push(effect)
+      else actual.useEffect(effect, deps)
+    },
   }
 })
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: refreshMock }),
+  useRouter: () => ({ push: navMock.push, replace: navMock.replace, back: navMock.back, prefetch: vi.fn(), refresh: refreshMock }),
   usePathname: () => '/combine',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(navMock.search()),
 }))
 
 vi.mock('@/components/ui/Toast', () => ({
   useToast: () => ({ toast: toastMock }),
 }))
 
+import { markOpenedByPush } from '@/lib/combine/navigation'
 import CombineClient, {
   shouldRecordMixFail,
   buildDemoCombineResult,
@@ -72,6 +116,12 @@ import CombineClient, {
   RecipeDescription,
   type RecipeWithSlots,
 } from './CombineClient'
+
+// 테스트마다 주소와 «push로 열었다» 표시를 처음으로 돌린다.
+beforeEach(() => {
+  navMock.reset()
+  markOpenedByPush(false)
+})
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet from './PendingResultsSheet'
 import RecipeSlotCard from './RecipeSlotCard'
@@ -984,6 +1034,8 @@ describe('CombineClient — 믹서 칸 수와 설명 (티켓 20261018_0055 2회)
 
   function mixerFor(recipe: RecipeWithSlots) {
     hooks.store = []
+    navMock.reset()
+    markOpenedByPush(false)
     const props = { items: [], publicRecipes: [recipe], ownedConditionBadgeIds: [] }
     const render = () => {
       hooks.cursor = 0
@@ -1185,6 +1237,8 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
     opts: { ownedConditionBadgeIds?: string[]; questStep?: 'mix_fail' | 'mix_success' | null } = {},
   ) {
     hooks.store = []
+    navMock.reset()
+    markOpenedByPush(false)
     const recipe = recipeFixture({ slots })
     const props = {
       items,
