@@ -72,11 +72,11 @@ describe('TierUpPanel 본문 순서', () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 
-  it('설명 문단은 윗등급이 나오거나 같은 등급이 나온다는 문장을 접지 않고 보이고 «운이 좋으면»으로 꾸미지 않는다', () => {
+  it('설명 문단은 같거나 더 높은 등급과 Mystic 규칙을 한 문장으로 접지 않고 보이고 «운이 좋으면»으로 꾸미지 않는다', () => {
     const out = html()
-    expect(out).toContain('윗등급이 나오거나 같은 등급이 나와요')
+    expect(out).toContain('같거나 더 높은 등급의 새 배지 1개로 다시 태어나고')
     expect(out).not.toContain('운이 좋')
-    expect(out).toContain('Mystic 6개를 넣으면 Mystic을 받아요')
+    expect(out).toContain('Mystic은 끝까지 Mystic이에요')
     expect(out).not.toContain('Mystic은 넣을 수 없어요')
     expect(out).not.toContain('더 보기')
   })

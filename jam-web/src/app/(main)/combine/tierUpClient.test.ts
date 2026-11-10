@@ -327,7 +327,9 @@ describe('d.combine.tierUp 문구', () => {
     expect(d.combine.tierUp).not.toHaveProperty('collectionPicker')
     expect(d.combine.tierUp).not.toHaveProperty('invalidCollection')
     expect(d.combine.tierUp.description).toContain('6개')
-    expect(d.combine.tierUp.description).toContain('Mystic 6개를 넣으면 Mystic을 받아요')
+    expect(d.combine.tierUp.description).toContain('Mystic은 끝까지 Mystic이에요')
+    // 한 문장이다(2026-11-10 사용자 결정) — 문장 끝 마침표는 하나뿐이다
+    expect(d.combine.tierUp.description.match(/[.!?]/g)).toHaveLength(1)
     expect(d.combine.tierUp.groupShort).toBe('6개부터 넣을 수 있어요')
   })
 })
