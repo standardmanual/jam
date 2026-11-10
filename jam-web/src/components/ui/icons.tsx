@@ -333,3 +333,23 @@ export function LockIcon(props: IconProps) {
     </Svg>
   )
 }
+
+/**
+ * 가차머신 — 믹스하기 버튼 앞 아이콘 (티켓 20261110_1500, 사용자 요청 2026-11-10)
+ *
+ * 위쪽 둥근 유리통 안에 알 세 개, 아래쪽 몸통에 돌리개와 배출구가 있다. 몸통이 유리통보다 넓어야 자물쇠로, 알이 같은 높이에 나란하면 얼굴로 읽히므로 알은 서로 다른 높이·크기로 둔다.
+ * 다른 아이콘과 같은 선 아이콘(선 1.5px, 24 상자, `currentColor`)이고, 20px(`w-5 h-5`)로 쓰면 16px 글자 옆에서 균형이 맞는다.
+ */
+export function GachaMachineIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.64 13.5A7 7 0 1117.36 13.5" />
+      <circle cx="9.3" cy="10.6" r="1.7" />
+      <circle cx="14.2" cy="10.9" r="1.4" />
+      <circle cx="12.6" cy="7" r="1.4" />
+      <rect x="4" y="13.5" width="16" height="7.5" rx="1.5" />
+      <circle cx="9" cy="17.25" r="1.4" />
+      <path d="M14.5 21v-2a1.5 1.5 0 013 0v2" />
+    </Svg>
+  )
+}

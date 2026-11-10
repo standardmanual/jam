@@ -9,7 +9,7 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { SearchIcon, PackageIcon } from '@/components/ui/icons'
+import { SearchIcon, PackageIcon, GachaMachineIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet, { type PendingSheetView } from './PendingResultsSheet'
 import BagItemCell from './BagItemCell'
@@ -1150,7 +1150,11 @@ export default function CombineClient({
                 .filter(Boolean)
                 .join(' ')}
             >
-              {loading && <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />}
+              {loading ? (
+                <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <GachaMachineIcon className="w-5 h-5 shrink-0" />
+              )}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>
             {/* 새 믹스가 막힌 이유 — 말 없이 막지 않는다. 읽혀야 하는 정보라 muted가 아니라 foreground로 둔다 */}
