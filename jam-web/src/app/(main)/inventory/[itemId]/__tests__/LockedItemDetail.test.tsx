@@ -145,7 +145,7 @@ describe('LockedItemDetail — 열기 전', () => {
 
   it('열기 전 설명은 세계관 말투로 숨겨진 무언가가 있다는 느낌만 전한다(트라이브·종류·숫자를 말하지 않는다)', () => {
     const text = visibleText(render())
-    expect(d.lockedItem.detail.description).toBe('도시의 뒷면에 숨어 있던 무언가가 기다리고 있어요')
+    expect(d.lockedItem.detail.description).toBe('뒷면에 숨은 무언가가 있어요')
     expect(text).toContain(d.lockedItem.detail.description)
     expect(d.lockedItem.detail.description).not.toMatch(/\d|획득|얻었|잠금|트라이브/)
   })
