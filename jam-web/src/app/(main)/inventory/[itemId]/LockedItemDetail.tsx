@@ -211,10 +211,11 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
         descriptionNode={description !== '' ? <SwapText value={description} /> : undefined}
       />
 
-      {/* 열린 뒤의 일련번호 — 일반 아이템 배지 상세와 같은 자리(카드 바로 아래, 가운데)와 간격이다 */}
+      {/* 열린 뒤의 일련번호 — 일반 아이템 배지 상세와 같은 자리(카드 바로 아래, 가운데)와 간격이고, 숫자가 릴처럼 돌아 멈추는 모션도 같다
+          (2026-11-10 사용자 지시: 꺼 두었던 모션을 다시 켬). 열기 응답으로 이 칸이 처음 그려질 때 한 번 돈다. */}
       {serialCode !== null && (
         <div className="relative z-10 flex justify-center px-4 pt-3 pb-[32px]">
-          <ItemSerialCode code={serialCode} height={50} animate={false} />
+          <ItemSerialCode code={serialCode} height={50} />
         </div>
       )}
 

@@ -288,6 +288,14 @@ describe('LockedItemDetail — 열린 뒤', () => {
     expect(text).toContain(d.badges.earnInfoTitle)
   })
 
+  it('열린 뒤 일련번호는 숫자 릴 모션을 끄지 않는다(일반 아이템 배지 상세와 같다, 2026-11-10 사용자 지시)', () => {
+    expect(sourceCode()).not.toMatch(/ItemSerialCode[^>]*animate=\{false\}/)
+    // 일련번호 4자 + 6자리 번호가 그대로 보인다
+    expect(visibleText(openedHtml())).toContain('000042')
+    // 모션을 끈 정적 그림은 자리마다 숫자 칸이 하나(6개)지만, 릴은 돌아갈 숫자 칸을 더 가진다
+    expect((openedHtml().match(/class="t-reel-digit"/g) ?? []).length).toBeGreaterThan(6)
+  })
+
   it('포인트 블록은 접히고 보조기기에서 숨는다', () => {
     const html = openedHtml()
     expect(html).toContain('aria-hidden="true"')
