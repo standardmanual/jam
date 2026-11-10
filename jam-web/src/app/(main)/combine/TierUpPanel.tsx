@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { getRarityLabel } from '@ds/components/cards/RarityBadge'
@@ -20,9 +19,10 @@ import {
  * 등급 올리기 화면 본문 (티켓 20261022_2119 3회, 채원 사전 판정 2026-10-23) — 서비스 전용 조립 컴포넌트, MODULAR 승격은 하지 않는다.
  *
  * 그리기만 한다. 담은 칸·시트 열림·제출 중 상태와 `/api/combine/tier-up` 호출은 `CombineClient`가 갖는다(`PendingResultsSheet`와 같은 분리).
- * 위에서 아래로 설명 문단, «확률 안내» 링크, 슬롯 6칸(3+3), 등급 안내 한 줄, (조건부) 안내, 제출 버튼, 재료 시트 순이다.
+ * 위에서 아래로 설명 문단, 슬롯 6칸(3+3), 등급 안내 한 줄, (조건부) 안내, 제출 버튼, 재료 시트 순이다.
+ * «확률 안내» 링크는 두지 않는다(사용자 지시 2026-11-10, 티켓 20261110_1510). 확률 안내는 푸터 링크로만 들어간다.
  * 받을 컬렉션은 유저가 고르지 않으므로 행도 시트도 없다(티켓 20261108_2322, 사용자 결정 2026-11-08).
- * 확률 숫자·퍼센트는 어디에도 쓰지 않는다 — 링크 이름 하나만 둔다(UX 라이팅 §3.3).
+ * 확률 숫자·퍼센트는 어디에도 쓰지 않는다(UX 라이팅 §3.3).
  */
 
 /** 한국어 줄바꿈(UX 라이팅 §3.2) — 문단과 짧은 안내 모두 `text-balance`를 쓴다 */
@@ -123,17 +123,6 @@ export default function TierUpPanel<T extends TierUpMaterial>({
     <>
       <div className="px-4 pt-4">
         <p className={PARAGRAPH}>{d.combine.tierUp.description}</p>
-      </div>
-
-      {/* 확률 안내 링크 — 설명 바로 아래, 슬롯을 채우기 전에 읽고 가는 순서. 모양은 캡슐 시트의 같은 이름 링크(`CapsuleSheet.tsx`)와 같다.
-          누르면 /probability로 이동하고 돌아오면 채운 칸이 비워진다(화면 상태가 클라이언트에만 있다). 숫자와 퍼센트는 쓰지 않는다 */}
-      <div className="px-4">
-        <Link
-          href="/probability"
-          className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-sm text-muted underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
-        >
-          {d.capsule.sheet.probabilityLink}
-        </Link>
       </div>
 
       <div className="flex-1 px-4 pt-2 pb-6">

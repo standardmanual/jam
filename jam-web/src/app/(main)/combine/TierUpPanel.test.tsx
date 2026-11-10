@@ -59,11 +59,10 @@ function html(overrides: Partial<Parameters<typeof TierUpPanel<TierUpMaterial>>[
 }
 
 describe('TierUpPanel 본문 순서', () => {
-  it('설명, 확률 안내 링크, 슬롯 6칸, 등급 안내 줄, 버튼, 소각 안내가 위에서 아래로 나온다', () => {
+  it('설명, 슬롯 6칸, 등급 안내 줄, 버튼, 소각 안내가 위에서 아래로 나온다', () => {
     const out = html()
     const order = [
       d.combine.tierUp.description,
-      d.capsule.sheet.probabilityLink,
       'grid grid-cols-3 gap-2',
       'aria-live="polite"',
       d.combine.tierUp.submit,
@@ -82,10 +81,10 @@ describe('TierUpPanel 본문 순서', () => {
     expect(out).not.toContain('더 보기')
   })
 
-  it('확률 안내 링크는 /probability로 가고 숫자·퍼센트가 어디에도 없다', () => {
+  it('확률 안내 링크가 없고(2026-11-10 사용자 지시) 숫자·퍼센트가 어디에도 없다', () => {
     const out = html({ rarityNote: '지금은 Rare 아이템 배지만 넣을 수 있어요', showNoEnoughNotice: true, pendingBlocked: true })
-    expect(out).toMatch(/<a [^>]*href="\/probability"[^>]*>확률 안내<\/a>/)
-    expect(out).toContain('min-h-11')
+    expect(out).not.toContain('/probability')
+    expect(out).not.toContain('확률 안내')
     // 슬롯의 인라인 스타일(width:100%)은 글자가 아니므로 태그를 걷어 낸 보이는 글자만 본다
     const visibleText = out.replace(/<[^>]+>/g, ' ')
     expect(visibleText).not.toMatch(/\d\s*%|퍼센트/)
@@ -224,9 +223,8 @@ describe('TierUpPanel 한국어 줄바꿈 (UX 라이팅 §3.2)', () => {
       '지금은 Rare 아이템 배지만 넣을 수 있어요',
       d.combine.tierUp.pendingBlockedNote,
       d.combine.tierUp.burnNotice,
-      d.capsule.sheet.probabilityLink,
     ]) {
-      const tag = out.match(new RegExp(`<(?:p|a)[^>]*>${text}</(?:p|a)>`))
+      const tag = out.match(new RegExp(`<p[^>]*>${text}</p>`))
       expect(tag, text).not.toBeNull()
       expect(tag![0], text).toContain('break-keep')
       expect(tag![0], text).toContain('wrap-break-word')
