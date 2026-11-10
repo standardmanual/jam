@@ -117,7 +117,8 @@ describe('CombineClient 초기 렌더', () => {
         questStep="mix_fail"
       />
     )
-    expect(html).toContain('살롱의 장물 시세')
+    // 목록 행 제목은 보상 배지명이다(티켓 20261110_1250) — 레시피 이름은 검색·보상 없음 행에만 쓰인다
+    expect(html).toContain(DEMO_MIX_RECIPE.rewardBadges[0].name)
   })
 
   it('questStep이 없으면(비연출 모드) 넘겨받은 실제 레시피 목록이 그대로 보인다', () => {
@@ -129,7 +130,7 @@ describe('CombineClient 초기 렌더', () => {
     const html = renderToStaticMarkup(
       <CombineClient items={[]} publicRecipes={[otherRecipe]} ownedConditionBadgeIds={[]} questStep={null} />
     )
-    expect(html).toContain('다른 레시피')
+    expect(html).toContain(otherRecipe.rewardBadges[0].name)
     expect(html).not.toContain('살롱의 장물 시세')
   })
 
@@ -336,13 +337,25 @@ describe('RecipeRewardRow — 공개 예정 줄 (티켓 20261001_1159)', () => {
 
 describe('CombineClient — 공개 예정 표시 (티켓 20261001_1159)', () => {
   it('releaseAt이 있는 행에만 「공개 예정」 줄이 보이고, 없는 행에는 없다', () => {
-    const scheduled = recipeFixture({ id: 'recipe-scheduled', name: '공개 전 레시피', releaseAt: RELEASE_AT })
-    const released = recipeFixture({ id: 'recipe-released', name: '공개된 레시피', releaseAt: null })
+    // 제목은 보상 배지명이라(티켓 20261110_1250) 두 행이 구분되도록 배지명을 다르게 둔다
+    const badge = DEMO_MIX_RECIPE.rewardBadges[0]
+    const scheduled = recipeFixture({
+      id: 'recipe-scheduled',
+      name: '공개 전 레시피',
+      releaseAt: RELEASE_AT,
+      rewardBadges: [{ ...badge, id: 'badge-scheduled', name: '공개 전 배지' }],
+    })
+    const released = recipeFixture({
+      id: 'recipe-released',
+      name: '공개된 레시피',
+      releaseAt: null,
+      rewardBadges: [{ ...badge, id: 'badge-released', name: '공개된 배지' }],
+    })
     const html = renderToStaticMarkup(
       <CombineClient items={[]} publicRecipes={[scheduled, released]} ownedConditionBadgeIds={[]} />
     )
-    expect(html).toContain('공개 전 레시피')
-    expect(html).toContain('공개된 레시피')
+    expect(html).toContain('공개 전 배지')
+    expect(html).toContain('공개된 배지')
     // 「공개 예정」 줄은 정확히 한 번 — 공개 전 행에만 붙는다
     expect(html.split(`${d.combine.releaseScheduled} ·`)).toHaveLength(2)
     expect(html).toContain(RELEASE_LABEL)
@@ -1072,14 +1085,37 @@ describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
     expect(display).not.toContain('cursor:pointer')
   })
 
-  it('배지 보상: lead는 tile 48 안 장식 이미지(alt 빈 값), eyebrow에 등급 칩, meta에 배지명(+N), 포인트가 value다', () => {
+  it('배지 보상: lead는 tile 48 안 장식 이미지(alt 빈 값), eyebrow에 등급 칩, 제목이 배지명(+N)이고 레시피 이름·배지명 줄은 없다, 포인트가 value다 (티켓 20261110_1250)', () => {
     const html = render({ badges: [badge, { ...badge, id: 'b2' }, { ...badge, id: 'b3' }], points: 1200 })
     expect(html).toMatch(/<img[^>]*alt=""/)
     expect(html).toContain('border-radius:var(--radius-2xl);background')
-    expect(html.indexOf('Rare')).toBeLessThan(html.indexOf('레시피 제목'))
-    expect(html).toMatch(/<span class="block truncate">결과 배지 \+2<\/span>/)
-    expect(html.indexOf('결과 배지 +2')).toBeGreaterThan(html.indexOf('레시피 제목'))
+    expect(html).toMatch(/font-weight:700[^"]*">결과 배지 \+2</)
+    expect(html).not.toContain('레시피 제목')
+    expect(html).not.toContain('block truncate')
+    expect(html.indexOf('Rare')).toBeLessThan(html.indexOf('결과 배지 +2'))
     expect(html).toContain('1,200')
+  })
+
+  it('배지가 1개면 제목에 +N이 붙지 않는다', () => {
+    const html = render({ badges: [badge] })
+    expect(html).toMatch(/font-weight:700[^"]*">결과 배지</)
+    expect(html).not.toContain('결과 배지 +')
+  })
+
+  it('linkBadge면 제목 자체가 배지 상세로 가는 밑줄 링크이고 +N도 링크 안에 있다, 눌림 행의 제목은 링크가 아니다 (티켓 20261110_1250)', () => {
+    const linked = render({ badges: [badge, { ...badge, id: 'b2' }], linkBadge: true })
+    expect(linked).toMatch(/<a [^>]*class="underline underline-offset-2"[^>]*>결과 배지 \+1<\/a>/)
+    expect(linked).not.toContain('레시피 제목')
+    const pressed = render({ badges: [badge], linkBadge: true, onClick: () => {} })
+    expect(pressed).not.toContain('<a ')
+    expect(pressed).toMatch(/font-weight:700[^"]*">결과 배지</)
+  })
+
+  it('보상 배지가 없으면(포인트만·보상 없음) 제목은 레시피 이름이다', () => {
+    expect(render({ points: 500 })).toMatch(/font-weight:700[^"]*">레시피 제목</)
+    const none = render({ points: 0, noReward: true })
+    expect(none).toMatch(/font-weight:700[^"]*">레시피 제목</)
+    expect(none).toContain(d.combine.noRewardLabel)
   })
 
   it('포인트만: lead는 round 코인, eyebrow·배지명 줄이 없다', () => {
@@ -1109,9 +1145,10 @@ describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
     expect(locked).toContain(d.lockedItem.detail.chip)
   })
 
-  it('공개 예정만 있고 배지명 줄이 없으면 날짜 줄에 위쪽 여백(mt-1)을 주지 않는다', () => {
+  it('«보상 없음» 부제가 있을 때만 날짜 줄에 위쪽 여백(mt-1)을 준다 — 배지명은 제목으로 올라가 meta에 없다', () => {
     expect(render({ releaseAt: RELEASE_AT })).not.toContain('mt-1')
-    expect(render({ badges: [badge], releaseAt: RELEASE_AT })).toContain('mt-1')
+    expect(render({ badges: [badge], releaseAt: RELEASE_AT })).not.toContain('mt-1')
+    expect(render({ points: 0, noReward: true, releaseAt: RELEASE_AT })).toContain('mt-1')
   })
 
   it('클릭 영역 안에 div·p가 없다 — 행 본문은 span뿐이다', () => {
