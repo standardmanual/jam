@@ -10,8 +10,8 @@
  * 모션 줄이기에서는 전환 없이 바로 갈라진 모양이 된다.
  */
 
-/** 흰색 */
-const PILL_COLOR = '#FFFFFF'
+/** 검은색 — 채움 안쪽 숫자와 같은 트랙 색이다(사용자 지시 2026-11-10, 이전에는 흰색) */
+const PILL_COLOR = 'var(--capsule-track)'
 /** 갈라질 때 반쪽이 벌어지는 각도(°) */
 const SPLIT_ANGLE_DEG = 45
 /** 두 반쪽이 맞닿는 위쪽 가운데 점(회전 축) */
@@ -45,11 +45,11 @@ export default function CapsulePillIcon({ width, open }: Props) {
       <g className={moveClass} style={{ transitionDuration: `${SPLIT_MS}ms`, transform: `translateY(${open ? OPEN_SHIFT_Y : 0}px)` }}>
         {/* 왼쪽 반쪽: 속이 찬 면. 갈라지면 시계 방향으로 벌어져 왼쪽 위를 향한다 */}
         <g className={moveClass} style={{ ...halfStyle, transform: `rotate(${open ? SPLIT_ANGLE_DEG : 0}deg)` }}>
-          <path d="M12 0H6a6 6 0 0 0 0 12h6Z" fill={PILL_COLOR} />
+          <path d="M12 0H6a6 6 0 0 0 0 12h6Z" style={{ fill: PILL_COLOR }} />
         </g>
         {/* 오른쪽 반쪽: 테두리만 있는 면. 갈라지면 반시계 방향으로 벌어져 오른쪽 위를 향한다 */}
         <g className={moveClass} style={{ ...halfStyle, transform: `rotate(${open ? -SPLIT_ANGLE_DEG : 0}deg)` }}>
-          <path d="M12 1H18a5 5 0 0 1 0 10H12Z" fill="none" stroke={PILL_COLOR} strokeWidth={2} />
+          <path d="M12 1H18a5 5 0 0 1 0 10H12Z" fill="none" style={{ stroke: PILL_COLOR }} strokeWidth={2} />
         </g>
       </g>
     </svg>
