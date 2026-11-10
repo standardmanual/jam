@@ -17,6 +17,7 @@ import { BookIcon, CoinIcon, MedalIcon } from '@/components/ui/icons'
 import BadgeHeroSection from '../../badges/[id]/BadgeHeroSection'
 import { useToast } from '@/components/ui/Toast'
 import { runLockedOpen, type LockedItemEffect } from '@/lib/inventory/lockedItemFill-flow'
+import { lockedItemMaskName } from '@/lib/inventory/lockedItemMask'
 import { resolveObtainRoute, type ObtainRouteKey } from '@/lib/inventory/obtainRoute'
 import type { LockedItemOpenPayload, LockedItemRarity } from '@/lib/inventory/lockedItemFill-contract'
 import { d, t } from '@/lib/i18n'
@@ -141,7 +142,8 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
     applyEffect(outcome.effect)
   }
 
-  const title = view ? view.item.name : d.lockedItem.card.name
+  // 열기 전 이름은 개체 id에서 정해지는 특수문자 6글자다(같은 개체는 언제나 같은 글자). 열리면 SwapText가 배지의 실제 이름으로 바꾼다
+  const title = view ? view.item.name : lockedItemMaskName(itemId)
   const description = view ? view.item.description : d.lockedItem.detail.description
   const displayRarity = view ? (view.item.rarity ?? rarity) : rarity
   const serialCode =

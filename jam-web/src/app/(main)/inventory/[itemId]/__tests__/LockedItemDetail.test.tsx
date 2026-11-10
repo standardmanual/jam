@@ -45,6 +45,7 @@ vi.mock('@/components/ui/TopNav', () => ({ default: () => <div data-stub="topnav
 import LockedItemDetail, { type LockedItemDetailProps } from '../LockedItemDetail'
 import type { LockedItemOpenPayload } from '@/lib/inventory/lockedItemFill-contract'
 import { d, t } from '@/lib/i18n'
+import { lockedItemMaskName } from '@/lib/inventory/lockedItemMask'
 
 const BASE: LockedItemDetailProps = {
   itemId: '22222222-2222-4222-8222-222222222222',
@@ -108,6 +109,9 @@ function buttonTagWith(html: string, label: string): string {
   return match![0].slice(0, match![0].indexOf('>') + 1)
 }
 
+/** 열기 전 이름 자리에 보이는 특수문자 6글자 — 개체 id에서 정해진다(2026-11-10 사용자 지시) */
+const MASK_NAME = lockedItemMaskName(BASE.itemId)
+
 const SHORTAGE_400 = t(d.lockedItem.detail.points.shortage, { short: '400' })
 
 beforeEach(() => {
@@ -118,7 +122,7 @@ beforeEach(() => {
 describe('LockedItemDetail — 열기 전', () => {
   it('타일·등급·잠김 칩·가린 이름·설명·획득 정보(일시·경로)가 있다', () => {
     const html = render()
-    expect(html).toContain(d.lockedItem.card.name)
+    expect(html).toContain(MASK_NAME)
     expect(html).toContain(d.lockedItem.detail.chip)
     expect(html).toContain(d.lockedItem.detail.description)
     // 다른 배지 상세와 같은 «획득 정보» 카드(획득 일시·획득 경로)다
@@ -127,6 +131,23 @@ describe('LockedItemDetail — 열기 전', () => {
     expect(html).toContain(d.badges.earnRoute)
     expect(html).toContain(d.inventory.obtainBySystem)
     expect(html).toContain('<svg')
+  })
+
+  it('열기 전 이름은 «잠긴 아이템 배지» 글자 대신 개체마다 정해진 특수문자 6글자다', () => {
+    const html = render()
+    expect(MASK_NAME).toHaveLength(6)
+    expect(html).toContain(`>${MASK_NAME}<`)
+    expect(visibleText(html)).not.toContain('잠긴 아이템 배지')
+    // 다른 개체는 이름이 다르게 보인다(같은 조합이 나와도 되지만 이 두 id에서는 다르다)
+    const other = render({ itemId: '33333333-3333-4333-8333-333333333333' })
+    expect(other).toContain(`>${lockedItemMaskName('33333333-3333-4333-8333-333333333333')}<`)
+  })
+
+  it('열기 전 설명은 세계관 말투로 숨겨진 무언가가 있다는 느낌만 전한다(트라이브·종류·숫자를 말하지 않는다)', () => {
+    const text = visibleText(render())
+    expect(d.lockedItem.detail.description).toBe('도시의 뒷면에 숨어 있던 무언가가 기다리고 있어요')
+    expect(text).toContain(d.lockedItem.detail.description)
+    expect(d.lockedItem.detail.description).not.toMatch(/\d|획득|얻었|잠금|트라이브/)
   })
 
   it('게이지·가진 잼 줄·«채우기» 버튼·채우기 시트가 없고 «열기» 버튼 하나만 있다', () => {
@@ -150,7 +171,7 @@ describe('LockedItemDetail — 열기 전', () => {
   })
 
   it('등급이 없는 개체(null)는 등급 칩 없이 그려진다', () => {
-    expect(render({ rarity: null })).toContain(d.lockedItem.card.name)
+    expect(render({ rarity: null })).toContain(MASK_NAME)
   })
 })
 
@@ -309,7 +330,7 @@ describe('LockedItemDetail — 열린 뒤', () => {
 
   it('열기 응답의 item이 null이면 전환하지 않고 열기 전 화면 그대로다(서버 페이지에 맡긴다)', () => {
     const html = render({}, { 2: { ...OPENED, item: null } })
-    expect(html).toContain(d.lockedItem.card.name)
+    expect(html).toContain(MASK_NAME)
     expect(html).toContain(d.lockedItem.detail.chip)
   })
 })
@@ -378,7 +399,7 @@ describe('LockedItemDetail — 일반 아이템 배지 상세와 같은 구성 (
     expect(card).toContain('<svg')
     expect(html.indexOf('Rare')).toBeGreaterThan(html.indexOf('<svg'))
     expect(html.indexOf(d.lockedItem.detail.chip)).toBeGreaterThan(html.indexOf('Rare'))
-    expect(html.indexOf(`>${d.lockedItem.card.name}<`)).toBeGreaterThan(html.indexOf(d.lockedItem.detail.chip))
+    expect(html.indexOf(`>${MASK_NAME}<`)).toBeGreaterThan(html.indexOf(d.lockedItem.detail.chip))
     expect(html).toMatch(/<h1 class="text-3xl font-bold text-center text-foreground">/)
     // 설명은 일반 상세와 같은 문단이다(줄 균형을 끈 text-wrap!)
     expect(html).toMatch(new RegExp(`<p class="text-base text-center text-wrap! text-muted">[^]*${d.lockedItem.detail.description}`))
