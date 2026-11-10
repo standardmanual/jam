@@ -74,6 +74,9 @@ import CombineClient, {
 } from './CombineClient'
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet from './PendingResultsSheet'
+import RecipeSlotCard from './RecipeSlotCard'
+import BagItemCell from './BagItemCell'
+import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
 import { Button } from '@ds/components/buttons/Button'
 import { d, t } from '@/lib/i18n'
@@ -259,7 +262,7 @@ describe('computeQuestPulseTarget', () => {
 })
 
 describe('resolveQuestPulseStep (티켓 20260928_2155)', () => {
-  it('가방을 처음 열어 mix_fail을 기록하면 같은 화면에서 mix_success 규칙으로 판정한다', () => {
+  it('칸의 «+»를 처음 눌러 mix_fail을 기록하면 같은 화면에서 mix_success 규칙으로 판정한다', () => {
     expect(resolveQuestPulseStep('mix_fail', false)).toBe('mix_fail')
     expect(resolveQuestPulseStep('mix_fail', true)).toBe('mix_success')
     expect(resolveQuestPulseStep('mix_success', false)).toBe('mix_success')
@@ -1126,5 +1129,249 @@ describe('RecipeRewardRow — 획득 포인트 표기 (티켓 20261104_2315)', (
   it('포인트가 0이면 숫자도 «포인트» 단위도 그리지 않는다', () => {
     const html = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={0} />)
     expect(html).not.toContain('>포인트<')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 티켓 20261110_1115 — 슬롯 칸 («+» 바로 채움 / 시트 / 흐림 / «−» 비움 / «+» 반짝임)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
+  beforeEach(() => {
+    toastMock.mockClear()
+    hooks.active = true
+    hooks.store = []
+  })
+
+  afterEach(() => {
+    hooks.active = false
+    vi.unstubAllGlobals()
+  })
+
+  const cand = (id: string) => ({ id, name: `배지-${id}`, image_url: `https://example.com/${id}.png` })
+  const owned = (itemId: string, badgeId: string) => ({
+    id: itemId,
+    badge_id: badgeId,
+    serial_prefix: null,
+    serial_number: 1,
+    badge: { id: badgeId, name: `배지-${badgeId}`, image_url: `https://example.com/${badgeId}.png`, rarity: 'common' as const },
+  })
+  const slotOf = (
+    id: string,
+    order: number,
+    badgeIds: string[],
+    badge_type: 'item' | 'activity' | 'checkin' = 'item',
+  ) => ({ id, slot_order: order, badge_type, candidates: badgeIds.map(cand) })
+
+  function screenFor(
+    slots: RecipeWithSlots['slots'],
+    items: ReturnType<typeof owned>[],
+    opts: { ownedConditionBadgeIds?: string[]; questStep?: 'mix_fail' | 'mix_success' | null } = {},
+  ) {
+    hooks.store = []
+    const recipe = recipeFixture({ slots })
+    const props = {
+      items,
+      publicRecipes: [recipe],
+      ownedConditionBadgeIds: opts.ownedConditionBadgeIds ?? [],
+      questStep: opts.questStep ?? null,
+    }
+    const render = () => {
+      hooks.cursor = 0
+      return CombineClient(props)
+    }
+    ;(findAll(render(), (el) => el.type === RecipeRewardRow)[0].props.onClick as () => void)()
+    const cards = (tree: ReactNode) => findAll(tree, (el) => el.type === RecipeSlotCard)
+    const sheet = (tree: ReactNode) => findAll(tree, (el) => el.type === BottomSheet)[0]
+    const cells = (tree: ReactNode) => findAll(tree, (el) => el.type === BagItemCell)
+    const cta = (tree: ReactNode) =>
+      findAll(tree, (el) => el.type === 'button' && String(el.props.className).includes('max-w-[220px]'))[0]
+    return { render, cards, sheet, cells, cta }
+  }
+
+  const press = (el: AnyElement, key: 'onAdd' | 'onRemove') => (el.props[key] as () => void)()
+
+  it('활성 행이 하나면 «+»가 시트 없이 바로 채우고, «−»로 비우면 «+»로 돌아간다', () => {
+    const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a')])
+    let tree = s.render()
+    expect(s.cards(tree)[0].props.status).toBe('addable')
+    expect(s.cards(tree)[0].props.name).toBe('배지-a')
+
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.sheet(tree).props.open).toBe(false)
+    expect(s.cards(tree)[0].props.status).toBe('filled')
+    expect(s.cta(tree).props.disabled).toBe(false)
+
+    press(s.cards(tree)[0], 'onRemove')
+    tree = s.render()
+    expect(s.cards(tree)[0].props.status).toBe('addable')
+    expect(s.cta(tree).props.disabled).toBe(true)
+  })
+
+  it('같은 배지 개체가 둘이면 «+»가 시트를 열고, 시트에서 고르면 채워진다', () => {
+    const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a'), owned('i2', 'a')])
+    let tree = s.render()
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.sheet(tree).props.open).toBe(true)
+    expect(s.cells(tree)).toHaveLength(2)
+    expect(s.cards(tree)[0].props.status).toBe('addable')
+
+    ;(s.cells(tree)[1].props.onClick as () => void)()
+    tree = s.render()
+    expect(s.sheet(tree).props.open).toBe(false)
+    expect(s.cards(tree)[0].props.status).toBe('filled')
+  })
+
+  it('후보 배지가 여럿이면 활성 행의 첫 후보를 대표로 보여 주고 «+»는 시트를 연다', () => {
+    const s = screenFor([slotOf('s1', 1, ['a', 'b', 'c'])], [owned('i2', 'b'), owned('i3', 'c')])
+    let tree = s.render()
+    expect(s.cards(tree)[0].props.name).toBe('배지-b')
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.sheet(tree).props.open).toBe(true)
+    // 시트 목록은 그대로다: 후보 전체(미보유 a는 needed, 보유 b·c는 active)
+    expect(s.cells(tree).map((c) => c.props.state)).toEqual(['needed', 'active', 'active'])
+  })
+
+  it('보유 후보가 없으면 첫 후보를 흐리게 보여 주고 «+» 동작은 아무 일도 하지 않는다', () => {
+    const s = screenFor([slotOf('s1', 1, ['a', 'b'])], [])
+    let tree = s.render()
+    const card = s.cards(tree)[0]
+    expect(card.props.status).toBe('unowned')
+    expect(card.props.name).toBe('배지-a')
+    press(card, 'onAdd')
+    tree = s.render()
+    expect(s.sheet(tree).props.open).toBe(false)
+    expect(s.cards(tree)[0].props.status).toBe('unowned')
+  })
+
+  it('보유했지만 모두 다른 칸에 쓴 칸은 흐리다 — 같은 개체는 슬롯 하나에만 들어간다', () => {
+    const s = screenFor([slotOf('s1', 1, ['a']), slotOf('s2', 2, ['a'])], [owned('i1', 'a')])
+    let tree = s.render()
+    expect(s.cards(tree).map((c) => c.props.status)).toEqual(['addable', 'addable'])
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.cards(tree).map((c) => c.props.status)).toEqual(['filled', 'unowned'])
+    // 칸 하나를 비우면 다른 칸이 다시 «+»가 된다
+    press(s.cards(tree)[0], 'onRemove')
+    tree = s.render()
+    expect(s.cards(tree).map((c) => c.props.status)).toEqual(['addable', 'addable'])
+  })
+
+  it('조건 배지 슬롯도 같은 방식이다 — 보유 조건이면 바로 채우고 아니면 흐리다', () => {
+    const s = screenFor(
+      [slotOf('s1', 1, ['c1'], 'activity'), slotOf('s2', 2, ['c2'], 'checkin')],
+      [],
+      { ownedConditionBadgeIds: ['c1'] },
+    )
+    let tree = s.render()
+    expect(s.cards(tree).map((c) => c.props.status)).toEqual(['addable', 'unowned'])
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.sheet(tree).props.open).toBe(false)
+    expect(s.cards(tree).map((c) => c.props.status)).toEqual(['filled', 'unowned'])
+  })
+
+  it('4칸 이하는 카드 여백을 줄이고(dense) 5칸은 줄이지 않는다', () => {
+    const four = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a')])
+    expect(four.cards(four.render())[0].props.dense).toBe(true)
+    const five = screenFor(
+      [1, 2, 3, 4, 5].map((n) => slotOf(`s${n}`, n, ['a'])),
+      [owned('i1', 'a')],
+    )
+    expect(five.cards(five.render())[0].props.dense).toBe(false)
+  })
+
+  it('퀘스트 mix_success: 반짝임이 «+» → 다음 빈 칸의 «+» → 믹스하기 버튼으로 이어진다(시트 없이 바로 채움)', () => {
+    const s = screenFor(
+      [slotOf('s1', 1, ['a']), slotOf('s2', 2, ['b'])],
+      [owned('i1', 'a'), owned('i2', 'b')],
+      { questStep: 'mix_success' },
+    )
+    let tree = s.render()
+    expect(s.cards(tree).map((c) => c.props.pulse)).toEqual([true, false])
+    expect(String(s.cta(tree).props.className)).not.toContain('jam-quest-pulse')
+
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.cards(tree).map((c) => c.props.pulse)).toEqual([false, true])
+
+    press(s.cards(tree)[1], 'onAdd')
+    tree = s.render()
+    expect(s.cards(tree).map((c) => c.props.pulse)).toEqual([false, false])
+    expect(String(s.cta(tree).props.className)).toContain('jam-quest-pulse')
+  })
+
+  it('퀘스트 mix_success: 시트가 열리면 반짝임이 칸이 아니라 시트의 활성 행으로 옮겨 간다', () => {
+    const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a'), owned('i2', 'a')], { questStep: 'mix_success' })
+    let tree = s.render()
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.cards(tree)[0].props.pulse).toBe(false)
+    expect(s.cells(tree).map((c) => c.props.pulse)).toEqual([true, false])
+  })
+
+  it('퀘스트: 첫 빈 칸이 흐린 칸이면 «+»가 없으므로 반짝임을 걸지 않는다', () => {
+    const s = screenFor([slotOf('s1', 1, ['a'])], [], { questStep: 'mix_success' })
+    const tree = s.render()
+    expect(s.cards(tree)[0].props.status).toBe('unowned')
+    expect(s.cards(tree)[0].props.pulse).toBe(false)
+  })
+
+  it('데모 모드: 첫 «+» 탭에서 mix_fail을 한 번만 기록한다', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({}) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const s = screenFor(
+      [slotOf('s1', 1, ['a']), slotOf('s2', 2, ['b'])],
+      [owned('i1', 'a'), owned('i2', 'b')],
+      { questStep: 'mix_fail' },
+    )
+    let tree = s.render()
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    press(s.cards(tree)[1], 'onAdd')
+    await Promise.resolve()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { method: string; body: string }]
+    expect(url).toBe('/api/onboarding-quest/step')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ step: 'mix_fail' })
+  })
+
+  it('데모 모드: 흐린 칸에는 «+»가 없어 mix_fail을 기록하지 않는다', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({}) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const s = screenFor([slotOf('s1', 1, ['z'])], [], { questStep: 'mix_fail' })
+    press(s.cards(s.render())[0], 'onAdd')
+    await Promise.resolve()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('데모 모드가 아니면 «+»를 눌러도 mix_fail을 기록하지 않는다', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a')])
+    press(s.cards(s.render())[0], 'onAdd')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('mix_fail 기록이 실패하면 토스트로 알리고 플래그를 되돌려 다음 «+»에서 다시 시도한다', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: false, json: async () => ({}) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const s = screenFor(
+      [slotOf('s1', 1, ['a']), slotOf('s2', 2, ['b'])],
+      [owned('i1', 'a'), owned('i2', 'b')],
+      { questStep: 'mix_fail' },
+    )
+    let tree = s.render()
+    press(s.cards(tree)[0], 'onAdd')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(toastMock).toHaveBeenCalledWith(d.onboardingQuest.mixStepSaveFailed, 'error')
+    tree = s.render()
+    press(s.cards(tree)[1], 'onAdd')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
