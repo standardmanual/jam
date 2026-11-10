@@ -101,3 +101,19 @@ describe('prefers-reduced-transparency 대체 스크림', () => {
     expect(block).not.toMatch(/background-color:\s*var\(--background\)/)
   })
 })
+
+describe('제목은 크고 굵게 쓴다 — 서비스와 MODULAR가 같은 값 (티켓 20261110_2048, 피그마 시안 52:28)', () => {
+  it('서비스 BottomSheet 기본 제목은 text-xl font-bold leading-6이다', () => {
+    const service = read(SHEETS['BottomSheet.tsx'])
+    expect(service).toContain("const TITLE_CLASS_DEFAULT = 'text-xl font-bold leading-6'")
+    expect(service).toContain('titleClassName ?? TITLE_CLASS_DEFAULT')
+  })
+
+  it('MODULAR 제목은 20px(--text-xl)·굵은 글씨·행간 24px이다', () => {
+    const html = renderToStaticMarkup(<DsBottomSheet open onClose={() => {}} title="제목">본문</DsBottomSheet>)
+    const heading = /<h2[^>]*style="([^"]*)"/.exec(html)?.[1] ?? ''
+    expect(heading).toContain('font-size:var(--text-xl)')
+    expect(heading).toContain('font-weight:700')
+    expect(heading).toContain('line-height:var(--spacing-24)')
+  })
+})

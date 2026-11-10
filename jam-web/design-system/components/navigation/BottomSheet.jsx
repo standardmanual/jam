@@ -119,9 +119,9 @@ export function BottomSheet({
               style={{
                 margin: 'var(--spacing-16) 0',
                 // 서비스(src/components/ui/BottomSheet.tsx)의 <h2> 가 기준이다:
-                // text-base
-                fontSize: 'var(--text-base)',
-                lineHeight: 'var(--text-base--line-height)',
+                // text-xl font-bold leading-6 (크고 굵은 제목, 티켓 20261110_2048)
+                fontSize: 'var(--text-xl)',
+                lineHeight: 'var(--spacing-24)',
                 fontWeight: 700,
                 color: 'var(--foreground)',
               }}

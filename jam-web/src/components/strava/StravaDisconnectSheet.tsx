@@ -41,8 +41,6 @@ export function StravaDisconnectSheetView({ open, submitting, onClose, onConfirm
       onClose={submitting ? () => {} : onClose}
       detent="compact"
       title={copy.title}
-      // 피그마 시안(52:28): 제목은 20px 굵은 글씨, 행간 24px (티켓 20261110_2048). 헤더 여백은 기본값(px-6 pb-4) 그대로다
-      titleClassName="text-xl font-bold leading-6"
       footer={
         <div className="flex gap-4">
           <Button

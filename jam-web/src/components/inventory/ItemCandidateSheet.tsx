@@ -72,7 +72,7 @@ export default function ItemCandidateSheet({
       // 상단 여백(pt-8)은 핸들과 제목 사이 간격을 확보하고, 하단 여백(pb-8, 기본 16보다 좁힘)
       // 은 제목과 본문 사이 간격을 줄인다.
       headerClassName="px-6 pt-2 pb-2 shrink-0"
-      titleClassName="text-2xl font-medium"
+      titleClassName="text-2xl font-bold"
     >
       <div className="px-6 pb-4 flex flex-col gap-2">
         <p className="text-xs text-[var(--muted)]">

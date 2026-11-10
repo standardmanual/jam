@@ -47,7 +47,7 @@ interface Props {
   onRetry: () => void
 }
 
-const TITLE_CLASS = 'text-base break-keep wrap-break-word text-balance'
+const TITLE_CLASS = 'text-xl font-bold leading-6 break-keep wrap-break-word text-balance'
 const TEXT_CLASS = 'm-0 break-keep wrap-break-word text-balance'
 
 function ResultTile({ item }: { item: PendingResultView }) {

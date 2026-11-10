@@ -30,7 +30,7 @@ interface BottomSheetProps {
    * 좁게 쓰는 경우) 사용한다.
    */
   headerClassName?: string
-  /** 제목(`<h2>`)의 클래스를 **전체 교체**한다 — 위와 같은 이유로 병합하지 않는다. */
+  /** 제목(`<h2>`)의 클래스를 **전체 교체**한다 — 위와 같은 이유로 병합하지 않는다. 기본은 크고 굵은 제목(20px 굵게, 행간 24px)이다. */
   titleClassName?: string
   children: ReactNode
   /** compact: 콘텐츠 높이만큼(최대 75vh) / full: 화면 대부분을 채우는 큰 디텐트 */
@@ -73,6 +73,9 @@ interface BottomSheetProps {
 const FOOTER_PAD_TABBAR_PX = 16 + 64 + 12
 /** footer의 padding-bottom(safe-area 제외분) — `footerBottomInset='safe-area'`: 탭바가 있던 자리(16px). */
 const FOOTER_PAD_SAFE_AREA_PX = 16
+
+/** 시트 제목 기본 서체 — 크고 굵게(20px·굵은 글씨·행간 24px). 피그마 시안 asset 52:28, 티켓 20261110_2048. MODULAR `BottomSheet.jsx`와 같은 값이다. */
+const TITLE_CLASS_DEFAULT = 'text-xl font-bold leading-6'
 
 const DRAG_CLOSE_THRESHOLD = 120
 /** 릴리즈 순간 하향 속도(px/ms)가 이 값을 넘으면 거리와 무관하게 닫는다(플릭 제스처). */
@@ -398,7 +401,7 @@ export default function BottomSheet({
           <div className={headerClassName ?? 'px-6 pb-4 shrink-0'}>
             <h2
               id={titleId}
-              className={titleClassName ?? 'text-base'}
+              className={titleClassName ?? TITLE_CLASS_DEFAULT}
             >
               {title}
             </h2>

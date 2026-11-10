@@ -71,9 +71,9 @@ describe('StravaDisconnectSheetView — 끊기 확인 시트', () => {
     for (const line of copy.body) expect(html).toContain(line)
   })
 
-  it('제목은 20px 굵은 글씨·행간 24px 클래스를 BottomSheet에 넘긴다 (피그마 시안 52:28)', () => {
+  it('제목 서체는 따로 지정하지 않고 BottomSheet 기본값(크고 굵게)을 따른다 (피그마 시안 52:28)', () => {
     const tree = StravaDisconnectSheetView({ open: true, submitting: false, onClose: noop, onConfirm: noop })
-    expect(tree.props.titleClassName).toBe('text-xl font-bold leading-6')
+    expect(tree.props.titleClassName).toBeUndefined()
   })
 
   it('본문은 가운데 정렬이 아니라 왼쪽 정렬이고 한국어 줄바꿈 클래스를 갖는다', () => {
