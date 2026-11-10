@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
 import { useToast } from '@/components/ui/Toast'
@@ -11,6 +12,7 @@ import type { NearbyPoi } from '@/types/drops'
 import { d, t } from '@/lib/i18n'
 import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import QuestPickupScene from './QuestPickupScene'
+import { carouselPoiHref, DROPS_PATH, resolveCarouselClose, resolveCarouselPoi } from './carouselUrl'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
 
@@ -55,6 +57,8 @@ interface DropsClientProps {
 
 export default function DropsClient({ focusPoi = null, questStep = null }: DropsClientProps) {
   const { toast } = useToast()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [locError, setLocError] = useState<string | null>(null)
   const [userLat, setUserLat] = useState<number | null>(null)
@@ -62,6 +66,8 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
 
   const [pois, setPois] = useState<NearbyPoi[]>([])
   const [poisLoading, setPoisLoading] = useState(false)
+  // 근처 장소를 한 번이라도 성공적으로 받았는지 — 주소의 poi 판정 시점을 정한다
+  const [poisLoaded, setPoisLoaded] = useState(false)
 
   // ── Phase 17: 뷰포트 기반 체크인 배지 (드랍/픽업과 완전 별개 파이프라인) ──
   const [badgeMarkers, setBadgeMarkers] = useState<PoiBadgeMarker[]>([])
@@ -70,7 +76,35 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
   // 20260820_018: 선택된 POI 하나 + 드랍 목록 대신, "캐러셀을 연 시작점 POI id"만
   // 들고 있는다. 반경 내 전체 POI 목록 + 개별 드랍 목록 조회/캐싱은
   // PoiCarouselModal이 자체적으로 관리한다.
-  const [carouselPoiId, setCarouselPoiId] = useState<string | null>(null)
+  // 티켓 20261110_1216: 이 값은 state가 아니라 주소(`/drops?poi=<id>`)에서 파생한다 —
+  // 열 때 history 항목이 쌓여 뒤로 가기가 모달을 닫고, 새로고침·링크로도 같은 모달이 열린다.
+  // 캐러셀 안에서 스와이프로 중앙 카드가 바뀌어도 주소는 "처음 연 장소"로 둔다(스와이프마다
+  // 주소를 바꾸면 시작점이 바뀌어 캐러셀 순서가 매번 다시 회전한다).
+  const poiParam = searchParams.get('poi')
+  // 한 번 열린 장소는 위치 이동으로 목록이 갱신돼 반경 밖이 되어도 모달을 닫지 않는다
+  const [openedPoiId, setOpenedPoiId] = useState<string | null>(null)
+  const carouselResolution = resolveCarouselPoi({ poiParam, pois, poisLoaded, openedPoiId })
+  const nextOpenedPoiId = carouselResolution.status === 'open' ? carouselResolution.poiId : null
+  if (carouselResolution.status !== 'invalid' && carouselResolution.status !== 'pending' && nextOpenedPoiId !== openedPoiId) {
+    setOpenedPoiId(nextOpenedPoiId)
+  }
+  const carouselPoiId = carouselResolution.status === 'open' ? carouselResolution.poiId : null
+  // 이 화면에서 push로 열었는지 — 닫기 방법(뒤로 가기 / 주소 치환)을 정한다
+  const openedByPushRef = useRef(false)
+
+  const closeCarousel = useCallback(() => {
+    if (resolveCarouselClose(openedByPushRef.current) === 'back') router.back()
+    else router.replace(DROPS_PATH)
+  }, [router])
+
+  // 주소에서 poi가 사라지면(뒤로 가기 포함) push 표식을 지우고, 근처 장소에 없는 id면 정리한다.
+  // 알림 착지점(`?poi=`)이 반경 밖 장소를 가리킬 때도 여기서 `/drops`로 정리된다 —
+  // 지도 카메라 이동은 서버가 넘긴 focusPoi로 이미 끝난 뒤다(focusedRef).
+  const carouselStatus = carouselResolution.status
+  useEffect(() => {
+    if (carouselStatus === 'none') openedByPushRef.current = false
+    else if (carouselStatus === 'invalid') closeCarousel()
+  }, [carouselStatus, closeCarousel])
 
   // 지도 명령형 핸들 — 캐러셀 카드 전환 시 map.morph()로 포커싱하는 데 사용.
   // next/dynamic으로 지연 로드되는 MapView는 ref를 그대로 전달받지 못해
@@ -148,6 +182,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
         return
       }
       setPois(json.pois ?? [])
+      setPoisLoaded(true)
     } catch {
       toast(d.drops.loadPoiFailed, 'error')
     } finally {
@@ -204,7 +239,8 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
       toast(t(d.drops.outOfRange, { name: poi.name, distance: poi.distance_meters, m: DROP_RADIUS_METERS }), 'error')
       return
     }
-    setCarouselPoiId(poiId)
+    openedByPushRef.current = true
+    router.push(carouselPoiHref(poiId))
 
     // 소식 #18("내 드랍 지점 활성") 계측 — 캐러셀이 열리는 이 지점이 곧 "POI를 열어서 확인한"
     // 순간이다(픽업 여부와 무관). 기록 시각은 서버가 찍는다 — 기기 시계를 믿지 않는다.
@@ -215,7 +251,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ poi_id: poiId }),
     }).catch(() => {})
-  }, [pois, toast])
+  }, [pois, toast, router])
 
   // 캐러셀 중앙 카드가 바뀔 때(스와이프 포함) → 지도 포커싱
   const handleCarouselCenterChange = useCallback((poi: NearbyPoi) => {
@@ -324,7 +360,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
           initialPoiId={carouselPoiId}
           userLat={userLat}
           userLng={userLng}
-          onClose={() => setCarouselPoiId(null)}
+          onClose={closeCarousel}
           onCenterChange={handleCarouselCenterChange}
           onDropOrPickupSuccess={loadNearbyPois}
         />
