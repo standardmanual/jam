@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import SafeImage from '@/components/SafeImage'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
@@ -38,6 +39,11 @@ interface Props {
    * 이 값이 없으면 보상이 비어 있어도 지금과 똑같이 그린다(티켓 20261018_0055 2회).
    */
   noReward?: boolean
+  /**
+   * 대표 보상 배지의 이미지와 이름을 그 배지 상세(`/badges/{id}`)로 가는 링크로 만든다(2026-11-10 사용자 지시, 믹서 상단 요약 행용).
+   * 눌림 행(`onClick`)에서는 쓰지 않는다 — 행 전체가 이미 버튼이라 링크를 안에 둘 수 없다. 보상 배지가 없으면(포인트만·보상 없음) 무시한다.
+   */
+  linkBadge?: boolean
   /** 결과를 잠긴 채 지급하는 레시피 — 부제의 등급 칩 옆에 «잠김» 칩을 붙인다(티켓 20261018_0055 2회) */
   rewardLocked?: boolean
 }
@@ -72,6 +78,7 @@ export default function RecipeRewardRow({
   releaseAt,
   noReward = false,
   rewardLocked = false,
+  linkBadge = false,
 }: Props) {
   const hasBadges = badges.length > 0
   const hasPoints = points > 0
@@ -80,6 +87,8 @@ export default function RecipeRewardRow({
 
   const showNoReward = noReward && !hasBadges && !hasPoints
   const showBadge = hasBadges && primary !== undefined
+  // 눌림 행 안에는 링크를 둘 수 없다(버튼 안의 링크). 표시 전용 요약 행에서만 배지 상세로 연결한다
+  const badgeHref = linkBadge && showBadge && !onClick ? `/badges/${primary.id}` : undefined
 
   // 이미지는 장식이다(`alt=""`) — 배지 이름은 meta 글자에 이미 있다. 아이콘은 20px 글리프만 주고 48 박스·면은 ListRow가 준다.
   const lead = showBadge ? (
@@ -113,8 +122,18 @@ export default function RecipeRewardRow({
   // meta는 phrasing(`<span>`)만 쓴다 — 클릭 영역(`<button>`) 안이다. `metaLines={0}`이라 말줄임은 배지명 줄에만 직접 건다.
   const badgeLine = showBadge ? (
     <span className="block truncate">
-      {primary.name}
-      {extraCount > 0 ? ` +${extraCount}` : ''}
+      {badgeHref ? (
+        // 링크는 글자 모양을 그대로 두고 밑줄만 더해 눌러 볼 수 있음을 알린다
+        <Link href={badgeHref} className="underline underline-offset-2">
+          {primary.name}
+          {extraCount > 0 ? ` +${extraCount}` : ''}
+        </Link>
+      ) : (
+        <>
+          {primary.name}
+          {extraCount > 0 ? ` +${extraCount}` : ''}
+        </>
+      )}
     </span>
   ) : showNoReward ? (
     d.combine.noRewardLabel
@@ -141,6 +160,8 @@ export default function RecipeRewardRow({
   return (
     <ListRow
       lead={lead}
+      leadHref={badgeHref}
+      leadLabel={badgeHref ? primary?.name : undefined}
       leadShape={leadShape}
       eyebrow={eyebrow}
       title={title}

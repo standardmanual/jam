@@ -1030,13 +1030,11 @@ export default function CombineClient({
               releaseAt={selectedRecipe.releaseAt}
               noReward={isNoRewardRecipe(selectedRecipe)}
               rewardLocked={selectedRecipe.reward_locked === true}
+              linkBadge
             />
           </div>
 
-          {/* 레시피 설명 — 없으면 영역 자체를 그리지 않는다. 탐색 목록 행에는 싣지 않는다 */}
-          {selectedRecipe.description?.trim() && (
-            <RecipeDescription key={selectedRecipe.id} text={selectedRecipe.description} />
-          )}
+          {/* 레시피 설명은 그리지 않는다(2026-11-10 사용자 지시, 티켓 20261110_1050). 이전에는 요약 행 아래에 3줄까지 보였다 */}
 
           {/* 믹서 슬롯 그리드 */}
           <div className="flex-1 px-4 pb-6">

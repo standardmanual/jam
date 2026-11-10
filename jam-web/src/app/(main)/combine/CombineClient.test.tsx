@@ -1002,13 +1002,15 @@ describe('CombineClient — 믹서 칸 수와 설명 (티켓 20261018_0055 2회)
     expect(gridClass(mixerFor(recipeFixture({ slots: slots(2) })))).toContain('grid-cols-4')
   })
 
-  it('설명이 있으면 요약 행 아래에 설명 영역이 있고, 없거나 공백뿐이면 영역이 없다', () => {
+  it('레시피에 설명이 있어도 믹서에는 설명 영역을 그리지 않는다(2026-11-10 사용자 지시)', () => {
     const find = (tree: ReactNode) => findAll(tree, (el) => el.type === RecipeDescription)
-    const withText = find(mixerFor(recipeFixture({ description: '설명 문단' })))
-    expect(withText).toHaveLength(1)
-    expect(withText[0].props.text).toBe('설명 문단')
+    expect(find(mixerFor(recipeFixture({ description: '설명 문단' })))).toHaveLength(0)
     expect(find(mixerFor(recipeFixture({ description: null })))).toHaveLength(0)
-    expect(find(mixerFor(recipeFixture({ description: '   ' })))).toHaveLength(0)
+  })
+
+  it('요약 행은 대표 보상 배지를 배지 상세로 연결한다(linkBadge)', () => {
+    const row = findAll(mixerFor(recipeFixture({})), (el) => el.type === RecipeRewardRow)[0]
+    expect(row.props.linkBadge).toBe(true)
   })
 
   it('요약 행에 보상 없음·잠김 여부가 전달된다', () => {
@@ -1041,6 +1043,20 @@ describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
     expect(html).toContain('레시피 제목')
     expect(html).not.toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:400[^"]*">3<\/span>/)
     expect(html).not.toMatch(/font-weight:400[^"]*">\d+<\/span>/)
+  })
+
+  it('linkBadge면 대표 보상 배지의 이미지와 이름이 그 배지 상세로 가는 링크다(표시 전용 요약 행)', () => {
+    const html = render({ badges: [badge], linkBadge: true })
+    // 이름: 밑줄 링크, 이미지: 같은 주소의 lead 링크(접근 가능한 이름은 배지명)
+    expect(html.match(/href="\/badges\/b1"/g)).toHaveLength(2)
+    expect(html).toContain('aria-label="결과 배지"')
+    expect(html).toMatch(/<a [^>]*href="\/badges\/b1"[^>]*>결과 배지<\/a>/)
+  })
+
+  it('linkBadge가 없거나, 눌림 행(onClick)이거나, 보상 배지가 없으면 링크를 만들지 않는다', () => {
+    expect(render({ badges: [badge] })).not.toContain('/badges/')
+    expect(render({ badges: [badge], linkBadge: true, onClick: () => {} })).not.toContain('/badges/')
+    expect(render({ badges: [], linkBadge: true })).not.toContain('/badges/')
   })
 
   it('눌림 유무: onClick이 있으면 버튼(눌림), 없으면 표시 전용 요약바(눌림·cursor 없음)', () => {

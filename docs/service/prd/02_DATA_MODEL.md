@@ -859,7 +859,7 @@ CHECK `combination_recipes_valid_period_check`). 재료 배열 컬럼(`ingredien
 옮겨졌다.
 
 **JAM 2.0 믹스 고치기 (마이그레이션 236, 티켓 20261018_0055)**: 새 칸 셋을 덧붙였다. `description`(TEXT, nullable —
-레시피 설명, 유저에게 보인다), `reward_locked`(BOOLEAN NOT NULL 기본 false — 결과 아이템 배지를 잠긴 채 지급할지.
+레시피 설명, 믹스 화면에는 지금 그리지 않는다), `reward_locked`(BOOLEAN NOT NULL 기본 false — 결과 아이템 배지를 잠긴 채 지급할지.
 잠김으로 만든 배지 `badges.always_locked`는 이 값과 상관없이 늘 잠긴다), `allow_no_reward`(BOOLEAN NOT NULL 기본
 false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check`는 «`allow_no_reward`이거나 포인트가 있거나
 보상 배지가 하나 이상»으로 바뀌었다. 기본값이 false라 옛 행과 옛 어드민의 저장은 지금처럼 보상 하나 이상을 요구하고,
