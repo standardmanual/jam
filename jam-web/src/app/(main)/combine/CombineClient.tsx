@@ -1087,9 +1087,10 @@ export default function CombineClient({
                 {d.combine.pendingBlockedNote}
               </p>
             )}
-            {/* 재료 소각 안내 — 아이템 슬롯이 있는 레시피에서만, 버튼 아래 상시 노출(티켓 20260924_0813) */}
+            {/* 재료 소각 안내 — 아이템 슬롯이 있는 레시피에서만, 버튼 아래 상시 노출(티켓 20260924_0813). 버튼과 간격을 더 둔다
+                (gap 8px에 mt-2 8px를 더해 16px, 2026-11-10 사용자 지시) */}
             {hasItemSlot && (
-              <p className="text-xs text-muted text-center">{d.combine.burnNotice}</p>
+              <p className="mt-2 text-xs text-muted text-center">{d.combine.burnNotice}</p>
             )}
             {/* 시험 믹스 사전 안내 — 공개 전 레시피(운영자)에만. 조건형 문구라 화면이 낡아 공개 시각이 지나도 거짓이 되지 않는다(티켓 20261001_1159).
                 360px에서 두 줄로 넘어가 마지막 글자 하나만 떨어지므로 단어 단위로 끊고 두 줄 길이를 맞춘다(break-keep·text-balance) */}
