@@ -117,7 +117,7 @@ describe('CombineClient 초기 렌더', () => {
         questStep="mix_fail"
       />
     )
-    // 목록 행 제목은 보상 배지명이다(티켓 20261110_1250) — 레시피 이름은 검색·보상 없음 행에만 쓰인다
+    // 목록 행 제목은 보상 배지명이다(티켓 20261110_1250) — 레시피 이름은 보상 배지가 없는 행에만 쓰인다
     expect(html).toContain(DEMO_MIX_RECIPE.rewardBadges[0].name)
   })
 
