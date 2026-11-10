@@ -66,8 +66,10 @@ interface MapViewProps {
   /**
    * 뷰포트가 "이전에 조회한 범위를 벗어났을 때"만 호출된다(디바운스 적용).
    * 범위 안에서의 이동은 호출하지 않아 API 호출량을 최소화한다.
+   * 조회가 실패했으면 `false`(또는 `false`로 끝나는 Promise)를 돌려준다 — 그러면 이 범위를
+   * 조회한 것으로 치지 않고 잠시 뒤 다시 호출한다. 아무것도 돌려주지 않으면 성공으로 본다.
    */
-  onViewportChange?: (viewport: MapViewport) => void
+  onViewportChange?: (viewport: MapViewport) => void | boolean | Promise<boolean | void>
   /** 지도(naver.maps.Map) 초기화가 끝나면 1회 호출되어 명령형 핸들을 전달한다 */
   onMapReady?: (handle: MapViewHandle) => void
 }
@@ -91,6 +93,11 @@ const VIEWPORT_MARGIN_RATIO = 0.02
  * 바뀌었는데도 사용자가 같은 지역 안에서만 움직이면 영영 갱신되지 않는 문제를 막는다.
  */
 const VIEWPORT_STALE_TTL_MS = 90_000
+
+/** 뷰포트 조회가 실패했을 때 다시 시도하는 최대 횟수. 실패 횟수가 늘수록 간격도 늘어난다 */
+const VIEWPORT_RETRY_MAX = 3
+/** 재시도 간격의 기준(ms). n번째 재시도는 n배만큼 기다린다 */
+const VIEWPORT_RETRY_DELAY_MS = 1_500
 
 /** "내 위치" 버튼이 위치를 새로 조회할 때 기다리는 최대 시간(ms). 이 시간이 지나면 버튼을 다시 누를 수 있다 */
 const LOCATE_TIMEOUT_MS = 8_000
@@ -300,6 +307,8 @@ export default function MapView({
   const lastViewportRef = useRef<MapViewport | null>(null)
   // 마지막으로 실제 fetch(재조회)를 트리거한 시각 — TTL 경과 시 마진 범위 안이어도 강제 재조회
   const lastFetchAtRef = useRef<number | null>(null)
+  // 조회가 연달아 실패한 횟수 — 성공하면 0으로 돌아간다
+  const viewportRetryRef = useRef(0)
   // 최신 콜백을 리스너 재등록 없이 참조하기 위한 ref
   const onViewportChangeRef = useRef(onViewportChange)
   useEffect(() => {
@@ -382,6 +391,11 @@ export default function MapView({
           zoom: map.getZoom(),
         }
 
+        // 지도가 아직 배치되지 않아 폭이나 높이가 0인 범위는 조회하지 않는다 —
+        // 이 값으로 조회했다고 기록하면 실제 범위가 이전 범위 안으로 오해될 수 있다.
+        // 지도가 자리를 잡은 뒤의 첫 idle에서 실제 범위로 조회된다.
+        if (next.swLat === next.neLat || next.swLng === next.neLng) return
+
         const prev = lastViewportRef.current
         const lastFetchAt = lastFetchAtRef.current
         const isStale = lastFetchAt === null || Date.now() - lastFetchAt >= VIEWPORT_STALE_TTL_MS
@@ -391,7 +405,29 @@ export default function MapView({
 
         lastViewportRef.current = next
         lastFetchAtRef.current = Date.now()
-        onViewportChangeRef.current?.(next)
+        Promise.resolve(onViewportChangeRef.current?.(next))
+          .catch(() => false)
+          .then((result) => {
+            if (cancelled) return
+            if (result !== false) {
+              viewportRetryRef.current = 0
+              return
+            }
+            // 조회가 실패했다. 이 범위를 조회한 것으로 남겨 두면 다음 TTL이 지나거나 지도를
+            // 크게 움직이기 전에는 다시 조회하지 않아 체크인 지점이 빠진 채로 남는다.
+            // 기록을 지우고 잠시 뒤 다시 조회한다(그 사이 유저가 지도를 움직이면 그 idle이 먼저 조회한다).
+            if (lastViewportRef.current === next) {
+              lastViewportRef.current = null
+              lastFetchAtRef.current = null
+            }
+            if (viewportRetryRef.current >= VIEWPORT_RETRY_MAX) return
+            viewportRetryRef.current += 1
+            if (debounceRef.current) clearTimeout(debounceRef.current)
+            debounceRef.current = setTimeout(
+              emitViewport,
+              VIEWPORT_RETRY_DELAY_MS * viewportRetryRef.current
+            )
+          })
       }
 
       const idleListener = naver.maps.Event.addListener(map, 'idle', () => {

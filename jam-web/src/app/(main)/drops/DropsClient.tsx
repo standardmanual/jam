@@ -165,7 +165,12 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
 
   // 뷰포트 변경 → 체크인 배지 재조회.
   // MapView가 디바운스 + "이전 조회 범위를 벗어났을 때만" 필터링해서 호출한다.
-  const handleViewportChange = useCallback(async (viewport: MapViewport) => {
+  // 가장 최근에 보낸 조회의 번호 — 먼저 보낸 조회의 응답이 더 늦게 도착해도 최신 범위의 마커를 덮어쓰지 않는다
+  const viewportRequestSeqRef = useRef(0)
+
+  // 조회에 실패하면 false를 돌려준다 — MapView가 이 범위를 조회한 것으로 치지 않고 다시 시도한다.
+  // (예전에는 실패를 조용히 삼켜서, 진입 직후 한 번 실패하면 체크인 지점이 빠진 채로 남았다)
+  const handleViewportChange = useCallback(async (viewport: MapViewport): Promise<boolean> => {
     const params = new URLSearchParams({
       swLat: String(viewport.swLat),
       swLng: String(viewport.swLng),
@@ -173,14 +178,19 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
       neLng: String(viewport.neLng),
       zoom: String(viewport.zoom),
     })
+    const seq = ++viewportRequestSeqRef.current
     try {
       const res = await fetch(`/api/checkin-badges?${params.toString()}`)
-      if (!res.ok) return
+      if (!res.ok) return false
       const json = await res.json()
+      // 그 사이 더 새로운 조회가 나갔으면 이 응답은 버린다(조회 자체는 성공이다)
+      if (seq !== viewportRequestSeqRef.current) return true
       setBadgeMarkers((json.pois ?? []) as PoiBadgeMarker[])
       setBadgeClusters((json.clusters ?? []) as PoiBadgeClusterMarker[])
+      return true
     } catch {
-      /* 배지 마커 조회 실패는 드랍/픽업 플로우에 영향을 주지 않으므로 조용히 무시 */
+      /* 배지 마커 조회 실패는 드랍/픽업 플로우에 영향을 주지 않으므로 토스트 없이 재시도에 맡긴다 */
+      return false
     }
   }, [])
 
