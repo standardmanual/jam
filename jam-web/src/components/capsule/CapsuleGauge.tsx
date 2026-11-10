@@ -60,9 +60,9 @@ const NUMBER_EDGE_GAP_PX = 14
 /** 숫자를 위로 올리는 양(px) — 글자 줄 상자의 가운데가 숫자 모양의 가운데보다 아래라 트랙 가운데에 맞추려고 올린다(2026-11-04 사용자 요청) */
 const NUMBER_RISE_PX = 1
 /** 알약 아이콘 너비(px)는 채움 원 지름의 이 비율이다. 높이는 너비의 절반이다 */
-const PILL_WIDTH_RATIO = 0.64
+const PILL_WIDTH_RATIO = 0.72
 /** 아이콘 자리 상자의 오른쪽 안쪽 여백(px) — 아이콘을 왼쪽으로 절반만큼 밀어 채움 오른쪽 끝(가득 차면 바 오른쪽 끝)에서 간격을 둔다(사용자 지시 2026-11-10) */
-const PILL_RIGHT_INSET_PX = 4
+const PILL_RIGHT_INSET_PX = 5
 
 /** 게이지 높이(px)가 정해지면 채움 원의 지름이 정해진다 */
 export function gaugeCircleDiameter(height: number): number {
