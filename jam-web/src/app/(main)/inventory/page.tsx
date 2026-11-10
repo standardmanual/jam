@@ -83,16 +83,18 @@ export default async function InventoryPage() {
       <div className="mb-5">
         {/* 20261031_1821: 보이는 타이틀은 없애고, 스크린리더용 페이지 제목만 남긴다 */}
         <h1 className="sr-only">{d.inventory.title}</h1>
-        <div className="flex items-start justify-end mb-5">
+        {/* 슬롯 사용량 — 컬렉션 상세의 진행도 바와 같은 모양(바 오른쪽에 «사용/전체» 수치, 바 아래 문장 없음, 2026-11-09 사용자 지시) */}
+        <ProgressCountBar percent={Math.min(100, (usedSlots / maxSlots) * 100)} current={usedSlots} total={maxSlots} />
+
+        {/* 20261110: 믹스하기 버튼을 진행도 바 아래로 옮겼다(사용자 지시, 버튼 색은 그대로) */}
+        <div className="flex items-start justify-end mt-3">
           <Link
             href="/combine"
-            className="mt-1 inline-flex items-center justify-center min-h-11 rounded-full px-4 text-base bg-surface active:scale-95 transition-transform duration-100"
+            className="inline-flex items-center justify-center min-h-11 rounded-full px-4 text-base bg-surface active:scale-95 transition-transform duration-100"
           >
             {d.inventory.combineButton}
           </Link>
         </div>
-        {/* 슬롯 사용량 — 컬렉션 상세의 진행도 바와 같은 모양(바 오른쪽에 «사용/전체» 수치, 바 아래 문장 없음, 2026-11-09 사용자 지시) */}
-        <ProgressCountBar percent={Math.min(100, (usedSlots / maxSlots) * 100)} current={usedSlots} total={maxSlots} />
 
         {/* 20260912_1940: 슬롯 포화 상시 안내 — 가득 찼을 때만 노출, 카드형 인셋(edge-to-edge 금지).
             20261105_1953: 홈 막힘 카드와 같은 어두운 반전 면(--background-inverse + --snow).
