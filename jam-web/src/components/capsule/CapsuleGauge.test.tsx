@@ -59,8 +59,7 @@ describe('문구가 있으면 숫자 자리를 대신하고 늘 채움 안쪽에
 
   it('보임 관찰자가 없는 서버 렌더 경로에서도 문구는 투명(opacity 0)이 아니다', () => {
     for (const html of [withMessage(0, 300), withMessage(300, 300)]) {
-      // 알약 아이콘의 알갱이는 닫혀 있을 때 일부러 투명하다. 문구 영역만 본다
-      expect(html.replace(/<svg[\s\S]*?<\/svg>/, '')).not.toMatch(/opacity:\s*0\b/)
+      expect(html).not.toMatch(/opacity:\s*0\b/)
     }
   })
 
