@@ -5,16 +5,17 @@ import React from 'react';
  * 시각적으로 동일하게 그리는 슬롯 UI (티켓 20260917_1655, 폴리시 수정 티켓 20260917_1828).
  *
  * 상태 3가지:
- *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 --foreground 화살표 아이콘
- *            (추가 가능함을 나타냄, 티켓 20260917_2028 후속 조정)을 표시하고, 테두리를
- *            그레이(--muted) 3px로 굵게 표현해 잠긴 슬롯과 구분한다(티켓
- *            20260917_1828). 탭하면 채울 수 있다. 면이 흰색(--card-bg)이라 화살표를
- *            흰색으로 두면 보이지 않는다(1.05:1) — 글자색 --foreground(17.07:1)를 쓴다.
+ *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 --foreground «+» 아이콘
+ *            (추가 가능함을 나타냄)을 표시한다. 테두리는 없다 — 잠긴 슬롯(점선)과는 «+»의
+ *            선명함과 점선 유무로 구분한다(2026-11-11 사용자 지시, 이전에는 그레이 3px 테두리와
+ *            아래 화살표, 티켓 20260917_1828·2028). 탭하면 채울 수 있다. 면이 흰색(--card-bg)이라
+ *            «+»를 흰색으로 두면 보이지 않는다(1.05:1) — 글자색 --foreground(17.07:1)를 쓴다.
  *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. '+' 텍스트를 흐리게 표시하고, 사선
  *            패턴 없이 불투명도만으로 empty와 구분한다(티켓 20260917_1828 — 사선 패턴
  *            제거). 탭해도 채울 배지가 없다는 뜻이라 상호작용은 호출부가 막는다(이
  *            컴포넌트는 시각만 담당 — onClick 자체는 그대로 전달된다).
- *   filled — 채운 배지 카드(썸네일+이름) + 우상단 제거 버튼. 컬렉션 칸의 «빼기»와 같은 모양이다:
+ *   filled — 채운 배지 카드(썸네일+이름) + 3px 그레이(--muted) 안쪽 테두리(레시피 믹서의 채운 칸과 같은
+ *            «채웠다»는 신호, 2026-11-11 사용자 지시) + 우상단 제거 버튼. 컬렉션 칸의 «빼기»와 같은 모양이다:
  *            검은 원(24px, --background-inverse) 안에 흰 «−» 아이콘, 가장자리에서 6px 안쪽(2026-11-09 사용자 지시,
  *            이전에는 모서리에 걸친 16px «✕»). 눌리는 영역은 바깥 40px 박스가 맡는다.
  *
@@ -58,11 +59,9 @@ export function MixerSlot({
     boxSizing: 'border-box',
     textAlign: 'center',
     fontFamily: 'var(--font-family-base)',
-    border: filled
-      ? 'none'
-      : fillable
-        ? '3px solid var(--muted)'
-        : '1px dashed var(--border)',
+    border: locked ? '1px dashed var(--border)' : 'none',
+    // 채운 칸만 안쪽 링으로 3px 그레이 테두리를 둔다 — box-shadow inset이라 칸 크기와 이미지 위치를 밀지 않는다
+    boxShadow: filled ? 'inset 0 0 0 3px var(--muted)' : undefined,
     background: filled ? 'var(--surface)' : 'var(--card-bg)',
     color: 'var(--foreground)',
     opacity: locked ? 0.5 : 1,
@@ -156,7 +155,7 @@ export function MixerSlot({
           viewBox="0 -960 960 960"
           fill="var(--foreground)"
         >
-          <path d="M480-240 240-480l56-56 144 144v-368h80v368l144-144 56 56-240 240Z" />
+          <path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
         </svg>
       ) : (
         <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, opacity: 0.4, color: 'var(--foreground)' }}>
