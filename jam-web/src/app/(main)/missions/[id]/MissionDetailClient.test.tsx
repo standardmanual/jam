@@ -36,6 +36,7 @@ function render(
     completed?: boolean
     locked?: boolean
     missionType?: string
+    statusDisplayType?: 'ranking' | 'achievement' | 'individual'
     progressValue?: number
     conditionJson?: Record<string, unknown>
     conditionBullets?: string[] | null
@@ -47,6 +48,7 @@ function render(
     title: '페이스의 증명',
     description: '4주 동안 달린 당신의 속도를 증명하세요',
     mission_type: state.missionType ?? 'engine_condition',
+    status_display_type: state.statusDisplayType ?? 'ranking',
     condition_json: state.conditionJson ?? { activity_type: 'running', single_distance_km: 10 },
     condition_text: conditionText,
     reward_points: null,
@@ -336,5 +338,26 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
     )
     expect(card).toContain('3.2km')
     expect(card).toContain('32%')
+  })
+})
+
+describe('MissionDetailClient 랭킹 보기 버튼 (티켓 20261111_0850)', () => {
+  const LINK = 'href="/missions/m1/status"'
+
+  it('랭킹형 미션에 참가 중이면 «랭킹» 버튼이 상황 화면으로 이어진다', () => {
+    const html = render(CONDITION_TEXT, { participating: true, statusDisplayType: 'ranking' })
+    expect(html).toContain(LINK)
+    expect(html).toContain('>랭킹</div>')
+    expect(html).not.toContain('미션 상황 보기')
+  })
+
+  it('랭킹형이라도 완료한 미션에는 버튼이 남고, 참가 전에는 없다', () => {
+    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType: 'ranking' })).toContain(LINK)
+    expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'ranking' })).not.toContain(LINK)
+  })
+
+  it.each(['achievement', 'individual'] as const)('%s 미션에는 참가 중이거나 완료해도 버튼이 없다', (statusDisplayType) => {
+    expect(render(CONDITION_TEXT, { participating: true, statusDisplayType })).not.toContain(LINK)
+    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType })).not.toContain(LINK)
   })
 })

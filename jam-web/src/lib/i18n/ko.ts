@@ -863,7 +863,7 @@ export const ko = {
     /** 보상 배지 행 캡션(티켓 20260915_2244)
      * 20260916_0856: "완료하면 ~해요"로 통일. 포인트 행의 «완료하면 바로 받아요» 캡션은 티켓 20261104_2150에서 뺐다 */
     rewardBadgeCaption: '완료하면 획득해요',
-    statusViewButton: '미션 상황 보기',
+    statusViewButton: '랭킹',
     joinConfirmBody: '한번 참가하면 취소할 수 없어요. 참가할까요?',
     joinConfirmButton: '참가 확정',
     joinNote: '참가 후에는 취소할 수 없어요',
