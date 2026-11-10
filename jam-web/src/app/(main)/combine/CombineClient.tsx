@@ -983,6 +983,8 @@ export default function CombineClient({
   const bagRows = bagSlot ? bagRowsFor(bagSlot) : []
   /** 아이템 슬롯이 있는 레시피에서만 재료 소각 안내를 보여준다(티켓 20260924_0813) */
   const hasItemSlot = selectedRecipe?.slots.some((s) => s.badge_type === 'item') ?? false
+  /** 액티비티·체크인 슬롯 — 보유 여부만 확인하고 소각하지 않는다 */
+  const hasKeptSlot = selectedRecipe?.slots.some((s) => s.badge_type !== 'item') ?? false
   /** 퀘스트 4~5단계 「지금 눌러야 할 요소」 펄스 — 판정은 computeQuestPulseTarget() 하나로 모은다.
    * «+»를 처음 눌러 mix_fail을 기록하면 화면 새로고침 없이 같은 화면에서 5단계로 이어지므로
    * (상위 결정 23) 그때부터는 mix_success 규칙으로 판정한다(티켓 20260928_2155). */
@@ -1163,17 +1165,27 @@ export default function CombineClient({
                 {d.combine.pendingBlockedNote}
               </p>
             )}
-            {/* 재료 소각 안내 — 아이템 슬롯이 있는 레시피에서만, 버튼 아래 상시 노출(티켓 20260924_0813). 버튼과 간격을 더 둔다
-                (gap 8px에 mt-2 8px를 더해 16px, 2026-11-10 사용자 지시) */}
-            {hasItemSlot && (
-              <p className="mt-2 text-xs text-muted text-center">{d.combine.burnNotice}</p>
-            )}
             {/* 시험 믹스 사전 안내 — 공개 전 레시피(운영자)에만. 조건형 문구라 화면이 낡아 공개 시각이 지나도 거짓이 되지 않는다(티켓 20261001_1159).
                 360px에서 두 줄로 넘어가 마지막 글자 하나만 떨어지므로 단어 단위로 끊고 두 줄 길이를 맞춘다(break-keep·text-balance) */}
             {selectedRecipe.releaseAt && (
               <p className="text-xs text-muted text-center break-keep text-balance">{d.combine.testMixPreNotice}</p>
             )}
           </div>
+
+          {/* 유의사항 — 버튼 아래 구역(사용자 지시 2026-11-10, 티켓 20261110_1757). 첫 줄은 이전에 버튼 아래 한 줄로 있던 재료 소각 안내(티켓 20260924_0813)다.
+              확률·결과가 갈리는 내용은 싣지 않는다 */}
+          <section className="bg-surface px-4 py-6" aria-labelledby="combine-notice-title">
+            <h2 id="combine-notice-title" className="m-0 text-base font-semibold text-foreground">
+              {d.combine.notice.title}
+            </h2>
+            <ul className="mt-3 mb-0 list-disc space-y-2 pl-5 text-sm text-muted break-keep">
+              {hasItemSlot && <li>{d.combine.burnNotice}</li>}
+              {hasKeptSlot && <li>{d.combine.notice.keptBadges}</li>}
+              <li>{d.combine.notice.lockedItem}</li>
+              <li>{d.combine.notice.noSpace}</li>
+              <li>{d.combine.notice.pendingExists}</li>
+            </ul>
+          </section>
 
           {/*
             가방 — 슬롯 하나를 지정해서 여는 시트. 칸의 «+»를 눌렀을 때 쓸 수 있는 행이 둘 이상일 때만 열리고,
