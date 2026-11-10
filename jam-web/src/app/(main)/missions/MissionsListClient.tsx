@@ -121,7 +121,7 @@ const TABS: SlidingTabItem<Tab>[] = [
 
 // 기간 텍스트 — 완료 건은 완료일, ended 탭이면 tagEnded, 상시면 tagPermanent, 그 외 N일 N시간 남음
 function periodText(m: MissionListItem, tab: Tab): string {
-  // 20260825_028: 완료한 상시 미션은 "종료됨"이 아니라 언제 완료했는지를 보여준다
+  // 20260825_028: 완료한 상시 미션은 "종료"가 아니라 언제 완료했는지를 보여준다
   // (상태 뱃지가 이미 '완료'를 표시하므로 여기선 날짜만 — 날짜는 직관적인 한국어 형태로)
   if (m.done) {
     return m.completedAt
