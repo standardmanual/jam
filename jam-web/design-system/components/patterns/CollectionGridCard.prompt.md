@@ -26,4 +26,4 @@
 
 그리드 레이아웃은 호출부에서 결정한다 (예: `grid-template-columns: repeat(2, 1fr)`).
 썸네일은 투명 배경이라 카드의 흰 면이 그대로 비친다 — 배지 이미지가 투명 PNG인 경우 자연스럽게 보임.
-진행 바는 `ProgressBar`(트랙 `--border`, 필 `--accent`, 높이 12px)를 쓴다.
+진행 바는 `ProgressBar`(트랙 `--border`, 필 강조색 그린 `--jam-green`, 높이 12px)를 쓴다.

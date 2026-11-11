@@ -83,7 +83,8 @@ export default function CollectionGridCard({
       {/* 진행 바 + 카운트 한 행 */}
       {!hideProgress && (
         <div className="flex items-center gap-2">
-          <ProgressBar percent={pct} height={12} />
+          {/* 채움은 강조색 그린이다(2026-11-11 사용자 지시, 티켓 20261111_1005) — 컬렉션 상세·인벤토리의 바와 같다 */}
+          <ProgressBar percent={pct} height={12} color="var(--jam-green)" />
           <span className="text-xs text-[color:var(--link)] font-bold leading-none tabular-nums shrink-0">
             {collected}/{total}
           </span>

@@ -23,7 +23,7 @@ const TAG_STYLE = {
  * 썸네일 좌상단: 등급 태그(선택) + 완성 태그(선택)
  *
  * 면 (티켓 20261015_2133): BadgeGridCard와 같은 면 — --card-bg(흰) 면, 외곽선 없음, 반경 --radius-2xl + 안쪽 여백 12, 그림자 없음.
- * 진행 바는 직접 그리지 않고 ProgressBar(트랙 --border, 필 --accent)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙이다.
+ * 진행 바는 직접 그리지 않고 ProgressBar(트랙 --border, 필 강조색 그린 --jam-green, 2026-11-11 사용자 지시)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙·필이다.
  *
  * Props:
  *   rarity     — 최초 등록 아이템배지 기준 컬렉션 등급 (선택)
@@ -124,7 +124,7 @@ export function CollectionGridCard({
 
       {/* 진행 바 + 카운트 한 행 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
-        <ProgressBar percent={pct} height={12} />
+        <ProgressBar percent={pct} height={12} color="var(--jam-green)" />
         <span style={{
           fontSize: 'var(--text-xs)',
           color: 'var(--link)',

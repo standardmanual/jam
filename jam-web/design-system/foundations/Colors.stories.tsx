@@ -136,10 +136,10 @@ function ColorsPage() {
         <Swatch token="--accent-soft-hover" desc="accent-soft의 hover 면" />
       </Section>
 
-      <Section title="강조색 5가지 (정의만 · 사용처 미지정 — 사용자가 따로 지정)">
+      <Section title="강조색 5가지 (사용처는 사용자가 따로 지정)">
         <TagChip token="--jam-red" note="사용처 미지정" />
         <TagChip token="--jam-yellow" note="사용처 미지정" />
-        <TagChip token="--jam-green" note="사용처 미지정" />
+        <TagChip token="--jam-green" note="컬렉션·인벤토리 진행도 바 채움" />
         <TagChip token="--jam-purple" note="사용처 미지정" />
         <TagChip token="--jam-blue" note="사용처 미지정" />
       </Section>
