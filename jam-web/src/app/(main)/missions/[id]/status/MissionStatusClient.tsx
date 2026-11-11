@@ -127,8 +127,8 @@ function MyHero({ avatarUrl, name, children }: { avatarUrl: string | null; name:
   )
 }
 
-/** 카드 헤더 — 제목(왼쪽, 굵게)과 «참가자 N명»(오른쪽, 12px 회색)을 기준선에 맞춘다 */
-function CardHeader({ title, total }: { title: string; total: number }) {
+/** 카드 헤더 — 제목(왼쪽, 굵게)과 인원 표기(오른쪽, 12px 회색)를 기준선에 맞춘다 */
+function CardHeader({ title, countLabel }: { title: string; countLabel: string }) {
   return (
     <div className="flex items-baseline justify-between mb-2">
       <p
@@ -138,7 +138,7 @@ function CardHeader({ title, total }: { title: string; total: number }) {
         {title}
       </p>
       <span className="text-xs text-muted tabular-nums whitespace-nowrap">
-        {t(d.missions.statusParticipants, { count: total })}
+        {countLabel}
       </span>
     </div>
   )
@@ -255,7 +255,10 @@ export default function MissionStatusClient({
               <div className={cardArea} style={cardAreaStyle}>
                 {entries.length > 0 ? (
                   <Card style={translucent}>
-                    <CardHeader title={d.missions.statusAllRanks} total={data.totalParticipants} />
+                    <CardHeader
+                      title={d.missions.statusAllRanks}
+                      countLabel={t(d.missions.statusParticipants, { count: data.totalParticipants })}
+                    />
                     {/* 행 면이 tint(테두리 없음)라 행 사이 간격(8px)이 있어야 행이 하나로 붙어 보이지 않는다 — 홈 ListCard 행형과 같다 */}
                     <div className="flex flex-col gap-2">
                       {entries.map(entry => (
@@ -288,6 +291,8 @@ export default function MissionStatusClient({
           const achieved = me?.achieved ?? false
           // 서버가 내 행을 뺀 뒤 달성한 사람을 먼저(먼저 달성한 순) 정렬해 visible_rank_count까지 잘라 보낸다. 내 행은 위쪽 알약이 대신한다
           const others = data.entries
+          // totalParticipants는 나를 포함한 수다. 목록에는 내 행이 없으므로 내가 참가자일 때 1을 뺀 «다른 참가자» 수를 보여 준다
+          const otherCount = me ? Math.max(data.totalParticipants - 1, 0) : data.totalParticipants
 
           return (
             <>
@@ -310,7 +315,10 @@ export default function MissionStatusClient({
               <div className={cardArea} style={cardAreaStyle}>
                 {others.length > 0 ? (
                   <Card style={translucent}>
-                    <CardHeader title={d.missions.statusAchievementLabel} total={data.totalParticipants} />
+                    <CardHeader
+                      title={d.missions.statusAchievementLabel}
+                      countLabel={t(d.missions.statusOtherParticipants, { count: otherCount })}
+                    />
                     <div className="flex flex-col gap-2">
                       {others.map(e => (
                         <AchievementRow key={e.userId} e={e} />

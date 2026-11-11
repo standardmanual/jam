@@ -83,7 +83,8 @@ describe('MissionStatusClient — 랭킹형', () => {
   it('«전체 랭킹» 카드에 1위부터 모든 참가자가 나오고 내 행에만 «나» 칩이 있다', () => {
     const html = render(base)
     expect(html).toContain('전체 랭킹')
-    expect(html).toContain('참가자 3명')
+    expect(html).toContain('>참가자 3명')
+    expect(html).not.toContain('다른 참가자')
     expect(html).toContain('var(--card-bg-translucent)')
     for (const id of ['a', 'me', 'c']) expect(html).toContain(`이름-${id}`)
     expect(html.match(/>나<\/span>/g)).toHaveLength(1)
@@ -129,13 +130,20 @@ describe('MissionStatusClient — 달성형', () => {
       totalParticipants: 3,
     })
     expect(html).toContain('달성 현황')
-    expect(html).toContain('참가자 3명')
+    // totalParticipants(3)는 나를 포함한 수라 목록(2행)과 맞도록 «다른 참가자 2명»으로 보인다
+    expect(html).toContain('다른 참가자 2명')
+    expect(html).not.toContain('>참가자 3명')
     expect(html.indexOf('이름-a')).toBeGreaterThan(-1)
     expect(html.indexOf('이름-a')).toBeLessThan(html.indexOf('이름-c'))
     // 내 이름은 위쪽 «나» 영역에 한 번만 나온다(목록에는 없다)
     expect(html.match(/이름-me/g)).toHaveLength(1)
     expect(html).not.toContain('>나</span>')
     expect(html).not.toContain('— 나 —')
+  })
+
+  it('내가 참가자가 아니면(me가 null) «다른 참가자 N명»에 totalParticipants를 그대로 쓴다', () => {
+    const html = render({ type: 'achievement', entries: [person('a', true), person('c', false)], me: null, totalParticipants: 2 })
+    expect(html).toContain('다른 참가자 2명')
   })
 
   it('내가 참가 중인데 다른 참가자가 없으면 «아직 다른 참가자가 없어요» EmptyState가 나온다', () => {

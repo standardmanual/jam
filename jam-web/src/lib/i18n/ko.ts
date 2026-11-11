@@ -882,6 +882,8 @@ export const ko = {
 
     statusAchievementLabel: '달성 현황',
     statusParticipants: '참가자 {count}명',
+    /** 달성형 «달성 현황» 카드 오른쪽 표기 — 목록에서 내 행이 빠지므로 나를 뺀 수(티켓 20261111_2049) */
+    statusOtherParticipants: '다른 참가자 {count}명',
     statusAllRanks: '전체 랭킹',
     /** 랭킹형 상황 화면 위쪽 «내 순위» 라벨(티켓 20261111_2049) */
     statusMyRankLabel: '내 순위',
