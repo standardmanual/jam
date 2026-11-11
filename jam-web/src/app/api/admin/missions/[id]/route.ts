@@ -22,7 +22,7 @@ import type { MissionRow } from '@/types/database'
 import type { MissionType } from '@/types/database'
 
 // PATCH /api/admin/missions/[id] — 기존 미션 수정.
-// 티켓 20260813_001: status_display_type을 'individual'로 전환하는 등 이미 활성화된
+// 티켓 20260813_001: status_display_type을 바꾸는 등 이미 활성화된
 // 미션도 운영자가 수정할 수 있어야 해서 신설.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireAdmin()

@@ -1,7 +1,7 @@
 /**
  * 미션 상황 화면 서버 분기 (티켓 20261111_0850)
  *
- * 랭킹형만 이 화면을 연다. 달성형·개인형은 상세에 «랭킹» 버튼이 없고, 알림(미션 종료·팔로잉 미션 완료)이나 직접 주소로 들어와도
+ * 랭킹형만 이 화면을 연다. 달성형은 상세에 «랭킹» 버튼이 없고, 알림(미션 종료·팔로잉 미션 완료)이나 직접 주소로 들어와도
  * 미션 상세로 돌려보낸다. 미참가자도 상세로 돌려보낸다(기존 동작).
  *
  * 페이지 함수를 모의 Supabase로 직접 호출하고, 클라이언트 컴포넌트는 그리지 않는다.
@@ -63,7 +63,7 @@ describe('미션 상황 화면 — 서버 분기', () => {
     expect(element.props.displayType).toBe('ranking')
   })
 
-  it.each(['achievement', 'individual'])('%s 미션은 미션 상세로 돌려보낸다', async (displayType) => {
+  it.each(['achievement'])('%s 미션은 미션 상세로 돌려보낸다', async (displayType) => {
     state.tables.missions = mission(displayType)
     await expect(open()).rejects.toThrow('NEXT_REDIRECT:/missions/m1')
   })

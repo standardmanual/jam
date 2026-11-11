@@ -67,7 +67,7 @@ const MIXED = {
   condition_json: { jam_period_earned: 300, combine_success_count: 2 },
 }
 const PLAIN = { id: 'm-plain', title: '달리기', status_display_type: 'ranking', condition_json: { distance_km: 5 } }
-const INDIVIDUAL = { id: 'm-indiv', title: '개인형', status_display_type: 'individual', condition_json: { distance_km: 1 } }
+const ACHIEVEMENT = { id: 'm-ach', title: '달성형', status_display_type: 'achievement', condition_json: { distance_km: 1 } }
 
 describe('isPeriodEarnedMission', () => {
   it('조건에 jam_period_earned가 있으면 true, 없으면 false', async () => {
@@ -191,7 +191,7 @@ describe('rankingModeMissionRejection — PATCH가 본문에 미션이 없어도
 
 describe('fetchRankingMissionOptions', () => {
   it('랭킹형 미션 가운데 기간 동안 모은 잼 미션만 뺀 id·제목을 돌려준다', async () => {
-    const { client, log } = fakeMissions([PERIOD, MIXED, PLAIN, INDIVIDUAL])
+    const { client, log } = fakeMissions([PERIOD, MIXED, PLAIN, ACHIEVEMENT])
     const options = await fetchRankingMissionOptions(client)
 
     expect(options).toEqual([{ id: 'm-plain', title: '달리기' }])
@@ -199,7 +199,7 @@ describe('fetchRankingMissionOptions', () => {
   })
 
   it('수정 화면: 지금 연결된 기간 동안 모은 잼 미션은 «연결할 수 없는 미션» 표시와 함께 남기고, 다른 모은 잼 미션은 계속 뺀다 (4회)', async () => {
-    const { client } = fakeMissions([PERIOD, MIXED, PLAIN, INDIVIDUAL])
+    const { client } = fakeMissions([PERIOD, MIXED, PLAIN, ACHIEVEMENT])
     const options = await fetchRankingMissionOptions(client, 'm-period')
 
     expect(options).toEqual([
@@ -209,7 +209,7 @@ describe('fetchRankingMissionOptions', () => {
   })
 
   it('수정 화면: 지금 연결된 미션이 일반 미션이거나 없으면 목록은 생성 화면과 같다', async () => {
-    const { client } = fakeMissions([PERIOD, MIXED, PLAIN, INDIVIDUAL])
+    const { client } = fakeMissions([PERIOD, MIXED, PLAIN, ACHIEVEMENT])
     expect(await fetchRankingMissionOptions(client, 'm-plain')).toEqual([{ id: 'm-plain', title: '달리기' }])
     expect(await fetchRankingMissionOptions(client, null)).toEqual([{ id: 'm-plain', title: '달리기' }])
     expect(await fetchRankingMissionOptions(client, undefined)).toEqual([{ id: 'm-plain', title: '달리기' }])

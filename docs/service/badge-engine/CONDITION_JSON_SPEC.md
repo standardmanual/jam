@@ -655,7 +655,7 @@ interface BadgeGateRequirement {
 
 ### 7.3 순위형 금지
 
-미션의 틀(`status_display_type`)이 `ranking`이면 아래 조건을 저장하지 못한다(오류 문구는 현상·원인·해결책 순서). 달성형·개인형은 저장된다.
+미션의 틀(`status_display_type`)이 `ranking`이면 아래 조건을 저장하지 못한다(오류 문구는 현상·원인·해결책 순서). 달성형은 저장된다.
 
 - 밤 조건: `time_range`, `time_band_counts`의 구간, 주기 안 부분집합의 시간대(`streak_subset.time_range`)가 22:00~05:00(KST)과 겹치는 것. 시각은 배지 엔진 `inTimeRange`와 같은 함수(`timeBands.ts`의 `isMinuteInTimeRange`)로 읽는다 — `HH:MM` 외에 `HH:MM:SS`·`24:00`도 받고, 양 끝을 포함하며, 끝이 시작보다 이르면 자정을 넘기는 구간이다(티켓 20261019_1312 2회). 그래서 22:00에 시작한 활동을 세는 `18:00~22:00`과 `20:00~24:00`, `22:00:00~05:00:00`은 밤 조건이고, 밤 시각을 하나도 건드리지 않는 `18:00~21:59`, `05:00~08:00`은 밤이 아니다. `distinct_time_bands`는 서로 다른 시간대의 수만 세므로 밤 조건이 아니다.
 - 캡슐 연 횟수: `capsule_open_count`.

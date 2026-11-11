@@ -361,7 +361,7 @@ function labelKeys(keys: string[]): string {
 //
 // 밤 조건과 캡슐 연 횟수는 순위형 미션의 기준으로 쓰지 않는다(JAM 2.0 운영 로직 13.2절). 밤 조건은
 // 순위를 올리려고 늦은 밤에 무리해서 움직이게 만들 수 있고, 캡슐 연 횟수는 나중에 캡슐을 빨리 채워 주는
-// 유료 상품이 생기면 돈을 낸 유저가 순위에서 유리해진다. 달성형과 개인형은 허용한다.
+// 유료 상품이 생기면 돈을 낸 유저가 순위에서 유리해진다. 달성형은 허용한다.
 
 /** 미션 틀을 비워서 만들 때 DB가 채우는 값(마이그레이션 046 `DEFAULT 'ranking'`) — 라우트와 등록 검사가 같은 값을 쓴다 */
 export const DEFAULT_MISSION_STATUS_DISPLAY_TYPE: MissionStatusDisplayType = 'ranking'
@@ -414,7 +414,7 @@ export function usesNightCondition(condition: unknown): boolean {
 
 /**
  * 순위형 미션에 쓸 수 없는 조건(밤 조건, 캡슐 연 횟수)이 있으면 오류 문장을, 없으면 null을 돌려준다.
- * 틀이 순위형이 아니면(달성형·개인형·정해지지 않음) 항상 null이다.
+ * 틀이 순위형이 아니면(달성형·정해지지 않음) 항상 null이다.
  *
  * `checkMissionCondition`이 이 함수를 부르고, PATCH가 틀만 바뀔 때(조건은 기존 행 그대로)는 다른 검사 없이
  * 이 함수만 직접 부른다 — 기존 행의 다른 문제(옛 키 등)가 틀을 바꾸는 수정까지 막지 않게 한다.
@@ -440,7 +440,7 @@ export function rankingConditionError(
   }
   if (usedKeys.length === 0) return null
 
-  return `조건 JSON을 저장하지 못했어요. 순위형 미션에는 쓸 수 없는 조건이 있어요 — ${usedKeys.join(', ')}. ${reasons.join(' ')} 미션 틀을 달성형이나 개인형으로 바꾸거나, 이 조건을 빼고 다시 저장해주세요.`
+  return `조건 JSON을 저장하지 못했어요. 순위형 미션에는 쓸 수 없는 조건이 있어요 — ${usedKeys.join(', ')}. ${reasons.join(' ')} 미션 틀을 달성형으로 바꾸거나, 이 조건을 빼고 다시 저장해주세요.`
 }
 
 /**

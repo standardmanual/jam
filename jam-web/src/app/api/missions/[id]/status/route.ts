@@ -41,7 +41,7 @@ export async function GET(_req: Request, { params }: Params) {
     .maybeSingle() as { data: { id: string; status_display_type: MissionStatusDisplayType; visible_rank_count: number | null } | null }
 
   if (!missionRaw) return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
-  // 달성형·개인형은 상황 화면을 주지 않는다(상세에 «랭킹» 버튼이 없고 화면 페이지도 상세로 돌려보낸다, 티켓 20261111_0850). 참가자·정지 조회에 들어가기 전에 끊는다
+  // 달성형은 상황 화면을 주지 않는다(상세에 «랭킹» 버튼이 없고 화면 페이지도 상세로 돌려보낸다, 티켓 20261111_0850). 참가자·정지 조회에 들어가기 전에 끊는다
   if (missionRaw.status_display_type !== 'ranking') return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
 
   // 트라이브 제한 (티켓 20261019_1311) — 참가할 수 있는 트라이브가 아닌 미션은 «없는 미션»이다(존재를 알리지 않는다).

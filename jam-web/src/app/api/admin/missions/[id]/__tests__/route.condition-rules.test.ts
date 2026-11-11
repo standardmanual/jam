@@ -99,7 +99,7 @@ describe('PATCH /api/admin/missions/[id] — 순위형 금지 (갱신 후 상태
 
   it('조건과 틀을 함께 보내면 기존 행을 조회하지 않고 그 조합으로 검사한다', async () => {
     const mission = { mission_type: 'engine_condition' }
-    const ok = await patch({ ...mission, condition_json: NIGHT, status_display_type: 'individual' })
+    const ok = await patch({ ...mission, condition_json: NIGHT, status_display_type: 'achievement' })
     expect(ok.status).toBe(200)
     const rejected = await patch({ ...mission, condition_json: NIGHT, status_display_type: 'ranking' })
     expect(rejected.status).toBe(400)
@@ -240,7 +240,7 @@ describe('PATCH /api/admin/missions/[id] — DB 기록 키 기준 값 검증 (�
 
   it('틀만 바꾸는 수정도 기존 조건의 기준 값은 다시 검사하지 않는다 (순위형 금지만 본다)', async () => {
     existing({ mission_type: 'engine_condition', condition_json: { combine_success_count: 0 }, status_display_type: 'achievement' })
-    const res = await patch({ status_display_type: 'individual' })
+    const res = await patch({ status_display_type: 'achievement' })
     expect(res.status).toBe(200)
   })
 

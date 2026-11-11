@@ -36,7 +36,7 @@ function render(
     completed?: boolean
     locked?: boolean
     missionType?: string
-    statusDisplayType?: 'ranking' | 'achievement' | 'individual'
+    statusDisplayType?: 'ranking' | 'achievement'
     progressValue?: number
     conditionJson?: Record<string, unknown>
     conditionBullets?: string[] | null
@@ -356,7 +356,7 @@ describe('MissionDetailClient 랭킹 보기 버튼 (티켓 20261111_0850)', () =
     expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'ranking' })).not.toContain(LINK)
   })
 
-  it.each(['achievement', 'individual'] as const)('%s 미션에는 참가 중이거나 완료해도 버튼이 없다', (statusDisplayType) => {
+  it.each(['achievement'] as const)('%s 미션에는 참가 중이거나 완료해도 버튼이 없다', (statusDisplayType) => {
     expect(render(CONDITION_TEXT, { participating: true, statusDisplayType })).not.toContain(LINK)
     expect(render(CONDITION_TEXT, { completed: true, statusDisplayType })).not.toContain(LINK)
   })

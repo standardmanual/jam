@@ -112,7 +112,7 @@ docs/assets/mission-bundles/<묶음 ID>/
 | `ends_at` | 선택 | ISO 8601 | 없으면 종료일 없는 상시 미션. 있으면 `starts_at`보다 뒤여야 한다 |
 | `reward_points` | 선택 | 0 이상 정수 | 없으면 null |
 | `reward_badge_ids` | 선택 | UUID 배열 | 기본 `[]`. 같은 id를 두 번 넣을 수 없고, 각 배지가 삭제되지 않은 채 있는지 DB를 읽어 확인한다 |
-| `status_display_type` | 선택 | `ranking` \| `achievement` \| `individual` | 기본 `ranking` |
+| `status_display_type` | 선택 | `ranking` \| `achievement` | 기본 `ranking` |
 | `visible_rank_count` | 선택 | 1 이상 정수 | 없으면 전체 노출(null) |
 | `max_completions` | 선택 | 1 이상 정수 | 없으면 제한 없음(null) |
 | `gate_axis`·`gate_stage` | 선택 | 문자열 | 게이트 미션일 때만. 둘은 짝이다. `findGateMissionSaveError`가 판정한다(축 형태 `종목:축이름`, 단계 `rare_to_epic`·`epic_to_mystic`) |

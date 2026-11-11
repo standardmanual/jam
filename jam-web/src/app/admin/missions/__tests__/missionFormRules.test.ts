@@ -133,19 +133,19 @@ const cases: Array<[string, () => void]> = [
     assert.ok(error)
     assert.ok(error.includes('지금 랭킹형으로 정해져 있어서'))
     assert.ok(error.includes('밤 조건'))
-    assert.ok(error.includes('달성형이나 개인형으로 바꿔야 저장할 수 있어요'))
+    assert.ok(error.includes('달성형으로 바꿔야 저장할 수 있어요'))
   }],
   ['틀 선택 안내: 랭킹형이 아니면 이유만, 랭킹형이면 바꾸라는 말을 덧붙이고, 막힐 조건이 없으면 없다', () => {
     const reason = rankingBlockReason(CAPSULE)
     assert.strictEqual(rankingFrameNotice('achievement', CAPSULE), reason)
-    assert.strictEqual(rankingFrameNotice('individual', CAPSULE), reason)
+    assert.strictEqual(rankingFrameNotice('achievement', CAPSULE), reason)
     const onRanking = rankingFrameNotice('ranking', CAPSULE)
     assert.ok(onRanking && onRanking.startsWith(reason as string) && onRanking.includes('바꿔야 저장할 수 있어요'))
     assert.strictEqual(rankingFrameNotice('ranking', MORNING), null)
     assert.strictEqual(rankingFrameNotice('achievement', null), null)
   }],
-  ['저장 전 검사: 달성형·개인형은 밤 조건과 캡슐 연 횟수를 막지 않는다', () => {
-    for (const frame of ['achievement', 'individual']) {
+  ['저장 전 검사: 달성형은 밤 조건과 캡슐 연 횟수를 막지 않는다', () => {
+    for (const frame of ['achievement']) {
       for (const condition of [NIGHT, CAPSULE, BOTH]) {
         assert.strictEqual(
           saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition }),
@@ -163,7 +163,7 @@ const cases: Array<[string, () => void]> = [
   }],
   ['저장 전 검사: 입력 범위를 벗어난 위임 키 값은 어떤 틀에서도 저장 전에 알린다 (20261021_1114 1회)', () => {
     const condition = buildMissionConditionJson('engine_condition', fields({ distinctTimeBands: '9', avgWatts: '300' }))
-    for (const frame of ['achievement', 'individual', 'ranking']) {
+    for (const frame of ['achievement', 'ranking']) {
       const error = saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
       assert.ok(error && error.includes('서로 다른 시간대 9개(허용 범위 2~6개)'), `${frame}: ${error}`)
       assert.ok(error.includes('범위 안의 값으로 고쳐서 다시 저장해 주세요'))
@@ -179,7 +179,7 @@ const cases: Array<[string, () => void]> = [
       'engine_condition',
       fields({ weeklyActiveDays: '8', jamPeriodEarned: '0', checkinBadgeCountNames: '성수역', checkinBadgeCountCount: '0' })
     )
-    for (const frame of ['achievement', 'individual', 'ranking']) {
+    for (const frame of ['achievement', 'ranking']) {
       const error = saveError({ scope: 'common', allowedTribeIds: [], statusDisplayType: frame, condition })
       assert.ok(error, frame)
       assert.ok(error.includes('주간 활동일 8일(허용 범위 1~7일의 정수)'), `${frame}: ${error}`)
@@ -209,7 +209,7 @@ const cases: Array<[string, () => void]> = [
     const condition = buildMissionConditionJson('engine_condition', conditionFields)
     assert.deepStrictEqual(condition, { distinct_time_bands: 2 }) // 읽기에서 이미 잘렸다
     assert.strictEqual(missionConditionRangeError(condition), null) // 조립된 값만 보면 2~6 범위 안이라 통과한다
-    for (const frame of ['achievement', 'individual', 'ranking']) {
+    for (const frame of ['achievement', 'ranking']) {
       const error = saveError({
         scope: 'common',
         allowedTribeIds: [],

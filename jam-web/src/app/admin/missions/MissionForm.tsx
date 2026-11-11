@@ -67,8 +67,7 @@ function formatBadgeLabel(b?: BadgeSearchResult): string {
 // 이 화면은 원래 한글 라벨 맵이 없어 목록·저작 폼에 원시값(`poi_visit`)이 그대로 노출됐다.
 const statusDisplayTypes = [
   { value: 'ranking', label: '랭킹형 (등수/진행값)' },
-  { value: 'achievement', label: '달성형 (완료 여부)' },
-  { value: 'individual', label: '개인형 (본인 진행상황만)' },
+  { value: 'achievement', label: '달성형 (랭킹 없음)' },
 ] as const
 
 // 미션 노출 옵션 (티켓 20260912_0139) — MissionTable.tsx 노출 컬럼에서도 재사용

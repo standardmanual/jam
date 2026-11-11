@@ -6,7 +6,7 @@
  *  - 이용 정지 중인 참가자는 다른 유저가 보는 순위와 `totalParticipants`에서 빠진다
  *  - 정지 중인 본인에게는 본인이 계속 보이고(`me`·`entries`), 정지가 풀리면 다시 보인다
  *  - 정지 여부를 읽지 못하면 목록을 내리지 않는다(500)
- *  - 랭킹형이 아닌 미션(달성형·개인형)은 404(없는 미션)이고 정지 조회를 하지 않는다
+ *  - 랭킹형이 아닌 미션(달성형)은 404(없는 미션)이고 정지 조회를 하지 않는다
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/missions/[id]/status/__tests__/route.test.ts"
  */
@@ -19,7 +19,7 @@ const OTHER = 'user-other'
 const THIRD = 'user-third'
 
 const state = vi.hoisted(() => ({
-  displayType: 'ranking' as 'ranking' | 'achievement' | 'individual',
+  displayType: 'ranking' as 'ranking' | 'achievement',
   mine: true,
   /** 참가자 (user_mission_participations 전체) */
   participations: [] as { user_id: string; progress_value: number }[],
@@ -201,7 +201,7 @@ describe('GET /api/missions/[id]/status — 이용 정지 유저 순위 제외',
     expect(body).toEqual({ error: d.missions.statusLoadError })
   })
 
-  it.each(['achievement', 'individual'] as const)('%s 미션은 «없는 미션» 404이고 정지 조회를 하지 않는다 (티켓 20261111_0856)', async (displayType) => {
+  it.each(['achievement'] as const)('%s 미션은 «없는 미션» 404이고 정지 조회를 하지 않는다 (티켓 20261111_0856)', async (displayType) => {
     state.displayType = displayType
     const { status, body } = await getStatus()
     expect(status).toBe(404)

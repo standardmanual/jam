@@ -57,7 +57,7 @@ export const MISSION_OPTIONAL_FIELDS = [
   'exposure_at',
 ]
 
-export const STATUS_DISPLAY_TYPES = ['ranking', 'achievement', 'individual']
+export const STATUS_DISPLAY_TYPES = ['ranking', 'achievement']
 export const EXPOSURE_MODES = ['hidden', 'start_date', 'scheduled']
 
 /** 어드민 검증 함수 결과(`{ error, warning }`)를 묶음 오류·주의 목록에 옮긴다. */

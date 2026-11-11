@@ -76,13 +76,13 @@ describe('checkRankingModeIntegrity — 기간 동안 모은 잼 미션 (티켓 
   })
 
   it('랭킹형이 아닌 미션은 기존 경고가 먼저다', async () => {
-    const individual = clientReturning({
-      data: { status_display_type: 'individual', condition_json: { jam_period_earned: 500 } },
+    const achievement = clientReturning({
+      data: { status_display_type: 'achievement', condition_json: { jam_period_earned: 500 } },
       error: null,
     })
-    expect(await checkRankingModeIntegrity(missionMode(), individual)).toEqual({
+    expect(await checkRankingModeIntegrity(missionMode(), achievement)).toEqual({
       code: 'mission_not_ranking_type',
-      missionStatusDisplayType: 'individual',
+      missionStatusDisplayType: 'achievement',
     })
   })
 })

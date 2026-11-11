@@ -713,8 +713,8 @@ export type MissionType =
   | 'engine_condition'
 export type MissionRewardType = 'badge' | 'points' | 'item_badge'
 /** Phase13: 미션 상황 표시 방식 — 랭킹형(등수) / 달성형(완료 여부) */
-/** individual: 개인형 — 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환 (티켓 20260813_001) */
-export type MissionStatusDisplayType = 'ranking' | 'achievement' | 'individual'
+/** individual(개인형)은 달성형으로 통합해 없앴다(티켓 20261111_0900). 틀의 의미는 랭킹형인가 아닌가다 */
+export type MissionStatusDisplayType = 'ranking' | 'achievement'
 
 /**
  * 티켓 20260912_0139: 관리자 수동 노출 제어 모드.

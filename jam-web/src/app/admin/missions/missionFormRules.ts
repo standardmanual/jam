@@ -69,13 +69,13 @@ export function rankingFrameNotice(statusDisplayType: string, condition: unknown
   const reason = rankingBlockReason(condition)
   if (!reason) return null
   if (statusDisplayType !== 'ranking') return reason
-  return `${reason} 지금 랭킹형으로 정해져 있어서, 달성형이나 개인형으로 바꿔야 저장할 수 있어요.`
+  return `${reason} 지금 랭킹형으로 정해져 있어서, 달성형으로 바꿔야 저장할 수 있어요.`
 }
 
 export interface MissionFormSaveInput {
   scope: MissionScope
   allowedTribeIds: readonly string[]
-  /** 고른 미션 상황 표시 방식(`ranking` | `achievement` | `individual`) */
+  /** 고른 미션 상황 표시 방식(`ranking` | `achievement`) */
   statusDisplayType: string
   /** 저장될 condition_json (폼 미리보기) */
   condition: unknown

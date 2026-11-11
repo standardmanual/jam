@@ -79,7 +79,7 @@ describe('POST /api/admin/missions — 순위형 금지', () => {
     expect(state.inserts).toHaveLength(0)
   })
 
-  it.each(['achievement', 'individual'])('%s는 밤 조건과 캡슐 연 횟수를 저장한다', async (frame) => {
+  it.each(['achievement'])('%s는 밤 조건과 캡슐 연 횟수를 저장한다', async (frame) => {
     const night = await post({ ...base, status_display_type: frame })
     expect(night.status).toBe(200)
     const capsule = await post({ ...base, status_display_type: frame, condition_json: { capsule_open_count: 3 } })
@@ -155,8 +155,8 @@ describe('POST /api/admin/missions — DB 기록 키', () => {
 })
 
 describe('POST /api/admin/missions — 기간 동안 모은 잼 (티켓 20261019_1445 3-A회)', () => {
-  it('순위형·달성형·개인형 어느 틀로든 경고 없이 저장한다 (모은 잼은 순위 기준으로 쓸 수 있다)', async () => {
-    for (const frame of ['ranking', 'achievement', 'individual']) {
+  it('순위형·달성형 어느 틀로든 경고 없이 저장한다 (모은 잼은 순위 기준으로 쓸 수 있다)', async () => {
+    for (const frame of ['ranking', 'achievement']) {
       state.inserts = []
       const condition = { jam_period_earned: 500 }
       const res = await post({ ...base, status_display_type: frame, condition_json: condition })

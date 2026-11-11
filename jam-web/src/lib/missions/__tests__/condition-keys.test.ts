@@ -454,8 +454,8 @@ const cases: Array<[string, () => void]> = [
       assert.ok(error, `${name}: ${JSON.stringify(condition)}가 통과됐다`)
       assert.ok(error!.includes(name), `문제 키가 문구에 없다: ${error}`)
     }
-    // 같은 조건을 달성형·개인형에는 저장할 수 있다
-    for (const frame of ['achievement', 'individual']) {
+    // 같은 조건을 달성형에는 저장할 수 있다
+    for (const frame of ['achievement']) {
       assert.strictEqual(checkMissionCondition('engine_condition', conditions[0][1], frame).error, null)
     }
   }],
@@ -471,7 +471,7 @@ const cases: Array<[string, () => void]> = [
       assert.strictEqual(warning, null)
       assert.ok(error!.startsWith('조건 JSON을 저장하지 못했어요.'), `현상이 없다: ${error}`)
       assert.ok(error!.includes('늦은 밤'), `원인이 없다: ${error}`)
-      assert.ok(error!.includes('달성형이나 개인형'), `해결책이 없다: ${error}`)
+      assert.ok(error!.includes('달성형으로'), `해결책이 없다: ${error}`)
       assert.ok(error!.includes(name), `문제 키가 문구에 없다: ${error}`)
     }
   }],
@@ -480,7 +480,7 @@ const cases: Array<[string, () => void]> = [
     assert.ok(error, '순위형 캡슐 횟수가 통과됐다')
     assert.ok(error!.includes('capsule_open_count'), `문제 키가 문구에 없다: ${error}`)
     assert.ok(error!.includes('순위에서 유리'), `원인이 없다: ${error}`)
-    assert.ok(error!.includes('달성형이나 개인형'), `해결책이 없다: ${error}`)
+    assert.ok(error!.includes('달성형으로'), `해결책이 없다: ${error}`)
   }],
   ['순위형 + 밤 조건과 캡슐 횟수가 함께 있으면 두 이유를 모두 알린다', () => {
     const { error } = checkMissionCondition(
@@ -490,13 +490,13 @@ const cases: Array<[string, () => void]> = [
     )
     assert.ok(error!.includes('늦은 밤') && error!.includes('순위에서 유리'), error!)
   }],
-  ['달성형·개인형은 밤 조건과 캡슐 횟수를 저장할 수 있다', () => {
+  ['달성형은 밤 조건과 캡슐 횟수를 저장할 수 있다', () => {
     const condition = {
       time_range: { start: '22:00', end: '05:00' },
       time_band_counts: [{ start: '20:00', end: '05:00', count: 2 }],
       capsule_open_count: 3,
     } as unknown as MissionCondition
-    for (const frame of ['achievement', 'individual']) {
+    for (const frame of ['achievement']) {
       const { error } = checkMissionCondition('engine_condition', condition, frame)
       assert.strictEqual(error, null, `${frame}에서 막혔다: ${error}`)
     }
@@ -568,8 +568,8 @@ const cases: Array<[string, () => void]> = [
       assert.deepStrictEqual(result, { error: null, warning: null }, `${key}: ${JSON.stringify(result)}`)
     }
   }],
-  ['engine_condition + jam_period_earned → 경고도 오류도 없다 (순위형·달성형·개인형 어느 틀이든 저장할 수 있다)', () => {
-    for (const frame of ['ranking', 'achievement', 'individual']) {
+  ['engine_condition + jam_period_earned → 경고도 오류도 없다 (순위형·달성형 어느 틀이든 저장할 수 있다)', () => {
+    for (const frame of ['ranking', 'achievement']) {
       const result = checkMissionCondition('engine_condition', { jam_period_earned: 500 }, frame)
       assert.deepStrictEqual(result, { error: null, warning: null }, `${frame}: ${JSON.stringify(result)}`)
     }
@@ -662,7 +662,7 @@ const cases: Array<[string, () => void]> = [
     }
   }],
   ['순위 기준으로 쓰이는 jam_period_earned를 distance 미션에 넣으면 라벨과 함께 경고한다 (순위형 틀에서도 저장은 막지 않는다)', () => {
-    for (const frame of ['ranking', 'achievement', 'individual']) {
+    for (const frame of ['ranking', 'achievement']) {
       const { error, warning } = checkMissionCondition('distance', { distance_km: 10, jam_period_earned: 500 }, frame)
       assert.strictEqual(error, null, `${frame}: ${error}`)
       assert.ok(warning?.includes('기간 동안 모은 잼(jam_period_earned)'), String(warning))

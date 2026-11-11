@@ -112,7 +112,7 @@ describe('MissionForm — 순위형 제한 안내와 밤 조건 안전 안내', 
     const out = render({ mission: NIGHT_RANKING })
 
     expect(out).toContain('밤 조건은 순위를 올리려고 늦은 밤에 무리해서 움직이게 만들 수 있어서 랭킹형을 고를 수 없어요.')
-    expect(out).toContain('지금 랭킹형으로 정해져 있어서, 달성형이나 개인형으로 바꿔야 저장할 수 있어요.')
+    expect(out).toContain('지금 랭킹형으로 정해져 있어서, 달성형으로 바꿔야 저장할 수 있어요.')
     expect(out).toContain(NIGHT_SAFETY_NOTICE)
     // 안내가 있으면 «추천: 랭킹형»은 보이지 않는다
     expect(out).not.toContain('추천: 랭킹형')
@@ -128,7 +128,7 @@ describe('MissionForm — 순위형 제한 안내와 밤 조건 안전 안내', 
 
   it('캡슐 연 횟수 조건은 캡슐 이유를 보이고 밤 안전 안내는 붙이지 않는다', () => {
     const out = render({
-      mission: mission({ mission_type: 'engine_condition', status_display_type: 'individual', condition_json: { capsule_open_count: 3 } }),
+      mission: mission({ mission_type: 'engine_condition', status_display_type: 'achievement', condition_json: { capsule_open_count: 3 } }),
     })
 
     expect(out).toContain('캡슐 연 횟수는 캡슐을 빨리 채워 주는 상품이 생기면')
@@ -185,7 +185,7 @@ describe('MissionForm — 시간대·요일·계절·운동 속성 입력 칸 (�
   }
 
   function engine(condition: Record<string, unknown>): MissionRow {
-    return mission({ mission_type: 'engine_condition', status_display_type: 'individual', condition_json: condition })
+    return mission({ mission_type: 'engine_condition', status_display_type: 'achievement', condition_json: condition })
   }
 
   it('12개 키가 모두 든 미션은 입력 칸마다 기존 값을 채워 열고, 입력 칸이 없다는 보존 안내를 띄우지 않는다', () => {
@@ -261,7 +261,7 @@ describe('MissionForm — 기록으로 세는 조건 입력 칸 (티켓 20261021
   }
 
   function engine(condition: Record<string, unknown>): MissionRow {
-    return mission({ mission_type: 'engine_condition', status_display_type: 'individual', condition_json: condition })
+    return mission({ mission_type: 'engine_condition', status_display_type: 'achievement', condition_json: condition })
   }
 
   it('복합 조건 미션은 「기록으로 세는 조건」 구역과 한 줄 설명, 소제목 6개를 정해진 순서로 그린다', () => {

@@ -62,8 +62,7 @@ function gateMissionValueRule(type: GateMissionType): MissionConditionValueRule 
 }
 
 const STATUS_DISPLAY_TYPES = [
-  { value: 'individual', label: '개인형 (본인 진행상황만)' },
-  { value: 'achievement', label: '달성형 (완료 여부)' },
+  { value: 'achievement', label: '달성형 (랭킹 없음)' },
   { value: 'ranking', label: '랭킹형 (등수/진행값)' },
 ] as const
 
@@ -90,7 +89,7 @@ const emptyForm = {
   target: '10',
   conditionActivityType: 'walking',
   reward_badge_ids: [] as string[],
-  status_display_type: 'individual' as string,
+  status_display_type: 'achievement' as string,
   require: { ...emptyRequirement },
   hide: { ...emptyRequirement },
   unmet_visibility: 'locked' as 'locked' | 'hidden',
