@@ -94,10 +94,11 @@ export function ListRowEm(props: ListRowEmProps): JSX.Element;
 export interface ListRowChipProps {
   /**
    * 면 채움. `neutral`(기본 `--default-soft`) · `accent`(`--accent-soft`) · `warning`(`--warning` 면 + `--snow` 글자) · `done`(`--foreground` 면 + `--snow` 글자, 달성·완료) ·
-   * `surface`(`--surface` 면 + `--foreground` 글자) · `surface-muted`(`--surface` 면 + `--muted` 글자, 미달성). 글자는 done·warning(`--snow`)·surface-muted(`--muted`) 외에는 `--foreground`.
+   * `surface`(`--surface` 면 + `--foreground` 글자) · `surface-muted`(`--surface` 면 + `--muted` 글자, 미달성) ·
+   * `red`(`--jam-red` 면 + `--foreground` 글자, 참가중) · `gray`(`--muted` 면 + `--snow` 글자, 미달성). 글자는 done·warning·gray(`--snow`)·surface-muted(`--muted`) 외에는 `--foreground`.
    * `surface`·`surface-muted`는 tint 행 위 전용이다.
    */
-  tone?: 'neutral' | 'accent' | 'warning' | 'done' | 'surface' | 'surface-muted';
+  tone?: 'neutral' | 'accent' | 'warning' | 'done' | 'surface' | 'surface-muted' | 'red' | 'gray';
   /** `null`/`undefined`/`''`이면 아무것도 그리지 않는다. */
   children?: ReactNode;
   className?: string;

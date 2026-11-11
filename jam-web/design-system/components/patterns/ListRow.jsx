@@ -107,6 +107,8 @@ const CHIP_TONES = {
   done: { bg: 'var(--foreground)', fg: 'var(--snow)' },
   surface: { bg: 'var(--surface)', fg: 'var(--foreground)' },
   'surface-muted': { bg: 'var(--surface)', fg: 'var(--muted)' },
+  red: { bg: 'var(--jam-red)', fg: 'var(--foreground)' },
+  gray: { bg: 'var(--muted)', fg: 'var(--snow)' },
 };
 
 /**

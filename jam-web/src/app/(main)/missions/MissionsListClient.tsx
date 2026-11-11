@@ -151,8 +151,8 @@ function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.R
     case 'joinedEnded':
       return <ListRowChip>{d.missions.tagJoinedEnded}</ListRowChip>
     case 'joined':
-      // 참가중 칩은 강조색 --jam-red 면이다(2026-11-11 사용자 지시, 티켓 20261111_2143). 12px 글자라 대비 4.5:1이 필요해 글자는 --snow(약 3.7:1)가 아니라 --foreground(약 4.6:1)다
-      return <ListRowChip style={{ background: 'var(--jam-red)', color: 'var(--foreground)' }}>{d.missions.tagJoined}</ListRowChip>
+      // 참가중 칩은 강조색 --jam-red 면이다(2026-11-11 사용자 지시, 티켓 20261111_2143). `tone="red"`가 글자를 --foreground(약 4.6:1)로 둔다
+      return <ListRowChip tone="red">{d.missions.tagJoined}</ListRowChip>
     case 'done':
       return <ListRowChip>{d.missions.tagDone}</ListRowChip>
     case 'locked':

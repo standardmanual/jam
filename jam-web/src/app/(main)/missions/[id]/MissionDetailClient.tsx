@@ -11,7 +11,7 @@ import TopNav from '@/components/ui/TopNav'
 import { LockIcon, CoinIcon, PackageIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LockedTile } from '@ds/components/cards/LockedTile'
-import { ListRow } from '@/components/ui/ListRow'
+import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
@@ -176,47 +176,23 @@ function ConditionRow({
   )
 }
 
-/* ── 미션 상태 칩 ── */
+/* ── 미션 상태 칩 — 목록과 같은 `ListRowChip`(12px·굵게·`--list-row-chip-padding`)이다. 상세만 크기나 굵기를 따로 정하지 않는다(2026-11-11 사용자 지시, 티켓 20261111_2350) ── */
 function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted: boolean; participating: boolean; locked: boolean; ended: boolean }) {
   // 20260825_028: 잠긴 미션은 오늘카드·딥링크로만 도달하는데, 칩이 없으면 스크롤 최하단에
   // 가서야 상태를 알게 된다. 목록 잠금 카드와 같은 자물쇠 글리프를 첫 화면에 노출한다.
   if (locked) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
-        style={{ background: 'var(--border)', color: 'var(--foreground)' }}>
+      <ListRowChip style={{ gap: 'var(--spacing-4)' }}>
         {/* 12px 렌더라 기본 strokeWidth 1.5(=24px 전제)로는 실효 0.75px로 뭉개진다 — 호출부 보정 */}
-        <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.2} />
+        <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.25} />
         {d.missions.tagLocked}
-      </span>
+      </ListRowChip>
     )
   }
-  if (isCompleted) {
-    // 완료해도 미션은 기간이 지나면 끝나므로 «완료»가 아니라 «종료» 칩을 쓴다(2026-11-11 사용자 지시, 티켓 20261111_2204)
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
-        style={{ background: 'var(--background-secondary)', color: 'var(--muted)' }}>
-        {d.missions.tagJoinedEnded}
-      </span>
-    )
-  }
-  if (participating && ended) {
-    // 끝난 미션에 참가했던 경우는 «참가중»이 아니라 «종료»다(목록의 참가한 종료 미션 칩 `tagJoinedEnded`와 같은 글자, 티켓 20261111_2152)
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
-        style={{ background: 'var(--background-secondary)', color: 'var(--muted)' }}>
-        {d.missions.tagJoinedEnded}
-      </span>
-    )
-  }
-  if (participating) {
-    return (
-      /* 참가중 칩은 한 단계 키웠다(2026-11-11 사용자 지시, 티켓 20261111_2143): 11px·좌우 10 → 14px(--text-sm)·좌우 12·위아래 4 */
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold leading-none"
-        style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-        {d.missions.tagJoined}
-      </span>
-    )
-  }
+  // 완료해도 미션은 기간이 지나면 끝나므로 «완료»가 아니라 «종료» 칩을 쓴다(2026-11-11 사용자 지시, 티켓 20261111_2204).
+  // 끝난 미션에 참가했던 경우도 «참가중»이 아니라 «종료»다(목록의 `tagJoinedEnded`와 같은 글자, 티켓 20261111_2152)
+  if (isCompleted || (participating && ended)) return <ListRowChip>{d.missions.tagJoinedEnded}</ListRowChip>
+  if (participating) return <ListRowChip tone="red">{d.missions.tagJoined}</ListRowChip>
   return null
 }
 
@@ -630,9 +606,9 @@ export default function MissionDetailClient({
                 {mission.mission_type !== 'engine_condition' && (
                   <p className="text-[14px] leading-[1.43] text-foreground">{goal.label}</p>
                 )}
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-foreground text-snow' : 'bg-btn-secondary text-muted'}`}>
+                <ListRowChip tone={achieved ? 'done' : 'gray'}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
-                </span>
+                </ListRowChip>
               </div>
             ) : (
               /* 수치 + 프로그레스 바 */

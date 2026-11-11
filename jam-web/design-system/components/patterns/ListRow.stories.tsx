@@ -793,6 +793,7 @@ const worstCases = (): WorstCase[] => [
       <>
         <ListRow tone="tint" lead={<UserIcon />} leadShape="round" title="runner_kim" value={<ListRowChip tone="done">달성</ListRowChip>} />
         <ListRow tone="tint" lead={<UserIcon />} leadShape="round" title="han_river_seoul_runner_2026" titleLines={1} titleSuffix={<ListRowChip tone="surface">나</ListRowChip>} value={<ListRowChip tone="surface-muted">미달성</ListRowChip>} />
+        <ListRow tone="tint" lead={<UserIcon />} leadShape="round" title="runner_park" value={<><ListRowChip tone="red">참가중</ListRowChip><ListRowChip tone="gray">미달성</ListRowChip></>} />
       </>
     ),
   },

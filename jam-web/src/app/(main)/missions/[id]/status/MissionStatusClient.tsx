@@ -68,10 +68,7 @@ export function AchievementRow({ e }: { e: AchievementEntry }) {
       lead={<SimpleAvatar url={e.avatarUrl} />}
       title={e.displayName}
       value={
-        <ListRowChip
-          tone="done"
-          style={e.achieved ? undefined : { background: 'var(--muted)', color: 'var(--snow)' }}
-        >
+        <ListRowChip tone={e.achieved ? 'done' : 'gray'}>
           {e.achieved ? d.missions.achieved : d.missions.notAchieved}
         </ListRowChip>
       }
