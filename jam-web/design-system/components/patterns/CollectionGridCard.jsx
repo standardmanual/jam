@@ -2,14 +2,14 @@ import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
-// RarityBadge와 같은 축소 스케일(패딩 4px/9px, 폰트 8px) — "완성" 태그가 등급 태그 옆에
-// 나란히 붙으므로 크기를 맞춘다.
+// RarityBadge `md`와 같은 크기(패딩 5px/10px, 글자 --text-xs) — "완성" 태그가 등급 태그 옆에
+// 나란히 붙으므로 크기를 맞춘다(2026-11-11 사용자 지시, 이전에는 sm 8px/4px 9px, 티켓 20261111_1141).
 const TAG_STYLE = {
   display: 'inline-flex',
   alignItems: 'center',
-  padding: '4px 9px',
+  padding: '5px 10px',
   borderRadius: 'var(--radius-full)',
-  fontSize: '8px',
+  fontSize: 'var(--text-xs)',
   fontWeight: 700,
   textTransform: 'uppercase',
   lineHeight: 1,
@@ -102,7 +102,7 @@ export function CollectionGridCard({
                 완성
               </span>
             )}
-            {showRarity && <RarityBadge rarity={rarity} />}
+            {showRarity && <RarityBadge rarity={rarity} size="md" />}
           </div>
         )}
       </div>

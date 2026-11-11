@@ -66,13 +66,14 @@ export default function CollectionGridCard({
             좁은 폭(320px 2열)에서도 칩이 잘리지 않게 줄바꿈하고, 오른쪽 여백을 남긴다. */}
         {(rarity || completed) && (
           <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
-            {/* 완성 칩은 옆의 등급 칩(`RarityBadge` sm)과 같은 크기다: 글자 8px, 패딩 4px 9px, 줄 높이 1(높이 16px). 디자인 시스템 사본의 TAG_STYLE과 같은 값이다(2026-11-09 사용자 지시) */}
+            {/* 완성 칩은 옆의 등급 칩(`RarityBadge` md)과 같은 크기다: 글자 12px(`--text-xs`), 패딩 5px 10px, 줄 높이 1. 디자인 시스템 사본의 TAG_STYLE과 같은 값이다.
+                2026-11-09에는 sm(8px, 4px 9px)으로 맞췄다가 2026-11-11 사용자 지시로 둘 다 md로 키웠다(티켓 20261111_1141) */}
             {completed && (
-              <span className="bg-accent text-accent-foreground text-[8px] leading-none px-[9px] py-1 rounded-full font-bold" /* spacing-allow: 디자인 시스템 사본의 TAG_STYLE과 같은 9px */>
+              <span className="bg-accent text-accent-foreground text-xs leading-none px-[10px] py-[5px] rounded-full font-bold" /* spacing-allow: RarityBadge md와 같은 패딩 5px 10px */>
                 {d.itembooks.completed}
               </span>
             )}
-            {rarity && <RarityBadge rarity={rarity} />}
+            {rarity && <RarityBadge rarity={rarity} size="md" />}
           </div>
         )}
       </div>

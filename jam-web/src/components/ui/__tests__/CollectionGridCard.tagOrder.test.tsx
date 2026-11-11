@@ -41,17 +41,17 @@ describe.each(cases)('CollectionGridCard 태그 행 (%s)', (_label, render, comp
   })
 })
 
-describe('CollectionGridCard 완성 칩의 크기 (2026-11-09 사용자 지시)', () => {
-  it('서비스: 등급 칩(RarityBadge sm: 8px, 패딩 4px 9px, 줄 높이 1)과 같은 크기다', () => {
+describe('CollectionGridCard 완성 칩의 크기 (2026-11-11 사용자 지시, 이전 sm 8px에서 md로)', () => {
+  it('서비스: 등급 칩(RarityBadge md: 글자 12px, 패딩 5px 10px, 줄 높이 1)과 같은 크기다', () => {
     const html = renderToStaticMarkup(<CollectionGridCard name="컬렉션" collected={9} total={9} completed rarity="rare" />)
     const chip = html.match(/<span class="([^"]*)">완성<\/span>/)?.[1] ?? ''
     const rarity = html.match(/<span[^>]*style="([^"]*)"[^>]*>Rare<\/span>/)?.[1] ?? ''
 
-    expect(rarity).toContain('font-size:8px')
-    expect(rarity).toContain('padding:4px 9px')
+    expect(rarity).toContain('font-size:var(--text-xs)')
+    expect(rarity).toContain('padding:5px 10px')
     expect(rarity).toContain('line-height:1')
-    for (const c of ['text-[8px]', 'px-[9px]', 'py-1', 'leading-none']) expect(chip, c).toContain(c)
-    expect(chip).not.toContain('text-xs')
+    for (const c of ['text-xs', 'px-[10px]', 'py-[5px]', 'leading-none']) expect(chip, c).toContain(c)
+    expect(chip).not.toContain('text-[8px]')
   })
 
   it('MODULAR: 같은 크기다', () => {
@@ -59,7 +59,7 @@ describe('CollectionGridCard 완성 칩의 크기 (2026-11-09 사용자 지시)'
     const chip = html.match(/<span style="([^"]*)">완성<\/span>/)?.[1] ?? ''
     const rarity = html.match(/<span[^>]*style="([^"]*)"[^>]*>Rare<\/span>/)?.[1] ?? ''
 
-    for (const part of ['font-size:8px', 'padding:4px 9px', 'line-height:1']) {
+    for (const part of ['font-size:var(--text-xs)', 'padding:5px 10px', 'line-height:1']) {
       expect(chip, part).toContain(part)
       expect(rarity, part).toContain(part)
     }
