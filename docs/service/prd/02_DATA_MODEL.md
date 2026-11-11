@@ -874,7 +874,7 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 
 **JAM 2.0 등급 올리기는 레시피 행을 만들지 않는다 (티켓 20261022_2119, 7-7a)**: 등급 올리기는 `combination_recipes`·`combination_recipe_slots`에 행을 넣지 않고 규칙 하나로 처리한다(사용자 결정 2026-10-23).
 처음 계획한 레시피 1,350건(마이그레이션 283)은 공용 DB에 적용된 적 없이 폐기했고 파일을 지웠다. 이 기능으로 스키마는 바뀌지 않는다.
-규칙(재료 같은 등급 6개·Mystic 재료 허용, 컬렉션 선택 없음, 결과 등급은 확률로 정해짐, 아이템은 소속 트라이브의 활성 컬렉션 전체에서 균등)은 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이다.
+규칙(재료 같은 등급 6개·Mystic 재료 허용, 컬렉션 선택 없음, 결과 등급은 확률로 정해짐, 아이템은 트라이브와 상관없이 서비스의 활성 컬렉션 전체에서 균등)은 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이다.
 
 **삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200): `combination_recipes.id`를 FK로 참조하는
 테이블은 없다. 대신 삭제되지 않은(`deleted_at IS NULL`) 배지의 조건
