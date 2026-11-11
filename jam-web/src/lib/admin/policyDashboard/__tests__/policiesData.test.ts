@@ -152,7 +152,7 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
     expect(vehiclePolicy?.defaultValue).toBe(60)
   })
 
-  it('등급 올리기 카드는 «6개, 컬렉션 선택 없음, 트라이브 활성 컬렉션 전체에서 균등, 바로 윗등급 70%·같은 등급 30%, Mystic 재료는 Mystic 100%, 후보 없으면 소각 전 거절, 아래 등급으로 내려가지 않음» 규칙을 말한다 (티켓 20261108_2323 3회차)', () => {
+  it('등급 올리기 카드는 «6개, 컬렉션 선택 없음, 서비스의 활성 컬렉션 전체에서 트라이브 무관 균등, 바로 윗등급 70%·같은 등급 30%, Mystic 재료는 Mystic 100%, 후보 없으면 소각 전 거절, 아래 등급으로 내려가지 않음» 규칙을 말한다 (티켓 20261108_2323 3회차, 20261111_0847)', () => {
     const rule = POLICIES_DATA.find((p) => p.id === 'ch8-tier-up-recipes')
     expect(rule?.type).toBe('code_constant')
     for (const text of [
@@ -160,7 +160,9 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
       '컬렉션을 고르지 않음',
       'Mystic도 재료가 되고',
       'Mystic 100%',
-      '활성 컬렉션(공개 기간 안) 전체에서',
+      '소속 트라이브와 상관없이 서비스의 활성 컬렉션(공개 기간 안, 드랍 제외 아님) 전체에서',
+      '소속 트라이브가 없는 유저도 할 수 있음',
+      '서비스의 활성 컬렉션 전체에 재료 등급과 바로 위 등급의 아이템이 모두 있어야 시작',
       '같은 확률로 균등 추첨',
       '윗등급 확률(기본 70%)',
       '같은 등급이 나머지(기본 30%)',
@@ -171,11 +173,12 @@ describe('POLICIES_DATA 카탈로그 정합성 검사 (티켓 20261022_1631)', (
       expect(rule?.currentSpec, text).toContain(text)
     }
     // 옛 규칙 문구(5개, 컬렉션 선택, Mystic 재료 제외)가 남아 있지 않다
-    for (const old of ['캡슐 등급 확률', '합이 100%', '열린 컬렉션에서 균등', '캡슐과 같은 굴림', '한 등급씩 낮춤', '다른 트라이브일 확률', '5개', '받을 컬렉션', '고른 컬렉션', 'Mystic은 재료 아님']) {
+    for (const old of ['캡슐 등급 확률', '합이 100%', '열린 컬렉션에서 균등', '캡슐과 같은 굴림', '한 등급씩 낮춤', '다른 트라이브일 확률', '소속 트라이브의 활성 컬렉션', '트라이브의 활성 컬렉션 전체에 재료', '5개', '받을 컬렉션', '고른 컬렉션', 'Mystic은 재료 아님']) {
       expect(`${rule?.currentSpec} ${rule?.userExperience}`, old).not.toContain(old)
     }
-    expect(rule?.userExperience).toContain('아이템 배지 6개를 내면 내 트라이브의 새 아이템 1개를 받아요')
-    expect(rule?.ticketId).toBe('20261108_2323')
+    expect(rule?.userExperience).toContain('아이템 배지 6개를 내면 소속 트라이브와 상관없이 서비스에서 받을 수 있는 새 아이템 1개를 받아요')
+    expect(rule?.userExperience).not.toContain('내 트라이브')
+    expect(rule?.ticketId).toBe('20261111_0847')
   })
 
   it('등급 올리기 윗등급 확률 카드는 combine_policy.tier_up_probability를 밸런스 설정 «컬렉션과 믹스» 구역으로 잇는다 (티켓 20261023_1648 4회)', () => {
