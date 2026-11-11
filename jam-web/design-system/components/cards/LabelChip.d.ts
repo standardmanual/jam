@@ -17,7 +17,7 @@ export interface LabelChipProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 /**
- * 카드 좌상단 라벨 필. 12px bold 대문자, 안쪽 여백 6px 10px. 기본(`default`)은 `--background-secondary` 채움 + `--foreground` 글자,
+ * 카드 좌상단 라벨 필. 12px bold 대문자, 안쪽 여백 `--chip-padding`(2px 8px), 높이 20px. 기본(`default`)은 `--background-secondary` 채움 + `--foreground` 글자,
  * `tone="inverse"`는 `--background-inverse` 채움 + `--snow` 글자. `size` 변형 없음 · 비인터랙티브 `<span>`.
  */
 export function LabelChip(props: LabelChipProps): JSX.Element | null;

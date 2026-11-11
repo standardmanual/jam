@@ -325,9 +325,9 @@ describe('TodayCardStack — 옛 렌더러의 클래스·마크업이 남지 않
     }
   })
 
-  it('칩은 MODULAR LabelChip(인라인 6px 10px)이다', () => {
+  it('칩은 MODULAR LabelChip(인라인 --chip-padding)이다', () => {
     const html = render([makeCard({ layout_type: 'large_thumbnail' })])
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*padding:6px 10px[^"]*">배지 소개<\/span>/)
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*padding:var\(--chip-padding\)[^"]*">배지 소개<\/span>/)
     expect(html).not.toContain('px-2.5 py-1.5')
   })
 

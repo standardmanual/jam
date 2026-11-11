@@ -177,8 +177,8 @@ export function BadgeGridCard({
             aria-label={`${visitCount}번 방문했어요`}
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              padding: '5px 10px', borderRadius: 'var(--radius-full)',
-              fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+              padding: 'var(--chip-padding)', borderRadius: 'var(--radius-full)',
+              fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
               color: 'var(--foreground)', background: 'var(--default-soft)',
             }}
           >

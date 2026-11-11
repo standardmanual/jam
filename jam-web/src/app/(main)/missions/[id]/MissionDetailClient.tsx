@@ -176,7 +176,7 @@ function ConditionRow({
   )
 }
 
-/* ── 미션 상태 칩 — 목록과 같은 `ListRowChip`(12px·굵게·`--list-row-chip-padding`)이다. 상세만 크기나 굵기를 따로 정하지 않는다(2026-11-11 사용자 지시, 티켓 20261111_2350) ── */
+/* ── 미션 상태 칩 — 목록과 같은 `ListRowChip`(12px·굵게·`--chip-padding`)이다. 상세만 크기나 굵기를 따로 정하지 않는다(2026-11-11 사용자 지시, 티켓 20261111_2350) ── */
 function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted: boolean; participating: boolean; locked: boolean; ended: boolean }) {
   // 20260825_028: 잠긴 미션은 오늘카드·딥링크로만 도달하는데, 칩이 없으면 스크롤 최하단에
   // 가서야 상태를 알게 된다. 목록 잠금 카드와 같은 자물쇠 글리프를 첫 화면에 노출한다.

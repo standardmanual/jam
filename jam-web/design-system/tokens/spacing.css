@@ -56,7 +56,8 @@
   --list-row-padding-x: var(--spacing-16);
   --list-row-padding-y: var(--spacing-12);
   --list-row-line-gap: 2px;
-  --list-row-chip-padding: 2px 8px;
+  --chip-padding: 2px 8px;                      /* 모든 칩의 안쪽 여백(글자 12px·줄 높이 16px과 함께 높이 20px). ListRowChip이 기준이다 */
+  --list-row-chip-padding: var(--chip-padding);
   --list-row-selected-ring: 2px;
   --list-row-lead-badge-offset: -6px;
   --list-row-lead-badge-size: 20px;

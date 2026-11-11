@@ -22,10 +22,11 @@ import React from 'react';
  */
 const SIZES = {
   sm: { fontSize: '8px', padding: '4px 0', lineHeight: 1 },
-  md: { fontSize: 'var(--text-xs)', padding: '5px 0', lineHeight: 1 },
+  // md·row — ListRowChip과 같은 12px/20px(2026-11-11 사용자 지시, 티켓 20261112_0010). 가로 패딩은 0으로 두고 width로 폭을 잡는다
+  md: { fontSize: 'var(--text-xs)', padding: '2px 0', lineHeight: 'var(--text-xs--line-height)' },
   // row (티켓 20261106_2322) — ListRow 안 칩 전용, ListRowChip과 같은 12px/20px.
-  // 세로 2px은 --list-row-chip-padding(2px 8px)의 세로 값과 같다 — 이 칩은 가로 패딩을 0으로 두고
-  // width로 폭을 잡아서 토큰을 그대로 못 쓴다. 토큰의 세로 값을 바꾸면 여기도 같이 바꾼다.
+  // 세로 2px은 --chip-padding(2px 8px)의 세로 값과 같다 — 이 칩은 가로 패딩을 0으로 두고
+  // width로 폭을 잡아서 토큰을 그대로 못 쓴다. 토큰의 세로 값을 바꾸면 md·row 둘 다 같이 바꾼다.
   row: { fontSize: 'var(--text-xs)', padding: '2px 0', lineHeight: 'var(--text-xs--line-height)' },
 };
 

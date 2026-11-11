@@ -136,11 +136,11 @@ describe('BriefCard — 칩 줄', () => {
   })
 
   it('라벨 칩은 MODULAR LabelChip이고 줄어들지 않는다(shrink-0)', () => {
-    expect(render()).toMatch(/<span class="shrink-0" style="[^"]*padding:6px 10px[^"]*">미션<\/span>/)
+    expect(render()).toMatch(/<span class="shrink-0" style="[^"]*padding:var\(--chip-padding\)[^"]*">미션<\/span>/)
   })
 
   it('라벨이 없으면 칩을 그리지 않는다', () => {
-    expect(render({ label: undefined })).not.toContain('padding:6px 10px')
+    expect(render({ label: undefined })).not.toContain('padding:var(--chip-padding)')
   })
 
   it('지역 핀: 옛 마크업(caption·text-muted·핀 w-3 h-3)에 min-w-0과 글자 말줄임을 더했다', () => {

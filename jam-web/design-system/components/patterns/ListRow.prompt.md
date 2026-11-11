@@ -89,7 +89,7 @@ indicator의 체크 아이콘·순위 숫자는 시각 표지라 스크린리더
 | `--list-row-gap` | `--spacing-12` | 클릭 영역 안 칸 사이 |
 | `--list-row-padding-x` / `-y` | `--spacing-16` / `--spacing-12` | 행 안쪽 여백(flat은 가로 0) |
 | `--list-row-line-gap` | 2px | 줄 사이 |
-| `--list-row-chip-padding` | 2px 8px | `ListRowChip` |
+| `--chip-padding`(= `--list-row-chip-padding`) | 2px 8px | `ListRowChip` 외 모든 칩(`RarityBadge`·`BadgeLevelChip`·`LabelChip`) |
 | `--list-row-selected-ring` | 2px | 선택 링 |
 | `--list-row-lead-badge-offset` / `-size` / `-padding-x` | -6px / 20px / 6px | `leadBadge` |
 

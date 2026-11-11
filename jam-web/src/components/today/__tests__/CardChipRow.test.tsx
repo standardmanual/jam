@@ -54,11 +54,11 @@ describe('CardChipRow — 줄', () => {
   })
 
   it('라벨 칩은 줄어들지 않는다(shrink-0)', () => {
-    expect(render()).toMatch(/<span class="shrink-0" style="[^"]*padding:6px 10px[^"]*">미션<\/span>/)
+    expect(render()).toMatch(/<span class="shrink-0" style="[^"]*padding:var\(--chip-padding\)[^"]*">미션<\/span>/)
   })
 
   it('라벨이 없으면 라벨 칩을 그리지 않는다', () => {
-    expect(render({ label: undefined })).not.toContain('padding:6px 10px')
+    expect(render({ label: undefined })).not.toContain('padding:var(--chip-padding)')
   })
 
   it('그릴 것이 하나도 없으면 줄 자체를 그리지 않는다 — 호출부가 준 아래 마진만 남지 않는다(처음 보는 템플릿 값의 카드, 티켓 20261006_1217)', () => {

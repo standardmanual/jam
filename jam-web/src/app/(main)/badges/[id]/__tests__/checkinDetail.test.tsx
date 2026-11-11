@@ -59,7 +59,7 @@ describe('방문 횟수 칩', () => {
     // Common 등급이라 등급 칩은 없고, 방문 횟수 칩이 그 자리를 쓴다
     expect(html).not.toContain('>Common<')
     // 등급 칩(md)과 같은 크기
-    expect(html).toContain('padding:5px 10px')
+    expect(html).toContain('padding:var(--chip-padding)')
   })
 
   it('체크인 상세 페이지가 방문 이력 행 수를 칩으로 넘기고 1회는 넘기지 않는다', () => {

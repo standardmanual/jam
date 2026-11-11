@@ -1103,13 +1103,13 @@ describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
     const html = render()
     expect(html).toMatch(/text-overflow:ellipsis;white-space:nowrap[^"]*font-weight:700[^"]*">레시피 제목</)
     // 슬롯 수 칩: 12px 보통 굵기, 제목 말줄임 바깥(줄어들지 않는 칸)
-    expect(html).toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:400[^"]*">3<\/span>/)
+    expect(html).toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:700[^"]*">3<\/span>/)
   })
 
   it('slotCount를 주지 않으면 제목 끝 칩이 없다(레시피 탐색 목록 행, 2026-11-10 사용자 지시)', () => {
     const html = render({ slotCount: undefined, onClick: () => {} })
     expect(html).toContain('레시피 제목')
-    expect(html).not.toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:400[^"]*">3<\/span>/)
+    expect(html).not.toMatch(/flex-shrink:0;display:inline-flex;align-items:center"><span class="" style="[^"]*font-weight:700[^"]*">3<\/span>/)
     expect(html).not.toMatch(/font-weight:400[^"]*">\d+<\/span>/)
   })
 

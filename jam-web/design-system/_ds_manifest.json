@@ -977,7 +977,7 @@
     },
     {
       "name": "--list-row-chip-padding",
-      "value": "2px 8px",
+      "value": "var(--chip-padding)",
       "kind": "spacing",
       "definedIn": "tokens/spacing.css"
     },
@@ -1052,6 +1052,138 @@
       "value": "#0695EC",
       "kind": "color",
       "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--status-card-bg",
+      "value": "color-mix(in srgb, var(--foreground) 94%, transparent)",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--danger-text",
+      "value": "#d61f1f",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--spacing-20",
+      "value": "20px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--page-x",
+      "value": "var(--spacing-16)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--page-top",
+      "value": "var(--spacing-16)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--page-bottom",
+      "value": "var(--spacing-24)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-section",
+      "value": "var(--spacing-20)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-section-lg",
+      "value": "var(--spacing-24)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-group",
+      "value": "var(--spacing-12)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-text",
+      "value": "var(--spacing-8)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-label",
+      "value": "var(--spacing-4)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-card",
+      "value": "var(--spacing-8)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-card-detail",
+      "value": "var(--spacing-12)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--card-padding",
+      "value": "var(--spacing-16)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--card-padding-row",
+      "value": "var(--spacing-12) var(--spacing-16)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-field",
+      "value": "var(--spacing-16)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--gap-actions",
+      "value": "var(--spacing-8)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--chip-padding",
+      "value": "2px 8px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--status-card-title-size",
+      "value": "1.3125rem",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--status-card-title-line-height",
+      "value": "1.5",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--status-rank-size",
+      "value": "2rem",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--status-rank-line-height",
+      "value": "2.5rem",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
     }
   ],
   "themes": [],

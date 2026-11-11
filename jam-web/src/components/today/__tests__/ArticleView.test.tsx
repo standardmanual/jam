@@ -94,8 +94,8 @@ describe('ArticleView — 머리 영역', () => {
   it('칩은 MODULAR LabelChip 반전 색조(검정 바탕 위 흰 칩)이고 flex 칸으로 한 번 감쌌다', () => {
     const html = render()
     expect(html).toMatch(/<div class="flex"><span class="" style="[^"]*background:var\(--background-inverse\);color:var\(--snow\)[^"]*">기사<\/span><\/div>/)
-    // LabelChip 규격(padding 6px 10px·lineHeight 1) — 옛 직접 마크업(bg-background-inverse 클래스)이 아니다
-    expect(html).toContain('padding:6px 10px')
+    // LabelChip 규격(padding --chip-padding·줄 높이 16px) — 옛 직접 마크업(bg-background-inverse 클래스)이 아니다
+    expect(html).toContain('padding:var(--chip-padding)')
     expect(html).not.toContain('bg-background-inverse')
   })
 

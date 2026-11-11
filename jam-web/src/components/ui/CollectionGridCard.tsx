@@ -5,6 +5,7 @@ import SafeImage from '@/components/SafeImage'
 import { d } from '@/lib/i18n'
 import { BookIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { ListRowChip } from '@/components/ui/ListRow'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
@@ -66,12 +67,10 @@ export default function CollectionGridCard({
             좁은 폭(320px 2열)에서도 칩이 잘리지 않게 줄바꿈하고, 오른쪽 여백을 남긴다. */}
         {(rarity || completed) && (
           <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
-            {/* 완성 칩은 옆의 등급 칩(`RarityBadge` md)과 같은 크기다: 글자 12px(`--text-xs`), 패딩 5px 10px, 줄 높이 1. 디자인 시스템 사본의 TAG_STYLE과 같은 값이다.
-                2026-11-09에는 sm(8px, 4px 9px)으로 맞췄다가 2026-11-11 사용자 지시로 둘 다 md로 키웠다(티켓 20261111_1141) */}
+            {/* 완성 칩은 옆의 등급 칩(`RarityBadge`)과 같은 크기다: 모든 칩의 기준인 `ListRowChip`(12px, 줄 높이 16px, 안쪽 2px 8px, 높이 20px)을 쓰고 색만 accent 면이다
+                (2026-11-11 사용자 지시, 티켓 20261112_0010. 이전에는 5px 10px 손으로 만든 칩이었다) */}
             {completed && (
-              <span className="bg-accent text-accent-foreground text-xs leading-none px-[10px] py-[5px] rounded-full font-bold" /* spacing-allow: RarityBadge md와 같은 패딩 5px 10px */>
-                {d.itembooks.completed}
-              </span>
+              <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>{d.itembooks.completed}</ListRowChip>
             )}
             {rarity && <RarityBadge rarity={rarity} size="md" />}
           </div>

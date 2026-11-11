@@ -55,13 +55,13 @@ describe('BadgesClient 체크인 탭 — 방문 횟수 칩', () => {
     expect(html.split('×').length - 1).toBe(1)
   })
 
-  it('등급 칩과 같은 크기(글자 --text-xs, 패딩 5px 10px, 줄 높이 1)다', () => {
+  it('등급 칩과 같은 크기(글자 --text-xs, 패딩 --chip-padding, 줄 높이 16px)다', () => {
     const html = render([checkin('c1', '북한산', 2)])
     const chip = html.match(/<span aria-hidden="true"[^>]*style="([^"]*)"[^>]*>×2<\/span>/)?.[1] ?? ''
 
     expect(chip).toContain('font-size:var(--text-xs)')
-    expect(chip).toContain('padding:5px 10px')
-    expect(chip).toContain('line-height:1')
+    expect(chip).toContain('padding:var(--chip-padding)')
+    expect(chip).toContain('line-height:var(--text-xs--line-height)')
     expect(chip).toContain('var(--default-soft)')
   })
 

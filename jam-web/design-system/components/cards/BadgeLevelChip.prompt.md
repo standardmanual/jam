@@ -17,4 +17,4 @@
 
 ## size (티켓 20261106_2322)
 
-`RarityBadge`와 같은 어휘다: `sm`(기본, 8px·16px) / `md`(12px·22px) / `row`(12px·20px, `ListRow` 안 칩 전용). `row`는 폭 52px·가운데 정렬을 그대로 두고 세로 패딩 2px(`--list-row-chip-padding`의 세로 값)만 쓴다.
+`RarityBadge`와 같은 어휘다: `sm`(기본, 8px·16px) / `md`·`row`(둘 다 12px·20px, `ListRowChip`과 같다). 폭 52px·가운데 정렬을 그대로 두고 세로 패딩 2px(`--chip-padding`의 세로 값)만 쓴다.

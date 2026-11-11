@@ -2,17 +2,17 @@ import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
-// RarityBadge `md`와 같은 크기(패딩 5px/10px, 글자 --text-xs) — "완성" 태그가 등급 태그 옆에
-// 나란히 붙으므로 크기를 맞춘다(2026-11-11 사용자 지시, 이전에는 sm 8px/4px 9px, 티켓 20261111_1141).
+// RarityBadge `md`와 같은 크기(패딩 --chip-padding, 글자 --text-xs, 높이 20px — 모든 칩의 기준인 ListRowChip과 같다) — "완성" 태그가 등급 태그 옆에
+// 나란히 붙으므로 크기를 맞춘다(2026-11-11 사용자 지시, 티켓 20261111_1141 → 20261112_0010).
 const TAG_STYLE = {
   display: 'inline-flex',
   alignItems: 'center',
-  padding: '5px 10px',
+  padding: 'var(--chip-padding)',
   borderRadius: 'var(--radius-full)',
   fontSize: 'var(--text-xs)',
   fontWeight: 700,
   textTransform: 'uppercase',
-  lineHeight: 1,
+  lineHeight: 'var(--text-xs--line-height)',
   fontFamily: 'var(--font-family-base)',
 };
 

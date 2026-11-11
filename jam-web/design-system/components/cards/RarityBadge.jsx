@@ -71,10 +71,12 @@ export function getRarityLabel(rarity = 'common') {
  */
 const SIZES = {
   sm: { fontSize: '8px', padding: '4px 9px', lineHeight: 1 },
-  md: { fontSize: 'var(--text-xs)', padding: '5px 10px', lineHeight: 1 },
+  // md·row — 모든 칩의 기준인 ListRowChip과 같은 12px/20px(글자 --text-xs, 줄높이 16px, 패딩 --chip-padding = 2px 8px, 2026-11-11 사용자 지시, 티켓 20261112_0010).
+  // md는 5px 10px(22px)이었다가 이 값으로 줄었다. 이름은 호출부 호환 때문에 남긴다.
+  md: { fontSize: 'var(--text-xs)', padding: 'var(--chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
   // row (티켓 20261106_2322) — ListRow 안 칩 전용. ListRowChip과 같은 12px/20px
-  // (글자 --text-xs, 줄높이 16px, 패딩 --list-row-chip-padding = 2px 8px)라 한 줄에서 높이가 맞는다.
-  row: { fontSize: 'var(--text-xs)', padding: 'var(--list-row-chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
+  // (글자 --text-xs, 줄높이 16px, 패딩 --chip-padding = 2px 8px)라 한 줄에서 높이가 맞는다.
+  row: { fontSize: 'var(--text-xs)', padding: 'var(--chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
 };
 
 export function RarityBadge({ rarity = 'common', size = 'sm', className = '', showCommon = false }) {

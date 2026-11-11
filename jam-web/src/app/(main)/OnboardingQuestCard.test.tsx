@@ -449,7 +449,7 @@ describe('JAM! 시작하기 카드 — 줄바꿈 규칙(UX 라이팅 가이드 �
 describe('JAM! 시작하기 카드 — 칩은 MODULAR LabelChip(티켓 20261001_1204)', () => {
   // LabelChip은 Tailwind 클래스 대신 인라인 style로 그린다 — 모양(계산 스타일)은 LabelChip.test.tsx가
   // 고정하고, 여기서는 카드 상태 모두 칩이 같은 컴포넌트를 거치고 호출부 배치 클래스 self-start만 붙는지 본다.
-  const CHIP_PATTERN = new RegExp(`<span class="self-start" style="[^"]*padding:6px 10px[^"]*">${d.onboardingQuest.chipLabel}</span>`, 'g')
+  const CHIP_PATTERN = new RegExp(`<span class="self-start" style="[^"]*padding:var\\(--chip-padding\\)[^"]*">${d.onboardingQuest.chipLabel}</span>`, 'g')
 
   it.each([...DEMO_STATES, ...REAL_STATES])('칩 라벨이 self-start LabelChip으로 한 번 그려진다 (%s)', (_name, state) => {
     const html = render(state, 'runner')

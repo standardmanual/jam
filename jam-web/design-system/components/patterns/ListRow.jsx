@@ -123,7 +123,7 @@ export function ListRowChip({ tone = 'neutral', children, className = '', style 
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
-        padding: 'var(--list-row-chip-padding)',
+        padding: 'var(--chip-padding)',
         borderRadius: 'var(--radius-full)',
         background: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).bg,
         color: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).fg,

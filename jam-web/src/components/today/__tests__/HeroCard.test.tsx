@@ -95,7 +95,7 @@ describe('HeroCard — 이미지 칸', () => {
     expect(box).not.toContain('bg-black')
     expect(box).not.toContain('gradient')
     expect(box).not.toContain('shadow')
-    expect(box).not.toContain('padding:6px 10px')
+    expect(box).not.toContain('padding:var(--chip-padding)')
   })
 })
 
@@ -292,8 +292,8 @@ describe('HeroCard — 끝 줄 없음 (티켓 20261109_1458)', () => {
 describe('HeroCard — 칩 줄', () => {
   it('칩 줄은 본문 첫 줄이다(이미지 칸 다음, 제목 앞)', () => {
     const html = render()
-    expect(html.indexOf('padding:6px 10px')).toBeGreaterThan(html.indexOf(IMAGE_BOX))
-    expect(html.indexOf('padding:6px 10px')).toBeLessThan(html.indexOf('<h3'))
+    expect(html.indexOf('padding:var(--chip-padding)')).toBeGreaterThan(html.indexOf(IMAGE_BOX))
+    expect(html.indexOf('padding:var(--chip-padding)')).toBeLessThan(html.indexOf('<h3'))
   })
 
   it('기사는 줄 끝에 게재일을 그린다', () => {

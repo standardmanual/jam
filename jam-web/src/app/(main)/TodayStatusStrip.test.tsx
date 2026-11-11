@@ -13,7 +13,7 @@ import TodayStatusStrip from './TodayStatusStrip'
 import { d } from '@/lib/i18n'
 
 function chipPattern(label: string) {
-  return new RegExp(`<span class="self-start" style="[^"]*padding:6px 10px[^"]*">${label}</span>`, 'g')
+  return new RegExp(`<span class="self-start" style="[^"]*padding:var\\(--chip-padding\\)[^"]*">${label}</span>`, 'g')
 }
 
 describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', () => {

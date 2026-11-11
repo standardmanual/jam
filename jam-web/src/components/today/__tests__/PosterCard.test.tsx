@@ -160,8 +160,8 @@ describe('PosterCard — 막 위 글자 배치', () => {
     const html = render()
     expect(scrimInnerOf(html).startsWith(CHIP_ROW_OPEN)).toBe(true)
     // 칩 줄은 막 안에 한 번뿐이고 이미지 칸(막보다 앞)에는 칩이 없다
-    expect(html.match(/padding:6px 10px/g)).toHaveLength(1)
-    expect(html.slice(0, html.indexOf('absolute inset-x-0 bottom-0'))).not.toContain('padding:6px 10px')
+    expect(html.match(/padding:var\(--chip-padding\)/g)).toHaveLength(1)
+    expect(html.slice(0, html.indexOf('absolute inset-x-0 bottom-0'))).not.toContain('padding:var(--chip-padding)')
   })
 
   it('칩 줄 → 제목 → 필수 정보 순서다', () => {

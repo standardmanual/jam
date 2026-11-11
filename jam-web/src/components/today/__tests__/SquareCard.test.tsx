@@ -90,7 +90,7 @@ describe('SquareCard — 이미지 칸', () => {
   it('이미지 위에는 아무것도 얹지 않는다(어두운 막·그림자·칩이 이미지 칸 안에 없다)', () => {
     const html = render({ resource: 'badge', rarity: 'epic' })
     const box = html.slice(html.indexOf(SQUARE_BOX), html.indexOf(BODY_OPEN))
-    for (const needle of ['bg-black', 'gradient', 'shadow', 'padding:6px 10px', 'text-white']) expect(box).not.toContain(needle)
+    for (const needle of ['bg-black', 'gradient', 'shadow', 'padding:var(--chip-padding)', 'text-white']) expect(box).not.toContain(needle)
   })
 
   it('레터박스 판은 어두운 bg-background다(흰 판·이미지 모서리 둥글림 없음)', () => {
@@ -214,8 +214,8 @@ describe('SquareCard — 본문 글자 배치', () => {
   it('칩 줄은 본문 첫 줄이다(이미지 칸 다음, 제목 앞)', () => {
     const html = render()
     expect(bodyOf(html).startsWith('<div class="flex items-center gap-2">')).toBe(true)
-    expect(html.indexOf('padding:6px 10px')).toBeGreaterThan(html.indexOf(SQUARE_BOX))
-    expect(html.indexOf('padding:6px 10px')).toBeLessThan(html.indexOf('<h3'))
+    expect(html.indexOf('padding:var(--chip-padding)')).toBeGreaterThan(html.indexOf(SQUARE_BOX))
+    expect(html.indexOf('padding:var(--chip-padding)')).toBeLessThan(html.indexOf('<h3'))
   })
 
   it('제목은 h3, 24px(--text-2xl)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {

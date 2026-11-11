@@ -136,7 +136,7 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
   it('칩 줄 → 제목 → 요약 → 필수 정보 → 설명문 → 타일 줄 순서다', () => {
     const html = render(tilesView())
     expectOrdered(
-      positionsInOrder(html, ['padding:6px 10px', '<h3', '성수동 골목을 걸으면', '상시', '배지 3개', '설명문입니다', '<ul']),
+      positionsInOrder(html, ['padding:var(--chip-padding)', '<h3', '성수동 골목을 걸으면', '상시', '배지 3개', '설명문입니다', '<ul']),
     )
   })
 
@@ -293,7 +293,7 @@ describe('ListCard 타일형 — 끝 줄 없음과 링크·계측', () => {
 describe('ListCard 행형 — 본문과 순위 행', () => {
   it('칩 줄 → 제목 → 요약 → 설명문 → 순위 행 순서다', () => {
     const html = render(live(rankingView()))
-    expectOrdered(positionsInOrder(html, ['padding:6px 10px', '<h3', '지금 가장 많이 달린', '매일 새로 계산돼요', '이름1']))
+    expectOrdered(positionsInOrder(html, ['padding:var(--chip-padding)', '<h3', '지금 가장 많이 달린', '매일 새로 계산돼요', '이름1']))
   })
 
   it('순위 행은 8px 간격으로 쌓이고 순위 수만큼 그린다(1·3·10행)', () => {
@@ -363,7 +363,7 @@ describe('ListCard 행형 — 링크 구조', () => {
     for (const username of ['runner1', 'runner2', 'runner3']) expect(html).toContain(`href="/${username}"`)
     // 제목 링크는 칩 줄·제목·요약·설명문을 모두 감싼다
     const titleLink = html.match(/<a [^>]*href="\/missions\/m1\/status"[^>]*>(.*?)<\/a>/)?.[1] ?? ''
-    for (const needle of ['padding:6px 10px', '<h3', '지금 가장 많이 달린', '매일 새로 계산돼요']) expect(titleLink).toContain(needle)
+    for (const needle of ['padding:var(--chip-padding)', '<h3', '지금 가장 많이 달린', '매일 새로 계산돼요']) expect(titleLink).toContain(needle)
     expect(titleLink).not.toContain('이름1')
   })
 
