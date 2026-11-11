@@ -1848,9 +1848,9 @@ stateDiagram-v2
     사유 값: 드랍 `collection_inactive`·`collection_not_launched`·`collection_ended`·`collection_drop_excluded`·`item_drop_excluded`·`item_out_of_period`, 믹스 `no_recipe`·`recipe_scheduled`·`recipe_ended`,
     미션 `no_mission`·`mission_hidden`·`mission_not_exposed`·`mission_not_started`·`mission_ended`.
     `syncCapsule`·`tierUp`도 `{ open, reasons }`이고 `reasons`는 닫혔을 때만 채운다. 동기화·캡슐의 사유는 위 드랍 사유 여섯 개에 `collection_no_tribe`(컬렉션에 `tribe_id`가 없음)·`item_no_rarity`(아이템 배지에 등급이 없음)를 더한 것이고,
-    등급 올리기의 사유는 아이템 배지가 발급 풀에 들지 못할 때 동기화·캡슐과 같은 사유, 풀에는 드는데 컬렉션이 속한 트라이브의 활성 컬렉션 전체에 재료 등급이나 바로 위 등급의 아이템 배지가 나올 수 없을 때 `tier_up_rarity_pair_missing`이다(유저가 컬렉션을 고르지 않아 판정 단위가 트라이브다, 2026-11-08).
+    등급 올리기의 사유는 아이템 배지가 발급 풀에 들지 못할 때 동기화·캡슐과 같은 사유, 풀에는 드는데 서비스의 활성 컬렉션 전체에 재료 등급이나 바로 위 등급의 아이템 배지가 나올 수 없을 때 `tier_up_rarity_pair_missing`이다(유저가 컬렉션을 고르지 않고 트라이브도 보지 않아 판정 단위가 서비스 전체다, 2026-11-11). 등급 올리기 길의 «풀에 드는가»는 트라이브를 보지 않는 `listServiceIssueCandidates`로 판정하므로 `collection_no_tribe`는 이 길의 사유가 아니다.
     `lock`은 `{ receivedLocked, unlockPoints }`로 «잠긴 채 받는 모습»이다(`badges.always_locked`, 필요 포인트는 이 배지 등급의 `jam_policy.locked_points_*`이고 잠기지 않으면 null). 길이 아니라서 `status`에 쓰지 않는다.
-  - 판정은 기존 함수를 그대로 부른다: 동기화·캡슐은 `listIssueCandidates`(`drop-engine/syncIssue.ts`), 등급 올리기는 `issuableRaritiesByBook`·`tribeSupportsTierUp`(`combine/`). 두 길은 드랍 길의 부분집합이라 `status`는 길을 더하기 전과 같다.
+  - 판정은 기존 함수를 그대로 부른다: 동기화·캡슐은 `listIssueCandidates`(`drop-engine/syncIssue.ts`), 등급 올리기는 `listServiceIssueCandidates`·`issuableServiceRarities`·`serviceSupportsTierUp`(트라이브 무관). 두 길은 드랍 길의 부분집합이라 `status`는 길을 더하기 전과 같다.
 - **「드랍 제외」는 막힘과 다르다.** 컬렉션 또는 아이템이 `drop_excluded`이면 드랍 길이 닫히고, 다른 길도 없으면 상태가 `blocked`가 아니라 `drop_excluded`다(운영자가 일부러 드랍에서 뺀 것이라 「막힘」 신호로 세지 않는다).
   `onlyBlocked`에도 들어가지 않는다. 드랍 길은 활동 드랍 또는 앰비언트 드랍으로 보고 누적 조건(`condition_json`)은 보지 않으며, 드랍 제외를 앰비언트 드랍에도 적용하는 것으로 정의한다(사용자 결정, P2 20261005_1957 A. 앰비언트 쪽 코드는 그 티켓이 맞춘다).
   어드민 직접 지급·컬렉션 완성 보상은 길로 세지 않고, 선착순 미션이 다 찬 경우도 이번에는 세지 않는다(열림). 판정은 기존 함수(`isItemBookDroppable`·`recipeReleaseState`·`isMissionExposed`·`isMissionActive`)를 그대로 쓴다.

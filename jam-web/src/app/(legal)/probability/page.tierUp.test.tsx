@@ -45,8 +45,8 @@ const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침�
 const TITLE = '등급 올리기'
 const LOWERING_RULE = '그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.'
 const INTRO =
-  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 가득 채워 넣으면, 내 트라이브의 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic을 넣으면 Mystic이 나와요.'
-const PICK_NOTE = '등급이 정해지면 내 트라이브의 컬렉션 전체에서 그 등급으로 지금 받을 수 있는 아이템 배지를 모두 같은 확률로 골라요.'
+  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 가득 채워 넣으면, 소속 트라이브와 상관없이 서비스에 있는 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic을 넣으면 Mystic이 나와요.'
+const PICK_NOTE = '등급이 정해지면 서비스의 컬렉션 전체에서 그 등급으로 지금 받을 수 있는 아이템 배지를 모두 같은 확률로 골라요.'
 
 async function render(results: Record<string, Result> = ALL_OK): Promise<string> {
   createServiceClientMock.mockReturnValue(fakeClient(results).client)
@@ -99,11 +99,11 @@ describe('정상 — 자리와 구성', () => {
     expect(order).toEqual([...order].sort((a, b) => a - b))
   })
 
-  it('소개 문단은 «내 트라이브의 새 아이템 배지»와 «바로 윗등급이 나오거나 같은 등급이 나와요», Mystic 규칙을 담은 세 문장이다', async () => {
+  it('소개 문단은 «소속 트라이브와 상관없이 서비스에 있는 새 아이템 배지»와 «바로 윗등급이 나오거나 같은 등급이 나와요», Mystic 규칙을 담은 세 문장이다', async () => {
     const section = sectionOf(await render(), TITLE)
     const [intro] = paragraphsOf(section)
     expect(intro).toBe(INTRO)
-    expect(intro).toContain('내 트라이브의 새 아이템 배지를 받아요')
+    expect(intro).toContain('소속 트라이브와 상관없이 서비스에 있는 새 아이템 배지를 받아요')
     expect(intro).toContain('Mystic을 넣으면 Mystic이 나와요')
     expect(intro).not.toContain('Mystic은 넣을 수 없어요')
     expect(intro).toContain('넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요')
@@ -138,9 +138,11 @@ describe('정상 — 자리와 구성', () => {
     expect(section.lastIndexOf('</table>')).toBeLessThan(section.indexOf('border-l-2'))
   })
 
-  it('트라이브에서 받는다는 말은 소개 문단에, 같은 확률로 고른다는 말은 Note에만 있다. 컬렉션을 고른다는 말은 없다', async () => {
+  it('트라이브와 상관없다는 말은 소개 문단에, 같은 확률로 고른다는 말은 Note에만 있다. 컬렉션을 고른다는 말은 없다', async () => {
     const [intro, note] = paragraphsOf(sectionOf(await render(), TITLE))
-    expect(intro).toContain('내 트라이브')
+    expect(intro).toContain('소속 트라이브와 상관없이')
+    expect(intro).not.toContain('내 트라이브')
+    expect(note).not.toContain('트라이브')
     expect(intro).not.toContain('같은 확률')
     expect(note).toContain('같은 확률')
     expect(note).toContain('컬렉션 전체')
