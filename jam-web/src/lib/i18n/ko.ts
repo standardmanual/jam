@@ -863,7 +863,9 @@ export const ko = {
     /** 보상 배지 행 캡션(티켓 20260915_2244)
      * 20260916_0856: "완료하면 ~해요"로 통일. 포인트 행의 «완료하면 바로 받아요» 캡션은 티켓 20261104_2150에서 뺐다 */
     rewardBadgeCaption: '완료하면 획득해요',
-    statusViewButton: '랭킹',
+    /** 미션 상세의 상황 화면 진입 버튼 글자 — 랭킹형은 «랭킹», 달성형은 «달성 현황»(티켓 20261111_2049) */
+    statusViewRankingButton: '랭킹',
+    statusViewAchievementButton: '달성 현황',
     joinConfirmBody: '한번 참가하면 취소할 수 없어요. 참가할까요?',
     joinConfirmButton: '참가 확정',
     joinNote: '참가 후에는 취소할 수 없어요',
@@ -878,8 +880,11 @@ export const ko = {
      * 20260916_0856: §5.1 단독 명사 CTA 금지 + §1.3 미션 상태 행("끝난")에 맞춰 재작성 */
     ctaEnded: '종료',
 
+    statusAchievementLabel: '달성 현황',
     statusParticipants: '참가자 {count}명',
     statusAllRanks: '전체 랭킹',
+    /** 랭킹형 상황 화면 위쪽 «내 순위» 라벨(티켓 20261111_2049) */
+    statusMyRankLabel: '내 순위',
     statusLoadError: '불러오지 못했어요',
     statusNoParticipants: '아직 참가자가 없어요',
     statusNoParticipantsBody: '가장 먼저 도전해보세요',

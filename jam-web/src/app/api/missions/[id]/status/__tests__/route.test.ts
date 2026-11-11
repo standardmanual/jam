@@ -3,10 +3,10 @@
  *
  * 검증 대상:
  *  - 참가할 수 있는 트라이브가 아닌 미션은 404(없는 미션)다. 이미 완료한 미션은 트라이브가 달라도 본다. 접근을 읽지 못하면 500이다
- *  - 이용 정지 중인 참가자는 다른 유저가 보는 순위와 `totalParticipants`에서 빠진다
+ *  - 이용 정지 중인 참가자는 다른 유저가 보는 순위·달성자 목록과 `totalParticipants`에서 빠진다
  *  - 정지 중인 본인에게는 본인이 계속 보이고(`me`·`entries`), 정지가 풀리면 다시 보인다
  *  - 정지 여부를 읽지 못하면 목록을 내리지 않는다(500)
- *  - 랭킹형이 아닌 미션(달성형)은 404(없는 미션)이고 정지 조회를 하지 않는다
+ *  - 달성형도 같은 응답을 받고(티켓 20261111_2049), 달성한 사람이 먼저 나온다
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/missions/[id]/status/__tests__/route.test.ts"
  */
@@ -201,11 +201,29 @@ describe('GET /api/missions/[id]/status — 이용 정지 유저 순위 제외',
     expect(body).toEqual({ error: d.missions.statusLoadError })
   })
 
-  it.each(['achievement'] as const)('%s 미션은 «없는 미션» 404이고 정지 조회를 하지 않는다 (티켓 20261111_0856)', async (displayType) => {
-    state.displayType = displayType
+  it('달성형: 정지 중인 달성자는 목록에서 빠진다', async () => {
+    state.displayType = 'achievement'
+    state.completions = [
+      { user_id: OTHER, completed_at: '2026-10-17T00:00:00Z' },
+      { user_id: THIRD, completed_at: '2026-10-18T00:00:00Z' },
+    ]
+    state.suspended = new Set([OTHER])
+    const { body } = await getStatus()
+    expect(body.type).toBe('achievement')
+    expect(ids(body.entries)).toEqual([THIRD, ME])
+    expect(body.totalParticipants).toBe(2)
+  })
+
+  it('달성형: 달성한 사람이 먼저, 먼저 달성한 순으로 나온다 (티켓 20261111_2049)', async () => {
+    state.displayType = 'achievement'
+    state.completions = [
+      { user_id: THIRD, completed_at: '2026-10-17T00:00:00Z' },
+      { user_id: OTHER, completed_at: '2026-10-18T00:00:00Z' },
+    ]
     const { status, body } = await getStatus()
-    expect(status).toBe(404)
-    expect(body).toEqual({ error: d.missions.missionNotFound })
-    expect(state.suspensionLookups).toBe(0)
+    expect(status).toBe(200)
+    expect(body.type).toBe('achievement')
+    expect(ids(body.entries)).toEqual([THIRD, OTHER, ME])
+    expect(body.me?.userId).toBe(ME)
   })
 })

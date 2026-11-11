@@ -356,8 +356,12 @@ describe('MissionDetailClient 랭킹 보기 버튼 (티켓 20261111_0850)', () =
     expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'ranking' })).not.toContain(LINK)
   })
 
-  it.each(['achievement'] as const)('%s 미션에는 참가 중이거나 완료해도 버튼이 없다', (statusDisplayType) => {
-    expect(render(CONDITION_TEXT, { participating: true, statusDisplayType })).not.toContain(LINK)
-    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType })).not.toContain(LINK)
+  it('달성형 미션에도 «달성 현황» 버튼이 상황 화면으로 이어진다 (티켓 20261111_2049)', () => {
+    const html = render(CONDITION_TEXT, { participating: true, statusDisplayType: 'achievement' })
+    expect(html).toContain(LINK)
+    expect(html).toContain('>달성 현황</div>')
+    expect(html).not.toContain('>랭킹</div>')
+    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType: 'achievement' })).toContain(LINK)
+    expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'achievement' })).not.toContain(LINK)
   })
 })
