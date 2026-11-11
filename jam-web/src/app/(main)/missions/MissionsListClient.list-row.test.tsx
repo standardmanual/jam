@@ -2,7 +2,7 @@
  * 미션 목록 행 — ListRow 미디어 행 (티켓 20261108_1020, 4단계 4-2배치)
  *
  * 열린 미션은 `/missions/{id}` 링크 행, 잠긴 미션은 링크 없는 button(aria-disabled) 행이다.
- * 딤·흑백은 lead 안 이미지 래퍼에만 걸리고, 칩은 ListRowChip(참가중·NEW는 done 톤)이다.
+ * 딤·흑백은 lead 안 이미지 래퍼에만 걸리고, 칩은 ListRowChip(NEW는 done 톤, 참가중은 --jam-red 면)이다.
  * `ListRow`가 행마다 `<style>`을 내보내므로 마크업을 읽기 전에 걷는다(4-1 시험과 같은 방식).
  * 저장소에 jsdom이 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다.
  * 실행: cd jam-web && npx vitest run "src/app/(main)/missions/MissionsListClient.list-row.test.tsx"
@@ -100,10 +100,11 @@ describe('미션 목록 — ListRow 미디어 행', () => {
     expect(html).toContain(d.missions.tagUpcoming)
   })
 
-  it('참가중 칩은 done 톤(검정 면 + --snow 글자)이고 완료 칩은 neutral이다', () => {
+  it('참가중 칩은 강조 레드 면(--jam-red + --foreground 글자)이고 완료 칩은 neutral이다', () => {
     const joined = render(item({ joined: true }))
     const chip = joined.slice(joined.lastIndexOf('<span', joined.indexOf(`>${d.missions.tagJoined}<`)), joined.indexOf(`>${d.missions.tagJoined}<`))
-    expect(chip).toContain('color:var(--snow)')
+    expect(chip).toContain('background:var(--jam-red)')
+    expect(chip).toContain('color:var(--foreground)')
 
     const done = render(item({ done: true }))
     const doneChip = done.slice(done.lastIndexOf('<span', done.indexOf(`>${d.missions.tagDone}<`)), done.indexOf(`>${d.missions.tagDone}<`))

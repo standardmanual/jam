@@ -199,7 +199,8 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   }
   if (participating) {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
+      /* 참가중 칩은 한 단계 키웠다(2026-11-11 사용자 지시, 티켓 20261111_2143): 11px·좌우 10 → 14px(--text-sm)·좌우 12·위아래 4 */
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold leading-none"
         style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
         {d.missions.tagJoined}
       </span>
