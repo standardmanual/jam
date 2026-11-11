@@ -9,7 +9,7 @@
  * 5. 경계 시각 — 레시피 종료는 제외(`<`)·컬렉션 종료는 포함(`<=`), 기존 판정 함수와 같은 결과
  * 6. 여러 레시피·미션 ID는 중복 없이 모은다
  * 7. 동기화·캡슐 길 — `listIssueCandidates`와 열림이 같고, 트라이브·등급이 없으면 닫힌다. 컬렉션·아이템 사유는 드랍 길과 같은 상수를 쓴다 (티켓 20261022_1136 2회)
- * 8. 등급 올리기 길 — 컬렉션이 속한 트라이브의 활성 컬렉션 전체에서 재료 등급과 바로 윗등급이 함께 나올 수 있을 때만 열린다(Mystic은 Mystic 재료로 늘 열린다). 네 등급의 모든 조합을 대조한다 (티켓 20261108_2321)
+ * 8. 등급 올리기 길 — 트라이브와 무관하게 서비스의 활성 컬렉션 전체에서 재료 등급과 바로 윗등급이 함께 나올 수 있을 때만 열린다(Mystic은 Mystic 재료로 늘 열린다). 네 등급의 모든 조합을 대조하고, 서버 시작 검사와 같은 함수(`issuableServiceRarities`·`serviceSupportsTierUp`)로 판정한다 (티켓 20261108_2321, 20261111_0846)
  * 9. 잠긴 배지 — 어느 길이든 잠긴 채 받는 모습만 싣고 열림 판정에는 쓰지 않는다. 필요 포인트는 배지 등급의 `jam_policy.locked_points_*`다
  * 10. 새 길은 드랍 길의 부분집합이라 아이템 상태(열림/막힘/드랍 제외)를 바꾸지 않는다(격자 대조)
  */
@@ -25,6 +25,8 @@ import type {
 import { isItemBookDroppable } from '@/lib/itembook/visibility'
 import { isRecipeReleased } from '@/lib/combine/visibility'
 import { listIssueCandidates } from '@/lib/drop-engine/syncIssue'
+import { issuableServiceRarities } from '@/lib/combine/tierUpCollections'
+import { TIER_UP_MATERIAL_RARITIES, serviceSupportsTierUp, tierUpUpperRarity } from '@/lib/combine/tierUpOdds'
 import type { BadgeRarity } from '@/types/database'
 
 const NOW = new Date('2026-10-04T00:00:00.000Z')
@@ -463,7 +465,6 @@ describe('동기화·캡슐 길', () => {
   it('컬렉션에 소속 트라이브가 없으면 닫히고(collection_no_tribe) 드랍 길만 남는다', () => {
     const r = run({ collection: { tribe_id: null } })
     expect(r.syncCapsule).toEqual({ open: false, reasons: ['collection_no_tribe'] })
-    expect(r.tierUp).toEqual({ open: false, reasons: ['collection_no_tribe'] })
     expect(r.drop.open).toBe(true)
     expect(r.status).toBe('open')
   })
@@ -514,9 +515,9 @@ describe('동기화·캡슐 길', () => {
                       tribe_id !== null && listIssueCandidates({ tribeId: tribe_id, rarity: 'common', books: [c], badges: [i], now: NOW }).length > 0
                     expect(r.syncCapsule.open).toBe(expectedOpen)
                     expect(r.syncCapsule.reasons.length === 0).toBe(r.syncCapsule.open)
-                    // 동기화·캡슐 ⊂ 드랍, 등급 올리기 ⊂ 동기화·캡슐 — 새 길은 아이템 상태를 바꾸지 않는다
+                    // 동기화·캡슐 ⊂ 드랍, 등급 올리기 ⊂ 드랍(등급 올리기는 트라이브를 보지 않아 동기화·캡슐의 부분집합이 아니다) — 새 길은 아이템 상태를 바꾸지 않는다
                     if (r.syncCapsule.open) expect(r.drop.open).toBe(true)
-                    if (r.tierUp.open) expect(r.syncCapsule.open).toBe(true)
+                    if (r.tierUp.open) expect(r.drop.open).toBe(true)
                     expect(r.status === 'open').toBe(r.drop.open)
                   }
                 }
@@ -536,7 +537,7 @@ describe('등급 올리기 길', () => {
     expect(r.rare.tierUp).toEqual({ open: true, reasons: [] })
   })
 
-  it('한 등급만 나올 수 있는 트라이브는 닫히고(tier_up_rarity_pair_missing) 동기화·캡슐 길은 그대로 열린다', () => {
+  it('한 등급만 나올 수 있는 서비스는 닫히고(tier_up_rarity_pair_missing) 동기화·캡슐 길은 그대로 열린다', () => {
     const r = runRarities(['rare'])
     expect(r.rare.tierUp).toEqual({ open: false, reasons: ['tier_up_rarity_pair_missing'] })
     expect(r.rare.syncCapsule.open).toBe(true)
@@ -552,7 +553,7 @@ describe('등급 올리기 길', () => {
     expect(b.mystic.tierUp.open).toBe(true)
   })
 
-  it('Mystic 아이템만 있는 트라이브도 열린다 — Mystic 재료 6개로 Mystic이 나온다(윗등급 조건 없음)', () => {
+  it('Mystic 아이템만 있는 서비스도 열린다 — Mystic 재료 6개로 Mystic이 나온다(윗등급 조건 없음)', () => {
     const r = runRarities(['mystic'])
     expect(r.mystic.tierUp).toEqual({ open: true, reasons: [] })
   })
@@ -581,7 +582,7 @@ describe('등급 올리기 길', () => {
     expect(r.rare.tierUp.reasons).toEqual(['tier_up_rarity_pair_missing'])
   })
 
-  it('같은 트라이브의 다른 컬렉션 아이템은 짝으로 센다 — 트라이브의 활성 컬렉션 전체가 풀이다', () => {
+  it('같은 트라이브의 다른 컬렉션 아이템은 짝으로 센다 — 서비스의 활성 컬렉션 전체가 풀이다', () => {
     const result = computeItemPaths({
       collections: [collection({ id: 'c1' }), collection({ id: 'c2' })],
       items: [item({ id: 'a', item_book_id: 'c1', rarity: 'common' }), item({ id: 'b', item_book_id: 'c2', rarity: 'rare' })],
@@ -593,7 +594,7 @@ describe('등급 올리기 길', () => {
     expect(result.items.map((r) => r.tierUp.open)).toEqual([true, true])
   })
 
-  it('다른 트라이브의 컬렉션 아이템은 짝으로 세지 않는다', () => {
+  it('다른 트라이브의 컬렉션 아이템도 짝으로 센다 — 트라이브를 보지 않는다', () => {
     const result = computeItemPaths({
       collections: [collection({ id: 'c1', tribe_id: 't1' }), collection({ id: 'c2', tribe_id: 't2' })],
       items: [item({ id: 'a', item_book_id: 'c1', rarity: 'common' }), item({ id: 'b', item_book_id: 'c2', rarity: 'rare' })],
@@ -602,10 +603,10 @@ describe('등급 올리기 길', () => {
       lockedPoints: { common: 50, rare: 100, epic: 200, mystic: 400 },
       now: NOW,
     })
-    expect(result.items.map((r) => r.tierUp.open)).toEqual([false, false])
+    expect(result.items.map((r) => r.tierUp.open)).toEqual([true, true])
   })
 
-  it('비활성·기간이 끝난 같은 트라이브 컬렉션의 아이템은 짝으로 세지 않는다', () => {
+  it('비활성·기간이 끝난·드랍 제외 컬렉션의 아이템은 짝으로 세지 않는다', () => {
     for (const over of [{ is_active: false }, { valid_until: PAST }, { drop_excluded: true }] as const) {
       const result = computeItemPaths({
         collections: [collection({ id: 'c1' }), collection({ id: 'c2', ...over })],
@@ -619,9 +620,31 @@ describe('등급 올리기 길', () => {
     }
   })
 
-  it('소속 트라이브가 없는 컬렉션은 닫힌다', () => {
+  it('소속 트라이브가 없는 컬렉션도 열린다 — 동기화·캡슐 길은 닫혀도(collection_no_tribe) 등급 올리기 길은 트라이브를 보지 않는다', () => {
     const r = runRarities(['common', 'rare'], { collection: { tribe_id: null } })
-    expect(r.common.tierUp).toEqual({ open: false, reasons: ['collection_no_tribe'] })
+    expect(r.common.tierUp).toEqual({ open: true, reasons: [] })
+    expect(r.rare.tierUp).toEqual({ open: true, reasons: [] })
+    expect(r.common.syncCapsule).toEqual({ open: false, reasons: ['collection_no_tribe'] })
+  })
+
+  it('등급이 없는 아이템은 닫힌다(item_no_rarity)', () => {
+    const r = run({ item: { rarity: null } })
+    expect(r.tierUp).toEqual({ open: false, reasons: ['item_no_rarity'] })
+  })
+
+  it('서버 시작 검사와 같은 함수로 판정한다 — 등급 조합마다 서버의 «재료 등급 시작 가능» 판정과 어드민 열림이 일치한다', () => {
+    for (let mask = 1; mask < 16; mask++) {
+      const present = ORDER.filter((_, bit) => (mask & (1 << bit)) !== 0)
+      const books = [collection()]
+      const badges = present.map((rarity) => item({ id: `i-${rarity}`, rarity }))
+      const available = [...issuableServiceRarities({ books, badges, now: NOW })]
+      const r = runRarities(present)
+      for (const rarity of present) {
+        // 이 등급은 재료 등급 M의 결과가 될 수 있고(M 또는 바로 윗등급), 서버가 M으로 시작해 준다
+        const expected = TIER_UP_MATERIAL_RARITIES.some((m) => (rarity === m || rarity === tierUpUpperRarity(m)) && serviceSupportsTierUp(available, m))
+        expect(r[rarity].tierUp.open, `${present.join('+')} 중 ${rarity}`).toBe(expected)
+      }
+    }
   })
 
   it('컬렉션 기간이 끝났으면 어느 등급도 열리지 않고 사유는 동기화·캡슐 길과 같다', () => {

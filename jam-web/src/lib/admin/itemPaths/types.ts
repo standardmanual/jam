@@ -3,7 +3,7 @@
  *
  * 입력은 이미 읽어 온 행에서 판정에 필요한 컬럼만 추린 최소 형태다(DB 읽기는 이 모듈 밖, ⑦b가 한다).
  * 판정 자체는 기존 함수(`isItemBookDroppable`·`isRecipeReleased`·`isMissionActive`·`isMissionExposed`,
- * 동기화·캡슐과 등급 올리기는 `listIssueCandidates`·`issuableRaritiesByBook`)를 `compute.ts`가 그대로 다시 쓴다 — 여기에는 조건을 두지 않는다.
+ * 동기화·캡슐과 등급 올리기는 `listIssueCandidates`, 등급 올리기는 `listServiceIssueCandidates`·`issuableServiceRarities`)를 `compute.ts`가 그대로 다시 쓴다 — 여기에는 조건을 두지 않는다.
  */
 import type { BadgeRarity, MissionExposureMode } from '@/types/database'
 
@@ -13,7 +13,7 @@ import type { BadgeRarity, MissionExposureMode } from '@/types/database'
  */
 export interface ItemPathCollectionInput {
   id: string
-  /** 소속 트라이브 — 동기화·캡슐과 등급 올리기는 유저의 소속 트라이브 컬렉션만 푼다. 없으면 두 길이 닫힌다 */
+  /** 소속 트라이브 — 동기화·캡슐은 유저의 소속 트라이브 컬렉션만 푼다. 없으면 그 길이 닫힌다. 등급 올리기는 트라이브를 보지 않는다 */
   tribe_id: string | null
   is_active: boolean
   valid_from: string | null
@@ -118,10 +118,10 @@ export interface SyncCapsulePath {
   reasons: ItemPathReason[]
 }
 
-/** 등급 올리기 길 — 재료 등급 또는 그 바로 윗등급으로 이 아이템의 등급이 나오고, 컬렉션이 속한 트라이브의 활성 컬렉션 전체가 그 재료 등급으로 시작할 수 있어야 열린다 */
+/** 등급 올리기 길 — 재료 등급 또는 그 바로 윗등급으로 이 아이템의 등급이 나오고, 서비스의 활성 컬렉션 전체가 그 재료 등급으로 시작할 수 있어야 열린다(트라이브 무관) */
 export interface TierUpPath {
   open: boolean
-  /** 닫혔을 때만 채운다(열렸으면 빈 배열). 아이템 자체가 발급 풀에 못 들면 동기화·캡슐 길과 같은 사유다 */
+  /** 닫혔을 때만 채운다(열렸으면 빈 배열). 아이템 자체가 서비스 풀에 못 들면 «풀에 드는가» 사유다(트라이브 사유 없음) */
   reasons: ItemPathReason[]
 }
 
