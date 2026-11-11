@@ -8,8 +8,10 @@ import { d, t } from '@/lib/i18n'
  * 우측 상단 원 버튼만 누른다. 버튼은 카드 안이 아니라 형제로 둔다(컬렉션 `SlotGrid`의 래퍼 구조와 같다).
  *
  * - `filled`: 채운 개체를 선명하게 + «−»(누르면 비운다) + 3px 회색 테두리(등급 올리기 칸과 같은 모양, 채웠다는 신호).
- * - `addable`: 대표 후보를 선명하게 + «+»(활성 행이 하나면 바로 채우고, 여럿이면 호출부가 시트를 연다).
- * - `unowned`: 대표 후보를 흐리게(썸네일 grayscale + opacity-40, 이름 muted), 버튼 없음, 눌러도 아무 일 없음.
+ * - `addable`: 대표 후보를 흐린 회색으로(썸네일 grayscale + opacity-40, 이름 muted) + «+»(활성 행이 하나면 바로 채우고, 여럿이면 호출부가 시트를 연다).
+ *   컬렉션 상세에서 넣을 수 있는 아이템 배지가 있는 칸(`SlotGrid`의 `isSlottable`)과 같은 모양이다(2026-11-11 사용자 지시, 이전에는 선명했다).
+ * - `unowned`: 가진 개체가 없는 칸. 썸네일을 이미지 윤곽의 회색 실루엣으로 칠하고(컬렉션 상세의 미발견 칸 `undiscovered`와 같다, 2026-11-11 사용자 지시)
+ *   이름은 muted, 버튼 없음, 눌러도 아무 일 없음.
  * - `pulse`: 온보딩 퀘스트 펄스는 «+»에만 건다. «−»·`unowned`에는 걸리지 않는다.
  */
 export type RecipeSlotStatus = 'filled' | 'addable' | 'unowned'
@@ -38,6 +40,8 @@ export default function RecipeSlotCard({
   dense = false,
 }: RecipeSlotCardProps) {
   const unowned = status === 'unowned'
+  // 채운 칸만 선명하다. 넣을 수 있는 칸은 흐린 회색 + «+», 가진 게 없는 칸은 회색 실루엣이다
+  const dimmed = status !== 'filled'
   // 채운 칸은 등급 올리기의 채운·빈 칸(`MixerSlot`)과 같은 3px 회색 테두리(`--muted`)로 «채움»을 알린다(2026-11-10 사용자 지시).
   // 안쪽 링(box-shadow inset)이라 칸 크기와 이미지 위치를 밀지 않는다.
   const cardClassName = ['w-full', dense && 'p-2!', status === 'filled' && 'ring-3 ring-inset ring-muted'].filter(Boolean).join(' ')
@@ -48,8 +52,9 @@ export default function RecipeSlotCard({
         name={name}
         imageUrl={imageUrl}
         rarity={null}
-        earned={!unowned}
-        nameMuted={unowned}
+        earned={!dimmed}
+        undiscovered={unowned}
+        nameMuted={dimmed}
       />
       {status === 'addable' && (
         <SlotCircleButton

@@ -11,18 +11,21 @@ const render = (props: Partial<React.ComponentProps<typeof RecipeSlotCard>> = {}
   renderToStaticMarkup(<RecipeSlotCard status="addable" name="황금빛 도토리" imageUrl="https://example.com/a.png" {...props} />)
 
 describe('RecipeSlotCard', () => {
-  it('addable: 선명한 칸 + «+» 버튼(배지 이름이 붙은 aria-label), 칸 본체는 버튼이 아니다', () => {
+  it('addable: 흐린 회색 칸 + «+» 버튼(배지 이름이 붙은 aria-label), 칸 본체는 버튼이 아니다 (컬렉션 상세의 넣을 수 있는 칸과 같다, 2026-11-11)', () => {
     const html = render()
     expect(html).toContain(`aria-label="${t(d.combine.slotAddAria, { name: '황금빛 도토리' })}"`)
-    expect(html).not.toContain('grayscale')
-    expect(html).not.toContain('text-muted')
+    expect(html).toContain('grayscale opacity-40')
+    expect(html).not.toContain('brightness-0')
+    expect(html).toContain('text-muted opacity-60')
     // 버튼은 «+» 하나뿐이다(카드 본체는 비대화형 div)
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(html).not.toContain('active:scale-95')
   })
 
-  it('filled: «−» 버튼만 나온다', () => {
+  it('filled: «−» 버튼만 나오고 썸네일·이름은 선명하다', () => {
     const html = render({ status: 'filled' })
+    expect(html).not.toContain('grayscale')
+    expect(html).not.toContain('text-muted')
     expect(html).toContain(`aria-label="${t(d.combine.slotRemoveAria, { name: '황금빛 도토리' })}"`)
     expect(html).not.toContain(`aria-label="${t(d.combine.slotAddAria, { name: '황금빛 도토리' })}"`)
     expect(html.match(/<button/g)).toHaveLength(1)
@@ -38,9 +41,10 @@ describe('RecipeSlotCard', () => {
     expect(dense).toContain('ring-inset')
   })
 
-  it('unowned: 썸네일은 grayscale+opacity-40, 이름은 muted이고 버튼이 없다', () => {
+  it('unowned: 썸네일은 회색 실루엣(brightness-0 invert-[.64]), 이름은 muted이고 버튼이 없다 (컬렉션 상세의 미발견 칸과 같다, 2026-11-11)', () => {
     const html = render({ status: 'unowned' })
-    expect(html).toContain('grayscale opacity-40')
+    expect(html).toContain('brightness-0 invert-[.64]')
+    expect(html).not.toContain('grayscale opacity-40')
     expect(html).toContain('text-muted opacity-60')
     expect(html).not.toContain('<button')
   })
