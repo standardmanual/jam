@@ -27,6 +27,11 @@
   --text-4xl: 2.25rem;   --text-4xl--line-height: calc(2.5 / 2.25);
   --text-5xl: 3rem;      --text-5xl--line-height: 1;
 
+  /* 미션 상황 화면 카드 제목 전용(티켓 20261111_2049). 시안이 21px인데 위 눈금에 21px이 없어 이 화면만 따로 둔다.
+     다른 화면에 쓰지 않고, 위 --text-* 눈금은 바꾸지 않는다. 행간 1.5 = 31.5px */
+  --status-card-title-size: 1.3125rem;
+  --status-card-title-line-height: 1.5;
+
   /* 긴 글 행간: 새 시스템에 없어서 남긴다. */
   --leading-loose: 1.6;    /* 조건·설명 블록 */
   --leading-reading: 1.75; /* 여러 문단 산문(/philosophy, 정책 문서). 한국어 장문 관례는 1.7~1.8 */

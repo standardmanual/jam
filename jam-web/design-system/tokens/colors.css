@@ -66,13 +66,17 @@
   --jam-purple: #BA8AF7;
   --jam-blue: #0695EC;
 
-  /* 미션 상황 화면 전용(티켓 20261111_2049). 다른 화면에 퍼뜨리지 않는다. 색 수치는 새로 없고 --jam-red를 --card-bg에 5%·12.5%·18% 섞은 합성이다. */
+  /* 미션 상황 화면 전용(티켓 20261111_2049). 다른 화면에 퍼뜨리지 않는다. 시안 hex(#fbfbfb → #fdf3f3 → #fbe3e3 → #f9d6d6)를 토큰 합성으로 근사한다.
+     첫 색은 --base-neutral-50(#fafafa, 시안과 1단계 차이). 나머지는 --jam-red(255,29,29)를 #fafafa(250)에 N% 섞은 값이다.
+     채널값 = 250 + (255-250)·N (R), 250 - (250-29)·N (G·B). 시안의 G·B에 맞춰 N을 풀었다:
+     #fdf3f3 → (250-243)/221 = 3.2% → rgb(250,243,243) / #fbe3e3 → (250-227)/221 = 10.4% → rgb(251,227,227) / #f9d6d6 → (250-214)/221 = 16.3% → rgb(251,214,214).
+     R 채널은 --jam-red와 #fafafa의 차가 5뿐이라 시안(253·251·249)에 못 미치고 최대 3단계 어긋난다. 색 수치는 새로 만들지 않았다. */
   --status-page-gradient: linear-gradient(
     to bottom,
-    var(--card-bg) 0,
-    color-mix(in srgb, var(--jam-red) 5%, var(--card-bg)) 280px,
-    color-mix(in srgb, var(--jam-red) 12.5%, var(--card-bg)) 580px,
-    color-mix(in srgb, var(--jam-red) 18%, var(--card-bg)) 900px
+    var(--base-neutral-50) 0,
+    color-mix(in srgb, var(--jam-red) 3.2%, var(--base-neutral-50)) 280px,
+    color-mix(in srgb, var(--jam-red) 10.4%, var(--base-neutral-50)) 580px,
+    color-mix(in srgb, var(--jam-red) 16.3%, var(--base-neutral-50)) 900px
   );
   --status-glow: radial-gradient(70% 60% at 50% 32%, var(--card-bg), transparent); /* 프로필 뒤 흰 빛. 높이 420px 레이어에 깐다 */
   --card-bg-translucent: color-mix(in srgb, var(--card-bg) 94%, transparent);      /* 그라데이션 위 카드 면. 아주 약한 투과(blur 없음) */

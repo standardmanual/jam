@@ -121,10 +121,10 @@ describe('MissionStatusClient — 달성형', () => {
     expect(notYet).toContain('background:var(--base-neutral-600);color:var(--snow)')
   })
 
-  it('«달성 현황» 카드에는 다른 참가자만, 서버가 준 순서 그대로 나오고 내 행·«나» 칩은 없다', () => {
+  it('«달성 현황» 카드에는 서버가 내 행을 뺀 다른 참가자가 준 순서 그대로 나오고 «나» 칩은 없다', () => {
     const html = render({
       type: 'achievement',
-      entries: [person('a', true), me, person('c', false)],
+      entries: [person('a', true), person('c', false)],
       me,
       totalParticipants: 3,
     })
@@ -138,9 +138,22 @@ describe('MissionStatusClient — 달성형', () => {
     expect(html).not.toContain('— 나 —')
   })
 
-  it('다른 참가자가 없으면 EmptyState가 나온다', () => {
-    const html = render({ type: 'achievement', entries: [me], me, totalParticipants: 1 })
-    expect(html).toContain('아직 참가자가 없어요')
+  it('내가 참가 중인데 다른 참가자가 없으면 «아직 다른 참가자가 없어요» EmptyState가 나온다', () => {
+    const html = render({ type: 'achievement', entries: [], me, totalParticipants: 1 })
+    expect(html).toContain('아직 다른 참가자가 없어요')
+    expect(html).toContain('다른 참가자가 생기면 여기에 보여요')
+    expect(html).not.toContain('아직 참가자가 없어요')
     expect(html).not.toContain('참가자 1명')
+  })
+
+  it('참가자가 한 명도 없으면(me도 null) 기존 «아직 참가자가 없어요» EmptyState가 나온다', () => {
+    const html = render({ type: 'achievement', entries: [], me: null, totalParticipants: 0 })
+    expect(html).toContain('아직 참가자가 없어요')
+    expect(html).not.toContain('아직 다른 참가자가 없어요')
+  })
+
+  it('카드 제목은 화면 전용 글자 크기 토큰을 쓴다', () => {
+    const html = render({ type: 'achievement', entries: [person('a', true)], me, totalParticipants: 2 })
+    expect(html).toContain('var(--status-card-title-size)')
   })
 })

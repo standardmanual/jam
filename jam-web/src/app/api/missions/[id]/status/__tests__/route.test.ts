@@ -7,6 +7,7 @@
  *  - 정지 중인 본인에게는 본인이 계속 보이고(`me`·`entries`), 정지가 풀리면 다시 보인다
  *  - 정지 여부를 읽지 못하면 목록을 내리지 않는다(500)
  *  - 달성형도 같은 응답을 받고(티켓 20261111_2049), 달성한 사람이 먼저 나온다
+ *  - 달성형 entries는 내 행을 뺀 다른 참가자이고 visible_rank_count는 그 목록에 적용한다(me는 따로)
  *
  * 실행: cd jam-web && npx vitest run "src/app/api/missions/[id]/status/__tests__/route.test.ts"
  */
@@ -20,6 +21,7 @@ const THIRD = 'user-third'
 
 const state = vi.hoisted(() => ({
   displayType: 'ranking' as 'ranking' | 'achievement',
+  visibleRankCount: null as number | null,
   mine: true,
   /** 참가자 (user_mission_participations 전체) */
   participations: [] as { user_id: string; progress_value: number }[],
@@ -46,7 +48,7 @@ vi.mock('@/lib/supabase/server', () => ({
       builder.in = () => builder
       builder.maybeSingle = async () => {
         if (table === 'missions') {
-          return { data: { id: 'm1', status_display_type: state.displayType, visible_rank_count: null }, error: null }
+          return { data: { id: 'm1', status_display_type: state.displayType, visible_rank_count: state.visibleRankCount }, error: null }
         }
         if (table === 'user_mission_participations') {
           const row = state.participations.find((p) => p.user_id === filters.user_id)
@@ -113,6 +115,7 @@ const ids = (entries: { userId: string }[]) => entries.map((e) => e.userId)
 
 beforeEach(() => {
   state.displayType = 'ranking'
+  state.visibleRankCount = null
   state.mine = true
   state.participations = [
     { user_id: ME, progress_value: 10 },
@@ -210,7 +213,8 @@ describe('GET /api/missions/[id]/status — 이용 정지 유저 순위 제외',
     state.suspended = new Set([OTHER])
     const { body } = await getStatus()
     expect(body.type).toBe('achievement')
-    expect(ids(body.entries)).toEqual([THIRD, ME])
+    expect(ids(body.entries)).toEqual([THIRD])
+    expect(body.me?.userId).toBe(ME)
     expect(body.totalParticipants).toBe(2)
   })
 
@@ -223,7 +227,28 @@ describe('GET /api/missions/[id]/status — 이용 정지 유저 순위 제외',
     const { status, body } = await getStatus()
     expect(status).toBe(200)
     expect(body.type).toBe('achievement')
-    expect(ids(body.entries)).toEqual([THIRD, OTHER, ME])
+    expect(ids(body.entries)).toEqual([THIRD, OTHER])
     expect(body.me?.userId).toBe(ME)
+  })
+
+  it('달성형: 내가 공개 범위 안이어도 다른 참가자가 정확히 N명 나온다 (티켓 20261111_2049)', async () => {
+    state.displayType = 'achievement'
+    state.visibleRankCount = 2
+    state.participations = [
+      { user_id: ME, progress_value: 0 },
+      { user_id: OTHER, progress_value: 0 },
+      { user_id: THIRD, progress_value: 0 },
+      { user_id: 'user-fourth', progress_value: 0 },
+    ]
+    // 내가 가장 먼저 달성했다 — 자른 뒤에 빼면 다른 참가자가 1명만 남는다
+    state.completions = [
+      { user_id: ME, completed_at: '2026-10-16T00:00:00Z' },
+      { user_id: THIRD, completed_at: '2026-10-17T00:00:00Z' },
+      { user_id: OTHER, completed_at: '2026-10-18T00:00:00Z' },
+    ]
+    const { body } = await getStatus()
+    expect(ids(body.entries)).toEqual([THIRD, OTHER])
+    expect(body.me?.userId).toBe(ME)
+    expect(body.totalParticipants).toBe(4)
   })
 })

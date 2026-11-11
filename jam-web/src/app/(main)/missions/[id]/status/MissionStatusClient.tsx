@@ -131,7 +131,12 @@ function MyHero({ avatarUrl, name, children }: { avatarUrl: string | null; name:
 function CardHeader({ title, total }: { title: string; total: number }) {
   return (
     <div className="flex items-baseline justify-between mb-2">
-      <p className="m-0 text-xl font-bold text-foreground break-keep wrap-break-word">{title}</p>
+      <p
+        className="m-0 font-bold text-foreground break-keep wrap-break-word"
+        style={{ fontSize: 'var(--status-card-title-size)', lineHeight: 'var(--status-card-title-line-height)' }}
+      >
+        {title}
+      </p>
       <span className="text-xs text-muted tabular-nums whitespace-nowrap">
         {t(d.missions.statusParticipants, { count: total })}
       </span>
@@ -179,6 +184,15 @@ export default function MissionStatusClient({
       icon={<UsersIcon className="w-8 h-8" />}
       title={d.missions.statusNoParticipants}
       description={d.missions.statusNoParticipantsBody}
+    />
+  )
+
+  // 달성형에서 내가 참가 중인데 다른 참가자가 없을 때 — «아직 참가자가 없어요»는 나까지 없는 것처럼 읽혀 따로 둔다
+  const otherEmptyState = (
+    <EmptyState
+      icon={<UsersIcon className="w-8 h-8" />}
+      title={d.missions.statusNoOtherParticipants}
+      description={d.missions.statusNoOtherParticipantsBody}
     />
   )
 
@@ -272,8 +286,8 @@ export default function MissionStatusClient({
         {data?.type === 'achievement' && (() => {
           const me = data.me
           const achieved = me?.achieved ?? false
-          // 서버가 달성한 사람을 먼저(먼저 달성한 순) 정렬해 visible_rank_count까지 잘라 보낸다. 내 행은 위쪽 알약이 대신하므로 뺀다
-          const others = data.entries.filter(e => e.userId !== me?.userId)
+          // 서버가 내 행을 뺀 뒤 달성한 사람을 먼저(먼저 달성한 순) 정렬해 visible_rank_count까지 잘라 보낸다. 내 행은 위쪽 알약이 대신한다
+          const others = data.entries
 
           return (
             <>
@@ -303,7 +317,7 @@ export default function MissionStatusClient({
                       ))}
                     </div>
                   </Card>
-                ) : emptyState}
+                ) : me ? otherEmptyState : emptyState}
               </div>
             </>
           )

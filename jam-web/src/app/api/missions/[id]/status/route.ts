@@ -154,8 +154,10 @@ export async function GET(_req: Request, { params }: Params) {
       return 0
     })
 
-    const entries = all.slice(0, limit)
+    // 내 행은 화면 위쪽 «나» 영역이 대신하므로(me로 따로 내린다) 목록에서 먼저 빼고 공개 수만큼 자른다.
+    // 자른 뒤에 빼면 내가 공개 범위 안일 때 다른 참가자가 하나 적게 나온다(티켓 20261111_2049).
     const me = all.find((e) => e.userId === user.id) ?? null
+    const entries = all.filter((e) => e.userId !== user.id).slice(0, limit)
 
     return NextResponse.json({ type: 'achievement', entries, me, totalParticipants })
   }
