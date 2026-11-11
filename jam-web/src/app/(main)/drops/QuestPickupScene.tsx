@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import { useToast } from '@/components/ui/Toast'
 import PoiCarouselModal from '@/components/PoiCarouselModal'
-import { BADGE_FILL_PATH } from '@/components/map/MapView'
+import { BADGE_FILL_PATH, DROP_MARKER_ACTIVE_BG, DROP_MARKER_ACTIVE_GLYPH } from '@/components/map/MapView'
 import { d } from '@/lib/i18n'
 import {
   DEMO_PICKUP_POI,
@@ -136,13 +136,13 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
       >
         <span
           className={`flex items-center justify-center rounded-full border-2 border-snow shrink-0${carouselOpen ? '' : ' jam-quest-pulse'}`}
-          style={{ width: MARKER_SIZE, height: MARKER_SIZE, background: 'var(--accent)' }}
+          style={{ width: MARKER_SIZE, height: MARKER_SIZE, background: DROP_MARKER_ACTIVE_BG }}
         >
           <svg
             viewBox="0 0 24 24"
             width={MARKER_ICON_SIZE}
             height={MARKER_ICON_SIZE}
-            style={{ fill: 'var(--accent-foreground)' }}
+            style={{ fill: DROP_MARKER_ACTIVE_GLYPH }}
             aria-hidden="true"
             dangerouslySetInnerHTML={{ __html: BADGE_FILL_PATH }}
           />

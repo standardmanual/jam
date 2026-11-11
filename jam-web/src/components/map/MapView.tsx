@@ -174,19 +174,27 @@ const BADGE_LINE_PATH =
   '<path fill-rule="evenodd" clip-rule="evenodd" d="M13.0006 2.17806C12.3815 1.82037 11.6185 1.82037 10.9994 2.17806L3.99945 6.22251C3.38096 6.57986 3 7.23993 3 7.95424V16.0457C3 16.76 3.38095 17.4201 3.99944 17.7774L10.9994 21.8219C11.6185 22.1796 12.3815 22.1796 13.0006 21.8219L20.0006 17.7774C20.619 17.4201 21 16.76 21 16.0457V7.95424C21 7.23993 20.619 6.57986 20.0006 6.22251L13.0006 2.17806ZM19.2501 7.5213L12.2501 3.47686C12.0954 3.38743 11.9046 3.38743 11.7499 3.47686L4.74986 7.5213C4.59524 7.61064 4.5 7.77566 4.5 7.95424V16.0457C4.5 16.2243 4.59524 16.3893 4.74986 16.4786L11.7499 20.5231C11.9046 20.6125 12.0954 20.6125 12.2501 20.5231L19.2501 16.4786C19.4048 16.3893 19.5 16.2243 19.5 16.0457V7.95424C19.5 7.77566 19.4048 7.61064 19.2501 7.5213Z"/>'
 
 /**
+ * 배지(드랍)가 있는 지점 마커의 면·아이콘 색 — 강조색 그린(사용자 지시 2026-11-11, 티켓 20261111_1034).
+ * 밝은 그린 위라 아이콘은 흰색이 아니라 검정(--foreground, 약 11:1)이다. 온보딩 연출의 정지 마커(`QuestPickupScene`)가
+ * 실제 마커와 같은 모양을 보이도록 같이 쓴다.
+ */
+export const DROP_MARKER_ACTIVE_BG = 'var(--jam-green)'
+export const DROP_MARKER_ACTIVE_GLYPH = 'var(--foreground)'
+
+/**
  * 드랍/픽업 POI 마커 — 서클 + 내부 배지 아이콘.
- * 픽업 가능한 드랍 있음 = 메인 포인트 컬러 배경 + badge-fill 아이콘(--accent-foreground),
- * 없음 = --muted 배경 + badge-line 아이콘(--snow). 드랍 범위 밖은 같은 --muted 배경에
+ * 픽업 가능한 드랍 있음 = 강조색 그린 배경 + badge-fill 아이콘(--foreground),
+ * 없음 = --muted 배경 + badge-line 아이콘(--snow). 드랍 범위 밖은 같은 색에
  * 반투명(0.5)으로 표현한다. 직접 적은 회색·흰색 대신 역할 토큰을 쓴다(티켓 20261015_2134).
  */
-function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: number }): string {
+export function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: number }): string {
   const { hasDrops, inRange, size } = opts
-  const bg = hasDrops ? 'var(--accent)' : 'var(--muted)'
+  const bg = hasDrops ? DROP_MARKER_ACTIVE_BG : 'var(--muted)'
   const opacity = inRange ? 1 : 0.5
   const icon = size * 0.6
   const path = hasDrops ? BADGE_FILL_PATH : BADGE_LINE_PATH
-  // accent 면 위는 --accent-foreground(6.63:1), --muted 면 위는 --snow(5.60:1)
-  const glyph = hasDrops ? 'var(--accent-foreground)' : 'var(--snow)'
+  // 그린 면 위는 --foreground(검정), --muted 면 위는 --snow(5.60:1)
+  const glyph = hasDrops ? DROP_MARKER_ACTIVE_GLYPH : 'var(--snow)'
 
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};opacity:${opacity};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">` +
     `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="${glyph}" aria-hidden="true">${path}</svg></div>`

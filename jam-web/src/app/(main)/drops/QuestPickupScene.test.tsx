@@ -22,7 +22,7 @@ vi.mock('@/components/ui/Toast', () => ({
 
 import QuestPickupScene from './QuestPickupScene'
 import { d } from '@/lib/i18n'
-import { BADGE_FILL_PATH } from '@/components/map/MapView'
+import { BADGE_FILL_PATH, DROP_MARKER_ACTIVE_BG, DROP_MARKER_ACTIVE_GLYPH, dropMarkerIconHtml } from '@/components/map/MapView'
 
 describe('QuestPickupScene 초기 렌더 (mode=pickup)', () => {
   it('마커 라벨(pickupMarkerLabel)이 보인다', () => {
@@ -36,6 +36,22 @@ describe('QuestPickupScene 초기 렌더 (mode=pickup)', () => {
     // dangerouslySetInnerHTML로 주입된 path의 fill-rule 속성 일부로 재사용 여부를 확인한다.
     expect(BADGE_FILL_PATH).toContain('fill-rule')
     expect(html).toContain('fill-rule')
+  })
+
+  it('배지가 있는 지점의 마커는 강조색 그린 면에 검정 아이콘이고, 지도 마커와 온보딩 마커가 같은 색을 쓴다 (티켓 20261111_1034)', () => {
+    const map = dropMarkerIconHtml({ hasDrops: true, inRange: true, size: 24 })
+    expect(DROP_MARKER_ACTIVE_BG).toBe('var(--jam-green)')
+    expect(map).toContain(`background:${DROP_MARKER_ACTIVE_BG}`)
+    expect(map).toContain(`fill="${DROP_MARKER_ACTIVE_GLYPH}"`)
+    const scene = renderToStaticMarkup(<QuestPickupScene mode="pickup" />)
+    expect(scene).toContain('background:var(--jam-green)')
+    expect(scene).toContain('fill:var(--foreground)')
+  })
+
+  it('배지가 없는 지점의 마커는 그린이 아니라 회색이다', () => {
+    const none = dropMarkerIconHtml({ hasDrops: false, inRange: true, size: 24 })
+    expect(none).toContain('background:var(--muted)')
+    expect(none).not.toContain('--jam-green')
   })
 
   it('마커를 탭하기 전에는 "여기에 드랍" 버튼(캐러셀)이 렌더되지 않는다', () => {
