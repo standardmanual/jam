@@ -25,6 +25,7 @@ describe('배지 상세 미획득 안내 카드', () => {
 
   it('공유 시트의 미획득 안내도 본문 없이 제목만 그린다', () => {
     expect(share).not.toContain('notEarnedBody')
-    expect(share).toContain('{ title: d.badges.notEarnedTitle, body: null }')
+    // 안내 팝오버는 미획득 하나뿐이라(스트라바 끊김은 공유를 막지 않는다, 티켓 20261111_0801) 제목만 그린다
+    expect(share).toContain('{d.badges.notEarnedTitle}')
   })
 })

@@ -22,7 +22,9 @@ function ItemCardContent({ entry, inSheet = false }: { entry: ItemEarnEntry; inS
     ...(entry.expires_at ? [{ key: 'expires', title: d.inventory.expiresAt, iso: entry.expires_at }] : []),
   ]
   return (
-    <div className={inSheet ? 'flex flex-col' : 'flex flex-col -mb-3'}>
+    // 카드 안의 행은 위아래에 같은 안쪽 여백(12px)이 있어 카드 여백과 겹쳐 두꺼워진다 — 위·아래 모두 12px씩 걷는다.
+    // 제목이 카드 안에 있는 다른 배지 상세의 «획득 정보» 카드는 아래만 걷는다(제목이 위를 채운다). 이 카드는 제목이 카드 밖이라 위도 걷는다(2026-11-11 사용자 지시)
+    <div className={inSheet ? 'flex flex-col' : 'flex flex-col -my-3'}>
       {rows.map((row, i) => (
         <ListRow
           key={row.key}
