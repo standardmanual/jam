@@ -51,12 +51,12 @@ export function tierUpUpperRarity(materialRarity: TierUpMaterialRarity): BadgeRa
 }
 
 /**
- * 순수 — 트라이브가 등급 올리기를 시작할 수 있는가 (티켓 20261108_2321). 컬렉션을 고르지 않으므로 판정 단위가 트라이브다.
- * `rarities`는 소속 트라이브의 활성 컬렉션 전체에서 지금 실제로 나올 수 있는 아이템 배지가 있는 등급이다. **재료 등급과 바로 윗등급이 모두** 있어야 한다
+ * 순수 — 서비스가 등급 올리기를 시작할 수 있는가 (티켓 20261108_2321, 20261111_0846에서 판정 단위를 트라이브에서 서비스 전체로 바꿨다).
+ * `rarities`는 서비스의 활성 컬렉션 전체에서 지금 실제로 나올 수 있는 아이템 배지가 있는 등급이다. **재료 등급과 바로 윗등급이 모두** 있어야 한다
  * (Mystic 재료는 Mystic만 있으면 된다). 한쪽이 없으면 굴린 등급에 따라 받을 것이 없어 거절이 나는데, 거절은 소각 전이라 비용이 없다 —
- * 윗등급만 있는 트라이브면 거절될 때마다 다시 시도해 윗등급 100%를 얻을 수 있다. 서버(`tierUp`)와 어드민 아이템 길이 이 함수로 판정한다.
+ * 윗등급만 있는 풀이면 거절될 때마다 다시 시도해 윗등급 100%를 얻을 수 있다. 서버(`tierUp`)와 어드민 아이템 길이 이 함수로 판정한다.
  */
-export function tribeSupportsTierUp(rarities: readonly BadgeRarity[], materialRarity: TierUpMaterialRarity): boolean {
+export function serviceSupportsTierUp(rarities: readonly BadgeRarity[], materialRarity: TierUpMaterialRarity): boolean {
   const upper = tierUpUpperRarity(materialRarity)
   return rarities.includes(materialRarity) && (upper === null || rarities.includes(upper))
 }

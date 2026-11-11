@@ -27,7 +27,7 @@ export const PATH_REASON_LABELS: Record<ItemPathReason, string> = {
   item_out_of_period: '아이템 배지가 유효기간 밖이에요',
   collection_no_tribe: '컬렉션에 소속 트라이브가 없어요',
   item_no_rarity: '아이템 배지에 등급이 없어요',
-  tier_up_rarity_pair_missing: '트라이브의 활성 컬렉션 전체에 재료 등급이나 바로 위 등급의 아이템 배지가 없어요',
+  tier_up_rarity_pair_missing: '서비스의 활성 컬렉션 전체에 재료 등급이나 바로 위 등급의 아이템 배지가 없어요',
   no_recipe: '이 아이템 배지를 주는 레시피가 없어요',
   recipe_scheduled: '레시피가 아직 공개되지 않았어요',
   recipe_ended: '레시피가 끝났어요',

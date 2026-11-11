@@ -163,19 +163,47 @@ export function isIssuableBook(book: IssueBook, tribeId: string, now: Date): boo
   return book.tribe_id === tribeId && book.is_active && !book.drop_excluded && inWindow(book.valid_from, book.valid_until, now.getTime())
 }
 
-/** 발급할 수 있는 후보 전체 — 소속 트라이브 컬렉션, 그 등급, 활성, 공개 기간 안, 드랍 제외 아님, 삭제 아님 */
-export function listIssueCandidates<B extends IssueBadge>(input: PickItemBadgeInput<B>): B[] {
-  const nowMs = input.now.getTime()
-  const bookIds = new Set(input.books.filter((b) => isIssuableBook(b, input.tribeId, input.now)).map((b) => b.id))
-  return input.badges.filter(
+/** 컬렉션 id 집합 안에서 그 등급의 발급 가능한 배지를 거른다 — 트라이브 있는 후보와 트라이브 없는 후보가 같은 배지 판정을 쓴다 */
+function filterIssuableBadges<B extends IssueBadge>(bookIds: ReadonlySet<string>, rarity: BadgeRarity, badges: readonly B[], nowMs: number): B[] {
+  return badges.filter(
     (b) =>
-      b.rarity === input.rarity &&
+      b.rarity === rarity &&
       b.item_book_id !== null &&
       bookIds.has(b.item_book_id) &&
       !b.drop_excluded &&
       b.deleted_at === null &&
       inWindow(b.valid_from, b.valid_until, nowMs)
   )
+}
+
+/** 발급할 수 있는 후보 전체 — 소속 트라이브 컬렉션, 그 등급, 활성, 공개 기간 안, 드랍 제외 아님, 삭제 아님 */
+export function listIssueCandidates<B extends IssueBadge>(input: PickItemBadgeInput<B>): B[] {
+  const bookIds = new Set(input.books.filter((b) => isIssuableBook(b, input.tribeId, input.now)).map((b) => b.id))
+  return filterIssuableBadges(bookIds, input.rarity, input.badges, input.now.getTime())
+}
+
+export type ServiceIssueInput<B extends IssueBadge = IssueBadge> = Omit<PickItemBadgeInput<B>, 'tribeId'>
+
+/**
+ * 서비스 전체에서 발급할 수 있는 컬렉션인가 — 활성, 드랍 제외 아님, 공개 기간 안. **트라이브는 보지 않는다**(`tribe_id`가 없는 컬렉션도 든다).
+ * 등급 올리기(`lib/combine/tierUp.ts`, 티켓 20261111_0846)와 어드민 아이템 길이 같은 판정을 쓴다. 드랍·동기화·캡슐은 `isIssuableBook`을 그대로 쓴다.
+ */
+export function isServiceIssuableBook(book: IssueBook, now: Date): boolean {
+  return book.is_active && !book.drop_excluded && inWindow(book.valid_from, book.valid_until, now.getTime())
+}
+
+/** 서비스 전체의 발급 후보 — 트라이브와 무관하게 활성 컬렉션의 그 등급 배지(활성, 공개 기간 안, 드랍 제외 아님, 삭제 아님) 전체 */
+export function listServiceIssueCandidates<B extends IssueBadge>(input: ServiceIssueInput<B>): B[] {
+  const bookIds = new Set(input.books.filter((b) => isServiceIssuableBook(b, input.now)).map((b) => b.id))
+  return filterIssuableBadges(bookIds, input.rarity, input.badges, input.now.getTime())
+}
+
+/** 서비스 전체 후보에서 배지마다 같은 확률로 하나를 고른다(난수 1번). 후보가 없으면 null이다. 컬렉션을 먼저 뽑지 않는다 */
+export function pickServiceItemBadge<B extends IssueBadge>(input: ServiceIssueInput<B>, rand: Rand): B | null {
+  const candidates = listServiceIssueCandidates(input)
+  if (candidates.length === 0) return null
+  const idx = Math.min(Math.floor(rand() * candidates.length), candidates.length - 1)
+  return candidates[idx]
 }
 
 /**
