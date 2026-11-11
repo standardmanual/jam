@@ -267,7 +267,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
   if (questStep === 'pickup' || questStep === 'drop') {
     return (
       <div className="fixed inset-0 bg-background overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
-        <TopNav logo />
+        <TopNav logo logoText={d.drops.screenTitle} />
         <QuestPickupScene mode={questStep} />
       </div>
     )
@@ -316,7 +316,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
           TopNav(position: sticky, z-index: 30, design-system/components/navigation/TopNav.jsx)는
           이 fixed 컨테이너(position:fixed라 자체 스태킹 컨텍스트 생성) 안에서 z-index:auto인
           아래 지도 레이어보다 항상 위에 그려지므로 별도 z-index 조정 불필요. */}
-      <TopNav logo />
+      <TopNav logo logoText={d.drops.screenTitle} />
 
       {/* 지도 — 풀스크린(노치·홈 인디케이터 영역까지 꽉 채움). TopNav가 상단 일부를 가린다. */}
       <div className="absolute inset-0">

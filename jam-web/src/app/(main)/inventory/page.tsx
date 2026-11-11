@@ -76,7 +76,7 @@ export default async function InventoryPage() {
   return (
     <div className="min-h-full text-foreground">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
-      <TopNav logo />
+      <TopNav logo logoText={d.inventory.title} />
 
       <div className="px-4 pt-4 pb-6">
       {/* 헤더 */}

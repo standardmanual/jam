@@ -76,6 +76,12 @@ export interface TopNavProps {
    */
   logo?: boolean
   /**
+   * `logo`와 함께 쓴다. 값이 있으면 좌측에 Jam 로고 대신 이 한글 탭 이름을 큰 글씨로 보인다(배지·체크인·미션·인벤토리,
+   * 사용자 지시 2026-11-11, 시안 티켓 20261111_1100). 누르는 요소가 아니라 글자만이다 — 탭 이동은 하단 탭바가 맡는다.
+   * 값이 없으면 지금처럼 로고다(홈·내 프로필).
+   */
+  logoText?: string
+  /**
    * 값이 있으면 중앙 슬롯을 stravaState 분기(SyncButton·다시 동기화·동기화 시작 버튼) 대신 이
    * 노드로 교체한다. 온보딩 퀘스트 `sync` 차례 전용(티켓 20260927_2331) — 호출부는
    * 홈(`page.tsx`)만 넘긴다.
@@ -83,7 +89,7 @@ export interface TopNavProps {
   centerSlotOverride?: ReactNode
 }
 
-export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false, centerSlotOverride }: TopNavProps) {
+export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false, logoText, centerSlotOverride }: TopNavProps) {
   const router = useRouter()
   const { username, avatarUrl, stravaState } = useTopNavData()
 
@@ -125,7 +131,10 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
 
   // 20260828_1548: 베타테스트 VOC 임시 채널로 로고 옆에 '문의' 버튼을 두었다.
   // 20261031_1302: 그 입구를 푸터의 «문의» 링크(Footer.tsx)로 옮겼다. 로고만 남는다.
-  const logoNode = logo ? (
+  const logoNode = logo && logoText ? (
+    // 탭 이름 글자(시안): 24px 굵게. 헤더 높이 56px 안에서 로고(26px)와 비슷한 시각 크기다. 한글은 줄 상자 안에서 아래로 치우쳐 보여 1px 올린다.
+    <span className="shrink-0 text-2xl font-bold leading-none text-foreground relative -top-px">{logoText}</span>
+  ) : logo ? (
     <Link href="/" aria-label="홈으로 이동" className="shrink-0">
       {/* 로고 PNG는 흰색 한 색이라 크림 위 1.05:1이다 — 알파만 마스크로 쓰고 색은 --foreground(17.07:1)로 칠한다.
           접근 가능한 이름은 바깥 Link의 aria-label이 맡는다. */}

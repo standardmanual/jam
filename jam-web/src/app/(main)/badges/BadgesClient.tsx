@@ -178,7 +178,7 @@ export default function BadgesClient({
   return (
     <div className="min-h-full text-foreground">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
-      <TopNav logo />
+      <TopNav logo logoText={d.badges.title} />
 
       {/* 20261031_1821: 보이는 타이틀은 없애고, 스크린리더용 페이지 제목만 남긴다 */}
       <h1 className="sr-only">{d.badges.title}</h1>
