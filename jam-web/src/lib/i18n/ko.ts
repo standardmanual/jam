@@ -878,7 +878,6 @@ export const ko = {
     joinButtonPending: '참가하는 중',
     /** 완료 후 종료된 미션의 비활성 CTA 버튼(티켓 20260915_2244)
      * 20260916_0856: §5.1 단독 명사 CTA 금지 + §1.3 미션 상태 행("끝난")에 맞춰 재작성 */
-    ctaEnded: '종료',
 
     statusParticipants: '참가자 {count}명',
     statusAllRanks: '전체 랭킹',

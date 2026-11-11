@@ -382,10 +382,14 @@ describe('MissionDetailClient 상태 칩 — 끝난 미션 (티켓 20261111_2152
     expect(html).not.toContain(`>${d.missions.tagJoinedEnded}</span>`)
   })
 
-  it('끝난 미션을 완료했다면 «완료» 칩이 우선한다', () => {
-    const html = render(CONDITION_TEXT, { participating: true, completed: true, endsAt: PAST })
-    expect(html).toContain(`>${d.missions.tagDone}</span>`)
-    expect(html).not.toContain(`>${d.missions.tagJoinedEnded}</span>`)
+  it('완료한 미션은 기간이 남았어도 «종료» 칩이고 «완료» 칩과 맨 아래 «종료» 버튼은 없다', () => {
+    for (const endsAt of [PAST, FUTURE]) {
+      const html = render(CONDITION_TEXT, { participating: true, completed: true, endsAt })
+      expect(html).toContain(`>${d.missions.tagJoinedEnded}</span>`)
+      expect(html).not.toContain(`>${d.missions.tagDone}</span>`)
+      expect(html).not.toContain('cursor-default') // 예전 비활성 «종료» 버튼의 클래스
+      expect(html).not.toContain(d.missions.joinButton)
+    }
   })
 })
 

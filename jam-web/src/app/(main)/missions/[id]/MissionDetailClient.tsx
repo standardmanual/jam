@@ -191,10 +191,11 @@ function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted
     )
   }
   if (isCompleted) {
+    // 완료해도 미션은 기간이 지나면 끝나므로 «완료»가 아니라 «종료» 칩을 쓴다(2026-11-11 사용자 지시, 티켓 20261111_2204)
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
         style={{ background: 'var(--background-secondary)', color: 'var(--muted)' }}>
-        {d.missions.tagDone}
+        {d.missions.tagJoinedEnded}
       </span>
     )
   }
@@ -659,14 +660,8 @@ export default function MissionDetailClient({
         {/* ── CTA 버튼 ── */}
         {/* 20260825_028: 잠긴 미션은 참가 CTA를 렌더하지 않는다(해제 조건 안내는 히어로 직후) */}
         {locked ? null : isCompleted ? (
-          /* 완료 → 종료 (disabled) */
-          <button
-            disabled
-            className="w-full min-h-[56px] rounded-full text-[16px] font-bold leading-[1.5] cursor-default"
-            style={{ background: 'var(--surface)', color: 'var(--muted)' }}
-          >
-            {d.missions.ctaEnded}
-          </button>
+          /* 완료: 맨 아래 비활성 «종료» 버튼을 지웠다(2026-11-11 사용자 지시). 위쪽 «종료» 칩이 알린다. 이 분기를 지우면 아래 «참가하기»가 뜰 수 있다 */
+          null
         ) : participating ? (
           /* 참가 중: 위쪽 «참가중» 칩이 이미 알리므로 맨 아래에는 아무것도 그리지 않는다(티켓 20261104_2140). 이 분기를 지우면 아래 «참가하기»가 뜬다 */
           null
