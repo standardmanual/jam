@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import LocalDate from '@/components/LocalDate'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { ListRowChip } from '@/components/ui/ListRow'
 import { d } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
 import type { BadgeRarity } from '@/types/database'
@@ -128,15 +129,16 @@ export default function ItemCandidateRow({
         {locked ? (
           pointsTitle ? <span className="text-xs text-foreground text-center break-keep wrap-break-word">{pointsTitle}</span> : null
         ) : (
-          <span className="inline-flex rounded-full bg-background px-2 py-0.5 text-xs font-bold tracking-wider text-foreground">
+          // 일련번호 칩도 모든 칩의 기준인 ListRowChip 규격(12px·2px 8px·20px)이다. 색(--background 면)만 다르다(티켓 20261112_0010)
+          <ListRowChip className="tracking-wider" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
             {formatSerial(candidate)}
-          </span>
+          </ListRowChip>
         )}
         {shownRarity && shownRarity !== 'common' && <RarityBadge rarity={shownRarity} size="md" />}
         {expiring && candidate.expires_at && (
-          <span className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted text-center">
+          <ListRowChip style={{ background: 'transparent', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }}>
             <LocalDate iso={candidate.expires_at} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
-          </span>
+          </ListRowChip>
         )}
         {trailing}
       </div>

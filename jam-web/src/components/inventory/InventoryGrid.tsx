@@ -2,6 +2,7 @@
 
 import LocalDate from '@/components/LocalDate'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import { ListRowChip } from '@/components/ui/ListRow'
 import { d } from '@/lib/i18n'
 
 // 인벤토리 그리드 카드에 필요한 정규화된 아이템 형태.
@@ -92,9 +93,10 @@ export default function InventoryGrid({
       {items.map((item) => {
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
-          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted text-center">
+          // 만료 임박 칩도 ListRowChip 규격(12px·2px 8px·20px)이다. 선 칩 모양(투명 면 + --border 안쪽 선 + --muted 글자)만 유지한다(티켓 20261112_0010)
+          <ListRowChip style={{ background: 'transparent', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }}>
             <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
-          </p>
+          </ListRowChip>
         ) : null
 
         // 카드 자식은 만료 임박 칩뿐이다. 일련번호를 그리던 분기는 유일한 사용처였던 컬렉션

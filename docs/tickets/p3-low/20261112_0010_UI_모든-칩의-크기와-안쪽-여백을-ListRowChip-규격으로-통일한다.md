@@ -21,7 +21,7 @@ parent: "20261111_2350"
 
 - 배지 목록 카드·배지 상세·인벤토리·오늘 카드 등 `RarityBadge`·`BadgeLevelChip` `md`를 쓰던 곳은 칩 높이가 22px에서 20px로, 홈 카드 `LabelChip`은 24px에서 20px로 줄었다.
 - `RarityBadge` 기본값 `sm`(8px, 안쪽 4px 9px)은 바꾸지 않았다. 크기를 넘기지 않는 호출부는 `PoiCarouselModal`의 잠긴 드랍 칩 한 곳이다.
-- 손으로 만든 칩 중 인벤토리의 후보 행(`ItemCandidateRow`: 일련번호·만료 칩)과 `InventoryGrid`의 만료 칩, `SlotActionPill`(버튼), VOC 상태 칩은 이번에 건드리지 않았다.
+- 손으로 만든 칩 중 인벤토리의 후보 행(`ItemCandidateRow`: 일련번호·만료 칩)과 `InventoryGrid`의 만료 칩은 같은 날 사용자 지시로 `ListRowChip`으로 바꿨다(색은 그대로: 일련번호 = `--background` 면, 만료 = 투명 면 + `--border` 안쪽 선 + `--muted` 글자). `SlotActionPill`(버튼)과 VOC 상태 칩은 건드리지 않았다.
 - `_ds_manifest.json`을 재생성하며 그동안 빠져 있던 토큰(`--status-*`, `--card-padding*` 등)도 함께 들어갔다.
 
 ---
@@ -34,4 +34,5 @@ parent: "20261111_2350"
 - [x] `vitest run` 전체에서 어드민·`asset-generator`(기존 환경 실패) 외 실패 없음, `npm run typecheck` 통과, eslint 오류 0, `ds-sync-check` 오류 0
 - [x] 개발 서버에서 배지 목록·홈·내 프로필 화면의 칩이 모두 12px·700·높이 20px(안쪽 2px 8px, 레벨 칩은 2px 0)임을 측정
 - [ ] `CombineClient.test.tsx`는 앞선 티켓 20261111_2340(칩 굵기 700)에서 이미 깨져 있던 것을 이번에 함께 고쳤다
+- [ ] 인벤토리 칩 세 곳은 이 계정에 해당 상태(만료 임박·선택 시트)가 없어 화면에서는 보지 못했다. 시험 178건과 타입 검사로만 확인했다
 - [ ] claude.ai/design 업로드본 갱신과 Storybook 시각 확인은 하지 못했다
