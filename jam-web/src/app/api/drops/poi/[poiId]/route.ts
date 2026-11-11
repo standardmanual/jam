@@ -50,7 +50,7 @@ export async function GET(
     // 20260829_2101 개체정체성 모델의 poi_drops.inventory_item_id(현재 드랍이 가리키는
     // 개체). 관계명을 명시하지 않으면 PostgREST가 PGRST201로 거부해 목록 조회 자체가
     // 실패한다 — 여기서는 후자를 써야 하므로 명시적으로 지정한다.
-    .select(`id, badge_id, dropped_at, dropper_user_id, source, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at, locked, unlock_points_required )`)
+    .select(`id, badge_id, dropped_at, dropper_user_id, source, badges ( name, rarity, image_url, description ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at, locked, unlock_points_required )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
@@ -69,7 +69,7 @@ export async function GET(
     dropper_user_id: string | null
     /** 'system'(앰비언트)은 원래 드랍한 유저가 없다. 'user'인데 dropper_user_id가 NULL이면 드랍한 유저가 탈퇴한 것이다 */
     source: PoiDropSource
-    badges: { name: string; rarity: string; image_url: string | null } | null
+    badges: { name: string; rarity: string; image_url: string | null; description: string | null } | null
     // 마이그레이션 이전에 완료된 과거 드랍은 소급 연결되지 않아 null일 수 있다.
     inventory_items: {
       serial_prefix: string | null
@@ -130,6 +130,8 @@ export async function GET(
       badge_name: d.badges?.name,
       badge_rarity: d.badges?.rarity,
       badge_image_url: d.badges?.image_url,
+      // 줍기 시트가 배지 이름 아래에 그리는 설명(2026-11-11 사용자 지시, 티켓 20261111_1056). 잠긴 개체는 위 분기에서 싣지 않는다
+      badge_description: d.badges?.description ?? null,
       dropper_name: dropperName,
       dropped_at: d.dropped_at,
       serial: d.inventory_items

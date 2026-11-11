@@ -80,6 +80,39 @@ describe('BadgeDetailSheet 잠긴 변형', () => {
   })
 })
 
+describe('BadgeDetailSheet 배지 설명과 일련번호 자리 (티켓 20261111_1056)', () => {
+  const withDescription: PickupDrop = { ...base, badge_description: '손바닥보다 큰 뻥튀기 한 장입니다. 부푼 알갱이 사이가 보입니다.' }
+
+  it('배지 이름 아래에 설명이 문장 단위로 나뉘어 보인다', () => {
+    const html = render(withDescription)
+    expect(html).toContain('>손바닥보다 큰 뻥튀기 한 장입니다.<')
+    expect(html).toContain('>부푼 알갱이 사이가 보입니다.<')
+    expect(html.indexOf('</h1>')).toBeLessThan(html.indexOf('손바닥보다 큰 뻥튀기 한 장입니다.'))
+  })
+
+  it('일련번호는 설명 아래, 장소·드랍한 사람 카드 위에 있다', () => {
+    const html = render(withDescription)
+    const description = html.indexOf('부푼 알갱이 사이가 보입니다.')
+    const serial = html.indexOf('>000005<')
+    const poi = html.indexOf('성수역')
+    expect(serial).toBeGreaterThan(-1)
+    expect(description).toBeLessThan(serial)
+    expect(serial).toBeLessThan(poi)
+  })
+
+  it('설명이 없으면 설명 줄 없이 일련번호만 이름 아래에 있다', () => {
+    const html = render(base)
+    expect(html).not.toContain('text-wrap!')
+    expect(html.indexOf('</h1>')).toBeLessThan(html.indexOf('>000005<'))
+    expect(html.indexOf('>000005<')).toBeLessThan(html.indexOf('성수역'))
+  })
+
+  it('잠긴 개체는 설명이 값으로 남아 있어도 그리지 않는다', () => {
+    const html = render({ ...locked, badge_description: '들키면 안 되는 설명입니다.' })
+    expect(html).not.toContain('들키면 안 되는 설명')
+  })
+})
+
 describe('BadgeDetailSheet 막힘 안내', () => {
   it('안내가 없으면 인라인 안내 블록이 없고 [픽업]이 눌린다', () => {
     const html = render(base)
