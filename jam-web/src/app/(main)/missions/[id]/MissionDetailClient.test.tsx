@@ -388,3 +388,26 @@ describe('MissionDetailClient 상태 칩 — 끝난 미션 (티켓 20261111_2152
     expect(html).not.toContain(`>${d.missions.tagJoinedEnded}</span>`)
   })
 })
+
+describe('MissionDetailClient 나의 진행 상황 카드 면 (티켓 20261111_2201)', () => {
+  const card = (html: string) => {
+    const i = html.indexOf(d.missions.myProgressTitle)
+    return html.slice(html.lastIndexOf('<div', i), html.indexOf('</div>', i) + 200)
+  }
+
+  it('수치형·개수형·달성형 모두 카드 면이 강조 레드(--jam-red)다', () => {
+    for (const opts of [
+      { participating: true, missionType: 'distance', progressValue: 3.2, conditionJson: { distance_km: 10 } },
+      { participating: true, missionType: 'streak_days', progressValue: 3, conditionJson: { streak_days: 7 } },
+      { participating: true, missionType: 'checkin', progressValue: 0, conditionJson: { poi_ids: ['a'] } },
+    ]) {
+      expect(card(render(CONDITION_TEXT, opts))).toContain('background:var(--jam-red)')
+    }
+  })
+
+  it('수치형은 현재 값이 흰색(--snow), 막대 채움이 흰색이다', () => {
+    const html = render(CONDITION_TEXT, { participating: true, missionType: 'distance', progressValue: 3.2, conditionJson: { distance_km: 10 } })
+    expect(html).toContain('color:var(--snow)')
+    expect(html).toContain('background:var(--snow)')
+  })
+})

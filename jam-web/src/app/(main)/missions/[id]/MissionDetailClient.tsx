@@ -112,7 +112,7 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
         aria-hidden="true"
         className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-[12px] font-bold tabular-nums leading-none flex-shrink-0 ${isNow ? 'border-2' : ''}`}
         style={{
-          // 회차 서클은 검정 면에 흰 글자다(2026-11-11 사용자 지시: 나의 진행 상황 카드의 레드 포인트는 막대·현재 값에만 쓰고 서클·달성 칩은 검정으로 되돌렸다)
+          // 회차 서클은 검정 면에 흰 글자다(2026-11-11 사용자 지시). 서클이 놓이는 나의 진행 상황 카드는 레드 면이다
           background:  isDone ? 'var(--accent)' : isNow ? 'transparent' : 'var(--background-secondary)',
           borderColor: isNow ? 'var(--link)' : undefined,
           color:       isDone ? 'var(--accent-foreground)' : isNow ? 'var(--link)' : 'var(--muted)',
@@ -132,7 +132,7 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
       {total > 0 && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           {circle(total - 1)}
-          <span aria-hidden="true" className="text-[14px] leading-none text-muted">{unit}</span>
+          <span aria-hidden="true" className="text-[14px] leading-none text-foreground">{unit}</span>
         </span>
       )}
     </div>
@@ -149,9 +149,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 /* ── 다크 인포 카드 (20260816_012: 보더 제거, 페이지 캔버스보다 밝은 엘리베이션 배경으로 구분) ── */
-function InfoCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function InfoCard({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <Card className={`flex flex-col gap-3 ${className}`}>
+    <Card className={`flex flex-col gap-3 ${className}`} style={style}>
       {children}
     </Card>
   )
@@ -609,7 +609,8 @@ export default function MissionDetailClient({
 
         {/* ── 진행상황 카드 ── */}
         {(participating || isCompleted) && goal.target > 0 && (
-          <InfoCard>
+          /* 나의 진행 상황 카드는 강조 레드(--jam-red) 면이다(2026-11-11 사용자 지시). 글자는 검정(--foreground, 대비 약 4.6:1)이고 큰 현재 값만 흰색(--snow)이다 */
+          <InfoCard style={{ background: 'var(--jam-red)' }}>
             <SectionLabel>{d.missions.myProgressTitle}</SectionLabel>
 
             {isCircleType ? (
@@ -619,7 +620,7 @@ export default function MissionDetailClient({
               /* 달성형(체크인·아이템 픽업·복합 조건). 복합 조건은 «미션 완료» 라벨이 달성 조건 카드와 겹쳐 칩만 둔다 */
               <div className="flex items-center justify-between">
                 {mission.mission_type !== 'engine_condition' && (
-                  <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
+                  <p className="text-[14px] leading-[1.43] text-foreground">{goal.label}</p>
                 )}
                 <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-foreground text-snow' : 'bg-btn-secondary text-muted'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
@@ -630,17 +631,17 @@ export default function MissionDetailClient({
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[22px] font-bold text-foreground tabular-nums leading-none">
-                    <span style={{ color: 'var(--jam-red)' }}>
+                    <span style={{ color: 'var(--snow)' }}>
                       {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
                     </span>
-                    <span className="text-[16px] font-normal text-muted mx-1">/</span>
+                    <span className="text-[16px] font-normal text-foreground mx-1">/</span>
                     {goal.target}{goal.unit}
                   </span>
                   <span className="text-[14px] font-bold text-foreground tabular-nums">
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <ProgressBar percent={isCompleted ? 100 : progressPct} color="var(--jam-red)" />
+                <ProgressBar percent={isCompleted ? 100 : progressPct} color="var(--snow)" trackColor="color-mix(in srgb, var(--foreground) 20%, transparent)" />
               </div>
             )}
           </InfoCard>
