@@ -888,9 +888,7 @@ export const ko = {
     /** 랭킹형 상황 화면 위쪽 «내 순위» 라벨(티켓 20261111_2049) */
     statusMyRankLabel: '내 순위',
     statusLoadError: '불러오지 못했어요',
-    statusNoParticipants: '아직 참가자가 없어요',
-    statusNoParticipantsBody: '가장 먼저 도전해보세요',
-    /** 달성형에서 내가 참가 중인데 다른 참가자가 없을 때(티켓 20261111_2049). «아직 참가자가 없어요»는 내가 빠진 것처럼 읽혀 따로 둔다 */
+    /** 달성형에서 내가 참가 중인데 다른 참가자가 없을 때(티켓 20261111_2049) */
     statusNoOtherParticipants: '아직 다른 참가자가 없어요',
     statusNoOtherParticipantsBody: '다른 참가자가 생기면 여기에 보여요',
     /** 순위·달성 행에서 내 행을 알리는 칩 글자(티켓 20261107_1947) */

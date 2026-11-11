@@ -179,15 +179,7 @@ export default function MissionStatusClient({
 
   const isMeInEntries = (userId: string) => data?.me?.userId === userId
 
-  const emptyState = (
-    <EmptyState
-      icon={<UsersIcon className="w-8 h-8" />}
-      title={d.missions.statusNoParticipants}
-      description={d.missions.statusNoParticipantsBody}
-    />
-  )
-
-  // 달성형에서 내가 참가 중인데 다른 참가자가 없을 때 — «아직 참가자가 없어요»는 나까지 없는 것처럼 읽혀 따로 둔다
+  // 달성형에서 내가 참가 중인데 다른 참가자가 없을 때
   const otherEmptyState = (
     <EmptyState
       icon={<UsersIcon className="w-8 h-8" />}
@@ -253,7 +245,7 @@ export default function MissionStatusClient({
               </MyHero>
 
               <div className={cardArea} style={cardAreaStyle}>
-                {entries.length > 0 ? (
+                {entries.length > 0 && (
                   <Card style={translucent}>
                     <CardHeader
                       title={d.missions.statusAllRanks}
@@ -279,7 +271,7 @@ export default function MissionStatusClient({
                       ))}
                     </div>
                   </Card>
-                ) : emptyState}
+                )}
               </div>
             </>
           )
@@ -325,7 +317,7 @@ export default function MissionStatusClient({
                       ))}
                     </div>
                   </Card>
-                ) : me ? otherEmptyState : emptyState}
+                ) : me ? otherEmptyState : null}
               </div>
             </>
           )

@@ -104,9 +104,10 @@ describe('MissionStatusClient — 랭킹형', () => {
     expect(html).toContain('내 순위')
   })
 
-  it('참가자가 없으면 카드 대신 EmptyState가 나온다', () => {
+  it('목록이 비어도(me null·entries 0) 깨지지 않고 «나» 영역만 그린다', () => {
     const html = render({ type: 'ranking', entries: [], me: null, totalParticipants: 0 })
-    expect(html).toContain('아직 참가자가 없어요')
+    expect(html).toContain('>—</p>')
+    expect(html).toContain('내 순위')
     expect(html).not.toContain('전체 랭킹')
   })
 })
@@ -152,12 +153,6 @@ describe('MissionStatusClient — 달성형', () => {
     expect(html).toContain('다른 참가자가 생기면 여기에 보여요')
     expect(html).not.toContain('아직 참가자가 없어요')
     expect(html).not.toContain('참가자 1명')
-  })
-
-  it('참가자가 한 명도 없으면(me도 null) 기존 «아직 참가자가 없어요» EmptyState가 나온다', () => {
-    const html = render({ type: 'achievement', entries: [], me: null, totalParticipants: 0 })
-    expect(html).toContain('아직 참가자가 없어요')
-    expect(html).not.toContain('아직 다른 참가자가 없어요')
   })
 
   it('카드 제목은 화면 전용 글자 크기 토큰을 쓴다', () => {
