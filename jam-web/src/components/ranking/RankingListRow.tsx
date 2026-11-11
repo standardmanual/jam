@@ -40,6 +40,30 @@ export interface RankingListRowProps {
   isMe: boolean
   /** 지표별 값 표시 포맷 — 미션 상세는 `formatMissionProgress`, 랭킹보드는 `formatRankingMetricValue`를 주입 */
   formatValue: (value: number) => string
+  /** 진행 바 채움 색. 기본은 홈 랭킹보드 카드가 쓰는 `var(--accent)`다. 미션 상황 화면이 `var(--jam-red)`로 켠다(티켓 20261111_2049) */
+  barColor?: string
+  /**
+   * 내 행 표식 모양. 기본 `chip`은 이름 옆 «나» 칩(홈 랭킹보드 카드)이고, `circle`은 `--jam-red` 면의 지름 22 원 안 «나»(미션 상황 화면, 티켓 20261111_2049)다.
+   */
+  meMarker?: 'chip' | 'circle'
+}
+
+/** 내 행 표식 원 — 지름 22, 글자 11px 굵게·줄 높이 1. 글자만으로 뜻이 전달되므로 접근성 이름도 같은 «나»다 */
+function MeCircle() {
+  return (
+    <span
+      role="img"
+      aria-label={d.missions.statusMeChip}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        width: 22, height: 22, borderRadius: '50%',
+        background: 'var(--jam-red)', color: 'var(--foreground)',
+        fontSize: 11, fontWeight: 700, lineHeight: 1,
+      }}
+    >
+      {d.missions.statusMeChip}
+    </span>
+  )
 }
 
 /**
@@ -47,11 +71,11 @@ export interface RankingListRowProps {
  * 이 행은 늘 흰 카드(홈 `ListCard`, 미션 현황의 순위 카드) 안에 들어가므로 면은 `tone="tint"`(--background-secondary, 테두리 없음)다 —
  * 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133). 행 사이에는 호출부가 간격(gap 8)을 둔다.
  *
- * 내 행은 크기·색이 아니라 이름 옆 «나» 칩 하나로 알린다(색 강조 한 곳 규칙, 티켓 20261107_1947 사용자 승인).
+ * 내 행은 크기·색이 아니라 이름 옆 «나» 표식 하나로 알린다(색 강조 한 곳 규칙, 티켓 20261107_1947 사용자 승인). 기본은 «나» 칩이고, `meMarker="circle"`이면 레드 원이다.
  * 클릭 영역(프로필 링크) 안은 phrasing만 쓴다 — 진행 바는 `as="span"`이고 장식이라 호출부 span 래퍼에 aria-hidden을 건다.
  * 순위 숫자는 화면용 숫자(aria-hidden)와 «N위»(sr-only)를 함께 둔다.
  */
-export default function RankingListRow({ entry, maxValue, isMe, formatValue }: RankingListRowProps) {
+export default function RankingListRow({ entry, maxValue, isMe, formatValue, barColor = 'var(--accent)', meMarker = 'chip' }: RankingListRowProps) {
   const fillRatio = maxValue > 0 ? Math.min(1, entry.value / maxValue) : 0
 
   return (
@@ -74,7 +98,13 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
         )
       }
       title={entry.displayName}
-      titleSuffix={isMe ? <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip> : undefined}
+      titleSuffix={
+        isMe
+          ? meMarker === 'circle'
+            ? <MeCircle />
+            : <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip>
+          : undefined
+      }
       meta={
         <span aria-hidden="true" className="block">
           <ProgressBar
@@ -82,7 +112,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
             percent={fillRatio * 100}
             labelType="none"
             height={6}
-            color="var(--accent)"
+            color={barColor}
             trackColor="var(--border)"
             radius="3px"
           />
