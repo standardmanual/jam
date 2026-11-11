@@ -31,6 +31,9 @@
      다른 화면에 쓰지 않고, 위 --text-* 눈금은 바꾸지 않는다. 행간 1.5 = 31.5px */
   --status-card-title-size: 1.3125rem;
   --status-card-title-line-height: 1.5;
+  /* 같은 화면 위쪽 «N위» 전용. 시안이 32/40인데 눈금에 32px(text-3xl 30, text-4xl 36)이 없다 */
+  --status-rank-size: 2rem;
+  --status-rank-line-height: 2.5rem;
 
   /* 긴 글 행간: 새 시스템에 없어서 남긴다. */
   --leading-loose: 1.6;    /* 조건·설명 블록 */

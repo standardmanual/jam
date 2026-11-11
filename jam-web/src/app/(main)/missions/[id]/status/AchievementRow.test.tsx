@@ -31,10 +31,11 @@ describe('AchievementRow', () => {
     expect(html).toContain('data-interactive="false"')
   })
 
-  it('달성·미달성은 value 칩이다(달성은 done 블랙 면, 미달성은 흰 면 + muted 글자)', () => {
+  it('달성·미달성은 value 칩이다(달성은 done 블랙 면, 미달성은 --muted 면 + --snow 글자)', () => {
     expect(render({ achieved: true })).toContain('background:var(--foreground);color:var(--snow)')
     expect(render({ achieved: true })).toContain('>달성</span>')
-    expect(render({ achieved: false })).toContain('background:var(--surface);color:var(--muted)')
+    expect(render({ achieved: false })).toContain('background:var(--muted);color:var(--snow)')
+    expect(render({ achieved: false })).not.toContain('border-radius:var(--radius-full);background:var(--surface);color:var(--muted);font-size')
     expect(render({ achieved: false })).toContain('>미달성</span>')
   })
 

@@ -53,10 +53,11 @@ beforeEach(() => {
 })
 
 describe('MissionStatusClient — 공통 골격', () => {
-  it('루트에 배경 그라데이션·흰 빛 토큰을 깔고 상단 바 배경은 투명이다', () => {
+  it('루트 배경은 --jam-red 한 색이고(그라데이션·흰 빛 없음) 상단 바 배경은 투명이다', () => {
     const html = render({ type: 'ranking', entries: [ranked('me', 1)], me: ranked('me', 1), totalParticipants: 1 })
-    expect(html).toContain('var(--status-page-gradient)')
-    expect(html).toContain('var(--status-glow)')
+    expect(html).toContain('background:var(--jam-red)')
+    expect(html).not.toContain('gradient')
+    expect(html).not.toContain('--status-glow')
     expect(html).toContain('data-bg="transparent"')
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,6}\b/)
     expect(html).not.toContain('rgba(')
@@ -76,8 +77,17 @@ describe('MissionStatusClient — 랭킹형', () => {
     const order = ['나의 진행 상황', '>20.0', 'km', '내 순위', '2위</p>'].map((s) => html.indexOf(s))
     expect(order.every((i) => i >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(html).toContain('var(--jam-red)')
     expect(html).toContain('width:114px')
+  })
+
+  it('위쪽 «나» 영역 글자색: 라벨·진행값·단위는 --foreground, «N위»는 --snow 32/40 굵게다', () => {
+    const html = render(base)
+    const hero = html.slice(0, html.indexOf('전체 랭킹'))
+    expect(hero).toContain('text-sm text-foreground')
+    expect(hero).not.toMatch(/<(p|span)[^>]*text-muted/) // 프로필 아이콘(svg)의 회색은 흰 원 위라 해당 없다
+    expect(hero).toContain('text-base font-normal text-foreground')
+    expect(hero).toMatch(/color:var\(--snow\);font-size:var\(--status-rank-size\);line-height:var\(--status-rank-line-height\)[^>]*>2위<\/p>/)
+    expect(hero).not.toContain('color:var(--jam-red)')
   })
 
   it('«전체 랭킹» 카드에 1위부터 모든 참가자가 나오고 내 행에만 «나» 칩이 있다', () => {
@@ -85,9 +95,24 @@ describe('MissionStatusClient — 랭킹형', () => {
     expect(html).toContain('전체 랭킹')
     expect(html).toContain('>참가자 3명')
     expect(html).not.toContain('다른 참가자')
-    expect(html).toContain('var(--card-bg-translucent)')
+    expect(html).toContain('background:var(--status-card-bg)')
+    expect(html).not.toContain('card-bg-translucent')
+    // 카드 제목·«참가자 N명»은 흰색(--snow)
+    expect(html).toMatch(/color:var\(--snow\);font-size:var\(--status-card-title-size\)[^>]*>전체 랭킹/)
+    expect(html).toMatch(/style="color:var\(--snow\)">참가자 3명/)
     for (const id of ['a', 'me', 'c']) expect(html).toContain(`이름-${id}`)
     expect(html.match(/>나<\/span>/g)).toHaveLength(1)
+  })
+
+  it('내 행 표식은 칩이 아니라 --jam-red 22px 원이고 막대 채움도 --jam-red다', () => {
+    const html = render(base)
+    expect(html).toContain('role="img" aria-label="나"')
+    expect(html).toContain('width:22px;height:22px;border-radius:50%;background:var(--jam-red);color:var(--foreground);font-size:11px;font-weight:700;line-height:1')
+    // 칩 면(--accent-soft)의 «나»는 없다
+    expect(html).not.toMatch(/background:var\(--accent-soft\)[^>]*>나</)
+    // 막대 채움: 행 3개 모두 --jam-red
+    expect(html.match(/background:var\(--jam-red\)/g)!.length).toBeGreaterThanOrEqual(4)
+    expect(html).not.toContain('background:var(--accent)')
   })
 
   it('내 순위가 공개 목록 밖이어도 위쪽 순위는 보이고 목록에 내 행은 없다', () => {
@@ -115,12 +140,20 @@ describe('MissionStatusClient — 랭킹형', () => {
 describe('MissionStatusClient — 달성형', () => {
   const me = person('me', true)
 
-  it('내가 달성하면 --jam-red 알약, 미달성이면 --base-neutral-600 알약이다', () => {
+  it('내가 달성하면 --foreground 알약, 미달성이면 --muted 알약이다(글자는 둘 다 --snow)', () => {
     const done = render({ type: 'achievement', entries: [me, person('a', false)], me, totalParticipants: 2 })
-    expect(done).toContain('background:var(--jam-red);color:var(--snow)')
+    expect(done).toContain('background:var(--foreground);color:var(--snow)')
     expect(done).toContain('>달성</span>')
+    expect(done).not.toContain('--base-neutral-600')
     const notYet = render({ type: 'achievement', entries: [person('a', true)], me: person('me', false), totalParticipants: 2 })
-    expect(notYet).toContain('background:var(--base-neutral-600);color:var(--snow)')
+    expect(notYet).toContain('background:var(--muted);color:var(--snow)')
+    expect(notYet).not.toContain('--base-neutral-600')
+  })
+
+  it('«달성 현황» 카드 면은 --status-card-bg, 제목은 --snow다', () => {
+    const html = render({ type: 'achievement', entries: [person('a', true)], me, totalParticipants: 2 })
+    expect(html).toContain('background:var(--status-card-bg)')
+    expect(html).toMatch(/color:var\(--snow\);font-size:var\(--status-card-title-size\)[^>]*>달성 현황/)
   })
 
   it('«달성 현황» 카드에는 서버가 내 행을 뺀 다른 참가자가 준 순서 그대로 나오고 «나» 칩은 없다', () => {

@@ -54,9 +54,9 @@ interface Props {
 
 /**
  * 달성형 행 — `ListRow`(티켓 20261107_1947, 목록 행 4단계 3-5배치): 랭킹형 `RankingListRow`와 같은 골격.
- * 48 원형 아바타(lead) + 이름 + 달성·미달성 칩(value). 내 행은 이 목록에 없으므로(위쪽 «나» 영역이 대신한다) «나» 칩이 없다.
+ * 48 원형 아바타(lead) + 이름 + 달성·미달성 칩(value). 달성은 done 톤(검정 면·흰 글자), 미달성은 같은 칩의 면·글자만 --muted·--snow로 덮는다(공용 칩 톤은 건드리지 않는다). 내 행은 이 목록에 없으므로(위쪽 «나» 영역이 대신한다) «나» 칩이 없다.
  * 칩을 `trail`이 아니라 `value`에 둔 것은 행 전체를 프로필 링크 안에 두기 위해서다.
- * 이 행은 늘 흰 카드 안이라 면은 tint다 — 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133).
+ * 이 행은 늘 카드 안이라 면은 tint다 — 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133).
  */
 /** 시험에서 마크업을 직접 확인하려고 내보낸다(티켓 20261107_1947) */
 export function AchievementRow({ e }: { e: AchievementEntry }) {
@@ -68,7 +68,10 @@ export function AchievementRow({ e }: { e: AchievementEntry }) {
       lead={<SimpleAvatar url={e.avatarUrl} />}
       title={e.displayName}
       value={
-        <ListRowChip tone={e.achieved ? 'done' : 'surface-muted'}>
+        <ListRowChip
+          tone="done"
+          style={e.achieved ? undefined : { background: 'var(--muted)', color: 'var(--snow)' }}
+        >
           {e.achieved ? d.missions.achieved : d.missions.notAchieved}
         </ListRowChip>
       }
@@ -127,17 +130,17 @@ function MyHero({ avatarUrl, name, children }: { avatarUrl: string | null; name:
   )
 }
 
-/** 카드 헤더 — 제목(왼쪽, 굵게)과 인원 표기(오른쪽, 12px 회색)를 기준선에 맞춘다 */
+/** 카드 헤더 — 제목(왼쪽, 굵게)과 인원 표기(오른쪽, 12px)를 기준선에 맞춘다. 면이 검정이라 둘 다 --snow다 */
 function CardHeader({ title, countLabel }: { title: string; countLabel: string }) {
   return (
     <div className="flex items-baseline justify-between mb-2">
       <p
-        className="m-0 font-bold text-foreground break-keep wrap-break-word"
-        style={{ fontSize: 'var(--status-card-title-size)', lineHeight: 'var(--status-card-title-line-height)' }}
+        className="m-0 font-bold break-keep wrap-break-word"
+        style={{ color: 'var(--snow)', fontSize: 'var(--status-card-title-size)', lineHeight: 'var(--status-card-title-line-height)' }}
       >
         {title}
       </p>
-      <span className="text-xs text-muted tabular-nums whitespace-nowrap">
+      <span className="text-xs tabular-nums whitespace-nowrap" style={{ color: 'var(--snow)' }}>
         {countLabel}
       </span>
     </div>
@@ -188,21 +191,14 @@ export default function MissionStatusClient({
     />
   )
 
-  // 카드 영역 — 좌우 바깥 16, 아래 24 + 안전영역. 카드 면은 94% 불투명 토큰이다(blur 없음)
+  // 카드 영역 — 좌우 바깥 16, 아래 24 + 안전영역. 카드 면은 검정 94% 토큰이다(blur 없음)
   const cardArea = 'px-4'
   const cardAreaStyle = { paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }
-  const translucent = { background: 'var(--card-bg-translucent)' }
+  const cardFace = { background: 'var(--status-card-bg)' }
 
   return (
-    // 배경 그라데이션은 로딩·오류 중에도 루트에 깔아 번쩍임이 없게 한다. 상단 바 배경은 투명이라 바 뒤까지 보인다.
-    <div className="min-h-full relative text-foreground" style={{ background: 'var(--status-page-gradient)' }}>
-      {/* 프로필 뒤 흰 빛 — 정적 absolute(will-change 없음, iOS Safari 깜빡임 방지) */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 pointer-events-none"
-        style={{ height: 420, background: 'var(--status-glow)' }}
-      />
-
+    // 배경은 강조색 한 색이다. 로딩·오류 중에도 루트에 깔아 번쩍임이 없게 하고, 상단 바 배경은 투명이라 바 뒤까지 이어진다.
+    <div className="min-h-full relative text-foreground" style={{ background: 'var(--jam-red)' }}>
       <div className="relative">
         <TopNav title={d.missions.backToDetail} headerStyle={{ background: 'transparent' }} />
 
@@ -215,7 +211,7 @@ export default function MissionStatusClient({
           </div>
         )}
         {error && (
-          <p className="px-4 pt-4 text-base text-muted">
+          <p className="px-4 pt-4 text-base text-foreground">
             {error}
           </p>
         )}
@@ -230,23 +226,26 @@ export default function MissionStatusClient({
           return (
             <>
               <MyHero avatarUrl={me?.avatarUrl ?? null} name={me?.displayName ?? null}>
-                <p className="m-0 text-sm text-muted break-keep wrap-break-word">{d.missions.myProgressTitle}</p>
+                <p className="m-0 text-sm text-foreground break-keep wrap-break-word">{d.missions.myProgressTitle}</p>
                 <p className="m-0 text-5xl font-bold text-foreground tabular-nums">
                   {formatMissionProgress(me?.progressValue ?? 0, missionType)}
-                  {unit && <span className="text-base font-normal text-muted">{unit}</span>}
+                  {unit && <span className="text-base font-normal text-foreground">{unit}</span>}
                 </p>
-                <p className="m-0 text-sm text-muted break-keep wrap-break-word" style={{ marginTop: 12 }}>
+                <p className="m-0 text-sm text-foreground break-keep wrap-break-word" style={{ marginTop: 12 }}>
                   {d.missions.statusMyRankLabel}
                 </p>
-                {/* 큰 글자(3:1) 기준을 겨우 넘는 색이라 흰 빛 영역 안(위쪽 «나» 영역)에서만 쓴다 */}
-                <p className="m-0 text-3xl font-bold tabular-nums" style={{ color: 'var(--jam-red)' }}>
+                {/* 레드 면 위 흰 글자 «N위» — 32/40 굵게 */}
+                <p
+                  className="m-0 font-bold tabular-nums"
+                  style={{ color: 'var(--snow)', fontSize: 'var(--status-rank-size)', lineHeight: 'var(--status-rank-line-height)' }}
+                >
                   {me ? t(d.missions.statusRankLabel, { rank: me.rank }) : '—'}
                 </p>
               </MyHero>
 
               <div className={cardArea} style={cardAreaStyle}>
                 {entries.length > 0 && (
-                  <Card style={translucent}>
+                  <Card style={cardFace}>
                     <CardHeader
                       title={d.missions.statusAllRanks}
                       countLabel={t(d.missions.statusParticipants, { count: data.totalParticipants })}
@@ -266,6 +265,8 @@ export default function MissionStatusClient({
                           }}
                           maxValue={maxProgress}
                           isMe={isMeInEntries(entry.userId)}
+                          barColor="var(--jam-red)"
+                          meMarker="circle"
                           formatValue={(v) => formatMissionProgress(v, missionType)}
                         />
                       ))}
@@ -289,14 +290,14 @@ export default function MissionStatusClient({
           return (
             <>
               <MyHero avatarUrl={me?.avatarUrl ?? null} name={me?.displayName ?? null}>
-                <p className="m-0 text-sm text-muted break-keep wrap-break-word">{d.missions.myProgressTitle}</p>
+                <p className="m-0 text-sm text-foreground break-keep wrap-break-word">{d.missions.myProgressTitle}</p>
                 <span
                   className="inline-flex items-center text-3xl font-bold whitespace-nowrap"
                   style={{
                     marginTop: 4,
                     padding: '4px 16px',
                     borderRadius: 'var(--radius-full)',
-                    background: achieved ? 'var(--jam-red)' : 'var(--base-neutral-600)',
+                    background: achieved ? 'var(--foreground)' : 'var(--muted)',
                     color: 'var(--snow)',
                   }}
                 >
@@ -306,7 +307,7 @@ export default function MissionStatusClient({
 
               <div className={cardArea} style={cardAreaStyle}>
                 {others.length > 0 ? (
-                  <Card style={translucent}>
+                  <Card style={cardFace}>
                     <CardHeader
                       title={d.missions.statusAchievementLabel}
                       countLabel={t(d.missions.statusOtherParticipants, { count: otherCount })}
