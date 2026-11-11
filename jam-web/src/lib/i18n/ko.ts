@@ -865,7 +865,9 @@ export const ko = {
     /** 보상 배지 행 캡션(티켓 20260915_2244)
      * 20260916_0856: "완료하면 ~해요"로 통일. 포인트 행의 «완료하면 바로 받아요» 캡션은 티켓 20261104_2150에서 뺐다 */
     rewardBadgeCaption: '완료하면 획득해요',
-    statusViewButton: '랭킹 보기',
+    /** 미션 상세의 상황 화면 진입 버튼 글자 — 랭킹형은 «랭킹 보기»(사용자 확정, 2026-11-11), 달성형은 «달성 현황 보기»(같은 형태로 맞춘 가정)(티켓 20261111_2049·20261111_2157) */
+    statusViewRankingButton: '랭킹 보기',
+    statusViewAchievementButton: '달성 현황 보기',
     joinConfirmBody: '한번 참가하면 취소할 수 없어요. 참가할까요?',
     joinConfirmButton: '참가 확정',
     joinNote: '참가 후에는 취소할 수 없어요',
@@ -879,11 +881,17 @@ export const ko = {
     /** 완료 후 종료된 미션의 비활성 CTA 버튼(티켓 20260915_2244)
      * 20260916_0856: §5.1 단독 명사 CTA 금지 + §1.3 미션 상태 행("끝난")에 맞춰 재작성 */
 
+    statusAchievementLabel: '달성 현황',
     statusParticipants: '참가자 {count}명',
+    /** 달성형 «달성 현황» 카드 오른쪽 표기 — 목록에서 내 행이 빠지므로 나를 뺀 수(티켓 20261111_2049) */
+    statusOtherParticipants: '다른 참가자 {count}명',
     statusAllRanks: '전체 랭킹',
+    /** 랭킹형 상황 화면 위쪽 «내 순위» 라벨(티켓 20261111_2049) */
+    statusMyRankLabel: '내 순위',
     statusLoadError: '불러오지 못했어요',
-    statusNoParticipants: '아직 참가자가 없어요',
-    statusNoParticipantsBody: '가장 먼저 도전해보세요',
+    /** 달성형에서 내가 참가 중인데 다른 참가자가 없을 때(티켓 20261111_2049) */
+    statusNoOtherParticipants: '아직 다른 참가자가 없어요',
+    statusNoOtherParticipantsBody: '다른 참가자가 생기면 여기에 보여요',
     /** 순위·달성 행에서 내 행을 알리는 칩 글자(티켓 20261107_1947) */
     statusMeChip: '나',
     /** 순위 행의 순위 숫자를 스크린리더가 읽는 문구 */

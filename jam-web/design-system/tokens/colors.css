@@ -66,6 +66,10 @@
   --jam-purple: #BA8AF7;
   --jam-blue: #0695EC;
 
+  /* 미션 상황 화면 전용(티켓 20261111_2049). 다른 화면에 퍼뜨리지 않는다.
+     레드 면(--jam-red) 위에 얹는 «전체 랭킹»·«달성 현황» 카드 면: 검정(--foreground) 94%. 아주 약한 투과(blur 없음). */
+  --status-card-bg: color-mix(in srgb, var(--foreground) 94%, transparent);
+
   /* ── 선·면 ────────────────────────────────────────────────── */
   --border: #e5e5e5;
   --field-border: #8f8f8f;

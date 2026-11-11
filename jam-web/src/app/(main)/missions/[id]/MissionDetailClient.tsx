@@ -21,7 +21,7 @@ import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
 import { trackEvent } from '@/lib/analytics/gtag'
-import { formatMissionProgress } from '@/lib/missions/format'
+import { formatMissionProgress, missionProgressUnit } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 import type { ClaimItemRewardsErrorCode } from '@/lib/missions/claim-contract'
@@ -74,13 +74,14 @@ interface Props {
 
 function missionGoalText(type: string, condition: MissionCondition): { label: string; unit: string; target: number } {
   switch (type) {
-    case 'distance':          return { label: d.missions.goalDistance,        unit: 'km', target: condition.distance_km ?? 0 }
-    case 'activity_count':    return { label: d.missions.goalActivityCount,    unit: '회', target: condition.count ?? 0 }
-    case 'checkin':           return { label: d.missions.goalCheckin,          unit: '곳', target: 1 }
-    case 'item_collect':      return { label: d.missions.goalItemCollect,      unit: '개', target: 1 }
-    case 'streak_days':       return { label: d.missions.goalStreakDays,       unit: '일', target: condition.streak_days ?? 0 }
-    case 'duration_minutes':  return { label: d.missions.goalDurationMinutes,  unit: '분', target: condition.duration_minutes ?? 0 }
-    case 'elevation_gain_m':  return { label: d.missions.goalElevationGainM,  unit: 'm',  target: condition.elevation_gain_m ?? 0 }
+    // 단위 글자는 미션 상황 화면과 함께 쓰는 `missionProgressUnit`이 정한다(티켓 20261111_2049)
+    case 'distance':          return { label: d.missions.goalDistance,        unit: missionProgressUnit(type), target: condition.distance_km ?? 0 }
+    case 'activity_count':    return { label: d.missions.goalActivityCount,    unit: missionProgressUnit(type), target: condition.count ?? 0 }
+    case 'checkin':           return { label: d.missions.goalCheckin,          unit: missionProgressUnit(type), target: 1 }
+    case 'item_collect':      return { label: d.missions.goalItemCollect,      unit: missionProgressUnit(type), target: 1 }
+    case 'streak_days':       return { label: d.missions.goalStreakDays,       unit: missionProgressUnit(type), target: condition.streak_days ?? 0 }
+    case 'duration_minutes':  return { label: d.missions.goalDurationMinutes,  unit: missionProgressUnit(type), target: condition.duration_minutes ?? 0 }
+    case 'elevation_gain_m':  return { label: d.missions.goalElevationGainM,  unit: missionProgressUnit(type), target: condition.elevation_gain_m ?? 0 }
     // engine_condition(티켓 20260906_2231) — 여러 필드를 조합하는 복합 조건이라 진행바 개념이
     // 없다. checkin/item_collect와 같은 달성형(target=1)으로 취급한다.
     case 'engine_condition':  return { label: d.missions.goalEngineCondition,  unit: '',   target: 1 }
@@ -648,11 +649,11 @@ export default function MissionDetailClient({
           </InfoCard>
         )}
 
-        {/* 랭킹 보기 버튼 — 검정 면·흰 글자(2026-11-11 사용자 지시, 티켓 20261111_2157). 참가자만, 랭킹형 미션에만 둔다(달성형은 상황 화면으로 가는 버튼을 주지 않는다, 티켓 20261111_0850) */}
-        {(participating || isCompleted) && mission.status_display_type === 'ranking' && (
+        {/* 상황 보기 버튼 — 검정 면·흰 글자(2026-11-11 사용자 지시, 티켓 20261111_2157). 참가자만, 랭킹형은 «랭킹 보기»·달성형은 «달성 현황 보기»(티켓 20261111_2049) */}
+        {(participating || isCompleted) && (
           <Link href={`/missions/${mission.id}/status`}>
             <div className="bg-foreground rounded-2xl p-4 text-center text-base text-snow jam-press">
-              {d.missions.statusViewButton}
+              {mission.status_display_type === 'achievement' ? d.missions.statusViewAchievementButton : d.missions.statusViewRankingButton}
             </div>
           </Link>
         )}
