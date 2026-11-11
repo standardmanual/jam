@@ -43,6 +43,11 @@ export interface RankingListRowProps {
   /** 진행 바 채움 색. 기본은 홈 랭킹보드 카드가 쓰는 `var(--accent)`다. 미션 상황 화면이 `var(--jam-red)`로 켠다(티켓 20261111_2049) */
   barColor?: string
   /**
+   * 진행 바 트랙 색. 기본은 `var(--border)`다. 이 값이 행 면(`--background-secondary`)과 같아 트랙이 안 보이면 바가 없는 것처럼 읽혀
+   * 이름만 위로 떠 보인다 — 미션 상황 화면이 행 면보다 짙은 색을 넘겨 트랙을 드러낸다(티켓 20261111_2306).
+   */
+  trackColor?: string
+  /**
    * 내 행 표식 모양. 기본 `chip`은 이름 옆 «나» 칩(홈 랭킹보드 카드)이고, `circle`은 `--jam-red` 면의 지름 22 원 안 «나»(미션 상황 화면, 티켓 20261111_2049)다.
    */
   meMarker?: 'chip' | 'circle'
@@ -75,7 +80,7 @@ function MeCircle() {
  * 클릭 영역(프로필 링크) 안은 phrasing만 쓴다 — 진행 바는 `as="span"`이고 장식이라 호출부 span 래퍼에 aria-hidden을 건다.
  * 순위 숫자는 화면용 숫자(aria-hidden)와 «N위»(sr-only)를 함께 둔다.
  */
-export default function RankingListRow({ entry, maxValue, isMe, formatValue, barColor = 'var(--accent)', meMarker = 'chip' }: RankingListRowProps) {
+export default function RankingListRow({ entry, maxValue, isMe, formatValue, barColor = 'var(--accent)', trackColor = 'var(--border)', meMarker = 'chip' }: RankingListRowProps) {
   const fillRatio = maxValue > 0 ? Math.min(1, entry.value / maxValue) : 0
 
   return (
@@ -98,13 +103,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue, bar
         )
       }
       title={entry.displayName}
-      titleSuffix={
-        isMe
-          ? meMarker === 'circle'
-            ? <MeCircle />
-            : <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip>
-          : undefined
-      }
+      titleSuffix={isMe && meMarker === 'chip' ? <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip> : undefined}
       meta={
         <span aria-hidden="true" className="block">
           <ProgressBar
@@ -113,12 +112,22 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue, bar
             labelType="none"
             height={6}
             color={barColor}
-            trackColor="var(--border)"
+            trackColor={trackColor}
             radius="3px"
           />
         </span>
       }
-      value={formatValue(entry.value)}
+      // 원형 표식은 이름 줄이 아니라 값 칸에 둔다 — 이름 줄은 기준선 정렬이라 원이 순위·아바타·값보다 아래위로 어긋난다. 값 칸은 행 세로 중앙에 놓인다.
+      value={
+        isMe && meMarker === 'circle' ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
+            <MeCircle />
+            {formatValue(entry.value)}
+          </span>
+        ) : (
+          formatValue(entry.value)
+        )
+      }
     />
   )
 }

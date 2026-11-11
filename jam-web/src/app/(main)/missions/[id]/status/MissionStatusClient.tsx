@@ -266,6 +266,7 @@ export default function MissionStatusClient({
                           maxValue={maxProgress}
                           isMe={isMeInEntries(entry.userId)}
                           barColor="var(--jam-red)"
+                          trackColor="color-mix(in srgb, var(--foreground) 12%, var(--background-secondary))"
                           meMarker="circle"
                           formatValue={(v) => formatMissionProgress(v, missionType)}
                         />
