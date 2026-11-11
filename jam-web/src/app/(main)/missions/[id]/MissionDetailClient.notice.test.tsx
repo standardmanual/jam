@@ -275,9 +275,9 @@ describe('미션 상세 — 보상 카드의 잠긴 보상 행', () => {
     expect(open).toBeGreaterThan(-1)
     expect(locked).toBeGreaterThan(open)
     expect(points).toBeGreaterThan(locked)
-    // 보상 행은 레드 면이라 포인트를 오렌지(PointText) 대신 흰색 일반 문구로 쓴다(티켓 20261111_2310)
+    // 보상 행은 레드 면이라 포인트를 오렌지(PointText) 대신 검정(--foreground) 일반 문구로 쓴다(티켓 20261111_2310)
     expect(html).not.toMatch(/text-point-text[^>]*>300 포인트<\/span>/)
-    expect(html).toMatch(/color:\s*var\(--snow\)[^>]*>300 포인트<\/span>/)
+    expect(html).toMatch(/color:\s*var\(--foreground\)[^>]*>300 포인트<\/span>/)
     expect(html).toContain('background:var(--jam-red)')
   })
 

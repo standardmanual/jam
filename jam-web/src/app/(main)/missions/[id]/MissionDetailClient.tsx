@@ -221,7 +221,7 @@ function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted
 }
 
 /* ── 등급 칩 — 칩이 실제로 그려질 때만 eyebrow로 넘긴다(common·null이면 undefined라 빈 줄이 남지 않는다) ── */
-/** 보상 영역 행의 면 — 미션 상세의 보상은 레드 면이다(2026-11-11 사용자 지시, 티켓 20261111_2310). 면 위 글자는 --foreground, 포인트만 흰색이다 */
+/** 보상 영역 행의 면 — 미션 상세의 보상은 레드 면이다(2026-11-11 사용자 지시, 티켓 20261111_2310). 면 위 글자는 포인트까지 모두 --foreground다 */
 const REWARD_ROW_STYLE = { background: 'var(--jam-red)' }
 
 function rarityEyebrow(rarity: BadgeRarity | null) {
@@ -574,8 +574,8 @@ export default function MissionDetailClient({
                     <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
                   </span>
                 }
-                // 레드 면 위라 포인트 조각을 오렌지(PointText) 대신 흰색 일반 문구로 쓴다(2026-11-11 사용자 지시)
-                title={<span style={{ color: 'var(--snow)' }}>{t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}</span>}
+                // 레드 면 위라 포인트 조각을 오렌지(PointText) 대신 검정(--foreground) 일반 문구로 쓴다(2026-11-11 사용자 지시, 처음 흰색이었다가 검정으로 되돌림)
+                title={<span style={{ color: 'var(--foreground)' }}>{t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}</span>}
               />
             ) : null}
 
