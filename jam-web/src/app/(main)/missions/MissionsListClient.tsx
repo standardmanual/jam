@@ -149,11 +149,10 @@ function periodText(m: MissionListItem, tab: Tab): string {
 function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
   switch (missionStatusKind(m, started, tab === 'ended')) {
     case 'joinedEnded':
-      // «참가중»·«종료» 칩은 굵은 글씨다(2026-11-11 사용자 지시, 티켓 20261111_2330)
-      return <ListRowChip style={{ fontWeight: 700 }}>{d.missions.tagJoinedEnded}</ListRowChip>
+      return <ListRowChip>{d.missions.tagJoinedEnded}</ListRowChip>
     case 'joined':
       // 참가중 칩은 강조색 --jam-red 면이다(2026-11-11 사용자 지시, 티켓 20261111_2143). 12px 글자라 대비 4.5:1이 필요해 글자는 --snow(약 3.7:1)가 아니라 --foreground(약 4.6:1)다
-      return <ListRowChip style={{ background: 'var(--jam-red)', color: 'var(--foreground)', fontWeight: 700 }}>{d.missions.tagJoined}</ListRowChip>
+      return <ListRowChip style={{ background: 'var(--jam-red)', color: 'var(--foreground)' }}>{d.missions.tagJoined}</ListRowChip>
     case 'done':
       return <ListRowChip>{d.missions.tagDone}</ListRowChip>
     case 'locked':
@@ -167,11 +166,8 @@ function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.R
       )
     case 'upcoming':
       return <ListRowChip>{d.missions.tagUpcoming}</ListRowChip>
-    default: {
-      // 종료된 미션의 기간 칩(«종료»)만 굵게 — 남은 시간·상시 칩은 그대로다
-      const period = periodText(m, tab)
-      return <ListRowChip style={period === d.missions.tagEnded ? { fontWeight: 700 } : undefined}>{period}</ListRowChip>
-    }
+    default:
+      return <ListRowChip>{periodText(m, tab)}</ListRowChip>
   }
 }
 

@@ -110,7 +110,7 @@ const CHIP_TONES = {
 };
 
 /**
- * 행 안 칩 한 크기(12px). 상태·만료·마지막 파편 같은 칩 복제를 대신한다.
+ * 행 안 칩 한 크기(12px). **칩 글자는 항상 굵게(700)다**(2026-11-11 사용자 지시, 티켓 20261111_2340) — 칩마다 굵기를 따로 넘기지 않는다. 상태·만료·마지막 파편 같은 칩 복제를 대신한다.
  * 글자는 --foreground가 기본이다. done·warning은 --snow(어두운 면 위), surface-muted는 --muted다. accent·warning은 면 채우기에만 쓴다(선·점으로도 쓰지 않는다).
  * surface·surface-muted(흰 면)는 tint 행 위 전용이다.
  */
@@ -125,7 +125,7 @@ export function ListRowChip({ tone = 'neutral', children, className = '', style 
         borderRadius: 'var(--radius-full)',
         background: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).bg,
         color: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).fg,
-        fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', fontWeight: ROW_WEIGHT.regular,
+        fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', fontWeight: ROW_WEIGHT.strong,
         ...style,
       }}
     >
