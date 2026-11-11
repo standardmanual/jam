@@ -646,10 +646,10 @@ export default function MissionDetailClient({
           </InfoCard>
         )}
 
-        {/* 랭킹 보기 — 참가자만, 랭킹형 미션에만 둔다(달성형은 상황 화면으로 가는 버튼을 주지 않는다, 티켓 20261111_0850) */}
+        {/* 랭킹 보기 버튼 — 검정 면·흰 글자(2026-11-11 사용자 지시, 티켓 20261111_2157). 참가자만, 랭킹형 미션에만 둔다(달성형은 상황 화면으로 가는 버튼을 주지 않는다, 티켓 20261111_0850) */}
         {(participating || isCompleted) && mission.status_display_type === 'ranking' && (
           <Link href={`/missions/${mission.id}/status`}>
-            <div className="bg-card-bg rounded-2xl p-4 text-center text-base text-muted jam-press">
+            <div className="bg-foreground rounded-2xl p-4 text-center text-base text-snow jam-press">
               {d.missions.statusViewButton}
             </div>
           </Link>

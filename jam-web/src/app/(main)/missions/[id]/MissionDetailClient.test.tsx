@@ -345,10 +345,13 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
 describe('MissionDetailClient 랭킹 보기 버튼 (티켓 20261111_0850)', () => {
   const LINK = 'href="/missions/m1/status"'
 
-  it('랭킹형 미션에 참가 중이면 «랭킹» 버튼이 상황 화면으로 이어진다', () => {
+  it('랭킹형 미션에 참가 중이면 «랭킹 보기» 버튼(검정 면·흰 글자)이 상황 화면으로 이어진다', () => {
     const html = render(CONDITION_TEXT, { participating: true, statusDisplayType: 'ranking' })
     expect(html).toContain(LINK)
-    expect(html).toContain('>랭킹</div>')
+    const btn = html.slice(html.lastIndexOf('<div', html.indexOf('>랭킹 보기</div>')), html.indexOf('>랭킹 보기</div>'))
+    expect(btn).toContain('bg-foreground')
+    expect(btn).toContain('text-snow')
+    expect(html).toContain('>랭킹 보기</div>')
     expect(html).not.toContain('미션 상황 보기')
   })
 
