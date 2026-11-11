@@ -385,10 +385,10 @@ export default function SlotGrid({
 
   /**
    * 후보가 1개면 즉시 장착, 2개 이상이면 일련번호가 보이는 선택 시트를 연다(20260907_2059).
-   * 컬렉션 등급이 아직 없으면 후보가 1개여도 항상 시트를 연다 — 이유와 판정은 `shouldOpenCandidateSheet` 참고(티켓 20261028_1408).
+   * 컬렉션 등급이 아직 없어도 같다 — 첫 장착한 개체의 등급이 컬렉션 등급이 된다(티켓 20261111_0911, 판정은 `shouldOpenCandidateSheet`).
    */
   function handleSlotButton(badgeSlot: BadgeSlot) {
-    if (!shouldOpenCandidateSheet(badgeSlot.candidates.length, tierUndecided)) {
+    if (!shouldOpenCandidateSheet(badgeSlot.candidates.length)) {
       handleSlot(cellKeyOf(badgeSlot), badgeSlot.candidates[0].id)
       return
     }

@@ -297,13 +297,12 @@ describe('buildBadgeSlots — 입력이 비어 있는 경우', () => {
 })
 
 describe('shouldOpenCandidateSheet — «추가» 버튼', () => {
-  it('컬렉션 등급이 없으면 후보가 1개여도 시트를 연다', () => {
-    expect(shouldOpenCandidateSheet(1, true)).toBe(true)
-    expect(shouldOpenCandidateSheet(3, true)).toBe(true)
+  it('후보가 1개면 컬렉션 등급이 없어도 시트 없이 바로 장착한다 (티켓 20261111_0911)', () => {
+    expect(shouldOpenCandidateSheet(1)).toBe(false)
   })
 
-  it('컬렉션 등급이 정해졌으면 후보 1개는 바로 장착하고 2개 이상은 시트를 연다', () => {
-    expect(shouldOpenCandidateSheet(1, false)).toBe(false)
-    expect(shouldOpenCandidateSheet(2, false)).toBe(true)
+  it('후보가 2개 이상이면 시트를 연다', () => {
+    expect(shouldOpenCandidateSheet(2)).toBe(true)
+    expect(shouldOpenCandidateSheet(3)).toBe(true)
   })
 })
