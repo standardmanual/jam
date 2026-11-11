@@ -1037,7 +1037,7 @@
     },
     {
       "name": "--jam-green",
-      "value": "#5BEA07",
+      "value": "#34ef5a",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
