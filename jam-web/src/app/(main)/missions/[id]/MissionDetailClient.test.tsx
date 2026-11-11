@@ -297,17 +297,17 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
     expect(card).not.toContain('7일 중 3일</span>')
   })
 
-  it('끝낸 칸은 accent 채움, 지금 칸은 link 테두리, 남은 칸은 보조 면이다', () => {
+  it('끝낸 칸은 강조 레드(--jam-red) 채움, 지금 칸은 강조 레드 테두리, 남은 칸은 보조 면이다', () => {
     const card = streak(3)
-    expect((card.match(/background:var\(--accent\)/g) ?? []).length).toBe(3)
-    expect((card.match(/border-color:var\(--link\)/g) ?? []).length).toBe(1)
+    expect((card.match(/background:var\(--jam-red\)/g) ?? []).length).toBe(3)
+    expect((card.match(/border-color:var\(--jam-red\)/g) ?? []).length).toBe(1)
     expect((card.match(/background:var\(--background-secondary\)/g) ?? []).length).toBe(3)
   })
 
   it('달성하면 전부 채워지고 지금 칸이 없다', () => {
     const card = streak(0, { completed: true })
-    expect((card.match(/background:var\(--accent\)/g) ?? []).length).toBe(7)
-    expect(card).not.toContain('border-color:var(--link)')
+    expect((card.match(/background:var\(--jam-red\)/g) ?? []).length).toBe(7)
+    expect(card).not.toContain('border-color:var(--jam-red)')
   })
 
   it('서클이 많아도(30일) 모두 그린다', () => {

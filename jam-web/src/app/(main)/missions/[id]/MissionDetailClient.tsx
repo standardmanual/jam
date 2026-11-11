@@ -112,9 +112,10 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
         aria-hidden="true"
         className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-[12px] font-bold tabular-nums leading-none flex-shrink-0 ${isNow ? 'border-2' : ''}`}
         style={{
-          background:  isDone ? 'var(--accent)' : isNow ? 'transparent' : 'var(--background-secondary)',
-          borderColor: isNow ? 'var(--link)' : undefined,
-          color:       isDone ? 'var(--accent-foreground)' : isNow ? 'var(--link)' : 'var(--muted)',
+          // 나의 진행 상황 카드의 포인트 컬러: 채운 서클 면과 지금 서클 테두리가 강조 레드(--jam-red)다(티켓 20261111_2151). 12px 숫자라 글자는 --foreground(대비 약 4.6:1)
+          background:  isDone ? 'var(--jam-red)' : isNow ? 'transparent' : 'var(--background-secondary)',
+          borderColor: isNow ? 'var(--jam-red)' : undefined,
+          color:       isDone ? 'var(--foreground)' : isNow ? 'var(--foreground)' : 'var(--muted)',
         }}
       >
         {i + 1}
@@ -620,7 +621,7 @@ export default function MissionDetailClient({
                 {mission.mission_type !== 'engine_condition' && (
                   <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
                 )}
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-foreground text-snow' : 'bg-btn-secondary text-muted'}`}>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-jam-red text-foreground' : 'bg-btn-secondary text-muted'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>
@@ -629,7 +630,9 @@ export default function MissionDetailClient({
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[22px] font-bold text-foreground tabular-nums leading-none">
-                    {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
+                    <span style={{ color: 'var(--jam-red)' }}>
+                      {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
+                    </span>
                     <span className="text-[16px] font-normal text-muted mx-1">/</span>
                     {goal.target}{goal.unit}
                   </span>
@@ -637,7 +640,7 @@ export default function MissionDetailClient({
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <ProgressBar percent={isCompleted ? 100 : progressPct} />
+                <ProgressBar percent={isCompleted ? 100 : progressPct} color="var(--jam-red)" />
               </div>
             )}
           </InfoCard>
