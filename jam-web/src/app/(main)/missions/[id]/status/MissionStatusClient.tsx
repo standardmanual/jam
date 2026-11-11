@@ -198,7 +198,7 @@ export default function MissionStatusClient({
 
   return (
     // 배경은 강조색 한 색이다. 로딩·오류 중에도 루트에 깔아 번쩍임이 없게 하고, 상단 바 배경은 투명이라 바 뒤까지 이어진다.
-    <div className="min-h-full relative text-foreground" style={{ background: 'var(--jam-red)' }}>
+    <div className="min-h-dvh relative text-foreground" style={{ background: 'var(--jam-red)' }}>
       <div className="relative">
         <TopNav title={d.missions.backToDetail} headerStyle={{ background: 'transparent' }} />
 
