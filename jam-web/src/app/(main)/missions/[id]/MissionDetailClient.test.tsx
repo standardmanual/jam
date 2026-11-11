@@ -37,6 +37,7 @@ function render(
     locked?: boolean
     missionType?: string
     statusDisplayType?: 'ranking' | 'achievement'
+    endsAt?: string | null
     progressValue?: number
     conditionJson?: Record<string, unknown>
     conditionBullets?: string[] | null
@@ -54,7 +55,7 @@ function render(
     reward_points: null,
     reward_badge_ids: [],
     starts_at: '2026-01-01T00:00:00Z',
-    ends_at: null,
+    ends_at: state.endsAt ?? null,
     image_url: null,
   } as unknown as MissionRow
   return renderToStaticMarkup(
@@ -359,5 +360,28 @@ describe('MissionDetailClient 랭킹 보기 버튼 (티켓 20261111_0850)', () =
   it.each(['achievement'] as const)('%s 미션에는 참가 중이거나 완료해도 버튼이 없다', (statusDisplayType) => {
     expect(render(CONDITION_TEXT, { participating: true, statusDisplayType })).not.toContain(LINK)
     expect(render(CONDITION_TEXT, { completed: true, statusDisplayType })).not.toContain(LINK)
+  })
+})
+
+describe('MissionDetailClient 상태 칩 — 끝난 미션 (티켓 20261111_2152)', () => {
+  const PAST = '2026-01-02T00:00:00Z'
+  const FUTURE = '2099-01-01T00:00:00Z'
+
+  it('끝난 미션에 참가했던 경우 «참가중» 대신 «종료» 칩이 나온다', () => {
+    const html = render(CONDITION_TEXT, { participating: true, endsAt: PAST })
+    expect(html).toContain(`>${d.missions.tagJoinedEnded}</span>`)
+    expect(html).not.toContain(`>${d.missions.tagJoined}</span>`)
+  })
+
+  it('진행 중인 미션에 참가 중이면 «참가중» 칩이 그대로다', () => {
+    const html = render(CONDITION_TEXT, { participating: true, endsAt: FUTURE })
+    expect(html).toContain(`>${d.missions.tagJoined}</span>`)
+    expect(html).not.toContain(`>${d.missions.tagJoinedEnded}</span>`)
+  })
+
+  it('끝난 미션을 완료했다면 «완료» 칩이 우선한다', () => {
+    const html = render(CONDITION_TEXT, { participating: true, completed: true, endsAt: PAST })
+    expect(html).toContain(`>${d.missions.tagDone}</span>`)
+    expect(html).not.toContain(`>${d.missions.tagJoinedEnded}</span>`)
   })
 })

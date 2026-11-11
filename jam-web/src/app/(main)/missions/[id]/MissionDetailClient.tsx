@@ -176,7 +176,7 @@ function ConditionRow({
 }
 
 /* ── 미션 상태 칩 ── */
-function StatusChip({ isCompleted, participating, locked }: { isCompleted: boolean; participating: boolean; locked: boolean }) {
+function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted: boolean; participating: boolean; locked: boolean; ended: boolean }) {
   // 20260825_028: 잠긴 미션은 오늘카드·딥링크로만 도달하는데, 칩이 없으면 스크롤 최하단에
   // 가서야 상태를 알게 된다. 목록 잠금 카드와 같은 자물쇠 글리프를 첫 화면에 노출한다.
   if (locked) {
@@ -194,6 +194,15 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
         style={{ background: 'var(--background-secondary)', color: 'var(--muted)' }}>
         {d.missions.tagDone}
+      </span>
+    )
+  }
+  if (participating && ended) {
+    // 끝난 미션에 참가했던 경우는 «참가중»이 아니라 «종료»다(목록의 참가한 종료 미션 칩 `tagJoinedEnded`와 같은 글자, 티켓 20261111_2152)
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
+        style={{ background: 'var(--background-secondary)', color: 'var(--muted)' }}>
+        {d.missions.tagJoinedEnded}
       </span>
     )
   }
@@ -329,6 +338,7 @@ export default function MissionDetailClient({
   ) : null
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
+  const isEnded = mission.ends_at !== null && new Date(mission.ends_at) <= new Date()
   const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect' || mission.mission_type === 'engine_condition'
   const isCircleType = mission.mission_type === 'streak_days' || mission.mission_type === 'activity_count'
   // 티켓 20261019_1445 3-B: 달성은 완료 기록(isCompleted)으로만 판정한다. 예전에는 `|| progressValue >= 1`도 달성으로 봤지만, 복합 조건에
@@ -423,7 +433,7 @@ export default function MissionDetailClient({
         {/* 히어로 섹션 */}
         <div className="flex flex-col items-center gap-2">
           {/* 미션 상태 칩 */}
-          <StatusChip isCompleted={isCompleted} participating={participating} locked={locked} />
+          <StatusChip isCompleted={isCompleted} participating={participating} locked={locked} ended={isEnded} />
 
           {/* 제목 + 설명 */}
           <div className="flex flex-col items-center gap-2 text-center">
