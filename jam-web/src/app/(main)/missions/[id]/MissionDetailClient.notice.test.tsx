@@ -275,7 +275,10 @@ describe('미션 상세 — 보상 카드의 잠긴 보상 행', () => {
     expect(open).toBeGreaterThan(-1)
     expect(locked).toBeGreaterThan(open)
     expect(points).toBeGreaterThan(locked)
-    expect(html).toMatch(/text-point-text[^>]*>300 포인트<\/span>/)
+    // 보상 행은 레드 면이라 포인트를 오렌지(PointText) 대신 흰색 일반 문구로 쓴다(티켓 20261111_2310)
+    expect(html).not.toMatch(/text-point-text[^>]*>300 포인트<\/span>/)
+    expect(html).toMatch(/color:\s*var\(--snow\)[^>]*>300 포인트<\/span>/)
+    expect(html).toContain('background:var(--jam-red)')
   })
 
   it('잠긴 보상 행은 등급 칩과 «완료하면 획득해요»를 보이고 링크가 없다', () => {

@@ -19,7 +19,6 @@ import { RARITY_LABEL } from '@/lib/rarity'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
-import { tPoint } from '@/lib/i18n/tPoint'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { formatMissionProgress, missionProgressUnit } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -222,20 +221,24 @@ function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted
 }
 
 /* ── 등급 칩 — 칩이 실제로 그려질 때만 eyebrow로 넘긴다(common·null이면 undefined라 빈 줄이 남지 않는다) ── */
+/** 보상 영역 행의 면 — 미션 상세의 보상은 레드 면이다(2026-11-11 사용자 지시, 티켓 20261111_2310). 면 위 글자는 --foreground, 포인트만 흰색이다 */
+const REWARD_ROW_STYLE = { background: 'var(--jam-red)' }
+
 function rarityEyebrow(rarity: BadgeRarity | null) {
   return rarity && rarity !== 'common' ? <RarityBadge rarity={rarity} size="row" /> : undefined
 }
 
 /* ── 잠긴 아이템 배지 한 건의 자리 — 이름·그림 없이 잠금 타일과 등급 칩만 (운영 로직 7.3절).
     잠금 타일이 div라서 표시 전용 행으로만 쓴다. href·onClick·leadHref를 붙이지 않는다(잠긴 행은 클릭 불가 유지) ── */
-function LockedRewardRow({ rarity, caption, tone }: { rarity: BadgeRarity | null; caption?: string; tone: 'tint' | 'flat' }) {
+function LockedRewardRow({ rarity, caption, tone, onRed = false }: { rarity: BadgeRarity | null; caption?: string; tone: 'tint' | 'flat'; onRed?: boolean }) {
   return (
     <ListRow
       tone={tone}
+      style={onRed ? REWARD_ROW_STYLE : undefined}
       lead={<LockedTile size={48} />}
       eyebrow={rarityEyebrow(rarity)}
       title={d.lockedItem.card.name}
-      meta={caption || undefined}
+      meta={caption ? (onRed ? <span style={{ color: 'var(--foreground)' }}>{caption}</span> : caption) : undefined}
     />
   )
 }
@@ -537,6 +540,7 @@ export default function MissionDetailClient({
               <ListRow
                 key={badge.id}
                 tone="tint"
+                style={REWARD_ROW_STYLE}
                 href={`/badges/${badge.id}`}
                 lead={
                   <SafeImage
@@ -549,19 +553,20 @@ export default function MissionDetailClient({
                 }
                 eyebrow={rarityEyebrow(badge.rarity)}
                 title={badge.name}
-                meta={d.missions.rewardBadgeCaption}
+                meta={<span style={{ color: 'var(--foreground)' }}>{d.missions.rewardBadgeCaption}</span>}
               />
             ))}
 
             {/* 잠긴 아이템 배지 보상 행: 이름·그림·링크 없이 잠금 타일 + 등급 칩 (운영 로직 7.3절) */}
             {lockedRewardRarities.map((rarity, index) => (
-              <LockedRewardRow key={`locked-${index}`} rarity={rarity} caption={d.missions.rewardBadgeCaption} tone="tint" />
+              <LockedRewardRow key={`locked-${index}`} rarity={rarity} caption={d.missions.rewardBadgeCaption} tone="tint" onRed />
             ))}
 
             {/* 포인트 보상 행: ListRow + 서클 lead. 캡션 없이 «N 포인트»만 둔다 */}
             {mission.reward_points ? (
               <ListRow
                 tone="tint"
+                style={REWARD_ROW_STYLE}
                 leadShape="round"
                 lead={
                   <span className="w-full h-full flex items-center justify-center"
@@ -569,7 +574,8 @@ export default function MissionDetailClient({
                     <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
                   </span>
                 }
-                title={tPoint(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
+                // 레드 면 위라 포인트 조각을 오렌지(PointText) 대신 흰색 일반 문구로 쓴다(2026-11-11 사용자 지시)
+                title={<span style={{ color: 'var(--snow)' }}>{t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}</span>}
               />
             ) : null}
 
