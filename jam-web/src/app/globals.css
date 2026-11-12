@@ -388,6 +388,9 @@
   --toast-blur: 2px;
   --toast-scale: 0.97;
   --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* 토스트 뒤 화면 막: 검정 16%와 흐림 4px (티켓 20261112_2338, 사용자 확정 2026-11-12) */
+  --toast-scrim: color-mix(in srgb, var(--base-black) 16%, transparent);
+  --toast-scrim-blur: 4px;
   /* Like button */
   --like-color: #f40051;
   --like-fill: 150ms;

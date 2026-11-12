@@ -70,6 +70,22 @@
   .t-toast { transition: none !important; }
 }
 
+/* 토스트가 떠 있는 동안 뒤 화면을 조금 어둡게·흐리게 하는 막(티켓 20261112_2338). 눌림은 막지 않는다(pointer-events-none은 클래스에서). */
+.t-toast-scrim {
+  opacity: 0;
+  background: var(--toast-scrim);
+  -webkit-backdrop-filter: blur(var(--toast-scrim-blur));
+  backdrop-filter: blur(var(--toast-scrim-blur));
+  transition: opacity var(--toast-close) var(--toast-ease);
+}
+.t-toast-scrim.is-open {
+  opacity: 1;
+  transition: opacity var(--toast-open) var(--toast-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-toast-scrim { transition: none !important; }
+}
+
 /* ───────────────────────────────────────────────────────────────
  * Notification badge — 03-notification-badge.md
  * 사용처: TabBar 활성탭 점 표시자

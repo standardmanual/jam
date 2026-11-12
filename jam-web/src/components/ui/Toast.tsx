@@ -73,6 +73,21 @@ export function ToastRow({
   )
 }
 
+/**
+ * 토스트 뒤 화면 막(티켓 20261112_2338). 토스트가 하나라도 떠 있는 동안(닫히는 중인 것은 세지 않는다) 뒤 화면을
+ * 검정 16%로 덮고 4px 흐리게 하며, 마지막 토스트가 닫히기 시작하면 함께 풀린다. 컨테이너(z-60) 바로 아래 층(z-59)이고
+ * `pointer-events-none`이라 뒤 화면 조작을 막지 않는다.
+ */
+export function ToastScrim({ active }: { active: boolean }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-toast-scrim={active ? 'on' : 'off'}
+      className={['t-toast-scrim fixed inset-0 z-[59] pointer-events-none', active ? 'is-open' : ''].filter(Boolean).join(' ')}
+    />
+  )
+}
+
 interface ToastContextValue {
   toast: (message: string, type?: ToastType) => void
 }
@@ -188,6 +203,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       */}
       {mounted &&
         createPortal(
+          <>
+          <ToastScrim active={toasts.some((t) => !t.closing)} />
           <div
             className="fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none"
             style={{
@@ -200,7 +217,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {toasts.map((t) => (
               <ToastRow key={t.id} item={t} icon={iconMap[t.type]} onDismiss={() => dismiss(t.id)} />
             ))}
-          </div>,
+          </div>
+          </>,
           document.body
         )}
     </ToastContext.Provider>

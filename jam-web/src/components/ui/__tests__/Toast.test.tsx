@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { ToastRow } from '../Toast'
+import { ToastRow, ToastScrim } from '../Toast'
 
 type Item = Parameters<typeof ToastRow>[0]['item']
 
@@ -87,5 +87,26 @@ describe('ToastRow — 행 모양', () => {
     }
     // 열림 상태는 마운트 다음 프레임에 붙으므로 서버 렌더에는 없다.
     expect(row.split(' ')).not.toContain('is-open')
+  })
+})
+
+describe('ToastScrim — 토스트 뒤 화면 막 (티켓 20261112_2338)', () => {
+  it('토스트가 떠 있으면 is-open이고 눌림을 막지 않는다(pointer-events-none)', () => {
+    const html = renderToStaticMarkup(<ToastScrim active />)
+    expect(html).toContain('data-toast-scrim="on"')
+    expect(html).toContain('t-toast-scrim')
+    expect(html).toContain('is-open')
+    expect(html).toContain('pointer-events-none')
+    expect(html).toContain('aria-hidden="true"')
+  })
+
+  it('토스트가 없으면 is-open이 없다', () => {
+    const html = renderToStaticMarkup(<ToastScrim active={false} />)
+    expect(html).toContain('data-toast-scrim="off"')
+    expect(html).not.toContain('is-open')
+  })
+
+  it('컨테이너(z-60) 바로 아래 층(z-59)이다', () => {
+    expect(renderToStaticMarkup(<ToastScrim active />)).toContain('z-[59]')
   })
 })
