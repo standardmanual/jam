@@ -319,6 +319,9 @@ export function SlotOutline({
   };
 
   return (
+    <>
+    {/* React 19 스타일 리소스: href가 같으면 인스턴스가 30개여도 문서에 한 번만 들어간다(티켓 20261112_1817) */}
+    <style href="ds-slot-outline" precedence="medium">{STATIC_CSS}</style>
     <svg
       ref={ref}
       viewBox={`0 0 ${size} ${size}`}
@@ -329,7 +332,6 @@ export function SlotOutline({
       className={className}
       style={{ display: 'block', width: '100%', maxWidth: size, aspectRatio: '1 / 1', flexShrink: 0, ...style }}
     >
-      <style>{STATIC_CSS}</style>
       {state === 'ready' && <path className="ds-slot-outline-path" d={settled.path} vectorEffect="non-scaling-stroke" style={stroke} />}
       {state === 'failed' && fallback === 'box' && (
         <rect
@@ -344,5 +346,6 @@ export function SlotOutline({
         />
       )}
     </svg>
+    </>
   );
 }

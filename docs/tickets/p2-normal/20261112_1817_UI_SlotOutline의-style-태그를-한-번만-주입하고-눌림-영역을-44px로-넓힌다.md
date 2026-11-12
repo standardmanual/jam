@@ -35,3 +35,10 @@ parent: "20261112_1625"
 - 컬렉션 30칸에서도 `SlotOutline` 스타일 규칙이 DOM에 한 번만 있다. 시험이 이를 단언한다.
 - ②가 ⓐ이면 눌림 영역이 44×44px이고 `SlotGrid`·`RecipeSlotCard` 시험이 통과한다. ⓑ이면 `SlotCircleButton` 주석에 예외 사유를 적는다.
 - `scripts/verify.sh`가 통과한다.
+
+
+---
+## 진행 기록 (2026-11-12)
+
+- ① 완료: `SlotOutline.jsx`가 `<style href="ds-slot-outline" precedence="medium">`(React 19 스타일 리소스)로 규칙을 올려, 인스턴스가 30개여도 문서에 한 번만 들어간다. 시험 `SlotOutline.test.tsx`가 30칸 렌더에서 keyframes가 1개인 것을 단언한다. 호이스팅된 태그가 `BadgeGridCard.undiscovered.test.tsx`의 «opacity 없음» 단언에 섞이던 문제는 `withoutStyleTag` 정규식을 속성 있는 `<style>`까지 지우게 고쳐 해소했다.
+- ② 사용자 결정 대기: 눌림 영역 44px 확대(안 ⓐ) 또는 40px 유지(안 ⓑ).

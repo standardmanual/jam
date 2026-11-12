@@ -37,8 +37,8 @@ const implementations = [
   },
 ]
 
-/** 점선 svg 안의 <style>(등장 애니메이션 keyframes의 opacity)은 빼고 본다 — 칸 자체에 건 흐림만 문제다 */
-const withoutStyleTag = (html: string): string => html.replace(/<style>[\s\S]*?<\/style>/g, '')
+/** 점선의 <style>(등장 애니메이션 keyframes의 opacity, React 19가 href·precedence로 끌어올린 태그 포함)은 빼고 본다 — 칸 자체에 건 흐림만 문제다 */
+const withoutStyleTag = (html: string): string => html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, '')
 
 const SILHOUETTE_FILTERS = ['brightness-0', 'invert-[.64]', 'brightness(0)', 'invert(0.64)']
 const outlineTag = (html: string): string => {
@@ -63,7 +63,7 @@ describe.each(implementations)('BadgeGridCard undiscovered — $label', ({ rende
 
   it('흐림(opacity)을 쓰지 않는다', () => {
     const html = withoutStyleTag(render({ name: NAME, imageUrl: IMAGE, undiscovered: true }))
-    expect(html).not.toMatch(/opacity/)
+    expect(withoutStyleTag(html)).not.toMatch(/opacity/)
   })
 
   it('earned=false가 함께 와도(SlotGrid의 실제 조합) 점선이 이기고 grayscale·이미지는 없다', () => {

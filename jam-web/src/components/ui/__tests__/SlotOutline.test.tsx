@@ -140,6 +140,18 @@ describe('SlotOutline 렌더', () => {
     expect(html).toContain('aria-hidden="true"')
   })
 
+  it('칸이 여러 개여도 점선 전환 스타일 규칙은 문서에 한 번만 들어간다', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {Array.from({ length: 30 }, (_, i) => (
+          <SlotOutline key={i} src={null} fallback="box" />
+        ))}
+      </>,
+    )
+    expect(html.match(/ds-slot-outline-in\{from/g)?.length).toBe(1)
+    expect(html.match(/<svg/g)?.length).toBe(30)
+  })
+
   it('주소가 없고 fallback이 none이면 아무것도 그리지 않는다', () => {
     const html = renderToStaticMarkup(<SlotOutline src={undefined} fallback="none" />)
     expect(html).toContain('data-outline-state="none"')

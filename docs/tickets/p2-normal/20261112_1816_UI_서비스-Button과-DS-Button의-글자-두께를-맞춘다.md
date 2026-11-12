@@ -12,7 +12,7 @@ parent: "20261112_1625"
 ## 핵심 요약
 
 - 요구사항: 서비스 `Button`(`jam-web/src/components/ui/Button.tsx`)과 DS `Button`(`jam-web/design-system/components/buttons/Button.jsx`)의 글자 두께가 갈라져 있다. 한쪽으로 맞춘다. **어느 쪽으로 맞출지는 사용자 결정 대기**(WAITING).
-- 구현 계획: 결정이 나면 한 쪽 값을 바꾸고, 스토리·시험·`Button.prompt.md`를 같이 고친다. `scripts/ds-sync-check.mjs`와 `buttonVariantPairs.test.tsx`가 쌍을 대조한다.
+- 구현 계획: 결정이 나면 한 쪽 값을 바꾸고, 스토리·시험·`Button.prompt.md`를 같이 고친다. `jam-web/scripts/ds-sync-check.mjs`와 `buttonVariantPairs.test.tsx`가 쌍을 대조한다.
 - 관련 파일(지도, 경로 기준 `jam-web/`):
   - 서비스: `src/components/ui/Button.tsx` 129행 `font-normal`(400, 모든 변형 고정, 주석 «weight 400 고정»).
   - DS: `design-system/components/buttons/Button.jsx` 83행 `fontWeight: 600`(모든 변형).
