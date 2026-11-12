@@ -106,14 +106,14 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue, bar
       titleSuffix={isMe && meMarker === 'chip' ? <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip> : undefined}
       meta={
         <span aria-hidden="true" className="block">
+          {/* 막대 두께 16px — 컬렉션·미션 상세의 진행 막대와 같다(2026-11-12 사용자 지시, 이전 6px). 모서리는 ProgressBar 기본(알약)이다. */}
           <ProgressBar
             as="span"
             percent={fillRatio * 100}
             labelType="none"
-            height={6}
+            height={16}
             color={barColor}
             trackColor={trackColor}
-            radius="3px"
           />
         </span>
       }
