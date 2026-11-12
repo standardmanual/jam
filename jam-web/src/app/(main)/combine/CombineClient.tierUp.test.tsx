@@ -102,6 +102,7 @@ import TierUpPanel from './TierUpPanel'
 import { ListRow } from '@/components/ui/ListRow'
 import TopNav from '@/components/ui/TopNav'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
+import TierUpRevealOverlay from '@/components/TierUpRevealOverlay'
 import { d } from '@/lib/i18n'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
@@ -227,6 +228,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
     const entry = (tree: ReactNode) => findAll(tree, (el) => el.type === ListRow)[0]
     const nav = (tree: ReactNode) => findAll(tree, (el) => el.type === TopNav)[0]
     const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
+    const reveal = (tree: ReactNode) => findAll(tree, (el) => el.type === TierUpRevealOverlay)[0]
     const openTierUp = () => {
       ;(entry(render()).props.onClick as () => void)()
       return render()
@@ -244,7 +246,7 @@ describe('CombineClient 등급 올리기 흐름', () => {
     }
     /** 재료 6개를 담아 제출 직전까지 만든다 */
     const fillAll = (ids: string[] = FULL) => fill(ids)
-    return { render, panel, entry, nav, overlay, openTierUp, fill, setItems, fillAll }
+    return { render, panel, entry, nav, overlay, reveal, openTierUp, fill, setItems, fillAll }
   }
 
   const slotIds = (tree: ReactNode, screen: ReturnType<typeof createScreen>) =>
@@ -555,36 +557,99 @@ describe('CombineClient 등급 올리기 흐름', () => {
       expect(screen.panel(screen.render()).props.submitting).toBe(false)
     })
 
-    it('바로 지급되면 카드 1장과 윗등급/같은 등급 문구로 결과 오버레이가 열리고, 닫으면 칸만 비워진 채 같은 화면에 남는다', async () => {
+    it('바로 지급되면 새 연출 오버레이가 열리고 기존 오버레이는 닫혀 있으며, 확인하면 칸만 비워진 채 같은 화면에 남는다', async () => {
       stubFetch({
         success: true,
         path: 'tier_up',
         materialRarity: 'rare',
         resultStatus: 'granted',
-        resultBadges: [{ id: 'b1', name: '새 배지', rarity: 'epic', imageUrl: 'https://example.com/b1.png' }],
+        resultBadges: [
+          { id: 'b1', name: '새 배지', rarity: 'epic', imageUrl: 'https://example.com/b1.png', description: '첫 문장입니다. 둘째 문장입니다.' },
+        ],
+      })
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fillAll()
+      expect(screen.reveal(screen.render()).props.open).toBe(false)
+      const after = await submit(screen)
+
+      // 두 오버레이가 동시에 열리지 않는다
+      expect(screen.overlay(after).props.open).toBe(false)
+      const reveal = screen.reveal(after)
+      expect(reveal.props.open).toBe(true)
+      expect(reveal.props.result).toEqual({
+        name: '새 배지',
+        rarity: 'epic',
+        imageUrl: 'https://example.com/b1.png',
+        description: '첫 문장입니다. 둘째 문장입니다.',
+      })
+      expect(refreshMock).toHaveBeenCalledTimes(1)
+      // 확률 링크는 결과 화면에 두지 않는다
+      expect(JSON.stringify(reveal.props)).not.toContain('/probability')
+
+      refreshMock.mockClear()
+      ;(reveal.props.onConfirm as () => void)()
+      const closed = screen.render()
+      expect(screen.reveal(closed).props.open).toBe(false)
+      expect(screen.overlay(closed).props.open).toBe(false)
+      expect(screen.panel(closed)).toBeDefined()
+      expect(slotIds(closed, screen)).toEqual([null, null, null, null, null, null])
+      expect(screen.nav(closed).props.title).toBe('등급 올리기')
+    })
+
+    it('옛 응답처럼 description이 없으면 설명 없음으로 연출을 연다', async () => {
+      stubFetch({
+        success: true,
+        path: 'tier_up',
+        materialRarity: 'rare',
+        resultStatus: 'granted',
+        resultBadges: [{ id: 'b1', name: '새 배지', rarity: 'rare' }],
+      })
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fillAll()
+      const reveal = screen.reveal(await submit(screen))
+      expect(reveal.props.open).toBe(true)
+      expect(reveal.props.result).toMatchObject({ name: '새 배지', description: null })
+    })
+
+    it('잠긴 결과는 새 연출 대신 기존 오버레이(가린 카드)가 열린다', async () => {
+      stubFetch({
+        success: true,
+        path: 'tier_up',
+        materialRarity: 'rare',
+        resultStatus: 'granted',
+        resultBadges: [{ id: '', name: '', rarity: 'epic', imageUrl: null, locked: true }],
       })
       const screen = createScreen()
       screen.openTierUp()
       screen.fillAll()
       const after = await submit(screen)
-
+      expect(screen.reveal(after).props.open).toBe(false)
       const overlay = screen.overlay(after)
       expect(overlay.props.open).toBe(true)
-      const cards = overlay.props.items as { id: string; name: string; imageUrl?: string | null; rarity?: string | null }[]
-      expect(cards).toHaveLength(1)
-      expect(cards[0]).toMatchObject({ id: 'b1', name: '새 배지', imageUrl: 'https://example.com/b1.png', rarity: 'epic' })
-      expect(overlay.props.resultMessage).toBe('윗등급이 나왔어요! Epic 아이템 배지를 받았어요')
-      expect(refreshMock).toHaveBeenCalledTimes(1)
-      // 확률 링크는 결과 화면에 두지 않는다
-      expect(JSON.stringify(overlay.props)).not.toContain('/probability')
+      expect((overlay.props.items as { locked?: boolean }[])[0]).toMatchObject({ locked: true })
 
-      refreshMock.mockClear()
       ;(overlay.props.onClose as () => void)()
-      const closed = screen.render()
-      expect(screen.overlay(closed).props.open).toBe(false)
-      expect(screen.panel(closed)).toBeDefined()
-      expect(slotIds(closed, screen)).toEqual([null, null, null, null, null, null])
-      expect(screen.nav(closed).props.title).toBe('등급 올리기')
+      expect(slotIds(screen.render(), screen)).toEqual([null, null, null, null, null, null])
+    })
+
+    it('받지 않은 결과(pending)는 새 연출을 열지 않는다', async () => {
+      stubFetch({
+        success: true,
+        path: 'tier_up',
+        materialRarity: 'rare',
+        resultStatus: 'pending',
+        resultBadges: [],
+        pendingCount: 1,
+        freeSlots: 0,
+      })
+      const screen = createScreen()
+      screen.openTierUp()
+      screen.fillAll()
+      const after = await submit(screen)
+      expect(screen.reveal(after).props.open).toBe(false)
+      expect(screen.overlay(after).props.open).toBe(true)
     })
 
     it('같은 등급이 나오면 받은 등급만 말하고, 등급이 없으면 등급을 지어내지 않는다', async () => {
@@ -637,6 +702,14 @@ describe('CombineClient 등급 올리기 흐름', () => {
       expect(slotIds(closed, screen)).toEqual([null, null, null, null, null, null])
       // 막힌 이유가 제출 버튼 곁에 보인다
       expect(screen.panel(closed).props.pendingBlocked).toBe(true)
+    })
+
+    it('결과 배지의 description이 카드 설명으로 들어가고 없으면 빈 문자열이다', () => {
+      const cards = toTierUpRevealBadges([
+        { id: 'a', name: 'A', rarity: 'rare', description: '설명입니다.' },
+        { id: 'b', name: 'B', rarity: 'rare' },
+      ])
+      expect(cards.map((card) => card.description)).toEqual(['설명입니다.', ''])
     })
 
     it('잠긴 결과가 오면 이름과 그림 없이 가린 카드로 받는다', () => {

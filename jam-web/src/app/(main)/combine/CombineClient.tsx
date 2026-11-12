@@ -7,6 +7,7 @@ import { ListRow } from '@/components/ui/ListRow'
 import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
+import TierUpRevealOverlay, { measureTierUpMaterials, type TierUpRevealMaterial, type TierUpRevealResult } from '@/components/TierUpRevealOverlay'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { SearchIcon, PackageIcon } from '@/components/ui/icons'
@@ -156,8 +157,13 @@ export function toMixRevealBadges(resultBadges: MixResultBadge[], rewardBadges: 
 export function toTierUpRevealBadges(resultBadges: TierUpResultBadge[]): RevealBadge[] {
   const details: BadgeDetail[] = resultBadges
     .filter((b) => b.locked !== true)
-    .map((b) => ({ id: b.id, name: b.name, image_url: b.imageUrl ?? null, rarity: b.rarity ?? null, description: '' }))
+    .map((b) => ({ id: b.id, name: b.name, image_url: b.imageUrl ?? null, rarity: b.rarity ?? null, description: b.description ?? '' }))
   return toMixRevealBadges(resultBadges, details)
+}
+
+/** 순수 변환 — 잠기지 않은 등급 올리기 결과 배지를 결과 연출(`TierUpRevealOverlay`)의 입력으로 바꾼다. 옛 응답처럼 `description`이 없으면 설명 없음이다 */
+export function toTierUpReveal(badge: TierUpResultBadge): TierUpRevealResult {
+  return { name: badge.name, rarity: badge.rarity ?? null, imageUrl: badge.imageUrl ?? null, description: badge.description ?? null }
 }
 
 /** 순수 변환 — 받은 «받지 않은 결과» 목록을 결과 캐러셀 항목으로 바꾼다. 잠긴 결과를 열린 척 보이지 않는다. */
@@ -403,6 +409,8 @@ export default function CombineClient({
     resultMessage?: string
     /** 어디서 온 결과인가 — `claim`(받지 않은 결과 받기)은 믹서의 채운 슬롯을 건드리지 않고, `tierUp`은 등급 올리기의 담은 칸을 비운다 */
     kind?: 'mix' | 'claim' | 'tierUp'
+    /** 잠기지 않은 등급 올리기 성공 — 있으면 `BadgeRevealOverlay` 대신 `TierUpRevealOverlay`가 열린다(티켓 20261112_2141) */
+    tierUpReveal?: TierUpRevealResult
     /** 오버레이를 닫는 순간 배너가 가리킬 받지 않은 결과 개수(닫은 뒤 서버 값을 다시 읽는다) */
     pendingAfterClose?: number
   } | null>(null)
@@ -421,6 +429,8 @@ export default function CombineClient({
   const [tierUpSheetOpen, setTierUpSheetOpen] = useState(false)
   const [tierUpTarget, setTierUpTarget] = useState(0)
   const [tierUpLoading, setTierUpLoading] = useState(false)
+  /** 제출하는 순간 잰 재료 그림과 슬롯 자리 — 결과가 오면 서버 새로고침으로 슬롯이 비므로 그 전에 잡아 둔다 */
+  const [tierUpMaterials, setTierUpMaterials] = useState<TierUpRevealMaterial[]>([])
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -435,6 +445,8 @@ export default function CombineClient({
   )
   const selectedRecipeId = view.recipeId
   const tierUpOpen = view.kind === 'tierUp'
+  /** 결과가 «잠기지 않은 등급 올리기 성공»이면 블랙 전환 연출을 연다 — 그때는 `BadgeRevealOverlay`를 열지 않는다 */
+  const tierUpReveal = result?.kind === 'tierUp' && !!result.tierUpReveal
   const needsUrlCleanup = view.needsCleanup
 
   useEffect(() => {
@@ -896,6 +908,7 @@ export default function CombineClient({
 
     setTierUpLoading(true)
     setResult(null)
+    setTierUpMaterials(measureTierUpMaterials(tierUpFilled.map((item) => item?.badge.image_url)))
     try {
       const res = await fetch(TIER_UP_ENDPOINT, {
         method: 'POST',
@@ -927,6 +940,7 @@ export default function CombineClient({
         })
       } else {
         const message = tierUpResultMessage(data.materialRarity, resultBadges)
+        const first = resultBadges[0]
         setResult({
           success: true,
           badges: toTierUpRevealBadges(resultBadges),
@@ -934,6 +948,8 @@ export default function CombineClient({
           message,
           resultMessage: message,
           kind: 'tierUp',
+          // 잠기지 않은 성공만 블랙 전환 연출을 쓴다. 잠긴 결과는 이름·그림이 없어 지금 오버레이(가린 카드)를 그대로 쓴다
+          tierUpReveal: resultBadges.length === 1 && first.locked !== true && first.name ? toTierUpReveal(first) : undefined,
         })
       }
       // 재료 소각·지급 반영 — 담은 칸은 오버레이를 닫을 때 비운다
@@ -1240,13 +1256,16 @@ export default function CombineClient({
 
       {/* 결과 오버레이 — 성공 시 BadgeRevealCarousel, 실패(또는 배지 없이 포인트만)는 같은 셸에 메시지 */}
       <BadgeRevealOverlay
-        open={!!result}
+        open={!!result && !tierUpReveal}
         items={result?.badges ?? []}
         profileHref="/profile"
         onClose={closeResult}
         emptyMessage={result?.message}
         resultMessage={result?.resultMessage}
       />
+
+      {/* 등급 올리기 성공(잠기지 않음) 연출 — 위 오버레이와 동시에 열리지 않는다. 확인을 누르면 closeResult가 슬롯 6칸을 비운다 */}
+      <TierUpRevealOverlay open={tierUpReveal} materials={tierUpMaterials} result={result?.tierUpReveal ?? null} onConfirm={closeResult} />
     </div>
   )
 }

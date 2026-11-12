@@ -98,6 +98,11 @@ describe('TierUpPanel 본문 순서', () => {
     expect(out).toContain('class="grid grid-cols-3 gap-2"')
   })
 
+  it('슬롯마다 번호를 단 래퍼가 있다 — 결과 연출이 재료 그림의 화면 자리를 잴 때 쓴다 (티켓 20261112_2141)', () => {
+    const out = html()
+    for (let index = 0; index < 6; index += 1) expect(out).toContain(`<div data-tier-up-slot="${index}">`)
+  })
+
   it('빈 칸은 정중앙의 검은 원(24px, background-inverse) 안 흰 «+»다 — 원 없는 foreground 플러스가 아니다 (티켓 20261112_1627)', () => {
     const out = html()
     expect(out.match(/background:var\(--background-inverse\)/g)).toHaveLength(6)
