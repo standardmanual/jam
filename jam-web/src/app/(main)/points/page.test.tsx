@@ -60,7 +60,7 @@ vi.mock('@/components/ui/TopNav', () => ({
 }))
 
 import PointsPage from './page'
-import { formatKoreanDateTime } from '@/components/LocalDate'
+import { formatDateTimeMinute } from '@/components/LocalDate'
 import Button from '@/components/ui/Button'
 import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { PointHistoryList, type PointHistoryListProps } from '@/components/points/PointHistoryList'
@@ -75,6 +75,7 @@ function item(over: Partial<PointHistoryItem> = {}): PointHistoryItem {
     amount: 30,
     created_at: '2026-10-20T01:30:00.000Z',
     reason: 'badge_point_reward',
+    kind: d.points.reasonKindBadgeReward,
     title: '한강 러너',
     note: null,
     href: null,
@@ -223,6 +224,8 @@ describe('포인트 화면 — 잔액', () => {
     const html = renderHtml()
 
     expect(html).toContain(d.points.balanceLabel)
+    // «현재 잔액»은 블랙 칩(ListRowChip done)이다 — 면 --foreground, 글자 --snow
+    expect(html).toMatch(/background:var\(--foreground\);color:var\(--snow\)[^>]*>현재 잔액</)
     expect(html).toContain('aria-label="1,200 포인트"')
     expect(visibleText(html)).toContain(d.points.unitSuffix)
     expect(visibleText(html)).not.toContain('—')
@@ -249,60 +252,86 @@ describe('포인트 화면 — 잔액', () => {
 })
 
 describe('포인트 화면 — 내역 행', () => {
-  it('제목과 부호가 붙은 금액이 보인다 — 적립은 +, 차감은 −', async () => {
+  it('행위·대상 이름·날짜 세 줄과 숫자가 보인다 — 적립에는 +가 없고 차감은 −다', async () => {
     fetchMock.mockResolvedValue(
       page([
         item({ id: 'plus', title: '한강 러너', amount: 30 }),
-        item({ id: 'minus', title: d.points.reasonKindAdminAdjustment, amount: -1500, reason: 'admin_deduct' }),
+        item({ id: 'minus', kind: d.points.reasonKindAdminAdjustment, title: d.points.reasonKindAdminAdjustment, amount: -1500, reason: 'admin_deduct' }),
       ])
     )
     await mountAndLoad()
 
     const text = visibleText(renderHtml())
 
-    expect(text).toContain('한강 러너')
-    expect(text).toContain('+30 포인트')
-    expect(text).toContain(d.points.reasonKindAdminAdjustment)
+    expect(text).toContain(`${d.points.reasonKindBadgeReward} 한강 러너 ${formatDateTimeMinute('2026-10-20T01:30:00.000Z')} 30 포인트`)
+    expect(text).not.toContain('+30')
     // 마이너스는 하이픈이 아니라 U+2212이고, 천 단위 구분이 붙는다
     expect(text).toContain('−1,500 포인트')
     expect(text).not.toContain('--1,500')
   })
 
-  it('금액은 부호까지 point-text로 칠한다 — 차감도 같은 색이다 (티켓 20261104_2319)', async () => {
+  it('숫자와 «포인트»는 두 줄(stacked)로 point-text 색이다 — 차감도 같은 색이다 (티켓 20261112_1628)', async () => {
     fetchMock.mockResolvedValue(
       page([
         item({ id: 'plus', title: '한강 러너', amount: 30 }),
-        item({ id: 'minus', title: d.points.reasonKindAdminAdjustment, amount: -1500, reason: 'admin_deduct' }),
+        item({ id: 'minus', title: '', amount: -1500, reason: 'admin_deduct' }),
       ])
     )
     await mountAndLoad()
 
     const html = renderHtml()
 
-    expect(html).toContain('>+30 포인트</span>')
-    expect(html).toContain('>−1,500 포인트</span>')
-    expect(html.match(/<span class="text-point-text"/g)).toHaveLength(2)
+    expect(html).toContain('>30</span>')
+    expect(html).toContain('>−1,500</span>')
+    // 행마다 숫자·단위 두 칸
+    expect(html.match(/<span class="text-point-text"/g)).toHaveLength(4)
+    expect(html.match(/>포인트<\/span>/g)).toHaveLength(2)
     // 잔액 숫자 칸은 같은 토큰의 클래스를 직접 쓴다(자릿수 팝인 예외)
     expect(html).toMatch(/<p class="[^"]*text-point-text[^"]*"/)
     // ListRow가 내보내는 <style>의 포커스 아웃라인(--link)은 빼고, 행 마크업에 링크 색이 없는지 본다
     expect(html.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('--link')
   })
 
-  it('날짜와 시각이 KST로 보인다', async () => {
+  it('내역 행에 서클(lead)이 없다', async () => {
+    fetchMock.mockResolvedValue(page([item()]))
+    await mountAndLoad()
+
+    expect(renderHtml().replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('ds-list-row-lead')
+  })
+
+  it('날짜와 시각이 «YYYY-MM-DD AM hh:mm»(KST)로 한 줄에 보인다', async () => {
     fetchMock.mockResolvedValue(page([item({ created_at: '2026-10-20T01:30:00.000Z' })]))
     await mountAndLoad()
 
     const text = visibleText(renderHtml())
 
-    const expected = formatKoreanDateTime('2026-10-20T01:30:00.000Z', { year: true, time: true })
-    expect(expected).toContain('2026년 10월 20일')
-    expect(text).toContain(expected)
+    expect(formatDateTimeMinute('2026-10-20T01:30:00.000Z')).toBe('2026-10-20 AM 10:30')
+    expect(text).toContain('2026-10-20 AM 10:30')
   })
 
-  it('어드민 «기타» 메모(note)는 있을 때만 보인다', async () => {
+  it('대상 이름이 없으면 행위 줄과 날짜 줄만 있다', async () => {
+    fetchMock.mockResolvedValue(
+      page([item({ id: 'mix', kind: d.points.reasonKindCombineRecipeReward, title: '', reason: 'combine_recipe_reward' })])
+    )
+    await mountAndLoad()
+
+    const html = renderHtml()
+
+    expect(visibleText(html)).toContain(`${d.points.reasonKindCombineRecipeReward} 2026-10-20 AM 10:30`)
+    // 이름 줄(title) 칸은 만들지 않는다: base 크기 칸은 값 칸 래퍼와 숫자 둘뿐이다(이름이 있으면 하나 더 있다)
+    const baseSized = (markup: string) => (markup.match(/font-size:var\(--text-base\)/g) ?? []).length
+    expect(baseSized(html)).toBe(2)
+
+    scope.slots = []
+    fetchMock.mockResolvedValue(page([item({ id: 'named', title: '털실 한 뭉치' })]))
+    await mountAndLoad()
+    expect(baseSized(renderHtml())).toBe(3)
+  })
+
+  it('어드민 «기타» 메모(note)는 이름이 없을 때 이름 줄로 보인다', async () => {
     fetchMock.mockResolvedValue(
       page([
-        item({ id: 'a', title: d.points.reasonKindAdminAdjustment, reason: 'admin_grant', note: '운영 사정으로 조정했어요' }),
+        item({ id: 'a', kind: d.points.reasonKindAdminAdjustment, title: '', reason: 'admin_grant', note: '운영 사정으로 조정했어요' }),
         item({ id: 'b', title: '한강 러너', note: null }),
       ])
     )
@@ -310,8 +339,17 @@ describe('포인트 화면 — 내역 행', () => {
 
     const text = visibleText(renderHtml())
 
-    expect(text).toContain('운영 사정으로 조정했어요')
+    expect(text).toContain(`${d.points.reasonKindAdminAdjustment} 운영 사정으로 조정했어요`)
     expect(text.match(/운영 사정으로 조정했어요/g)).toHaveLength(1)
+  })
+
+  it('관리자 조정의 사유 라벨은 이름 줄에 보이고 메모보다 앞선다', async () => {
+    fetchMock.mockResolvedValue(
+      page([item({ id: 'a', kind: d.points.reasonKindAdminAdjustment, title: d.points.reasonCsCompensation, reason: 'admin_grant', note: null })])
+    )
+    await mountAndLoad()
+
+    expect(visibleText(renderHtml())).toContain(`${d.points.reasonKindAdminAdjustment} ${d.points.reasonCsCompensation}`)
   })
 
   it('링크가 있는 행만 이동한다 — 배지·미션 포인트는 상세로, 조정은 링크가 없다', async () => {

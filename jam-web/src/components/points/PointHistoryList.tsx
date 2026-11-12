@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, type ReactNode } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import type { PointHistoryItem } from '@/app/api/points/route'
 import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -8,14 +8,13 @@ import { ListRow } from '@/components/ui/ListRow'
 import Button from '@/components/ui/Button'
 import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { CoinIcon } from '@/components/ui/icons'
-import { formatKoreanDateTime } from '@/components/LocalDate'
+import { PointText } from '@ds/components/patterns/PointText'
+import { formatDateTimeMinute } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
-import { tPoint } from '@/lib/i18n/tPoint'
 
-// 금액 전체(부호 포함)를 PointText가 오렌지로 칠한다. 차감(−)도 같은 색이다(티켓 20261104_2319 3회차).
-function formatAmount(n: number): ReactNode {
-  const sign = n > 0 ? '+' : '−'
-  return tPoint(d.points.amountValue, { amount: `${sign}${Math.abs(n).toLocaleString('ko-KR')}` })
+// 내역 행 숫자는 «+» 없이 쓰고 차감만 «−»를 붙인다. 색은 PointText가 한 곳에서 칠한다(티켓 20261112_1628).
+function formatAmount(n: number): string {
+  return `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('ko-KR')}`
 }
 
 /**
@@ -116,17 +115,12 @@ export function PointHistoryList({ items, cursor, loading, loadingMore, error, o
             <ListRow
               key={it.id}
               href={it.href ?? undefined}
-              lead={<CoinIcon className="w-5 h-5" />}
-              leadShape="round"
-              title={it.title}
-              meta={
-                <>
-                  {it.note ? <span className="block truncate">{it.note}</span> : undefined}
-                  <span className="block">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
-                </>
-              }
-              metaLines={0}
-              value={formatAmount(it.amount)}
+              eyebrow={it.kind}
+              // 대상 이름이 없으면 행위 줄만 둔다. 관리자 조정 «기타»의 자유 입력 사유(note)는 이름 줄로 보존한다.
+              title={it.title || it.note || undefined}
+              meta={formatDateTimeMinute(it.created_at)}
+              metaLines={1}
+              value={<PointText value={formatAmount(it.amount)} unit={d.points.unitSuffix} layout="stacked" />}
             />
           ))}
         </div>
