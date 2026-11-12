@@ -11,7 +11,6 @@ import {
   GAUGE_MOVE_MIN_MS,
   GRAPH_MIN_PERCENT,
   capsuleGraphPercent,
-  capsuleSpinTurns,
   gaugeMoveDurationMs,
   graphPercentToFillRatio,
   jamPercentToGraphPercent,
@@ -73,20 +72,5 @@ describe('모션 시간', () => {
     expect(short).toBeGreaterThan(GAUGE_MOVE_MIN_MS)
     expect(long).toBeGreaterThan(short)
     expect(long).toBeLessThanOrEqual(GAUGE_MOVE_MAX_MS)
-  })
-})
-
-describe('알약 아이콘 회전 바퀴 수 (티켓 20261110_1346)', () => {
-  it('시간이 없으면 돌지 않는다', () => {
-    expect(capsuleSpinTurns(0)).toBe(0)
-    expect(capsuleSpinTurns(-10)).toBe(0)
-    expect(capsuleSpinTurns(Number.NaN)).toBe(0)
-  })
-
-  it('750ms에 한 바퀴이고 최소 한 바퀴다. 늘 정수 바퀴라 끝나면 처음 방향이다', () => {
-    expect(capsuleSpinTurns(GAUGE_MOVE_MIN_MS)).toBe(1)
-    expect(capsuleSpinTurns(GAUGE_ENTRY_MS)).toBe(2)
-    expect(capsuleSpinTurns(100)).toBe(1)
-    for (const ms of [700, 900, 1100, 1500]) expect(Number.isInteger(capsuleSpinTurns(ms))).toBe(true)
   })
 })

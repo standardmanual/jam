@@ -100,7 +100,7 @@ describe('채운 양의 숫자', () => {
     }
   })
 
-  it('안쪽 숫자는 알약 아이콘 자리(원 지름)를 뺀 너비 안에서만 보이고 채움 안에 있다', () => {
+  it('안쪽 숫자는 채움 끝 원 자리(원 지름)를 뺀 너비 안에서만 보이고 채움 안에 있다', () => {
     const html = render(200, 300)
     const circle = gaugeCircleDiameter(CAPSULE_GAUGE_HEIGHT_PX)
     expect(html).toContain(`width:calc(100% - ${circle}px)`)
@@ -199,17 +199,11 @@ describe('색과 모양', () => {
     expect(html.match(/left:(20|40|60|80)%/g)).toHaveLength(4)
   })
 
-  it('알약 아이콘이 채움 끝 원 안에 있고 스크린리더에서 숨는다', () => {
-    const html = render(120, 300)
-    expect(html).toContain('<svg')
-    expect(html).toContain('aria-hidden="true"')
-    expect(html).toContain('data-capsule-pill="closed"')
-  })
-
-  it('처음 그릴 때는 가득 찬 값이어도 닫혀 있고 돌지 않는다(서버 렌더와 하이드레이션이 어긋나지 않게)', () => {
+  it('채움 끝 원 안에 아이콘을 그리지 않는다(2026-11-12 사용자 지시, 이전에는 알약 아이콘이 있었다)', () => {
     for (const html of [render(120, 300), render(300, 300)]) {
-      expect(html).toContain('data-capsule-pill="closed"')
-      expect(html).toContain('rotate(0deg)')
+      expect(html).not.toContain('<svg')
+      expect(html).not.toContain('data-capsule-pill')
+      expect(html).not.toContain('rotate(')
     }
   })
 })

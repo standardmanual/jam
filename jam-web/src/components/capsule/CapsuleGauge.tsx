@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, type Ref } from 'react'
-import CapsulePillIcon from '@/components/capsule/CapsulePillIcon'
 import PopInNumber from '@/components/ui/PopInNumber'
 import { prefersReducedMotion } from '@/lib/motion'
 import {
@@ -9,12 +8,10 @@ import {
   GAUGE_ENTRY_MS,
   GAUGE_ENTRY_TABBAR_CLEARANCE_PX,
   GAUGE_ENTRY_VISIBLE_RATIO,
-  GRAPH_MAX_PERCENT,
   GRAPH_MIN_PERCENT,
   capsuleGraphPercent,
   capsuleNumberPlacement,
   capsuleNumberText,
-  capsuleSpinTurns,
   gaugeMoveDurationMs,
   graphPercentToFillRatio,
 } from '@/lib/capsule/capsule-gauge'
@@ -23,18 +20,15 @@ import {
  * 캡슐 게이지 — 어두운 트랙 위에 오렌지 채움이 오른쪽으로 차오르는 서비스 전용 컴포넌트 (티켓 20261028_1739 2회, 채원 사전 판정 2026-10-30)
  *
  * 프로토타입 `JamGauge`(`app/spike/capsule-fill`, 4회차에 삭제)를 옮겼다. 어두운 트랙 위에 점 4개(20·40·60·80%)가 있고, 오렌지 채움은 왼쪽 끝에서 시작한다.
- * 그래프 2%가 지름이 트랙 안쪽 높이와 같은 원이고, 100%는 트랙 안쪽을 가득 채운다. 알약 아이콘(`CapsulePillIcon`)은 채움의 오른쪽 끝 원 안에 붙어 같이 움직인다.
+ * 그래프 2%가 지름이 트랙 안쪽 높이와 같은 원이고, 100%는 트랙 안쪽을 가득 채운다. 채움의 오른쪽 끝 원 안에는 아무것도 얹지 않는다(알약 아이콘은 2026-11-12 사용자 지시로 뺐다, 티켓 20261112_1944).
  *
- * 알약 아이콘 모션(티켓 20261110_1346, 사용자 요청 2026-11-10):
- *  - 채움이 차오르는 동안 같은 시간·같은 곡선으로 돈다. 750ms에 한 바퀴(최소 한 바퀴)라 끝나면 처음 방향으로 돌아와 있다.
- *  - 채움이 100%에 닿으면(막힘 문구가 있을 때도 같다) 가운데가 갈라진다. 값이 100% 아래로 내려가면 닫힌다.
  *
  * 눌러도 아무 일도 없다 — `button`·`jam-press`·커서가 없고 접근성 역할은 `role="img"`다. 상태는 숫자 없는 `ariaLabel`로만 글자로 알린다.
  * `message`가 있으면(막힘) 채운 양과 상관없이 채움을 가득 채우고, 숫자를 지운 자리(채움 안쪽 왼쪽, 트랙 색 글자)에 그 문구를 보인다(티켓 20261105_1912).
  * 문구는 바로 보이고 240ms 페이드만 건다(진입 모션·보임 관찰에 묶지 않는다, 티켓 20261105_1439).
  * 퍼센트는 그리지 않는다. 채운 양(`filled`)의 숫자만 그리고(2026-11-04 사용자 결정, 이전에는 숫자를 그리지 않았다), 자리는 두 가지다.
  *  - 채운 비율이 50% 미만: 트랙 안쪽 오른쪽 끝, 오렌지 글자.
- *  - 채운 비율이 50% 이상: 채움 안쪽 왼쪽, 트랙 색 글자. 채움이 차오를 때 숫자도 알약 아이콘 앞까지 같이 드러난다(아이콘을 덮지 않는다).
+ *  - 채운 비율이 50% 이상: 채움 안쪽 왼쪽, 트랙 색 글자. 채움이 차오를 때 숫자도 같이 드러난다(끝 원 지름만큼은 비워 둔다).
  *  숫자는 채움이 움직이기 시작하는 순간 같이 한 번 «팝인»한다(두 모션이 동시에 시작한다, 2026-11-04 사용자 결정, 이전에는 채움이 닿은 뒤였다. transitions.dev Number pop-in, 공유 `PopInNumber`: 각 자리가 블러와 함께 아래에서 들어오고 끝 두 자리가 뒤따른다, 2026-11-04 사용자 요청).
  *  시작 전에는 보이지 않고, 같은 화면에서 값이 바뀌면 새 값으로 옮겨 가기 시작할 때 다시 팝인한다. 모션 줄이기에서는 전환 없이 바로 보인다.
  *
@@ -59,11 +53,6 @@ const DOT_SIZE_PX = 3
 const NUMBER_EDGE_GAP_PX = 14
 /** 숫자를 위로 올리는 양(px) — 글자 줄 상자의 가운데가 숫자 모양의 가운데보다 아래라 트랙 가운데에 맞추려고 올린다(2026-11-04 사용자 요청) */
 const NUMBER_RISE_PX = 1
-/** 알약 아이콘 너비(px)는 채움 원 지름의 이 비율이다. 높이는 너비의 절반이다 */
-const PILL_WIDTH_RATIO = 0.72
-/** 아이콘 자리 상자의 오른쪽 안쪽 여백(px) — 아이콘을 왼쪽으로 절반만큼 밀어 채움 오른쪽 끝(가득 차면 바 오른쪽 끝)에서 간격을 둔다(사용자 지시 2026-11-10) */
-const PILL_RIGHT_INSET_PX = 5
-
 /** 게이지 높이(px)가 정해지면 채움 원의 지름이 정해진다 */
 export function gaugeCircleDiameter(height: number): number {
   return height - (BORDER_PX + PADDING_PX) * 2
@@ -85,13 +74,6 @@ interface Props {
 interface Motion {
   graph: number
   durationMs: number
-  /** 알약 아이콘의 누적 회전각(°). 채움이 움직일 때마다 정수 바퀴만큼 더해 끝나면 처음 방향이다 */
-  spin: number
-}
-
-/** 새 값으로 옮겨 가는 모션 상태 — 시간이 있으면 알약 아이콘의 회전각도 그 시간에 맞춰 정수 바퀴만큼 더한다 */
-function spun(prev: Motion, graph: number, durationMs: number): Motion {
-  return { graph, durationMs, spin: prev.spin + capsuleSpinTurns(durationMs) * 360 }
 }
 
 export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, message }: Props) {
@@ -99,7 +81,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
   const target = capsuleGraphPercent(message ? required : filled, required)
   const numberText = capsuleNumberText(filled)
   // 처음 그리는 값은 늘 2%다. 진입 모션이 끝 눈금으로 옮긴다(값이 0이면 옮길 곳이 없어 그대로다)
-  const [motion, setMotion] = useState<Motion>({ graph: GRAPH_MIN_PERCENT, durationMs: 0, spin: 0 })
+  const [motion, setMotion] = useState<Motion>({ graph: GRAPH_MIN_PERCENT, durationMs: 0 })
   const enteredRef = useRef(false)
   // 트랙이 화면에 보였는가 — 관찰자가 없는 환경에서는 처음부터 보인 것으로 친다. 서버 렌더 값은 그리기에 쓰이지 않는다
   const trackRef = useRef<HTMLDivElement>(null)
@@ -122,7 +104,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
         () => {
           enteredRef.current = true
           shownRef.current = target
-          setMotion((prev) => spun(prev, target, reduced ? 0 : GAUGE_ENTRY_MS))
+          setMotion({ graph: target, durationMs: reduced ? 0 : GAUGE_ENTRY_MS })
         },
         reduced ? 0 : GAUGE_ENTRY_DELAY_MS
       )
@@ -133,7 +115,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
     const duration = shownRef.current === target || reduced ? 0 : gaugeMoveDurationMs(shownRef.current, target)
     if (shownRef.current !== target) {
       shownRef.current = target
-      setMotion((prev) => spun(prev, target, duration))
+      setMotion({ graph: target, durationMs: duration })
     }
   }, [target, visible])
 
@@ -148,19 +130,6 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
       setNumberReady(false)
     }
   }, [arrived, numberText])
-
-  // 갈라짐 — 채움이 100%에 닿는 순간(이동 시간이 지난 뒤) 켜고, 100% 아래로 내려가면 바로 닫는다. 모션 줄이기에서는 시간이 0이라 바로 켜진다.
-  // 효과로 켜는 이유는 숫자 팝인과 같다: 서버 렌더와 첫 그리기에서는 닫혀 있어야 하이드레이션이 어긋나지 않는다
-  const full = target >= GRAPH_MAX_PERCENT
-  const [open, setOpen] = useState(false)
-  useEffect(() => {
-    if (!full || !arrived) return
-    const timer = window.setTimeout(() => setOpen(true), motion.durationMs)
-    return () => {
-      window.clearTimeout(timer)
-      setOpen(false)
-    }
-  }, [full, arrived, motion.durationMs])
 
   // 보임 관찰 — 트랙(바깥 상자)을 본다. 채움 요소는 2%에서 시작해 너비가 변하므로 기준으로 삼지 않는다. 보이면 해제한다
   useEffect(() => {
@@ -248,7 +217,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
             transition: motion.durationMs > 0 ? `width ${motion.durationMs}ms var(--ease-smooth-out)` : 'none',
           }}
         >
-          {/* 채운 비율 50% 이상: 채움 안쪽 왼쪽에 어두운 숫자. 알약 아이콘 자리(원 지름)를 뺀 너비 안에서만 보여 2% 원일 때는 아무것도 보이지 않는다 */}
+          {/* 채운 비율 50% 이상: 채움 안쪽 왼쪽에 어두운 숫자. 채움 끝 원 자리(원 지름)를 뺀 너비 안에서만 보여 2% 원일 때는 아무것도 보이지 않는다 */}
           {placement === 'inside' && (
             <span
               data-capsule-number="inside"
@@ -260,18 +229,6 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
               </span>
             </span>
           )}
-          <span className="absolute right-0 top-0 grid h-full place-items-center" style={{ width: circle, paddingRight: PILL_RIGHT_INSET_PX, boxSizing: 'border-box' }}>
-            {/* 채움이 움직이는 동안 같은 시간·같은 곡선으로 돈다(모션 줄이기에서는 시간이 0이라 돌지 않는다) */}
-            <span
-              className="block"
-              style={{
-                transform: `rotate(${motion.spin}deg)`,
-                transition: motion.durationMs > 0 ? `transform ${motion.durationMs}ms var(--ease-smooth-out)` : 'none',
-              }}
-            >
-              <CapsulePillIcon width={Math.round(circle * PILL_WIDTH_RATIO)} open={open} />
-            </span>
-          </span>
         </span>
       </span>
     </div>

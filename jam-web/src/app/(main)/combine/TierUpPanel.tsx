@@ -122,7 +122,7 @@ export default function TierUpPanel<T extends TierUpMaterial>({
   return (
     <>
       <div className="px-4 pt-4">
-        <p className={PARAGRAPH}>{d.combine.tierUp.description}</p>
+        <p className={`${PARAGRAPH} text-center`}>{d.combine.tierUp.description}</p>
       </div>
 
       <div className="flex-1 px-4 pt-2 pb-6">

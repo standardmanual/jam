@@ -75,6 +75,8 @@ describe('TierUpPanel 본문 순서', () => {
   it('설명 문단은 «같은 등급 배지 6개로 등급 업! 도전!» 한 줄을 접지 않고 보이고 «운이 좋으면»·«올랐어요»로 꾸미지 않는다', () => {
     const out = html()
     expect(out).toContain('같은 등급 배지 6개로 등급 업! 도전!')
+    // 안내 문장은 가운데 정렬이다(2026-11-12 사용자 지시)
+    expect(out).toMatch(/<p class="[^"]*text-center[^"]*">같은 등급 배지 6개로 등급 업! 도전!<\/p>/)
     expect(out).not.toContain('운이 좋')
     expect(out).not.toContain('레벨업')
     expect(out).not.toContain('Mystic은 넣을 수 없어요')
