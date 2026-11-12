@@ -37,4 +37,32 @@ describe('ItemBookHeroSection children', () => {
     expect(html).not.toContain('완성 알림')
     expect(html).toContain('1/3')
   })
+
+  it('맨 위 카드는 1:1 고정(aspect-square)이 없고 내용에 맞춰 높이가 정해진다 — 이미지와 글자 사이는 gap-4 (티켓 20261112_1627, BadgeHeroSection과 같은 방식)', () => {
+    const html = renderToStaticMarkup(<ItemBookHeroSection book={BOOK} slottedCount={1} totalBadgeCount={3} />)
+    const card = html.match(/<div class="(relative overflow-hidden[^"]*)"/)?.[1] ?? ''
+
+    expect(card).toContain('overflow-hidden')
+    expect(card).toContain('gap-4')
+    expect(card).toContain('p-6')
+    expect(card).toContain('w-[calc(100%-16px)]')
+    expect(card).not.toContain('aspect-square')
+  })
+
+  it('이름·설명 묶음이 남는 공간을 채우거나(flex-1) 잘라내지(overflow-hidden) 않는다', () => {
+    const html = renderToStaticMarkup(<ItemBookHeroSection book={BOOK} slottedCount={1} totalBadgeCount={3} />)
+    const group = html.match(/<div class="(relative z-10 flex[^"]*)"[^>]*><div class="flex-shrink-0 flex flex-col items-center gap-1"><h1/)?.[1] ?? ''
+
+    expect(group).toBe('relative z-10 flex flex-col items-center gap-1')
+  })
+
+  it('설명이 길어도 이름과 모든 문장이 그대로 나온다', () => {
+    const long = Array.from({ length: 8 }, (_, i) => `긴 설명 문장 ${i + 1}번이에요.`).join(' ')
+    const html = renderToStaticMarkup(
+      <ItemBookHeroSection book={{ ...BOOK, description: long }} slottedCount={1} totalBadgeCount={3} />,
+    )
+
+    expect(html).toContain('한강 컬렉션')
+    for (let i = 1; i <= 8; i++) expect(html).toContain(`긴 설명 문장 ${i}번이에요.`)
+  })
 })

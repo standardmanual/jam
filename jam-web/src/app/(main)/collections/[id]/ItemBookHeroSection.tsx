@@ -45,6 +45,8 @@ interface ItemBookHeroSectionProps {
  * +설명은 하나의 `flex-1 justify-end` 그룹으로 묶어 카드 하단에 붙인다. 설명도 마침표 기준
  * 자동 줄바꿈(`splitDescriptionSentences`)을 그대로 적용한다. 진행도 바는 이 카드의 대상이
  * 아니다(사용자 명시 지시) — 카드 밖, 부모(`page.tsx`)의 별도 렌더링으로 유지한다.
+ * 2026-11-12(티켓 20261112_1627)에 1:1 고정과 `flex-1 justify-end overflow-hidden` 그룹을 풀었다 — 카드 높이는 내용이 정한다
+ * (`BadgeHeroSection`의 2026-11-09 방식). 이미지 200×200과 마침표 줄바꿈은 그대로다.
  *
  * [20260917_1303-보완] 카드 배경 테두리(`border border-[var(--border)]`, 20260915_2006
  * 컨트라스트 보정용)는 사용자 확인 결과 배지 상세와 다르게 도드라져 보여 제거했다 — 두 상세화면의
@@ -80,7 +82,10 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           // `w-full`은 부모 폭의 100%로 고정되므로 여기에 `mx-2`를 더하면 박스가 총
           // 100%+16px가 되어 오른쪽으로 넘쳐 좌우 여백이 달라 보였다(사용자 확인). 너비 자체를
           // `calc(100%-16px)`로 줄여야 마진을 더해도 부모 폭 안에 대칭으로 들어간다.
-          'relative overflow-hidden w-[calc(100%-16px)] aspect-square rounded-2xl flex flex-col items-center p-6 mx-2',
+          // 2026-11-12(티켓 20261112_1627, 캔버스 확정): 카드의 1:1 비율(aspect-square) 고정을 풀었다 — 설명이 길면 정사각형 안에서 이름이
+          // 가려졌다. 카드 높이는 내용(이미지 200 + 이름 + 설명 줄 수)이 정하고, 이미지와 글자 블록 사이는 gap-4가 띄운다.
+          // 배지 상세(BadgeHeroSection, 2026-11-09)와 같은 방식이다. overflow-hidden은 블롭 배경 라운드 클리핑용으로 카드에 남긴다.
+          'relative overflow-hidden w-[calc(100%-16px)] rounded-2xl flex flex-col items-center gap-4 p-6 mx-2',
           // 배경 애니메이션이 없을 때만 흰 면 + 1px 테두리다 — BadgeHeroSection과 같은 레시피(티켓 20261015_2133)
           backgroundAnimation ? 'bg-transparent' : 'bg-card-bg',
         ].join(' ')}
@@ -101,10 +106,10 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
             <BookIcon className="w-28 h-28" style={{ color: onMedia ? 'var(--snow)' : 'var(--muted)' }} />
           )}
         </div>
-        {/* 이름+설명을 하나의 flex-1 그룹으로 묶어 카드 하단 쪽에 함께 붙인다 —
-            BadgeHeroSection(20260917_1245-보완)과 동일 구조. */}
+        {/* 이름+설명을 한 그룹으로 묶는다. 높이는 내용이 정하므로 남는 공간을 채우거나(flex-1) 잘라내지(overflow-hidden) 않는다 —
+            BadgeHeroSection과 동일 구조. */}
         <div
-          className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-end gap-1 overflow-hidden"
+          className="relative z-10 flex flex-col items-center gap-1"
           style={cardTextStyle}
         >
           <div className="flex-shrink-0 flex flex-col items-center gap-1">
