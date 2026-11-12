@@ -10,6 +10,10 @@
       "sourcePath": "components/buttons/IconButton.jsx"
     },
     {
+      "name": "LoadMoreButton",
+      "sourcePath": "components/buttons/LoadMoreButton.jsx"
+    },
+    {
       "name": "BadgeFrame",
       "sourcePath": "components/cards/BadgeFrame.jsx"
     },

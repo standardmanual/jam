@@ -4,7 +4,7 @@
  * 고정하는 것
  *  - 잔액: 불러오기 전에는 «—», 불러온 뒤에는 라벨 «현재 잔액»과 스크린리더 문구(`aria-label`), 단위 «포인트». 팝인 훅에는 숫자만 넘긴다.
  *  - 내역 행: 제목, 부호가 붙은 금액(+/−), KST 날짜와 시각, 어드민 «기타» 메모(`note`, 있을 때만), 링크(있을 때만).
- *  - 빈 상태, 불러오기 실패(HTTP 오류와 네트워크 오류)와 «다시 시도», «더 보기»(다음 페이지를 이어 붙임, 받는 중 중복 클릭 차단).
+ *  - 빈 상태, 불러오기 실패(HTTP 오류와 네트워크 오류)와 «다시 시도», «더보기»(다음 페이지를 이어 붙임, 받는 중 중복 클릭 차단).
  *  - 그려진 글 어디에도 어드민 용어 «회수»(와 «지급»·«차감»)가 없다. 모든 화면 상태에서 확인한다(14.2절, UX 가이드 1.3절).
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 이 화면이 부르는 훅(`useState`·`useEffect`·`useCallback`)을
@@ -62,6 +62,7 @@ vi.mock('@/components/ui/TopNav', () => ({
 import PointsPage from './page'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import Button from '@/components/ui/Button'
+import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { PointHistoryList, type PointHistoryListProps } from '@/components/points/PointHistoryList'
 import { d } from '@/lib/i18n'
 import type { PointHistoryItem } from '@/app/api/points/route'
@@ -158,9 +159,9 @@ function findAll(tree: ReactNode, predicate: (element: ReactElement<Record<strin
   return found
 }
 
-/** 글자로 찾은 누를 수 있는 요소(Button 컴포넌트 또는 button 태그) */
+/** 글자로 찾은 누를 수 있는 요소(Button·LoadMoreButton 컴포넌트 또는 button 태그) */
 function buttonByLabel(tree: ReactNode, label: string) {
-  return findAll(tree, (el) => (el.type === Button || el.type === 'button') && textOf(el.props.children) === label)[0]
+  return findAll(tree, (el) => (el.type === Button || el.type === LoadMoreButton || el.type === 'button') && textOf(el.props.children) === label)[0]
 }
 
 function click(button: ReactElement<Record<string, unknown>> | undefined): Promise<void> {
@@ -344,7 +345,7 @@ describe('포인트 화면 — 내역 행', () => {
 })
 
 describe('포인트 화면 — 빈 상태', () => {
-  it('내역이 없으면 안내만 보이고 «더 보기»는 없다', async () => {
+  it('내역이 없으면 안내만 보이고 «더보기»는 없다', async () => {
     fetchMock.mockResolvedValue(page([], null, 0))
     await mountAndLoad()
 
@@ -352,7 +353,7 @@ describe('포인트 화면 — 빈 상태', () => {
 
     expect(visibleText(html)).toContain(d.points.emptyTitle)
     expect(visibleText(html)).toContain(d.points.emptyBody)
-    expect(visibleText(html)).not.toContain(d.points.loadMore)
+    expect(visibleText(html)).not.toContain(d.common.loadMore)
     expect(visibleText(html)).not.toContain(d.points.loadError)
     expectNoAdminTerms(html)
   })
@@ -413,22 +414,22 @@ describe('포인트 화면 — 불러오기 실패', () => {
   })
 })
 
-describe('포인트 화면 — 더 보기', () => {
-  it('다음 페이지가 없으면 «더 보기»가 없다', async () => {
+describe('포인트 화면 — 더보기', () => {
+  it('다음 페이지가 없으면 «더보기»가 없다', async () => {
     fetchMock.mockResolvedValue(page([item()], null))
     await mountAndLoad()
 
-    expect(visibleText(renderHtml())).not.toContain(d.points.loadMore)
+    expect(visibleText(renderHtml())).not.toContain(d.common.loadMore)
   })
 
-  it('다음 페이지가 있으면 «더 보기»가 보이고, 누르면 cursor를 실어 부르고 내역을 이어 붙인다', async () => {
+  it('다음 페이지가 있으면 «더보기»가 보이고, 누르면 cursor를 실어 부르고 내역을 이어 붙인다', async () => {
     const cursor = '2026-10-19T00:00:00.000Z'
     fetchMock.mockResolvedValueOnce(page([item({ id: 'a', title: '첫 쪽 내역' })], cursor))
     await mountAndLoad()
-    expect(visibleText(renderHtml())).toContain(d.points.loadMore)
+    expect(visibleText(renderHtml())).toContain(d.common.loadMore)
 
     fetchMock.mockResolvedValueOnce(page([item({ id: 'b', title: '둘째 쪽 내역' })], null, 1500))
-    await click(buttonByLabel(renderTree(), d.points.loadMore))
+    await click(buttonByLabel(renderTree(), d.common.loadMore))
     await flush()
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -438,8 +439,8 @@ describe('포인트 화면 — 더 보기', () => {
     expect(text).toContain('첫 쪽 내역')
     expect(text).toContain('둘째 쪽 내역')
     expect(text.indexOf('첫 쪽 내역')).toBeLessThan(text.indexOf('둘째 쪽 내역'))
-    // 마지막 쪽이면 «더 보기»가 사라진다
-    expect(text).not.toContain(d.points.loadMore)
+    // 마지막 쪽이면 «더보기»가 사라진다
+    expect(text).not.toContain(d.common.loadMore)
   })
 
   it('받는 동안 버튼 글자가 «불러오는 중»으로 바뀌고 눌러지지 않는다', async () => {
@@ -449,13 +450,14 @@ describe('포인트 화면 — 더 보기', () => {
 
     let resolveNext: (value: unknown) => void = () => {}
     fetchMock.mockReturnValueOnce(new Promise((resolve) => (resolveNext = resolve)))
-    const pending = click(buttonByLabel(renderTree(), d.points.loadMore))
+    const pending = click(buttonByLabel(renderTree(), d.common.loadMore))
 
     const during = renderTree()
     const busy = buttonByLabel(during, d.points.loadingMore)
     expect(busy).toBeDefined()
-    expect(busy!.props.disabled).toBe(true)
-    expect(buttonByLabel(during, d.points.loadMore)).toBeUndefined()
+    // LoadMoreButton은 loading이면 Button이 스피너와 함께 비활성으로 만든다(중복 탭 차단)
+    expect(busy!.props.loading).toBe(true)
+    expect(buttonByLabel(during, d.common.loadMore)).toBeUndefined()
 
     resolveNext(page([item({ id: 'b' })], null))
     await pending
@@ -464,20 +466,20 @@ describe('포인트 화면 — 더 보기', () => {
     expect(buttonByLabel(renderTree(), d.points.loadingMore)).toBeUndefined()
   })
 
-  it('더 보기가 실패해도 이미 받은 내역은 그대로 남고 오류 카드로 바뀌지 않는다', async () => {
+  it('더보기가 실패해도 이미 받은 내역은 그대로 남고 오류 카드로 바뀌지 않는다', async () => {
     const cursor = '2026-10-19T00:00:00.000Z'
     fetchMock.mockResolvedValueOnce(page([item({ id: 'a', title: '첫 쪽 내역' })], cursor))
     await mountAndLoad()
 
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    await click(buttonByLabel(renderTree(), d.points.loadMore))
+    await click(buttonByLabel(renderTree(), d.common.loadMore))
     await flush()
 
     const text = visibleText(renderHtml())
     expect(text).toContain('첫 쪽 내역')
     expect(text).not.toContain(d.points.loadError)
-    // 같은 쪽을 다시 받을 수 있게 «더 보기»가 남는다
-    expect(text).toContain(d.points.loadMore)
+    // 같은 쪽을 다시 받을 수 있게 «더보기»가 남는다
+    expect(text).toContain(d.common.loadMore)
   })
 })
 
@@ -507,7 +509,7 @@ describe('포인트 화면 — 어드민 용어 «회수»가 없다 (운영 로
     // 받는 중
     let resolveNext: (value: unknown) => void = () => {}
     fetchMock.mockReturnValueOnce(new Promise((resolve) => (resolveNext = resolve)))
-    const pending = click(buttonByLabel(renderTree(), d.points.loadMore))
+    const pending = click(buttonByLabel(renderTree(), d.common.loadMore))
     seen.push(renderHtml())
     resolveNext(page([], null))
     await pending

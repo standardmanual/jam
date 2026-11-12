@@ -11,7 +11,7 @@ import { tPoint } from '@/lib/i18n/tPoint'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
-import Button from '@/components/ui/Button'
+import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { Card } from '@ds/components/cards/Card'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -695,15 +695,9 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
             ))}
           </div>
           {hasMore && (
-            <Button
-              variant="outline"
-              surface="main"
-              fullWidth
-              className="mt-4"
-              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-            >
+            <LoadMoreButton onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}>
               {d.common.loadMore}
-            </Button>
+            </LoadMoreButton>
           )}
         </>
       )}
