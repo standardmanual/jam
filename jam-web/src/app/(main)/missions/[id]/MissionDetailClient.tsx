@@ -13,6 +13,7 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
+import { PointText } from '@ds/components/patterns/PointText'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
@@ -98,24 +99,23 @@ function timeLeft(endsAt: string | null): string {
   return `${h}시간 ${m}분 ${d.missions.timeLeftSuffix}`
 }
 
-/* ── 개수 서클 — 연속 일수·활동 횟수의 «나의 진행 상황» (티켓 20261104_2147)
- * 프로그래스바·퍼센트 없이 목표 개수만큼 숫자 서클을 전부 그린다. 끝낸 칸은 --accent 채움, 지금 채울 칸은 --link 테두리,
- * 남은 칸은 --background-secondary다. 단위 글자는 마지막 서클과 한 묶음(whitespace-nowrap)이라 줄이 넘치면 함께 내려간다. */
+/* ── 개수 서클 — 연속 일수·활동 횟수의 «나의 진행 상황» (티켓 20261104_2147, 4회차 20261112_1629)
+ * 프로그래스바·퍼센트 없이 목표 개수만큼 숫자 서클을 전부 그린다. 끝낸 칸은 --jam-red 채움에 --snow 숫자,
+ * 남은 칸은 --btn-secondary 채움에 --foreground 숫자이고 테두리는 어느 칸에도 없다(지금 채울 칸 구분 없음).
+ * 단위 글자는 마지막 서클과 한 묶음(whitespace-nowrap)이라 줄이 넘치면 함께 내려간다. */
 function CountCircles({ total, done, unit, completed }: { total: number; done: number; unit: string; completed: boolean }) {
   const filled = completed ? total : Math.min(total, Math.max(0, Math.floor(done)))
   const circle = (i: number) => {
     const isDone = i < filled
-    const isNow = !isDone && i === filled && !completed
     return (
       <span
         key={i}
         aria-hidden="true"
-        className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-[12px] font-bold tabular-nums leading-none flex-shrink-0 ${isNow ? 'border-2' : ''}`}
+        className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[12px] font-bold tabular-nums leading-none flex-shrink-0"
         style={{
-          // 회차 서클은 검정 면에 흰 글자다(2026-11-11 사용자 지시). 서클이 놓이는 나의 진행 상황 카드는 레드 면이다
-          background:  isDone ? 'var(--accent)' : isNow ? 'transparent' : 'var(--background-secondary)',
-          borderColor: isNow ? 'var(--link)' : undefined,
-          color:       isDone ? 'var(--accent-foreground)' : isNow ? 'var(--link)' : 'var(--muted)',
+          // 달성은 레드 면에 흰 글자, 미달성은 회색 면에 검정 글자다. 서클이 놓이는 나의 진행 상황 카드는 흰 면이다(캔버스 확정, 티켓 20261112_1629)
+          background: isDone ? 'var(--jam-red)' : 'var(--btn-secondary)',
+          color:      isDone ? 'var(--snow)' : 'var(--foreground)',
         }}
       >
         {i + 1}
@@ -197,7 +197,7 @@ function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted
 }
 
 /* ── 등급 칩 — 칩이 실제로 그려질 때만 eyebrow로 넘긴다(common·null이면 undefined라 빈 줄이 남지 않는다) ── */
-/** 보상 영역 행의 면 — 미션 상세의 보상은 레드 면이다(2026-11-11 사용자 지시, 티켓 20261111_2310). 면 위 글자는 포인트까지 모두 --foreground다 */
+/** 보상 영역 배지 행의 면 — 배지 보상은 레드 면이다(2026-11-11 사용자 지시, 티켓 20261111_2310). 포인트 행은 흰 면(tone default)이라 쓰지 않는다(티켓 20261112_1629). 면 위 글자는 --foreground다 */
 const REWARD_ROW_STYLE = { background: 'var(--jam-red)' }
 
 function rarityEyebrow(rarity: BadgeRarity | null) {
@@ -538,11 +538,10 @@ export default function MissionDetailClient({
               <LockedRewardRow key={`locked-${index}`} rarity={rarity} caption={d.missions.rewardBadgeCaption} tone="tint" onRed />
             ))}
 
-            {/* 포인트 보상 행: ListRow + 서클 lead. 캡션 없이 «N 포인트»만 둔다 */}
+            {/* 포인트 보상 행: ListRow + 서클 lead. 캡션 없이 «N 포인트»만 둔다. 배지 보상 행(레드)과 달리 흰 면(tone default)이다(티켓 20261112_1629) */}
             {mission.reward_points ? (
               <ListRow
-                tone="tint"
-                style={REWARD_ROW_STYLE}
+                tone="default"
                 leadShape="round"
                 lead={
                   <span className="w-full h-full flex items-center justify-center"
@@ -550,8 +549,8 @@ export default function MissionDetailClient({
                     <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
                   </span>
                 }
-                // 레드 면 위라 포인트 조각을 오렌지(PointText) 대신 검정(--foreground) 일반 문구로 쓴다(2026-11-11 사용자 지시, 처음 흰색이었다가 검정으로 되돌림)
-                title={<span style={{ color: 'var(--foreground)' }}>{t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}</span>}
+                // 흰 면 위라 포인트는 PointText가 --point-text 주황으로 칠한다(색은 PointText 한 곳에서 정한다)
+                title={<PointText value={mission.reward_points} unit={d.points.unitSuffix} layout="inline" />}
               />
             ) : null}
 
@@ -593,8 +592,8 @@ export default function MissionDetailClient({
 
         {/* ── 진행상황 카드 ── */}
         {(participating || isCompleted) && goal.target > 0 && (
-          /* 나의 진행 상황 카드는 강조 레드(--jam-red) 면이다(2026-11-11 사용자 지시). 글자는 검정(--foreground, 대비 약 4.6:1)이고 큰 현재 값만 흰색(--snow)이다 */
-          <InfoCard style={{ background: 'var(--jam-red)' }}>
+          /* 나의 진행 상황 카드는 흰 면이다. 레드는 현재 값 글자·진행 막대 채움·달성 서클에만 쓴다(캔버스 확정, 티켓 20261112_1629) */
+          <InfoCard>
             <SectionLabel>{d.missions.myProgressTitle}</SectionLabel>
 
             {isCircleType ? (
@@ -615,7 +614,7 @@ export default function MissionDetailClient({
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[22px] font-bold text-foreground tabular-nums leading-none">
-                    <span style={{ color: 'var(--snow)' }}>
+                    <span style={{ color: 'var(--jam-red)' }}>
                       {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
                     </span>
                     <span className="text-[16px] font-normal text-foreground mx-1">/</span>
@@ -625,7 +624,7 @@ export default function MissionDetailClient({
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <ProgressBar percent={isCompleted ? 100 : progressPct} color="var(--snow)" trackColor="color-mix(in srgb, var(--foreground) 20%, transparent)" />
+                <ProgressBar percent={isCompleted ? 100 : progressPct} height={16} color="var(--jam-red)" />
               </div>
             )}
           </InfoCard>
