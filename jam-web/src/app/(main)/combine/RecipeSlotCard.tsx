@@ -5,13 +5,14 @@ import { d, t } from '@/lib/i18n'
 /**
  * 레시피 믹서의 슬롯 칸 — 컬렉션 칸(`SlotGrid`)과 같은 «BadgeGridCard + 형제 SlotCircleButton» 조합이다(티켓 20261110_1115).
  * 서비스 전용 조립 조각이라 새 MODULAR 컴포넌트가 아니다. 칸 본체는 누르는 동작이 없고(`BadgeGridCard`를 비대화형으로 둔다)
- * 우측 상단 원 버튼만 누른다. 버튼은 카드 안이 아니라 형제로 둔다(컬렉션 `SlotGrid`의 래퍼 구조와 같다).
+ * 원 버튼(«−»는 우상단, «+»는 이미지 정중앙)만 누른다. 버튼은 카드 안이 아니라 형제로 둔다(컬렉션 `SlotGrid`의 래퍼 구조와 같다).
  *
  * - `filled`: 채운 개체를 선명하게 + «−»(누르면 비운다) + 3px 회색 테두리(등급 올리기 칸과 같은 모양, 채웠다는 신호).
- * - `addable`: 대표 후보를 흐린 회색으로(썸네일 grayscale + opacity-40, 이름 muted) + «+»(활성 행이 하나면 바로 채우고, 여럿이면 호출부가 시트를 연다).
+ * - `addable`: 대표 후보를 흐린 회색으로(썸네일 grayscale + opacity-40, 이름 muted) + 그 위에 윤곽 점선(`outlined`) + 이미지 정중앙의 «+»
+ *   (활성 행이 하나면 바로 채우고, 여럿이면 호출부가 시트를 연다). «+» 틀은 `dense`(4열, 카드 p-2)에 맞춰 안쪽 여백을 줄인다(티켓 20261112_1627).
  *   컬렉션 상세에서 넣을 수 있는 아이템 배지가 있는 칸(`SlotGrid`의 `isSlottable`)과 같은 모양이다(2026-11-11 사용자 지시, 이전에는 선명했다).
- * - `unowned`: 가진 개체가 없는 칸. 썸네일을 이미지 윤곽의 회색 실루엣으로 칠하고(컬렉션 상세의 미발견 칸 `undiscovered`와 같다, 2026-11-11 사용자 지시)
- *   이름은 muted, 버튼 없음, 눌러도 아무 일 없음.
+ * - `unowned`: 가진 개체가 없는 칸. 이미지는 그리지 않고 이미지 윤곽의 점선만 둔다(컬렉션 상세의 미발견 칸 `undiscovered`와 같다,
+ *   2026-11-11 사용자 지시, 2026-11-12 캔버스 확정으로 회색 채움에서 점선으로 바뀜). 이름은 muted, 버튼 없음, 눌러도 아무 일 없음.
  * - `pulse`: 온보딩 퀘스트 펄스는 «+»에만 건다. «−»·`unowned`에는 걸리지 않는다.
  */
 export type RecipeSlotStatus = 'filled' | 'addable' | 'unowned'
@@ -40,7 +41,7 @@ export default function RecipeSlotCard({
   dense = false,
 }: RecipeSlotCardProps) {
   const unowned = status === 'unowned'
-  // 채운 칸만 선명하다. 넣을 수 있는 칸은 흐린 회색 + «+», 가진 게 없는 칸은 회색 실루엣이다
+  // 채운 칸만 선명하다. 넣을 수 있는 칸은 흐린 회색 이미지 + 점선 + 정중앙 «+», 가진 게 없는 칸은 이미지 없이 윤곽 점선만이다
   const dimmed = status !== 'filled'
   // 채운 칸은 등급 올리기의 채운·빈 칸(`MixerSlot`)과 같은 3px 회색 테두리(`--muted`)로 «채움»을 알린다(2026-11-10 사용자 지시).
   // 안쪽 링(box-shadow inset)이라 칸 크기와 이미지 위치를 밀지 않는다.
@@ -54,11 +55,14 @@ export default function RecipeSlotCard({
         rarity={null}
         earned={!dimmed}
         undiscovered={unowned}
+        outlined={status === 'addable'}
         nameMuted={dimmed}
       />
       {status === 'addable' && (
         <SlotCircleButton
           icon="plus"
+          position="center"
+          dense={dense}
           label={t(d.combine.slotAddAria, { name })}
           disabled={loading}
           className={pulse ? 'jam-quest-pulse' : ''}

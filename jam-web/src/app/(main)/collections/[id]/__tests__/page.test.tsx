@@ -465,7 +465,7 @@ describe('컬렉션 상세 페이지 — 꺼진 컬렉션', () => {
     expect(gridProps?.badgeSlots).toHaveLength(NAMES.length)
   })
 
-  it('가진 개체가 없는 칸은 켜진 컬렉션과 같이 회색 실루엣 + 이름이고 흐림·흑백·«???»가 없다', async () => {
+  it('가진 개체가 없는 칸은 켜진 컬렉션과 같이 이미지 없이 윤곽 점선 + 이름이고 흐림·흑백·«???»가 없다', async () => {
     state.tables.item_books = offBook()
     state.tables.issued_item_books = [{ item_book_id: 'book-1', first_issued_at: '2026-11-01T00:00:00Z' }]
     state.tables.badges = [badgeRow('이름1', 'common', { image_url: 'https://example.com/a.png' })]
@@ -474,11 +474,13 @@ describe('컬렉션 상세 페이지 — 꺼진 컬렉션', () => {
 
     const { gridProps } = await renderGrid()
     const html = renderToStaticMarkup(<SlotGrid {...(gridProps as React.ComponentProps<typeof SlotGrid>)} />)
-    const img = html.match(/<img[^>]*>/)?.[0] ?? ''
 
-    expect(img).toContain('brightness-0')
-    expect(img).toContain('invert-[.64]')
-    expect(img).not.toMatch(/\bgrayscale\b/)
+    // 이미지를 그리지 않고 점선 svg만 둔다(티켓 20261112_1627). 예전 회색 실루엣 필터는 남아 있지 않다
+    expect(html).not.toContain('<img')
+    expect(html).toContain('data-outline-state')
+    expect(html).not.toContain('brightness-0')
+    expect(html).not.toContain('invert-[.64]')
+    expect(html).not.toMatch(/\bgrayscale\b/)
     expect(html).toContain('>이름1<')
     expect(html).not.toContain('???')
     expect(html).not.toContain('opacity-30')

@@ -5,7 +5,7 @@
  * "등록된 호스트 + 내부 경로만 true"라는 성질을 여기서 고정한다.
  */
 import { describe, it, expect } from 'vitest'
-import { isOptimizableImageSrc } from '@/lib/imageSrc'
+import { isOptimizableImageSrc, slotOutlineTraceSrc } from '@/lib/imageSrc'
 
 describe('isOptimizableImageSrc', () => {
   it('내부 절대 경로는 최적화 대상', () => {
@@ -81,5 +81,25 @@ describe('isOptimizableImageSrc', () => {
     expect(isOptimizableImageSrc('blob:http://localhost/abc')).toBe(false)
     expect(isOptimizableImageSrc('badges/a.png')).toBe(false)
     expect(isOptimizableImageSrc('storage.heypop.kr/a.jpeg')).toBe(false)
+  })
+})
+
+/* 티켓 20261112_1627 — 슬롯 점선 추적 주소. w=192는 next 기본 sizes에 없어 400이고,
+   폭 90 이미지의 2x 후보(256)가 휴대폰이 이미 받는 변환본이다. */
+describe('slotOutlineTraceSrc', () => {
+  it('최적화 가능한 주소는 /_next/image w=256 q=75로 만든다', () => {
+    const url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/badges/a.png'
+    expect(slotOutlineTraceSrc(url)).toBe(`/_next/image?url=${encodeURIComponent(url)}&w=256&q=75`)
+    expect(slotOutlineTraceSrc('/badges/sample/a.png')).toBe(`/_next/image?url=${encodeURIComponent('/badges/sample/a.png')}&w=256&q=75`)
+  })
+
+  it('최적화할 수 없는 주소는 그대로 돌려준다', () => {
+    expect(slotOutlineTraceSrc('https://example.com/a.png')).toBe('https://example.com/a.png')
+  })
+
+  it('주소가 없으면 null', () => {
+    expect(slotOutlineTraceSrc(null)).toBeNull()
+    expect(slotOutlineTraceSrc(undefined)).toBeNull()
+    expect(slotOutlineTraceSrc('   ')).toBeNull()
   })
 })

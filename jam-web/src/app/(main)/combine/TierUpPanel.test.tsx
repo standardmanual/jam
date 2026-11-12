@@ -96,6 +96,15 @@ describe('TierUpPanel 본문 순서', () => {
     expect(out).toContain('class="grid grid-cols-3 gap-2"')
   })
 
+  it('빈 칸은 정중앙의 검은 원(24px, background-inverse) 안 흰 «+»다 — 원 없는 foreground 플러스가 아니다 (티켓 20261112_1627)', () => {
+    const out = html()
+    expect(out.match(/background:var\(--background-inverse\)/g)).toHaveLength(6)
+    expect(out.match(/M12 6v12M6 12h12/g)).toHaveLength(6)
+    expect(out.match(/stroke-width="4.5"/g)).toHaveLength(6)
+    expect(out).not.toContain('viewBox="0 -960 960 960"')
+    expect(out).not.toContain('fill="var(--foreground)"')
+  })
+
   it('담은 칸은 이름이 보이고 나머지는 빈 칸이다', () => {
     const out = html({ slots: [material('a', 'rare'), null, material('b', 'rare'), null, null, null] })
     expect(out).toContain('배지 a')

@@ -485,7 +485,7 @@ export default function SlotGrid({
           return (
             // 칸 key를 cellKey로 안정시킨다 — 첫 장착으로 등급이 정해져 대표 배지가 바뀌어도 칸이 다시
             // 마운트되지 않고 그림만 바뀐다(9칸이 한꺼번에 깜빡이지 않는다, 티켓 20261028_1408)
-            // 래퍼는 우측 상단 «빼기» 원 버튼의 기준점이다. 카드 전체가 링크라 버튼을 링크 안에 넣지 않고 형제로 둔다.
+            // 래퍼는 우측 상단 «빼기» 원 버튼과 이미지 정중앙 «추가» 원 버튼(틀)의 기준점이다. 카드 전체가 링크라 버튼을 링크 안에 넣지 않고 형제로 둔다.
             <div key={cellKey} className="relative flex">
             <BadgeGridCard
               className="w-full"
@@ -498,6 +498,8 @@ export default function SlotGrid({
               href={!isUndiscovered ? `/badges/${badge.id}${badgeLinkQuery}${itemQuery}` : undefined}
               earned={isSlotted}
               undiscovered={isUndiscovered}
+              // 넣을 수 있는 칸은 회색 이미지 위에 윤곽 점선을 겹친다(티켓 20261112_1627)
+              outlined={isSlottable}
               highlighted={slotMode && !readOnly && isSlottable}
               // 장착하지 않은 칸(빈 칸·넣을 수 있는 배지가 있는 칸)의 이름은 그레이로 장착된 칸과 구분한다(2026-11-09 사용자 지시)
               nameMuted={!isSlotted}
@@ -518,8 +520,8 @@ export default function SlotGrid({
                 </SlotActionPill>
               )}
             </BadgeGridCard>
-            {/* 칸 우측 상단의 검은 원 버튼(2026-11-09 사용자 지시). 장착된 본인 칸은 «−»(빼기, 교체 후보가 있는 칸에도 보인다),
-                장착하지 않았고 넣을 수 있는 본인 칸은 «+»(추가). «교체»는 칸 아래 알약 그대로다. */}
+            {/* 검은 원 버튼(2026-11-09 사용자 지시). 장착된 본인 칸은 우측 상단의 «−»(빼기, 교체 후보가 있는 칸에도 보인다),
+                장착하지 않았고 넣을 수 있는 본인 칸은 이미지 정중앙의 «+»(추가, 2026-11-12 캔버스 확정). «교체»는 칸 아래 알약 그대로다. */}
             {isSlotted && !readOnly && (
               <SlotCircleButton
                 icon="minus"
@@ -532,6 +534,7 @@ export default function SlotGrid({
             {isSlottable && !readOnly && (
               <SlotCircleButton
                 icon="plus"
+                position="center"
                 label={d.itembooks.slotButton}
                 pending={pending}
                 disabled={bulkBusy}

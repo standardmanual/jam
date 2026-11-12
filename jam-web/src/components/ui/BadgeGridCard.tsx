@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
+import { SlotOutline } from '@ds/components/cards/SlotOutline'
+import { slotOutlineTraceSrc } from '@/lib/imageSrc'
 import { MedalIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
@@ -52,10 +54,17 @@ export interface BadgeGridCardProps {
   /** false = 썸네일 흑백+반투명 처리 (미획득 배지). 기본값 true. `undiscovered`가 함께 오면 그쪽이 이긴다. */
   earned?: boolean
   /**
-   * true = 썸네일을 이미지 바깥 윤곽의 회색 실루엣으로, 이름은 그대로 보여 준다(아이템북 미발견 배지, 티켓 20261102_1834).
-   * 등급 칩과 ×N은 그리지 않는다. `earned={false}`가 함께 와도(`SlotGrid`의 실제 조합) 실루엣이 이긴다.
+   * true = 이미지를 그리지 않고 이미지 알파 윤곽을 따라가는 점선(`SlotOutline`)만 그린다. 이름은 그대로 보여 준다
+   * (아이템북 후보가 없는 칸, 티켓 20261112_1627 — 이전의 회색 실루엣 채움을 대신한다). 추적에 실패하거나 이미지 주소가 없으면 둥근 사각형 점선이다.
+   * 등급 칩과 ×N은 그리지 않는다. `earned={false}`가 함께 와도(`SlotGrid`의 실제 조합) 점선이 이긴다.
    */
   undiscovered?: boolean
+  /**
+   * true = 이미지(`earned={false}`면 grayscale + opacity-40) 위에 같은 점선을 불투명 100%로 겹친다 — 지금 넣을 수 있는 칸
+   * (컬렉션 `isSlottable`, 믹스 `addable`, 티켓 20261112_1627). 점선은 이미지 래퍼의 형제라 이미지 투명도의 영향을 받지 않는다.
+   * 추적에 실패하면 이미지가 보이므로 사각형 대체 없이 그리지 않는다. `undiscovered`·`locked`가 함께 오면 그쪽이 이긴다.
+   */
+  outlined?: boolean
   /** 선택 강조 링 (select 모드). */
   selected?: boolean
   /** 고르면 실행되는 카드가 «지금 고른 것»임을 보조기술에 알린다(`aria-pressed`). `onClick` 카드에만 붙는다(티켓 20261110_2150) */
@@ -110,12 +119,6 @@ export interface BadgeGridCardProps {
 const BASE =
   'flex flex-col items-center rounded-2xl p-3 overflow-hidden'
 
-// 미발견 실루엣 (티켓 20261102_1834) — 원본 <img> 한 장을 검정으로 만든 뒤(brightness-0, 알파는 그대로) 중립 400 단계로 올린다(invert-[.64]).
-// 0.64는 중립 400 단계와 같은 밝기다. 필터는 CSS 변수 색을 받지 못해 숫자로 적는다.
-// 래퍼가 아니라 <img>에만 건다: 래퍼에 걸면 대체 아이콘(MedalIcon)까지 검정으로 칠해지고 ×N 필 기준점과도 겹친다.
-// 2026-09-06 «미획득은 원본 그레이»를 되돌린 것이 아니다 — 미발견만 실루엣 예외이고 `earned={false}`는 grayscale을 그대로 쓴다.
-export const UNDISCOVERED_SILHOUETTE_CLASS = 'brightness-0 invert-[.64]'
-
 export default function BadgeGridCard({
   name = '',
   imageUrl,
@@ -128,6 +131,7 @@ export default function BadgeGridCard({
   onNavigate,
   earned = true,
   undiscovered = false,
+  outlined = false,
   selected = false,
   pressed,
   disabled = false,
@@ -155,8 +159,10 @@ export default function BadgeGridCard({
     .filter(Boolean)
     .join(' ')
 
-  // 판정 순서: undiscovered(실루엣) > !earned(grayscale + opacity-40). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 실루엣이 사라진다
+  // 판정 순서: undiscovered(이미지 없이 점선만) > !earned(grayscale + opacity-40). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 점선이 사라진다
   const thumbDimmed = !earned && !undiscovered
+  // 점선이 추적할 주소. w=256, q=75 — 폭 90 이미지가 이미 받는 변환본이라 새 변환본이 생기지 않는다(`slotOutlineTraceSrc`)
+  const outlineSrc = slotOutlineTraceSrc(imageUrl)
 
   const thumbnailCls = [
     'w-full aspect-square rounded-2xl overflow-hidden',
@@ -187,17 +193,27 @@ export default function BadgeGridCard({
         {locked ? (
           // 잠긴 개체는 어떤 배지인지 알 수 있는 그림을 그리지 않는다(운영 로직 7.3절). 호출부가 URL을 넘겨도 쓰지 않는다
           <LockedTile size={90} />
+        ) : undiscovered ? (
+          // 후보가 없는 칸: 이미지를 그리지 않고 이미지 윤곽의 점선만 둔다. SlotOutline이 정사각형 칸을 스스로 잡아 레이아웃이 밀리지 않는다.
+          // 추적 실패·주소 없음이면 둥근 사각형 점선이다. 이름은 아래 줄이 전하므로 점선은 장식(aria-hidden)이다
+          <SlotOutline src={outlineSrc} fallback="box" />
         ) : (
-          <div className={thumbnailCls}>
-            <SafeImage
-              src={imageUrl}
-              alt={name}
-              width={90}
-              height={90}
-              className={undiscovered ? `w-full h-full object-contain p-1 ${UNDISCOVERED_SILHOUETTE_CLASS}` : 'w-full h-full object-contain p-1'}
-              fallback={<MedalIcon className="w-10 h-10 text-muted" />}
-            />
-          </div>
+          <>
+            <div className={thumbnailCls}>
+              <SafeImage
+                src={imageUrl}
+                alt={name}
+                width={90}
+                height={90}
+                className="w-full h-full object-contain p-1"
+                fallback={<MedalIcon className="w-10 h-10 text-muted" />}
+              />
+            </div>
+            {outlined && (
+              // 이미지 래퍼의 형제: 래퍼 안에 두면 opacity-40을 먹어 점선이 흐려진다. 추적 실패 때는 이미지가 보이므로 사각형 대체가 없다
+              <SlotOutline src={outlineSrc} fallback="none" className="absolute inset-0 h-full w-full" />
+            )}
+          </>
         )}
         {showCount && (
           // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이

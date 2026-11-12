@@ -134,6 +134,10 @@
       "sourcePath": "components/cards/LockedTile.jsx"
     },
     {
+      "name": "SlotOutline",
+      "sourcePath": "components/cards/SlotOutline.jsx"
+    },
+    {
       "name": "ListRow",
       "sourcePath": "components/patterns/ListRow.jsx"
     }
