@@ -188,7 +188,7 @@ export function pendingResultMessage(params: { pendingCount: number; freeSlots: 
 }
 
 /**
- * 레시피 설명 — 믹서 화면의 요약 행 아래. 3줄까지 보이고, 넘칠 때만 «더 보기»가 붙는다. 높이 전환 없이 줄임만 풀고 접는다.
+ * 레시피 설명 — 믹서 화면의 요약 행 아래. 3줄까지 보이고, 넘칠 때만 «더보기»가 붙는다. 높이 전환 없이 줄임만 풀고 접는다.
  * 넘침은 접힌 상태의 실제 높이로 잰다(글자 수로 추측하지 않는다). 레시피를 바꾸면 `key`로 다시 접힌다.
  */
 export function RecipeDescription({ text }: { text: string }) {

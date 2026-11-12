@@ -1995,7 +1995,7 @@ export const ko = {
     /** 레시피 행·요약 바에서 보상 포인트 숫자 아래 작은 글씨로 붙는 단위(티켓 20261104_2315) */
     pointsUnit: '포인트',
     /** 레시피 설명이 길 때 접고 펴는 버튼 */
-    descriptionMore: '더 보기',
+    descriptionMore: '더보기',
     descriptionLess: '접기',
     claim: {
       /** 받기 409 `no_pending` — 이미 받았다(중복 클릭, 다른 기기) */
