@@ -63,8 +63,24 @@ describe('패널·푸터는 흰 면이다 — 서비스와 MODULAR가 같은 쌍
   const service = read(SHEETS['BottomSheet.tsx'])
 
   it('서비스 패널은 --card-bg, 푸터는 bg-surface다', () => {
-    expect(service).toContain('bg-[var(--card-bg)] text-foreground')
-    expect(service).toMatch(/className="shrink-0 px-5 pt-2 bg-surface"/)
+    expect(service).toContain("'bg-[var(--card-bg)] text-foreground'")
+    expect(service).toContain("panelTone = 'card'")
+    expect(service).toContain("panelTone === 'background' ? 'bg-background' : 'bg-surface'")
+  })
+
+  it("panelTone='background'는 서비스·MODULAR 모두 패널과 푸터가 --background다 (티켓 20261112_1629)", () => {
+    expect(service).toContain("panelTone === 'background' ? 'bg-background text-foreground'")
+
+    const html = renderToStaticMarkup(
+      <DsBottomSheet open onClose={() => {}} title="제목" panelTone="background" footer={<span>푸터</span>}>
+        본문
+      </DsBottomSheet>
+    )
+    const panel = /<div[^>]*role="dialog"[^>]*style="([^"]*)"/.exec(html)?.[1] ?? ''
+    expect(panel).toContain('background:var(--background)')
+    expect(panel).not.toContain('background:var(--card-bg)')
+    expect(/<div[^>]*style="([^"]*background:var\(--background\)[^"]*)"[^>]*><span>푸터<\/span>/.exec(html), 'MODULAR 푸터가 --background가 아님').not.toBeNull()
+    expect(html).not.toContain('background:var(--surface)')
   })
 
   it('MODULAR 패널은 --card-bg, 푸터는 --surface다', () => {

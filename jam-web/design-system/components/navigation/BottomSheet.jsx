@@ -5,7 +5,7 @@ import React, { useEffect, useRef } from 'react';
  * Shares focus-trap and Escape-dismiss pattern with ModalToast.
  *
  * props: open / onClose / title / children / detent / footer / topGapPx /
- * footerBottomInset / contentScrollable — matches the service implementation's
+ * footerBottomInset / contentScrollable / panelTone — matches the service implementation's
  * API (`src/components/ui/BottomSheet.tsx`). Swipe-to-dismiss (드래그투클로즈)
  * is intentionally excluded from this minimal implementation due to touch
  * event complexity — the service component has its own richer drag-based
@@ -24,6 +24,7 @@ export function BottomSheet({
   footer,
   topGapPx,
   contentScrollable = true,
+  panelTone = 'card',
 }) {
   const panelRef = useRef(null);
   const labelId = React.useId();
@@ -87,7 +88,8 @@ export function BottomSheet({
           flexDirection: 'column',
           // 패널과 푸터 모두 흰 면(--card-bg·--surface) — 서비스 BottomSheet.tsx와 같은 쌍이다
           // (티켓 20261015_2133). 스크림(--backdrop 검정 50%) 위에서 패널 경계는 3.94:1로 보인다.
-          background: 'var(--card-bg)',
+          // panelTone='background'면 패널과 푸터 모두 페이지 바탕(--background)이다(티켓 20261112_1629)
+          background: panelTone === 'background' ? 'var(--background)' : 'var(--card-bg)',
           borderRadius: 'var(--radius-2xl) var(--radius-2xl) 0 0',
           boxSizing: 'border-box',
           animation: 'ds-bottomsheet-in var(--duration-medium) var(--ease-bounce) both',
@@ -137,7 +139,7 @@ export function BottomSheet({
               flexShrink: 0,
               padding: 'var(--spacing-8) var(--spacing-20)',
               paddingBottom: 'calc(var(--spacing-20) + var(--spacing-safe-bottom))',
-              background: 'var(--surface)',
+              background: panelTone === 'background' ? 'var(--background)' : 'var(--surface)',
             }}
           >
             {footer}
