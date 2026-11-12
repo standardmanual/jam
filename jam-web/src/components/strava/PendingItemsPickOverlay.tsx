@@ -64,6 +64,10 @@ const FADE_MS = 150
 function footerLayerStyle(active: boolean) {
   return {
     gridArea: '1 / 1',
+    // 보이지 않는 층은 높이를 0으로 접는다. 같은 칸에 겹친 두 층 중 큰 쪽이 시트 높이를 정하던 것을,
+    // 보이는 층의 높이로 정한다(선택 층은 «N개 담기» 버튼만이라 문구가 있던 만큼 낮아진다, 티켓 20261112_1629).
+    height: active ? undefined : 0,
+    overflow: active ? undefined : 'hidden',
     opacity: active ? 1 : 0,
     visibility: active ? 'visible' : 'hidden',
     transition: `opacity var(--duration-quick) var(--ease-out), visibility 0s linear ${active ? 0 : FADE_MS}ms`,
