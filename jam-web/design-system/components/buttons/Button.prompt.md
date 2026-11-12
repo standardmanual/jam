@@ -18,4 +18,6 @@ Use `surface="dark"` only when placed on a `--background-inverse` (black) sectio
 <Button variant="secondary" size="sm">동기화</Button>
 ```
 
+Text weight is 400 in every variant, the same as the service `Button` (ticket 20261112_1816, decided 2026-11-12). Do not set a heavier weight on a single button.
+
 Usage guidance (ticket 20261112_1626): a list-bottom «더보기» is always `LoadMoreButton`, never a hand-made button (see `LoadMoreButton.prompt.md`). A save + cancel pair sits on one line, half and half (`flex gap-2` of two `fullWidth` buttons: primary save, secondary cancel; 176.5px each in a 361px column). A large button inside a bottom sheet takes `SHEET_BUTTON_CLASS` (`src/components/ui/sheetClasses.ts`, 16px text, 56px high). A navigation shortcut that looks like a button (e.g. «랭킹 보기») is an `outline` Button with `onClick` navigation, not a Button nested inside a link.

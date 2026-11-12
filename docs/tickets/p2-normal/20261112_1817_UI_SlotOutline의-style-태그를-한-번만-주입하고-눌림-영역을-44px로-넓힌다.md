@@ -2,7 +2,8 @@
 id: "20261112_1817"
 category: UI
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
+closed: 2026-11-12
 created: 2026-11-12
 parent: "20261112_1625"
 ---
@@ -42,3 +43,13 @@ parent: "20261112_1625"
 
 - ① 완료: `SlotOutline.jsx`가 `<style href="ds-slot-outline" precedence="medium">`(React 19 스타일 리소스)로 규칙을 올려, 인스턴스가 30개여도 문서에 한 번만 들어간다. 시험 `SlotOutline.test.tsx`가 30칸 렌더에서 keyframes가 1개인 것을 단언한다. 호이스팅된 태그가 `BadgeGridCard.undiscovered.test.tsx`의 «opacity 없음» 단언에 섞이던 문제는 `withoutStyleTag` 정규식을 속성 있는 `<style>`까지 지우게 고쳐 해소했다.
 - ② 사용자 결정 대기: 눌림 영역 44px 확대(안 ⓐ) 또는 40px 유지(안 ⓑ).
+
+
+---
+## 완료 기록
+
+### 구현 내용 요약
+- ① 위 진행 기록대로 완료.
+- ② 사용자 결정(2026-11-12): 안 ⓐ 44px로 확대. `SlotCircleButton`의 `before:-inset-2`를 `before:-inset-2.5`로 바꿔 눌림 영역을 44×44px로 맞췄고, 같은 규격인 DS `MixerSlot`의 제거 버튼 박스도 44px(위치 -4px)로 바꿨다. 스토리의 폭 단언(40→44)과 주석을 맞췄다.
+- 관련 시험 629건 통과, `ds:check` 오류 0.
+- 확인하지 못한 항목: 컬렉션 슬롯·믹스 화면에서 + 버튼을 눌렀을 때 카드 이동 영역이 줄어든 정도(실렌더 미확인).

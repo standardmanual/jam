@@ -2,7 +2,8 @@
 id: "20261112_1816"
 category: UI
 priority: P3
-status: WAITING
+status: CLOSED
+closed: 2026-11-12
 created: 2026-11-12
 parent: "20261112_1625"
 ---
@@ -35,3 +36,13 @@ parent: "20261112_1625"
 
 - 결정이 ①이면: DS `Button.jsx`의 모든 변형이 400이고 스토리가 서비스와 같은 굵기로 보인다. `ds-sync-check`와 `buttonVariantPairs.test.tsx`가 통과한다.
 - 결정이 ③이면: 이 티켓을 «차이는 의도»라는 기록과 함께 닫는다(`Button.prompt.md`에 한 줄 명시).
+
+
+---
+## 완료 기록
+
+### 구현 내용 요약
+- 사용자 결정(2026-11-12): ① DS를 400으로 맞춘다.
+- `design-system/components/buttons/Button.jsx`의 글자 두께를 600에서 400으로 낮췄다(모든 변형). `LoadMoreButton`은 DS `Button`을 쓰므로 함께 맞춰진다. `Button.prompt.md`에 «모든 변형 400» 규칙 한 줄을 더했다.
+- 서비스 화면과 캔버스는 이미 400이라 바뀌지 않는다. 관련 시험(`src/components/ui/__tests__`) 629건 통과, `ds:check` 오류 0.
+- 확인하지 못한 항목: Storybook 실렌더(로컬에서 열지 않음).

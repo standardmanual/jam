@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * ActionCircle — 믹서 칸의 «+»·«−» 원. 24px 검은 원(--background-inverse) 안에 흰(--snow) 14px 아이콘, 굵은 선(strokeWidth 4.5, round cap).
- * 링·그림자·글로우를 얹지 않는다. 눌리는 영역은 호출부가 정한다(filled의 제거 버튼은 40px 박스, empty는 슬롯 전체).
+ * 링·그림자·글로우를 얹지 않는다. 눌리는 영역은 호출부가 정한다(filled의 제거 버튼은 44px 박스, empty는 슬롯 전체).
  * 이 파일 안의 도우미라 export하지 않는다.
  */
 function ActionCircle({ kind }) {
@@ -48,7 +48,7 @@ function ActionCircle({ kind }) {
  *   filled — 채운 배지 카드(썸네일+이름) + 3px 그레이(--muted) 안쪽 테두리(레시피 믹서의 채운 칸과 같은
  *            «채웠다»는 신호, 2026-11-11 사용자 지시) + 우상단 제거 버튼. 컬렉션 칸의 «빼기»와 같은 모양이다:
  *            검은 원(24px, --background-inverse) 안에 흰 «−» 아이콘, 가장자리에서 6px 안쪽(2026-11-09 사용자 지시,
- *            이전에는 모서리에 걸친 16px «✕»). 눌리는 영역은 바깥 40px 박스가 맡는다.
+ *            이전에는 모서리에 걸친 16px «✕»). 눌리는 영역은 바깥 44px 박스가 맡는다.
  *
  * 완료 여부는 이 슬롯의 시각 상태만으로 표현한다 — 진행률 텍스트는 이 컴포넌트도,
  * 호출부도 별도로 그리지 않는다(티켓 확정 사항).
@@ -145,13 +145,13 @@ export function MixerSlot({
                   onRemove();
                 }
               }}
-              // 눌리는 영역 40px — 보이는 원(24px)은 가장자리에서 6px 안쪽이라 박스는 -2px에서 시작한다(6 - (40-24)/2)
+              // 눌리는 영역 44px — 보이는 원(24px)은 가장자리에서 6px 안쪽이라 박스는 -4px에서 시작한다(6 - (44-24)/2)
               style={{
                 position: 'absolute',
-                top: -2,
-                right: -2,
-                width: 40,
-                height: 40,
+                top: -4,
+                right: -4,
+                width: 44,
+                height: 44,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

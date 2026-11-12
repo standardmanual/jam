@@ -80,7 +80,7 @@ export function Button({
 
   const base = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-    fontFamily: 'var(--font-family-base)', fontWeight: 600,
+    fontFamily: 'var(--font-family-base)', fontWeight: 400, // 서비스 Button과 같다(모든 변형 400, 티켓 20261112_1816)
     borderRadius: 'var(--radius-full)',
     cursor: isDisabled ? 'not-allowed' : 'pointer',
     // 모든 변형에 1px 테두리를 둔다(외곽선 외에는 투명) — 변형이 바뀌어도 높이가 같다.

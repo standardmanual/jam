@@ -76,9 +76,9 @@ export const Filled: Story = {
   play: async ({ canvasElement }) => {
     const remove = canvasElement.querySelector('[role="button"]') as HTMLElement;
     expect(remove).toBeTruthy();
-    // 눌리는 영역은 바깥 40px 박스이고, 보이는 원은 그 안의 24px다.
+    // 눌리는 영역은 바깥 44px 박스이고, 보이는 원은 그 안의 24px다.
     const circle = remove.firstElementChild as HTMLElement;
-    expect(remove.getBoundingClientRect().width).toBe(40);
+    expect(remove.getBoundingClientRect().width).toBe(44);
     expect(circle.getBoundingClientRect().width).toBe(24);
     expect(circle.getBoundingClientRect().height).toBe(24);
     // 원은 반전 면(--background-inverse, #171717) + --snow(#fcfcfc) 아이콘이다(17.47:1).
