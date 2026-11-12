@@ -1,4 +1,5 @@
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import { LabelChip } from '@ds/components/cards/LabelChip'
 import { d } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
@@ -7,7 +8,8 @@ import type { BadgeRarity } from '@/types/database'
  * 티켓 20261110_2150부터 인벤토리·컬렉션·배지 목록과 같은 `BadgeGridCard` 레이아웃으로 그린다(캔버스 «JAM! 바텀시트»).
  *
  * - `active`: 탭해서 담을 수 있음 — 카드가 버튼이다
- * - `used`: 다른 칸에 이미 담음 — 눌리지 않고 카드 아래에 «사용 중»이 붙는다
+ * - `used`: 다른 칸에 이미 담음 — 눌리지 않고, 그림이 그레이(흑백·흐림)이며 이름 아래 가운데에 «추가됨» 칩이 붙는다
+ *   (2026-11-12 사용자 지시, 캔버스 «등급 올리기 · 배지를 한 장 담은 뒤». 이전에는 카드 아래 «사용 중» 글자였다)
  * - `needed`: 아예 보유하지 않음 — 눌리지 않고 카드가 흐리며 그림이 그레이스케일이다(미보유 전용)
  * - `inactive`: 지금은 담을 수 없음 — 눌리지 않고 카드가 흐리다. 이유는 셀 밖의 줄이 말한다(등급 올리기의 6개 미만 묶음)
  *
@@ -45,10 +47,14 @@ export default function BagItemCell({
       name={name}
       imageUrl={imageUrl}
       rarity={rarity}
-      earned={state !== 'needed'}
+      earned={state !== 'needed' && state !== 'used'}
       onClick={active ? onClick : undefined}
     >
-      {state === 'used' && <span className="text-xs text-muted">{d.combine.bagUsedLabel}</span>}
+      {state === 'used' && (
+        <div className="flex justify-center">
+          <LabelChip>{d.combine.bagUsedLabel}</LabelChip>
+        </div>
+      )}
     </BadgeGridCard>
   )
 }

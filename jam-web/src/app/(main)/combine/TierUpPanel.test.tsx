@@ -259,18 +259,22 @@ describe('TierUpSheetContent', () => {
     expect(out).toContain('<section aria-labelledby="tier-up-group-common"')
     expect(out).toContain('<h3 id="tier-up-group-rare"')
     expect(out).toContain('<h3 id="tier-up-group-mystic"')
+    // 등급 칩은 가로 가운데다(2026-11-12 사용자 지시, 캔버스 «등급 올리기 · 슬롯을 눌렀을 때»)
+    expect(out.match(/<h3 [^>]*class="m-0 flex items-center justify-center"/g)).toHaveLength(3)
   })
 
-  it('묶음 보기: 6개 미만 묶음의 셀은 모두 비활성(opacity-40)이고 «사용 중» 라벨이 없다', () => {
+  it('묶음 보기: 6개 미만 묶음의 셀은 모두 비활성(opacity-40)이고 «추가됨» 칩이 없다', () => {
     const out = render(buildTierUpSheet(groupTierUpMaterials(common3), EMPTY_SLOTS))
     expect(out.match(/opacity-40/g)).toHaveLength(3)
     expect(out).not.toContain('<button')
     expect(out).not.toContain(d.combine.bagUsedLabel)
   })
 
-  it('등급 고정 보기: 묶음 제목 없이 위에 한 줄, 담은 셀은 «사용 중»이다', () => {
+  it('등급 고정 보기: 묶음 제목 없이 위에 한 줄, 담은 셀은 «추가됨» 칩이다', () => {
     const out = render(buildTierUpSheet(groups, [rare7[0], rare7[1], null, null, null, null]))
     expect(out).toContain('지금은 Rare 아이템 배지만 넣을 수 있어요')
+    // 안내 한 줄은 가운데 정렬이다(2026-11-12 사용자 지시)
+    expect(out).toMatch(/<p class="[^"]*text-center[^"]*">지금은 Rare 아이템 배지만 넣을 수 있어요<\/p>/)
     expect(out).not.toContain('<h3')
     expect(out).not.toContain('Common')
     expect(out).not.toContain('Mystic')

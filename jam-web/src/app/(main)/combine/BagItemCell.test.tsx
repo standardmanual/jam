@@ -1,6 +1,6 @@
 /**
  * 내 배지 시트 셀 (티켓 20261022_2119 3회, 티켓 20261110_2150) — 인벤토리·컬렉션·배지 목록과 같은 `BadgeGridCard` 레이아웃으로 그린다
- * (캔버스 «JAM! 바텀시트» 07번). 활성만 버튼이고, 사용 중은 카드 아래 «사용 중», 미보유·비활성은 카드가 흐리다(미보유만 그림이 그레이스케일).
+ * (캔버스 «JAM! 바텀시트» 07번). 활성만 버튼이고, 추가된 배지는 그림이 그레이이고 이름 아래 «추가됨» 칩, 미보유·비활성은 카드가 흐리다(미보유만 그림이 그레이스케일).
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -24,13 +24,17 @@ describe('BagItemCell — BadgeGridCard 레이아웃', () => {
     expect(html).not.toContain('opacity-40')
   })
 
-  it('used: 버튼이 아니고 흐리지 않으며 카드 아래에 «사용 중»이 붙는다', () => {
+  it('used: 버튼이 아니고 그림이 그레이이며 이름 아래 가운데에 «추가됨» 칩이 붙는다(2026-11-12 사용자 지시)', () => {
     const html = render({ state: 'used' })
     expect(html.startsWith('<div')).toBe(true)
     expect(html).not.toContain('<button')
-    expect(html).toContain(`<span class="text-xs text-muted">${d.combine.bagUsedLabel}</span>`)
-    expect(html).not.toContain('opacity-40')
-    expect(html).not.toContain('grayscale')
+    expect(html).toContain(d.combine.bagUsedLabel)
+    expect(d.combine.bagUsedLabel).toBe('추가됨')
+    expect(html).not.toContain('사용 중')
+    // 칩은 가운데 줄 안에 있다
+    expect(html).toMatch(/<div class="flex justify-center"><span[^>]*>추가됨<\/span><\/div>/)
+    // 그림만 그레이(흑백·흐림)이고 카드 전체는 흐리지 않는다
+    expect(html).toContain('grayscale')
   })
 
   it('needed: 버튼이 아니고 카드가 흐리며 그림만 그레이스케일이다(라벨 없음)', () => {

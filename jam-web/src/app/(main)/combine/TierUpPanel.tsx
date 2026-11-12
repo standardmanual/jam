@@ -80,7 +80,7 @@ export function TierUpSheetContent<T extends TierUpMaterial>({
   if (sheet.kind === 'locked') {
     return (
       <div className="flex flex-col gap-2">
-        <p className={PARAGRAPH}>{tierUpRarityNote(sheet.rarity)}</p>
+        <p className={`${PARAGRAPH} text-center`}>{tierUpRarityNote(sheet.rarity)}</p>
         <SheetCells cells={sheet.cells} onPick={onPick} />
       </div>
     )
@@ -92,7 +92,7 @@ export function TierUpSheetContent<T extends TierUpMaterial>({
         return (
           <section key={group.rarity} aria-labelledby={headingId} className="flex flex-col gap-2">
             {/* 묶음 제목은 등급 칩 하나다(캔버스 «JAM! 바텀시트» 08번, 티켓 20261110_2150). 개수와 «6개부터 넣을 수 있어요» 줄은 지웠다 */}
-            <h3 id={headingId} className="m-0 flex items-center">
+            <h3 id={headingId} className="m-0 flex items-center justify-center">
               <RarityBadge rarity={group.rarity} size="md" showCommon />
             </h3>
             <SheetCells cells={group.cells} onPick={onPick} />
