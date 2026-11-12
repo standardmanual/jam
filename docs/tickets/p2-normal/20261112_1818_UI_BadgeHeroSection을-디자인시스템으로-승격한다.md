@@ -2,7 +2,7 @@
 id: "20261112_1818"
 category: UI
 priority: P3
-status: WAITING
+status: IN_PROGRESS
 created: 2026-11-12
 parent: "20261112_1625"
 ---
@@ -30,8 +30,20 @@ parent: "20261112_1625"
 
 ## 구현 계획
 
-결정 뒤 확정한다. 5개 이상 파일을 건드리므로 `plan_only` 면제를 위해 파일 단위 계획을 먼저 적는다.
+사용자 결정(2026-11-12): **슬롯으로 열어 승격한다.** DS는 DB 타입·`SafeImage`·블롭 애니메이션·테마 판정 유틸을 모른다. 서비스에는 얇은 어댑터 한 벌이 남아 5곳이 이를 함께 쓴다(5곳이 각각 어댑터를 만들지 않는다).
 
+파일 단위 계획(경로 기준 `jam-web/`):
+
+1. **DS 신규** `design-system/components/cards/BadgeHeroSection.jsx` — 현재 `src/components/BadgeHeroSection.tsx`의 마크업(103~200행)을 옮긴다. props: `name`, `rarity`, `level`(칩은 DS의 `RarityBadge`·`BadgeLevelChip`을 그대로 씀), `hasEarned`, `descriptionLines`(문자열 배열, 문장 나누기는 호출부), `imageSlot`(없으면 `MedalIcon` 대체 대신 빈 자리가 아니라 호출부가 항상 채움), `chipExtra`, `titleNode`, `descriptionNode`, `backgroundSlot`(카드 안 최하단 z-0 레이어), `backgroundColor`(첫 페인트 폴백), `onMedia`(글자 흰색 여부), `textStyle`(텍스트 블록 그림자 보정), `size`(`page`|`sheet`, 지금 `SIZE_STYLE` 값 그대로). 서비스 import를 하나도 쓰지 않는다. 색은 토큰만.
+2. **DS 신규** `BadgeHeroSection.d.ts`, `BadgeHeroSection.prompt.md`(영어, 다른 `.prompt.md` 형식), `BadgeHeroSection.stories.tsx`(page·sheet·잠긴 개체(chipExtra·titleNode·descriptionNode)·이미지 없음·배경 슬롯 있음), `_ds_manifest.json`·`readme.md` 등록(기존 `SlotOutline` 등록 방식을 따름).
+3. **서비스 어댑터** `src/components/BadgeHeroSection.tsx` — 파일 이름·`BadgeHeroSectionProps`(BadgeRow 모양 `badge`, `themedBackground`, `backgroundAnimation`, 슬롯들)를 **그대로 유지**해 사용처 5곳의 코드를 바꾸지 않는다. 안에서 `hasBadgeBackgroundTheme`·`getBadgeThemedTextStyle`로 `onMedia`·`textStyle`을 계산하고, `SafeImage`/`MedalIcon`으로 기본 `imageSlot`, `BlobAnimationBackground`로 `backgroundSlot`, `splitDescriptionSentences`로 `descriptionLines`를 만들어 DS를 렌더한다. 파일 위 주석의 «MODULAR 신규 컴포넌트 아님(20260816_006 선례)»를 현재 사실(DS 승격, 이 파일은 어댑터)로 고친다.
+4. **사용처 5곳은 코드 변경 없음**(`badges/[id]/page.tsx`, `inventory/[itemId]/LockedItemDetail.tsx`, `drops/BadgeDetailSheet.tsx`, `admin/badges/BadgeDetailPreviewFrame.tsx`, `dev-sample/item-badge-serial/page.tsx`). 렌더 결과(DOM·클래스)는 지금과 같아야 한다.
+5. **시험**: 기존 `heroLayout`·`heroTextColor`·`page.locked`·`checkinDetail`·`LockedItemDetail`·`serviceLiteralColors` 시험이 그대로 통과해야 한다. DS 컴포넌트 단독 시험 `src/components/ui/__tests__/BadgeHeroSection.test.tsx`(page·sheet 클래스, onMedia 색, 슬롯 렌더)를 더한다.
+6. **문서**: `docs/service/prd/`에서 배지 상세·체크인 시트 PRD 중 이 컴포넌트를 적은 곳, DS 목록 문서가 있으면 갱신.
+
+## 완료 조건 보충
+
+- 사용처 5곳이 렌더하는 DOM이 승격 전과 같다(기존 시험으로 확인).
 ## 완료 조건
 
 - 결정이 «승격»이면: `BadgeHeroSection`이 DS에 있고 서비스 사용처 5곳이 DS를 import한다. 스토리에 `page`·`sheet`·잠긴 개체·이미지 없음이 있다. `ds-sync-check`, 관련 시험, `scripts/verify.sh`가 통과한다.
