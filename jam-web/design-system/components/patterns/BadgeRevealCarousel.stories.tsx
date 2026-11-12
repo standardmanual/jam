@@ -366,6 +366,40 @@ export const LevelAndRepeatSlots: Story = {
 };
 
 /**
+ * 칩 규격 (티켓 20261112_1626) — 카드의 등급·레벨 칩은 ListRowChip과 같은 md(12px 굵게, 높이 20px, 안쪽 2px 8px)다.
+ * 칩 줄 높이도 20px로 고정돼, 칩이 없는 카드(common)·칩만 있는 카드·×N이 붙은 카드 사이에서 아래 이름의 y가 흔들리지 않는다.
+ * 세 자리 레벨(Lv.100)도 52px 칩 안에 들어간다.
+ */
+export const ChipSizeMd: Story = {
+  name: '칩 규격 — 12px 굵게·높이 20px (Lv.100, Mystic, common 없음, ×N)',
+  args: {
+    open: true,
+    items: [
+      { id: 'lv', name: '첫 숨결', description: '달릴수록 레벨이 오르는 배지예요.', imageUrl: SAMPLE_IMAGE, rarity: null, level: 100 },
+      { id: 'my', name: '신비한 러너', description: '아주 드문 배지예요.', imageUrl: SAMPLE_IMAGE, rarity: 'mystic', earnCount: 3 },
+      { id: 'co', name: '한강 러너', description: '칩이 없는 common 카드예요.', imageUrl: SAMPLE_IMAGE, rarity: 'common' },
+    ],
+  },
+  play: async ({ canvasElement, step }) => {
+    await step('레벨 칩이 12px·높이 20px이고 글자가 넘치지 않는다', async () => {
+      await waitFor(() => expect(canvasElement.textContent).toContain('Lv.100'));
+      const chip = Array.from(canvasElement.querySelectorAll('span')).find((el) => el.textContent === 'Lv.100') as HTMLElement;
+      expect(chip.offsetHeight).toBe(20);
+      expect(getComputedStyle(chip).fontSize).toBe('12px');
+      expect(chip.scrollWidth).toBeLessThanOrEqual(chip.offsetWidth);
+    });
+
+    await step('등급 칩이 12px·높이 20px이다', async () => {
+      await userEvent.keyboard('{ArrowRight}');
+      const chip = Array.from(canvasElement.querySelectorAll('span')).find((el) => el.textContent === 'Mystic') as HTMLElement;
+      expect(chip).toBeTruthy();
+      expect(chip.offsetHeight).toBe(20);
+      expect(getComputedStyle(chip).fontSize).toBe('12px');
+    });
+  },
+};
+
+/**
  * 같은 배지 3회 획득이 카드 3장이 되면 안 된다 (티켓 20260905_0038 B).
  * 같은 `id`는 첫 등장 자리에서 한 장으로 접히고, 접힌 수가 ×N이 된다.
  */
