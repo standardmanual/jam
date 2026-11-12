@@ -38,13 +38,16 @@ cd jam-web && npm run storybook   # http://localhost:6006
   (JAM 2.0부터 `colors.light.css`는 없다 — 서비스는 라이트 전용이라 다크 오버라이드를 두지 않는다.
   티켓 20261015_2131)
 
-- **연결된 컴포넌트 21종 — 서비스에 즉시 반영.** *(2026-11-12 실측, 티켓 20261112_1627 — 테스트·스토리 제외)*
+- **연결된 컴포넌트 22종 — 서비스에 즉시 반영.** *(2026-11-12 실측, 티켓 20261112_1818 — 테스트·스토리 제외)*
   서비스 62개 파일이 `@ds/components/*`를 **122건** import한다. 실사용 목록:
-  `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `LabelChip` · `LockedTile` · `SlotOutline` ·
+  `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `LabelChip` · `LockedTile` · `SlotOutline` · `BadgeHeroSection` ·
   `EmptyState` · `ProgressBar` · `Skeleton` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` · `Select` · `Input` ·
   `BadgeRevealCarousel` · `ItemSerialCode` · `MixerSlot` · `PointText`
   (`SlotOutline`은 티켓 20261112_1627에서 신설한 슬롯 점선 외곽선이다 — 서비스 `BadgeGridCard`(병존 구현)가 import하므로
   DS의 `SlotOutline`을 고치면 컬렉션 칸·믹스 칸에 즉시 반영된다. `LockedTile`도 같은 방식으로 `BadgeGridCard`가 import한다.
+  `BadgeHeroSection`은 티켓 20261112_1818에서 서비스 `src/components/BadgeHeroSection.tsx`의 마크업을 DS로 승격한 것이다 —
+  그 파일은 DS를 렌더하는 어댑터로 남았고, 사용처 5곳(배지 상세·잠긴 개체 상세·체크인 시트·어드민 미리보기·dev 샘플)이
+  어댑터를 거쳐 DS를 렌더하므로 DS를 고치면 즉시 반영된다. 동명 서비스 사본이 없어 병존 구현이 아니다.
   `Input`은 `WithdrawSheet`가 import하므로 아래 «미도입»의 설명은 낡았다 — 다음 정리 때 옮길 것.
   `Accordion`·`Select`·`MixerSlot`은 이전 실측으로 이동했다 — `Select`는 `BadgesClient`·`MissionsListClient`,
   `MixerSlot`은 `CombineClient`·`TierUpPanel`이 import한다. 배지 트리 전용 9종은 2026-10-19 티켓 20261018_1817 2회에서
