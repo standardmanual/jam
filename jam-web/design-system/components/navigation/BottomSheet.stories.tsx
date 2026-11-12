@@ -174,6 +174,31 @@ export const FullDetent: Story = {
   },
 };
 
+export const PanelBackground: Story = {
+  name: 'panelTone=background (시트 바탕 + 흰 카드)',
+  args: {
+    open: true,
+    title: '바탕이 회색인 시트',
+    detent: 'full',
+    panelTone: 'background',
+    children: (
+      <div style={{ padding: '0 var(--spacing-24)' }}>
+        <div
+          style={{
+            background: 'var(--card-bg)',
+            borderRadius: 'var(--radius-2xl)',
+            padding: 'var(--spacing-24) var(--spacing-16)',
+            color: 'var(--muted)',
+          }}
+        >
+          panelTone=&quot;background&quot;는 시트 바탕이 페이지 바탕색이라 안의 흰 카드가 또렷이 구분됩니다.
+        </div>
+      </div>
+    ),
+    footer: <Button fullWidth>확인</Button>,
+  },
+};
+
 export const NotScrollable: Story = {
   name: 'contentScrollable=false',
   args: {

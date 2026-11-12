@@ -5,7 +5,7 @@ import LocalDate from '@/components/LocalDate'
 import { BookIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
-import BadgeHeroSection from '../../(main)/badges/[id]/BadgeHeroSection'
+import BadgeHeroSection from '@/components/BadgeHeroSection'
 
 /**
  * 샘플 전용 — 실제 서비스 라우트(badges/[id]/page.tsx)를 건드리지 않고 디자인만

@@ -3,7 +3,7 @@
 import type { ComponentProps, CSSProperties, ReactNode, Ref } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import Footer from '@/components/ui/Footer'
-import BadgeHeroSection from '@/app/(main)/badges/[id]/BadgeHeroSection'
+import BadgeHeroSection from '@/components/BadgeHeroSection'
 import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'

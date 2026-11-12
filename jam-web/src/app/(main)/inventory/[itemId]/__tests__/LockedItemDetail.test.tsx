@@ -448,7 +448,7 @@ describe('LockedItemDetail — 일반 아이템 배지 상세와 같은 구성 (
   it('히어로를 일반 상세의 컴포넌트로 그린다 — 소스가 BadgeHeroSection을 가져온다', () => {
     const src = sourceCode()
 
-    expect(src).toMatch(/import BadgeHeroSection from '..\/..\/badges\/\[id\]\/BadgeHeroSection'/)
+    expect(src).toMatch(/import BadgeHeroSection from '@\/components\/BadgeHeroSection'/)
     expect(src).toContain('<BadgeHeroSection')
     // 직접 그리던 칩·제목 마크업은 남지 않는다
     expect(src).not.toContain('<RarityBadge')

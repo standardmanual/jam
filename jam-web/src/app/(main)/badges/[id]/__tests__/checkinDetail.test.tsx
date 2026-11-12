@@ -16,7 +16,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 vi.mock('@/components/BlobAnimationBackground', () => ({ default: () => null }))
 vi.mock('@/components/ui/BottomSheet', () => ({ default: () => null }))
 
-import BadgeHeroSection from '../BadgeHeroSection'
+import BadgeHeroSection from '@/components/BadgeHeroSection'
 import PoiEarnHistory from '../PoiEarnHistory'
 import VisitCountChip from '@/components/ui/VisitCountChip'
 import { d, t } from '@/lib/i18n'

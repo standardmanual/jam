@@ -507,12 +507,7 @@ function SelectModeHarness({
             gap: 'var(--spacing-8)',
           }}
         >
-          <p aria-live="polite" style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 700 }}>
-            {`${selected.length}/${need}개 골랐어요`}
-          </p>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>
-            {`고르지 않은 ${total - need}개는 받을 수 없어요`}
-          </p>
+          {/* 푸터에는 보이는 문구 없이 «N개 담기» 버튼만 둔다(티켓 20261112_1629). 서비스는 선택 개수를 sr-only 라이브 리전으로만 알린다 */}
           <Button fullWidth disabled={selected.length !== need || submitting} loading={submitting}>
             {submitting ? '담는 중' : `${need}개 담기`}
           </Button>

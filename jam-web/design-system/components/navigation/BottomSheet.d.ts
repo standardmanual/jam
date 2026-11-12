@@ -16,6 +16,11 @@ export interface BottomSheetProps {
   footerBottomInset?: 'tabbar' | 'safe-area';
   /** 기본값 `true`는 콘텐츠 영역을 스크롤 가능하게 둔다. */
   contentScrollable?: boolean;
+  /**
+   * 시트 면의 바탕. `'card'`(기본)는 흰 면(`--card-bg`, footer는 `--surface`), `'background'`는 페이지 바탕색(`--background`)이다.
+   * 안에 흰 카드를 올리는 화면에서 쓴다. footer 띠도 같은 바탕을 따른다. 서비스 BottomSheet.tsx와 같은 prop이다.
+   */
+  panelTone?: 'card' | 'background';
 }
 
 export function BottomSheet(props: BottomSheetProps): JSX.Element | null;

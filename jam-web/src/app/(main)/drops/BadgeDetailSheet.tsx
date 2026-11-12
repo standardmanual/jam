@@ -1,21 +1,18 @@
 'use client'
 
-import SafeImage from '@/components/SafeImage'
 import { useEffect, useState } from 'react'
 import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { SHEET_BUTTON_CLASS } from '@/components/ui/sheetClasses'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import BadgeHeroSection from '@/components/BadgeHeroSection'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
-import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { pushBottomOverlay } from '@/lib/uiOverlay'
-import { splitDescriptionSentences } from '@/lib/splitDescriptionSentences'
 
 // 픽업 대상 배지 (DropsClient의 DropItem과 동일 형태)
 export interface PickupDrop {
@@ -25,7 +22,7 @@ export interface PickupDrop {
   badge_rarity: string
   badge_image_url: string | null
   /**
-   * 배지 설명(티켓 20261111_1056) — 이름 아래에 문장 단위로 그린다. 잠긴 개체에는 싣지 않는다(서버가 비운다).
+   * 배지 설명(티켓 20261111_1056) — 이름 아래에 문장 단위로 그린다(그리는 쪽은 `BadgeHeroSection`). 잠긴 개체에는 싣지 않는다(서버가 비운다).
    * 옛 응답·연출 데이터에는 이 키가 없을 수 있다.
    */
   badge_description?: string | null
@@ -69,6 +66,23 @@ interface BadgeDetailSheetProps {
 }
 
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/**
+ * 픽업 대상 드랍을 `BadgeHeroSection`의 badge 모양으로 바꾼다(티켓 20261112_1629). 이미지·이름·설명을 그리는 소스는 히어로 카드 한 곳이다.
+ * 잠긴 개체는 이름·그림·설명을 싣지 않는다 — 서버가 비운 값을 여기서도 쓰지 않고, 화면에 보이는 고정 문구는 `titleNode`·`imageSlot`이 정한다.
+ */
+function toHeroBadge(drop: PickupDrop, rarity: BadgeRarity, locked: boolean) {
+  return {
+    image_url: locked ? null : drop.badge_image_url,
+    name: locked ? d.lockedItem.card.name : drop.badge_name,
+    rarity,
+    description: locked ? '' : (drop.badge_description ?? ''),
+    background_color: null,
+    background_shader_id: null,
+    background_image_url: null,
+    background_animation: null,
+  }
+}
 
 /** 스크롤 영역 아래 여백(safe-area 제외) — 플로팅 탭바(16+64) 위 12px. BottomSheet footer와 같은 관례. */
 /** 버튼 행 아래 여백(안전영역 제외) — 캔버스 «JAM! 바텀시트» 기준 20px(티켓 20261110_2150). 예전에는 플로팅 탭바(16+64+12) 위로 올렸다 */
@@ -166,7 +180,7 @@ export default function BadgeDetailSheet({
   }, [actionsEl, contentEl])
 
   return (
-    <BottomSheet open onClose={onCancel} detent="full">
+    <BottomSheet open onClose={onCancel} detent="full" panelTone="background">
       <div
         ref={setContentEl}
         className="px-6 pt-2 flex flex-col gap-6 min-h-full"
@@ -175,48 +189,24 @@ export default function BadgeDetailSheet({
            화면이 작아 다 안 보이면 스크롤해서 버튼을 볼 수 있게 한다. */
         style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${ACTION_BOTTOM_GAP_PX}px)` }}
       >
-        {/* 배지 이미지 (대형). 잠긴 개체는 이름·그림을 DOM 어디에도 두지 않고 잠금 타일과 고정 문구만 그린다(7.3절). */}
-        <div className="flex flex-col items-center gap-4 py-4">
-          {locked ? (
-            <LockedTile size={176} />
-          ) : (
-            <div className="w-44 h-44 rounded-2xl bg-background-secondary flex items-center justify-center overflow-hidden">
-              <SafeImage
-                src={drop.badge_image_url}
-                alt={drop.badge_name}
-                width={176}
-                height={176}
-                className="w-full h-full object-contain p-4"
-                fallback={<MedalIcon className="w-16 h-16 text-muted" />}
-              />
+        {/* 시트 바탕은 --background, 이미지·등급 칩·이름·설명은 흰 카드 한 장(티켓 20261112_1629, 캔버스 확정). 배지 상세 페이지와 같은 `BadgeHeroSection`(size="sheet")이다.
+            잠긴 개체는 이름·그림을 DOM 어디에도 두지 않고 잠금 타일·«잠김» 칩·고정 이름만 그린다(7.3절). 열린 배지라 회색 처리(hasEarned)·배경 테마는 걸지 않는다 */}
+        <div className="flex flex-col gap-4">
+          <BadgeHeroSection
+            size="sheet"
+            badge={toHeroBadge(drop, rarity, locked)}
+            hasEarned
+            themedBackground={false}
+            imageSlot={locked ? <LockedTile size={176} /> : undefined}
+            chipExtra={locked ? <LabelChip>{d.lockedItem.detail.chip}</LabelChip> : undefined}
+            titleNode={locked ? d.lockedItem.card.name : undefined}
+          />
+          {/* 일련번호 — 카드 바로 아래, 장소 카드 위. 이 시트는 좁아 배지 상세 페이지(height=50)보다 작은 최소값(height=40)을 쓴다 */}
+          {!locked && drop.serial && (
+            <div className="flex justify-center">
+              <ItemSerialCode code={drop.serial} height={40} />
             </div>
           )}
-          <div className="text-center">
-            <h1 className="text-3xl mb-2 text-foreground break-keep wrap-break-word text-balance">
-              {locked ? d.lockedItem.card.name : drop.badge_name}
-            </h1>
-            {locked ? (
-              <div className="flex items-center justify-center gap-2">
-                <RarityBadge rarity={rarity} size="md" />
-                <LabelChip>{d.lockedItem.detail.chip}</LabelChip>
-              </div>
-            ) : (
-              <RarityBadge rarity={rarity} size="md" />
-            )}
-          </div>
-          {/* 배지 설명 — 이름 아래, 일련번호 위(2026-11-11 사용자 지시, 티켓 20261111_1056). 문장 단위로 줄을 나누는 방식은 배지 상세의 히어로와 같고,
-              전역 `p { text-wrap: balance }`는 끈다(`text-wrap!`). 잠긴 개체는 설명이 없어 그리지 않는다 */}
-          {!locked && drop.badge_description && (
-            <div className="flex flex-col gap-0.5">
-              {splitDescriptionSentences(drop.badge_description).map((sentence, index) => (
-                <p key={index} className="m-0 text-base text-center text-muted text-wrap!">
-                  {sentence}
-                </p>
-              ))}
-            </div>
-          )}
-          {/* 일련번호 — 이전에는 맨 아래 드랍 컨텍스트 카드 안에 있었다. 이 시트는 좁아 배지 상세 페이지(height=50)보다 작은 최소값(height=40)을 쓴다 */}
-          {!locked && drop.serial && <ItemSerialCode code={drop.serial} height={40} />}
         </div>
 
         {/* 드랍 컨텍스트 */}
@@ -228,8 +218,8 @@ export default function BadgeDetailSheet({
             {t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
           {/* 20260829_2101 — 픽업은 소유권 이전일 뿐 재발급이 아니라서 드랍 상태에서도 이미 확정된 일련번호가 존재한다.
-              일련번호(ItemSerialCode, 20260903_1423)는 배지 이름·설명 아래로 옮겼다(티켓 20261111_1056) */}
-          {/* 잠긴 개체: 일련번호가 있던 자리에 픽업한 뒤의 일 한 줄 */}
+              일련번호(ItemSerialCode, 20260903_1423)는 위 흰 카드 바로 아래로 옮겼다(티켓 20261111_1056, 20261112_1629) */}
+          {/* 잠긴 개체: 일련번호가 없어 픽업한 뒤의 일 한 줄을 장소 카드 안에 둔다 */}
           {locked && (
             <div className="mt-3 pt-3 border-t border-foreground/10">
               <p className="m-0 text-base text-foreground break-keep wrap-break-word text-balance">{d.drops.pickupLockedHint}</p>

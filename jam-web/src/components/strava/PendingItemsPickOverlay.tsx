@@ -64,6 +64,10 @@ const FADE_MS = 150
 function footerLayerStyle(active: boolean) {
   return {
     gridArea: '1 / 1',
+    // 보이지 않는 층은 높이를 0으로 접는다. 같은 칸에 겹친 두 층 중 큰 쪽이 시트 높이를 정하던 것을,
+    // 보이는 층의 높이로 정한다(선택 층은 «N개 담기» 버튼만이라 문구가 있던 만큼 낮아진다, 티켓 20261112_1629).
+    height: active ? undefined : 0,
+    overflow: active ? undefined : 'hidden',
     opacity: active ? 1 : 0,
     visibility: active ? 'visible' : 'hidden',
     transition: `opacity var(--duration-quick) var(--ease-out), visibility 0s linear ${active ? 0 : FADE_MS}ms`,
@@ -372,13 +376,17 @@ export function PendingItemsPickView({
         ? d.syncPending.pick.fullTitle
         : ''
 
-  const counterText = t(d.syncPending.pick.counter, { k: selected.length, n: chooseCount })
+  /** 선택 개수 공지(티켓 20261112_1629) — 보이는 문구는 없애고 보조기술에만 «k/n개 골랐어요»를 알린다. 열림 공지와 섞이지 않게 별도 라이브 리전이다 */
+  const counterText = open && phase === 'ready' ? t(d.syncPending.pick.counter, { k: selected.length, n: chooseCount }) : ''
   const confirmLabel = t(d.syncPending.pick.confirmCta, { n: chooseCount })
 
   return (
     <>
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
+      </div>
+      <div data-testid="pick-counter-live" aria-live="polite" aria-atomic="true" className="sr-only">
+        {counterText}
       </div>
 
       {open && phase === 'loading' && (
@@ -551,21 +559,7 @@ export function PendingItemsPickView({
             <div style={{ display: 'grid' }}>
               {/* 선택 */}
               <div style={footerLayerStyle(!confirming)} inert={confirming}>
-                <p
-                  aria-live="polite"
-                  className="m-0 break-keep wrap-break-word"
-                  style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: 700 }}
-                >
-                  {counterText}
-                </p>
-                {unselected > 0 && (
-                  <p
-                    className="m-0 break-keep wrap-break-word text-balance"
-                    style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
-                  >
-                    {t(d.syncPending.pick.unselectedNote, { count: unselected })}
-                  </p>
-                )}
+                {/* 선택 층에는 «N개 담기» 버튼만 둔다(티켓 20261112_1629, 캔버스 확정). 개수 공지는 위 sr-only 라이브 리전이 맡는다 */}
                 <Button
                   variant="primary"
                   fullWidth

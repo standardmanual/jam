@@ -65,6 +65,12 @@ interface BottomSheetProps {
    * 하는 문제를 막는다.
    */
   contentScrollable?: boolean
+  /**
+   * 시트 면의 바탕(티켓 20261112_1629). `'card'`(기본)는 흰 면(`--card-bg`, footer는 `--surface`)이다.
+   * `'background'`는 페이지 바탕색(`--background`)이라 안에 흰 카드를 올리는 화면(체크인 아이템 상세)에서 쓰고,
+   * footer 띠도 같은 바탕을 따라 흰 띠가 혼자 남지 않는다.
+   */
+  panelTone?: 'card' | 'background'
 }
 
 /** footer의 padding-bottom(safe-area 제외분). 캔버스 기준 20px이다(티켓 20261110_2150). */
@@ -104,6 +110,7 @@ export default function BottomSheet({
   footer,
   topGapPx,
   contentScrollable = true,
+  panelTone = 'card',
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -365,7 +372,7 @@ export default function BottomSheet({
         tabIndex={-1}
         className={[
           'relative rounded-t-2xl flex flex-col',
-          'bg-[var(--card-bg)] text-foreground',
+          panelTone === 'background' ? 'bg-background text-foreground' : 'bg-[var(--card-bg)] text-foreground',
           /* dvh(동적 뷰포트 높이) 사용 — iOS Safari는 vh를 주소창이 숨겨진
              상태의 레이아웃 뷰포트 기준으로 계산해서, 주소창이 보이는 상태로
              열리면 시트 하단과 실제 화면 하단 사이에 틈이 생겨 그 틈으로
@@ -414,7 +421,7 @@ export default function BottomSheet({
           <div
             ref={footerRef}
             // 20260816_012: 상단 1px 구분선(hr 대체) 제거 → 스크롤 영역과 다른 배경톤으로 구분
-            className="shrink-0 px-5 pt-2 bg-surface"
+            className={`shrink-0 px-5 pt-2 ${panelTone === 'background' ? 'bg-background' : 'bg-surface'}`}
             style={{
               paddingBottom: `calc(env(safe-area-inset-bottom) + ${FOOTER_PAD_BOTTOM_PX}px)`,
             }}

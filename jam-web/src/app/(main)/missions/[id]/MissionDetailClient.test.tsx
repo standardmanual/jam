@@ -317,17 +317,21 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
     expect(card).not.toContain('7일 중 3일</span>')
   })
 
-  it('끝낸 칸은 검정(--accent) 채움·흰 글자, 지금 칸은 link 테두리, 남은 칸은 보조 면이다', () => {
+  it('끝낸 칸은 레드(--jam-red) 채움·흰 글자(--snow), 남은 칸은 회색(--btn-secondary) 채움·검정 글자(--foreground)이고 테두리가 없다', () => {
     const card = streak(3)
-    expect((card.match(/background:var\(--accent\)/g) ?? []).length).toBe(3)
-    expect((card.match(/border-color:var\(--link\)/g) ?? []).length).toBe(1)
-    expect((card.match(/background:var\(--background-secondary\)/g) ?? []).length).toBe(3)
+    expect((card.match(/background:var\(--jam-red\)/g) ?? []).length).toBe(3)
+    expect((card.match(/color:var\(--snow\)/g) ?? []).length).toBe(3)
+    expect((card.match(/background:var\(--btn-secondary\)/g) ?? []).length).toBe(4)
+    expect((card.match(/color:var\(--foreground\)/g) ?? []).length).toBeGreaterThanOrEqual(4)
+    expect(card).not.toContain('border-color')
+    expect(card).not.toContain('border-2')
   })
 
-  it('달성하면 전부 채워지고 지금 칸이 없다', () => {
+  it('달성하면 전부 레드로 채워지고 회색 칸이 없다', () => {
     const card = streak(0, { completed: true })
-    expect((card.match(/background:var\(--accent\)/g) ?? []).length).toBe(7)
-    expect(card).not.toContain('border-color:var(--link)')
+    expect((card.match(/background:var\(--jam-red\)/g) ?? []).length).toBe(7)
+    expect(card).not.toContain('background:var(--btn-secondary)')
+    expect(card).not.toContain('border-color')
   })
 
   it('서클이 많아도(30일) 모두 그린다', () => {
@@ -441,19 +445,24 @@ describe('MissionDetailClient 나의 진행 상황 카드 면 (티켓 20261111_2
     return html.slice(html.lastIndexOf('<div', i), html.indexOf('</div>', i) + 200)
   }
 
-  it('수치형·개수형·달성형 모두 카드 면이 강조 레드(--jam-red)다', () => {
+  it('수치형·달성형 카드 면이 흰색이다 — 카드 면에 레드를 깔지 않는다 (티켓 20261112_1629)', () => {
     for (const opts of [
       { participating: true, missionType: 'distance', progressValue: 3.2, conditionJson: { distance_km: 10 } },
-      { participating: true, missionType: 'streak_days', progressValue: 3, conditionJson: { streak_days: 7 } },
       { participating: true, missionType: 'checkin', progressValue: 0, conditionJson: { poi_ids: ['a'] } },
     ]) {
-      expect(card(render(CONDITION_TEXT, opts))).toContain('background:var(--jam-red)')
+      const html = render(CONDITION_TEXT, opts)
+      const slice = html.slice(html.lastIndexOf('<div', html.indexOf(d.missions.myProgressTitle)))
+      expect(slice.slice(0, slice.indexOf(d.missions.myProgressTitle))).not.toContain('var(--jam-red)')
     }
   })
 
-  it('수치형은 현재 값이 흰색(--snow), 막대 채움이 흰색이다', () => {
+  it('수치형은 현재 값만 레드(--jam-red)이고, 막대는 16px 레드 채움에 기본 트랙(--border)이다', () => {
     const html = render(CONDITION_TEXT, { participating: true, missionType: 'distance', progressValue: 3.2, conditionJson: { distance_km: 10 } })
-    expect(html).toContain('color:var(--snow)')
-    expect(html).toContain('background:var(--snow)')
+    expect(html).toContain('color:var(--jam-red)')
+    expect(html).not.toContain('color:var(--snow)')
+    expect(html).toContain('background:var(--jam-red)')
+    expect(html).toContain('height:16px')
+    expect(html).toContain('background:var(--border)')
+    expect(html).not.toContain('color-mix')
   })
 })

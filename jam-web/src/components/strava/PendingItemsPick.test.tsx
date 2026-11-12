@@ -5,7 +5,7 @@
  * 시험(`lib/strava/__tests__/pending-pick.test.ts`·`sync-flow.test.ts`)이 맡고, 여기서는 화면이 그 상태를 올바르게 그리는지 본다.
  *
  * 고정하는 것:
- * - 선택 단계: 헤더 제목·보조 문구, 푸터 카운터·«고르지 않은 N개» 안내(안 고른 것이 0개면 숨김)·«N개 담기»(정확히 N개일 때만 활성),
+ * - 선택 단계: 헤더 제목·보조 문구, 푸터는 «N개 담기»(정확히 N개일 때만 활성)만 보이고 선택 개수는 sr-only 라이브 리전에 남는다(티켓 20261112_1629),
  *   카드마다 토글(`aria-pressed`), 가득 선택이면 안 고른 카드 토글 `aria-disabled`.
  * - 확정 확인: 두 층이 같은 자리에 겹쳐 있고 활성 층만 보인다(비활성 층은 `inert`·`visibility:hidden`).
  * - 제출 중: 닫기 버튼이 막히고(soft disabled) 확정 버튼이 «담는 중» 라벨의 loading이다.
@@ -89,6 +89,18 @@ function buttonTag(html: string, label: string): string | null {
   return match ? match[0] : null
 }
 
+/** 선택 개수를 알리는 sr-only 라이브 리전 한 칸 */
+function counterLive(html: string): string {
+  const start = html.indexOf('data-testid="pick-counter-live"')
+  return start < 0 ? '' : html.slice(html.lastIndexOf('<div', start), html.indexOf('</div>', start) + 6)
+}
+
+/** 보이는 푸터 — sr-only 영역 뒤, 오버레이 맨 아래 */
+function visibleFooter(html: string): string {
+  const live = counterLive(html)
+  return html.slice(html.indexOf(live) + live.length).replace(/<div[^>]*sr-only[^>]*>.*?<\/div>/g, '')
+}
+
 describe('선택 단계', () => {
   it('헤더에 제목과 보조 문구가 있다', () => {
     const html = view()
@@ -97,18 +109,32 @@ describe('선택 단계', () => {
     expect(html).toContain(t(d.syncPending.pick.subtitle, { total: 3 }))
   })
 
-  it('푸터에 카운터와 고르지 않은 개수 안내, «N개 담기»가 있다', () => {
+  it('보이는 푸터에는 «N개 담기» 버튼만 있고 카운터·고르지 않은 개수 안내 문구가 없다 (티켓 20261112_1629)', () => {
     const html = view({ selected: ['p1'] })
+    const footer = visibleFooter(html)
 
-    expect(html).toContain(t(d.syncPending.pick.counter, { k: 1, n: 2 }))
-    expect(html).toContain(t(d.syncPending.pick.unselectedNote, { count: 1 }))
-    expect(html).toContain(t(d.syncPending.pick.confirmCta, { n: 2 }))
+    expect(footer).toContain(t(d.syncPending.pick.confirmCta, { n: 2 }))
+    expect(footer).not.toContain(t(d.syncPending.pick.counter, { k: 1, n: 2 }))
+    expect(footer).not.toContain('고르지 않은 1개는 받을 수 없어요')
+    expect(footer).not.toContain('개 골랐어요')
+    // 선택 층(첫 층)에는 문단이 없다 — 확정 확인 층의 제목·본문만 문단이다
+    expect(footer.split('grid-area:1 / 1')[1]).not.toContain('<p')
   })
 
-  it('카운터는 aria-live=polite 한 줄이다', () => {
-    const html = view()
+  it('선택 개수는 화면에 보이지 않는 sr-only aria-live=polite 영역에 남는다', () => {
+    const html = view({ selected: ['p1'] })
+    const live = counterLive(html)
 
-    expect(html).toMatch(new RegExp(`<p aria-live="polite"[^>]*>${t(d.syncPending.pick.counter, { k: 0, n: 2 })}</p>`))
+    expect(live).toMatch(/class="sr-only"/)
+    expect(live).toContain('aria-live="polite"')
+    expect(live).toContain('aria-atomic="true"')
+    expect(live).toContain(`>${t(d.syncPending.pick.counter, { k: 1, n: 2 })}</div>`)
+    expect(counterLive(view())).toContain(`>${t(d.syncPending.pick.counter, { k: 0, n: 2 })}</div>`)
+  })
+
+  it('unselectedNote 키는 사전에 없다 (확정 확인 본문 confirmBody만 남는다)', () => {
+    expect(Object.keys(d.syncPending.pick)).not.toContain('unselectedNote')
+    expect(Object.keys(d.syncPending.pick)).toContain('confirmBody')
   })
 
   it('고른 수가 빈칸 수와 정확히 같을 때만 «담기»가 활성이다', () => {
@@ -135,11 +161,10 @@ describe('선택 단계', () => {
     expect(html.match(/data-select-toggle="" [^>]*aria-disabled="true"|aria-disabled="true"[^>]*data-select-toggle/g)).toHaveLength(1)
   })
 
-  it('안 고른 것이 0개(칸이 보류 이상)이면 고르지 않은 안내를 숨긴다', () => {
+  it('안 고른 것이 0개(칸이 보류 이상)이면 선택 단계에 «받을 수 없어요» 안내가 없다', () => {
     const html = view({ payload: payload({ freeSlots: 5, chooseCount: 3 }), selected: ['p1', 'p2', 'p3'] })
 
     expect(html).not.toContain('받을 수 없어요')
-    expect(html).not.toContain(t(d.syncPending.pick.unselectedNote, { count: 0 }))
   })
 
   it('보류 개체는 각자 별개 카드다(같은 배지라도 id가 다르다)', () => {
@@ -217,7 +242,7 @@ describe('확정 확인', () => {
       expect(html.match(/(?<![-\w])visibility:hidden/g)).toHaveLength(1)
     }
     // 선택 단계에서는 확정 확인 층이, 확정 확인 단계에서는 선택 층이 비활성이다
-    expect(pick.indexOf('inert=""')).toBeGreaterThan(pick.indexOf(t(d.syncPending.pick.counter, { k: 2, n: 2 })))
+    expect(pick.indexOf('inert=""')).toBeGreaterThan(pick.indexOf(t(d.syncPending.pick.confirmCta, { n: 2 })))
     expect(confirm.indexOf('inert=""')).toBeLessThan(confirm.indexOf(t(d.syncPending.pick.confirmTitle, { n: 2 })))
   })
 
@@ -250,7 +275,7 @@ describe('제출 중과 오류', () => {
     const html = view({ errorText: d.syncPending.wrongCount })
 
     expect(html).toMatch(new RegExp(`<p role="alert"[^>]*>${d.syncPending.wrongCount}</p>`))
-    expect(html.indexOf('role="alert"')).toBeLessThan(html.indexOf(t(d.syncPending.pick.counter, { k: 0, n: 2 })))
+    expect(html.indexOf('role="alert"')).toBeLessThan(html.indexOf(t(d.syncPending.pick.confirmCta, { n: 2 })))
   })
 
   it('오류가 없으면 alert가 없다', () => {

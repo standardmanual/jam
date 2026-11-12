@@ -16,7 +16,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 // 캔버스를 그리는 클라이언트 배경은 렌더 결과(클래스)와 무관하다.
 vi.mock('@/components/BlobAnimationBackground', () => ({ default: () => null }))
 
-import BadgeHeroSection from '../BadgeHeroSection'
+import BadgeHeroSection from '@/components/BadgeHeroSection'
 
 const BADGE = {
   image_url: null,

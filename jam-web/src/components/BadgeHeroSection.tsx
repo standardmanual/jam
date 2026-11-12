@@ -15,7 +15,18 @@ import { splitDescriptionSentences } from '@/lib/splitDescriptionSentences'
  * 배지 상세화면 hero-section (item/poi/activity 3변형 공통) — [20260818_002]
  * 3중 복사돼 있던 마크업을 추출한 순수 리팩터링. 렌더링 결과는 기존과 동일해야 한다.
  * MODULAR 신규 컴포넌트 아님 — [20260816_006] 선례에 따라 서비스 전용 div+Tailwind 유지.
+ *
+ * 티켓 20261112_1629: 배지 상세 페이지 밖(체크인 아이템 상세 시트)에서도 같은 카드를 쓰게 되어 `src/components/`로 옮겼다.
+ * `size`로 바뀌는 것은 바깥 여백·카드 안쪽 여백·이미지 크기뿐이고 카드 마크업은 한 벌이다.
  */
+/** `page`: 배지 상세 페이지(기본). `sheet`: 시트 안 — 바깥 여백은 호출부가 정하고, 카드 안쪽 여백 24 16, 이미지 176 */
+export type BadgeHeroSize = 'page' | 'sheet'
+
+const SIZE_STYLE = {
+  page: { wrapper: 'relative z-10 px-4 pt-0 pb-5', card: 'p-6', imageBox: 'w-[200px] h-[200px]', imagePx: 200 },
+  sheet: { wrapper: 'relative z-10', card: 'py-6 px-4', imageBox: 'w-44 h-44', imagePx: 176 },
+} as const
+
 interface BadgeHeroSectionProps {
   /**
    * [20260901_1944] `background_animation`을 **필수**로 포함한다 — 이 필드가 빠져 있으면 아래
@@ -61,9 +72,12 @@ interface BadgeHeroSectionProps {
   titleNode?: ReactNode
   /** 설명 문단의 내용을 바꾼다(잠긴 상세의 `SwapText`). 없으면 `badge.description`을 마침표 기준으로 나눠 그린다 */
   descriptionNode?: ReactNode
+  /** 놓이는 자리. 기본 `page`는 이전 출력과 같다. `sheet`는 바텀시트 안(체크인 아이템 상세)용이다 */
+  size?: BadgeHeroSize
 }
 
-export default function BadgeHeroSection({ badge, hasEarned, themedBackground, backgroundAnimation, imageSlot, chipExtra, titleNode, descriptionNode }: BadgeHeroSectionProps) {
+export default function BadgeHeroSection({ badge, hasEarned, themedBackground, backgroundAnimation, imageSlot, chipExtra, titleNode, descriptionNode, size = 'page' }: BadgeHeroSectionProps) {
+  const sizeStyle = SIZE_STYLE[size]
   // [20260819_011] 배경은 상세화면의 고정 배경 레이어 "한 곳에서만" 그린다. hero 카드가 배경을
   // 한 번 더 그리면(기존 동작) 카드 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
   // 배율로 두 번 잘려 이음매가 보였다. 그래서 여기서는 배경을 그리지 않고, 배경이 있을 때는
@@ -93,7 +107,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
     // 함께 수정).
     // 아래 여백 pb-5(20px)는 다른 화면의 카드 사이 간격(`gap-5`)과 같다(2026-11-09 사용자 지시). 이전에는 이 아래 여백 32px에
     // 다음 영역의 위 여백 32px가 겹쳐 카드와 «획득 조건» 카드 사이가 64px였다.
-    <div className="relative z-10 px-4 pt-0 pb-5">
+    <div className={sizeStyle.wrapper}>
       {/* [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다 — overflow-hidden으로 라운드 안에
           가두고, 캔버스는 절대배치 최하단(z-0)에 두어 이미지·이름은 그 위(z-10)에 그대로 남는다.
           애니메이션이 카드 배경 자체가 되므로 bg-surface는 깔지 않는다.
@@ -103,7 +117,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           칩·이름 + 설명 줄 수)이 정하고, 이미지와 글자 블록 사이는 gap-4가 띄운다. */}
       <div
         className={[
-          'relative overflow-hidden w-full rounded-2xl flex flex-col items-center gap-4 p-6',
+          `relative overflow-hidden w-full rounded-2xl flex flex-col items-center gap-4 ${sizeStyle.card}`,
           // 테마·애니메이션 배경이 없을 때만 카드 면(--card-bg)이고 외곽선은 없다(티켓 20261107_2203)
           backgroundAnimation || themed ? 'bg-transparent' : 'bg-card-bg',
         ].join(' ')}
@@ -118,14 +132,14 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           {imageSlot !== undefined ? (
             imageSlot
           ) : badge.image_url ? (
-            <div className="w-[200px] h-[200px] flex items-center justify-center">
+            <div className={`${sizeStyle.imageBox} flex items-center justify-center`}>
               {/* 어드민 배지 상세 미리보기도 이 컴포넌트를 쓴다. 미등록 호스트 URL 하나로 화면 전체가
                   오류 화면이 되지 않도록 SafeImage로 렌더한다(티켓 20260925_2319). */}
               <SafeImage
                 src={badge.image_url}
                 alt={badge.name}
-                width={200}
-                height={200}
+                width={sizeStyle.imagePx}
+                height={sizeStyle.imagePx}
                 className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
               />
             </div>

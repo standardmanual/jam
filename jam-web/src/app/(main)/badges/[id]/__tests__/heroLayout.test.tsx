@@ -13,7 +13,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 
 vi.mock('@/components/BlobAnimationBackground', () => ({ default: () => null }))
 
-import BadgeHeroSection from '../BadgeHeroSection'
+import BadgeHeroSection from '@/components/BadgeHeroSection'
 
 const BADGE = {
   image_url: null,
@@ -49,5 +49,33 @@ describe('BadgeHeroSection 설명 줄바꿈', () => {
     // 전역 `p { text-wrap: balance }`가 레이어 밖이라 유틸리티만으로는 이기지 못한다 — 중요도 접미사가 필요하다
     expect(description.split(' ')).toContain('text-wrap!')
     expect(title).not.toContain('text-wrap')
+  })
+})
+
+describe('BadgeHeroSection size (티켓 20261112_1629)', () => {
+  const WITH_IMAGE = { ...BADGE, image_url: 'https://example.com/a.png' }
+
+  it('기본(page)은 바깥 여백 px-4 pt-0 pb-5, 카드 안쪽 p-6, 이미지 200이다', () => {
+    const html = renderToStaticMarkup(<BadgeHeroSection badge={WITH_IMAGE} hasEarned />)
+    expect(html).toContain('class="relative z-10 px-4 pt-0 pb-5"')
+    expect(html).toContain('gap-4 p-6')
+    expect(html).toContain('w-[200px] h-[200px]')
+    expect(renderToStaticMarkup(<BadgeHeroSection badge={WITH_IMAGE} hasEarned size="page" />)).toBe(html)
+  })
+
+  it('sheet는 바깥 여백이 없고 카드 안쪽 여백 24 16, 이미지 176이다 — 이름·설명 마크업은 page와 같다', () => {
+    const page = renderToStaticMarkup(<BadgeHeroSection badge={WITH_IMAGE} hasEarned />)
+    const sheet = renderToStaticMarkup(<BadgeHeroSection badge={WITH_IMAGE} hasEarned size="sheet" />)
+    expect(sheet).toContain('class="relative z-10"')
+    expect(sheet).not.toContain('px-4 pt-0 pb-5')
+    expect(sheet).toContain('gap-4 py-6 px-4')
+    expect(sheet).not.toContain('p-6')
+    expect(sheet).toContain('w-44 h-44')
+    expect(sheet).not.toContain('200')
+    expect(sheet).toContain('176')
+    for (const part of ['<h1 class="text-3xl font-bold text-center text-foreground">한강 러너</h1>', '짝 잃은 양말이 제 짝을 찾아 빨랫줄에 나란히 걸렸습니다.']) {
+      expect(page).toContain(part)
+      expect(sheet).toContain(part)
+    }
   })
 })
