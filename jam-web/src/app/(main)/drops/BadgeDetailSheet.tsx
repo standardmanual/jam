@@ -76,7 +76,7 @@ function toHeroBadge(drop: PickupDrop, rarity: BadgeRarity, locked: boolean) {
     image_url: locked ? null : drop.badge_image_url,
     name: locked ? d.lockedItem.card.name : drop.badge_name,
     rarity,
-    description: locked ? null : (drop.badge_description ?? null),
+    description: locked ? '' : (drop.badge_description ?? ''),
     background_color: null,
     background_shader_id: null,
     background_image_url: null,
