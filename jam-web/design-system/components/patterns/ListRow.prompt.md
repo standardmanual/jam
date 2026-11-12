@@ -69,6 +69,9 @@ indicator의 체크 아이콘·순위 숫자는 시각 표지라 스크린리더
 - E 체크 목록: 완료 단계는 체크 아이콘에 `aria-hidden`을 두고 title 앞에 `<span className="sr-only">완료: </span>`, 현재 단계는 `<span className="sr-only">지금 할 차례: </span>`, 아직 안 한 단계는 `<span className="sr-only">아직: </span>`.
 - C4 순위: indicator를 `<><span aria-hidden="true">1</span><span className="sr-only">1위</span></>`처럼 두어 «1위»로 읽히게 한다(숫자만 읽히지 않게).
 
+## 포인트 내역 행 레시피 (티켓 20261112_1628)
+lead 없이 `eyebrow`=행위 라벨(문자열, 12px muted), `title`=대상 이름(굵게 1줄), `meta`=`YYYY-MM-DD AM hh:mm`(`metaLines={1}`), `value`=`<PointText layout="stacked" />`로 만든다. 대상이 없으면 `title`을 비워 행위 줄과 날짜 줄만 둔다. 숫자에 `+`는 붙이지 않고 차감만 `−`를 붙인다(`PointText.prompt.md`).
+
 ## 문구 규칙 (호출부)
 - `MediaVariant`의 «곧 끝나요»·«2시간 남음» 같은 문구는 실제 마감이 있을 때만 쓴다. 마감이 없는 항목에 긴급감을 붙이지 않는다(가짜 긴급감 금지).
 

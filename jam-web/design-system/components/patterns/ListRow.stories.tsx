@@ -298,7 +298,7 @@ export const Tones: Story = {
       <Caption>tint — 카드 안 행 전용</Caption>
       <InCard>
         <ListRow tone="tint" lead={<BookIcon />} title="아이템북" meta="모은 아이템 배지" chevron href="#" />
-        <ListRow tone="tint" lead={<CoinIcon />} leadShape="round" title="포인트" value={<PointText value="+120" />} />
+        <ListRow tone="tint" lead={<CoinIcon />} leadShape="round" title="포인트" value={<PointText value="120" />} />
       </InCard>
       <Caption>inverse — 경고 안내 행 전용</Caption>
       <ListRow tone="inverse" lead={<TargetIcon />} leadBadge="2" title="곧 끝나는 미션" meta="내일까지 완료해야 해요" chevron href="#" />
@@ -689,30 +689,32 @@ const worstCases = (): WorstCase[] => [
   },
   {
     id: 'A5',
-    label: 'A5 포인트 내역 — 긴 사유 + 긴 절대 날짜. 깨짐 후보와 대안',
+    label: 'A5 포인트 내역 — lead 없음, 행위(eyebrow)·대상 이름(title)·날짜(meta) 세 줄 + 오른쪽 stacked 포인트. + 없음, 차감만 −',
     node: (
       <>
-        <Caption>깨짐 후보: 긴 절대 날짜를 time에 넣으면 time은 줄지 않아 eyebrow 칸이 거의 사라진다.</Caption>
+        <Caption>대상 있음: 행위 12px muted, 이름 굵게 1줄, 날짜 14px muted 한 줄. 오른쪽은 숫자 위·«포인트» 아래, 가운데 정렬, + 없음.</Caption>
         <ListRow
-          lead={<CoinIcon />}
-          leadShape="round"
-          eyebrow="포인트 적립"
-          time="2026년 11월 6일 오후 3시 30분"
-          title="러닝 보너스"
-          meta="5km 러닝 3회 연속 달성 보너스와 주간 챌린지 완주 보상이 함께 지급됐어요"
-          metaLines={2}
-          value={<PointText value="+120" />}
+          eyebrow="배지 보상"
+          title="털실 한 뭉치"
+          meta="2026-11-11 AM 10:29"
+          metaLines={1}
+          value={<PointText value="20" layout="stacked" />}
+          href="#badge"
         />
-        <Caption>대안(호출부 규칙): time에는 짧은 형식(«11월 6일»), 긴 날짜는 meta 줄로 내린다.</Caption>
+        <Caption>대상 없음(믹스·컬렉션 완성 보상 등): 이름 줄 없이 행위 줄과 날짜 줄만 둔다.</Caption>
         <ListRow
-          lead={<CoinIcon />}
-          leadShape="round"
-          eyebrow="포인트 적립"
-          time="11월 6일"
-          title="러닝 보너스"
-          meta="2026년 11월 6일 오후 3시 30분 · 5km 러닝 3회 연속 달성 보너스와 주간 챌린지 완주 보상이 함께 지급됐어요"
-          metaLines={3}
-          value={<PointText value="+120" />}
+          eyebrow="믹스 보상"
+          meta="2026-11-11 AM 10:29"
+          metaLines={1}
+          value={<PointText value="300" layout="stacked" />}
+        />
+        <Caption>차감: 숫자 앞에 − 만 붙고 색은 같은 주황이다. 네 자리 숫자에서는 이름이 말줄임으로 양보한다.</Caption>
+        <ListRow
+          eyebrow="포인트 조정"
+          title="이용 정책 위반으로 조정된 아주 긴 사유 이름이 한 줄을 넘는 경우"
+          meta="2026-11-11 PM 03:05"
+          metaLines={1}
+          value={<PointText value="−1,200" layout="stacked" />}
         />
       </>
     ),
