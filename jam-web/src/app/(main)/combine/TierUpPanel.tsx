@@ -129,14 +129,16 @@ export default function TierUpPanel<T extends TierUpMaterial>({
         {/* 6칸은 레시피 믹서와 같이 3열(3+3)이다. 제출 중에는 칸을 건드릴 수 없다(MixerSlot에 disabled가 없어 핸들러를 넘기지 않는다) */}
         <div className="grid grid-cols-3 gap-2">
           {slots.map((item, index) => (
-            <MixerSlot
-              key={index}
-              status={item ? 'filled' : noMaterials ? 'locked' : 'empty'}
-              name={item?.badge.name}
-              imageUrl={item?.badge.image_url}
-              onClick={item || submitting ? undefined : () => onOpenSheet(index)}
-              onRemove={item && !submitting ? () => onRemove(index) : undefined}
-            />
+            // 슬롯 래퍼의 번호는 결과 연출(`TierUpRevealOverlay`)이 재료 그림의 화면 자리를 재는 데 쓴다
+            <div key={index} data-tier-up-slot={index}>
+              <MixerSlot
+                status={item ? 'filled' : noMaterials ? 'locked' : 'empty'}
+                name={item?.badge.name}
+                imageUrl={item?.badge.image_url}
+                onClick={item || submitting ? undefined : () => onOpenSheet(index)}
+                onRemove={item && !submitting ? () => onRemove(index) : undefined}
+              />
+            </div>
           ))}
         </div>
 

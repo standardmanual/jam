@@ -9,10 +9,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import type { IssueBadge, IssueBook } from '@/lib/drop-engine/syncIssue'
 
-/** 굴림이 결과로 돌려주는 칸까지 포함한 아이템 배지 — 이름·그림·잠김 */
+/** 굴림이 결과로 돌려주는 칸까지 포함한 아이템 배지 — 이름·그림·설명문·잠김 */
 export type TierUpPoolBadge = IssueBadge & {
   name: string
   image_url: string | null
+  /** 배지 설명문 — 등급 올리기 결과 연출이 문장 줄로 보여 준다(티켓 20261112_2141). 비어 있으면 null이거나 빈 문자열이다 */
+  description?: string | null
 }
 
 export async function loadTierUpPool(supabase: SupabaseClient): Promise<{ books: IssueBook[]; badges: TierUpPoolBadge[] }> {
@@ -31,7 +33,7 @@ export async function loadTierUpPool(supabase: SupabaseClient): Promise<{ books:
     (chunk) =>
       supabase
         .from('badges')
-        .select('id, name, image_url, rarity, item_book_id, drop_excluded, valid_from, valid_until, deleted_at, always_locked, unlock_required')
+        .select('id, name, image_url, description, rarity, item_book_id, drop_excluded, valid_from, valid_until, deleted_at, always_locked, unlock_required')
         .eq('type', 'item')
         .is('deleted_at', null)
         .in('item_book_id', chunk)
