@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Suspense } from 'react'
+import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { WITHDRAWN_QUERY_KEY } from '@/lib/account/withdraw-contract'
 import { d } from '@/lib/i18n'
@@ -23,11 +24,10 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center bg-background text-foreground px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      {/* 로고 */}
-      <div className="text-center mb-10">
-        {/* 흰색 로고 PNG를 마스크로 쓰고 색은 --foreground로 칠한다(크림 위 흰 로고는 1.05:1). 이름은 role="img"가 맡는다. */}
-        <span role="img" aria-label={d.auth.wordmark} className="jam-logo-mark inline-block align-bottom h-[48px]" />
+    <main className="min-h-dvh flex flex-col items-center justify-center bg-[color:var(--base-black)] text-snow px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      {/* 로고 — 검정 바탕 위라 흰색(--snow)으로 칠한다(FooterLogo와 같은 방식). 캔버스 값 204×67·아래 간격 88을 토큰에 가까운 h-16(64)·mb-24(96)로 옮겼다(티켓 20261112_2254). 이름은 role="img"가 맡는다. */}
+      <div className="text-center mb-24">
+        <span role="img" aria-label={d.auth.wordmark} className="jam-logo-mark inline-block align-bottom h-16 bg-[color:var(--snow)]" />
       </div>
 
       {/* 에러 메시지 */}
@@ -45,11 +45,9 @@ function LoginContent() {
       )}
 
       {/* 구글 로그인 버튼 */}
-      <div className="w-full max-w-sm">
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-background-inverse text-snow rounded-full min-h-11 py-[14px] px-6 text-base active:scale-95 transition-transform duration-100"
-        >
+      {/* 캔버스 값 폭 261을 가까운 max-w-64(256)로 옮겼고, 버튼은 서비스 Button(secondary, md 52px)을 쓴다 */}
+      <div className="w-full max-w-64">
+        <Button variant="secondary" fullWidth onClick={handleGoogleLogin} className="gap-2">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -69,7 +67,7 @@ function LoginContent() {
             />
           </svg>
           {d.auth.googleLogin}
-        </button>
+        </Button>
 
         {/* 로컬 개발 전용 — 프로덕션/프리뷰 빌드에서는 NODE_ENV가 'development'가 아니므로 렌더링 안 됨 */}
         {process.env.NODE_ENV === 'development' && (
@@ -77,14 +75,14 @@ function LoginContent() {
             onClick={() => {
               window.location.href = '/api/dev-login'
             }}
-            className="w-full mt-4 flex items-center justify-center gap-3 border border-foreground/30 text-foreground rounded-full min-h-11 py-[14px] px-6 text-base active:scale-95 transition-transform duration-100"
+            className="w-full mt-4 flex items-center justify-center gap-3 border border-snow/30 text-snow rounded-full min-h-11 py-[14px] px-6 text-base active:scale-95 transition-transform duration-100"
           >
             {d.auth.devLogin}
           </button>
         )}
       </div>
 
-      <p className="mt-8 text-muted text-[11px] text-center">
+      <p className="mt-8 text-snow text-xs text-center">
         {d.auth.terms}
       </p>
     </main>
@@ -95,7 +93,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-dvh flex items-center justify-center bg-background text-foreground">
+        <main className="min-h-dvh flex items-center justify-center bg-[color:var(--base-black)] text-snow">
           <div className="text-3xl">{d.auth.wordmark}</div>
         </main>
       }
