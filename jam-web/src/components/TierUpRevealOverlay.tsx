@@ -511,7 +511,7 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          paddingTop: 12,
+          paddingTop: 'var(--spacing-12)',
           paddingLeft: 'var(--spacing-16)',
           paddingRight: 'var(--spacing-16)',
           paddingBottom: `calc(${BUTTON_HEIGHT}px + ${buttonBottom} + var(--spacing-24))`,
@@ -529,7 +529,7 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 8,
+            gap: 'var(--spacing-8)',
           }}
         >
           {lines.chipRarity && (
