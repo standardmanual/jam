@@ -2048,6 +2048,11 @@ export const ko = {
       invalidMaterials: '같은 등급의 아이템 배지 6개만 넣을 수 있어요. 넣은 재료는 그대로 있어요. 다시 골라 주세요.',
       /** 소각 전 거절 `invalid_count` — 재료가 6개가 아니다 */
       invalidCount: '아이템 배지 6개를 넣어야 해요. 넣은 재료는 그대로 있어요. 다시 골라 주세요.',
+      /** 결과 연출 오버레이(`TierUpRevealOverlay`, 티켓 20261112_2141) — 화면을 덮는 대화창의 이름과 마지막 버튼 글자 */
+      reveal: {
+        ariaLabel: '등급 올리기 결과',
+        confirm: '확인',
+      },
     },
   },
 
