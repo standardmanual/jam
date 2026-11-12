@@ -24,7 +24,7 @@ export const ko = {
   common: {
     close: '닫기',
     detail: '상세보기',
-    loadMore: '더 불러오기',
+    loadMore: '더보기',
     back: '뒤로',
     countItems: '{count}개',
     networkError: '네트워크 오류가 발생했어요',
@@ -1387,7 +1387,6 @@ export const ko = {
     retry: '다시 시도',
     emptyTitle: '아직 쌓인 포인트가 없어요.',
     emptyBody: 'Strava를 동기화하면 배지와 함께 포인트를 받을 수 있어요.',
-    loadMore: '더 보기',
     loadingMore: '불러오는 중',
 
     /** 잔액 카드의 단위 — 숫자 팝인 애니메이션 대상에서 분리해 정적으로 렌더한다 */
@@ -1656,7 +1655,7 @@ export const ko = {
     /** 첫 페이지 조회 자체가 실패했을 때 — "소식 0건"과 반드시 구분해서 보여준다 */
     errorTitle: '소식을 불러오지 못했어요',
     errorBody: '연결 상태를 확인하고 다시 시도해 주세요',
-    /** GET /api/notifications(더 불러오기) 실패 응답 — 서버가 완성 문구로 내려보낸다.
+    /** GET /api/notifications(더보기) 실패 응답 — 서버가 완성 문구로 내려보낸다.
      *  화면 제목용 errorTitle/errorBody와는 역할이 달라 별도 키로 둔다(티켓 20260916_0905) */
     fetchFailed: '소식을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     /** POST /api/notifications/seen 실패 응답 — 클라이언트는 이 값을 화면에 노출하지 않고

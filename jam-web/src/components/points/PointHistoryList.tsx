@@ -6,6 +6,7 @@ import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { ListRow } from '@/components/ui/ListRow'
 import Button from '@/components/ui/Button'
+import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { CoinIcon } from '@/components/ui/icons'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
@@ -132,13 +133,9 @@ export function PointHistoryList({ items, cursor, loading, loadingMore, error, o
       )}
 
       {!loading && !error && cursor && (
-        <button
-          onClick={onLoadMore}
-          disabled={loadingMore}
-          className="mx-auto mt-1 min-h-11 px-6 rounded-full bg-surface text-base active:scale-95 transition-transform duration-100 disabled:opacity-50 break-keep wrap-break-word"
-        >
-          {loadingMore ? d.points.loadingMore : d.points.loadMore}
-        </button>
+        <LoadMoreButton onClick={onLoadMore} loading={loadingMore}>
+          {loadingMore ? d.points.loadingMore : d.common.loadMore}
+        </LoadMoreButton>
       )}
     </>
   )

@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } f
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
+import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { ListRow, ListRowEm } from '@/components/ui/ListRow'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import {
@@ -340,18 +341,13 @@ export default function NotificationsClient({
         )}
 
         {cursor && (
-          <button
-            type="button"
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="mx-auto mt-1 min-h-11 px-6 rounded-full bg-surface text-base active:scale-95 transition-transform duration-100 disabled:opacity-50"
-          >
+          <LoadMoreButton onClick={loadMore} loading={loadingMore}>
             {loadingMore
               ? d.notifications.loadingMore
               : error
                 ? d.notifications.retry
                 : d.common.loadMore}
-          </button>
+          </LoadMoreButton>
         )}
       </div>
     </div>

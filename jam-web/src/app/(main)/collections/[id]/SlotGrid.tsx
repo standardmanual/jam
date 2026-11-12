@@ -552,11 +552,12 @@ export default function SlotGrid({
       )}
 
       {/* 모두 빼기 — 격자 바로 아래 한 줄(티켓 20261028_1420, 채원 판정). 본인 화면이고 장착이 하나라도 있을 때만 그린다.
-          화면의 유일한 primary라 검정 채움(Button primary)을 그대로 쓴다 — 어떤 배경 위에서도 보여 면 덮어쓰기가 필요 없다(티켓 20261104_2153).
+          더보기 성격이 아닌 일반 액션이라 secondary(회색 알약, --btn-secondary)다(티켓 20261112_1626, 캔버스 확정). 그래서 이 화면에는
+          primary가 없다 — 의도된 결정이다. 확인 시트의 실행 버튼만 검정 primary로 남는다.
           눌러도 바로 빼지 않고 확인 시트를 연다. */}
       {!readOnly && slotCount > 0 && (
         <Button
-          variant="primary"
+          variant="secondary"
           fullWidth
           className="mt-3 whitespace-nowrap"
           disabled={sheetBusy || bulkBusy}

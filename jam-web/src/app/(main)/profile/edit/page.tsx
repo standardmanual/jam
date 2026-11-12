@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import TopNav from '@/components/ui/TopNav'
+import Button from '@/components/ui/Button'
 import { UserIcon } from '@/components/ui/icons'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -361,19 +362,26 @@ export default function ProfileEditPage() {
           {saveError && (
             <p className="text-base text-center">{saveError}</p>
           )}
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            className="w-full min-h-11 bg-background-inverse text-snow py-[14px] rounded-full active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-base"
-          >
-            {saving ? d.profileEdit.saving : d.profileEdit.saveButton}
-          </button>
-          <button
-            onClick={() => router.back()}
-            className="w-full min-h-11 text-muted text-base active:opacity-70 transition-opacity"
-          >
-            {d.profileEdit.cancelButton}
-          </button>
+          {/* 저장·취소는 한 줄에 반씩(361px 폭에서 각 176.5px, 높이 52px). 한 영역에 primary는 저장 하나, 취소는 secondary */}
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleSave}
+              disabled={!canSave}
+              className="break-keep wrap-break-word"
+            >
+              {saving ? d.profileEdit.saving : d.profileEdit.saveButton}
+            </Button>
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => router.back()}
+              className="break-keep wrap-break-word"
+            >
+              {d.profileEdit.cancelButton}
+            </Button>
+          </div>
           {/* 티켓 20261021_1249 3회(채원 사전 판정): 탈퇴 진입. 바로 위 «취소»와 짝처럼 읽히지 않도록 일부러 작게, 밑줄로, 16px를 더 띄운다
               (gap 8px + mt-4 16px = 약 24px). 설명 캡션은 두지 않는다 — 시트가 지워지는 것을 설명한다. 닫히면 포커스가 이 버튼으로 돌아온다. */}
           <button

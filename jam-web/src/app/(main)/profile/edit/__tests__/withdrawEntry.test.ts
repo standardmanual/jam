@@ -70,9 +70,10 @@ describe('프로필 편집 — 탈퇴하기 진입', () => {
     expect(cancel).toBeLessThan(withdraw)
   })
 
-  it('저장과 취소는 기존 그대로다 — 저장은 primary 알약, 취소는 text-muted 텍스트 버튼', () => {
-    expect(source).toContain('w-full min-h-11 bg-background-inverse text-snow py-[14px] rounded-full')
-    expect(source).toContain('w-full min-h-11 text-muted text-base active:opacity-70 transition-opacity')
+  it('저장·취소는 한 줄에 반씩 — 저장은 primary, 취소는 secondary Button이다 (티켓 20261112_1626)', () => {
+    expect(source).toContain('<div className="flex gap-2">')
+    expect(source).toMatch(/<Button\s+variant="primary"\s+fullWidth\s+onClick=\{handleSave\}\s+disabled=\{!canSave\}/)
+    expect(source).toMatch(/<Button\s+variant="secondary"\s+fullWidth\s+onClick=\{\(\) => router\.back\(\)\}/)
   })
 
   it('버튼 문구는 사전의 «탈퇴하기»다', () => {

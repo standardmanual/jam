@@ -80,7 +80,7 @@ export function FollowButton({ targetUserId, initialFollowing, onEarnBadges }: F
     <Button
       variant={following ? 'secondary' : 'primary'}
       surface="sub"
-      size="sm"
+      size="xs"
       onClick={toggle}
       className="shrink-0"
     >

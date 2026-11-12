@@ -77,6 +77,8 @@ import { LockedTile } from '../cards/LockedTile.jsx';
  *   터치 타겟이 뒤틀린다.
  */
 
+/** 칩 줄 높이 — 칩 규격(ListRowChip과 같은 md: 12px 글자 줄높이 16px + 세로 패딩 2px×2 = 20px). 칩 크기를 바꾸면 같이 바꾼다. */
+const CHIP_ROW_HEIGHT = 20;
 /** 카드 1칸 이동 시간 */
 const STEP_MOVE_MS = 340;
 /** 플리킹 판정 — 거리(px) / 속도(px·ms). 서비스 BottomSheet 드래그 임계값의 수평 버전 */
@@ -672,8 +674,8 @@ function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
       {/* 칩 줄 — 등급 또는 Lv.N이 한 개, 반복 획득이면 그 옆에 ×N.
           `minHeight`로 자리를 고정한다: 등급이 common이라 칩이 안 그려지는 카드와 그려지는
           카드가 섞여도 아래 이름·설명의 y가 흔들리지 않는다(이미지가 먼저 양보하는 규칙 유지). */}
-      <div style={{ flexShrink: 0, minHeight: 18, display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
-        {level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={item?.rarity} />}
+      <div style={{ flexShrink: 0, minHeight: CHIP_ROW_HEIGHT, display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
+        {level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={item?.rarity} size="md" />}
         {earnCount > 1 && (
           <span
             style={{

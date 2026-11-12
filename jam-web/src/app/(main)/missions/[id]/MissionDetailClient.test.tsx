@@ -13,8 +13,28 @@ import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { MissionRow } from '@/types/database'
 
+const nav = vi.hoisted(() => ({
+  push: vi.fn(),
+  /** 렌더된 Button의 onClick을 글자로 찾아 누르기 위한 기록 (서버 렌더라 실제 클릭이 없다) */
+  clicks: new Map<string, () => void>(),
+}))
+
+vi.mock('@/components/ui/Button', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/ui/Button')>()
+  const Real = actual.default
+  return {
+    ...actual,
+    default: (props: React.ComponentProps<typeof Real>) => {
+      if (typeof props.children === 'string' && props.onClick) {
+        nav.clicks.set(props.children, props.onClick as () => void)
+      }
+      return <Real {...props} />
+    },
+  }
+})
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push: nav.push, replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }))
@@ -342,33 +362,49 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
   })
 })
 
-describe('MissionDetailClient 랭킹 보기 버튼 (티켓 20261111_0850)', () => {
-  const LINK = 'href="/missions/m1/status"'
+describe('MissionDetailClient 랭킹 보기 버튼 (티켓 20261111_0850, 20261112_1626)', () => {
+  const STATUS_PATH = '/missions/m1/status'
 
-  it('랭킹형 미션에 참가 중이면 «랭킹 보기» 버튼(검정 면·흰 글자)이 상황 화면으로 이어진다', () => {
+  /** 레이블이 label인 button 태그의 여는 태그 문자열 */
+  function buttonTag(html: string, label: string): string {
+    const end = html.indexOf(`>${label}</button>`)
+    expect(end, `«${label}» 버튼이 없다`).toBeGreaterThan(-1)
+    return html.slice(html.lastIndexOf('<button', end), end)
+  }
+
+  it('랭킹형 미션에 참가 중이면 «랭킹 보기» 회색 알약 버튼(폭 전체·52px)이 그려지고, a 안 button 중첩이 없다', () => {
     const html = render(CONDITION_TEXT, { participating: true, statusDisplayType: 'ranking' })
-    expect(html).toContain(LINK)
-    const btn = html.slice(html.lastIndexOf('<div', html.indexOf('>랭킹 보기</div>')), html.indexOf('>랭킹 보기</div>'))
-    expect(btn).toContain('bg-foreground')
-    expect(btn).toContain('text-snow')
-    expect(html).toContain('>랭킹 보기</div>')
+    const btn = buttonTag(html, '랭킹 보기')
+    expect(btn).toContain('bg-btn-secondary')
+    expect(btn).toContain('text-foreground')
+    expect(btn).toContain('w-full')
+    expect(btn).not.toContain('bg-background-inverse')
+    // 링크로 감싸지 않는다 — a 안 button은 유효하지 않은 HTML이다
+    expect(html).not.toContain(`href="${STATUS_PATH}"`)
     expect(html).not.toContain('미션 상황 보기')
   })
 
-  it('랭킹형이라도 완료한 미션에는 버튼이 남고, 참가 전에는 없다', () => {
-    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType: 'ranking' })).toContain(LINK)
-    expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'ranking' })).not.toContain(LINK)
+  it('버튼을 누르면 상황 화면으로 이동한다', () => {
+    nav.push.mockClear()
+    render(CONDITION_TEXT, { participating: true, statusDisplayType: 'ranking' })
+    nav.clicks.get('랭킹 보기')!()
+    expect(nav.push).toHaveBeenCalledWith(STATUS_PATH)
   })
 
-  it('달성형 미션에도 «달성 현황 보기» 버튼(검정 면·흰 글자)이 상황 화면으로 이어진다 (티켓 20261111_2049)', () => {
+  it('랭킹형이라도 완료한 미션에는 버튼이 남고, 참가 전에는 없다', () => {
+    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType: 'ranking' })).toContain('>랭킹 보기</button>')
+    expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'ranking' })).not.toContain('>랭킹 보기</button>')
+  })
+
+  it('달성형 미션에는 «달성 현황 보기» 회색 알약 버튼이 같은 곳으로 이어진다 (티켓 20261111_2049)', () => {
+    nav.push.mockClear()
     const html = render(CONDITION_TEXT, { participating: true, statusDisplayType: 'achievement' })
-    expect(html).toContain(LINK)
-    const btn = html.slice(html.lastIndexOf('<div', html.indexOf('>달성 현황 보기</div>')), html.indexOf('>달성 현황 보기</div>'))
-    expect(btn).toContain('bg-foreground')
-    expect(btn).toContain('text-snow')
-    expect(html).not.toContain('>랭킹 보기</div>')
-    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType: 'achievement' })).toContain(LINK)
-    expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'achievement' })).not.toContain(LINK)
+    expect(buttonTag(html, '달성 현황 보기')).toContain('bg-btn-secondary')
+    expect(html).not.toContain('>랭킹 보기</button>')
+    nav.clicks.get('달성 현황 보기')!()
+    expect(nav.push).toHaveBeenCalledWith(STATUS_PATH)
+    expect(render(CONDITION_TEXT, { completed: true, statusDisplayType: 'achievement' })).toContain('>달성 현황 보기</button>')
+    expect(render(CONDITION_TEXT, { participating: false, statusDisplayType: 'achievement' })).not.toContain('>달성 현황 보기</button>')
   })
 })
 
