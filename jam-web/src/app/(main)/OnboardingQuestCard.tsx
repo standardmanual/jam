@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@ds/components/cards/Card'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
-import { CheckCircleIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { ChevronRightIcon } from '@/components/ui/icons'
 import type { ReactNode } from 'react'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
@@ -93,18 +93,6 @@ function Divider() {
 
 // ─── 실제 2단계 체크 목록 ───────────────────────────────────────────────────
 
-/** 마친 행은 `--link` 선 체크 아이콘, 아직 안 한 행은 `--muted` 테두리 원이다. 둘 다 24px 칸에 놓여 글자 시작선이 같다. */
-function StepMark({ done }: { done: boolean }) {
-  if (done) {
-    return <CheckCircleIcon className="h-6 w-6 shrink-0 text-link" aria-hidden="true" />
-  }
-  return (
-    <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center">
-      <span className="h-[18px] w-[18px] rounded-full border-[1.5px] border-muted" />
-    </span>
-  )
-}
-
 /** 지금 할 차례 행의 설명 — ②는 개체를 알면 필요 포인트와 상관없이 같은 문장이다 */
 function currentDescription(current: RealCurrentStep): string {
   const copy = d.onboardingQuest.real
@@ -119,7 +107,6 @@ function ChecklistRow({ row, description, trailing }: { row: RealStepRow; descri
     : `text-sm leading-6 break-keep wrap-break-word ${row.state === 'pending' ? 'text-muted' : 'text-foreground'}`
   return (
     <li className={`flex gap-3 ${trailing ? 'items-center' : 'items-start'}`}>
-      <StepMark done={row.state === 'done'} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className={`m-0 ${titleClass}`}>
           {d.onboardingQuest.real.steps[row.key]}

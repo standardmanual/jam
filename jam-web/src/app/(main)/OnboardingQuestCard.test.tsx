@@ -173,13 +173,13 @@ describe('JAM! 시작하기 카드 — 연출 중(연출 구역 + 실제 2단계
     expect(textOf(html)).not.toContain('캡슐 열기')
   })
 
-  it('연출이 남은 채 실제 2단계가 모두 끝났으면 카드는 남고 두 행이 모두 체크 표시다', () => {
+  it('연출이 남은 채 실제 2단계가 모두 끝났으면 카드는 남고 두 행이 모두 «마쳤어요»다', () => {
     const html = render(demo(2, 'pickup', realView({ steps: { sync: true, lockedOpened: true } })))
     expect(html).toContain(d.onboardingQuest.steps.pickup.title)
     const items = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0])
     expect(items).toHaveLength(2)
     for (const item of items) {
-      expect(item).toContain('text-link') // 체크 아이콘(--link)
+      expect(item).not.toContain('<svg') // 체크 서클은 없다(티켓 20261112_1628)
       expect(item).toContain('마쳤어요')
     }
   })
@@ -324,9 +324,10 @@ describe('JAM! 시작하기 카드 — 실제 구역이 위로 올라온 카드(
     const html = render(realOnly({ steps: { sync: true } }))
     const items = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0])
     expect(items).toHaveLength(2)
-    // 마친 행: 체크 아이콘 + 한 줄(설명 없음)
+    // 마친 행: 서클 없이 한 줄(설명 없음)
     expect(items[0]).toContain('마쳤어요')
-    expect(items[0]).toContain('text-link')
+    expect(items[0]).not.toContain('<svg')
+    expect(items[0]).not.toContain('rounded-full')
     expect(items[0]).not.toContain('text-muted')
     // 지금 할 차례 행: text-base font-bold + 설명
     expect(items[1]).toContain('지금 할 차례예요')
@@ -342,11 +343,12 @@ describe('JAM! 시작하기 카드 — 실제 구역이 위로 올라온 카드(
     expect(items[1]).not.toContain('text-base font-bold')
   })
 
-  it('아이콘은 aria-hidden이고 행마다 상태가 글자(sr-only)로 붙는다', () => {
+  it('행마다 서클 표시는 없고 상태가 글자(sr-only)로 붙는다', () => {
     const html = render(realOnly({ steps: { sync: true } }))
     const items = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0])
     for (const item of items) {
-      expect(item).toContain('aria-hidden="true"')
+      expect(item).not.toContain('<svg')
+      expect(item).not.toContain('aria-hidden="true"')
       expect(item).toMatch(/<span class="sr-only">, (마쳤어요|지금 할 차례예요|아직이에요)<\/span>/)
     }
   })
