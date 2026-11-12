@@ -23,6 +23,7 @@ const FILES = [
   '(main)/badges/[id]/BadgeShareButton.tsx',
   '(main)/badges/[id]/page.tsx',
   '../components/BadgeHeroSection.tsx', // 티켓 20261112_1629: 서비스 공용 컴포넌트로 src/components/ 로 옮겼다
+  '../../design-system/components/cards/BadgeHeroSection.jsx', // 티켓 20261112_1818: 마크업이 DS로 옮겨가 위 어댑터는 마크업이 없다 — 가드는 DS 파일에 건다
   '(main)/collections/[id]/page.tsx',
   '(main)/collections/[id]/ItemBookHeroSection.tsx',
   '(main)/drops/BadgeDetailSheet.tsx',

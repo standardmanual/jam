@@ -48,3 +48,13 @@ parent: "20261112_1625"
 
 - 결정이 «승격»이면: `BadgeHeroSection`이 DS에 있고 서비스 사용처 5곳이 DS를 import한다. 스토리에 `page`·`sheet`·잠긴 개체·이미지 없음이 있다. `ds-sync-check`, 관련 시험, `scripts/verify.sh`가 통과한다.
 - 결정이 «유지»이면: 주석의 사유를 현재 상태(4곳 공용)에 맞게 갱신하고 닫는다.
+
+## 구현 기록 (2026-11-12, 아현)
+
+- 부류: **연결된 컴포넌트 신규 편입**(21종 → 22종, `ds-connection-scope.md` 갱신). 병존 구현(`src/components/ui/`에 동명 파일) 해당 없음 — 병존 구현을 고치지 않았다.
+- DS 신규: `design-system/components/cards/BadgeHeroSection.{jsx,d.ts,prompt.md,stories.tsx}`, `_ds_manifest.json`(SlotOutline 다음 줄)·`readme.md` 등록. 서비스 import와 색 리터럴 0개. 마크업의 Tailwind 클래스 문자열을 그대로 유지했다(DS 첫 선례; 사유는 prompt.md·스토리 설명에 적었다).
+- 채원 판정 조정: `hasEarned`는 DS props에서 뺐고(어댑터가 기본 이미지 슬롯에 grayscale·opacity-50을 건다), `imagePx`·`imageBox`는 어댑터의 SIZE 표에 남겼다(DS에는 wrapper·card 클래스만).
+- 어댑터 `src/components/BadgeHeroSection.tsx`: 이름·props 그대로, DS를 렌더. 머리 주석을 현재 사실로 고쳤다. 영향 호출부 5곳(`badges/[id]/page.tsx`, `inventory/[itemId]/LockedItemDetail.tsx`, `drops/BadgeDetailSheet.tsx`, `admin/badges/BadgeDetailPreviewFrame.tsx`, `dev-sample/item-badge-serial/page.tsx`)의 코드 변경은 0줄.
+- 시험: `src/components/ui/__tests__/BadgeHeroSection.test.tsx` 추가(7건). `serviceLiteralColors.test.ts` FILES에 DS 파일 추가. 기존 6종(`heroLayout`·`heroTextColor`·`page.locked`·`checkinDetail`·`LockedItemDetail`·`serviceLiteralColors`)은 수정 없이 통과.
+- 문서: `ds-connection-scope.md`, `docs/service/prd/inventory/PRD.md`(체크인 시트 카드 설명).
+- 남은 확인(병합 뒤 메인 트리): `next dev`로 배지 상세·체크인 시트·잠긴 상세를 열어 클라이언트/서버 경계와 Tailwind가 design-system/ 안의 클래스(`gap-4 p-6`, `text-snow`)를 생성하는지 실렌더로 확인, Storybook(:6006)에서 흰 카드·칩·이름·설명 배치를 서비스 화면과 눈으로 대조.

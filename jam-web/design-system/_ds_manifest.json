@@ -138,6 +138,10 @@
       "sourcePath": "components/cards/SlotOutline.jsx"
     },
     {
+      "name": "BadgeHeroSection",
+      "sourcePath": "components/cards/BadgeHeroSection.jsx"
+    },
+    {
       "name": "ListRow",
       "sourcePath": "components/patterns/ListRow.jsx"
     }
