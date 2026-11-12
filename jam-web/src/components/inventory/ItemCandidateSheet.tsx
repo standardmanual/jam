@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
+import Button from '@/components/ui/Button'
+import { SHEET_BUTTON_CLASS } from '@/components/ui/sheetClasses'
 import ItemCandidateRow, { type ItemCandidate } from '@/components/inventory/ItemCandidateRow'
 import type { BadgeRarity } from '@/types/database'
 
@@ -91,14 +93,15 @@ export default function ItemCandidateSheet({
           ))}
         </div>
         {secondaryAction && (
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            fullWidth
             onClick={secondaryAction.onClick}
             disabled={secondaryAction.disabled}
-            className="mt-2 w-full py-2 rounded-full bg-[var(--background-inverse)] text-[var(--snow)] text-xs transition-all disabled:opacity-40"
+            className={`mt-2 ${SHEET_BUTTON_CLASS}`}
           >
             {secondaryAction.label}
-          </button>
+          </Button>
         )}
       </div>
     </BottomSheet>
