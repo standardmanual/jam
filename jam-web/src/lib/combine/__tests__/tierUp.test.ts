@@ -158,6 +158,7 @@ const BOOK_B = 'book-b'
 interface PoolBadge extends IssueBadge {
   name: string
   image_url: string | null
+  description?: string | null
   point_reward: number | null
 }
 
@@ -565,7 +566,7 @@ describe('tierUp — 성공', () => {
       success: true,
       path: 'tier_up',
       materialRarity: 'common',
-      resultBadges: [{ id: 'own-r1', name: '배지 own-r1', rarity: 'rare', imageUrl: null }],
+      resultBadges: [{ id: 'own-r1', name: '배지 own-r1', rarity: 'rare', imageUrl: null, description: null }],
       pointsAwarded: 0,
       resultStatus: 'granted',
     })
@@ -639,12 +640,23 @@ describe('tierUp — 성공', () => {
     // 윗등급 굴림 → 그림이 있는 배지
     const upper = await tierUp(USER, ITEM_IDS, { rand: seq(0.5, 0.0) })
     expect(upper.success && upper.resultBadges).toEqual([
-      { id: 'own-r1', name: '배지 own-r1', rarity: 'rare', imageUrl: 'https://cdn.example/own-r1.png' },
+      { id: 'own-r1', name: '배지 own-r1', rarity: 'rare', imageUrl: 'https://cdn.example/own-r1.png', description: null },
     ])
 
     // 같은 등급 굴림 → 그림이 없는 배지는 null (키가 빠지지 않는다)
     const same = await tierUp(USER, ITEM_IDS, { rand: seq(0.1, 0.0) })
-    expect(same.success && same.resultBadges).toEqual([{ id: 'own-c1', name: '배지 own-c1', rarity: 'common', imageUrl: null }])
+    expect(same.success && same.resultBadges).toEqual([{ id: 'own-c1', name: '배지 own-c1', rarity: 'common', imageUrl: null, description: null }])
+  })
+
+  it('결과 배지에 설명문(description)을 싣는다 — 비었거나 공백뿐이면 null', async () => {
+    const described = badge('own-r1', 'rare', BOOK_OWN, { description: '비 오는 날에도 달렸습니다. 발이 젖어도 괜찮았습니다.' })
+    setPool(BOOKS, [described, badge('own-c1', 'common', BOOK_OWN, { description: '  ' })])
+
+    const upper = await tierUp(USER, ITEM_IDS, { rand: seq(0.5, 0.0) })
+    expect(upper.success && upper.resultBadges[0].description).toBe('비 오는 날에도 달렸습니다. 발이 젖어도 괜찮았습니다.')
+
+    const blank = await tierUp(USER, ITEM_IDS, { rand: seq(0.1, 0.0) })
+    expect(blank.success && blank.resultBadges[0].description).toBeNull()
   })
 
   it('서비스 활동 잼 «믹스 성공»(combine_success)은 새 UUID를 원천 id로 한 번만 준다 — 시도마다 다른 id다', async () => {
@@ -745,7 +757,7 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
   })
 
   it('잠김으로 만든 배지가 나오면 이름·id·그림을 가리고 필요한 양은 싣지 않는다', async () => {
-    const locked = badge('own-c1', 'common', BOOK_OWN, { always_locked: true, image_url: 'https://cdn.example/own-c1.png' })
+    const locked = badge('own-c1', 'common', BOOK_OWN, { always_locked: true, image_url: 'https://cdn.example/own-c1.png', description: '가려야 하는 설명' })
     setPool(BOOKS, [locked, badge('own-r1', 'rare', BOOK_OWN)])
 
     const result = await tierUp(USER, ITEM_IDS, { rand: seq(0.1, 0.0) })
@@ -756,6 +768,7 @@ describe('tierUp — 받지 않은 결과와 잠긴 결과', () => {
       resultBadges: [{ id: '', name: '', rarity: 'common', imageUrl: null, locked: true }],
     })
     expect(result.success && 'unlockRequired' in result.resultBadges[0]).toBe(false)
+    expect(result.success && 'description' in result.resultBadges[0]).toBe(false)
     // 지급은 열린 채 요청한다 — 잠김은 DB가 배지(always_locked)로 정한다
     expect(db.rpcCalls[0].args.p_locked).toBe(false)
   })

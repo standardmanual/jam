@@ -39,6 +39,8 @@ export interface TierUpResultBadge {
   name: string
   rarity?: Rarity | null
   imageUrl?: string | null
+  /** 결과 배지의 설명문. 잠긴 결과와 옛 응답에는 없다 — 없으면 설명 없음으로 처리한다 */
+  description?: string | null
   locked?: boolean
 }
 
