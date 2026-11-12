@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 
 export interface MixerSlotProps {
-  /** empty: 채울 수 있는 슬롯(«+», 테두리 없음) · locked: 후보 미보유(점선·흐린 «+») · filled: 채움(3px 그레이 안쪽 테두리) */
+  /** empty: 채울 수 있는 슬롯(정중앙의 검은 원 안 흰 «+», 테두리 없음) · locked: 후보 미보유(점선·흐린 «+») · filled: 채움(3px 그레이 안쪽 테두리) */
   status?: 'empty' | 'locked' | 'filled';
   /** filled일 때 배지 썸네일 URL */
   imageUrl?: string | null;

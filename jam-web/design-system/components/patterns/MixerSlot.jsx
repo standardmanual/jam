@@ -1,15 +1,46 @@
 import React from 'react';
 
 /**
+ * ActionCircle — 믹서 칸의 «+»·«−» 원. 24px 검은 원(--background-inverse) 안에 흰(--snow) 14px 아이콘, 굵은 선(strokeWidth 4.5, round cap).
+ * 링·그림자·글로우를 얹지 않는다. 눌리는 영역은 호출부가 정한다(filled의 제거 버튼은 40px 박스, empty는 슬롯 전체).
+ * 이 파일 안의 도우미라 export하지 않는다.
+ */
+function ActionCircle({ kind }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: 24,
+        height: 24,
+        borderRadius: 'var(--radius-full)',
+        background: 'var(--background-inverse)',
+        color: 'var(--snow)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round">
+        {kind === 'plus' ? <path d="M12 6v12M6 12h12" /> : <path d="M6 12h12" />}
+      </svg>
+    </span>
+  );
+}
+
+/**
  * MixerSlot — 믹스(크래프팅) 슬롯 카드. 아이템·액티비티·체크인 등 배지 타입 구분 없이
  * 시각적으로 동일하게 그리는 슬롯 UI (티켓 20260917_1655, 폴리시 수정 티켓 20260917_1828).
  *
  * 상태 3가지:
- *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 --foreground «+» 아이콘
- *            (추가 가능함을 나타냄)을 표시한다. 테두리는 없다 — 잠긴 슬롯(점선)과는 «+»의
- *            선명함과 점선 유무로 구분한다(2026-11-11 사용자 지시, 이전에는 그레이 3px 테두리와
- *            아래 화살표, 티켓 20260917_1828·2028). 탭하면 채울 수 있다. 면이 흰색(--card-bg)이라
- *            «+»를 흰색으로 두면 보이지 않는다(1.05:1) — 글자색 --foreground(17.07:1)를 쓴다.
+ *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 정중앙에 검은 원(24px, --background-inverse) 안
+ *            흰 «+»(--snow, 14px, 굵은 선)를 표시한다(추가 가능함을 나타냄, 티켓 20261112_1627 — 캔버스 확정).
+ *            테두리는 없다 — 잠긴 슬롯(점선)과는 검은 원의 선명함과 점선 유무로 구분한다(2026-11-11 사용자 지시,
+ *            이전에는 그레이 3px 테두리와 아래 화살표, 티켓 20260917_1828·2028). 탭하면 채울 수 있다.
+ *            슬롯 전체가 버튼이므로 원은 장식(aria-hidden)이다. 원 규격은 filled의 제거 버튼(−)과 컬렉션 칸의
+ *            «+»(`SlotCircleButton`)와 같다 — 같은 «+»가 두 가지 모양이 되지 않게 `ActionCircle` 하나를 함께 쓴다.
+ *            이전의 `--foreground` 24px 플러스(원 없음)는 걷었다. 면이 흰색(--card-bg)이라 흰 «+»를 원 없이 두면
+ *            보이지 않지만(1.05:1), 검은 원 위의 흰 «+»(--snow on --background-inverse)는 대비가 충분하다.
  *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. '+' 텍스트를 흐리게 표시하고, 사선
  *            패턴 없이 불투명도만으로 empty와 구분한다(티켓 20260917_1828 — 사선 패턴
  *            제거). 탭해도 채울 배지가 없다는 뜻이라 상호작용은 호출부가 막는다(이
@@ -127,36 +158,12 @@ export function MixerSlot({
                 cursor: 'pointer',
               }}
             >
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 'var(--radius-full)',
-                  background: 'var(--background-inverse)',
-                  color: 'var(--snow)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round">
-                  <path d="M6 12h12" />
-                </svg>
-              </span>
+              <ActionCircle kind="minus" />
             </span>
           )}
         </>
       ) : fillable ? (
-        <svg
-          aria-hidden="true"
-          width="24"
-          height="24"
-          viewBox="0 -960 960 960"
-          fill="var(--foreground)"
-        >
-          <path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-        </svg>
+        <ActionCircle kind="plus" />
       ) : (
         <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, opacity: 0.4, color: 'var(--foreground)' }}>
           +
