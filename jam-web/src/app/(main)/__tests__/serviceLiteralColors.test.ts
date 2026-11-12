@@ -22,7 +22,7 @@ const FILES = [
   '(main)/badges/BadgesClient.tsx',
   '(main)/badges/[id]/BadgeShareButton.tsx',
   '(main)/badges/[id]/page.tsx',
-  '(main)/badges/[id]/BadgeHeroSection.tsx',
+  '../components/BadgeHeroSection.tsx', // 티켓 20261112_1629: 서비스 공용 컴포넌트로 src/components/ 로 옮겼다
   '(main)/collections/[id]/page.tsx',
   '(main)/collections/[id]/ItemBookHeroSection.tsx',
   '(main)/drops/BadgeDetailSheet.tsx',
