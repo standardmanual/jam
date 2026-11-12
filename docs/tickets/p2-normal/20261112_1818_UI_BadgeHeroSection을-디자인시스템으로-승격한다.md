@@ -2,7 +2,8 @@
 id: "20261112_1818"
 category: UI
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
+closed: 2026-11-12
 created: 2026-11-12
 parent: "20261112_1625"
 ---
@@ -58,3 +59,19 @@ parent: "20261112_1625"
 - 시험: `src/components/ui/__tests__/BadgeHeroSection.test.tsx` 추가(7건). `serviceLiteralColors.test.ts` FILES에 DS 파일 추가. 기존 6종(`heroLayout`·`heroTextColor`·`page.locked`·`checkinDetail`·`LockedItemDetail`·`serviceLiteralColors`)은 수정 없이 통과.
 - 문서: `ds-connection-scope.md`, `docs/service/prd/inventory/PRD.md`(체크인 시트 카드 설명).
 - 남은 확인(병합 뒤 메인 트리): `next dev`로 배지 상세·체크인 시트·잠긴 상세를 열어 클라이언트/서버 경계와 Tailwind가 design-system/ 안의 클래스(`gap-4 p-6`, `text-snow`)를 생성하는지 실렌더로 확인, Storybook(:6006)에서 흰 카드·칩·이름·설명 배치를 서비스 화면과 눈으로 대조.
+
+
+## 완료 기록
+
+### 구현 내용 요약
+- 사용자 결정(2026-11-12): «슬롯으로 열어 승격». 채원① 판정: MODULAR 확장(신규 DS 컴포넌트 `cards/BadgeHeroSection`), 서비스는 얇은 어댑터. 새 토큰 없음. 마크업의 Tailwind 클래스는 그대로 유지(기존 시험 6종이 클래스 문자열을 단언하므로, DS 첫 선례).
+- 서비스 어댑터 `src/components/BadgeHeroSection.tsx`는 이름·props를 유지해 사용처 5곳의 코드 변경은 0줄이다. 원래 티켓의 «서비스 사본을 지운다»와 달리 어댑터 한 벌이 남는다(BadgeRow·SafeImage·블롭 애니메이션·테마 판정을 DS가 모르게 하려는 결정의 결과).
+- 게이트 WARN(실렌더 미확인)을 카리나가 머지 뒤 메인 트리 `next dev`로 해소: `/dev-sample/item-badge-serial`에서 카드 간격 16px·안쪽 여백 24px·흰 면·반경 16px, 제목 30px 굵게, 설명 16px `#666`·일반 줄바꿈, 바깥 여백 `0 16 20`으로 승격 전 규격과 같았다. Tailwind가 `design-system/` 안의 클래스를 생성함을 확인했다. 콘솔 오류는 HMR 웹소켓뿐이다.
+- 확인하지 못한 항목: Storybook(:6006) 눈 대조, 체크인 시트(`sheet`)·잠긴 상세·배경 애니메이션이 있는 상세의 실렌더(시험은 통과).
+- 후속: 티켓 20261112_1848(Tailwind 의존 정리 검토).
+
+### 실행 지표
+| 실행 | 에이전트 수 | 출력 토큰 | 전체 토큰 | 소요 |
+|---|---|---|---|---|
+| 1818 승격(판정·구현·게이트·디자인 리뷰) | 4 | 62,662 | 309,878 | 약 17분 |
+| 합계 | 4 | 62,662 | 309,878 | 약 17분 |
