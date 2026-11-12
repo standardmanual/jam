@@ -123,6 +123,12 @@ async function titles(items: PointTransactionRow[]): Promise<string[]> {
   return body.items.map((it: { title: string }) => it.title)
 }
 
+async function kinds(items: PointTransactionRow[]): Promise<string[]> {
+  setRows(items)
+  const body = await (await GET(request())).json()
+  return body.items.map((it: { kind: string }) => it.kind)
+}
+
 beforeEach(() => {
   state.authenticated = true
   state.balance = 120
@@ -192,7 +198,7 @@ describe('GET /api/points — 행의 모양', () => {
 
     const { items } = await (await GET(request())).json()
 
-    expect(Object.keys(items[0]).sort()).toEqual(['amount', 'created_at', 'href', 'id', 'note', 'reason', 'title'])
+    expect(Object.keys(items[0]).sort()).toEqual(['amount', 'created_at', 'href', 'id', 'kind', 'note', 'reason', 'title'])
     expect(JSON.stringify(items)).not.toContain(USER_ID)
   })
 
@@ -226,12 +232,21 @@ describe('GET /api/points — 배지 포인트', () => {
     expect(items[0].href).toBe(`/badges/${BADGE_ID}`)
   })
 
-  it('삭제됐거나 못 찾은 배지는 «배지 보상»으로 물러난다', async () => {
+  it('행위 줄(kind)은 «배지 보상»이고 제목과 따로 실린다', async () => {
+    setRows([row({ source_badge_id: BADGE_ID })])
+
+    const { items } = await (await GET(request())).json()
+
+    expect(items[0].kind).toBe(d.points.reasonKindBadgeReward)
+  })
+
+  it('삭제됐거나 못 찾은 배지는 제목이 빈 문자열이고 행위 줄만 남는다', async () => {
     setRows([row({ source_badge_id: GONE_BADGE_ID })])
 
     const { items } = await (await GET(request())).json()
 
-    expect(items[0].title).toBe(d.points.reasonKindBadgeReward)
+    expect(items[0].title).toBe('')
+    expect(items[0].kind).toBe(d.points.reasonKindBadgeReward)
   })
 
   it('이름 조회는 소프트 삭제된 배지를 거른다(deleted_at IS NULL) — 이름을 노출하지 않는다', async () => {
@@ -244,12 +259,13 @@ describe('GET /api/points — 배지 포인트', () => {
     expect(badgeQuery?.select).toBe('id, name')
   })
 
-  it('원천 배지가 없는 배지 포인트 행은 일반 제목이고 링크가 없다', async () => {
+  it('원천 배지가 없는 배지 포인트 행은 제목이 비어 있고 링크가 없다', async () => {
     setRows([row({ source_badge_id: null })])
 
     const { items } = await (await GET(request())).json()
 
-    expect(items[0].title).toBe(d.points.reasonKindBadgeReward)
+    expect(items[0].title).toBe('')
+    expect(items[0].kind).toBe(d.points.reasonKindBadgeReward)
     expect(items[0].href).toBeNull()
   })
 
@@ -274,12 +290,13 @@ describe('GET /api/points — 미션 포인트', () => {
     expect(items[0].href).toBe(`/missions/${MISSION_ID}`)
   })
 
-  it('못 찾은 미션은 «미션 보상»으로 물러난다', async () => {
+  it('못 찾은 미션은 제목이 빈 문자열이고 행위 줄은 «미션 보상»이다', async () => {
     setRows([row({ reason: 'mission_point_reward', source_mission_id: GONE_MISSION_ID })])
 
     const { items } = await (await GET(request())).json()
 
-    expect(items[0].title).toBe(d.points.reasonKindMissionReward)
+    expect(items[0].title).toBe('')
+    expect(items[0].kind).toBe(d.points.reasonKindMissionReward)
   })
 
   it('배지 행만 있으면 미션을 조회하지 않고 미션 행만 있으면 배지를 조회하지 않는다', async () => {
@@ -309,12 +326,19 @@ describe('GET /api/points — 어드민 조정', () => {
     expect(await titles([row({ reason: 'admin_deduct', admin_reason_label: 'abuse_reclaim' })])).toEqual(['이용 정책 위반'])
   })
 
-  it('라벨이 없거나 «기타»거나 모르는 코드면 «포인트 조정»이다', async () => {
+  it('행위 줄은 사유 라벨과 상관없이 «포인트 조정»이다', async () => {
     for (const reason of ['admin_grant', 'admin_deduct'] as const) {
-      expect(await titles([row({ reason, admin_reason_label: null })])).toEqual([d.points.reasonKindAdminAdjustment])
-      expect(await titles([row({ reason, admin_reason_label: 'other' })])).toEqual([d.points.reasonKindAdminAdjustment])
+      expect(await kinds([row({ reason, admin_reason_label: 'cs_compensation' })])).toEqual([d.points.reasonKindAdminAdjustment])
+      expect(await kinds([row({ reason, admin_reason_label: null })])).toEqual([d.points.reasonKindAdminAdjustment])
+    }
+  })
+
+  it('라벨이 없거나 «기타»거나 모르는 코드면 제목이 빈 문자열이다(행위 줄 «포인트 조정»만 남는다)', async () => {
+    for (const reason of ['admin_grant', 'admin_deduct'] as const) {
+      expect(await titles([row({ reason, admin_reason_label: null })])).toEqual([''])
+      expect(await titles([row({ reason, admin_reason_label: 'other' })])).toEqual([''])
       // 모르는 코드가 화면에 새지 않는다
-      expect(await titles([row({ reason, admin_reason_label: 'legacy_unknown_code' })])).toEqual([d.points.reasonKindAdminAdjustment])
+      expect(await titles([row({ reason, admin_reason_label: 'legacy_unknown_code' })])).toEqual([''])
     }
   })
 
@@ -358,13 +382,13 @@ describe('GET /api/points — 어드민 조정', () => {
   it('사유 코드별 유저용 라벨이 문구 사전의 값과 같다(어드민 라벨 «…회수»가 아니다)', async () => {
     for (const option of ADMIN_REASONS) {
       const [title] = await titles([row({ reason: 'admin_deduct', admin_reason_label: option.value })])
-      expect(title).toBe(REASON_BY_CODE[option.value] ?? d.points.reasonKindAdminAdjustment)
+      expect(title).toBe(REASON_BY_CODE[option.value] ?? '')
     }
   })
 })
 
 describe('GET /api/points — 믹스·컬렉션 보상과 전체 사유', () => {
-  it('믹스·컬렉션 보상은 일반 제목이고 링크가 없다', async () => {
+  it('믹스·컬렉션 보상은 제목이 비어 있고 행위 줄만 있으며 링크가 없다', async () => {
     const items = [
       row({ id: 'a', reason: 'combine_fail_reward' }),
       row({ id: 'b', reason: 'combine_recipe_reward' }),
@@ -374,7 +398,8 @@ describe('GET /api/points — 믹스·컬렉션 보상과 전체 사유', () => 
 
     const body = await (await GET(request())).json()
 
-    expect(body.items.map((it: { title: string }) => it.title)).toEqual([
+    expect(body.items.map((it: { title: string }) => it.title)).toEqual(['', '', ''])
+    expect(body.items.map((it: { kind: string }) => it.kind)).toEqual([
       d.points.reasonKindCombineFailReward,
       d.points.reasonKindCombineRecipeReward,
       d.points.reasonKindItemBookCompletionReward,
@@ -382,7 +407,7 @@ describe('GET /api/points — 믹스·컬렉션 보상과 전체 사유', () => 
     expect(body.items.every((it: { href: string | null }) => it.href === null)).toBe(true)
   })
 
-  it('PointReason 일곱 가지 모두 제목이 있고 어드민 용어가 없다', async () => {
+  it('PointReason 일곱 가지 모두 행위 줄이 있고 어드민 용어가 없다', async () => {
     const reasons: PointReason[] = [
       'badge_point_reward',
       'mission_point_reward',
@@ -393,12 +418,12 @@ describe('GET /api/points — 믹스·컬렉션 보상과 전체 사유', () => 
       'item_book_completion_point_reward',
     ]
 
-    const all = await titles(reasons.map((reason, i) => row({ id: `tx-${i}`, reason })))
+    const all = await kinds(reasons.map((reason, i) => row({ id: `tx-${i}`, reason })))
 
     expect(all).toHaveLength(reasons.length)
-    for (const title of all) {
-      expect(title).toBeTruthy()
-      for (const term of FORBIDDEN_TERMS) expect(title).not.toContain(term)
+    for (const kind of all) {
+      expect(kind).toBeTruthy()
+      for (const term of FORBIDDEN_TERMS) expect(kind).not.toContain(term)
     }
   })
 })

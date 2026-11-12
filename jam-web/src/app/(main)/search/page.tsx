@@ -105,7 +105,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <EmptyState
             icon={<SearchIcon className="w-8 h-8" />}
             title={d.search.promptTitle}
-            description={d.search.promptBody}
           />
         ) : results.length === 0 ? (
           <EmptyState

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import LocalDate, { formatDateTimeStamp } from '../LocalDate'
+import LocalDate, { formatDateTimeMinute, formatDateTimeStamp } from '../LocalDate'
 
 describe('formatDateTimeStamp: 배지 상세의 일시 형식', () => {
   it('KST 12시간제로 «2026-12-22 AM 02:22:33» 모양을 만든다', () => {
@@ -33,5 +33,22 @@ describe('formatDateTimeStamp: 배지 상세의 일시 형식', () => {
 
   it('stampBreak만 있고 stamp가 없으면 기존 경로 그대로다', () => {
     expect(renderToStaticMarkup(<LocalDate iso="2026-12-21T17:22:33Z" stampBreak />)).not.toContain('nowrap')
+  })
+})
+
+describe('formatDateTimeMinute: 포인트 내역의 일시 형식(초 없음)', () => {
+  it('KST 12시간제로 «2026-11-11 AM 10:29» 모양을 만든다', () => {
+    // 2026-11-11 01:29:45 UTC = 2026-11-11 10:29:45 KST
+    expect(formatDateTimeMinute('2026-11-11T01:29:45Z')).toBe('2026-11-11 AM 10:29')
+  })
+
+  it('오후와 자정·정오 표기는 초 있는 형식과 같다', () => {
+    expect(formatDateTimeMinute('2026-12-22T06:05:09Z')).toBe('2026-12-22 PM 03:05')
+    expect(formatDateTimeMinute('2026-12-21T15:00:00Z')).toBe('2026-12-22 AM 12:00')
+  })
+
+  it('값이 없으면 빈 문자열이다', () => {
+    expect(formatDateTimeMinute(null)).toBe('')
+    expect(formatDateTimeMinute(undefined)).toBe('')
   })
 })

@@ -3,7 +3,8 @@ import type { SVGProps } from 'react'
 /**
  * SuperHi Plus 라인 아이콘 세트
  *
- * - 이모지 대체용. stroke 1.5px, 24 viewBox, `currentColor` 고정.
+ * - 이모지 대체용. stroke 1.5px, 24 viewBox, `currentColor` 고정. 예외는 CoinIcon 하나(굵은 P)다 —
+ *   다른 아이콘까지 굵게 만들지 않는다.
  * - fill/색상은 부모의 text-* 로만 제어합니다(제3의 컬러 도입 금지).
  * - 크기는 className으로 지정하세요. 기본 w-6 h-6.
  */
@@ -152,12 +153,18 @@ export function ActivityIcon(props: IconProps) {
   )
 }
 
-/** 포인트 — 원 안에 P(2026-11-10 사용자 지시, 이전에는 S) */
+/**
+ * 포인트 — 서클 없이 P만, 크고 굵게(티켓 20261112_1628). 색은 currentColor 그대로다.
+ * 중심(12,12) 기준 2.08배 확대 + 선 2.1 → 유효 선 굵기 약 4.4/24. Svg 래퍼의 stroke 1.5는 건드리지 않는다.
+ */
 export function CoinIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      <path d="M9.7 16V8.2h2.6a2.3 2.3 0 010 4.6H9.7" />
+      <path
+        d="M9.7 16V8.2h2.6a2.3 2.3 0 010 4.6H9.7"
+        strokeWidth={2.1}
+        transform="translate(12 12) scale(2.08) translate(-12 -12)"
+      />
     </Svg>
   )
 }

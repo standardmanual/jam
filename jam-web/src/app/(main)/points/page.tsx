@@ -2,6 +2,7 @@
 
 import { Card } from '@ds/components/cards/Card'
 import TopNav from '@/components/ui/TopNav'
+import { ListRowChip } from '@/components/ui/ListRow'
 import { PointHistoryList, usePointHistory } from '@/components/points/PointHistoryList'
 import { useDigitPopIn } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -23,7 +24,9 @@ export default function PointsPage() {
       <div className="px-4 pt-4 pb-6 flex flex-col gap-5">
         {/* 잔액 카드 */}
         <Card className="text-center">
-          <p className="text-xs uppercase text-muted mb-2">{d.points.balanceLabel}</p>
+          <p className="mb-1 flex justify-center">
+            <ListRowChip tone="done">{d.points.balanceLabel}</ListRowChip>
+          </p>
           <p
             className="text-5xl font-bold text-point-text"
             aria-label={balanceDigits === null ? undefined : t(d.points.balanceAria, { amount: balanceDigits })}

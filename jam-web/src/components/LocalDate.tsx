@@ -71,12 +71,8 @@ export function formatKoreanDateTime(iso: string | null | undefined, korean: Kor
   return `${datePart} ${formatKoreanTime(date)}`
 }
 
-/**
- * ISO 문자열을 '2026-12-22 AM 02:22:33'(KST, 12시간제, 시·분·초 두 자리) 형식으로 변환한다.
- * 배지 상세의 «획득 일시»·«만료 일시»·«활동 일시»가 쓴다(2026-11-09 결정).
- */
-export function formatDateTimeStamp(iso: string | null | undefined): string {
-  if (!iso) return ''
+/** `YYYY-MM-DD AM hh:mm[:ss]` 조립 — 초 유무만 다른 두 변형이 한 포매터를 쓴다. */
+function formatStamp(iso: string, withSeconds: boolean): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Seoul',
     year: 'numeric',
@@ -84,11 +80,30 @@ export function formatDateTimeStamp(iso: string | null | undefined): string {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
+    ...(withSeconds ? { second: '2-digit' as const } : null),
     hourCycle: 'h12',
   }).formatToParts(new Date(iso))
   const pick = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
-  return `${pick('year')}-${pick('month')}-${pick('day')} ${pick('dayPeriod')} ${pick('hour')}:${pick('minute')}:${pick('second')}`
+  const clock = `${pick('hour')}:${pick('minute')}${withSeconds ? `:${pick('second')}` : ''}`
+  return `${pick('year')}-${pick('month')}-${pick('day')} ${pick('dayPeriod')} ${clock}`
+}
+
+/**
+ * ISO 문자열을 '2026-12-22 AM 02:22:33'(KST, 12시간제, 시·분·초 두 자리) 형식으로 변환한다.
+ * 배지 상세의 «획득 일시»·«만료 일시»·«활동 일시»가 쓴다(2026-11-09 결정).
+ */
+export function formatDateTimeStamp(iso: string | null | undefined): string {
+  if (!iso) return ''
+  return formatStamp(iso, true)
+}
+
+/**
+ * ISO 문자열을 '2026-11-11 AM 10:29'(KST, 12시간제, 초 없음) 형식으로 변환한다.
+ * 포인트 내역 행의 날짜시각이 쓴다(티켓 20261112_1628). 초만 `formatDateTimeStamp`와 다르다.
+ */
+export function formatDateTimeMinute(iso: string | null | undefined): string {
+  if (!iso) return ''
+  return formatStamp(iso, false)
 }
 
 /**

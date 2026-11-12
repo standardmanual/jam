@@ -655,12 +655,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
       {hideHeader ? (
         <h2 className="sr-only">{title}</h2>
       ) : (
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl text-foreground">{title}</h2>
-          <span className="text-base text-muted">
-            {t(d.common.countItems, { count: filtered.length })}
-          </span>
-        </div>
+        <h2 className="text-2xl text-foreground mb-4">{title}</h2>
       )}
       {/* 필터 탭 — Tabs sliding (16-tabs-sliding.md) */}
       <div className="mb-4">

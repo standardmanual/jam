@@ -11,7 +11,9 @@ export interface PointHistoryItem {
   amount: number
   created_at: string
   reason: PointTransactionRow['reason']
-  /** 사람이 읽는 사유/제목 (배지·미션 이름 또는 어드민 사유 라벨) */
+  /** 행위 라벨(«배지 보상»·«미션 보상»·«믹스 보상»·«포인트 조정» 등, `REASON_KIND`) */
+  kind: string
+  /** 대상 이름(배지·미션 이름, 관리자 조정은 유저용 사유 라벨). 대상이 없거나 이름을 못 찾으면 빈 문자열 */
   title: string
   /** admin_reason_label='other'일 때 자유 입력 노트 */
   note: string | null
@@ -24,7 +26,7 @@ const REASON_KIND: Record<PointTransactionRow['reason'], string> = {
   mission_point_reward: d.points.reasonKindMissionReward,
   // 유저 노출 화면이므로 어드민 원장 용어(「지급」·「회수」)를 쓰지 않는다 —
   // UX_WRITING_GUIDELINE §1.3. userFacingReasonLabel()이 구체적인 사유를 찾으면
-  // 아래 title 계산에서 이 값을 덮어쓴다(admin_grant/admin_deduct 분기 참고).
+  // 아래 title 계산에서 사유 라벨이 있으면 그 라벨이 title로 따로 실린다(admin_grant/admin_deduct 분기 참고).
   admin_grant: d.points.reasonKindAdminAdjustment,
   admin_deduct: d.points.reasonKindAdminAdjustment,
   combine_fail_reward: d.points.reasonKindCombineFailReward,
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest) {
   const missionIds = [...new Set(page.items.filter((t) => t.source_mission_id).map((t) => t.source_mission_id as string))]
 
   // 소프트 삭제된 배지(badges.deleted_at)는 이름을 노출하지 않는다(20260824_007) — 매치가
-  // 안 되면 아래 title 계산에서 REASON_KIND의 일반 사유 라벨("배지 보상")로 자동 대체된다.
+  // 안 되면 아래 title 계산에서 빈 문자열이 되고, 화면은 행위 줄(kind)만 보여준다.
   const [badgesRes, missionsRes] = await Promise.all([
     badgeIds.length > 0
       ? service.from('badges').select('id, name').in('id', badgeIds).is('deleted_at', null)
@@ -66,19 +68,19 @@ export async function GET(req: NextRequest) {
   const missionTitle = new Map(((missionsRes.data ?? []) as { id: string; title: string }[]).map((m) => [m.id, m.title]))
 
   const items: PointHistoryItem[] = page.items.map((t) => {
-    let title = REASON_KIND[t.reason]
+    let title = ''
     let href: string | null = null
 
     if (t.reason === 'badge_point_reward' && t.source_badge_id) {
-      title = badgeName.get(t.source_badge_id) ?? d.points.reasonKindBadgeReward
+      title = badgeName.get(t.source_badge_id) ?? ''
       href = `/badges/${t.source_badge_id}`
     } else if (t.reason === 'mission_point_reward' && t.source_mission_id) {
-      title = missionTitle.get(t.source_mission_id) ?? d.points.reasonKindMissionReward
+      title = missionTitle.get(t.source_mission_id) ?? ''
       href = `/missions/${t.source_mission_id}`
     } else if (t.reason === 'admin_grant' || t.reason === 'admin_deduct') {
       // 유저 노출 화면이므로 어드민 원장 라벨(「지급」·「회수」 포함)을 쓰지 않는다 —
-      // UX_WRITING_GUIDELINE §1.3. 라벨이 없으면 기존 기본 제목(중립 표현)을 유지한다.
-      title = userFacingReasonLabel(t.admin_reason_label) ?? title
+      // UX_WRITING_GUIDELINE §1.3. 라벨이 없으면 빈 문자열이고 행위 줄(kind)만 남는다.
+      title = userFacingReasonLabel(t.admin_reason_label) ?? ''
     }
 
     return {
@@ -86,6 +88,7 @@ export async function GET(req: NextRequest) {
       amount: t.amount,
       created_at: t.created_at,
       reason: t.reason,
+      kind: REASON_KIND[t.reason],
       title,
       note: t.admin_reason_label === 'other' ? t.admin_reason_note : null,
       href,
