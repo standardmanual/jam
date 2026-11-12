@@ -631,13 +631,17 @@ export default function MissionDetailClient({
           </InfoCard>
         )}
 
-        {/* 상황 보기 버튼 — 검정 면·흰 글자(2026-11-11 사용자 지시, 티켓 20261111_2157). 참가자만, 랭킹형은 «랭킹 보기»·달성형은 «달성 현황 보기»(티켓 20261111_2049) */}
+        {/* 상황 보기 버튼 — 더보기와 같은 회색 알약(Button outline, 폭 전체·52px)(티켓 20261112_1626, 캔버스 확정). 참가자만, 랭킹형은 «랭킹 보기»·달성형은 «달성 현황 보기»(티켓 20261111_2049).
+            Link 안에 Button을 넣으면 a 안 button이라 유효하지 않은 HTML이고 키보드 포커스가 두 번 잡혀서, Button의 onClick에서 router.push로 이동한다.
+            대가: 링크 의미(새 탭 열기·주소 복사)를 잃는다 — 정적 화면 이동이라 감수했다(티켓 완료 기록에 근거). */}
         {(participating || isCompleted) && (
-          <Link href={`/missions/${mission.id}/status`}>
-            <div className="bg-foreground rounded-2xl p-4 text-center text-base text-snow jam-press">
-              {mission.status_display_type === 'achievement' ? d.missions.statusViewAchievementButton : d.missions.statusViewRankingButton}
-            </div>
-          </Link>
+          <Button
+            variant="outline"
+            fullWidth
+            onClick={() => router.push(`/missions/${mission.id}/status`)}
+          >
+            {mission.status_display_type === 'achievement' ? d.missions.statusViewAchievementButton : d.missions.statusViewRankingButton}
+          </Button>
         )}
 
         {/* ── CTA 버튼 ── */}
