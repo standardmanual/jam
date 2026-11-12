@@ -102,7 +102,7 @@ export const Unearned: Story = {
 };
 
 export const Undiscovered: Story = {
-  name: '미발견 (회색 실루엣 + 이름)',
+  name: '비어 있음 (이미지 없이 윤곽 점선 + 이름)',
   args: {
     name: '한강 마스터',
     imageUrl: SAMPLE_IMAGES.epic,
@@ -111,14 +111,32 @@ export const Undiscovered: Story = {
     earned: false,
   },
   play: async ({ canvasElement }) => {
-    // earned=false가 함께 와도 실루엣이 이긴다(서비스 호출부의 실제 조합). 흐림 없음, 이름 공개, 등급 칩 없음
-    const img = canvasElement.querySelector('img')!;
-    expect(img.style.filter).toContain('brightness(0)');
-    expect(img.style.filter).not.toContain('grayscale');
-    expect(img.style.opacity).toBe('');
-    expect(img.alt).toBe('한강 마스터');
+    // 이미지를 그리지 않고 점선 SVG만 둔다(티켓 20261112_1627). earned=false가 함께 와도 점선이 이긴다. 이름 공개, 등급 칩 없음
+    expect(canvasElement.querySelector('img')).toBeNull();
+    expect(canvasElement.querySelector('svg[data-outline-state]')).toBeTruthy();
     expect(canvasElement.textContent).toContain('한강 마스터');
     expect(canvasElement.textContent).not.toContain('???');
+  },
+};
+
+/** 지금 넣을 수 있는 칸 — 회색 반투명 이미지 위에 같은 점선이 불투명으로 겹친다(점선은 이미지의 형제). */
+export const Outlined: Story = {
+  name: '넣을 수 있음 (회색 이미지 + 점선)',
+  args: {
+    name: '한강 마스터',
+    imageUrl: SAMPLE_IMAGES.epic,
+    rarity: 'epic',
+    earned: false,
+    outlined: true,
+  },
+  play: async ({ canvasElement }) => {
+    const img = canvasElement.querySelector('img')!;
+    const svg = canvasElement.querySelector('svg[data-outline-state]')!;
+    expect(img.style.filter).toBe('grayscale(1)');
+    expect(img.style.opacity).toBe('0.4');
+    // 점선은 이미지 요소의 형제라 이미지 opacity의 영향을 받지 않는다
+    expect(img.contains(svg)).toBe(false);
+    expect((svg as SVGElement).style.opacity).toBe('');
   },
 };
 
@@ -244,17 +262,17 @@ export const Interactive: Story = {
 };
 
 /**
- * 미획득 썸네일 — 원본 + grayscale(1) (2026-09-06 확정), 미발견만 실루엣 (티켓 20261102_1834).
+ * 미획득 썸네일 — 원본 + grayscale(1) (2026-09-06 확정), 미발견만 윤곽 점선 (티켓 20261102_1834, 20261112_1627).
  *
  * 미획득 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
  * 20260905_0036이 한때 실루엣으로 바꿨다가 2026-09-06 사용자 확정으로 되돌렸다 —
  * 외형을 감추는 것보다 어떤 배지인지 알아볼 수 있는 쪽을 택한다.
- * 2026-11-02 사용자 지시로 미발견(`undiscovered`)만 예외가 됐다: 배지마다 자기 이미지의 윤곽을
- * `brightness(0) invert(0.64)`로 회색 한 가지 색에 칠하고, 이름은 가리지 않는다.
- * 되돌린 것이 아니라 «미발견만 실루엣, `earned=false`는 원본 그레이 유지»다.
+ * 2026-11-02 사용자 지시로 미발견(`undiscovered`)만 예외가 됐다. 2026-11-12(티켓 20261112_1627)부터는 회색 채움 대신
+ * 배지마다 자기 이미지의 알파 윤곽을 따라가는 점선만 그리고 이름은 가리지 않는다.
+ * 되돌린 것이 아니라 «미발견만 이미지 없이 윤곽 점선, `earned=false`는 원본 그레이 유지»다.
  */
 export const GrayscaleWhenHidden: Story = {
-  name: '미획득은 그레이, 미발견은 회색 실루엣',
+  name: '미획득은 그레이, 미발견은 윤곽 점선',
   render: () => (
     <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
       <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned />
@@ -263,16 +281,12 @@ export const GrayscaleWhenHidden: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    // 세 장 모두 원본 이미지 한 장을 쓴다. 미획득은 grayscale, 미발견은 실루엣 필터(brightness(0) 포함)이고 흐림은 없다.
-    // 미발견은 earned=false와 함께 와도 실루엣이 이긴다.
+    // 미획득은 원본 이미지 + grayscale이다. 미발견은 이미지를 그리지 않고 점선 SVG만 둔다(earned=false가 함께 와도 점선이 이긴다).
     const imgs = canvasElement.querySelector('[data-testid="cards"]')!.querySelectorAll('img');
-    expect(imgs.length).toBe(3);
+    expect(imgs.length).toBe(2);
     expect(imgs[0].style.filter).toBe('none');
     expect(imgs[1].style.filter).toBe('grayscale(1)');
-    expect(imgs[2].style.filter).toContain('brightness(0)');
-    expect(imgs[2].style.filter).not.toContain('grayscale');
-    expect(imgs[2].style.opacity).toBe('');
-    expect(imgs[2].alt).toBe('동네 산책러');
+    expect(canvasElement.querySelectorAll('svg[data-outline-state]').length).toBe(1);
   },
 };
 

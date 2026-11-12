@@ -17,6 +17,9 @@ describe('RecipeSlotCard', () => {
     expect(html).toContain('grayscale opacity-40')
     expect(html).not.toContain('brightness-0')
     expect(html).toContain('text-muted opacity-60')
+    // 회색 이미지 위에 윤곽 점선이 겹친다(이미지 래퍼의 형제, 추적 실패 때 사각형 대체는 없다 — 티켓 20261112_1627)
+    expect(html).toContain('data-outline-state="loading"')
+    expect(html).toContain('class="absolute inset-0 h-full w-full"')
     // 버튼은 «+» 하나뿐이다(카드 본체는 비대화형 div)
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(html).not.toContain('active:scale-95')
@@ -41,9 +44,30 @@ describe('RecipeSlotCard', () => {
     expect(dense).toContain('ring-inset')
   })
 
-  it('unowned: 썸네일은 회색 실루엣(brightness-0 invert-[.64]), 이름은 muted이고 버튼이 없다 (컬렉션 상세의 미발견 칸과 같다, 2026-11-11)', () => {
+  it('addable: «+»는 카드 모서리가 아니라 이미지 상자 정중앙의 틀 안에 있고, 4열(dense)이면 틀 여백이 줄어든다', () => {
+    const html = render()
+    expect(html).toContain('pointer-events-none absolute z-10 inset-x-3 top-3')
+    expect(html).toContain('relative mx-auto flex aspect-square w-full max-w-[90px] items-center justify-center')
+    expect(html).toContain('pointer-events-auto relative')
+    expect(html).not.toContain('right-1.5 top-1.5')
+    const dense = render({ dense: true })
+    expect(dense).toContain('inset-x-2 top-2')
+    expect(dense).not.toContain('inset-x-3 top-3')
+  })
+
+  it('filled: «−»는 기존대로 우상단 안쪽이고 틀이 없다', () => {
+    const html = render({ status: 'filled' })
+    expect(html).toContain('absolute right-1.5 top-1.5')
+    expect(html).not.toContain('pointer-events-none')
+    expect(html).not.toContain('data-outline-state')
+  })
+
+  it('unowned: 이미지 없이 윤곽 점선만(이미지 주소가 없으면 사각형 점선), 이름은 muted이고 버튼이 없다 (컬렉션 상세의 미발견 칸과 같다, 2026-11-11)', () => {
     const html = render({ status: 'unowned' })
-    expect(html).toContain('brightness-0 invert-[.64]')
+    expect(html).not.toContain('<img')
+    expect(html).toContain('data-outline-state="loading"')
+    expect(render({ status: 'unowned', imageUrl: null })).toContain('data-outline-state="box"')
+    expect(html).not.toContain('brightness-0')
     expect(html).not.toContain('grayscale opacity-40')
     expect(html).toContain('text-muted opacity-60')
     expect(html).not.toContain('<button')

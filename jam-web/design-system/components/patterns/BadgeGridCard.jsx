@@ -2,13 +2,11 @@ import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 import { LockedTile } from '../cards/LockedTile.jsx';
+import { SlotOutline } from '../cards/SlotOutline.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
 /** 잠긴 카드의 이름 줄 — 서비스 `d.lockedItem.card.name`과 같은 문구다(이 DS 파일은 서비스 사전을 가져오지 않는다) */
 const LOCKED_NAME = '잠긴 아이템 배지';
-
-/** 미발견 실루엣 필터 — 검정으로 만든 뒤 중립 400 단계(약 #a3a3a3)로 올린다. 필터는 토큰을 못 쓴다 */
-const UNDISCOVERED_SILHOUETTE_FILTER = 'brightness(0) invert(0.64)';
 
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
@@ -25,7 +23,8 @@ const UNDISCOVERED_SILHOUETTE_FILTER = 'brightness(0) invert(0.64)';
  *
  * 상태:
  *   earned: false  → 썸네일을 원본 + grayscale(1)로 (미획득)
- *   undiscovered   → 썸네일을 회색 실루엣으로, 이름은 그대로 (아이템북 미발견, 티켓 20261102_1834)
+ *   undiscovered   → 이미지 없이 이미지 윤곽의 점선(`SlotOutline`)만, 이름은 그대로 (아이템북 후보 없는 칸, 티켓 20261112_1627)
+ *   outlined       → 이미지(grayscale + 반투명) 위에 같은 점선을 불투명하게 겹친다 (지금 넣을 수 있는 칸, 티켓 20261112_1627)
  *   selected       → 블랙 2px 링(box-shadow, 레이아웃을 밀지 않음). 면은 그대로 --card-bg (선택 모드)
  *
  * 미획득 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
@@ -35,11 +34,15 @@ const UNDISCOVERED_SILHOUETTE_FILTER = 'brightness(0) invert(0.64)';
  * 있는 쪽을 택한다(v5는 조건도 전면 공개한다).
  *
  * 미발견(`undiscovered`)만 예외다 (티켓 20261102_1834, 2026-11-02 사용자 지시). 되돌린 것이 아니라
- * «미발견만 실루엣 예외, `earned=false`는 원본 그레이 유지»다. 폐기됐던 공통 SVG와 달리 배지마다 **자기 이미지의
- * 가장 바깥 윤곽**을 딴다: 원본 `<img>` 하나에 `brightness(0) invert(0.64)`를 걸어 불투명 픽셀을 한 가지 회색으로 칠한다
- * (알파는 그대로). 0.64는 중립 400 단계와 같은 밝기다 — 필터는 CSS 변수 색을 받지 못해 숫자로 적는다.
+ * «미발견만 이미지를 걷고 윤곽만, `earned=false`는 원본 그레이 유지»다. 티켓 20261112_1627에서 이전의 회색 실루엣 채움
+ * (`brightness(0) invert(0.64)`)을 걷고 **자기 이미지의 알파 윤곽을 따라가는 점선**으로 바꿨다(2026-11-12 사용자 확정).
+ * 점선은 `SlotOutline`이 그린다: 색 `--muted` 불투명, 2px, 선 3 · 간격 4. 추적에 실패하거나 이미지 주소가 없으면 둥근 사각형 점선이다.
  * 이름은 가리지 않고 그대로 보인다(수집 목표가 읽히도록). 판정 순서는 locked > undiscovered > !earned다
  * (서비스 호출부는 미발견 칸에 `earned=false`도 함께 넘긴다).
+ *
+ * `outlined`(새 prop)는 지금 넣을 수 있는 칸이다. 이미지는 `earned=false`처럼 grayscale + 반투명(opacity 0.4)이고
+ * 그 위에 같은 점선을 **이미지 요소의 형제**로 겹친다(이미지 opacity의 영향을 받지 않아 점선이 불투명 100%).
+ * 추적에 실패하면 이미지가 보이므로 사각형 대체 없이 그리지 않는다.
  *
  * 잠김 (`locked`, 티켓 20261018_0054 2회) — 열기 전의 아이템 배지. 같은 면 위에서 썸네일 자리에 `LockedTile`,
  *   이름 줄은 가린 이름(«잠긴 아이템 배지»), 등급 칩 아래에 `ProgressBar outlined` 한 줄(높이 6, 숫자 없음)이 붙는다.
@@ -68,6 +71,7 @@ export function BadgeGridCard({
   onNavigate,
   earned = true,
   undiscovered = false,
+  outlined = false,
   selected = false,
   highlighted = false,
   locked = false,
@@ -76,8 +80,10 @@ export function BadgeGridCard({
   style = {},
   children,
 }) {
-  // 판정 순서: undiscovered(실루엣) > !earned(원본 + grayscale). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 실루엣이 사라진다
-  const thumbFilter = undiscovered ? UNDISCOVERED_SILHOUETTE_FILTER : !earned ? 'grayscale(1)' : 'none';
+  // 판정 순서: undiscovered(이미지 없이 점선만) > !earned(원본 + grayscale). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 점선이 사라진다
+  const thumbFilter = !earned ? 'grayscale(1)' : 'none';
+  // 넣을 수 있는 칸의 이미지는 서비스와 같이 반투명(opacity-40). 점선은 이 <img>의 형제라 영향을 받지 않는다
+  const thumbOpacity = outlined && !earned ? 0.4 : undefined;
   const interactive = !!(href || onClick);
 
   const containerStyle = {
@@ -118,10 +124,13 @@ export function BadgeGridCard({
   const content = (
     <>
       {/* 카운터 필의 기준점 — 썸네일 자체가 아니라 래퍼에 건다(필이 grayscale을 먹지 않게) */}
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 90 }}>
         {locked ? (
           <LockedTile size={90} />
+        ) : undiscovered ? (
+          <SlotOutline src={imageUrl} fallback="box" />
         ) : (
+        <>
         <div style={thumbnailStyle}>
           {imageUrl ? (
             <img
@@ -130,6 +139,7 @@ export function BadgeGridCard({
               style={{
                 width: '100%', height: '100%', objectFit: 'contain', padding: 4,
                 filter: thumbFilter,
+                opacity: thumbOpacity,
               }}
             />
           ) : (
@@ -139,6 +149,8 @@ export function BadgeGridCard({
             </svg>
           )}
         </div>
+        {outlined && <SlotOutline src={imageUrl} fallback="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />}
+        </>
         )}
         {showCount && (
           <span

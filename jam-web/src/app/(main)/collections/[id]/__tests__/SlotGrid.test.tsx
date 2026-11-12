@@ -1,7 +1,7 @@
 /**
  * 컬렉션 격자의 칸 표시 (티켓 20261028_1408)
  *
- * 등급이 정해진 칸은 그 등급의 칩을, 등급이 없는 칸(`tierUndecided`)은 칩을 그리지 않는다. 미보유 칸은 회색 실루엣·실제 이름·흐림 없음·링크 없음이고
+ * 등급이 정해진 칸은 그 등급의 칩을, 등급이 없는 칸(`tierUndecided`)은 칩을 그리지 않는다. 미보유 칸은 이미지 없는 윤곽 점선·실제 이름·흐림 없음·링크 없음이고
  * 버튼이 없다. 저장소에 jsdom·testing-library가 없어(vitest.config.ts `environment: 'node'`) 서버 렌더로 마크업만 고정한다 —
  * 시트를 여는 판정은 `shouldOpenCandidateSheet`(`lib/itembook/__tests__/tier-badge-slots.test.ts`)가 맡는다.
  *
@@ -269,7 +269,7 @@ describe('SlotGrid — 우측 상단 빼기 원 버튼 (2026-11-09 사용자 지
   })
 })
 
-describe('SlotGrid — 우측 상단 추가 원 버튼 (2026-11-09 사용자 지시)', () => {
+describe('SlotGrid — 이미지 정중앙 추가 원 버튼 (2026-11-09 사용자 지시, 2026-11-12 캔버스 확정으로 위치가 모서리에서 정중앙으로 바뀜)', () => {
   const addOf = (html: string) => html.match(/<button[^>]*aria-label="추가"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? ''
   const html = renderToStaticMarkup(
     <SlotGrid
@@ -282,14 +282,40 @@ describe('SlotGrid — 우측 상단 추가 원 버튼 (2026-11-09 사용자 지
     />,
   )
 
-  it('«빼기»와 같은 검은 원이고 «+» 아이콘이며 글자가 없다', () => {
+  it('«빼기»와 같은 검은 원이고 «+» 아이콘이며 글자가 없다. 모서리 위치(right-1.5 top-1.5)는 쓰지 않는다', () => {
     const button = addOf(html)
 
-    for (const c of ['rounded-full', 'bg-background-inverse', 'text-snow', 'absolute', 'h-6 w-6', 'right-1.5', 'top-1.5']) {
+    for (const c of ['rounded-full', 'bg-background-inverse', 'text-snow', 'h-6 w-6', 'pointer-events-auto']) {
       expect(button, c).toContain(c)
     }
+    for (const c of ['right-1.5', 'top-1.5', 'translate']) expect(button, c).not.toContain(c)
     expect(button).toContain('M12 6v12M6 12h12')
     expect(button.replace(/<svg[\s\S]*?<\/svg>/, '').replace(/<[^>]+>/g, '')).toBe('')
+  })
+
+  it('이미지 상자와 같은 기하의 틀(pointer-events-none, 카드 안쪽 여백 12px) 가운데에 놓인다 — 버튼을 움직이지 않는다', () => {
+    const frame = html.match(/<div class="pointer-events-none[^"]*"><div class="[^"]*"><button[^>]*aria-label="추가"/)?.[0] ?? ''
+
+    expect(frame).toContain('pointer-events-none absolute z-10 inset-x-3 top-3')
+    expect(frame).toContain('relative mx-auto flex aspect-square w-full max-w-[90px] items-center justify-center')
+  })
+
+  it('넣을 수 있는 칸은 회색 이미지 위에 윤곽 점선이 겹치고, 빈 칸은 이미지 없이 점선만이다', () => {
+    // 넣을 수 있는 칸(이름2): 이미지 래퍼 뒤에 겹치는 점선(이미지가 없으니 추적 실패 때처럼 아무것도 그리지 않는다, fallback none)
+    // 빈 칸(이름3): 이미지 없이 점선만(주소가 없으니 둥근 사각형 점선, fallback box). 장착된 칸(이름1)에는 점선이 없다
+    expect(count(html, 'class="absolute inset-0 h-full w-full"')).toBe(1)
+    expect(count(html, 'data-outline-state')).toBe(2)
+    expect(count(html, 'data-outline-state="none"')).toBe(1)
+    expect(count(html, 'data-outline-state="box"')).toBe(1)
+  })
+
+  it('읽기 전용(타인 열람)이면 «+» 없이 이미지와 점선만 남는다', () => {
+    const readOnlyHtml = renderToStaticMarkup(
+      <SlotGrid itemBookId="book-1" readOnly badgeSlots={[cell('이름2', 'rare', { candidates: [candidate('c1')] })]} />,
+    )
+
+    expect(readOnlyHtml).not.toContain(ADD)
+    expect(readOnlyHtml).toContain('class="absolute inset-0 h-full w-full"')
   })
 
   it('넣을 수 있는 칸에만 한 번 보이고, 장착된 칸·빈 칸에는 없다. «빼기»는 장착된 칸에만 있다', () => {

@@ -38,18 +38,17 @@ cd jam-web && npm run storybook   # http://localhost:6006
   (JAM 2.0부터 `colors.light.css`는 없다 — 서비스는 라이트 전용이라 다크 오버라이드를 두지 않는다.
   티켓 20261015_2131)
 
-- **연결된 컴포넌트 24종 — 서비스에 즉시 반영.** *(2026-09-14 실측 기준)*
-  서비스 45개 파일이 `@ds/components/*`를 **86건** import한다. 실사용 목록:
-  `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `EmptyState` ·
-  `ProgressBar` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` ·
-  `BadgeRevealCarousel` · `ItemSerialCode` · `Select` · `MixerSlot`
-  (배지 트리 전용 9종 `BadgeFamilyCardHeader` · `BadgeLevelGauge` · `BadgeProgressRingCard` · `BadgeStageRail` ·
-  `BadgeStampRow` · `BadgeStatusSection` · `BadgeTreeSummaryHeader` · `DualAxisGauge` · `UnlockConditionSheetContent`는
-  화면 제거와 함께 2026-10-19 티켓 20261018_1817 2회에서 삭제했다. 위 수치 24종·86건은 삭제 전 값이다.)
-  (`Accordion`은 이전 조사에서 "미도입"으로 분류됐으나 이후 연결됨을 확인해 이동했다. `Select`와
-  `MixerSlot`은 2026-10-16 티켓 20261015_2134 3회 실측으로 추가했다 — `Select`는 `BadgesClient`·
-  `MissionsListClient`, `MixerSlot`은 `CombineClient`가 import한다. 위 수치 21종·86건은 2026-09-14
-  기준이라 그 밖의 항목은 아래 실측 명령으로 다시 세어야 한다.)
+- **연결된 컴포넌트 21종 — 서비스에 즉시 반영.** *(2026-11-12 실측, 티켓 20261112_1627 — 테스트·스토리 제외)*
+  서비스 62개 파일이 `@ds/components/*`를 **122건** import한다. 실사용 목록:
+  `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `LabelChip` · `LockedTile` · `SlotOutline` ·
+  `EmptyState` · `ProgressBar` · `Skeleton` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` · `Select` · `Input` ·
+  `BadgeRevealCarousel` · `ItemSerialCode` · `MixerSlot` · `PointText`
+  (`SlotOutline`은 티켓 20261112_1627에서 신설한 슬롯 점선 외곽선이다 — 서비스 `BadgeGridCard`(병존 구현)가 import하므로
+  DS의 `SlotOutline`을 고치면 컬렉션 칸·믹스 칸에 즉시 반영된다. `LockedTile`도 같은 방식으로 `BadgeGridCard`가 import한다.
+  `Input`은 `WithdrawSheet`가 import하므로 아래 «미도입»의 설명은 낡았다 — 다음 정리 때 옮길 것.
+  `Accordion`·`Select`·`MixerSlot`은 이전 실측으로 이동했다 — `Select`는 `BadgesClient`·`MissionsListClient`,
+  `MixerSlot`은 `CombineClient`·`TierUpPanel`이 import한다. 배지 트리 전용 9종은 2026-10-19 티켓 20261018_1817 2회에서
+  화면 제거와 함께 삭제했다. 수치는 아래 실측 명령에 `--exclude="*.test.*" --exclude="*.stories.*"`를 붙여 센다.)
 
 - **병존 구현 9종 — 스토리북에만 반영. ⚠️ 양쪽을 함께 고쳐야 한다.**
   `Button` · `TabBar` · `BottomSheet` · `Toast` · `SlidingTabs` · `BadgeGridCard` ·
@@ -70,4 +69,4 @@ cd jam-web && npm run storybook   # http://localhost:6006
 - **병존 구현을 고쳤다면 `src/components/ui/`의 대응 파일도 함께 고쳤는지**
 
 > 이 목록은 연결 작업이 진행될수록 바뀐다. 정확한 현황이 필요하면 실측할 것:
-> `grep -rho "@ds/components/[a-zA-Z]*/[A-Za-z]*" src/ | sort -u`
+> `grep -rho "@ds/components/[a-zA-Z]*/[A-Za-z]*" src/ --exclude="*.test.*" --exclude="*.stories.*" | sort -u`

@@ -102,3 +102,22 @@ export function isOptimizableImageSrc(src: string | null | undefined): boolean {
     return false
   }
 }
+
+/**
+ * 슬롯 점선 외곽선(`SlotOutline`)이 윤곽을 추적할 이미지 주소 (티켓 20261112_1627).
+ *
+ * 최적화 가능한 src는 `/_next/image`를 거친다 — 같은 출처가 되어 canvas가 오염되지 않는다.
+ * 폭 90 이미지를 `next/image`가 내보내는 srcset은 1x=96, 2x=256이라 **w=256, q=75는 휴대폰이 이미 받는 변환본과 같다**
+ * (새 변환본이 생기지 않아 Vercel 이미지 최적화 비용이 늘지 않는다). 다른 폭을 쓰면 이미지마다 변환본이 늘고,
+ * 192처럼 next 기본 sizes(deviceSizes + imageSizes)에 없는 값은 `/_next/image`가 400을 돌려준다.
+ * 최적화할 수 없는 src는 그대로 돌려준다(CORS가 막히면 추적이 실패해 사각형 점선으로 떨어진다). 주소가 없으면 null.
+ */
+export const SLOT_OUTLINE_TRACE_WIDTH = 256
+export const SLOT_OUTLINE_TRACE_QUALITY = 75
+
+export function slotOutlineTraceSrc(src: string | null | undefined): string | null {
+  const value = src?.trim()
+  if (!value) return null
+  if (!isOptimizableImageSrc(value)) return value
+  return `/_next/image?url=${encodeURIComponent(value)}&w=${SLOT_OUTLINE_TRACE_WIDTH}&q=${SLOT_OUTLINE_TRACE_QUALITY}`
+}

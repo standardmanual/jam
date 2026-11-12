@@ -24,8 +24,16 @@ export interface BadgeGridCardProps {
   onNavigate?: () => void;
   /** false → 썸네일 흑백+반투명 (미획득 배지). 기본값 true. */
   earned?: boolean;
-  /** true → 썸네일을 이미지 윤곽의 회색 실루엣으로, 이름은 그대로 (아이템북 미발견 배지). `earned=false`가 함께 와도 실루엣이 이긴다. */
+  /**
+   * true → 이미지를 그리지 않고 이미지 알파 윤곽을 따라가는 점선(`SlotOutline`)만, 이름은 그대로 (아이템북 후보 없는 칸, 티켓 20261112_1627).
+   * 추적 실패·이미지 주소 없음이면 둥근 사각형 점선. `earned=false`가 함께 와도 점선이 이긴다.
+   */
   undiscovered?: boolean;
+  /**
+   * true → 이미지(`earned=false`면 grayscale + 반투명) 위에 같은 점선을 불투명하게 겹친다 — 지금 넣을 수 있는 칸(티켓 20261112_1627).
+   * 점선은 이미지의 형제라 이미지 투명도의 영향을 받지 않는다. 추적 실패면 사각형 대체 없이 그리지 않는다.
+   */
+  outlined?: boolean;
   /** 선택 강조 링 (select 모드). */
   selected?: boolean;
   /** 컬렉션 슬롯 장착 모드에서 "지금 넣을 수 있는 칸"을 짚어주는 강조 링. */

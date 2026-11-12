@@ -63,6 +63,12 @@ describe.each(implementations)('BadgeGridCard locked — $label', ({ render, has
     const html = render({ locked: true, count: 3 })
     expect(html).not.toContain('×3')
   })
+
+  it('locked이면 outlined가 함께 와도 윤곽 점선(추적할 그림)을 그리지 않는다 — 가림이 점선으로 뚫리지 않는다 (티켓 20261112_1627)', () => {
+    const html = render({ locked: true, outlined: true, earned: false, imageUrl: 'https://example.com/secret.png' })
+    expect(html).not.toContain('data-outline-state')
+    expect(html).not.toContain('<img')
+  })
 })
 
 /**
