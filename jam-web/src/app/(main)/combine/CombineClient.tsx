@@ -9,7 +9,7 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { SearchIcon, PackageIcon, GachaMachineIcon } from '@/components/ui/icons'
+import { SearchIcon, PackageIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet, { type PendingSheetView } from './PendingResultsSheet'
 import BagItemCell from './BagItemCell'
@@ -1159,10 +1159,9 @@ export default function CombineClient({
                 .filter(Boolean)
                 .join(' ')}
             >
-              {loading ? (
+              {/* 아이콘은 없다 — 로딩이 아닐 때는 글자만(티켓 20261112_1627, 캔버스 확정). 로딩 스피너는 그대로다 */}
+              {loading && (
                 <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <GachaMachineIcon className="w-5 h-5 shrink-0" />
               )}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>

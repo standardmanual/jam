@@ -130,6 +130,7 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
 import { Button } from '@ds/components/buttons/Button'
 import { d, t } from '@/lib/i18n'
+import { GachaMachineIcon } from '@/components/ui/icons'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
 
 describe('shouldRecordMixFail', () => {
@@ -1298,6 +1299,16 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
   }
 
   const press = (el: AnyElement, key: 'onAdd' | 'onRemove') => (el.props[key] as () => void)()
+
+  it('믹스하기 버튼은 글자만이고 가챠 기계 아이콘이 없다. 로딩 스피너는 그대로다 (티켓 20261112_1627)', () => {
+    const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a')])
+    const button = s.cta(s.render())
+    expect(findAll(button, (el) => el.type === GachaMachineIcon)).toHaveLength(0)
+    expect(textOf(button)).toBe(d.combine.combineButton)
+    // 로딩이 아닐 때는 스피너도 없다(스피너는 loading일 때만 나온다 — 로딩 상태 전환은 이 시험 틀로 만들 수 없다)
+    const spinners = findAll(button, (el) => el.type === 'span' && String(el.props.className).includes('animate-spin'))
+    expect(spinners).toHaveLength(0)
+  })
 
   it('활성 행이 하나면 «+»가 시트 없이 바로 채우고, «−»로 비우면 «+»로 돌아간다', () => {
     const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a')])
