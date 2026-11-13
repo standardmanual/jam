@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type Ref } from 'react'
 import PopInNumber from '@/components/ui/PopInNumber'
+import { d } from '@/lib/i18n'
 import { prefersReducedMotion } from '@/lib/motion'
 import {
   GAUGE_ENTRY_DELAY_MS,
@@ -38,6 +39,10 @@ import {
  *    이미 보이면 바로 260ms 뒤 시작하고, 시작하면 관찰자를 해제한다. `IntersectionObserver`가 없는 환경(시험·구형)에서는 즉시 시작한다.
  *  - 같은 화면에서 값이 바뀌면 처음부터 다시 돌지 않고 지금 값에서 새 값으로 700~1500ms 동안 옮겨 간다.
  *  - `prefers-reduced-motion`이면 쉼도 시간도 0이다.
+ *
+ * 이름표: 바 시작 부분 안쪽 왼쪽에 «캡슐» 글자를 얹는다(사용자 지시 2026-11-13, 티켓 20261113_1521). 글자는 두 겹이다. 트랙 위에는 밝은 글자(--snow), 채움 안쪽에는 어두운 글자(--capsule-track)를 같은 자리에
+ * 그려 채움이 글자 아래를 지나는 곳에서 색이 바뀐다(오렌지 위 흰 글자는 약 3.4:1이라 작은 글자에 쓰지 않는다). 채운 비율이 50% 이상이면 숫자 앞에 같은 줄로 놓이고,
+ * 막힘 문구(`message`)가 있으면 그 자리를 문구가 쓰므로 그리지 않는다. 장식이라 `aria-hidden`이다(상태 문장은 `ariaLabel`이 맡는다).
  */
 
 /** 게이지 높이(px) — 로딩 자리(Skeleton)와 오류 상자도 같은 높이를 쓴다 */
@@ -53,6 +58,10 @@ const DOT_SIZE_PX = 3
 const NUMBER_EDGE_GAP_PX = 14
 /** 숫자를 위로 올리는 양(px) — 글자 줄 상자의 가운데가 숫자 모양의 가운데보다 아래라 트랙 가운데에 맞추려고 올린다(2026-11-04 사용자 요청) */
 const NUMBER_RISE_PX = 1
+/** 이름표(«캡슐») 왼쪽 안쪽 여백(px)과 숫자와의 간격(px) */
+const LABEL_LEFT_PX = 12
+const LABEL_NUMBER_GAP_PX = 8
+const LABEL_CLASS = 'whitespace-nowrap text-xs font-bold leading-none'
 /** 게이지 높이(px)가 정해지면 채움 원의 지름이 정해진다 */
 export function gaugeCircleDiameter(height: number): number {
   return height - (BORDER_PX + PADDING_PX) * 2
@@ -160,6 +169,8 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
   const numberContent = message ?? (showNumber ? <PopInNumber key={numberText} value={numberText} playOnMount /> : numberText)
   // 문구는 진입 모션·보임 관찰에 묶지 않는다(값이 0이면 관찰자가 없어 arrived가 영원히 false라 숨은 채 남았다)
   const numberVisibility = message ? undefined : showNumber ? undefined : 0
+  const labelText = message ? null : d.capsule.gaugeLabel
+  const labelStyle = { transform: `translateY(-${NUMBER_RISE_PX}px)` }
   const numberClass = message
     ? 'whitespace-nowrap text-base font-extrabold leading-none transition-opacity duration-[240ms] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
     : 'whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'
@@ -196,6 +207,15 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
           />
         ))}
 
+        {/* 이름표 아랫겹 — 트랙 위에 밝은 글자. 채움이 덮은 곳에서는 윗겹(채움 안쪽 어두운 글자)이 대신한다 */}
+        {labelText && (
+          <span aria-hidden="true" data-capsule-label="track" className="absolute left-0 top-0 flex h-full items-center" style={{ paddingLeft: LABEL_LEFT_PX, color: 'var(--snow)' }}>
+            <span className={LABEL_CLASS} style={labelStyle}>
+              {labelText}
+            </span>
+          </span>
+        )}
+
         {/* 채운 비율 50% 미만: 트랙 안쪽 오른쪽 끝에 오렌지 숫자. 닿기 전에는 투명하다 */}
         {placement === 'outside' && (
           <span
@@ -224,8 +244,25 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
               className="absolute left-0 top-0 block h-full overflow-hidden"
               style={{ width: `calc(100% - ${circle}px)` }}
             >
-              <span className={`flex h-full items-center ${numberClass}`} style={{ paddingLeft: NUMBER_EDGE_GAP_PX, color: 'var(--capsule-track)', transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: numberVisibility }}>
-                {numberContent}
+              <span className="flex h-full items-center" style={{ paddingLeft: labelText ? LABEL_LEFT_PX : NUMBER_EDGE_GAP_PX, gap: LABEL_NUMBER_GAP_PX, color: 'var(--capsule-track)' }}>
+                {labelText && (
+                  <span aria-hidden="true" data-capsule-label="fill" className={LABEL_CLASS} style={labelStyle}>
+                    {labelText}
+                  </span>
+                )}
+                <span className={numberClass} style={{ transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: numberVisibility }}>
+                  {numberContent}
+                </span>
+              </span>
+            </span>
+          )}
+          {/* 채운 비율 50% 미만이면 숫자가 오른쪽 끝이라 이름표만 채움 안쪽에 어두운 글자로 그린다. 채움 너비 밖은 잘린다 */}
+          {labelText && placement === 'outside' && (
+            <span aria-hidden="true" data-capsule-label="fill" className="absolute left-0 top-0 block h-full w-full overflow-hidden">
+              <span className="flex h-full items-center" style={{ paddingLeft: LABEL_LEFT_PX, color: 'var(--capsule-track)' }}>
+                <span className={LABEL_CLASS} style={labelStyle}>
+                  {labelText}
+                </span>
               </span>
             </span>
           )}

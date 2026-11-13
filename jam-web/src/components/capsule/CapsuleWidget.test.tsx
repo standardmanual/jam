@@ -43,7 +43,7 @@ const status = (over: Partial<CapsuleStatus> = {}): CapsuleStatus => ({
   ...over,
 })
 
-const textOf = (html: string) => html.replace(/<[^>]*>/g, '')
+const textOf = (html: string) => html.replace(new RegExp(`>${d.capsule.gaugeLabel}</span>`, 'g'), '></span>').replace(/<[^>]*>/g, '')  // 이름표(«캡슐», 티켓 20261113_1521)는 글자 비교에서 뺀다
 const render = (over: Partial<CapsuleStatus> = {}) => renderToStaticMarkup(<CapsuleWidget initial={status(over)} />)
 
 describe('서버 초기값이 있을 때', () => {

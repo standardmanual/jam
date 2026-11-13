@@ -16,10 +16,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX, gaugeCircleDiameter } from './CapsuleGauge'
 import { capsuleNumberPlacement, capsuleNumberText } from '@/lib/capsule/capsule-gauge'
+import { d } from '@/lib/i18n'
 
 const LABEL = '캡슐, 채우는 중이에요'
 const render = (filled: number, required: number) => renderToStaticMarkup(<CapsuleGauge filled={filled} required={required} ariaLabel={LABEL} />)
-const textOf = (html: string) => html.replace(/<[^>]*>/g, '')
+const textOf = (html: string) => html.replace(new RegExp(`>${d.capsule.gaugeLabel}</span>`, 'g'), '></span>').replace(/<[^>]*>/g, '')  // 이름표(«캡슐», 티켓 20261113_1521)는 글자 비교에서 뺀다
 
 describe('눌러도 동작이 없다', () => {
   it('role="img"와 숫자 없는 aria-label이다', () => {
@@ -75,7 +76,7 @@ describe('문구가 있으면 숫자 자리를 대신하고 늘 채움 안쪽에
   })
 
   it('문구가 없으면 지금처럼 숫자를 그린다', () => {
-    expect(render(300, 300).replace(/<[^>]*>/g, '')).toBe('300')
+    expect(textOf(render(300, 300))).toBe('300')
   })
 })
 
@@ -107,9 +108,28 @@ describe('채운 양의 숫자', () => {
     expect(html.indexOf('data-capsule-number="inside"')).toBeGreaterThan(html.indexOf('background:var(--capsule-fill)'))
   })
 
-  it('숫자는 양쪽 자리 모두 1px 위로 올라가 트랙 가운데에 맞는다', () => {
-    expect(render(120, 300).match(/transform:translateY\(-1px\)/g)).toHaveLength(1)
-    expect(render(200, 300).match(/transform:translateY\(-1px\)/g)).toHaveLength(1)
+  it('숫자와 이름표는 양쪽 자리 모두 1px 위로 올라가 트랙 가운데에 맞는다', () => {
+    // 이름표 두 겹(트랙 위·채움 안쪽)과 숫자 하나
+    expect(render(120, 300).match(/transform:translateY\(-1px\)/g)).toHaveLength(3)
+    expect(render(200, 300).match(/transform:translateY\(-1px\)/g)).toHaveLength(3)
+  })
+
+  it('바 시작 부분 안쪽에 «캡슐» 이름표가 있다: 트랙 위 밝은 글자와 채움 안쪽 어두운 글자 두 겹이고 장식이다 (티켓 20261113_1521)', () => {
+    for (const html of [render(120, 300), render(200, 300)]) {
+      expect(html.match(/data-capsule-label="track"/g)).toHaveLength(1)
+      expect(html.match(/data-capsule-label="fill"/g)).toHaveLength(1)
+      expect(html.match(new RegExp(`>${d.capsule.gaugeLabel}</span>`, 'g'))).toHaveLength(2)
+      expect(html).toContain('color:var(--snow)')
+      // 채움 안쪽 글자는 채움(background:var(--capsule-fill)) 뒤에 온다
+      expect(html.indexOf('data-capsule-label="fill"')).toBeGreaterThan(html.indexOf('background:var(--capsule-fill)'))
+    }
+    // 아랫겹은 채움보다 앞에 놓여 채움이 덮는다
+    const html = render(120, 300)
+    expect(html.indexOf('data-capsule-label="track"')).toBeLessThan(html.indexOf('background:var(--capsule-fill)'))
+  })
+
+  it('막힘 문구가 있으면 이름표를 그리지 않는다', () => {
+    expect(renderToStaticMarkup(<CapsuleGauge filled={300} required={300} ariaLabel={LABEL} message="캡슐이 가득 찼어요" />)).not.toContain('data-capsule-label')
   })
 
   it('퍼센트 기호는 없고 aria-label에도 숫자가 없다', () => {

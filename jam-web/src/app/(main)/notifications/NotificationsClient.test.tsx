@@ -87,7 +87,7 @@ function bold(text: string): string {
 }
 
 /** 종류별 아이콘 lead 박스 — 둥근 사각 + 기본 톤 면(ListRow가 준다) */
-const DEFAULT_TILE = 'border-radius:var(--radius-2xl);background:var(--background-secondary)'
+const DEFAULT_TILE = 'border-radius:var(--radius-xl);background:var(--background-secondary)'
 
 const CHAPTER_UP = view('chapter_up', { chapter_no: 3 })
 const ONE_CANCELLED = view('mission_participation_cancelled', { missions: [{ mission_id: 'm1', title: '한강 100km' }] })

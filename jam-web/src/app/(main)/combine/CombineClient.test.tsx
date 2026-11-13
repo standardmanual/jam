@@ -1141,7 +1141,7 @@ describe('RecipeRewardRow — ListRow 구조 (티켓 20261107_0011)', () => {
   it('배지 보상: lead는 tile 48 안 장식 이미지(alt 빈 값), eyebrow에 등급 칩, 제목이 배지명(+N)이고 레시피 이름·배지명 줄은 없다, 포인트가 value다 (티켓 20261110_1250)', () => {
     const html = render({ badges: [badge, { ...badge, id: 'b2' }, { ...badge, id: 'b3' }], points: 1200 })
     expect(html).toMatch(/<img[^>]*alt=""/)
-    expect(html).toContain('border-radius:var(--radius-2xl);background')
+    expect(html).toContain('border-radius:var(--radius-xl);background')
     expect(html).toMatch(/font-weight:700[^"]*">결과 배지 \+2</)
     expect(html).not.toContain('레시피 제목')
     expect(html).not.toContain('block truncate')
