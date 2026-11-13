@@ -286,6 +286,8 @@ export interface BadgeImageItemPromptRow {
   item_book_id: string
   item_name: string
   description_en: string
+  /** 영어 문장을 만들 때 쓴 badges.form_description의 sha256 16진수 */
+  source_hash: string
   source: 'claude' | 'manual'
   updated_at: string
 }

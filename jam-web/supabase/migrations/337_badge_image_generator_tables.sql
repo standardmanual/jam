@@ -23,6 +23,7 @@ create table public.badge_image_item_prompts (
   item_book_id uuid not null references public.item_books(id) on delete cascade,
   item_name text not null,
   description_en text not null,
+  source_hash text not null,
   source text not null check (source in ('claude', 'manual')),
   updated_at timestamptz not null default now(),
   unique (item_book_id, item_name)
@@ -65,7 +66,7 @@ insert into public.badge_image_presets (name, style_id, composition_text, forbid
 values (
   '기본',
   'SET_ME',
-  'A single object for a collectible badge, centered, the whole object fully visible with generous empty space around it, seen from a slight three-quarter angle. Clear, simple silhouette that reads at small sizes. Restrained detail, soft even light, plain solid background.',
-  'No text of any kind: no letters, numbers, symbols, labels, signs, signatures, logos or letter-like marks. No people, no hands, no extra objects, no glow, no sparkles, no dramatic lighting, no border, no scenery.',
-  'text, letters, numbers, digits, symbols, writing, label, signature, logo, watermark, people, hands, multiple objects, cropped, glossy, plastic, sparkles, glow, lens flare, bokeh, dramatic lighting, hyperrealistic, oversaturated, cluttered, ornate, scenery'
+  'A single object (or one compact group of the same object) for a collectible badge, centered, the whole object fully visible with generous empty space around it, seen from a slight three-quarter angle. Clear, simple silhouette that reads at small sizes. Restrained detail, soft even light, plain solid background.',
+  'No text of any kind: no letters, numbers, symbols, labels, signs, signatures, logos or letter-like marks. No faces, no eyes, no people, no hands, no extra objects, no glow, no sparkles, no dramatic lighting, no border, no scenery.',
+  'text, letters, numbers, digits, symbols, writing, label, signature, logo, watermark, face, eyes, cartoon character, people, hands, multiple objects, cropped, glossy, plastic, sparkles, glow, lens flare, bokeh, dramatic lighting, hyperrealistic, oversaturated, cluttered, ornate, scenery'
 );
