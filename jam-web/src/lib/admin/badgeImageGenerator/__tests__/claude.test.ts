@@ -96,5 +96,7 @@ describe('recraftErrorMessage', () => {
     expect(await recraftErrorMessage(credits, '생성')).toMatch(/크레딧이 부족/)
     const other = new Response(JSON.stringify({ code: 'invalid_request_parameter', message: 'bad' }), { status: 400 })
     expect(await recraftErrorMessage(other, '생성')).toBe('Recraft 생성 실패 (HTTP 400, invalid_request_parameter: bad)')
+    const model = new Response(JSON.stringify({ code: 'invalid_model', message: "The requested model 'recraftv4' isn't compatible with the style's model 'recraftv3'" }), { status: 400 })
+    expect(await recraftErrorMessage(model, '생성')).toMatch(/recraftv3로 만든 스타일/)
   })
 })

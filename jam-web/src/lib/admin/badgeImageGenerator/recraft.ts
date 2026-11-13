@@ -26,6 +26,11 @@ export async function recraftErrorMessage(res: Response, label: string): Promise
   if (code === 'not_enough_credits') {
     return `Recraft 크레딧이 부족해서 ${label}에 실패했어요. Recraft에서 크레딧을 충전한 뒤 다시 시도해 주세요.`
   }
+  if (code === 'invalid_model') {
+    // 예: "The requested model 'recraftv4' isn't compatible with the style's model 'recraftv3'" (2026-11-13 실측)
+    const styleModel = message.match(/style's model '([^']+)'/)?.[1]
+    return `이 스타일 ID는 ${styleModel ?? '다른 모델'}로 만든 스타일이라 지금 프리셋 모델과 함께 쓸 수 없어요. 프리셋 관리에서 모델을 ${styleModel ?? '스타일을 만든 모델'}로 바꿔 주세요.`
+  }
   const detail = [code, message].filter(Boolean).join(': ')
   return `Recraft ${label} 실패 (HTTP ${res.status}${detail ? `, ${detail}` : ''})`
 }

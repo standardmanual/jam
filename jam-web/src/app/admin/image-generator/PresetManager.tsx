@@ -136,7 +136,7 @@ export default function PresetManager({ open, onOpenChange, presets, onChanged }
               <Field label="스타일 ID">
                 <Input value={form.style_id} onChange={(e) => set('style_id', e.target.value)} />
               </Field>
-              <Field label="모델">
+              <Field label="모델" hint="스타일 ID를 만든 모델과 같아야 해요.">
                 <Select value={form.model} onValueChange={(v) => set('model', v)}>
                   <SelectTrigger>
                     <SelectValue />
