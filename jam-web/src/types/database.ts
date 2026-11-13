@@ -168,6 +168,8 @@ export interface BadgeRow {
   id: string
   name: string
   description: string
+  /** 시선과 동작 원고 문구(마이그레이션 330). 아이템 배지만 채워져 있고 화면에는 어드민에서만 보인다 */
+  gaze_motion?: string | null
   type: BadgeType
   /**
    * 등급형 배지의 등급. **NULL이면 무한레벨형이다** — v5의 유일한 배지 종류 판정 기준이며,
@@ -479,6 +481,8 @@ export interface ItemBookRow {
   id: string
   name: string
   description: string
+  /** 시선과 동작 원고 문구(마이그레이션 330). 어드민에서만 보인다 */
+  gaze_motion?: string | null
   image_url: string | null
   required_activity_badge_id: string | null
   reward_badge_id: string | null

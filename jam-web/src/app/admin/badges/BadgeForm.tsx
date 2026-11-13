@@ -929,6 +929,14 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         )}
       </div>
 
+      {/* 시선과 동작 — 읽기 전용이다. 원고 문구(마이그레이션 330)라 이 폼에서는 고치지 않는다. */}
+      {isEdit && badge?.gaze_motion && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">시선과 동작</span>
+          <p className="text-sm text-muted-foreground">{badge.gaze_motion}</p>
+        </div>
+      )}
+
       {/* 계열 키 — **읽기 전용이다.** 2단 교차 게이트가 대상 계열을 이 키로 지정하므로
           이름을 고쳐도 키가 바뀌면 게이트 참조가 조용히 끊긴다(티켓 20260905_0032 판단 ③). */}
       {isEdit && (

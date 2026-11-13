@@ -42,6 +42,11 @@ export function ItemBookDetail({
             </div>
           )}
 
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">시선과 동작</p>
+            <p className="text-sm">{itemBook.gaze_motion || '없음'}</p>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">필수 액티비티 배지</p>

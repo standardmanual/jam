@@ -539,6 +539,7 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 - `badges.gaze_motion`: 아이템 배지 네 등급 설명을 잇는 한 문장. 같은 아이템의 등급 4행에 같은 값이 들어간다. JAM 2.0 원고(`docs/plan/jam2/tribe-rethink/manuscript/`의 01~05 원고) 6절의 아이템 450개(1800행)를 채웠다.
 - `item_books.gaze_motion`: 컬렉션의 아이템 9개를 하나의 시선으로 잇는 한 문장. 같은 원고 6.x절 머리의 «시선과 동작(컬렉션)» 50개를 채웠다.
 - 문구의 원본은 원고 문서다. 원고를 고치면 이 칸도 함께 고친다.
+- 어드민에서는 읽기 전용으로 보인다: 배지 상세 «기본 정보»(아이템 배지), 컬렉션 상세 카드, 배지 수정 폼, 아이템 배지 일련번호 목록 머리.
 
 ### user_item_book_slots / user_item_book_completions (신규)
 - `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)

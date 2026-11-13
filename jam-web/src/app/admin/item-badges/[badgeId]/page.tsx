@@ -59,11 +59,11 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
 
   const { data: badgeRaw } = await supabase
     .from('badges')
-    .select('id, name, image_url, rarity')
+    .select('id, name, image_url, rarity, gaze_motion')
     .eq('id', badgeId)
     .maybeSingle()
   if (!badgeRaw) notFound()
-  const badge = badgeRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
+  const badge = badgeRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'gaze_motion'>
 
   const { data: itemsRaw } = await supabase
     .from('inventory_items')
@@ -107,6 +107,11 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
           </span>
         </div>
       </div>
+      {badge.gaze_motion && (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">시선과 동작</span> {badge.gaze_motion}
+        </p>
+      )}
     </div>
   )
 
