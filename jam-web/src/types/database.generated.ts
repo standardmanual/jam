@@ -335,6 +335,164 @@ export type Database = {
         }
         Relationships: []
       }
+      badge_image_generations: {
+        Row: {
+          applied_at: string | null
+          applied_index: number | null
+          applied_url: string | null
+          candidate_urls: string[]
+          created_at: string
+          created_by: string | null
+          error: string | null
+          feedback: string | null
+          id: string
+          item_book_id: string
+          item_name: string
+          preset_id: string | null
+          preset_version: number
+          previous_image_url: string | null
+          prompt: string
+          request_json: Json
+          status: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_index?: number | null
+          applied_url?: string | null
+          candidate_urls?: string[]
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          feedback?: string | null
+          id?: string
+          item_book_id: string
+          item_name: string
+          preset_id?: string | null
+          preset_version: number
+          previous_image_url?: string | null
+          prompt: string
+          request_json: Json
+          status?: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_index?: number | null
+          applied_url?: string | null
+          candidate_urls?: string[]
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          feedback?: string | null
+          id?: string
+          item_book_id?: string
+          item_name?: string
+          preset_id?: string | null
+          preset_version?: number
+          previous_image_url?: string | null
+          prompt?: string
+          request_json?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "badge_image_generations_item_book_id_fkey"
+            columns: ["item_book_id"]
+            isOneToOne: false
+            referencedRelation: "item_books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "badge_image_generations_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "badge_image_presets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      badge_image_item_prompts: {
+        Row: {
+          description_en: string
+          id: string
+          item_book_id: string
+          item_name: string
+          source: string
+          source_hash: string
+          updated_at: string
+        }
+        Insert: {
+          description_en: string
+          id?: string
+          item_book_id: string
+          item_name: string
+          source: string
+          source_hash: string
+          updated_at?: string
+        }
+        Update: {
+          description_en?: string
+          id?: string
+          item_book_id?: string
+          item_name?: string
+          source?: string
+          source_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "badge_image_item_prompts_item_book_id_fkey"
+            columns: ["item_book_id"]
+            isOneToOne: false
+            referencedRelation: "item_books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      badge_image_presets: {
+        Row: {
+          background_color: string
+          composition_text: string
+          created_at: string
+          forbid_text: string
+          id: string
+          is_active: boolean
+          model: string
+          name: string
+          negative_prompt: string
+          style_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          background_color?: string
+          composition_text: string
+          created_at?: string
+          forbid_text: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          name: string
+          negative_prompt?: string
+          style_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          background_color?: string
+          composition_text?: string
+          created_at?: string
+          forbid_text?: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          name?: string
+          negative_prompt?: string
+          style_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       badge_metric_labels: {
         Row: {
           label_ko: string
@@ -406,6 +564,7 @@ export type Database = {
           drop_excluded: boolean
           drop_weight: number
           family_key: string | null
+          form_description: string | null
           gaze_motion: string | null
           id: string
           image_gen_params: Json | null
@@ -446,6 +605,7 @@ export type Database = {
           drop_excluded?: boolean
           drop_weight?: number
           family_key?: string | null
+          form_description?: string | null
           gaze_motion?: string | null
           id?: string
           image_gen_params?: Json | null
@@ -486,6 +646,7 @@ export type Database = {
           drop_excluded?: boolean
           drop_weight?: number
           family_key?: string | null
+          form_description?: string | null
           gaze_motion?: string | null
           id?: string
           image_gen_params?: Json | null
