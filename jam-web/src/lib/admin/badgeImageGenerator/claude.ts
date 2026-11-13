@@ -33,6 +33,8 @@ async function callClaude(system: string, content: string | ContentBlock[], maxT
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: maxTokens,
+      // 이 모델은 기본으로 사고 단계를 거쳐 짧은 출력 한도를 다 써 버린다(2026-11-13 실측: 본문이 비어 돌아옴)
+      thinking: { type: 'disabled' },
       system,
       messages: [{ role: 'user', content }],
     }),
