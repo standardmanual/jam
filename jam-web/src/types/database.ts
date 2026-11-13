@@ -170,6 +170,8 @@ export interface BadgeRow {
   description: string
   /** 시선과 동작 원고 문구(마이그레이션 330). 아이템 배지만 채워져 있고 화면에는 어드민에서만 보인다 */
   gaze_motion?: string | null
+  /** 이미지용 형태 묘사(마이그레이션 338, 티켓 20261113_1145). 아이템 배지만 채워져 있고 어드민 배지 상세와 이미지 생성기가 읽는다 */
+  form_description?: string | null
   type: BadgeType
   /**
    * 등급형 배지의 등급. **NULL이면 무한레벨형이다** — v5의 유일한 배지 종류 판정 기준이며,

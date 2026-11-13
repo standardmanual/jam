@@ -199,8 +199,8 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
           {badge.description ? <span className="whitespace-pre-line">{badge.description}</span> : <Empty />}
         </ReadOnlyItem>
         {badge.type === 'item' && (
-          <ReadOnlyItem label="시선과 동작" span={3}>
-            {badge.gaze_motion ? <span className="whitespace-pre-line">{badge.gaze_motion}</span> : <Empty />}
+          <ReadOnlyItem label="형태 묘사" span={3}>
+            {badge.form_description ? <span className="whitespace-pre-line">{badge.form_description}</span> : <Empty />}
           </ReadOnlyItem>
         )}
         <ReadOnlyItem label="계열 키" span={3}>
