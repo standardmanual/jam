@@ -9,6 +9,27 @@ function authHeader(): Record<string, string> {
   return { Authorization: `Bearer ${key}` }
 }
 
+/**
+ * Recraft 오류 응답({code, message})을 운영자가 알아볼 문장으로 바꾼다.
+ * 2026-11-13 크레딧이 바닥났는데 화면에 「HTTP 400」만 보여 원인을 몰랐던 일이 있었다.
+ */
+export async function recraftErrorMessage(res: Response, label: string): Promise<string> {
+  let code = ''
+  let message = ''
+  try {
+    const body = (await res.json()) as { code?: string; message?: string }
+    code = body.code ?? ''
+    message = body.message ?? ''
+  } catch {
+    // 본문이 JSON이 아니면 상태 코드만 쓴다
+  }
+  if (code === 'not_enough_credits') {
+    return `Recraft 크레딧이 부족해서 ${label}에 실패했어요. Recraft에서 크레딧을 충전한 뒤 다시 시도해 주세요.`
+  }
+  const detail = [code, message].filter(Boolean).join(': ')
+  return `Recraft ${label} 실패 (HTTP ${res.status}${detail ? `, ${detail}` : ''})`
+}
+
 export async function downloadImage(url: string): Promise<Buffer> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`이미지 다운로드 실패 (HTTP ${res.status})`)
@@ -22,7 +43,7 @@ export async function generateCandidates(body: RecraftRequestBody): Promise<stri
     headers: { ...authHeader(), 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`Recraft 생성 실패 (HTTP ${res.status})`)
+  if (!res.ok) throw new Error(await recraftErrorMessage(res, '생성'))
   const json = (await res.json()) as { data?: Array<{ url?: string }> }
   const urls = (json.data ?? []).map((d) => d.url).filter((u): u is string => Boolean(u))
   if (urls.length === 0) throw new Error('Recraft가 이미지를 돌려주지 않았습니다.')
@@ -39,7 +60,7 @@ export async function removeBackground(png: Buffer): Promise<Buffer> {
     headers: authHeader(),
     body: form,
   })
-  if (!res.ok) throw new Error(`Recraft 배경 제거 실패 (HTTP ${res.status})`)
+  if (!res.ok) throw new Error(await recraftErrorMessage(res, '배경 제거'))
   const json = (await res.json()) as { image?: { url?: string } }
   const url = json.image?.url
   if (!url) throw new Error('Recraft가 배경 제거 결과를 돌려주지 않았습니다.')
@@ -74,7 +95,7 @@ function appendModelFields(form: FormData, preset: EditPreset) {
 
 async function postEdit(path: string, label: string, form: FormData): Promise<Buffer> {
   const res = await fetch(`${RECRAFT_BASE}/images/${path}`, { method: 'POST', headers: authHeader(), body: form })
-  if (!res.ok) throw new Error(`Recraft ${label} 실패 (HTTP ${res.status})`)
+  if (!res.ok) throw new Error(await recraftErrorMessage(res, label))
   const json = (await res.json()) as { image?: { url?: string }; data?: Array<{ url?: string }> }
   const url = json.image?.url ?? json.data?.[0]?.url
   if (!url) throw new Error(`Recraft가 ${label} 결과를 돌려주지 않았습니다.`)

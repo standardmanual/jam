@@ -88,3 +88,13 @@ describe('planImageEdit', () => {
     await expect(planImageEdit(await png(), '지워 줘', 'a cup')).rejects.toThrow()
   })
 })
+
+describe('recraftErrorMessage', () => {
+  it('크레딧 부족은 충전 안내로, 그 밖에는 코드와 메시지를 붙여 알린다', async () => {
+    const { recraftErrorMessage } = await import('../recraft')
+    const credits = new Response(JSON.stringify({ code: 'not_enough_credits', message: '' }), { status: 400 })
+    expect(await recraftErrorMessage(credits, '생성')).toMatch(/크레딧이 부족/)
+    const other = new Response(JSON.stringify({ code: 'invalid_request_parameter', message: 'bad' }), { status: 400 })
+    expect(await recraftErrorMessage(other, '생성')).toBe('Recraft 생성 실패 (HTTP 400, invalid_request_parameter: bad)')
+  })
+})
