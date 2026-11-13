@@ -61,6 +61,8 @@ export interface ItemGenerationSummary {
   prompt: string
   candidate_urls: string[]
   status: string
+  kind: string
+  edit_instruction: string | null
   applied_index: number | null
   applied_url: string | null
   feedback: string | null
@@ -102,7 +104,7 @@ export async function listBookItems(supabase: ServiceClient, bookId: string): Pr
     supabase
       .from('badge_image_generations')
       .select(
-        'id, item_name, preset_id, preset_version, prompt, candidate_urls, status, applied_index, applied_url, feedback, error, created_at, applied_at'
+        'id, item_name, preset_id, preset_version, prompt, candidate_urls, status, kind, edit_instruction, applied_index, applied_url, feedback, error, created_at, applied_at'
       )
       .eq('item_book_id', bookId)
       .order('created_at', { ascending: false })

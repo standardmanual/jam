@@ -43,8 +43,20 @@ interface Props {
   onChanged: () => Promise<void>
 }
 
-type Pending = { kind: 'apply'; index: number } | { kind: 'revert'; generationId: string }
-type Busy = 'describe' | 'generate' | 'apply' | 'revert' | null
+type Pending = { kind: 'apply' } | { kind: 'revert'; generationId: string }
+type Busy = 'describe' | 'generate' | 'edit' | 'apply' | 'revert' | null
+
+/** 작업 이미지 — 생성 기록 한 줄(generationId)의 index번째 후보 */
+type Selection = { generationId: string; index: number }
+
+const EDIT_OPERATION_LABEL: Record<string, string> = {
+  erase: '지우기',
+  inpaint: '다시 그리기',
+  outpaint: '바깥 넓히기',
+  restyle: '다시 칠하기',
+}
+
+const INSTRUCTION_MAX = 300
 
 const API = '/api/admin/badge-image-generator'
 
@@ -67,6 +79,9 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
   )
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selection, setSelection] = useState<Selection | null>(null)
+  const [instruction, setInstruction] = useState('')
+  const [editNote, setEditNote] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
 
   const preset = activePresets.find((p) => p.id === presetId) ?? null
@@ -74,6 +89,29 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
   const dirty = draftEn !== (item.descriptionEn ?? '')
   const hasHistory = item.generations.length > 0 || current !== null
   const working = busy !== null
+
+  // 고른 게 없으면 가장 최근 후보의 첫 장이 작업 이미지다
+  const sel: Selection | null = selection ?? (current ? { generationId: current.generationId, index: 0 } : null)
+  const work = resolveWork(sel)
+
+  function resolveWork(s: Selection | null) {
+    if (!s) return null
+    if (current && s.generationId === current.generationId) {
+      const c = current.candidates[s.index]
+      if (!c) return null
+      return { ...s, url: c.url, touchesEdge: c.touchesEdge, label: `후보 ${s.index + 1}`, applied: false }
+    }
+    const g = item.generations.find((x) => x.id === s.generationId)
+    const url = g?.candidate_urls[s.index]
+    if (!g || !url) return null
+    return {
+      ...s,
+      url,
+      touchesEdge: false,
+      label: `이력 ${formatKst(g.created_at)} · ${g.kind === 'edit' ? '후처리' : '생성'}`,
+      applied: g.status === 'applied',
+    }
+  }
 
   function fail(e: unknown, fallback: string) {
     setError(e instanceof Error ? e.message : fallback)
@@ -116,11 +154,43 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
         }
       )
       setCurrent({ generationId: res.generationId, candidates: res.candidates })
+      setSelection(null)
+      setEditNote(null)
       setDraftEn(res.descriptionEn)
       if (withFeedback) setFeedback('')
       await onChanged()
     } catch (e) {
       fail(e, '이미지를 만들지 못했어요.')
+      await onChanged()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function edit() {
+    if (!work || !instruction.trim()) return
+    setBusy('edit')
+    setError(null)
+    try {
+      const res = await callApi<{
+        generationId: string
+        candidates: Candidate[]
+        plan: { operation: string; reason_ko: string }
+      }>(`${API}/edit`, {
+        method: 'POST',
+        body: { generationId: work.generationId, index: work.index, instruction: instruction.trim() },
+      })
+      setCurrent({ generationId: res.generationId, candidates: res.candidates })
+      setSelection({ generationId: res.generationId, index: 0 })
+      setEditNote(`${EDIT_OPERATION_LABEL[res.plan.operation] ?? res.plan.operation} · ${res.plan.reason_ko}`)
+      setInstruction('')
+      await onChanged()
+    } catch (e) {
+      if (e instanceof ApiError && e.message === 'plan_invalid') {
+        setError('요청을 처리 방법으로 바꾸지 못했어요. 지울 부분이나 바꿀 내용을 더 구체적으로 적어 주세요.')
+      } else {
+        fail(e, '후처리하지 못했어요.')
+      }
       await onChanged()
     } finally {
       setBusy(null)
@@ -133,14 +203,16 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
     if (!target) return
     setError(null)
     if (target.kind === 'apply') {
-      if (!current) return
+      if (!work) return
       setBusy('apply')
       try {
         await callApi(`${API}/apply`, {
           method: 'POST',
-          body: { generationId: current.generationId, index: target.index },
+          body: { generationId: work.generationId, index: work.index },
         })
         setCurrent(null)
+        setSelection(null)
+        setEditNote(null)
         await onChanged()
         toast.success('이미지를 적용했어요.')
       } catch (e) {
@@ -257,22 +329,57 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
           <p className="text-sm font-semibold">후보</p>
           <div className="grid grid-cols-2 gap-3">
             {current.candidates.map((c, i) => (
-              <div key={c.url} className="space-y-2">
-                <div className="aspect-square overflow-hidden rounded-md border" style={CHECKER_STYLE}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 어드민 미리보기, 외부 저장소 URL */}
-                  <img src={c.url} alt={`후보 ${i + 1}`} className="size-full object-contain" />
-                </div>
-                {c.touchesEdge && <p className="text-xs text-destructive">그림이 잘렸을 수 있어요.</p>}
-                <Button
-                  size="sm"
-                  className="w-full"
-                  disabled={working}
-                  onClick={() => setPending({ kind: 'apply', index: i })}
-                >
-                  {busy === 'apply' ? '적용 중이에요' : '이 이미지 적용'}
-                </Button>
-              </div>
+              <button
+                key={c.url}
+                type="button"
+                aria-pressed={sel?.generationId === current.generationId && sel.index === i}
+                onClick={() => setSelection({ generationId: current.generationId, index: i })}
+                className={`aspect-square overflow-hidden rounded-md border-2 ${
+                  sel?.generationId === current.generationId && sel.index === i ? 'border-primary' : 'border-border'
+                }`}
+                style={CHECKER_STYLE}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- 어드민 미리보기, 외부 저장소 URL */}
+                <img src={c.url} alt={`후보 ${i + 1}`} className="size-full object-contain" />
+              </button>
             ))}
+          </div>
+        </section>
+      )}
+
+      {work && (
+        <section className="space-y-3">
+          <p className="text-sm font-semibold">작업 이미지</p>
+          <p className="text-xs text-muted-foreground">{work.label}</p>
+          <div className="aspect-square max-w-md overflow-hidden rounded-md border" style={CHECKER_STYLE}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- 어드민 미리보기, 외부 저장소 URL */}
+            <img src={work.url} alt="작업 이미지" className="size-full object-contain" />
+          </div>
+          {work.touchesEdge && <p className="text-xs text-destructive">그림이 잘렸을 수 있어요.</p>}
+          {editNote && <p className="text-sm">{editNote}</p>}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold">후처리 요청</p>
+            <Textarea
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              maxLength={INSTRUCTION_MAX}
+              rows={2}
+              placeholder="예: 오른쪽 종이를 지워 줘, 잘린 윗부분을 살려 줘"
+            />
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" disabled={working || !instruction.trim()} onClick={edit}>
+                {busy === 'edit' ? '처리하는 중이에요 (최대 1분)' : '처리'}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {instruction.length}/{INSTRUCTION_MAX}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button disabled={working || work.applied} onClick={() => setPending({ kind: 'apply' })}>
+              {busy === 'apply' ? '적용 중이에요' : '이 이미지 적용'}
+            </Button>
+            {work.applied && <span className="text-xs text-muted-foreground">지금 적용된 이미지예요.</span>}
           </div>
         </section>
       )}
@@ -287,6 +394,7 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
               <li key={g.id} className="space-y-2 rounded-md border p-2 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span>{formatKst(g.created_at)}</span>
+                  {g.kind === 'edit' && <Badge variant="outline">후처리</Badge>}
                   <span className="text-muted-foreground">
                     {p?.name ?? '삭제된 프리셋'} v{g.preset_version}
                   </span>
@@ -304,13 +412,25 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
                     </Button>
                   )}
                 </div>
+                {g.kind === 'edit' && g.edit_instruction && (
+                  <p className="truncate text-xs text-muted-foreground">{g.edit_instruction}</p>
+                )}
                 {g.error && <p className="text-xs text-destructive">{g.error}</p>}
                 <div className="flex gap-2">
-                  {g.candidate_urls.map((url) => (
-                    <span key={url} className="size-14 overflow-hidden rounded border" style={CHECKER_STYLE}>
+                  {g.candidate_urls.map((url, i) => (
+                    <button
+                      key={url}
+                      type="button"
+                      aria-pressed={sel?.generationId === g.id && sel.index === i}
+                      onClick={() => setSelection({ generationId: g.id, index: i })}
+                      className={`size-14 overflow-hidden rounded border-2 ${
+                        sel?.generationId === g.id && sel.index === i ? 'border-primary' : 'border-border'
+                      }`}
+                      style={CHECKER_STYLE}
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element -- 어드민 미리보기, 외부 저장소 URL */}
                       <img src={url} alt="" className="size-full object-contain" />
-                    </span>
+                    </button>
                   ))}
                 </div>
               </li>
