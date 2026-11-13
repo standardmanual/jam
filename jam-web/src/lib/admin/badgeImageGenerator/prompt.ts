@@ -12,8 +12,19 @@ export type PromptPreset = Pick<
 
 export const RECRAFT_V3_MODEL = 'recraftv3'
 
+/**
+ * 프롬프트 맨 앞에 고정으로 붙는 구도 문장. Recraft는 앞쪽 단어를 우선하므로(V4 가이드),
+ * 그림이 캔버스 밖으로 잘리지 않게 하는 지시를 묘사보다 먼저 둔다(2026-11-13 잘림이 잦다는 사용자 지적).
+ * 운영자가 프리셋에서 지우지 못하게 코드에 고정한다.
+ */
+export const FRAMING_LEAD =
+  'Zoomed-out shot: one small object fully inside the frame, centered, wide empty margins on all sides.'
+
+/** Recraft 프롬프트 길이 한도(2026-11-13 실측: 1001자에서 "prompt length should be in [1, 1000]") */
+export const RECRAFT_PROMPT_MAX = 1000
+
 export function buildRecraftPrompt(description: string, preset: PromptPreset): string {
-  return `${description} ${preset.composition_text} ${preset.forbid_text}`
+  return `${FRAMING_LEAD} ${description} ${preset.composition_text} ${preset.forbid_text}`
 }
 
 /** '#rrggbb' · 'rrggbb' · '#rgb' → [r, g, b]. 형식이 틀리면 오류 */
@@ -37,8 +48,14 @@ export interface RecraftRequestBody {
 
 /** negative_prompt·controls.no_text는 recraftv3에서만 지원하므로 그 모델일 때만 넣는다 */
 export function buildRecraftRequest(description: string, preset: PromptPreset): RecraftRequestBody {
+  const prompt = buildRecraftPrompt(description, preset)
+  if (prompt.length > RECRAFT_PROMPT_MAX) {
+    throw new Error(
+      `프롬프트가 ${prompt.length}자라 Recraft 한도(${RECRAFT_PROMPT_MAX}자)를 넘었어요. 프리셋의 고정 문장이나 영어 문장을 줄여 주세요.`
+    )
+  }
   const body: RecraftRequestBody = {
-    prompt: buildRecraftPrompt(description, preset),
+    prompt,
     style_id: preset.style_id,
     model: preset.model,
     size: '1024x1024',

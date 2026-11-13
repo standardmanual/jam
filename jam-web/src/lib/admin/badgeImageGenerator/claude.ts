@@ -12,6 +12,7 @@ Rules:
 3. No faces, eyes, expressions or human-like behavior.
 4. Never mention text, letters, numbers, labels, logos or writing. Surfaces are plain.
 5. No style, lighting, angle, background or evaluative words.
+6. Describe the object as compact and self-contained: no cords, straps or parts trailing away from it.
 Output the sentence only.`
 
 export const REVISE_SYSTEM =
