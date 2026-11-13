@@ -56,7 +56,8 @@ export async function ensureDescription(
   if (manual) {
     descriptionEn = manual.replace(/\s*[\r\n]+\s*/g, ' ')
     source = 'manual'
-  } else if (feedback && saved?.description_en) {
+  } else if (feedback && saved?.description_en && saved.source_hash === hash) {
+    // 원문(form_description)이 바뀌었으면 옛 문장을 고치지 않고 아래에서 다시 옮긴 뒤 피드백을 반영한다
     descriptionEn = await reviseDescription(saved.description_en, feedback)
     source = 'claude'
     claudeCalled = true
