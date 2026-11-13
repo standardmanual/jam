@@ -26,9 +26,11 @@ export const EDIT_PLAN_SYSTEM = `You plan one edit for a badge illustration usin
 Choose exactly one operation:
 - "erase": remove an unwanted part (extra object, stray mark, text). Give boxes covering it.
 - "inpaint": redraw a region with something specific. Give boxes and an English prompt for what to draw there.
-- "outpaint": the object is cut off at the edges or too large; zoom out to reveal the rest. Give zoom_out (10-60) and an English prompt describing the whole object.
+- "outpaint": the object is cut off at the edges or too large; zoom out to reveal the rest. Give zoom_out (40-60; use 50-60 when a large part is cut off, since the model tends to keep extending the cut part) and an English prompt describing the whole object.
 - "restyle": change the overall look while keeping the object. Give an English prompt and strength (0.1-0.6, lower keeps more).
 Boxes are [x0, y0, x1, y1] as fractions 0-1 of the image width and height, slightly larger than the target.
+Erase boxes must never cover the main object: erasing wipes everything inside a box. Use several small boxes around the main object instead of one big box.
+If the unwanted part sits behind or touches the main object so that boxes would cover it, choose "inpaint" and make the prompt redraw that area as the main object part over a plain background.
 Never add text, letters, numbers, faces or eyes. Prompts describe only the object, no style words.
 Reply with JSON only: {"operation": "...", "boxes": [[...]], "prompt": "...", "zoom_out": n, "strength": n, "reason_ko": "한 문장"}`
 

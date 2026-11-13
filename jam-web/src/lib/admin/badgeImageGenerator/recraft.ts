@@ -122,9 +122,14 @@ export async function inpaint(png: Buffer, maskPng: Buffer, prompt: string, pres
 export async function outpaint(png: Buffer, prompt: string, zoomOut: number, preset: EditPreset): Promise<Buffer> {
   const form = new FormData()
   form.append('image', pngBlob(png), 'image.png')
-  form.append('prompt', withForbid(prompt, preset))
+  // 넓힌 바깥은 원래 배경과 이어져야 한다. style_id를 함께 보내면 스타일이 배경을 다른 색(실측: 빨강)으로
+  // 칠해 원래 그림이 네모로 남는다(2026-11-13 같은 이미지 비교 시험). 그래서 바깥 넓히기에는 style_id를 넣지 않는다.
+  form.append('prompt', withForbid(`${prompt}, on a plain solid background that continues the existing background`, preset))
   form.append('zoom_out_percentage', String(Math.round(zoomOut)))
-  appendModelFields(form, preset)
+  form.append('model', RECRAFT_V3_MODEL)
+  if (preset.model === RECRAFT_V3_MODEL) form.append('negative_prompt', preset.negative_prompt)
+  form.append('n', '1')
+  form.append('response_format', 'url')
   return postEdit('outpaint', '바깥 넓히기', form)
 }
 
