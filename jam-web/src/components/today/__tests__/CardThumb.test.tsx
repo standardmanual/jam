@@ -10,12 +10,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import CardThumb from '../CardThumb'
 import { BookIcon, FlaskIcon, MedalIcon, TargetIcon } from '@/components/ui/icons'
 
-const BOX = 'w-16 h-16 shrink-0 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center'
+const BOX = 'w-16 h-16 shrink-0 rounded-xl bg-background-secondary overflow-hidden flex items-center justify-center'
 const ICON_CLASS = 'w-6 h-6 text-muted'
 const icon = (Icon: typeof MedalIcon) => renderToStaticMarkup(<Icon className={ICON_CLASS} />)
 
 describe('CardThumb — 64px 칸', () => {
-  it('칸은 64px 정사각이고 줄지 않으며 구획 면(bg-background-secondary)·모서리 --radius-2xl다', () => {
+  it('칸은 64px 정사각이고 줄지 않으며 구획 면(bg-background-secondary)·모서리 --radius-xl(12px)다', () => {
     const html = renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} src="https://cdn.example/b.png" />)
     expect(html.startsWith(`<div class="${BOX}">`)).toBe(true)
   })

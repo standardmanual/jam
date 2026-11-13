@@ -403,9 +403,9 @@ export const ko = {
     /** 압축 인사말. name은 표시 이름(닉네임/아이디) */
     greeting: '{name}님, 오늘도 좋은 하루예요',
 
-    // 좌: 진행상황
+    // 좌: 진행(칩 레이블, 티켓 20261113_1452)
     /** 좌측 슬롯 카드 타이틀 레이블 — 3분기(strava_not_connected/progress/suggestion) 공통 (티켓 20260830_2121) */
-    myProgressLabel: '진행상황',
+    myProgressLabel: '진행',
     // UX_WRITING_GUIDELINE.md 고정 용어 — "Strava 동기화"(X: Strava 연동). 티켓 원문 문구의
     // "연동"을 가이드 고정 용어로 교정했다.
     stravaCta: 'Strava 동기화하면 시작해요',
@@ -461,7 +461,7 @@ export const ko = {
 
   /** 투데이 카드 스택 콘텐츠 유형 (template_type) 라벨 — 색상 구분 없이 아이콘+라벨로만 식별 */
   todayCard: {
-    badgeSpotlight: '배지 소개',
+    badgeSpotlight: '배지',
     progressNudge: '진행 알림',
     missionSpotlight: '미션',
     itembookMilestone: '컬렉션',

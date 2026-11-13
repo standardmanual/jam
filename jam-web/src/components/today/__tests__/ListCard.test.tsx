@@ -207,7 +207,7 @@ describe('ListCard 타일형 — 타일 줄', () => {
 
   it('타일은 그림 칸(64px 정사각, 구획 면) 아래에 이름이 온다', () => {
     const html = render(tilesView({ tiles: [tile('성수동 탐험가')] }))
-    expect(html).toContain('<li class="w-16 shrink-0"><div class="w-16 h-16 shrink-0 rounded-2xl bg-background-secondary')
+    expect(html).toContain('<li class="w-16 shrink-0"><div class="w-16 h-16 shrink-0 rounded-xl bg-background-secondary')
     expect(html.indexOf('bg-background-secondary')).toBeLessThan(html.indexOf('성수동 탐험가'))
   })
 

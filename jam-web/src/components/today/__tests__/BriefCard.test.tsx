@@ -276,10 +276,10 @@ describe('BriefCard — 옅은 글자', () => {
 })
 
 describe('BriefCard — 64px 칸', () => {
-  it('칸은 64px 정사각·--radius-2xl·--background-secondary 면이고 왼쪽에 줄어들지 않게 고정된다', () => {
+  it('칸은 64px 정사각·--radius-xl·--background-secondary 면이고 왼쪽에 줄어들지 않게 고정된다', () => {
     const html = render()
     expect(html).toContain(
-      'w-16 h-16 shrink-0 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center',
+      'w-16 h-16 shrink-0 rounded-xl bg-background-secondary overflow-hidden flex items-center justify-center',
     )
     // 칸은 글자 열보다 앞에 있다
     expect(html.indexOf('w-16 h-16')).toBeLessThan(html.indexOf('flex-1 min-w-0'))

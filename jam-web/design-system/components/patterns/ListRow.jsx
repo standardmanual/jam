@@ -150,7 +150,7 @@ function Lead({ lead, shape, badge, tone }) {
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           width: '100%', height: '100%', overflow: 'hidden', boxSizing: 'border-box',
-          borderRadius: shape === 'round' ? 'var(--radius-full)' : 'var(--radius-2xl)',
+          borderRadius: shape === 'round' ? 'var(--radius-full)' : 'var(--radius-xl)',
           background: t.leadBg, color: 'var(--muted)',
         }}
       >
@@ -436,7 +436,7 @@ export function ListRow({
             className="ds-list-row-lead-link"
             aria-label={leadLabel || undefined}
             tabIndex={disabled ? -1 : undefined}
-            style={{ display: 'block', color: 'inherit', textDecoration: 'none', borderRadius: leadShape === 'round' ? 'var(--radius-full)' : 'var(--radius-2xl)', pointerEvents: disabled ? 'none' : undefined }}
+            style={{ display: 'block', color: 'inherit', textDecoration: 'none', borderRadius: leadShape === 'round' ? 'var(--radius-full)' : 'var(--radius-xl)', pointerEvents: disabled ? 'none' : undefined }}
           >
             <Lead lead={lead} shape={leadShape} badge={leadBadge} tone={tone} />
           </a>

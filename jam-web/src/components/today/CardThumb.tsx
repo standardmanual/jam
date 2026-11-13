@@ -9,13 +9,14 @@ import { resourceIconOf, type ResourceIconView } from './resourceIcon'
  * 같은 카드가 모양만 바꿔도 같은 아이콘이어야 하기 때문이다(`resourceIcon.ts` 한 곳에서 고른다).
  *
  * `alt`가 비어 있는 이유: 이름이 바로 옆·아래 글자로 보인다(확정 설계 3절의 alt 규칙).
+ * 모서리는 `rounded-xl`(12px)이다 — 목록 행의 이미지 칸(`ListRow` tile lead)과 같은 값이다(티켓 20261113_1452).
  * 흑백(`dimmed`)은 그림에만 건다 — 색 외에 글자 단서가 없는 기존 규칙이다(티켓 20260905_0038 B). 값이 없으면(유저 정보가 없는 미리보기) 컬러다.
  * 칸 바탕 `bg-background-secondary`(#e5e5e5)는 카드(--card-bg) 안 구획 면이다(카드는 외곽선이 없다, 티켓 20261107_2246).
  */
 export default function CardThumb({ view, src, dimmed = false }: { view: ResourceIconView; src?: string | null; dimmed?: boolean }) {
   const icon = resourceIconOf(view, { className: 'w-6 h-6 text-muted' })
   return (
-    <div className="w-16 h-16 shrink-0 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center">
+    <div className="w-16 h-16 shrink-0 rounded-xl bg-background-secondary overflow-hidden flex items-center justify-center">
       {src ? (
         <SafeImage
           src={src}

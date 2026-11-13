@@ -17,7 +17,7 @@ function chipPattern(label: string) {
 }
 
 describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', () => {
-  it('좌(진행상황)·우(팔로잉) 셀 모두 self-start LabelChip으로 칩을 그린다', () => {
+  it('좌(진행)·우(팔로잉) 셀 모두 self-start LabelChip으로 칩을 그린다', () => {
     const html = renderToStaticMarkup(
       <TodayStatusStrip
         left={{ kind: 'strava_not_connected', href: '/strava' }}
@@ -55,8 +55,8 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
     expect(html).not.toContain('text-snow')
   })
 
-  it('라벨은 «진행상황»·«팔로잉»이다 (티켓 20261109_1429)', () => {
-    expect(d.todayStatus.myProgressLabel).toBe('진행상황')
+  it('라벨은 «진행»·«팔로잉»이다 (티켓 20261109_1429, 20261113_1452)', () => {
+    expect(d.todayStatus.myProgressLabel).toBe('진행')
     expect(d.todayStatus.friendActivityLabel).toBe('팔로잉')
   })
 
