@@ -343,11 +343,15 @@ export type Database = {
           candidate_urls: string[]
           created_at: string
           created_by: string | null
+          edit_instruction: string | null
+          edit_plan: Json | null
           error: string | null
           feedback: string | null
           id: string
           item_book_id: string
           item_name: string
+          kind: string
+          parent_generation_id: string | null
           preset_id: string | null
           preset_version: number
           previous_image_url: string | null
@@ -362,11 +366,15 @@ export type Database = {
           candidate_urls?: string[]
           created_at?: string
           created_by?: string | null
+          edit_instruction?: string | null
+          edit_plan?: Json | null
           error?: string | null
           feedback?: string | null
           id?: string
           item_book_id: string
           item_name: string
+          kind?: string
+          parent_generation_id?: string | null
           preset_id?: string | null
           preset_version: number
           previous_image_url?: string | null
@@ -381,11 +389,15 @@ export type Database = {
           candidate_urls?: string[]
           created_at?: string
           created_by?: string | null
+          edit_instruction?: string | null
+          edit_plan?: Json | null
           error?: string | null
           feedback?: string | null
           id?: string
           item_book_id?: string
           item_name?: string
+          kind?: string
+          parent_generation_id?: string | null
           preset_id?: string | null
           preset_version?: number
           previous_image_url?: string | null
@@ -399,6 +411,13 @@ export type Database = {
             columns: ["item_book_id"]
             isOneToOne: false
             referencedRelation: "item_books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "badge_image_generations_parent_generation_id_fkey"
+            columns: ["parent_generation_id"]
+            isOneToOne: false
+            referencedRelation: "badge_image_generations"
             referencedColumns: ["id"]
           },
           {

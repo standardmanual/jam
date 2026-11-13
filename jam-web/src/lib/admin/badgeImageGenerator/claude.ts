@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import { extractJson, validateEditPlan, type EditPlan } from './edit'
 import { cleanClaudeSentence } from './prompt'
 
 /** 티켓 20261113_1131 — Claude 호출은 이 파일의 세 함수로만 한다. 모델 상수는 이 한 곳에만 둔다. */
@@ -20,6 +21,16 @@ export const REVISE_SYSTEM =
 
 export const TEXT_CHECK_SYSTEM =
   'Look at the image. Reply with exactly YES if any text, letters, numbers, symbols, signatures, logos or letter-like marks are visible anywhere, otherwise reply with exactly NO.'
+
+export const EDIT_PLAN_SYSTEM = `You plan one edit for a badge illustration using Recraft tools. Read the operator's request (Korean) and look at the image.
+Choose exactly one operation:
+- "erase": remove an unwanted part (extra object, stray mark, text). Give boxes covering it.
+- "inpaint": redraw a region with something specific. Give boxes and an English prompt for what to draw there.
+- "outpaint": the object is cut off at the edges or too large; zoom out to reveal the rest. Give zoom_out (10-60) and an English prompt describing the whole object.
+- "restyle": change the overall look while keeping the object. Give an English prompt and strength (0.1-0.6, lower keeps more).
+Boxes are [x0, y0, x1, y1] as fractions 0-1 of the image width and height, slightly larger than the target.
+Never add text, letters, numbers, faces or eyes. Prompts describe only the object, no style words.
+Reply with JSON only: {"operation": "...", "boxes": [[...]], "prompt": "...", "zoom_out": n, "strength": n, "reason_ko": "한 문장"}`
 
 type ContentBlock =
   | { type: 'text'; text: string }
@@ -84,4 +95,22 @@ export async function checkImageHasNoText(png: Buffer): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** 후처리 요청 → 편집 계획. 이미지는 512px로 줄여 보내고, 계획 검증 실패는 EditPlanError */
+export async function planImageEdit(imagePng: Buffer, instruction: string, descriptionEn: string): Promise<EditPlan> {
+  const small = await sharp(imagePng)
+    .resize(512, 512, { fit: 'inside' })
+    .flatten({ background: '#ffffff' })
+    .png()
+    .toBuffer()
+  const text = await callClaude(
+    EDIT_PLAN_SYSTEM,
+    [
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: small.toString('base64') } },
+      { type: 'text', text: `Request: ${instruction}\nCurrent object description: ${descriptionEn}` },
+    ],
+    300
+  )
+  return validateEditPlan(extractJson(text))
 }

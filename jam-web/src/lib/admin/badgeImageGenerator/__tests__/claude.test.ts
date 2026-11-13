@@ -1,6 +1,6 @@
 import sharp from 'sharp'
 import { afterEach, beforeEach, vi } from 'vitest'
-import { checkImageHasNoText, describeItem } from '../claude'
+import { checkImageHasNoText, describeItem, planImageEdit } from '../claude'
 
 async function png(): Promise<Buffer> {
   return sharp({ create: { width: 64, height: 64, channels: 3, background: { r: 200, g: 10, b: 10 } } })
@@ -67,5 +67,24 @@ describe('describeItem', () => {
   it('HTTP 오류면 오류를 던진다', async () => {
     mockReply('x', false)
     await expect(describeItem('컵', '빨간 컵')).rejects.toThrow()
+  })
+})
+
+describe('planImageEdit', () => {
+  const reply = '{"operation":"erase","boxes":[[0.1,0.1,0.3,0.3]],"reason_ko":"지움"}'
+
+  it('JSON 앞뒤에 글이 섞여도 계획을 읽고, 사고 끔과 이미지 블록을 보낸다', async () => {
+    const fetchMock = mockReply(`Here: ${reply} bye`)
+    const plan = await planImageEdit(await png(), '오른쪽 종이를 지워 줘', 'a red cup')
+    expect(plan.operation).toBe('erase')
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(sent.thinking).toEqual({ type: 'disabled' })
+    expect(sent.max_tokens).toBe(300)
+    expect(sent.messages[0].content.some((b: { type: string }) => b.type === 'image')).toBe(true)
+  })
+
+  it('JSON이 아니면 오류를 낸다', async () => {
+    mockReply('죄송합니다')
+    await expect(planImageEdit(await png(), '지워 줘', 'a cup')).rejects.toThrow()
   })
 })
