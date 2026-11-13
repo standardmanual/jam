@@ -261,6 +261,60 @@ export interface BadgeRow {
   image_source: string | null
 }
 
+/** 아이템 배지 이미지 생성기 프리셋(마이그레이션 337, 티켓 20261113_1130). 서비스 롤 전용 */
+export interface BadgeImagePresetRow {
+  id: string
+  name: string
+  /** Recraft 스타일 ID. 시드는 자리표시자 'SET_ME' */
+  style_id: string
+  model: string
+  composition_text: string
+  forbid_text: string
+  negative_prompt: string
+  /** hex */
+  background_color: string
+  /** 고정 문장·설정을 고칠 때마다 서버가 1 올린다 */
+  version: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** 아이템(item_book_id + item_name)별 영어 묘사 문장(마이그레이션 337) */
+export interface BadgeImageItemPromptRow {
+  id: string
+  item_book_id: string
+  item_name: string
+  description_en: string
+  source: 'claude' | 'manual'
+  updated_at: string
+}
+
+export type BadgeImageGenerationStatus = 'generated' | 'applied' | 'reverted' | 'failed'
+
+/** 이미지 생성 1회(후보 2장) 이력(마이그레이션 337) */
+export interface BadgeImageGenerationRow {
+  id: string
+  item_book_id: string
+  item_name: string
+  preset_id: string | null
+  preset_version: number
+  prompt: string
+  request_json: Record<string, unknown>
+  candidate_urls: string[]
+  status: BadgeImageGenerationStatus
+  /** 적용한 후보 번호(0 또는 1) */
+  applied_index: number | null
+  applied_url: string | null
+  /** 적용 직전 4등급 공통 image_url, 되돌리기용 */
+  previous_image_url: string | null
+  feedback: string | null
+  error: string | null
+  created_by: string | null
+  created_at: string
+  applied_at: string | null
+}
+
 export interface UserActivityBadgeRow {
   id: string
   user_id: string
