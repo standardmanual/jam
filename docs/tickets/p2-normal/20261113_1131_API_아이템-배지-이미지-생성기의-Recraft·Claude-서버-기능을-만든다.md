@@ -2,8 +2,9 @@
 id: "20261113_1131"
 category: API
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-13
+closed: 2026-11-13
 ---
 
 # [API] 아이템 배지 이미지 생성기의 Recraft·Claude 서버 기능을 만든다
@@ -106,14 +107,21 @@ Claude 응답 문장은 앞뒤 공백·따옴표를 지우고 줄바꿈을 공�
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 서버 모듈 6개(`prompt`·`claude`·`recraft`·`normalize`·`items`·`describe`)와 관리자 API 6개(`presets`·`items`·`describe`·`generate`·`apply`·`revert`)를 만들었다. `describe.ts`는 describe·generate 라우트가 같은 묘사 확보 로직을 쓰도록 나눈 공용 모듈이다.
+- 카리나 보정: 원문(form_description)이 바뀐 뒤 피드백만 오면 옛 영어 문장을 고치던 분기를 고쳤다(2db096093).
+- 브랜치는 push하지 않았다(사용자 지시). 로컬 `staging`(be190ae2f)에서 분기해 로컬로 게이트를 받고 로컬 staging에 머지했다(f66b5a16a).
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/admin/badgeImageGenerator/{prompt,claude,recraft,normalize,items,describe}.ts
+jam-web/src/lib/admin/badgeImageGenerator/__tests__/{prompt,normalize,claude}.test.ts
+jam-web/src/app/api/admin/badge-image-generator/{presets,items,describe,generate,apply,revert}/route.ts
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 새 시험 3파일 12건 통과, tsc 통과, 변경 폴더 eslint 통과
+- [x] 게이트(민지) WARN 2회: CI 없음(push 보류), Recraft 배경 제거 응답 형태({image:{url}})는 문서 기준 가정 — 실제 호출은 후속 범위에서 확인
+- [ ] 실제 Recraft·Claude 호출 시험(후속 범위, 1132 머지 뒤)
 
 ### 배포 정보
 - 배포일: 
@@ -124,8 +132,9 @@ Claude 응답 문장은 앞뒤 공백·따옴표를 지우고 줄바꿈을 공�
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 2 | 141,465 | 36,840 / 4,425 | 12분 2초 | 55 |
+| 게이트만(카리나 보정) | 1 | 31,845 | - / 4,161 | 30초 | 6 |
+| 합계 | 3 | 173,310 | 36,840 / 8,586 | 12분 32초 | 61 |
 
 ### 주요 의사결정 / 핵심 메모
 - 계획 반환 면제: 파일 14개·예상 700줄로 임계값을 넘지만, 구현 계획을 파일 단위로 적었고 설계는 2026-11-10~13 대화에서 사용자가 항목별로 확정했다. 서버 로직과 라우트를 더 쪼개면 라우트 티켓이 로직 티켓을 기다리기만 하므로 한 티켓으로 둔다.
@@ -133,4 +142,5 @@ Claude 응답 문장은 앞뒤 공백·따옴표를 지우고 줄바꿈을 공�
 - Anthropic·Recraft SDK를 새로 설치하지 않는다. 호출이 세 종류뿐이라 `fetch`로 충분하다.
 
 ### 잔여 이슈
--
+- 범위 밖 발견 티켓: 20261113_1208(P2, 적용 동시 요청 경합), 20261113_1209(P3, 기록 갱신만 실패 시 되돌리기 불가), 20261113_1210(P3, 묘사 확보 분기 시험)
+- 배포된 어드민에서 쓰려면 Vercel 두 프로젝트에 `RECRAFT_API_KEY` 등록이 필요하다(2026-11-13 확인 시 없음).
