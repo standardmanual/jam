@@ -44,7 +44,7 @@ interface Props {
 }
 
 type Pending = { kind: 'apply' } | { kind: 'revert'; generationId: string }
-type Busy = 'describe' | 'generate' | 'edit' | 'apply' | 'revert' | null
+type Busy = 'describe' | 'form' | 'generate' | 'edit' | 'apply' | 'revert' | null
 
 /** 작업 이미지 — 생성 기록 한 줄(generationId)의 index번째 후보 */
 type Selection = { generationId: string; index: number }
@@ -83,6 +83,8 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
   const [instruction, setInstruction] = useState('')
   const [editNote, setEditNote] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const [editingForm, setEditingForm] = useState(false)
+  const [formDraft, setFormDraft] = useState('')
 
   const preset = activePresets.find((p) => p.id === presetId) ?? null
   const styleMissing = !preset || preset.style_id === STYLE_ID_PLACEHOLDER
@@ -130,6 +132,34 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
       toast.success(body.manualText !== undefined ? '문장을 저장했어요.' : '영어 문장을 다시 만들었어요.')
     } catch (e) {
       fail(e, '문장을 저장하지 못했어요.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** 형태 묘사 저장 → 영어 문장 다시 옮기기. 다시 옮기기가 실패해도 저장은 유지된다 (티켓 20261113_1411) */
+  async function saveForm() {
+    setBusy('form')
+    setError(null)
+    try {
+      await callApi(`${API}/form-description`, {
+        method: 'PATCH',
+        body: { bookId, itemName: item.itemName, formDescription: formDraft },
+      })
+    } catch (e) {
+      fail(e, '형태 묘사를 저장하지 못했어요.')
+      setBusy(null)
+      return
+    }
+    setEditingForm(false)
+    toast.success('형태 묘사를 저장했어요. 영어 문장을 다시 만드는 중이에요.')
+    try {
+      await callApi(`${API}/describe`, { method: 'POST', body: { bookId, itemName: item.itemName, force: true } })
+      await onChanged()
+      toast.success('영어 문장을 다시 만들었어요.')
+    } catch (e) {
+      await onChanged()
+      fail(e, '영어 문장을 다시 만들지 못했어요.')
     } finally {
       setBusy(null)
     }
@@ -243,7 +273,44 @@ export default function ItemWorkbench({ bookId, item, presets, defaultPresetId, 
       <section className="space-y-2">
         <h2 className="text-lg font-bold">{item.itemName}</h2>
         <p className="text-sm text-muted-foreground">형태 묘사</p>
-        <p className="rounded-md bg-muted p-3 text-sm">{item.formDescription}</p>
+        {editingForm ? (
+          <div className="space-y-2">
+            <Textarea
+              value={formDraft}
+              onChange={(e) => setFormDraft(e.target.value)}
+              rows={4}
+              maxLength={200}
+              disabled={working}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" disabled={working || formDraft.trim().length < 10} onClick={saveForm}>
+                {busy === 'form' ? '저장하는 중이에요' : '저장'}
+              </Button>
+              <Button size="sm" variant="outline" disabled={working} onClick={() => setEditingForm(false)}>
+                취소
+              </Button>
+              <span className="text-xs text-muted-foreground">{formDraft.length}/200자</span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="rounded-md bg-muted p-3 text-sm">{item.formDescription}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={working}
+              onClick={() => {
+                setFormDraft(item.formDescription)
+                setEditingForm(true)
+              }}
+            >
+              수정
+            </Button>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground break-keep wrap-break-word">
+          여기서 고친 형태 묘사는 원고 문서에는 자동으로 반영되지 않아요.
+        </p>
         {item.stale && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-destructive">형태 묘사가 바뀌었어요. 영어 문장을 다시 만들어 주세요.</span>
