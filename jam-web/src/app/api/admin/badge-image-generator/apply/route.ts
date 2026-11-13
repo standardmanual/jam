@@ -34,8 +34,12 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
   if (genErr) return NextResponse.json({ error: genErr.message }, { status: 500 })
   if (!gen) return NextResponse.json({ error: '생성 기록을 찾을 수 없습니다.' }, { status: 404 })
-  if (gen.status !== 'generated') {
-    return NextResponse.json({ error: '적용할 수 없는 상태의 기록입니다.' }, { status: 409 })
+  // 되돌린(reverted) 기록도 생성 이력에서 다시 골라 적용할 수 있다 (티켓 20261113_1332)
+  if (gen.status === 'applied') {
+    return NextResponse.json({ error: '이미 적용된 기록입니다.' }, { status: 409 })
+  }
+  if (gen.status !== 'generated' && gen.status !== 'reverted') {
+    return NextResponse.json({ error: '적용할 수 없는 상태의 기록입니다.' }, { status: 400 })
   }
   const candidateUrl = gen.candidate_urls[index]
   if (!candidateUrl) return NextResponse.json({ error: '해당 번호의 후보가 없습니다.' }, { status: 400 })
