@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { MedalIcon, PackageIcon } from '@/components/ui/icons'
-import { ListRow, ListRowChip } from '@/components/ui/ListRow'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Card } from '@ds/components/cards/Card'
@@ -15,7 +16,6 @@ import { Carousel } from '@ds/components/navigation/Carousel'
 import type { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import type { ItemCandidate } from '@/components/inventory/ItemCandidateRow'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
-import LocalDate from '@/components/LocalDate'
 import BadgeDetailSheet, { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -98,7 +98,7 @@ function toCandidate(item: { id: string; serial_number: number | null; serial_pr
 /**
  * 온보딩 퀘스트 `drop` 연출 전용(티켓 20260927_2128) — 드랍한 연출 아이템을 실제
  * `/api/drops` 재조회 없이 곧바로 POI 드랍 목록(`dropsCache`)에 추가하기 위해 `PickupDrop`
- * 셰이프로 변환하는 순수 함수. `dropped_at`은 이 목록 행(`ItemRow`)에 노출되지 않으므로
+ * 셰이프로 변환하는 순수 함수. `dropped_at`은 이 갤러리 칸(`PoiBadgeGallery`)에 노출되지 않으므로
  * 실제 시각 대신 고정값을 쓴다 — jsdom이 없어 탭 상호작용을 자동 검증할 수 없는 대신
  * 이 함수만 단위 테스트로 고정한다(`PoiCarouselModal.test.tsx`).
  */
@@ -116,20 +116,6 @@ export function toDemoDroppedPickup(item: InventoryItem): PickupDrop {
     serial_number: item.serial_number,
     expires_at: item.expires_at,
   }
-}
-
-/**
- * 그룹 내 가장 이른 만료일(있으면) — 드랍 그리드 카드의 "곧 만료" 칩 기준(20260908_0040).
- * 20260908_0223: 픽업 그룹(`PickupDrop[]`)도 같은 기준으로 재사용하도록 `expires_at`
- * 필드만 요구하는 형태로 넓혔다 — 나머지 필드(badge_id 등)는 필요 없다.
- */
-function earliestExpiry(items: { expires_at: string | null }[]): string | null {
-  let earliest: string | null = null
-  for (const item of items) {
-    if (!item.expires_at) continue
-    if (!earliest || new Date(item.expires_at) < new Date(earliest)) earliest = item.expires_at
-  }
-  return earliest
 }
 
 /** 같은 badge_id를 가진 픽업 후보(다른 사람이 드랍한 개체) 묶음 — 20260908_0223. */
@@ -173,17 +159,6 @@ function groupPickupDrops(drops: PickupDrop[]): PickupGroup[] {
   return [...groups.filter((g) => !g.locked), ...groups.filter((g) => g.locked)]
 }
 
-/**
- * 만료 임박(7일 이내) 여부 — `InventoryGrid.tsx`의 동명 함수와 동일 기준(20260908_0217,
- * 픽업 목록·드랍 선택 목록 행 통일). 20260908_0223부터 픽업 그룹 행에도 쓰인다 — 이미 발급된
- * 개체가 POI에 드랍돼 대기 중인 동안에도 만료는 계속 진행되기 때문이다.
- */
-function isRowExpiringSoon(expiresAt: string | null | undefined): boolean {
-  if (!expiresAt) return false
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
-}
-
 /** 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — `BottomSheet.tsx`(20260908_0040)와 동일 정의.
  *  이 모달은 BottomSheet를 쓰지 않는 별도 오버레이 구현이라 접근성 로직을 자체적으로
  *  갖는다(20260908_1754). */
@@ -195,6 +170,16 @@ const INITIAL_WINDOW_SIZE = 3
 const WINDOW_STEP = 3
 
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/**
+ * 지점 카드 크기 고정(티켓 20261114_2352). 갤러리 칸 높이는 `grid-auto-rows`로 이 값에 고정하고, 본문 슬롯 높이(2행)는 같은 상수에서 계산한다.
+ * 값은 칸 안 구성(여백 8·썸네일 56·이름 2줄·칩 줄 24)에서 잡았고 실렌더 `offsetHeight` 실측으로 확인한다.
+ */
+const GALLERY_CELL_H = 138
+const GALLERY_GAP = 8
+const GALLERY_H = GALLERY_CELL_H * 2 + GALLERY_GAP
+/** 「여기에 드랍」·[취소][드랍] 버튼 줄이 들어가는 슬롯 높이(버튼이 없는 상태에서도 비워 둔다) */
+const BUTTON_SLOT_H = 48
 
 interface PoiCarouselModalProps {
   /** 반경 내 전체 POI 목록(정렬 순서는 무관 — 내부에서 거리순으로 재정렬한다) */
@@ -683,8 +668,6 @@ export default function PoiCarouselModal({
     badgeName: group.badgeName,
     badgeImageUrl: group.badgeImageUrl,
     badgeRarity: group.badgeRarity,
-    // 잠긴 묶음에는 만료 칩이 없다(운영 로직 7.3절) — 만료일을 행으로 넘기지 않는다.
-    expiresAt: group.locked ? null : earliestExpiry(group.items),
     count: group.items.length,
     countAriaText: t(d.drops.dropOwnedCountAria, { count: String(group.items.length) }),
     locked: group.locked,
@@ -712,10 +695,9 @@ export default function PoiCarouselModal({
 
       {/*
         20260820_022: 화면 세로 중앙(justify-center) → TabBar 바로 위 고정(justify-end)으로
-        변경. 이 기능 개발 이전 바텀시트와 동일한 하단 위치다. paddingBottom은 TabBar
-        (bottom: safe-area+16px, height 64px) 위 12px 여백을 더한 값 — BottomSheet.tsx/
-        BadgeDetailSheet.tsx의 footer 패딩과 동일한 관례를 따른다. justify-end라 컨텐츠
-        (드랍된 배지 수)가 많아질수록 패널이 아래는 고정된 채 위쪽으로만 늘어난다.
+        변경. paddingBottom은 TabBar(bottom: safe-area+16px, height 64px) 위 12px 여백을 더한
+        값 — BottomSheet.tsx/BadgeDetailSheet.tsx의 footer 패딩과 동일한 관례를 따른다.
+        카드 높이는 상태·묶음 수와 무관하게 고정이다(20261114_2352, `PoiCard` 본문 슬롯).
         좌우 padding은 제거 — 캐러셀이 화면 폭 전체를 써서 옆 카드(peek)가 화면 끝까지
         잘리지 않고 보이게 한다(빈 영역은 pointer-events:none으로 배경 탭 닫기를 살려둔다).
       */}
@@ -868,6 +850,147 @@ export function PoiCard({
   questPulseStep,
   onClose,
 }: PoiCardProps) {
+  const spinner = (
+    <div className="flex justify-center">
+      <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+  const pulseDrop = questPulseStep === 'drop'
+  const pulsePickup = questPulseStep === 'pickup'
+  let body: ReactNode = null
+  let footer: ReactNode = null
+  if (isActive) {
+    if (loading || drops === undefined) {
+      body = spinner
+    } else if (showInventory) {
+      /* ===== 드랍: 인벤토리 갤러리(활성 카드에서만 열림) ===== */
+      if (pendingDropItem) {
+        body = (
+          <div className="flex flex-col items-center gap-4">
+            {pendingDropItem.locked ? (
+              // 잠긴 개체는 이름·그림 없이 잠금 타일과 등급 칩만 보인다(운영 로직 7.3절, 티켓 20261018_1817).
+              <div className="flex flex-col items-center gap-2">
+                <LockedTile size={80} />
+                <RarityBadge
+                  rarity={
+                    KNOWN_RARITIES.includes(pendingDropItem.badgeRarity as BadgeRarity)
+                      ? (pendingDropItem.badgeRarity as BadgeRarity)
+                      : 'common'
+                  }
+                />
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center">
+                <SafeImage
+                  src={pendingDropItem.badgeImageUrl}
+                  alt={pendingDropItem.badgeName}
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-contain p-1"
+                  fallback={<MedalIcon className="w-8 h-8 text-muted" />}
+                />
+              </div>
+            )}
+            <p className="text-base text-center whitespace-pre-line break-keep wrap-break-word">
+              {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
+            </p>
+          </div>
+        )
+        footer = (
+          <div className="flex gap-2 w-full">
+            <Button fullWidth variant="secondary" surface="main" onClick={onCancelPending} disabled={dropping}>
+              {d.drops.cancel}
+            </Button>
+            {/* 확인 버튼만 pill 래퍼로 펄스(티켓 20260928_1754) — 취소 버튼에는 붙이지
+                않는다. Button 자체는 --radius-full(=--radius-full)라 래퍼 반경이
+                실제 버튼 반경과 일치한다. */}
+            {pulseDrop ? (
+              <div className="w-full rounded-full jam-quest-pulse">
+                <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
+                  {d.drops.dropButton}
+                </Button>
+              </div>
+            ) : (
+              <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
+                {d.drops.dropButton}
+              </Button>
+            )}
+          </div>
+        )
+      } else if (inventoryLoading) {
+        body = spinner
+      } else if (dropGridItems.length === 0) {
+        body = (
+          <EmptyState
+            icon={<MedalIcon className="w-8 h-8" />}
+            title={d.drops.dropNoItems}
+            description={d.drops.dropNoItemsBody}
+          />
+        )
+      } else {
+        // 20260908_0217: 픽업 목록과 같은 형태로 통일 — 티켓 20261114_2352에서 둘 다 3열 갤러리로 옮겼다.
+        // 버튼 슬롯은 빈 채로 높이만 유지한다(갤러리를 버튼 자리까지 늘리지 않는다).
+        body = (
+          <PoiBadgeGallery
+            cells={dropGridItems.map((item) => ({
+              id: item.id,
+              name: item.badgeName,
+              imageUrl: item.badgeImageUrl,
+              rarity: item.badgeRarity,
+              count: item.count,
+              countAriaText: item.countAriaText,
+              locked: item.locked === true,
+              onClick: () => onSelectDropItem?.(item),
+              pulse: pulseDrop,
+            }))}
+          />
+        )
+      }
+    } else {
+      /* ===== 드랍된 배지 목록(있으면) + [여기에 드랍] 액션(항상 함께 노출) — 20260829_2101
+         "No broken objects" 위반 수정: 픽업 가능 목록 유무와 드랍 액션 노출 여부를
+         독립적인 축으로 분리했다. 목록·버튼 레이블·문구는 기존 것을 그대로 재사용. */
+      body =
+        drops.length > 0 ? (
+          // 20260908_0223: 픽업 목록은 badge_id별 그룹으로 묶는다(같은 배지를 여러 명이 드랍해도 칸 하나 + ×N).
+          // 그룹 클릭 시 개체가 1개면 즉시, 2개 이상이면 개체 선택 시트로 이어진다(handleSelectPickupGroup).
+          <PoiBadgeGallery
+            cells={groupPickupDrops(drops).map((group) => ({
+              id: group.badgeId,
+              name: group.badgeName,
+              imageUrl: group.badgeImageUrl,
+              rarity: group.badgeRarity,
+              count: group.items.length,
+              countAriaText: t(d.drops.pickupAvailableCountAria, { count: String(group.items.length) }),
+              locked: group.locked,
+              onClick: () => onSelectPickupGroup?.(group),
+              pulse: pulsePickup,
+            }))}
+          />
+        ) : (
+          <EmptyState
+            icon={<PackageIcon className="w-8 h-8" />}
+            title={d.drops.dropEmptyTitle}
+            description={d.drops.dropEmptyBody}
+            style={{ padding: 0 }}
+          />
+        )
+      if (!hideDropAction) {
+        footer = pulseDrop ? (
+          <div className="w-full rounded-full jam-quest-pulse">
+            <Button fullWidth surface="main" onClick={onOpenInventory}>
+              {d.drops.dropHereButton}
+            </Button>
+          </div>
+        ) : (
+          <Button fullWidth surface="main" onClick={onOpenInventory}>
+            {d.drops.dropHereButton}
+          </Button>
+        )
+      }
+    }
+  }
+
   return (
     <Card
       tone="default"
@@ -894,253 +1017,65 @@ export function PoiCard({
         <IconButton icon="close" label={d.common.close} onClick={onClose} surface="light" className="shrink-0 -mt-2 -mr-2" />
       </div>
 
-      {/* 본문 — peek(비활성) 카드는 POI 기본 정보만 노출하고 본문 자체를
-          렌더하지 않는다. 배지 데이터는 이 카드가 중앙(활성)에 도착한
-          시점에만 불러온다(20260820_025). 세로 높이는 콘텐츠(드랍된 배지 수)
-          만큼 자연스럽게 자라되, 목록 자체는 `max-h-[50vh] overflow-y-auto`로
-          제한된다(20260917) — 보유·드랍 아이템이 많으면 카드가 화면 위(로고·
-          TopNav)까지 밀고 올라가던 문제를 막기 위함. 이 캐러셀에는 반경 내
-          (in_drop_range) POI만 들어오므로 반경 밖 안내는 없다. */}
-      {!isActive ? null : loading || drops === undefined ? (
-        <div className="flex justify-center py-6">
-          <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : showInventory ? (
-        /* ===== 드랍: 인벤토리 그리드(활성 카드에서만 열림) ===== */
-        pendingDropItem ? (
-          <div className="flex flex-col items-center gap-4 py-4">
-            {pendingDropItem.locked ? (
-              // 잠긴 개체는 이름·그림 없이 잠금 타일과 등급 칩만 보인다(운영 로직 7.3절, 티켓 20261018_1817).
-              <div className="flex flex-col items-center gap-2">
-                <LockedTile size={80} />
-                <RarityBadge
-                  rarity={
-                    KNOWN_RARITIES.includes(pendingDropItem.badgeRarity as BadgeRarity)
-                      ? (pendingDropItem.badgeRarity as BadgeRarity)
-                      : 'common'
-                  }
-                />
-              </div>
-            ) : (
-              <div className="w-20 h-20 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center">
-                <SafeImage
-                  src={pendingDropItem.badgeImageUrl}
-                  alt={pendingDropItem.badgeName}
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-contain p-1"
-                  fallback={<MedalIcon className="w-8 h-8 text-muted" />}
-                />
-              </div>
-            )}
-            <p className="text-base text-center whitespace-pre-line">
-              {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
-            </p>
-            <div className="flex gap-2 w-full">
-              <Button fullWidth variant="secondary" surface="main" onClick={onCancelPending} disabled={dropping}>
-                {d.drops.cancel}
-              </Button>
-              {/* 확인 버튼만 pill 래퍼로 펄스(티켓 20260928_1754) — 취소 버튼에는 붙이지
-                  않는다. Button 자체는 --radius-full(=--radius-full)라 래퍼 반경이
-                  실제 버튼 반경과 일치한다. */}
-              {questPulseStep === 'drop' ? (
-                <div className="w-full rounded-full jam-quest-pulse">
-                  <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
-                    {d.drops.dropButton}
-                  </Button>
-                </div>
-              ) : (
-                <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
-                  {d.drops.dropButton}
-                </Button>
-              )}
-            </div>
-          </div>
-        ) : inventoryLoading ? (
-          <div className="flex justify-center py-6">
-            <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : dropGridItems.length === 0 ? (
-          <EmptyState
-            icon={<MedalIcon className="w-8 h-8" />}
-            title={d.drops.dropNoItems}
-            description={d.drops.dropNoItemsBody}
-          />
-        ) : (
-          // 20260908_0217: 그리드 카드 대신 픽업 목록과 같은 행 형태(ItemRow)로 통일.
-          // dropGridItems(배지 종류별 그룹 — 개수·만료일 포함)는 그대로 두고 렌더링만 교체.
-          // 20260917: 보유 아이템이 많으면 카드가 화면 위로 무한정 자라 상단(로고·TopNav)을
-          // 밀어내던 문제 수정 — 목록에 최대 높이 + 내부 스크롤을 둔다.
-          <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
-            {dropGridItems.map((item) => (
-              <ItemRow
-                key={item.id}
-                name={item.badgeName}
-                imageUrl={item.badgeImageUrl}
-                rarity={item.badgeRarity}
-                count={item.count}
-                countAriaText={item.countAriaText}
-                expiresAt={item.expiresAt}
-                locked={item.locked}
-                onClick={() => onSelectDropItem?.(item)}
-                pulse={questPulseStep === 'drop'}
-              />
-            ))}
-          </div>
-        )
-      ) : (
-        /* ===== 드랍된 배지 목록(있으면) + [여기에 드랍] 액션(항상 함께 노출) — 20260829_2101
-           "No broken objects" 위반 수정: 픽업 가능 목록 유무와 드랍 액션 노출 여부를
-           독립적인 축으로 분리했다. 목록·버튼 레이블·문구는 기존 것을 그대로 재사용. */
-        <div className="flex flex-col gap-4">
-          {drops.length > 0 ? (
-            // 20260908_0223: 픽업 목록도 개체 flat 배열이 아니라 badge_id별 그룹으로
-            // 묶는다(같은 배지를 여러 명이 드랍해도 행 하나 + 개수 서클). 그룹 클릭 시
-            // 개체가 1개면 지금까지처럼 즉시, 2개 이상이면 개체 선택 시트로 이어진다
-            // (handleSelectPickupGroup).
-            <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
-              {groupPickupDrops(drops).map((group) => (
-                <ItemRow
-                  key={group.badgeId}
-                  name={group.badgeName}
-                  imageUrl={group.badgeImageUrl}
-                  rarity={group.badgeRarity}
-                  count={group.items.length}
-                  countAriaText={t(d.drops.pickupAvailableCountAria, { count: String(group.items.length) })}
-                  expiresAt={group.locked ? null : earliestExpiry(group.items)}
-                  locked={group.locked}
-                  onClick={() => onSelectPickupGroup?.(group)}
-                  pulse={questPulseStep === 'pickup'}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<PackageIcon className="w-8 h-8" />}
-              title={d.drops.dropEmptyTitle}
-              description={d.drops.dropEmptyBody}
-              style={{ padding: 0 }}
-            />
-          )}
-          {isActive && !hideDropAction && (
-            questPulseStep === 'drop' ? (
-              <div className="w-full rounded-full jam-quest-pulse">
-                <Button fullWidth surface="main" onClick={onOpenInventory}>
-                  {d.drops.dropHereButton}
-                </Button>
-              </div>
-            ) : (
-              <Button fullWidth surface="main" onClick={onOpenInventory}>
-                {d.drops.dropHereButton}
-              </Button>
-            )
-          )}
-        </div>
-      )}
+      {/* 본문 슬롯 — 높이가 상태와 무관하게 `GALLERY_H`로 고정된다(티켓 20261114_2352): 로딩·갤러리·빈 상태·드랍 확인이
+          모두 이 안에서 그려지고, 옆 카드(peek)도 같은 높이의 빈 슬롯을 갖는다(`aria-hidden`). 배지 데이터는 이 카드가 중앙(활성)에
+          도착한 시점에만 불러온다(20260820_025). 이 캐러셀에는 반경 내(in_drop_range) POI만 들어오므로 반경 밖 안내는 없다. */}
+      <div style={{ height: GALLERY_H }} className="flex flex-col justify-center" aria-hidden={!isActive || undefined}>
+        {body}
+      </div>
+      {/* 버튼 슬롯 — 버튼이 없는 상태(온보딩 pickup 연출·드랍 선택·로딩·옆 카드)에서도 높이 48을 비워 둔다 */}
+      <div className="shrink-0 flex items-center" style={{ height: BUTTON_SLOT_H }} aria-hidden={!isActive || undefined}>
+        {footer}
+      </div>
     </Card>
   )
 }
 
-// ===== 아이템 행 (픽업 목록 · 드랍 선택 목록 공용, 20260908_0217) =====
 
-interface ItemRowProps {
+// ===== 배지 갤러리 (픽업 목록 · 드랍 선택 목록 공용, 티켓 20261114_2352) =====
+
+/** 갤러리 한 칸의 입력 — 두 목록의 데이터를 이 모양으로 정규화해 넘긴다. 만료일은 받지 않는다(갤러리 칸에는 만료 임박을 표시하지 않는다). */
+interface PoiBadgeCell {
+  id: string
   name: string
   imageUrl: string | null
-  /** 미지 등급 값은 픽업 행과 동일하게 'common'으로 폴백한다(기존 관례 유지, 되돌리지 않음). */
+  /** 미지 등급 값은 'common'으로 폴백한다(기존 관례 유지) */
   rarity: string | null
-  onClick?: () => void
-  /**
-   * 같은 배지를 여러 개(드랍 선택 행: 내 보유 개체 / 픽업 행: 이 지점에 드랍된 개체)
-   * 가진 그룹일 때의 개수 — 1 이하면(undefined 포함) 서클이 그려지지 않는다. 20260908_0040에서
-   * 드랍 선택 행에만 도입됐다가, 20260908_0223에서 픽업 행도 badge_id로 그룹핑하며 함께 받는다.
-   */
+  /** 2 이상일 때만 ×N 필을 그린다 */
   count?: number | null
-  /** count>1일 때 행 버튼의 aria-label에 포함할 문구(dropOwnedCountAria/pickupAvailableCountAria, 새 문구 아님). */
   countAriaText?: string
-  /**
-   * 그룹 내 가장 이른 만료일. 드랍 선택 그룹은 내 인벤토리 개체의 만료일, 픽업 그룹은 이미
-   * 발급된 개체가 이 지점에 드랍돼 대기 중인 동안의 만료일이다(둘 다 20260908_0223 기준
-   * 만료 개념이 있다 — 픽업 대기 중이라고 만료가 멈추지 않는다).
-   */
-  expiresAt?: string | null
-  /**
-   * 잠긴 개체 행(티켓 20261018_1817, 운영 로직 7.3절) — 썸네일은 `LockedTile`(48), 이름 줄은 «잠긴 아이템 배지», 둘째 줄은 등급 칩뿐이다.
-   * 이름·그림·일련번호·만료 칩을 그리지 않는다(`name`·`imageUrl`·`expiresAt`을 읽지 않는다). 칩 «잠김»은 이름에 이미 있어 더하지 않는다.
-   */
-  locked?: boolean
-  /**
-   * 온보딩 퀘스트 3·6단계 「지금 눌러야 할 곳」 펄스(티켓 20260928_1754) — true면 `ListRow`
-   * 바깥 면(`tone="tint"`, `--radius-2xl`)의 className에 `.jam-quest-pulse`를 병합한다(별도
-   * 래퍼 없음, 반경 불일치 없음). 평소 픽업·드랍 목록에서는 전달되지 않는다.
-   */
-  pulse?: boolean
+  /** 잠긴 개체 묶음 — 이름·그림을 읽지 않고 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그린다(운영 로직 7.3절) */
+  locked: boolean
+  onClick: () => void
+  /** 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스(`.jam-quest-pulse`) */
+  pulse: boolean
 }
 
 /**
- * 픽업 목록(다른 사람이 드랍한 배지)과 드랍 선택 목록(내 인벤토리에서 여기 내놓을 배지 고르기)이
- * 함께 쓰는 행 프레젠테이션 컴포넌트 — 20260908_0217. 기존에는 픽업이 행, 드랍 선택이
- * InventoryGrid 그리드 카드로 서로 다른 UI였다. 데이터(dropGridItems 그룹화·핸들러·개체
- * 선택 시트)는 그대로 두고 렌더링만 통일한다. 20260908_0223부터 픽업 쪽도 같은 방식으로
- * badge_id 그룹핑돼 count·expiresAt을 함께 받는다 — 두 목록의 행 시각·규칙(개체 1개=서클
- * 없음, 2개 이상=서클)이 완전히 동일하다.
+ * 3열 × 2행 갤러리. 칸 높이는 `grid-auto-rows` 한 곳(`GALLERY_CELL_H`)에서 고정하고 본문 슬롯 높이도 같은 상수에서 계산한다.
+ * 묶음이 6개를 넘으면 이 영역 안에서만 세로 스크롤하고(`overscroll-contain`), 6개 미만이면 앞에서부터 채우며 빈 칸 자리 표시는 없다.
+ * 세로 스크롤과 캐러셀 가로 스와이프는 브라우저가 제스처 방향으로 가르므로 `touch-action`을 따로 제한하지 않는다.
  */
-function ItemRow({ name, imageUrl, rarity, onClick, count, countAriaText, expiresAt, locked = false, pulse = false }: ItemRowProps) {
-  const rarityValue = KNOWN_RARITIES.includes(rarity as BadgeRarity) ? (rarity as BadgeRarity) : 'common'
-  const showCount = typeof count === 'number' && count > 1
-  const expiring = !locked && isRowExpiringSoon(expiresAt)
-
-  // `RarityBadge`는 common이면 null을 돌려준다. 그 요소를 eyebrow에 넘기면 ListRow가 «요소가 있다»고 보고
-  // 빈 줄과 title 위 간격을 만들므로(ItemCandidateRow와 같은 함정), 칩이 실제로 그려질 때만 노드를 넘긴다.
-  const showRarity = rarityValue !== 'common'
-  const eyebrow =
-    showRarity || (expiring && expiresAt) ? (
-      <>
-        {showRarity && <RarityBadge rarity={rarityValue} size="row" />}
-        {expiring && expiresAt && (
-          <ListRowChip tone="neutral">
-            <LocalDate iso={expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
-          </ListRowChip>
-        )}
-      </>
-    ) : undefined
-
-  // 개수 알약은 position:absolute라 sr-only 문구가 알약 안에 갇힌다. ×N은 aria-hidden으로 가리고
-  // 스크린리더용 문구(countAriaText)를 덧붙여 «개수 안내 → 이름 → 등급 → 만료» 순서로 읽힌다.
-  // countAriaText가 없으면 aria-hidden을 걸지 않고 ×N을 그대로 읽게 둔다.
-  const leadBadge = showCount ? (
-    countAriaText ? (
-      <>
-        <span aria-hidden="true">×{count}</span>
-        <span className="sr-only">{countAriaText}</span>
-      </>
-    ) : (
-      `×${count}`
-    )
-  ) : undefined
-
+function PoiBadgeGallery({ cells }: { cells: PoiBadgeCell[] }) {
   return (
-    <ListRow
-      tone="tint"
-      lead={
-        locked ? (
-          <LockedTile size={48} />
-        ) : (
-          <SafeImage
-            src={imageUrl}
-            alt=""
-            width={48}
-            height={48}
-            fallback={<MedalIcon className="w-5 h-5 text-muted" />}
-          />
-        )
-      }
-      leadBadge={leadBadge}
-      eyebrow={eyebrow}
-      title={locked ? d.lockedItem.card.name : name}
-      titleVariant="regular"
-      chevron
-      onClick={onClick}
-      className={pulse ? 'jam-quest-pulse' : undefined}
-    />
+    <div
+      className="grid grid-cols-3 gap-2 content-start h-full overflow-y-auto overscroll-contain"
+      style={{ gridAutoRows: GALLERY_CELL_H }}
+    >
+      {cells.map((cell) => (
+        <BadgeGridCard
+          key={cell.id}
+          compact
+          name={cell.name}
+          imageUrl={cell.imageUrl}
+          rarity={KNOWN_RARITIES.includes(cell.rarity as BadgeRarity) ? (cell.rarity as BadgeRarity) : 'common'}
+          count={cell.count}
+          countAriaText={cell.countAriaText}
+          locked={cell.locked}
+          onClick={cell.onClick}
+          className={cell.pulse ? 'jam-quest-pulse' : undefined}
+        />
+      ))}
+    </div>
   )
 }

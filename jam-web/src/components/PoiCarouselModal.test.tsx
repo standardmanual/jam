@@ -188,7 +188,7 @@ describe('잠긴 개체 행과 드랍 확인 단계 (티켓 20261018_1817, 운�
   })
 })
 
-describe('아이템 행의 ListRow 배선 (티켓 20261108_1625)', () => {
+describe('갤러리 칸 배선 (티켓 20261114_2352, 이전 20261108_1625)', () => {
   const base: PickupDrop = { ...DEMO_PICKUP_DROP, id: 'r1', badge_id: 'badge-r', badge_name: '행 배지 이름', badge_rarity: 'common', serial: null }
   function renderList(drops: PickupDrop[]) {
     return renderToStaticMarkup(
@@ -208,7 +208,7 @@ describe('아이템 행의 ListRow 배선 (티켓 20261108_1625)', () => {
 
   it('개체가 둘 이상이면 ×N 알약은 aria-hidden이고 개수 안내 문구가 따로 읽힌다', () => {
     const html = renderList([base, { ...base, id: 'r2' }])
-    expect(html).toContain('<span aria-hidden="true">×2</span>')
+    expect(html).toMatch(/<span[^>]*aria-hidden="true"[^>]*>×2<\/span>/)
     expect(html).toContain(`<span class="sr-only">${t(d.drops.pickupAvailableCountAria, { count: '2' })}</span>`)
   })
 
@@ -216,10 +216,54 @@ describe('아이템 행의 ListRow 배선 (티켓 20261108_1625)', () => {
     expect(renderList([base])).not.toContain('×1')
   })
 
-  it('common 행은 등급 칩 줄을 만들지 않는다', () => {
+  it('common 칸은 등급 칩을 그리지 않지만 칩 줄 높이(h-6)는 남는다', () => {
     // 칩이 그려졌는지는 등급 라벨 글자(RarityBadge 라벨 «Rare»)로 본다. 레이아웃 gap 문자열에 기대면 같은 모달의 다른 요소가 같은 gap을 쓸 때 오탐한다.
     expect(renderList([{ ...base, badge_rarity: 'rare' }])).toContain('>Rare<')
     expect(renderList([base])).not.toContain('>Rare<')
+    expect(renderList([base])).toContain('h-6 flex items-center justify-center')
+  })
+
+  it('만료 임박 개체여도 칸에 만료 칩을 그리지 않는다', () => {
+    const html = renderList([{ ...base, expires_at: new Date(Date.now() + 86_400_000).toISOString() }])
+    expect(html).not.toContain(d.inventory.expiringSuffix)
+  })
+
+  it('칸은 compact 규격이다: 3열 갤러리, 면 --background-secondary, 여백 8', () => {
+    const html = renderList([base])
+    expect(html).toContain('grid grid-cols-3 gap-2')
+    expect(html).toContain('bg-background-secondary')
+    expect(html).toContain('p-2')
+  })
+
+  it('묶음이 몇 개든 본문 슬롯 높이는 2행 갤러리 높이(284)로 같고 갤러리는 안에서만 스크롤된다', () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({ ...base, id: `m${i}`, badge_id: `b${i}`, badge_name: `배지${i}` }))
+    for (const drops of [[base], many]) {
+      const html = renderList(drops)
+      expect(html).toContain('height:284px')
+      expect(html).toContain('overflow-y-auto overscroll-contain')
+      expect(html).toContain('grid-auto-rows:138px')
+    }
+  })
+
+  it('옆 카드(isActive=false)도 같은 높이의 본문·버튼 슬롯을 그린다', () => {
+    const html = renderToStaticMarkup(
+      <PoiCard
+        poi={DEMO_PICKUP_POI}
+        isActive={false}
+        drops={undefined}
+        loading={false}
+        showInventory={false}
+        inventoryLoading={false}
+        pendingDropItem={null}
+        dropping={false}
+        dropGridItems={[]}
+        onClose={vi.fn()}
+      />
+    )
+    expect(html).toContain('height:284px')
+    expect(html).toContain('height:48px')
+    expect(html).toContain('aria-hidden="true"')
+    expect(html).not.toContain(`>${d.drops.dropHereButton}<`)
   })
 })
 
@@ -263,8 +307,8 @@ describe('잠긴 개체 드랍 확인 단계 (티켓 20261028_1741 2회)', () =>
     const start = html.indexOf('그래도 드랍할까요?')
     const between = html.slice(start, html.indexOf('<button', start))
     expect(between).not.toContain('role="status"')
-    // 문구 끝(</p>) 바로 뒤에 버튼 행이 온다
-    expect(between).toBe('그래도 드랍할까요?</p><div class="flex gap-2 w-full">')
+    // 문구 끝(</p>) 뒤에는 본문 슬롯을 닫고 버튼 슬롯 안의 버튼 행이 바로 이어진다
+    expect(between).toMatch(/^그래도 드랍할까요\?<\/p><\/div><\/div><div class="shrink-0[^>]*><div class="flex gap-2 w-full">$/)
   })
 
   it('열린 개체의 확인 단계도 같다(회귀 방지)', () => {
