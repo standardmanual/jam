@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useToast } from '@/components/ui/Toast'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
+import SyncIconButton from '@/components/ui/SyncIconButton'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { usePendingItemsPicker } from '@/components/strava/PendingItemsPickerProvider'
 import { runSyncFlow } from '@/lib/strava/sync-flow'
@@ -46,8 +47,11 @@ interface SyncResponse {
 export default function SyncButton({
   username,
   size = 'xs',
+  variant = 'pill',
 }: {
   username: string | null
+  /** 모양. 기본 `pill`(글자 알약). `icon`은 홈 밖 TopNav의 아이콘 서클이다 — 동기화 로직은 같다(티켓 20261114_1349) */
+  variant?: 'pill' | 'icon'
   /** 버튼 크기. 기본 `xs`(상단 바 중앙 슬롯의 조밀한 자리). 홈 «JAM! 시작하기» 카드는 44px 터치 영역이 필요해 `sm`을 넘긴다(티켓 20261021_1248) */
   size?: 'xs' | 'sm'
 }) {
@@ -149,16 +153,20 @@ export default function SyncButton({
 
   return (
     <>
-      <Button
-        variant="primary"
-        surface="sub"
-        size={size}
-        onClick={handleSync}
-        disabled={loading}
-        loading={showLoading}
-      >
-        {d.today.syncButton}
-      </Button>
+      {variant === 'icon' ? (
+        <SyncIconButton label={d.today.syncButton} onClick={handleSync} disabled={loading} loading={showLoading} />
+      ) : (
+        <Button
+          variant="primary"
+          surface="sub"
+          size={size}
+          onClick={handleSync}
+          disabled={loading}
+          loading={showLoading}
+        >
+          {d.today.syncButton}
+        </Button>
+      )}
 
       <BadgeRevealOverlay
         open={revealOpen}

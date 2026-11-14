@@ -114,9 +114,9 @@ export default async function HomePage() {
           로고 헤더 블록을 대체한다. sync 차례(온보딩 퀘스트 T2c)면 중앙 슬롯을 연출
           동기화 버튼으로 교체한다(티켓 20260927_2331). */}
       {onboardingQuestGate === 'sync' ? (
-        <TopNav logo centerSlotOverride={<OnboardingSyncButton />} />
+        <TopNav logo syncStyle="pill" centerSlotOverride={<OnboardingSyncButton />} />
       ) : (
-        <TopNav logo />
+        <TopNav logo syncStyle="pill" />
       )}
 
       <div className="px-4 pt-4 pb-6 flex flex-col gap-5">
