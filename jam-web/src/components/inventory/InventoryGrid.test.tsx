@@ -117,3 +117,18 @@ describe('InventoryGrid 잠긴 개체 (티켓 20261018_0054 2회)', () => {
     expect(html).not.toContain('--ds-progress-fill')
   })
 })
+
+describe('InventoryGrid 빈 슬롯 (티켓 20261114_1040)', () => {
+  it('빈 슬롯은 카드 면만 그리고 안쪽 회색 상자와 «+»는 없다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM]} mode="navigate" emptySlots={2} />)
+    expect(html.match(/bg-card-bg rounded-2xl p-3 overflow-hidden opacity-30/g)).toHaveLength(2)
+    expect(html).not.toContain('>+<')
+    // 회색 상자(bg-background-secondary 90px 칸)가 빈 슬롯 안에 없다
+    expect(html).not.toMatch(/opacity-30[^>]*>\s*<div class="w-\[90px\] h-\[90px\] rounded-2xl[^"]*bg-background-secondary/)
+  })
+
+  it('빈 슬롯도 행 높이를 지키려고 90px 자리를 비워 둔다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[]} mode="navigate" emptySlots={1} />)
+    expect(html).toContain('<div class="w-[90px] h-[90px]" aria-hidden="true"></div>')
+  })
+})

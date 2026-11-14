@@ -134,15 +134,14 @@ export default function InventoryGrid({
           </BadgeGridCard>
         )
       })}
-      {/* 빈 슬롯 placeholder — BadgeGridCard와 동일한 구조로 맞춰 행 높이를 일치시킨다 */}
+      {/* 빈 슬롯 placeholder — BadgeGridCard와 동일한 구조로 맞춰 행 높이를 일치시킨다. 카드 면만 보이고 안쪽 회색 상자와 «+»는 그리지 않는다
+          (사용자 지시 2026-11-14, 티켓 20261114_1040). 상자 자리는 행 높이를 지키려고 비워 둔다 */}
       {Array.from({ length: emptySlots }).map((_, i) => (
         <div
           key={`empty-${i}`}
           className="flex flex-col items-center bg-card-bg rounded-2xl p-3 overflow-hidden opacity-30"
         >
-          <div className="w-[90px] h-[90px] rounded-2xl flex items-center justify-center bg-background-secondary">
-            <span className="text-foreground text-xl">+</span>
-          </div>
+          <div className="w-[90px] h-[90px]" aria-hidden="true" />
           <div className="flex flex-col items-center gap-1 pt-2 w-full">
             <p className="text-[11px] font-bold text-foreground text-center truncate w-full leading-tight">&nbsp;</p>
             <div className="h-6" />
