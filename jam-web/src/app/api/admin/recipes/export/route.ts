@@ -5,7 +5,7 @@ import { parseExportIds } from '@/lib/admin/export-ids'
 import { toCsv } from '@/lib/admin/csv'
 import { kstDateString } from '@/lib/notifications/kst'
 import { formatKstYmdHm } from '@/lib/admin/kst-format'
-import { RECIPE_LIST_COLUMNS, type RecipeListRow } from '@/lib/admin/recipe-list'
+import { RECIPE_LIST_COLUMNS, recipeBadgeNames, recipeGradeModeLabel, type RecipeListRow } from '@/lib/admin/recipe-list'
 import type { CombinationRecipeSlotRow } from '@/types/database'
 
 /**
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     ...new Set([
       ...slots.flatMap((s) => s.allowed_badge_ids),
       ...rows.flatMap((r) => r.reward_badge_ids ?? []),
+      ...rows.flatMap((r) => (r.first_success_badge_id ? [r.first_success_badge_id] : [])),
     ]),
   ]
   const badgeNameById = new Map<string, string>()
@@ -73,17 +74,20 @@ export async function POST(req: NextRequest) {
   const csv = toCsv(rows, [
     { header: 'ID', value: (r) => r.id },
     { header: '이름', value: (r) => r.name },
+    // 등급 대응형 / 등급 고정형(티켓 20261114_1705 2회차)
+    { header: '유형', value: (r) => recipeGradeModeLabel(r) },
     { header: '슬롯 수', value: (r) => (slotsByRecipe.get(r.id) ?? []).length },
     {
       header: '슬롯 상세',
       value: (r) =>
         [...(slotsByRecipe.get(r.id) ?? [])]
           .sort((a, b) => a.slot_order - b.slot_order)
-          .map((s) => s.allowed_badge_ids.map(nameOf).join('/'))
+          .map((s) => recipeBadgeNames(s.allowed_badge_ids, nameOf, r).join('/'))
           .join(' + '),
     },
     { header: '보상 포인트', value: (r) => r.reward_points },
-    { header: '보상 배지', value: (r) => (r.reward_badge_ids ?? []).map(nameOf).join(', ') },
+    { header: '보상 배지', value: (r) => recipeBadgeNames(r.reward_badge_ids ?? [], nameOf, r).join(', ') },
+    { header: '첫 성공자 보상', value: (r) => (r.first_success_badge_id ? nameOf(r.first_success_badge_id) : '') },
     // 비어 있으면 처음부터 공개된 레시피다(티켓 20261001_1158). 시각은 KST로 적는다.
     { header: '공개 시각', value: (r) => (r.valid_from ? formatKstYmdHm(r.valid_from) : '') },
     // 비어 있으면 종료 없이 상시인 레시피다(티켓 20261002_0710). 시각은 KST로 적는다.

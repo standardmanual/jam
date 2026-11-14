@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
   // 숨김 배지를 결과에서 뺀다(`excludeHidden=1`). 미션 보상·게이트 배지 선택은 숨김 배지를 쓸 수 없어서 이 값을 보낸다
   // (티켓 20261019_1313 2회). 보내지 않는 기존 호출부는 숨김 배지도 그대로 검색된다.
   const excludeHidden = req.nextUrl.searchParams.get('excludeHidden') === '1'
+  // 드랍 제외가 켜진 배지만 남긴다(`dropExcluded=1`). 레시피의 첫 성공자 보상 배지 선택이 보낸다(티켓 20261114_1705 2회차) — 다른 경로에서
+  // 나오지 않는 배지만 쓰게 하려는 것이다. 보내지 않는 기존 호출부는 그대로다.
+  const dropExcludedOnly = req.nextUrl.searchParams.get('dropExcluded') === '1'
   // PostgREST 필터 문법(쉼표/괄호)과 LIKE 와일드카드를 깨뜨리는 문자는 제거
   const query = raw.replace(/[,()%_*\\]/g, ' ').trim()
   // 필터(트라이브·컬렉션·등급)가 하나라도 걸려 있으면 이름 없이도 후보를 훑을 수 있게 한다.
@@ -62,6 +65,7 @@ export async function GET(req: NextRequest) {
   if (itemBookId) q = q.eq('item_book_id', itemBookId)
   if (rarity) q = q.eq('rarity', rarity)
   if (excludeHidden) q = q.eq('is_hidden', false)
+  if (dropExcludedOnly) q = q.eq('drop_excluded', true)
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

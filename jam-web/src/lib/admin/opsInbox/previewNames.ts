@@ -57,6 +57,7 @@ export function collectPreviewIds(items: readonly NameSource[]): {
       if (!resource) continue
       if (item.kind === 'recipe') {
         for (const id of stringList(resource.reward_badge_ids)) badgeIds.add(id)
+        for (const id of stringList([resource.first_success_badge_id])) badgeIds.add(id)
         if (Array.isArray(resource.slots)) {
           for (const slot of resource.slots) for (const id of stringList(asRecord(slot)?.allowed_badge_ids)) badgeIds.add(id)
         }

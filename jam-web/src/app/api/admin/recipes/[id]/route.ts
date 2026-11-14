@@ -73,7 +73,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 공개 시각 변경 가드(티켓 20261001_1158)와 공개·종료 시각 순서 가드(티켓 20261002_0710)를 위해 기존 행을
   // 먼저 읽는다. 없는 레시피는 404다.
   const { data: existing, error: existingError } = isUuid(id)
-    ? await supabase.from('combination_recipes').select('id, valid_from, valid_until').eq('id', id).maybeSingle()
+    ? await supabase
+        .from('combination_recipes')
+        .select('id, valid_from, valid_until, grade_mode, first_success_badge_id')
+        .eq('id', id)
+        .maybeSingle()
     : { data: null, error: null }
   if (existingError) {
     console.error('[recipes PATCH] 기존 레시피 조회 실패:', existingError)
@@ -84,7 +88,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 티켓 20260910_1408: 이전에는 body를 `as never`로 캐스팅해 그대로 update했다. POST와 같은
   // 검증 규칙을 `buildRecipeRow()` 한 곳에서 공유한다. 티켓 20260917_1427: 슬롯 기반 재설계로
   // 재료 분류가 슬롯 배열 검증으로 바뀌었다 — 슬롯은 레시피 update 성공 후 전체 교체한다.
-  const built = await buildRecipeRow(supabase, body)
+  // 티켓 20261114_1705 2회차: 유형(등급 대응형 검사)과 첫 성공자 보상(이미 성공 기록이 있으면 거절)은 기존 레시피를 알아야 해서 넘긴다.
+  const existingRow = existing as { grade_mode?: string | null; first_success_badge_id?: string | null }
+  const built = await buildRecipeRow(supabase, body, new Date(), {
+    recipeId: id,
+    existing: { grade_mode: existingRow.grade_mode, first_success_badge_id: existingRow.first_success_badge_id },
+  })
   if (!built.ok) return NextResponse.json({ error: built.error }, { status: 400 })
 
   // 이미 공개된 레시피는 공개 시각을 바꿀 수 없다 — 예약 중일 때만 시각 변경·바로 공개 전환이 된다.

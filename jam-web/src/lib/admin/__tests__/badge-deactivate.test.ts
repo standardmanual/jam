@@ -14,6 +14,7 @@ describe('runBadgeDeactivationSideEffects', () => {
     vi.mocked(countRecipesReferencingBadge).mockResolvedValue({
       slotRecipeIds: [],
       rewardRecipeIds: [],
+      firstSuccessRecipeIds: [],
       total: 0,
       error: null,
     })
@@ -43,6 +44,7 @@ describe('runBadgeDeactivationSideEffects', () => {
     vi.mocked(countRecipesReferencingBadge).mockResolvedValue({
       slotRecipeIds: ['r1'],
       rewardRecipeIds: ['r2'],
+      firstSuccessRecipeIds: [],
       total: 2,
       error: null,
     })
@@ -55,6 +57,7 @@ describe('runBadgeDeactivationSideEffects', () => {
     vi.mocked(countRecipesReferencingBadge).mockResolvedValue({
       slotRecipeIds: [],
       rewardRecipeIds: [],
+      firstSuccessRecipeIds: [],
       total: 0,
       error: 'boom',
     })

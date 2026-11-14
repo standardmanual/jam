@@ -915,6 +915,24 @@ describe('toRecipeRegisterInput (티켓 20261002_2221, PRD §8.4 레시피 행)'
     })
   })
 
+  it('resource의 grade_mode·first_success_badge_id를 값 그대로 넘기고 읽지 않은 키 경고를 내지 않는다(티켓 20261114_1705 2회차)', () => {
+    const result = toRecipeRegisterInput(
+      recipeItem({
+        resource: { slots: SLOTS, reward_points: 10, grade_mode: 'follow_materials', first_success_badge_id: UUID_C },
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.payload).toMatchObject({ grade_mode: 'follow_materials', first_success_badge_id: UUID_C })
+  })
+
+  it('grade_mode·first_success_badge_id가 비었으면 칸을 넣지 않는다(등급 고정형, 첫 성공자 보상 없음)', () => {
+    const result = toRecipeRegisterInput(recipeItem())
+    expect(result.payload).not.toBeNull()
+    expect('grade_mode' in (result.payload as object)).toBe(false)
+    expect('first_success_badge_id' in (result.payload as object)).toBe(false)
+  })
+
   it('종료 시각(ends_at)이 없으면 valid_until 칸을 넣지 않는다(상시). 있으면 valid_until로 읽는다', () => {
     const open = toRecipeRegisterInput(recipeItem())
     expect(open.payload).not.toBeNull()

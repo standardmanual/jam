@@ -61,6 +61,7 @@ export type BadgeReferenceKey =
   | 'today_cards'
   | 'recipes_ingredient'
   | 'recipes_result'
+  | 'recipes_first_success'
   | 'recipes_required'
   | 'item_books_required'
   | 'item_books_reward'
@@ -252,6 +253,18 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
     group: 'content',
     label: '믹스 레시피 보상',
     location: 'combination_recipes.reward_badge_ids',
+    blocksDelete: false,
+    cascades: false,
+    detachable: false,
+  },
+  {
+    // 마이그레이션 340(티켓 20261114_1705 2회차): 믹스 레시피의 첫 성공자 보상 배지. 지우면 이 칸만 NULL이 되어(ON DELETE SET NULL) 첫 성공자 보상이 조용히
+    // 나가지 않게 된다. 외래키 위반으로 삭제가 실패하지 않으므로 blocksDelete는 false다 — 삭제 전 참조 목록에 보여 주고 콘텐츠 연결 합계로
+    // 하드 삭제 가드가 먼저 정리하게 한다(컬렉션 완성 보상과 같은 방식).
+    key: 'recipes_first_success',
+    group: 'content',
+    label: '믹스 레시피 첫 성공자 보상',
+    location: 'combination_recipes.first_success_badge_id',
     blocksDelete: false,
     cascades: false,
     detachable: false,
@@ -471,6 +484,12 @@ export async function collectBadgeReferences(
     {
       key: 'poi',
       run: (chunk) => supabase.from('poi').select('*', { count: 'exact', head: true }).in('linked_badge_id', chunk),
+    },
+    {
+      // 마이그레이션 340: 레시피 수만큼의 작은 표지만, 같은 청크 방식으로 세는 편이 단순하다(티켓 20261114_1705 2회차).
+      key: 'recipes_first_success',
+      run: (chunk) =>
+        supabase.from('combination_recipes').select('*', { count: 'exact', head: true }).in('first_success_badge_id', chunk),
     },
     {
       // 행 수가 컬렉션 수 × 4 이하인 작은 표지만, 배지 id 목록을 청크로 쪼개 세는 이 방식이 가장 단순해 같이 둔다.

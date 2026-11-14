@@ -104,7 +104,12 @@ export const RECIPE_HANDLER: ExecuteHandler<RecipeRegisterPayload> = {
     if (!period.ok) return { reason: period.error, detail: period.error }
 
     // 레시피가 열리는 순간에 아직 열리지 않은 컬렉션의 배지가 슬롯이나 보상에 있으면 막는다. 읽지 못하면 통과시키지 않는다.
-    const badgeIds = [...built.slots.flatMap((slot) => slot.allowed_badge_ids), ...built.row.reward_badge_ids]
+    // 첫 성공자 보상 배지(티켓 20261114_1705 2회차)도 열리지 않은 컬렉션의 배지면 안 된다.
+    const badgeIds = [
+      ...built.slots.flatMap((slot) => slot.allowed_badge_ids),
+      ...built.row.reward_badge_ids,
+      ...(built.row.first_success_badge_id ? [built.row.first_success_badge_id] : []),
+    ]
     try {
       const unlaunched = await findUnlaunchedCollectionBadges(client, badgeIds, built.row.valid_from ?? now.toISOString())
       if (unlaunched.length === 0) return null

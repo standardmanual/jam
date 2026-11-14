@@ -51,6 +51,7 @@ export async function runBadgeDeactivationSideEffects(
         badgeId,
         slotRecipeIds: recipeReferences.slotRecipeIds,
         rewardRecipeIds: recipeReferences.rewardRecipeIds,
+        firstSuccessRecipeIds: recipeReferences.firstSuccessRecipeIds,
       })
     }
   })
