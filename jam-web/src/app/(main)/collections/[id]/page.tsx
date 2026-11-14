@@ -14,7 +14,7 @@ import type {
 import TopNav from '@/components/ui/TopNav'
 import { PinIcon, BookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { Card } from '@ds/components/cards/Card'
+import { ListRowChip } from '@/components/ui/ListRow'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
@@ -323,19 +323,26 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           totalBadgeCount={totalBadgeCount}
           backgroundAnimation={bookCardAnimation}
         >
-          {/* 완성 알림 — 대표 카드와 진행도 바 사이(2026-11-09 사용자 지시: 진행도 바 위) */}
+          {/* 완성 알림 — 대표 카드 아래, 진행 바 자리(완성이면 진행 바는 그리지 않는다, 티켓 20261114_1643).
+              면은 컬렉션 카드(CollectionGridCard)의 완성 면과 같은 --jam-green이고 외곽선·그림자는 없다. 전부 가로 중앙 정렬이다. */}
           {isCompleted && (
-            <Card className="text-center">
+            <div className="mx-2 flex flex-col items-center gap-1.5 rounded-2xl bg-jam-green p-5 text-center">
+              <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
+                {d.itembooks.completed}
+              </ListRowChip>
               <p
-                className="font-bold mb-2"
-                style={{ color: 'var(--foreground)', fontSize: '18px' }}
+                className="font-bold break-keep wrap-break-word text-balance"
+                style={{ color: 'var(--foreground)', fontSize: '22px' }}
               >
                 {d.itembooks.completedTitle}
               </p>
-              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+              <p
+                className="break-keep wrap-break-word"
+                style={{ color: 'var(--foreground)', opacity: 0.7, fontSize: '14px' }}
+              >
                 {d.itembooks.completedBody}
               </p>
-            </Card>
+            </div>
           )}
         </ItemBookHeroSection>
 

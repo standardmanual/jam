@@ -26,8 +26,9 @@ interface ItemBookHeroSectionProps {
    */
   backgroundAnimation?: BlobAnimationParams | null
   /**
-   * 대표 이미지 카드와 진행도 바 **사이**에 놓는 내용. 컬렉션 상세가 완성 알림 카드를 여기에 넣는다
-   * (2026-11-09 사용자 지시: 완성 카드를 진행도 바 위로). 없으면 아무것도 그리지 않는다.
+   * 대표 이미지 카드 **아래**에 놓는 내용. 컬렉션 상세가 완성 알림 카드를 여기에 넣는다.
+   * 내용이 있으면 진행도 바를 그리지 않는다 — 완성 알림이 진행도 바를 대신한다(티켓 20261114_1643).
+   * 없으면 아무것도 그리지 않고 진행도 바를 그린다.
    */
   children?: ReactNode
 }
@@ -139,13 +140,15 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
 
       {children}
 
-      {/* 진행도 바 + 카운트 인라인 — 카드 밖에 유지(사용자 명시 지시). 카드~진행도 바 세로 간격을
-          20px로 맞춘다 — 부모(page.tsx)의 `flex flex-col gap-3`(12px)를 직접 바꾸면 진행도 바
+      {/* 진행도 바 + 카운트 인라인 — 카드 밖에 유지(사용자 명시 지시). 완성 알림(children)이 있으면 그리지 않는다(티켓 20261114_1643).
+          카드~진행도 바 세로 간격을 20px로 맞춘다 — 부모(page.tsx)의 `flex flex-col gap-3`(12px)를 직접 바꾸면 진행도 바
           다음에 오는 다른 형제 섹션과의 간격도 함께 바뀌므로, 이 래퍼에 보정 마진
           `mt-2`(8px)을 더해 12+8=20px를 만든다. [20260917_1303] */}
       {/* mx-2 — 위 카드에 추가한 mx-2와 좌우 폭을 맞춰, 카드보다 진행도 바가 더 넓어 보이는
           어긋남을 막는다. */}
-      <ProgressCountBar className="mt-2 mx-2" percent={pct} current={slottedCount} total={totalBadgeCount} />
+      {!children && (
+        <ProgressCountBar className="mt-2 mx-2" percent={pct} current={slottedCount} total={totalBadgeCount} />
+      )}
     </>
   )
 }
