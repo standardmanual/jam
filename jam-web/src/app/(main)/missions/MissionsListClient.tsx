@@ -12,10 +12,11 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Select } from '@ds/components/forms/Select'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
-import { ListRow, ListRowChip } from '@/components/ui/ListRow'
+import { ListRowChip } from '@/components/ui/ListRow'
+import { ListCard } from '@/components/ui/ListCard'
+import { PointText } from '@ds/components/patterns/PointText'
 import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
-import { tPoint } from '@/lib/i18n/tPoint'
 import { missionStatusKind } from './missionStatusKind'
 import { buildQueryHref, readEnumParam } from '@/lib/urlQueryState'
 
@@ -58,7 +59,7 @@ type SortKey = 'newest' | 'oldest' | 'ending_soon'
 
 const NEW_MISSION_WINDOW_MS = 2 * 24 * 60 * 60 * 1000 // 생성 후 2일 이내 = 신규 (2026-11-04 사용자 결정, 이전 7일)
 
-// 썸네일 자물쇠 오버레이 전용 색. lead 바탕(--background-secondary)이 밝아 --foreground다(14:1).
+// 이미지 칸 자물쇠 전용 색. 딤 이미지 아래 바탕(--background-secondary)이 밝아 --foreground다(14:1).
 const C_LOCK_GLYPH = 'var(--foreground)'
 
 const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
@@ -98,7 +99,7 @@ function lockedRewardNode(rarity: BadgeRarity | null): React.ReactNode {
   )
 }
 
-// 텍스트 전용(포인트)과 배지 보상(칩+이름)을 한 줄에 " + "로 이어 붙인다. 열린 배지 뒤에 잠긴 보상, 그 뒤에 포인트다.
+// 푸터 보상 줄 — 열린 배지 뒤에 잠긴 아이템 배지를 " + "로 잇는다. 포인트는 칩 줄 오른쪽 값 칸으로 올라가서 여기에 없다.
 function rewardNodes(m: MissionListItem, badgeNames: Record<string, RewardBadgeInfo>): React.ReactNode[] {
   const ids = m.reward_badge_ids ?? []
   const nodes: React.ReactNode[] = []
@@ -110,11 +111,6 @@ function rewardNodes(m: MissionListItem, badgeNames: Record<string, RewardBadgeI
     if (nodes.length > 0) nodes.push(<span key={`sep-locked-${index}`}> + </span>)
     nodes.push(<span key={`locked-${index}`}>{lockedRewardNode(rarity)}</span>)
   })
-  if (m.reward_points) {
-    if (nodes.length > 0) nodes.push(<span key="sep-points"> + </span>)
-    nodes.push(<span key="points">{tPoint(d.missions.rewardPoints, { points: m.reward_points.toLocaleString('ko-KR') })}</span>)
-  }
-  if (nodes.length === 0) nodes.push(<span key="none">{d.missions.rewardNone}</span>)
   return nodes
 }
 
@@ -143,10 +139,10 @@ function periodText(m: MissionListItem, tab: Tab): string {
   return `${h}시간 ${mins}분 ${d.missions.timeLeftSuffix}`
 }
 
-// 카드 상단 상태 라벨 — 20260923_1353: 잠김·상시 등 여러 칩이 섞여 있던 meta-row를
-// 우선순위 하나로 합친다(우선순위 판정은 missionStatusKind.ts). 잠긴 이유
-// 안내는 이 라벨이 아니라 아래 "조건" 행(lockedHintText 포함)이 맡는다.
-function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
+// 칩 줄의 상태 칩과 기간 칩 — 우선순위 판정은 missionStatusKind.ts (티켓 20261114_1543).
+// 참가하지 않은 진행 중 미션은 상태 칩 없이 기간 칩만 보인다(«진행중» 칩은 만들지 않는다, 2026-11-14 사용자 결정).
+// 잠긴 이유 안내는 칩이 아니라 아래 "조건" 행(lockedHintText 포함)이 맡는다.
+function statusChip(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
   switch (missionStatusKind(m, started, tab === 'ended')) {
     case 'joinedEnded':
       return <ListRowChip>{d.missions.tagJoinedEnded}</ListRowChip>
@@ -167,8 +163,15 @@ function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.R
     case 'upcoming':
       return <ListRowChip>{d.missions.tagUpcoming}</ListRowChip>
     default:
-      return <ListRowChip>{periodText(m, tab)}</ListRowChip>
+      return null
   }
+}
+
+function periodChip(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
+  const kind = missionStatusKind(m, started, tab === 'ended')
+  // 참가종료는 «종료»만, 시작 전은 «시작전»만 보인다(시작 전에 «n일 남음»을 붙이지 않는다).
+  if (kind === 'joinedEnded' || kind === 'upcoming') return null
+  return <ListRowChip>{periodText(m, tab)}</ListRowChip>
 }
 
 // "조건" 행 전용 — requiredBadge에는 level이 없으므로 등급칩만 재사용한다(BadgeLevelChip 미사용)
@@ -307,64 +310,40 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
           description={emptyBody}
         />
       ) : (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-card-detail)' }}>
           {list.map((m) => {
             const started = new Date(m.starts_at) <= new Date()
             const newMission = isNewMission(m.created_at)
             const reward = rewardNodes(m, rewardBadgeNames)
             // 20260825_028: 잠긴 미션은 상세 진입을 막고, 눌리면 잠금 사유를 토스트로 알린다.
-            // 딤(잠김 0.4·시작 전 0.6)은 글자에 걸면 --muted가 2.46:1로 떨어지고 잠금 힌트 대비도 깎이므로
-            // lead 안 이미지 래퍼에만 건다 — 미획득 배지를 표현하는 하우스 패턴과 같은 방식이다.
-            const lead = (
+            // 딤(잠김 0.4·시작 전 0.6)과 흑백은 글자에 걸면 --muted 대비가 떨어지므로 이미지에만 건다(ListCard의 imageDim·grayscale).
+            const imageOverlay = m.locked ? (
+              <span style={{ display: 'flex', color: C_LOCK_GLYPH }}>
+                <LockIcon className="w-6 h-6" />
+              </span>
+            ) : undefined
+
+            // 칩 줄 순서: NEW → 상태 → 기간. NEW는 생성 후 2일 이내에만 앞에 붙는다(칩은 최대 3개).
+            const chips = (
               <>
-                <span
-                  style={{
-                    display: 'flex',
-                    width: '100%',
-                    height: '100%',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    filter: m.locked ? 'grayscale(1)' : undefined,
-                    opacity: m.locked ? 0.4 : !started ? 0.6 : 1,
-                  }}
-                >
-                  {m.image_url ? (
-                    // 미션 그림은 조건 문구가 든 합성 이미지라 잘리면 안 된다 — 인라인 contain이 ListRow의 cover 규칙을 이긴다
-                    // eslint-disable-next-line @next/next/no-img-element -- 외부 미션 그림 주소를 그대로 쓰는 48px 장식 썸네일이라 next/image 최적화 대상이 아니다
-                    <img src={m.image_url} alt="" width={48} height={48} style={{ objectFit: 'contain' }} />
-                  ) : (
-                    <span style={{ display: 'block', width: '24px', height: '24px', background: 'var(--surface)', borderRadius: '4px' }} />
-                  )}
-                </span>
-                {m.locked && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: C_LOCK_GLYPH,
-                    }}
-                  >
-                    <LockIcon className="w-5 h-5" />
-                  </span>
-                )}
+                {newMission && <ListRowChip tone="done">{d.missions.tagNew}</ListRowChip>}
+                {statusChip(m, tab, started)}
+                {periodChip(m, tab, started)}
               </>
             )
 
-            // 상태 칩은 항상 나오므로 eyebrow가 비는 경우는 없다. NEW는 생성 후 2일 이내에만 앞에 붙는다.
-            const eyebrow = (
-              <>
-                {newMission && <ListRowChip tone="done">{d.missions.tagNew}</ListRowChip>}
-                {topStatusLabel(m, tab, started)}
-              </>
-            )
+            // 보상: 포인트는 칩 줄 오른쪽 값 칸, 배지·잠긴 아이템 배지는 푸터 줄. 둘 다 없으면 값 칸에 «없음».
+            const value = m.reward_points ? (
+              <PointText value={m.reward_points} />
+            ) : reward.length === 0 ? (
+              <span style={{ color: 'var(--muted)' }}>{d.missions.rewardNone}</span>
+            ) : undefined
 
             // 잠긴 미션은 «조건» 줄 + 보상 줄, 열린 미션은 보상 줄만. 보상 줄 글자는 굵게(티켓 20261104_2318)이고 색은 행에서 상속한다.
             // «조건» 줄: requiredBadge가 있으면 등급칩+배지명, 없으면(v5 게이트 미션 등) lockedHintText()의
             // 범용 안내 문구 — 잠긴 이유를 알려주는 유일한 정보라 생략하면 안 된다.
-            const footer = (
+            const hasFooter = m.locked || reward.length > 0
+            const footer = hasFooter ? (
               <>
                 {m.locked && (
                   <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', color: 'var(--muted)', lineHeight: 'var(--text-xs--line-height)' }}>
@@ -372,35 +351,37 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                     {m.requiredBadge ? conditionBadgeNode(m.requiredBadge) : lockedHintText(m)}
                   </span>
                 )}
-                <span
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    fontSize: 'var(--text-xs)',
-                    fontWeight: 700,
-                    lineHeight: 'var(--text-xs--line-height)',
-                    marginTop: m.locked ? 'var(--spacing-4)' : undefined,
-                  }}
-                >
-                  {reward}
-                </span>
+                {reward.length > 0 && (
+                  <span
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      fontSize: 'var(--text-xs)',
+                      fontWeight: 700,
+                      lineHeight: 'var(--text-xs--line-height)',
+                      marginTop: m.locked ? 'var(--spacing-4)' : undefined,
+                    }}
+                  >
+                    {reward}
+                  </span>
+                )}
               </>
-            )
+            ) : undefined
 
-            // 잠긴 행은 disabled 없이 onClick + aria-disabled다 — disabled는 행 전체 불투명도 0.4와 키보드 차단을 함께 걸어
-            // «썸네일만 흐림, 글자 대비 유지» 규칙과 토스트를 깬다. aria-disabled는 ListRow가 클릭 영역(button)으로 넘긴다.
+            // 잠긴 카드는 disabled 없이 onClick + aria-disabled다 — disabled는 카드 전체 불투명도와 키보드 차단을 함께 걸어
+            // «이미지만 흐림, 글자 대비 유지» 규칙과 토스트를 깬다. aria-disabled는 ListCard가 클릭 영역(button)으로 넘긴다.
             return (
-              <ListRow
+              <ListCard
                 key={m.id}
-                variant="media"
-                tone="flat"
-                separator
-                lead={lead}
-                eyebrow={eyebrow}
+                imageUrl={m.image_url ?? undefined}
+                imageDim={m.locked ? 0.4 : !started ? 0.6 : undefined}
+                grayscale={m.locked}
+                imageOverlay={imageOverlay}
                 title={m.title}
-                meta={m.description || undefined}
-                metaLines={2}
+                chips={chips}
+                value={value}
+                description={m.description || undefined}
                 footer={footer}
                 {...(m.locked
                   ? { onClick: () => toast(lockedToastText(m), 'info'), 'aria-disabled': 'true' as const }

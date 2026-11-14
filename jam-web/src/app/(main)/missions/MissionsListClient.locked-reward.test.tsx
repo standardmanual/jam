@@ -1,7 +1,8 @@
 /**
  * 미션 목록의 보상 줄 — 잠긴 아이템 배지 보상 (티켓 20261019_1317 2회, 운영 로직 7.3절)
  *
- * 잠긴 보상은 이름·그림 없이 «등급 칩 + 잠긴 아이템 배지»만 보이고, 열린 배지 뒤·포인트 앞에 이어진다.
+ * 잠긴 보상은 이름·그림 없이 «등급 칩 + 잠긴 아이템 배지»만 보이고, 열린 배지 뒤에 푸터 줄로 이어진다.
+ * 포인트는 푸터가 아니라 칩 줄 오른쪽 값 칸으로 올라갔다(티켓 20261114_1543).
  * 서버 페이지가 잠긴 보상의 이름·id를 내리지 않으므로(`page.hidden-reward.test.tsx`) 이 화면에는 등급 목록만 들어온다.
  *
  * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다.
@@ -88,12 +89,13 @@ describe('미션 목록 — 잠긴 보상 배지', () => {
     expect(html).toContain(LOCKED_NAME)
   })
 
-  it('잠긴 보상이 여러 개면 개수만큼 이어 붙고 포인트가 맨 뒤다', () => {
+  it('잠긴 보상이 여러 개면 개수만큼 이어 붙고 포인트는 푸터 줄이 아니라 값 칸에 있다', () => {
     const html = render(item({ lockedRewardRarities: ['epic', 'rare'], reward_points: 300 }))
 
     const text = rewardText(html)
     expect(text.split(LOCKED_NAME).length - 1).toBe(2)
-    expect(text.lastIndexOf(LOCKED_NAME)).toBeLessThan(text.indexOf('300 포인트'))
+    expect(text.indexOf('300 포인트')).toBeLessThan(text.indexOf(LOCKED_NAME))
+    expect(text).not.toMatch(/\+ 300 포인트/)
   })
 
   it('등급이 없는 잠긴 보상은 칩 없이 «잠긴 아이템 배지»만 남는다', () => {
@@ -103,12 +105,13 @@ describe('미션 목록 — 잠긴 보상 배지', () => {
     for (const label of ['Common', 'Rare', 'Epic', 'Mystic']) expect(html).not.toContain(label)
   })
 
-  it('잠긴 보상이 없으면 보상 줄이 지금과 같다', () => {
+  it('잠긴 보상이 없으면 열린 배지만 푸터에 남고 포인트는 값 칸이다', () => {
     const html = render(item({ reward_badge_ids: [OPEN_ID], reward_points: 300 }))
 
     const text = rewardText(html)
     expect(text).not.toContain(LOCKED_NAME)
-    expect(text).toContain('주말 러너 배지 + 300 포인트')
+    expect(text).toContain('주말 러너 배지')
+    expect(text).not.toContain('+ 300 포인트')
     expect(html).toMatch(/text-point-text[^>]*>300 포인트<\/span>/)
   })
 
