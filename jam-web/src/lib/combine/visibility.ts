@@ -25,6 +25,10 @@
  * `scheduled`만 대상이고 `ended`는 운영자에게도 없는 레시피다(티켓 20261002_0710 G7).
  */
 
+import { resolveGradeMode } from '@/lib/combine/gradeMode'
+import { RARITY_TIER } from '@/lib/rarity'
+import type { BadgeRarity } from '@/types/database'
+
 export interface RecipeReleaseInput {
   valid_from?: string | null
   valid_until?: string | null
@@ -71,13 +75,22 @@ export function filterReleasedRecipes<T extends RecipeReleaseInput>(recipes: T[]
  *
  * - `valid_until`이 `null`/`undefined`이면 종료 없음이다. `valid_until <= now`이면 끝났다(종료 시각 그 순간부터).
  * - `valid_until`을 해석할 수 없는 문자열이면 끝난 것으로 본다(fail-closed, 레시피 종료 판정과 같다).
- * - 결과 배지 중 하나라도 끝났으면 그 레시피는 쓸 수 없다. 조회되지 않은 배지(삭제 등)는 판정하지 않는다.
+ * - 결과 배지 중 하나라도 끝났으면 그 레시피는 쓸 수 없다(등급 고정형). 조회되지 않은 배지(삭제 등)는 판정하지 않는다.
+ *   등급 대응형은 «등급별»로 본다 — 아래 `liveResultRarities`·`filterRecipesWithLiveResults`.
  * - 공개 시작 전(`valid_from`)인 결과 배지는 건드리지 않는다 — 스펙은 «끝난» 것만 말한다.
  * - 재료 쪽은 공개 기간과 상관없이 가진 것이면 쓸 수 있다. 이 판정은 «결과» 쪽만 본다.
  */
 export interface ResultBadgeWindow {
   id: string
   valid_until?: string | null
+  /** 등급 대응형 레시피의 «살아 있는 등급» 판정에 쓴다. 등급 고정형 판정에는 필요 없다 */
+  rarity?: string | null
+}
+
+function isEndedAt(validUntil: string | null | undefined, nowMs: number): boolean {
+  if (validUntil === null || validUntil === undefined) return false
+  const endAt = new Date(validUntil).getTime()
+  return Number.isNaN(endAt) || endAt <= nowMs
 }
 
 export function hasEndedResultBadge(
@@ -88,19 +101,60 @@ export function hasEndedResultBadge(
   if (!rewardBadgeIds || rewardBadgeIds.length === 0) return false
   const wanted = new Set(rewardBadgeIds)
   const nowMs = now.getTime()
-  return badges.some((badge) => {
-    if (!wanted.has(badge.id)) return false
-    if (badge.valid_until === null || badge.valid_until === undefined) return false
-    const endAt = new Date(badge.valid_until).getTime()
-    return Number.isNaN(endAt) || endAt <= nowMs
+  return badges.some((badge) => wanted.has(badge.id) && isEndedAt(badge.valid_until, nowMs))
+}
+
+/**
+ * 등급 대응형 레시피의 «살아 있는 등급» (티켓 20261114_1705 3회) — 서버(`combineRecipeAttempt` 3-a단계)가 재료 등급을 정한 뒤 하는 판정과 같은 규칙이다.
+ * 보상 배지를 등급별로 묶어, 그 등급의 배지 중 끝난 것이 없고 조회된(삭제되지 않은) 배지가 있는 등급만 살아 있다.
+ * 등급이 없는 배지는 어떤 재료 등급도 따를 수 없으므로 세지 않는다. `badges`에는 삭제되지 않은 배지만 들어 있어야 한다.
+ * 살아 있는 등급이 하나도 없으면 서버는 어느 재료 등급으로도 소각 전에 `recipe_not_found`로 거절한다.
+ */
+export function liveResultRarities(
+  rewardBadgeIds: readonly string[] | null | undefined,
+  badges: readonly ResultBadgeWindow[],
+  now: Date = new Date()
+): Set<string> {
+  const wanted = new Set(rewardBadgeIds ?? [])
+  const nowMs = now.getTime()
+  const seen = new Set<string>()
+  const ended = new Set<string>()
+  for (const badge of badges) {
+    if (!wanted.has(badge.id) || !badge.rarity) continue
+    seen.add(badge.rarity)
+    if (isEndedAt(badge.valid_until, nowMs)) ended.add(badge.rarity)
+  }
+  return new Set([...seen].filter((rarity) => !ended.has(rarity)))
+}
+
+/**
+ * 결과 배지의 공개 기간이 끝난 레시피를 뺀다. 입력 배열은 바꾸지 않고 순서를 유지한다.
+ * - 등급 고정형(`grade_mode`가 없거나 `fixed`): 보상 배지 중 하나라도 끝났으면 뺀다.
+ * - 등급 대응형(`follow_materials`): 살아 있는 등급(`liveResultRarities`)이 하나도 없으면 뺀다. 한 등급만 끝난 레시피는 남기고
+ *   그 등급의 후보·보상을 빼는 일은 호출부(`page.tsx`)가 한다. 보상 배지가 0개인 레시피(보상 없음)는 어느 유형이든 남긴다.
+ */
+export function filterRecipesWithLiveResults<
+  T extends { reward_badge_ids?: string[] | null; grade_mode?: string | null },
+>(recipes: T[], badges: readonly ResultBadgeWindow[], now: Date = new Date()): T[] {
+  return recipes.filter((recipe) => {
+    const rewardIds = recipe.reward_badge_ids ?? []
+    if (resolveGradeMode(recipe) === 'follow_materials' && rewardIds.length > 0) {
+      return liveResultRarities(rewardIds, badges, now).size > 0
+    }
+    return !hasEndedResultBadge(rewardIds, badges, now)
   })
 }
 
-/** 결과 배지의 공개 기간이 끝난 레시피를 뺀다. 입력 배열은 바꾸지 않고 순서를 유지한다. */
-export function filterRecipesWithLiveResults<T extends { reward_badge_ids?: string[] | null }>(
-  recipes: T[],
-  badges: readonly ResultBadgeWindow[],
-  now: Date = new Date()
-): T[] {
-  return recipes.filter((recipe) => !hasEndedResultBadge(recipe.reward_badge_ids, badges, now))
+/**
+ * 등급 대응형 레시피에서 끝난 등급의 배지를 빼고 등급 낮은 순으로 정렬한다(`RARITY_TIER`). 입력 배열은 바꾸지 않는다.
+ * 후보·보상 배지에 쓴다 — 클라이언트는 등급 판정을 새로 하지 않고 서버가 내려 준 목록만 쓴다. 등급이 없는 배지는 뺀다(서버가 지급하지 않는다).
+ */
+export function keepLiveRarities<T extends { rarity?: string | null }>(badges: readonly T[], live: ReadonlySet<string>): T[] {
+  return badges
+    .filter((badge) => !!badge.rarity && live.has(badge.rarity))
+    .sort((a, b) => rarityTierOf(a.rarity) - rarityTierOf(b.rarity))
+}
+
+function rarityTierOf(rarity: string | null | undefined): number {
+  return rarity && rarity in RARITY_TIER ? RARITY_TIER[rarity as BadgeRarity] : 0
 }

@@ -41,11 +41,18 @@ describe('/combine — 레시피 공개 판정', () => {
     expect(code).not.toContain('releaseAt')
   })
   it('슬롯·보상 조회와 화면 목록이 같은 필터 결과(visibleRecipe*)를 따라온다', () => {
-    expect(code).toContain('const visibleRecipeRows = filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)')
+    // 조회가 실패하면 등급 대응형의 등급을 알 수 없어 거르지 않는다(티켓 20261114_1705 3회) — 서버가 소각 전에 한 번 더 거절한다
+    expect(code).toContain(
+      'const visibleRecipeRows = windowsError ? releasedRecipes : filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)'
+    )
     expect(code).toContain('const visibleRecipeIds = visibleRecipeRows.map((r) => r.id)')
     expect(code).toContain(".in('recipe_id', visibleRecipeIds)")
     expect(code).toContain('visibleRecipeRows.map((r) => ({')
     expect(code).not.toMatch(/publicRecipe(Rows|Ids)/)
+  })
+  it('첫 성공자 보상 배지 id는 클라이언트 props에 싣지 않는다 (티켓 20261114_1705 3회)', () => {
+    expect(code).toContain('...withoutFirstSuccessBadge(r),')
+    expect(code).toContain('delete copy.first_success_badge_id')
   })
 })
 

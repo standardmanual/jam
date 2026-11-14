@@ -9,6 +9,8 @@ import {
   filterReleasedRecipes,
   hasEndedResultBadge,
   isRecipeReleased,
+  keepLiveRarities,
+  liveResultRarities,
   recipeReleaseState,
 } from '../visibility'
 
@@ -205,5 +207,66 @@ describe('hasEndedResultBadge — 결과 배지의 공개 기간이 끝난 레�
     const badges = [{ id: 'b2', valid_until: PAST }]
     expect(filterRecipesWithLiveResults(recipes, badges, NOW).map((r) => r.id)).toEqual(['r1', 'r3'])
     expect(recipes).toHaveLength(3)
+  })
+})
+
+describe('등급 대응형 레시피의 결과 공개 판정 (티켓 20261114_1705 3회)', () => {
+  const PAST = '2026-10-10T02:59:59.999Z'
+  const follow = { id: 'f', grade_mode: 'follow_materials', reward_badge_ids: ['c', 'r', 'e', 'm'] }
+  const live = [
+    { id: 'c', rarity: 'common', valid_until: null },
+    { id: 'r', rarity: 'rare', valid_until: null },
+    { id: 'e', rarity: 'epic', valid_until: null },
+    { id: 'm', rarity: 'mystic', valid_until: null },
+  ]
+  const withEnded = (id: string) => live.map((b) => (b.id === id ? { ...b, valid_until: PAST } : b))
+
+  it('한 등급만 끝나면 레시피는 남고 그 등급만 살아 있는 등급에서 빠진다', () => {
+    const badges = withEnded('e')
+    expect(filterRecipesWithLiveResults([follow], badges, NOW)).toHaveLength(1)
+    expect([...liveResultRarities(follow.reward_badge_ids, badges, NOW)].sort()).toEqual(['common', 'mystic', 'rare'])
+  })
+
+  it('모든 등급이 끝나면 레시피를 뺀다', () => {
+    const badges = live.map((b) => ({ ...b, valid_until: PAST }))
+    expect(filterRecipesWithLiveResults([follow], badges, NOW)).toEqual([])
+  })
+
+  it('한 등급의 배지가 하나도 조회되지 않아도(삭제) 남은 등급이 있으면 남기고, 모두 없으면 뺀다', () => {
+    expect(filterRecipesWithLiveResults([follow], live.slice(0, 2), NOW)).toHaveLength(1)
+    expect(filterRecipesWithLiveResults([follow], [], NOW)).toEqual([])
+  })
+
+  it('같은 등급의 배지 중 하나라도 끝났으면 그 등급은 살아 있지 않다(서버 판정과 같다)', () => {
+    const recipe = { id: 'f2', grade_mode: 'follow_materials', reward_badge_ids: ['r1', 'r2'] }
+    const badges = [
+      { id: 'r1', rarity: 'rare', valid_until: null },
+      { id: 'r2', rarity: 'rare', valid_until: PAST },
+    ]
+    expect(filterRecipesWithLiveResults([recipe], badges, NOW)).toEqual([])
+  })
+
+  it('등급 고정형은 보상 배지 하나라도 끝나면 뺀다(지금 그대로)', () => {
+    const fixed = { id: 'x', grade_mode: 'fixed', reward_badge_ids: ['c', 'r'] }
+    const unset = { id: 'y', reward_badge_ids: ['c', 'r'] }
+    expect(filterRecipesWithLiveResults([fixed, unset], withEnded('r'), NOW)).toEqual([])
+    expect(filterRecipesWithLiveResults([fixed, unset], live, NOW)).toHaveLength(2)
+  })
+
+  it('보상 배지가 0개인 레시피는 유형과 상관없이 남긴다', () => {
+    const none = { id: 'n', grade_mode: 'follow_materials', reward_badge_ids: [] }
+    expect(filterRecipesWithLiveResults([none], [], NOW)).toHaveLength(1)
+  })
+
+  it('keepLiveRarities는 끝난 등급과 등급 없는 배지를 빼고 낮은 등급부터 세운다', () => {
+    const badges = [
+      { id: 'm', rarity: 'mystic' },
+      { id: 'c', rarity: 'common' },
+      { id: 'e', rarity: 'epic' },
+      { id: 'x', rarity: null },
+      { id: 'r', rarity: 'rare' },
+    ]
+    expect(keepLiveRarities(badges, new Set(['common', 'rare', 'mystic'])).map((b) => b.id)).toEqual(['c', 'r', 'm'])
+    expect(badges).toHaveLength(5)
   })
 })
