@@ -22,6 +22,9 @@
 
 // 이미지 없음 (플레이스홀더)
 <CollectionGridCard name="미지의 컬렉션" collected={0} total={10} />
+
+// 전체 슬롯 수를 모를 때 — 바·숫자 없이 썸네일과 이름만
+<CollectionGridCard name="새 컬렉션" imageUrl="/collections/new.png" collected={0} total={0} hideProgress />
 ```
 
 그리드 레이아웃은 호출부에서 결정한다 (예: `grid-template-columns: repeat(2, 1fr)`).
@@ -29,3 +32,4 @@
 진행 바는 `ProgressBar shape="capsule"`(어두운 트랙 `--capsule-track`, 필 강조색 그린 `--jam-green`, 높이 16px)를 쓴다.
 완성 카드는 면만 `--jam-green`이고 글자는 `--foreground`다. «완성» 칩은 accent 검정 면(`ListRowChip` 규격, 20px)이며 가운데 정렬하거나 키우지 않는다.
 맨 아래 행은 완성·미완성 모두 최소 높이 20px이라 두 카드의 높이가 같다. 등급 칩은 좌상단 그대로다.
+`hideProgress`는 맨 아래 행을 아예 그리지 않아 카드가 그만큼 낮아진다. `completed`이면 «완성» 칩 행은 유지된다(서비스 `src/components/ui/CollectionGridCard.tsx`의 `completed || !hideProgress` 조건과 같다).

@@ -77,3 +77,33 @@ Sticky top bar for sub-pages (badges detail, drops, inventory item). Root screen
   서비스 래퍼 `src/components/ui/TopNav.tsx`가 컨텍스트(`src/lib/topNavData.tsx`)로 담당한다.
 - `/drops`와 본인 프로필(`/{username}`, 티켓 20260820_015)은 TopNav 자체를 노출하지 않는다
   — 이 정책은 변경되지 않았다.
+
+## 동기화 모양 두 가지 (홈은 글자 알약, 나머지는 아이콘 서클)
+
+스트라바 동기화 진입점은 화면에 따라 두 모양 중 하나만 쓴다. 한 헤더에 같이 그리지 않는다.
+
+```jsx
+// 홈(/) — «동기화» 글자 알약을 centerSlot에
+<TopNav showBack={false} logo={<JamLogo />} centerSlot={<SyncPill />} rightSlot={<ProfileAvatarLink />} />
+
+// 홈을 뺀 화면 — 아이콘 서클을 rightSlot에 [호출부 액션][동기화 서클][종][아바타] 순서로
+<TopNav
+  title="뒤로"
+  backHref="/badges/123"
+  rightSlot={(
+    <>
+      <IconButton icon="share" label="공유" />
+      <SyncIconCircle />
+      <NotificationBell />
+      <ProfileAvatarLink />
+    </>
+  )}
+/>
+```
+
+- 서클 규격: 44×44 터치 영역 안에 36px `--border` 면, 글자·아이콘색 `--foreground`, 16px 아이콘이다. 새 색·그림자·테두리는 없고 빨강 점은 종 전용이다.
+- 서클 바깥 박스에 `marginRight: -4px`(서비스 `-mr-1`)를 줘서 종·아바타와의 시각 간격을 12px로 맞춘다(rightSlot gap이 8이라 보정이 필요하다).
+- 눌렀을 때는 scale 0.95(100ms)다. 로딩 때는 아이콘만 돌리고, 모션 줄이기에서는 회전 대신 서클을 흐리게(opacity 60%) 한다. `aria-busy`는 항상 켠다.
+- 눈에 보이는 글자가 없으므로 `aria-label`은 필수다(예: «동기화»).
+- DS에는 `syncStyle` prop이 없다. DS TopNav는 `centerSlot`·`rightSlot` 슬롯만 가지며, 어느 모양을 쓸지 고르는 것(`syncStyle`)은 서비스 래퍼 `src/components/ui/TopNav.tsx`가 한다. 위 `centerSlot`은 서비스 `TopNavProps`에 노출되지 않는 내부 전용 슬롯이라는 설명과 같은 구조다.
+- 서클 Story는 `SyncIconCircle`이다. DS IconCatalog에는 SyncIcon이 없어 Story 안에 인라인 svg로 둔다.
