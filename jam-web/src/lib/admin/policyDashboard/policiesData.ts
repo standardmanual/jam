@@ -856,13 +856,15 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch8-clue-recipes',
     chapter: 8,
     chapterTitle: '인벤토리, 컬렉션, 믹스',
-    title: '단서 레시피 20선 규격',
+    title: '단서 레시피 20선 규격 (레시피 유형·같은 등급 규칙·첫 성공자 보상)',
     type: 'pre_launch_pending',
-    currentSpec: '정해진 3~5개 재료 조합 시 확정 결과물 제공 (재료와 같은 등급, 단서 20개 × 4등급 = 80건, 성공 포인트는 레시피마다 정함, 오픈 직전 공개)',
-    codeLocation: 'jam-web/supabase/migrations/281_clue_recipes.sql',
-    userExperience: '힌트를 모아 특별한 히든 아이템을 제작하는 재미를 느껴요.',
-    basisDoc: '운영 로직 8.4절, 19.3절',
-    ticketId: '20261022_1138',
+    currentSpec:
+      '정해진 3~5개 재료 조합 시 확정 결과물 제공 (재료와 같은 등급, 성공 포인트는 레시피마다 정함, 오픈 직전 공개). 레시피 유형은 둘: 등급 대응형(grade_mode follow_materials)은 같은 이름의 4등급 배지를 한 레시피에 모두 담고 재료 등급이 곧 결과 등급이라 목록에 한 행으로만 보임, 등급 고정형(fixed, 기본값)은 슬롯이 가리킨 배지만 받고 보상 배지를 그대로 줌. 같은 등급 규칙: 등급 대응형은 재료 등급이 섞이면 재료를 소각하기 전에 mixed_grade_not_allowed(409)로 거절하고 재료·포인트·실패 기록을 바꾸지 않음(낮은 재료로 높은 등급이 나오는 길 없음). 단서 20개 × 4등급 80건은 마이그레이션 341이 등급 대응형 20건으로 합침(적용 전에는 등급별 80건). 첫 성공자 보상: 레시피마다 드랍 제외가 켜진 아이템 배지 1개를 지정할 수 있고(first_success_badge_id, 선택), 레시피를 처음 성공한 유저 1명(성공 기록의 is_recipe_first, 부분 유일 인덱스가 1명만 허용)에게만 일반 결과와 함께 지급, 인벤토리 빈칸이 모자라면 받지 않은 결과에 담음. 이미 성공 기록이 있는 레시피에는 켤 수 없음. 예전의 «가장 먼저 성공» 배지 조건(recipe_first_success)은 없앰(마이그레이션 342)',
+    codeLocation: 'jam-web/src/lib/combine/index.ts',
+    userExperience:
+      '힌트를 모아 특별한 히든 아이템을 제작하는 재미를 느껴요. 같은 아이템을 같은 등급으로 모아 넣으면 그 등급의 결과를 받아요. 서로 다른 등급을 섞으면 재료가 그대로 남고 안내만 떠요. 첫 성공자 보상이 걸린 레시피는 처음 성공한 한 명만 일반 결과와 함께 특별한 아이템 배지를 받아요.',
+    basisDoc: '운영 로직 8.4절, 19.3절, 아이템 조합(믹스) 시스템 정책 2절',
+    ticketId: '20261114_1705',
     nodes: ['inventory'],
   },
   {

@@ -885,10 +885,10 @@ false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check
 처음 계획한 레시피 1,350건(마이그레이션 283)은 공용 DB에 적용된 적 없이 폐기했고 파일을 지웠다. 이 기능으로 스키마는 바뀌지 않는다.
 규칙(재료 같은 등급 6개·Mystic 재료 허용, 컬렉션 선택 없음, 결과 등급은 확률로 정해짐, 아이템은 트라이브와 상관없이 서비스의 활성 컬렉션 전체에서 균등)은 [COMBINE_RECIPES.md](../content/COMBINE_RECIPES.md) 4절이다.
 
-**삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200): `combination_recipes.id`를 FK로 참조하는
-테이블은 없다. 대신 삭제되지 않은(`deleted_at IS NULL`) 배지의 조건
-`condition_json.recipe_first_success.recipe_id`가 레시피를 가리키면 단건·일괄 삭제를 막는다(단건
-409, 일괄은 건너뜀 사유 — 「이 레시피를 가리키는 배지가 N개 있어요」). 참조 조회가 실패해도
+**삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200, 20261114_1705 4회차에 줄임): `combination_recipes.id`를 FK로 참조하는
+테이블은 없고, 삭제를 막는 참조도 지금 없다. 예전에는 배지 조건 «가장 먼저 성공»이 레시피를 가리켜 삭제를 막았지만 그 조건을 없앴다
+(믹스 성공 기록의 `is_recipe_first` 칸·부분 유일 인덱스·`record_combine_success_with_id`는 레시피의 첫 성공자 보상이 쓰므로 남는다).
+홈 카드(`today_cards.recipe_id`)는 `ON DELETE SET NULL`이라 삭제를 막지 않고 삭제 뒤에 알린다. 참조 조회가 실패하면
 삭제를 막는다(fail-closed).
 
 ### combination_recipe_slots (신규, 티켓 20260917_1427)
