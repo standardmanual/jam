@@ -236,12 +236,10 @@ describe('MissionForm — 시간대·요일·계절·운동 속성 입력 칸 (�
 })
 
 describe('MissionForm — 기록으로 세는 조건 입력 칸 (티켓 20261021_1114 2회)', () => {
-  const RECIPE = '00000000-0000-0000-0000-0000000000aa'
   const ALL = {
     combine_attempt_count: 10,
     combine_success_count: 5,
     combine_fail_count: 3,
-    recipe_first_success: { recipe_id: RECIPE },
     cross_tribe_combine_success_count: 2,
     drop_item_count: 4,
     pickup_item_count: 6,
@@ -295,7 +293,6 @@ describe('MissionForm — 기록으로 세는 조건 입력 칸 (티켓 20261021
     valueOf('combineAttemptCount', '10')
     valueOf('combineSuccessCount', '5')
     valueOf('combineFailCount', '3')
-    valueOf('recipeFirstSuccessRecipeId', RECIPE)
     valueOf('crossTribeCombineSuccessCount', '2')
     valueOf('dropItemCount', '4')
     valueOf('pickupItemCount', '6')
@@ -352,7 +349,7 @@ describe('MissionForm — 기록으로 세는 조건 입력 칸 (티켓 20261021
   it('배지 기준으로 적힌 레지스트리 도움말은 미션 말로 바꿔 보인다 («발급»·«가입한 날부터» 없이)', () => {
     const out = render({ mission: engine({ distance_km: 10 }) })
 
-    expect(out).toContain('이 레시피를 가장 먼저 성공한 1명만 달성해요')
+    expect(out).toContain('가장 많이 활동한 한 주(월~일)로 판정하고, 기간이 걸친 주는 기간 안의 날만 세요.')
     expect(out).not.toContain('발급돼요')
     expect(out).not.toContain('가입한 날부터')
     // 바꾸지 않은 칸은 레지스트리 도움말 그대로다

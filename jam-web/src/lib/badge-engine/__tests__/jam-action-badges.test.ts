@@ -1,11 +1,10 @@
 /**
- * JAM! 행동 지표 배지(믹스 시도·성공·실패·레시피 최초 성공) 판정·발급 테스트
+ * JAM! 행동 지표 배지(믹스 시도·성공·실패) 판정·발급 테스트
  * (티켓 20261001_0631, 상위 20260930_1456 ①)
  *
  * 검증 대상:
  *  ① 시도·성공·실패 임계 발급/미발급. 시도 = 성공 기록 수 + `no_recipe_match` 수(재료 소각 전 실패는 제외)
  *  ② 등급형·레벨형 순차 발급, 고가치 등급 상한 없음, 포인트·피드(`usageBadges.ts`의 발급 정책을 그대로 쓴다)
- *  ③ `recipe_first_success`: 최초 행 보유자만, 멱등, 동시 최초 성공에서 1명만
  *  ④ 호출 규칙: 후보가 없으면 계산 0회, 요청한 지표만 계산, 계산 예외는 그 지표만 건너뜀, 배지 조회 오류는 `[]`
  *  ⑤ 계약: `USAGE_METRIC_CONDITION_KEYS`의 모든 키는 기존 6지표이거나 `JAM_ACTION_CONDITION_KEYS`에 있다
  *
@@ -353,72 +352,6 @@ describe('발급 정책은 usageBadges의 것을 그대로 쓴다', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
-// ③ recipe_first_success
-// ═══════════════════════════════════════════════════════════════════════
-
-describe('레시피 최초 성공(recipe_first_success)', () => {
-  const badgeFor = (id: string, recipeId: string) =>
-    makeBadge({ id, name: `최초-${id}`, condition_json: { recipe_first_success: { recipe_id: recipeId } } })
-
-  it('최초 행을 가진 유저만 발급받고, triggered_by에 레시피 id가 남는다', async () => {
-    setBadges(badgeFor('first-a', RECIPE_A))
-    addSuccess('user-1', RECIPE_A, true)
-    addSuccess('user-2', RECIPE_A, false)
-
-    expect((await evaluateJamActionBadges('user-1', ['recipe_first_success'])).map((b) => b.id)).toEqual(['first-a'])
-    expect(await evaluateJamActionBadges('user-2', ['recipe_first_success'])).toEqual([])
-    expect(state.inserts).toEqual([
-      { user_id: 'user-1', badge_id: 'first-a', triggered_by: `recipe_first_success:${RECIPE_A}` },
-    ])
-  })
-
-  it('다른 레시피의 최초 성공자는 이 레시피 배지를 받지 않는다', async () => {
-    setBadges(badgeFor('first-a', RECIPE_A), badgeFor('first-b', RECIPE_B))
-    addSuccess('user-1', RECIPE_B, true)
-    expect((await evaluateJamActionBadges('user-1', ['recipe_first_success'])).map((b) => b.id)).toEqual(['first-b'])
-  })
-
-  it('성공한 적 없는 유저는 발급받지 않는다', async () => {
-    setBadges(badgeFor('first-a', RECIPE_A))
-    expect(await evaluateJamActionBadges('user-1', ['recipe_first_success'])).toEqual([])
-  })
-
-  it('다시 평가해도 한 번만 발급된다 — 멱등', async () => {
-    setBadges(badgeFor('first-a', RECIPE_A))
-    addSuccess('user-1', RECIPE_A, true)
-    expect((await evaluateJamActionBadges('user-1', ['recipe_first_success'])).map((b) => b.id)).toEqual(['first-a'])
-    expect(await evaluateJamActionBadges('user-1', ['recipe_first_success'])).toEqual([])
-    expect(state.inserts).toHaveLength(1)
-  })
-
-  it('같은 레시피에 동시에 성공해도 최초 표시를 가진 1명만 받는다', async () => {
-    // DB가 (recipe_id) WHERE is_recipe_first 부분 유니크로 최초 표시를 1행만 허용한다 — 그 결과 상태를 그대로 재현한다
-    setBadges(badgeFor('first-a', RECIPE_A))
-    addSuccess('user-1', RECIPE_A, true)
-    addSuccess('user-2', RECIPE_A, false)
-    const [first, second] = await Promise.all([
-      evaluateJamActionBadges('user-1', ['recipe_first_success']),
-      evaluateJamActionBadges('user-2', ['recipe_first_success']),
-    ])
-    expect(first.map((b) => b.id)).toEqual(['first-a'])
-    expect(second).toEqual([])
-    expect(state.tables.user_activity_badges.filter((r) => r.badge_id === 'first-a')).toHaveLength(1)
-  })
-
-  it('형태가 깨진 recipe_first_success 값을 가진 배지는 후보에서 빠진다', async () => {
-    setBadges(
-      makeBadge({ id: 'broken-1', condition_json: { recipe_first_success: 'x' } as never }),
-      makeBadge({ id: 'broken-2', condition_json: { recipe_first_success: { recipe_id: 7 } } as never }),
-      makeBadge({ id: 'broken-3', condition_json: { recipe_first_success: null } as never })
-    )
-    addSuccess('user-1', RECIPE_A, true)
-    expect(await evaluateJamActionBadges('user-1', ['recipe_first_success'])).toEqual([])
-    // 후보가 없으니 성공 기록도 조회하지 않는다
-    expect(state.queried).not.toContain('user_combine_success_logs')
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════
 // ④ 호출 규칙
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -468,23 +401,6 @@ describe('호출 규칙', () => {
     const earned = await evaluateJamActionBadges('user-1', ['combine_success_count', 'combine_fail_count', 'combine_attempt_count'])
 
     // 실패 로그를 못 읽으면 실패·시도 지표는 건너뛴다. 0으로 바꿔 «센 값이 0»처럼 굴지 않는다
-    expect(earned.map((b) => b.id)).toEqual(['success-1'])
-    expect(consoleError).toHaveBeenCalled()
-    consoleError.mockRestore()
-  })
-
-  it('recipe_first_success 계산이 던져도 수치형 지표는 그대로 발급한다', async () => {
-    setBadges(
-      makeBadge({ id: 'success-1', condition_json: { combine_success_count: 1 } }),
-      makeBadge({ id: 'first-a', name: '최초', condition_json: { recipe_first_success: { recipe_id: RECIPE_A } } })
-    )
-    addSuccess('user-1', RECIPE_A, true)
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    // 수치형 성공 횟수 계산(1번째 조회)은 통과시키고, recipe_first_success 차례(2번째 조회)에서만 실패시킨다
-    state.errors.user_combine_success_logs = (nth) => (nth >= 2 ? { message: 'DB 장애' } : undefined)
-
-    const earned = await evaluateJamActionBadges('user-1', ['combine_success_count', 'recipe_first_success'])
-
     expect(earned.map((b) => b.id)).toEqual(['success-1'])
     expect(consoleError).toHaveBeenCalled()
     consoleError.mockRestore()

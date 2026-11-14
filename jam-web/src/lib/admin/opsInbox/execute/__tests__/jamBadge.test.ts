@@ -18,7 +18,6 @@ const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0'
 const BADGE_ID = uid(1)
 const EXISTING_BADGE_ID = uid(2)
 const RECIPE_ID = uid(3)
-const EXISTING_RECIPE_ID = uid(4)
 const MISSION_ID = uid(5)
 const CARD_ID = uid(6)
 /** `LATER`(10/10 09:00 KST)를 등록 형식으로 바꾼 공개 시각. */
@@ -106,13 +105,13 @@ describe('prepare', () => {
     expect(prepared(badgeItem({}, {}, {}, { endsAt })).payload).toMatchObject({ valid_from: STARTS_AT, valid_until: endsAt })
   })
 
-  it('받은 linkedIds는 그대로 남기고 연결 칸을 payload에 덮고 linkFields로 알린다', () => {
+  it('받은 linkedIds는 그대로 남기고, 연결로 채우는 칸이 없어 payload를 바꾸지 않는다', () => {
     const linkedIds = { recipe_id: RECIPE_ID }
-    const value = prepared(badgeItem({ condition_json: { recipe_first_success: { recipe_id: EXISTING_RECIPE_ID } } }), linkedIds)
+    const value = prepared(badgeItem(), linkedIds)
     expect(value.linkedIds).toBe(linkedIds)
-    expect(value.linkFields).toEqual(['condition_json.recipe_first_success.recipe_id'])
-    expect(value.payload.condition_json).toEqual({ recipe_first_success: { recipe_id: RECIPE_ID } })
-    expect(JSON.stringify(value.payload)).not.toContain(EXISTING_RECIPE_ID)
+    expect(value.linkFields).toEqual([])
+    expect(value.payload.condition_json).toEqual(CONDITION)
+    expect(JSON.stringify(value.payload)).not.toContain(RECIPE_ID)
   })
 
   it('경고는 막지 않고 그대로 돌려준다(activity_types는 툴이 정하는 값이라 읽지 않는다)', () => {
@@ -177,7 +176,6 @@ describe('prepare', () => {
       ['사용량 지표', { follower_count: 10 }],
       ['JAM! 행동 지표', { combine_success_count: 1 }],
       ['JAM! 행동 지표(미션 완료)', { mission_complete_count: 3 }],
-      ['레시피 최초 성공', { recipe_first_success: { recipe_id: EXISTING_RECIPE_ID } }],
       ['미션 보상 표시', { mission_reward: true }],
     ])('%s가 있으면 통과한다', (_label, condition) => {
       expect(handler.prepare(badgeItem({ condition_json: condition }), { id: BADGE_ID, actorId: 'admin-1', linkedIds: {}, now: NOW }).ok).toBe(true)
@@ -245,18 +243,6 @@ describe('prepare', () => {
     })
   })
 
-  it('연결 없이 직접 적은 recipe_first_success의 레시피 ID가 UUID가 아니면 막는다', () => {
-    const failure = failureOf(badgeItem({ condition_json: { recipe_first_success: { recipe_id: 'not-a-uuid' } } }))
-    expect(failure.reason).toContain('recipe_first_success의 recipe_id가 레시피 ID(UUID) 형식이 아니에요')
-    const noId = failureOf(badgeItem({ condition_json: { recipe_first_success: true } }))
-    expect(noId.reason).toContain('recipe_first_success의 recipe_id가 레시피 ID(UUID) 형식이 아니에요')
-  })
-
-  it('레시피를 연결하면 항목에 적은 레시피 값이 형식에 어긋나도 연결 ID로 덮여 통과한다', () => {
-    const value = prepared(badgeItem({ condition_json: { recipe_first_success: true } }), { recipe_id: RECIPE_ID })
-    expect(value.payload.condition_json).toEqual({ recipe_first_success: { recipe_id: RECIPE_ID } })
-  })
-
   it('kind가 jam_badge가 아니면 형식 오류다', () => {
     const failure = failureOf(makeItem({ key: 'x', kind: 'mission' }))
     expect(failure.reason).toContain('배지 형식이 맞지 않아요: kind: jam_badge 항목만 JAM! 배지로 바꿀 수 있어요')
@@ -315,70 +301,6 @@ describe('check — 가정 7의 고정 문장', () => {
     expect(failure).toMatchObject({ reason: '등록 전 확인 중 DB를 읽지 못했어요' })
     expect(failure?.reason).not.toContain(DB_SECRET)
     expect(failure?.detail).toContain(DB_SECRET)
-  })
-
-  describe('연결 없이 직접 적은 레시피(가정 3)', () => {
-    const direct = (recipeId = EXISTING_RECIPE_ID) => badgeItem({ condition_json: { recipe_first_success: { recipe_id: recipeId } } })
-
-    it('레시피가 있고 공개 시각이 같으면 통과한다(밀리초 비교라 표기가 달라도 같은 순간이면 통과)', async () => {
-      const db = new FakeDb()
-      db.tables.combination_recipes = [{ id: EXISTING_RECIPE_ID, valid_from: STARTS_AT }]
-      expect(await checkOf(db, direct())).toBeNull()
-
-      db.tables.combination_recipes = [{ id: EXISTING_RECIPE_ID, valid_from: '2026-10-10T09:00:00+09:00' }]
-      expect(await checkOf(db, direct())).toBeNull()
-    })
-
-    it('공개 시각이 다르면 막는다(1밀리초 달라도). 레시피 ID·시각은 detail에만 있다', async () => {
-      const db = new FakeDb()
-      db.tables.combination_recipes = [{ id: EXISTING_RECIPE_ID, valid_from: after(STARTS_AT, 1) }]
-      const failure = await checkOf(db, direct())
-      expect(failure).toMatchObject({ reason: '가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요' })
-      expect(failure?.reason).toBe(JAM_BADGE_MESSAGES.recipeStartsDiffer)
-      expect(failure?.reason).not.toContain(EXISTING_RECIPE_ID)
-      expect(failure?.detail).toContain(EXISTING_RECIPE_ID)
-    })
-
-    it('레시피가 이미 열려 있으면(valid_from 없음) 나중에 여는 배지는 막는다', async () => {
-      const db = new FakeDb()
-      db.tables.combination_recipes = [{ id: EXISTING_RECIPE_ID, valid_from: null }]
-      expect(await checkOf(db, direct())).toMatchObject({ reason: '가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요' })
-    })
-
-    it('레시피가 없으면 「가장 먼저 성공할 레시피가 없어요」다', async () => {
-      const db = new FakeDb()
-      const failure = await checkOf(db, direct())
-      expect(failure).toMatchObject({ reason: '가장 먼저 성공할 레시피가 없어요' })
-      expect(failure?.reason).not.toContain(EXISTING_RECIPE_ID)
-    })
-
-    it('레시피를 읽지 못하면 통과시키지 않는다. DB 오류 원문은 detail에만 있다', async () => {
-      const db = new FakeDb()
-      db.failIf = (call) => call.table === 'combination_recipes'
-      const failure = await checkOf(db, direct())
-      expect(failure).toMatchObject({ reason: '등록 전 확인 중 DB를 읽지 못했어요' })
-      expect(failure?.reason).not.toContain(DB_SECRET)
-      expect(failure?.detail).toContain(DB_SECRET)
-    })
-
-    it('레시피 공개 시각이 시각으로 읽히지 않으면 통과시키지 않는다', async () => {
-      const db = new FakeDb()
-      db.tables.combination_recipes = [{ id: EXISTING_RECIPE_ID, valid_from: '내일' }]
-      expect(await checkOf(db, direct())).toMatchObject({ reason: '등록 전 확인 중 DB를 읽지 못했어요' })
-    })
-
-    it('이름이 겹치면 레시피를 읽기 전에 그 사유로 막는다', async () => {
-      const db = new FakeDb()
-      db.tables.badges = [{ id: EXISTING_BADGE_ID, name: '첫 믹스', deleted_at: null }]
-      expect(await checkOf(db, direct())).toMatchObject({ reason: '같은 이름의 배지가 이미 있어요' })
-      expect(db.calls.some((call) => call.table === 'combination_recipes')).toBe(false)
-    })
-
-    it('연결로 채운 레시피는 같은 실행(또는 이전 실행)이 만든 것이라 DB에서 읽지 않는다', async () => {
-      const db = new FakeDb()
-      expect(await checkOf(db, direct(), { recipe_id: RECIPE_ID })).toBeNull()
-      expect(db.calls.some((call) => call.table === 'combination_recipes')).toBe(false)
-    })
   })
 })
 

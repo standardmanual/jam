@@ -159,7 +159,6 @@ export const ENGINE_DELEGATED_DB_CONDITION_KEY_LIST = [
   'combine_attempt_count',
   'combine_success_count',
   'combine_fail_count',
-  'recipe_first_success',
   // 드랍·픽업 4
   'drop_item_count',
   'pickup_item_count',
@@ -647,9 +646,6 @@ export const MISSION_CONDITION_VALUE_RULE: Partial<Record<MissionType, MissionCo
 /** RFC4122 형태 검사만 한다 — 버전 비트까지는 보지 않는다(`notifications/feed.ts`의 UUID_RE와 동일 패턴) */
 const MISSION_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** 기준 값(임계값)이 따로 없는 DB 기록 키 — 레시피 id만 든 객체라 «얼마 이상인가»가 없다 */
-const DB_KEYS_WITHOUT_THRESHOLD: ReadonlySet<string> = new Set<MissionDbConditionKey>(['recipe_first_success'])
-
 /** 기준 값이 객체 안의 `count`인 DB 기록 키 — 값 모양은 배지 조건 레지스트리의 `input: 'object'` 정의를 따른다 */
 const DB_KEYS_WITH_COUNT_FIELD: ReadonlySet<string> = new Set<MissionDbConditionKey>(['checkin_category_count', 'checkin_badge_count'])
 
@@ -670,13 +666,13 @@ function describeThreshold(value: unknown): string {
  * 검사 규칙이 없으면 0 이하의 값이 그대로 저장되고, 0이면 `actual >= 0`이라 첫 동기화에서 바로 완료된다(진행률의 목표도 0이 된다).
  * 소수나 숫자가 아닌 값은 비교가 어긋나거나(`"3"`은 숫자가 아니라 영원히 충족하지 못한다) 횟수로 셀 수 없다.
  * 모든 키가 개수나 잼 양이라 기준은 «1 이상의 정수»다. 객체형 `checkin_category_count`·`checkin_badge_count`는 안의 `count`를 본다.
- * `recipe_first_success`는 기준 값이 없어 건너뛴다. 문제가 있는 키를 한 번에 모두 알린다.
+ * 문제가 있는 키를 한 번에 모두 알린다.
  */
 function engineDbThresholdError(condition: Record<string, unknown>): string | null {
   const problems: string[] = []
   for (const key of MISSION_DB_CONDITION_KEY_LIST) {
     const raw = condition[key]
-    if (raw === undefined || DB_KEYS_WITHOUT_THRESHOLD.has(key)) continue
+    if (raw === undefined) continue
     const label = `${missionConditionValueLabel(key)}(${key})`
     if (DB_KEYS_WITH_COUNT_FIELD.has(key)) {
       const count = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>).count : undefined
@@ -711,12 +707,10 @@ export const MISSION_RANGE_CHECKED_KEYS = [
 ] as const satisfies readonly EngineDelegatedConditionKey[]
 
 /**
- * DB 기록 키 가운데 숫자를 받는 키 20개(`recipe_first_success`는 숫자가 없는 레시피 지정이라 뺀다).
+ * DB 기록 키 가운데 숫자를 받는 키 20개(`MISSION_DB_CONDITION_KEY_LIST` 전체).
  * 서버 기준 값 검사(`engineDbThresholdError`)는 1 이상의 정수만 보고 위쪽 한계는 보지 않으므로, 위쪽 한계는 이 범위 검사가 맡는다.
  */
-export const MISSION_DB_RANGE_CHECKED_KEYS: readonly MissionDbConditionKey[] = MISSION_DB_CONDITION_KEY_LIST.filter(
-  (key) => key !== 'recipe_first_success'
-)
+export const MISSION_DB_RANGE_CHECKED_KEYS: readonly MissionDbConditionKey[] = MISSION_DB_CONDITION_KEY_LIST
 
 /** 레지스트리에 값 범위가 없는 객체형 두 키(`checkin_category_count`·`checkin_badge_count`)의 안쪽 `count` 입력 범위 */
 export const MISSION_DB_OBJECT_COUNT_RANGE = { min: 1, max: 1000000, step: 1 } as const

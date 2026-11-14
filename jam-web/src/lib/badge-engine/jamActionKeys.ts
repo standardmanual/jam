@@ -13,7 +13,6 @@ export const JAM_ACTION_CONDITION_KEYS = [
   'combine_attempt_count',
   'combine_success_count',
   'combine_fail_count',
-  'recipe_first_success',
   // 드랍·픽업 4종 (티켓 20261001_0632)
   'drop_item_count',
   'pickup_item_count',

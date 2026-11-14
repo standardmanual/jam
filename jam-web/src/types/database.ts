@@ -940,8 +940,6 @@ export interface MissionCondition {
   combine_success_count?: BadgeCondition['combine_success_count']
   /** 믹스 실패 횟수 — 재료가 소각된 실패만 */
   combine_fail_count?: BadgeCondition['combine_fail_count']
-  /** 지정한 레시피를 기간 안에 전체 유저 중 처음 성공했는가 */
-  recipe_first_success?: BadgeCondition['recipe_first_success']
   /** 놓은 서로 다른 아이템 개체 수 (놓은 때 기준) */
   drop_item_count?: BadgeCondition['drop_item_count']
   /** 주운 서로 다른 아이템 개체 수 (주운 때 기준) */
@@ -1727,12 +1725,6 @@ export interface BadgeCondition {
   combine_success_count?: number
   /** [JAM!] 믹스 실패 횟수 ≥ 값. `user_combine_fail_logs` 중 `fail_reason = 'no_recipe_match'` 수. */
   combine_fail_count?: number
-  /**
-   * [JAM!] 지정한 믹스 레시피를 전체 유저 중 처음 성공한 1명에게만 발급한다.
-   * `user_combine_success_logs.is_recipe_first = true`인 행이 내 것인지로 판정한다(상태 기반).
-   * `recipe_id`는 저장 시점에 존재하는 레시피인지 검증된다(`findRecipeFirstSuccessNotFoundError`).
-   */
-  recipe_first_success?: { recipe_id: string }
 
   // ── JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632) ──
   //

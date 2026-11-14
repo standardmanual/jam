@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: d.combine.genericFail }, { status: 500 })
   }
 
-  // JAM! 행동 지표(믹스 시도·성공·실패·레시피 최초 성공) 배지 판정 — 응답을 만들기 전에 한 번 돌린다
+  // JAM! 행동 지표(믹스 시도·성공·실패) 배지 판정 — 응답을 만들기 전에 한 번 돌린다
   // (티켓 20261001_0631). 래퍼가 예외를 던지지 않지만 트리거 계산까지 한 번 더 감싼다: 판정·알림이
   // 실패해도 아래 응답(상태 코드·JSON 키·message)은 바뀌지 않는다.
   try {

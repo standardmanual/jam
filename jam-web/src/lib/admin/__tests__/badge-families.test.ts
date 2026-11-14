@@ -155,17 +155,6 @@ describe('⑤ JAM! 카테고리(admin_category) — 종목 없는 계열도 실�
     ])
     expect(family.measurableKeys).toEqual([])
     expect(family.usageMetricKeys).toEqual(['combine_attempt_count'])
-
-    const [recipeFamily] = groupBadgesIntoFamilies([
-      badge({
-        name: '첫 발견자',
-        family_key: null,
-        activity_types: [],
-        condition_json: { recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' } } as BadgeCondition,
-        admin_category: 'jam',
-      }),
-    ])
-    expect(recipeFamily.usageMetricKeys).toEqual(['recipe_first_success'])
   })
 
   it('admin_category가 없는 일반 배지는 usageMetricKeys가 비어 있고 adminCategory는 null이다', () => {

@@ -1,6 +1,6 @@
 /**
- * DELETE /api/admin/recipes/[id] — 배지 조건 `recipe_first_success`가 가리키는 레시피는 삭제를 막는다
- * (티켓 20261001_1200). 레시피 공개 카드(`today_cards.recipe_id`)가 가리켜도 막지 않고 삭제 뒤에 알린다(티켓 20261006_1218). DB는 기록형 스텁이고 실제 조회는 하지 않는다.
+ * DELETE /api/admin/recipes/[id] — 레시피 공개 카드(`today_cards.recipe_id`)가 가리켜도 막지 않고 삭제 뒤에 알린다(티켓 20261006_1218).
+ * 배지 조건 참조로 막던 가드는 «가장 먼저 성공» 조건과 함께 걷었다(티켓 20261114_1705 4회차). DB는 기록형 스텁이고 실제 조회는 하지 않는다.
  * 실행: cd jam-web && npx vitest run "src/app/api/admin/recipes/[id]/__tests__/route.test.ts"
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -8,31 +8,21 @@ import { NextRequest } from 'next/server'
 
 const state = vi.hoisted(() => ({
   recipeExists: true,
-  /** 레시피를 가리키는 삭제되지 않은 배지 수 */
-  badgeCount: 0,
-  /** 값이 있으면 배지 참조 조회가 이 오류를 돌려준다 */
-  badgeError: null as { message: string } | null,
   /** 레시피를 가리키는 레시피 공개 카드 수 */
   cardCount: 0,
+  /** 값이 있으면 카드 참조 조회가 이 오류를 돌려준다 */
+  cardError: null as { message: string } | null,
   deletes: 0,
 }))
 
 const fakeClient = {
   from: (table: string) => {
-    if (table === 'badges') {
-      const builder = {
-        is: () => builder,
-        in: () =>
-          Promise.resolve(
-            state.badgeError
-              ? { count: null, error: state.badgeError }
-              : { count: state.badgeCount, error: null }
-          ),
-      }
-      return { select: () => builder }
-    }
     if (table === 'today_cards') {
-      return { select: () => ({ in: () => Promise.resolve({ count: state.cardCount, error: null }) }) }
+      return {
+        select: () => ({
+          in: () => Promise.resolve(state.cardError ? { count: null, error: state.cardError } : { count: state.cardCount, error: null }),
+        }),
+      }
     }
     return {
       select: () => ({
@@ -68,9 +58,8 @@ const del = () =>
 
 beforeEach(() => {
   state.recipeExists = true
-  state.badgeCount = 0
-  state.badgeError = null
   state.cardCount = 0
+  state.cardError = null
   state.deletes = 0
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -79,7 +68,7 @@ afterEach(() => {
 })
 
 describe('DELETE /api/admin/recipes/[id]', () => {
-  it('가리키는 배지가 없으면 삭제한다', async () => {
+  it('가리키는 카드가 없으면 삭제한다', async () => {
     const res = await del()
 
     expect(res.status).toBe(200)
@@ -99,19 +88,8 @@ describe('DELETE /api/admin/recipes/[id]', () => {
     expect(body.notice).toContain('카드가 2장')
   })
 
-  it('가리키는 배지가 있으면 409와 배지 수 문구로 막고 삭제하지 않는다', async () => {
-    state.badgeCount = 2
-
-    const res = await del()
-    const body = await res.json()
-
-    expect(res.status).toBe(409)
-    expect(body.error).toContain('이 레시피를 가리키는 배지가 2개 있어요')
-    expect(state.deletes).toBe(0)
-  })
-
-  it('배지 참조 조회가 실패하면 500으로 막고 삭제하지 않는다(fail-closed)', async () => {
-    state.badgeError = { message: 'badges 조회 실패' }
+  it('참조 조회가 실패하면 500으로 막고 삭제하지 않는다(fail-closed)', async () => {
+    state.cardError = { message: 'today_cards 조회 실패' }
 
     const res = await del()
 

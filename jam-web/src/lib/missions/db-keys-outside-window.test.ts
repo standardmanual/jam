@@ -1,5 +1,5 @@
 /**
- * DB 기록 조건 21개 키 종합 시험 — «참가 전·기간 밖 기록은 세지 않는다» (티켓 20261019_1445 4회)
+ * DB 기록 조건 20개 키 종합 시험 — «참가 전·기간 밖 기록은 세지 않는다» (티켓 20261019_1445 4회)
  *
  * 1·2·3-A회에서 키를 더할 때마다 읽기 함수·로더·판정 시험이 따로 생겼다. 이 파일은 그 시험들이 한곳에서 같은 약속을 지키는지 키마다 확인한다.
  *   A. 참가 전(시작 전, 시작 뒤 참가 전)·종료 뒤 기록만 있는 DB는 모든 키가 0이고, 그 값으로 판정하면 조건을 충족하지 못한다.
@@ -124,7 +124,7 @@ const checkinInside: Tables = plus(checkinOutside, {
 })
 
 const CASES: Record<MissionDbConditionKey, MatrixCase> = {
-  // ── 믹스 4 ──
+  // ── 믹스 3 ──
   combine_attempt_count: {
     condition: { combine_attempt_count: 2 },
     outside: { user_combine_success_logs: outsideRows((id, at) => successLog(`s${id}`, at)), user_combine_fail_logs: outsideRows((id, at) => failLog(`f${id}`, at)) },
@@ -144,14 +144,6 @@ const CASES: Record<MissionDbConditionKey, MatrixCase> = {
     condition: { combine_fail_count: 1 },
     outside: { user_combine_fail_logs: outsideRows((id, at) => failLog(id, at)) },
     inside: { user_combine_fail_logs: [...outsideRows((id, at) => failLog(id, at)), failLog('in', INSIDE)] },
-    expectedInside: 1,
-  },
-  recipe_first_success: {
-    condition: { recipe_first_success: { recipe_id: 'r1' } },
-    // 최초 성공이 참가 전에 있었다 — 기간 안에 같은 레시피를 다시 성공해도 «최초»는 아니다
-    outside: { user_combine_success_logs: [successLog('first', BEFORE_JOIN, { is_recipe_first: true }), successLog('again', INSIDE)] },
-    // 최초 성공이 기간 안이다
-    inside: { user_combine_success_logs: [successLog('first', INSIDE, { is_recipe_first: true })] },
     expectedInside: 1,
   },
   // ── 드랍·픽업 4 ──
@@ -361,9 +353,9 @@ async function loadFor(key: MissionDbConditionKey, tables: Tables) {
   return { metrics, value: metrics[key], db }
 }
 
-describe('DB 기록 조건 21개 키 — 사례 목록', () => {
-  it('사례가 MISSION_DB_CONDITION_KEY_LIST 21개를 빠짐없이, 겹치지 않게 덮는다', () => {
-    expect(KEYS).toHaveLength(21)
+describe('DB 기록 조건 20개 키 — 사례 목록', () => {
+  it('사례가 MISSION_DB_CONDITION_KEY_LIST 20개를 빠짐없이, 겹치지 않게 덮는다', () => {
+    expect(KEYS).toHaveLength(20)
     expect([...KEYS].sort()).toEqual([...MISSION_DB_CONDITION_KEY_LIST].sort())
   })
 

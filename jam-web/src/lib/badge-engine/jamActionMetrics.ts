@@ -59,29 +59,3 @@ export async function countCombineAttempts(supabase: SupabaseClient, userId: str
   ])
   return success + fail
 }
-
-/**
- * `recipeIds` 중 내가 «최초 성공자»인 레시피 id 집합 — `is_recipe_first = true` 행이 내 것인 레시피.
- * 최초 표시는 레시피마다 DB가 1행만 허용하므로(부분 유니크 인덱스, 마이그레이션 200) 같은 레시피가
- * 두 유저의 집합에 동시에 들어가는 일은 없다. `window`를 주면 그 최초 성공 행의 `attempted_at`이 범위 안일 때만 넣는다.
- */
-export async function fetchFirstSuccessRecipeIds(
-  supabase: SupabaseClient,
-  userId: string,
-  recipeIds: readonly string[],
-  window?: MetricWindow
-): Promise<Set<string>> {
-  if (recipeIds.length === 0) return new Set()
-  const { data, error } = await applyMetricWindow(
-    supabase
-      .from('user_combine_success_logs')
-      .select('recipe_id')
-      .eq('user_id', userId)
-      .eq('is_recipe_first', true)
-      .in('recipe_id', [...recipeIds]),
-    'attempted_at',
-    window
-  )
-  if (error) throwQueryError('레시피 최초 성공 기록', error)
-  return new Set(((data ?? []) as { recipe_id: string }[]).map((r) => r.recipe_id))
-}

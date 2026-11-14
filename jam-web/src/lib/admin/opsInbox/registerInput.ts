@@ -88,19 +88,8 @@ export type TodayCardRegisterPayload = ReturnType<typeof buildTodayCardInsertPay
 
 export type MissionRegisterPayload = ReturnType<typeof buildMissionInsertPayload>
 
-/**
- * JAM! 배지의 연결 칸에 넣을 ID. `jam_badge` → `recipe` 쌍(§8.3)이 정한 레시피 ID로 `condition_json.recipe_first_success.recipe_id`를 덮는다.
- * 검증용으로는 미리 정한 UUID를 넣는다(G3).
- */
-export type JamBadgeLinkedIds = {
-  recipe_id?: string | null
-}
-
 /** `badges` insert 값. 어드민 배지 생성 API의 변환(`buildBadgeInsertPayload`) 결과에 정한 ID를 더했다(변환 함수에는 `id` 칸이 없다). */
 export type JamBadgeRegisterPayload = ReturnType<typeof buildBadgeInsertPayload> & { id: string }
-
-/** 연결로 채운 칸 이름(`linkFields`)에 들어가는 JAM! 배지의 칸. 최상위 칸이 아니라 `withoutLinkedFields`가 다루지 않는다. */
-export const JAM_BADGE_RECIPE_LINK_FIELD = 'condition_json.recipe_first_success.recipe_id'
 
 /** 컬렉션의 연결 칸에 넣을 ID. `collection_launch` → `jam_badge` 쌍(§8.3)이 정한 보상 배지 ID가 `reward_badge_id`가 된다. 검증용으로는 미리 정한 UUID를 넣는다(G3). */
 export type CollectionLaunchLinkedIds = {
@@ -560,14 +549,13 @@ function readCount(errors: RegisterInputIssue[], prefix: 'badge' | 'collection',
  * - 글자 칸 `name`·`description`(필수)은 `copy` 먼저, 없으면 `resource`. `resource`의 `condition_json`(필수, 객체)·`point_reward`·`sort_order`(0 이상의 정수)·
  *   `rarity`·`level`(정확히 하나, `findRarityLevelError`)·`family_key`("종목:이름" 형태, `isValidFamilyKey`)·`image_url`(없으면 null)을 읽는다.
  * - 툴이 정하는 값: `type = 'activity'`, `admin_category = 'jam'`, `activity_types = []`(JAM! 배지는 종목과 함께 쓰지 않는다), `id`. `resource`에 있어도 읽지 않고 경고한다.
- * - 연결로 채우는 칸 `condition_json.recipe_first_success.recipe_id`는 `linkedIds.recipe_id`가 있으면 그 값으로 **덮고** `linkFields`에 알린다(§8.3 「덮는 칸」.
- *   `resource`에 같은 값이 있어도 충돌이 아니다). 항목에 `recipe_first_success`가 없으면 칸을 만든다.
+ * - JAM! 배지는 연결로 채우는 칸이 없다(`linkFields`는 늘 빈 배열이다).
  * - 조건 저장 규칙(`findBadgeConditionSaveError`)과 발급 조건 유무는 보지 않는다. 핸들러의 `prepare`가 이어서 본다.
  * - 값은 `buildBadgeInsertPayload`(어드민 배지 생성 API·등록 스크립트와 같은 변환)로 만든다.
  */
 export function toJamBadgeRegisterInput(
   item: OpsRegisterItem,
-  { id, linkedIds = {} }: { id: string; linkedIds?: JamBadgeLinkedIds }
+  { id }: { id: string }
 ): RegisterInputResult<JamBadgeRegisterPayload> {
   const errors: RegisterInputIssue[] = []
   const warnings: RegisterInputIssue[] = []
@@ -600,7 +588,7 @@ export function toJamBadgeRegisterInput(
     errors.push({ path: 'ends_at', message: 'badge.valid_until: 종료 시각은 공개 시각보다 늦어야 해요.' })
   }
 
-  // 발급 조건. 연결로 채우는 레시피 ID는 항목 값 위에 덮는다.
+  // 발급 조건.
   let condition: Record<string, unknown> | null = null
   if (!isPresent(resource.condition_json)) {
     errors.push({ path: 'resource.condition_json', message: 'badge.condition_json: 필수 항목이 없어요.' })
@@ -608,10 +596,6 @@ export function toJamBadgeRegisterInput(
     const record = asRecord(resource.condition_json)
     if (record) condition = { ...record }
     else errors.push({ path: 'resource.condition_json', message: `badge.condition_json: 객체여야 해요(받은 값: ${describeValue(resource.condition_json)}).` })
-  }
-  if (condition !== null && isPresent(linkedIds.recipe_id) && linkedIds.recipe_id !== '') {
-    condition.recipe_first_success = { ...(asRecord(condition.recipe_first_success) ?? {}), recipe_id: linkedIds.recipe_id }
-    linkFields.push(JAM_BADGE_RECIPE_LINK_FIELD)
   }
 
   const pointReward = readCount(errors, 'badge', 'point_reward', resource.point_reward)
@@ -760,7 +744,7 @@ export function toCollectionLaunchRegisterInput(
  * - 공통 칸: `starts_at`(필수)은 `valid_from`으로, `ends_at`은 `valid_until`로 읽는다. `ends_at`이 없으면 칸을 넣지 않는다(상시).
  * - 글자 칸 `name`(필수)은 `copy` 먼저, 없으면 `resource`. `resource`의 `slots`(필수)·`reward_points`·`reward_badge_ids`·`grade_mode`·`first_success_badge_id`는 값 그대로 넘긴다.
  * - 값의 형식(슬롯 개수·보상·시각 형식과 공개 시각이 미래인지)은 보지 않는다. `normalizeRecipePayload`가 현재 시각과 함께 본다.
- * - 연결로 채우는 칸이 없어 `linkFields`는 늘 빈 배열이다(`jam_badge` → `recipe` 쌍은 배지 쪽 칸이다, §8.3).
+ * - 연결로 채우는 칸이 없어 `linkFields`는 늘 빈 배열이다.
  */
 export function toRecipeRegisterInput(item: OpsRegisterItem): RegisterInputResult<RecipeRegisterPayload> {
   const errors: RegisterInputIssue[] = []

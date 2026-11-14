@@ -6,7 +6,6 @@ import {
   findConditionShapeSaveWarning,
   findCheckinBadgeNamesNotFoundError,
   findHiddenBadgeReferenceError,
-  findRecipeFirstSuccessNotFoundError,
   findRarityLevelError,
 } from '@/lib/admin/badge-validation'
 import { findBranchKeyError, findHiddenBadgeError, normalizeBranchKey, normalizeIsHidden } from '@/lib/admin/badge-hidden-guard'
@@ -122,13 +121,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const checkinBadgeNamesError = await findCheckinBadgeNamesNotFoundError(conditionJson ?? null, supabase)
   if (checkinBadgeNamesError) {
     return NextResponse.json({ error: checkinBadgeNamesError }, { status: 400 })
-  }
-
-  // 레시피 최초 성공(recipe_first_success)의 레시피 ID 형식·존재 검증 — 역시 DB 조회가 필요해 별도로
-  // await한다(티켓 20261001_0631).
-  const recipeFirstSuccessError = await findRecipeFirstSuccessNotFoundError(conditionJson ?? null, supabase)
-  if (recipeFirstSuccessError) {
-    return NextResponse.json({ error: recipeFirstSuccessError }, { status: 400 })
   }
 
   const { data, error } = await supabase

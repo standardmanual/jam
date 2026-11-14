@@ -1,5 +1,5 @@
 /**
- * POST /api/combine — JAM! 행동 지표(믹스 시도·성공·실패·레시피 최초 성공) 판정 연동 테스트
+ * POST /api/combine — JAM! 행동 지표(믹스 시도·성공·실패) 판정 연동 테스트
  * (티켓 20261001_0631)
  *
  * 검증 대상:
@@ -130,12 +130,11 @@ describe('칸이 비면 대기 보상을 자동 지급한다 (티켓 20261105_14
 })
 
 describe('결과별로 판정할 지표', () => {
-  it('성공이면 시도·성공·레시피 최초 성공·트라이브를 넘는 성공 수·다른 트라이브 아이템 종류 수를 판정한다', async () => {
+  it('성공이면 시도·성공·트라이브를 넘는 성공 수·다른 트라이브 아이템 종류 수를 판정한다', async () => {
     await POST(request(VALID_BODY))
     expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [
       'combine_attempt_count',
       'combine_success_count',
-      'recipe_first_success',
       'cross_tribe_combine_success_count',
       'other_tribe_item_kinds_count',
     ])
@@ -147,7 +146,6 @@ describe('결과별로 판정할 지표', () => {
     expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [
       'combine_attempt_count',
       'combine_success_count',
-      'recipe_first_success',
       'cross_tribe_combine_success_count',
       'other_tribe_item_kinds_count',
     ])
@@ -403,7 +401,6 @@ describe('JAM 2.0 믹스 고치기 — 받지 않은 결과·이용 정지·보�
     expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [
       'combine_attempt_count',
       'combine_success_count',
-      'recipe_first_success',
       'cross_tribe_combine_success_count',
       'other_tribe_item_kinds_count',
     ])

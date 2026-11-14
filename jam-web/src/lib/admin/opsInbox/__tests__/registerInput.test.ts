@@ -18,7 +18,6 @@ import type { HomeFeedCardInput } from '@/lib/admin/registerChecks/homeFeedField
 import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH } from '@/lib/today/shape'
 import { buildBadgeInsertPayload } from '@/lib/admin/badge-insert-payload'
 import {
-  JAM_BADGE_RECIPE_LINK_FIELD,
   toCollectionLaunchRegisterInput,
   toDropScheduleRegisterInput,
   toJamBadgeRegisterInput,
@@ -115,8 +114,8 @@ function badgeOriginal(over: Raw = {}): Raw {
 
 const badgeItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('jam_badge', badgeOriginal(over), extra)
 
-function toBadge(item: OpsRegisterItem, linkedIds?: Parameters<typeof toJamBadgeRegisterInput>[1]['linkedIds']) {
-  return toJamBadgeRegisterInput(item, { id: BADGE_ID, linkedIds })
+function toBadge(item: OpsRegisterItem) {
+  return toJamBadgeRegisterInput(item, { id: BADGE_ID })
 }
 
 /** 검사를 통과하는 컬렉션 항목(틀만: 이름·설명·공개 시각). */
@@ -1391,40 +1390,11 @@ describe('toJamBadgeRegisterInput (티켓 20261004_1756, PRD §8.4 JAM! 배지 �
     })
   })
 
-  describe('연결 칸 condition_json.recipe_first_success.recipe_id(§8.3 「덮는 칸」)', () => {
-    it('연결 ID가 있으면 항목의 값 위에 덮고 linkFields에 알린다. resource의 같은 값은 충돌이 아니다', () => {
-      const result = toBadge(
-        badgeItem({ resource: { condition_json: { recipe_first_success: { recipe_id: UUID_A } }, rarity: 'common' } }),
-        { recipe_id: UUID_B }
-      )
-      expect(result.errors).toEqual([])
-      expect(result.linkFields).toEqual([JAM_BADGE_RECIPE_LINK_FIELD])
-      expect(result.linkFields).toEqual(['condition_json.recipe_first_success.recipe_id'])
-      expect(result.payload?.condition_json).toEqual({ recipe_first_success: { recipe_id: UUID_B } })
-    })
-
-    it('항목에 recipe_first_success가 없으면 칸을 만들고, 값이 객체가 아닌 칸도 연결 ID로 맞춘다', () => {
-      const none = toBadge(badgeItem({ resource: { condition_json: { mission_reward: true }, rarity: 'common' } }), { recipe_id: UUID_B })
-      expect(none.payload?.condition_json).toEqual({ mission_reward: true, recipe_first_success: { recipe_id: UUID_B } })
-
-      const notObject = toBadge(badgeItem({ resource: { condition_json: { recipe_first_success: true }, rarity: 'common' } }), { recipe_id: UUID_B })
-      expect(notObject.payload?.condition_json).toEqual({ recipe_first_success: { recipe_id: UUID_B } })
-    })
-
-    it('연결 ID가 없으면(null·빈 문자열 포함) 항목의 값을 그대로 두고 linkFields는 비어 있다', () => {
-      for (const linked of [undefined, { recipe_id: null }, { recipe_id: '' }]) {
-        const result = toBadge(badgeItem({ resource: { condition_json: { recipe_first_success: { recipe_id: UUID_A } }, rarity: 'common' } }), linked)
-        expect(result.linkFields).toEqual([])
-        expect(result.payload?.condition_json).toEqual({ recipe_first_success: { recipe_id: UUID_A } })
-      }
-    })
-
-    it('원본 항목의 condition_json 객체를 바꾸지 않는다', () => {
-      const original = badgeOriginal({ resource: { condition_json: { recipe_first_success: { recipe_id: UUID_A } }, rarity: 'common' } })
-      const before = JSON.stringify(original)
-      toBadge(opsItem('jam_badge', original), { recipe_id: UUID_B })
-      expect(JSON.stringify(original)).toBe(before)
-    })
+  it('JAM! 배지는 연결로 채우는 칸이 없어 linkFields가 늘 비어 있고 항목의 조건을 그대로 쓴다', () => {
+    const result = toBadge(badgeItem())
+    expect(result.errors).toEqual([])
+    expect(result.linkFields).toEqual([])
+    expect(result.payload?.condition_json).toEqual({ combine_success_count: 1 })
   })
 
   it('kind가 jam_badge가 아니면 오류다', () => {

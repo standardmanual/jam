@@ -13,8 +13,8 @@
  * - `check`는 슬롯 후보·보상 배지의 존재와 타입(`buildRecipeRow`) → 공개·종료 시각 순서(`assertValidPeriod`) → 아직 열리지 않은 컬렉션의 배지가 없는지 순서로 본다.
  *   컬렉션 검사는 레시피 공개 시각(`valid_from`) 기준이고, 컬렉션을 읽지 못하면 실패다. 사전 점검은 DB를 읽지 않아 이 검사를 하지 못한다(§8.4).
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 서버 오류(500)면 같은 ID로 정리 delete를 한 번 시도한다(슬롯은 CASCADE).
- * - `undo`는 이 레시피를 가리키는 배지(`recipe_first_success`)를 확인한 뒤 ID로 지운다. 시각 조건은 걸지 않는다(상태 맞추기의 멈춘 준비중 정리는 공개 시각이 지난 뒤에 올 수 있다).
- * - `cancel`은 레시피를 다시 읽어 공개됐으면 막고, 지우기는 `cancelScheduledRecipe`(참조 확인·`valid_from > now` 조건)에 맡긴다. 참조는 가장 먼저 성공 배지에 더해 운영툴 밖 카드도 막는다(티켓 20261006_1218). 서버 함수의 문장은 어드민 화면용이라 사유로 쓰지 않는다.
+ * - `undo`는 이 레시피를 막는 참조(`collectRecipeReferences`의 `total`, 지금은 없다)를 확인한 뒤 ID로 지운다. 시각 조건은 걸지 않는다(상태 맞추기의 멈춘 준비중 정리는 공개 시각이 지난 뒤에 올 수 있다).
+ * - `cancel`은 레시피를 다시 읽어 공개됐으면 막고, 지우기는 `cancelScheduledRecipe`(참조 확인·`valid_from > now` 조건)에 맡긴다. 참조는 운영툴 밖 카드를 막는다(티켓 20261006_1218). 서버 함수의 문장은 어드민 화면용이라 사유로 쓰지 않는다.
  * - `end`(티켓 20261006_0950, ⑪-a)는 공개 중인 레시피를 지금 끝낸다: 레시피를 다시 읽어 없으면 `missing`, `recipeReleaseState`가 `ended`(`valid_until`의 그 순간부터)면 `alreadyEnded`, `scheduled`면 `not_published`,
  *   그 밖에는 `valid_until`을 지금으로 바꾼다(읽은 `valid_until`을 조건으로 건다). DB의 `valid_until > valid_from` 제약에 걸리면 `error`로 돌아온다(공개 시각과 같은 순간에 끝낼 때).
  * - `observe`(상태 맞추기, §8.6)는 `recipeReleaseState`로 공개 중·종료를 돌려준다. 레시피에는 비활성 칸이 없어 `inactive`는 늘 `false`다.
@@ -37,11 +37,11 @@ const RECIPE_MESSAGES = {
   collectionNotLaunched: '아직 열리지 않은 컬렉션의 배지가 들어 있어요',
   checkReadFailed: '등록 전 확인 중 DB를 읽지 못했어요',
   createFailed: '레시피를 만들지 못했어요',
-  undoBlocked: '연결된 배지가 있거나 확인하지 못해 레시피를 지우지 않았어요',
+  undoBlocked: '연결된 항목이 있거나 확인하지 못해 레시피를 지우지 않았어요',
   undoFailed: '레시피를 지우지 못했어요',
   // 취소. 지우기 실패 문장은 되돌림과 같은 것을 쓴다.
   cancelPublished: '공개 시각이 지나 취소할 수 없어요',
-  cancelReferenced: '가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요',
+  cancelReferenced: '카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요',
 } as const
 
 /** 읽은 레시피 행의 시각이 시각으로 읽히지 않을 때(상태 맞추기). 사유가 아니라 서버 로그용이다. */
@@ -144,7 +144,7 @@ export const RECIPE_HANDLER: ExecuteHandler<RecipeRegisterPayload> = {
     // 이 레시피를 가리키는 배지가 있거나 확인하지 못하면 지우지 않는다. 시각 조건은 걸지 않는다.
     const references = await collectRecipeReferences(service, [resourceId])
     if (references.error) return { reason: RECIPE_MESSAGES.undoBlocked, detail: `참조 확인 실패: ${references.error}` }
-    if (references.total > 0) return { reason: RECIPE_MESSAGES.undoBlocked, detail: `이 레시피를 가리키는 배지가 ${references.total}개 있어요` }
+    if (references.total > 0) return { reason: RECIPE_MESSAGES.undoBlocked, detail: `이 레시피를 막는 참조가 ${references.total}개 있어요` }
 
     const removed = await service.from('combination_recipes').delete().eq('id', resourceId)
     if (removed.error) return { reason: RECIPE_MESSAGES.undoFailed, detail: removed.error.message }

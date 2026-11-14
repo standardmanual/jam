@@ -146,11 +146,10 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     // JAM! 카테고리 — 체크인 배지 보유 조건 2종 (티켓 20260914_1725)
     checkin_category_count: { category: 'train_subway', count: 5 },
     checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
-    // JAM! 카테고리 — 믹스 행동 지표 4종 (티켓 20261001_0631)
+    // JAM! 카테고리 — 믹스 행동 지표 3종 (티켓 20261001_0631)
     combine_attempt_count: 10,
     combine_success_count: 5,
     combine_fail_count: 3,
-    recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' },
     // JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632)
     drop_item_count: 5,
     pickup_item_count: 20,
@@ -465,7 +464,7 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
       new Set([
         'follower_count', 'following_count', 'daily_sync_count', 'daily_sync_streak_days', 'mission_reward',
         'checkin_category_count', 'checkin_badge_count',
-        'combine_attempt_count', 'combine_success_count', 'combine_fail_count', 'recipe_first_success',
+        'combine_attempt_count', 'combine_success_count', 'combine_fail_count',
         'drop_item_count', 'pickup_item_count', 'pickup_from_user_count', 'picked_up_by_user_count',
         'mission_complete_count', 'collection_complete_count', 'days_since_signup', 'signup_recent_active_days',
         'weekly_active_days', 'same_spot_checkin_days',
@@ -494,41 +493,30 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
   })
 })
 
-describe('믹스 행동 지표 4종 — 폼 입력·저장·복원 (티켓 20261001_0631)', () => {
+describe('믹스 행동 지표 3종 — 폼 입력·저장·복원 (티켓 20261001_0631)', () => {
   it('폼 입력이 condition_json으로 조립된다', () => {
     const fields = emptyFields({
       combineAttemptCount: '10',
       combineSuccessCount: '5',
       combineFailCount: '3',
-      recipeFirstSuccessRecipeId: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70',
     })
     expect(buildConditionJsonFromFields(fields)).toEqual({
       combine_attempt_count: 10,
       combine_success_count: 5,
       combine_fail_count: 3,
-      recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' },
     })
   })
 
-  it('빈 입력이면 4키 모두 결과에 없다', () => {
+  it('빈 입력이면 3키 모두 결과에 없다', () => {
     expect(buildConditionJsonFromFields(emptyFields())).toBeNull()
-  })
-
-  it('레시피 ID 앞뒤 공백은 잘라서 저장한다', () => {
-    const fields = emptyFields({ recipeFirstSuccessRecipeId: '  3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70  ' })
-    expect(buildConditionJsonFromFields(fields)).toEqual({
-      recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' },
-    })
   })
 
   it('저장된 값을 폼 입력으로 되돌린다', () => {
     const fields = conditionFormFieldsFrom({
       combine_success_count: 7,
-      recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' },
     })
     expect(fields.combineSuccessCount).toBe('7')
     expect(fields.combineAttemptCount).toBe('')
-    expect(fields.recipeFirstSuccessRecipeId).toBe('3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70')
   })
 })
 

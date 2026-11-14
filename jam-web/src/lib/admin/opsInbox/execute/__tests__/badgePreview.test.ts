@@ -145,20 +145,6 @@ describe('② 정의를 candidateBadges로 넘기고 이 묶음 배지만 골라
     const result = await previewBundleBadges(noService, items, precheck, deps({ preview, loadUserIds: async () => userIdsOf(3) }))
     expect(result.lines).toEqual([{ itemId: uid(1), status: 'counted', userCount: 3, points: 0 }])
   })
-
-  it('같은 그룹의 레시피 연결은 자리표시 UUID로 채워 형식 검사를 통과한다', async () => {
-    const { items, precheck } = setup([
-      badgeSpec(1, 'first', { condition_json: { recipe_first_success: {} } }, { links: ['recipe'] }),
-      { id: uid(2), key: 'recipe', kind: 'recipe' },
-    ])
-    expect(precheck.ready).toEqual(expect.arrayContaining([uid(1), uid(2)]))
-    const { preview, calls } = makePreview()
-    const result = await previewBundleBadges(noService, items, precheck, deps({ preview }))
-    expect(result.lines.map((line) => line.status)).toEqual(['counted'])
-    const recipeId = (calls[0].candidateBadges[0].condition_json as { recipe_first_success: { recipe_id: string } }).recipe_first_success.recipe_id
-    expect(recipeId).toMatch(/^[0-9a-f-]{36}$/)
-    expect(recipeId).not.toBe(uid(2))
-  })
 })
 
 describe('③ 유저가 상한 이하면 전원을 센다', () => {

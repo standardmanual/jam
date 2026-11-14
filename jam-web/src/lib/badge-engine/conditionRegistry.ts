@@ -1940,39 +1940,6 @@ export const CONDITION_FIELDS = [
       help: '재료가 소각됐지만 레시피가 맞지 않은 믹스만 세요.',
     }),
   }),
-  field({
-    key: 'recipe_first_success',
-    label: '레시피 최초 성공',
-    unit: null,
-    role: 'meta',
-    input: 'object',
-    direction: 'higher',
-    evaluation: 'external',
-    chip: () => '레시피 최초 성공',
-    detail: () => '지정한 믹스 레시피를 전체 유저 중 가장 먼저 성공',
-    form: {
-      fields: ['recipeFirstSuccessRecipeId'],
-      read: (f) => {
-        const recipeId = typeof f.recipeFirstSuccessRecipeId === 'string' ? f.recipeFirstSuccessRecipeId.trim() : ''
-        return recipeId ? { recipe_id: recipeId } : undefined
-      },
-      write: (v) => ({
-        recipeFirstSuccessRecipeId: typeof v?.recipe_id === 'string' ? v.recipe_id : '',
-      }),
-      controls: [
-        {
-          field: 'recipeFirstSuccessRecipeId',
-          kind: 'text',
-          label: '레시피 ID',
-          placeholder: '믹스 레시피 목록에서 복사한 ID',
-          span: 3,
-          help: '믹스 레시피 목록의 ID예요. 이 레시피를 전체 유저 중 처음 성공한 1명에게만 발급돼요. 이미 성공한 사람이 있는 레시피에는 쓰지 마세요.',
-        },
-      ],
-      section: 'meta',
-    },
-  }),
-
   // ── JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632, 상위 20260930_1456 ②) ──
   //
   // 서로 다른 아이템을 몇 개 드랍·픽업했는가, 몇 명의 유저와 드랍·픽업을 주고받았는가를 재는 지표.

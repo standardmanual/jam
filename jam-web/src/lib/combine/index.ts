@@ -683,7 +683,7 @@ async function logFailure(
 
 /**
  * 성공 이력 적재 — `record_combine_success_with_id` RPC(마이그레이션 254, 옛 `record_combine_success`(200)와 같은 동작에 방금 넣은 행의 id를 함께 돌려줌)가
- * 성공 1행과 «레시피 최초 성공» 표시를 원자적으로 만든다. 믹스 시도·성공 횟수와 `recipe_first_success` 배지 조건의 원천이고,
+ * 성공 1행과 «레시피 최초 성공» 표시를 원자적으로 만든다. 믹스 시도·성공 횟수의 원천이고,
  * 돌려주는 `is_recipe_first`는 첫 성공자 보상(티켓 20261114_1705)의 판정이다.
  * 오류·예외는 `console.error`로만 남기고 삼킨다 — 이미 재료가 소각되고 보상이 지급된 뒤라 기록
  * 실패가 믹스 응답을 바꾸면 안 된다.
@@ -725,7 +725,7 @@ async function recordCombineSuccess(
 
 /**
  * 믹스 결과에 따라 JAM! 행동 지표 중 다시 판정할 것을 고른다 — `/api/combine` 라우트가 결과에 이어 부른다.
- *  - 성공: 시도·성공·레시피 최초 성공, 트라이브를 넘는 성공 수·다른 트라이브 아이템 종류 수(티켓 20261018_1815)
+ *  - 성공: 시도·성공, 트라이브를 넘는 성공 수·다른 트라이브 아이템 종류 수(티켓 20261018_1815)
  *  - `no_recipe_match`(재료가 소각된 실패): 시도·실패
  *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`·`locked_item_not_allowed`·`pending_results_exist`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
  *  - 시험 믹스(`testMix`)는 성공·실패와 관계없이 판정하지 않는다(티켓 20261001_1159)
@@ -736,7 +736,6 @@ export function jamTriggersForCombineResult(result: CombineResult): JamActionTri
     return [
       'combine_attempt_count',
       'combine_success_count',
-      'recipe_first_success',
       'cross_tribe_combine_success_count',
       'other_tribe_item_kinds_count',
     ]

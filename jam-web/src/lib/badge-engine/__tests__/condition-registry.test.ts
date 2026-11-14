@@ -200,14 +200,14 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('92종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4 + 미션·컬렉션·가입·활동일·체크인 일수 지표 6 + 새 JAM 조건 5 + 잼·챕터 3 + 활동 기반 새 지표 6 + 체크인·드랍·잼 새 지표 6)을 선언한다', () => {
+  it('91종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 3 + 드랍·픽업 지표 4 + 미션·컬렉션·가입·활동일·체크인 일수 지표 6 + 새 JAM 조건 5 + 잼·챕터 3 + 활동 기반 새 지표 6 + 체크인·드랍·잼 새 지표 6)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
     // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
     // follower_count · following_count · daily_sync_count. 연속 동기화 일수 1종
     // (티켓 20260911_2304) — daily_sync_streak_days. 체크인 배지 보유 조건 2종
-    // (티켓 20260914_1725) — checkin_category_count · checkin_badge_count. 믹스 행동 지표 4종
-    // (티켓 20261001_0631) — combine_attempt_count · combine_success_count · combine_fail_count ·
-    // recipe_first_success. 드랍·픽업 지표 4종(티켓 20261001_0632) — drop_item_count ·
+    // (티켓 20260914_1725) — checkin_category_count · checkin_badge_count. 믹스 행동 지표 3종
+    // (티켓 20261001_0631) — combine_attempt_count · combine_success_count · combine_fail_count.
+    // 드랍·픽업 지표 4종(티켓 20261001_0632) — drop_item_count ·
     // pickup_item_count · pickup_from_user_count · picked_up_by_user_count. 미션·컬렉션·가입 경과일·
     // 활동일·체크인 일수 지표 6종(티켓 20261001_0633) — mission_complete_count ·
     // collection_complete_count · days_since_signup · signup_recent_active_days(보조 키) ·
@@ -219,9 +219,9 @@ describe('레지스트리 — 필드 구성', () => {
     // full_season_year_count · distinct_activity_type_count. 체크인·드랍·잼 새 지표 6종(티켓 20261019_0542 2회,
     // 마이그레이션 247) — new_checkin_badge_count · checkin_season_year_count · dropped_item_picked_up_count ·
     // jam_week_count · jam_week_streak · jam_week_min_earned(보조 키).
-    expect(CONDITION_FIELDS.length).toBe(92)
-    expect(ALL_CONDITION_KEYS.length).toBe(92)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(92) // 중복 키 없음
+    expect(CONDITION_FIELDS.length).toBe(91)
+    expect(ALL_CONDITION_KEYS.length).toBe(91)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(91) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -290,7 +290,6 @@ describe('레지스트리 — 필드 구성', () => {
       'pickup_item_count',
       'poi_id',
       'prerequisite_badge_names',
-      'recipe_first_success',
       'return_streak_weeks',
       'same_spot_checkin_days',
       'signup_recent_active_days',
@@ -608,7 +607,6 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
       'combine_attempt_count',
       'combine_success_count',
       'combine_fail_count',
-      'recipe_first_success',
       'drop_item_count',
       'pickup_item_count',
       'pickup_from_user_count',

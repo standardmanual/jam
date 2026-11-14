@@ -386,16 +386,16 @@ const cases: Array<[string, () => void]> = [
     assert.deepStrictEqual(cond, { distance_km: 10 })
   }],
 
-  // ── DB 기록 키 21개 입력 칸 (티켓 20261019_1445가 판정을 만들고 20261021_1114 2회가 입력 칸을 만들었다) ──────────
-  ['DB 기록 키 21개가 전부 폼 목록에 있고 보존 목록은 비었다 — 폼 목록 = 정본 합집합 = 배지 쪽 19개 + jam_period_earned·sync_count', () => {
+  // ── DB 기록 키 20개 입력 칸 (티켓 20261019_1445가 판정을 만들고 20261021_1114 2회가 입력 칸을 만들었다) ──────────
+  ['DB 기록 키 20개가 전부 폼 목록에 있고 보존 목록은 비었다 — 폼 목록 = 정본 합집합 = 배지 쪽 18개 + jam_period_earned·sync_count', () => {
     assert.deepStrictEqual([...MISSION_DB_FORM_KEYS].sort(), [...MISSION_DB_CONDITION_KEY_LIST].sort())
     assert.deepStrictEqual(
       [...MISSION_DB_FORM_KEYS].sort(),
       [...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST, 'jam_period_earned', 'sync_count'].sort(),
       '배지 쪽 DB 키 목록만 쓰면 미션 전용 키가 빠져 입력 칸이 없어진다'
     )
-    assert.strictEqual(MISSION_DB_FORM_KEYS.length, 21)
-    assert.strictEqual(new Set(MISSION_DB_FORM_KEYS).size, 21, '키가 두 번 들어 있다')
+    assert.strictEqual(MISSION_DB_FORM_KEYS.length, 20)
+    assert.strictEqual(new Set(MISSION_DB_FORM_KEYS).size, 20, '키가 두 번 들어 있다')
     assert.deepStrictEqual([...MISSION_ENGINE_DB_PRESERVED_KEYS], [], 'DB 기록 키가 보존 목록에 남아 있다')
     for (const key of MISSION_DB_FORM_KEYS) {
       assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `위임 키와 겹친다: ${key}`)
@@ -405,13 +405,13 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!(MISSION_DB_FORM_KEYS as readonly string[]).includes(key), `기온 키가 DB 기록 폼 목록에 있다: ${key}`)
     }
   }],
-  ['기록으로 세는 조건은 소제목 7개로 나뉜다 — 믹스 5, 드랍·픽업 4, 완료 수 2, 캡슐·잠긴 아이템 배지 3, 날짜·체크인 5, 잼 1, 동기화 1', () => {
+  ['기록으로 세는 조건은 소제목 7개로 나뉜다 — 믹스 4, 드랍·픽업 4, 완료 수 2, 캡슐·잠긴 아이템 배지 3, 날짜·체크인 5, 잼 1, 동기화 1', () => {
     assert.deepStrictEqual(
       MISSION_DB_FORM_GROUPS.map((g) => [g.title, g.keys.length]),
-      [['믹스', 5], ['드랍·픽업', 4], ['완료 수', 2], ['캡슐·잠긴 아이템 배지', 3], ['날짜·체크인', 5], ['잼', 1], ['동기화', 1]]
+      [['믹스', 4], ['드랍·픽업', 4], ['완료 수', 2], ['캡슐·잠긴 아이템 배지', 3], ['날짜·체크인', 5], ['잼', 1], ['동기화', 1]]
     )
     assert.deepStrictEqual(MISSION_DB_FORM_GROUPS[0]!.keys, [
-      'combine_attempt_count', 'combine_success_count', 'combine_fail_count', 'recipe_first_success', 'cross_tribe_combine_success_count',
+      'combine_attempt_count', 'combine_success_count', 'combine_fail_count', 'cross_tribe_combine_success_count',
     ])
     assert.deepStrictEqual(MISSION_DB_FORM_GROUPS[5]!.keys, ['jam_period_earned'])
     assert.deepStrictEqual(MISSION_DB_FORM_GROUPS[6]!.keys, ['sync_count'])
@@ -440,7 +440,7 @@ const cases: Array<[string, () => void]> = [
       assert.ok(checkMissionCondition('engine_condition', cond).error, `서버가 ${key}를 거절하지 않는다`)
     }
   }],
-  ['DB 기록 키 19개는 레지스트리의 폼 정의를 쓰고(라벨·단위·범위 그대로), jam_period_earned·sync_count만 레지스트리에 없다', () => {
+  ['DB 기록 키 18개는 레지스트리의 폼 정의를 쓰고(라벨·단위·범위 그대로), jam_period_earned·sync_count만 레지스트리에 없다', () => {
     const fieldNames = new Set(Object.keys(emptyMissionConditionFields()))
     for (const key of MISSION_DB_FORM_KEYS) {
       if (key === 'jam_period_earned') {
@@ -498,21 +498,18 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(scalarKeys.length, 16)
     const million = scalarKeys.filter((key) => range(key)[0] === 1 && range(key)[1] === 1000000)
     assert.strictEqual(million.length, 13, '1~1,000,000인 수치 키 수가 달라졌다')
-    // 범위 검사 대상 20개 = 수치 16개 + 미션 전용 2개 + 객체형 두 키의 안쪽 count. 숫자가 없는 레시피 지정은 대상이 아니다
+    // 범위 검사 대상 20개 = 수치 16개 + 미션 전용 2개 + 객체형 두 키의 안쪽 count
     assert.strictEqual(MISSION_DB_RANGE_CHECKED_KEYS.length, 20)
-    assert.ok(!(MISSION_DB_RANGE_CHECKED_KEYS as readonly string[]).includes('recipe_first_success'))
     // 객체형 두 키는 레지스트리에 범위가 없어 이 폼이 정한다
     for (const key of ['checkin_category_count', 'checkin_badge_count']) {
       assert.deepStrictEqual(range(key), [undefined, undefined], `${key}에 레지스트리 범위가 생겼다 — 이 폼의 범위를 걷어낼 수 있는지 본다`)
     }
   }],
-  ['engine_condition: DB 기록 키 21개를 입력 칸에서 하나씩 채워도 그 키 하나만 조립되고 저장 검증을 통과한다', () => {
-    const recipe = '00000000-0000-0000-0000-0000000000aa'
+  ['engine_condition: DB 기록 키 20개를 입력 칸에서 하나씩 채워도 그 키 하나만 조립되고 저장 검증을 통과한다', () => {
     const cases: Array<[Partial<MissionConditionFormFields>, MissionCondition]> = [
       [{ combineAttemptCount: '10' }, { combine_attempt_count: 10 }],
       [{ combineSuccessCount: '5' }, { combine_success_count: 5 }],
       [{ combineFailCount: '3' }, { combine_fail_count: 3 }],
-      [{ recipeFirstSuccessRecipeId: ` ${recipe} ` }, { recipe_first_success: { recipe_id: recipe } }],
       [{ crossTribeCombineSuccessCount: '3' }, { cross_tribe_combine_success_count: 3 }],
       [{ dropItemCount: '5' }, { drop_item_count: 5 }],
       [{ pickupItemCount: '20' }, { pickup_item_count: 20 }],
@@ -537,11 +534,11 @@ const cases: Array<[string, () => void]> = [
       [{ jamPeriodEarned: '300' }, { jam_period_earned: 300 }],
       [{ syncCount: '1' }, { sync_count: 1 }],
     ]
-    assert.strictEqual(cases.length, 21)
+    assert.strictEqual(cases.length, 20)
     assert.deepStrictEqual(
       cases.map(([, expected]) => Object.keys(expected)[0]).sort(),
       [...MISSION_DB_FORM_KEYS].sort(),
-      '21개 키가 한 번씩 시험되지 않았다'
+      '20개 키가 한 번씩 시험되지 않았다'
     )
     for (const [input, expected] of cases) {
       const cond = buildMissionConditionJson('engine_condition', fields(input))
@@ -552,14 +549,13 @@ const cases: Array<[string, () => void]> = [
       assert.deepStrictEqual(filledMissionDbKeys(fields(input)), [Object.keys(expected)[0]])
     }
   }],
-  ['engine_condition: DB 기록 키 21개를 모두 채워도 그대로 되돌아오고 원본 없이도 입력 칸이 값을 만들며, 보존 안내 대상이 아니다', () => {
+  ['engine_condition: DB 기록 키 20개를 모두 채워도 그대로 되돌아오고 원본 없이도 입력 칸이 값을 만들며, 보존 안내 대상이 아니다', () => {
     const init: MissionCondition = {
       activity_type: 'running',
       distance_km: 20,
       combine_attempt_count: 5,
       combine_success_count: 3,
       combine_fail_count: 2,
-      recipe_first_success: { recipe_id: '00000000-0000-0000-0000-0000000000aa' },
       drop_item_count: 4,
       pickup_item_count: 4,
       pickup_from_user_count: 2,
@@ -591,7 +587,7 @@ const cases: Array<[string, () => void]> = [
     assert.deepStrictEqual(checkMissionCondition('engine_condition', rebuilt, 'achievement'), { error: null, warning: null })
     assert.deepStrictEqual(checkMissionConditionValue('engine_condition', rebuilt), { error: null, warning: null })
     assert.deepStrictEqual(unsupportedMissionConditionKeys(init), [])
-    assert.strictEqual(filledMissionDbKeys(f).length, 21)
+    assert.strictEqual(filledMissionDbKeys(f).length, 20)
   }],
   ['engine_condition: DB 기록 키만 든 미션을 열어 다른 칸을 고쳐도 DB 키는 남는다', () => {
     const init: MissionCondition = { combine_success_count: 3, mission_complete_count: 1 }
@@ -625,7 +621,6 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(buildMissionConditionJson('engine_condition', fields({ checkinCategoryCountCount: '2' })), null)
     assert.strictEqual(buildMissionConditionJson('engine_condition', fields({ checkinBadgeCountNames: '성수역' })), null)
     assert.strictEqual(buildMissionConditionJson('engine_condition', fields({ checkinBadgeCountCount: '1' })), null)
-    assert.strictEqual(buildMissionConditionJson('engine_condition', fields({ recipeFirstSuccessRecipeId: '   ' })), null)
     assert.strictEqual(buildMissionConditionJson('engine_condition', fields({ jamPeriodEarned: '' })), null)
   }],
   ['주입한 선택지(장소 카테고리)에 없는 저장값은 값 그대로 덧붙이고, 비어 있으면 덧붙이지 않는다', () => {
@@ -730,7 +725,6 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(missionConditionRangeError({ checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 } }), null)
     // 모양이 틀린 객체는 이 검사의 대상이 아니다(서버 값 검사가 막는다)
     assert.strictEqual(missionConditionRangeError({ checkin_badge_count: 5 }), null)
-    assert.strictEqual(missionConditionRangeError({ recipe_first_success: { recipe_id: 'x' } }), null)
   }],
   ['engine_condition: 원본이 없으면(새 미션) DB 기록 키를 만들지 않는다', () => {
     assert.deepStrictEqual(buildMissionConditionJson('engine_condition', fields({ distanceKm: '10' }), null), { distance_km: 10 })

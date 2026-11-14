@@ -118,7 +118,6 @@ export const MISSION_DB_FORM_GROUPS: readonly MissionDbFormGroup[] = [
       'combine_attempt_count',
       'combine_success_count',
       'combine_fail_count',
-      'recipe_first_success',
       'cross_tribe_combine_success_count',
     ],
   },
@@ -195,8 +194,6 @@ export const SYNC_COUNT_INPUT = {
  * 라벨·단위·범위는 레지스트리를 그대로 쓰고 도움말만 바꾼다. 여기 없는 칸은 레지스트리 도움말을 그대로 보인다.
  */
 export const MISSION_DB_HELP_OVERRIDES: Readonly<Record<string, string>> = {
-  recipeFirstSuccessRecipeId:
-    '믹스 레시피 목록의 ID예요. 전체 유저 중 이 레시피를 가장 먼저 성공한 1명만 달성해요. 이미 성공한 사람이 있는 레시피에는 쓰지 마세요.',
   weeklyActiveDays:
     'JAM! 종목(러닝·사이클·트레일러닝·하이킹·걷기) 활동이 있는 날과 체크인한 날을 세요. 걷기는 0.5km·10분 이상만, 차량 속도로 이동한 기록은 빼요. 가장 많이 활동한 한 주(월~일)로 판정하고, 기간이 걸친 주는 기간 안의 날만 세요.',
   sameSpotCheckinDays:
@@ -244,11 +241,10 @@ export type MissionConditionFormFields = {
   avgHeartrateBpm: string
   avgWatts: string
   avgCadence: string
-  // ── DB 기록으로 세는 21종(티켓 20261021_1114 2회). 19개는 레지스트리 form.fields 그대로, jamPeriodEarned·syncCount만 미션 쪽 이름 ──
+  // ── DB 기록으로 세는 20종(티켓 20261021_1114 2회). 18개는 레지스트리 form.fields 그대로, jamPeriodEarned·syncCount만 미션 쪽 이름 ──
   combineAttemptCount: string
   combineSuccessCount: string
   combineFailCount: string
-  recipeFirstSuccessRecipeId: string
   crossTribeCombineSuccessCount: string
   dropItemCount: string
   pickupItemCount: string
@@ -321,7 +317,6 @@ export function emptyMissionConditionFields(): MissionConditionFormFields {
     combineAttemptCount: '',
     combineSuccessCount: '',
     combineFailCount: '',
-    recipeFirstSuccessRecipeId: '',
     crossTribeCombineSuccessCount: '',
     dropItemCount: '',
     pickupItemCount: '',

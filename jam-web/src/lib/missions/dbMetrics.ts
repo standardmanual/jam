@@ -1,8 +1,8 @@
 /**
  * 미션 DB 기록 조건의 지표 읽기 (서버 사이드 전용, 티켓 20261019_1445 1·2회)
  *
- * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 21개
- * (`MISSION_DB_CONDITION_KEY_LIST`: 배지 조건과 이름이 같은 19개 — 믹스·드랍·픽업·미션/컬렉션 완료·캡슐 열기·잠긴 개체·트라이브를 넘는 믹스 +
+ * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 20개
+ * (`MISSION_DB_CONDITION_KEY_LIST`: 배지 조건과 이름이 같은 18개 — 믹스·드랍·픽업·미션/컬렉션 완료·캡슐 열기·잠긴 개체·트라이브를 넘는 믹스 +
  * 2회의 날짜·체크인 5개 — 와 미션 전용 `jam_period_earned`·`sync_count` 2개)를 «참가한 뒤, 미션 기간 안»의 값으로 읽어 `{ 키: 값 }`을 돌려준다. 비교는 순수 함수 `evaluateEngineMissionCondition`이
  * 한다 — 이 파일은 읽기만 한다.
  *
@@ -17,8 +17,7 @@
  * 하한을 정할 수 없을 때(참가·시작 시각이 둘 다 해석되지 않을 때)도 던진다 — 하한 없이 읽으면 평생값이 섞여 참가 전의 기록이 세어진다.
  *
  * ## 값 모양
- * 모든 값은 숫자다. `recipe_first_success`만 «지정한 레시피를 기간 안에 처음 성공했는가»를 1/0으로 돌려준다
- * (배지 엔진이 같은 키를 1/0로 비교하는 것과 같다, `jamActionBadges.ts`).
+ * 모든 값은 숫자다.
  * 객체 값을 가진 `checkin_category_count`(`{ category, count }`)·`checkin_badge_count`(`{ checkin_badge_names, count }`)는
  * «지정한 장소 종류·이름 목록에 든 배지가 몇 개인가»를 숫자로 돌려주고, `count`와의 비교는 `engineCondition.ts`가 한다.
  * 값 모양이 틀린 조건은 읽지 않고 0을 돌려준다 — 비교 쪽도 모양이 틀리면 충족하지 못하므로 결과가 같다.
@@ -48,7 +47,6 @@ import {
   countCombineAttempts,
   countCombineFail,
   countCombineSuccess,
-  fetchFirstSuccessRecipeIds,
 } from '@/lib/badge-engine/jamActionMetrics'
 import {
   countDroppedItems,
@@ -146,13 +144,6 @@ const READERS: Record<MissionDbConditionKey, MetricReader> = {
   combine_attempt_count: (s, u, w) => countCombineAttempts(s, u, w),
   combine_success_count: (s, u, w) => countCombineSuccess(s, u, w),
   combine_fail_count: (s, u, w) => countCombineFail(s, u, w),
-  recipe_first_success: async (s, u, w, condition) => {
-    const recipeId = condition.recipe_first_success?.recipe_id
-    // 레시피를 가리키지 않는 값은 «처음 성공했는가»를 물을 수 없다 — 0이면 비교 쪽에서 충족하지 못한다
-    if (typeof recipeId !== 'string' || recipeId === '') return 0
-    const firstIds = await fetchFirstSuccessRecipeIds(s, u, [recipeId], w)
-    return firstIds.has(recipeId) ? 1 : 0
-  },
   drop_item_count: (s, u, w) => countDroppedItems(s, u, w),
   pickup_item_count: async (s, u, w, _condition, shared) => countPickedUpItems(s, u, w, await shared.pickupRows()),
   pickup_from_user_count: async (s, u, w, _condition, shared) => countPickupFromUsers(s, u, w, await shared.pickupRows()),
