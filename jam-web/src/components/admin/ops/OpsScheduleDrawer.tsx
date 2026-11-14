@@ -228,6 +228,7 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
         decisions={detail.decisions}
         onSelectItem={onOpenItem}
         balance={itemBalanceInfoOf(balanceView, item.id)}
+        previewNames={detail.previewNames}
         detailEdit={(target) =>
           (target.status === 'reviewing' || canEditScheduledCopy(target)) && draft?.itemId === target.id ? (
             <OpsItemEditForm bundleId={detail.bundleId} item={target} ctx={ctx} onSaved={handlers.handleSaved} onConflict={handlers.refresh} />

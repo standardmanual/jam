@@ -356,6 +356,7 @@ export function OpsBundleWorkspace({
                         onSelectItem={selectItem}
                         balance={itemBalanceInfoOf(balanceView, selectedItem.id)}
                         stages={stages}
+                        previewNames={previewNames}
                         detailEdit={detailEdit ? (item) => detailEdit(item, ctx) : undefined}
                         detailFooter={detailFooter ? (item) => detailFooter(item, ctx) : undefined}
                         detailHistoryAction={detailHistoryAction ? (item) => detailHistoryAction(item, ctx) : undefined}

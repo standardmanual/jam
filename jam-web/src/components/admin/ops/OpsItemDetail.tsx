@@ -30,6 +30,7 @@ import {
 } from '@/lib/admin/opsInbox/balance/messages'
 import { isBalanceSkippedStatus } from '@/lib/admin/opsInbox/balance/rules'
 import type { ItemBalanceInfo } from '@/lib/admin/opsInbox/balance/view'
+import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import { OpsKindIcon } from './opsIcons'
 import { OpsDiffLines } from './OpsDiffLines'
 import { OpsStatusBadge } from './OpsStatusBadge'
@@ -75,6 +76,8 @@ interface OpsItemDetailProps {
   balance?: ItemBalanceInfo
   /** 묶음의 에이전트 단계 기록. 「검수 결과」 줄의 시각에만 쓴다. */
   stages?: readonly OpsRoutineStageRecord[]
+  /** 레시피가 가리키는 배지 이름·컬렉션(서버가 읽어 내린다). 「핵심 값」의 등급 대응형 보상 배지 수를 셀 때만 쓴다. */
+  previewNames?: OpsPreviewNames
   detailEdit?: (item: OpsItemRecord) => ReactNode
   detailFooter?: (item: OpsItemRecord) => ReactNode
   detailHistoryAction?: (item: OpsItemRecord) => ReactNode
@@ -368,8 +371,8 @@ function WhyPlanned({ item }: { item: OpsItemRecord }) {
 }
 
 /** 「핵심 값」: 한 칸에 한 줄. 읽을 수 있는 칸만 그리고, 하나도 없으면 안내 한 줄이다. */
-function KeyValues({ item }: { item: OpsItemRecord }) {
-  const rows = keyValuesOf(item)
+function KeyValues({ item, previewNames }: { item: OpsItemRecord; previewNames?: OpsPreviewNames }) {
+  const rows = keyValuesOf(item, previewNames)
   return (
     <section aria-label="핵심 값">
       <SectionTitle>핵심 값</SectionTitle>
@@ -448,6 +451,7 @@ export function OpsItemDetail({
   onSelectItem,
   balance,
   stages = [],
+  previewNames,
   detailEdit,
   detailFooter,
   detailHistoryAction,
@@ -516,7 +520,7 @@ export function OpsItemDetail({
             </section>
 
             {/* 5. 핵심 값 */}
-            <KeyValues item={item} />
+            <KeyValues item={item} previewNames={previewNames} />
           </>
         )}
 

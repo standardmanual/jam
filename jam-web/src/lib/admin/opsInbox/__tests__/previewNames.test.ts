@@ -57,13 +57,13 @@ describe('readOpsPreviewNames', () => {
 
   it('배지·지점·컬렉션·종류 이름을 맵으로 만든다', async () => {
     const { client } = fakeClient({
-      badges: [{ id: B1, name: '비 맞은 러너', image_url: 'https://example.com/b.png', rarity: 'rare' }],
+      badges: [{ id: B1, name: '비 맞은 러너', image_url: 'https://example.com/b.png', rarity: 'rare', item_book_id: 'book-1' }],
       poi: [{ id: 'p-1', name: '한강공원' }],
       item_books: [{ id: 'c-1', name: '비 컬렉션' }],
       poi_categories: [{ slug: 'cafe', label: '카페' }],
     })
     const names = await readOpsPreviewNames(client, [recipe, drop])
-    expect(names.badges[B1]).toEqual({ id: B1, name: '비 맞은 러너', imageUrl: 'https://example.com/b.png', rarity: 'rare' })
+    expect(names.badges[B1]).toEqual({ id: B1, name: '비 맞은 러너', imageUrl: 'https://example.com/b.png', rarity: 'rare', itemBookId: 'book-1' })
     expect(names.pois).toEqual({ 'p-1': '한강공원' })
     expect(names.collections).toEqual({ 'c-1': '비 컬렉션' })
     expect(names.categories).toEqual({ cafe: '카페' })

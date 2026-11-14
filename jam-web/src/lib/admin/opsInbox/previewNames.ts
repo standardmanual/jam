@@ -19,6 +19,8 @@ export interface OpsPreviewBadge {
   name: string
   imageUrl: string | null
   rarity: BadgeRarity | null
+  /** 소속 컬렉션. 등급 대응형 레시피의 보상 «이름 묶음 수»를 셀 때만 쓴다(티켓 20261114_2111). 없으면 묶을 수 없는 배지다 */
+  itemBookId?: string | null
 }
 
 export interface OpsPreviewNames {
@@ -98,7 +100,7 @@ export async function readOpsPreviewNames(supabase: ServiceClient, items: readon
   if (badgeIds.length + poiIds.length + collectionIds.length === 0 && !needsCategories) return EMPTY_PREVIEW_NAMES
 
   const [badgeRows, poiRows, collectionRows, categoryRows] = await Promise.all([
-    readRows('badges(미리보기 이름)', badgeIds, (chunk) => supabase.from('badges').select('id, name, image_url, rarity').in('id', chunk)),
+    readRows('badges(미리보기 이름)', badgeIds, (chunk) => supabase.from('badges').select('id, name, image_url, rarity, item_book_id').in('id', chunk)),
     readRows('poi(미리보기 이름)', poiIds, (chunk) => supabase.from('poi').select('id, name').in('id', chunk)),
     readRows('item_books(미리보기 이름)', collectionIds, (chunk) => supabase.from('item_books').select('id, name').in('id', chunk)),
     needsCategories ? readCategories(supabase) : Promise.resolve([]),
@@ -108,7 +110,7 @@ export async function readOpsPreviewNames(supabase: ServiceClient, items: readon
     badges: Object.fromEntries(
       badgeRows.map((row) => [
         row.id,
-        { id: row.id, name: row.name, imageUrl: row.image_url ?? null, rarity: (row.rarity ?? null) as BadgeRarity | null },
+        { id: row.id, name: row.name, imageUrl: row.image_url ?? null, rarity: (row.rarity ?? null) as BadgeRarity | null, itemBookId: row.item_book_id ?? null },
       ])
     ),
     pois: Object.fromEntries(poiRows.map((row) => [row.id, row.name])),
