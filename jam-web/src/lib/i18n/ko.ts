@@ -118,7 +118,7 @@ export const ko = {
   nav: {
     today: '투데이',
     badges: '배지',
-    drops: 'JAM',
+    drops: '체크인',
     missions: '미션',
     inventory: '인벤토리',
     profile: '프로필',

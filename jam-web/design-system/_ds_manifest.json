@@ -1196,6 +1196,18 @@
       "value": "2.5rem",
       "kind": "font",
       "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--tabbar-label-size",
+      "value": "0.8125rem",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--tabbar-label-line-height",
+      "value": "1",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
     }
   ],
   "themes": [],

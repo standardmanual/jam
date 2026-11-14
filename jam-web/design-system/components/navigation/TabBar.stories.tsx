@@ -36,7 +36,7 @@ export const Badges: Story = {
 };
 
 export const Drops: Story = {
-  name: '드랍 활성',
+  name: '체크인 활성',
   args: { active: 'drops' },
   decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
 };
@@ -51,6 +51,21 @@ export const Inventory: Story = {
   name: '인벤토리 활성',
   args: { active: 'inventory' },
   decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
+};
+
+// 360px 폭 — 가장 긴 «인벤토리» 이름표가 한 줄이고 비활성 슬롯이 44px 아래로 줄지 않는지 본다(티켓 20261114_1418).
+export const Narrow360: Story = {
+  name: '360px 폭 (인벤토리 활성)',
+  args: { active: 'inventory' },
+  decorators: [(Story) => <div style={{ width: 360, minHeight: 180, background: 'var(--background)', position: 'relative', transform: 'translateZ(0)' }}><Story /></div>],
+};
+
+export const InvertedLabel: Story = {
+  name: '반전 + 이름표 (인벤토리 활성)',
+  args: { active: 'inventory', inverted: true },
+  decorators: [(Story) => (
+    <div style={{ minHeight: 180, background: 'var(--background-inverse)', position: 'relative' }}><Story /></div>
+  )],
 };
 
 export const Material: Story = {

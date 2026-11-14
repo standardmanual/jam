@@ -1,4 +1,4 @@
-Floating pill bottom nav recreated 1:1 from the JAM! codebase's own `TabBar.tsx` — icon-only (no labels), filled icon on a sliding background pill when selected, outline icon otherwise. 5 tabs: 투데이/배지/드랍/미션/인벤토리.
+Floating pill bottom nav recreated 1:1 from the JAM! codebase's own `TabBar.tsx` — icon-only when inactive (outline icon), and the selected tab shows a filled icon plus its name label (투데이/배지/체크인/미션/인벤토리) on a sliding background pill. 5 tabs: 투데이/배지/체크인/미션/인벤토리.
 
 ```jsx
 <TabBar active="today" onChange={setTab} />
@@ -31,3 +31,9 @@ offsetLeft/offsetWidth를 측정해 translateX로 이동한다(서비스 Sliding
 ```jsx
 <TabBar active="badges" onChange={setTab} inverted={overFooter} />
 ```
+
+20261114_1418: 활성 탭에만 아이콘 옆에 이름표를 보인다(13px 굵게, `--tabbar-label-size`, 아이콘과 6px 간격).
+세 번째 탭 이름은 «드랍»에서 «체크인»으로 바뀌었다(키 `drops`는 그대로). 활성 슬롯이 이름표만큼 넓어지고 비활성
+슬롯은 44px 아래로 줄지 않는다. 슬롯 폭과 필은 측정이 아니라 계산한 같은 값으로 같은 길이·이징(300ms)에 미끄러진다.
+이름표 색은 아이콘과 같다(밝은 면 `--tabbar-icon-active`, 반전 면 `--snow`). 서비스
+`src/components/ui/TabBar.tsx`·`transitions.css`(`.jam-tabbar-slot`·`.jam-tabbar-label`)가 같은 모양이라 함께 고쳐야 한다.

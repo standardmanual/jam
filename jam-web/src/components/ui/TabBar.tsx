@@ -22,16 +22,58 @@ import { isPathActive } from '@/lib/isPathActive'
  */
 const PILL_HEIGHT = 41
 
-// 필의 폭은 상수로 두지 않고 활성 탭 슬롯의 실측 폭(offsetWidth)을 그대로 쓴다(moveTo 참고).
+// 필의 폭은 상수로 두지 않고 활성 탭 슬롯의 «계산한 최종 폭»을 그대로 쓴다(moveTo·computeSlotLayout 참고).
 // nav 가로폭은 Figma 기준 388px이지만 좁은 화면에서는 calc(100%-42px)로 줄어드는데, 폭을
 // 고정하면 그때 좌우 여백이 어긋난다 — 슬롯 폭을 그대로 따라가면 여백이 항상 nav 좌우
 // 패딩(px-1 = 4px)으로 일정하게 유지된다.
+//
+// 티켓 20261114_1418: 활성 탭에만 이름표가 붙어 활성 슬롯이 넓어진다. 슬롯 폭이 CSS 전환 중일 때
+// offsetWidth를 읽으면 중간값이 읽혀 필이 틀어지므로, 측정이 아니라 «계산»으로 간다 — 한 함수가 모든
+// 슬롯의 최종 폭을 만들고, 그 값을 슬롯 flex-basis와 필 transform·width에 같은 프레임에 쓴다.
+// 둘이 같은 길이·이징(--tabs-dur·--tabs-ease, transitions.css)으로 전환되니 중간 프레임에서도 어긋나지 않는다.
+const NAV_PADDING_X = 4 // nav의 px-1
+const ICON_SIZE = 24
+const LABEL_GAP = 6
+const SLOT_PADDING_X = 10 // 활성 슬롯 좌우 안쪽 여백(상한에 걸리면 줄어든다)
+const MIN_TOUCH = 44 // 비활성 슬롯 최소 폭
+
+export interface SlotLayout {
+  widths: number[]
+  /** 활성 슬롯의 왼쪽 끝(nav 패딩 포함). 활성이 없으면 null */
+  pillLeft: number | null
+  pillWidth: number
+}
+
+/**
+ * 모든 슬롯의 최종 폭(px)을 계산한다. 활성 슬롯 = 안쪽 여백 10 + 아이콘 24 + 간격 6 + 이름표 + 안쪽 여백 10이고,
+ * 비활성 슬롯이 44px 아래로 줄지 않게 `안쪽 폭 - 비활성 수 × 44`를 상한으로 둔다(320px에서 여백이 6px로 줄어드는 자리).
+ * 활성이 없으면 균등 폭이다. 이름표 폭은 활성 이름표가 있을 때만 의미가 있다.
+ */
+export function computeSlotLayout(
+  innerWidth: number,
+  count: number,
+  activeIndex: number,
+  labelWidth: number,
+): SlotLayout {
+  if (count <= 0) return { widths: [], pillLeft: null, pillWidth: 0 }
+  if (activeIndex < 0 || activeIndex >= count || count === 1 || !(labelWidth >= 0)) {
+    return { widths: Array(count).fill(innerWidth / count), pillLeft: null, pillWidth: 0 }
+  }
+  const content = ICON_SIZE + LABEL_GAP + labelWidth
+  const natural = content + SLOT_PADDING_X * 2
+  const cap = innerWidth - (count - 1) * MIN_TOUCH
+  const active = Math.max(content, Math.min(natural, cap))
+  const other = (innerWidth - active) / (count - 1)
+  const widths = Array.from({ length: count }, (_, i) => (i === activeIndex ? active : other))
+  const pillLeft = NAV_PADDING_X + widths.slice(0, activeIndex).reduce((a, b) => a + b, 0)
+  return { widths, pillLeft, pillWidth: active }
+}
 
 /**
  * SuperHi Plus 바텀 탭바 (iOS 26 스타일 플로팅 캡슐, iOS HIG Tab Bar 패턴)
  *
- * 시각 스타일은 최신 iOS 인스타그램/앱스토어의 플로팅 캡슐 탭바를 참고해
- * 아이콘 전용(라벨 없음)으로 구성했습니다. 흰 72% 반투명 + blur 20px 캡슐이라 보더/드롭섀도 없이
+ * 시각 스타일은 최신 iOS 인스타그램/앱스토어의 플로팅 캡슐 탭바를 참고했습니다. 비활성 탭은 아이콘뿐이고
+ * 활성 탭에만 아이콘 옆에 이름표가 붙습니다(티켓 20261114_1418). 흰 72% 반투명 + blur 20px 캡슐이라 보더/드롭섀도 없이
  * 렌더링합니다(20260816_012). 크림 바탕 위에서는 경계가 약합니다 — 모양을 그대로 두고 렌더를 본 뒤
  * 외곽선 여부를 정합니다(티켓 20261015_2133, 사용자 결정 9).
  */
@@ -280,30 +322,49 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
 
   // SlidingTabs.tsx의 moveTo()를 Link 기반 라우트 탐색에 맞게 이식한 것.
   // SlidingTabs 컴포넌트 자체(value/onChange 단일 페이지 모델)는 재사용하지 않고
-  // "단일 pill + offsetLeft/offsetWidth 측정 + 첫 배치 무애니메이션" 패턴만 차용한다
-  // (20260901_1521). 활성 탭이 없으면(href=null) pill을 숨기고 false를 돌려준다.
+  // "단일 pill + 첫 배치 무애니메이션" 패턴만 차용한다(20260901_1521).
+  // 20261114_1418: 필 위치·폭을 슬롯 실측(offsetLeft/offsetWidth)이 아니라 computeSlotLayout 계산값으로 쓰고,
+  // 같은 값을 모든 슬롯의 flex-basis에도 쓴다. 활성 탭이 없으면(href=null) pill을 숨기고 false를 돌려준다.
   const moveTo = useCallback((href: string | null, animate: boolean): boolean => {
     const pill = pillRef.current
-    if (!pill) return false
+    const nav = navRef.current
+    if (!pill || !nav) return false
+    const hrefs = baseTabs.map((t) => t.href)
     const tab = href ? tabRefs.current.get(href) : undefined
+    const slots = hrefs.map((h) => tabRefs.current.get(h))
+    if (slots.some((el) => !el)) return false
+
+    // 이름표 자연 폭 — flex: none이라 슬롯 폭 전환의 영향을 받지 않는다.
+    const label = tab?.querySelector<HTMLElement>('[data-jam-tabbar-label]')
+    const labelWidth = label ? label.getBoundingClientRect().width : 0
+    const innerWidth = nav.getBoundingClientRect().width - NAV_PADDING_X * 2
+    const layout = computeSlotLayout(innerWidth, hrefs.length, href && tab ? hrefs.indexOf(href) : -1, labelWidth)
 
     const apply = () => {
-      if (tab) {
+      slots.forEach((el, i) => {
+        el!.style.flex = `0 0 ${layout.widths[i]}px`
+      })
+      if (tab && layout.pillLeft !== null) {
         pill.style.opacity = '1'
-        // 필 폭 = 탭 슬롯 폭이므로 중앙 정렬 보정 없이 offsetLeft를 그대로 쓴다.
-        pill.style.width = `${tab.offsetWidth}px`
-        pill.style.transform = `translate(${tab.offsetLeft}px, -50%)`
+        pill.style.width = `${layout.pillWidth}px`
+        pill.style.transform = `translate(${layout.pillLeft}px, -50%)`
       } else {
         pill.style.opacity = '0'
       }
     }
 
     if (!animate) {
-      const prevTransition = pill.style.transition
+      const prevPill = pill.style.transition
       pill.style.transition = 'none'
+      slots.forEach((el) => {
+        el!.style.transition = 'none'
+      })
       apply()
       void pill.offsetWidth
-      pill.style.transition = prevTransition
+      pill.style.transition = prevPill
+      slots.forEach((el) => {
+        el!.style.transition = ''
+      })
     } else {
       apply()
     }
@@ -314,7 +375,11 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
   // 활성 탭 변경(라우트 전환) — 첫 배치만 무애니메이션, 이후에는 트윈.
   useLayoutEffect(() => {
     const positioned = moveTo(activeHref, hasPositionedRef.current)
-    if (positioned) hasPositionedRef.current = true
+    if (positioned) {
+      hasPositionedRef.current = true
+      // 이름표 등장 애니메이션은 첫 배치 이후에만 켠다(첫 화면은 제자리). React가 건드리지 않는 속성이다.
+      navRef.current?.setAttribute('data-motion', 'on')
+    }
   }, [activeHref, moveTo])
 
   // 리사이즈 / 웹폰트 로드 / 컨테이너 폭 변화 — 항상 무애니메이션으로 재배치.
@@ -399,7 +464,9 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
               if (el) tabRefs.current.set(tab.href, el)
               else tabRefs.current.delete(tab.href)
             }}
-            className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
+            // 폭 전환(flex-basis)·눌림 전환은 .jam-tabbar-slot(transitions.css)이 소유한다. 하이드레이션 전 기본값은 CSS가 준다
+            // (활성 슬롯 flex: 0 0 auto = 내용 폭, 나머지 flex: 1). 하이드레이션 뒤 moveTo가 인라인 px로 덮는다.
+            className="jam-tabbar-slot relative flex items-center justify-center h-full min-w-11 overflow-hidden active:scale-90"
           >
             {/* 활성=--tabbar-icon-active(검정, --foreground), 비활성=--tabbar-icon(검정 계열) — 활성은 채운 아이콘+선택 필로 구분.
                 반전 상태(20261109_1153)에서는 활성=--snow, 비활성=--tabbar-icon-inverse. 활성 아이콘이 검정으로 남으면 어두운 면에서 사라진다 */}
@@ -412,6 +479,17 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
               }}
             >
               {active ? tab.iconFill : tab.iconLine}
+              {/* 20261114_1418: 이름표는 활성 탭에만. 색은 바깥 span을 상속해 아이콘과 같이 전환된다.
+                  같은 글자를 aria-label이 이미 읽으므로 보조기기에서는 숨긴다. */}
+              {active && (
+                <span
+                  aria-hidden="true"
+                  data-jam-tabbar-label
+                  className="jam-tabbar-label shrink-0 whitespace-nowrap break-keep wrap-break-word"
+                >
+                  {tab.label}
+                </span>
+              )}
             </span>
           </Link>
         )
