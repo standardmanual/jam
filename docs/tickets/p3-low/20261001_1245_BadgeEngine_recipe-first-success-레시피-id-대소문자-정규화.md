@@ -2,9 +2,9 @@
 id: "20261001_1245"
 category: BadgeEngine
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-10-01
-closed:
+closed: 2026-11-14
 ---
 
 # [BadgeEngine] 배지 조건 `recipe_first_success.recipe_id`가 대문자로 저장되면 발급도 가드도 놓친다
@@ -63,6 +63,7 @@ closed:
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+- 2026-11-14 닫음(작업 없이 종료). 이 티켓이 다루던 «가장 먼저 성공»(`recipe_first_success`) 배지 조건 자체를 티켓 20261114_1705 4회차에서 없앴다. 조건이 사라져 대소문자 정규화가 필요한 대상이 없다.
 
 ### 잔여 이슈
 -

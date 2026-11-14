@@ -913,7 +913,7 @@ service_role만 접근한다.
 
 ### user_combine_success_logs (신규, 티켓 20261001_0631, 마이그레이션 200)
 믹스 성공 1건 = 1행. 보상이 전부 비어 재료만 소각된 **빈손 성공도 1행**이다. 믹스 시도·성공
-횟수와 「레시피 최초 성공」 배지 조건(JAM! 행동 지표)의 원천이다.
+횟수 배지 조건(JAM! 행동 지표)과 레시피의 첫 성공자 보상(`is_recipe_first` 표시)의 원천이다.
 - 컬럼: `id`, `user_id`(→ `users`, `ON DELETE CASCADE`), `recipe_id`(UUID, NOT NULL),
   `attempted_at`, `ingredient_badge_ids[]`, `result_badge_ids[]`, `points_awarded`(≥0),
   `is_recipe_first`(BOOLEAN — 그 레시피를 전체 유저 중 처음 성공한 행이면 true).

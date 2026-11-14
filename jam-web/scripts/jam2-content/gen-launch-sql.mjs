@@ -670,7 +670,6 @@ DROP TABLE _jam2_launch_clue;
     '되돌림 SQL',
     `연 레시피 ${e.openRecipes}건을 백업 표 ${B}의 valid_from(자리 값)으로 되돌린다. 한 번의 호출로 통째로 실행한다.`,
     '연 뒤에 유저가 이미 믹스했을 수 있다. 그때는 먼저 user_combine_success_logs와 user_combine_fail_logs를 확인하고,',
-    '배지 조건(condition_json.recipe_first_success)이 이 레시피를 가리키는지도 확인한다(삭제 가드와 같다).',
     '연 뒤에 운영자가 같은 레시피의 공개 시작을 따로 바꿨다면 아래 확인 쿼리가 0이 아닐 수 있다. 그때는 달라진 행을 보고 판단한다.',
     '',
     '1) 연 레시피 되돌리기 (valid_from)',

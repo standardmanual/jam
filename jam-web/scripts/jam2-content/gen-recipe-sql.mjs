@@ -489,7 +489,6 @@ DROP TABLE _jam2_tier;
     '되돌림 SQL',
     `단서 레시피 ${n.recipes}건만 지운다. 칸(combination_recipe_slots)은 외래키 ON DELETE CASCADE로 함께 지워진다. 한 번의 호출로 통째로 실행한다.`,
     '공개 시작을 실제 오픈 시각으로 바꾼 뒤라면 유저가 이미 믹스했을 수 있다. 그때는 먼저 user_combine_success_logs와 user_combine_fail_logs를 확인하고,',
-    '배지 조건(condition_json.recipe_first_success)이 이 레시피를 가리키는지도 확인한다(삭제 가드와 같다).',
     '',
     `1) 지우기 (자리 값 공개 시작인 상태에서는 정확히 ${n.recipes}건이 지워진다. 공개 시작을 이미 바꿨다면 valid_from 조건을 뺀다)`,
     `DELETE FROM public.combination_recipes WHERE valid_from = ${VALID_FROM_SQL} AND name IN (${clueNames});`,
