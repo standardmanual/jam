@@ -1054,6 +1054,8 @@ export type Database = {
           allow_no_reward: boolean
           created_at: string
           description: string | null
+          first_success_badge_id: string | null
+          grade_mode: string
           id: string
           name: string | null
           reward_badge_ids: string[]
@@ -1066,6 +1068,8 @@ export type Database = {
           allow_no_reward?: boolean
           created_at?: string
           description?: string | null
+          first_success_badge_id?: string | null
+          grade_mode?: string
           id?: string
           name?: string | null
           reward_badge_ids?: string[]
@@ -1078,6 +1082,8 @@ export type Database = {
           allow_no_reward?: boolean
           created_at?: string
           description?: string | null
+          first_success_badge_id?: string | null
+          grade_mode?: string
           id?: string
           name?: string | null
           reward_badge_ids?: string[]
@@ -1086,7 +1092,15 @@ export type Database = {
           valid_from?: string | null
           valid_until?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "combination_recipes_first_success_badge_id_fkey"
+            columns: ["first_success_badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       combination_recipe_slots: {
         Row: {
@@ -5208,6 +5222,10 @@ export type Database = {
       }
       combine_claim_pending: {
         Args: { p_user_id: string }
+        Returns: Json
+      }
+      combine_grant_first_success: {
+        Args: { p_badge_id: string; p_force_pending?: boolean; p_locked?: boolean; p_recipe_id: string | null; p_user_id: string }
         Returns: Json
       }
       combine_grant_results: {
