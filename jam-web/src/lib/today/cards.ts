@@ -18,6 +18,8 @@ import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { recipeReleaseState } from '@/lib/combine/visibility'
+import { rewardBadgeCountOf, representativeRewardBadges, resolveGradeMode } from '@/lib/combine/gradeMode'
+import type { BundleBadgeInput } from '@/lib/admin/recipe-grade-bundles'
 import { resourceOfTemplate } from './cardView'
 import { sortHomeCards } from './cardSelection'
 import { kstDateString } from '@/lib/notifications/kst'
@@ -99,7 +101,7 @@ export interface ResolvedReleasedRecipe {
   /** 재료 수 = 슬롯 수. 후보가 전부 삭제돼 타일을 못 그린 슬롯도 센다 */
   ingredient_count: number
   reward_points: number
-  /** `reward_badge_ids`의 개수(보상 줄 「배지 N개」) */
+  /** 보상 줄 「배지 N개」의 N. 등급 고정형은 `reward_badge_ids`의 개수, 등급 대응형은 같은 컬렉션·같은 이름 묶음 수다(`rewardBadgeCountOf`) */
   reward_badge_count: number
   /**
    * 슬롯 순서(`slot_order` 오름차순)대로 슬롯마다 대표 후보 배지 하나(후보를 펼치지 않는다). 대표는 유저가 가진 후보(`earned: true`)가 있으면 그것,
@@ -480,6 +482,8 @@ export type FetchedRecipe =
   | (Omit<ResolvedReleasedRecipe, 'tiles'> & {
       /** 슬롯 순서대로 슬롯마다 후보 배지 id */
       slot_candidates: string[][]
+      /** 등급 대응형(`grade_mode = 'follow_materials'`)인가 — 슬롯의 대표 후보를 가장 낮은 등급으로 고정한다. 없으면 등급 고정형이다 */
+      follow_materials?: boolean
     })
 
 /** 공개 뒤 레시피의 후보 배지 id 전부(배지 조회에 합친다). 공개 전 레시피의 후보는 읽지도 않으므로 여기 없다. */
@@ -508,7 +512,7 @@ export async function fetchRecipesById(
 
   const { data: recipeRows, error: recipesError } = await supabase
     .from('combination_recipes')
-    .select('id, reward_points, reward_badge_ids, valid_from, valid_until')
+    .select('id, reward_points, reward_badge_ids, grade_mode, valid_from, valid_until')
     .in('id', recipeIds)
   if (recipesError) {
     console.error('[fetchRecipesById] 레시피 조회 오류:', recipesError.message)
@@ -538,6 +542,16 @@ export async function fetchRecipesById(
     slotsByRecipe.set(slot.recipe_id, list)
   }
 
+  // 등급 대응형 보상은 이름 묶음 수로 센다 — 묶음을 가르려면 배지 이름·컬렉션이 필요해 등급 대응형이 하나라도 있을 때만 배지를 한 번 더 읽는다(레시피마다 읽지 않는다).
+  const followRewardIds = [
+    ...new Set(
+      live
+        .filter((r) => recipeReleaseState(r, now) === 'released' && resolveGradeMode(r) === 'follow_materials')
+        .flatMap((r) => r.reward_badge_ids ?? []),
+    ),
+  ]
+  const rewardBadges = await fetchRewardBundleInputs(supabase, followRewardIds)
+
   for (const recipe of live) {
     const slots = (slotsByRecipe.get(recipe.id) ?? []).sort((a, b) => a.slot_order - b.slot_order)
     if (recipeReleaseState(recipe, now) === 'scheduled') {
@@ -549,17 +563,37 @@ export async function fetchRecipesById(
       state: 'released',
       ingredient_count: slots.length,
       reward_points: recipe.reward_points ?? 0,
-      reward_badge_count: recipe.reward_badge_ids?.length ?? 0,
+      reward_badge_count: rewardBadgeCountOf(recipe, rewardBadges),
       slot_candidates: slots.map((s) => s.allowed_badge_ids ?? []),
+      ...(resolveGradeMode(recipe) === 'follow_materials' ? { follow_materials: true } : {}),
     })
   }
   return map
+}
+
+/**
+ * 등급 대응형 보상 배지의 이름·컬렉션·등급(묶음 수를 세는 입력). 대상이 없으면 읽지 않는다.
+ * 읽기가 실패하면 `console.error` 뒤 빈 목록이다 — 보상 배지 수는 0(줄 생략)이 되고 «4개»로 되돌아가지 않는다.
+ */
+async function fetchRewardBundleInputs(supabase: ServiceClient, badgeIds: string[]): Promise<BundleBadgeInput[]> {
+  if (badgeIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('badges')
+    .select('id, name, rarity, item_book_id')
+    .in('id', badgeIds)
+    .is('deleted_at', null)
+  if (error) {
+    console.error('[fetchRecipesById] 보상 배지 묶음 조회 오류:', error.message)
+    return []
+  }
+  return (data ?? []) as BundleBadgeInput[]
 }
 
 type RecipeRow = {
   id: string
   reward_points: number | null
   reward_badge_ids: string[] | null
+  grade_mode?: string | null
   valid_from: string | null
   valid_until: string | null
 }
@@ -569,6 +603,8 @@ type SlotRow = { recipe_id: string; slot_order: number; allowed_badge_ids: strin
 /**
  * 읽어 온 레시피를 카드에 실을 값으로 바꾼다. 공개 전은 그대로, 공개 뒤는 슬롯마다 대표 후보 하나를 타일로 고른다(후보를 펼치지 않는다):
  * 유저가 가진 후보가 있으면 `allowed_badge_ids` 순서로 그 첫 번째(`earned: true`), 없으면 삭제되지 않은 첫 번째 후보(`earned: false`)다.
+ * 등급 대응형은 후보가 같은 이름의 4등급 배지라 대표 그림을 가장 낮은 등급 배지로 고정하고 등급 칩이 나오지 않게 `rarity`를 `null`로 덮는다(믹스 목록의 대표 배지 규칙 `representativeRewardBadges`).
+ * 보유는 어느 등급이든 후보 중 하나라도 가졌으면 `earned: true`다(Rare만 가져도 타일이 흑백으로 보이지 않게).
  * 보유 여부는 `fetchBadgesById`의 판정(활동·체크인·인벤토리 아이템 3원)을 그대로 쓴다. 후보가 전부 삭제된 슬롯은 타일만 빠지고 재료 수에는 든다.
  * 레시피를 읽지 못했으면(`undefined`) null이다.
  */
@@ -582,6 +618,11 @@ export function toResolvedRecipe(
   const tiles: ResolvedBadge[] = []
   for (const candidateIds of recipe.slot_candidates) {
     const candidates = candidateIds.map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b))
+    if (recipe.follow_materials) {
+      const [lowest] = representativeRewardBadges({ rewardBadges: candidates })
+      if (lowest) tiles.push({ ...lowest, earned: candidates.some((b) => b.earned === true) })
+      continue
+    }
     const representative = candidates.find((b) => b.earned === true) ?? candidates[0]
     if (representative) tiles.push(representative)
   }

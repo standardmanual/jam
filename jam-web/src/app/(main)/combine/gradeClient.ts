@@ -10,8 +10,7 @@
  */
 import { getRarityLabel } from '@ds/components/cards/RarityBadge'
 import { d, t } from '@/lib/i18n'
-import { resolveGradeMode } from '@/lib/combine/gradeMode'
-import { RARITY_TIER } from '@/lib/rarity'
+import { representativeRewardBadges, resolveGradeMode } from '@/lib/combine/gradeMode'
 import type { BadgeRarity, CombineSlotBadgeType } from '@/types/database'
 
 interface GradeBadge {
@@ -82,20 +81,7 @@ export function narrowRecipeToGrade<C extends GradeBadge, B extends GradeBadge, 
   }
 }
 
-function tierOf(rarity: string | null | undefined): number {
-  return rarity && rarity in RARITY_TIER ? RARITY_TIER[rarity as BadgeRarity] : Number.POSITIVE_INFINITY
-}
-
-/**
- * 등급이 정해지기 전 요약 행에 넘길 «대표 배지». 레시피에 있는 가장 낮은 등급의 보상 배지이고 등급 칩이 나오지 않게 `rarity`를 `null`로 덮는다.
- * 낮은 등급 그림을 등급 칩과 함께 보이면 «Common이 나온다»로 읽히기 때문이다. 같은 등급에 보상 배지가 둘 이상이면(결과가 여러 개인 레시피) 그대로 둘 다 넘겨
- * «+N»이 사실을 말하게 한다. 등급 고정형은 이 함수를 쓰지 않는다(호출부가 보상 배지를 그대로 넘긴다).
- */
-export function representativeRewardBadges<B extends GradeBadge>(recipe: { rewardBadges: B[] }): (Omit<B, 'rarity'> & { rarity: null })[] {
-  if (recipe.rewardBadges.length === 0) return []
-  const lowest = Math.min(...recipe.rewardBadges.map((b) => tierOf(b.rarity)))
-  return recipe.rewardBadges.filter((b) => tierOf(b.rarity) === lowest).map((b) => ({ ...b, rarity: null }))
-}
+export { representativeRewardBadges }
 
 /** 슬롯 그리드 아래 한 줄 — 「지금은 Rare 아이템 배지만 넣을 수 있어요」. 등급은 색이 아니라 영문 글자로 전한다 */
 export function gradeLockNote(rarity: string): string {
