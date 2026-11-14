@@ -6,7 +6,7 @@
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) `renderToStaticMarkup`으로 클래스·태그 문자열을 단언한다.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import type { ReactNode } from 'react'
 
 vi.mock('next/navigation', () => ({

@@ -19,7 +19,7 @@
  */
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),

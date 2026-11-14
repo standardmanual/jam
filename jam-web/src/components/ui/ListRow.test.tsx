@@ -180,7 +180,7 @@ describe('클릭 영역', () => {
 
     expect(none).not.toContain('<span class="ds-list-row-chevron"')
     expect(chevron).toContain('<span class="ds-list-row-chevron" data-expanded="false"')
-    expect(chevron).toContain('M5 9l7 7 7-7')
+    expect(chevron).toContain('M10.5 18 L24 31.5 L37.5 18')
   })
 
   it('onClick도 href도 없으면 div이고 눌림 대상이 아니다', () => {
