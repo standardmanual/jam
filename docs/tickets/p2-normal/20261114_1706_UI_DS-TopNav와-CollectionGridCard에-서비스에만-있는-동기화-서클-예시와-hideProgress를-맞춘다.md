@@ -2,8 +2,9 @@
 id: "20261114_1706"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-14
+closed: 2026-11-14
 ---
 
 # [UI] DS TopNav와 CollectionGridCard에 서비스에만 있는 동기화 서클 예시와 hideProgress를 맞춘다
@@ -51,3 +52,45 @@ created: 2026-11-14
 
 ## 주요 의사결정
 - DS TopNav에 `syncStyle`을 만들지 않는다(도메인 결합이라 서비스 래퍼 몫, `TopNav.d.ts` `centerSlot` 주석). 서클 규격의 공통 컴포넌트 승격은 티켓 20261114_1413이 맡는다.
+
+## 완료 기록
+
+### 구현 내용 요약
+- DS `CollectionGridCard`에 서비스 사본과 같은 `hideProgress`(기본 끔, 켜면 진행 바와 «수집/전체» 숫자 행을 그리지 않음, `completed`이면 «완성» 칩 행은 유지)를 옮겼다. `.jsx`·`.d.ts`·Story(`HideProgress`, `HideProgressCompleted`)·prompt에 반영했다.
+- DS `TopNav`는 코드와 prop을 바꾸지 않고, `SyncIconCircle` Story와 prompt의 「동기화 모양 두 가지」 절(홈 글자 알약=centerSlot, 나머지 아이콘 서클=rightSlot, DS에 `syncStyle` 없음)만 더했다. 서비스 코드(`src/`)는 0줄이다.
+- 채원① 판정: 재사용, 새 토큰·새 컴포넌트·새 prop 없음, 승인 불필요. 채원② 중대 문제 없음.
+
+### 변경된 파일
+```
+jam-web/design-system/components/navigation/TopNav.stories.tsx
+jam-web/design-system/components/navigation/TopNav.prompt.md
+jam-web/design-system/components/patterns/CollectionGridCard.jsx
+jam-web/design-system/components/patterns/CollectionGridCard.d.ts
+jam-web/design-system/components/patterns/CollectionGridCard.stories.tsx
+jam-web/design-system/components/patterns/CollectionGridCard.prompt.md
+```
+
+### 테스트 결과
+- [x] 게이트(민지) WARN: CI 없음(push 금지), Storybook 실렌더 미확인. 재작업 없음
+- [x] 머지 뒤 메인 트리: `ds:check` 오류 0건(경고 46→44, `CollectionGridCard`의 `hideProgress` PROPS_DRIFT 사라짐, `TopNav`의 PROPS_DRIFT는 서비스 전용 prop이라 남음), tsc 오류 없음, 카드 시험 2개 파일 34건 통과
+- [ ] 사용자 확인 필요: Storybook에서 `SyncIconCircle`·`HideProgress` 실렌더, 360px에서 제목 말줄임과 서클·종·아바타 12px 간격
+
+### 배포 정보
+- 배포일: (로컬 staging에 머지만 했고 push·배포는 하지 않았다)
+- 환경: staging (로컬)
+- 커밋: 머지 `7bb1ac422`(구현 `b40717a5d`·`01eedde12`), 브랜치 `claude/jamwork-20261114_1706-ds-sync-hideprogress`
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 4 | 233,160 | 12,577 / 8,340 | 12분 29초 | 63 |
+| 합계 | 4 | 233,160 | 20,917 | 12분 29초 | 63 |
+
+### 주요 의사결정 / 핵심 메모
+- 처음에는 «TopNav 동기화 서클이 DS에 빠졌다»고 보았으나, DS `TopNav`가 슬롯 껍데기이고 동기화는 서비스 래퍼 몫이라 기능 누락이 아니라 예시 누락임을 확인해 prop을 만들지 않았다.
+- 아현의 review 브랜치 push가 자동 모드 분류기에 거부되어 CI 실행이 없다. 우회하지 않고 로컬 브랜치로 머지했다.
+
+### 잔여 이슈
+- 서클 아이콘 버튼(`SyncIconButton`·`NotificationBell`)과 `SyncIcon`의 DS 승격은 티켓 20261114_1413이 맡는다.
+- `TopNav.prompt.md` 마지막 불릿의 «같은 구조다» 가리킴이 모호하다는 채원 지적이 있다(판정 영향 없음).
