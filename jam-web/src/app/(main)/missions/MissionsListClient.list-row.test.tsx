@@ -160,6 +160,12 @@ describe('미션 목록 — ListCard 큰 이미지 카드', () => {
     expect(chipTexts(render(item({ locked: true })))).toEqual([d.missions.tagLocked, d.missions.tagPermanent])
   })
 
+  it('종료 탭의 완료 미션은 «완료» 칩만 보이고 완료일 칩은 없다 (티켓 20261114_1700)', () => {
+    const chips = chipTexts(render(item({ done: true, completedAt: '2026-11-10T00:00:00Z' }), 'ended'))
+    expect(chips).toEqual([d.missions.tagDone])
+    expect(chips.join(' ')).not.toContain('2026년')
+  })
+
   it('NEW는 칩 줄 맨 앞이고 칩은 3개를 넘지 않는다', () => {
     const chips = chipTexts(render(item({ joined: true, ends_at: '2026-11-10T12:00:00Z', created_at: '2026-11-08T00:00:00Z' })))
 

@@ -171,6 +171,8 @@ function periodChip(m: MissionListItem, tab: Tab, started: boolean): React.React
   const kind = missionStatusKind(m, started, tab === 'ended')
   // 참가종료는 «종료»만, 시작 전은 «시작전»만 보인다(시작 전에 «n일 남음»을 붙이지 않는다).
   if (kind === 'joinedEnded' || kind === 'upcoming') return null
+  // 종료 탭의 완료 건은 날짜 칩을 그리지 않는다(상태 칩 «완료»만, 2026-11-14 사용자 지시, 티켓 20261114_1700)
+  if (tab === 'ended' && m.done) return null
   return <ListRowChip>{periodText(m, tab)}</ListRowChip>
 }
 
