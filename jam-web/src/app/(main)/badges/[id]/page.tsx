@@ -7,7 +7,7 @@ import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
 import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
-import { BookIcon, CoinIcon } from '@/components/ui/icons'
+import { MagicBookIcon, CoinIcon } from '@/components/ui/icons'
 import PoiMapButton from './PoiMapButton'
 import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
@@ -432,14 +432,14 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 lead={
                   /* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드다. next/image에 직접 넘기면
                      미등록 호스트 하나로 배지 상세 화면 전체가 500이 되므로 SafeImage로 렌더한다
-                     (20260824_005). 폴백은 이미지가 없을 때 BookIcon — lead 박스(48px)는 ListRow가 주므로
+                     (20260824_005). 폴백은 이미지가 없을 때 MagicBookIcon — lead 박스(48px)는 ListRow가 주므로
                      아이콘만 넘겨 박스가 이중이 되지 않고 행 정렬도 무너지지 않는다. */
                   <SafeImage
                     src={itemBook.image_url}
                     alt=""
                     width={48}
                     height={48}
-                    fallback={<BookIcon className="w-5 h-5 text-muted" />}
+                    fallback={<MagicBookIcon className="w-5 h-5 text-muted" />}
                   />
                 }
                 title={itemBook.name}

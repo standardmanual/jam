@@ -3,7 +3,7 @@ import SafeImage from '@/components/SafeImage'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { PointText } from '@ds/components/patterns/PointText'
-import { CoinIcon, PackageIcon } from '@/components/ui/icons'
+import { CoinIcon, ArrowDownIcon } from '@/components/ui/icons'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
@@ -61,7 +61,7 @@ interface Props {
  * - 배지만: 위와 같고 value 없음
  * - 포인트만: lead=코인(round), title=레시피 이름, eyebrow·meta 없음, value=포인트 값
  *
- * 4번째 케이스(티켓 20261018_0055 2회): `noReward`면 중립 아이콘(`PackageIcon`)과 meta «보상 없음»만 그린다(title=레시피 이름).
+ * 4번째 케이스(티켓 20261018_0055 2회): `noReward`면 중립 아이콘(`ArrowDownIcon`)과 meta «보상 없음»만 그린다(title=레시피 이름).
  * `rewardLocked`면 배지 보상이 있을 때 eyebrow의 등급 칩 옆에 «잠김» 칩을 붙인다.
  *
  * `releaseAt`이 있으면 위 어느 케이스든 meta 맨 아래에 「공개 예정」 줄을 하나 더 그린다.
@@ -100,10 +100,10 @@ export default function RecipeRewardRow({
       alt=""
       width={48}
       height={48}
-      fallback={<PackageIcon className="w-5 h-5 text-muted" />}
+      fallback={<ArrowDownIcon className="w-5 h-5 text-muted" />}
     />
   ) : showNoReward ? (
-    <PackageIcon className="w-5 h-5 text-muted" />
+    <ArrowDownIcon className="w-5 h-5 text-muted" />
   ) : (
     <CoinIcon className="w-5 h-5 text-muted" />
   )

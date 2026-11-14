@@ -11,7 +11,7 @@ import RecipeRewardRow from '@/app/(main)/combine/RecipeRewardRow'
 import SafeImage from '@/components/SafeImage'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
-import { PackageIcon } from '@/components/ui/icons'
+import { ArrowDownIcon } from '@/components/ui/icons'
 import { formatKstDay } from '@/lib/admin/opsInbox/labels'
 import type { KindPreview } from '@/lib/admin/opsInbox/cardPreview'
 
@@ -125,7 +125,7 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
             width={90}
             height={90}
             className="h-full w-full object-contain"
-            fallback={<PackageIcon className="h-8 w-8 text-white/30" />}
+            fallback={<ArrowDownIcon className="h-8 w-8 text-white/30" />}
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-2">

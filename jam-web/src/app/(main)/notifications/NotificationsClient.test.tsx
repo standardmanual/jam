@@ -11,7 +11,7 @@
  *    누르면 각각 홈(`/`)·홈(`/`)·그 미션 상세(미션 id가 비면 `/missions`), 아이콘은 자물쇠·체크 원·선물이고 세 종류 모두 경고면(`bg-warning`)이 아니라 일반 타일이다.
  *  - 소식이 없을 때와 읽지 못했을 때는 서로 다른 안내가 보이고, 어느 쪽에도 어드민 용어 «회수»가 없다.
  *
- * 아이콘은 화면이 쓰는 아이콘 컴포넌트(`MedalIcon`·`TargetIcon`)를 같은 클래스로 따로 그린 마크업과 견준다 — 제품 코드에 시험용 표지를 넣지 않는다.
+ * 아이콘은 화면이 쓰는 아이콘 컴포넌트(`MedalIcon`·`TicketIcon`)를 같은 클래스로 따로 그린 마크업과 견준다 — 제품 코드에 시험용 표지를 넣지 않는다.
  * 문구와 착지 계산(`message.ts`·`href.ts`) 자체는 `lib/notifications/__tests__/message-href.test.ts`가 고정한다. 여기서는 화면이 그 결과를 제대로 잇는지 본다.
  * 참가 취소 소식과 트라이브 변경 소식(`tribe_changed`)을 만드는 곳은 어드민 트라이브 변경(`lib/admin/user-tribe.ts`)이라, 마이그레이션 258~261이 공용 DB에 적용되기 전에는 실제로 만들어지지 않는다(화면이 받을 준비가 됐는지만 확인한다).
  *
@@ -31,7 +31,7 @@ vi.mock('@/components/ui/TopNav', () => ({
 }))
 
 import NotificationsClient from './NotificationsClient'
-import { CheckCircleIcon, GiftIcon, LockIcon, MedalIcon, PackageIcon, TargetIcon, UserIcon, UsersIcon } from '@/components/ui/icons'
+import { CheckBoldIcon, ArrowUpIcon, LockIcon, MedalIcon, ArrowDownIcon, TicketIcon, UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { NotificationView } from '@/lib/notifications/message'
 import type { NotificationType } from '@/types/database'
@@ -110,7 +110,7 @@ afterEach(() => {
 
 describe('아이콘 마크업 전제', () => {
   it('메달과 과녁은 서로 다른 그림이다 — 아래 구분 시험이 의미가 있다', () => {
-    expect(icon(MedalIcon)).not.toBe(icon(TargetIcon))
+    expect(icon(MedalIcon)).not.toBe(icon(TicketIcon))
   })
 })
 
@@ -151,7 +151,7 @@ describe('챕터 오름 소식 (chapter_up)', () => {
     const html = render([CHAPTER_UP])
 
     expect(html).toContain(icon(MedalIcon))
-    expect(html).not.toContain(icon(TargetIcon))
+    expect(html).not.toContain(icon(TicketIcon))
   })
 
   it('경고 칸이나 행위자 아바타가 아니라 종류별 아이콘 칸으로 그려진다', () => {
@@ -199,7 +199,7 @@ describe('미션 참가 취소 소식 (mission_participation_cancelled)', () => 
   it('아이콘은 과녁이고 메달이 아니다', () => {
     const html = render([ONE_CANCELLED])
 
-    expect(html).toContain(icon(TargetIcon))
+    expect(html).toContain(icon(TicketIcon))
     expect(html).not.toContain(icon(MedalIcon))
   })
 
@@ -238,7 +238,7 @@ describe('어드민 트라이브 변경 소식 (tribe_changed, 티켓 20261021_1
 
     expect(html).toContain(icon(UsersIcon))
     expect(html).not.toContain(icon(MedalIcon))
-    expect(html).not.toContain(icon(TargetIcon))
+    expect(html).not.toContain(icon(TicketIcon))
   })
 
   it('경고 칸이나 행위자 아바타가 아니라 종류별 아이콘 칸으로 그려진다', () => {
@@ -272,8 +272,8 @@ describe('이용 정지 소식 (suspension_started, 티켓 20261021_1249 6-3 5�
     const html = render([STARTED])
 
     expect(html).toContain(icon(LockIcon))
-    expect(html).not.toContain(icon(CheckCircleIcon))
-    expect(html).not.toContain(icon(GiftIcon))
+    expect(html).not.toContain(icon(CheckBoldIcon))
+    expect(html).not.toContain(icon(ArrowUpIcon))
   })
 
   it('경고면이나 행위자 아바타가 아니라 일반 아이콘 타일로 그려진다', () => {
@@ -314,7 +314,7 @@ describe('이용 정지 해제 소식 (suspension_lifted, 티켓 20261021_1249 6
   it('아이콘은 체크 원이고 자물쇠가 아니다', () => {
     const html = render([LIFTED])
 
-    expect(html).toContain(icon(CheckCircleIcon))
+    expect(html).toContain(icon(CheckBoldIcon))
     expect(html).not.toContain(icon(LockIcon))
   })
 
@@ -359,9 +359,9 @@ describe('받지 않은 보상 소식 (reward_pending, 티켓 20261021_1249 6-3 
   it('아이콘은 선물이고 자물쇠·체크 원이 아니다', () => {
     const html = render([PENDING])
 
-    expect(html).toContain(icon(GiftIcon))
+    expect(html).toContain(icon(ArrowUpIcon))
     expect(html).not.toContain(icon(LockIcon))
-    expect(html).not.toContain(icon(CheckCircleIcon))
+    expect(html).not.toContain(icon(CheckBoldIcon))
   })
 
   it('경고면이나 행위자 아바타가 아니라 일반 아이콘 타일로 그려진다', () => {
@@ -403,7 +403,7 @@ describe('캡슐 소식 — 과거 행 표시 (capsule_nearly_full·capsule_jam_
     for (const row of [NEARLY, BLOCKED]) {
       const html = render([row])
 
-      expect(html).toContain(icon(GiftIcon))
+      expect(html).toContain(icon(ArrowUpIcon))
       expect(html).toContain(DEFAULT_TILE)
       expect(html).not.toContain('bg-warning')
       expect(html).not.toContain(d.profile.avatarAlt)
@@ -422,8 +422,8 @@ describe('새 세 종류의 행이 함께 있을 때', () => {
     const links = [...html.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1])
     expect(links).toEqual(['/', '/', '/missions/m1'])
     expect(html.split(icon(LockIcon)).length - 1).toBe(1)
-    expect(html.split(icon(CheckCircleIcon)).length - 1).toBe(1)
-    expect(html.split(icon(GiftIcon)).length - 1).toBe(1)
+    expect(html.split(icon(CheckBoldIcon)).length - 1).toBe(1)
+    expect(html.split(icon(ArrowUpIcon)).length - 1).toBe(1)
   })
 })
 
@@ -435,9 +435,9 @@ describe('두 소식이 함께 있을 때', () => {
     expect(links).toEqual(['/runner', '/missions'])
     // 각각 한 번씩만 그려진다
     expect(html.split(icon(MedalIcon)).length - 1).toBe(1)
-    expect(html.split(icon(TargetIcon)).length - 1).toBe(1)
+    expect(html.split(icon(TicketIcon)).length - 1).toBe(1)
     // 메달 행이 과녁 행보다 앞이다(받은 순서 그대로)
-    expect(html.indexOf(icon(MedalIcon))).toBeLessThan(html.indexOf(icon(TargetIcon)))
+    expect(html.indexOf(icon(MedalIcon))).toBeLessThan(html.indexOf(icon(TicketIcon)))
   })
 
   it('읽음 시각 뒤에 온 소식 수만큼 «새 소식» 구분선이 한 번 그려진다', () => {
@@ -494,8 +494,8 @@ describe('인벤토리 가득 참 소식의 어두운 반전 면 (티켓 2026110
     const html = render([FULL])
 
     expect(html).toContain('background:var(--surface-on-inverse)')
-    expect(html).toContain(renderToStaticMarkup(<PackageIcon className="w-5 h-5 text-snow" />))
-    expect(html).not.toContain(renderToStaticMarkup(<PackageIcon className="w-5 h-5 text-foreground" />))
+    expect(html).toContain(renderToStaticMarkup(<ArrowDownIcon className="w-5 h-5 text-snow" />))
+    expect(html).not.toContain(renderToStaticMarkup(<ArrowDownIcon className="w-5 h-5 text-foreground" />))
   })
 
   it('남은 칸 적음 행과 다른 종류 행은 흰 면 그대로다', () => {

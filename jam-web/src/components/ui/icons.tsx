@@ -536,25 +536,3 @@ export function AlertCircleIcon(props: IconProps) {
 export function BanIcon(props: IconProps) {
   return <RoleIcon nodes={BAN_NODES} {...props} />
 }
-
-// 옛 이름 별칭 — 그림이 바뀐 10종. 사용처 교체는 20261114_2346에서 하고 이 별칭을 지운다.
-/** @deprecated 20261114_2346에서 제거 */
-export const TargetIcon = TicketIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const PackageIcon = ArrowDownIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const GiftIcon = ArrowUpIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const RankingIcon = PodiumIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const BookIcon = MagicBookIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const HourglassIcon = SparkleCircleIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const GachaMachineIcon = MixingBowlIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const ActivityIcon = SyncCircleIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const CheckCircleIcon = CheckBoldIcon
-/** @deprecated 20261114_2346에서 제거 */
-export const XCircleIcon = XBoldIcon

@@ -7,7 +7,7 @@ import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
-import { LockIcon, TargetIcon } from '@/components/ui/icons'
+import { LockIcon, TicketIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Select } from '@ds/components/forms/Select'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
@@ -307,7 +307,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
 
       {list.length === 0 ? (
         <EmptyState
-          icon={<TargetIcon className="w-8 h-8" />}
+          icon={<TicketIcon className="w-8 h-8" />}
           title={emptyText}
           description={emptyBody}
         />

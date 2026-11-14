@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SafeImage from '@/components/SafeImage'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
-import { MedalIcon, PackageIcon } from '@/components/ui/icons'
+import { MedalIcon, ArrowDownIcon } from '@/components/ui/icons'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -1016,7 +1016,7 @@ export function PoiCard({
             </div>
           ) : (
             <EmptyState
-              icon={<PackageIcon className="w-8 h-8" />}
+              icon={<ArrowDownIcon className="w-8 h-8" />}
               title={d.drops.dropEmptyTitle}
               description={d.drops.dropEmptyBody}
               style={{ padding: 0 }}

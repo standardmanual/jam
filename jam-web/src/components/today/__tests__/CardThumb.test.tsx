@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import CardThumb from '../CardThumb'
-import { BookIcon, FlaskIcon, MedalIcon, TargetIcon } from '@/components/ui/icons'
+import { MagicBookIcon, FlaskIcon, MedalIcon, TicketIcon } from '@/components/ui/icons'
 
 const BOX = 'w-16 h-16 shrink-0 rounded-xl bg-background-secondary overflow-hidden flex items-center justify-center'
 const ICON_CLASS = 'w-6 h-6 text-muted'
@@ -43,8 +43,8 @@ describe('CardThumb — 64px 칸', () => {
 
   it('아이콘은 카드의 자원이 정한다 — 재료(recipe)는 메달이 아니라 플라스크다', () => {
     expect(renderToStaticMarkup(<CardThumb view={{ resource: 'recipe' }} />)).toContain(icon(FlaskIcon))
-    expect(renderToStaticMarkup(<CardThumb view={{ resource: 'mission' }} />)).toContain(icon(TargetIcon))
-    expect(renderToStaticMarkup(<CardThumb view={{ resource: 'collection' }} />)).toContain(icon(BookIcon))
+    expect(renderToStaticMarkup(<CardThumb view={{ resource: 'mission' }} />)).toContain(icon(TicketIcon))
+    expect(renderToStaticMarkup(<CardThumb view={{ resource: 'collection' }} />)).toContain(icon(MagicBookIcon))
     expect(renderToStaticMarkup(<CardThumb view={{ resource: 'recipe' }} />)).not.toContain(icon(MedalIcon))
   })
 

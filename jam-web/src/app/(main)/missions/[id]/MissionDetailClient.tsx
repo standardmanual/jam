@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import TopNav from '@/components/ui/TopNav'
-import { LockIcon, CoinIcon, PackageIcon } from '@/components/ui/icons'
+import { LockIcon, CoinIcon, ArrowDownIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
@@ -231,7 +231,7 @@ function PendingRewardRow({ reward }: { reward: PendingRewardInfo }) {
           alt=""
           width={48}
           height={48}
-          fallback={<PackageIcon className="w-5 h-5 text-muted" />}
+          fallback={<ArrowDownIcon className="w-5 h-5 text-muted" />}
         />
       }
       eyebrow={rarityEyebrow(reward.rarity)}

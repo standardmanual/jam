@@ -10,7 +10,7 @@ import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOv
 import TierUpRevealOverlay, { measureTierUpMaterials, type TierUpRevealMaterial, type TierUpRevealResult } from '@/components/TierUpRevealOverlay'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { SearchIcon, PackageIcon } from '@/components/ui/icons'
+import { SearchIcon, ArrowDownIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
 import PendingResultsSheet, { type PendingSheetView } from './PendingResultsSheet'
 import BagItemCell from './BagItemCell'
@@ -1163,7 +1163,7 @@ export default function CombineClient({
           {/* 레시피 탐색 목록 */}
           <div className="flex-1 px-4 pb-6">
             {publicRecipes.length === 0 ? (
-              <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.noRecipes} />
+              <EmptyState icon={<ArrowDownIcon className="w-8 h-8" />} title={d.combine.noRecipes} />
             ) : filteredRecipes.length === 0 ? (
               <EmptyState icon={<SearchIcon className="w-8 h-8" />} title={d.combine.searchNoResult} />
             ) : (
@@ -1299,7 +1299,7 @@ export default function CombineClient({
             */}
             <div className="px-6 py-6">
               {bagRows.length === 0 ? (
-                <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.bagEmpty} />
+                <EmptyState icon={<ArrowDownIcon className="w-8 h-8" />} title={d.combine.bagEmpty} />
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {bagRows.map((row) => {
