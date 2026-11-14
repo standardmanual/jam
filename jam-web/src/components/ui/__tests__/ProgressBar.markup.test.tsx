@@ -9,6 +9,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 
 type Props = React.ComponentProps<typeof ProgressBar>
@@ -141,6 +143,67 @@ describe('ProgressBar 기본 경로 마크업 — 기존 호출부 불변', () =
       expect(renderToStaticMarkup(<ProgressBar {...props} as="div" />)).toBe(EXPECTED[name])
     })
   }
+})
+
+describe('ProgressBar shape (티켓 20261114_1502)', () => {
+  it('shape="flat"을 명시해도 기본과 같다', () => {
+    for (const [name, props] of Object.entries(CASES)) {
+      expect(renderToStaticMarkup(<ProgressBar {...props} shape="flat" />), name).toBe(EXPECTED[name])
+    }
+  })
+
+  it('capsule: 어두운 트랙 + 안쪽 2px 여백 + 둥근 채움, 채움 기본색은 --capsule-fill이다', () => {
+    const html = renderToStaticMarkup(<ProgressBar shape="capsule" percent={50} height={16} />)
+    expect(html).toContain('height:16px')
+    expect(html).toContain('box-sizing:border-box')
+    expect(html).toContain('padding:2px')
+    expect(html).toContain('background:var(--capsule-track)')
+    expect(html).toContain('background:var(--capsule-fill)')
+    expect(html).toContain('border-radius:var(--radius-full)')
+    expect(html).toContain('transition:width var(--duration-slow) var(--ease-smooth-out)')
+    // 게이지 전용 장식은 가져오지 않는다
+    expect(html).not.toMatch(/box-shadow|border:|role=|aria-/)
+  })
+
+  it('capsule: color·trackColor로 덮어쓴다(컬렉션은 --jam-green)', () => {
+    const html = renderToStaticMarkup(<ProgressBar shape="capsule" percent={50} height={16} color="var(--jam-green)" trackColor="var(--background)" />)
+    expect(html).toContain('background:var(--jam-green)')
+    expect(html).toContain('background:var(--background)')
+    expect(html).not.toContain('--capsule-fill')
+    expect(html).not.toContain('--capsule-track')
+  })
+
+  it('capsule: 채움 너비는 calc(원지름 + (100% - 원지름) × 비율)이고 원지름은 height - 4다', () => {
+    expect(renderToStaticMarkup(<ProgressBar shape="capsule" percent={30} height={16} />)).toContain('width:calc(12px + (100% - 12px) * 0.3)')
+    expect(renderToStaticMarkup(<ProgressBar shape="capsule" percent={100} height={12} />)).toContain('width:calc(8px + (100% - 8px) * 1)')
+  })
+
+  it('capsule: 0%이면 채움 너비가 0이다(진행한 것처럼 읽히는 점이 없다)', () => {
+    const html = renderToStaticMarkup(<ProgressBar shape="capsule" percent={0} height={16} />)
+    expect(html).toContain('width:0px')
+    expect(html).not.toContain('calc(')
+  })
+
+  it('capsule: 숫자 height가 아니면 flat으로 그린다', () => {
+    const html = renderToStaticMarkup(<ProgressBar shape="capsule" percent={50} height="1rem" />)
+    expect(html).not.toContain('--capsule-')
+    expect(html).toContain('background:var(--border)')
+    expect(html).toContain('background:var(--accent)')
+  })
+
+  it('capsule + as="span": div가 없다', () => {
+    const html = renderToStaticMarkup(<ProgressBar shape="capsule" percent={50} height={16} as="span" />)
+    expect(html).not.toContain('<div')
+  })
+
+  it('CapsuleGauge와 트랙·채움 토큰 문자열이 같다(드리프트 방지)', () => {
+    const gauge = readFileSync(join(__dirname, '../../capsule/CapsuleGauge.tsx'), 'utf8')
+    const bar = renderToStaticMarkup(<ProgressBar shape="capsule" percent={50} height={36} />)
+    for (const token of ['var(--capsule-track)', 'var(--capsule-fill)']) {
+      expect(gauge).toContain(`background: '${token}'`)
+      expect(bar).toContain(`background:${token}`)
+    }
+  })
 })
 
 describe('ProgressBar as="span"', () => {

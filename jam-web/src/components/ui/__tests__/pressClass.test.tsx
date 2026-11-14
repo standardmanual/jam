@@ -44,6 +44,12 @@ describe('CollectionGridCard — 눌림은 .jam-press다', () => {
     expect(html).not.toContain('jam-press')
     expect(html).not.toContain(OLD_PRESS)
   })
+
+  it('완성한(초록 면) 카드도 같은 규칙이다 — 링크·버튼이면 붙고 정적이면 붙지 않는다', () => {
+    expect(renderToStaticMarkup(<CollectionGridCard {...props} completed href="/collections/c1" />)).toContain('jam-press')
+    expect(renderToStaticMarkup(<CollectionGridCard {...props} completed onClick={() => {}} />)).toContain('jam-press')
+    expect(renderToStaticMarkup(<CollectionGridCard {...props} completed />)).not.toContain('jam-press')
+  })
 })
 
 describe('저장소에 옛 눌림 문자열이 남지 않는다', () => {

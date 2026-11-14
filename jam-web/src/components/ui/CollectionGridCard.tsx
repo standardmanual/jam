@@ -17,7 +17,7 @@ export interface CollectionGridCardProps {
   collected: number
   /** 전체 슬롯 수 */
   total: number
-  /** 완성 배지 표시 여부 */
+  /** 완성 여부 — 카드 면이 강조색 그린이 되고, 진행 바·숫자 자리에 «완성» 칩이 온다 */
   completed?: boolean
   /** 최초 등록 아이템배지 기준 컬렉션 등급 */
   rarity?: BadgeRarity
@@ -30,7 +30,10 @@ export interface CollectionGridCardProps {
 }
 
 // 카드 면 레시피(티켓 20261107_2246): BadgeGridCard와 같은 면 — --card-bg + 반경 16 + 안쪽 여백 12, 외곽선·그림자 없음.
-const BASE = 'flex flex-col gap-2 bg-card-bg rounded-2xl p-3'
+// 완성한 카드는 면만 강조색 그린(--jam-green)이다(2026-11-14 사용자 지시, 티켓 20261114_1502). 그림자·외곽선은 더하지 않는다.
+const BASE = 'flex flex-col gap-2 rounded-2xl p-3'
+const FACE_DEFAULT = 'bg-card-bg'
+const FACE_COMPLETED = 'bg-jam-green'
 
 export default function CollectionGridCard({
   name,
@@ -47,7 +50,7 @@ export default function CollectionGridCard({
 }: CollectionGridCardProps) {
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0
   // 눌림은 공용 `.jam-press`(0.98배·80ms, 동작 줄이기 설정에서는 없음)다. 링크도 버튼도 아닌 카드에는 붙이지 않는다.
-  const cls = [BASE, (href || onClick) && 'jam-press', className].filter(Boolean).join(' ')
+  const cls = [BASE, completed ? FACE_COMPLETED : FACE_DEFAULT, (href || onClick) && 'jam-press', className].filter(Boolean).join(' ')
 
   const content = (
     <>
@@ -61,18 +64,13 @@ export default function CollectionGridCard({
           alt={name}
           className="object-contain p-1.5"
           sizes="50vw"
-          fallback={<BookIcon className="w-10 h-10 text-muted" />}
+          fallback={<BookIcon className={`w-10 h-10 ${completed ? 'text-foreground' : 'text-muted'}`} />}
         />
-        {/* 태그 행: 완성(선택) → 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다.
+        {/* 태그 행: 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다. 완성 칩은 맨 아래 행으로 옮겼다(티켓 20261114_1502).
             좁은 폭(320px 2열)에서도 칩이 잘리지 않게 줄바꿈하고, 오른쪽 여백을 남긴다. */}
-        {(rarity || completed) && (
+        {rarity && (
           <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
-            {/* 완성 칩은 옆의 등급 칩(`RarityBadge`)과 같은 크기다: 모든 칩의 기준인 `ListRowChip`(12px, 줄 높이 16px, 안쪽 2px 8px, 높이 20px)을 쓰고 색만 accent 면이다
-                (2026-11-11 사용자 지시, 티켓 20261112_0010. 이전에는 5px 10px 손으로 만든 칩이었다) */}
-            {completed && (
-              <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>{d.itembooks.completed}</ListRowChip>
-            )}
-            {rarity && <RarityBadge rarity={rarity} size="md" />}
+            <RarityBadge rarity={rarity} size="md" />
           </div>
         )}
       </div>
@@ -80,14 +78,23 @@ export default function CollectionGridCard({
       {/* 타이틀 */}
       <p className="text-[15px] font-bold text-foreground leading-[18px] truncate">{name}</p>
 
-      {/* 진행 바 + 카운트 한 행 */}
-      {!hideProgress && (
-        <div className="flex items-center gap-2">
-          {/* 채움은 강조색 그린이다(2026-11-11 사용자 지시, 티켓 20261111_1005) — 컬렉션 상세·인벤토리의 바와 같다 */}
-          <ProgressBar percent={pct} height={12} color="var(--jam-green)" />
-          <span className="text-xs text-[color:var(--link)] font-bold leading-none tabular-nums shrink-0">
-            {collected}/{total}
-          </span>
+      {/* 맨 아래 한 행 — 높이는 칩 높이(20px)로 맞춰 완성·미완성 카드의 높이가 같다.
+          완성: 바·숫자 없이 «완성» 칩 하나(왼쪽 정렬, 이름과 같은 시작선). 칩은 `ListRowChip` 규격에 색만 accent 면이다
+          (등급 칩 `RarityBadge`와 같은 크기, 2026-11-11 사용자 지시, 티켓 20261112_0010).
+          미완성: 진행 바 + 「수집/전체」 숫자. */}
+      {(completed || !hideProgress) && (
+        <div className="flex items-center gap-2 min-h-5">
+          {completed ? (
+            <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>{d.itembooks.completed}</ListRowChip>
+          ) : (
+            <>
+              {/* 캡슐 모양 바(어두운 트랙·강조색 그린 채움) — 컬렉션 상세·인벤토리의 바와 같다(티켓 20261114_1502) */}
+              <ProgressBar shape="capsule" percent={pct} height={16} color="var(--jam-green)" />
+              <span className="text-xs text-[color:var(--link)] font-bold leading-none tabular-nums shrink-0">
+                {collected}/{total}
+              </span>
+            </>
+          )}
         </div>
       )}
 

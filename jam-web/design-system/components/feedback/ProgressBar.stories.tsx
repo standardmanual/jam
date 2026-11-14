@@ -241,3 +241,20 @@ export const AsSpan: Story = {
     expect(canvasElement.querySelector('[data-testid="as-span-link"] div')).toBeNull();
   },
 };
+
+/**
+ * 캡슐 모양 (티켓 20261114_1502) — 홈 캡슐 게이지와 같은 어두운 트랙(--capsule-track) 안쪽 2px 여백, 둥근 채움.
+ * 채움 색은 호출부가 정한다(컬렉션·인벤토리는 --jam-green, 기본은 --capsule-fill). 0%는 채움 없음, 작은 값은 원 지름이 최소 폭이다.
+ * 숫자 height만 받는다(16이면 안쪽 채움 12px).
+ */
+export const Capsule: Story = {
+  name: 'shape="capsule" — 0 / 5 / 50 / 100%',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 280 }}>
+      {[0, 5, 50, 100].map((percent) => (
+        <ProgressBar key={percent} shape="capsule" percent={percent} height={16} color="var(--jam-green)" />
+      ))}
+      <ProgressBar shape="capsule" percent={50} height={12} />
+    </div>
+  ),
+};
