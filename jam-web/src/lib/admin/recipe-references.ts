@@ -189,6 +189,8 @@ export interface BadgeInRecipeReferenceReport {
   slotRecipeIds: string[]
   /** 이 배지를 보상으로 주는 레시피 id */
   rewardRecipeIds: string[]
+  /** 이 배지를 첫 성공자 보상(`first_success_badge_id`)으로 주는 레시피 id (티켓 20261114_1705 2회차) */
+  firstSuccessRecipeIds: string[]
   total: number
   error: string | null
 }
@@ -204,6 +206,9 @@ export interface BadgeInRecipeReferenceReport {
  * 경고만 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을
  * 보되, 목적은 «차단»이 아니라 «소프트 삭제 시 경고»다.
  *
+ * 첫 성공자 보상 칸(`combination_recipes.first_success_badge_id`, 마이그레이션 340, 티켓 20261114_1705 2회차)은 배지를 가리키는 단일 uuid FK
+ * (`ON DELETE SET NULL`)라 `.eq()`로 센다. 하드 삭제 가드(`badge-references.ts`의 `recipes_first_success`)도 같은 칸을 센다.
+ *
  * 배열 컬럼 매칭은 PostgREST `.overlaps()`(Postgres `&&` 연산자)로 센다 — 전체 레시피를
  * 메모리로 끌어와 필터링하지 않는다.
  */
@@ -211,17 +216,19 @@ export async function countRecipesReferencingBadge(
   supabase: ServiceClient,
   badgeId: string
 ): Promise<BadgeInRecipeReferenceReport> {
-  const [slotResult, rewardResult] = await Promise.all([
+  const [slotResult, rewardResult, firstSuccessResult] = await Promise.all([
     supabase.from('combination_recipe_slots').select('recipe_id').overlaps('allowed_badge_ids', [badgeId]),
     supabase.from('combination_recipes').select('id').overlaps('reward_badge_ids', [badgeId]),
+    supabase.from('combination_recipes').select('id').eq('first_success_badge_id', badgeId),
   ])
 
-  if (slotResult.error || rewardResult.error) {
+  if (slotResult.error || rewardResult.error || firstSuccessResult.error) {
     return {
       slotRecipeIds: [],
       rewardRecipeIds: [],
+      firstSuccessRecipeIds: [],
       total: 0,
-      error: (slotResult.error ?? rewardResult.error)?.message ?? '알 수 없는 오류',
+      error: (slotResult.error ?? rewardResult.error ?? firstSuccessResult.error)?.message ?? '알 수 없는 오류',
     }
   }
 
@@ -229,11 +236,13 @@ export async function countRecipesReferencingBadge(
     ...new Set(((slotResult.data ?? []) as { recipe_id: string }[]).map((r) => r.recipe_id)),
   ]
   const rewardRecipeIds = ((rewardResult.data ?? []) as { id: string }[]).map((r) => r.id)
+  const firstSuccessRecipeIds = ((firstSuccessResult.data ?? []) as { id: string }[]).map((r) => r.id)
 
   return {
     slotRecipeIds,
     rewardRecipeIds,
-    total: slotRecipeIds.length + rewardRecipeIds.length,
+    firstSuccessRecipeIds,
+    total: slotRecipeIds.length + rewardRecipeIds.length + firstSuccessRecipeIds.length,
     error: null,
   }
 }
