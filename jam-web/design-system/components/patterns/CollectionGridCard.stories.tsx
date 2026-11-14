@@ -12,6 +12,7 @@ const meta: Meta<typeof CollectionGridCard> = {
   argTypes: {
     completed: { control: 'boolean' },
     rarity: { control: 'select', options: ['common', 'rare', 'epic', 'mystic'] },
+    hideProgress: { control: 'boolean' },
     collected: { control: { type: 'number', min: 0 } },
     total: { control: { type: 'number', min: 1 } },
   },
@@ -108,6 +109,36 @@ export const NoImage: Story = {
     collected: 3,
     total: 8,
     rarity: 'rare',
+  },
+};
+
+export const HideProgress: Story = {
+  name: '진행 표시 숨김 (0/0) — 운영툴 미리보기',
+  parameters: { docs: { description: { story: '전체 슬롯 수를 아직 모를 때 써요. 맨 아래 행이 없어서 카드가 그만큼 낮아져요.' } } },
+  args: {
+    name: '도시 탐험가 컬렉션',
+    imageUrl: SAMPLE_IMAGE,
+    collected: 0,
+    total: 0,
+    hideProgress: true,
+  },
+  render: (args) => (
+    <div style={{ width: 128 }}>
+      <CollectionGridCard {...args} />
+    </div>
+  ),
+};
+
+export const HideProgressCompleted: Story = {
+  name: '진행 표시 숨김이어도 완성 칩은 남음',
+  parameters: { docs: { description: { story: '완성 카드는 hideProgress를 켜도 «완성» 칩 행이 그대로 보여요.' } } },
+  args: {
+    name: '한강 러너 컬렉션',
+    imageUrl: SAMPLE_IMAGE,
+    collected: 10,
+    total: 10,
+    completed: true,
+    hideProgress: true,
   },
 };
 

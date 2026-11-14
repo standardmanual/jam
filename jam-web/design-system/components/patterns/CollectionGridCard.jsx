@@ -30,6 +30,7 @@ const TAG_STYLE = {
  * Props:
  *   rarity     — 최초 등록 아이템배지 기준 컬렉션 등급 (선택)
  *   completed  — 완성 카드: 면이 그린이 되고 바·숫자 대신 «완성» 칩을 맨 아래에 둔다
+ *   hideProgress — 진행 바와 «수집/전체» 숫자(맨 아래 행)를 그리지 않는다(전체 슬롯 수를 아직 모르는 미리보기용, 기본 false). completed이면 «완성» 칩 행은 그대로 둔다
  *
  * 인터랙션 모드 (상호 배타):
  *   href   → <a> 래핑
@@ -43,6 +44,7 @@ export function CollectionGridCard({
   total,
   completed = false,
   rarity,
+  hideProgress = false,
   href,
   onClick,
   className = '',
@@ -120,28 +122,31 @@ export function CollectionGridCard({
       </p>
 
       {/* 맨 아래 한 행 — 칩 높이(20px) 최소 높이로 완성·미완성 카드의 높이를 맞춘다 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', minHeight: 20 }}>
-        {completed ? (
-          <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-            완성
-          </span>
-        ) : (
-          <>
-            <ProgressBar shape="capsule" percent={pct} height={16} color="var(--jam-green)" />
-            <span style={{
-              fontSize: 'var(--text-xs)',
-              color: 'var(--link)',
-              fontWeight: 700,
-              lineHeight: 1,
-              fontVariantNumeric: 'tabular-nums',
-              fontFamily: 'var(--font-family-base)',
-              flexShrink: 0,
-            }}>
-              {collected}/{total}
+      {/* hideProgress이면 행을 그리지 않는다(단 completed이면 «완성» 칩 행은 유지) — 서비스 CollectionGridCard.tsx와 같은 조건 */}
+      {(completed || !hideProgress) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', minHeight: 20 }}>
+          {completed ? (
+            <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
+              완성
             </span>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <ProgressBar shape="capsule" percent={pct} height={16} color="var(--jam-green)" />
+              <span style={{
+                fontSize: 'var(--text-xs)',
+                color: 'var(--link)',
+                fontWeight: 700,
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+                fontFamily: 'var(--font-family-base)',
+                flexShrink: 0,
+              }}>
+                {collected}/{total}
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       {children}
     </>
