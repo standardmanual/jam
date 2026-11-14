@@ -3,6 +3,7 @@ import React from 'react';
 import { TopNav } from './TopNav';
 import { IconButton } from '../buttons/IconButton';
 import { Button } from '../buttons/Button';
+import { BellIcon } from '../icons/IconCatalog';
 
 // 20260901_1926: props API를 서비스 `src/components/ui/TopNav.tsx` 기준으로 재정렬
 // (logoSlot→logo, style→headerStyle, avatarSlot 제거·rightSlot 합성, 타이포 오버라이드
@@ -144,6 +145,67 @@ export const RightSlotWithAvatar: Story = {
     rightSlot: (
       <>
         <IconButton icon="share" label="공유" />
+        <DemoAvatar />
+      </>
+    ),
+  },
+};
+
+// 동기화 아이콘 서클 — 홈(/)을 뺀 화면에서 쓰는 모양. DS IconCatalog에 SyncIcon이 없어
+// 서비스 `src/components/ui/icons.tsx`의 SyncIcon과 같은 path를 Story 안에 인라인으로 둔다.
+// 규격은 서비스 `SyncIconButton.tsx`와 같다: 44×44 터치 영역 안 36px `--border` 면, 16px 아이콘.
+function DemoSyncCircle() {
+  return (
+    <button
+      type="button"
+      aria-label="동기화"
+      style={{
+        width: 44, height: 44, marginRight: -4, padding: 0, border: 'none', background: 'transparent',
+        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        width: 36, height: 36, borderRadius: '50%', background: 'var(--border)', color: 'var(--foreground)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M20 11a8 8 0 00-14.5-4.5L4 8M4 4v4h4" />
+          <path d="M4 13a8 8 0 0014.5 4.5L20 16M20 20v-4h-4" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
+function DemoBell() {
+  return (
+    <button
+      type="button"
+      aria-label="알림"
+      style={{
+        width: 44, height: 44, padding: 0, border: 'none', background: 'transparent',
+        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        width: 36, height: 36, borderRadius: '50%', background: 'var(--border)', color: 'var(--foreground)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <BellIcon width={16} height={16} />
+      </span>
+    </button>
+  );
+}
+
+export const SyncIconCircle: Story = {
+  name: '동기화 아이콘 서클 — 홈은 글자 알약, 나머지 화면은 아이콘 서클을 써요',
+  args: {
+    title: '뒤로',
+    showBack: true,
+    rightSlot: (
+      <>
+        <DemoSyncCircle />
+        <DemoBell />
         <DemoAvatar />
       </>
     ),
