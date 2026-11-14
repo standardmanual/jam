@@ -25,10 +25,12 @@ import {
   type RecipePayloadInput,
 } from '@/lib/combine/recipe-payload'
 import { recipeReleaseState, type RecipeReleaseInput } from '@/lib/combine/visibility'
+import { resolveGradeMode } from '@/lib/combine/gradeMode'
 import { collectRecipeReferences } from '@/lib/admin/recipe-references'
 import { recipeDeleteBlockedMessage } from '@/lib/admin/recipe-bulk'
+import { findBundleViolation, groupItemBadgeBundles, type BundleBadgeInput } from '@/lib/admin/recipe-grade-bundles'
 import { isUuid } from '@/lib/admin/uuid'
-import type { CombinationRecipeRow } from '@/types/database'
+import type { CombinationRecipeRow, CombineRecipeGradeMode } from '@/types/database'
 
 export { recipeReleaseState, type RecipeReleaseState } from '@/lib/combine/visibility'
 
@@ -48,6 +50,20 @@ export interface RecipeRow {
   reward_locked?: boolean
   /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 값을 그대로 둔다). 새 어드민만 보낸다 */
   allow_no_reward?: boolean
+  /** 제출하지 않으면 행에 넣지 않는다(생성 때는 DB 기본값 `fixed`, 수정 때는 기존 값 그대로). 티켓 20261114_1705 */
+  grade_mode?: CombineRecipeGradeMode
+  /** 제출하지 않으면 행에 넣지 않는다. `null`은 첫 성공자 보상 없음. 티켓 20261114_1705 */
+  first_success_badge_id?: string | null
+}
+
+/**
+ * 저장 검증이 기존 레시피를 알아야 할 때 호출부가 넘기는 값(수정 라우트). 생성에는 없다.
+ * - `recipeId`: 첫 성공자 보상을 켤 때 이미 성공 기록이 있는지 볼 레시피
+ * - `existing`: 칸을 제출하지 않았을 때 유효 값(유형)과, 제출한 첫 성공자 보상이 바뀌었는지 가르는 기준
+ */
+export interface RecipeWriteContext {
+  recipeId?: string
+  existing?: { grade_mode?: string | null; first_success_badge_id?: string | null }
 }
 
 export interface RecipeSlotRow {
@@ -59,13 +75,25 @@ export interface RecipeSlotRow {
 export async function buildRecipeRow(
   supabase: ServiceClient,
   body: RecipePayloadInput,
-  now: Date = new Date()
+  now: Date = new Date(),
+  context: RecipeWriteContext = {}
 ): Promise<{ ok: true; row: RecipeRow; slots: RecipeSlotRow[] } | { ok: false; error: string }> {
   const normalized = normalizeRecipePayload(body, now)
   if (!normalized.ok) return normalized
 
-  const { name, slots, rewardPoints, rewardBadgeIds, validFrom, validUntil, description, rewardLocked, allowNoReward } =
-    normalized.value
+  const {
+    name,
+    slots,
+    rewardPoints,
+    rewardBadgeIds,
+    validFrom,
+    validUntil,
+    description,
+    rewardLocked,
+    allowNoReward,
+    gradeMode,
+    firstSuccessBadgeId,
+  } = normalized.value
 
   // 슬롯 후보 배지 전체의 실제 타입 조회 — 삭제된 배지는 후보로 쓸 수 없다.
   const allowedBadgeIds = [...new Set(slots.flatMap((s) => s.allowedBadgeIds))]
@@ -113,6 +141,18 @@ export async function buildRecipeRow(
     }
   }
 
+  // 레시피 유형(티켓 20261114_1705 2회차) — 칸을 제출하지 않았으면 기존 레시피의 유형(생성이면 fixed)으로 본다.
+  const effectiveGradeMode = gradeMode ?? resolveGradeMode(context.existing ?? {})
+  if (effectiveGradeMode === 'follow_materials') {
+    const bundleCheck = await checkGradeFollowBundles(supabase, slots, rewardBadgeIds)
+    if (!bundleCheck.ok) return bundleCheck
+  }
+
+  if (typeof firstSuccessBadgeId === 'string') {
+    const firstSuccessCheck = await checkFirstSuccessBadge(supabase, firstSuccessBadgeId, context)
+    if (!firstSuccessCheck.ok) return firstSuccessCheck
+  }
+
   return {
     ok: true,
     row: {
@@ -124,6 +164,8 @@ export async function buildRecipeRow(
       ...(description !== undefined ? { description } : {}),
       ...(rewardLocked !== undefined ? { reward_locked: rewardLocked } : {}),
       ...(allowNoReward !== undefined ? { allow_no_reward: allowNoReward } : {}),
+      ...(gradeMode !== undefined ? { grade_mode: gradeMode } : {}),
+      ...(firstSuccessBadgeId !== undefined ? { first_success_badge_id: firstSuccessBadgeId } : {}),
     },
     slots: slots.map((s, idx) => ({
       slot_order: idx,
@@ -131,6 +173,130 @@ export async function buildRecipeRow(
       allowed_badge_ids: s.allowedBadgeIds,
     })),
   }
+}
+
+/** `.in()` 한 번에 넣는 값 개수 — 묶음 형제 조회가 URL 상한에 걸리지 않게 나눈다 */
+const BUNDLE_LOOKUP_CHUNK = 40
+
+const BUNDLE_LOOKUP_ERROR = '배지 묶음을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.'
+
+/**
+ * 등급 대응형 레시피의 저장 검사 — 아이템 슬롯의 후보와 보상 배지가 «4등급이 모두 갖춰진 아이템 배지 묶음»의 4등급 배지 전부로
+ * 이루어졌는지 본다(티켓 20261114_1705 2회차). 후보에 든 배지의 컬렉션·이름으로 형제 배지를 읽어 묶음을 세운다.
+ * 액티비티·체크인 슬롯은 등급이 없어 보지 않는다. 어긋나면 어느 자리(슬롯 n·보상)의 어느 묶음인지 문장으로 돌려준다.
+ */
+async function checkGradeFollowBundles(
+  supabase: ServiceClient,
+  slots: NormalizedSlot[],
+  rewardBadgeIds: string[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const groups: { where: string; ids: string[] }[] = [
+    ...slots.flatMap((slot, idx) =>
+      slot.badgeType === 'item' ? [{ where: `슬롯 ${idx + 1}`, ids: slot.allowedBadgeIds }] : []
+    ),
+    ...(rewardBadgeIds.length > 0 ? [{ where: '보상', ids: rewardBadgeIds }] : []),
+  ]
+  const involvedIds = [...new Set(groups.flatMap((g) => g.ids))]
+  if (involvedIds.length === 0) return { ok: true }
+
+  const { data: ownRaw, error: ownError } = await supabase
+    .from('badges')
+    .select('id, name, rarity, item_book_id')
+    .in('id', involvedIds)
+    .is('deleted_at', null)
+  if (ownError) {
+    console.error('[recipe-write] 묶음 검사 — 후보 배지 조회 실패:', ownError)
+    return { ok: false, error: BUNDLE_LOOKUP_ERROR }
+  }
+  const own = (ownRaw ?? []) as BundleBadgeInput[]
+  const badgeById = new Map(own.map((b) => [b.id, b]))
+
+  // 형제 배지(같은 컬렉션·같은 이름)를 모두 읽어야 4등급이 갖춰졌는지 알 수 있다.
+  const bookIds = [...new Set(own.map((b) => b.item_book_id).filter((id): id is string => !!id))]
+  const names = [...new Set(own.map((b) => b.name))]
+  const siblings = new Map<string, BundleBadgeInput>(own.map((b) => [b.id, b]))
+  for (let i = 0; i < bookIds.length; i += BUNDLE_LOOKUP_CHUNK) {
+    for (let j = 0; j < names.length; j += BUNDLE_LOOKUP_CHUNK) {
+      const { data, error } = await supabase
+        .from('badges')
+        .select('id, name, rarity, item_book_id')
+        .in('item_book_id', bookIds.slice(i, i + BUNDLE_LOOKUP_CHUNK))
+        .in('name', names.slice(j, j + BUNDLE_LOOKUP_CHUNK))
+        .eq('type', 'item')
+        .is('deleted_at', null)
+      if (error) {
+        console.error('[recipe-write] 묶음 검사 — 형제 배지 조회 실패:', error)
+        return { ok: false, error: BUNDLE_LOOKUP_ERROR }
+      }
+      for (const b of (data ?? []) as BundleBadgeInput[]) siblings.set(b.id, b)
+    }
+  }
+  const bundles = groupItemBadgeBundles([...siblings.values()])
+
+  for (const group of groups) {
+    const violation = findBundleViolation(group.ids, bundles, badgeById, group.where)
+    if (violation) return { ok: false, error: violation }
+  }
+  return { ok: true }
+}
+
+/**
+ * 첫 성공자 보상 배지 검사(티켓 20261114_1705 2회차) — ① 삭제되지 않은 아이템 배지, ② 드랍 제외(`drop_excluded`)가 켜진 배지(다른 경로에서
+ * 나오지 않게 막는 방법, 1회차 결정), ③ 이미 성공 기록이 있는 레시피에서는 새로 켜거나 다른 배지로 바꿀 수 없다.
+ * 기존과 같은 배지를 그대로 다시 보내는 수정은 ③을 보지 않는다. 끄는 것(`null`)은 이 함수를 거치지 않는다.
+ */
+async function checkFirstSuccessBadge(
+  supabase: ServiceClient,
+  badgeId: string,
+  context: RecipeWriteContext
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await supabase
+    .from('badges')
+    .select('id, type, drop_excluded')
+    .eq('id', badgeId)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) {
+    console.error('[recipe-write] 첫 성공자 보상 배지 조회 실패:', error)
+    return { ok: false, error: '첫 성공자 보상 배지를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+  }
+  const badge = data as { id: string; type: string; drop_excluded: boolean } | null
+  if (!badge) {
+    return { ok: false, error: '첫 성공자 보상 배지가 삭제되었거나 존재하지 않아요. 다시 선택해 주세요.' }
+  }
+  if (badge.type !== 'item') {
+    return {
+      ok: false,
+      error: '첫 성공자 보상은 아이템 배지만 지정할 수 있어요. 액티비티·체크인 배지는 보상으로 쓸 수 없어요.',
+    }
+  }
+  if (!badge.drop_excluded) {
+    return {
+      ok: false,
+      error:
+        '이 배지는 드랍 제외가 꺼져 있어 첫 성공자 보상으로 쓸 수 없어요. 다른 경로에서도 나올 수 있기 때문이에요. 배지에서 드랍 제외를 켜거나 다른 배지를 선택해 주세요.',
+    }
+  }
+
+  const existingId = context.existing?.first_success_badge_id ?? null
+  if (context.recipeId && existingId !== badgeId) {
+    const { count, error: logError } = await supabase
+      .from('user_combine_success_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipe_id', context.recipeId)
+    if (logError) {
+      console.error('[recipe-write] 믹스 성공 기록 조회 실패:', logError)
+      return { ok: false, error: '믹스 성공 기록을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+    }
+    if ((count ?? 0) > 0) {
+      return {
+        ok: false,
+        error:
+          '이미 믹스에 성공한 유저가 있는 레시피에는 첫 성공자 보상을 켜거나 바꿀 수 없어요. 첫 성공이 이미 지나갔기 때문이에요. 새 레시피로 등록해 주세요.',
+      }
+    }
+  }
+  return { ok: true }
 }
 
 /** 레시피 슬롯 전체 교체 — delete-then-insert. */
