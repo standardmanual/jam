@@ -57,7 +57,7 @@ describe('TS 상수 ↔ SQL CHECK 동기화', () => {
   it('믹스 실패 사유: CombineFailReason ↔ user_combine_fail_logs_reason_check (마이그레이션 200)', () => {
     // 재료를 소각하기 전에 거절하는 사유는 실패 기록을 남기지 않으므로 CHECK에 없는 게 맞다.
     // 새 사유를 더할 때는 «기록을 남기는가»를 정해, 남기면 CHECK를 고치고 안 남기면 여기에 올린다.
-    const NOT_LOGGED = ['locked_item_not_allowed', 'pending_results_exist']
+    const NOT_LOGGED = ['locked_item_not_allowed', 'pending_results_exist', 'mixed_grade_not_allowed']
 
     const types = readFileSync(join(root, 'src/types/database.ts'), 'utf-8')
     const start = types.indexOf('export type CombineFailReason =')

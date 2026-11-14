@@ -53,6 +53,10 @@
  *  - 결과 아이템 배지의 배지 포인트(티켓 20261019_1314 2회, 운영 로직 14.1절): 결과를 바로 지급했으면 열린 개체에 한해 일련번호마다
  *    한 번 준다(`resultPointFollowUp.ts`). 잠긴 개체는 열 때, 받지 않은 결과는 받을 때(`/api/combine/pending`) 준다.
  *    레시피 보상 포인트(`pointsAwarded`)와 실패 보상은 그대로다.
+ *  - 레시피 유형(티켓 20261114_1705, 마이그레이션 340, `gradeMode.ts`): 등급 대응형(`grade_mode = 'follow_materials'`) 레시피는 재료를 모두 같은 등급으로 넣으면
+ *    같은 등급의 결과가 100% 나온다. 재료 등급이 섞이면 소각 전에 `mixed_grade_not_allowed`로 거절한다(재료·포인트·실패 기록 없음). 등급 고정형(`fixed`)은 지금 그대로다.
+ *  - 첫 성공자 보상(같은 티켓): 레시피에 `first_success_badge_id`가 있고 성공 기록 RPC가 `is_recipe_first = true`를 돌려주면 그 아이템 배지를 일반 결과와 함께 준다.
+ *    빈칸이 모자라거나 일반 결과가 받지 않은 결과로 남았으면 이 배지도 받지 않은 결과로 남긴다(`combine_grant_first_success`). 시험 믹스는 기록이 없어 받지 않는다.
  *  - 챕터 점수 «믹스 성공»(티켓 20261019_1315 3회, 운영 로직 12.2절): 성공 기록 RPC(`record_combine_success_with_id`)가 돌려주는 성공 행 id로 센다.
  *    시험 믹스는 기록을 남기지 않아 세지 않고, 빈손 성공은 센다. 점수 실패는 믹스 응답·소각·보상·후속 처리를 바꾸지 않는다(`recordCombineSuccess` 참고).
  */
@@ -64,6 +68,13 @@ import { burnMaterials, type InventorySlotState } from '@/lib/combine/burn'
 import { getPendingCount } from '@/lib/combine/pending'
 import { followUpCombineResultPoints } from '@/lib/combine/resultPointFollowUp'
 import { hasEndedResultBadge, recipeReleaseState } from '@/lib/combine/visibility'
+import {
+  narrowSlotsToGrade,
+  pickRewardBadgeIdsForGrade,
+  resolveGradeMode,
+  resolveMaterialGrade,
+  type RarityById,
+} from '@/lib/combine/gradeMode'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import { awardMixSuccessScore, recordMixScoreFailure } from '@/lib/chapter/mix'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
@@ -102,6 +113,11 @@ export type CombineResult =
       freeSlots?: number
       /** 레시피가 보상 없음(포인트 0, 보상 배지 없음)으로 정해져 있다 — 빈손이어도 이상 상황이 아니다 */
       noReward?: true
+      /**
+       * 첫 성공자 보상(티켓 20261114_1705) — 이번 믹스가 레시피의 첫 성공이고 레시피에 보상 배지가 지정돼 있을 때만 있다.
+       * `granted`면 `badge`가 지급된 배지(잠긴 채 나온 것은 `locked: true`이고 `id`·`name`을 가린다), `pending`이면 받지 않은 결과로 남았고 `badge`는 없다.
+       */
+      firstSuccessReward?: { status: 'granted' | 'pending'; badge?: CombineResultBadge }
       /** 공개 전 레시피를 운영자가 믹스한 시험 믹스 — 기록·지표에 남지 않는다. 일반 믹스에는 키가 없다. */
       testMix?: true
     }
@@ -178,6 +194,7 @@ export async function combineRecipeAttempt(
   // 막으려고 소각 앞에서 거절한다. 운영자(`allowUnreleased`)도 같다. 조회가 실패하면 닫는다(fail-closed).
   // 같은 조회 결과를 아래 결과 지급 뒤 응답용 이름·등급·잠김에도 쓴다.
   const rewardBadgeIds = recipe.reward_badge_ids ?? []
+  const followMaterials = resolveGradeMode(recipe) === 'follow_materials'
   let rewardBadges: RewardBadgeInfo[] = []
   if (rewardBadgeIds.length > 0) {
     const { data: rewardBadgesRaw, error: rewardBadgesError } = await supabase
@@ -191,7 +208,8 @@ export async function combineRecipeAttempt(
       return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
     }
     rewardBadges = (Array.isArray(rewardBadgesRaw) ? rewardBadgesRaw : []) as RewardBadgeInfo[]
-    if (hasEndedResultBadge(rewardBadgeIds, rewardBadges)) {
+    // 등급 대응형은 재료 등급이 정해진 뒤 «그 등급의 결과 배지»만 본다(아래 3-a단계). 등급 고정형은 보상 배지 전체를 본다.
+    if (!followMaterials && hasEndedResultBadge(rewardBadgeIds, rewardBadges)) {
       await logFailure(supabase, userId, [], 'recipe_not_found', 0)
       return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
     }
@@ -249,8 +267,47 @@ export async function combineRecipeAttempt(
 
   const badgeIds = items.map((i) => i.badge_id)
 
+  // 3-a. 등급 대응형(티켓 20261114_1705) — 재료 등급이 한 가지인지 소각 전에 보고, 슬롯 후보와 결과 배지를 그 등급으로 좁힌다.
+  // 등급이 섞이면 재료·포인트·실패 기록 없이 거절한다. 등급 고정형은 이 단계를 건너뛴다.
+  let effectiveSlots = recipeSlots
+  let effectiveRewardBadgeIds = rewardBadgeIds
+  if (followMaterials) {
+    const rarityById = await loadRarityById(supabase, [
+      ...badgeIds,
+      ...recipeSlots.filter((s) => s.badge_type === 'item').flatMap((s) => s.allowed_badge_ids),
+      ...rewardBadgeIds,
+    ])
+    if (!rarityById) {
+      await recordFailure([], 'recipe_not_found', 0)
+      return withTestMix({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+    }
+    const grade = resolveMaterialGrade(badgeIds, rarityById)
+    if (!grade.ok) {
+      if (grade.reason === 'mixed') {
+        return withTestMix({ success: false, reason: 'mixed_grade_not_allowed', pointsAwarded: 0 })
+      }
+      await recordFailure(badgeIds, 'items_not_found', 0)
+      return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
+    }
+    effectiveSlots = narrowSlotsToGrade(recipeSlots, grade.rarity, rarityById)
+    // 삭제된 배지(앞서 조회에서 빠진 것)는 결과로 줄 수 없으므로 같이 뺀다.
+    const liveRewardIds = new Set(rewardBadges.map((b) => b.id))
+    effectiveRewardBadgeIds = pickRewardBadgeIdsForGrade(rewardBadgeIds, grade.rarity, rarityById).filter((id) =>
+      liveRewardIds.has(id)
+    )
+    // 보상 배지를 정해 둔 레시피인데 이 등급의 결과가 없으면(데이터 오류) 재료만 잃게 두지 않고 소각 전에 거절한다.
+    // 이 등급 결과 배지의 공개 기간이 끝난 경우도 같다(운영 로직 8.4절).
+    if (
+      (rewardBadgeIds.length > 0 && effectiveRewardBadgeIds.length === 0) ||
+      hasEndedResultBadge(effectiveRewardBadgeIds, rewardBadges)
+    ) {
+      await recordFailure([], 'recipe_not_found', 0)
+      return withTestMix({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+    }
+  }
+
   // 3. 선택된 레시피의 슬롯 충족 여부만 판정한다(전체 레시피 스캔 없음).
-  const matched = (await matchesRecipeSlots(supabase, userId, recipeSlots, badgeIds)) ? recipe : undefined
+  const matched = (await matchesRecipeSlots(supabase, userId, effectiveSlots, badgeIds)) ? recipe : undefined
 
   // 4. 원본 아이템 소각 — 성공/실패 무관 항상 소각. 소프트 삭제·칸 반환·Consume 이벤트는 공용 소각 단계(`burn.ts`)가 한다.
   // 소각 행 수가 요청한 itemIds와 다르면(동시 믹스 시도) 보상 지급 없이 중단한다.
@@ -265,7 +322,7 @@ export async function combineRecipeAttempt(
     // 결과 지급은 `combine_grant_results` 한 번이다(마이그레이션 236). 빈칸이 결과 개수 이상이면 모두 기한 없이 지급하고,
     // 모자라면 일부만 주지 않고 전부 받지 않은 결과로 남긴다. 잠김은 레시피(`reward_locked`)와 배지(`always_locked`)가 정한다.
     // 앱은 빈칸을 세지 않는다 — 소각으로 칸이 반환된 뒤의 값은 DB가 인벤토리 행을 잠그고 읽는다.
-    const grant = await grantResults(supabase, userId, matched, rewardBadgeIds, rewardBadges)
+    const grant = await grantResults(supabase, userId, matched, effectiveRewardBadgeIds, rewardBadges)
     // 결과를 바로 지급했으면 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
     if (grant.status === 'granted') {
       await notifyInventorySlotsLow(userId, supabase)
@@ -286,8 +343,9 @@ export async function combineRecipeAttempt(
     // 응답과 보상은 그대로다(티켓 20261001_0631, 믹스 행동 지표). 시험 믹스는 기록하지 않는다 —
     // 남기면 운영자가 공개 전에 먼저 성공해 실제 첫 성공 유저의 «레시피 최초 성공» 몫을 가로챈다
     // (티켓 20261001_1159).
+    let firstSuccessReward: FirstSuccessRewardOutcome | null = null
     if (!testMix) {
-      await recordCombineSuccess(
+      const recorded = await recordCombineSuccess(
         supabase,
         userId,
         matched.id,
@@ -295,9 +353,19 @@ export async function combineRecipeAttempt(
         grant.recordedBadgeIds,
         pointsAwarded
       )
+      // 첫 성공자 보상(티켓 20261114_1705) — 성공 기록 RPC가 이번 믹스를 «레시피 최초 성공»으로 정했을 때만 준다(부분 유일 인덱스가 정확히 1명을 정한다).
+      if (recorded.isRecipeFirst && matched.first_success_badge_id) {
+        firstSuccessReward = await grantFirstSuccessReward(
+          supabase,
+          userId,
+          matched,
+          matched.first_success_badge_id,
+          grant.status === 'pending'
+        )
+      }
     }
 
-    const noReward = rewardBadgeIds.length === 0 && matched.reward_points <= 0
+    const noReward = effectiveRewardBadgeIds.length === 0 && matched.reward_points <= 0
     return withTestMix({
       success: true,
       path: 'recipe',
@@ -306,6 +374,7 @@ export async function combineRecipeAttempt(
       resultStatus: grant.status,
       ...(grant.status === 'pending' ? { pendingCount: grant.pendingCount, freeSlots: grant.freeSlots } : {}),
       ...(noReward ? { noReward: true as const } : {}),
+      ...(firstSuccessReward ? { firstSuccessReward } : {}),
     })
   }
 
@@ -504,6 +573,88 @@ async function grantResults(
   return empty
 }
 
+/**
+ * 배지 id들의 등급(`badges.rarity`)을 한 번에 읽는다. 삭제된 배지도 읽는다(이미 가진 재료는 배지가 삭제돼도 재료다).
+ * 조회에 실패하면 `null`이다 — 호출부가 닫는다(fail-closed).
+ */
+async function loadRarityById(supabase: ServiceClient, badgeIds: string[]): Promise<RarityById | null> {
+  const ids = [...new Set(badgeIds)]
+  if (ids.length === 0) return new Map()
+  const { data, error } = await supabase.from('badges').select('id, rarity').in('id', ids)
+  if (error) {
+    console.error('[combineRecipeAttempt] 재료·결과 배지 등급 조회 실패 — 레시피를 쓸 수 없는 것으로 처리:', error)
+    return null
+  }
+  return new Map(((data ?? []) as { id: string; rarity: string | null }[]).map((b) => [b.id, b.rarity]))
+}
+
+type FirstSuccessRewardOutcome = NonNullable<Extract<CombineResult, { success: true }>['firstSuccessReward']>
+
+/**
+ * 첫 성공자 보상 배지 1개를 지급한다(`combine_grant_first_success`, 마이그레이션 340). 빈칸이 있으면 기한 없이 지급하고, 모자라거나
+ * 일반 결과가 받지 않은 결과로 남았으면(`forcePending`) 받지 않은 결과로 남긴다. 던지지 않는다 — 이미 재료가 소각되고 일반 결과가 지급된 뒤라
+ * 실패해도 믹스 응답을 바꾸지 않고 로그만 남긴다(첫 성공자는 이미 정해져 다시 받을 수 없으므로 운영이 탐지할 수 있게 오류를 남긴다).
+ * 아이템 배지가 아니거나 삭제된 배지는 DB가 건너뛴다(`status: 'none'`) — 응답에도 싣지 않는다.
+ */
+async function grantFirstSuccessReward(
+  supabase: ServiceClient,
+  userId: string,
+  recipe: CombinationRecipeRow,
+  badgeId: string,
+  forcePending: boolean
+): Promise<FirstSuccessRewardOutcome | null> {
+  try {
+    const { data, error } = await supabase.rpc('combine_grant_first_success', {
+      p_user_id: userId,
+      p_recipe_id: recipe.id,
+      p_badge_id: badgeId,
+      p_locked: recipe.reward_locked === true,
+      p_force_pending: forcePending,
+    })
+    const result = data as { ok?: boolean; error?: string; status?: string; itemId?: string | null } | null
+    if (error || !result || result.ok !== true) {
+      console.error('[combineRecipeAttempt] combine_grant_first_success 실패 — 첫 성공자 보상 미지급:', {
+        recipeId: recipe.id,
+        badgeId,
+        userId,
+        rpcError: error?.message ?? result?.error ?? 'unknown',
+      })
+      return null
+    }
+    if (result.status === 'pending') return { status: 'pending' }
+    if (result.status !== 'granted') {
+      console.error('[combineRecipeAttempt] 첫 성공자 보상 배지가 지급되지 않음(삭제됐거나 아이템 배지가 아님):', {
+        recipeId: recipe.id,
+        badgeId,
+        userId,
+      })
+      return null
+    }
+
+    // 지급 뒤 처리 — 열린 개체의 배지 포인트와 남은 칸 알림. 던지지 않는다.
+    if (result.itemId) await followUpCombineResultPoints(supabase, userId, [result.itemId])
+    await notifyInventorySlotsLow(userId, supabase)
+
+    const { data: badgeRaw } = await supabase
+      .from('badges')
+      .select('id, name, rarity, always_locked')
+      .eq('id', badgeId)
+      .maybeSingle()
+    const badge = badgeRaw as { id: string; name: string; rarity: string; always_locked?: boolean | null } | null
+    if (!badge) return { status: 'granted' }
+    const locked = recipe.reward_locked === true || badge.always_locked === true
+    return {
+      status: 'granted',
+      badge: locked
+        ? { id: '', name: '', rarity: badge.rarity, locked: true }
+        : { id: badge.id, name: badge.name, rarity: badge.rarity },
+    }
+  } catch (error) {
+    console.error('[combineRecipeAttempt] 첫 성공자 보상 지급 예외:', error)
+    return null
+  }
+}
+
 /** 실패 이력 적재 — 어드민 유저 상세에서만 조회한다(유저 화면 비노출). 실패해도 응답을 막지 않는다. */
 async function logFailure(
   supabase: ServiceClient,
@@ -524,7 +675,8 @@ async function logFailure(
 
 /**
  * 성공 이력 적재 — `record_combine_success_with_id` RPC(마이그레이션 254, 옛 `record_combine_success`(200)와 같은 동작에 방금 넣은 행의 id를 함께 돌려줌)가
- * 성공 1행과 «레시피 최초 성공» 표시를 원자적으로 만든다. 믹스 시도·성공 횟수와 `recipe_first_success` 배지 조건의 원천이다.
+ * 성공 1행과 «레시피 최초 성공» 표시를 원자적으로 만든다. 믹스 시도·성공 횟수와 `recipe_first_success` 배지 조건의 원천이고,
+ * 돌려주는 `is_recipe_first`는 첫 성공자 보상(티켓 20261114_1705)의 판정이다.
  * 오류·예외는 `console.error`로만 남기고 삼킨다 — 이미 재료가 소각되고 보상이 지급된 뒤라 기록
  * 실패가 믹스 응답을 바꾸면 안 된다.
  *
@@ -539,7 +691,7 @@ async function recordCombineSuccess(
   ingredientBadgeIds: string[],
   resultBadgeIds: string[],
   pointsAwarded: number
-): Promise<void> {
+): Promise<{ isRecipeFirst: boolean }> {
   try {
     const { data, error } = await supabase.rpc('record_combine_success_with_id', {
       p_user_id: userId,
@@ -551,12 +703,15 @@ async function recordCombineSuccess(
     if (error) {
       console.error('[combineRecipeAttempt] 성공 이력 기록 오류:', error)
       await recordMixScoreFailure(userId, `record_combine_success_with_id RPC 오류: ${error.message ?? String(error)}`)
-      return
+      return { isRecipeFirst: false }
     }
     await awardMixSuccessScore(supabase, userId, data)
+    // 첫 성공자 보상 판정(티켓 20261114_1705) — 기록이 실패했거나 응답이 알려진 모양이 아니면 첫 성공이 아닌 것으로 본다(보상을 못 받는 쪽이 안전하다).
+    return { isRecipeFirst: (data as { is_recipe_first?: unknown } | null)?.is_recipe_first === true }
   } catch (error) {
     console.error('[combineRecipeAttempt] 성공 이력 기록 예외:', error)
     await recordMixScoreFailure(userId, `record_combine_success_with_id 예외: ${error instanceof Error ? error.message : String(error)}`)
+    return { isRecipeFirst: false }
   }
 }
 

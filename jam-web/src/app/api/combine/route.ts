@@ -12,6 +12,7 @@
  *  - 실패: { success: false, reason: 'no_recipe_match'|'items_not_found'|'invalid_count'|
  *    'recipe_not_found'|'locked_item_not_allowed', pointsAwarded, message }
  *    (`locked_item_not_allowed`는 재료에 잠긴 개체가 섞인 경우다. 소각 전에 거절하고 `code` 키를 더해 409로 내린다, 티켓 20261018_0051)
+ *    (`mixed_grade_not_allowed`는 등급 대응형 레시피에 재료 등급이 섞인 경우다. 소각 전에 거절하고 `code` 키를 더해 409로 내린다, 티켓 20261114_1705)
  *    (`pending_results_exist`는 받지 않은 믹스 결과가 남은 경우다. 소각 전에 거절하고 `code` 키를 더해 409로 내린다, 티켓 20261018_0055)
  *  - 이용 정지 중이면 소각 전에 403 `{ error, code: 'user_suspended' }`로 막는다(티켓 20261018_0055)
  *  - 성공 응답에는 결과 지급 상태 `resultStatus`('granted'|'pending'|'none')가 있다. 빈칸이 모자라 결과를 받지 않은 상태로 남기면
@@ -38,10 +39,14 @@ const FAIL_REASON_MESSAGE: Record<CombineFailReason, string> = {
   recipe_not_found: d.combine.recipeNotFound,
   locked_item_not_allowed: d.lockedItem.combine,
   pending_results_exist: d.combine.pendingResultsExist,
+  mixed_grade_not_allowed: d.combine.mixedGradeNotAllowed,
 }
 
 /** 받지 않은 결과가 있어 새 믹스를 거절할 때 `code` 키로 내리는 값 — 클라이언트가 «받기»로 안내한다(`reason`과 같은 값) */
 const PENDING_RESULTS_EXIST_CODE = 'pending_results_exist'
+
+/** 등급 대응형 레시피에 재료 등급이 섞여 소각 전에 거절할 때 `code` 키로 내리는 값(`reason`과 같은 값, 티켓 20261114_1705) */
+const MIXED_GRADE_NOT_ALLOWED_CODE = 'mixed_grade_not_allowed'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -103,6 +108,11 @@ export async function POST(req: NextRequest) {
   // 받지 않은 결과가 남아 있으면 소각 전에 거절된다 — 받은 뒤에 새 믹스를 할 수 있다(티켓 20261018_0055)
   if (!result.success && result.reason === PENDING_RESULTS_EXIST_CODE) {
     return NextResponse.json({ ...result, code: PENDING_RESULTS_EXIST_CODE, message: d.combine.pendingResultsExist }, { status: 409 })
+  }
+
+  // 등급 대응형 레시피에 재료 등급이 섞이면 소각 전에 거절된다 — 재료·포인트가 그대로고 실패 보상·기록이 없다(티켓 20261114_1705)
+  if (!result.success && result.reason === MIXED_GRADE_NOT_ALLOWED_CODE) {
+    return NextResponse.json({ ...result, code: MIXED_GRADE_NOT_ALLOWED_CODE, message: d.combine.mixedGradeNotAllowed }, { status: 409 })
   }
 
   if (!result.success) {
