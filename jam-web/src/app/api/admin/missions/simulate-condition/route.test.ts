@@ -36,10 +36,10 @@ const post = (body: Record<string, unknown>) =>
 
 describe('POST /api/admin/missions/simulate-condition — DB 기록 키 안내', () => {
   it('조건에 든 DB 기록 키를 missionDbKeysPresent로 알려 준다', async () => {
-    const res = await post({ condition: { distance_km: 10, combine_success_count: 2, recipe_first_success: { recipe_id: 'r1' } }, userId: 'u1' })
+    const res = await post({ condition: { distance_km: 10, combine_success_count: 2, drop_item_count: 1 }, userId: 'u1' })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.missionDbKeysPresent).toEqual(['combine_success_count', 'recipe_first_success'])
+    expect(body.missionDbKeysPresent).toEqual(['combine_success_count', 'drop_item_count'])
   })
 
   it('2회(티켓 20261019_1445): 날짜·체크인 키도 안내한다', async () => {

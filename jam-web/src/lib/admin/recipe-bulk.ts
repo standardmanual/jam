@@ -13,8 +13,8 @@ export interface RecipeDeletionCandidate {
 
 /**
  * 레시피 삭제 거부 문구 — 단건 DELETE 409 응답과 일괄 삭제 건너뜀 사유가 같은 문장을 쓴다
- * (티켓 20261001_1200). 참조 소스가 배지 조건(`recipe_first_success`) 하나뿐이라 `count`는
- * 가리키는 배지 수다(`recipe-references.ts` 머리 주석).
+ * (티켓 20261001_1200). 지금은 삭제를 막는 참조 소스가 없어 이 문구가 나올 일이 없다(`recipe-references.ts` 머리 주석).
+ * 막는 참조를 다시 더하면 문구도 그 참조에 맞게 고친다.
  */
 export function recipeDeleteBlockedMessage(count: number): string {
   return `삭제할 수 없어요. 이 레시피를 가리키는 배지가 ${count}개 있어요. 배지 조건에서 이 레시피를 먼저 바꿔 주세요.`

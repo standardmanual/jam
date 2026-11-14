@@ -6,7 +6,6 @@ import {
   findConditionShapeSaveWarning,
   findCheckinBadgeNamesNotFoundError,
   findHiddenBadgeReferenceError,
-  findRecipeFirstSuccessNotFoundError,
   findRarityLevelError,
 } from '@/lib/admin/badge-validation'
 import { isValidFamilyKey } from '@/lib/admin/badge-families'
@@ -136,13 +135,6 @@ export async function POST(req: NextRequest) {
   const checkinBadgeNamesError = await findCheckinBadgeNamesNotFoundError(condition_json ?? null, supabase)
   if (checkinBadgeNamesError) {
     return NextResponse.json({ error: checkinBadgeNamesError }, { status: 400 })
-  }
-
-  // 레시피 최초 성공(recipe_first_success)의 레시피 ID 형식·존재 검증 — 역시 DB 조회가 필요해 별도로
-  // await한다(티켓 20261001_0631).
-  const recipeFirstSuccessError = await findRecipeFirstSuccessNotFoundError(condition_json ?? null, supabase)
-  if (recipeFirstSuccessError) {
-    return NextResponse.json({ error: recipeFirstSuccessError }, { status: 400 })
   }
 
   // 포인트를 생략한 요청(계열 화면의 «단계 추가» 등)은 배지 포인트 일괄 값으로 채운다: 숨김이면 0, 레벨형이면 레벨형 값, 아니면 등급 값(티켓 20261022_1135).

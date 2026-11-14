@@ -21,7 +21,6 @@ const ITEM_BADGE = uid(3)
 const ACTIVITY_BADGE = uid(4)
 const REWARD_BADGE = uid(5)
 const BOOK_ID = uid(6)
-const FIRST_SUCCESS_BADGE = uid(7)
 /** `LATER`(10/10 09:00 KST)를 등록 형식으로 바꾼 공개 시각. */
 const STARTS_AT = new Date(LATER).toISOString()
 const DAY = 24 * 60 * 60_000
@@ -408,8 +407,8 @@ describe('create — 정한 ID로 만든다', () => {
   })
 })
 
-describe('undo — 가리키는 배지를 확인한 뒤 ID로 지운다', () => {
-  const REASON = '연결된 배지가 있거나 확인하지 못해 레시피를 지우지 않았어요'
+describe('undo — 막는 참조를 확인한 뒤 ID로 지운다', () => {
+  const REASON = '연결된 항목이 있거나 확인하지 못해 레시피를 지우지 않았어요'
   const seed = (db: FakeDb) => {
     db.tables.combination_recipes = [{ id: RECIPE_ID }, { id: EXISTING_RECIPE_ID }]
     db.tables.combination_recipe_slots = [
@@ -417,31 +416,10 @@ describe('undo — 가리키는 배지를 확인한 뒤 ID로 지운다', () => 
       { id: 's2', recipe_id: EXISTING_RECIPE_ID },
     ]
   }
-  const firstSuccessBadge = (recipeId: string, over: Row = {}) => ({
-    id: FIRST_SUCCESS_BADGE,
-    deleted_at: null,
-    condition_json: { recipe_first_success: { recipe_id: recipeId } },
-    ...over,
-  })
-
-  it('이 레시피를 가리키는 배지(가장 먼저 성공)가 있으면 지우지 않고 고정 사유를 돌려준다. 배지·레시피 ID는 reason에 없다', async () => {
-    const db = new FakeDb()
-    seed(db)
-    db.tables.badges = [firstSuccessBadge(RECIPE_ID)]
-    const failure = await handler.undo(db.service, RECIPE_ID)
-
-    expect(failure?.reason).toBe(REASON)
-    expect(failure?.reason).not.toContain(RECIPE_ID)
-    expect(failure?.reason).not.toContain(FIRST_SUCCESS_BADGE)
-    expect(failure?.detail).toContain('1개')
-    expect(deletes(db)).toEqual([])
-    expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
-  })
-
   it('참조를 읽지 못하면 확인 없이 지우지 않고 원문은 detail에만 있다', async () => {
     const db = new FakeDb()
     seed(db)
-    db.failIf = (call) => call.table === 'badges'
+    db.failIf = (call) => call.table === 'today_cards'
     const failure = await handler.undo(db.service, RECIPE_ID)
 
     expect(failure?.reason).toBe(REASON)
@@ -451,11 +429,11 @@ describe('undo — 가리키는 배지를 확인한 뒤 ID로 지운다', () => 
     expect(recipeIds(db)).toHaveLength(2)
   })
 
-  it('가리키는 배지가 없으면 ID로 지우고 슬롯도 함께 사라지며 다른 레시피는 건드리지 않는다. 참조 확인이 지우기보다 먼저다', async () => {
+  it('막는 참조가 없으면 ID로 지우고 슬롯도 함께 사라지며 다른 레시피는 건드리지 않는다. 참조 확인이 지우기보다 먼저다', async () => {
     const db = new FakeDb()
     seed(db)
-    // 다른 레시피를 가리키는 배지와 삭제된 배지는 상관없다.
-    db.tables.badges = [firstSuccessBadge(EXISTING_RECIPE_ID), firstSuccessBadge(RECIPE_ID, { id: uid(8), deleted_at: '2026-10-01T00:00:00.000Z' })]
+    // 카드는 삭제를 막지 않는다(레시피 줄만 빈다).
+    db.tables.today_cards = [{ id: 'card-outside', recipe_id: RECIPE_ID }]
     expect(await handler.undo(db.service, RECIPE_ID)).toBeNull()
 
     expect(deletes(db)).toHaveLength(1)
@@ -463,17 +441,7 @@ describe('undo — 가리키는 배지를 확인한 뒤 ID로 지운다', () => 
     expect(recipeIds(db)).toEqual([EXISTING_RECIPE_ID])
     expect((db.tables.combination_recipe_slots as Row[]).map((slot) => slot.id)).toEqual(['s2'])
     const order = db.calls.map((call) => `${call.table}:${call.op}`)
-    expect(order.indexOf('badges:select')).toBeLessThan(order.indexOf('combination_recipes:delete'))
-  })
-
-  it('배지가 지워진 뒤에는 레시피를 지울 수 있다(그래서 되돌림은 배지가 먼저다)', async () => {
-    const db = new FakeDb()
-    seed(db)
-    db.tables.badges = [firstSuccessBadge(RECIPE_ID)]
-    expect((await handler.undo(db.service, RECIPE_ID))?.reason).toBe(REASON)
-    db.tables.badges = []
-    expect(await handler.undo(db.service, RECIPE_ID)).toBeNull()
-    expect(recipeIds(db)).toEqual([EXISTING_RECIPE_ID])
+    expect(order.indexOf('today_cards:select')).toBeLessThan(order.indexOf('combination_recipes:delete'))
   })
 
   it('공개 시각이 지난 레시피도 지운다: 시각 조건을 걸지 않는다(멈춘 준비중 정리)', async () => {
@@ -498,7 +466,7 @@ describe('undo — 가리키는 배지를 확인한 뒤 ID로 지운다', () => 
 })
 
 describe('cancel — 공개 전에만 지운다', () => {
-  const CANCEL_REFERENCED = '가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
+  const CANCEL_REFERENCED = '카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
   const seed = (db: FakeDb, recipe: Row = {}) => {
     db.tables.combination_recipes = [
       { id: RECIPE_ID, valid_from: LATER, valid_until: null, ...recipe },
@@ -509,10 +477,9 @@ describe('cancel — 공개 전에만 지운다', () => {
       { id: 's2', recipe_id: EXISTING_RECIPE_ID },
     ]
   }
-  const firstSuccessBadge = { id: FIRST_SUCCESS_BADGE, deleted_at: null, condition_json: { recipe_first_success: { recipe_id: RECIPE_ID } } }
   const cancel = (db: FakeDb) => handler.cancel(db.service, RECIPE_ID, { now: NOW })
 
-  it('공개 전이고 가리키는 배지가 없으면 ID로 지우고 슬롯도 사라지며 다른 레시피는 건드리지 않는다. 지울 때 공개 시각 조건을 건다', async () => {
+  it('공개 전이고 가리키는 카드가 없으면 ID로 지우고 슬롯도 사라지며 다른 레시피는 건드리지 않는다. 지울 때 공개 시각 조건을 건다', async () => {
     const db = new FakeDb()
     seed(db)
     expect(await cancel(db)).toEqual({ ok: true, missing: false })
@@ -523,15 +490,15 @@ describe('cancel — 공개 전에만 지운다', () => {
     expect(deletes(db)[0]).toMatchObject({ table: 'combination_recipes', filters: [['id', RECIPE_ID], ['valid_from >', NOW.toISOString()]] })
     // 읽기 → 참조 확인 → 지우기 순서
     const order = db.calls.map((call) => `${call.table}:${call.op}`)
-    expect(order.indexOf('combination_recipes:select')).toBeLessThan(order.indexOf('badges:select'))
-    expect(order.indexOf('badges:select')).toBeLessThan(order.indexOf('combination_recipes:delete'))
+    expect(order.indexOf('combination_recipes:select')).toBeLessThan(order.indexOf('today_cards:select'))
+    expect(order.indexOf('today_cards:select')).toBeLessThan(order.indexOf('combination_recipes:delete'))
   })
 
   it('행이 없으면 밖에서 지워진 것이라 성공(missing)이고 아무것도 쓰지 않으며 참조도 읽지 않는다', async () => {
     const db = new FakeDb()
     expect(await cancel(db)).toEqual({ ok: true, missing: true })
     expect(db.calls.filter((call) => call.op !== 'select')).toEqual([])
-    expect(db.calls.some((call) => call.table === 'badges')).toBe(false)
+    expect(db.calls.some((call) => call.table === 'today_cards')).toBe(false)
   })
 
   it.each([
@@ -547,21 +514,7 @@ describe('cancel — 공개 전에만 지운다', () => {
     expect(result).toEqual({ ok: false, code: 'published', failure: { reason: '공개 시각이 지나 취소할 수 없어요' } })
     expect(deletes(db)).toEqual([])
     expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
-    expect(db.calls.some((call) => call.table === 'badges')).toBe(false)
-  })
-
-  it('가장 먼저 성공 배지가 이 레시피를 가리키면 referenced이고 지우지 않는다. 배지·레시피 ID는 reason에 없다', async () => {
-    const db = new FakeDb()
-    seed(db)
-    db.tables.badges = [firstSuccessBadge]
-    const result = await cancel(db)
-
-    expect(result).toMatchObject({ ok: false, code: 'referenced', failure: { reason: CANCEL_REFERENCED } })
-    if (result.ok) throw new Error('실패여야 해요')
-    expect(result.failure.reason).not.toContain(RECIPE_ID)
-    expect(result.failure.reason).not.toContain(FIRST_SUCCESS_BADGE)
-    expect(deletes(db)).toEqual([])
-    expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
+    expect(db.calls.some((call) => call.table === 'today_cards')).toBe(false)
   })
 
   it('운영툴 밖 카드(레시피 공개 카드)가 이 레시피를 가리키면 referenced이고 지우지 않는다. 카드·레시피 ID는 reason에 없다(티켓 20261006_1218)', async () => {
@@ -599,28 +552,6 @@ describe('cancel — 공개 전에만 지운다', () => {
     expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
   })
 
-  it('삭제된 배지가 가리키는 건 참조가 아니다', async () => {
-    const db = new FakeDb()
-    seed(db)
-    db.tables.badges = [{ ...firstSuccessBadge, deleted_at: '2026-10-01T00:00:00.000Z' }]
-    expect(await cancel(db)).toEqual({ ok: true, missing: false })
-  })
-
-  it('참조를 읽지 못하면 지우지 않고 error다. DB 오류 원문은 detail에도 reason에도 싣지 않고 서버 함수의 쉬운 문장만 detail에 남는다', async () => {
-    const db = new FakeDb()
-    seed(db)
-    db.failIf = (call) => call.table === 'badges'
-    const result = await cancel(db)
-
-    expect(result).toMatchObject({ ok: false, code: 'error', failure: { reason: '레시피를 지우지 못했어요' } })
-    if (result.ok) throw new Error('실패여야 해요')
-    expect(result.failure.reason).not.toContain(DB_SECRET)
-    expect(result.failure.reason).not.toContain(RECIPE_ID)
-    expect(result.failure.detail).not.toContain(DB_SECRET)
-    expect(deletes(db)).toEqual([])
-    expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
-  })
-
   it('읽은 뒤 공개 시각이 지나면(삭제 경합) 지운 행이 없고, 다시 읽어 공개됐으니 published다', async () => {
     const db = new FakeDb()
     seed(db)
@@ -646,7 +577,7 @@ describe('cancel — 공개 전에만 지운다', () => {
   it('참조 때문에 막힌 뒤 그사이 공개되면 published다. 그사이 지워졌으면 missing이다', async () => {
     const published = new FakeDb()
     seed(published)
-    published.tables.badges = [firstSuccessBadge]
+    published.tables.today_cards = [{ id: 'card-outside', recipe_id: RECIPE_ID }]
     let reads = 0
     published.beforeRun = (call) => {
       // 두 번째 레시피 읽기(409 뒤 다시 읽기)에서는 이미 공개돼 있다.
@@ -656,7 +587,7 @@ describe('cancel — 공개 전에만 지운다', () => {
 
     const gone = new FakeDb()
     seed(gone)
-    gone.tables.badges = [firstSuccessBadge]
+    gone.tables.today_cards = [{ id: 'card-outside', recipe_id: RECIPE_ID }]
     let goneReads = 0
     gone.beforeRun = (call) => {
       if (call.table === 'combination_recipes' && call.op === 'select' && ++goneReads === 2) gone.tables.combination_recipes = []
@@ -696,7 +627,7 @@ describe('cancel — 공개 전에만 지운다', () => {
   it('참조로 막힌 뒤 다시 읽기가 실패하면 error다', async () => {
     const db = new FakeDb()
     seed(db)
-    db.tables.badges = [firstSuccessBadge]
+    db.tables.today_cards = [{ id: 'card-outside', recipe_id: RECIPE_ID }]
     let selects = 0
     db.failIf = (call) => call.table === 'combination_recipes' && call.op === 'select' && ++selects === 2
     const result = await cancel(db)

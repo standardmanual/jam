@@ -1,6 +1,5 @@
 /**
- * 믹스 레시피(`combination_recipes` 테이블)를 가리키는 참조를 센다 (티켓 20260907_1138,
- * 배지 조건 참조는 티켓 20261001_1200)
+ * 믹스 레시피(`combination_recipes` 테이블)를 가리키는 참조를 센다 (티켓 20260907_1138)
  *
  * ## 실제 스키마 재검증 결과 (2026-09-07, 2026-10-01 갱신)
  * `poi-references.ts`와 같은 근거(마이그레이션 전체 grep — `recipe_id` 컬럼, `REFERENCES
@@ -11,12 +10,9 @@
  * `allowed_badge_ids`로 **배지를 참조하는 방향**만 있다(마이그레이션 174, 티켓 20260917_1427
  * 에서 재료·보유 조건 배열이 슬롯 테이블로 이관됐다).
  *
- * 다만 **FK가 아닌 느슨한 참조가 하나 있다** — 배지 조건 `badges.condition_json.
- * recipe_first_success.recipe_id`(마이그레이션 199, 티켓 20261001_0631)다. 이 레시피를
- * 지우면 아무도 얻을 수 없는 JAM! 배지가 남으므로, 삭제되지 않은(`deleted_at IS NULL`) 배지
- * 중 이 값으로 레시피를 가리키는 것을 센다. 소스가 이것 하나뿐이라 `total`은 곧 «가리키는
- * 배지 수»이고, 삭제 거부 문구(`recipeDeleteBlockedMessage`)도 그 전제다 — 소스를 늘리면 문구도
- * 함께 고친다.
+ * 예전에는 «가장 먼저 성공» 배지 조건이 레시피를 가리키는 느슨한 참조였고 삭제를 막았지만,
+ * 그 조건 종류를 없애(티켓 20261114_1705 4회차) 지금 삭제를 막는 참조는 없다.
+ * 계약(`blockingTotal`·`total`)은 그대로 두므로 막는 참조를 다시 더하면 호출부가 그대로 막는다.
  *
  * `user_combine_success_logs.recipe_id`는 FK를 일부러 걸지 않았다(마이그레이션 200) —
  * 레시피를 지워도 유저의 성공 횟수·최초 성공 기록은 남아야 하므로 가드 대상이 아니다.
@@ -38,7 +34,7 @@ import type { RecipeDeletionCandidate } from './recipe-bulk'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export type RecipeReferenceKey = 'badges_recipe_first_success' | 'today_cards_recipe_id'
+export type RecipeReferenceKey = 'today_cards_recipe_id'
 
 export interface RecipeReferenceSource {
   key: RecipeReferenceKey
@@ -49,13 +45,6 @@ export interface RecipeReferenceSource {
 }
 
 export const RECIPE_REFERENCE_SOURCES: RecipeReferenceSource[] = [
-  {
-    key: 'badges_recipe_first_success',
-    label: '레시피 최초 성공 배지',
-    location: "badges.condition_json->'recipe_first_success'->>'recipe_id'",
-    blocksDelete: true,
-    cascades: false,
-  },
   {
     key: 'today_cards_recipe_id',
     label: '레시피 공개 카드',
@@ -75,20 +64,13 @@ export interface RecipeReferenceReport {
   error: string | null
 }
 
-/**
- * `badges` 조건 JSON에서 레시피 id를 꺼내는 PostgREST 두 단계 경로(`->` 다음 `->>`). 같은 모양의
- * `.in()` 조회가 라이브에서 SQL 집계와 같은 건수를 돌려주는 것을 확인했다(2026-10-01, 티켓 20261001_1200).
- */
-const BADGE_RECIPE_ID_PATH = 'condition_json->recipe_first_success->>recipe_id'
-
 /** `.in()` 한 번에 넣는 id 개수. 80 × uuid 37자 ≈ 3KB — URL 상한에 여유가 있다 */
 const REFERENCE_CHUNK = 80
 
 /**
  * 대상 레시피 집합을 가리키는 참조를 전부 센다. **아무것도 쓰지 않는다.**
  *
- * 삭제되지 않은 배지 중 `recipe_first_success.recipe_id`가 대상 집합에 드는 것(삭제를 막는다)과,
- * `recipe_id`가 대상 집합에 드는 투데이 카드(삭제를 막지 않는다, `noticeTotal`)를 센다.
+ * `recipe_id`가 대상 집합에 드는 투데이 카드(삭제를 막지 않는다, `noticeTotal`)를 센다. 삭제를 막는 참조는 지금 없다.
  * 조회가 하나라도 실패하면 부분 카운트로 «참조 0건»이라 판정하지 않도록 `error`를 채워
  * 돌려준다 — 호출부는 삭제를 막는다(fail-closed).
  */
@@ -96,24 +78,18 @@ export async function collectRecipeReferences(
   supabase: ServiceClient,
   recipeIds: string[]
 ): Promise<RecipeReferenceReport> {
-  // 배지 조건의 recipe_id는 text로 비교되므로, 주소로 들어온 대문자 uuid도 소문자로 맞춰 센다.
+  // 주소로 들어온 대문자 uuid도 소문자로 맞춰 센다.
   const ids = recipeIds.map((id) => id.toLowerCase())
-  let badgeCount = 0
   let cardCount = 0
   for (let i = 0; i < ids.length; i += REFERENCE_CHUNK) {
     const chunk = ids.slice(i, i + REFERENCE_CHUNK)
-    const [badges, cards] = await Promise.all([
-      supabase.from('badges').select('id', { count: 'exact', head: true }).is('deleted_at', null).in(BADGE_RECIPE_ID_PATH, chunk),
-      supabase.from('today_cards').select('id', { count: 'exact', head: true }).in('recipe_id', chunk),
-    ])
-    const failed = badges.error ?? cards.error
-    if (failed) {
-      return { blockingTotal: 0, cascadeTotal: 0, total: 0, noticeTotal: 0, error: failed.message }
+    const cards = await supabase.from('today_cards').select('id', { count: 'exact', head: true }).in('recipe_id', chunk)
+    if (cards.error) {
+      return { blockingTotal: 0, cascadeTotal: 0, total: 0, noticeTotal: 0, error: cards.error.message }
     }
-    badgeCount += badges.count ?? 0
     cardCount += cards.count ?? 0
   }
-  return { blockingTotal: badgeCount, cascadeTotal: 0, total: badgeCount, noticeTotal: cardCount, error: null }
+  return { blockingTotal: 0, cascadeTotal: 0, total: 0, noticeTotal: cardCount, error: null }
 }
 
 export interface RecipeDeletionLookupCandidate extends RecipeDeletionCandidate {
@@ -200,7 +176,7 @@ export interface BadgeInRecipeReferenceReport {
  * reward_badge_ids`(둘 다 uuid[])에 남아 있는 레시피 수를 센다 (티켓 20260910_1515,
  * 슬롯 이관은 티켓 20260917_1427).
  *
- * 레시피 행을 가리키는 참조는 배지 조건과 투데이 카드의 `recipe_id`(마이그레이션 217) 둘이고(파일 상단 주석, `collectRecipeReferences`),
+ * 레시피 행을 가리키는 참조는 투데이 카드의 `recipe_id`(마이그레이션 217)이고(파일 상단 주석, `collectRecipeReferences`),
  * **반대 방향**(레시피/슬롯이 배지를 참조하는 방향)은 배열 컬럼이라 FK가 걸리지 않는다.
  * 그래서 소프트 삭제(`badges` PATCH)가 이 참조를 막지는 않되, 운영이 탐지할 수 있도록
  * 경고만 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을

@@ -34,7 +34,8 @@ function badge(points: unknown, condition: unknown, extra: Record<string, unknow
 }
 
 const COUNT = { combine_attempt_count: 5 }
-const ACHIEVEMENT = { recipe_first_success: { recipe_id: 'r1' } }
+// 달성형: JAM! 행동 지표 키가 없는 조건(미션 보상 표시)
+const ACHIEVEMENT = { mission_reward: true }
 
 describe('R1 동시 개방 컬렉션 수', () => {
   const rules = rulesOnly(['open_collections_max'])
@@ -448,7 +449,7 @@ describe('R5 항목별 포인트', () => {
     })
   }
 
-  it('JAM! 배지 종류 판정: 지표 키가 있으면 횟수형(10), recipe_first_success만이면 달성형(100)', () => {
+  it('JAM! 배지 종류 판정: 지표 키가 있으면 횟수형(10), 지표 키가 없으면 달성형(100)', () => {
     expect(run([badge(50, COUNT)], rules).warnings).toHaveLength(1)
     expect(run([badge(50, ACHIEVEMENT)], rules).warnings).toEqual([])
     expect(run([badge(50, { ...ACHIEVEMENT, mission_complete_count: 1 })], rules).warnings).toHaveLength(1)

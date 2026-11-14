@@ -52,7 +52,6 @@ vi.mock('@/lib/admin/badge-validation', async () => {
     findBadgeConditionSaveError: () => null,
     findConditionShapeSaveWarning: guards.findConditionShapeSaveWarning,
     findCheckinBadgeNamesNotFoundError: async () => null,
-    findRecipeFirstSuccessNotFoundError: async () => null,
     findRarityLevelError: () => null,
     findHiddenBadgeReferenceError: async () => null,
   }

@@ -5,7 +5,6 @@
  *  - 성공 횟수 = `user_combine_success_logs` 행 수(그 유저만)
  *  - 실패 횟수 = `user_combine_fail_logs` 중 `fail_reason = 'no_recipe_match'`(소각 전 실패 제외)
  *  - 시도 횟수 = 성공 + 실패
- *  - 최초 성공 레시피 = `is_recipe_first = true` 행이 내 것인 레시피
  *  - DB 오류는 0으로 바꾸지 않고 던진다(「센 값이 0」과 「세지 못함」을 구분한다)
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/jam-action-metrics.test.ts
@@ -16,7 +15,6 @@ import {
   countCombineAttempts,
   countCombineFail,
   countCombineSuccess,
-  fetchFirstSuccessRecipeIds,
 } from '../jamActionMetrics'
 
 type Row = Record<string, unknown>
@@ -109,30 +107,5 @@ describe('countCombineAttempts', () => {
   it('두 테이블 중 하나라도 실패하면 예외다 — 한쪽만 더한 값을 돌려주지 않는다', async () => {
     await expect(countCombineAttempts(makeSupabase(TABLES, ['user_combine_fail_logs']).client, 'u1')).rejects.toThrow()
     await expect(countCombineAttempts(makeSupabase(TABLES, ['user_combine_success_logs']).client, 'u1')).rejects.toThrow()
-  })
-})
-
-describe('fetchFirstSuccessRecipeIds', () => {
-  it('내가 최초 성공자인 레시피 id만 돌려준다', async () => {
-    const { client } = makeSupabase(TABLES)
-    expect(await fetchFirstSuccessRecipeIds(client, 'u1', ['r1', 'r2'])).toEqual(new Set(['r1']))
-    // 같은 레시피를 성공했어도 최초 표시가 없으면 포함되지 않는다
-    expect(await fetchFirstSuccessRecipeIds(client, 'u2', ['r1'])).toEqual(new Set())
-  })
-
-  it('요청한 레시피 id 밖의 최초 성공은 돌려주지 않는다', async () => {
-    const { client } = makeSupabase(TABLES)
-    expect(await fetchFirstSuccessRecipeIds(client, 'u1', ['r2'])).toEqual(new Set())
-  })
-
-  it('레시피 id 목록이 비어 있으면 조회하지 않는다', async () => {
-    const { client, queried } = makeSupabase(TABLES)
-    expect(await fetchFirstSuccessRecipeIds(client, 'u1', [])).toEqual(new Set())
-    expect(queried).toEqual([])
-  })
-
-  it('DB 오류는 빈 집합이 아니라 예외다', async () => {
-    const { client } = makeSupabase(TABLES, ['user_combine_success_logs'])
-    await expect(fetchFirstSuccessRecipeIds(client, 'u1', ['r1'])).rejects.toThrow('레시피 최초 성공 기록')
   })
 })

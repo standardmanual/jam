@@ -351,14 +351,14 @@ describe('생성기 — SQL 파일', () => {
     expect(body).toMatch(/^COMMIT;$/m)
   })
 
-  it('CHECK 제약을 만드는 파일이 아니라서 조건 레지스트리 시험이 보는 «가장 큰 번호의 CHECK 파일»은 247 그대로다', () => {
+  it('CHECK 제약을 만드는 파일이 아니라서 조건 레지스트리 시험이 보는 «가장 큰 번호의 CHECK 파일»은 342(믹스 행동 지표 허용 키를 줄인 축소)다', () => {
     expect(sql).not.toContain('ADD CONSTRAINT badges_condition_json_known_keys')
     const checkFiles = fs
       .readdirSync(MIGRATIONS_DIR)
       .filter((f) => /^\d+_.*\.sql$/.test(f))
       .filter((f) => fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8').includes('ADD CONSTRAINT badges_condition_json_known_keys'))
       .sort()
-    expect(checkFiles[checkFiles.length - 1]).toBe('247_condition_json_checkin_drop_jam_keys.sql')
+    expect(checkFiles[checkFiles.length - 1]).toBe('342_condition_json_narrow_combine_keys.sql')
   })
 
   it('머리에 규칙·영향·적용 순서·알려진 어긋남이, 끝에 되돌림 SQL·드라이런·사후 검증이 있다', () => {

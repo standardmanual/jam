@@ -151,15 +151,15 @@ describe('isCountBadgeCondition', () => {
     expect(isCountBadgeCondition({ mission_complete_count: 3, anything: 1 })).toBe(true)
   })
 
-  it('지표 키가 JAM! 행동 키 전부에 대해 횟수형이고 recipe_first_success만 예외다', () => {
+  it('지표 키가 JAM! 행동 키 전부에 대해 횟수형이다', () => {
     for (const key of JAM_ACTION_CONDITION_KEYS) {
-      expect(isCountBadgeCondition({ [key]: 1 })).toBe(key !== 'recipe_first_success')
+      expect(isCountBadgeCondition({ [key]: 1 })).toBe(true)
     }
   })
 
   it('JAM! 행동 키가 없으면 달성형이다', () => {
     expect(isCountBadgeCondition({})).toBe(false)
-    expect(isCountBadgeCondition({ recipe_first_success: { recipe_id: 'r' } })).toBe(false)
+    expect(isCountBadgeCondition({ mission_reward: true })).toBe(false)
     expect(isCountBadgeCondition({ distance_km: 5 })).toBe(false)
   })
 

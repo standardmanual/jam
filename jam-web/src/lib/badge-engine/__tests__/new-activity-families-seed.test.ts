@@ -27,7 +27,6 @@ const mocks = vi.hoisted(() => ({
     countCombineAttempts: vi.fn(),
     countCombineFail: vi.fn(),
     countCombineSuccess: vi.fn(),
-    fetchFirstSuccessRecipeIds: vi.fn(),
     countDroppedItems: vi.fn(),
     countPickedUpByUsers: vi.fn(),
     countPickedUpItems: vi.fn(),
@@ -60,7 +59,6 @@ vi.mock('../jamActionMetrics', () => ({
   countCombineAttempts: mocks.computers.countCombineAttempts,
   countCombineFail: mocks.computers.countCombineFail,
   countCombineSuccess: mocks.computers.countCombineSuccess,
-  fetchFirstSuccessRecipeIds: mocks.computers.fetchFirstSuccessRecipeIds,
 }))
 // 티켓 20261019_0542 2회: 새 키 계산 함수·순수 함수가 늘어도 이 시험이 쓰는 값만 대체하도록 나머지는 원본을 둔다
 vi.mock('../jamActionDropMetrics', async (importOriginal) => ({

@@ -43,8 +43,6 @@ export const LINK_PAIRS: readonly LinkPair[] = [
   { from: 'mission', to: 'jam_badge', field: 'reward_badge_ids', mode: 'append', ownResourceKey: null, directSelectKey: null },
   { from: 'collection_launch', to: 'jam_badge', field: 'reward_badge_id', mode: 'single', ownResourceKey: 'reward_badge_id', directSelectKey: null },
   { from: 'drop_schedule', to: 'collection_launch', field: 'collection_ids', mode: 'append', ownResourceKey: null, directSelectKey: 'badge_ids' },
-  // 대상의 `recipe_id`로 덮는 칸이라 `resource`에 같은 값이 있어도 충돌이 아니다.
-  { from: 'jam_badge', to: 'recipe', field: 'recipe_id', mode: 'single', ownResourceKey: null, directSelectKey: null },
 ]
 
 /** 생성 순서(§8.3): 참조당하는 쪽이 먼저다. 이 순서는 `LINK_PAIRS`의 모든 쌍을 만족한다. */

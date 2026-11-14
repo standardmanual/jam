@@ -501,8 +501,6 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
   const state = {
     /** id → valid_from (행이 없으면 키가 없다) */
     recipes: new Map<string, string | null>(),
-    badgeCount: 0,
-    badgeError: null as { message: string } | null,
     /** 이 레시피를 가리키는 레시피 공개 카드 수(`today_cards.recipe_id`) */
     cardCount: 0,
     cardError: null as { message: string } | null,
@@ -519,16 +517,6 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
   function makeCancelClient() {
     return {
       from: (table: string) => {
-        if (table === 'badges') {
-          const builder = {
-            is: () => builder,
-            in: () =>
-              Promise.resolve(
-                state.badgeError ? { count: null, error: state.badgeError } : { count: state.badgeCount, error: null }
-              ),
-          }
-          return { select: () => builder }
-        }
         if (table === 'today_cards') {
           return {
             select: () => ({
@@ -576,8 +564,6 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
 
   beforeEach(() => {
     state.recipes = new Map()
-    state.badgeCount = 0
-    state.badgeError = null
     state.cardCount = 0
     state.cardError = null
     state.deleteError = null
@@ -644,18 +630,6 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
     expect(state.deleteCalls).toBe(0)
   })
 
-  it('배지 조건이 가리키는 레시피는 예약 중이어도 삭제 가드가 막는다(409, 삭제 시도 없음)', async () => {
-    state.recipes.set(ID, FUTURE)
-    state.badgeCount = 2
-
-    const result = await cancelScheduledRecipe(makeCancelClient(), ID, NOW)
-
-    expect(result).toMatchObject({ ok: false, status: 409 })
-    if (!result.ok) expect(result.error).toContain('이 레시피를 가리키는 배지가 2개 있어요')
-    expect(state.deleteCalls).toBe(0)
-    expect(state.recipes.has(ID)).toBe(true)
-  })
-
   it('레시피 공개 카드가 가리켜도 기본(어드민)은 막지 않고 지운다 — 카드는 레시피 줄만 비운다(티켓 20261006_1218 가정 B)', async () => {
     state.recipes.set(ID, FUTURE)
     state.cardCount = 3
@@ -682,15 +656,8 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
     expect(state.recipes.has(ID)).toBe(false)
   })
 
-  it('blockOnCards여도 배지 참조가 먼저다(배지 문구 409). 카드 조회가 실패하면 500으로 막는다(fail-closed)', async () => {
+  it('blockOnCards여도 카드 조회가 실패하면 500으로 막는다(fail-closed)', async () => {
     state.recipes.set(ID, FUTURE)
-    state.badgeCount = 1
-    state.cardCount = 2
-    const byBadge = await cancelScheduledRecipe(makeCancelClient(), ID, NOW, { blockOnCards: true })
-    expect(byBadge).toMatchObject({ ok: false, status: 409 })
-    if (!byBadge.ok) expect(byBadge.error).toContain('이 레시피를 가리키는 배지가 1개 있어요')
-
-    state.badgeCount = 0
     state.cardError = { message: 'today_cards 조회 실패' }
     const failed = await cancelScheduledRecipe(makeCancelClient(), ID, NOW, { blockOnCards: true })
     expect(failed).toMatchObject({ ok: false, status: 500 })
@@ -699,7 +666,7 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
 
   it('참조 조회가 실패하면 500으로 막는다(fail-closed, 삭제 시도 없음)', async () => {
     state.recipes.set(ID, FUTURE)
-    state.badgeError = { message: 'badges 조회 실패' }
+    state.cardError = { message: 'today_cards 조회 실패' }
 
     const result = await cancelScheduledRecipe(makeCancelClient(), ID, NOW)
 

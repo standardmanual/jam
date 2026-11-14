@@ -10,13 +10,10 @@
  * 응답·결정 기록·슬랙에 나가는 `reason`은 아래 고정 문장뿐이다. DB 오류 원문·기존 배지나 레시피 ID·칼럼 이름은 `detail`(서버 로그)에만 둔다.
  * 단, 형식 오류는 변환 오류 문장(운영 항목에 붙은 오류)의 첫 문장을 그대로 싣는다.
  *
- * - `prepare`는 변환 뒤 조건 저장 규칙(`findBadgeConditionSaveError`)과 발급 조건 유무를 본다. 발급 조건이 없는 배지(`USAGE_METRIC_CONDITION_KEYS`·`JAM_ACTION_CONDITION_KEYS`·
- *   `recipe_first_success` 가운데 하나도 없고 `mission_reward: true`도 아닌 것)는 메인 엔진이 `admin_category = 'jam'`을 후보에서 빼므로 영원히 발급되지 않아 형식 오류다.
+ * - `prepare`는 변환 뒤 조건 저장 규칙(`findBadgeConditionSaveError`)과 발급 조건 유무를 본다. 발급 조건이 없는 배지(`USAGE_METRIC_CONDITION_KEYS`·`JAM_ACTION_CONDITION_KEYS` 가운데 하나도 없고 `mission_reward: true`도 아닌 것)는 메인 엔진이 `admin_category = 'jam'`을 후보에서 빼므로 영원히 발급되지 않아 형식 오류다.
  *   단, 같은 그룹의 컬렉션 항목이 `reward_badge_id` 칸으로 이 배지를 가리키면(`pointedBy`, 실행이 그룹의 `linkPlan`에서 계산해 넘긴다) 이 검사만 건너뛴다: 발급 경로가 컬렉션 완성(`issueItemBookRewardBadges`)이라
  *   엔진 조건이 필요 없다(사용자 결정 2026-10-04, 티켓 20261004_2039 가정 2). 연결이 없으면(가리키던 컬렉션이 반려되는 등) 지금처럼 형식 오류다. 조건 저장 규칙과 `condition_json` 필수(빈 객체 `{}` 가능)는 그대로다.
- * - `check`는 이름 중복 등 DB 검사(`runBadgeDbChecks`)를 라벨별 고정 문장으로 바꾸고, 연결 없이 `condition_json`에 직접 적은 레시피(`recipe_first_success`)가
- *   있으면 DB의 레시피를 읽어 같은 시각에 공개되는지 본다(§8.2의 「가장 먼저 성공 배지는 레시피와 같은 시각」). 같은 실행에서 만들 레시피(연결)는 존재 확인을 건너뛴다
- *   (생성 순서가 보장하고, 시각은 사전 점검이 항목으로 본다). `runBadgeDbChecks`는 레시피 ID를 읽지 않아 연결 칸을 뺀 사본이 필요 없다.
+ * - `check`는 이름 중복 등 DB 검사(`runBadgeDbChecks`)를 라벨별 고정 문장으로 바꾼다.
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 오류 응답이면 같은 ID로 정리 delete를 한 번 시도한다.
  * - `undo`는 참조(획득 기록·연결·배열 칸)를 확인한 뒤 ID로 지운다. 하드 삭제다(등록 스크립트 `--undo`와 같다).
  * - `cancel`은 배지를 다시 읽어 공개됐으면 막고, 참조를 확인한 뒤, 지울 때도 `valid_from > now` 조건을 함께 건다(읽은 뒤 공개 시각이 지나는 경합). 미션 취소와 같은 흐름이다.
@@ -26,13 +23,12 @@
  *   배지에는 비활성 칸이 없어 `inactive`는 늘 `false`다. 소프트 삭제된 배지(`deleted_at`)는 운영툴 밖에서 지워진 것으로 본다.
  */
 import { findBadgeConditionSaveError } from '@/lib/admin/badge-validation'
-import { toJamBadgeRegisterInput, withoutSavePrefix, JAM_BADGE_RECIPE_LINK_FIELD } from '@/lib/admin/opsInbox/registerInput'
+import { toJamBadgeRegisterInput, withoutSavePrefix } from '@/lib/admin/opsInbox/registerInput'
 import type { JamBadgeRegisterPayload, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
 import { asRecord } from '@/lib/admin/opsInbox/itemView'
 import { runBadgeDbChecks } from '@/lib/admin/registerChecks/badge'
 import { findBadgeUndoReferences } from '@/lib/admin/registerChecks/references'
-import type { RegisterCheck, RegisterChecksClient, RegisterQueryResult, RegisterRow } from '@/lib/admin/registerChecks/shared'
-import { isUuid } from '@/lib/admin/uuid'
+import type { RegisterCheck } from '@/lib/admin/registerChecks/shared'
 import { USAGE_METRIC_CONDITION_KEYS } from '@/lib/badge-engine/conditionRegistry'
 import { JAM_ACTION_CONDITION_KEYS } from '@/lib/badge-engine/jamActionKeys'
 import type { BadgeCondition } from '@/types/database'
@@ -45,8 +41,6 @@ export const JAM_BADGE_MESSAGES = {
   formatInvalid: '배지 형식이 맞지 않아요',
   duplicate: '같은 이름의 배지가 이미 있어요',
   checkinNamesMissing: '체크인 배지 이름 목록에 없는 이름이 있어요',
-  recipeMissing: '가장 먼저 성공할 레시피가 없어요',
-  recipeStartsDiffer: '가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요',
   checkReadFailed: '등록 전 확인 중 DB를 읽지 못했어요',
   checkFailed: '등록 전 확인을 통과하지 못했어요',
   createFailed: '배지를 만들지 못했어요',
@@ -75,8 +69,8 @@ const DB_READ_FAILED_PREFIX = 'DB 조회에 실패했어요'
 /** 취소·상태 맞추기가 다시 읽는 칸. 공개 판정과 소프트 삭제 여부에 필요한 것뿐이다. */
 const READ_COLUMNS = 'id, valid_from, valid_until, deleted_at'
 
-/** 발급 판정에 관여하는 조건 키. 어드민 배지 저장 검사의 「사용량 지표」와 JAM! 행동 지표를 합친 것이다(`recipe_first_success` 포함). */
-const ISSUING_CONDITION_KEYS: ReadonlySet<string> = new Set<string>([...USAGE_METRIC_CONDITION_KEYS, ...JAM_ACTION_CONDITION_KEYS, 'recipe_first_success'])
+/** 발급 판정에 관여하는 조건 키. 어드민 배지 저장 검사의 「사용량 지표」와 JAM! 행동 지표를 합친 것이다. */
+const ISSUING_CONDITION_KEYS: ReadonlySet<string> = new Set<string>([...USAGE_METRIC_CONDITION_KEYS, ...JAM_ACTION_CONDITION_KEYS])
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -94,19 +88,13 @@ function hasIssuingCondition(condition: Record<string, unknown>): boolean {
   return condition.mission_reward === true || Object.keys(condition).some((key) => ISSUING_CONDITION_KEYS.has(key))
 }
 
-/** `condition_json.recipe_first_success.recipe_id`. 없거나 문자열이 아니면 `undefined`다. */
-function firstSuccessRecipeId(condition: Record<string, unknown> | null): string | undefined {
-  const value = asRecord(condition?.recipe_first_success)?.recipe_id
-  return typeof value === 'string' ? value : undefined
-}
-
 /** 같은 그룹의 컬렉션이 이 배지를 완성 보상(`reward_badge_id`)으로 가리키는지. 그러면 발급 경로가 컬렉션 완성이라 발급 조건이 필요 없다. */
 function isCollectionReward(pointedBy: readonly PointedByEntry[] | undefined): boolean {
   return (pointedBy ?? []).some((entry) => entry.kind === COLLECTION_LAUNCH_KIND && entry.field === COLLECTION_REWARD_LINK_FIELD)
 }
 
 /**
- * 변환이 통과한 뒤의 조건 형식 검사. 어드민 배지 저장 검사(`findBadgeConditionSaveError`)와 발급 조건 유무, 레시피 ID 형식이다.
+ * 변환이 통과한 뒤의 조건 형식 검사. 어드민 배지 저장 검사(`findBadgeConditionSaveError`)와 발급 조건 유무다.
  * `collectionReward`면 발급 조건 유무만 건너뛴다(나머지는 그대로).
  */
 function conditionIssues(payload: JamBadgeRegisterPayload, { collectionReward }: { collectionReward: boolean }): RegisterInputIssue[] {
@@ -122,43 +110,7 @@ function conditionIssues(payload: JamBadgeRegisterPayload, { collectionReward }:
       message: 'badge.condition_json: 발급 조건이 없는 배지예요. JAM! 행동 지표(믹스·드랍·미션 등)나 미션 보상(mission_reward) 조건이 하나 있어야 발급돼요.',
     })
   }
-
-  if ('recipe_first_success' in condition) {
-    const recipeId = firstSuccessRecipeId(condition)
-    if (recipeId === undefined || !isUuid(recipeId)) {
-      issues.push({ path: 'resource.condition_json', message: 'badge.condition_json: recipe_first_success의 recipe_id가 레시피 ID(UUID) 형식이 아니에요.' })
-    }
-  }
   return issues
-}
-
-/**
- * 연결 없이 `condition_json`에 직접 적은 레시피를 확인한다: 레시피가 있고, 공개 시각(`valid_from`)이 배지와 같아야 한다(밀리초 비교).
- * 레시피가 이미 열려 있으면(`valid_from`이 비어 바로 공개) 배지가 나중에 열리므로 다르다. 읽지 못하면 통과시키지 않는다.
- */
-async function checkDirectRecipe(client: RegisterChecksClient, recipeId: string, badgeValidFrom: string | null | undefined): Promise<ExecuteFailure | null> {
-  let read: RegisterQueryResult<RegisterRow>
-  try {
-    read = await client.from('combination_recipes').select('id, valid_from').eq('id', recipeId).maybeSingle()
-  } catch (err) {
-    return { reason: JAM_BADGE_MESSAGES.checkReadFailed, detail: `레시피 조회 예외: ${messageOf(err)}` }
-  }
-  if (read.error) return { reason: JAM_BADGE_MESSAGES.checkReadFailed, detail: `레시피 조회 실패: ${read.error.message}` }
-  if (!read.data) return { reason: JAM_BADGE_MESSAGES.recipeMissing, detail: `레시피 ${recipeId}를 찾을 수 없어요` }
-
-  const recipeFrom = read.data.valid_from
-  const badgeMs = Date.parse(String(badgeValidFrom))
-  if (recipeFrom === null || recipeFrom === undefined) {
-    return { reason: JAM_BADGE_MESSAGES.recipeStartsDiffer, detail: `레시피 ${recipeId}는 이미 공개 중이에요(valid_from 없음)` }
-  }
-  const recipeMs = typeof recipeFrom === 'string' ? Date.parse(recipeFrom) : NaN
-  if (!Number.isFinite(recipeMs) || !Number.isFinite(badgeMs)) {
-    return { reason: JAM_BADGE_MESSAGES.checkReadFailed, detail: `레시피 ${recipeId}의 공개 시각을 읽을 수 없어요(${String(recipeFrom)})` }
-  }
-  if (recipeMs !== badgeMs) {
-    return { reason: JAM_BADGE_MESSAGES.recipeStartsDiffer, detail: `배지 공개 ${String(badgeValidFrom)} / 레시피 ${recipeId} 공개 ${recipeFrom}` }
-  }
-  return null
 }
 
 export const JAM_BADGE_HANDLER: ExecuteHandler<JamBadgeRegisterPayload> = {
@@ -167,7 +119,7 @@ export const JAM_BADGE_HANDLER: ExecuteHandler<JamBadgeRegisterPayload> = {
   idFirst: true,
 
   prepare(item, { id, linkedIds, pointedBy }): ExecuteOutcome<ExecutePrepared<JamBadgeRegisterPayload>> {
-    const result = toJamBadgeRegisterInput(item, { id, linkedIds })
+    const result = toJamBadgeRegisterInput(item, { id })
     const issues: RegisterInputIssue[] = [...result.errors]
     // 변환이 통과한 뒤에야 조건 검사를 한다(변환 오류가 있으면 payload가 없다).
     if (result.payload !== null && issues.length === 0) issues.push(...conditionIssues(result.payload, { collectionReward: isCollectionReward(pointedBy) }))
@@ -185,7 +137,7 @@ export const JAM_BADGE_HANDLER: ExecuteHandler<JamBadgeRegisterPayload> = {
 
   async check(client, prepared): Promise<ExecuteFailure | null> {
     const condition = asRecord(prepared.payload.condition_json)
-    // 트라이브·컬렉션은 이 변환이 읽지 않아 null이다(검사는 「해당 없음」). 연결로 채운 레시피 ID는 이 검사가 읽지 않는다.
+    // 트라이브·컬렉션은 이 변환이 읽지 않아 null이다(검사는 「해당 없음」).
     const result = await runBadgeDbChecks({
       supabase: client,
       badge: { name: prepared.payload.name, tribe_id: null, item_book_id: null, condition_json: condition as BadgeCondition | null },
@@ -193,11 +145,7 @@ export const JAM_BADGE_HANDLER: ExecuteHandler<JamBadgeRegisterPayload> = {
     if (result.errors.length > 0) {
       return { reason: reasonOfCheck(result.checks.find((check) => check.status === '실패')), detail: result.errors.join(' / ') }
     }
-
-    // 연결로 채운 레시피는 같은 실행(또는 이전 실행)이 만든 것이라 건너뛴다. 직접 적은 레시피만 본다.
-    if (prepared.linkFields.includes(JAM_BADGE_RECIPE_LINK_FIELD)) return null
-    const recipeId = firstSuccessRecipeId(condition)
-    return recipeId === undefined ? null : checkDirectRecipe(client, recipeId, prepared.payload.valid_from)
+    return null
   },
 
   async create(service: ExecuteServiceClient, prepared): Promise<ExecuteOutcome<{ id: string }>> {

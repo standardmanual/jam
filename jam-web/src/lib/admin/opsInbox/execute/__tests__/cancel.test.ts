@@ -9,7 +9,7 @@
  * - 부분 실패·상태 저장 실패·결정 기록 실패(`decisionLogFailed`)·상태 경합
  * - 미리 보기(가정 5): 쓰기 없음. 슬랙(가정 6): 요약·알림과 `slack_result`
  * - 예약됨 미션 취소(⑥): 실제 미션 핸들러, 미션을 가리키는 카드를 먼저 지운 뒤 미션을 지운다
- * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·가장 먼저 성공 배지가 가리킴(409)·없음·시험 묶음.
+ * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·카드가 가리킴(409)·없음·시험 묶음.
  *   카드 → 레시피 연결(⑫-b, 티켓 20261006_1218): 가리키는 카드를 함께 취소·게재 중 카드 409·운영툴 밖 카드 409
  * - 예약됨 드랍 취소(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러, 공개 전 취소(지우지 않고 「취소」 상태)·예정 시각이 지남·실행 시작·끝남(409)·밖에서 취소됨·없음·시험 묶음
  * - 예약됨 JAM! 배지 취소(⑨-a, 티켓 20261004_1756): 실제 배지 핸들러, 공개 전 취소·공개됨·참조 있음(409)·밖에서 지워짐·소프트 삭제·배지를 가리키는 미션·카드 함께 취소(카드→미션→배지 순)·시험 묶음
@@ -619,9 +619,8 @@ describe('예약됨 미션 취소 — 실제 카드·미션 핸들러 (티켓 20
 describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 20261002_2221)', () => {
   const RECIPE_RES = uid(21)
   const OTHER_RECIPE = uid(97)
-  const BADGE_RES = uid(22)
   const RECIPE_LABEL = '믹스 레시피 · 10/10(토) 09:00'
-  const REFERENCED = '가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
+  const REFERENCED = '카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
   const recipeSpec = (extra: ItemSpec = {}): ItemSpec => ({
     id: ID.poster,
     key: 'recipe',
@@ -631,7 +630,6 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
     ...extra,
   })
   const recipeRow = (extra: Row = {}): Row => ({ id: RECIPE_RES, valid_from: LATER, valid_until: null, ...extra })
-  const firstSuccessBadge: Row = { id: BADGE_RES, deleted_at: null, condition_json: { recipe_first_success: { recipe_id: RECIPE_RES } } }
 
   /** 지울 레시피(슬롯 포함)와 다른 레시피 하나가 있는 DB. */
   function recipeSetup(options: Parameters<typeof setup>[1] = {}, specs: ItemSpec[] = [recipeSpec()]) {
@@ -652,7 +650,7 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
   }
   const orderOf = (db: FakeDb) => db.calls.map((call) => `${call.table}:${call.op}`)
 
-  it('공개 전이고 가리키는 배지가 없으면 레시피와 슬롯을 지우고 항목을 「취소」로 두며 cancel 기록을 남긴다. 다른 레시피는 건드리지 않는다', async () => {
+  it('공개 전이고 가리키는 카드가 없으면 레시피와 슬롯을 지우고 항목을 「취소」로 두며 cancel 기록을 남긴다. 다른 레시피는 건드리지 않는다', async () => {
     const { db, run } = recipeSetup()
     const result = ok(await run(ID.poster, '레시피를 접어요'))
 
@@ -686,21 +684,6 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
     expect(failure.status).toBe(409)
     expect(failure.error).toBe('공개 시각이 지나 취소할 수 없어요')
     expect(nonSelect(db)).toEqual([])
-  })
-
-  it('가장 먼저 성공 배지가 이 레시피를 가리키면 409이고 아무것도 지우지 않는다. 레시피·배지 ID는 응답에 없다', async () => {
-    const { db, run } = recipeSetup()
-    db.tables.badges = [firstSuccessBadge]
-    const failure = bad(await run(ID.poster))
-
-    expect(failure.status).toBe(409)
-    expect(failure.error).toBe(REFERENCED)
-    expect(failure.error).not.toContain(RECIPE_RES)
-    expect(failure.error).not.toContain(BADGE_RES)
-    expect(nonSelect(db)).toEqual([])
-    expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
-    expect(statusOf(db, ID.poster)).toBe('scheduled')
-    expect(db.decisions()).toEqual([])
   })
 
   it('레시피를 취소하면 그 레시피를 여는 카드를 먼저 지운 뒤 레시피를 지운다. 카드가 남아 있으면 레시피의 참조 확인에 걸리기 때문이다', async () => {
@@ -763,14 +746,6 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
     expect((db.tables.today_cards as Row[]).map((row) => row.id)).toEqual([uid(60), uid(61)])
   })
 
-  it('가리키는 배지가 지워졌거나 다른 레시피를 가리키면 취소할 수 있다', async () => {
-    const { db, run } = recipeSetup()
-    db.tables.badges = [{ ...firstSuccessBadge, deleted_at: '2026-10-01T00:00:00.000Z' }, { id: uid(23), deleted_at: null, condition_json: { recipe_first_success: { recipe_id: OTHER_RECIPE } } }]
-    ok(await run(ID.poster))
-
-    expect(recipeIds(db)).toEqual([OTHER_RECIPE])
-  })
-
   it('밖에서 이미 지워진 레시피는 missing으로 두고 항목만 「취소」로 둔다', async () => {
     const { db, run } = setup([recipeSpec()], { cards: [] })
     const result = ok(await run(ID.poster))
@@ -795,9 +770,9 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
     expect(logged()).toContain(DB_SECRET)
   })
 
-  it('가리키는 배지를 읽지 못하면 지우지 않고 500이다(확인 없이 지우지 않는다)', async () => {
+  it('가리키는 카드를 읽지 못하면 지우지 않고 500이다(확인 없이 지우지 않는다)', async () => {
     const { db, run } = recipeSetup()
-    db.failIf = (call) => call.table === 'badges'
+    db.failIf = (call) => call.table === 'today_cards'
     const failure = bad(await run(ID.poster))
 
     expect(failure.status).toBe(500)

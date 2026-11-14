@@ -5,7 +5,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient, type ExecuteServiceClient } from '../handlers'
-import { JAM_BADGE_MESSAGES } from '../jamBadge'
 import { EXECUTE_LEAD_MS, PRECHECK_MESSAGES, precheckBundle } from '../precheck'
 import { EXECUTE_HANDLERS } from '../registry'
 import { FULL_REGISTRY, LATER, NOW, fakeRegistry, makeItem } from './fixtures'
@@ -756,88 +755,20 @@ describe('드랍이 연결된 컬렉션보다 먼저 공개되면 막는다 (티
   })
 })
 
-describe('「가장 먼저 성공」 배지와 레시피의 공개 시각이 다르면 막는다 (티켓 20261004_1756, 사용자 결정 2026-10-04)', () => {
-  const REASON = PRECHECK_MESSAGES.firstSuccessStartsDiffer
-  type Spec = Partial<Parameters<typeof makeItem>[0]>
-  const badge = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'badge', kind: 'jam_badge', links: ['recipe'], startsAt, ...extra })
-  const recipe = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'recipe', kind: 'recipe', startsAt, ...extra })
-
-  it('문장은 「가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요」이고 핸들러의 등록 전 검사 사유와 같다', () => {
-    expect(REASON).toBe('가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요')
-    expect(REASON).toBe(JAM_BADGE_MESSAGES.recipeStartsDiffer)
-  })
-
-  it('같은 시각이면 함께 예약할 수 있다', () => {
-    const result = run([badge(at(60 * MINUTE)), recipe(at(60 * MINUTE))])
-    expect(result.ready).toEqual(['badge', 'recipe'])
-    expect(result.warnings).toEqual([])
-  })
-
-  it('시각이 다르면(배지가 늦든 이르든) 배지가 못 하는 항목이고 레시피는 「연결된 항목을 예약할 수 없어요」로 막힌다', () => {
+describe('배지 → 레시피 연결은 더 이상 짝이 아니다 («가장 먼저 성공» 조건을 없앴다, 티켓 20261114_1705 4회차)', () => {
+  it('배지가 레시피를 가리키게 적어도 칸을 채우지 않고 공개 시각이 달라도 막지 않는다', () => {
     for (const [badgeAt, recipeAt] of [
       [60, 120],
       [120, 60],
     ]) {
-      const result = run([badge(at(badgeAt * MINUTE)), recipe(at(recipeAt * MINUTE))])
-      expect(result.ready).toEqual([])
-      expect(result.blocked).toEqual([
-        { id: 'badge', reasons: [REASON] },
-        { id: 'recipe', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+      const result = run([
+        makeItem({ key: 'badge', kind: 'jam_badge', links: ['recipe'], startsAt: at(badgeAt * MINUTE) }),
+        makeItem({ key: 'recipe', kind: 'recipe', startsAt: at(recipeAt * MINUTE) }),
       ])
+      expect(result.blocked, `${badgeAt}/${recipeAt}`).toEqual([])
+      expect(result.ready, `${badgeAt}/${recipeAt}`).toEqual(['badge', 'recipe'])
+      expect(result.groups[0].linkPlan.badge ?? []).toEqual([])
     }
-  })
-
-  it('밀리초까지 견준다(1밀리초 달라도 막는다)', () => {
-    const result = run([badge(at(60 * MINUTE + 1)), recipe(at(60 * MINUTE))])
-    expect(result.blocked[0]).toEqual({ id: 'badge', reasons: [REASON] })
-  })
-
-  it('대상 레시피 항목의 상태와 관계없이 견준다: 이미 예약·게재 중·종료된 레시피에 다른 시각으로 여는 배지도 막는다', () => {
-    for (const status of ['scheduled', 'live', 'ended']) {
-      const target = recipe(at(120 * MINUTE), { status, createdResource: { recipe_id: 'recipe-uuid' } })
-      const differs = run([badge(at(180 * MINUTE)), target])
-      expect(differs.ready, status).toEqual([])
-      expect(differs.blocked, status).toEqual([{ id: 'badge', reasons: [REASON] }])
-      expect(run([badge(at(120 * MINUTE)), target]).ready, status).toEqual(['badge'])
-    }
-  })
-
-  it('레시피 항목이 배지를 가리키게 적어도 같은 쌍으로 읽는다', () => {
-    const result = run([makeItem({ key: 'badge', kind: 'jam_badge', startsAt: at(60 * MINUTE) }), makeItem({ key: 'recipe', kind: 'recipe', links: ['badge'], startsAt: at(120 * MINUTE) })])
-    expect(result.blocked[0]).toEqual({ id: 'badge', reasons: [REASON] })
-  })
-
-  it('결정 전 레시피여도 견준다. 막는 이유가 기다리는 중보다 앞선다', () => {
-    const result = run([badge(at(60 * MINUTE)), recipe(at(120 * MINUTE), { status: 'reviewing' })])
-    expect(result.waiting).toEqual([])
-    expect(result.blocked).toEqual([{ id: 'badge', reasons: [REASON] }])
-  })
-
-  it('두 시각 중 하나라도 읽을 수 없으면 견주지 않는다(그 항목이 따로 이유를 갖는다)', () => {
-    const noBadgeStart = run([badge(at(0), { startsAt: null }), recipe(at(120 * MINUTE))])
-    expect(noBadgeStart.blocked[0]).toEqual({ id: 'badge', reasons: [PRECHECK_MESSAGES.startMissing] })
-    const noRecipeStart = run([badge(at(60 * MINUTE)), recipe(at(0), { startsAt: null })])
-    expect(noRecipeStart.blocked).toEqual([
-      { id: 'badge', reasons: [PRECHECK_MESSAGES.groupBlocked] },
-      { id: 'recipe', reasons: [PRECHECK_MESSAGES.startMissing] },
-    ])
-  })
-
-  it('레시피와 이어지지 않은 배지는 이 규칙의 대상이 아니다', () => {
-    expect(run([makeItem({ key: 'badge', kind: 'jam_badge', startsAt: at(60 * MINUTE) }), recipe(at(120 * MINUTE))]).ready).toEqual(['badge', 'recipe'])
-  })
-
-  it('배지가 미션에 보상으로 이어지고 레시피와도 이어지면 두 규칙을 따로 본다', () => {
-    const result = run([
-      makeItem({ key: 'mission', kind: 'mission', links: ['badge'], startsAt: at(60 * MINUTE) }),
-      makeItem({ key: 'badge', kind: 'jam_badge', links: ['recipe'], startsAt: at(120 * MINUTE) }),
-      makeItem({ key: 'recipe', kind: 'recipe', startsAt: at(180 * MINUTE) }),
-    ])
-    expect(result.blocked).toEqual([
-      { id: 'mission', reasons: [PRECHECK_MESSAGES.beforeLinkedBadge] },
-      { id: 'badge', reasons: [REASON] },
-      { id: 'recipe', reasons: [PRECHECK_MESSAGES.groupBlocked] },
-    ])
   })
 })
 
@@ -858,23 +789,9 @@ describe('카드 → 레시피 연결에는 공개 순서 검사가 없다 (티�
     }
   })
 
-  it('「가장 먼저 성공」 배지의 공개 시각 검사는 카드에 걸리지 않는다. 같은 칸 이름(recipe_id)이어도 가리키는 쪽이 배지일 때만 본다', () => {
+  it('카드가 레시피를 가리키는 칸은 recipe_id 하나다', () => {
     const result = run([card(at(60 * MINUTE)), recipe(at(180 * MINUTE))])
-    expect(result.blocked.flatMap((entry) => entry.reasons)).not.toContain(PRECHECK_MESSAGES.firstSuccessStartsDiffer)
     expect(result.groups[0].linkPlan.card?.map((fill) => fill.field)).toEqual(['recipe_id'])
-  })
-
-  it('같은 레시피를 여는 배지와 카드가 있으면 배지만 레시피와 시각을 맞춰야 한다', () => {
-    const result = run([
-      card(at(60 * MINUTE)),
-      makeItem({ key: 'badge', kind: 'jam_badge', links: ['recipe'], startsAt: at(120 * MINUTE) }),
-      recipe(at(180 * MINUTE)),
-    ])
-    expect(result.blocked).toEqual([
-      { id: 'card', reasons: [PRECHECK_MESSAGES.groupBlocked] },
-      { id: 'badge', reasons: [PRECHECK_MESSAGES.firstSuccessStartsDiffer] },
-      { id: 'recipe', reasons: [PRECHECK_MESSAGES.groupBlocked] },
-    ])
   })
 
   it('카드가 이미 게재 중이거나 레시피가 이미 예약된 항목이어도 순서를 견주지 않는다', () => {

@@ -117,7 +117,6 @@ export type ConditionFormFields = {
   combineAttemptCount: string
   combineSuccessCount: string
   combineFailCount: string
-  recipeFirstSuccessRecipeId: string
   // JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632)
   dropItemCount: string
   pickupItemCount: string
@@ -226,7 +225,6 @@ export function emptyConditionFormFields(): ConditionFormFields {
     combineAttemptCount: '',
     combineSuccessCount: '',
     combineFailCount: '',
-    recipeFirstSuccessRecipeId: '',
     dropItemCount: '',
     pickupItemCount: '',
     pickupFromUserCount: '',

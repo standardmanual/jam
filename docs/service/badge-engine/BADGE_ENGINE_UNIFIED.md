@@ -9,10 +9,10 @@ code:
 
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-10-01 (JAM! 종목 조건에 **믹스 행동 지표 4종** 추가 —
+> 최종 업데이트: 2026-10-01 (JAM! 종목 조건에 **믹스 행동 지표 3종** 추가 —
 > `combine_attempt_count`(믹스 시도 횟수)·`combine_success_count`(성공 횟수)·
-> `combine_fail_count`(실패 횟수)·`recipe_first_success`(지정 레시피를 전체 유저 중 가장 먼저
-> 성공). 믹스 성공은 그동안 어디에도 기록되지 않아 `user_combine_success_logs` 테이블과
+> `combine_fail_count`(실패 횟수). «가장 먼저 성공» 조건은 2026-11-14에 없앴고 레시피의 첫 성공자 보상이 대신한다
+> (티켓 20261114_1705 4회차). 믹스 성공은 그동안 어디에도 기록되지 않아 `user_combine_success_logs` 테이블과
 > `record_combine_success()` RPC를 신설했다(마이그레이션 200, 실행됨). 판정·발급은 신규
 > `jamActionBadges.ts`(`evaluateJamActionBadges`)가 전담하고 발급 정책은 `usageBadges.ts`의
 > `issueQualifyingBadges()`를 공유한다 — 이후 행동 지표가 이 틀에 키·계산 함수만 더해 이어
@@ -172,7 +172,7 @@ Strava 싱크
 
 **③ JAM! 카테고리 — 서비스 사용량 배지 (2026-09-10, 티켓 20260910_1557; 연속 동기화 일수
 1종 추가 — 2026-09-11, 티켓 20260911_2304; 체크인 배지 보유 조건 2종 추가 — 2026-09-14,
-티켓 20260914_1725; 믹스 행동 지표 4종 추가 — 2026-10-01, 티켓 20261001_0631; 드랍·픽업 행동
+티켓 20260914_1725; 믹스 행동 지표 3종 추가 — 2026-10-01, 티켓 20261001_0631; 드랍·픽업 행동
 지표 4종 추가 — 2026-10-01, 티켓 20261001_0632; 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표
 6키 추가 — 2026-10-01, 티켓 20261001_0633)** —
 badge-engine 밖의 세 번째 평가 경로.
@@ -193,10 +193,9 @@ badge-engine 밖의 세 번째 평가 경로.
 성공 직후(체크인 배지 자체의 발급과는 별개 호출, try/catch로 격리해 이 평가가 실패해도
 체크인 배지 발급·동기화 API 응답은 계속 성공한다).
 
-**믹스 행동 지표 4종은 «유저가 한 행동»을 재는 별도 모듈이 판정한다** — 티켓
+**믹스 행동 지표 3종은 «유저가 한 행동»을 재는 별도 모듈이 판정한다** — 티켓
 20261001_0631(상위 20260930_1456 ①)이 공용 틀을 만들었다. `combine_attempt_count`·
-`combine_success_count`·`combine_fail_count`(정수 ≥1, 수치형)와 `recipe_first_success`
-(`{ recipe_id }`, 후보마다 자기 레시피를 가리키는 객체형)다. 판정·발급은
+`combine_success_count`·`combine_fail_count`(정수 ≥1, 수치형)다. 판정·발급은
 `jamActionBadges.ts`의 `evaluateJamActionBadges(userId, triggers, client?)`가 맡는다 —
 후보 배지를 한 번 조회해 **요청한 지표를 가진 후보만** 남기고(없으면 값 계산 없이 종료),
 지표별 계산 함수(`jamActionMetrics.ts`)로 현재값을 구해 `usageBadges.ts`의
@@ -210,18 +209,16 @@ badge-engine 밖의 세 번째 평가 경로.
 - **운영자의 공개 전 시험 믹스는 2026-11-10부터 허용하지 않는다**(티켓 20261110_1030, 사용자 지시) — 공개 전 레시피는 운영자도
   믹스할 수 없고 `recipe_not_found`다. 아래는 엔진에 남아 있는 옵션(`allowUnreleased`)의 동작을 적은 것으로, 지금은 어디서도 켜지 않는다. 이전 서술: 운영자가 공개 시각 전의
   레시피를 믹스하면 `user_combine_success_logs`·`user_combine_fail_logs`에 행을 남기지 않고
-  `jamTriggersForCombineResult`가 빈 배열을 돌려주므로 시도·성공·실패 횟수와 `recipe_first_success`에
+  `jamTriggersForCombineResult`가 빈 배열을 돌려주므로 시도·성공·실패 횟수에
   들어가지 않는다(운영자가 «최초 성공» 표시를 먼저 차지하는 것을 막는다). 보상 지급과 재료 소각은
   일반 믹스와 같다. 시험 믹스의 범위와 이유는 `docs/service/content/COMBINE_RECIPES.md` 2절 「공개 시각」이
   단일 출처다.
-- **`recipe_first_success`는 상태 기반이다** — 그 레시피의 `is_recipe_first=true` 행이 내 것이면
-  현재값 1, 아니면 0이고 임계는 1이다. 여러 번 평가해도 같은 결과라 멱등이다.
-  `triggered_by`는 `recipe_first_success:{recipe_id}`다. 배지를 붙이기 **전에** 이미 성공한
-  사람이 있는 레시피에는 쓰지 않는 것을 운영 규칙으로만 다룬다(저장 시점 가드 없음) — 상태 기반
-  판정이라 그 기존 최초 성공자가 다음 믹스 성공 때 발급받는다. 레시피 ID의 UUID 형식과
-  `combination_recipes` 존재는 저장 시점에 검증한다(`findRecipeFirstSuccessNotFoundError`).
+- **«최초 성공» 표시는 배지 조건이 아니라 레시피의 첫 성공자 보상이 쓴다** — 성공 기록의 `is_recipe_first`는 레시피마다 DB가
+  1행만 허용하고(부분 유일 인덱스), `record_combine_success_with_id`가 이번 믹스가 그 1행인지 돌려준다. 믹스가 이 값을 보고
+  레시피의 `first_success_badge_id`를 지급한다(`docs/service/content/COMBINE_RECIPES.md`). 배지 조건 종류로는 쓰지 않는다
+  (티켓 20261114_1705 4회차).
 - **호출**: `POST /api/combine`이 믹스 결과가 나온 뒤 `runJamActionEvaluation()`
-  (`jamActionRoute.ts`)을 부른다 — 성공이면 시도·성공·레시피 최초 성공, `no_recipe_match`면
+  (`jamActionRoute.ts`)을 부른다 — 성공이면 시도·성공(과 트라이브를 넘는 성공 수 등), `no_recipe_match`면
   시도·실패를 넘기고 그 밖의 실패는 판정하지 않는다(`jamTriggersForCombineResult`). 래퍼는
   획득한 배지가 있으면 기존 `activity_recap` 결산으로 알리고(`notifyActivityBadgesEarned`,
   `activityIds=[]`), **어떤 예외도 밖으로 던지지 않는다** — 판정·알림이 실패해도 믹스 응답은
@@ -447,7 +444,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 | | ① 액티비티배지 엔진 | ③ 서비스 사용량 배지 |
 |---|---|---|
 | 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) · `user_checkin_badge_earns` insert 성공 직후(체크인 배지 발급 직후) · `POST /api/combine`(믹스 결과가 나온 직후) · `POST /api/drops`(드랍 성공 직후, `after()`) · `POST /api/drops/[dropId]/pickup`(픽업 성공 직후, `after()`) · `syncStravaActivities()`의 동기화 끝(새 활동이 있으면 주 키 17개, 새 활동이 없으면 `days_since_signup`) · `POST /api/itembooks/[id]/slot`(장착 성공 직후, `after()`) · `POST /api/capsule/open`·`POST /api/inventory/items/[itemId]/open`(열기 성공 직후, `after()`, 티켓 20261018_1815) |
-| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`/`checkin_category_count`/`checkin_badge_count`/`combine_attempt_count`/`combine_success_count`/`combine_fail_count`/`recipe_first_success`/`drop_item_count`/`pickup_item_count`/`pickup_from_user_count`/`picked_up_by_user_count`/`mission_complete_count`/`collection_complete_count`/`days_since_signup`/`weekly_active_days`/`same_spot_checkin_days`/`capsule_open_count`/`locked_item_open_count`/`locked_item_pickup_count`/`other_tribe_item_kinds_count`/`cross_tribe_combine_success_count`/`jam_total_earned`/`jam_weekly_earned`/`chapter_reached`/`active_week_streak`/`return_streak_weeks`/`full_week_count`/`full_season_year_count`/`distinct_activity_type_count`/`new_checkin_badge_count`/`checkin_season_year_count`/`dropped_item_picked_up_count`/`jam_week_count`/`jam_week_streak`(+ 보조 키 `signup_recent_active_days`·`active_week_min_days`·`jam_week_min_earned`), `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
+| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`/`checkin_category_count`/`checkin_badge_count`/`combine_attempt_count`/`combine_success_count`/`combine_fail_count`/`drop_item_count`/`pickup_item_count`/`pickup_from_user_count`/`picked_up_by_user_count`/`mission_complete_count`/`collection_complete_count`/`days_since_signup`/`weekly_active_days`/`same_spot_checkin_days`/`capsule_open_count`/`locked_item_open_count`/`locked_item_pickup_count`/`other_tribe_item_kinds_count`/`cross_tribe_combine_success_count`/`jam_total_earned`/`jam_weekly_earned`/`chapter_reached`/`active_week_streak`/`return_streak_weeks`/`full_week_count`/`full_season_year_count`/`distinct_activity_type_count`/`new_checkin_badge_count`/`checkin_season_year_count`/`dropped_item_picked_up_count`/`jam_week_count`/`jam_week_streak`(+ 보조 키 `signup_recent_active_days`·`active_week_min_days`·`jam_week_min_earned`), `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
 | 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`(4종)·`evaluateCheckinUsageBadges()`(체크인 2종) · `src/lib/badge-engine/jamActionBadges.ts`의 `evaluateJamActionBadges()`(믹스·드랍·픽업·미션·컬렉션·가입 경과일·활동일·체크인 일수·캡슐·잠긴 개체·다른 트라이브·잼·챕터·활동 기반·체크인·드랍·잼 주 행동 31종, 보조 키 3개 별도) — 모두 §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 `issueQualifyingBadges()`로 공유 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719·20260914_1725) |
 | 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(`increment_daily_sync_count()` RPC로 원자 증가 — `daily_sync_count`·`daily_sync_streak_days` 파생) · `user_checkin_badge_earns` × effective category(카테고리 지표) · `user_checkin_badge_earns` × 이름→id 해석(목록 지표) · `user_combine_success_logs`(성공 기록 행 수·최초 표시 행) · `user_combine_fail_logs`(`fail_reason='no_recipe_match'` 수) · `poi_drops`(`inventory_item_id`가 있는 행의 서로 다른 개체·유저 수) · `user_mission_completions`(행 수) · `user_item_book_completions`·`user_item_book_tier_completions`(`collection_complete_count`: 두 표에서 읽은 컬렉션 id의 서로 다른 개수) · `strava_activities`(`start_date`·`normalized`)와 `user_checkin_badge_earns`(`poi_id`·`triggered_by_activity_date`)의 가입한 날 이후 행(활동한 날·같은 지점 일수), `users.created_at`(가입 경과일) |
 
@@ -1535,8 +1532,7 @@ triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER })`를 한 번 더 부른다. �
   이 함수의 마지막 인자 `options?: { dryRun, silent, triggeredByPrefix }`가 재평가용 분기다 — 생략하면 자연 발급과 같다.
   `dryRun`은 등급형·레벨형 판정을 마친 **뒤**에서 갈라 통과한 배지를 `earned`에 담기만 하고
   `user_activity_badges` insert·`awardPoints`·`recordFeedEvent`를 하나도 부르지 않는다. `silent`는 피드만 건너뛴다.
-- **`triggered_by` 접두**: 재평가로 발급한 JAM! 배지는 `catalog_reevaluation:jam_action:<지표 키>`(레시피 최초 성공은
-  `catalog_reevaluation:recipe_first_success:<recipe_id>`)로 기록된다. 자연 발급(`jam_action:…`)과 구분되어, 되돌릴 때
+- **`triggered_by` 접두**: 재평가로 발급한 JAM! 배지는 `catalog_reevaluation:jam_action:<지표 키>`로 기록된다. 자연 발급(`jam_action:…`)과 구분되어, 되돌릴 때
   골라내는 근거가 된다. 메인 엔진 몫은 기존대로 `catalog_reevaluation`이다.
 - **알림은 만들지 않는다**: JAM! 알림은 호출부(`jamActionRoute.ts`·`sync.ts`)가 만들고 이 배치는 그 호출부를 거치지 않는다.
 - **실패 격리**: JAM! 호출은 별도 `try/catch`다. 던지면 그 유저의 메인 엔진 결과는 그대로 남고 `error`에 `JAM! 지표: <메시지>`가

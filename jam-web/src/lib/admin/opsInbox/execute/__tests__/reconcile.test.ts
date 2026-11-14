@@ -1055,22 +1055,9 @@ describe('실행 — 레시피의 상태 전이 (티켓 20261002_2221, 실제 �
       expect(db.tables.combination_recipes).toEqual([])
     })
 
-    it('만든 레시피를 가리키는 배지가 있으면 지우지 않고 사유에 덧붙이며 결과에 자원 ID를 싣는다. 배지 정보는 응답·기록에 없다', async () => {
-      const { db, run } = setup([stuck()], { recipes: [recipeRow()] })
-      db.tables.badges = [{ id: uid(60), deleted_at: null, condition_json: { recipe_first_success: { recipe_id: RECIPE_RES } } }]
-      const result = ok(await run())
-
-      expect(statusOf(db, ID.recipe)).toBe('failed')
-      expect(db.tables.combination_recipes).toHaveLength(1)
-      expect(db.decisions()[0]).toMatchObject({ action: 'fail', reason: `${STALLED}. ${REMAINS}` })
-      expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: RECIPE_RES })
-      expect(JSON.stringify([result, db.decisions()])).not.toContain(uid(60))
-      expect(logged()).toContain('이 레시피를 가리키는 배지')
-    })
-
     it('참조를 읽지 못해도 지우지 않고 실패로 닫는다. DB 오류 원문은 기록에 없다', async () => {
       const { db, run } = setup([stuck()], { recipes: [recipeRow()] })
-      db.failIf = (call) => call.table === 'badges'
+      db.failIf = (call) => call.table === 'today_cards'
       const result = ok(await run())
 
       expect(statusOf(db, ID.recipe)).toBe('failed')

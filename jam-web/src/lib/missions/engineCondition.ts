@@ -171,7 +171,7 @@ function extractDelegatedCondition(condition: MissionCondition): Record<string, 
 /**
  * DB 기록 키 하나가 충족됐는가 (티켓 20261019_1445). `dbMetrics`에 그 키의 값이 없으면 충족하지 못한 것으로 본다(fail-closed) —
  * 호출자가 값을 읽지 않았는데 «조건 없음»처럼 통과해 미션이 즉시 완료되는 일을 막는다.
- * 조건 값이 숫자가 아니거나(문자열·NaN) 레시피를 가리키지 않는 `recipe_first_success`도 충족하지 못한다.
+ * 조건 값이 숫자가 아니면(문자열·NaN) 충족하지 못한다.
  * 미션 전용 `jam_period_earned`(3-A회)는 다른 숫자 키와 같다 — 읽은 «기간 안에 모은 잼»이 조건 값 이상이면 충족한다.
  * 객체 값을 가진 `checkin_category_count`·`checkin_badge_count`는 모양이 맞아야(장소 종류·이름 목록과 숫자 `count`) 하고
  * 읽은 값(그 종류·그 목록에 든 배지 수)이 `count` 이상이어야 충족한다 — 배지 발급(`usageBadges.ts`)과 같은 비교다.
@@ -179,11 +179,6 @@ function extractDelegatedCondition(condition: MissionCondition): Record<string, 
 function dbConditionMet(key: MissionDbConditionKey, condition: MissionCondition, dbMetrics: MissionDbMetrics | undefined): boolean {
   const actual = dbMetrics?.[key]
   if (actual === undefined || !Number.isFinite(actual)) return false
-
-  if (key === 'recipe_first_success') {
-    const recipeId = condition.recipe_first_success?.recipe_id
-    return typeof recipeId === 'string' && recipeId !== '' && actual >= 1
-  }
 
   if (key === 'checkin_category_count') {
     const required = condition.checkin_category_count

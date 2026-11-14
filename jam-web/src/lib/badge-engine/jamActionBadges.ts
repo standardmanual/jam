@@ -25,7 +25,7 @@
  *
  * ## 가입 경과일은 전용 분기다
  * `days_since_signup`은 보조 키(`signup_recent_active_days`, 선택)가 붙을 수 있어 «유저 단위로 한 번 계산한 숫자
- * 하나»를 모든 후보에 비교하는 `METRIC_COMPUTERS` 흐름에 맞지 않는다(`recipe_first_success`처럼 전용 분기).
+ * 하나»를 모든 후보에 비교하는 `METRIC_COMPUTERS` 흐름에 맞지 않는 전용 분기다.
  * 보조 키는 트리거가 아니라 후보를 거르는 조건이라 `JAM_ACTION_CONDITION_KEYS`가 아닌
  * `JAM_ACTION_MODIFIER_KEYS`에 둔다. `active_week_streak`도 보조 키(`active_week_min_days`)에 따라 후보마다 값이 달라 전용 분기다.
  * `jam_week_count`·`jam_week_streak`도 보조 키(`jam_week_min_earned`)에 따라 후보마다 값이 달라 전용 분기다(티켓 20261019_0542 2회).
@@ -42,7 +42,6 @@ import {
   countCombineAttempts,
   countCombineFail,
   countCombineSuccess,
-  fetchFirstSuccessRecipeIds,
 } from './jamActionMetrics'
 import {
   countDroppedItemPickedUpCount,
@@ -93,11 +92,11 @@ export type { JamActionConditionKey }
 
 /**
  * 「유저 단위로 한 번 계산한 숫자 하나」를 모든 후보에 비교하는 수치형 지표.
- * `recipe_first_success`(후보마다 레시피가 다르다)와 `days_since_signup`·`active_week_streak`·`jam_week_count`·`jam_week_streak`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
+ * `days_since_signup`·`active_week_streak`·`jam_week_count`·`jam_week_streak`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
  */
 export type JamActionMetric = Exclude<
   JamActionConditionKey,
-  'recipe_first_success' | 'days_since_signup' | 'active_week_streak' | 'jam_week_count' | 'jam_week_streak'
+  'days_since_signup' | 'active_week_streak' | 'jam_week_count' | 'jam_week_streak'
 >
 
 /** 호출부가 「이번 행동으로 다시 볼 지표」로 넘기는 키 */
@@ -138,15 +137,6 @@ const METRIC_COMPUTERS: Record<JamActionMetric, MetricComputer> = {
   dropped_item_picked_up_count: countDroppedItemPickedUpCount,
 }
 
-function isRecipeFirstSuccessValue(v: unknown): v is { recipe_id: string } {
-  return (
-    typeof v === 'object' &&
-    v !== null &&
-    typeof (v as { recipe_id?: unknown }).recipe_id === 'string' &&
-    (v as { recipe_id: string }).recipe_id.length > 0
-  )
-}
-
 function isMetricTrigger(trigger: JamActionTrigger): trigger is JamActionMetric {
   return trigger in METRIC_COMPUTERS
 }
@@ -166,9 +156,7 @@ export interface JamActionCandidateOptions {
  *  ② 요청한 지표 키를 가진 후보만 남긴다. 없으면 **값 계산 없이** `[]`
  *  ③ 지표별로 현재값을 계산한다. 계산이 던지면 그 지표만 건너뛴다(fail-closed)
  *  ④ 수치형은 `issueQualifyingBadges`로 발급한다(`triggered_by` = `jam_action:${metric}`)
- *  ⑤ `recipe_first_success`는 내가 최초 성공자인 레시피 집합으로 현재값 1/0을 만든다
- *     (상태 기반이라 여러 번 불러도 같은 결과 — 재실행해도 멱등). `triggered_by` = `recipe_first_success:${recipe_id}`
- *  ⑥ `days_since_signup`은 가입 경과일을 한 번 계산하고, 후보 중 보조 키(`signup_recent_active_days`)가 숫자인
+ *  ⑤ `days_since_signup`은 가입 경과일을 한 번 계산하고, 후보 중 보조 키(`signup_recent_active_days`)가 숫자인
  *     배지가 있을 때만 최근 30일 활동일을 한 번 더 계산한다. 보조 키가 있는 배지의 현재값은 최근 활동일이 보조 키
  *     이상일 때만 가입 경과일이고 아니면 0이다(발급되지 않는다). 어느 계산이든 던지면 이 분기 전체를 건너뛴다.
  *     `triggered_by` = `jam_action:days_since_signup`
@@ -178,7 +166,7 @@ export interface JamActionCandidateOptions {
  *
  * `client`를 생략하면 새 service_role 클라이언트를 만든다.
  *
- * `options`는 `issueQualifyingBadges`에 그대로 넘긴다(수치형·`days_since_signup`·`recipe_first_success` 세 곳).
+ * `options`는 `issueQualifyingBadges`에 그대로 넘긴다(수치형·전용 분기 모두).
  * 생략하면 자연 발급과 같다. 재평가 배치만 쓴다(`dryRun`·`silent`·`triggeredByPrefix`, 티켓 20261001_0634).
  *
  * `candidateOptions`는 «열릴 예정 배지 미리보기» 전용이다(티켓 20261001_2203). 생략하면 위 설명 그대로
@@ -340,24 +328,6 @@ export async function evaluateJamActionBadges(
         earned.push(...issued)
         continue
       }
-
-      // recipe_first_success — 후보마다 자기 레시피를 가리키므로 지표 하나로 비교할 수 없다
-      const candidates = allBadges.filter((b) => isRecipeFirstSuccessValue(b.condition_json?.recipe_first_success))
-      if (candidates.length === 0) continue
-
-      const recipeIdOf = (b: BadgeRow): string => (b.condition_json!.recipe_first_success as { recipe_id: string }).recipe_id
-      const firstRecipeIds = await fetchFirstSuccessRecipeIds(supabase, userId, [...new Set(candidates.map(recipeIdOf))])
-      const issued = await issueQualifyingBadges(
-        supabase,
-        userId,
-        candidates,
-        () => 1,
-        (b) => (firstRecipeIds.has(recipeIdOf(b)) ? 1 : 0),
-        (b) => `recipe_first_success:${recipeIdOf(b)}`,
-        'evaluateJamActionBadges(recipe_first_success)',
-        options
-      )
-      earned.push(...issued)
     } catch (error) {
       // 계산·발급이 던지면 그 지표만 건너뛴다 — 다른 지표와 원본 액션은 계속 진행한다
       console.error(`[evaluateJamActionBadges] ${trigger} 판정 실패 — 이 지표만 건너뜀 (userId: ${userId}):`, error)

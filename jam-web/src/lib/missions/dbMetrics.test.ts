@@ -4,7 +4,7 @@
  * 검증 대상:
  *  - 조건에 든 DB 키만 읽는다(키가 없으면 아무 표도 읽지 않는다)
  *  - 기간 하한 = max(참가 시각, 미션 시작), 상한 = 미션 종료(없으면 상한 없음) — 참가 전·기간 밖 기록은 세지 않는다
- *  - 14개 키(1회)와 날짜·체크인 5개 키(2회)가 각자 알맞은 값을 돌려준다(recipe_first_success는 1/0)
+ *  - 13개 키(1회)와 날짜·체크인 5개 키(2회)가 각자 알맞은 값을 돌려준다
  *  - 읽지 못하면 던진다(0으로 폴백하지 않는다) — 하한을 정할 수 없을 때도 마찬가지
  *  - 미션 전용 DB 키 `jam_period_earned`(3-A회): 정산된 활동의 시작 시각이 기간 안인 활동의 잼만 센다(정산 시각이 아니다)
  *  - 조회 공유(4회): 같은 원천을 읽는 키·미션은 한 번만 읽고, 값은 공유하든 안 하든 같다. 같은 동기화 안에서 값이 바뀌는 읽기는 공유하지 않는다
@@ -152,7 +152,6 @@ describe('loadMissionDbMetrics — 14개 키', () => {
       combine_attempt_count: 1,
       combine_success_count: 1,
       combine_fail_count: 1,
-      recipe_first_success: { recipe_id: 'r1' },
       drop_item_count: 1,
       pickup_item_count: 1,
       pickup_from_user_count: 1,
@@ -164,16 +163,15 @@ describe('loadMissionDbMetrics — 14개 키', () => {
       locked_item_pickup_count: 1,
       cross_tribe_combine_success_count: 1,
     }
-    // 1회 키 14개 + 아래 «날짜·체크인 5개 키» 블록의 5개 = 정본 목록 19개 전부 (키를 더하고 시험을 빠뜨리면 여기서 걸린다)
+    // 1회 키 13개 + 아래 «날짜·체크인 5개 키» 블록의 5개 = 정본 목록 18개 전부 (키를 더하고 시험을 빠뜨리면 여기서 걸린다)
     const firstStageKeys = ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.filter((key) => !DATE_AND_CHECKIN_KEYS.includes(key))
     expect(Object.keys(condition).sort()).toEqual([...firstStageKeys].sort())
-    expect(firstStageKeys.length + DATE_AND_CHECKIN_KEYS.length).toBe(19)
+    expect(firstStageKeys.length + DATE_AND_CHECKIN_KEYS.length).toBe(18)
     const result = await loadMissionDbMetrics(db.client, U, condition, window)
     expect(result).toEqual({
       combine_attempt_count: 2, // 성공 1 + 실패 1 (기간 안)
       combine_success_count: 1,
       combine_fail_count: 1,
-      recipe_first_success: 1,
       drop_item_count: 1, // d1만 (d2는 기간 전)
       pickup_item_count: 1,
       pickup_from_user_count: 1,
@@ -185,21 +183,6 @@ describe('loadMissionDbMetrics — 14개 키', () => {
       locked_item_pickup_count: 1,
       cross_tribe_combine_success_count: 1,
     })
-  })
-
-  it('recipe_first_success: 최초 성공이 기간 밖이거나 다른 레시피면 0이다', async () => {
-    const db = makeFakeDb(tables())
-    const outside = await loadMissionDbMetrics(db.client, U, { recipe_first_success: { recipe_id: 'r2' } }, window) // 기간 전
-    expect(outside.recipe_first_success).toBe(0)
-    const missing = await loadMissionDbMetrics(db.client, U, { recipe_first_success: { recipe_id: 'none' } }, window)
-    expect(missing.recipe_first_success).toBe(0)
-  })
-
-  it('recipe_first_success: 레시피를 가리키지 않으면 DB를 읽지 않고 0이다', async () => {
-    const db = makeFakeDb(tables())
-    const result = await loadMissionDbMetrics(db.client, U, { recipe_first_success: {} } as MissionCondition, window)
-    expect(result.recipe_first_success).toBe(0)
-    expect(db.queried).toEqual([])
   })
 })
 

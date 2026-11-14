@@ -219,7 +219,7 @@ describe('planLinkFills · 연결 칸 채우기 계획', () => {
     expect(own.conflicts.map((conflict) => conflict.code)).toEqual(['own_resource_field'])
   })
 
-  it('JAM! 배지와 카드가 같은 레시피를 가리켜도 각자 자기 칸을 채운다(배지의 recipe_id와 카드의 recipe_id는 서로 다른 항목의 칸이다)', () => {
+  it('JAM! 배지가 레시피를 가리켜도 칸을 채우지 않는다(«가장 먼저 성공» 조건을 없앴다). 카드의 레시피 칸만 채운다', () => {
     const plan = planOf([
       makeItem({ key: 'card', kind: 'home_feed_card', links: ['recipe'] }),
       makeItem({ key: 'badge', kind: 'jam_badge', links: ['recipe'] }),
@@ -227,7 +227,7 @@ describe('planLinkFills · 연결 칸 채우기 계획', () => {
     ])
     expect(plan.conflicts).toEqual([])
     expect(plan.fills.get('card')?.map((fill) => fill.field)).toEqual(['recipe_id'])
-    expect(plan.fills.get('badge')?.map((fill) => fill.field)).toEqual(['recipe_id'])
+    expect(plan.fills.has('badge')).toBe(false)
   })
 
   it('표에 없는 쌍(같은 종류끼리 등)은 그룹으로만 묶고 칸을 채우지 않는다', () => {

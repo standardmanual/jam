@@ -8,8 +8,7 @@ import { isUuid } from '@/lib/admin/uuid'
 
 /**
  * 하드 삭제 — 참조 카운트 가드는 `lib/admin/recipe-references.ts`가 단일 출처다(티켓
- * 20260907_1138). 삭제되지 않은 배지가 조건 `recipe_first_success.recipe_id`로 이 레시피를
- * 가리키면 삭제를 막는다(티켓 20261001_1200). `badges`/`poi`와 같은 fail-closed 계약이라
+ * 20260907_1138). 삭제를 막는 참조가 생기면 막는다. `badges`/`poi`와 같은 fail-closed 계약이라
  * 참조 조회가 실패해도 삭제를 막는다.
  */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

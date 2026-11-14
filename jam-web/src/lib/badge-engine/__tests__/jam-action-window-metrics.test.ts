@@ -16,7 +16,6 @@ import {
   countCombineAttempts,
   countCombineFail,
   countCombineSuccess,
-  fetchFirstSuccessRecipeIds,
 } from '../jamActionMetrics'
 import {
   countDroppedItems,
@@ -88,20 +87,6 @@ describe('믹스 지표 — attempted_at 기준', () => {
     const { client } = makeFakeDb(tables())
     expect(await countCombineSuccess(client, U, { fromIso: FROM })).toBe(4)
     expect(await countCombineSuccess(client, U, { fromIso: FROM, toIso: null })).toBe(4)
-  })
-
-  it('레시피 최초 성공: 기간 안의 최초 성공 행만 인정한다 / 인자가 없으면 기간과 상관없이 인정', async () => {
-    const { client } = makeFakeDb({
-      user_combine_success_logs: [
-        { id: 'a', user_id: U, recipe_id: 'before', is_recipe_first: true, attempted_at: BEFORE },
-        { id: 'b', user_id: U, recipe_id: 'inside', is_recipe_first: true, attempted_at: INSIDE },
-        { id: 'c', user_id: U, recipe_id: 'after', is_recipe_first: true, attempted_at: AFTER },
-        { id: 'd', user_id: U, recipe_id: 'notfirst', is_recipe_first: false, attempted_at: INSIDE },
-      ],
-    })
-    const ids = ['before', 'inside', 'after', 'notfirst']
-    expect([...(await fetchFirstSuccessRecipeIds(client, U, ids, WINDOW))]).toEqual(['inside'])
-    expect([...(await fetchFirstSuccessRecipeIds(client, U, ids))].sort()).toEqual(['after', 'before', 'inside'])
   })
 })
 

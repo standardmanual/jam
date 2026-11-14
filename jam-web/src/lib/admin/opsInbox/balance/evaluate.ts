@@ -95,13 +95,13 @@ export interface BalanceEvaluation {
 }
 
 /**
- * 횟수형 JAM! 배지인지: `condition_json`에 JAM! 행동 지표 키(`JAM_ACTION_CONDITION_KEYS`) 가운데 `recipe_first_success`가 아닌
- * 키가 있으면 횟수형이고, 그 밖의 JAM! 배지는 달성형이다(PRD §5.2). 조건 값이 객체가 아니면 판정할 수 없어 `null`이다.
+ * 횟수형 JAM! 배지인지: `condition_json`에 JAM! 행동 지표 키(`JAM_ACTION_CONDITION_KEYS`)가
+ * 있으면 횟수형이고, 그 밖의 JAM! 배지는 달성형이다(PRD §5.2). 조건 값이 객체가 아니면 판정할 수 없어 `null`이다.
  */
 export function isCountBadgeCondition(conditionJson: unknown): boolean | null {
   const record = asRecord(conditionJson)
   if (!record) return null
-  return JAM_ACTION_CONDITION_KEYS.some((key) => key !== 'recipe_first_success' && key in record)
+  return JAM_ACTION_CONDITION_KEYS.some((key) => key in record)
 }
 
 // ── 읽기 도우미 ─────────────────────────────────────────────────────────────────────────────────

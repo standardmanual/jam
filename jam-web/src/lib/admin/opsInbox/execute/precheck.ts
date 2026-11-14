@@ -11,8 +11,7 @@
  *
  * 미션이 붙은 뒤(티켓 20261002_1944, ⑥)의 두 규칙은 못 하는 항목 이유로 더한다(사용자 결정 2026-10-02):
  * 카드가 그 카드가 여는 미션보다 먼저 공개되면(G4 예외), 같은 묶음의 예약할 미션끼리 같은 제목이고 기간이 겹치면 뒤 항목(`position`이 큰 쪽)이다.
- * JAM! 배지가 붙은 뒤(티켓 20261004_1756, ⑨-a)의 두 규칙도 같다(사용자 결정 2026-10-04): 미션·카드가 연결된 JAM! 배지보다 먼저 공개되면 그 미션·카드가,
- * 「가장 먼저 성공」 배지와 연결된 레시피의 공개 시각이 다르면 그 배지가 못 하는 항목이다.
+ * JAM! 배지가 붙은 뒤(티켓 20261004_1756, ⑨-a)의 규칙도 같다(사용자 결정 2026-10-04): 미션·카드가 연결된 JAM! 배지보다 먼저 공개되면 그 미션·카드가 못 하는 항목이다.
  * 컬렉션이 붙은 뒤(티켓 20261004_2039, ⑩-a)의 두 규칙도 같다(사용자 확인 2026-10-04): 컬렉션이 연결된 완성 보상 JAM! 배지보다 먼저 공개되면 그 컬렉션이(이유는 JAM! 배지 규칙과 같은 문장),
  * 카드가 연결된 컬렉션보다 먼저 공개되면 그 카드가 못 하는 항목이다.
  * 드랍이 붙은 뒤(티켓 20261004_2242, ⑩-b)의 규칙도 같다(사용자 확인 2026-10-04): 드랍 예약이 연결로 채운 컬렉션보다 먼저 공개되면 그 드랍이 못 하는 항목이다(이유는 카드 규칙과 같은 문장).
@@ -45,7 +44,6 @@ export const EXECUTE_LEAD_MS = 10 * 60_000
 const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 const MISSION_KIND = 'mission'
-const JAM_BADGE_KIND = 'jam_badge'
 /** 카드가 미션을 여는 연결 칸(`LINK_PAIRS`의 card→mission 쌍). 이 칸을 채우는 대상의 공개 시각과 견준다(G4 예외). */
 const CARD_MISSION_FIELDS: readonly string[] = ['mission_id']
 /**
@@ -57,11 +55,6 @@ const LINKED_BADGE_FIELDS: readonly string[] = ['reward_badge_ids', 'badge_ids',
 const CARD_COLLECTION_FIELDS: readonly string[] = ['item_book_id']
 /** 드랍 예약이 컬렉션을 가리키는 연결 칸(`LINK_PAIRS`의 drop_schedule→collection_launch 쌍). 이 칸을 채우는 대상 컬렉션의 공개 시각과 견준다(티켓 20261004_2242). */
 const DROP_COLLECTION_FIELDS: readonly string[] = ['collection_ids']
-/**
- * 「가장 먼저 성공」 배지가 레시피를 가리키는 연결 칸(`LINK_PAIRS`의 jam_badge→recipe 쌍). 대상 레시피의 공개 시각과 견준다(티켓 20261004_1756).
- * 카드가 레시피를 가리키는 칸(card→recipe 쌍, 티켓 20261006_1218)도 이름이 같은 `recipe_id`라 칸 이름만으로는 가를 수 없다 — 검사는 가리키는 쪽이 JAM! 배지일 때만 한다.
- */
-const BADGE_RECIPE_FIELDS: readonly string[] = ['recipe_id']
 
 /** 요약창에 그대로 보이는 사유 문장. */
 export const PRECHECK_MESSAGES = {
@@ -78,7 +71,6 @@ export const PRECHECK_MESSAGES = {
   cardBeforeMission: '카드가 여는 미션보다 먼저 공개돼요',
   beforeLinkedBadge: '연결된 JAM! 배지보다 먼저 공개돼요',
   beforeLinkedCollection: '연결된 컬렉션보다 먼저 공개돼요',
-  firstSuccessStartsDiffer: '가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요',
   missionTitleOverlap: '같은 기획 안에 기간이 겹치는 같은 제목의 미션이 있어요',
 } as const
 
@@ -236,27 +228,6 @@ function opensBeforeLinked(item: ExecuteItem, fills: readonly LinkFill[], byId: 
 }
 
 /**
- * 「가장 먼저 성공」 배지(jam_badge→recipe 쌍)의 공개 시각이 연결된 레시피 항목과 다른지(사용자 결정 2026-10-04). 이 배지는 믹스에 성공할 때만 판정해 배지가 늦게 열리면 첫 성공자가
- * 받지 못하고 일찍 열리면 레시피보다 먼저 보인다. 대상 레시피 항목의 상태와 관계없이 견준다(이미 게재 중인 레시피에 나중에 여는 배지는 첫 성공을 놓친다).
- * 밀리초로 견주고, 두 시각 중 하나라도 읽을 수 없으면 견주지 않는다. 카드(card→recipe 쌍)에는 공개 순서 검사를 하지 않는다 — 카드는 레시피보다 먼저 공개돼도 막지 않는다(07 §4.5 예외).
- */
-function differsFromLinkedRecipe(item: ExecuteItem, fills: readonly LinkFill[], byId: ReadonlyMap<string, ExecuteItem>): boolean {
-  if (item.kind !== JAM_BADGE_KIND) return false
-  const start = readStart(item)
-  if (!start.ok) return false
-  return fills
-    .filter((fill) => BADGE_RECIPE_FIELDS.includes(fill.field))
-    .some((fill) =>
-      fill.targetItemIds.some((targetId) => {
-        const target = byId.get(targetId)
-        if (!target) return false
-        const targetStart = readStart(target)
-        return targetStart.ok && start.ms !== targetStart.ms
-      })
-    )
-}
-
-/**
  * 같은 묶음에서 예약할 미션끼리 같은 제목이고 기간이 겹치면, 뒤 항목(`position`이 큰 쪽)의 ID를 모은다(사용자 결정 2026-10-02).
  * 예약할 미션은 승인된 미션 항목이고, 변환(`toMissionRegisterInput`)이 값을 읽는 항목만 센다 — 형식 오류 항목은 실행 때 변환이 걸러 낸다.
  * 제목은 등록 전 DB 검사(`runMissionDbChecks`)와 같게 글자 그대로 견준다. 실패로 닫을 항목은 만들지 않으니 뺀다.
@@ -333,7 +304,6 @@ export function precheckBundle(
       if (opensBeforeLinked(item, fills, byId, LINKED_BADGE_FIELDS)) reasons.push(PRECHECK_MESSAGES.beforeLinkedBadge)
       if (opensBeforeLinked(item, fills, byId, CARD_COLLECTION_FIELDS)) reasons.push(PRECHECK_MESSAGES.beforeLinkedCollection)
       if (opensBeforeLinked(item, fills, byId, DROP_COLLECTION_FIELDS)) reasons.push(PRECHECK_MESSAGES.beforeLinkedCollection)
-      if (differsFromLinkedRecipe(item, fills, byId)) reasons.push(PRECHECK_MESSAGES.firstSuccessStartsDiffer)
       if (laterDuplicateMissions.has(item.id)) reasons.push(PRECHECK_MESSAGES.missionTitleOverlap)
       reasonsById.set(item.id, reasons)
     }
