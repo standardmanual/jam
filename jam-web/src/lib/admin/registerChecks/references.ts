@@ -21,7 +21,7 @@ export interface BadgeUndoReferenceSpec extends UndoReferenceSpec {
 
 /**
  * 되돌림 전에 «이 배지가 아직 아무 데도 쓰이지 않았는지» 읽는 관계 표(티켓 20260925_0540). `badges`를 가리키는 외래 키
- * 17곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25 + 마이그레이션 227의 `item_issue_log` + 마이그레이션 229의 `sync_pending_items` + 마이그레이션 235의 `inventory_item_events` + 마이그레이션 236의 `combine_pending_results` + 마이그레이션 250의 `mission_item_rewards`, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
+ * 18곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25 + 마이그레이션 227의 `item_issue_log` + 마이그레이션 229의 `sync_pending_items` + 마이그레이션 235의 `inventory_item_events` + 마이그레이션 236의 `combine_pending_results` + 마이그레이션 250의 `mission_item_rewards` + 마이그레이션 340의 `combination_recipes.first_success_badge_id`, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
  * - 삭제 차단(NO ACTION, DB가 막아 주지만 --undo가 중간에 실패하면 저장소 파일과 행이 어긋날 수 있어 미리 읽는다):
  *   user_activity_badges · inventory_items · poi_drops · poi.linked_badge_id · point_transactions.source_badge_id
  *   · combine_pending_results.badge_id(마이그레이션 236, 티켓 20261018_0055 — 받지 않은 믹스 결과는 `ON DELETE` 규칙이 없어 NO ACTION이다)
@@ -32,6 +32,7 @@ export interface BadgeUndoReferenceSpec extends UndoReferenceSpec {
  * - 연결 해제(SET NULL, 조용히 연결이 끊김): item_books.reward_badge_id · item_books.required_activity_badge_id · missions.gated_badge_id
  *   · item_book_tier_rewards.reward_badge_id · item_issue_log.badge_id(마이그레이션 227, 티켓 20261017_1424 — 발급 기록의 배지 칸)
  *   · inventory_item_events.badge_id(마이그레이션 235, 티켓 20261018_0053 — 개체 이력의 배지 칸)
+ *   · combination_recipes.first_success_badge_id(마이그레이션 340, 티켓 20261114_1705 — 레시피의 첫 성공자 보상 배지 칸. 지우면 레시피는 남고 보상만 비어 조용히 사라진다)
  * 조회는 각 표의 배지 id 컬럼으로 센다(표마다 `id` 컬럼 유무가 달라 컬럼을 그대로 쓴다).
  * 참조 표를 바꿀 때는 이 목록만 고친다 — 코드·SQL 기록 주석은 이 상수에서 나온다.
  * (`as const`를 쓰지 않는다: 스크립트 테스트가 `{ table: string; column: string }[]`로 단언한다.)
@@ -54,6 +55,7 @@ export const BADGE_UNDO_REFERENCE_TABLES: BadgeUndoReferenceSpec[] = [
   { table: 'missions', column: 'gated_badge_id', effect: '연결 해제' },
   { table: 'item_issue_log', column: 'badge_id', effect: '연결 해제' },
   { table: 'inventory_item_events', column: 'badge_id', effect: '연결 해제' },
+  { table: 'combination_recipes', column: 'first_success_badge_id', effect: '연결 해제' },
 ]
 
 /**

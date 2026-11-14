@@ -13,7 +13,12 @@
  * (보유 조건) 두 배열로 저장해 "정확히 일치"만 매칭됐다. 슬롯 구조가 이를 완전히 대체한다.
  */
 
+import type { CombineRecipeGradeMode } from '@/types/database'
+
 export type CombineSlotBadgeType = 'item' | 'activity' | 'checkin'
+
+/** 레시피 유형 입력 값(마이그레이션 340, 티켓 20261114_1705) */
+const GRADE_MODES: readonly CombineRecipeGradeMode[] = ['follow_materials', 'fixed']
 
 const SLOT_BADGE_TYPES: readonly CombineSlotBadgeType[] = ['item', 'activity', 'checkin']
 
@@ -65,6 +70,13 @@ export interface RecipePayloadInput {
    * 새 어드민만 보낸다. 옛 어드민 요청에는 이 칸이 없어 옛 검증(보상 하나 이상)이 그대로다.
    */
   allow_no_reward?: unknown
+  /**
+   * 레시피 유형(마이그레이션 340, 티켓 20261114_1705) — `follow_materials`(등급 대응형) 또는 `fixed`(등급 고정형).
+   * 칸이 없으면 건드리지 않는다. 4등급이 모두 있는 배지만 고르게 하는 검사와 저장은 어드민 양식(2회차)이 한다.
+   */
+  grade_mode?: unknown
+  /** 첫 성공자 보상 배지 id(마이그레이션 340) — 칸이 없으면 건드리지 않고, 빈 값·null이면 보상 없음 */
+  first_success_badge_id?: unknown
 }
 
 export interface NormalizedRecipePayload {
@@ -82,6 +94,10 @@ export interface NormalizedRecipePayload {
   rewardLocked: boolean | undefined
   /** `undefined`는 제출하지 않음(행을 바꾸지 않는다) */
   allowNoReward: boolean | undefined
+  /** `undefined`는 제출하지 않음(행을 바꾸지 않는다) */
+  gradeMode: CombineRecipeGradeMode | undefined
+  /** `undefined`는 제출하지 않음(행을 바꾸지 않는다), `null`은 첫 성공자 보상 없음 */
+  firstSuccessBadgeId: string | null | undefined
 }
 
 /** 시간대가 붙은 ISO 8601 — 시간대가 없는 값은 서버 시간대로 해석돼 예약이 어긋나므로 받지 않는다 */
@@ -205,6 +221,10 @@ export function normalizeRecipePayload(
   if (rewardLocked === 'invalid') return { ok: false, error: '결과 잠김 값이 올바르지 않아요. 켜기 또는 끄기로 다시 선택해 주세요.' }
   const description = normalizeDescription(body.description)
   if (!description.ok) return description
+  const gradeMode = normalizeGradeMode(body.grade_mode)
+  if (!gradeMode.ok) return gradeMode
+  const firstSuccessBadgeId = normalizeFirstSuccessBadgeId(body.first_success_badge_id)
+  if (!firstSuccessBadgeId.ok) return firstSuccessBadgeId
 
   if (allowNoReward !== true && rewardPoints === 0 && rewardBadgeIds.length === 0) {
     return { ok: false, error: '보상을 하나 이상 지정해 주세요. 포인트나 배지 중 최소 하나가 필요해요.' }
@@ -228,8 +248,34 @@ export function normalizeRecipePayload(
       description: description.value,
       rewardLocked,
       allowNoReward,
+      gradeMode: gradeMode.value,
+      firstSuccessBadgeId: firstSuccessBadgeId.value,
     },
   }
+}
+
+/** 레시피 유형 — 칸 없음(`undefined`·`null`)은 `undefined`, 알려진 값만 받는다 */
+function normalizeGradeMode(
+  value: unknown
+): { ok: true; value: CombineRecipeGradeMode | undefined } | { ok: false; error: string } {
+  if (value === undefined || value === null) return { ok: true, value: undefined }
+  if (typeof value !== 'string' || !GRADE_MODES.includes(value as CombineRecipeGradeMode)) {
+    return { ok: false, error: '레시피 유형이 올바르지 않아요. 등급 대응형 또는 등급 고정형으로 다시 선택해 주세요.' }
+  }
+  return { ok: true, value: value as CombineRecipeGradeMode }
+}
+
+/** 첫 성공자 보상 배지 — 칸 없음(`undefined`)은 그대로, 빈 문자열·null은 보상 없음(`null`), 문자열은 앞뒤 공백을 지운 id */
+function normalizeFirstSuccessBadgeId(
+  value: unknown
+): { ok: true; value: string | null | undefined } | { ok: false; error: string } {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (value === null) return { ok: true, value: null }
+  if (typeof value !== 'string') {
+    return { ok: false, error: '첫 성공자 보상 배지가 올바르지 않아요. 배지를 다시 선택해 주세요.' }
+  }
+  const trimmed = value.trim()
+  return { ok: true, value: trimmed === '' ? null : trimmed }
 }
 
 /** 칸 없음(`undefined`·`null`)은 `undefined`, boolean은 그대로, 그 밖의 값은 `'invalid'` */

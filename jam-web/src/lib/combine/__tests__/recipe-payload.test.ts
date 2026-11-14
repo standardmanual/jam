@@ -400,3 +400,35 @@ describe('normalizeRecipePayload — 설명·결과 잠김·보상 없음 (티�
     expect(normalizeRecipePayload({ ...base, reward_points: 10, description: 'ㄱ'.repeat(501) }).ok).toBe(false)
   })
 })
+
+describe('normalizeRecipePayload — 레시피 유형·첫 성공자 보상 (티켓 20261114_1705)', () => {
+  const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), activitySlot([ACT])], reward_points: 10 }
+
+  it('칸이 없으면 건드리지 않는다(undefined)', () => {
+    const result = normalizeRecipePayload(base)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.gradeMode).toBeUndefined()
+      expect(result.value.firstSuccessBadgeId).toBeUndefined()
+    }
+  })
+
+  it('grade_mode는 follow_materials·fixed만 받는다', () => {
+    const follow = normalizeRecipePayload({ ...base, grade_mode: 'follow_materials' })
+    const fixed = normalizeRecipePayload({ ...base, grade_mode: 'fixed' })
+    expect(follow.ok && follow.value.gradeMode).toBe('follow_materials')
+    expect(fixed.ok && fixed.value.gradeMode).toBe('fixed')
+    expect(normalizeRecipePayload({ ...base, grade_mode: 'other' }).ok).toBe(false)
+    expect(normalizeRecipePayload({ ...base, grade_mode: 1 }).ok).toBe(false)
+  })
+
+  it('first_success_badge_id는 id·빈 값(null)·칸 없음을 구분한다', () => {
+    const set = normalizeRecipePayload({ ...base, first_success_badge_id: ' badge-1 ' })
+    const blank = normalizeRecipePayload({ ...base, first_success_badge_id: '  ' })
+    const nul = normalizeRecipePayload({ ...base, first_success_badge_id: null })
+    expect(set.ok && set.value.firstSuccessBadgeId).toBe('badge-1')
+    expect(blank.ok && blank.value.firstSuccessBadgeId).toBeNull()
+    expect(nul.ok && nul.value.firstSuccessBadgeId).toBeNull()
+    expect(normalizeRecipePayload({ ...base, first_success_badge_id: 5 }).ok).toBe(false)
+  })
+})

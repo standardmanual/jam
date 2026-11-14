@@ -671,8 +671,19 @@ export interface CombinationRecipeRow {
   reward_locked: boolean
   /** 보상 없음(포인트 0, 보상 배지 없음)을 허용한 레시피(마이그레이션 236). 새 어드민만 켠다. 기본 false라 옛 레시피는 보상 하나 이상을 요구한다 */
   allow_no_reward: boolean
+  /**
+   * 레시피 유형(마이그레이션 340, 티켓 20261114_1705) — `follow_materials`(등급 대응형): 재료를 모두 같은 등급으로 넣으면 같은 등급의 결과가 100% 나온다.
+   * `fixed`(등급 고정형, 기본): 슬롯이 가리킨 배지만 받고 보상 배지를 그대로 준다. 칸이 없는 응답(340 전 환경)은 `fixed`로 본다 — 그래서 선택 칸이다.
+   * 판정은 `lib/combine/gradeMode.ts`가 한다.
+   */
+  grade_mode?: CombineRecipeGradeMode
+  /** 첫 성공자 보상 아이템 배지(마이그레이션 340). 이 레시피를 전체 유저 중 처음 성공한 1명에게 일반 결과와 함께 준다. null·없음이면 보상 없음 */
+  first_success_badge_id?: string | null
   created_at: string
 }
+
+/** 레시피 유형 — 등급 대응형(`follow_materials`)과 등급 고정형(`fixed`) (마이그레이션 340) */
+export type CombineRecipeGradeMode = 'follow_materials' | 'fixed'
 
 /** 슬롯 단위 배지 타입 — 슬롯 안 후보는 전부 같은 타입이어야 한다 (마이그레이션 174) */
 export type CombineSlotBadgeType = 'item' | 'activity' | 'checkin'
@@ -722,6 +733,8 @@ export type CombineFailReason =
   | 'locked_item_not_allowed'
   /** 받지 않은 믹스 결과가 남아 있어 새 믹스를 시작하지 않았다(티켓 20261018_0055). 소각 전에 거절하므로 실패 기록은 남기지 않는다 */
   | 'pending_results_exist'
+  /** 등급 대응형 레시피에 재료 등급이 섞였다(티켓 20261114_1705). 소각 전에 거절하므로 실패 기록·실패 보상은 없다 */
+  | 'mixed_grade_not_allowed'
 
 export interface UserCombineFailLogRow {
   id: string
