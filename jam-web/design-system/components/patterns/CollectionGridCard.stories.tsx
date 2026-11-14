@@ -7,7 +7,7 @@ const meta: Meta<typeof CollectionGridCard> = {
   component: CollectionGridCard,
   parameters: {
     layout: 'centered',
-    docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스바 | 카운트]. 썸네일 좌상단에 등급+완성 태그.' } },
+    docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스바 | 카운트]. 썸네일 좌상단에 등급 태그. 완성 카드는 면이 강조색 그린이고 바·숫자 자리에 완성 칩이 온다.' } },
   },
   argTypes: {
     completed: { control: 'boolean' },
@@ -24,7 +24,7 @@ const SAMPLE_IMAGE = '/ds-assets/uploads/jam_logo.png';
 
 /**
  * 크림 캔버스 위 카드 면(JAM 2.0 라이트, 티켓 20261015_2133) — BadgeGridCard와 같은 면(흰 면 + 1px --border + 안쪽 여백 12).
- * 진행 바 트랙은 ProgressBar 기본 트랙(--border)이라 크림 위에서도 보인다.
+ * 진행 바는 캡슐 모양(어두운 트랙 --capsule-track + 그린 채움)이라 크림·흰 면 위에서도 보인다. 완성 카드는 그린 면.
  */
 export const OnCreamCanvas: Story = {
   name: '크림 캔버스 위 — 카드 면과 진행 바',
@@ -38,6 +38,8 @@ export const OnCreamCanvas: Story = {
     >
       <CollectionGridCard name="한강 러너 컬렉션" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarity="rare" />
       <CollectionGridCard name="이미지 없는 컬렉션" collected={0} total={10} />
+      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarity="mystic" />
+      <CollectionGridCard name="이미지 없는 완성 컬렉션" collected={10} total={10} completed />
     </div>
   ),
 };

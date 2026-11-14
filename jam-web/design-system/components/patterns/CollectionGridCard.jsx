@@ -2,8 +2,8 @@ import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
-// RarityBadge `md`와 같은 크기(패딩 --chip-padding, 글자 --text-xs, 높이 20px — 모든 칩의 기준인 ListRowChip과 같다) — "완성" 태그가 등급 태그 옆에
-// 나란히 붙으므로 크기를 맞춘다(2026-11-11 사용자 지시, 티켓 20261111_1141 → 20261112_0010).
+// RarityBadge `md`와 같은 크기(패딩 --chip-padding, 글자 --text-xs, 높이 20px — 모든 칩의 기준인 ListRowChip과 같다) — "완성" 칩은 카드 맨 아래 행에 놓이고,
+// 좌상단의 등급 칩과 크기를 맞춘다(2026-11-11 사용자 지시, 티켓 20261111_1141 → 20261112_0010 → 20261114_1502).
 const TAG_STYLE = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -19,15 +19,17 @@ const TAG_STYLE = {
 /**
  * CollectionGridCard — 컬렉션(아이템북) 그리드 셀 패턴.
  *
- * 레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스 바 | 카운트]
- * 썸네일 좌상단: 등급 태그(선택) + 완성 태그(선택)
+ * 레이아웃: 썸네일(투명 배경) → 타이틀 → 맨 아래 한 행(20px 최소 높이)
+ * 썸네일 좌상단: 등급 태그(선택)
+ * 맨 아래 행: 미완성 = [프로그레스 바 | 카운트] / 완성 = «완성» 칩 하나(왼쪽 정렬). 두 카드의 높이가 같다.
  *
  * 면 (티켓 20261015_2133): BadgeGridCard와 같은 면 — --card-bg(흰) 면, 외곽선 없음, 반경 --radius-2xl + 안쪽 여백 12, 그림자 없음.
- * 진행 바는 직접 그리지 않고 ProgressBar(트랙 --border, 필 강조색 그린 --jam-green, 2026-11-11 사용자 지시)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙·필이다.
+ * 완성한 카드는 면이 강조색 그린 --jam-green이다(2026-11-14 사용자 지시, 티켓 20261114_1502). 면 위 글자는 --foreground, 칩은 accent 검정 면.
+ * 진행 바는 직접 그리지 않고 ProgressBar shape="capsule"(어두운 트랙 --capsule-track, 필 강조색 그린 --jam-green, 높이 16)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙·필이다.
  *
  * Props:
  *   rarity     — 최초 등록 아이템배지 기준 컬렉션 등급 (선택)
- *   completed  — 완성 태그 표시
+ *   completed  — 완성 카드: 면이 그린이 되고 바·숫자 대신 «완성» 칩을 맨 아래에 둔다
  *
  * 인터랙션 모드 (상호 배타):
  *   href   → <a> 래핑
@@ -55,7 +57,7 @@ export function CollectionGridCard({
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--spacing-8)',
-    background: 'var(--card-bg)',
+    background: completed ? 'var(--jam-green)' : 'var(--card-bg)',
     boxSizing: 'border-box',
     borderRadius: 'var(--radius-2xl)',
     padding: 'var(--spacing-12)',
@@ -86,23 +88,18 @@ export function CollectionGridCard({
             style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }}
           />
         ) : (
-          // 이미지가 없을 때의 자리 표시 — 서비스의 BookIcon(w-10 h-10, text-muted)과 같은 40px 상자·--muted 색이다
-          <span style={{ display: 'inline-flex', width: 40, height: 40, color: 'var(--muted)' }}>
+          // 이미지가 없을 때의 자리 표시 — 서비스의 BookIcon(w-10 h-10, text-muted)과 같은 40px 상자·--muted 색이다(완성 카드는 그린 면 위라 --foreground)
+          <span style={{ display: 'inline-flex', width: 40, height: 40, color: completed ? 'var(--foreground)' : 'var(--muted)' }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <path d="M3 9h18M9 21V9" />
             </svg>
           </span>
         )}
-        {/* 태그 행: 완성(선택) → 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다. */}
-        {(showRarity || completed) && (
+        {/* 태그 행: 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다. 완성 칩은 맨 아래 행으로 옮겼다. */}
+        {showRarity && (
           <div style={{ position: 'absolute', top: 8, left: 8, right: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-            {completed && (
-              <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-                완성
-              </span>
-            )}
-            {showRarity && <RarityBadge rarity={rarity} size="md" />}
+            <RarityBadge rarity={rarity} size="md" />
           </div>
         )}
       </div>
@@ -122,20 +119,28 @@ export function CollectionGridCard({
         {name}
       </p>
 
-      {/* 진행 바 + 카운트 한 행 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
-        <ProgressBar percent={pct} height={12} color="var(--jam-green)" />
-        <span style={{
-          fontSize: 'var(--text-xs)',
-          color: 'var(--link)',
-          fontWeight: 700,
-          lineHeight: 1,
-          fontVariantNumeric: 'tabular-nums',
-          fontFamily: 'var(--font-family-base)',
-          flexShrink: 0,
-        }}>
-          {collected}/{total}
-        </span>
+      {/* 맨 아래 한 행 — 칩 높이(20px) 최소 높이로 완성·미완성 카드의 높이를 맞춘다 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', minHeight: 20 }}>
+        {completed ? (
+          <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
+            완성
+          </span>
+        ) : (
+          <>
+            <ProgressBar shape="capsule" percent={pct} height={16} color="var(--jam-green)" />
+            <span style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--link)',
+              fontWeight: 700,
+              lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+              fontFamily: 'var(--font-family-base)',
+              flexShrink: 0,
+            }}>
+              {collected}/{total}
+            </span>
+          </>
+        )}
       </div>
 
       {children}
