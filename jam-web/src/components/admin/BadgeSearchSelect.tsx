@@ -34,6 +34,8 @@ interface BadgeSearchSelectProps {
   typeFilter?: BadgeType
   /** 숨김 배지를 검색 결과에서 뺀다. 게이트 배지처럼 숨김 배지를 쓸 수 없는 자리에서 켠다(티켓 20261019_1313 2회) */
   excludeHidden?: boolean
+  /** 드랍 제외가 켜진 배지만 검색한다. 레시피의 첫 성공자 보상 배지 선택이 켠다(티켓 20261114_1705 2회차) */
+  dropExcludedOnly?: boolean
   placeholder?: string
   allowClear?: boolean
 }
@@ -54,6 +56,7 @@ export default function BadgeSearchSelect({
   initialLabel,
   typeFilter,
   excludeHidden,
+  dropExcludedOnly,
   placeholder,
   allowClear = true,
 }: BadgeSearchSelectProps) {
@@ -81,6 +84,7 @@ export default function BadgeSearchSelect({
         const params = new URLSearchParams({ query })
         if (typeFilter) params.set('type', typeFilter)
         if (excludeHidden) params.set('excludeHidden', '1')
+        if (dropExcludedOnly) params.set('dropExcluded', '1')
         const res = await fetch(`/api/admin/badges/search?${params.toString()}`)
         const data = await res.json()
         setResults((data.badges ?? []) as BadgeSearchResult[])
@@ -93,7 +97,7 @@ export default function BadgeSearchSelect({
       }
     }, 250)
     return () => clearTimeout(handle)
-  }, [query, typeFilter, excludeHidden, open])
+  }, [query, typeFilter, excludeHidden, dropExcludedOnly, open])
 
   // query가 비면(방금 포커스했거나 지웠을 때) 직전 검색 결과를 그대로 안 보여준다
   const displayResults = query.trim() ? results : []

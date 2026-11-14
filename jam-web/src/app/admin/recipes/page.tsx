@@ -64,7 +64,11 @@ export default async function AdminRecipesPage({ searchParams }: AdminRecipesPag
   const usedBadgeIds = [
     ...new Set(
       recipes
-        .flatMap((r) => [...r.slots.flatMap((s) => s.allowed_badge_ids), ...(r.reward_badge_ids ?? [])])
+        .flatMap((r) => [
+          ...r.slots.flatMap((s) => s.allowed_badge_ids),
+          ...(r.reward_badge_ids ?? []),
+          ...(r.first_success_badge_id ? [r.first_success_badge_id] : []),
+        ])
         .filter((id): id is string => !!id)
     ),
   ]

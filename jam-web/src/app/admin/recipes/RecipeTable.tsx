@@ -18,7 +18,7 @@ import { useListParams, useUrlSorting } from '@/components/admin/data-table/use-
 import { runBulk, fetchListIds, downloadResponseAsFile, type BulkRunResponse } from '@/components/admin/data-table/admin-fetch'
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import type { CombinationRecipeSlotRow } from '@/types/database'
-import { recipeStatusDisplay, type RecipeListRow } from '@/lib/admin/recipe-list'
+import { recipeBadgeNames, recipeGradeModeLabel, recipeStatusDisplay, type RecipeListRow } from '@/lib/admin/recipe-list'
 import { RecipeDeleteImpact } from './RecipeDeleteImpact'
 
 export type RecipeWithSlots = RecipeListRow & { slots: CombinationRecipeSlotRow[] }
@@ -78,6 +78,16 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
             </Link>
           ),
         }),
+        // 유형(티켓 20261114_1705 2회차) — 등급 대응형 / 등급 고정형
+        columnHelper.display({
+          id: 'gradeMode',
+          header: '유형',
+          enableSorting: false,
+          enableHiding: false,
+          cell: ({ row }) => (
+            <span className="text-sm whitespace-nowrap break-keep">{recipeGradeModeLabel(row.original)}</span>
+          ),
+        }),
         columnHelper.display({
           id: 'slots',
           header: '슬롯',
@@ -105,7 +115,9 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
             return (
               <span className="text-xs text-muted-foreground">
                 {slots
-                  .map((s) => s.allowed_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join('/'))
+                  .map((s) =>
+                    recipeBadgeNames(s.allowed_badge_ids, (id) => badgeMap.get(id) ?? id.slice(0, 8), row.original).join('/')
+                  )
                   .join(' + ')}
               </span>
             )
@@ -117,16 +129,29 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
           enableSorting: false,
           enableHiding: false,
           cell: ({ row }) => {
-            const { reward_points: points, reward_badge_ids: badgeIds } = row.original
+            const { reward_points: points, reward_badge_ids: badgeIds, first_success_badge_id: firstSuccessId } = row.original
             const parts: string[] = []
             if (points > 0) parts.push(`${points}P`)
             if ((badgeIds ?? []).length > 0) {
-              parts.push((badgeIds ?? []).map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(', '))
+              parts.push(
+                recipeBadgeNames(badgeIds ?? [], (id) => badgeMap.get(id) ?? id.slice(0, 8), row.original).join(', ')
+              )
             }
+            const firstSuccessNote = firstSuccessId ? (
+              <span className="block text-xs text-muted-foreground break-keep wrap-break-word">
+                첫 성공자 보상: {badgeMap.get(firstSuccessId) ?? firstSuccessId.slice(0, 8)}
+              </span>
+            ) : null
             return parts.length > 0 ? (
-              <span className="text-sm">{parts.join(' + ')}</span>
+              <span className="text-sm">
+                {parts.join(' + ')}
+                {firstSuccessNote}
+              </span>
             ) : (
-              <span className="text-xs text-red-600">보상 미지정</span>
+              <span>
+                <span className="text-xs text-red-600">보상 미지정</span>
+                {firstSuccessNote}
+              </span>
             )
           },
         }),

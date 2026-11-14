@@ -7,6 +7,8 @@ import {
   parseRecipeListParams,
   applyRecipeListQuery,
   recipeStatusDisplay,
+  recipeGradeModeLabel,
+  recipeBadgeNames,
   type RecipeListQuery,
 } from '../recipe-list'
 import { classifyRecipeDeletion, recipeDeleteBlockedMessage, type RecipeDeletionCandidate } from '../recipe-bulk'
@@ -175,5 +177,28 @@ describe('recipeStatusDisplay — 목록 「상태」 열 (티켓 20261002_0710)
     expect(recipeStatusDisplay({ valid_from: null } as { valid_from: string | null; valid_until: string | null }, NOW).label).toBe(
       '공개 중'
     )
+  })
+})
+
+describe('유형 열·배지 이름 표시 (티켓 20261114_1705 2회차)', () => {
+  it('RECIPE_LIST_COLUMNS에 유형·첫 성공자 보상 칸이 있다', () => {
+    const columns = RECIPE_LIST_COLUMNS.split(', ')
+    expect(columns).toContain('grade_mode')
+    expect(columns).toContain('first_success_badge_id')
+  })
+
+  it('recipeGradeModeLabel — follow_materials만 등급 대응형이고 칸이 없거나 알 수 없는 값은 등급 고정형이다', () => {
+    expect(recipeGradeModeLabel({ grade_mode: 'follow_materials' })).toBe('등급 대응형')
+    expect(recipeGradeModeLabel({ grade_mode: 'fixed' })).toBe('등급 고정형')
+    expect(recipeGradeModeLabel({})).toBe('등급 고정형')
+    expect(recipeGradeModeLabel({ grade_mode: 'whatever' })).toBe('등급 고정형')
+  })
+
+  it('recipeBadgeNames — 등급 대응형은 4등급이 같은 이름이라 하나로 줄이고, 등급 고정형은 그대로 둔다', () => {
+    const names: Record<string, string> = { a: '팻말', b: '팻말', c: '팻말', d: '팻말', e: '깃발' }
+    const nameOf = (id: string) => names[id] ?? id
+
+    expect(recipeBadgeNames(['a', 'b', 'c', 'd', 'e'], nameOf, { grade_mode: 'follow_materials' })).toEqual(['팻말', '깃발'])
+    expect(recipeBadgeNames(['a', 'b', 'e'], nameOf, { grade_mode: 'fixed' })).toEqual(['팻말', '팻말', '깃발'])
   })
 })

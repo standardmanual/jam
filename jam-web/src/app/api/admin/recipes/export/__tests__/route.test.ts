@@ -1,6 +1,7 @@
 /**
  * POST /api/admin/recipes/export — 「공개 시각」 옆의 「종료 시각」 열 (티켓 20261002_0710)
  * 종료 시각이 있는 레시피는 KST로, 비어 있는(상시) 레시피는 빈 칸으로 내보낸다.
+ * 티켓 20261114_1705 2회차: 「유형」 열(등급 대응형 / 등급 고정형)과 「첫 성공자 보상」 열.
  * 실행: cd jam-web && npx vitest run src/app/api/admin/recipes/export/__tests__/route.test.ts
  */
 import { describe, it, expect, vi } from 'vitest'
@@ -18,6 +19,8 @@ const rows = vi.hoisted(() => [
     valid_from: '2026-10-05T00:00:00.000Z', // KST 2026.10.05 09:00
     valid_until: '2026-10-12T00:00:00.000Z', // KST 2026.10.12 09:00
     created_at: '2026-10-02T00:00:00.000Z',
+    grade_mode: 'follow_materials',
+    first_success_badge_id: 'badge-first' as string | null,
   },
   {
     id: '22222222-2222-4222-8222-222222222222',
@@ -27,6 +30,8 @@ const rows = vi.hoisted(() => [
     valid_from: null,
     valid_until: null,
     created_at: '2026-10-01T00:00:00.000Z',
+    grade_mode: 'fixed',
+    first_success_badge_id: null as string | null,
   },
 ])
 
@@ -91,5 +96,38 @@ describe('POST /api/admin/recipes/export — 종료 시각 열', () => {
     await exportRecipes()
 
     expect(selectedColumns[0].split(', ')).toContain('valid_until')
+  })
+})
+
+describe('POST /api/admin/recipes/export — 유형·첫 성공자 보상 열 (티켓 20261114_1705 2회차)', () => {
+  it('유형을 한국어 이름으로 적고, 칸이 없는 옛 행은 등급 고정형이다', async () => {
+    const res = await exportRecipes()
+    const lines = await csvLines(res)
+    const typeIndex = lines[0].split(',').indexOf('유형')
+
+    expect(typeIndex).toBeGreaterThan(-1)
+    const byName = new Map(lines.slice(1).map((line) => [line.split(',')[1], line.split(',')]))
+    expect(byName.get('기간 한정 레시피')?.[typeIndex]).toBe('등급 대응형')
+    expect(byName.get('상시 레시피')?.[typeIndex]).toBe('등급 고정형')
+  })
+
+  it('첫 성공자 보상 배지를 적고 없으면 빈 칸이다', async () => {
+    const res = await exportRecipes()
+    const lines = await csvLines(res)
+    const index = lines[0].split(',').indexOf('첫 성공자 보상')
+
+    expect(index).toBeGreaterThan(-1)
+    const byName = new Map(lines.slice(1).map((line) => [line.split(',')[1], line.split(',')]))
+    expect(byName.get('기간 한정 레시피')?.[index]).toBe('badge-first')
+    expect(byName.get('상시 레시피')?.[index]).toBe('')
+  })
+
+  it('목록과 같은 칸 목록으로 유형(grade_mode)과 첫 성공자 보상(first_success_badge_id)을 조회한다', async () => {
+    selectedColumns.length = 0
+    await exportRecipes()
+
+    const columns = selectedColumns[0].split(', ')
+    expect(columns).toContain('grade_mode')
+    expect(columns).toContain('first_success_badge_id')
   })
 })

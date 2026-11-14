@@ -6,18 +6,46 @@
  * 20261001_1158)·종료 시각(`valid_until`, 티켓 20261002_0710)만 있다 — 공개 상태 필터는 만들지 않아
  * 필터는 이름 검색뿐이다.
  */
+import { resolveGradeMode } from '@/lib/combine/gradeMode'
 import { recipeReleaseState, type RecipeReleaseState } from '@/lib/combine/visibility'
 import type { CombinationRecipeRow } from '@/types/database'
 import { formatKstMdHm, formatKstYmdHm } from './kst-format'
 import { sanitizeSearchTerm } from './search-term'
 
 /** 목록·내보내기에 쓰는 컬럼 — 슬롯은 별도 조회한다 */
-export const RECIPE_LIST_COLUMNS = 'id, name, reward_points, reward_badge_ids, valid_from, valid_until, created_at'
+export const RECIPE_LIST_COLUMNS =
+  'id, name, reward_points, reward_badge_ids, valid_from, valid_until, created_at, grade_mode, first_success_badge_id'
 
 export type RecipeListRow = Pick<
   CombinationRecipeRow,
-  'id' | 'name' | 'reward_points' | 'reward_badge_ids' | 'valid_from' | 'valid_until' | 'created_at'
+  | 'id'
+  | 'name'
+  | 'reward_points'
+  | 'reward_badge_ids'
+  | 'valid_from'
+  | 'valid_until'
+  | 'created_at'
+  | 'grade_mode'
+  | 'first_success_badge_id'
 >
+
+/** 목록·내보내기의 「유형」 열 표시(티켓 20261114_1705 2회차). 칸이 없거나 알 수 없는 값은 등급 고정형이다(`resolveGradeMode`). */
+export function recipeGradeModeLabel(recipe: { grade_mode?: string | null }): string {
+  return resolveGradeMode(recipe) === 'follow_materials' ? '등급 대응형' : '등급 고정형'
+}
+
+/**
+ * 슬롯·보상 칸에 보일 배지 이름 목록. 등급 대응형은 한 묶음의 4등급 배지 이름이 같아 그대로 이으면 같은 이름이 네 번 나오므로 겹치는 이름을
+ * 하나로 줄인다. 등급 고정형은 입력 그대로다(이름이 같은 서로 다른 배지도 그대로 보인다).
+ */
+export function recipeBadgeNames(
+  ids: readonly string[],
+  nameOf: (id: string) => string,
+  recipe: { grade_mode?: string | null }
+): string[] {
+  const names = ids.map(nameOf)
+  return resolveGradeMode(recipe) === 'follow_materials' ? [...new Set(names)] : names
+}
 
 export interface RecipeStatusDisplay {
   state: RecipeReleaseState
