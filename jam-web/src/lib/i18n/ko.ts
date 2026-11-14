@@ -651,6 +651,19 @@ export const ko = {
     locationDenied: '위치 권한을 허용해 주세요',
     retry: '다시 시도',
     locating: '위치 확인 중',
+    // 티켓 20261114_1507: 위치를 거부했거나 브라우저가 위치를 지원하지 않을 때의 안내 카드.
+    // 위 locationUnsupported·locationDenied는 DropsClient가 상태를 가르는 비교 값으로 남고 화면에는 아래 문구를 쓴다.
+    permissionDeniedTitle: '근처 장소를 보려면 위치가 필요해요',
+    permissionDeniedDescription: '근처 장소에서 받을 수 있는 배지를 찾는 데 위치를 써요.',
+    permissionGuideTitle: '허용하는 방법',
+    permissionGuideSteps: [
+      '주소창 옆 사이트 설정(자물쇠나 aA)을 열어요',
+      '위치를 «허용»으로 바꿔요',
+      '이 화면으로 돌아와 아래 버튼을 눌러요',
+    ],
+    permissionRetry: '허용했어요, 다시 시도',
+    permissionUnsupportedTitle: '이 브라우저에서는 위치를 쓸 수 없어요',
+    permissionUnsupportedDescription: '위치를 쓸 수 있는 다른 브라우저에서 열어 주세요.',
     loadPoiFailed: '주변 장소를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     // 20260826_002: '드랍 목록 로드 실패'·'인벤토리 로드 실패'는 개발자용 축약 문구였다.
     // 가이드의 [현상]→[원인/해결책] 구조 + 해요체로 다시 썼다.
