@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 import type { Json } from '@/types/database.generated'
 import type { BalanceLine } from '@/lib/admin/opsInbox/balance/view'
 import { splitByChecked, withCheck } from '@/lib/admin/opsInbox/selection'
+import { EMPTY_PREVIEW_NAMES, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import { keyValuesOf, nextDecidableItemId, periodText, reviewResultsOf } from '../drawerView'
 import { makeStage } from './fixtures'
 
@@ -60,6 +61,48 @@ describe('keyValuesOf', () => {
     expect(rowsOf({ kind: 'mission', original: { resource: { reward_points: 50, reward_badge_ids: ['a', 'b'] } } })['보상']).toBe('50포인트 · 보상 배지 2개')
     expect(rowsOf({ kind: 'recipe', original: { resource: { reward_points: 30 } } })['보상']).toBe('30포인트')
     expect(rowsOf({ kind: 'collection_launch', original: { resource: { reward_points: 20, reward_badge_id: 'x' } } })['보상']).toBe('20포인트 · 보상 배지 1개')
+  })
+
+  describe('등급 대응형 레시피의 보상 배지 수 (티켓 20261114_2111)', () => {
+    const names: OpsPreviewNames = {
+      ...EMPTY_PREVIEW_NAMES,
+      badges: Object.fromEntries(
+        [
+          ['c', 'common', '머그'],
+          ['r', 'rare', '머그'],
+          ['e', 'epic', '머그'],
+          ['m', 'mystic', '머그'],
+          ['x', 'common', '컵'],
+        ].map(([id, rarity, name]) => [id, { id, name, imageUrl: null, rarity: rarity as 'common', itemBookId: id === 'x' ? 'book-2' : 'book-1' }])
+      ),
+    }
+    const recipe = (resource: Record<string, Json>): Partial<Item> => ({ kind: 'recipe', original: { resource: { reward_points: 30, ...resource } } })
+
+    it('같은 이름 4등급이 담겨 있어도 이름 묶음 하나로 센다', () => {
+      const rows = keyValuesOf(item(recipe({ grade_mode: 'follow_materials', reward_badge_ids: ['c', 'r', 'e', 'm'] })), names)
+      expect(rows.find((r) => r.label === '보상')?.value).toBe('30포인트 · 보상 배지 1개')
+    })
+
+    it('묶음이 둘이면 둘로 센다', () => {
+      const rows = keyValuesOf(item(recipe({ grade_mode: 'follow_materials', reward_badge_ids: ['c', 'r', 'e', 'm', 'x'] })), names)
+      expect(rows.find((r) => r.label === '보상')?.value).toBe('30포인트 · 보상 배지 2개')
+    })
+
+    it('등급 고정형(또는 grade_mode 없음)은 보상 배지 칸의 길이 그대로다', () => {
+      const ids = ['c', 'r', 'e', 'm']
+      expect(keyValuesOf(item(recipe({ grade_mode: 'fixed', reward_badge_ids: ids })), names).find((r) => r.label === '보상')?.value).toBe('30포인트 · 보상 배지 4개')
+      expect(keyValuesOf(item(recipe({ reward_badge_ids: ids })), names).find((r) => r.label === '보상')?.value).toBe('30포인트 · 보상 배지 4개')
+    })
+
+    it('미션은 grade_mode가 있어도 길이 그대로다', () => {
+      const mission = { kind: 'mission', original: { resource: { grade_mode: 'follow_materials', reward_badge_ids: ['c', 'r', 'e', 'm'] } } }
+      expect(keyValuesOf(item(mission), names).find((r) => r.label === '보상')?.value).toBe('보상 배지 4개')
+    })
+
+    it('배지 이름을 읽지 못했으면 「4개」로 되돌아가지 않고 배지 줄을 뺀다', () => {
+      const rows = keyValuesOf(item(recipe({ grade_mode: 'follow_materials', reward_badge_ids: ['c', 'r', 'e', 'm'] })))
+      expect(rows.find((r) => r.label === '보상')?.value).toBe('30포인트')
+    })
   })
 
   it('JAM! 배지: 조건(condition_json)과 보상(point_reward)', () => {

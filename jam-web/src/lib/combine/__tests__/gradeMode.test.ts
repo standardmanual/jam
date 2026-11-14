@@ -9,6 +9,7 @@ import {
   pickRewardBadgeIdsForGrade,
   resolveGradeMode,
   resolveMaterialGrade,
+  rewardBadgeCountOf,
 } from '../gradeMode'
 import type { CombinationRecipeSlotRow } from '@/types/database'
 
@@ -90,5 +91,46 @@ describe('pickRewardBadgeIdsForGrade', () => {
   it('등급이 없거나 조회되지 않은 배지는 고르지 않는다', () => {
     expect(pickRewardBadgeIdsForGrade(['activity-badge', 'missing', 'sign-rare'], 'rare', RARITY)).toEqual(['sign-rare'])
     expect(pickRewardBadgeIdsForGrade([], 'rare', RARITY)).toEqual([])
+  })
+})
+
+describe('rewardBadgeCountOf — 보상 배지 표시 개수 (티켓 20261114_2111)', () => {
+  const bundle = (prefix: string, bookId: string | null, name: string) =>
+    ['common', 'rare', 'epic', 'mystic'].map((rarity) => ({ id: `${prefix}-${rarity}`, name, rarity, item_book_id: bookId }))
+  const sign = bundle('sign', 'book-1', '표지판')
+  const lamp = bundle('lamp', 'book-1', '가로등')
+  const ids = (list: { id: string }[]) => list.map((b) => b.id)
+
+  it('등급 대응형은 같은 이름 4등급을 묶음 하나로 센다', () => {
+    expect(rewardBadgeCountOf({ grade_mode: 'follow_materials', reward_badge_ids: ids(sign) }, sign)).toBe(1)
+  })
+
+  it('묶음이 둘이면 둘이다', () => {
+    expect(rewardBadgeCountOf({ grade_mode: 'follow_materials', reward_badge_ids: [...ids(sign), ...ids(lamp)] }, [...sign, ...lamp])).toBe(2)
+  })
+
+  it('같은 이름이어도 컬렉션이 다르면 다른 묶음이다', () => {
+    const other = bundle('sign2', 'book-2', '표지판')
+    expect(rewardBadgeCountOf({ grade_mode: 'follow_materials', reward_badge_ids: [...ids(sign), ...ids(other)] }, [...sign, ...other])).toBe(2)
+  })
+
+  it('일부 등급 배지가 삭제돼 남은 것만 읽혀도 묶음 하나로 센다', () => {
+    expect(rewardBadgeCountOf({ grade_mode: 'follow_materials', reward_badge_ids: ids(sign) }, sign.slice(1))).toBe(1)
+  })
+
+  it('읽지 못한 배지는 세지 않아 「4개」로 되돌아가지 않는다', () => {
+    expect(rewardBadgeCountOf({ grade_mode: 'follow_materials', reward_badge_ids: ids(sign) }, [])).toBe(0)
+  })
+
+  it('컬렉션이 없는 배지는 묶을 수 없어 각각 하나로 센다', () => {
+    const loose = bundle('loose', null, '떠도는 배지')
+    expect(rewardBadgeCountOf({ grade_mode: 'follow_materials', reward_badge_ids: ids(loose) }, loose)).toBe(4)
+  })
+
+  it('등급 고정형·칸 없음·알 수 없는 값은 보상 배지 칸의 길이 그대로다', () => {
+    for (const grade_mode of ['fixed', undefined, null, 'weird']) {
+      expect(rewardBadgeCountOf({ grade_mode, reward_badge_ids: ids(sign) }, sign)).toBe(4)
+    }
+    expect(rewardBadgeCountOf({ grade_mode: 'fixed', reward_badge_ids: null }, [])).toBe(0)
   })
 })

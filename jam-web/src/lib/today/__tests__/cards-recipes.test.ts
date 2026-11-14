@@ -7,7 +7,8 @@
  * 2. 공개 전 레시피: 재료 수와 공개 시각 두 값뿐이다. 이름·슬롯 후보·보상은 읽은 자리에서 버리고, 후보 배지를 조회하지도 않는다(사용자 결정 Q3).
  * 3. 끝났거나 없는 레시피, `recipe_id`가 비었거나 레시피 공개 카드가 아닌 카드는 null이다.
  * 4. 읽기 횟수: 레시피 공개 카드가 여럿이어도 레시피 1번·슬롯 1번이고, 후보 배지는 카드 배지와 함께 1번에 읽는다. 레시피 공개 카드가 없으면 읽지 않는다.
- * 5. 조회가 실패해도 카드는 사라지지 않는다. 처음 보는 템플릿 값의 카드도 던지지 않는다.
+ * 5. 등급 대응형(`grade_mode = 'follow_materials'`): 보상 배지 수는 이름 묶음 수, 슬롯 대표는 가장 낮은 등급(칩 없음), 보유는 어느 등급이든(티켓 20261114_2111).
+ * 6. 조회가 실패해도 카드는 사라지지 않는다. 처음 보는 템플릿 값의 카드도 던지지 않는다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cards-recipes.test.ts
  */
@@ -235,6 +236,110 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
       ['배지 a1', false],
       ['배지 b1', true],
     ])
+  })
+})
+
+describe('getTodayCards — 등급 대응형 레시피 (티켓 20261114_2111)', () => {
+  const GRADES = ['common', 'rare', 'epic', 'mystic']
+  /** 같은 이름·같은 컬렉션의 4등급 배지. 후보 순서를 일부러 common이 아닌 등급부터 둔다(첫 번째가 대표가 되면 안 된다) */
+  const sign = GRADES.map((g) => `sign-${g}`)
+  const lamp = GRADES.map((g) => `lamp-${g}`)
+
+  beforeEach(() => {
+    fx.tables.today_cards = [cardRow({ id: 'a', recipe_id: 'r1' })]
+    fx.tables.combination_recipes = [
+      recipeRow('r1', { valid_from: '2026-10-01T00:00:00Z', grade_mode: 'follow_materials', reward_badge_ids: sign }),
+    ]
+    fx.tables.combination_recipe_slots = [slotRow('r1', 1, [...sign].reverse()), slotRow('r1', 2, lamp)]
+    fx.tables.badges = [
+      ...GRADES.map((g) => badgeRow(`sign-${g}`, { name: '표지판', rarity: g, item_book_id: 'book-1' })),
+      ...GRADES.map((g) => badgeRow(`lamp-${g}`, { name: '가로등', rarity: g, item_book_id: 'book-1' })),
+    ]
+  })
+
+  it('보상 배지 수는 이름 묶음 수 1이고, 홈 사실 줄은 「배지 1개」다', async () => {
+    const [card] = await getCardsById(USER, null, NOW)
+    const view = toCardView(card, { now: NOW, tracking: true })
+
+    expect(card.resolved_recipe).toMatchObject({ state: 'released', reward_badge_count: 1 })
+    expect(view.facts).toEqual(['재료 2개', '300 포인트 · 배지 1개'])
+  })
+
+  it('슬롯 대표는 가장 낮은 등급(common) 배지이고 등급 칩이 나오지 않게 rarity가 null이다', async () => {
+    const [card] = await getCardsById(USER, null, NOW)
+
+    // 가짜 클라이언트는 select 칸을 거르지 않아 `item_book_id`가 따라 나온다 — 화면에 쓰는 칸만 대조한다
+    const tiles = card.resolved_recipe?.state === 'released' ? card.resolved_recipe.tiles : []
+    expect(tiles).toHaveLength(2)
+    expect(tiles).toMatchObject([
+      { id: 'sign-common', name: '표지판', image_url: 'https://cdn.example/sign-common.png', rarity: null, earned: false },
+      { id: 'lamp-common', name: '가로등', image_url: 'https://cdn.example/lamp-common.png', rarity: null, earned: false },
+    ])
+  })
+
+  it('Rare만 가졌어도 대표 그림은 common이고 earned는 true다', async () => {
+    fx.tables.user_activity_badges = [{ user_id: USER, badge_id: 'sign-rare' }]
+
+    const [card] = await getCardsById(USER, null, NOW)
+
+    expect(card.resolved_recipe).toMatchObject({ tiles: [{ id: 'sign-common', earned: true }, { id: 'lamp-common', earned: false }] })
+  })
+
+  it('common 배지가 삭제됐으면 남은 가장 낮은 등급이 대표다', async () => {
+    fx.tables.badges = (fx.tables.badges as Row[]).filter((b) => b.id !== 'sign-common')
+
+    const [card] = await getCardsById(USER, null, NOW)
+
+    expect(card.resolved_recipe).toMatchObject({ tiles: [{ id: 'sign-rare' }, { id: 'lamp-common' }] })
+  })
+
+  it('조회 횟수: 레시피 1 + 슬롯 1 + 보상 묶음 배지 1, 후보 배지는 따로 1이다', async () => {
+    await getCardsById(USER, null, NOW)
+
+    expect(count('combination_recipes')).toBe(1)
+    expect(count('combination_recipe_slots')).toBe(1)
+    expect(count('badges')).toBe(2)
+  })
+
+  it('등급 대응형이 없으면 보상 묶음 배지를 읽지 않는다(기존 조회 횟수 그대로)', async () => {
+    fx.tables.combination_recipes = [recipeRow('r1', { valid_from: '2026-10-01T00:00:00Z', reward_badge_ids: ['x', 'y'] })]
+    fx.tables.combination_recipe_slots = [slotRow('r1', 1, ['sign-rare'])]
+
+    const [card] = await getCardsById(USER, null, NOW)
+
+    expect(count('badges')).toBe(1)
+    expect(card.resolved_recipe).toMatchObject({ reward_badge_count: 2 })
+  })
+
+  it('grade_mode 칸이 없으면(옛 환경) 고정형이다 — 보상 배지 칸의 길이와 첫 후보 그대로', async () => {
+    fx.tables.combination_recipes = [recipeRow('r1', { valid_from: '2026-10-01T00:00:00Z', reward_badge_ids: sign })]
+
+    const [card] = await getCardsById(USER, null, NOW)
+
+    expect(card.resolved_recipe).toMatchObject({ reward_badge_count: 4, tiles: [{ id: 'sign-mystic', rarity: 'mystic' }, { id: 'lamp-common' }] })
+  })
+
+  it('공개 전 등급 대응형은 보상도 후보도 읽지 않는다', async () => {
+    fx.tables.combination_recipes = [
+      recipeRow('r1', { valid_from: '2026-10-20T00:00:00Z', grade_mode: 'follow_materials', reward_badge_ids: sign }),
+    ]
+
+    const [card] = await getCardsById(USER, null, NOW)
+
+    expect(card.resolved_recipe).toEqual({ state: 'scheduled', ingredient_count: 2, release_at: '2026-10-20T00:00:00Z' })
+    expect(count('badges')).toBe(0)
+  })
+
+  it('보상 묶음 조회가 실패하면 «4개»로 되돌아가지 않고 배지 줄만 빠진다(오류를 기록한다)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fx.errors.badges = { message: 'boom' }
+
+    const [card] = await getCardsById(USER, null, NOW)
+    const view = toCardView(card, { now: NOW })
+
+    expect(card.resolved_recipe).toMatchObject({ reward_badge_count: 0 })
+    expect(view.facts).toEqual(['재료 2개', '300 포인트'])
+    expect(console.error).toHaveBeenCalledWith('[fetchRecipesById] 보상 배지 묶음 조회 오류:', 'boom')
   })
 })
 

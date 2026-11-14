@@ -20,6 +20,8 @@ import { formatKstClock, formatKstDayTime, kstDateKey } from '@/lib/admin/opsInb
 import { isDecidable } from '@/lib/admin/opsInbox/selection'
 import type { BalanceLine } from '@/lib/admin/opsInbox/balance/view'
 import type { OpsRoutineStageRecord } from '@/lib/admin/opsInbox/query'
+import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
+import { rewardBadgeCountOf } from '@/lib/combine/gradeMode'
 import { isCardShape } from '@/lib/today/shape'
 
 // ── 핵심 값 ──────────────────────────────────────────────────────────────
@@ -55,8 +57,21 @@ function pointsText(value: unknown): string | null {
   return typeof value === 'number' && Number.isFinite(value) ? `${value}포인트` : null
 }
 
-function badgeCountOf(resource: Record<string, unknown>): number {
+/**
+ * 보상 배지 수. 레시피는 등급 대응형(`grade_mode = 'follow_materials'`)이면 같은 컬렉션·같은 이름 묶음 수로 센다(`rewardBadgeCountOf`, 티켓 20261114_2111) —
+ * 보상 칸에 4등급 배지가 모두 담겨 있어도 실제로 받는 것은 재료 등급에 맞는 한 개이기 때문이다. 묶음은 배지 이름·컬렉션이 있어야 가를 수 있어 `names`로 찾고,
+ * 못 읽은 배지는 세지 않는다(「4개」로 되돌아가지 않는다). 고정형 레시피·미션·컬렉션 출시는 `reward_badge_ids`의 길이 그대로다.
+ */
+function badgeCountOf(resource: Record<string, unknown>, kind: string | null, names?: OpsPreviewNames): number {
   const ids = resource.reward_badge_ids
+  if (kind === 'recipe' && Array.isArray(ids) && resource.grade_mode === 'follow_materials') {
+    const rewardIds = ids.filter((id): id is string => typeof id === 'string')
+    const badges = rewardIds.flatMap((id) => {
+      const badge = names?.badges[id]
+      return badge ? [{ id, name: badge.name, rarity: badge.rarity, item_book_id: badge.itemBookId ?? null }] : []
+    })
+    return rewardBadgeCountOf({ grade_mode: resource.grade_mode, reward_badge_ids: rewardIds }, badges)
+  }
   if (Array.isArray(ids)) return ids.length
   return typeof resource.reward_badge_id === 'string' && resource.reward_badge_id !== '' ? 1 : 0
 }
@@ -82,18 +97,18 @@ function conditionText(item: KeyValueItem, resource: Record<string, unknown>): s
 }
 
 /** 보상: 미션·레시피·컬렉션은 `resource.reward_points`와 보상 배지 수, JAM! 배지는 `resource.point_reward`다. */
-function rewardText(item: KeyValueItem, resource: Record<string, unknown>): string | null {
+function rewardText(item: KeyValueItem, resource: Record<string, unknown>, names?: OpsPreviewNames): string | null {
   if (item.kind === 'jam_badge') return pointsText(resource.point_reward)
   if (item.kind !== 'mission' && item.kind !== 'recipe' && item.kind !== 'collection_launch') return null
   const parts = [pointsText(resource.reward_points)]
-  const badges = badgeCountOf(resource)
+  const badges = badgeCountOf(resource, item.kind, names)
   if (badges > 0) parts.push(`보상 배지 ${badges}개`)
   const text = parts.filter(Boolean).join(' · ')
   return text || null
 }
 
 /** 서랍 「핵심 값」 줄. 순서는 공개 기간 → 대상 → 모양 → 조건 → 보상이다. 읽을 수 없는 칸은 줄을 그리지 않는다. */
-export function keyValuesOf(item: KeyValueItem): KeyValueRow[] {
+export function keyValuesOf(item: KeyValueItem, names?: OpsPreviewNames): KeyValueRow[] {
   const resource = asRecord(itemField(item, 'resource')) ?? {}
   const shape = itemField(item, 'shape')
   const rows: Array<[string, string | null]> = [
@@ -101,7 +116,7 @@ export function keyValuesOf(item: KeyValueItem): KeyValueRow[] {
     ['대상', targetText(item)],
     ['모양', isCardShape(shape) ? shape : null],
     ['조건', conditionText(item, resource)],
-    ['보상', rewardText(item, resource)],
+    ['보상', rewardText(item, resource, names)],
   ]
   return rows.flatMap(([label, value]) => (value ? [{ label, value }] : []))
 }
