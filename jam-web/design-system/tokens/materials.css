@@ -15,4 +15,7 @@
   --tabbar-background-inverse-solid: color-mix(in srgb, var(--snow) 22%, var(--background-inverse));
   --tabbar-background-inverse: color-mix(in srgb, var(--tabbar-background-inverse-solid) 75%, transparent);
   --tabbar-selection-inverse: var(--surface-on-inverse); /* 활성 필: 반전 면보다 한 단계 밝은 snow 15% */
+
+  /* 반투명 카드 면(티켓 20261114_1507): 카드 뒤 장식 선이 희미하게 비치는 흰 면. --card-bg 위에 72% 불투명도만 얹는 별칭이며 새 색 수치는 없다. 72%를 넘겨 내리지 않는다(설명 글자 대비) */
+  --card-bg-translucent: color-mix(in srgb, var(--card-bg) 72%, transparent);
 }

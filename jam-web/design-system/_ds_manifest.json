@@ -1208,6 +1208,13 @@
       "value": "1",
       "kind": "font",
       "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--card-bg-translucent",
+      "value": "color-mix(in srgb, var(--card-bg) 72%, transparent)",
+      "kind": "other",
+      "definedIn": "tokens/materials.css",
+      "annotation": "other"
     }
   ],
   "themes": [],

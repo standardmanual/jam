@@ -118,6 +118,7 @@ function ColorsPage() {
         <Swatch token="--surface" desc="시트·모달 등 흰 면(그림자 없음)" />
         <Swatch token="--page-bg" desc="서비스 열(430px) 바깥 바탕 — html·body" />
         <Swatch token="--card-bg" desc="Card default 면. 외곽선 없음, 흰 바탕과 약 1.07:1이라 구분이 약하다" />
+        <Swatch token="--card-bg-translucent" desc="반투명 카드 면 — --card-bg의 72%. 카드 뒤 장식 선이 희미하게 비치는 안내 카드용(72%를 넘겨 내리지 않는다)" />
         <Swatch token="--btn-secondary" desc="Button secondary·outline 면(둘은 같은 면). 카드 위 연한 면이 필요할 때도 이 값" />
         <Swatch token="--surface-transparent" desc="완전 투명한 바탕색" />
       </Section>

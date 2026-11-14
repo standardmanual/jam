@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
 import { useToast } from '@/components/ui/Toast'
 import PoiCarouselModal from '@/components/PoiCarouselModal'
@@ -12,6 +11,7 @@ import type { NearbyPoi } from '@/types/drops'
 import { d, t } from '@/lib/i18n'
 import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import QuestPickupScene from './QuestPickupScene'
+import LocationPermissionCard from './LocationPermissionCard'
 import { carouselPoiHref, DROPS_PATH, resolveCarouselClose, resolveCarouselPoi } from './carouselUrl'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
@@ -275,14 +275,22 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
 
   if (locError) {
     return (
+      // 티켓 20261114_1507: 전체 화면 덮개 대신 TopNav·안내 카드·탭바가 함께 보이는 화면.
+      // 본문 아래 여유는 탭바(높이 49px, bottom max(10px, …))가 카드·버튼을 덮지 않게 둔다.
       <div
-        className="fixed inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center bg-background text-foreground"
+        className="fixed inset-0 flex flex-col bg-background text-foreground"
         style={{ maxWidth: 430, margin: '0 auto' }}
       >
-        <p className="text-base text-muted">{locError}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          {d.drops.retry}
-        </Button>
+        <TopNav logo logoText={d.drops.screenTitle} />
+        <div
+          className="flex-1 overflow-y-auto px-4 pt-4"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 49px + 12px)' }}
+        >
+          <LocationPermissionCard
+            kind={locError === d.drops.locationUnsupported ? 'unsupported' : 'denied'}
+            onRetry={() => window.location.reload()}
+          />
+        </div>
       </div>
     )
   }
