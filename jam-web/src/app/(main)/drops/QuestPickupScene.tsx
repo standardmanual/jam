@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import { useToast } from '@/components/ui/Toast'
 import PoiCarouselModal from '@/components/PoiCarouselModal'
-import { BADGE_FILL_PATH, DROP_MARKER_ACTIVE_BG, DROP_MARKER_ACTIVE_GLYPH } from '@/components/map/MapView'
+import { TreasureBoxIcon } from '@/components/ui/icons'
+import { DROP_MARKER_ACTIVE_BG, DROP_MARKER_ACTIVE_GLYPH } from '@/components/map/MapView'
 import { d } from '@/lib/i18n'
 import {
   DEMO_PICKUP_POI,
@@ -23,7 +24,7 @@ import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
  * `QuestBagGrid.tsx`와 같은 위치·같은 성격의 얇은 클라이언트 래퍼 — 실제 `PoiCarouselModal`·
  * `BadgeDetailSheet`를 그대로 쓰고, 배경(가상 지도 이미지)과 정지 마커 1개만 새로 그린다.
  *
- * 마커는 실제 드랍 마커와 같은 실루엣(`MapView.tsx`의 `BADGE_FILL_PATH`)을 재사용한다 —
+ * 마커는 실제 드랍 마커와 같은 실루엣(`MapView.tsx` 마커의 채움 보물 상자 `TreasureBoxIcon`)을 재사용한다 —
  * 새 아이콘을 그리지 않는다(사용자 결정, 2026-09-28). 마커를 탭하면 `PoiCarouselModal`을
  * `demoMode`로 연다. `pickup`은 데모 POI에 미리 채워둔 드랍 1건만 보여주고 "여기에 드랍"
  * 버튼을 숨기며(존재하지 않는 POI id로 실제 드랍 API가 불리는 사고 방지), `drop`은 그 반대로
@@ -138,13 +139,12 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
           className={`flex items-center justify-center rounded-full border-2 border-snow shrink-0${carouselOpen ? '' : ' jam-quest-pulse'}`}
           style={{ width: MARKER_SIZE, height: MARKER_SIZE, background: DROP_MARKER_ACTIVE_BG }}
         >
-          <svg
-            viewBox="0 0 24 24"
+          <TreasureBoxIcon
+            variant="fill"
+            className="block"
             width={MARKER_ICON_SIZE}
             height={MARKER_ICON_SIZE}
-            style={{ fill: DROP_MARKER_ACTIVE_GLYPH }}
-            aria-hidden="true"
-            dangerouslySetInnerHTML={{ __html: BADGE_FILL_PATH }}
+            style={{ color: DROP_MARKER_ACTIVE_GLYPH }}
           />
         </span>
         <span className="px-2 py-1 rounded-full bg-background-inverse text-snow text-base font-bold whitespace-nowrap">

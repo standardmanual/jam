@@ -21,8 +21,9 @@ vi.mock('@/components/ui/Toast', () => ({
 }))
 
 import QuestPickupScene from './QuestPickupScene'
+import { TreasureBoxIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
-import { BADGE_FILL_PATH, DROP_MARKER_ACTIVE_BG, DROP_MARKER_ACTIVE_GLYPH, dropMarkerIconHtml } from '@/components/map/MapView'
+import { DROP_MARKER_ACTIVE_BG, DROP_MARKER_ACTIVE_GLYPH, dropMarkerIconHtml } from '@/components/map/MapView'
 
 describe('QuestPickupScene 초기 렌더 (mode=pickup)', () => {
   it('마커 라벨(pickupMarkerLabel)이 보인다', () => {
@@ -30,22 +31,25 @@ describe('QuestPickupScene 초기 렌더 (mode=pickup)', () => {
     expect(html).toContain(d.onboardingQuest.pickupMarkerLabel)
   })
 
-  it('마커가 실제 드랍 마커와 같은 실루엣(BADGE_FILL_PATH)을 그린다', () => {
+  it('마커가 실제 드랍 마커와 같은 채움 보물 상자를 그린다 (티켓 20261114_2347)', () => {
     const html = renderToStaticMarkup(<QuestPickupScene mode="pickup" />)
-    expect(html).toContain('viewBox="0 0 24 24"')
-    // dangerouslySetInnerHTML로 주입된 path의 fill-rule 속성 일부로 재사용 여부를 확인한다.
-    expect(BADGE_FILL_PATH).toContain('fill-rule')
-    expect(html).toContain('fill-rule')
+    const svg = renderToStaticMarkup(<TreasureBoxIcon variant="fill" width={14} height={14} />)
+    // 비운 면은 흰색이 아니라 mask로 뚫는다 — 채움 판 도형이 그대로 들어 있는지 확인한다.
+    expect(html).toContain('viewBox="0 0 48 48"')
+    expect(html).toContain('mask=')
+    expect(svg).toContain('mask=')
+    expect(html).not.toContain('w-6 h-6')
   })
 
   it('배지가 있는 지점의 마커는 강조색 그린 면에 검정 아이콘이고, 지도 마커와 온보딩 마커가 같은 색을 쓴다 (티켓 20261111_1034)', () => {
     const map = dropMarkerIconHtml({ hasDrops: true, inRange: true, size: 24 })
     expect(DROP_MARKER_ACTIVE_BG).toBe('var(--jam-green)')
     expect(map).toContain(`background:${DROP_MARKER_ACTIVE_BG}`)
-    expect(map).toContain(`fill="${DROP_MARKER_ACTIVE_GLYPH}"`)
+    expect(map).toContain(`color:${DROP_MARKER_ACTIVE_GLYPH}`)
+    expect(map).toContain('viewBox="0 0 48 48"')
     const scene = renderToStaticMarkup(<QuestPickupScene mode="pickup" />)
     expect(scene).toContain('background:var(--jam-green)')
-    expect(scene).toContain('fill:var(--foreground)')
+    expect(scene).toContain('color:var(--foreground)')
   })
 
   it('배지가 없는 지점의 마커는 그린이 아니라 회색이다', () => {
