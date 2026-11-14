@@ -12,6 +12,7 @@ import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import TribeStep, { type TribesState } from './TribeStep'
 import { resolveOnboardingEntry, type OnboardingUserRow } from './onboarding-entry'
+import { CheckIcon } from '@/components/ui/icons'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 type Step = 'account' | 'tribe'
@@ -457,9 +458,7 @@ function OnboardingContent() {
                   aria-label={d.onboarding.ageConfirmLabel}
                 />
                 {ageConfirmed && (
-                  <svg viewBox="0 0 16 16" className="w-3 h-3 pointer-events-none" fill="none" aria-hidden="true">
-                    <path d="M3 8.5L6.5 12L13 4.5" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <CheckIcon className="w-3 h-3 pointer-events-none text-foreground" />
                 )}
               </span>
               <span className="text-base text-foreground">
