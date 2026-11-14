@@ -39,3 +39,13 @@ MissionStatusClient의 3px 임의값 등).
 - 바깥·트랙·채움(라벨이 있으면 래퍼 포함)이 모두 span이 되고, span 경로에서만 바깥·트랙에 `display:block`이 붙는다.
   채움은 절대 배치라 따로 붙지 않는다. 모양을 내는 값은 div와 같다.
 - 이 prop은 `role`·`aria-*`를 더하지 않는다. 태그만 바꾼다. 진행 바의 접근성 속성은 읽기가 바뀌는 판단이라 호출부 또는 별도 티켓에서 정한다.
+
+## 추가 — 캡슐 모양 (티켓 20261114_1502)
+
+- `shape` — `'flat'`(기본, 예전과 완전히 동일) / `'capsule'`. 홈 캡슐 게이지(`CapsuleGauge`)와 같은 트랙·채움 모양을 쓴다.
+- capsule: 트랙 기본색 `--capsule-track`(`trackColor`로 덮어씀), 안쪽 여백 2px, 반경 `--radius-full`, 채움 기본색 `--capsule-fill`(`color`로 덮어씀).
+  채움 너비는 `calc(원지름px + (100% - 원지름px) × 비율)`(원지름 = `height` - 4)이라 아주 작아도 얇은 렌즈로 찌그러지지 않고, 0%이면 채움이 없다.
+  테두리·그림자·점·숫자 겹침은 게이지 전용이라 가져오지 않는다.
+- **숫자 `height`만 받는다.** 문자열이면 flat으로 그린다. `fillMode='track-gradient'`·`outlined`는 capsule에서 지원하지 않는다.
+- 쓰는 곳: 컬렉션 카드(높이 16, 채움 `--jam-green`)·컬렉션 상세와 인벤토리(`ProgressCountBar`, 높이 16, 채움 `--jam-green`).
+  홈 `CapsuleGauge`는 아직 이 부품 위에 얹지 않았다(36px 테두리·그림자·점·진입 모션·이름표 두 겹 글자가 서비스 전용이다 — 후속).

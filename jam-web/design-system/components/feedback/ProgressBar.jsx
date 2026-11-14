@@ -20,6 +20,11 @@ import React from 'react';
  * 외곽선을 둔다(`box-sizing: border-box`라 `height`가 외곽선을 포함한다). 채움은 절대 배치(`inset: 0`)라
  * 테두리 안쪽에만 그려져 외곽선이 가려지지 않는다. 기본 `trackColor`가 `--border`와 같은 색이라 외곽선이 보이려면
  * 호출부가 트랙 면을 따로 정해야 한다(예: `trackColor="var(--background)"`).
+ *
+ * [20261114_1502] `shape` 추가 — **기본 'flat'이라 기존 호출부는 한 글자도 바뀌지 않는다.** 'capsule'이면 홈 캡슐 게이지(`CapsuleGauge`)와 같은
+ * 트랙·채움 모양을 쓴다: 어두운 트랙(`--capsule-track`) 안쪽 2px 여백, 둥근 채움, 채움 너비 `calc(원지름px + (100% - 원지름px) × 비율)`
+ * (원지름 = height - 4, 비율 0이면 채움 없음). 테두리·그림자·점은 게이지 전용이라 없다. 채움 기본색은 `--capsule-fill`이고 호출부가 `color`로 정한다.
+ * capsule은 숫자 height만 받는다(문자열이면 flat으로 그린다). `fillMode='track-gradient'`는 capsule에서 지원하지 않는다(solid로 그린다).
  */
 /**
  * [20260906_2140] 그라데이션 정의를 `--progress-sweep` 토큰 하나로 모았다.
@@ -32,6 +37,9 @@ import React from 'react';
  */
 export const PROGRESS_TRACK_GRADIENT = 'var(--progress-sweep)';
 
+/** capsule 트랙 안쪽 여백(px) — `CapsuleGauge`의 PADDING_PX와 같다 */
+const CAPSULE_PADDING_PX = 2;
+
 export function ProgressBar({
   current,
   total,
@@ -39,9 +47,10 @@ export function ProgressBar({
   labelType = 'none',
   labelPosition = 'inline',
   height = 8,
-  color = 'var(--accent)',
-  trackColor = 'var(--border)',
+  color,
+  trackColor,
   radius = 'var(--radius-full)',
+  shape = 'flat',
   fillMode = 'solid',
   gradient = PROGRESS_TRACK_GRADIENT,
   outlined = false,
@@ -62,6 +71,12 @@ export function ProgressBar({
         ? ((current ?? 0) / total) * 100
         : 0;
   const clampedPercent = Math.min(100, Math.max(0, computedPercent));
+
+  // [20261114_1502] capsule은 숫자 height에서만 켠다. color·trackColor는 shape에 따라 기본값이 갈려 undefined로 받아 여기서 푼다
+  // (구조분해 기본값으로 쓰면 flat 경로가 바뀐다).
+  const isCapsule = shape === 'capsule' && typeof height === 'number';
+  const resolvedColor = color === undefined ? (isCapsule ? 'var(--capsule-fill)' : 'var(--accent)') : color;
+  const resolvedTrackColor = trackColor === undefined ? (isCapsule ? 'var(--capsule-track)' : 'var(--border)') : trackColor;
 
   const label =
     labelType === 'percent' ? (
@@ -90,7 +105,42 @@ export function ProgressBar({
       </span>
     ) : null;
 
-  const bar = (
+  const capsuleCircle = isCapsule ? height - CAPSULE_PADDING_PX * 2 : 0;
+  const capsuleRatio = clampedPercent / 100;
+
+  const bar = isCapsule ? (
+    // 캡슐: 트랙 안쪽 여백 2px 안의 기준 상자에 채움을 절대 배치한다(CapsuleGauge와 같은 구조).
+    <Tag
+      style={{
+        ...blockStyle,
+        flex: 1,
+        position: 'relative',
+        boxSizing: 'border-box',
+        height,
+        padding: CAPSULE_PADDING_PX,
+        borderRadius: radius,
+        background: resolvedTrackColor,
+      }}
+    >
+      <Tag style={{ display: 'block', position: 'relative', width: '100%', height: '100%' }}>
+        <Tag
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            height: '100%',
+            width:
+              capsuleRatio > 0
+                ? `calc(${capsuleCircle}px + (100% - ${capsuleCircle}px) * ${capsuleRatio})`
+                : '0px',
+            borderRadius: radius,
+            background: resolvedColor,
+            transition: 'width var(--duration-slow) var(--ease-smooth-out)',
+          }}
+        />
+      </Tag>
+    </Tag>
+  ) : (
     <Tag
       style={{
         ...blockStyle,
@@ -99,7 +149,7 @@ export function ProgressBar({
         height,
         borderRadius: radius,
         overflow: 'hidden',
-        background: trackColor,
+        background: resolvedTrackColor,
         ...(outlined ? { boxSizing: 'border-box', border: '1px solid var(--border)' } : null),
       }}
     >
@@ -128,7 +178,7 @@ export function ProgressBar({
             width: `${clampedPercent}%`,
             height: '100%',
             borderRadius: radius,
-            background: color,
+            background: resolvedColor,
             transition: 'width var(--duration-slow) var(--ease-smooth-out)',
           }}
         />
