@@ -61,7 +61,7 @@ export default function NotificationBell() {
         <span className="t-badge jam-bell-dot" data-open={hasUnreadNotifications} aria-hidden="true">
           <span
             className="t-badge-dot w-2 h-2 rounded-full"
-            style={{ background: 'var(--danger)' }}
+            style={{ background: 'var(--jam-red)' }}
           />
         </span>
       </span>

@@ -1,19 +1,23 @@
 import React from 'react';
 
 /**
- * ActionCircle — 믹서 칸의 «+»·«−» 원. 24px 검은 원(--background-inverse) 안에 흰(--snow) 14px 아이콘, 굵은 선(strokeWidth 4.5, round cap).
+ * ActionCircle — 믹서 칸의 «+»·«−» 원. «+»는 24px 검은 원(--background-inverse) 안에 흰(--snow) 14px 아이콘, 굵은 선(strokeWidth 4.5, round cap).
+ * «−»(빼기)는 레드 원(--jam-red)이고 크기가 «+»의 80%다(19.2px 원, 11.2px 아이콘 — 사용자 지시 2026-11-14, 티켓 20261114_1722).
  * 링·그림자·글로우를 얹지 않는다. 눌리는 영역은 호출부가 정한다(filled의 제거 버튼은 44px 박스, empty는 슬롯 전체).
  * 이 파일 안의 도우미라 export하지 않는다.
  */
 function ActionCircle({ kind }) {
+  const minus = kind !== 'plus';
+  const circle = minus ? 19.2 : 24;
+  const icon = minus ? 11.2 : 14;
   return (
     <span
       aria-hidden="true"
       style={{
-        width: 24,
-        height: 24,
+        width: circle,
+        height: circle,
         borderRadius: 'var(--radius-full)',
-        background: 'var(--background-inverse)',
+        background: minus ? 'var(--jam-red)' : 'var(--background-inverse)',
         color: 'var(--snow)',
         display: 'flex',
         alignItems: 'center',
@@ -21,7 +25,7 @@ function ActionCircle({ kind }) {
         flexShrink: 0,
       }}
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round">
+      <svg width={icon} height={icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round">
         {kind === 'plus' ? <path d="M12 6v12M6 12h12" /> : <path d="M6 12h12" />}
       </svg>
     </span>
@@ -37,8 +41,9 @@ function ActionCircle({ kind }) {
  *            흰 «+»(--snow, 14px, 굵은 선)를 표시한다(추가 가능함을 나타냄, 티켓 20261112_1627 — 캔버스 확정).
  *            테두리는 없다 — 잠긴 슬롯(점선)과는 검은 원의 선명함과 점선 유무로 구분한다(2026-11-11 사용자 지시,
  *            이전에는 그레이 3px 테두리와 아래 화살표, 티켓 20260917_1828·2028). 탭하면 채울 수 있다.
- *            슬롯 전체가 버튼이므로 원은 장식(aria-hidden)이다. 원 규격은 filled의 제거 버튼(−)과 컬렉션 칸의
- *            «+»(`SlotCircleButton`)와 같다 — 같은 «+»가 두 가지 모양이 되지 않게 `ActionCircle` 하나를 함께 쓴다.
+ *            슬롯 전체가 버튼이므로 원은 장식(aria-hidden)이다. «+» 원 규격은 컬렉션 칸의 «+»(`SlotCircleButton`)와 같다 —
+ *            같은 «+»가 두 가지 모양이 되지 않게 `ActionCircle` 하나를 함께 쓴다. filled의 제거 버튼(−)은 레드 원이고 «+»의 80%다
+ *            (티켓 20261114_1722).
  *            이전의 `--foreground` 24px 플러스(원 없음)는 걷었다. 면이 흰색(--card-bg)이라 흰 «+»를 원 없이 두면
  *            보이지 않지만(1.05:1), 검은 원 위의 흰 «+»(--snow on --background-inverse)는 대비가 충분하다.
  *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. '+' 텍스트를 흐리게 표시하고, 사선
