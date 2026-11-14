@@ -1,6 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { SyncIcon } from '@/components/ui/icons'
+
+/** 아이콘이 한 바퀴 도는 시간 — 천천히 돈다(사용자 지시 2026-11-14, 티켓 20261114_1810). 기본 `animate-spin`은 1s다 */
+const SPIN_CLASS = 'animate-[spin_2.4s_linear_infinite] motion-reduce:animate-none'
 
 /**
  * TopNav 동기화 서클 (티켓 20261114_1349)
@@ -25,6 +29,11 @@ export default function SyncIconButton({
   disabled?: boolean
   onClick?: () => void
 }) {
+  // 눌러서 동기화가 끝날 때까지 천천히 돌고, 끝나면 도는 중이던 한 바퀴를 마저 돈 뒤 멈춘다(중간 각도에서 갑자기 0도로 튀지 않게).
+  // `loading`이 켜지는 렌더에서 바로 돌기 시작하고(렌더 중 상태 보정), `loading`이 꺼진 뒤 한 바퀴가 끝나는 시점(animationiteration)에 멈춘다.
+  const [spinning, setSpinning] = useState(false)
+  if (loading && !spinning) setSpinning(true)
+
   return (
     <button
       type="button"
@@ -39,7 +48,12 @@ export default function SyncIconButton({
           loading ? ' motion-reduce:opacity-60' : ''
         }`}
       >
-        <SyncIcon className={`w-4 h-4${loading ? ' animate-spin motion-reduce:animate-none' : ''}`} />
+        <SyncIcon
+          className={`w-4 h-4${loading || spinning ? ` ${SPIN_CLASS}` : ''}`}
+          onAnimationIteration={() => {
+            if (!loading) setSpinning(false)
+          }}
+        />
       </span>
     </button>
   )

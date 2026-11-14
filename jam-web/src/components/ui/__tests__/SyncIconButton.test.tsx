@@ -31,12 +31,13 @@ describe('SyncIconButton', () => {
     const html = renderToStaticMarkup(<SyncIconButton label="동기화" loading disabled />)
     expect(html).toContain('aria-busy="true"')
     expect(html).toContain('disabled=""')
-    expect(html).toContain('animate-spin motion-reduce:animate-none')
+    // 천천히 도는 한 바퀴 2.4초(기본 animate-spin의 1초보다 느리다, 티켓 20261114_1810)
+    expect(html).toContain('animate-[spin_2.4s_linear_infinite] motion-reduce:animate-none')
     expect(html).toContain('motion-reduce:opacity-60')
   })
 
   it('loading이 아니면 회전하지 않는다', () => {
     const html = renderToStaticMarkup(<SyncIconButton label="동기화" />)
-    expect(html).not.toContain('animate-spin')
+    expect(html).not.toContain('animate-')
   })
 })

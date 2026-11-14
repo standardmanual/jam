@@ -154,7 +154,7 @@ export default function SyncButton({
   return (
     <>
       {variant === 'icon' ? (
-        <SyncIconButton label={d.today.syncButton} onClick={handleSync} disabled={loading} loading={showLoading} />
+        <SyncIconButton label={d.today.syncButton} onClick={handleSync} disabled={loading} loading={loading} />
       ) : (
         <Button
           variant="primary"
