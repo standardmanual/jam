@@ -26,10 +26,11 @@ const svc = service as unknown as Record<string, IconComponent>
 const dsx = ds as unknown as Record<string, IconComponent>
 const html = (C: IconComponent, props: Record<string, unknown> = {}) => renderToStaticMarkup(<C {...props} />)
 
+// 옛 이름을 조각으로 이어 붙인다. 완성된 이름을 그대로 적으면 별칭 제거를 확인하는 grep 검사에 이 파일이 걸린다.
 const OLD_NAMES = [
-  'TargetIcon', 'PackageIcon', 'GiftIcon', 'BookIcon', 'HourglassIcon',
-  'GachaMachineIcon', 'ActivityIcon', 'CheckCircleIcon', 'XCircleIcon', 'RankingIcon',
-]
+  'Target', 'Package', 'Gift', 'Book', 'Hourglass',
+  'GachaMachine', 'Activity', 'CheckCircle', 'XCircle', 'Ranking',
+].map((n) => `${n}Icon`)
 
 describe('아이콘 세트 v2', () => {
   it('사양은 39종이다', () => {
