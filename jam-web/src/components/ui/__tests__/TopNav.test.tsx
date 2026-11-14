@@ -23,14 +23,45 @@ import TopNav from '../TopNav'
 
 describe('TopNav centerSlotOverride', () => {
   it('override가 없으면 기존 연동 유도 버튼(동기화)이 보인다', () => {
-    const html = renderToStaticMarkup(<TopNav logo />)
+    const html = renderToStaticMarkup(<TopNav logo syncStyle="pill" />)
     expect(html).toContain('동기화')
   })
 
   it('override가 있으면 그 내용이 렌더되고 기존 연동 유도 버튼은 사라진다', () => {
-    const html = renderToStaticMarkup(<TopNav logo centerSlotOverride={<span>연출 동기화 버튼</span>} />)
+    const html = renderToStaticMarkup(<TopNav logo syncStyle="pill" centerSlotOverride={<span>연출 동기화 버튼</span>} />)
     expect(html).toContain('연출 동기화 버튼')
     expect(html).not.toContain('>동기화<')
+  })
+})
+
+describe('TopNav 동기화 아이콘 서클 (티켓 20261114_1349)', () => {
+  it('기본(icon)은 «동기화» 글자 버튼이 없고 aria-label 달린 서클이 종 앞에 온다', () => {
+    const html = renderToStaticMarkup(<TopNav title="미션" />)
+    expect(html).not.toContain('>동기화<')
+    const circle = /<button[^>]*aria-label="동기화"[^>]*>/.exec(html)?.[0] ?? ''
+    expect(circle).toContain('type="button"')
+    const sync = html.indexOf('aria-label="동기화"')
+    const bell = html.indexOf('href="/notifications"')
+    const avatar = html.indexOf('aria-label="프로필"')
+    expect(sync).toBeGreaterThan(-1)
+    expect(bell).toBeGreaterThan(sync)
+    expect(avatar === -1 || avatar > bell).toBe(true)
+  })
+
+  it('호출부 rightSlot은 동기화 서클보다 앞에 온다', () => {
+    const html = renderToStaticMarkup(<TopNav title="배지" rightSlot={<span>공유버튼</span>} />)
+    expect(html.indexOf('공유버튼')).toBeLessThan(html.indexOf('aria-label="동기화"'))
+  })
+
+  it('icon에서도 centerSlotOverride가 있으면 중앙 슬롯에 그 노드를 쓴다', () => {
+    const html = renderToStaticMarkup(<TopNav logo centerSlotOverride={<span>연출 동기화 버튼</span>} />)
+    expect(html).toContain('연출 동기화 버튼')
+  })
+
+  it('pill은 글자 알약이고 동기화 서클은 없다', () => {
+    const html = renderToStaticMarkup(<TopNav logo syncStyle="pill" />)
+    expect(html).toContain('>동기화</button>')
+    expect(html).not.toContain('aria-label="동기화"')
   })
 })
 
@@ -82,7 +113,7 @@ describe('TopNav 헤더 면과 버튼', () => {
   })
 
   it('로고 옆에 문의 버튼이 없고(푸터 링크로 옮김) 동기화 유도 버튼은 인라인 덮어쓰기 없는 primary다', () => {
-    const html = renderToStaticMarkup(<TopNav logo />)
+    const html = renderToStaticMarkup(<TopNav logo syncStyle="pill" />)
     expect(html).not.toContain('>문의<')
     expect(html).not.toContain('/voc')
     const sync = /<button[^>]*>동기화<\/button>/.exec(html)?.[0] ?? ''

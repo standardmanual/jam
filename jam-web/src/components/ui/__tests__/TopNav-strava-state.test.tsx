@@ -27,12 +27,12 @@ import { TopNavDataProvider } from '@/lib/topNavData'
 import { d } from '@/lib/i18n'
 import type { StravaUiState } from '@/lib/strava/connection-state'
 
-function renderNav(stravaState: StravaUiState) {
+function renderNav(stravaState: StravaUiState, syncStyle: 'icon' | 'pill' = 'pill') {
   return renderToStaticMarkup(
     <TopNavDataProvider
       value={{ username: 'runner', avatarUrl: null, stravaState, hasUnreadNotifications: false }}
     >
-      <TopNav logo />
+      <TopNav logo syncStyle={syncStyle} />
     </TopNavDataProvider>
   )
 }
@@ -68,5 +68,28 @@ describe('TopNav 가운데 슬롯 — Strava 동기화 상태', () => {
     expect(html).not.toContain('SYNC_BUTTON')
     // 유저가 직접 끊은 경우에도 «다시 동기화» 같은 알람 어조를 쓰지 않는다
     expect(html).not.toContain(d.stravaConnection.topNavReconnect)
+  })
+})
+
+describe('TopNav 우측 동기화 서클 — Strava 동기화 상태 (티켓 20261114_1349)', () => {
+  it('connected는 SyncButton 하나이고 글자 알약은 없다', () => {
+    const html = renderNav('connected', 'icon')
+    expect(html).toContain('SYNC_BUTTON')
+    expect(buttonWithLabel(html, d.today.syncButton)).toBe('')
+  })
+
+  it.each<StravaUiState>(['none', 'disconnected_user'])('%s는 «동기화» 라벨 서클이고 글자·알약이 없다', (state) => {
+    const html = renderNav(state, 'icon')
+    expect(html).toContain(`aria-label="${d.today.syncButton}"`)
+    expect(html).not.toContain('SYNC_BUTTON')
+    expect(html).not.toContain('bg-accent')
+    expect(html).not.toContain(`>${d.today.syncButton}<`)
+  })
+
+  it('disconnected_error는 «다시 동기화» 라벨 서클이다', () => {
+    const html = renderNav('disconnected_error', 'icon')
+    expect(html).toContain(`aria-label="${d.stravaConnection.topNavReconnect}"`)
+    expect(html).not.toContain('bg-accent')
+    expect(html).not.toContain('SYNC_BUTTON')
   })
 })

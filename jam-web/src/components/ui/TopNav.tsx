@@ -9,6 +9,7 @@ import { useTopNavData } from '@/lib/topNavData'
 import SyncButton from '@/components/SyncButton'
 import Button from '@/components/ui/Button'
 import NotificationBell from '@/components/ui/NotificationBell'
+import SyncIconButton from '@/components/ui/SyncIconButton'
 import { UserIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
@@ -87,9 +88,15 @@ export interface TopNavProps {
    * 홈(`page.tsx`)만 넘긴다.
    */
   centerSlotOverride?: ReactNode
+  /**
+   * 동기화 버튼 모양(티켓 20261114_1349). 기본 `icon` — 중앙 슬롯을 비우고 우측에서 종 왼쪽에 아이콘 서클을 둔다.
+   * `pill`은 중앙 슬롯의 «동기화» 글자 알약(지금 모양)이고 홈(`page.tsx`)만 넘긴다.
+   * `centerSlotOverride`가 있으면 모양과 무관하게 중앙 슬롯에 그 노드를 쓴다.
+   */
+  syncStyle?: 'icon' | 'pill'
 }
 
-export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false, logoText, centerSlotOverride }: TopNavProps) {
+export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false, logoText, centerSlotOverride, syncStyle = 'icon' }: TopNavProps) {
   const router = useRouter()
   const { username, avatarUrl, stravaState } = useTopNavData()
 
@@ -121,9 +128,25 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   // 20260901_1926: DS TopNav의 `avatarSlot`이 제거되면서(rightSlot과 같은 flex 컨테이너
   // 안에서 바로 뒤에 이어 렌더링되던 자리였을 뿐이라 시각적 변화 없음) 아바타도 여기서
   // 함께 합성한다.
+  // 20261114_1349: syncStyle이 icon이면 동기화 서클이 [호출부 rightSlot][동기화][종][아바타] 순으로 종 앞에 붙는다.
+  const isIconSync = syncStyle === 'icon'
+  const syncCircle = isIconSync ? (
+    stravaState === 'connected' ? (
+      <SyncButton username={username} variant="icon" />
+    ) : (
+      <SyncIconButton
+        label={stravaState === 'disconnected_error' ? d.stravaConnection.topNavReconnect : d.today.syncButton}
+        onClick={() => {
+          window.location.href = '/api/strava/auth'
+        }}
+      />
+    )
+  ) : null
+
   const composedRightSlot = (
     <>
       {rightSlot}
+      {syncCircle}
       <NotificationBell />
       {avatarSlot}
     </>
@@ -155,7 +178,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   // centerSlotOverride가 있으면(온보딩 퀘스트 sync 차례) 연동 여부와 무관하게 그 값을 쓴다.
   const centerSlot =
     centerSlotOverride ??
-    (stravaState === 'connected' ? (
+    (isIconSync ? null : stravaState === 'connected' ? (
       <SyncButton username={username} />
     ) : (
       <Button
