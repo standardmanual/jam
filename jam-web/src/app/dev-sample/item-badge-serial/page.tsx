@@ -2,7 +2,7 @@ import TopNav from '@/components/ui/TopNav'
 import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
-import { BookIcon } from '@/components/ui/icons'
+import { MagicBookIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeHeroSection from '@/components/BadgeHeroSection'
@@ -71,7 +71,7 @@ export default function ItemBadgeSerialSamplePage() {
       <div className="relative z-10 flex flex-col gap-4 px-6 pb-[40px]">
         <ListRow
           href="#"
-          lead={<BookIcon className="w-5 h-5 text-muted" />}
+          lead={<MagicBookIcon className="w-5 h-5 text-muted" />}
           title={mockItemBook.name}
           chevron
         />

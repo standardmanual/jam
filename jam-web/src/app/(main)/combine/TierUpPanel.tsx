@@ -5,7 +5,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import BottomSheet from '@/components/ui/BottomSheet'
 import InlineNotice from '@/components/ui/InlineNotice'
-import { PackageIcon } from '@/components/ui/icons'
+import { ArrowDownIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import BagItemCell from './BagItemCell'
 import {
@@ -75,7 +75,7 @@ export function TierUpSheetContent<T extends TierUpMaterial>({
   onPick: (itemId: string) => void
 }) {
   if (sheet.kind === 'empty') {
-    return <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.tierUp.sheetEmpty} />
+    return <EmptyState icon={<ArrowDownIcon className="w-8 h-8" />} title={d.combine.tierUp.sheetEmpty} />
   }
   if (sheet.kind === 'locked') {
     return (

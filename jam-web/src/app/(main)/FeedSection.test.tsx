@@ -27,13 +27,13 @@ vi.mock('next/navigation', () => ({
 
 import FeedSection, { EventIcon, eventLabelText, feedImageOf, feedTarget, feedTitle, goToFeedTarget, matchesFilter } from './FeedSection'
 import {
-  BookIcon,
-  CheckCircleIcon,
-  GiftIcon,
+  MagicBookIcon,
+  CheckBoldIcon,
+  ArrowUpIcon,
   MedalIcon,
-  PackageIcon,
-  TargetIcon,
-  XCircleIcon,
+  ArrowDownIcon,
+  TicketIcon,
+  XBoldIcon,
 } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import { Constants } from '@/types/database.generated'
@@ -96,13 +96,13 @@ afterEach(() => {
 /** 종류마다 기대하는 아이콘. `Record`라 종류를 더하고 여기를 빠뜨리면 컴파일 오류가 난다 */
 const EXPECTED_ICON: Record<ActivityFeedEventType, (props: { className?: string }) => ReactNode> = {
   badge_earned: MedalIcon,
-  item_dropped: PackageIcon,
-  item_picked_up: GiftIcon,
-  mission_joined: TargetIcon,
-  mission_completed: CheckCircleIcon,
-  mission_cancelled: XCircleIcon,
+  item_dropped: ArrowDownIcon,
+  item_picked_up: ArrowUpIcon,
+  mission_joined: TicketIcon,
+  mission_completed: CheckBoldIcon,
+  mission_cancelled: XBoldIcon,
   chapter_up: MedalIcon,
-  collection_tier_completed: BookIcon,
+  collection_tier_completed: MagicBookIcon,
 }
 
 describe('피드 종류 목록과 아이콘', () => {
@@ -118,7 +118,7 @@ describe('피드 종류 목록과 아이콘', () => {
   })
 
   it('책과 메달은 서로 다른 그림이다 — 위 대조가 의미가 있다', () => {
-    expect(icon(BookIcon, 'w-5 h-5')).not.toBe(icon(MedalIcon, 'w-5 h-5'))
+    expect(icon(MagicBookIcon, 'w-5 h-5')).not.toBe(icon(MedalIcon, 'w-5 h-5'))
   })
 
   it('모르는 종류가 와도 던지지 않고 메달로 그리며, 경고는 종류당 한 번만 남긴다', () => {

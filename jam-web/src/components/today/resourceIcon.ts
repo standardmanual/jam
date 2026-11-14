@@ -1,15 +1,15 @@
 import { createElement, type ComponentType, type ReactElement, type SVGProps } from 'react'
 import {
-  BookIcon,
+  MagicBookIcon,
   FlaskIcon,
-  HourglassIcon,
+  SparkleCircleIcon,
   InfoIcon,
   MedalIcon,
   NewspaperIcon,
-  PackageIcon,
+  ArrowDownIcon,
   PinIcon,
-  RankingIcon,
-  TargetIcon,
+  PodiumIcon,
+  TicketIcon,
 } from '@/components/ui/icons'
 import type { CardResource, CardView } from '@/lib/today/cardView'
 
@@ -24,14 +24,14 @@ import type { CardResource, CardView } from '@/lib/today/cardView'
  * `Record<CardResource, …>`라 자원이 늘면 컴파일이 잡는다.
  */
 const RESOURCE_ICON: Record<CardResource, ComponentType<SVGProps<SVGSVGElement>>> = {
-  mission: TargetIcon,
-  drop: PackageIcon,
+  mission: TicketIcon,
+  drop: ArrowDownIcon,
   recipe: FlaskIcon,
   badge: MedalIcon,
   article: NewspaperIcon,
-  ranking: RankingIcon,
-  collection: BookIcon,
-  auto: HourglassIcon,
+  ranking: PodiumIcon,
+  collection: MagicBookIcon,
+  auto: SparkleCircleIcon,
 }
 
 /** 아이콘을 고르는 데 쓰는 표시 데이터 값. */

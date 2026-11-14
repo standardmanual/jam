@@ -8,7 +8,7 @@ import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
-import { MedalIcon, PinIcon, BookIcon } from '@/components/ui/icons'
+import { MedalIcon, PinIcon, MagicBookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Select } from '@ds/components/forms/Select'
 import { d } from '@/lib/i18n'
@@ -323,7 +323,7 @@ export default function BadgesClient({
               })}
             </div>
           ) : (
-            <EmptyState icon={<BookIcon className="w-8 h-8" />} title={d.badges.emptyItembookTitle} description={d.badges.emptyItembookBody} />
+            <EmptyState icon={<MagicBookIcon className="w-8 h-8" />} title={d.badges.emptyItembookTitle} description={d.badges.emptyItembookBody} />
           )
         )}
       </div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BookIcon } from '@/components/ui/icons'
+import { MagicBookIcon } from '@/components/ui/icons'
 import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
@@ -104,7 +104,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
               />
             </div>
           ) : (
-            <BookIcon className="w-28 h-28" style={{ color: onMedia ? 'var(--snow)' : 'var(--muted)' }} />
+            <MagicBookIcon className="w-28 h-28" style={{ color: onMedia ? 'var(--snow)' : 'var(--muted)' }} />
           )}
         </div>
         {/* 이름+설명을 한 그룹으로 묶는다. 높이는 내용이 정하므로 남는 공간을 채우거나(flex-1) 잘라내지(overflow-hidden) 않는다 —

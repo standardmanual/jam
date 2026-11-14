@@ -7,7 +7,7 @@ import QuestBagGrid from './QuestBagGrid'
 import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import TopNav from '@/components/ui/TopNav'
-import { GachaMachineIcon, PackageIcon } from '@/components/ui/icons'
+import { MixingBowlIcon, ArrowDownIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 
@@ -94,7 +94,7 @@ export default async function InventoryPage() {
             href="/combine"
             className="flex w-full items-center justify-center gap-2 min-h-11 rounded-full px-4 text-base bg-surface active:scale-95 transition-transform duration-100"
           >
-            <GachaMachineIcon className="w-5 h-5 shrink-0" />
+            <MixingBowlIcon className="w-5 h-5 shrink-0" />
             {d.inventory.combineButton}
           </Link>
         </div>
@@ -119,7 +119,7 @@ export default async function InventoryPage() {
         />
       ) : items.length === 0 ? (
         <EmptyState
-          icon={<PackageIcon className="w-8 h-8" />}
+          icon={<ArrowDownIcon className="w-8 h-8" />}
           title={d.inventory.emptyTitle}
           description={d.inventory.emptyBody}
         />

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import SafeImage from '@/components/SafeImage'
 import { d } from '@/lib/i18n'
-import { BookIcon } from '@/components/ui/icons'
+import { MagicBookIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ListRowChip } from '@/components/ui/ListRow'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -57,14 +57,14 @@ export default function CollectionGridCard({
       {/* 썸네일 — 투명 배경 정사각형.
           컬렉션 이미지는 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에
           직접 넘기면 카드 한 장 때문에 그리드가 있는 화면 전체가 500이 된다 (20260824_005).
-          폴백은 이미지가 없을 때와 같은 BookIcon — 카드 골격과 진행도는 그대로 남는다. */}
+          폴백은 이미지가 없을 때와 같은 MagicBookIcon — 카드 골격과 진행도는 그대로 남는다. */}
       <div className="relative w-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center">
         <SafeImage
           src={imageUrl}
           alt={name}
           className="object-contain p-1.5"
           sizes="50vw"
-          fallback={<BookIcon className={`w-10 h-10 ${completed ? 'text-foreground' : 'text-muted'}`} />}
+          fallback={<MagicBookIcon className={`w-10 h-10 ${completed ? 'text-foreground' : 'text-muted'}`} />}
         />
         {/* 태그 행: 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다. 완성 칩은 맨 아래 행으로 옮겼다(티켓 20261114_1502).
             좁은 폭(320px 2열)에서도 칩이 잘리지 않게 줄바꿈하고, 오른쪽 여백을 남긴다. */}

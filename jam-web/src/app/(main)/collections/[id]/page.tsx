@@ -12,7 +12,7 @@ import type {
   UserItemBookSlotRow,
 } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
-import { PinIcon, BookIcon } from '@/components/ui/icons'
+import { PinIcon, MagicBookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { ListRowChip } from '@/components/ui/ListRow'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
@@ -364,7 +364,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         {/* 배지 없음 상태 */}
         {totalBadgeCount === 0 && (
           <EmptyState
-            icon={<BookIcon className="w-8 h-8" />}
+            icon={<MagicBookIcon className="w-8 h-8" />}
             title={d.itembooks.noBadgesTitle}
             description={d.itembooks.noBadgesBody}
           />

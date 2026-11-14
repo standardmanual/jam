@@ -6,7 +6,7 @@ import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { SHEET_BUTTON_CLASS } from '@/components/ui/sheetClasses'
 import SwapText from '@/components/ui/SwapText'
-import { PackageIcon } from '@/components/ui/icons'
+import { ArrowDownIcon } from '@/components/ui/icons'
 import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Skeleton } from '@ds/components/feedback/Skeleton'
@@ -138,7 +138,7 @@ export default function PendingResultsSheet({ open, onClose, view, onClaim, onRe
             </Button>
           </div>
         )}
-        {empty && <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.claim.noPending} />}
+        {empty && <EmptyState icon={<ArrowDownIcon className="w-8 h-8" />} title={d.combine.claim.noPending} />}
         {status === 'ready' && !empty && (
           <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0">
             {items.map((item) => (

@@ -8,15 +8,15 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import BriefCard from '../BriefCard'
 import {
-  BookIcon,
+  MagicBookIcon,
   FlaskIcon,
-  HourglassIcon,
+  SparkleCircleIcon,
   MedalIcon,
   NewspaperIcon,
-  PackageIcon,
+  ArrowDownIcon,
   PinIcon,
-  RankingIcon,
-  TargetIcon,
+  PodiumIcon,
+  TicketIcon,
 } from '@/components/ui/icons'
 import { CARD_RESOURCES, type BriefCardView, type CardResource } from '@/lib/today/cardView'
 
@@ -43,7 +43,7 @@ function factParagraphs(html: string): { className: string; text: string }[] {
 }
 
 const SLOT_ICON_CLASS = 'w-6 h-6 text-muted'
-const slotIcon = (Icon: typeof TargetIcon) => renderToStaticMarkup(<Icon className={SLOT_ICON_CLASS} />)
+const slotIcon = (Icon: typeof TicketIcon) => renderToStaticMarkup(<Icon className={SLOT_ICON_CLASS} />)
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -325,15 +325,15 @@ describe('BriefCard — 64px 칸', () => {
 })
 
 describe('BriefCard — 자원 → 아이콘 (아이콘 모양으로만 구분, 색 없음)', () => {
-  const EXPECTED: Record<CardResource, typeof TargetIcon> = {
-    mission: TargetIcon,
-    drop: PackageIcon,
+  const EXPECTED: Record<CardResource, typeof TicketIcon> = {
+    mission: TicketIcon,
+    drop: ArrowDownIcon,
     recipe: FlaskIcon,
     badge: MedalIcon,
     article: NewspaperIcon,
-    ranking: RankingIcon,
-    collection: BookIcon,
-    auto: HourglassIcon,
+    ranking: PodiumIcon,
+    collection: MagicBookIcon,
+    auto: SparkleCircleIcon,
   }
 
   it.each(CARD_RESOURCES.map((resource) => [resource]))('%s의 아이콘이 정해진 모양이다', (resource) => {
@@ -348,17 +348,17 @@ describe('BriefCard — 자원 → 아이콘 (아이콘 모양으로만 구분, 
   it('자동 카드는 템플릿이 지역 트렌드면 핀, 진행 알림이면 모래시계다(지역 값과 무관, 티켓 20261001_2244)', () => {
     const trend = render({ resource: 'auto', template: 'location_trend', regionLabel: '성수동', facts: undefined })
     expect(trend).toContain(slotIcon(PinIcon))
-    expect(trend).not.toContain(slotIcon(HourglassIcon))
+    expect(trend).not.toContain(slotIcon(SparkleCircleIcon))
     // 진행 알림은 지역 값이 있어도 모래시계다
     const nudge = render({ resource: 'auto', template: 'progress_nudge', regionLabel: '성수동', facts: undefined })
-    expect(nudge).toContain(slotIcon(HourglassIcon))
+    expect(nudge).toContain(slotIcon(SparkleCircleIcon))
     expect(nudge).not.toContain(slotIcon(PinIcon))
     // 구분 값이 없는 직접 만든 표시 데이터는 자원의 기본 아이콘(모래시계)이다
-    expect(render({ resource: 'auto', facts: undefined })).toContain(slotIcon(HourglassIcon))
+    expect(render({ resource: 'auto', facts: undefined })).toContain(slotIcon(SparkleCircleIcon))
   })
 
   it('지역 값이 있어도 자동 카드가 아니면 자원 아이콘이 그대로다', () => {
-    expect(render({ resource: 'mission', regionLabel: '성수동', facts: undefined })).toContain(slotIcon(TargetIcon))
+    expect(render({ resource: 'mission', regionLabel: '성수동', facts: undefined })).toContain(slotIcon(TicketIcon))
   })
 
   it('아이콘에 색을 입히지 않는다(text-muted 하나뿐, 제3의 컬러 없음)', () => {

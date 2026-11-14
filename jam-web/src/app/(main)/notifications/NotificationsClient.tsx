@@ -8,19 +8,19 @@ import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { ListRow, ListRowEm } from '@/components/ui/ListRow'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import {
-  ActivityIcon,
+  SyncCircleIcon,
   AlertTriangleIcon,
   BellIcon,
-  BookIcon,
-  CheckCircleIcon,
+  MagicBookIcon,
+  CheckBoldIcon,
   CoinIcon,
-  GiftIcon,
+  ArrowUpIcon,
   LockIcon,
   MedalIcon,
   NewspaperIcon,
-  PackageIcon,
+  ArrowDownIcon,
   PinIcon,
-  TargetIcon,
+  TicketIcon,
   UserIcon,
   UsersIcon,
 } from '@/components/ui/icons'
@@ -55,21 +55,21 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
       return <MedalIcon className={className} />
     case 'inventory_full':
     case 'inventory_slots_low':
-      return <PackageIcon className={className} />
+      return <ArrowDownIcon className={className} />
     case 'admin_points_changed':
       return <CoinIcon className={className} />
     case 'collection_slottable':
     case 'collection_near_complete':
     case 'collection_completable':
     case 'following_collection_complete':
-      return <BookIcon className={className} />
+      return <MagicBookIcon className={className} />
     case 'drop_picked_up':
     // 받지 않은 보상도 선물이라 같은 아이콘을 쓴다(티켓 20261021_1249 6-3 5회, 새 아이콘을 고르지 않았다)
     case 'reward_pending':
     // 캡슐에서 받지 못한 보상 이야기라 받지 않은 보상과 같은 선물 아이콘을 쓴다(티켓 20261028_1734 3회, 새 아이콘을 고르지 않았다)
     case 'capsule_nearly_full':
     case 'capsule_jam_blocked':
-      return <GiftIcon className={className} />
+      return <ArrowUpIcon className={className} />
     case 'drop_spot_active':
       return <PinIcon className={className} />
     case 'mission_milestone':
@@ -79,21 +79,21 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'mission_ended':
     case 'mission_participation_cancelled':
     case 'following_mission_complete':
-      return <TargetIcon className={className} />
+      return <TicketIcon className={className} />
     case 'followed':
     // 트라이브는 사람들의 모임이라 같은 아이콘을 쓴다(티켓 20261021_1247, 새 아이콘을 고르지 않았다). 행위자가 없어 아바타 대신 이 아이콘이 보인다
     case 'tribe_changed':
       return <UsersIcon className={className} />
     case 'strava_disconnected':
     case 'sync_stalled':
-      return <ActivityIcon className={className} />
+      return <SyncCircleIcon className={className} />
     case 'announcement':
       return <NewspaperIcon className={className} />
     // 이용 정지는 경고면이 아니라 일반 타일에 잠금으로 그린다. 지난 사건의 기록이라 경고 재평가 대상(`warning.ts`)에도 넣지 않았다(티켓 20261021_1249 6-3 5회)
     case 'suspension_started':
       return <LockIcon className={className} />
     case 'suspension_lifted':
-      return <CheckCircleIcon className={className} />
+      return <CheckBoldIcon className={className} />
     default:
       // 29종 전수에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 파일을
       // 빠뜨리면 아래 호출이 컴파일 에러가 난다(20260827_021).

@@ -13,7 +13,7 @@ import InlineNotice from '@/components/ui/InlineNotice'
 import { ListRow } from '@/components/ui/ListRow'
 import SwapText from '@/components/ui/SwapText'
 import TopNav from '@/components/ui/TopNav'
-import { BookIcon, CoinIcon, MedalIcon } from '@/components/ui/icons'
+import { MagicBookIcon, CoinIcon, MedalIcon } from '@/components/ui/icons'
 import BadgeHeroSection from '@/components/BadgeHeroSection'
 import { useToast } from '@/components/ui/Toast'
 import { runLockedOpen, type LockedItemEffect } from '@/lib/inventory/lockedItemFill-flow'
@@ -272,7 +272,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
           <ListRow
             href={`/collections/${view.item.collection.id}`}
             leadShape="tile"
-            lead={<BookIcon className="h-5 w-5 text-foreground" />}
+            lead={<MagicBookIcon className="h-5 w-5 text-foreground" />}
             title={view.item.collection.name}
             chevron
           />

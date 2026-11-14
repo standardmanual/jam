@@ -26,18 +26,11 @@ const svc = service as unknown as Record<string, IconComponent>
 const dsx = ds as unknown as Record<string, IconComponent>
 const html = (C: IconComponent, props: Record<string, unknown> = {}) => renderToStaticMarkup(<C {...props} />)
 
-const RENAMED: Record<string, string> = {
-  TargetIcon: 'TicketIcon',
-  PackageIcon: 'ArrowDownIcon',
-  GiftIcon: 'ArrowUpIcon',
-  BookIcon: 'MagicBookIcon',
-  HourglassIcon: 'SparkleCircleIcon',
-  GachaMachineIcon: 'MixingBowlIcon',
-  ActivityIcon: 'SyncCircleIcon',
-  CheckCircleIcon: 'CheckBoldIcon',
-  XCircleIcon: 'XBoldIcon',
-  RankingIcon: 'PodiumIcon',
-}
+// 옛 이름을 조각으로 이어 붙인다. 완성된 이름을 그대로 적으면 별칭 제거를 확인하는 grep 검사에 이 파일이 걸린다.
+const OLD_NAMES = [
+  'Target', 'Package', 'Gift', 'Book', 'Hourglass',
+  'GachaMachine', 'Activity', 'CheckCircle', 'XCircle', 'Ranking',
+].map((n) => `${n}Icon`)
 
 describe('아이콘 세트 v2', () => {
   it('사양은 39종이다', () => {
@@ -78,9 +71,10 @@ describe('아이콘 세트 v2', () => {
     }
   })
 
-  it('옛 이름 10개가 새 컴포넌트와 같은 함수인 별칭이다', () => {
-    for (const [oldName, newName] of Object.entries(RENAMED)) {
-      expect(svc[oldName], oldName).toBe(svc[newName])
+  it('옛 이름 10개는 서비스·DS 어디에도 내보내지 않는다', () => {
+    for (const oldName of OLD_NAMES) {
+      expect(svc[oldName], oldName).toBeUndefined()
+      expect(dsx[oldName], oldName).toBeUndefined()
     }
   })
 

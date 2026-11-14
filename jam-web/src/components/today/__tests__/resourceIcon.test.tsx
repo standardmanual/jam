@@ -7,29 +7,29 @@ import { describe, it, expect } from 'vitest'
 import { createElement, type ComponentType, type SVGProps } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  BookIcon,
+  MagicBookIcon,
   FlaskIcon,
-  HourglassIcon,
+  SparkleCircleIcon,
   InfoIcon,
   MedalIcon,
   NewspaperIcon,
-  PackageIcon,
+  ArrowDownIcon,
   PinIcon,
-  RankingIcon,
-  TargetIcon,
+  PodiumIcon,
+  TicketIcon,
 } from '@/components/ui/icons'
 import { CARD_RESOURCES, type CardResource } from '@/lib/today/cardView'
 import { resourceIconOf } from '../resourceIcon'
 
-const EXPECTED: Record<CardResource, typeof TargetIcon> = {
-  mission: TargetIcon,
-  drop: PackageIcon,
+const EXPECTED: Record<CardResource, typeof TicketIcon> = {
+  mission: TicketIcon,
+  drop: ArrowDownIcon,
   recipe: FlaskIcon,
   badge: MedalIcon,
   article: NewspaperIcon,
-  ranking: RankingIcon,
-  collection: BookIcon,
-  auto: HourglassIcon,
+  ranking: PodiumIcon,
+  collection: MagicBookIcon,
+  auto: SparkleCircleIcon,
 }
 
 const CLASS = 'w-6 h-6'
@@ -56,21 +56,21 @@ describe('resourceIconOf', () => {
 
   it('자동 카드는 템플릿이 지역 트렌드면 핀, 진행 알림이면 모래시계다', () => {
     expect(drawn({ resource: 'auto', template: 'location_trend' })).toBe(expected(PinIcon))
-    expect(drawn({ resource: 'auto', template: 'progress_nudge' })).toBe(expected(HourglassIcon))
+    expect(drawn({ resource: 'auto', template: 'progress_nudge' })).toBe(expected(SparkleCircleIcon))
   })
 
   it('구분 값(template)이 없는 직접 만든 표시 데이터의 자동 카드는 자원의 기본 아이콘(모래시계)이다', () => {
-    expect(drawn({ resource: 'auto' })).toBe(expected(HourglassIcon))
+    expect(drawn({ resource: 'auto' })).toBe(expected(SparkleCircleIcon))
   })
 
   it('지역 값은 아이콘을 정하지 않는다 — 진행 알림은 지역 값이 있어도 모래시계다', () => {
     const view = { resource: 'auto', template: 'progress_nudge', regionLabel: '성수동' } as const
-    expect(drawn(view as Parameters<typeof resourceIconOf>[0])).toBe(expected(HourglassIcon))
+    expect(drawn(view as Parameters<typeof resourceIconOf>[0])).toBe(expected(SparkleCircleIcon))
   })
 
   it('컨텐츠 소개 카드(content_intro)는 자원이 auto여도 모래시계·핀이 아니라 정보 아이콘이다(티켓 20261101_2054)', () => {
     expect(drawn({ resource: 'auto', template: 'content_intro' })).toBe(expected(InfoIcon))
-    expect(drawn({ resource: 'auto', template: 'content_intro' })).not.toBe(expected(HourglassIcon))
+    expect(drawn({ resource: 'auto', template: 'content_intro' })).not.toBe(expected(SparkleCircleIcon))
   })
 
   it('레시피 공개 카드(recipe_reveal)는 플라스크다', () => {
@@ -85,7 +85,7 @@ describe('resourceIconOf', () => {
   })
 
   it('템플릿이 지역 트렌드여도 자동 카드가 아닌 자원이면 자원 아이콘이 그대로다', () => {
-    expect(drawn({ resource: 'mission', template: 'location_trend' })).toBe(expected(TargetIcon))
-    expect(drawn({ resource: 'drop', template: 'location_trend' })).toBe(expected(PackageIcon))
+    expect(drawn({ resource: 'mission', template: 'location_trend' })).toBe(expected(TicketIcon))
+    expect(drawn({ resource: 'drop', template: 'location_trend' })).toBe(expected(ArrowDownIcon))
   })
 })

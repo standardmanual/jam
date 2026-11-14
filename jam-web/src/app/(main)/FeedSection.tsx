@@ -18,12 +18,12 @@ import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { buildQueryHref, readEnumParam } from '@/lib/urlQueryState'
 import {
   MedalIcon,
-  BookIcon,
-  PackageIcon,
-  GiftIcon,
-  TargetIcon,
-  CheckCircleIcon,
-  XCircleIcon,
+  MagicBookIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  TicketIcon,
+  CheckBoldIcon,
+  XBoldIcon,
   PuzzleIcon,
   InboxIcon,
 } from '@/components/ui/icons'
@@ -133,14 +133,14 @@ function unknownFeedEventType(type: never): void {
 export function EventIcon({ type, className }: { type: ActivityFeedEventType; className?: string }): ReactNode {
   switch (type) {
     case 'badge_earned': return <MedalIcon className={className} />
-    case 'item_dropped': return <PackageIcon className={className} />
-    case 'item_picked_up': return <GiftIcon className={className} />
-    case 'mission_joined': return <TargetIcon className={className} />
-    case 'mission_completed': return <CheckCircleIcon className={className} />
-    case 'mission_cancelled': return <XCircleIcon className={className} />
+    case 'item_dropped': return <ArrowDownIcon className={className} />
+    case 'item_picked_up': return <ArrowUpIcon className={className} />
+    case 'mission_joined': return <TicketIcon className={className} />
+    case 'mission_completed': return <CheckBoldIcon className={className} />
+    case 'mission_cancelled': return <XBoldIcon className={className} />
     // 챕터 오름은 소식의 chapter_up이 이미 쓰는 메달, 컬렉션 완성은 컬렉션 소식이 쓰는 책이다(티켓 20261021_1249 6-3 5회, 새 아이콘을 고르지 않았다)
     case 'chapter_up': return <MedalIcon className={className} />
-    case 'collection_tier_completed': return <BookIcon className={className} />
+    case 'collection_tier_completed': return <MagicBookIcon className={className} />
     default:
       // 모든 종류에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 switch를 빠뜨리면 아래 호출이 컴파일 오류가 난다.
       unknownFeedEventType(type)
