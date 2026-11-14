@@ -10,7 +10,14 @@ import type {
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
-import { filterRecipesWithLiveResults, filterReleasedRecipes } from '@/lib/combine/visibility'
+import { resolveGradeMode } from '@/lib/combine/gradeMode'
+import {
+  filterRecipesWithLiveResults,
+  filterReleasedRecipes,
+  keepLiveRarities,
+  liveResultRarities,
+  type ResultBadgeWindow,
+} from '@/lib/combine/visibility'
 import { getPendingCount } from '@/lib/combine/pending'
 import { selectInChunks } from '@/lib/combine/chunked-in'
 
@@ -47,11 +54,15 @@ export default async function CombinePage() {
   const resultBadgeIds = [...new Set(releasedRecipes.flatMap((r) => r.reward_badge_ids ?? []))]
   // `.in()`에 ID가 수백 개 실리면 요청 주소가 헤더 한도를 넘으므로 묶음으로 나눠 조회한다(티켓 20261104_2316).
   const { data: windowsRaw, error: windowsError } = await selectInChunks(resultBadgeIds, (chunk) =>
-    service.from('badges').select('id, valid_until').in('id', chunk).is('deleted_at', null),
+    service.from('badges').select('id, valid_until, rarity').in('id', chunk).is('deleted_at', null),
   )
   if (windowsError) console.error('[combine/page] 결과 배지 공개 기간 조회 실패', windowsError)
-  const resultBadgeWindows = windowsRaw as { id: string; valid_until: string | null }[]
-  const visibleRecipeRows = filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)
+  const resultBadgeWindows = (windowsRaw ?? []) as ResultBadgeWindow[]
+  // 등급 대응형은 «등급별»로 본다(티켓 20261114_1705 3회) — 한 등급의 결과 배지만 끝나도 레시피는 남고, 모든 등급이 끝나야 빠진다.
+  // 조회가 실패하면 등급 대응형의 등급을 알 수 없어 레시피가 통째로 사라질 수 있으므로 거르지 않고 서버 거절에 맡긴다.
+  const visibleRecipeRows = windowsError
+    ? releasedRecipes
+    : filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)
   const visibleRecipeIds = visibleRecipeRows.map((r) => r.id)
 
   // 유저 화면이 레시피 선택형 플로우로 바뀌면서, 레시피는 슬롯 목록과 슬롯별 후보 배지
@@ -111,26 +122,53 @@ export default async function CombinePage() {
     ]),
   ]
 
+  // 등급 대응형 레시피의 «살아 있는 등급» — 끝난 등급은 후보·보상에서 빼서 내려보낸다(클라이언트는 등급 판정을 새로 하지 않는다, 티켓 20261114_1705 3회).
+  // 등급 고정형과 조회 실패 때는 항목이 없어 지금처럼 그대로 내려간다.
+  const liveRaritiesByRecipe = new Map<string, Set<string>>()
+  if (!windowsError) {
+    for (const r of visibleRecipeRows) {
+      if (resolveGradeMode(r) === 'follow_materials' && r.reward_badge_ids.length > 0) {
+        liveRaritiesByRecipe.set(r.id, liveResultRarities(r.reward_badge_ids, resultBadgeWindows))
+      }
+    }
+  }
+
   const slotsByRecipe = new Map<string, RecipeWithSlots['slots']>()
   for (const slot of slotRows) {
     const list = slotsByRecipe.get(slot.recipe_id) ?? []
+    const candidates = slot.allowed_badge_ids
+      .map((id) => badgeDetailMap.get(id))
+      .filter((b): b is NonNullable<typeof b> => Boolean(b))
+    const live = liveRaritiesByRecipe.get(slot.recipe_id)
     list.push({
       id: slot.id,
       slot_order: slot.slot_order,
       badge_type: slot.badge_type,
-      candidates: slot.allowed_badge_ids
-        .map((id) => badgeDetailMap.get(id))
-        .filter((b): b is NonNullable<typeof b> => Boolean(b)),
+      // 등급 대응형의 아이템 슬롯만 등급으로 거르고 낮은 등급부터 세운다. 액티비티·체크인 슬롯은 등급을 따르지 않는다
+      candidates: live && slot.badge_type === 'item' ? keepLiveRarities(candidates, live) : candidates,
     })
     slotsByRecipe.set(slot.recipe_id, list)
   }
 
-  const publicRecipes: RecipeWithSlots[] = visibleRecipeRows.map((r) => ({
-    ...r,
-    slots: (slotsByRecipe.get(r.id) ?? []).sort((a, b) => a.slot_order - b.slot_order),
-    rewardBadges: r.reward_badge_ids
+  // `first_success_badge_id`는 화면이 쓰지 않는다 — 아직 아무도 받지 못한 첫 성공자 보상이 미리 노출되지 않게 클라이언트 props에서 뺀다
+  const withoutFirstSuccessBadge = (row: CombinationRecipeRow): CombinationRecipeRow => {
+    const copy = { ...row }
+    delete copy.first_success_badge_id
+    return copy
+  }
+
+  const rewardBadgesOf = (r: CombinationRecipeRow) => {
+    const details = r.reward_badge_ids
       .map((id) => badgeDetailMap.get(id))
-      .filter((b): b is NonNullable<typeof b> => Boolean(b)),
+      .filter((b): b is NonNullable<typeof b> => Boolean(b))
+    const live = liveRaritiesByRecipe.get(r.id)
+    return live ? keepLiveRarities(details, live) : details
+  }
+
+  const publicRecipes: RecipeWithSlots[] = visibleRecipeRows.map((r) => ({
+    ...withoutFirstSuccessBadge(r),
+    slots: (slotsByRecipe.get(r.id) ?? []).sort((a, b) => a.slot_order - b.slot_order),
+    rewardBadges: rewardBadgesOf(r),
   }))
 
   let items: Array<Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> & { badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'> }> = []

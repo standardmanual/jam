@@ -92,6 +92,8 @@ export interface CombineResultBadge {
   id: string
   name: string
   rarity: string
+  /** 첫 성공자 보상(`firstSuccessReward.badge`)만 싣는다 — 일반 결과 그림은 화면이 미리 받아 둔 보상 배지 상세에서 찾는다. 잠긴 배지에는 싣지 않는다 */
+  imageUrl?: string | null
   locked?: true
 }
 
@@ -637,17 +639,23 @@ async function grantFirstSuccessReward(
 
     const { data: badgeRaw } = await supabase
       .from('badges')
-      .select('id, name, rarity, always_locked')
+      .select('id, name, rarity, always_locked, image_url')
       .eq('id', badgeId)
       .maybeSingle()
-    const badge = badgeRaw as { id: string; name: string; rarity: string; always_locked?: boolean | null } | null
+    const badge = badgeRaw as {
+      id: string
+      name: string
+      rarity: string
+      always_locked?: boolean | null
+      image_url?: string | null
+    } | null
     if (!badge) return { status: 'granted' }
     const locked = recipe.reward_locked === true || badge.always_locked === true
     return {
       status: 'granted',
       badge: locked
         ? { id: '', name: '', rarity: badge.rarity, locked: true }
-        : { id: badge.id, name: badge.name, rarity: badge.rarity },
+        : { id: badge.id, name: badge.name, rarity: badge.rarity, imageUrl: badge.image_url ?? null },
     }
   } catch (error) {
     console.error('[combineRecipeAttempt] 첫 성공자 보상 지급 예외:', error)

@@ -139,7 +139,7 @@ function makeBuilder(table: string) {
         const ids = (state.in.id as string[] | undefined) ?? (state.eq.id ? [state.eq.id as string] : [])
         const rows = ids.map((id) => {
           const grade = GRADES.find((g) => id.endsWith(`-${g}`)) ?? 'rare'
-          return { id, name: `배지 ${id}`, rarity: grade, always_locked: false, valid_until: null }
+          return { id, name: `배지 ${id}`, rarity: grade, always_locked: false, valid_until: null, image_url: `https://img.test/${id}.png` }
         })
         // `.maybeSingle()` 조회(첫 성공자 보상 배지 1개)는 한 줄을 돌려준다
         return { data: state.eq.id ? (rows[0] ?? null) : rows, error: null }
@@ -345,6 +345,8 @@ describe('첫 성공자 보상', () => {
       expect(first.resultBadges.map((b) => b.id)).toEqual([badgeId('result', 'rare')])
       expect(first.firstSuccessReward?.status).toBe('granted')
       expect(first.firstSuccessReward?.badge?.id).toBe(FIRST_BADGE)
+      // 결과 오버레이가 보상 카드의 그림을 그리도록 응답에 그림 주소가 실린다(티켓 20261114_1705 3회)
+      expect(first.firstSuccessReward?.badge?.imageUrl).toBe(`https://img.test/${FIRST_BADGE}.png`)
     }
     expect(second.success).toBe(true)
     if (second.success) expect(second.firstSuccessReward).toBeUndefined()

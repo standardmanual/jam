@@ -17,6 +17,14 @@ import BagItemCell from './BagItemCell'
 import RecipeSlotCard, { type RecipeSlotStatus } from './RecipeSlotCard'
 import TierUpPanel from './TierUpPanel'
 import {
+  gradeLockNote,
+  hasMixedGrades,
+  isFollowMaterials,
+  lockedGradeOf,
+  narrowRecipeToGrade,
+  representativeRewardBadges,
+} from './gradeClient'
+import {
   TIER_UP_ENDPOINT,
   buildTierUpSheet,
   emptyTierUpSlots,
@@ -111,6 +119,8 @@ const PENDING_LOAD_TIMEOUT_MS = 8000
 const PENDING_RESULTS_EXIST = 'pending_results_exist'
 const INSUFFICIENT_SLOTS = 'insufficient_slots'
 const NO_PENDING = 'no_pending'
+/** 믹스 409 응답의 `code` — 등급 대응형 레시피에 서로 다른 등급의 재료를 넣었다 */
+const MIXED_GRADE_NOT_ALLOWED = 'mixed_grade_not_allowed'
 
 const INITIAL_SHEET: PendingSheetView = { status: 'loading', items: [], freeSlots: 0, neededSlots: 0, claiming: false }
 
@@ -120,6 +130,25 @@ interface MixResultBadge {
   name: string
   rarity?: RevealBadge['rarity']
   locked?: boolean
+}
+
+/** 믹스 응답의 `firstSuccessReward`(티켓 20261114_1705) — `granted`면 `badge`가 있고, `pending`이면 받지 않은 결과로 남았다 */
+interface MixFirstSuccessReward {
+  status: 'granted' | 'pending'
+  badge?: MixResultBadge & { imageUrl?: string | null }
+}
+
+/**
+ * 순수 변환 — 지급된 첫 성공자 보상 배지를 결과 캐러셀 카드 1장으로 바꾼다. 보상 배지는 미리 내려받지 않으므로(아직 아무도 못 받은 보상이 노출되지 않게)
+ * 응답이 싣는 `imageUrl`·`rarity`로 카드를 만든다. 잠긴 배지는 이름·그림을 가린 `locked` 카드다. 지급되지 않았거나 배지가 없으면 `null`이다.
+ */
+export function toFirstSuccessRevealBadge(reward: MixFirstSuccessReward | null | undefined): RevealBadge | null {
+  if (!reward || reward.status !== 'granted' || !reward.badge) return null
+  const badge = reward.badge
+  if (badge.locked === true) {
+    return { id: 'locked-first-success', name: '', description: '', rarity: badge.rarity, locked: true }
+  }
+  return { id: badge.id, name: badge.name, description: '', imageUrl: badge.imageUrl ?? null, rarity: badge.rarity }
 }
 
 /**
@@ -244,6 +273,8 @@ interface SlotFill {
   badgeId: string
   name: string
   imageUrl: string | null
+  /** 후보 행의 등급 — 등급 대응형 레시피에서 첫 재료가 정한 등급을 채운 칸에서 읽는다(`lockedGradeOf`). 조건 슬롯·옛 호출부는 비어 있다 */
+  rarity?: BadgeRow['rarity'] | null
 }
 
 /**
@@ -413,6 +444,8 @@ export default function CombineClient({
     tierUpReveal?: TierUpRevealResult
     /** 오버레이를 닫는 순간 배너가 가리킬 받지 않은 결과 개수(닫은 뒤 서버 값을 다시 읽는다) */
     pendingAfterClose?: number
+    /** 일반 결과는 지급됐고 첫 성공자 보상만 받지 않은 결과로 남았다 — 닫은 뒤 서버의 지금 개수를 읽어 배너를 나타낸다 */
+    refreshPendingOnClose?: boolean
   } | null>(null)
   /**
    * 받지 않은 결과 개수 — 서버 값(`pendingCount` prop)이 기준이고, 이 화면에서 개수가 바뀌는 순간(받기 성공·목록 읽기·409·믹스 직후
@@ -505,7 +538,12 @@ export default function CombineClient({
   )
 
   const selectedRecipe = publicRecipes.find((r) => r.id === selectedRecipeId) ?? null
-  const canSubmit = !!selectedRecipe && selectedRecipe.slots.every((s) => fills[s.id])
+  // 등급 대응형(티켓 20261114_1705 3회): 첫 재료가 등급을 정하면 나머지 칸의 후보와 결과 미리보기를 그 등급으로 좁힌다. 등급은 저장하지 않고
+  // 채운 칸에서 매번 계산하므로 칸을 모두 비우면 풀린다. 최종 판정은 서버가 소각 전에 한다(`gradeClient.ts` 머리 주석).
+  const lockedRarity = selectedRecipe ? lockedGradeOf(selectedRecipe, fills) : null
+  const viewRecipe = selectedRecipe ? narrowRecipeToGrade(selectedRecipe, lockedRarity) : null
+  const canSubmit =
+    !!selectedRecipe && selectedRecipe.slots.every((s) => fills[s.id]) && !hasMixedGrades(selectedRecipe, fills)
 
   // 등급 올리기 — 목록에서 찾을 수 없는 개체(새로고침으로 사라진 것)를 담은 칸에서 걸러 유령 칸을 만들지 않는다.
   const tierUpGroups = groupTierUpMaterials(items)
@@ -593,7 +631,7 @@ export default function CombineClient({
       for (const key of Object.keys(next)) {
         if (next[key].refId === refId) delete next[key]
       }
-      next[slotId] = { refId, badgeId: row.badgeId, name: row.name, imageUrl: row.imageUrl }
+      next[slotId] = { refId, badgeId: row.badgeId, name: row.name, imageUrl: row.imageUrl, rarity: row.rarity ?? null }
       return next
     })
     setBagSlotId(null)
@@ -851,6 +889,13 @@ export default function CombineClient({
         return
       }
 
+      // 등급 대응형에 서로 다른 등급의 재료가 섞였다 — 소각 전에 거절됐다. 화면이 같은 등급만 고르게 막으므로 직접 요청에서만 닿는 안전망이다.
+      // 오류가 아니라 안내라 결과 오버레이를 열지 않고 칸도 그대로 둔다(티켓 20261114_1705 3회).
+      if (res.status === 409 && data.code === MIXED_GRADE_NOT_ALLOWED) {
+        toast(data.message ?? d.combine.mixedGradeNotAllowed, 'info')
+        return
+      }
+
       const resultBadges = (data.resultBadges ?? []) as MixResultBadge[]
       const points = data.pointsAwarded ?? 0
       // 20260910_1408: 레시피 보상은 배지·포인트를 함께 줄 수 있다. 캐러셀에 넘길 상세는
@@ -869,24 +914,40 @@ export default function CombineClient({
       // 단 받지 않은 결과로 남은 성공과 보상 없음 성공은 서버 문구를 쓰지 않고 숫자·상황을 넣어 만든다.
       // 결과 배지가 비어 있다는 이유만으로 «포인트만 받음»으로 보내지 않는다 — pending·noReward를 먼저 가른다.
       const pendingResult = data.success === true && data.resultStatus === 'pending'
-      const pendingTotal = Number(data.pendingCount ?? 0)
+      // 첫 성공자 보상(티켓 20261114_1705 3회) — 성공 응답에만 있다. 지급 실패는 키가 없어 화면에 아무것도 더하지 않는다.
+      const firstSuccess = (data.success === true ? data.firstSuccessReward : undefined) as MixFirstSuccessReward | undefined
+      const firstSuccessCard = pendingResult ? null : toFirstSuccessRevealBadge(firstSuccess)
+      const firstSuccessPending = firstSuccess?.status === 'pending'
+      // 응답의 `pendingCount`는 일반 결과의 개수라 첫 성공자 보상 pending 1건이 빠져 있다(마이그레이션 340 `combine_grant_first_success`는 따로 한 행을 넣는다).
+      const pendingTotal = Number(data.pendingCount ?? 0) + (pendingResult && firstSuccessPending ? 1 : 0)
       let message: string | undefined
       if (pendingResult) {
         message = pendingResultMessage({ pendingCount: pendingTotal, freeSlots: Number(data.freeSlots ?? 0), points })
+        if (firstSuccessPending) message = `${message} ${d.combine.firstSuccessPendingIncluded}`
       } else if (revealBadges.length === 0) {
         if (data.success && data.noReward === true) message = d.combine.noRewardResult
         else if (data.success) message = t(d.combine.successPointsOnly, { points })
         else message = data.message ?? d.combine.genericFail
+        // 일반 결과 카드가 없어 헤더 한 줄이 비어 있다 — 받지 못한 첫 성공 보상 배지를 같은 문구에 잇는다
+        if (data.success && firstSuccessPending) message = `${message} ${d.combine.firstSuccessPending}`
       }
+      // 헤더 한 줄은 카드가 있을 때만 그려진다. 받지 못한 보상(일반 결과는 지급됨)은 닫은 뒤 배너로 이어지므로 서버 개수를 다시 읽는다.
+      const firstSuccessHeader = firstSuccessCard
+        ? d.combine.firstSuccessGranted
+        : firstSuccessPending && !pendingResult
+          ? d.combine.firstSuccessPending
+          : undefined
 
       setResult({
         success: !!data.success,
-        badges: revealBadges,
+        badges: firstSuccessCard ? [...revealBadges, firstSuccessCard] : revealBadges,
         points,
         message,
         testMix: data.testMix === true,
         kind: 'mix',
+        ...(firstSuccessHeader ? { resultMessage: firstSuccessHeader } : {}),
         ...(pendingResult ? { pendingAfterClose: pendingTotal } : {}),
+        ...(!pendingResult && firstSuccessPending ? { refreshPendingOnClose: true } : {}),
       })
       // 재료 소각·조합 결과 반영 — 슬롯만 비우고 같은 레시피 화면은 유지한다(오버레이를 닫을 때 처리).
       router.refresh()
@@ -979,6 +1040,10 @@ export default function CombineClient({
       setPendingOverride(closing.pendingAfterClose)
       router.refresh()
     }
+    if (closing?.refreshPendingOnClose) {
+      void refreshPendingCount()
+      router.refresh()
+    }
     // 시험 믹스 안내는 오버레이를 닫은 뒤에 띄운다 — 오버레이가 떠 있는 동안 토스트(z-60)가 올라오면
     // 같은 z의 캐러셀 하단 조작을 가로챌 수 있다(티켓 20261001_1159).
     if (testMixNotice) toast(testMixNotice, 'info')
@@ -989,7 +1054,8 @@ export default function CombineClient({
       <RecipeRewardRow
         key={recipe.id}
         title={recipeDisplayName(recipe)}
-        badges={recipe.rewardBadges}
+        // 등급 대응형은 목록에 한 번만, 대표 배지 하나로 보인다(등급 칩·«+N» 없음). 등급은 믹서에서 첫 재료를 담을 때 정해진다
+        badges={isFollowMaterials(recipe) ? representativeRewardBadges(recipe) : recipe.rewardBadges}
         points={recipe.reward_points}
         releaseAt={recipe.releaseAt}
         noReward={isNoRewardRecipe(recipe)}
@@ -1000,7 +1066,7 @@ export default function CombineClient({
     )
   }
 
-  const bagSlot = selectedRecipe?.slots.find((s) => s.id === bagSlotId) ?? null
+  const bagSlot = viewRecipe?.slots.find((s) => s.id === bagSlotId) ?? null
   const bagRows = bagSlot ? bagRowsFor(bagSlot) : []
   /** 아이템 슬롯이 있는 레시피에서만 재료 소각 안내를 보여준다(티켓 20260924_0813) */
   const hasItemSlot = selectedRecipe?.slots.some((s) => s.badge_type === 'item') ?? false
@@ -1117,12 +1183,17 @@ export default function CombineClient({
           <div className="px-4 pt-4 pb-4">
             <RecipeRewardRow
               title={recipeDisplayName(selectedRecipe)}
-              badges={selectedRecipe.rewardBadges}
+              // 등급 대응형: 등급이 정해지기 전에는 칩·링크 없는 대표 배지, 정해진 뒤에는 그 등급의 결과 배지(= 결과 미리보기)다
+              badges={
+                isFollowMaterials(selectedRecipe) && !lockedRarity
+                  ? representativeRewardBadges(selectedRecipe)
+                  : (viewRecipe ?? selectedRecipe).rewardBadges
+              }
               points={selectedRecipe.reward_points}
               releaseAt={selectedRecipe.releaseAt}
               noReward={isNoRewardRecipe(selectedRecipe)}
               rewardLocked={selectedRecipe.reward_locked === true}
-              linkBadge
+              linkBadge={!isFollowMaterials(selectedRecipe) || !!lockedRarity}
             />
           </div>
 
@@ -1132,7 +1203,7 @@ export default function CombineClient({
           <div className="px-4 pb-6">
             {/* 5칸은 3열(3+2)로 둔다 — 5열은 360px에서 칸이 약 59px라 썸네일과 이름이 읽히지 않는다. 4칸 이하는 지금처럼 4열 */}
             <div className={selectedRecipe.slots.length > 4 ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-4 gap-2'}>
-              {selectedRecipe.slots.map((slot) => {
+              {(viewRecipe ?? selectedRecipe).slots.map((slot) => {
                 const fill = fills[slot.id]
                 // 대표 후보 — 쓸 수 있는 행의 첫 번째, 없으면 슬롯의 첫 후보를 흐리게 보여 준다(티켓 20261110_1115)
                 const activeRow = fill ? undefined : bagRowsFor(slot).find((r) => r.state === 'active')
@@ -1160,6 +1231,12 @@ export default function CombineClient({
                 )
               })}
             </div>
+            {/* 등급 안내 한 줄 — 등급 대응형에서만. 줄이 생겨도 레이아웃이 밀리지 않게 자리를 항상 잡고, 스크린리더에만 알린다. 오류가 아니라 규칙이라 상자·경고색을 쓰지 않는다 */}
+            {isFollowMaterials(selectedRecipe) && (
+              <p aria-live="polite" className="m-0 mt-2 min-h-5 text-sm text-foreground break-keep wrap-break-word text-balance">
+                {lockedRarity ? gradeLockNote(lockedRarity) : null}
+              </p>
+            )}
           </div>
 
           {/* CTA — 화면 전체 폭을 채우지 않는다(티켓 20260917_1828, 요구사항 8) */}
@@ -1202,6 +1279,7 @@ export default function CombineClient({
             </h2>
             <ul className="mt-3 mb-0 list-disc space-y-2 pl-5 text-sm text-muted break-keep">
               {hasItemSlot && <li>{d.combine.burnNotice}</li>}
+              {isFollowMaterials(selectedRecipe) && <li>{d.combine.notice.gradeFollow}</li>}
               {hasKeptSlot && <li>{d.combine.notice.keptBadges}</li>}
               <li>{d.combine.notice.lockedItem}</li>
               <li>{d.combine.notice.noSpace}</li>

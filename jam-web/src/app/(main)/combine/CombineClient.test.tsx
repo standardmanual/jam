@@ -110,6 +110,7 @@ import CombineClient, {
   computeQuestPulseTarget,
   resolveQuestPulseStep,
   testMixNoticeOnClose,
+  toFirstSuccessRevealBadge,
   toMixRevealBadges,
   toPendingRevealBadges,
   pendingResultMessage,
@@ -1492,5 +1493,361 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
     press(s.cards(tree)[1], 'onAdd')
     await new Promise((r) => setTimeout(r, 0))
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 티켓 20261114_1705 3회 — 등급 대응형 레시피 화면과 첫 성공자 보상
+// 합친 데이터가 DB에 없어(마이그레이션 341 미실행) 가짜 레시피로 본다.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('toFirstSuccessRevealBadge — 첫 성공자 보상 카드 변환 (티켓 20261114_1705 3회)', () => {
+  it('지급된 배지는 응답의 이름·그림·등급으로 카드를 만든다', () => {
+    expect(
+      toFirstSuccessRevealBadge({ status: 'granted', badge: { id: 'b1', name: '첫 성공 배지', rarity: 'epic', imageUrl: 'https://example.com/b1.png' } }),
+    ).toEqual({ id: 'b1', name: '첫 성공 배지', description: '', imageUrl: 'https://example.com/b1.png', rarity: 'epic' })
+  })
+
+  it('잠긴 배지는 이름·그림을 싣지 않은 locked 카드다', () => {
+    const card = toFirstSuccessRevealBadge({ status: 'granted', badge: { id: '', name: '', rarity: 'mystic', locked: true } })
+    expect(card).toMatchObject({ name: '', locked: true, rarity: 'mystic' })
+    expect(card?.imageUrl).toBeUndefined()
+  })
+
+  it('pending·배지 없음·응답 없음은 카드가 없다', () => {
+    expect(toFirstSuccessRevealBadge({ status: 'pending' })).toBeNull()
+    expect(toFirstSuccessRevealBadge({ status: 'granted' })).toBeNull()
+    expect(toFirstSuccessRevealBadge(undefined)).toBeNull()
+  })
+})
+
+describe('CombineClient — 등급 대응형 레시피 (티켓 20261114_1705 3회)', () => {
+  type Rarity = 'common' | 'rare' | 'epic' | 'mystic'
+  const GRADES: Rarity[] = ['common', 'rare', 'epic', 'mystic']
+
+  beforeEach(() => {
+    toastMock.mockClear()
+    refreshMock.mockClear()
+    hooks.active = true
+    hooks.store = []
+  })
+
+  afterEach(() => {
+    hooks.active = false
+    vi.unstubAllGlobals()
+  })
+
+  const bundleCandidates = (prefix: string) =>
+    GRADES.map((g) => ({ id: `${prefix}-${g}`, name: `${prefix} 배지`, image_url: `https://example.com/${prefix}-${g}.png`, rarity: g }))
+  const rewardBadges = GRADES.map((g) => ({
+    id: `reward-${g}`,
+    name: '결과 배지',
+    image_url: `https://example.com/reward-${g}.png`,
+    rarity: g,
+    description: '',
+  }))
+  const ownedItem = (itemId: string, prefix: string, rarity: Rarity) => ({
+    id: itemId,
+    badge_id: `${prefix}-${rarity}`,
+    serial_prefix: null,
+    serial_number: 1,
+    badge: { id: `${prefix}-${rarity}`, name: `${prefix} 배지`, image_url: null, rarity },
+  })
+
+  function followRecipe(overrides: Partial<RecipeWithSlots> = {}): RecipeWithSlots {
+    return recipeFixture({
+      id: 'follow-1',
+      name: '등급 대응형',
+      grade_mode: 'follow_materials',
+      reward_badge_ids: rewardBadges.map((b) => b.id),
+      rewardBadges,
+      slots: [
+        { id: 's1', slot_order: 1, badge_type: 'item', candidates: bundleCandidates('a') },
+        { id: 's2', slot_order: 2, badge_type: 'item', candidates: bundleCandidates('b') },
+      ],
+      ...overrides,
+    })
+  }
+
+  function screenFor(recipes: RecipeWithSlots[], items: ReturnType<typeof ownedItem>[], pendingCount = 0) {
+    hooks.store = []
+    navMock.reset()
+    markOpenedByPush(false)
+    const props = { items, publicRecipes: recipes, ownedConditionBadgeIds: [], pendingCount }
+    const render = () => {
+      hooks.cursor = 0
+      return CombineClient(props)
+    }
+    const rows = (tree: ReactNode) => findAll(tree, (el) => el.type === RecipeRewardRow)
+    const cards = (tree: ReactNode) => findAll(tree, (el) => el.type === RecipeSlotCard)
+    const cells = (tree: ReactNode) => findAll(tree, (el) => el.type === BagItemCell)
+    const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
+    const cta = (tree: ReactNode) =>
+      findAll(tree, (el) => el.type === 'button' && String(el.props.className).includes('max-w-[220px]'))[0]
+    const note = (tree: ReactNode) => findAll(tree, (el) => el.type === 'p' && el.props['aria-live'] === 'polite')
+    const open = (recipeId: string) => {
+      const row = rows(render()).find((r) => r.key === recipeId)
+      ;(row?.props.onClick as () => void)()
+      return render()
+    }
+    return { render, rows, cards, cells, overlay, cta, note, open }
+  }
+
+  function stubFetch(handler: (url: string) => { status?: number; body: unknown }) {
+    const fn = vi.fn(async (url: string) => {
+      const out = handler(url)
+      const status = out.status ?? 200
+      return { ok: status >= 200 && status < 300, status, json: async () => out.body }
+    })
+    vi.stubGlobal('fetch', fn)
+    return fn
+  }
+
+  const press = (el: AnyElement, key: 'onAdd' | 'onRemove') => (el.props[key] as () => void)()
+  const badgesOf = (el: AnyElement) => el.props.badges as { id: string; rarity: string | null }[]
+
+  // ── 목록 ─────────────────────────────────────────────────────────────────
+
+  it('목록에는 등급 대응형 레시피가 한 행으로 보이고 대표 배지에 등급 칩·«+N»이 없다', () => {
+    const s = screenFor([followRecipe()], [])
+    const rows = s.rows(s.render())
+    expect(rows).toHaveLength(1)
+    // 배지가 하나라 «+N»이 붙지 않고, 등급이 null이라 칩이 없다
+    expect(badgesOf(rows[0])).toHaveLength(1)
+    expect(badgesOf(rows[0])[0]).toMatchObject({ id: 'reward-common', rarity: null })
+  })
+
+  it('등급 고정형 행은 보상 배지를 그대로 넘긴다(지금과 같다)', () => {
+    const fixed = recipeFixture({ id: 'fixed-1', grade_mode: 'fixed', reward_badge_ids: ['x'], rewardBadges: [rewardBadges[1]], slots: [] })
+    const s = screenFor([fixed], [])
+    expect(badgesOf(s.rows(s.render())[0])).toEqual([rewardBadges[1]])
+  })
+
+  // ── 믹서: 등급 미정 ───────────────────────────────────────────────────────
+
+  it('등급이 정해지기 전 요약 행은 칩·링크 없는 대표 배지이고, 안내 줄은 비어 있어도 줄 높이가 잡힌다', () => {
+    const s = screenFor([followRecipe()], [ownedItem('i1', 'a', 'rare')])
+    const tree = s.open('follow-1')
+    const summary = s.rows(tree)[0]
+    expect(badgesOf(summary)).toHaveLength(1)
+    expect(badgesOf(summary)[0].rarity).toBeNull()
+    expect(summary.props.linkBadge).toBe(false)
+    const [note] = s.note(tree)
+    expect(textOf(note)).toBe('')
+    expect(String(note.props.className)).toContain('min-h-5')
+    expect(String(note.props.className)).toContain('mt-2')
+    expect(String(note.props.className)).not.toContain('text-center')
+    // 유의사항에 같은 등급 규칙 줄이 있다
+    expect(textOf(tree)).toContain(d.combine.notice.gradeFollow)
+  })
+
+  // ── 믹서: 첫 재료로 등급 확정 ─────────────────────────────────────────────
+
+  it('첫 재료를 Rare로 담으면 요약 행이 Rare 배지가 되고 안내 줄이 나오며, 다른 칸 후보가 Rare로만 좁혀진다', () => {
+    // 칸 1은 Rare만 갖고(바로 채워진다), 칸 2는 Common·Rare·Epic 개체를 모두 갖는다
+    const s = screenFor(
+      [followRecipe()],
+      [ownedItem('i1', 'a', 'rare'), ownedItem('i2', 'b', 'common'), ownedItem('i3', 'b', 'rare'), ownedItem('i4', 'b', 'epic')],
+    )
+    let tree = s.open('follow-1')
+    // 등급이 정해지기 전 칸 2는 활성 행이 셋이라 시트를 열고, 시트에는 4등급 후보 행이 모두 있다
+    press(s.cards(tree)[1], 'onAdd')
+    tree = s.render()
+    expect(s.cells(tree).map((c) => c.props.rarity)).toEqual(['common', 'rare', 'epic', 'mystic'])
+
+    // 칸 1을 채우면(시트는 닫힌다) 등급이 정해진다
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.cards(tree)[0].props.status).toBe('filled')
+
+    const summary = s.rows(tree)[0]
+    expect(badgesOf(summary)).toEqual([expect.objectContaining({ id: 'reward-rare', rarity: 'rare' })])
+    expect(summary.props.linkBadge).toBe(true)
+    expect(textOf(s.note(tree)[0])).toBe('지금은 Rare 아이템 배지만 넣을 수 있어요')
+
+    // 칸 2: 후보가 Rare 하나뿐이라 «+»가 시트 없이 바로 채운다(Common·Epic 개체는 후보에 없다)
+    expect(s.cards(tree)[1].props.status).toBe('addable')
+    press(s.cards(tree)[1], 'onAdd')
+    tree = s.render()
+    expect(s.cards(tree)[1].props.status).toBe('filled')
+    expect(s.cta(tree).props.disabled).toBe(false)
+  })
+
+  it.each(GRADES)('%s로 첫 재료를 담아도 같은 규칙이다', (grade) => {
+    const s = screenFor([followRecipe()], [ownedItem('i1', 'a', grade), ownedItem('i2', 'b', 'common'), ownedItem('i3', 'b', 'mystic')])
+    let tree = s.open('follow-1')
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(badgesOf(s.rows(tree)[0])[0]).toMatchObject({ id: `reward-${grade}`, rarity: grade })
+    const label = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' }[grade]
+    expect(textOf(s.note(tree)[0])).toBe(`지금은 ${label} 아이템 배지만 넣을 수 있어요`)
+  })
+
+  it('정해진 등급의 개체가 없는 칸은 unowned(점선)이고 믹스하기는 비활성이다', () => {
+    const s = screenFor([followRecipe()], [ownedItem('i1', 'a', 'rare'), ownedItem('i2', 'b', 'common')])
+    let tree = s.open('follow-1')
+    expect(s.cards(tree)[1].props.status).toBe('addable')
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(s.cards(tree)[1].props.status).toBe('unowned')
+    expect(s.cta(tree).props.disabled).toBe(true)
+  })
+
+  it('담은 칸을 모두 비우면 등급이 풀려 미정 화면으로 돌아간다', () => {
+    const s = screenFor([followRecipe()], [ownedItem('i1', 'a', 'rare'), ownedItem('i2', 'b', 'common')])
+    let tree = s.open('follow-1')
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    expect(textOf(s.note(tree)[0])).not.toBe('')
+    press(s.cards(tree)[0], 'onRemove')
+    tree = s.render()
+    expect(textOf(s.note(tree)[0])).toBe('')
+    expect(badgesOf(s.rows(tree)[0])[0]).toMatchObject({ id: 'reward-common', rarity: null })
+    expect(s.rows(tree)[0].props.linkBadge).toBe(false)
+    expect(s.cards(tree)[1].props.status).toBe('addable')
+  })
+
+  // ── 등급 고정형 회귀 ──────────────────────────────────────────────────────
+
+  it('등급 고정형 믹서에는 등급 안내 줄도 유의사항 신규 줄도 없고 요약 행은 지금과 같다', () => {
+    const fixed = recipeFixture({
+      id: 'fixed-1',
+      grade_mode: 'fixed',
+      reward_badge_ids: [rewardBadges[1].id],
+      rewardBadges: [rewardBadges[1]],
+      slots: [{ id: 's1', slot_order: 1, badge_type: 'item', candidates: bundleCandidates('a') }],
+    })
+    const s = screenFor([fixed], [ownedItem('i1', 'a', 'rare')])
+    const tree = s.open('fixed-1')
+    expect(s.note(tree)).toHaveLength(0)
+    expect(textOf(tree)).not.toContain(d.combine.notice.gradeFollow)
+    const summary = s.rows(tree)[0]
+    expect(badgesOf(summary)).toEqual([rewardBadges[1]])
+    expect(summary.props.linkBadge).toBe(true)
+  })
+
+  // ── 서버 409 ─────────────────────────────────────────────────────────────
+
+  async function fillBothAndPost(s: ReturnType<typeof screenFor>) {
+    let tree = s.open('follow-1')
+    press(s.cards(tree)[0], 'onAdd')
+    tree = s.render()
+    press(s.cards(tree)[1], 'onAdd')
+    tree = s.render()
+    await (s.cta(tree).props.onClick as () => Promise<void>)()
+    return s.render()
+  }
+  const twoRare = () => [ownedItem('i1', 'a', 'rare'), ownedItem('i2', 'b', 'rare')]
+
+  it('서버가 409 mixed_grade_not_allowed를 돌려주면 info 토스트만 뜨고 오버레이는 열리지 않으며 칸이 그대로다', async () => {
+    stubFetch(() => ({
+      status: 409,
+      body: { success: false, reason: 'mixed_grade_not_allowed', code: 'mixed_grade_not_allowed', message: d.combine.mixedGradeNotAllowed, pointsAwarded: 0 },
+    }))
+    const s = screenFor([followRecipe()], twoRare())
+    const tree = await fillBothAndPost(s)
+    expect(toastMock).toHaveBeenCalledWith(d.combine.mixedGradeNotAllowed, 'info')
+    expect(toastMock).not.toHaveBeenCalledWith(expect.anything(), 'error')
+    expect(s.overlay(tree).props.open).toBe(false)
+    expect(s.cards(tree).map((c) => c.props.status)).toEqual(['filled', 'filled'])
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
+
+  it('409 응답에 문구가 없으면 사전의 문구를 쓴다', async () => {
+    stubFetch(() => ({ status: 409, body: { success: false, code: 'mixed_grade_not_allowed' } }))
+    await fillBothAndPost(screenFor([followRecipe()], twoRare()))
+    expect(toastMock).toHaveBeenCalledWith(d.combine.mixedGradeNotAllowed, 'info')
+  })
+
+  // ── 첫 성공자 보상 ────────────────────────────────────────────────────────
+
+  const generalGranted = {
+    success: true,
+    resultStatus: 'granted',
+    resultBadges: [{ id: 'reward-rare', name: '결과 배지', rarity: 'rare' }],
+    pointsAwarded: 10,
+  }
+
+  it('첫 성공자 보상이 지급되면 결과 카드 뒤에 보상 카드 1장이 붙고 헤더 한 줄이 나온다', async () => {
+    stubFetch(() => ({
+      body: {
+        ...generalGranted,
+        firstSuccessReward: { status: 'granted', badge: { id: 'fs-1', name: '첫 성공 배지', rarity: 'epic', imageUrl: 'https://example.com/fs.png' } },
+      },
+    }))
+    const s = screenFor([followRecipe()], twoRare())
+    const shown = s.overlay(await fillBothAndPost(s))
+    const items = shown.props.items as { id: string; name: string; imageUrl?: string | null; rarity?: string | null }[]
+    expect(items.map((b) => b.id)).toEqual(['reward-rare', 'fs-1'])
+    expect(items[1]).toMatchObject({ name: '첫 성공 배지', imageUrl: 'https://example.com/fs.png', rarity: 'epic' })
+    expect(shown.props.resultMessage).toBe(d.combine.firstSuccessGranted)
+  })
+
+  it('잠긴 첫 성공자 보상은 이름·그림을 가린 locked 카드로 그린다', async () => {
+    stubFetch(() => ({
+      body: { ...generalGranted, firstSuccessReward: { status: 'granted', badge: { id: '', name: '', rarity: 'mystic', locked: true } } },
+    }))
+    const s = screenFor([followRecipe()], twoRare())
+    const items = s.overlay(await fillBothAndPost(s)).props.items as { name: string; locked?: boolean }[]
+    expect(items).toHaveLength(2)
+    expect(items[1]).toMatchObject({ name: '', locked: true })
+  })
+
+  it('일반 결과는 지급되고 첫 성공자 보상만 받지 못했으면 카드는 그대로이고 안내 한 줄이 나오며, 닫으면 서버 개수를 읽어 배너가 나타난다', async () => {
+    const fetchMock = stubFetch((url) =>
+      url === '/api/combine/pending'
+        ? { body: { pendingCount: 1, freeSlots: 0, items: [] } }
+        : { body: { ...generalGranted, firstSuccessReward: { status: 'pending' } } },
+    )
+    const s = screenFor([followRecipe()], twoRare())
+    let tree = await fillBothAndPost(s)
+    const shown = s.overlay(tree)
+    expect((shown.props.items as { id: string }[]).map((b) => b.id)).toEqual(['reward-rare'])
+    expect(shown.props.resultMessage).toBe(d.combine.firstSuccessPending)
+
+    refreshMock.mockClear()
+    ;(shown.props.onClose as () => void)()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/combine/pending')).toBe(true)
+    expect(refreshMock).toHaveBeenCalled()
+    tree = s.render()
+    expect(textOf(tree)).toContain(t(d.combine.pendingBanner.title, { count: 1 }))
+  })
+
+  it('일반 결과도 받지 않은 상태면 개수에 첫 성공자 보상 1건을 더하고 한 문장을 잇는다', async () => {
+    stubFetch(() => ({
+      body: {
+        success: true,
+        resultStatus: 'pending',
+        resultBadges: [],
+        pointsAwarded: 0,
+        pendingCount: 1,
+        freeSlots: 0,
+        firstSuccessReward: { status: 'pending' },
+      },
+    }))
+    const s = screenFor([followRecipe()], twoRare())
+    const shown = s.overlay(await fillBothAndPost(s))
+    expect(shown.props.emptyMessage).toBe(
+      `${pendingResultMessage({ pendingCount: 2, freeSlots: 0, points: 0 })} ${d.combine.firstSuccessPendingIncluded}`,
+    )
+    expect(shown.props.items).toEqual([])
+  })
+
+  it('일반 결과가 받지 않은 상태이고 첫 성공자 보상이 없으면 문구는 지금과 같다', async () => {
+    stubFetch(() => ({
+      body: { success: true, resultStatus: 'pending', resultBadges: [], pointsAwarded: 0, pendingCount: 1, freeSlots: 0 },
+    }))
+    const s = screenFor([followRecipe()], twoRare())
+    const shown = s.overlay(await fillBothAndPost(s))
+    expect(shown.props.emptyMessage).toBe(pendingResultMessage({ pendingCount: 1, freeSlots: 0, points: 0 }))
+  })
+
+  it('첫 성공자 보상이 응답에 없으면 오버레이는 지금과 같다', async () => {
+    stubFetch(() => ({ body: generalGranted }))
+    const s = screenFor([followRecipe()], twoRare())
+    const shown = s.overlay(await fillBothAndPost(s))
+    expect((shown.props.items as unknown[]).length).toBe(1)
+    expect(shown.props.resultMessage).toBeUndefined()
   })
 })
