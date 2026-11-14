@@ -4,7 +4,7 @@ import { ListRow, ListRowChip, ListRowEm, ListRowSkeleton } from './ListRow';
 import { PointText } from './PointText';
 import { RarityBadge } from '../cards/RarityBadge';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip';
-import { ActivityIcon, BookIcon, CheckIcon, CoinIcon, LockIcon, MedalIcon, PackageIcon, TargetIcon, UserIcon } from '../icons/IconCatalog';
+import { SyncCircleIcon, MagicBookIcon, CheckIcon, CoinIcon, LockIcon, MedalIcon, ArrowDownIcon, TicketIcon, UserIcon } from '../icons/IconCatalog';
 
 // 티켓 20261106_1759 2-2회차: 한 골격(ListRow)에서 A~E 계열·media 변형·상태·로딩을 만든다.
 // 2-3회차: lead 40/48 비교, 전/후 비교 2건, 최악 사례(320·360·글자 확대), flat 선택됨을 같은 파일에 더했다.
@@ -139,7 +139,7 @@ export const B2MissionList: Story = {
         variant="media"
         tone="flat"
         separator
-        lead={<TargetIcon />}
+        lead={<TicketIcon />}
         eyebrow={<ListRowChip tone="accent">진행 중</ListRowChip>}
         time="D-5"
         title="10km 러닝 챌린지"
@@ -152,7 +152,7 @@ export const B2MissionList: Story = {
       <ListRow
         variant="media"
         tone="flat"
-        lead={<TargetIcon />}
+        lead={<TicketIcon />}
         eyebrow={<ListRowChip>완료</ListRowChip>}
         title="첫 러닝 인증"
         meta="처음으로 러닝을 기록했어요"
@@ -170,7 +170,7 @@ export const MediaVariant: Story = {
   render: () => (
     <ListRow
       variant="media"
-      lead={<PackageIcon />}
+      lead={<ArrowDownIcon />}
       leadBadge="12"
       eyebrow={<><ListRowChip tone="warning">곧 끝나요</ListRowChip><ListRowChip>마지막 파편</ListRowChip></>}
       time="2시간 남음"
@@ -294,14 +294,14 @@ export const Tones: Story = {
   render: () => (
     <>
       <Caption>default — 크림 바탕 위 단독 행</Caption>
-      <ListRow lead={<BookIcon />} title="아이템북" meta="모은 아이템 배지" chevron href="#" />
+      <ListRow lead={<MagicBookIcon />} title="아이템북" meta="모은 아이템 배지" chevron href="#" />
       <Caption>tint — 카드 안 행 전용</Caption>
       <InCard>
-        <ListRow tone="tint" lead={<BookIcon />} title="아이템북" meta="모은 아이템 배지" chevron href="#" />
+        <ListRow tone="tint" lead={<MagicBookIcon />} title="아이템북" meta="모은 아이템 배지" chevron href="#" />
         <ListRow tone="tint" lead={<CoinIcon />} leadShape="round" title="포인트" value={<PointText value="120" />} />
       </InCard>
       <Caption>inverse — 경고 안내 행 전용</Caption>
-      <ListRow tone="inverse" lead={<TargetIcon />} leadBadge="2" title="곧 끝나는 미션" meta="내일까지 완료해야 해요" chevron href="#" />
+      <ListRow tone="inverse" lead={<TicketIcon />} leadBadge="2" title="곧 끝나는 미션" meta="내일까지 완료해야 해요" chevron href="#" />
       <Caption>flat — 면 없음, 구분선은 선택</Caption>
       <ListRow tone="flat" separator titleVariant="label" title="구분선 있음" value="값" />
       <ListRow tone="flat" titleVariant="label" title="구분선 없음" value="값" />
@@ -383,7 +383,7 @@ export const Expanded: Story = {
     const [open, setOpen] = useState(true);
     return (
       <ListRow
-        lead={<BookIcon />}
+        lead={<MagicBookIcon />}
         title="자주 묻는 질문"
         meta={open ? '펼쳐져 있어요' : '접혀 있어요'}
         chevron
@@ -485,7 +485,7 @@ type FeedCase = {
 
 // 사용자가 보낸 프로필 피드 화면(2026-11-06)의 행 6개를 그대로 옮겼다: 파우치 아이템 픽업 1건 + 배지 획득 5건(Lv 칩만 있고 등급 칩은 없다).
 const FEED_CASES: FeedCase[] = [
-  { icon: <PackageIcon />, label: '아이템 픽업', title: '파우치', sub: '이마트24 디저트랩서울숲점', rarity: 'common', time: '7시간 전' },
+  { icon: <ArrowDownIcon />, label: '아이템 픽업', title: '파우치', sub: '이마트24 디저트랩서울숲점', rarity: 'common', time: '7시간 전' },
   { icon: <MedalIcon />, label: '배지 획득', title: '봉투 속 한 장', rarity: 'common', level: 1, time: '7시간 전' },
   { icon: <MedalIcon />, label: '배지 획득', title: '건너온 물건 칸', rarity: 'common', level: 1, time: '7시간 전' },
   { icon: <MedalIcon />, label: '배지 획득', title: '건너온 물건 칸', rarity: 'common', level: 3, time: '7시간 전' },
@@ -575,7 +575,7 @@ const MISSION_STATE_LABEL = { normal: 'NEW', joined: '참가중', locked: '잠�
 const LegacyMissionRow = ({ c }: { c: MissionCase }) => (
   <div style={{ display: 'flex', gap: 12, padding: '12px 0', boxSizing: 'border-box', width: '100%', borderBottom: '1px solid var(--separator)', fontFamily: 'var(--font-family-base)', ...textBreak }}>
     <div style={{ width: 90, height: 90, flexShrink: 0, borderRadius: 12, background: 'var(--background-secondary)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {c.state === 'locked' ? <LockIcon /> : <TargetIcon />}
+      {c.state === 'locked' ? <LockIcon /> : <TicketIcon />}
     </div>
     <div style={{ flex: 1, minWidth: 0 }}>
       <span style={{ display: 'inline-block', fontSize: 10, lineHeight: 1, padding: '4px 6px', borderRadius: 'var(--radius-full)', background: 'var(--default-soft)' }}>{MISSION_STATE_LABEL[c.state]}</span>
@@ -602,7 +602,7 @@ export const BeforeAfterMissionList: Story = {
             variant="media"
             tone="flat"
             separator
-            lead={c.state === 'locked' ? <LockIcon /> : <TargetIcon />}
+            lead={c.state === 'locked' ? <LockIcon /> : <TicketIcon />}
             eyebrow={<ListRowChip tone={c.state === 'joined' ? 'accent' : 'neutral'}>{MISSION_STATE_LABEL[c.state]}</ListRowChip>}
             time={c.time}
             title={c.title}
@@ -647,7 +647,7 @@ const worstCases = (): WorstCase[] => [
     node: (
       <>
         <ListRow
-          lead={<ActivityIcon />}
+          lead={<SyncCircleIcon />}
           leadBadge="×5"
           eyebrow="한강 새벽 러닝 10km 인터벌 훈련 후 모은 활동"
           time="방금"
@@ -658,7 +658,7 @@ const worstCases = (): WorstCase[] => [
         />
         <Caption>대안: 눈에 보이는 펼침 단서가 필요하면 chevron을 켠다(aria-expanded와 함께 쓰면 펼침에서 180도 돈다). 필요한지는 사용자가 정한다.</Caption>
         <ListRow
-          lead={<ActivityIcon />}
+          lead={<SyncCircleIcon />}
           leadBadge="×5"
           eyebrow="한강 새벽 러닝 10km 인터벌 훈련 후 모은 활동"
           time="방금"
@@ -724,7 +724,7 @@ const worstCases = (): WorstCase[] => [
     label: 'B1 레시피 — 슬롯 수 칩(titleSuffix) + 잠김 + 긴 공개 예정 + stacked 포인트',
     node: (
       <ListRow
-        lead={<PackageIcon />}
+        lead={<ArrowDownIcon />}
         title="한여름 밤의 레시피와 긴 이름"
         titleSuffix={<ListRowChip>슬롯 3</ListRowChip>}
         chips={<><RarityBadge rarity="epic" size="md" /><ListRowChip>잠김</ListRowChip></>}

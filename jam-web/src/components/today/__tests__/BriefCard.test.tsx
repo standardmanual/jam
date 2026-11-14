@@ -5,7 +5,7 @@
  * 계산 스타일(높이 88px·가로 넘침·윤곽선 색)은 이 방식으로 볼 수 없어 Story의 `play`(`BriefCard.stories.tsx`)가 본다.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import BriefCard from '../BriefCard'
 import {
   BookIcon,

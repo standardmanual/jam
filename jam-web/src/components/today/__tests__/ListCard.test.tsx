@@ -9,7 +9,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect, vi } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import type { ReactNode } from 'react'
 
 vi.mock('next/navigation', () => ({

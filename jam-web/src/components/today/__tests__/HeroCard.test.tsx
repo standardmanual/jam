@@ -6,7 +6,7 @@
  * 「주소 없음」 경로로 그 컴포넌트를 검증하고, 실패 자체와 높이·가로 넘침 같은 계산 스타일은 Story의 `play`(`HeroCard.stories.tsx`)가 본다.
  */
 import { describe, it, expect } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import HeroCard from '../HeroCard'
 import { resourceIconOf } from '../resourceIcon'
 import { CARD_RESOURCES, type ImageCardView } from '@/lib/today/cardView'

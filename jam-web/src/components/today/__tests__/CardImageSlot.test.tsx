@@ -7,7 +7,7 @@
  * `video`(hero)의 출력은 칸을 공용으로 빼기 전 `HeroCard`가 직접 그리던 문자열과 글자 단위로 같아야 한다 — 아래 상수가 그 옛 문자열이다.
  */
 import { describe, it, expect } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import CardImageSlot, { type CardImageRatio } from '../CardImageSlot'
 import { resourceIconOf } from '../resourceIcon'
 import { CARD_RESOURCES, type ImageCardView } from '@/lib/today/cardView'

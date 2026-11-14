@@ -6,7 +6,7 @@
  * `BriefCard.test.tsx`의 칩 줄 단언이 brief 출력 동일을 따로 지킨다.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import CardChipRow, { type CardChipRowOn, type CardChipRowView } from '../CardChipRow'
 import { PinIcon } from '@/components/ui/icons'
 

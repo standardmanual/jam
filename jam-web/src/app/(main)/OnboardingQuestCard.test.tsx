@@ -212,7 +212,7 @@ describe('JAM! 시작하기 카드 — 연출 CTA', () => {
   it('2~7단계: 「다음 단계」 버튼과 화살표 아이콘이 있다', () => {
     const html = render(demo(1, 'bag'))
     expect(html).toContain(d.onboardingQuest.continueButton)
-    expect(html).toContain('M9 5l7 7-7 7')
+    expect(html).toContain('M18 10.5 L31.5 24 L18 37.5')
     expect(html).toContain('py-[9px]')
   })
 

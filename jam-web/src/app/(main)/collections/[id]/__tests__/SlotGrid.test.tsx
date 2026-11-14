@@ -242,7 +242,7 @@ describe('SlotGrid — 우측 상단 빼기 원 버튼 (2026-11-09 사용자 지
     for (const c of ['right-[8.4px]', 'top-[8.4px]']) expect(button, c).toContain(c)
     expect(button).not.toContain('translate')
     expect(button).toContain('<svg')
-    expect(button).toContain('M6 12h12')
+    expect(button).toContain('M11 24 H37')
     // 버튼 안에 글자가 없다 — 이름은 접근 이름이 맡는다
     expect(button.replace(/<svg[\s\S]*?<\/svg>/, '').replace(/<[^>]+>/g, '')).toBe('')
   })
@@ -292,7 +292,7 @@ describe('SlotGrid — 이미지 정중앙 추가 원 버튼 (2026-11-09 사용�
       expect(button, c).toContain(c)
     }
     for (const c of ['right-1.5', 'top-1.5', 'translate']) expect(button, c).not.toContain(c)
-    expect(button).toContain('M12 6v12M6 12h12')
+    expect(button).toContain('M24 11 V37 M11 24 H37')
     expect(button.replace(/<svg[\s\S]*?<\/svg>/, '').replace(/<[^>]+>/g, '')).toBe('')
   })
 

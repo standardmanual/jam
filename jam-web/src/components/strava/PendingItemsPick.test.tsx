@@ -202,8 +202,8 @@ describe('잠긴 카드 가림 (티켓 20261018_0051 2회)', () => {
     expect(html).toContain(d.lockedItem.card.description)
     expect(html).not.toContain('잼')
     expect(html).not.toContain('<img')
-    // 잠금 타일은 DS 자물쇠 아이콘이고 사람 모양 폴백이 아니다
-    expect(html).not.toContain('<circle')
+    // 잠금 타일은 DS 자물쇠 아이콘(새 세트의 열쇠 구멍 점이 circle이라 circle 부재로는 가리지 못한다)이다
+    expect(html).toContain('<svg')
   })
 
   it('열린 카드와 섞여도 열린 카드는 그대로 그려지고 잠긴 카드의 토글도 같은 규칙을 따른다', () => {
