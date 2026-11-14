@@ -511,12 +511,58 @@
 .jam-tabbar-pill {
   transition:
     transform var(--tabs-dur) var(--tabs-ease),
+    width var(--tabs-dur) var(--tabs-ease),
     opacity var(--tabs-dur) var(--tabs-ease),
     background-color var(--duration-fast) var(--ease-smooth-out);
   will-change: transform, opacity;
 }
+
+/* TabBar 슬롯 폭 전환(티켓 20261114_1418) — 활성 탭에만 이름표가 붙어 활성 슬롯이 넓어진다.
+ * 필(.jam-tabbar-pill)과 반드시 같은 길이·이징(--tabs-dur·--tabs-ease)이어야 중간 프레임에서 둘이 어긋나지 않는다.
+ * 폭 값은 TabBar.tsx moveTo가 computeSlotLayout 계산값을 인라인 flex로 쓴다(필 규칙과 나란히 두는 까닭).
+ * 하이드레이션 전 기본값: 활성 슬롯은 내용 폭(이름표를 담을 만큼), 나머지는 균등 — 인라인 값이 이 기본값을 덮는다.
+ * 눌림(active:scale-90)은 Tailwind v4가 scale 속성으로 그려서 transition-property에 scale을 함께 둔다(100ms).
+ * overflow: hidden은 폭 전환 중 이름표가 옆 슬롯으로 새지 않게 한다. */
+.jam-tabbar-slot {
+  flex: 1 1 0%;
+  transition-property: flex-basis, transform, translate, scale, rotate;
+  transition-duration: var(--tabs-dur), 100ms, 100ms, 100ms, 100ms;
+  transition-timing-function:
+    var(--tabs-ease),
+    cubic-bezier(0.4, 0, 0.2, 1),
+    cubic-bezier(0.4, 0, 0.2, 1),
+    cubic-bezier(0.4, 0, 0.2, 1),
+    cubic-bezier(0.4, 0, 0.2, 1);
+}
+.jam-tabbar-slot[aria-current="page"] {
+  flex: 0 0 auto;
+  padding-inline: 10px;
+  /* 가운데 정렬이면 슬롯이 아직 좁은 전환 첫 프레임에 아이콘+이름표 묶음이 양쪽으로 넘쳐 아이콘이 왼쪽 밖으로 잘린다.
+   * 왼쪽부터 놓으면 아이콘 자리는 그대로이고 이름표만 오른쪽으로 드러난다. 최종 폭에서 가운데가 되도록
+   * 안쪽 여백은 moveTo가 (슬롯 폭 - 내용 폭) / 2로 인라인에 쓴다(320px에서 6px). */
+  justify-content: flex-start;
+}
+/* 이름표 — 글자 크기·행간은 탭바 전용 토큰(--tabbar-label-size). 색은 .jam-tabbar-icon을 상속한다.
+ * 애니메이션은 .jam-tabbar-label-enter가 붙은 이름표에만 걸린다. TabBar.tsx는 전체 로드 때 이미 화면에 있던 활성 탭의 이름표에는
+ * 이 클래스를 달지 않아(서버 HTML에도 이미 있어 하이드레이션 뒤에 애니메이션이 붙으면 깜빡인다) 첫 화면은 제자리다.
+ * 탭 이동으로 새로 마운트되는 이름표만 슬롯이 넓어지는 300ms의 후반부에 나타난다(80ms 지연). */
+.jam-tabbar-label {
+  font-size: var(--tabbar-label-size);
+  line-height: var(--tabbar-label-line-height);
+  font-weight: 700;
+}
+.jam-tabbar-label-enter {
+  animation: jam-tabbar-label-in var(--duration-fast) var(--ease-smooth-out) 80ms backwards;
+}
+@keyframes jam-tabbar-label-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .jam-tabbar-pill { transition: none !important; }
+  .jam-tabbar-pill,
+  .jam-tabbar-slot { transition: none !important; }
+  .jam-tabbar-label,
+  .jam-tabbar-label-enter { animation: none !important; }
 }
 
 /* TopNav 알림 종 버블 — 36px 서클의 우상단에 앵커 (20260824_021, 20260825 조정).
@@ -583,6 +629,10 @@
   opacity: 1;
 }
 .jam-tabbar-icon {
+  /* 20261114_1418: 아이콘과 활성 이름표를 가로 한 줄로 묶는다. 간격 6px는 시안 값이다(눈금 밖) */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: color var(--duration-fast) var(--ease-smooth-out);
 }
 @media (prefers-reduced-motion: reduce) {

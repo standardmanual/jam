@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /*
  * 20261109_1310: 반전 상태(`inverted`) — 서비스 `src/components/ui/TabBar.tsx`·transitions.css(.jam-tabbar-*,
@@ -18,8 +18,13 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
  * JS 포지셔닝 패턴(transform/opacity를 JS가 쓰고 트윈은 CSS가 소유)만 차용한다. duration/
  * easing은 서비스 --tabs-dur(300ms)/--tabs-ease와 동일한 값을 이 DS 토큰(--ease-smooth-out)으로
  * 맞췄다.
+ *
+ * 20261114_1418: 활성 탭에만 아이콘 옆에 이름표(탭 label)를 보인다 — 서비스 `src/components/ui/TabBar.tsx`·
+ * transitions.css(.jam-tabbar-slot·.jam-tabbar-label)와 같은 모양이다(병존 구현이라 함께 봐야 함). 활성 슬롯이 넓어져
+ * 슬롯 폭과 필을 측정(offsetWidth)이 아니라 «계산»(computeSlotLayout)으로 같은 값·같은 길이·같은 이징에 전환한다.
+ * 글자 크기는 탭바 전용 토큰 --tabbar-label-size(tokens/typography.css).
  */
-const STATIC_CSS = `.ds-tabbar-chrome,.ds-tabbar-chrome-inverse{position:absolute;inset:0;border-radius:inherit;pointer-events:none;transition:opacity var(--duration-fast) var(--ease-smooth-out)}.ds-tabbar-chrome-inverse{background:var(--tabbar-background-inverse);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome{opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome-inverse{opacity:1}.ds-tabbar-icon{transition:color var(--duration-fast) var(--ease-smooth-out)}@media(prefers-reduced-motion:reduce){.ds-tabbar-chrome,.ds-tabbar-chrome-inverse,.ds-tabbar-icon{transition:none!important}}.ds-tabbar-chrome{background:var(--tabbar-background);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}.ds-tabbar-chrome-inverse{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--tabbar-background-inverse-solid)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out),background-color var(--duration-fast) var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
+const STATIC_CSS = `.ds-tabbar-chrome,.ds-tabbar-chrome-inverse{position:absolute;inset:0;border-radius:inherit;pointer-events:none;transition:opacity var(--duration-fast) var(--ease-smooth-out)}.ds-tabbar-chrome-inverse{background:var(--tabbar-background-inverse);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome{opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome-inverse{opacity:1}.ds-tabbar-icon{transition:color var(--duration-fast) var(--ease-smooth-out)}@media(prefers-reduced-motion:reduce){.ds-tabbar-chrome,.ds-tabbar-chrome-inverse,.ds-tabbar-icon{transition:none!important}}.ds-tabbar-chrome{background:var(--tabbar-background);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}.ds-tabbar-chrome-inverse{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--tabbar-background-inverse-solid)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),width 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out),background-color var(--duration-fast) var(--ease-smooth-out);will-change:transform,opacity}.ds-tabbar-slot{flex:1 1 0%;padding:0;overflow:hidden;justify-content:center;transition:flex-basis 300ms var(--ease-smooth-out)}.ds-tabbar-slot[aria-current="page"]{flex:0 0 auto;padding-inline:10px;justify-content:flex-start}.ds-tabbar-label{font-family:var(--font-family-base);font-size:var(--tabbar-label-size);line-height:var(--tabbar-label-line-height);font-weight:700;flex:none;white-space:nowrap;word-break:keep-all;overflow-wrap:break-word}.ds-tabbar-label-enter{animation:ds-tabbar-label-in var(--duration-fast) var(--ease-smooth-out) 80ms backwards}@keyframes ds-tabbar-label-in{from{opacity:0}to{opacity:1}}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill,.ds-tabbar-slot{transition:none!important}.ds-tabbar-label,.ds-tabbar-label-enter{animation:none!important}}`;
 
 /*
  * 탭바 기하값은 Figma 원본(file UXcBEgFagmO5ARwH5F0mMW, node 11:218 "Tab Bar Buttons")
@@ -34,10 +39,30 @@ const STATIC_CSS = `.ds-tabbar-chrome,.ds-tabbar-chrome-inverse{position:absolut
  */
 const PILL_HEIGHT = 41;
 
+// 슬롯 폭 계산 — 서비스 TabBar.tsx의 computeSlotLayout과 같은 식이다(두 파일을 함께 고친다).
+const NAV_PADDING_X = 4;
+const ICON_SIZE = 24;
+const LABEL_GAP = 6;
+const SLOT_PADDING_X = 10;
+const MIN_TOUCH = 44;
+function computeSlotLayout(innerWidth, count, activeIndex, labelWidth) {
+  if (count <= 0 || activeIndex < 0 || activeIndex >= count || count === 1 || !(labelWidth >= 0)) {
+    return { widths: Array(Math.max(count, 0)).fill(innerWidth / count), pillLeft: null, pillWidth: 0, activePadding: 0 };
+  }
+  const content = ICON_SIZE + LABEL_GAP + labelWidth;
+  const natural = content + SLOT_PADDING_X * 2;
+  const cap = innerWidth - (count - 1) * MIN_TOUCH;
+  const active = Math.max(content, Math.min(natural, cap));
+  const other = (innerWidth - active) / (count - 1);
+  const widths = Array.from({ length: count }, (_, i) => (i === activeIndex ? active : other));
+  const pillLeft = NAV_PADDING_X + widths.slice(0, activeIndex).reduce((a, b) => a + b, 0);
+  return { widths, pillLeft, pillWidth: active, activePadding: (active - content) / 2 };
+}
+
 /**
  * TabBar — floating pill bottom navigation.
  * 5 tabs: today / badges / drops / missions / inventory.
- * Active state: filled icon + primary color + sliding background pill.
+ * Active state: filled icon + label (활성 탭에만) + sliding background pill. 비활성은 아이콘뿐.
  *
  * v2 changes:
  *   - bottom offset now respects env(safe-area-inset-bottom) — iPhone home indicator clearance
@@ -90,7 +115,7 @@ const icons = {
 const tabs = [
   { key: 'today',     label: '투데이' },
   { key: 'badges',    label: '배지' },
-  { key: 'drops',     label: '드랍' },
+  { key: 'drops',     label: '체크인' },
   { key: 'missions',  label: '미션' },
   { key: 'inventory', label: '인벤토리' },
 ];
@@ -102,30 +127,50 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
   // 첫 페인트에서는 애니메이션 없이 스냅시켜야 한다 (서비스 SlidingTabs.tsx와 동일).
   const hasPositionedRef = useRef(false);
   const activeRef = useRef(active);
+  // 마운트 때 이미 활성이던 탭의 이름표에는 등장 애니메이션을 걸지 않는다(서비스 TabBar.tsx와 같은 규칙).
+  // 활성 탭이 처음 바뀌는 렌더에서 비우고, 그 뒤 새로 마운트되는 이름표만 .ds-tabbar-label-enter를 받는다.
+  const [initialKey, setInitialKey] = useState(active);
+  if (initialKey !== null && initialKey !== active) setInitialKey(null);
   useLayoutEffect(() => {
     activeRef.current = active;
   });
 
   // 서비스 SlidingTabs.tsx의 moveTo()를 이식한 것. `active`가 이미 value/onChange로
   // 제어되는 controlled prop이라 이 컴포넌트는 SlidingTabs 패턴을 그대로 적용할 수 있다.
+  // 20261114_1418: 필 위치·폭은 슬롯 실측이 아니라 computeSlotLayout 계산값이고, 같은 값을 모든 슬롯의
+  // flex-basis에도 쓴다(슬롯 폭 전환 중에 읽으면 중간값이라 필이 틀어지기 때문).
   const moveTo = useCallback((key, animate) => {
     const pill = pillRef.current;
+    const nav = navRef.current;
     const tab = tabRefs.current.get(key);
-    if (!pill || !tab) return false;
+    if (!pill || !nav || !tab) return false;
+    const slots = tabs.map((t) => tabRefs.current.get(t.key));
+    if (slots.some((el) => !el)) return false;
+
+    const label = tab.querySelector('[data-ds-tabbar-label]');
+    const labelWidth = label ? label.getBoundingClientRect().width : 0;
+    const innerWidth = nav.getBoundingClientRect().width - NAV_PADDING_X * 2;
+    const layout = computeSlotLayout(innerWidth, tabs.length, tabs.findIndex((t) => t.key === key), labelWidth);
 
     const apply = () => {
+      slots.forEach((el, i) => {
+        el.style.flex = `0 0 ${layout.widths[i]}px`;
+        // 활성 슬롯은 왼쪽 정렬 + 계산한 안쪽 여백(CSS) — 서비스 TabBar.tsx와 같다. 다른 슬롯은 비워서 CSS로 돌린다.
+        el.style.paddingInline = el === tab ? `${layout.activePadding}px` : '';
+      });
       pill.style.opacity = '1';
-      // 필 폭 = 탭 슬롯 폭이므로 중앙 정렬 보정 없이 offsetLeft를 그대로 쓴다.
-      pill.style.width = `${tab.offsetWidth}px`;
-      pill.style.transform = `translate(${tab.offsetLeft}px, -50%)`;
+      pill.style.width = `${layout.pillWidth}px`;
+      pill.style.transform = `translate(${layout.pillLeft}px, -50%)`;
     };
 
     if (!animate) {
-      const prevTransition = pill.style.transition;
+      const prevPill = pill.style.transition;
       pill.style.transition = 'none';
+      slots.forEach((el) => { el.style.transition = 'none'; });
       apply();
       void pill.offsetWidth;
-      pill.style.transition = prevTransition;
+      pill.style.transition = prevPill;
+      slots.forEach((el) => { el.style.transition = ''; });
     } else {
       apply();
     }
@@ -150,6 +195,8 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
     const observer = new ResizeObserver(reposition);
     observer.observe(nav);
     window.addEventListener('resize', reposition);
+    // 이름표 폭은 웹폰트 로드 전후가 다르다 — 로드가 끝나면 무애니메이션으로 다시 계산한다.
+    document.fonts?.ready.then(reposition).catch(() => {});
 
     return () => {
       observer.disconnect();
@@ -209,24 +256,31 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
               if (el) tabRefs.current.set(t.key, el);
               else tabRefs.current.delete(t.key);
             }}
+            className="ds-tabbar-slot"
             style={{
-              position: 'relative', flex: 1, height: '100%',
+              position: 'relative', height: '100%', minWidth: 44,
               border: 'none', background: 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center',
               cursor: 'pointer',
             }}
           >
             <span className="ds-tabbar-icon" style={{
               position: 'relative',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
               color: inverted
                 ? (isActive ? 'var(--snow)' : 'var(--tabbar-icon-inverse)')
                 : (isActive ? 'var(--tabbar-icon-active)' : 'var(--tabbar-icon)'),
             }}>
               {/* 20260901: today도 Material Symbols 좌표계로 교체돼 5개 탭 전부 동일
                   viewBox를 쓴다(20260827_026 당시엔 today만 예외였으나 두께 불일치로 정리). */}
-              <svg viewBox="0 -960 960 960" fill="none" width={24} height={24}>
+              <svg viewBox="0 -960 960 960" fill="none" width={24} height={24} style={{ flex: 'none' }}>
                 {isActive ? ic.fill : ic.line}
               </svg>
+              {/* 20261114_1418: 이름표는 활성 탭에만. 색은 바깥 span을 상속해 아이콘과 같이 전환된다.
+                  같은 글자를 aria-label이 이미 읽으므로 보조기기에서는 숨긴다. */}
+              {isActive && (
+                <span aria-hidden="true" data-ds-tabbar-label className={t.key === initialKey ? 'ds-tabbar-label' : 'ds-tabbar-label ds-tabbar-label-enter'}>{t.label}</span>
+              )}
             </span>
           </button>
         );

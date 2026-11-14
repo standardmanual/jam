@@ -56,7 +56,7 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 
 ## 소스로부터 1:1 재현 (Recreated 1:1 from source)
 
-* **TabBar** — 플로팅 필 형태의 하단 내비게이션(아이콘 전용, 활성 점 표시기, 채우기/선 아이콘 전환)은 `jam-web/src/components/ui/TabBar.tsx`의 마크업 및 SVG 아이콘 경로에서 직접 복사되었으며, 색상은 `tokens/`의 탭바 토큰(`--tabbar-*`)으로 바뀌었습니다.
+* **TabBar** — 플로팅 필 형태의 하단 내비게이션(활성 탭에만 아이콘 옆 이름표, 슬라이딩 활성 필, 채우기/선 아이콘 전환)은 `jam-web/src/components/ui/TabBar.tsx`의 마크업 및 SVG 아이콘 경로에서 직접 복사되었으며, 색상은 `tokens/`의 탭바 토큰(`--tabbar-*`)으로 바뀌었습니다.
 * **모바일 뷰포트** — UI 키트 프레임은 430×932로, 코드베이스 자체의 `max-w-[430px] mx-auto` 모바일 컨테이너(`jam-web/src/app/(main)/layout.tsx`)와 일치합니다. 데스크톱에서는 동일한 방식으로 배경 중앙에 렌더링됩니다.
 * **모션** — `tokens/motion.css`의 지속 시간/이징(durations/easings)은 JAM!의 프로덕션 `globals.css`에서 실행되는 동일한 마이크로 인터랙션 시스템인 [transitions.dev](https://transitions.dev/detail.html?doc=installation)에서 1:1로 복사되었습니다.
 
