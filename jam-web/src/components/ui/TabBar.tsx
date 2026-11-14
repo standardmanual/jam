@@ -37,11 +37,21 @@ const LABEL_GAP = 6
 const SLOT_PADDING_X = 10 // 활성 슬롯 좌우 안쪽 여백(상한에 걸리면 줄어든다)
 const MIN_TOUCH = 44 // 비활성 슬롯 최소 폭
 
+/**
+ * 이 탭의 이름표에 등장 애니메이션을 걸지 정한다. 전체 로드 때 이미 있던 활성 탭(initialHref)의 이름표는 걸지 않는다.
+ * 활성 탭이 한 번이라도 바뀌면 initialHref는 null이라 이후에 마운트되는 이름표는 모두 받는다.
+ */
+export function shouldAnimateLabel(href: string, initialHref: string | null): boolean {
+  return href !== initialHref
+}
+
 export interface SlotLayout {
   widths: number[]
   /** 활성 슬롯의 왼쪽 끝(nav 패딩 포함). 활성이 없으면 null */
   pillLeft: number | null
   pillWidth: number
+  /** 활성 슬롯의 좌우 안쪽 여백(px). 내용 폭과 슬롯 폭의 차이를 반씩 나눈 값이라 정상 폭에서는 10, 320px에서는 6이다. 활성이 없으면 0 */
+  activePadding: number
 }
 
 /**
@@ -55,9 +65,9 @@ export function computeSlotLayout(
   activeIndex: number,
   labelWidth: number,
 ): SlotLayout {
-  if (count <= 0) return { widths: [], pillLeft: null, pillWidth: 0 }
+  if (count <= 0) return { widths: [], pillLeft: null, pillWidth: 0, activePadding: 0 }
   if (activeIndex < 0 || activeIndex >= count || count === 1 || !(labelWidth >= 0)) {
-    return { widths: Array(count).fill(innerWidth / count), pillLeft: null, pillWidth: 0 }
+    return { widths: Array(count).fill(innerWidth / count), pillLeft: null, pillWidth: 0, activePadding: 0 }
   }
   const content = ICON_SIZE + LABEL_GAP + labelWidth
   const natural = content + SLOT_PADDING_X * 2
@@ -66,7 +76,7 @@ export function computeSlotLayout(
   const other = (innerWidth - active) / (count - 1)
   const widths = Array.from({ length: count }, (_, i) => (i === activeIndex ? active : other))
   const pillLeft = NAV_PADDING_X + widths.slice(0, activeIndex).reduce((a, b) => a + b, 0)
-  return { widths, pillLeft, pillWidth: active }
+  return { widths, pillLeft, pillWidth: active, activePadding: (active - content) / 2 }
 }
 
 /**
@@ -316,6 +326,14 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
   // 활성 탭이 없는 페이지(프로필/검색/알림함 등)에서는 null — pill을 숨긴다.
   const activeHref = tabs.find((tab) => isActive(tab.href))?.href ?? null
 
+  // 전체 로드 때 이미 화면에 있던 활성 탭. 이 탭의 이름표에는 등장 애니메이션을 걸지 않는다. 서버 HTML에도 이미 들어 있어
+  // 하이드레이션 뒤에 애니메이션을 붙이면 보이던 이름표가 사라졌다 다시 나타난다(티켓 20261114_1418 재작업).
+  // 활성 탭이 처음 바뀌는 렌더에서 null로 비우고(렌더 중 setState — React가 같은 패스에서 다시 그린다),
+  // 그 뒤 새로 마운트되는 이름표만 .jam-tabbar-label-enter를 받는다. 이름표는 탭이 활성일 때만 마운트되므로
+  // «이 클래스를 단 채 마운트된 이름표 = 탭 이동으로 새로 생긴 이름표»다.
+  const [initialHref, setInitialHref] = useState<string | null>(activeHref)
+  if (initialHref !== null && initialHref !== activeHref) setInitialHref(null)
+
   useLayoutEffect(() => {
     activeHrefRef.current = activeHref
   })
@@ -343,6 +361,9 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
     const apply = () => {
       slots.forEach((el, i) => {
         el!.style.flex = `0 0 ${layout.widths[i]}px`
+        // 활성 슬롯은 왼쪽 정렬 + 계산한 안쪽 여백(CSS) — 폭이 아직 좁은 전환 첫 프레임에도 아이콘이 왼쪽 밖으로 밀리지 않는다.
+        // 다른 슬롯은 비워서 CSS(여백 0, 가운데 정렬)로 돌린다.
+        el!.style.paddingInline = el === tab ? `${layout.activePadding}px` : ''
       })
       if (tab && layout.pillLeft !== null) {
         pill.style.opacity = '1'
@@ -373,14 +394,16 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
   }, [])
 
   // 활성 탭 변경(라우트 전환) — 첫 배치만 무애니메이션, 이후에는 트윈.
+  // 탭바가 숨으면(hidden) nav가 사라졌다 새로 생기므로 deps에 hidden을 넣어 복귀 직후에도 계산값(슬롯 폭·필)을 다시 쓴다.
+  // 복귀한 nav는 CSS 기본값에서 시작하니 첫 배치처럼 무애니메이션으로 놓는다.
   useLayoutEffect(() => {
-    const positioned = moveTo(activeHref, hasPositionedRef.current)
-    if (positioned) {
-      hasPositionedRef.current = true
-      // 이름표 등장 애니메이션은 첫 배치 이후에만 켠다(첫 화면은 제자리). React가 건드리지 않는 속성이다.
-      navRef.current?.setAttribute('data-motion', 'on')
+    if (hidden) {
+      hasPositionedRef.current = false
+      return
     }
-  }, [activeHref, moveTo])
+    const positioned = moveTo(activeHref, hasPositionedRef.current)
+    if (positioned) hasPositionedRef.current = true
+  }, [activeHref, hidden, moveTo])
 
   // 리사이즈 / 웹폰트 로드 / 컨테이너 폭 변화 — 항상 무애니메이션으로 재배치.
   // deps에 activeHref를 넣지 않는 이유는 SlidingTabs.tsx와 동일
@@ -402,7 +425,7 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
       observer.disconnect()
       window.removeEventListener('resize', reposition)
     }
-  }, [moveTo])
+  }, [moveTo, hidden])
 
   // 푸터 감지(20261109_1240) — pathname이 바뀌면 푸터를 다시 찾아 관찰자를 새로 만들고, 탭바가 숨었다
   // 돌아오면(nav가 새로 생김) 현재 값을 다시 계산한다. 푸터가 없는 경로는 항상 false다.
@@ -485,7 +508,9 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
                 <span
                   aria-hidden="true"
                   data-jam-tabbar-label
-                  className="jam-tabbar-label shrink-0 whitespace-nowrap break-keep wrap-break-word"
+                  className={`jam-tabbar-label shrink-0 whitespace-nowrap break-keep wrap-break-word${
+                    shouldAnimateLabel(tab.href, initialHref) ? ' jam-tabbar-label-enter' : ''
+                  }`}
                 >
                   {tab.label}
                 </span>

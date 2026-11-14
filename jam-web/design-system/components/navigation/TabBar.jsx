@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /*
  * 20261109_1310: 반전 상태(`inverted`) — 서비스 `src/components/ui/TabBar.tsx`·transitions.css(.jam-tabbar-*,
@@ -24,7 +24,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
  * 슬롯 폭과 필을 측정(offsetWidth)이 아니라 «계산»(computeSlotLayout)으로 같은 값·같은 길이·같은 이징에 전환한다.
  * 글자 크기는 탭바 전용 토큰 --tabbar-label-size(tokens/typography.css).
  */
-const STATIC_CSS = `.ds-tabbar-chrome,.ds-tabbar-chrome-inverse{position:absolute;inset:0;border-radius:inherit;pointer-events:none;transition:opacity var(--duration-fast) var(--ease-smooth-out)}.ds-tabbar-chrome-inverse{background:var(--tabbar-background-inverse);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome{opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome-inverse{opacity:1}.ds-tabbar-icon{transition:color var(--duration-fast) var(--ease-smooth-out)}@media(prefers-reduced-motion:reduce){.ds-tabbar-chrome,.ds-tabbar-chrome-inverse,.ds-tabbar-icon{transition:none!important}}.ds-tabbar-chrome{background:var(--tabbar-background);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}.ds-tabbar-chrome-inverse{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--tabbar-background-inverse-solid)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),width 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out),background-color var(--duration-fast) var(--ease-smooth-out);will-change:transform,opacity}.ds-tabbar-slot{flex:1 1 0%;padding:0;overflow:hidden;transition:flex-basis 300ms var(--ease-smooth-out)}.ds-tabbar-slot[aria-current="page"]{flex:0 0 auto;padding-inline:10px}.ds-tabbar-label{font-family:var(--font-family-base);font-size:var(--tabbar-label-size);line-height:var(--tabbar-label-line-height);font-weight:700;flex:none;white-space:nowrap;word-break:keep-all;overflow-wrap:break-word}.ds-tabbar[data-motion="on"] .ds-tabbar-label{animation:ds-tabbar-label-in var(--duration-fast) var(--ease-smooth-out) 80ms backwards}@keyframes ds-tabbar-label-in{from{opacity:0}to{opacity:1}}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill,.ds-tabbar-slot{transition:none!important}.ds-tabbar-label{animation:none!important}}`;
+const STATIC_CSS = `.ds-tabbar-chrome,.ds-tabbar-chrome-inverse{position:absolute;inset:0;border-radius:inherit;pointer-events:none;transition:opacity var(--duration-fast) var(--ease-smooth-out)}.ds-tabbar-chrome-inverse{background:var(--tabbar-background-inverse);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome{opacity:0}.ds-tabbar[data-inverted="true"] .ds-tabbar-chrome-inverse{opacity:1}.ds-tabbar-icon{transition:color var(--duration-fast) var(--ease-smooth-out)}@media(prefers-reduced-motion:reduce){.ds-tabbar-chrome,.ds-tabbar-chrome-inverse,.ds-tabbar-icon{transition:none!important}}.ds-tabbar-chrome{background:var(--tabbar-background);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}.ds-tabbar-chrome-inverse{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--tabbar-background-inverse-solid)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),width 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out),background-color var(--duration-fast) var(--ease-smooth-out);will-change:transform,opacity}.ds-tabbar-slot{flex:1 1 0%;padding:0;overflow:hidden;justify-content:center;transition:flex-basis 300ms var(--ease-smooth-out)}.ds-tabbar-slot[aria-current="page"]{flex:0 0 auto;padding-inline:10px;justify-content:flex-start}.ds-tabbar-label{font-family:var(--font-family-base);font-size:var(--tabbar-label-size);line-height:var(--tabbar-label-line-height);font-weight:700;flex:none;white-space:nowrap;word-break:keep-all;overflow-wrap:break-word}.ds-tabbar-label-enter{animation:ds-tabbar-label-in var(--duration-fast) var(--ease-smooth-out) 80ms backwards}@keyframes ds-tabbar-label-in{from{opacity:0}to{opacity:1}}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill,.ds-tabbar-slot{transition:none!important}.ds-tabbar-label,.ds-tabbar-label-enter{animation:none!important}}`;
 
 /*
  * 탭바 기하값은 Figma 원본(file UXcBEgFagmO5ARwH5F0mMW, node 11:218 "Tab Bar Buttons")
@@ -47,7 +47,7 @@ const SLOT_PADDING_X = 10;
 const MIN_TOUCH = 44;
 function computeSlotLayout(innerWidth, count, activeIndex, labelWidth) {
   if (count <= 0 || activeIndex < 0 || activeIndex >= count || count === 1 || !(labelWidth >= 0)) {
-    return { widths: Array(Math.max(count, 0)).fill(innerWidth / count), pillLeft: null, pillWidth: 0 };
+    return { widths: Array(Math.max(count, 0)).fill(innerWidth / count), pillLeft: null, pillWidth: 0, activePadding: 0 };
   }
   const content = ICON_SIZE + LABEL_GAP + labelWidth;
   const natural = content + SLOT_PADDING_X * 2;
@@ -56,7 +56,7 @@ function computeSlotLayout(innerWidth, count, activeIndex, labelWidth) {
   const other = (innerWidth - active) / (count - 1);
   const widths = Array.from({ length: count }, (_, i) => (i === activeIndex ? active : other));
   const pillLeft = NAV_PADDING_X + widths.slice(0, activeIndex).reduce((a, b) => a + b, 0);
-  return { widths, pillLeft, pillWidth: active };
+  return { widths, pillLeft, pillWidth: active, activePadding: (active - content) / 2 };
 }
 
 /**
@@ -127,6 +127,10 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
   // 첫 페인트에서는 애니메이션 없이 스냅시켜야 한다 (서비스 SlidingTabs.tsx와 동일).
   const hasPositionedRef = useRef(false);
   const activeRef = useRef(active);
+  // 마운트 때 이미 활성이던 탭의 이름표에는 등장 애니메이션을 걸지 않는다(서비스 TabBar.tsx와 같은 규칙).
+  // 활성 탭이 처음 바뀌는 렌더에서 비우고, 그 뒤 새로 마운트되는 이름표만 .ds-tabbar-label-enter를 받는다.
+  const [initialKey, setInitialKey] = useState(active);
+  if (initialKey !== null && initialKey !== active) setInitialKey(null);
   useLayoutEffect(() => {
     activeRef.current = active;
   });
@@ -149,7 +153,11 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
     const layout = computeSlotLayout(innerWidth, tabs.length, tabs.findIndex((t) => t.key === key), labelWidth);
 
     const apply = () => {
-      slots.forEach((el, i) => { el.style.flex = `0 0 ${layout.widths[i]}px`; });
+      slots.forEach((el, i) => {
+        el.style.flex = `0 0 ${layout.widths[i]}px`;
+        // 활성 슬롯은 왼쪽 정렬 + 계산한 안쪽 여백(CSS) — 서비스 TabBar.tsx와 같다. 다른 슬롯은 비워서 CSS로 돌린다.
+        el.style.paddingInline = el === tab ? `${layout.activePadding}px` : '';
+      });
       pill.style.opacity = '1';
       pill.style.width = `${layout.pillWidth}px`;
       pill.style.transform = `translate(${layout.pillLeft}px, -50%)`;
@@ -172,11 +180,7 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
   // 활성 탭 변경 — 첫 배치만 무애니메이션, 이후에는 트윈.
   useLayoutEffect(() => {
     const positioned = moveTo(active, hasPositionedRef.current);
-    if (positioned) {
-      hasPositionedRef.current = true;
-      // 이름표 등장 애니메이션은 첫 배치 이후에만 켠다(첫 화면은 제자리).
-      navRef.current?.setAttribute('data-motion', 'on');
-    }
+    if (positioned) hasPositionedRef.current = true;
   }, [active, moveTo]);
 
   // 리사이즈 — 항상 무애니메이션으로 재배치 (deps에 active를 넣지 않는 이유는
@@ -256,7 +260,7 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
             style={{
               position: 'relative', height: '100%', minWidth: 44,
               border: 'none', background: 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center',
               cursor: 'pointer',
             }}
           >
@@ -275,7 +279,7 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
               {/* 20261114_1418: 이름표는 활성 탭에만. 색은 바깥 span을 상속해 아이콘과 같이 전환된다.
                   같은 글자를 aria-label이 이미 읽으므로 보조기기에서는 숨긴다. */}
               {isActive && (
-                <span aria-hidden="true" data-ds-tabbar-label className="ds-tabbar-label">{t.label}</span>
+                <span aria-hidden="true" data-ds-tabbar-label className={t.key === initialKey ? 'ds-tabbar-label' : 'ds-tabbar-label ds-tabbar-label-enter'}>{t.label}</span>
               )}
             </span>
           </button>

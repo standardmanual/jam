@@ -12,6 +12,7 @@
  *
  * 실행: cd jam-web && npx vitest run src/components/ui/TabBar.label.test.tsx
  */
+import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -30,7 +31,7 @@ vi.mock('next/link', () => ({
 }))
 vi.mock('@/lib/uiOverlay', () => ({ useTabBarHidden: () => false }))
 
-import TabBar, { computeSlotLayout } from './TabBar'
+import TabBar, { computeSlotLayout, shouldAnimateLabel } from './TabBar'
 
 const LABELS = ['투데이', '배지', '체크인', '미션', '인벤토리']
 
@@ -83,7 +84,46 @@ describe('활성 탭에만 이름표', () => {
   })
 })
 
+describe('이름표 등장 애니메이션은 탭 이동으로 새로 마운트되는 이름표에만', () => {
+  const css = readFileSync(new URL('../transitions.css', import.meta.url), 'utf8')
+  const ruleOf = (selector: string) => {
+    const at = css.indexOf(`${selector} {`)
+    return at < 0 ? '' : css.slice(at, css.indexOf('}', at))
+  }
+
+  it('전체 로드(서버 HTML·하이드레이션)에서는 어느 탭의 이름표에도 등장 클래스가 없다', () => {
+    for (const pathname of ['/', '/badges', '/drops', '/missions', '/inventory']) {
+      const html = render(pathname)
+      expect(visibleLabels(html)).toHaveLength(1)
+      expect(html).not.toContain('jam-tabbar-label-enter')
+    }
+  })
+
+  it('처음부터 있던 탭만 제외하고, 활성 탭이 바뀐 뒤(initialHref=null)에는 모든 이름표가 받는다', () => {
+    expect(shouldAnimateLabel('/badges', '/badges')).toBe(false)
+    expect(shouldAnimateLabel('/drops', '/badges')).toBe(true)
+    expect(shouldAnimateLabel('/badges', null)).toBe(true)
+  })
+
+  it('등장 애니메이션은 .jam-tabbar-label-enter에만 걸리고 nav 속성(data-motion)에 기대지 않는다', () => {
+    expect(ruleOf('.jam-tabbar-label-enter')).toMatch(/animation:\s*jam-tabbar-label-in/)
+    expect(ruleOf('.jam-tabbar-label')).not.toContain('animation')
+    expect(css).not.toContain('data-motion')
+    expect(readFileSync(new URL('./TabBar.tsx', import.meta.url), 'utf8')).not.toContain('data-motion')
+  })
+
+  it('움직임 줄이기에서는 이름표 애니메이션이 없다', () => {
+    expect(css).toMatch(/\.jam-tabbar-label,\s*\.jam-tabbar-label-enter \{ animation: none !important; \}/)
+  })
+})
+
 describe('슬롯 폭 계산', () => {
+  it('활성 슬롯의 안쪽 여백은 정상 폭에서 10, 320px에서 6이다(내용이 슬롯 안에 가운데로 놓이는 값)', () => {
+    expect(computeSlotLayout(310, 5, 4, 52).activePadding).toBe(10)
+    expect(computeSlotLayout(270, 5, 4, 52).activePadding).toBe(6)
+    expect(computeSlotLayout(310, 5, -1, 0).activePadding).toBe(0)
+  })
+
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 
   it('360px(안쪽 310)에서 «인벤토리»(약 52px)가 활성이면 활성 102, 비활성 52', () => {
