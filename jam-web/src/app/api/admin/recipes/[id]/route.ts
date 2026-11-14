@@ -90,6 +90,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 재료 분류가 슬롯 배열 검증으로 바뀌었다 — 슬롯은 레시피 update 성공 후 전체 교체한다.
   // 티켓 20261114_1705 2회차: 유형(등급 대응형 검사)과 첫 성공자 보상(이미 성공 기록이 있으면 거절)은 기존 레시피를 알아야 해서 넘긴다.
   const existingRow = existing as { grade_mode?: string | null; first_success_badge_id?: string | null }
+  // 레시피 유형은 등록한 뒤 바꿀 수 없다(양식과 같은 규칙). 직접 요청으로 바꾸면 슬롯·보상에 담긴 4등급 배지 id가 그대로 남아 어긋난다.
+  const submittedGradeMode = (body as { grade_mode?: unknown }).grade_mode
+  if (typeof submittedGradeMode === 'string' && submittedGradeMode !== (existingRow.grade_mode ?? 'fixed')) {
+    return NextResponse.json({ error: '레시피 유형은 등록한 뒤에 바꿀 수 없어요. 새 레시피로 만들어 주세요.' }, { status: 400 })
+  }
   const built = await buildRecipeRow(supabase, body, new Date(), {
     recipeId: id,
     existing: { grade_mode: existingRow.grade_mode, first_success_badge_id: existingRow.first_success_badge_id },

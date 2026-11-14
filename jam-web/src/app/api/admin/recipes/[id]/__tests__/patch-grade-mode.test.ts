@@ -159,6 +159,17 @@ describe('PATCH /api/admin/recipes/[id] — 첫 성공자 보상·유형', () =>
     expect(state.updates).toHaveLength(1)
   })
 
+  it('기존과 다른 유형을 보내면 400이고 저장하지 않는다', async () => {
+    state.existingGradeMode = 'follow_materials'
+
+    const res = await patch({ grade_mode: 'fixed' })
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body.error).toContain('유형은 등록한 뒤에 바꿀 수 없어요')
+    expect(state.updates).toHaveLength(0)
+  })
+
   it('유형을 보내면 행에 실린다', async () => {
     const res = await patch({ grade_mode: 'fixed' })
 
