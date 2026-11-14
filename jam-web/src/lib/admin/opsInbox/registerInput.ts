@@ -195,7 +195,7 @@ const COLLECTION_KIND = 'collection_launch'
 
 const RECIPE_COMMON_KEYS = ['starts_at', 'ends_at']
 const RECIPE_COPY_KEYS = ['name']
-const RECIPE_RESOURCE_KEYS = ['slots', 'reward_points', 'reward_badge_ids']
+const RECIPE_RESOURCE_KEYS = ['slots', 'reward_points', 'reward_badge_ids', 'grade_mode', 'first_success_badge_id']
 const RECIPE_TOOL_KEYS = ['id', 'created_at']
 
 const RECIPE_KIND = 'recipe'
@@ -758,7 +758,7 @@ export function toCollectionLaunchRegisterInput(
 /**
  * `recipe` 항목을 레시피 서버 함수의 입력으로 바꾼다(PRD §8.4 레시피 행).
  * - 공통 칸: `starts_at`(필수)은 `valid_from`으로, `ends_at`은 `valid_until`로 읽는다. `ends_at`이 없으면 칸을 넣지 않는다(상시).
- * - 글자 칸 `name`(필수)은 `copy` 먼저, 없으면 `resource`. `resource`의 `slots`(필수)·`reward_points`·`reward_badge_ids`는 값 그대로 넘긴다.
+ * - 글자 칸 `name`(필수)은 `copy` 먼저, 없으면 `resource`. `resource`의 `slots`(필수)·`reward_points`·`reward_badge_ids`·`grade_mode`·`first_success_badge_id`는 값 그대로 넘긴다.
  * - 값의 형식(슬롯 개수·보상·시각 형식과 공개 시각이 미래인지)은 보지 않는다. `normalizeRecipePayload`가 현재 시각과 함께 본다.
  * - 연결로 채우는 칸이 없어 `linkFields`는 늘 빈 배열이다(`jam_badge` → `recipe` 쌍은 배지 쪽 칸이다, §8.3).
  */
@@ -794,6 +794,10 @@ export function toRecipeRegisterInput(item: OpsRegisterItem): RegisterInputResul
   else payload.slots = resource.slots
   if (isPresent(resource.reward_points)) payload.reward_points = resource.reward_points
   if (isPresent(resource.reward_badge_ids)) payload.reward_badge_ids = resource.reward_badge_ids
+  // 레시피 유형과 첫 성공자 보상 배지(티켓 20261114_1705 2회차) — 값 그대로 넘기고 형식은 `normalizeRecipePayload`가, 유형별 배지 검사는 `buildRecipeRow`가 본다.
+  // 유형을 비우면 칸을 넣지 않아 DB 기본값(등급 고정형)이다.
+  if (isPresent(resource.grade_mode)) payload.grade_mode = resource.grade_mode
+  if (isPresent(resource.first_success_badge_id)) payload.first_success_badge_id = resource.first_success_badge_id
 
   if (errors.length > 0) return { payload: null, errors, warnings, linkFields }
   return { payload, errors, warnings, linkFields }
