@@ -1,0 +1,471 @@
+{
+ "source": "claude.ai 아티팩트 «JAM 화면 개선안 캔버스» IconsNew.dc.html, 버전 1794667182-bc94 (2026-11-14 KST 23:4x)",
+ "grid": "viewBox 0 0 48 48, 선 굵기 --sw=3(24px 렌더에서 1.5px), 띠(ro/rc) --rw=4, 굵은 표시선 ta/tb/tc = sw*1.5",
+ "roleCss": ".ni{overflow:visible;display:block}\n.ni *{stroke:currentColor;stroke-width:var(--sw);stroke-linejoin:round;stroke-linecap:round}\n.ni .ta,.ni .tb,.ni .tc{fill:none;stroke-width:calc(var(--sw) * 1.5)}\n.ni .nb,.ni .nc{fill:none}\n.ni .ro{fill:none;stroke-width:calc(var(--rw) + var(--sw) * 2)}\n.ni .rc{fill:none;stroke-width:var(--rw)}\n.ni .h *{stroke-width:calc(var(--sw) / 2)}\n.ln .b,.ln .g,.ln .c{fill:var(--bg)}\n.ln .kb,.ln .kc{fill:currentColor;stroke:none}\n.ln .rc{stroke:var(--bg)}\n.fl .b{fill:currentColor}\n.fl .g{fill:currentColor;stroke:var(--bg)}\n.fl .c{fill:var(--bg)}\n.fl .kb{fill:var(--bg);stroke:none}\n.fl .kc{fill:currentColor;stroke:none}\n.fl .tb,.fl .nb{stroke:var(--bg)}\n.fl .rc{stroke:currentColor}",
+ "roles": {
+  "b": "바탕 면. 라인=배경 면+선, 채움=글자색 면",
+  "g": "틈 있는 면. 채움에서 글자색 면+배경색 테두리(아래 면과 틈)",
+  "c": "비운 면. 두 벌 모두 배경 면+선(채움에서 구멍)",
+  "kb": "바탕 위 점. 라인=글자색, 채움=배경색",
+  "kc": "비운 면 위 점. 항상 글자색",
+  "ta": "굵은 선, 항상 글자색",
+  "tb": "바탕 위 굵은 선. 채움에서 배경색",
+  "tc": "비운 면 위 굵은 선. 항상 글자색",
+  "nb": "바탕 위 가는 선. 채움에서 배경색",
+  "nc": "비운 면 위 가는 선. 항상 글자색",
+  "ro+rc": "띠. 라인=두 줄 선(rc가 배경색), 채움=꽉 찬 띠",
+  "h": "scale(2) 그룹, 선 굵기 절반"
+ },
+ "variantUse": {
+  "fill": [
+   "하단 탭바 켜진 탭",
+   "지도 마커(드랍 있음)"
+  ],
+  "line": [
+   "그 밖 전부"
+  ],
+  "lineOnly": "동작 글리프 7종(쉐브론 2·더하기·빼기·닫기·체크·동기화)은 라인만"
+ },
+ "icons": [
+  {
+   "name": "HomeIcon",
+   "oldName": null,
+   "role": "투데이",
+   "section": "하단 탭바",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M8.5 21.5 L24 9 L39.5 21.5 V37.5 Q39.5 41 36 41 H12 Q8.5 41 8.5 37.5 Z\"></path><path class=\"c\" d=\"M19 41 V32 A5 5 0 0 1 29 32 V41 Z\"></path>",
+   "usedFor": [
+    "하단 · 투데이"
+   ],
+   "note": "새 아이콘(지금은 TabBar.tsx 안 Material Symbols 인라인 SVG)"
+  },
+  {
+   "name": "MedalIcon",
+   "oldName": "MedalIcon",
+   "role": "배지",
+   "section": "하단 탭바",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M14.5 26 H33.5 V46 L24 40.5 L14.5 46 Z\"></path><path class=\"g\" d=\"M20.79 8.02 Q24 2.98 27.21 8.02 Q32.51 5.26 32.77 11.23 Q38.74 11.49 35.98 16.79 Q41.02 20 35.98 23.21 Q38.74 28.51 32.77 28.77 Q32.51 34.74 27.21 31.98 Q24 37.02 20.79 31.98 Q15.49 34.74 15.23 28.77 Q9.26 28.51 12.02 23.21 Q6.98 20 12.02 16.79 Q9.26 11.49 15.23 11.23 Q15.49 5.26 20.79 8.02 Z\"></path><circle class=\"c\" cx=\"24\" cy=\"20\" r=\"6\"></circle>",
+   "usedFor": [
+    "하단 · 배지",
+    "컨텐츠·자원 · 배지"
+   ],
+   "note": "하단 탭바 «배지» 탭과 컨텐츠 «배지»가 같은 그림"
+  },
+  {
+   "name": "CheckinIcon",
+   "oldName": null,
+   "role": "체크인",
+   "section": "하단 탭바",
+   "lineOnly": false,
+   "svgInner48": "<ellipse class=\"b\" cx=\"24\" cy=\"41\" rx=\"11.5\" ry=\"3.8\"></ellipse><path class=\"g\" d=\"M24 40 C24 40 10.5 28.5 10.5 18.5 A13.5 13.5 0 0 1 37.5 18.5 C37.5 28.5 24 40 24 40 Z\"></path><circle class=\"c\" cx=\"24\" cy=\"18.5\" r=\"5.2\"></circle>",
+   "usedFor": [
+    "하단 · 체크인"
+   ],
+   "note": "새 아이콘(지금은 TabBar.tsx 안 Material Symbols 인라인 SVG)"
+  },
+  {
+   "name": "TicketIcon",
+   "oldName": "TargetIcon",
+   "role": "미션",
+   "section": "하단 탭바",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M6.5 15 Q6.5 11 10.5 11 H37.5 Q41.5 11 41.5 15 V19 A5 5 0 0 0 41.5 29 V33 Q41.5 37 37.5 37 H10.5 Q6.5 37 6.5 33 V29 A5 5 0 0 0 6.5 19 Z\"></path><path class=\"c\" d=\"M24 14.5 Q25.9 22.1 33.5 24 Q25.9 25.9 24 33.5 Q22.1 25.9 14.5 24 Q22.1 22.1 24 14.5 Z\"></path>",
+   "usedFor": [
+    "하단 · 미션",
+    "컨텐츠·자원 · 미션"
+   ],
+   "note": "하단 탭바 «미션» 탭과 컨텐츠 «미션»이 같은 그림(사용자 요청)"
+  },
+  {
+   "name": "CrateIcon",
+   "oldName": null,
+   "role": "인벤토리",
+   "section": "하단 탭바",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M9.5 19 H38.5 V37 Q38.5 41 34.5 41 H13.5 Q9.5 41 9.5 37 Z\"></path><rect class=\"g\" x=\"6.5\" y=\"9\" width=\"35\" height=\"11\" rx=\"3.5\"></rect><rect class=\"c\" x=\"18\" y=\"25.5\" width=\"12\" height=\"5\" rx=\"2.5\"></rect>",
+   "usedFor": [
+    "하단 · 인벤토리"
+   ],
+   "note": "새 아이콘(지금은 TabBar.tsx 안 Material Symbols 인라인 SVG)"
+  },
+  {
+   "name": "ArrowDownIcon",
+   "oldName": "PackageIcon",
+   "role": "아이템 드랍",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" transform=\"translate(0 0.5)\" d=\"M17.5 7.5 Q17.5 5 20 5 H28 Q30.5 5 30.5 7.5 V20.5 H38 Q41.5 20.5 39.3 23.3 L25.9 40.3 Q24 42.7 22.1 40.3 L8.7 23.3 Q6.5 20.5 10 20.5 H17.5 Z\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · 아이템 드랍"
+   ]
+  },
+  {
+   "name": "ArrowUpIcon",
+   "oldName": "GiftIcon",
+   "role": "아이템 픽업",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" transform=\"rotate(180 24 24) translate(0 0.5)\" d=\"M17.5 7.5 Q17.5 5 20 5 H28 Q30.5 5 30.5 7.5 V20.5 H38 Q41.5 20.5 39.3 23.3 L25.9 40.3 Q24 42.7 22.1 40.3 L8.7 23.3 Q6.5 20.5 10 20.5 H17.5 Z\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · 아이템 픽업"
+   ]
+  },
+  {
+   "name": "FlaskIcon",
+   "oldName": "FlaskIcon",
+   "role": "믹스 레시피",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"c\" d=\"M20.5 8 V18.5 L10.8 35.6 Q8.4 40.8 14.2 40.8 H33.8 Q39.6 40.8 37.2 35.6 L27.5 18.5 V8 Z\"></path><path class=\"b\" d=\"M15.3 27.5 H32.7 L37.2 35.6 Q39.6 40.8 33.8 40.8 H14.2 Q8.4 40.8 10.8 35.6 Z\"></path><rect class=\"b\" x=\"17.5\" y=\"4.5\" width=\"13\" height=\"5\" rx=\"2.5\"></rect><circle class=\"c\" cx=\"21\" cy=\"34\" r=\"2.2\"></circle><circle class=\"b\" cx=\"35.5\" cy=\"15\" r=\"2.6\"></circle><circle class=\"b\" cx=\"40\" cy=\"8.5\" r=\"1.8\"></circle>",
+   "usedFor": [
+    "컨텐츠·자원 · 믹스 레시피"
+   ]
+  },
+  {
+   "name": "NewspaperIcon",
+   "oldName": "NewspaperIcon",
+   "role": "기사",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<g transform=\"rotate(-6 24 24)\"><rect class=\"b\" x=\"9\" y=\"6.5\" width=\"30\" height=\"35\" rx=\"4\"></rect><rect class=\"c\" x=\"14\" y=\"12\" width=\"20\" height=\"7\" rx=\"2.5\"></rect><path class=\"nb\" d=\"M14.5 25.5 H33.5 M14.5 30.5 H33.5 M14.5 35.5 H26\"></path></g>",
+   "usedFor": [
+    "컨텐츠·자원 · 기사"
+   ]
+  },
+  {
+   "name": "PodiumIcon",
+   "oldName": "RankingIcon",
+   "role": "랭킹",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<rect class=\"b\" x=\"5.5\" y=\"23\" width=\"12.5\" height=\"18.5\" rx=\"2.5\"></rect><rect class=\"b\" x=\"30\" y=\"28.5\" width=\"12.5\" height=\"13\" rx=\"2.5\"></rect><rect class=\"g\" x=\"17.75\" y=\"15\" width=\"12.5\" height=\"26.5\" rx=\"2.5\"></rect><path class=\"b\" d=\"M24 2 Q25 6 29 7 Q25 8 24 12 Q23 8 19 7 Q23 6 24 2 Z\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · 랭킹"
+   ]
+  },
+  {
+   "name": "MagicBookIcon",
+   "oldName": "BookIcon",
+   "role": "컬렉션·아이템북",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M10 9.5 Q10 5 14.5 5 H38.5 V43 H14.5 Q10 43 10 38.5 Z\"></path><path class=\"c\" d=\"M38.5 34 H14.5 Q11.5 34 11.5 37 Q11.5 40 14.5 40 H38.5 Z\"></path><path class=\"c\" d=\"M24.5 11 Q26.1 17.9 33 19.5 Q26.1 21.1 24.5 28 Q22.9 21.1 16 19.5 Q22.9 17.9 24.5 11 Z\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · 컬렉션·아이템북"
+   ]
+  },
+  {
+   "name": "SparkleCircleIcon",
+   "oldName": "HourglassIcon",
+   "role": "진행 알림",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<circle class=\"b\" cx=\"24\" cy=\"24\" r=\"19\"></circle><path class=\"c\" d=\"M24 11.5 Q26.25 21.75 36.5 24 Q26.25 26.25 24 36.5 Q21.75 26.25 11.5 24 Q21.75 21.75 24 11.5 Z\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · 진행 알림"
+   ]
+  },
+  {
+   "name": "PinIcon",
+   "oldName": "PinIcon",
+   "role": "지역·드랍 위치",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M24 43 C24 43 9.5 30.5 9.5 19 A14.5 14.5 0 0 1 38.5 19 C38.5 30.5 24 43 24 43 Z\"></path><circle class=\"c\" cx=\"24\" cy=\"19\" r=\"5.5\"></circle>",
+   "usedFor": [
+    "컨텐츠·자원 · 지역·드랍 위치"
+   ]
+  },
+  {
+   "name": "InfoIcon",
+   "oldName": "InfoIcon",
+   "role": "컨텐츠 소개",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<circle class=\"b\" cx=\"24\" cy=\"24\" r=\"17.5\"></circle><circle class=\"kb\" cx=\"24\" cy=\"15.5\" r=\"2.4\"></circle><path class=\"tb\" d=\"M24 22.5 V33\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · 컨텐츠 소개"
+   ]
+  },
+  {
+   "name": "CoinIcon",
+   "oldName": "CoinIcon",
+   "role": "포인트",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" fill-rule=\"evenodd\" transform=\"translate(-2.5 0)\" d=\"M13.5 42 V7 H26.5 C34.5 7 39.5 11.8 39.5 18.8 C39.5 25.8 34.5 30.5 26.5 30.5 H23.5 V42 Z M23.5 14.8 V22.7 H26 C28.6 22.7 30 21.2 30 18.75 C30 16.3 28.6 14.8 26 14.8 Z\"></path><path class=\"b\" d=\"M39 32 Q40.1 36.4 44.5 37.5 Q40.1 38.6 39 43 Q37.9 38.6 33.5 37.5 Q37.9 36.4 39 32 Z\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · 포인트"
+   ]
+  },
+  {
+   "name": "MixingBowlIcon",
+   "oldName": "GachaMachineIcon",
+   "role": "믹스하기",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"ta\" d=\"M32 3.5 L26.5 11\"></path><ellipse class=\"nc\" cx=\"22.5\" cy=\"17\" rx=\"5.5\" ry=\"9.5\" transform=\"rotate(28 22.5 17)\"></ellipse><ellipse class=\"nc\" cx=\"22.5\" cy=\"17\" rx=\"2\" ry=\"9\" transform=\"rotate(28 22.5 17)\"></ellipse><path class=\"b\" d=\"M7 24 H41 Q41 41.5 24 41.5 Q7 41.5 7 24 Z\"></path><rect class=\"g\" x=\"4.5\" y=\"20.5\" width=\"39\" height=\"5.5\" rx=\"2.75\"></rect>",
+   "usedFor": [
+    "컨텐츠·자원 · 믹스하기"
+   ]
+  },
+  {
+   "name": "PuzzleIcon",
+   "oldName": "PuzzleIcon",
+   "role": "마지막 파편",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<g transform=\"translate(0 0.5) scale(2)\" class=\"h\"><path class=\"b\" d=\"M10.2 4.5a1.8 1.8 0 013.6 0V6h2.7a1 1 0 011 1v2.7h1.5a1.8 1.8 0 010 3.6H17.5V17a1 1 0 01-1 1h-2.7v-1.5a1.8 1.8 0 10-3.6 0V18H7.5a1 1 0 01-1-1v-2.7H5a1.8 1.8 0 010-3.6h1.5V7a1 1 0 011-1h2.7V4.5z\"></path></g>",
+   "usedFor": [
+    "컨텐츠·자원 · 마지막 파편"
+   ]
+  },
+  {
+   "name": "SyncCircleIcon",
+   "oldName": "ActivityIcon",
+   "role": "Strava 연동",
+   "section": "컨텐츠·자원 15종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"ta\" d=\"M40 22 A16 16 0 0 0 11.5 12.5 L8.5 15.5\"></path><path class=\"ta\" d=\"M8 7.5 V16 H16.5\"></path><path class=\"ta\" d=\"M8 26 A16 16 0 0 0 36.5 35.5 L39.5 32.5\"></path><path class=\"ta\" d=\"M40 40.5 V32 H31.5\"></path>",
+   "usedFor": [
+    "컨텐츠·자원 · Strava 연동"
+   ]
+  },
+  {
+   "name": "UserIcon",
+   "oldName": "UserIcon",
+   "role": "아바타 자리",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M8 43 C8 33 15 27.5 24 27.5 C33 27.5 40 33 40 43 Z\"></path><circle class=\"g\" cx=\"24\" cy=\"16\" r=\"9\"></circle>",
+   "usedFor": [
+    "사람·상태 · 아바타 자리"
+   ]
+  },
+  {
+   "name": "UsersIcon",
+   "oldName": "UsersIcon",
+   "role": "팔로워·팔로잉",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M21.5 41 C21.5 33 27 28.5 33.5 28.5 C40 28.5 45.5 33 45.5 41 Z\"></path><circle class=\"b\" cx=\"33.5\" cy=\"18\" r=\"6.8\"></circle><path class=\"g\" d=\"M2.5 43 C2.5 34 9 29 17 29 C25 29 31.5 34 31.5 43 Z\"></path><circle class=\"g\" cx=\"17\" cy=\"17.5\" r=\"7.8\"></circle>",
+   "usedFor": [
+    "사람·상태 · 팔로워·팔로잉"
+   ]
+  },
+  {
+   "name": "CheckBoldIcon",
+   "oldName": "CheckCircleIcon",
+   "role": "미션 완료",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<g style=\"--rw: 6\"><path class=\"ro\" d=\"M11.5 25 L20 33.5 L36.5 15\"></path><path class=\"rc\" d=\"M11.5 25 L20 33.5 L36.5 15\"></path></g>",
+   "usedFor": [
+    "사람·상태 · 미션 완료"
+   ]
+  },
+  {
+   "name": "XBoldIcon",
+   "oldName": "XCircleIcon",
+   "role": "미션 취소",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<g style=\"--rw: 6\"><path class=\"ro\" d=\"M14 14 L34 34 M34 14 L14 34\"></path><path class=\"rc\" d=\"M14 14 L34 34 M34 14 L14 34\"></path></g>",
+   "usedFor": [
+    "사람·상태 · 미션 취소"
+   ]
+  },
+  {
+   "name": "LockIcon",
+   "oldName": "LockIcon",
+   "role": "잠김",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"ro\" d=\"M15.5 21 V15.5 A8.5 8.5 0 0 1 32.5 15.5 V21\"></path><path class=\"rc\" d=\"M15.5 21 V15.5 A8.5 8.5 0 0 1 32.5 15.5 V21\"></path><rect class=\"b\" x=\"9\" y=\"20\" width=\"30\" height=\"21.5\" rx=\"5\"></rect><circle class=\"kb\" cx=\"24\" cy=\"29\" r=\"2.8\"></circle><path class=\"tb\" d=\"M24 30 V35\"></path>",
+   "usedFor": [
+    "사람·상태 · 잠김"
+   ]
+  },
+  {
+   "name": "AlertTriangleIcon",
+   "oldName": "AlertTriangleIcon",
+   "role": "경고",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M24 6.5 C25.6 6.5 26.7 7.4 27.6 9 L42.2 35 C43.9 38.1 42.2 41.5 38.6 41.5 H9.4 C5.8 41.5 4.1 38.1 5.8 35 L20.4 9 C21.3 7.4 22.4 6.5 24 6.5 Z\"></path><path class=\"tb\" d=\"M24 18 V28\"></path><circle class=\"kb\" cx=\"24\" cy=\"34.2\" r=\"2.4\"></circle>",
+   "usedFor": [
+    "사람·상태 · 경고"
+   ]
+  },
+  {
+   "name": "InboxIcon",
+   "oldName": "InboxIcon",
+   "role": "피드 빈 상태",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M6 27 L11 11.5 Q12 8.5 15 8.5 H33 Q36 8.5 37 11.5 L42 27 V37 Q42 41 38 41 H10 Q6 41 6 37 Z\"></path><path class=\"g\" d=\"M6 27 H16 L19 32.5 H29 L32 27 H42 V37 Q42 41 38 41 H10 Q6 41 6 37 Z\"></path><path class=\"c\" d=\"M24 12.5 Q25.1 16.9 29.5 18 Q25.1 19.1 24 23.5 Q22.9 19.1 18.5 18 Q22.9 16.9 24 12.5 Z\"></path>",
+   "usedFor": [
+    "사람·상태 · 피드 빈 상태"
+   ]
+  },
+  {
+   "name": "BellIcon",
+   "oldName": "BellIcon",
+   "role": "알림함",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<circle class=\"b\" cx=\"24\" cy=\"42\" r=\"3.2\"></circle><circle class=\"b\" cx=\"24\" cy=\"7.5\" r=\"2.5\"></circle><path class=\"b\" d=\"M24 9.5 C29.5 9.5 34 14.5 34 21 C34 26.5 34.5 30 37.5 33 Q40.5 36.5 36.5 37.5 H11.5 Q7.5 36.5 10.5 33 C13.5 30 14 26.5 14 21 C14 14.5 18.5 9.5 24 9.5 Z\"></path>",
+   "usedFor": [
+    "사람·상태 · 알림함"
+   ]
+  },
+  {
+   "name": "SearchIcon",
+   "oldName": "SearchIcon",
+   "role": "검색",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"ro\" d=\"M31 31 L40.5 40.5\"></path><path class=\"rc\" d=\"M31 31 L40.5 40.5\"></path><circle class=\"b\" cx=\"20.5\" cy=\"20.5\" r=\"13\"></circle><path class=\"nb\" d=\"M13.5 18 A7.5 7.5 0 0 1 18.5 13\"></path>",
+   "usedFor": [
+    "사람·상태 · 검색"
+   ]
+  },
+  {
+   "name": "PencilIcon",
+   "oldName": "PencilIcon",
+   "role": "프로필 편집",
+   "section": "사람·상태 10종",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"b\" d=\"M12.5 30.5 L32 11 L37 16 L17.5 35.5 Z\"></path><path class=\"g\" d=\"M32 11 L34.5 8.5 Q36 7 37.5 8.5 L39.5 10.5 Q41 12 39.5 13.5 L37 16 Z\"></path><path class=\"c\" d=\"M12.5 30.5 L17.5 35.5 L8.5 39.5 Z\"></path><path class=\"kc\" d=\"M10.4 35 L8.5 39.5 L13 37.6 Z\"></path>",
+   "usedFor": [
+    "사람·상태 · 프로필 편집"
+   ]
+  },
+  {
+   "name": "ChevronRightIcon",
+   "oldName": "ChevronRightIcon",
+   "role": "이동",
+   "section": "동작 글리프 7종",
+   "lineOnly": true,
+   "svgInner48": "<path class=\"ta\" d=\"M18 10.5 L31.5 24 L18 37.5\"></path>",
+   "usedFor": [
+    "동작 · 이동"
+   ]
+  },
+  {
+   "name": "ChevronDownIcon",
+   "oldName": "ChevronDownIcon",
+   "role": "펼침",
+   "section": "동작 글리프 7종",
+   "lineOnly": true,
+   "svgInner48": "<path class=\"ta\" d=\"M10.5 18 L24 31.5 L37.5 18\"></path>",
+   "usedFor": [
+    "동작 · 펼침"
+   ]
+  },
+  {
+   "name": "PlusIcon",
+   "oldName": "PlusIcon",
+   "role": "칸 추가",
+   "section": "동작 글리프 7종",
+   "lineOnly": true,
+   "svgInner48": "<path class=\"ta\" d=\"M24 11 V37 M11 24 H37\"></path>",
+   "usedFor": [
+    "동작 · 칸 추가"
+   ]
+  },
+  {
+   "name": "MinusIcon",
+   "oldName": "MinusIcon",
+   "role": "칸 빼기",
+   "section": "동작 글리프 7종",
+   "lineOnly": true,
+   "svgInner48": "<path class=\"ta\" d=\"M11 24 H37\"></path>",
+   "usedFor": [
+    "동작 · 칸 빼기"
+   ]
+  },
+  {
+   "name": "CloseIcon",
+   "oldName": "CloseIcon",
+   "role": "닫기",
+   "section": "동작 글리프 7종",
+   "lineOnly": true,
+   "svgInner48": "<path class=\"ta\" d=\"M13.5 13.5 L34.5 34.5 M34.5 13.5 L13.5 34.5\"></path>",
+   "usedFor": [
+    "동작 · 닫기"
+   ]
+  },
+  {
+   "name": "CheckIcon",
+   "oldName": "CheckIcon",
+   "role": "성공",
+   "section": "동작 글리프 7종",
+   "lineOnly": true,
+   "svgInner48": "<path class=\"ta\" d=\"M10 25.5 L19.5 34.5 L38 14\"></path>",
+   "usedFor": [
+    "동작 · 성공"
+   ]
+  },
+  {
+   "name": "SyncIcon",
+   "oldName": "SyncIcon",
+   "role": "동기화",
+   "section": "동작 글리프 7종",
+   "lineOnly": true,
+   "svgInner48": "<path class=\"ta\" d=\"M40 22 A16 16 0 0 0 11.5 12.5 L8.5 15.5\"></path><path class=\"ta\" d=\"M8 7.5 V16 H16.5\"></path><path class=\"ta\" d=\"M8 26 A16 16 0 0 0 36.5 35.5 L39.5 32.5\"></path><path class=\"ta\" d=\"M40 40.5 V32 H31.5\"></path>",
+   "usedFor": [
+    "동작 · 동기화"
+   ]
+  },
+  {
+   "name": "TreasureBoxIcon",
+   "oldName": "MapView",
+   "role": "지도 마커",
+   "section": "지도와 화면 전용",
+   "lineOnly": false,
+   "svgInner48": "<rect class=\"c\" x=\"12\" y=\"13.5\" width=\"24\" height=\"21\" rx=\"2.5\"></rect><rect class=\"c\" x=\"12\" y=\"13.5\" width=\"5.5\" height=\"21\" rx=\"2\"></rect><rect class=\"c\" x=\"30.5\" y=\"13.5\" width=\"5.5\" height=\"21\" rx=\"2\"></rect><circle class=\"b\" cx=\"24\" cy=\"24\" r=\"3.4\"></circle>",
+   "usedFor": [
+    "지도와 · 지도 마커"
+   ],
+   "note": "서비스 지도 마커의 원(드랍 있음=초록, 없음=회색)은 그대로 두고, 원 안 그림만 이 상자로 바꾼다. 드랍 있음=채움, 없음=라인(사용자 결정 2026-11-14). 새 아이콘(지금은 컴포넌트 안 인라인 SVG)."
+  },
+  {
+   "name": "LocateIcon",
+   "oldName": "MapView",
+   "role": "현재 위치 버튼",
+   "section": "지도와 화면 전용",
+   "lineOnly": false,
+   "svgInner48": "<path class=\"ta\" d=\"M24 4.5 V10 M24 38 V43.5 M4.5 24 H10 M38 24 H43.5\"></path><circle class=\"b\" cx=\"24\" cy=\"24\" r=\"13\"></circle><circle class=\"kb\" cx=\"24\" cy=\"24\" r=\"5\"></circle>",
+   "usedFor": [
+    "지도와 · 현재 위치 버튼"
+   ],
+   "note": "새 아이콘(지금은 컴포넌트 안 인라인 SVG)."
+  },
+  {
+   "name": "AlertCircleIcon",
+   "oldName": "error.tsx",
+   "role": "오류 화면",
+   "section": "지도와 화면 전용",
+   "lineOnly": false,
+   "svgInner48": "<circle class=\"b\" cx=\"24\" cy=\"24\" r=\"17.5\"></circle><path class=\"tb\" d=\"M24 15.5 V26\"></path><circle class=\"kb\" cx=\"24\" cy=\"32.5\" r=\"2.4\"></circle>",
+   "usedFor": [
+    "지도와 · 오류 화면"
+   ],
+   "note": "새 아이콘(지금은 컴포넌트 안 인라인 SVG)."
+  },
+  {
+   "name": "BanIcon",
+   "oldName": "forbidden",
+   "role": "접근 불가 (어드민)",
+   "section": "지도와 화면 전용",
+   "lineOnly": false,
+   "svgInner48": "<circle class=\"b\" cx=\"24\" cy=\"24\" r=\"18\"></circle><circle class=\"c\" cx=\"24\" cy=\"24\" r=\"11.5\"></circle><path class=\"tc\" style=\"stroke-width: calc(var(--sw) * 2.4)\" d=\"M16.5 16.5 L31.5 31.5\"></path>",
+   "usedFor": [
+    "지도와 · 접근 불가 (어드민)"
+   ],
+   "note": "새 아이콘(지금은 컴포넌트 안 인라인 SVG)."
+  }
+ ]
+}
