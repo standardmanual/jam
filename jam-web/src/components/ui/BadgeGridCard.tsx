@@ -109,6 +109,12 @@ export interface BadgeGridCardProps {
    * 그려진 뒤 필터만 건다. 기본 false라 다른 화면은 마크업이 그대로다.
    */
   chipGray?: boolean
+  /**
+   * true = 좁은 칸용 고정 규격(체크인 지점 카드의 3열 갤러리, 티켓 20261114_2352). 여백 8, 면 `--background-secondary`,
+   * 썸네일 56 고정(면 `--surface`), 이름 12px 굵게 2줄(1줄 이름도 2줄 높이), 칩 줄 높이 24 고정(등급 칩만, Common이면 빈 줄).
+   * 만료·방문 횟수·children·미발견·외곽선 표현은 그리지 않는다. 기본 false라 다른 화면은 마크업이 그대로다.
+   */
+  compact?: boolean
   className?: string
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
   children?: ReactNode
@@ -118,6 +124,9 @@ export interface BadgeGridCardProps {
 // 경계는 카드 사이 간격이 맡는다. 면은 선택 여부로 한쪽만 고른다(아래 `containerCls`).
 const BASE =
   'flex flex-col items-center rounded-2xl p-3 overflow-hidden'
+
+// compact: 여백 8, 면은 호출부 카드 면(--card-bg)과 겹치지 않게 --background-secondary(위 containerCls)
+const BASE_COMPACT = 'flex flex-col items-center rounded-2xl p-2 overflow-hidden'
 
 export default function BadgeGridCard({
   name = '',
@@ -141,15 +150,17 @@ export default function BadgeGridCard({
   visitCount = null,
   showCommonChip = false,
   chipGray = false,
+  compact = false,
   className = '',
   children,
 }: BadgeGridCardProps) {
   const isInteractive = !!(href || onClick)
 
   const containerCls = [
-    BASE,
+    // compact는 여백과 면을 분기로 한쪽만 넣는다(클래스 순서에 기대지 않는다)
+    compact ? BASE_COMPACT : BASE,
     // 면은 항상 --card-bg이고, 선택은 블랙 2px 링(box-shadow라 레이아웃을 밀지 않는다)으로 말한다. 새 색을 만들지 않는다(티켓 20261107_2246).
-    'bg-card-bg',
+    compact ? 'bg-background-secondary' : 'bg-card-bg',
     selected && 'ring-2 ring-foreground',
     isInteractive && 'active:scale-95 transition-transform duration-100',
     // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
@@ -179,6 +190,50 @@ export default function BadgeGridCard({
   const chip = level != null
     ? <BadgeLevelChip level={level} size="md" className={chipClass} />
     : <RarityBadge rarity={rarity ?? undefined} size="md" className={chipClass} showCommon={showCommonChip} />
+
+  if (compact) {
+    const compactContent = (
+      <>
+        <div className="relative w-14 h-14 max-w-full shrink-0">
+          {locked ? (
+            <LockedTile size={56} />
+          ) : (
+            <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center bg-surface ${thumbDimmed ? 'grayscale opacity-40' : ''}`}>
+              <SafeImage
+                src={imageUrl}
+                alt={name}
+                width={56}
+                height={56}
+                className="w-full h-full object-contain p-1"
+                fallback={<MedalIcon className="w-6 h-6 text-muted" />}
+              />
+            </div>
+          )}
+          {showCount && (
+            <span
+              className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center"
+              aria-hidden="true"
+            >
+              ×{count}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col items-center gap-1 pt-2 w-full">
+          <p className={`text-xs font-bold ${nameMuted ? 'text-muted opacity-60' : 'text-foreground'} text-center line-clamp-2 min-h-[30px] w-full leading-tight break-keep wrap-break-word`}>
+            {locked ? d.lockedItem.card.name : name}
+          </p>
+          {showCount && (
+            <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
+          )}
+          {/* 칩 줄은 높이 24를 항상 확보한다 — Common이면 비어도 칸 높이가 같다 */}
+          <div className="h-6 flex items-center justify-center">{chip}</div>
+        </div>
+      </>
+    )
+    if (href) return <Link href={href} onClick={onNavigate} className={containerCls}>{compactContent}</Link>
+    if (onClick) return <button type="button" onClick={onClick} disabled={disabled} aria-pressed={pressed} className={containerCls}>{compactContent}</button>
+    return <div className={containerCls}>{compactContent}</div>
+  }
 
   const content = (
     <>
