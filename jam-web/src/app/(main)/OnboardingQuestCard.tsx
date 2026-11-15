@@ -54,9 +54,11 @@ const SCREEN_PATH_MAP: Record<OnboardingQuestScreen, string> = {
 }
 
 const CARD_CLASS = 'flex flex-col gap-4'
-// CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다
-const CTA_ROW_CLASS = 'flex'
-// 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — 연출 CTA 줄에만 쓴다. 실제 2단계의 버튼에는 붙이지 않는다(채원 사전 판정 20261021_1248).
+// CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다.
+// jam-quest-cta는 직계 자식 button의 면을 퍼플로 칠한다(티켓 20261115_1804). 연출·실제 두 구역 모두 면은 칠하고, 링(펄스)은 아래 변형만 건다.
+// 건너뛰기 버튼은 이 줄 밖에 있어 칠해지지 않는다.
+const CTA_ROW_CLASS = 'flex jam-quest-cta'
+// 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — 연출 CTA 줄에만 쓴다. 실제 2단계의 버튼에는 펄스를 붙이지 않는다(채원 사전 판정 20261021_1248, 20261115_1804에서 유지). 면 퍼플만 두 구역이 같다.
 // rounded-full은 버튼의 --radius-full과 래퍼 반경을 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정).
 // self-start가 없으면 이 줄 자체가 카드 폭으로 늘어나 펄스 링이 카드 폭 전체에 그려진다(티켓 20260928_2137).
 const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-full jam-quest-pulse`

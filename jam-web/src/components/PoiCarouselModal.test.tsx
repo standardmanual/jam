@@ -63,6 +63,11 @@ describe('PoiCarouselModal demoMode 초기 렌더', () => {
     const html = renderToStaticMarkup(<PoiCarouselModal {...baseProps} questPulseStep="pickup" />)
     expect(html).toContain('jam-quest-pulse')
   })
+
+  it('questPulseStep="pickup"이어도 버튼 면(jam-quest-cta)은 칠하지 않고 링 색만 바뀐다(티켓 20261115_1804)', () => {
+    const html = renderToStaticMarkup(<PoiCarouselModal {...baseProps} questPulseStep="pickup" />)
+    expect(html).not.toContain('jam-quest-cta')
+  })
 })
 
 describe('PoiCarouselModal demoMode(drop) 초기 렌더', () => {
@@ -98,6 +103,13 @@ describe('PoiCarouselModal demoMode(drop) 초기 렌더', () => {
   it('questPulseStep 미지정이면 "여기에 드랍" 버튼에 펄스 클래스가 없다(회귀 방지, 티켓 20260928_1754)', () => {
     const html = renderToStaticMarkup(<PoiCarouselModal {...dropProps} />)
     expect(html).not.toContain('jam-quest-pulse')
+  })
+
+  it('questPulseStep="drop"이면 «여기에 드랍» 래퍼에 jam-quest-cta가 함께 붙고, 아니면 붙지 않는다(티켓 20261115_1804)', () => {
+    const pulsed = renderToStaticMarkup(<PoiCarouselModal {...dropProps} questPulseStep="drop" />)
+    expect(pulsed).toContain('w-full rounded-full jam-quest-pulse jam-quest-cta')
+    const plain = renderToStaticMarkup(<PoiCarouselModal {...dropProps} />)
+    expect(plain).not.toContain('jam-quest-cta')
   })
 })
 

@@ -141,7 +141,7 @@ function ColorsPage() {
         <TagChip token="--jam-red" note="사용처 미지정" />
         <TagChip token="--jam-yellow" note="사용처 미지정" />
         <TagChip token="--jam-green" note="컬렉션·인벤토리 진행도 바 채움 + 완성한 컬렉션 카드 면" />
-        <TagChip token="--jam-purple" note="사용처 미지정" />
+        <TagChip token="--jam-purple" note="온보딩 퀘스트 «지금 눌러야 할 곳»(펄스 링·CTA 면)" />
         <TagChip token="--jam-blue" note="사용처 미지정" />
       </Section>
 
