@@ -329,6 +329,10 @@ code:
   - **주소 규칙**: `optimizedImageUrl(src, nextImageWidthFor(90, devicePixelRatio))`. 90px 카드는 1배 화면 w=96, 2배 이상 w=256이다. 화면이 요청하는 주소와 한 글자라도 다르면 캐시가 맞지 않으므로, `BadgeGridCard`의 srcset과 같은지 시험으로 고정한다.
 - **작은 칸의 변환 폭 통일(티켓 20261115_1455)**: 56px 칸(`BadgeGridCard`의 `compact`: 지점 카드 갤러리·드랍 선택)은 `SafeImage`의 `variantWidth={90}`로 90px 카드와 같은 변환본(96·256)을 요청한다. 한 번 받은 그림을 두 곳이 함께 쓰고, 표시 크기(56×56)와 마크업은 그대로다. 정적 파일 배지(`unoptimized`)는 영향이 없다. 3배 화면에서는 128 대신 256 변환본이 쓰여 조금 더 선명하다.
 - **드랍 지도 미리 받기(티켓 20261115_1455)**: 드랍 지도(`DropsClient`)에서 지점 목록이 도착하면 한가한 시점(`requestIdleCallback`, 없으면 2초 뒤)에 `in_drop_range`이고 `available_drops_count`가 1 이상인 지점을 가까운 순으로 최대 3곳 골라(`pickWarmupPois`, `jam-web/src/lib/poi/dropMapWarmup.ts`) `/api/drops/poi/:id`의 `badge_image_url`을 받는다. 주소는 위 «주소 규칙»과 같고, 받기는 인벤토리 미리 받기와 같은 공용 함수(`jam-web/src/lib/warmImages.ts`, 6장씩 낮은 우선순위)를 쓴다. 지도 화면이 떠 있는 동안 이미 부른 지점은 다시 부르지 않고 합쳐 9곳을 넘기지 않는다. `saveData`가 켜져 있으면 하지 않고, 실패해도 화면에 영향이 없다. 응답은 `PoiCarouselModal`의 `dropsCache`에 넣지 않는다 — 그사이 다른 사람이 주워 갈 수 있어 목록은 카드가 열릴 때의 조회를 쓴다.
+- **올린 직후 예열(티켓 20261115_1620)**: 그림을 저장하면 서버가 화면이 쓰는 변환 주소를 한 번씩 요청해 변환 캐시에 넣어 둔다. 새 그림을 누군가 처음 볼 때 변환을 기다리지 않게 하려는 것이고, 화면 코드는 바뀌지 않는다.
+  - **폭 네 개**: 96·256·384·640(`WARM_IMAGE_WIDTHS`, `jam-web/src/lib/images/warmImageVariants.ts`). 카드·작은 칸 96(1배)·256(2배), 시트 대표 그림 384, 배지 상세 대표 그림 640이다. `Accept: image/webp`로 요청하고, 정적 파일 배지·변환 대상이 아닌 주소는 요청하지 않는다. 요청마다 8초 제한이 있고 실패해도 던지지 않는다.
+  - **연결 지점**: 어드민 API 네 곳(`badge-image-generator/apply`, `badge-image/generate`, `activity-badge-image/generate`, `upload-image`의 이미지 파일)이 저장 직후 `after()`로 예열한다. 응답은 늦어지지 않는다. `jam-web/scripts/recraft/register-badge-images.js`는 DB 반영 뒤 `--warm-origin`(기본 `https://stage.j-a-m.app`)으로 예열한다.
+  - **대상 출처**: 요청이 들어온 출처 하나다. staging과 프로덕션은 Vercel 프로젝트가 달라 변환 캐시가 따로다. 프로덕션은 JAM 2.0 출시 뒤 `jam-web/scripts/warm-badge-image-variants.mjs`(원본 주소 JSON 목록, `--origin`·`--dry-run`·`--concurrency`)로 기존 그림을 일괄 예열한다.
 
 ## 10. 제작 경로 표시
 

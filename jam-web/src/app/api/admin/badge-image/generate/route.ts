@@ -1,7 +1,8 @@
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { ImageResponse } from 'next/og'
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { warmImageVariants } from '@/lib/images/warmImageVariants'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { isKnownBadgeImageDesign } from '@/lib/admin/badgeImageDesigns'
@@ -133,6 +134,10 @@ export async function POST(req: NextRequest) {
   if (updateErr) {
     return NextResponse.json({ error: `이미지는 업로드됐지만 배지 반영에 실패했습니다: ${updateErr.message}` }, { status: 500 })
   }
+
+  // 응답 뒤에 변환본을 미리 만들어 둔다(티켓 20261115_1620)
+  const origin = new URL(req.url).origin
+  after(() => warmImageVariants(imageUrl, origin))
 
   return NextResponse.json({
     badgeId: badge.id,
