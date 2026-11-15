@@ -252,6 +252,21 @@ export interface BadgeImagePresetRow {
   updated_at: string
 }
 
+/** 액티비티 배지 템플릿(마이그레이션 344, 티켓 20261115_2355). 분류(class_key)마다 한 줄. 서비스 롤 전용 */
+export interface ActivityBadgeTemplateRow {
+  /** 'metric' | 'days' | 'streak' | 'count' */
+  class_key: string
+  svg: string
+  /** SVG에서 읽어 낸 이름 자리·값 자리 정보 */
+  slots: Record<string, unknown>
+  /** 색·글자 기본 조정값 */
+  default_params: Record<string, unknown>
+  /** 마지막으로 고친 운영자 이메일 */
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 /** 아이템(item_book_id + item_name)별 영어 묘사 문장(마이그레이션 337) */
 export interface BadgeImageItemPromptRow {
   id: string
@@ -2445,6 +2460,18 @@ export interface Database {
         Row: MissionRankSnapshotRow
         Insert: Omit<MissionRankSnapshotRow, 'captured_at'> & { captured_at?: string }
         Update: Partial<MissionRankSnapshotRow>
+        Relationships: []
+      }
+      activity_badge_templates: {
+        Row: ActivityBadgeTemplateRow
+        Insert: Omit<ActivityBadgeTemplateRow, 'slots' | 'default_params' | 'updated_by' | 'created_at' | 'updated_at'> & {
+          slots?: Record<string, unknown>
+          default_params?: Record<string, unknown>
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<ActivityBadgeTemplateRow>
         Relationships: []
       }
     }

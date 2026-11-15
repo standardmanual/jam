@@ -121,6 +121,36 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_badge_templates: {
+        Row: {
+          class_key: string
+          created_at: string
+          default_params: Json
+          slots: Json
+          svg: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          class_key: string
+          created_at?: string
+          default_params?: Json
+          slots?: Json
+          svg: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          class_key?: string
+          created_at?: string
+          default_params?: Json
+          slots?: Json
+          svg?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       admin_badge_bulk_runs: {
         Row: {
           action: string
