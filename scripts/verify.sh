@@ -147,5 +147,13 @@ else
   for name in "${FAILED[@]}"; do
     echo "  - $name 로그: $LOG_PREFIX.$name"
   done
+  # test 단계가 실패하면 실패한 시험 파일 경로를 중복 없이 최대 60줄 남긴다. CI 기록에는 로그 파일이 남지 않아
+  # 게이트가 기존 실패와 새 실패를 가르지 못했다(티켓 20261115_0030).
+  for name in "${FAILED[@]}"; do
+    if [ "$name" = "test" ] && [ -f "$LOG_PREFIX.test" ]; then
+      echo "실패한 시험 파일:"
+      perl -pe 's/\e\[[0-9;]*m//g' "$LOG_PREFIX.test" | sed -n 's/^ *FAIL  *\([^ >]*\).*/\1/p' | awk '!seen[$0]++' | head -60 | sed 's/^/  - /'
+    fi
+  done
   exit 1
 fi
