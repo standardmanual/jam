@@ -34,14 +34,17 @@ export function validateTemplateSvg(svgText: unknown): ValidateTemplateResult {
     return fail('SVG를 읽지 못했어요. 피그마에서 SVG로 다시 내보내 주세요.')
   }
 
-  for (const [slotName, label] of [['name', '이름'], ['value', '값']] as const) {
-    const slot = slots[slotName]
-    if (!slot.found) {
+  const pairs = [['name', '이름'], ['value', '값']] as const
+  // «없음»을 두 자리 모두 먼저 검사한 뒤 «글자 아님»을 검사한다(없는 자리가 더 근본 원인).
+  for (const [slotName, label] of pairs) {
+    if (!slots[slotName].found) {
       return fail(
         `${label} 자리를 찾지 못했어요. 피그마에서 ${label} 글자의 레이어 이름을 ${slotName}으로 바꾸고, 내보내기 설정의 Include "id" attribute를 켠 뒤 다시 내보내 주세요.`
       )
     }
-    if (!slot.isText) {
+  }
+  for (const [slotName, label] of pairs) {
+    if (!slots[slotName].isText) {
       return fail(
         `${label} 자리가 글자가 아니에요. 피그마 내보내기 설정의 Outline text를 끄고 다시 내보내 주세요.`
       )

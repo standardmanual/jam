@@ -54,4 +54,13 @@ describe('validateTemplateSvg', () => {
       error: '값 자리가 글자가 아니에요. 피그마 내보내기 설정의 Outline text를 끄고 다시 내보내 주세요.',
     })
   })
+
+  it('이름은 윤곽선이고 값 자리가 없으면 값 자리 없음 문구가 먼저 나온다', () => {
+    const r = validateTemplateSvg(wrap('<path id="name" d="M0 0"/>'))
+    expect(r).toEqual({
+      ok: false,
+      error:
+        '값 자리를 찾지 못했어요. 피그마에서 값 글자의 레이어 이름을 value으로 바꾸고, 내보내기 설정의 Include "id" attribute를 켠 뒤 다시 내보내 주세요.',
+    })
+  })
 })
