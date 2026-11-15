@@ -225,12 +225,13 @@ describe('JAM! 시작하기 카드 — 연출 CTA', () => {
     expect(render(demo(1, 'bag'))).toContain('self-start rounded-full jam-quest-pulse')
   })
 
-  it('연출 CTA 줄에는 jam-quest-pulse와 jam-quest-cta가 함께 있고 건너뛰기에는 퍼플 클래스가 없다 (티켓 20261115_1804)', () => {
+  it('연출 CTA 줄에는 jam-quest-pulse와 jam-quest-cta-snow가 함께 있고 jam-quest-cta는 없으며 건너뛰기에는 클래스가 없다 (티켓 20261115_1932)', () => {
     for (const html of [render(demo(0, 'sync')), render(demo(1, 'bag'))]) {
       expect(html).toContain('self-start rounded-full jam-quest-pulse')
-      expect(html).toMatch(/class="flex jam-quest-cta self-start rounded-full jam-quest-pulse"/)
-      // 퍼플 면 클래스는 CTA 줄에 한 번뿐이다 — 건너뛰기 버튼이 있는 목록 쪽에는 없다
-      expect(html.match(/jam-quest-cta/g)).toHaveLength(1)
+      expect(html).toMatch(/class="flex jam-quest-cta-snow self-start rounded-full jam-quest-pulse"/)
+      // 흰 알약 클래스는 CTA 줄에 한 번뿐이다 — 건너뛰기 버튼이 있는 목록 쪽에는 없다
+      expect(html.match(/jam-quest-cta-snow/g)).toHaveLength(1)
+      expect(html).not.toMatch(/jam-quest-cta(?!-snow)/)
       const list = html.slice(html.indexOf('<ol'), html.indexOf('</ol>'))
       expect(list).not.toContain('jam-quest-cta')
       expect(list).not.toContain('jam-quest-pulse')
@@ -317,11 +318,12 @@ describe('JAM! 시작하기 카드 — 실제 구역이 위로 올라온 카드(
     }
   })
 
-  it('실제 구역 CTA 줄에는 jam-quest-cta만 있고 펄스는 없다 — 면만 퍼플이다 (티켓 20261115_1804, 채원 판정 20261021_1248 유지)', () => {
+  it('실제 구역 CTA 줄에는 jam-quest-cta-snow만 있고 펄스는 없다 (티켓 20261115_1932, 채원 판정 20261021_1248 유지)', () => {
     for (const [name, state] of REAL_STATES) {
       const html = render(state, 'runner')
-      expect(html, name).toMatch(/class="flex jam-quest-cta"/)
+      expect(html, name).toMatch(/class="flex jam-quest-cta-snow"/)
       expect(html.match(/jam-quest-cta/g), name).toHaveLength(1)
+      expect(html, name).not.toMatch(/jam-quest-cta(?!-snow)/)
       expect(html, name).not.toContain('jam-quest-pulse')
     }
   })
@@ -360,8 +362,17 @@ describe('JAM! 시작하기 카드 — 실제 구역이 위로 올라온 카드(
     const html = render(realOnly())
     const items = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0])
     expect(items[1]).toContain('아직이에요')
-    expect(items[1]).toContain('text-muted')
+    expect(items[1]).toContain('text-[color-mix(in_srgb,var(--foreground)_80%,var(--jam-purple))]')
+    expect(items[1]).not.toContain('text-muted')
     expect(items[1]).not.toContain('text-base font-bold')
+  })
+
+  it('두 구역 카드 면은 --jam-purple이고 진행 바 트랙은 --snow이며 muted 글자는 없다 (티켓 20261115_1932)', () => {
+    for (const html of [render(demo(0, 'sync')), render(demo(1, 'bag')), render(realOnly())]) {
+      expect(html).toContain('background:var(--jam-purple)')
+      expect(html).toContain('var(--snow)')
+      expect(html).not.toContain('text-muted')
+    }
   })
 
   it('행마다 서클 표시는 없고 상태가 글자(sr-only)로 붙는다', () => {

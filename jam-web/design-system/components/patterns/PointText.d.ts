@@ -13,7 +13,12 @@ export interface PointTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'c
    * 굵은 숫자(16px) 위, 작은 단위(12px) 아래, 가운데 정렬.
    */
   layout?: 'inline' | 'stacked';
-  /** 글자 크기·굵기·배치용 클래스. 색은 호출부가 정하지 않는다(항상 `--point-text`) */
+  /**
+   * 색조. `point`(기본)는 `--point-text` 오렌지, `muted`는 차감 같은 «빠져나간 포인트»용 회색(`--muted`)이다.
+   * 값과 단위가 함께 바뀐다. 둘 외의 색은 없다.
+   */
+  tone?: 'point' | 'muted';
+  /** 글자 크기·굵기·배치용 클래스. 색은 호출부가 직접 정하지 않고 `tone`으로만 고른다 */
   className?: string;
   style?: CSSProperties;
 }

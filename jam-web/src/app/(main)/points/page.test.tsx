@@ -270,7 +270,7 @@ describe('포인트 화면 — 내역 행', () => {
     expect(text).not.toContain('--1,500')
   })
 
-  it('숫자와 «포인트»는 두 줄(stacked)로 point-text 색이다 — 차감도 같은 색이다 (티켓 20261112_1628)', async () => {
+  it('숫자와 «포인트»는 두 줄(stacked)이고 적립은 point-text 오렌지, 차감은 값·«포인트» 모두 회색(text-muted)이다 (티켓 20261112_1628, 20261115_1431)', async () => {
     fetchMock.mockResolvedValue(
       page([
         item({ id: 'plus', title: '한강 러너', amount: 30 }),
@@ -283,8 +283,10 @@ describe('포인트 화면 — 내역 행', () => {
 
     expect(html).toContain('>30</span>')
     expect(html).toContain('>−1,500</span>')
-    // 행마다 숫자·단위 두 칸
-    expect(html.match(/<span class="text-point-text"/g)).toHaveLength(4)
+    // 적립 행은 숫자·단위 두 칸이 오렌지, 차감 행은 두 칸이 회색이다
+    expect(html.match(/<span class="text-point-text"/g)).toHaveLength(2)
+    expect(html.match(/<span class="text-muted"/g)).toHaveLength(2)
+    expect(html).toMatch(/<span class="text-muted"[^>]*>−1,500<\/span>/)
     expect(html.match(/>포인트<\/span>/g)).toHaveLength(2)
     // 잔액 숫자 칸은 같은 토큰의 클래스를 직접 쓴다(자릿수 팝인 예외)
     expect(html).toMatch(/<p class="[^"]*text-point-text[^"]*"/)

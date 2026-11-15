@@ -12,7 +12,7 @@ import { PointText } from '@ds/components/patterns/PointText'
 import { formatDateTimeMinute } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 
-// 내역 행 숫자는 «+» 없이 쓰고 차감만 «−»를 붙인다. 색은 PointText가 한 곳에서 칠한다(티켓 20261112_1628).
+// 내역 행 숫자는 «+» 없이 쓰고 차감만 «−»를 붙인다. 색은 PointText가 한 곳에서 칠한다: 적립은 오렌지, 차감은 값과 «포인트» 모두 회색이다(티켓 20261112_1628, 20261115_1431).
 function formatAmount(n: number): string {
   return `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('ko-KR')}`
 }
@@ -120,7 +120,14 @@ export function PointHistoryList({ items, cursor, loading, loadingMore, error, o
               title={it.title || it.note || undefined}
               meta={formatDateTimeMinute(it.created_at)}
               metaLines={1}
-              value={<PointText value={formatAmount(it.amount)} unit={d.points.unitSuffix} layout="stacked" />}
+              value={
+                <PointText
+                  value={formatAmount(it.amount)}
+                  unit={d.points.unitSuffix}
+                  layout="stacked"
+                  tone={it.amount < 0 ? 'muted' : 'point'}
+                />
+              }
             />
           ))}
         </div>

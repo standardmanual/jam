@@ -18,20 +18,27 @@ import React from 'react';
  * 색만으로 «포인트임»을 알리지 않는다 — 숫자 옆에 항상 «포인트» 글자가 붙는다.
  * 버튼 안 포인트는 칠하지 않는다(호출부가 이 컴포넌트를 쓰지 않고 버튼 글자색을 따른다).
  *
+ * tone="muted"는 차감처럼 «빠져나간 포인트»를 오렌지 대신 회색(`--muted`, 글자 회색 토큰)으로 그린다(사용자 지시
+ * 2026-11-15, 티켓 20261115_1431). 값과 «포인트» 글자가 함께 회색이 된다. 기본은 `point`(오렌지)다.
+ *
  * 색은 인라인 `color: var(--point-text)`가 정하고, `text-point-text` 클래스(서비스 Tailwind 매핑,
  * globals.css)는 같은 토큰을 가리켜 서비스 쪽 검사·선택자가 클래스로 닿게 하는 표지다.
  *
  * 글자 대비 한계: --point-text(#ff4400)는 흰 면 3.45:1·크림 면 약 3.1:1이라 12~16px 글자는 4.5:1에 못 미친다.
  */
-const COLOR = 'var(--point-text)';
+const TONES = {
+  point: { color: 'var(--point-text)', className: 'text-point-text' },
+  muted: { color: 'var(--muted)', className: 'text-muted' },
+};
 
 function formatValue(value) {
   return typeof value === 'number' ? value.toLocaleString('ko-KR') : String(value);
 }
 
-export function PointText({ value, unit = '포인트', layout = 'inline', className = '', style = {}, ...rest }) {
+export function PointText({ value, unit = '포인트', layout = 'inline', tone = 'point', className = '', style = {}, ...rest }) {
   if (value == null) return null;
   const text = formatValue(value);
+  const { color: COLOR, className: toneClass } = TONES[tone] ?? TONES.point;
 
   if (layout === 'stacked') {
     return (
@@ -41,14 +48,14 @@ export function PointText({ value, unit = '포인트', layout = 'inline', classN
         {...rest}
       >
         <span
-          className="text-point-text"
+          className={toneClass}
           style={{ fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: 700, color: COLOR }}
         >
           {text}
         </span>
         {unit !== '' && (
           <span
-            className="text-point-text"
+            className={toneClass}
             style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', color: COLOR }}
           >
             {unit}
@@ -59,7 +66,7 @@ export function PointText({ value, unit = '포인트', layout = 'inline', classN
   }
 
   return (
-    <span className={`text-point-text ${className}`.trim()} style={{ whiteSpace: 'nowrap', color: COLOR, ...style }} {...rest}>
+    <span className={`${toneClass} ${className}`.trim()} style={{ whiteSpace: 'nowrap', color: COLOR, ...style }} {...rest}>
       {unit === '' ? text : `${text} ${unit}`}
     </span>
   );

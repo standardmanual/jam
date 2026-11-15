@@ -12,13 +12,14 @@ const meta: Meta<typeof PointText> = {
         component:
           '포인트 «값 + 단위» 표기 — 티켓 20261104_2319. 값과 «포인트» 글자 모두 `--point-text`(#ff4400 리터럴) 한 색이다. ' +
           '`layout="stacked"`는 우측 보상 칸(굵은 숫자 16px 위, 작은 «포인트» 12px 아래), `inline`은 문장 속 한 덩어리(줄바꿈 없음)다. ' +
-          '값이 `null`/`undefined`면 아무것도 그리지 않고 `0`은 그린다. `unit=""`이면 값만 그린다. 알려진 한계: 흰·크림 면 위 12~16px 글자는 대비 4.5:1에 못 미친다(3:1은 넘는다).',
+          '값이 `null`/`undefined`면 아무것도 그리지 않고 `0`은 그린다. `unit=""`이면 값만 그린다. `tone="muted"`는 차감을 값·단위 모두 회색(`--muted`)으로 그린다(티켓 20261115_1431). 알려진 한계: 흰·크림 면 위 12~16px 글자는 대비 4.5:1에 못 미친다(3:1은 넘는다).',
       },
     },
   },
   argTypes: {
     layout: { control: 'inline-radio', options: ['inline', 'stacked'] },
     unit: { control: 'text' },
+    tone: { control: 'inline-radio', options: ['point', 'muted'] },
   },
 };
 
@@ -135,6 +136,16 @@ export const InlineValueOnly: Story = {
 export const StackedValueOnly: Story = {
   name: 'stacked — unit="" (값만)',
   args: { value: 1200, unit: '', layout: 'stacked' },
+  render: (args) => (
+    <Frame>
+      <PointText {...args} />
+    </Frame>
+  ),
+};
+
+export const StackedMuted: Story = {
+  name: 'stacked — tone="muted" (차감, 값과 «포인트» 모두 회색)',
+  args: { value: '−1,500', layout: 'stacked', tone: 'muted' },
   render: (args) => (
     <Frame>
       <PointText {...args} />
