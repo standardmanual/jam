@@ -2,9 +2,13 @@
 
 /**
  * «배지 만들기» 탭: 배지 검색 → 선택 → 분류의 템플릿 위에 이름·값 미리보기 (티켓 20261116_0555).
- * 검색은 기존 POST /api/admin/activity-badge-image/search를 쓴다. 등록·색·글자 조정은 다음 회차.
+ * 검색은 기존 POST /api/admin/activity-badge-image/search를 쓴다. 색·글자 조정은 20261116_0653, 등록은 다음 회차.
  */
 import { useState } from 'react'
+import {
+  DEFAULT_TEMPLATE_BADGE_PARAMS,
+  type TemplateBadgeParams,
+} from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
 import BadgePicker, { ALL_VALUE, type BadgeFilters, type StudioSearchBadge } from './BadgePicker'
 import BadgePreview from './BadgePreview'
@@ -31,6 +35,8 @@ export default function BadgeStudio({
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [selected, setSelected] = useState<StudioSearchBadge | null>(null)
+  // 다른 배지를 골라도 조정값은 그대로 둔다(같은 모양으로 이어서 볼 수 있게).
+  const [params, setParams] = useState<TemplateBadgeParams>(DEFAULT_TEMPLATE_BADGE_PARAMS)
 
   async function runSearch(nextPage: number) {
     setError(null)
@@ -77,7 +83,14 @@ export default function BadgeStudio({
         onSearch={(p) => void runSearch(p)}
         onSelect={setSelected}
       />
-      <BadgePreview badge={selected} templates={templates} onGoToTemplates={onGoToTemplates} />
+      <BadgePreview
+        badge={selected}
+        templates={templates}
+        onGoToTemplates={onGoToTemplates}
+        params={params}
+        onParamsChange={setParams}
+        onParamsReset={() => setParams(DEFAULT_TEMPLATE_BADGE_PARAMS)}
+      />
     </div>
   )
 }

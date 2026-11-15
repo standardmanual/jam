@@ -4,13 +4,17 @@
  * 고른 배지와 그 분류의 템플릿으로 미리보기를 그린다 (티켓 20261116_0555).
  * 상태: 배지 선택 전 / 분류 없음 / 템플릿 없음 / 정상.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '@/components/admin/ui/badge'
 import { Button } from '@/components/admin/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { slotLabelOf } from '@/lib/admin/badge-families'
+import { stripSlotText } from '@/lib/admin/activityBadgeTemplate/composeTemplate'
+import { extractSvgColors } from '@/lib/admin/activityBadgeTemplate/templateColors'
+import type { TemplateBadgeParams } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
 import type { StudioSearchBadge } from './BadgePicker'
+import BadgeAdjustPanel from './BadgeAdjustPanel'
 import { renderTemplateBadge, type RenderTemplateBadgeResult } from './renderTemplateBadge'
 
 const WRAP = 'break-keep wrap-break-word'
@@ -36,10 +40,23 @@ export function PreviewMessage({ children }: { children: React.ReactNode }) {
   return <p className={`text-sm text-muted-foreground ${WRAP}`}>{children}</p>
 }
 
-function ReadyPreview({ badge, template }: { badge: StudioSearchBadge; template: TemplateItem }) {
+interface AdjustProps {
+  params: TemplateBadgeParams
+  onParamsChange: (next: TemplateBadgeParams) => void
+  onParamsReset: () => void
+}
+
+function ReadyPreview({
+  badge,
+  template,
+  params,
+  onParamsChange,
+  onParamsReset,
+}: { badge: StudioSearchBadge; template: TemplateItem } & AdjustProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [notes, setNotes] = useState<string[]>([])
   const [failed, setFailed] = useState(false)
+  const colors = useMemo(() => (template.svg ? extractSvgColors(stripSlotText(template.svg)) : []), [template.svg])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -52,6 +69,7 @@ function ReadyPreview({ badge, template }: { badge: StudioSearchBadge; template:
       name: badge.name,
       value: badge.templateValue ?? '',
       longSidePx: 1024,
+      params,
     })
       .then((r) => {
         if (!cancelled) setNotes(previewNotes(r))
@@ -62,10 +80,11 @@ function ReadyPreview({ badge, template }: { badge: StudioSearchBadge; template:
     return () => {
       cancelled = true
     }
-  }, [badge.name, badge.templateValue, template.svg, template.slots])
+  }, [badge.name, badge.templateValue, template.svg, template.slots, params])
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
+      <div className="space-y-3">
       {failed && <PreviewMessage>미리보기를 그리지 못했어요. 템플릿을 다시 올린 뒤 시도해 주세요.</PreviewMessage>}
       {/* 실패해도 캔버스를 남겨 둔다. 지우면 템플릿을 다시 올렸을 때 다시 그릴 자리가 없다. */}
       <canvas ref={canvasRef} className={failed ? 'hidden' : 'w-full max-w-[480px] h-auto rounded-md border'} />
@@ -90,6 +109,16 @@ function ReadyPreview({ badge, template }: { badge: StudioSearchBadge; template:
           ))}
         </ul>
       )}
+      </div>
+      {template.slots && (
+        <BadgeAdjustPanel
+          params={params}
+          onChange={onParamsChange}
+          onReset={onParamsReset}
+          colors={colors}
+          slots={template.slots}
+        />
+      )}
     </div>
   )
 }
@@ -98,11 +127,14 @@ export default function BadgePreview({
   badge,
   templates,
   onGoToTemplates,
+  params,
+  onParamsChange,
+  onParamsReset,
 }: {
   badge: StudioSearchBadge | null
   templates: TemplateItem[]
   onGoToTemplates: () => void
-}) {
+} & AdjustProps) {
   let body: React.ReactNode
   if (!badge) {
     body = <PreviewMessage>배지를 검색해서 골라 주세요</PreviewMessage>
@@ -127,7 +159,14 @@ export default function BadgePreview({
         </div>
       )
     } else {
-      state = <ReadyPreview key={badge.id} badge={badge} template={template} />
+      state = <ReadyPreview
+          key={badge.id}
+          badge={badge}
+          template={template}
+          params={params}
+          onParamsChange={onParamsChange}
+          onParamsReset={onParamsReset}
+        />
     }
     body = (
       <div className="space-y-4">

@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgePreview, { previewNotes } from '../BadgePreview'
 import BadgePicker, { ALL_VALUE, type StudioSearchBadge } from '../BadgePicker'
+import { DEFAULT_TEMPLATE_BADGE_PARAMS } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
 import type { TemplateSlot, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
 
@@ -17,6 +18,9 @@ vi.mock('@/components/admin/ui/select', () => ({
   SelectContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   SelectItem: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }))
+
+// 글꼴 고르기의 Popover도 서버 렌더에서 컨텍스트를 쓰므로 단순 태그로 바꾼다.
+vi.mock('../TemplateFontField', () => ({ default: () => <div>글꼴 고르기</div> }))
 
 const slot = (): TemplateSlot => ({
   found: true, isText: true, x: 1, y: 2, fontFamily: 'Pretendard', fontSize: 48, fontWeight: null,
@@ -32,7 +36,14 @@ const badge = (over: Partial<StudioSearchBadge> = {}): StudioSearchBadge => ({
   templateValue: '21.1km', familyKey: null, ...over,
 })
 const preview = (b: StudioSearchBadge | null, t: TemplateItem[]) =>
-  renderToStaticMarkup(<BadgePreview badge={b} templates={t} onGoToTemplates={vi.fn()} />)
+  renderToStaticMarkup(<BadgePreview
+      badge={b}
+      templates={t}
+      onGoToTemplates={vi.fn()}
+      params={DEFAULT_TEMPLATE_BADGE_PARAMS}
+      onParamsChange={vi.fn()}
+      onParamsReset={vi.fn()}
+    />)
 
 describe('BadgePreview', () => {
   it('배지를 고르기 전', () => {

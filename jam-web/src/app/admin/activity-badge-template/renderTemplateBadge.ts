@@ -3,13 +3,23 @@
  * 글자 위치·크기 계산은 composeTemplate.ts(4-1)가, 글자 그리기는 asset-generator의 drawTextLayer가 맡는다.
  */
 import {
+  applyColorMap,
+  buildColorMap,
+  extractSvgColors,
+} from '@/lib/admin/activityBadgeTemplate/templateColors'
+import {
+  DEFAULT_TEMPLATE_BADGE_PARAMS,
+  styleSlot,
+  type TemplateBadgeParams,
+} from '@/lib/admin/activityBadgeTemplate/templateParams'
+import {
   layoutSlotText,
   parseLetterSpacingEm,
   resolveTemplateFont,
   stripSlotText,
   toTextLayerInput,
 } from '@/lib/admin/activityBadgeTemplate/composeTemplate'
-import type { TemplateSlotName, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import type { TemplateSlot, TemplateSlotName, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
 import { SYSTEM_DEFAULT_FONT, loadFontInBrowser } from '@/app/admin/asset-generator/assetGeneratorHelpers'
 import { drawTextLayer, type Canvas2DContextLike } from '@/lib/asset-generator/render'
 import type { TextLayerFont } from '@/lib/asset-generator/types'
@@ -27,6 +37,8 @@ export interface RenderTemplateBadgeInput {
   name: string
   value: string
   longSidePx: number
+  /** 색·글자 조정값. 없으면 기본값(조정 없음)으로 본다. */
+  params?: TemplateBadgeParams
 }
 
 /** 글자 하나씩 재서 더하고 글자 사이마다 자간을 더한다(drawTextLayer와 같은 방식). */
@@ -86,7 +98,14 @@ export async function renderTemplateBadge(
   const result: RenderTemplateBadgeResult = { fontFallbacks: [], shrunk: [], skipped: [] }
 
   const { slots, longSidePx } = input
-  const img = await loadImage(svgToDataUrl(stripSlotText(input.svg)))
+  const params = input.params ?? DEFAULT_TEMPLATE_BADGE_PARAMS
+  let svgText = stripSlotText(input.svg)
+  const { hueShift, saturation, lightness, overrides } = params.color
+  if (hueShift !== 0 || saturation !== 0 || lightness !== 0 || Object.keys(overrides).length > 0) {
+    const colors = extractSvgColors(svgText).map((c) => c.color)
+    svgText = applyColorMap(svgText, buildColorMap(colors, { hueShift, saturation, lightness, overrides }))
+  }
+  const img = await loadImage(svgToDataUrl(svgText))
   if (stale()) return result
 
   const viewWidth = slots.viewBoxWidth ?? img.naturalWidth
@@ -97,23 +116,41 @@ export async function renderTemplateBadge(
   const height = Math.max(1, Math.round(viewHeight * scale))
 
   // 글꼴 불러오기는 오래 걸릴 수 있어 캔버스를 건드리기 전에 모두 끝낸다.
-  const prepared: { slotName: TemplateSlotName; text: string; font: TextLayerFont }[] = []
+  const prepared: {
+    slotName: TemplateSlotName
+    text: string
+    font: TextLayerFont
+    originalFont: TextLayerFont
+    styled: TemplateSlot
+  }[] = []
   for (const slotName of ['name', 'value'] as const) {
-    const resolved = resolveTemplateFont(slots[slotName])
+    const styled = styleSlot(slots[slotName], params.text[slotName])
+    const text = slotName === 'name' ? input.name : input.value
+    // 예시 글자의 폭은 템플릿의 원래 글꼴로 재야 가운데가 옮겨 가지 않는다.
+    const original = resolveTemplateFont(slots[slotName])
+    let originalFont = original.font
+    if (!original.fallback) {
+      try {
+        await loadFontInBrowser(originalFont)
+        await loadFontForText(originalFont, slots[slotName].placeholder ?? '')
+      } catch {
+        originalFont = { family: SYSTEM_DEFAULT_FONT.family, weight: originalFont.weight }
+      }
+    }
+    const resolved = resolveTemplateFont(styled)
     let font = resolved.font
     let fallback = resolved.fallback
-    const text = slotName === 'name' ? input.name : input.value
     if (!fallback) {
       try {
         await loadFontInBrowser(font)
-        await loadFontForText(font, text + (slots[slotName].placeholder ?? ''))
+        await loadFontForText(font, text)
       } catch {
         font = { family: SYSTEM_DEFAULT_FONT.family, weight: font.weight }
         fallback = true
       }
     }
     if (fallback) result.fontFallbacks.push({ slot: slotName, requestedFamily: resolved.requestedFamily })
-    prepared.push({ slotName, text, font })
+    prepared.push({ slotName, text, font, originalFont, styled })
   }
   if (stale()) return result
 
@@ -124,31 +161,36 @@ export async function renderTemplateBadge(
   ctx.clearRect(0, 0, width, height)
   ctx.drawImage(img, 0, 0, width, height)
 
-  for (const { slotName, text, font } of prepared) {
+  for (const { slotName, text, font, originalFont, styled } of prepared) {
     const slot = slots[slotName]
-    if (slot.fontSize === null || slot.y === null) {
+    if (slot.fontSize === null || slot.y === null || styled.fontSize === null) {
       result.skipped.push(slotName)
       continue
     }
     const letterSpacingEm = parseLetterSpacingEm(slot.letterSpacing, slot.fontSize)
-    // 폭은 viewBox 단위 그대로의 글자 크기로 잰다.
-    ctx.font = `${font.weight} ${slot.fontSize}px "${font.family}"`
-    const spacingPx = letterSpacingEm * slot.fontSize
-    const placeholderWidth = measureWidth(ctx, slot.placeholder ?? '', spacingPx)
-    const contentWidth = measureWidth(ctx, text, spacingPx)
-    const layout = layoutSlotText({ slot, viewWidth, placeholderWidth, contentWidth })
+    // 예시 글자의 폭은 원래 글꼴·크기로, 넣을 글자의 폭은 조정한 글꼴·크기로 잰다(viewBox 단위 그대로).
+    ctx.font = `${originalFont.weight} ${slot.fontSize}px "${originalFont.family}"`
+    const placeholderWidth = measureWidth(ctx, slot.placeholder ?? '', letterSpacingEm * slot.fontSize)
+    ctx.font = `${font.weight} ${styled.fontSize}px "${font.family}"`
+    const contentWidth = measureWidth(ctx, text, letterSpacingEm * styled.fontSize)
+    const layout = layoutSlotText({
+      slot: { x: slot.x, textAnchor: slot.textAnchor, fontSize: styled.fontSize },
+      viewWidth,
+      placeholderWidth,
+      contentWidth,
+    })
     if (!layout) {
       result.skipped.push(slotName)
       continue
     }
     if (layout.shrunk) result.shrunk.push(slotName)
-    const middleOffsetEm = measureMiddleOffsetEm(ctx, slot.fontSize)
+    const middleOffsetEm = measureMiddleOffsetEm(ctx, styled.fontSize)
     drawTextLayer(
       ctx as unknown as Canvas2DContextLike,
       toTextLayerInput({
         content: text,
         font,
-        color: slot.fill,
+        color: styled.fill,
         letterSpacingEm,
         layout,
         baselineY: slot.y,
