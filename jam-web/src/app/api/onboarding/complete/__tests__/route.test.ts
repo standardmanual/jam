@@ -7,6 +7,7 @@
  *  - 기능 스위치(ONBOARDING_QUEST_ENABLED)가 꺼져 있으면 행을 만들지 않는다
  *  - 1단계(tribe_id 없이) 호출은 스위치와 무관하게 행을 만들지 않는다
  *  - 행 생성이 실패해도 온보딩 완료 응답은 그대로 200 성공이다
+ *  - 2단계 성공 시 챕터 1 시작과 완료 배지 지급을 부른다(티켓 20261115_2056). 409·1단계는 부르지 않고, 둘이 던져도 응답은 `{ success: true }`다
  *  - 2단계 갱신은 «트라이브가 비어 있을 때만» 저장한다(티켓 20261021_1247): 갱신문에 `tribe_id IS NULL` 조건이 걸리고,
  *    바뀐 행이 없으면(다른 요청이 먼저 저장) 이미 설정됨(409 ALREADY_SET)으로 응답하며 퀘스트 행을 만들지 않는다. 1단계 갱신에는 이 조건이 없다
  *
@@ -28,6 +29,13 @@ vi.mock('@/lib/onboarding-quest/config', () => ({
     return state.questEnabled
   },
 }))
+
+const chapterMocks = vi.hoisted(() => ({
+  ensure: vi.fn<(client: unknown, userId: string) => Promise<void>>(async () => {}),
+  grant: vi.fn<(client: unknown, userId: string) => Promise<string | null>>(async () => 'badge-id'),
+}))
+vi.mock('@/lib/chapter/start', () => ({ ensureChapterStarted: (c: unknown, u: string) => chapterMocks.ensure(c, u) }))
+vi.mock('@/lib/chapter/signup-reward', () => ({ grantSignupBadge: (c: unknown, u: string) => chapterMocks.grant(c, u) }))
 
 const questUpsertMock = vi.hoisted(() => vi.fn<(row: unknown, opts: unknown) => void>(() => {}))
 
@@ -128,6 +136,8 @@ beforeEach(() => {
   usersUpdate.error = null
   usersUpdate.currentTribeId = null
   vi.clearAllMocks()
+  chapterMocks.ensure.mockResolvedValue(undefined)
+  chapterMocks.grant.mockResolvedValue('badge-id')
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -226,5 +236,69 @@ describe('POST /api/onboarding/complete — 트라이브가 비어 있을 때만
     expect(res.status).toBe(200)
     expect(usersUpdate.payloads).toEqual([{ username: 'jam.user', display_name: '잼유저' }])
     expect(usersUpdate.iss).toEqual([])
+  })
+})
+
+describe('POST /api/onboarding/complete — 챕터 1 시작·완료 배지 지급 (티켓 20261115_2056)', () => {
+  const body2 = { username: 'jam.user', display_name: '잼유저', tribe_id: TRIBE_ID }
+
+  it('2단계 성공 시 챕터 1 시작과 완료 배지 지급을 이 유저로 한 번씩 부른다', async () => {
+    const res = await POST(request(body2))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ success: true })
+    expect(chapterMocks.ensure).toHaveBeenCalledTimes(1)
+    expect(chapterMocks.ensure.mock.calls[0][1]).toBe(USER_ID)
+    expect(chapterMocks.grant).toHaveBeenCalledTimes(1)
+    expect(chapterMocks.grant.mock.calls[0][1]).toBe(USER_ID)
+  })
+
+  it('퀘스트 기능 스위치가 꺼져 있어도 챕터 시작·배지 지급은 한다', async () => {
+    state.questEnabled = false
+
+    await POST(request(body2))
+
+    expect(chapterMocks.ensure).toHaveBeenCalledTimes(1)
+    expect(chapterMocks.grant).toHaveBeenCalledTimes(1)
+  })
+
+  it('1단계 호출은 챕터 시작도 배지 지급도 하지 않는다', async () => {
+    await POST(request({ username: 'jam.user', display_name: '잼유저' }))
+
+    expect(chapterMocks.ensure).not.toHaveBeenCalled()
+    expect(chapterMocks.grant).not.toHaveBeenCalled()
+  })
+
+  it('이미 설정됨(409 — 읽기 단계·경합 둘 다)이면 부르지 않아 재호출로 중복 지급이 없다', async () => {
+    usersUpdate.currentTribeId = 'tribe-0'
+    expect((await POST(request(body2))).status).toBe(409)
+
+    usersUpdate.currentTribeId = null
+    usersUpdate.updatedRows = []
+    expect((await POST(request(body2))).status).toBe(409)
+
+    expect(chapterMocks.ensure).not.toHaveBeenCalled()
+    expect(chapterMocks.grant).not.toHaveBeenCalled()
+  })
+
+  it('챕터 시작·배지 지급이 던져도 응답은 200 { success: true }다', async () => {
+    chapterMocks.ensure.mockRejectedValue(new Error('chapter down'))
+    chapterMocks.grant.mockRejectedValue(new Error('grant down'))
+
+    const res = await POST(request(body2))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ success: true })
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it('챕터 시작이 던져도 배지 지급과 퀘스트 행 생성은 이어지고 응답은 성공이다', async () => {
+    chapterMocks.ensure.mockRejectedValue(new Error('chapter down'))
+
+    const res = await POST(request(body2))
+
+    expect(res.status).toBe(200)
+    expect(chapterMocks.grant).toHaveBeenCalledTimes(1)
+    expect(questUpsertMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -16,7 +16,7 @@ import {
   DEV_LOGIN_USER_ID,
   isStagingOrDevEnv,
 } from '@/lib/env/test-accounts'
-import { ONBOARDING_QUEST_ENABLED } from '@/lib/onboarding-quest/config'
+import { ensureChapterStarted } from '@/lib/chapter/start'
 import { ensureDevLoginTribe } from '@/lib/tribe/dev-login-tribe'
 
 // 고정 테스트 유저 — jam-web/supabase/seed_dev_test_user.sql과 동일한 값 사용
@@ -78,21 +78,13 @@ export async function GET(request: NextRequest) {
   //    위의 환경 게이트(isStagingOrDevEnv) 안에서만 도달한다. 실패해도 로그인은 막지 않는다.
   await ensureDevLoginTribe(serviceClient, DEV_USER_ID)
 
-  // 5) 이 계정은 온보딩을 거치지 않아 퀘스트 행(`user_onboarding_quests`)이 없다. 행이 없으면 퀘스트 완료 처리가 바로 끝나
-  //    로컬·staging 확인 계정이 실제 2단계를 마쳐도 챕터 1을 받지 못한다(티켓 20261021_1248).
-  //    `/api/onboarding/complete`와 같은 형태로 행이 없을 때만 만든다(`ignoreDuplicates` — 있으면 건드리지 않는다).
-  //    위의 환경 게이트(isStagingOrDevEnv) 안에서만 도달하고, 실패해도 로그인은 막지 않는다.
-  if (ONBOARDING_QUEST_ENABLED) {
-    try {
-      const { error: questRowError } = await serviceClient
-        .from('user_onboarding_quests')
-        .upsert({ user_id: DEV_USER_ID }, { onConflict: 'user_id', ignoreDuplicates: true })
-      if (questRowError) {
-        console.error('[JAM!][dev-login] 테스트 계정 퀘스트 행 생성 실패:', questRowError.message)
-      }
-    } catch (err) {
-      console.error('[JAM!][dev-login] 테스트 계정 퀘스트 행 처리 중 오류:', err)
-    }
+  // 5) 이 계정은 온보딩을 거치지 않아 챕터 1이 시작돼 있지 않을 수 있다. 챕터가 비어 있을 때만 시작한다
+  //    (`ensureChapterStarted`는 멱등이다 — 티켓 20261115_2056, 이전의 퀘스트 행 upsert를 대체).
+  //    위의 환경 게이트(isStagingOrDevEnv) 안에서만 도달하고, 던지지 않으며 실패해도 로그인은 막지 않는다.
+  try {
+    await ensureChapterStarted(serviceClient, DEV_USER_ID)
+  } catch (err) {
+    console.error('[JAM!][dev-login] 테스트 계정 챕터 1 시작 중 오류:', err)
   }
 
   return NextResponse.redirect(`${origin}/`)
