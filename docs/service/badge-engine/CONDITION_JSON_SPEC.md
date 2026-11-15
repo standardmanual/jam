@@ -361,7 +361,7 @@ interface BadgeGateRequirement {
 
 | 필드 | 타입 | 설명 | 평가 방식 |
 |------|------|------|-----------|
-| `mission_reward` | `boolean` | 미션 완료(`grantMissionRewards`)로만 지급되는 배지 표시용 플래그 | badge-engine 내 **항상 fail**(사유: "미션 보상 배지 — 미션 완료로만 지급") + 발급 후보 조회 단계에서 아예 제외. 배지 상세화면이 이 플래그로 "미션 보상 배지" 안내를 표시. 온보딩 완료 배지(마이그레이션 196이 '퀘스트 클리어'로 넣었고, 마이그레이션 256이 이름을 「JAM!」으로 바꾼다. 적용은 6-2 2회와 함께, 티켓 20261021_1248)도 이 플래그를 쓴다 — 지급 경로는 온보딩 완료 판정이다(티켓 20260927_2130 T7b) |
+| `mission_reward` | `boolean` | 미션 완료(`grantMissionRewards`)로만 지급되는 배지 표시용 플래그 | badge-engine 내 **항상 fail**(사유: "미션 보상 배지 — 미션 완료로만 지급") + 발급 후보 조회 단계에서 아예 제외. 배지 상세화면이 이 플래그로 "미션 보상 배지" 안내를 표시. 가입 완료 배지(마이그레이션 196이 '퀘스트 클리어'로 넣었고, 마이그레이션 256이 이름을 「JAM!」으로 바꿨다)도 이 플래그를 쓴다 — 지급 경로는 가입 완료다(`POST /api/onboarding/complete` 2단계가 `grantSignupBadge`를 부른다, 티켓 20261115_2055·2056). 획득 조건 문장은 미션 문장이 아니라 «트라이브를 고르고 가입을 마치면 받을 수 있는 배지예요»다 |
 | `follower_count` | `number` | [JAM! 카테고리] 팔로워 수 ≥ 조건값 | badge-engine 내 **항상 fail**(measurable 필드가 없어 "평가 가능한 조건 없음") — `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 별도 판정·발급 |
 | `following_count` | `number` | [JAM! 카테고리] 팔로잉 수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 판정 |
 | `daily_sync_count` | `number` | [JAM! 카테고리] 그날(KST) 누적 동기화 성공 횟수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `syncStravaActivities()`에서 `synced > 0`일 때만 판정(카운터는 `user_daily_sync_counts` + `increment_daily_sync_count()` RPC) |
@@ -388,7 +388,7 @@ interface BadgeGateRequirement {
 | `cross_tribe_combine_success_count` | `number`(정수 ≥1) | [JAM! 카테고리] 믹스 성공 기록(`user_combine_success_logs`) 중 재료(`ingredient_badge_ids`)가 `badges.tribe_id` 기준 **2개 이상 트라이브**에 걸친 행 수 ≥ 조건값. 트라이브가 없는 재료는 트라이브로 세지 않는다 | 위와 동일 — `POST /api/combine` 성공 뒤 판정 |
 | `jam_total_earned` | `number`(정수 ≥1) | [JAM! 카테고리] 지금까지 **모은** 잼 ≥ 조건값. `jam_wallets.total_earned`(활동 잼, 가진 양 `balance`이 아니라 쓴 잼이 줄이지 않는다)에 `jam_service_daily.amount` 전체 합(서비스 활동 잼)을 더한다. 소멸한 잼은 세지 않는다. 지갑이 없어도 서비스 활동 잼 합은 센다 | 위와 동일 — 잼 정산이 있는 동기화 끝(`JAM_SYNC_TRIGGERS`)과 서비스 활동 잼 지급 직후(`jamTriggersForServiceJam`)에서 판정 |
 | `jam_weekly_earned` | `number`(정수 ≥1) | [JAM! 카테고리] 월~일(KST) 한 주에 모은 잼의 **역대 최고 주** 값 ≥ 조건값. `jam_daily_earned`(활동한 날(KST)별 모은 양)와 `jam_service_daily`(서비스 활동 잼의 날짜별 양)를 날짜별로 더한 뒤 주별로 합산한다 | 위와 동일 — 동기화 끝과 서비스 활동 잼 지급 직후에 판정 |
-| `chapter_reached` | `number`(정수 ≥1) | [JAM! 카테고리] 도달한 챕터 번호 ≥ 조건값. `user_chapters.chapter_no`(행이 없거나 퀘스트 전 NULL이면 0) | 위와 동일 + 챕터 오름 직후 — 챕터가 오르면 오름 처리(`lib/chapter/rise.ts`, 티켓 20261019_1316)가 이 지표만 바로 판정한다. 점수 호출(`chapter_add_score`, 티켓 20261019_1315)과 챕터 1 시작(`chapter_start`, 퀘스트 완료 처리가 부름)이 오름 처리를 부르고, 동기화 안의 잼 정산에서 난 오름만 동기화 끝 판정이 이어서 읽어 오름 직후 판정을 건너뛴다. 챕터 조건 배지는 «배지 받기» 챕터 점수에서 뺀다 |
+| `chapter_reached` | `number`(정수 ≥1) | [JAM! 카테고리] 도달한 챕터 번호 ≥ 조건값. `user_chapters.chapter_no`(행이 없거나 챕터 전 NULL이면 0) | 위와 동일 + 챕터 오름 직후 — 챕터가 오르면 오름 처리(`lib/chapter/rise.ts`, 티켓 20261019_1316)가 이 지표만 바로 판정한다. 점수 호출(`chapter_add_score`, 티켓 20261019_1315)과 챕터 1 시작(`chapter_start`, 가입 완료 라우트가 부름)이 오름 처리를 부르고, 동기화 안의 잼 정산에서 난 오름만 동기화 끝 판정이 이어서 읽어 오름 직후 판정을 건너뛴다. 챕터 조건 배지는 «배지 받기» 챕터 점수에서 뺀다 |
 | `active_week_streak` | `number`(정수 ≥1) | [JAM! 카테고리] 한 주(월~일, KST)에 활동한 날이 `active_week_min_days`(없으면 1) 이상인 주가 이어진 **최장 주 수** ≥ 조건값. 활동은 인정된 활동(`filter_reason IS NULL`, 가입한 날 이후, JAM! 종목·걷기 게이트 통과)이고 체크인만 한 날은 세지 않는다 | badge-engine 내 **항상 fail** — `jamActionBadges.ts`의 `evaluateJamActionBadges()`가 동기화 끝(`JAM_SYNC_TRIGGERS`)에서 판정(티켓 20261019_0542) |
 | `active_week_min_days` | `number`(정수 1~7) | [JAM! 카테고리] `active_week_streak`의 **보조 키**(선택). «채운 주»로 치는 한 주의 최소 활동일. 없으면 1 | 지표가 아니라 `active_week_streak` 배지의 기준이다 — 단독으로 저장할 수 없다(짝 필드 `active_week_streak`) |
 | `return_streak_weeks` | `number`(정수 ≥1) | [JAM! 카테고리] 7일 이상 쉬었다가(두 활동일 사이에 활동 없는 날 ≥ 7, 코드 상수 `RETURN_REST_DAYS`) 돌아온 뒤, **돌아온 날이 속한 주를 1주로** 바로 다음 주들에 활동이 이어진 연속 주 수의 최댓값 ≥ 조건값. 첫 활동은 복귀가 아니다 | 위와 동일 — 동기화 끝에서 판정 |
@@ -609,7 +609,7 @@ interface BadgeGateRequirement {
 | 케이던스 단위 | ✅ 러닝·트레일러닝만 ×2 정규화(양발 합계 spm), 사이클은 rpm 그대로 — 저장 시점(신규 싱크+백필)에 적용(티켓 20260906_0110 ⑤). 기존 저장분은 마이그레이션 141로 재정규화 완료 |
 | `negative_split` (`splits_metric`) | ❌ **v5 1차 범위 밖** (티켓 20260905_0029 확정) — 상세 엔드포인트에만 있어 활동 1건당 호출 1회가 든다(백필 697회). 상한을 두면 배지가 비결정적이 되므로 별도 티켓으로 분리했다. `StravaDetailedActivity` 타입은 신설됐지만 **수집하지 않는다** |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
-| `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조. 온보딩 퀘스트 완료 배지도 이 플래그를 쓴다(지급 경로는 온보딩 완료 판정, 티켓 20260927_2130 T7b) |
+| `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조. 가입 완료 배지도 이 플래그를 쓴다(지급 경로는 가입 완료, 티켓 20261115_2056) |
 | `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존. 미션 조건으로는 쓰지 않는다(저장 거절, §7.2) |
 | UTC vs KST 경계 | ✅ 시간대(`time_range`·`distinct_time_bands`)·요일·월·계절·`day_of_month`와 횟수 5종(`total_count`·`weekly_count`·`monthly_count`·`season_count`·`season_count_all`)은 KST 날짜 기준이다(티켓 20261018_1815 1회). 연속(`streak_days`·`weekly_streak`)·휴식 4종(공백 일수)·활동일(`active_days_count`)·전월 대비 배수(`month_over_month_ratio`)와 회차 계산(`repeat_count`)의 일·주 키, 미션 복합 조건의 주·달·요일 개수도 같은 KST 날짜를 쓴다(티켓 20261019_1312 2회). 해외 활동도 한국 시각의 날로 세고 `startDateLocal`은 날 기준에 쓰지 않는다. 랭킹 `total_count`는 활동 건수를 세므로 이 기준과 단위가 다르다(티켓 20261018_2303) |
 

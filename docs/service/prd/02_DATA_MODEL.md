@@ -75,7 +75,7 @@ code:
                 users ─1:N─ capsule_unseen_results (동기화에서 자동으로 열린 결과 중 아직 보지 않은 것 — 새 행은 더 쓰지 않음, 티켓 20261106_1028)
                 users ─1:N─ capsule_pending_rewards (인벤토리가 차서 보류한 캡슐 보상, 유저당 최대 2개, 마이그레이션 300 표·302 함수)
                 jam_forfeit_weekly (뷰: jam_transactions의 capsule_forfeit 줄을 주 단위로 합침, 마이그레이션 302. 2026-11-05부터 새 줄이 생기지 않는다)
-                capsule_policy(싱글톤: 개수·확률·보정·퀘스트 전 값) / capsule_chapter_costs (챕터별 채울 양 두 가지·100% 횟수)
+                capsule_policy(싱글톤: 개수·확률·보정·챕터 전 값 `pre_quest_*`) / capsule_chapter_costs (챕터별 채울 양 두 가지·100% 횟수)
 
 [소셜]          users ─N:M(팔로우)─ users (user_follows)
                 user_activity_feed (배지/드랍/미션 이벤트 통합 피드)
@@ -126,14 +126,8 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 오늘(KST)까지의 날짜 차를 세고, 주간 활동일·최근 30일 활동일·같은 지점 체크인 일수는 가입한 날 이후 기록만 센다
 (티켓 20261001_0633, [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리).
 
-### user_onboarding_quests (신규)
-온보딩 퀘스트(1~7단계, 연출용) 유저별 진행 상태(마이그레이션 195, 티켓 20260927_2124/상위 20260927_2123). `user_id`(PK, `users(id)` FK, 유저 삭제 시 CASCADE), `step_progress`(단계 키 `sync`·`bag`·`pickup`·`mix_fail`·`mix_success`·`drop`·`browse` → 완료 시각 ISO 문자열 JSONB, 기본값 `{}`), `skipped_at`(건너뛰기 T8 시각, 있으면 완료 배지 불가), `completed_at`(«연출 7단계를 마쳤거나 건너뜀»과 «실제 2단계 완료»가 둘 다 된 시각 — 티켓 20261021_1248부터. 그 전에는 실제 첫 활동 유입 시각이었다), `reward_granted_at`(완료 배지·100P 지급 시각 T7, 멱등 기준), `created_at`. 실제 2단계는 이 표에 기록하지 않고 `strava_activities`·`inventory_item_events`에서 읽는다(`lib/onboarding-quest/real-steps.ts`).
-
-행 생성 시점은 `POST /api/onboarding/complete`가 `onboarding_completed_at`을 처음 기록하는 순간(service_role, 이미 있으면 무시)이며, **기능 배포 이후 온보딩 2단계를 마친 신규 유저에게만** 만든다 — 기존 유저에게 소급 생성하지 않는다(백필 없음). 행의 존재 자체가 "퀘스트 대상"의 기준이다. 퀘스트 1~7단계는 연출용 데이터이고, 이 테이블 외의 실제 테이블(`inventory_items`·`poi_drops`·`user_activity_badges`·`point_transactions`)에는 퀘스트 때문에 행을 만들지 않는다.
-
-RLS는 켜고 본인 행 SELECT만 허용, INSERT·UPDATE·DELETE 정책은 없다(서버 service_role 경로 전용).
-
-**기능 스위치**: `src/lib/onboarding-quest/config.ts`의 `ONBOARDING_QUEST_ENABLED`가 `false`면 온보딩을 완료해도 행을 만들지 않는다. 하위 티켓들이 순차로 프로덕션에 나가도 스위치를 켜기 전에는 신규 유저에게 반쯤 만든 퀘스트가 보이지 않게 하기 위함이며, 스위치는 상위 티켓의 마지막 단계에서 켠다.
+### user_onboarding_quests (삭제됨)
+온보딩 퀘스트 진행 표(마이그레이션 195)였고 퀘스트 기능을 걷으면서 마이그레이션 343(티켓 20261115_2059)으로 삭제했다. 삭제 전 내용은 백업 표 `user_onboarding_quests_backup_20261115`에 남는다. 챕터 1 시작과 완료 배지 「JAM!」 지급은 이 표 없이 가입 완료 시점에 일어난다(9-3절 «챕터 1 시작과 오름 처리»).
 
 ### strava_connections
 원안과 거의 동일. `access_token`/`refresh_token` 암호화 저장, `backfill_completed` 유지.
@@ -405,7 +399,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
   - CHECK `inventory_items_lock_consistent`: 잠긴 개체는 `unlock_required`·`lock_reason`이 있고 `unlock_filled <= unlock_required`, `unlocked_at`이 비어 있다.
   - **지급 함수** `grant_inventory_item_locked(p_inventory_id, p_badge_id, p_obtained_by, p_expires_at, p_locked, p_lock_reason, p_unlock_required)`
     (`SECURITY DEFINER`, `service_role`만 실행, 뒤 네 인자는 선택): 옛 `grant_inventory_item`을 그대로 부른 뒤 같은 트랜잭션에서 잠김 칸을 채운다.
-    `p_locked`가 true인데 까닭이나 필요한 양이 없으면 `{ok: false, reason: 'invalid_lock_args'}`다. 옛 지급 경로(믹스·미션 보상·픽업·퀘스트)는
+    `p_locked`가 true인데 까닭이나 필요한 양이 없으면 `{ok: false, reason: 'invalid_lock_args'}`다. 옛 지급 경로(믹스·미션 보상·픽업)는
     옛 함수를 그대로 부르고 그 개체는 열린 채다. 동기화 발급(`syncIssueRun.ts`)과 보류 고르기(`resolve_sync_pending_items`)만 새 함수를 쓴다.
   - **트리거** `trg_inventory_items_reject_locked`: 잠긴 개체의 `slotted_in`(컬렉션 꽂기)·`dropped_at` 갱신을 `locked_item_cannot_be_slotted`·
     `locked_item_cannot_be_dropped` 오류로 거부한다. 장착·교체의 마지막 방어선이다. 유저 드랍(`create_user_drop`)은 `dropped_at`을 쓰지 않고
@@ -464,7 +458,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
     본문은 그대로이고 원장 열 하나만 더 쓴다. 기존 호출은 이름이나 위치로 부르던 그대로 동작한다(`admin_deduct_points`·`slot_item_into_book`은 8개 인자를 위치로 부르고, 9번째가 기본값이라 맞는다).
   - **트리거** `trg_inventory_items_fix_unlock_points`(BEFORE INSERT OR UPDATE OF `locked`, 함수 `inventory_items_fix_unlock_points`, SECURITY DEFINER, 304): 잠긴 채로 되는 순간 `unlock_points_required`가 비어 있으면 값을 채운다.
     값만 채우고 예외를 던지지 않으며, 이미 값이 있으면 건드리지 않는다. 잠금을 입히는 경로가 많아(`grant_inventory_item_locked`, 캡슐 세 함수, 보류 고르기, 미션·믹스 보상, 시스템 드랍) 경로마다 값을 넘기지 않고 이 한 곳에서 덮는다.
-    - **퀘스트의 첫 잠긴 배지는 0**: 그 유저에게 챕터가 아직 없고(`user_chapters`에 `chapter_no`가 있는 행이 없음) 이 개체 말고는 그 유저에게 `lock_reason`이 있는 개체가 없으면 0으로 고정한다.
+    - **챕터가 없는 유저의 첫 잠긴 배지는 0**(가입 즉시 챕터 1이 시작되므로 옛 유저나 시작이 실패한 유저에게만 남는 경우다): 그 유저에게 챕터가 아직 없고(`user_chapters`에 `chapter_no`가 있는 행이 없음) 이 개체 말고는 그 유저에게 `lock_reason`이 있는 개체가 없으면 0으로 고정한다.
       «첫 하나»가 두 경로에서 동시에 생기지 않도록 유저 단위 트랜잭션 어드바이저리 잠금(`locked_first_free:<user_id>`)을 건다. 개체가 아직 유저에게 배정되지 않았으면(`inventory_id` NULL) 이 판정을 건너뛰고 정책값을 넣는다.
       캡슐의 `preQuest`(챕터 없음)와 같은 조건이다. 한계: 버려졌거나 드랍된 개체도 «잠긴 적 있는 개체»로 센다.
     - 그 밖에는 배지 등급별 `jam_policy.locked_points_*`(등급이 비면 common). 배지나 정책 행이 없으면 비워 둔다.
@@ -476,7 +470,7 @@ DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_a
   - 잔액 방어: 지갑 잔액이 0 아래로 내려가지 못하게 하는 DB 제약(266)은 출시 뒤에 걸린다. 그 전에는 이 함수의 지갑 잠금과 잔액 확인이 유일한 방어다(`admin_deduct_points`와 같은 방식).
   - 앱(`lib/inventory/lockedItemFill.ts` `openLockedItem`·`getLockedItemStatus`, 계약 `lockedItemFill-contract.ts`, 티켓 20261028_1737 2회): `POST /api/inventory/items/[itemId]/open`이 이 함수를 부르고 응답에 `pointsSpent`·`pointBalance`를 싣는다.
     `insufficient_points`는 409이며 `required`·`balance`를 싣는다(옛 `not_full` 분기는 새 함수가 돌려주지 않는 죽은 경로이고 코드에 남아 있다). `GET .../lock`은 `pointsRequired`(개체에 고정된 값, 비었고 잠겨 있으면 등급별 정책값, 열린 개체는 null)와
-    `pointBalance`(지갑이 없으면 0)를 더 싣는다. 열기가 확정된 뒤 서비스 활동 잼(`locked_unlock`), 퀘스트 완료 처리, 포인트 소식, 피드는 그대로 이어진다.
+    `pointBalance`(지갑이 없으면 0)를 더 싣는다. 열기가 확정된 뒤 서비스 활동 잼(`locked_unlock`), 포인트 소식, 피드는 그대로 이어진다.
   - 권한: `locked_item_open_points`와 9개 인자 `award_points`는 `authenticated`·`anon` 실행이 막혀 있고 `service_role`만 실행한다.
   - 되돌림 SQL은 304 파일 끝의 주석에 있다. 새 함수·트리거를 지우고 `award_points`를 8개 인자 본문으로 되돌린다. 이미 남은 차감 줄은 지워지지 않는다.
 
@@ -1139,7 +1133,7 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 | 아이템 배지: 잠긴 채 받은 개체 | 열 때 일련번호마다 한 번, `point_awarded_at`으로 중복 방지 | DB `locked_item_open_points`(마이그레이션 304, 옛 `locked_item_open`(235)은 마이그레이션 305에서 지웠다) |
 | 컬렉션 보상 배지(`item_books.reward_badge_id`, 등급 보상 배지 포함) | `user_activity_badges`에 **새로 넣을 때만**. 이미 보유·23505는 지급 없음, 보정분도 새로 넣을 때는 준다 | `lib/itembook/checker.ts`(`issueItemBookRewardBadges`, 동기화 보정과 장착 직후 발급이 함께 쓴다) |
 | 미션 보상 배지 | 미션 완료 때 | `lib/missions/rewards.ts` |
-| 퀘스트 완료 배지(「JAM!」) | «연출 끝 또는 건너뜀 AND 실제 2단계 완료»가 된 뒤 한 번, 건너뛰지 않은 유저에게만 | `lib/onboarding-quest/completion.ts` |
+| 가입 완료 배지(「JAM!」) | 트라이브를 고르고 가입을 마칠 때 한 번(배지 insert의 23505로 1회 보장) | `lib/chapter/signup-reward.ts`(`grantSignupBadge`) |
 
 포인트가 0인 배지는 지급을 부르지 않는다. 믹스의 레시피 보상(`combine_recipe_reward`)과 실패 보상(`combine_fail_reward`), 컬렉션 완성 포인트(`item_book_completion_point_reward`), 미션 포인트(`mission_point_reward`)는 이 표의 배지 포인트가 아니다. 공개 전 레시피의 운영자 시험 믹스도 개체를 실제로 주므로 같은 후속이 배지 포인트를 준다(시험 믹스의 레시피 보상 포인트 지급 변경은 이번 범위가 아니다).
 
@@ -1276,13 +1270,13 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다(221이 만든 표 6개 가운데 `chapter_names`는 챕터를 트라이브와 상관없이 숫자로만 표기하기로 한 2026-10-21 결정으로 마이그레이션 257에서 삭제해 5개가 남았다). 점수를 주는 연결은 «점수 호출 지점과 원천 id», 챕터 1 시작·오름 처리·소식·챕터 배지 판정은 «챕터 1 시작과 오름 처리»(티켓 20261019_1316)다. 연출·프로필 표시는 묶음 5(5-7).
 
 #### chapter_definitions
-`chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지). 편집 화면은 어드민 «밸런스 설정»의 «챕터» 구역이다(`/admin/balance#chapter`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 챕터 2~10의 `required_score`만 칸 이름 `required:<챕터>`로 편집하고(앞 챕터보다 커야 하며 챕터 1은 0으로 고정), 저장하면 바뀐 행의 `updated_at`을 직접 올린다(갱신 트리거가 없다). 필요 점수를 낮추면 이미 점수가 넘은 유저는 바로 오르지 않고 다음에 점수가 쌓일 때 오른다(`chapter_add_score`만 챕터를 올린다). `user_chapters`·`chapter_ups`의 외래키가 이 표를 가리켜 유저가 있는 챕터는 지울 수 없으므로 줄이기는 만들지 않고, 행을 더하는 챕터 더하기는 후속 티켓 20261022_1718이다.
+`chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(가입 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지). 편집 화면은 어드민 «밸런스 설정»의 «챕터» 구역이다(`/admin/balance#chapter`, 티켓 20261022_1133, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 챕터 2~10의 `required_score`만 칸 이름 `required:<챕터>`로 편집하고(앞 챕터보다 커야 하며 챕터 1은 0으로 고정), 저장하면 바뀐 행의 `updated_at`을 직접 올린다(갱신 트리거가 없다). 필요 점수를 낮추면 이미 점수가 넘은 유저는 바로 오르지 않고 다음에 점수가 쌓일 때 오른다(`chapter_add_score`만 챕터를 올린다). `user_chapters`·`chapter_ups`의 외래키가 이 표를 가리켜 유저가 있는 챕터는 지울 수 없으므로 줄이기는 만들지 않고, 행을 더하는 챕터 더하기는 후속 티켓 20261022_1718이다.
 
 #### chapter_score_rules (마이그레이션 305에서 지웠다)
 `activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다. 편집 화면(티켓 20261022_1133의 활동 12종 `rule:<활동>:points|cap|ratio` 칸)은 티켓 20261028_1742 2회에서 걷었다. 지금 코드는 이 표를 읽지도 쓰지도 않는다(삭제는 3회).
 
 #### user_chapters
-유저당 1개(첫 점수·시작 때 생성). `chapter_no`(NULL=퀘스트 전), `total_score`, `capsule_full_count`(INTEGER NOT NULL DEFAULT 0, CHECK 0 이상 — 지금 챕터에서 캡슐이 100%에 닿은 횟수, 챕터가 오르면 0으로 돌아간다. 마이그레이션 300, 티켓 20261028_1732. 세는 곳은 `capsule_auto_fill`이고 캡슐이 100%에 처음 닿는 호출에서 센다. 마이그레이션 302 이전에는 `capsule_open_counted`가 열 때 셌다. 아래 9-4). 본인만 SELECT.
+유저당 1개(첫 점수·시작 때 생성). `chapter_no`(NULL=챕터 전), `total_score`, `capsule_full_count`(INTEGER NOT NULL DEFAULT 0, CHECK 0 이상 — 지금 챕터에서 캡슐이 100%에 닿은 횟수, 챕터가 오르면 0으로 돌아간다. 마이그레이션 300, 티켓 20261028_1732. 세는 곳은 `capsule_auto_fill`이고 캡슐이 100%에 처음 닿는 호출에서 센다. 마이그레이션 302 이전에는 `capsule_open_counted`가 열 때 셌다. 아래 9-4). 본인만 SELECT.
 
 #### chapter_score_events (마이그레이션 305에서 지웠다)
 점수 기록(append-only). `activity_kind`, `source_id`(호출부가 정한 UUID, FK 없음), `occurred_on`(활동한 날 KST), `unit_amount`(호출된 양), `raw_score`(상한 적용 전), `counted_score`(실제로 센 점수). `UNIQUE (activity_kind, source_id)`로 같은 활동은 한 번만 센다. 본인만 SELECT.
@@ -1293,7 +1287,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 > 점수·챕터 변경은 전부 두 RPC(SECURITY DEFINER, service_role 전용)로만 처리한다.
 > - (마이그레이션 305에서 지웠다) `chapter_add_score(p_user_id, p_activity_kind, p_source_id, p_amount, p_occurred_on)`: 점수 계산(주 월~일은 활동한 날 기준, 상한 안은 그대로·넘는 부분은 `over_cap_ratio`, 소수점 내림) + 점수 기록 + 누적 점수 반영 + 챕터가 있으면 올릴 수 있는 만큼 상승. 같은 `(활동 종류, 원천)`은 오류 없이 이미 센 결과를 돌려주고, 미래 날짜는 거절한다. 반환: `score_added`, `current_chapter`, `reached_chapters`.
 > - `chapter_start(p_user_id)`: 챕터가 비어 있으면 챕터 1로 만들고 쌓인 점수로 오를 챕터까지 한 번에 올린다. 이미 챕터가 있으면 아무것도 하지 않는다. 같은 모양을 돌려준다(`score_added`=0).
-> - 챕터는 내려가지 않는다. 퀘스트 전 점수는 버리지 않고 쌓았다가 챕터 1 때 함께 계산한다(가정, SQL 실행 승인 전 재확인).
+> - 챕터는 내려가지 않는다. 챕터가 없는 동안의 점수는 버리지 않고 쌓았다가 챕터 1 때 함께 계산한다(가정, SQL 실행 승인 전 재확인).
 > - 점수 가산을 부를지 말지(챕터 배지·포인트 조건 배지 제외, 자기 드랍 줍기 제외, 이용 정지 중 차단)는 부르는 쪽 책임이다.
 
 #### 점수 호출 지점과 원천 id (티켓 20261019_1315)
@@ -1314,7 +1308,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `locked_item_badge_open` | `lib/inventory/lockedItemFill.ts` `openLockedItem`(`locked_item_open_points` RPC 직후) | 개체 id(`inventory_items.id`) | 생략 | 연결됨(1회) |
 | `drop` | `app/api/drops/route.ts` POST(성공 뒤 `after()` 콜백) | `poi_drops.id`(`drop_id`) | 생략 | 연결됨(1회). 유저 드랍만(시스템 드랍은 앰비언트 배치라 이 라우트를 거치지 않는다) |
 | `pickup` | `app/api/drops/[dropId]/pickup/route.ts`(성공 뒤 `after()` 콜백) | 경로의 `dropId` | 생략 | 연결됨(1회). `isSelfPickup`이면 세지 않고, 시스템 드랍과 잠긴 채 받은 픽업은 센다. 드랍과 픽업은 활동 종류가 달라 같은 드랍 id로도 키가 겹치지 않는다 |
-| `badge_receive` | 새 발급 6곳(엔진 새 발급 `lib/badge-engine/index.ts`·`usageBadges.ts` `issueQualifyingBadges`·미션 보상 `lib/missions/rewards.ts`·컬렉션 보상 `lib/itembook/checker.ts`·온보딩 완료 `lib/onboarding-quest/completion.ts`·체크인 첫 획득 `lib/strava/sync.ts`) → 공용 함수 `lib/chapter/badgeReceive.ts` | (유저, 배지) 결정적 id. 반복형의 새 회차는 (유저, 배지, 활동 id) | 생략 | 새 발급 6곳은 연결됨(2a회). 반복형의 새 회차는 엔진의 `increment` 경로와 첫 발급 경로(같은 평가의 나머지 새 회차)에 연결됨(2b회, `awardBadgeReceiveOccurrenceScores`) |
+| `badge_receive` | 새 발급 6곳(엔진 새 발급 `lib/badge-engine/index.ts`·`usageBadges.ts` `issueQualifyingBadges`·미션 보상 `lib/missions/rewards.ts`·컬렉션 보상 `lib/itembook/checker.ts`·가입 완료 `lib/chapter/signup-reward.ts`·체크인 첫 획득 `lib/strava/sync.ts`) → 공용 함수 `lib/chapter/badgeReceive.ts` | (유저, 배지) 결정적 id. 반복형의 새 회차는 (유저, 배지, 활동 id) | 생략 | 새 발급 6곳은 연결됨(2a회). 반복형의 새 회차는 엔진의 `increment` 경로와 첫 발급 경로(같은 평가의 나머지 새 회차)에 연결됨(2b회, `awardBadgeReceiveOccurrenceScores`) |
 | `collection_complete_<등급>` | 컬렉션 장착 라우트 `app/api/itembooks/[id]/slot/route.ts` POST(성공 뒤 `after()` 콜백)와 동기화 보정 `lib/itembook/checker.ts`(`completedIds`마다, 완성 기록 upsert 뒤) → 공용 `lib/chapter/collection.ts` | (유저, 컬렉션, 등급) 결정적 id. 등급형이 아닌 컬렉션은 등급 `common` | 생략 | 연결됨(3회). 아래 «컬렉션 완성·믹스 성공·미션 완료 점수» |
 | `mix_success` | `lib/combine/index.ts` `recordCombineSuccess`(성공 기록 RPC 직후) → `lib/chapter/mix.ts` | `user_combine_success_logs.id`(`record_combine_success_with_id`가 돌려준 id) | 생략 | 연결됨(3회). 시험 믹스는 기록이 없어 세지 않고 빈손 성공은 센다 |
 | `mission_complete` | `lib/missions/checker.ts`(`mission_complete` RPC가 `completed`를 돌려준 직후, 보상 지급 앞) | `user_mission_completions.id`(`completionId`) | 생략 | 연결됨(3회). `already_completed`·거절·계약 밖 응답은 세지 않는다 |
@@ -1363,22 +1357,19 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 이 소절은 1회(챕터 1 시작·오름 처리·소식·챕터 배지 즉시 판정)다. 읽기 함수(내 챕터·이름·다음 챕터까지 비율, 다른 유저용)와 이름 조회는 아래 «챕터 읽기»(2회)다. 챕터 전체의 기능 정의는 [챕터 PRD](chapter/PRD.md)다.
 
 **챕터 1 시작** (`src/lib/chapter/start.ts`)
-- 호출 지점은 `lib/onboarding-quest/completion.ts`의 `recordOnboardingQuestCompletion` 한 곳이다. 호출처는 4곳이고 시그니처는 그대로이며 모두 service 클라이언트를 넘긴다: `lib/strava/sync.ts`의 `syncStravaActivities`, `app/api/onboarding-quest/step/route.ts`, `skip/route.ts`, 그리고 **잠긴 개체 열기(`lib/inventory/lockedItemFill.ts`)가 확정된 직후**(챕터 점수를 센 다음, 티켓 20261021_1248)다. 캡슐 열기(`lib/capsule/open.ts`)는 더는 퀘스트 단계가 아니라 부르지 않는다(티켓 20261028_1738). 동기화는 처리한 인정 활동이 1건 이상일 때만 부르고, 그 호출은 동기화 끝 판정(`processFetchedActivities` 안) **뒤**에 일어난다. 열기 쪽 호출은 던지지 않고 열기 결과·응답을 바꾸지 않는다.
-- **챕터 1 시작 시점은 실제 2단계가 끝난 순간이다**(티켓 20261021_1248, 캡슐 열기 단계 삭제 20261028_1738, 운영 로직 2.2절). `lib/onboarding-quest/real-steps.ts`의 `readRealSteps`가 ① `strava_activities`(걸러지지 않은 활동, `filter_reason IS NULL`) ② `inventory_item_events`(`event_type='unlocked'`이고 `user_id`가 그 유저)에 각각 행이 1건 이상 있는지 읽고, 모두 있으면(`isRealStepsDone`) `ensureChapterStarted`가 `chapter_start(p_user_id)`를 부른다. 연출 7단계가 끝났는지·건너뛰었는지와 무관하다. 하나라도 읽지 못하면 던져서 «마쳤다»로 보지 않고 시작하지 않는다.
-- 완료 기록(`completed_at`)은 «연출 7단계를 마쳤거나 건너뜀» **그리고** «실제 2단계 완료»가 둘 다 된 뒤 조건부 갱신으로 한 번 남긴다. 보상(완료 배지 「JAM!」과 포인트 100)은 그 갱신이 행을 바꾼 호출에서 건너뛰지 않은 유저에게만 나간다. 연출 전에 실제 2단계를 마치면 챕터 1은 바로 받고 보상은 연출을 마친 뒤에 나가며, 건너뛴 유저는 챕터 1만 받는다. 동시 호출에 져서 바뀐 행이 없으면 보상은 이긴 호출이 지급한다(챕터 시작은 멱등이라 둘 다 지나도 된다).
-- 응답 `{score_added, current_chapter, reached_chapters}`는 `start.ts` 안의 계약 검사(`toStartRow`)로 읽는다. 시작한 뒤에도 챕터가 비어 있는 응답은 계약 밖이다. `reached_chapters`는 챕터 1과, 퀘스트 전에 쌓인 점수로 한 번에 오른 챕터를 모두 담고, 비어 있지 않으면 오름 처리로 넘긴다.
-- **재시도 경로** (사용자 결정 4): `chapter_start`가 실패하면 다음 호출이 다시 시도한다. 완료 기록이 없는 유저는 실제 2단계가 끝난 호출마다, 완료 기록이 있는 유저는 들어올 때마다(보상 재시도 분기와 완료 있음 분기 포함) `ensureChapterStarted`가 `user_chapters.chapter_no`를 읽어 **비어 있을 때(행 없음·NULL)만** `chapter_start`를 다시 부른다. 챕터가 있으면 RPC를 부르지 않는다(조회 한 번만 늘어난다). 완료 기록이 있는 유저는 실제 단계를 다시 읽지 않는다. 옛 퀘스트를 마친 유저도 다음 호출에서 챕터 1을 받는다.
-- 부르지 않는 경우: 퀘스트 행 없음, 실제 2단계가 하나라도 남음(연출을 다 마쳤어도), 실제 단계를 읽지 못함, `ONBOARDING_QUEST_ENABLED`가 꺼짐. 연출 도중이라도 실제 2단계가 끝났으면 부른다.
+- **챕터 1 시작 시점은 가입 완료 순간이다**(티켓 20261115_2055·2056, 운영 로직 2.2절). 호출 지점은 `app/api/onboarding/complete/route.ts`의 2단계(트라이브 저장 성공 직후)이고, 거기서 `ensureChapterStarted`가 `chapter_start(p_user_id)`를 부른다(service 클라이언트). 이어서 같은 라우트가 `grantSignupBadge`로 완료 배지 「JAM!」과 그 `point_reward`를 1회 지급한다(`triggered_by`는 옛 값 `'onboarding_quest'` 그대로, 1회 보장은 배지 insert의 23505). 두 호출 모두 던지지 않고, 응답을 막지 않도록 라우트가 한 번 더 감싼다. 그 밖의 호출처는 테스트 로그인(`app/api/dev-login/route.ts`)뿐이다. 첫 동기화·잠긴 아이템 배지 열기는 시작 조건이 아니다(예전에는 두 단계를 마쳐야 시작했다).
+- 응답 `{score_added, current_chapter, reached_chapters}`는 `start.ts` 안의 계약 검사(`toStartRow`)로 읽는다. 시작한 뒤에도 챕터가 비어 있는 응답은 계약 밖이다. `reached_chapters`는 챕터 1과, 챕터가 없는 동안 쌓인 점수로 한 번에 오른 챕터를 모두 담고, 비어 있지 않으면 오름 처리로 넘긴다.
+- **재시도 경로**: `ensureChapterStarted`는 `user_chapters.chapter_no`를 읽어 **비어 있을 때(행 없음·NULL)만** `chapter_start`를 부르는 멱등 함수다. 그러나 가입 라우트는 트라이브가 이미 있으면 409로 끝나 두 번 실행되지 않으므로, 시작이 일시 오류로 실패한 유저를 다시 시작해 주는 호출은 지금 없다. (TODO: 카리나 확인 — `lib/chapter/start.ts` 머리 주석은 아직 퀘스트 완료 처리 기준의 재시도를 적고 있다)
 - 던지지 않는다. RPC 오류·예외·계약 밖 응답·챕터 조회 실패는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='chapter_start_failed'`)에 남기고, 반환값(지급한 완료 배지 id)과 기존 분기 동작은 그대로다.
 
 **오름 처리** (`src/lib/chapter/rise.ts` `processChapterRise({ userId, reachedChapters }, { skipBadgeEvaluation })`)
 - 부르는 곳: `startChapter`(챕터 1 포함)와 캡슐 자동 채움·열기(`lib/capsule/auto-fill.ts`, `open.ts`). 옛 `awardChapterScore`는 지웠다. 비어 있으면 아무것도 하지 않는다.
-- **소식**: 오른 챕터 가운데 가장 높은 챕터로 `chapter_up` 한 건만 보낸다(여러 챕터를 한 번에 넘어도 한 건). **챕터 1만 오른 경우(챕터 1 시작)도 보낸다**(티켓 20261021_1248 — 챕터 1은 실제 2단계를 마친 순간 시작해 완료 보상과 시점이 갈라지고 건너뛴 유저는 보상이 없다). 새 알림 종류나 마이그레이션은 필요 없다(`chapter_up`은 마이그레이션 255에 이미 있다). 묶음 키 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다(`once`는 이미 있으면 기존 행을 돌려준다).
+- **소식**: 오른 챕터 가운데 가장 높은 챕터로 `chapter_up` 한 건만 보낸다(여러 챕터를 한 번에 넘어도 한 건). **챕터 1만 오른 경우(챕터 1 시작)도 보낸다**(티켓 20261021_1248). 새 알림 종류나 마이그레이션은 필요 없다(`chapter_up`은 마이그레이션 255에 이미 있다). 묶음 키 `chapter_up:{챕터}` + `once`라 같은 (유저, 챕터) 소식은 다시 만들어지지 않는다(`once`는 이미 있으면 기존 행을 돌려준다).
 - **피드**(티켓 20261021_1249 5회): 가장 높은 챕터가 2 이상일 때만 `recordFeedEvent(userId, 'chapter_up', { chapter_no })` 한 건을 기록한다(챕터 1 시작은 제외). 활동 id를 넘기지 않는다. 오른 챕터 목록이 이번 호출로 `chapter_ups`에 새로 들어간 챕터만 담으므로 목록이 비어 있지 않을 때만 기록하는 것이 «새로 오른 경우에만»이다. 소식·판정과 서로 막지 않는다.
 - **챕터 배지 판정**: 오름이 있으면(챕터 1 시작 포함) `runJamActionEvaluation(userId, ['chapter_reached'])`로 챕터 조건 배지를 바로 판정해 받게 한다. 챕터 도달값은 지금 챕터 하나라서 넘은 챕터가 여럿이어도 한 번의 판정으로 `chapter_reached >= N` 배지를 모두 받는다. 배지 소식은 기존 방식(`activity_recap` 결산)이다.
 - 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 던지지 않고, 실패는 `console.error`와 `engine_decision_log`(`event='chapter_rise_failed'`, 페이로드 `step`=`notification`·`feed`·`badge_evaluation`·`unexpected`)에 남긴다. `runJamActionEvaluation`은 자기 안의 실패를 스스로 삼키고 `console.error`만 남기므로 `badge_evaluation`은 그 함수를 불러오거나 부르다 던진 경우에만 기록된다.
-- **이중 판정 규칙**: 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)은 DB의 지금 챕터를 읽는다. 동기화가 **직접** 부르는 점수(잼 정산 `settleActivities`, 뒤에 동기화 끝 판정이 반드시 이어짐)만 `skipRiseBadgeEvaluation`을 켜서 오름의 소식은 보내고 챕터 배지 판정은 건너뛴다. 나머지 호출(라우트, 동기화 안의 배지 받기·미션 점수, 동기화 뒤의 챕터 1 시작)은 바로 판정한다. 켜지 않은 호출이 동기화 안에서 겹쳐도 발급은 `user_activity_badges`의 `UNIQUE(user_id, badge_id)`로 한 번뿐이다(`issueQualifyingBadges`가 이미 가진 배지를 건너뛰고 동시 호출의 23505는 부수효과 없이 넘김). 겹치면 판정이 한 번 더 돌고 결과 카드 대신 결산 소식으로 먼저 알려질 뿐이다.
-- **순환 import**: `start.ts → rise.ts → jamActionRoute → strava/sync.ts → onboarding-quest/completion.ts → start.ts`가 정적으로 이어지면 순환이 되므로, `rise.ts`가 `jamActionRoute`를 호출 시점에 `await import()`로 불러 모듈 평가 시점의 순환을 없앴다(`rise-import-cycle.test.ts`가 두 불러오기 순서를 고정).
+- **이중 판정 규칙**: 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)은 DB의 지금 챕터를 읽는다. 동기화가 **직접** 부르는 점수(잼 정산 `settleActivities`, 뒤에 동기화 끝 판정이 반드시 이어짐)만 `skipRiseBadgeEvaluation`을 켜서 오름의 소식은 보내고 챕터 배지 판정은 건너뛴다. 나머지 호출(라우트, 동기화 안의 배지 받기·미션 점수, 가입 완료 때의 챕터 1 시작)은 바로 판정한다. 켜지 않은 호출이 동기화 안에서 겹쳐도 발급은 `user_activity_badges`의 `UNIQUE(user_id, badge_id)`로 한 번뿐이다(`issueQualifyingBadges`가 이미 가진 배지를 건너뛰고 동시 호출의 23505는 부수효과 없이 넘김). 겹치면 판정이 한 번 더 돌고 결과 카드 대신 결산 소식으로 먼저 알려질 뿐이다.
+- **순환 import**: `rise.ts`가 `jamActionRoute`를 호출 시점에 `await import()`로 불러 모듈 평가 시점의 순환을 피한다(`score.ts → rise.ts → jamActionRoute → strava/sync.ts → settlement.ts → score.ts`, `rise-import-cycle.test.ts`가 두 불러오기 순서를 고정).
 - 챕터 배지가 다시 챕터 점수를 올리지 않는다: `chapter_reached` 조건 배지는 «배지 받기» 점수에서 뺀다(위 «배지 받기 점수의 규칙», `rise.test.ts`가 확인).
 - 점수 함수와 챕터 1 시작은 오름 처리가 끝나기를 기다린 뒤 돌려준다. 오름이 있는 요청에서만 소식·판정 시간이 더해진다.
 
@@ -1400,7 +1391,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 동기화가 캡슐을 저절로 채우고 여는 구조(티켓 20261028_1733, 상위 20261028_1730)는 마이그레이션 300·301이 덧붙였다. 아래 «자동 채움 구조» 소절에 모았다. 인벤토리가 차면 보상을 보류하고 둘째부터 잼이 사라지는 구조(티켓 20261028_1734)는 마이그레이션 302가 덧붙였고, «자동 채움 구조»와 «capsule_pending_rewards»·«jam_forfeit_weekly» 소절에 모았다. 232·233·234의 옛 객체와 옛 열은 그대로이고, 프로덕션 main이 옛 함수를 쓰기 때문에 지우지 않았다. 그중 옛 채우기·열기 함수와 챕터 점수 표는 U11 3회(마이그레이션 305)가 지웠고, 나머지 옛 객체의 정리는 후속 티켓 20261031_0131이 이어 받는다.
 
 #### capsule_policy
-한 행 싱글톤(`id = 1`). 칸과 기본값: `guaranteed_count` 1, `bonus_count` 1, `bonus_probability` 0.2, `other_tribe_probability` 0.2, `rarity_common`/`_rare`/`_epic`/`_mystic` 70/22/6/2(합계 100, DB 제약 `capsule_policy_rarity_sum_100`), `pity_epic_threshold` 15(보정 1), `pre_quest_fill_amount` 5, `pre_quest_unlock_required` 5(퀘스트 전 첫 캡슐에서 반드시 나오는 잠긴 아이템 배지를 여는 데 필요한 양). 이 칸은 어드민에서 편집하지 않는 자리값이다: 비용은 304 트리거가 정하고, 열은 `inventory_items_lock_consistent` 제약 때문에 남는다. Common 연속 보정(10번)과 잠길 확률은 동기화와 합산하는 값이라 `jam_policy`의 것을 그대로 쓴다. 코드는 `src/lib/capsule/policy.ts`의 `getCapsulePolicy`로 읽고, 조회 실패·비정상 칸은 기본값(`DEFAULT_CAPSULE_POLICY`)으로 대체하고 로그를 남긴다(등급 확률 네 칸은 묶음 단위). 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다. 편집 화면은 어드민 «밸런스 설정»의 «캡슐» 구역이다(`/admin/balance`, 티켓 20261022_1132 2회, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 열한 칸 가운데 `pre_quest_unlock_required`를 뺀 열 칸을 그 구역에서 편집하고 저장하면 `updated_at`을 직접 올린다(갱신 트리거가 없다). 이 가운데 확률 안내 페이지가 읽는 칸(`pre_quest_*` 두 칸 제외 아홉 칸, `lib/probability/disclosure.ts`의 `CAPSULE_COLUMNS`)을 바꾸면 저장 전 확인창이 뜬다.
+한 행 싱글톤(`id = 1`). 칸과 기본값: `guaranteed_count` 1, `bonus_count` 1, `bonus_probability` 0.2, `other_tribe_probability` 0.2, `rarity_common`/`_rare`/`_epic`/`_mystic` 70/22/6/2(합계 100, DB 제약 `capsule_policy_rarity_sum_100`), `pity_epic_threshold` 15(보정 1), `pre_quest_fill_amount` 5, `pre_quest_unlock_required` 5(챕터가 없는 동안의 캡슐에서 반드시 나오는 잠긴 아이템 배지를 여는 데 필요한 양. 가입 즉시 챕터 1이 되므로 실제로는 옛 유저·시작 실패 때만 쓰인다). 이 칸은 어드민에서 편집하지 않는 자리값이다: 비용은 304 트리거가 정하고, 열은 `inventory_items_lock_consistent` 제약 때문에 남는다. Common 연속 보정(10번)과 잠길 확률은 동기화와 합산하는 값이라 `jam_policy`의 것을 그대로 쓴다. 코드는 `src/lib/capsule/policy.ts`의 `getCapsulePolicy`로 읽고, 조회 실패·비정상 칸은 기본값(`DEFAULT_CAPSULE_POLICY`)으로 대체하고 로그를 남긴다(등급 확률 네 칸은 묶음 단위). 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다. 편집 화면은 어드민 «밸런스 설정»의 «캡슐» 구역이다(`/admin/balance`, 티켓 20261022_1132 2회, [ADMIN_PRD.md](admin-ui/ADMIN_PRD.md) §5-9). 열한 칸 가운데 `pre_quest_unlock_required`를 뺀 열 칸을 그 구역에서 편집하고 저장하면 `updated_at`을 직접 올린다(갱신 트리거가 없다). 이 가운데 확률 안내 페이지가 읽는 칸(`pre_quest_*` 두 칸 제외 아홉 칸, `lib/probability/disclosure.ts`의 `CAPSULE_COLUMNS`)을 바꾸면 저장 전 확인창이 뜬다.
 
 #### capsule_chapter_costs
 `chapter_no`(PK)와 챕터별 숫자 세 가지, `updated_at`.
@@ -1418,7 +1409,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 화면이 읽을 때 `fill_amount`·`fill_amount_v2` 값이 숫자가 아니거나, 챕터 1~9의 `advance_count`가 숫자가 아니면 기본값으로 바꿔 보이지 않고 구역 전체가 읽기 오류가 된다.
 
 #### user_capsules
-유저당 한 행(`user_id` PK). `required`(필요량, 캡슐이 생길 때 정해 고정), `filled`(채운 양, 0~`required`), `chapter_no`(만들 때의 챕터, NULL이면 퀘스트 전), `alert_stage`(SMALLINT NOT NULL DEFAULT 0, CHECK 0·70·80·90 — 지금 캡슐에서 마지막으로 알린 채움 단계. 보류가 하나일 때 채움이 단계에 처음 닿으면 `capsule_auto_fill`이 올리고, 캡슐이 열리거나 보류로 옮겨지면 0으로 돌린다. 마이그레이션 302), `created_at`, `updated_at`. 처음 필요할 때 만든다(지연 생성).
+유저당 한 행(`user_id` PK). `required`(필요량, 캡슐이 생길 때 정해 고정), `filled`(채운 양, 0~`required`), `chapter_no`(만들 때의 챕터, NULL이면 챕터 전), `alert_stage`(SMALLINT NOT NULL DEFAULT 0, CHECK 0·70·80·90 — 지금 캡슐에서 마지막으로 알린 채움 단계. 보류가 하나일 때 채움이 단계에 처음 닿으면 `capsule_auto_fill`이 올리고, 캡슐이 열리거나 보류로 옮겨지면 0으로 돌린다. 마이그레이션 302), `created_at`, `updated_at`. 처음 필요할 때 만든다(지연 생성).
 
 #### capsule_opens
 열 때마다 한 줄(append-only): `opened_at`, `chapter_no`, `required`, `filled`, `items`(나온 개체 목록 JSONB). 캡슐 연 횟수는 이 표로 센다. `capsule_open`이 열 때마다 한 줄 쓰고, 보류를 받는 `capsule_claim_pending`도 한 줄 쓴다(챕터와 채운 양은 보류에 남은 값).
@@ -1430,7 +1421,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 화면 쪽은 티켓 20261028_1740(U9)이 구현했으나 티켓 20261106_1028에서 걷었다. 앱 레이아웃과 화면은 이 표를 읽지 않는다. 읽기 라우트는 남아 있고 그 동작은 다음과 같다. 읽기는 `lib/capsule/unseen.ts`의 `readUnseenCapsuleResult`(`GET /api/capsule/unseen`)이고, `seen_at IS NULL`인 행을 오래된 순서로 최대 50건 읽어 이벤트를 하나로 합친다. 깨진 행은 건너뛴다. 챕터 배지는 합친 `reachedChapters`에 해당하는 것 가운데 유저가 이미 받은 것만 싣는다. «봤어요»(`POST /api/capsule/unseen/seen`)가 읽어 간 행의 `seen_at`을 채운다.
 
 #### capsule_pending_rewards
-인벤토리 빈칸이 모자라 보류한 캡슐 보상(표는 마이그레이션 300, 쓰는 함수는 302, 티켓 20261028_1734). `id`(uuid PK), `user_id`(`users(id)` FK, 삭제 시 CASCADE), `slot`(SMALLINT, CHECK 1·2), `chapter_no`(INTEGER, NULL이면 퀘스트 전), `fill_amount`(INTEGER, CHECK 1 이상 — 보류될 때 캡슐의 필요량), `reached_at`(100%에 닿은 시각, 기본 `now()`), `UNIQUE (user_id, slot)`. 아이템 칸이 없다: 받을 때 추첨한다. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
+인벤토리 빈칸이 모자라 보류한 캡슐 보상(표는 마이그레이션 300, 쓰는 함수는 302, 티켓 20261028_1734). `id`(uuid PK), `user_id`(`users(id)` FK, 삭제 시 CASCADE), `slot`(SMALLINT, CHECK 1·2), `chapter_no`(INTEGER, NULL이면 챕터 전), `fill_amount`(INTEGER, CHECK 1 이상 — 보류될 때 캡슐의 필요량), `reached_at`(100%에 닿은 시각, 기본 `now()`), `UNIQUE (user_id, slot)`. 아이템 칸이 없다: 받을 때 추첨한다. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
 - 유저당 최대 2줄이다(slot 1·2). 줄을 만드는 곳은 `capsule_hold_reward`(가장 낮은 빈 slot), 지우는 곳은 `capsule_claim_pending`(받은 줄)이다. 줄을 바꾸는 두 함수는 캡슐 행을 먼저 잠가 직렬화된다.
 - 받는 순서는 `reached_at`, `slot` 순(오래된 것부터)이다. 이 순서는 호출하는 앱(`lib/capsule/claim.ts`)이 정한다. 함수는 넘겨받은 줄을 받는다.
 
@@ -1450,7 +1441,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 #### 자동 채움 구조 — 마이그레이션 300·301·302, 티켓 20261028_1732·1733·1734 (운영 로직 5.2·12.2절)
 300이 새 열과 표를 더하고(이 구조가 쓰는 것은 `capsule_chapter_costs.fill_amount_v2`·`advance_count`, `user_chapters.capsule_full_count`, `capsule_unseen_results`다. 300의 나머지 표와 열은 U4~U6이 쓴다), 301이 아래 함수 셋을 더한다. 둘 다 공용 DB에 적용했다. 302(티켓 20261028_1734)는 `capsule_auto_fill`·`capsule_open_counted`를 같은 시그니처로 교체하고 새 함수 `capsule_hold_reward`·`capsule_claim_pending`, 열 `user_capsules.alert_stage`, 뷰 `jam_forfeit_weekly`, 알림 종류 값 2개(`capsule_nearly_full`·`capsule_jam_blocked`)를 더했고 2026-10-29에 공용 DB에 적용했다(적용 기록은 티켓 20261028_1734 1회차). 옛 함수(`capsule_next_required`·`capsule_get_or_create`·`capsule_fill`·`capsule_open`·`jam_apply`)의 인자와 동작은 바뀌지 않았다. 새 함수는 `SECURITY DEFINER`·`search_path=public`이고 service_role만 실행한다(`authenticated`·`anon` 실행 불가).
 - `capsule_next_required_v2(p_user_id) → (required, chapter_no)`: 새 캡슐의 필요량. 챕터가 없으면 `capsule_policy.pre_quest_fill_amount`, 있으면 그 챕터의 `fill_amount_v2`, 그 챕터 행에 값이 없으면 값이 있는 마지막 행의 `fill_amount_v2`.
-- `capsule_auto_fill(p_user_id) → jsonb {ok, applied, required, filled, full, balance, chapterNo, forfeited, pendingCount, alertStage, reachedChapters, chapterCount}`(302에서 교체, 322와 323에서 다시 교체. 301의 앞 일곱 키는 그대로): 이용 정지 확인 → 캡슐 행 잠금 → **보류 줄이 1건 이상이면 지갑·캡슐·챕터 횟수를 바꾸지 않고 `applied = 0`, `pendingCount = 보류 수`로 돌려준다(323, 서버 코드가 `inventory_blocked`로 멈춘다)** → `filled = 0`이면 필요량을 v2로 맞춤 → «지갑 잔액과 남은 양 중 작은 만큼» `jam_apply(-n, 'capsule_fill')`로 빼고 `filled`를 올린다. 이번 호출로 `filled`가 `required`에 처음 닿으면 챕터 횟수 +1과 오름 판정을 하고 오른 챕터를 `reachedChapters`(빈 배열 또는 1개)로 돌려준다(퀘스트 전 캡슐은 세지 않고, `advance_count`가 NULL이거나 다음 챕터 정의가 없으면 횟수만 올리고 멈춘다). 지갑을 소멸시키지 않고 알림 단계를 올리지 않는다(322부터 `forfeited`는 0, `alertStage`는 null로 고정, 옛 호출부가 키 이름으로 읽기 때문에 키를 남겼다). 한 번에 캡슐 하나만 채운다. 잔액이 0이면 `applied = 0, full = false`로 정상 반환한다(반복의 종료 신호다). `chapterCount`는 호출이 끝난 시점의 `capsule_full_count`다.
+- `capsule_auto_fill(p_user_id) → jsonb {ok, applied, required, filled, full, balance, chapterNo, forfeited, pendingCount, alertStage, reachedChapters, chapterCount}`(302에서 교체, 322와 323에서 다시 교체. 301의 앞 일곱 키는 그대로): 이용 정지 확인 → 캡슐 행 잠금 → **보류 줄이 1건 이상이면 지갑·캡슐·챕터 횟수를 바꾸지 않고 `applied = 0`, `pendingCount = 보류 수`로 돌려준다(323, 서버 코드가 `inventory_blocked`로 멈춘다)** → `filled = 0`이면 필요량을 v2로 맞춤 → «지갑 잔액과 남은 양 중 작은 만큼» `jam_apply(-n, 'capsule_fill')`로 빼고 `filled`를 올린다. 이번 호출로 `filled`가 `required`에 처음 닿으면 챕터 횟수 +1과 오름 판정을 하고 오른 챕터를 `reachedChapters`(빈 배열 또는 1개)로 돌려준다(챕터가 없는 상태의 캡슐은 세지 않고, `advance_count`가 NULL이거나 다음 챕터 정의가 없으면 횟수만 올리고 멈춘다). 지갑을 소멸시키지 않고 알림 단계를 올리지 않는다(322부터 `forfeited`는 0, `alertStage`는 null로 고정, 옛 호출부가 키 이름으로 읽기 때문에 키를 남겼다). 한 번에 캡슐 하나만 채운다. 잔액이 0이면 `applied = 0, full = false`로 정상 반환한다(반복의 종료 신호다). `chapterCount`는 호출이 끝난 시점의 `capsule_full_count`다.
 - `capsule_open_counted(p_user_id, p_items jsonb) → jsonb {…capsule_open 결과, chapterNo, reachedChapters, chapterCount}`(302에서 교체): 같은 트랜잭션에서 `capsule_open`을 부른 뒤 다음 캡슐의 필요량을 v2로 덮어쓰고 `alert_stage`를 0으로 돌린다. **더는 챕터 횟수를 세지 않는다**(`chapterNo`는 null, `reachedChapters`는 빈 배열, `chapterCount`는 지금 값. 이 세 키는 호출하는 TS가 읽어 남겼다). `capsule_open`이 `ok = false`를 주면 그 결과를 그대로 돌려준다. `total_score`는 건드리지 않는다. 301까지는 열 때 횟수와 오름을 처리했다.
 - `capsule_hold_reward(p_user_id) → jsonb {ok, slot, pendingCount, blockedNow, next{required, filled, chapterNo}}`(302, 새 함수): 이용 정지 확인(`user_suspended`) → 캡슐 행 잠금 → 가득 차지 않았으면 `not_full` → 보류가 이미 2개이면 `pending_full` → 가득 찬 캡슐을 `capsule_pending_rewards`의 가장 낮은 빈 slot에 옮기고(`chapter_no`, `fill_amount = required`, `reached_at = now()`) 캡슐을 v2의 새 캡슐로 바꾼다(`filled = 0`, `alert_stage = 0`). `blockedNow`는 이 호출 전 보류 1개에서 호출 뒤 2개가 된 경우만 true다(잼을 받을 수 없게 된 순간의 표식).
 - `capsule_claim_pending(p_user_id, p_pending_id, p_items jsonb) → jsonb {ok, openId, itemIds, items, pendingCount}`(302, 새 함수): 보류 한 줄을 받는다. 이용 정지 확인 → 항목 검사(`invalid_items`, `capsule_open`과 같다) → 캡슐 행 잠금 → 보류 줄 잠금(없으면 `pending_not_found`) → 인벤토리 잠금(`inventory_not_found`) → 빈칸이 `guaranteed_count + bonus_count`보다 적으면 아무것도 바꾸지 않고 `insufficient_slots`(`free`, `needed`) → 충분하면 `capsule_open`과 같은 방식으로 지급하고 `item_issue_log`(route `capsule`)·`user_drop_state`·`capsule_opens`(챕터와 채운 양은 보류의 값)를 쓰고 그 보류 줄을 지운다. 캡슐 자체(`filled`, `alert_stage`)는 바꾸지 않는다. `pendingCount`는 남은 보류 수다.

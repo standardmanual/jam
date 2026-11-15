@@ -110,6 +110,9 @@ VALUES (NEW.id, 50, 0);
    - 두 거부 모두 `console.error`로 로깅(어뷰징·UI 버그 조기 감지)
    - 통과 시 `users.tribe_id`, `users.onboarding_completed_at`을 함께 기록 — 이 시점부터
      온보딩 완료로 판정된다
+   - 기록에 성공하면 이어서 챕터 1을 시작하고(`ensureChapterStarted`, `src/lib/chapter/start.ts`) 완료 배지
+     「JAM!」과 그 `point_reward`를 1회 지급한다(`grantSignupBadge`, `src/lib/chapter/signup-reward.ts`). 두 처리가
+     실패해도 가입 응답은 막지 않고 오류만 기록한다
 
 **트라이브 불변**: `tribe_id`는 온보딩 2단계에서 1회 설정된 뒤 탈퇴 전까지 변경할 수 없다.
 `PATCH /api/profile`에는 애초에 `tribe_id`를 다루는 코드가 없어 변경 API 자체가 존재하지
@@ -121,27 +124,6 @@ VALUES (NEW.id, 50, 0);
 온보딩을 이미 마친 것으로 간주) — 이 백필이 없으면 기존 유저가 다음 로그인 때 전부 온보딩으로
 강제 이동한다. `tribe_id`는 백필 대상이 아니라 NULL로 남고, 그 상태로 서비스를 계속
 이용할 수 있다(점진적 유도 UI는 후속 과제).
-
-### 2-4. 온보딩 퀘스트 관리자 미리보기 (티켓 20260928_0138, 상위 20260927_2123 N5a·N5b)
-
-`ONBOARDING_QUEST_ENABLED`(`src/lib/onboarding-quest/config.ts`)가 꺼져 있는 동안에도 관리자는
-`/admin/onboarding-quest-preview`에서 퀘스트 1~7단계(또는 완료 상태 `done`) 중 하나를 골라 실제
-서비스 화면에서 연출을 확인할 수 있다.
-
-- **시작**: 단계 버튼을 누르면 `POST /api/admin/onboarding-quest/preview`(`{ step }`,
-  `requireAdmin()`)가 쿠키(`jam_quest_preview`, httpOnly, 1일)를 설정하고 홈(`/`)으로 이동한다.
-- **DB 무기록**: 쿠키만 쓴다 — `user_onboarding_quests` 등 어떤 테이블에도 행이 생기거나
-  바뀌지 않는다.
-- **카드의 실제 2단계**: 미리보기는 DB를 읽지 않으므로 홈 카드의 «내 활동으로 2단계» 목록은 늘 아무것도 안 한 상태로 보이고 지금 할 차례는 ① Strava 동기화다.
-  `done`을 고르면 연출 구역 없이 실제 구역이 위로 올라온 카드가 보인다(티켓 20261021_1248).
-- **자동 진행**: 미리보기 중에는 실제 퀘스트 화면의 버튼(`/api/onboarding-quest/step`,
-  `/api/onboarding-quest/skip`)이 실제 DB 기록 대신 쿠키 값만 다음 단계로 전이시킨다 — 화면을
-  그대로 클릭해 나가면 되고, 다시 어드민 페이지로 돌아갈 필요가 없다.
-- **끝내기**: 어드민 페이지의 [미리보기 끝내기] 또는 실제 화면 상단의 앰버색 띠(「퀘스트
-  미리보기 중 · N/7단계」)의 [끝내기]가 `{ reset: true }`로 쿠키를 지운다 — 이후 평소 판정
-  (기능 스위치·실제 진행도)으로 돌아간다.
-- **이중 방어**: 쿠키가 있어도 `getAdminQuestPreview()`가 매번 `getAdminUser()`로 관리자
-  여부를 다시 확인한다 — 관리자가 아니면 무시(null)한다.
 
 ---
 
