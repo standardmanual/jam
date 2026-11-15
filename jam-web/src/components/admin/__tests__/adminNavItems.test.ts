@@ -88,6 +88,7 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(design?.items.map((i) => i.href)).toEqual([
       '/admin/badge-image',
       '/admin/activity-badge-image',
+      '/admin/activity-badge-template',
       '/admin/assets',
       '/admin/image-generator',
     ])
