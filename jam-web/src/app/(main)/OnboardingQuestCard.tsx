@@ -24,7 +24,8 @@ import QuestStartTracker from './QuestStartTracker'
  * 보상 문구 제거·CTA 버튼화 20260928_1537 · 실제 3단계 20261021_1248 2회 · 실제 2단계와 포인트 기준 20261028_1738 1회).
  *
  * 채원 사전 판정 — 재사용. 신규 토큰·컴포넌트 없이 Card(기본 톤: 흰 면 + 1px 테두리)·LabelChip·ProgressBar·InlineNotice·icons.tsx·서비스
- * Button만으로 조립한다. 어두운 반전 면이 아니라서 글자는 `text-foreground`(Card가 깔아 상속)·`text-muted`·`text-link`다(티켓 20261015_2133).
+ * Button만으로 조립한다. 카드 면은 `--jam-purple`이라(티켓 20261115_1932) 글자는 `text-foreground`(Card가 깔아 상속, 퍼플 위 6.89:1)다. 분수 라벨의 `text-link`도 `--link`가 검정이라 그대로다.
+ * `text-muted`(퍼플 위 2.21:1)는 쓰지 않는다 — 설명은 `text-foreground`, 아직 안 한 행은 `MUTED_ON_PURPLE_CLASS`(퍼플 위 4.91:1)다.
  * 그라데이션·그림자·반투명 면·가운데 정렬이 없고 모든 글자는 왼쪽 정렬이다. 체크 아이콘은 `--link` 선이고 아직 안 한 원의 테두리는 `--muted`다.
  *
  * 한 카드, 두 구역이다. 위계는 «지금 할 일» 기준이고 한 카드의 primary 버튼은 늘 하나다.
@@ -54,11 +55,15 @@ const SCREEN_PATH_MAP: Record<OnboardingQuestScreen, string> = {
 }
 
 const CARD_CLASS = 'flex flex-col gap-4'
+// 카드 면(티켓 20261115_1932) — Card가 ...style을 마지막에 펼쳐 --card-bg 면을 이기므로 클래스가 아니라 style로 넘긴다. 두 구역이 같은 상수를 쓴다.
+const QUEST_CARD_STYLE = { background: 'var(--jam-purple)' }
+// 퍼플 면 위 «아직 안 한 행» 글자. --foreground 80% + 퍼플 20%(#382e44)로 퍼플 위 4.91:1이다. 75% 이하는 AA에 못 미쳐 쓰지 않는다.
+const MUTED_ON_PURPLE_CLASS = 'text-[color-mix(in_srgb,var(--foreground)_80%,var(--jam-purple))]'
 // CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다.
-// jam-quest-cta는 직계 자식 button의 면을 퍼플로 칠한다(티켓 20261115_1804). 연출·실제 두 구역 모두 면은 칠하고, 링(펄스)은 아래 변형만 건다.
-// 건너뛰기 버튼은 이 줄 밖에 있어 칠해지지 않는다.
-const CTA_ROW_CLASS = 'flex jam-quest-cta'
-// 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — 연출 CTA 줄에만 쓴다. 실제 2단계의 버튼에는 펄스를 붙이지 않는다(채원 사전 판정 20261021_1248, 20261115_1804에서 유지). 면 퍼플만 두 구역이 같다.
+// jam-quest-cta-snow는 직계 자식 button을 퍼플 카드 위 흰 알약(면 --snow + 진한 퍼플 글자)으로 칠한다(티켓 20261115_1932, 20261115_1804의 퍼플 면을 뒤집음).
+// 카드 안 줄에는 jam-quest-cta를 함께 붙이지 않는다. 연출·실제 두 구역 모두 면은 칠하고, 링(펄스)은 아래 변형만 건다. 건너뛰기 버튼은 이 줄 밖에 있어 칠해지지 않는다.
+const CTA_ROW_CLASS = 'flex jam-quest-cta-snow'
+// 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — 연출 CTA 줄에만 쓴다. 실제 2단계의 버튼에는 펄스를 붙이지 않는다(채원 사전 판정 20261021_1248, 20261115_1804에서 유지). 흰 면은 두 구역이 같다.
 // rounded-full은 버튼의 --radius-full과 래퍼 반경을 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정).
 // self-start가 없으면 이 줄 자체가 카드 폭으로 늘어나 펄스 링이 카드 폭 전체에 그려진다(티켓 20260928_2137).
 const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-full jam-quest-pulse`
@@ -69,7 +74,7 @@ const CHIP_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-x-2 gap-
 const PROGRESS_LABEL_CLASS = 'text-sm font-bold text-link whitespace-nowrap break-keep wrap-break-word [font-variant-numeric:tabular-nums]'
 // 어절 중간에서 끊기던 `[overflow-wrap:anywhere]`를 한국어 줄바꿈 규칙(§3.2)으로 바꿨다(티켓 20261021_1248)
 const TITLE_CLASS = 'text-base font-bold break-keep wrap-break-word text-balance'
-const DESC_CLASS = 'text-sm text-muted break-keep wrap-break-word text-balance'
+const DESC_CLASS = 'text-sm text-foreground break-keep wrap-break-word text-balance'
 const BUTTON_LABEL_CLASS = 'whitespace-nowrap break-keep'
 
 function Chip() {
@@ -106,7 +111,7 @@ function ChecklistRow({ row, description, trailing }: { row: RealStepRow; descri
   const emphasized = description !== null
   const titleClass = emphasized
     ? 'text-base font-bold leading-6 text-foreground break-keep wrap-break-word'
-    : `text-sm leading-6 break-keep wrap-break-word ${row.state === 'pending' ? 'text-muted' : 'text-foreground'}`
+    : `text-sm leading-6 break-keep wrap-break-word ${row.state === 'pending' ? MUTED_ON_PURPLE_CLASS : 'text-foreground'}`
   return (
     <li className={`flex gap-3 ${trailing ? 'items-center' : 'items-start'}`}>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -188,9 +193,9 @@ function RealCard({ real, username }: { real: RealStepsView; username: string | 
   const progress = d.onboardingQuest.progress
   const counts = { done: real.doneCount, total: real.total }
   return (
-    <Card role="group" aria-label={d.onboardingQuest.cardLabel} className={CARD_CLASS}>
+    <Card role="group" aria-label={d.onboardingQuest.cardLabel} className={CARD_CLASS} style={QUEST_CARD_STYLE}>
       <Header fraction={t(progress.real, counts)} srFraction={t(progress.realSr, counts)} />
-      <ProgressBar current={real.doneCount} total={real.total} labelType="none" />
+      <ProgressBar current={real.doneCount} total={real.total} labelType="none" trackColor="var(--snow)" />
       <RealChecklist real={real} emphasizeCurrent />
       {notice !== null && <InlineNotice>{notice}</InlineNotice>}
       {real.current && (
@@ -241,9 +246,9 @@ function DemoCard({ state }: { state: Extract<NonNullable<OnboardingQuestCardSta
   return (
     <>
       {startTracker}
-      <Card role="group" aria-label={d.onboardingQuest.cardLabel} className={CARD_CLASS}>
+      <Card role="group" aria-label={d.onboardingQuest.cardLabel} className={CARD_CLASS} style={QUEST_CARD_STYLE}>
         <Header fraction={t(progress.demo, counts)} srFraction={t(progress.demoSr, counts)} />
-        <ProgressBar current={state.done} total={state.total} labelType="none" />
+        <ProgressBar current={state.done} total={state.total} labelType="none" trackColor="var(--snow)" />
         <div className="flex flex-col gap-2">
           <p className={TITLE_CLASS}>{step.title}</p>
           <p className={DESC_CLASS}>{step.description}</p>
