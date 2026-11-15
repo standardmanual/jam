@@ -2,6 +2,7 @@
 
 import LocalDate from '@/components/LocalDate'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import { FIRST_SCREEN_GRID_COUNT } from '@/lib/imageSrc'
 import { ListRowChip } from '@/components/ui/ListRow'
 import { d } from '@/lib/i18n'
 
@@ -86,11 +87,13 @@ export default function InventoryGrid({
           onClick={leadingItem.disabled ? undefined : leadingItem.onSelect}
           name={leadingItem.item.badgeName}
           imageUrl={leadingItem.item.badgeImageUrl}
+          eager
           rarity={leadingItem.item.badgeRarity as import('@/types/database').BadgeRarity | null}
           className={leadingItem.pulse ? 'jam-quest-pulse' : ''}
         />
       )}
-      {items.map((item) => {
+      {items.map((item, index) => {
+        const eager = index + (leadingItem ? 1 : 0) < FIRST_SCREEN_GRID_COUNT
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
           // 만료 임박 칩도 ListRowChip 규격(12px·2px 8px·20px)이다. 선 칩 모양(투명 면 + --border 안쪽 선 + --muted 글자)만 유지한다(티켓 20261112_0010)
@@ -113,6 +116,7 @@ export default function InventoryGrid({
             <BadgeGridCard
               key={item.id}
               href={`/inventory/${item.id}`}
+              eager={eager}
               {...identity}
               rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             >
@@ -125,6 +129,7 @@ export default function InventoryGrid({
           <BadgeGridCard
             key={item.id}
             onClick={() => onSelect?.(item)}
+            eager={eager}
             {...identity}
             rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             count={item.count}

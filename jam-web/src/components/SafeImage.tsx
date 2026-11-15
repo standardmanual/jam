@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useCallback, useState, type ReactNode } from 'react'
-import { isOptimizableImageSrc } from '@/lib/imageSrc'
+import { isDirectStaticBadgeSrc, isOptimizableImageSrc } from '@/lib/imageSrc'
 
 type SafeImageProps = {
   /** 이미지 주소. 어드민 자유 입력값이어도 된다(호스트를 사전에 몰라도 안전하다). */
@@ -22,6 +22,11 @@ type SafeImageProps = {
   sizes?: string
   /** 화면 최상단에 즉시 보이는 이미지면 true — lazy 로딩을 끄고 우선 로드한다. */
   priority?: boolean
+  /**
+   * 첫 화면에 보이는 이미지면 true — 지연 로딩만 끈다(`loading="eager"`). `priority`와 달리 `<head>` 선로드를
+   * 넣지 않는다. 그리드 앞 칸처럼 여러 장이 한꺼번에 보이는 곳에 쓴다 (티켓 20261115_1237).
+   */
+  eager?: boolean
   /** 이미지가 없거나 로드에 실패했을 때 대신 렌더할 내용 (기본: 아무것도 렌더하지 않음) */
   fallback?: ReactNode
 }
@@ -47,6 +52,7 @@ export default function SafeImage({
   height,
   sizes,
   priority = false,
+  eager = false,
   fallback = null,
 }: SafeImageProps) {
   const [failed, setFailed] = useState(false)
@@ -66,11 +72,15 @@ export default function SafeImage({
 
   const hasFixedSize = typeof width === 'number' && typeof height === 'number'
 
+  // 정적 파일 배지는 변환 주소를 거치지 않고 원래 주소로 받는다(긴 캐시 헤더는 next.config.ts headers())
+  const unoptimized = isDirectStaticBadgeSrc(value)
+  const loading = eager && !priority ? 'eager' : undefined
+
   const image = isOptimizableImageSrc(value) ? (
     hasFixedSize ? (
-      <Image src={value} alt={alt} width={width} height={height} sizes={sizes} priority={priority} className={className} onError={onError} ref={detectAlreadyFailed} />
+      <Image src={value} alt={alt} width={width} height={height} sizes={sizes} priority={priority} loading={loading} unoptimized={unoptimized} className={className} onError={onError} ref={detectAlreadyFailed} />
     ) : (
-      <Image src={value} alt={alt} fill sizes={sizes} priority={priority} className={className} onError={onError} ref={detectAlreadyFailed} />
+      <Image src={value} alt={alt} fill sizes={sizes} priority={priority} loading={loading} unoptimized={unoptimized} className={className} onError={onError} ref={detectAlreadyFailed} />
     )
   ) : (
     // eslint-disable-next-line @next/next/no-img-element -- 어드민 자유 입력 URL은 호스트를 알 수 없어 next/image에 넘길 수 없다
@@ -79,7 +89,7 @@ export default function SafeImage({
       alt={alt}
       width={hasFixedSize ? width : undefined}
       height={hasFixedSize ? height : undefined}
-      loading={priority ? 'eager' : 'lazy'}
+      loading={priority || eager ? 'eager' : 'lazy'}
       fetchPriority={priority ? 'high' : undefined}
       decoding="async"
       className={hasFixedSize ? className : `absolute inset-0 w-full h-full ${className ?? ''}`}

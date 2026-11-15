@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
+import { FIRST_SCREEN_GALLERY_COUNT } from '@/lib/imageSrc'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { MedalIcon, ArrowDownIcon } from '@/components/ui/icons'
@@ -886,6 +887,7 @@ export function PoiCard({
                   alt={pendingDropItem.badgeName}
                   width={80}
                   height={80}
+                  eager
                   className="w-full h-full object-contain p-1"
                   fallback={<MedalIcon className="w-8 h-8 text-muted" />}
                 />
@@ -1062,9 +1064,10 @@ function PoiBadgeGallery({ cells }: { cells: PoiBadgeCell[] }) {
       className="grid grid-cols-3 gap-2 content-start h-full overflow-y-auto overscroll-contain"
       style={{ gridAutoRows: GALLERY_CELL_H }}
     >
-      {cells.map((cell) => (
+      {cells.map((cell, index) => (
         <BadgeGridCard
           key={cell.id}
+          eager={index < FIRST_SCREEN_GALLERY_COUNT}
           compact
           name={cell.name}
           imageUrl={cell.imageUrl}

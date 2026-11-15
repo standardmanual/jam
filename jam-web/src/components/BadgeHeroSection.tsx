@@ -117,6 +117,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           alt={badge.name}
           width={sizeStyle.imagePx}
           height={sizeStyle.imagePx}
+          eager
           className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
         />
       </div>

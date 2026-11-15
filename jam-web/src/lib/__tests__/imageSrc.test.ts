@@ -5,7 +5,7 @@
  * "등록된 호스트 + 내부 경로만 true"라는 성질을 여기서 고정한다.
  */
 import { describe, it, expect } from 'vitest'
-import { isOptimizableImageSrc, slotOutlineTraceSrc } from '@/lib/imageSrc'
+import { isDirectStaticBadgeSrc, isOptimizableImageSrc, optimizedImageUrl, slotOutlineTraceSrc } from '@/lib/imageSrc'
 
 describe('isOptimizableImageSrc', () => {
   it('내부 절대 경로는 최적화 대상', () => {
@@ -87,10 +87,14 @@ describe('isOptimizableImageSrc', () => {
 /* 티켓 20261112_1627 — 슬롯 점선 추적 주소. w=192는 next 기본 sizes에 없어 400이고,
    폭 90 이미지의 2x 후보(256)가 휴대폰이 이미 받는 변환본이다. */
 describe('slotOutlineTraceSrc', () => {
-  it('최적화 가능한 주소는 /_next/image w=256 q=75로 만든다', () => {
+  it('저장소 주소는 /_next/image w=256 q=75로 만든다', () => {
     const url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/badges/a.png'
     expect(slotOutlineTraceSrc(url)).toBe(`/_next/image?url=${encodeURIComponent(url)}&w=256&q=75`)
-    expect(slotOutlineTraceSrc('/badges/sample/a.png')).toBe(`/_next/image?url=${encodeURIComponent('/badges/sample/a.png')}&w=256&q=75`)
+  })
+
+  /* 티켓 20261115_1237 — 정적 파일 배지는 카드가 직접 받으므로 같은 주소여야 두 번 받지 않는다 */
+  it('정적 파일 배지는 카드가 받는 직접 주소와 같다', () => {
+    expect(slotOutlineTraceSrc('/badges/sample/a.png')).toBe('/badges/sample/a.png')
   })
 
   it('최적화할 수 없는 주소는 그대로 돌려준다', () => {
@@ -101,5 +105,38 @@ describe('slotOutlineTraceSrc', () => {
     expect(slotOutlineTraceSrc(null)).toBeNull()
     expect(slotOutlineTraceSrc(undefined)).toBeNull()
     expect(slotOutlineTraceSrc('   ')).toBeNull()
+  })
+})
+
+/* 티켓 20261115_1237 */
+describe('isDirectStaticBadgeSrc', () => {
+  it('/badges/로 시작하는 내부 경로만 true', () => {
+    expect(isDirectStaticBadgeSrc('/badges/poi/a.png')).toBe(true)
+    expect(isDirectStaticBadgeSrc(' /badges/poi/a.png ')).toBe(true)
+  })
+
+  it('그 외는 false', () => {
+    expect(isDirectStaticBadgeSrc('/other/a.png')).toBe(false)
+    expect(isDirectStaticBadgeSrc('https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/badges/a.png')).toBe(false)
+    expect(isDirectStaticBadgeSrc(null)).toBe(false)
+    expect(isDirectStaticBadgeSrc('')).toBe(false)
+  })
+})
+
+describe('optimizedImageUrl', () => {
+  const url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/badges/a.png'
+
+  it('저장소 주소는 /_next/image에 폭을 실어 만든다', () => {
+    expect(optimizedImageUrl(url, 128)).toBe(`/_next/image?url=${encodeURIComponent(url)}&w=128&q=75`)
+  })
+
+  it('정적 파일 배지와 최적화할 수 없는 주소는 그대로', () => {
+    expect(optimizedImageUrl('/badges/poi/a.png', 128)).toBe('/badges/poi/a.png')
+    expect(optimizedImageUrl('https://example.com/a.png', 128)).toBe('https://example.com/a.png')
+  })
+
+  it('주소가 없으면 null', () => {
+    expect(optimizedImageUrl(null, 128)).toBeNull()
+    expect(optimizedImageUrl('  ', 128)).toBeNull()
   })
 })

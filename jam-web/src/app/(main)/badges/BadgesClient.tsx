@@ -5,6 +5,7 @@ import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/type
 import { BADGE_ACTIVITY_FILTER_LABELS } from '@/lib/utils'
 import { matchesActivityFilter, type ActivityFilterValue } from './activityFilter'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import { FIRST_SCREEN_GRID_COUNT } from '@/lib/imageSrc'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
@@ -225,7 +226,7 @@ export default function BadgesClient({
 
               {filteredActivityBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
-                  {filteredActivityBadges.map(({ badge, earned }) => (
+                  {filteredActivityBadges.map(({ badge, earned }, index) => (
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
@@ -233,6 +234,7 @@ export default function BadgesClient({
                       name={badge.name}
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
+                      eager={index < FIRST_SCREEN_GRID_COUNT}
                       // 무한레벨형 배지(등급 없음)는 등급 칩 자리에 Lv.N 칩을 그린다(2026-11-09 사용자 지시)
                       level={badge.level}
                       // Common 배지도 칩으로 알린다(2026-11-09 사용자 지시) — 다른 화면의 «Common 칩 없음» 규약은 그대로다
@@ -280,7 +282,7 @@ export default function BadgesClient({
 
               {filteredCheckinBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
-                  {filteredCheckinBadges.map(({ badge, earnCount }) => (
+                  {filteredCheckinBadges.map(({ badge, earnCount }, index) => (
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
@@ -288,6 +290,7 @@ export default function BadgesClient({
                       name={badge.name}
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
+                      eager={index < FIRST_SCREEN_GRID_COUNT}
                       // 이름 아래에 «×방문 횟수» 칩(2026-11-09 사용자 지시)
                       visitCount={earnCount}
                     />

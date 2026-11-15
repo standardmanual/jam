@@ -44,6 +44,21 @@ const nextConfig: NextConfig = {
   images: {
     // 패턴 정의는 src/lib/imageSrc.ts에 있다 (위 import 주석 참조)
     remotePatterns: IMAGE_REMOTE_PATTERNS,
+    // 변환 캐시 수명 31일 (티켓 20261115_1237). 기본값 4시간이면 하루 한 번 보는 배지도 매번 재검증한다
+    minimumCacheTTL: 2678400,
+  },
+  // 정적 파일 배지(/badges/…)는 변환을 거치지 않고 직접 받는다(SafeImage unoptimized).
+  // 같은 이름으로 그림이 교체돼도 하루 뒤에는 새 그림을 확인한다
+  async headers() {
+    return [
+      {
+        // 그림 파일만 고른다. `/badges`·`/badges/[id]`는 화면 주소라서 이 헤더가 붙으면 화면 응답이 하루 동안 캐시된다
+        source: '/badges/:file(.+\\.(?:png|webp|jpg|jpeg|avif))',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=2592000' },
+        ],
+      },
+    ]
   },
   // 20260821_002: "아이템북" → "컬렉션" 공개 URL 전환. 기존에 공유된 /itembooks 링크를
   // 보호하기 위해 301(permanent) 리다이렉트를 유지한다. 관리자 화면(/admin/itembooks)과
