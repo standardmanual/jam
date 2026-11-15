@@ -17,7 +17,7 @@ import { d } from '@/lib/i18n'
  * Strava 주황, 아이콘, 맥동·흔들림·입장 애니메이션을 쓰지 않는다(오류 상황에서 시선을 강제하지 않는다).
  * 누르는 중 피드백은 Button의 scale 축소를 그대로 쓴다.
  *
- * 다시 동기화는 OAuth 전체 페이지 이동이라 `OnboardingQuestCard`·`TopNav`와 같은 방식으로 이동한다.
+ * 다시 동기화는 OAuth 전체 페이지 이동이라 `TopNav`와 같은 방식으로 이동한다.
  */
 export default function StravaDisconnectedCard() {
   const copy = d.stravaConnection

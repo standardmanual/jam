@@ -4,8 +4,7 @@
  * `CellLabel`이 인라인 Tailwind 칩에서 MODULAR `LabelChip`으로 바뀌었다. 칩 모양(계산 스타일)은
  * `src/components/LabelChip.test.tsx`가 고정하고, 여기서는 현황 줄의 좌·우 셀이 칩을 같은
  * 컴포넌트로 그리고 flex-col 셀에서 칩이 카드 폭으로 늘어나지 않게 하는 호출부 클래스
- * `self-start`만 붙는지 본다. 저장소에 jsdom이 없어 `renderToStaticMarkup`으로 고정한다
- * (`OnboardingQuestCard.test.tsx`와 같은 방식).
+ * `self-start`만 붙는지 본다. 저장소에 jsdom이 없어 `renderToStaticMarkup`으로 고정한다.
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'

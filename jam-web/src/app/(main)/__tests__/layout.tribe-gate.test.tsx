@@ -63,7 +63,6 @@ vi.mock('@/lib/notifications/feed', () => ({
   hasUnread: () => false,
   latestBumpingNotificationAt: async () => null,
 }))
-vi.mock('@/lib/onboarding-quest/preview', () => ({ getAdminQuestPreview: async () => null }))
 vi.mock('@/lib/strava/pending-items', () => ({ countPendingItems: async () => 0 }))
 vi.mock('@/lib/topNavData', () => ({
   TopNavDataProvider: function TopNavDataProviderStub() {
@@ -97,11 +96,6 @@ vi.mock('@/components/strava/StravaDuplicateSheet', () => ({
 }))
 vi.mock('@/components/strava/PendingItemsPickerProvider', () => ({
   default: function PendingItemsPickerProviderStub() {
-    return null
-  },
-}))
-vi.mock('@/components/QuestPreviewBanner', () => ({
-  default: function QuestPreviewBannerStub() {
     return null
   },
 }))

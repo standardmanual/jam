@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -12,8 +11,6 @@ import { countPendingItems } from '@/lib/strava/pending-items'
 import { TopNavDataProvider } from '@/lib/topNavData'
 import { resolveStravaUiState } from '@/lib/strava/connection-state'
 import { hasUnread, latestBumpingNotificationAt } from '@/lib/notifications/feed'
-import { getAdminQuestPreview } from '@/lib/onboarding-quest/preview'
-import QuestPreviewBanner from '@/components/QuestPreviewBanner'
 import { MAIN_PAGE_BACKGROUND } from '@/lib/pageBackground'
 import { hasTribe, TRIBE_SELECT_PATH } from '@/lib/tribe/gate-contract'
 
@@ -36,7 +33,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     { data: profileRaw, error: profileError },
     { data: stravaConnRaw, error: stravaConnError },
     latestBumpingAt,
-    questPreview,
     pendingItemsCount,
   ] = await Promise.all([
     service
@@ -51,9 +47,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       .eq('user_id', user.id)
       .maybeSingle(),
     latestBumpingNotificationAt(user.id),
-    // 관리자 전용 퀘스트 미리보기 띠(티켓 20260928_0138, N5b). 쿠키가 없으면 관리자 조회
-    // 자체를 하지 않아(getAdminQuestPreview 내부) 일반 유저 진입 비용이 늘지 않는다.
-    getAdminQuestPreview(),
     // 고르기를 기다리는 동기화 보류 개수(티켓 20261017_1425). 숫자만 클라이언트 프로바이더에 내려 앱을 열 때 고르기 화면을 다시 띄운다.
     // 서버 전용 헬퍼라 이 서버 컴포넌트에서만 가져온다. 읽지 못하면 0으로 두고 로그만 남긴다(레이아웃이 깨지지 않는다 —
     // 보류는 동기화 버튼(409)에서도 다시 만난다).
@@ -96,20 +89,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             // 하단 여백을 두지 않는다 — 푸터 로고의 아래면이 페이지 맨 끝(브라우저 끝)에 닿는다. 하단 탭 바(fixed)는
             // 스크롤 끝에서 로고 아래쪽에 겹친다. 서비스 열 전체가 이 래퍼의 회색 바탕이다(티켓 20261104_1642, 20261108_1940).
             className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative bg-background"
-            // 띠가 있을 때 TopNav의 안전영역 padding-top을 0으로 눌러 이중 여백을 없앤다 —
-            // 안전영역은 물리적 최상단인 띠가 진다(design-system/components/navigation/TopNav.jsx
-            // `--topnav-safe-top` 폴백 참고, 티켓 20260928_0138 재작업 ①).
-            style={
-              questPreview
-                ? ({ ...MAIN_PAGE_BACKGROUND, '--topnav-safe-top': '0px' } as CSSProperties)
-                : MAIN_PAGE_BACKGROUND
-            }
+            style={MAIN_PAGE_BACKGROUND}
           >
-            {/* 관리자 전용 퀘스트 미리보기 띠 — null이면 DOM에 아예 없다(관리자가 아니거나
-                미리보기 중이 아닐 때). 문서 흐름 안에 두어 TopNav를 아래로 민다(fixed 오버레이
-                아님, 채원 판정 승인 항목 ①). */}
-            {questPreview && <QuestPreviewBanner value={questPreview} />}
-
             {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정.
                 배경은 `--background` 흐린 그레이 단색이며(티켓 20261104_1642, 20261108_1940), 값은 `@/lib/pageBackground`의
                 `MAIN_PAGE_BACKGROUND`다. (legal)·(onboarding)은 크림 `PAGE_GRADIENT_BACKGROUND`를 그대로 쓴다. */}
