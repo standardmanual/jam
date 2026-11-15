@@ -112,8 +112,8 @@ export interface BadgeGridCardProps {
    */
   chipGray?: boolean
   /**
-   * true = 좁은 칸용 고정 규격(체크인 지점 카드의 3열 갤러리, 티켓 20261114_2352). 여백 8, 면 `--background-secondary`,
-   * 썸네일은 칸 폭에서 좌우 여백 8을 뺀 정사각형(위 여백과 같은 8, 면 `--surface`, 모서리는 카드 반경 16에서 여백 8을 뺀 8, 티켓 20261115_2045),
+   * true = 좁은 칸용 고정 규격(체크인 지점 카드의 3열 갤러리, 티켓 20261114_2352). 여백 4, 면 `--background-secondary`,
+   * 썸네일은 칸 폭에서 좌우 여백 4를 뺀 정사각형(위 여백과 같은 4, 면 `--surface`, 모서리는 카드 반경 16에서 여백 4를 뺀 12, 티켓 20261115_2045),
    * 이름 12px 굵게 2줄(1줄 이름도 2줄 높이), 칩 줄 높이 24 고정(등급 칩만, Common이면 빈 줄).
    * 만료·방문 횟수·children·미발견·외곽선 표현은 그리지 않는다. 기본 false라 다른 화면은 마크업이 그대로다.
    */
@@ -128,8 +128,8 @@ export interface BadgeGridCardProps {
 const BASE =
   'flex flex-col items-center rounded-2xl p-3 overflow-hidden'
 
-// compact: 여백 8, 면은 호출부 카드 면(--card-bg)과 겹치지 않게 --background-secondary(위 containerCls)
-const BASE_COMPACT = 'flex flex-col items-center rounded-2xl p-2 overflow-hidden'
+// compact: 여백 4, 면은 호출부 카드 면(--card-bg)과 겹치지 않게 --background-secondary(위 containerCls)
+const BASE_COMPACT = 'flex flex-col items-center rounded-2xl p-1 overflow-hidden'
 
 export default function BadgeGridCard({
   name = '',
@@ -198,12 +198,12 @@ export default function BadgeGridCard({
   if (compact) {
     const compactContent = (
       <>
-        {/* 썸네일은 칸 폭에서 좌우 여백(8)을 뺀 정사각형이라 위 여백(8)과 좌우 여백이 같다. 모서리는 카드 반경 16 − 여백 8 = 8(`rounded-lg`)이다(티켓 20261115_2045) */}
+        {/* 썸네일은 칸 폭에서 좌우 여백(4)을 뺀 정사각형이라 위 여백(4)과 좌우 여백이 같다. 모서리는 카드 반경 16 − 여백 4 = 12(`rounded-xl`)이다(티켓 20261115_2045) */}
         <div className="relative w-full aspect-square shrink-0">
           {locked ? (
-            <LockedTile size={72} style={{ width: '100%', borderRadius: 'var(--radius-lg)' }} />
+            <LockedTile size={72} style={{ width: '100%', borderRadius: 'var(--radius-xl)' }} />
           ) : (
-            <div className={`w-full aspect-square rounded-lg overflow-hidden flex items-center justify-center bg-surface ${thumbDimmed ? 'grayscale opacity-40' : ''}`}>
+            <div className={`w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-surface ${thumbDimmed ? 'grayscale opacity-40' : ''}`}>
               <SafeImage
                 src={imageUrl}
                 alt={name}

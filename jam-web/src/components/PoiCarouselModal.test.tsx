@@ -244,7 +244,7 @@ describe('갤러리 칸 배선 (티켓 20261114_2352, 이전 20261108_1625)', ()
     const html = renderList([base])
     expect(html).toContain('grid grid-cols-3 gap-2')
     expect(html).toContain('bg-background-secondary')
-    expect(html).toContain('p-2')
+    expect(html).toContain('rounded-2xl p-1 overflow-hidden')
   })
 
   it('묶음이 몇 개든 본문 슬롯 높이는 2행 갤러리 높이(칸 폭 기준 계산)로 같고 갤러리는 안에서만 스크롤된다', () => {
