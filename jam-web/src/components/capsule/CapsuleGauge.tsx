@@ -43,6 +43,8 @@ import {
  * 이름표: 바 시작 부분 안쪽 왼쪽에 «캡슐» 글자를 얹는다(사용자 지시 2026-11-13, 티켓 20261113_1521). 글자는 두 겹이다. 트랙 위에는 밝은 글자(--snow), 채움 안쪽에는 어두운 글자(--capsule-track)를 같은 자리에
  * 그려 채움이 글자 아래를 지나는 곳에서 색이 바뀐다(오렌지 위 흰 글자는 약 3.4:1이라 작은 글자에 쓰지 않는다). 채운 비율이 50% 이상이면 숫자 앞에 같은 줄로 놓이고,
  * 막힘 문구(`message`)가 있으면 그 자리를 문구가 쓰므로 그리지 않는다. 장식이라 `aria-hidden`이다(상태 문장은 `ariaLabel`이 맡는다).
+ * 채움이 시작하기 전(2% 원일 때)에는 이름표를 숨긴다. 원 지름(28px)보다 글자가 길어 원 밖으로 나온 흰 글자 일부가 시작점 옆에 비쳐 보였다(티켓 20261115_1929).
+ * 채움이 움직이기 시작하는 순간 숫자와 같이 240ms 동안 나타난다. 그 사이 채움이 글자 아래를 덮는다.
  */
 
 /** 게이지 높이(px) — 로딩 자리(Skeleton)와 오류 상자도 같은 높이를 쓴다 */
@@ -61,7 +63,8 @@ const NUMBER_RISE_PX = 1
 /** 이름표(«캡슐») 왼쪽 안쪽 여백(px)과 숫자와의 간격(px) */
 const LABEL_LEFT_PX = 12
 const LABEL_NUMBER_GAP_PX = 8
-const LABEL_CLASS = 'whitespace-nowrap text-xs font-bold leading-none'
+const LABEL_CLASS =
+  'whitespace-nowrap text-xs font-bold leading-none transition-opacity duration-[240ms] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 /** 게이지 높이(px)가 정해지면 채움 원의 지름이 정해진다 */
 export function gaugeCircleDiameter(height: number): number {
   return height - (BORDER_PX + PADDING_PX) * 2
@@ -170,7 +173,8 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
   // 문구는 진입 모션·보임 관찰에 묶지 않는다(값이 0이면 관찰자가 없어 arrived가 영원히 false라 숨은 채 남았다)
   const numberVisibility = message ? undefined : showNumber ? undefined : 0
   const labelText = message ? null : d.capsule.gaugeLabel
-  const labelStyle = { transform: `translateY(-${NUMBER_RISE_PX}px)` }
+  // 채움이 시작하기 전에는 숨긴다(숫자와 같은 조건). 막힘 문구가 있으면 이름표 자체를 그리지 않는다
+  const labelStyle = { transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: showNumber ? undefined : 0 }
   const numberClass = message
     ? 'whitespace-nowrap text-base font-extrabold leading-none transition-opacity duration-[240ms] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
     : 'whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'

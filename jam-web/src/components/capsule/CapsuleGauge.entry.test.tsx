@@ -99,6 +99,19 @@ describe('관찰자가 없는 환경', () => {
     expect(fillStyle().width).toBe(widthAt(TARGET))
     expect(fillStyle().transition).toContain(`${GAUGE_ENTRY_MS}ms`)
   })
+
+  it('이름표는 채움이 시작하기 전에는 숨겨져 있다가 시작하면 나타난다 (티켓 20261115_1929)', () => {
+    vi.stubGlobal('window', { setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout })
+    const labelOpacities = () =>
+      findAll((e) => e.type === 'span' && String(e.props.className ?? '').includes('text-xs font-bold')).map(
+        (e) => (e.props.style as { opacity?: number }).opacity
+      )
+    mount(CapsuleGauge, props)
+    expect(labelOpacities()).toEqual([0, 0])
+    vi.advanceTimersByTime(GAUGE_ENTRY_DELAY_MS)
+    vi.advanceTimersByTime(1)
+    expect(labelOpacities()).toEqual([undefined, undefined])
+  })
 })
 
 describe('문구가 있으면 채운 양과 상관없이 가득 찬다(막힘, 티켓 20261105_1912)', () => {

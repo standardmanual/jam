@@ -128,6 +128,14 @@ describe('채운 양의 숫자', () => {
     expect(html.indexOf('data-capsule-label="track"')).toBeLessThan(html.indexOf('background:var(--capsule-fill)'))
   })
 
+  it('처음 그릴 때(채움이 시작하기 전) 이름표 두 겹도 투명하다 — 2% 원 옆으로 흰 글자가 비치지 않는다 (티켓 20261115_1929)', () => {
+    for (const html of [render(120, 300), render(200, 300)]) {
+      const labels = html.match(/<span[^>]*text-xs font-bold[^>]*>/g) ?? []
+      expect(labels).toHaveLength(2)
+      for (const tag of labels) expect(tag).toMatch(/opacity:0/)
+    }
+  })
+
   it('막힘 문구가 있으면 이름표를 그리지 않는다', () => {
     expect(renderToStaticMarkup(<CapsuleGauge filled={300} required={300} ariaLabel={LABEL} message="캡슐이 가득 찼어요" />)).not.toContain('data-capsule-label')
   })
