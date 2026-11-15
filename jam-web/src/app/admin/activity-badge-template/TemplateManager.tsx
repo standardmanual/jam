@@ -4,7 +4,7 @@
  * 액티비티 배지 템플릿 등록 화면의 상태 관리 (티켓 20261116_0426).
  * 파일을 고르면 브라우저에서 먼저 검증해 «저장 전 확인» 상태로 두고, 저장을 눌러야 서버에 보낸다.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -24,10 +24,22 @@ import TemplateCard, { type TemplatePending } from './TemplateCard'
 
 const WRAP = 'break-keep wrap-break-word'
 
-export default function TemplateManager({ initial }: { initial: TemplateItem[] }) {
-  const [items, setItems] = useState<TemplateItem[]>(initial)
+export default function TemplateManager({
+  items,
+  onItemsChange,
+}: {
+  items: TemplateItem[]
+  onItemsChange: (next: TemplateItem[]) => void
+}) {
+  // 저장·지우기는 await 뒤에 목록을 고치므로 그 사이 바뀐 최신 목록을 ref로 읽는다.
+  const itemsRef = useRef(items)
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
   const [pending, setPending] = useState<Partial<Record<BadgeTemplateClassKey, TemplatePending>>>({})
   const [busyKey, setBusyKey] = useState<BadgeTemplateClassKey | null>(null)
+  // 창의 열림 여부와 지울 대상을 따로 들어, 닫히는 동안에도 제목의 분류 이름이 남게 한다.
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState<TemplateItem | null>(null)
 
   const setPendingFor = (key: BadgeTemplateClassKey, value: TemplatePending | null) =>
@@ -71,7 +83,7 @@ export default function TemplateManager({ initial }: { initial: TemplateItem[] }
         return
       }
       const saved = json.template
-      setItems((prev) => prev.map((it) => (it.classKey === saved.classKey ? saved : it)))
+      onItemsChange(itemsRef.current.map((it) => (it.classKey === saved.classKey ? saved : it)))
       setPendingFor(item.classKey, null)
       toast.success(`${item.label} 템플릿을 저장했어요.`)
     } catch {
@@ -82,7 +94,7 @@ export default function TemplateManager({ initial }: { initial: TemplateItem[] }
   }
 
   const handleDelete = async (item: TemplateItem) => {
-    setDeleting(null)
+    setDeleteOpen(false)
     setBusyKey(item.classKey)
     try {
       const res = await fetch(`/api/admin/activity-badge-templates/${item.classKey}`, { method: 'DELETE' })
@@ -91,8 +103,8 @@ export default function TemplateManager({ initial }: { initial: TemplateItem[] }
         toast.error(json?.error ?? '템플릿을 지우지 못했어요. 잠시 후 다시 시도해 주세요.')
         return
       }
-      setItems((prev) =>
-        prev.map((it) =>
+      onItemsChange(
+        itemsRef.current.map((it) =>
           it.classKey === item.classKey
             ? { ...it, svg: null, slots: null, updatedAt: null, updatedBy: null }
             : it
@@ -130,12 +142,15 @@ export default function TemplateManager({ initial }: { initial: TemplateItem[] }
             onPickFile={(file) => void handlePick(item.classKey, file)}
             onSave={() => void handleSave(item)}
             onCancel={() => setPendingFor(item.classKey, null)}
-            onDelete={() => setDeleting(item)}
+            onDelete={() => {
+              setDeleting(item)
+              setDeleteOpen(true)
+            }}
           />
         ))}
       </div>
 
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className={WRAP}>{deleting?.label} 템플릿을 지울까요?</AlertDialogTitle>

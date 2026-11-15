@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { throwOnQueryError } from '@/lib/admin/queryError'
 import { TEMPLATE_CLASS_KEYS, toTemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
-import TemplateManager from './TemplateManager'
+import TemplateWorkspace from './TemplateWorkspace'
 
 export default async function AdminActivityBadgeTemplatePage() {
   const supabase = createServiceClient()
@@ -17,10 +17,10 @@ export default async function AdminActivityBadgeTemplatePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">액티비티 배지 템플릿</h1>
         <p className="text-muted-foreground text-sm mt-1 break-keep wrap-break-word text-balance">
-          분류마다 템플릿 SVG를 한 장씩 올려요. 배지를 만들 때 그 배지가 속한 분류의 템플릿이 자동으로 쓰여요
+          배지를 고르면 그 배지가 속한 분류의 템플릿에 이름과 값이 자동으로 들어가요
         </p>
       </div>
-      <TemplateManager initial={items} />
+      <TemplateWorkspace initial={items} />
     </div>
   )
 }
