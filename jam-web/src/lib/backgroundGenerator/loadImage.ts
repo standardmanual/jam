@@ -1,6 +1,6 @@
 /**
  * 업로드된 File(objectURL) 또는 원격 URL을 HTMLImageElement로 로드한다
- * (20260819_001 스파이크에서 도입, 서버 업로드 없음). `buildBadgeShareBlob.ts`(배지 공유 이미지
+ * (20260819_001 스파이크에서 도입, 서버 업로드 없음). `buildBadgeImageBlob.ts`(배지 공유 이미지
  * 생성)가 실서비스 경로로 쓰고 있어 `/spike/background-generator` 라우트 삭제(20260901_1851)와
  * 별개로 이 파일만 `src/lib`로 이전했다.
  * `crossOrigin`(20260819_008 추가) — 이미 등록된 배지 이미지(Storage 원격 URL)를 소스로 재사용할

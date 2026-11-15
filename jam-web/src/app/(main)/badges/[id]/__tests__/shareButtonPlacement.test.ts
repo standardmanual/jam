@@ -28,6 +28,12 @@ describe('배지 상세의 공유 버튼 위치', () => {
     expect(share).toContain('{d.badges.shareButtonLabel}')
   })
 
+  it('공유 이미지는 배지 이미지 한 장뿐이라 호출부가 Strava 연결 조회·기록 속성을 넘기지 않는다(티켓 20261115_1249)', () => {
+    expect(page).not.toContain('strava_connections')
+    expect(page).not.toContain('strava' + 'Connected')
+    expect(page).not.toMatch(/<BadgeShareButton[^>]*(subjectUsername|level=|earnCount)/)
+  })
+
   it('막힌 사유는 네이티브 disabled가 아니라 aria-disabled로 알려 눌러야 안내가 뜬다', () => {
     expect(share).toContain('aria-disabled={isDisabled || undefined}')
     expect(share).not.toMatch(/<Button[^>]*\sdisabled=/)
