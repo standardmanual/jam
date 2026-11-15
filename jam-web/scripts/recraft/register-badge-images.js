@@ -31,10 +31,37 @@ const BUCKET = 'images'
 // 값 어휘는 jam-web/src/lib/admin/contentImageSource.ts·마이그레이션 186의 CHECK와 같다.
 const IMAGE_SOURCE = 'jam-img'
 
+// 올린 직후 변환본 예열 (티켓 20261115_1620). 기본 출처는 staging — 프로덕션은 `--warm-origin`으로 지정한다.
+const DEFAULT_WARM_ORIGIN = 'https://stage.j-a-m.app'
+// 폭 목록과 주소 형식은 src/lib/images/warmImageVariants.ts의 WARM_IMAGE_WIDTHS, src/lib/imageSrc.ts의
+// optimizedImageUrl(`/_next/image?url=<encodeURIComponent(원본)>&w=<폭>&q=75`)과 같아야 한다.
+// .js 스크립트는 TS 모듈을 가져올 수 없어 여기에 다시 적는다.
+const WARM_WIDTHS = [96, 256, 384, 640]
+
+async function warmVariants(origin, imageUrl) {
+  await Promise.all(
+    WARM_WIDTHS.map(async (w) => {
+      try {
+        const res = await fetch(`${origin}/_next/image?url=${encodeURIComponent(imageUrl)}&w=${w}&q=75`, {
+          headers: { Accept: 'image/webp' },
+          signal: AbortSignal.timeout(8000),
+        })
+        await res.arrayBuffer().catch(() => undefined)
+        if (!res.ok) console.warn(`  예열 응답 ${res.status}: w=${w}`)
+      } catch (e) {
+        console.warn(`  예열 실패: w=${w} — ${e.message}`)
+      }
+    })
+  )
+}
+
 async function main() {
-  const [collectionDir] = process.argv.slice(2)
-  if (!collectionDir) {
-    console.error('사용법: node register-badge-images.js <컬렉션 폴더 절대경로>')
+  const args = process.argv.slice(2)
+  const warmFlagIdx = args.indexOf('--warm-origin')
+  const warmOrigin = warmFlagIdx >= 0 ? args[warmFlagIdx + 1] : DEFAULT_WARM_ORIGIN
+  const collectionDir = args.find((a, i) => !a.startsWith('--') && i !== warmFlagIdx + 1)
+  if (!collectionDir || (warmFlagIdx >= 0 && !warmOrigin)) {
+    console.error('사용법: node register-badge-images.js <컬렉션 폴더 절대경로> [--warm-origin <출처>]')
     process.exit(1)
   }
 
@@ -76,6 +103,7 @@ async function main() {
     }
 
     console.log(`완료: ${item.name} → ${publicUrl} (${item.ids.length}개 등급 전부 반영)`)
+    await warmVariants(warmOrigin, publicUrl)
     sqlLines.push(
       `UPDATE badges SET image_url = '${publicUrl}', image_source = '${IMAGE_SOURCE}' WHERE id IN ('${item.ids.join("','")}'); -- ${item.name}`
     )

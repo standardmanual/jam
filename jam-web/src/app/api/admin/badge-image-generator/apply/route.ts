@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { warmImageVariants } from '@/lib/images/warmImageVariants'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
@@ -101,6 +102,10 @@ export async function POST(req: NextRequest) {
   if ((updated ?? []).length !== ITEM_ROW_COUNT) {
     return NextResponse.json({ error: `${ITEM_ROW_COUNT}행 갱신이 완료되지 않았습니다.` }, { status: 500 })
   }
+
+  // 화면이 처음 열 때 변환을 기다리지 않도록 응답 뒤에 변환본을 미리 만들어 둔다(티켓 20261115_1620)
+  const origin = new URL(req.url).origin
+  after(() => warmImageVariants(webpUrl, origin))
 
   const { error: recErr } = await supabase
     .from('badge_image_generations')

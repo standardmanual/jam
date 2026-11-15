@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { warmImageVariants } from '@/lib/images/warmImageVariants'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { computeAverageColorHex } from '@/lib/imageAverageColor'
@@ -63,5 +64,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filename)
+  // 이미지 파일만 응답 뒤에 변환본을 미리 만들어 둔다(영상은 건너뜀, 티켓 20261115_1620)
+  if (!isVideo) {
+    const origin = new URL(req.url).origin
+    after(() => warmImageVariants(publicUrl, origin))
+  }
   return NextResponse.json({ url: publicUrl, averageColor })
 }
