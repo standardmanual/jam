@@ -14,8 +14,7 @@
  *
  * 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다. 열기 성공 응답에만 `loadOpenedInfo`가 읽은 정보를 싣는다.
  *
- * 열기가 확정되면 서비스 활동 잼(`locked_unlock`)을 지급한 다음 퀘스트 완료 처리를 부른다(티켓 20261021_1248, 운영 로직 2.2절). 실제 단계 ② «잠긴 아이템 배지 열기»가 여기서 끝날 수 있고
- * (동기화로 받은 잠긴 개체를 열어도 된다), 실제 2단계가 다 끝났으면 챕터 1이 시작된다. 던지지 않고, 어떤 실패도 열기와 응답을 바꾸지 않는다(응답에 완료 배지를 싣지 않는다).
+ * 열기가 확정되면 서비스 활동 잼(`locked_unlock`)을 지급한다(운영 로직 2.2절). 던지지 않고, 어떤 실패도 열기와 응답을 바꾸지 않는다(응답에 완료 배지를 싣지 않는다).
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
  * 클라이언트가 쓸 타입·상수는 `lockedItemFill-contract.ts`에 있다.
@@ -25,7 +24,6 @@ import { CAPSULE_ISSUE_ROUTE } from '@/lib/capsule/open'
 import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { recordItemDroppedFeed } from '@/lib/drop-engine/issueFollowUp'
 import { recordActivityRecap } from '@/lib/notifications/recap'
-import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import {
   LOCKED_ITEM_OPEN_ERROR_CODES,
@@ -199,12 +197,6 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
   // 서비스 활동 잼 «잠긴 아이템 배지 열기» (티켓 20261028_1735 3회, 옛 챕터 점수 자리). 원천 id는 개체 id다 — 개체는 한 번만 열리고(두 번째는 `not_locked`)
   // 같은 개체를 다시 보내도 한 번만 지급한다. 던지지 않는다(실패는 기록만 남는다).
   await awardServiceJam(supabase, { userId, kind: 'locked_unlock', sourceId: itemId })
-  // 퀘스트 실제 단계 ② «잠긴 아이템 배지 열기»(티켓 20261021_1248). 잼 지급 다음이다. 완료 처리는 던지지 않지만, 어떤 실패도 열기와 응답을 바꾸지 않도록 한 번 더 감싼다.
-  try {
-    await recordOnboardingQuestCompletion(supabase, userId)
-  } catch (e) {
-    console.error(`[locked-item] 퀘스트 완료 처리 실패 — 열기는 유지한다 (userId: ${userId}, itemId: ${itemId}):`, e)
-  }
   // 포인트 소식(티켓 20261026_1031). 열린 채 받을 때와 같은 활동 결산의 «포인트» 꼬리다(피드는 아래에서 따로 올린다). 포인트는 RPC 안에서 이미 지급됐으므로
   // 소식이 실패해도 열기와 응답을 막지 않는다. RPC는 `point_awarded_at`이 비었을 때만 0보다 큰 값을 돌려주고 두 번째 열기는 `not_locked`로 거절하므로 한 번만 나간다.
   if (result.pointsAwarded > 0) {

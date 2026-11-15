@@ -1,15 +1,10 @@
 /**
- * POST /api/onboarding/complete — user_onboarding_quests 행 생성 회귀 테스트 (티켓 20260927_2124)
+ * POST /api/onboarding/complete 회귀 테스트
  *
  * 검증 대상:
- *  - 2단계(tribe_id 포함) 완료 시, 기능 스위치가 켜져 있으면 user_onboarding_quests에
- *    upsert(ignoreDuplicates)로 행을 만든다
- *  - 기능 스위치(ONBOARDING_QUEST_ENABLED)가 꺼져 있으면 행을 만들지 않는다
- *  - 1단계(tribe_id 없이) 호출은 스위치와 무관하게 행을 만들지 않는다
- *  - 행 생성이 실패해도 온보딩 완료 응답은 그대로 200 성공이다
  *  - 2단계 성공 시 챕터 1 시작과 완료 배지 지급을 부른다(티켓 20261115_2056). 409·1단계는 부르지 않고, 둘이 던져도 응답은 `{ success: true }`다
  *  - 2단계 갱신은 «트라이브가 비어 있을 때만» 저장한다(티켓 20261021_1247): 갱신문에 `tribe_id IS NULL` 조건이 걸리고,
- *    바뀐 행이 없으면(다른 요청이 먼저 저장) 이미 설정됨(409 ALREADY_SET)으로 응답하며 퀘스트 행을 만들지 않는다. 1단계 갱신에는 이 조건이 없다
+ *    바뀐 행이 없으면(다른 요청이 먼저 저장) 이미 설정됨(409 ALREADY_SET)으로 응답한다. 1단계 갱신에는 이 조건이 없다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/onboarding/complete/__tests__/route.test.ts
  */
@@ -19,25 +14,12 @@ import { NextRequest } from 'next/server'
 const USER_ID = 'user-1'
 const TRIBE_ID = 'tribe-1'
 
-const state = vi.hoisted(() => ({
-  questEnabled: true,
-  questUpsertError: null as { message: string } | null,
-}))
-
-vi.mock('@/lib/onboarding-quest/config', () => ({
-  get ONBOARDING_QUEST_ENABLED() {
-    return state.questEnabled
-  },
-}))
-
 const chapterMocks = vi.hoisted(() => ({
   ensure: vi.fn<(client: unknown, userId: string) => Promise<void>>(async () => {}),
   grant: vi.fn<(client: unknown, userId: string) => Promise<string | null>>(async () => 'badge-id'),
 }))
 vi.mock('@/lib/chapter/start', () => ({ ensureChapterStarted: (c: unknown, u: string) => chapterMocks.ensure(c, u) }))
 vi.mock('@/lib/chapter/signup-reward', () => ({ grantSignupBadge: (c: unknown, u: string) => chapterMocks.grant(c, u) }))
-
-const questUpsertMock = vi.hoisted(() => vi.fn<(row: unknown, opts: unknown) => void>(() => {}))
 
 /** users 갱신 호출 기록과 결과 조절 — 2단계 갱신은 `.eq('id').is('tribe_id', null).select('id')` 체인이다 */
 const usersUpdate = vi.hoisted(() => ({
@@ -96,14 +78,6 @@ function makeServiceClient() {
         }),
       }
     }
-    if (table === 'user_onboarding_quests') {
-      return {
-        upsert: (row: unknown, opts: unknown) => {
-          questUpsertMock(row, opts)
-          return Promise.resolve({ error: state.questUpsertError })
-        },
-      }
-    }
     throw new Error(`알 수 없는 테이블: ${table}`)
   }
   return { from }
@@ -126,8 +100,6 @@ function request(body: Record<string, unknown>): NextRequest {
 }
 
 beforeEach(() => {
-  state.questEnabled = true
-  state.questUpsertError = null
   usersUpdate.payloads = []
   usersUpdate.eqs = []
   usersUpdate.iss = []
@@ -139,51 +111,6 @@ beforeEach(() => {
   chapterMocks.ensure.mockResolvedValue(undefined)
   chapterMocks.grant.mockResolvedValue('badge-id')
   vi.spyOn(console, 'error').mockImplementation(() => {})
-})
-
-describe('POST /api/onboarding/complete — user_onboarding_quests 행 생성', () => {
-  it('2단계 완료 + 기능 스위치 ON이면 upsert(ignoreDuplicates)로 행을 만든다', async () => {
-    const res = await POST(request({ username: 'jam.user', display_name: '잼유저', tribe_id: TRIBE_ID }))
-    const body = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-    expect(questUpsertMock).toHaveBeenCalledTimes(1)
-    expect(questUpsertMock).toHaveBeenCalledWith(
-      { user_id: USER_ID },
-      { onConflict: 'user_id', ignoreDuplicates: true }
-    )
-  })
-
-  it('기능 스위치가 꺼져 있으면 2단계를 완료해도 행을 만들지 않는다', async () => {
-    state.questEnabled = false
-
-    const res = await POST(request({ username: 'jam.user', display_name: '잼유저', tribe_id: TRIBE_ID }))
-    const body = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-    expect(questUpsertMock).not.toHaveBeenCalled()
-  })
-
-  it('1단계(tribe_id 없이) 호출은 스위치가 켜져 있어도 행을 만들지 않는다', async () => {
-    const res = await POST(request({ username: 'jam.user', display_name: '잼유저' }))
-    const body = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-    expect(questUpsertMock).not.toHaveBeenCalled()
-  })
-
-  it('행 생성이 실패해도 온보딩 완료 응답은 200 성공이다', async () => {
-    state.questUpsertError = { message: 'DB 오류' }
-
-    const res = await POST(request({ username: 'jam.user', display_name: '잼유저', tribe_id: TRIBE_ID }))
-    const body = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-  })
 })
 
 describe('POST /api/onboarding/complete — 트라이브가 비어 있을 때만 저장 (티켓 20261021_1247)', () => {
@@ -199,7 +126,7 @@ describe('POST /api/onboarding/complete — 트라이브가 비어 있을 때만
     expect(usersUpdate.selects).toEqual(['id'])
   })
 
-  it('바뀐 행이 없으면(다른 요청이 먼저 저장) 이미 설정됨 409로 응답하고 퀘스트 행을 만들지 않는다', async () => {
+  it('바뀐 행이 없으면(다른 요청이 먼저 저장) 이미 설정됨 409로 응답한다', async () => {
     usersUpdate.updatedRows = []
 
     const res = await POST(request({ username: 'jam.user', display_name: '잼유저', tribe_id: TRIBE_ID }))
@@ -207,7 +134,6 @@ describe('POST /api/onboarding/complete — 트라이브가 비어 있을 때만
 
     expect(res.status).toBe(409)
     expect(body).toEqual({ error: 'ALREADY_SET' })
-    expect(questUpsertMock).not.toHaveBeenCalled()
   })
 
   it('읽을 때 이미 트라이브가 있으면 갱신을 시도하지 않고 같은 409로 응답한다(기존 동작)', async () => {
@@ -253,15 +179,6 @@ describe('POST /api/onboarding/complete — 챕터 1 시작·완료 배지 지�
     expect(chapterMocks.grant.mock.calls[0][1]).toBe(USER_ID)
   })
 
-  it('퀘스트 기능 스위치가 꺼져 있어도 챕터 시작·배지 지급은 한다', async () => {
-    state.questEnabled = false
-
-    await POST(request(body2))
-
-    expect(chapterMocks.ensure).toHaveBeenCalledTimes(1)
-    expect(chapterMocks.grant).toHaveBeenCalledTimes(1)
-  })
-
   it('1단계 호출은 챕터 시작도 배지 지급도 하지 않는다', async () => {
     await POST(request({ username: 'jam.user', display_name: '잼유저' }))
 
@@ -292,13 +209,12 @@ describe('POST /api/onboarding/complete — 챕터 1 시작·완료 배지 지�
     expect(console.error).toHaveBeenCalled()
   })
 
-  it('챕터 시작이 던져도 배지 지급과 퀘스트 행 생성은 이어지고 응답은 성공이다', async () => {
+  it('챕터 시작이 던져도 배지 지급은 이어지고 응답은 성공이다', async () => {
     chapterMocks.ensure.mockRejectedValue(new Error('chapter down'))
 
     const res = await POST(request(body2))
 
     expect(res.status).toBe(200)
     expect(chapterMocks.grant).toHaveBeenCalledTimes(1)
-    expect(questUpsertMock).toHaveBeenCalledTimes(1)
   })
 })

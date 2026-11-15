@@ -1,11 +1,9 @@
 /**
  * 가입 완료(트라이브 선택) 시점의 완료 배지 «JAM!» 지급 (티켓 20261115_2056, 상위 20261115_2055)
  *
- * 챕터 1 시작과 이 배지는 예전에 온보딩 퀘스트 완료 처리에서만 나갔다. 퀘스트를 걷으면 끊기므로
- * 가입 2단계(`POST /api/onboarding/complete`)가 트라이브 저장에 성공한 순간 이 함수로 옮긴다.
- * 원본은 `onboarding-quest/completion.ts`의 `grantOnboardingQuestReward`이며, 그 삭제 전까지 이 파일은 그 모듈을 임포트하지 않는다.
+ * 챕터 1 시작과 이 배지는 가입 2단계(`POST /api/onboarding/complete`)가 트라이브 저장에 성공한 순간 이 함수로 나간다.
  *
- * `reward_granted_at` 선점·롤백은 퀘스트 행이 있어야 하는 장치라 뺐다. 1회 보장은 배지 insert의 23505(이미 보유)가 맡는다.
+ * 1회 보장은 배지 insert의 23505(이미 보유)가 맡는다.
  * 같은 유저가 다시 불러도 포인트·피드는 나가지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'

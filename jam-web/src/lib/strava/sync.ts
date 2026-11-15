@@ -43,7 +43,6 @@ import type { CreateNotificationInput, NotificationType } from '@/lib/notificati
 import { getAbusingPolicy, DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh } from '@/lib/abusing/policy'
 import { judgeVehicleActivity } from '@/lib/abusing/vehicleFilter'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
-import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 // JAM 2.0 잼 정산과 대량 수령 경보(티켓 20261017_1423) — 서버 전용 모듈. 이 파일에서만 부른다.
 import { getJamPolicy } from '@/lib/jam/policy'
 import { settleActivities, type JamSettlementItem } from '@/lib/jam/settlement'
@@ -1315,21 +1314,6 @@ export async function syncStravaActivities(
         .eq('strava_athlete_id', connection.strava_athlete_id)
       if (pendingError) {
         console.error(`[syncStravaActivities] first_sync_pending 해제 실패 (userId: ${userId}):`, pendingError)
-      }
-    }
-
-    // 온보딩 퀘스트 완료 판정(T6) — 정산한 인정 활동이 1건 이상일 때만 시도한다.
-    // 0건이면 호출하지 않는다(불필요한 조회 생략). 절대 throw하지 않으므로 동기화 흐름에
-    // 영향을 주지 않는다. 지급된 완료 배지(T7b)가 있으면 기존 배지 획득 카드에 함께 실리도록
-    // earnedBadgeIds에 합류시킨다(사용자 결정 2) — 중복 제거는 already-includes 체크로 충분하다.
-    // 티켓 20261021_1248: 완료는 실제 2단계(첫 동기화·잠긴 개체 열기)와 연출이 둘 다 끝나야 하므로,
-    // 보통 이 동기화가 마지막 조건이 되지 못한다(②는 이 동기화로 받은 잠긴 개체를 유저가 직접 열어야 한다). 이 자리에서 배지가 지급되는 경우는
-    // 대부분 앞선 호출의 지급 실패를 다시 시도하는 때다. 열기·단계 기록·건너뛰기 호출에서 지급된 배지는 배지 획득 카드 없이
-    // 피드 기록(`badge_earned`)과 포인트 소식으로 남는다.
-    if (settledCount >= 1) {
-      const grantedBadgeId = await recordOnboardingQuestCompletion(supabase, userId)
-      if (grantedBadgeId && !earnedBadgeIds.includes(grantedBadgeId)) {
-        earnedBadgeIds.push(grantedBadgeId)
       }
     }
 

@@ -185,7 +185,6 @@ describe('호출 지점 목록 — 소스 검색', () => {
       'lib/chapter/signup-reward.ts': 1, // 가입 완료 배지 «JAM!» (티켓 20261115_2056)
       'lib/itembook/checker.ts': 1,
       'lib/missions/rewards.ts': 1,
-      'lib/onboarding-quest/completion.ts': 1,
       'lib/strava/sync.ts': 1,
     })
     expect(callSites('awardBadgeReceiveOccurrenceScores')).toEqual({ 'lib/badge-engine/index.ts': 2 })

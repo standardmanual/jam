@@ -34,7 +34,7 @@ export type EngineDecisionEvent =
   | 'service_jam_failed'
   /** 챕터 오름 처리(소식·챕터 배지 판정) 실패 (engine='points', 티켓 20261019_1316). 한쪽이 실패해도 다른 쪽은 한다. 소식은 같은 묶음 키라 다시 보내도 한 건이다 */
   | 'chapter_rise_failed'
-  /** 챕터 1 시작(`chapter_start`) 실패 (engine='points', 티켓 20261019_1316). 퀘스트 완료 처리가 다음에 불릴 때 다시 시도한다 */
+  /** 챕터 1 시작(`chapter_start`) 실패 (engine='points', 티켓 20261019_1316). `ensureChapterStarted`가 다음에 불릴 때 다시 시도한다 */
   | 'chapter_start_failed'
   | 'tribe_constant_missing'
   | 'drop_state_last_activity_mismatch'

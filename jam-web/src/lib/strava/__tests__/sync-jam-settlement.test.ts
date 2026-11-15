@@ -61,7 +61,6 @@ vi.mock('@/lib/itembook/completable', () => ({ findCompletableItemBooks: vi.fn(a
 vi.mock('@/lib/missions/checker', () => ({
   checkMissions: vi.fn(async () => ({ completedMissionIds: [], awardedBadgeIds: [] })),
 }))
-vi.mock('@/lib/onboarding-quest/completion', () => ({ recordOnboardingQuestCompletion: vi.fn(async () => null) }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications', () => ({
   createNotification: vi.fn(async () => {}),
