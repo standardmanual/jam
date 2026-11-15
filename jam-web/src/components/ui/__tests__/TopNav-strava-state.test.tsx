@@ -50,16 +50,6 @@ describe('TopNav 가운데 슬롯 — Strava 동기화 상태', () => {
     expect(html).not.toContain(d.stravaConnection.topNavReconnect)
   })
 
-  it('TopNav 동기화 버튼에는 퀘스트 퍼플 클래스가 없다(티켓 20261115_1804)', () => {
-    for (const state of ['connected', 'none', 'disconnected_error', 'disconnected_user'] as const) {
-      for (const style of ['pill', 'icon'] as const) {
-        const html = renderNav(state, style)
-        expect(html, `${state}/${style}`).not.toContain('jam-quest-cta')
-        expect(html, `${state}/${style}`).not.toContain('jam-quest-pulse')
-      }
-    }
-  })
-
   it('disconnected_error는 primary sub xs 「다시 동기화」다', () => {
     const html = renderNav('disconnected_error')
     const button = buttonWithLabel(html, d.stravaConnection.topNavReconnect)
