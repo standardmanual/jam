@@ -652,6 +652,9 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - 경로: 같은 `/admin/activity-badge-template`. 탭은 «배지 만들기»(기본)와 «템플릿»(17.4)이다. 템플릿 탭에서 올리거나 지운 결과는 새로 고침 없이 «배지 만들기»에 반영된다.
 - 흐름: 배지 검색 → 선택 → 그 배지가 속한 분류의 템플릿 위에 이름과 값을 그린 미리보기. 검색은 `POST /api/admin/activity-badge-image/search`를 쓰고, 응답 항목의 `templateClass`·`templateClassLabel`·`templateValue`·`familyKey` 네 칸으로 분류와 값을 얻는다. 분류를 정하지 못한 배지(`templateClass` 없음)와 템플릿이 아직 없는 분류는 미리보기 대신 안내를 보인다.
 - 그리는 순서(`renderTemplateBadge`, 브라우저 전용): ① `stripSlotText`로 예시 글자를 걷어 낸 SVG를 이미지로 불러온다. ② 캔버스 비율은 viewBox를 따르고 긴 변은 1024px로 한다. ③ 이미지를 캔버스 전체에 그린다. ④ 이름·값 자리를 차례로 `resolveTemplateFont`→`loadFontInBrowser`→`layoutSlotText`→`toTextLayerInput`→`drawTextLayer`로 그린다. 글자 위치 계산은 4-1의 함수만 쓰고 다시 만들지 않는다. 배지를 빠르게 바꿔 고르면 마지막 요청의 결과만 남는다.
+- 글꼴 조각: 구글 폰트의 한글은 여러 조각으로 나뉘어 내려온다. `loadFontInBrowser` 뒤에 `document.fonts.load(글꼴, 그릴 글자 + 예시 글자)`로 그 글자가 든 조각까지 기다린 다음 그린다(`loadFontForText`). 기다리지 않으면 한글이 다른 글꼴로 그려진다.
+- 세로 위치: SVG는 글자의 기준선 위치를 주고 `drawTextLayer`는 `textBaseline: 'middle'`로 그린다. 두 선의 거리는 같은 글자를 두 기준선으로 재서 `actualBoundingBoxAscent`의 차이로 구한다(`measureMiddleOffsetEm`). 글꼴 상자 값으로 어림하면 어긋난다(IBM Plex Sans KR 140px에서 6px, 2026-11-16 실측).
+- 두 탭은 모두 붙여 둔다(`forceMount`). 템플릿 탭에 다녀와도 검색어·결과·고른 배지가 남는다.
 - 글꼴 대응: 자리의 글꼴 이름이 구글 폰트 목록에 있으면 그 글꼴을 불러오고, 없거나 불러오지 못하면 시스템 기본 글꼴로 바꿔 그리고 화면에 안내한다.
 - 넘치면 줄이는 규칙: 넣을 글자의 폭이 자리 기준 좌우 여백 중 좁은 쪽의 2배 × 0.92를 넘으면 글자 크기를 비례해 줄이고 안내한다. 자리의 위치나 글자 크기를 읽지 못하면 그 자리는 그리지 않고 안내한다.
 - 이 회차에 없는 것: 등록(저장), 색·글자 조정. 다음 회차에서 만든다.
