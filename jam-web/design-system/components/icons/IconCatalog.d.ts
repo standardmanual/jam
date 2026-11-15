@@ -43,6 +43,9 @@ export function TreasureBoxIcon(props: IconProps): JSX.Element;
 export function LocateIcon(props: IconProps): JSX.Element;
 export function AlertCircleIcon(props: IconProps): JSX.Element;
 export function BanIcon(props: IconProps): JSX.Element;
+export function CopyIcon(props: IconProps): JSX.Element;
+export function DownloadIcon(props: IconProps): JSX.Element;
+export function MoreIcon(props: IconProps): JSX.Element;
 
 export interface IconEntry {
   name: string;

@@ -1,14 +1,14 @@
 import React, { createElement, useId } from 'react';
 
 /**
- * IconCatalog — 아이콘 세트 v2(라인·채움 39종) + 카탈로그 격자 (티켓 20261114_2345).
+ * IconCatalog — 아이콘 세트 v2(라인·채움 42종) + 카탈로그 격자 (티켓 20261114_2345).
  *
  * 서비스 `src/components/ui/icons.tsx`와 같은 조각·같은 규칙의 병존 사본이다(서비스는 이 파일을 import하지 않는다).
  * 사양: docs/assets/prototypes/icon-set-v2/spec.json. 한쪽만 고치지 않는다 — 두 사본 동일성은
  * `src/components/ui/__tests__/icons.test.tsx`가 지킨다.
  *
  * 48 격자, 선 굵기 3(24px에서 1.5px), 색은 currentColor 하나. variant 'line'(기본)·'fill'.
- * 동작 글리프 7종은 variant와 무관하게 라인이다. 비운 면·틈은 배경색 칠이 아니라 SVG mask로 뚫는다.
+ * 동작 글리프 7종과 MoreIcon은 variant와 무관하게 라인이다. 비운 면·틈은 배경색 칠이 아니라 SVG mask로 뚫는다.
  * 크기는 className 또는 width/height prop으로 지정, 기본 24×24.
  */
 
@@ -337,6 +337,22 @@ const BAN_NODES = [
   ['path', 'tc', { d: 'M16.5 16.5 L31.5 31.5' }, 7.2],
 ]
 
+const COPY_NODES = [
+  ['rect', 'b', { x: '17.5', y: '6.5', width: '24', height: '24', rx: '5.5' }, 3],
+  ['rect', 'g', { x: '6.5', y: '17.5', width: '24', height: '24', rx: '5.5' }, 3],
+]
+
+const DOWNLOAD_NODES = [
+  ['path', 'b', { d: 'M20 8.5 Q20 6 22.5 6 H25.5 Q28 6 28 8.5 V17.5 H32.5 Q35.8 17.5 33.8 20.1 L26 30.3 Q24 32.9 22 30.3 L14.2 20.1 Q12.2 17.5 15.5 17.5 H20 Z' }, 3],
+  ['path', 'ta', { d: 'M8.5 31 V35.5 Q8.5 40.5 13.5 40.5 H34.5 Q39.5 40.5 39.5 35.5 V31' }, 4.5],
+]
+
+const MORE_NODES = [
+  ['circle', 'kc', { cx: '11', cy: '24', r: '3.8' }, 0],
+  ['circle', 'kc', { cx: '24', cy: '24', r: '3.8' }, 0],
+  ['circle', 'kc', { cx: '37', cy: '24', r: '3.8' }, 0],
+]
+
 /** 투데이 */
 export function HomeIcon(props) {
   return <RoleIcon nodes={HOME_NODES} {...props} />;
@@ -532,6 +548,21 @@ export function BanIcon(props) {
   return <RoleIcon nodes={BAN_NODES} {...props} />;
 }
 
+/** 공유 시트 · 복사하기 */
+export function CopyIcon(props) {
+  return <RoleIcon nodes={COPY_NODES} {...props} />;
+}
+
+/** 공유 시트 · 저장하기 */
+export function DownloadIcon(props) {
+  return <RoleIcon nodes={DOWNLOAD_NODES} {...props} />;
+}
+
+/** 공유 시트 · 더보기 */
+export function MoreIcon(props) {
+  return <RoleIcon nodes={MORE_NODES} lineOnly {...props} />;
+}
+
 /** 카탈로그에 노출할 전체 아이콘 — 사양(spec.json) 순서. role은 쓰임 한 줄 설명이다. */
 export const ICON_ENTRIES = [
   { name: 'HomeIcon', Icon: HomeIcon, role: '투데이', section: '하단 탭바', lineOnly: false },
@@ -573,9 +604,12 @@ export const ICON_ENTRIES = [
   { name: 'LocateIcon', Icon: LocateIcon, role: '현재 위치 버튼', section: '지도와 화면 전용', lineOnly: false },
   { name: 'AlertCircleIcon', Icon: AlertCircleIcon, role: '오류 화면', section: '지도와 화면 전용', lineOnly: false },
   { name: 'BanIcon', Icon: BanIcon, role: '접근 불가 (어드민)', section: '지도와 화면 전용', lineOnly: false },
+  { name: 'CopyIcon', Icon: CopyIcon, role: '복사하기', section: '공유 시트', lineOnly: false },
+  { name: 'DownloadIcon', Icon: DownloadIcon, role: '저장하기', section: '공유 시트', lineOnly: false },
+  { name: 'MoreIcon', Icon: MoreIcon, role: '더보기', section: '공유 시트', lineOnly: true },
 ];
 
-const SECTION_ORDER = ['하단 탭바', '컨텐츠·자원 15종', '사람·상태 10종', '동작 글리프 7종', '지도와 화면 전용'];
+const SECTION_ORDER = ['하단 탭바', '컨텐츠·자원 15종', '사람·상태 10종', '동작 글리프 7종', '지도와 화면 전용', '공유 시트'];
 
 /**
  * IconCatalog — 전체 아이콘 격자. Storybook 카탈로그 전용 컴포넌트.

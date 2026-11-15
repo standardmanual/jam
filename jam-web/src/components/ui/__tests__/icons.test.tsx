@@ -1,5 +1,5 @@
 /**
- * 아이콘 세트 v2 (티켓 20261114_2345) — 39종 × 라인·채움
+ * 아이콘 세트 v2 (티켓 20261114_2345) — 42종 × 라인·채움
  *
  * 사양 docs/assets/prototypes/icon-set-v2/spec.json 과 서비스 icons.tsx · DS IconCatalog.jsx 두 사본을 대조한다.
  */
@@ -33,8 +33,8 @@ const OLD_NAMES = [
 ].map((n) => `${n}Icon`)
 
 describe('아이콘 세트 v2', () => {
-  it('사양은 39종이다', () => {
-    expect(spec.icons).toHaveLength(39)
+  it('사양은 42종이다', () => {
+    expect(spec.icons).toHaveLength(42)
   })
 
   describe.each(spec.icons.map((i) => [i.name, i] as const))('%s', (name, icon) => {
