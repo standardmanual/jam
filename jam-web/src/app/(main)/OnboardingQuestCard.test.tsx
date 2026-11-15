@@ -130,13 +130,13 @@ describe('JAM! 시작하기 카드 — 어느 상태에도 없는 것', () => {
   })
 })
 
-describe('JAM! 시작하기 카드 — 연출 중(연출 구역 + 실제 2단계 체크 목록)', () => {
-  it('칩 «JAM! 시작하기»와 분수 «미리 해보기 3/7»이 보이고 스크린리더에는 «미리 해보기 7단계 중 3단계»로 읽힌다', () => {
+describe('JAM! 시작하기 카드 — 연출 중(연출 구역만, 분수·구분선·체크 목록 없음)', () => {
+  it('칩 «JAM! 시작하기»만 보이고 분수 «미리 해보기 n/7»은 없다 — 스크린리더에는 «미리 해보기 7단계 중 3단계»로 읽힌다 (티켓 20261115_2043)', () => {
     const html = render(demo(3, 'mix_success'))
     const text = textOf(html)
     expect(text).toContain('JAM! 시작하기')
-    expect(html).toContain('<span aria-hidden="true" class="text-sm font-bold text-link')
-    expect(html).toContain('>미리 해보기 3/7</span>')
+    expect(html).not.toContain('미리 해보기 3/7')
+    expect(html).not.toContain('text-sm font-bold text-link')
     expect(html).toContain('<span class="sr-only">미리 해보기 7단계 중 3단계</span>')
   })
 
@@ -152,35 +152,16 @@ describe('JAM! 시작하기 카드 — 연출 중(연출 구역 + 실제 2단계
     expect(html).toContain(d.onboardingQuest.steps.bag.description)
   })
 
-  it('연출 구역 아래에 구분선과 «내 활동으로 2단계» 체크 목록(<ol>)이 있고 행이 둘이다', () => {
-    const html = render(demo(1, 'bag'))
-    expect(html).toContain('<hr')
-    expect(html).toContain('<ol aria-label="내 활동으로 2단계"')
-    expect(html.match(/<li /g)).toHaveLength(2)
-    const text = textOf(html)
-    expect(text).toContain('Strava 동기화')
-    expect(text).toContain('잠긴 아이템 배지 열기')
-    expect(text).not.toContain('캡슐 열기')
-    // 연출 구역이 먼저, 목록이 나중이다(DOM 순서 = 화면 순서)
-    expect(html.indexOf(d.onboardingQuest.steps.bag.title)).toBeLessThan(html.indexOf('<ol'))
-  })
-
-  it('실제 단계 기록을 읽지 못했으면(real = null) 연출 구역만 있고 구분선도 목록도 없다', () => {
-    const html = render(demo(1, 'bag', null))
-    expect(html).toContain(d.onboardingQuest.steps.bag.title)
-    expect(html).not.toContain('<hr')
-    expect(html).not.toContain('<ol')
-    expect(textOf(html)).not.toContain('캡슐 열기')
-  })
-
-  it('연출이 남은 채 실제 2단계가 모두 끝났으면 카드는 남고 두 행이 모두 «마쳤어요»다', () => {
-    const html = render(demo(2, 'pickup', realView({ steps: { sync: true, lockedOpened: true } })))
-    expect(html).toContain(d.onboardingQuest.steps.pickup.title)
-    const items = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0])
-    expect(items).toHaveLength(2)
-    for (const item of items) {
-      expect(item).not.toContain('<svg') // 체크 서클은 없다(티켓 20261112_1628)
-      expect(item).toContain('마쳤어요')
+  it('구분선(흰 선)과 «내 활동으로 2단계» 체크 목록이 없다 — 실제 단계 기록이 있어도 연출 구역만 그린다 (티켓 20261115_2043)', () => {
+    for (const html of [render(demo(1, 'bag')), render(demo(1, 'bag', null)), render(demo(2, 'pickup', realView({ steps: { sync: true, lockedOpened: true } })))]) {
+      expect(html).toContain(d.onboardingQuest.steps[html.includes(d.onboardingQuest.steps.pickup.title) ? 'pickup' : 'bag'].title)
+      expect(html).not.toContain('<hr')
+      expect(html).not.toContain('<ol')
+      expect(html).not.toContain('<li ')
+      const text = textOf(html)
+      expect(text).not.toContain('Strava 동기화')
+      expect(text).not.toContain('잠긴 아이템 배지 열기')
+      expect(text).not.toContain('캡슐 열기')
     }
   })
 
@@ -189,31 +170,36 @@ describe('JAM! 시작하기 카드 — 연출 중(연출 구역 + 실제 2단계
     expect(buttonTexts(html)).toEqual([d.onboardingQuest.continueButton, d.onboardingQuest.skip.entryLabel])
   })
 
-  it('목록 행은 누를 수 없다 — 행 자체는 버튼이나 링크가 아니고, 버튼은 마지막 행 끝의 건너뛰기 하나뿐이다', () => {
-    const html = render(demo(1, 'bag'))
-    const list = html.slice(html.indexOf('<ol'), html.indexOf('</ol>'))
-    expect(list.match(/<button/g)).toHaveLength(1)
-    expect(list).toContain(`>${d.onboardingQuest.skip.entryLabel}</button>`)
-    expect(list).not.toContain('<a ')
-    expect(list).not.toContain('onclick')
+  it('다음 단계 버튼과 건너뛰기 버튼은 같은 크기(xs)이고 한 줄에 있다 — 다음 단계는 카드 왼쪽 끝, 건너뛰기는 오른쪽 끝 (티켓 20261115_2043)', () => {
+    for (const html of [render(demo(0, 'sync')), render(demo(1, 'bag'))]) {
+      const buttons = [...html.matchAll(/<button[\s\S]*?<\/button>/g)].map((m) => m[0])
+      expect(buttons).toHaveLength(2)
+      const sizeOf = (b: string) => b.match(/min-height:[^;"]*/)?.[0]
+      expect(sizeOf(buttons[0])).toBeDefined()
+      expect(sizeOf(buttons[0])).toBe(sizeOf(buttons[1]))
+      expect(sizeOf(buttons[0])).toContain('calc(44px * var(--scale-compact))')
+      // 두 버튼은 같은 줄 래퍼 안에 있고, 줄은 양 끝 정렬이다
+      const rowStart = html.lastIndexOf('<div class="flex items-center justify-between gap-2"')
+      expect(rowStart).toBeGreaterThan(-1)
+      const row = html.slice(rowStart)
+      expect(row.indexOf('<button')).toBeLessThan(row.lastIndexOf('<button'))
+      expect(row).toContain(`>${d.onboardingQuest.skip.entryLabel}</button>`)
+    }
   })
 })
 
 describe('JAM! 시작하기 카드 — 연출 CTA', () => {
-  it('sync 차례: 「동기화」 버튼이 있고 44px 터치 영역(size sm)이다', () => {
+  it('sync 차례: 「동기화」 버튼이 있고 건너뛰기 버튼과 같은 작은 크기(xs)다 (티켓 20261115_2043)', () => {
     const html = render(demo(0, 'sync'))
     expect(buttonTexts(html)[0]).toBe(d.today.syncButton)
-    expect(html).toContain('py-[9px]')
-    // 연출 CTA 자신은 xs가 아니다(건너뛰기 버튼만 xs)
-    const cta = html.slice(html.lastIndexOf('<button', html.indexOf(`>${d.today.syncButton}</button>`)), html.indexOf(`>${d.today.syncButton}</button>`))
-    expect(cta).not.toContain('calc(44px * var(--scale-compact))')
+    expect(html).not.toContain('py-[9px]')
   })
 
-  it('2~7단계: 「다음 단계」 버튼과 화살표 아이콘이 있다', () => {
+  it('2~7단계: 「다음 단계」 버튼과 화살표 아이콘이 있고 작은 크기(xs)다', () => {
     const html = render(demo(1, 'bag'))
     expect(html).toContain(d.onboardingQuest.continueButton)
     expect(html).toContain('M18 10.5 L31.5 24 L18 37.5')
-    expect(html).toContain('py-[9px]')
+    expect(html).not.toContain('py-[9px]')
   })
 
   it.each(['bag', 'pickup', 'drop', 'mix_fail', 'mix_success', 'browse'] as const)('nextStep=%s면 「다음 단계」 CTA가 보인다', (nextStep) => {
@@ -229,12 +215,13 @@ describe('JAM! 시작하기 카드 — 연출 CTA', () => {
     for (const html of [render(demo(0, 'sync')), render(demo(1, 'bag'))]) {
       expect(html).toContain('self-start rounded-full jam-quest-pulse')
       expect(html).toMatch(/class="flex jam-quest-cta-snow self-start rounded-full jam-quest-pulse"/)
-      // 흰 알약 클래스는 CTA 줄에 한 번뿐이다 — 건너뛰기 버튼이 있는 목록 쪽에는 없다
+      // 흰 알약 클래스는 CTA 줄에 한 번뿐이다
       expect(html.match(/jam-quest-cta-snow/g)).toHaveLength(1)
       expect(html).not.toMatch(/jam-quest-cta(?!-snow)/)
-      const list = html.slice(html.indexOf('<ol'), html.indexOf('</ol>'))
-      expect(list).not.toContain('jam-quest-cta')
-      expect(list).not.toContain('jam-quest-pulse')
+      // 건너뛰기 버튼에는 흰 알약·펄스 클래스가 닿지 않는다
+      const skip = html.slice(html.lastIndexOf('<button'))
+      expect(skip).not.toContain('jam-quest-cta')
+      expect(skip).not.toContain('jam-quest-pulse')
     }
   })
 
@@ -256,32 +243,26 @@ describe('JAM! 시작하기 카드 — 건너뛰기 진입점(티켓 20260927_21
     }
   })
 
-  it('진입 버튼은 «잠긴 아이템 배지 열기» 행 오른쪽 끝의 작은 검정 버튼이다(2026-11-04)', () => {
+  it('진입 버튼은 다음 단계 버튼과 같은 줄 오른쪽 끝의 작은(xs) 검정 알약이다 (2026-11-04, 줄 위치는 티켓 20261115_2043)', () => {
     const html = render(demo(1, 'bag', realView()))
-    const lockedRow = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0]).find((li) => li.includes(d.onboardingQuest.real.steps.locked))
-    expect(lockedRow).toBeDefined()
-    // 같은 행 안에 있고, 글자 뒤(오른쪽 끝)에 놓인다
-    expect(lockedRow).toContain(`>${d.onboardingQuest.skip.entryLabel}</button>`)
-    expect(lockedRow!.indexOf('<button')).toBeGreaterThan(lockedRow!.indexOf(d.onboardingQuest.real.steps.locked))
-    // 첫 행(Strava 동기화)에는 없다
-    const syncRow = [...html.matchAll(/<li [\s\S]*?<\/li>/g)].map((m) => m[0]).find((li) => li.includes(d.onboardingQuest.real.steps.sync))
-    expect(syncRow).not.toContain('<button')
+    const button = html.slice(html.lastIndexOf('<button'), html.lastIndexOf('</button>'))
+    expect(button).toContain(`>${d.onboardingQuest.skip.entryLabel}`)
     // 작은(xs) 검정 알약이다 — 연출 CTA의 accent 면(surface sub)이 아니다
-    const button = lockedRow!.slice(lockedRow!.indexOf('<button'), lockedRow!.indexOf('</button>'))
     expect(button).toContain('min-height:calc(44px * var(--scale-compact))')
     expect(button).toContain('bg-background-inverse')
     expect(button).not.toContain('bg-accent')
+    // 다음 단계 버튼 뒤(오른쪽)에 놓인다
+    expect(html.indexOf(d.onboardingQuest.continueButton)).toBeLessThan(html.lastIndexOf('<button'))
     // 보조기술에는 무엇을 건너뛰는지 알린다
     expect(button).toContain(`aria-label="${d.onboardingQuest.skip.entryAriaLabel}"`)
     // 모달은 닫힌 채라 마크업에 없다
     expect(html).not.toContain('role="dialog"')
   })
 
-  it('실제 단계 기록을 못 읽어 체크리스트가 없으면 오른쪽 정렬 행에 둔다', () => {
+  it('실제 단계 기록을 못 읽어도 줄 구성은 같다 — 다음 단계는 왼쪽, 건너뛰기는 오른쪽', () => {
     const html = render(demo(1, 'bag', null))
-    const button = html.slice(html.lastIndexOf('<button'))
-    expect(button).toContain(`>${d.onboardingQuest.skip.entryLabel}</button>`)
-    expect(html.slice(html.lastIndexOf('<div', html.lastIndexOf('<button')), html.lastIndexOf('<button'))).toContain('justify-end')
+    expect(buttonTexts(html)).toEqual([d.onboardingQuest.continueButton, d.onboardingQuest.skip.entryLabel])
+    expect(html).toContain('<div class="flex items-center justify-between gap-2"')
     expect(html).not.toContain('<ol')
   })
 
@@ -385,10 +366,11 @@ describe('JAM! 시작하기 카드 — 실제 구역이 위로 올라온 카드(
     }
   })
 
-  it('연출 중 카드의 목록과 같은 행 상태를 쓴다 — 연출 중에도 실제 진행이 체크된다', () => {
+  it('연출 중 카드에는 체크 목록이 없다 — 실제 진행은 연출이 끝난 카드에서만 체크로 보인다 (티켓 20261115_2043)', () => {
     const html = render(demo(1, 'bag', realView({ steps: { sync: true } })))
-    expect(html).toContain('<span class="sr-only">, 마쳤어요</span>')
-    expect(html).toContain('<span class="sr-only">, 지금 할 차례예요</span>')
+    expect(html).not.toContain('<ol')
+    expect(html).not.toContain('마쳤어요')
+    expect(html).not.toContain('지금 할 차례예요')
   })
 })
 

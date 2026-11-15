@@ -29,8 +29,8 @@ import QuestStartTracker from './QuestStartTracker'
  * 그라데이션·그림자·반투명 면·가운데 정렬이 없고 모든 글자는 왼쪽 정렬이다. 체크 아이콘은 `--link` 선이고 아직 안 한 원의 테두리는 `--muted`다.
  *
  * 한 카드, 두 구역이다. 위계는 «지금 할 일» 기준이고 한 카드의 primary 버튼은 늘 하나다.
- * - 연출 중(`in_progress`): 칩 + «미리 해보기 n/7», ProgressBar 7칸, 연출 다음 단계 제목·설명, primary CTA(펄스 유지), 구분선, «내 활동으로 2단계» 체크 목록
- *   (`<ol>`, 누를 수 없음), 카드 밖 «미리 해보기 건너뛰기». 실제 단계 기록을 읽지 못했으면(`real` null) 구분선과 목록을 그리지 않는다.
+ * - 연출 중(`in_progress`): 칩만(분수 라벨 «미리 해보기 n/7»은 없고 진행 정도는 `sr-only` 문장과 ProgressBar 7칸이 알린다), 연출 다음 단계 제목·설명,
+ *   한 줄에 primary CTA(펄스 유지, 왼쪽 끝)와 «건너뛰기»(오른쪽 끝)를 같은 크기(xs)로 둔다. 구분선과 «내 활동으로 2단계» 체크 목록은 없다(티켓 20261115_2043).
  * - 연출 끝 또는 건너뜀(`real`): 칩 + «내 활동으로 n/2», ProgressBar 2칸, 체크 목록(지금 할 차례 행은 굵은 제목과 설명), 필요하면 InlineNotice, primary CTA 하나(펄스 없음).
  *   건너뛴 유저에게는 연출 구역도 «건너뛰었어요» 표시도 건너뛰기 버튼도 없다.
  * 완료 상태 구역은 없다 — 챕터 1은 소식 한 건으로 알린다(사용자 결정 4). 연출 끝/건너뜀과 실제 2단계가 둘 다 끝나면 카드가 사라진다(`status.ts`).
@@ -81,21 +81,22 @@ function Chip() {
   return <LabelChip className="self-start">{d.onboardingQuest.chipLabel}</LabelChip>
 }
 
-/** 칩과 분수 라벨 한 줄. 보이는 분수는 숫자와 빗금이라 스크린리더에는 같은 뜻의 문장을 따로 읽힌다. */
-function Header({ fraction, srFraction }: { fraction: string; srFraction: string }) {
+/**
+ * 칩과 분수 라벨 한 줄. 보이는 분수는 숫자와 빗금이라 스크린리더에는 같은 뜻의 문장을 따로 읽힌다.
+ * `fraction`이 없으면(연출 구역, 티켓 20261115_2043) 칩만 그리고 진행 정도는 `sr-only` 문장과 진행 막대가 알린다.
+ */
+function Header({ fraction, srFraction }: { fraction?: string; srFraction: string }) {
   return (
     <div className={CHIP_ROW_CLASS}>
       <Chip />
-      <span aria-hidden="true" className={PROGRESS_LABEL_CLASS}>
-        {fraction}
-      </span>
+      {fraction !== undefined && (
+        <span aria-hidden="true" className={PROGRESS_LABEL_CLASS}>
+          {fraction}
+        </span>
+      )}
       <span className="sr-only">{srFraction}</span>
     </div>
   )
-}
-
-function Divider() {
-  return <hr className="m-0 h-px border-0 bg-border" />
 }
 
 // ─── 실제 2단계 체크 목록 ───────────────────────────────────────────────────
@@ -217,7 +218,7 @@ function DemoCta({ nextStep }: { nextStep: OnboardingQuestStepKey }) {
   if (nextStep === 'sync') {
     return (
       <div className={CTA_ROW_PULSE_CLASS}>
-        <OnboardingSyncButton size="sm" />
+        <OnboardingSyncButton size="xs" />
       </div>
     )
   }
@@ -225,9 +226,9 @@ function DemoCta({ nextStep }: { nextStep: OnboardingQuestStepKey }) {
   const screen = STEP_SCREEN_MAP[nextStep]
   return (
     <div className={CTA_ROW_PULSE_CLASS}>
-      <Button variant="primary" surface="sub" size="sm" className={BUTTON_LABEL_CLASS} onClick={() => router.push(SCREEN_PATH_MAP[screen])}>
+      <Button variant="primary" surface="sub" size="xs" className={BUTTON_LABEL_CLASS} onClick={() => router.push(SCREEN_PATH_MAP[screen])}>
         <span>{d.onboardingQuest.continueButton}</span>
-        <ChevronRightIcon className="w-4 h-4" />
+        <ChevronRightIcon className="w-3.5 h-3.5" />
       </Button>
     </div>
   )
@@ -247,24 +248,19 @@ function DemoCard({ state }: { state: Extract<NonNullable<OnboardingQuestCardSta
     <>
       {startTracker}
       <Card role="group" aria-label={d.onboardingQuest.cardLabel} className={CARD_CLASS} style={QUEST_CARD_STYLE}>
-        <Header fraction={t(progress.demo, counts)} srFraction={t(progress.demoSr, counts)} />
+        <Header srFraction={t(progress.demoSr, counts)} />
         <ProgressBar current={state.done} total={state.total} labelType="none" trackColor="var(--snow)" />
         <div className="flex flex-col gap-2">
           <p className={TITLE_CLASS}>{step.title}</p>
           <p className={DESC_CLASS}>{step.description}</p>
         </div>
-        <DemoCta nextStep={state.nextStep} />
-        {/* 건너뛰기 진입 버튼(티켓 20260927_2131 T8, 카드 안 버튼과 모달 20261104_1810, «잠긴 아이템 배지 열기» 행 오른쪽 끝의 작은 검정 버튼으로 변경 2026-11-04, 채원 사전 판정).
-            연출 진행 중 모든 단계(sync 포함)에서 보이고, 건너뛴 뒤에는 없다. 누르면 가운데 모달이 뜬다. 체크리스트가 없으면(실제 단계 기록을 못 읽음) 오른쪽 정렬 행에 둔다.
+        {/* 다음 단계 버튼과 건너뛰기 버튼은 같은 크기(xs)로 한 줄에 둔다 — 다음 단계는 카드 왼쪽 끝, 건너뛰기는 오른쪽 끝(티켓 20261115_2043).
+            건너뛰기 진입 버튼은 티켓 20260927_2131 T8, 카드 안 버튼과 모달 20261104_1810. 연출 진행 중 모든 단계(sync 포함)에서 보이고, 건너뛴 뒤에는 없다. 누르면 가운데 모달이 뜬다.
             GA4 onboarding_quest_skip 이벤트에 실릴 단계 키(nextStep)를 함께 넘긴다(티켓 20260927_2132). */}
-        {state.real ? (
-          <>
-            <Divider />
-            <RealChecklist real={state.real} emphasizeCurrent={false} lastRowTrailing={skipEntry} />
-          </>
-        ) : (
-          <div className="flex justify-end">{skipEntry}</div>
-        )}
+        <div className="flex items-center justify-between gap-2">
+          <DemoCta nextStep={state.nextStep} />
+          {skipEntry}
+        </div>
       </Card>
     </>
   )
