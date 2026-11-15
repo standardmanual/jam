@@ -365,20 +365,6 @@
       "annotation": "other"
     },
     {
-      "name": "--duration-quest-pulse",
-      "value": "1.6s",
-      "kind": "other",
-      "definedIn": "tokens/motion.css",
-      "annotation": "other"
-    },
-    {
-      "name": "--ease-quest-pulse",
-      "value": "cubic-bezier(0.2, 0, 0, 1)",
-      "kind": "other",
-      "definedIn": "tokens/motion.css",
-      "annotation": "other"
-    },
-    {
       "name": "--base-white",
       "value": "#ffffff",
       "kind": "color",

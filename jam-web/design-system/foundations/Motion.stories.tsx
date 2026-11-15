@@ -188,7 +188,6 @@ function MotionPage() {
         <DurationRow token="--duration-fast" desc="일반 전환 — 대부분의 UI 상호작용" />
         <DurationRow token="--duration-medium" desc="중형 전환 — 모달 열기, 탭 전환" />
         <DurationRow token="--duration-slow" desc="느린 전환 — 페이지 진입, 스플래시" />
-        <DurationRow token="--duration-quest-pulse" ease="--ease-quest-pulse" desc="온보딩 퀘스트 펄스 전용 — 범용 전환으로 쓰지 않는다" />
       </div>
 
       <div style={{ marginBottom: 40 }}>
@@ -199,7 +198,6 @@ function MotionPage() {
         <EaseRow token="--ease-smooth-out" desc="부드럽게 감속 — 일반 UI 전환 기본값" />
         <EaseRow token="--ease-bounce" desc="탄성 — 강조, 팝업, 획득 연출" />
         <EaseRow token="--ease-out" desc="표준 ease-out — 단순 슬라이드인" />
-        <EaseRow token="--ease-quest-pulse" desc="온보딩 퀘스트 펄스 전용 — 범용 이징으로 쓰지 않는다" />
       </div>
 
       <div style={{ marginBottom: 40 }}>
