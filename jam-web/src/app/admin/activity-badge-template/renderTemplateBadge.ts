@@ -11,6 +11,7 @@ import {
   DEFAULT_TEMPLATE_BADGE_PARAMS,
   styleSlot,
   type TemplateBadgeParams,
+  resolveSlotColor,
 } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import {
   layoutSlotText,
@@ -190,7 +191,7 @@ export async function renderTemplateBadge(
       toTextLayerInput({
         content: text,
         font,
-        color: styled.fill,
+        color: resolveSlotColor(slot.fill, params.text[slotName].color, params.color) ?? styled.fill,
         letterSpacingEm,
         layout,
         baselineY: slot.y,

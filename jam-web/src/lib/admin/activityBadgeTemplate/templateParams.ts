@@ -2,7 +2,7 @@
  * 템플릿 배지의 색·글자 조정값의 꼴, 정리, 자리 정보에 얹기 (티켓 20261116_0632).
  * 순수 모듈. 서버 전용 모듈을 들여오지 않는다.
  */
-import { parseSvgColor } from './templateColors'
+import { buildColorMap, parseSvgColor } from './templateColors'
 import { TEMPLATE_SLOT_NAMES, type TemplateSlot, type TemplateSlotName } from './templateSvg'
 
 export interface TemplateColorParams {
@@ -101,6 +101,23 @@ export function isDefaultTemplateBadgeParams(p: TemplateBadgeParams): boolean {
     const b = d.text[n]
     return a.color === b.color && a.fontFamily === b.fontFamily && a.fontWeight === b.fontWeight && a.sizeScalePct === b.sizeScalePct
   })
+}
+
+/**
+ * 글자를 그릴 색(`#RRGGBB`). 따로 고른 색이 있으면 그 색이고, 없으면 템플릿의 글자 색에
+ * 템플릿 색 조정(칸 바꾸기와 색상·채도·명도)을 똑같이 얹은 색이다. 템플릿을 파랑 계열로 돌리면
+ * 글자도 함께 돈다. 템플릿의 글자 색을 읽지 못하면 `null`이다.
+ */
+export function resolveSlotColor(
+  templateFill: string | null,
+  textColor: string | null,
+  color: TemplateColorParams
+): string | null {
+  const picked = parseSvgColor(textColor)
+  if (picked) return picked
+  const base = parseSvgColor(templateFill)
+  if (!base) return null
+  return buildColorMap([base], color)[base] ?? base
 }
 
 /** 자리 정보에 글자 조정을 얹은 사본 */

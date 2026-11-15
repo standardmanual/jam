@@ -25,6 +25,7 @@ import {
   TEMPLATE_PARAM_RANGES,
   type SlotTextParams,
   type TemplateBadgeParams,
+  resolveSlotColor,
 } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateSlotName, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
 import TemplateFontField from './TemplateFontField'
@@ -164,7 +165,7 @@ function SlotSection({
           <Input
             type="color"
             aria-label={`${title} 색`}
-            value={t.color ?? slot.fill ?? '#000000'}
+            value={resolveSlotColor(slot.fill, t.color, params.color) ?? '#000000'}
             onChange={(e) => setText({ color: e.target.value.toUpperCase() })}
             className="h-9 w-16 p-1"
           />

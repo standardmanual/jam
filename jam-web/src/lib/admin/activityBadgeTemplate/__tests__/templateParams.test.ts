@@ -7,6 +7,7 @@ import {
   DEFAULT_TEMPLATE_BADGE_PARAMS,
   parseTemplateBadgeParams,
   isDefaultTemplateBadgeParams,
+  resolveSlotColor,
   styleSlot,
 } from '../templateParams'
 import type { TemplateSlot } from '../templateSvg'
@@ -89,5 +90,27 @@ describe('styleSlot', () => {
   })
   it('fontSize가 없으면 null', () => {
     expect(styleSlot({ ...slot, fontSize: null }, { color: null, fontFamily: null, fontWeight: null, sizeScalePct: 150 }).fontSize).toBeNull()
+  })
+})
+
+describe('resolveSlotColor', () => {
+  const none = { hueShift: 0, saturation: 0, lightness: 0, overrides: {} }
+
+  it('따로 고른 색이 있으면 템플릿 색 조정과 상관없이 그 색이다', () => {
+    expect(resolveSlotColor('#FF0000', '#0000ff', { ...none, hueShift: 120 })).toBe('#0000FF')
+  })
+
+  it('고른 색이 없으면 템플릿의 글자 색에 색상 조정을 얹는다', () => {
+    expect(resolveSlotColor('#FF0000', null, { ...none, hueShift: 120 })).toBe('#00FF00')
+    expect(resolveSlotColor('#ff0000', null, none)).toBe('#FF0000')
+  })
+
+  it('템플릿 색 칸을 바꾸면 같은 색의 글자도 따라 바뀐다', () => {
+    expect(resolveSlotColor('#123B2E', null, { ...none, overrides: { '#123B2E': '#FF0000' } })).toBe('#FF0000')
+  })
+
+  it('템플릿의 글자 색을 읽지 못하면 null이다', () => {
+    expect(resolveSlotColor(null, null, none)).toBeNull()
+    expect(resolveSlotColor('url(#paint0)', null, none)).toBeNull()
   })
 })
