@@ -6,7 +6,8 @@
 import { useEffect } from 'react'
 import { BADGE_CARD_DISPLAY_WIDTH, nextImageWidthFor, optimizedImageUrl } from '@/lib/imageSrc'
 
-export const WARMUP_SESSION_KEY ='jam:badge-image-warmup'
+export const WARMUP_SESSION_KEY = 'jam:badge-image-warmup'
+const IDLE_TIMEOUT_MS = 4000
 const BATCH_SIZE = 6
 const FALLBACK_DELAY_MS = 2000
 
@@ -23,17 +24,22 @@ function loadOne(src: string): Promise<void> {
   })
 }
 
+let inFlight = false
+
 export async function warmUpBadgeImages() {
+  if (inFlight) return
+  inFlight = true
   try {
     const conn = (navigator as Navigator & { connection?: NetworkInformationLike }).connection
     if (conn?.saveData) return
     if (sessionStorage.getItem(WARMUP_SESSION_KEY)) return
-    sessionStorage.setItem(WARMUP_SESSION_KEY, '1')
 
     const res = await fetch('/api/badge-images/warmup', { credentials: 'same-origin' })
     if (!res.ok) return
     const body = (await res.json()) as { urls?: unknown }
     if (!Array.isArray(body.urls)) return
+    // 목록을 받은 뒤에 기록한다. 먼저 기록하면 첫 시도가 통신 오류로 실패했을 때 그 탭에서는 다시 시도하지 못한다
+    sessionStorage.setItem(WARMUP_SESSION_KEY, '1')
 
     const width = nextImageWidthFor(BADGE_CARD_DISPLAY_WIDTH, window.devicePixelRatio || 1)
     const srcs = body.urls
@@ -46,6 +52,8 @@ export async function warmUpBadgeImages() {
     }
   } catch {
     // 미리 받기는 덤이다 — 실패해도 화면에 아무 영향이 없어야 한다
+  } finally {
+    inFlight = false
   }
 }
 
@@ -58,7 +66,7 @@ export default function BadgeImageWarmup() {
     const start = () => {
       if (cancelled) return
       if (typeof window.requestIdleCallback === 'function') {
-        idleId = window.requestIdleCallback(() => void warmUpBadgeImages())
+        idleId = window.requestIdleCallback(() => void warmUpBadgeImages(), { timeout: IDLE_TIMEOUT_MS })
       } else {
         timerId = setTimeout(() => void warmUpBadgeImages(), FALLBACK_DELAY_MS)
       }

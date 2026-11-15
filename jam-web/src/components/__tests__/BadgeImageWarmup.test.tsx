@@ -93,6 +93,26 @@ describe('warmUpBadgeImages', () => {
     await expect(warmUpBadgeImages()).resolves.toBeUndefined()
     expect(loaded).toEqual([])
   })
+
+  it('첫 시도가 실패하면 세션 기록을 남기지 않아 다음 호출에서 다시 시도한다', async () => {
+    setup({
+      fetchImpl: async () => {
+        throw new Error('network')
+      },
+    })
+    await warmUpBadgeImages()
+    expect(store.has(WARMUP_SESSION_KEY)).toBe(false)
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ urls: [STORE] }) })))
+    await warmUpBadgeImages()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(store.get(WARMUP_SESSION_KEY)).toBe('1')
+    expect(loaded).toHaveLength(1)
+  })
+
+  it('실행 중에 다시 불려도 목록을 한 번만 요청한다', async () => {
+    await Promise.all([warmUpBadgeImages(), warmUpBadgeImages()])
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('주소 일치 — BadgeGridCard(90px)의 srcset', () => {
