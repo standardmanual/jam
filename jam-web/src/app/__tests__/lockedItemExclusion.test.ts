@@ -66,7 +66,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/lib/admin/auth', () => ({ hasAdminAccess: async () => false }))
-vi.mock('@/lib/onboarding-quest/screen-gate', () => ({ getOnboardingQuestGate: async () => null }))
 
 /** 표 이름과 `eq('locked', false)` 호출이 있었는지 — 해당 표를 읽은 쿼리마다 따로 보지 못하므로 «표 기준 하나라도»가 아니라 개수로 본다 */
 function lockedFilterCount(table: string): number {

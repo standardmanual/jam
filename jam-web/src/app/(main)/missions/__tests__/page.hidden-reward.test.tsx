@@ -46,7 +46,6 @@ vi.mock('next/navigation', () => ({
     throw new Error(`NEXT_REDIRECT:${to}`)
   },
 }))
-vi.mock('@/lib/onboarding-quest/screen-gate', () => ({ getOnboardingQuestGate: async () => null }))
 vi.mock('@/lib/missions/visibility-server', () => ({
   loadMissionVisibilityContext: async () => ({ completedMissionIds: new Set<string>(), tribeAccess: null }),
 }))
@@ -56,7 +55,6 @@ vi.mock('@/lib/missions/visibility', async (importOriginal) => ({
     new Map(missions.map((m) => [m.id, { visibility: 'open', requiredBadge: null }])),
 }))
 vi.mock('../MissionsListClient', () => ({ default: () => null }))
-vi.mock('../MissionsBrowseTracker', () => ({ default: () => null }))
 
 import MissionsPage from '../page'
 
@@ -81,12 +79,8 @@ const mission = (id: string, rewardBadgeIds: string[]): Row => ({
 })
 
 async function render(): Promise<ListProps> {
-  const element = (await MissionsPage()) as { props: { children: unknown } }
-  const children = (Array.isArray(element.props.children) ? element.props.children : [element.props.children]) as {
-    props?: Partial<ListProps>
-  }[]
-  const list = children.find((child) => child && child.props && 'rewardBadgeNames' in child.props)
-  return list!.props as ListProps
+  const element = (await MissionsPage()) as { props: ListProps }
+  return element.props
 }
 
 describe('미션 목록 페이지 — 숨김 보상 배지', () => {
