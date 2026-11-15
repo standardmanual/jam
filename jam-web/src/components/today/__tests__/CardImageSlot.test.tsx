@@ -14,7 +14,8 @@ import { CARD_RESOURCES, type ImageCardView } from '@/lib/today/cardView'
 
 const IMAGE = 'https://cdn.example/cover.png'
 const VIDEO = 'https://cdn.example/motion.mp4'
-const INTERNAL_IMAGE = '/badges/sample/s142.png'
+// 정적 파일 배지(/badges/…)는 변환을 거치지 않아 sizes가 붙지 않는다(티켓 20261115_1237) — 변환을 거치는 내부 경로로 쓴다
+const INTERNAL_IMAGE = '/covers/sample/s142.png'
 
 // 칸을 공용으로 빼기 전 HeroCard의 문자열(티켓 20261001_1737)
 const OLD_HERO_BOX = 'relative aspect-video overflow-hidden bg-background'
