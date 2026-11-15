@@ -52,7 +52,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/badges/:path*',
+        // 그림 파일만 고른다. `/badges`·`/badges/[id]`는 화면 주소라서 이 헤더가 붙으면 화면 응답이 하루 동안 캐시된다
+        source: '/badges/:file(.+\\.(?:png|webp|jpg|jpeg|avif))',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=2592000' },
         ],
