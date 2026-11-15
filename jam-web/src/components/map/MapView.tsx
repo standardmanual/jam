@@ -119,7 +119,7 @@ const LOCATE_BUTTON_BOTTOM =
 
 type MapsReadyCallback = () => void
 /**
- * 티켓 20260927_2126: `DROP_MARKER_ACTIVE_BG` 등을 export해 `QuestPickupScene.tsx`가 가져다 쓰면서
+ * 티켓 20260927_2126: `DROP_MARKER_ACTIVE_BG` 등을 export하면서
  * 이 모듈이 (기존 `next/dynamic(ssr:false)` 지연 로드 경로 밖에서) 서버 렌더 중에도 import될
  * 수 있게 됐다. 모듈 최상위에서 곧바로 `window`를 참조하면 서버(Node)에는 `window`가 없어
  * import 시점에 그대로 crash한다 — `typeof window !== 'undefined'`로 감싸 서버에서는 빈
@@ -169,8 +169,7 @@ const DROP_MARKER_SCALE = 1.2
 
 /**
  * 배지(드랍)가 있는 지점 마커의 면·아이콘 색 — 강조색 그린(사용자 지시 2026-11-11, 티켓 20261111_1034).
- * 밝은 그린 위라 아이콘은 흰색이 아니라 검정(--foreground, 약 11:1)이다. 온보딩 연출의 정지 마커(`QuestPickupScene`)가
- * 실제 마커와 같은 모양을 보이도록 같이 쓴다.
+ * 밝은 그린 위라 아이콘은 흰색이 아니라 검정(--foreground, 약 11:1)이다.
  */
 export const DROP_MARKER_ACTIVE_BG = 'var(--jam-green)'
 export const DROP_MARKER_ACTIVE_GLYPH = 'var(--foreground)'

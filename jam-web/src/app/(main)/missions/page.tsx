@@ -8,8 +8,6 @@ import { dedupeByRewardBadge } from '@/lib/missions/dedupeReward'
 import { withoutHiddenRewardBadgeIds } from '@/lib/missions/reward-badges'
 import { lockedRaritiesOf, splitRewardBadges, type RewardBadgeSourceRow } from '@/lib/missions/locked-rewards'
 import MissionsListClient, { type MissionListItem, type RewardBadgeInfo } from './MissionsListClient'
-import MissionsBrowseTracker from './MissionsBrowseTracker'
-import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 
 export default async function MissionsPage() {
   const supabase = await createClient()
@@ -18,9 +16,6 @@ export default async function MissionsPage() {
 
   const service = createServiceClient()
   const now = new Date().toISOString()
-  // 결정 14·18(상위 20260927_2123): browse 차례일 때만 화면 진입 계측을 마운트한다.
-  const questStep = await getOnboardingQuestGate(user.id, 'missions')
-  const isBrowseQuestTurn = questStep === 'browse'
 
   // ends_at이 NULL이면 상시 미션(종료일 없음) — 항상 진행중 탭에 포함
   const [
@@ -120,13 +115,10 @@ export default async function MissionsPage() {
   }
 
   return (
-    <>
-      {isBrowseQuestTurn && <MissionsBrowseTracker />}
-      <MissionsListClient
-        ongoing={visibleOngoing.map(toItem)}
-        ended={[...completedMissions, ...endedMissions].map(toItem)}
-        rewardBadgeNames={rewardBadgeNames}
-      />
-    </>
+    <MissionsListClient
+      ongoing={visibleOngoing.map(toItem)}
+      ended={[...completedMissions, ...endedMissions].map(toItem)}
+      rewardBadgeNames={rewardBadgeNames}
+    />
   )
 }

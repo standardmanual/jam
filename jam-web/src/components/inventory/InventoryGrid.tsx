@@ -43,22 +43,6 @@ interface InventoryGridProps {
   onSelect?: (item: InventoryGridItem) => void
   /** 빈 슬롯 placeholder 개수(인벤토리 페이지에서만 사용) */
   emptySlots?: number
-  /**
-   * 그리드 첫 칸에 `mode`와 무관하게 select 동작(버튼)으로 끼워 넣는 항목 — 온보딩 퀘스트
-   * `bag` 차례의 연출 도토리 전용(티켓 20260928_0137, `QuestBagGrid.tsx`). 나머지 `items`는
-   * 기존 `mode` 그대로 렌더된다. 넘기지 않는 기존 호출부(드랍 바텀시트 등)는 변경이 없다.
-   */
-  leadingItem?: {
-    item: InventoryGridItem
-    onSelect: () => void
-    disabled?: boolean
-    /**
-     * 「지금 눌러야 할 곳」 공용 펄스(`.jam-quest-pulse`, 티켓 20260928_1752)를 선두 셀에
-     * 씌운다 — 20260928_1753. `BadgeGridCard`의 기존 `className` prop에 그대로 병합되므로
-     * 셀 모서리(`--radius-2xl`)를 벗어나지 않는다.
-     */
-    pulse?: boolean
-  }
 }
 
 /**
@@ -77,23 +61,11 @@ export default function InventoryGrid({
   mode,
   onSelect,
   emptySlots = 0,
-  leadingItem,
 }: InventoryGridProps) {
   return (
     <div className="grid grid-cols-3 gap-2">
-      {leadingItem && (
-        <BadgeGridCard
-          key={leadingItem.item.id}
-          onClick={leadingItem.disabled ? undefined : leadingItem.onSelect}
-          name={leadingItem.item.badgeName}
-          imageUrl={leadingItem.item.badgeImageUrl}
-          eager
-          rarity={leadingItem.item.badgeRarity as import('@/types/database').BadgeRarity | null}
-          className={leadingItem.pulse ? 'jam-quest-pulse' : ''}
-        />
-      )}
       {items.map((item, index) => {
-        const eager = index + (leadingItem ? 1 : 0) < FIRST_SCREEN_GRID_COUNT
+        const eager = index < FIRST_SCREEN_GRID_COUNT
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
           // 만료 임박 칩도 ListRowChip 규격(12px·2px 8px·20px)이다. 선 칩 모양(투명 면 + --border 안쪽 선 + --muted 글자)만 유지한다(티켓 20261112_0010)

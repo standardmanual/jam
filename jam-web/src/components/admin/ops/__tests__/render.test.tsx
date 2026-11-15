@@ -1,7 +1,7 @@
 /**
  * 받은 기획함 화면 부품의 초기 렌더 (티켓 20260930_1817, 결정 화면 부품은 티켓 20260930_1818)
  *
- * 저장소에 jsdom·testing-library가 없어(`OnboardingSyncButton.test.tsx`와 같은 방식) 서버 렌더(`renderToStaticMarkup`)로
+ * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로
  * 처음 그린 모양만 고정한다: 상태가 아이콘과 글자로 나오는지, 지금 단계 표시가 붙는지, 제출 문자열이 HTML로 해석되지 않는지,
  * 색 견본이 `#rrggbb`일 때만 그려지는지, 슬롯이 비면 자리를 잡지 않는지. 클릭·URL 바꾸기·전환 요청은 브라우저 동작이라
  * 여기서 다루지 않는다(화면 확인은 카리나가 한다).

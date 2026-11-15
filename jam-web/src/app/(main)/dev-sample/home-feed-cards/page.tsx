@@ -10,23 +10,20 @@ import { toCardView } from '@/lib/today/cardView'
 import type { ResolvedBadge, TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
 import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
-import type { RealStepsView } from '@/lib/onboarding-quest/real-view'
-import type { OnboardingQuestCardState } from '@/lib/onboarding-quest/status'
 import { CARD_SHAPES, type CardShape } from '@/lib/today/shape'
 import { d, t } from '@/lib/i18n'
 import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
-import OnboardingQuestCard from '../../OnboardingQuestCard'
 import SuspensionBanner from '../../SuspensionBanner'
 import TodayStatusStrip from '../../TodayStatusStrip'
 
 /**
  * 샘플 전용 — 홈 화면(`(main)/page.tsx`)과 같은 틀(상단 내비·탭 바·푸터·여백) 안에 홈에 나올 수 있는 요소를 전부 그린다.
- * 홈 상단 요소(이용 정지 배너·인사말·캡슐·Strava 끊김 카드·«JAM! 시작하기» 카드·오늘의 현황 스트립)의 상태별 모습과,
+ * 홈 상단 요소(이용 정지 배너·인사말·캡슐·Strava 끊김 카드·오늘의 현황 스트립)의 상태별 모습과,
  * 홈피드 카드 유형(template_type 10개) × 모양(shape 7개) 전체 조합, 주요 변형을 한 화면에 모은다.
  * 링크가 없는 숨은 경로다(메뉴·홈 어디에도 연결하지 않는다). DB를 읽지 않고 손으로 만든 값을 실제 변환(`toCardView`)과
  * 실제 컴포넌트에 그대로 넣는다 — 홈과 같은 코드로 그려지므로 디자인이 바뀌면 이 화면도 따라 바뀐다.
  * 계측 정보(`tracking`)를 싣지 않아 카드의 노출·클릭 기록이 남지 않고 카드 전체 링크도 걸리지 않는다.
- * 데이터를 바꾸는 버튼(연출 동기화 등)은 일부러 그리지 않는 상태만 골랐다 — 눌러도 이동만 일어난다.
+ * 데이터를 바꾸는 버튼은 일부러 그리지 않는 상태만 골랐다 — 눌러도 이동만 일어난다.
  */
 
 export const metadata: Metadata = {
@@ -535,37 +532,6 @@ const CAPSULES: { label: string; status: CapsuleStatus }[] = [
   },
 ]
 
-const REAL_SYNC: RealStepsView = {
-  rows: [
-    { key: 'sync', state: 'current' },
-    { key: 'locked', state: 'pending' },
-  ],
-  doneCount: 0,
-  total: 2,
-  current: { step: 'sync', stravaConnected: false },
-  stravaConnected: false,
-}
-
-const REAL_LOCKED: RealStepsView = {
-  rows: [
-    { key: 'sync', state: 'done' },
-    { key: 'locked', state: 'current' },
-  ],
-  doneCount: 1,
-  total: 2,
-  current: { step: 'locked', target: { itemId: 'sample-item', need: 300 }, shortage: { have: 120, need: 300 } },
-  stravaConnected: true,
-}
-
-const QUESTS: { label: string; state: OnboardingQuestCardState }[] = [
-  {
-    label: '«JAM! 시작하기» · 연출 진행 중(3/7)',
-    state: { kind: 'in_progress', done: 3, total: 7, nextStep: 'mix_fail', real: REAL_SYNC },
-  },
-  { label: '«JAM! 시작하기» · 내 활동 ① 연동 전', state: { kind: 'real', real: REAL_SYNC } },
-  { label: '«JAM! 시작하기» · 내 활동 ② 잠긴 아이템 배지(포인트 부족)', state: { kind: 'real', real: REAL_LOCKED } },
-]
-
 const STRIPS: { label: string; left: TodayLeftStatus; right: TodayRightStatus }[] = [
   {
     label: '현황 · 미션 진행 + 친구 활동 여럿',
@@ -657,12 +623,6 @@ export default function HomeFeedCardsSamplePage() {
         {CAPSULES.map((c) => (
           <Labeled key={c.label} label={c.label}>
             <CapsuleWidget initial={c.status} blockedCard />
-          </Labeled>
-        ))}
-
-        {QUESTS.map((q) => (
-          <Labeled key={q.label} label={q.label}>
-            <OnboardingQuestCard state={q.state} username="sample" />
           </Labeled>
         ))}
 

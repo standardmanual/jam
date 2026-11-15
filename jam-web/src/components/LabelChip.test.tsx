@@ -6,7 +6,7 @@
  * addon-vitest 연동이 티켓 20260906_1348에서 제거됨 — `vitest.config.ts` 머리말). 그래서
  * 「교체 전 Tailwind 클래스와 계산값이 같다」는 보증을 여기서 한다.
  *
- * 교체 전 클래스(`TodayStatusStrip` CellLabel · `OnboardingQuestCard` CHIP_CLASS 공통, `self-start`
+ * 교체 전 클래스(`TodayStatusStrip` CellLabel, `self-start`
  * 제외): `inline-flex items-center text-xs leading-none font-bold
  * uppercase px-2.5 py-1.5 rounded-full bg-background text-foreground`. 모양(여백·글자)은 지금도 같고,
  * 면만 티켓 20261015_2133에서 `--background-secondary`로 올렸다(흰 카드 위 윤곽).

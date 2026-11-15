@@ -672,58 +672,6 @@
   user-select: none;
 }
 
-/* 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스(티켓 20260928_1752, 상위 20260927_2123 Q1) — 진행
-   중인 퀘스트 카드에서 지금 눌러야 할 CTA pill 둘레에 브랜드 강조색 box-shadow가 0 → 10px로
-   번지며 사라지는 반복 애니메이션. 색은 리터럴 rgba 대신 color-mix로 --jam-purple을 직접
-   참조한다(티켓 20261115_1804, 이전에는 --link) — --jam-purple이 바뀌면 자동 반영된다. 퍼플 카드 위 CTA 줄은
-   `.jam-quest-cta-snow`가 --quest-pulse-color(흰색)·--quest-pulse-alpha(85%)로 링 색을 바꾼다(티켓 20261115_1932). 1단계(홈 카드 ①·②)에서 시작해, 결정 7(단계별 대상 하나에만)에 따라
-   Q2~Q4(티켓 20260928_1753~1755)가 각 단계의 「지금 눌러야 할 곳」 한 칸에 재사용한다.
-   TopNav 동기화 버튼·하단 탭 아이콘·퀘스트 이후 카드(③·④)에는 붙이지 않는다. */
-@keyframes jam-quest-pulse {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--quest-pulse-color, var(--jam-purple)) var(--quest-pulse-alpha, 55%), transparent);
-  }
-  100% {
-    box-shadow: 0 0 0 10px color-mix(in srgb, var(--jam-purple) 0%, transparent);
-  }
-}
-.jam-quest-pulse {
-  animation: jam-quest-pulse var(--duration-quest-pulse) var(--ease-quest-pulse) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .jam-quest-pulse { animation: none; }
-}
-
-/* 온보딩 퀘스트 「지금 눌러야 할 곳」 버튼 면(티켓 20261115_1804) — 퍼플 면 + --foreground 글자(대비 약 8:1,
-   --snow는 퍼플 위 약 1.4:1이라 쓰지 않는다). 퍼플 면은 이 한 곳에서만 정의한다.
-   - 래퍼에 붙이면 직계 자식 button만 칠한다(`> button`). 후손 전체로 넓히면 BadgeRevealOverlay 안 버튼까지 칠해진다.
-   - button 자신에 붙여도 된다(`:is(button)`, 믹스하기).
-   - @layer 밖이라 Tailwind utilities 레이어(Button의 bg-accent·bg-background-inverse·text-*·hover:*)를 소스 순서와
-     무관하게 이긴다. transform·opacity는 건드리지 않아 active:scale-95와 disabled 흐림은 그대로다.
-   - border-color만 transparent로 둬 Button의 border 두께를 유지한다. 색 전환 애니메이션은 걸지 않는다. */
-.jam-quest-cta:is(button),
-.jam-quest-cta > button {
-  background-color: var(--jam-purple);
-  color: var(--foreground);
-  border-color: transparent;
-}
-
-/* 퍼플 퀘스트 카드 안 CTA(티켓 20261115_1932) — 퍼플 면 위 흰 알약. 글자는 --jam-purple 60% + --foreground 40%(#795c9d)로
-   흰 면 위 5.34:1이다(#BA8AF7 그대로는 2.6:1이라 쓰지 않는다, 사용자가 진한 퍼플을 선택). 퍼플 면과 흰 알약 경계 대비는 2.54:1이지만
-   글자 라벨이 있어 허용하고 테두리·그림자는 더하지 않는다. 직계 자식 button만 칠한다(BadgeRevealOverlay 안 버튼 제외).
-   transform·opacity는 건드리지 않는다. 펄스 링은 같은 래퍼에서 변수로 흰색으로 바꾼다(애니메이션이 걸리는 요소에 변수가 있어야 한다).
-   카드 안 줄에는 .jam-quest-cta를 함께 붙이지 않는다. 버튼 loading 스피너는 border-current라 같은 진한 퍼플이 된다. */
-.jam-quest-cta-snow {
-  --quest-pulse-color: var(--snow);
-  --quest-pulse-alpha: 85%;
-}
-.jam-quest-cta-snow:is(button),
-.jam-quest-cta-snow > button {
-  background-color: var(--snow);
-  color: color-mix(in srgb, var(--jam-purple) 60%, var(--foreground));
-  border-color: transparent;
-}
-
 /* 카드 전체 눌림(티켓 20261001_1204, 상위 20260930_1453 b0) — 카드 래퍼(`<a>`/`Link`는 display:block이어야
    transform이 먹는다)에 붙이면 눌렀을 때 --scale-press-card(0.98)로 줄어든다. 흩어져 있던
    `active:scale-[0.98] transition-transform duration-100`을 대체한다(시간 100ms → --duration-micro 80ms,

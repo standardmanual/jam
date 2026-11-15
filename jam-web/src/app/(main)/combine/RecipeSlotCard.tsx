@@ -13,7 +13,6 @@ import { d, t } from '@/lib/i18n'
  *   컬렉션 상세에서 넣을 수 있는 아이템 배지가 있는 칸(`SlotGrid`의 `isSlottable`)과 같은 모양이다(2026-11-11 사용자 지시, 이전에는 선명했다).
  * - `unowned`: 가진 개체가 없는 칸. 이미지는 그리지 않고 이미지 윤곽의 점선만 둔다(컬렉션 상세의 미발견 칸 `undiscovered`와 같다,
  *   2026-11-11 사용자 지시, 2026-11-12 캔버스 확정으로 회색 채움에서 점선으로 바뀜). 이름은 muted, 버튼 없음, 눌러도 아무 일 없음.
- * - `pulse`: 온보딩 퀘스트 펄스는 «+»에만 건다. «−»·`unowned`에는 걸리지 않는다.
  */
 export type RecipeSlotStatus = 'filled' | 'addable' | 'unowned'
 
@@ -25,7 +24,6 @@ interface RecipeSlotCardProps {
   onRemove?: () => void
   /** 제출 중이면 «+»·«−»를 비활성으로 둔다 */
   loading?: boolean
-  pulse?: boolean
   /** 4열일 때 카드 안쪽 여백을 줄인다(360px에서 칸 폭이 약 76px라 p-3은 안쪽이 약 52px로 빠듯하다). Tailwind v4 중요 접미사로 BadgeGridCard의 p-3을 덮는다 */
   dense?: boolean
 }
@@ -37,7 +35,6 @@ export default function RecipeSlotCard({
   onAdd,
   onRemove,
   loading = false,
-  pulse = false,
   dense = false,
 }: RecipeSlotCardProps) {
   const unowned = status === 'unowned'
@@ -65,7 +62,6 @@ export default function RecipeSlotCard({
           dense={dense}
           label={t(d.combine.slotAddAria, { name })}
           disabled={loading}
-          className={pulse ? 'jam-quest-pulse' : ''}
           onClick={() => onAdd?.()}
         />
       )}

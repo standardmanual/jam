@@ -85,7 +85,7 @@ vi.mock('@/components/ui/Toast', () => ({
 
 import TopNav from '@/components/ui/TopNav'
 import { ListRow } from '@/components/ui/ListRow'
-import { DEMO_MIX_RECIPE } from '@/lib/onboarding-quest/demo-data'
+import { TEST_RECIPE } from './testRecipeFixture'
 import { markOpenedByPush } from '@/lib/combine/navigation'
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
 import RecipeRewardRow from './RecipeRewardRow'
@@ -104,15 +104,14 @@ function findAll(node: ReactNode, predicate: (el: AnyElement) => boolean, found:
   return found
 }
 
-const RECIPE_A: RecipeWithSlots = { ...DEMO_MIX_RECIPE, id: 'recipe-a' }
-const RECIPE_B: RecipeWithSlots = { ...DEMO_MIX_RECIPE, id: 'recipe-b' }
+const RECIPE_A: RecipeWithSlots = { ...TEST_RECIPE, id: 'recipe-a' }
+const RECIPE_B: RecipeWithSlots = { ...TEST_RECIPE, id: 'recipe-b' }
 
-function createScreen(options: { questStep?: 'mix_fail' | 'mix_success' | null; recipes?: RecipeWithSlots[] } = {}) {
+function createScreen(options: { recipes?: RecipeWithSlots[] } = {}) {
   const props = {
     items: [],
     publicRecipes: options.recipes ?? [RECIPE_A, RECIPE_B],
     ownedConditionBadgeIds: [],
-    questStep: options.questStep ?? null,
   }
   const render = () => {
     hooks.cursor = 0
@@ -230,15 +229,4 @@ describe('CombineClient — 레시피 상세·등급 올리기 개별 URL (티�
     expect(navMock.replace).not.toHaveBeenCalled()
   })
 
-  it('온보딩 퀘스트 연출 모드도 연출 레시피 ID를 주소에 싣고 같은 상세로 이어진다', () => {
-    const screen = createScreen({ questStep: 'mix_fail', recipes: [DEMO_MIX_RECIPE] })
-    const row = screen.listRows(screen.render())[0]
-    expect(String(row.props.className)).toContain('jam-quest-pulse')
-    ;(row.props.onClick as () => void)()
-
-    expect(navMock.push).toHaveBeenCalledWith(`/combine?recipe=${encodeURIComponent(DEMO_MIX_RECIPE.id)}`)
-    const detail = screen.render()
-    expect(typeof screen.onBack(detail)).toBe('function')
-    expect(screen.listRows(detail)).toHaveLength(1)
-  })
 })

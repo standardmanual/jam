@@ -22,21 +22,18 @@ export default function BagItemCell({
   imageUrl,
   rarity = null,
   state,
-  pulse = false,
   onClick,
 }: {
   name: string
   imageUrl: string | null
   rarity?: BadgeRarity | null
   state: BagItemState
-  pulse?: boolean
   onClick: () => void
 }) {
   const active = state === 'active'
   const className = [
     'w-full',
     state === 'needed' || state === 'inactive' ? 'opacity-40' : '',
-    pulse ? 'jam-quest-pulse' : '',
   ]
     .filter(Boolean)
     .join(' ')

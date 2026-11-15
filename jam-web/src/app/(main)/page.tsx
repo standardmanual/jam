@@ -5,8 +5,6 @@ import { UserRow } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
 import TodayCardStack from './TodayCardStack'
 import TodayStatusStrip from './TodayStatusStrip'
-import OnboardingQuestCard from './OnboardingQuestCard'
-import OnboardingSyncButton from './OnboardingSyncButton'
 import StravaDisconnectedCard from '@/components/strava/StravaDisconnectedCard'
 import SuspensionBanner from './SuspensionBanner'
 import { loadHomeSuspensionBanner } from '@/lib/suspension/home-banner'
@@ -16,8 +14,6 @@ import CapsuleWidget from '@/components/capsule/CapsuleWidget'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
-import { getOnboardingQuestCard } from '@/lib/onboarding-quest/status'
-import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { getDisplayName } from '@/lib/utils'
 import {
   resolveStravaUiState,
@@ -73,27 +69,17 @@ export default async function HomePage() {
   const leftStatusPromise: Promise<TodayLeftStatus> = showsStravaSyncCta(stravaView)
     ? Promise.resolve({ kind: 'strava_not_connected', href: '/api/strava/auth' })
     : getTodayLeftStatus(userId)
-  // «JAM! 시작하기» 카드는 실제 2단계를 읽어 그린다(티켓 20261021_1248 2회). 캡슐 열기는 단계가 아니라 캡슐 상태를 넘기지 않는다(티켓 20261028_1738).
-  // 캡슐 위젯용 조회(capsulePromise)는 그대로 위젯이 쓴다.
-  const onboardingQuestPromise = getOnboardingQuestCard(userId, {
-    stravaConnected: stravaView === 'connected' || stravaView === 'unknown',
-  })
-  const onboardingQuestGatePromise = getOnboardingQuestGate(userId, 'home')
 
   const [
     { data: profile, error: profileError },
     rightStatus,
     leftStatus,
-    onboardingQuestCard,
-    onboardingQuestGate,
     suspension,
     capsuleInitial,
   ] = await Promise.all([
     profilePromise,
     rightStatusPromise,
     leftStatusPromise,
-    onboardingQuestPromise,
-    onboardingQuestGatePromise,
     suspensionPromise,
     capsulePromise,
   ])
@@ -111,13 +97,8 @@ export default async function HomePage() {
     <div className="min-h-full text-foreground">
       <HomeViewTracker />
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) — 기존 자체
-          로고 헤더 블록을 대체한다. sync 차례(온보딩 퀘스트 T2c)면 중앙 슬롯을 연출
-          동기화 버튼으로 교체한다(티켓 20260927_2331). */}
-      {onboardingQuestGate === 'sync' ? (
-        <TopNav logo syncStyle="pill" centerSlotOverride={<OnboardingSyncButton />} />
-      ) : (
-        <TopNav logo syncStyle="pill" />
-      )}
+          로고 헤더 블록을 대체한다. */}
+      <TopNav logo syncStyle="pill" />
 
       <div className="px-4 pt-4 pb-6 flex flex-col gap-5">
       {/* 이용 정지 배너 (티켓 20261017_1426) — 정지 중인 유저에게만 렌더, 아니면 DOM에 없다.
@@ -142,13 +123,10 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      {/* 캡슐 위젯 (티켓 20261018_0054, 20261028_1739, 20261031_1806, 위치 20261104_1710) — 인사말 줄 바로 아래, «JAM! 시작하기» 퀘스트 카드 위(2026-11-04 사용자 요청).
+      {/* 캡슐 위젯 (티켓 20261018_0054, 20261028_1739, 20261031_1806, 위치 20261104_1710) — 인사말 줄 바로 아래(2026-11-04 사용자 요청).
           홈에는 챕터 번호를 그리지 않는다. 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
           막힘이면 위젯이 게이지와 안내·«인벤토리 가기»를 한 카드로 그린다(티켓 20261105_1912). 정지 중에는 서버가 notice none을 줘 일반 게이지다. 조회가 실패했으면 위젯이 직접 가져온다. 확률 안내 링크는 이 묶음에 두지 않는다(푸터의 «확률 안내»로 통합). */}
       <CapsuleWidget initial={capsuleInitial} blockedCard />
-
-      {/* «JAM! 시작하기» 카드 (티켓 20260927_2133, 실제 2단계 20261021_1248·20261028_1738) — 대상 유저에게만 렌더, 그 외엔 null */}
-      <OnboardingQuestCard state={onboardingQuestCard} username={userProfile?.username ?? null} />
 
       {/* Strava 동기화 끊김 카드 (티켓 20261017_1422) — 오류로 끊긴 유저에게만 렌더, 그 외엔 DOM에 없다.
           유저가 직접 끊은 경우는 알람 없이 미연동처럼 보인다(사용자 승인). */}

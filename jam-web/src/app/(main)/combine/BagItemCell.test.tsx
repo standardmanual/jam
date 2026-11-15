@@ -58,9 +58,4 @@ describe('BagItemCell — BadgeGridCard 레이아웃', () => {
     expect(render({ rarity: 'common' })).not.toContain('Common')
     expect(render({ rarity: null })).not.toContain('Rare')
   })
-
-  it('pulse가 켜지면 퀘스트 펄스 클래스가 붙는다', () => {
-    expect(render({ pulse: true })).toContain('jam-quest-pulse')
-    expect(render({ pulse: false })).not.toContain('jam-quest-pulse')
-  })
 })

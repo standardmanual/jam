@@ -74,13 +74,6 @@ describe('RecipeSlotCard', () => {
     expect(html).not.toContain('<button')
   })
 
-  it('펄스는 «+»에만 걸린다 — «−»·흐린 칸에는 걸리지 않는다', () => {
-    expect(render({ pulse: true })).toContain('jam-quest-pulse')
-    expect(render({ pulse: false })).not.toContain('jam-quest-pulse')
-    expect(render({ status: 'filled', pulse: true })).not.toContain('jam-quest-pulse')
-    expect(render({ status: 'unowned', pulse: true })).not.toContain('jam-quest-pulse')
-  })
-
   it('제출 중(loading)이면 버튼이 비활성이다', () => {
     expect(render({ loading: true })).toMatch(/<button[^>]*disabled=""/)
     expect(render({ status: 'filled', loading: true })).toMatch(/<button[^>]*disabled=""/)

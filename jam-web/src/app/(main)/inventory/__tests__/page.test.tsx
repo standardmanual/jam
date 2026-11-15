@@ -35,10 +35,6 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
-vi.mock('@/lib/onboarding-quest/screen-gate', () => ({
-  getOnboardingQuestGate: async () => null,
-}))
-
 vi.mock('next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/navigation')>()),
   redirect: (to: string) => {
@@ -47,8 +43,6 @@ vi.mock('next/navigation', async (importOriginal) => ({
 }))
 
 vi.mock('@/components/ui/TopNav', () => ({ default: () => <div data-stub="topnav" /> }))
-
-vi.mock('../QuestBagGrid', () => ({ default: () => <div data-stub="quest-bag-grid" /> }))
 
 vi.mock('@/components/inventory/InventoryGrid', () => ({
   default: (props: { items: { id: string; badgeName: string }[] }) => {

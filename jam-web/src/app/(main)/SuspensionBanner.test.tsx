@@ -1,7 +1,7 @@
 /**
  * 홈 상단 이용 정지 배너(SuspensionBanner) 렌더 (티켓 20261017_1426 2회, 채원 사전 판정)
  *
- * 저장소에 jsdom·testing-library가 없어(`OnboardingSyncButton.test.tsx`와 같은 방식) 서버 렌더로 마크업만 고정한다.
+ * 저장소에 jsdom·testing-library가 없어 서버 렌더로 마크업만 고정한다.
  * 가짜 props만 쓰며 공용 DB는 부르지 않는다.
  *
  * 고정하는 것: 칩·제목·사유 전문·정지일(KST)·결과 설명·«문의하기» 버튼이 문구 사전에서 나온다, 긴 사유와 줄바꿈은 줄이지 않고 보존한다,

@@ -1,24 +1,13 @@
 /**
- * 온보딩 퀘스트 4~5단계(mix_fail=레시피 확인, mix_success=믹스 성공) 연출 분기
- * (티켓 20260927_2127, 상위 20260927_2123 T4). 펄스 강조 판정(`computeQuestPulseTarget`)은
- * 티켓 20260928_1755(상위 T4) 추가.
+ * CombineClient 화면 테스트.
  *
- * 저장소에 jsdom·testing-library가 없어(`QuestPickupScene.test.tsx`와 같은 방식) 클릭·
- * 슬롯 채우기 같은 실제 상호작용은 시뮬레이션할 수 없다. 그래서 갈래를 나눠 고정한다:
- * 1) 순수 함수(`shouldRecordMixFail`·`buildDemoCombineResult`·`computeQuestPulseTarget`) —
- *    demoMode에서 mix_fail을 한 번만 기록하는 판정, 실제 /api/combine 응답 없이 로컬로
- *    구성하는 결과값, 「지금 눌러야 할 요소」 하나를 고르는 로직.
- * 2) 서버 렌더(`renderToStaticMarkup`) — demoMode에서는 연출 레시피 1건만 보이고, 그 밖의
- *    경우(questStep 없음)는 넘겨받은 실제 레시피 목록이 그대로 보인다(회귀 방지). 슬롯/시트/
- *    버튼 전환은 jsdom 부재로 검증 불가 — 레시피 미선택 시 펄스 클래스 유무만 정적 렌더로 확인한다.
+ * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 마크업을 본다.
  *
  * 티켓 20261001_1159(운영자 시험 믹스) 추가분: 클릭·상태 전환은 jsdom이 없어도 검증할 수 있게
  * `react`의 `useState`·`useMemo`만 «손으로 돌리는 상태 저장소»로 바꿔 끼우고(`hooks.active`일 때만),
  * 컴포넌트 함수를 직접 호출해 나온 엘리먼트 트리에서 핸들러(`onClick`·`onClose`)를 꺼내 부른다.
  * 하위 컴포넌트는 렌더하지 않고 props만 본다. 그 밖의 테스트는 실제 React 훅으로 돈다.
  */
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -107,10 +96,6 @@ vi.mock('@/components/ui/Toast', () => ({
 
 import { markOpenedByPush } from '@/lib/combine/navigation'
 import CombineClient, {
-  shouldRecordMixFail,
-  buildDemoCombineResult,
-  computeQuestPulseTarget,
-  resolveQuestPulseStep,
   testMixNoticeOnClose,
   toFirstSuccessRevealBadge,
   toMixRevealBadges,
@@ -134,223 +119,7 @@ import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
 import { Button } from '@ds/components/buttons/Button'
 import { d, t } from '@/lib/i18n'
 import { MixingBowlIcon } from '@/components/ui/icons'
-import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
-
-describe('shouldRecordMixFail', () => {
-  it('연출 모드이고 아직 기록하지 않았으면 기록한다', () => {
-    expect(shouldRecordMixFail(true, false)).toBe(true)
-  })
-
-  it('연출 모드가 아니면 기록하지 않는다', () => {
-    expect(shouldRecordMixFail(false, false)).toBe(false)
-  })
-
-  it('이미 기록했으면 다시 기록하지 않는다', () => {
-    expect(shouldRecordMixFail(true, true)).toBe(false)
-  })
-})
-
-describe('buildDemoCombineResult', () => {
-  it('DEMO_MIX_RECIPE의 보상 배지·포인트를 그대로 결과값으로 옮긴다', () => {
-    const result = buildDemoCombineResult(DEMO_MIX_RECIPE)
-    expect(result.success).toBe(true)
-    expect(result.points).toBe(DEMO_MIX_RECIPE.reward_points)
-    expect(result.badges).toHaveLength(1)
-    expect(result.badges[0].id).toBe(DEMO_MIX_RECIPE.rewardBadges[0].id)
-    expect(result.badges[0].name).toBe('최고급 캣닢 뭉치')
-  })
-})
-
-describe('CombineClient 초기 렌더', () => {
-  it('questStep이 mix_fail이면 연출 레시피(살롱의 장물 시세) 1건만 보인다', () => {
-    const html = renderToStaticMarkup(
-      <CombineClient
-        items={DEMO_MIX_ITEMS}
-        publicRecipes={[DEMO_MIX_RECIPE]}
-        ownedConditionBadgeIds={[]}
-        questStep="mix_fail"
-      />
-    )
-    // 목록 행 제목은 보상 배지명이다(티켓 20261110_1250) — 레시피 이름은 보상 배지가 없는 행에만 쓰인다
-    expect(html).toContain(DEMO_MIX_RECIPE.rewardBadges[0].name)
-  })
-
-  it('questStep이 없으면(비연출 모드) 넘겨받은 실제 레시피 목록이 그대로 보인다', () => {
-    const otherRecipe = {
-      ...DEMO_MIX_RECIPE,
-      id: 'other-recipe-1',
-      name: '다른 레시피',
-    }
-    const html = renderToStaticMarkup(
-      <CombineClient items={[]} publicRecipes={[otherRecipe]} ownedConditionBadgeIds={[]} questStep={null} />
-    )
-    expect(html).toContain(otherRecipe.rewardBadges[0].name)
-    expect(html).not.toContain('살롱의 장물 시세')
-  })
-
-  // 티켓 20260928_1755: 레시피 미선택 상태에서 mix_fail·mix_success 둘 다 레시피 행에
-  // 펄스가 붙는다(사용자 승인 결정 1). 슬롯/시트/버튼 전환은 jsdom 부재로 정적 렌더로
-  // 검증할 수 없어 computeQuestPulseTarget 단위 테스트로 별도 커버한다.
-  it.each(['mix_fail', 'mix_success'] as const)(
-    'questStep이 %s이고 레시피 미선택이면 레시피 행에 jam-quest-pulse 클래스가 붙는다',
-    (questStep) => {
-      const html = renderToStaticMarkup(
-        <CombineClient
-          items={DEMO_MIX_ITEMS}
-          publicRecipes={[DEMO_MIX_RECIPE]}
-          ownedConditionBadgeIds={[]}
-          questStep={questStep}
-        />
-      )
-      expect(html).toContain('jam-quest-pulse')
-    }
-  )
-
-  it('questStep이 없으면(비연출 모드) 평소 레시피 목록에 펄스 클래스가 없다', () => {
-    const html = renderToStaticMarkup(
-      <CombineClient
-        items={[]}
-        publicRecipes={[DEMO_MIX_RECIPE]}
-        ownedConditionBadgeIds={[]}
-        questStep={null}
-      />
-    )
-    expect(html).not.toContain('jam-quest-pulse')
-  })
-})
-
-// 티켓 20261115_1804: 믹스하기 버튼의 퍼플 면(jam-quest-cta)은 펄스가 submit을 가리킬 때만 붙는다.
-// submit 상태는 슬롯을 채우는 상호작용이 필요해 정적 렌더로 닿을 수 없다(jsdom 부재). 붙이지 않는 쪽은
-// 렌더로, 붙이는 조건(펄스와 같은 식)은 소스 문자열로 고정한다.
-describe('믹스하기 버튼 퍼플 면 클래스 (티켓 20261115_1804)', () => {
-  it('퀘스트가 아니면(questStep null) jam-quest-cta가 없다', () => {
-    const html = renderToStaticMarkup(
-      <CombineClient items={[]} publicRecipes={[DEMO_MIX_RECIPE]} ownedConditionBadgeIds={[]} questStep={null} />
-    )
-    expect(html).not.toContain('jam-quest-cta')
-  })
-
-  it('펄스가 레시피 행을 가리키는 동안(submit 아님)에도 jam-quest-cta가 없다', () => {
-    const html = renderToStaticMarkup(
-      <CombineClient items={DEMO_MIX_ITEMS} publicRecipes={[DEMO_MIX_RECIPE]} ownedConditionBadgeIds={[]} questStep="mix_fail" />
-    )
-    expect(html).toContain('jam-quest-pulse')
-    expect(html).not.toContain('jam-quest-cta')
-  })
-
-  it('jam-quest-cta는 pulseTarget이 submit일 때만 붙고 로딩 스피너도 그때만 border-foreground다', () => {
-    const src = readFileSync(path.join(__dirname, 'CombineClient.tsx'), 'utf8')
-    expect(src.match(/jam-quest-pulse jam-quest-cta/g)).toHaveLength(1)
-    expect(src).toContain("pulseTarget?.type === 'submit' ? 'jam-quest-pulse jam-quest-cta' : ''")
-    expect(src).toContain("pulseTarget?.type === 'submit' ? 'border-foreground' : 'border-background'")
-  })
-})
-
-describe('computeQuestPulseTarget', () => {
-  const base = {
-    questStep: 'mix_fail' as const,
-    loading: false,
-    selectedRecipe: null,
-    fills: {},
-    bagSlotId: null,
-    bagRows: [],
-    canSubmit: false,
-  }
-  const [slot1, slot2] = DEMO_MIX_RECIPE.slots
-  const dummyFill = { refId: 'r', badgeId: 'b', name: 'n', imageUrl: null }
-
-  it('퀘스트 차례가 아니면(questStep null) 항상 null이다', () => {
-    expect(computeQuestPulseTarget({ ...base, questStep: null, selectedRecipe: DEMO_MIX_RECIPE })).toBeNull()
-  })
-
-  it('제출 중(loading)이면 항상 null이다', () => {
-    expect(
-      computeQuestPulseTarget({ ...base, loading: true, selectedRecipe: DEMO_MIX_RECIPE, canSubmit: true })
-    ).toBeNull()
-  })
-
-  it('레시피를 아직 고르지 않았으면 레시피 행을 가리킨다(mix_fail·mix_success 공통)', () => {
-    expect(computeQuestPulseTarget({ ...base, selectedRecipe: null })).toEqual({ type: 'recipe' })
-    expect(computeQuestPulseTarget({ ...base, questStep: 'mix_success', selectedRecipe: null })).toEqual({
-      type: 'recipe',
-    })
-  })
-
-  it('mix_fail: 선택 후 빈 슬롯이 있으면 slot_order가 빠른 첫 빈 슬롯을 가리킨다', () => {
-    expect(
-      computeQuestPulseTarget({ ...base, selectedRecipe: DEMO_MIX_RECIPE, fills: {} })
-    ).toEqual({ type: 'slot', slotId: slot1.id })
-
-    expect(
-      computeQuestPulseTarget({
-        ...base,
-        selectedRecipe: DEMO_MIX_RECIPE,
-        fills: { [slot1.id]: dummyFill },
-      })
-    ).toEqual({ type: 'slot', slotId: slot2.id })
-  })
-
-  it('mix_fail: 두 슬롯이 모두 채워지면 null이다(제출 버튼 경로를 정의하지 않음)', () => {
-    expect(
-      computeQuestPulseTarget({
-        ...base,
-        selectedRecipe: DEMO_MIX_RECIPE,
-        fills: { [slot1.id]: dummyFill, [slot2.id]: dummyFill },
-      })
-    ).toBeNull()
-  })
-
-  it('mix_success: 가방 시트가 열려 있으면 활성 후보 행 중 첫 번째를 가리킨다', () => {
-    const bagRows = [
-      { key: 'needed-1', refId: null, badgeId: 'b1', name: 'n1', imageUrl: null, state: 'needed' as const },
-      { key: 'active-1', refId: 'r1', badgeId: 'b1', name: 'n1', imageUrl: null, state: 'active' as const },
-      { key: 'active-2', refId: 'r2', badgeId: 'b2', name: 'n2', imageUrl: null, state: 'active' as const },
-    ]
-    expect(
-      computeQuestPulseTarget({
-        ...base,
-        questStep: 'mix_success',
-        selectedRecipe: DEMO_MIX_RECIPE,
-        bagSlotId: slot1.id,
-        bagRows,
-      })
-    ).toEqual({ type: 'bagRow', key: 'active-1' })
-  })
-
-  it('mix_success: 시트가 닫혀 있고 빈 슬롯이 있으면 다음 빈 슬롯을 가리킨다', () => {
-    expect(
-      computeQuestPulseTarget({
-        ...base,
-        questStep: 'mix_success',
-        selectedRecipe: DEMO_MIX_RECIPE,
-        fills: { [slot1.id]: dummyFill },
-        bagSlotId: null,
-      })
-    ).toEqual({ type: 'slot', slotId: slot2.id })
-  })
-
-  it('mix_success: 시트가 닫혀 있고 canSubmit이면 조합하기 버튼을 가리킨다', () => {
-    expect(
-      computeQuestPulseTarget({
-        ...base,
-        questStep: 'mix_success',
-        selectedRecipe: DEMO_MIX_RECIPE,
-        fills: { [slot1.id]: dummyFill, [slot2.id]: dummyFill },
-        bagSlotId: null,
-        canSubmit: true,
-      })
-    ).toEqual({ type: 'submit' })
-  })
-})
-
-describe('resolveQuestPulseStep (티켓 20260928_2155)', () => {
-  it('칸의 «+»를 처음 눌러 mix_fail을 기록하면 같은 화면에서 mix_success 규칙으로 판정한다', () => {
-    expect(resolveQuestPulseStep('mix_fail', false)).toBe('mix_fail')
-    expect(resolveQuestPulseStep('mix_fail', true)).toBe('mix_success')
-    expect(resolveQuestPulseStep('mix_success', false)).toBe('mix_success')
-    expect(resolveQuestPulseStep(null, true)).toBe(null)
-  })
-})
+import { TEST_RECIPE } from './testRecipeFixture'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 티켓 20261001_1159 — 운영자 미리보기와 시험 믹스
@@ -362,7 +131,7 @@ const RELEASE_LABEL = '10월 6일 오후 3시 30분'
 
 /** 슬롯이 없는 레시피 — 슬롯을 채우지 않아도 믹스하기 핸들러가 바로 돈다. */
 function recipeFixture(overrides: Partial<RecipeWithSlots> = {}): RecipeWithSlots {
-  return { ...DEMO_MIX_RECIPE, id: 'recipe-1', name: '테스트 레시피', slots: [], ...overrides }
+  return { ...TEST_RECIPE, id: 'recipe-1', name: '테스트 레시피', slots: [], ...overrides }
 }
 
 type AnyElement = ReactElement<Record<string, unknown>>
@@ -419,7 +188,7 @@ describe('RecipeRewardRow — 공개 예정 줄 (티켓 20261001_1159)', () => {
 describe('CombineClient — 공개 예정 표시 (티켓 20261001_1159)', () => {
   it('releaseAt이 있는 행에만 「공개 예정」 줄이 보이고, 없는 행에는 없다', () => {
     // 제목은 보상 배지명이라(티켓 20261110_1250) 두 행이 구분되도록 배지명을 다르게 둔다
-    const badge = DEMO_MIX_RECIPE.rewardBadges[0]
+    const badge = TEST_RECIPE.rewardBadges[0]
     const scheduled = recipeFixture({
       id: 'recipe-scheduled',
       name: '공개 전 레시피',
@@ -442,9 +211,9 @@ describe('CombineClient — 공개 예정 표시 (티켓 20261001_1159)', () => 
     expect(html).toContain(RELEASE_LABEL)
   })
 
-  it('releaseAt 필드가 없는 레시피(온보딩 연출 레시피 등)는 줄이 없다', () => {
+  it('releaseAt 필드가 없는 레시피는 줄이 없다', () => {
     const html = renderToStaticMarkup(
-      <CombineClient items={[]} publicRecipes={[DEMO_MIX_RECIPE]} ownedConditionBadgeIds={[]} />
+      <CombineClient items={[]} publicRecipes={[TEST_RECIPE]} ownedConditionBadgeIds={[]} />
     )
     expect(html).not.toContain(d.combine.releaseScheduled)
   })
@@ -706,7 +475,7 @@ describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2�
     vi.unstubAllGlobals()
   })
 
-  function createScreen(recipe: RecipeWithSlots, extra: { pendingCount?: number; questStep?: 'mix_fail' | 'mix_success' | null } = {}) {
+  function createScreen(recipe: RecipeWithSlots, extra: { pendingCount?: number } = {}) {
     const props = { items: [], publicRecipes: [recipe], ownedConditionBadgeIds: [], ...extra }
     const render = () => {
       hooks.cursor = 0
@@ -782,13 +551,6 @@ describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2�
     expect(textOf(mixer)).not.toContain(d.combine.pendingBlockedNote)
     expect(screen.ctaButton(mixer).props.disabled).toBe(false)
     expect(screen.ctaButton(mixer).props['aria-describedby']).toBeUndefined()
-  })
-
-  it('온보딩 연출 모드에서는 받지 않은 결과가 있다고 서버가 알려 와도 배너·차단이 없다', () => {
-    const screen = createScreen(recipeFixture(), { pendingCount: 3, questStep: 'mix_fail' })
-    const mixer = screen.openMixer()
-    expect(textOf(mixer)).not.toContain(d.combine.pendingBanner.body)
-    expect(screen.ctaButton(mixer).props.disabled).toBe(false)
   })
 
   it('막힌 상태에서 믹스하기 핸들러가 불려도 요청을 보내지 않는다', async () => {
@@ -1303,7 +1065,7 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
   function screenFor(
     slots: RecipeWithSlots['slots'],
     items: ReturnType<typeof owned>[],
-    opts: { ownedConditionBadgeIds?: string[]; questStep?: 'mix_fail' | 'mix_success' | null } = {},
+    opts: { ownedConditionBadgeIds?: string[] } = {},
   ) {
     hooks.store = []
     navMock.reset()
@@ -1313,7 +1075,6 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
       items,
       publicRecipes: [recipe],
       ownedConditionBadgeIds: opts.ownedConditionBadgeIds ?? [],
-      questStep: opts.questStep ?? null,
     }
     const render = () => {
       hooks.cursor = 0
@@ -1433,96 +1194,6 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
     expect(five.cards(five.render())[0].props.dense).toBe(false)
   })
 
-  it('퀘스트 mix_success: 반짝임이 «+» → 다음 빈 칸의 «+» → 믹스하기 버튼으로 이어진다(시트 없이 바로 채움)', () => {
-    const s = screenFor(
-      [slotOf('s1', 1, ['a']), slotOf('s2', 2, ['b'])],
-      [owned('i1', 'a'), owned('i2', 'b')],
-      { questStep: 'mix_success' },
-    )
-    let tree = s.render()
-    expect(s.cards(tree).map((c) => c.props.pulse)).toEqual([true, false])
-    expect(String(s.cta(tree).props.className)).not.toContain('jam-quest-pulse')
-
-    press(s.cards(tree)[0], 'onAdd')
-    tree = s.render()
-    expect(s.cards(tree).map((c) => c.props.pulse)).toEqual([false, true])
-
-    press(s.cards(tree)[1], 'onAdd')
-    tree = s.render()
-    expect(s.cards(tree).map((c) => c.props.pulse)).toEqual([false, false])
-    expect(String(s.cta(tree).props.className)).toContain('jam-quest-pulse')
-  })
-
-  it('퀘스트 mix_success: 시트가 열리면 반짝임이 칸이 아니라 시트의 활성 행으로 옮겨 간다', () => {
-    const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a'), owned('i2', 'a')], { questStep: 'mix_success' })
-    let tree = s.render()
-    press(s.cards(tree)[0], 'onAdd')
-    tree = s.render()
-    expect(s.cards(tree)[0].props.pulse).toBe(false)
-    expect(s.cells(tree).map((c) => c.props.pulse)).toEqual([true, false])
-  })
-
-  it('퀘스트: 첫 빈 칸이 흐린 칸이면 «+»가 없으므로 반짝임을 걸지 않는다', () => {
-    const s = screenFor([slotOf('s1', 1, ['a'])], [], { questStep: 'mix_success' })
-    const tree = s.render()
-    expect(s.cards(tree)[0].props.status).toBe('unowned')
-    expect(s.cards(tree)[0].props.pulse).toBe(false)
-  })
-
-  it('데모 모드: 첫 «+» 탭에서 mix_fail을 한 번만 기록한다', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({}) }))
-    vi.stubGlobal('fetch', fetchMock)
-    const s = screenFor(
-      [slotOf('s1', 1, ['a']), slotOf('s2', 2, ['b'])],
-      [owned('i1', 'a'), owned('i2', 'b')],
-      { questStep: 'mix_fail' },
-    )
-    let tree = s.render()
-    press(s.cards(tree)[0], 'onAdd')
-    tree = s.render()
-    press(s.cards(tree)[1], 'onAdd')
-    await Promise.resolve()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { method: string; body: string }]
-    expect(url).toBe('/api/onboarding-quest/step')
-    expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body)).toEqual({ step: 'mix_fail' })
-  })
-
-  it('데모 모드: 흐린 칸에는 «+»가 없어 mix_fail을 기록하지 않는다', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({}) }))
-    vi.stubGlobal('fetch', fetchMock)
-    const s = screenFor([slotOf('s1', 1, ['z'])], [], { questStep: 'mix_fail' })
-    press(s.cards(s.render())[0], 'onAdd')
-    await Promise.resolve()
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('데모 모드가 아니면 «+»를 눌러도 mix_fail을 기록하지 않는다', () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-    const s = screenFor([slotOf('s1', 1, ['a'])], [owned('i1', 'a')])
-    press(s.cards(s.render())[0], 'onAdd')
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('mix_fail 기록이 실패하면 토스트로 알리고 플래그를 되돌려 다음 «+»에서 다시 시도한다', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: false, json: async () => ({}) }))
-    vi.stubGlobal('fetch', fetchMock)
-    const s = screenFor(
-      [slotOf('s1', 1, ['a']), slotOf('s2', 2, ['b'])],
-      [owned('i1', 'a'), owned('i2', 'b')],
-      { questStep: 'mix_fail' },
-    )
-    let tree = s.render()
-    press(s.cards(tree)[0], 'onAdd')
-    await new Promise((r) => setTimeout(r, 0))
-    expect(toastMock).toHaveBeenCalledWith(d.onboardingQuest.mixStepSaveFailed, 'error')
-    tree = s.render()
-    press(s.cards(tree)[1], 'onAdd')
-    await new Promise((r) => setTimeout(r, 0))
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

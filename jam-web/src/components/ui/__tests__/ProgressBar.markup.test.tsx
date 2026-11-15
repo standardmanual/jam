@@ -1,7 +1,7 @@
 /**
  * ProgressBar 마크업 고정 (티켓 20261107_2156)
  *
- * `as` prop(기본 'div')을 더하면서 기존 호출부 10곳의 렌더 결과가 한 글자도 바뀌지 않았음을 못 박는다.
+ * `as` prop(기본 'div')을 더하면서 기존 호출부의 렌더 결과가 한 글자도 바뀌지 않았음을 못 박는다.
  * EXPECTED는 **`as`를 더하기 전의 ProgressBar.jsx**를 `renderToStaticMarkup`한 결과다(수정 후 코드에서 뽑은 값이 아니다).
  * 기본 경로의 마크업을 일부러 바꿀 때만 이 값을 고친다.
  *
@@ -17,9 +17,7 @@ type Props = React.ComponentProps<typeof ProgressBar>
 
 // <CASES-BEGIN>
 const CASES: Record<string, Props> = {
-  // 실제 호출 10곳(호출 시점의 prop 그대로, 값은 대표값)
-  'OnboardingQuestCard 실제 단계(204)': { current: 2, total: 5, labelType: 'none' },
-  'OnboardingQuestCard 연출(257)': { current: 0, total: 4, labelType: 'none' },
+  // 실제 호출(호출 시점의 prop 그대로, 값은 대표값)
   'TodayStatusStrip(64)': { current: 3, total: 10 },
   'collections/page(250)': { percent: 40, height: 6 },
   'ItemBookHeroSection(136)': { percent: 30 },
@@ -74,10 +72,6 @@ const CASES: Record<string, Props> = {
 // <CASES-END>
 
 const EXPECTED: Record<string, string> = {
-  'OnboardingQuestCard 실제 단계(204)':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:40%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  'OnboardingQuestCard 연출(257)':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:0%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'TodayStatusStrip(64)':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:30%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'collections/page(250)':
