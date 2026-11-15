@@ -327,6 +327,8 @@ code:
   - **대상**: 인벤토리 전체(30칸 한도, 화면과 같은 필터, 잠긴 개체 제외)와 배지함 `activity` 탭 앞 12칸(`FIRST_SCREEN_GRID_COUNT`, 화면과 같은 조회·정렬·계열 접기). 합쳐서 42개를 넘기지 않는다. 목록은 `GET /api/badge-images/warmup`이 원본 주소로 돌려준다(`jam-web/src/lib/badges/firstScreenBadgeImages.ts`, 배지함 목록 규칙은 `activityBadgeList.ts`를 화면과 공유한다).
   - **실행 조건**: `(main)` 레이아웃의 `BadgeImageWarmup`이 탭(브라우저 세션)마다 한 번, 페이지 로드가 끝난 뒤 `requestIdleCallback`(없으면 2초 뒤)으로 시작한다. `saveData`가 켜져 있으면 하지 않는다. 6장씩 차례로 `fetchPriority=low`로 받고, 실패해도 화면에 영향이 없다.
   - **주소 규칙**: `optimizedImageUrl(src, nextImageWidthFor(90, devicePixelRatio))`. 90px 카드는 1배 화면 w=96, 2배 이상 w=256이다. 화면이 요청하는 주소와 한 글자라도 다르면 캐시가 맞지 않으므로, `BadgeGridCard`의 srcset과 같은지 시험으로 고정한다.
+- **작은 칸의 변환 폭 통일(티켓 20261115_1455)**: 56px 칸(`BadgeGridCard`의 `compact`: 지점 카드 갤러리·드랍 선택)은 `SafeImage`의 `variantWidth={90}`로 90px 카드와 같은 변환본(96·256)을 요청한다. 한 번 받은 그림을 두 곳이 함께 쓰고, 표시 크기(56×56)와 마크업은 그대로다. 정적 파일 배지(`unoptimized`)는 영향이 없다. 3배 화면에서는 128 대신 256 변환본이 쓰여 조금 더 선명하다.
+- **드랍 지도 미리 받기(티켓 20261115_1455)**: 드랍 지도(`DropsClient`)에서 지점 목록이 도착하면 한가한 시점(`requestIdleCallback`, 없으면 2초 뒤)에 `in_drop_range`이고 `available_drops_count`가 1 이상인 지점을 가까운 순으로 최대 3곳 골라(`pickWarmupPois`, `jam-web/src/lib/poi/dropMapWarmup.ts`) `/api/drops/poi/:id`의 `badge_image_url`을 받는다. 주소는 위 «주소 규칙»과 같고, 받기는 인벤토리 미리 받기와 같은 공용 함수(`jam-web/src/lib/warmImages.ts`, 6장씩 낮은 우선순위)를 쓴다. 지도 화면이 떠 있는 동안 이미 부른 지점은 다시 부르지 않고 합쳐 9곳을 넘기지 않는다. `saveData`가 켜져 있으면 하지 않고, 실패해도 화면에 영향이 없다. 응답은 `PoiCarouselModal`의 `dropsCache`에 넣지 않는다 — 그사이 다른 사람이 주워 갈 수 있어 목록은 카드가 열릴 때의 조회를 쓴다.
 
 ## 10. 제작 경로 표시
 

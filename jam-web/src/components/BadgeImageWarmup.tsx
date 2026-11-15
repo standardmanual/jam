@@ -4,25 +4,14 @@
 // 아무것도 그리지 않는다. 규칙은 docs/service/prd/asset-generator/PRD.md §9.1 (티켓 20261115_1344).
 
 import { useEffect } from 'react'
+import { warmImageSrcs } from '@/lib/warmImages'
 import { BADGE_CARD_DISPLAY_WIDTH, nextImageWidthFor, optimizedImageUrl } from '@/lib/imageSrc'
 
 export const WARMUP_SESSION_KEY = 'jam:badge-image-warmup'
 const IDLE_TIMEOUT_MS = 4000
-const BATCH_SIZE = 6
 const FALLBACK_DELAY_MS = 2000
 
 type NetworkInformationLike = { saveData?: boolean }
-
-function loadOne(src: string): Promise<void> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.fetchPriority = 'low'
-    img.decoding = 'async'
-    img.onload = () => resolve()
-    img.onerror = () => resolve()
-    img.src = src
-  })
-}
 
 let inFlight = false
 
@@ -47,9 +36,7 @@ export async function warmUpBadgeImages() {
       .map((u) => optimizedImageUrl(u, width))
       .filter((s): s is string => !!s)
 
-    for (let i = 0; i < srcs.length; i += BATCH_SIZE) {
-      await Promise.all(srcs.slice(i, i + BATCH_SIZE).map(loadOne))
-    }
+    await warmImageSrcs(srcs)
   } catch {
     // 미리 받기는 덤이다 — 실패해도 화면에 아무 영향이 없어야 한다
   } finally {
