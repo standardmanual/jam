@@ -131,6 +131,21 @@ export function optimizedImageUrl(src: string | null | undefined, width: number)
   return `/_next/image?url=${encodeURIComponent(value)}&w=${width}&q=75`
 }
 
+/** next 기본 폭 목록(imageSizes + deviceSizes, 오름차순) — `next.config.ts`가 따로 지정하지 않아 기본값이다 */
+const NEXT_IMAGE_WIDTHS = [32, 48, 64, 96, 128, 256, 384, 640, 750, 828, 1080, 1200, 1920, 2048, 3840]
+
+/** 배지 카드 썸네일의 표시 폭(`BadgeGridCard`의 `SafeImage width`) — 미리 받기 주소 계산에 쓴다 */
+export const BADGE_CARD_DISPLAY_WIDTH = 90
+
+/**
+ * `next/image`가 srcset에 넣는 폭 — 1배 화면은 표시 폭 이상인 가장 작은 값, 그 밖에는 표시 폭 2배 이상인 가장 작은 값
+ * (티켓 20261115_1344). 90 → 96(1x)·256(2x 이상).
+ */
+export function nextImageWidthFor(displayWidth: number, dpr: number): number {
+  const target = dpr <= 1 ? displayWidth : displayWidth * 2
+  return NEXT_IMAGE_WIDTHS.find((w) => w >= target) ?? NEXT_IMAGE_WIDTHS[NEXT_IMAGE_WIDTHS.length - 1]
+}
+
 /**
  * 슬롯 점선 외곽선(`SlotOutline`)이 윤곽을 추적할 이미지 주소 (티켓 20261112_1627).
  *
