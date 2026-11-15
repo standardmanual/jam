@@ -21,7 +21,6 @@ import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeC
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
-import { resolveStravaConnectionState } from '@/lib/strava/connection-state'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
@@ -83,7 +82,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     { data: badge, error: badgeError },
     { data: earnedRow, error: earnedRowError },
     { data: ownedBadgesRaw, error: ownedBadgesError },
-    { data: stravaConnectionRaw, error: stravaConnectionError },
   ] = await Promise.all([
     // 소프트 삭제된 배지(badges.deleted_at)는 직접 접근 시 존재하지 않는 배지와 동일하게 취급한다
     // (20260824_007) — 없으면 아래 notFound()로 빠진다. 이후 이 배지에 종속된 소속 컬렉션·
@@ -98,18 +96,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       .eq('badge_id', id)
       .maybeSingle(),
         service.from('user_activity_badges').select('badge_id').eq('user_id', subjectId),
-    // 공유 버튼 사전 비활성화 판정용 — 배지 소유자(subjectId)가 스트라바에 연동돼 있는지
-    // 미리 조회한다(20260821_004 재작업: 클릭 후가 아니라 클릭 전에 판별해야 함).
-    service.from('strava_connections').select('disconnected_at, disconnect_reason').eq('user_id', subjectId).maybeSingle(),
   ])
   // 20260901_1848: 이 파일이 티켓 20260824_017에서 "조회 실패가 빈 목록으로 위장된다"고
   // 지적된 원 사례다 — badgeError는 특히 !badge → notFound()(404)로 위장되던 지점.
   if (badgeError) console.error('[badges/[id]/page] badges 단건 조회 실패', badgeError)
   if (earnedRowError) console.error('[badges/[id]/page] user_activity_badges(획득 여부) 조회 실패', earnedRowError)
   if (ownedBadgesError) console.error('[badges/[id]/page] user_activity_badges(선행배지 보유판정용) 조회 실패', ownedBadgesError)
-  if (stravaConnectionError) console.error('[badges/[id]/page] strava_connections 조회 실패', stravaConnectionError)
-  // 끊긴 연결은 스트라바 데이터를 다시 가져올 수 없다 — «행이 있는가»가 아니라 연결 상태 판정(connected)으로 본다
-  const stravaConnected = resolveStravaConnectionState(stravaConnectionRaw) === 'connected'
 
   if (!badge) notFound()
 
@@ -466,8 +458,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               imageUrl={badgeRow.image_url}
               badgeName={badgeRow.name}
               hasEarned={hasEarned}
-              stravaConnected={stravaConnected}
-              subjectUsername={subjectUsername ?? undefined}
             />
           </div>
         )}
@@ -538,11 +528,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               imageUrl={badgeRow.image_url}
               badgeName={badgeRow.name}
               hasEarned={hasEarned}
-              stravaConnected={stravaConnected}
-              subjectUsername={subjectUsername ?? undefined}
-              // 체크인 배지의 회차는 방문 이력 행 수다 — 활동 배지의 earn_count와 같은 자리.
-              // 안 넘기면 반복 체크인의 ×N이 공유 카드에만 빠진다(게이트 리뷰 지적).
-              earnCount={checkinEarns.length > 0 ? checkinEarns.length : null}
             />
           )}
         </div>
@@ -678,12 +663,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             imageUrl={badgeRow.image_url}
             badgeName={badgeRow.name}
             hasEarned={hasEarned}
-            stravaConnected={stravaConnected}
-            subjectUsername={subjectUsername ?? undefined}
-            // 공유 카드의 Lv·×N 슬롯 (티켓 20260905_0038 B). 레벨은 배지 자체의 값,
-            // 횟수는 이 유저의 소유 행에서 온다 — 둘의 출처가 다르다.
-            level={badgeRow.level}
-            earnCount={earned?.earn_count ?? null}
           />
         )}
       </div>

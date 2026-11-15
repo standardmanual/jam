@@ -3,7 +3,7 @@
  *
  * 피그마 node `8:33`(540×540)을 그대로 캔버스에 옮긴다. 서버 렌더(next/og·satori)로는 Canvas 2D
  * 블롭 배경도 backdrop-blur 글래스도 그릴 수 없어, 이미 두 번 검증된 클라이언트 캔버스 합성
- * 패턴을 따른다(`bakePreviewToBlob.ts` 20260819_008, `buildBadgeShareBlob.ts` 20260821_004).
+ * 패턴을 따른다(`bakePreviewToBlob.ts` 20260819_008, `buildBadgeImageBlob.ts` 20260821_004).
  *
  * ## 좌표계
  * 모든 상수는 **피그마 원본 540 좌표계**로 정의하고, 출력 해상도는 배율 `S = size / 540` 하나로만
@@ -168,7 +168,7 @@ function loadFontStylesheet(): Promise<void> {
 
 /**
  * 웹폰트 로딩을 기다린다. 기다리지 않으면 폴백 폰트로 구워진다
- * (`buildBadgeShareBlob.ts`의 `waitForFonts`와 같은 이유·같은 방식).
+ * (1080×1920 공유 카드를 합성하던 옛 `waitForFonts`와 같은 이유·같은 방식, 그 카드는 티켓 20261115_1249에서 폐지).
  * 스타일시트 삽입 → load 대기 → `document.fonts.load` 순서다. 스타일시트가 먼저 와야
  * `@font-face`가 등록돼 `document.fonts.load`가 실제 파일을 요청한다.
  */

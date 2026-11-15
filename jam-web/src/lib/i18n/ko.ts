@@ -549,20 +549,16 @@ export const ko = {
     physicalPatchButton: '실물 패치 보기',
 
     shareButtonLabel: '공유하기',
-    shareActionShare: '공유하기',
+    shareActionCopy: '복사하기',
     shareActionDownload: '저장하기',
+    shareActionMore: '더보기',
     shareImageLoading: '공유 이미지를 준비하고 있어요',
     shareSaveSuccess: '이미지를 저장했어요',
     shareSaveError: '이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
+    shareCopySuccess: '이미지를 복사했어요',
+    shareCopyUnsupported: '이미지를 복사하지 못했어요. 이 브라우저는 이미지 복사를 지원하지 않아요. 저장하기를 눌러 주세요.',
+    shareCopyError: '이미지를 복사하지 못했어요. 브라우저가 복사를 허용하지 않았을 수 있어요. 저장하기를 눌러 주세요.',
     shareSaveIOSHint: '곧 열리는 공유 시트에서 \'저장\'을 눌러주세요',
-    shareErrorStravaDisconnectedTitle: 'Strava 동기화가 끊겼어요',
-    shareErrorStravaDisconnectedBody: '페이스·시간 데이터를 다시 가져오려면 Strava를 다시 동기화해야 해요',
-    shareErrorNoTriggerTitle: '이 배지는 공유 이미지를 만들 수 없어요',
-    shareErrorNoTriggerBody: '연결된 Strava 활동 기록이 없어 거리·페이스 정보를 채울 수 없어요',
-    shareErrorFetchFailedTitle: '지금은 이미지를 만들 수 없어요',
-    shareErrorFetchFailedBody: '잠시 후 다시 시도해 주세요',
-    shareErrorActivityNotFoundTitle: 'Strava에서\n기록을 확인할 수 없어요.',
-    shareErrorActivityNotFoundBody: '활동이 삭제되지 않았는지\n확인해보세요.',
     shareErrorUnknownTitle: '이미지를 만들지 못했어요',
     shareErrorUnknownBody: '잠시 후 다시 시도해 주세요',
 
@@ -576,12 +572,6 @@ export const ko = {
     filterCheckinCategoryAll: '전체',
     sortCheckinLatest: '최신순',
     sortCheckinName: '이름순',
-
-    // 공유 시트 캐러셀(20260911_1102) — 스크린리더 전용 aria-label
-    shareCarouselAriaLabel: '공유 이미지 선택',
-    /** '통계'는 배지 트리의 '지표'/'축'과 갈라지는 미등록 용어라 이미 쓰는 '기록'으로 통일 (티켓 20260916_0734) */
-    shareCardGroupLabel: '기록이 담긴 공유 카드',
-    shareBadgeGroupLabel: '배지 이미지만',
 
     // 체크인 배지 지도 마커 API(/api/checkin-badges) — 서버 에러 메시지 단일 소스(ADR 0001)
     /**
