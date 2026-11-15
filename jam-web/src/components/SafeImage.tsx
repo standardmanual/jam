@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useCallback, useState, type ReactNode } from 'react'
-import { isDirectStaticBadgeSrc, isOptimizableImageSrc } from '@/lib/imageSrc'
+import { isDirectStaticBadgeSrc, isOptimizableImageSrc, nextImageWidthFor, optimizedImageUrl } from '@/lib/imageSrc'
 
 type SafeImageProps = {
   /** 이미지 주소. 어드민 자유 입력값이어도 된다(호스트를 사전에 몰라도 안전하다). */
@@ -27,6 +27,11 @@ type SafeImageProps = {
    * 넣지 않는다. 그리드 앞 칸처럼 여러 장이 한꺼번에 보이는 곳에 쓴다 (티켓 20261115_1237).
    */
   eager?: boolean
+  /**
+   * 다른 칸이 쓰는 변환본의 표시 폭(예: 90px 카드면 90). 주면 이 칸이 자기 폭 대신 그 폭의 변환 주소를 요청해,
+   * 한 번 받은 그림을 두 칸이 함께 쓴다(티켓 20261115_1455). 고정 크기(width·height)일 때만 쓰고, 정적 파일 배지에는 영향이 없다.
+   */
+  variantWidth?: number
   /** 이미지가 없거나 로드에 실패했을 때 대신 렌더할 내용 (기본: 아무것도 렌더하지 않음) */
   fallback?: ReactNode
 }
@@ -53,6 +58,7 @@ export default function SafeImage({
   sizes,
   priority = false,
   eager = false,
+  variantWidth,
   fallback = null,
 }: SafeImageProps) {
   const [failed, setFailed] = useState(false)
@@ -76,9 +82,16 @@ export default function SafeImage({
   const unoptimized = isDirectStaticBadgeSrc(value)
   const loading = eager && !priority ? 'eager' : undefined
 
+  // next/image가 고정 폭 칸에 만드는 srcset은 1배(폭 이상 가장 작은 값)와 2배 두 후보다. 후보의 폭이 칸 폭의 2배 미만이면 1배로 본다
+  const variantLoader =
+    hasFixedSize && typeof variantWidth === 'number'
+      ? ({ src: from, width: candidate }: { src: string; width: number }) =>
+          optimizedImageUrl(from, nextImageWidthFor(variantWidth, candidate < (width as number) * 2 ? 1 : 2)) ?? from
+      : undefined
+
   const image = isOptimizableImageSrc(value) ? (
     hasFixedSize ? (
-      <Image src={value} alt={alt} width={width} height={height} sizes={sizes} priority={priority} loading={loading} unoptimized={unoptimized} className={className} onError={onError} ref={detectAlreadyFailed} />
+      <Image src={value} alt={alt} width={width} height={height} sizes={sizes} priority={priority} loading={loading} unoptimized={unoptimized} loader={unoptimized ? undefined : variantLoader} className={className} onError={onError} ref={detectAlreadyFailed} />
     ) : (
       <Image src={value} alt={alt} fill sizes={sizes} priority={priority} loading={loading} unoptimized={unoptimized} className={className} onError={onError} ref={detectAlreadyFailed} />
     )

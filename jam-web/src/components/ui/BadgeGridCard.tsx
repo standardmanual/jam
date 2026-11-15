@@ -7,7 +7,7 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { SlotOutline } from '@ds/components/cards/SlotOutline'
-import { slotOutlineTraceSrc } from '@/lib/imageSrc'
+import { BADGE_CARD_DISPLAY_WIDTH, slotOutlineTraceSrc } from '@/lib/imageSrc'
 import { MedalIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
@@ -208,6 +208,7 @@ export default function BadgeGridCard({
                 width={56}
                 height={56}
                 eager={eager}
+                variantWidth={BADGE_CARD_DISPLAY_WIDTH}
                 className="w-full h-full object-contain p-1"
                 fallback={<MedalIcon className="w-6 h-6 text-muted" />}
               />

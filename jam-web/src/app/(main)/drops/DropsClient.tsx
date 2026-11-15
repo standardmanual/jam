@@ -10,6 +10,7 @@ import type { PoiBadgeMarker, PoiBadgeClusterMarker, MapViewport, MapViewHandle 
 import type { NearbyPoi } from '@/types/drops'
 import { d, t } from '@/lib/i18n'
 import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
+import { warmDropMapImages } from '@/lib/poi/dropMapWarmup'
 import QuestPickupScene from './QuestPickupScene'
 import LocationPermissionCard from './LocationPermissionCard'
 import { carouselPoiHref, DROPS_PATH, resolveCarouselClose, resolveCarouselPoi } from './carouselUrl'
@@ -189,6 +190,20 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
       setPoisLoading(false)
     }
   }, [userLat, userLng, toast])
+
+  // 지점 목록이 도착하면 가까운 지점의 배지 그림을 한가한 시점에 미리 받는다(티켓 20261115_1455).
+  // 이미 부른 지점은 지도 화면이 떠 있는 동안 다시 부르지 않는다.
+  const warmedPoiIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (pois.length === 0) return
+    const run = () => void warmDropMapImages(pois, warmedPoiIdsRef.current)
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(run, { timeout: 4000 })
+      return () => window.cancelIdleCallback?.(id)
+    }
+    const timer = setTimeout(run, 2000)
+    return () => clearTimeout(timer)
+  }, [pois])
 
   useEffect(() => {
     // loadNearbyPois 내부의 setPoisLoading(true)가 effect 본문에서 동기 호출되는
