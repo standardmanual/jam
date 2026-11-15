@@ -11,8 +11,6 @@
  *   모르는 코드·RPC 오류·해석할 수 없는 응답은 일반 오류.
  * - 후속 처리: 개체마다 `recordIssuedRewards`(활동 없음, 잠김 여부 전달, 피드 건너뜀 `skipFeed`). 잠긴 개체는 포인트에서 빠진다. 열린 개체도 피드에 올리지 않는다(운영 로직 15.3절, 티켓 20261021_1249 6-3 5회). 후속 처리가 던져도 열기는 유지된다.
  * - 챕터 점수 «캡슐 열기»(옛 `chapter_add_score`)는 세지 않는다(티켓 20261028_1742 1회에서 비집계 경로를 걷었다). 후속 처리 실패는 열기·응답을 바꾸지 않는다.
- * - 퀘스트 완료 처리(티켓 20261028_1738): 캡슐 열기는 더 이상 퀘스트 단계가 아니라 열기가 완료 처리를 부르지 않는다(성공이든 거절이든 0번).
- *   완료 판정은 동기화와 잠긴 개체 열기가 부른다. 응답에는 완료 배지를 싣지 않는다. 실제 판정은 `onboarding-quest/__tests__`가 고정한다(여기서는 가짜).
  * - 다른 트라이브 추첨 대상(티켓 20261021_1248): 후보 배지가 있는 트라이브만이다. 후보 없는 비활성 트라이브가 뽑혀 첫 캡슐이 열리지 않는 일이 없다.
  * - 집계 열기: RPC는 `capsule_open_counted` 하나뿐이다. 오름 처리(`processChapterRise`)는 부르지 않고(`capsule_auto_fill`이 한다), 응답에 `chapterNo`·`reachedChapters`·`chapterCount`가 더해진다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트·가짜 RPC·결정적 난수만 쓴다.
@@ -34,7 +32,6 @@ const awardPointsMock = vi.hoisted(() => vi.fn())
 const feedMock = vi.hoisted(() => vi.fn())
 const logMock = vi.hoisted(() => vi.fn())
 const badgesRef = vi.hoisted(() => ({ rows: [] as unknown[] }))
-const completionMock = vi.hoisted(() => vi.fn())
 const riseMock = vi.hoisted(() => vi.fn())
 const realFollowUp = vi.hoisted(() => ({ fn: null as null | ((...args: never[]) => unknown) }))
 
@@ -78,12 +75,6 @@ vi.mock('@/lib/db/fetchAllRows', () => ({
   },
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
-vi.mock('@/lib/onboarding-quest/completion', () => ({
-  recordOnboardingQuestCompletion: async (...args: unknown[]) => {
-    order.calls.push('quest_completion')
-    return completionMock(...args)
-  },
-}))
 vi.mock('@/lib/chapter/rise', () => ({
   processChapterRise: async (...args: unknown[]) => {
     order.calls.push('rise')
@@ -238,8 +229,6 @@ beforeEach(() => {
   feedMock.mockResolvedValue(undefined)
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
-  completionMock.mockReset()
-  completionMock.mockResolvedValue(null)
   riseMock.mockReset()
   riseMock.mockResolvedValue(undefined)
   badgesRef.rows = [mkBadge('common'), mkBadge('epic')]
@@ -543,8 +532,6 @@ describe('openCapsule — DB 응답 변환', () => {
     expect(order.calls).not.toContain('rpc:inventory_slot_alert_step')
     // 챕터 점수도 세지 않는다(티켓 20261019_1315)
     expect(order.calls).not.toContain('rpc:chapter_add_score')
-    // 퀘스트 완료 처리도 부르지 않는다(티켓 20261021_1248)
-    expect(completionMock).not.toHaveBeenCalled()
   })
 })
 
@@ -634,35 +621,7 @@ describe('openCapsule — 옛 챕터 점수 «캡슐 열기»를 세지 않는�
   })
 })
 
-describe('openCapsule — 퀘스트 완료 처리를 부르지 않는다 (티켓 20261028_1738)', () => {
-  it('열기가 확정돼도 완료 처리를 부르지 않고 바로 후속 처리가 이어진다', async () => {
-    followUpMock.mockImplementation(async () => {
-      order.calls.push('followUp')
-    })
-    const { client } = fakeClient({ rpc: OK_RPC })
-
-    await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
-
-    expect(completionMock).not.toHaveBeenCalled()
-    expect(order.calls).not.toContain('quest_completion')
-    expect(order.calls).toContain('followUp')
-  })
-
-  it('추첨 전에 막히거나 DB가 거절하거나 나올 개체가 없을 때도 부르지 않는다', async () => {
-    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
-    await openCapsule(fakeClient({ rpc: OK_RPC }).client, USER_ID, { rand: seq() }).catch(() => {})
-
-    stateMock.mockResolvedValueOnce(stateOf({ filled: 50, remaining: 60, openable: false, notOpenableReason: 'not_full' }))
-    await openCapsule(fakeClient({ rpc: OK_RPC }).client, USER_ID, { rand: seq() }).catch(() => {})
-
-    await openCapsule(fakeClient({ rpc: { data: { ok: false, error: 'not_full' }, error: null } }).client, USER_ID, { rand: seq(...TWO_ITEMS) }).catch(() => {})
-
-    badgesRef.rows = []
-    await openCapsule(fakeClient({ rpc: OK_RPC }).client, USER_ID, { rand: seq(0.5, 0.5, 0) }).catch(() => {})
-
-    expect(completionMock).not.toHaveBeenCalled()
-  })
-
+describe('openCapsule — 응답 모양', () => {
   it('응답에는 완료 배지를 싣지 않는다 — 응답 모양은 openId·items·next와 챕터 횟수 정보뿐이다', async () => {
     const { client } = fakeClient({ rpc: OK_RPC })
 
@@ -780,7 +739,6 @@ describe('openCapsule — 집계 열기의 챕터 횟수 정보 (티켓 20261028
 
     expect(riseMock).not.toHaveBeenCalled()
     expect(payload).toMatchObject({ chapterNo: 3, reachedChapters: [4], chapterCount: 0 })
-    expect(completionMock).not.toHaveBeenCalled()
     expect(order.calls).toContain('followUp')
   })
 

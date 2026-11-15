@@ -5,16 +5,14 @@
  * - 옛 채우기(`fillLockedItem`, RPC `locked_item_fill`)는 티켓 20261028_1742 1회에서 걷었다. 아래 머리말의 «채우기에는 부르지 않는다» 항목은 열기 쪽 규칙만 남는다.
  * - 열기(티켓 20261028_1737 2회): 포인트로 연다 — DB 함수 `locked_item_open_points`를 부른다(옛 `locked_item_open`은 부르지 않는다). 정지 확인이 RPC보다 먼저다.
  *   성공하면 같은 개체의 일련번호와 준 포인트(`pointsAwarded`)·낸 포인트(`pointsSpent`)·연 뒤 잔액(`pointBalance`), 열린 뒤의 개체 정보(이름·그림·설명·컬렉션·트라이브)를 싣는다.
- *   `insufficient_points`는 필요한 포인트(`required`)·가진 포인트(`balance`)를 싣고 뒤처리와 개체 정보 조회가 모두 나가지 않는다. 여는 포인트가 0이면(퀘스트의 첫 잠긴 배지) `pointsSpent` 0으로 열린다.
+ *   `insufficient_points`는 필요한 포인트(`required`)·가진 포인트(`balance`)를 싣고 뒤처리와 개체 정보 조회가 모두 나가지 않는다. 여는 포인트가 0이면 `pointsSpent` 0으로 열린다.
  *   `not_full`은 옛 함수 호환으로 채운 양·필요한 양을 싣는다. 열기가 확정된 뒤 정보 조회가 실패해도 열기를 실패로 돌려주지 않는다(`item: null`).
  *   열기 거절 응답에는 개체 정보를 읽는 조회가 아예 나가지 않는다.
  * - 서비스 활동 잼(티켓 20261028_1735 3회, 옛 챕터 점수 «잠긴 아이템 배지 열기» 자리): 열기가 확정되면 `jam_apply_service_activity`를 (locked_unlock, `locked_unlock:<개체 id>`)로 한 번 부른다.
  *   거절·정지·해석 불가 응답에는 부르지 않고, 같은 개체를 다시 보내도 같은 키다. 옛 `chapter_add_score`는 더는 부르지 않는다. 지급(양 > 0)이 있으면 곧바로 캡슐 자동 채움이 이어지고
- *   (열기 응답은 그대로, 퀘스트 완료 처리보다 앞), 규칙값 0 등 지급 0이면 채우지 않는다. 지급 실패(RPC 오류·예외)는 열기와 응답을 바꾸지 않는다. 채우기는 잼 지급과 무관하다.
- * - 퀘스트 완료 처리(티켓 20261021_1248): 열기가 확정되면 서비스 활동 잼 다음에 `(supabase, userId)`로 한 번 부른다. 거절·정지·해석 불가 응답과 채우기에는 부르지 않고,
- *   완료 처리가 던져도 열기와 응답은 그대로다. 응답에는 완료 배지를 싣지 않는다. 실제 판정은 `onboarding-quest/__tests__`가 고정한다(여기서는 가짜).
+ *   (열기 응답은 그대로), 규칙값 0 등 지급 0이면 채우지 않는다. 지급 실패(RPC 오류·예외)는 열기와 응답을 바꾸지 않는다. 채우기는 잼 지급과 무관하다.
  * - 포인트 소식(티켓 20261026_1031): 열기가 확정되고 `pointsAwarded`가 0보다 크면 활동 결산의 «포인트» 조각을 `(유저 id, { points }, { client })`로 한 번 낸다.
- *   퀘스트 완료 처리 다음이며 개체 정보 조회보다 앞이다. `pointsAwarded`가 0이면 내지 않고, 거절(`not_locked` 포함)·정지·해석 불가 응답과 채우기에도 내지 않는다.
+ *   서비스 활동 잼 다음이며 개체 정보 조회보다 앞이다. `pointsAwarded`가 0이면 내지 않고, 거절(`not_locked` 포함)·정지·해석 불가 응답과 채우기에도 내지 않는다.
  *   소식이 던져도 열기와 응답은 그대로다.
  * - 활동 피드(티켓 20261026_1031, 사용자 결정 2026-10-26): 잠긴 채 받은 개체는 받을 때 피드가 없다(`recordIssuedRewards`가 잠긴 개체는 포인트와 피드를 모두 건너뛴다, 7.3절).
  *   그래서 열기가 확정되면 `item_dropped`를 한 번 올린다. 칸 이름과 값은 열린 채 받은 개체의 피드와 같고(같은 헬퍼 `recordItemDroppedFeed`), 시각은 연 때(생략 = DB 기본값),
@@ -42,18 +40,10 @@ const calls = vi.hoisted(() => ({ order: [] as string[] }))
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
 const logMock = vi.hoisted(() => vi.fn())
 const autoFillMock = vi.hoisted(() => vi.fn())
-const completionMock = vi.hoisted(() => vi.fn())
 const recapMock = vi.hoisted(() => vi.fn())
 const feedMock = vi.hoisted(() => vi.fn())
 const awardPointsMock = vi.hoisted(() => vi.fn())
 
-// 퀘스트 완료 처리는 가짜로 막는다(티켓 20261021_1248) — 불린 순서와 인자만 본다
-vi.mock('@/lib/onboarding-quest/completion', () => ({
-  recordOnboardingQuestCompletion: async (...args: unknown[]) => {
-    calls.order.push('quest_completion')
-    return completionMock(...args)
-  },
-}))
 // 포인트 소식(활동 결산)은 가짜로 막는다(티켓 20261026_1031) — 불린 순서와 인자만 본다
 vi.mock('@/lib/notifications/recap', () => ({
   recordActivityRecap: async (...args: unknown[]) => {
@@ -169,8 +159,6 @@ beforeEach(() => {
   logMock.mockResolvedValue(undefined)
   autoFillMock.mockReset()
   autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false })
-  completionMock.mockReset()
-  completionMock.mockResolvedValue(null)
   recapMock.mockReset()
   recapMock.mockResolvedValue(undefined)
   feedMock.mockReset()
@@ -293,7 +281,7 @@ describe('openLockedItem', () => {
     expect(payload).toEqual({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: null, pointsAwarded: 50, pointsSpent: 50, pointBalance: 120, item: null })
   })
 
-  it('포인트가 모자라면 insufficient_points와 필요한 포인트·가진 포인트를 싣고, 잼·퀘스트·소식·피드·개체 정보 조회 없이 거절한다(잔액 불변)', async () => {
+  it('포인트가 모자라면 insufficient_points와 필요한 포인트·가진 포인트를 싣고, 잼·소식·피드·개체 정보 조회 없이 거절한다(잔액 불변)', async () => {
     const { client, rpc, reads } = fakeClient({
       rpc: { locked_item_open_points: { data: { ok: false, error: 'insufficient_points', required: 50, balance: 20 }, error: null } },
       tables: INFO_TABLES,
@@ -309,13 +297,12 @@ describe('openLockedItem', () => {
     // 앱은 포인트를 따로 건드리지 않는다 — 부른 RPC는 열기 하나뿐이고(차감·지급은 DB 함수 안에서 한 트랜잭션), 거절이면 그 함수가 아무것도 바꾸지 않는다
     expect(rpc.mock.calls.map(([name]) => name)).toEqual(['locked_item_open_points'])
     expect(awardPointsMock).not.toHaveBeenCalled()
-    expect(completionMock).not.toHaveBeenCalled()
     expect(recapMock).not.toHaveBeenCalled()
     expect(feedMock).not.toHaveBeenCalled()
     expect(reads).toEqual([])
   })
 
-  it('퀘스트의 첫 잠긴 배지처럼 여는 포인트가 0이면 pointsSpent 0으로 열리고 잔액이 그대로다', async () => {
+  it('여는 포인트가 0이면 pointsSpent 0으로 열리고 잔액이 그대로다', async () => {
     const { client } = fakeClient({
       rpc: { locked_item_open_points: { data: { ...OPEN_OK, pointsAwarded: 10, pointsSpent: 0, pointBalance: 30 }, error: null } },
       tables: INFO_TABLES,
@@ -325,7 +312,6 @@ describe('openLockedItem', () => {
 
     expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, pointsAwarded: 10, pointsSpent: 0, pointBalance: 30 })
     // 열기가 확정되면 뒤처리는 포인트를 낸 열기와 같다
-    expect(completionMock).toHaveBeenCalledTimes(1)
     expect(recapMock).toHaveBeenCalledWith(USER_ID, { points: 10 }, expect.anything())
   })
 
@@ -374,14 +360,14 @@ describe('openLockedItem — 서비스 활동 잼 «잠긴 아이템 배지 열�
     expect(rpc.mock.calls.map(([name]) => name)).not.toContain('chapter_add_score')
   })
 
-  it('지급이 있으면 곧바로 캡슐 자동 채움이 이어지고, 퀘스트 완료 처리·소식보다 앞이며 열기 응답은 그대로다 (지급 즉시 채움)', async () => {
+  it('지급이 있으면 곧바로 캡슐 자동 채움이 이어지고, 소식보다 앞이며 열기 응답은 그대로다 (지급 즉시 채움)', async () => {
     const { client } = fakeClient({ rpc: { locked_item_open_points: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
 
     const payload = await openLockedItem(client, USER_ID, ITEM_ID)
 
     expect(autoFillMock).toHaveBeenCalledTimes(1)
     expect(autoFillMock).toHaveBeenCalledWith(expect.anything(), USER_ID)
-    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'auto_fill', 'quest_completion', 'recap'])
+    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'auto_fill', 'recap'])
     expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
   })
 
@@ -466,51 +452,8 @@ describe('openLockedItem — 서비스 활동 잼 «잠긴 아이템 배지 열�
   })
 })
 
-describe('openLockedItem — 퀘스트 완료 처리 (티켓 20261021_1248)', () => {
-  it('열기가 확정되면 (클라이언트, 유저 id)로 한 번 부르고, 서비스 활동 잼 다음이며 개체 정보 조회보다 앞이다', async () => {
-    const { client, reads } = fakeClient({ rpc: { locked_item_open_points: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
-    let readsWhenCalled = -1
-    completionMock.mockImplementation(async () => {
-      readsWhenCalled = reads.length
-      return null
-    })
-
-    await openLockedItem(client, USER_ID, ITEM_ID)
-
-    expect(completionMock).toHaveBeenCalledTimes(1)
-    expect(completionMock).toHaveBeenCalledWith(client, USER_ID)
-    expect(calls.order.indexOf('quest_completion')).toBeGreaterThan(calls.order.indexOf('rpc:jam_apply_service_activity'))
-    // 완료 처리가 불릴 때까지 개체 정보 표는 아직 읽지 않았고, 그 뒤에 읽는다
-    expect(readsWhenCalled).toBe(0)
-    expect(reads.length).toBeGreaterThan(0)
-  })
-
-  it('정지·DB 거절·해석할 수 없는 응답은 부르지 않는다', async () => {
-    assertNotSuspendedMock.mockRejectedValueOnce(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
-    await openLockedItem(fakeClient({ rpc: { locked_item_open_points: { data: OPEN_OK, error: null } }, tables: INFO_TABLES }).client, USER_ID, ITEM_ID).catch(() => {})
-
-    const notFull = fakeClient({ rpc: { locked_item_open_points: { data: { ok: false, error: 'not_full', required: 100, filled: 60 }, error: null } } })
-    await openLockedItem(notFull.client, USER_ID, ITEM_ID).catch(() => {})
-
-    const broken = fakeClient({ rpc: { locked_item_open_points: { data: { ok: true }, error: null } } })
-    await openLockedItem(broken.client, USER_ID, ITEM_ID).catch(() => {})
-
-    expect(completionMock).not.toHaveBeenCalled()
-  })
-
-  it('완료 처리가 던져도 열기와 응답은 그대로이고 개체 정보를 이어 읽으며 기록만 남긴다', async () => {
-    completionMock.mockRejectedValue(new Error('퀘스트 완료 처리 장애'))
-    const { client } = fakeClient({ rpc: { locked_item_open_points: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
-
-    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
-
-    expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
-    expect(payload.item).not.toBeNull()
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('퀘스트 완료 처리 실패'), expect.any(Error))
-  })
-
-  it('응답에는 완료 배지를 싣지 않는다 — 완료 처리가 배지 id를 돌려줘도 응답 모양은 같다', async () => {
-    completionMock.mockResolvedValue('cd20f271-9445-42cc-ac51-d8a96b25e1c3')
+describe('openLockedItem — 응답 모양', () => {
+  it('응답에는 완료 배지를 싣지 않는다 — 응답 모양은 개체·포인트 정보뿐이다', async () => {
     const { client } = fakeClient({ rpc: { locked_item_open_points: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
 
     const payload = await openLockedItem(client, USER_ID, ITEM_ID)
@@ -521,7 +464,7 @@ describe('openLockedItem — 퀘스트 완료 처리 (티켓 20261021_1248)', ()
 })
 
 describe('openLockedItem — 포인트 소식 (티켓 20261026_1031)', () => {
-  it('열기가 확정되면 받은 포인트로 소식을 한 번 내고, 퀘스트 완료 처리 다음이며 개체 정보 조회보다 앞이다', async () => {
+  it('열기가 확정되면 받은 포인트로 소식을 한 번 내고, 서비스 활동 잼 다음이며 개체 정보 조회보다 앞이다', async () => {
     const { client, reads } = fakeClient({ rpc: { locked_item_open_points: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
     let readsWhenCalled = -1
     recapMock.mockImplementation(async () => {
@@ -532,7 +475,7 @@ describe('openLockedItem — 포인트 소식 (티켓 20261026_1031)', () => {
 
     expect(recapMock).toHaveBeenCalledTimes(1)
     expect(recapMock).toHaveBeenCalledWith(USER_ID, { points: 50 }, { client })
-    expect(calls.order.indexOf('recap')).toBeGreaterThan(calls.order.indexOf('quest_completion'))
+    expect(calls.order.indexOf('recap')).toBeGreaterThan(calls.order.indexOf('rpc:jam_apply_service_activity'))
     expect(readsWhenCalled).toBe(0)
     expect(reads.length).toBeGreaterThan(0)
   })
@@ -749,8 +692,8 @@ describe('openLockedItem — 활동 피드 item_dropped (티켓 20261026_1031)',
       // 포인트 소식은 그대로 한 번 나간다
       expect(recapMock).toHaveBeenCalledTimes(1)
       expect(recapMock).toHaveBeenCalledWith(USER_ID, { points: 50 }, { client })
-      // 잼 지급·즉시 채움·퀘스트 완료 처리도 그대로다
-      expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'auto_fill', 'quest_completion', 'recap'])
+      // 잼 지급·즉시 채움도 그대로다
+      expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'auto_fill', 'recap'])
       // 열기 응답은 출처와 무관하게 같다(개체 정보·접두사를 그대로 싣는다)
       expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
       expect(payload.item).toMatchObject({ name: '새벽의 첫 바퀴' })
@@ -953,7 +896,7 @@ describe('getLockedItemStatus', () => {
     expect((await getLockedItemStatus(client, USER_ID, ITEM_ID)).pointBalance).toBe(0)
   })
 
-  it('여는 포인트는 개체에 고정된 값을 쓰고, 정책이 나중에 바뀌어도 읽지 않는다(퀘스트의 첫 잠긴 배지는 0)', async () => {
+  it('여는 포인트는 개체에 고정된 값을 쓰고, 정책이 나중에 바뀌어도 읽지 않는다', async () => {
     const { client, reads } = fakeClient({
       tables: statusTables({ inventory_items: { data: { ...ITEM_ROW, unlock_points_required: 0 }, error: null } }),
     })

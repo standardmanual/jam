@@ -17,8 +17,6 @@
  *    옛 비집계 경로(RPC `capsule_open`과 챕터 점수 «캡슐 열기» `awardChapterScore`)는 걷었다. 챕터 횟수와 오름 판정은 열기가 아니라 `capsule_auto_fill`이 캡슐이 100%에 닿는 시점에 하므로
  *    **여기서는 오름 처리(`processChapterRise`)를 하지 않는다**(`auto-fill.ts`가 한다 — 이중 호출 방지). 응답에는 `chapterNo`·`reachedChapters`·`chapterCount`를 싣는다
  *    (DB가 `reachedChapters`를 항상 빈 배열로 돌려준다).
- *  - 퀘스트 완료 처리는 부르지 않는다(티켓 20261028_1738). 캡슐 열기는 더 이상 퀘스트 단계가 아니다. 퀘스트는 첫 동기화와 잠긴 개체 열기 두 단계라
- *    완료 판정은 동기화(`syncStravaActivities`)와 잠긴 개체 열기(`lockedItemFill.ts`)가 각각 부른다. 이 열기는 두 단계 어느 쪽의 기록도 바꾸지 않는다.
  *  - 다른 트라이브를 고를 때는 후보 배지가 있는 트라이브만 대상이다(`tribesWithCandidates`, 티켓 20261021_1248). 후보가 없는 트라이브가 뽑혀 개체가 비는 일을 없앤다.
  *  - 응답의 잠긴 개체는 이름·그림·일련번호 없이 등급과 여는 데 필요한 양만 싣는다.
  *

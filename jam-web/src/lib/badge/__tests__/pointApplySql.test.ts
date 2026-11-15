@@ -7,7 +7,7 @@
  * 고정하는 것
  *  (a) 값이 `badge_point_policy`의 칸 5개에서 오고, 포인트 리터럴(10·20·50·100)을 코드에 직접 쓰지 않는다.
  *  (b) 계획 문장이 `deleted_at IS NULL`·`is_hidden = false`로 삭제·숨김 배지를 뺀다.
- *  (c) 289는 종류가 `item`·`checkin` 둘뿐, 290은 `activity`뿐이며 온보딩 완료 배지 id를 제외한다(id는 onboarding-quest/config.ts의 상수와 같다).
+ *  (c) 289는 종류가 `item`·`checkin` 둘뿐, 290은 `activity`뿐이며 온보딩 완료 배지 id를 제외한다(id는 chapter/signup-badge-id.ts의 상수와 같다).
  *  (d) 백업 표(RLS 켬·권한 회수), 바뀔 행만 백업, 조건부 UPDATE, 건수 가드, 사후 검증, 되돌림 블록, 맨 앞 드라이런이 있다.
  *  (e) 등급 → 칸 대응이 `lib/admin/badge-point-defaults.ts`의 `defaultPointFor`와 같다(같은 입력으로 대조).
  *  (f) `BEGIN`·`COMMIT` 같은 트랜잭션 문장이 없다(호출자가 한 트랜잭션으로 실행한다).
@@ -27,7 +27,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { defaultPointFor } from '@/lib/admin/badge-point-defaults'
 import { BADGE_POINT_POLICY_KEYS, type BadgePointPolicy } from '@/lib/badge/pointPolicy'
-import { ONBOARDING_COMPLETION_BADGE_ID } from '@/lib/onboarding-quest/config'
+import { SIGNUP_COMPLETION_BADGE_ID as ONBOARDING_COMPLETION_BADGE_ID } from '@/lib/chapter/signup-badge-id'
 import type { BadgeRarity } from '@/types/database'
 
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase/migrations')

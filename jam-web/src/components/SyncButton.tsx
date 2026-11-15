@@ -40,7 +40,7 @@ interface SyncResponse {
  * TopNav 중앙 슬롯(모든 페이지 공통)에서도 재사용한다. 동작(POST /api/strava/sync →
  * 배지 캐러셀 또는 완료 토스트)은 변경 없음 — 호출 위치만 늘었다.
  *
- * 모양: 놓인 자리(TopNav 중앙 슬롯·온보딩 퀘스트 홈 카드)와 상관없이 primary(`--accent` 알약)다.
+ * 모양: 놓인 자리(TopNav 중앙 슬롯)와 상관없이 primary(`--accent` 알약)다.
  * 한때 `appearance`(티켓 20260928_1537)로 nav·card를 갈랐지만 Button에 secondary·danger·outline이
  * 생겨 「outline + accent 인라인 덮어쓰기」가 필요 없어지면서 둘이 같아져 prop을 걷었다(티켓 20261015_2133).
  */

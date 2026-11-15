@@ -60,7 +60,6 @@ vi.mock('@/lib/itembook/checker', () => ({
 }))
 vi.mock('@/lib/itembook/completable', () => ({ findCompletableItemBooks: vi.fn(async () => []) }))
 vi.mock('@/lib/missions/checker', () => ({ checkMissions: checkMissionsMock }))
-vi.mock('@/lib/onboarding-quest/completion', () => ({ recordOnboardingQuestCompletion: vi.fn(async () => null) }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications', () => ({
   createNotification: vi.fn(async () => {}),
