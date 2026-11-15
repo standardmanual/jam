@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ToastProvider } from '@/components/ui/Toast'
 import TabBar from '@/components/ui/TabBar'
 import Footer from '@/components/ui/Footer'
+import BadgeImageWarmup from '@/components/BadgeImageWarmup'
 import StravaConnectReveal from '@/components/StravaConnectReveal'
 import StravaDuplicateSheet from '@/components/strava/StravaDuplicateSheet'
 import PendingItemsPickerProvider from '@/components/strava/PendingItemsPickerProvider'
@@ -129,6 +130,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
             {/* 하단 탭 바 */}
             <TabBar username={username} />
+
+            {/* 곧 열 화면(배지함·인벤토리)의 배지 그림을 한가한 시점에 미리 받는다 — 그리는 것은 없다(티켓 20261115_1344) */}
+            <BadgeImageWarmup />
 
             {/* 최초 Strava 연동 직후(reveal=1) 획득 배지 연출.
                 콜백 리다이렉트 도착 지점이 profile 경유로 한 번 더 옮겨가므로

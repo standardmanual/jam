@@ -323,6 +323,10 @@ code:
 - **정적 파일 배지(`/badges/…`)는 변환을 거치지 않는다**: `SafeImage`가 `unoptimized`로 원래 주소를 직접 요청하고, `next.config.ts`의 `headers()`가 `Cache-Control: public, max-age=86400, stale-while-revalidate=2592000`을 붙인다(`isDirectStaticBadgeSrc`, `jam-web/src/lib/imageSrc.ts`). 같은 이름으로 그림을 교체해도 하루 뒤에는 새 그림을 확인한다. 이 헤더는 그림 파일 확장자로 끝나는 주소에만 붙인다. `/badges`와 `/badges/[id]`는 같은 주소 대역을 쓰는 화면이라서, 대역 전체에 붙이면 화면 응답까지 캐시된다.
 - **첫 화면 분량은 지연 로딩을 끈다**: `SafeImage`의 `eager`가 `loading="eager"`를 넣는다(`<head>` 선로드는 넣지 않는다). 기준은 그리드(3열) 앞 12칸(`FIRST_SCREEN_GRID_COUNT`), 지점 카드 갤러리 앞 6칸(`FIRST_SCREEN_GALLERY_COUNT`), 대표 그림(배지 상세·드랍 시트 히어로, 컬렉션 히어로), 지점 카드 확인 단계의 80px 그림이다. 그 뒤 칸은 지연 로딩이다.
 - **새 화면이 지킬 것**: 배지 그림은 `SafeImage` 또는 `BadgeGridCard`로 그린다(원본 `<img>` 금지). 그리드에서 첫 화면에 보이는 칸에는 `eager`를 준다. HTML 문자열(지도 마커)은 `optimizedImageUrl(src, 폭)`으로 카드와 같은 주소를 만든다. 폭은 next 기본 폭(96·128·256 등)에서 고른다.
+- **곧 열 화면의 그림 미리 받기(티켓 20261115_1344)**: 메인 화면이 뜬 뒤 한가한 시점에 인벤토리·배지함의 그림을 브라우저 캐시에 넣어 둬서, 그 기기에서 처음 여는 화면에도 그림이 화면과 함께 보인다. 화면 모양은 바뀌지 않는다.
+  - **대상**: 인벤토리 전체(30칸 한도, 화면과 같은 필터, 잠긴 개체 제외)와 배지함 `activity` 탭 앞 12칸(`FIRST_SCREEN_GRID_COUNT`, 화면과 같은 조회·정렬·계열 접기). 합쳐서 42개를 넘기지 않는다. 목록은 `GET /api/badge-images/warmup`이 원본 주소로 돌려준다(`jam-web/src/lib/badges/firstScreenBadgeImages.ts`, 배지함 목록 규칙은 `activityBadgeList.ts`를 화면과 공유한다).
+  - **실행 조건**: `(main)` 레이아웃의 `BadgeImageWarmup`이 탭(브라우저 세션)마다 한 번, 페이지 로드가 끝난 뒤 `requestIdleCallback`(없으면 2초 뒤)으로 시작한다. `saveData`가 켜져 있으면 하지 않는다. 6장씩 차례로 `fetchPriority=low`로 받고, 실패해도 화면에 영향이 없다.
+  - **주소 규칙**: `optimizedImageUrl(src, nextImageWidthFor(90, devicePixelRatio))`. 90px 카드는 1배 화면 w=96, 2배 이상 w=256이다. 화면이 요청하는 주소와 한 글자라도 다르면 캐시가 맞지 않으므로, `BadgeGridCard`의 srcset과 같은지 시험으로 고정한다.
 
 ## 10. 제작 경로 표시
 

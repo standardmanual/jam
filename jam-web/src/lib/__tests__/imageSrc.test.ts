@@ -5,7 +5,7 @@
  * "등록된 호스트 + 내부 경로만 true"라는 성질을 여기서 고정한다.
  */
 import { describe, it, expect } from 'vitest'
-import { isDirectStaticBadgeSrc, isOptimizableImageSrc, optimizedImageUrl, slotOutlineTraceSrc } from '@/lib/imageSrc'
+import { nextImageWidthFor, isDirectStaticBadgeSrc, isOptimizableImageSrc, optimizedImageUrl, slotOutlineTraceSrc } from '@/lib/imageSrc'
 
 describe('isOptimizableImageSrc', () => {
   it('내부 절대 경로는 최적화 대상', () => {
@@ -138,5 +138,18 @@ describe('optimizedImageUrl', () => {
   it('주소가 없으면 null', () => {
     expect(optimizedImageUrl(null, 128)).toBeNull()
     expect(optimizedImageUrl('  ', 128)).toBeNull()
+  })
+})
+
+describe('nextImageWidthFor — next/image srcset 폭 (티켓 20261115_1344)', () => {
+  it.each([
+    [90, 96, 256],
+    [56, 64, 128],
+    [80, 96, 256],
+    [200, 256, 640],
+  ])('표시 폭 %i → 1배 %i, 2배 이상 %i', (display, one, two) => {
+    expect(nextImageWidthFor(display, 1)).toBe(one)
+    expect(nextImageWidthFor(display, 2)).toBe(two)
+    expect(nextImageWidthFor(display, 3)).toBe(two)
   })
 })
