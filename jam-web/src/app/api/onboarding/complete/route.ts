@@ -12,6 +12,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ONBOARDING_QUEST_ENABLED } from '@/lib/onboarding-quest/config'
+import { ensureChapterStarted } from '@/lib/chapter/start'
+import { grantSignupBadge } from '@/lib/chapter/signup-reward'
 
 function validateUsernameFormat(username: string): string | null {
   if (username.length === 0) return 'EMPTY'
@@ -132,6 +134,20 @@ export async function POST(request: NextRequest) {
   if (!updatedRows || updatedRows.length === 0) {
     console.error('[onboarding/complete] 트라이브 저장 경합(다른 요청이 먼저 저장함):', user.id)
     return NextResponse.json({ error: 'ALREADY_SET' }, { status: 409 })
+  }
+
+  // 가입이 끝난 이 순간에 챕터 1을 시작하고 완료 배지 «JAM!»을 1회 지급한다(티켓 20261115_2056).
+  // 두 함수 모두 던지지 않지만 응답을 막지 않는 것이 이 호출의 약속이라 한 번 더 감싼다.
+  // 같은 유저의 재호출은 위에서 409로 끝나 여기까지 오지 않고, 배지는 23505(이미 보유)로 한 번 더 막힌다.
+  try {
+    await ensureChapterStarted(serviceClient, user.id)
+  } catch (e) {
+    console.error('[onboarding/complete] 챕터 1 시작 예외:', e)
+  }
+  try {
+    await grantSignupBadge(serviceClient, user.id)
+  } catch (e) {
+    console.error('[onboarding/complete] 완료 배지 지급 예외:', e)
   }
 
   // 온보딩 퀘스트 진행 테이블 행 생성 — 기능 스위치가 꺼져 있으면 만들지 않는다

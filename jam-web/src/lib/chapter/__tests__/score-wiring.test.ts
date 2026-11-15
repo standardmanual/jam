@@ -182,6 +182,7 @@ describe('호출 지점 목록 — 소스 검색', () => {
       'lib/badge-engine/index.ts': 1,
       'lib/badge-engine/usageBadges.ts': 1,
       'lib/chapter/badgeReceive.ts': 1, // 회차 함수 안의 내부 호출
+      'lib/chapter/signup-reward.ts': 1, // 가입 완료 배지 «JAM!» (티켓 20261115_2056)
       'lib/itembook/checker.ts': 1,
       'lib/missions/rewards.ts': 1,
       'lib/onboarding-quest/completion.ts': 1,

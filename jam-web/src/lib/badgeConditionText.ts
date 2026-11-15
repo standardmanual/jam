@@ -26,7 +26,7 @@
 import type { BadgeCondition } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 import { timeBandOfHour } from '@/lib/badge-engine/timeBands'
-import { ONBOARDING_COMPLETION_BADGE_ID } from '@/lib/onboarding-quest/config'
+import { SIGNUP_COMPLETION_BADGE_ID } from '@/lib/chapter/signup-reward'
 import {
   CONDITION_FIELDS,
   PERSONAL_RECORD_METRIC_FORM_OPTIONS,
@@ -39,12 +39,12 @@ import {
 const MANUAL_TEXT = '관리자가 직접 발급하는 배지예요.'
 
 /**
- * 온보딩 완료 배지(「JAM!」)의 획득 조건 문장 (티켓 20261021_1248 2회).
- * 이 배지는 `mission_reward` 표시를 쓰지만 별도 기능인 «미션»이 아니라 JAM! 시작하기의 완료 보상이다.
+ * 온보딩 완료 배지(「JAM!」)의 획득 조건 문장 (티켓 20261021_1248 2회, 가입 시점 문구로 변경 20261115_2056).
+ * 이 배지는 `mission_reward` 표시를 쓰지만 별도 기능인 «미션»이 아니라 가입을 마치면 받는 시작 보상이다.
  * 이름을 끼운 미션 문장을 쓰면 «'JAM!' 미션을…»이라는 사실과 다른 문장이 나가고, 유저 화면에는 «퀘스트»·«미션»이라는 말을 쓰지 않는다.
  * 한 문장이라 마침표가 없다(UX 라이팅 가이드 §3).
  */
-export const ONBOARDING_COMPLETION_CONDITION_TEXT = 'JAM!의 첫 단계를 모두 마치면 받을 수 있는 배지예요'
+export const ONBOARDING_COMPLETION_CONDITION_TEXT = '트라이브를 고르고 가입을 마치면 받을 수 있는 배지예요'
 
 /**
  * 레지스트리에 없는 키만 들어 있어 한 줄도 만들지 못한 경우.
@@ -360,7 +360,7 @@ function crossAttrNote(condition: BadgeCondition): string {
 /**
  * 배지 상세의 「획득 조건」 본문 한 문단.
  *
- * - 온보딩 완료 배지(`badgeId`가 `ONBOARDING_COMPLETION_BADGE_ID`) → 전용 문구. «미션»·«퀘스트»를 말하지 않는다(티켓 20261021_1248)
+ * - 온보딩 완료 배지(`badgeId`가 `SIGNUP_COMPLETION_BADGE_ID`) → 전용 문구. «미션»·«퀘스트»를 말하지 않는다(티켓 20261021_1248)
  * - 미션 보상 배지(`mission_reward`) → 미션 문구. **여기만 「직접 발급」 계열 문구가 맞다**
  * - 조건이 비어 있음 → 관리자 수동 발급
  * - 그 외 → 조건 나열 + 「조건을 채우면 획득할 수 있어요.」
@@ -373,7 +373,7 @@ export function formatBadgeConditionText(
   badgeId?: string | null
 ): string {
   if (condition?.mission_reward) {
-    if (badgeId === ONBOARDING_COMPLETION_BADGE_ID) return ONBOARDING_COMPLETION_CONDITION_TEXT
+    if (badgeId === SIGNUP_COMPLETION_BADGE_ID) return ONBOARDING_COMPLETION_CONDITION_TEXT
     return `'${badgeName}' 미션을 완료하면 받을 수 있는 배지예요.`
   }
   if (!condition || Object.keys(condition).length === 0) {
