@@ -7,6 +7,7 @@ import {
   DEFAULT_TEMPLATE_BADGE_PARAMS,
   parseTemplateBadgeParams,
   isDefaultTemplateBadgeParams,
+  isDefaultTemplateColorParams,
   styleSlot,
 } from '../templateParams'
 import type { TemplateSlot } from '../templateSvg'
@@ -89,5 +90,16 @@ describe('styleSlot', () => {
   })
   it('fontSize가 없으면 null', () => {
     expect(styleSlot({ ...slot, fontSize: null }, { color: null, fontFamily: null, fontWeight: null, sizeScalePct: 150 }).fontSize).toBeNull()
+  })
+})
+
+describe('isDefaultTemplateColorParams', () => {
+  const base = { hueShift: 0, saturation: 0, lightness: 0, overrides: {} }
+  it('세 값이 0이고 덮어쓴 색이 없을 때만 참', () => {
+    expect(isDefaultTemplateColorParams(base)).toBe(true)
+    expect(isDefaultTemplateColorParams({ ...base, hueShift: 1 })).toBe(false)
+    expect(isDefaultTemplateColorParams({ ...base, saturation: -1 })).toBe(false)
+    expect(isDefaultTemplateColorParams({ ...base, lightness: 5 })).toBe(false)
+    expect(isDefaultTemplateColorParams({ ...base, overrides: { '#ffffff': '#000000' } })).toBe(false)
   })
 })

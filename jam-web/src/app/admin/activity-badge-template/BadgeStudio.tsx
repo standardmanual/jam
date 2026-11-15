@@ -2,9 +2,10 @@
 
 /**
  * «배지 만들기» 탭: 배지 검색 → 선택 → 분류의 템플릿 위에 이름·값 미리보기 (티켓 20261116_0555).
- * 검색은 기존 POST /api/admin/activity-badge-image/search를 쓴다. 색·글자 조정은 20261116_0653, 등록은 다음 회차.
+ * 검색은 기존 POST /api/admin/activity-badge-image/search를 쓴다. 색·글자 조정은 20261116_0653, 등록은 20261116_0748.
  */
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   DEFAULT_TEMPLATE_BADGE_PARAMS,
   type TemplateBadgeParams,
@@ -12,7 +13,10 @@ import {
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
 import BadgePicker, { ALL_VALUE, type BadgeFilters, type StudioSearchBadge } from './BadgePicker'
 import BadgePreview from './BadgePreview'
+import { BatchRegisterDialog, SingleRegisterDialog } from './RegisterDialogs'
+import { registerTemplateBadge, summarizeBatch, type BatchEntry } from './registerTemplateBadge'
 
+const FAMILY_FAIL = '같은 계열의 배지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
 const SEARCH_FAIL = '배지를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.'
 
 export default function BadgeStudio({
@@ -35,8 +39,98 @@ export default function BadgeStudio({
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [selected, setSelected] = useState<StudioSearchBadge | null>(null)
-  // 다른 배지를 골라도 조정값은 그대로 둔다(같은 모양으로 이어서 볼 수 있게).
+  // 다른 배지를 골라도 조정값은 그대로 둔다(같은 모양으로 이어서 볼 수 있게). 저장된 조정값이 있는 배지만 그 값으로 바꾼다.
   const [params, setParams] = useState<TemplateBadgeParams>(DEFAULT_TEMPLATE_BADGE_PARAMS)
+  const [loadedNotice, setLoadedNotice] = useState(false)
+  const [singleTarget, setSingleTarget] = useState<StudioSearchBadge | null>(null)
+  const [batchTargets, setBatchTargets] = useState<StudioSearchBadge[] | null>(null)
+  const [registering, setRegistering] = useState(false)
+  const [progress, setProgress] = useState<{ index: number; total: number } | null>(null)
+  const [failures, setFailures] = useState<{ name: string; error: string }[]>([])
+  const busy = registering || progress !== null
+
+  function handleSelect(b: StudioSearchBadge) {
+    setSelected(b)
+    setFailures([])
+    if (b.templateParams) {
+      setParams(b.templateParams)
+      setLoadedNotice(true)
+    } else {
+      setLoadedNotice(false)
+    }
+  }
+
+  function changeParams(next: TemplateBadgeParams) {
+    setLoadedNotice(false)
+    setParams(next)
+  }
+
+  function templateOf(b: StudioSearchBadge) {
+    return b.templateClass ? templates.find((t) => t.classKey === b.templateClass) : undefined
+  }
+
+  function markRegistered(id: string, registered: TemplateBadgeParams) {
+    const patch = { hasImage: true, templateParams: registered }
+    setResults((prev) => prev && prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+    setSelected((prev) => (prev && prev.id === id ? { ...prev, ...patch } : prev))
+  }
+
+  async function registerOne(b: StudioSearchBadge) {
+    const template = templateOf(b)
+    if (!template) return
+    setRegistering(true)
+    setFailures([])
+    try {
+      const r = await registerTemplateBadge({ badge: b, template, params })
+      if (r.ok) {
+        markRegistered(b.id, params)
+        toast.success(`${b.name} 배지 이미지를 등록했어요.`)
+      } else {
+        toast.error(r.error)
+      }
+    } finally {
+      setRegistering(false)
+    }
+  }
+
+  async function openFamilyDialog() {
+    if (!selected?.familyKey) return
+    setRegistering(true)
+    try {
+      const res = await fetch('/api/admin/activity-badge-image/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ familyKey: selected.familyKey, page: 1 }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !Array.isArray(data?.badges)) throw new Error(FAMILY_FAIL)
+      const targets = (data.badges as StudioSearchBadge[]).filter((b) => b.templateClass === selected.templateClass)
+      if (targets.length === 0) toast.info('같은 계열에 등록할 배지가 없어요.')
+      else setBatchTargets(targets)
+    } catch {
+      toast.error(FAMILY_FAIL)
+    } finally {
+      setRegistering(false)
+    }
+  }
+
+  async function registerBatch(targets: StudioSearchBadge[]) {
+    const template = selected ? templateOf(selected) : undefined
+    if (!template) return
+    setFailures([])
+    const entries: BatchEntry[] = []
+    // 동시에 보내지 않고 한 단계씩 차례로 보낸다.
+    for (let i = 0; i < targets.length; i += 1) {
+      setProgress({ index: i + 1, total: targets.length })
+      const result = await registerTemplateBadge({ badge: targets[i], template, params })
+      if (result.ok) markRegistered(targets[i].id, params)
+      entries.push({ name: targets[i].name, result })
+    }
+    setProgress(null)
+    const summary = summarizeBatch(entries)
+    setFailures(summary.failed)
+    toast.success(`${summary.total}개 가운데 ${summary.okCount}개를 등록했어요.`)
+  }
 
   async function runSearch(nextPage: number) {
     setError(null)
@@ -81,15 +175,32 @@ export default function BadgeStudio({
         totalPages={totalPages}
         selectedId={selected?.id ?? null}
         onSearch={(p) => void runSearch(p)}
-        onSelect={setSelected}
+        onSelect={handleSelect}
+        selectDisabled={busy}
       />
       <BadgePreview
         badge={selected}
         templates={templates}
         onGoToTemplates={onGoToTemplates}
         params={params}
-        onParamsChange={setParams}
-        onParamsReset={() => setParams(DEFAULT_TEMPLATE_BADGE_PARAMS)}
+        onParamsChange={changeParams}
+        onParamsReset={() => changeParams(DEFAULT_TEMPLATE_BADGE_PARAMS)}
+        busy={busy}
+        progress={progress}
+        failures={failures}
+        loadedNotice={loadedNotice}
+        onRegister={() => setSingleTarget(selected)}
+        onRegisterFamily={() => void openFamilyDialog()}
+      />
+      <SingleRegisterDialog
+        badge={singleTarget}
+        onOpenChange={(open) => !open && setSingleTarget(null)}
+        onConfirm={(b) => void registerOne(b)}
+      />
+      <BatchRegisterDialog
+        badges={batchTargets}
+        onOpenChange={(open) => !open && setBatchTargets(null)}
+        onConfirm={(list) => void registerBatch(list)}
       />
     </div>
   )

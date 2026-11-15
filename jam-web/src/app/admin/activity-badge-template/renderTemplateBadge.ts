@@ -9,6 +9,7 @@ import {
 } from '@/lib/admin/activityBadgeTemplate/templateColors'
 import {
   DEFAULT_TEMPLATE_BADGE_PARAMS,
+  isDefaultTemplateColorParams,
   styleSlot,
   type TemplateBadgeParams,
 } from '@/lib/admin/activityBadgeTemplate/templateParams'
@@ -101,7 +102,7 @@ export async function renderTemplateBadge(
   const params = input.params ?? DEFAULT_TEMPLATE_BADGE_PARAMS
   let svgText = stripSlotText(input.svg)
   const { hueShift, saturation, lightness, overrides } = params.color
-  if (hueShift !== 0 || saturation !== 0 || lightness !== 0 || Object.keys(overrides).length > 0) {
+  if (!isDefaultTemplateColorParams(params.color)) {
     const colors = extractSvgColors(svgText).map((c) => c.color)
     svgText = applyColorMap(svgText, buildColorMap(colors, { hueShift, saturation, lightness, overrides }))
   }

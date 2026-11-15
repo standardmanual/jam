@@ -5,6 +5,7 @@
  * 상태: 배지 선택 전 / 분류 없음 / 템플릿 없음 / 정상.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'
 import { Badge } from '@/components/admin/ui/badge'
 import { Button } from '@/components/admin/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
@@ -46,13 +47,31 @@ interface AdjustProps {
   onParamsReset: () => void
 }
 
+export interface RegisterProps {
+  /** 등록·일괄 등록 중이면 버튼과 조정 패널을 잠근다 */
+  busy: boolean
+  /** 일괄 등록 진행: {i} / {n} */
+  progress: { index: number; total: number } | null
+  failures: { name: string; error: string }[]
+  /** 조정값을 저장된 값에서 불러왔을 때 */
+  loadedNotice: boolean
+  onRegister: () => void
+  onRegisterFamily: () => void
+}
+
 function ReadyPreview({
   badge,
   template,
   params,
   onParamsChange,
   onParamsReset,
-}: { badge: StudioSearchBadge; template: TemplateItem } & AdjustProps) {
+  busy,
+  progress,
+  failures,
+  loadedNotice,
+  onRegister,
+  onRegisterFamily,
+}: { badge: StudioSearchBadge; template: TemplateItem } & AdjustProps & RegisterProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [notes, setNotes] = useState<string[]>([])
   const [failed, setFailed] = useState(false)
@@ -85,39 +104,72 @@ function ReadyPreview({
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
       <div className="space-y-3">
-      {failed && <PreviewMessage>미리보기를 그리지 못했어요. 템플릿을 다시 올린 뒤 시도해 주세요.</PreviewMessage>}
-      {/* 실패해도 캔버스를 남겨 둔다. 지우면 템플릿을 다시 올렸을 때 다시 그릴 자리가 없다. */}
-      <canvas ref={canvasRef} className={failed ? 'hidden' : 'w-full max-w-[480px] h-auto rounded-md border'} />
-      <dl className={`space-y-1 text-sm ${WRAP}`}>
-        <div className="flex gap-2">
-          <dt className="w-10 text-muted-foreground">이름</dt>
-          <dd>{badge.name}</dd>
+        {loadedNotice && <PreviewMessage>이 배지에 저장된 조정값을 불러왔어요</PreviewMessage>}
+        {failed && <PreviewMessage>미리보기를 그리지 못했어요. 템플릿을 다시 올린 뒤 시도해 주세요.</PreviewMessage>}
+        {/* 실패해도 캔버스를 남겨 둔다. 지우면 템플릿을 다시 올렸을 때 다시 그릴 자리가 없다. */}
+        <canvas ref={canvasRef} className={failed ? 'hidden' : 'w-full max-w-[480px] h-auto rounded-md border'} />
+        <dl className={`space-y-1 text-sm ${WRAP}`}>
+          <div className="flex gap-2">
+            <dt className="w-10 text-muted-foreground">이름</dt>
+            <dd>{badge.name}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="w-10 text-muted-foreground">값</dt>
+            <dd>{badge.templateValue ?? '-'}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="w-10 text-muted-foreground">분류</dt>
+            <dd>{badge.templateClassLabel}</dd>
+          </div>
+        </dl>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" disabled={busy || failed} onClick={onRegister}>
+            등록
+          </Button>
+          {badge.familyKey && (
+            <Button size="sm" variant="outline" disabled={busy || failed} onClick={onRegisterFamily}>
+              같은 계열 모두 등록
+            </Button>
+          )}
         </div>
-        <div className="flex gap-2">
-          <dt className="w-10 text-muted-foreground">값</dt>
-          <dd>{badge.templateValue ?? '-'}</dd>
-        </div>
-        <div className="flex gap-2">
-          <dt className="w-10 text-muted-foreground">분류</dt>
-          <dd>{badge.templateClassLabel}</dd>
-        </div>
-      </dl>
-      {!failed && notes.length > 0 && (
-        <ul className={`space-y-1 text-xs text-muted-foreground ${WRAP}`}>
-          {notes.map((n) => (
-            <li key={n}>{n}</li>
-          ))}
-        </ul>
-      )}
+        {progress && (
+          <PreviewMessage>
+            {progress.index} / {progress.total} 등록하는 중이에요
+          </PreviewMessage>
+        )}
+        {failures.length > 0 && (
+          <Alert variant="destructive">
+            <AlertTitle className={WRAP}>등록하지 못한 배지</AlertTitle>
+            <AlertDescription>
+              <ul className={`space-y-1 ${WRAP}`}>
+                {failures.map((f) => (
+                  <li key={f.name}>
+                    {f.name}: {f.error}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+        {!failed && notes.length > 0 && (
+          <ul className={`space-y-1 text-xs text-muted-foreground ${WRAP}`}>
+            {notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        )}
       </div>
       {template.slots && (
-        <BadgeAdjustPanel
-          params={params}
-          onChange={onParamsChange}
-          onReset={onParamsReset}
-          colors={colors}
-          slots={template.slots}
-        />
+        // 등록하는 동안 조정을 잠근다(슬라이더 등 버튼이 아닌 입력도 막으려고 inert를 쓴다).
+        <div inert={busy} className={busy ? 'opacity-60' : undefined}>
+          <BadgeAdjustPanel
+            params={params}
+            onChange={onParamsChange}
+            onReset={onParamsReset}
+            colors={colors}
+            slots={template.slots}
+          />
+        </div>
       )}
     </div>
   )
@@ -130,11 +182,13 @@ export default function BadgePreview({
   params,
   onParamsChange,
   onParamsReset,
+  ...register
 }: {
   badge: StudioSearchBadge | null
   templates: TemplateItem[]
   onGoToTemplates: () => void
-} & AdjustProps) {
+} & AdjustProps &
+  RegisterProps) {
   let body: React.ReactNode
   if (!badge) {
     body = <PreviewMessage>배지를 검색해서 골라 주세요</PreviewMessage>
@@ -166,6 +220,7 @@ export default function BadgePreview({
           params={params}
           onParamsChange={onParamsChange}
           onParamsReset={onParamsReset}
+          {...register}
         />
     }
     body = (

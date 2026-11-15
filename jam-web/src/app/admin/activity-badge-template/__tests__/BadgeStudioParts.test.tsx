@@ -33,7 +33,7 @@ const template = (svg: string | null): TemplateItem => ({
 const badge = (over: Partial<StudioSearchBadge> = {}): StudioSearchBadge => ({
   id: 'b1', name: '트럭 꽁무니를 따라 뛴 저녁', rarity: 'rare', level: null, leveled: false,
   activityTypes: ['running'], hasImage: true, templateClass: 'metric', templateClassLabel: '운동 수치',
-  templateValue: '21.1km', familyKey: null, ...over,
+  templateValue: '21.1km', familyKey: null, templateParams: null, ...over,
 })
 const preview = (b: StudioSearchBadge | null, t: TemplateItem[]) =>
   renderToStaticMarkup(<BadgePreview
@@ -43,6 +43,12 @@ const preview = (b: StudioSearchBadge | null, t: TemplateItem[]) =>
       params={DEFAULT_TEMPLATE_BADGE_PARAMS}
       onParamsChange={vi.fn()}
       onParamsReset={vi.fn()}
+      busy={false}
+      progress={null}
+      failures={[]}
+      loadedNotice={false}
+      onRegister={vi.fn()}
+      onRegisterFamily={vi.fn()}
     />)
 
 describe('BadgePreview', () => {

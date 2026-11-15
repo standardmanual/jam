@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { slotLabelOf } from '@/lib/admin/badge-families'
 import type { BadgeTemplateClassKey } from '@/lib/admin/activityBadgeTemplate/resolveTemplateText'
+import type { TemplateBadgeParams } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import type { ActivityType, BadgeRarity } from '@/types/database'
 
@@ -48,6 +49,7 @@ export interface StudioSearchBadge {
   templateClassLabel: string | null
   templateValue: string | null
   familyKey: string | null
+  templateParams: TemplateBadgeParams | null
 }
 
 export interface BadgeFilters {
@@ -69,6 +71,8 @@ interface Props {
   selectedId: string | null
   onSearch: (page: number) => void
   onSelect: (badge: StudioSearchBadge) => void
+  /** 등록하는 동안 다른 배지를 고르지 못하게 한다 */
+  selectDisabled?: boolean
 }
 
 export default function BadgePicker({
@@ -83,6 +87,7 @@ export default function BadgePicker({
   selectedId,
   onSearch,
   onSelect,
+  selectDisabled = false,
 }: Props) {
   const set = (patch: Partial<BadgeFilters>) => onFiltersChange({ ...filters, ...patch })
   return (
@@ -196,7 +201,7 @@ export default function BadgePicker({
                           <Badge variant={b.hasImage ? 'secondary' : 'outline'}>{b.hasImage ? '있음' : '없음'}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button size="sm" variant="outline" onClick={() => onSelect(b)}>
+                          <Button size="sm" variant="outline" disabled={selectDisabled} onClick={() => onSelect(b)}>
                             선택
                           </Button>
                         </TableCell>

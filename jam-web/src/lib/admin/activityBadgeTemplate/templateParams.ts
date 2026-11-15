@@ -92,10 +92,14 @@ export function parseTemplateBadgeParams(raw: unknown): TemplateBadgeParams | nu
   }
 }
 
+/** 색 조정이 기본값(세 값이 0이고 덮어쓴 색이 없음)인가 */
+export function isDefaultTemplateColorParams(color: TemplateColorParams): boolean {
+  return color.hueShift === 0 && color.saturation === 0 && color.lightness === 0 && Object.keys(color.overrides).length === 0
+}
+
 export function isDefaultTemplateBadgeParams(p: TemplateBadgeParams): boolean {
   const d = DEFAULT_TEMPLATE_BADGE_PARAMS
-  if (p.color.hueShift !== 0 || p.color.saturation !== 0 || p.color.lightness !== 0) return false
-  if (Object.keys(p.color.overrides).length > 0) return false
+  if (!isDefaultTemplateColorParams(p.color)) return false
   return TEMPLATE_SLOT_NAMES.every((n) => {
     const a = p.text[n]
     const b = d.text[n]
