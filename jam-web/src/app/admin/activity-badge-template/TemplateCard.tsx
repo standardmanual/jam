@@ -66,7 +66,7 @@ export default function TemplateCard({ item, pending, busy, onPickFile, onSave, 
       <CardContent className="space-y-4">
         <p className={`text-sm text-muted-foreground ${WRAP}`}>{VALUE_EXAMPLE[item.classKey]}</p>
 
-        <div>
+        <div className="max-w-xs">
           <div className="flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
             {shownSvg ? (
               // eslint-disable-next-line @next/next/no-img-element -- data URL 미리보기라 next/image가 맞지 않음
