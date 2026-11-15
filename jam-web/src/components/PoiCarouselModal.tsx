@@ -32,8 +32,6 @@ import { pickupBlockKind } from '@/lib/drop/pickup-block-contract'
 // 기존 하단 고정 바텀시트를 대체하는 화면 중앙 모달 — 캐러셀 아이템 자체가
 // 모달 카드다(모달과 캐러셀이 분리된 두 컴포넌트가 아님). 중앙 카드 = 선택된 POI.
 
-// 20260927_2128: 온보딩 퀘스트 `drop` 연출(`QuestPickupScene.tsx`)이 이 셰이프로 데모
-// 아이템(`demo-data.ts`의 `DEMO_DROP_ITEM`)을 만들어 `demoDropItems` prop으로 넘기므로 export.
 export interface InventoryItem {
   id: string
   badge_id: string
@@ -94,29 +92,6 @@ function toCandidate(item: { id: string; serial_number: number | null; serial_pr
   // 마이그레이션 이전 완료된 과거 드랍 등 원본 개체 연결이 소급되지 않은 극히 드문 레거시 데이터만 serial_number가 null일 수 있다.
   // ItemCandidate 셰이프는 number를 요구하므로 0으로 안전하게 폴백한다.
   return { id: item.id, serial_number: item.serial_number ?? 0, serial_prefix: item.serial_prefix, expires_at: item.expires_at }
-}
-
-/**
- * 온보딩 퀘스트 `drop` 연출 전용(티켓 20260927_2128) — 드랍한 연출 아이템을 실제
- * `/api/drops` 재조회 없이 곧바로 POI 드랍 목록(`dropsCache`)에 추가하기 위해 `PickupDrop`
- * 셰이프로 변환하는 순수 함수. `dropped_at`은 이 갤러리 칸(`PoiBadgeGallery`)에 노출되지 않으므로
- * 실제 시각 대신 고정값을 쓴다 — jsdom이 없어 탭 상호작용을 자동 검증할 수 없는 대신
- * 이 함수만 단위 테스트로 고정한다(`PoiCarouselModal.test.tsx`).
- */
-export function toDemoDroppedPickup(item: InventoryItem): PickupDrop {
-  return {
-    id: item.id,
-    badge_id: item.badge_id,
-    badge_name: item.badge_name,
-    badge_rarity: item.badge_rarity,
-    badge_image_url: item.badge_image_url,
-    dropper_name: null,
-    dropped_at: '2026-01-01T00:00:00.000Z',
-    serial: null,
-    serial_prefix: item.serial_prefix,
-    serial_number: item.serial_number,
-    expires_at: item.expires_at,
-  }
 }
 
 /** 같은 badge_id를 가진 픽업 후보(다른 사람이 드랍한 개체) 묶음 — 20260908_0223. */
@@ -194,40 +169,6 @@ interface PoiCarouselModalProps {
   onCenterChange: (poi: NearbyPoi) => void
   /** 드랍/픽업 성공 시 호출 — 부모의 반경 내 POI 목록(카운트)을 재조회 */
   onDropOrPickupSuccess: () => void
-  /**
-   * 온보딩 퀘스트 `pickup` 연출 전용(티켓 20260927_2126). true면 `executePickup`이 실제
-   * `/api/drops/:id/pickup` 호출·GA `item_pickup` 이벤트·`onDropOrPickupSuccess`를
-   * 생략하고 `onPickupOverride`만 호출한다. 존재하지 않는 데모 POI id로 실제 드랍 API가
-   * 불리는 사고를 막기 위해 "여기에 드랍" 버튼도 렌더하지 않는다.
-   */
-  demoMode?: boolean
-  /**
-   * 데모 POI의 드랍 목록을 `dropsCache` 초기값으로 미리 채운다 — 데모 POI id가 이미
-   * 캐시에 있으므로 `fetchPoiDrops` effect가 자연스럽게 스킵된다(로딩 스피너·실제
-   * `/api/drops/poi/:id` 호출 없음).
-   */
-  initialDropsCache?: Record<string, PickupDrop[]>
-  /** `demoMode`에서 실제 픽업 API 대신 호출되는 콜백. */
-  onPickupOverride?: () => Promise<void>
-  /**
-   * 온보딩 퀘스트 `drop` 연출 전용(티켓 20260927_2128). `demoMode`이고 이 값이 있으면
-   * "여기에 드랍" 버튼을 살리고(`hideDropAction`이 꺼진다), 인벤토리 그리드를 실제
-   * `/api/inventory/items` 조회 대신 이 값으로 즉시 채운다(로딩 스피너 없음).
-   */
-  demoDropItems?: InventoryItem[]
-  /**
-   * `demoMode`에서 실제 `/api/drops` POST 대신 호출되는 콜백. true를 돌려주면 성공 토스트·
-   * 로컬 `dropsCache`에 방금 놓은 배지 추가(`toDemoDroppedPickup`)로 이어지고, false면 확인
-   * 단계를 그대로 유지한다(실패 토스트는 콜백이 직접 띄운다).
-   */
-  onDropOverride?: () => Promise<boolean>
-  /**
-   * 온보딩 퀘스트 `pickup`·`drop` 차례 전용(티켓 20260928_1754, 상위 20260927_2123 Q3).
-   * 값이 있으면 "지금 눌러야 할 요소" 하나(픽업 그룹 행 / 「여기에 드랍」 버튼 / 드랍 선택
-   * 칸 / 확인 버튼)에만 공용 펄스(`.jam-quest-pulse`)를 건다. 기본값 미지정이므로 평소
-   * 호출부(실제 `/drops` 지도)는 전혀 영향받지 않는다.
-   */
-  questPulseStep?: 'pickup' | 'drop'
 }
 
 export default function PoiCarouselModal({
@@ -238,12 +179,6 @@ export default function PoiCarouselModal({
   onClose,
   onCenterChange,
   onDropOrPickupSuccess,
-  demoMode = false,
-  initialDropsCache,
-  onPickupOverride,
-  demoDropItems,
-  onDropOverride,
-  questPulseStep,
 }: PoiCarouselModalProps) {
   const { toast } = useToast()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -352,7 +287,7 @@ export default function PoiCarouselModal({
   }, [])
 
   // ── POI별 드랍(픽업 가능 배지) 목록 캐시 — 이미 열람한 POI는 재호출하지 않는다 ──
-  const [dropsCache, setDropsCache] = useState<Record<string, PickupDrop[]>>(initialDropsCache ?? {})
+  const [dropsCache, setDropsCache] = useState<Record<string, PickupDrop[]>>({})
   const [loadingIds, setLoadingIds] = useState<Record<string, boolean>>({})
   const fetchingRef = useRef<Set<string>>(new Set())
 
@@ -420,12 +355,6 @@ export default function PoiCarouselModal({
 
   async function openInventory() {
     setShowInventory(true)
-    // 20260927_2128: drop 연출은 실제 인벤토리가 아니라 demoDropItems로 즉시 채운다 —
-    // fetch를 생략하므로 로딩 스피너도 뜨지 않는다(완료 조건: 로딩 UI 없음).
-    if (demoMode) {
-      setInventoryItems(demoDropItems ?? [])
-      return
-    }
     setInventoryLoading(true)
     try {
       const res = await fetch('/api/inventory/items')
@@ -461,31 +390,6 @@ export default function PoiCarouselModal({
   async function executeDrop() {
     if (!activePoi || !pendingDropItem) return
     setDropping(true)
-    // 20260927_2128: drop 연출은 실제 /api/drops POST·GA·재조회·onDropOrPickupSuccess를
-    // 건너뛰고 onDropOverride만 호출한다. 실패(false)면 확인 단계를 그대로 유지한다(콜백이
-    // 내부에서 실패 토스트를 직접 띄운다).
-    if (demoMode) {
-      try {
-        const success = (await onDropOverride?.()) ?? false
-        if (!success) return
-        toast(d.drops.dropSuccess, 'success')
-        setShowInventory(false)
-        setPendingDropItem(null)
-        setInventoryItems([])
-        // 채원 판정 1(20260927_2128): 실제 드랍처럼 dropsCache에 방금 놓은 배지를 추가해
-        // "지도에 놓인 장면"을 보여준다. 원본 개체는 demoDropItems에서 찾는다.
-        const droppedItem = (demoDropItems ?? []).find((it) => it.id === pendingDropItem.id)
-        if (droppedItem) {
-          setDropsCache((prev) => ({
-            ...prev,
-            [activePoi.id]: [...(prev[activePoi.id] ?? []), toDemoDroppedPickup(droppedItem)],
-          }))
-        }
-      } finally {
-        setDropping(false)
-      }
-      return
-    }
     try {
       const res = await fetch('/api/drops', {
         method: 'POST',
@@ -572,18 +476,6 @@ export default function PoiCarouselModal({
   async function executePickup() {
     if (!selectedDrop || !activePoi) return
     setPickingUp(true)
-    // demoMode(온보딩 퀘스트 pickup 연출)는 실제 픽업이 아니므로 실제 API 호출·GA
-    // 이벤트·onDropOrPickupSuccess를 건너뛰고 onPickupOverride만 호출한다. 실패해도
-    // onPickupOverride가 내부에서 토스트를 띄우고 삼키므로(never throw) 여기서는
-    // pickingUp만 되돌려 시트 재시도를 가능하게 한다.
-    if (demoMode) {
-      try {
-        await onPickupOverride?.()
-      } finally {
-        setPickingUp(false)
-      }
-      return
-    }
     try {
       const res = await fetch(`/api/drops/${selectedDrop.id}/pickup`, {
         method: 'POST',
@@ -736,8 +628,6 @@ export default function PoiCarouselModal({
                 onCancelPending={isActive ? () => setPendingDropItem(null) : undefined}
                 onConfirmDrop={isActive ? executeDrop : undefined}
                 onSelectPickupGroup={isActive ? handleSelectPickupGroup : undefined}
-                hideDropAction={demoMode && !onDropOverride}
-                questPulseStep={questPulseStep}
                 onClose={onClose}
               />
             )}
@@ -821,13 +711,6 @@ interface PoiCardProps {
   onConfirmDrop?: () => void
   /** 픽업 목록의 배지 종류(그룹) 행을 골랐을 때 — 20260908_0223. */
   onSelectPickupGroup?: (group: PickupGroup) => void
-  /**
-   * true면 "여기에 드랍" 버튼을 렌더하지 않는다(티켓 20260927_2126, `demoMode` 전용).
-   * 존재하지 않는 데모 POI id로 실제 `/api/drops` POST가 나가는 사고를 막는다.
-   */
-  hideDropAction?: boolean
-  /** 온보딩 퀘스트 3·6단계 펄스 대상 판단용(티켓 20260928_1754) — `PoiCarouselModal`의 동명 prop 그대로. */
-  questPulseStep?: 'pickup' | 'drop'
   onClose: () => void
 }
 
@@ -847,8 +730,6 @@ export function PoiCard({
   onCancelPending,
   onConfirmDrop,
   onSelectPickupGroup,
-  hideDropAction = false,
-  questPulseStep,
   onClose,
 }: PoiCardProps) {
   const spinner = (
@@ -856,8 +737,6 @@ export function PoiCard({
       <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
     </div>
   )
-  const pulseDrop = questPulseStep === 'drop'
-  const pulsePickup = questPulseStep === 'pickup'
   let body: ReactNode = null
   let footer: ReactNode = null
   if (isActive) {
@@ -903,20 +782,9 @@ export function PoiCard({
             <Button fullWidth variant="secondary" surface="main" onClick={onCancelPending} disabled={dropping}>
               {d.drops.cancel}
             </Button>
-            {/* 확인 버튼만 pill 래퍼로 펄스(티켓 20260928_1754) — 취소 버튼에는 붙이지
-                않는다. Button 자체는 --radius-full(=--radius-full)라 래퍼 반경이
-                실제 버튼 반경과 일치한다. */}
-            {pulseDrop ? (
-              <div className="w-full rounded-full jam-quest-pulse jam-quest-cta">
-                <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
-                  {d.drops.dropButton}
-                </Button>
-              </div>
-            ) : (
-              <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
-                {d.drops.dropButton}
-              </Button>
-            )}
+            <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
+              {d.drops.dropButton}
+            </Button>
           </div>
         )
       } else if (inventoryLoading) {
@@ -943,7 +811,6 @@ export function PoiCard({
               countAriaText: item.countAriaText,
               locked: item.locked === true,
               onClick: () => onSelectDropItem?.(item),
-              pulse: pulseDrop,
             }))}
           />
         )
@@ -966,7 +833,6 @@ export function PoiCard({
               countAriaText: t(d.drops.pickupAvailableCountAria, { count: String(group.items.length) }),
               locked: group.locked,
               onClick: () => onSelectPickupGroup?.(group),
-              pulse: pulsePickup,
             }))}
           />
         ) : (
@@ -977,19 +843,11 @@ export function PoiCard({
             style={{ padding: 0 }}
           />
         )
-      if (!hideDropAction) {
-        footer = pulseDrop ? (
-          <div className="w-full rounded-full jam-quest-pulse jam-quest-cta">
-            <Button fullWidth surface="main" onClick={onOpenInventory}>
-              {d.drops.dropHereButton}
-            </Button>
-          </div>
-        ) : (
-          <Button fullWidth surface="main" onClick={onOpenInventory}>
-            {d.drops.dropHereButton}
-          </Button>
-        )
-      }
+      footer = (
+        <Button fullWidth surface="main" onClick={onOpenInventory}>
+          {d.drops.dropHereButton}
+        </Button>
+      )
     }
   }
 
@@ -1049,8 +907,6 @@ interface PoiBadgeCell {
   /** 잠긴 개체 묶음 — 이름·그림을 읽지 않고 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그린다(운영 로직 7.3절) */
   locked: boolean
   onClick: () => void
-  /** 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스(`.jam-quest-pulse`) */
-  pulse: boolean
 }
 
 /**
@@ -1076,7 +932,6 @@ function PoiBadgeGallery({ cells }: { cells: PoiBadgeCell[] }) {
           countAriaText={cell.countAriaText}
           locked={cell.locked}
           onClick={cell.onClick}
-          className={cell.pulse ? 'jam-quest-pulse' : undefined}
         />
       ))}
     </div>

@@ -27,7 +27,6 @@ const FILES = [
   '(main)/collections/[id]/page.tsx',
   '(main)/collections/[id]/ItemBookHeroSection.tsx',
   '(main)/drops/BadgeDetailSheet.tsx',
-  '(main)/drops/QuestPickupScene.tsx',
   '(main)/missions/MissionsListClient.tsx',
   '(main)/missions/[id]/MissionDetailClient.tsx',
   '(main)/missions/[id]/status/MissionStatusClient.tsx',

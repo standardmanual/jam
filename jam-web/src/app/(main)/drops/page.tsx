@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DropsClient, { type DropsFocusPoi } from './DropsClient'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
-import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 
 /**
  * 20260824_021: `?poi=<id>` — 알림 소식 #18·#32의 착지점.
@@ -37,12 +36,5 @@ export default async function DropsPage({ searchParams }: Props) {
     if (data) focusPoi = data as DropsFocusPoi
   }
 
-  // 결정 22: pickup·drop 차례일 때만 실제 지도 대신 정적 연출 씬을 보여준다
-  // (티켓 20260927_2126·20260927_2128). 이 화면(`getOnboardingQuestGate(..., 'drops')`)이
-  // 돌려줄 수 있는 단계 키는 STEP_SCREEN_MAP상 이 둘뿐이지만, 타입은 전체 단계 키를
-  // 허용하므로 여기서 명시적으로 좁힌다.
-  const gate = await getOnboardingQuestGate(user.id, 'drops')
-  const questStep = gate === 'pickup' || gate === 'drop' ? gate : null
-
-  return <DropsClient focusPoi={focusPoi} questStep={questStep} />
+  return <DropsClient focusPoi={focusPoi} />
 }
