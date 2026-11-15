@@ -4,7 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import BadgesClient, { ItemBookProgress, CheckinBadgeItem } from './BadgesClient'
-import { pickHighestLevelPerFamily } from '@/lib/activity-feed/collapseLeveled'
+import { buildActivityBadgeList, queryEarnedActivityBadges } from '@/lib/badges/activityBadgeList'
 import { IN_CHUNK_SIZE } from '@/lib/notifications/batch/shared'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
@@ -42,11 +42,7 @@ export default async function BadgesPage({ searchParams }: Props) {
   ] = await Promise.all([
     // 액티비티 배지 — 이 탭은 체크인 탭과 동일하게 획득분만 조회한다(티켓 20260901_0911).
     // 받지 않은 배지의 조건은 배지 상세에서 본다(배지 트리 화면은 티켓 20261018_1817에서 제거).
-    supabase
-      .from('user_activity_badges')
-      .select('*, badge:badges(*)')
-      .eq('user_id', user.id)
-      .order('earned_at', { ascending: false }),
+    queryEarnedActivityBadges(supabase, user.id),
     supabase
       .from('inventory')
       .select('id, inventory_items(id, badge_id, serial_number, expires_at, dropped_at, locked, badge:badges(id, name, image_url, rarity, deleted_at))')
@@ -78,13 +74,8 @@ export default async function BadgesPage({ searchParams }: Props) {
   // 상위 쓰기 경로(admin/simulate 등)가 타입 분기를 놓치면 checkin 타입 배지가 여기 섞여
   // 들어올 수 있다. 화면 쪽 마지막 방어선으로 activity 타입만 노출한다.
   // 레벨형은 «같은 배지가 레벨이 오르는 것»이라 계열당 최고 레벨 한 장만 보인다(티켓 20261108_1622).
-  const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = pickHighestLevelPerFamily(
-    (
-      (earnedBadges ?? []) as unknown as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
-    )
-      .filter((r) => r.badge && !r.badge.deleted_at && r.badge.type === 'activity')
-      .map((r) => ({ badge: r.badge, earned: r })),
-  )
+  // 조회·필터·접기는 `lib/badges/activityBadgeList`가 한 곳에서 맡는다 — 그림 미리 받기 API와 같은 규칙(티켓 20261115_1344).
+  const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = buildActivityBadgeList(earnedBadges)
 
   type RawInventoryItem = {
     id: string
