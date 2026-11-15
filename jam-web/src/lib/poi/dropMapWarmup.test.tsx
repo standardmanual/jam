@@ -33,10 +33,10 @@ describe('56px 칸(compact)의 srcset', () => {
     expect(compact).toEqual(card)
   })
 
-  it('표시 크기는 56×56 그대로다', () => {
+  it('그림은 고정 56px이 아니라 카드 폭을 채운다', () => {
     const html = renderToStaticMarkup(<BadgeGridCard compact rarity="epic" name="배지" imageUrl={STORE} />)
-    expect(html).toContain('width="56"')
-    expect(html).toContain('height="56"')
+    expect(html).not.toContain('width="56"')
+    expect(html).toMatch(/<img[^>]*class="[^"]*\bw-full\b[^"]*\bh-full\b/)
   })
 
   it('정적 파일 배지는 변환 주소를 거치지 않는다', () => {
