@@ -248,6 +248,8 @@ export class FakeDb {
     tribes: [],
     user_item_book_completions: [],
     issued_item_books: [], // 마이그레이션 328(티켓 20261106_1227) — 컬렉션 참조 확인 목록에 들어왔다
+    badge_image_generations: [], // 마이그레이션 337 — 컬렉션 참조 확인 목록에 들어왔다(티켓 20261115_0030)
+    badge_image_item_prompts: [],
     item_book_tier_rewards: [],
     user_item_book_tier_completions: [],
     ambient_drop_config: [],
