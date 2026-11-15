@@ -1359,7 +1359,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 **챕터 1 시작** (`src/lib/chapter/start.ts`)
 - **챕터 1 시작 시점은 가입 완료 순간이다**(티켓 20261115_2055·2056, 운영 로직 2.2절). 호출 지점은 `app/api/onboarding/complete/route.ts`의 2단계(트라이브 저장 성공 직후)이고, 거기서 `ensureChapterStarted`가 `chapter_start(p_user_id)`를 부른다(service 클라이언트). 이어서 같은 라우트가 `grantSignupBadge`로 완료 배지 「JAM!」과 그 `point_reward`를 1회 지급한다(`triggered_by`는 옛 값 `'onboarding_quest'` 그대로, 1회 보장은 배지 insert의 23505). 두 호출 모두 던지지 않고, 응답을 막지 않도록 라우트가 한 번 더 감싼다. 그 밖의 호출처는 테스트 로그인(`app/api/dev-login/route.ts`)뿐이다. 첫 동기화·잠긴 아이템 배지 열기는 시작 조건이 아니다(예전에는 두 단계를 마쳐야 시작했다).
 - 응답 `{score_added, current_chapter, reached_chapters}`는 `start.ts` 안의 계약 검사(`toStartRow`)로 읽는다. 시작한 뒤에도 챕터가 비어 있는 응답은 계약 밖이다. `reached_chapters`는 챕터 1과, 챕터가 없는 동안 쌓인 점수로 한 번에 오른 챕터를 모두 담고, 비어 있지 않으면 오름 처리로 넘긴다.
-- **재시도 경로**: `ensureChapterStarted`는 `user_chapters.chapter_no`를 읽어 **비어 있을 때(행 없음·NULL)만** `chapter_start`를 부르는 멱등 함수다. 그러나 가입 라우트는 트라이브가 이미 있으면 409로 끝나 두 번 실행되지 않으므로, 시작이 일시 오류로 실패한 유저를 다시 시작해 주는 호출은 지금 없다. (TODO: 카리나 확인 — `lib/chapter/start.ts` 머리 주석은 아직 퀘스트 완료 처리 기준의 재시도를 적고 있다)
+- **재시도 경로**: `ensureChapterStarted`는 `user_chapters.chapter_no`를 읽어 **비어 있을 때(행 없음·NULL)만** `chapter_start`를 부르는 멱등 함수다. 가입 라우트는 트라이브가 이미 있으면 409로 끝나 두 번 실행되지 않으므로, 시작이 일시 오류로 실패한 유저(와 챕터가 없는 옛 유저)는 **동기화가 활동을 1건 이상 처리할 때마다**(`syncStravaActivities`, 동적 임포트) 같은 함수로 다시 시작한다(티켓 20261115_2055). 이미 챕터가 있으면 읽기 1번으로 끝난다.
 - 던지지 않는다. RPC 오류·예외·계약 밖 응답·챕터 조회 실패는 `console.error`와 `engine_decision_log`(`engine='points'`, `event='chapter_start_failed'`)에 남기고, 반환값(지급한 완료 배지 id)과 기존 분기 동작은 그대로다.
 
 **오름 처리** (`src/lib/chapter/rise.ts` `processChapterRise({ userId, reachedChapters }, { skipBadgeEvaluation })`)

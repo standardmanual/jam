@@ -1317,6 +1317,18 @@ export async function syncStravaActivities(
       }
     }
 
+    // 챕터 1 시작 재시도 (티켓 20261115_2055). 챕터 1은 가입 완료(트라이브 선택) 때 시작하지만 그 호출이 일시 오류로 실패하면 다시 시도할 곳이 없다.
+    // 처리한 활동이 1건 이상일 때만, 챕터가 비어 있는 경우에만 시작한다(`ensureChapterStarted`가 챕터를 먼저 읽어 이미 있으면 DB 함수를 부르지 않는다).
+    // 던지지 않는다. `chapter/start → rise → jamActionRoute → 이 파일`이 정적 순환이 되므로 동적으로 불러온다.
+    if (settledCount >= 1) {
+      try {
+        const { ensureChapterStarted } = await import('@/lib/chapter/start')
+        await ensureChapterStarted(supabase, userId)
+      } catch (e) {
+        console.error(`[syncStravaActivities] 챕터 1 시작 재시도 실패 — 동기화는 유지한다 (userId: ${userId}):`, e)
+      }
+    }
+
     // 획득 배지 상세는 엔진 4경로를 각각 개조하는 대신, 수집된 id로 여기서 1회만 조회한다.
     // 카드 상한(10장)도 여기서 적용한다 — 클라이언트는 받은 배열을 그대로 그린다.
     // (earnedBadgeIds는 processFetchedActivities 안에서 daily_sync_count 사용량 배지까지

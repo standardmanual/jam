@@ -51,7 +51,7 @@ code:
 - **챕터 1은 트라이브를 고르고 가입을 마친 순간 받는다**(티켓 20261115_2055·2056, 운영 로직 2.2절). `POST /api/onboarding/complete` 2단계가 트라이브 저장에 성공하면 `ensureChapterStarted`(`lib/chapter/start.ts`)로 `chapter_start`를 부르고, 이어서 완료 배지 「JAM!」을 지급한다(아래). 첫 동기화·잠긴 아이템 배지 열기는 챕터 1 시작의 조건이 아니다(예전에는 두 단계를 마쳐야 시작했다).
   - 챕터 1은 점수와 상관없이 시작하고, 쌓인 점수로 오를 수 있는 챕터까지 한 번에 오른다. 오른 챕터마다 `chapter_ups`에 한 줄이 남는다.
   - **완료 배지 「JAM!」과 그 `point_reward`는 같은 시점에 1회 지급한다**(`lib/chapter/signup-reward.ts`의 `grantSignupBadge`). 1회 보장은 배지 insert의 23505(이미 보유)가 맡고, `triggered_by`는 옛 값 `'onboarding_quest'`를 그대로 쓴다. 획득 조건 문구는 «트라이브를 고르고 가입을 마치면 받을 수 있는 배지예요»다.
-- **재시도.** 가입 라우트는 트라이브가 이미 있으면 409 `ALREADY_SET`으로 끝나 두 번 실행되지 않는다. 그래서 `chapter_start`가 일시 오류로 실패하면 이 유저를 다시 시작해 주는 호출 경로가 지금은 없다(`ensureChapterStarted`는 챕터가 비어 있을 때만 부르는 멱등 함수이고, 호출부는 가입 라우트와 테스트 로그인(`api/dev-login`) 둘뿐이다). 실패는 `console.error`와 `engine_decision_log`(`chapter_start_failed`)에 남는다. `lib/chapter/start.ts` 머리 주석은 아직 퀘스트 완료 처리 기준의 재시도를 설명한다. (TODO: 카리나 확인 — 실패 유저를 다시 시작하는 경로를 둘지)
+- **재시도.** 가입 라우트는 트라이브가 이미 있으면 409 `ALREADY_SET`으로 끝나 두 번 실행되지 않는다. 그래서 `chapter_start`가 일시 오류로 실패한 유저(와 챕터가 없는 옛 유저)는 동기화가 활동을 1건 이상 처리하는 호출(`syncStravaActivities`)이 `ensureChapterStarted`를 다시 불러 시작한다(챕터가 비어 있을 때만 부르는 멱등 함수, 티켓 20261115_2055). 호출부는 가입 라우트, 동기화, 테스트 로그인(`api/dev-login`)이다. 실패는 `console.error`와 `engine_decision_log`(`chapter_start_failed`)에 남는다.
 - 챕터 1 시작이나 배지 지급이 실패해도 가입 응답은 그대로 성공이다(라우트가 각각 예외를 감싼다).
 - 챕터 1을 받으면 소식 한 건이 나간다(4절).
 
