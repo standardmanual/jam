@@ -2,9 +2,9 @@
 id: "20261115_0030"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-15
-closed:
+closed: 2026-11-16
 ---
 
 # [Infra] staging CI verify가 선행 실패 시험 5건으로 계속 실패한다
@@ -65,29 +65,54 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+기존 실패 시험은 처음 알려진 7건이 아니라 9건이었다. 앞의 실패가 뒤의 실패를 가리는 구조여서(vitest가 실패하면 `test:node`가 돌지 않는다) 하나를 고칠 때마다 다음 것이 드러났다. 시험마다 고친 쪽과 근거는 아래와 같다.
+
+| 시험 | 고친 쪽 | 근거 |
+|---|---|---|
+| today/cardView | 시험 기대값 | 티켓 20261113_1452가 칩 문구를 «배지»로 바꿨다 |
+| today/eventsImports | 구현 | events.ts → combine/visibility.ts → rarity.ts → lib/i18n 경로로 사전이 딸려 들어갔다. 등급 서열을 사전이 없는 `src/lib/rarityTier.ts`로 옮기고 rarity.ts가 다시 내보낸다 |
+| registerMissionBundle | 시험 기대값 | 티켓 20261111_0900이 미션 틀에서 개인형을 없앴다 |
+| gen-launch-sql, gen-recipe-sql | 시험의 대조 방식 | 티켓 20261114_1705 4회차가 생성기에서 안내 한 줄을 뺐다. 이미 실행된 SQL(281·293)은 그대로 두고 시험이 그 한 줄만 가리고 비교한다 |
+| registerChecks | 구현 | 마이그레이션 337의 두 표(badge_image_generations, badge_image_item_prompts)가 item_books를 CASCADE로 참조하는데 `ITEM_BOOK_UNDO_REFERENCE_TABLES`에 빠져 있었다. 두 표를 더했다(8곳 → 10곳) |
+| item-paths route | 시험 기대값 | 티켓 20261111_0846이 등급 올리기에서 트라이브 조건을 뺐다 |
+| poi/dropMapWarmup (8번째) | 시험 기대값 | a5429c826·1dbe9e7f8이 compact 그림을 카드 폭에 맞추도록 바꿨다. 시험은 56 고정을 기대하고 있었다 |
+| missions/condition-keys (9번째, `test:node`) | 시험 기대값 | DB 키 목록은 18개, 합집합은 20개인데 단언이 19와 21이었다 |
+
+`scripts/verify.sh`는 test 단계가 실패하면 실패한 시험 파일을 출력한다. vitest의 `FAIL` 줄에서 경로를 뽑고(중복 없이 최대 60줄), `FAIL` 줄이 없으면 `test:node` 로그의 마지막 `→ ` 줄을 출력한다.
 
 ### 변경된 파일
 ```
--
+- jam-web/src/lib/rarityTier.ts (신규), jam-web/src/lib/rarity.ts, jam-web/src/lib/combine/visibility.ts
+- jam-web/src/lib/admin/registerChecks/references.ts, jam-web/src/lib/admin/opsInbox/execute/__tests__/fakeDb.ts
+- 시험 9개: today/cardView, today/eventsImports, registerMissionBundle, gen-launch-sql, gen-recipe-sql, registerChecks, item-paths route, poi/dropMapWarmup, missions/condition-keys
+- scripts/verify.sh
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 리뷰 브랜치 CI verify success (run 43735928333, 커밋 6350821bd)
+- [x] 머지 뒤 메인 트리에서 vitest 8개 파일 365건 통과, `npm run test:node` 통과 (카리나 실측, 2026-11-16)
 
 ### 배포 정보
 - 배포일: 
-- 환경: production
-- 커밋: 
+- 환경: 로컬 staging에 ff 머지(6350821bd). push는 사용자 요청 때 한다
+- 커밋: 2cfe89279, 66b3b1116, a9bb25b90, ad7b5edda, 10415ac39, 6350821bd
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1 (7건과 verify 출력, 게이트 WARN) | 2 | 139,722 | 17,031 / 4,662 | 22분 11초 | 66 |
+| 2 (dropMapWarmup, 게이트 FAIL) | 2 | 99,805 | 5,457 / 5,736 | 7분 18초 | 41 |
+| 3 (condition-keys와 test:node 출력, 게이트 PASS) | 2 | 97,526 | 7,962 / 2,849 | 13분 29초 | 43 |
+| 합계 | 6 | 337,053 | 30,450 / 13,247 | 42분 58초 | 150 |
 
 ### 주요 의사결정 / 핵심 메모
+- 재작업 1: 게이트는 WARN이었지만 CI가 `dropMapWarmup.test.tsx` 한 건으로 실패해 카리나가 이어서 고치게 했다. 카리나가 처음 실측할 때 `.tsx` 실패를 모두 로컬 환경 문제로 묶어 이 한 건을 가려내지 못했다.
+- 재작업 2: vitest가 전부 통과하자 `test:node`가 처음 돌면서 `condition-keys.test.ts`가 드러났다. 사용자 승인 뒤 진행했다(2026-11-16).
+- 컬렉션 되돌림: 이미지 생성 기록이 있는 컬렉션은 이제 되돌림·취소가 막힌다. «하나라도 있거나 읽지 못하면 지우지 않는다»는 티켓 20261004_2039 가정 7의 원칙을 그대로 따른 것이다.
+- 메인 트리의 전체 vitest는 `.tsx` 47개 파일이 Invalid hook call로 실패한다. CI에서는 나지 않는다. 별도 티켓으로 분리했다.
 - 출처: 민지 sideFindings [주의] (20261114_2345 게이트). 2026-11-15 00:51 KST에 아이콘 3회차(20261114_2347) 검토에서 registerChecks와 item-paths route 두 파일도 staging 코드에서 실패함을 재현했다.
 
 ### 잔여 이슈
--
+- 어드민 삭제 가드(`reference-guards.ts`)에 이미지 생성기 두 표가 있는지 확인(별도 티켓).
+- 로컬 전체 vitest의 Invalid hook call(별도 티켓).

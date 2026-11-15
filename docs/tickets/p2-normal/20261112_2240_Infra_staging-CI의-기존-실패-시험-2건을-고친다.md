@@ -2,7 +2,8 @@
 id: "20261112_2240"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
+closed: 2026-11-16
 created: 2026-11-12
 ---
 
@@ -23,3 +24,5 @@ created: 2026-11-12
 ## 완료 조건
 
 - 두 시험이 통과하고 `scripts/verify.sh`와 GitHub Actions `verify`가 통과한다.
+
+> 2026-11-16: 티켓 20261115_0030에 포함되어 해결됐다(로컬 staging 6350821bd, CI run 43735928333 success). 이 티켓의 시험은 그 티켓의 완료 기록 표에 있다.
