@@ -9,7 +9,8 @@ import {
   parseActivityBadgeImageSearchParams,
 } from '@/lib/admin/activityBadgeImageSearch'
 import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
-import type { ActivityType, BadgeRarity } from '@/types/database'
+import { toStudioBadgeFields } from '@/lib/admin/activityBadgeTemplate/studioBadge'
+import type { ActivityType, BadgeCondition, BadgeRarity } from '@/types/database'
 import type { Json } from '@/types/database.generated'
 
 /**
@@ -41,6 +42,9 @@ interface BadgeRow {
   activity_types: string[] | null
   image_url: string | null
   image_gen_params: Json | null
+  condition_json: BadgeCondition | null
+  is_hidden: boolean | null
+  family_key: string | null
 }
 
 export async function POST(req: NextRequest) {
@@ -55,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   let query = supabase
     .from('badges')
-    .select('id, name, description, rarity, level, activity_types, image_url, image_gen_params', {
+    .select('id, name, description, rarity, level, activity_types, image_url, image_gen_params, condition_json, is_hidden, family_key', {
       count: 'exact',
     })
     .eq('type', 'activity')
@@ -94,6 +98,7 @@ export async function POST(req: NextRequest) {
     hasImage: Boolean(row.image_url),
     // 저작 파라미터가 남아 있으면 재편집으로 그대로 복원한다.
     imageGenParams: parseActivityBadgeImageParams(row.image_gen_params),
+    ...toStudioBadgeFields(row),
   }))
 
   const total = count ?? 0

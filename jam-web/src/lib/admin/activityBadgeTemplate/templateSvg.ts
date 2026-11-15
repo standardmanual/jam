@@ -51,19 +51,20 @@ export interface TemplateSlots {
 const REMOVED_ELEMENTS = new Set(['script', 'foreignobject', 'iframe', 'object', 'embed', 'link', 'meta'])
 
 // xmldom 타입은 DOM 전체가 아니라 필요한 만큼만 구조적으로 쓴다.
-interface XNode {
+export interface XNode {
   nodeType: number
   localName?: string | null
   nodeName: string
   textContent: string | null
   childNodes: ArrayLike<XNode>
+  parentNode: XNode | null
   removeChild(child: XNode): XNode
 }
-interface XAttr {
+export interface XAttr {
   name: string
   value: string
 }
-interface XElement extends XNode {
+export interface XElement extends XNode {
   attributes: ArrayLike<XAttr>
   getAttribute(name: string): string | null
   removeAttribute(name: string): void
@@ -76,9 +77,9 @@ function isElement(n: XNode): n is XElement {
   return n.nodeType === ELEMENT_NODE
 }
 
-const lname = (n: XNode) => (n.localName ?? n.nodeName).toLowerCase()
+export const lname = (n: XNode) => (n.localName ?? n.nodeName).toLowerCase()
 
-function parseSvg(svgText: string): XElement {
+export function parseSvg(svgText: string): XElement {
   const errors: string[] = []
   const parser = new DOMParser({
     onError: (level: string, msg: string) => {
@@ -175,7 +176,7 @@ export function sanitizeTemplateSvg(svgText: string): SanitizeResult {
   return { svg: new XMLSerializer().serializeToString(root as never), removed }
 }
 
-function findById(node: XNode, id: string): XElement | null {
+export function findById(node: XNode, id: string): XElement | null {
   if (isElement(node) && node.getAttribute('id') === id) return node
   for (const child of Array.from(node.childNodes)) {
     const hit = findById(child, id)
@@ -184,7 +185,7 @@ function findById(node: XNode, id: string): XElement | null {
   return null
 }
 
-function findFirst(node: XNode, name: string): XElement | null {
+export function findFirst(node: XNode, name: string): XElement | null {
   for (const child of Array.from(node.childNodes)) {
     if (!isElement(child)) continue
     if (lname(child) === name) return child
