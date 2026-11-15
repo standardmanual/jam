@@ -225,7 +225,7 @@ describe('validateMissionBundle — 기간·노출·표시·보상', () => {
     raw.mission.status_display_type = 'chart';
     const text = validate(raw).errors.join('\n');
     expect(text).toContain('mission.exposure_mode: hidden · start_date · scheduled 중 하나여야 해요');
-    expect(text).toContain('mission.status_display_type: ranking · achievement · individual 중 하나여야 해요');
+    expect(text).toContain('mission.status_display_type: ranking · achievement 중 하나여야 해요');
   });
 
   it('숫자 필드 범위를 검사한다', () => {

@@ -369,8 +369,10 @@ describe('커밋된 마이그레이션 파일', () => {
   });
 
   it('생성기 결과와 저장소의 SQL 파일 두 개가 한 글자도 다르지 않다(생성기를 고치면 --write로 다시 만든다)', () => {
+    // 이미 실행된 SQL 파일은 고치지 않는다. 「가장 먼저 성공」 제거(티켓 20261114_1705 4회차)로 생성기가 뺀 되돌림 안내 한 줄만 커밋본에서 가리고 비교한다(티켓 20261115_0030).
+    const REMOVED_NOTE = '-- 배지 조건(condition_json.recipe_first_success)이 이 레시피를 가리키는지도 확인한다(삭제 가드와 같다).\n';
     for (const [file, text] of Object.entries(outputs)) {
-      expect(fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'), file).toBe(text);
+      expect(fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8').replace(REMOVED_NOTE, ''), file).toBe(text);
     }
   });
 

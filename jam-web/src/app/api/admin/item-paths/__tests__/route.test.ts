@@ -268,12 +268,12 @@ describe('GET /api/admin/item-paths — 인증', () => {
       lock: { receivedLocked: true, unlockPoints: 50 },
     })
     expect(byId.b).toMatchObject({ tierUp: { open: true }, lock: { receivedLocked: false, unlockPoints: null } })
-    // 소속 트라이브가 없는 컬렉션은 동기화·캡슐·등급 올리기가 닫히지만 드랍 길이 열려 있어 아이템은 열림이다
+    // 소속 트라이브가 없는 컬렉션은 동기화·캡슐이 닫히지만 드랍 길이 열려 있어 아이템은 열림이다. 등급 올리기는 트라이브와 무관하게 서비스 전체 풀에서 굴려 열려 있다(티켓 20261111_0846)
     expect(byId.c).toMatchObject({
       status: 'open',
       drop: { open: true },
       syncCapsule: { open: false, reasons: ['collection_no_tribe'] },
-      tierUp: { open: false, reasons: ['collection_no_tribe'] },
+      tierUp: { open: true, reasons: [] },
     })
   })
 

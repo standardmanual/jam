@@ -372,7 +372,7 @@ describe('toCardView — 표시 데이터', () => {
 
   it('기본 필드: 제목·부제·설명문·링크·라벨. 비었거나 공백뿐인 값은 싣지 않는다', () => {
     const view = toCardView(makeCard({ subtitle: ' 부제 ', description: '설명문', resolved_href: '/badges/b1' }))
-    expect(view).toMatchObject({ title: '제목', subtitle: '부제', description: '설명문', href: '/badges/b1', label: '배지 소개' })
+    expect(view).toMatchObject({ title: '제목', subtitle: '부제', description: '설명문', href: '/badges/b1', label: '배지' })
     const bare = toCardView(makeCard({ subtitle: '  ', description: '', resolved_href: '' }))
     expect(bare.subtitle).toBeUndefined()
     expect(bare.description).toBeUndefined()
