@@ -40,6 +40,27 @@ describe('sanitizeTemplateSvg', () => {
     expect(good.removed).toEqual([])
   })
 
+  it('style 속성의 바깥 주소 선언만 걷어 내고 나머지는 남긴다', () => {
+    const r = sanitizeTemplateSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:url(https://a.example/x.png);stroke:#000"/><circle style="fill:url(https://a.example/y)"/></svg>'
+    )
+    expect(r.svg).toContain('style="stroke:#000"')
+    expect(r.svg).not.toContain('a.example')
+    expect(r.svg).not.toMatch(/<circle[^>]*style=/)
+    expect(r.removed).toEqual(['속성 style의 fill(바깥 주소)', '속성 style의 fill(바깥 주소)'])
+  })
+
+  it('그 밖의 속성도 바깥 주소는 지우고 안쪽 참조는 남긴다', () => {
+    const r = sanitizeTemplateSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(https://a.example/x)"/><rect fill="url(#paint0_linear)" style="fill:url(\'#a\')" filter="url(#f)"/></svg>'
+    )
+    expect(r.svg).not.toContain('a.example')
+    expect(r.svg).toContain('fill="url(#paint0_linear)"')
+    expect(r.svg).toContain("fill:url('#a')")
+    expect(r.svg).toContain('filter="url(#f)"')
+    expect(r.removed).toEqual(['속성 fill(바깥 주소)'])
+  })
+
   it('정상 SVG는 그대로 두고 removed가 비어 있다', () => {
     const r = sanitizeTemplateSvg(okSvg)
     expect(r.removed).toEqual([])

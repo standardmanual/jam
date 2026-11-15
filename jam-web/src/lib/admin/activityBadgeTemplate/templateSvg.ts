@@ -67,6 +67,7 @@ interface XElement extends XNode {
   attributes: ArrayLike<XAttr>
   getAttribute(name: string): string | null
   removeAttribute(name: string): void
+  setAttribute(name: string, value: string): void
 }
 
 const ELEMENT_NODE = 1
@@ -105,6 +106,21 @@ function isSafeHref(value: string): boolean {
   return v.startsWith('#') || v.startsWith('data:image/')
 }
 
+/** 값 안의 url(...) 가운데 안쪽 참조(#…)나 data:image/ 가 아닌 대상이 하나라도 있으면 참 */
+export function hasExternalUrl(value: string): boolean {
+  const re = /url\(\s*([^)]*)\)/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(value)) !== null) {
+    const target = m[1].trim().replace(/^['"\s]+|['"\s]+$/g, '').toLowerCase()
+    if (!target.startsWith('#') && !target.startsWith('data:image/')) return true
+  }
+  return false
+}
+
+function isDangerousDeclaration(decl: string): boolean {
+  return hasExternalUrl(decl) || /@import|expression\(|javascript:/i.test(decl)
+}
+
 function sanitizeNode(el: XElement, removed: string[]): void {
   for (const child of Array.from(el.childNodes)) {
     if (!isElement(child)) continue
@@ -128,6 +144,23 @@ function sanitizeNode(el: XElement, removed: string[]): void {
       el.removeAttribute(attr.name)
       removed.push(`속성 ${attr.name}`)
     } else if (local === 'href' && !isSafeHref(attr.value)) {
+      el.removeAttribute(attr.name)
+      removed.push(`속성 ${attr.name}(바깥 주소)`)
+    } else if (attrName === 'style') {
+      const decls = attr.value.split(';').filter((d) => d.trim() !== '')
+      const kept: string[] = []
+      for (const decl of decls) {
+        if (isDangerousDeclaration(decl)) {
+          const i = decl.indexOf(':')
+          const prop = (i < 0 ? decl : decl.slice(0, i)).trim()
+          removed.push(`속성 style의 ${prop}(바깥 주소)`)
+        } else {
+          kept.push(decl.trim())
+        }
+      }
+      if (kept.length === 0) el.removeAttribute(attr.name)
+      else if (kept.length !== decls.length) el.setAttribute(attr.name, kept.join(';'))
+    } else if (hasExternalUrl(attr.value)) {
       el.removeAttribute(attr.name)
       removed.push(`속성 ${attr.name}(바깥 주소)`)
     }
