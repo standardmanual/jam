@@ -8,8 +8,6 @@ import type {
   InventoryItemRow,
 } from '@/types/database'
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
-import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
-import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
 import { resolveGradeMode } from '@/lib/combine/gradeMode'
 import {
   filterRecipesWithLiveResults,
@@ -218,22 +216,15 @@ export default async function CombinePage() {
     }
   }
 
-  // 결정 22: mix_fail(레시피 확인)·mix_success(믹스 성공) 차례일 때만 실제 재료·레시피
-  // 대신 연출 레시피 1건·연출 재료 2개를 넘긴다(티켓 20260927_2127). 실제 DB 조회는
-  // 그대로 두고 CombineClient에 넘기는 값만 마지막에 바꿔치기한다.
-  const questGate = await getOnboardingQuestGate(user.id, 'combine')
-  const questStep = questGate === 'mix_fail' || questGate === 'mix_success' ? questGate : null
-
-  // 받지 않은 믹스 결과 개수(티켓 20261018_0055 2회) — 있으면 배너를 띄우고 새 믹스를 막는다. 온보딩 연출 모드는 0이다.
+  // 받지 않은 믹스 결과 개수(티켓 20261018_0055 2회) — 있으면 배너를 띄우고 새 믹스를 막는다.
   // 읽지 못하면 던진다: 있는데 없다고 보여 주면 재료가 또 소모되고 결과가 더 쌓인다(서버도 소각 앞에서 한 번 더 거절한다).
-  const pendingCount = questStep ? 0 : await getPendingCount(service, user.id)
+  const pendingCount = await getPendingCount(service, user.id)
 
   return (
     <CombineClient
-      items={questStep ? DEMO_MIX_ITEMS : items}
-      publicRecipes={questStep ? [DEMO_MIX_RECIPE] : publicRecipes}
-      ownedConditionBadgeIds={questStep ? [] : ownedConditionBadgeIds}
-      questStep={questStep}
+      items={items}
+      publicRecipes={publicRecipes}
+      ownedConditionBadgeIds={ownedConditionBadgeIds}
       pendingCount={pendingCount}
     />
   )

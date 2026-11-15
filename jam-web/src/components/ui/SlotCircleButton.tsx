@@ -14,7 +14,7 @@ import { MinusIcon, PlusIcon } from '@/components/ui/icons'
  * - `position="center"`(티켓 20261112_1627, 캔버스 확정): «+»를 카드 모서리가 아니라 **이미지 상자의 정중앙**에 놓는다.
  *   버튼을 움직이지 않고 틀(frame)로 맞춘다 — 바깥 틀(`pointer-events-none`, 카드 안쪽 여백만큼 안으로)이 `BadgeGridCard`의 이미지 상자와
  *   같은 기하(`aspect-square w-full max-w-[90px]`)의 안쪽 틀을 품고, 버튼은 그 안쪽 틀의 flex 가운데에 놓인다. 버튼에 `translate`를 쓰지 않으므로
- *   퀘스트 펄스(`jam-quest-pulse`, transform 애니메이션)와 충돌하지 않는다. 틀이 `pointer-events-none`이라 틀 자체는 카드 탭을 가로채지 않고,
+ *   transform 애니메이션과 충돌하지 않는다. 틀이 `pointer-events-none`이라 틀 자체는 카드 탭을 가로채지 않고,
  *   눌리는 44px 영역만 카드 링크 위에 얹힌다. `dense`(믹스 4열, 카드 `p-2`)이면 틀의 안쪽 여백을 8px로 줄인다.
  *   기본값 `corner`는 이전과 같다(«−»는 계속 우상단).
  */
@@ -27,7 +27,7 @@ interface SlotCircleButtonProps {
   /** 해당 칸의 요청이 진행 중 — 비활성이 되고 반투명해진다 */
   pending?: boolean
   disabled?: boolean
-  /** 덧붙일 클래스 — 믹서 칸이 퀘스트 펄스(`jam-quest-pulse`)를 걸 때 쓴다. 기본값은 빈 문자열이라 컬렉션 칸은 그대로다 */
+  /** 덧붙일 클래스. 기본값은 빈 문자열이라 컬렉션 칸은 그대로다 */
   className?: string
   /** `corner`(기본) = 카드 우상단 안쪽(«−»), `center` = 이미지 상자의 정중앙(«+»). 위 설명 참고 */
   position?: SlotCirclePosition

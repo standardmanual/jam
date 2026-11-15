@@ -105,7 +105,7 @@ import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
 import TierUpRevealOverlay from '@/components/TierUpRevealOverlay'
 import { d } from '@/lib/i18n'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
-import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
+import { TEST_RECIPE } from './testRecipeFixture'
 
 type AnyElement = ReactElement<Record<string, unknown>>
 
@@ -152,7 +152,7 @@ const MYSTIC_FULL = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6']
 describe('등급 올리기 입구 (탐색 화면)', () => {
   it('검색창보다 위에 있고 아이콘 없이 제목과 부제가 보인다', () => {
     const html = renderToStaticMarkup(
-      <CombineClient items={[]} publicRecipes={[DEMO_MIX_RECIPE]} ownedConditionBadgeIds={[]} questStep={null} />,
+      <CombineClient items={[]} publicRecipes={[TEST_RECIPE]} ownedConditionBadgeIds={[]} />,
     )
     expect(html).toContain('등급 올리기')
     expect(html).toContain('같은 등급 6개를 넣고 새 아이템 배지 1개를 받아요')
@@ -164,15 +164,6 @@ describe('등급 올리기 입구 (탐색 화면)', () => {
     expect(entryHtml).toMatch(/aria-hidden="true" style="[^"]*color:var\(--muted\)"><svg/)
     // 제목은 굵게(700)다
     expect(entryHtml).toMatch(/font-weight:700[^"]*">등급 올리기</)
-  })
-
-  it('온보딩 연출 모드에서는 그리지 않는다', () => {
-    for (const questStep of ['mix_fail', 'mix_success'] as const) {
-      const html = renderToStaticMarkup(
-        <CombineClient items={DEMO_MIX_ITEMS} publicRecipes={[DEMO_MIX_RECIPE]} ownedConditionBadgeIds={[]} questStep={questStep} />,
-      )
-      expect(html).not.toContain('등급 올리기')
-    }
   })
 
   it('레시피가 하나도 없어도 입구는 남는다', () => {
@@ -210,15 +201,13 @@ describe('CombineClient 등급 올리기 흐름', () => {
     options: {
       items?: InventoryItemWithBadge[]
       pendingCount?: number
-      questStep?: 'mix_fail' | 'mix_success' | null
     } = {},
   ) {
     const props = {
       items: options.items ?? DEFAULT_ITEMS,
-      publicRecipes: [DEMO_MIX_RECIPE],
+      publicRecipes: [TEST_RECIPE],
       ownedConditionBadgeIds: [],
       pendingCount: options.pendingCount ?? 0,
-      questStep: options.questStep ?? null,
     }
     const render = () => {
       hooks.cursor = 0

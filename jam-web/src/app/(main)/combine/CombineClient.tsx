@@ -59,13 +59,10 @@ import {
   tierUpHref,
   wasOpenedByPush,
 } from '@/lib/combine/navigation'
-import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
-import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 // 타입만 가져온다 — `lib/combine/pending.ts`는 서버 전용이라 값을 가져오면 번들링에서 터진다.
 import type { PendingResultView, PendingResultsPayload } from '@/lib/combine/pending'
 import type { BadgeRow, CombinationRecipeRow, CombineSlotBadgeType, InventoryItemRow } from '@/types/database'
 
-/** 온보딩 퀘스트 4~5단계(T4)의 demo-data.ts가 연출 재료 타입으로도 쓴다(export). */
 export interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> {
   badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
 }
@@ -90,7 +87,7 @@ export interface RecipeWithSlots extends CombinationRecipeRow {
    * 공개 시각 — 서버(`page.tsx`)가 «공개 전 레시피를 운영자에게 보여 줄 때만» `valid_from` 값을 넣는다
    * (티켓 20261001_1159). 공개된 레시피는 운영자에게도 없거나 null이고, 종료된 레시피는 운영자에게도 목록에
    * 없다(티켓 20261002_0710). 클라이언트는 행 전체에 딸려 오는 `valid_from`·`valid_until`로 공개 여부를 다시
-   * 판정하지 않는다. 온보딩 연출 레시피(`DEMO_MIX_RECIPE`)에는 없다.
+   * 판정하지 않는다.
    */
   releaseAt?: string | null
 }
@@ -101,14 +98,8 @@ interface Props {
   /** 유저가 실제로 보유한 조건 슬롯(액티비티·체크인) 후보 배지 id — 서버가 미리 조회해 내려준다 */
   ownedConditionBadgeIds: string[]
   /**
-   * 온보딩 퀘스트 4~5단계(mix_fail=레시피 확인, mix_success=믹스 성공) 차례일 때만 채워진다
-   * (티켓 20260927_2127, 상위 20260927_2123 T4). 차례가 아니면 null — 화면은 평소 `/combine`
-   * 그대로다(결정 22).
-   */
-  questStep?: 'mix_fail' | 'mix_success' | null
-  /**
    * 받지 않은 믹스 결과 개수 — 서버(`page.tsx`)가 읽어 내려준다(티켓 20261018_0055 2회). 0보다 크면 배너를 띄우고 새 믹스를
-   * 막는다. 온보딩 연출 모드에서는 서버가 0을 내리고, 클라이언트도 0으로 본다.
+   * 막는다.
    */
   pendingCount?: number
 }
@@ -313,116 +304,10 @@ function recipeDisplayName(recipe: RecipeWithSlots): string {
   return recipe.name ?? d.combine.unnamedRecipe
 }
 
-/**
- * 순수 판정 — 데모 모드의 첫 «+» 탭에서 `mix_fail`을 기록할 차례인지. `demoMode`가 아니거나 이미
- * 기록했으면 기록하지 않는다(티켓 20260927_2127, `screen-gate.ts`의 순수/DB 분리 패턴).
- */
-export function shouldRecordMixFail(demoMode: boolean, alreadyRecorded: boolean): boolean {
-  return demoMode && !alreadyRecorded
-}
-
-/**
- * 순수 빌더 — 연출 믹스 성공 시 실제 `/api/combine` 응답 대신 로컬에서 구성하는 결과값.
- * `selectedRecipe.rewardBadges`·`reward_points`를 그대로 옮긴다(티켓 20260927_2127).
- */
-export function buildDemoCombineResult(recipe: RecipeWithSlots): {
-  success: true
-  badges: RevealBadge[]
-  points: number
-} {
-  return {
-    success: true,
-    badges: recipe.rewardBadges.map((b) => ({
-      id: b.id,
-      name: b.name,
-      description: b.description,
-      imageUrl: b.image_url,
-      rarity: b.rarity,
-    })),
-    points: recipe.reward_points,
-  }
-}
-
-/**
- * 순수 판정 — 펄스 판정에 쓸 단계. 칸의 «+»를 처음 눌러 `mix_fail`을 기록하면(`mixFailRecorded`)
- * 같은 화면에서 5단계로 이어지므로 `mix_success` 규칙으로 바꾼다(티켓 20260928_2155).
- */
-export function resolveQuestPulseStep(
-  questStep: 'mix_fail' | 'mix_success' | null,
-  mixFailRecorded: boolean,
-): 'mix_fail' | 'mix_success' | null {
-  return questStep === 'mix_fail' && mixFailRecorded ? 'mix_success' : questStep
-}
-
-/** `computeQuestPulseTarget()`가 돌려주는 「지금 눌러야 할 요소」 판정 결과 — 항상 최대 1개(결정 7). */
-export type QuestPulseTarget =
-  | { type: 'recipe' }
-  | { type: 'slot'; slotId: string }
-  | { type: 'bagRow'; key: string }
-  | { type: 'submit' }
-  | null
-
-/** `fills`에 없는 첫 슬롯 — `slot_order` 오름차순. 없으면 null(전 슬롯이 채워짐). */
-function firstEmptySlot(
-  recipe: RecipeWithSlots,
-  fills: Record<string, SlotFill>
-): RecipeSlotWithCandidates | null {
-  return (
-    recipe.slots
-      .slice()
-      .sort((a, b) => a.slot_order - b.slot_order)
-      .find((s) => !fills[s.id]) ?? null
-  )
-}
-
-/**
- * 순수 판정 — 온보딩 퀘스트 4~5단계(`mix_fail`·`mix_success`)에서 지금 반짝여야 할 요소
- * 하나를 고른다(티켓 20260928_1755, 채원 판정). `slot` 대상은 그 칸의 «+» 버튼을 반짝이게 한다(티켓 20261110_1115).
- * 슬롯 펄스·제출 버튼 펄스·후보 행 펄스를
- * 각각 독립 조건으로 산개하지 않고 이 함수 하나로 모아 상호 배타를 강제한다(craft_notes).
- *
- * - 퀘스트 차례가 아니거나(`questStep` null) 제출 중(`loading`)이면 항상 null.
- * - 레시피 미선택: 레시피 행(`mix_fail`·`mix_success` 공통, 사용자 승인 결정 1).
- * - `mix_fail` 선택 후: 첫 빈 슬롯(시트 열림 여부 무관, 완료 조건 원문). 빈 슬롯이 없으면 null —
- *   «+»를 누르는 순간 단계가 이미 기록되므로 제출 버튼까지 도달하는 경로를 정의하지 않는다.
- * - `mix_success` 선택 후: 시트 열림 → 그 슬롯의 활성 후보 행 중 첫 번째(craft_notes 방어적 고정).
- *   시트 닫힘 + 빈 슬롯 있음 → 다음 빈 슬롯의 «+»(활성 행 하나라 시트 없이 바로 채운 경우도 여기로 온다).
- *   시트 닫힘 + `canSubmit` → 조합하기 버튼.
- */
-export function computeQuestPulseTarget(params: {
-  questStep: 'mix_fail' | 'mix_success' | null
-  loading: boolean
-  selectedRecipe: RecipeWithSlots | null
-  fills: Record<string, SlotFill>
-  bagSlotId: string | null
-  bagRows: BagRow[]
-  canSubmit: boolean
-}): QuestPulseTarget {
-  const { questStep, loading, selectedRecipe, fills, bagSlotId, bagRows, canSubmit } = params
-  if (questStep !== 'mix_fail' && questStep !== 'mix_success') return null
-  if (loading) return null
-  if (!selectedRecipe) return { type: 'recipe' }
-
-  if (questStep === 'mix_fail') {
-    const empty = firstEmptySlot(selectedRecipe, fills)
-    return empty ? { type: 'slot', slotId: empty.id } : null
-  }
-
-  // mix_success
-  if (bagSlotId) {
-    const activeRow = bagRows.find((r) => r.state === 'active')
-    return activeRow ? { type: 'bagRow', key: activeRow.key } : null
-  }
-  if (canSubmit) return { type: 'submit' }
-  const empty = firstEmptySlot(selectedRecipe, fills)
-  return empty ? { type: 'slot', slotId: empty.id } : null
-}
-
 export default function CombineClient({
   items,
   publicRecipes,
   ownedConditionBadgeIds,
-  questStep = null,
   pendingCount: serverPendingCount = 0,
 }: Props) {
   const [search, setSearch] = useState('')
@@ -501,11 +386,7 @@ export default function CombineClient({
   // 화면을 떠나면 «목록에서 push로 열었다» 표시를 지운다(다음에 주소로 바로 열리면 앞 항목이 없을 수 있다).
   useEffect(() => () => markOpenedByPush(false), [])
 
-  /** 온보딩 퀘스트 4~5단계 연출 모드 — 실제 `/api/combine`·`trackEvent`·`router.refresh()`를 부르지 않는다. */
-  const demoMode = questStep === 'mix_fail' || questStep === 'mix_success'
-  const [mixFailRecorded, setMixFailRecorded] = useState(false)
-  /** 연출 모드에서는 받지 않은 결과를 0으로 본다 — 배너·받기·CTA 차단 모두 비활성(채원 판정) */
-  const pendingCount = demoMode ? 0 : (pendingOverride ?? serverPendingCount)
+  const pendingCount = pendingOverride ?? serverPendingCount
   const pendingBlocked = pendingCount > 0
 
   const ownedConditionSet = useMemo(() => new Set(ownedConditionBadgeIds), [ownedConditionBadgeIds])
@@ -683,40 +564,12 @@ export default function CombineClient({
   }
 
   /**
-   * 데모 모드의 첫 «+» 탭에서 `mix_fail`을 한 번만 기록한다(티켓 20261110_1115, 이전에는 가방 시트를 여는 순간 기록했다).
-   * 시트 열기·바로 채움은 기록 결과를 기다리지 않는다(티켓 20260927_2127 사용자 결정 2). 실패하면
-   * 로컬 플래그를 되돌려 다음 «+» 탭에서 재시도할 수 있게 한다.
-   */
-  async function recordMixFailOnce() {
-    if (!shouldRecordMixFail(demoMode, mixFailRecorded)) return
-
-    setMixFailRecorded(true)
-    try {
-      const res = await fetch('/api/onboarding-quest/step', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ step: 'mix_fail' }),
-      })
-      if (!res.ok) throw new StepSaveFailedError()
-      trackQuestStepComplete('mix_fail', await res.json())
-    } catch (err) {
-      setMixFailRecorded(false)
-      if (err instanceof StepSaveFailedError) {
-        toast(d.onboardingQuest.mixStepSaveFailed, 'error')
-      } else {
-        toast(d.common.networkError, 'error')
-      }
-    }
-  }
-
-  /**
    * 칸의 «+» — 쓸 수 있는 행(활성)이 정확히 하나면 시트 없이 바로 채우고, 둘 이상이면 가방 시트를 열어 고르게 한다.
    * 활성 행이 없으면 «+» 자체가 그려지지 않으므로 여기까지 오지 않지만, 방어적으로 아무 일도 하지 않는다.
    */
   function addToSlot(slot: RecipeSlotWithCandidates) {
     const activeRows = bagRowsFor(slot).filter((r) => r.state === 'active')
     if (activeRows.length === 0) return
-    void recordMixFailOnce()
     if (activeRows.length === 1) fillSlot(slot.id, activeRows[0])
     else setBagSlotId(slot.id)
   }
@@ -816,42 +669,6 @@ export default function CombineClient({
 
   async function handleCombine() {
     if (!selectedRecipe || !canSubmit || pendingBlocked) return
-
-    // 온보딩 퀘스트 4~5단계 연출 분기 — 실제 /api/combine·trackEvent·router.refresh()를
-    // 전혀 부르지 않는다(티켓 20260927_2127). mix_fail을 멱등 호출하는 것은 가방 시트를
-    // 안 열고 바로 슬롯이 채워진 경우를 대비한 순서 안전망이다.
-    if (demoMode) {
-      setLoading(true)
-      setResult(null)
-      try {
-        const failRes = await fetch('/api/onboarding-quest/step', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ step: 'mix_fail' }),
-        })
-        if (!failRes.ok) throw new StepSaveFailedError()
-        trackQuestStepComplete('mix_fail', await failRes.json())
-
-        const successRes = await fetch('/api/onboarding-quest/step', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ step: 'mix_success' }),
-        })
-        if (!successRes.ok) throw new StepSaveFailedError()
-        trackQuestStepComplete('mix_success', await successRes.json())
-
-        setResult(buildDemoCombineResult(selectedRecipe))
-      } catch (err) {
-        if (err instanceof StepSaveFailedError) {
-          toast(d.onboardingQuest.mixStepSaveFailed, 'error')
-        } else {
-          toast(d.common.networkError, 'error')
-        }
-      } finally {
-        setLoading(false)
-      }
-      return
-    }
 
     const itemIds = selectedRecipe.slots
       .filter((s) => s.badge_type === 'item')
@@ -964,7 +781,7 @@ export default function CombineClient({
    * 섞지 않기 위해서다(티켓 가정 나).
    */
   async function handleTierUp() {
-    if (tierUpLoading || pendingBlocked || demoMode || !tierUpSubmitItemIds) return
+    if (tierUpLoading || pendingBlocked || !tierUpSubmitItemIds) return
     const body: TierUpRequest = { itemIds: tierUpSubmitItemIds }
 
     setTierUpLoading(true)
@@ -1026,11 +843,6 @@ export default function CombineClient({
     const testMixNotice = testMixNoticeOnClose(result)
     const closing = result
     setResult(null)
-    if (demoMode) {
-      // 온보딩 퀘스트 4~5단계 완료 — 같은 화면에 남지 않고 홈으로 이동한다(사용자 결정 3).
-      router.push('/')
-      return
-    }
     // 티켓 요구사항: 오버레이를 닫으면 같은 레시피 화면에 슬롯만 비운 채로 남는다.
     // 받지 않은 결과를 받은 연출은 믹서의 채운 슬롯과 무관하므로 건드리지 않는다.
     if (closing?.kind === 'tierUp') setTierUpSlots(emptyTierUpSlots())
@@ -1061,7 +873,6 @@ export default function CombineClient({
         noReward={isNoRewardRecipe(recipe)}
         rewardLocked={recipe.reward_locked === true}
         onClick={() => onPick(recipe.id)}
-        className={pulseTarget?.type === 'recipe' ? 'jam-quest-pulse' : ''}
       />
     )
   }
@@ -1072,18 +883,6 @@ export default function CombineClient({
   const hasItemSlot = selectedRecipe?.slots.some((s) => s.badge_type === 'item') ?? false
   /** 액티비티·체크인 슬롯 — 보유 여부만 확인하고 소각하지 않는다 */
   const hasKeptSlot = selectedRecipe?.slots.some((s) => s.badge_type !== 'item') ?? false
-  /** 퀘스트 4~5단계 「지금 눌러야 할 요소」 펄스 — 판정은 computeQuestPulseTarget() 하나로 모은다.
-   * «+»를 처음 눌러 mix_fail을 기록하면 화면 새로고침 없이 같은 화면에서 5단계로 이어지므로
-   * (상위 결정 23) 그때부터는 mix_success 규칙으로 판정한다(티켓 20260928_2155). */
-  const pulseTarget = computeQuestPulseTarget({
-    questStep: resolveQuestPulseStep(questStep, mixFailRecorded),
-    loading,
-    selectedRecipe,
-    fills,
-    bagSlotId,
-    bagRows,
-    canSubmit,
-  })
 
   return (
     // 레시피 상세(믹서)에서는 루트가 뷰포트 높이를 채워, 맨 아래 유의사항 구역이 푸터까지 같은 회색으로 이어진다(티켓 20261110_1757).
@@ -1137,14 +936,11 @@ export default function CombineClient({
         <>
           {/*
             등급 올리기 입구(티켓 20261022_2119 3회, 채원 판정) — 레시피가 아니라서 검색 결과에 걸리지 않게 검색창 위에 두고, 레시피 행의
-            lead(아이콘 칸)와 슬롯 개수 칩을 쓰지 않는다. 받지 않은 결과가 있어도 눌린다(막는 것은 제출 버튼뿐). 온보딩 연출 모드에서는
-            레시피 하나만 보여야 하므로 그리지 않는다.
+            lead(아이콘 칸)와 슬롯 개수 칩을 쓰지 않는다. 받지 않은 결과가 있어도 눌린다(막는 것은 제출 버튼뿐).
           */}
-          {!demoMode && (
-            <div className="px-4 pt-4">
-              <ListRow title={d.combine.tierUp.title} meta={d.combine.tierUp.entrySubtitle} metaLines={2} chevron onClick={openTierUp} />
-            </div>
-          )}
+          <div className="px-4 pt-4">
+            <ListRow title={d.combine.tierUp.title} meta={d.combine.tierUp.entrySubtitle} metaLines={2} chevron onClick={openTierUp} />
+          </div>
 
           {/* 검색 */}
           <div className="px-4 pt-4 pb-4">
@@ -1213,9 +1009,6 @@ export default function CombineClient({
                 const shownName = shown?.name ?? firstCandidate?.name ?? ''
                 const shownImage = shown ? shown.imageUrl : (firstCandidate?.image_url ?? null)
 
-                // 펄스는 «+»가 그려지는 칸에만 건다 — 흐린 칸을 가리키면 반짝임이 허공에 뜬다
-                const pulseSlot = status === 'addable' && pulseTarget?.type === 'slot' && pulseTarget.slotId === slot.id
-
                 return (
                   <RecipeSlotCard
                     key={slot.id}
@@ -1224,7 +1017,6 @@ export default function CombineClient({
                     imageUrl={shownImage}
                     loading={loading}
                     dense={selectedRecipe.slots.length <= 4}
-                    pulse={pulseSlot}
                     onAdd={() => addToSlot(slot)}
                     onRemove={() => removeSlot(slot.id)}
                   />
@@ -1245,19 +1037,11 @@ export default function CombineClient({
               onClick={handleCombine}
               disabled={loading || !canSubmit || pendingBlocked}
               aria-describedby={pendingBlocked ? 'combine-pending-note' : undefined}
-              className={[
-                'w-full max-w-[220px] py-4 rounded-full bg-foreground text-background text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2',
-                pulseTarget?.type === 'submit' ? 'jam-quest-pulse jam-quest-cta' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              className="w-full max-w-[220px] py-4 rounded-full bg-foreground text-background text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
             >
               {/* 아이콘은 없다 — 로딩이 아닐 때는 글자만(티켓 20261112_1627, 캔버스 확정). 로딩 스피너는 그대로다 */}
               {loading && (
-                // 퀘스트 펄스 중에는 버튼 면이 퍼플(jam-quest-cta)이라 흰 스피너가 안 보인다(대비 약 1.4:1) — 그때만 검정으로 바꾼다(티켓 20261115_1804)
-                <span
-                  className={`w-4 h-4 border-2 ${pulseTarget?.type === 'submit' ? 'border-foreground' : 'border-background'} border-t-transparent rounded-full animate-spin`}
-                />
+                <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
               )}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>
@@ -1314,7 +1098,6 @@ export default function CombineClient({
                         imageUrl={row.imageUrl}
                         rarity={row.rarity}
                         state={row.state}
-                        pulse={pulseTarget?.type === 'bagRow' && pulseTarget.key === row.key}
                         onClick={() => bagSlot && active && fillSlot(bagSlot.id, row)}
                       />
                     )
