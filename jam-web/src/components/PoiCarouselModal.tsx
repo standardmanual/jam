@@ -173,12 +173,15 @@ const WINDOW_STEP = 3
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /**
- * 지점 카드 크기 고정(티켓 20261114_2352). 갤러리 칸 높이는 `grid-auto-rows`로 이 값에 고정하고, 본문 슬롯 높이(2행)는 같은 상수에서 계산한다.
- * 값은 칸 안 구성(여백 8·썸네일 56·이름 2줄·칩 줄 24)에서 잡았고 실렌더 `offsetHeight` 실측으로 확인한다.
+ * 지점 카드 크기 고정(티켓 20261114_2352). 갤러리 칸 높이는 `grid-auto-rows`로 이 값에 고정하고, 본문 슬롯 높이(2행)는 같은 값에서 계산한다.
+ * 썸네일이 칸 폭에서 좌우 여백 8을 뺀 정사각형이라(티켓 20261115_2045) 칸 높이는 칸 폭에 따라 달라진다. 그래서 값을 px 상수가 아니라
+ * 본문 슬롯 래퍼(`container-type: inline-size`)의 폭(`cqw`)으로 계산한다: 칸 폭 = (슬롯 폭 − 열 간격 2×8) ÷ 3,
+ * 칸 높이 = 위 여백 8 + 썸네일(칸 폭 − 16) + 이름 위 간격 8 + 이름 2줄 30 + 간격 4 + 칩 줄 24 + 아래 여백 8 = 칸 폭 + 66.
+ * 375 폭 화면에서 칸 폭 약 87이면 칸 높이는 약 153이다. 실렌더 `offsetHeight` 실측으로 확인한다.
  */
-const GALLERY_CELL_H = 138
 const GALLERY_GAP = 8
-const GALLERY_H = GALLERY_CELL_H * 2 + GALLERY_GAP
+const GALLERY_CELL_H = `calc((100cqw - ${GALLERY_GAP * 2}px) / 3 + 66px)`
+const GALLERY_H = `calc(${GALLERY_CELL_H} * 2 + ${GALLERY_GAP}px)`
 /** 「여기에 드랍」·[취소][드랍] 버튼 줄이 들어가는 슬롯 높이(버튼이 없는 상태에서도 비워 둔다) */
 const BUTTON_SLOT_H = 48
 
@@ -1022,8 +1025,10 @@ export function PoiCard({
       {/* 본문 슬롯 — 높이가 상태와 무관하게 `GALLERY_H`로 고정된다(티켓 20261114_2352): 로딩·갤러리·빈 상태·드랍 확인이
           모두 이 안에서 그려지고, 옆 카드(peek)도 같은 높이의 빈 슬롯을 갖는다(`aria-hidden`). 배지 데이터는 이 카드가 중앙(활성)에
           도착한 시점에만 불러온다(20260820_025). 이 캐러셀에는 반경 내(in_drop_range) POI만 들어오므로 반경 밖 안내는 없다. */}
-      <div style={{ height: GALLERY_H }} className="flex flex-col justify-center" aria-hidden={!isActive || undefined}>
-        {body}
+      <div style={{ containerType: 'inline-size' }} aria-hidden={!isActive || undefined}>
+        <div style={{ height: GALLERY_H }} className="flex flex-col justify-center">
+          {body}
+        </div>
       </div>
       {/* 버튼 슬롯 — 버튼이 없는 상태(온보딩 pickup 연출·드랍 선택·로딩·옆 카드)에서도 높이 48을 비워 둔다 */}
       <div className="shrink-0 flex items-center" style={{ height: BUTTON_SLOT_H }} aria-hidden={!isActive || undefined}>

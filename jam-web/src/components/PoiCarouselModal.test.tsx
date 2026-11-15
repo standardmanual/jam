@@ -247,13 +247,14 @@ describe('갤러리 칸 배선 (티켓 20261114_2352, 이전 20261108_1625)', ()
     expect(html).toContain('p-2')
   })
 
-  it('묶음이 몇 개든 본문 슬롯 높이는 2행 갤러리 높이(284)로 같고 갤러리는 안에서만 스크롤된다', () => {
+  it('묶음이 몇 개든 본문 슬롯 높이는 2행 갤러리 높이(칸 폭 기준 계산)로 같고 갤러리는 안에서만 스크롤된다', () => {
     const many = Array.from({ length: 7 }, (_, i) => ({ ...base, id: `m${i}`, badge_id: `b${i}`, badge_name: `배지${i}` }))
     for (const drops of [[base], many]) {
       const html = renderList(drops)
-      expect(html).toContain('height:284px')
+      expect(html).toContain('container-type:inline-size')
+      expect(html).toContain('height:calc(calc((100cqw - 16px) / 3 + 66px) * 2 + 8px)')
       expect(html).toContain('overflow-y-auto overscroll-contain')
-      expect(html).toContain('grid-auto-rows:138px')
+      expect(html).toContain('grid-auto-rows:calc((100cqw - 16px) / 3 + 66px)')
     }
   })
 
@@ -272,7 +273,7 @@ describe('갤러리 칸 배선 (티켓 20261114_2352, 이전 20261108_1625)', ()
         onClose={vi.fn()}
       />
     )
-    expect(html).toContain('height:284px')
+    expect(html).toContain('height:calc(calc((100cqw - 16px) / 3 + 66px) * 2 + 8px)')
     expect(html).toContain('height:48px')
     expect(html).toContain('aria-hidden="true"')
     expect(html).not.toContain(`>${d.drops.dropHereButton}<`)
@@ -319,8 +320,8 @@ describe('잠긴 개체 드랍 확인 단계 (티켓 20261028_1741 2회)', () =>
     const start = html.indexOf('그래도 드랍할까요?')
     const between = html.slice(start, html.indexOf('<button', start))
     expect(between).not.toContain('role="status"')
-    // 문구 끝(</p>) 뒤에는 본문 슬롯을 닫고 버튼 슬롯 안의 버튼 행이 바로 이어진다
-    expect(between).toMatch(/^그래도 드랍할까요\?<\/p><\/div><\/div><div class="shrink-0[^>]*><div class="flex gap-2 w-full">$/)
+    // 문구 끝(</p>) 뒤에는 본문 슬롯(높이 래퍼 + 칸 폭 기준 컨테이너 래퍼)을 닫고 버튼 슬롯 안의 버튼 행이 바로 이어진다
+    expect(between).toMatch(/^그래도 드랍할까요\?<\/p><\/div><\/div><\/div><div class="shrink-0[^>]*><div class="flex gap-2 w-full">$/)
   })
 
   it('열린 개체의 확인 단계도 같다(회귀 방지)', () => {
