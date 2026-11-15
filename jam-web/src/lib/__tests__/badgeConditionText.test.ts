@@ -12,7 +12,7 @@ import {
   formatBadgeConditionSpec,
   ONBOARDING_COMPLETION_CONDITION_TEXT,
 } from '@/lib/badgeConditionText'
-import { SIGNUP_COMPLETION_BADGE_ID } from '@/lib/chapter/signup-reward'
+import { SIGNUP_COMPLETION_BADGE_ID } from '@/lib/chapter/signup-badge-id'
 import { CONDITION_FIELDS, type ConditionKey } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition } from '@/types/database'
 

@@ -12,9 +12,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { awardPoints } from '@/lib/points'
 import { awardBadgeReceiveScore } from '@/lib/chapter/badgeReceive'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { SIGNUP_COMPLETION_BADGE_ID } from './signup-badge-id'
 
-/** 가입 완료 배지 «JAM!»의 고정 id (T7a가 등록, 값은 기존 `ONBOARDING_COMPLETION_BADGE_ID`와 같다) */
-export const SIGNUP_COMPLETION_BADGE_ID = 'cd20f271-9445-42cc-ac51-d8a96b25e1c3'
+export { SIGNUP_COMPLETION_BADGE_ID }
 
 /**
  * 가입 완료 배지와 그 `point_reward`를 1회만 지급한다. `usageBadges.ts`와 같은 부수효과 순서 —

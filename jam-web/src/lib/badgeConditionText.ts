@@ -26,7 +26,7 @@
 import type { BadgeCondition } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 import { timeBandOfHour } from '@/lib/badge-engine/timeBands'
-import { SIGNUP_COMPLETION_BADGE_ID } from '@/lib/chapter/signup-reward'
+import { SIGNUP_COMPLETION_BADGE_ID } from '@/lib/chapter/signup-badge-id'
 import {
   CONDITION_FIELDS,
   PERSONAL_RECORD_METRIC_FORM_OPTIONS,
