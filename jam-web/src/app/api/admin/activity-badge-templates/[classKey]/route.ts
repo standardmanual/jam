@@ -6,12 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { isTemplateClassKey, toTemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
-import {
-  TEMPLATE_SVG_MAX_BYTES,
-  TemplateSvgError,
-  readTemplateSlots,
-  sanitizeTemplateSvg,
-} from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import { validateTemplateSvg } from '@/lib/admin/activityBadgeTemplate/validateTemplate'
 
 type Ctx = { params: Promise<{ classKey: string }> }
 
@@ -31,40 +26,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   } catch {
     return bad('요청 내용을 읽지 못했어요. 템플릿 SVG를 다시 올려 주세요.')
   }
-  const svgRaw = (body as { svg?: unknown } | null)?.svg
-  if (typeof svgRaw !== 'string' || svgRaw.trim() === '') {
-    return bad('SVG 내용이 비어 있어요. 피그마에서 내보낸 SVG를 올려 주세요.')
-  }
-  if (Buffer.byteLength(svgRaw, 'utf8') > TEMPLATE_SVG_MAX_BYTES) {
-    return bad('SVG가 너무 커요. 1MB 이하로 줄여서 다시 올려 주세요.')
-  }
-
-  let svg: string
-  let removed: string[]
-  let slots: ReturnType<typeof readTemplateSlots>
-  try {
-    ;({ svg, removed } = sanitizeTemplateSvg(svgRaw))
-    slots = readTemplateSlots(svg)
-  } catch (e) {
-    if (e instanceof TemplateSvgError) {
-      return bad('SVG를 읽지 못했어요. 피그마에서 SVG로 다시 내보내 주세요.')
-    }
-    throw e
-  }
-
-  for (const [slotName, label] of [['name', '이름'], ['value', '값']] as const) {
-    const slot = slots[slotName]
-    if (!slot.found) {
-      return bad(
-        `${label} 자리를 찾지 못했어요. 피그마에서 ${label} 글자의 레이어 이름을 ${slotName}으로 바꾸고, 글자를 윤곽선으로 바꾸지 않은 채 다시 내보내 주세요.`
-      )
-    }
-    if (!slot.isText) {
-      return bad(
-        `${label} 자리가 글자가 아니에요. 피그마에서 ${label} 글자를 윤곽선으로 바꾸지 않은 채 다시 내보내 주세요.`
-      )
-    }
-  }
+  const result = validateTemplateSvg((body as { svg?: unknown } | null)?.svg)
+  if (!result.ok) return bad(result.error)
+  const { svg, removed, slots } = result
 
   const supabase = createServiceClient()
   const { data, error } = await supabase

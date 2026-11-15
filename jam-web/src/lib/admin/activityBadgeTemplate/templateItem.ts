@@ -1,6 +1,7 @@
 /**
  * 템플릿 API 두 라우트가 함께 쓰는 분류 목록과 응답 항목 모양 (티켓 20261116_0234).
  */
+import type { TemplateSlots } from './templateSvg'
 import { BADGE_TEMPLATE_CLASS_LABEL, type BadgeTemplateClassKey } from './resolveTemplateText'
 
 export const TEMPLATE_CLASS_KEYS: BadgeTemplateClassKey[] = ['metric', 'days', 'streak', 'count']
@@ -13,7 +14,7 @@ export interface TemplateItem {
   classKey: BadgeTemplateClassKey
   label: string
   svg: string | null
-  slots: Record<string, unknown> | null
+  slots: TemplateSlots | null
   updatedAt: string | null
   updatedBy: string | null
 }
@@ -30,7 +31,7 @@ export function toTemplateItem(classKey: BadgeTemplateClassKey, row: TemplateRow
     classKey,
     label: BADGE_TEMPLATE_CLASS_LABEL[classKey],
     svg: row?.svg ?? null,
-    slots: row ? (row.slots as Record<string, unknown>) : null,
+    slots: row ? (row.slots as TemplateSlots) : null,
     updatedAt: row?.updated_at ?? null,
     updatedBy: row?.updated_by ?? null,
   }
