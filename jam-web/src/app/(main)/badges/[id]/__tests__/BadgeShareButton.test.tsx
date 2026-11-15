@@ -1,7 +1,7 @@
 /**
  * 배지 공유 시트 — 체크무늬 카드 한 장과 복사·저장·더보기 (티켓 20261115_1249)
  *
- * - 버튼 줄(`ShareActionButtons`): 복사하기(primary, CopyIcon)·저장하기(DownloadIcon)·더보기(MoreIcon) 순, `canShare`가 거짓이면 더보기가 없다
+ * - 버튼 줄(`ShareActionButtons`): 복사하기(검은 서클)·저장하기·더보기(회색 서클) 순, 아이콘은 서클 안·이름표는 아래, `canShare`가 거짓이면 더보기가 없다
  * - 동작(`badgeShareActions`): 복사는 `image/png`를 클립보드에 쓰고 성공·미지원·실패 토스트, 더보기는 `navigator.share`를 부르고 취소는 조용히 넘김,
  *   저장은 iOS가 아니면 내려받기 뒤 성공 토스트, iOS는 안내 토스트 뒤 공유 시트
  * - 시트 본문: 캐러셀·기록 카드·기록 조회 API 호출이 없다(소스 확인)
@@ -11,73 +11,58 @@
  * 실행: cd jam-web && npx vitest run "src/app/(main)/badges/[id]/__tests__/BadgeShareButton.test.tsx"
  */
 import { readFileSync } from 'node:fs'
-import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Button } from '@ds/components/buttons/Button'
-import { CopyIcon, DownloadIcon, MoreIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
-import { ShareActionButtons, SHARE_ACTION_BUTTON_CLASS } from '../ShareActionButtons'
+import { ShareActionButtons, SHARE_ACTION_CIRCLE_CLASS } from '../ShareActionButtons'
 import { copyImage, openShareSheet, saveImage } from '../badgeShareActions'
 
-type El = ReactElement<Record<string, unknown>>
-
-function collect(node: ReactNode, predicate: (el: El) => boolean): El[] {
-  const found: El[] = []
-  const visit = (value: unknown) => {
-    if (Array.isArray(value)) return value.forEach(visit)
-    if (!isValidElement(value)) return
-    const el = value as El
-    if (predicate(el)) found.push(el)
-    visit(el.props.children)
-  }
-  visit(node)
-  return found
+function html(canNativeShare: boolean, copying = false) {
+  return renderToStaticMarkup(
+    <ShareActionButtons copying={copying} canNativeShare={canNativeShare} onCopy={() => {}} onSave={() => {}} onMore={() => {}} />,
+  )
 }
 
-function buttonsOf(canNativeShare: boolean, copying = false) {
-  const tree = ShareActionButtons({ copying, canNativeShare, onCopy: () => {}, onSave: () => {}, onMore: () => {} })
-  return collect(tree, (el) => el.type === Button)
-}
-
-/** 버튼 안의 아이콘 컴포넌트와 이름표 글자 */
-function parts(button: El) {
-  const icon = collect(button.props.children as ReactNode, (el) => typeof el.type === 'function')[0]?.type
-  const label = collect(button.props.children as ReactNode, (el) => el.type === 'span')[0]?.props.children
-  return { icon, label }
+/** 칸(버튼) 하나씩: [서클 안쪽 마크업, 이름표] */
+function items(markup: string) {
+  return [...markup.matchAll(/<button[^>]*>(<span aria-hidden="true" class="([^"]*)">[\s\S]*?<\/span>)<span>([^<]*)<\/span><\/button>/g)].map(
+    (m) => ({ circleClass: m[2], label: m[3], circle: m[1] }),
+  )
 }
 
 describe('ShareActionButtons — 버튼 줄', () => {
-  it('canShare가 참이면 복사하기·저장하기·더보기 순으로 아이콘과 이름표가 함께 있다', () => {
-    const buttons = buttonsOf(true)
-    expect(buttons.map((b) => parts(b))).toEqual([
-      { icon: CopyIcon, label: '복사하기' },
-      { icon: DownloadIcon, label: '저장하기' },
-      { icon: MoreIcon, label: '더보기' },
-    ])
-  })
-
-  it('canShare가 거짓이면 더보기를 그리지 않고 두 버튼만 남는다', () => {
-    const buttons = buttonsOf(false)
-    expect(buttons.map((b) => parts(b).label)).toEqual(['복사하기', '저장하기'])
-  })
-
-  it('복사하기만 primary이고 나머지는 secondary다(세 개 모두 primary 금지)', () => {
-    const variants = buttonsOf(true).map((b) => b.props.variant ?? 'primary')
-    expect(variants).toEqual(['primary', 'secondary', 'secondary'])
-  })
-
-  it('세 버튼은 같은 클래스(아이콘 위·이름표 아래, 줄바꿈 없음)와 전체 폭을 쓴다', () => {
-    for (const b of buttonsOf(true)) {
-      expect(b.props.className).toBe(SHARE_ACTION_BUTTON_CLASS)
-      expect(b.props.fullWidth).toBe(true)
+  it('canShare가 참이면 복사하기·저장하기·더보기 순으로 서클 안 아이콘과 아래 이름표가 함께 있다', () => {
+    const list = items(html(true))
+    expect(list.map((i) => i.label)).toEqual(['복사하기', '저장하기', '더보기'])
+    // 아이콘은 서클 안, 이름표는 서클 밖(서클 span 뒤 형제)에 있다
+    for (const i of list) {
+      expect(i.circle).toContain('<svg')
+      expect(i.circleClass).toContain(SHARE_ACTION_CIRCLE_CLASS)
     }
-    expect(SHARE_ACTION_BUTTON_CLASS).toContain('flex-col')
-    expect(SHARE_ACTION_BUTTON_CLASS).toContain('whitespace-nowrap')
+  })
+
+  it('canShare가 거짓이면 더보기를 그리지 않고 두 칸만 남는다', () => {
+    expect(items(html(false)).map((i) => i.label)).toEqual(['복사하기', '저장하기'])
+  })
+
+  it('복사하기 서클만 검고 나머지는 회색이다(세 개 모두 검정 금지)', () => {
+    const classes = items(html(true)).map((i) => i.circleClass)
+    expect(classes[0]).toContain('bg-background-inverse text-snow')
+    expect(classes[1]).toContain('bg-border')
+    expect(classes[2]).toContain('bg-border')
+  })
+
+  it('서클은 56px 원이고 칸은 아이콘 위·이름표 아래 세로 배치에 줄바꿈이 없다', () => {
+    expect(SHARE_ACTION_CIRCLE_CLASS).toContain('h-14 w-14')
+    expect(SHARE_ACTION_CIRCLE_CLASS).toContain('rounded-full')
+    const markup = html(true)
+    expect(markup).toContain('flex-col')
+    expect(markup).toContain('whitespace-nowrap')
   })
 
   it('복사하는 동안에만 복사하기에 aria-busy가 붙는다', () => {
-    expect(buttonsOf(true, true)[0].props['aria-busy']).toBe(true)
-    expect(buttonsOf(true, false)[0].props['aria-busy']).toBeUndefined()
+    expect(html(true, true).match(/aria-busy="true"/g)).toHaveLength(1)
+    expect(html(true, false)).not.toContain('aria-busy')
   })
 
   it('버튼 이름 문구가 ko.ts와 같다', () => {

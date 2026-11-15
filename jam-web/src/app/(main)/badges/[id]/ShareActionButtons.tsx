@@ -1,14 +1,15 @@
-import { Button } from '@ds/components/buttons/Button'
+import type { ReactNode } from 'react'
 import { CopyIcon, DownloadIcon, MoreIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
 /**
- * 아이콘 위·이름표 아래 세로 배치(티켓 20261115_1249, 채원 판정의 폭 대안). 폭 320~360px에서 버튼 한 칸이
- * 88~99px라 «아이콘 24 + 간격 8 + 4글자 약 60px»(약 92px)가 한 줄에 들어가지 않는다. 높이는 테두리 2 + 위아래 4씩 8 +
- * 아이콘 24 + 간격 2 + 이름표 20 = 56px로 `SHEET_BUTTON_CLASS`와 같다. `Button`이 인라인 스타일로 정한
- * 패딩·간격·글자 크기를 `!`로 덮는다. 터치 영역은 56px 높이 × 최소 88px 폭이다.
+ * 아이콘은 56px 서클 안, 이름표는 서클 아래에 놓는 세로 배치(사용자 지시 2026-11-15, 티켓 20261115_1405).
+ * 이전의 알약 버튼은 폭 320~360px에서 한 칸이 88~99px라 아이콘과 이름표를 한 줄에 두기 어려웠다. 서클 방식은 칸 폭과
+ * 무관하게 56px 서클이 가운데에 놓이고 이름표는 서클 아래 한 줄이다. 터치 영역은 서클과 이름표를 함께 감싼 칸 전체다.
  */
-export const SHARE_ACTION_BUTTON_CLASS = 'flex-col gap-0.5! px-1! py-1! text-sm! whitespace-nowrap break-keep'
+export const SHARE_ACTION_CIRCLE_CLASS = 'flex h-14 w-14 items-center justify-center rounded-full'
+const SHARE_ACTION_ITEM_CLASS =
+  'flex flex-1 min-w-0 flex-col items-center gap-2 text-sm text-foreground whitespace-nowrap break-keep active:scale-95 transition-transform duration-100'
 
 interface ShareActionButtonsProps {
   /** 복사하는 동안 true — `aria-busy`를 달고, 중복 탭은 호출부가 무시한다 */
@@ -20,38 +21,50 @@ interface ShareActionButtonsProps {
   onMore: () => void
 }
 
+function ActionItem({
+  label,
+  primary = false,
+  busy,
+  onClick,
+  children,
+}: {
+  label: string
+  /** 가장 흔한 행동 하나만 검은 서클(복사하기), 나머지는 회색 서클 */
+  primary?: boolean
+  busy?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button type="button" className={SHARE_ACTION_ITEM_CLASS} aria-busy={busy || undefined} onClick={onClick}>
+      <span
+        aria-hidden="true"
+        className={`${SHARE_ACTION_CIRCLE_CLASS} ${primary ? 'bg-background-inverse text-snow' : 'bg-border text-foreground'}`}
+      >
+        {children}
+      </span>
+      <span>{label}</span>
+    </button>
+  )
+}
+
 /**
- * 공유 시트 footer의 버튼 줄. 복사하기만 primary(가장 흔한 행동), 저장하기·더보기는 secondary다.
- * 아이콘은 `aria-hidden`이라 이름표 글자가 곧 접근 가능한 이름이다.
+ * 공유 시트 footer의 버튼 줄. 복사하기만 검은 서클(가장 흔한 행동), 저장하기·더보기는 회색 서클이다.
+ * 서클은 `aria-hidden`이라 이름표 글자가 곧 접근 가능한 이름이다.
  */
 export function ShareActionButtons({ copying, canNativeShare, onCopy, onSave, onMore }: ShareActionButtonsProps) {
   return (
     <div className="flex gap-2">
-      <div className="flex-1 min-w-0">
-        <Button
-          surface="light"
-          fullWidth
-          className={SHARE_ACTION_BUTTON_CLASS}
-          aria-busy={copying || undefined}
-          onClick={onCopy}
-        >
-          <CopyIcon />
-          <span>{d.badges.shareActionCopy}</span>
-        </Button>
-      </div>
-      <div className="flex-1 min-w-0">
-        <Button surface="light" variant="secondary" fullWidth className={SHARE_ACTION_BUTTON_CLASS} onClick={onSave}>
-          <DownloadIcon />
-          <span>{d.badges.shareActionDownload}</span>
-        </Button>
-      </div>
+      <ActionItem label={d.badges.shareActionCopy} primary busy={copying} onClick={onCopy}>
+        <CopyIcon />
+      </ActionItem>
+      <ActionItem label={d.badges.shareActionDownload} onClick={onSave}>
+        <DownloadIcon />
+      </ActionItem>
       {canNativeShare && (
-        <div className="flex-1 min-w-0">
-          <Button surface="light" variant="secondary" fullWidth className={SHARE_ACTION_BUTTON_CLASS} onClick={onMore}>
-            <MoreIcon />
-            <span>{d.badges.shareActionMore}</span>
-          </Button>
-        </div>
+        <ActionItem label={d.badges.shareActionMore} onClick={onMore}>
+          <MoreIcon />
+        </ActionItem>
       )}
     </div>
   )
