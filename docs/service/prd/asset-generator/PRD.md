@@ -631,7 +631,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 
 ### 17.2 어드민 API (모두 어드민만, 아니면 403)
 - `GET /api/admin/activity-badge-templates`: `{ templates }`. 네 분류를 `metric`·`days`·`streak`·`count` 순서로 항상 돌려준다. 항목은 `{ classKey, label, svg, slots, updatedAt, updatedBy }`이고 등록 전이면 `svg`·`slots`·`updatedAt`·`updatedBy`가 `null`이다.
-- `PUT /api/admin/activity-badge-templates/[classKey]`, 본문 `{ svg }`: 정화한 SVG와 읽어 낸 자리를 `class_key` 기준으로 upsert한다. 응답은 `{ template, removed }`. 분류 오류, 빈 본문, 1,000,000바이트 초과, SVG로 읽지 못함, 이름·값 자리 없음, 자리가 글자가 아님은 400이고 쓰지 않는다.
+- `PUT /api/admin/activity-badge-templates/[classKey]`, 본문 `{ svg }`: 정화한 SVG와 읽어 낸 자리를 `class_key` 기준으로 upsert한다. 응답은 `{ template, removed }`. 분류 오류, 빈 본문, 1,000,000바이트 초과, SVG로 읽지 못함, 이름·값 자리 없음, 자리가 글자가 아님은 400이고 쓰지 않는다. 본문 검증은 `validateTemplate.ts`의 `validateTemplateSvg`가 맡고, 등록 화면도 같은 함수를 브라우저에서 먼저 돌린다.
 - `DELETE /api/admin/activity-badge-templates/[classKey]`: 그 분류의 템플릿을 지운다. 없어도 200, 분류 오류는 400.
 - 구현: `jam-web/src/lib/admin/activityBadgeTemplate/templateSvg.ts`(`sanitizeTemplateSvg`, `readTemplateSlots`).
 
@@ -639,5 +639,11 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - 이름 글자의 레이어(요소) `id`는 `name`, 값 글자는 `value`로 한다. `text` 요소이거나 그 안에 첫 `text`가 든 `g`여야 한다.
 - 글자를 윤곽선(`path`)으로 바꾸지 않은 채 내보낸다. 윤곽선이면 저장을 거절한다.
 - 자리마다 `x`·`y`·`fontFamily`·`fontSize`·`fontWeight`·`fill`·`letterSpacing`·`textAnchor`·`transform`·자리 표시용 글자(`placeholder`)를 읽고, 없으면 `null`이다. 피그마는 가운데 정렬을 남기지 않아 정렬·위치 계산은 제작 화면에서 다룬다.
-- 정화 규칙: `script`·`foreignObject`·`iframe`·`object`·`embed`·`link`·`meta` 요소와, 내용에 `@import`나 `url(`이 든 `style` 요소를 걷어 낸다. `on`으로 시작하는 속성을 걷어 내고, `href`·`xlink:href`는 `#`이나 `data:image/`로 시작할 때만 남긴다. 걷어 낸 목록은 `removed`로 돌려준다.
+- 정화 규칙: `script`·`foreignObject`·`iframe`·`object`·`embed`·`link`·`meta` 요소와, 내용에 `@import`나 `url(`이 든 `style` 요소를 걷어 낸다. `on`으로 시작하는 속성을 걷어 내고, `href`·`xlink:href`는 `#`이나 `data:image/`로 시작할 때만 남긴다. `style` 속성은 `;`로 나눈 선언 가운데 바깥 주소(`url(...)`의 대상이 `#`이나 `data:image/`로 시작하지 않는 것)나 `@import`·`expression(`·`javascript:`가 든 선언만 걷어 내고 나머지는 남긴다. 그 밖의 속성도 값에 바깥 주소가 있으면 걷어 낸다. 피그마의 그라데이션·마스크·필터가 쓰는 안쪽 참조(`url(#…)`)는 남는다. 걷어 낸 목록은 `removed`로 돌려준다.
 - 그리기: 화면은 템플릿 SVG를 문서에 직접 끼워 넣지 않고 이미지(`img`나 캔버스)로만 그린다.
+
+### 17.4 템플릿 등록 화면 (티켓 20261116_0426)
+- 경로: `/admin/activity-badge-template`(어드민 «디자인» 메뉴의 «배지 템플릿»). 분류 4개를 카드로 보인다.
+- 흐름: 파일을 고르면 브라우저에서 `validateTemplateSvg`로 먼저 검증해 «저장 전 확인» 상태로 둔다(서버에 보내지 않음). 미리보기·자리 줄·걷어 낸 목록을 확인하고 «저장»을 누르면 `PUT`으로 보낸다. 검증에 실패하면 안내 문구만 보이고 기존 템플릿은 그대로다. «지우기»는 확인 대화상자를 거쳐 `DELETE`를 보낸다.
+- 피그마 내보내기 설정: 이름 글자의 레이어 이름은 `name`, 값 글자는 `value`로 짓고, SVG 내보내기 설정에서 `Include "id" attribute`를 켜고 `Outline text`를 끈다(글자 레이어는 Outline text가 기본으로 켜져 있어 글자가 윤곽선이 된다. 피그마 도움말 «Export formats and settings», 2026-11-16 확인).
+- 미리보기는 SVG를 이미지로 그리므로 웹 글꼴을 불러오지 못하고 이 컴퓨터에 설치된 글꼴로 보인다. 실제 배지의 글자는 제작 화면이 캔버스에 따로 그린다.
