@@ -1,13 +1,13 @@
 import { createElement, useId, type ReactElement, type SVGProps } from 'react'
 
 /**
- * JAM! 아이콘 세트 v2 — 라인·채움 두 벌, 39종 (티켓 20261114_2345)
+ * JAM! 아이콘 세트 v2 — 라인·채움 두 벌, 42종 (티켓 20261114_2345)
  *
  * - 사양: docs/assets/prototypes/icon-set-v2/spec.json (좌표는 거기서 그대로 옮김), 완성 그림은 board.png.
  * - 48 격자(viewBox 0 0 48 48), 선 굵기 3(24px 렌더에서 1.5px), 색은 currentColor 하나(제3의 컬러 금지).
  *   색은 호출부 text-* 로만 제어한다. 크기는 className으로, 기본 w-6 h-6.
  * - variant: 'line'(기본) | 'fill'. 채움은 켜진 탭·지도 마커(드랍 있음)에만 쓴다. CoinIcon만 기본이 'fill'.
- *   동작 글리프 7종(Chevron 2·Plus·Minus·Close·Check·Sync)은 variant와 무관하게 라인이다.
+ *   동작 글리프 7종(Chevron 2·Plus·Minus·Close·Check·Sync)과 MoreIcon은 variant와 무관하게 라인이다.
  * - 비운 면·틈은 배경색 칠이 아니라 SVG mask로 뚫는다. 어떤 배경 위에서도 같은 모양이다.
  * - DS 사본(design-system/components/icons/IconCatalog.jsx)과 같은 조각·같은 규칙이다. 한쪽만 고치지 않는다
  *   (두 사본 동일성은 __tests__/icons.test.tsx가 지킨다).
@@ -342,6 +342,22 @@ const BAN_NODES: readonly RoleNode[] = [
   ['path', 'tc', { d: 'M16.5 16.5 L31.5 31.5' }, 7.2],
 ]
 
+const COPY_NODES: readonly RoleNode[] = [
+  ['rect', 'b', { x: '17.5', y: '6.5', width: '24', height: '24', rx: '5.5' }, 3],
+  ['rect', 'g', { x: '6.5', y: '17.5', width: '24', height: '24', rx: '5.5' }, 3],
+]
+
+const DOWNLOAD_NODES: readonly RoleNode[] = [
+  ['path', 'b', { d: 'M20 8.5 Q20 6 22.5 6 H25.5 Q28 6 28 8.5 V17.5 H32.5 Q35.8 17.5 33.8 20.1 L26 30.3 Q24 32.9 22 30.3 L14.2 20.1 Q12.2 17.5 15.5 17.5 H20 Z' }, 3],
+  ['path', 'ta', { d: 'M8.5 31 V35.5 Q8.5 40.5 13.5 40.5 H34.5 Q39.5 40.5 39.5 35.5 V31' }, 4.5],
+]
+
+const MORE_NODES: readonly RoleNode[] = [
+  ['circle', 'kc', { cx: '11', cy: '24', r: '3.8' }, 0],
+  ['circle', 'kc', { cx: '24', cy: '24', r: '3.8' }, 0],
+  ['circle', 'kc', { cx: '37', cy: '24', r: '3.8' }, 0],
+]
+
 /** 투데이 */
 export function HomeIcon(props: IconProps) {
   return <RoleIcon nodes={HOME_NODES} {...props} />
@@ -535,4 +551,19 @@ export function AlertCircleIcon(props: IconProps) {
 /** 접근 불가 (어드민) */
 export function BanIcon(props: IconProps) {
   return <RoleIcon nodes={BAN_NODES} {...props} />
+}
+
+/** 공유 시트 · 복사하기 */
+export function CopyIcon(props: IconProps) {
+  return <RoleIcon nodes={COPY_NODES} {...props} />
+}
+
+/** 공유 시트 · 저장하기 */
+export function DownloadIcon(props: IconProps) {
+  return <RoleIcon nodes={DOWNLOAD_NODES} {...props} />
+}
+
+/** 공유 시트 · 더보기 */
+export function MoreIcon(props: IconProps) {
+  return <RoleIcon nodes={MORE_NODES} lineOnly {...props} />
 }
