@@ -907,7 +907,7 @@ export function PoiCard({
                 않는다. Button 자체는 --radius-full(=--radius-full)라 래퍼 반경이
                 실제 버튼 반경과 일치한다. */}
             {pulseDrop ? (
-              <div className="w-full rounded-full jam-quest-pulse">
+              <div className="w-full rounded-full jam-quest-pulse jam-quest-cta">
                 <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
                   {d.drops.dropButton}
                 </Button>
@@ -979,7 +979,7 @@ export function PoiCard({
         )
       if (!hideDropAction) {
         footer = pulseDrop ? (
-          <div className="w-full rounded-full jam-quest-pulse">
+          <div className="w-full rounded-full jam-quest-pulse jam-quest-cta">
             <Button fullWidth surface="main" onClick={onOpenInventory}>
               {d.drops.dropHereButton}
             </Button>

@@ -17,6 +17,8 @@
  * 컴포넌트 함수를 직접 호출해 나온 엘리먼트 트리에서 핸들러(`onClick`·`onClose`)를 꺼내 부른다.
  * 하위 컴포넌트는 렌더하지 않고 props만 본다. 그 밖의 테스트는 실제 React 훅으로 돈다.
  */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -214,6 +216,33 @@ describe('CombineClient 초기 렌더', () => {
       />
     )
     expect(html).not.toContain('jam-quest-pulse')
+  })
+})
+
+// 티켓 20261115_1804: 믹스하기 버튼의 퍼플 면(jam-quest-cta)은 펄스가 submit을 가리킬 때만 붙는다.
+// submit 상태는 슬롯을 채우는 상호작용이 필요해 정적 렌더로 닿을 수 없다(jsdom 부재). 붙이지 않는 쪽은
+// 렌더로, 붙이는 조건(펄스와 같은 식)은 소스 문자열로 고정한다.
+describe('믹스하기 버튼 퍼플 면 클래스 (티켓 20261115_1804)', () => {
+  it('퀘스트가 아니면(questStep null) jam-quest-cta가 없다', () => {
+    const html = renderToStaticMarkup(
+      <CombineClient items={[]} publicRecipes={[DEMO_MIX_RECIPE]} ownedConditionBadgeIds={[]} questStep={null} />
+    )
+    expect(html).not.toContain('jam-quest-cta')
+  })
+
+  it('펄스가 레시피 행을 가리키는 동안(submit 아님)에도 jam-quest-cta가 없다', () => {
+    const html = renderToStaticMarkup(
+      <CombineClient items={DEMO_MIX_ITEMS} publicRecipes={[DEMO_MIX_RECIPE]} ownedConditionBadgeIds={[]} questStep="mix_fail" />
+    )
+    expect(html).toContain('jam-quest-pulse')
+    expect(html).not.toContain('jam-quest-cta')
+  })
+
+  it('jam-quest-cta는 pulseTarget이 submit일 때만 붙고 로딩 스피너도 그때만 border-foreground다', () => {
+    const src = readFileSync(path.join(__dirname, 'CombineClient.tsx'), 'utf8')
+    expect(src.match(/jam-quest-pulse jam-quest-cta/g)).toHaveLength(1)
+    expect(src).toContain("pulseTarget?.type === 'submit' ? 'jam-quest-pulse jam-quest-cta' : ''")
+    expect(src).toContain("pulseTarget?.type === 'submit' ? 'border-foreground' : 'border-background'")
   })
 })
 

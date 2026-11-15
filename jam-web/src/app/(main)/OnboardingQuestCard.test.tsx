@@ -225,6 +225,18 @@ describe('JAM! 시작하기 카드 — 연출 CTA', () => {
     expect(render(demo(1, 'bag'))).toContain('self-start rounded-full jam-quest-pulse')
   })
 
+  it('연출 CTA 줄에는 jam-quest-pulse와 jam-quest-cta가 함께 있고 건너뛰기에는 퍼플 클래스가 없다 (티켓 20261115_1804)', () => {
+    for (const html of [render(demo(0, 'sync')), render(demo(1, 'bag'))]) {
+      expect(html).toContain('self-start rounded-full jam-quest-pulse')
+      expect(html).toMatch(/class="flex jam-quest-cta self-start rounded-full jam-quest-pulse"/)
+      // 퍼플 면 클래스는 CTA 줄에 한 번뿐이다 — 건너뛰기 버튼이 있는 목록 쪽에는 없다
+      expect(html.match(/jam-quest-cta/g)).toHaveLength(1)
+      const list = html.slice(html.indexOf('<ol'), html.indexOf('</ol>'))
+      expect(list).not.toContain('jam-quest-cta')
+      expect(list).not.toContain('jam-quest-pulse')
+    }
+  })
+
   it('옛 «시작하기» 버튼 문구는 사전에 없다', () => {
     expect(d.onboardingQuest).not.toHaveProperty('startButton')
   })
@@ -302,6 +314,15 @@ describe('JAM! 시작하기 카드 — 실제 구역이 위로 올라온 카드(
       expect(buttonTexts(html), name).toHaveLength(1)
       expect(html, name).not.toContain('jam-quest-pulse')
       expect(html, name).toContain('py-[9px]') // size sm(44px)
+    }
+  })
+
+  it('실제 구역 CTA 줄에는 jam-quest-cta만 있고 펄스는 없다 — 면만 퍼플이다 (티켓 20261115_1804, 채원 판정 20261021_1248 유지)', () => {
+    for (const [name, state] of REAL_STATES) {
+      const html = render(state, 'runner')
+      expect(html, name).toMatch(/class="flex jam-quest-cta"/)
+      expect(html.match(/jam-quest-cta/g), name).toHaveLength(1)
+      expect(html, name).not.toContain('jam-quest-pulse')
     }
   })
 

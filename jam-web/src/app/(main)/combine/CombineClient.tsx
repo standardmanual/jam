@@ -1247,14 +1247,17 @@ export default function CombineClient({
               aria-describedby={pendingBlocked ? 'combine-pending-note' : undefined}
               className={[
                 'w-full max-w-[220px] py-4 rounded-full bg-foreground text-background text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2',
-                pulseTarget?.type === 'submit' ? 'jam-quest-pulse' : '',
+                pulseTarget?.type === 'submit' ? 'jam-quest-pulse jam-quest-cta' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
             >
               {/* 아이콘은 없다 — 로딩이 아닐 때는 글자만(티켓 20261112_1627, 캔버스 확정). 로딩 스피너는 그대로다 */}
               {loading && (
-                <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
+                // 퀘스트 펄스 중에는 버튼 면이 퍼플(jam-quest-cta)이라 흰 스피너가 안 보인다(대비 약 1.4:1) — 그때만 검정으로 바꾼다(티켓 20261115_1804)
+                <span
+                  className={`w-4 h-4 border-2 ${pulseTarget?.type === 'submit' ? 'border-foreground' : 'border-background'} border-t-transparent rounded-full animate-spin`}
+                />
               )}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>

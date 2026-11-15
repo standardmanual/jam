@@ -674,16 +674,16 @@
 
 /* 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스(티켓 20260928_1752, 상위 20260927_2123 Q1) — 진행
    중인 퀘스트 카드에서 지금 눌러야 할 CTA pill 둘레에 브랜드 강조색 box-shadow가 0 → 10px로
-   번지며 사라지는 반복 애니메이션. 색은 리터럴 rgba 대신 color-mix로 --link를 직접
-   참조한다 — --link가 바뀌면 자동 반영된다. 1단계(홈 카드 ①·②)에서 시작해, 결정 7(단계별 대상 하나에만)에 따라
+   번지며 사라지는 반복 애니메이션. 색은 리터럴 rgba 대신 color-mix로 --jam-purple을 직접
+   참조한다(티켓 20261115_1804, 이전에는 --link) — --jam-purple이 바뀌면 자동 반영된다. 1단계(홈 카드 ①·②)에서 시작해, 결정 7(단계별 대상 하나에만)에 따라
    Q2~Q4(티켓 20260928_1753~1755)가 각 단계의 「지금 눌러야 할 곳」 한 칸에 재사용한다.
    TopNav 동기화 버튼·하단 탭 아이콘·퀘스트 이후 카드(③·④)에는 붙이지 않는다. */
 @keyframes jam-quest-pulse {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--link) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--jam-purple) 55%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 10px color-mix(in srgb, var(--link) 0%, transparent);
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--jam-purple) 0%, transparent);
   }
 }
 .jam-quest-pulse {
@@ -691,6 +691,20 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .jam-quest-pulse { animation: none; }
+}
+
+/* 온보딩 퀘스트 「지금 눌러야 할 곳」 버튼 면(티켓 20261115_1804) — 퍼플 면 + --foreground 글자(대비 약 8:1,
+   --snow는 퍼플 위 약 1.4:1이라 쓰지 않는다). 퍼플 면은 이 한 곳에서만 정의한다.
+   - 래퍼에 붙이면 직계 자식 button만 칠한다(`> button`). 후손 전체로 넓히면 BadgeRevealOverlay 안 버튼까지 칠해진다.
+   - button 자신에 붙여도 된다(`:is(button)`, 믹스하기).
+   - @layer 밖이라 Tailwind utilities 레이어(Button의 bg-accent·bg-background-inverse·text-*·hover:*)를 소스 순서와
+     무관하게 이긴다. transform·opacity는 건드리지 않아 active:scale-95와 disabled 흐림은 그대로다.
+   - border-color만 transparent로 둬 Button의 border 두께를 유지한다. 색 전환 애니메이션은 걸지 않는다. */
+.jam-quest-cta:is(button),
+.jam-quest-cta > button {
+  background-color: var(--jam-purple);
+  color: var(--foreground);
+  border-color: transparent;
 }
 
 /* 카드 전체 눌림(티켓 20261001_1204, 상위 20260930_1453 b0) — 카드 래퍼(`<a>`/`Link`는 display:block이어야
