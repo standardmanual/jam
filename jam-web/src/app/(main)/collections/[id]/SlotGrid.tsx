@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import { FIRST_SCREEN_GRID_COUNT } from '@/lib/imageSrc'
 import Button from '@/components/ui/Button'
 import SlotActionPill from './SlotActionPill'
 import SlotCircleButton from '@/components/ui/SlotCircleButton'
@@ -468,7 +469,7 @@ export default function SlotGrid({
       )}
 
       <div className="grid grid-cols-3 gap-2">
-        {badgeSlots.map((badgeSlot) => {
+        {badgeSlots.map((badgeSlot, index) => {
           const { badge, candidates, slot } = badgeSlot
           const cellKey = cellKeyOf(badgeSlot)
           const isSlotted = slot != null
@@ -491,6 +492,7 @@ export default function SlotGrid({
               className="w-full"
               name={badge.name}
               imageUrl={badge.image_url}
+              eager={index < FIRST_SCREEN_GRID_COUNT}
               // 등급이 없는 상태의 칸은 칩을 그리지 않는다: `null`을 넘기면 `BadgeGridCard`가 내부에서
               // `rarity ?? undefined`를 `RarityBadge`에 넘기고, `RarityBadge`는 undefined를 Common으로 보아
               // 아무것도 그리지 않는다. 이 동작에 기대고 있으니 `RarityBadge`의 Common 규약을 바꾸면 여기도 확인한다.

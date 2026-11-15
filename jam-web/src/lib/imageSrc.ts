@@ -103,6 +103,34 @@ export function isOptimizableImageSrc(src: string | null | undefined): boolean {
   }
 }
 
+/** 그리드(3열)에서 첫 화면으로 보는 칸 수 — 3열 × 4행. 이 앞 칸은 지연 로딩을 끈다(`SafeImage eager`, 티켓 20261115_1237) */
+export const FIRST_SCREEN_GRID_COUNT = 12
+/** 지점 카드 갤러리(3열)의 첫 화면 칸 수 — 3열 × 2행 */
+export const FIRST_SCREEN_GALLERY_COUNT = 6
+
+/**
+ * `/badges/`로 시작하는 내부 정적 파일 경로인지 (티켓 20261115_1237).
+ * 이 경로는 변환 주소(`/_next/image`)를 거치지 않고 원래 주소로 직접 받는다 — 변환 응답은
+ * `max-age=0`이라 매번 재검증하지만, 직접 응답은 next.config의 `headers()`가 긴 캐시를 붙인다.
+ */
+export function isDirectStaticBadgeSrc(src: string | null | undefined): boolean {
+  const value = src?.trim()
+  if (!value) return false
+  return value.startsWith('/badges/')
+}
+
+/**
+ * 카드(`SafeImage`)가 실제로 요청하는 주소를 만든다.
+ * 정적 파일 배지와 최적화할 수 없는 주소는 그대로, 나머지는 `/_next/image?url=…&w=…&q=75`.
+ * `w`는 next 기본 폭(deviceSizes + imageSizes)에 있는 값이어야 한다 — 없으면 `/_next/image`가 400을 돌려준다.
+ */
+export function optimizedImageUrl(src: string | null | undefined, width: number): string | null {
+  const value = src?.trim()
+  if (!value) return null
+  if (isDirectStaticBadgeSrc(value) || !isOptimizableImageSrc(value)) return value
+  return `/_next/image?url=${encodeURIComponent(value)}&w=${width}&q=75`
+}
+
 /**
  * 슬롯 점선 외곽선(`SlotOutline`)이 윤곽을 추적할 이미지 주소 (티켓 20261112_1627).
  *
@@ -116,8 +144,5 @@ export const SLOT_OUTLINE_TRACE_WIDTH = 256
 export const SLOT_OUTLINE_TRACE_QUALITY = 75
 
 export function slotOutlineTraceSrc(src: string | null | undefined): string | null {
-  const value = src?.trim()
-  if (!value) return null
-  if (!isOptimizableImageSrc(value)) return value
-  return `/_next/image?url=${encodeURIComponent(value)}&w=${SLOT_OUTLINE_TRACE_WIDTH}&q=${SLOT_OUTLINE_TRACE_QUALITY}`
+  return optimizedImageUrl(src, SLOT_OUTLINE_TRACE_WIDTH)
 }

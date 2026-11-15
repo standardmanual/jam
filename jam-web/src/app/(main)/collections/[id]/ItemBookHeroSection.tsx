@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { MagicBookIcon } from '@/components/ui/icons'
+import SafeImage from '@/components/SafeImage'
 import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
@@ -96,10 +97,12 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
         <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
           {book.image_url ? (
             <div className="w-[200px] h-[200px] flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <SafeImage
                 src={book.image_url}
                 alt={book.name}
+                width={200}
+                height={200}
+                eager
                 className="w-full h-full object-contain"
               />
             </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CLUSTER_ZOOM_THRESHOLD } from '@/lib/poi/badge-clustering'
 import { d } from '@/lib/i18n'
+import { optimizedImageUrl } from '@/lib/imageSrc'
 import { LocateIcon } from '@/components/ui/icons'
 import { dropMarkerGlyphSvg } from '@/components/map/dropMarkerGlyph'
 
@@ -194,6 +195,8 @@ export function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; 
 
 /** 개별 체크인 배지 마커의 기준 지름(px) — 드랍/픽업 지점 서클(기본 24px)과 동일하게 맞춘다 */
 const BADGE_MARKER_SIZE = 24
+/** 마커 그림을 받는 변환 폭. 마커 24px에 줌 배율·3배 화면을 덮는 next 기본 폭 하나로 고정해 변환본이 늘지 않게 한다(티켓 20261115_1237) */
+const BADGE_MARKER_IMAGE_WIDTH = 128
 /**
  * 체크인 배지 마커를 지점 서클 위로 띄우는 기준 수직 오프셋(px).
  * 드랍/픽업 서클 반경(기본 24px 기준 12px) + 여유 간격(4px).
@@ -245,8 +248,9 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
   const filter = earned ? 'none' : 'grayscale(1)'
   const opacity = earned ? 1 : 0.7
   const safeName = escapeHtml(name)
-  const inner = imageUrl
-    ? `<img src="${escapeHtml(imageUrl)}" alt="${safeName}" style="width:100%;height:100%;object-fit:contain;" />`
+  const markerSrc = optimizedImageUrl(imageUrl, BADGE_MARKER_IMAGE_WIDTH)
+  const inner = markerSrc
+    ? `<img src="${escapeHtml(markerSrc)}" alt="${safeName}" style="width:100%;height:100%;object-fit:contain;" />`
     : `<span style="font-size:13px;line-height:1;color:var(--muted);">?</span>`
 
   const badge = `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`

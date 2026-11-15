@@ -92,6 +92,8 @@ export interface BadgeGridCardProps {
    * 흰 면 위 대비가 약 2.5:1로 낮다 — 비활성 칸이라는 뜻이고 기본 false라 다른 화면은 그대로다.
    */
   nameMuted?: boolean
+  /** true = 썸네일의 지연 로딩을 끈다. 그리드 앞 칸(첫 화면)에 쓴다 (티켓 20261115_1237). 기본 false */
+  eager?: boolean
   /**
    * 방문 횟수. 2 이상이면 이름 아래, 등급 칩 자리에 «×N» 칩을 그린다(체크인 배지 목록, 2026-11-09 사용자 지시).
    * 1회는 칩을 그리지 않는다(사용자 지시). 썸네일 모서리의 «×N» 필(`count`)과 다른 표현이다 — 이쪽은 등급 칩과 같은 크기(md)의 칩이다.
@@ -147,6 +149,7 @@ export default function BadgeGridCard({
   highlighted = false,
   locked = false,
   nameMuted = false,
+  eager = false,
   visitCount = null,
   showCommonChip = false,
   chipGray = false,
@@ -204,6 +207,7 @@ export default function BadgeGridCard({
                 alt={name}
                 width={56}
                 height={56}
+                eager={eager}
                 className="w-full h-full object-contain p-1"
                 fallback={<MedalIcon className="w-6 h-6 text-muted" />}
               />
@@ -260,6 +264,7 @@ export default function BadgeGridCard({
                 alt={name}
                 width={90}
                 height={90}
+                eager={eager}
                 className="w-full h-full object-contain p-1"
                 fallback={<MedalIcon className="w-10 h-10 text-muted" />}
               />

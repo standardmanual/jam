@@ -65,6 +65,37 @@ describe('SafeImage 계약 — 미등록 호스트', () => {
   })
 })
 
+/* 티켓 20261115_1237 — 첫 화면 분량은 지연 로딩을 끄고, 정적 파일 배지는 변환 주소를 거치지 않는다 */
+describe('SafeImage 계약 — eager·정적 파일 배지', () => {
+  it('기본은 지연 로딩, eager면 지연 로딩이 아니다 (next/image)', () => {
+    expect(renderToStaticMarkup(<SafeImage src={REGISTERED} alt="" width={40} height={40} />)).toContain('loading="lazy"')
+    const eager = renderToStaticMarkup(<SafeImage src={REGISTERED} alt="" width={40} height={40} eager />)
+    expect(eager).not.toContain('loading="lazy"')
+  })
+
+  it('eager는 일반 <img> 경로에서도 loading="eager"', () => {
+    expect(renderToStaticMarkup(<SafeImage src={UNREGISTERED} alt="" width={40} height={40} eager />)).toContain('loading="eager"')
+    expect(renderToStaticMarkup(<SafeImage src={UNREGISTERED} alt="" width={40} height={40} />)).toContain('loading="lazy"')
+  })
+
+  it('정적 파일 배지는 /_next/image를 거치지 않고 원래 주소로 요청한다', () => {
+    const html = renderToStaticMarkup(<SafeImage src="/badges/poi/a.png" alt="" width={40} height={40} />)
+    expect(html).toContain('src="/badges/poi/a.png"')
+    expect(html).not.toContain('/_next/image')
+  })
+
+  it('저장소 그림은 /_next/image를 거친다', () => {
+    expect(renderToStaticMarkup(<SafeImage src={REGISTERED} alt="" width={40} height={40} />)).toContain('/_next/image')
+  })
+
+  it('BadgeGridCard eager가 썸네일에 전달된다', () => {
+    const lazy = renderToStaticMarkup(<BadgeGridCard name="a" imageUrl={REGISTERED} rarity="common" href="/b/1" />)
+    const eager = renderToStaticMarkup(<BadgeGridCard name="a" imageUrl={REGISTERED} rarity="common" href="/b/1" eager />)
+    expect(lazy).toContain('loading="lazy"')
+    expect(eager).not.toContain('loading="lazy"')
+  })
+})
+
 describe('미등록 호스트 이미지 URL이어도 컴포넌트가 예외 없이 렌더된다', () => {
   it('BadgeGridCard (배지 목록·컬렉션 표지)', () => {
     const html = renderToStaticMarkup(<BadgeGridCard name="테스트 배지" imageUrl={UNREGISTERED} rarity="common" href="/badges/1" />)

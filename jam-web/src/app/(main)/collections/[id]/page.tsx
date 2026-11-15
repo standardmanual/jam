@@ -11,6 +11,7 @@ import type {
   InventoryItemRow,
   UserItemBookSlotRow,
 } from '@/types/database'
+import SafeImage from '@/components/SafeImage'
 import TopNav from '@/components/ui/TopNav'
 import { PinIcon, MagicBookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -414,10 +415,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                       style={{ background: 'var(--background-secondary)' }}
                     >
                       {checkinBadge.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <SafeImage
                           src={checkinBadge.image_url}
                           alt={checkinBadge.name}
+                          width={90}
+                          height={90}
                           className={`w-full h-full object-contain ${earned ? '' : 'grayscale opacity-40'}`}
                         />
                       ) : (
