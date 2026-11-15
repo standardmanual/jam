@@ -17,7 +17,6 @@ import {
   IconUserOff,
   IconPhoto,
   IconPhotoEdit,
-  IconTemplate,
   IconTag,
   IconDatabaseImport,
   IconBinaryTree,
@@ -104,8 +103,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '디자인',
     items: [
       { href: '/admin/badge-image', label: '체크인 배지', icon: IconPhoto },
-      { href: '/admin/activity-badge-image', label: '액티비티 배지', icon: IconPhotoEdit },
-      { href: '/admin/activity-badge-template', label: '배지 템플릿', icon: IconTemplate },
+      { href: '/admin/activity-badge-template', label: '액티비티 배지', icon: IconPhotoEdit },
       { href: '/admin/assets', label: '에셋', icon: IconShape },
       { href: '/admin/image-generator', label: '이미지 생성', icon: IconSparkles },
     ],

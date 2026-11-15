@@ -2,8 +2,6 @@
  * 액티비티 배지 이미지 생성기 — 검색 페이징·레벨형 대응 회귀 (티켓 20260905_0032 C-1)
  *
  * 지키는 것:
- *   ③ **레벨형 배지에 등급 기반 프리셋을 쓰지 않는다** — 프리셋은 «활동 종목 × 등급»
- *      조합표라 등급이 없는 배지에는 성립하지 않는다
  *   ④ **550종 규모에서 검색이 잘리지 않는다** — 예전의 「상한 50건 + truncated」로는
  *      상위 50건 밖의 배지에 도달할 수 없었다
  *
@@ -15,58 +13,6 @@ import {
   activityBadgeImageSearchTotalPages,
   parseActivityBadgeImageSearchParams,
 } from '../activityBadgeImageSearch'
-import {
-  DEFAULT_ACTIVITY_BADGE_BACKGROUND,
-  buildInitialActivityBadgeImageParams,
-} from '../activityBadgeImage'
-import { getBadgeBlobPreset } from '@/lib/badgeBlobPresets'
-
-describe('③ 레벨형 배지에는 등급 기반 프리셋을 쓰지 않는다', () => {
-  it('등급형은 활동 종목 × 등급 프리셋 4색을 채운다', () => {
-    const params = buildInitialActivityBadgeImageParams({
-      name: '언덕의 도전자',
-      description: '누적 300m',
-      rarity: 'epic',
-      activityTypes: ['hiking'],
-    })
-    expect(params.rarity).toBe('epic')
-    expect(params.background.colors).toEqual(getBadgeBlobPreset('hiking', 'epic'))
-  })
-
-  it('레벨형(등급 없음)은 프리셋을 적용하지 않고 기본 배경을 쓴다', () => {
-    const params = buildInitialActivityBadgeImageParams({
-      name: '밤의 보행자',
-      description: 'Lv.7',
-      rarity: null,
-      activityTypes: ['walking'],
-    })
-    expect(params.background).toEqual(DEFAULT_ACTIVITY_BADGE_BACKGROUND)
-    // 어떤 등급의 프리셋도 쓰지 않는다
-    for (const rarity of ['common', 'rare', 'epic', 'mystic'] as const) {
-      expect(params.background.colors).not.toEqual(getBadgeBlobPreset('walking', rarity))
-    }
-  })
-
-  it('레벨형의 저작 등급은 common이다 — 등급 칩을 그리지 않는다는 뜻', () => {
-    const params = buildInitialActivityBadgeImageParams({
-      name: '밤의 보행자',
-      description: 'Lv.7',
-      rarity: null,
-      activityTypes: ['walking'],
-    })
-    expect(params.rarity).toBe('common')
-  })
-
-  it('프리셋 표에 없는 종목(레거시 키)에는 프리셋을 쓰지 않는다 — 깨지지 않는다', () => {
-    const params = buildInitialActivityBadgeImageParams({
-      name: '레거시',
-      description: '설명',
-      rarity: 'rare',
-      activityTypes: ['road_running'],
-    })
-    expect(params.background).toEqual(DEFAULT_ACTIVITY_BADGE_BACKGROUND)
-  })
-})
 
 describe('④ 550종 규모에서 검색이 잘리지 않는다', () => {
   it('페이지를 넘기면 550종 전부에 도달한다', () => {

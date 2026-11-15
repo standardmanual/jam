@@ -81,13 +81,12 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(mostSpecificActiveItem('/admin/ops-settings')?.href).not.toBe('/admin/ops-inbox')
   })
 
-  it('디자인 그룹은 배지 이미지 생성 2종 + 에셋 + 이미지 생성(티켓 20261113_1132)을 포함하고 테마 컬러·쉐이더 랩·에셋 제너레이터·3D 로고 항목은 ' +
+  it('디자인 그룹은 체크인·액티비티(템플릿 제작 화면, 티켓 20261116_0809) 배지 + 에셋 + 이미지 생성(티켓 20261113_1132)을 포함하고 테마 컬러·쉐이더 랩·에셋 제너레이터·3D 로고 항목은 ' +
     '제거됐다(쉐이더 텍스트 생성은 티켓 20260913_0413, 쉐이더 랩은 티켓 20260925_1416에서 제거, ' +
     '에셋은 티켓 20261022_1318에서 에셋 제너레이터 기능을 통합, 3D 로고는 티켓 20261103_1738에서 에셋의 3D 모드로 통합)', () => {
     const design = NAV_GROUPS.find((g) => g.id === 'design')
     expect(design?.items.map((i) => i.href)).toEqual([
       '/admin/badge-image',
-      '/admin/activity-badge-image',
       '/admin/activity-badge-template',
       '/admin/assets',
       '/admin/image-generator',

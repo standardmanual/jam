@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { parseActivityBadgeImageParams } from '@/lib/admin/activityBadgeImage'
 import {
   ACTIVITY_BADGE_IMAGE_SEARCH_PAGE_SIZE,
   activityBadgeImageSearchRange,
@@ -88,7 +87,7 @@ export async function POST(req: NextRequest) {
     .order('level', { ascending: true, nullsFirst: true })
     .order('id')
     .range(from, to)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: '배지를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.' }, { status: 500 })
 
   const badges = ((data ?? []) as unknown as BadgeRow[]).map((row) => ({
     id: row.id,
@@ -100,7 +99,6 @@ export async function POST(req: NextRequest) {
     activityTypes: (row.activity_types ?? []) as ActivityType[],
     hasImage: Boolean(row.image_url),
     // 저작 파라미터가 남아 있으면 재편집으로 그대로 복원한다.
-    imageGenParams: parseActivityBadgeImageParams(row.image_gen_params),
     ...toStudioBadgeFields(row),
   }))
 
