@@ -109,19 +109,6 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     ticketId: '20261021_1247',
   },
   {
-    id: 'ch2-onboarding-quests',
-    chapter: 2,
-    chapterTitle: '가입, 트라이브, 온보딩',
-    title: '온보딩 실제 2단계 퀘스트',
-    type: 'code_constant',
-    currentSpec:
-      'Strava 첫 동기화 → 잠긴 아이템 배지 열기. 캡슐은 첫 동기화가 저절로 채워 열고 단계가 아님. 첫 캡슐의 첫 개체는 반드시 잠기고 필요 포인트 0으로 고정돼 포인트 없이 열림. 챕터 1 시작과 완료 배지 「JAM!」·100포인트는 이제 이 퀘스트가 아니라 가입 완료(트라이브 선택) 시점에 나감',
-    codeLocation: 'jam-web/src/lib/onboarding-quest/',
-    userExperience: '첫 동기화로 받은 캡슐에서 잠긴 배지를 열면 챕터 1이 시작돼요.',
-    basisDoc: '운영 로직 2.2절',
-    ticketId: '20261028_1738',
-  },
-  {
     id: 'ch2-chapter1-start',
     chapter: 2,
     chapterTitle: '가입, 트라이브, 온보딩',
