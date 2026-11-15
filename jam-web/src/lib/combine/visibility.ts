@@ -26,7 +26,7 @@
  */
 
 import { resolveGradeMode } from '@/lib/combine/gradeMode'
-import { RARITY_TIER } from '@/lib/rarity'
+import { RARITY_TIER } from '@/lib/rarityTier'
 import type { BadgeRarity } from '@/types/database'
 
 export interface RecipeReleaseInput {
