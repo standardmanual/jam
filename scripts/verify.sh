@@ -152,7 +152,14 @@ else
   for name in "${FAILED[@]}"; do
     if [ "$name" = "test" ] && [ -f "$LOG_PREFIX.test" ]; then
       echo "실패한 시험 파일:"
-      perl -pe 's/\e\[[0-9;]*m//g' "$LOG_PREFIX.test" | sed -n 's/^ *FAIL  *\([^ >]*\).*/\1/p' | awk '!seen[$0]++' | head -60 | sed 's/^/  - /'
+      CLEAN_TEST_LOG="$(perl -pe 's/\e\[[0-9;]*m//g' "$LOG_PREFIX.test")"
+      FAIL_FILES="$(printf '%s\n' "$CLEAN_TEST_LOG" | sed -n 's/^ *FAIL  *\([^ >]*\).*/\1/p' | awk '!seen[$0]++' | head -60)"
+      if [ -z "$FAIL_FILES" ]; then
+        # vitest의 FAIL 줄이 없으면 test:node(tsx로 파일마다 "→ 경로"를 찍고 첫 실패에서 멈춘다) 쪽 실패다.
+        # 마지막 "→ " 줄이 실패한 파일이다.
+        FAIL_FILES="$(printf '%s\n' "$CLEAN_TEST_LOG" | sed -n 's/^→ \(.*\)$/\1/p' | tail -1)"
+      fi
+      printf '%s\n' "$FAIL_FILES" | sed '/^$/d' | sed 's/^/  - /'
     fi
   done
   exit 1
