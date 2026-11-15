@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     leveled: isLeveledBadge(row),
     activityTypes: (row.activity_types ?? []) as ActivityType[],
     hasImage: Boolean(row.image_url),
-    // 저작 파라미터가 남아 있으면 재편집으로 그대로 복원한다.
+    // 템플릿 분류·값·계열 키와 배지에 저장된 템플릿 조정값을 함께 싣는다.
     ...toStudioBadgeFields(row),
   }))
 
