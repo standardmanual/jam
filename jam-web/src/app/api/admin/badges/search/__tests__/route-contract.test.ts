@@ -3,7 +3,7 @@
  *
  * `/admin/itembooks`의 "필수 액티비티 배지" 검색은 이 라우트를 그대로 쓴다
  * (`ItemBookForm.tsx` → `BadgeSearchSelect.tsx`). JAM! 카테고리 배지는 시뮬레이터·
- * activity-badge-image와 달리 **제외하지 않는다** — 게이트미션과 같은 정책으로, 검색
+ * activity-badge-image 검색과 달리 **제외하지 않는다** — 게이트미션과 같은 정책으로, 검색
  * 결과·라벨에 구분 표시만 붙여 정상 노출·선택 가능해야 한다(AC6). 이 라우트가
  * `admin_category`를 응답에서 빠뜨리면 `BadgeSearchSelect`가 구분 라벨을 붙일 재료 자체가
  * 없어진다.

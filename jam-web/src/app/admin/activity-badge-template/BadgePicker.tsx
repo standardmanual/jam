@@ -2,7 +2,7 @@
 
 /**
  * 배지 검색 카드와 결과 표 (표시 전용, 티켓 20261116_0555).
- * 옛 화면(activity-badge-image/page.tsx)의 검색 UI를 본보기로 옮겼다. 옛 화면은 7회차에서 지우므로 고치지 않는다.
+ * 옛 화면(activity-badge-image)의 검색 UI를 본보기로 옮겼다. 옛 화면은 2026-11-16에 지웠다(지금은 이 화면으로 보내는 페이지만 남음).
  */
 import { IconCircleX, IconSearch } from '@tabler/icons-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'

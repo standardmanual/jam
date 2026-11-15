@@ -142,8 +142,8 @@ function ReadyPreview({
             <AlertTitle className={WRAP}>등록하지 못한 배지</AlertTitle>
             <AlertDescription>
               <ul className={`space-y-1 ${WRAP}`}>
-                {failures.map((f) => (
-                  <li key={f.name}>
+                {failures.map((f, index) => (
+                  <li key={index}>
                     {f.name}: {f.error}
                   </li>
                 ))}

@@ -221,9 +221,9 @@ export interface BadgeRow {
    *  전체 배경 레이어용인 위 4필드와 렌더링 지점이 다르다 — `lib/blobAnimation.ts` 참조
    *  (20260901_1944) */
   background_animation: Record<string, unknown> | null
-  /** 어드민 액티비티 배지 이미지 생성기(/admin/activity-badge-image)가 image_url을 구울 때 쓴
-   *  저작 파라미터(jsonb). 재편집용이며 배경의 정지 위상(phase)이 반드시 들어 있다.
-   *  null이면 이 도구로 구운 이미지가 아니다 — `lib/admin/activityBadgeImage.ts` 참조
+  /** 어드민 액티비티 배지 제작 화면(/admin/activity-badge-template)이 image_url을 구울 때 쓴
+   *  저작 파라미터(jsonb). 재편집용이다. 옛 생성기(2026-11-16 삭제)가 남긴 값도 있어 kind가
+   *  다르면 새 화면은 조정값으로 읽지 않는다 — `parseTemplateBadgeParams` 참조
    *  (20260902_1613) */
   image_gen_params: Record<string, unknown> | null
   /** 배지 대표 이미지(image_url) 제작 경로(마이그레이션 186, 티켓 20260924_2200).

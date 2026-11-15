@@ -9,7 +9,7 @@ import {
  *
  * `/api/admin/shader-text/generate`(배지 전용)가 확립한 "Storage 업로드 -> getPublicUrl() +
  * 캐시 무효화 쿼리 -> 대상 레코드 update" 흐름을 배지/미션/컬렉션(아이템북) 3종 신규 적용
- * 라우트가 공유하도록 뺐다. 기존 3개 생성 도구(activity-badge-image, badge-image, shader-text)는
+ * 라우트가 공유하도록 뺐다. 기존 생성 도구(badge-image, shader-text)는
  * 각자 인라인 구현을 그대로 유지한다 - 이 함수로 리팩터링하는 것은 이 티켓 범위 밖이다.
  *
  * 대상 테이블(badges/missions/item_books) 모두 id 컬럼이 id, 이미지 컬럼이 image_url로

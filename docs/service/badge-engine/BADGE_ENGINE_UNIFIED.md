@@ -92,7 +92,7 @@ code:
 > 아니라 이 컬럼 하나로 한다(`badge-labels.ts`의 `isJamCategoryBadge`). 배지 목록 필터·
 > 계열관리(종목·조건지표 칸)·게이트미션(계열 선택 — family_key 없이 `#name:` 폴백 키로
 > 선택 가능하게 함)·아이템북(검색 결과 구분 표시)·시뮬레이터(`evaluateBadgesDetailed`
-> 후보 조회에서 제외)·activity-badge-image(배경 이미지 검색 후보에서 제외) 6개 화면에
+> 후보 조회에서 제외)·액티비티 배지 제작 화면의 검색(`/api/admin/activity-badge-image/search`, 후보에서 제외) 6개 화면에
 > 반영 — 티켓 20260910_2055)
 >
 > 이전: 2026-09-10 (사용량 배지(팔로워·팔로잉·일일동기화) + 반복 획득(`repeat_count`)
@@ -407,7 +407,7 @@ KST 날짜다(`timeBands.ts`의 `kstDateKeyOfStart`). **체크인만 한 날은 
 
 **어드민 분류는 `admin_category='jam'`(마이그레이션 156, 티켓 20260910_2055)** — 위
 평가 로직과는 별개로, 어드민이 이 배지들을 목록 필터·계열관리·게이트미션·아이템북·
-시뮬레이터·activity-badge-image 6개 화면에서 구분·관리하기 위한 순수 분류 컬럼이다.
+시뮬레이터·액티비티 배지 제작 화면 검색 6개 화면에서 구분·관리하기 위한 순수 분류 컬럼이다.
 체크인 배지 전용인 `category`(지점 카테고리, `poi_categories` FK)와는 완전히 별개 컬럼 —
 이름이 비슷하다고 섞어 쓰지 않는다. 판별은 `badge-labels.ts`의 `isJamCategoryBadge()`가
 단일 출처다.
@@ -424,7 +424,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
   자체에는 `'jam'`을 합치지 않고, `BadgesClient.tsx` 내부의 필터 전용 타입으로만 좁혔다.
   배지 트리(`/badges/tree`)는 이 변경 대상이 아니다 — 여전히 미노출.
 - 알려진 잔여 이슈: `utils.ts`의 `ACTIVITY_TYPE_LABELS`가 배지 메뉴 전용이 아니라
-  `/admin/activity-badge-image`와 공유하는 맵이라, JAM! 라벨 추가가 그 화면의 종목 검색
+  `/admin/activity-badge-template`(옛 `/admin/activity-badge-image`)과 공유하는 맵이라, JAM! 라벨 추가가 그 화면의 종목 검색
   드롭다운에도 새어 들어간다(검색 API가 이미 `admin_category='jam'`을 제외해 선택해도
   결과는 0건 — 기능 오작동은 없음). 정리는 후속 티켓([20260910_2316](../../tickets/p3-low/20260910_2316_UI_ACTIVITY_TYPE_LABELS공유모듈-JAM라벨오염.md)) 참고.
 

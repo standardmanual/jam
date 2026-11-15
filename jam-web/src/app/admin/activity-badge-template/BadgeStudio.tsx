@@ -2,7 +2,7 @@
 
 /**
  * «배지 만들기» 탭: 배지 검색 → 선택 → 분류의 템플릿 위에 이름·값 미리보기 (티켓 20261116_0555).
- * 검색은 기존 POST /api/admin/activity-badge-image/search를 쓴다. 색·글자 조정은 20261116_0653, 등록은 20261116_0748.
+ * 검색은 기존 POST /api/admin/activity-badge-image/search를 쓴다. 색·글자 조정은 20261116_0653, 등록은 20261116_0748, 메뉴 연결과 옛 화면 삭제는 20261116_0809.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'

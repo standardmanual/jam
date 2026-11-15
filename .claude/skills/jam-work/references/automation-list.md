@@ -47,7 +47,7 @@
 | `simulator` | 혜린·민지 | O | — (읽기 전용 검증) |
 | `abusing`, `users` | 카즈하 | O | **금지** (제재·변경은 사용자) |
 | `strava-backfill` | 카즈하 | O | 승인 후 O |
-| `badge-image`, `activity-badge-image`, `upload-image` | 카리나 (`/jam-img`) | O | 기존 파이프라인 |
+| `badge-image`, `upload-image` | 카리나 (`/jam-img`) | O | 기존 파이프라인 |
 
 ## Slack 채널 (2026-09-18 생성, 티켓 20260918_1154)
 

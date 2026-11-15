@@ -331,7 +331,7 @@ code:
 - **드랍 지도 미리 받기(티켓 20261115_1455)**: 드랍 지도(`DropsClient`)에서 지점 목록이 도착하면 한가한 시점(`requestIdleCallback`, 없으면 2초 뒤)에 `in_drop_range`이고 `available_drops_count`가 1 이상인 지점을 가까운 순으로 최대 3곳 골라(`pickWarmupPois`, `jam-web/src/lib/poi/dropMapWarmup.ts`) `/api/drops/poi/:id`의 `badge_image_url`을 받는다. 주소는 위 «주소 규칙»과 같고, 받기는 인벤토리 미리 받기와 같은 공용 함수(`jam-web/src/lib/warmImages.ts`, 6장씩 낮은 우선순위)를 쓴다. 지도 화면이 떠 있는 동안 이미 부른 지점은 다시 부르지 않고 합쳐 9곳을 넘기지 않는다. `saveData`가 켜져 있으면 하지 않고, 실패해도 화면에 영향이 없다. 응답은 `PoiCarouselModal`의 `dropsCache`에 넣지 않는다 — 그사이 다른 사람이 주워 갈 수 있어 목록은 카드가 열릴 때의 조회를 쓴다.
 - **올린 직후 예열(티켓 20261115_1620)**: 그림을 저장하면 서버가 화면이 쓰는 변환 주소를 한 번씩 요청해 변환 캐시에 넣어 둔다. 새 그림을 누군가 처음 볼 때 변환을 기다리지 않게 하려는 것이고, 화면 코드는 바뀌지 않는다.
   - **폭 네 개**: 96·256·384·640(`WARM_IMAGE_WIDTHS`, `jam-web/src/lib/images/warmImageVariants.ts`). 카드·작은 칸 96(1배)·256(2배), 시트 대표 그림 384, 배지 상세 대표 그림 640이다. `Accept: image/webp`로 요청하고, 정적 파일 배지·변환 대상이 아닌 주소는 요청하지 않는다. 요청마다 8초 제한이 있고 실패해도 던지지 않는다.
-  - **연결 지점**: 어드민 API 네 곳(`badge-image-generator/apply`, `badge-image/generate`, `activity-badge-image/generate`, `upload-image`의 이미지 파일)이 저장 직후 `after()`로 예열한다. 응답은 늦어지지 않는다. `jam-web/scripts/recraft/register-badge-images.js`는 DB 반영 뒤 `--warm-origin`(기본 `https://stage.j-a-m.app`)으로 예열한다.
+  - **연결 지점**: 어드민 API 세 곳(`badge-image-generator/apply`, `badge-image/generate`, `upload-image`의 이미지 파일)이 저장 직후 `after()`로 예열한다. 응답은 늦어지지 않는다. `jam-web/scripts/recraft/register-badge-images.js`는 DB 반영 뒤 `--warm-origin`(기본 `https://stage.j-a-m.app`)으로 예열한다.
   - **대상 출처**: 요청이 들어온 출처 하나다. staging과 프로덕션은 Vercel 프로젝트가 달라 변환 캐시가 따로다. 프로덕션은 JAM 2.0 출시 뒤 `jam-web/scripts/warm-badge-image-variants.mjs`(원본 주소 JSON 목록, `--origin`·`--dry-run`·`--concurrency`)로 기존 그림을 일괄 예열한다.
 
 ## 10. 제작 경로 표시
@@ -675,3 +675,9 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - 저장되는 값: 배지의 `image_url`, `image_gen_params`(조정값 `TemplateBadgeParams`), `image_source`(`'admin-generator'`, 도구 구분은 `image_gen_params.kind`).
 - 일괄 등록: 고른 배지의 `familyKey`로 검색 API를 불러 받은 단계 가운데 `templateClass`가 같은 것만 대상으로 삼는다. 지금 조정값 그대로 단계마다 이름·값만 바꿔 한 단계씩 차례로 등록하고(동시에 보내지 않는다), 실패해도 끝까지 간다. 끝나면 «{n}개 가운데 {ok}개를 등록했어요.»와 실패 목록을 보인다. 진행 중에는 등록 버튼·조정 패널·«선택»이 잠긴다. 대상이 없으면 대화상자 대신 알림을 띄운다.
 - 조정값 불러오기: 저장된 조정값이 있는 배지를 고르면 그 값으로 바꾸고 «이 배지에 저장된 조정값을 불러왔어요»를 보인다. 없으면 지금 조정값을 유지한다(17.6).
+
+### 17.8 메뉴 연결과 옛 생성기 삭제 (티켓 20261116_0809)
+- 어드민 «디자인» 메뉴의 «액티비티 배지»가 이 화면(`/admin/activity-badge-template`)을 연다. 개발 중에 따로 두었던 «배지 템플릿» 항목은 없앴다.
+- 옛 화면 `/admin/activity-badge-image`와 옛 등록 API `POST /api/admin/activity-badge-image/generate`는 2026-11-16에 없앴다. 옛 주소로 들어오면 이 화면으로 넘어가고, 옛 등록 API는 404다.
+- 옛 생성기로 등록한 이미지(`badges/activity/{id}.png`, `image_url`)와 `image_gen_params`의 옛 조정값은 그대로 남는다. 새 화면은 `kind`가 다른 값을 조정값으로 읽지 않는다.
+- 검색 API 주소(`/api/admin/activity-badge-image/search`)는 그대로다. 응답에서 `imageGenParams` 칸은 빠졌고, DB 오류 때 원문 대신 «배지를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.»를 돌려준다.
