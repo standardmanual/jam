@@ -620,3 +620,24 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - 한글 폰트는 파일 전체를 받는다(Noto Sans KR 700이 약 6.0MB). 용량을 줄이는 처리는 다음 단계다.
 - 틀 윗면(평평한 띠)은 폭이 0.0003보다 좁아지지 않도록 틀 모서리 둥글림이 줄어든다(줄면 사유가 경고로 나온다). 외곽선 폭과 틀 모서리 둥글림을 최솟값·최댓값 어느 조합으로 쓰든 A·M·J 모두 윗면에 납작한 삼각형이 생기지 않는 것을 시험(`jam-web/src/lib/logo-3d/__tests__/logo3dParamRange.test.ts`)으로 확인했다. 다만 슬라이더 중간값 일부 조합(예: A에서 외곽선 폭 0.013 × 틀 모서리 둥글림 0.006)에서는 윗면에 가는 삼각형이 남아 이음선이 보일 수 있다. 윗면 삼각분할이 긴 직선 띠의 중간 점을 지우는 것이 원인이라 별도 처리 대상이다.
 - 굵기는 100~900을 모두 고를 수 있지만 폰트마다 있는 굵기가 다르다. 없는 굵기를 고르면 오류 영역에 안내가 나온다.
+
+## 17. 액티비티 배지 템플릿 (티켓 20261116_0234, 상위 20261115_2353)
+
+분류별로 디자이너가 피그마에서 내보낸 SVG를 템플릿으로 저장하고, 제작 화면(다음 티켓)이 이름·값 글자를 바꿔 끼워 배지 이미지를 만든다. 이 절은 저장·정화·자리 읽기까지의 약속이다.
+
+### 17.1 표 `activity_badge_templates`
+- `class_key`(`metric`·`days`·`streak`·`count`, 기본키), `svg`(정화한 본문), `slots`(읽어 낸 자리 정보), `default_params`(색·글자 기본 조정값), `updated_by`(마지막으로 고친 운영자 이메일), `created_at`, `updated_at`. 마이그레이션은 티켓 20261115_2355.
+- 분류 이름은 `jam-web/src/lib/admin/activityBadgeTemplate/resolveTemplateText.ts`의 `BADGE_TEMPLATE_CLASS_LABEL`이 단일 원천이다.
+
+### 17.2 어드민 API (모두 어드민만, 아니면 403)
+- `GET /api/admin/activity-badge-templates`: `{ templates }`. 네 분류를 `metric`·`days`·`streak`·`count` 순서로 항상 돌려준다. 항목은 `{ classKey, label, svg, slots, updatedAt, updatedBy }`이고 등록 전이면 `svg`·`slots`·`updatedAt`·`updatedBy`가 `null`이다.
+- `PUT /api/admin/activity-badge-templates/[classKey]`, 본문 `{ svg }`: 정화한 SVG와 읽어 낸 자리를 `class_key` 기준으로 upsert한다. 응답은 `{ template, removed }`. 분류 오류, 빈 본문, 1,000,000바이트 초과, SVG로 읽지 못함, 이름·값 자리 없음, 자리가 글자가 아님은 400이고 쓰지 않는다.
+- `DELETE /api/admin/activity-badge-templates/[classKey]`: 그 분류의 템플릿을 지운다. 없어도 200, 분류 오류는 400.
+- 구현: `jam-web/src/lib/admin/activityBadgeTemplate/templateSvg.ts`(`sanitizeTemplateSvg`, `readTemplateSlots`).
+
+### 17.3 SVG 약속
+- 이름 글자의 레이어(요소) `id`는 `name`, 값 글자는 `value`로 한다. `text` 요소이거나 그 안에 첫 `text`가 든 `g`여야 한다.
+- 글자를 윤곽선(`path`)으로 바꾸지 않은 채 내보낸다. 윤곽선이면 저장을 거절한다.
+- 자리마다 `x`·`y`·`fontFamily`·`fontSize`·`fontWeight`·`fill`·`letterSpacing`·`textAnchor`·`transform`·자리 표시용 글자(`placeholder`)를 읽고, 없으면 `null`이다. 피그마는 가운데 정렬을 남기지 않아 정렬·위치 계산은 제작 화면에서 다룬다.
+- 정화 규칙: `script`·`foreignObject`·`iframe`·`object`·`embed`·`link`·`meta` 요소와, 내용에 `@import`나 `url(`이 든 `style` 요소를 걷어 낸다. `on`으로 시작하는 속성을 걷어 내고, `href`·`xlink:href`는 `#`이나 `data:image/`로 시작할 때만 남긴다. 걷어 낸 목록은 `removed`로 돌려준다.
+- 그리기: 화면은 템플릿 SVG를 문서에 직접 끼워 넣지 않고 이미지(`img`나 캔버스)로만 그린다.
