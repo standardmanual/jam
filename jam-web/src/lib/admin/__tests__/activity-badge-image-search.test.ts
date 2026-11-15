@@ -122,3 +122,12 @@ describe('④ 550종 규모에서 검색이 잘리지 않는다', () => {
     expect(parseActivityBadgeImageSearchParams({ q: ' 산책,왕(100%) ' }).q).toBe('산책 왕 100')
   })
 })
+
+describe('parseActivityBadgeImageSearchParams — familyKey (티켓 20261116_0728)', () => {
+  it('비어 있지 않은 글자만 읽고 아니면 null', () => {
+    expect(parseActivityBadgeImageSearchParams({ familyKey: 'run_5k' }).familyKey).toBe('run_5k')
+    expect(parseActivityBadgeImageSearchParams({ familyKey: '  ' }).familyKey).toBeNull()
+    expect(parseActivityBadgeImageSearchParams({ familyKey: 3 }).familyKey).toBeNull()
+    expect(parseActivityBadgeImageSearchParams({}).familyKey).toBeNull()
+  })
+})

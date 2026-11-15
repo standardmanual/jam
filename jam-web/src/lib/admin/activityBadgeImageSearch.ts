@@ -30,6 +30,8 @@ export interface ActivityBadgeImageSearchParams {
   rarity: BadgeRarity | null
   activityType: string | null
   kind: ActivityBadgeImageSearchKind | null
+  /** 같은 계열(`family_key`)만 좁힌다 */
+  familyKey: string | null
   /** 1 이상의 정수 */
   page: number
 }
@@ -59,10 +61,12 @@ export function parseActivityBadgeImageSearchParams(body: unknown): ActivityBadg
 
   const activityType = typeof raw.activityType === 'string' && raw.activityType ? raw.activityType : null
 
+  const familyKey = typeof raw.familyKey === 'string' && raw.familyKey.trim() ? raw.familyKey.trim() : null
+
   const rawPage = Number(raw.page)
   const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1
 
-  return { q, rarity, activityType, kind, page }
+  return { q, rarity, activityType, kind, familyKey, page }
 }
 
 /** 페이지 번호 → PostgREST `range` 경계(0-based, 양 끝 포함) */

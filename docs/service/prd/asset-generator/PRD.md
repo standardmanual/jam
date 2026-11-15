@@ -633,6 +633,8 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - `GET /api/admin/activity-badge-templates`: `{ templates }`. 네 분류를 `metric`·`days`·`streak`·`count` 순서로 항상 돌려준다. 항목은 `{ classKey, label, svg, slots, updatedAt, updatedBy }`이고 등록 전이면 `svg`·`slots`·`updatedAt`·`updatedBy`가 `null`이다.
 - `PUT /api/admin/activity-badge-templates/[classKey]`, 본문 `{ svg }`: 정화한 SVG와 읽어 낸 자리를 `class_key` 기준으로 upsert한다. 응답은 `{ template, removed }`. 분류 오류, 빈 본문, 1,000,000바이트 초과, SVG로 읽지 못함, 이름·값 자리 없음, 자리가 글자가 아님은 400이고 쓰지 않는다. 본문 검증은 `validateTemplate.ts`의 `validateTemplateSvg`가 맡고, 등록 화면도 같은 함수를 브라우저에서 먼저 돌린다.
 - `DELETE /api/admin/activity-badge-templates/[classKey]`: 그 분류의 템플릿을 지운다. 없어도 200, 분류 오류는 400.
+- `POST /api/admin/activity-badge-templates/register`(티켓 20261116_0728), `multipart/form-data`(`badgeId`, `params` JSON 글자, `image` PNG): 브라우저가 구운 PNG를 WebP로 바꿔 `images` 버킷의 `badges/activity-template/{id}.png|webp`에 `upsert`로 올리고, `badges`의 `image_url`(WebP 주소 + `?v=`), `image_gen_params`(정리된 템플릿 조정값), `image_source`(`'admin-generator'`)를 고친다. 순서와 실패: 권한 없음 403 → 본문·배지 id·조정값(`parseTemplateBadgeParams`가 `null`)·PNG 아님·5MB 초과·긴 변이 1280px 아님은 400 → 액티비티 배지 없음 404 → 올리기·표 고치기 실패 500(DB 오류 원문은 싣지 않는다). 응답은 `{ badgeId, badgeName, imageUrl, originalUrl, webpBytes }`이고 응답 뒤에 변환본을 미리 만든다. `image_source`에 새 값을 더하지 않는 까닭은 CHECK 제약(마이그레이션 186) 때문이며, 어떤 도구인지는 `image_gen_params.kind`로 가린다.
+- `POST /api/admin/activity-badge-image/search`(기존 검색): 요청에 `familyKey`(비어 있지 않은 글자)를 주면 `family_key`가 같은 배지만 조회한다(다른 조건과 함께 걸 수 있다). 응답 항목에 `templateParams`가 더해진다: `image_gen_params`가 템플릿 조정값이면 정리된 값, 옛 생성기 값이거나 없으면 `null`.
 - 구현: `jam-web/src/lib/admin/activityBadgeTemplate/templateSvg.ts`(`sanitizeTemplateSvg`, `readTemplateSlots`).
 
 ### 17.3 SVG 약속

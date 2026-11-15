@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null)
   // 요청 해석·페이징 산술은 순수 모듈이 단일 출처다(테스트가 그 모듈을 직접 고정한다).
-  const { q, rarity, activityType, kind, page } = parseActivityBadgeImageSearchParams(body)
+  const { q, rarity, activityType, kind, familyKey, page } = parseActivityBadgeImageSearchParams(body)
 
   const supabase = createServiceClient()
 
@@ -76,6 +76,9 @@ export async function POST(req: NextRequest) {
   if (rarity) query = query.eq('rarity', rarity)
   // activity_types는 text[] — 배열에 해당 종목이 들어 있는 배지만 남긴다.
   if (activityType) query = query.contains('activity_types', [activityType])
+
+  // 같은 계열의 단계를 한꺼번에 불러올 때 쓴다(티켓 20261116_0728). 다른 조건과 함께 걸 수 있다.
+  if (familyKey) query = query.eq('family_key', familyKey)
 
   const { from, to } = activityBadgeImageSearchRange(page)
   // 이름이 중복되는 배지가 많아 이름만으로는 페이지 경계에서 순서가 흔들린다 —
