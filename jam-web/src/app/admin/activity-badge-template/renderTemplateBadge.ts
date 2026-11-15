@@ -35,17 +35,33 @@ function measureWidth(ctx: CanvasRenderingContext2D, text: string, letterSpacing
   return chars.reduce((sum, ch, i) => sum + ctx.measureText(ch).width + (i < chars.length - 1 ? letterSpacingPx : 0), 0)
 }
 
-/** 기준선에서 글자 상자 가운데까지의 거리(글자 크기 배수) */
+/**
+ * 기준선에서 `textBaseline: 'middle'` 선까지의 거리(글자 크기 배수).
+ * 같은 글자를 두 기준선으로 재서 잉크 윗변의 차이로 구한다. 글꼴 상자 값(fontBoundingBox)으로 어림하면
+ * 브라우저가 실제로 쓰는 가운데 선과 어긋난다(IBM Plex Sans KR 140px에서 6px, 카리나 실측 2026-11-16).
+ */
 function measureMiddleOffsetEm(ctx: CanvasRenderingContext2D, fontSize: number): number {
+  if (!(fontSize > 0)) return 0.35
   ctx.textBaseline = 'alphabetic'
-  const m = ctx.measureText('가')
-  if (m.emHeightAscent !== undefined && m.emHeightDescent !== undefined && fontSize > 0) {
-    return (m.emHeightAscent - m.emHeightDescent) / 2 / fontSize
+  const fromAlphabetic = ctx.measureText('가').actualBoundingBoxAscent
+  ctx.textBaseline = 'middle'
+  const fromMiddle = ctx.measureText('가').actualBoundingBoxAscent
+  ctx.textBaseline = 'alphabetic'
+  const offset = (fromAlphabetic - fromMiddle) / fontSize
+  return Number.isFinite(offset) ? offset : 0.35
+}
+
+/**
+ * 그릴 글자가 든 글꼴 조각까지 불러온다. 구글 폰트의 한글은 여러 조각으로 나뉘어 있어서,
+ * 글자를 주지 않고 불러오면 한글 조각이 오기 전에 그려져 다른 글꼴로 보인다.
+ */
+async function loadFontForText(font: TextLayerFont, text: string): Promise<void> {
+  if (typeof document === 'undefined' || !document.fonts || text === '') return
+  try {
+    await document.fonts.load(`${font.weight} 16px "${font.family}"`, text)
+  } catch {
+    // 실패해도 기본 글꼴로 그려지면 된다.
   }
-  if (m.fontBoundingBoxAscent !== undefined && m.fontBoundingBoxDescent !== undefined && fontSize > 0) {
-    return (m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2 / fontSize
-  }
-  return 0.35
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -86,16 +102,18 @@ export async function renderTemplateBadge(
     const resolved = resolveTemplateFont(slots[slotName])
     let font = resolved.font
     let fallback = resolved.fallback
+    const text = slotName === 'name' ? input.name : input.value
     if (!fallback) {
       try {
         await loadFontInBrowser(font)
+        await loadFontForText(font, text + (slots[slotName].placeholder ?? ''))
       } catch {
         font = { family: SYSTEM_DEFAULT_FONT.family, weight: font.weight }
         fallback = true
       }
     }
     if (fallback) result.fontFallbacks.push({ slot: slotName, requestedFamily: resolved.requestedFamily })
-    prepared.push({ slotName, text: slotName === 'name' ? input.name : input.value, font })
+    prepared.push({ slotName, text, font })
   }
   if (stale()) return result
 

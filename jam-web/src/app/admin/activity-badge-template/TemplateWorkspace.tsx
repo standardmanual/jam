@@ -19,10 +19,11 @@ export default function TemplateWorkspace({ initial }: { initial: TemplateItem[]
         <TabsTrigger value="studio">배지 만들기</TabsTrigger>
         <TabsTrigger value="templates">템플릿</TabsTrigger>
       </TabsList>
-      <TabsContent value="studio">
+      {/* 두 탭을 모두 붙여 둔다. 떼면 템플릿을 올리고 돌아왔을 때 검색과 고른 배지가 사라진다. */}
+      <TabsContent value="studio" forceMount className="data-[state=inactive]:hidden">
         <BadgeStudio templates={items} onGoToTemplates={() => setTab('templates')} />
       </TabsContent>
-      <TabsContent value="templates">
+      <TabsContent value="templates" forceMount className="data-[state=inactive]:hidden">
         <TemplateManager items={items} onItemsChange={setItems} />
       </TabsContent>
     </Tabs>

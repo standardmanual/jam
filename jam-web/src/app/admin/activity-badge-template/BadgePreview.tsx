@@ -66,11 +66,9 @@ function ReadyPreview({ badge, template }: { badge: StudioSearchBadge; template:
 
   return (
     <div className="space-y-3">
-      {failed ? (
-        <PreviewMessage>미리보기를 그리지 못했어요. 템플릿을 다시 올린 뒤 시도해 주세요.</PreviewMessage>
-      ) : (
-        <canvas ref={canvasRef} className="w-full max-w-[480px] h-auto rounded-md border" />
-      )}
+      {failed && <PreviewMessage>미리보기를 그리지 못했어요. 템플릿을 다시 올린 뒤 시도해 주세요.</PreviewMessage>}
+      {/* 실패해도 캔버스를 남겨 둔다. 지우면 템플릿을 다시 올렸을 때 다시 그릴 자리가 없다. */}
+      <canvas ref={canvasRef} className={failed ? 'hidden' : 'w-full max-w-[480px] h-auto rounded-md border'} />
       <dl className={`space-y-1 text-sm ${WRAP}`}>
         <div className="flex gap-2">
           <dt className="w-10 text-muted-foreground">이름</dt>
