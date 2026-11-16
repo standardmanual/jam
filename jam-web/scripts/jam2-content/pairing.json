@@ -193,7 +193,7 @@
         {"no":1,"name":"복원 전과 후의 사진 한 쌍","oldBadgeName":"빛바랜 즉석사진","basis":"이름 일치","confirm":false},
         {"no":2,"name":"일회용 카메라","oldBadgeName":"일회용 카메라 플래시 부품","basis":"이름 일치","confirm":false},
         {"no":3,"name":"현상액 병","oldBadgeName":"인화지 냄새","basis":"이름 일치","confirm":false},
-        {"no":4,"name":"다시사진 루페","oldBadgeName":"사진 속 모르는 사람","basis":"이름 일치","confirm":false},
+        {"no":4,"name":"복원 작업실 루페","oldBadgeName":"사진 속 모르는 사람","basis":"이름 일치","confirm":false},
         {"no":5,"name":"초점이 나간 필름","oldBadgeName":"초점이 나간 필름","basis":"이름 일치","confirm":false},
         {"no":6,"name":"다이어리에 붙어 있던 사진","oldBadgeName":"다이어리에 붙어있던 사진","basis":"이름 일치","confirm":false},
         {"no":7,"name":"오래된 앨범","oldBadgeName":"오래된 앨범 모서리","basis":"이름 일치","confirm":false},
@@ -389,14 +389,14 @@
         {"no":6,"name":"서지 않는 오뚝이","oldBadgeName":"모래놀이 플라스틱 삽","basis":"순서 짝","confirm":false},
         {"no":7,"name":"수리를 마친 로봇","oldBadgeName":"어린 시절의 향수","basis":"이름 일치","confirm":false},
         {"no":8,"name":"양철 비행기","oldBadgeName":"장난감 병정의 총","basis":"순서 짝","confirm":false},
-        {"no":9,"name":"고장 난 그대로인 한 대","oldBadgeName":"잃어버린 동심의 조각","basis":"이름 일치","confirm":false}
+        {"no":9,"name":"고장 난 양철 로봇","oldBadgeName":"잃어버린 동심의 조각","basis":"이름 일치","confirm":false}
       ]},
       {"no":6,"name":"분실물 센터 999","oldBookName":"분실물 센터 999","items":[
         {"no":1,"name":"입양 서약서","oldBadgeName":"분실물 센터 접수증","basis":"이름 일치","confirm":false},
         {"no":2,"name":"5장 넘게 붙은 서약서","oldBadgeName":"기억의 보관함 열쇠","basis":"이름 일치","confirm":false},
         {"no":3,"name":"빈 서약서","oldBadgeName":"999번 방의 문고리 조각","basis":"이름 일치","confirm":false},
         {"no":4,"name":"겹친 캡슐토이","oldBadgeName":"영원히 잃어버리지 않는 나침반","basis":"이름 일치","confirm":false},
-        {"no":5,"name":"2개가 된 한정판","oldBadgeName":"누군가의 가장 소중했던 기억","basis":"이름 일치","confirm":false},
+        {"no":5,"name":"한정판 엽서 2장","oldBadgeName":"누군가의 가장 소중했던 기억","basis":"이름 일치","confirm":false},
         {"no":6,"name":"동물 모형","oldBadgeName":"기억을 되찾은 자의 눈물","basis":"순서 짝","confirm":true},
         {"no":7,"name":"입양 클립보드","oldBadgeName":"차원을 넘나드는 먼지","basis":"순서 짝","confirm":false},
         {"no":8,"name":"입양 칸 선반","oldBadgeName":"환상의 아날로그 테이프","basis":"이름 일치","confirm":false},
@@ -411,13 +411,13 @@
         {"no":6,"name":"은색 볼체인","oldBadgeName":"알루미늄 캔 조각","basis":"이름 일치","confirm":false},
         {"no":7,"name":"비즈 꿴 가는 실","oldBadgeName":"둥지의 마른 나뭇가지","basis":"이름 일치","confirm":false},
         {"no":8,"name":"세상에 하나뿐인 열쇠고리","oldBadgeName":"구겨진 은박지","basis":"이름 일치","confirm":false},
-        {"no":9,"name":"아직 쓰지 않은 한 알","oldBadgeName":"철조망 파편","basis":"이름 일치","confirm":false}
+        {"no":9,"name":"남은 비즈 한 알","oldBadgeName":"철조망 파편","basis":"이름 일치","confirm":false}
       ]},
       {"no":8,"name":"열쇠고리를 단 가방","oldBookName":"생존 배낭의 밑바닥","items":[
         {"no":1,"name":"검은 가방","oldBadgeName":"구겨진 은박 보온 담요","basis":"순서 짝","confirm":true},
         {"no":2,"name":"아크릴 열쇠고리","oldBadgeName":"다 쓴 정수 알약","basis":"순서 짝","confirm":true},
         {"no":3,"name":"캐릭터 손거울","oldBadgeName":"닳아버린 구급상자","basis":"순서 짝","confirm":true},
-        {"no":4,"name":"2개가 된 인형","oldBadgeName":"먼지 쌓인 나침반","basis":"이름 일치","confirm":false},
+        {"no":4,"name":"똑같은 인형 2개","oldBadgeName":"먼지 쌓인 나침반","basis":"이름 일치","confirm":false},
         {"no":5,"name":"리본","oldBadgeName":"마지막 성냥개비","basis":"순서 짝","confirm":true},
         {"no":6,"name":"와펜","oldBadgeName":"바스라진 육포","basis":"순서 짝","confirm":true},
         {"no":7,"name":"파우치","oldBadgeName":"비상금 만원 지폐","basis":"순서 짝","confirm":true},
@@ -450,7 +450,7 @@
     {"name":"혼자들","collections":[
       {"no":1,"name":"고친 기계 번호","oldBookName":"결계 '섬데이' 돌파","items":[
         {"no":1,"name":"빨래 카트","oldBadgeName":"기적의 성취감 조각","basis":"순서 짝","confirm":false},
-        {"no":2,"name":"수리 중 펜","oldBadgeName":"게으름을 이긴 마법의 펜","basis":"이름 일치","confirm":false},
+        {"no":2,"name":"'수리 중' 펜","oldBadgeName":"게으름을 이긴 마법의 펜","basis":"이름 일치","confirm":false},
         {"no":3,"name":"손글씨 자석","oldBadgeName":"부서진 '내일'의 결계 조각","basis":"이름 일치","confirm":false},
         {"no":4,"name":"십자 드라이버","oldBadgeName":"떨리는 다리의 진동","basis":"순서 짝","confirm":false},
         {"no":5,"name":"손빗자루","oldBadgeName":"섬데이 탈출 티켓","basis":"순서 짝","confirm":false},
