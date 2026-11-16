@@ -11,9 +11,36 @@ import {
   layoutSlotText,
   toTextLayerInput,
   layoutTemplateContent,
+  offsetTextLayerInput,
   TEMPLATE_CONTENT_BOX_RATIO,
 } from '../composeTemplate'
 import { BOX_PX, CANVAS_PX } from '@/lib/admin/badgeImageGenerator/normalize'
+
+describe('offsetTextLayerInput', () => {
+  it('안쪽 상자의 퍼센트를 캔버스 전체의 퍼센트로 바꾼다', () => {
+    const base = {
+      content: '가', font: { family: 'Noto Sans KR', weight: 900 }, sizePct: 20, letterSpacing: 0, lineHeight: 1,
+      align: 'center' as const, color: '#000000', xPct: 50, yPct: 40, rotationDeg: 0, opacityPct: 100,
+      stageWidth: 500, stageHeight: 250,
+    }
+    const out = offsetTextLayerInput(base, { canvasWidth: 1000, canvasHeight: 1000, offsetX: 250, offsetY: 375, drawWidth: 500, drawHeight: 250 })
+    expect(out.stageWidth).toBe(1000)
+    expect(out.stageHeight).toBe(1000)
+    expect(out.xPct).toBeCloseTo(50, 6) // (250 + 250) / 1000
+    expect(out.yPct).toBeCloseTo(47.5, 6) // (375 + 100) / 1000
+    expect(out.sizePct).toBeCloseTo(5, 6) // 20% × min(500, 250) = 50px → 50 / 1000
+    expect(out.content).toBe('가')
+  })
+  it('여백이 없으면 위치와 크기가 그대로다', () => {
+    const base = {
+      content: '가', font: { family: 'Noto Sans KR', weight: 900 }, sizePct: 10, letterSpacing: 0, lineHeight: 1,
+      align: 'center' as const, color: '#000000', xPct: 30, yPct: 60, rotationDeg: 0, opacityPct: 100,
+      stageWidth: 800, stageHeight: 800,
+    }
+    const out = offsetTextLayerInput(base, { canvasWidth: 800, canvasHeight: 800, offsetX: 0, offsetY: 0, drawWidth: 800, drawHeight: 800 })
+    expect([out.xPct, out.yPct, out.sizePct]).toEqual([30, 60, 10])
+  })
+})
 
 describe('layoutTemplateContent', () => {
   it('이미지 생성 메뉴의 규격과 같은 비율이다', () => {

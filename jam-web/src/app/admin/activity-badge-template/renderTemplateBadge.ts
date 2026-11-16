@@ -17,6 +17,7 @@ import {
 import {
   layoutSlotText,
   layoutTemplateContent,
+  offsetTextLayerInput,
   parseLetterSpacingEm,
   resolveTemplateFont,
   stripSlotText,
@@ -247,25 +248,25 @@ export async function renderTemplateBadge(
     }
     if (layout.shrunk) result.shrunk.push(slotName)
     const middleOffsetEm = measureMiddleOffsetEm(ctx, styled.fontSize)
-    ctx.save()
-    ctx.translate(offsetX, offsetY)
     drawTextLayer(
       ctx as unknown as Canvas2DContextLike,
-      toTextLayerInput({
-        content: text,
-        font,
-        color: styled.fill,
-        letterSpacingEm,
-        layout,
-        baselineY: slot.y,
-        middleOffsetEm,
-        viewWidth,
-        viewHeight,
-        stageWidth: drawWidth,
-        stageHeight: drawHeight,
-      })
+      offsetTextLayerInput(
+        toTextLayerInput({
+          content: text,
+          font,
+          color: styled.fill,
+          letterSpacingEm,
+          layout,
+          baselineY: slot.y,
+          middleOffsetEm,
+          viewWidth,
+          viewHeight,
+          stageWidth: drawWidth,
+          stageHeight: drawHeight,
+        }),
+        { canvasWidth: width, canvasHeight: height, offsetX, offsetY, drawWidth, drawHeight }
+      )
     )
-    ctx.restore()
   }
   return result
 }

@@ -138,6 +138,28 @@ export interface TemplateContentLayout {
   drawHeight: number
 }
 
+/**
+ * 안쪽 상자(drawWidth×drawHeight) 기준으로 만든 글자 입력을, 캔버스 전체(canvasWidth×canvasHeight) 기준으로 바꾼다.
+ * `drawTextLayer`는 `setTransform`으로 위치를 절대 좌표로 정하기 때문에 `ctx.translate`로는 상자의 여백을 더할 수 없다.
+ * 그래서 위치와 크기를 퍼센트 단위에서 다시 계산한다.
+ */
+export function offsetTextLayerInput(
+  input: TextLayerRenderInput,
+  box: Pick<TemplateContentLayout, 'canvasWidth' | 'canvasHeight' | 'offsetX' | 'offsetY' | 'drawWidth' | 'drawHeight'>
+): TextLayerRenderInput {
+  const sizePx = (input.sizePct / 100) * Math.min(box.drawWidth, box.drawHeight)
+  const cx = box.offsetX + (input.xPct / 100) * box.drawWidth
+  const cy = box.offsetY + (input.yPct / 100) * box.drawHeight
+  return {
+    ...input,
+    stageWidth: box.canvasWidth,
+    stageHeight: box.canvasHeight,
+    sizePct: (sizePx / Math.min(box.canvasWidth, box.canvasHeight)) * 100,
+    xPct: (cx / box.canvasWidth) * 100,
+    yPct: (cy / box.canvasHeight) * 100,
+  }
+}
+
 /** 정사각형 캔버스 한가운데의 안쪽 상자에 그림을 맞춘다. 값을 반올림하지 않는다. */
 export function layoutTemplateContent(input: {
   viewWidth: number
