@@ -81,6 +81,16 @@ describe('검색 API 분류 필터', () => {
     expect(json.badges).toHaveLength(50)
   })
 
+  it('이미지가 있는 배지는 imageUrl을 싣고 없는 배지는 null이며 hasImage는 그대로다', async () => {
+    dbRows = [
+      { ...row(1, { single_distance_km: 5 }), image_url: 'https://cdn.example.com/b.png?v=3' },
+      row(2, { single_distance_km: 5 }),
+    ]
+    const json = await (await call({})).json()
+    expect(json.badges[0]).toMatchObject({ imageUrl: 'https://cdn.example.com/b.png?v=3', hasImage: true })
+    expect(json.badges[1]).toMatchObject({ imageUrl: null, hasImage: false })
+  })
+
   it('DB 오류면 500', async () => {
     dbError = { message: 'RAW' }
     const res = await call({ templateClass: 'metric' })

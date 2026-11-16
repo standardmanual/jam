@@ -96,6 +96,8 @@ export async function POST(req: NextRequest) {
     leveled: isLeveledBadge(row),
     activityTypes: (row.activity_types ?? []) as ActivityType[],
     hasImage: Boolean(row.image_url),
+    // 결과 표의 썸네일 주소(티켓 20261116_1640). 비어 있으면 null이다.
+    imageUrl: row.image_url || null,
     // 템플릿 분류·값·계열 키와 배지에 저장된 템플릿 조정값을 함께 싣는다.
     ...toStudioBadgeFields(row),
   })
