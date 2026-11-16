@@ -31,9 +31,7 @@ export function previewNotes(r: RenderTemplateBadgeResult): string[] {
     )
   }
   for (const s of r.shrunk) notes.push(`${SLOT_LABEL[s]}이 길어서 글자 크기를 줄였어요.`)
-  for (const s of r.skipped) {
-    notes.push(`${SLOT_LABEL[s]} 자리의 위치를 읽지 못해 글자를 그리지 못했어요. 템플릿을 다시 올려 주세요.`)
-  }
+  for (const s of r.skipped) notes.push(`${SLOT_LABEL[s]} 자리에 글자를 그리지 못했어요.`)
   return notes
 }
 
@@ -105,8 +103,8 @@ function ReadyPreview({
     <div className="grid gap-4 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
       <div className="space-y-3">
         {loadedNotice && <PreviewMessage>이 배지에 저장된 조정값을 불러왔어요</PreviewMessage>}
-        {failed && <PreviewMessage>미리보기를 그리지 못했어요. 템플릿을 다시 올린 뒤 시도해 주세요.</PreviewMessage>}
-        {/* 실패해도 캔버스를 남겨 둔다. 지우면 템플릿을 다시 올렸을 때 다시 그릴 자리가 없다. */}
+        {failed && <PreviewMessage>미리보기를 그리지 못했어요. 잠시 후 다시 시도해 주세요.</PreviewMessage>}
+        {/* 실패해도 캔버스를 남겨 둔다. 지우면 다시 그릴 자리가 없다. */}
         <canvas ref={canvasRef} className={failed ? 'hidden' : 'w-full max-w-[480px] h-auto rounded-md border'} />
         <dl className={`space-y-1 text-sm ${WRAP}`}>
           <div className="flex gap-2">
@@ -178,7 +176,6 @@ function ReadyPreview({
 export default function BadgePreview({
   badge,
   templates,
-  onGoToTemplates,
   params,
   onParamsChange,
   onParamsReset,
@@ -186,7 +183,6 @@ export default function BadgePreview({
 }: {
   badge: StudioSearchBadge | null
   templates: TemplateItem[]
-  onGoToTemplates: () => void
 } & AdjustProps &
   RegisterProps) {
   let body: React.ReactNode
@@ -203,14 +199,7 @@ export default function BadgePreview({
       )
     } else if (!template?.svg || !template.slots) {
       state = (
-        <div className="space-y-3">
-          <PreviewMessage>
-            {badge.templateClassLabel} 템플릿이 아직 없어요. 템플릿 탭에서 SVG를 올려 주세요.
-          </PreviewMessage>
-          <Button size="sm" variant="outline" onClick={onGoToTemplates}>
-            템플릿 탭으로 가기
-          </Button>
-        </div>
+        <PreviewMessage>{badge.templateClassLabel} 템플릿이 아직 준비되지 않았어요.</PreviewMessage>
       )
     } else {
       state = <ReadyPreview

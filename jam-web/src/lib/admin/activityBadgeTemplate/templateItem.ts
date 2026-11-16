@@ -1,8 +1,9 @@
 /**
- * 템플릿 API 두 라우트가 함께 쓰는 분류 목록과 응답 항목 모양 (티켓 20261116_0234).
+ * 제작 화면이 쓰는 분류 목록과 템플릿 항목 (티켓 20261116_1513). 템플릿은 코드(templates/)에 정의한다.
  */
-import type { TemplateSlots } from './templateSvg'
 import { BADGE_TEMPLATE_CLASS_LABEL, type BadgeTemplateClassKey } from './resolveTemplateText'
+import type { TemplateDefSlots } from './templateDef'
+import { getBadgeTemplateDef } from './templates'
 
 export const TEMPLATE_CLASS_KEYS: BadgeTemplateClassKey[] = ['metric', 'days', 'streak', 'count']
 
@@ -14,25 +15,13 @@ export interface TemplateItem {
   classKey: BadgeTemplateClassKey
   label: string
   svg: string | null
-  slots: TemplateSlots | null
-  updatedAt: string | null
-  updatedBy: string | null
+  slots: TemplateDefSlots | null
 }
 
-export interface TemplateRowLike {
-  svg: string
-  slots: unknown
-  updated_at: string
-  updated_by: string | null
-}
-
-export function toTemplateItem(classKey: BadgeTemplateClassKey, row: TemplateRowLike | null | undefined): TemplateItem {
-  return {
-    classKey,
-    label: BADGE_TEMPLATE_CLASS_LABEL[classKey],
-    svg: row?.svg ?? null,
-    slots: row ? (row.slots as TemplateSlots) : null,
-    updatedAt: row?.updated_at ?? null,
-    updatedBy: row?.updated_by ?? null,
-  }
+/** 네 분류를 정해진 순서로 돌려준다. 코드에 정의가 없는 분류는 svg와 slots가 null이다. */
+export function listTemplateItems(): TemplateItem[] {
+  return TEMPLATE_CLASS_KEYS.map((classKey) => {
+    const def = getBadgeTemplateDef(classKey)
+    return { classKey, label: BADGE_TEMPLATE_CLASS_LABEL[classKey], svg: def?.svg ?? null, slots: def?.slots ?? null }
+  })
 }

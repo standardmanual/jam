@@ -9,7 +9,8 @@ import {
   DEFAULT_TEMPLATE_BADGE_PARAMS,
   type TemplateBadgeParams,
 } from '@/lib/admin/activityBadgeTemplate/templateParams'
-import type { TemplateSlot, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import type { TemplateDefSlots } from '@/lib/admin/activityBadgeTemplate/templateDef'
+import type { TemplateSlot } from '@/lib/admin/activityBadgeTemplate/templateSvg'
 
 // Popover·Command는 서버 렌더 컨텍스트를 쓰므로 글꼴 고르기는 단순 태그로 바꾼다.
 vi.mock('../TemplateFontField', () => ({ default: () => <div>글꼴 고르기</div> }))
@@ -18,7 +19,7 @@ const slot = (): TemplateSlot => ({
   found: true, isText: true, x: 1, y: 2, fontFamily: 'Pretendard', fontSize: 48, fontWeight: null,
   fill: '#123B2E', letterSpacing: null, textAnchor: null, transform: null, placeholder: '가',
 })
-const slots: TemplateSlots = { viewBoxWidth: 1024, viewBoxHeight: 1024, name: slot(), value: slot() }
+const slots: TemplateDefSlots = { viewBoxWidth: 1024, viewBoxHeight: 1024, name: slot(), value: slot() }
 const colorful = [
   { color: '#FF0000', count: 3 },
   { color: '#0000FF', count: 1 },

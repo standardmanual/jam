@@ -1,17 +1,7 @@
-import { createServiceClient } from '@/lib/supabase/server'
-import { throwOnQueryError } from '@/lib/admin/queryError'
-import { TEMPLATE_CLASS_KEYS, toTemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
-import TemplateWorkspace from './TemplateWorkspace'
+import { listTemplateItems } from '@/lib/admin/activityBadgeTemplate/templateItem'
+import BadgeStudio from './BadgeStudio'
 
-export default async function AdminActivityBadgeTemplatePage() {
-  const supabase = createServiceClient()
-  const { data, error } = await supabase
-    .from('activity_badge_templates')
-    .select('class_key, svg, slots, updated_at, updated_by')
-  throwOnQueryError(error, 'activity-badge-template')
-  const rows = new Map((data ?? []).map((r) => [r.class_key, r]))
-  const items = TEMPLATE_CLASS_KEYS.map((key) => toTemplateItem(key, rows.get(key)))
-
+export default function AdminActivityBadgeTemplatePage() {
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
@@ -20,7 +10,7 @@ export default async function AdminActivityBadgeTemplatePage() {
           배지를 고르면 그 배지가 속한 분류의 템플릿에 이름과 값이 자동으로 들어가요
         </p>
       </div>
-      <TemplateWorkspace initial={items} />
+      <BadgeStudio templates={listTemplateItems()} />
     </div>
   )
 }
