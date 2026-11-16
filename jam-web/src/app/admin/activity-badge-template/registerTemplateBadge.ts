@@ -36,7 +36,7 @@ export async function registerTemplateBadge({
     })
     if (rendered.skipped.length > 0) {
       const labels = rendered.skipped.map((s) => SLOT_LABEL[s]).join('|')
-      return { ok: false, error: `${labels} 자리를 그리지 못해 등록할 수 없어요. 템플릿을 다시 올려 주세요.` }
+      return { ok: false, error: `${labels} 자리를 그리지 못해 등록할 수 없어요. 잠시 후 다시 시도해 주세요.` }
     }
     const blob = await canvasToBlob(canvas)
     const form = new FormData()

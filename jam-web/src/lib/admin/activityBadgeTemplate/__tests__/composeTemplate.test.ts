@@ -10,7 +10,30 @@ import {
   resolveTemplateFont,
   layoutSlotText,
   toTextLayerInput,
+  layoutTemplateContent,
+  TEMPLATE_CONTENT_BOX_RATIO,
 } from '../composeTemplate'
+import { BOX_PX, CANVAS_PX } from '@/lib/admin/badgeImageGenerator/normalize'
+
+describe('layoutTemplateContent', () => {
+  it('이미지 생성 메뉴의 규격과 같은 비율이다', () => {
+    expect(TEMPLATE_CONTENT_BOX_RATIO).toBe(BOX_PX / CANVAS_PX)
+  })
+  it('정사각형 그림을 1024 캔버스 가운데 870에 맞춘다', () => {
+    const l = layoutTemplateContent({ viewWidth: 922, viewHeight: 922, longSidePx: 1024 })
+    expect(l).toMatchObject({ canvasWidth: 1024, canvasHeight: 1024, drawWidth: 870, drawHeight: 870, offsetX: 77, offsetY: 77 })
+    expect(l.scale).toBeCloseTo(0.9436, 4)
+  })
+  it('긴 변 1280이면 상자가 비례해 커진다', () => {
+    const l = layoutTemplateContent({ viewWidth: 922, viewHeight: 922, longSidePx: 1280 })
+    expect(l.drawWidth).toBe(1087.5)
+    expect(l.offsetX).toBe(96.25)
+  })
+  it('가로가 긴 그림은 세로를 가운데에 둔다', () => {
+    const l = layoutTemplateContent({ viewWidth: 1000, viewHeight: 500, longSidePx: 1024 })
+    expect(l).toMatchObject({ drawWidth: 870, drawHeight: 435, offsetX: 77, offsetY: 294.5 })
+  })
+})
 import { TemplateSvgError } from '../templateSvg'
 import { SYSTEM_DEFAULT_FONT } from '@/app/admin/asset-generator/assetGeneratorHelpers'
 

@@ -26,7 +26,8 @@ import {
   type SlotTextParams,
   type TemplateBadgeParams,
 } from '@/lib/admin/activityBadgeTemplate/templateParams'
-import type { TemplateSlotName, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import type { TemplateSlotName } from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import type { TemplateDefSlots } from '@/lib/admin/activityBadgeTemplate/templateDef'
 import TemplateFontField from './TemplateFontField'
 
 const WRAP = 'break-keep wrap-break-word'
@@ -43,7 +44,7 @@ export interface BadgeAdjustPanelProps {
   onChange: (next: TemplateBadgeParams) => void
   onReset: () => void
   colors: ColorCount[]
-  slots: TemplateSlots
+  slots: TemplateDefSlots
 }
 
 function ColorSection({ params, onChange, colors }: Pick<BadgeAdjustPanelProps, 'params' | 'onChange' | 'colors'>) {

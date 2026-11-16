@@ -10,21 +10,28 @@ import {
 import {
   DEFAULT_TEMPLATE_BADGE_PARAMS,
   isDefaultTemplateColorParams,
+  styleArcSlot,
   styleSlot,
   type TemplateBadgeParams,
 } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import {
   layoutSlotText,
+  layoutTemplateContent,
   parseLetterSpacingEm,
   resolveTemplateFont,
   stripSlotText,
   toTextLayerInput,
 } from '@/lib/admin/activityBadgeTemplate/composeTemplate'
-import type { TemplateSlot, TemplateSlotName, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import type { TemplateSlot, TemplateSlotName } from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import { isArcSlot, type TemplateArcSlot, type TemplateDefSlots } from '@/lib/admin/activityBadgeTemplate/templateDef'
+import { layoutArcText } from '@/lib/admin/activityBadgeTemplate/arcText'
 import { SYSTEM_DEFAULT_FONT, loadFontInBrowser } from '@/app/admin/asset-generator/assetGeneratorHelpers'
 import { drawTextLayer, type Canvas2DContextLike } from '@/lib/asset-generator/render'
 import type { TextLayerFont } from '@/lib/asset-generator/types'
-import { svgToDataUrl } from './TemplateCard'
+
+export function svgToDataUrl(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
 
 export interface RenderTemplateBadgeResult {
   fontFallbacks: { slot: TemplateSlotName; requestedFamily: string | null }[]
@@ -34,7 +41,7 @@ export interface RenderTemplateBadgeResult {
 
 export interface RenderTemplateBadgeInput {
   svg: string
-  slots: TemplateSlots
+  slots: TemplateDefSlots
   name: string
   value: string
   longSidePx: number
@@ -112,28 +119,43 @@ export async function renderTemplateBadge(
   const viewWidth = slots.viewBoxWidth ?? img.naturalWidth
   const viewHeight = slots.viewBoxHeight ?? img.naturalHeight
   if (!(viewWidth > 0) || !(viewHeight > 0)) throw new Error('템플릿 크기를 읽지 못했어요.')
-  const scale = longSidePx / Math.max(viewWidth, viewHeight)
-  const width = Math.max(1, Math.round(viewWidth * scale))
-  const height = Math.max(1, Math.round(viewHeight * scale))
+  const { canvasWidth: width, canvasHeight: height, scale, offsetX, offsetY, drawWidth, drawHeight } =
+    layoutTemplateContent({ viewWidth, viewHeight, longSidePx })
 
   // 글꼴 불러오기는 오래 걸릴 수 있어 캔버스를 건드리기 전에 모두 끝낸다.
-  const prepared: {
-    slotName: TemplateSlotName
-    text: string
-    font: TextLayerFont
-    originalFont: TextLayerFont
-    styled: TemplateSlot
-  }[] = []
+  type Prepared =
+    | { arc: false; slotName: TemplateSlotName; text: string; font: TextLayerFont; originalFont: TextLayerFont; styled: TemplateSlot; slot: TemplateSlot }
+    | { arc: true; slotName: TemplateSlotName; text: string; font: TextLayerFont; styled: TemplateArcSlot; slot: TemplateArcSlot }
+  const prepared: Prepared[] = []
   for (const slotName of ['name', 'value'] as const) {
-    const styled = styleSlot(slots[slotName], params.text[slotName])
+    const defSlot = slots[slotName]
     const text = slotName === 'name' ? input.name : input.value
+    if (isArcSlot(defSlot)) {
+      const styledArc = styleArcSlot(defSlot, params.text[slotName])
+      const resolvedArc = resolveTemplateFont(styledArc)
+      let arcFont = resolvedArc.font
+      let arcFallback = resolvedArc.fallback
+      if (!arcFallback) {
+        try {
+          await loadFontInBrowser(arcFont)
+          await loadFontForText(arcFont, text)
+        } catch {
+          arcFont = { family: SYSTEM_DEFAULT_FONT.family, weight: arcFont.weight }
+          arcFallback = true
+        }
+      }
+      if (arcFallback) result.fontFallbacks.push({ slot: slotName, requestedFamily: resolvedArc.requestedFamily })
+      prepared.push({ arc: true, slotName, text, font: arcFont, styled: styledArc, slot: defSlot })
+      continue
+    }
+    const styled = styleSlot(defSlot, params.text[slotName])
     // 예시 글자의 폭은 템플릿의 원래 글꼴로 재야 가운데가 옮겨 가지 않는다.
-    const original = resolveTemplateFont(slots[slotName])
+    const original = resolveTemplateFont(defSlot)
     let originalFont = original.font
     if (!original.fallback) {
       try {
         await loadFontInBrowser(originalFont)
-        await loadFontForText(originalFont, slots[slotName].placeholder ?? '')
+        await loadFontForText(originalFont, defSlot.placeholder ?? '')
       } catch {
         originalFont = { family: SYSTEM_DEFAULT_FONT.family, weight: originalFont.weight }
       }
@@ -151,7 +173,7 @@ export async function renderTemplateBadge(
       }
     }
     if (fallback) result.fontFallbacks.push({ slot: slotName, requestedFamily: resolved.requestedFamily })
-    prepared.push({ slotName, text, font, originalFont, styled })
+    prepared.push({ arc: false, slotName, text, font, originalFont, styled, slot: defSlot })
   }
   if (stale()) return result
 
@@ -160,10 +182,49 @@ export async function renderTemplateBadge(
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('캔버스를 만들지 못했어요.')
   ctx.clearRect(0, 0, width, height)
-  ctx.drawImage(img, 0, 0, width, height)
+  ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight)
 
-  for (const { slotName, text, font, originalFont, styled } of prepared) {
-    const slot = slots[slotName]
+  for (const item of prepared) {
+    const { slotName, text, font } = item
+    if (item.arc) {
+      const { slot, styled } = item
+      if (text === '') continue
+      ctx.save()
+      ctx.font = `${font.weight} ${styled.fontSize}px "${font.family}"`
+      const chars = Array.from(text)
+      const advances = chars.map((ch) => ctx.measureText(ch).width)
+      const layout = layoutArcText({
+        advances,
+        fontSize: styled.fontSize,
+        letterSpacingEm: slot.letterSpacingEm,
+        cx: slot.cx,
+        cy: slot.cy,
+        baselineRadius: slot.baselineRadius,
+        centerDeg: slot.centerDeg,
+        facing: slot.facing,
+        maxSpanDeg: slot.maxSpanDeg,
+      })
+      if (!layout) {
+        result.skipped.push(slotName)
+        ctx.restore()
+        continue
+      }
+      if (layout.shrunk) result.shrunk.push(slotName)
+      ctx.fillStyle = styled.fill
+      ctx.font = `${font.weight} ${layout.fontSize * scale}px "${font.family}"`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'alphabetic'
+      for (const glyph of layout.glyphs) {
+        ctx.save()
+        ctx.translate(offsetX + glyph.x * scale, offsetY + glyph.y * scale)
+        ctx.rotate((glyph.rotationDeg * Math.PI) / 180)
+        ctx.fillText(chars[glyph.index], 0, 0)
+        ctx.restore()
+      }
+      ctx.restore()
+      continue
+    }
+    const { slot, styled, originalFont } = item
     if (slot.fontSize === null || slot.y === null || styled.fontSize === null) {
       result.skipped.push(slotName)
       continue
@@ -186,6 +247,8 @@ export async function renderTemplateBadge(
     }
     if (layout.shrunk) result.shrunk.push(slotName)
     const middleOffsetEm = measureMiddleOffsetEm(ctx, styled.fontSize)
+    ctx.save()
+    ctx.translate(offsetX, offsetY)
     drawTextLayer(
       ctx as unknown as Canvas2DContextLike,
       toTextLayerInput({
@@ -198,10 +261,11 @@ export async function renderTemplateBadge(
         middleOffsetEm,
         viewWidth,
         viewHeight,
-        stageWidth: width,
-        stageHeight: height,
+        stageWidth: drawWidth,
+        stageHeight: drawHeight,
       })
     )
+    ctx.restore()
   }
   return result
 }

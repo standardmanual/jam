@@ -32,13 +32,7 @@ export function buildSearchBody(filters: BadgeFilters, page: number) {
   }
 }
 
-export default function BadgeStudio({
-  templates,
-  onGoToTemplates,
-}: {
-  templates: TemplateItem[]
-  onGoToTemplates: () => void
-}) {
+export default function BadgeStudio({ templates }: { templates: TemplateItem[] }) {
   const [filters, setFilters] = useState<BadgeFilters>({
     query: '',
     templateClass: ALL_VALUE,
@@ -188,7 +182,6 @@ export default function BadgeStudio({
       <BadgePreview
         badge={selected}
         templates={templates}
-        onGoToTemplates={onGoToTemplates}
         params={params}
         onParamsChange={changeParams}
         onParamsReset={() => changeParams(DEFAULT_TEMPLATE_BADGE_PARAMS)}

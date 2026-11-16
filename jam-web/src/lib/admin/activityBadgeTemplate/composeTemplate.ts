@@ -123,3 +123,38 @@ export function toTextLayerInput(input: {
     stageHeight: input.stageHeight,
   }
 }
+
+/** 이미지 생성 메뉴의 규격(normalize.ts의 BOX_PX ÷ CANVAS_PX)과 같은 값이다 */
+export const TEMPLATE_CONTENT_BOX_RATIO = 870 / 1024
+
+export interface TemplateContentLayout {
+  canvasWidth: number
+  canvasHeight: number
+  /** viewBox 좌표에 곱하는 배율 */
+  scale: number
+  offsetX: number
+  offsetY: number
+  drawWidth: number
+  drawHeight: number
+}
+
+/** 정사각형 캔버스 한가운데의 안쪽 상자에 그림을 맞춘다. 값을 반올림하지 않는다. */
+export function layoutTemplateContent(input: {
+  viewWidth: number
+  viewHeight: number
+  longSidePx: number
+}): TemplateContentLayout {
+  const { viewWidth, viewHeight, longSidePx } = input
+  const scale = (longSidePx * TEMPLATE_CONTENT_BOX_RATIO) / Math.max(viewWidth, viewHeight)
+  const drawWidth = viewWidth * scale
+  const drawHeight = viewHeight * scale
+  return {
+    canvasWidth: longSidePx,
+    canvasHeight: longSidePx,
+    scale,
+    offsetX: (longSidePx - drawWidth) / 2,
+    offsetY: (longSidePx - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  }
+}

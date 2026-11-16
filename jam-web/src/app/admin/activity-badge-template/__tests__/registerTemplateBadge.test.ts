@@ -40,7 +40,7 @@ describe('registerTemplateBadge', () => {
     render.mockResolvedValue({ fontFallbacks: [], shrunk: [], skipped: ['value'] })
     const r = await registerTemplateBadge({ badge, template, params: DEFAULT_TEMPLATE_BADGE_PARAMS })
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(r).toEqual({ ok: false, error: '값 자리를 그리지 못해 등록할 수 없어요. 템플릿을 다시 올려 주세요.' })
+    expect(r).toEqual({ ok: false, error: '값 자리를 그리지 못해 등록할 수 없어요. 잠시 후 다시 시도해 주세요.' })
   })
 
   it('서버 오류는 문구를 돌려주고 예외를 던지지 않는다', async () => {

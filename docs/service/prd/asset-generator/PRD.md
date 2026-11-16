@@ -623,45 +623,38 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 
 ## 17. 액티비티 배지 템플릿 (티켓 20261116_0234, 상위 20261115_2353)
 
-분류별로 디자이너가 피그마에서 내보낸 SVG를 템플릿으로 저장하고, 제작 화면(다음 티켓)이 이름·값 글자를 바꿔 끼워 배지 이미지를 만든다. 이 절은 저장·정화·자리 읽기까지의 약속이다.
+분류별 템플릿은 코드에 정의하고, 제작 화면이 이름·값 글자를 얹어 배지 이미지를 만든다(2026-11-16 «템플릿을 넣는 방식» 결정: 어드민에 SVG를 올리지 않고 템플릿마다 개발해서 넣는다, 티켓 20261116_1513). 옛 «SVG를 올려 저장» 흐름은 없앴다.
 
 ### 17.1 표 `activity_badge_templates`
-- `class_key`(`metric`·`days`·`streak`·`count`, 기본키), `svg`(정화한 본문), `slots`(읽어 낸 자리 정보), `default_params`(색·글자 기본 조정값), `updated_by`(마지막으로 고친 운영자 이메일), `created_at`, `updated_at`. 마이그레이션은 티켓 20261115_2355.
+- 표는 DB에 남아 있고(0줄) 코드는 읽거나 쓰지 않는다. 표를 지우는 일은 프로덕션 공용 DB의 축소 단계라 별도 티켓에서 한다.
 - 분류 이름은 `jam-web/src/lib/admin/activityBadgeTemplate/resolveTemplateText.ts`의 `BADGE_TEMPLATE_CLASS_LABEL`이 단일 원천이다.
 
 ### 17.2 어드민 API (모두 어드민만, 아니면 403)
-- `GET /api/admin/activity-badge-templates`: `{ templates }`. 네 분류를 `metric`·`days`·`streak`·`count` 순서로 항상 돌려준다. 항목은 `{ classKey, label, svg, slots, updatedAt, updatedBy }`이고 등록 전이면 `svg`·`slots`·`updatedAt`·`updatedBy`가 `null`이다.
-- `PUT /api/admin/activity-badge-templates/[classKey]`, 본문 `{ svg }`: 정화한 SVG와 읽어 낸 자리를 `class_key` 기준으로 upsert한다. 응답은 `{ template, removed }`. 분류 오류, 빈 본문, 1,000,000바이트 초과, SVG로 읽지 못함, 이름·값 자리 없음, 자리가 글자가 아님은 400이고 쓰지 않는다. 본문 검증은 `validateTemplate.ts`의 `validateTemplateSvg`가 맡고, 등록 화면도 같은 함수를 브라우저에서 먼저 돌린다.
-- `DELETE /api/admin/activity-badge-templates/[classKey]`: 그 분류의 템플릿을 지운다. 없어도 200, 분류 오류는 400.
+- 템플릿 목록·저장·삭제 API(`GET`·`PUT`·`DELETE /api/admin/activity-badge-templates`)는 2026-11-16에 없앴다.
 - `POST /api/admin/activity-badge-templates/register`(티켓 20261116_0728), `multipart/form-data`(`badgeId`, `params` JSON 글자, `image` PNG): 브라우저가 구운 PNG를 WebP로 바꿔 `images` 버킷의 `badges/activity-template/{id}.png|webp`에 `upsert`로 올리고, `badges`의 `image_url`(WebP 주소 + `?v=`), `image_gen_params`(정리된 템플릿 조정값), `image_source`(`'admin-generator'`)를 고친다. 순서와 실패: 권한 없음 403 → 본문·배지 id·조정값(`parseTemplateBadgeParams`가 `null`)·PNG 아님·5MB 초과·긴 변이 1280px 아님은 400 → 액티비티 배지 없음 404 → 올리기·표 고치기 실패 500(DB 오류 원문은 싣지 않는다). 응답은 `{ badgeId, badgeName, imageUrl, originalUrl, webpBytes }`이고 응답 뒤에 변환본을 미리 만든다. `image_source`에 새 값을 더하지 않는 까닭은 CHECK 제약(마이그레이션 186) 때문이며, 어떤 도구인지는 `image_gen_params.kind`로 가린다.
 - `POST /api/admin/activity-badge-image/search`(기존 검색): 요청에 `familyKey`(비어 있지 않은 글자)를 주면 `family_key`가 같은 배지만 조회한다(다른 조건과 함께 걸 수 있다). 응답 항목에 `templateParams`가 더해진다: `image_gen_params`가 템플릿 조정값이면 정리된 값, 옛 생성기 값이거나 없으면 `null`.
   - 분류 필터(티켓 20261116_1442): 요청에 `templateClass`(`metric`·`days`·`streak`·`count` 중 하나, 그 밖의 값은 무시)를 주면 그 분류의 배지만 돌려준다. 분류는 DB 칸이 아니라 획득 조건에서 계산하는 값이라, 이 조건이 있을 때만 다른 조건에 맞는 배지를 1,000줄씩 끝까지 읽어 분류를 계산하고 걸러 낸 뒤 페이지를 자른다. 응답의 `total`·`totalPages`는 걸러 낸 뒤의 수다. 분류를 정하지 못한 배지는 이 조건에서 빠진다. 조건이 없으면 DB에서 한 페이지만 읽는다(`pickActivityBadgeImageSearchPage`).
-- 구현: `jam-web/src/lib/admin/activityBadgeTemplate/templateSvg.ts`(`sanitizeTemplateSvg`, `readTemplateSlots`).
 
-### 17.3 SVG 약속
-- 이름 글자의 레이어(요소) `id`는 `name`, 값 글자는 `value`로 한다. `text` 요소이거나 그 안에 첫 `text`가 든 `g`여야 한다.
-- 글자를 윤곽선(`path`)으로 바꾸지 않은 채 내보낸다. 윤곽선이면 저장을 거절한다.
-- 자리마다 `x`·`y`·`fontFamily`·`fontSize`·`fontWeight`·`fill`·`letterSpacing`·`textAnchor`·`transform`·자리 표시용 글자(`placeholder`)를 읽고, 없으면 `null`이다. 피그마는 가운데 정렬을 남기지 않아 정렬·위치 계산은 제작 화면에서 다룬다.
-- 정화 규칙: `script`·`foreignObject`·`iframe`·`object`·`embed`·`link`·`meta` 요소와, 내용에 `@import`나 `url(`이 든 `style` 요소를 걷어 낸다. `on`으로 시작하는 속성을 걷어 내고, `href`·`xlink:href`는 `#`이나 `data:image/`로 시작할 때만 남긴다. `style` 속성은 `;`로 나눈 선언 가운데 바깥 주소(`url(...)`의 대상이 `#`이나 `data:image/`로 시작하지 않는 것)나 `@import`·`expression(`·`javascript:`가 든 선언만 걷어 내고 나머지는 남긴다. 그 밖의 속성도 값에 바깥 주소가 있으면 걷어 낸다. 피그마의 그라데이션·마스크·필터가 쓰는 안쪽 참조(`url(#…)`)는 남는다. 걷어 낸 목록은 `removed`로 돌려준다.
+### 17.3 템플릿은 코드에 정의한다
+- 위치: `jam-web/src/lib/admin/activityBadgeTemplate/templates/`(분류마다 파일 하나와 SVG 문자열, `index.ts`의 `getBadgeTemplateDef`). 항목의 꼴은 `templateDef.ts`의 `BadgeTemplateDef`다. 지금 정의가 있는 분류는 `metric`(운동 수치)뿐이다.
+- 새 템플릿은 사용자가 SVG와 글꼴·분류를 주면 카리나가 원본에 겹쳐 수치를 맞춰 코드에 넣는다.
+- 자리의 종류는 직선(`TemplateSlot`: x·y에 놓는 글자)과 원호(`TemplateArcSlot`: 원을 따라 놓는 글자, 계산은 `arcText.ts`의 `layoutArcText`)다.
+- 샘플 글자 레이어의 `id`는 이름 `name`, 값 `value`다. 그리기 전에 `stripSlotText`가 이 레이어를 걷어 낸다.
 - 그리기: 화면은 템플릿 SVG를 문서에 직접 끼워 넣지 않고 이미지(`img`나 캔버스)로만 그린다.
 
-### 17.4 템플릿 등록 화면 (티켓 20261116_0426)
-- 경로: `/admin/activity-badge-template`(어드민 «디자인» 메뉴의 «배지 템플릿»). 분류 4개를 카드로 보인다.
-- 흐름: 파일을 고르면 브라우저에서 `validateTemplateSvg`로 먼저 검증해 «저장 전 확인» 상태로 둔다(서버에 보내지 않음). 미리보기·자리 줄·걷어 낸 목록을 확인하고 «저장»을 누르면 `PUT`으로 보낸다. 검증에 실패하면 안내 문구만 보이고 기존 템플릿은 그대로다. «지우기»는 확인 대화상자를 거쳐 `DELETE`를 보낸다.
-- 피그마 내보내기 설정: 이름 글자의 레이어 이름은 `name`, 값 글자는 `value`로 짓고, SVG 내보내기 설정에서 `Include "id" attribute`를 켜고 `Outline text`를 끈다(글자 레이어는 Outline text가 기본으로 켜져 있어 글자가 윤곽선이 된다. 피그마 도움말 «Export formats and settings», 2026-11-16 확인).
-- 미리보기는 SVG를 이미지로 그리므로 웹 글꼴을 불러오지 못하고 이 컴퓨터에 설치된 글꼴로 보인다. 실제 배지의 글자는 제작 화면이 캔버스에 따로 그린다.
+### 17.4 템플릿 등록 화면
+- 2026-11-16에 없앴다(티켓 20261116_1513). «템플릿» 탭과 SVG 올리기·검증·지우기가 없다.
 
-### 17.5 제작 화면 (티켓 20261116_0555)
-- 경로: 같은 `/admin/activity-badge-template`. 탭은 «배지 만들기»(기본)와 «템플릿»(17.4)이다. 템플릿 탭에서 올리거나 지운 결과는 새로 고침 없이 «배지 만들기»에 반영된다.
-- 흐름: 배지 검색 → 선택 → 그 배지가 속한 분류의 템플릿 위에 이름과 값을 그린 미리보기. 검색은 `POST /api/admin/activity-badge-image/search`를 쓰고, 응답 항목의 `templateClass`·`templateClassLabel`·`templateValue`·`familyKey` 네 칸으로 분류와 값을 얻는다. 분류를 정하지 못한 배지(`templateClass` 없음)와 템플릿이 아직 없는 분류는 미리보기 대신 안내를 보인다.
-- 그리는 순서(`renderTemplateBadge`, 브라우저 전용): ① `stripSlotText`로 예시 글자를 걷어 낸 SVG를 이미지로 불러온다. ② 캔버스 비율은 viewBox를 따르고 긴 변은 1024px로 한다. ③ 이미지를 캔버스 전체에 그린다. ④ 이름·값 자리를 차례로 `resolveTemplateFont`→`loadFontInBrowser`→`layoutSlotText`→`toTextLayerInput`→`drawTextLayer`로 그린다. 글자 위치 계산은 4-1의 함수만 쓰고 다시 만들지 않는다. 배지를 빠르게 바꿔 고르면 마지막 요청의 결과만 남는다.
-- 글꼴 조각: 구글 폰트의 한글은 여러 조각으로 나뉘어 내려온다. `loadFontInBrowser` 뒤에 `document.fonts.load(글꼴, 그릴 글자 + 예시 글자)`로 그 글자가 든 조각까지 기다린 다음 그린다(`loadFontForText`). 기다리지 않으면 한글이 다른 글꼴로 그려진다.
-- 세로 위치: SVG는 글자의 기준선 위치를 주고 `drawTextLayer`는 `textBaseline: 'middle'`로 그린다. 두 선의 거리는 같은 글자를 두 기준선으로 재서 `actualBoundingBoxAscent`의 차이로 구한다(`measureMiddleOffsetEm`). 글꼴 상자 값으로 어림하면 어긋난다(IBM Plex Sans KR 140px에서 6px, 2026-11-16 실측).
+### 17.5 제작 화면 (티켓 20261116_0555, 개편 20261116_1513)
+- 경로: `/admin/activity-badge-template`. 탭이 없고 «배지 만들기» 화면 하나다. 페이지는 DB를 읽지 않고 `listTemplateItems()`(`templateItem.ts`)가 돌려준 코드의 템플릿을 쓴다. 네 분류를 `metric`·`days`·`streak`·`count` 순서로 주고 정의가 없는 분류는 `svg`·`slots`가 `null`이다.
+- 흐름: 배지 검색 → 선택 → 그 배지가 속한 분류의 템플릿 위에 이름과 값을 그린 미리보기. 검색은 `POST /api/admin/activity-badge-image/search`를 쓰고, 응답 항목의 `templateClass`·`templateClassLabel`·`templateValue`·`familyKey` 네 칸으로 분류와 값을 얻는다. 분류를 정하지 못한 배지와 템플릿이 없는 분류는 미리보기 대신 안내를 보인다. 템플릿이 없는 분류의 안내는 «{분류 이름} 템플릿이 아직 준비되지 않았어요.»이고 버튼은 없다.
+- 그리는 순서(`renderTemplateBadge`, 브라우저 전용): ① `stripSlotText`로 샘플 글자를 걷어 낸 SVG를 이미지로 불러온다. ② 캔버스는 긴 변 × 긴 변 정사각형이고, 그림은 안쪽 상자에 맞춘다: 상자의 한 변은 긴 변 × 870÷1024(이미지 생성 메뉴의 `normalize.ts` `BOX_PX`÷`CANVAS_PX`와 같은 기준, 시험이 대조한다), 가운데 정렬, 바깥은 투명(`layoutTemplateContent`). 미리보기의 긴 변은 1024, 등록은 1280이다. ③ 직선 자리는 `resolveTemplateFont`→`loadFontInBrowser`→`layoutSlotText`→`toTextLayerInput`→`drawTextLayer`로 안쪽 상자 기준으로 그린다. ④ 원호 자리는 글자마다 폭을 재서 `layoutArcText`로 위치·회전을 구하고 글자 하나씩 회전해 그린다. 글자가 비면 그리지 않는다. 배지를 빠르게 바꿔 고르면 마지막 요청의 결과만 남는다.
+- 글꼴 조각: 구글 폰트의 한글은 여러 조각으로 나뉘어 내려온다. `loadFontInBrowser` 뒤에 `document.fonts.load(글꼴, 그릴 글자)`로 그 글자가 든 조각까지 기다린 다음 그린다(`loadFontForText`). 기다리지 않으면 한글이 다른 글꼴로 그려진다.
+- 세로 위치(직선 자리): SVG는 글자의 기준선 위치를 주고 `drawTextLayer`는 `textBaseline: 'middle'`로 그린다. 두 선의 거리는 같은 글자를 두 기준선으로 재서 `actualBoundingBoxAscent`의 차이로 구한다(`measureMiddleOffsetEm`).
 - 분류 필터(티켓 20261116_1442): 검색 카드의 이름 입력 칸 다음에 «분류» 선택 상자가 있다. 선택지는 «전체 분류»와 네 분류(운동 수치·쌓은 날·이어 온 날·횟수와 양)이고, 값을 바꾼 뒤 «검색»을 눌러야 결과가 바뀐다. «전체 분류»면 요청에 `templateClass`를 싣지 않는다.
-- 두 탭은 모두 붙여 둔다(`forceMount`). 템플릿 탭에 다녀와도 검색어·결과·고른 배지가 남는다.
 - 글꼴 대응: 자리의 글꼴 이름이 구글 폰트 목록에 있으면 그 글꼴을 불러오고, 없거나 불러오지 못하면 시스템 기본 글꼴로 바꿔 그리고 화면에 안내한다.
-- 넘치면 줄이는 규칙: 넣을 글자의 폭이 자리 기준 좌우 여백 중 좁은 쪽의 2배 × 0.92를 넘으면 글자 크기를 비례해 줄이고 안내한다. 자리의 위치나 글자 크기를 읽지 못하면 그 자리는 그리지 않고 안내한다.
-- 이 회차에 없던 것: 등록(저장), 색·글자 조정. 조정은 17.6에서, 등록은 다음 회차에서 만든다.
+- 넘치면 줄이는 규칙: 직선 자리는 넣을 글자의 폭이 자리 기준 좌우 여백 중 좁은 쪽의 2배 × 0.92를 넘으면, 원호 자리는 글자 묶음이 `maxSpanDeg`를 넘으면 글자 크기를 비례해 줄이고 안내한다. 자리를 그리지 못하면 «{이름|값} 자리에 글자를 그리지 못했어요.»를 안내하고, 미리보기를 못 그리면 «미리보기를 그리지 못했어요. 잠시 후 다시 시도해 주세요.»를 보인다.
+
 
 ### 17.6 색과 글자 조정 (티켓 20261116_0653)
 - 위치: «배지 만들기» 탭의 미리보기 옆(좁은 화면에서는 아래)에 «조정» 카드가 붙는다. 바꾸는 즉시 미리보기가 다시 그려진다. 버튼 «처음으로»는 조정값이 기본값이면 비활성이다.

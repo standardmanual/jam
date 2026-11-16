@@ -8,8 +8,9 @@ import BadgePreview, { previewNotes } from '../BadgePreview'
 import { buildSearchBody } from '../BadgeStudio'
 import BadgePicker, { ALL_VALUE, type StudioSearchBadge } from '../BadgePicker'
 import { DEFAULT_TEMPLATE_BADGE_PARAMS } from '@/lib/admin/activityBadgeTemplate/templateParams'
+import type { TemplateDefSlots } from '@/lib/admin/activityBadgeTemplate/templateDef'
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
-import type { TemplateSlot, TemplateSlots } from '@/lib/admin/activityBadgeTemplate/templateSvg'
+import type { TemplateSlot } from '@/lib/admin/activityBadgeTemplate/templateSvg'
 
 // Radix Select는 서버 렌더에서 컨텍스트를 쓰므로(워크트리 심볼릭 링크 환경에서 React가 둘로 갈린다) 시험에서는 단순 태그로 바꾼다.
 vi.mock('@/components/admin/ui/select', () => ({
@@ -27,9 +28,9 @@ const slot = (): TemplateSlot => ({
   found: true, isText: true, x: 1, y: 2, fontFamily: 'Pretendard', fontSize: 48, fontWeight: null,
   fill: '#123B2E', letterSpacing: null, textAnchor: null, transform: null, placeholder: '가',
 })
-const slots: TemplateSlots = { viewBoxWidth: 1024, viewBoxHeight: 1024, name: slot(), value: slot() }
+const slots: TemplateDefSlots = { viewBoxWidth: 1024, viewBoxHeight: 1024, name: slot(), value: slot() }
 const template = (svg: string | null): TemplateItem => ({
-  classKey: 'metric', label: '운동 수치', svg, slots: svg ? slots : null, updatedAt: null, updatedBy: null,
+  classKey: 'metric', label: '운동 수치', svg, slots: svg ? slots : null
 })
 const badge = (over: Partial<StudioSearchBadge> = {}): StudioSearchBadge => ({
   id: 'b1', name: '트럭 꽁무니를 따라 뛴 저녁', rarity: 'rare', level: null, leveled: false,
@@ -40,7 +41,6 @@ const preview = (b: StudioSearchBadge | null, t: TemplateItem[]) =>
   renderToStaticMarkup(<BadgePreview
       badge={b}
       templates={t}
-      onGoToTemplates={vi.fn()}
       params={DEFAULT_TEMPLATE_BADGE_PARAMS}
       onParamsChange={vi.fn()}
       onParamsReset={vi.fn()}
@@ -60,10 +60,11 @@ describe('BadgePreview', () => {
     const h = preview(badge({ templateClass: null, templateClassLabel: null, templateValue: null }), [])
     expect(h).toContain('이 배지는 분류를 정하지 못했어요. 획득 조건이 템플릿 규칙에 없는 종류예요. 규칙을 더해야 하니 개발 요청을 남겨 주세요.')
   })
-  it('템플릿이 없으면 안내와 이동 버튼', () => {
+  it('템플릿이 없으면 안내만 보이고 버튼은 없다', () => {
     const h = preview(badge(), [template(null)])
-    expect(h).toContain('운동 수치 템플릿이 아직 없어요. 템플릿 탭에서 SVG를 올려 주세요.')
-    expect(h).toContain('템플릿 탭으로 가기')
+    expect(h).toContain('운동 수치 템플릿이 아직 준비되지 않았어요.')
+    expect(h).not.toContain('템플릿 탭')
+    expect(h).not.toContain('<button')
   })
   it('정상이면 캔버스와 이름·값·분류 세 줄', () => {
     const h = preview(badge(), [template('<svg xmlns="http://www.w3.org/2000/svg"/>')])
@@ -86,7 +87,7 @@ describe('previewNotes', () => {
       '이름 자리의 글꼴 Foo를 구글 폰트에서 찾지 못해 기본 글꼴로 보여요.',
       '값 자리에 글꼴 정보가 없어 기본 글꼴로 보여요.',
       '값이 길어서 글자 크기를 줄였어요.',
-      '이름 자리의 위치를 읽지 못해 글자를 그리지 못했어요. 템플릿을 다시 올려 주세요.',
+      '이름 자리에 글자를 그리지 못했어요.',
     ])
   })
 })
