@@ -12,6 +12,7 @@ import {
   activityBadgeImageSearchRange,
   activityBadgeImageSearchTotalPages,
   parseActivityBadgeImageSearchParams,
+  pickActivityBadgeImageSearchPage,
 } from '../activityBadgeImageSearch'
 
 describe('④ 550종 규모에서 검색이 잘리지 않는다', () => {
@@ -75,5 +76,27 @@ describe('parseActivityBadgeImageSearchParams — familyKey (티켓 20261116_072
     expect(parseActivityBadgeImageSearchParams({ familyKey: '  ' }).familyKey).toBeNull()
     expect(parseActivityBadgeImageSearchParams({ familyKey: 3 }).familyKey).toBeNull()
     expect(parseActivityBadgeImageSearchParams({}).familyKey).toBeNull()
+  })
+})
+
+describe('분류 필터', () => {
+  it('templateClass는 네 분류 키만 받는다', () => {
+    expect(parseActivityBadgeImageSearchParams({ templateClass: 'metric' }).templateClass).toBe('metric')
+    for (const v of ['etc', 1, '', undefined, 'toString']) {
+      expect(parseActivityBadgeImageSearchParams({ templateClass: v }).templateClass).toBeNull()
+    }
+  })
+  it('걸러서 페이지를 자르고 total은 자르기 전 수다', () => {
+    const items = Array.from({ length: 120 }, (_, i) => ({ i, templateClass: i % 12 < 7 ? 'metric' : 'days' }))
+    const metric = items.filter((x) => x.templateClass === 'metric').length
+    expect(metric).toBe(70)
+    const p1 = pickActivityBadgeImageSearchPage(items, 'metric', 1)
+    const p2 = pickActivityBadgeImageSearchPage(items, 'metric', 2)
+    const p3 = pickActivityBadgeImageSearchPage(items, 'metric', 3)
+    expect([p1.items.length, p1.total]).toEqual([50, 70])
+    expect([p2.items.length, p2.total]).toEqual([20, 70])
+    expect(p3.items).toHaveLength(0)
+    const idx = [...p1.items, ...p2.items].map((x) => x.i)
+    expect(idx).toEqual([...idx].sort((a, b) => a - b))
   })
 })

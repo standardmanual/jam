@@ -19,6 +19,19 @@ import { registerTemplateBadge, summarizeBatch, type BatchEntry } from './regist
 const FAMILY_FAIL = '같은 계열의 배지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
 const SEARCH_FAIL = '배지를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.'
 
+/** 검색 요청 본문. «전체»로 둔 조건은 싣지 않는다 */
+export function buildSearchBody(filters: BadgeFilters, page: number) {
+  return {
+    q: filters.query,
+    // 레벨형에는 등급이 없다 — 종류 필터가 레벨형이면 등급 필터를 보내지 않는다.
+    rarity: filters.rarity === ALL_VALUE || filters.kind === 'leveled' ? undefined : filters.rarity,
+    activityType: filters.activity === ALL_VALUE ? undefined : filters.activity,
+    kind: filters.kind === ALL_VALUE ? undefined : filters.kind,
+    templateClass: filters.templateClass === ALL_VALUE ? undefined : filters.templateClass,
+    page,
+  }
+}
+
 export default function BadgeStudio({
   templates,
   onGoToTemplates,
@@ -28,6 +41,7 @@ export default function BadgeStudio({
 }) {
   const [filters, setFilters] = useState<BadgeFilters>({
     query: '',
+    templateClass: ALL_VALUE,
     kind: ALL_VALUE,
     rarity: ALL_VALUE,
     activity: ALL_VALUE,
@@ -139,14 +153,7 @@ export default function BadgeStudio({
       const res = await fetch('/api/admin/activity-badge-image/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          q: filters.query,
-          // 레벨형에는 등급이 없다 — 종류 필터가 레벨형이면 등급 필터를 보내지 않는다.
-          rarity: filters.rarity === ALL_VALUE || filters.kind === 'leveled' ? undefined : filters.rarity,
-          activityType: filters.activity === ALL_VALUE ? undefined : filters.activity,
-          kind: filters.kind === ALL_VALUE ? undefined : filters.kind,
-          page: nextPage,
-        }),
+        body: JSON.stringify(buildSearchBody(filters, nextPage)),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error ?? SEARCH_FAIL)

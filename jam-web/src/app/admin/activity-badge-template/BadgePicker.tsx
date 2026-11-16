@@ -13,7 +13,7 @@ import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { slotLabelOf } from '@/lib/admin/badge-families'
-import type { BadgeTemplateClassKey } from '@/lib/admin/activityBadgeTemplate/resolveTemplateText'
+import { BADGE_TEMPLATE_CLASS_LABEL, type BadgeTemplateClassKey } from '@/lib/admin/activityBadgeTemplate/resolveTemplateText'
 import type { TemplateBadgeParams } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import type { ActivityType, BadgeRarity } from '@/types/database'
@@ -35,6 +35,9 @@ export const KIND_OPTIONS = [
   { value: 'leveled', label: '레벨형' },
 ]
 
+/** 분류 선택지. 이름은 규칙 파일의 라벨이 단일 원천이다 */
+export const CLASS_OPTIONS = Object.entries(BADGE_TEMPLATE_CLASS_LABEL).map(([value, label]) => ({ value, label }))
+
 const WRAP = 'break-keep wrap-break-word'
 
 export interface StudioSearchBadge {
@@ -54,6 +57,7 @@ export interface StudioSearchBadge {
 
 export interface BadgeFilters {
   query: string
+  templateClass: string
   kind: string
   rarity: string
   activity: string
@@ -110,6 +114,19 @@ export default function BadgePicker({
               }}
               className="sm:flex-1"
             />
+            <Select value={filters.templateClass} onValueChange={(v) => set({ templateClass: v })}>
+              <SelectTrigger className="sm:w-36">
+                <SelectValue placeholder="분류" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>전체 분류</SelectItem>
+                {CLASS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={filters.kind} onValueChange={(v) => set({ kind: v })}>
               <SelectTrigger className="sm:w-36">
                 <SelectValue placeholder="종류" />

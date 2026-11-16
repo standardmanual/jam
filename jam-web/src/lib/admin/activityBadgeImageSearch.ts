@@ -11,6 +11,7 @@
  * DOM·Supabase에 의존하지 않는다 — 라우트와 테스트가 같은 함수를 쓴다.
  */
 import type { BadgeRarity } from '@/types/database'
+import { BADGE_TEMPLATE_CLASS_LABEL, type BadgeTemplateClassKey } from './activityBadgeTemplate/resolveTemplateText'
 
 /** 한 페이지에 보여줄 배지 수. 화면은 서버가 돌려준 `pageSize`를 그대로 쓴다 */
 export const ACTIVITY_BADGE_IMAGE_SEARCH_PAGE_SIZE = 50
@@ -32,6 +33,8 @@ export interface ActivityBadgeImageSearchParams {
   kind: ActivityBadgeImageSearchKind | null
   /** 같은 계열(`family_key`)만 좁힌다 */
   familyKey: string | null
+  /** 템플릿 분류. DB 칸이 아니라 획득 조건에서 계산하는 값이라 서버가 읽은 뒤 거른다 */
+  templateClass: BadgeTemplateClassKey | null
   /** 1 이상의 정수 */
   page: number
 }
@@ -63,10 +66,15 @@ export function parseActivityBadgeImageSearchParams(body: unknown): ActivityBadg
 
   const familyKey = typeof raw.familyKey === 'string' && raw.familyKey.trim() ? raw.familyKey.trim() : null
 
+  const templateClass =
+    typeof raw.templateClass === 'string' && Object.prototype.hasOwnProperty.call(BADGE_TEMPLATE_CLASS_LABEL, raw.templateClass)
+      ? (raw.templateClass as BadgeTemplateClassKey)
+      : null
+
   const rawPage = Number(raw.page)
   const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1
 
-  return { q, rarity, activityType, kind, familyKey, page }
+  return { q, rarity, activityType, kind, familyKey, templateClass, page }
 }
 
 /** 페이지 번호 → PostgREST `range` 경계(0-based, 양 끝 포함) */
@@ -78,4 +86,15 @@ export function activityBadgeImageSearchRange(page: number): { from: number; to:
 /** 전체 건수 → 페이지 수(최소 1) */
 export function activityBadgeImageSearchTotalPages(total: number): number {
   return Math.max(1, Math.ceil(total / ACTIVITY_BADGE_IMAGE_SEARCH_PAGE_SIZE))
+}
+
+/** 분류가 같은 것만 남기고(순서 유지) 해당 페이지 범위로 자른다. `total`은 자르기 전의 수 */
+export function pickActivityBadgeImageSearchPage<T extends { templateClass: string | null }>(
+  items: T[],
+  templateClass: BadgeTemplateClassKey,
+  page: number,
+): { items: T[]; total: number } {
+  const matched = items.filter((item) => item.templateClass === templateClass)
+  const { from, to } = activityBadgeImageSearchRange(page)
+  return { items: matched.slice(from, to + 1), total: matched.length }
 }

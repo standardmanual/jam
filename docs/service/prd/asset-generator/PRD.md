@@ -635,6 +635,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - `DELETE /api/admin/activity-badge-templates/[classKey]`: 그 분류의 템플릿을 지운다. 없어도 200, 분류 오류는 400.
 - `POST /api/admin/activity-badge-templates/register`(티켓 20261116_0728), `multipart/form-data`(`badgeId`, `params` JSON 글자, `image` PNG): 브라우저가 구운 PNG를 WebP로 바꿔 `images` 버킷의 `badges/activity-template/{id}.png|webp`에 `upsert`로 올리고, `badges`의 `image_url`(WebP 주소 + `?v=`), `image_gen_params`(정리된 템플릿 조정값), `image_source`(`'admin-generator'`)를 고친다. 순서와 실패: 권한 없음 403 → 본문·배지 id·조정값(`parseTemplateBadgeParams`가 `null`)·PNG 아님·5MB 초과·긴 변이 1280px 아님은 400 → 액티비티 배지 없음 404 → 올리기·표 고치기 실패 500(DB 오류 원문은 싣지 않는다). 응답은 `{ badgeId, badgeName, imageUrl, originalUrl, webpBytes }`이고 응답 뒤에 변환본을 미리 만든다. `image_source`에 새 값을 더하지 않는 까닭은 CHECK 제약(마이그레이션 186) 때문이며, 어떤 도구인지는 `image_gen_params.kind`로 가린다.
 - `POST /api/admin/activity-badge-image/search`(기존 검색): 요청에 `familyKey`(비어 있지 않은 글자)를 주면 `family_key`가 같은 배지만 조회한다(다른 조건과 함께 걸 수 있다). 응답 항목에 `templateParams`가 더해진다: `image_gen_params`가 템플릿 조정값이면 정리된 값, 옛 생성기 값이거나 없으면 `null`.
+  - 분류 필터(티켓 20261116_1442): 요청에 `templateClass`(`metric`·`days`·`streak`·`count` 중 하나, 그 밖의 값은 무시)를 주면 그 분류의 배지만 돌려준다. 분류는 DB 칸이 아니라 획득 조건에서 계산하는 값이라, 이 조건이 있을 때만 다른 조건에 맞는 배지를 1,000줄씩 끝까지 읽어 분류를 계산하고 걸러 낸 뒤 페이지를 자른다. 응답의 `total`·`totalPages`는 걸러 낸 뒤의 수다. 분류를 정하지 못한 배지는 이 조건에서 빠진다. 조건이 없으면 DB에서 한 페이지만 읽는다(`pickActivityBadgeImageSearchPage`).
 - 구현: `jam-web/src/lib/admin/activityBadgeTemplate/templateSvg.ts`(`sanitizeTemplateSvg`, `readTemplateSlots`).
 
 ### 17.3 SVG 약속
@@ -656,6 +657,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - 그리는 순서(`renderTemplateBadge`, 브라우저 전용): ① `stripSlotText`로 예시 글자를 걷어 낸 SVG를 이미지로 불러온다. ② 캔버스 비율은 viewBox를 따르고 긴 변은 1024px로 한다. ③ 이미지를 캔버스 전체에 그린다. ④ 이름·값 자리를 차례로 `resolveTemplateFont`→`loadFontInBrowser`→`layoutSlotText`→`toTextLayerInput`→`drawTextLayer`로 그린다. 글자 위치 계산은 4-1의 함수만 쓰고 다시 만들지 않는다. 배지를 빠르게 바꿔 고르면 마지막 요청의 결과만 남는다.
 - 글꼴 조각: 구글 폰트의 한글은 여러 조각으로 나뉘어 내려온다. `loadFontInBrowser` 뒤에 `document.fonts.load(글꼴, 그릴 글자 + 예시 글자)`로 그 글자가 든 조각까지 기다린 다음 그린다(`loadFontForText`). 기다리지 않으면 한글이 다른 글꼴로 그려진다.
 - 세로 위치: SVG는 글자의 기준선 위치를 주고 `drawTextLayer`는 `textBaseline: 'middle'`로 그린다. 두 선의 거리는 같은 글자를 두 기준선으로 재서 `actualBoundingBoxAscent`의 차이로 구한다(`measureMiddleOffsetEm`). 글꼴 상자 값으로 어림하면 어긋난다(IBM Plex Sans KR 140px에서 6px, 2026-11-16 실측).
+- 분류 필터(티켓 20261116_1442): 검색 카드의 이름 입력 칸 다음에 «분류» 선택 상자가 있다. 선택지는 «전체 분류»와 네 분류(운동 수치·쌓은 날·이어 온 날·횟수와 양)이고, 값을 바꾼 뒤 «검색»을 눌러야 결과가 바뀐다. «전체 분류»면 요청에 `templateClass`를 싣지 않는다.
 - 두 탭은 모두 붙여 둔다(`forceMount`). 템플릿 탭에 다녀와도 검색어·결과·고른 배지가 남는다.
 - 글꼴 대응: 자리의 글꼴 이름이 구글 폰트 목록에 있으면 그 글꼴을 불러오고, 없거나 불러오지 못하면 시스템 기본 글꼴로 바꿔 그리고 화면에 안내한다.
 - 넘치면 줄이는 규칙: 넣을 글자의 폭이 자리 기준 좌우 여백 중 좁은 쪽의 2배 × 0.92를 넘으면 글자 크기를 비례해 줄이고 안내한다. 자리의 위치나 글자 크기를 읽지 못하면 그 자리는 그리지 않고 안내한다.
