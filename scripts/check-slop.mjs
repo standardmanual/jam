@@ -15,9 +15,10 @@ import { readFileSync } from 'node:fs'
 
 const DICT_PATH = 'docs/service/writing/SLOP_DICTIONARY.md'
 
-// 검사에서 빼는 컨텐츠 데이터 파일(정확한 경로만): 짝짓기 데이터 하나와 7-6의 백업 표·트라이브별 컨텐츠 마이그레이션
+// 검사에서 빼는 컨텐츠 데이터 파일(정확한 경로만): 짝짓기 데이터 하나와 그 원천인 짝짓기 표 문서, 7-6의 백업 표·트라이브별 컨텐츠 마이그레이션.
+// 짝짓기 표 문서는 실제 배지 이름을 옮겨 적은 표라서 같은 줄의 이름 하나만 고쳐도 옛 배지 이름이 걸린다(티켓 20261116_1250, 사용자 결정).
 const CONTENT_DATA_FILE =
-  /^(jam-web\/scripts\/jam2-content\/pairing\.json|jam-web\/supabase\/migrations\/\d+_(content_overwrite_backup|tribe_content_[a-z0-9_]+)\.sql)$/
+  /^(jam-web\/scripts\/jam2-content\/pairing\.json|docs\/service\/content\/ITEMBOOK_REPLACEMENT_MAP\.md|jam-web\/supabase\/migrations\/\d+_(content_overwrite_backup|tribe_content_[a-z0-9_]+)\.sql)$/
 
 function extractQuoted(text) {
   return [...text.matchAll(/"([^"]+)"/g)].map((m) => m[1].replace(/~$/, '').trim())
