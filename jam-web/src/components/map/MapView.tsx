@@ -168,6 +168,12 @@ function dotIconHtml(color: string, size: number, opacity: number): string {
 const DROP_MARKER_SCALE = 1.2
 
 /**
+ * 지점 서클 지름 대비 안쪽 보물 상자 아이콘 크기 비율. 0.6에서 0.8로 키웠다(사용자 지시 2026-11-16).
+ * 서클은 2px 테두리가 안쪽 면적을 줄이므로(24px 서클의 안쪽 20px), 0.8이면 19.2px로 테두리에 닿지 않고 꽉 찬다.
+ */
+export const DROP_MARKER_GLYPH_RATIO = 0.8
+
+/**
  * 배지(드랍)가 있는 지점 마커의 면·아이콘 색 — 강조색 그린(사용자 지시 2026-11-11, 티켓 20261111_1034).
  * 밝은 그린 위라 아이콘은 흰색이 아니라 검정(--foreground, 약 11:1)이다.
  */
@@ -184,7 +190,7 @@ export function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; 
   const { hasDrops, inRange, size } = opts
   const bg = hasDrops ? DROP_MARKER_ACTIVE_BG : 'var(--muted)'
   const opacity = inRange ? 1 : 0.5
-  const icon = size * 0.6
+  const icon = Math.round(size * DROP_MARKER_GLYPH_RATIO * 10) / 10
   // 그린 면 위는 --foreground(검정), --muted 면 위는 --snow(5.60:1)
   const glyph = hasDrops ? DROP_MARKER_ACTIVE_GLYPH : 'var(--snow)'
 

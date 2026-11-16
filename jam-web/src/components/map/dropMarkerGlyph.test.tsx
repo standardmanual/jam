@@ -26,4 +26,10 @@ describe('dropMarkerGlyphSvg (티켓 20261114_2347)', () => {
     expect(off).toContain('color:var(--snow)')
     expect(off).toContain('opacity:0.5')
   })
+
+  it('서클 안 아이콘은 서클 지름의 0.8배다(24px 서클이면 19.2px)', () => {
+    const html = dropMarkerIconHtml({ hasDrops: true, inRange: true, size: 24 })
+    expect(html).toContain('width:19.2px')
+    expect(html).toContain('height:19.2px')
+  })
 })
