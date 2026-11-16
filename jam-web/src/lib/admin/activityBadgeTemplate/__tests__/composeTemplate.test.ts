@@ -43,6 +43,12 @@ describe('stripSlotText', () => {
     expect(out).toContain('<rect')
   })
 
+  it('모양(path)과 text 없는 g도 통째로 지운다', () => {
+    const out = stripSlotText(svgOf('<path id="name" d="M0 0L5 5"/><g id="value"><path d="M1 1"/></g><circle id="keep" r="5"/>'))
+    expect(out).not.toMatch(/id="(name|value)"/)
+    expect(out).toContain('id="keep"')
+  })
+
   it('읽지 못하면 TemplateSvgError', () => {
     expect(() => stripSlotText('<svg><')).toThrow(TemplateSvgError)
   })

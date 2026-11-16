@@ -9,7 +9,7 @@ import { GOOGLE_FONT_CATALOG } from '@/lib/admin/googleFonts'
 import { SYSTEM_DEFAULT_FONT } from '@/app/admin/asset-generator/assetGeneratorHelpers'
 import { TEMPLATE_SLOT_NAMES, findById, findFirst, lname, parseSvg, type TemplateSlot } from './templateSvg'
 
-/** 이름 자리·값 자리의 text 요소를 통째로 지운 SVG 글자를 돌려준다. 읽지 못하면 TemplateSvgError. */
+/** 이름 자리·값 자리의 샘플 글자(글자 요소든 모양이든)를 걷어 낸 SVG 글자를 돌려준다. 읽지 못하면 TemplateSvgError. */
 export function stripSlotText(svgText: string): string {
   const root = parseSvg(svgText)
   for (const id of TEMPLATE_SLOT_NAMES) {
@@ -17,7 +17,8 @@ export function stripSlotText(svgText: string): string {
     if (!el) continue
     const tag = lname(el)
     const textEl = tag === 'text' ? el : tag === 'g' ? findFirst(el, 'text') : null
-    if (textEl?.parentNode) textEl.parentNode.removeChild(textEl)
+    const target = textEl ?? el
+    if (target.parentNode) target.parentNode.removeChild(target)
   }
   return new XMLSerializer().serializeToString(root as never)
 }

@@ -3,6 +3,7 @@
  * 순수 모듈. 서버 전용 모듈을 들여오지 않는다.
  */
 import { parseSvgColor } from './templateColors'
+import type { TemplateArcSlot } from './templateDef'
 import { TEMPLATE_SLOT_NAMES, type TemplateSlot, type TemplateSlotName } from './templateSvg'
 
 export interface TemplateColorParams {
@@ -115,5 +116,16 @@ export function styleSlot(slot: TemplateSlot, p: SlotTextParams): TemplateSlot {
     fontFamily: p.fontFamily ?? slot.fontFamily,
     fontWeight: p.fontWeight !== null ? String(p.fontWeight) : slot.fontWeight,
     fontSize: slot.fontSize !== null ? (slot.fontSize * p.sizeScalePct) / 100 : null,
+  }
+}
+
+/** 원호 자리에 글자 조정을 얹은 사본 */
+export function styleArcSlot(slot: TemplateArcSlot, p: SlotTextParams): TemplateArcSlot {
+  return {
+    ...slot,
+    fill: p.color ?? slot.fill,
+    fontFamily: p.fontFamily ?? slot.fontFamily,
+    fontWeight: p.fontWeight !== null ? String(p.fontWeight) : slot.fontWeight,
+    fontSize: (slot.fontSize * p.sizeScalePct) / 100,
   }
 }

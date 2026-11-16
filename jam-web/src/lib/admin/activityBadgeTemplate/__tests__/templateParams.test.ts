@@ -9,7 +9,9 @@ import {
   isDefaultTemplateBadgeParams,
   isDefaultTemplateColorParams,
   styleSlot,
+  styleArcSlot,
 } from '../templateParams'
+import type { TemplateArcSlot } from '../templateDef'
 import type { TemplateSlot } from '../templateSvg'
 
 const slot: TemplateSlot = {
@@ -90,6 +92,20 @@ describe('styleSlot', () => {
   })
   it('fontSize가 없으면 null', () => {
     expect(styleSlot({ ...slot, fontSize: null }, { color: null, fontFamily: null, fontWeight: null, sizeScalePct: 150 }).fontSize).toBeNull()
+  })
+})
+
+describe('styleArcSlot', () => {
+  const arc: TemplateArcSlot = {
+    kind: 'arc', cx: 1, cy: 2, baselineRadius: 300, centerDeg: 0, facing: 'outward', maxSpanDeg: 200,
+    fontFamily: 'Noto Sans KR', fontWeight: '900', fontSize: 100, letterSpacingEm: 0.1, fill: '#FFFFFF',
+  }
+  it('기본값이면 그대로', () => {
+    expect(styleArcSlot(arc, { color: null, fontFamily: null, fontWeight: null, sizeScalePct: 100 })).toEqual(arc)
+  })
+  it('색·글꼴·굵기·크기를 반영한다', () => {
+    const s = styleArcSlot(arc, { color: '#000000', fontFamily: 'Pretendard', fontWeight: 500, sizeScalePct: 120 })
+    expect(s).toMatchObject({ fill: '#000000', fontFamily: 'Pretendard', fontWeight: '500', fontSize: 120, baselineRadius: 300 })
   })
 })
 
