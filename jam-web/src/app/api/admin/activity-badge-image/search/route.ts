@@ -6,6 +6,7 @@ import {
   activityBadgeImageSearchRange,
   activityBadgeImageSearchTotalPages,
   parseActivityBadgeImageSearchParams,
+  pickActivityBadgeImageSearchPage,
 } from '@/lib/admin/activityBadgeImageSearch'
 import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 import { toStudioBadgeFields } from '@/lib/admin/activityBadgeTemplate/studioBadge'
@@ -52,44 +53,41 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null)
   // 요청 해석·페이징 산술은 순수 모듈이 단일 출처다(테스트가 그 모듈을 직접 고정한다).
-  const { q, rarity, activityType, kind, familyKey, page } = parseActivityBadgeImageSearchParams(body)
+  const { q, rarity, activityType, kind, familyKey, templateClass, page } = parseActivityBadgeImageSearchParams(body)
 
   const supabase = createServiceClient()
 
-  let query = supabase
-    .from('badges')
-    .select('id, name, description, rarity, level, activity_types, image_url, image_gen_params, condition_json, is_hidden, family_key', {
-      count: 'exact',
-    })
-    .eq('type', 'activity')
-    .is('deleted_at', null)
-    // JAM! 카테고리(admin_category='jam')는 배경 이미지가 필요 없는 배지다 — 검색 후보에서
-    // 제외한다. NULL은 그대로 남겨야 하므로 neq 대신 or(is.null, neq)를 쓴다(티켓 20260910_2055).
-    .or('admin_category.is.null,admin_category.neq.jam')
+  // 조건을 거는 부분을 함수로 묶는다 — Supabase 질의는 한 번 쓰면 다시 쓸 수 없어 읽을 때마다 새로 만든다.
+  const buildQuery = () => {
+    let query = supabase
+      .from('badges')
+      .select('id, name, description, rarity, level, activity_types, image_url, image_gen_params, condition_json, is_hidden, family_key', {
+        count: 'exact',
+      })
+      .eq('type', 'activity')
+      .is('deleted_at', null)
+      // JAM! 카테고리(admin_category='jam')는 배경 이미지가 필요 없는 배지다 — 검색 후보에서
+      // 제외한다. NULL은 그대로 남겨야 하므로 neq 대신 or(is.null, neq)를 쓴다(티켓 20260910_2055).
+      .or('admin_category.is.null,admin_category.neq.jam')
 
-  if (q) query = query.ilike('name', `%${q}%`)
-  // 레벨형 ⇔ `rarity IS NULL`(`badgeKind.ts`의 `isLeveledBadge`)을 SQL로 투영한 것이다.
-  // 등급 필터는 `parseActivityBadgeImageSearchParams`가 레벨형일 때 이미 떨어뜨린다.
-  if (kind === 'leveled') query = query.is('rarity', null)
-  else if (kind === 'graded') query = query.not('rarity', 'is', null)
-  if (rarity) query = query.eq('rarity', rarity)
-  // activity_types는 text[] — 배열에 해당 종목이 들어 있는 배지만 남긴다.
-  if (activityType) query = query.contains('activity_types', [activityType])
+    if (q) query = query.ilike('name', `%${q}%`)
+    // 레벨형 ⇔ `rarity IS NULL`(`badgeKind.ts`의 `isLeveledBadge`)을 SQL로 투영한 것이다.
+    // 등급 필터는 `parseActivityBadgeImageSearchParams`가 레벨형일 때 이미 떨어뜨린다.
+    if (kind === 'leveled') query = query.is('rarity', null)
+    else if (kind === 'graded') query = query.not('rarity', 'is', null)
+    if (rarity) query = query.eq('rarity', rarity)
+    // activity_types는 text[] — 배열에 해당 종목이 들어 있는 배지만 남긴다.
+    if (activityType) query = query.contains('activity_types', [activityType])
 
-  // 같은 계열의 단계를 한꺼번에 불러올 때 쓴다(티켓 20261116_0728). 다른 조건과 함께 걸 수 있다.
-  if (familyKey) query = query.eq('family_key', familyKey)
+    // 같은 계열의 단계를 한꺼번에 불러올 때 쓴다(티켓 20261116_0728). 다른 조건과 함께 걸 수 있다.
+    if (familyKey) query = query.eq('family_key', familyKey)
 
-  const { from, to } = activityBadgeImageSearchRange(page)
-  // 이름이 중복되는 배지가 많아 이름만으로는 페이지 경계에서 순서가 흔들린다 —
-  // 레벨·id까지 정렬키에 넣어 페이지를 넘겨도 같은 행이 두 번 나오거나 빠지지 않게 한다.
-  const { data, error, count } = await query
-    .order('name')
-    .order('level', { ascending: true, nullsFirst: true })
-    .order('id')
-    .range(from, to)
-  if (error) return NextResponse.json({ error: '배지를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.' }, { status: 500 })
+    // 이름이 중복되는 배지가 많아 이름만으로는 페이지 경계에서 순서가 흔들린다 —
+    // 레벨·id까지 정렬키에 넣어 페이지를 넘겨도 같은 행이 두 번 나오거나 빠지지 않게 한다.
+    return query.order('name').order('level', { ascending: true, nullsFirst: true }).order('id')
+  }
 
-  const badges = ((data ?? []) as unknown as BadgeRow[]).map((row) => ({
+  const toItem = (row: BadgeRow) => ({
     id: row.id,
     name: row.name,
     description: row.description,
@@ -100,9 +98,35 @@ export async function POST(req: NextRequest) {
     hasImage: Boolean(row.image_url),
     // 템플릿 분류·값·계열 키와 배지에 저장된 템플릿 조정값을 함께 싣는다.
     ...toStudioBadgeFields(row),
-  }))
+  })
 
-  const total = count ?? 0
+  const DB_FAIL = '배지를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.'
+  let badges: ReturnType<typeof toItem>[]
+  let total: number
+
+  if (templateClass) {
+    // 분류는 DB 칸이 아니라 획득 조건에서 계산하는 값이다 — 다른 조건에 맞는 배지를 1,000줄씩
+    // 끝까지 읽어 분류를 계산하고, 걸러 낸 뒤 페이지를 자른다.
+    const READ_SIZE = 1000
+    const all: ReturnType<typeof toItem>[] = []
+    for (let offset = 0; ; offset += READ_SIZE) {
+      const { data, error } = await buildQuery().range(offset, offset + READ_SIZE - 1)
+      if (error) return NextResponse.json({ error: DB_FAIL }, { status: 500 })
+      const rows = (data ?? []) as unknown as BadgeRow[]
+      all.push(...rows.map(toItem))
+      if (rows.length < READ_SIZE) break
+    }
+    const picked = pickActivityBadgeImageSearchPage(all, templateClass, page)
+    badges = picked.items
+    total = picked.total
+  } else {
+    const { from, to } = activityBadgeImageSearchRange(page)
+    const { data, error, count } = await buildQuery().range(from, to)
+    if (error) return NextResponse.json({ error: DB_FAIL }, { status: 500 })
+    badges = ((data ?? []) as unknown as BadgeRow[]).map(toItem)
+    total = count ?? 0
+  }
+
   return NextResponse.json({
     badges,
     total,

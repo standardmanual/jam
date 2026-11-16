@@ -5,6 +5,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgePreview, { previewNotes } from '../BadgePreview'
+import { buildSearchBody } from '../BadgeStudio'
 import BadgePicker, { ALL_VALUE, type StudioSearchBadge } from '../BadgePicker'
 import { DEFAULT_TEMPLATE_BADGE_PARAMS } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
@@ -92,7 +93,7 @@ describe('previewNotes', () => {
 
 describe('BadgePicker', () => {
   const props = {
-    filters: { query: '', kind: ALL_VALUE, rarity: ALL_VALUE, activity: ALL_VALUE },
+    filters: { query: '', templateClass: ALL_VALUE, kind: ALL_VALUE, rarity: ALL_VALUE, activity: ALL_VALUE },
     onFiltersChange: vi.fn(), loading: false, error: null, total: 2, page: 1, totalPages: 1,
     selectedId: null, onSearch: vi.fn(), onSelect: vi.fn(),
   }
@@ -109,7 +110,21 @@ describe('BadgePicker', () => {
     expect(h).toContain('>없음<')
     expect(h).toContain('>-<')
   })
+  it('분류 선택 상자와 선택지 다섯 개', () => {
+    const h = renderToStaticMarkup(<BadgePicker {...props} results={[]} total={0} />)
+    for (const t of ['전체 분류', '운동 수치', '쌓은 날', '이어 온 날', '횟수와 양']) expect(h).toContain(t)
+  })
   it('결과가 없으면 문구', () => {
     expect(renderToStaticMarkup(<BadgePicker {...props} total={0} results={[]} />)).toContain('검색 결과가 없어요')
+  })
+})
+
+describe('buildSearchBody', () => {
+  const base = { query: '저녁', templateClass: ALL_VALUE, kind: ALL_VALUE, rarity: ALL_VALUE, activity: ALL_VALUE }
+  it('분류를 고르면 templateClass가 실린다', () => {
+    expect(buildSearchBody({ ...base, templateClass: 'metric' }, 2)).toMatchObject({ templateClass: 'metric', page: 2 })
+  })
+  it('전체 분류면 싣지 않는다', () => {
+    expect(buildSearchBody(base, 1).templateClass).toBeUndefined()
   })
 })
