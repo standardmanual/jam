@@ -22,7 +22,7 @@ describe('convertBadgeImageToWebp', () => {
     const meta = await sharp(webp).metadata()
 
     expect(meta.format).toBe('webp')
-    expect(BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX).toBe(1280)
+    expect(BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX).toBe(1024)
     expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX)
 
     // 비율 유지 확인 — sharp의 정수 반올림 오차 1px까지 허용한다
@@ -31,19 +31,27 @@ describe('convertBadgeImageToWebp', () => {
     expect(Math.abs(actualShortSide - expectedShortSide)).toBeLessThanOrEqual(1)
   })
 
-  it('스테이지 원본(긴 변 1280)은 크기를 그대로 유지한다', async () => {
-    const png = await makePng(1024, 1280)
+  it('스테이지 원본(긴 변 1024)은 크기를 그대로 유지한다', async () => {
+    const png = await makePng(819, 1024)
+    const webp = await convertBadgeImageToWebp(png)
+    const meta = await sharp(webp).metadata()
+    expect(meta.width).toBe(819)
+    expect(meta.height).toBe(1024)
+  })
+
+  it('1920×1080 원본은 1024×576으로 줄어든다', async () => {
+    const png = await makePng(1920, 1080)
     const webp = await convertBadgeImageToWebp(png)
     const meta = await sharp(webp).metadata()
     expect(meta.width).toBe(1024)
-    expect(meta.height).toBe(1280)
+    expect(meta.height).toBe(576)
   })
 
-  it('원본이 규격(1280px)보다 작으면 확대하지 않는다', async () => {
-    const png = await makePng(200, 200)
+  it('원본이 규격(1024px)보다 작으면 확대하지 않는다', async () => {
+    const png = await makePng(800, 800)
     const webp = await convertBadgeImageToWebp(png)
     const meta = await sharp(webp).metadata()
-    expect(meta.width).toBe(200)
-    expect(meta.height).toBe(200)
+    expect(meta.width).toBe(800)
+    expect(meta.height).toBe(800)
   })
 })

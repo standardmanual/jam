@@ -72,7 +72,7 @@ async function req(over: { badgeId?: string | null; params?: string | null; imag
   if (badgeId !== null) form.set('badgeId', badgeId)
   const params = over.params === undefined ? JSON.stringify(DEFAULT_TEMPLATE_BADGE_PARAMS) : over.params
   if (params !== null) form.set('params', params)
-  const image = over.image === undefined ? await png(1280) : over.image
+  const image = over.image === undefined ? await png(1024) : over.image
   if (image) form.set('image', image)
   return new NextRequest('https://j-a-m.app/api/admin/activity-badge-templates/register', { method: 'POST', body: form })
 }
@@ -126,14 +126,14 @@ describe('register — 검증', () => {
     await expectError(await POST(await req({ image: big })), 400, '이미지가 너무 커요. 5MB 이하만 등록할 수 있어요.')
   })
 
-  it('긴 변이 1280이 아니거나 읽지 못하면 400', async () => {
-    const msg = '이미지 크기가 맞지 않아요. 긴 변이 1280px인 이미지만 등록할 수 있어요.'
-    await expectError(await POST(await req({ image: await png(1024) })), 400, msg)
+  it('긴 변이 1024가 아니거나 읽지 못하면 400', async () => {
+    const msg = '이미지 크기가 맞지 않아요. 긴 변이 1024px인 이미지만 등록할 수 있어요.'
+    await expectError(await POST(await req({ image: await png(1280) })), 400, msg)
     await expectError(await POST(await req({ image: new File(['garbage'], 'a.png', { type: 'image/png' }) })), 400, msg)
   })
 
-  it('긴 변이 1280이면 직사각형도 통과한다', async () => {
-    const res = await POST(await req({ image: await png(1280, 640) }))
+  it('긴 변이 1024이면 직사각형도 통과한다', async () => {
+    const res = await POST(await req({ image: await png(1024, 512) }))
     expect(res.status).toBe(200)
   })
 

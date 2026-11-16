@@ -129,10 +129,10 @@ describe('isometricCameraPose', () => {
 
 describe('stageSizeFor', () => {
   it.each([
-    ['1:1', 1280, 1280],
-    ['4:5', 1024, 1280],
-    ['9:16', 720, 1280],
-    ['16:9', 1280, 720],
+    ['1:1', 1024, 1024],
+    ['4:5', 819, 1024],
+    ['9:16', 576, 1024],
+    ['16:9', 1024, 576],
   ] as const)('%s 비율은 %i×%i로 나온다', (ratio, width, height) => {
     expect(stageSizeFor(ratio)).toEqual({ width, height })
   })
@@ -141,7 +141,7 @@ describe('stageSizeFor', () => {
     expect(RATIO_OPTIONS).toEqual(['1:1', '4:5', '9:16', '16:9'])
     for (const r of RATIO_OPTIONS) {
       const { width, height } = stageSizeFor(r)
-      expect(Math.max(width, height)).toBe(1280)
+      expect(Math.max(width, height)).toBe(1024)
     }
   })
 })

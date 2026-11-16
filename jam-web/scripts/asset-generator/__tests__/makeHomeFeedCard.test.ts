@@ -55,7 +55,7 @@ function stubDeps(overrides: Record<string, unknown> = {}) {
     deps: {
       renderPng: async (renderArgs: Record<string, unknown>) => {
         calls.push(renderArgs);
-        return { buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1280, h: 1280 }, presetSource: 'admin-api' };
+        return { buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1024, h: 1024 }, presetSource: 'admin-api' };
       },
       runDryRun: realDryRun,
       now: () => NOW_MS,
@@ -223,7 +223,7 @@ describe('makeHomeFeedCard', () => {
     expect(exitCode).toBe(0);
     expect(output).toMatchObject({
       ok: true, imagePath: path.join(dir, 'image.png'), bundlePath: path.join(dir, 'bundle.json'),
-      imageBytes: FIXTURE_PNG.length, presetSource: 'admin-api', stage: { w: 1280, h: 1280 },
+      imageBytes: FIXTURE_PNG.length, presetSource: 'admin-api', stage: { w: 1024, h: 1024 },
     });
     expect(output.dryRun.note).toContain('DB 읽기 검사는 건너뜀');
     expect(fs.readFileSync(path.join(dir, 'image.png')).equals(FIXTURE_PNG)).toBe(true);
@@ -242,7 +242,7 @@ describe('makeHomeFeedCard', () => {
     const dir = path.join(tmpRoot, 'only-text01');
     const layers = { applied: ['text01'], saved: ['text02'] };
     const { deps } = stubDeps({
-      renderPng: async (renderArgs: Record<string, unknown>) => ({ buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1280, h: 1280 }, presetSource: 'admin-api', layers }),
+      renderPng: async (renderArgs: Record<string, unknown>) => ({ buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1024, h: 1024 }, presetSource: 'admin-api', layers }),
     });
     const argv = baseArgv(dir);
     argv.splice(argv.indexOf('--text02'), 2);

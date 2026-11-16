@@ -22,7 +22,7 @@ import type {
 import { waitForGoogleFontLoaded } from '@/lib/admin/googleFonts'
 
 /** 스테이지 긴 변 고정 길이(px). 원본 MAX_LONG. */
-export const STAGE_MAX_LONG_SIDE_PX = 1280
+export const STAGE_MAX_LONG_SIDE_PX = 1024
 
 /**
  * 비율별 스테이지 크기 (원본 applyAspect). 네 비율 모두 명시 분기다 — 목록에 없는 값을
@@ -33,7 +33,7 @@ export function resolveStageSize(ratio: StageRatio): { width: number; height: nu
     case '1:1':
       return { width: STAGE_MAX_LONG_SIDE_PX, height: STAGE_MAX_LONG_SIDE_PX }
     case '4:5':
-      return { width: (STAGE_MAX_LONG_SIDE_PX * 4) / 5, height: STAGE_MAX_LONG_SIDE_PX }
+      return { width: Math.round((STAGE_MAX_LONG_SIDE_PX * 4) / 5), height: STAGE_MAX_LONG_SIDE_PX }
     case '9:16':
       return { width: Math.round((STAGE_MAX_LONG_SIDE_PX * 9) / 16), height: STAGE_MAX_LONG_SIDE_PX }
     case '16:9':

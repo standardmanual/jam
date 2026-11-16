@@ -151,7 +151,7 @@ function previewDeps(over: Record<string, unknown> = {}) {
     loadPreset: async () => ({ layers: DARK_TEXT_LAYERS }),
     renderPng: async (renderArgs: Record<string, unknown>) => {
       renderCalls.push(renderArgs);
-      return { buffer: Buffer.from(`png-${renderArgs.seed}`), seed: renderArgs.seed, stage: { w: 1280, h: 1280 } };
+      return { buffer: Buffer.from(`png-${renderArgs.seed}`), seed: renderArgs.seed, stage: { w: 1024, h: 1024 } };
     },
     randomSeed: () => seedCounter++,
     detectTextOverflow: async () => false,
@@ -375,7 +375,7 @@ describe('runPreview', () => {
       [ID_A2, 101, `${ID_A2}.png`, false],
       [ID_B, 102, `${ID_B}.png`, false],
     ]);
-    expect(resolved.items[0]).toMatchObject({ title: '가 미션', values: { text01: '2주 330km', text02: '가 미션' }, bg: '#E8C39E', end: '#B98A5B', bytes: 7, stage: { w: 1280, h: 1280 } });
+    expect(resolved.items[0]).toMatchObject({ title: '가 미션', values: { text01: '2주 330km', text02: '가 미션' }, bg: '#E8C39E', end: '#B98A5B', bytes: 7, stage: { w: 1024, h: 1024 } });
     expect(logs.join('\n')).toContain('이미지 3장');
   });
 
