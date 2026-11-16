@@ -288,7 +288,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     -- running:K1 · 달려온 거리 — 누적 거리 20km
     ('달려온 거리', '발이 지나온 길이는 지도보다 몸이 먼저 압니다.', 'activity', NULL, 1, 'running:K1', 1, '{"activity_type":"running","distance_km":20}'::jsonb, ARRAY['running']::text[]),
     ('달려온 거리', '지나온 길이 지도 위에서 한 뼘쯤 늘었습니다.', 'activity', NULL, 2, 'running:K1', 1, '{"activity_type":"running","distance_km":60}'::jsonb, ARRAY['running']::text[]),
-    ('달려온 거리', '익숙한 길만 돌아서는 이 길이가 나오지 않습니다.', 'activity', NULL, 3, 'running:K1', 1, '{"activity_type":"running","distance_km":150}'::jsonb, ARRAY['running']::text[]),
+    ('달려온 거리', '익숙한 길만 돌면 이만한 거리가 나오지 않습니다.', 'activity', NULL, 3, 'running:K1', 1, '{"activity_type":"running","distance_km":150}'::jsonb, ARRAY['running']::text[]),
     ('달려온 거리', '도시 하나를 통째로 가로지른 길이입니다.', 'activity', NULL, 4, 'running:K1', 1, '{"activity_type":"running","distance_km":320}'::jsonb, ARRAY['running']::text[]),
     ('달려온 거리', '지도를 펴야 가늠이 되는 거리에 들어섰습니다.', 'activity', NULL, 5, 'running:K1', 1, '{"activity_type":"running","distance_km":600}'::jsonb, ARRAY['running']::text[]),
     ('달려온 거리', '여기부터는 거리를 세는 단위가 달라집니다.', 'activity', NULL, 6, 'running:K1', 1, '{"activity_type":"running","distance_km":1100}'::jsonb, ARRAY['running']::text[]),
@@ -498,7 +498,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('바퀴로 오른 고도', '이 사람 위로 남은 높이가 많지 않습니다.', 'activity', NULL, 6, 'cycling:K2', 2, '{"activity_type":"cycling","elevation_gain_m":70000}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:K3 · 안장에 오른 횟수 — 총 8회
     ('안장에 오른 횟수', '얼마나 멀리 갔는지보다 몇 번 나섰는지가 정직합니다.', 'activity', NULL, 1, 'cycling:K3', 3, '{"activity_type":"cycling","total_count":8}'::jsonb, ARRAY['cycling']::text[]),
-    ('안장에 오른 횟수', '나서는 일이 결심에서 순서로 바뀝니다.', 'activity', NULL, 2, 'cycling:K3', 3, '{"activity_type":"cycling","total_count":25}'::jsonb, ARRAY['cycling']::text[]),
+    ('안장에 오른 횟수', '나서는 일이 결심에서 일과로 바뀝니다.', 'activity', NULL, 2, 'cycling:K3', 3, '{"activity_type":"cycling","total_count":25}'::jsonb, ARRAY['cycling']::text[]),
     ('안장에 오른 횟수', '날씨를 확인하는 이유가 취소가 아니라 준비로 바뀝니다.', 'activity', NULL, 3, 'cycling:K3', 3, '{"activity_type":"cycling","total_count":55}'::jsonb, ARRAY['cycling']::text[]),
     ('안장에 오른 횟수', '나섰다는 사실만으로 채워진 기록이 두꺼워집니다.', 'activity', NULL, 4, 'cycling:K3', 3, '{"activity_type":"cycling","total_count":100}'::jsonb, ARRAY['cycling']::text[]),
     ('안장에 오른 횟수', '결심이라는 단어가 필요 없어집니다.', 'activity', NULL, 5, 'cycling:K3', 3, '{"activity_type":"cycling","total_count":170}'::jsonb, ARRAY['cycling']::text[]),
@@ -532,7 +532,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     --   [회차] 미소비 키 weekly_count
     ('이번 주의 바퀴', '세 번을 채운 주에는 다리가 먼저 알아차립니다.', 'activity', 'common', NULL, 'cycling:C2', 9, '{"activity_type":"cycling","weekly_count":3,"repeat_count":1}'::jsonb, ARRAY['cycling']::text[]),
     ('이번 주의 바퀴', '채운 주가 이어지면 일정표가 먼저 자리를 비워둡니다.', 'activity', 'rare', NULL, 'cycling:C2', 9, '{"activity_type":"cycling","weekly_count":3,"repeat_count":8}'::jsonb, ARRAY['cycling']::text[]),
-    ('이번 주의 바퀴', '한 주를 무너뜨리지 않는 사람은 계절도 무너지지 않습니다.', 'activity', 'epic', NULL, 'cycling:C2', 9, '{"activity_type":"cycling","weekly_count":3,"repeat_count":26}'::jsonb, ARRAY['cycling']::text[]),
+    ('이번 주의 바퀴', '한 주를 무너뜨리지 않는 사람은 계절도 무너뜨리지 않습니다.', 'activity', 'epic', NULL, 'cycling:C2', 9, '{"activity_type":"cycling","weekly_count":3,"repeat_count":26}'::jsonb, ARRAY['cycling']::text[]),
     ('이번 주의 바퀴', '이제 주간 계획이 이 사람을 따라옵니다.', 'activity', 'mystic', NULL, 'cycling:C2', 9, '{"activity_type":"cycling","weekly_count":3,"repeat_count":52}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:C3 · 이달의 라이더 — 한 달에 400km
     ('이달의 라이더', '한 달의 총량은 하루의 컨디션을 이깁니다.', 'activity', 'common', NULL, 'cycling:C3', 10, '{"activity_type":"cycling","monthly_km":400}'::jsonb, ARRAY['cycling']::text[]),
@@ -550,7 +550,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     --   [근사] 「주말」을 요일별 독립 카운터로 근사
     ('주말 라이더', '주말의 도로는 이 사람들의 것입니다.', 'activity', 'common', NULL, 'cycling:D1', 12, '{"activity_type":"cycling","day_of_week":["saturday","sunday"],"total_count":1}'::jsonb, ARRAY['cycling']::text[]),
     ('주말 라이더', '토요일 아침이 늦잠보다 먼저 정해져 있습니다.', 'activity', 'rare', NULL, 'cycling:D1', 12, '{"activity_type":"cycling","day_of_week":["saturday","sunday"],"total_count":10}'::jsonb, ARRAY['cycling']::text[]),
-    ('주말 라이더', '이틀이라는 짧은 창을 이만큼 크게 쓰는 경우는 드뭅니다.', 'activity', 'epic', NULL, 'cycling:D1', 12, '{"activity_type":"cycling","day_of_week":["saturday","sunday"],"total_count":35}'::jsonb, ARRAY['cycling']::text[]),
+    ('주말 라이더', '이틀이라는 짧은 시간을 이만큼 크게 쓰는 경우는 드뭅니다.', 'activity', 'epic', NULL, 'cycling:D1', 12, '{"activity_type":"cycling","day_of_week":["saturday","sunday"],"total_count":35}'::jsonb, ARRAY['cycling']::text[]),
     ('주말 라이더', '주말이라는 말이 더 이상 휴식과 붙어 다니지 않습니다.', 'activity', 'mystic', NULL, 'cycling:D1', 12, '{"activity_type":"cycling","day_of_week":["saturday","sunday"],"total_count":100}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:D2 · 평일의 반란 — 평일에 한 번에 100km 이상 / 1회
     --   [필터] day_of_week + total_count
@@ -565,11 +565,11 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('사흘의 바퀴', '무너지지 않은 사흘이 여러 번 겹칩니다.', 'activity', 'rare', NULL, 'cycling:N1', 14, '{"activity_type":"cycling","streak_days":3,"repeat_count":5}'::jsonb, ARRAY['cycling']::text[]),
     ('사흘의 바퀴', '사흘째의 다리 상태를 미리 아는 사람이 됩니다.', 'activity', 'epic', NULL, 'cycling:N1', 14, '{"activity_type":"cycling","streak_days":3,"repeat_count":20}'::jsonb, ARRAY['cycling']::text[]),
     ('사흘의 바퀴', '연속이라는 말이 더 이상 부담으로 들리지 않습니다.', 'activity', 'mystic', NULL, 'cycling:N1', 14, '{"activity_type":"cycling","streak_days":3,"repeat_count":50}'::jsonb, ARRAY['cycling']::text[]),
-    -- cycling:N2 · 일곱 바퀴의 궤도 — 7일 연속 / 1회
+    -- cycling:N2 · 일주일의 바퀴 — 7일 연속 / 1회
     --   [회차] 미소비 키 streak_days
-    ('일곱 바퀴의 궤도', '일곱 밤을 하루도 건너뛰지 않았습니다.', 'activity', 'common', NULL, 'cycling:N2', 15, '{"activity_type":"cycling","streak_days":7,"repeat_count":1}'::jsonb, ARRAY['cycling']::text[]),
-    ('일곱 바퀴의 궤도', '한 주가 통째로 하나의 흐름이 됩니다.', 'activity', 'rare', NULL, 'cycling:N2', 15, '{"activity_type":"cycling","streak_days":7,"repeat_count":3}'::jsonb, ARRAY['cycling']::text[]),
-    ('일곱 바퀴의 궤도', '쉬는 날을 끼워 넣지 않고도 다음 주가 이어집니다.', 'activity', 'epic', NULL, 'cycling:N2', 15, '{"activity_type":"cycling","streak_days":7,"repeat_count":10}'::jsonb, ARRAY['cycling']::text[]),
+    ('일주일의 바퀴', '일곱 밤을 하루도 건너뛰지 않았습니다.', 'activity', 'common', NULL, 'cycling:N2', 15, '{"activity_type":"cycling","streak_days":7,"repeat_count":1}'::jsonb, ARRAY['cycling']::text[]),
+    ('일주일의 바퀴', '한 주가 통째로 하나의 흐름이 됩니다.', 'activity', 'rare', NULL, 'cycling:N2', 15, '{"activity_type":"cycling","streak_days":7,"repeat_count":3}'::jsonb, ARRAY['cycling']::text[]),
+    ('일주일의 바퀴', '쉬는 날을 끼워 넣지 않고도 다음 주가 이어집니다.', 'activity', 'epic', NULL, 'cycling:N2', 15, '{"activity_type":"cycling","streak_days":7,"repeat_count":10}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:N3 · 삼 주의 바퀴 — 21일 연속 / 1회
     --   [회차] 미소비 키 streak_days
     ('삼 주의 바퀴', '삼 주를 끊지 않는 것은 훈련이 아니라 생활입니다.', 'activity', 'epic', NULL, 'cycling:N3', 16, '{"activity_type":"cycling","streak_days":21,"repeat_count":1}'::jsonb, ARRAY['cycling']::text[]),
@@ -687,7 +687,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('높은 곳', '얼마나 올랐는가가 아니라 어디까지 닿았는가입니다.', 'activity', 'common', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":700}'::jsonb, ARRAY['hiking']::text[]),
     ('높은 곳', '구름과 같은 높이에 서 본 사람은 등고선을 다르게 읽습니다.', 'activity', 'rare', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1200}'::jsonb, ARRAY['hiking']::text[]),
     ('높은 곳', '여기서부터는 높이를 세는 대신 남은 봉우리를 셉니다.', 'activity', 'epic', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1600}'::jsonb, ARRAY['hiking']::text[]),
-    ('높은 곳', '가장 멀리 닿았던 숨은 그 자체로 지워지지 않는 흔적입니다.', 'activity', 'mystic', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1900}'::jsonb, ARRAY['hiking']::text[]),
+    ('높은 곳', '가장 멀리 닿았던 숨결은 그 자체로 지워지지 않는 흔적입니다.', 'activity', 'mystic', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1900}'::jsonb, ARRAY['hiking']::text[]),
     -- hiking:L1 · 산에서의 하루 — 한 번에 3시간
     ('산에서의 하루', '해가 뜨고 지는 동안 산에 있었습니다.', 'activity', 'common', NULL, 'hiking:L1', 5, '{"activity_type":"hiking","duration_minutes":180}'::jsonb, ARRAY['hiking']::text[]),
     ('산에서의 하루', '그루터기 살롱은 하루를 통째로 숲에 두고 가는 손님을 반깁니다.', 'activity', 'rare', NULL, 'hiking:L1', 5, '{"activity_type":"hiking","duration_minutes":300}'::jsonb, ARRAY['hiking']::text[]),

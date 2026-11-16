@@ -475,7 +475,7 @@ describe('이름: 같은 원고 번호 안에서만 겹치고 다른 계열과 �
       owner.set(r.name, r.number)
     }
     const threeTwo = rows.filter((r) => r.number === '3-2')
-    expect(new Set(threeTwo.map((r) => r.name))).toEqual(new Set(['남은 재료의 저녁']))
+    expect(new Set(threeTwo.map((r) => r.name))).toEqual(new Set(['남은 재료 저녁상']))
     expect(new Set(threeTwo.map((r) => r.family_key)).size).toBe(5)
   })
 

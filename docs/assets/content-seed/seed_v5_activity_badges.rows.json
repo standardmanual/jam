@@ -2880,7 +2880,7 @@
  },
  {
   "name": "달려온 거리",
-  "description": "익숙한 길만 돌아서는 이 길이가 나오지 않습니다.",
+  "description": "익숙한 길만 돌면 이만한 거리가 나오지 않습니다.",
   "type": "activity",
   "rarity": null,
   "level": 3,
@@ -5519,7 +5519,7 @@
  },
  {
   "name": "안장에 오른 횟수",
-  "description": "나서는 일이 결심에서 순서로 바뀝니다.",
+  "description": "나서는 일이 결심에서 일과로 바뀝니다.",
   "type": "activity",
   "rarity": null,
   "level": 2,
@@ -5984,7 +5984,7 @@
  },
  {
   "name": "이번 주의 바퀴",
-  "description": "한 주를 무너뜨리지 않는 사람은 계절도 무너지지 않습니다.",
+  "description": "한 주를 무너뜨리지 않는 사람은 계절도 무너뜨리지 않습니다.",
   "type": "activity",
   "rarity": "epic",
   "level": null,
@@ -6202,7 +6202,7 @@
  },
  {
   "name": "주말 라이더",
-  "description": "이틀이라는 짧은 창을 이만큼 크게 쓰는 경우는 드뭅니다.",
+  "description": "이틀이라는 짧은 시간을 이만큼 크게 쓰는 경우는 드뭅니다.",
   "type": "activity",
   "rarity": "epic",
   "level": null,
@@ -6415,7 +6415,7 @@
   "patch_available": false
  },
  {
-  "name": "일곱 바퀴의 궤도",
+  "name": "일주일의 바퀴",
   "description": "일곱 밤을 하루도 건너뛰지 않았습니다.",
   "type": "activity",
   "rarity": "common",
@@ -6433,7 +6433,7 @@
   "patch_available": false
  },
  {
-  "name": "일곱 바퀴의 궤도",
+  "name": "일주일의 바퀴",
   "description": "한 주가 통째로 하나의 흐름이 됩니다.",
   "type": "activity",
   "rarity": "rare",
@@ -6451,7 +6451,7 @@
   "patch_available": false
  },
  {
-  "name": "일곱 바퀴의 궤도",
+  "name": "일주일의 바퀴",
   "description": "쉬는 날을 끼워 넣지 않고도 다음 주가 이어집니다.",
   "type": "activity",
   "rarity": "epic",
@@ -7871,7 +7871,7 @@
  },
  {
   "name": "높은 곳",
-  "description": "가장 멀리 닿았던 숨은 그 자체로 지워지지 않는 흔적입니다.",
+  "description": "가장 멀리 닿았던 숨결은 그 자체로 지워지지 않는 흔적입니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,

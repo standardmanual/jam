@@ -34,19 +34,19 @@
 --
 -- 이미지 대응표 (새 family_key → 이미지를 복사할 기존 family_key)
 --   walking:J6-1             6-1   좌판 사이를 걸은 날    ← walking:K1 (4행 ← 원본 단계를 비례로 대응)
---   walking:J6-2             6-2   건조기가 멈춘 뒤에도 걸은 날 ← walking:P1 (4행 ← 원본 단계를 비례로 대응)
+--   walking:J6-2             6-2   건조기 도는 동안 걸은 날 ← walking:P1 (4행 ← 원본 단계를 비례로 대응)
 --   jam:J7-1                 7-1   노트가 쌓이는 빨래방    ← walking:K1 (5행 ← 원본 단계를 비례로 대응)
---   jam:J7-2                 7-2   부스에 쌓인 일주일     ← walking:P2 (4행 ← 원본 단계를 비례로 대응)
+--   jam:J7-2                 7-2   부스에 쌓인 소리      ← walking:P2 (4행 ← 원본 단계를 비례로 대응)
 --   jam:J8-1                 8-1   봉투 속 한 장       ← walking:K3 (5행 ← 원본 단계를 비례로 대응)
 --   jam:J8-2                 8-2   빌린 유리 칸        ← walking:P1 (4행 ← 원본 단계를 비례로 대응)
---   jam:J8-3                 8-3   창가 연구소 메모      ← walking:S1 (4행 ← 원본 단계를 비례로 대응)
+--   jam:J8-3                 8-3   창가 연구소의 메모     ← walking:S1 (4행 ← 원본 단계를 비례로 대응)
 --   jam:J8-6                 8-6   빨랫줄의 한 켤레      ← walking:K1 (5행 ← 원본 단계를 비례로 대응)
 --   jam:J8-7                 8-7   엉뚱한 주제         ← walking:K3 (5행 ← 원본 단계를 비례로 대응)
 --   jam:J8-8                 8-8   앨범에 붙는 한마디     ← walking:A8 (3행 ← 원본 단계를 비례로 대응)
---   jam:J8-9                 8-9   건너온 물건 칸       ← walking:K1 (5행 ← 원본 단계를 비례로 대응)
+--   jam:J8-9                 8-9   건너온 물건의 칸      ← walking:K1 (5행 ← 원본 단계를 비례로 대응)
 --   jam:J8-10                8-10  남의 가게에 흐른 곡    ← walking:A6 (3행 ← 원본 단계를 비례로 대응)
 --   jam:J8-11                8-11  들썩이는 관중석       ← walking:K3 (5행 ← 원본 단계를 비례로 대응)
---   jam:J8-12                8-12  로봇 이야기 곁       ← walking:K1 (5행 ← 원본 단계를 비례로 대응)
+--   jam:J8-12                8-12  로봇 이야기 청중      ← walking:K1 (5행 ← 원본 단계를 비례로 대응)
 --
 -- 되돌림 방법과 사후 확인은 파일 끝에 있다.
 
@@ -60,7 +60,7 @@
 --   SELECT family_key, count(*) FROM public.badges WHERE family_key IN ('walking:J6-1', 'walking:J6-2', 'jam:J7-1', 'jam:J7-2', 'jam:J8-1', 'jam:J8-2', 'jam:J8-3', 'jam:J8-6', 'jam:J8-7', 'jam:J8-8', 'jam:J8-9', 'jam:J8-10', 'jam:J8-11', 'jam:J8-12') GROUP BY family_key;
 --
 -- ② 같은 이름이 살아 있는 배지에 이미 있는가 (0행이어야 한다. 등급형은 같은 이름이 한 계열 안에서만 반복된다)
---   SELECT name, type, family_key FROM public.badges WHERE deleted_at IS NULL AND name IN ('좌판 사이를 걸은 날', '좌판 끝까지 걸은 날', '문방구 구석까지 걸은 날', '버스 2번 거리를 걸은 날', '건조기가 멈춘 뒤에도 걸은 날', '빨래 2판 동안 걸은 날', '빨래 3판 동안 걸은 날', '빨래방 한 저녁을 걸은 날', '노트가 쌓이는 빨래방', '부스에 쌓인 일주일', '봉투 속 한 장', '빌린 유리 칸', '창가 연구소 메모', '빨랫줄의 한 켤레', '엉뚱한 주제', '앨범에 붙는 한마디', '건너온 물건 칸', '남의 가게에 흐른 곡', '들썩이는 관중석', '로봇 이야기 곁');
+--   SELECT name, type, family_key FROM public.badges WHERE deleted_at IS NULL AND name IN ('좌판 사이를 걸은 날', '좌판 끝까지 걸은 날', '문방구까지 걸은 날', '환승 2번만큼 걸은 날', '건조기 도는 동안 걸은 날', '세탁 2번 동안 걸은 날', '세탁 3번 동안 걸은 날', '저녁 내내 걸은 날', '노트가 쌓이는 빨래방', '부스에 쌓인 소리', '봉투 속 한 장', '빌린 유리 칸', '창가 연구소의 메모', '빨랫줄의 한 켤레', '엉뚱한 주제', '앨범에 붙는 한마디', '건너온 물건의 칸', '남의 가게에 흐른 곡', '들썩이는 관중석', '로봇 이야기 청중');
 --
 -- ③ 이미지 원본: 계열마다 행 수와 image_url이 있는 행 수
 --   SELECT family_key, count(*) AS 행수, count(image_url) AS 이미지있음 FROM public.badges WHERE family_key IN ('walking:K1', 'walking:P1', 'walking:P2', 'walking:K3', 'walking:S1', 'walking:A8', 'walking:A6') GROUP BY family_key ORDER BY family_key;
@@ -154,21 +154,21 @@ WITH new_rows (name, description, type, rarity, level, family_key, sort_order, c
   VALUES
     ('좌판 사이를 걸은 날', '벼룩시장 좌판 사이를 수집가들이 지나갑니다. 단종된 시리즈가 문방구 구석에 있다고 해서 버스를 2번 갈아타고 왔습니다.', 'activity', 'common', NULL, 'walking:J6-1', 601, '{"activity_type":"walking","single_distance_km":5}'::jsonb, ARRAY['walking']::text[], 10, 'attribute', NULL, 'walking:K1', 1, 4),
     ('좌판 끝까지 걸은 날', '좌판 끝에서 수집가들이 빈손으로 돌아섰습니다. 그래도 칸에 세운 물건을 보면 다들 출처부터 묻습니다.', 'activity', 'rare', NULL, 'walking:J6-1', 601, '{"activity_type":"walking","single_distance_km":7.5}'::jsonb, ARRAY['walking']::text[], 20, 'attribute', NULL, 'walking:K1', 2, 4),
-    ('문방구 구석까지 걸은 날', '소문의 출처는 문방구 구석 한 곳뿐이었습니다.', 'activity', 'epic', NULL, 'walking:J6-1', 601, '{"activity_type":"walking","single_distance_km":10}'::jsonb, ARRAY['walking']::text[], 50, 'attribute', NULL, 'walking:K1', 3, 4),
-    ('버스 2번 거리를 걸은 날', '수집가는 좌판에서 건진 물건 하나를 칸에 세웁니다.', 'activity', 'mystic', NULL, 'walking:J6-1', 601, '{"activity_type":"walking","single_distance_km":20}'::jsonb, ARRAY['walking']::text[], 100, 'attribute', NULL, 'walking:K1', 4, 4),
-    ('건조기가 멈춘 뒤에도 걸은 날', '빨래방이 붐비자 단골은 문을 열지 않고 골목으로 나갔습니다. 건조기 돌아가는 소리가 골목 끝까지 따라왔습니다.', 'activity', 'common', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":60}'::jsonb, ARRAY['walking']::text[], 10, 'attribute', NULL, 'walking:P1', 1, 4),
-    ('빨래 2판 동안 걸은 날', '단골은 골목을 한 바퀴 더 돌았습니다. 돌아와 보니 건조기는 이미 멎어 있었습니다.', 'activity', 'rare', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":90}'::jsonb, ARRAY['walking']::text[], 20, 'attribute', NULL, 'walking:P1', 2, 4),
-    ('빨래 3판 동안 걸은 날', '단골이 돌아왔을 때 건조기는 식어 있었습니다.', 'activity', 'epic', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":120}'::jsonb, ARRAY['walking']::text[], 50, 'attribute', NULL, 'walking:P1', 3, 4),
-    ('빨래방 한 저녁을 걸은 날', '불이 켜진 빨래방은 이미 조용했습니다.', 'activity', 'mystic', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":180}'::jsonb, ARRAY['walking']::text[], 100, 'attribute', NULL, 'walking:P1', 4, 4),
+    ('문방구까지 걸은 날', '소문의 출처는 문방구 구석 한 곳뿐이었습니다.', 'activity', 'epic', NULL, 'walking:J6-1', 601, '{"activity_type":"walking","single_distance_km":10}'::jsonb, ARRAY['walking']::text[], 50, 'attribute', NULL, 'walking:K1', 3, 4),
+    ('환승 2번만큼 걸은 날', '수집가는 좌판에서 건진 물건 하나를 칸에 세웁니다.', 'activity', 'mystic', NULL, 'walking:J6-1', 601, '{"activity_type":"walking","single_distance_km":20}'::jsonb, ARRAY['walking']::text[], 100, 'attribute', NULL, 'walking:K1', 4, 4),
+    ('건조기 도는 동안 걸은 날', '빨래방이 붐비자 단골은 문을 열지 않고 골목으로 나갔습니다. 건조기 돌아가는 소리가 골목 끝까지 따라왔습니다.', 'activity', 'common', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":60}'::jsonb, ARRAY['walking']::text[], 10, 'attribute', NULL, 'walking:P1', 1, 4),
+    ('세탁 2번 동안 걸은 날', '단골은 골목을 한 바퀴 더 돌았습니다. 돌아와 보니 건조기는 이미 멎어 있었습니다.', 'activity', 'rare', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":90}'::jsonb, ARRAY['walking']::text[], 20, 'attribute', NULL, 'walking:P1', 2, 4),
+    ('세탁 3번 동안 걸은 날', '단골이 돌아왔을 때 건조기는 식어 있었습니다.', 'activity', 'epic', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":120}'::jsonb, ARRAY['walking']::text[], 50, 'attribute', NULL, 'walking:P1', 3, 4),
+    ('저녁 내내 걸은 날', '불이 켜진 빨래방은 이미 조용했습니다.', 'activity', 'mystic', NULL, 'walking:J6-2', 602, '{"activity_type":"walking","duration_minutes":180}'::jsonb, ARRAY['walking']::text[], 100, 'attribute', NULL, 'walking:P1', 4, 4),
     ('노트가 쌓이는 빨래방', '노트 한 권이 가득 찼습니다. 마지막 장은 접이식 테이블 위에 펼쳐져 있습니다.', 'activity', NULL, 1, 'jam:J7-1', 701, '{"jam_total_earned":1100}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:K1', 1, 5),
     ('노트가 쌓이는 빨래방', '새 노트가 접이식 테이블에 올라왔습니다. 진봉수는 첫 장부터 끝까지 읽습니다.', 'activity', NULL, 2, 'jam:J7-1', 701, '{"jam_total_earned":5500}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:K1', 2, 5),
     ('노트가 쌓이는 빨래방', '다 쓴 노트가 한쪽에 쌓였습니다. 진봉수는 한 권도 버리지 않습니다.', 'activity', NULL, 3, 'jam:J7-1', 701, '{"jam_total_earned":22000}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:K1', 3, 5),
     ('노트가 쌓이는 빨래방', '쌓인 노트가 접이식 테이블 밑으로 내려갔습니다.', 'activity', NULL, 4, 'jam:J7-1', 701, '{"jam_total_earned":55000}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:K1', 4, 5),
     ('노트가 쌓이는 빨래방', '다 쓴 노트는 한 손에 들리지 않습니다.', 'activity', NULL, 5, 'jam:J7-1', 701, '{"jam_total_earned":110000}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:K1', 5, 5),
-    ('부스에 쌓인 일주일', '계단 밑 부스에 30초짜리 녹음이 들어왔습니다. 시장 뒤 창고의 일정한 칼질 소리입니다.', 'activity', 'common', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":230}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:P2', 1, 4),
-    ('부스에 쌓인 일주일', '칼질 소리 다음에는 뒷방의 박수가 이어집니다. 앰프 켜지는 소리가 그 사이에 끼었습니다.', 'activity', 'rare', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":360}'::jsonb, ARRAY[]::text[], 20, 'milestone', 'jam', 'walking:P2', 2, 4),
-    ('부스에 쌓인 일주일', '칼질과 박수와 앰프 소리가 부스에 다 담겼습니다.', 'activity', 'epic', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":880}'::jsonb, ARRAY[]::text[], 50, 'milestone', 'jam', 'walking:P2', 3, 4),
-    ('부스에 쌓인 일주일', '고양이 코 고는 소리가 부스에 남았습니다.', 'activity', 'mystic', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":1250}'::jsonb, ARRAY[]::text[], 100, 'milestone', 'jam', 'walking:P2', 4, 4),
+    ('부스에 쌓인 소리', '계단 밑 부스에 30초짜리 녹음이 들어왔습니다. 시장 뒤 창고의 일정한 칼질 소리입니다.', 'activity', 'common', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":230}'::jsonb, ARRAY[]::text[], 10, 'milestone', 'jam', 'walking:P2', 1, 4),
+    ('부스에 쌓인 소리', '칼질 소리 다음에는 뒷방의 박수가 이어집니다. 앰프 켜지는 소리가 그 사이에 끼었습니다.', 'activity', 'rare', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":360}'::jsonb, ARRAY[]::text[], 20, 'milestone', 'jam', 'walking:P2', 2, 4),
+    ('부스에 쌓인 소리', '칼질과 박수와 앰프 소리가 부스에 다 담겼습니다.', 'activity', 'epic', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":880}'::jsonb, ARRAY[]::text[], 50, 'milestone', 'jam', 'walking:P2', 3, 4),
+    ('부스에 쌓인 소리', '고양이 코 고는 소리가 부스에 남았습니다.', 'activity', 'mystic', NULL, 'jam:J7-2', 702, '{"jam_weekly_earned":1250}'::jsonb, ARRAY[]::text[], 100, 'milestone', 'jam', 'walking:P2', 4, 4),
     ('봉투 속 한 장', '반셔터 인화 봉투를 열면 맨 위에 사진이 올라 있습니다. 구석이 번졌는데 광호가 고른 한 장입니다.', 'activity', NULL, 1, 'jam:J8-1', 801, '{"capsule_open_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 1, 5),
     ('봉투 속 한 장', '봉투마다 손글씨로 이름이 적혀 있습니다.', 'activity', NULL, 2, 'jam:J8-1', 801, '{"capsule_open_count":20}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 2, 5),
     ('봉투 속 한 장', '손이 흔들린 사진이 맨 위에 올라온 봉투도 있습니다.', 'activity', NULL, 3, 'jam:J8-1', 801, '{"capsule_open_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 3, 5),
@@ -178,10 +178,10 @@ WITH new_rows (name, description, type, rarity, level, family_key, sort_order, c
     ('빌린 유리 칸', '누군가의 세계가 칸마다 들어 있습니다. 같은 캐릭터의 열쇠고리 47개 앞에는 출처부터 묻는 사람이 몰렸습니다.', 'activity', 'rare', NULL, 'jam:J8-2', 802, '{"locked_item_open_count":10}'::jsonb, ARRAY[]::text[], 20, 'jam_activity', 'jam', 'walking:P1', 2, 4),
     ('빌린 유리 칸', '2000년대 초 인형 시리즈가 든 칸은 조명 각도를 주인이 직접 맞춰 둡니다.', 'activity', 'epic', NULL, 'jam:J8-2', 802, '{"locked_item_open_count":30}'::jsonb, ARRAY[]::text[], 50, 'jam_activity', 'jam', 'walking:P1', 3, 4),
     ('빌린 유리 칸', '칸 주인이 물건마다 출처를 댑니다.', 'activity', 'mystic', NULL, 'jam:J8-2', 802, '{"locked_item_open_count":100}'::jsonb, ARRAY[]::text[], 100, 'jam_activity', 'jam', 'walking:P1', 4, 4),
-    ('창가 연구소 메모', '럭키마트 창가 조합 연구소에서 재료를 섞었습니다. 편의점 재료가 딱 맞아떨어졌습니다.', 'activity', 'common', NULL, 'jam:J8-3', 803, '{"combine_success_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:S1', 1, 4),
-    ('창가 연구소 메모', '은박지를 펴서 메모에 한 줄 적었습니다.', 'activity', 'rare', NULL, 'jam:J8-3', 803, '{"combine_success_count":5}'::jsonb, ARRAY[]::text[], 20, 'jam_activity', 'jam', 'walking:S1', 2, 4),
-    ('창가 연구소 메모', '창가에 앉고, 재료를 늘어놓고, 메모부터 폅니다.', 'activity', 'epic', NULL, 'jam:J8-3', 803, '{"combine_success_count":20}'::jsonb, ARRAY[]::text[], 50, 'jam_activity', 'jam', 'walking:S1', 3, 4),
-    ('창가 연구소 메모', '창가에 은박지 메모가 붙어 있습니다.', 'activity', 'mystic', NULL, 'jam:J8-3', 803, '{"combine_success_count":50}'::jsonb, ARRAY[]::text[], 100, 'jam_activity', 'jam', 'walking:S1', 4, 4),
+    ('창가 연구소의 메모', '럭키마트 창가 조합 연구소에서 재료를 섞었습니다. 편의점 재료가 딱 맞아떨어졌습니다.', 'activity', 'common', NULL, 'jam:J8-3', 803, '{"combine_success_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:S1', 1, 4),
+    ('창가 연구소의 메모', '은박지를 펴서 메모에 한 줄 적었습니다.', 'activity', 'rare', NULL, 'jam:J8-3', 803, '{"combine_success_count":5}'::jsonb, ARRAY[]::text[], 20, 'jam_activity', 'jam', 'walking:S1', 2, 4),
+    ('창가 연구소의 메모', '창가에 앉고, 재료를 늘어놓고, 메모부터 폅니다.', 'activity', 'epic', NULL, 'jam:J8-3', 803, '{"combine_success_count":20}'::jsonb, ARRAY[]::text[], 50, 'jam_activity', 'jam', 'walking:S1', 3, 4),
+    ('창가 연구소의 메모', '창가에 은박지 메모가 붙어 있습니다.', 'activity', 'mystic', NULL, 'jam:J8-3', 803, '{"combine_success_count":50}'::jsonb, ARRAY[]::text[], 100, 'jam_activity', 'jam', 'walking:S1', 4, 4),
     ('빨랫줄의 한 켤레', '짝 잃은 양말이 제 짝을 찾아 빨랫줄에 나란히 걸렸습니다.', 'activity', NULL, 1, 'jam:J8-6', 806, '{"collection_complete_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 1, 5),
     ('빨랫줄의 한 켤레', '건조기에서 꺼낸 양말을 짝부터 맞춥니다.', 'activity', NULL, 2, 'jam:J8-6', 806, '{"collection_complete_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 2, 5),
     ('빨랫줄의 한 켤레', '분실물 바구니에서 짝이 하나 더 나왔습니다.', 'activity', NULL, 3, 'jam:J8-6', 806, '{"collection_complete_count":30}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 3, 5),
@@ -190,29 +190,29 @@ WITH new_rows (name, description, type, rarity, level, family_key, sort_order, c
     ('엉뚱한 주제', '백승리가 제비뽑기 통을 흔듭니다. 나온 주제는 붕어빵 틀로 만드는 요리였습니다.', 'activity', NULL, 1, 'jam:J8-7', 807, '{"mission_complete_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 1, 5),
     ('엉뚱한 주제', '마이크를 잡은 백승리가 "오늘의 대결!"이라고 외칩니다. 주제는 편의점 재료만으로 한 상 차리기였습니다.', 'activity', NULL, 2, 'jam:J8-7', 807, '{"mission_complete_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 2, 5),
     ('엉뚱한 주제', '대결이 끝나자 엔드롤로 몰려가 냄비를 나눕니다.', 'activity', NULL, 3, 'jam:J8-7', 807, '{"mission_complete_count":30}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 3, 5),
-    ('엉뚱한 주제', '승리의 목소리는 시장 끝까지 들렸습니다.', 'activity', NULL, 4, 'jam:J8-7', 807, '{"mission_complete_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 4, 5),
-    ('엉뚱한 주제', '승리가 쪽지를 펼치자 시장이 조용해집니다.', 'activity', NULL, 5, 'jam:J8-7', 807, '{"mission_complete_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 5, 5),
+    ('엉뚱한 주제', '백승리의 목소리는 시장 끝까지 들렸습니다.', 'activity', NULL, 4, 'jam:J8-7', 807, '{"mission_complete_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 4, 5),
+    ('엉뚱한 주제', '백승리가 쪽지를 펼치자 시장이 조용해집니다.', 'activity', NULL, 5, 'jam:J8-7', 807, '{"mission_complete_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 5, 5),
     ('앨범에 붙는 한마디', '계산대에서 은주는 앨범에 한마디를 붙입니다. 어느 곡부터 들으라는 말입니다.', 'activity', 'common', NULL, 'jam:J8-8', 808, '{"chapter_reached":3}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:A8', 1, 3),
     ('앨범에 붙는 한마디', '은주는 계산대에서 베이스 얘기도 꺼냅니다. "베이스는 잘 안 들리지만, 빠지면 다들 알아요."', 'activity', 'rare', NULL, 'jam:J8-8', 808, '{"chapter_reached":5}'::jsonb, ARRAY[]::text[], 20, 'jam_activity', 'jam', 'walking:A8', 2, 3),
     ('앨범에 붙는 한마디', '한마디를 들은 손님은 앨범을 들고 나갑니다.', 'activity', 'epic', NULL, 'jam:J8-8', 808, '{"chapter_reached":10}'::jsonb, ARRAY[]::text[], 50, 'jam_activity', 'jam', 'walking:A8', 3, 3),
-    ('건너온 물건 칸', '반하은의 칸에 카세트가 꽂혀 있습니다. 찍어 낸 곳은 비사이드입니다.', 'activity', NULL, 1, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 1, 5),
-    ('건너온 물건 칸', '비사이드는 카세트를 찍는 작은 레이블입니다. 새 카세트가 나오면 하은이 한 개씩 칸에 꽂습니다.', 'activity', NULL, 2, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":20}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 2, 5),
-    ('건너온 물건 칸', '표지 글씨는 전부 하은이 썼습니다.', 'activity', NULL, 3, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 3, 5),
-    ('건너온 물건 칸', '하은은 칸 이름표에 카세트가 나온 해를 적습니다.', 'activity', NULL, 4, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 4, 5),
-    ('건너온 물건 칸', '하은이 새 카세트를 꽂을 틈을 비워 둡니다.', 'activity', NULL, 5, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":200}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 5, 5),
+    ('건너온 물건의 칸', '반하은의 칸에 카세트가 꽂혀 있습니다. 찍어 낸 곳은 비사이드입니다.', 'activity', NULL, 1, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 1, 5),
+    ('건너온 물건의 칸', '비사이드는 카세트를 찍는 작은 레이블입니다. 새 카세트가 나오면 하은이 한 개씩 칸에 꽂습니다.', 'activity', NULL, 2, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":20}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 2, 5),
+    ('건너온 물건의 칸', '표지 글씨는 전부 하은이 썼습니다.', 'activity', NULL, 3, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 3, 5),
+    ('건너온 물건의 칸', '하은은 칸 이름표에 카세트가 나온 해를 적습니다.', 'activity', NULL, 4, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 4, 5),
+    ('건너온 물건의 칸', '하은이 새 카세트를 꽂을 틈을 비워 둡니다.', 'activity', NULL, 5, 'jam:J8-9', 809, '{"other_tribe_item_kinds_count":200}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 5, 5),
     ('남의 가게에 흐른 곡', '표하린이 음원으로 올린 노래가 카페 스피커로 흘러 나갑니다. 신경 쓰는 사람은 없습니다.', 'activity', 'common', NULL, 'jam:J8-10', 810, '{"cross_tribe_combine_success_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:A6', 1, 3),
     ('남의 가게에 흐른 곡', '편의점 스피커에서도 하린이 고른 노래가 흐릅니다. 소리는 배경에 깔려 있습니다.', 'activity', 'rare', NULL, 'jam:J8-10', 810, '{"cross_tribe_combine_success_count":3}'::jsonb, ARRAY[]::text[], 20, 'jam_activity', 'jam', 'walking:A6', 2, 3),
     ('남의 가게에 흐른 곡', '하린은 "아무도 안 쳐다봐요. 일이 잘 되고 있다는 뜻이에요."라고 말합니다.', 'activity', 'epic', NULL, 'jam:J8-10', 810, '{"cross_tribe_combine_success_count":10}'::jsonb, ARRAY[]::text[], 50, 'jam_activity', 'jam', 'walking:A6', 3, 3),
-    ('들썩이는 관중석', '대결 무대 앞에서 곱빼기가 중계를 시작했습니다. 지나가던 이가 걸음을 멈췄습니다.', 'activity', NULL, 1, 'jam:J8-11', 811, '{"follower_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 1, 5),
-    ('들썩이는 관중석', '곱빼기의 중계는 "자, 여기서 깍두기 투입합니다! 관중석이 들썩입니다!"로 시작합니다. 관중석으로 사람들이 하나둘 모입니다.', 'activity', NULL, 2, 'jam:J8-11', 811, '{"follower_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 2, 5),
+    ('들썩이는 관중석', '대결 무대 앞에서 영업사원 곱빼기가 중계를 시작했습니다. 지나가던 이가 걸음을 멈췄습니다.', 'activity', NULL, 1, 'jam:J8-11', 811, '{"follower_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 1, 5),
+    ('들썩이는 관중석', '영업사원 곱빼기의 중계는 "자, 여기서 깍두기 투입합니다! 관중석이 들썩입니다!"로 시작합니다. 관중석으로 사람들이 하나둘 모입니다.', 'activity', NULL, 2, 'jam:J8-11', 811, '{"follower_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 2, 5),
     ('들썩이는 관중석', '깍두기 한 점에도 중계가 붙고 관중석이 들썩입니다. 무대 앞에 줄이 생깁니다.', 'activity', NULL, 3, 'jam:J8-11', 811, '{"follower_count":20}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 3, 5),
     ('들썩이는 관중석', '관중석이 가득 차서 무대 옆에도 사람이 섭니다.', 'activity', NULL, 4, 'jam:J8-11', 811, '{"follower_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 4, 5),
-    ('들썩이는 관중석', '관중석 밖까지 사람이 서서 곱빼기의 중계를 듣습니다.', 'activity', NULL, 5, 'jam:J8-11', 811, '{"follower_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 5, 5),
-    ('로봇 이야기 곁', '교환회 돗자리 곁에 서서 이야기를 듣습니다. 탁영수가 1970년대부터 모은 양철 로봇의 출처를 댑니다.', 'activity', NULL, 1, 'jam:J8-12', 812, '{"following_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 1, 5),
-    ('로봇 이야기 곁', '탁영수의 1번 칸 앞에 듣는 이들이 섰습니다. 이야기는 연도에서 시작합니다.', 'activity', NULL, 2, 'jam:J8-12', 812, '{"following_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 2, 5),
-    ('로봇 이야기 곁', '탁영수는 양철 로봇마다 출처를 하나하나 짚습니다.', 'activity', NULL, 3, 'jam:J8-12', 812, '{"following_count":20}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 3, 5),
-    ('로봇 이야기 곁', '태엽 감개를 꺼내 양철 로봇 60대를 고친 이야기를 합니다.', 'activity', NULL, 4, 'jam:J8-12', 812, '{"following_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 4, 5),
-    ('로봇 이야기 곁', '탁영수가 1번 칸 조명을 끕니다.', 'activity', NULL, 5, 'jam:J8-12', 812, '{"following_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 5, 5)
+    ('들썩이는 관중석', '관중석 밖까지 사람이 서서 영업사원 곱빼기의 중계를 듣습니다.', 'activity', NULL, 5, 'jam:J8-11', 811, '{"follower_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K3', 5, 5),
+    ('로봇 이야기 청중', '교환회 돗자리 곁에 서서 이야기를 듣습니다. 탁영수가 1970년대부터 모은 양철 로봇의 출처를 댑니다.', 'activity', NULL, 1, 'jam:J8-12', 812, '{"following_count":1}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 1, 5),
+    ('로봇 이야기 청중', '탁영수의 1번 칸 앞에 듣는 이들이 섰습니다. 이야기는 연도에서 시작합니다.', 'activity', NULL, 2, 'jam:J8-12', 812, '{"following_count":5}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 2, 5),
+    ('로봇 이야기 청중', '탁영수는 양철 로봇마다 출처를 하나하나 짚습니다.', 'activity', NULL, 3, 'jam:J8-12', 812, '{"following_count":20}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 3, 5),
+    ('로봇 이야기 청중', '태엽 감개를 꺼내 양철 로봇 60대를 고친 이야기를 합니다.', 'activity', NULL, 4, 'jam:J8-12', 812, '{"following_count":50}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 4, 5),
+    ('로봇 이야기 청중', '탁영수가 1번 칸 조명을 끕니다.', 'activity', NULL, 5, 'jam:J8-12', 812, '{"following_count":100}'::jsonb, ARRAY[]::text[], 10, 'jam_activity', 'jam', 'walking:K1', 5, 5)
 ),
 src AS (
   SELECT family_key AS src_family_key, image_url,
