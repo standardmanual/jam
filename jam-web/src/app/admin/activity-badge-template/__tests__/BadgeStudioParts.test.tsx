@@ -2,11 +2,13 @@
  * BadgePreview·BadgePicker 표시 시험 (티켓 20261116_0555)
  * 실행: cd jam-web && npx vitest run src/app/admin/activity-badge-template
  */
+import type React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgePreview, { previewNotes } from '../BadgePreview'
 import { buildSearchBody } from '../BadgeStudio'
-import BadgePicker, { ALL_VALUE, type StudioSearchBadge } from '../BadgePicker'
+import BadgePicker, { ALL_VALUE, BadgeThumbView, type StudioSearchBadge } from '../BadgePicker'
+import { optimizedImageUrl } from '@/lib/imageSrc'
 import { DEFAULT_TEMPLATE_BADGE_PARAMS } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateDefSlots } from '@/lib/admin/activityBadgeTemplate/templateDef'
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
@@ -34,7 +36,7 @@ const template = (svg: string | null): TemplateItem => ({
 })
 const badge = (over: Partial<StudioSearchBadge> = {}): StudioSearchBadge => ({
   id: 'b1', name: '트럭 꽁무니를 따라 뛴 저녁', rarity: 'rare', level: null, leveled: false,
-  activityTypes: ['running'], hasImage: true, templateClass: 'metric', templateClassLabel: '운동 수치',
+  activityTypes: ['running'], hasImage: true, imageUrl: 'https://cdn.example.com/badges/b1.png?v=2', templateClass: 'metric', templateClassLabel: '운동 수치',
   templateValue: '21.1km', familyKey: null, templateParams: null, ...over,
 })
 const preview = (b: StudioSearchBadge | null, t: TemplateItem[]) =>
@@ -102,14 +104,36 @@ describe('BadgePicker', () => {
     const h = renderToStaticMarkup(
       <BadgePicker
         {...props}
-        results={[badge(), badge({ id: 'b2', templateClass: null, templateClassLabel: null, templateValue: null, hasImage: false })]}
+        results={[badge(), badge({ id: 'b2', templateClass: null, templateClassLabel: null, templateValue: null, hasImage: false, imageUrl: null })]}
       />
     )
-    for (const t of ['검색 결과 2건', '배지 이름', '등급 · 레벨', '분류', '이미지', '선택', '운동 수치', '21.1km', '있음']) {
+    for (const t of ['검색 결과 2건', '배지 이름', '등급 · 레벨', '분류', '이미지', '선택', '운동 수치', '21.1km']) {
       expect(h).toContain(t)
     }
     expect(h).toContain('>없음<')
     expect(h).toContain('>-<')
+  })
+  it('이미지가 있으면 96px 변환 주소의 썸네일을, 없으면 없음만 보인다', () => {
+    const withImg = renderToStaticMarkup(<BadgePicker {...props} total={1} results={[badge()]} />)
+    expect(withImg).toContain(`src="${optimizedImageUrl('https://cdn.example.com/badges/b1.png?v=2', 96)}"`)
+    expect(withImg).toContain('loading="lazy"')
+    expect(withImg).toContain('alt="트럭 꽁무니를 따라 뛴 저녁 이미지"')
+    expect(withImg).not.toContain('>없음<')
+    const noImg = renderToStaticMarkup(
+      <BadgePicker {...props} total={1} results={[badge({ imageUrl: null, hasImage: false })]} />
+    )
+    expect(noImg).toContain('>없음<')
+    expect(noImg).not.toContain('<img')
+  })
+  it('썸네일 불러오기에 실패하면 불러오지 못함으로 바꾼다', () => {
+    const onError = vi.fn()
+    const url = 'https://cdn.example.com/a.png'
+    const ok = BadgeThumbView({ name: '배지', imageUrl: url, failed: false, onError }) as React.ReactElement<{ onError: () => void }>
+    ok.props.onError()
+    expect(onError).toHaveBeenCalledTimes(1)
+    const failedHtml = renderToStaticMarkup(<BadgeThumbView name="배지" imageUrl={url} failed onError={onError} />)
+    expect(failedHtml).toContain('불러오지 못함')
+    expect(failedHtml).not.toContain('<img')
   })
   it('분류 선택 상자와 선택지 다섯 개', () => {
     const h = renderToStaticMarkup(<BadgePicker {...props} results={[]} total={0} />)

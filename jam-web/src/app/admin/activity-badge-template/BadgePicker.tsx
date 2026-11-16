@@ -4,6 +4,7 @@
  * 배지 검색 카드와 결과 표 (표시 전용, 티켓 20261116_0555).
  * 옛 화면(activity-badge-image)의 검색 UI를 본보기로 옮겼다. 옛 화면은 2026-11-16에 지웠다(지금은 이 화면으로 보내는 페이지만 남음).
  */
+import { useState } from 'react'
 import { IconCircleX, IconSearch } from '@tabler/icons-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'
 import { Badge } from '@/components/admin/ui/badge'
@@ -15,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { slotLabelOf } from '@/lib/admin/badge-families'
 import { BADGE_TEMPLATE_CLASS_LABEL, type BadgeTemplateClassKey } from '@/lib/admin/activityBadgeTemplate/resolveTemplateText'
 import type { TemplateBadgeParams } from '@/lib/admin/activityBadgeTemplate/templateParams'
+import { optimizedImageUrl } from '@/lib/imageSrc'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import type { ActivityType, BadgeRarity } from '@/types/database'
 
@@ -48,11 +50,48 @@ export interface StudioSearchBadge {
   leveled: boolean
   activityTypes: ActivityType[]
   hasImage: boolean
+  /** 등록된 이미지 주소(`badges.image_url`). 없으면 null */
+  imageUrl: string | null
   templateClass: BadgeTemplateClassKey | null
   templateClassLabel: string | null
   templateValue: string | null
   familyKey: string | null
   templateParams: TemplateBadgeParams | null
+}
+
+/** 결과 표의 썸네일 — 표시 48px의 2배인 96px 변환 주소를 쓴다(티켓 20261116_1640) */
+export const THUMB_WIDTH = 96
+
+/** 썸네일 표시 부분. 불러오기에 실패했으면(`failed`) «불러오지 못함»을 보인다 */
+export function BadgeThumbView({
+  name,
+  imageUrl,
+  failed,
+  onError,
+}: {
+  name: string
+  imageUrl: string
+  failed: boolean
+  onError: () => void
+}) {
+  if (failed) return <Badge variant="outline" className={WRAP}>불러오지 못함</Badge>
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- 어드민의 다른 화면과 같이 <img>를 쓴다(badge-image/page.tsx)
+    <img
+      src={optimizedImageUrl(imageUrl, THUMB_WIDTH) ?? imageUrl}
+      alt={`${name} 이미지`}
+      loading="lazy"
+      decoding="async"
+      onError={onError}
+      className="h-12 w-12 rounded-md border bg-muted object-contain"
+    />
+  )
+}
+
+/** 부르는 쪽이 `key`에 주소를 넣어, 주소가 바뀌면 실패 상태를 지우고 다시 시도한다 */
+function BadgeThumb({ name, imageUrl }: { name: string; imageUrl: string }) {
+  const [failed, setFailed] = useState(false)
+  return <BadgeThumbView name={name} imageUrl={imageUrl} failed={failed} onError={() => setFailed(true)} />
 }
 
 export interface BadgeFilters {
@@ -215,7 +254,11 @@ export default function BadgePicker({
                         <TableCell className={`text-muted-foreground ${WRAP}`}>{b.templateClassLabel ?? '없음'}</TableCell>
                         <TableCell className={`text-muted-foreground ${WRAP}`}>{b.templateValue ?? '-'}</TableCell>
                         <TableCell>
-                          <Badge variant={b.hasImage ? 'secondary' : 'outline'}>{b.hasImage ? '있음' : '없음'}</Badge>
+                          {b.imageUrl ? (
+                            <BadgeThumb key={b.imageUrl} name={b.name} imageUrl={b.imageUrl} />
+                          ) : (
+                            <Badge variant="outline" className={WRAP}>없음</Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" variant="outline" disabled={selectDisabled} onClick={() => onSelect(b)}>

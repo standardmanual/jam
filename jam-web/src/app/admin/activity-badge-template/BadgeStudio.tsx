@@ -77,8 +77,9 @@ export default function BadgeStudio({ templates }: { templates: TemplateItem[] }
     return b.templateClass ? templates.find((t) => t.classKey === b.templateClass) : undefined
   }
 
-  function markRegistered(id: string, registered: TemplateBadgeParams) {
-    const patch = { hasImage: true, templateParams: registered }
+  function markRegistered(id: string, registered: TemplateBadgeParams, imageUrl: string) {
+    // 등록 응답의 주소가 비어 있으면 이전 주소를 그대로 둔다 — 표의 썸네일이 새 이미지로 바뀐다.
+    const patch = { hasImage: true, templateParams: registered, ...(imageUrl ? { imageUrl } : {}) }
     setResults((prev) => prev && prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
     setSelected((prev) => (prev && prev.id === id ? { ...prev, ...patch } : prev))
   }
@@ -91,7 +92,7 @@ export default function BadgeStudio({ templates }: { templates: TemplateItem[] }
     try {
       const r = await registerTemplateBadge({ badge: b, template, params })
       if (r.ok) {
-        markRegistered(b.id, params)
+        markRegistered(b.id, params, r.imageUrl)
         toast.success(`${b.name} 배지 이미지를 등록했어요.`)
       } else {
         toast.error(r.error)
@@ -131,7 +132,7 @@ export default function BadgeStudio({ templates }: { templates: TemplateItem[] }
     for (let i = 0; i < targets.length; i += 1) {
       setProgress({ index: i + 1, total: targets.length })
       const result = await registerTemplateBadge({ badge: targets[i], template, params })
-      if (result.ok) markRegistered(targets[i].id, params)
+      if (result.ok) markRegistered(targets[i].id, params, result.imageUrl)
       entries.push({ name: targets[i].name, result })
     }
     setProgress(null)

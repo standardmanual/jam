@@ -25,7 +25,7 @@ vi.mock('@/components/admin/ui/alert-dialog', () => {
 
 const badge = (over: Partial<StudioSearchBadge> = {}): StudioSearchBadge => ({
   id: 'b1', name: '새벽 러너', rarity: 'rare', level: null, leveled: false,
-  activityTypes: ['running'], hasImage: true, templateClass: 'metric', templateClassLabel: '운동 수치',
+  activityTypes: ['running'], hasImage: true, imageUrl: null, templateClass: 'metric', templateClassLabel: '운동 수치',
   templateValue: '21.1km', familyKey: 'f1', templateParams: null, ...over,
 })
 
