@@ -20,7 +20,7 @@ function toCanvasLike(canvas: Canvas): CanvasLike {
   return canvas as unknown as CanvasLike;
 }
 
-const STAGE_SIZE = 64; // 테스트 속도를 위해 실제 배지 규격(1280)보다 작게 그린다
+const STAGE_SIZE = 64; // 테스트 속도를 위해 실제 배지 규격(1024)보다 작게 그린다
 
 async function renderRibbonOnly(seed: number, bg: string, end: string): Promise<Buffer> {
   const random = deriveRibbonFromSeed(seed);

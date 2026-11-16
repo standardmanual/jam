@@ -54,7 +54,7 @@ code:
 
 | 영역 | 내용 |
 |---|---|
-| 스테이지 | 미리보기 캔버스. 비율 네 가지, 긴 변 1280px — 1:1(1280×1280) · 4:5(1024×1280) · 9:16(720×1280) · 16:9(1280×720). 가로로 넓은 16:9도 같은 캔버스를 뷰포트 칸에 맞춰 줄여 보이며 출력 해상도는 그대로다. 재생/정지 토글, 정지 시 머리 위치 슬라이더 |
+| 스테이지 | 미리보기 캔버스. 비율 네 가지, 긴 변 1024px — 1:1(1024×1024) · 4:5(819×1024) · 9:16(576×1024) · 16:9(1024×576). 가로로 넓은 16:9도 같은 캔버스를 뷰포트 칸에 맞춰 줄여 보이며 출력 해상도는 그대로다. 재생/정지 토글, 정지 시 머리 위치 슬라이더 |
 | 설정 패널 | 프로토타입과 같은 접기·펼치기 섹션. 원천 그래픽(글자 J·A·M 선택 / PNG·SVG 업로드) · 스테이지(비율·배경색) · 이미지(크기·블러·회전·진행 방향 회전) · 그라데이션(방향·시작색·끝색·시작색=배경색 연결) · 이동 곡선(불규칙성·다시 뽑기·속도·복사 간격·복사 수) |
 | 도구 줄 | 전체 랜덤 · PNG 저장 · 영상 저장(길이 초 입력, 어드민 화면 전용) |
 | 레이어 | 리본 레이어(기본, 1개) 위에 이미지 레이어·텍스트 레이어를 추가·순서 변경·삭제 (§4) |
@@ -203,7 +203,7 @@ code:
     각각 `--text01`·`--text02`에 넣은 값을 기록한다.
   - 홈피드 프리셋(`홈피드`, id `51aa4673-f723-4929-ac20-a302202b7aa7`)은 `text01` = 「피드 제목」(세로 31%·글자 크기 10%), `text02` = 「간단한 설명」(세로 41%·크기 5%)이다.
     「미션」 프리셋(id `98562783-36c9-44aa-8fba-3c4793608f28`)은 `text01` = 조건 문구, `text02` = 미션 이름이고 `text03`은 고정 라벨 `MISSION`(저장된 글자를 그대로 쓴다)이다.
-  - **홈피드 비율별 프리셋(티켓 20261031_2049, 2026-10-31)**: `홈피드 16:9`(id `c5491ad2-12d4-4ab0-a59d-6897067a8a9a`, 1280×720, `hero`·`ticket`용)와 `홈피드 4:5`(id `a4d7f928-2531-4cc4-a611-3399db244bfe`, 1024×1280, `poster`·`dome`용)가 있다. 글자·로고 크기가 스테이지 짧은 변 기준이라 16:9는 1:1보다 키워(제목 17.8%·설명 8.9%·로고 23.1%) 같은 픽셀 크기로 맞췄고, 4:5는 짧은 변이 너비라 크기 %가 같다. 4:5는 포스터가 아래 45%에 글자를 두지 못하므로 로고를 위(세로 10%)에 두고 제목 33%·설명 43%다. 글자 수 가이드(제목 공백 포함 11자 이하 1줄, 설명 22자 이하)는 두 비율에서 같다(너비가 같거나 비례한다). 샘플 문구로 실렌더해 확인했다. 시드 파일은 `jam-web/supabase/seed_20261031_asset_presets_home_feed_ratios.sql`이다.
+  - **홈피드 비율별 프리셋(티켓 20261031_2049, 2026-10-31)**: `홈피드 16:9`(id `c5491ad2-12d4-4ab0-a59d-6897067a8a9a`, 1024×576, `hero`·`ticket`용)와 `홈피드 4:5`(id `a4d7f928-2531-4cc4-a611-3399db244bfe`, 819×1024, `poster`·`dome`용)가 있다. 글자·로고 크기가 스테이지 짧은 변 기준이라 16:9는 1:1보다 키워(제목 17.8%·설명 8.9%·로고 23.1%) 같은 픽셀 크기로 맞췄고, 4:5는 짧은 변이 너비라 크기 %가 같다. 4:5는 포스터가 아래 45%에 글자를 두지 못하므로 로고를 위(세로 10%)에 두고 제목 33%·설명 43%다. 글자 수 가이드(제목 공백 포함 11자 이하 1줄, 설명 22자 이하)는 두 비율에서 같다(너비가 같거나 비례한다). 샘플 문구로 실렌더해 확인했다. 시드 파일은 `jam-web/supabase/seed_20261031_asset_presets_home_feed_ratios.sql`이다.
   - **글자 수 가이드(홈피드 프리셋, 1:1 스테이지 1280×1280, 2026-09-26 서비스 롤 경로로 실렌더한 실측, 글꼴 Noto Sans KR 600)**:
 
     | 항목 | 실측 | 가이드 |
@@ -231,7 +231,7 @@ code:
     2. **승인** — 사용자가 이미지 전체와 경고 목록을 확인하고 승인한다. 실행 주체는 메인 세션(카리나)이다(Supabase는 공용 DB라 적용은 즉시 프로덕션에 반영된다).
     3. **적용** `... --out-dir <폴더> --apply` — 검토한 이미지 그대로 올린다(다시 렌더하지 않는다). 쓰기 전에 모든 PNG 존재·5MB 이하·미션 존재·WebP 변환을 확인한다.
        미션마다 (1) 기존 이미지가 있으면 저장소의 기존 PNG·WebP를 `<폴더>/backup/`에 백업 (2) 원본 PNG 업로드(`missions/asset-generator/{id}.png`, upsert)
-       (3) 1280px WebP 업로드 (4) `missions.image_url`(`?v=<시각>`)·`image_source = 'agent-generator'` 갱신 순서다. 시작 전 이전 값을 `<폴더>/applied.json`에 기록하고,
+       (3) 1024px WebP 업로드 (4) `missions.image_url`(`?v=<시각>`)·`image_source = 'agent-generator'` 갱신 순서다. 시작 전 이전 값을 `<폴더>/applied.json`에 기록하고,
        한 건이라도 실패하면 즉시 멈추고 진행 상황을 출력한다.
     4. **롤백** `... --rollback <폴더>/applied.json` — 미션마다 이전 `image_url`·`image_source`(null 포함)로 되돌리고 백업한 저장소 파일을 다시 올린다.
        백업이 없던 경로에 새로 올린 파일은 지우지 않는다(미션이 더 이상 가리키지 않는다).
@@ -301,13 +301,16 @@ code:
 
 | 용도 | 제작 규격 | 서비스 적용 |
 |---|---|---|
-| 배지 대표 이미지 | 1:1 · 4:5 · 9:16 · 16:9, 긴 변 1280 원본 PNG | 긴 변 **1280px** 이하로 줄인 WebP(유형 구분 없이 통일, 원본이 더 작으면 확대하지 않음) |
-| 마케팅 소재 | 1:1 · 4:5 · 9:16 · 16:9, 긴 변 1280 | 서비스에 올리지 않음(PNG·MP4 다운로드) |
+| 배지 대표 이미지 | 1:1 · 4:5 · 9:16 · 16:9, 긴 변 1024 원본 PNG | 긴 변 **1024px** 이하로 줄인 WebP(유형 구분 없이 통일, 원본이 더 작으면 확대하지 않음) |
+| 마케팅 소재 | 1:1 · 4:5 · 9:16 · 16:9, 긴 변 1024 | 서비스에 올리지 않음(PNG·MP4 다운로드) |
 
-- **1280px 산출 근거(티켓 20260926_2312, 코드 기준)**: 서비스에서 이 WebP를 가장 크게 그리는 곳은
-  `missions/[id]/MissionDetailClient.tsx`의 가로 전체 정사각형 이미지로, 최대 표시 크기가 640px
-  (`sizes="(max-width: 640px) 100vw, 640px"`)다. 고해상도(2배) 화면에서 선명하려면 640 × 2 =
-  **1280px**가 필요하다. 그보다 작은 칸(배지 그리드·홈피드 카드·지도 마커 등)은
+- **1024px 기준(티켓 20261116_1522, 사용자 원칙 2026-11-16: «긴 변 1024 또는 1024×1024»)**: 2026-11-16 사용자
+  결정으로 긴 변 1280에서 1024로 바꿨다. 그 전에 올린 이미지는 1280 이하 그대로이고 다시 변환하지 않았다.
+  이전 1280px는 서비스에서 이 WebP를 가장 크게 그리는 `missions/[id]/MissionDetailClient.tsx`의 가로 전체
+  정사각형 이미지(최대 표시 크기 640px, `sizes="(max-width: 640px) 100vw, 640px"`)의 2배로 정한 값이었다.
+  1024 원본은 그 한 곳의 2배 화면에서 약간 덜 선명할 수 있다. 아이템 배지 이미지 생성(`normalize.ts`)의
+  1024 캔버스와 기준이 같아졌다. 브라우저 저장용 변환본의 폭(`WARM_IMAGE_WIDTHS` 96·256·384·640)은 그대로다.
+  그보다 작은 칸(배지 그리드·홈피드 카드·지도 마커 등)은
   `SafeImage`를 거친 Next 이미지 최적화가 화면 크기에 맞게 줄여 내려준다. 변환 헬퍼는
   `jam-web/src/lib/admin/badgeImageWebp.ts`(`BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX`), sharp
   `resize({fit: 'inside', withoutEnlargement: true})`로 비율을 유지하고 확대하지 않는다.
@@ -474,7 +477,7 @@ code:
   shadcn Tabs로 "제작"/"적용" 두 화면으로 나누고(`page.tsx`), 왼쪽 스테이지 캔버스는 탭과
   무관하게 공유한다(`ApplyTab.tsx`). 배지 검색·선택은 기존 `BadgeSearchSelect`를 재사용했다.
   적용 API(`/api/admin/asset-generator/apply`)는 원본 PNG를 `badges/asset-generator/{id}.png`에
-  보관하고 sharp(`lib/admin/badgeImageWebp.ts`)로 긴 변 1280px WebP를 만들어
+  보관하고 sharp(`lib/admin/badgeImageWebp.ts`)로 긴 변 1024px WebP를 만들어
   `badges/asset-generator/{id}.webp`에 저장한 뒤, `image_url`을 WebP로, `image_source`를
   `admin-generator`로 갱신한다. 라벨·필터 옵션은 `lib/admin/contentImageSource.ts`(티켓
   20260925_1407에서 `badgeImageSource.ts`를 미션까지 공용으로 일반화)가 단일 출처이고, 어드민
@@ -631,7 +634,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 
 ### 17.2 어드민 API (모두 어드민만, 아니면 403)
 - 템플릿 목록·저장·삭제 API(`GET`·`PUT`·`DELETE /api/admin/activity-badge-templates`)는 2026-11-16에 없앴다.
-- `POST /api/admin/activity-badge-templates/register`(티켓 20261116_0728), `multipart/form-data`(`badgeId`, `params` JSON 글자, `image` PNG): 브라우저가 구운 PNG를 WebP로 바꿔 `images` 버킷의 `badges/activity-template/{id}.png|webp`에 `upsert`로 올리고, `badges`의 `image_url`(WebP 주소 + `?v=`), `image_gen_params`(정리된 템플릿 조정값), `image_source`(`'admin-generator'`)를 고친다. 순서와 실패: 권한 없음 403 → 본문·배지 id·조정값(`parseTemplateBadgeParams`가 `null`)·PNG 아님·5MB 초과·긴 변이 1280px 아님은 400 → 액티비티 배지 없음 404 → 올리기·표 고치기 실패 500(DB 오류 원문은 싣지 않는다). 응답은 `{ badgeId, badgeName, imageUrl, originalUrl, webpBytes }`이고 응답 뒤에 변환본을 미리 만든다. `image_source`에 새 값을 더하지 않는 까닭은 CHECK 제약(마이그레이션 186) 때문이며, 어떤 도구인지는 `image_gen_params.kind`로 가린다.
+- `POST /api/admin/activity-badge-templates/register`(티켓 20261116_0728), `multipart/form-data`(`badgeId`, `params` JSON 글자, `image` PNG): 브라우저가 구운 PNG를 WebP로 바꿔 `images` 버킷의 `badges/activity-template/{id}.png|webp`에 `upsert`로 올리고, `badges`의 `image_url`(WebP 주소 + `?v=`), `image_gen_params`(정리된 템플릿 조정값), `image_source`(`'admin-generator'`)를 고친다. 순서와 실패: 권한 없음 403 → 본문·배지 id·조정값(`parseTemplateBadgeParams`가 `null`)·PNG 아님·5MB 초과·긴 변이 1024px 아님은 400 → 액티비티 배지 없음 404 → 올리기·표 고치기 실패 500(DB 오류 원문은 싣지 않는다). 응답은 `{ badgeId, badgeName, imageUrl, originalUrl, webpBytes }`이고 응답 뒤에 변환본을 미리 만든다. `image_source`에 새 값을 더하지 않는 까닭은 CHECK 제약(마이그레이션 186) 때문이며, 어떤 도구인지는 `image_gen_params.kind`로 가린다.
 - `POST /api/admin/activity-badge-image/search`(기존 검색): 요청에 `familyKey`(비어 있지 않은 글자)를 주면 `family_key`가 같은 배지만 조회한다(다른 조건과 함께 걸 수 있다). 응답 항목에 `templateParams`가 더해진다: `image_gen_params`가 템플릿 조정값이면 정리된 값, 옛 생성기 값이거나 없으면 `null`.
   - 분류 필터(티켓 20261116_1442): 요청에 `templateClass`(`metric`·`days`·`streak`·`count` 중 하나, 그 밖의 값은 무시)를 주면 그 분류의 배지만 돌려준다. 분류는 DB 칸이 아니라 획득 조건에서 계산하는 값이라, 이 조건이 있을 때만 다른 조건에 맞는 배지를 1,000줄씩 끝까지 읽어 분류를 계산하고 걸러 낸 뒤 페이지를 자른다. 응답의 `total`·`totalPages`는 걸러 낸 뒤의 수다. 분류를 정하지 못한 배지는 이 조건에서 빠진다. 조건이 없으면 DB에서 한 페이지만 읽는다(`pickActivityBadgeImageSearchPage`).
 
@@ -648,7 +651,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 ### 17.5 제작 화면 (티켓 20261116_0555, 개편 20261116_1513)
 - 경로: `/admin/activity-badge-template`. 탭이 없고 «배지 만들기» 화면 하나다. 페이지는 DB를 읽지 않고 `listTemplateItems()`(`templateItem.ts`)가 돌려준 코드의 템플릿을 쓴다. 네 분류를 `metric`·`days`·`streak`·`count` 순서로 주고 정의가 없는 분류는 `svg`·`slots`가 `null`이다.
 - 흐름: 배지 검색 → 선택 → 그 배지가 속한 분류의 템플릿 위에 이름과 값을 그린 미리보기. 검색은 `POST /api/admin/activity-badge-image/search`를 쓰고, 응답 항목의 `templateClass`·`templateClassLabel`·`templateValue`·`familyKey` 네 칸으로 분류와 값을 얻는다. 분류를 정하지 못한 배지와 템플릿이 없는 분류는 미리보기 대신 안내를 보인다. 템플릿이 없는 분류의 안내는 «{분류 이름} 템플릿이 아직 준비되지 않았어요.»이고 버튼은 없다.
-- 그리는 순서(`renderTemplateBadge`, 브라우저 전용): ① `stripSlotText`로 샘플 글자를 걷어 낸 SVG를 이미지로 불러온다. ② 캔버스는 긴 변 × 긴 변 정사각형이고, 그림은 안쪽 상자에 맞춘다: 상자의 한 변은 긴 변 × 870÷1024(이미지 생성 메뉴의 `normalize.ts` `BOX_PX`÷`CANVAS_PX`와 같은 기준, 시험이 대조한다), 가운데 정렬, 바깥은 투명(`layoutTemplateContent`). 미리보기의 긴 변은 1024, 등록은 1280이다. ③ 직선 자리는 `resolveTemplateFont`→`loadFontInBrowser`→`layoutSlotText`→`toTextLayerInput`→`drawTextLayer`로 안쪽 상자 기준으로 그린다. ④ 원호 자리는 글자마다 폭을 재서 `layoutArcText`로 위치·회전을 구하고 글자 하나씩 회전해 그린다. 글자가 비면 그리지 않는다. 배지를 빠르게 바꿔 고르면 마지막 요청의 결과만 남는다.
+- 그리는 순서(`renderTemplateBadge`, 브라우저 전용): ① `stripSlotText`로 샘플 글자를 걷어 낸 SVG를 이미지로 불러온다. ② 캔버스는 긴 변 × 긴 변 정사각형이고, 그림은 안쪽 상자에 맞춘다: 상자의 한 변은 긴 변 × 870÷1024(이미지 생성 메뉴의 `normalize.ts` `BOX_PX`÷`CANVAS_PX`와 같은 기준, 시험이 대조한다), 가운데 정렬, 바깥은 투명(`layoutTemplateContent`). 미리보기와 등록의 긴 변은 모두 1024다. ③ 직선 자리는 `resolveTemplateFont`→`loadFontInBrowser`→`layoutSlotText`→`toTextLayerInput`→`drawTextLayer`로 안쪽 상자 기준으로 그린다. ④ 원호 자리는 글자마다 폭을 재서 `layoutArcText`로 위치·회전을 구하고 글자 하나씩 회전해 그린다. 글자가 비면 그리지 않는다. 배지를 빠르게 바꿔 고르면 마지막 요청의 결과만 남는다.
 - 글꼴 조각: 구글 폰트의 한글은 여러 조각으로 나뉘어 내려온다. `loadFontInBrowser` 뒤에 `document.fonts.load(글꼴, 그릴 글자)`로 그 글자가 든 조각까지 기다린 다음 그린다(`loadFontForText`). 기다리지 않으면 한글이 다른 글꼴로 그려진다.
 - 세로 위치(직선 자리): SVG는 글자의 기준선 위치를 주고 `drawTextLayer`는 `textBaseline: 'middle'`로 그린다. 두 선의 거리는 같은 글자를 두 기준선으로 재서 `actualBoundingBoxAscent`의 차이로 구한다(`measureMiddleOffsetEm`).
 - 분류 필터(티켓 20261116_1442): 검색 카드의 이름 입력 칸 다음에 «분류» 선택 상자가 있다. 선택지는 «전체 분류»와 네 분류(운동 수치·쌓은 날·이어 온 날·횟수와 양)이고, 값을 바꾼 뒤 «검색»을 눌러야 결과가 바뀐다. «전체 분류»면 요청에 `templateClass`를 싣지 않는다.
@@ -666,7 +669,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 
 ### 17.7 등록 (티켓 20261116_0748, 서버는 20261116_0728)
 - 버튼: 미리보기의 이름·값·분류 아래에 «등록»과 «같은 계열 모두 등록»(고른 배지에 `familyKey`가 있을 때만). 두 버튼 모두 확인 대화상자를 거친다. 등록은 서비스에 보이는 배지 이미지를 바로 바꾸고, 일괄 등록은 한 번에 여러 개를 바꾸기 때문이다.
-- 등록 규격: 브라우저가 화면에 붙이지 않은 캔버스에 긴 변 1280px로 다시 그린 PNG를 `POST /api/admin/activity-badge-templates/register`에 보낸다. 서버가 원본 PNG와 WebP를 올린다. 이름·값 자리 가운데 하나라도 그리지 못했으면(`skipped`) 보내지 않는다. 글꼴 대체·글자 줄임은 막지 않는다.
+- 등록 규격: 브라우저가 화면에 붙이지 않은 캔버스에 긴 변 1024px로 다시 그린 PNG를 `POST /api/admin/activity-badge-templates/register`에 보낸다. 서버가 원본 PNG와 WebP를 올린다. 이름·값 자리 가운데 하나라도 그리지 못했으면(`skipped`) 보내지 않는다. 글꼴 대체·글자 줄임은 막지 않는다.
 - 저장되는 값: 배지의 `image_url`, `image_gen_params`(조정값 `TemplateBadgeParams`), `image_source`(`'admin-generator'`, 도구 구분은 `image_gen_params.kind`).
 - 일괄 등록: 고른 배지의 `familyKey`로 검색 API를 불러 받은 단계 가운데 `templateClass`가 같은 것만 대상으로 삼는다. 지금 조정값 그대로 단계마다 이름·값만 바꿔 한 단계씩 차례로 등록하고(동시에 보내지 않는다), 실패해도 끝까지 간다. 끝나면 «{n}개 가운데 {ok}개를 등록했어요.»와 실패 목록을 보인다. 진행 중에는 등록 버튼·조정 패널·«선택»이 잠긴다. 대상이 없으면 대화상자 대신 알림을 띄운다.
 - 조정값 불러오기: 저장된 조정값이 있는 배지를 고르면 그 값으로 바꾸고 «이 배지에 저장된 조정값을 불러왔어요»를 보인다. 없으면 지금 조정값을 유지한다(17.6).

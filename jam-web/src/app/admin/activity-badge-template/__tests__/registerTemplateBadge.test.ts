@@ -1,5 +1,5 @@
 /**
- * registerTemplateBadge 시험 (티켓 20261116_0748): 1280px로 그리고, 그리지 못한 자리가 있으면 보내지 않는다.
+ * registerTemplateBadge 시험 (티켓 20261116_0748): 1024px로 그리고, 그리지 못한 자리가 있으면 보내지 않는다.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { DEFAULT_TEMPLATE_BADGE_PARAMS } from '@/lib/admin/activityBadgeTemplate/templateParams'
@@ -27,11 +27,11 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('registerTemplateBadge', () => {
-  it('긴 변 1280px로 그려 등록 API에 보낸다', async () => {
+  it('긴 변 1024px로 그려 등록 API에 보낸다', async () => {
     render.mockResolvedValue({ fontFallbacks: [], shrunk: [], skipped: [] })
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ imageUrl: 'https://x/y.webp' }) })
     const r = await registerTemplateBadge({ badge, template, params: DEFAULT_TEMPLATE_BADGE_PARAMS })
-    expect(render.mock.calls[0][1].longSidePx).toBe(1280)
+    expect(render.mock.calls[0][1].longSidePx).toBe(1024)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(r).toEqual({ ok: true, imageUrl: 'https://x/y.webp' })
   })

@@ -11,7 +11,7 @@ import type { Json } from '@/types/database.generated'
 /**
  * 템플릿으로 만든 액티비티 배지 이미지 등록 API (티켓 20261116_0728, 상위 20261115_2353)
  *
- * 브라우저가 구운 PNG(긴 변 1280px)를 받아 WebP로 바꿔 두 파일을 올리고 배지에 반영한다.
+ * 브라우저가 구운 PNG(긴 변 1024px)를 받아 WebP로 바꿔 두 파일을 올리고 배지에 반영한다.
  * 저장 방식은 `asset-generator/apply`를 따르되, 다른 도구의 원본과 덮어쓰지 않도록 경로를
  * `badges/activity-template/{id}`로 따로 둔다. `image_source`는 CHECK 제약(마이그레이션 186) 때문에
  * 수동 제작 값 `'admin-generator'`를 쓰고, 어떤 도구인지는 `image_gen_params.kind`로 가린다.
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (file.size > MAX_APPLY_IMAGE_BYTES) return fail('이미지가 너무 커요. 5MB 이하만 등록할 수 있어요.', 400)
 
   const png = Buffer.from(await file.arrayBuffer())
-  const sizeError = '이미지 크기가 맞지 않아요. 긴 변이 1280px인 이미지만 등록할 수 있어요.'
+  const sizeError = '이미지 크기가 맞지 않아요. 긴 변이 1024px인 이미지만 등록할 수 있어요.'
   try {
     const meta = await sharp(png).metadata()
     if (Math.max(meta.width ?? 0, meta.height ?? 0) !== BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX) {

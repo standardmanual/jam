@@ -1852,7 +1852,7 @@ stateDiagram-v2
 - **인증:** 관리자 로그인 세션만. 읽기 토큰은 proxy가 막는다. `maxDuration`은 60초다.
 - **요청:** `multipart/form-data`, 필드 `image` 하나(PNG, 5MB 이하). 두 ID는 UUID여야 하고 항목은 그 기획 안에 있어야 한다(없으면 404).
 - **거절(409):** 이미지 칸이 없는 종류(레시피·드랍·패턴 제안), 반려·취소·실패·종료 항목, 시험 묶음(자원이 없어 이미지를 저장하지 않는다). 올리기 전에 거른다. 형식 오류(PNG 아님·크기 초과·파일 없음)는 400이다.
-- **처리:** `convertBadgeImageToWebp`(긴 변 1280px)로 변환 → 원본 PNG와 WebP를 `images` 버킷의 `ops-inbox/{접두사}/{항목 ID}.png`·`.webp`에 upsert(접두사: 카드 `today_cards`, 미션 `missions`, 배지 `badges`, 컬렉션 `item_books`) →
+- **처리:** `convertBadgeImageToWebp`(긴 변 1024px)로 변환 → 원본 PNG와 WebP를 `images` 버킷의 `ops-inbox/{접두사}/{항목 ID}.png`·`.webp`에 upsert(접두사: 카드 `today_cards`, 미션 `missions`, 배지 `badges`, 컬렉션 `item_books`) →
   항목의 `edited.resource`에 기존 `resource`와 합친 객체 전체를 쓴다(`edited`는 최상위 키 덮어쓰기라 합쳐 써야 한다). 항목의 `updated_at`을 조건으로 걸고, 충돌하면 한 번 다시 읽어 재시도하며 그래도 충돌하면 409다.
   예약된 뒤에는 `created_resource`가 가리키는 자원 행의 이미지 칸에도 쓴다. 주소는 `?v=` 시각을 붙여 같은 경로 재업로드 때 옛 그림이 보이지 않게 한다.
 - **응답 200:** `{ ok: true, url, webpBytes }`. 항목에는 썼지만 자원에 쓰지 못하면 500이고 고정 문장(「항목에는 저장했지만 예약된 자원에는 쓰지 못했어요…」)이다. 같은 이미지를 다시 올리면 된다.

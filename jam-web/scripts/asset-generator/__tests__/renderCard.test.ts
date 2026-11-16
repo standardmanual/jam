@@ -70,14 +70,14 @@ describe('renderCardPng 프리셋 조회 경로', () => {
     });
     expect(result.presetSource).toBe('admin-api');
     expect(result.seed).toBe(1);
-    expect(result.stage).toEqual({ w: 1280, h: 1280 });
+    expect(result.stage).toEqual({ w: 1024, h: 1024 });
     expect(result.layers).toEqual({ applied: [], saved: [] });
     expect(result.buffer.subarray(1, 4).toString()).toBe('PNG');
   });
 
   it('admin-api 경로: 비율 16:9는 스테이지 크기에 반영된다', async () => {
     const result = await renderCardPng(ARGS, adminDeps([], '16:9'));
-    expect(result.stage).toEqual({ w: 1280, h: 720 });
+    expect(result.stage).toEqual({ w: 1024, h: 576 });
   });
 
   it('service-role 경로: asset_presets를 id로 조회하고 직렬화된 행을 정규화한다', async () => {
@@ -94,7 +94,7 @@ describe('renderCardPng 프리셋 조회 경로', () => {
     expect(from).toHaveBeenCalledWith('asset_presets');
     expect(eq).toHaveBeenCalledWith('id', 'p1');
     expect(result.presetSource).toBe('service-role');
-    expect(result.stage).toEqual({ w: 1024, h: 1280 });
+    expect(result.stage).toEqual({ w: 819, h: 1024 });
   });
 
   it('service-role 경로: 조회 오류·없는 프리셋은 한국어 오류다', async () => {
@@ -125,34 +125,34 @@ describe('renderCardPng 프리셋 조회 경로', () => {
 });
 
 describe('renderCardPng 실제 캔버스 결과', () => {
-  // 1:1 스테이지 1280, 이미지 200×100을 widthPct 50 → 640×320, 중심 (640, 640). 왼쪽 절반(x 320~640)만 불투명.
+  // 1:1 스테이지 1024, 이미지 200×100을 widthPct 50 → 512×256, 중심 (512, 512). 왼쪽 절반(x 256~512)만 불투명.
   const png = halfTransparentPng(200, 100, '#ff0000');
 
   it('투명한 영역은 알파가 유지되어 배경이 비치고 불투명한 영역은 이미지 색이다', async () => {
     const { buffer } = await renderCardPng(ARGS, adminDeps([imageLayer('i1', dataUrl(png))]));
-    expect(await pixelAt(buffer, 480, 640)).toEqual([255, 0, 0, 255]); // 불투명 절반
-    expect(await pixelAt(buffer, 800, 640)).toEqual([0x11, 0x22, 0x33, 255]); // 투명 절반 = 배경
+    expect(await pixelAt(buffer, 384, 512)).toEqual([255, 0, 0, 255]); // 불투명 절반
+    expect(await pixelAt(buffer, 640, 512)).toEqual([0x11, 0x22, 0x33, 255]); // 투명 절반 = 배경
   });
 
-  it('세로 크기는 원본 비율로 정해진다(640×320)', async () => {
+  it('세로 크기는 원본 비율로 정해진다(512×256)', async () => {
     const { buffer } = await renderCardPng(ARGS, adminDeps([imageLayer('i1', dataUrl(png))]));
-    expect(await pixelAt(buffer, 480, 640 - 150)).toEqual([255, 0, 0, 255]); // 위쪽 경계 안
-    expect(await pixelAt(buffer, 480, 640 - 170)).toEqual([0x11, 0x22, 0x33, 255]); // 위쪽 경계 밖
-    expect(await pixelAt(buffer, 480, 640 + 150)).toEqual([255, 0, 0, 255]);
-    expect(await pixelAt(buffer, 480, 640 + 170)).toEqual([0x11, 0x22, 0x33, 255]);
+    expect(await pixelAt(buffer, 384, 512 - 120)).toEqual([255, 0, 0, 255]); // 위쪽 경계 안
+    expect(await pixelAt(buffer, 384, 512 - 136)).toEqual([0x11, 0x22, 0x33, 255]); // 위쪽 경계 밖
+    expect(await pixelAt(buffer, 384, 512 + 120)).toEqual([255, 0, 0, 255]);
+    expect(await pixelAt(buffer, 384, 512 + 136)).toEqual([0x11, 0x22, 0x33, 255]);
   });
 
   it('overlayEnabled면 overlayColor가 불투명한 부분에만 입혀지고 투명한 부분은 그대로다', async () => {
     const layer = imageLayer('i1', dataUrl(png), { overlayEnabled: true, overlayColor: '#00ff00' });
     const { buffer } = await renderCardPng(ARGS, adminDeps([layer]));
-    expect(await pixelAt(buffer, 480, 640)).toEqual([0, 255, 0, 255]);
-    expect(await pixelAt(buffer, 800, 640)).toEqual([0x11, 0x22, 0x33, 255]);
+    expect(await pixelAt(buffer, 384, 512)).toEqual([0, 255, 0, 255]);
+    expect(await pixelAt(buffer, 640, 512)).toEqual([0x11, 0x22, 0x33, 255]);
   });
 
   it('overlayEnabled가 꺼져 있으면 overlayColor가 있어도 원래 색이다', async () => {
     const layer = imageLayer('i1', dataUrl(png), { overlayEnabled: false, overlayColor: '#00ff00' });
     const { buffer } = await renderCardPng(ARGS, adminDeps([layer]));
-    expect(await pixelAt(buffer, 480, 640)).toEqual([255, 0, 0, 255]);
+    expect(await pixelAt(buffer, 384, 512)).toEqual([255, 0, 0, 255]);
   });
 
   it('같은 시드·같은 입력이면 PNG 바이트가 같다', async () => {
@@ -169,8 +169,8 @@ describe('renderCardPng 실제 캔버스 결과', () => {
     const layers = [imageLayer('i1', saved, { yPct: 25 }), imageLayer('i2', saved, { yPct: 75 })];
     const result = await renderCardPng({ ...ARGS, values: { img01: replacement } }, adminDeps(layers));
     expect(result.layers).toEqual({ applied: ['img01'], saved: ['img02'] });
-    expect(await pixelAt(result.buffer, 480, 320)).toEqual([0, 0, 255, 255]); // img01 = 교체 원본
-    expect(await pixelAt(result.buffer, 480, 960)).toEqual([255, 0, 0, 255]); // img02 = 저장된 원본
+    expect(await pixelAt(result.buffer, 384, 256)).toEqual([0, 0, 255, 255]); // img01 = 교체 원본
+    expect(await pixelAt(result.buffer, 384, 768)).toEqual([255, 0, 0, 255]); // img02 = 저장된 원본
   });
 
   it('불러올 수 없는 저장 이미지는 레이어 원본 오류로 멈춘다', async () => {

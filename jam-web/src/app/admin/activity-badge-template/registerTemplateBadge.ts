@@ -1,6 +1,6 @@
 /**
  * 템플릿 배지 이미지 등록 도우미 (티켓 20261116_0748). 브라우저 전용.
- * 긴 변 1280px로 다시 그린 PNG와 조정값을 6-1의 등록 API로 보낸다. 예외를 던지지 않는다.
+ * 긴 변 1024px로 다시 그린 PNG와 조정값을 6-1의 등록 API로 보낸다. 예외를 던지지 않는다.
  */
 import type { TemplateBadgeParams } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateItem } from '@/lib/admin/activityBadgeTemplate/templateItem'
@@ -8,7 +8,7 @@ import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
 import type { StudioSearchBadge } from './BadgePicker'
 import { renderTemplateBadge } from './renderTemplateBadge'
 
-export const REGISTER_LONG_SIDE_PX = 1280
+export const REGISTER_LONG_SIDE_PX = 1024
 const REGISTER_FAIL = '이미지를 등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const SLOT_LABEL = { name: '이름', value: '값' } as const
 

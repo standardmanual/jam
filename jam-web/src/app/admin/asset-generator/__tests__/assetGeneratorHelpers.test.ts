@@ -53,20 +53,20 @@ function makeTextLayer(id: string): TextLayerConfig {
 }
 
 describe('resolveStageSize (티켓 20260924_2156, 원본 applyAspect 302줄과 동일해야 한다)', () => {
-  it('1:1은 1280 × 1280', () => {
-    expect(resolveStageSize('1:1')).toEqual({ width: 1280, height: 1280 })
+  it('1:1은 1024 × 1024', () => {
+    expect(resolveStageSize('1:1')).toEqual({ width: 1024, height: 1024 })
   })
 
-  it('4:5는 1024 × 1280', () => {
-    expect(resolveStageSize('4:5')).toEqual({ width: 1024, height: 1280 })
+  it('4:5는 819 × 1024 (반올림)', () => {
+    expect(resolveStageSize('4:5')).toEqual({ width: 819, height: 1024 })
   })
 
-  it('9:16은 720 × 1280 (반올림)', () => {
-    expect(resolveStageSize('9:16')).toEqual({ width: 720, height: 1280 })
+  it('9:16은 576 × 1024', () => {
+    expect(resolveStageSize('9:16')).toEqual({ width: 576, height: 1024 })
   })
 
-  it('16:9는 1280 × 720 (티켓 20261001_1202)', () => {
-    expect(resolveStageSize('16:9')).toEqual({ width: 1280, height: 720 })
+  it('16:9는 1024 × 576 (티켓 20261001_1202)', () => {
+    expect(resolveStageSize('16:9')).toEqual({ width: 1024, height: 576 })
   })
 
   it('목록에 없는 비율은 9:16으로 보정하지 않고 오류를 낸다', () => {
@@ -79,7 +79,7 @@ describe('STAGE_RATIO_OPTIONS (티켓 20261001_1202)', () => {
     expect(STAGE_RATIO_OPTIONS.map((opt) => opt.value)).toEqual(['1:1', '4:5', '9:16', '16:9'])
     for (const opt of STAGE_RATIO_OPTIONS) {
       const { width, height } = resolveStageSize(opt.value)
-      expect(Math.max(width, height)).toBe(1280)
+      expect(Math.max(width, height)).toBe(1024)
     }
   })
 })
