@@ -59,12 +59,24 @@ describe('우선순위와 예외', () => {
   })
   it('밤 배지', () => {
     expect(r({ condition_json: c({ time_range: TR }), is_hidden: true })).toEqual({ classKey: 'days', value: '밤' })
-    expect(r({ condition_json: c({ time_range: TR }), is_hidden: false })).toBeNull()
+    expect(r({ condition_json: c({ time_range: TR }), is_hidden: false })).toEqual({ classKey: 'etc', value: '' })
   })
-  it('판정 불가는 null', () => {
-    expect(r({ condition_json: c({ route: 'x' }) })).toBeNull()
-    expect(r({ condition_json: c({}) })).toBeNull()
-    expect(r({ condition_json: null })).toBeNull()
+  it('판정 불가는 기타', () => {
+    expect(r({ condition_json: c({ route: 'x' }) })).toEqual({ classKey: 'etc', value: '' })
+    expect(r({ condition_json: c({}) })).toEqual({ classKey: 'etc', value: '' })
+    expect(r({ condition_json: null })).toEqual({ classKey: 'etc', value: '' })
+    expect(r({ condition_json: c({ activity_type: 'running' }) })).toEqual({ classKey: 'etc', value: '' })
+  })
+})
+
+describe('기타 분류의 값', () => {
+  it.each([
+    [{ total_count: 30, activity_type: 'running' }, '30회'],
+    [{ weekly_count: 3, repeat_count: 4, activity_type: 'cycling' }, '주 3회'],
+    [{ day_of_month: 1, total_count: 12, activity_type: 'walking' }, '12회'],
+    [{ total_count: 5, weekly_count: 2 }, '5회'],
+  ])('%j → etc %s', (cond, value) => {
+    expect(r({ condition_json: c(cond) })).toEqual({ classKey: 'etc', value })
   })
 })
 

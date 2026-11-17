@@ -80,9 +80,10 @@ describe('parseActivityBadgeImageSearchParams — familyKey (티켓 20261116_072
 })
 
 describe('분류 필터', () => {
-  it('templateClass는 네 분류 키만 받는다', () => {
+  it('templateClass는 다섯 분류 키만 받는다', () => {
     expect(parseActivityBadgeImageSearchParams({ templateClass: 'metric' }).templateClass).toBe('metric')
-    for (const v of ['etc', 1, '', undefined, 'toString']) {
+    expect(parseActivityBadgeImageSearchParams({ templateClass: 'etc' }).templateClass).toBe('etc')
+    for (const v of ['other', 1, '', undefined, 'toString']) {
       expect(parseActivityBadgeImageSearchParams({ templateClass: v }).templateClass).toBeNull()
     }
   })
