@@ -68,6 +68,8 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
       style={{
         position: 'fixed', inset: 0,
         background: 'var(--backdrop)',
+        backdropFilter: 'blur(var(--scrim-blur))',
+        WebkitBackdropFilter: 'blur(var(--scrim-blur))',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 60,
       }}

@@ -184,6 +184,8 @@ export default function BadgeRevealOverlay({
             alignItems: 'center',
             justifyContent: 'center',
             background: 'var(--backdrop)',
+            backdropFilter: 'blur(var(--scrim-blur))',
+            WebkitBackdropFilter: 'blur(var(--scrim-blur))',
           }}
         >
           <WanderingEyesLoader duration="2s" eyeColor="var(--snow)" pupilColor="var(--background-inverse)" />
@@ -207,6 +209,8 @@ export default function BadgeRevealOverlay({
             gap: 'var(--spacing-24)',
             padding: 'var(--spacing-24)',
             background: 'var(--backdrop)',
+            backdropFilter: 'blur(var(--scrim-blur))',
+            WebkitBackdropFilter: 'blur(var(--scrim-blur))',
           }}
         >
           <p

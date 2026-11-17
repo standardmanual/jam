@@ -2,13 +2,17 @@
  * JAM! DS v3 — material tokens (재질: 반투명 + blur, Apple HIG materials 원칙).
  *
  * 티켓 20261015_2131: 탭바 재질 토큰을 --tabbar-* 이름으로 바꾸고 선택 필 색(--tabbar-selection)을
- * 토큰으로 올렸다. 모달 배경 blur는 새 시스템의 blur 0을 따라 없앴다(상위 티켓 결정 6).
- * 탭바의 blur 20px만 남는 재질이다. 아이콘 색(--tabbar-icon·--tabbar-icon-active)은 colors.css에 있다.
+ * 토큰으로 올렸다. 모달 배경 blur는 새 시스템의 blur 0을 따라 없앴으나(상위 티켓 결정 6),
+ * 티켓 20261117_1752에서 스크림 흐림(--scrim-blur)으로 되살렸다. 아이콘 색(--tabbar-icon·--tabbar-icon-active)은 colors.css에 있다.
  */
 :root {
   --tabbar-background: rgba(255, 255, 255, 0.72); /* 항상 흰 필 */
   --tabbar-blur: 20px;
   --tabbar-selection: rgba(0, 0, 0, 0.08);        /* 선택된 탭의 필 */
+
+  /* 시트·모달 스크림(--backdrop) 뒤 화면의 흐림(티켓 20261117_1752, 사용자 지시 2026-11-17).
+     20261015_2131의 «스크림 blur 0» 결정을 스크림에 한해 되돌린다. 투명도 줄이기 설정에서는 아래 미디어 쿼리가 0으로 만든다. */
+  --scrim-blur: 8px;
 
   /* 반전 상태(푸터 위, 티켓 20261109_1153). 기존 토큰의 별칭·합성이며 새 색 수치는 없다. */
   /* 반전 면: 푸터(--background-inverse)보다 밝은 어두운 회색 위에 75% 불투명도를 얹은 반투명 면(티켓 20261109_1325에서 85%, 같은 날 사용자 지시로 75%, 티켓 20261109_1628). --snow 22% 합성 값은 -solid에 불투명으로 남긴다 */
@@ -18,4 +22,11 @@
 
   /* 반투명 카드 면(티켓 20261114_1507): 카드 뒤 장식 선이 희미하게 비치는 흰 면. --card-bg 위에 72% 불투명도만 얹는 별칭이며 새 색 수치는 없다. 72%를 넘겨 내리지 않는다(설명 글자 대비) */
   --card-bg-translucent: color-mix(in srgb, var(--card-bg) 72%, transparent);
+}
+
+/* 투명도 줄이기: 스크림 흐림을 끈다. 스크림 면은 transitions.css에서 불투명 반전 면으로 바뀐다. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --scrim-blur: 0px;
+  }
 }

@@ -70,6 +70,8 @@ export function BottomSheet({
       style={{
         position: 'fixed', inset: 0,
         background: 'var(--backdrop)',
+        backdropFilter: 'blur(var(--scrim-blur))',
+        WebkitBackdropFilter: 'blur(var(--scrim-blur))',
         zIndex: 50,
         display: 'flex', alignItems: 'flex-end',
       }}

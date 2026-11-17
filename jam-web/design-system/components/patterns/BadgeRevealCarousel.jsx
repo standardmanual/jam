@@ -430,6 +430,8 @@ export function BadgeRevealCarousel({
         inset: 0,
         zIndex: 60,
         background: 'var(--backdrop)',
+        backdropFilter: 'blur(var(--scrim-blur))',
+        WebkitBackdropFilter: 'blur(var(--scrim-blur))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

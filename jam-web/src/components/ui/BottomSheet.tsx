@@ -346,7 +346,7 @@ export default function BottomSheet({
       {/* Backdrop — 스크림은 --backdrop(검정 50%)이다. 크림(--background) 반투명은 크림 바탕 위에서
           가려지는 느낌이 거의 없었다(티켓 20261015_2133). prefers-reduced-transparency 가드는
           .t-panel-backdrop(transitions.css)에 공용으로 정의(FeedSection·PoiCarouselModal과
-          공유)하고 blur는 두지 않는다. 시트 본체(아래 bg-[var(--card-bg)])는 불투명 유지.
+          공유)하고, 뒤 화면 흐림(--scrim-blur)도 그 클래스가 맡는다(티켓 20261117_1752). 시트 본체(아래 bg-[var(--card-bg)])는 불투명 유지.
           pointer-events는 같은 파일의 .t-panel-backdrop[data-open]이 담당(20260908_0040). */}
       <div className="absolute inset-0 bg-backdrop t-panel-backdrop" data-open={shown} onClick={onClose} />
 

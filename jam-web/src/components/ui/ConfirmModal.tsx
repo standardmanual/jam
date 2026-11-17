@@ -133,7 +133,7 @@ export default function ConfirmModal({ open, onClose, body, cancelLabel, confirm
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ maxWidth: 430, margin: '0 auto' }}>
-      {/* 스크림은 --backdrop(검정 50%)이고 blur는 두지 않는다(티켓 20261015_2131) */}
+      {/* 스크림은 --backdrop(검정 50%)이고 뒤 화면 흐림(--scrim-blur)은 .t-modal-backdrop이 맡는다(티켓 20261117_1752) */}
       <div
         className="absolute inset-0 bg-backdrop t-modal-backdrop"
         data-open={shown}
