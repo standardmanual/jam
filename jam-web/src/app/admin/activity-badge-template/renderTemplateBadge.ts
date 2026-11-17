@@ -237,7 +237,7 @@ export async function renderTemplateBadge(
     ctx.font = `${font.weight} ${styled.fontSize}px "${font.family}"`
     const contentWidth = measureWidth(ctx, text, letterSpacingEm * styled.fontSize)
     const layout = layoutSlotText({
-      slot: { x: slot.x, textAnchor: slot.textAnchor, fontSize: styled.fontSize },
+      slot: { x: slot.x, textAnchor: slot.textAnchor, fontSize: styled.fontSize, maxWidth: slot.maxWidth ?? null },
       viewWidth,
       placeholderWidth,
       contentWidth,

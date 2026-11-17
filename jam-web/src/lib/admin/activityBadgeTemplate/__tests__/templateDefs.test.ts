@@ -6,9 +6,10 @@ import { describe, it, expect } from 'vitest'
 import { BADGE_TEMPLATE_DEFS, getBadgeTemplateDef } from '../templates'
 import { STREAK_TEMPLATE, nameSampleTextLayers } from '../templates/streak'
 import { STREAK_ORIGINAL_SVG } from '../templates/streakSvg'
+import { COUNT_TEMPLATE } from '../templates/count'
 import { isArcSlot } from '../templateDef'
 import { stripSlotText, resolveTemplateFont, layoutSlotText } from '../composeTemplate'
-import { extractSvgColors } from '../templateColors'
+import { extractSvgColors, applyColorMap } from '../templateColors'
 import type { TemplateSlot } from '../templateSvg'
 
 describe('getBadgeTemplateDef', () => {
@@ -38,8 +39,20 @@ describe('getBadgeTemplateDef', () => {
     expect(d.slots.name).toEqual({ ...common, x: 40.4758, y: 345.745, fontSize: 90, placeholder: '동해물과 백두산이 백두산이' })
     expect(d.slots.value).toEqual({ ...common, x: 197.157, y: 574.845, fontSize: 129, placeholder: '연속 3000일' })
   })
+  it('count는 표의 수치를 가진다', () => {
+    const d = getBadgeTemplateDef('count')!
+    expect(d.classKey).toBe('count')
+    expect(d.slots.viewBoxWidth).toBe(1582)
+    expect(d.slots.viewBoxHeight).toBe(958)
+    const common = {
+      found: true, isText: true, x: 791, fontFamily: 'Noto Sans KR', fontWeight: '900', fill: '#000000',
+      letterSpacing: '-0.08em', textAnchor: 'middle', transform: null,
+    }
+    expect(d.slots.name).toEqual({ ...common, y: 487.64, fontSize: 101.84, placeholder: '벼룩시장 건너편', maxWidth: 663.4 })
+    expect(d.slots.value).toEqual({ ...common, y: 626.35, fontSize: 92.01, placeholder: '5가지', maxWidth: 376.2 })
+  })
   it('등록 안 된 분류는 null', () => {
-    for (const k of ['days', 'count'] as const) expect(getBadgeTemplateDef(k)).toBeNull()
+    expect(getBadgeTemplateDef('days')).toBeNull()
   })
 })
 
@@ -122,5 +135,47 @@ describe('streak 전용', () => {
     const v = layoutSlotText({ slot: value, viewWidth: 1021, placeholderWidth: 634.2, contentWidth: 497.7 })!
     expect(v.anchorX).toBeCloseTo(514.26, 1)
     expect(v.shrunk).toBe(false)
+  })
+})
+
+describe('count 전용', () => {
+  const name = COUNT_TEMPLATE.slots.name as TemplateSlot
+  const value = COUNT_TEMPLATE.slots.value as TemplateSlot
+  it('샘플 글자를 걷어 내도 줄무늬·로고 경로는 남는다', () => {
+    const out = stripSlotText(COUNT_TEMPLATE.svg)
+    expect(out).not.toContain('<text')
+    for (const id of ['Rectangle 10', 'Rectangle 11', 'Vector']) expect(out).toContain(`id="${id}"`)
+  })
+  it('색은 #F95B1D·#D3ACFD·#222222·#000000', () => {
+    const colors = extractSvgColors(COUNT_TEMPLATE.svg).map((c) => String(c.color).toUpperCase())
+    for (const c of ['#F95B1D', '#D3ACFD', '#222222', '#000000']) expect(colors).toContain(c)
+  })
+  it('색을 바꿔도 mix-blend-mode와 fill-opacity가 남는다', () => {
+    const colors = extractSvgColors(COUNT_TEMPLATE.svg)
+    const map: Record<string, string> = {}
+    for (const c of colors) map[String(c.color)] = '#123456'
+    const out = applyColorMap(COUNT_TEMPLATE.svg, map)
+    expect(out).toContain('mix-blend-mode:overlay')
+    expect(out).toContain('fill-opacity="0.97"')
+    expect(out).toContain('#123456')
+    expect(out).not.toContain('#F95B1D')
+  })
+  it('두 자리는 직선 자리다', () => {
+    expect(isArcSlot(COUNT_TEMPLATE.slots.name)).toBe(false)
+    expect(isArcSlot(COUNT_TEMPLATE.slots.value)).toBe(false)
+  })
+  it('직선 글자 배치는 가운데 축에 놓이고 최대 폭을 넘을 때만 줄인다', () => {
+    const n = layoutSlotText({ slot: name, viewWidth: 1582, placeholderWidth: 627.3, contentWidth: 562.2 })!
+    expect(n.anchorX).toBe(791)
+    expect(n.shrunk).toBe(false)
+    const nBig = layoutSlotText({ slot: name, viewWidth: 1582, placeholderWidth: 627.3, contentWidth: 700 })!
+    expect(nBig.shrunk).toBe(true)
+    expect(nBig.fontSizePx).toBeCloseTo((101.84 * 663.4) / 700, 2)
+    const v = layoutSlotText({ slot: value, viewWidth: 1582, placeholderWidth: 210.6, contentWidth: 335 })!
+    expect(v.anchorX).toBe(791)
+    expect(v.shrunk).toBe(false)
+    const vBig = layoutSlotText({ slot: value, viewWidth: 1582, placeholderWidth: 210.6, contentWidth: 420 })!
+    expect(vBig.shrunk).toBe(true)
+    expect(vBig.fontSizePx).toBeCloseTo((92.01 * 376.2) / 420, 2)
   })
 })

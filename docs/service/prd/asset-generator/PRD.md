@@ -639,8 +639,9 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
   - 분류 필터(티켓 20261116_1442): 요청에 `templateClass`(`metric`·`days`·`streak`·`count` 중 하나, 그 밖의 값은 무시)를 주면 그 분류의 배지만 돌려준다. 분류는 DB 칸이 아니라 획득 조건에서 계산하는 값이라, 이 조건이 있을 때만 다른 조건에 맞는 배지를 1,000줄씩 끝까지 읽어 분류를 계산하고 걸러 낸 뒤 페이지를 자른다. 응답의 `total`·`totalPages`는 걸러 낸 뒤의 수다. 분류를 정하지 못한 배지는 이 조건에서 빠진다. 조건이 없으면 DB에서 한 페이지만 읽는다(`pickActivityBadgeImageSearchPage`).
 
 ### 17.3 템플릿은 코드에 정의한다
-- 위치: `jam-web/src/lib/admin/activityBadgeTemplate/templates/`(분류마다 파일 하나와 SVG 문자열, `index.ts`의 `getBadgeTemplateDef`). 항목의 꼴은 `templateDef.ts`의 `BadgeTemplateDef`다. 지금 정의가 있는 분류는 `metric`(운동 수치, 원호 글자)과 `streak`(이어 온 날, 직선 글자, `templates/streak.ts`·티켓 20261116_1634)이다. `streak`는 원본 SVG(`streakSvg.ts`)의 두 `<text>` id를 `nameSampleTextLayers`가 `name`·`value`로 바꾼 사본을 쓴다.
+- 위치: `jam-web/src/lib/admin/activityBadgeTemplate/templates/`(분류마다 파일 하나와 SVG 문자열, `index.ts`의 `getBadgeTemplateDef`). 항목의 꼴은 `templateDef.ts`의 `BadgeTemplateDef`다. 지금 정의가 있는 분류는 `metric`(운동 수치, 원호 글자)과 `streak`(이어 온 날, 직선 글자, `templates/streak.ts`·티켓 20261116_1634)·`count`(횟수와 양, 직선 글자, `templates/count.ts`·티켓 20261117_1300)이다. `count`의 두 자리는 가운데 축(x = 791)에 가운데 맞춤이고 `maxWidth`로 안쪽 마름모 안의 최대 폭을 정한다. `streak`는 원본 SVG(`streakSvg.ts`)의 두 `<text>` id를 `nameSampleTextLayers`가 `name`·`value`로 바꾼 사본을 쓴다.
 - 새 템플릿은 사용자가 SVG와 글꼴·분류를 주면 카리나가 원본에 겹쳐 수치를 맞춰 코드에 넣는다.
+- 직선 자리에는 선택 칸 `maxWidth`(viewBox 단위의 글자 폭 상한)가 있다. 값이 0보다 크면 `layoutSlotText`가 그것을 상한으로 쓰고, 없으면 아래 «넘치면 줄이는 규칙»의 기본 상한을 쓴다.
 - 자리의 종류는 직선(`TemplateSlot`: x·y에 놓는 글자)과 원호(`TemplateArcSlot`: 원을 따라 놓는 글자, 계산은 `arcText.ts`의 `layoutArcText`)다.
 - 샘플 글자 레이어의 `id`는 이름 `name`, 값 `value`다. 그리기 전에 `stripSlotText`가 이 레이어를 걷어 낸다.
 - 그리기: 화면은 템플릿 SVG를 문서에 직접 끼워 넣지 않고 이미지(`img`나 캔버스)로만 그린다.
@@ -657,7 +658,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
 - 분류 필터(티켓 20261116_1442): 검색 카드의 이름 입력 칸 다음에 «분류» 선택 상자가 있다. 선택지는 «전체 분류»와 네 분류(운동 수치·쌓은 날·이어 온 날·횟수와 양)이고, 값을 바꾼 뒤 «검색»을 눌러야 결과가 바뀐다. «전체 분류»면 요청에 `templateClass`를 싣지 않는다.
 - 검색 결과 썸네일(티켓 20261116_1640): 검색 API 응답 항목에 `imageUrl`(`badges.image_url` 그대로, 비면 `null`)을 더했고 `hasImage`는 그대로다. 결과 표의 «이미지» 칸은 이미지가 있으면 48px 칸에 `optimizedImageUrl(imageUrl, 96)` 주소의 그림을 `object-contain`·`loading="lazy"`로 보이고, 없으면 «없음»을 보인다(«있음» 글자는 썸네일로 대체). 그림을 불러오지 못하면 «불러오지 못함»으로 바꾸고, 주소가 바뀌면 다시 시도한다. 등록에 성공하면 응답의 새 주소로 그 줄의 썸네일을 바꾼다.
 - 글꼴 대응: 자리의 글꼴 이름이 구글 폰트 목록에 있으면 그 글꼴을 불러오고, 없거나 불러오지 못하면 시스템 기본 글꼴로 바꿔 그리고 화면에 안내한다.
-- 넘치면 줄이는 규칙: 직선 자리는 넣을 글자의 폭이 자리 기준 좌우 여백 중 좁은 쪽의 2배 × 0.92를 넘으면, 원호 자리는 글자 묶음이 `maxSpanDeg`를 넘으면 글자 크기를 비례해 줄이고 안내한다. 자리를 그리지 못하면 «{이름|값} 자리에 글자를 그리지 못했어요.»를 안내하고, 미리보기를 못 그리면 «미리보기를 그리지 못했어요. 잠시 후 다시 시도해 주세요.»를 보인다.
+- 넘치면 줄이는 규칙: 직선 자리는 넣을 글자의 폭이 상한(`maxWidth`가 있으면 그 값, 없으면 자리 기준 좌우 여백 중 좁은 쪽의 2배 × 0.92)을 넘으면, 원호 자리는 글자 묶음이 `maxSpanDeg`를 넘으면 글자 크기를 비례해 줄이고 안내한다. 자리를 그리지 못하면 «{이름|값} 자리에 글자를 그리지 못했어요.»를 안내하고, 미리보기를 못 그리면 «미리보기를 그리지 못했어요. 잠시 후 다시 시도해 주세요.»를 보인다.
 
 
 ### 17.6 색과 글자 조정 (티켓 20261116_0653)

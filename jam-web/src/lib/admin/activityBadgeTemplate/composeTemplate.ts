@@ -73,7 +73,7 @@ export interface SlotLayout {
 
 /** 단위는 SVG viewBox 단위. 폭 두 개는 자리의 원래 글자 크기로 잰 값이다. */
 export function layoutSlotText(input: {
-  slot: Pick<TemplateSlot, 'x' | 'fontSize' | 'textAnchor'>
+  slot: Pick<TemplateSlot, 'x' | 'fontSize' | 'textAnchor' | 'maxWidth'>
   viewWidth: number
   placeholderWidth: number
   contentWidth: number
@@ -86,7 +86,10 @@ export function layoutSlotText(input: {
       : slot.textAnchor === 'end'
         ? slot.x - placeholderWidth / 2
         : slot.x + placeholderWidth / 2
-  const maxWidth = 2 * Math.min(anchorX, viewWidth - anchorX) * 0.92
+  const maxWidth =
+    slot.maxWidth != null && slot.maxWidth > 0
+      ? slot.maxWidth
+      : 2 * Math.min(anchorX, viewWidth - anchorX) * 0.92
   if (maxWidth > 0 && contentWidth > maxWidth) {
     return { anchorX, fontSizePx: (slot.fontSize * maxWidth) / contentWidth, shrunk: true }
   }
