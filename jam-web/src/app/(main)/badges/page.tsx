@@ -20,6 +20,9 @@ import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
  * 200이 나오지만, 그건 선언이 사실과 어긋난 채 버티는 것뿐이다 — 여기서 정규화해
  * 「값 없음」(= 기본 탭)으로 못 박는다 (티켓 20260906_1312).
  */
+/** 컬렉션 카드 등급 칩의 나열 순서(낮은 등급부터) */
+const RARITY_ASC: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
 interface Props {
   searchParams: Promise<{ tab?: SearchParamValue }>
 }
@@ -139,12 +142,16 @@ export default async function BadgesPage({ searchParams }: Props) {
       if (slotsError) console.error('[badges/page] user_item_book_slots 조회 실패', slotsError)
       if (completionsError) console.error('[badges/page] user_item_book_completions 조회 실패', completionsError)
 
-      const rarityByBook = new Map<string, BadgeRarity>()
       const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; name: string; rarity: BadgeRarity; deleted_at: string | null; created_at: string }[]
-      for (const b of bookBadges) {
-        if (!b.item_book_id || b.type !== 'item') continue
-        // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
-        if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
+      // 컬렉션 카드의 등급 칩: 내가 슬롯에 장착한 배지의 등급(중복 없이, 낮은 등급부터). 컬렉션이 4등급이라 첫 배지 하나로는 대표할 수 없다(티켓 20261117_1856)
+      const rarityByBadge = new Map(bookBadges.map((b) => [b.id, b.rarity]))
+      const equippedRaritiesByBook = new Map<string, Set<BadgeRarity>>()
+      for (const slot of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
+        const rarity = rarityByBadge.get(slot.badge_id)
+        if (!rarity) continue
+        const set = equippedRaritiesByBook.get(slot.item_book_id)
+        if (set) set.add(rarity)
+        else equippedRaritiesByBook.set(slot.item_book_id, new Set([rarity]))
       }
       // 분모·분자 — 완성 판정 단일 모듈(티켓 20261016_2340 2회-나). 분자는 컬렉션별 집합으로 센다.
       const checkinBadgesByBook = new Map<string, string[]>()
@@ -170,7 +177,7 @@ export default async function BadgesPage({ searchParams }: Props) {
         const total = completion?.total ?? 0
         const owned = completion?.filled ?? 0
         const completed = isBookCompleted(completedSet, book.id, completion)
-        return { bookId: book.id, owned, total, completed, rarity: rarityByBook.get(book.id) ?? 'common' }
+        return { bookId: book.id, owned, total, completed, rarities: RARITY_ASC.filter((r) => equippedRaritiesByBook.get(book.id)?.has(r)) }
       })
     }
   }

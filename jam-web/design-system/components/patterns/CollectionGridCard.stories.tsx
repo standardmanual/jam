@@ -101,6 +101,18 @@ export const AlmostDone: Story = {
   },
 };
 
+export const EquippedRarities: Story = {
+  name: '장착한 등급 칩 여러 개 — Common은 그리지 않음',
+  parameters: { docs: { description: { story: '`rarities`에 장착한 배지의 등급을 낮은 순서로 넘기면 왼쪽 위에 칩으로 나열해요. Common은 그리지 않고, Common뿐이면 칩 행도 없어요(티켓 20261117_1856).' } } },
+  args: {
+    name: '노을 헌터의 기록',
+    imageUrl: SAMPLE_IMAGE,
+    collected: 4,
+    total: 36,
+    rarities: ['common', 'rare', 'mystic'],
+  },
+};
+
 export const NoImage: Story = {
   name: '이미지 없음',
   args: {

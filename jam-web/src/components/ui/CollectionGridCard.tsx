@@ -19,8 +19,13 @@ export interface CollectionGridCardProps {
   total: number
   /** 완성 여부 — 카드 면이 강조색 그린이 되고, 진행 바·숫자 자리에 «완성» 칩이 온다 */
   completed?: boolean
-  /** 최초 등록 아이템배지 기준 컬렉션 등급 */
+  /** 컬렉션 등급 하나(옛 전제: 컬렉션 하나는 등급 하나). `rarities`가 없을 때만 쓴다 */
   rarity?: BadgeRarity
+  /**
+   * 카드 왼쪽 위에 칩으로 그릴 등급들(낮은 등급부터 넘긴다). Common은 그리지 않는다. 컬렉션이 4등급이라 하나로 대표할 수 없어
+   * 배지 목록은 «내가 장착한 배지의 등급»을 넘긴다(티켓 20261117_1856). 넘기면 `rarity`는 무시한다.
+   */
+  rarities?: BadgeRarity[]
   /** 진행 바와 「수집/전체」 숫자를 숨긴다. 전체 슬롯 수를 아직 모르는 운영툴 미리보기용이다. 기본은 끔. */
   hideProgress?: boolean
   href?: string
@@ -42,12 +47,14 @@ export default function CollectionGridCard({
   total,
   completed = false,
   rarity,
+  rarities,
   hideProgress = false,
   href,
   onClick,
   className = '',
   children,
 }: CollectionGridCardProps) {
+  const chipRarities = (rarities ?? (rarity ? [rarity] : [])).filter((r) => r !== 'common')
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0
   // 눌림은 공용 `.jam-press`(0.98배·80ms, 동작 줄이기 설정에서는 없음)다. 링크도 버튼도 아닌 카드에는 붙이지 않는다.
   const cls = [BASE, completed ? FACE_COMPLETED : FACE_DEFAULT, (href || onClick) && 'jam-press', className].filter(Boolean).join(' ')
@@ -66,11 +73,13 @@ export default function CollectionGridCard({
           sizes="50vw"
           fallback={<MagicBookIcon className={`w-10 h-10 ${completed ? 'text-foreground' : 'text-muted'}`} />}
         />
-        {/* 태그 행: 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다. 완성 칩은 맨 아래 행으로 옮겼다(티켓 20261114_1502).
+        {/* 태그 행: 등급 칩들(선택). 컬렉션이 담은 등급을 낮은 순서로 나열하고 Common은 그리지 않는다. 완성 칩은 맨 아래 행으로 옮겼다(티켓 20261114_1502).
             좁은 폭(320px 2열)에서도 칩이 잘리지 않게 줄바꿈하고, 오른쪽 여백을 남긴다. */}
-        {rarity && (
+        {chipRarities.length > 0 && (
           <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
-            <RarityBadge rarity={rarity} size="md" />
+            {chipRarities.map((r) => (
+              <RarityBadge key={r} rarity={r} size="md" />
+            ))}
           </div>
         )}
       </div>

@@ -28,7 +28,8 @@ const TAG_STYLE = {
  * 진행 바는 직접 그리지 않고 ProgressBar shape="capsule"(어두운 트랙 --capsule-track, 필 강조색 그린 --jam-green, 높이 16)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙·필이다.
  *
  * Props:
- *   rarity     — 최초 등록 아이템배지 기준 컬렉션 등급 (선택)
+ *   rarity     — 컬렉션 등급 하나 (선택, 옛 전제). `rarities`가 없을 때만 쓴다
+ *   rarities   — 왼쪽 위에 칩으로 그릴 등급들(낮은 등급부터, 선택). Common은 그리지 않는다. 넘기면 `rarity`는 무시한다(티켓 20261117_1856)
  *   completed  — 완성 카드: 면이 그린이 되고 바·숫자 대신 «완성» 칩을 맨 아래에 둔다
  *   hideProgress — 진행 바와 «수집/전체» 숫자(맨 아래 행)를 그리지 않는다(전체 슬롯 수를 아직 모르는 미리보기용, 기본 false). completed이면 «완성» 칩 행은 그대로 둔다
  *
@@ -44,6 +45,7 @@ export function CollectionGridCard({
   total,
   completed = false,
   rarity,
+  rarities,
   hideProgress = false,
   href,
   onClick,
@@ -53,7 +55,7 @@ export function CollectionGridCard({
 }) {
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
   const interactive = !!(href || onClick);
-  const showRarity = !!rarity && rarity !== 'common';
+  const chipRarities = (rarities ?? (rarity ? [rarity] : [])).filter((r) => r !== 'common');
 
   const containerStyle = {
     display: 'flex',
@@ -98,10 +100,12 @@ export function CollectionGridCard({
             </svg>
           </span>
         )}
-        {/* 태그 행: 등급(선택). 컬렉션은 처음 등록한 배지와 같은 등급만 담으므로 등급 칩은 하나다. 완성 칩은 맨 아래 행으로 옮겼다. */}
-        {showRarity && (
+        {/* 태그 행: 등급 칩들(선택). 낮은 등급부터 나열하고 Common은 그리지 않는다. 완성 칩은 맨 아래 행으로 옮겼다. */}
+        {chipRarities.length > 0 && (
           <div style={{ position: 'absolute', top: 8, left: 8, right: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-            <RarityBadge rarity={rarity} size="md" />
+            {chipRarities.map((r) => (
+              <RarityBadge key={r} rarity={r} size="md" />
+            ))}
           </div>
         )}
       </div>

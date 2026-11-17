@@ -62,6 +62,23 @@ describe.each(cases)('CollectionGridCard 칩 자리 (%s)', (_label, render, comp
     expect(html).not.toContain(completedText)
   })
 
+  it('rarities는 낮은 등급부터 칩으로 나열하고 Common은 그리지 않는다(티켓 20261117_1856)', () => {
+    const html = render({ rarities: ['common', 'rare', 'mystic'], collected: 3, total: 9 })
+    expect(html).not.toContain('Common')
+    expect(html.indexOf('Rare')).toBeGreaterThan(-1)
+    expect(html.indexOf('Mystic')).toBeGreaterThan(html.indexOf('Rare'))
+    expect(html).not.toContain('Epic')
+  })
+
+  it('rarities가 비었거나 Common뿐이면 칩 행 자체를 그리지 않고, rarities가 있으면 rarity는 무시한다', () => {
+    const chipRow = /top-2 left-2|top:\s*8px/
+    expect(render({ rarities: [], collected: 3, total: 9 })).not.toMatch(chipRow)
+    expect(render({ rarities: ['common'], collected: 3, total: 9 })).not.toMatch(chipRow)
+    const html = render({ rarities: ['epic'], rarity: 'rare', collected: 3, total: 9 })
+    expect(html).toContain('Epic')
+    expect(html).not.toContain('Rare')
+  })
+
   it('맨 아래 행은 완성·미완성 모두 최소 높이 20px이라 카드 높이가 같다', () => {
     const rowMin = (html: string) => html.includes('min-h-5') || html.includes('min-height:20px')
     expect(rowMin(render({ completed: true }))).toBe(true)

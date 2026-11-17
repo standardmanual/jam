@@ -177,7 +177,23 @@ describe('배지 목록 페이지 — 꺼진 컬렉션 (티켓 20261106_1230, T4
     const props = await renderProps()
 
     expect((props.itemBooks as { id: string }[]).map((b) => b.id)).toEqual(['book-off'])
-    expect(props.itemBookProgress).toEqual([{ bookId: 'book-off', owned: 1, total: 1, completed: true, rarity: 'epic' }])
+    expect(props.itemBookProgress).toEqual([{ bookId: 'book-off', owned: 1, total: 1, completed: true, rarities: ['epic'] }])
+  })
+
+  it('컬렉션 카드 등급은 내가 장착한 배지의 등급이다: 중복 없이 낮은 등급부터, 장착하지 않은 등급은 없다(티켓 20261117_1856)', async () => {
+    ownedOffBookState()
+    state.tables.badges = [
+      { id: 'b-c', item_book_id: 'book-off', type: 'item', drop_excluded: false, name: 'c', rarity: 'common', deleted_at: null, created_at: '2026-10-01T00:00:00Z' },
+      { id: 'b-m', item_book_id: 'book-off', type: 'item', drop_excluded: false, name: 'm', rarity: 'mystic', deleted_at: null, created_at: '2026-10-01T00:00:01Z' },
+      { id: 'b-r1', item_book_id: 'book-off', type: 'item', drop_excluded: false, name: 'r1', rarity: 'rare', deleted_at: null, created_at: '2026-10-01T00:00:02Z' },
+      { id: 'b-r2', item_book_id: 'book-off', type: 'item', drop_excluded: false, name: 'r2', rarity: 'rare', deleted_at: null, created_at: '2026-10-01T00:00:03Z' },
+      { id: 'b-e', item_book_id: 'book-off', type: 'item', drop_excluded: false, name: 'e', rarity: 'epic', deleted_at: null, created_at: '2026-10-01T00:00:04Z' },
+    ]
+    state.tables.user_item_book_slots = ['b-m', 'b-r1', 'b-r2', 'b-c'].map((badge_id) => ({ item_book_id: 'book-off', badge_id }))
+
+    const props = await renderProps()
+
+    expect((props.itemBookProgress as { rarities: string[] }[])[0].rarities).toEqual(['common', 'rare', 'mystic'])
   })
 
   it('컬렉션 조회는 내가 가진 개체의 컬렉션 id로만 한다(가진 것이 없는 꺼진 컬렉션은 조회 대상이 아니다)', async () => {
