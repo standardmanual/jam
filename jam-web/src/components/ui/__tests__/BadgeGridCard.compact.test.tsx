@@ -35,10 +35,17 @@ describe('BadgeGridCard compact', () => {
     expect(html).toContain('>Rare<')
   })
 
-  it('compact Common은 칩이 없어도 칩 줄이 남는다', () => {
+  it('compact Common은 칩도 칩 줄도 그리지 않는다(칩이 없으면 칸이 늘어나지 않는다, 티켓 20261117_1822)', () => {
     const html = renderToStaticMarkup(<BadgeGridCard compact name="이름" rarity="common" />)
     expect(html).not.toContain('>Common<')
-    expect(html).toContain('h-6 flex')
+    expect(html).not.toContain('h-6 flex')
+  })
+
+  it('compact 등급이 없는 무한레벨형도 칩 줄이 없고, Lv 칩이나 Common 켬은 줄이 있다', () => {
+    expect(renderToStaticMarkup(<BadgeGridCard compact name="이름" rarity={null} />)).not.toContain('h-6 flex')
+    expect(renderToStaticMarkup(<BadgeGridCard compact name="이름" rarity={null} level={3} />)).toContain('h-6 flex')
+    expect(renderToStaticMarkup(<BadgeGridCard compact name="이름" rarity="common" showCommonChip />)).toContain('h-6 flex')
+    expect(renderToStaticMarkup(<BadgeGridCard compact name="이름" rarity="rare" />)).toContain('h-6 flex')
   })
 
   it('compact 잠긴 개체는 이름·그림 주소가 DOM에 없다', () => {

@@ -128,11 +128,12 @@ describe('갤러리 칸 배선 (티켓 20261114_2352, 이전 20261108_1625)', ()
     expect(renderList([base])).not.toContain('×1')
   })
 
-  it('common 칸은 등급 칩을 그리지 않지만 칩 줄 높이(h-6)는 남는다', () => {
+  it('common 칸은 등급 칩도 칩 줄(h-6)도 그리지 않고, 등급 칩이 있는 칸만 칩 줄을 둔다(티켓 20261117_1822)', () => {
     // 칩이 그려졌는지는 등급 라벨 글자(RarityBadge 라벨 «Rare»)로 본다. 레이아웃 gap 문자열에 기대면 같은 모달의 다른 요소가 같은 gap을 쓸 때 오탐한다.
     expect(renderList([{ ...base, badge_rarity: 'rare' }])).toContain('>Rare<')
     expect(renderList([base])).not.toContain('>Rare<')
-    expect(renderList([base])).toContain('h-6 flex items-center justify-center')
+    expect(renderList([base])).not.toContain('h-6 flex items-center justify-center')
+    expect(renderList([{ ...base, badge_rarity: 'rare' }])).toContain('h-6 flex items-center justify-center')
   })
 
   it('만료 임박 개체여도 칸에 만료 칩을 그리지 않는다', () => {
@@ -147,14 +148,14 @@ describe('갤러리 칸 배선 (티켓 20261114_2352, 이전 20261108_1625)', ()
     expect(html).toContain('rounded-2xl p-1 overflow-hidden')
   })
 
-  it('묶음이 몇 개든 본문 슬롯 높이는 2행 갤러리 높이(칸 폭 기준 계산)로 같고 갤러리는 안에서만 스크롤된다', () => {
+  it('묶음이 몇 개든 본문 슬롯 높이는 2행 갤러리 높이(칸 폭 기준 계산)로 같고 갤러리는 안에서만 스크롤된다. 행 높이는 고정하지 않고 내용을 따른다', () => {
     const many = Array.from({ length: 7 }, (_, i) => ({ ...base, id: `m${i}`, badge_id: `b${i}`, badge_name: `배지${i}` }))
     for (const drops of [[base], many]) {
       const html = renderList(drops)
       expect(html).toContain('container-type:inline-size')
       expect(html).toContain('height:calc(calc((100cqw - 16px) / 3 + 66px) * 2 + 8px)')
       expect(html).toContain('overflow-y-auto overscroll-contain')
-      expect(html).toContain('grid-auto-rows:calc((100cqw - 16px) / 3 + 66px)')
+      expect(html).not.toContain('grid-auto-rows')
     }
   })
 

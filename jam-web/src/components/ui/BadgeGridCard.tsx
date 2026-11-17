@@ -114,7 +114,7 @@ export interface BadgeGridCardProps {
   /**
    * true = 좁은 칸용 고정 규격(체크인 지점 카드의 3열 갤러리, 티켓 20261114_2352). 여백 4, 면 `--background-secondary`,
    * 썸네일은 칸 폭에서 좌우 여백 4를 뺀 정사각형(위 여백과 같은 4, 면 `--surface`, 모서리는 카드 반경 16에서 여백 4를 뺀 12, 티켓 20261115_2045),
-   * 이름 12px 굵게 2줄(1줄 이름도 2줄 높이), 칩 줄 높이 24 고정(등급 칩만, Common이면 빈 줄).
+   * 이름 12px 굵게 2줄(1줄 이름도 2줄 높이), 칩 줄은 칩이 그려질 때만 높이 24(등급 칩만, Common이면 줄이 없다 — 티켓 20261117_1822).
    * 만료·방문 횟수·children·미발견·외곽선 표현은 그리지 않는다. 기본 false라 다른 화면은 마크업이 그대로다.
    */
   compact?: boolean
@@ -191,6 +191,8 @@ export default function BadgeGridCard({
   // 회색조는 칩 자체에 `grayscale`을 걸어 만든다. 래퍼를 두면 Common처럼 칩이 아무것도 그리지 않을 때도 빈 래퍼가 남아
   // 이름과 칩 사이 간격(gap-1)만큼 칸이 커진다(장착 상태와 칸 높이가 어긋났다).
   const chipClass = chipGray ? 'grayscale' : ''
+  // 칩이 실제로 그려지는지: Lv 칩은 항상, 등급 칩은 등급이 있고 Common이 아닐 때(`showCommonChip`이면 Common도)
+  const hasChip = level != null || (rarity != null && (rarity !== 'common' || showCommonChip))
   const chip = level != null
     ? <BadgeLevelChip level={level} size="md" className={chipClass} />
     : <RarityBadge rarity={rarity ?? undefined} size="md" className={chipClass} showCommon={showCommonChip} />
@@ -232,8 +234,9 @@ export default function BadgeGridCard({
           {showCount && (
             <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
           )}
-          {/* 칩 줄은 높이 24를 항상 확보한다 — Common이면 비어도 칸 높이가 같다 */}
-          <div className="h-6 flex items-center justify-center">{chip}</div>
+          {/* 칩이 그려질 때만 높이 24의 줄을 둔다. 칩이 없으면 줄도 없어 칸이 이름 아래에서 끝난다(다른 BadgeGridCard와 같은 규칙, 티켓 20261117_1822).
+              같은 행 안에서는 그리드 정렬(stretch)이 가장 큰 칸 높이로 맞춘다 */}
+          {hasChip && <div className="h-6 flex items-center justify-center">{chip}</div>}
         </div>
       </>
     )

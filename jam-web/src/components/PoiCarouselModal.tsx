@@ -148,7 +148,7 @@ const WINDOW_STEP = 3
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /**
- * 지점 카드 크기 고정(티켓 20261114_2352). 갤러리 칸 높이는 `grid-auto-rows`로 이 값에 고정하고, 본문 슬롯 높이(2행)는 같은 값에서 계산한다.
+ * 지점 카드 크기 고정(티켓 20261114_2352). 본문 슬롯 높이(2행)는 칩이 있는 칸의 높이를 기준으로 이 값에서 계산한다. 갤러리 칸 자체는 내용 높이를 따르고, 칩이 있을 때의 높이가 이 값과 같다(티켓 20261117_1822).
  * 썸네일이 칸 폭에서 좌우 여백 4를 뺀 정사각형이라(티켓 20261115_2045) 칸 높이는 칸 폭에 따라 달라진다. 그래서 값을 px 상수가 아니라
  * 본문 슬롯 래퍼(`container-type: inline-size`)의 폭(`cqw`)으로 계산한다: 칸 폭 = (슬롯 폭 − 열 간격 2×8) ÷ 3,
  * 칸 높이 = 위 여백 4 + 썸네일(칸 폭 − 8) + 이름 위 간격 8 + 이름 2줄 30 + 간격 4 + 칩 줄 24 + 아래 여백 4 = 칸 폭 + 66(여백이 8에서 4로 줄어든 만큼 썸네일이 커져 합은 같다).
@@ -915,7 +915,7 @@ interface PoiBadgeCell {
 }
 
 /**
- * 3열 × 2행 갤러리. 칸 높이는 `grid-auto-rows` 한 곳(`GALLERY_CELL_H`)에서 고정하고 본문 슬롯 높이도 같은 상수에서 계산한다.
+ * 3열 × 2행 갤러리. 칸 높이는 내용을 따른다(칩이 없는 행은 칩 줄만큼 낮다, 티켓 20261117_1822). 본문 슬롯 높이는 칩이 있는 칸 2행 기준(`GALLERY_H`)으로 고정해 시트 크기가 바뀌지 않는다.
  * 묶음이 6개를 넘으면 이 영역 안에서만 세로 스크롤하고(`overscroll-contain`), 6개 미만이면 앞에서부터 채우며 빈 칸 자리 표시는 없다.
  * 세로 스크롤과 캐러셀 가로 스와이프는 브라우저가 제스처 방향으로 가르므로 `touch-action`을 따로 제한하지 않는다.
  */
@@ -923,7 +923,6 @@ function PoiBadgeGallery({ cells }: { cells: PoiBadgeCell[] }) {
   return (
     <div
       className="grid grid-cols-3 gap-2 content-start h-full overflow-y-auto overscroll-contain"
-      style={{ gridAutoRows: GALLERY_CELL_H }}
     >
       {cells.map((cell, index) => (
         <BadgeGridCard
