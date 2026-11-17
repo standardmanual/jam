@@ -4,9 +4,12 @@
  */
 import { describe, it, expect } from 'vitest'
 import { BADGE_TEMPLATE_DEFS, getBadgeTemplateDef } from '../templates'
+import { DAYS_TEMPLATE, nameSampleShapes } from '../templates/days'
+import { DAYS_ORIGINAL_SVG } from '../templates/daysSvg'
 import { STREAK_TEMPLATE, nameSampleTextLayers } from '../templates/streak'
 import { STREAK_ORIGINAL_SVG } from '../templates/streakSvg'
 import { isArcSlot } from '../templateDef'
+import { layoutArcText } from '../arcText'
 import { stripSlotText, resolveTemplateFont, layoutSlotText } from '../composeTemplate'
 import { extractSvgColors } from '../templateColors'
 import type { TemplateSlot } from '../templateSvg'
@@ -38,8 +41,22 @@ describe('getBadgeTemplateDef', () => {
     expect(d.slots.name).toEqual({ ...common, x: 40.4758, y: 345.745, fontSize: 90, placeholder: '동해물과 백두산이 백두산이' })
     expect(d.slots.value).toEqual({ ...common, x: 197.157, y: 574.845, fontSize: 129, placeholder: '연속 3000일' })
   })
+  it('days는 표의 수치를 가진다', () => {
+    const d = getBadgeTemplateDef('days')!
+    expect(d.classKey).toBe('days')
+    expect(d.slots.viewBoxWidth).toBe(702)
+    expect(d.slots.viewBoxHeight).toBe(1098)
+    expect(d.slots.name).toMatchObject({
+      kind: 'arc', cx: 351, cy: 300.49, baselineRadius: 178.13, centerDeg: 0.25, facing: 'outward',
+      maxSpanDeg: 177.2, fontFamily: 'Noto Sans KR', fontWeight: '900', fontSize: 84, letterSpacingEm: -0.0802, fill: '#000000',
+    })
+    expect(d.slots.value).toMatchObject({
+      found: true, isText: true, x: 350.51, y: 949.75, fontFamily: 'Noto Sans KR', fontSize: 116.44, fontWeight: '900',
+      fill: '#000000', letterSpacing: '-0.0756em', textAnchor: 'middle', transform: null, placeholder: '1000일',
+    })
+  })
   it('등록 안 된 분류는 null', () => {
-    for (const k of ['days', 'count'] as const) expect(getBadgeTemplateDef(k)).toBeNull()
+    expect(getBadgeTemplateDef('count')).toBeNull()
   })
 })
 
@@ -121,6 +138,59 @@ describe('streak 전용', () => {
     expect(n.shrunk).toBe(false)
     const v = layoutSlotText({ slot: value, viewWidth: 1021, placeholderWidth: 634.2, contentWidth: 497.7 })!
     expect(v.anchorX).toBeCloseTo(514.26, 1)
+    expect(v.shrunk).toBe(false)
+  })
+})
+
+describe('days 전용', () => {
+  const sampleShapes = (svg: string) => svg.match(/<path id="(?!Union|Line)[^"]*"/g) ?? []
+  it('원본에는 샘플 글자 모양 <path>가 둘이고, id만 name·value로 바뀐다', () => {
+    expect(sampleShapes(DAYS_ORIGINAL_SVG)).toHaveLength(2)
+    const out = nameSampleShapes(DAYS_ORIGINAL_SVG)
+    expect(out.match(/id="name"/g)).toHaveLength(1)
+    expect(out.match(/id="value"/g)).toHaveLength(1)
+    const a = DAYS_ORIGINAL_SVG.split('\n')
+    const b = out.split('\n')
+    expect(b).toHaveLength(a.length)
+    const diff = a.map((line, i) => (line === b[i] ? -1 : i)).filter((i) => i >= 0)
+    expect(diff).toHaveLength(2)
+    expect(b[diff[0]]).toBe(a[diff[0]].replace(/<path id="[^"]*"/, '<path id="name"'))
+    expect(b[diff[1]]).toBe(a[diff[1]].replace(/<path id="[^"]*"/, '<path id="value"'))
+  })
+  it('샘플 글자 모양이 둘이 아니면 원본을 그대로 돌려준다', () => {
+    const one = '<svg><path id="Union" d="M0 0"/><path id="샘플" d="M0 0"/></svg>'
+    expect(nameSampleShapes(one)).toBe(one)
+  })
+  it('샘플 글자를 걷어 내도 알약·선·그림 묶음은 남는다', () => {
+    const out = stripSlotText(DAYS_TEMPLATE.svg)
+    for (const id of ['Union', 'Line 1', 'Vector_3']) expect(out).toContain(`id="${id}"`)
+  })
+  it('색은 #000000·#990000·#FF0000', () => {
+    const colors = extractSvgColors(DAYS_TEMPLATE.svg).map((c) => String(c.color).toUpperCase())
+    for (const c of ['#000000', '#990000', '#FF0000']) expect(colors).toContain(c)
+  })
+  it('이름은 원호 자리, 값은 직선 자리다', () => {
+    expect(isArcSlot(DAYS_TEMPLATE.slots.name)).toBe(true)
+    expect(isArcSlot(DAYS_TEMPLATE.slots.value)).toBe(false)
+  })
+  it('원호 글자 배치가 각도 한도를 지킨다', () => {
+    const s = DAYS_TEMPLATE.slots.name
+    if (!isArcSlot(s)) throw new Error('원호 자리여야 한다')
+    const input = {
+      fontSize: s.fontSize, letterSpacingEm: s.letterSpacingEm, cx: s.cx, cy: s.cy,
+      baselineRadius: s.baselineRadius, centerDeg: s.centerDeg, facing: s.facing, maxSpanDeg: s.maxSpanDeg,
+    }
+    const fit = layoutArcText({ ...input, advances: Array(9).fill(50) })!
+    expect(fit.shrunk).toBe(false)
+    expect(fit.spanDeg).toBeLessThanOrEqual(s.maxSpanDeg)
+    const wide = layoutArcText({ ...input, advances: Array(9).fill(70) })!
+    expect(wide.shrunk).toBe(true)
+    expect(wide.spanDeg).toBeLessThanOrEqual(s.maxSpanDeg + 1e-6)
+  })
+  it('직선 글자 배치가 가운데 기준이고 줄지 않는다', () => {
+    const value = DAYS_TEMPLATE.slots.value as TemplateSlot
+    const v = layoutSlotText({ slot: value, viewWidth: 702, placeholderWidth: 355.5, contentWidth: 230 })!
+    expect(v.anchorX).toBeCloseTo(350.51, 1)
     expect(v.shrunk).toBe(false)
   })
 })
