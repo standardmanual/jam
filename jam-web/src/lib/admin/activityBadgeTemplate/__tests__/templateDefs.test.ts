@@ -9,7 +9,8 @@ import { DAYS_ORIGINAL_SVG } from '../templates/daysSvg'
 import { STREAK_TEMPLATE, nameSampleTextLayers } from '../templates/streak'
 import { STREAK_ORIGINAL_SVG } from '../templates/streakSvg'
 import { COUNT_TEMPLATE } from '../templates/count'
-import { isArcSlot } from '../templateDef'
+import { METRIC_TEMPLATE_SVG } from '../templates/metricSvg'
+import { isArcSlot, type TemplateArcSlot } from '../templateDef'
 import { layoutArcText } from '../arcText'
 import { stripSlotText, resolveTemplateFont, layoutSlotText } from '../composeTemplate'
 import { extractSvgColors, applyColorMap } from '../templateColors'
@@ -19,15 +20,15 @@ describe('getBadgeTemplateDef', () => {
   it('metric은 표의 수치를 가진다', () => {
     const d = getBadgeTemplateDef('metric')!
     expect(d.classKey).toBe('metric')
-    expect(d.slots.viewBoxWidth).toBe(922)
-    expect(d.slots.viewBoxHeight).toBe(922)
+    expect(d.slots.viewBoxWidth).toBe(764)
+    expect(d.slots.viewBoxHeight).toBe(764)
     expect(d.slots.name).toMatchObject({
-      kind: 'arc', cx: 461, cy: 461, baselineRadius: 302.56, centerDeg: 0, facing: 'outward',
-      maxSpanDeg: 208.5, fontSize: 106.5, letterSpacingEm: -0.11, fontFamily: 'Noto Sans KR', fontWeight: '900', fill: '#FFFFFF',
+      kind: 'arc', cx: 382, cy: 382, baselineRadius: 267.93, centerDeg: 0.09, facing: 'outward',
+      maxSpanDeg: 166.95, fontSize: 71.34, letterSpacingEm: -0.0669, fontFamily: 'Noto Sans KR', fontWeight: '900', fill: '#000000',
     })
-    expect(d.slots.value).toMatchObject({
-      kind: 'arc', cx: 461, cy: 461, baselineRadius: 383.56, centerDeg: 180, facing: 'inward',
-      maxSpanDeg: 91, fontSize: 107, letterSpacingEm: 0.06, fontFamily: 'Noto Sans KR', fontWeight: '900', fill: '#FFFFFF',
+    expect(d.slots.value).toEqual({
+      found: true, isText: true, x: 98.4085, y: 535.408, fontFamily: 'Noto Sans KR', fontSize: 108.333, fontWeight: '900',
+      fill: '#000000', letterSpacing: '-0.08em', textAnchor: null, transform: null, placeholder: '1829283km', maxWidth: 620,
     })
   })
   it('streak은 표의 수치를 가진다', () => {
@@ -100,18 +101,37 @@ describe('등록된 모든 정의 공통', () => {
 
 describe('metric 전용', () => {
   const def = getBadgeTemplateDef('metric')!
-  it('샘플 글자를 걷어 내도 그림은 남는다', () => {
+  it('원본에는 이름 모양 <path id="name">과 값 <text id="value">가 하나씩 있다', () => {
+    expect(METRIC_TEMPLATE_SVG.match(/<path id="name"/g)).toHaveLength(1)
+    expect(METRIC_TEMPLATE_SVG.match(/<text id="value"/g)).toHaveLength(1)
+  })
+  it('샘플 글자를 걷어 내도 반원 두 개·로고는 남는다', () => {
     const out = stripSlotText(def.svg)
-    expect(out).toContain('Union')
-    expect(out).toContain('Vector')
+    for (const id of ['Subtract', 'Subtract_2', 'Vector_2']) expect(out).toContain(`id="${id}"`)
+    expect(out).not.toContain('1829283km')
   })
-  it('색 네 가지', () => {
+  it('색: 글자 #000000, 위 반원 #FF5900, 로고 #FBFF00', () => {
     const colors = extractSvgColors(def.svg).map((c) => String(c.color).toUpperCase())
-    for (const c of ['#000000', '#DD2C0F', '#FC8471', '#FFFFFF']) expect(colors).toContain(c)
+    for (const c of ['#000000', '#FF5900', '#FBFF00']) expect(colors).toContain(c)
   })
-  it('두 자리 모두 원호 자리', () => {
+  it('이름은 원호 자리, 값은 직선 자리', () => {
     expect(isArcSlot(def.slots.name)).toBe(true)
-    expect(isArcSlot(def.slots.value)).toBe(true)
+    expect(isArcSlot(def.slots.value)).toBe(false)
+  })
+  it('값 직선 배치가 샘플 글자 폭의 가운데(그림 가운데 382)에 맞고 긴 값은 줄어든다', () => {
+    const value = def.slots.value as TemplateSlot
+    const v = layoutSlotText({ slot: value, viewWidth: 764, placeholderWidth: 567.9, contentWidth: 330 })!
+    expect(v.anchorX).toBeCloseTo(382.4, 0)
+    expect(v.shrunk).toBe(false)
+    const long = layoutSlotText({ slot: value, viewWidth: 764, placeholderWidth: 567.9, contentWidth: 700 })!
+    expect(long.shrunk).toBe(true)
+    expect(long.fontSizePx).toBeCloseTo((108.333 * 620) / 700, 3)
+  })
+  it('이름 원호 배치: 샘플과 같은 15자는 샘플이 차지한 각도(약 167°)에 들어간다', () => {
+    const name = def.slots.name as TemplateArcSlot
+    const advances = Array(15).fill(name.fontSize * 0.9)
+    const out = layoutArcText({ advances, fontSize: name.fontSize, letterSpacingEm: name.letterSpacingEm, cx: name.cx, cy: name.cy, baselineRadius: name.baselineRadius, centerDeg: name.centerDeg, facing: name.facing, maxSpanDeg: name.maxSpanDeg })!
+    expect(out.spanDeg).toBeLessThanOrEqual(name.maxSpanDeg + 0.01)
   })
 })
 
