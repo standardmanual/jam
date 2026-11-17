@@ -1,10 +1,12 @@
 import type { BadgeTemplateClassKey } from '../resolveTemplateText'
 import type { BadgeTemplateDef } from '../templateDef'
+import { DAYS_TEMPLATE } from './days'
 import { METRIC_TEMPLATE } from './metric'
 import { STREAK_TEMPLATE } from './streak'
 
 export const BADGE_TEMPLATE_DEFS: Partial<Record<BadgeTemplateClassKey, BadgeTemplateDef>> = {
   metric: METRIC_TEMPLATE,
+  days: DAYS_TEMPLATE,
   streak: STREAK_TEMPLATE,
 }
 

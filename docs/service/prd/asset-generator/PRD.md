@@ -639,7 +639,7 @@ Google Fonts 글자(또는 SVG 로고)를 3D로 압출하고, 원본보다 앞�
   - 분류 필터(티켓 20261116_1442): 요청에 `templateClass`(`metric`·`days`·`streak`·`count` 중 하나, 그 밖의 값은 무시)를 주면 그 분류의 배지만 돌려준다. 분류는 DB 칸이 아니라 획득 조건에서 계산하는 값이라, 이 조건이 있을 때만 다른 조건에 맞는 배지를 1,000줄씩 끝까지 읽어 분류를 계산하고 걸러 낸 뒤 페이지를 자른다. 응답의 `total`·`totalPages`는 걸러 낸 뒤의 수다. 분류를 정하지 못한 배지는 이 조건에서 빠진다. 조건이 없으면 DB에서 한 페이지만 읽는다(`pickActivityBadgeImageSearchPage`).
 
 ### 17.3 템플릿은 코드에 정의한다
-- 위치: `jam-web/src/lib/admin/activityBadgeTemplate/templates/`(분류마다 파일 하나와 SVG 문자열, `index.ts`의 `getBadgeTemplateDef`). 항목의 꼴은 `templateDef.ts`의 `BadgeTemplateDef`다. 지금 정의가 있는 분류는 `metric`(운동 수치, 원호 글자)과 `streak`(이어 온 날, 직선 글자, `templates/streak.ts`·티켓 20261116_1634)이다. `streak`는 원본 SVG(`streakSvg.ts`)의 두 `<text>` id를 `nameSampleTextLayers`가 `name`·`value`로 바꾼 사본을 쓴다.
+- 위치: `jam-web/src/lib/admin/activityBadgeTemplate/templates/`(분류마다 파일 하나와 SVG 문자열, `index.ts`의 `getBadgeTemplateDef`). 항목의 꼴은 `templateDef.ts`의 `BadgeTemplateDef`다. 지금 정의가 있는 분류는 `metric`(운동 수치, 원호 글자), `days`(쌓은 날, 이름 원호·값 직선, `templates/days.ts`·티켓 20261117_1140)와 `streak`(이어 온 날, 직선 글자, `templates/streak.ts`·티켓 20261116_1634)이다. `streak`는 원본 SVG(`streakSvg.ts`)의 두 `<text>` id를 `nameSampleTextLayers`가 `name`·`value`로 바꾼 사본을 쓴다. `days`는 글자가 모양(`<path>`)이라, 원본(`daysSvg.ts`)에서 `Union`·`Line`으로 시작하지 않는 두 `<path>`의 id를 `nameSampleShapes`가 `name`·`value`로 바꾼 사본을 쓴다(글꼴 Noto Sans KR 900).
 - 새 템플릿은 사용자가 SVG와 글꼴·분류를 주면 카리나가 원본에 겹쳐 수치를 맞춰 코드에 넣는다.
 - 자리의 종류는 직선(`TemplateSlot`: x·y에 놓는 글자)과 원호(`TemplateArcSlot`: 원을 따라 놓는 글자, 계산은 `arcText.ts`의 `layoutArcText`)다.
 - 샘플 글자 레이어의 `id`는 이름 `name`, 값 `value`다. 그리기 전에 `stripSlotText`가 이 레이어를 걷어 낸다.
