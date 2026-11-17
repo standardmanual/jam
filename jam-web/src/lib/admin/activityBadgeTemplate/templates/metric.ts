@@ -8,6 +8,23 @@ import type { BadgeTemplateDef, TemplateArcSlot } from '../templateDef'
 import type { TemplateSlot } from '../templateSvg'
 import { METRIC_TEMPLATE_SVG } from './metricSvg'
 
+/**
+ * 아래 반원의 초록 그라데이션을 대신하는 단색(티켓 20261117_2025, 사용자 지시 2026-11-17: «아래 반원은 그린 컬러로 적용하고 색 칸에 추가»).
+ * 원본 그라데이션의 두 끝색(#005B3B·#14BA80)의 가운데 색이다. 어드민 색 칸에서 바꿀 수 있다.
+ */
+export const METRIC_LOWER_HALF_GREEN = '#0A8B5E'
+
+/**
+ * 원본의 아래 반원(`<g id="Subtract_2">`, 원뿔 그라데이션을 `foreignObject`로 그린 묶음)을 같은 모양의 단색 `<path>`로 바꾼 사본.
+ * 그라데이션은 색 칸으로 읽히지 않아 색 조정이 먹지 않기 때문이다. 해당 묶음이 없으면 원본을 그대로 돌려준다(시험이 확인한다).
+ */
+export function flattenLowerHalf(svg: string): string {
+  const group = /<g id="Subtract_2">[\s\S]*?data-figma-gradient-fill="[^"]*"\/>\n<\/g>/
+  const shape = svg.match(/<path d="(M382 764C[^"]*)" data-figma-gradient-fill=/)?.[1]
+  if (!group.test(svg) || !shape) return svg
+  return svg.replace(group, `<path id="Subtract_2" d="${shape}" fill="${METRIC_LOWER_HALF_GREEN}"/>`)
+}
+
 const name: TemplateArcSlot = {
   kind: 'arc',
   cx: 382,
@@ -42,6 +59,6 @@ const value: TemplateSlot = {
 
 export const METRIC_TEMPLATE: BadgeTemplateDef = {
   classKey: 'metric',
-  svg: METRIC_TEMPLATE_SVG,
+  svg: flattenLowerHalf(METRIC_TEMPLATE_SVG),
   slots: { viewBoxWidth: 764, viewBoxHeight: 764, name, value },
 }

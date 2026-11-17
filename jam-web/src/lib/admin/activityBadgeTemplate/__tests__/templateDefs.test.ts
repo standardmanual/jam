@@ -10,10 +10,11 @@ import { STREAK_TEMPLATE, nameSampleTextLayers } from '../templates/streak'
 import { STREAK_ORIGINAL_SVG } from '../templates/streakSvg'
 import { COUNT_TEMPLATE } from '../templates/count'
 import { METRIC_TEMPLATE_SVG } from '../templates/metricSvg'
+import { METRIC_LOWER_HALF_GREEN, flattenLowerHalf } from '../templates/metric'
 import { isArcSlot, type TemplateArcSlot } from '../templateDef'
 import { layoutArcText } from '../arcText'
 import { stripSlotText, resolveTemplateFont, layoutSlotText } from '../composeTemplate'
-import { extractSvgColors, applyColorMap } from '../templateColors'
+import { extractSvgColors, applyColorMap, buildColorMap } from '../templateColors'
 import type { TemplateSlot } from '../templateSvg'
 
 describe('getBadgeTemplateDef', () => {
@@ -110,9 +111,30 @@ describe('metric 전용', () => {
     for (const id of ['Subtract', 'Subtract_2', 'Vector_2']) expect(out).toContain(`id="${id}"`)
     expect(out).not.toContain('1829283km')
   })
-  it('색: 글자 #000000, 위 반원 #FF5900, 로고 #FBFF00', () => {
+  it('색: 글자 #000000, 위 반원 #FF5900, 아래 반원 초록 #0A8B5E, 로고 #FBFF00', () => {
     const colors = extractSvgColors(def.svg).map((c) => String(c.color).toUpperCase())
-    for (const c of ['#000000', '#FF5900', '#FBFF00']) expect(colors).toContain(c)
+    for (const c of ['#000000', '#FF5900', METRIC_LOWER_HALF_GREEN, '#FBFF00']) expect(colors).toContain(c)
+  })
+  it('아래 반원은 그라데이션이 아니라 단색이고, 원본과 다른 곳은 그 묶음 하나뿐이다', () => {
+    expect(METRIC_TEMPLATE_SVG).toContain('foreignObject')
+    expect(def.svg).not.toContain('foreignObject')
+    expect(def.svg).not.toContain('data-figma-gradient-fill')
+    expect(def.svg.match(/id="Subtract_2"/g)).toHaveLength(1)
+    // 윗부분(위 반원)과 뒷부분(글자·로고)은 원본 그대로다
+    const head = METRIC_TEMPLATE_SVG.slice(0, METRIC_TEMPLATE_SVG.indexOf('<g id="Subtract_2">'))
+    expect(def.svg.startsWith(head)).toBe(true)
+    const tail = METRIC_TEMPLATE_SVG.slice(METRIC_TEMPLATE_SVG.indexOf('<g id="Vector">'))
+    expect(def.svg).toContain(tail.slice(0, tail.indexOf('<defs>')))
+  })
+  it('색 조정이 아래 반원 초록에도 먹는다', () => {
+    const map = buildColorMap(extractSvgColors(def.svg).map((c) => String(c.color)), { hueShift: 120, saturation: 0, lightness: 0 })
+    const out = applyColorMap(def.svg, map)
+    expect(out).not.toContain(`fill="${METRIC_LOWER_HALF_GREEN}"`)
+    expect(out).toContain(`fill="${map[METRIC_LOWER_HALF_GREEN]}"`)
+  })
+  it('아래 반원 묶음이 없으면 원본을 그대로 돌려준다', () => {
+    const plain = '<svg><path d="M0 0"/></svg>'
+    expect(flattenLowerHalf(plain)).toBe(plain)
   })
   it('이름은 원호 자리, 값은 직선 자리', () => {
     expect(isArcSlot(def.slots.name)).toBe(true)
