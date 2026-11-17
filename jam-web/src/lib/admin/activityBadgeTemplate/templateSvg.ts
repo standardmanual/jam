@@ -31,6 +31,8 @@ export interface TemplateSlot {
   textAnchor: string | null
   transform: string | null
   placeholder: string | null
+  /** viewBox 단위의 글자 폭 상한. 없으면 가운데 축에서 잰 기본 규칙을 쓴다 */
+  maxWidth?: number | null
 }
 
 // xmldom 타입은 DOM 전체가 아니라 필요한 만큼만 구조적으로 쓴다.

@@ -169,6 +169,23 @@ describe('layoutSlotText', () => {
     expect(layoutSlotText({ slot: { ...slot, textAnchor: 'end' }, viewWidth: 1024, placeholderWidth: 320, contentWidth: 10 })!.anchorX).toBe(192)
   })
 
+  it('maxWidth가 있으면 그 값을 상한으로 쓴다', () => {
+    const mid = { ...slot, textAnchor: 'middle', maxWidth: 400 }
+    const fit = layoutSlotText({ slot: mid, viewWidth: 1024, placeholderWidth: 320, contentWidth: 400 })!
+    expect(fit).toEqual({ anchorX: 352, fontSizePx: 64, shrunk: false })
+    const over = layoutSlotText({ slot: mid, viewWidth: 1024, placeholderWidth: 320, contentWidth: 500 })!
+    expect(over.shrunk).toBe(true)
+    expect(over.fontSizePx).toBeCloseTo((64 * 400) / 500, 6)
+    // maxWidth가 null이면 기본 상한(2×352×0.92=647.68)이라 같은 폭에서 줄지 않는다
+    const noMax = layoutSlotText({ slot: { ...mid, maxWidth: null }, viewWidth: 1024, placeholderWidth: 320, contentWidth: 500 })!
+    expect(noMax.shrunk).toBe(false)
+  })
+
+  it('maxWidth가 0 이하면 기본 규칙을 쓴다', () => {
+    const r = layoutSlotText({ slot: { ...slot, maxWidth: 0 }, viewWidth: 1024, placeholderWidth: 320, contentWidth: 1200 })!
+    expect(r.fontSizePx).toBeCloseTo((64 * 942.08) / 1200, 6)
+  })
+
   it('x나 fontSize가 없으면 null', () => {
     expect(layoutSlotText({ slot: { ...slot, x: null }, viewWidth: 1024, placeholderWidth: 1, contentWidth: 1 })).toBeNull()
     expect(layoutSlotText({ slot: { ...slot, fontSize: null }, viewWidth: 1024, placeholderWidth: 1, contentWidth: 1 })).toBeNull()
