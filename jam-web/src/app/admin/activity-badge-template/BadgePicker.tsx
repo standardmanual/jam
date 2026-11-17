@@ -116,6 +116,8 @@ interface Props {
   onSelect: (badge: StudioSearchBadge) => void
   /** 등록하는 동안 다른 배지를 고르지 못하게 한다 */
   selectDisabled?: boolean
+  /** 검색 결과 왼쪽에 놓을 미리보기(티켓 20261117_2005). 넓은 화면에서는 결과 목록을 내려도 미리보기가 따라온다 */
+  preview?: React.ReactNode
 }
 
 export default function BadgePicker({
@@ -131,6 +133,7 @@ export default function BadgePicker({
   onSearch,
   onSelect,
   selectDisabled = false,
+  preview,
 }: Props) {
   const set = (patch: Partial<BadgeFilters>) => onFiltersChange({ ...filters, ...patch })
   return (
@@ -223,76 +226,81 @@ export default function BadgePicker({
         </Alert>
       )}
 
-      {results && (
-        <Card>
-          <CardHeader>
-            <CardTitle className={WRAP}>검색 결과 {total}건</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {results.length === 0 ? (
-              <p className={`text-sm text-muted-foreground ${WRAP}`}>검색 결과가 없어요</p>
-            ) : (
-              <div className="max-h-96 overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>배지 이름</TableHead>
-                      <TableHead>등급 · 레벨</TableHead>
-                      <TableHead>분류</TableHead>
-                      <TableHead>값</TableHead>
-                      <TableHead>이미지</TableHead>
-                      <TableHead className="text-right">선택</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {results.map((b) => (
-                      <TableRow key={b.id} data-state={selectedId === b.id ? 'selected' : undefined}>
-                        <TableCell className={`font-medium ${WRAP}`}>{b.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{slotLabelOf(b)}</Badge>
-                        </TableCell>
-                        <TableCell className={`text-muted-foreground ${WRAP}`}>{b.templateClassLabel ?? '없음'}</TableCell>
-                        <TableCell className={`text-muted-foreground ${WRAP}`}>{b.templateValue ?? '-'}</TableCell>
-                        <TableCell>
-                          {b.imageUrl ? (
-                            <BadgeThumb key={b.imageUrl} name={b.name} imageUrl={b.imageUrl} />
-                          ) : (
-                            <Badge variant="outline" className={WRAP}>없음</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" variant="outline" disabled={selectDisabled} onClick={() => onSelect(b)}>
-                            선택
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,460px)_minmax(0,1fr)] xl:items-start">
+        {preview && <div className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">{preview}</div>}
+        <div className="min-w-0">
+          {results && (
+            <Card>
+              <CardHeader>
+                <CardTitle className={WRAP}>검색 결과 {total}건</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {results.length === 0 ? (
+                  <p className={`text-sm text-muted-foreground ${WRAP}`}>검색 결과가 없어요</p>
+                ) : (
+                  <div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>배지 이름</TableHead>
+                          <TableHead>등급 · 레벨</TableHead>
+                          <TableHead>분류</TableHead>
+                          <TableHead>값</TableHead>
+                          <TableHead>이미지</TableHead>
+                          <TableHead className="text-right">선택</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {results.map((b) => (
+                          <TableRow key={b.id} data-state={selectedId === b.id ? 'selected' : undefined}>
+                            <TableCell className={`font-medium ${WRAP}`}>{b.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{slotLabelOf(b)}</Badge>
+                            </TableCell>
+                            <TableCell className={`text-muted-foreground ${WRAP}`}>{b.templateClassLabel ?? '없음'}</TableCell>
+                            <TableCell className={`text-muted-foreground ${WRAP}`}>{b.templateValue ?? '-'}</TableCell>
+                            <TableCell>
+                              {b.imageUrl ? (
+                                <BadgeThumb key={b.imageUrl} name={b.name} imageUrl={b.imageUrl} />
+                              ) : (
+                                <Badge variant="outline" className={WRAP}>없음</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button size="sm" variant="outline" disabled={selectDisabled} onClick={() => onSelect(b)}>
+                                선택
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
 
-            {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <Button variant="outline" size="sm" disabled={loading || page <= 1} onClick={() => onSearch(page - 1)}>
-                  이전
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {page} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loading || page >= totalPages}
-                  onClick={() => onSearch(page + 1)}
-                >
-                  다음
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                {totalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <Button variant="outline" size="sm" disabled={loading || page <= 1} onClick={() => onSearch(page - 1)}>
+                      이전
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      {page} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={loading || page >= totalPages}
+                      onClick={() => onSearch(page + 1)}
+                    >
+                      다음
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

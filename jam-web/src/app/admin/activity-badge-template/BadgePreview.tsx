@@ -100,7 +100,7 @@ function ReadyPreview({
   }, [badge.name, badge.templateValue, template.svg, template.slots, params])
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)] xl:grid-cols-1">
       <div className="space-y-3">
         {loadedNotice && <PreviewMessage>이 배지에 저장된 조정값을 불러왔어요</PreviewMessage>}
         {failed && <PreviewMessage>미리보기를 그리지 못했어요. 잠시 후 다시 시도해 주세요.</PreviewMessage>}

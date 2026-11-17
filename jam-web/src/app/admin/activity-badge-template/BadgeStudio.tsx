@@ -179,19 +179,21 @@ export default function BadgeStudio({ templates }: { templates: TemplateItem[] }
         onSearch={(p) => void runSearch(p)}
         onSelect={handleSelect}
         selectDisabled={busy}
-      />
-      <BadgePreview
-        badge={selected}
-        templates={templates}
-        params={params}
-        onParamsChange={changeParams}
-        onParamsReset={() => changeParams(DEFAULT_TEMPLATE_BADGE_PARAMS)}
-        busy={busy}
-        progress={progress}
-        failures={failures}
-        loadedNotice={loadedNotice}
-        onRegister={() => setSingleTarget(selected)}
-        onRegisterFamily={() => void openFamilyDialog()}
+        preview={
+          <BadgePreview
+            badge={selected}
+            templates={templates}
+            params={params}
+            onParamsChange={changeParams}
+            onParamsReset={() => changeParams(DEFAULT_TEMPLATE_BADGE_PARAMS)}
+            busy={busy}
+            progress={progress}
+            failures={failures}
+            loadedNotice={loadedNotice}
+            onRegister={() => setSingleTarget(selected)}
+            onRegisterFamily={() => void openFamilyDialog()}
+          />
+        }
       />
       <SingleRegisterDialog
         badge={singleTarget}
