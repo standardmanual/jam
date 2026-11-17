@@ -4,13 +4,14 @@
  */
 import type { BadgeCondition } from '@/types/database'
 
-export type BadgeTemplateClassKey = 'metric' | 'days' | 'streak' | 'count'
+export type BadgeTemplateClassKey = 'metric' | 'days' | 'streak' | 'count' | 'etc'
 
 export const BADGE_TEMPLATE_CLASS_LABEL: Record<BadgeTemplateClassKey, string> = {
   metric: '운동 수치',
   days: '쌓은 날',
   streak: '이어 온 날',
   count: '횟수와 양',
+  etc: '기타',
 }
 
 export interface BadgeTemplateText {
@@ -46,7 +47,7 @@ const rules = (formatter: (n: number) => string, keys: (keyof BadgeCondition)[])
   keys.map((key) => ({ key, format: formatter }))
 
 /** 분류별 대응표(조건 칸 → 값 꼴). */
-const RULES: Record<BadgeTemplateClassKey, Rule[]> = {
+const RULES: Record<Exclude<BadgeTemplateClassKey, 'etc'>, Rule[]> = {
   streak: [
     ...rules(suffix('일 연속'), ['streak_days']),
     ...rules(suffix('주 연속'), ['active_week_streak', 'jam_week_streak', 'return_streak_weeks']),
@@ -97,7 +98,6 @@ export const AUXILIARY_CONDITION_KEYS: readonly string[] = [
 export const UNSUPPORTED_CONDITION_KEYS: readonly string[] = [
   'min_speed_kmh',
   'weekend_duration_hours',
-  'weekly_count',
   'month',
   'monthly_km',
   'season',
@@ -150,10 +150,11 @@ export const UNSUPPORTED_CONDITION_KEYS: readonly string[] = [
 export const TEMPLATE_RULE_KEYS: readonly string[] = [
   ...Object.values(RULES).flatMap((rs) => rs.map((r) => r.key as string)),
   'total_count',
+  'weekly_count',
   'personal_record_break',
 ]
 
-const PRIORITY: BadgeTemplateClassKey[] = ['streak', 'days', 'metric', 'count']
+const PRIORITY: Exclude<BadgeTemplateClassKey, 'etc'>[] = ['streak', 'days', 'metric', 'count']
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
@@ -165,6 +166,17 @@ function resolvePersonalRecord(c: Cond): BadgeTemplateText | null {
   return null
 }
 
+/**
+ * 네 분류에 맞지 않는 배지의 값 글자(기타). 임시 규칙이라 기타 템플릿을 받으면 다시 정한다.
+ * total_count → «N회», weekly_count → «주 N회», 둘 다 없으면 빈 글자.
+ */
+function resolveEtcValue(c: Cond): string {
+  if (isNum(c.total_count)) return suffix('회')(c.total_count)
+  if (isNum(c.weekly_count)) return `주 ${suffix('회')(c.weekly_count)}`
+  return ''
+}
+
+/** 반환 타입은 호출부 호환을 위해 null을 남기지만, 네 분류에 맞지 않으면 기타(etc)를 돌려주므로 실제로 null은 나오지 않는다. */
 export function resolveBadgeTemplateText(input: {
   condition_json: BadgeCondition | null | undefined
   is_hidden?: boolean | null
@@ -186,5 +198,5 @@ export function resolveBadgeTemplateText(input: {
   }
 
   if (input.is_hidden && c.time_range != null) return { classKey: 'days', value: '밤' }
-  return null
+  return { classKey: 'etc', value: resolveEtcValue(c) }
 }

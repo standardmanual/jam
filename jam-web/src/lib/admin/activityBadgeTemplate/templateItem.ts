@@ -5,7 +5,7 @@ import { BADGE_TEMPLATE_CLASS_LABEL, type BadgeTemplateClassKey } from './resolv
 import type { TemplateDefSlots } from './templateDef'
 import { getBadgeTemplateDef } from './templates'
 
-export const TEMPLATE_CLASS_KEYS: BadgeTemplateClassKey[] = ['metric', 'days', 'streak', 'count']
+export const TEMPLATE_CLASS_KEYS: BadgeTemplateClassKey[] = ['metric', 'days', 'streak', 'count', 'etc']
 
 export function isTemplateClassKey(v: string): v is BadgeTemplateClassKey {
   return (TEMPLATE_CLASS_KEYS as string[]).includes(v)
@@ -18,7 +18,7 @@ export interface TemplateItem {
   slots: TemplateDefSlots | null
 }
 
-/** 네 분류를 정해진 순서로 돌려준다. 코드에 정의가 없는 분류는 svg와 slots가 null이다. */
+/** 다섯 분류를 정해진 순서로 돌려준다. 코드에 정의가 없는 분류는 svg와 slots가 null이다. */
 export function listTemplateItems(): TemplateItem[] {
   return TEMPLATE_CLASS_KEYS.map((classKey) => {
     const def = getBadgeTemplateDef(classKey)

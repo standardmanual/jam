@@ -7,7 +7,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgePreview, { previewNotes } from '../BadgePreview'
 import { buildSearchBody } from '../BadgeStudio'
-import BadgePicker, { ALL_VALUE, BadgeThumbView, type StudioSearchBadge } from '../BadgePicker'
+import BadgePicker, { ALL_VALUE, CLASS_OPTIONS, BadgeThumbView, type StudioSearchBadge } from '../BadgePicker'
 import { optimizedImageUrl } from '@/lib/imageSrc'
 import { DEFAULT_TEMPLATE_BADGE_PARAMS } from '@/lib/admin/activityBadgeTemplate/templateParams'
 import type { TemplateDefSlots } from '@/lib/admin/activityBadgeTemplate/templateDef'
@@ -61,6 +61,12 @@ describe('BadgePreview', () => {
   it('분류를 정하지 못한 배지', () => {
     const h = preview(badge({ templateClass: null, templateClassLabel: null, templateValue: null }), [])
     expect(h).toContain('이 배지는 분류를 정하지 못했어요. 획득 조건이 템플릿 규칙에 없는 종류예요. 규칙을 더해야 하니 개발 요청을 남겨 주세요.')
+  })
+  it('기타 배지는 기타 템플릿 준비 안내만 보이고 버튼은 없다', () => {
+    const etc: TemplateItem = { classKey: 'etc', label: '기타', svg: null, slots: null }
+    const h = preview(badge({ templateClass: 'etc', templateClassLabel: '기타', templateValue: '30회' }), [template('<svg/>'), etc])
+    expect(h).toContain('기타 템플릿이 아직 준비되지 않았어요.')
+    expect(h).not.toContain('<button')
   })
   it('템플릿이 없으면 안내만 보이고 버튼은 없다', () => {
     const h = preview(badge(), [template(null)])
@@ -135,9 +141,10 @@ describe('BadgePicker', () => {
     expect(failedHtml).toContain('불러오지 못함')
     expect(failedHtml).not.toContain('<img')
   })
-  it('분류 선택 상자와 선택지 다섯 개', () => {
+  it('분류 선택 상자와 선택지 여섯 개', () => {
     const h = renderToStaticMarkup(<BadgePicker {...props} results={[]} total={0} />)
-    for (const t of ['전체 분류', '운동 수치', '쌓은 날', '이어 온 날', '횟수와 양']) expect(h).toContain(t)
+    for (const t of ['전체 분류', '운동 수치', '쌓은 날', '이어 온 날', '횟수와 양', '기타']) expect(h).toContain(t)
+    expect(CLASS_OPTIONS.map((o) => o.label)).toEqual(['운동 수치', '쌓은 날', '이어 온 날', '횟수와 양', '기타'])
   })
   it('결과가 없으면 문구', () => {
     expect(renderToStaticMarkup(<BadgePicker {...props} total={0} results={[]} />)).toContain('검색 결과가 없어요')

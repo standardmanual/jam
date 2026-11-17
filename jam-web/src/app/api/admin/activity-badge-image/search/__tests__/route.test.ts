@@ -73,6 +73,17 @@ describe('검색 API 분류 필터', () => {
     expect(json.totalPages).toBe(2)
   })
 
+  it('etc로 부르면 기타 분류 배지만 돌려준다', async () => {
+    dbRows = [
+      row(1, { total_count: 30, activity_type: 'running' }),
+      row(2, { weekly_count: 3 }),
+      row(3, { single_distance_km: 5 }),
+    ]
+    const json = await (await call({ templateClass: 'etc' })).json()
+    expect(json.total).toBe(2)
+    expect(json.badges.every((b: { templateClass: string }) => b.templateClass === 'etc')).toBe(true)
+  })
+
   it('1,000줄을 넘으면 두 번 읽어 모두 거른다', async () => {
     dbRows = Array.from({ length: 1200 }, (_, i) => row(i, i % 2 === 0 ? { single_distance_km: 5 } : { streak_days: 3 }))
     const json = await (await call({ templateClass: 'metric', page: 12 })).json()

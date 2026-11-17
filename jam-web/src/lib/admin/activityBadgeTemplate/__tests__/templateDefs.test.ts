@@ -71,6 +71,9 @@ describe('getBadgeTemplateDef', () => {
   it('네 분류가 모두 정의를 가진다', () => {
     for (const k of ['metric', 'days', 'streak', 'count'] as const) expect(getBadgeTemplateDef(k)).not.toBeNull()
   })
+  it('기타는 아직 정의가 없다', () => {
+    expect(getBadgeTemplateDef('etc')).toBeNull()
+  })
 })
 
 describe('등록된 모든 정의 공통', () => {

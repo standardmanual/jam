@@ -5,13 +5,14 @@ import { describe, it, expect } from 'vitest'
 import { listTemplateItems } from '../templateItem'
 
 describe('listTemplateItems', () => {
-  it('네 분류를 정해진 순서로 돌려주고 모두 정의가 있다', () => {
+  it('다섯 분류를 정해진 순서로 돌려주고 앞의 넷만 정의가 있다', () => {
     const items = listTemplateItems()
-    expect(items.map((i) => i.classKey)).toEqual(['metric', 'days', 'streak', 'count'])
+    expect(items.map((i) => i.classKey)).toEqual(['metric', 'days', 'streak', 'count', 'etc'])
     for (const i of items) {
-      const defined = true
+      const defined = i.classKey !== 'etc'
       expect(Boolean(i.svg)).toBe(defined)
       expect(i.slots !== null).toBe(defined)
     }
+    expect(items[4]).toMatchObject({ label: '기타', svg: null, slots: null })
   })
 })

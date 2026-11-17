@@ -17,15 +17,15 @@ describe('toStudioBadgeFields', () => {
     })
   })
 
-  it('규칙에 없는 조건은 세 칸이 null', () => {
+  it('규칙에 없는 조건은 기타 분류에 빈 값', () => {
     expect(toStudioBadgeFields({ condition_json: { foo: 1 } as unknown as BadgeCondition })).toEqual({
-      templateClass: null,
-      templateClassLabel: null,
-      templateValue: null,
+      templateClass: 'etc',
+      templateClassLabel: '기타',
+      templateValue: '',
       familyKey: null,
       templateParams: null,
     })
-    expect(toStudioBadgeFields({ condition_json: null }).templateClass).toBeNull()
+    expect(toStudioBadgeFields({ condition_json: null }).templateClass).toBe('etc')
   })
 
   it('템플릿 조정값이 있으면 정리해 templateParams에 싣고, 옛 생성기 값은 null', () => {
