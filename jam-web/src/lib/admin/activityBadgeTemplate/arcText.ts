@@ -11,6 +11,8 @@ export interface ArcTextInput {
   cx: number
   cy: number
   baselineRadius: number
+  /** 글자 사이 각도를 재는 호의 반지름. 없으면 baselineRadius와 같다(글자 위치(x, y)는 baselineRadius로 정한다) */
+  pathRadius?: number
   /** 12시가 0, 시계 방향이 + */
   centerDeg: number
   facing: 'outward' | 'inward'
@@ -36,13 +38,14 @@ const DEG = 180 / Math.PI
 
 export function layoutArcText(input: ArcTextInput): ArcTextLayout | null {
   const { advances, fontSize, letterSpacingEm, cx, cy, baselineRadius: R, centerDeg, facing, maxSpanDeg } = input
+  const P = input.pathRadius ?? R
   const positive = (n: number) => Number.isFinite(n) && n > 0
-  if (!positive(R) || !positive(fontSize) || !positive(maxSpanDeg)) return null
+  if (!positive(R) || !positive(P) || !positive(fontSize) || !positive(maxSpanDeg)) return null
   if (advances.length === 0) return { fontSize, scale: 1, shrunk: false, spanDeg: 0, glyphs: [] }
 
   const gap0 = letterSpacingEm * fontSize
   const length0 = advances.reduce((s, a) => s + a, 0) + gap0 * (advances.length - 1)
-  const span0 = (length0 / R) * DEG
+  const span0 = (length0 / P) * DEG
   const shrunk = span0 > maxSpanDeg
   const scale = shrunk ? maxSpanDeg / span0 : 1
 
@@ -51,7 +54,7 @@ export function layoutArcText(input: ArcTextInput): ArcTextLayout | null {
   let cursor = -length / 2
   const glyphs: ArcGlyph[] = advances.map((adv, index) => {
     const w = adv * scale
-    const a = ((cursor + w / 2) / R) * DEG
+    const a = ((cursor + w / 2) / P) * DEG
     cursor += w + gap
     const theta = facing === 'outward' ? centerDeg + a : centerDeg - a
     const rad = theta / DEG
@@ -62,5 +65,5 @@ export function layoutArcText(input: ArcTextInput): ArcTextLayout | null {
       rotationDeg: facing === 'outward' ? theta : theta - 180,
     }
   })
-  return { fontSize: fontSize * scale, scale, shrunk, spanDeg: (length / R) * DEG, glyphs }
+  return { fontSize: fontSize * scale, scale, shrunk, spanDeg: (length / P) * DEG, glyphs }
 }

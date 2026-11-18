@@ -53,7 +53,33 @@ describe('layoutArcText', () => {
     expect(r.glyphs[0].rotationDeg).toBeCloseTo(-7.162, 3)
     expect(r.glyphs[1].rotationDeg).toBeCloseTo(7.162, 3)
   })
+  it('pathRadius는 글자 사이 각도만 바꾸고 위치는 baselineRadius로 정한다', () => {
+    const r = layoutArcText({ ...base, pathRadius: 200 })!
+    expect(r.spanDeg).toBeCloseTo(28.648, 3)
+    expect(r.glyphs[0].rotationDeg).toBeCloseTo(-7.162, 3)
+    expect(r.glyphs[0].x).toBeCloseTo(-12.467, 3)
+    expect(r.glyphs[0].y).toBeCloseTo(-99.22, 2)
+    expect(r.glyphs[1].x).toBeCloseTo(12.467, 3)
+    expect(r.glyphs[1].y).toBeCloseTo(-99.22, 2)
+  })
+  it('pathRadius가 baselineRadius와 같거나 없으면 결과가 같다', () => {
+    expect(layoutArcText({ ...base, pathRadius: 100 })).toEqual(layoutArcText(base))
+  })
+  it('pathRadius와 inward·centerDeg 180', () => {
+    const r = layoutArcText({ ...base, pathRadius: 200, centerDeg: 180, facing: 'inward' })!
+    expect(r.glyphs[0].x).toBeCloseTo(-12.467, 3)
+    expect(r.glyphs[0].y).toBeCloseTo(99.22, 2)
+    expect(r.glyphs[0].rotationDeg).toBeCloseTo(7.162, 3)
+  })
+  it('pathRadius로 잰 각도가 한도를 넘으면 줄인다', () => {
+    const r = layoutArcText({ ...base, pathRadius: 200, maxSpanDeg: 14.324 })!
+    expect(r.shrunk).toBe(true)
+    expect(r.scale).toBeCloseTo(0.5, 3)
+    expect(r.fontSize).toBeCloseTo(50, 2)
+  })
   it('빈 글자와 잘못된 입력', () => {
+    expect(layoutArcText({ ...base, pathRadius: 0 })).toBeNull()
+    expect(layoutArcText({ ...base, pathRadius: NaN })).toBeNull()
     expect(layoutArcText({ ...base, advances: [] })!.glyphs).toEqual([])
     expect(layoutArcText({ ...base, baselineRadius: 0 })).toBeNull()
     expect(layoutArcText({ ...base, fontSize: NaN })).toBeNull()

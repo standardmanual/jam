@@ -11,6 +11,8 @@ export interface TemplateArcSlot {
   cy: number
   /** 글자의 기준선이 놓이는 원의 반지름 */
   baselineRadius: number
+  /** 글자 사이 각도를 재는 호의 반지름. 없으면 baselineRadius와 같다(위치는 baselineRadius로 정하고 각도만 바뀐다) */
+  pathRadius?: number
   /** 글자 묶음의 가운데가 놓이는 각도. 12시가 0, 시계 방향이 +, 6시가 180 */
   centerDeg: number
   /** outward: 글자 윗부분이 바깥을 향한다(위쪽 호). inward: 글자 윗부분이 중심을 향한다(아래쪽 호) */
