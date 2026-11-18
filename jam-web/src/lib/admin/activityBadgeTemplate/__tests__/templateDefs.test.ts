@@ -62,14 +62,15 @@ describe('getBadgeTemplateDef', () => {
   it('count는 표의 수치를 가진다', () => {
     const d = getBadgeTemplateDef('count')!
     expect(d.classKey).toBe('count')
-    expect(d.slots.viewBoxWidth).toBe(1582)
-    expect(d.slots.viewBoxHeight).toBe(958)
-    const common = {
-      found: true, isText: true, x: 791, fontFamily: 'Noto Sans KR', fontWeight: '900', fill: '#000000',
-      letterSpacing: '-0.08em', textAnchor: 'middle', transform: null,
-    }
-    expect(d.slots.name).toEqual({ ...common, y: 487.64, fontSize: 101.84, placeholder: '벼룩시장 건너편', maxWidth: 663.4 })
-    expect(d.slots.value).toEqual({ ...common, y: 626.35, fontSize: 92.01, placeholder: '5가지', maxWidth: 376.2 })
+    expect(d.slots.viewBoxWidth).toBe(616)
+    expect(d.slots.viewBoxHeight).toBe(409)
+    const common = { kind: 'arc', fontFamily: 'Noto Sans KR', fontWeight: '900', fontSize: 54, letterSpacingEm: -0.065, fill: '#000000', maxSpanDeg: 40 }
+    expect(d.slots.name).toEqual({
+      ...common, cx: 308.625, cy: 735.25, baselineRadius: 650, pathRadius: 666.25, centerDeg: 0, facing: 'outward',
+    })
+    expect(d.slots.value).toEqual({
+      ...common, cx: 308.375, cy: -352.125, baselineRadius: 656, pathRadius: 633, centerDeg: 180, facing: 'inward',
+    })
   })
   it('etc는 표의 수치를 가진다', () => {
     const d = getBadgeTemplateDef('etc')!
@@ -289,43 +290,37 @@ describe('etc 전용', () => {
 })
 
 describe('count 전용', () => {
-  const name = COUNT_TEMPLATE.slots.name as TemplateSlot
-  const value = COUNT_TEMPLATE.slots.value as TemplateSlot
-  it('샘플 글자를 걷어 내도 줄무늬·로고 경로는 남는다', () => {
-    const out = stripSlotText(COUNT_TEMPLATE.svg)
-    expect(out).not.toContain('<text')
-    for (const id of ['Rectangle 10', 'Rectangle 11', 'Vector']) expect(out).toContain(`id="${id}"`)
+  const def = COUNT_TEMPLATE
+  it('샘플 글자를 걷어 내도 띠·로고·JOIN AND MOVE 장식은 남는다', () => {
+    const out = stripSlotText(def.svg)
+    expect(out).not.toMatch(/id="(name|value)"/)
+    for (const id of ['Subtract', 'Subtract_2', 'Vector_2', 'Vector']) expect(out).toContain(`id="${id}"`)
   })
-  it('색은 #F95B1D·#D3ACFD·#222222·#000000', () => {
-    const colors = extractSvgColors(COUNT_TEMPLATE.svg).map((c) => String(c.color).toUpperCase())
-    for (const c of ['#F95B1D', '#D3ACFD', '#222222', '#000000']) expect(colors).toContain(c)
+  it('색은 #FFA100·#FF0000·#000000·#FFFFFF', () => {
+    const colors = extractSvgColors(def.svg).map((c) => String(c.color).toUpperCase())
+    for (const c of ['#FFA100', '#FF0000', '#000000', '#FFFFFF']) expect(colors).toContain(c)
   })
-  it('색을 바꿔도 mix-blend-mode와 fill-opacity가 남는다', () => {
-    const colors = extractSvgColors(COUNT_TEMPLATE.svg)
+  it('모든 색을 바꾸면 새 색이 들어가고 옛 주황이 사라진다', () => {
     const map: Record<string, string> = {}
-    for (const c of colors) map[String(c.color)] = '#123456'
-    const out = applyColorMap(COUNT_TEMPLATE.svg, map)
-    expect(out).toContain('mix-blend-mode:overlay')
-    expect(out).toContain('fill-opacity="0.97"')
+    for (const c of extractSvgColors(def.svg)) map[String(c.color)] = '#123456'
+    const out = applyColorMap(def.svg, map)
     expect(out).toContain('#123456')
-    expect(out).not.toContain('#F95B1D')
+    expect(out).not.toContain('#FFA100')
   })
-  it('두 자리는 직선 자리다', () => {
-    expect(isArcSlot(COUNT_TEMPLATE.slots.name)).toBe(false)
-    expect(isArcSlot(COUNT_TEMPLATE.slots.value)).toBe(false)
+  it('두 자리는 원호 자리다', () => {
+    expect(isArcSlot(def.slots.name)).toBe(true)
+    expect(isArcSlot(def.slots.value)).toBe(true)
   })
-  it('직선 글자 배치는 가운데 축에 놓이고 최대 폭을 넘을 때만 줄인다', () => {
-    const n = layoutSlotText({ slot: name, viewWidth: 1582, placeholderWidth: 627.3, contentWidth: 562.2 })!
-    expect(n.anchorX).toBe(791)
-    expect(n.shrunk).toBe(false)
-    const nBig = layoutSlotText({ slot: name, viewWidth: 1582, placeholderWidth: 627.3, contentWidth: 700 })!
-    expect(nBig.shrunk).toBe(true)
-    expect(nBig.fontSizePx).toBeCloseTo((101.84 * 663.4) / 700, 2)
-    const v = layoutSlotText({ slot: value, viewWidth: 1582, placeholderWidth: 210.6, contentWidth: 335 })!
-    expect(v.anchorX).toBe(791)
-    expect(v.shrunk).toBe(false)
-    const vBig = layoutSlotText({ slot: value, viewWidth: 1582, placeholderWidth: 210.6, contentWidth: 420 })!
-    expect(vBig.shrunk).toBe(true)
-    expect(vBig.fontSizePx).toBeCloseTo((92.01 * 376.2) / 420, 2)
+  it('이름 원호 배치: 글자 9개는 각도 한도 안에 놓이고, 20개는 줄어 한도 안에 든다', () => {
+    const s = def.slots.name as TemplateArcSlot
+    const input = {
+      fontSize: s.fontSize, letterSpacingEm: s.letterSpacingEm, cx: s.cx, cy: s.cy,
+      baselineRadius: s.baselineRadius, pathRadius: s.pathRadius, centerDeg: s.centerDeg, facing: s.facing, maxSpanDeg: s.maxSpanDeg,
+    }
+    const fit = layoutArcText({ ...input, advances: Array(9).fill(40) })!
+    expect(fit.spanDeg).toBeLessThanOrEqual(s.maxSpanDeg)
+    const wide = layoutArcText({ ...input, advances: Array(20).fill(40) })!
+    expect(wide.shrunk).toBe(true)
+    expect(wide.spanDeg).toBeLessThanOrEqual(s.maxSpanDeg + 1e-6)
   })
 })
