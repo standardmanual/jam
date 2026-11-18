@@ -199,8 +199,8 @@ describe('BriefCard — 희귀도 칩 (JAM! 배지 1개 카드)', () => {
     expect(html).not.toContain('Common')
   })
 
-  it('희귀도 칩은 흑백으로 만들지 않는다(미보유 배지여도 grayscale은 썸네일에만 걸린다)', () => {
-    const html = render({ resource: 'badge', rarity: 'rare', thumbnailUrl: 'https://cdn.example/a.png', thumbnailDimmed: true })
+  it('희귀도 칩은 흑백으로 만들지 않는다', () => {
+    const html = render({ resource: 'badge', rarity: 'rare', thumbnailUrl: 'https://cdn.example/a.png' })
     const rarityChip = html.slice(html.indexOf('Rare') - 200, html.indexOf('Rare') + 10)
     expect(rarityChip).not.toContain('grayscale')
   })
@@ -293,16 +293,6 @@ describe('BriefCard — 64px 칸', () => {
     expect(html).toContain('height="64"')
     expect(html).toContain('class="w-full h-full object-cover"')
     expect(html).not.toContain('grayscale')
-  })
-
-  it('미보유 배지(thumbnailDimmed)는 썸네일만 흑백이다', () => {
-    const html = render({
-      resource: 'badge',
-      thumbnailUrl: 'https://cdn.example/a.png',
-      thumbnailDimmed: true,
-    })
-    expect(html).toContain('class="w-full h-full object-cover grayscale"')
-    expect(html.match(/grayscale/g)).toHaveLength(1)
   })
 
   it('썸네일 값이 없으면(유저 정보가 없는 미리보기 포함) 컬러이고, 값이 없으면 이미지 대신 자원 아이콘이다', () => {

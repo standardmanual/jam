@@ -79,14 +79,6 @@ describe('SquareCard — 이미지 칸', () => {
     expect(html).not.toContain('grayscale')
   })
 
-  it('imageDimmed면 이미지만 흑백이다(희귀도 칩·본문은 컬러, 자리 표시는 흑백 아님)', () => {
-    const html = render({ imageDimmed: true, resource: 'badge', rarity: 'epic' })
-    expect(html).toContain('class="absolute inset-0 w-full h-full object-contain grayscale"')
-    expect(html.match(/grayscale/g)).toHaveLength(1)
-    expect(bodyOf(html)).not.toContain('grayscale')
-    expect(render({ imageDimmed: true, imageUrl: null })).not.toContain('grayscale')
-  })
-
   it('이미지 위에는 아무것도 얹지 않는다(어두운 막·그림자·칩이 이미지 칸 안에 없다)', () => {
     const html = render({ resource: 'badge', rarity: 'epic' })
     const box = html.slice(html.indexOf(SQUARE_BOX), html.indexOf(BODY_OPEN))

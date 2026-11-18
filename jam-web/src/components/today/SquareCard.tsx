@@ -19,7 +19,7 @@ import CardImageSlot from './CardImageSlot'
  * - `--text-base`은 서비스에서 14px이 아니라 16px이다. 필수 정보 14px은 `--text-sm`이다.
  * - 옅은 글자는 `text-muted` 한 단계로 통일한다(흰 면 위 5.74:1). 불투명도로 글자색을 만들지 않는다(티켓 20261015_2133).
  * - 칩 줄에 `publishedAt`은 넘기지 않는다(`brief`와 같다, 기사는 `hero`로만 간다).
- * - 이미지 칸·자리 표시·`alt`·`sizes`는 `CardImageSlot`이 그린다. `imageDimmed`는 이미지만 흑백이고 희귀도 칩은 컬러다.
+ * - 이미지 칸·자리 표시·`alt`·`sizes`는 `CardImageSlot`이 그린다.
  *   `titleInImage`(옛 미션 소개 카드 포함)면 제목·요약을 빼고(이미지 `alt`가 제목) 필수 정보가 칩 줄 바로 다음에 온다. 설명문은 이때도 필수 정보 다음이다.
  */
 

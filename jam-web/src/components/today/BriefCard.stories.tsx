@@ -332,14 +332,12 @@ export const BadgeRarity: Story = {
 
 // ─── 4. JAM! 배지 썸네일 ───────────────────────────────────────────────────
 
-/** 미보유 배지는 흑백, 유저 정보가 없는 미리보기는 컬러, 주소가 없거나 로드에 실패하면 같은 칸에 아이콘이다. 다섯 카드의 높이는 같다. */
+/** 배지 그림은 보유 여부와 무관하게 컬러(티켓 20261118_1523), 주소가 없거나 로드에 실패하면 같은 칸에 아이콘이다. 네 카드의 높이는 같다. */
 export const BadgeThumbnail: Story = {
-  name: 'JAM! 배지 썸네일 — 보유 컬러 · 미보유 흑백 · 미리보기 컬러 · 주소 없음 · 로드 실패',
+  name: 'JAM! 배지 썸네일 — 컬러 · 주소 없음 · 로드 실패',
   render: () => (
     <Column width={W360}>
-      <Case caption="보유 — 컬러" view={{ ...BADGE, rarity: 'rare', thumbnailUrl: SAMPLE.rare }} />
-      <Case caption="미보유 — 흑백(thumbnailDimmed)" view={{ ...BADGE, rarity: 'rare', thumbnailUrl: SAMPLE.rare, thumbnailDimmed: true }} />
-      <Case caption="유저 정보 없는 미리보기 — 컬러(thumbnailDimmed 없음)" view={{ ...BADGE, rarity: 'rare', thumbnailUrl: SAMPLE.rare }} />
+      <Case caption="컬러 — 보유 여부와 무관" view={{ ...BADGE, rarity: 'rare', thumbnailUrl: SAMPLE.rare }} />
       <Case caption="주소 없음 — 자원 아이콘" view={{ ...BADGE, rarity: 'rare', thumbnailUrl: undefined }} />
       <Case caption="로드 실패(깨진 경로) — SafeImage fallback 아이콘" view={{ ...BADGE, rarity: 'rare', thumbnailUrl: '/badges/sample/없는-파일.png' }} />
     </Column>
@@ -348,12 +346,12 @@ export const BadgeThumbnail: Story = {
     // 깨진 경로가 fallback으로 바뀔 시간을 준다
     await new Promise((resolve) => setTimeout(resolve, 800))
     const heights = cardsOf(canvasElement).map(heightOf)
-    expect(heights).toHaveLength(5)
+    expect(heights).toHaveLength(3)
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1)
     const images = canvasElement.querySelectorAll('.w-16 img')
-    // 보유·미보유·미리보기만 이미지가 남고, 주소 없음·로드 실패는 아이콘이다
-    expect(images).toHaveLength(3)
-    expect(canvasElement.querySelectorAll('.w-16 img.grayscale')).toHaveLength(1)
+    // 그림이 있는 카드만 이미지가 남고(흑백 없음), 주소 없음·로드 실패는 아이콘이다
+    expect(images).toHaveLength(1)
+    expect(canvasElement.querySelectorAll('.w-16 img.grayscale')).toHaveLength(0)
     expect(canvasElement.querySelectorAll('.w-16 svg')).toHaveLength(2)
     expectNoHorizontalOverflow(canvasElement)
   },

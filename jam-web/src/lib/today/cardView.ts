@@ -185,8 +185,6 @@ export interface CardViewTile {
   name: string
   imageUrl: string | null
   rarity?: string | null
-  /** 유저가 보유했는지. 값이 없으면(유저 정보가 없는 미리보기) 컬러로 그린다. */
-  earned?: boolean
 }
 
 /**
@@ -236,8 +234,6 @@ export interface ImageCardView extends CardViewBase {
   imageUrl: string | null
   /** 카드의 레이아웃 형태(티켓 20261022_2300 후속, 돔 포스터 등). */
   layoutType?: TodayCardLayoutType
-  /** 첫 배지 그림이 커버로 올라간 카드에서 유저가 그 배지를 아직 갖지 않았을 때 true(흑백으로 그린다). 값이 없으면(유저 정보가 없는 미리보기) 컬러다. */
-  imageDimmed?: boolean
 }
 
 export interface BriefCardView extends CardViewBase {
@@ -248,8 +244,6 @@ export interface BriefCardView extends CardViewBase {
    * `brief`에 쓰면 그 판정과 섞인다. 커버(`cover_image_url`)와 미션 이미지는 썸네일로 쓰지 않는다.
    */
   thumbnailUrl?: string
-  /** 유저가 그 배지를 아직 갖지 않았을 때 true(흑백으로 그린다). 값이 없으면(유저 정보가 없는 미리보기) 컬러다. */
-  thumbnailDimmed?: true
 }
 
 /**
@@ -292,7 +286,6 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     name: b.name,
     imageUrl: b.image_url,
     rarity: b.rarity,
-    earned: b.earned,
   }))
 
   // 타일이 0개인 타일형은 brief로 그린다(확정 설계 1절).
@@ -352,8 +345,6 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     // 64px 칸의 썸네일은 JAM! 배지 1개 카드의 배지 그림뿐이다(여러 개는 `list`가 맞다)
     if (resource === 'badge' && singleBadge?.image_url) {
       view.thumbnailUrl = singleBadge.image_url
-      // 보유 여부를 모르면(earned 없음, 유저 정보가 없는 미리보기) 컬러다 — 타일(`list`)과 같은 규칙(티켓 20261001_2208)
-      if (singleBadge.earned === false) view.thumbnailDimmed = true
     }
     return view
   }
@@ -364,7 +355,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   if (card.layout_type) view.layoutType = card.layout_type
   if (!card.cover_image_url && first?.image_url) {
     view.imageUrl = first.image_url
-    if (first.earned === false) view.imageDimmed = true
+    // 보유 여부와 무관하게 컬러다(티켓 20261118_1523)
   }
   return view
 }

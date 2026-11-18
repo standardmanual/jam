@@ -192,28 +192,26 @@ type Story = StoryObj<typeof meta>
 
 // ─── 1. 자원별 대표 ───────────────────────────────────────────────────────
 
-/** 기사·미션·컬렉션·JAM! 배지(그림 승격 컬러·흑백)·드랍. 드랍은 칩 줄에 지역 핀이 없다. 배지 그림은 1:1을 16:9로 자르므로 위아래가 잘리는 정도를 눈으로 본다. */
+/** 기사·미션·컬렉션·JAM! 배지(그림 승격 컬러)·드랍. 드랍은 칩 줄에 지역 핀이 없다. 배지 그림은 1:1을 16:9로 자르므로 위아래가 잘리는 정도를 눈으로 본다. */
 export const ByResource: Story = {
-  name: '자원별 대표 — 기사 · 미션 · 컬렉션 · 배지(컬러·흑백) · 드랍',
+  name: '자원별 대표 — 기사 · 미션 · 컬렉션 · 배지(컬러) · 드랍',
   render: () => (
     <Column width={W360}>
       <Case caption="기사 — 칩 줄 끝 게재일" view={ARTICLE} />
       <Case caption="미션 — 필수 정보 2줄" view={MISSION} />
       <Case caption="컬렉션 — 이름 · 아이템 수" view={COLLECTION} />
       <Case caption="JAM! 배지 — 그림 승격(컬러) · 희귀도 칩 · 1:1 PNG가 16:9로 잘림" view={BADGE_PROMOTED} />
-      <Case caption="JAM! 배지 — 그림 승격(미보유 흑백, imageDimmed) · 희귀도 칩은 흑백 아님" view={{ ...BADGE_PROMOTED, imageDimmed: true }} />
       <Case caption="드랍 — 칩 줄에 지역 핀 없음(필수 정보 「지역」 줄이 같은 값)" view={DROP} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
     expectNoHorizontalOverflow(canvasElement)
     expectSixteenByNine(canvasElement)
-    const [article, , , , dimmed, drop] = cardsOf(canvasElement)
+    const [article, , , badge, drop] = cardsOf(canvasElement)
     expect(article.textContent).toContain('10월 5일')
     expect(article.textContent).not.toContain('기사 읽기')
-    // 흑백은 이미지에만 걸린다
-    expect(dimmed.querySelectorAll('.grayscale')).toHaveLength(1)
-    expect(dimmed.querySelector('.grayscale')?.tagName).toBe('IMG')
+    // 배지 그림은 보유 여부와 무관하게 컬러다(티켓 20261118_1523)
+    expect(badge.querySelectorAll('.grayscale')).toHaveLength(0)
     // 드랍은 핀이 없고 지역은 필수 정보 한 곳에서만 보인다
     expect(drop.querySelectorAll('.truncate')).toHaveLength(0)
     expect(drop.textContent?.match(/여의도 한강공원/g)).toHaveLength(1)

@@ -15,7 +15,7 @@ import CardThumb from './CardThumb'
  * 윗줄의 썸네일 칸 폭(`CardThumb`의 `w-16`)이나 `gap-3`을 바꾸면 이 76px도 같이 바꾼다. 설명문 한 줄만 공용 `CardDescription`을 쓰고 본문은 여전히 별개다. 설명문은 `toCardView`가 배지 소개·컨텐츠 소개에만 값을 싣는다(티켓 20261109_1458).
  * 필수 정보는 `hero` 등과 같이 굵게 하되 본문색(`text-foreground`)이다(티켓 20261109_1458).
  * 설명문이 없으면 아랫줄과 간격이 함께 사라져 윗줄만 남는다(`justify-center`로 최소 높이 88px 안에서 세로 가운데).
- * 64px 칸의 그림·흑백·자원 아이콘 대체 규칙은 `CardThumb.tsx`에 있다(`list` 타일과 공용, 티켓 20261001_2104).
+ * 64px 칸의 그림·자원 아이콘 대체 규칙은 `CardThumb.tsx`에 있다(`list` 타일과 공용, 티켓 20261001_2104).
  *
  * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--card-padding)` = 16px)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다.
  *   그래서 같은 인라인 `style`로 덮는다. 칸 64 + 위아래 12×2 = 최소 높이 88px와 맞아떨어진다.
@@ -32,7 +32,7 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
       style={{ padding: 'var(--spacing-12) var(--spacing-16)' }}
     >
       <div className="flex items-start gap-3">
-        <CardThumb view={view} src={view.thumbnailUrl} dimmed={view.thumbnailDimmed} />
+        <CardThumb view={view} src={view.thumbnailUrl} />
 
         <div className="flex-1 min-w-0">
           {/* 칩 줄은 `hero`와 공용이다(`CardChipRow`: 좁아지면 줄어드는 것은 지역 핀뿐, 드랍은 핀 생략). brief에는 게재일 칸이 없어 `publishedAt`을 넘기지 않는다 */}

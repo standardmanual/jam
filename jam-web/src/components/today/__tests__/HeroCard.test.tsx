@@ -83,12 +83,6 @@ describe('HeroCard — 이미지 칸', () => {
     expect(html).not.toContain('grayscale')
   })
 
-  it('imageDimmed면 이미지만 흑백이다(자리 표시 판·아이콘은 흑백 처리하지 않는다)', () => {
-    expect(render({ imageDimmed: true })).toContain('class="absolute inset-0 w-full h-full object-cover grayscale"')
-    expect(render({ imageDimmed: true }).match(/grayscale/g)).toHaveLength(1)
-    expect(render({ imageDimmed: true, imageUrl: null })).not.toContain('grayscale')
-  })
-
   it('이미지 위에는 아무것도 얹지 않는다(어두운 막·그림자·칩이 이미지 칸 안에 없다)', () => {
     const html = render({ label: '미션', rarity: 'epic' })
     const box = html.slice(html.indexOf(IMAGE_BOX), html.indexOf('flex flex-col gap-2'))

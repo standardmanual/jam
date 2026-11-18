@@ -392,8 +392,8 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
       }),
     },
     {
-      id: 'v-badge-cover-dimmed',
-      title: '커버 없음 · 첫 배지 그림 승격 (미보유 흑백)',
+      id: 'v-badge-cover-unowned-color',
+      title: '커버 없음 · 첫 배지 그림 승격 (미보유도 컬러)',
       card: row('badge_spotlight', {
         ...TEMPLATES[2].base,
         shape: 'square',
@@ -401,8 +401,8 @@ function buildVariants(TEMPLATES: TemplateSample[]): Variant[] {
       }),
     },
     {
-      id: 'v-brief-thumb-dimmed',
-      title: 'brief · 배지 썸네일 미보유 흑백',
+      id: 'v-brief-thumb-unowned-color',
+      title: 'brief · 배지 썸네일 미보유도 컬러',
       card: row('badge_spotlight', {
         ...TEMPLATES[2].base,
         shape: 'brief',

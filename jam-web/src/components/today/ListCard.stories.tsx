@@ -54,12 +54,11 @@ const RANKING_TRACKING = { cardId: 'story-ranking', contentTypeId: null, templat
 
 // ─── 값 ──────────────────────────────────────────────────────────────────
 
-/** 배지 타일 `count`개(12개까지). 보유 여부는 `earned`로 준다(생략하면 미리보기라 전부 컬러). */
-function tiles(count: number, earned: (index: number) => boolean | undefined = () => true): CardViewTile[] {
+/** 배지 타일 `count`개(12개까지). 그림은 보유 여부와 무관하게 컬러다(티켓 20261118_1523). */
+function tiles(count: number): CardViewTile[] {
   return Array.from({ length: count }, (_, index) => ({
     name: NAMES[index % NAMES.length],
     imageUrl: SAMPLE[index % SAMPLE.length],
-    earned: earned(index),
   }))
 }
 
@@ -305,26 +304,6 @@ export const TilesAt320: Story = {
 
 // ─── 2. 타일형 — 타일 내용 ────────────────────────────────────────────────
 
-/** 보유·미보유가 섞이면 미보유 그림만 흑백이고 이름은 컬러다. 유저 정보가 없는 미리보기(`earned` 없음)는 전부 컬러다. */
-export const TileOwnership: Story = {
-  name: '타일 보유·미보유 섞임 · 미리보기(전부 컬러)',
-  render: () => (
-    <Column width={W360}>
-      <Case caption="보유 · 미보유 섞임 — 미보유 그림만 흑백, 이름은 컬러" view={tileCard({ tiles: tiles(4, (i) => i % 2 === 0) })} />
-      <Case caption="미리보기(earned 없음) — 전부 컬러" view={tileCard({ tiles: tiles(4, () => undefined) })} />
-    </Column>
-  ),
-  play: async ({ canvasElement }) => {
-    const [mixed, preview] = cardsOf(canvasElement)
-    const gray = Array.from(mixed.querySelectorAll('.grayscale'))
-    expect(gray).toHaveLength(2)
-    for (const el of gray) expect(el.tagName).toBe('IMG')
-    // 이름은 흑백이 아니다
-    for (const p of Array.from(mixed.querySelectorAll<HTMLElement>('li p'))) expect(getComputedStyle(p).filter).toBe('none')
-    expect(preview.querySelectorAll('.grayscale')).toHaveLength(0)
-  },
-}
-
 /** 재료 타일(그림 없음 → 플라스크)과 배지 타일을 나란히. 자원 아이콘은 카드의 자원이 정한다. 같은 64px 칸이라 크기가 같다. */
 export const TileRecipeAndBadge: Story = {
   name: '재료 타일(플라스크) · 배지 타일 나란히 — 같은 64px 칸',
@@ -339,13 +318,13 @@ export const TileRecipeAndBadge: Story = {
           tiles: [
             { name: '성수동 지도', imageUrl: null },
             { name: '한강 물병', imageUrl: null },
-            { name: '성수동 탐험가', imageUrl: SAMPLE[0], earned: true },
+            { name: '성수동 탐험가', imageUrl: SAMPLE[0] },
           ],
         })}
       />
       <Case
         caption="JAM! 배지 — 그림 없는 타일은 메달 아이콘"
-        view={tileCard({ tiles: [{ name: '그림 없음', imageUrl: null, earned: true }, ...tiles(2)] })}
+        view={tileCard({ tiles: [{ name: '그림 없음', imageUrl: null }, ...tiles(2)] })}
       />
     </Column>
   ),
@@ -369,16 +348,16 @@ export const TileRecipeAndBadge: Story = {
 }
 
 /**
- * 레시피 공개 카드의 공개 뒤 모습(티켓 20261006_1217). 타일은 슬롯마다 하나(대표 후보)이고 후보를 펼치지 않는다 — 가진 후보가 있는 슬롯은 컬러, 없는 슬롯은 첫 후보의 흑백이다.
+ * 레시피 공개 카드의 공개 뒤 모습(티켓 20261006_1217). 타일은 슬롯마다 하나(대표 후보)이고 후보를 펼치지 않는다 — 타일 그림은 가진 재료와 없는 재료를 색으로 구분하지 않고 전부 컬러다.
  * 정보 줄은 「재료 N개」·「보상 …」, 타일 수는 재료 수와 같다. 328px 폭에서 4개는 들어오고 5개부터 잘려 보이며 슬롯 상한 10개까지 자르지 않는다.
  * 타일이 하나도 없으면(레시피 줄 없음·후보 전부 삭제) `brief`로 그려져 이 Story의 맨 아래 카드가 보이지 않는다 — 그 모습은 `BriefCard`의 「레시피 공개 전」 Story에 있다.
  */
 export const RecipeRevealTiles: Story = {
-  name: '레시피 공개 뒤 — 슬롯당 타일 하나(컬러·흑백 섞임), 4개 · 10개',
+  name: '레시피 공개 뒤 — 슬롯당 타일 하나(전부 컬러), 4개 · 10개',
   render: () => (
     <Column width={W360}>
       <Case
-        caption="슬롯 4개 — 가진 슬롯은 컬러, 없는 슬롯은 첫 후보의 흑백(이름은 컬러), 그림 없는 타일은 플라스크"
+        caption="슬롯 4개 — 전부 컬러, 그림 없는 타일은 플라스크"
         view={tileCard({
           resource: 'recipe',
           template: 'recipe_reveal',
@@ -389,10 +368,10 @@ export const RecipeRevealTiles: Story = {
           facts: ['재료 4개', '300 포인트 · 배지 1개'],
           href: '/combine',
           tiles: [
-            { name: '성수동 지도', imageUrl: SAMPLE[0], earned: true },
-            { name: '한강 물병', imageUrl: SAMPLE[1], earned: false },
-            { name: '뚝섬 돗자리', imageUrl: null, earned: false },
-            { name: '서울숲 손전등', imageUrl: SAMPLE[3], earned: true },
+            { name: '성수동 지도', imageUrl: SAMPLE[0] },
+            { name: '한강 물병', imageUrl: SAMPLE[1] },
+            { name: '뚝섬 돗자리', imageUrl: null },
+            { name: '서울숲 손전등', imageUrl: SAMPLE[3] },
           ],
         })}
       />
@@ -407,7 +386,7 @@ export const RecipeRevealTiles: Story = {
           description: undefined,
           facts: ['재료 10개', '배지 1개'],
           href: '/combine',
-          tiles: tiles(10, (index) => index % 3 === 0),
+          tiles: tiles(10),
         })}
       />
     </Column>
@@ -420,9 +399,8 @@ export const RecipeRevealTiles: Story = {
     // 「재료 N개」와 타일 수가 같다
     expect(four.textContent).toContain('재료 4개')
     expect(ten.textContent).toContain('재료 10개')
-    // 흑백은 이미지에만 걸리고 이름은 컬러다
-    for (const el of Array.from(four.querySelectorAll('.grayscale'))) expect(el.tagName).toBe('IMG')
-    expect(four.querySelectorAll('.grayscale')).toHaveLength(1)
+    // 타일 그림은 전부 컬러다
+    expect(four.querySelectorAll('.grayscale')).toHaveLength(0)
     // 4개는 280px라 안쪽 폭 296px에 들어와 스크롤이 없고, 10개는 스크롤이다
     expect(scrolls(four)).toBe(false)
     expect(scrolls(ten)).toBe(true)
@@ -460,7 +438,7 @@ export const TileNoImage: Story = {
 export const TileNames: Story = {
   name: '타일 이름 — 1줄 · 2줄 · 3줄 이상(말줄임) · 공백 없는 8자',
   render: () => {
-    const named = (names: string[]) => tileCard({ tiles: names.map((name, i) => ({ name, imageUrl: SAMPLE[i], earned: true })) })
+    const named = (names: string[]) => tileCard({ tiles: names.map((name, i) => ({ name, imageUrl: SAMPLE[i] })) })
     return (
       <Column width={W360}>
         <Case caption="1줄(짧은 이름) · 2줄(어절 단위 줄바꿈)" view={named(['러너', '한강 러너', '성수동 탐험가'])} />
@@ -774,7 +752,7 @@ export const Untracked: Story = {
   render: () => (
     <div style={ROW_STYLE}>
       <Column width={W360}>
-        <Case caption="타일형 — 링크 0, 끝 줄만 보임, 스크롤 동작" view={tileCard({ tiles: tiles(8, () => undefined) })} />
+        <Case caption="타일형 — 링크 0, 끝 줄만 보임, 스크롤 동작" view={tileCard({ tiles: tiles(8) })} />
       </Column>
       <Column width={W360}>
         <Case caption="행형 · 미션 대상과 같은 순위 — 링크 0 · 강조 없음(currentUserId를 넘겨도)" view={rankingCard()} currentUserId="user-2" />
@@ -830,9 +808,9 @@ const WORST_TILES = tileCard({
   regionLabel: '서울 성동구 성수동',
   rarity: 'epic',
   tiles: [
-    { name: '서울숲 한가운데 산책가 수집가', imageUrl: SAMPLE[0], earned: true },
-    { name: '한강러닝챌린지', imageUrl: null, earned: false },
-    ...tiles(6, (i) => i % 2 === 0),
+    { name: '서울숲 한가운데 산책가 수집가', imageUrl: SAMPLE[0] },
+    { name: '한강러닝챌린지', imageUrl: null },
+    ...tiles(6),
   ],
 })
 

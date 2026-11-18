@@ -232,10 +232,7 @@ describe('getTodayCards — 공개 뒤 레시피 (재료 타일)', () => {
     expect(view.shape).toBe('list')
     if (view.shape !== 'list') throw new Error('list여야 한다')
     expect(view.facts).toEqual(['재료 2개', '300 포인트 · 배지 2개'])
-    expect(view.tiles.map((t) => [t.name, t.earned])).toEqual([
-      ['배지 a1', false],
-      ['배지 b1', true],
-    ])
+    expect(view.tiles.map((t) => t.name)).toEqual(['배지 a1', '배지 b1'])
   })
 })
 

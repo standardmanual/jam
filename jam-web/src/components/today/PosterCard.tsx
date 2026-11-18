@@ -22,7 +22,7 @@ import CardImageSlot from './CardImageSlot'
  * - 안쪽 여백은 `Card`가 인라인 `style`로 주기 때문에 클래스로는 덮이지 않아 `HeroCard`와 같은 인라인 `style`로 0을 준다. 바탕 색조는 이미지 판이 덮으므로 `default`다.
  *   모서리는 `Card`의 `overflow-hidden`이 자른다. 눌림·hover를 안쪽에 더하지 않는다(`CardFrame`의 링크가 가진 `.jam-press` 하나뿐이다).
  * - 이미지 칸·자리 표시·`alt`·`sizes`는 `CardImageSlot`이 그린다. 자리 표시는 카드 위쪽 60%에만 있어 아래에서 올라오는 막과 겹치지 않는다.
- *   `imageDimmed`는 이미지만 흑백이고 막·글자·희귀도 칩은 컬러다. `titleInImage`면 제목을 빼고(이미지 `alt`가 제목) 필수 정보가 칩 줄 바로 다음에 온다.
+ *   `titleInImage`면 제목을 빼고(이미지 `alt`가 제목) 필수 정보가 칩 줄 바로 다음에 온다.
  */
 
 /** 막 — 글자 블록 아래쪽 정렬, 위 32px가 램프다(고정 길이 정지점, 위 설명 참고). 클래스 전체 문자열이어야 Tailwind가 읽는다. */

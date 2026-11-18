@@ -380,26 +380,6 @@ export const FactLines: Story = {
   },
 }
 
-// ─── 5. imageDimmed ───────────────────────────────────────────────────────
-
-/** 이미지만 흑백이고 막·글자·희귀도 칩은 컬러다. */
-export const ImageDimmed: Story = {
-  name: 'imageDimmed — 이미지만 흑백, 막·글자·희귀도 칩은 컬러',
-  render: () => (
-    <Column width={W360}>
-      <Case caption="컬러(기준)" view={BADGE_WITH_PIN} />
-      <Case caption="흑백(imageDimmed) — Epic 칩은 컬러" view={{ ...BADGE_WITH_PIN, imageDimmed: true }} />
-    </Column>
-  ),
-  play: async ({ canvasElement }) => {
-    const [, dimmed] = cardsOf(canvasElement)
-    expect(dimmed.querySelectorAll('.grayscale')).toHaveLength(1)
-    expect(dimmed.querySelector('.grayscale')?.tagName).toBe('IMG')
-    expect(scrimOf(dimmed).querySelector('.grayscale')).toBeNull()
-    expectFourByFive(canvasElement)
-  },
-}
-
 // ─── 6. 이미지에 제목이 있는 카드 ──────────────────────────────────────────
 
 /**

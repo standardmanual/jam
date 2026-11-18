@@ -46,12 +46,6 @@ describe('CardImageSlot — video(hero)는 옛 HeroCard 출력과 같다', () =>
     expect(html).not.toContain('grayscale')
   })
 
-  it('imageDimmed면 이미지에만 grayscale이 붙는다', () => {
-    const html = render('video', { imageDimmed: true })
-    expect(html).toContain('class="absolute inset-0 w-full h-full object-cover grayscale"')
-    expect(html.match(/grayscale/g)).toHaveLength(1)
-  })
-
   it('이미지 없음: 옛 자리 표시 클래스·아이콘이 그대로다', () => {
     const html = render('video', { imageUrl: null })
     expect(html).toBe(`<div class="${OLD_HERO_BOX}"><div class="${OLD_HERO_PLACEHOLDER}">${iconMarkup({ resource: 'mission' })}</div></div>`)
@@ -88,7 +82,6 @@ describe('CardImageSlot — 비율별 칸', () => {
   ] as const)('%s: 이미지는 %s다(square만 자르지 않는다)', (ratio, fit) => {
     const html = render(ratio)
     expect(html).toContain(`class="absolute inset-0 w-full h-full ${fit}"`)
-    expect(render(ratio, { imageDimmed: true })).toContain(`class="absolute inset-0 w-full h-full ${fit} grayscale"`)
   })
 
   it('square 이미지는 object-cover가 아니다(잘리지 않는다)', () => {
@@ -179,11 +172,6 @@ describe('CardImageSlot — 동영상 미디어 지원 (티켓 20261022_2300)', 
     expect(render('video', { imageUrl: VIDEO })).toContain('class="absolute inset-0 w-full h-full object-cover"')
     expect(render('poster', { imageUrl: VIDEO })).toContain('class="absolute inset-0 w-full h-full object-cover"')
     expect(render('square', { imageUrl: VIDEO })).toContain('class="absolute inset-0 w-full h-full object-contain"')
-  })
-
-  it('imageDimmed일 때 비디오 태그에도 grayscale이 붙는다', () => {
-    const html = render('video', { imageUrl: VIDEO, imageDimmed: true })
-    expect(html).toContain('grayscale')
   })
 
   it('titleInImage가 아니면 aria-hidden="true"가 붙는다', () => {

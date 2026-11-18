@@ -38,7 +38,7 @@ const IMG = 'https://cdn.example/b.png'
 const ICON_CLASS = 'w-6 h-6 text-muted'
 const icon = (Icon: typeof MedalIcon) => renderToStaticMarkup(<Icon className={ICON_CLASS} />)
 
-const tile = (name: string, overrides: Partial<CardViewTile> = {}): CardViewTile => ({ name, imageUrl: IMG, earned: true, ...overrides })
+const tile = (name: string, overrides: Partial<CardViewTile> = {}): CardViewTile => ({ name, imageUrl: IMG, ...overrides })
 
 function tilesView(overrides: Partial<ListCardView> = {}): ListCardView {
   return {
@@ -226,15 +226,9 @@ describe('ListCard 타일형 — 타일 줄', () => {
     expect(render(tilesView({ rarity: 'epic', tiles: [tile('가')] }))).toContain('>Epic</span>')
   })
 
-  it('미보유(earned: false) 그림만 흑백이고 이름은 컬러다', () => {
-    const html = render(tilesView({ tiles: [tile('보유', { earned: true }), tile('미보유', { earned: false })] }))
-    expect(html.match(/grayscale/g)).toHaveLength(1)
-    expect(html).toContain('w-full h-full object-cover grayscale')
-    expect(html).not.toMatch(/grayscale[^>]*>[^<]*<\/p>/)
-  })
-
-  it('earned가 없으면(유저 정보가 없는 미리보기) 전부 컬러다', () => {
-    const html = render(tilesView({ tiles: [tile('가', { earned: undefined }), tile('나', { earned: undefined })] }))
+  it('타일 그림에는 grayscale이 없다(보유 여부와 무관하게 컬러, 티켓 20261118_1523)', () => {
+    const html = render(tilesView({ tiles: [tile('가'), tile('나')] }))
+    expect(html).toContain('w-full h-full object-cover')
     expect(html).not.toContain('grayscale')
   })
 

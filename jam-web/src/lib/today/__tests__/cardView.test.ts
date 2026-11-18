@@ -442,8 +442,8 @@ describe('toCardView — 표시 데이터', () => {
       expect(view.shape).toBe('list')
       if (view.shape !== 'list') throw new Error('list여야 한다')
       expect(view.tiles).toEqual([
-        { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare', earned: true },
-        { name: '배지 b', imageUrl: null, rarity: null, earned: false },
+        { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare' },
+        { name: '배지 b', imageUrl: null, rarity: null },
       ])
       expect(view.ranking).toBeUndefined()
     })
@@ -474,9 +474,10 @@ describe('toCardView — 표시 데이터', () => {
       expect(view).toMatchObject({ shape: 'hero', imageUrl: 'https://cdn.example/cover.png' })
     })
 
-    it('커버가 없으면 첫 배지 그림을 쓰고, 유저가 그 배지를 갖지 않았으면 흑백(imageDimmed)이다', () => {
+    it('커버가 없으면 첫 배지 그림을 쓰고, 유저가 그 배지를 갖지 않았어도 imageDimmed가 없다(티켓 20261118_1523)', () => {
       const unowned = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: false })] }))
-      expect(unowned).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png', imageDimmed: true })
+      expect(unowned).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
+      expect(unowned).not.toHaveProperty('imageDimmed')
       const owned = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: true })] }))
       expect(owned).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
       expect(owned).not.toHaveProperty('imageDimmed')
@@ -643,9 +644,10 @@ describe('toCardView — 표시 데이터', () => {
       expect(view).not.toHaveProperty('thumbnailDimmed')
     })
 
-    it('유저가 갖지 않은 배지는 흑백(thumbnailDimmed)이다', () => {
+    it('유저가 갖지 않은 배지여도 thumbnailDimmed가 없다(티켓 20261118_1523)', () => {
       const view = toCardView(briefBadgeCard([badge('a', { earned: false })]))
-      expect(view).toMatchObject({ thumbnailUrl: 'https://cdn.example/a.png', thumbnailDimmed: true })
+      expect(view).toMatchObject({ thumbnailUrl: 'https://cdn.example/a.png' })
+      expect(view).not.toHaveProperty('thumbnailDimmed')
     })
 
     it('보유 여부를 모르면(earned 없음, 유저 정보가 없는 미리보기) 썸네일은 컬러다 (티켓 20261001_2208)', () => {
@@ -853,10 +855,10 @@ describe('toCardView — 레시피 공개 카드 (티켓 20261006_1217)', () => 
       if (view.shape !== 'list') throw new Error('list여야 한다')
       expect(view).toMatchObject({ resource: 'recipe', label: '레시피 공개', facts: ['재료 4개', '300 포인트 · 배지 1개'], href: '/combine' })
       expect(view.tiles).toEqual([
-        { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare', earned: true },
-        { name: '배지 b', imageUrl: 'https://cdn.example/b.png', rarity: 'rare', earned: false },
-        { name: '배지 c', imageUrl: null, rarity: 'rare', earned: true },
-        { name: '배지 d', imageUrl: 'https://cdn.example/d.png', rarity: 'rare', earned: false },
+        { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare' },
+        { name: '배지 b', imageUrl: 'https://cdn.example/b.png', rarity: 'rare' },
+        { name: '배지 c', imageUrl: null, rarity: 'rare' },
+        { name: '배지 d', imageUrl: 'https://cdn.example/d.png', rarity: 'rare' },
       ])
       expect(view.tracking?.shape).toBe('list')
     })
@@ -880,10 +882,10 @@ describe('toCardView — 레시피 공개 카드 (티켓 20261006_1217)', () => 
       expect(view.facts).toEqual(['재료 4개'])
     })
 
-    it('보유 여부를 모르면(earned 없음, 어드민 미리보기) 타일은 컬러다', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released([badge('a', { earned: undefined })]) }), { now: NOW })
+    it('타일은 보유 여부를 싣지 않는다(홈피드 그림은 늘 컬러, 티켓 20261118_1523)', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released([badge('a', { earned: false })]) }), { now: NOW })
       if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view.tiles[0].earned).toBeUndefined()
+      expect(view.tiles[0]).not.toHaveProperty('earned')
     })
 
     it('후보가 전부 삭제돼 타일이 하나도 없으면 brief다(재료 수는 슬롯 수 그대로)', () => {

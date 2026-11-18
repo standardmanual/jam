@@ -138,9 +138,8 @@ describe('공개 뒤 — list 타일형', () => {
     for (const name of ['재료 a', '재료 b', '재료 c', '재료 d']) expect(html).toContain(`>${name}</p>`)
   })
 
-  it('가진 후보의 슬롯은 컬러, 없는 슬롯은 첫 후보의 흑백이고 이름은 컬러다', () => {
-    expect(html.match(/grayscale/g)).toHaveLength(2)
-    expect(html).not.toMatch(/grayscale[^>]*>[^<]*<\/p>/)
+  it('가진 후보의 슬롯과 없는 슬롯 모두 컬러다(티켓 20261118_1523)', () => {
+    expect(html).not.toContain('grayscale')
   })
 
   it('그림이 없는 타일은 같은 칸에 플라스크 아이콘이다', () => {

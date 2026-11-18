@@ -277,14 +277,6 @@ describe('PosterCard — 이미지 칸', () => {
     expect(html).toContain('class="absolute inset-0 w-full h-full object-cover"')
     expect(html).not.toContain('grayscale')
   })
-
-  it('imageDimmed면 이미지만 흑백이다(막·글자·희귀도 칩·자리 표시는 컬러)', () => {
-    const html = render({ imageDimmed: true, resource: 'badge', rarity: 'epic' })
-    expect(html).toContain('class="absolute inset-0 w-full h-full object-cover grayscale"')
-    expect(html.match(/grayscale/g)).toHaveLength(1)
-    expect(scrimInnerOf(html)).not.toContain('grayscale')
-    expect(render({ imageDimmed: true, imageUrl: null })).not.toContain('grayscale')
-  })
 })
 
 describe('PosterCard — 이미지 alt와 titleInImage', () => {

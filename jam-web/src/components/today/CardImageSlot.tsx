@@ -18,13 +18,12 @@ import { resourceIconOf } from './resourceIcon'
  * - `sizes`: 앱 열이 최대 430px이고 카드 좌우 여백이 16px씩이라 카드는 최대 398px이다. 세 모양 모두 카드 폭이 같다. 주지 않으면 100vw로 가정해 과대 다운로드한다.
  * - 자리 표시: `--background` 단색 판 + 자원 아이콘뿐이다(그라디언트·문구 없음). 제목은 이미지에 제목이 들어 있는 카드(`titleInImage`)에서만 판 위에 그린다.
  *   일반 카드는 바로 아래 본문(또는 막)이 같은 제목을 24px로 보여 주므로 아이콘만 둬 같은 제목이 한 카드에 두 번 보이지 않게 한다.
- *   가운데 정렬은 이 판에만 쓴다. 아이콘은 장식이라 숨기고(`aria-hidden`, 아이콘 세트 기본값) 판은 흑백 처리하지 않는다.
+ *   가운데 정렬은 이 판에만 쓴다. 아이콘은 장식이라 숨긴다(`aria-hidden`, 아이콘 세트 기본값).
  *
  * 비율별 값은 클래스 전체 문자열 맵이다 — Tailwind는 클래스를 문자열 조립으로 만들면 읽지 못한다.
  * - `video`(hero): 16:9, 미디어를 칸에 맞춰 자른다(`object-cover`).
  * - `poster`: 4:5, 미디어를 칸에 맞춰 자른다. 아래에서 어두운 막이 올라오므로 자리 표시는 위쪽 60%에만 둔다(막과 겹쳐 읽히지 않게).
  * - `square`: 1:1, 미디어를 자르지 않는다(`object-contain`). 1:1이 아니면 판 위에 레터박스다.
- * `imageDimmed`면 미디어에만 `grayscale`을 건다(자리 표시 판·아이콘은 흑백 처리하지 않는다).
  */
 export type CardImageRatio = 'video' | 'poster' | 'square'
 
@@ -79,7 +78,7 @@ export default function CardImageSlot({ view, ratio }: { view: ImageCardView; ra
           preload="metadata"
           aria-hidden={view.titleInImage ? undefined : true}
           aria-label={view.titleInImage ? view.title : undefined}
-          className={`absolute inset-0 w-full h-full ${slot.image}${view.imageDimmed ? ' grayscale' : ''}`}
+          className={`absolute inset-0 w-full h-full ${slot.image}`}
           onError={() => setVideoFailed(true)}
         />
       ) : (
@@ -87,7 +86,7 @@ export default function CardImageSlot({ view, ratio }: { view: ImageCardView; ra
           src={view.imageUrl}
           alt={view.titleInImage ? view.title : ''}
           sizes={IMAGE_SIZES}
-          className={view.imageDimmed ? `${slot.image} grayscale` : slot.image}
+          className={slot.image}
           fallback={<ImagePlaceholder view={view} className={slot.placeholder} />}
         />
       )}

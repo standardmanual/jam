@@ -60,8 +60,8 @@ const listView = (overrides: Partial<ListCardView> = {}): CardView => ({
   title: '성수동 배지 모음',
   label: '배지 소개',
   tiles: [
-    { name: '성수동 탐험가', imageUrl: null, earned: true },
-    { name: '한강 러너', imageUrl: null, earned: false },
+    { name: '성수동 탐험가', imageUrl: null },
+    { name: '한강 러너', imageUrl: null },
   ],
   ...overrides,
 })

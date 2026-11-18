@@ -6,7 +6,7 @@
  * 2. 출력에 트래커·링크·`jam-press`가 없다 — 미리보기가 노출·클릭 수치에 섞이지 않고 눌러도 이동하지 않는다
  *    (티켓 20260930_1645 `TodayCardStack.preview.test.tsx`의 「미리보기는 계측과 이동을 모두 끈다」를 새 경로 기준으로 옮긴 것).
  * 3. 기기 폭 전환 값(360·430)이 카드 폭 328px·398px를 만든다.
- * 4. 유저 정보가 없는 미리보기는 배지 그림이 컬러이고, 보유하지 않은 배지(`earned: false`)만 흑백이다.
+ * 4. 배지 그림은 보유 여부(`earned`)와 무관하게 컬러다(티켓 20261118_1523).
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)로 확인한다.
  * 트래커는 표식 div로 바꿔 「그려졌는가」로 확인한다 — 노출 보고와 클릭 보고는 모두 이 컴포넌트 안에서만 일어난다.
@@ -232,12 +232,12 @@ describe('TodayCardPreview — 유저 정보가 없는 미리보기는 배지 �
     expect(html).not.toContain('grayscale')
   })
 
-  it('보유하지 않은 배지(earned: false)는 승격 이미지·썸네일이 흑백이다(홈과 같은 규칙)', () => {
+  it('보유하지 않은 배지(earned: false)여도 승격 이미지·썸네일이 흑백이 아니다(티켓 20261118_1523)', () => {
     const owned = (id: string): ResolvedBadge => ({ ...unknownOwnershipBadge(id), earned: false })
     const promoted = makeCard({ id: 'promoted', cover_image_url: null, resolved_badges: [owned('a')] })
     const thumb = makeCard({ id: 'thumb', layout_type: 'shortcut', cover_image_url: null, resolved_badges: [owned('b')] })
     const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([promoted, thumb])} />)
-    expect(html.match(/grayscale/g)).toHaveLength(2)
+    expect(html).not.toContain('grayscale')
   })
 })
 

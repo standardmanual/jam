@@ -43,8 +43,8 @@ function listView(resource: CardResource, tracking = true): ListCardView {
     label: '목록',
     href: '/somewhere',
     tiles: [
-      { name: '타일 하나', imageUrl: null, earned: true },
-      { name: '타일 둘', imageUrl: null, earned: false },
+      { name: '타일 하나', imageUrl: null },
+      { name: '타일 둘', imageUrl: null },
     ],
     ranking: {
       metricType: 'mission_progress',

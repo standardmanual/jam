@@ -2,7 +2,7 @@
  * 64px 칸 공용(`CardThumb`) 렌더 테스트 (티켓 20261001_2104, 상위 20260930_1453 조각 b5)
  *
  * `BriefCard`의 `BriefSlot`을 그대로 옮긴 것이라 `BriefCard.test.tsx`의 썸네일 단언도 같은 마크업을 본다. 여기서는 칸이 모양을 모른 채
- * (`resource`·`regionLabel`만 읽고) 그림·흑백·자원 아이콘 대체·칸 크기를 지키는지 고정한다. 이미지 로드 실패는 「주소 없음」과 같은 대체 경로를 타므로
+ * (`resource`·`regionLabel`만 읽고) 그림·자원 아이콘 대체·칸 크기를 지키는지 고정한다. 이미지 로드 실패는 「주소 없음」과 같은 대체 경로를 타므로
  * 「주소 없음」으로 검증하고, 실패 후 칸 높이 같은 계산 스타일은 Story의 `play`(`ListCard.stories.tsx`)가 본다.
  */
 import { describe, it, expect } from 'vitest'
@@ -29,12 +29,6 @@ describe('CardThumb — 64px 칸', () => {
     expect(html).not.toContain('grayscale')
   })
 
-  it('dimmed면 그림에만 grayscale을 건다', () => {
-    const html = renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} src="https://cdn.example/b.png" dimmed />)
-    expect(html.match(/grayscale/g)).toHaveLength(1)
-    expect(html).toContain('w-full h-full object-cover grayscale')
-  })
-
   it.each([[undefined], [null], ['']])('그림 주소가 %p이면 같은 칸에 자원 아이콘을 그린다(그림 태그 없음)', (src) => {
     const html = renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} src={src} />)
     expect(html).toBe(`<div class="${BOX}">${icon(MedalIcon)}</div>`)
@@ -54,7 +48,4 @@ describe('CardThumb — 64px 칸', () => {
     expect(html).not.toContain('/40')
   })
 
-  it('dimmed여도 그림이 없으면 아이콘은 흑백 처리하지 않는다', () => {
-    expect(renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} dimmed />)).not.toContain('grayscale')
-  })
 })

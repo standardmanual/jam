@@ -56,7 +56,7 @@ export default function CardChipRow({
           <span className="truncate">{view.regionLabel}</span>
         </span>
       )}
-      {/* Common·등급 없음(null)·미지 값은 컴포넌트가 스스로 아무것도 그리지 않는다. 희귀도는 배지 자체의 정보라 흑백으로 만들지 않는다 */}
+      {/* Common·등급 없음(null)·미지 값은 컴포넌트가 스스로 아무것도 그리지 않는다. */}
       <RarityBadge rarity={view.rarity as Rarity | null | undefined} size="md" className="shrink-0" />
       {publishedDay && (
         <time dateTime={view.publishedAt} className={`ml-auto shrink-0 whitespace-nowrap text-xs ${mutedText}`}>

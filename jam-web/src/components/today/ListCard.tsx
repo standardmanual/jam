@@ -21,7 +21,7 @@ import CardThumb from './CardThumb'
  * - 타일형: 한 줄 가로 스크롤(줄바꿈 없음 — 줄바꿈은 타일 8개에서 카드 높이가 100px 안팎씩 늘어 「큰 카드 사이에 작은 카드」 편성을 깬다). 스크롤 칸이 카드 좌우 끝까지
  *   번지고(`-mx`·`px` 16px) 타일 간격이 8px라 360·430·320 기기 폭에서 다음 타일이 가장자리에서 잘려 보인다 — 더 있다는 단서는 이것뿐이다(화살표·점·「+N」·페이드·스냅 없음).
  *   희귀도는 타일에 그리지 않는다(`CardViewTile.rarity`는 표시 데이터에 두되 쓰지 않는다). 되돌리기는 이 파일 한 곳이다. 이름은 64px 칸 폭 그대로 가운데 2줄이다.
- *   그림이 없거나 실패하면 `CardThumb`이 같은 칸에 카드의 자원 아이콘을 그린다. 미보유(`earned === false`)만 그림이 흑백이고 `earned`가 없으면(미리보기) 컬러다.
+ *   그림이 없거나 실패하면 `CardThumb`이 같은 칸에 카드의 자원 아이콘을 그린다. 그림은 보유 여부와 무관하게 컬러다.
  *   스크롤 칸에는 `tabIndex`를 주지 않는다(카드 전체가 링크라 안에 `tabindex`를 두면 마크업 규칙 위반이다).
  *   안쪽 `ul`이 `w-max`인 이유: 없으면 `ul`이 칸 안쪽 폭에 갇히고 타일이 그 밖으로 넘쳐서, 끝까지 밀었을 때 칸의 오른쪽 `padding`이 스크롤 영역에 들어가지 않아 마지막 타일이
  *   카드 가장자리에 붙는다(Chromium 실측: 끝 여백 0px). 마지막 `li`의 오른쪽 `margin`으로는 고쳐지지 않았고(0px) `w-max`로 16px이 남는 것을 실측했다(`ListCard.stories.tsx`).
@@ -55,7 +55,7 @@ function ListTiles({ view }: { view: ListCardView }) {
           <ul className="flex w-max gap-2">
             {view.tiles.map((tile, index) => (
               <li key={index} className="w-16 shrink-0">
-                <CardThumb view={view} src={tile.imageUrl} dimmed={tile.earned === false} />
+                <CardThumb view={view} src={tile.imageUrl} />
                 <p className="mt-1 text-xs text-muted text-center line-clamp-2 break-keep break-words">
                   {tile.name}
                 </p>
