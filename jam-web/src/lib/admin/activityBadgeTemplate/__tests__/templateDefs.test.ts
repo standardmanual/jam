@@ -9,6 +9,7 @@ import { DAYS_ORIGINAL_SVG } from '../templates/daysSvg'
 import { STREAK_TEMPLATE, nameSampleTextLayers } from '../templates/streak'
 import { STREAK_ORIGINAL_SVG } from '../templates/streakSvg'
 import { COUNT_TEMPLATE } from '../templates/count'
+import { ETC_TEMPLATE } from '../templates/etc'
 import { METRIC_TEMPLATE_SVG } from '../templates/metricSvg'
 import { METRIC_LOWER_HALF_GREEN, flattenLowerHalf } from '../templates/metric'
 import { isArcSlot, type TemplateArcSlot } from '../templateDef'
@@ -70,11 +71,21 @@ describe('getBadgeTemplateDef', () => {
     expect(d.slots.name).toEqual({ ...common, y: 487.64, fontSize: 101.84, placeholder: '벼룩시장 건너편', maxWidth: 663.4 })
     expect(d.slots.value).toEqual({ ...common, y: 626.35, fontSize: 92.01, placeholder: '5가지', maxWidth: 376.2 })
   })
-  it('네 분류가 모두 정의를 가진다', () => {
-    for (const k of ['metric', 'days', 'streak', 'count'] as const) expect(getBadgeTemplateDef(k)).not.toBeNull()
+  it('etc는 표의 수치를 가진다', () => {
+    const d = getBadgeTemplateDef('etc')!
+    expect(d.classKey).toBe('etc')
+    expect(d.slots.viewBoxWidth).toBe(975)
+    expect(d.slots.viewBoxHeight).toBe(1153)
+    const common = { kind: 'arc', fontFamily: 'Noto Sans KR', fontWeight: '900', fontSize: 111, letterSpacingEm: -0.08, fill: '#000000' }
+    expect(d.slots.name).toEqual({
+      ...common, cx: 489, cy: 471.8, baselineRadius: 319.63, pathRadius: 369.34, centerDeg: 0, facing: 'outward', maxSpanDeg: 181.8,
+    })
+    expect(d.slots.value).toEqual({
+      ...common, cx: 487.56, cy: 682, baselineRadius: 400.75, pathRadius: 372.5, centerDeg: 180, facing: 'inward', maxSpanDeg: 122.5,
+    })
   })
-  it('기타는 아직 정의가 없다', () => {
-    expect(getBadgeTemplateDef('etc')).toBeNull()
+  it('다섯 분류가 모두 정의를 가진다', () => {
+    for (const k of ['metric', 'days', 'streak', 'count', 'etc'] as const) expect(getBadgeTemplateDef(k)).not.toBeNull()
   })
 })
 
@@ -250,6 +261,30 @@ describe('days 전용', () => {
     const v = layoutSlotText({ slot: value, viewWidth: 702, placeholderWidth: 355.5, contentWidth: 230 })!
     expect(v.anchorX).toBeCloseTo(350.51, 1)
     expect(v.shrunk).toBe(false)
+  })
+})
+
+describe('etc 전용', () => {
+  const def = ETC_TEMPLATE
+  it('샘플 글자를 걷어 내도 고리·타원·로고 모양은 남는다', () => {
+    const out = stripSlotText(def.svg)
+    for (const id of ['Union', 'Union (Stroke)', 'Vector_2']) expect(out).toContain(`id="${id}"`)
+  })
+  it('색은 #FF3A00·#00892B·#000000·#FFFFFF', () => {
+    const colors = extractSvgColors(def.svg).map((c) => String(c.color).toUpperCase())
+    for (const c of ['#FF3A00', '#00892B', '#000000', '#FFFFFF']) expect(colors).toContain(c)
+  })
+  it('두 자리는 원호 자리다', () => {
+    expect(isArcSlot(def.slots.name)).toBe(true)
+    expect(isArcSlot(def.slots.value)).toBe(true)
+  })
+  it('이름 원호 배치: 글자 8개는 각도 한도 안에 놓인다', () => {
+    const s = def.slots.name as TemplateArcSlot
+    const out = layoutArcText({
+      advances: Array(8).fill(80), fontSize: s.fontSize, letterSpacingEm: s.letterSpacingEm, cx: s.cx, cy: s.cy,
+      baselineRadius: s.baselineRadius, pathRadius: s.pathRadius, centerDeg: s.centerDeg, facing: s.facing, maxSpanDeg: s.maxSpanDeg,
+    })!
+    expect(out.spanDeg).toBeLessThanOrEqual(s.maxSpanDeg)
   })
 })
 

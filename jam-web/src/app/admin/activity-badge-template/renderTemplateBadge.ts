@@ -201,6 +201,7 @@ export async function renderTemplateBadge(
         cx: slot.cx,
         cy: slot.cy,
         baselineRadius: slot.baselineRadius,
+        pathRadius: slot.pathRadius,
         centerDeg: slot.centerDeg,
         facing: slot.facing,
         maxSpanDeg: slot.maxSpanDeg,
