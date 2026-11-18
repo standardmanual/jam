@@ -81,7 +81,7 @@ related:
 | 항목 | `world_review`(필수) | 객체 `{ world_related, winter_reviewed, reason }`. 셋 다 필수, 앞의 둘은 불리언, `reason`은 한 줄 문자열, `world_related`가 참이면 `winter_reviewed`도 참이어야 한다. 규칙은 홈피드 등록 묶음의 `world_review`와 같다(`registerHomeFeedBundle.mjs`, 테스트가 같은 입력으로 대조) |
 | 항목 | `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음 `excluded_items` | 아래 「카드 칸과 뺀 항목」 표가 정한다 |
 | 항목 | `resource.pattern`(`kind`가 `pattern_proposal`일 때만) | 아래 「패턴 제안 내용 칸」 표가 정한다. 다른 종류의 `resource`는 보지 않는다 |
-| 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, `preset_id`는 있는데 `bg`·`end`가 없으면(렌더가 실패한다), 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. `values`의 이미지 레이어 번호(`img01` 등) 값이 이 프로젝트 저장소(`NEXT_PUBLIC_SUPABASE_URL` 호스트의 https)가 아닌 외부 주소(`http(s)://`, `//host`, 값 안에 탭·개행을 끼운 `/<탭>/host`도 브라우저가 탭·개행을 지우고 읽으므로 걷어낸 뒤 판정)이면 그 칸도 경고하고, 브라우저 렌더(`imageSpecToRenderArgs`)는 그 값을 건너뛰어 관리자 브라우저가 외부 주소를 불러오지 않는다(`/`로 시작하는 같은 출처 경로와 텍스트 레이어 값은 그대로, 티켓 20261007_1620). 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
+| 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, `preset_id`는 있는데 `bg`·`end`가 없으면(렌더가 실패한다), 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. `values`의 이미지 레이어 번호(`img01` 등) 값이 이 프로젝트 저장소(`NEXT_PUBLIC_SUPABASE_URL` 호스트의 https)가 아닌 외부 주소(`http(s)://`, `//host`, 값 안에 탭·개행을 끼운 `/<탭>/host`도 브라우저가 탭·개행을 지우고 읽으므로 걷어낸 뒤 판정)이면 그 칸도 경고하고, 브라우저 렌더(`imageSpecToRenderArgs`)는 그 값을 건너뛰어 관리자 브라우저가 외부 주소를 불러오지 않는다(`/`로 시작하는 같은 출처 경로와 텍스트 레이어 값은 그대로, 티켓 20261007_1620). 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 주간 기획(윤진)은 미션 전부와 이미지가 보이는 카드 모양(`hero`·`ticket`·`poster`·`dome`·`square`)에 `image_spec`을 내야 한다. `brief`·`list`는 홈 화면이 커버 이미지를 그리지 않아 만들지 않는다(티켓 20261118_1715, 프리셋 대응은 윤진 정의 모드 ⑨). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
 | 항목 | `knobs.place_category`(선택) | `knobs`가 객체이고 이 키에 값이 있으면 `poi_categories.slug`의 문자열 배열이어야 한다(빈 배열은 허용). 없는 slug는 모아서 형식 오류 한 줄로 남기고 저장·승인은 막지 않는다. 카테고리 목록 조회가 실패하면 저장하지 않고 500이다. `knobs`가 없거나 객체가 아니거나 이 키가 없으면 검사하지 않는다 |
 | 항목 | `knobs`의 나머지·`segment`·`balance_check`·`copy`·`colors`·`resource`(`pattern_proposal`의 `resource.pattern`은 위 행이 따로 본다) | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
 
@@ -219,7 +219,7 @@ related:
 
 - **대표 카드.** 그날 전원 대상(`all`) 카드 가운데 정렬이 가장 앞인 카드다. 실제 카드는 지금 정렬(`sort_order` 오름차순 → `starts_at` 내림차순), 운영 묶음 카드는
   `resource.sort_order`를 같은 줄에 놓고 값이 없으면 실제 카드 뒤에 제출 순서로 둔다. 노출 대상을 읽을 수 없는 카드는 대표가 될 수 없다.
-- **「이미지 제작 필요」.** 신호가 아니라 표시다. 승인됨·준비중·예약됨 운영 묶음 항목(승인 직후 자동 제작이 실패했거나 `image_spec`이 비어 만들지 못한 것)의 모양이 이미지가 있는 모양(`hero`·`poster`·`square`)인데 이미지가 없으면 붙는다. 도착·검토중은 아직 만들 때가 아니라 「이미지는 승인 뒤 만들어요」다. 승인을 막지 않고 새로 고쳐도 데이터로 다시 계산돼 남는다.
+- **「이미지 제작 필요」.** 신호가 아니라 표시다. 승인됨·준비중·예약됨 운영 묶음 항목(승인 직후 자동 제작이 실패했거나 `image_spec`이 비어 만들지 못한 것)의 모양이 이미지가 있는 모양(`hero`·`poster`·`square`·`dome`·`ticket`)인데 이미지가 없으면 붙는다. 도착·검토중은 아직 만들 때가 아니라 「이미지는 승인 뒤 만들어요」다. 승인을 막지 않고 새로 고쳐도 데이터로 다시 계산돼 남는다.
   예약·게재 중인 항목이나 모양이 저장된 실제 카드가 이미지 모양인데 이미지가 없으면 「비어 있는 컨텐츠」의 「이미지가 빈 항목」이다. 모양 칸이 빈 옛 카드는 `resolveShape`가
   커버 유무를 이미 반영하므로 표시하지 않는다. 운영 묶음 항목의 「이미지가 있다」는 `resource.cover_image_url`이 비어 있지 않은 문자열인 경우다(제출 형식에 이미지 칸이 따로 없다).
 
