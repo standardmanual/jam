@@ -11,10 +11,16 @@ let dbRows: Record<string, unknown>[] = []
 let dbError: { message: string } | null = null
 let dbCount = 0
 const ranges: [number, number][] = []
+const calls: { method: string; args: unknown[] }[] = []
 
 function makeBuilder() {
   const b: Record<string, unknown> = {}
-  for (const m of ['select', 'eq', 'is', 'or', 'ilike', 'not', 'contains', 'order']) b[m] = vi.fn(() => b)
+  for (const m of ['select', 'eq', 'is', 'or', 'ilike', 'not', 'contains', 'order']) {
+    b[m] = vi.fn((...args: unknown[]) => {
+      calls.push({ method: m, args })
+      return b
+    })
+  }
   b.range = vi.fn(async (from: number, to: number) => {
     ranges.push([from, to])
     if (dbError) return { data: null, error: dbError, count: null }
@@ -44,6 +50,20 @@ beforeEach(() => {
   adminUser = { id: 'admin-1' }
   dbError = null
   ranges.length = 0
+  calls.length = 0
+})
+
+describe('검색 API 대상 범위', () => {
+  it('JAM! 카테고리(admin_category=jam) 배지를 후보에서 빼지 않는다', async () => {
+    dbRows = [row(1, { capsule_open_count: 5 })]
+    dbCount = 1
+    const json = await (await call({})).json()
+    expect(json.total).toBe(1)
+    // 카테고리를 거르는 조건(or·neq)이 질의에 없어야 한다. 활동 배지·삭제 안 됨만 건다.
+    expect(calls.some((c) => c.method === 'or')).toBe(false)
+    expect(calls.some((c) => c.args.some((a) => typeof a === 'string' && a.includes('admin_category')))).toBe(false)
+    expect(calls).toContainEqual({ method: 'eq', args: ['type', 'activity'] })
+  })
 })
 
 describe('검색 API 분류 필터', () => {

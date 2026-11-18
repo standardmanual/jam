@@ -66,9 +66,9 @@ export async function POST(req: NextRequest) {
       })
       .eq('type', 'activity')
       .is('deleted_at', null)
-      // JAM! 카테고리(admin_category='jam')는 배경 이미지가 필요 없는 배지다 — 검색 후보에서
-      // 제외한다. NULL은 그대로 남겨야 하므로 neq 대신 or(is.null, neq)를 쓴다(티켓 20260910_2055).
-      .or('admin_category.is.null,admin_category.neq.jam')
+      // JAM! 카테고리(admin_category='jam') 배지도 후보에 둔다. 예전에는 «배경 이미지가 필요 없다»며
+      // 제외했지만(티켓 20260910_2055), 지금 화면은 분류별 템플릿으로 이미지를 만들어 등록하므로
+      // 이 배지들도 조회돼야 한다(티켓 20261118_1254, jam 70건·17이름이 검색되지 않았다).
 
     if (q) query = query.ilike('name', `%${q}%`)
     // 레벨형 ⇔ `rarity IS NULL`(`badgeKind.ts`의 `isLeveledBadge`)을 SQL로 투영한 것이다.
