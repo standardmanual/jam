@@ -54,6 +54,12 @@ const uploadMock = vi.fn(
 const getPublicUrlMock = vi.fn((path: string) => ({ data: { publicUrl: `https://cdn.test.jam.app/images/${path}` } }))
 const storageFromMock = vi.fn(() => ({ upload: uploadMock, getPublicUrl: getPublicUrlMock }))
 
+// 대표색 추출은 실제 이미지를 내려받으므로 막는다(티켓 20261119_1652). 추출 자체는 badgeBgColors.test.ts가 본다.
+const bgColorsMock = vi.hoisted(() => vi.fn<(url: string | null) => Promise<{ bg_colors?: string[] }>>(async () => ({})))
+vi.mock('@/lib/admin/badgeBgColors', () => ({
+  badgeBgColorsFields: bgColorsMock,
+  badgeBgColorsFieldsIfChanged: vi.fn(async () => ({})),
+}))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({ from: fromMock, storage: { from: storageFromMock } }),
 }))
@@ -79,6 +85,8 @@ beforeEach(() => {
   lookupResult = { data: { id: BADGE_ID, name: '테스트 배지' }, error: null }
   updateError = null
   updatePayloads.length = 0
+  bgColorsMock.mockReset()
+  bgColorsMock.mockResolvedValue({})
   fromCalls.length = 0
   tableBuilder = makeTableBuilder()
   fromMock.mockReset().mockImplementation((table: string) => {
@@ -166,6 +174,38 @@ describe('POST /api/admin/asset-generator/apply', () => {
     expect(body.name).toBe('테스트 배지')
     expect(body.webpUrl).toBe(updatePayloads[0].image_url)
     expect(body.webpBytes).toBeGreaterThan(0)
+  })
+
+  it('배지: 대표색을 같은 update에 담고, 추출이 비면 bg_colors를 담지 않는다(티켓 20261119_1652)', async () => {
+    bgColorsMock.mockResolvedValue({ bg_colors: ['#3366ff', '#ffaa00'] })
+    const form = new FormData()
+    form.append('targetType', 'badge')
+    form.append('targetId', BADGE_ID)
+    form.append('image', await makeSmallPngFile())
+    expect((await POST(postReq(form))).status).toBe(200)
+    expect(updatePayloads).toHaveLength(1)
+    expect(updatePayloads[0].bg_colors).toEqual(['#3366ff', '#ffaa00'])
+    expect(bgColorsMock).toHaveBeenCalledWith(updatePayloads[0].image_url)
+
+    updatePayloads.length = 0
+    bgColorsMock.mockResolvedValue({})
+    const form2 = new FormData()
+    form2.append('targetType', 'badge')
+    form2.append('targetId', BADGE_ID)
+    form2.append('image', await makeSmallPngFile())
+    expect((await POST(postReq(form2))).status).toBe(200)
+    expect('bg_colors' in updatePayloads[0]).toBe(false)
+  })
+
+  it('미션: 대표색을 뽑지 않는다(배지만 bg_colors 칸이 있다)', async () => {
+    const form = new FormData()
+    form.append('targetType', 'mission')
+    form.append('targetId', MISSION_ID)
+    form.append('image', await makeSmallPngFile())
+    lookupResult = { data: { id: MISSION_ID, title: '미션' }, error: null }
+    expect((await POST(postReq(form))).status).toBe(200)
+    expect(bgColorsMock).not.toHaveBeenCalled()
+    expect('bg_colors' in updatePayloads[0]).toBe(false)
   })
 
   it('미션: missions 테이블에 title로 조회하고 저장 경로가 missions/ 접두사다(티켓 20260925_1407)', async () => {

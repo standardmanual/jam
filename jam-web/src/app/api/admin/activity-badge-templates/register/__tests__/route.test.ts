@@ -37,6 +37,12 @@ const uploadMock = vi.fn<(path: string, body: Buffer, options: { contentType: st
 )
 const getPublicUrlMock = vi.fn((path: string) => ({ data: { publicUrl: `https://cdn.test/images/${path}` } }))
 
+// 대표색 추출은 실제 이미지를 내려받으므로 막는다(티켓 20261119_1652). 추출 자체는 badgeBgColors.test.ts가 본다.
+const bgColorsMock = vi.hoisted(() => vi.fn<(url: string | null) => Promise<{ bg_colors?: string[] }>>(async () => ({})))
+vi.mock('@/lib/admin/badgeBgColors', () => ({
+  badgeBgColorsFields: bgColorsMock,
+  badgeBgColorsFieldsIfChanged: vi.fn(async () => ({})),
+}))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
     from: (t: string) => {
@@ -86,6 +92,8 @@ beforeEach(() => {
   fromCalls.length = 0
   uploadMock.mockClear()
   afterMock.mockClear()
+  bgColorsMock.mockReset()
+  bgColorsMock.mockResolvedValue({})
 })
 
 async function expectError(res: Response, status: number, message: string) {
@@ -162,6 +170,22 @@ describe('register — 저장', () => {
     expect(body.originalUrl).toBe(`https://cdn.test/images/badges/activity-template/${BADGE_ID}.png`)
     expect(body.webpBytes).toBeGreaterThan(0)
     expect(afterMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('대표색을 새 이미지 주소에서 뽑아 같은 update에 담는다(티켓 20261119_1652)', async () => {
+    bgColorsMock.mockResolvedValue({ bg_colors: ['#ff8800'] })
+    const res = await POST(await req())
+    expect(res.status).toBe(200)
+    expect(updatePayloads).toHaveLength(1)
+    expect(updatePayloads[0].bg_colors).toEqual(['#ff8800'])
+    expect(bgColorsMock).toHaveBeenCalledWith(updatePayloads[0].image_url)
+  })
+
+  it('대표색 추출이 비어 있어도(실패) 이미지 저장은 성공하고 bg_colors는 담지 않는다', async () => {
+    const res = await POST(await req())
+    expect(res.status).toBe(200)
+    expect(updatePayloads).toHaveLength(1)
+    expect('bg_colors' in updatePayloads[0]).toBe(false)
   })
 
   it('올리기가 실패하면 500이고 DB 오류 원문을 싣지 않는다', async () => {

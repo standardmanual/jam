@@ -150,7 +150,8 @@ describe('POST의 insert 페이로드는 공용 순수 함수가 만든다 (티�
       /import\s*\{[^}]*\bbuildBadgeInsertPayload\b[^}]*\}\s*from\s*'@\/lib\/admin\/badge-insert-payload'/
     )
     expect(postCode).toMatch(/const insertPayload = buildBadgeInsertPayload\(body\)/)
-    expect(postCode).toMatch(/\.insert\(insertPayload\)/)
+    // 대표색은 같은 insert에 펼쳐 담는다(티켓 20261119_1652)
+    expect(postCode).toMatch(/\.insert\(\{ \.\.\.insertPayload, \.\.\.bgColorsFields \}\)/)
   })
 
   it('매핑을 라우트 안에 다시 인라인하지 않는다 — 원본은 순수 함수 한 곳이다', () => {

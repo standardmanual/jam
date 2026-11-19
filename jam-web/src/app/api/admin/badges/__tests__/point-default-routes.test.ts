@@ -78,6 +78,11 @@ const fakeClient = {
   },
 }
 
+// 대표색 추출은 실제 이미지를 내려받으므로 막는다(티켓 20261119_1652). 추출 자체는 badgeBgColors.test.ts가 본다.
+vi.mock('@/lib/admin/badgeBgColors', () => ({
+  badgeBgColorsFields: vi.fn(async () => ({})),
+  badgeBgColorsFieldsIfChanged: vi.fn(async () => ({})),
+}))
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => fakeClient }))
 vi.mock('@/lib/admin/auth', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/admin/auth')>()),

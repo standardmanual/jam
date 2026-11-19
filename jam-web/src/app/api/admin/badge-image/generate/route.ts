@@ -5,6 +5,7 @@ import { after, NextRequest, NextResponse } from 'next/server'
 import { warmImageVariants } from '@/lib/images/warmImageVariants'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { badgeBgColorsFields } from '@/lib/admin/badgeBgColors'
 import { isKnownBadgeImageDesign } from '@/lib/admin/badgeImageDesigns'
 
 // 렌더링(next/og·resvg)이 수 초 걸릴 수 있어 다른 admin 라우트(strava sync 등)와 동일하게
@@ -127,9 +128,11 @@ export async function POST(req: NextRequest) {
   // DB에는 캐시 무효화용 쿼리스트링을 붙여 저장해 재생성 즉시 새 이미지가 보이도록 한다.
   const imageUrl = `${publicUrl}?v=${Date.now()}`
 
+  // 대표색은 같은 update에 담는다(티켓 20261119_1652)
+  const bgColorsFields = await badgeBgColorsFields(imageUrl)
   const { error: updateErr } = await supabase
     .from('badges')
-    .update({ image_url: imageUrl })
+    .update({ image_url: imageUrl, ...bgColorsFields })
     .eq('id', badge.id)
   if (updateErr) {
     return NextResponse.json({ error: `이미지는 업로드됐지만 배지 반영에 실패했습니다: ${updateErr.message}` }, { status: 500 })
