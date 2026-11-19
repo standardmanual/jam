@@ -289,7 +289,7 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
     return `${hex} ${along(x)}`
   }).join(', ')
   return [
-    `radial-gradient(ellipse ${sizeX(1.12)} ${sizeY(0.69)} at 50% ${along(0.46)}, ${gaussianAlphaStops('#ffffff', 0.6)})`,
+    `radial-gradient(ellipse ${sizeX(2.24)} ${sizeY(1.38)} at 50% ${along(0.46)}, ${gaussianAlphaStops('#ffffff', 0.6)})`,
     `radial-gradient(ellipse ${sizeX(1)} ${sizeY(0.56)} at 50% ${along(0)}, ${gaussianAlphaStops(dark, 0.85)})`,
     `linear-gradient(to bottom, ${linear})`,
   ]
@@ -299,7 +299,7 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
 export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
   const [, mid] = glowPalette(colors, options)
   const soft = mixHex(mid, '#ffffff', 0.82)
-  return `inset 0 0 96px 15px ${withAlpha(soft, 0.65)}, inset 0 0 36px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.92), 0.8)}`
+  return `inset 0 0 192px 30px ${withAlpha(soft, 0.65)}, inset 0 0 72px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.92), 0.8)}`
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
