@@ -18,6 +18,7 @@ const USER_ID = 'user-1'
 const SECRET_BADGE_ID = 'badge-secret-id'
 const SECRET_NAME = '비밀배지이름'
 const SECRET_IMAGE = 'https://img.example/secret.png'
+const SECRET_BG_COLORS = ['#7090e0', '#203a8a']
 const SECRET_PREFIX = 'ZQX'
 const SECRET_SERIAL = 424242
 
@@ -27,7 +28,7 @@ type Row = {
   dropped_at: string
   dropper_user_id: string | null
   source: 'user' | 'system'
-  badges: { name: string; rarity: string; image_url: string | null }
+  badges: { name: string; rarity: string; image_url: string | null; bg_colors?: string[] | null }
   inventory_items: {
     serial_prefix: string | null
     serial_number: number
@@ -99,7 +100,7 @@ function row(overrides: Partial<Row> & { locked: boolean }): Row {
     dropped_at: '2026-10-18T00:00:00Z',
     dropper_user_id: 'dropper-1',
     source: 'user',
-    badges: { name: SECRET_NAME, rarity: 'epic', image_url: SECRET_IMAGE },
+    badges: { name: SECRET_NAME, rarity: 'epic', image_url: SECRET_IMAGE, bg_colors: SECRET_BG_COLORS },
     inventory_items: {
       serial_prefix: SECRET_PREFIX,
       serial_number: SECRET_SERIAL,
@@ -199,7 +200,8 @@ describe('잠긴 개체 가림 (운영 로직 7.3절)', () => {
 
     const raw = JSON.stringify(await (await get()).json())
 
-    for (const secret of [SECRET_NAME, SECRET_IMAGE, SECRET_BADGE_ID, SECRET_PREFIX, String(SECRET_SERIAL), '424242']) {
+    // 티켓 20261119_1653: 대표색도 잠긴 개체에는 싣지 않는다(상세 히어로는 흰 카드)
+    for (const secret of [SECRET_NAME, SECRET_IMAGE, SECRET_BADGE_ID, SECRET_PREFIX, String(SECRET_SERIAL), '424242', SECRET_BG_COLORS[0]]) {
       expect(raw, `응답에 ${secret}가 있다`).not.toContain(secret)
     }
   })
@@ -224,6 +226,7 @@ describe('잠긴 개체 가림 (운영 로직 7.3절)', () => {
       badge_id: SECRET_BADGE_ID,
       badge_name: SECRET_NAME,
       badge_image_url: SECRET_IMAGE,
+      badge_bg_colors: SECRET_BG_COLORS,
       serial: `${SECRET_PREFIX}${String(SECRET_SERIAL).padStart(6, '0')}`,
       serial_prefix: SECRET_PREFIX,
       serial_number: SECRET_SERIAL,

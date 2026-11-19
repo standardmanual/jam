@@ -26,6 +26,11 @@ export interface PickupDrop {
    * 옛 응답·연출 데이터에는 이 키가 없을 수 있다.
    */
   badge_description?: string | null
+  /**
+   * 배지 이미지 대표색(`badges.bg_colors`, 티켓 20261119_1653) — 히어로 카드의 Aura 배경 색. 잠긴 개체에는 싣지 않는다(서버가 비워 흰 카드).
+   * 옛 응답·연출 데이터에는 이 키가 없을 수 있다(없으면 NULL과 같이 흰 카드).
+   */
+  badge_bg_colors?: string[] | null
   dropper_name: string | null
   dropped_at: string
   /** 20260829_2101 — 개체 정체성 모델: poi_drops가 항상 이미 발급된 개체를 가리키므로
@@ -81,6 +86,8 @@ function toHeroBadge(drop: PickupDrop, rarity: BadgeRarity, locked: boolean) {
     background_shader_id: null,
     background_image_url: null,
     background_animation: null,
+    // 잠긴 개체는 그림을 가리므로 색도 넘기지 않는다(흰 카드)
+    bg_colors: locked ? null : (drop.badge_bg_colors ?? null),
   }
 }
 
