@@ -199,9 +199,9 @@ export const AURA_GLOW_BASE_COLOR = '#ffffff'
 /** «글로우» 면의 색 보정표. 자리 순서는 밝은 색 → 진한 색이며, 진한 색이 위쪽에 놓인다 */
 export const AURA_GLOW_TUNING: AuraTuning = {
   lightness: [0.94, 0.88, 0.8],
-  saturationScale: 1,
-  saturationMin: 0.5,
-  saturationMax: 0.95,
+  saturationScale: 0.8,
+  saturationMin: 0.4,
+  saturationMax: 0.76,
   slotSaturation: [0.85, 1, 0.95],
 }
 
