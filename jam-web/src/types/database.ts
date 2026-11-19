@@ -167,6 +167,12 @@ export interface BadgeRow {
    */
   sort_order: number
   image_url: string | null
+  /**
+   * 이미지에서 뽑은 대표색 원색(보정 전) 최대 3개, 밝기 높은 순 hex 배열(마이그레이션 347, 티켓 20261119_1651).
+   * NULL=아직 안 뽑음, `[]`=뽑았는데 색 없음(흑백 위주). `image_url`만 바뀌면 DB 트리거가 NULL로 비운다.
+   * 칸이 없는 옛 값은 NULL로 본다
+   */
+  bg_colors?: string[] | null
   condition_json: BadgeCondition | null
   activity_types: ActivityType[]
   patch_available: boolean
