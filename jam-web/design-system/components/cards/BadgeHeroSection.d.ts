@@ -26,6 +26,8 @@ export interface BadgeHeroSectionProps {
   onMedia?: boolean;
   /** 글자 블록(칩 · 이름 · 설명)에 거는 style. 배경 위 텍스트 그림자 보정은 호출부가 넘긴다 */
   textStyle?: CSSProperties;
+  /** 설명 글자를 `text-muted` 대신 `text-foreground`로 한 단계 진하게 한다(중간색 면 위 대비 보강). `onMedia`면 무시. 기본 false */
+  strongText?: boolean;
   /** 놓이는 자리. `page`(기본) = 배지 상세 페이지, `sheet` = 바텀시트 안 */
   size?: 'page' | 'sheet';
 }

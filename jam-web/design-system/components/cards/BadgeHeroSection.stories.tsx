@@ -27,6 +27,7 @@ const meta: Meta<typeof BadgeHeroSection> = {
     size: { control: 'radio', options: ['page', 'sheet'] },
     rarity: { control: 'radio', options: ['common', 'rare', 'epic', 'mystic'] },
     onMedia: { control: 'boolean' },
+    strongText: { control: 'boolean' },
   },
 };
 
@@ -187,5 +188,38 @@ export const LongDescription: Story = {
     // 말줄임 없이 내용이 카드 높이를 정한다 — 마지막 문장이 카드 안에서 잘리지 않는다
     const card = canvasElement.querySelector('h1')!.closest('.rounded-2xl') as HTMLElement;
     expect(lines[2].getBoundingClientRect().bottom).toBeLessThanOrEqual(card.getBoundingClientRect().bottom);
+  },
+};
+
+/** 중간색 면 위에서 설명을 한 단계 진하게 한다. 샘플 배경은 서비스 Aura를 흉내 낸 세로 그라데이션(위 연함 → 아래 진함)이다. */
+export const StrongText: Story = {
+  name: '설명 진하게 — strongText',
+  render: () => (
+    <Column>
+      <BadgeHeroSection
+        strongText
+        backgroundColor="var(--card-bg)"
+        backgroundSlot={
+          <div
+            data-testid="bg"
+            className="absolute inset-0 z-0"
+            style={{ background: 'linear-gradient(to bottom, var(--card-bg) 0%, var(--card-bg) 28%, var(--border) 100%)' }}
+          />
+        }
+        name="한강 러너"
+        rarity="rare"
+        descriptionLines={DESCRIPTION}
+        imageSlot={<Image px={200} alt="한강 러너" />}
+      />
+    </Column>
+  ),
+  play: async ({ canvasElement }) => {
+    const lines = canvasElement.querySelectorAll('p');
+    expect(lines.length).toBe(2);
+    lines.forEach((line) => {
+      expect(line.className).toContain('text-foreground');
+      expect(line.className).not.toContain('text-muted');
+    });
+    expect(canvasElement.querySelector('h1')!.className).toContain('text-foreground');
   },
 };
