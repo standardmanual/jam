@@ -64,7 +64,7 @@ describe('BadgeAuraBackground', () => {
     expect(html).not.toContain('blur(24px)')
   })
 
-  it('variant="glow"는 그라데이션 세 장과 안쪽 빛이다 — 블러·블렌드·입자가 없고 바탕은 흰색이다', () => {
+  it('variant="glow"는 그라데이션 세 장에 블러 한 겹과 안쪽 빛이다 — 블렌드·입자가 없고 바탕은 흰색이다', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="glow" />)
     expect(html).toContain('data-variant="glow"')
     expect(AURA_GLOW_BASE_COLOR).toBe('#ffffff')
@@ -72,8 +72,10 @@ describe('BadgeAuraBackground', () => {
     expect(html.match(/linear-gradient\(to bottom/g)).toHaveLength(1)
     expect(html.match(/radial-gradient\(ellipse/g)).toHaveLength(2)
     expect(html).toContain('box-shadow:inset')
+    // 블러는 그라데이션 면 한 겹에만 걸고, 가장자리가 옅어지지 않게 카드 밖으로 키운다
+    expect(html.match(/filter:blur\(28px\)/g)).toHaveLength(1)
+    expect(html).toContain('inset:-56px')
     expect(html).not.toContain('mix-blend-mode')
-    expect(html).not.toContain('filter:blur')
     expect(html).not.toContain('soft-light')
   })
 

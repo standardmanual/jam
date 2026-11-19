@@ -206,7 +206,7 @@ export const AURA_GLOW_TUNING: AuraTuning = {
 }
 
 /** 미획득 배지의 «글로우» 색(밝은 → 진한). 대표색 대신 무채색으로 깐다 */
-export const AURA_GLOW_GRAY_COLORS: readonly [string, string, string] = ['#f3f4f6', '#e6e8ec', '#d8dce2']
+export const AURA_GLOW_GRAY_COLORS: readonly [string, string, string] = ['#f1f2f5', '#e1e4e8', '#cdd1d8']
 
 /** 두 hex를 `t`(0~1) 비율로 섞은 hex. 색 사이 경계가 보이지 않게 중간 정지점을 만들 때 쓴다 */
 function mixHex(from: string, to: string, t: number): string {
@@ -223,9 +223,13 @@ const smoothstep = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t)
 }
 
+/** 글로우 그라데이션 면에 거는 블러 반경(px)과, 블러로 가장자리가 옅어지지 않게 면을 카드 밖으로 키우는 여유(px) */
+export const AURA_GLOW_BLUR_PX = 28
+export const AURA_GLOW_BLEED_PX = AURA_GLOW_BLUR_PX * 2
+
 /** 선형 정지점 개수와 가우시안 번짐 폭(0~1). 클수록 색이 넓게 섞여 경계선이 흐려진다 */
 const GLOW_LINEAR_STEPS = 15
-const GLOW_BLEND_SIGMA = 0.22
+const GLOW_BLEND_SIGMA = 0.3
 
 /**
  * 제어색들을 가우시안 가중 평균으로 번지게 섞어 위치 `x`(0~1)의 색을 구한다.
@@ -274,7 +278,7 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
     return `${hex} ${Math.round(x * 100)}%`
   }).join(', ')
   return [
-    `radial-gradient(ellipse 75% 46% at 50% 46%, ${gaussianAlphaStops('#ffffff', 0.55)})`,
+    `radial-gradient(ellipse 112% 69% at 50% 46%, ${gaussianAlphaStops('#ffffff', 0.6)})`,
     `radial-gradient(ellipse 100% 56% at 50% 0%, ${gaussianAlphaStops(dark, 0.85)})`,
     `linear-gradient(to bottom, ${linear})`,
   ]
@@ -284,7 +288,7 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
 export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
   const [, mid] = glowPalette(colors, options)
   const soft = mixHex(mid, '#ffffff', 0.6)
-  return `inset 0 0 64px 10px ${withAlpha(soft, 0.7)}, inset 0 0 24px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.78), 0.8)}`
+  return `inset 0 0 96px 15px ${withAlpha(soft, 0.7)}, inset 0 0 36px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.78), 0.8)}`
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {

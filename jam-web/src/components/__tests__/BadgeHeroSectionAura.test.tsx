@@ -38,7 +38,7 @@ describe('Aura 적용 조건', () => {
     expect(html).toContain('data-variant="glow"')
     expect(html.toLowerCase()).toContain('background-color:#ffffff')
     expect(html).not.toContain('mix-blend-mode')
-    expect(html).not.toContain('filter:blur')
+    expect(html).toContain('filter:blur(28px)')
     expect(html).toMatch(/text-wrap! text-foreground/)
     expect(html).not.toContain('text-muted')
     expect(html).not.toContain('bg-transparent')
