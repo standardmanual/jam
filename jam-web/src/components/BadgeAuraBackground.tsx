@@ -3,6 +3,7 @@ import {
   AURA_BLUR_DETAIL_PX,
   AURA_GLOW_BASE_COLOR,
   AURA_GRAIN,
+  auraGlowInsetShadow,
   auraGlowLayers,
   auraGrainImage,
   auraLayers,
@@ -42,14 +43,14 @@ export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_
   if (!resolved) return null
 
   if (variant === 'glow') {
-    // 선형 그라데이션 한 장이라 블러·블렌드·입자가 필요 없다
+    // 그라데이션과 안쪽 빛(inset 그림자)만 쓰므로 블러·블렌드·입자가 필요 없다
     return (
       <div
         aria-hidden="true"
         data-testid="badge-aura-background"
         data-variant="glow"
         className="absolute inset-0 z-0 overflow-hidden rounded-[inherit] isolate pointer-events-none"
-        style={{ backgroundColor: AURA_GLOW_BASE_COLOR, backgroundImage: auraGlowLayers(resolved, { gray }).join(', ') }}
+        style={{ backgroundColor: AURA_GLOW_BASE_COLOR, backgroundImage: auraGlowLayers(resolved, { gray }).join(', '), boxShadow: auraGlowInsetShadow(resolved, { gray }) }}
       />
     )
   }

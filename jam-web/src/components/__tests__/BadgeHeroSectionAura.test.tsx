@@ -32,11 +32,11 @@ const render = (extra: Omit<Partial<HeroProps>, 'badge'> & { badge?: Record<stri
 }
 
 describe('Aura 적용 조건', () => {
-  it('bg_colors 3색이면 글로우 Aura를 깔고, 카드 바탕은 #fbfcff, 설명은 text-foreground다', () => {
+  it('bg_colors 3색이면 글로우 Aura를 깔고, 카드 바탕은 #ffffff, 설명은 text-foreground다', () => {
     const html = render({ badge: { bg_colors: COLORS } })
     expect(html).toContain('badge-aura-background')
     expect(html).toContain('data-variant="glow"')
-    expect(html.toLowerCase()).toContain('background-color:#fbfcff')
+    expect(html.toLowerCase()).toContain('background-color:#ffffff')
     expect(html).not.toContain('mix-blend-mode')
     expect(html).not.toContain('filter:blur')
     expect(html).toMatch(/text-wrap! text-foreground/)
@@ -48,8 +48,8 @@ describe('Aura 적용 조건', () => {
     const earned = render({ badge: { bg_colors: COLORS } })
     const unearned = render({ badge: { bg_colors: COLORS }, hasEarned: false })
     expect(unearned).toContain('data-variant="glow"')
-    expect(unearned).toContain('#f1f2f4')
-    expect(earned).not.toContain('#f1f2f4')
+    expect(unearned).toContain('#e6e8ec')
+    expect(earned).not.toContain('#e6e8ec')
   })
 
   it('bg_colors가 NULL이거나 필드가 없으면 지금의 흰 카드와 DOM이 같다', () => {

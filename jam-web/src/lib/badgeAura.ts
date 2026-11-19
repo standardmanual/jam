@@ -193,54 +193,72 @@ export function auraLayers(colors: readonly string[], tuning: AuraTuning = AURA_
   ]
 }
 
-/** 상세 히어로 «글로우» 면의 바탕색. 가장자리와 아래쪽이 이 색으로 풀린다 (사용자 첨부 디자인, 2026-11-20) */
-export const AURA_GLOW_BASE_COLOR = '#fbfcff'
+/** 상세 히어로 «글로우» 면의 바탕색이자 맨 아래 색. 가장 아래는 반드시 흰색이다(사용자 지시, 2026-11-20) */
+export const AURA_GLOW_BASE_COLOR = '#ffffff'
 
-/** «글로우» 면의 색 보정표. 띠 방식보다 명도를 높이고 채도는 조금 살려 연한 빛번짐으로 보이게 한다 */
+/** «글로우» 면의 색 보정표. 자리 순서는 밝은 색 → 진한 색이며, 진한 색이 위쪽에 놓인다 */
 export const AURA_GLOW_TUNING: AuraTuning = {
-  lightness: [0.93, 0.88, 0.9],
+  lightness: [0.94, 0.88, 0.8],
   saturationScale: 1,
   saturationMin: 0.5,
   saturationMax: 0.95,
   slotSaturation: [0.85, 1, 0.95],
 }
 
-/** 미획득 배지의 «글로우» 색(위 → 아래). 대표색 대신 무채색으로 깐다 */
-export const AURA_GLOW_GRAY_COLORS: readonly [string, string, string] = ['#f1f2f4', '#e8eaed', '#dfe2e6']
+/** 미획득 배지의 «글로우» 색(밝은 → 진한). 대표색 대신 무채색으로 깐다 */
+export const AURA_GLOW_GRAY_COLORS: readonly [string, string, string] = ['#f3f4f6', '#e6e8ec', '#d8dce2']
 
 /** 두 hex를 `t`(0~1) 비율로 섞은 hex. 색 사이 경계가 보이지 않게 중간 정지점을 만들 때 쓴다 */
 function mixHex(from: string, to: string, t: number): string {
   return rgbToHex(lerpRgb(hexToRgb(from), hexToRgb(to), t))
 }
 
+/** 밝은 색 · 중간 색 · 진한 색 (미획득이면 무채색) */
+function glowPalette(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning }): [string, string, string] {
+  return options.gray ? [...AURA_GLOW_GRAY_COLORS] : (tuneAuraColors(colors, options.tuning ?? AURA_GLOW_TUNING) as [string, string, string])
+}
+
 /**
  * 상세 히어로 «글로우» 면의 `background-image` 층 목록(위 → 아래 쌓임). 블러·블렌드 없이 그라데이션만 쓴다.
- * 1) 세로 선형: 맨 위 색 → 중간 색 → 마지막 색이 위에서 아래로 차례로 쌓인다. 정지점 사이에 섞은 색을 촘촘히 넣어
- *    겹침 구간을 넓혔고, 색이 바뀌는 선이 눈에 띄지 않는다.
- * 2) 아래쪽 타원: 마지막 색이 아래 가운데에서 원형으로 퍼지다가 바탕색으로 풀린다(사용자 첨부 «Hum a tune» 디자인).
- * `gray`면 대표색 대신 무채색(미획득)이다. 얼룩 없이 색 위치가 위에서 아래로 정해지게 했다(사용자 지시, 2026-11-20).
+ * 구성은 사용자가 첨부한 카드 디자인을 따른다(2026-11-20).
+ * 1) 안쪽 중앙 하이라이트: 카드 가운데가 살짝 밝아지는 흰빛
+ * 2) 위쪽 타원: 가장 진한 색이 위 가운데에서 퍼지고 좌우 모서리로 갈수록 옅어진다
+ * 3) 세로 선형: 진한 색 → 중간 색 → 밝은 색 → 흰색. 정지점 사이에 섞은 색을 촘촘히 두어 겹침 구간을 넓히고 경계선이 보이지 않게 한다. 아래 약 3분의 1은 흰색이다
+ * `gray`면 대표색 대신 무채색(미획득)이다.
  */
 export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string[] {
-  const [top, mid, low] = options.gray ? AURA_GLOW_GRAY_COLORS : tuneAuraColors(colors, options.tuning ?? AURA_GLOW_TUNING)
-  const base = AURA_GLOW_BASE_COLOR
+  const [light, mid, dark] = glowPalette(colors, options)
+  const white = AURA_GLOW_BASE_COLOR
   const linear = [
-    `${top} 0%`,
-    `${mixHex(top, mid, 0.35)} 16%`,
-    `${mixHex(top, mid, 0.7)} 30%`,
-    `${mid} 44%`,
-    `${mixHex(mid, low, 0.4)} 58%`,
-    `${mixHex(mid, low, 0.8)} 72%`,
-    `${mixHex(low, base, 0.35)} 88%`,
-    `${mixHex(low, base, 0.7)} 100%`,
+    `${mixHex(dark, white, 0.2)} 0%`,
+    `${mixHex(dark, mid, 0.5)} 12%`,
+    `${mid} 26%`,
+    `${mixHex(mid, light, 0.5)} 38%`,
+    `${light} 50%`,
+    `${mixHex(light, white, 0.5)} 62%`,
+    `${mixHex(light, white, 0.85)} 72%`,
+    `${white} 84%`,
+    `${white} 100%`,
   ].join(', ')
-  const bottomGlow = [
-    `${withAlpha(low, 0.95)} 0%`,
-    `${withAlpha(low, 0.7)} 28%`,
-    `${withAlpha(low, 0.4)} 52%`,
-    `${withAlpha(low, 0.15)} 76%`,
-    `${withAlpha(low, 0)} 100%`,
+  const topGlow = [
+    `${withAlpha(dark, 0.9)} 0%`,
+    `${withAlpha(dark, 0.6)} 28%`,
+    `${withAlpha(dark, 0.3)} 56%`,
+    `${withAlpha(dark, 0.1)} 80%`,
+    `${withAlpha(dark, 0)} 100%`,
   ].join(', ')
-  return [`radial-gradient(ellipse 105% 52% at 50% 84%, ${bottomGlow})`, `linear-gradient(to bottom, ${linear})`]
+  const innerLight = ['rgba(255,255,255,0.6) 0%', 'rgba(255,255,255,0.3) 45%', 'rgba(255,255,255,0) 100%'].join(', ')
+  return [
+    `radial-gradient(ellipse 58% 34% at 50% 44%, ${innerLight})`,
+    `radial-gradient(ellipse 90% 46% at 50% 0%, ${topGlow})`,
+    `linear-gradient(to bottom, ${linear})`,
+  ]
+}
+
+/** 카드 안쪽 가장자리에 도는 밝은 빛(inset `box-shadow`). 밝은 색을 더 희게 올린 색을 쓴다 */
+export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
+  const [light, mid] = glowPalette(colors, options)
+  return `inset 0 0 28px 2px ${withAlpha(mixHex(mid, '#ffffff', 0.6), 0.75)}, inset 0 0 8px 0 ${withAlpha(mixHex(light, '#ffffff', 0.5), 0.9)}`
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
