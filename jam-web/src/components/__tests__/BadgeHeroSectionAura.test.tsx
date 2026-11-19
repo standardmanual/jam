@@ -44,6 +44,14 @@ describe('Aura 적용 조건', () => {
     expect(html).not.toContain('bg-transparent')
   })
 
+  it('미획득이면 대표색 대신 그레이 글로우다', () => {
+    const earned = render({ badge: { bg_colors: COLORS } })
+    const unearned = render({ badge: { bg_colors: COLORS }, hasEarned: false })
+    expect(unearned).toContain('data-variant="glow"')
+    expect(unearned).toContain('#f1f2f4')
+    expect(earned).not.toContain('#f1f2f4')
+  })
+
   it('bg_colors가 NULL이거나 필드가 없으면 지금의 흰 카드와 DOM이 같다', () => {
     const base = render()
     expect(render({ badge: { bg_colors: null } })).toBe(base)

@@ -205,19 +205,17 @@ export const AURA_GLOW_TUNING: AuraTuning = {
   slotSaturation: [0.85, 1, 0.95],
 }
 
+/** 미획득 배지의 «글로우» 색(위 → 아래). 대표색 대신 무채색으로 깐다 */
+export const AURA_GLOW_GRAY_COLORS: readonly [string, string, string] = ['#f1f2f4', '#e8eaed', '#dfe2e6']
+
 /**
- * 상세 히어로 «글로우» 면의 `background-image` 층 목록(위 → 아래 쌓임). 블러·블렌드 없이 방사형 그라데이션만 겹친다.
- * 위쪽 오른쪽(맨 위 색) · 왼쪽 가운데(중간 색) · 아래쪽 가운데(마지막 색)에서 퍼지는 빛이고,
- * 맨 아래는 바탕색으로 풀린다. 구성은 사용자가 첨부한 «Hum a tune» 카드 디자인을 따른다.
+ * 상세 히어로 «글로우» 면의 `background-image` 층 목록. 세로 선형 그라데이션 한 장이다.
+ * 맨 위 색 → 중간 색 → 마지막 색이 위에서 아래로 차례로 쌓이고, 맨 아래는 바탕색으로 풀린다.
+ * 얼룩 없이 색 위치가 한 줄로 정해지게 했다(사용자 지시, 2026-11-20). `gray`면 대표색 대신 무채색(미획득)이다.
  */
-export function auraGlowLayers(colors: readonly string[], tuning: AuraTuning = AURA_GLOW_TUNING): string[] {
-  const [top, mid, low] = tuneAuraColors(colors, tuning)
-  return [
-    `linear-gradient(to bottom, transparent 66%, ${AURA_GLOW_BASE_COLOR} 100%)`,
-    `radial-gradient(ellipse 105% 60% at 50% 74%, ${withAlpha(low, 0.95)} 0%, transparent 76%)`,
-    `radial-gradient(ellipse 95% 66% at 8% 42%, ${mid} 0%, transparent 76%)`,
-    `radial-gradient(ellipse 95% 58% at 92% 6%, ${withAlpha(top, 0.95)} 0%, transparent 76%)`,
-  ]
+export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string[] {
+  const [top, mid, low] = options.gray ? AURA_GLOW_GRAY_COLORS : tuneAuraColors(colors, options.tuning ?? AURA_GLOW_TUNING)
+  return [`linear-gradient(to bottom, ${top} 0%, ${mid} 40%, ${low} 74%, ${AURA_GLOW_BASE_COLOR} 100%)`]
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {

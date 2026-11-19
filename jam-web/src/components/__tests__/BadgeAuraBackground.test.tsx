@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, AURA_GLOW_BASE_COLOR, auraGlowLayers, auraLayers } from '@/lib/badgeAura'
+import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, AURA_GLOW_BASE_COLOR, AURA_GLOW_GRAY_COLORS, AURA_GLOW_TUNING, auraGlowLayers, auraLayers, tuneAuraColors } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
@@ -64,21 +64,30 @@ describe('BadgeAuraBackground', () => {
     expect(html).not.toContain('blur(24px)')
   })
 
-  it('variant="glow"는 방사형 그라데이션 한 장이다 — 블러·블렌드·입자가 없고 바탕은 글로우 바탕색이다', () => {
+  it('variant="glow"는 세로 선형 그라데이션 한 장이다 — 방사형·블러·블렌드·입자가 없고 바탕은 글로우 바탕색이다', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="glow" />)
     expect(html).toContain('data-variant="glow"')
     expect(html.toLowerCase()).toContain(`background-color:${AURA_GLOW_BASE_COLOR}`)
-    expect(html.match(/radial-gradient/g)).toHaveLength(3)
+    expect(html.match(/linear-gradient\(to bottom/g)).toHaveLength(1)
+    expect(html).not.toContain('radial-gradient')
     expect(html).not.toContain('mix-blend-mode')
     expect(html).not.toContain('filter:blur')
     expect(html).not.toContain('soft-light')
   })
 
-  it('auraGlowLayers는 맨 위 층이 아래쪽을 바탕색으로 푸는 선형 그라데이션이다', () => {
-    const layers = auraGlowLayers(COLORS)
-    expect(layers).toHaveLength(4)
-    expect(layers[0]).toContain('linear-gradient')
-    expect(layers[0]).toContain(AURA_GLOW_BASE_COLOR)
+  it('auraGlowLayers는 위에서 아래로 맨 위 색 → 중간 색 → 마지막 색 → 바탕색 순이다', () => {
+    const [layer] = auraGlowLayers(COLORS)
+    const [top, mid, low] = tuneAuraColors(COLORS, AURA_GLOW_TUNING)
+    expect(layer.indexOf(top)).toBeLessThan(layer.indexOf(mid))
+    expect(layer.indexOf(mid)).toBeLessThan(layer.indexOf(low))
+    expect(layer.indexOf(low)).toBeLessThan(layer.lastIndexOf(AURA_GLOW_BASE_COLOR))
+  })
+
+  it('gray면 대표색 대신 무채색 세 색으로 깐다(미획득)', () => {
+    const [layer] = auraGlowLayers(COLORS, { gray: true })
+    for (const c of AURA_GLOW_GRAY_COLORS) expect(layer).toContain(c)
+    const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="glow" gray />)
+    expect(html).toContain(AURA_GLOW_GRAY_COLORS[0])
   })
 
   it('will-change와 drop-shadow를 쓰지 않는다', () => {
