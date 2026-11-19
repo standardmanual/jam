@@ -20,12 +20,15 @@ export type BagItemState = 'active' | 'used' | 'needed' | 'inactive'
 export default function BagItemCell({
   name,
   imageUrl,
+  bgColors = null,
   rarity = null,
   state,
   onClick,
 }: {
   name: string
   imageUrl: string | null
+  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 없으면 지금 모습 그대로 */
+  bgColors?: string[] | null
   rarity?: BadgeRarity | null
   state: BagItemState
   onClick: () => void
@@ -43,6 +46,7 @@ export default function BagItemCell({
       className={className}
       name={name}
       imageUrl={imageUrl}
+      bgColors={bgColors}
       rarity={rarity}
       earned={state !== 'needed' && state !== 'used'}
       onClick={active ? onClick : undefined}

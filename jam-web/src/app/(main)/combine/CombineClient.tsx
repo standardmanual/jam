@@ -64,10 +64,10 @@ import type { PendingResultView, PendingResultsPayload } from '@/lib/combine/pen
 import type { BadgeRow, CombinationRecipeRow, CombineSlotBadgeType, InventoryItemRow } from '@/types/database'
 
 export interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> {
-  badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
+  badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'bg_colors'>
 }
 
-type BadgeDetail = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description'>
+type BadgeDetail = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description' | 'bg_colors'>
 
 /** 슬롯 하나에 딸린 후보(OR) 배지 상세 — 티켓 20260917_1427 */
 export interface RecipeSlotWithCandidates {
@@ -75,7 +75,7 @@ export interface RecipeSlotWithCandidates {
   slot_order: number
   badge_type: CombineSlotBadgeType
   /** 등급은 가방 카드의 등급 칩에 쓴다(없으면 칩 없음). 서버(`page.tsx`)가 후보 배지 상세를 그대로 내려 주므로 실제로는 들어 있다 */
-  candidates: (Pick<BadgeRow, 'id' | 'name' | 'image_url'> & Partial<Pick<BadgeRow, 'rarity'>>)[]
+  candidates: (Pick<BadgeRow, 'id' | 'name' | 'image_url'> & Partial<Pick<BadgeRow, 'rarity' | 'bg_colors'>>)[]
 }
 
 /** 공개 레시피 + 슬롯 상세 + 보상 배지 상세(티켓 20260917_1655, 슬롯 기반 크래프팅 UI) */
@@ -264,6 +264,8 @@ interface SlotFill {
   badgeId: string
   name: string
   imageUrl: string | null
+  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654) */
+  bgColors?: string[] | null
   /** 후보 행의 등급 — 등급 대응형 레시피에서 첫 재료가 정한 등급을 채운 칸에서 읽는다(`lockedGradeOf`). 조건 슬롯·옛 호출부는 비어 있다 */
   rarity?: BadgeRow['rarity'] | null
 }
@@ -279,6 +281,8 @@ interface BagRow {
   badgeId: string
   name: string
   imageUrl: string | null
+  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654) */
+  bgColors?: string[] | null
   /** 가방 카드의 등급 칩(Common이거나 없으면 칩 없음, 티켓 20261110_2150) */
   rarity?: BadgeRow['rarity'] | null
   /** active: 탭해서 채울 수 있음 · used: 다른 슬롯에 이미 씀 · needed: 아예 보유하지 않음 */
@@ -468,7 +472,7 @@ export default function CombineClient({
       if (slot.badge_type === 'item') {
         const owned = itemsByBadgeId.get(candidate.id) ?? []
         if (owned.length === 0) {
-          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, rarity: candidate.rarity ?? null, state: 'needed' })
+          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, bgColors: candidate.bg_colors ?? null, rarity: candidate.rarity ?? null, state: 'needed' })
           continue
         }
         for (const inv of owned) {
@@ -479,13 +483,14 @@ export default function CombineClient({
             badgeId: candidate.id,
             name: inv.badge.name,
             imageUrl: inv.badge.image_url,
+            bgColors: inv.badge.bg_colors ?? null,
             rarity: inv.badge.rarity,
             state: usedElsewhere ? 'used' : 'active',
           })
         }
       } else {
         if (!ownedConditionSet.has(candidate.id)) {
-          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, rarity: candidate.rarity ?? null, state: 'needed' })
+          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, bgColors: candidate.bg_colors ?? null, rarity: candidate.rarity ?? null, state: 'needed' })
           continue
         }
         const usedElsewhere = Object.entries(fills).some(([sId, f]) => sId !== slot.id && f.refId === candidate.id)
@@ -495,6 +500,7 @@ export default function CombineClient({
           badgeId: candidate.id,
           name: candidate.name,
           imageUrl: candidate.image_url,
+          bgColors: candidate.bg_colors ?? null,
           rarity: candidate.rarity ?? null,
           state: usedElsewhere ? 'used' : 'active',
         })
@@ -512,7 +518,7 @@ export default function CombineClient({
       for (const key of Object.keys(next)) {
         if (next[key].refId === refId) delete next[key]
       }
-      next[slotId] = { refId, badgeId: row.badgeId, name: row.name, imageUrl: row.imageUrl, rarity: row.rarity ?? null }
+      next[slotId] = { refId, badgeId: row.badgeId, name: row.name, imageUrl: row.imageUrl, bgColors: row.bgColors ?? null, rarity: row.rarity ?? null }
       return next
     })
     setBagSlotId(null)
@@ -1008,6 +1014,7 @@ export default function CombineClient({
                 const shown = fill ?? activeRow
                 const shownName = shown?.name ?? firstCandidate?.name ?? ''
                 const shownImage = shown ? shown.imageUrl : (firstCandidate?.image_url ?? null)
+                const shownColors = shown ? shown.bgColors : (firstCandidate?.bg_colors ?? null)
 
                 return (
                   <RecipeSlotCard
@@ -1015,6 +1022,7 @@ export default function CombineClient({
                     status={status}
                     name={shownName}
                     imageUrl={shownImage}
+                    bgColors={shownColors}
                     loading={loading}
                     dense={selectedRecipe.slots.length <= 4}
                     onAdd={() => addToSlot(slot)}
@@ -1096,6 +1104,7 @@ export default function CombineClient({
                         key={row.key}
                         name={row.name}
                         imageUrl={row.imageUrl}
+                        bgColors={row.bgColors}
                         rarity={row.rarity}
                         state={row.state}
                         onClick={() => bagSlot && active && fillSlot(bagSlot.id, row)}

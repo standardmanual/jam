@@ -20,6 +20,8 @@ interface RecipeSlotCardProps {
   status: RecipeSlotStatus
   name: string
   imageUrl?: string | null
+  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 가진 게 없는 칸(`unowned`)은 점선만 그려 색을 쓰지 않는다 */
+  bgColors?: string[] | null
   onAdd?: () => void
   onRemove?: () => void
   /** 제출 중이면 «+»·«−»를 비활성으로 둔다 */
@@ -32,6 +34,7 @@ export default function RecipeSlotCard({
   status,
   name,
   imageUrl,
+  bgColors = null,
   onAdd,
   onRemove,
   loading = false,
@@ -49,6 +52,7 @@ export default function RecipeSlotCard({
         className={cardClassName}
         name={name}
         imageUrl={imageUrl}
+        bgColors={unowned ? null : bgColors}
         rarity={null}
         earned={!dimmed}
         undiscovered={unowned}

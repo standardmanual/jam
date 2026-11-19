@@ -58,6 +58,7 @@ function SheetCells<T extends TierUpMaterial>({ cells, onPick }: { cells: TierUp
           key={item.id}
           name={item.badge.name}
           imageUrl={item.badge.image_url}
+          bgColors={item.badge.bg_colors}
           state={state}
           onClick={() => state === 'active' && onPick(item.id)}
         />
