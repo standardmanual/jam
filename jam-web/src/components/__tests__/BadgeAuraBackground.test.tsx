@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, AURA_GLOW_BASE_COLOR, AURA_GLOW_GRAY_COLORS, AURA_GLOW_TUNING, auraGlowInsetShadow, auraGlowLayers, auraLayers, tuneAuraColors } from '@/lib/badgeAura'
+import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, auraGlowInsetShadow, auraGlowLayers, auraLayers, tuneAuraColors } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
