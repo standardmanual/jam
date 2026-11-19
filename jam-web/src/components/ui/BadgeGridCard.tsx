@@ -123,7 +123,7 @@ export interface BadgeGridCardProps {
   /**
    * 썸네일 면에 깔 Aura 배경의 색 — `badges.bg_colors` 값 그대로(티켓 20261119_1654). 없거나 null이면 지금 모습 그대로다.
    * `locked`·`undiscovered`에는 깔지 않는다(이미지를 가리는 칸). 어드민 미리보기는 넘기지 않는다.
-   * 블러는 면 크기에 비례한다(`badgeAura.ts`의 `AURA_BLUR_RATIO`). 입자는 목록에서 끈다.
+   * 글로우의 블러·여유·안쪽 빛은 면 크기에 비례한다(`badgeAura.ts`의 `auraGlowMetrics`).
    * `earned={false}`면 면의 `grayscale opacity-40`이 그라데이션까지 먹고, `outlined` 점선은 면의 형제라 영향이 없다.
    */
   bgColors?: string[] | null
@@ -226,7 +226,7 @@ export default function BadgeGridCard({
               // 칸 폭이 기기마다 달라 블러를 폭 비례(cqw)로 준다. 면 자신이 컨테이너라 자손인 Aura 레이어가 이 폭을 기준으로 삼는다
               style={aura ? { containerType: 'inline-size' } : undefined}
             >
-              {aura && <BadgeAuraBackground colors={aura} variant="glow" glowSize="container" gray={thumbDimmed} />}
+              {aura && <BadgeAuraBackground colors={aura} glowSize="container" gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
@@ -286,7 +286,7 @@ export default function BadgeGridCard({
         ) : (
           <>
             <div className={thumbnailCls}>
-              {aura && <BadgeAuraBackground colors={aura} variant="glow" glowSize={90} gray={thumbDimmed} />}
+              {aura && <BadgeAuraBackground colors={aura} glowSize={90} gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}

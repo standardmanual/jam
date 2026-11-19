@@ -1,101 +1,33 @@
 /**
- * 배지 Aura 배경 — 색 보정표와 그라데이션 계산 (티켓 20261119_1653, 상위 20261119_1650)
+ * 배지 글로우 배경 — 색 보정표와 그라데이션 계산 (티켓 20261119_1653·20261120_0235·20261120_0316, 상위 20261119_1650)
  *
  * 배지 이미지의 대표색(`badges.bg_colors`, 밝기 높은 순 hex 최대 3개)을 배경 그라데이션 색으로 바꾸는 순수 함수 모음이다.
- * 배경 부품(`BadgeAuraBackground`)과 목록 카드(티켓 20261119_1654)가 같은 계산을 쓰도록 한 곳에 둔다.
+ * 배경 부품(`BadgeAuraBackground`)이 상세 히어로와 목록 카드(`BadgeGridCard`)에서 같은 계산을 쓰도록 한 곳에 둔다.
  *
- * 이 파일의 숫자는 모두 사용자가 샘플 아티팩트로 확정한 값이다(2026-11-19). 토큰이 아니라 상수로 둔다.
+ * 이 파일의 숫자는 모두 사용자가 시안을 보고 확정한 값이다(2026-11-20). 토큰이 아니라 상수로 둔다.
  * 리터럴 색(`#ffffff`·`rgba(...)`)은 이 파일에만 둔다 — `serviceLiteralColors.test.ts`가 어댑터·DS 카드의 리터럴을 막는다.
- * 순서 규칙: 색은 위(틴트) → 중간 → 아래(가장 진한 색) 밝기 순이다.
+ * 순서 규칙: `bg_colors`는 밝은 색 → 진한 색 순이고, 글로우는 진한 색을 위쪽에 놓는다.
+ * 옛 «세로 띠 두 겹 + 입자» 방식(2026-11-19 샘플)은 글로우로 대체되어 걷어냈다. 이력은 git에 있다.
  */
 
-/** 한 자리(위·중간·아래)가 아니라 보정표 전체. 나중에 «보통»·«진하게»를 `AURA_TUNING`에 항목만 더해 추가한다 */
+/** 색 보정표: 한 자리가 아니라 세 자리(밝은·중간·진한 색) 전체를 정한다 */
 export interface AuraTuning {
-  /** 자리별 명도(HSL L), 위 → 아래 */
+  /** 자리별 명도(HSL L), 밝은 색 → 진한 색 */
   lightness: readonly [number, number, number]
   /** 원래 채도에 곱하는 배율 */
   saturationScale: number
   /** 배율을 곱한 채도의 하한·상한 */
   saturationMin: number
   saturationMax: number
-  /** 한계를 적용한 채도에 자리별로 곱하는 배율, 위 → 아래 */
+  /** 한계를 적용한 채도에 자리별로 곱하는 배율, 밝은 색 → 진한 색 */
   slotSaturation: readonly [number, number, number]
 }
-
-/** 사용자 확정 샘플(2026-11-19), 티켓 20261119_1653: «연하게» */
-export const AURA_TUNING: { light: AuraTuning } = {
-  light: {
-    lightness: [0.92, 0.83, 0.74],
-    saturationScale: 0.27,
-    saturationMin: 0.07,
-    saturationMax: 0.32,
-    slotSaturation: [0.65, 0.85, 1],
-  },
-}
-
-/** 카드·루트 바탕색 (사용자 확정 샘플) */
-export const AURA_BASE_COLOR = '#faf8f2'
 
 /** `bg_colors`가 `[]`(뽑았는데 색 없음 — 흑백 위주)일 때 대신 쓰는 청회색 3색, 밝은 순. 사용자가 아직 보지 않은 값이라 구현 뒤 확인 대상이다 */
 export const AURA_FALLBACK_COLORS: readonly string[] = ['#c9d3de', '#8fa2b8', '#5d7490']
 
-/** 상세 화면(큰 면)의 블러 반경(px) */
-export const AURA_BLUR_DETAIL_PX = 100
-
-/** 상세 카드 높이(px) — 블러 100px을 확정한 면의 크기. 비율의 분모 */
-const AURA_DETAIL_FACE_PX = 320
-
-/**
- * 면 한 변 대비 블러 비율(약 0.3125). 상세 카드(높이 약 320px)에서 확정한 100px에서 나왔다.
- * 작은 면(목록 카드)은 면 크기에 이 비율을 곱해 블러를 정한다 — 호출마다 숫자를 복사하지 않는다(티켓 20261119_1654).
- */
-export const AURA_BLUR_RATIO = AURA_BLUR_DETAIL_PX / AURA_DETAIL_FACE_PX
-
-/** 면 한 변이 `facePx`일 때의 블러 반경(px). 일반 목록 면 90px이면 약 28px이다 */
-export function auraBlurPx(facePx: number): number {
-  return Math.round(facePx * AURA_BLUR_RATIO * 100) / 100
-}
-
-/**
- * 면 폭에 맞춰 늘고 주는 블러 길이(CSS). 면 쪽에 `container-type: inline-size`가 있어야 한다.
- * 칸 폭이 기기마다 다른 compact 면이 쓴다 — `ResizeObserver` 없이 CSS만으로 같은 비율을 지킨다.
- */
-export function auraBlurContainerCss(): string {
-  return `calc(${AURA_BLUR_RATIO} * 100cqw)`
-}
-
-/** 입자(SVG feTurbulence) — 사용자 확정 샘플 */
-export const AURA_GRAIN = {
-  baseFrequency: 0.95,
-  numOctaves: 2,
-  opacity: 0.55,
-  blendMode: 'soft-light',
-  /** 타일 한 변(px) */
-  tilePx: 200,
-} as const
-
 /** 색상 채움 폭: 3색 미만이면 마지막 색에서 색상(hue)을 ±이 각도만큼 돌려 채운다 */
 export const AURA_FILL_HUE_DEG = 22
-
-/** 틴트(맨 위 색)의 불투명도 */
-const TINT_ALPHA = 0.12
-const WHITE = '#ffffff'
-const GRAY_STOP = 'rgba(219,219,219,0.22)'
-
-/** 정지점 위치(%). 레이어마다 `틴트·흰색·중간·진한색`이다. 레이어1 틴트·흰색은 같은 위치(28%)다 */
-export const AURA_STOPS = {
-  layer1: { tint: 28, white: 28, mid: 68, dark: 100 },
-  layer2: { gray: 34, white: 66, mid: 82, dark: 100 },
-} as const
-
-/** 글자색 판정에 쓰는 글자 높이(%) — 설명 글자가 놓이는 약 85% 지점 */
-export const AURA_TEXT_SAMPLE_PERCENT = 85
-
-/**
- * 배경 상대 휘도가 이 값 이상이면 어두운 글자(`dark`), 미만이면 밝은 글자(`light`).
- * 흰 글자와 #171717 글자의 대비가 같아지는 휘도(약 0.18)다.
- */
-export const AURA_TEXT_LUMINANCE_THRESHOLD = 0.18
 
 /** 정지색이 없는 무채색(채도 0) 원색의 보정 색상 — 색상이 정의되지 않아 청회색 쪽으로 둔다 */
 const ACHROMATIC_HUE = 215
@@ -168,8 +100,8 @@ export function fill3(colors: readonly string[]): string[] {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-/** 3색(부족하면 `fill3`로 채움)을 보정표대로 연하게 바꾼다. 위 → 아래 hex 3개 */
-export function tuneAuraColors(colors: readonly string[], tuning: AuraTuning = AURA_TUNING.light): string[] {
+/** 3색(부족하면 `fill3`로 채움)을 보정표대로 바꾼다. 밝은 색 → 진한 색 hex 3개 */
+export function tuneAuraColors(colors: readonly string[], tuning: AuraTuning = AURA_GLOW_TUNING): string[] {
   return fill3(colors).map((hex, slot) => {
     const { h, s } = hexToHsl(hex)
     const saturation = clamp(s * tuning.saturationScale, tuning.saturationMin, tuning.saturationMax) * tuning.slotSaturation[slot]
@@ -180,17 +112,6 @@ export function tuneAuraColors(colors: readonly string[], tuning: AuraTuning = A
 function withAlpha(hex: string, alpha: number): string {
   const [r, g, b] = hexToRgb(hex)
   return `rgba(${r},${g},${b},${alpha})`
-}
-
-/** 레이어 두 장의 `linear-gradient` 문자열. 둘 다 카드 크기 그대로 깔고 `multiply`로 겹친다 */
-export function auraLayers(colors: readonly string[], tuning: AuraTuning = AURA_TUNING.light): [string, string] {
-  const [top, mid, dark] = tuneAuraColors(colors, tuning)
-  const a = AURA_STOPS.layer1
-  const b = AURA_STOPS.layer2
-  return [
-    `linear-gradient(to bottom, transparent 0%, ${withAlpha(top, TINT_ALPHA)} ${a.tint}%, ${WHITE} ${a.white}%, ${mid} ${a.mid}%, ${dark} ${a.dark}%)`,
-    `linear-gradient(to bottom, transparent 0%, ${GRAY_STOP} ${b.gray}%, ${WHITE} ${b.white}%, ${mid} ${b.mid}%, ${dark} ${b.dark}%)`,
-  ]
 }
 
 /** 상세 히어로 «글로우» 면의 바탕색이자 맨 아래 색. 가장 아래는 반드시 흰색이다(사용자 지시, 2026-11-20) */
@@ -337,29 +258,6 @@ function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
   return [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * t) as Rgb
 }
 
-/** 상대 휘도(WCAG) 0~1 */
-function luminance([r, g, b]: Rgb): number {
-  const lin = (v: number) => {
-    const c = v / 255
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-  }
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
-}
-
-/**
- * 글자 높이(약 85%)에서 두 레이어를 곱한 밝기로 글자색을 정한다.
- * `dark`는 어두운 글자(`text-foreground`), `light`는 밝은 글자(`text-snow`)다.
- * 이 높이는 두 레이어 모두 «중간 → 진한색» 구간이라 중간·진한색 사이를 보간한다. 바탕·블러는 무시한다.
- */
-export function textMode(colors: readonly string[], tuning: AuraTuning = AURA_TUNING.light): 'light' | 'dark' {
-  const [, mid, dark] = tuneAuraColors(colors, tuning).map(hexToRgb)
-  const at = (stops: { mid: number; dark: number }): Rgb => lerpRgb(mid, dark, (AURA_TEXT_SAMPLE_PERCENT - stops.mid) / (stops.dark - stops.mid))
-  const c1 = at(AURA_STOPS.layer1)
-  const c2 = at(AURA_STOPS.layer2)
-  const product = [0, 1, 2].map((i) => (c1[i] * c2[i]) / 255) as Rgb
-  return luminance(product) >= AURA_TEXT_LUMINANCE_THRESHOLD ? 'dark' : 'light'
-}
-
 /**
  * DB 값(`badges.bg_colors`)을 Aura에 쓸 색으로 바꾼다.
  * - NULL·undefined(아직 안 뽑음) → null: Aura 없음, 지금의 흰 카드 그대로
@@ -371,14 +269,4 @@ export function resolveAuraColors(bgColors: readonly string[] | null | undefined
   if (bgColors.length === 0) return [...AURA_FALLBACK_COLORS]
   const normalized = bgColors.slice(0, 3).map(normalizeHex)
   return normalized.every((c): c is string => c !== null) ? normalized : null
-}
-
-/** 입자 SVG 타일의 `background-image` 값(`data:` URI). 새 이미지 파일을 만들지 않는다 */
-export function auraGrainImage(): string {
-  const { baseFrequency, numOctaves, tilePx } = AURA_GRAIN
-  const svg =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${tilePx}' height='${tilePx}'>` +
-    `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${baseFrequency}' numOctaves='${numOctaves}' stitchTiles='stitch'/></filter>` +
-    `<rect width='100%' height='100%' filter='url(#n)'/></svg>`
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }

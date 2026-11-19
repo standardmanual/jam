@@ -152,7 +152,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       // [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다(DS가 z-0 자리를 내준다). 첫 페인트 폴백 색은 파라미터에서 미리 깐다.
       // [20261119_1653] Aura 배경은 같은 슬롯에 들어간다(블롭과 동시에 켜지지 않는다). 바탕색은 인라인이라 카드 면(`bg-card-bg`)을 이긴다.
       backgroundSlot={
-        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} variant="glow" gray={!hasEarned} /> : undefined
+        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} gray={!hasEarned} /> : undefined
       }
       backgroundColor={backgroundAnimation?.bgColor ?? (auraColors ? AURA_GLOW_BASE_COLOR : undefined)}
       onMedia={onMedia}
