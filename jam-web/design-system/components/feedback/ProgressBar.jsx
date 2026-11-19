@@ -23,7 +23,7 @@ import React from 'react';
  *
  * [20261114_1502] `shape` 추가 — **기본 'flat'이라 기존 호출부는 한 글자도 바뀌지 않는다.** 'capsule'이면 홈 캡슐 게이지(`CapsuleGauge`)와 같은
  * 트랙·채움 모양을 쓴다: 어두운 트랙(`--capsule-track`) 안쪽 2px 여백, 둥근 채움, 채움 너비 `calc(원지름px + (100% - 원지름px) × 비율)`
- * (원지름 = height - 4, 비율 0이면 채움 없음). 테두리·그림자·점은 게이지 전용이라 없다. 채움 기본색은 `--capsule-fill`이고 호출부가 `color`로 정한다.
+ * (원지름 = height - 4, 비율 0이면 채움 없음). 테두리·그림자는 게이지 전용이라 없다(게이지의 회색 점은 2026-11-19에 뺐다). 채움 기본색은 `--capsule-fill`이고 호출부가 `color`로 정한다.
  * capsule은 숫자 height만 받는다(문자열이면 flat으로 그린다). `fillMode='track-gradient'`는 capsule에서 지원하지 않는다(solid로 그린다).
  */
 /**

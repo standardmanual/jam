@@ -20,7 +20,7 @@ import {
 /**
  * 캡슐 게이지 — 어두운 트랙 위에 오렌지 채움이 오른쪽으로 차오르는 서비스 전용 컴포넌트 (티켓 20261028_1739 2회, 채원 사전 판정 2026-10-30)
  *
- * 프로토타입 `JamGauge`(`app/spike/capsule-fill`, 4회차에 삭제)를 옮겼다. 어두운 트랙 위에 점 4개(20·40·60·80%)가 있고, 오렌지 채움은 왼쪽 끝에서 시작한다.
+ * 프로토타입 `JamGauge`(`app/spike/capsule-fill`, 4회차에 삭제)를 옮겼다. 오렌지 채움은 왼쪽 끝에서 시작한다. 트랙 위의 회색 점 4개(20·40·60·80%)는 2026-11-19 사용자 지시로 뺐다(티켓 20261119_1431).
  * 그래프 2%가 지름이 트랙 안쪽 높이와 같은 원이고, 100%는 트랙 안쪽을 가득 채운다. 채움의 오른쪽 끝 원 안에는 아무것도 얹지 않는다(알약 아이콘은 2026-11-12 사용자 지시로 뺐다, 티켓 20261112_1944).
  *
  *
@@ -53,9 +53,6 @@ export const CAPSULE_GAUGE_HEIGHT_PX = 36
 const BORDER_PX = 2
 /** 테두리 안쪽에서 채움까지의 간격(px) */
 const PADDING_PX = 2
-/** 트랙 위 점의 위치(트랙 안쪽 너비 기준 %) */
-const DOT_POSITIONS = [20, 40, 60, 80] as const
-const DOT_SIZE_PX = 3
 /** 숫자와 트랙·채움 가장자리 사이 간격(px) */
 const NUMBER_EDGE_GAP_PX = 14
 /** 숫자를 위로 올리는 양(px) — 글자 줄 상자의 가운데가 숫자 모양의 가운데보다 아래라 트랙 가운데에 맞추려고 올린다(2026-11-04 사용자 요청) */
@@ -194,23 +191,8 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
         boxShadow: '0 2px 0 rgba(25, 32, 28, 0.1)',
       }}
     >
-      {/* 트랙 안쪽 — 점과 채움의 기준 상자 */}
+      {/* 트랙 안쪽 — 채움과 글자의 기준 상자 */}
       <span className="relative block h-full w-full">
-        {DOT_POSITIONS.map((position) => (
-          <span
-            key={position}
-            aria-hidden="true"
-            className="absolute top-1/2 block rounded-full"
-            style={{
-              left: `${position}%`,
-              width: DOT_SIZE_PX,
-              height: DOT_SIZE_PX,
-              transform: 'translate(-50%, -50%)',
-              background: 'rgba(249, 249, 244, 0.22)',
-            }}
-          />
-        ))}
-
         {/* 이름표 아랫겹 — 트랙 위에 밝은 글자. 채움이 덮은 곳에서는 윗겹(채움 안쪽 어두운 글자)이 대신한다 */}
         {labelText && (
           <span aria-hidden="true" data-capsule-label="track" className="absolute left-0 top-0 flex h-full items-center" style={{ paddingLeft: LABEL_LEFT_PX, color: 'var(--snow)' }}>

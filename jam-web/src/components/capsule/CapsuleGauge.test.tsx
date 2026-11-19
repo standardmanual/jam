@@ -222,9 +222,12 @@ describe('색과 모양', () => {
     expect(html).toContain('var(--capsule-ring)')
   })
 
-  it('점 4개가 트랙 위에 있다', () => {
-    const html = render(120, 300)
-    expect(html.match(/left:(20|40|60|80)%/g)).toHaveLength(4)
+  it('트랙 위에 회색 점을 그리지 않는다(2026-11-19 사용자 지시, 이전에는 20·40·60·80% 자리에 점 4개가 있었다)', () => {
+    for (const html of [render(0, 300), render(120, 300), render(300, 300)]) {
+      expect(html.match(/left:(20|40|60|80)%/g)).toBeNull()
+      expect(html).not.toContain('rgba(249, 249, 244, 0.22)')
+      expect(html).not.toContain('width:3px')
+    }
   })
 
   it('채움 끝 원 안에 아이콘을 그리지 않는다(2026-11-12 사용자 지시, 이전에는 알약 아이콘이 있었다)', () => {
