@@ -57,6 +57,7 @@ function ResultTile({ item }: { item: PendingResultView }) {
         className="w-full"
         name={item.locked ? undefined : item.name}
         imageUrl={item.locked ? undefined : item.imageUrl}
+        bgColors={item.locked ? null : item.bgColors}
         rarity={item.rarity as BadgeRarity}
         locked={item.locked}
       />
