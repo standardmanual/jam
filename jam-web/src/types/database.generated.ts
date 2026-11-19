@@ -603,6 +603,7 @@ export type Database = {
           background_image_url: string | null
           background_shader_id: string | null
           background_video_url: string | null
+          bg_colors: Json | null
           branch_key: string | null
           category: string | null
           condition_json: Json | null
@@ -644,6 +645,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          bg_colors?: Json | null
           branch_key?: string | null
           category?: string | null
           condition_json?: Json | null
@@ -685,6 +687,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          bg_colors?: Json | null
           branch_key?: string | null
           category?: string | null
           condition_json?: Json | null
