@@ -58,6 +58,12 @@ describe('BadgeAuraBackground', () => {
     expect(renderToStaticMarkup(<BadgeAuraBackground colors={['#aabbcc', 'nope']} />)).toBe('')
   })
 
+  it('blurLength는 blurPx보다 앞서는 CSS 길이다', () => {
+    const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} blurPx={24} blurLength="calc(0.3125 * 100cqw)" />)
+    expect(html.match(/filter:blur\(calc\(0\.3125 \* 100cqw\)\)/g)).toHaveLength(2)
+    expect(html).not.toContain('blur(24px)')
+  })
+
   it('will-change와 drop-shadow를 쓰지 않는다', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} />)
     expect(html).not.toContain('will-change')

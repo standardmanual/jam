@@ -1,6 +1,7 @@
 'use client'
 
 import SafeImage from '@/components/SafeImage'
+import BadgeAuraBackground from '@/components/BadgeAuraBackground'
 import VisitCountChip from '@/components/ui/VisitCountChip'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
@@ -8,6 +9,7 @@ import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { SlotOutline } from '@ds/components/cards/SlotOutline'
 import { BADGE_CARD_DISPLAY_WIDTH, slotOutlineTraceSrc } from '@/lib/imageSrc'
+import { auraBlurContainerCss, auraBlurPx, resolveAuraColors } from '@/lib/badgeAura'
 import { MedalIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
@@ -118,6 +120,13 @@ export interface BadgeGridCardProps {
    * 만료·방문 횟수·children·미발견·외곽선 표현은 그리지 않는다. 기본 false라 다른 화면은 마크업이 그대로다.
    */
   compact?: boolean
+  /**
+   * 썸네일 면에 깔 Aura 배경의 색 — `badges.bg_colors` 값 그대로(티켓 20261119_1654). 없거나 null이면 지금 모습 그대로다.
+   * `locked`·`undiscovered`에는 깔지 않는다(이미지를 가리는 칸). 어드민 미리보기는 넘기지 않는다.
+   * 블러는 면 크기에 비례한다(`badgeAura.ts`의 `AURA_BLUR_RATIO`). 입자는 목록에서 끈다.
+   * `earned={false}`면 면의 `grayscale opacity-40`이 그라데이션까지 먹고, `outlined` 점선은 면의 형제라 영향이 없다.
+   */
+  bgColors?: string[] | null
   className?: string
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
   children?: ReactNode
@@ -155,6 +164,7 @@ export default function BadgeGridCard({
   showCommonChip = false,
   chipGray = false,
   compact = false,
+  bgColors = null,
   className = '',
   children,
 }: BadgeGridCardProps) {
@@ -179,7 +189,13 @@ export default function BadgeGridCard({
   // 점선이 추적할 주소. w=256, q=75 — 폭 90 이미지가 이미 받는 변환본이라 새 변환본이 생기지 않는다(`slotOutlineTraceSrc`)
   const outlineSrc = slotOutlineTraceSrc(imageUrl)
 
+  // Aura는 면(일반·compact)이 같이 쓰므로 색 판정은 한 번만 한다. 잠긴 칸·미발견 칸은 면 자체를 그리지 않으니 색도 계산하지 않는다
+  const aura = !locked && !undiscovered ? resolveAuraColors(bgColors) : null
+  // Aura는 면 안의 `absolute z-0` 면이라 이미지·대체 아이콘이 그 위로 올라와야 한다(비위치 요소는 z-0 위치 요소 아래에 그려진다)
+  const aboveAura = aura ? 'relative z-10 ' : ''
+
   const thumbnailCls = [
+    aura && 'relative',
     'w-full aspect-square rounded-2xl overflow-hidden',
     'flex items-center justify-center',
     thumbDimmed && 'grayscale opacity-40',
@@ -205,7 +221,12 @@ export default function BadgeGridCard({
           {locked ? (
             <LockedTile size={72} style={{ width: '100%', borderRadius: 'var(--radius-xl)' }} />
           ) : (
-            <div className={`w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-surface ${thumbDimmed ? 'grayscale opacity-40' : ''}`}>
+            <div
+              className={`${aura ? 'relative ' : ''}w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-surface ${thumbDimmed ? 'grayscale opacity-40' : ''}`}
+              // 칸 폭이 기기마다 달라 블러를 폭 비례(cqw)로 준다. 면 자신이 컨테이너라 자손인 Aura 레이어가 이 폭을 기준으로 삼는다
+              style={aura ? { containerType: 'inline-size' } : undefined}
+            >
+              {aura && <BadgeAuraBackground colors={aura} blurLength={auraBlurContainerCss()} grain={false} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
@@ -213,8 +234,8 @@ export default function BadgeGridCard({
                 height={72}
                 eager={eager}
                 variantWidth={BADGE_CARD_DISPLAY_WIDTH}
-                className="w-full h-full object-contain p-1"
-                fallback={<MedalIcon className="w-6 h-6 text-muted" />}
+                className={`${aboveAura}w-full h-full object-contain p-1`}
+                fallback={<MedalIcon className={`${aboveAura}w-6 h-6 text-muted`} />}
               />
             </div>
           )}
@@ -265,14 +286,15 @@ export default function BadgeGridCard({
         ) : (
           <>
             <div className={thumbnailCls}>
+              {aura && <BadgeAuraBackground colors={aura} blurPx={auraBlurPx(90)} grain={false} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
                 width={90}
                 height={90}
                 eager={eager}
-                className="w-full h-full object-contain p-1"
-                fallback={<MedalIcon className="w-10 h-10 text-muted" />}
+                className={`${aboveAura}w-full h-full object-contain p-1`}
+                fallback={<MedalIcon className={`${aboveAura}w-10 h-10 text-muted`} />}
               />
             </div>
             {outlined && (

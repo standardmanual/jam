@@ -23,17 +23,19 @@ import {
 interface BadgeAuraBackgroundProps {
   /** `badges.bg_colors` 값. 밝기 높은 순 hex, 3색 미만이면 색상을 돌려 채운다 */
   colors: string[]
-  /** 레이어 블러 반경(px). 기본은 상세 화면 값이고, 작은 면은 호출부가 줄여 넘긴다 */
+  /** 레이어 블러 반경(px). 기본은 상세 화면 값이고, 작은 면은 `auraBlurPx(면 크기)`로 계산해 넘긴다 */
   blurPx?: number
+  /** 블러 반경을 CSS 길이로 직접 준다(예: `auraBlurContainerCss()`). 있으면 `blurPx`보다 앞선다 */
+  blurLength?: string
   /** 입자(질감) 겹을 그릴지. 기본 true */
   grain?: boolean
 }
 
-export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_PX, grain = true }: BadgeAuraBackgroundProps) {
+export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_PX, blurLength, grain = true }: BadgeAuraBackgroundProps) {
   const resolved = resolveAuraColors(colors)
   if (!resolved) return null
   const [layer1, layer2] = auraLayers(resolved)
-  const blur = `blur(${blurPx}px)`
+  const blur = `blur(${blurLength ?? `${blurPx}px`})`
 
   return (
     <div

@@ -5,9 +5,13 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
+  AURA_BLUR_DETAIL_PX,
+  AURA_BLUR_RATIO,
   AURA_FALLBACK_COLORS,
   AURA_TUNING,
   type AuraTuning,
+  auraBlurContainerCss,
+  auraBlurPx,
   auraGrainImage,
   auraLayers,
   fill3,
@@ -199,5 +203,21 @@ describe('입자 이미지', () => {
     expect(svg).toContain('feTurbulence')
     expect(svg).toContain("baseFrequency='0.95'")
     expect(svg).toContain("numOctaves='2'")
+  })
+})
+
+describe('면 크기에 비례하는 블러 (티켓 20261119_1654)', () => {
+  it('비율은 상세 카드 확정값(높이 320px에서 100px)이다', () => {
+    expect(AURA_BLUR_RATIO).toBeCloseTo(0.3125, 6)
+    expect(auraBlurPx(320)).toBe(AURA_BLUR_DETAIL_PX)
+  })
+
+  it('일반 목록 면 90px은 약 28px, 작은 면은 더 작다', () => {
+    expect(auraBlurPx(90)).toBeCloseTo(28.13, 2)
+    expect(auraBlurPx(60)).toBeLessThan(auraBlurPx(90))
+  })
+
+  it('폭 비례 길이는 같은 비율을 100cqw에 곱한다', () => {
+    expect(auraBlurContainerCss()).toBe(`calc(${AURA_BLUR_RATIO} * 100cqw)`)
   })
 })

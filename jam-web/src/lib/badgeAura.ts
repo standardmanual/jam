@@ -39,8 +39,30 @@ export const AURA_BASE_COLOR = '#faf8f2'
 /** `bg_colors`가 `[]`(뽑았는데 색 없음 — 흑백 위주)일 때 대신 쓰는 청회색 3색, 밝은 순. 사용자가 아직 보지 않은 값이라 구현 뒤 확인 대상이다 */
 export const AURA_FALLBACK_COLORS: readonly string[] = ['#c9d3de', '#8fa2b8', '#5d7490']
 
-/** 상세 화면(큰 면)의 블러 반경(px). 작은 면은 호출부가 `blurPx`로 줄여 넘긴다(티켓 20261119_1654) */
+/** 상세 화면(큰 면)의 블러 반경(px) */
 export const AURA_BLUR_DETAIL_PX = 100
+
+/** 상세 카드 높이(px) — 블러 100px을 확정한 면의 크기. 비율의 분모 */
+const AURA_DETAIL_FACE_PX = 320
+
+/**
+ * 면 한 변 대비 블러 비율(약 0.3125). 상세 카드(높이 약 320px)에서 확정한 100px에서 나왔다.
+ * 작은 면(목록 카드)은 면 크기에 이 비율을 곱해 블러를 정한다 — 호출마다 숫자를 복사하지 않는다(티켓 20261119_1654).
+ */
+export const AURA_BLUR_RATIO = AURA_BLUR_DETAIL_PX / AURA_DETAIL_FACE_PX
+
+/** 면 한 변이 `facePx`일 때의 블러 반경(px). 일반 목록 면 90px이면 약 28px이다 */
+export function auraBlurPx(facePx: number): number {
+  return Math.round(facePx * AURA_BLUR_RATIO * 100) / 100
+}
+
+/**
+ * 면 폭에 맞춰 늘고 주는 블러 길이(CSS). 면 쪽에 `container-type: inline-size`가 있어야 한다.
+ * 칸 폭이 기기마다 다른 compact 면이 쓴다 — `ResizeObserver` 없이 CSS만으로 같은 비율을 지킨다.
+ */
+export function auraBlurContainerCss(): string {
+  return `calc(${AURA_BLUR_RATIO} * 100cqw)`
+}
 
 /** 입자(SVG feTurbulence) — 사용자 확정 샘플 */
 export const AURA_GRAIN = {
