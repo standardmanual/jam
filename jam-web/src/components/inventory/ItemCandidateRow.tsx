@@ -77,6 +77,8 @@ interface ItemCandidateRowProps {
   rarity: BadgeRarity | null | undefined
   /** 카드 썸네일에 쓰는 배지 그림 — 같은 배지의 개체들이라 시트가 한 장을 모두에게 준다(없으면 메달 아이콘) */
   imageUrl?: string | null
+  /** 카드 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 잠긴 개체에는 쓰지 않는다 */
+  bgColors?: string[] | null
   /** 지금 고른 행(요청 진행 중이든 아니든) — 프라이머리 링으로 표시한다 */
   selected?: boolean
   /** 다른 행이 처리되는 동안 이 행을 눌러도 반응하지 않게 한다(시각적으로도 억제) */
@@ -96,6 +98,7 @@ export default function ItemCandidateRow({
   candidate,
   rarity,
   imageUrl = null,
+  bgColors = null,
   selected = false,
   muted = false,
   trailing,
@@ -118,6 +121,7 @@ export default function ItemCandidateRow({
       className={muted ? 'w-full opacity-40 pointer-events-none' : 'w-full'}
       name={locked ? undefined : ''}
       imageUrl={locked ? undefined : imageUrl}
+      bgColors={locked ? null : bgColors}
       rarity={null}
       locked={locked}
       selected={selected}

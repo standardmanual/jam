@@ -14,6 +14,8 @@ export interface InventoryGridItem {
   id: string
   badgeName: string
   badgeImageUrl: string | null
+  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 잠긴 개체에는 싣지 않는다. 없으면 지금 모습 그대로 */
+  badgeBgColors?: string[] | null
   /** 무한레벨형 배지는 등급이 없다(마이그레이션 130). null이면 등급 칩을 그리지 않는다 */
   badgeRarity: string | null
   expiresAt?: string | null
@@ -81,7 +83,7 @@ export default function InventoryGrid({
         // 잠긴 개체는 이름·그림을 카드에 넘기지 않는다(카드도 막지만 호출부에서 먼저 끊는다) — 운영 로직 7.3절
         const identity = item.locked
           ? { locked: true }
-          : { name: item.badgeName, imageUrl: item.badgeImageUrl }
+          : { name: item.badgeName, imageUrl: item.badgeImageUrl, bgColors: item.badgeBgColors }
 
         if (mode === 'navigate') {
           return (
