@@ -420,6 +420,8 @@ export default function ProfileClient({
               onClick={() => handleCardClick(item)}
               name={meta.badge_name}
               imageUrl={meta.badge_image_url ?? null}
+              // 썸네일 면 Aura 색 — 피드 메타의 `badge_bg_colors`(hydrate·레거시 재구성이 싣는다, 티켓 20261119_1654). 없으면 지금 모습 그대로다
+              bgColors={(item.metadata as Record<string, unknown>).badge_bg_colors as string[] | null | undefined}
               rarity={(meta.rarity as BadgeRarity | null) ?? null}
               level={level}
               count={count}
