@@ -2,11 +2,10 @@ import {
   AURA_BASE_COLOR,
   AURA_BLUR_DETAIL_PX,
   AURA_GLOW_BASE_COLOR,
-  AURA_GLOW_BLEED_PX,
-  AURA_GLOW_BLUR_PX,
   AURA_GRAIN,
   auraGlowInsetShadow,
   auraGlowLayers,
+  auraGlowMetrics,
   auraGrainImage,
   auraLayers,
   resolveAuraColors,
@@ -38,15 +37,18 @@ interface BadgeAuraBackgroundProps {
   variant?: 'band' | 'glow'
   /** `glow`일 때 대표색 대신 무채색으로 깐다(미획득 배지) */
   gray?: boolean
+  /** `glow`의 블러·여유·안쪽 빛을 면 크기에 맞춘다. 없으면 상세 카드 값, 숫자면 면 한 변(px), `'container'`면 면 폭(cqw, 면 쪽에 `container-type: inline-size` 필요) */
+  glowSize?: number | 'container'
 }
 
-export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_PX, blurLength, grain = true, variant = 'band', gray = false }: BadgeAuraBackgroundProps) {
+export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_PX, blurLength, grain = true, variant = 'band', gray = false, glowSize }: BadgeAuraBackgroundProps) {
   const resolved = resolveAuraColors(colors)
   if (!resolved) return null
 
   if (variant === 'glow') {
     // 그라데이션 면에 블러를 걸되, 가장자리가 옅어지지 않게 위·좌·우로 카드 밖으로 키운다(루트가 overflow-hidden으로 자른다). 아래는 흰색이라 키우지 않는다.
     // 안쪽 빛(inset 그림자)은 블러 위에 따로 얹는다 — 블러 면 아래에 두면 가려진다.
+    const m = auraGlowMetrics(glowSize)
     return (
       <div
         aria-hidden="true"
@@ -57,9 +59,9 @@ export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_
       >
         <div
           className="absolute"
-          style={{ top: -AURA_GLOW_BLEED_PX, left: -AURA_GLOW_BLEED_PX, right: -AURA_GLOW_BLEED_PX, bottom: 0, backgroundImage: auraGlowLayers(resolved, { gray, bleedPx: AURA_GLOW_BLEED_PX }).join(', '), filter: `blur(${AURA_GLOW_BLUR_PX}px)` }}
+          style={{ top: m.negBleed, left: m.negBleed, right: m.negBleed, bottom: 0, backgroundImage: auraGlowLayers(resolved, { gray, bleed: m.bleed }).join(', '), filter: `blur(${m.blur})` }}
         />
-        <div className="absolute inset-0 rounded-[inherit]" style={{ boxShadow: auraGlowInsetShadow(resolved, { gray }) }} />
+        <div className="absolute inset-0 rounded-[inherit]" style={{ boxShadow: auraGlowInsetShadow(resolved, { gray, size: glowSize }) }} />
       </div>
     )
   }

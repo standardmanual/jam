@@ -9,7 +9,7 @@ import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { SlotOutline } from '@ds/components/cards/SlotOutline'
 import { BADGE_CARD_DISPLAY_WIDTH, slotOutlineTraceSrc } from '@/lib/imageSrc'
-import { auraBlurContainerCss, auraBlurPx, resolveAuraColors } from '@/lib/badgeAura'
+import { resolveAuraColors } from '@/lib/badgeAura'
 import { MedalIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
@@ -226,7 +226,7 @@ export default function BadgeGridCard({
               // 칸 폭이 기기마다 달라 블러를 폭 비례(cqw)로 준다. 면 자신이 컨테이너라 자손인 Aura 레이어가 이 폭을 기준으로 삼는다
               style={aura ? { containerType: 'inline-size' } : undefined}
             >
-              {aura && <BadgeAuraBackground colors={aura} blurLength={auraBlurContainerCss()} grain={false} />}
+              {aura && <BadgeAuraBackground colors={aura} variant="glow" glowSize="container" gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
@@ -286,7 +286,7 @@ export default function BadgeGridCard({
         ) : (
           <>
             <div className={thumbnailCls}>
-              {aura && <BadgeAuraBackground colors={aura} blurPx={auraBlurPx(90)} grain={false} />}
+              {aura && <BadgeAuraBackground colors={aura} variant="glow" glowSize={90} gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}

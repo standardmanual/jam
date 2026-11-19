@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import BadgeGridCard from '../BadgeGridCard'
-import { auraBlurContainerCss, auraBlurPx } from '@/lib/badgeAura'
+import { auraGlowMetrics } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 const IMAGE = 'https://example.com/badge.png'
@@ -108,20 +108,39 @@ describe('BadgeGridCard bgColors — 일반 면만의 규칙', () => {
   })
 })
 
-describe('BadgeGridCard bgColors — 블러 비율', () => {
-  it('일반 면은 면 90px의 비율 블러(약 28px)이고 컨테이너 타입은 없다', () => {
+describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
+  it('일반 면은 글로우(variant)이고 면 90px에 비례한 블러(7px)·여유(14px)다. 컨테이너 타입은 없다', () => {
     const html = render({ bgColors: COLORS })
-    const px = auraBlurPx(90)
-    expect(px).toBeGreaterThan(27)
-    expect(px).toBeLessThan(29)
-    expect(html.match(new RegExp(`filter:blur\\(${px}px\\)`, 'g'))).toHaveLength(2)
+    expect(html).toContain('data-variant="glow"')
+    expect(auraGlowMetrics(90).blur).toBe('7px')
+    expect(auraGlowMetrics(90).bleed).toBe('14px')
+    expect(html.match(/filter:blur\(7px\)/g)).toHaveLength(1)
+    expect(html).toContain('top:-14px')
     expect(html).not.toContain('container-type')
+    expect(html).not.toContain('mix-blend-mode')
   })
 
-  it('compact 면은 면이 컨테이너이고 블러는 폭 비례(cqw) 길이다', () => {
+  it('compact 면은 면이 컨테이너이고 블러·여유·안쪽 빛은 폭 비례(cqw)다', () => {
     const html = render({ compact: true, bgColors: COLORS })
     expect(html).toContain('container-type:inline-size')
-    expect(auraBlurContainerCss()).toBe('calc(0.3125 * 100cqw)')
-    expect(html.match(/filter:blur\(calc\(0\.3125 \* 100cqw\)\)/g)).toHaveLength(2)
+    expect(html).toContain('data-variant="glow"')
+    expect(html.match(/filter:blur\(7\.78cqw\)/g)).toHaveLength(1)
+    expect(html).toContain('top:-15.56cqw')
+    expect(html).toMatch(/box-shadow:inset 0 0 [\d.]+cqw/)
+  })
+
+  it('earned=false면 그레이 글로우다(대표색이 없다)', () => {
+    const earned = render({ bgColors: COLORS })
+    const unearned = render({ earned: false, bgColors: COLORS })
+    expect(unearned).not.toBe(earned)
+    // 그레이 정지점은 모두 채도가 낮다
+    const linear = unearned.slice(unearned.indexOf('linear-gradient(to bottom'))
+    const hexes = [...linear.matchAll(/#([0-9a-f]{6})/g)].map((m) => m[1])
+    expect(hexes.length).toBeGreaterThan(5)
+    for (const h of hexes) {
+      const n = parseInt(h, 16)
+      const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+      expect(Math.max(...rgb) - Math.min(...rgb)).toBeLessThanOrEqual(12)
+    }
   })
 })

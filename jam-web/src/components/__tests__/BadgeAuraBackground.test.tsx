@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, auraGlowInsetShadow, auraGlowLayers, auraLayers, tuneAuraColors } from '@/lib/badgeAura'
+import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, auraGlowInsetShadow, auraGlowLayers, auraGlowMetrics, auraLayers, tuneAuraColors } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
@@ -95,7 +95,7 @@ describe('BadgeAuraBackground', () => {
   })
 
   it('블러 면이 카드 밖으로 커져도 정지점과 타원 중심은 카드 기준이다 — 흰색 구간이 카드 안에 남는다', () => {
-    const [inner, top, linear] = auraGlowLayers(COLORS, { bleedPx: 56 })
+    const [inner, top, linear] = auraGlowLayers(COLORS, { bleed: 56 })
     // 카드 높이를 H라 할 때 위치 = 56 + (H - 56) × 비율. 마지막 두 정지점(흰색)은 비율 0.9대·1이다
     expect(linear).toContain('calc(56px + (100% - 56px) * 1)')
     expect(linear.match(/#ffffff calc\(56px \+ \(100% - 56px\) \* (0\.8\d*|0\.9\d*|1)\)/g)?.length).toBeGreaterThanOrEqual(3)
@@ -107,6 +107,20 @@ describe('BadgeAuraBackground', () => {
     expect(auraGlowLayers(COLORS)[2]).not.toContain('calc(')
     // 렌더 결과에도 카드 기준 위치가 들어간다
     expect(renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="glow" />)).toContain('calc(56px + (100% - 56px)')
+  })
+
+  it('auraGlowMetrics는 상세(px 그대로)·숫자(비례 px)·container(cqw) 세 방식으로 길이를 준다', () => {
+    const d = auraGlowMetrics()
+    expect([d.blur, d.bleed, d.negBleed, d.len(192)]).toEqual(['28px', '56px', '-56px', '192px'])
+    const n = auraGlowMetrics(180)
+    expect([n.blur, n.bleed, n.len(72)]).toEqual(['14px', '28px', '36px'])
+    const c = auraGlowMetrics('container')
+    expect([c.blur, c.bleed, c.negBleed]).toEqual(['7.78cqw', '15.56cqw', '-15.56cqw'])
+  })
+
+  it('bleed에 CSS 길이 문자열을 줘도 정지점은 그 길이 기준 calc다', () => {
+    const [, , linear] = auraGlowLayers(COLORS, { bleed: '15.56cqw' })
+    expect(linear).toContain('calc(15.56cqw + (100% - 15.56cqw) * 1)')
   })
 
   it('위쪽 타원은 진한 색이 위 가운데(at 50% 0%)에서 투명으로 풀린다', () => {

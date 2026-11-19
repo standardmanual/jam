@@ -230,6 +230,36 @@ export const AURA_GLOW_BLEED_PX = AURA_GLOW_BLUR_PX * 2
  * 블러 면은 위·좌·우로만 `AURA_GLOW_BLEED_PX`씩 커진다(아래는 흰색이라 키우지 않는다). 타원 크기에는 `%`와 `px`를 섞은 `calc`를 쓸 수 없어서,
  * 키운 만큼 줄인 비율로 카드 크기에 맞춘다. 카드 폭 약 360px, 높이 약 360px 기준의 근사값이다.
  */
+/** 상세 카드(약 360px)에서 확정한 값(블러 28px·여유 56px·안쪽 빛)을 면 크기에 비례해 줄일 때의 기준 크기(px) */
+const GLOW_REF_PX = 360
+
+export interface AuraGlowMetrics {
+  /** 그라데이션 면에 거는 블러 반경(CSS 길이) */
+  blur: string
+  /** 면을 위·좌·우로 키우는 여유(CSS 길이)와 그 음수 */
+  bleed: string
+  negBleed: string
+  /** 상세 기준 px 값을 이 면 크기에 맞춘 CSS 길이로 바꾼다(안쪽 빛 번짐에 쓴다) */
+  len: (refPx: number) => string
+}
+
+/**
+ * 글로우의 블러·여유·안쪽 빛 길이를 면 크기에 맞춘다. `size`가 없으면 상세 카드(px 그대로), 숫자면 그 변 길이(px)에 비례,
+ * `'container'`면 면 폭(`cqw`)에 비례한다 — 면 쪽에 `container-type: inline-size`가 있어야 한다(칸 폭이 기기마다 다른 compact 면).
+ */
+export function auraGlowMetrics(size?: number | 'container'): AuraGlowMetrics {
+  const round = (v: number) => Math.round(v * 100) / 100
+  if (size === undefined) {
+    return { blur: `${AURA_GLOW_BLUR_PX}px`, bleed: `${AURA_GLOW_BLEED_PX}px`, negBleed: `-${AURA_GLOW_BLEED_PX}px`, len: (px) => `${px}px` }
+  }
+  if (size === 'container') {
+    const cq = (px: number) => `${round((px / GLOW_REF_PX) * 100)}cqw`
+    return { blur: cq(AURA_GLOW_BLUR_PX), bleed: cq(AURA_GLOW_BLEED_PX), negBleed: `-${cq(AURA_GLOW_BLEED_PX)}`, len: cq }
+  }
+  const px = (v: number) => `${round((v * size) / GLOW_REF_PX)}px`
+  return { blur: px(AURA_GLOW_BLUR_PX), bleed: px(AURA_GLOW_BLEED_PX), negBleed: `-${px(AURA_GLOW_BLEED_PX)}`, len: px }
+}
+
 const GLOW_WIDTH_SCALE = 0.77
 const GLOW_HEIGHT_SCALE = 0.86
 
@@ -270,13 +300,13 @@ function gaussianAlphaStops(rgb: string, peak: number, steps = 9): string {
  * 3) 세로 선형: 진한 색 → 중간 색 → 흰색. 15개 정지점을 가우시안 번짐으로 계산해 경계선이 보이지 않게 하고, 아래는 순백이다
  * `gray`면 대표색 대신 무채색(미획득)이다.
  */
-export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; bleedPx?: number } = {}): string[] {
+export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; bleed?: number | string } = {}): string[] {
   const [, mid, dark] = glowPalette(colors, options)
   // 면이 카드 밖으로 위·좌·우 `bleedPx`씩 커져 있어도 세로 위치는 카드 기준이다. 안 그러면 흰색 구간이 카드 밖으로 밀려난다.
-  const bleed = options.bleedPx ?? 0
-  const along = (frac: number) => (bleed === 0 ? `${Math.round(frac * 100)}%` : `calc(${bleed}px + (100% - ${bleed}px) * ${Math.round(frac * 1000) / 1000})`)
-  const sizeX = (frac: number) => `${Math.round(frac * (bleed === 0 ? 1 : GLOW_WIDTH_SCALE) * 100)}%`
-  const sizeY = (frac: number) => `${Math.round(frac * (bleed === 0 ? 1 : GLOW_HEIGHT_SCALE) * 100)}%`
+  const bleed = typeof options.bleed === 'number' ? (options.bleed === 0 ? null : `${options.bleed}px`) : (options.bleed ?? null)
+  const along = (frac: number) => (bleed === null ? `${Math.round(frac * 100)}%` : `calc(${bleed} + (100% - ${bleed}) * ${Math.round(frac * 1000) / 1000})`)
+  const sizeX = (frac: number) => `${Math.round(frac * (bleed === null ? 1 : GLOW_WIDTH_SCALE) * 100)}%`
+  const sizeY = (frac: number) => `${Math.round(frac * (bleed === null ? 1 : GLOW_HEIGHT_SCALE) * 100)}%`
   const white = AURA_GLOW_BASE_COLOR
   const controls = [
     { pos: 0, hex: dark },
@@ -296,10 +326,11 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
 }
 
 /** 카드 안쪽 가장자리에 도는 넓고 부드러운 밝은 빛(inset `box-shadow`). 중간 색을 더 희게 올린 색을 쓴다 */
-export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
+export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; size?: number | 'container' } = {}): string {
   const [, mid] = glowPalette(colors, options)
+  const { len } = auraGlowMetrics(options.size)
   const soft = mixHex(mid, '#ffffff', 0.82)
-  return `inset 0 0 192px 30px ${withAlpha(soft, 0.65)}, inset 0 0 72px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.92), 0.8)}`
+  return `inset 0 0 ${len(192)} ${len(30)} ${withAlpha(soft, 0.65)}, inset 0 0 ${len(72)} 0 ${withAlpha(mixHex(mid, '#ffffff', 0.92), 0.8)}`
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
