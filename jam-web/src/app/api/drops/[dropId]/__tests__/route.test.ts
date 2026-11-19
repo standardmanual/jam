@@ -14,6 +14,7 @@ import { d } from '@/lib/i18n'
 const USER_ID = 'user-1'
 const SECRET_NAME = '비밀배지이름'
 const SECRET_IMAGE = 'https://img.example/secret.png'
+const SECRET_BG_COLORS = ['#7090e0', '#203a8a']
 const SECRET_PREFIX = 'ZQX'
 
 const state = vi.hoisted(() => ({
@@ -46,7 +47,7 @@ vi.mock('@/lib/supabase/server', () => ({
           is_available: true,
           dropper_user_id: state.dropperUserId,
           source: state.source,
-          badges: { name: SECRET_NAME, rarity: 'epic', image_url: SECRET_IMAGE },
+          badges: { name: SECRET_NAME, rarity: 'epic', image_url: SECRET_IMAGE, bg_colors: SECRET_BG_COLORS },
           users: state.users,
           inventory_items: { serial_prefix: SECRET_PREFIX, serial_number: 424242, locked: state.locked },
         },
@@ -82,6 +83,7 @@ describe('GET /api/drops/[dropId]', () => {
     expect(body).toMatchObject({
       badge_name: SECRET_NAME,
       badge_image_url: SECRET_IMAGE,
+      badge_bg_colors: SECRET_BG_COLORS,
       serial: `${SECRET_PREFIX}424242`,
     })
     expect(body).not.toHaveProperty('locked')
@@ -100,7 +102,9 @@ describe('GET /api/drops/[dropId]', () => {
       locked: true,
     })
     const raw = JSON.stringify(body)
-    for (const secret of [SECRET_NAME, SECRET_IMAGE, SECRET_PREFIX, '424242']) {
+    // 티켓 20261119_1653: 대표색도 잠긴 개체에는 싣지 않는다(상세 히어로는 흰 카드)
+    expect(body).not.toHaveProperty('badge_bg_colors')
+    for (const secret of [SECRET_NAME, SECRET_IMAGE, SECRET_PREFIX, '424242', SECRET_BG_COLORS[0]]) {
       expect(raw, `응답에 ${secret}가 있다`).not.toContain(secret)
     }
   })
