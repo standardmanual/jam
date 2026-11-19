@@ -208,14 +208,39 @@ export const AURA_GLOW_TUNING: AuraTuning = {
 /** 미획득 배지의 «글로우» 색(위 → 아래). 대표색 대신 무채색으로 깐다 */
 export const AURA_GLOW_GRAY_COLORS: readonly [string, string, string] = ['#f1f2f4', '#e8eaed', '#dfe2e6']
 
+/** 두 hex를 `t`(0~1) 비율로 섞은 hex. 색 사이 경계가 보이지 않게 중간 정지점을 만들 때 쓴다 */
+function mixHex(from: string, to: string, t: number): string {
+  return rgbToHex(lerpRgb(hexToRgb(from), hexToRgb(to), t))
+}
+
 /**
- * 상세 히어로 «글로우» 면의 `background-image` 층 목록. 세로 선형 그라데이션 한 장이다.
- * 맨 위 색 → 중간 색 → 마지막 색이 위에서 아래로 차례로 쌓이고, 맨 아래는 바탕색으로 풀린다.
- * 얼룩 없이 색 위치가 한 줄로 정해지게 했다(사용자 지시, 2026-11-20). `gray`면 대표색 대신 무채색(미획득)이다.
+ * 상세 히어로 «글로우» 면의 `background-image` 층 목록(위 → 아래 쌓임). 블러·블렌드 없이 그라데이션만 쓴다.
+ * 1) 세로 선형: 맨 위 색 → 중간 색 → 마지막 색이 위에서 아래로 차례로 쌓인다. 정지점 사이에 섞은 색을 촘촘히 넣어
+ *    겹침 구간을 넓혔고, 색이 바뀌는 선이 눈에 띄지 않는다.
+ * 2) 아래쪽 타원: 마지막 색이 아래 가운데에서 원형으로 퍼지다가 바탕색으로 풀린다(사용자 첨부 «Hum a tune» 디자인).
+ * `gray`면 대표색 대신 무채색(미획득)이다. 얼룩 없이 색 위치가 위에서 아래로 정해지게 했다(사용자 지시, 2026-11-20).
  */
 export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string[] {
   const [top, mid, low] = options.gray ? AURA_GLOW_GRAY_COLORS : tuneAuraColors(colors, options.tuning ?? AURA_GLOW_TUNING)
-  return [`linear-gradient(to bottom, ${top} 0%, ${mid} 40%, ${low} 74%, ${AURA_GLOW_BASE_COLOR} 100%)`]
+  const base = AURA_GLOW_BASE_COLOR
+  const linear = [
+    `${top} 0%`,
+    `${mixHex(top, mid, 0.35)} 16%`,
+    `${mixHex(top, mid, 0.7)} 30%`,
+    `${mid} 44%`,
+    `${mixHex(mid, low, 0.4)} 58%`,
+    `${mixHex(mid, low, 0.8)} 72%`,
+    `${mixHex(low, base, 0.35)} 88%`,
+    `${mixHex(low, base, 0.7)} 100%`,
+  ].join(', ')
+  const bottomGlow = [
+    `${withAlpha(low, 0.95)} 0%`,
+    `${withAlpha(low, 0.7)} 28%`,
+    `${withAlpha(low, 0.4)} 52%`,
+    `${withAlpha(low, 0.15)} 76%`,
+    `${withAlpha(low, 0)} 100%`,
+  ].join(', ')
+  return [`radial-gradient(ellipse 105% 52% at 50% 84%, ${bottomGlow})`, `linear-gradient(to bottom, ${linear})`]
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
