@@ -25,8 +25,11 @@ const BADGE = {
 }
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
-const render = (props: Partial<Parameters<typeof BadgeHeroSection>[0]> & { badge?: Record<string, unknown> } = {}) =>
-  renderToStaticMarkup(<BadgeHeroSection hasEarned {...(props as object)} badge={{ ...BADGE, ...(props.badge ?? {}) } as typeof BADGE} />)
+type HeroProps = Parameters<typeof BadgeHeroSection>[0]
+const render = (extra: Omit<Partial<HeroProps>, 'badge'> & { badge?: Record<string, unknown> } = {}) => {
+  const { badge, ...rest } = extra
+  return renderToStaticMarkup(<BadgeHeroSection hasEarned {...rest} badge={{ ...BADGE, ...badge } as HeroProps['badge']} />)
+}
 
 describe('Aura 적용 조건', () => {
   it('bg_colors 3색이면 Aura를 깔고, 카드 바탕은 #faf8f2, 설명은 text-foreground다', () => {
