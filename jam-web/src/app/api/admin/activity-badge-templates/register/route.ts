@@ -3,6 +3,7 @@ import sharp from 'sharp'
 import { warmImageVariants } from '@/lib/images/warmImageVariants'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { badgeBgColorsFields } from '@/lib/admin/badgeBgColors'
 import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 import { BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX, convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
 import { parseTemplateBadgeParams } from '@/lib/admin/activityBadgeTemplate/templateParams'
@@ -94,9 +95,16 @@ export async function POST(req: NextRequest) {
   const originalUrl = bucket.getPublicUrl(pngPath).data.publicUrl
   const imageUrl = `${bucket.getPublicUrl(webpPath).data.publicUrl}?v=${Date.now()}`
 
+  // 대표색은 같은 update에 담는다(티켓 20261119_1652)
+  const bgColorsFields = await badgeBgColorsFields(imageUrl)
   const { error: updateErr } = await supabase
     .from('badges')
-    .update({ image_url: imageUrl, image_gen_params: params as unknown as Json, image_source: 'admin-generator' })
+    .update({
+      image_url: imageUrl,
+      image_gen_params: params as unknown as Json,
+      image_source: 'admin-generator',
+      ...bgColorsFields,
+    })
     .eq('id', badge.id)
   if (updateErr) return fail('이미지는 올렸지만 배지에 반영하지 못했어요. 잠시 후 다시 시도해 주세요.', 500)
 

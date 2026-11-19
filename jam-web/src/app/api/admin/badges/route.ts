@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
+import { badgeBgColorsFields } from '@/lib/admin/badgeBgColors'
 import {
   findBadgeConditionSaveError,
   findConditionShapeSaveWarning,
@@ -147,9 +148,11 @@ export async function POST(req: NextRequest) {
   }
 
   // 페이로드 매핑은 등록 스크립트와 공용이다(lib/admin/badge-insert-payload.ts).
+  // 이미지 대표색은 같은 insert에 담는다. 추출이 실패하면 칸을 비워 둔다(티켓 20261119_1652).
   const insertPayload = buildBadgeInsertPayload(body)
+  const bgColorsFields = await badgeBgColorsFields(image_url)
   const badgesQuery = supabase.from('badges')
-  const insertQuery = badgesQuery.insert(insertPayload)
+  const insertQuery = badgesQuery.insert({ ...insertPayload, ...bgColorsFields })
   const { data, error } = await insertQuery.select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

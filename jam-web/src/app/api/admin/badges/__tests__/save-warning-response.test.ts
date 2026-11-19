@@ -38,6 +38,12 @@ function makeBuilder() {
   return builder
 }
 
+// 대표색 추출은 실제 이미지를 내려받으므로 막는다(티켓 20261119_1652). 추출 자체는 badgeBgColors.test.ts가 본다.
+const bgColorsMock = vi.hoisted(() => vi.fn<(url: string | null) => Promise<{ bg_colors?: string[] }>>(async () => ({})))
+vi.mock('@/lib/admin/badgeBgColors', () => ({
+  badgeBgColorsFields: bgColorsMock,
+  badgeBgColorsFieldsIfChanged: vi.fn(async () => ({})),
+}))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({ from: () => makeBuilder() }),
 }))
@@ -73,6 +79,8 @@ function putReq(body: Row): NextRequest {
 
 beforeEach(() => {
   existingRow = null
+  bgColorsMock.mockReset()
+  bgColorsMock.mockResolvedValue({})
 })
 
 describe('배지 POST 응답', () => {
@@ -142,5 +150,33 @@ describe('배지 PUT 응답', () => {
     const res = await PUT(putReq({ condition_json: BLOCKED }), params)
     expect(res.status).toBe(200)
     expect(await res.json()).not.toHaveProperty('warning')
+  })
+})
+
+describe('배지 POST — 이미지 대표색 (티켓 20261119_1652)', () => {
+  const create = () =>
+    postReq({
+      name: '배지',
+      description: '설명',
+      type: 'activity',
+      rarity: 'common',
+      image_url: 'https://cdn.test.jam.app/a.png',
+      condition_json: COUNTED,
+    })
+
+  it('새 이미지의 대표색을 같은 insert 페이로드에 담는다', async () => {
+    bgColorsMock.mockResolvedValue({ bg_colors: ['#ff8800'] })
+    const { POST } = await import('../route')
+    const res = await POST(create())
+    expect(res.status).toBe(201)
+    expect(bgColorsMock).toHaveBeenCalledWith('https://cdn.test.jam.app/a.png')
+    expect((await res.json()).badge).toMatchObject({ image_url: 'https://cdn.test.jam.app/a.png', bg_colors: ['#ff8800'] })
+  })
+
+  it('추출이 실패해도 배지는 만들어지고 bg_colors는 담지 않는다', async () => {
+    const { POST } = await import('../route')
+    const res = await POST(create())
+    expect(res.status).toBe(201)
+    expect((await res.json()).badge).not.toHaveProperty('bg_colors')
   })
 })

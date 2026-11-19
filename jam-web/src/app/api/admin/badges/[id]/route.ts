@@ -21,6 +21,7 @@ import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
 import { runBadgeDeactivationSideEffects } from '@/lib/admin/badge-deactivate'
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
+import { badgeBgColorsFieldsIfChanged } from '@/lib/admin/badgeBgColors'
 import type { BadgeRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -123,6 +124,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: checkinBadgeNamesError }, { status: 400 })
   }
 
+  const bgColorsFields = await badgeBgColorsFieldsIfChanged(existing.image_url, body.image_url)
+
   const { data, error } = await supabase
     .from('badges')
     .update({
@@ -137,6 +140,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       image_url: body.image_url !== undefined ? body.image_url : existing.image_url,
       // 이미지가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940 방침 A).
       ...imageSourceReset(existing.image_url, body.image_url),
+      // 이미지가 실제로 바뀔 때만 대표색을 같은 update에 담는다(티켓 20261119_1652). 안 바뀌면 기존 색을 건드리지 않는다.
+      ...bgColorsFields,
       activity_types: body.activity_types !== undefined ? body.activity_types : existing.activity_types,
       patch_available: body.patch_available !== undefined ? body.patch_available : existing.patch_available,
       // point_reward와 동일하게 음수를 막되, patch_available=false일 때 null이 들어올 수 있는

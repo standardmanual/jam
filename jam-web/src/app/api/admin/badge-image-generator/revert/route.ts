@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { badgeBgColorsFields } from '@/lib/admin/badgeBgColors'
 
 const ITEM_ROW_COUNT = 4
 
@@ -36,9 +37,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '이후에 적용된 기록이 있어 최신 적용분부터 되돌려야 합니다.' }, { status: 409 })
   }
 
+  // 되돌린 이미지의 대표색을 다시 뽑는다(옛 색은 보관하지 않는다, 티켓 20261119_1652)
+  const bgColorsFields = await badgeBgColorsFields(gen.previous_image_url)
   const { data: updated, error: updErr } = await supabase
     .from('badges')
-    .update({ image_url: gen.previous_image_url })
+    .update({ image_url: gen.previous_image_url, ...bgColorsFields })
     .eq('item_book_id', gen.item_book_id)
     .eq('name', gen.item_name)
     .select('id')

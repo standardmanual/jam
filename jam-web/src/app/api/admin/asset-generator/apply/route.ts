@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { badgeBgColorsFields } from '@/lib/admin/badgeBgColors'
 import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 import { convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
 
@@ -105,7 +106,7 @@ interface TargetTable {
   select(columns: string): TargetFindQuery
   // 이미지 컬럼명이 콘텐츠 유형마다 달라(image_url · cover_image_url) 동적 키로 받는다
   // (`config.imageUrlColumn`, 티켓 20260925_1411).
-  update(payload: Record<string, string>): TargetUpdateQuery
+  update(payload: Record<string, string | string[]>): TargetUpdateQuery
 }
 
 export async function POST(req: NextRequest) {
@@ -238,8 +239,10 @@ export async function POST(req: NextRequest) {
   const originalUrl = pngPublicUrl
   const webpUrl = `${webpPublicUrl}?v=${Date.now()}`
 
+  // 배지는 이미지 대표색을 같은 update에 담는다(티켓 20261119_1652). 다른 콘텐츠 유형은 칸이 없다.
+  const bgColorsFields = config.table === 'badges' ? await badgeBgColorsFields(webpUrl) : {}
   const { error: updateErr } = await table
-    .update({ [config.imageUrlColumn]: webpUrl, image_source: 'admin-generator' })
+    .update({ [config.imageUrlColumn]: webpUrl, image_source: 'admin-generator', ...bgColorsFields })
     .eq('id', targetId)
   if (updateErr) {
     return NextResponse.json(

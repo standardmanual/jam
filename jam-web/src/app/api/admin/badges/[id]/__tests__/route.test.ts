@@ -40,6 +40,9 @@ const fakeClient = {
   }),
 }
 
+// 대표색 추출은 실제 이미지를 내려받으므로 막는다(티켓 20261119_1652). 변경 판정은 실제 헬퍼가 한다.
+const extractMock = vi.hoisted(() => vi.fn<(url: string) => Promise<string[] | null>>(async () => null))
+vi.mock('@/lib/badgeColorExtract', () => ({ extractBadgeColors: extractMock }))
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => fakeClient }))
 vi.mock('@/lib/admin/auth', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/admin/auth')>()),
@@ -68,6 +71,8 @@ beforeEach(() => {
   state.readError = null
   state.updates = []
   state.sideEffectIds = []
+  extractMock.mockReset()
+  extractMock.mockResolvedValue(null)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 afterEach(() => {
@@ -174,5 +179,33 @@ describe('PUT /api/admin/badges/[id] — image_url 형식 검사(라우트 배�
     expect(res.status).toBe(200)
     expect(state.updates[0].image_url).toBe('https://cdn.example/old.png')
     expect(state.updates[0]).not.toHaveProperty('image_source')
+  })
+
+  it('이미지가 바뀌면 대표색을 같은 update에 담는다(티켓 20261119_1652)', async () => {
+    state.row = { ...existing }
+    extractMock.mockResolvedValue(['#ff8800', '#2244aa'])
+    const res = await put({ image_url: 'https://cdn.example/new.png' })
+    expect(res.status).toBe(200)
+    expect(extractMock).toHaveBeenCalledWith('https://cdn.example/new.png')
+    expect(state.updates).toHaveLength(1)
+    expect(state.updates[0].image_url).toBe('https://cdn.example/new.png')
+    expect(state.updates[0].bg_colors).toEqual(['#ff8800', '#2244aa'])
+  })
+
+  it('추출이 실패해도 이미지 저장은 성공하고 bg_colors는 담지 않는다', async () => {
+    state.row = { ...existing }
+    const res = await put({ image_url: 'https://cdn.example/new.png' })
+    expect(res.status).toBe(200)
+    expect(state.updates[0].image_url).toBe('https://cdn.example/new.png')
+    expect(state.updates[0]).not.toHaveProperty('bg_colors')
+  })
+
+  it('이미지를 바꾸지 않는 수정(이름만, 같은 이미지 재전송)은 추출하지 않고 bg_colors를 쓰지 않는다', async () => {
+    extractMock.mockResolvedValue(['#ff8800'])
+    state.row = { ...existing }
+    expect((await put({ name: '새 이름' })).status).toBe(200)
+    expect((await put({ name: '새 이름', image_url: 'https://cdn.example/old.png' })).status).toBe(200)
+    expect(extractMock).not.toHaveBeenCalled()
+    for (const update of state.updates) expect(update).not.toHaveProperty('bg_colors')
   })
 })

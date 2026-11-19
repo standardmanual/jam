@@ -3,6 +3,7 @@ import { warmImageVariants } from '@/lib/images/warmImageVariants'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
+import { badgeBgColorsFields } from '@/lib/admin/badgeBgColors'
 import { convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
 import { checkImageHasNoText } from '@/lib/admin/badgeImageGenerator/claude'
 import { itemSlug } from '@/lib/admin/badgeImageGenerator/items'
@@ -90,9 +91,11 @@ export async function POST(req: NextRequest) {
   }
   const previousImageUrl = rows!.find((r) => r.image_url)?.image_url ?? null
 
+  // 같은 이미지라 대표색은 한 번만 뽑아 대상 배지 전부에 쓴다(티켓 20261119_1652)
+  const bgColorsFields = await badgeBgColorsFields(webpUrl)
   const { data: updated, error: updErr } = await supabase
     .from('badges')
-    .update({ image_url: webpUrl, image_source: 'admin-generator' })
+    .update({ image_url: webpUrl, image_source: 'admin-generator', ...bgColorsFields })
     .in(
       'id',
       rows!.map((r) => r.id)
