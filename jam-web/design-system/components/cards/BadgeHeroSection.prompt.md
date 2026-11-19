@@ -39,6 +39,7 @@ It is a pure display component. Everything service-specific (safe image renderin
 - Long names wrap to two or three lines. No ellipsis.
 - The description block is not rendered when neither `descriptionNode` nor `descriptionLines` is given. Description paragraphs use `text-wrap!` to turn off the global `p { text-wrap: balance }`.
 - `backgroundSlot` sits at the bottom of the card (`z-0`), clipped by the rounded corners. The DS draws no default background. `backgroundColor` is the first-paint fallback and is applied inline only when given. `textStyle` (for example a text shadow over a bright background) goes on the text block and the DS does not know its value.
+- `strongText` (default false) turns the description from `text-muted` into `text-foreground`. Use it when the caller puts a mid-tone surface behind the text (for example the service's Aura gradient) and muted text would miss 4.5:1. It does nothing with `onMedia`. With it off, the rendered classes are exactly the same as before.
 - `size`: `page` (default) = wrapper `relative z-10 px-4 pt-0 pb-5`, card `p-6`. `sheet` = wrapper `relative z-10`, card `py-6 px-4`; the outer margin is the caller's.
 - No color literals in this file. Only `text-snow`, `text-foreground`, `text-muted`, `bg-card-bg`.
 

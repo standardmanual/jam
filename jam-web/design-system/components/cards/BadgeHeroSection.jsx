@@ -48,10 +48,13 @@ export function BadgeHeroSection({
   onMedia = false,
   /** 글자 블록에 거는 style(예: 배경 위 텍스트 그림자 보정). DS는 값을 모른다 */
   textStyle,
+  /** 설명 글자를 `text-muted` 대신 `text-foreground`로 한 단계 진하게 한다. 중간색 면 위에서 대비가 모자랄 때 호출부가 켠다. `onMedia`면 무시. 기본 false */
+  strongText = false,
   /** 'page'(기본) | 'sheet' */
   size = 'page',
 }) {
   const sizeStyle = SIZE_STYLE[size] ?? SIZE_STYLE.page;
+  const descriptionTone = onMedia ? 'text-snow' : strongText ? 'text-foreground' : 'text-muted';
   const chip = level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />;
 
   return (
@@ -82,13 +85,13 @@ export function BadgeHeroSection({
           </div>
           {descriptionNode ? (
             <div className="flex-shrink-0 flex flex-col gap-0.5">
-              <p className={`text-base text-center text-wrap! ${onMedia ? 'text-snow' : 'text-muted'}`}>{descriptionNode}</p>
+              <p className={`text-base text-center text-wrap! ${descriptionTone}`}>{descriptionNode}</p>
             </div>
           ) : (
             descriptionLines && (
               <div className="flex-shrink-0 flex flex-col gap-0.5">
                 {descriptionLines.map((line, index) => (
-                  <p key={index} className={`text-base text-center text-wrap! ${onMedia ? 'text-snow' : 'text-muted'}`}>
+                  <p key={index} className={`text-base text-center text-wrap! ${descriptionTone}`}>
                     {line}
                   </p>
                 ))}

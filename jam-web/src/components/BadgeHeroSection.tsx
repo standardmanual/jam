@@ -3,8 +3,10 @@ import SafeImage from '@/components/SafeImage'
 import { BadgeHeroSection as BadgeHeroCard } from '@ds/components/cards/BadgeHeroSection'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
-import { getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import { getBadgeBackgroundAnimation, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
+import BadgeAuraBackground from '@/components/BadgeAuraBackground'
+import { AURA_BASE_COLOR, resolveAuraColors, textMode } from '@/lib/badgeAura'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
 // [20260917_1303] 마침표 기준 줄바꿈 로직을 공용 유틸로 추출 — 컬렉션 상세
 // (`ItemBookHeroSection`)도 동일 로직을 쓴다(코드 중복 방지).
@@ -49,6 +51,11 @@ interface BadgeHeroSectionProps {
      * 실제 배지 레코드가 아닌 호출부가 있어 필수로 만들면 그쪽이 막힌다.
      */
     level?: number | null
+    /**
+     * 이미지 대표색(밝기 높은 순 hex 최대 3개, 티켓 20261119_1650). **선택**이다 — 어드민 미리보기·dev 샘플처럼 색을 안 넘기는 호출부는 지금 모습 그대로다.
+     * 배경 테마가 없고 NULL이 아닐 때만 Aura 배경을 깐다(NULL=흰 카드, `[]`=청회색 대체색). — 티켓 20261119_1653
+     */
+    bg_colors?: string[] | null
   }
   hasEarned: boolean
   /**
@@ -101,7 +108,13 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 배경(블롭·테마)이 깔린 카드는 글자가 어두운 면 위에 놓이므로 --snow, 배경이 없는 흰 카드는
   // 새 글자색(--foreground·--muted)이다. 설명에는 muted 단계가 없어 배경 위에서는 둘 다 --snow다
   // (티켓 20261015_2134). 테마 판정 두 가지(전체 배경 `themed`, 카드 안 블롭 `backgroundAnimation`)가 모두 DS의 `onMedia`다.
-  const onMedia = Boolean(backgroundAnimation || themed)
+  // [20261119_1653] Aura는 기존 배경 테마(전체 배경·카드 안 블롭·어드민 강제 themed)가 하나도 없을 때만, `bg_colors`가 NULL이 아닐 때만 깐다.
+  // 배경 테마가 있으면 `bg_colors`는 읽지도 않는다. 새 판정을 만들지 않고 위 판정을 그대로 따른다.
+  const hasTheme = Boolean(backgroundAnimation || themed || getBadgeBackgroundAnimation(badge))
+  const auraColors = hasTheme ? null : resolveAuraColors(badge.bg_colors)
+  // 어두운 글자(`dark`)가 기본이다. 밝은 글자(`light`)는 보정표가 바뀔 때를 위한 방어 분기다.
+  const auraLight = auraColors ? textMode(auraColors) === 'light' : false
+  const onMedia = Boolean(backgroundAnimation || themed || auraLight)
 
   // 대표 이미지: 호출부가 슬롯을 주면 그대로, 없으면 badge.image_url(SafeImage) → 없으면 MedalIcon.
   // 이미지 크기 규칙(200/176)이 DS가 아니라 여기 있는 이유는 슬롯을 통째로 바꿔도 크기 규칙이 숨지 않게 하기 위해서다.
@@ -138,10 +151,14 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       chipExtra={chipExtra}
       imageSlot={resolvedImage}
       // [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다(DS가 z-0 자리를 내준다). 첫 페인트 폴백 색은 파라미터에서 미리 깐다.
-      backgroundSlot={backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : undefined}
-      backgroundColor={backgroundAnimation?.bgColor}
+      // [20261119_1653] Aura 배경은 같은 슬롯에 들어간다(블롭과 동시에 켜지지 않는다). 바탕색은 인라인이라 카드 면(`bg-card-bg`)을 이긴다.
+      backgroundSlot={
+        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} /> : undefined
+      }
+      backgroundColor={backgroundAnimation?.bgColor ?? (auraColors ? AURA_BASE_COLOR : undefined)}
       onMedia={onMedia}
-      textStyle={cardTextStyle}
+      strongText={Boolean(auraColors)}
+      textStyle={cardTextStyle ?? (auraLight ? getBadgeThemedTextStyle(true) : undefined)}
     />
   )
 }
