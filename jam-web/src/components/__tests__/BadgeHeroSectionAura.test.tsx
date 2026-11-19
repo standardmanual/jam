@@ -48,8 +48,16 @@ describe('Aura 적용 조건', () => {
     const earned = render({ badge: { bg_colors: COLORS } })
     const unearned = render({ badge: { bg_colors: COLORS }, hasEarned: false })
     expect(unearned).toContain('data-variant="glow"')
-    expect(unearned).toContain('#e6e8ec')
-    expect(earned).not.toContain('#e6e8ec')
+    expect(unearned).not.toBe(earned)
+    // 그레이는 선형 정지점이 전부 무채색이라 대표색의 푸른 기가 없다
+    const firstStop = (html: string) => /linear-gradient\(to bottom, #([0-9a-f]{6})/.exec(html)?.[1] ?? ''
+    const spread = (hex: string) => {
+      const n = parseInt(hex, 16)
+      const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+      return Math.max(...rgb) - Math.min(...rgb)
+    }
+    expect(spread(firstStop(unearned))).toBeLessThanOrEqual(12)
+    expect(spread(firstStop(earned))).toBeGreaterThan(20)
   })
 
   it('bg_colors가 NULL이거나 필드가 없으면 지금의 흰 카드와 DOM이 같다', () => {

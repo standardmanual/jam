@@ -218,47 +218,73 @@ function glowPalette(colors: readonly string[], options: { gray?: boolean; tunin
   return options.gray ? [...AURA_GLOW_GRAY_COLORS] : (tuneAuraColors(colors, options.tuning ?? AURA_GLOW_TUNING) as [string, string, string])
 }
 
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = clamp((x - a) / (b - a), 0, 1)
+  return t * t * (3 - 2 * t)
+}
+
+/** 선형 정지점 개수와 가우시안 번짐 폭(0~1). 클수록 색이 넓게 섞여 경계선이 흐려진다 */
+const GLOW_LINEAR_STEPS = 15
+const GLOW_BLEND_SIGMA = 0.22
+
+/**
+ * 제어색들을 가우시안 가중 평균으로 번지게 섞어 위치 `x`(0~1)의 색을 구한다.
+ * 색 사이를 직선으로 잇지 않으므로 제어점마다 기울기가 꺾이지 않아 띠(마하 밴드) 경계가 생기지 않는다.
+ */
+function blendAt(controls: { pos: number; hex: string }[], x: number): string {
+  let wSum = 0
+  const acc: Rgb = [0, 0, 0]
+  for (const { pos, hex } of controls) {
+    const w = Math.exp(-((x - pos) ** 2) / (2 * GLOW_BLEND_SIGMA ** 2))
+    const rgb = hexToRgb(hex)
+    for (let i = 0; i < 3; i++) acc[i] += rgb[i] * w
+    wSum += w
+  }
+  return rgbToHex([acc[0] / wSum, acc[1] / wSum, acc[2] / wSum])
+}
+
+/** 가우시안 모양으로 옅어지는 알파 정지점(`rgba(...) 위치%`). 가운데 `peak`에서 가장자리 0까지 */
+function gaussianAlphaStops(rgb: string, peak: number, steps = 9): string {
+  return Array.from({ length: steps }, (_, i) => {
+    const r = i / (steps - 1)
+    const alpha = i === steps - 1 ? 0 : peak * Math.exp(-(r ** 2) / (2 * 0.42 ** 2))
+    return `${withAlpha(rgb, Math.round(alpha * 1000) / 1000)} ${Math.round(r * 100)}%`
+  }).join(', ')
+}
+
 /**
  * 상세 히어로 «글로우» 면의 `background-image` 층 목록(위 → 아래 쌓임). 블러·블렌드 없이 그라데이션만 쓴다.
- * 구성은 사용자가 첨부한 카드 디자인을 따른다(2026-11-20).
- * 1) 안쪽 중앙 하이라이트: 카드 가운데가 살짝 밝아지는 흰빛
- * 2) 위쪽 타원: 가장 진한 색이 위 가운데에서 퍼지고 좌우 모서리로 갈수록 옅어진다
- * 3) 세로 선형: 진한 색 → 중간 색 → 밝은 색 → 흰색. 정지점 사이에 섞은 색을 촘촘히 두어 겹침 구간을 넓히고 경계선이 보이지 않게 한다. 아래 약 3분의 1은 흰색이다
+ * 구성은 사용자가 첨부한 카드 디자인을 따른다(2026-11-20). 색은 대표색 3개 중 2개(중간 색·진한 색)만 쓴다.
+ * 1) 안쪽 중앙 하이라이트: 카드 가운데가 넓게 살짝 밝아지는 흰빛
+ * 2) 위쪽 타원: 진한 색이 위 가운데에서 가우시안으로 퍼지고 좌우 모서리로 갈수록 옅어진다
+ * 3) 세로 선형: 진한 색 → 중간 색 → 흰색. 15개 정지점을 가우시안 번짐으로 계산해 경계선이 보이지 않게 하고, 아래는 순백이다
  * `gray`면 대표색 대신 무채색(미획득)이다.
  */
 export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string[] {
-  const [light, mid, dark] = glowPalette(colors, options)
+  const [, mid, dark] = glowPalette(colors, options)
   const white = AURA_GLOW_BASE_COLOR
-  const linear = [
-    `${mixHex(dark, white, 0.2)} 0%`,
-    `${mixHex(dark, mid, 0.5)} 12%`,
-    `${mid} 26%`,
-    `${mixHex(mid, light, 0.5)} 38%`,
-    `${light} 50%`,
-    `${mixHex(light, white, 0.5)} 62%`,
-    `${mixHex(light, white, 0.85)} 72%`,
-    `${white} 84%`,
-    `${white} 100%`,
-  ].join(', ')
-  const topGlow = [
-    `${withAlpha(dark, 0.9)} 0%`,
-    `${withAlpha(dark, 0.6)} 28%`,
-    `${withAlpha(dark, 0.3)} 56%`,
-    `${withAlpha(dark, 0.1)} 80%`,
-    `${withAlpha(dark, 0)} 100%`,
-  ].join(', ')
-  const innerLight = ['rgba(255,255,255,0.6) 0%', 'rgba(255,255,255,0.3) 45%', 'rgba(255,255,255,0) 100%'].join(', ')
+  const controls = [
+    { pos: 0, hex: dark },
+    { pos: 0.38, hex: mid },
+    { pos: 0.62, hex: mixHex(mid, white, 0.6) },
+  ]
+  const linear = Array.from({ length: GLOW_LINEAR_STEPS }, (_, i) => {
+    const x = i / (GLOW_LINEAR_STEPS - 1)
+    const hex = mixHex(blendAt(controls, x), white, smoothstep(0.5, 0.88, x))
+    return `${hex} ${Math.round(x * 100)}%`
+  }).join(', ')
   return [
-    `radial-gradient(ellipse 58% 34% at 50% 44%, ${innerLight})`,
-    `radial-gradient(ellipse 90% 46% at 50% 0%, ${topGlow})`,
+    `radial-gradient(ellipse 75% 46% at 50% 46%, ${gaussianAlphaStops('#ffffff', 0.55)})`,
+    `radial-gradient(ellipse 100% 56% at 50% 0%, ${gaussianAlphaStops(dark, 0.85)})`,
     `linear-gradient(to bottom, ${linear})`,
   ]
 }
 
-/** 카드 안쪽 가장자리에 도는 밝은 빛(inset `box-shadow`). 밝은 색을 더 희게 올린 색을 쓴다 */
+/** 카드 안쪽 가장자리에 도는 넓고 부드러운 밝은 빛(inset `box-shadow`). 중간 색을 더 희게 올린 색을 쓴다 */
 export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
-  const [light, mid] = glowPalette(colors, options)
-  return `inset 0 0 28px 2px ${withAlpha(mixHex(mid, '#ffffff', 0.6), 0.75)}, inset 0 0 8px 0 ${withAlpha(mixHex(light, '#ffffff', 0.5), 0.9)}`
+  const [, mid] = glowPalette(colors, options)
+  const soft = mixHex(mid, '#ffffff', 0.6)
+  return `inset 0 0 64px 10px ${withAlpha(soft, 0.7)}, inset 0 0 24px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.78), 0.8)}`
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {

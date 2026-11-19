@@ -77,14 +77,17 @@ describe('BadgeAuraBackground', () => {
     expect(html).not.toContain('soft-light')
   })
 
-  it('선형은 진한 색이 위, 흰색이 아래이고 맨 아래 구간(84~100%)은 흰색이다', () => {
+  it('선형은 진한 색이 위, 흰색이 아래이고 맨 아래 구간은 순백이다 — 정지점이 촘촘하다', () => {
     const linear = auraGlowLayers(COLORS).find((l) => l.startsWith('linear-gradient')) ?? ''
-    const [, , dark] = tuneAuraColors(COLORS, AURA_GLOW_TUNING)
-    const [mid] = [tuneAuraColors(COLORS, AURA_GLOW_TUNING)[1]]
-    expect(linear.indexOf(mid)).toBeGreaterThan(0)
-    expect(dark).not.toBe(mid)
-    expect(linear.endsWith(`${AURA_GLOW_BASE_COLOR} 84%, ${AURA_GLOW_BASE_COLOR} 100%)`)).toBe(true)
-    expect(linear.split('%,').length).toBeGreaterThanOrEqual(8)
+    const stops = linear.replace('linear-gradient(to bottom, ', '').replace(/\)$/, '').split(', ')
+    expect(stops.length).toBeGreaterThanOrEqual(12)
+    expect(stops[0]).not.toContain(AURA_GLOW_BASE_COLOR)
+    expect(stops.slice(-3).every((st) => st.startsWith(AURA_GLOW_BASE_COLOR))).toBe(true)
+  })
+
+  it('대표색 3개 중 밝은 색은 쓰지 않고 2개(중간·진한 색)만 쓴다', () => {
+    const [light] = tuneAuraColors(COLORS, AURA_GLOW_TUNING)
+    expect(auraGlowLayers(COLORS).join(' ')).not.toContain(light)
   })
 
   it('위쪽 타원은 진한 색이 위 가운데(at 50% 0%)에서 투명으로 풀린다', () => {
@@ -98,12 +101,21 @@ describe('BadgeAuraBackground', () => {
     expect(shadow.match(/inset/g)).toHaveLength(2)
   })
 
-  it('gray면 대표색 대신 무채색으로 깐다(미획득)', () => {
-    const joined = auraGlowLayers(COLORS, { gray: true }).join(' ')
-    expect(joined).toContain(AURA_GLOW_GRAY_COLORS[0])
-    expect(joined).toContain(AURA_GLOW_GRAY_COLORS[1])
+  it('gray면 대표색 대신 무채색으로 깐다(미획득) — 선형의 모든 정지점이 무채색이다', () => {
+    const chroma = (layers: string[]) => {
+      const linear = layers.find((l) => l.startsWith('linear-gradient')) ?? ''
+      return Math.max(
+        ...[...linear.matchAll(/#([0-9a-f]{6})/g)].map((m) => {
+          const n = parseInt(m[1], 16)
+          const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+          return Math.max(...rgb) - Math.min(...rgb)
+        }),
+      )
+    }
+    expect(chroma(auraGlowLayers(COLORS, { gray: true }))).toBeLessThanOrEqual(12)
+    expect(chroma(auraGlowLayers(COLORS))).toBeGreaterThan(20)
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="glow" gray />)
-    expect(html).toContain(AURA_GLOW_GRAY_COLORS[1])
+    expect(html).toContain('data-variant="glow"')
   })
 
   it('will-change와 drop-shadow를 쓰지 않는다', () => {
