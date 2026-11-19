@@ -42,7 +42,7 @@ const openRow = {
   expires_at: null,
   locked: false,
   unlock_points_required: null,
-  badges: { name: '바람의 깃', rarity: 'rare', image_url: 'https://img/open.png', deleted_at: null },
+  badges: { name: '바람의 깃', rarity: 'rare', image_url: 'https://img/open.png', bg_colors: ['#e0e8ff', '#7090e0', '#203a8a'], deleted_at: null },
 }
 
 const lockedRow = {
@@ -82,6 +82,8 @@ describe('GET /api/inventory/items', () => {
       locked: true,
       unlock_points_required: 300,
     })
+    // 잠긴 개체에는 대표색도 싣지 않는다(티켓 20261119_1654)
+    expect(body.items[0]).not.toHaveProperty('badge_bg_colors')
     const raw = JSON.stringify(body)
     for (const secret of ['비밀 배지', 'badge-secret', 'secret.png', 'SCR']) expect(raw).not.toContain(secret)
   })
@@ -97,6 +99,7 @@ describe('GET /api/inventory/items', () => {
       badge_name: '바람의 깃',
       badge_rarity: 'rare',
       badge_image_url: 'https://img/open.png',
+      badge_bg_colors: ['#e0e8ff', '#7090e0', '#203a8a'],
       serial_prefix: 'WND',
       serial_number: 7,
       expires_at: null,

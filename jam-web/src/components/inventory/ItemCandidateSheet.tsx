@@ -21,6 +21,8 @@ export interface ItemCandidateSheetProps {
   rarity: BadgeRarity | null | undefined
   /** 카드 썸네일에 쓰는 배지 그림(같은 배지의 개체들이라 한 장을 모든 카드가 쓴다) */
   badgeImageUrl?: string | null
+  /** 카드 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654) — 같은 배지라 한 값을 모든 카드가 쓴다. 없으면 지금 모습 그대로 */
+  badgeBgColors?: string[] | null
   candidates: ItemCandidate[]
   onSelect: (candidate: ItemCandidate) => void
   /** 안내문과 후보 목록 사이에 보여줄 에러 배너 — 장착 시트만 쓴다(API 호출 실패, 20260907_2221). */
@@ -57,6 +59,7 @@ export default function ItemCandidateSheet({
   badgeName,
   rarity,
   badgeImageUrl = null,
+  badgeBgColors = null,
   candidates,
   onSelect,
   error,
@@ -85,6 +88,7 @@ export default function ItemCandidateSheet({
               candidate={candidate}
               rarity={rarity}
               imageUrl={badgeImageUrl}
+              bgColors={badgeBgColors}
               selected={isSelected?.(candidate) ?? false}
               muted={isMuted?.(candidate) ?? false}
               trailing={renderTrailing?.(candidate)}
