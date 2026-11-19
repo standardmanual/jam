@@ -74,7 +74,9 @@ describe('BadgeAuraBackground', () => {
     expect(html).toContain('box-shadow:inset')
     // 블러는 그라데이션 면 한 겹에만 걸고, 가장자리가 옅어지지 않게 카드 밖으로 키운다
     expect(html.match(/filter:blur\(28px\)/g)).toHaveLength(1)
-    expect(html).toContain('inset:-56px')
+    expect(html).toContain('top:-56px')
+    expect(html).toContain('left:-56px')
+    expect(html).toContain('right:-56px')
     expect(html).not.toContain('mix-blend-mode')
     expect(html).not.toContain('soft-light')
   })
@@ -90,6 +92,21 @@ describe('BadgeAuraBackground', () => {
   it('대표색 3개 중 밝은 색은 쓰지 않고 2개(중간·진한 색)만 쓴다', () => {
     const [light] = tuneAuraColors(COLORS, AURA_GLOW_TUNING)
     expect(auraGlowLayers(COLORS).join(' ')).not.toContain(light)
+  })
+
+  it('블러 면이 카드 밖으로 커져도 정지점과 타원 중심은 카드 기준이다 — 흰색 구간이 카드 안에 남는다', () => {
+    const [inner, top, linear] = auraGlowLayers(COLORS, { bleedPx: 56 })
+    // 카드 높이를 H라 할 때 위치 = 56 + (H - 56) × 비율. 마지막 두 정지점(흰색)은 비율 0.9대·1이다
+    expect(linear).toContain('calc(56px + (100% - 56px) * 1)')
+    expect(linear.match(/#ffffff calc\(56px \+ \(100% - 56px\) \* (0\.8\d*|0\.9\d*|1)\)/g)?.length).toBeGreaterThanOrEqual(3)
+    expect(top).toContain('at 50% calc(56px + (100% - 56px) * 0)')
+    expect(inner).toContain('at 50% calc(56px + (100% - 56px) * 0.46)')
+    // 타원 크기는 calc(%와 px 혼합)를 쓰지 않는다 — 브라우저가 그라데이션 전체를 무효로 처리한다
+    expect([inner, top].join(' ')).not.toMatch(/ellipse calc/)
+    // 면이 커지지 않으면 지금처럼 퍼센트다
+    expect(auraGlowLayers(COLORS)[2]).not.toContain('calc(')
+    // 렌더 결과에도 카드 기준 위치가 들어간다
+    expect(renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="glow" />)).toContain('calc(56px + (100% - 56px)')
   })
 
   it('위쪽 타원은 진한 색이 위 가운데(at 50% 0%)에서 투명으로 풀린다', () => {

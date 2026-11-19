@@ -226,6 +226,12 @@ const smoothstep = (a: number, b: number, x: number) => {
 /** 글로우 그라데이션 면에 거는 블러 반경(px)과, 블러로 가장자리가 옅어지지 않게 면을 카드 밖으로 키우는 여유(px) */
 export const AURA_GLOW_BLUR_PX = 28
 export const AURA_GLOW_BLEED_PX = AURA_GLOW_BLUR_PX * 2
+/**
+ * 블러 면은 위·좌·우로만 `AURA_GLOW_BLEED_PX`씩 커진다(아래는 흰색이라 키우지 않는다). 타원 크기에는 `%`와 `px`를 섞은 `calc`를 쓸 수 없어서,
+ * 키운 만큼 줄인 비율로 카드 크기에 맞춘다. 카드 폭 약 360px, 높이 약 360px 기준의 근사값이다.
+ */
+const GLOW_WIDTH_SCALE = 0.77
+const GLOW_HEIGHT_SCALE = 0.86
 
 /** 선형 정지점 개수와 가우시안 번짐 폭(0~1). 클수록 색이 넓게 섞여 경계선이 흐려진다 */
 const GLOW_LINEAR_STEPS = 15
@@ -264,8 +270,13 @@ function gaussianAlphaStops(rgb: string, peak: number, steps = 9): string {
  * 3) 세로 선형: 진한 색 → 중간 색 → 흰색. 15개 정지점을 가우시안 번짐으로 계산해 경계선이 보이지 않게 하고, 아래는 순백이다
  * `gray`면 대표색 대신 무채색(미획득)이다.
  */
-export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string[] {
+export function auraGlowLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; bleedPx?: number } = {}): string[] {
   const [, mid, dark] = glowPalette(colors, options)
+  // 면이 카드 밖으로 위·좌·우 `bleedPx`씩 커져 있어도 세로 위치는 카드 기준이다. 안 그러면 흰색 구간이 카드 밖으로 밀려난다.
+  const bleed = options.bleedPx ?? 0
+  const along = (frac: number) => (bleed === 0 ? `${Math.round(frac * 100)}%` : `calc(${bleed}px + (100% - ${bleed}px) * ${Math.round(frac * 1000) / 1000})`)
+  const sizeX = (frac: number) => `${Math.round(frac * (bleed === 0 ? 1 : GLOW_WIDTH_SCALE) * 100)}%`
+  const sizeY = (frac: number) => `${Math.round(frac * (bleed === 0 ? 1 : GLOW_HEIGHT_SCALE) * 100)}%`
   const white = AURA_GLOW_BASE_COLOR
   const controls = [
     { pos: 0, hex: dark },
@@ -275,11 +286,11 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
   const linear = Array.from({ length: GLOW_LINEAR_STEPS }, (_, i) => {
     const x = i / (GLOW_LINEAR_STEPS - 1)
     const hex = mixHex(blendAt(controls, x), white, smoothstep(0.5, 0.88, x))
-    return `${hex} ${Math.round(x * 100)}%`
+    return `${hex} ${along(x)}`
   }).join(', ')
   return [
-    `radial-gradient(ellipse 112% 69% at 50% 46%, ${gaussianAlphaStops('#ffffff', 0.6)})`,
-    `radial-gradient(ellipse 100% 56% at 50% 0%, ${gaussianAlphaStops(dark, 0.85)})`,
+    `radial-gradient(ellipse ${sizeX(1.12)} ${sizeY(0.69)} at 50% ${along(0.46)}, ${gaussianAlphaStops('#ffffff', 0.6)})`,
+    `radial-gradient(ellipse ${sizeX(1)} ${sizeY(0.56)} at 50% ${along(0)}, ${gaussianAlphaStops(dark, 0.85)})`,
     `linear-gradient(to bottom, ${linear})`,
   ]
 }
@@ -287,8 +298,8 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
 /** 카드 안쪽 가장자리에 도는 넓고 부드러운 밝은 빛(inset `box-shadow`). 중간 색을 더 희게 올린 색을 쓴다 */
 export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
   const [, mid] = glowPalette(colors, options)
-  const soft = mixHex(mid, '#ffffff', 0.6)
-  return `inset 0 0 96px 15px ${withAlpha(soft, 0.7)}, inset 0 0 36px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.78), 0.8)}`
+  const soft = mixHex(mid, '#ffffff', 0.82)
+  return `inset 0 0 96px 15px ${withAlpha(soft, 0.65)}, inset 0 0 36px 0 ${withAlpha(mixHex(mid, '#ffffff', 0.92), 0.8)}`
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {

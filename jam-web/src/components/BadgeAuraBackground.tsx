@@ -45,7 +45,7 @@ export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_
   if (!resolved) return null
 
   if (variant === 'glow') {
-    // 그라데이션 면에 블러를 걸되, 가장자리가 옅어지지 않게 카드 밖으로 키운다(루트가 overflow-hidden으로 자른다).
+    // 그라데이션 면에 블러를 걸되, 가장자리가 옅어지지 않게 위·좌·우로 카드 밖으로 키운다(루트가 overflow-hidden으로 자른다). 아래는 흰색이라 키우지 않는다.
     // 안쪽 빛(inset 그림자)은 블러 위에 따로 얹는다 — 블러 면 아래에 두면 가려진다.
     return (
       <div
@@ -57,7 +57,7 @@ export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_
       >
         <div
           className="absolute"
-          style={{ inset: -AURA_GLOW_BLEED_PX, backgroundImage: auraGlowLayers(resolved, { gray }).join(', '), filter: `blur(${AURA_GLOW_BLUR_PX}px)` }}
+          style={{ top: -AURA_GLOW_BLEED_PX, left: -AURA_GLOW_BLEED_PX, right: -AURA_GLOW_BLEED_PX, bottom: 0, backgroundImage: auraGlowLayers(resolved, { gray, bleedPx: AURA_GLOW_BLEED_PX }).join(', '), filter: `blur(${AURA_GLOW_BLUR_PX}px)` }}
         />
         <div className="absolute inset-0 rounded-[inherit]" style={{ boxShadow: auraGlowInsetShadow(resolved, { gray }) }} />
       </div>
