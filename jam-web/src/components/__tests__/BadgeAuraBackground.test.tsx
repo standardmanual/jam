@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, auraLayers } from '@/lib/badgeAura'
+import { AURA_BASE_COLOR, AURA_BLUR_DETAIL_PX, AURA_GLOW_BASE_COLOR, auraGlowLayers, auraLayers } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
@@ -62,6 +62,23 @@ describe('BadgeAuraBackground', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} blurPx={24} blurLength="calc(0.3125 * 100cqw)" />)
     expect(html.match(/filter:blur\(calc\(0\.3125 \* 100cqw\)\)/g)).toHaveLength(2)
     expect(html).not.toContain('blur(24px)')
+  })
+
+  it('variant="glow"는 방사형 그라데이션 한 장이다 — 블러·블렌드·입자가 없고 바탕은 글로우 바탕색이다', () => {
+    const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="glow" />)
+    expect(html).toContain('data-variant="glow"')
+    expect(html.toLowerCase()).toContain(`background-color:${AURA_GLOW_BASE_COLOR}`)
+    expect(html.match(/radial-gradient/g)).toHaveLength(3)
+    expect(html).not.toContain('mix-blend-mode')
+    expect(html).not.toContain('filter:blur')
+    expect(html).not.toContain('soft-light')
+  })
+
+  it('auraGlowLayers는 맨 위 층이 아래쪽을 바탕색으로 푸는 선형 그라데이션이다', () => {
+    const layers = auraGlowLayers(COLORS)
+    expect(layers).toHaveLength(4)
+    expect(layers[0]).toContain('linear-gradient')
+    expect(layers[0]).toContain(AURA_GLOW_BASE_COLOR)
   })
 
   it('will-change와 drop-shadow를 쓰지 않는다', () => {

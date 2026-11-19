@@ -193,6 +193,33 @@ export function auraLayers(colors: readonly string[], tuning: AuraTuning = AURA_
   ]
 }
 
+/** 상세 히어로 «글로우» 면의 바탕색. 가장자리와 아래쪽이 이 색으로 풀린다 (사용자 첨부 디자인, 2026-11-20) */
+export const AURA_GLOW_BASE_COLOR = '#fbfcff'
+
+/** «글로우» 면의 색 보정표. 띠 방식보다 명도를 높이고 채도는 조금 살려 연한 빛번짐으로 보이게 한다 */
+export const AURA_GLOW_TUNING: AuraTuning = {
+  lightness: [0.93, 0.88, 0.9],
+  saturationScale: 1,
+  saturationMin: 0.5,
+  saturationMax: 0.95,
+  slotSaturation: [0.85, 1, 0.95],
+}
+
+/**
+ * 상세 히어로 «글로우» 면의 `background-image` 층 목록(위 → 아래 쌓임). 블러·블렌드 없이 방사형 그라데이션만 겹친다.
+ * 위쪽 오른쪽(맨 위 색) · 왼쪽 가운데(중간 색) · 아래쪽 가운데(마지막 색)에서 퍼지는 빛이고,
+ * 맨 아래는 바탕색으로 풀린다. 구성은 사용자가 첨부한 «Hum a tune» 카드 디자인을 따른다.
+ */
+export function auraGlowLayers(colors: readonly string[], tuning: AuraTuning = AURA_GLOW_TUNING): string[] {
+  const [top, mid, low] = tuneAuraColors(colors, tuning)
+  return [
+    `linear-gradient(to bottom, transparent 66%, ${AURA_GLOW_BASE_COLOR} 100%)`,
+    `radial-gradient(ellipse 105% 60% at 50% 74%, ${withAlpha(low, 0.95)} 0%, transparent 76%)`,
+    `radial-gradient(ellipse 95% 66% at 8% 42%, ${mid} 0%, transparent 76%)`,
+    `radial-gradient(ellipse 95% 58% at 92% 6%, ${withAlpha(top, 0.95)} 0%, transparent 76%)`,
+  ]
+}
+
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
   return [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * t) as Rgb
 }

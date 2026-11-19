@@ -32,10 +32,13 @@ const render = (extra: Omit<Partial<HeroProps>, 'badge'> & { badge?: Record<stri
 }
 
 describe('Aura 적용 조건', () => {
-  it('bg_colors 3색이면 Aura를 깔고, 카드 바탕은 #faf8f2, 설명은 text-foreground다', () => {
+  it('bg_colors 3색이면 글로우 Aura를 깔고, 카드 바탕은 #fbfcff, 설명은 text-foreground다', () => {
     const html = render({ badge: { bg_colors: COLORS } })
     expect(html).toContain('badge-aura-background')
-    expect(html.toLowerCase()).toContain('background-color:#faf8f2')
+    expect(html).toContain('data-variant="glow"')
+    expect(html.toLowerCase()).toContain('background-color:#fbfcff')
+    expect(html).not.toContain('mix-blend-mode')
+    expect(html).not.toContain('filter:blur')
     expect(html).toMatch(/text-wrap! text-foreground/)
     expect(html).not.toContain('text-muted')
     expect(html).not.toContain('bg-transparent')

@@ -1,7 +1,9 @@
 import {
   AURA_BASE_COLOR,
   AURA_BLUR_DETAIL_PX,
+  AURA_GLOW_BASE_COLOR,
   AURA_GRAIN,
+  auraGlowLayers,
   auraGrainImage,
   auraLayers,
   resolveAuraColors,
@@ -29,11 +31,27 @@ interface BadgeAuraBackgroundProps {
   blurLength?: string
   /** 입자(질감) 겹을 그릴지. 기본 true */
   grain?: boolean
+  /** `band`는 세로 띠 두 겹(목록 카드), `glow`는 방사형 빛번짐 한 장(상세 히어로). 기본 `band` */
+  variant?: 'band' | 'glow'
 }
 
-export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_PX, blurLength, grain = true }: BadgeAuraBackgroundProps) {
+export default function BadgeAuraBackground({ colors, blurPx = AURA_BLUR_DETAIL_PX, blurLength, grain = true, variant = 'band' }: BadgeAuraBackgroundProps) {
   const resolved = resolveAuraColors(colors)
   if (!resolved) return null
+
+  if (variant === 'glow') {
+    // 방사형 그라데이션은 가장자리가 원래 부드러워 블러·블렌드·입자가 필요 없다
+    return (
+      <div
+        aria-hidden="true"
+        data-testid="badge-aura-background"
+        data-variant="glow"
+        className="absolute inset-0 z-0 overflow-hidden rounded-[inherit] isolate pointer-events-none"
+        style={{ backgroundColor: AURA_GLOW_BASE_COLOR, backgroundImage: auraGlowLayers(resolved).join(', ') }}
+      />
+    )
+  }
+
   const [layer1, layer2] = auraLayers(resolved)
   const blur = `blur(${blurLength ?? `${blurPx}px`})`
 

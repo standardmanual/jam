@@ -6,7 +6,7 @@ import type { BadgeRow } from '@/types/database'
 import { getBadgeBackgroundAnimation, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_BASE_COLOR, resolveAuraColors, textMode } from '@/lib/badgeAura'
+import { AURA_GLOW_BASE_COLOR, resolveAuraColors } from '@/lib/badgeAura'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
 // [20260917_1303] 마침표 기준 줄바꿈 로직을 공용 유틸로 추출 — 컬렉션 상세
 // (`ItemBookHeroSection`)도 동일 로직을 쓴다(코드 중복 방지).
@@ -112,9 +112,8 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 배경 테마가 있으면 `bg_colors`는 읽지도 않는다. 새 판정을 만들지 않고 위 판정을 그대로 따른다.
   const hasTheme = Boolean(backgroundAnimation || themed || getBadgeBackgroundAnimation(badge))
   const auraColors = hasTheme ? null : resolveAuraColors(badge.bg_colors)
-  // 어두운 글자(`dark`)가 기본이다. 밝은 글자(`light`)는 보정표가 바뀔 때를 위한 방어 분기다.
-  const auraLight = auraColors ? textMode(auraColors) === 'light' : false
-  const onMedia = Boolean(backgroundAnimation || themed || auraLight)
+  // [20261120] 상세 히어로는 연한 «글로우» 면이라 글자는 항상 어두운 색이다(옛 띠 방식의 밝기 판정은 쓰지 않는다).
+  const onMedia = Boolean(backgroundAnimation || themed)
 
   // 대표 이미지: 호출부가 슬롯을 주면 그대로, 없으면 badge.image_url(SafeImage) → 없으면 MedalIcon.
   // 이미지 크기 규칙(200/176)이 DS가 아니라 여기 있는 이유는 슬롯을 통째로 바꿔도 크기 규칙이 숨지 않게 하기 위해서다.
@@ -153,12 +152,12 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       // [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다(DS가 z-0 자리를 내준다). 첫 페인트 폴백 색은 파라미터에서 미리 깐다.
       // [20261119_1653] Aura 배경은 같은 슬롯에 들어간다(블롭과 동시에 켜지지 않는다). 바탕색은 인라인이라 카드 면(`bg-card-bg`)을 이긴다.
       backgroundSlot={
-        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} /> : undefined
+        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} variant="glow" /> : undefined
       }
-      backgroundColor={backgroundAnimation?.bgColor ?? (auraColors ? AURA_BASE_COLOR : undefined)}
+      backgroundColor={backgroundAnimation?.bgColor ?? (auraColors ? AURA_GLOW_BASE_COLOR : undefined)}
       onMedia={onMedia}
       strongText={Boolean(auraColors)}
-      textStyle={cardTextStyle ?? (auraLight ? getBadgeThemedTextStyle(true) : undefined)}
+      textStyle={cardTextStyle}
     />
   )
 }
