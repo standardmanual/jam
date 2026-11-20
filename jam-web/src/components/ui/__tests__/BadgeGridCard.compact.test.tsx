@@ -5,11 +5,12 @@ import BadgeGridCard from '../BadgeGridCard'
 import { d } from '@/lib/i18n'
 
 describe('BadgeGridCard compact', () => {
-  it('compact를 주지 않으면 기본 마크업 그대로다(p-3, bg-card-bg, 썸네일은 카드 가장자리까지, text-sm)', () => {
+  it('compact를 주지 않으면 기본 마크업 그대로다(p-3, bg-card-bg, 썸네일은 카드 여백과 같은 두께의 안쪽 면, text-sm)', () => {
     const html = renderToStaticMarkup(<BadgeGridCard name="이름" rarity="rare" onClick={() => {}} />)
     expect(html).toContain('p-3')
     expect(html).toContain('bg-card-bg')
-    expect(html).toContain('w-[calc(100%+1.5rem)] -mt-3')
+    expect(html).toContain('relative w-full')
+    expect(html).not.toContain('max-w-[90px]')
     expect(html).toContain('text-sm font-bold')
     expect(html).not.toContain('bg-background-secondary')
     expect(renderToStaticMarkup(<BadgeGridCard name="이름" rarity="rare" onClick={() => {}} compact={false} />)).toBe(html)

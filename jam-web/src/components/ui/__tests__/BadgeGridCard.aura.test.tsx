@@ -36,7 +36,7 @@ function innerOf(html: string, marker: string): string | null {
   return null
 }
 
-const faceOf = (html: string, compact: boolean) => innerOf(html, compact ? 'rounded-xl overflow-hidden' : 'aspect-square overflow-hidden flex')
+const faceOf = (html: string, compact: boolean) => innerOf(html, compact ? 'rounded-xl overflow-hidden' : 'aspect-square rounded-2xl overflow-hidden flex')
 
 describe.each([
   { label: '일반', compact: false },
@@ -108,26 +108,25 @@ describe('BadgeGridCard bgColors — 일반 면만의 규칙', () => {
 })
 
 describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
-  it('일반 면은 카드 가장자리까지 채우고(여백 없음), 면이 컨테이너라 블러·여유는 폭 비례(cqw)다', () => {
+  it('일반 면은 카드 여백과 같은 두께의 안쪽 면이고, 면이 컨테이너라 블러·여유는 폭 비례(cqw)다', () => {
     const html = render({ bgColors: COLORS })
     expect(html).toContain('data-variant="glow"')
     expect(html).toContain('container-type:inline-size')
     expect(html.match(/filter:blur\(7\.78cqw\)/g)).toHaveLength(1)
     expect(html).toContain('top:-15.56cqw')
-    // 위·좌·우 여백(p-3)만큼 키우고 모서리는 카드가 자른다 — 면 자신은 둥글리지 않는다
-    expect(html).toContain('w-[calc(100%+1.5rem)] -mt-3')
+    // 폭은 칸 폭에서 좌우 여백을 뺀 값(90px 상한 없음)이고, 면 자신이 둥글다
+    expect(html).toContain('<div class="relative w-full">')
+    expect(html).not.toContain('max-w-[90px]')
     const face = faceOf(html, false)!
-    expect(innerOf(html, 'aspect-square overflow-hidden flex')).not.toBeNull()
-    expect(html).not.toContain('rounded-2xl overflow-hidden flex')
     expect(face).toContain('p-[4.4%]')
     expect(html).not.toContain('mix-blend-mode')
   })
 
-  it('색이 없는 일반 면도 같은 크기로 가장자리까지 채운다(한 그리드 안에서 어긋나지 않는다). 컨테이너 타입은 없다', () => {
+  it('색이 없는 일반 면도 같은 크기다(한 그리드 안에서 어긋나지 않는다). 컨테이너 타입은 없다', () => {
     const html = render({})
-    expect(html).toContain('w-[calc(100%+1.5rem)] -mt-3')
+    expect(html).toContain('<div class="relative w-full">')
     expect(html).not.toContain('max-w-[90px]')
-    expect(html).not.toContain('rounded-2xl overflow-hidden flex')
+    expect(html).toContain('rounded-2xl overflow-hidden flex')
     expect(html).not.toContain('container-type')
   })
 
