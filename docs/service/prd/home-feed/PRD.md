@@ -528,8 +528,8 @@ code:
 - **새 유형 키**: 옛 모양 `ticket`·`hero`·`list`와 새 유형·박스 모양 «티켓»이 같은 말이어서 `shape` 열, `card_shape`, 계측 집계가 섞인다. 새 유형은 따로 키를 둔다(2회차에서 정한다).
 - **이미지 위 제목**: 전체 배경 이미지 유형은 이미지 위 제목의 대비 기준이 없다. 어두운 막이 필요하며 이미지 규칙(8회차) 전에는 켜지 않는다.
 - **박스 구현**: 티켓·우표·반원은 CSS 마스크(radial-gradient), 물결만 시드 SVG 경로로 그리는 것을 권한다. 픽셀 고정 치수는 비율 변환과 충돌하므로 구현 때 맞춘다.
-- **새 색 이름**: 원색 5개는 기존 `--jam-*`를 쓴다. 연한 색은 `--jam-*-soft`, 참조 색은 `--feed-ref-red·blue·lime·pink·yellow`로 `colors.css`에 둔다. 카드에는 hex가 아니라 색 키를 저장한다. 계산용 hex가 코드에도 필요하므로 두 정의가 같은지 대조하는 시험을 둔다.
-- **서비스 전용 상수**: 디자인 시스템에 없는 값(칩 높이 32·40, 외곽선 2px, 홈 지름 28·52·56, 도장 60px, 기울기 여섯 값, 물결 12~22px, 모션 0.72초·70~210ms·탄성 곡선)은 `lib/today`의 한 파일에 근거 주석과 함께 둔다.
+- **새 색 이름**: 원색 5개는 기존 `--jam-*`를 쓴다. 연한 색은 `--jam-*-soft`, 참조 색은 `--feed-ref-red·blue·lime·pink·yellow`로 `colors.css`에 둔다. 카드에는 hex가 아니라 색 키를 저장한다. 계산용 hex가 코드에도 필요하므로 두 정의가 같은지 대조하는 시험을 둔다. 구현 위치: `jam-web/design-system/tokens/colors.css`, `jam-web/src/lib/today/feedConstants.ts`.
+- **서비스 전용 상수**: 디자인 시스템에 없는 값(칩 높이 32·40, 외곽선 2px, 홈 지름 28·52·56, 도장 60px, 기울기 여섯 값, 물결 12~22px, 모션 0.72초·70~210ms·탄성 곡선)은 `lib/today`의 한 파일에 근거 주석과 함께 둔다. 구현 위치: `jam-web/src/lib/today/feedConstants.ts`.
 - **기존 컴포넌트**: `CardFrame`·`CardBody`의 제목·필수 정보·설명 조각, `CardThumb`, `SafeImage`는 그대로 쓴다. 칩·박스 모양 5종·도장·갤러리 4칸·컬렉션 모션·색 배정 함수는 새로 만든다. `LabelChip`은 12px 대문자에 외곽선이 없어 확장하지 않고, `CardChipRow`와 `CardImageSlot`은 옛 7모양 전용으로 둔다.
 - **함께 고칠 곳**: 강조색 사용처 규칙(`colors.css` 주석, 디자인 시스템 문서 11 §5.3, `_adherence.oxlintrc.json` 두 곳, `_ds_manifest.json`).
 
