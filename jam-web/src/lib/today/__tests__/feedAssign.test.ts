@@ -190,11 +190,10 @@ describe('feedChipSlots', () => {
     }
   })
 
-  it('칩 개수 상한: 배지만 0, 목록형·드랍·픽업 1, 나머지 2', () => {
+  it('칩 개수 상한: 배지만 0, 목록형 1, 나머지(드랍·픽업 포함) 2', () => {
     expect(chipLimitOf('badge_only')).toBe(0)
     expect(chipLimitOf('gallery_list')).toBe(1)
-    expect(chipLimitOf('drop_pickup')).toBe(1)
-    for (const type of ['hero_box', 'full_image', 'badge_intro', 'collection_intro', 'text_box'] as FeedType[]) {
+    for (const type of ['hero_box', 'full_image', 'badge_intro', 'collection_intro', 'drop_pickup', 'text_box'] as FeedType[]) {
       expect(chipLimitOf(type)).toBe(MAX_CARD_CHIPS)
     }
   })
@@ -208,7 +207,7 @@ describe('assignChipPlacement', () => {
   })
 
   it('칩이 2개면 서로 대각선 자리이고, 기울기는 여섯 값 중 하나이며 두 칩이 같지 않다', () => {
-    for (const type of ['hero_box', 'full_image', 'badge_intro', 'collection_intro', 'text_box'] as FeedType[]) {
+    for (const type of ['hero_box', 'full_image', 'badge_intro', 'collection_intro', 'drop_pickup', 'text_box'] as FeedType[]) {
       for (const seed of seeds(60)) {
         const [first, second, ...rest] = assignChipPlacement({ seed, feedType: type, chipCount: 2 })
         expect(rest).toEqual([])
@@ -221,13 +220,23 @@ describe('assignChipPlacement', () => {
     }
   })
 
-  it('자리가 하나뿐인 유형은 칩을 1개만 둔다(많이 요청해도)', () => {
+  it('자리가 하나뿐인 목록형은 칩을 1개만 둔다(많이 요청해도)', () => {
     expect(assignChipPlacement({ seed: 's', feedType: 'gallery_list', chipCount: 2 })).toEqual([
       { slot: 'card-top-right', tilt: expect.any(Number) },
     ])
+  })
+
+  it('드랍·픽업은 박스 줄 모서리 네 자리 중 대각선 두 자리에 칩 2개를 두고, 많이 요청해도 2개다', () => {
+    expect(FEED_CHIP_SLOT_SPECS.drop_pickup.slots).toEqual([
+      'box-row-top-left',
+      'box-row-top-right',
+      'box-row-bottom-left',
+      'box-row-bottom-right',
+    ])
     const drop = assignChipPlacement({ seed: 's', feedType: 'drop_pickup', chipCount: 5 })
-    expect(drop).toHaveLength(1)
-    expect(drop[0].slot).toBe('box-row-top')
+    expect(drop).toHaveLength(2)
+    expect(diagonalOf('drop_pickup', drop[0].slot)).toBe(drop[1].slot)
+    expect(assignChipPlacement({ seed: 's', feedType: 'drop_pickup', chipCount: 1 })).toHaveLength(1)
   })
 
   it('«배지만»은 칩이 없다', () => {

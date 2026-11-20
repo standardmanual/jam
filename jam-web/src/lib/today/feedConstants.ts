@@ -230,7 +230,7 @@ export const FEED_BURST_SAMPLE = [
 
 /**
  * 드랍·픽업(`drop_pickup`): 박스 줄 높이 184(샘플), 칸 간격 8(`gap-2`), 칸마다 배지 80×80을 가운데에 둔다. 칸 수는 3이다.
- * 칩(`box-row-top`)은 박스 줄의 왼쪽 위 모서리에 걸친다(걸침 정도는 `FEED_CHIP_OFFSET`).
+ * 칩 «드랍»·«픽업»(큰 칩 두 개)은 박스 줄의 대각선 모서리(`box-row-*`)에 걸친다(걸침 정도는 `FEED_CHIP_OFFSET`).
  */
 export const FEED_DROP_PICKUP = { rowHeight: 184, badgeSize: 80, columns: 3, gap: 8 } as const;
 

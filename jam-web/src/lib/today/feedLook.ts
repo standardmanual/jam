@@ -13,7 +13,8 @@
  * - 저장된 `chips`(NULL이 아님): 그것을 그린다. 문구 칩은 `text`, 구분 칩은 `text` 또는 자원의 구분 문구, 값 칩은 `source`가 가리키는 값을 문구로 바꾼다
  *   (알려진 출처 키만: `mission.remaining`·`mission.reward_points`·`collection.item_count`·`checkin.required_badges`·`checkin.place_name`. 읽지 못하면 그 칩은 없다).
  * - NULL(자동): 첫 값 칩 → 구분 칩 순이다. 값이 없으면 구분 칩 하나, 구분 칩이 없는 자원이면 값 칩을 앞에서 두 개까지.
- * - 개수는 카드당 최대 2개이고 유형의 한도(`chipLimitOf`)로 한 번 더 자른다. 첫 칩은 큰 칩, 둘째는 작은 칩이다(샘플). 구분 칩은 검정이다.
+ *   **드랍·픽업(`drop_pickup`)만 다르다**: 자원과 무관하게 «드랍»(색 칩)·«픽업»(검정 칩) 문구 칩 둘이다(샘플).
+ * - 개수는 카드당 최대 2개이고 유형의 한도(`chipLimitOf`)로 한 번 더 자른다. 첫 칩은 큰 칩, 둘째는 작은 칩이다(샘플). 구분 칩은 검정이다. 드랍·픽업은 두 칩 모두 큰 칩이다(샘플).
  *
  * ## 지원 유형 목록
  * `FEED_RENDERED_TYPES`가 그릴 수 있는 유형(4-2의 다섯 유형에 4-3의 컬렉션 소개·드랍·픽업·목록형을 더한 여덟 유형)의 단일 원천이다.
@@ -41,6 +42,7 @@ import {
 } from './feedConstants'
 import { limitChipsForType } from './feedChipLayout'
 import {
+  FEED_DROP_PICKUP_PHRASES,
   FEED_VALUE_CHIP_RULES,
   buildValueChips,
   formatItemCountChip,
@@ -209,6 +211,7 @@ function draftChips(
   stored: readonly TodayChipSpec[] | null | undefined,
   valueSource: FeedValueChipSource | null,
   now: Date,
+  feedType: RenderedFeedType,
 ): ChipDraft[] {
   const divider = valueSource ? FEED_VALUE_CHIP_RULES[valueSource.resource].divider : null
   if (stored) {
@@ -222,6 +225,14 @@ function draftChips(
       drafts.push({ kind: spec.kind, text, fixed: { slot: spec.slot ?? null, tilt: spec.tilt ?? null } })
     }
     return drafts
+  }
+  // 드랍·픽업의 자동 칩: «드랍»(색 칩)·«픽업»(검정 칩) 두 문구 칩이다(샘플, 티켓 20261121_0115 재작업)
+  if (feedType === 'drop_pickup') {
+    const [drop, pickup] = FEED_DROP_PICKUP_PHRASES
+    return [
+      { kind: 'phrase', text: drop, fixed: {} },
+      { kind: 'label', text: pickup, fixed: {} },
+    ]
   }
   if (!valueSource) return []
   const values = buildValueChips(valueSource, now)
@@ -367,7 +378,7 @@ export function resolveFeedLook({ card, feedType, valueSource, now }: ResolveFee
   }
 
   // 칩 — 글자 → 한도 → 자리·기울기
-  const drafts = limitChipsForType(feedType, draftChips(card.chips, valueSource, now)).slice(0, MAX_CARD_CHIPS)
+  const drafts = limitChipsForType(feedType, draftChips(card.chips, valueSource, now, feedType)).slice(0, MAX_CARD_CHIPS)
   const placements = assignChipPlacement({
     seed: seedKey,
     feedType,
@@ -381,7 +392,7 @@ export function resolveFeedLook({ card, feedType, valueSource, now }: ResolveFee
     kind: draft.kind,
     text: draft.text,
     color: draft.kind === 'label' ? 'black' : colors.chip,
-    size: index === 0 ? 'lg' : 'sm',
+    size: index === 0 || feedType === 'drop_pickup' ? 'lg' : 'sm',
     slot: placements[index].slot,
     tilt: isTilt(placements[index].tilt) ? placements[index].tilt : FEED_TILTS[0],
   }))

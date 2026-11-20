@@ -155,6 +155,22 @@ describe('resolveFeedLook — 칩', () => {
     expect(look('hero_box', {}, { resource: 'drop_pickup' }).chips.map((chip) => chip.text)).toEqual(['아이템 배지'])
   })
 
+  it('드랍·픽업의 자동 칩은 «드랍»(색 칩)·«픽업»(검정 칩) 두 문구 칩이고 둘 다 큰 칩이다(값 출처와 무관)', () => {
+    for (const source of [{ resource: 'drop_pickup' } as FeedValueChipSource, MISSION, null]) {
+      const chips = look('drop_pickup', { chip_color_key: 'ref-lime' }, source).chips
+      expect(chips.map((chip) => [chip.kind, chip.text, chip.color, chip.size])).toEqual([
+        ['phrase', '드랍', 'ref-lime', 'lg'],
+        ['label', '픽업', 'black', 'lg'],
+      ])
+    }
+  })
+
+  it('드랍·픽업이라도 저장된 chips가 있으면 그것을 따른다(빈 배열은 칩 없음)', () => {
+    expect(look('drop_pickup', { chips: [] }).chips).toEqual([])
+    const stored = look('drop_pickup', { chips: [{ kind: 'phrase', text: '곧 드랍' }] }).chips
+    expect(stored.map((chip) => chip.text)).toEqual(['곧 드랍'])
+  })
+
   it('카드당 2개를 넘지 않는다', () => {
     const chips = look('hero_box', {
       chips: [{ kind: 'phrase', text: 'a' }, { kind: 'phrase', text: 'b' }, { kind: 'phrase', text: 'c' }],

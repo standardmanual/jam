@@ -4,7 +4,7 @@
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) `renderToStaticMarkup`으로 마크업 문자열을 단언한다.
  *
  * 확인하는 것: 구성(최소 높이 360·박스 줄 높이 184·칸 폭 3칸 기준·배지 80), 박스 모양을 아이템 방향으로 그림(외곽선 없음), 배지 1~3개, 이미지 없는 배지는 이름 글자,
- * 칩 한 개가 박스 줄 위(왼쪽 위 모서리에 걸침), 카드 전체 링크 하나, 설명 숨김, hex 없음.
+ * 칩 «드랍»·«픽업» 두 개가 박스 줄의 대각선 모서리에 걸침, 카드 전체 링크 하나, 설명 숨김, hex 없음.
  *
  * 실행: cd jam-web && npx vitest run src/components/today/__tests__/FeedDropPickupCard.test.tsx
  */
@@ -28,7 +28,8 @@ vi.mock('@/components/today/TodayCardTracker', () => ({
 
 import FeedCard from '../feed/FeedCard'
 import type { FeedCardView, FeedCardViewBadge } from '@/lib/today/cardView'
-import { FEED_CARD_MIN_HEIGHT, FEED_DROP_PICKUP } from '@/lib/today/feedConstants'
+import { diagonalOf } from '@/lib/today/feedChipSlots'
+import { FEED_CARD_MIN_HEIGHT, FEED_CHIP_OFFSET, FEED_DROP_PICKUP } from '@/lib/today/feedConstants'
 import { resolveFeedLook, type FeedLookCard } from '@/lib/today/feedLook'
 
 const NOW = new Date('2026-11-21T12:00:00+09:00')
@@ -117,35 +118,78 @@ describe('드랍·픽업 — 구성', () => {
 })
 
 describe('드랍·픽업 — 칩·링크·설명', () => {
-  it('칩은 박스 줄 위 한 개이고 왼쪽 위 모서리에 걸친다(큰 칩 40)', () => {
-    const html = render(dropView({ chips: [{ kind: 'phrase', text: '드랍', slot: 'box-row-top' }] }))
-    expect(count(html, 'rounded-full')).toBe(1)
+  it('칩이 저장되지 않으면 «드랍»(색 칩)·«픽업»(검정 칩) 두 칩이고 둘 다 큰 칩(40)이다', () => {
+    const view = dropView({ chip_color_key: 'ref-lime' })
+    expect(view.look.chips.map((chip) => [chip.text, chip.color, chip.size])).toEqual([
+      ['드랍', 'ref-lime', 'lg'],
+      ['픽업', 'black', 'lg'],
+    ])
+    const html = render(view)
+    expect(count(html, 'rounded-full')).toBe(2)
+    expect(count(html, 'height:40px')).toBe(2)
     expect(html).toContain('드랍')
-    expect(html).toContain('left:-12px')
-    expect(html).toContain('top:-16px')
-    expect(html).toContain('height:40px')
+    expect(html).toContain('픽업')
+    // 색 칩은 색 변수, 검정 칩은 --foreground 면에 --snow 글자
+    expect(html).toContain('background-color:var(--feed-ref-lime)')
+    expect(html).toContain('background-color:var(--foreground)')
+    expect(html).toContain('text-snow')
   })
 
-  it('저장된 칩이 둘이어도 자리가 하나뿐이라 한 개만 그린다', () => {
+  it('두 칩은 박스 줄의 대각선 모서리에 걸친다(위쪽은 위로, 아래쪽은 아래로, 가로 12·세로 16)', () => {
+    const offsets: Record<string, string[]> = {
+      'box-row-top-left': ['top:-16px', 'left:-12px'],
+      'box-row-top-right': ['top:-16px', 'right:-12px'],
+      'box-row-bottom-left': ['bottom:-16px', 'left:-12px'],
+      'box-row-bottom-right': ['bottom:-16px', 'right:-12px'],
+    }
+    const pairs = new Set<string>()
+    for (let n = 0; n < 40; n++) {
+      const view = dropView({ feed_seed: n })
+      const slots = view.look.chips.map((chip) => chip.slot)
+      expect(slots).toHaveLength(2)
+      expect(diagonalOf('drop_pickup', slots[0])).toBe(slots[1])
+      pairs.add([...slots].sort().join('/'))
+      const html = render(view)
+      for (const slot of slots) for (const part of offsets[slot]) expect(html).toContain(part)
+    }
+    // 대각선 짝 두 가지가 모두 나온다
+    expect([...pairs].sort()).toEqual(['box-row-bottom-left/box-row-top-right', 'box-row-bottom-right/box-row-top-left'])
+  })
+
+  it('저장된 chips가 있으면 그것을 따른다(한 개만 저장하면 한 개)', () => {
+    const html = render(dropView({ chips: [{ kind: 'phrase', text: '드랍 예정', slot: 'box-row-bottom-right' }] }))
+    expect(count(html, 'rounded-full')).toBe(1)
+    expect(html).toContain('드랍 예정')
+    expect(html).toContain('bottom:-16px')
+    expect(html).toContain('right:-12px')
+    expect(html).not.toContain('픽업')
+  })
+
+  it('저장된 칩이 셋이어도 두 개까지만 그린다', () => {
     const html = render(
       dropView({
         chips: [
-          { kind: 'phrase', text: '드랍' },
-          { kind: 'phrase', text: '픽업' },
+          { kind: 'phrase', text: '가' },
+          { kind: 'phrase', text: '나' },
+          { kind: 'phrase', text: '다' },
         ],
       }),
     )
-    expect(count(html, 'rounded-full')).toBe(1)
+    expect(count(html, 'rounded-full')).toBe(2)
   })
 
   it('칩 없음([])이면 칩이 없다', () => {
     expect(count(render(dropView({ chips: [] })), 'rounded-full')).toBe(0)
   })
 
-  it('폭 320에서 칩이 카드 바깥으로 나가지 않는다(걸침 12 < 안쪽 여백 16)', () => {
-    const html = render(dropView({ chips: [{ kind: 'phrase', text: '드랍', slot: 'box-row-top' }] }))
-    const left = Number(/left:(-?\d+)px/.exec(html.slice(html.indexOf('z-10')))?.[1])
-    expect(Math.abs(left)).toBeLessThan(16)
+  it('폭 320에서 칩이 카드 바깥으로 나가지 않는다(가로 걸침 12 < 안쪽 여백 16)', () => {
+    expect(FEED_CHIP_OFFSET.x).toBeLessThan(16)
+    for (const n of [1, 2, 3, 4, 5, 6]) {
+      const html = render(dropView({ feed_seed: n }))
+      const sides = [...html.matchAll(/(?:left|right):(-?\d+)px/g)].map((match) => Math.abs(Number(match[1])))
+      expect(sides.length).toBeGreaterThan(0)
+      for (const side of sides) expect(side).toBeLessThan(16)
+    }
   })
 
   it('설명 숨김이면 설명이 없다', () => {

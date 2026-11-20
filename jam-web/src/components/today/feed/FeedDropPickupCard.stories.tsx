@@ -6,8 +6,8 @@ import { CARD_WIDTH_320, CardBox, Cell, ITEM_BADGES, Row, feedView, type StoryCa
 /**
  * 드랍·픽업(`drop_pickup`) 상태 행렬 (티켓 20261121_0115, 상위 20261120_2026 4회차-3). 서비스 전용(홈피드 한정).
  * 위에 아이템 배지 3개를 박스에 담아 한 줄(영역 높이 184, 칸 간격 8, 칸마다 배지 80×80을 가운데에), 아래에 제목과 설명. 샘플 카드 높이 360.
- * 박스 모양은 5종 중 하나를 아이템 방향으로 그린다. 칩은 박스 줄 위 한 개(큰 칩 40)가 박스 줄의 왼쪽 위 모서리에 걸친다.
- * 4-1의 칩 자리표가 이 유형을 «칩 1개»로 정해 두어(`box-row-top` 하나) 샘플의 «드랍»·«픽업» 두 칩 대신 한 칩이다 — 두 칩이 필요하면 자리표를 넓혀야 한다(티켓 20261121_0115 요약 참고).
+ * 박스 모양은 5종 중 하나를 아이템 방향으로 그린다. 칩은 «드랍»(색 칩)·«픽업»(검정 칩) 큰 칩(40) 두 개가 박스 줄의 대각선 모서리(`box-row-*`)에 걸친다(샘플 기준, 위쪽은 위로·아래쪽은 아래로).
+ * 칩이 저장되지 않은 카드는 이 두 칩이 자동으로 붙고, 저장된 chips가 있으면 그것을 따른다.
  */
 const meta: Meta<typeof FeedDropPickupCard> = {
   title: '서비스/Today/Feed/드랍·픽업(drop_pickup)',
@@ -24,7 +24,6 @@ const base: StoryCardOptions = {
   imageUrl: null,
   itemBadges: ITEM_BADGES.slice(0, 3),
   valueSource: { resource: 'drop_pickup' },
-  chips: [{ kind: 'phrase', text: '드랍·픽업', slot: 'box-row-top' }],
   box_shape: 'round',
   feed_seed: 5,
 }
@@ -79,8 +78,40 @@ export const NoImages: Story = {
   ),
 }
 
+export const DiagonalChipPairs: Story = {
+  name: '칩 2개(대각선 두 짝)',
+  render: () => (
+    <Row>
+      <Cell label="왼쪽 위 ↔ 오른쪽 아래">
+        <CardBox>
+          <FeedDropPickupCard
+            view={view({
+              chips: [
+                { kind: 'phrase', text: '드랍', slot: 'box-row-top-left' },
+                { kind: 'label', text: '픽업', slot: 'box-row-bottom-right' },
+              ],
+            })}
+          />
+        </CardBox>
+      </Cell>
+      <Cell label="오른쪽 위 ↔ 왼쪽 아래">
+        <CardBox>
+          <FeedDropPickupCard
+            view={view({
+              chips: [
+                { kind: 'phrase', text: '드랍', slot: 'box-row-top-right' },
+                { kind: 'label', text: '픽업', slot: 'box-row-bottom-left' },
+              ],
+            })}
+          />
+        </CardBox>
+      </Cell>
+    </Row>
+  ),
+}
+
 export const ChipVariants: Story = {
-  name: '칩 없음 · 구분 칩(검정)',
+  name: '칩 없음 · 한 개만 저장',
   render: () => (
     <Row>
       <Cell label="칩 없음">
@@ -88,9 +119,9 @@ export const ChipVariants: Story = {
           <FeedDropPickupCard view={view({ chips: [] })} />
         </CardBox>
       </Cell>
-      <Cell label="구분 칩 «아이템 배지»(검정)">
+      <Cell label="한 개만 저장(검정)">
         <CardBox>
-          <FeedDropPickupCard view={view({ chips: [{ kind: 'label', slot: 'box-row-top' }] })} />
+          <FeedDropPickupCard view={view({ chips: [{ kind: 'label', text: '픽업', slot: 'box-row-top-left' }] })} />
         </CardBox>
       </Cell>
     </Row>

@@ -8,6 +8,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/feedLook.collection.test.ts
  */
 import { describe, it, expect } from 'vitest'
+import { diagonalOf } from '../feedChipSlots'
 import { FEED_BURST, FEED_MOTION } from '../feedConstants'
 import { generateCollectionBurst, resolveCollectionBurst, resolveFeedLook, type FeedBurstPlacement, type FeedLookCard, type RenderedFeedType } from '../feedLook'
 
@@ -153,12 +154,15 @@ describe('resolveFeedLook — burst와 설명 노출', () => {
     }
   })
 
-  it('칩 자리는 4-1 자리표를 따른다(컬렉션 art-*, 드랍·픽업 box-row-top, 목록형 card-top-right)', () => {
+  it('칩 자리는 4-1 자리표를 따른다(컬렉션 art-*, 드랍·픽업 box-row-* 대각선 두 칩, 목록형 card-top-right)', () => {
     const source = { resource: 'collection', itemCount: 12 } as const
     const intro = resolveFeedLook({ card: { id: 'c', feed_type: 'collection_intro' }, feedType: 'collection_intro', valueSource: source, now: NOW })
     expect(intro.chips.length).toBeGreaterThan(0)
     for (const chip of intro.chips) expect(chip.slot).toMatch(/^art-/)
     const drop = resolveFeedLook({ card: { id: 'c', feed_type: 'drop_pickup' }, feedType: 'drop_pickup', valueSource: { resource: 'drop_pickup' }, now: NOW })
-    expect(drop.chips.map((chip) => chip.slot)).toEqual(['box-row-top'])
+    expect(drop.chips).toHaveLength(2)
+    for (const chip of drop.chips) expect(chip.slot).toMatch(/^box-row-(top|bottom)-(left|right)$/)
+    expect(diagonalOf('drop_pickup', drop.chips[0].slot)).toBe(drop.chips[1].slot)
+    expect(drop.chips.map((chip) => chip.size)).toEqual(['lg', 'lg'])
   })
 })
