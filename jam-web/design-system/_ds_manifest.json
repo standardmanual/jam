@@ -1212,6 +1212,66 @@
       "kind": "other",
       "definedIn": "tokens/materials.css",
       "annotation": "other"
+    },
+    {
+      "name": "--jam-red-soft",
+      "value": "#FF9A9A",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-yellow-soft",
+      "value": "#FFDD73",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-green-soft",
+      "value": "#9AF7AD",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-purple-soft",
+      "value": "#D6B9FA",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-blue-soft",
+      "value": "#8FCFF6",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--feed-ref-red",
+      "value": "#F5442C",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--feed-ref-blue",
+      "value": "#95C1F7",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--feed-ref-lime",
+      "value": "#C0DC66",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--feed-ref-pink",
+      "value": "#E57FBB",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--feed-ref-yellow",
+      "value": "#F2EC6A",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
     }
   ],
   "themes": [],

@@ -71,6 +71,17 @@
   --color-jam-green: var(--jam-green);
   --color-jam-purple: var(--jam-purple);
   --color-jam-blue: var(--jam-blue);
+  /* 홈피드 카드 전용 10색(티켓 20261120_2143): Card·Button·상태색에는 쓰지 않는다 */
+  --color-jam-red-soft: var(--jam-red-soft);
+  --color-jam-yellow-soft: var(--jam-yellow-soft);
+  --color-jam-green-soft: var(--jam-green-soft);
+  --color-jam-purple-soft: var(--jam-purple-soft);
+  --color-jam-blue-soft: var(--jam-blue-soft);
+  --color-feed-ref-red: var(--feed-ref-red);
+  --color-feed-ref-blue: var(--feed-ref-blue);
+  --color-feed-ref-lime: var(--feed-ref-lime);
+  --color-feed-ref-pink: var(--feed-ref-pink);
+  --color-feed-ref-yellow: var(--feed-ref-yellow);
 
   /* shadcn 이름 — 어드민 전용. 값은 [data-admin-theme] 안에서만 정의된다 */
   --color-sidebar-ring: var(--sidebar-ring);
