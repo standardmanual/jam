@@ -36,6 +36,16 @@ export function hasResourceImage(item: ViewableItem & { kind: string | null }): 
   return typeof value === 'string' && value.trim() !== ''
 }
 
+/**
+ * 별도 이미지를 만들지 않는 항목인가(티켓 20261120_1825). 미션 소개 카드(`home_feed_card` + `mission_spotlight`)는 홈 화면이 연결된 미션의
+ * 대표 이미지를 커버로 그리므로 카드용 이미지를 따로 만들지 않는다 — 만들어 커버가 생기면 미션 이미지를 가린다.
+ * 기획을 열 때 자동 제작·승인 뒤 자동 제작·[이미지 만들기]가 같은 함수를 쓴다.
+ */
+export function usesMissionImage(item: ViewableItem & { kind: string | null }): boolean {
+  if (item.kind !== 'home_feed_card') return false
+  return asRecord(itemField(item, 'resource'))?.template_type === 'mission_spotlight'
+}
+
 export interface ImageSpec {
   preset_id?: string
   bg?: string

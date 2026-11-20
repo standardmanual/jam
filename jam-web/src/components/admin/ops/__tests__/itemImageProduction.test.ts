@@ -130,6 +130,14 @@ describe('produceItemImages', () => {
     expect(post).toHaveBeenCalledTimes(1)
   })
 
+  it('미션 소개 카드는 image_spec이 있어도 만들지 않고 skipped다 — 다른 카드·미션은 그대로 만든다(티켓 20261120_1825)', async () => {
+    const spec = { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' } }
+    const missionCard = makeItem({ id: 'ms', original: { resource: { template_type: 'mission_spotlight' }, image_spec: spec } })
+    const mission = makeItem({ id: 'mi', kind: 'mission', original: { resource: { template_type: 'mission_spotlight' }, image_spec: spec } })
+    expect(await produceItemImages('b1', ['ms', 'mi', 'a'], [...items, missionCard, mission], false)).toEqual({ done: 2, failed: 0, skipped: 1 })
+    expect(post.mock.calls.map((call) => call[1])).toEqual(['mi', 'a'])
+  })
+
   it('이미 이미지가 붙은 항목은 덮어쓰지 않고 skipped다', async () => {
     const withImage = makeItem({
       id: 'e',

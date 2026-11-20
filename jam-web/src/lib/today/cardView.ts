@@ -349,11 +349,16 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     return view
   }
 
-  // hero·poster·square — 커버가 있으면 커버, 없으면 첫 배지 그림(옛 카드가 올려 쓰던 규칙 그대로)
+  // hero·poster·square — 커버 → 미션 대표 이미지(미션 소개 카드만) → 첫 배지 그림 순서(옛 카드가 올려 쓰던 규칙 그대로)
   const first = badges[0]
   const view: ImageCardView = { ...base, shape, imageUrl: card.cover_image_url || null }
   if (card.layout_type) view.layoutType = card.layout_type
-  if (!card.cover_image_url && first?.image_url) {
+  if (!card.cover_image_url && card.template_type === 'mission_spotlight' && mission?.image_url) {
+    // 미션 소개 카드는 카드용 이미지를 따로 만들지 않고 미션 대표 이미지를 커버로 쓴다(티켓 20261120_1825).
+    // 미션 이미지에는 이름·조건이 글자로 들어 있어 저장된 title_in_image와 무관하게 «이미지가 제목을 말하는 카드»다.
+    view.imageUrl = mission.image_url
+    view.titleInImage = true
+  } else if (!card.cover_image_url && first?.image_url) {
     view.imageUrl = first.image_url
     // 보유 여부와 무관하게 컬러다(티켓 20261118_1523)
   }

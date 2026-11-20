@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { PREVIEW_NAME_UNKNOWN, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
-import { PREVIEW_TITLE_PLACEHOLDER, bundleBadgeNamesOf, itemToPreviewCard, previewOf, previewViewOf, type PreviewItem } from '@/lib/admin/opsInbox/cardPreview'
+import { PREVIEW_TITLE_PLACEHOLDER, bundleBadgeNamesOf, itemToPreviewCard, linkedMissionOf, previewOf, previewViewOf, type PreviewItem } from '@/lib/admin/opsInbox/cardPreview'
 
 const NOW = new Date('2026-10-06T00:00:00.000Z')
 
@@ -237,5 +237,45 @@ describe('bundleBadgeNamesOf', () => {
     ]
     expect(bundleBadgeNamesOf('recipe-1', items)).toEqual(['첫 성공 배지'])
     expect(bundleBadgeNamesOf(null, items)).toEqual([])
+  })
+})
+
+describe('미션 소개 카드의 연결 미션 이미지 (티켓 20261120_1825)', () => {
+  const card: PreviewItem = {
+    kind: 'home_feed_card',
+    original: { shape: 'square', links: ['m-1'], copy: { title: '카드' }, resource: { template_type: 'mission_spotlight' } } as never,
+    edited: null,
+  }
+  const mission = (image: string | null): PreviewItem & { itemKey: string } => ({
+    itemKey: 'm-1',
+    kind: 'mission',
+    original: { resource: image ? { image_url: image, reward_points: 100 } : { reward_points: 100 } } as never,
+    edited: null,
+  })
+
+  it('연결 미션의 이미지를 커버로 쓰고 mission_id는 null로 둔다', () => {
+    const linked = linkedMissionOf('c-1', card, [mission('https://x/m.png')])
+    const row = itemToPreviewCard(card, undefined, { linkedMission: linked })
+    expect(row?.mission_id).toBeNull()
+    expect(previewViewOf(card, undefined, { linkedMission: linked })).toMatchObject({ imageUrl: 'https://x/m.png', titleInImage: true })
+  })
+
+  it('연결이 없거나 미션 이미지가 없으면 이미지 없는 그대로다', () => {
+    expect(previewViewOf(card, undefined, { linkedMission: null })).toMatchObject({ imageUrl: null })
+    expect(previewViewOf(card, undefined, { linkedMission: mission(null) })).toMatchObject({ imageUrl: null })
+  })
+
+  it('다른 템플릿 카드는 연결 미션이 있어도 영향받지 않는다', () => {
+    const other: PreviewItem = { ...card, original: { shape: 'square', resource: { template_type: 'editorial_article' } } as never }
+    expect(previewViewOf(other, undefined, { linkedMission: mission('https://x/m.png') })).toMatchObject({ imageUrl: null })
+  })
+
+  it('linkedMissionOf: 카드의 links나 미션의 links 어느 쪽이든 찾고 없으면 null이다', () => {
+    expect(linkedMissionOf('c-1', card, [mission('https://x/m.png')])?.kind).toBe('mission')
+    const noLinks: PreviewItem = { ...card, original: { resource: {} } as never }
+    expect(linkedMissionOf('c-1', noLinks, [mission('https://x/m.png')])).toBeNull()
+    const reverse = { ...mission('https://x/m.png'), original: { links: ['c-1'], resource: {} } as never }
+    expect(linkedMissionOf('c-1', noLinks, [reverse])?.kind).toBe('mission')
+    expect(linkedMissionOf('c-1', card, [{ ...mission(null), kind: 'jam_badge' }])).toBeNull()
   })
 })

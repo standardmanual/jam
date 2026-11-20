@@ -11,7 +11,7 @@ import { asRecord, itemField, linksOf, type ViewableItem } from '@/lib/admin/ops
 import { formatScheduleAt } from '@/lib/ambient-drop/scheduleView'
 import { EMPTY_PREVIEW_NAMES, PREVIEW_NAME_UNKNOWN, type OpsPreviewBadge, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import { toCardView, type CardView } from '@/lib/today/cardView'
-import type { TodayCardWithHref } from '@/lib/today/cards'
+import type { ResolvedMission, TodayCardWithHref } from '@/lib/today/cards'
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import type { BadgeRarity, TodayCardLayoutType, TodayCardRow, TodayCardTemplateType } from '@/types/database'
 
@@ -42,6 +42,11 @@ export interface PreviewOptions {
   names?: OpsPreviewNames
   /** 같은 묶음에서 새로 만드는 배지의 이름(레시피 항목에서만 쓴다). */
   bundleBadgeNames?: readonly string[]
+  /**
+   * 같은 묶음에서 이 카드가 `links`로 연결한 미션 항목(티켓 20261120_1825). 미션 소개 카드는 카드 커버가 없으면 이 미션의 대표 이미지를
+   * 커버로 그린다(홈 화면과 같은 규칙). 값은 표시용이다 — 카드의 `mission_id`는 null로 둔다.
+   */
+  linkedMission?: PreviewItem | null
 }
 
 function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -106,7 +111,46 @@ export function itemToPreviewCard(
     shape: shape === OPS_FIELD_UNKNOWN ? null : shape,
     title_in_image: typeof titleInImage === 'boolean' ? titleInImage : null,
   }
-  return { ...row, resolved_href: resolveTargetHref(row), resolved_badges: [], resolved_ranking: null }
+  const resolvedMission = row.template_type === 'mission_spotlight' ? previewMissionOf(options.linkedMission, now) : null
+  return { ...row, resolved_href: resolveTargetHref(row), resolved_badges: [], resolved_ranking: null, ...(resolvedMission ? { resolved_mission: resolvedMission } : {}) }
+}
+
+/** 연결 미션 항목을 홈 화면의 `resolved_mission` 모양으로 바꾼다(표시용). 대표 이미지가 없으면 null이라 카드는 이미지 없는 모양 그대로다. */
+function previewMissionOf(mission: PreviewItem | null | undefined, now: Date): ResolvedMission | null {
+  if (!mission) return null
+  const resource = asRecord(itemField(mission, 'resource')) ?? {}
+  const image = resource.image_url
+  if (typeof image !== 'string' || image.trim() === '') return null
+  const points = resource.reward_points
+  const badgeIds = resource.reward_badge_ids
+  const endsAt = itemField(mission, 'ends_at')
+  return {
+    starts_at: timeOf(mission, 'starts_at', now),
+    ends_at: typeof endsAt === 'string' && !Number.isNaN(Date.parse(endsAt)) ? new Date(endsAt).toISOString() : null,
+    reward_points: typeof points === 'number' && Number.isFinite(points) ? points : null,
+    reward_badge_count: Array.isArray(badgeIds) ? badgeIds.length : 0,
+    image_url: image.trim(),
+  }
+}
+
+/**
+ * 같은 묶음에서 이 카드가 `links`로 가리키는 미션 항목(티켓 20261120_1825). 카드의 `links`에 미션 `item_key`가 있거나 미션의 `links`에 카드
+ * `item_key`가 있으면 연결로 본다(묶음 그룹은 방향과 무관하다, ops-tool PRD §9). 없으면 null이다.
+ */
+export function linkedMissionOf(
+  cardItemKey: string | null | undefined,
+  card: PreviewItem,
+  bundleItems: readonly (PreviewItem & { itemKey?: string | null })[]
+): PreviewItem | null {
+  const cardLinks = linksOf(card)
+  return (
+    bundleItems.find(
+      (other) =>
+        other.kind === 'mission' &&
+        Boolean(other.itemKey) &&
+        (cardLinks.includes(other.itemKey as string) || (Boolean(cardItemKey) && linksOf(other).includes(cardItemKey as string)))
+    ) ?? null
+  )
 }
 
 /** 표시 데이터. 계측 정보가 없다. 카드가 아니면 null. */

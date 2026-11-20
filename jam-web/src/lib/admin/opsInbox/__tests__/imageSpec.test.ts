@@ -19,6 +19,7 @@ import {
   previewRenderArgs,
   readImageSpec,
   stableImageSeed,
+  usesMissionImage,
 } from '../imageSpec'
 
 describe('종류별 이미지 칸', () => {
@@ -214,5 +215,24 @@ describe('previewRenderArgs', () => {
   it('한쪽 색만 있으면 있는 색을 따르고 tempColor다', () => {
     const out = previewRenderArgs({ preset_id: 'p1', bg: '#123456' }, 'item-1')
     expect(out).toMatchObject({ tempColor: true, args: { bg: '#123456', end: '#123456' } })
+  })
+})
+
+describe('usesMissionImage (티켓 20261120_1825)', () => {
+  const item = (kind: string | null, template: string | undefined) => ({
+    kind,
+    original: { resource: template ? { template_type: template } : {} } as never,
+    edited: null,
+  })
+
+  it('홈피드 카드 중 미션 소개 카드만 true다', () => {
+    expect(usesMissionImage(item('home_feed_card', 'mission_spotlight'))).toBe(true)
+    expect(usesMissionImage(item('home_feed_card', 'badge_spotlight'))).toBe(false)
+    expect(usesMissionImage(item('home_feed_card', undefined))).toBe(false)
+  })
+
+  it('종류가 카드가 아니면 템플릿 값이 같아도 false다', () => {
+    expect(usesMissionImage(item('mission', 'mission_spotlight'))).toBe(false)
+    expect(usesMissionImage(item(null, 'mission_spotlight'))).toBe(false)
   })
 })

@@ -4,6 +4,7 @@ import type { ReactElement } from 'react'
 import {
   OpsCardPreview,
   PREVIEW_IMAGE_MAKING_TEXT,
+  PREVIEW_IMAGE_MISSION_TEXT,
   PREVIEW_IMAGE_NEEDED_TEXT,
   PREVIEW_IMAGE_PENDING_TEXT,
   PREVIEW_NOT_CARD_TEXT,
@@ -99,5 +100,45 @@ describe('OpsCardPreview', () => {
       expect(out).toContain(PREVIEW_IMAGE_PENDING_TEXT)
       expect(out).not.toContain(PREVIEW_IMAGE_NEEDED_TEXT)
     }
+  })
+
+  describe('미션 소개 카드 (티켓 20261120_1825)', () => {
+    const MISSION_IMAGE = 'https://example.com/mission-image.png'
+    const missionCard = {
+      ...BASE,
+      resource: { template_type: 'mission_spotlight' },
+      links: ['mission-1'],
+      image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' },
+    }
+    const missionItem = (image: string | null) => ({
+      itemKey: 'mission-1',
+      kind: 'mission',
+      original: { copy: { title: '미션' }, resource: image ? { image_url: image } : {} } as never,
+      edited: null,
+    })
+    const cardItem = (status: string) => ({ ...item(missionCard), itemKey: 'card-1', status })
+
+    it('연결한 미션 항목의 대표 이미지를 카드 커버로 보이고 제작 안내는 보이지 않는다', () => {
+      for (const status of ['arrived', 'approved']) {
+        const out = html(<OpsCardPreview item={cardItem(status)} bundleItems={[missionItem(MISSION_IMAGE)]} />)
+        expect(out).toContain(MISSION_IMAGE)
+        expect(out).not.toContain(PREVIEW_IMAGE_MISSION_TEXT)
+        expect(out).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
+        expect(out).not.toContain(PREVIEW_IMAGE_NEEDED_TEXT)
+      }
+    })
+
+    it('연결한 미션이 없거나 미션 이미지가 아직 없으면 «미션 대표 이미지를 써요»만 보인다', () => {
+      expect(PREVIEW_IMAGE_MISSION_TEXT).toBe('미션 대표 이미지를 써요')
+      for (const bundleItems of [[], [missionItem(null)]]) {
+        for (const status of ['arrived', 'reviewing', 'approved']) {
+          const out = html(<OpsCardPreview item={cardItem(status)} bundleItems={bundleItems} making />)
+          expect(out).toContain(PREVIEW_IMAGE_MISSION_TEXT)
+          expect(out).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
+          expect(out).not.toContain(PREVIEW_IMAGE_NEEDED_TEXT)
+          expect(out).not.toContain(PREVIEW_IMAGE_MAKING_TEXT)
+        }
+      }
+    })
   })
 })
