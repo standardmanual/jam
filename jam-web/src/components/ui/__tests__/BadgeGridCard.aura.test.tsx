@@ -13,7 +13,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 import BadgeGridCard from '../BadgeGridCard'
-import { auraGlowMetrics } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 const IMAGE = 'https://example.com/badge.png'
@@ -124,11 +123,12 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
     expect(html).not.toContain('mix-blend-mode')
   })
 
-  it('색이 없는 일반 면은 지금처럼 90px 안쪽 면이다(여백 안, 둥근 모서리)', () => {
+  it('색이 없는 일반 면도 같은 크기로 가장자리까지 채운다(한 그리드 안에서 어긋나지 않는다). 컨테이너 타입은 없다', () => {
     const html = render({})
-    expect(html).toContain('max-w-[90px]')
-    expect(html).toContain('rounded-2xl overflow-hidden flex')
-    expect(html).not.toContain('w-[calc(100%+1.5rem)]')
+    expect(html).toContain('w-[calc(100%+1.5rem)] -mt-3')
+    expect(html).not.toContain('max-w-[90px]')
+    expect(html).not.toContain('rounded-2xl overflow-hidden flex')
+    expect(html).not.toContain('container-type')
   })
 
   it('compact 면은 면이 컨테이너이고 블러·여유·안쪽 빛은 폭 비례(cqw)다', () => {

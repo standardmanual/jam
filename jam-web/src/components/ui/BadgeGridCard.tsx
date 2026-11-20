@@ -124,7 +124,7 @@ export interface BadgeGridCardProps {
    * 썸네일 면에 깔 Aura 배경의 색 — `badges.bg_colors` 값 그대로(티켓 20261119_1654). 없거나 null이면 지금 모습 그대로다.
    * `locked`·`undiscovered`에는 깔지 않는다(이미지를 가리는 칸). 어드민 미리보기는 넘기지 않는다.
    * 글로우의 블러·여유·안쪽 빛은 면 크기에 비례한다(`badgeAura.ts`의 `auraGlowMetrics`).
-   * 일반 카드(compact 아님)는 글로우가 있으면 썸네일 면이 카드 위·좌·우 가장자리까지 꽉 찬다(여백 없음, 티켓 20261120_1448). 이름·칩 줄의 여백은 그대로다.
+   * 일반 카드(compact 아님)의 썸네일은 글로우 유무와 상관없이 카드 위·좌·우 가장자리까지 꽉 찬다(여백 없음, 티켓 20261120_1113·1120). 이름·칩 줄의 여백은 그대로다.
    * `earned={false}`면 면의 `grayscale opacity-40`이 그라데이션까지 먹고, `outlined` 점선은 면의 형제라 영향이 없다.
    */
   bgColors?: string[] | null
@@ -195,12 +195,12 @@ export default function BadgeGridCard({
   // Aura는 면 안의 `absolute z-0` 면이라 이미지·대체 아이콘이 그 위로 올라와야 한다(비위치 요소는 z-0 위치 요소 아래에 그려진다)
   const aboveAura = aura ? 'relative z-10 ' : ''
 
-  // 글로우 면은 카드 가장자리까지 채운다(여백 없음, 티켓 20261120_1448). 위·좌·우 여백(p-3)만큼 키우고, 모서리는 카드(`rounded-2xl overflow-hidden`)가 자른다.
-  // 아래 모서리는 글로우가 순백으로 끝나 카드 면(`--card-bg` 흰색)과 이어지므로 둥글리지 않는다
-  const bleed = aura !== null
+  // 일반 카드의 썸네일은 카드 가장자리까지 채운다(여백 없음, 티켓 20261120_1113·1120). 위·좌·우 여백(p-3)만큼 키우고, 모서리는 카드(`rounded-2xl overflow-hidden`)가 자른다.
+  // 아래 모서리는 글로우가 순백으로 끝나 카드 면(`--card-bg` 흰색)과 이어지므로 둥글리지 않는다. 글로우가 없는 카드·잠김·미발견 칸도 같은 크기라 한 그리드 안에서 어긋나지 않는다.
+  // compact는 별도 고정 규격(여백 4)이라 이 분기에 들어오지 않는다
   const thumbnailCls = [
     aura && 'relative',
-    bleed ? 'w-full aspect-square overflow-hidden' : 'w-full aspect-square rounded-2xl overflow-hidden',
+    'w-full aspect-square overflow-hidden',
     'flex items-center justify-center',
     thumbDimmed && 'grayscale opacity-40',
   ]
@@ -279,32 +279,32 @@ export default function BadgeGridCard({
         thumbnailCls(w-full)가 부모의 100%를 요구하는 순환 참조가 생겨 0×0으로 collapse된다
         (티켓 20260907_2138, 직전 시도 게이트 리뷰 FAIL 사유).
       */}
-      <div className={bleed ? 'relative w-[calc(100%+1.5rem)] -mt-3' : 'relative w-full max-w-[90px]'}>
+      <div className="relative w-[calc(100%+1.5rem)] -mt-3">
         {locked ? (
           // 잠긴 개체는 어떤 배지인지 알 수 있는 그림을 그리지 않는다(운영 로직 7.3절). 호출부가 URL을 넘겨도 쓰지 않는다
-          <LockedTile size={90} />
+          <LockedTile size={128} style={{ width: '100%', borderRadius: 0 }} />
         ) : undiscovered ? (
           // 후보가 없는 칸: 이미지를 그리지 않고 이미지 윤곽의 점선만 둔다. SlotOutline이 정사각형 칸을 스스로 잡아 레이아웃이 밀리지 않는다.
           // 추적 실패·주소 없음이면 둥근 사각형 점선이다. 이름은 아래 줄이 전하므로 점선은 장식(aria-hidden)이다
-          <SlotOutline src={outlineSrc} fallback="box" />
+          <SlotOutline src={outlineSrc} fallback="box" size={128} inset={6} style={{ maxWidth: 'none' }} />
         ) : (
           <>
-            <div className={thumbnailCls} style={bleed ? { containerType: 'inline-size' } : undefined}>
+            <div className={thumbnailCls} style={aura ? { containerType: 'inline-size' } : undefined}>
               {aura && <BadgeAuraBackground colors={aura} glowSize="container" gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
-                width={bleed ? 128 : 90}
-                height={bleed ? 128 : 90}
+                width={128}
+                height={128}
                 eager={eager}
                 // 면이 커져도 그림이 면에서 차지하는 비율(약 91%)과 점선 윤곽(`SlotOutline`의 inset 4/90)이 그대로 맞도록 여백을 비율로 준다
-                className={`${aboveAura}w-full h-full object-contain ${bleed ? 'p-[4.4%]' : 'p-1'}`}
-                fallback={<MedalIcon className={`${aboveAura}w-10 h-10 text-muted`} />}
+                className={`${aboveAura}w-full h-full object-contain p-[4.4%]`}
+                fallback={<MedalIcon className={`${aboveAura}w-14 h-14 text-muted`} />}
               />
             </div>
             {outlined && (
               // 이미지 래퍼의 형제: 래퍼 안에 두면 opacity-40을 먹어 점선이 흐려진다. 추적 실패 때는 이미지가 보이므로 사각형 대체가 없다
-              <SlotOutline src={outlineSrc} fallback="none" className="absolute inset-0 h-full w-full" />
+              <SlotOutline src={outlineSrc} fallback="none" size={128} inset={6} style={{ maxWidth: 'none' }} className="absolute inset-0 h-full w-full" />
             )}
           </>
         )}
@@ -312,7 +312,7 @@ export default function BadgeGridCard({
           // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이
           // 아니라 썸네일에 붙어야 「이 배지를」 몇 번인지가 한눈에 붙는다.
           <span
-            className={`absolute ${bleed ? 'bottom-2 right-2' : '-bottom-1 -right-1'} min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center`}
+            className={`absolute bottom-2 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center`}
             aria-hidden="true"
           >
             ×{count}
