@@ -76,7 +76,16 @@ export interface ResolvedCollection {
   name: string
   /** 컬렉션 목록과 같은 기준(`computeBookCompletion`의 분모)으로 센 아이템 수. 개수를 읽지 못했으면 NULL */
   item_count: number | null
+  /**
+   * 컬렉션 소개 카드(`collection_intro`)가 대표 그림 뒤로 퍼뜨릴 아이템 배지 그림(그림이 있는 것만 최대 `COLLECTION_BURST_BADGE_LIMIT`개, 티켓 20261121_0115).
+   * 아이템 수를 세려고 이미 읽는 컬렉션 아이템 배지 조회에서 나온다(조회를 더하지 않는다). 읽지 못했거나 그림이 없으면 없거나 빈 배열이고, 카드는 대표 그림만 그린다.
+   * 등급형 컬렉션은 같은 이름의 배지가 등급마다 있어 이름이 같은 배지는 하나로 본다.
+   */
+  item_badges?: { name: string; image_url: string }[]
 }
+
+/** 컬렉션 소개 카드가 쓰는 아이템 배지 그림의 최대 개수(둘레로 퍼지는 자리 수와 같다). */
+export const COLLECTION_BURST_BADGE_LIMIT = 4
 
 /**
  * 레시피 공개 카드(`recipe_reveal`)의 표시 데이터에 필요한 레시피 값 (티켓 20261006_1217, 1500 ⑫ 사용자 결정 Q3).
@@ -429,7 +438,7 @@ export async function fetchCollectionsById(
     applyLaunchedItemBookFilter(supabase.from('item_books').select('id, name, tier_mode').in('id', bookIds), nowIso),
     supabase
       .from('badges')
-      .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
+      .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at, image_url')
       .in('item_book_id', bookIds)
       .in('type', [...COMPLETION_BADGE_TYPES])
       .is('deleted_at', null),
@@ -450,13 +459,54 @@ export async function fetchCollectionsById(
     })
   }
 
+  const itemBadgesByBook = badgesResult.error ? null : collectionItemBadgeImages((badgesResult.data ?? []) as CollectionItemBadgeRow[])
   for (const book of books) {
-    map.set(book.id, {
+    const resolved: ResolvedCollection = {
       name: book.name,
       item_count: completionByBook ? (completionByBook.get(book.id)?.total ?? 0) : null,
-    })
+    }
+    const itemBadges = itemBadgesByBook?.get(book.id)
+    if (itemBadges && itemBadges.length > 0) resolved.item_badges = itemBadges
+    map.set(book.id, resolved)
   }
   return map
+}
+
+interface CollectionItemBadgeRow {
+  id: string
+  item_book_id: string | null
+  type?: string
+  name: string | null
+  image_url?: string | null
+}
+
+/**
+ * 컬렉션마다 아이템 배지(`type` item) 그림을 최대 `COLLECTION_BURST_BADGE_LIMIT`개 고른다. 그림이 없는 배지와 이름이 같은 배지(등급형 컬렉션의 다른 등급)는 건너뛴다.
+ * 조회 결과의 순서는 정해져 있지 않으므로 이름·id 순으로 정렬해 같은 컬렉션이 늘 같은 배지를 고르게 한다.
+ */
+function collectionItemBadgeImages(rows: CollectionItemBadgeRow[]): Map<string, { name: string; image_url: string }[]> {
+  const byBook = new Map<string, { name: string; image_url: string; id: string }[]>()
+  for (const row of rows) {
+    const imageUrl = row.image_url?.trim()
+    // 체크인 배지도 컬렉션 완성 판정의 분모라 같이 읽히지만 퍼지는 것은 아이템 배지만이다
+    if (row.type !== 'item' || !row.item_book_id || !row.name || !imageUrl) continue
+    const list = byBook.get(row.item_book_id) ?? []
+    list.push({ id: row.id, name: row.name, image_url: imageUrl })
+    byBook.set(row.item_book_id, list)
+  }
+  const result = new Map<string, { name: string; image_url: string }[]>()
+  for (const [bookId, list] of byBook) {
+    const seen = new Set<string>()
+    const picked: { name: string; image_url: string }[] = []
+    for (const item of list.sort((a, b) => a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id))) {
+      if (seen.has(item.name)) continue
+      seen.add(item.name)
+      picked.push({ name: item.name, image_url: item.image_url })
+      if (picked.length >= COLLECTION_BURST_BADGE_LIMIT) break
+    }
+    result.set(bookId, picked)
+  }
+  return result
 }
 
 /**

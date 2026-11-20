@@ -415,3 +415,77 @@ describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 �
     expect(cards[0].resolved_mission).toBeNull()
   })
 })
+
+describe('getTodayCards — 컬렉션 소개용 아이템 배지 그림 (티켓 20261121_0115)', () => {
+  const milestoneCard = () => cardRow({ id: 'a', template_type: 'itembook_milestone', item_book_id: 'book1', feed_type: 'collection_intro' })
+  const itemRow = (id: string, name: string, imageUrl: string | null, overrides: Row = {}): Row => ({
+    id,
+    item_book_id: 'book1',
+    type: 'item',
+    drop_excluded: false,
+    name,
+    rarity: 'common',
+    deleted_at: null,
+    image_url: imageUrl,
+    ...overrides,
+  })
+
+  it('이미 읽는 컬렉션 아이템 조회에서 그림이 있는 아이템 배지를 이름 순으로 최대 4개 싣는다(조회를 더하지 않는다)', async () => {
+    fx.tables.today_cards = [milestoneCard()]
+    fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
+    fx.tables.badges = [
+      itemRow('b5', '마', 'https://cdn.example/5.png'),
+      itemRow('b1', '가', 'https://cdn.example/1.png'),
+      itemRow('b2', '나', null),
+      itemRow('b3', '다', 'https://cdn.example/3.png'),
+      itemRow('b4', '라', 'https://cdn.example/4.png'),
+      itemRow('b6', '바', 'https://cdn.example/6.png'),
+    ]
+
+    const [card] = await getCardsById('u1', null, NOW)
+
+    expect(card.resolved_collection?.item_badges).toEqual([
+      { name: '가', image_url: 'https://cdn.example/1.png' },
+      { name: '다', image_url: 'https://cdn.example/3.png' },
+      { name: '라', image_url: 'https://cdn.example/4.png' },
+      { name: '마', image_url: 'https://cdn.example/5.png' },
+    ])
+    // 아이템 수는 그림 유무와 상관없이 기존 규칙대로다
+    expect(card.resolved_collection?.item_count).toBe(6)
+    expect(fx.reads.filter((table) => table === 'badges')).toHaveLength(1)
+  })
+
+  it('체크인 배지와 이름이 같은 배지(등급형의 다른 등급)는 건너뛴다', async () => {
+    fx.tables.today_cards = [milestoneCard()]
+    fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
+    fx.tables.badges = [
+      itemRow('b1', '카메라', 'https://cdn.example/1.png'),
+      itemRow('b2', '카메라', 'https://cdn.example/2.png', { rarity: 'rare' }),
+      itemRow('b3', '체크인 지점', 'https://cdn.example/3.png', { type: 'checkin' }),
+    ]
+
+    const [card] = await getCardsById('u1', null, NOW)
+
+    expect(card.resolved_collection?.item_badges).toEqual([{ name: '카메라', image_url: 'https://cdn.example/1.png' }])
+  })
+
+  it('그림이 있는 아이템 배지가 없으면 item_badges 칸을 싣지 않는다(기존 모양 그대로)', async () => {
+    fx.tables.today_cards = [milestoneCard()]
+    fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
+    fx.tables.badges = [itemRow('b1', '가', null)]
+
+    const [card] = await getCardsById('u1', null, NOW)
+
+    expect(card.resolved_collection).toEqual({ name: '한강 컬렉션', item_count: 1 })
+  })
+
+  it('컬렉션 아이템 조회가 실패해도 카드는 그려진다(그림 없이)', async () => {
+    fx.tables.today_cards = [milestoneCard()]
+    fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
+    fx.errors.badges = { message: 'boom' }
+
+    const [card] = await getCardsById('u1', null, NOW)
+
+    expect(card.resolved_collection).toEqual({ name: '한강 컬렉션', item_count: null })
+  })
+})

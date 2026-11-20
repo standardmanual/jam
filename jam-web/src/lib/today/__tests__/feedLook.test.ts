@@ -247,14 +247,27 @@ describe('resolveFeedLook — 제목 속 칩·설명·도장·박스', () => {
 })
 
 describe('지원 유형 목록', () => {
-  it('다섯 유형이다', () => {
-    expect([...FEED_RENDERED_TYPES]).toEqual(['hero_box', 'text_box', 'badge_intro', 'badge_only', 'full_image'])
+  it('여덟 유형이다(4-2의 다섯 유형 + 4-3의 컬렉션 소개·드랍·픽업·목록형)', () => {
+    expect([...FEED_RENDERED_TYPES]).toEqual([
+      'hero_box',
+      'text_box',
+      'badge_intro',
+      'badge_only',
+      'full_image',
+      'collection_intro',
+      'drop_pickup',
+      'gallery_list',
+    ])
   })
 
-  it('4-3 유형·모르는 값·NULL은 그리지 않는다', () => {
-    for (const value of ['collection_intro', 'drop_pickup', 'gallery_list', 'nope', null, undefined, 3]) {
+  it('모르는 값·NULL은 그리지 않는다', () => {
+    for (const value of ['nope', null, undefined, 3]) {
       expect(isRenderedFeedType(value)).toBe(false)
     }
+  })
+
+  it('4-3 유형은 그린다', () => {
+    for (const value of ['collection_intro', 'drop_pickup', 'gallery_list']) expect(isRenderedFeedType(value)).toBe(true)
   })
 
   it('full_image는 꺼짐 상수를 따른다(지금 꺼져 있다)', () => {

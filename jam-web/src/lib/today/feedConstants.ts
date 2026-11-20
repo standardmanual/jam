@@ -165,6 +165,10 @@ export const FEED_CARD_MIN_HEIGHT = {
   badge_intro: 384,
   badge_only: 332,
   full_image: 358,
+  // 4회차-3(티켓 20261121_0115): 컬렉션 소개 416, 드랍·픽업 360, 목록형은 «260 이상»이라 항목 이름 줄이 늘면 늘어난다
+  collection_intro: 416,
+  drop_pickup: 360,
+  gallery_list: 260,
 } as const;
 
 /** 히어로 이미지 박스 높이(샘플 326×184). 폭은 카드 폭에서 좌우 여백 16px씩을 뺀 값을 채운다. */
@@ -186,3 +190,52 @@ export const FEED_STAMP_TILT = 14;
 
 /** 글자를 담는 텍스트 박스의 안쪽 여백 px(`--spacing-32`). 물결 가장자리(최대 22px)와 티켓 홈 반지름(28px)이 글자에 닿지 않게 하는 값이다. */
 export const FEED_TEXT_BOX_PADDING = 32;
+
+// ── 컬렉션 소개·드랍·픽업·목록형 (티켓 20261121_0115, 상위 20261120_2026 4회차-3) ─────────────────
+
+/**
+ * 컬렉션 소개(`collection_intro`)의 치수·배치 규칙 (샘플 326×240 영역, 폭 390 화면의 카드 폭 358 기준).
+ *
+ * - 영역 높이 240 가운데에 대표 그림 168×168(`object-contain`)을 두고, 그 뒤 가운데에서 아이템 배지가 둘레로 퍼진다. 배지 한 변은 68~84px이다.
+ * - 배지 배치(`x`·`y`)는 가운데에서 영역 가장자리까지를 1로 본 −1~1이다. 화면은 영역의 절반 크기(`50cqw`·`50cqh`)에 곱해 그리므로 카드 폭이 달라도 비율이 같다.
+ *   배치를 만드는 쪽(`resolveFeedLook`)은 기준 영역(`referenceHalf` = 326×240의 절반)의 px로 겹침을 계산한다.
+ * - `minCenterDistance`: 배지 중심이 가운데에서 이만큼 떨어진다. 대표 그림 반지름 84px 바깥에 배지 중심이 놓여 배지가 그림 뒤에 숨지 않는다(샘플은 115~129px).
+ *   `minPairDistance`: 배지 중심끼리의 거리. 가장 큰 배지(84) 한 변보다 조금 큰 88이라 서로 반 넘게 겹치지 않는다(샘플은 111 이상).
+ * - 모인 모습은 `scale(0.3)`·불투명도 0(샘플). 불투명도 전환은 220ms 안에 끝난다(샘플 `opacity 220ms ease-out`).
+ * - 관찰자는 55% 넘게 보일 때 «퍼짐», 완전히 나가면 «모임»으로 본다(`visibleRatio`). 노출 계측의 관찰자(50%)와 다른 관찰자다.
+ * 값의 근거는 사용자 확정 샘플(2026-11-20)과 PRD 「컬렉션 모션」이다. 디자인 시스템 눈금에 없어 서비스 전용으로 둔다.
+ */
+export const FEED_BURST = {
+  count: 4,
+  areaHeight: 240,
+  artSize: 168,
+  badgeSize: { min: 68, max: 84 },
+  referenceHalf: { x: 163, y: 120 },
+  edgeMargin: 2,
+  minCenterDistance: 112,
+  minPairDistance: 88,
+  tilt: { min: 6, max: 14 },
+  collectedScale: 0.3,
+  opacitySeconds: 0.22,
+  visibleRatio: 0.55,
+} as const;
+
+/** 시드가 알맞은 배치를 끝내 못 찾을 때 쓰는 샘플 배치(영역 326×240 기준 px와 기울기·크기·지연). 샘플 보드의 위치·기울기이고 최소 거리 규칙을 만족한다. 크기는 68~84 안으로, 지연은 70~210 안으로 맞췄다(샘플의 64·0은 범위 밖). */
+export const FEED_BURST_SAMPLE = [
+  { px: -112, py: -30, tilt: 8, size: 80, delayMs: 70 },
+  { px: -84, py: 78, tilt: -14, size: 68, delayMs: 140 },
+  { px: 104, py: -76, tilt: -9, size: 72, delayMs: 100 },
+  { px: 112, py: 48, tilt: 12, size: 84, delayMs: 210 },
+] as const;
+
+/**
+ * 드랍·픽업(`drop_pickup`): 박스 줄 높이 184(샘플), 칸 간격 8(`gap-2`), 칸마다 배지 80×80을 가운데에 둔다. 칸 수는 3이다.
+ * 칩(`box-row-top`)은 박스 줄의 왼쪽 위 모서리에 걸친다(걸침 정도는 `FEED_CHIP_OFFSET`).
+ */
+export const FEED_DROP_PICKUP = { rowHeight: 184, badgeSize: 80, columns: 3, gap: 8 } as const;
+
+/**
+ * 목록형(`gallery_list`): 칸 4개(`grid-cols-4`, 칸 간격 8)·항목은 최대 3개, 화살표 아이콘 32px(샘플).
+ * 칩(`card-top-right`)은 카드 오른쪽 위에서 위 14·오른쪽 12px 안쪽이다(샘플 값. 칩 높이 40 기준 폭 320 화면에서도 카드 안쪽이다).
+ */
+export const FEED_GALLERY = { maxItems: 3, arrowIconSize: 32, chipTop: 14, chipRight: 12 } as const;

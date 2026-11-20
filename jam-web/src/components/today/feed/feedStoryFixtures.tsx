@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { FeedCardView } from '@/lib/today/cardView'
+import type { FeedCardView, FeedCardViewBadge, FeedCardViewListItem } from '@/lib/today/cardView'
 import { resolveFeedLook, type FeedLookCard, type RenderedFeedType } from '@/lib/today/feedLook'
 import type { FeedValueChipSource } from '@/lib/today/feedValueChips'
 import type { TodayChipSpec } from '@/types/database'
@@ -32,6 +32,17 @@ export function fakeImage(background: string, accent: string): string {
 export const IMAGE = fakeImage('#3a5f7d', '#f2c14e')
 export const BADGE = '/badges/sample/s142.png'
 
+/** 컬렉션 소개·드랍·픽업이 쓰는 아이템 배지 샘플 그림(`public/badges/sample`). 외부 요청이 없다. */
+export const ITEM_BADGES: FeedCardViewBadge[] = [
+  { name: '황동 카메라', imageUrl: '/badges/sample/s001.png' },
+  { name: '다 쓴 필름통', imageUrl: '/badges/sample/s003.png' },
+  { name: '인화 타이머', imageUrl: '/badges/sample/s004.png' },
+  { name: '압정 한 줌', imageUrl: '/badges/sample/s005.png' },
+]
+
+/** 컬렉션 대표 그림 샘플(168×168 정사각) */
+export const COLLECTION_ART = fakeImage('#d9c7a3', '#8a5a2b')
+
 export const MISSION_VALUES: FeedValueChipSource = {
   resource: 'mission',
   endsAt: '2026-11-23T12:00:00+09:00',
@@ -51,11 +62,35 @@ export interface StoryCardOptions extends Partial<Omit<FeedLookCard, 'id'>> {
   badgeImageUrl?: string | null
   badgeName?: string
   valueSource?: FeedValueChipSource | null
+  /** 컬렉션 소개 */
+  collectionName?: string
+  collectionBadges?: FeedCardViewBadge[]
+  /** 드랍·픽업 */
+  itemBadges?: FeedCardViewBadge[]
+  /** 목록형 */
+  listItems?: FeedCardViewListItem[]
+  listMoreHref?: string
+  /** true면 계측 정보를 단다(목록형 항목이 링크가 되고 눌림·포커스가 보인다. 홈과 같은 모습) */
+  linked?: boolean
 }
 
 /** 해석 함수를 거쳐 표시 데이터를 만든다. 지정하지 않은 칸은 자동 규칙(NULL)이다. */
 export function feedView(feedType: RenderedFeedType, options: StoryCardOptions = {}): FeedCardView {
-  const { title = '낙엽 소리 따라\n걷는 한 주', description, imageUrl = IMAGE, badgeImageUrl = null, badgeName, valueSource = MISSION_VALUES, ...stored } = options
+  const {
+    title = '낙엽 소리 따라\n걷는 한 주',
+    description,
+    imageUrl = IMAGE,
+    badgeImageUrl = null,
+    badgeName,
+    valueSource = MISSION_VALUES,
+    collectionName,
+    collectionBadges,
+    itemBadges,
+    listItems,
+    listMoreHref,
+    linked = false,
+    ...stored
+  } = options
   const look = resolveFeedLook({
     card: { id: 'story-card', feed_type: feedType, ...stored },
     feedType,
@@ -66,6 +101,15 @@ export function feedView(feedType: RenderedFeedType, options: StoryCardOptions =
   if (description && look.showDescription) view.description = description
   if (badgeImageUrl) view.badgeImageUrl = badgeImageUrl
   if (badgeName) view.badgeName = badgeName
+  if (collectionName) view.collectionName = collectionName
+  if (collectionBadges) view.collectionBadges = collectionBadges
+  if (itemBadges) view.itemBadges = itemBadges
+  if (listItems) view.listItems = listItems
+  if (listMoreHref) view.listMoreHref = listMoreHref
+  if (linked) {
+    view.href = '/drops'
+    view.tracking = { cardId: 'story-card', contentTypeId: null, templateType: 'drop_alert', shape: 'hero' }
+  }
   return view
 }
 

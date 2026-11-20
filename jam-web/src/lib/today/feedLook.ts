@@ -16,14 +16,29 @@
  * - 개수는 카드당 최대 2개이고 유형의 한도(`chipLimitOf`)로 한 번 더 자른다. 첫 칩은 큰 칩, 둘째는 작은 칩이다(샘플). 구분 칩은 검정이다.
  *
  * ## 지원 유형 목록
- * `FEED_RENDERED_TYPES`가 4-2가 그릴 수 있는 다섯 유형의 단일 원천이다. `toCardView`(어떤 카드를 새 갈래로 보낼지)와 `FeedCard`(어떤 유형을 그릴지)가 함께 읽는다.
+ * `FEED_RENDERED_TYPES`가 그릴 수 있는 유형(4-2의 다섯 유형에 4-3의 컬렉션 소개·드랍·픽업·목록형을 더한 여덟 유형)의 단일 원천이다.
+ * `toCardView`(어떤 카드를 새 갈래로 보낼지)와 `FeedCard`(어떤 유형을 그릴지)가 함께 읽는다.
  * `full_image`는 `FEED_FULL_IMAGE_ENABLED`가 거짓인 동안 `isRenderedFeedType`이 거짓이다.
+ * 4-3의 세 유형은 그리는 데 필요한 값(컬렉션 그림·아이템 배지·목록 항목)이 없으면 `toCardView`가 그 행을 옛 경로로 보낸다(이 파일은 유형만 안다).
+ *
+ * ## 컬렉션 배지 배치 (티켓 20261121_0115)
+ * `collection_intro`의 `look.burst`는 아이템 배지 4개 자리의 도착 위치·기울기·크기·시작 지연이다. 저장된 `collection_burst`가 있으면 그것을(범위를 넘는 값은 범위 안으로 맞춘다),
+ * 없는(NULL) 자리는 카드 시드로 정한다. 그리는 쪽은 배지 수만큼 앞에서부터 쓴다. 다른 유형의 `look`에는 `burst`가 없다.
  */
-import type { TodayBoxKind, TodayBoxShape, TodayChipSpec } from '@/types/database'
+import type { TodayBoxKind, TodayBoxShape, TodayBurstPoint, TodayChipSpec } from '@/types/database'
 import { createRng, hashSeed, type BoxSeed } from './boxShape'
 import { assignChipPlacement, assignFeedColors, FEED_FALLBACK_COLORS, type FeedChipFixedPlacement } from './feedAssign'
 import { FEED_CHIP_SLOT_SPECS, isAllowedSlot, isFeedType, MAX_CARD_CHIPS } from './feedChipSlots'
-import { FEED_COLOR_KEYS, FEED_FULL_IMAGE_ENABLED, FEED_TILTS, type FeedColorKey, type FeedTilt } from './feedConstants'
+import {
+  FEED_BURST,
+  FEED_BURST_SAMPLE,
+  FEED_COLOR_KEYS,
+  FEED_FULL_IMAGE_ENABLED,
+  FEED_MOTION,
+  FEED_TILTS,
+  type FeedColorKey,
+  type FeedTilt,
+} from './feedConstants'
 import { limitChipsForType } from './feedChipLayout'
 import {
   FEED_VALUE_CHIP_RULES,
@@ -39,12 +54,21 @@ import { MAX_TITLE_CHIPS } from './titleChips'
 
 // ── 지원 유형 ────────────────────────────────────────────────
 
-/** 4-2가 그리는 다섯 유형. 나머지(컬렉션 소개·드랍·픽업·목록형)는 4-3이다. */
-export const FEED_RENDERED_TYPES = ['hero_box', 'text_box', 'badge_intro', 'badge_only', 'full_image'] as const
+/** 그릴 수 있는 여덟 유형. 앞 다섯은 4-2, 뒤 셋(컬렉션 소개·드랍·픽업·목록형)은 4-3이다. */
+export const FEED_RENDERED_TYPES = [
+  'hero_box',
+  'text_box',
+  'badge_intro',
+  'badge_only',
+  'full_image',
+  'collection_intro',
+  'drop_pickup',
+  'gallery_list',
+] as const
 
 export type RenderedFeedType = (typeof FEED_RENDERED_TYPES)[number]
 
-/** 홈이 새 갈래로 그리는 유형인가. 모르는 값·4-3 유형·꺼진 `full_image`는 거짓이라 옛 경로가 그린다. */
+/** 홈이 새 갈래로 그리는 유형인가. 모르는 값·NULL·꺼진 `full_image`는 거짓이라 옛 경로가 그린다. */
 export function isRenderedFeedType(value: unknown): value is RenderedFeedType {
   if (!isFeedType(value)) return false
   if (value === 'full_image') return FEED_FULL_IMAGE_ENABLED
@@ -58,6 +82,9 @@ const DESCRIPTION_DEFAULT: Readonly<Record<RenderedFeedType, boolean>> = {
   badge_intro: true,
   badge_only: false,
   full_image: false,
+  collection_intro: true,
+  drop_pickup: true,
+  gallery_list: true,
 }
 
 // ── 해석 결과 ────────────────────────────────────────────────
@@ -80,6 +107,15 @@ export interface FeedLookStamp {
   color: FeedColorKey
 }
 
+/** 컬렉션 소개의 아이템 배지 한 개가 퍼져 닿는 자리. `x`·`y`는 가운데에서 영역 가장자리까지를 1로 본 −1~1이고, 크기(px)·시작 지연(ms)·기울기(deg)가 따라온다. */
+export interface FeedBurstPlacement {
+  x: number
+  y: number
+  tilt: number
+  size: number
+  delayMs: number
+}
+
 export interface FeedLook {
   /** 무작위 값의 시드(저장된 `feed_seed` 또는 카드 id의 해시) */
   seed: number
@@ -92,6 +128,8 @@ export interface FeedLook {
   stamp: FeedLookStamp | null
   boxShape: TodayBoxShape
   boxKind: TodayBoxKind
+  /** 컬렉션 소개만 있다. 아이템 배지 4개 자리(`FEED_BURST.count`). 그리는 쪽이 배지 수만큼 앞에서 쓴다. */
+  burst?: FeedBurstPlacement[]
 }
 
 /** 해석이 읽는 카드 값. 카드 행(`TodayCardRow`)과 서버 조회 결과(`TodayCardWithHref`)가 모두 맞는다. */
@@ -108,6 +146,7 @@ export interface FeedLookCard {
   stamp_slot?: string | null
   box_shape?: TodayBoxShape | null
   box_kind?: TodayBoxKind | null
+  collection_burst?: TodayBurstPoint[] | null
   feed_seed?: number | null
 }
 
@@ -192,6 +231,123 @@ function draftChips(
   return values.length > 0 ? [...valueDrafts(values.slice(0, 1)), dividerDraft] : [dividerDraft]
 }
 
+// ── 컬렉션 배지 배치 ─────────────────────────────────────────
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function round3(value: number): number {
+  return Math.round(value * 1000) / 1000
+}
+
+/** 시드 난수로 제자리 섞기(피셔–예이츠). 입력은 바꾸지 않는다. */
+function shuffled<T>(rng: () => number, list: readonly T[]): T[] {
+  const copy = [...list]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
+/** 시작 지연 후보 네 개: 70~210ms를 같은 간격으로 나눈 값(70·117·163·210). 배지마다 서로 다르다. */
+const BURST_DELAYS: readonly number[] = Array.from({ length: FEED_BURST.count }, (_, index) =>
+  Math.round(FEED_MOTION.delayMs.min + ((FEED_MOTION.delayMs.max - FEED_MOTION.delayMs.min) * index) / (FEED_BURST.count - 1)),
+)
+
+/** 사분면(부호 쌍) → 샘플 배치의 자리. 위왼쪽·아래왼쪽·위오른쪽·아래오른쪽이다. */
+const QUADRANTS: readonly (readonly [number, number])[] = [
+  [-1, -1],
+  [-1, 1],
+  [1, -1],
+  [1, 1],
+]
+
+function placementFromPx(px: number, py: number, tilt: number, size: number, delayMs: number): FeedBurstPlacement {
+  return {
+    x: round3(px / FEED_BURST.referenceHalf.x),
+    y: round3(py / FEED_BURST.referenceHalf.y),
+    tilt,
+    size,
+    delayMs,
+  }
+}
+
+function burstCenterDistance(point: FeedBurstPlacement): number {
+  return Math.hypot(point.x * FEED_BURST.referenceHalf.x, point.y * FEED_BURST.referenceHalf.y)
+}
+
+function burstPairDistance(a: FeedBurstPlacement, b: FeedBurstPlacement): number {
+  return Math.hypot((a.x - b.x) * FEED_BURST.referenceHalf.x, (a.y - b.y) * FEED_BURST.referenceHalf.y)
+}
+
+/** 새 배치가 가운데 그림과 앞의 배지들에서 최소 거리를 지키는가. */
+function isBurstPointClear(point: FeedBurstPlacement, placed: readonly FeedBurstPlacement[]): boolean {
+  if (burstCenterDistance(point) < FEED_BURST.minCenterDistance) return false
+  return placed.every((other) => burstPairDistance(point, other) >= FEED_BURST.minPairDistance)
+}
+
+/**
+ * 카드 시드로 배지 4개의 자리를 불규칙하게 정한다. 배지마다 사분면을 하나씩 맡아 한쪽으로 몰리지 않고(순서는 시드로 섞는다),
+ * 사분면 안의 자리·크기(68~84)·기울기(±6~14°)는 난수로 고른다. 가운데 그림과 배지끼리 최소 거리를 지킬 때까지 자리를 다시 뽑고(자리당 30번),
+ * 끝내 못 찾으면 그 사분면의 샘플 자리를 쓴다. 같은 시드는 서버와 브라우저에서 같은 값이다(`Math.random` 없음).
+ */
+export function generateCollectionBurst(seed: number): FeedBurstPlacement[] {
+  const rng = createRng(`${seed}:collection-burst`)
+  const delays = shuffled(rng, BURST_DELAYS)
+  const placed: FeedBurstPlacement[] = []
+  shuffled(rng, QUADRANTS.map((_, index) => index)).forEach((quadrantIndex, order) => {
+    const [signX, signY] = QUADRANTS[quadrantIndex]
+    const sample = FEED_BURST_SAMPLE[quadrantIndex]
+    const { badgeSize, referenceHalf, edgeMargin, tilt } = FEED_BURST
+    let chosen: FeedBurstPlacement | null = null
+    for (let attempt = 0; attempt < 30 && !chosen; attempt++) {
+      const size = badgeSize.min + Math.floor(rng() * (badgeSize.max - badgeSize.min + 1))
+      const maxX = referenceHalf.x - size / 2 - edgeMargin
+      const maxY = referenceHalf.y - size / 2 - edgeMargin
+      const minX = 48
+      const minY = 8
+      const tiltAbs = tilt.min + Math.floor(rng() * (tilt.max - tilt.min + 1))
+      const tiltSign = rng() < 0.5 ? -1 : 1
+      const candidate = placementFromPx(
+        signX * (minX + rng() * (maxX - minX)),
+        signY * (minY + rng() * (maxY - minY)),
+        tiltSign * tiltAbs,
+        size,
+        delays[order],
+      )
+      if (isBurstPointClear(candidate, placed)) chosen = candidate
+    }
+    placed[quadrantIndex] = chosen ?? placementFromPx(sample.px, sample.py, sample.tilt, sample.size, delays[order])
+  })
+  // 사분면 순서(위왼쪽부터)로 놓았으므로 배지 순서도 그 순서다. 샘플 자리가 섞여 최소 거리를 어기면 샘플 배치 전체로 대신한다.
+  const valid = placed.every((point, index) => isBurstPointClear(point, placed.slice(0, index)))
+  if (valid) return placed
+  return FEED_BURST_SAMPLE.map((sample, index) => placementFromPx(sample.px, sample.py, sample.tilt, sample.size, BURST_DELAYS[index]))
+}
+
+/**
+ * 저장된 `collection_burst`와 시드 배치를 합친다. 저장된 칸은 범위 안으로 맞춰(`x`·`y` −1~1, 크기 68~84, 지연 70~210, 기울기 ±45) 쓰고,
+ * 값이 모자라거나 읽을 수 없는 칸·저장되지 않은 자리는 시드 배치가 채운다. 항상 `FEED_BURST.count`개다.
+ */
+export function resolveCollectionBurst(stored: readonly TodayBurstPoint[] | null | undefined, seed: number): FeedBurstPlacement[] {
+  const generated = generateCollectionBurst(seed)
+  if (!Array.isArray(stored) || stored.length === 0) return generated
+  const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
+  return generated.map((fallback, index) => {
+    const point = stored[index]
+    if (!point || !finite(point.x) || !finite(point.y)) return fallback
+    return {
+      x: clamp(point.x, -1, 1),
+      y: clamp(point.y, -1, 1),
+      tilt: finite(point.tilt) ? clamp(point.tilt, -45, 45) : fallback.tilt,
+      size: finite(point.size) ? clamp(Math.round(point.size), FEED_BURST.badgeSize.min, FEED_BURST.badgeSize.max) : fallback.size,
+      delayMs: finite(point.delay_ms) ? clamp(Math.round(point.delay_ms), FEED_MOTION.delayMs.min, FEED_MOTION.delayMs.max) : fallback.delayMs,
+    }
+  })
+}
+
 // ── 해석 ─────────────────────────────────────────────────────
 
 /** 카드 행의 새 칸과 4-1 계산을 합쳐 «그릴 값»을 낸다. 같은 입력은 언제 어디서 열어도 같은 값이다. */
@@ -264,5 +420,7 @@ export function resolveFeedLook({ card, feedType, valueSource, now }: ResolveFee
   const boxShape = card.box_shape ?? pick(createRng(`${seed}:box-shape`), BOX_SHAPES_ALL)
   const boxKind: TodayBoxKind = card.box_kind ?? (feedType === 'hero_box' ? 'image_mask' : 'text')
 
-  return { seed, colors, chips, titleChips, showDescription, stamp, boxShape, boxKind }
+  const look: FeedLook = { seed, colors, chips, titleChips, showDescription, stamp, boxShape, boxKind }
+  if (feedType === 'collection_intro') look.burst = resolveCollectionBurst(card.collection_burst, seed)
+  return look
 }
