@@ -136,16 +136,21 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
     expect(html).not.toContain('container-type')
   })
 
-  it('compact 면은 면이 컨테이너이고 블러·여유·안쪽 빛은 폭 비례(cqw)다', () => {
+  it('compact 면도 일반 카드와 같은 파스텔 메시다(블러·안쪽 빛·컨테이너 단위 없음, 입자 한 겹)', () => {
     const html = render({ compact: true, bgColors: COLORS })
-    expect(html).toContain('container-type:inline-size')
-    expect(html).toContain('data-variant="glow"')
-    expect(html.match(/filter:blur\(7\.78cqw\)/g)).toHaveLength(1)
-    expect(html).toContain('top:-15.56cqw')
-    expect(html).toMatch(/box-shadow:inset 0 -[\d.]+cqw [\d.]+cqw [\d.]+cqw/)
+    expect(html).toContain('data-variant="mesh"')
+    expect(html).not.toContain('data-variant="glow"')
+    expect(html).not.toContain('container-type')
+    expect(html).not.toContain('cqw')
+    expect(html).not.toContain('filter:blur')
+    expect(html).not.toContain('box-shadow:inset')
+    expect(html.match(/mix-blend-mode/g)).toHaveLength(1)
+    // 같은 배지 이름이면 일반 카드와 같은 대각선 방향이다(시드가 이름이다)
+    const gradientOf = (h: string) => h.match(/linear-gradient\((\d+)deg/)?.[1]
+    expect(gradientOf(html)).toBe(gradientOf(render({ bgColors: COLORS })))
   })
 
-  it('earned=false면 그레이 배경이다(대표색이 없다) — 메시(일반)·글로우(compact) 모두', () => {
+  it('earned=false면 그레이 배경이다(대표색이 없다) — 일반·compact 모두', () => {
     const chromaOf = (html: string) => {
       const values = [...html.matchAll(/rgba\((\d+),(\d+),(\d+),|#([0-9a-f]{6})/g)].map((m) => {
         const rgb = m[4] ? [parseInt(m[4].slice(0, 2), 16), parseInt(m[4].slice(2, 4), 16), parseInt(m[4].slice(4), 16)] : [Number(m[1]), Number(m[2]), Number(m[3])]

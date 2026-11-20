@@ -227,10 +227,9 @@ export default function BadgeGridCard({
           ) : (
             <div
               className={`${aura ? 'relative ' : ''}w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-surface ${thumbDimmed ? 'grayscale opacity-40' : ''}`}
-              // 칸 폭이 기기마다 달라 블러를 폭 비례(cqw)로 준다. 면 자신이 컨테이너라 자손인 Aura 레이어가 이 폭을 기준으로 삼는다
-              style={aura ? { containerType: 'inline-size' } : undefined}
             >
-              {aura && <BadgeAuraBackground colors={aura} glowSize="container" gray={thumbDimmed} />}
+              {/* 일반 카드와 같은 파스텔 메시다(티켓 20261120_1405). 메시는 폭에 비례하는 블러가 없어 컨테이너 타입이 필요 없다 */}
+              {aura && <BadgeAuraBackground colors={aura} variant="mesh" seed={name} gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
