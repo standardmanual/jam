@@ -268,15 +268,21 @@ describe('목록형 — 주소 안전 검사(isSafeListHref)', () => {
 })
 
 describe('목록형 — 칩', () => {
-  it('칩은 카드 오른쪽 위(위 14·오른쪽 12) 한 개다', () => {
+  it('칩은 제목 위 칩 줄의 오른쪽 끝에 한 개 놓인다(절대 위치가 아니라 제목과 겹치지 않는다)', () => {
     const html = render(listView({ chips: [{ kind: 'phrase', text: '요즘 인기', slot: 'card-top-right' }] }))
     expect(count(html, 'rounded-full')).toBe(1)
     expect(html).toContain('요즘 인기')
-    expect(html).toContain(`top:${FEED_GALLERY.chipTop}px`)
-    expect(html).toContain(`right:${FEED_GALLERY.chipRight}px`)
+    expect(html).toContain('justify-end')
+    expect(html).not.toContain('position:absolute')
+    // 칩 층(`FeedChipLayer`)은 `absolute z-10` 래퍼를 쓴다. 칩 줄은 흐름 안에 있어 이 래퍼가 없다.
+    expect(html).not.toContain('absolute z-10')
+    // 칩 줄이 제목보다 앞에 온다.
+    expect(html.indexOf('요즘 인기')).toBeLessThan(html.indexOf('<h3'))
   })
 
-  it('칩이 없으면 그리지 않는다', () => {
-    expect(count(render(listView({ chips: [] })), 'rounded-full')).toBe(0)
+  it('칩이 없으면 그리지 않고 칩 줄도 만들지 않는다', () => {
+    const html = render(listView({ chips: [] }))
+    expect(count(html, 'rounded-full')).toBe(0)
+    expect(html).not.toContain('justify-end')
   })
 })

@@ -239,6 +239,6 @@ export const FEED_DROP_PICKUP = { rowHeight: 184, badgeSize: 80, columns: 3, gap
 
 /**
  * 목록형(`gallery_list`): 칸 4개(`grid-cols-4`, 칸 간격 8)·항목은 최대 3개, 화살표 아이콘 32px(샘플).
- * 칩(`card-top-right`)은 카드 오른쪽 위에서 위 14·오른쪽 12px 안쪽이다(샘플 값. 칩 높이 40 기준 폭 320 화면에서도 카드 안쪽이다).
+ * 칩(`card-top-right`)은 제목 위 칩 줄의 오른쪽 끝에 놓는다(절대 위치가 아니라 제목을 가리지 않는다. 샘플에는 목록형 칩이 없어 이 배치는 4회차 화면 실측 뒤 정했다).
  */
-export const FEED_GALLERY = { maxItems: 3, arrowIconSize: 32, chipTop: 14, chipRight: 12 } as const;
+export const FEED_GALLERY = { maxItems: 3, arrowIconSize: 32 } as const;

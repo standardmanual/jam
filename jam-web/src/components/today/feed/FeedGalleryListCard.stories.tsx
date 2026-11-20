@@ -127,7 +127,7 @@ export const LongNames: Story = {
 }
 
 export const WithChip: Story = {
-  name: '칩(카드 오른쪽 위)',
+  name: '칩(제목 위 칩 줄의 오른쪽 끝)',
   render: () => (
     <Row>
       <Cell label="문구 칩(큰 칩)">
@@ -138,6 +138,11 @@ export const WithChip: Story = {
       <Cell label="구분 칩(검정)">
         <CardBox>
           <FeedGalleryListCard view={view({ chips: [{ kind: 'label', text: '아이템 배지', slot: 'card-top-right' }], title: '요즘 드랍', valueSource: { resource: 'drop_pickup' } })} />
+        </CardBox>
+      </Cell>
+      <Cell label="긴 두 줄 제목(칩이 제목을 가리지 않는다)">
+        <CardBox>
+          <FeedGalleryListCard view={view({ chips: [{ kind: 'phrase', text: '요즘 인기', slot: 'card-top-right' }], title: '이번 주말에 한 번쯤 가 볼 만한 동네 드랍' })} />
         </CardBox>
       </Cell>
     </Row>
