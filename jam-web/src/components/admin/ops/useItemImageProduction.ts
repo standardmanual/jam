@@ -10,7 +10,7 @@
  */
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { hasResourceImage, imageSpecToRenderArgs, imageKeyOfKind, readImageSpec, stableImageSeed } from '@/lib/admin/opsInbox/imageSpec'
+import { hasResourceImage, imageSpecToRenderArgs, imageKeyOfKind, readImageSpec, stableImageSeed, usesMissionImage } from '@/lib/admin/opsInbox/imageSpec'
 import { renderPresetToPngBlob } from '@/lib/admin/opsInbox/imageRender.client'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { postItemImage } from './imageClient'
@@ -104,7 +104,8 @@ export async function produceItemImages(
       counts.skipped += 1
       continue
     }
-    if (hasResourceImage(item)) {
+    // 이미 이미지가 붙은 항목과 미션 대표 이미지를 쓰는 미션 소개 카드(티켓 20261120_1825)는 만들지 않는다
+    if (hasResourceImage(item) || usesMissionImage(item)) {
       counts.skipped += 1
       continue
     }
@@ -122,7 +123,7 @@ export function useItemImageProduction({ bundleId, isSample, onDone }: Options):
     async (itemId: string, items: readonly OpsItemRecord[]) => {
       if (isSample || inFlight.current.has(itemId)) return
       const item = items.find((entry) => entry.id === itemId)
-      if (!item) return
+      if (!item || usesMissionImage(item)) return
       inFlight.current.add(itemId)
       setMaking(new Set(inFlight.current))
       try {

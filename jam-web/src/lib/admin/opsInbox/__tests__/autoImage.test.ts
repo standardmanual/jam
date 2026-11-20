@@ -57,6 +57,13 @@ describe('pickAutoImageItemIds', () => {
     expect(pick([makeItem({ kind: 'mission' }, { resource: { image_url: '  ' } })])).toEqual(['item-1'])
   })
 
+  it('미션 소개 카드는 미션 대표 이미지를 쓰므로 고르지 않는다(다른 카드·미션은 그대로 고른다, 티켓 20261120_1825)', () => {
+    const missionCard = makeItem({ id: 'ms' }, { resource: { template_type: 'mission_spotlight' } })
+    const otherCard = makeItem({ id: 'ed' }, { resource: { template_type: 'editorial_article' } })
+    const mission = makeItem({ id: 'mi', kind: 'mission' }, { resource: { template_type: 'mission_spotlight' } })
+    expect(pick([missionCard, otherCard, mission])).toEqual(['ed', 'mi'])
+  })
+
   it('preset_id가 없거나 image_spec이 없으면 고르지 않는다', () => {
     expect(pick([makeItem({}, { image_spec: { bg: '#111111', end: '#222222' } })])).toEqual([])
     expect(pick([makeItem({}, { image_spec: undefined })])).toEqual([])

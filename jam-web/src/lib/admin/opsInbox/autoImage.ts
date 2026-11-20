@@ -5,7 +5,7 @@
  * 승인 이후 상태(`OPS_IMAGE_PRODUCTION_STATUSES`)는 승인·예약 때의 자동 제작과 [이미지 만들기]가 맡으므로 여기서 보지 않는다.
  * 색(`bg`·`end`)이 비었거나 `color_pending`이면 만들지 않는다 — 승인 전 미리보기가 임시 색으로 그리는 동작은 그대로다.
  */
-import { hasResourceImage, imageKeyOfKind, imageSpecToRenderArgs, readImageSpec } from './imageSpec'
+import { hasResourceImage, imageKeyOfKind, imageSpecToRenderArgs, readImageSpec, usesMissionImage } from './imageSpec'
 import { readOpsItemColorPending } from './fields'
 import type { OpsItemRecord } from './query'
 
@@ -27,6 +27,8 @@ export function pickAutoImageItemIds(items: readonly OpsItemRecord[], { isSample
     if (attempted.has(item.id)) continue
     if (!AUTO_IMAGE_STATUSES.includes(item.status)) continue
     if (imageKeyOfKind(item.kind) === null) continue
+    // 미션 소개 카드는 미션 대표 이미지를 쓰므로 카드 이미지를 만들지 않는다(티켓 20261120_1825)
+    if (usesMissionImage(item)) continue
     if (hasResourceImage(item)) continue
     if (readOpsItemColorPending(item) !== false) continue
     const args = imageSpecToRenderArgs(readImageSpec(item), 0)

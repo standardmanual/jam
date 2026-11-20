@@ -546,6 +546,43 @@ describe('toCardView — 표시 데이터', () => {
     })
   })
 
+  describe('미션 소개 카드의 미션 대표 이미지 대체 (티켓 20261120_1825)', () => {
+    const MISSION = {
+      starts_at: '2026-10-12T00:00:00+09:00',
+      ends_at: '2026-11-08T23:59:59+09:00',
+      reward_points: 300,
+      reward_badge_count: 1,
+      image_url: 'https://cdn.example/mission.png',
+    }
+    const missionCard = (overrides: Partial<TodayCardWithHref> = {}) =>
+      makeCard({ template_type: 'mission_spotlight', cover_image_url: null, mission_id: 'm1', resolved_mission: MISSION, ...overrides })
+
+    it('커버가 없으면 미션 대표 이미지를 쓰고 이미지가 제목을 말하는 카드다', () => {
+      expect(toCardView(missionCard())).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/mission.png', titleInImage: true })
+    })
+
+    it('저장된 title_in_image가 false여도 미션 이미지를 쓰면 true다', () => {
+      expect(toCardView(missionCard({ title_in_image: false })).titleInImage).toBe(true)
+    })
+
+    it('카드 커버가 있으면 커버가 우선이고 이전과 같다', () => {
+      const view = toCardView(missionCard({ cover_image_url: 'https://cdn.example/cover.png', title_in_image: false }))
+      expect(view).toMatchObject({ imageUrl: 'https://cdn.example/cover.png', titleInImage: false })
+    })
+
+    it('커버도 미션 이미지도 없으면 imageUrl은 null이다', () => {
+      const view = toCardView(missionCard({ resolved_mission: { ...MISSION, image_url: null } }))
+      expect(view).toMatchObject({ imageUrl: null, titleInImage: false })
+      expect(toCardView(missionCard({ resolved_mission: null }))).toMatchObject({ imageUrl: null })
+    })
+
+    it('미션 소개가 아닌 카드는 미션 이미지를 쓰지 않는다', () => {
+      const view = toCardView(makeCard({ cover_image_url: null, resolved_mission: MISSION, resolved_badges: [badge('a')] }))
+      expect(view).toMatchObject({ imageUrl: 'https://cdn.example/a.png' })
+      expect(view.titleInImage).toBe(false)
+    })
+  })
+
   describe('자원별 필수 정보와 부가 값', () => {
     it('옛 미션 소개 카드: square, 기간·보상 줄', () => {
       const view = toCardView(

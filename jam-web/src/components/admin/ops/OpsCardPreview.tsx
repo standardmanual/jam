@@ -17,13 +17,13 @@ import TodayCardPreview from '@/app/admin/today/TodayCardPreview'
 import { previewOf } from '@/lib/admin/opsInbox/cardPreview'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { entriesOf, itemField } from '@/lib/admin/opsInbox/itemView'
-import { bundleBadgeNamesOf } from '@/lib/admin/opsInbox/cardPreview'
+import { bundleBadgeNamesOf, linkedMissionOf } from '@/lib/admin/opsInbox/cardPreview'
 import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { OPS_IMAGE_PRODUCTION_STATUSES } from '@/lib/admin/opsSignals/composition'
 import { isImageShape } from '@/lib/today/shape'
-import { previewRenderArgs, readImageSpec } from '@/lib/admin/opsInbox/imageSpec'
+import { previewRenderArgs, readImageSpec, usesMissionImage } from '@/lib/admin/opsInbox/imageSpec'
 import { useDraftImagePreview, type DraftImageRequest } from './useDraftImagePreview'
 
 export const PREVIEW_NOT_CARD_TEXT = '이 종류의 미리보기는 곧 열려요'
@@ -34,6 +34,8 @@ export const PREVIEW_COLOR_LABEL = '색 견본'
 export const PREVIEW_IMAGE_DRAWING_TEXT = '이미지를 그리는 중이에요'
 export const PREVIEW_IMAGE_DRAWN_TEXT = '승인하면 이 이미지로 만들어요'
 export const PREVIEW_IMAGE_TEMP_COLOR_TEXT = '색이 정해지지 않아 임시 색으로 보여요'
+/** 미션 소개 카드는 카드 이미지를 만들지 않고 연결된 미션의 대표 이미지를 커버로 쓴다(티켓 20261120_1825). */
+export const PREVIEW_IMAGE_MISSION_TEXT = '미션 대표 이미지를 써요'
 
 export interface OpsCardPreviewProps {
   item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'> & { status?: string; itemKey?: string | null }
@@ -51,11 +53,14 @@ export function OpsCardPreview({ item, draft, making = false, previewNames, bund
   const preview = previewOf(item, draft, {
     names: previewNames,
     bundleBadgeNames: item.kind === 'recipe' ? bundleBadgeNamesOf(item.itemKey, bundleItems ?? []) : [],
+    linkedMission: item.kind === 'home_feed_card' ? linkedMissionOf(item.itemKey, item, bundleItems ?? []) : null,
   })
   const merged = draft ? applyDraftToItem(item, draft) : item
+  // 미션 소개 카드는 카드 이미지를 만들지 않는다 — 제작 관련 안내 대신, 미션 이미지가 아직 없을 때 «미션 대표 이미지를 써요»만 보인다(티켓 20261120_1825)
+  const usesMission = usesMissionImage({ ...merged, kind: item.kind })
 
   // 승인 전 홈피드 카드: 저장된 이미지가 없고 지시(`preset_id`)가 있을 때만 그린다. 그 밖에는 요청이 비어 렌더를 부르지 않는다.
-  const storedMissing = preview?.type === 'card' && isImageShape(preview.view.shape) && 'imageUrl' in preview.view && !preview.view.imageUrl
+  const storedMissing = !usesMission && preview?.type === 'card' && isImageShape(preview.view.shape) && 'imageUrl' in preview.view && !preview.view.imageUrl
   const beforeProduction = !item.status || !OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)
   const drawn = storedMissing && beforeProduction ? previewRenderArgs(readImageSpec(merged), item.id) : null
   const requests: DraftImageRequest[] = drawn ? [{ id: item.id, args: drawn.args, tempColor: drawn.tempColor }] : []
@@ -89,6 +94,9 @@ export function OpsCardPreview({ item, draft, making = false, previewNames, bund
   return (
     <div className="space-y-2">
       {preview.type === 'card' ? <TodayCardPreview views={[view ?? preview.view]} /> : <OpsKindPreview preview={preview} />}
+      {usesMission && preview.type === 'card' && 'imageUrl' in preview.view && !preview.view.imageUrl && (
+        <p className="text-xs text-muted-foreground break-keep wrap-break-word">{PREVIEW_IMAGE_MISSION_TEXT}</p>
+      )}
       {notice && <p className="text-xs text-muted-foreground break-keep wrap-break-word">{notice}</p>}
       {imageMissing && !notice && (
         <p className="text-xs text-muted-foreground break-keep wrap-break-word">
