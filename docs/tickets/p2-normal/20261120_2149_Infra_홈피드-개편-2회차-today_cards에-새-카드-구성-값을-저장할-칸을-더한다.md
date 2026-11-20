@@ -2,9 +2,9 @@
 id: "20261120_2149"
 category: Infra
 priority: P2
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-11-20
-closed:
+closed: 2026-11-20
 parent: "20261120_2026"
 specs:
   - docs/service/prd/home-feed/PRD.md
@@ -128,6 +128,7 @@ docs/tickets/p2-normal/20261120_2149_Infra_홈피드-개편-2회차-today_cards�
 - [x] 드라이런·롤백 실측·실행 직후 읽기 전용 확인
 - [x] `tsc --noEmit` 오류 0건
 - [x] 홈피드·어드민 관련 vitest 350파일 9,049건 통과
+- [x] 사용자 승인(2026-11-20, 배정 시점 결정 포함)
 - [ ] 스테이징 화면 확인은 하지 않았다(화면 변경 없음, 새 칸은 NULL)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
