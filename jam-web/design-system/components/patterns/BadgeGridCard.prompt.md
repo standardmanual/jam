@@ -36,6 +36,10 @@
   `fillPercent`는 서버가 준 채운 비율(0~100)이다. **`locked`이면 `imageUrl`·`name`이 넘어와도 그리지 않는다** — 호출부 실수로
   가림이 뚫리지 않게 컴포넌트가 막는다. 등급 색·글로우를 더하지 않는다(등급은 칩 하나로만 전달). 게이지는 `aria-hidden`이라
   진행 수치를 화면에도 보조기술에도 싣지 않는다. 만료 칩 같은 `children`은 게이지 아래에 붙는다.
+- `thumbBackground`(티켓 20261120_0323)는 썸네일 뒤에 까는 배경 면 슬롯이다. 서비스는 배지 대표색(`bgColors`)으로 글로우 배경을
+  깔지만 그 계산이 서비스 코드(`badgeAura.ts`)에 있어 DS는 가져오지 않는다. 호출부가 `absolute inset-0` 요소를 넘기면 썸네일
+  뒤에 깔고 이미지를 그 위로 올린다(상세 히어로 `BadgeHeroSection`의 `backgroundSlot`과 같은 방식). `locked`·`undiscovered` 칸에서는
+  그리지 않고, 미획득의 무채색 처리는 슬롯 쪽에서 한다.
 - `onNavigate`는 `href` 모드에서만 의미가 있다 — `<a href>`로 이동하기 직전에 실행할 부수효과
   클릭 핸들러다(`onClick`은 Button 모드 전용이라 href와 상호 배타).
 

@@ -27,6 +27,10 @@ const LOCKED_NAME = '잠긴 아이템 배지';
  *   outlined       → 이미지(grayscale + 반투명) 위에 같은 점선을 불투명하게 겹친다 (지금 넣을 수 있는 칸, 티켓 20261112_1627)
  *   selected       → 블랙 2px 링(box-shadow, 레이아웃을 밀지 않음). 면은 그대로 --card-bg (선택 모드)
  *
+ * 썸네일 배경 슬롯 (`thumbBackground`, 티켓 20261120_0323) — 서비스는 `bgColors`(배지 대표색)로 글로우 배경을 깔지만,
+ *   그 계산이 서비스 코드(`badgeAura.ts`)에 있어 이 DS 파일은 가져오지 않는다. 대신 호출부가 `absolute inset-0` 면을 슬롯으로 넘기면
+ *   썸네일 뒤에 깔고 이미지를 그 위로 올린다(상세 히어로 `BadgeHeroSection`의 `backgroundSlot`과 같은 방식). 잠금·미발견 칸에서는 그리지 않는다.
+ *
  * 미획득 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
  * 20260905_0036이 한때 실루엣(공통 SVG)으로 바꿨다 — grayscale은 그려진 뒤 걸리는 CSS
  * 필터라 원본 URL이 네트워크에 나가 「외형 비공개」가 성립하지 않는다는 이유였다.
@@ -76,6 +80,7 @@ export function BadgeGridCard({
   highlighted = false,
   locked = false,
   fillPercent = 0,
+  thumbBackground,
   className = '',
   style = {},
   children,
@@ -117,7 +122,11 @@ export function BadgeGridCard({
     background: 'transparent',
     color: 'var(--foreground)',
     flexShrink: 0,
+    // 배경 슬롯이 있으면 썸네일이 슬롯의 기준 면이 된다(슬롯은 absolute inset-0)
+    position: thumbBackground ? 'relative' : undefined,
   };
+  // 슬롯은 z-index 0 면이라, 슬롯이 있을 때만 이미지·대체 아이콘을 그 위로 올린다
+  const aboveBackground = thumbBackground ? { position: 'relative', zIndex: 1 } : null;
 
   const showCount = !locked && !undiscovered && typeof count === 'number' && count > 1;
 
@@ -132,6 +141,7 @@ export function BadgeGridCard({
         ) : (
         <>
         <div style={thumbnailStyle}>
+          {thumbBackground}
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -140,10 +150,11 @@ export function BadgeGridCard({
                 width: '100%', height: '100%', objectFit: 'contain', padding: 4,
                 filter: thumbFilter,
                 opacity: thumbOpacity,
+                ...aboveBackground,
               }}
             />
           ) : (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--muted)' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--muted)', ...aboveBackground }}>
               <circle cx="12" cy="8" r="5" />
               <path d="M3 20c0-4 4-7 9-7s9 3 9 7" />
             </svg>

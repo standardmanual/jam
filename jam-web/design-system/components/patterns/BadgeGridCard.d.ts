@@ -45,6 +45,12 @@ export interface BadgeGridCardProps {
   locked?: boolean;
   /** `locked`일 때 게이지의 채운 비율(0~100). 서버가 준 값을 그대로 그린다. 숫자는 화면에 쓰지 않는다. */
   fillPercent?: number;
+  /**
+   * 썸네일 뒤에 깔 배경 면(티켓 20261120_0323). 서비스의 `bgColors` 글로우 배경에 해당하지만 그 계산이 서비스 코드에 있어,
+   * 이 DS는 호출부가 `absolute inset-0` 요소를 넘기면 썸네일 뒤에 깔고 이미지를 그 위로 올리기만 한다.
+   * `locked`·`undiscovered` 칸에서는 그리지 않는다. 미획득의 무채색 처리는 슬롯 쪽에서 한다.
+   */
+  thumbBackground?: ReactNode;
   className?: string;
   style?: CSSProperties;
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
