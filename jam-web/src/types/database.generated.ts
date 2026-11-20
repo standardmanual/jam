@@ -3873,7 +3873,14 @@ export type Database = {
       today_cards: {
         Row: {
           badge_ids: string[]
+          bg_color_key: string | null
           body_markdown: string | null
+          box_color_key: string | null
+          box_kind: string | null
+          box_shape: string | null
+          chip_color_key: string | null
+          chips: Json | null
+          collection_burst: Json | null
           content_type_id: string | null
           cover_image_url: string | null
           created_at: string
@@ -3881,28 +3888,43 @@ export type Database = {
           description: string | null
           ends_at: string
           exposure_tags: string[]
+          feed_seed: number | null
+          feed_type: string | null
           id: string
           image_source: string | null
           is_active: boolean
           item_book_id: string | null
           layout_type: string
+          list_items: Json | null
+          list_more_href: string | null
           mission_id: string | null
           pattern_no: string | null
           ranking_mode_id: string | null
           recipe_id: string | null
           region_label: string | null
           shape: string | null
+          show_description: boolean | null
           sort_order: number
+          stamp_enabled: boolean | null
+          stamp_slot: string | null
           starts_at: string
           subtitle: string | null
           target_href: string | null
           template_type: string
           title: string
+          title_chip_words: string[] | null
           title_in_image: boolean | null
         }
         Insert: {
           badge_ids?: string[]
+          bg_color_key?: string | null
           body_markdown?: string | null
+          box_color_key?: string | null
+          box_kind?: string | null
+          box_shape?: string | null
+          chip_color_key?: string | null
+          chips?: Json | null
+          collection_burst?: Json | null
           content_type_id?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -3910,28 +3932,43 @@ export type Database = {
           description?: string | null
           ends_at: string
           exposure_tags?: string[]
+          feed_seed?: number | null
+          feed_type?: string | null
           id?: string
           image_source?: string | null
           is_active?: boolean
           item_book_id?: string | null
           layout_type?: string
+          list_items?: Json | null
+          list_more_href?: string | null
           mission_id?: string | null
           pattern_no?: string | null
           ranking_mode_id?: string | null
           recipe_id?: string | null
           region_label?: string | null
           shape?: string | null
+          show_description?: boolean | null
           sort_order?: number
+          stamp_enabled?: boolean | null
+          stamp_slot?: string | null
           starts_at: string
           subtitle?: string | null
           target_href?: string | null
           template_type: string
           title: string
+          title_chip_words?: string[] | null
           title_in_image?: boolean | null
         }
         Update: {
           badge_ids?: string[]
+          bg_color_key?: string | null
           body_markdown?: string | null
+          box_color_key?: string | null
+          box_kind?: string | null
+          box_shape?: string | null
+          chip_color_key?: string | null
+          chips?: Json | null
+          collection_burst?: Json | null
           content_type_id?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -3939,23 +3976,31 @@ export type Database = {
           description?: string | null
           ends_at?: string
           exposure_tags?: string[]
+          feed_seed?: number | null
+          feed_type?: string | null
           id?: string
           image_source?: string | null
           is_active?: boolean
           item_book_id?: string | null
           layout_type?: string
+          list_items?: Json | null
+          list_more_href?: string | null
           mission_id?: string | null
           pattern_no?: string | null
           ranking_mode_id?: string | null
           recipe_id?: string | null
           region_label?: string | null
           shape?: string | null
+          show_description?: boolean | null
           sort_order?: number
+          stamp_enabled?: boolean | null
+          stamp_slot?: string | null
           starts_at?: string
           subtitle?: string | null
           target_href?: string | null
           template_type?: string
           title?: string
+          title_chip_words?: string[] | null
           title_in_image?: boolean | null
         }
         Relationships: [

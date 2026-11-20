@@ -676,7 +676,16 @@ describe('toTodayCardRegisterInput · 페이로드(결정 1·2)', () => {
     const insert = table.slice(table.indexOf('Insert: {'), table.indexOf('Update: {'))
     const columns = [...insert.matchAll(/^\s+(\w+)\??:/gm)].map((m) => m[1])
     expect(columns.length).toBeGreaterThan(15)
-    expect(Object.keys(full().payload ?? {}).sort()).toEqual(columns.filter((c) => c !== 'created_at').sort())
+    // 마이그레이션 349(티켓 20261120_2149)가 더한 홈피드 개편 칸 15개는 NULL이 «자동 규칙이 정한다»는 뜻이고
+    // 등록 묶음이 아직 채우지 않는다. 에이전트 자동 회차(상위 티켓 20261120_2026의 6회차)가 payload에 채울 때 이 제외를 지운다.
+    const feedRedesignPending = [
+      'feed_type', 'box_shape', 'box_kind', 'bg_color_key', 'chip_color_key', 'box_color_key', 'chips', 'title_chip_words',
+      'show_description', 'stamp_enabled', 'stamp_slot', 'list_items', 'list_more_href', 'collection_burst', 'feed_seed',
+    ]
+    expect(feedRedesignPending.every((c) => columns.includes(c))).toBe(true)
+    expect(Object.keys(full().payload ?? {}).sort()).toEqual(
+      columns.filter((c) => c !== 'created_at' && !feedRedesignPending.includes(c)).sort()
+    )
   })
 })
 

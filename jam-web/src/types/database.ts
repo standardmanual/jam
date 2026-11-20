@@ -1354,6 +1354,92 @@ export interface TodayCardRow {
   pattern_no?: string | null
   /** 레시피 공개 카드(`recipe_reveal`)가 가리키는 레시피(티켓 20261006_1217, 칼럼은 마이그레이션 217·티켓 20261006_1218). NULL이면 레시피를 아직 안 가리키거나 레시피가 지워진 카드다. 선택인 이유는 `shape`와 같다. */
   recipe_id?: string | null
+  // ── 홈피드 카드 개편 칸 15개(마이그레이션 349, 티켓 20261120_2149 · 규격 PRD home-feed §6 「개편 규격」) ──
+  // 전부 선택(NULL 허용)이다. NULL은 «자동 규칙이 정한다»(제목 칩 낱말·도장은 «없음»)는 뜻이라 옛 카드와 손으로 만든
+  // 시험 데이터는 이 칸들 없이도 이 타입에 맞는다. 자동 배정 코드는 아직 없다(자동 규칙 5회차).
+  /** 개편 카드 유형 키. 옛 7모양 `shape`와 별도다. NULL이면 옛 모양 카드이거나 자동. */
+  feed_type?: TodayFeedType | null
+  /** 박스 모양. 텍스트 박스와 이미지 마스크 양쪽에 쓴다. NULL이면 자동. */
+  box_shape?: TodayBoxShape | null
+  /** 박스 용도. NULL이면 유형 기본값. */
+  box_kind?: TodayBoxKind | null
+  /** 카드 배경·칩·박스 색 키(15색 중 하나). hex가 아니라 키를 저장한다. NULL이면 자동. */
+  bg_color_key?: FeedColorKey | null
+  chip_color_key?: FeedColorKey | null
+  box_color_key?: FeedColorKey | null
+  /** 칩 목록(최대 2개). NULL=자동, []=칩 없음. 구조는 `TodayChipSpec`. */
+  chips?: TodayChipSpec[] | null
+  /** 제목 속 칩으로 만들 낱말(최대 2개, 제목에 그대로 들어 있어야 한다 — 이 검사는 저장하는 코드의 몫이다). NULL·[]는 칩 없음. */
+  title_chip_words?: string[] | null
+  /** 설명 문장 노출 여부. NULL이면 유형 기본값. */
+  show_description?: boolean | null
+  /** 도장 사용 여부와 자리. NULL이면 자동(쓰지 않음). */
+  stamp_enabled?: boolean | null
+  stamp_slot?: string | null
+  /** 목록형 카드의 항목(최대 3개)과 «→» 칸의 대표 페이지 주소. */
+  list_items?: TodayListItem[] | null
+  list_more_href?: string | null
+  /** 컬렉션 소개 카드의 아이템 배지 도착 위치(최대 4개). NULL이면 시드로 계산. */
+  collection_burst?: TodayBurstPoint[] | null
+  /** 무작위 값을 고정하는 시드(0 이상 2^32 미만 정수). 한 번 정하면 바꾸지 않는다. */
+  feed_seed?: number | null
+}
+
+/** 개편 카드 유형 8가지(DB CHECK `today_cards_feed_type_check`, 마이그레이션 349). */
+export type TodayFeedType =
+  | 'hero_box'
+  | 'full_image'
+  | 'badge_intro'
+  | 'badge_only'
+  | 'collection_intro'
+  | 'drop_pickup'
+  | 'text_box'
+  | 'gallery_list'
+
+/** 박스 모양 5가지(DB CHECK `today_cards_box_shape_check`). ticket은 옛 모양 `ticket`과 다른 말이다. */
+export type TodayBoxShape = 'round' | 'ticket' | 'stamp' | 'wave' | 'bump'
+
+/** 박스 용도(DB CHECK `today_cards_box_kind_check`): 글자를 담는 박스 또는 이미지를 박스 모양으로 자른 마스크. */
+export type TodayBoxKind = 'text' | 'image_mask'
+
+/** 홈피드 색 키 15개(DB CHECK `today_cards_*_color_key_check`). 색 값은 `design-system/tokens/colors.css`가 정한다. */
+export type FeedColorKey =
+  | 'red' | 'yellow' | 'green' | 'purple' | 'blue'
+  | 'red-soft' | 'yellow-soft' | 'green-soft' | 'purple-soft' | 'blue-soft'
+  | 'ref-red' | 'ref-blue' | 'ref-lime' | 'ref-pink' | 'ref-yellow'
+
+/**
+ * 칩 한 개(`today_cards.chips`의 원소). DB는 kind·필수 키·tilt 값·slot 모양만 지킨다(함수 `today_cards_chips_valid`).
+ * - value(값 칩): `source`에 값의 출처 키(예: `mission.reward_points`)가 필요하다. 출처 키 목록은 자동 규칙 회차에서 정한다.
+ * - phrase(문구 칩): `text`가 필요하다(글자 수 상한 12자 제안은 저장하는 코드가 검사한다).
+ * - label(구분 칩): 둘 다 없어도 된다(자원에서 «미션»·«컬렉션» 같은 말이 정해진다).
+ * `slot`은 유형마다 허용 자리가 다른 이름이고(코드 상수가 정본) 소문자·숫자·하이픈 24자 이하다. `tilt`는 −8·−6·−4·4·6·8도다.
+ */
+export interface TodayChipSpec {
+  kind: 'value' | 'phrase' | 'label'
+  source?: string
+  text?: string
+  slot?: string
+  tilt?: -8 | -6 | -4 | 4 | 6 | 8
+}
+
+/** 목록형 카드의 항목 한 개(`today_cards.list_items`의 원소). 항목마다 따로 링크를 건다. */
+export interface TodayListItem {
+  name: string
+  href: string
+  image_url?: string | null
+}
+
+/**
+ * 컬렉션 소개 카드의 아이템 배지 한 개의 도착 위치(`today_cards.collection_burst`의 원소).
+ * x·y는 카드 가운데에서 가장자리까지를 1로 본 −1~1이다. size는 68~84px, delay_ms는 70~210이다.
+ */
+export interface TodayBurstPoint {
+  x: number
+  y: number
+  tilt?: number
+  size?: number
+  delay_ms?: number
 }
 
 // =========================================
