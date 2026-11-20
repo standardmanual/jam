@@ -114,6 +114,7 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
     expect(html).not.toContain('data-variant="glow"')
     // 메시는 블러 면·안쪽 빛·컨테이너 단위가 없다
     expect(html).not.toContain('filter:blur')
+    expect(html).not.toContain('soft-light')
     expect(html).not.toContain('box-shadow:inset')
     expect(html).not.toContain('container-type')
     expect(html).not.toContain('cqw')
@@ -122,7 +123,9 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
     expect(html).not.toContain('max-w-[90px]')
     const face = faceOf(html, false)!
     expect(face).toContain('p-[4.4%]')
-    expect(html).not.toContain('mix-blend-mode')
+    // 입자는 곱하기 한 겹뿐이다
+    expect(html.match(/mix-blend-mode/g)).toHaveLength(1)
+    expect(html).toContain('mix-blend-mode:multiply')
   })
 
   it('색이 없는 일반 면도 같은 크기다(한 그리드 안에서 어긋나지 않는다). 컨테이너 타입은 없다', () => {

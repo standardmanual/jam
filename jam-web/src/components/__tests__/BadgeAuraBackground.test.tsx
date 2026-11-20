@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, AURA_MESH_TUNING, auraGlowInsetShadow, auraGlowLayers, auraGlowMetrics, auraMeshBase, auraMeshLayers, auraMeshSeed, tuneAuraColors } from '@/lib/badgeAura'
+import { AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, AURA_GRAIN_URL, AURA_MESH_TONES, auraGlowInsetShadow, auraGlowLayers, auraGlowMetrics, auraMeshBase, auraMeshLayers, auraMeshSeed, tuneAuraColors } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
@@ -130,77 +130,81 @@ describe('BadgeAuraBackground', () => {
   })
 })
 
-describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
-  it('그라데이션 한 장뿐이다 — 블러·안쪽 빛 없이 radial 둘(덩어리 둘, 가운데 밝은 점 없음)과 대각선 선형 바탕이다', () => {
+describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1143, 후보 E)', () => {
+  const rgbOf = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const chroma = (hex: string) => Math.max(...rgbOf(hex)) - Math.min(...rgbOf(hex))
+
+  it('블러·안쪽 빛 없이 가운데 하이라이트 radial 하나와 대각선 선형 바탕이고, 입자가 곱하기로 얹힌다', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="mesh" seed="a" />)
     expect(html).toContain('data-variant="mesh"')
     expect(html).toContain('aria-hidden="true"')
     expect(html).not.toContain('filter:blur')
     expect(html).not.toContain('box-shadow')
-    expect(html.match(/radial-gradient\(/g)).toHaveLength(2)
-    expect(html).not.toContain('rgba(255,255,255')
-    // 덩어리 사이에 빈 곳이 생기지 않게 맨 아래에 대각선 선형 바탕을 깐다(얼룩덜룩 방지)
+    expect(html.match(/radial-gradient\(/g)).toHaveLength(1)
     expect(html.match(/linear-gradient\(\d+deg,/g)).toHaveLength(1)
     expect(html.lastIndexOf('linear-gradient')).toBeGreaterThan(html.lastIndexOf('radial-gradient'))
-    // 위에서 아래로 흰색에 풀리는 글로우와 달리 바탕이 흰색이 아니다
+    // 입자: 코드로 만든 SVG 노이즈(이미지 파일 없음)를 곱하기로 얹는다
+    expect(html).toContain('mix-blend-mode:multiply')
+    expect(AURA_GRAIN_URL.startsWith('url("data:image/svg+xml,')).toBe(true)
+    expect(AURA_GRAIN_URL).toContain('feTurbulence'.replace(/./g, (c) => encodeURIComponent(c)))
+    // 바탕이 흰색이 아니다
     expect(html).toContain(`background-color:${auraMeshBase(COLORS)}`)
     expect(auraMeshBase(COLORS)).not.toBe('#ffffff')
   })
 
-  it('덩어리는 둘뿐이고 면보다 크다(반경 100% 이상) — 작은 얼룩이 없다', () => {
-    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).filter((l) => l.startsWith('radial-gradient'))
-    expect(blobs).toHaveLength(2)
-    for (const l of blobs) {
-      const m = /ellipse (\d+)% (\d+)%/.exec(l)!
-      expect(Number(m[1])).toBeGreaterThanOrEqual(100)
-      expect(Number(m[2])).toBeGreaterThanOrEqual(100)
-    }
+  it('선형 바탕은 8단계 smoothstep이다 — 양 끝은 연한 쪽·깊은 쪽 끝색이고 명도가 단조롭게 내려간다', () => {
+    const linear = auraMeshLayers(COLORS, { seed: 'a' }).find((l) => l.startsWith('linear-gradient'))!
+    const stops = [...linear.matchAll(/#([0-9a-f]{6}) (\d+)%/g)]
+    expect(stops).toHaveLength(8)
+    expect(stops[0][2]).toBe('0')
+    expect(stops[7][2]).toBe('100')
+    const light = (m: RegExpMatchArray) => rgbOf('#' + m[1]).reduce((a, b) => a + b, 0)
+    for (let i = 1; i < stops.length; i++) expect(light(stops[i])).toBeLessThanOrEqual(light(stops[i - 1]))
+    expect(`#${stops[0][1]}`).toBe(auraMeshBase(COLORS))
   })
 
-  it('같은 시드는 항상 같은 배치이고, 시드가 달라지면 배치가 달라진다', () => {
+  it('끝색은 정해진 채도·명도 보정표를 따른다(연한 쪽 s0.5·l0.93, 깊은 쪽 s0.62·l0.8)', () => {
+    expect(AURA_MESH_TONES.light).toEqual({ s: 0.5, l: 0.93 })
+    expect(AURA_MESH_TONES.deep).toEqual({ s: 0.62, l: 0.8 })
+    const linear = auraMeshLayers(COLORS, { seed: 'a' }).find((l) => l.startsWith('linear-gradient'))!
+    const hexes = [...linear.matchAll(/#([0-9a-f]{6})/g)].map((m) => '#' + m[1])
+    const l = (hex: string) => (Math.max(...rgbOf(hex)) + Math.min(...rgbOf(hex))) / 510
+    expect(l(hexes[0])).toBeCloseTo(AURA_MESH_TONES.light.l, 1)
+    expect(l(hexes[hexes.length - 1])).toBeCloseTo(AURA_MESH_TONES.deep.l, 1)
+  })
+
+  it('같은 시드는 항상 같은 방향이고, 시드가 달라지면 방향이 달라진다', () => {
     expect(auraMeshSeed('냄비')).toBe(auraMeshSeed('냄비'))
     expect(auraMeshLayers(COLORS, { seed: 'x' })).toEqual(auraMeshLayers(COLORS, { seed: 'x' }))
-    const layouts = new Set(Array.from({ length: 24 }, (_, i) => auraMeshLayers(COLORS, { seed: `배지 ${i}` }).join('|')))
-    expect(layouts.size).toBeGreaterThanOrEqual(3)
+    const angles = new Set(Array.from({ length: 24 }, (_, i) => /(\d+)deg/.exec(auraMeshLayers(COLORS, { seed: `배지 ${i}` }).join('|'))![1]))
+    expect(angles.size).toBeGreaterThanOrEqual(3)
     // 시드가 없으면 색 목록이 시드다
     expect(auraMeshLayers(COLORS)).toEqual(auraMeshLayers(COLORS, { seed: COLORS.join(',') }))
   })
 
-  it('덩어리는 두 가지 색만 쓰고 그중 하나는 진한 색이다(밝은 색은 바탕)', () => {
-    const [, , dark] = tuneAuraColors(COLORS, AURA_MESH_TUNING)
-    const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')
-    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).filter((l) => l.startsWith('radial-gradient')).join('|')
-    const used = new Set([...blobs.matchAll(/rgba\((\d+),(\d+),(\d+),/g)].map((m) => `${m[1]},${m[2]},${m[3]}`))
-    expect(used.size).toBe(2)
-    expect(used.has(rgb(dark))).toBe(true)
+  it('주색은 가장 선명한 대표색, 보조색은 그다음 색이다 — 밝기만 높은 흰빛 색은 쓰지 않는다', () => {
+    // 첫 색(#f4f4f4)은 거의 흰색이라 선명하지 않다. 둘째·셋째가 주색·보조색이다
+    const colors = ['#f4f4f4', '#e8368f', '#2f6fe0']
+    const hexes = [...auraMeshLayers(colors, { seed: 'a' }).find((l) => l.startsWith('linear-gradient'))!.matchAll(/#([0-9a-f]{6})/g)].map((m) => '#' + m[1])
+    for (const hex of [hexes[0], hexes[hexes.length - 1]]) expect(chroma(hex)).toBeGreaterThan(14)
   })
 
-  it('gray면 바탕과 덩어리가 모두 무채색이다', () => {
+  it('거의 무채색인 대표색은 색을 입히지 않는다', () => {
+    const hexes = [...auraMeshLayers(['#f0f0f0', '#a0a0a0', '#505050'], { seed: 'a' }).find((l) => l.startsWith('linear-gradient'))!.matchAll(/#([0-9a-f]{6})/g)].map((m) => '#' + m[1])
+    for (const hex of hexes) expect(chroma(hex)).toBeLessThanOrEqual(12)
+  })
+
+  it('gray면 바탕·바탕 그라데이션·하이라이트가 모두 무채색이다', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="mesh" gray />)
     const nums = [...html.matchAll(/rgba\((\d+),(\d+),(\d+),/g)].map((m) => [Number(m[1]), Number(m[2]), Number(m[3])])
-    expect(nums.length).toBeGreaterThan(8)
+    expect(nums.length).toBeGreaterThanOrEqual(2)
     for (const rgb of nums) expect(Math.max(...rgb) - Math.min(...rgb)).toBeLessThanOrEqual(12)
-    const base = auraMeshBase(COLORS, { gray: true })
-    expect(Math.max(...[1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16))) - Math.min(...[1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16)))).toBeLessThanOrEqual(12)
+    const hexes = [...html.matchAll(/#([0-9a-f]{6})/g)].map((m) => '#' + m[1])
+    expect(hexes.length).toBeGreaterThan(8)
+    for (const hex of hexes) expect(chroma(hex)).toBeLessThanOrEqual(12)
   })
 
   it('색이 hex가 아니면 아무것도 그리지 않는다', () => {
     expect(renderToStaticMarkup(<BadgeAuraBackground colors={['red']} variant="mesh" />)).toBe('')
-  })
-
-  it('메시는 글로우보다 채도가 낮다 — 같은 대표색에서 세 자리 모두 채도가 낮거나 같다', () => {
-    const sat = (hex: string) => {
-      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-      const max = Math.max(r, g, b)
-      const min = Math.min(r, g, b)
-      const l = (max + min) / 2
-      return max === min ? 0 : (max - min) / (1 - Math.abs(2 * l - 1))
-    }
-    const vivid = ['#ffd6e8', '#ff3d8b', '#d6006a']
-    const glow = tuneAuraColors(vivid, AURA_GLOW_TUNING)
-    const mesh = tuneAuraColors(vivid, AURA_MESH_TUNING)
-    for (let i = 0; i < 3; i++) expect(sat(mesh[i])).toBeLessThanOrEqual(sat(glow[i]) + 0.001)
-    expect(sat(mesh[2])).toBeLessThan(sat(glow[2]) - 0.1)
-    expect(AURA_MESH_TUNING.saturationMax).toBeLessThanOrEqual(0.34)
   })
 })

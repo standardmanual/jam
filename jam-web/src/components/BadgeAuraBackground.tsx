@@ -3,6 +3,9 @@ import {
   auraGlowInsetShadow,
   auraGlowLayers,
   auraGlowMetrics,
+  AURA_GRAIN_OPACITY,
+  AURA_GRAIN_SIZE_PX,
+  AURA_GRAIN_URL,
   auraMeshBase,
   auraMeshLayers,
   resolveAuraColors,
@@ -21,9 +24,9 @@ import {
  * 격리: 루트가 `isolate`로 쌓임 맥락을 만들고, 모서리는 `rounded-[inherit]` + `overflow-hidden`으로 부모를 따른다.
  * `will-change`는 쓰지 않는다(정적 면에 상시 레이어 승격은 메모리만 먹는다).
  *
- * 변형 두 가지: `glow`(기본, 상세 히어로)는 위에서 아래로 흰색에 풀리는 글로우, `mesh`(배지 그리드 카드, 티켓 20261120_1136)는
- * 크림 바탕에 같은 계열 색 덩어리가 모서리에서 번지는 파스텔 메시다. 메시는 그라데이션 한 장뿐이라 블러·안쪽 빛·`glowSize`가 필요 없고,
- * 덩어리 배치는 `seed`(없으면 색 목록)로 정해져 배지마다 다르되 렌더마다 같다.
+ * 변형 두 가지: `glow`(기본, compact 카드)는 위에서 아래로 흰색에 풀리는 글로우, `mesh`(배지 그리드 카드·상세 히어로, 티켓 20261120_1143)는
+ * 두 색이 대각선으로 번지고 가운데가 살짝 밝으며 고운 입자가 깔린 파스텔 메시다. 메시는 블러·안쪽 빛·`glowSize`가 필요 없고,
+ * 대각선 방향은 `seed`(없으면 색 목록)로 정해져 배지마다 다르되 렌더마다 같다.
  *
  * `colors`가 `[]`이면 청회색 대체색, hex가 아닌 값이 섞였으면 아무것도 그리지 않는다(`resolveAuraColors`).
  */
@@ -54,7 +57,13 @@ export default function BadgeAuraBackground({ colors, gray = false, glowSize, va
         data-variant="mesh"
         className="absolute inset-0 z-0 overflow-hidden rounded-[inherit] isolate pointer-events-none"
         style={{ backgroundColor: auraMeshBase(resolved, { gray }), backgroundImage: auraMeshLayers(resolved, { gray, seed }).join(', ') }}
-      />
+      >
+        {/* 입자: 코드로 만든 노이즈를 곱하기로 얹는다. 루트가 isolate라 이 블렌딩은 위 그라데이션에만 닿는다 */}
+        <div
+          className="absolute inset-0"
+          style={{ backgroundImage: AURA_GRAIN_URL, backgroundSize: `${AURA_GRAIN_SIZE_PX}px ${AURA_GRAIN_SIZE_PX}px`, mixBlendMode: 'multiply', opacity: AURA_GRAIN_OPACITY }}
+        />
+      </div>
     )
   }
   const m = auraGlowMetrics(glowSize)

@@ -263,37 +263,31 @@ export function auraGlowInsetShadow(colors: readonly string[], options: { gray?:
 }
 
 /**
- * 메시 배경 — 부드러운 파스텔 바탕에 같은 계열 색이 대각선으로 번지는 배경(사용자 시안, 2026-11-20).
- * 글로우와 달리 아래 흰 띠·안쪽 빛 테두리·블러 면이 없다. 그라데이션만으로 끝나 한 장의 `background`로 그려진다.
- * 얼룩덜룩해 보이지 않게(사용자 지시, 2026-11-20) 색 덩어리는 둘뿐이고 면보다 크게 서로 겹치며, 두 덩어리 색은 색상이 가깝게 맞추고,
- * 맨 아래에 대각선 선형 그라데이션을 깔아 덩어리 사이에 빈 곳이 생기지 않는다. 가운데 밝은 점도 없다. 덩어리 배치는 배지마다 다르되(시드), 같은 시드는 항상 같은 배치다.
+ * 메시 배경 — 두 색이 대각선으로 부드럽게 번지고, 가운데가 살짝 밝으며, 고운 입자가 깔린 파스텔 배경(사용자 시안, 2026-11-20).
+ * 글로우와 달리 아래 흰 띠·안쪽 빛 테두리·블러 면이 없다. 색 덩어리를 여럿 두면 얼룩져 보이고 채도·명암을 죽이면 단색처럼 뭉개지므로
+ * (사용자 지시 2026-11-20, 후보 A~E 비교에서 E 선택) 아래 셋으로만 만든다.
+ * 1) 대각선 선형 바탕: 보조색(밝고 연함) → 주색(깊음)을 8단계 smoothstep으로 이어 띠(마하 밴드)가 생기지 않게 한다
+ * 2) 가운데 흰 하이라이트: 그림이 떠 보이도록 가운데만 살짝 밝힌다
+ * 3) 입자: `AURA_GRAIN_URL` 노이즈를 곱하기로 얹어 매끈한 그라데이션이 단색처럼 보이지 않게 한다(컴포넌트가 따로 그린다)
+ * 주색은 대표색 셋 중 가장 선명한 색, 보조색은 그다음으로 선명한 색이다. 덩어리 배치 대신 대각선 방향만 시드가 고른다(배지마다 다르되 렌더마다 같다).
  */
-interface MeshLayout {
-  /** 선형 바탕의 방향(deg): 중간 색 쪽에서 시작해 진한 색 쪽으로 간다 */
-  angle: number
-  /** 진한 색 덩어리 중심(%)과 중간 색 덩어리 중심(%) — 서로 반대쪽 모서리다 */
-  dark: readonly [number, number]
-  mid: readonly [number, number]
-}
+const MESH_ANGLES: readonly number[] = [135, 225, 315, 45]
 
-const MESH_LAYOUTS: readonly MeshLayout[] = [
-  { angle: 225, dark: [0, 100], mid: [100, 0] },
-  { angle: 135, dark: [100, 100], mid: [0, 0] },
-  { angle: 315, dark: [0, 0], mid: [100, 100] },
-  { angle: 45, dark: [100, 0], mid: [0, 100] },
-]
+/** 메시의 연한 쪽(보조색)과 깊은 쪽(주색)의 채도·명도 */
+export const AURA_MESH_TONES = {
+  light: { s: 0.5, l: 0.93 },
+  deep: { s: 0.62, l: 0.8 },
+} as const
 
-/** 선형 바탕의 두 끝색을 흰색 쪽으로 섞는 비율. 크면 연하다 */
-const MESH_BASE_WHITEN = 0.5
+/** 거의 무채색인 대표색은 색을 입히지 않는다(없는 색상을 만들어 내지 않도록). 이 채도 미만이면 무채색으로 본다 */
+const MESH_NEUTRAL_SAT = 0.15
 
-/** 메시 배경의 색 보정표. 글로우보다 채도를 낮췄다(사용자 지시, 2026-11-20 두 차례: 채도 상한 0.76 → 0.5 → 0.34, 배율 0.8 → 0.5 → 0.34) */
-export const AURA_MESH_TUNING: AuraTuning = {
-  lightness: [0.94, 0.88, 0.8],
-  saturationScale: 0.34,
-  saturationMin: 0.16,
-  saturationMax: 0.34,
-  slotSaturation: [0.85, 1, 0.95],
-}
+/** 입자 하나의 타일 크기(px)와 곱하기로 얹는 세기 */
+export const AURA_GRAIN_SIZE_PX = 180
+export const AURA_GRAIN_OPACITY = 0.22
+const GRAIN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${AURA_GRAIN_SIZE_PX}" height="${AURA_GRAIN_SIZE_PX}"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`
+/** 입자 노이즈의 `background-image` 값. 코드로 만든 SVG라 이미지 파일·네트워크 요청이 없다 */
+export const AURA_GRAIN_URL = `url("data:image/svg+xml,${encodeURIComponent(GRAIN_SVG)}")`
 
 /** 문자열 → 0 이상의 정수(FNV-1a). 같은 문자열이면 항상 같은 값이다 */
 export function auraMeshSeed(key: string): number {
@@ -305,28 +299,35 @@ export function auraMeshSeed(key: string): number {
   return h >>> 0
 }
 
-/** 메시 배경의 바탕색: 밝은 색 자리. 미획득이면 무채색 */
-export function auraMeshBase(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
-  return glowPalette(colors, { ...options, tuning: options.tuning ?? AURA_MESH_TUNING })[0]
+/** 색의 «선명함»: 채도 × (중간 명도에 가까울수록 큼). 가장 선명한 색을 주색으로 고른다 */
+function vividness(hex: string): number {
+  const { s, l } = hexToHsl(hex)
+  return s * (1 - Math.abs(2 * l - 1))
 }
 
-/** 중간 색 덩어리의 색을 진한 색 쪽으로 당기는 비율. 색상 차이가 클수록 덩어리 경계가 얼룩으로 보여서 서로 가깝게 맞춘다 */
-const MESH_MID_PULL = 0.4
+/** 연한 쪽(보조색)·깊은 쪽(주색) 두 끝색. 미획득이면 무채색 두 끝이다 */
+function meshEnds(colors: readonly string[], gray: boolean): { light: string; deep: string } {
+  if (gray) return { light: AURA_GLOW_GRAY_COLORS[0], deep: AURA_GLOW_GRAY_COLORS[2] }
+  const sorted = [...fill3(colors)].sort((a, b) => vividness(b) - vividness(a))
+  const main = hexToHsl(sorted[0])
+  const second = hexToHsl(sorted[1])
+  const mainHue = main.s < MESH_NEUTRAL_SAT ? null : main.h
+  const secondHue = second.s < MESH_NEUTRAL_SAT ? mainHue : second.h
+  const paint = (hue: number | null, tone: { s: number; l: number }) => hslToHex({ h: hue ?? 0, s: hue === null ? 0.03 : tone.s, l: tone.l })
+  return { light: paint(secondHue, AURA_MESH_TONES.light), deep: paint(mainHue, AURA_MESH_TONES.deep) }
+}
 
-/**
- * 메시 배경의 `background-image` 층(위 → 아래): 진한 색 덩어리, 중간 색 덩어리, 대각선 선형 바탕.
- * 가운데 흰 하이라이트는 없다(얼룩덜룩 보정, 사용자 지시 2026-11-20 — 가운데만 밝은 점이 얼룩처럼 보였다). 덩어리 배치는 `seed`가 고른다
- */
-export function auraMeshLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; seed?: string } = {}): string[] {
-  const [, mid, dark] = glowPalette(colors, { ...options, tuning: options.tuning ?? AURA_MESH_TUNING })
-  const layout = MESH_LAYOUTS[auraMeshSeed(options.seed ?? colors.join(',')) % MESH_LAYOUTS.length]
-  const white = AURA_GLOW_BASE_COLOR
-  const midNear = mixHex(mid, dark, MESH_MID_PULL)
-  return [
-    `radial-gradient(ellipse 130% 120% at ${layout.dark[0]}% ${layout.dark[1]}%, ${gaussianAlphaStops(dark, 0.5)})`,
-    `radial-gradient(ellipse 120% 110% at ${layout.mid[0]}% ${layout.mid[1]}%, ${gaussianAlphaStops(midNear, 0.4)})`,
-    `linear-gradient(${layout.angle}deg, ${mixHex(midNear, white, MESH_BASE_WHITEN)}, ${mixHex(dark, white, MESH_BASE_WHITEN)})`,
-  ]
+/** 메시 배경의 바탕색(연한 쪽 끝색). 그라데이션이 그려지기 전·가장자리에 비치는 색이다. 미획득이면 무채색 */
+export function auraMeshBase(colors: readonly string[], options: { gray?: boolean } = {}): string {
+  return meshEnds(colors, Boolean(options.gray)).light
+}
+
+/** 메시 배경의 `background-image` 층(위 → 아래): 가운데 흰 하이라이트, 대각선 선형 바탕(8단계 smoothstep). 대각선 방향은 `seed`가 고른다 */
+export function auraMeshLayers(colors: readonly string[], options: { gray?: boolean; seed?: string } = {}): string[] {
+  const { light, deep } = meshEnds(colors, Boolean(options.gray))
+  const angle = MESH_ANGLES[auraMeshSeed(options.seed ?? colors.join(',')) % MESH_ANGLES.length]
+  const stops = Array.from({ length: 8 }, (_, i) => `${mixHex(light, deep, smoothstep(0, 1, i / 7))} ${Math.round((i / 7) * 100)}%`).join(', ')
+  return [`radial-gradient(ellipse 80% 70% at 45% 40%, ${withAlpha('#ffffff', 0.4)} 0%, ${withAlpha('#ffffff', 0)} 75%)`, `linear-gradient(${angle}deg, ${stops})`]
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
