@@ -8,7 +8,7 @@
  *   (새 카드 24시간 우선 + 유저·KST 날짜 씨앗의 하루 단위 섞기, 티켓 20261102_1720)
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { RankingModeRow, TodayCardRow } from '@/types/database'
+import type { BadgeCondition, RankingModeRow, TodayCardRow } from '@/types/database'
 import { computeUserExposureTags } from './exposure'
 import { loadMissionTribeAccess, loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { isMissionOpenToUser } from '@/lib/missions/tribe-access'
@@ -21,6 +21,7 @@ import { recipeReleaseState } from '@/lib/combine/visibility'
 import { rewardBadgeCountOf, representativeRewardBadges, resolveGradeMode } from '@/lib/combine/gradeMode'
 import type { BundleBadgeInput } from '@/lib/admin/recipe-grade-bundles'
 import { resourceOfTemplate } from './cardView'
+import type { MissionConditionValues } from './feedValueChips'
 import { sortHomeCards } from './cardSelection'
 import { kstDateString } from '@/lib/notifications/kst'
 /**
@@ -46,6 +47,13 @@ export interface ResolvedBadge {
    */
   rarity: string | null
   /**
+   * 액티비티 배지 달성 기준(`badges.condition_json`). 새 카드의 값 칩(«10회»·«고도 700m»)이 읽는다(티켓 20261121_0155).
+   * 배지 조회가 이미 읽는 행에서 나오고, 값이 없거나(NULL) 읽지 못하면 이 칸이 없다.
+   */
+  condition_json?: BadgeCondition
+  /** 무한레벨형 배지의 레벨(`badges.level`, 값 칩 «Lv.1»). 등급형(NULL)이거나 읽지 못하면 이 칸이 없다. */
+  level?: number
+  /**
    * 이 카드를 보는 유저가 **이미 보유한 배지인지** (티켓 20260905_0038 B).
    * 오늘 카드는 미획득 배지의 아트를 커버로 승격하면서 보유 여부를 한 번도 묻지 않아,
    * 아직 못 받은 배지가 「내 것」처럼 보였다.
@@ -69,6 +77,11 @@ export interface ResolvedMission {
   reward_badge_count: number
   /** 옛 미션 소개 카드의 「이미지에 제목 있음」 판정에 쓴다(커버 주소와 같으면 제목이 이미지 안에 있다) */
   image_url: string | null
+  /**
+   * 미션 조건 값(`missions.condition_json` 중 값 칩이 읽는 여섯 칸만, 티켓 20261121_0155). 새 카드의 값 칩(«걷기 8km»)이 읽는다.
+   * 이미 `select('*')`로 읽는 미션 행에서 꺼내 조회를 늘리지 않는다. 읽을 값이 하나도 없으면 이 칸이 없다.
+   */
+  condition_json?: MissionConditionValues
 }
 
 /** 컬렉션 소식 카드의 표시 데이터에 필요한 컬렉션 값 (티켓 20261001_1357) */
@@ -336,6 +349,7 @@ type FetchedMission = MissionVisibilityInput & {
   reward_points: number | null
   reward_badge_ids: string[] | null
   image_url: string | null
+  condition_json?: unknown
   exposure_mode: import('@/types/database').MissionExposureMode | null | undefined
   exposure_at: string | null | undefined
 }
@@ -371,13 +385,35 @@ export function collectionIdsToResolve(cards: TodayCardRow[]): string[] {
   ]
 }
 
+const MISSION_CONDITION_NUMBER_KEYS = ['distance_km', 'count', 'streak_days', 'duration_minutes', 'elevation_gain_m'] as const
+
+/**
+ * 미션 `condition_json`에서 값 칩이 읽는 여섯 칸(거리·종목·횟수·연속 일수·이동 시간·상승고도)만 꺼낸다(티켓 20261121_0155).
+ * 숫자가 아니거나 0 이하인 값, 문자가 아닌 종목은 버리고, 남는 칸이 없으면 null이다(체크인 미션의 `poi_id`처럼 값이 없는 조건).
+ * 나머지 칸(장소·판정 옵션 등)은 카드에 싣지 않는다.
+ */
+export function pickMissionConditionValues(raw: unknown): MissionConditionValues | null {
+  if (!raw || typeof raw !== 'object') return null
+  const source = raw as Record<string, unknown>
+  const picked: Record<string, unknown> = {}
+  for (const key of MISSION_CONDITION_NUMBER_KEYS) {
+    const value = source[key]
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) picked[key] = value
+  }
+  if (typeof source.activity_type === 'string' && source.activity_type) picked.activity_type = source.activity_type
+  // 종목만 있고 수치가 없으면 칩이 되지 않으므로 싣지 않는다
+  return Object.keys(picked).some((key) => key !== 'activity_type') ? (picked as MissionConditionValues) : null
+}
+
 export function toResolvedMission(m: FetchedMission): ResolvedMission {
+  const condition = pickMissionConditionValues(m.condition_json)
   return {
     starts_at: m.starts_at,
     ends_at: m.ends_at ?? null,
     reward_points: m.reward_points ?? null,
     reward_badge_count: m.reward_badge_ids?.length ?? 0,
     image_url: m.image_url ?? null,
+    ...(condition ? { condition_json: condition } : {}),
   }
 }
 
@@ -739,7 +775,8 @@ async function fetchBadgesById(
   if (uniqueIds.length === 0) return new Map()
 
   const [{ data }, activityOwned, checkinOwned, itemOwned] = await Promise.all([
-    supabase.from('badges').select('id, name, image_url, rarity').in('id', uniqueIds).is('deleted_at', null),
+    // condition_json·level은 새 카드의 값 칩(달성 기준·레벨)이 읽는 칸이다(티켓 20261121_0155). 같은 조회에 칸만 더했다
+    supabase.from('badges').select('id, name, image_url, rarity, condition_json, level').in('id', uniqueIds).is('deleted_at', null),
     supabase.from('user_activity_badges').select('badge_id').eq('user_id', userId).in('badge_id', uniqueIds),
     supabase.from('user_checkin_badge_earns').select('badge_id').eq('user_id', userId).in('badge_id', uniqueIds),
     supabase
@@ -761,8 +798,18 @@ async function fetchBadgesById(
   }
 
   const map = new Map<string, ResolvedBadge>()
-  for (const b of (data ?? []) as Omit<ResolvedBadge, 'earned'>[]) {
-    map.set(b.id, { ...b, earned: ownedIds.has(b.id) })
+  for (const row of (data ?? []) as (Omit<ResolvedBadge, 'earned' | 'condition_json' | 'level'> & {
+    condition_json?: BadgeCondition | null
+    level?: number | null
+  })[]) {
+    const { condition_json, level, ...b } = row
+    map.set(b.id, {
+      ...b,
+      // 값이 없는(NULL·생략) 칸은 싣지 않는다 — 기존 결과의 모양이 그대로다
+      ...(condition_json && typeof condition_json === 'object' ? { condition_json } : {}),
+      ...(typeof level === 'number' ? { level } : {}),
+      earned: ownedIds.has(b.id),
+    })
   }
   return map
 }

@@ -7,11 +7,11 @@
  * - 값만 받는 순수 함수다(DB·조회·훅 없음). 시각은 인자(`now`)로 받고 `Math.random`·`Date.now`는 쓰지 않는다 — 서버와 브라우저가 같은 행에서 같은 값을 낸다.
  * - 시드는 `feed_seed`가 있으면 그것(0도 유효), 없으면 카드 id의 해시다. 이웃 카드는 보지 않는다(등록 때 값을 저장해 고정하는 일은 5~6회차).
  * - 지정한 칸(NULL이 아닌 값)은 보존하고 NULL 칸만 4-1 계산이 채운다. 자리가 유형이 허용하지 않는 이름이면 지정하지 않은 것으로 본다.
- * - 값 칩은 지금 `TodayCardWithHref`가 싣고 있는 값만 쓴다(`FeedValueChipSource`). 미션 조건·배지 달성 기준·레벨은 `cards.ts` 조회 확장이 필요해 4-4로 미뤘다.
+ * - 값 칩은 `FeedValueChipSource`가 담은 값만 쓴다. 미션 조건·배지 달성 기준·레벨은 `cards.ts` 조회가 선택 칸으로 싣고(티켓 20261121_0155) `cardView.ts`가 이 입력에 연결한다. 칸이 없으면 그 칩만 없다.
  *
  * ## 칩 구성
  * - 저장된 `chips`(NULL이 아님): 그것을 그린다. 문구 칩은 `text`, 구분 칩은 `text` 또는 자원의 구분 문구, 값 칩은 `source`가 가리키는 값을 문구로 바꾼다
- *   (알려진 출처 키만: `mission.remaining`·`mission.reward_points`·`collection.item_count`·`checkin.required_badges`·`checkin.place_name`. 읽지 못하면 그 칩은 없다).
+ *   (알려진 출처 키만: `mission.remaining`·`mission.reward_points`·`mission.condition`·`activity_badge.criteria`·`activity_badge.level`·`collection.item_count`·`checkin.required_badges`·`checkin.place_name`. 읽지 못하면 그 칩은 없다).
  * - NULL(자동): 첫 값 칩 → 구분 칩 순이다. 값이 없으면 구분 칩 하나, 구분 칩이 없는 자원이면 값 칩을 앞에서 두 개까지.
  *   **드랍·픽업(`drop_pickup`)만 다르다**: 자원과 무관하게 «드랍»(색 칩)·«픽업»(검정 칩) 문구 칩 둘이다(샘플).
  * - 개수는 카드당 최대 2개이고 유형의 한도(`chipLimitOf`)로 한 번 더 자른다. 첫 칩은 큰 칩, 둘째는 작은 칩이다(샘플). 구분 칩은 검정이다. 드랍·픽업은 두 칩 모두 큰 칩이다(샘플).
@@ -28,7 +28,13 @@
  */
 import type { TodayBoxKind, TodayBoxShape, TodayBurstPoint, TodayChipSpec } from '@/types/database'
 import { createRng, hashSeed, type BoxSeed } from './boxShape'
-import { assignChipPlacement, assignFeedColors, FEED_FALLBACK_COLORS, type FeedChipFixedPlacement } from './feedAssign'
+import {
+  assignChipPlacement,
+  assignFeedColors,
+  FEED_FALLBACK_COLORS,
+  type ExcludedColorPair,
+  type FeedChipFixedPlacement,
+} from './feedAssign'
 import { FEED_CHIP_SLOT_SPECS, isAllowedSlot, isFeedType, MAX_CARD_CHIPS } from './feedChipSlots'
 import {
   FEED_BURST,
@@ -45,7 +51,10 @@ import {
   FEED_DROP_PICKUP_PHRASES,
   FEED_VALUE_CHIP_RULES,
   buildValueChips,
+  formatBadgeCriteriaChip,
+  formatBadgeLevelChip,
   formatItemCountChip,
+  formatMissionConditionChip,
   formatPlaceNameChip,
   formatRemainingChip,
   formatRequiredBadgesChip,
@@ -158,6 +167,8 @@ export interface ResolveFeedLookInput {
   /** 값 칩의 입력. 자원이 칩을 내지 않으면 null */
   valueSource: FeedValueChipSource | null
   now: Date
+  /** 미리보기 전용: 사용자가 검수표에서 제외한 색 조합(색 키 쌍, 순서 무관). 생략하면 제외 없이 배정한다(서비스 홈은 주지 않는다). */
+  excludedColorPairs?: readonly ExcludedColorPair[]
 }
 
 // ── 보조 ─────────────────────────────────────────────────────
@@ -189,6 +200,12 @@ function valueChipTextOf(source: string | undefined, valueSource: FeedValueChipS
       return valueSource.resource === 'mission' ? formatRemainingChip(valueSource.endsAt, now) : null
     case 'mission.reward_points':
       return valueSource.resource === 'mission' ? formatRewardPointsChip(valueSource.rewardPoints) : null
+    case 'mission.condition':
+      return valueSource.resource === 'mission' ? formatMissionConditionChip(valueSource.condition) : null
+    case 'activity_badge.criteria':
+      return valueSource.resource === 'activity_badge' ? formatBadgeCriteriaChip(valueSource.condition) : null
+    case 'activity_badge.level':
+      return valueSource.resource === 'activity_badge' ? formatBadgeLevelChip(valueSource.level) : null
     case 'collection.item_count':
       return valueSource.resource === 'collection' ? formatItemCountChip(valueSource.itemCount) : null
     case 'checkin.required_badges':
@@ -362,15 +379,18 @@ export function resolveCollectionBurst(stored: readonly TodayBurstPoint[] | null
 // ── 해석 ─────────────────────────────────────────────────────
 
 /** 카드 행의 새 칸과 4-1 계산을 합쳐 «그릴 값»을 낸다. 같은 입력은 언제 어디서 열어도 같은 값이다. */
-export function resolveFeedLook({ card, feedType, valueSource, now }: ResolveFeedLookInput): FeedLook {
+export function resolveFeedLook({ card, feedType, valueSource, now, excludedColorPairs }: ResolveFeedLookInput): FeedLook {
   const seed: number = typeof card.feed_seed === 'number' ? card.feed_seed : hashSeed(card.id)
   const seedKey: BoxSeed = seed
 
   // 색 — 지정한 칸은 보존하고 NULL 칸만 자동 규칙이 채운다
-  const assigned = assignFeedColors({
-    seed: seedKey,
-    fixed: { bg: fixedKey(card.bg_color_key), chip: fixedKey(card.chip_color_key), box: fixedKey(card.box_color_key) },
-  })
+  const assigned = assignFeedColors(
+    {
+      seed: seedKey,
+      fixed: { bg: fixedKey(card.bg_color_key), chip: fixedKey(card.chip_color_key), box: fixedKey(card.box_color_key) },
+    },
+    excludedColorPairs ? { excludedPairs: excludedColorPairs } : {},
+  )
   const colors = {
     bg: colorKeyOr(assigned.bg, FEED_FALLBACK_COLORS.bg as FeedColorKey),
     chip: colorKeyOr(assigned.chip, FEED_FALLBACK_COLORS.chip as FeedColorKey),

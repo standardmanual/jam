@@ -451,6 +451,8 @@ code:
 
 **구현 위치**(4회차-3, 티켓 20261121_0115): 컬렉션 소개 `jam-web/src/components/today/feed/FeedCollectionCard.tsx`(모션 래퍼만 `'use client'`인 `FeedCollectionBurst.tsx`), 드랍·픽업 `FeedDropPickupCard.tsx`, 목록형 `FeedGalleryListCard.tsx`, 같은 `feed/` 폴더의 조립 `FeedCard.tsx`가 세 유형을 더해 여덟 유형이 된다. 컬렉션 배지 배치(`look.burst`, 저장된 `collection_burst` 또는 카드 시드)는 `jam-web/src/lib/today/feedLook.ts`의 `resolveCollectionBurst`, 세 유형의 치수·모션 상수는 `feedConstants.ts`(`FEED_BURST`·`FEED_DROP_PICKUP`·`FEED_GALLERY`)다. 그릴 값이 없는 행(컬렉션 대표 그림=카드 `cover_image_url` 없음, 드랍·픽업 배지 0개, 목록 항목 0개)은 `toCardView`가 옛 경로로 보낸다. 컬렉션의 아이템 배지 그림은 컬렉션 조회(`fetchCollectionsById`)가 이미 읽는 컬렉션 아이템 배지 조회에서 최대 4개(이름순, 같은 이름은 하나)를 가져오고, 드랍·픽업은 카드가 가리키는 배지의 앞 3개다. 목록형은 카드 전체 링크 없이 항목·화살표 링크만 건다. 칩은 자리표(`feedChipSlots.ts`)를 따라 드랍·픽업이 박스 줄 네 모서리(`box-row-*`) 중 대각선 두 개(큰 칩 «드랍»·«픽업», 4-3 재작업에서 4-1 자리표를 넓혔다), 목록형이 카드 오른쪽 위 한 개다. 목록형의 항목 주소와 대표 페이지 주소는 내부 경로 또는 `https://`로 시작하는 값만 링크로 그린다(`isSafeListHref`). 컬렉션 소개의 모션은 모션 래퍼가 카드 루트 요소(`FeedCardShell`의 `markRoot` 표식)를 관찰한다.
 
+**구현 위치**(4회차-4, 티켓 20261121_0155): 값 칩의 미션 조건 값(`resolved_mission.condition_json`)과 배지 달성 기준·레벨(`resolved_badges[].condition_json`·`level`)은 `jam-web/src/lib/today/cards.ts`가 기존 미션·배지 조회에서 선택 칸으로 싣고(새 조회 없음, 값이 없으면 칸이 없다), `cardView.ts`가 새 카드 갈래의 값 칩 입력에 연결한다. 저장된 값 칩은 `mission.condition`·`activity_badge.criteria`·`activity_badge.level` 출처도 읽는다. 해석 함수 `resolveFeedLook`의 선택 입력 `excludedColorPairs`는 미리보기가 검수표 제외 조합 예시를 넣는 자리이고 서비스 홈은 주지 않는다.
+
 #### 박스 모양 5가지
 
 박스 모양은 고르는 옵션이다. 같은 모양을 텍스트 박스(세로로 긴 쪽)와 이미지 마스크(가로로 긴 쪽, 이미지를 이 모양으로 잘라 보임)에 모두 쓸 수 있고, 아이템 배지 박스(작은 칸)에도 쓴다. 박스에는 외곽선을 두지 않는다. 박스 경로는 비율에 맞게 변환해 그린다(SVG 경로).

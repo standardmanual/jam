@@ -9,6 +9,7 @@
  *    미션 소개 카드의 노출 판정(없는 미션은 걸러지고, 미션 행이 하나도 없으면 그대로 둔다)이 이전과 같다.
  * 4. 새 조회가 실패해도 카드는 사라지지 않는다.
  * 5. 공개 전(시작 시각 전)·비활성 컬렉션은 `resolved_collection`이 null이다 — 컬렉션 화면과 같은 공개 판정을 쓴다(티켓 20261001_1458).
+ * 6. 값 칩 입력(미션 조건 값, 배지 달성 기준·레벨)이 기존 조회에서 선택 칸으로 실리고, 값이 없으면 칸이 없다(티켓 20261121_0155).
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cards-resources.test.ts
  */
@@ -487,5 +488,61 @@ describe('getTodayCards — 컬렉션 소개용 아이템 배지 그림 (티켓 
     const [card] = await getCardsById('u1', null, NOW)
 
     expect(card.resolved_collection).toEqual({ name: '한강 컬렉션', item_count: null })
+  })
+})
+
+describe('getTodayCards — 값 칩 입력(미션 조건 값, 배지 달성 기준·레벨) (티켓 20261121_0155)', () => {
+  it('미션 행의 조건 값 중 값 칩이 읽는 칸만 싣고 조회를 늘리지 않는다', async () => {
+    fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' })]
+    fx.tables.missions = [
+      missionRow('m1', { condition_json: { distance_km: 8, activity_type: 'walking', poi_id: 'p1', repeat: true, count: 0 } }),
+    ]
+
+    const [card] = await getCardsById('u1', null, NOW)
+
+    // 거리·종목만 남는다(0인 횟수·장소·판정 옵션은 싣지 않는다). 기존 칸은 그대로다
+    expect(card.resolved_mission).toEqual({
+      starts_at: '2026-01-01T00:00:00Z',
+      ends_at: '2026-11-08T14:59:59Z',
+      reward_points: 300,
+      reward_badge_count: 1,
+      image_url: 'https://cdn.example/m.png',
+      condition_json: { distance_km: 8, activity_type: 'walking' },
+    })
+    expect(fx.reads.filter((table) => table === 'missions')).toHaveLength(1)
+  })
+
+  it('값이 없거나 읽을 수 없는 조건이면 condition_json 칸이 없다', async () => {
+    fx.tables.today_cards = [
+      cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' }),
+      cardRow({ id: 'b', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm2' }),
+      cardRow({ id: 'c', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm3' }),
+    ]
+    fx.tables.missions = [
+      missionRow('m1'), // condition_json 자체가 없다
+      missionRow('m2', { condition_json: { poi_id: 'p1' } }), // 체크인 미션: 값이 없는 조건
+      missionRow('m3', { condition_json: { activity_type: 'running', distance_km: 'x' } }), // 종목만 있고 수치가 깨졌다
+    ]
+
+    const cards = await getCardsById('u1', null, NOW)
+
+    for (const card of cards) expect(card.resolved_mission).not.toHaveProperty('condition_json')
+  })
+
+  it('배지의 달성 기준과 레벨을 같은 배지 조회에서 싣는다', async () => {
+    fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'badge_spotlight', badge_ids: ['b1', 'b2'] })]
+    fx.tables.badges = [
+      { id: 'b1', name: '높은 곳', image_url: null, rarity: null, condition_json: { elevation_gain_m: 700 }, level: 2 },
+      { id: 'b2', name: '한강 러너', image_url: null, rarity: 'rare', condition_json: null, level: null },
+    ]
+
+    const [card] = await getCardsById('u1', null, NOW)
+
+    expect(card.resolved_badges).toEqual([
+      { id: 'b1', name: '높은 곳', image_url: null, rarity: null, condition_json: { elevation_gain_m: 700 }, level: 2, earned: false },
+      // NULL 값은 칸을 싣지 않는다 — 기존 결과의 모양이 그대로다
+      { id: 'b2', name: '한강 러너', image_url: null, rarity: 'rare', earned: false },
+    ])
+    expect(fx.reads.filter((table) => table === 'badges')).toHaveLength(1)
   })
 })

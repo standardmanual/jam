@@ -9,7 +9,7 @@
  * 순수 파일이다: 서버 모듈을 값으로 불러오지 않는다(클라이언트 컴포넌트도 읽는다). `cards.ts`·`rankingDataSource.ts`는 타입만 가져온다.
  * 홈 화면이 이 값을 그리는 모양은 `components/today`의 `RENDERED_SHAPES`가 정한다(조각 b2~b5가 하나씩 더한다).
  */
-import type { TodayCardWithHref } from './cards'
+import type { ResolvedBadge, TodayCardWithHref } from './cards'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import type { TodayCardLayoutType, TodayCardTemplateType, TodayListItem } from '@/types/database'
 import { d, t } from '@/lib/i18n'
@@ -317,8 +317,9 @@ export interface ToCardViewOptions {
 }
 
 /**
- * 개편 카드의 값 칩 입력. 자원(템플릿)마다 지금 `TodayCardWithHref`가 이미 싣고 있는 값만 읽는다(기간·보상 포인트·컬렉션 아이템 수·체크인 필요 배지 수·장소 이름).
- * 미션 조건 값·배지 달성 기준·레벨은 조회 확장이 필요해 4-4로 미뤘다(그 칩은 만들지 않는다). 칩을 내지 않는 자원(기사·랭킹·레시피 공개)은 null이다.
+ * 개편 카드의 값 칩 입력. 자원(템플릿)마다 `TodayCardWithHref`가 싣고 있는 값을 읽는다(기간·보상 포인트·미션 조건 값·배지 달성 기준·레벨·컬렉션 아이템 수·체크인 필요 배지 수·장소 이름).
+ * 미션 조건 값(`resolved_mission.condition_json`)과 배지 달성 기준·레벨(`resolved_badges[].condition_json`·`level`)은 조회 확장이 싣는 선택 칸이라(티켓 20261121_0155),
+ * 칸이 없으면 그 칩만 만들지 않는다. 배지는 카드에 걸린 첫 배지의 값을 읽는다. 칩을 내지 않는 자원(기사·랭킹·레시피 공개)은 null이다.
  * 대응: 미션 소개 → 미션, 컬렉션 소식 → 컬렉션, 배지 소개 → 액티비티 배지, 지역 트렌드 → 체크인, 드랍 알림 → 아이템 배지(드랍·픽업), 미션을 가리키는 자동 카드 → 미션.
  */
 function feedValueSourceOf(
@@ -328,12 +329,15 @@ function feedValueSourceOf(
     mission: TodayCardWithHref['resolved_mission']
     collectionItemCount: number | null | undefined
     badgeCount: number
+    /** 카드에 걸린 첫 배지(달성 기준·레벨을 읽는다) */
+    firstBadge?: ResolvedBadge
   },
 ): FeedValueChipSource | null {
   const missionSource = (): FeedValueChipSource => ({
     resource: 'mission',
     endsAt: values.mission?.ends_at ?? null,
     rewardPoints: values.mission?.reward_points ?? null,
+    condition: values.mission?.condition_json ?? null,
   })
   if (card.template_type === 'location_trend') {
     return { resource: 'checkin', requiredBadgeCount: values.badgeCount, placeName: card.region_label }
@@ -346,7 +350,11 @@ function feedValueSourceOf(
     case 'collection':
       return { resource: 'collection', itemCount: values.collectionItemCount ?? null }
     case 'badge':
-      return { resource: 'activity_badge' }
+      return {
+        resource: 'activity_badge',
+        condition: values.firstBadge?.condition_json ?? null,
+        level: values.firstBadge?.level ?? null,
+      }
     case 'drop':
       return { resource: 'drop_pickup' }
     default:
@@ -453,6 +461,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
       mission,
       collectionItemCount: collection?.item_count,
       badgeCount: badges.length,
+      firstBadge: first,
     })
     const look = resolveFeedLook({ card, feedType: card.feed_type, valueSource: lookSource, now })
     // 이미지 순서는 옛 이미지 모양과 같다: 커버 → 미션 대표 이미지(미션 소개 카드만) → 첫 배지 그림
