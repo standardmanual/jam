@@ -486,7 +486,7 @@ code:
 
 **수동 지정**: 어드민에서 유형에 맞는 색을 직접 고른다. 규칙에 걸리는 조합을 고르면 경고만 보이고 막지 않는다(카리나 제안, 사용자 확인 대기). 이미지 위에 놓이는 칩과 이미지를 채운 박스는 이미지의 대표 색과 밝기를 알아야 규칙을 적용할 수 있어 이미지 회차에서 정한다.
 
-**구현 위치**(4회차-1, 화면 연결은 4-2 이후): 규칙 판정(hex 입력) `jam-web/src/lib/today/feedColorRules.ts`.
+**구현 위치**(4회차-1, 화면 연결은 4-2 이후): 규칙 판정(hex 입력) `jam-web/src/lib/today/feedColorRules.ts`, 자동 배정(색·사용 빈도·제외 조합·기본 조합 되돌림) `jam-web/src/lib/today/feedAssign.ts`의 `assignFeedColors`.
 
 #### 칩
 
@@ -508,6 +508,8 @@ code:
 | 컬렉션 | 속한 아이템 수 | «컬렉션» |
 | 체크인·장소 | 필요한 배지 수(«배지 3종류»), 장소 이름 | «체크인» |
 | 드랍·픽업 | 없음(문구 칩 «드랍»·«픽업») | «아이템 배지» |
+
+**구현 위치**(4회차-1, 화면 연결은 4-2 이후): 유형별 칩 자리·개수 한도 `jam-web/src/lib/today/feedChipSlots.ts`, 자리·기울기 배정 `jam-web/src/lib/today/feedAssign.ts`의 `assignChipPlacement`.
 
 #### 도장
 
