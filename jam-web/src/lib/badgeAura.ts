@@ -263,42 +263,28 @@ export function auraGlowInsetShadow(colors: readonly string[], options: { gray?:
 }
 
 /**
- * 메시 배경 — 부드러운 크림 바탕에 같은 계열 색 덩어리가 모서리에서 번지는 파스텔 배경(사용자 시안, 2026-11-20).
+ * 메시 배경 — 부드러운 파스텔 바탕에 같은 계열 색이 대각선으로 번지는 배경(사용자 시안, 2026-11-20).
  * 글로우와 달리 아래 흰 띠·안쪽 빛 테두리·블러 면이 없다. 그라데이션만으로 끝나 한 장의 `background`로 그려진다.
- * 덩어리 배치는 배지마다 다르되(시드), 같은 시드는 항상 같은 배치다(서버·클라이언트 렌더가 어긋나지 않는다).
+ * 얼룩덜룩해 보이지 않게(사용자 지시, 2026-11-20) 색 덩어리는 둘뿐이고 면보다 크게 서로 겹치며, 맨 아래에 대각선 선형 그라데이션을
+ * 깔아 덩어리 사이에 빈 곳이 생기지 않는다. 덩어리 배치는 배지마다 다르되(시드), 같은 시드는 항상 같은 배치다.
  */
-interface MeshBlob {
-  x: number
-  y: number
-  rx: number
-  ry: number
-  /** 진한 색(dark) · 중간 색(mid) */
-  slot: 'dark' | 'mid'
-  alpha: number
+interface MeshLayout {
+  /** 선형 바탕의 방향(deg): 중간 색 쪽에서 시작해 진한 색 쪽으로 간다 */
+  angle: number
+  /** 진한 색 덩어리 중심(%)과 중간 색 덩어리 중심(%) — 서로 반대쪽 모서리다 */
+  dark: readonly [number, number]
+  mid: readonly [number, number]
 }
 
-const MESH_LAYOUTS: readonly (readonly MeshBlob[])[] = [
-  [
-    { x: 4, y: 100, rx: 100, ry: 86, slot: 'dark', alpha: 0.95 },
-    { x: 100, y: 0, rx: 84, ry: 74, slot: 'mid', alpha: 0.85 },
-    { x: 100, y: 92, rx: 62, ry: 56, slot: 'mid', alpha: 0.55 },
-  ],
-  [
-    { x: 96, y: 100, rx: 100, ry: 86, slot: 'dark', alpha: 0.95 },
-    { x: 0, y: 4, rx: 84, ry: 74, slot: 'mid', alpha: 0.85 },
-    { x: 0, y: 88, rx: 62, ry: 56, slot: 'mid', alpha: 0.55 },
-  ],
-  [
-    { x: 0, y: 62, rx: 92, ry: 90, slot: 'dark', alpha: 0.9 },
-    { x: 100, y: 100, rx: 86, ry: 70, slot: 'mid', alpha: 0.85 },
-    { x: 78, y: 0, rx: 60, ry: 50, slot: 'mid', alpha: 0.5 },
-  ],
-  [
-    { x: 100, y: 12, rx: 96, ry: 88, slot: 'dark', alpha: 0.9 },
-    { x: 0, y: 100, rx: 90, ry: 74, slot: 'mid', alpha: 0.85 },
-    { x: 14, y: 0, rx: 56, ry: 48, slot: 'mid', alpha: 0.5 },
-  ],
+const MESH_LAYOUTS: readonly MeshLayout[] = [
+  { angle: 225, dark: [0, 100], mid: [100, 0] },
+  { angle: 135, dark: [100, 100], mid: [0, 0] },
+  { angle: 315, dark: [0, 0], mid: [100, 100] },
+  { angle: 45, dark: [100, 0], mid: [0, 100] },
 ]
+
+/** 선형 바탕의 두 끝색을 흰색 쪽으로 섞는 비율. 크면 연하다 */
+const MESH_BASE_WHITEN = 0.5
 
 /** 문자열 → 0 이상의 정수(FNV-1a). 같은 문자열이면 항상 같은 값이다 */
 export function auraMeshSeed(key: string): number {
@@ -315,12 +301,20 @@ export function auraMeshBase(colors: readonly string[], options: { gray?: boolea
   return glowPalette(colors, options)[0]
 }
 
-/** 메시 배경의 `background-image` 층(위 → 아래): 가운데 밝은 빛, 덩어리 셋. 덩어리 배치는 `seed`가 고른다 */
+/**
+ * 메시 배경의 `background-image` 층(위 → 아래): 가운데 밝은 빛, 진한 색 덩어리, 중간 색 덩어리, 대각선 선형 바탕.
+ * 덩어리 배치는 `seed`가 고른다
+ */
 export function auraMeshLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; seed?: string } = {}): string[] {
   const [, mid, dark] = glowPalette(colors, options)
   const layout = MESH_LAYOUTS[auraMeshSeed(options.seed ?? colors.join(',')) % MESH_LAYOUTS.length]
-  const blobs = layout.map((b) => `radial-gradient(ellipse ${b.rx}% ${b.ry}% at ${b.x}% ${b.y}%, ${gaussianAlphaStops(b.slot === 'dark' ? dark : mid, b.alpha)})`)
-  return [`radial-gradient(ellipse 70% 62% at 48% 42%, ${gaussianAlphaStops('#ffffff', 0.45)})`, ...blobs]
+  const white = AURA_GLOW_BASE_COLOR
+  return [
+    `radial-gradient(ellipse 85% 75% at 50% 45%, ${gaussianAlphaStops(white, 0.35)})`,
+    `radial-gradient(ellipse 130% 120% at ${layout.dark[0]}% ${layout.dark[1]}%, ${gaussianAlphaStops(dark, 0.6)})`,
+    `radial-gradient(ellipse 120% 110% at ${layout.mid[0]}% ${layout.mid[1]}%, ${gaussianAlphaStops(mid, 0.5)})`,
+    `linear-gradient(${layout.angle}deg, ${mixHex(mid, white, MESH_BASE_WHITEN)}, ${mixHex(dark, white, MESH_BASE_WHITEN)})`,
+  ]
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {

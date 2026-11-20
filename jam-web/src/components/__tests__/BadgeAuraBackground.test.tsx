@@ -131,17 +131,29 @@ describe('BadgeAuraBackground', () => {
 })
 
 describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
-  it('그라데이션 한 장뿐이다 — 블러·안쪽 빛 없이 크림 바탕에 radial 덩어리 넷(밝은 빛 하나 + 덩어리 셋)', () => {
+  it('그라데이션 한 장뿐이다 — 블러·안쪽 빛 없이 radial 셋(밝은 빛 하나 + 덩어리 둘)과 대각선 선형 바탕이다', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="mesh" seed="a" />)
     expect(html).toContain('data-variant="mesh"')
     expect(html).toContain('aria-hidden="true"')
     expect(html).not.toContain('filter:blur')
     expect(html).not.toContain('box-shadow')
-    expect(html.match(/radial-gradient\(/g)).toHaveLength(4)
-    expect(html).not.toContain('linear-gradient')
+    expect(html.match(/radial-gradient\(/g)).toHaveLength(3)
+    // 덩어리 사이에 빈 곳이 생기지 않게 맨 아래에 대각선 선형 바탕을 깐다(얼룩덜룩 방지)
+    expect(html.match(/linear-gradient\(\d+deg,/g)).toHaveLength(1)
+    expect(html.lastIndexOf('linear-gradient')).toBeGreaterThan(html.lastIndexOf('radial-gradient'))
     // 위에서 아래로 흰색에 풀리는 글로우와 달리 바탕이 흰색이 아니다
     expect(html).toContain(`background-color:${auraMeshBase(COLORS)}`)
     expect(auraMeshBase(COLORS)).not.toBe('#ffffff')
+  })
+
+  it('덩어리는 둘뿐이고 면보다 크다(반경 100% 이상) — 작은 얼룩이 없다', () => {
+    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).filter((l, i) => i > 0 && l.startsWith('radial-gradient'))
+    expect(blobs).toHaveLength(2)
+    for (const l of blobs) {
+      const m = /ellipse (\d+)% (\d+)%/.exec(l)!
+      expect(Number(m[1])).toBeGreaterThanOrEqual(100)
+      expect(Number(m[2])).toBeGreaterThanOrEqual(100)
+    }
   })
 
   it('같은 시드는 항상 같은 배치이고, 시드가 달라지면 배치가 달라진다', () => {
@@ -156,7 +168,7 @@ describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
   it('덩어리는 진한 색과 중간 색 두 가지만 쓴다(밝은 색은 바탕)', () => {
     const [, mid, dark] = tuneAuraColors(COLORS, AURA_GLOW_TUNING)
     const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')
-    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).slice(1).join('|')
+    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).slice(1, 3).join('|')
     const used = new Set([...blobs.matchAll(/rgba\((\d+),(\d+),(\d+),/g)].map((m) => `${m[1]},${m[2]},${m[3]}`))
     expect([...used].every((c) => c === rgb(mid) || c === rgb(dark))).toBe(true)
     expect(used.size).toBe(2)
