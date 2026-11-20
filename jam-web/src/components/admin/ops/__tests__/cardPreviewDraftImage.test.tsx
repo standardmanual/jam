@@ -124,7 +124,7 @@ describe('OpsCardPreview 승인 전 이미지 바로 그리기', () => {
     expect(out).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
   })
 
-  it('렌더가 실패하면 지금처럼 자리 표시와 「이미지는 승인 뒤 만들어요」로 돌아가고 화면을 깨뜨리지 않는다', () => {
+  it('렌더가 실패하면 지금처럼 자리 표시와 「이미지는 색이 정해지면 만들어요」로 돌아가고 화면을 깨뜨리지 않는다', () => {
     snapshot = new Map([['item-1', { status: 'failed', url: null, tempColor: false }]])
     const out = html(<OpsCardPreview item={card()} />)
     expect(out).toContain(PREVIEW_IMAGE_PENDING_TEXT)

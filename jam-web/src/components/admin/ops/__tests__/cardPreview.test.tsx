@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactElement } from 'react'
-import { OpsCardPreview, PREVIEW_IMAGE_NEEDED_TEXT, PREVIEW_IMAGE_PENDING_TEXT, PREVIEW_NOT_CARD_TEXT } from '../OpsCardPreview'
+import {
+  OpsCardPreview,
+  PREVIEW_IMAGE_MAKING_TEXT,
+  PREVIEW_IMAGE_NEEDED_TEXT,
+  PREVIEW_IMAGE_PENDING_TEXT,
+  PREVIEW_NOT_CARD_TEXT,
+} from '../OpsCardPreview'
 
 const html = (node: ReactElement) => renderToStaticMarkup(node).replace(/<!-- -->/g, '')
 
@@ -54,13 +60,34 @@ describe('OpsCardPreview', () => {
     expect(out).toContain('색 견본')
   })
 
-  it('이미지형 카드에 이미지가 없으면 「이미지는 승인 뒤 만들어요」를 보인다', () => {
+  it('이미지형 카드에 이미지가 없으면 「이미지는 색이 정해지면 만들어요」를 보인다', () => {
     const noImage = { ...BASE, resource: { template_type: 'editorial_article' } }
     expect(html(<OpsCardPreview item={item(noImage)} />)).toContain(PREVIEW_IMAGE_PENDING_TEXT)
+    expect(PREVIEW_IMAGE_PENDING_TEXT).toBe('이미지는 색이 정해지면 만들어요')
     expect(html(<OpsCardPreview item={item(BASE)} />)).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
   })
 
-  it('승인됨·준비중이면 「이미지 제작 필요」, 도착·검토중이면 승인 뒤 안내를 보인다', () => {
+  it('저장된 이미지가 있으면 도착·검토중이어도 안내 문구가 없다', () => {
+    for (const status of ['arrived', 'reviewing']) {
+      const out = html(<OpsCardPreview item={{ ...item(BASE), status }} making />)
+      expect(out).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
+      expect(out).not.toContain(PREVIEW_IMAGE_MAKING_TEXT)
+    }
+  })
+
+  it('도착·검토중 항목의 이미지를 만드는 중이면 「이미지를 만드는 중이에요」를 보인다(색이 있는 카드·미션 모두)', () => {
+    const noImage = { ...BASE, resource: { template_type: 'editorial_article' }, image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' } }
+    for (const status of ['arrived', 'reviewing']) {
+      const card = html(<OpsCardPreview item={{ ...item(noImage), status }} making />)
+      expect(card).toContain(PREVIEW_IMAGE_MAKING_TEXT)
+      expect(card).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
+    }
+    const mission = html(<OpsCardPreview item={{ ...item({ ...BASE, resource: {} }, 'mission'), status: 'reviewing' }} making />)
+    expect(mission).toContain(PREVIEW_IMAGE_MAKING_TEXT)
+    expect(mission).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
+  })
+
+  it('승인됨·준비중이면 「이미지 제작 필요」, 도착·검토중이면 색이 정해지면 만든다는 안내를 보인다', () => {
     const noImage = { ...BASE, resource: { template_type: 'editorial_article' } }
     for (const status of ['approved', 'preparing']) {
       const out = html(<OpsCardPreview item={{ ...item(noImage), status }} />)

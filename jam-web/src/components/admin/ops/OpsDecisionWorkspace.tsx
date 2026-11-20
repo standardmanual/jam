@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
@@ -29,6 +29,7 @@ import { OpsColorPairPicker } from './OpsColorPairPicker'
 import { OpsDecisionPanel } from './OpsDecisionPanel'
 import { OpsMixTrialNotice } from './OpsMixTrialNotice'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
+import { claimAutoImageItemIds } from '@/lib/admin/opsInbox/autoImage'
 import { useItemImageProduction } from './useItemImageProduction'
 
 /**
@@ -127,6 +128,16 @@ export function OpsDecisionWorkspace({
   const handlers = useOpsItemResultHandlers({ bundleId })
   const { refresh } = handlers
   const imageProduction = useItemImageProduction({ bundleId, isSample: isSample ?? false, onDone: refresh })
+
+  // 기획을 열면(항목이 바뀔 때마다) 이미지가 없고 지시·색이 완성된 도착·검토중 항목의 이미지를 미리 만들어 저장한다(티켓 20261120_1416).
+  // 한 항목은 이 화면 세션에서 한 번만 시도한다(실패해도 새로 고침 전까지 다시 하지 않는다). 색이 나중에 채워진 항목은 그때 대상이 된다.
+  const autoAttempted = useRef(new Set<string>())
+  const { startMany } = imageProduction
+  useEffect(() => {
+    const ids = claimAutoImageItemIds(items, isSample ?? false, autoAttempted.current)
+    if (ids.length === 0) return
+    void startMany(ids, items, { beforeApproval: true })
+  }, [items, isSample, startMany])
 
   /** 승인하고 예약이 끝났을 때. 결과 문장은 `executeToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
   const handleExecuted = (data: Record<string, unknown>) => {

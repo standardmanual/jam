@@ -14,7 +14,14 @@ vi.mock('../imageClient', () => ({ postItemImage: (...a: unknown[]) => post(...a
 vi.mock('sonner', () => ({ toast: { warning: vi.fn() } }))
 
 import { previewRenderArgs, readImageSpec, stableImageSeed } from '@/lib/admin/opsInbox/imageSpec'
-import { IMAGE_FAILED_AFTER_SCHEDULE_TOAST, produceItemImage, produceItemImages, seedForStart } from '../useItemImageProduction'
+import {
+  IMAGE_FAILED_AFTER_SCHEDULE_TOAST,
+  IMAGE_FAILED_BEFORE_APPROVAL_TOAST,
+  failedToastOf,
+  produceItemImage,
+  produceItemImages,
+  seedForStart,
+} from '../useItemImageProduction'
 
 function makeItem(overrides: Partial<OpsItemRecord> = {}): OpsItemRecord {
   return {
@@ -146,5 +153,17 @@ describe('produceItemImages', () => {
 
   it('실패 토스트 문장은 건수를 넣는다', () => {
     expect(IMAGE_FAILED_AFTER_SCHEDULE_TOAST(2)).toBe('예약은 유지했어요. 이미지 2건을 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.')
+  })
+})
+
+describe('failedToastOf (티켓 20261120_1416)', () => {
+  it('승인 전(기획을 열 때) 실패는 승인·예약 문구 없이 [이미지 만들기]로 다시 만들 수 있다고 알린다', () => {
+    expect(failedToastOf(2, true)).toBe(IMAGE_FAILED_BEFORE_APPROVAL_TOAST)
+    expect(IMAGE_FAILED_BEFORE_APPROVAL_TOAST).toBe('이미지를 만들지 못했어요. 승인한 뒤 [이미지 만들기]로 다시 만들 수 있어요.')
+    expect(IMAGE_FAILED_BEFORE_APPROVAL_TOAST).not.toContain('예약')
+  })
+
+  it('승인·예약 뒤 실패는 기존 문구 그대로다', () => {
+    expect(failedToastOf(2, false)).toBe(IMAGE_FAILED_AFTER_SCHEDULE_TOAST(2))
   })
 })
