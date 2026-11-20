@@ -2,7 +2,7 @@
  * `toCardView`의 개편 카드 분기 (티켓 20261121_0041, 상위 20261120_2026 4회차-2)
  *
  * 확인하는 것: ① `feed_type`이 NULL인 기존 카드·4-3 유형·모르는 값·꺼진 `full_image`는 새 칸이 있어도 옛 `CardView`와 같은 출력(기존 카드 회귀 방지),
- * ② 다섯 유형은 `FeedCardView`(feedType·look·이미지·배지), ③ 계측 `tracking.shape`는 옛 값이고 GA 파라미터에 새 필드를 더하지 않는다,
+ * ② 다섯 유형은 `FeedCardView`(feedType·look·이미지·배지), ③ 계측 `tracking.shape`는 옛 값이고 `tracking.feedType`이 새 갈래에만 있으며 GA 파라미터는 바꾸지 않는다,
  * ④ 값 칩의 입력이 `TodayCardWithHref`가 이미 싣는 값뿐이다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardView.feed.test.ts
@@ -136,10 +136,25 @@ describe('toCardView — 개편 카드', () => {
     expect(feed({})).toEqual(feed({}))
   })
 
-  it('계측: tracking.shape는 행의 옛 모양 값이고 새 필드를 싣지 않는다(GA 파라미터 불변)', () => {
+  it('계측: tracking.feedType이 있고 tracking.shape는 행의 옛 모양 값이다(GA 파라미터 불변)', () => {
     const view = feed({ shape: 'poster' })
-    expect(view.tracking).toEqual({ cardId: 'card-1', contentTypeId: 'T05', templateType: 'mission_spotlight', shape: 'poster' })
+    expect(view.tracking).toEqual({
+      cardId: 'card-1',
+      contentTypeId: 'T05',
+      templateType: 'mission_spotlight',
+      shape: 'poster',
+      feedType: 'hero_box',
+    })
     expect(toCardView(makeCard({ feed_type: 'hero_box' })).tracking).toBeUndefined()
+  })
+
+  it('계측: 옛 갈래(feed_type NULL·4-3 유형·꺼진 full_image)의 tracking에는 feedType이 생기지 않는다', () => {
+    for (const feedType of [null, 'unknown_type', 'full_image'] as const) {
+      const view = toCardView(makeCard({ feed_type: feedType as never, shape: 'poster' }), OPTIONS)
+      expect(view.tracking).toBeDefined()
+      expect(view.tracking).not.toHaveProperty('feedType')
+      expect(view.tracking?.shape).toBe('poster')
+    }
   })
 
   it('이미지는 커버 → 미션 대표 이미지(미션 소개) → 첫 배지 그림 순서다', () => {

@@ -199,6 +199,8 @@ export interface CardViewTracking {
   contentTypeId: string | null
   templateType: TodayCardTemplateType
   shape: CardShape
+  /** 개편 카드(`feed_type`이 지금 그릴 수 있는 유형)일 때만 있다. 옛 갈래의 계측 정보에는 생기지 않는다. `shape`는 옛 값 그대로이고 GA 이벤트 파라미터는 바꾸지 않았다. */
+  feedType?: RenderedFeedType
 }
 
 interface CardViewBase {
@@ -264,6 +266,7 @@ export interface ListCardView extends CardViewBase {
  * 값만 담는다(훅·조회 없음). 색·칩·도장·박스 같은 «그릴 값»은 `resolveFeedLook`이 낸 `look` 하나에 있다.
  * `shape?: undefined`는 `view.shape`를 읽는 옛 코드(어드민 미리보기 등)가 이 갈래를 만나도 컴파일되고 «모양 없음»으로 읽게 하는 자리다.
  * 계측 정보(`tracking`)의 `shape`에는 행의 옛 모양 값(또는 옛 판정 값)을 그대로 넣는다 — 기존 집계가 섞이지 않는다(GA 이벤트 파라미터는 바꾸지 않았다).
+ * 대신 `tracking.feedType`이 새 갈래에만 선택 필드로 붙는다(옛 갈래에는 생기지 않는다).
  */
 export interface FeedCardView extends CardViewBase {
   feedType: RenderedFeedType
@@ -408,6 +411,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     const feedView: FeedCardView = { ...base, feedType: card.feed_type, imageUrl, look }
     if (first?.image_url) feedView.badgeImageUrl = first.image_url
     if (first?.name) feedView.badgeName = first.name
+    if (base.tracking) feedView.tracking = { ...base.tracking, feedType: card.feed_type }
     // 설명은 유형·`show_description`이 정한다(옛 모양의 «배지 소개·컨텐츠 소개만» 규칙과 별개)
     const feedDescription = look.showDescription ? nonBlank(card.description) : null
     if (feedDescription) feedView.description = feedDescription
