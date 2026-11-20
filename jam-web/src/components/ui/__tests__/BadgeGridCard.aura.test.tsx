@@ -37,7 +37,7 @@ function innerOf(html: string, marker: string): string | null {
   return null
 }
 
-const faceOf = (html: string, compact: boolean) => innerOf(html, compact ? 'rounded-xl overflow-hidden' : 'rounded-2xl overflow-hidden flex')
+const faceOf = (html: string, compact: boolean) => innerOf(html, compact ? 'rounded-xl overflow-hidden' : 'aspect-square overflow-hidden flex')
 
 describe.each([
   { label: '일반', compact: false },
@@ -109,15 +109,26 @@ describe('BadgeGridCard bgColors — 일반 면만의 규칙', () => {
 })
 
 describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
-  it('일반 면은 글로우(variant)이고 면 90px에 비례한 블러(7px)·여유(14px)다. 컨테이너 타입은 없다', () => {
+  it('일반 면은 카드 가장자리까지 채우고(여백 없음), 면이 컨테이너라 블러·여유는 폭 비례(cqw)다', () => {
     const html = render({ bgColors: COLORS })
     expect(html).toContain('data-variant="glow"')
-    expect(auraGlowMetrics(90).blur).toBe('7px')
-    expect(auraGlowMetrics(90).bleed).toBe('14px')
-    expect(html.match(/filter:blur\(7px\)/g)).toHaveLength(1)
-    expect(html).toContain('top:-14px')
-    expect(html).not.toContain('container-type')
+    expect(html).toContain('container-type:inline-size')
+    expect(html.match(/filter:blur\(7\.78cqw\)/g)).toHaveLength(1)
+    expect(html).toContain('top:-15.56cqw')
+    // 위·좌·우 여백(p-3)만큼 키우고 모서리는 카드가 자른다 — 면 자신은 둥글리지 않는다
+    expect(html).toContain('w-[calc(100%+1.5rem)] -mt-3')
+    const face = faceOf(html, false)!
+    expect(innerOf(html, 'aspect-square overflow-hidden flex')).not.toBeNull()
+    expect(html).not.toContain('rounded-2xl overflow-hidden flex')
+    expect(face).toContain('p-[4.4%]')
     expect(html).not.toContain('mix-blend-mode')
+  })
+
+  it('색이 없는 일반 면은 지금처럼 90px 안쪽 면이다(여백 안, 둥근 모서리)', () => {
+    const html = render({})
+    expect(html).toContain('max-w-[90px]')
+    expect(html).toContain('rounded-2xl overflow-hidden flex')
+    expect(html).not.toContain('w-[calc(100%+1.5rem)]')
   })
 
   it('compact 면은 면이 컨테이너이고 블러·여유·안쪽 빛은 폭 비례(cqw)다', () => {
@@ -126,7 +137,7 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
     expect(html).toContain('data-variant="glow"')
     expect(html.match(/filter:blur\(7\.78cqw\)/g)).toHaveLength(1)
     expect(html).toContain('top:-15.56cqw')
-    expect(html).toMatch(/box-shadow:inset 0 0 [\d.]+cqw/)
+    expect(html).toMatch(/box-shadow:inset 0 -[\d.]+cqw [\d.]+cqw [\d.]+cqw/)
   })
 
   it('earned=false면 그레이 글로우다(대표색이 없다)', () => {
