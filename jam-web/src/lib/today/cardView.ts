@@ -11,9 +11,10 @@
  */
 import type { TodayCardWithHref } from './cards'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
-import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
+import type { TodayCardLayoutType, TodayCardTemplateType, TodayListItem } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
+import { FEED_GALLERY } from './feedConstants'
 import { isRenderedFeedType, resolveFeedLook, type FeedLook, type RenderedFeedType } from './feedLook'
 import type { FeedValueChipSource } from './feedValueChips'
 import {
@@ -271,14 +272,40 @@ export interface ListCardView extends CardViewBase {
 export interface FeedCardView extends CardViewBase {
   feedType: RenderedFeedType
   shape?: undefined
-  /** 박스·히어로 이미지·전체 배경 이미지. 없으면(null) 박스는 색 면이다. */
+  /** 박스·히어로 이미지·전체 배경 이미지. 컬렉션 소개에서는 컬렉션 대표 그림(카드의 `cover_image_url`)이다. 없으면(null) 박스는 색 면이다. */
   imageUrl: string | null
   /** 배지 소개·배지만의 배지 그림(카드에 걸린 첫 배지). 없으면 `imageUrl`을 쓰고 둘 다 없으면 빈 영역이다. */
   badgeImageUrl?: string | null
   /** 배지 그림의 접근성 이름(카드에 걸린 첫 배지 이름) */
   badgeName?: string
+  /** 컬렉션 소개: 컬렉션 이름(대표 그림의 접근성 이름) */
+  collectionName?: string
+  /** 컬렉션 소개: 대표 그림 뒤로 퍼지는 아이템 배지 그림(최대 4개, 그림이 있는 것만). 없거나 비면 모션 없이 대표 그림만 그린다. */
+  collectionBadges?: FeedCardViewBadge[]
+  /** 드랍·픽업: 박스에 담는 아이템 배지(카드에 걸린 배지의 앞 3개, 그림이 없는 배지도 있다. 1개 이상일 때만 이 갈래로 온다). */
+  itemBadges?: FeedCardViewBadge[]
+  /** 목록형: 항목(최대 3개, 1개 이상일 때만 이 갈래로 온다). 항목마다 따로 링크를 건다. */
+  listItems?: FeedCardViewListItem[]
+  /** 목록형: «→» 칸이 가는 대표 페이지 주소. 없으면 화살표 칸을 그리지 않는다. */
+  listMoreHref?: string
   look: FeedLook
 }
+
+/** 컬렉션 소개·드랍·픽업이 그리는 아이템 배지 한 개. 그림이 없으면 그리는 쪽이 이름 글자로 대신한다. */
+export interface FeedCardViewBadge {
+  name: string
+  imageUrl: string | null
+}
+
+/** 목록형 항목 한 개. */
+export interface FeedCardViewListItem {
+  name: string
+  href: string
+  imageUrl: string | null
+}
+
+/** 드랍·픽업이 박스에 담는 배지의 최대 개수. */
+export const FEED_ITEM_BADGE_LIMIT = 3
 
 export type CardView = ImageCardView | BriefCardView | ListCardView | FeedCardView
 
@@ -325,6 +352,19 @@ function feedValueSourceOf(
     default:
       return null
   }
+}
+
+/** 목록형 카드의 항목을 화면 값으로 바꾼다. 이름·주소가 비어 있는 항목은 건너뛰고 앞에서 `FEED_GALLERY.maxItems`개까지 쓴다. */
+function toListItems(items: readonly TodayListItem[] | null | undefined): FeedCardViewListItem[] {
+  const result: FeedCardViewListItem[] = []
+  for (const item of items ?? []) {
+    const name = nonBlank(item?.name)
+    const href = nonBlank(item?.href)
+    if (!name || !href) continue
+    result.push({ name, href, imageUrl: nonBlank(item.image_url) })
+    if (result.length >= FEED_GALLERY.maxItems) break
+  }
+  return result
 }
 
 /**
@@ -395,8 +435,19 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     }
   }
 
-  // 개편 카드: `feed_type`이 지금 그릴 수 있는 유형일 때만 새 갈래다. NULL·4-3 유형·모르는 값·꺼진 `full_image`는 아래 옛 경로 그대로다.
-  if (isRenderedFeedType(card.feed_type)) {
+  // 개편 카드: `feed_type`이 지금 그릴 수 있는 유형일 때만 새 갈래다. NULL·모르는 값·꺼진 `full_image`는 아래 옛 경로 그대로다.
+  // 컬렉션 소개·드랍·픽업·목록형(4-3)은 그릴 값(컬렉션 대표 그림·아이템 배지·목록 항목)이 없으면 그 행도 옛 경로로 간다 — 화면이 비지 않는다.
+  const listItems = card.feed_type === 'gallery_list' ? toListItems(card.list_items) : []
+  const itemBadges = badges.slice(0, FEED_ITEM_BADGE_LIMIT)
+  const hasFeedValues =
+    card.feed_type === 'collection_intro'
+      ? Boolean(card.cover_image_url)
+      : card.feed_type === 'drop_pickup'
+        ? itemBadges.length > 0
+        : card.feed_type === 'gallery_list'
+          ? listItems.length > 0
+          : true
+  if (isRenderedFeedType(card.feed_type) && hasFeedValues) {
     const first = badges[0]
     const lookSource = feedValueSourceOf(card, resource, {
       mission,
@@ -411,6 +462,19 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     const feedView: FeedCardView = { ...base, feedType: card.feed_type, imageUrl, look }
     if (first?.image_url) feedView.badgeImageUrl = first.image_url
     if (first?.name) feedView.badgeName = first.name
+    if (card.feed_type === 'collection_intro') {
+      // 대표 그림은 커버뿐이다(첫 배지 그림으로 대신하지 않는다 — 위 `hasFeedValues`가 커버 없는 행을 옛 경로로 보냈다)
+      feedView.imageUrl = card.cover_image_url || null
+      if (collection?.name) feedView.collectionName = collection.name
+      const collectionBadges = (collection?.item_badges ?? []).map((b) => ({ name: b.name, imageUrl: b.image_url }))
+      if (collectionBadges.length > 0) feedView.collectionBadges = collectionBadges
+    } else if (card.feed_type === 'drop_pickup') {
+      feedView.itemBadges = itemBadges.map((b) => ({ name: b.name, imageUrl: b.image_url || null }))
+    } else if (card.feed_type === 'gallery_list') {
+      feedView.listItems = listItems
+      const moreHref = nonBlank(card.list_more_href)
+      if (moreHref) feedView.listMoreHref = moreHref
+    }
     if (base.tracking) feedView.tracking = { ...base.tracking, feedType: card.feed_type }
     // 설명은 유형·`show_description`이 정한다(옛 모양의 «배지 소개·컨텐츠 소개만» 규칙과 별개)
     const feedDescription = look.showDescription ? nonBlank(card.description) : null

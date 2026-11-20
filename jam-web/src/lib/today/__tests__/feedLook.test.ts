@@ -155,6 +155,22 @@ describe('resolveFeedLook — 칩', () => {
     expect(look('hero_box', {}, { resource: 'drop_pickup' }).chips.map((chip) => chip.text)).toEqual(['아이템 배지'])
   })
 
+  it('드랍·픽업의 자동 칩은 «드랍»(색 칩)·«픽업»(검정 칩) 두 문구 칩이고 둘 다 큰 칩이다(값 출처와 무관)', () => {
+    for (const source of [{ resource: 'drop_pickup' } as FeedValueChipSource, MISSION, null]) {
+      const chips = look('drop_pickup', { chip_color_key: 'ref-lime' }, source).chips
+      expect(chips.map((chip) => [chip.kind, chip.text, chip.color, chip.size])).toEqual([
+        ['phrase', '드랍', 'ref-lime', 'lg'],
+        ['label', '픽업', 'black', 'lg'],
+      ])
+    }
+  })
+
+  it('드랍·픽업이라도 저장된 chips가 있으면 그것을 따른다(빈 배열은 칩 없음)', () => {
+    expect(look('drop_pickup', { chips: [] }).chips).toEqual([])
+    const stored = look('drop_pickup', { chips: [{ kind: 'phrase', text: '곧 드랍' }] }).chips
+    expect(stored.map((chip) => chip.text)).toEqual(['곧 드랍'])
+  })
+
   it('카드당 2개를 넘지 않는다', () => {
     const chips = look('hero_box', {
       chips: [{ kind: 'phrase', text: 'a' }, { kind: 'phrase', text: 'b' }, { kind: 'phrase', text: 'c' }],
@@ -247,14 +263,27 @@ describe('resolveFeedLook — 제목 속 칩·설명·도장·박스', () => {
 })
 
 describe('지원 유형 목록', () => {
-  it('다섯 유형이다', () => {
-    expect([...FEED_RENDERED_TYPES]).toEqual(['hero_box', 'text_box', 'badge_intro', 'badge_only', 'full_image'])
+  it('여덟 유형이다(4-2의 다섯 유형 + 4-3의 컬렉션 소개·드랍·픽업·목록형)', () => {
+    expect([...FEED_RENDERED_TYPES]).toEqual([
+      'hero_box',
+      'text_box',
+      'badge_intro',
+      'badge_only',
+      'full_image',
+      'collection_intro',
+      'drop_pickup',
+      'gallery_list',
+    ])
   })
 
-  it('4-3 유형·모르는 값·NULL은 그리지 않는다', () => {
-    for (const value of ['collection_intro', 'drop_pickup', 'gallery_list', 'nope', null, undefined, 3]) {
+  it('모르는 값·NULL은 그리지 않는다', () => {
+    for (const value of ['nope', null, undefined, 3]) {
       expect(isRenderedFeedType(value)).toBe(false)
     }
+  })
+
+  it('4-3 유형은 그린다', () => {
+    for (const value of ['collection_intro', 'drop_pickup', 'gallery_list']) expect(isRenderedFeedType(value)).toBe(true)
   })
 
   it('full_image는 꺼짐 상수를 따른다(지금 꺼져 있다)', () => {

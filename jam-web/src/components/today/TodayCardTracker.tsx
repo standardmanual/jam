@@ -11,6 +11,12 @@ import {
   todayCardClickParams,
 } from '@/lib/today/cardEventClient'
 
+/** 클릭한 자리가 링크(앵커) 안인가. 요소가 아닌 대상(글자 노드·없음)은 링크가 아니다. */
+function isLinkClick(target: unknown): boolean {
+  const closest = (target as { closest?: (selector: string) => unknown } | null | undefined)?.closest
+  return typeof closest === 'function' && Boolean(closest.call(target, 'a'))
+}
+
 /**
  * 투데이 카드 노출·클릭 트래커 (티켓 20260924_0004).
  *
@@ -25,6 +31,7 @@ export default function TodayCardTracker({
   templateType,
   shape,
   trackClick = true,
+  clickOnLinksOnly = false,
   children,
 }: {
   cardId: string
@@ -41,6 +48,11 @@ export default function TodayCardTracker({
    * 세지 않는다(노출만 추적) — `CardFrame`의 `link={false}`가 이 값을 false로 넘긴다.
    */
   trackClick?: boolean
+  /**
+   * true면 카드 안의 링크(앵커)에서 일어난 클릭만 센다(티켓 20261121_0115, 목록형 — 카드 전체 링크가 없고 항목·화살표 링크가 각자 있다). 제목·빈 곳의 클릭은 세지 않는다.
+   * 기본 false라 기존 카드(카드 전체가 링크)는 클릭 위치를 보지 않고 지금처럼 센다.
+   */
+  clickOnLinksOnly?: boolean
   children: ReactNode
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -70,7 +82,8 @@ export default function TodayCardTracker({
       ref={containerRef}
       onClick={
         reportClick
-          ? () => {
+          ? (event) => {
+              if (clickOnLinksOnly && !isLinkClick(event?.target)) return
               reportClick()
               trackEvent('today_card_click', todayCardClickParams({ cardId, contentTypeId, templateType, shape }))
             }

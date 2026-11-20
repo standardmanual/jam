@@ -1,10 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
 import type { FeedCardView } from '@/lib/today/cardView'
-import { chipPositionOf, stampPositionOf, stampTiltOf, type ChipAnchorMode } from '@/lib/today/feedChipLayout'
-import { FEED_BADGE_SIZE, FEED_STAMP_TILT, feedColorVar } from '@/lib/today/feedConstants'
+import { chipPositionOf, stampPositionOf, stampTiltOf, type ChipAnchorMode, type ChipPosition } from '@/lib/today/feedChipLayout'
+import { FEED_BADGE_SIZE, FEED_CARD_ROOT_ATTR, FEED_STAMP_TILT, feedColorVar } from '@/lib/today/feedConstants'
 import ChipTitle from '../ChipTitle'
-import FeedChip from '../FeedChip'
+import FeedChip, { type FeedChipSize } from '../FeedChip'
 import FeedStamp from '../FeedStamp'
 
 /**
@@ -23,21 +23,24 @@ import FeedStamp from '../FeedStamp'
 const TITLE_CLASS = 'text-3xl font-black tracking-[-0.02em] text-foreground whitespace-pre-line'
 const BIG_TITLE_CLASS = 'text-5xl leading-[1.1] font-black tracking-[-0.02em] text-foreground whitespace-pre-line text-center'
 
-/** 카드 면. 최소 높이는 유형별 샘플 높이(`FEED_CARD_MIN_HEIGHT`)이고 내용이 길면 늘어난다. */
+/** 카드 면. 최소 높이는 유형별 샘플 높이(`FEED_CARD_MIN_HEIGHT`)이고 내용이 길면 늘어난다. `markRoot`가 참이면 카드 루트 표식을 단다(생략하면 마크업이 그대로다). */
 export function FeedCardShell({
   view,
   minHeight,
   className,
+  markRoot = false,
   children,
 }: {
   view: FeedCardView
   minHeight: number
   className?: string
+  markRoot?: boolean
   children: ReactNode
 }) {
   const classes = ['relative flex flex-col rounded-2xl p-4', className].filter(Boolean).join(' ')
+  const rootProps = markRoot ? { [FEED_CARD_ROOT_ATTR]: '' } : undefined
   return (
-    <div className={classes} style={{ backgroundColor: feedColorVar(view.look.colors.bg), minHeight }}>
+    <div className={classes} style={{ backgroundColor: feedColorVar(view.look.colors.bg), minHeight }} {...rootProps}>
       {children}
     </div>
   )
@@ -75,23 +78,36 @@ export function FeedTextBlock({ view }: { view: FeedCardView }) {
   )
 }
 
-function positionStyle(position: { top?: number; right?: number; bottom?: number; left?: number }): CSSProperties {
+function positionStyle(position: ChipPosition): CSSProperties {
   return { top: position.top, right: position.right, bottom: position.bottom, left: position.left }
 }
 
 /**
  * 칩 층. 앵커(`relative` 부모) 안에 형제로 놓아 칩을 모서리에 건다. 허용하지 않는 자리의 칩은 그리지 않는다.
  * `mode`를 생략하면 유형의 기본(걸침, `full_image`는 안쪽)이다.
+ *
+ * 4회차-3이 더한 선택 인자(생략하면 4-2의 출력 그대로다): `positionOf`는 자리 이름 → 위치를 직접 정한다(모서리 자리가 아닌 `card-top-right`용, 이때 `mode`는 쓰지 않는다),
+ * `size`는 칩 크기를 모두 이 값으로 맞춘다(컬렉션 소개는 작은 칩이다).
  */
-export function FeedChipLayer({ view, mode }: { view: FeedCardView; mode?: ChipAnchorMode }) {
+export function FeedChipLayer({
+  view,
+  mode,
+  positionOf,
+  size,
+}: {
+  view: FeedCardView
+  mode?: ChipAnchorMode
+  positionOf?: (slot: string) => ChipPosition | null
+  size?: FeedChipSize
+}) {
   return (
     <>
       {view.look.chips.map((chip, index) => {
-        const position = chipPositionOf(view.feedType, chip.slot, mode)
+        const position = positionOf ? positionOf(chip.slot) : chipPositionOf(view.feedType, chip.slot, mode)
         if (!position) return null
         return (
           <span key={index} className="absolute z-10 flex" style={positionStyle(position)}>
-            <FeedChip size={chip.size} color={chip.color} tilt={chip.tilt}>
+            <FeedChip size={size ?? chip.size} color={chip.color} tilt={chip.tilt}>
               {chip.text}
             </FeedChip>
           </span>

@@ -24,10 +24,13 @@ describe('cornerOfSlot', () => {
     expect(cornerOfSlot('badge-bottom-right')).toBe('bottom-right')
     expect(cornerOfSlot('box-top-right')).toBe('top-right')
     expect(cornerOfSlot('box-bottom-left')).toBe('bottom-left')
+    expect(cornerOfSlot('box-row-top-left')).toBe('top-left')
+    expect(cornerOfSlot('box-row-bottom-right')).toBe('bottom-right')
   })
 
   it('모서리 이름으로 끝나지 않는 자리는 null이다', () => {
     expect(cornerOfSlot('box-row-top')).toBeNull()
+    expect(cornerOfSlot('card-top-right')).toBeNull()
   })
 })
 
@@ -56,8 +59,16 @@ describe('chipPositionOf', () => {
     expect(chipPositionOf('badge_only', 'image-top-left')).toBeNull()
   })
 
-  it('4-3 유형의 모서리가 아닌 자리는 이 회차가 그리지 않아 null이다', () => {
+  it('드랍·픽업은 박스 줄 네 모서리에 히어로와 같은 기하로 걸친다(위쪽은 위로, 아래쪽은 아래로)', () => {
+    expect(chipPositionOf('drop_pickup', 'box-row-top-left')).toEqual({ top: -16, left: -12 })
+    expect(chipPositionOf('drop_pickup', 'box-row-top-right')).toEqual({ top: -16, right: -12 })
+    expect(chipPositionOf('drop_pickup', 'box-row-bottom-left')).toEqual({ bottom: -16, left: -12 })
+    expect(chipPositionOf('drop_pickup', 'box-row-bottom-right')).toEqual({ bottom: -16, right: -12 })
     expect(chipPositionOf('drop_pickup', 'box-row-top')).toBeNull()
+    expect(chipPositionOf('drop_pickup', 'box-top-left')).toBeNull()
+  })
+
+  it('목록형의 모서리가 아닌 자리는 이 함수가 그리지 않아 null이다(목록형이 직접 정한다)', () => {
     expect(chipPositionOf('gallery_list', 'card-top-right')).toBeNull()
   })
 
@@ -90,7 +101,8 @@ describe('limitChipsForType', () => {
   it('유형의 칩 한도로 자른다(앞이 남는다)', () => {
     expect(limitChipsForType('hero_box', ['a', 'b', 'c'])).toEqual(['a', 'b'])
     expect(limitChipsForType('badge_only', ['a'])).toEqual([])
-    expect(limitChipsForType('drop_pickup', ['a', 'b'])).toEqual(['a'])
+    expect(limitChipsForType('gallery_list', ['a', 'b'])).toEqual(['a'])
+    expect(limitChipsForType('drop_pickup', ['a', 'b', 'c'])).toEqual(['a', 'b'])
   })
 
   it('모든 유형이 한도를 갖는다', () => {

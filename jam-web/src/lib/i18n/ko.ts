@@ -375,6 +375,8 @@ export const ko = {
     /** 남은 시간 — 종료 7일 이내에만 기간 줄 대신 쓴다. 초·분 단위와 카운트다운은 쓰지 않는다 */
     remainingDays: '{count}일 남음',
     remainingHours: '{count}시간 남음',
+    /** 목록형 카드(`gallery_list`)의 «→» 칸 접근성 이름(티켓 20261121_0115). 화면에는 화살표만 보인다 */
+    feedListViewAll: '{title} 전체 보기',
   },
 
   /** 배지 목록/상세 화면 */

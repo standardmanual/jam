@@ -7,7 +7,7 @@
  * - 유형 키 8개는 `today_cards.feed_type`의 허용 값과 같다(마이그레이션 349 `today_cards_feed_type_check`).
  * - 자리 이름은 DB 규칙(`^[a-z][a-z0-9-]{0,23}$`, 소문자로 시작·소문자·숫자·하이픈 24자 이내)을 따른다.
  * - 칩이 2개면 서로 **대각선** 자리에 둔다. 대각선 짝이 없는 자리는 칩 1개일 때만 쓴다.
- * - 자리가 하나뿐인 유형(목록형·드랍·픽업)은 칩을 1개만 둔다. «배지만»은 칩이 없다.
+ * - 자리가 하나뿐인 유형(목록형의 오른쪽 위)은 칩을 1개만 둔다. «배지만»은 칩이 없다. 드랍·픽업은 칩 «드랍»·«픽업» 두 개를 박스 줄의 대각선 모서리에 둔다(티켓 20261121_0115 재작업, 샘플 기준).
  */
 
 export const FEED_TYPES = [
@@ -59,7 +59,7 @@ function cornerSpec(prefix: string): FeedChipSlotSpec {
  * - 배지 소개: 배지 둘레 → `badge-*` 네 모서리
  * - 배지만: 칩 없음
  * - 컬렉션 소개: 그림 모서리 → `art-*` 네 모서리
- * - 드랍·픽업: 박스 줄 위 하나(`box-row-top`)
+ * - 드랍·픽업: 박스 줄의 네 모서리(`box-row-*`) → 칩 2개(대각선 짝)
  * - 텍스트: 박스 모서리에 걸침 → `box-*` 네 모서리
  * - 목록형: 카드 오른쪽 위 하나(`card-top-right`)
  */
@@ -72,7 +72,7 @@ export const FEED_CHIP_SLOT_SPECS: Readonly<Record<FeedType, FeedChipSlotSpec>> 
   badge_intro: cornerSpec('badge'),
   badge_only: { slots: [], diagonalPairs: [] },
   collection_intro: cornerSpec('art'),
-  drop_pickup: { slots: ['box-row-top'], diagonalPairs: [] },
+  drop_pickup: cornerSpec('box-row'),
   text_box: cornerSpec('box'),
   gallery_list: { slots: ['card-top-right'], diagonalPairs: [] },
 }

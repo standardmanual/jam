@@ -89,8 +89,14 @@ describe('toCardView — 기존 카드는 한 글자도 바뀌지 않는다', ()
     expect(legacy).not.toHaveProperty('look')
   })
 
-  it.each(['collection_intro', 'drop_pickup', 'gallery_list'] as const)('4-3 유형 %s는 옛 경로가 그린다', (feedType) => {
-    expect(toCardView(makeCard({ ...NEW_COLUMNS, feed_type: feedType }), OPTIONS)).toEqual(legacy)
+  // 4-3 유형(티켓 20261121_0115)은 그릴 값이 있으면 새 갈래다. 값이 부족한 행은 옛 경로 — 자세한 경우는 cardView.feed3.test.ts
+  it.each<[TodayCardWithHref['feed_type'], Partial<TodayCardWithHref>]>([
+    ['collection_intro', { cover_image_url: null }],
+    ['drop_pickup', { resolved_badges: [] }],
+    ['gallery_list', { list_items: [] }],
+  ])('4-3 유형 %s는 그릴 값이 없으면 옛 경로가 그린다', (feedType, lacking) => {
+    const lackingLegacy = toCardView(makeCard({ ...lacking }), OPTIONS)
+    expect(toCardView(makeCard({ ...NEW_COLUMNS, ...lacking, feed_type: feedType }), OPTIONS)).toEqual(lackingLegacy)
   })
 
   it('모르는 feed_type 값도 옛 경로다', () => {
