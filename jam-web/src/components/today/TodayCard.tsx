@@ -8,6 +8,7 @@ import ListCard from './ListCard'
 import PosterCard from './PosterCard'
 import SquareCard from './SquareCard'
 import TicketCard from './TicketCard'
+import FeedCard from './feed/FeedCard'
 
 /**
  * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 티켓 20261022_2225에서 dome, ticket 추가).
@@ -31,6 +32,8 @@ export function isRenderedShape(shape: unknown): shape is RenderedShape {
  * `ListCard`가 어느 갈래를 그릴지도 같은 함수로 정한다 — 한쪽만 바뀌어 앵커가 겹치거나 카드 전체 링크가 빠지는 일이 없게 한다(티켓 20261001_2244).
  */
 export default function TodayCard({ view, currentUserId }: { view: CardView; currentUserId?: string }) {
+  // 개편 카드(티켓 20261121_0041): `feedType` 갈래는 `FeedCard`가 그린다. 아래 옛 모양 분기는 그대로다.
+  if ('feedType' in view) return <FeedCard view={view} />
   if (!isRenderedShape(view.shape)) return null
 
   switch (view.shape) {
