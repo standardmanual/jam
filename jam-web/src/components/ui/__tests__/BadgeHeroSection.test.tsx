@@ -36,13 +36,16 @@ describe('DS BadgeHeroSection', () => {
     expect(html).toContain('bg-transparent')
     expect(html).not.toContain('bg-card-bg')
     expect(html).toMatch(/<h1 class="[^"]*text-snow"/)
-    expect(html.match(/text-base text-center text-wrap! text-snow/g)).toHaveLength(2)
+    expect(html.match(/text-base text-center text-wrap! text-snow/g)).toHaveLength(1)
     expect(html).not.toContain('text-muted')
   })
 
-  it('설명 줄은 줄마다 p 하나이고 평소에는 text-muted다', () => {
+  it('설명 문장은 한 문단에 이어 붙고 문장마다 inline-block이며 평소에는 text-muted다', () => {
     const html = renderToStaticMarkup(<BadgeHeroSection name="한강 러너" descriptionLines={['첫째.', '둘째.']} imageSlot={IMAGE} />)
-    expect(html.match(/<p /g)).toHaveLength(2)
+    // 문장마다 p를 나누면 짧은 문장이 여백이 남아도 따로 줄을 차지한다(티켓 20261120_1319)
+    expect(html.match(/<p /g)).toHaveLength(1)
+    expect(html.match(/<span class="inline-block max-w-full">/g)).toHaveLength(2)
+    expect(html).toContain('<span class="inline-block max-w-full">첫째.</span> <span class="inline-block max-w-full">둘째.</span>')
     expect(html).toContain('text-wrap! text-muted')
   })
 

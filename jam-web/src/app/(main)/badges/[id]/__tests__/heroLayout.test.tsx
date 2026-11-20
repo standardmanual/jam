@@ -43,7 +43,7 @@ describe('BadgeHeroSection 카드 높이', () => {
 describe('BadgeHeroSection 설명 줄바꿈', () => {
   it('설명 문단은 text-wrap(balance 해제)이고 제목은 건드리지 않는다', () => {
     const html = renderToStaticMarkup(<BadgeHeroSection badge={BADGE} hasEarned />)
-    const description = /<p class="([^"]*)">짝 잃은/.exec(html)?.[1] ?? ''
+    const description = /<p class="([^"]*)"><span[^>]*>짝 잃은/.exec(html)?.[1] ?? ''
     const title = /<h1 class="([^"]*)"/.exec(html)?.[1] ?? ''
 
     // 전역 `p { text-wrap: balance }`가 레이어 밖이라 유틸리티만으로는 이기지 못한다 — 중요도 접미사가 필요하다

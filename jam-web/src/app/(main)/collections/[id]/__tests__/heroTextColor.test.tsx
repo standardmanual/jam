@@ -28,7 +28,7 @@ describe('ItemBookHeroSection 글자색', () => {
       <ItemBookHeroSection book={BOOK} slottedCount={1} totalBadgeCount={3} />
     )
     expect(html).toMatch(/<h1[^>]*style="color:var\(--foreground\)"/)
-    expect(html).toMatch(/class="text-base text-center text-muted">한강의 지점을 모았어요\./)
+    expect(html).toMatch(/class="text-base text-center text-muted"><span class="inline-block max-w-full">한강의 지점을 모았어요\.</)
     expect(html).toContain('color:var(--muted)')
     expect(html).not.toContain('#FFFFFF')
     expect(html).not.toContain('#AAAAAA')
@@ -40,7 +40,7 @@ describe('ItemBookHeroSection 글자색', () => {
       <ItemBookHeroSection book={BOOK} slottedCount={1} totalBadgeCount={3} backgroundAnimation={BLOB} />
     )
     expect(html).toMatch(/<h1[^>]*style="color:var\(--snow\)"/)
-    expect(html).toMatch(/class="text-base text-center text-snow">한강의 지점을 모았어요\./)
+    expect(html).toMatch(/class="text-base text-center text-snow"><span class="inline-block max-w-full">한강의 지점을 모았어요\.</)
     expect(html).toContain('bg-transparent')
   })
 })

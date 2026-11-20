@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { MagicBookIcon } from '@/components/ui/icons'
 import SafeImage from '@/components/SafeImage'
 import ProgressCountBar from '@/components/ui/ProgressCountBar'
@@ -125,17 +125,17 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
             </h1>
           </div>
           {book.description && (
-            // 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을 별도 줄로
-            // 그린다 — BadgeHeroSection과 동일한 로직(splitDescriptionSentences).
-            <div className="flex-shrink-0 flex flex-col gap-0.5">
-              {splitDescriptionSentences(book.description).map((sentence, index) => (
-                <p
-                  key={index}
-                  className={`text-base text-center ${onMedia ? 'text-snow' : 'text-muted'}`}
-                >
-                  {sentence}
-                </p>
-              ))}
+            // 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눈 문장을 한 문단에 이어 붙인다 —
+            // BadgeHeroSection과 같은 규칙(티켓 20261120_1319). 문장은 inline-block이라 문장 한가운데서는 끊기지 않는다.
+            <div className="flex-shrink-0">
+              <p className={`text-base text-center ${onMedia ? 'text-snow' : 'text-muted'}`}>
+                {splitDescriptionSentences(book.description).map((sentence, index) => (
+                  <Fragment key={index}>
+                    {index > 0 && ' '}
+                    <span className="inline-block max-w-full">{sentence}</span>
+                  </Fragment>
+                ))}
+              </p>
             </div>
           )}
         </div>

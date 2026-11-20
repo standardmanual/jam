@@ -38,7 +38,7 @@ function titleClass(html: string): string {
 }
 
 function descriptionClass(html: string): string {
-  return /<p class="([^"]*)">한강을 달렸어요\./.exec(html)?.[1] ?? ''
+  return /<p class="([^"]*)"><span[^>]*>한강을 달렸어요\./.exec(html)?.[1] ?? ''
 }
 
 describe('BadgeHeroSection 글자색', () => {

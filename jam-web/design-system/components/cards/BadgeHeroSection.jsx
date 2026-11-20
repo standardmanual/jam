@@ -89,12 +89,17 @@ export function BadgeHeroSection({
             </div>
           ) : (
             descriptionLines && (
-              <div className="flex-shrink-0 flex flex-col gap-0.5">
-                {descriptionLines.map((line, index) => (
-                  <p key={index} className={`text-base text-center text-wrap! ${descriptionTone}`}>
-                    {line}
-                  </p>
-                ))}
+              <div className="flex-shrink-0">
+                {/* 문장을 한 문단에 이어 붙인다. 문장마다 줄을 나누면 짧은 문장이 좌우 여백이 남는데도 따로 줄을 차지한다(티켓 20261120_1319).
+                    문장은 inline-block이라 줄이 바뀔 때도 문장 한가운데서 끊기지 않고, 한 줄보다 긴 문장만 안에서 줄을 바꾼다 */}
+                <p className={`text-base text-center text-wrap! ${descriptionTone}`}>
+                  {descriptionLines.map((line, index) => (
+                    <React.Fragment key={index}>
+                      {index > 0 && ' '}
+                      <span className="inline-block max-w-full">{line}</span>
+                    </React.Fragment>
+                  ))}
+                </p>
               </div>
             )
           )}
