@@ -3,6 +3,8 @@ import {
   auraGlowInsetShadow,
   auraGlowLayers,
   auraGlowMetrics,
+  auraMeshBase,
+  auraMeshLayers,
   resolveAuraColors,
 } from '@/lib/badgeAura'
 
@@ -19,6 +21,10 @@ import {
  * 격리: 루트가 `isolate`로 쌓임 맥락을 만들고, 모서리는 `rounded-[inherit]` + `overflow-hidden`으로 부모를 따른다.
  * `will-change`는 쓰지 않는다(정적 면에 상시 레이어 승격은 메모리만 먹는다).
  *
+ * 변형 두 가지: `glow`(기본, 상세 히어로)는 위에서 아래로 흰색에 풀리는 글로우, `mesh`(배지 그리드 카드, 티켓 20261120_1136)는
+ * 크림 바탕에 같은 계열 색 덩어리가 모서리에서 번지는 파스텔 메시다. 메시는 그라데이션 한 장뿐이라 블러·안쪽 빛·`glowSize`가 필요 없고,
+ * 덩어리 배치는 `seed`(없으면 색 목록)로 정해져 배지마다 다르되 렌더마다 같다.
+ *
  * `colors`가 `[]`이면 청회색 대체색, hex가 아닌 값이 섞였으면 아무것도 그리지 않는다(`resolveAuraColors`).
  */
 interface BadgeAuraBackgroundProps {
@@ -31,11 +37,26 @@ interface BadgeAuraBackgroundProps {
    * `'container'`면 면 폭(cqw, 면 쪽에 `container-type: inline-size`가 있어야 한다)
    */
   glowSize?: number | 'container'
+  /** `glow`(기본): 흰색으로 풀리는 글로우, `mesh`: 크림 바탕의 파스텔 메시(그리드 카드) */
+  variant?: 'glow' | 'mesh'
+  /** 메시 덩어리 배치를 고르는 키(배지 이름 등). 없으면 색 목록으로 정한다 */
+  seed?: string
 }
 
-export default function BadgeAuraBackground({ colors, gray = false, glowSize }: BadgeAuraBackgroundProps) {
+export default function BadgeAuraBackground({ colors, gray = false, glowSize, variant = 'glow', seed }: BadgeAuraBackgroundProps) {
   const resolved = resolveAuraColors(colors)
   if (!resolved) return null
+  if (variant === 'mesh') {
+    return (
+      <div
+        aria-hidden="true"
+        data-testid="badge-aura-background"
+        data-variant="mesh"
+        className="absolute inset-0 z-0 overflow-hidden rounded-[inherit] isolate pointer-events-none"
+        style={{ backgroundColor: auraMeshBase(resolved, { gray }), backgroundImage: auraMeshLayers(resolved, { gray, seed }).join(', ') }}
+      />
+    )
+  }
   const m = auraGlowMetrics(glowSize)
 
   return (

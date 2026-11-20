@@ -289,13 +289,13 @@ export default function BadgeGridCard({
           <SlotOutline src={outlineSrc} fallback="box" size={128} inset={6} style={{ maxWidth: 'none' }} />
         ) : (
           <>
-            <div className={thumbnailCls} style={aura ? { containerType: 'inline-size' } : undefined}>
-              {aura && <BadgeAuraBackground colors={aura} glowSize="container" gray={thumbDimmed} />}
+            <div className={thumbnailCls}>
+              {aura && <BadgeAuraBackground colors={aura} variant="mesh" seed={name} gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
-                width={128}
-                height={128}
+                width={90}
+                height={90}
                 eager={eager}
                 // 면이 커져도 그림이 면에서 차지하는 비율(약 91%)과 점선 윤곽(`SlotOutline`의 inset 4/90)이 그대로 맞도록 여백을 비율로 준다
                 className={`${aboveAura}w-full h-full object-contain p-[4.4%]`}

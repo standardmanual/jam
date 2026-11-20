@@ -108,12 +108,15 @@ describe('BadgeGridCard bgColors — 일반 면만의 규칙', () => {
 })
 
 describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
-  it('일반 면은 카드 여백과 같은 두께의 안쪽 면이고, 면이 컨테이너라 블러·여유는 폭 비례(cqw)다', () => {
+  it('일반 면은 카드 여백과 같은 두께의 안쪽 면이고, 배경은 파스텔 메시(그라데이션 한 장)다', () => {
     const html = render({ bgColors: COLORS })
-    expect(html).toContain('data-variant="glow"')
-    expect(html).toContain('container-type:inline-size')
-    expect(html.match(/filter:blur\(7\.78cqw\)/g)).toHaveLength(1)
-    expect(html).toContain('top:-15.56cqw')
+    expect(html).toContain('data-variant="mesh"')
+    expect(html).not.toContain('data-variant="glow"')
+    // 메시는 블러 면·안쪽 빛·컨테이너 단위가 없다
+    expect(html).not.toContain('filter:blur')
+    expect(html).not.toContain('box-shadow:inset')
+    expect(html).not.toContain('container-type')
+    expect(html).not.toContain('cqw')
     // 폭은 칸 폭에서 좌우 여백을 뺀 값(90px 상한 없음)이고, 면 자신이 둥글다
     expect(html).toContain('<div class="relative w-full">')
     expect(html).not.toContain('max-w-[90px]')
@@ -139,18 +142,24 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
     expect(html).toMatch(/box-shadow:inset 0 -[\d.]+cqw [\d.]+cqw [\d.]+cqw/)
   })
 
-  it('earned=false면 그레이 글로우다(대표색이 없다)', () => {
-    const earned = render({ bgColors: COLORS })
-    const unearned = render({ earned: false, bgColors: COLORS })
-    expect(unearned).not.toBe(earned)
-    // 그레이 정지점은 모두 채도가 낮다
-    const linear = unearned.slice(unearned.indexOf('linear-gradient(to bottom'))
-    const hexes = [...linear.matchAll(/#([0-9a-f]{6})/g)].map((m) => m[1])
-    expect(hexes.length).toBeGreaterThan(5)
-    for (const h of hexes) {
-      const n = parseInt(h, 16)
-      const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-      expect(Math.max(...rgb) - Math.min(...rgb)).toBeLessThanOrEqual(12)
+  it('earned=false면 그레이 배경이다(대표색이 없다) — 메시(일반)·글로우(compact) 모두', () => {
+    const chromaOf = (html: string) => {
+      const values = [...html.matchAll(/rgba\((\d+),(\d+),(\d+),|#([0-9a-f]{6})/g)].map((m) => {
+        const rgb = m[4] ? [parseInt(m[4].slice(0, 2), 16), parseInt(m[4].slice(2, 4), 16), parseInt(m[4].slice(4), 16)] : [Number(m[1]), Number(m[2]), Number(m[3])]
+        return Math.max(...rgb) - Math.min(...rgb)
+      })
+      return { count: values.length, max: Math.max(...values) }
+    }
+    for (const compact of [false, true]) {
+      const earned = render({ compact, bgColors: COLORS })
+      const unearned = render({ compact, earned: false, bgColors: COLORS })
+      expect(unearned).not.toBe(earned)
+      const start = unearned.indexOf('data-testid="badge-aura-background"')
+      const end = unearned.indexOf('<img', start)
+      const { count, max } = chromaOf(unearned.slice(start, end))
+      expect(count).toBeGreaterThan(5)
+      // 그레이 정지점은 모두 채도가 낮다(흰색 하이라이트 포함)
+      expect(max).toBeLessThanOrEqual(12)
     }
   })
 })

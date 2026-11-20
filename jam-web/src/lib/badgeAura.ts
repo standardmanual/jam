@@ -262,6 +262,67 @@ export function auraGlowInsetShadow(colors: readonly string[], options: { gray?:
   return `inset 0 ${len(-10)} ${len(76)} ${len(14)} ${withAlpha(rim, 0.9)}, inset 0 0 ${len(28)} 0 ${withAlpha(edge, 0.85)}`
 }
 
+/**
+ * 메시 배경 — 부드러운 크림 바탕에 같은 계열 색 덩어리가 모서리에서 번지는 파스텔 배경(사용자 시안, 2026-11-20).
+ * 글로우와 달리 아래 흰 띠·안쪽 빛 테두리·블러 면이 없다. 그라데이션만으로 끝나 한 장의 `background`로 그려진다.
+ * 덩어리 배치는 배지마다 다르되(시드), 같은 시드는 항상 같은 배치다(서버·클라이언트 렌더가 어긋나지 않는다).
+ */
+interface MeshBlob {
+  x: number
+  y: number
+  rx: number
+  ry: number
+  /** 진한 색(dark) · 중간 색(mid) */
+  slot: 'dark' | 'mid'
+  alpha: number
+}
+
+const MESH_LAYOUTS: readonly (readonly MeshBlob[])[] = [
+  [
+    { x: 4, y: 100, rx: 100, ry: 86, slot: 'dark', alpha: 0.95 },
+    { x: 100, y: 0, rx: 84, ry: 74, slot: 'mid', alpha: 0.85 },
+    { x: 100, y: 92, rx: 62, ry: 56, slot: 'mid', alpha: 0.55 },
+  ],
+  [
+    { x: 96, y: 100, rx: 100, ry: 86, slot: 'dark', alpha: 0.95 },
+    { x: 0, y: 4, rx: 84, ry: 74, slot: 'mid', alpha: 0.85 },
+    { x: 0, y: 88, rx: 62, ry: 56, slot: 'mid', alpha: 0.55 },
+  ],
+  [
+    { x: 0, y: 62, rx: 92, ry: 90, slot: 'dark', alpha: 0.9 },
+    { x: 100, y: 100, rx: 86, ry: 70, slot: 'mid', alpha: 0.85 },
+    { x: 78, y: 0, rx: 60, ry: 50, slot: 'mid', alpha: 0.5 },
+  ],
+  [
+    { x: 100, y: 12, rx: 96, ry: 88, slot: 'dark', alpha: 0.9 },
+    { x: 0, y: 100, rx: 90, ry: 74, slot: 'mid', alpha: 0.85 },
+    { x: 14, y: 0, rx: 56, ry: 48, slot: 'mid', alpha: 0.5 },
+  ],
+]
+
+/** 문자열 → 0 이상의 정수(FNV-1a). 같은 문자열이면 항상 같은 값이다 */
+export function auraMeshSeed(key: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+/** 메시 배경의 바탕색: 밝은 색 자리. 미획득이면 무채색 */
+export function auraMeshBase(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
+  return glowPalette(colors, options)[0]
+}
+
+/** 메시 배경의 `background-image` 층(위 → 아래): 가운데 밝은 빛, 덩어리 셋. 덩어리 배치는 `seed`가 고른다 */
+export function auraMeshLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; seed?: string } = {}): string[] {
+  const [, mid, dark] = glowPalette(colors, options)
+  const layout = MESH_LAYOUTS[auraMeshSeed(options.seed ?? colors.join(',')) % MESH_LAYOUTS.length]
+  const blobs = layout.map((b) => `radial-gradient(ellipse ${b.rx}% ${b.ry}% at ${b.x}% ${b.y}%, ${gaussianAlphaStops(b.slot === 'dark' ? dark : mid, b.alpha)})`)
+  return [`radial-gradient(ellipse 70% 62% at 48% 42%, ${gaussianAlphaStops('#ffffff', 0.45)})`, ...blobs]
+}
+
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
   return [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * t) as Rgb
 }

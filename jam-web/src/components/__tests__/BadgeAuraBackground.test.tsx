@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, auraGlowInsetShadow, auraGlowLayers, auraGlowMetrics, tuneAuraColors } from '@/lib/badgeAura'
+import { AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, auraGlowInsetShadow, auraGlowLayers, auraGlowMetrics, auraMeshBase, auraMeshLayers, auraMeshSeed, tuneAuraColors } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
@@ -127,5 +127,51 @@ describe('BadgeAuraBackground', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} />)
     expect(html).not.toContain('will-change')
     expect(html).not.toContain('drop-shadow')
+  })
+})
+
+describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
+  it('그라데이션 한 장뿐이다 — 블러·안쪽 빛 없이 크림 바탕에 radial 덩어리 넷(밝은 빛 하나 + 덩어리 셋)', () => {
+    const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="mesh" seed="a" />)
+    expect(html).toContain('data-variant="mesh"')
+    expect(html).toContain('aria-hidden="true"')
+    expect(html).not.toContain('filter:blur')
+    expect(html).not.toContain('box-shadow')
+    expect(html.match(/radial-gradient\(/g)).toHaveLength(4)
+    expect(html).not.toContain('linear-gradient')
+    // 위에서 아래로 흰색에 풀리는 글로우와 달리 바탕이 흰색이 아니다
+    expect(html).toContain(`background-color:${auraMeshBase(COLORS)}`)
+    expect(auraMeshBase(COLORS)).not.toBe('#ffffff')
+  })
+
+  it('같은 시드는 항상 같은 배치이고, 시드가 달라지면 배치가 달라진다', () => {
+    expect(auraMeshSeed('냄비')).toBe(auraMeshSeed('냄비'))
+    expect(auraMeshLayers(COLORS, { seed: 'x' })).toEqual(auraMeshLayers(COLORS, { seed: 'x' }))
+    const layouts = new Set(Array.from({ length: 24 }, (_, i) => auraMeshLayers(COLORS, { seed: `배지 ${i}` }).join('|')))
+    expect(layouts.size).toBeGreaterThanOrEqual(3)
+    // 시드가 없으면 색 목록이 시드다
+    expect(auraMeshLayers(COLORS)).toEqual(auraMeshLayers(COLORS, { seed: COLORS.join(',') }))
+  })
+
+  it('덩어리는 진한 색과 중간 색 두 가지만 쓴다(밝은 색은 바탕)', () => {
+    const [, mid, dark] = tuneAuraColors(COLORS, AURA_GLOW_TUNING)
+    const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')
+    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).slice(1).join('|')
+    const used = new Set([...blobs.matchAll(/rgba\((\d+),(\d+),(\d+),/g)].map((m) => `${m[1]},${m[2]},${m[3]}`))
+    expect([...used].every((c) => c === rgb(mid) || c === rgb(dark))).toBe(true)
+    expect(used.size).toBe(2)
+  })
+
+  it('gray면 바탕과 덩어리가 모두 무채색이다', () => {
+    const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="mesh" gray />)
+    const nums = [...html.matchAll(/rgba\((\d+),(\d+),(\d+),/g)].map((m) => [Number(m[1]), Number(m[2]), Number(m[3])])
+    expect(nums.length).toBeGreaterThan(8)
+    for (const rgb of nums) expect(Math.max(...rgb) - Math.min(...rgb)).toBeLessThanOrEqual(12)
+    const base = auraMeshBase(COLORS, { gray: true })
+    expect(Math.max(...[1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16))) - Math.min(...[1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16)))).toBeLessThanOrEqual(12)
+  })
+
+  it('색이 hex가 아니면 아무것도 그리지 않는다', () => {
+    expect(renderToStaticMarkup(<BadgeAuraBackground colors={['red']} variant="mesh" />)).toBe('')
   })
 })
