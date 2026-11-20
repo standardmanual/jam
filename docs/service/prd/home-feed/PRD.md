@@ -624,6 +624,7 @@ code:
 | `click` | 카드를 눌렀을 때. `ranking_list`와 랭킹 행형 `list`는 세지 않는다(노출만) | `POST /api/today/events` + GA 이벤트 `today_card_click`(`card_id`·`content_type_id`·`template_type`·`shape`) |
 
 - 전송은 `navigator.sendBeacon`을 먼저 쓰고, 안 되면 `fetch(keepalive)`로 보낸다. 실패는 조용히 무시한다.
+- **목록형(`gallery_list`)의 클릭**: 카드 전체 링크가 없어 틀(`CardFrame`)에 `link={false}`와 `trackLinkClicks`를 함께 주고, 트래커(`TodayCardTracker`)가 `clickOnLinksOnly`로 카드 안의 링크(항목·화살표) 클릭만 카드 클릭으로 기록한다(제목·빈 곳의 클릭은 세지 않는다). 전송 경로·GA 파라미터는 그대로다. 컬렉션 소개 모션의 관찰자(임계값 55%, `FeedCollectionBurst`)는 노출 계측의 관찰자(50%)와 따로 만들고 계측을 보내지 않는다(티켓 20261121_0115).
 - 서버는 로그인 세션이 있어야 받고, 유저별 분당 60건을 넘으면 429다. 카드가 존재하고 활성이며 노출 기간 안일 때만 기록한다(아니면 400). `followup` 이벤트는 400으로 거부한다.
 - 저장(`today_card_events`)에는 카드 ID·기록 시점 유형 ID·기록 시점에 그려진 모양(`card_shape`)·기록 시점 카드의 패턴 번호(`pattern_no`)·이벤트 종류만 남고 **유저 식별자는 없다.** 패턴 번호는 노출 검증이 카드를 조회할 때 함께 읽은 카드의 `pattern_no`를 그대로 복사한 값이다(카드를 다시 조회하지 않고, 형식을 다시 검사하지 않는다). 패턴이 없는 카드(어드민에서 직접 만든 카드)와 패턴 열 도입 전 기록은 NULL이다(옛 기록을 채우지 않는다, 티켓 20261008_1059). 유저 ID는 빈도 제한 판정에만 인스턴스 메모리에서 쓴다.
 - 그려진 모양은 노출 검증이 카드를 조회할 때 함께 읽은 값(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 정한다(카드는 한 번만 조회). 저장된 `shape`가 있으면 그 모양이고, 배지가 없는 타일형 `list`는 화면처럼 `brief`로 기록한다. `shape`가 없는 옛 카드는 전환 상수(`LEGACY_SHAPE_CUTOVER`)가 켜져 있어 옛 값 대응표(`resolveShape`)의 모양으로 기록한다 — 전환 전에 쌓인 기록의 `card_shape`는 NULL로 남는다.

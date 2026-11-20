@@ -13,6 +13,8 @@ import type { CardView } from '@/lib/today/cardView'
  * - `link={false}`(티켓 20261001_2104, 랭킹 행형 `list`)면 `tracking`이 있어도 `Link`와 `.jam-press`를 걸지 않고 트래커만 `trackClick={false}`로 감싼다(노출만 기록한다).
  *   행형은 순위 행마다 자기 프로필 링크가 있어 카드 전체를 링크로 감싸면 앵커 안에 앵커가 생기고, 카드 단위 클릭은 의미가 없다. 트래커·GA 값 연결이 두 곳으로
  *   갈라지지 않게 틀을 따로 만들지 않고 이 옵션 하나로 갈랐다. 모양은 계속 모른다 — 어느 모양이 `link={false}`인지는 호출부(`TodayCard`)가 정한다.
+ * - `link={false}`와 `trackLinkClicks`를 함께 주면(티켓 20261121_0115, 목록형) 카드 전체 링크는 없지만 카드 안의 링크(항목·화살표) 클릭은 카드 클릭으로 기록한다.
+ *   링크가 아닌 자리(제목·빈 곳)의 클릭은 세지 않는다. 이 옵션을 생략한 기존 모든 카드의 동작은 그대로다.
  *
  * `Link`에 `aria-label`을 달지 않는다. 안쪽 글자(제목)가 곧 접근 가능한 이름이다.
  * `Link`의 둥근 모서리(`--radius-2xl`)는 키보드 포커스 윤곽선이 둥근 카드 밖에서 직각으로 그려지지 않게 하려는 것이고,
@@ -37,11 +39,14 @@ export function CardLink({ href, children }: { href: string; children: ReactNode
 export default function CardFrame({
   view,
   link = true,
+  trackLinkClicks = false,
   children,
 }: {
   view: CardView
   /** false면 카드 전체 링크와 눌림을 걸지 않고, 클릭 기록도 하지 않는다(노출만). 기본 true. */
   link?: boolean
+  /** `link={false}`일 때만 뜻이 있다. true면 카드 안의 링크(앵커) 클릭을 카드 클릭으로 기록한다. 기본 false. */
+  trackLinkClicks?: boolean
   children: ReactNode
 }) {
   const { tracking, href } = view
@@ -53,7 +58,8 @@ export default function CardFrame({
       contentTypeId={tracking.contentTypeId}
       templateType={tracking.templateType}
       shape={tracking.shape}
-      trackClick={link}
+      trackClick={link || trackLinkClicks}
+      clickOnLinksOnly={!link && trackLinkClicks}
     >
       {link && href ? <CardLink href={href}>{children}</CardLink> : children}
     </TodayCardTracker>
