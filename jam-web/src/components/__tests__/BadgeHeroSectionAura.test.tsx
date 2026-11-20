@@ -32,32 +32,33 @@ const render = (extra: Omit<Partial<HeroProps>, 'badge'> & { badge?: Record<stri
 }
 
 describe('Aura 적용 조건', () => {
-  it('bg_colors 3색이면 글로우 Aura를 깔고, 카드 바탕은 #ffffff, 설명은 text-foreground다', () => {
+  it('bg_colors 3색이면 파스텔 메시 Aura를 깔고(블러 없음), 카드 바탕은 #ffffff, 설명은 text-foreground다', () => {
     const html = render({ badge: { bg_colors: COLORS } })
     expect(html).toContain('badge-aura-background')
-    expect(html).toContain('data-variant="glow"')
+    expect(html).toContain('data-variant="mesh"')
+    expect(html).not.toContain('data-variant="glow"')
     expect(html.toLowerCase()).toContain('background-color:#ffffff')
     expect(html).not.toContain('mix-blend-mode')
-    expect(html).toContain('filter:blur(28px)')
+    expect(html).not.toContain('filter:blur')
     expect(html).toMatch(/text-wrap! text-foreground/)
     expect(html).not.toContain('text-muted')
     expect(html).not.toContain('bg-transparent')
   })
 
-  it('미획득이면 대표색 대신 그레이 글로우다', () => {
+  it('미획득이면 대표색 대신 그레이 메시다', () => {
     const earned = render({ badge: { bg_colors: COLORS } })
     const unearned = render({ badge: { bg_colors: COLORS }, hasEarned: false })
-    expect(unearned).toContain('data-variant="glow"')
+    expect(unearned).toContain('data-variant="mesh"')
     expect(unearned).not.toBe(earned)
-    // 그레이는 선형 정지점이 전부 무채색이라 대표색의 푸른 기가 없다
-    const firstStop = (html: string) => /linear-gradient\(to bottom, #([0-9a-f]{6})/.exec(html)?.[1] ?? ''
+    // 그레이는 선형 바탕이 무채색이라 대표색의 푸른 기가 없다
+    const firstStop = (html: string) => /linear-gradient\(\d+deg, #([0-9a-f]{6})/.exec(html)?.[1] ?? ''
     const spread = (hex: string) => {
       const n = parseInt(hex, 16)
       const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
       return Math.max(...rgb) - Math.min(...rgb)
     }
     expect(spread(firstStop(unearned))).toBeLessThanOrEqual(12)
-    expect(spread(firstStop(earned))).toBeGreaterThan(20)
+    expect(spread(firstStop(earned))).toBeGreaterThan(spread(firstStop(unearned)))
   })
 
   it('bg_colors가 NULL이거나 필드가 없으면 지금의 흰 카드와 DOM이 같다', () => {

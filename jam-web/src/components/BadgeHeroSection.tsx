@@ -112,7 +112,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 배경 테마가 있으면 `bg_colors`는 읽지도 않는다. 새 판정을 만들지 않고 위 판정을 그대로 따른다.
   const hasTheme = Boolean(backgroundAnimation || themed || getBadgeBackgroundAnimation(badge))
   const auraColors = hasTheme ? null : resolveAuraColors(badge.bg_colors)
-  // [20261120] 상세 히어로는 연한 «글로우» 면이라 글자는 항상 어두운 색이다(옛 띠 방식의 밝기 판정은 쓰지 않는다).
+  // [20261120] 상세 히어로는 연한 파스텔 «메시» 면(그리드 카드와 같은 배경, 같은 배지 이름 시드라 목록과 모양이 같다)이라 글자는 항상 어두운 색이다(옛 띠 방식의 밝기 판정은 쓰지 않는다).
   const onMedia = Boolean(backgroundAnimation || themed)
 
   // 대표 이미지: 호출부가 슬롯을 주면 그대로, 없으면 badge.image_url(SafeImage) → 없으면 MedalIcon.
@@ -152,7 +152,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       // [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다(DS가 z-0 자리를 내준다). 첫 페인트 폴백 색은 파라미터에서 미리 깐다.
       // [20261119_1653] Aura 배경은 같은 슬롯에 들어간다(블롭과 동시에 켜지지 않는다). 바탕색은 인라인이라 카드 면(`bg-card-bg`)을 이긴다.
       backgroundSlot={
-        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} gray={!hasEarned} /> : undefined
+        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} variant="mesh" seed={badge.name} gray={!hasEarned} /> : undefined
       }
       backgroundColor={backgroundAnimation?.bgColor ?? (auraColors ? AURA_GLOW_BASE_COLOR : undefined)}
       onMedia={onMedia}
