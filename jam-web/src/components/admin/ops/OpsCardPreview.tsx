@@ -8,6 +8,7 @@
  *
  * 승인 전(제작 대상 상태가 아닌) 카드에 저장된 이미지가 없고 `image_spec.preset_id`가 있으면 저장 없이 브라우저에서 바로 그려 보인다
  * (`useDraftImagePreview`, 티켓 20261101_2149). 시드는 항목 ID의 고정 시드라 승인 뒤 첫 제작 이미지와 같다. 카드 데이터는 바꾸지 않는다.
+ * 색이 정해진 항목은 기획을 열 때 이미지가 저장되고(`autoImage.ts`, 티켓 20261120_1416), 만드는 동안에는 「만드는 중」을, 색이 없어 건너뛴 항목은 「색이 정해지면 만들어요」를 보인다.
  */
 'use client'
 
@@ -26,7 +27,7 @@ import { previewRenderArgs, readImageSpec } from '@/lib/admin/opsInbox/imageSpec
 import { useDraftImagePreview, type DraftImageRequest } from './useDraftImagePreview'
 
 export const PREVIEW_NOT_CARD_TEXT = '이 종류의 미리보기는 곧 열려요'
-export const PREVIEW_IMAGE_PENDING_TEXT = '이미지는 승인 뒤 만들어요'
+export const PREVIEW_IMAGE_PENDING_TEXT = '이미지는 색이 정해지면 만들어요'
 export const PREVIEW_IMAGE_NEEDED_TEXT = '이미지 제작 필요'
 export const PREVIEW_IMAGE_MAKING_TEXT = '이미지를 만드는 중이에요'
 export const PREVIEW_COLOR_LABEL = '색 견본'
@@ -81,12 +82,16 @@ export function OpsCardPreview({ item, draft, making = false, previewNames, bund
           : PREVIEW_IMAGE_DRAWN_TEXT
         : PREVIEW_IMAGE_DRAWING_TEXT
 
+  // 승인 전에 이 항목의 이미지를 지금 만들어 저장하는 중이면(티켓 20261120_1416) 「만드는 중」이 미리 그리기 안내를 대신한다.
+  const makingNotice = making && imageMissing && beforeProduction ? PREVIEW_IMAGE_MAKING_TEXT : null
+  const notice = makingNotice ?? drawnNotice
+
   return (
     <div className="space-y-2">
       {preview.type === 'card' ? <TodayCardPreview views={[view ?? preview.view]} /> : <OpsKindPreview preview={preview} />}
-      {drawnNotice && <p className="text-xs text-muted-foreground break-keep wrap-break-word">{drawnNotice}</p>}
-      {imageMissing && !drawnNotice && (
-        <p className="text-xs text-muted-foreground">
+      {notice && <p className="text-xs text-muted-foreground break-keep wrap-break-word">{notice}</p>}
+      {imageMissing && !notice && (
+        <p className="text-xs text-muted-foreground break-keep wrap-break-word">
           {item.status && OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)
             ? making
               ? PREVIEW_IMAGE_MAKING_TEXT

@@ -29,6 +29,13 @@ export function imageKeyOfKind(kind: string | null | undefined): OpsImageKey | n
   return isImageKind(kind) ? IMAGE_KEY_BY_KIND[kind] : null
 }
 
+/** 항목의 자원에 이미지 주소가 이미 있는가. 이미 붙은 이미지(에이전트가 제출한 것 등)를 새로 만든 그림으로 덮어쓰지 않으려고 본다. */
+export function hasResourceImage(item: ViewableItem & { kind: string | null }): boolean {
+  const key = imageKeyOfKind(item.kind)
+  const value = key === null ? undefined : asRecord(itemField(item, 'resource'))?.[key]
+  return typeof value === 'string' && value.trim() !== ''
+}
+
 export interface ImageSpec {
   preset_id?: string
   bg?: string

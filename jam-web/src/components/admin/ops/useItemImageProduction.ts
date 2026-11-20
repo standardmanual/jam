@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * 승인 직후 항목 이미지 자동 제작 (티켓 20261007_1031 ③-b1-b, 상위 20261007_0946).
+ * 승인 직후 항목 이미지 자동 제작 (티켓 20261007_1031 ③-b1-b, 상위 20261007_0946). 기획을 열 때의 미리 만들기(티켓 20261120_1416)도 `startMany`를 쓴다.
  *
  * 항목 하나를 승인하면 `image_spec`으로 브라우저에서 PNG를 만들어 항목 이미지 API에 올린다(예약된 뒤라면 서버가 자원에도 붙인다).
  * 실패해도 승인은 그대로다 — 「이미지 제작 필요」는 이 훅의 상태가 아니라 항목 데이터(승인됨·준비중인데 이미지 칸이 빔)로 계산하니 새로 고쳐도 남는다.
@@ -10,8 +10,7 @@
  */
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { imageSpecToRenderArgs, imageKeyOfKind, readImageSpec, stableImageSeed } from '@/lib/admin/opsInbox/imageSpec'
-import { asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
+import { hasResourceImage, imageSpecToRenderArgs, imageKeyOfKind, readImageSpec, stableImageSeed } from '@/lib/admin/opsInbox/imageSpec'
 import { renderPresetToPngBlob } from '@/lib/admin/opsInbox/imageRender.client'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { postItemImage } from './imageClient'
@@ -21,13 +20,26 @@ export const IMAGE_FAILED_TOAST = '승인은 유지했어요. 이미지를 만�
 export const IMAGE_FAILED_AFTER_SCHEDULE_TOAST = (failed: number): string =>
   `예약은 유지했어요. 이미지 ${failed}건을 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.`
 
+/** 기획을 열 때 미리 만들다 실패했을 때(승인 전이라 승인·예약 문구가 맞지 않는다, 티켓 20261120_1416). */
+export const IMAGE_FAILED_BEFORE_APPROVAL_TOAST = '이미지를 만들지 못했어요. 승인한 뒤 [이미지 만들기]로 다시 만들 수 있어요.'
+
+/** `startMany`가 실패했을 때 띄울 알림 문장. 승인 전(기획을 열 때) 호출이면 승인 문구를 쓰지 않는다. */
+export function failedToastOf(failed: number, beforeApproval: boolean): string {
+  return beforeApproval ? IMAGE_FAILED_BEFORE_APPROVAL_TOAST : IMAGE_FAILED_AFTER_SCHEDULE_TOAST(failed)
+}
+
+export interface StartManyOptions {
+  /** 승인 전(기획을 열 때) 호출이면 true. 실패 알림 문구만 바뀐다. */
+  beforeApproval?: boolean
+}
+
 export interface ItemImageProduction {
   /** 지금 이미지를 만드는 중인 항목 ID. */
   making: ReadonlySet<string>
   /** 항목의 이미지를 만든다. 시험 묶음이거나 만들 지시가 없으면 아무것도 하지 않는다. 던지지 않는다. */
   start: (itemId: string, items: readonly OpsItemRecord[]) => Promise<void>
   /** 여러 항목의 이미지를 순서대로 만든다. 이미 만드는 중인 ID는 뺀다. 시험 묶음이면 아무것도 하지 않는다. 던지지 않는다. */
-  startMany: (itemIds: readonly string[], items: readonly OpsItemRecord[]) => Promise<void>
+  startMany: (itemIds: readonly string[], items: readonly OpsItemRecord[], options?: StartManyOptions) => Promise<void>
 }
 
 interface Options {
@@ -69,13 +81,6 @@ export interface ProduceManyResult {
   done: number
   failed: number
   skipped: number
-}
-
-/** 항목의 자원에 이미지 주소가 이미 있는가. 이미 붙은 이미지(에이전트가 제출한 것 등)를 예약 때 새로 만든 그림으로 덮어쓰지 않으려고 본다. */
-function hasResourceImage(item: OpsItemRecord): boolean {
-  const key = imageKeyOfKind(item.kind)
-  const value = key === null ? undefined : asRecord(itemField(item, 'resource'))?.[key]
-  return typeof value === 'string' && value.trim() !== ''
 }
 
 /** [이미지 만들기]·[다시 만들기]의 시드. 이미지가 이미 있으면 「다시 만들기」라 새 무작위 시드, 없으면 첫 제작이라 항목 ID의 고정 시드다. */
@@ -133,7 +138,7 @@ export function useItemImageProduction({ bundleId, isSample, onDone }: Options):
   )
 
   const startMany = useCallback(
-    async (itemIds: readonly string[], items: readonly OpsItemRecord[]) => {
+    async (itemIds: readonly string[], items: readonly OpsItemRecord[], options?: StartManyOptions) => {
       if (isSample) return
       const targets = itemIds.filter((id) => !inFlight.current.has(id))
       if (targets.length === 0) return
@@ -141,7 +146,7 @@ export function useItemImageProduction({ bundleId, isSample, onDone }: Options):
       setMaking(new Set(inFlight.current))
       try {
         const result = await produceItemImages(bundleId, targets, items, isSample)
-        if (result.failed > 0) toast.warning(IMAGE_FAILED_AFTER_SCHEDULE_TOAST(result.failed))
+        if (result.failed > 0) toast.warning(failedToastOf(result.failed, options?.beforeApproval ?? false))
       } finally {
         for (const id of targets) inFlight.current.delete(id)
         setMaking(new Set(inFlight.current))

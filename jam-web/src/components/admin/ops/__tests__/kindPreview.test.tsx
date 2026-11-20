@@ -50,7 +50,7 @@ describe('OpsCardPreview 종류별 미리보기', () => {
     expect(out).not.toContain('href=')
   })
 
-  it('초안이 바로 반영되고 이미지가 비면 도착 항목은 승인 뒤 안내를 보인다', () => {
+  it('초안이 바로 반영되고 이미지가 비면 도착 항목은 색이 정해지면 만든다는 안내를 보인다', () => {
     const out = html(
       <OpsCardPreview item={{ ...item('mission', { copy: { title: '원래 제목' } }), status: 'arrived' }} draft={{ 'copy.title': '바뀐 제목' }} />
     )
