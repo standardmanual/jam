@@ -195,9 +195,9 @@ export default function BadgeGridCard({
   // Aura는 면 안의 `absolute z-0` 면이라 이미지·대체 아이콘이 그 위로 올라와야 한다(비위치 요소는 z-0 위치 요소 아래에 그려진다)
   const aboveAura = aura ? 'relative z-10 ' : ''
 
-  // 일반 카드의 썸네일은 카드 여백(p-3)과 같은 두께의 안쪽 면이다(티켓 20261120_1113·1120의 가장자리 채움을 사용자 지시로 되돌렸다, 티켓 20261120_1136).
-  // 폭은 칸 폭에서 좌우 여백을 뺀 값이라 위·좌·우 여백이 같다. 글로우 없는 카드·잠김·미발견 칸도 같은 크기라 한 그리드 안에서 어긋나지 않는다.
-  // compact는 별도 고정 규격(여백 4)이라 이 분기에 들어오지 않는다
+  // 일반 카드의 썸네일은 카드 가장자리에서 6px 안쪽 면이다(시안은 카드 폭의 약 5%, 사용자 지시 2026-11-20, 티켓 20261120_1143).
+  // 카드 여백(p-3 = 12)보다 6px 키워 위·좌·우 6px만 남기고, 이름·칩 줄의 여백(12)은 그대로 둔다. 모서리 둥글기는 그대로 rounded-2xl이다.
+  // 글로우 없는 카드·잠김·미발견 칸도 같은 크기라 한 그리드 안에서 어긋나지 않는다. compact는 별도 고정 규격(여백 4)이라 이 분기에 들어오지 않는다
   const thumbnailCls = [
     aura && 'relative',
     'w-full aspect-square rounded-2xl overflow-hidden',
@@ -279,7 +279,7 @@ export default function BadgeGridCard({
         thumbnailCls(w-full)가 부모의 100%를 요구하는 순환 참조가 생겨 0×0으로 collapse된다
         (티켓 20260907_2138, 직전 시도 게이트 리뷰 FAIL 사유).
       */}
-      <div className="relative w-full">
+      <div className="relative w-[calc(100%+0.75rem)] -mt-1.5">
         {locked ? (
           // 잠긴 개체는 어떤 배지인지 알 수 있는 그림을 그리지 않는다(운영 로직 7.3절). 호출부가 URL을 넘겨도 쓰지 않는다
           <LockedTile size={128} style={{ width: '100%' }} />

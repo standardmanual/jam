@@ -157,10 +157,10 @@ describe('BadgeGridCard — 서비스 점선 주소와 합성', () => {
     expect(html).toContain('data-outline-state="loading"')
   })
 
-  it('점선 svg는 이미지 칸(카드 여백 안쪽을 채우는 relative w-full) 안에 있고 이미지 썸네일 래퍼는 없다', () => {
+  it('점선 svg는 이미지 칸(카드 가장자리에서 6px 안쪽을 채우는 relative w-[calc(100%+0.75rem)]) 안에 있고 이미지 썸네일 래퍼는 없다', () => {
     const html = renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" name={NAME} imageUrl={IMAGE} undiscovered earned={false} />)
     expect(html).not.toMatch(/<div class="w-full aspect-square/)
-    expect(html).toMatch(/<div class="relative w-full"><svg/)
+    expect(html).toMatch(/<div class="relative w-\[calc\(100%\+0\.75rem\)\] -mt-1\.5"><svg/)
   })
 
   it('outlined에서 점선 svg는 썸네일 래퍼(grayscale opacity-40)의 형제로 absolute inset-0이다', () => {

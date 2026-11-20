@@ -108,7 +108,7 @@ describe('BadgeGridCard bgColors — 일반 면만의 규칙', () => {
 })
 
 describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
-  it('일반 면은 카드 여백과 같은 두께의 안쪽 면이고, 배경은 파스텔 메시(그라데이션 한 장)다', () => {
+  it('일반 면은 카드 가장자리에서 6px 안쪽 면이고, 배경은 파스텔 메시(그라데이션 한 장)다', () => {
     const html = render({ bgColors: COLORS })
     expect(html).toContain('data-variant="mesh"')
     expect(html).not.toContain('data-variant="glow"')
@@ -118,7 +118,7 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
     expect(html).not.toContain('container-type')
     expect(html).not.toContain('cqw')
     // 폭은 칸 폭에서 좌우 여백을 뺀 값(90px 상한 없음)이고, 면 자신이 둥글다
-    expect(html).toContain('<div class="relative w-full">')
+    expect(html).toContain('<div class="relative w-[calc(100%+0.75rem)] -mt-1.5">')
     expect(html).not.toContain('max-w-[90px]')
     const face = faceOf(html, false)!
     expect(face).toContain('p-[4.4%]')
@@ -127,7 +127,7 @@ describe('BadgeGridCard bgColors — 글로우 크기 비례', () => {
 
   it('색이 없는 일반 면도 같은 크기다(한 그리드 안에서 어긋나지 않는다). 컨테이너 타입은 없다', () => {
     const html = render({})
-    expect(html).toContain('<div class="relative w-full">')
+    expect(html).toContain('<div class="relative w-[calc(100%+0.75rem)] -mt-1.5">')
     expect(html).not.toContain('max-w-[90px]')
     expect(html).toContain('rounded-2xl overflow-hidden flex')
     expect(html).not.toContain('container-type')

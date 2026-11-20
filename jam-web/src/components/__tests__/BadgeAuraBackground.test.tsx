@@ -131,13 +131,14 @@ describe('BadgeAuraBackground', () => {
 })
 
 describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
-  it('그라데이션 한 장뿐이다 — 블러·안쪽 빛 없이 radial 셋(밝은 빛 하나 + 덩어리 둘)과 대각선 선형 바탕이다', () => {
+  it('그라데이션 한 장뿐이다 — 블러·안쪽 빛 없이 radial 둘(덩어리 둘, 가운데 밝은 점 없음)과 대각선 선형 바탕이다', () => {
     const html = renderToStaticMarkup(<BadgeAuraBackground colors={COLORS} variant="mesh" seed="a" />)
     expect(html).toContain('data-variant="mesh"')
     expect(html).toContain('aria-hidden="true"')
     expect(html).not.toContain('filter:blur')
     expect(html).not.toContain('box-shadow')
-    expect(html.match(/radial-gradient\(/g)).toHaveLength(3)
+    expect(html.match(/radial-gradient\(/g)).toHaveLength(2)
+    expect(html).not.toContain('rgba(255,255,255')
     // 덩어리 사이에 빈 곳이 생기지 않게 맨 아래에 대각선 선형 바탕을 깐다(얼룩덜룩 방지)
     expect(html.match(/linear-gradient\(\d+deg,/g)).toHaveLength(1)
     expect(html.lastIndexOf('linear-gradient')).toBeGreaterThan(html.lastIndexOf('radial-gradient'))
@@ -147,7 +148,7 @@ describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
   })
 
   it('덩어리는 둘뿐이고 면보다 크다(반경 100% 이상) — 작은 얼룩이 없다', () => {
-    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).filter((l, i) => i > 0 && l.startsWith('radial-gradient'))
+    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).filter((l) => l.startsWith('radial-gradient'))
     expect(blobs).toHaveLength(2)
     for (const l of blobs) {
       const m = /ellipse (\d+)% (\d+)%/.exec(l)!
@@ -165,13 +166,13 @@ describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
     expect(auraMeshLayers(COLORS)).toEqual(auraMeshLayers(COLORS, { seed: COLORS.join(',') }))
   })
 
-  it('덩어리는 진한 색과 중간 색 두 가지만 쓴다(밝은 색은 바탕)', () => {
-    const [, mid, dark] = tuneAuraColors(COLORS, AURA_MESH_TUNING)
+  it('덩어리는 두 가지 색만 쓰고 그중 하나는 진한 색이다(밝은 색은 바탕)', () => {
+    const [, , dark] = tuneAuraColors(COLORS, AURA_MESH_TUNING)
     const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')
-    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).slice(1, 3).join('|')
+    const blobs = auraMeshLayers(COLORS, { seed: 'a' }).filter((l) => l.startsWith('radial-gradient')).join('|')
     const used = new Set([...blobs.matchAll(/rgba\((\d+),(\d+),(\d+),/g)].map((m) => `${m[1]},${m[2]},${m[3]}`))
-    expect([...used].every((c) => c === rgb(mid) || c === rgb(dark))).toBe(true)
     expect(used.size).toBe(2)
+    expect(used.has(rgb(dark))).toBe(true)
   })
 
   it('gray면 바탕과 덩어리가 모두 무채색이다', () => {
@@ -200,6 +201,6 @@ describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
     const mesh = tuneAuraColors(vivid, AURA_MESH_TUNING)
     for (let i = 0; i < 3; i++) expect(sat(mesh[i])).toBeLessThanOrEqual(sat(glow[i]) + 0.001)
     expect(sat(mesh[2])).toBeLessThan(sat(glow[2]) - 0.1)
-    expect(AURA_MESH_TUNING.saturationMax).toBeLessThanOrEqual(0.5)
+    expect(AURA_MESH_TUNING.saturationMax).toBeLessThanOrEqual(0.34)
   })
 })

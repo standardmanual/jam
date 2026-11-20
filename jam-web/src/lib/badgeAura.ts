@@ -265,8 +265,8 @@ export function auraGlowInsetShadow(colors: readonly string[], options: { gray?:
 /**
  * 메시 배경 — 부드러운 파스텔 바탕에 같은 계열 색이 대각선으로 번지는 배경(사용자 시안, 2026-11-20).
  * 글로우와 달리 아래 흰 띠·안쪽 빛 테두리·블러 면이 없다. 그라데이션만으로 끝나 한 장의 `background`로 그려진다.
- * 얼룩덜룩해 보이지 않게(사용자 지시, 2026-11-20) 색 덩어리는 둘뿐이고 면보다 크게 서로 겹치며, 맨 아래에 대각선 선형 그라데이션을
- * 깔아 덩어리 사이에 빈 곳이 생기지 않는다. 덩어리 배치는 배지마다 다르되(시드), 같은 시드는 항상 같은 배치다.
+ * 얼룩덜룩해 보이지 않게(사용자 지시, 2026-11-20) 색 덩어리는 둘뿐이고 면보다 크게 서로 겹치며, 두 덩어리 색은 색상이 가깝게 맞추고,
+ * 맨 아래에 대각선 선형 그라데이션을 깔아 덩어리 사이에 빈 곳이 생기지 않는다. 가운데 밝은 점도 없다. 덩어리 배치는 배지마다 다르되(시드), 같은 시드는 항상 같은 배치다.
  */
 interface MeshLayout {
   /** 선형 바탕의 방향(deg): 중간 색 쪽에서 시작해 진한 색 쪽으로 간다 */
@@ -286,12 +286,12 @@ const MESH_LAYOUTS: readonly MeshLayout[] = [
 /** 선형 바탕의 두 끝색을 흰색 쪽으로 섞는 비율. 크면 연하다 */
 const MESH_BASE_WHITEN = 0.5
 
-/** 메시 배경의 색 보정표. 글로우보다 채도를 낮췄다(사용자 지시, 2026-11-20: 채도 상한 0.76 → 0.5, 배율 0.8 → 0.5) */
+/** 메시 배경의 색 보정표. 글로우보다 채도를 낮췄다(사용자 지시, 2026-11-20 두 차례: 채도 상한 0.76 → 0.5 → 0.34, 배율 0.8 → 0.5 → 0.34) */
 export const AURA_MESH_TUNING: AuraTuning = {
   lightness: [0.94, 0.88, 0.8],
-  saturationScale: 0.5,
-  saturationMin: 0.25,
-  saturationMax: 0.5,
+  saturationScale: 0.34,
+  saturationMin: 0.16,
+  saturationMax: 0.34,
   slotSaturation: [0.85, 1, 0.95],
 }
 
@@ -310,19 +310,22 @@ export function auraMeshBase(colors: readonly string[], options: { gray?: boolea
   return glowPalette(colors, { ...options, tuning: options.tuning ?? AURA_MESH_TUNING })[0]
 }
 
+/** 중간 색 덩어리의 색을 진한 색 쪽으로 당기는 비율. 색상 차이가 클수록 덩어리 경계가 얼룩으로 보여서 서로 가깝게 맞춘다 */
+const MESH_MID_PULL = 0.4
+
 /**
- * 메시 배경의 `background-image` 층(위 → 아래): 가운데 밝은 빛, 진한 색 덩어리, 중간 색 덩어리, 대각선 선형 바탕.
- * 덩어리 배치는 `seed`가 고른다
+ * 메시 배경의 `background-image` 층(위 → 아래): 진한 색 덩어리, 중간 색 덩어리, 대각선 선형 바탕.
+ * 가운데 흰 하이라이트는 없다(얼룩덜룩 보정, 사용자 지시 2026-11-20 — 가운데만 밝은 점이 얼룩처럼 보였다). 덩어리 배치는 `seed`가 고른다
  */
 export function auraMeshLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; seed?: string } = {}): string[] {
   const [, mid, dark] = glowPalette(colors, { ...options, tuning: options.tuning ?? AURA_MESH_TUNING })
   const layout = MESH_LAYOUTS[auraMeshSeed(options.seed ?? colors.join(',')) % MESH_LAYOUTS.length]
   const white = AURA_GLOW_BASE_COLOR
+  const midNear = mixHex(mid, dark, MESH_MID_PULL)
   return [
-    `radial-gradient(ellipse 85% 75% at 50% 45%, ${gaussianAlphaStops(white, 0.35)})`,
-    `radial-gradient(ellipse 130% 120% at ${layout.dark[0]}% ${layout.dark[1]}%, ${gaussianAlphaStops(dark, 0.6)})`,
-    `radial-gradient(ellipse 120% 110% at ${layout.mid[0]}% ${layout.mid[1]}%, ${gaussianAlphaStops(mid, 0.5)})`,
-    `linear-gradient(${layout.angle}deg, ${mixHex(mid, white, MESH_BASE_WHITEN)}, ${mixHex(dark, white, MESH_BASE_WHITEN)})`,
+    `radial-gradient(ellipse 130% 120% at ${layout.dark[0]}% ${layout.dark[1]}%, ${gaussianAlphaStops(dark, 0.5)})`,
+    `radial-gradient(ellipse 120% 110% at ${layout.mid[0]}% ${layout.mid[1]}%, ${gaussianAlphaStops(midNear, 0.4)})`,
+    `linear-gradient(${layout.angle}deg, ${mixHex(midNear, white, MESH_BASE_WHITEN)}, ${mixHex(dark, white, MESH_BASE_WHITEN)})`,
   ]
 }
 
