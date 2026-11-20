@@ -524,8 +524,8 @@ code:
 
 #### 구현 때 지킬 점 (채원 판정, 2026-11-20)
 
-- **무작위 값**: 색·칩 자리·기울기·물결 모양·컬렉션 배지 위치는 카드 id를 시드로 정해 DB에 저장한다. `Math.random`은 서버와 브라우저의 결과가 어긋난다. 이웃 카드와 다른 배경을 배정하려면 피드 순서가 필요하므로 배정 시점(등록 때인지 편성 확정 때인지)을 2회차에서 정한다.
-- **새 유형 키**: 옛 모양 `ticket`·`hero`·`list`와 새 유형·박스 모양 «티켓»이 같은 말이어서 `shape` 열, `card_shape`, 계측 집계가 섞인다. 새 유형은 따로 키를 둔다(2회차에서 정한다).
+- **무작위 값**: 색·칩 자리·기울기·물결 모양·컬렉션 배지 위치는 카드 id를 시드로 정해 DB에 저장한다. `Math.random`은 서버와 브라우저의 결과가 어긋난다. 배정 시점은 2회차에서 정했다: 등록(승인·저장) 때 이웃을 보지 않고 정하고, 배경색은 같은 시기 노출 카드의 사용 빈도가 고르게 퍼지게 고른다(홈 순서가 유저·날짜마다 섞여 이웃이 고정되지 않는다, §10 「값을 정하는 시점」).
+- **새 유형 키**: 옛 모양 `ticket`·`hero`·`list`와 새 유형·박스 모양 «티켓»이 같은 말이어서 `shape` 열, `card_shape`, 계측 집계가 섞인다. 새 유형은 따로 키를 둔다: `today_cards.feed_type`(2회차, 마이그레이션 349).
 - **이미지 위 제목**: 전체 배경 이미지 유형은 이미지 위 제목의 대비 기준이 없다. 어두운 막이 필요하며 이미지 규칙(8회차) 전에는 켜지 않는다.
 - **박스 구현**: 티켓·우표·반원은 CSS 마스크(radial-gradient), 물결만 시드 SVG 경로로 그리는 것을 권한다. 픽셀 고정 치수는 비율 변환과 충돌하므로 구현 때 맞춘다.
 - **새 색 이름**: 원색 5개는 기존 `--jam-*`를 쓴다. 연한 색은 `--jam-*-soft`, 참조 색은 `--feed-ref-red·blue·lime·pink·yellow`로 `colors.css`에 둔다. 카드에는 hex가 아니라 색 키를 저장한다. 계산용 hex가 코드에도 필요하므로 두 정의가 같은지 대조하는 시험을 둔다.
@@ -628,9 +628,28 @@ code:
 
 | 테이블 | 쓰임 |
 |---|---|
-| `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`)·카드 모양(`shape`)·이미지 안 제목 여부(`title_in_image`). 두 칸은 NULL 허용이고 NULL이면 옛 카드라 규칙으로 판정한다(판정 규칙은 §6의 「카드 모양 판정」) |
+| `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`)·카드 모양(`shape`)·이미지 안 제목 여부(`title_in_image`). 두 칸은 NULL 허용이고 NULL이면 옛 카드라 규칙으로 판정한다(판정 규칙은 §6의 「카드 모양 판정」) 
+| `today_cards`의 개편 구성 칸 15개 | 마이그레이션 349(티켓 20261120_2149, 구현 전 규격 §6 「개편 규격」의 저장 자리). 전부 NULL 허용이고, NULL은 «자동 규칙이 정한다»(제목 칩 낱말·도장은 «없음»)는 뜻이다. 옛 `shape`는 옛 7모양 카드를 위해 그대로 둔다. 아래 「개편 구성 칸」 표 참고 |
 | `today_card_events` | 노출·열람 기록(§9). 기록 시점에 그려진 모양을 `card_shape`로 복사한다(NULL 허용 — 모양 도입 전 기록과 전환 전에 기록된 옛 카드만 NULL이고, 전환 뒤에는 옛 카드도 옛 값 대응표의 모양으로 기록한다). 유저 식별자 없음 |
 | `external_input_daily` | 날씨·특일 하루 값(§4) |
+
+**개편 구성 칸** (마이그레이션 349. 허용 값은 DB CHECK가 지키고, 아래 값 목록의 정본은 이 표다)
+
+| 칸 | 값 | 뜻 |
+|---|---|---|
+| `feed_type` | `hero_box`·`full_image`·`badge_intro`·`badge_only`·`collection_intro`·`drop_pickup`·`text_box`·`gallery_list` | 새 카드 유형 8가지. 옛 모양 `shape`와 이름이 겹치지 않도록 별도 칸이다 |
+| `box_shape` | `round`·`ticket`·`stamp`(우표)·`wave`(물결)·`bump`(반원 돌출) | 박스 모양 5가지. 텍스트 박스와 이미지 마스크 양쪽에 쓴다 |
+| `box_kind` | `text`·`image_mask` | 박스 용도(글자를 담는 박스 / 이미지를 박스 모양으로 자른 마스크) |
+| `bg_color_key`·`chip_color_key`·`box_color_key` | 색 키 15개: `red`·`yellow`·`green`·`purple`·`blue`, `red-soft`·`yellow-soft`·`green-soft`·`purple-soft`·`blue-soft`, `ref-red`·`ref-blue`·`ref-lime`·`ref-pink`·`ref-yellow` | 배경·칩·박스 색. hex가 아니라 키를 저장한다 |
+| `chips` | JSONB 배열 최대 2개. 원소 `{kind: value\|phrase\|label, source?, text?, slot?, tilt?}` | 칩 목록. `value`는 `source`(값의 출처 키), `phrase`는 `text`가 필수이고 `label`은 구분 칩이다. `tilt`는 −8·−6·−4·4·6·8. `slot`은 유형마다 다른 자리 이름(코드 상수가 정본, DB는 소문자·숫자·하이픈 24자 이하만 본다). NULL은 자동, `[]`는 칩 없음 |
+| `title_chip_words` | 텍스트 배열 최대 2개 | 제목 속 칩으로 만들 낱말. 제목에 그대로 들어 있어야 하는 검사는 저장하는 코드가 한다(제목을 고칠 때 DB 오류가 나지 않게 DB는 개수와 공백만 본다). NULL과 `[]`는 같은 뜻(칩 없음) |
+| `show_description` | 불리언 | 설명 문장 노출 여부. NULL이면 유형 기본값 |
+| `stamp_enabled`·`stamp_slot` | 불리언·자리 이름 | 도장 사용 여부와 자리. NULL이면 자동(쓰지 않음) |
+| `list_items`·`list_more_href` | JSONB 배열 최대 3개 `{name, href, image_url?}`·텍스트 | 목록형 카드의 항목(항목마다 링크)과 «→» 칸의 대표 페이지 주소 |
+| `collection_burst` | JSONB 배열 최대 4개 `{x, y, tilt?, size?, delay_ms?}` | 컬렉션 소개 카드의 아이템 배지 도착 위치. `x`·`y`는 가운데에서 카드 가장자리까지를 1로 본 −1~1, `size` 68~84px, `delay_ms` 70~210 |
+| `feed_seed` | 0 이상 2^32 미만 정수 | 무작위 값(색·칩 자리·기울기·물결 모양·배지 위치)을 고정하는 시드. 한 번 정하면 바꾸지 않는다 |
+
+**값을 정하는 시점**(구현은 자동 규칙 회차): 에이전트가 낸 카드는 운영 항목이 승인되어 `today_cards`에 들어갈 때, 어드민에서 만드는 카드는 저장할 때 정하고 이후에는 바꾸지 않는다. 홈 피드는 유저·날짜마다 순서가 섞여(`sortHomeCards`) 카드의 실제 이웃이 유저마다 달라서, 이웃 카드와 겹치지 않는 배정은 저장된 순서로 보장할 수 없다. 그래서 배경색은 같은 시기에 노출되는 카드들의 사용 빈도가 고르게 퍼지도록 정한다(이웃이 아니라 «같은 기간에 겹치는 카드 집합»을 본다). 사용자가 지정한 값은 자동 배정이 덮어쓰지 않는다.
 
 컬럼의 정확한 정의는 [02_DATA_MODEL.md](../02_DATA_MODEL.md)와 `jam-web/src/types/database.generated.ts`가 정본이다. 카드는 어드민 `/admin/today` 화면, 주간 편성 시드 SQL, 에셋 제너레이터 등록 스크립트 세 경로로 만들어지며 `image_source`로 구분된다(§11).
 
