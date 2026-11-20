@@ -75,6 +75,15 @@ export const FEED_COLORS = {
   'ref-yellow': { cssVar: '--feed-ref-yellow', hex: '#F2EC6A' },
 } as const satisfies Record<FeedColorKey, FeedColor>;
 
+/**
+ * 색 키 → CSS `var(--…)` 문자열. 부품은 색을 이 함수만 거쳐 칠한다(hex를 직접 쓰지 않는다).
+ * 개발 뒤 컬러셋을 바꿀 때 어드민(6회차)이 저장한 값을 홈 화면의 CSS 변수로 덮어쓰는 층이 이 함수 뒤에 끼어들 수 있다.
+ * 위 15색 표가 «키 → 변수 이름 + 기본 hex»의 순수 데이터라, hex를 입력으로 받는 순수 함수(5회차 자동 제외 규칙)가 그 위에 붙을 수 있다.
+ */
+export function feedColorVar(key: FeedColorKey): string {
+  return `var(${FEED_COLORS[key].cssVar})`;
+}
+
 // ── 칩 ────────────────────────────────────────────────────────
 
 /** 칩 크기 두 가지. 글자·가로 여백은 위 눈금 대응 표를 따른다(새 값 아님). */
@@ -93,6 +102,15 @@ export const FEED_TILTS = [-8, -6, -4, 4, 6, 8] as const;
 
 export type FeedTilt = (typeof FEED_TILTS)[number];
 
+/**
+ * 칩 자리 오프셋 px — 칩의 바깥 모서리가 박스·이미지 모서리를 넘어 걸치는 정도(칩이 박스 모서리에 «걸쳐» 보이게 하는 값).
+ * `x`는 가로(왼쪽·오른쪽 모서리 밖으로), `y`는 세로(위·아래 모서리 밖으로)다.
+ * 근거: x 12는 작은 칩의 가로 여백(`--spacing-12`)과 같아 칩 글자 시작이 모서리 선에 놓이고,
+ * y 16은 작은 칩 높이 32px의 절반이라 칩 가운데가 모서리 선에 놓인다. 디자인 시스템 눈금에 오프셋 토큰이 없어 서비스 전용으로 둔다.
+ * 채원 확인 필요(PRD 「치수 원칙」이 새 값으로 꼽은 항목). 폭 320px에서 칩이 좌우 16px 바깥으로 나가지 않게 하는 한도는 4회차(자리 배치)가 정한다.
+ */
+export const FEED_CHIP_OFFSET = { x: 12, y: 16 } as const;
+
 // ── 박스 모양 ────────────────────────────────────────────────
 
 /** 박스 모양의 홈·돌출 치수 px. 박스에는 외곽선이 없고 경로는 비율에 맞게 변환해 그린다. */
@@ -105,6 +123,8 @@ export const FEED_BOX = {
   bumpRadius: { itemBadge: 28, image: 52 },
   /** 물결 둘레의 높낮이 범위. 마디마다 깊이·간격을 조금씩 다르게 한다 */
   waveAmplitude: { min: 12, max: 22 },
+  /** 물결 마디 수(PRD 표). 높낮이 `waveAmplitude`와 다른 값이다 */
+  waveCount: 22,
 } as const;
 
 /** 도장 지름 px. 검정 2px 외곽선(`FEED_OUTLINE_WIDTH`)이 있는 도넛 모양이다. */

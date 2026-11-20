@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { FEED_COLORS, FEED_COLOR_KEYS, FEED_TILTS } from '../feedConstants'
+import { FEED_BOX, FEED_CHIP_OFFSET, FEED_COLORS, FEED_COLOR_KEYS, FEED_TILTS, feedColorVar } from '../feedConstants'
 
 const colorsCss = readFileSync(path.resolve(process.cwd(), 'design-system/tokens/colors.css'), 'utf8')
 
@@ -52,5 +52,28 @@ describe('FEED_TILTS 기울기', () => {
     expect(FEED_TILTS).toHaveLength(6)
     expect(FEED_TILTS).not.toContain(0)
     expect([...FEED_TILTS]).toEqual([-8, -6, -4, 4, 6, 8])
+  })
+})
+
+describe('feedColorVar 색 키 → CSS 변수', () => {
+  it.each(FEED_COLOR_KEYS)('%s: var(--…) 문자열로 바뀌고 표의 변수 이름을 가리킨다', (key) => {
+    expect(feedColorVar(key)).toBe(`var(${FEED_COLORS[key].cssVar})`)
+    expect(feedColorVar(key)).toMatch(/^var\(--[\w-]+\)$/)
+  })
+
+  it('hex 값은 돌려주지 않는다', () => {
+    for (const key of FEED_COLOR_KEYS) expect(feedColorVar(key)).not.toMatch(/#/)
+  })
+})
+
+describe('박스·칩 자리 상수', () => {
+  it('물결 마디 수는 22이고 높낮이 범위(12~22)와 다른 값이다', () => {
+    expect(FEED_BOX.waveCount).toBe(22)
+    expect(FEED_BOX.waveAmplitude).toEqual({ min: 12, max: 22 })
+  })
+
+  it('칩 자리 오프셋은 양수다', () => {
+    expect(FEED_CHIP_OFFSET.x).toBeGreaterThan(0)
+    expect(FEED_CHIP_OFFSET.y).toBeGreaterThan(0)
   })
 })
