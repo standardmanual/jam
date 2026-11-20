@@ -246,12 +246,20 @@ export function auraGlowLayers(colors: readonly string[], options: { gray?: bool
   ]
 }
 
-/** 카드 안쪽 가장자리에 도는 넓고 부드러운 밝은 빛(inset `box-shadow`). 중간 색을 더 희게 올린 색을 쓴다 */
+/**
+ * 카드 안쪽 가장자리를 따라 도는 밝은 빛(inset `box-shadow` 두 겹). 사용자 시안의 밝은 부분 모양을 따른다(2026-11-20).
+ * 시안에서 밝은 빛은 카드 윤곽을 따라 감싸고, 모서리와 좌우 가장자리가 가장 밝으며 안쪽으로 갈수록 진한 색에 녹아든다.
+ * 1) 넓은 띠: 가장자리에서 불투명에 가깝게 시작해 옆면은 폭의 약 14%(360px 카드 기준 약 50px)까지 번진다.
+ *    y 오프셋을 위로 밀어 위쪽 띠는 옆면보다 얇게 하고, 아래는 바탕이 흰색이라 어느 쪽이든 티가 나지 않는다
+ * 2) 좁은 테두리 빛: 가장자리 바로 안쪽만 더 하얗게 올려 윤곽에 밝은 림이 생기게 한다
+ * 색은 밝은 색 자리를 흰색 쪽으로 섞은 것이다(미획득이면 무채색).
+ */
 export function auraGlowInsetShadow(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; size?: number | 'container' } = {}): string {
-  const [, mid] = glowPalette(colors, options)
+  const [light] = glowPalette(colors, options)
   const { len } = auraGlowMetrics(options.size)
-  const soft = mixHex(mid, '#ffffff', 0.82)
-  return `inset 0 0 ${len(192)} ${len(30)} ${withAlpha(soft, 0.65)}, inset 0 0 ${len(72)} 0 ${withAlpha(mixHex(mid, '#ffffff', 0.92), 0.8)}`
+  const rim = mixHex(light, '#ffffff', 0.35)
+  const edge = mixHex(light, '#ffffff', 0.7)
+  return `inset 0 ${len(-10)} ${len(76)} ${len(14)} ${withAlpha(rim, 0.9)}, inset 0 0 ${len(28)} 0 ${withAlpha(edge, 0.85)}`
 }
 
 function lerpRgb(from: Rgb, to: Rgb, t: number): Rgb {
