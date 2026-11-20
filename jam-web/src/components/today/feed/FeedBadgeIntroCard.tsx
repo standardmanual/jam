@@ -1,0 +1,22 @@
+import type { FeedCardView } from '@/lib/today/cardView'
+import { FEED_BADGE_AREA_HEIGHT, FEED_CARD_MIN_HEIGHT } from '@/lib/today/feedConstants'
+import { FeedBadgeArt, FeedCardShell, FeedChipLayer, FeedStampLayer, FeedTextBlock } from './FeedCardParts'
+
+/**
+ * 배지 소개(`badge_intro`) — 위에 배지 그림을 박스 없이 가운데에(208×208, 영역 높이 216), 아래에 제목과 설명 (티켓 20261121_0041).
+ *
+ * 샘플: 카드 최소 높이 384. 칩은 배지 그림 둘레(그림과 같은 크기의 앵커 모서리에 걸침)다. 배지 그림이 없으면 빈 영역을 유지한다(자원 아이콘을 그리지 않는다).
+ */
+export default function FeedBadgeIntroCard({ view }: { view: FeedCardView }) {
+  return (
+    <FeedCardShell view={view} minHeight={FEED_CARD_MIN_HEIGHT.badge_intro} className="justify-between gap-4">
+      <div className="flex items-center justify-center" style={{ height: FEED_BADGE_AREA_HEIGHT }}>
+        <FeedBadgeArt view={view}>
+          <FeedChipLayer view={view} />
+          <FeedStampLayer view={view} />
+        </FeedBadgeArt>
+      </div>
+      <FeedTextBlock view={view} />
+    </FeedCardShell>
+  )
+}
