@@ -509,7 +509,7 @@ code:
 | 체크인·장소 | 필요한 배지 수(«배지 3종류»), 장소 이름 | «체크인» |
 | 드랍·픽업 | 없음(문구 칩 «드랍»·«픽업») | «아이템 배지» |
 
-**구현 위치**(4회차-1, 화면 연결은 4-2 이후): 유형별 칩 자리·개수 한도 `jam-web/src/lib/today/feedChipSlots.ts`, 자리·기울기 배정 `jam-web/src/lib/today/feedAssign.ts`의 `assignChipPlacement`.
+**구현 위치**(4회차-1, 화면 연결은 4-2 이후): 유형별 칩 자리·개수 한도 `jam-web/src/lib/today/feedChipSlots.ts`, 자리·기울기 배정 `jam-web/src/lib/today/feedAssign.ts`의 `assignChipPlacement`, DB 값 칩 규칙표와 값→문구 변환·12자 경고 `jam-web/src/lib/today/feedValueChips.ts`.
 
 #### 도장
 
