@@ -138,3 +138,50 @@ export const FEED_MOTION = {
   delayMs: { min: 70, max: 210 },
   easing: 'cubic-bezier(0.2, 1.5, 0.4, 1)',
 } as const;
+
+// ── 카드 유형별 치수·상수 (티켓 20261121_0041, 상위 20261120_2026 4회차-2) ─────────────────
+
+/**
+ * 전체 배경 이미지(`full_image`)를 홈에 그릴지. 꺼 둔다(거짓).
+ * 근거: 이미지 위 제목의 대비 기준이 없다(PRD 「개편 규격」 «이미지 위 제목», 이미지 규칙은 8회차 전). 거짓이면 `toCardView`가 이 유형을
+ * 옛 모양 경로로 보내 화면이 비지 않는다. 컴포넌트·Story는 이 값과 무관하게 있다.
+ */
+export const FEED_FULL_IMAGE_ENABLED = false;
+
+/**
+ * 전체 배경 이미지 위 제목 뒤의 어두운 막. 제목 대비를 위해 이미지가 어두워야 하므로 이 막 위의 제목 글자는 `--snow`다(채원이 정할 값: 농도·글자색).
+ * `opacity`는 아래쪽 끝의 농도(0~1)이고 위로 갈수록 옅어져 `heightPercent`(카드 높이 대비 %)에서 투명해진다. 색은 `--foreground` 토큰을 섞어 만든다(hex 없음).
+ */
+export const FEED_FULL_IMAGE_SCRIM = { opacity: 0.55, heightPercent: 60 } as const;
+
+/**
+ * 카드 유형별 최소 높이 px(샘플 치수, 2026-11-20 사용자 확정, 폭 390 화면의 카드 폭 358 기준). 높이는 `min-height`로 두고 내용이 길면 늘어난다.
+ * `full_image`는 정사각이라 높이 대신 비율(1:1)로 둔다(358은 참고 값).
+ */
+export const FEED_CARD_MIN_HEIGHT = {
+  hero_box: 360,
+  text_box: 440,
+  badge_intro: 384,
+  badge_only: 332,
+  full_image: 358,
+} as const;
+
+/** 히어로 이미지 박스 높이(샘플 326×184). 폭은 카드 폭에서 좌우 여백 16px씩을 뺀 값을 채운다. */
+export const FEED_HERO_IMAGE_HEIGHT = 184;
+
+/** 텍스트 박스 최소 높이(샘플 326×408 = 카드 440 − 위아래 여백 16×2). 티켓 모양 홈(지름 56)이 겹치지 않는 190px 이상이다. */
+export const FEED_TEXT_BOX_MIN_HEIGHT = 408;
+
+/** 배지 그림 한 변(샘플 208×208)과 그림이 놓이는 영역 높이(샘플 216). */
+export const FEED_BADGE_SIZE = 208;
+export const FEED_BADGE_AREA_HEIGHT = 216;
+
+/** 칩이 이미지 위 모서리 «안쪽»에 놓일 때(`full_image`) 모서리에서 띄우는 px. 디자인 시스템 `--spacing-16`과 같다. */
+export const FEED_CHIP_INSET = 16;
+
+/** 도장이 자리 모서리에서 안쪽으로 들어오는 px(`--spacing-12`)와 기울기(deg, 샘플은 오른쪽 14°). 왼쪽 자리는 부호를 뒤집는다. */
+export const FEED_STAMP_INSET = 12;
+export const FEED_STAMP_TILT = 14;
+
+/** 글자를 담는 텍스트 박스의 안쪽 여백 px(`--spacing-32`). 물결 가장자리(최대 22px)와 티켓 홈 반지름(28px)이 글자에 닿지 않게 하는 값이다. */
+export const FEED_TEXT_BOX_PADDING = 32;

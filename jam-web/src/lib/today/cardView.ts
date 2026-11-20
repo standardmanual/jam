@@ -14,6 +14,8 @@ import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import type { TodayCardLayoutType, TodayCardTemplateType } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
+import { isRenderedFeedType, resolveFeedLook, type FeedLook, type RenderedFeedType } from './feedLook'
+import type { FeedValueChipSource } from './feedValueChips'
 import {
   CARD_RESOURCES,
   fallbackEmptyTileShape,
@@ -257,13 +259,69 @@ export interface ListCardView extends CardViewBase {
   ranking?: RankingBoardResult | null
 }
 
-export type CardView = ImageCardView | BriefCardView | ListCardView
+/**
+ * 홈피드 개편 카드(티켓 20261121_0041, 상위 20261120_2026 4회차-2). 옛 7모양의 `shape` 대신 `feedType`(`today_cards.feed_type`)이 판별 값이다.
+ * 값만 담는다(훅·조회 없음). 색·칩·도장·박스 같은 «그릴 값»은 `resolveFeedLook`이 낸 `look` 하나에 있다.
+ * `shape?: undefined`는 `view.shape`를 읽는 옛 코드(어드민 미리보기 등)가 이 갈래를 만나도 컴파일되고 «모양 없음»으로 읽게 하는 자리다.
+ * 계측 정보(`tracking`)의 `shape`에는 행의 옛 모양 값(또는 옛 판정 값)을 그대로 넣는다 — 기존 집계가 섞이지 않는다(GA 이벤트 파라미터는 바꾸지 않았다).
+ */
+export interface FeedCardView extends CardViewBase {
+  feedType: RenderedFeedType
+  shape?: undefined
+  /** 박스·히어로 이미지·전체 배경 이미지. 없으면(null) 박스는 색 면이다. */
+  imageUrl: string | null
+  /** 배지 소개·배지만의 배지 그림(카드에 걸린 첫 배지). 없으면 `imageUrl`을 쓰고 둘 다 없으면 빈 영역이다. */
+  badgeImageUrl?: string | null
+  /** 배지 그림의 접근성 이름(카드에 걸린 첫 배지 이름) */
+  badgeName?: string
+  look: FeedLook
+}
+
+export type CardView = ImageCardView | BriefCardView | ListCardView | FeedCardView
 
 export interface ToCardViewOptions {
   /** 기준 시각(남은 시간 계산). 없으면 지금. 값을 주면 표시 데이터의 `now`에도 남는다. */
   now?: Date
   /** true면 계측 정보를 싣는다(홈 그리기). 기본은 싣지 않는다 — 미리보기가 계측을 남기지 않게 하려는 기본값이다. */
   tracking?: boolean
+}
+
+/**
+ * 개편 카드의 값 칩 입력. 자원(템플릿)마다 지금 `TodayCardWithHref`가 이미 싣고 있는 값만 읽는다(기간·보상 포인트·컬렉션 아이템 수·체크인 필요 배지 수·장소 이름).
+ * 미션 조건 값·배지 달성 기준·레벨은 조회 확장이 필요해 4-4로 미뤘다(그 칩은 만들지 않는다). 칩을 내지 않는 자원(기사·랭킹·레시피 공개)은 null이다.
+ * 대응: 미션 소개 → 미션, 컬렉션 소식 → 컬렉션, 배지 소개 → 액티비티 배지, 지역 트렌드 → 체크인, 드랍 알림 → 아이템 배지(드랍·픽업), 미션을 가리키는 자동 카드 → 미션.
+ */
+function feedValueSourceOf(
+  card: TodayCardWithHref,
+  resource: CardResource,
+  values: {
+    mission: TodayCardWithHref['resolved_mission']
+    collectionItemCount: number | null | undefined
+    badgeCount: number
+  },
+): FeedValueChipSource | null {
+  const missionSource = (): FeedValueChipSource => ({
+    resource: 'mission',
+    endsAt: values.mission?.ends_at ?? null,
+    rewardPoints: values.mission?.reward_points ?? null,
+  })
+  if (card.template_type === 'location_trend') {
+    return { resource: 'checkin', requiredBadgeCount: values.badgeCount, placeName: card.region_label }
+  }
+  switch (resource) {
+    case 'mission':
+      return missionSource()
+    case 'auto':
+      return values.mission ? missionSource() : null
+    case 'collection':
+      return { resource: 'collection', itemCount: values.collectionItemCount ?? null }
+    case 'badge':
+      return { resource: 'activity_badge' }
+    case 'drop':
+      return { resource: 'drop_pickup' }
+    default:
+      return null
+  }
 }
 
 /**
@@ -332,6 +390,29 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
       templateType: card.template_type,
       shape,
     }
+  }
+
+  // 개편 카드: `feed_type`이 지금 그릴 수 있는 유형일 때만 새 갈래다. NULL·4-3 유형·모르는 값·꺼진 `full_image`는 아래 옛 경로 그대로다.
+  if (isRenderedFeedType(card.feed_type)) {
+    const first = badges[0]
+    const lookSource = feedValueSourceOf(card, resource, {
+      mission,
+      collectionItemCount: collection?.item_count,
+      badgeCount: badges.length,
+    })
+    const look = resolveFeedLook({ card, feedType: card.feed_type, valueSource: lookSource, now })
+    // 이미지 순서는 옛 이미지 모양과 같다: 커버 → 미션 대표 이미지(미션 소개 카드만) → 첫 배지 그림
+    let imageUrl = card.cover_image_url || null
+    if (!imageUrl && card.template_type === 'mission_spotlight' && mission?.image_url) imageUrl = mission.image_url
+    else if (!imageUrl && first?.image_url) imageUrl = first.image_url
+    const feedView: FeedCardView = { ...base, feedType: card.feed_type, imageUrl, look }
+    if (first?.image_url) feedView.badgeImageUrl = first.image_url
+    if (first?.name) feedView.badgeName = first.name
+    // 설명은 유형·`show_description`이 정한다(옛 모양의 «배지 소개·컨텐츠 소개만» 규칙과 별개)
+    const feedDescription = look.showDescription ? nonBlank(card.description) : null
+    if (feedDescription) feedView.description = feedDescription
+    else delete feedView.description
+    return feedView
   }
 
   if (shape === 'list') {

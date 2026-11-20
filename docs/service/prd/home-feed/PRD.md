@@ -447,6 +447,8 @@ code:
 - 모든 카드에 CTA 버튼을 넣지 않는다.
 - 카드를 누르면 가는 곳(`target_href`)은 이 개편에서 바뀌지 않는다. 목록형만 항목마다 따로 링크를 건다.
 
+**구현 위치**(4회차-2 중간, 컬렉션 소개·드랍·픽업·목록형은 4-3): 행의 새 칸과 자동 계산을 합친 «그릴 값» 해석 `jam-web/src/lib/today/feedLook.ts`의 `resolveFeedLook`, 칩 자리 이름→화면 위치 `jam-web/src/lib/today/feedChipLayout.ts`, 표시 데이터 갈래(`FeedCardView`) `jam-web/src/lib/today/cardView.ts`. `feed_type`이 NULL인 카드·4-3 유형·모르는 값은 옛 7모양 경로가 그대로 그린다. 전체 배경 이미지(`full_image`)는 꺼져 있다(`FEED_FULL_IMAGE_ENABLED = false`, `feedConstants.ts`).
+
 #### 박스 모양 5가지
 
 박스 모양은 고르는 옵션이다. 같은 모양을 텍스트 박스(세로로 긴 쪽)와 이미지 마스크(가로로 긴 쪽, 이미지를 이 모양으로 잘라 보임)에 모두 쓸 수 있고, 아이템 배지 박스(작은 칸)에도 쓴다. 박스에는 외곽선을 두지 않는다. 박스 경로는 비율에 맞게 변환해 그린다(SVG 경로).
