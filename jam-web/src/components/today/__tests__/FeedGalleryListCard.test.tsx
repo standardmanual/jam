@@ -38,6 +38,7 @@ vi.mock('@/components/today/TodayCardTracker', () => ({
 }))
 
 import FeedCard from '../feed/FeedCard'
+import { isSafeListHref } from '../feed/FeedGalleryListCard'
 import TodayCard from '../TodayCard'
 import type { FeedCardView, FeedCardViewListItem } from '@/lib/today/cardView'
 import { FEED_CARD_MIN_HEIGHT, FEED_GALLERY } from '@/lib/today/feedConstants'
@@ -214,6 +215,55 @@ describe('목록형 — 링크와 계측의 분리', () => {
     expect(anchors(html)).toHaveLength(1)
     expect(html).toContain('data-track-click="true"')
     expect(html).toContain('data-links-only="false"')
+  })
+})
+
+describe('목록형 — 주소 안전 검사(isSafeListHref)', () => {
+  it('내부 경로(/로 시작, //로 시작하지 않음)와 https://로 시작하는 값만 안전하다', () => {
+    for (const ok of ['/drops', '/drops?place=mountain', '/', 'https://j-a-m.app/drops', 'HTTPS://example.com']) expect(isSafeListHref(ok)).toBe(true)
+  })
+
+  it('프로토콜 상대(//)·역슬래시·http·javascript·data·빈 값·공백·상대 경로는 안전하지 않다', () => {
+    for (const bad of ['//evil.example/x', '/\\evil.example', 'http://example.com', 'javascript:alert(1)', 'data:text/html,x', '', ' /drops', '/dro ps', 'drops', 'mailto:a@b.c']) {
+      expect(isSafeListHref(bad)).toBe(false)
+    }
+    expect(isSafeListHref(null)).toBe(false)
+    expect(isSafeListHref(undefined)).toBe(false)
+  })
+
+  it('안전하지 않은 항목 주소는 링크 없이 그린다(그림·이름은 그대로, 나머지 항목은 링크)', () => {
+    const items: FeedCardViewListItem[] = [
+      { name: '산', href: 'javascript:alert(1)', imageUrl: null },
+      { name: '편의점', href: '//evil.example/x', imageUrl: null },
+      { name: '마트', href: '/drops?place=mart', imageUrl: null },
+    ]
+    const html = render(listView({ items, tracking: true }))
+    expect(html).not.toContain('javascript:')
+    expect(html).not.toContain('evil.example')
+    const all = anchors(html)
+    expect(all).toHaveLength(2) // 마트 + 화살표
+    expect(all[0]).toContain('href="/drops?place=mart"')
+    expect(count(html, 'aspect-square')).toBe(4)
+    expect(html).toContain('산')
+    expect(html).toContain('편의점')
+  })
+
+  it('https:// 주소 항목은 링크로 그린다', () => {
+    const html = render(listView({ items: [{ name: '외부', href: 'https://j-a-m.app/x', imageUrl: null }], tracking: true }))
+    expect(anchors(html)[0]).toContain('href="https://j-a-m.app/x"')
+  })
+
+  it.each(['//evil.example', 'http://example.com', 'javascript:alert(1)', 'drops'])('list_more_href가 %s면 화살표 칸을 그리지 않는다', (moreHref) => {
+    const html = render(listView({ moreHref, tracking: true }))
+    expect(count(html, 'aspect-square')).toBe(3)
+    expect(html).not.toContain('전체 보기')
+    expect(html).not.toContain('bg-foreground')
+    expect(anchors(html)).toHaveLength(3)
+  })
+
+  it('list_more_href가 https://로 시작하면 화살표 칸을 그린다', () => {
+    const html = render(listView({ moreHref: 'https://j-a-m.app/drops', tracking: true }))
+    expect(anchors(html)[3]).toContain('href="https://j-a-m.app/drops"')
   })
 })
 

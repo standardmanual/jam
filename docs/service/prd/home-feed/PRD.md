@@ -449,7 +449,7 @@ code:
 
 **구현 위치**(4회차-2, 컬렉션 소개·드랍·픽업·목록형은 4-3): 히어로·텍스트·배지 소개·배지만·전체 배경 이미지 다섯 유형의 컴포넌트와 조립 `jam-web/src/components/today/feed/`(`FeedCard.tsx`), 행의 새 칸과 자동 계산을 합친 «그릴 값» 해석 `jam-web/src/lib/today/feedLook.ts`의 `resolveFeedLook`, 칩 자리 이름→화면 위치 `jam-web/src/lib/today/feedChipLayout.ts`. `feed_type`이 NULL인 카드·모르는 값은 옛 7모양 경로가 그대로 그린다(4-3의 세 유형도 그릴 값이 없는 행은 같다, 아래 4회차-3 줄). **전체 배경 이미지(`full_image`)는 꺼져 있다**(`FEED_FULL_IMAGE_ENABLED = false`, `feedConstants.ts`): 이미지 위 제목의 대비 기준이 없어 홈에서는 옛 모양으로 그리고, 컴포넌트와 Story만 있다. 컴포넌트의 제목 글자는 `--foreground`이고 제목 뒤 막의 기본 농도는 0(`FEED_FULL_IMAGE_SCRIM`)이다. 켤 때 채원이 글자색·막을 함께 정한다. 대비 기준은 이미지 규칙(8회차)에서 정한다.
 
-**구현 위치**(4회차-3, 티켓 20261121_0115): 컬렉션 소개 `jam-web/src/components/today/feed/FeedCollectionCard.tsx`(모션 래퍼만 `'use client'`인 `FeedCollectionBurst.tsx`), 드랍·픽업 `FeedDropPickupCard.tsx`, 목록형 `FeedGalleryListCard.tsx`, 같은 `feed/` 폴더의 조립 `FeedCard.tsx`가 세 유형을 더해 여덟 유형이 된다. 컬렉션 배지 배치(`look.burst`, 저장된 `collection_burst` 또는 카드 시드)는 `jam-web/src/lib/today/feedLook.ts`의 `resolveCollectionBurst`, 세 유형의 치수·모션 상수는 `feedConstants.ts`(`FEED_BURST`·`FEED_DROP_PICKUP`·`FEED_GALLERY`)다. 그릴 값이 없는 행(컬렉션 대표 그림=카드 `cover_image_url` 없음, 드랍·픽업 배지 0개, 목록 항목 0개)은 `toCardView`가 옛 경로로 보낸다. 컬렉션의 아이템 배지 그림은 컬렉션 조회(`fetchCollectionsById`)가 이미 읽는 컬렉션 아이템 배지 조회에서 최대 4개(이름순, 같은 이름은 하나)를 가져오고, 드랍·픽업은 카드가 가리키는 배지의 앞 3개다. 목록형은 카드 전체 링크 없이 항목·화살표 링크만 건다. 칩은 자리표(`feedChipSlots.ts`)를 따라 드랍·픽업이 박스 줄 네 모서리(`box-row-*`) 중 대각선 두 개(큰 칩 «드랍»·«픽업», 4-3 재작업에서 4-1 자리표를 넓혔다), 목록형이 카드 오른쪽 위 한 개다. 컬렉션 소개의 모션은 모션 래퍼가 카드 루트 요소(`FeedCardShell`의 `markRoot` 표식)를 관찰한다.
+**구현 위치**(4회차-3, 티켓 20261121_0115): 컬렉션 소개 `jam-web/src/components/today/feed/FeedCollectionCard.tsx`(모션 래퍼만 `'use client'`인 `FeedCollectionBurst.tsx`), 드랍·픽업 `FeedDropPickupCard.tsx`, 목록형 `FeedGalleryListCard.tsx`, 같은 `feed/` 폴더의 조립 `FeedCard.tsx`가 세 유형을 더해 여덟 유형이 된다. 컬렉션 배지 배치(`look.burst`, 저장된 `collection_burst` 또는 카드 시드)는 `jam-web/src/lib/today/feedLook.ts`의 `resolveCollectionBurst`, 세 유형의 치수·모션 상수는 `feedConstants.ts`(`FEED_BURST`·`FEED_DROP_PICKUP`·`FEED_GALLERY`)다. 그릴 값이 없는 행(컬렉션 대표 그림=카드 `cover_image_url` 없음, 드랍·픽업 배지 0개, 목록 항목 0개)은 `toCardView`가 옛 경로로 보낸다. 컬렉션의 아이템 배지 그림은 컬렉션 조회(`fetchCollectionsById`)가 이미 읽는 컬렉션 아이템 배지 조회에서 최대 4개(이름순, 같은 이름은 하나)를 가져오고, 드랍·픽업은 카드가 가리키는 배지의 앞 3개다. 목록형은 카드 전체 링크 없이 항목·화살표 링크만 건다. 칩은 자리표(`feedChipSlots.ts`)를 따라 드랍·픽업이 박스 줄 네 모서리(`box-row-*`) 중 대각선 두 개(큰 칩 «드랍»·«픽업», 4-3 재작업에서 4-1 자리표를 넓혔다), 목록형이 카드 오른쪽 위 한 개다. 목록형의 항목 주소와 대표 페이지 주소는 내부 경로 또는 `https://`로 시작하는 값만 링크로 그린다(`isSafeListHref`). 컬렉션 소개의 모션은 모션 래퍼가 카드 루트 요소(`FeedCardShell`의 `markRoot` 표식)를 관찰한다.
 
 #### 박스 모양 5가지
 
@@ -523,7 +523,7 @@ code:
 
 #### 목록형
 
-제목, 설명 아래에 4칸 한 줄 갤러리를 둔다. 앞의 세 칸은 항목(정사각 그림, 모서리 12px, 아래에 이름 12px 굵게 두 줄까지)이고 항목마다 따로 링크를 건다. 마지막 칸은 검정 바탕의 «→» 화살표이고 그 목록을 대표하는 페이지로 간다(대표 페이지 주소를 카드가 갖는다). 항목이 3개보다 적으면 빈 칸 없이 화살표 칸을 앞으로 당긴다. 카드 전체에는 링크를 걸지 않는다(카드 전체 링크를 끄면 클릭 계측도 꺼지므로 링크와 계측을 분리한다). 화살표 칸의 접근성 이름은 «{제목} 전체 보기»다. 대표 페이지 주소가 없으면 화살표 칸을 그리지 않고, 항목이 0개면 카드를 그리지 않는다. 칸 하나의 폭은 약 85px라 터치 영역 44px을 채운다.
+제목, 설명 아래에 4칸 한 줄 갤러리를 둔다. 앞의 세 칸은 항목(정사각 그림, 모서리 12px, 아래에 이름 12px 굵게 두 줄까지)이고 항목마다 따로 링크를 건다. 마지막 칸은 검정 바탕의 «→» 화살표이고 그 목록을 대표하는 페이지로 간다(대표 페이지 주소를 카드가 갖는다). 항목이 3개보다 적으면 빈 칸 없이 화살표 칸을 앞으로 당긴다. 카드 전체에는 링크를 걸지 않는다(카드 전체 링크를 끄면 클릭 계측도 꺼지므로 링크와 계측을 분리한다). 화살표 칸의 접근성 이름은 «{제목} 전체 보기»다. 대표 페이지 주소가 없으면 화살표 칸을 그리지 않고, 항목이 0개면 카드를 그리지 않는다. 칸 하나의 폭은 폭 358 카드에서 약 75px, 폭 320 화면(카드 288)에서 약 58px라 터치 영역 44px을 채운다. 항목 주소와 대표 페이지 주소는 내부 경로(`/`로 시작하고 `//`로 시작하지 않는 값) 또는 `https://`로 시작하는 값만 링크로 그린다. 그 밖의 값이면 항목은 링크 없이 그림·이름만 그리고 화살표 칸은 그리지 않는다.
 
 #### 컬렉션 모션
 

@@ -11,9 +11,10 @@ import { FeedCardShell, FeedChipLayer, FeedTextBlock } from './FeedCardParts'
  *
  * 샘플: 카드 최소 높이 260(내용이 늘면 늘어난다), 칸 4개(`grid-cols-4`, 칸 간격 8). 항목 칸은 정사각(`aspect-square`)·모서리 12(`rounded-xl`)·면 색은 박스 색, 안에 그림(없으면 항목 이름 글자),
  * 아래에 이름 12px 굵게 두 줄까지. 마지막 칸은 검정 바탕 정사각 안의 «→»이고 `listMoreHref`로 간다(주소가 없으면 그리지 않는다). 항목이 3개보다 적으면 화살표 칸이 앞으로 당겨진다(빈 칸이 없다).
- * 폭 390 화면(카드 358)에서 칸 하나는 (326 − 칸 간격 24) ÷ 4 ≈ 75px, 폭 320 화면(카드 288)에서도 58px라 터치 영역 44px을 채운다(티켓·PRD는 «약 85px»로 적었다). 칩(`card-top-right`)은 카드 오른쪽 위 안쪽이다.
+ * 폭 390 화면(카드 358)에서 칸 하나는 (326 − 칸 간격 24) ÷ 4 ≈ 75px, 폭 320 화면(카드 288)에서도 58px라 터치 영역 44px을 채운다. 칩(`card-top-right`)은 카드 오른쪽 위 안쪽이다.
  *
  * **링크와 계측**: 카드 전체에는 링크를 걸지 않는다(조립 `FeedCard`가 `CardFrame`에 `link={false}`를 준다). 항목마다 자기 링크가 있고 클릭은 카드 클릭으로 기록된다(`CardFrame`의 `trackLinkClicks`).
+ * 주소(`href`·`listMoreHref`)는 내부 경로(`/`로 시작하고 `//`·`/\`로 시작하지 않는 값) 또는 `https://`로 시작하는 값만 링크로 그린다(`isSafeListHref`). 그 밖이면 항목은 링크 없이 그리고 화살표 칸은 그리지 않는다.
  * 계측 정보(`view.tracking`)가 없는 미리보기에서는 항목이 링크가 아니라 글자·그림만 그려 눌러도 이동하지 않는다(다른 유형의 미리보기와 같다).
  * 화살표 칸의 접근성 이름은 «{제목} 전체 보기»이고 항목 칸은 아래 이름 글자가 곧 이름이다(그림은 장식이라 `alt`가 비어 있다).
  */
@@ -24,6 +25,16 @@ const LINK_CLASS =
   'rounded-xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--link)]'
 const NAME_CLASS = 'line-clamp-2 text-center text-xs font-bold text-foreground break-keep wrap-break-word'
 const TILE_CLASS = 'relative flex aspect-square items-center justify-center overflow-hidden rounded-xl'
+
+/**
+ * 링크로 그려도 안전한 주소인가: 내부 경로(`/`로 시작하고 `//`·`/\`로 시작하지 않는 값) 또는 `https://`로 시작하는 값.
+ * `javascript:`·`http:`·`//host`(프로토콜 상대)·`/\host`·빈 값·공백이 낀 값은 거짓이다.
+ */
+export function isSafeListHref(href: string | null | undefined): href is string {
+  if (typeof href !== 'string' || href.length === 0 || /\s/.test(href)) return false
+  if (href.startsWith('/')) return !href.startsWith('//') && !href.startsWith('/\\')
+  return /^https:\/\//i.test(href)
+}
 
 /** 칸 하나: 링크로 그릴 수 있으면(`href`) `Link`, 아니면 같은 모양의 `div`. */
 function Cell({ href, label, children }: { href?: string; label?: string; children: ReactNode }) {
@@ -37,12 +48,12 @@ function Cell({ href, label, children }: { href?: string; label?: string; childr
 
 function ItemCell({ view, item }: { view: FeedCardView; item: FeedCardViewListItem }) {
   return (
-    <Cell href={view.tracking ? item.href : undefined}>
+    <Cell href={view.tracking && isSafeListHref(item.href) ? item.href : undefined}>
       <span className={TILE_CLASS} style={{ backgroundColor: feedColorVar(view.look.colors.box) }}>
         <SafeImage
           src={item.imageUrl}
           alt=""
-          sizes="85px"
+          sizes="75px"
           className="object-cover"
           fallback={<span aria-hidden="true" className="px-1 text-center text-xs font-bold text-foreground break-keep wrap-break-word">{item.name}</span>}
         />
@@ -90,7 +101,7 @@ export default function FeedGalleryListCard({ view }: { view: FeedCardView }) {
         {items.map((item, index) => (
           <ItemCell key={index} view={view} item={item} />
         ))}
-        {view.listMoreHref ? <MoreCell view={view} href={view.listMoreHref} /> : null}
+        {isSafeListHref(view.listMoreHref) ? <MoreCell view={view} href={view.listMoreHref} /> : null}
       </div>
       <FeedChipLayer view={view} positionOf={cardTopRightChipPosition} />
     </FeedCardShell>
