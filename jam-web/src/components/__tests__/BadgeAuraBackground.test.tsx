@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, auraGlowInsetShadow, auraGlowLayers, auraGlowMetrics, auraMeshBase, auraMeshLayers, auraMeshSeed, tuneAuraColors } from '@/lib/badgeAura'
+import { AURA_GLOW_BASE_COLOR, AURA_GLOW_TUNING, AURA_MESH_TUNING, auraGlowInsetShadow, auraGlowLayers, auraGlowMetrics, auraMeshBase, auraMeshLayers, auraMeshSeed, tuneAuraColors } from '@/lib/badgeAura'
 
 const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 
@@ -166,7 +166,7 @@ describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
   })
 
   it('덩어리는 진한 색과 중간 색 두 가지만 쓴다(밝은 색은 바탕)', () => {
-    const [, mid, dark] = tuneAuraColors(COLORS, AURA_GLOW_TUNING)
+    const [, mid, dark] = tuneAuraColors(COLORS, AURA_MESH_TUNING)
     const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')
     const blobs = auraMeshLayers(COLORS, { seed: 'a' }).slice(1, 3).join('|')
     const used = new Set([...blobs.matchAll(/rgba\((\d+),(\d+),(\d+),/g)].map((m) => `${m[1]},${m[2]},${m[3]}`))
@@ -185,5 +185,21 @@ describe('BadgeAuraBackground — mesh 변형 (티켓 20261120_1136)', () => {
 
   it('색이 hex가 아니면 아무것도 그리지 않는다', () => {
     expect(renderToStaticMarkup(<BadgeAuraBackground colors={['red']} variant="mesh" />)).toBe('')
+  })
+
+  it('메시는 글로우보다 채도가 낮다 — 같은 대표색에서 세 자리 모두 채도가 낮거나 같다', () => {
+    const sat = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      const max = Math.max(r, g, b)
+      const min = Math.min(r, g, b)
+      const l = (max + min) / 2
+      return max === min ? 0 : (max - min) / (1 - Math.abs(2 * l - 1))
+    }
+    const vivid = ['#ffd6e8', '#ff3d8b', '#d6006a']
+    const glow = tuneAuraColors(vivid, AURA_GLOW_TUNING)
+    const mesh = tuneAuraColors(vivid, AURA_MESH_TUNING)
+    for (let i = 0; i < 3; i++) expect(sat(mesh[i])).toBeLessThanOrEqual(sat(glow[i]) + 0.001)
+    expect(sat(mesh[2])).toBeLessThan(sat(glow[2]) - 0.1)
+    expect(AURA_MESH_TUNING.saturationMax).toBeLessThanOrEqual(0.5)
   })
 })

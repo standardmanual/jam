@@ -286,6 +286,15 @@ const MESH_LAYOUTS: readonly MeshLayout[] = [
 /** 선형 바탕의 두 끝색을 흰색 쪽으로 섞는 비율. 크면 연하다 */
 const MESH_BASE_WHITEN = 0.5
 
+/** 메시 배경의 색 보정표. 글로우보다 채도를 낮췄다(사용자 지시, 2026-11-20: 채도 상한 0.76 → 0.5, 배율 0.8 → 0.5) */
+export const AURA_MESH_TUNING: AuraTuning = {
+  lightness: [0.94, 0.88, 0.8],
+  saturationScale: 0.5,
+  saturationMin: 0.25,
+  saturationMax: 0.5,
+  slotSaturation: [0.85, 1, 0.95],
+}
+
 /** 문자열 → 0 이상의 정수(FNV-1a). 같은 문자열이면 항상 같은 값이다 */
 export function auraMeshSeed(key: string): number {
   let h = 0x811c9dc5
@@ -298,7 +307,7 @@ export function auraMeshSeed(key: string): number {
 
 /** 메시 배경의 바탕색: 밝은 색 자리. 미획득이면 무채색 */
 export function auraMeshBase(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning } = {}): string {
-  return glowPalette(colors, options)[0]
+  return glowPalette(colors, { ...options, tuning: options.tuning ?? AURA_MESH_TUNING })[0]
 }
 
 /**
@@ -306,7 +315,7 @@ export function auraMeshBase(colors: readonly string[], options: { gray?: boolea
  * 덩어리 배치는 `seed`가 고른다
  */
 export function auraMeshLayers(colors: readonly string[], options: { gray?: boolean; tuning?: AuraTuning; seed?: string } = {}): string[] {
-  const [, mid, dark] = glowPalette(colors, options)
+  const [, mid, dark] = glowPalette(colors, { ...options, tuning: options.tuning ?? AURA_MESH_TUNING })
   const layout = MESH_LAYOUTS[auraMeshSeed(options.seed ?? colors.join(',')) % MESH_LAYOUTS.length]
   const white = AURA_GLOW_BASE_COLOR
   return [
