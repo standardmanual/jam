@@ -149,10 +149,11 @@ export const FEED_MOTION = {
 export const FEED_FULL_IMAGE_ENABLED = false;
 
 /**
- * 전체 배경 이미지 위 제목 뒤의 어두운 막. 제목 대비를 위해 이미지가 어두워야 하므로 이 막 위의 제목 글자는 `--snow`다(채원이 정할 값: 농도·글자색).
- * `opacity`는 아래쪽 끝의 농도(0~1)이고 위로 갈수록 옅어져 `heightPercent`(카드 높이 대비 %)에서 투명해진다. 색은 `--foreground` 토큰을 섞어 만든다(hex 없음).
+ * 전체 배경 이미지 위 제목 뒤의 막. 지금은 농도 0(막 없음)이다 — 제목 글자는 다른 유형처럼 `--foreground`이고, 이미지 위 제목의 대비 기준은 이미지 규칙(8회차)에서 채원이 정한다.
+ * 켤 때 채원이 글자색·막을 함께 정한다(어두운 막을 쓰면 글자색도 같이 바뀌어야 하므로 한쪽만 바꾸지 않는다).
+ * `opacity`는 아래쪽 끝의 농도(0~1)이고 위로 갈수록 옅어져 `heightPercent`(카드 높이 대비 %)에서 투명해진다. 색은 `--foreground` 토큰을 섞어 만든다(hex 없음). 값이 0이면 막을 그리지 않는다.
  */
-export const FEED_FULL_IMAGE_SCRIM = { opacity: 0.55, heightPercent: 60 } as const;
+export const FEED_FULL_IMAGE_SCRIM = { opacity: 0, heightPercent: 60 } as const;
 
 /**
  * 카드 유형별 최소 높이 px(샘플 치수, 2026-11-20 사용자 확정, 폭 390 화면의 카드 폭 358 기준). 높이는 `min-height`로 두고 내용이 길면 늘어난다.

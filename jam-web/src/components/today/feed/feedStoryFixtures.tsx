@@ -90,5 +90,5 @@ export function Cell({ label, children }: { label: string; children: ReactNode }
 
 /** 칸을 가로로 늘어놓는 줄 */
 export function Row({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-start gap-8 p-4">{children}</div>
+  return <div className="flex flex-wrap items-start gap-8 p-4">{/* spacing-allow: Story 전용 칸 사이 간격 32px, 서비스 화면이 아님(티켓 20261121_0041) */}{children}</div>
 }

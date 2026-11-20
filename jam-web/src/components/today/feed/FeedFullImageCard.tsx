@@ -11,8 +11,9 @@ import { FeedChipLayer, FeedStampLayer } from './FeedCardParts'
  * (PRD 「개편 규격」 «이미지 위 제목», 이미지 규칙은 8회차). 이 컴포넌트와 Story는 켜질 때를 위해 있다.
  *
  * - 샘플: 정사각(1:1, 358×358), 제목 30/36 굵기 900 왼쪽 아래 16px, 설명 숨김, 도장 선택.
- * - 제목 뒤에는 어두운 막이 필요하다: 이미지가 밝으면 제목이 묻힌다. 막은 아래에서 위로 옅어지는 그라데이션이고 농도·높이는 `FEED_FULL_IMAGE_SCRIM`(채원이 정할 값)이다.
- *   막이 어두우므로 이 유형의 제목 글자는 `--snow`다(다른 유형은 `--foreground`). 색은 토큰을 섞어 만들고 hex를 쓰지 않는다.
+ * - 제목 글자는 다른 유형처럼 `--foreground`다(`--snow` 아님). 이미지 위 제목의 대비 기준은 이미지 규칙(8회차)에서 채원이 정하므로 지금은 어두운 막을 깔지 않는다
+ *   (`FEED_FULL_IMAGE_SCRIM.opacity`가 0이면 막을 그리지 않는다, 상수는 남겼다). 켤 때 채원이 글자색·막을 함께 정한다.
+ *   막을 쓰게 되면 아래에서 위로 옅어지는 그라데이션이고 색은 토큰을 섞어 만든다(hex 없음).
  * - 칩은 이미지 위 모서리 안쪽(`inset`)이다. 제목이 왼쪽 아래에 얹히므로 그 자리(`image-bottom-left`)는 쓰지 않는다(자리 표가 세 자리만 허용한다).
  * - 이미지가 없으면 카드 배경 색 면이다. 이미지는 장식이라 `alt`가 비어 있다 — 제목이 글자로 보인다.
  */
@@ -30,14 +31,16 @@ export default function FeedFullImageCard({ view }: { view: FeedCardView }) {
       style={{ backgroundColor: feedColorVar(look.colors.bg) }}
     >
       <SafeImage src={view.imageUrl} alt="" sizes={IMAGE_SIZES} className="object-cover" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0"
-        style={{
-          height: `${FEED_FULL_IMAGE_SCRIM.heightPercent}%`,
-          backgroundImage: `linear-gradient(to top, ${SCRIM_COLOR}, transparent)`,
-        }}
-      />
+      {FEED_FULL_IMAGE_SCRIM.opacity > 0 && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0"
+          style={{
+            height: `${FEED_FULL_IMAGE_SCRIM.heightPercent}%`,
+            backgroundImage: `linear-gradient(to top, ${SCRIM_COLOR}, transparent)`,
+          }}
+        />
+      )}
       <ChipTitle
         as="h3"
         title={view.title}
@@ -45,7 +48,7 @@ export default function FeedFullImageCard({ view }: { view: FeedCardView }) {
         size="lg"
         colors={titleChips.colors}
         tilts={titleChips.tilts}
-        className="absolute inset-x-4 bottom-4 text-3xl font-black tracking-[-0.02em] text-snow whitespace-pre-line"
+        className="absolute inset-x-4 bottom-4 text-3xl font-black tracking-[-0.02em] text-foreground whitespace-pre-line"
       />
       <FeedChipLayer view={view} />
       <FeedStampLayer view={view} />

@@ -447,7 +447,7 @@ code:
 - 모든 카드에 CTA 버튼을 넣지 않는다.
 - 카드를 누르면 가는 곳(`target_href`)은 이 개편에서 바뀌지 않는다. 목록형만 항목마다 따로 링크를 건다.
 
-**구현 위치**(4회차-2, 컬렉션 소개·드랍·픽업·목록형은 4-3): 히어로·텍스트·배지 소개·배지만·전체 배경 이미지 다섯 유형의 컴포넌트와 조립 `jam-web/src/components/today/feed/`(`FeedCard.tsx`), 행의 새 칸과 자동 계산을 합친 «그릴 값» 해석 `jam-web/src/lib/today/feedLook.ts`의 `resolveFeedLook`, 칩 자리 이름→화면 위치 `jam-web/src/lib/today/feedChipLayout.ts`. `feed_type`이 NULL인 카드·4-3 유형·모르는 값은 옛 7모양 경로가 그대로 그린다. **전체 배경 이미지(`full_image`)는 꺼져 있다**(`FEED_FULL_IMAGE_ENABLED = false`, `feedConstants.ts`): 이미지 위 제목의 대비 기준이 없어 홈에서는 옛 모양으로 그리고, 컴포넌트와 Story만 있다. 컴포넌트의 제목 글자는 `--foreground`이고 제목 뒤 막의 기본 농도는 0(`FEED_FULL_IMAGE_SCRIM`)이다. 켤 때 채원이 글자색·막을 함께 정한다.
+**구현 위치**(4회차-2, 컬렉션 소개·드랍·픽업·목록형은 4-3): 히어로·텍스트·배지 소개·배지만·전체 배경 이미지 다섯 유형의 컴포넌트와 조립 `jam-web/src/components/today/feed/`(`FeedCard.tsx`), 행의 새 칸과 자동 계산을 합친 «그릴 값» 해석 `jam-web/src/lib/today/feedLook.ts`의 `resolveFeedLook`, 칩 자리 이름→화면 위치 `jam-web/src/lib/today/feedChipLayout.ts`. `feed_type`이 NULL인 카드·4-3 유형·모르는 값은 옛 7모양 경로가 그대로 그린다. **전체 배경 이미지(`full_image`)는 꺼져 있다**(`FEED_FULL_IMAGE_ENABLED = false`, `feedConstants.ts`): 이미지 위 제목의 대비 기준이 없어 홈에서는 옛 모양으로 그리고, 컴포넌트와 Story만 있다. 컴포넌트의 제목 글자는 `--foreground`이고 제목 뒤 막의 기본 농도는 0(`FEED_FULL_IMAGE_SCRIM`)이다. 켤 때 채원이 글자색·막을 함께 정한다. 대비 기준은 이미지 규칙(8회차)에서 정한다.
 
 #### 박스 모양 5가지
 

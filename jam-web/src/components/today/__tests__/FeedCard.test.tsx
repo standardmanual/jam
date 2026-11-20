@@ -269,19 +269,21 @@ describe('배지만(badge_only)', () => {
 })
 
 describe('전체 배경 이미지(full_image) — 꺼져 있지만 컴포넌트는 그린다', () => {
-  it('정사각(aspect-square), 이미지가 카드 전체, 제목은 왼쪽 아래 16px(snow 글자), 설명 숨김', () => {
+  it('정사각(aspect-square), 이미지가 카드 전체, 제목은 왼쪽 아래 16px(--foreground 글자), 설명 숨김', () => {
     const html = render(feedView('full_image', { description: '그려지지 않는 설명', show_description: true }))
     expect(html).toContain('aspect-square')
     expect(html).toContain('cover.png')
     expect(html).toContain('inset-x-4 bottom-4')
-    expect(html).toContain('text-snow')
+    expect(html).toMatch(/<h3[^>]*text-foreground/)
+    expect(html).not.toMatch(/<h3[^>]*text-snow/)
     expect(html).not.toContain('그려지지 않는 설명')
   })
 
-  it('제목 뒤에 어두운 막이 있고 농도·높이는 상수다(hex 없음)', () => {
+  it('제목 뒤 막은 기본 농도 0이라 그리지 않는다(켤 때 채원이 글자색·막을 함께 정한다, hex 없음)', () => {
     const html = render(feedView('full_image'))
-    expect(html).toContain(`height:${FEED_FULL_IMAGE_SCRIM.heightPercent}%`)
-    expect(html).toContain(`color-mix(in srgb, var(--foreground) ${Math.round(FEED_FULL_IMAGE_SCRIM.opacity * 100)}%, transparent)`)
+    expect(FEED_FULL_IMAGE_SCRIM.opacity).toBe(0)
+    expect(html).not.toContain('linear-gradient')
+    expect(html).not.toContain(`height:${FEED_FULL_IMAGE_SCRIM.heightPercent}%`)
   })
 
   it('칩은 이미지 위 모서리 안쪽이고 제목 자리(왼쪽 아래)를 쓰지 않는다', () => {
