@@ -137,12 +137,25 @@ function ColorsPage() {
         <Swatch token="--accent-soft-hover" desc="accent-soft의 hover 면" />
       </Section>
 
-      <Section title="강조색 5가지 (사용처는 사용자가 따로 지정)">
+      <Section title="강조색 5가지 (사용처는 사용자가 따로 지정, 홈피드 새 카드의 배경·칩·박스·도장 포함)">
         <TagChip token="--jam-red" note="사용처 미지정" />
         <TagChip token="--jam-yellow" note="사용처 미지정" />
         <TagChip token="--jam-green" note="컬렉션·인벤토리 진행도 바 채움 + 완성한 컬렉션 카드 면" />
         <TagChip token="--jam-purple" note="온보딩 퀘스트 «지금 눌러야 할 곳»(펄스 링·CTA 면)" />
         <TagChip token="--jam-blue" note="사용처 미지정" />
+      </Section>
+
+      <Section title="홈피드 카드 전용 10색 (Card·Button·상태색에는 쓰지 않는다)">
+        <TagChip token="--jam-red-soft" note="연한 색 · 원색 --jam-red와 짝" />
+        <TagChip token="--jam-yellow-soft" note="연한 색 · 원색 --jam-yellow와 짝" />
+        <TagChip token="--jam-green-soft" note="연한 색 · 원색 --jam-green과 짝" />
+        <TagChip token="--jam-purple-soft" note="연한 색 · 원색 --jam-purple과 짝" />
+        <TagChip token="--jam-blue-soft" note="연한 색 · 원색 --jam-blue와 짝" />
+        <TagChip token="--feed-ref-red" note="참조 색" />
+        <TagChip token="--feed-ref-blue" note="참조 색" />
+        <TagChip token="--feed-ref-lime" note="참조 색" />
+        <TagChip token="--feed-ref-pink" note="참조 색" />
+        <TagChip token="--feed-ref-yellow" note="참조 색" />
       </Section>
 
       <Section title="Semantic — Border & Overlay">
