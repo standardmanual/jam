@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
-import { FEED_BURST, FEED_MOTION } from '@/lib/today/feedConstants'
+import { FEED_BURST, FEED_CARD_ROOT_ATTR, FEED_MOTION } from '@/lib/today/feedConstants'
 
 /**
  * 컬렉션 소개의 모션 래퍼 (티켓 20261121_0115, 상위 20261120_2026 4회차-3). 서비스 전용(홈피드 한정). 컬렉션 소개에서 브라우저 스크립트가 필요한 유일한 부분이다.
  *
- * 영역(높이 240) 안에 아이템 배지를 가운데에 겹쳐 두고, 영역이 화면에 55% 넘게 들어오면 배지마다 정한 자리·기울기로 퍼뜨린다. 영역이 화면 밖으로 완전히 나가면 다시 모으고,
+ * 영역(높이 240) 안에 아이템 배지를 가운데에 겹쳐 두고, **카드 전체**가 화면에 55% 넘게 들어오면 배지마다 정한 자리·기울기로 퍼뜨린다(영역이 아니라 카드 루트 요소를 관찰한다 — 샘플도 카드 요소다). 카드가 화면 밖으로 완전히 나가면 다시 모으고,
  * 다시 들어오면 퍼뜨려 재생한다(PRD 「컬렉션 모션」). `children`(대표 그림·칩·도장)은 서버가 그린 마크업이고 배지들 위에 놓인다.
  *
  * - **기본 HTML은 퍼진 모습**이다(`static`). 스크립트가 늦거나 꺼져도 배지가 사라지지 않는다. 스크립트가 도착해 첫 관찰 결과를 받으면 «모인 모습»을 전환 없이 걸고(`collected`),
  *   그다음 프레임에 전환을 켜서 퍼뜨린다 — 화면에 이미 보이는 카드도 모였다 퍼지는 장면이 재생된다.
  * - **동작 줄이기**(`prefers-reduced-motion: reduce`)가 켜져 있으면 관찰자를 만들지 않아 퍼진 모습 그대로이고 전환이 없다. 관찰자가 없는 브라우저도 같다.
  * - 모션은 `transform`·`opacity`만 쓴다. 배지의 퍼진 자리는 영역 크기에 비례(`50cqw`·`50cqh`)해 카드 폭이 달라도 같은 비율로 닿는다.
+ * - 관찰 대상은 가장 가까운 카드 루트(`FEED_CARD_ROOT_ATTR` 표식, `FeedCardShell`의 `markRoot`)다. 표식 조상이 없으면(단독으로 쓰는 경우) 영역 요소를 관찰한다. 서버 컴포넌트 구조는 그대로다.
  * - 이 관찰자(임계값 0.55)는 노출 계측의 관찰자(`TodayCardTracker`, 50%)와 따로 만든다. 서로의 콜백·해제에 영향을 주지 않는다.
  * - 배지는 장식이다: `alt=""`·`aria-hidden`(카드 제목이 이름을 말한다).
  */
@@ -121,7 +122,8 @@ export default function FeedCollectionBurst({
       },
       { threshold: [0, FEED_BURST.visibleRatio] },
     )
-    observer.observe(el)
+    // 카드 루트(표식 조상)를 관찰한다. 없으면 영역 요소다
+    observer.observe(el.closest?.(`[${FEED_CARD_ROOT_ATTR}]`) ?? el)
     return () => {
       cancelAnimationFrame(frame)
       observer.disconnect()

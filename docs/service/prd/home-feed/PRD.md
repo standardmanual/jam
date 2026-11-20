@@ -449,7 +449,7 @@ code:
 
 **구현 위치**(4회차-2, 컬렉션 소개·드랍·픽업·목록형은 4-3): 히어로·텍스트·배지 소개·배지만·전체 배경 이미지 다섯 유형의 컴포넌트와 조립 `jam-web/src/components/today/feed/`(`FeedCard.tsx`), 행의 새 칸과 자동 계산을 합친 «그릴 값» 해석 `jam-web/src/lib/today/feedLook.ts`의 `resolveFeedLook`, 칩 자리 이름→화면 위치 `jam-web/src/lib/today/feedChipLayout.ts`. `feed_type`이 NULL인 카드·모르는 값은 옛 7모양 경로가 그대로 그린다(4-3의 세 유형도 그릴 값이 없는 행은 같다, 아래 4회차-3 줄). **전체 배경 이미지(`full_image`)는 꺼져 있다**(`FEED_FULL_IMAGE_ENABLED = false`, `feedConstants.ts`): 이미지 위 제목의 대비 기준이 없어 홈에서는 옛 모양으로 그리고, 컴포넌트와 Story만 있다. 컴포넌트의 제목 글자는 `--foreground`이고 제목 뒤 막의 기본 농도는 0(`FEED_FULL_IMAGE_SCRIM`)이다. 켤 때 채원이 글자색·막을 함께 정한다. 대비 기준은 이미지 규칙(8회차)에서 정한다.
 
-**구현 위치**(4회차-3, 티켓 20261121_0115): 컬렉션 소개 `jam-web/src/components/today/feed/FeedCollectionCard.tsx`(모션 래퍼만 `'use client'`인 `FeedCollectionBurst.tsx`), 드랍·픽업 `FeedDropPickupCard.tsx`, 목록형 `FeedGalleryListCard.tsx`, 같은 `feed/` 폴더의 조립 `FeedCard.tsx`가 세 유형을 더해 여덟 유형이 된다. 컬렉션 배지 배치(`look.burst`, 저장된 `collection_burst` 또는 카드 시드)는 `jam-web/src/lib/today/feedLook.ts`의 `resolveCollectionBurst`, 세 유형의 치수·모션 상수는 `feedConstants.ts`(`FEED_BURST`·`FEED_DROP_PICKUP`·`FEED_GALLERY`)다. 그릴 값이 없는 행(컬렉션 대표 그림=카드 `cover_image_url` 없음, 드랍·픽업 배지 0개, 목록 항목 0개)은 `toCardView`가 옛 경로로 보낸다. 컬렉션의 아이템 배지 그림은 컬렉션 조회(`fetchCollectionsById`)가 이미 읽는 컬렉션 아이템 배지 조회에서 최대 4개(이름순, 같은 이름은 하나)를 가져오고, 드랍·픽업은 카드가 가리키는 배지의 앞 3개다. 목록형은 카드 전체 링크 없이 항목·화살표 링크만 건다. 칩은 자리표(`feedChipSlots.ts`)를 따라 드랍·픽업이 박스 줄 네 모서리(`box-row-*`) 중 대각선 두 개(큰 칩 «드랍»·«픽업», 4-3 재작업에서 4-1 자리표를 넓혔다), 목록형이 카드 오른쪽 위 한 개다.
+**구현 위치**(4회차-3, 티켓 20261121_0115): 컬렉션 소개 `jam-web/src/components/today/feed/FeedCollectionCard.tsx`(모션 래퍼만 `'use client'`인 `FeedCollectionBurst.tsx`), 드랍·픽업 `FeedDropPickupCard.tsx`, 목록형 `FeedGalleryListCard.tsx`, 같은 `feed/` 폴더의 조립 `FeedCard.tsx`가 세 유형을 더해 여덟 유형이 된다. 컬렉션 배지 배치(`look.burst`, 저장된 `collection_burst` 또는 카드 시드)는 `jam-web/src/lib/today/feedLook.ts`의 `resolveCollectionBurst`, 세 유형의 치수·모션 상수는 `feedConstants.ts`(`FEED_BURST`·`FEED_DROP_PICKUP`·`FEED_GALLERY`)다. 그릴 값이 없는 행(컬렉션 대표 그림=카드 `cover_image_url` 없음, 드랍·픽업 배지 0개, 목록 항목 0개)은 `toCardView`가 옛 경로로 보낸다. 컬렉션의 아이템 배지 그림은 컬렉션 조회(`fetchCollectionsById`)가 이미 읽는 컬렉션 아이템 배지 조회에서 최대 4개(이름순, 같은 이름은 하나)를 가져오고, 드랍·픽업은 카드가 가리키는 배지의 앞 3개다. 목록형은 카드 전체 링크 없이 항목·화살표 링크만 건다. 칩은 자리표(`feedChipSlots.ts`)를 따라 드랍·픽업이 박스 줄 네 모서리(`box-row-*`) 중 대각선 두 개(큰 칩 «드랍»·«픽업», 4-3 재작업에서 4-1 자리표를 넓혔다), 목록형이 카드 오른쪽 위 한 개다. 컬렉션 소개의 모션은 모션 래퍼가 카드 루트 요소(`FeedCardShell`의 `markRoot` 표식)를 관찰한다.
 
 #### 박스 모양 5가지
 
@@ -527,7 +527,7 @@ code:
 
 #### 컬렉션 모션
 
-컬렉션 소개 카드가 스크롤되어 화면에 55% 넘게 들어오면, 대표 그림 뒤 가운데에 있던 아이템 배지 4개가 방사형으로 불규칙하게 퍼진다. 배지마다 시작 시각을 70~210ms씩 다르게 하고, 0.72초 동안 살짝 지나쳤다가 제자리로 돌아오는 탄성 곡선(`cubic-bezier(0.2, 1.5, 0.4, 1)`)으로 움직인다. 카드가 화면 밖으로 완전히 나가면 다시 모이고, 다시 들어오면 재생된다. 기기에서 «동작 줄이기»를 켠 사용자에게는 모션 없이 퍼진 모습만 보인다. 기본 HTML은 퍼진 모습이고 스크립트가 모으는 상태를 건다(스크립트가 늦어도 배지가 사라지지 않는다). 모션을 지켜보는 관찰자(55%)는 노출 계측의 관찰자(50%)와 분리한다. 배지 4개의 도착 위치와 기울기, 크기(68~84px)는 카드마다 정해 저장한다.
+컬렉션 소개 카드(카드 전체 요소, 대표 그림 영역이 아니다)가 스크롤되어 화면에 55% 넘게 들어오면, 대표 그림 뒤 가운데에 있던 아이템 배지 4개가 방사형으로 불규칙하게 퍼진다. 배지마다 시작 시각을 70~210ms씩 다르게 하고, 0.72초 동안 살짝 지나쳤다가 제자리로 돌아오는 탄성 곡선(`cubic-bezier(0.2, 1.5, 0.4, 1)`)으로 움직인다. 카드가 화면 밖으로 완전히 나가면 다시 모이고, 다시 들어오면 재생된다. 기기에서 «동작 줄이기»를 켠 사용자에게는 모션 없이 퍼진 모습만 보인다. 기본 HTML은 퍼진 모습이고 스크립트가 모으는 상태를 건다(스크립트가 늦어도 배지가 사라지지 않는다). 모션을 지켜보는 관찰자(55%)는 노출 계측의 관찰자(50%)와 분리한다. 배지 4개의 도착 위치와 기울기, 크기(68~84px)는 카드마다 정해 저장한다.
 
 #### 이미지 규칙
 

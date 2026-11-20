@@ -71,6 +71,15 @@ const render = (view: FeedCardView) => renderToStaticMarkup(<FeedCard view={view
 const count = (html: string, needle: string) => html.split(needle).length - 1
 
 describe('컬렉션 소개 — 구성', () => {
+  it('카드 면(최소 높이를 가진 요소)이 카드 루트 표식을 달고 있어 모션 래퍼가 카드 전체를 관찰한다', () => {
+    for (const badgeCount of [0, 4]) {
+      const html = render(collectionView({ badgeCount }))
+      expect(count(html, 'data-feed-card-root')).toBe(1)
+      // 표식은 카드 면(배경색·최소 높이) 요소에 있다
+      expect(html).toMatch(/<div class="relative flex flex-col rounded-2xl p-4[^"]*" style="[^"]*min-height:416px[^"]*" data-feed-card-root="">/)
+    }
+  })
+
   it('최소 높이 416, 영역 높이 240, 대표 그림 168×168(object-contain)이고 alt는 컬렉션 이름이다', () => {
     const html = render(collectionView({ description: '활판 골목 끝 현상소.' }))
     expect(html).toContain(`min-height:${FEED_CARD_MIN_HEIGHT.collection_intro}px`)

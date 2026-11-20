@@ -4,7 +4,7 @@
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 훅(`useState`·`useRef`·`useEffect`)을 슬롯 배열로 바꿔 컴포넌트 함수를 직접 부르고,
  * 관찰자(`IntersectionObserver`)·`requestAnimationFrame`·`matchMedia`는 가짜로 대신한다(`TodayCardTracker.test.tsx`와 같은 방식).
  *
- * 확인하는 것: ① 처음(스크립트 도착 전)은 퍼진 모습 ② 관찰자 임계값 0.55이고 노출 계측 관찰자(50%)와 별개 ③ 55% 넘게 보이면 퍼지고 완전히 나가면 모이고 다시 들어오면 재생
+ * 확인하는 것: ① 처음(스크립트 도착 전)은 퍼진 모습 ② 관찰자 임계값 0.55이고 **카드 루트 요소**를 관찰하며(영역이 아니다, 표식 조상이 없으면 영역) 노출 계측 관찰자(50%)와 별개 ③ 55% 넘게 보이면 퍼지고 완전히 나가면 모이고 다시 들어오면 재생
  ④ 이미 보이는 채로 도착해도 «모인 모습 → 한 프레임 뒤 퍼짐»이 재생 ⑤ 동작 줄이기·관찰자 없음이면 관찰자를 만들지 않고 전환이 없다 ⑥ transform·opacity만 쓴다 ⑦ 해제.
  *
  * 실행: cd jam-web && npx vitest run src/components/today/__tests__/FeedCollectionBurst.test.tsx
@@ -39,7 +39,7 @@ vi.mock('react', async (importOriginal) => {
 })
 
 import FeedCollectionBurst, { burstBadgeStyle, nextBurstView, INITIAL_BURST_VIEW, type FeedBurstBadge } from '../feed/FeedCollectionBurst'
-import { FEED_BURST, FEED_MOTION } from '@/lib/today/feedConstants'
+import { FEED_BURST, FEED_CARD_ROOT_ATTR, FEED_MOTION } from '@/lib/today/feedConstants'
 
 const BADGES: FeedBurstBadge[] = [
   { imageUrl: '/b1.png', x: -0.69, y: -0.25, tilt: 8, size: 80, delayMs: 70 },
@@ -85,13 +85,17 @@ afterEach(() => {
 
 type Child = ReactElement<{ style: Record<string, string | number>; 'aria-hidden'?: string }>
 
+/** 카드 루트 표식을 가진 가짜 조상. 영역 요소의 `closest`가 이것을 돌려준다. */
+const cardRoot = { name: 'card-root' }
+const area = { closest: vi.fn((selector: string): unknown => (selector === `[${FEED_CARD_ROOT_ATTR}]` ? cardRoot : null)) }
+
 /** 훅 순서를 처음으로 돌리고 컴포넌트를 불러 돌려받은 영역 요소를 얻는다. 영역 요소의 ref에는 가짜 요소를 단다. */
 function render(): ReactElement<{ children: [Child[], unknown] }> {
   hooks.index = 0
   hooks.effects = []
   const element = FeedCollectionBurst({ badges: BADGES, children: null }) as ReactElement<{ children: [Child[], unknown] }>
   const areaRef = hooks.slots[0] as { current: unknown }
-  if (!areaRef.current) areaRef.current = {}
+  if (!areaRef.current) areaRef.current = area
   return element
 }
 
@@ -126,12 +130,24 @@ describe('FeedCollectionBurst — 기본 모습', () => {
 })
 
 describe('FeedCollectionBurst — 관찰자', () => {
-  it('임계값에 0.55가 있고 영역 요소를 관찰한다(노출 계측의 50% 관찰자와 별개의 관찰자다)', () => {
+  it('임계값에 0.55가 있고 영역(높이 240)이 아니라 카드 루트 요소를 관찰한다(노출 계측의 50% 관찰자와 별개의 관찰자다)', () => {
     const observer = mountWithObserver()
     expect(FEED_BURST.visibleRatio).toBe(0.55)
     expect(observer.options.threshold).toContain(0.55)
     expect(observer.options.threshold).not.toContain(0.5)
-    expect(observer.observe).toHaveBeenCalledWith((hooks.slots[0] as { current: unknown }).current)
+    expect(area.closest).toHaveBeenCalledWith('[data-feed-card-root]')
+    expect(observer.observe).toHaveBeenCalledTimes(1)
+    expect(observer.observe).toHaveBeenCalledWith(cardRoot)
+    expect(observer.observe).not.toHaveBeenCalledWith(area)
+  })
+
+  it('카드 루트 표식을 가진 조상이 없으면 영역 요소를 관찰한다(단독으로 쓸 때)', () => {
+    render()
+    const slot = hooks.slots[0] as { current: unknown }
+    const alone = { closest: vi.fn(() => null) }
+    slot.current = alone
+    hooks.effects[0]()
+    expect(observers[0].observe).toHaveBeenCalledWith(alone)
   })
 
   it('첫 결과가 «화면 밖»이면 모인 모습을 전환 없이 걸고 그대로 둔다', () => {

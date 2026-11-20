@@ -228,6 +228,9 @@ export const FEED_BURST_SAMPLE = [
   { px: 112, py: 48, tilt: 12, size: 84, delayMs: 210 },
 ] as const;
 
+/** 카드 면 요소가 «카드 루트»임을 알리는 표식 속성. 컬렉션 소개의 모션 래퍼(`FeedCollectionBurst`)가 이 요소를 찾아 관찰하고, `FeedCardShell`의 `markRoot`가 단다. */
+export const FEED_CARD_ROOT_ATTR = 'data-feed-card-root';
+
 /**
  * 드랍·픽업(`drop_pickup`): 박스 줄 높이 184(샘플), 칸 간격 8(`gap-2`), 칸마다 배지 80×80을 가운데에 둔다. 칸 수는 3이다.
  * 칩 «드랍»·«픽업»(큰 칩 두 개)은 박스 줄의 대각선 모서리(`box-row-*`)에 걸친다(걸침 정도는 `FEED_CHIP_OFFSET`).
