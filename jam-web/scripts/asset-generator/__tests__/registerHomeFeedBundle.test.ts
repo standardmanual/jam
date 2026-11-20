@@ -724,7 +724,7 @@ describe('buildTodayCardInsertPayload', () => {
     });
   });
 
-  it('생성 타입 컬럼 대조: today_cards Insert 컬럼 중 DB 기본값에 맡기는 created_at·created_by와 아직 쓰지 않는 pattern_no를 뺀 전부를 채운다', () => {
+  it('생성 타입 컬럼 대조: today_cards Insert 컬럼 중 DB 기본값에 맡기는 created_at·created_by와 아직 쓰지 않는 pattern_no·홈피드 개편 새 칸 15개를 뺀 전부를 채운다', () => {
     const source = fs.readFileSync(GENERATED_TYPES_FILE, 'utf8');
     const table = source.slice(source.indexOf('      today_cards: {'));
     const insert = table.slice(table.indexOf('Insert: {'), table.indexOf('Update: {'));
@@ -732,7 +732,27 @@ describe('buildTodayCardInsertPayload', () => {
     expect(columns.length).toBeGreaterThan(15);
     // pattern_no(마이그레이션 211, 티켓 20261001_2056)는 NULL로 두는 칸이다. 채우는 쪽은 카드를 만드는 티켓 1500이고,
     // 칸이 적용되기 전에 등록 스크립트가 이 칸을 보내면 삽입이 실패하므로 그때까지 페이로드에 넣지 않는다.
-    const expected = columns.filter((c) => !['created_at', 'created_by', 'pattern_no'].includes(c)).sort();
+    // 홈피드 개편 2회차(마이그레이션 349, 티켓 20261120_2149)가 더한 새 칸 15개도 이 단계에서는 채우지 않는다.
+    // 어드민·에이전트가 이 칸을 쓰게 되는 것은 5~6회차이고, 그 전에는 NULL·기본값으로 둔다.
+    const NEW_COLUMNS_NOT_FILLED_YET = [
+      'bg_color_key',
+      'box_color_key',
+      'box_kind',
+      'box_shape',
+      'chip_color_key',
+      'chips',
+      'collection_burst',
+      'feed_seed',
+      'feed_type',
+      'list_items',
+      'list_more_href',
+      'show_description',
+      'stamp_enabled',
+      'stamp_slot',
+      'title_chip_words',
+    ];
+    const notFilled = ['created_at', 'created_by', 'pattern_no', ...NEW_COLUMNS_NOT_FILLED_YET];
+    const expected = columns.filter((c) => !notFilled.includes(c)).sort();
     expect(Object.keys(payloadOf()).sort()).toEqual(expected);
   });
 });
