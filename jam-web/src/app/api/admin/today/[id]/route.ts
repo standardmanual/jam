@@ -89,7 +89,8 @@ async function decideFeedColumnsForPatch(
     excludedPairs: [],
   })
 
-  if (firstTime) result.patch.feed_seed = decided.feed_seed
+  // 처음 정하는 경우, 그리고 유형은 있는데 시드가 비어 있던 카드(색만 자동으로 되돌린 경우)는 쓴 시드를 저장해 홈이 같은 값을 그리게 한다.
+  if (firstTime || existing.feed_seed === null) result.patch.feed_seed = decided.feed_seed
   for (const key of COLOR_KEYS) {
     if (firstTime || autoRequested.includes(key)) result.patch[key] = decided[key]
   }

@@ -248,6 +248,17 @@ describe('PATCH /api/admin/today/[id]', () => {
     expect(state.usageFilters).toHaveLength(0)
   })
 
+  it('유형은 있는데 시드가 비어 있는 카드의 색을 자동으로 되돌리면 쓴 시드를 함께 저장한다', async () => {
+    state.existing = { feed_type: 'hero_box', feed_seed: null, title: '제목', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime', starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
+    const res = await patch({ feed_type: 'hero_box', bg_color_key: null })
+    expect(res.status).toBe(200)
+    const saved = state.updates[0]
+    // 홈은 저장된 시드로 같은 값을 그리므로 색을 정하는 데 쓴 시드가 저장돼야 어긋나지 않는다
+    expect(saved.feed_seed).toBe(12345)
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, bgUsage: {} })
+    expect(saved.bg_color_key).toBe(direct.bg)
+  })
+
   it('기존 카드에 처음 유형을 지정하며 시드가 없으면 시드와 비어 있는 색을 한 번 정한다', async () => {
     state.existing = { feed_type: null, feed_seed: null, title: '제목', bg_color_key: null, chip_color_key: null, box_color_key: null, starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
     state.usageRows = [{ bg_color_key: 'red' }]
