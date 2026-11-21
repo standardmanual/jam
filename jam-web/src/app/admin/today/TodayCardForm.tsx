@@ -66,6 +66,7 @@ import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import { toCardView } from '@/lib/today/cardView'
 import TodayCardPreview from './TodayCardPreview'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/admin/ui/accordion'
 import FeedCardSection, { titleChipWordError } from './FeedCardSection'
 import {
   buildFeedCardColumns,
@@ -114,6 +115,28 @@ interface TodayCardFormProps {
   /** 페이지 제목·뒤로 가기 — 섹션 열 위에 둔다(레일은 페이지 맨 위에서 시작, TodayEditorShell 주석) */
   header?: ReactNode
 }
+
+/** 새 카드(시드가 아직 없는 카드)의 미리보기 전용 고정 시드. 저장할 때 서버가 정하는 값과 무관하다 — 미리보기가 입력마다 바뀌지 않게 상수로 둔다. */
+export const FEED_PREVIEW_SEED = 1121
+
+/**
+ * 폼의 개편 칸을 미리보기 카드 행에 실을 값으로 바꾼다(티켓 20261121_1318).
+ * 유형이 «옛 모양 그대로»(빈 값)이면 아무 칸도 싣지 않아 옛 7모양 미리보기 그대로다. «자동»인 칸은 `NULL`로 싣고,
+ * 저장된 시드(수정 화면)가 없으면 고정 시드를 쓴다.
+ */
+export function feedPreviewFields(values: FeedCardFormValues): Partial<TodayCardRow> {
+  if (!values.feedType) return {}
+  const columns = buildFeedCardColumns(values)
+  const seed = columns.feed_seed
+  return { ...columns, feed_seed: typeof seed === 'number' && Number.isFinite(seed) ? seed : FEED_PREVIEW_SEED }
+}
+
+/** 미리보기와 홈이 다를 수 있는 것 — 한 줄씩 «미리보기와 홈이 다를 수 있는 것» 접이식에 적는다. */
+export const FEED_PREVIEW_LIMITS: readonly string[] = [
+  '자동 배경색은 저장할 때 같은 시기에 노출되는 카드의 사용 빈도를 보고 정해져서 미리보기와 다를 수 있어요.',
+  '미션·배지 값 칩의 조건·보상·기간은 폼이 미션과 배지 전체를 읽지 않아 폼이 가진 값(배지 이름·지역)까지만 보여요.',
+  '컬렉션 소개의 배지 그림은 폼이 컬렉션의 배지를 읽지 않아 미리보기에 보이지 않아요. 저장하면 홈에서 컬렉션 배지가 보여요.',
+]
 
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
 const NONE_VALUE = '__none__'
@@ -423,6 +446,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     created_at: card?.created_at ?? new Date().toISOString(),
     created_by: card?.created_by ?? null,
     image_source: card?.image_source ?? null,
+    ...feedPreviewFields(feedValues),
   }
   const previewCard: TodayCardWithHref = {
     ...previewCardBase,
@@ -616,6 +640,11 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
 
   const feedSection = (
     <TodaySectionCard {...sectionHeader('feed')}>
+      {isEdit && card?.feed_type && (
+        <p className="text-xs text-muted-foreground break-keep wrap-break-word">
+          저장할 때 자동으로 정해진 값은 그대로 보여요. 바꾸려면 값을 고르거나 「자동」을 고르세요
+        </p>
+      )}
       <FeedCardSection
         values={feedValues}
         onChange={patchFeedValues}
@@ -906,6 +935,22 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         {/* bg-surface 판(홈 캔버스와 같은 배경)과 기기 폭 전환은 TodayCardPreview가 그린다
             (TodayPreviewModal.tsx와 같은 부품). */}
         <TodayCardPreview views={[previewView]} />
+        <Accordion type="single" collapsible className="mt-3">
+          <AccordionItem value="preview-limits" className="border-b-0">
+            <AccordionTrigger className="py-2 text-xs text-muted-foreground break-keep wrap-break-word">
+              미리보기와 홈이 다를 수 있는 것
+            </AccordionTrigger>
+            <AccordionContent className="pb-2">
+              <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+                {FEED_PREVIEW_LIMITS.map((line) => (
+                  <li key={line} className="break-keep wrap-break-word">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </RailCard>
 
       <RailCard title="섹션">
