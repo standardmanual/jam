@@ -811,7 +811,8 @@ describe('buildTodayCardInsertPayload', () => {
       'stamp_slot',
       'title_chip_words',
     ];
-    const notFilled = ['created_at', 'created_by', 'pattern_no', ...NEW_COLUMNS_NOT_FILLED_YET];
+    // 마이그레이션 351(티켓 20261121_1724)의 cover_colors도 이 스크립트는 싣지 않는다(NULL=아직 안 뽑음, 일괄 계산 대상).
+    const notFilled = ['created_at', 'created_by', 'pattern_no', 'cover_colors', ...NEW_COLUMNS_NOT_FILLED_YET];
     const expected = columns.filter((c) => !notFilled.includes(c)).sort();
     expect(Object.keys(payloadOf()).sort()).toEqual(expected);
   });

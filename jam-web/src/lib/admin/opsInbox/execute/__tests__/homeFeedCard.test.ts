@@ -21,7 +21,7 @@ vi.mock('@/lib/admin/registerChecks/homeFeed', async (importOriginal) => {
   }
 })
 
-import { asRegisterChecksClient, RESOURCE_KEY_BY_KIND, type ExecuteLinkedIds } from '../handlers'
+import { asRegisterChecksClient, RESOURCE_KEY_BY_KIND, type CoverColorsFieldsFn, type ExecuteLinkedIds } from '../handlers'
 import { HOME_FEED_CARD_HANDLER as handler } from '../homeFeedCard'
 import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
 import { DB_SECRET, FakeDb, type Row } from './fakeDb'
@@ -312,7 +312,7 @@ describe('create — 커버 이미지의 대표 색 저장(티켓 20261121_1724)
 
   it('실행 뼈대가 넘긴 추출 함수의 결과를 insert 행에 싣고, 추출 함수는 커버 주소로 부른다', async () => {
     const db = new FakeDb()
-    const extract = vi.fn(async (_url: string | null | undefined) => ({ cover_colors: ['#ff8800', '#2244aa'] }))
+    const extract = vi.fn<CoverColorsFieldsFn>(async () => ({ cover_colors: ['#ff8800', '#2244aa'] }))
     const outcome = await handler.create(db.service, prepared(cardItem({ cover_image_url: COVER })), { now: NOW, coverColorsFields: extract })
     expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
     expect(extract).toHaveBeenCalledWith(COVER)
@@ -348,7 +348,7 @@ describe('create — 커버 이미지의 대표 색 저장(티켓 20261121_1724)
 
   it('커버 이미지가 없으면 추출 함수를 부르지 않는다', async () => {
     const db = new FakeDb()
-    const extract = vi.fn(async (_url: string | null | undefined) => ({ cover_colors: ['#ff8800'] }))
+    const extract = vi.fn<CoverColorsFieldsFn>(async () => ({ cover_colors: ['#ff8800'] }))
     await handler.create(db.service, prepared(), { now: NOW, coverColorsFields: extract })
     expect(extract).not.toHaveBeenCalled()
     expect('cover_colors' in db.tables.today_cards[0]).toBe(false)
