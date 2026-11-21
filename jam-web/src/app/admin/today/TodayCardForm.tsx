@@ -65,6 +65,7 @@ import { orphanTribeTags, tribeTagOptions, type TribeTagSource } from '@/lib/adm
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import { toCardView } from '@/lib/today/cardView'
+import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import TodayCardPreview from './TodayCardPreview'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/admin/ui/accordion'
 import FeedCardSection, { titleChipWordError } from './FeedCardSection'
@@ -116,8 +117,8 @@ interface TodayCardFormProps {
   header?: ReactNode
 }
 
-/** 새 카드(시드가 아직 없는 카드)의 미리보기 전용 고정 시드. 저장할 때 서버가 정하는 값과 무관하다 — 미리보기가 입력마다 바뀌지 않게 상수로 둔다. */
-export const FEED_PREVIEW_SEED = 1121
+/** 새 카드(시드가 아직 없는 카드)의 미리보기 전용 고정 시드. 값은 `lib/today/feedPreviewSeed.ts` 한 곳에 있고, 기존 가져오기 경로가 깨지지 않게 다시 내보낸다. */
+export { FEED_PREVIEW_SEED }
 
 /**
  * 폼의 개편 칸을 미리보기 카드 행에 실을 값으로 바꾼다(티켓 20261121_1318).

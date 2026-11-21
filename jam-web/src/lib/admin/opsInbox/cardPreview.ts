@@ -17,6 +17,7 @@ import { asRecord, itemField, linksOf, type ViewableItem } from '@/lib/admin/ops
 import { formatScheduleAt } from '@/lib/ambient-drop/scheduleView'
 import { EMPTY_PREVIEW_NAMES, PREVIEW_NAME_UNKNOWN, type OpsPreviewBadge, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import { toCardView, type CardView } from '@/lib/today/cardView'
+import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import type { ResolvedMission, TodayCardWithHref } from '@/lib/today/cards'
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import type { BadgeRarity, TodayCardLayoutType, TodayCardRow, TodayCardTemplateType, TodayFeedType } from '@/types/database'
@@ -57,10 +58,9 @@ export interface PreviewOptions {
 
 /**
  * 운영 항목에는 `feed_seed`가 없어(등록 때 시스템이 정한다, 6회차-2) 미리보기는 고정 시드를 쓴다. 같은 항목은 언제 열어도 같은 미리보기다.
- * 값은 5회차-4 폼 미리보기의 `FEED_PREVIEW_SEED`(`app/admin/today/TodayCardForm.tsx`)와 같다. 그 파일은 클라이언트 컴포넌트라 이 순수 파일이 읽을 수 없어
- * 값을 한 번 더 적고, 두 값이 같은지는 시험이 지킨다.
+ * 값은 5회차-4 폼 미리보기와 같은 상수 하나(`lib/today/feedPreviewSeed.ts`의 `FEED_PREVIEW_SEED`)다(티켓 20261121_2113).
  */
-export const PREVIEW_FEED_SEED = 1121
+export const PREVIEW_FEED_SEED = FEED_PREVIEW_SEED
 
 /**
  * 항목 `resource`의 새 칸을 미리보기 카드 행에 실을 값으로 읽는다(티켓 20261121_1532, 상위 20261120_2026 6회차-3).

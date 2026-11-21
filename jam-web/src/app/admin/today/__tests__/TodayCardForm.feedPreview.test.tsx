@@ -20,6 +20,7 @@ vi.mock('next/navigation', () => ({
 import TodayCardForm, { FEED_PREVIEW_LIMITS, FEED_PREVIEW_SEED, feedPreviewFields } from '../TodayCardForm'
 import { EMPTY_FEED_CARD_FORM_VALUES, type FeedCardFormValues } from '@/lib/admin/feedCardFields'
 import { toCardView } from '@/lib/today/cardView'
+import { FEED_PREVIEW_SEED as SHARED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import { FEED_TYPES } from '@/lib/today/feedChipSlots'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardRow } from '@/types/database'
@@ -79,6 +80,10 @@ describe('feedPreviewFields — 폼 값을 미리보기 행에 싣는 값으로'
     expect(fields.stamp_enabled).toBe(true)
     expect(fields.stamp_slot).toBe('top-left')
     expect(fields.title_chip_words).toEqual(['성수동'])
+  })
+
+  it('폼의 고정 시드는 순수 파일의 상수 하나를 그대로 내보낸다(티켓 20261121_2113)', () => {
+    expect(FEED_PREVIEW_SEED).toBe(SHARED_PREVIEW_SEED)
   })
 
   it('저장된 시드가 없으면 고정 시드를, 있으면 그 시드를 쓴다', () => {
