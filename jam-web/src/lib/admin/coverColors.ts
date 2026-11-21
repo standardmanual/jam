@@ -1,4 +1,3 @@
-import { extractBadgeColors } from '@/lib/badgeColorExtract'
 import { isVideoUrl } from '@/lib/today/cardMedia'
 
 /**
@@ -12,6 +11,9 @@ import { isVideoUrl } from '@/lib/today/cardMedia'
  * 추출기(`extractBadgeColors`)는 http(s) 주소를 가리지 않고 fetch하므로 이 헬퍼가 «우리 저장소 공개 주소(Supabase Storage)와
  * `/`로 시작하는 정적 주소»만 통과시킨다. 서버 전용이다 — 번들 경계가 있는 파일(`homeFeedCard.ts`)은 이 함수를 직접 가져오지 않고
  * 실행 뼈대(`run.ts`)가 `create`의 context로 넘겨 준다.
+ *
+ * 추출기는 추출할 때만 동적으로 가져온다. 이 파일은 운영툴 쪽 모듈(`opsInbox/image.ts` → `run.ts`)이 값으로 가져오는데, 추출기는
+ * `server-only`·`sharp`에 의존해서 정적으로 가져오면 추출과 무관한 시험까지 이 모듈을 못 읽는다.
  */
 export type CoverColorsFields = { cover_colors?: string[] }
 
@@ -42,6 +44,7 @@ export async function coverColorsFields(imageUrl: string | null | undefined): Pr
   const url = normalize(imageUrl)
   if (!url || isVideoUrl(url) || !isExtractableUrl(url)) return {}
   try {
+    const { extractBadgeColors } = await import('@/lib/badgeColorExtract')
     const colors = await extractBadgeColors(url)
     return colors === null ? {} : { cover_colors: colors }
   } catch {

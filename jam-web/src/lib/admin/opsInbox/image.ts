@@ -9,6 +9,7 @@
  */
 import type { Json } from '@/types/database.generated'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
+import { coverColorsFields } from '@/lib/admin/coverColors'
 import { RESOURCE_KEY_BY_KIND, isExecutableKind, type ExecuteServiceClient } from './execute/handlers'
 import { asRecord, itemField } from './itemView'
 import { imageKeyOfKind, isImageKind, type ImageKind, type OpsImageKey } from './imageSpec'
@@ -87,7 +88,7 @@ export async function applyItemImage(service: ServiceClient, input: { itemId: st
 }
 
 interface UpdatableTable {
-  update(payload: Record<string, string>): { eq(column: string, value: string): PromiseLike<{ error: { message: string } | null }> }
+  update(payload: Record<string, string | string[]>): { eq(column: string, value: string): PromiseLike<{ error: { message: string } | null }> }
 }
 
 /** 예약된 뒤라면 `created_resource`가 가리키는 자원 행의 이미지 칸을 갱신한다. 쓸 자원이 없으면 true(할 일이 없다), 쓰다 실패하면 false다. */
@@ -105,7 +106,9 @@ async function writeResourceImage(
 
   const table = service.from(IMAGE_KIND_CONFIG[item.kind].table) as unknown as UpdatableTable
   try {
-    const updated = await table.update({ [key]: url }).eq('id', resourceId)
+    // 카드는 커버 대표 색을 같은 update에 담는다(티켓 20261121_1724). 추출이 실패하면 빈 조각이고, DB 트리거가 낡은 색을 비운다.
+    const coverColors = item.kind === 'home_feed_card' ? await coverColorsFields(url) : {}
+    const updated = await table.update({ [key]: url, ...coverColors }).eq('id', resourceId)
     if (updated.error) {
       console.error(`${LOG} 자원 이미지 저장 실패:`, updated.error.message)
       return false

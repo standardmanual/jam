@@ -11,6 +11,10 @@ import { imageKeyOfKind as imageKeyOfKindShared } from '../imageSpec'
 import { FakeDb,type Row } from '../execute/__tests__/fakeDb'
 import { makeItem, type ItemSpec } from '../execute/__tests__/fixtures'
 
+// 카드 커버 대표 색 추출은 모의로 대신한다(티켓 20261121_1724). 추출·주소 규칙은 coverColors.test.ts가 본다.
+const coverColorsMock = vi.hoisted(() => vi.fn<(url: string | null) => Promise<{ cover_colors?: string[] }>>(async () => ({})))
+vi.mock('@/lib/admin/coverColors', () => ({ coverColorsFields: coverColorsMock }))
+
 const ITEM = '00000000-0000-4000-8000-000000000001'
 const RES = '00000000-0000-4000-8000-000000000011'
 const URL = 'https://cdn.test/images/ops-inbox/today_cards/x.webp?v=1'
@@ -19,6 +23,8 @@ let errorSpy: MockInstance<typeof console.error>
 beforeEach(() => {
   errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   errorSpy.mockClear()
+  coverColorsMock.mockReset()
+  coverColorsMock.mockResolvedValue({})
 })
 
 function setup(spec: ItemSpec) {
@@ -80,6 +86,28 @@ describe('applyItemImage', () => {
     db.tables.today_cards = [{ id: RES }]
     await applyItemImage(db.service, { itemId: ITEM, url: URL })
     expect(db.tables.today_cards).toEqual([{ id: RES, cover_image_url: URL }])
+  })
+
+  it('카드는 커버 대표 색을 같은 update에 담고, 추출이 비면 cover_colors를 담지 않는다(티켓 20261121_1724)', async () => {
+    const db = setup({ kind: 'home_feed_card', status: 'scheduled', createdResource: { today_card_id: RES } })
+    db.tables.today_cards = [{ id: RES }]
+    coverColorsMock.mockResolvedValue({ cover_colors: ['#3366ff', '#ffaa00'] })
+    await applyItemImage(db.service, { itemId: ITEM, url: URL })
+    expect(coverColorsMock).toHaveBeenCalledWith(URL)
+    expect(db.tables.today_cards).toEqual([{ id: RES, cover_image_url: URL, cover_colors: ['#3366ff', '#ffaa00'] }])
+
+    const failed = setup({ kind: 'home_feed_card', status: 'scheduled', createdResource: { today_card_id: RES } })
+    failed.tables.today_cards = [{ id: RES }]
+    coverColorsMock.mockResolvedValue({})
+    expect(await applyItemImage(failed.service, { itemId: ITEM, url: URL })).toEqual({ ok: true, resourceWritten: true })
+    expect(failed.tables.today_cards).toEqual([{ id: RES, cover_image_url: URL }])
+  })
+
+  it('카드가 아닌 종류는 커버 대표 색을 뽑지 않는다', async () => {
+    const db = setup({ kind: 'jam_badge', status: 'scheduled', createdResource: { badge_id: RES } })
+    db.tables.badges = [{ id: RES, image_url: null }]
+    await applyItemImage(db.service, { itemId: ITEM, url: URL })
+    expect(coverColorsMock).not.toHaveBeenCalled()
   })
 
   it('시험 묶음(sample)이거나 자원 ID가 없으면 항목에만 쓴다', async () => {
