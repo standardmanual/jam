@@ -23,6 +23,8 @@ import { DESCRIPTION_TEMPLATES } from '@/lib/today/shape'
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import { collectCopyErrors } from './copyRules'
 import type { TodayCardLayoutType, TodayCardRow, TodayCardTemplateType } from '@/types/database'
+import type { FeedCardBundleColumns } from '@/lib/admin/feedCardFields'
+import type { Json } from '@/types/database.generated'
 import {
   SUGGESTED_LAYOUT_FOR,
   TODAY_CONTENT_TYPE_OPTIONS,
@@ -348,6 +350,13 @@ export interface HomeFeedCardInput {
   is_active?: boolean | null
 }
 
+/** 개편 칸을 insert 값으로 쓸 때의 모양: jsonb 칸(`chips`·`list_items`·`collection_burst`)은 생성 타입의 `Json`이다. */
+type FeedInsertColumns = Omit<FeedCardBundleColumns, 'chips' | 'list_items' | 'collection_burst'> & {
+  chips: Json | null
+  list_items: Json | null
+  collection_burst: Json | null
+}
+
 export interface HomeFeedPayloadOptions {
   /** 이미지 저장 경로에 쓰려고 등록 전에 정한 UUID. */
   id: string
@@ -359,6 +368,11 @@ export interface HomeFeedPayloadOptions {
   shape?: string | null
   /** 생략하면 null. */
   titleInImage?: boolean | null
+  /**
+   * 홈피드 개편 칸 14개(`feed_seed` 제외, 티켓 20261121_1530). 생략하면 새 칸 키를 페이로드에 넣지 않는다(반환 객체가 이전과 같다).
+   * 주면 14개 키를 모두 싣는다(적지 않은 칸은 null = «자동»). 값은 `buildFeedCardBundleColumns`가 다듬은 것이다.
+   */
+  feedColumns?: FeedCardBundleColumns | null
 }
 
 /**
@@ -374,11 +388,11 @@ export interface HomeFeedPayloadOptions {
  * `created_by`·`created_at`은 넣지 않는다(스크립트에는 어드민 계정이 없어 NULL, 시각은 DB 기본값).
  * `shape`·`title_in_image`(마이그레이션 206)는 등록 묶음에 아직 칸이 없어 기본 NULL로 넣는다 — NULL은 옛 렌더러로
  * 그리는 기존 카드와 같은 값이다(티켓 20260930_1453 c1). 서버가 값을 정해 두었다면 `shape`·`titleInImage`로 넘긴다.
- * 키 집합은 생성 타입의 today_cards Insert와 같다(`pattern_no`는 없다).
+ * 키 집합은 생성 타입의 today_cards Insert와 같다(`pattern_no`는 없다). 홈피드 개편 칸은 `feedColumns`를 줄 때만 더한다.
  */
 export function buildTodayCardInsertPayload(
   card: HomeFeedCardInput,
-  { id, coverImageUrl, imageSource = AGENT_IMAGE_SOURCE, shape = null, titleInImage = null }: HomeFeedPayloadOptions
+  { id, coverImageUrl, imageSource = AGENT_IMAGE_SOURCE, shape = null, titleInImage = null, feedColumns = null }: HomeFeedPayloadOptions
 ) {
   return {
     id,
@@ -405,5 +419,6 @@ export function buildTodayCardInsertPayload(
     image_source: imageSource,
     shape,
     title_in_image: titleInImage,
+    ...((feedColumns ?? {}) as unknown as Partial<FeedInsertColumns>),
   }
 }

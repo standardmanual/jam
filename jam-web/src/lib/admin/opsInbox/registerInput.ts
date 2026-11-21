@@ -31,6 +31,14 @@ import { isValidFamilyKey } from '@/lib/admin/familyKey'
 import { OPS_FIELD_UNKNOWN, readOpsItemTribeId } from '@/lib/admin/opsInbox/fields'
 import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { kstDateKey } from '@/lib/admin/opsInbox/labels'
+import {
+  buildFeedCardBundleColumns,
+  checkFeedCardBundleColumns,
+  FEED_CARD_BUNDLE_KEYS,
+  hasFeedCardBundleKeys,
+  isFeedTypeWritten,
+  type FeedCardBundleColumns,
+} from '@/lib/admin/feedCardFields'
 import { OPS_HOME_FEED_CARD_KIND } from '@/lib/admin/opsInbox/constants'
 import { OPS_PATTERN_NO_PATTERN } from '@/lib/admin/opsPatterns/constants'
 import { kstDayBoundsIso } from '@/lib/admin/today-calendar'
@@ -144,6 +152,8 @@ const CARD_RESOURCE_KEYS = [
   'content_type_id',
   'target_href',
   'sort_order',
+  // 홈피드 개편 칸 14개(`feed_seed`는 등록 때 시스템이 정한다, 티켓 20261121_1530).
+  ...FEED_CARD_BUNDLE_KEYS,
 ]
 const CARD_TOOL_KEYS = ['id', 'created_at', 'created_by', 'image_source', 'is_active']
 
@@ -317,7 +327,8 @@ function fillLinkedId(
 
 /**
  * `home_feed_card` 항목을 `today_cards` insert 값으로 바꾼다(PRD §8.4 카드 행).
- * - 공통 칸: `starts_at`(필수)·`ends_at`(없으면 공개한 날의 끝, 결정 6)·`shape`(필수)·`exposure_tags`(필수)·`pattern_no`(결정 5).
+ * - 공통 칸: `starts_at`(필수)·`ends_at`(없으면 공개한 날의 끝, 결정 6)·`shape`(필수, `resource.feed_type`이 있으면 선택)·`exposure_tags`(필수)·`pattern_no`(결정 5).
+ * - 홈피드 개편 칸 14개는 `resource`의 평평한 키다(PRD §8.4). 있으면 5-1의 검증(오류는 막고 경고는 알린다)을 거쳐 페이로드에 실리고, 없으면 페이로드에 새 키가 없다.
  * - 글자 칸 `title`·`subtitle`·`description`·`body_markdown`·`region_label`은 `copy` 먼저, 없으면 `resource`.
  * - 나머지는 `resource`. `image_source`는 null(결정 1), `created_by`는 `actorId`(결정 2), `is_active`는 true.
  */
@@ -365,9 +376,15 @@ export function toTodayCardRegisterInput(
   const exposureTags = itemField(item, 'exposure_tags')
   if (isPresent(exposureTags)) card.exposure_tags = exposureTags
 
+  // `resource.feed_type`이 있으면 `shape`는 선택이다(없으면 NULL로 등록, 티켓 20261121_1530).
   const shape = itemField(item, 'shape')
   if (!isPresent(shape)) {
-    errors.push({ path: 'shape', message: `card.shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적어 주세요).` })
+    if (!isFeedTypeWritten(resource)) {
+      errors.push({
+        path: 'shape',
+        message: `card.shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적거나 resource.feed_type을 적어 주세요).`,
+      })
+    }
   } else if (!isCardShape(shape)) {
     errors.push({ path: 'shape', message: `card.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeValue(shape)}). 허용값: ${CARD_SHAPES.join(', ')}` })
   }
@@ -424,11 +441,29 @@ export function toTodayCardRegisterInput(
     }
   }
 
-  if (errors.length > 0 || !isCardShape(shape)) return { payload: null, errors, warnings, linkFields }
+  // 홈피드 개편 칸(티켓 20261121_1530): 칸이 하나라도 있으면 5-1의 검증을 거치고, 통과한 값을 insert 페이로드로 넘긴다.
+  // 칸이 없으면 검사도 페이로드 인자도 없어 이전과 결과가 같다. 컬렉션 연결은 위에서 `card.item_book_id`로 채워져 있다.
+  let feedColumns: FeedCardBundleColumns | null = null
+  if (hasFeedCardBundleKeys(resource)) {
+    const title = typeof card.title === 'string' && card.title.trim() !== '' ? card.title.trim() : null
+    const itemBookId = typeof card.item_book_id === 'string' && card.item_book_id !== '' ? card.item_book_id : null
+    const feedCheck = checkFeedCardBundleColumns(resource, { title, itemBookId })
+    for (const issue of feedCheck.errors) {
+      errors.push({ path: `resource.${issue.key}`, message: `card.${issue.key}: ${issue.message}` })
+    }
+    for (const issue of feedCheck.warnings) {
+      warnings.push({ path: `resource.${issue.key}`, message: `card.${issue.key}: ${issue.message}` })
+    }
+    if (feedCheck.errors.length === 0) feedColumns = buildFeedCardBundleColumns(resource)
+  }
+
+  // 모양이 틀렸거나(허용값 밖), 모양도 유형도 없으면 오류가 이미 쌓였다. 유형이 있고 모양이 없으면 NULL로 등록한다.
+  const shapeValue = isCardShape(shape) ? shape : null
+  if (errors.length > 0 || (shapeValue === null && feedColumns?.feed_type == null)) return { payload: null, errors, warnings, linkFields }
 
   // `validateCard`를 통과했으므로 필수 칸이 있고 형식이 맞다.
   const payload: TodayCardRegisterPayload = {
-    ...buildTodayCardInsertPayload(card as unknown as HomeFeedCardInput, { id, coverImageUrl, imageSource: null, shape, titleInImage }),
+    ...buildTodayCardInsertPayload(card as unknown as HomeFeedCardInput, { id, coverImageUrl, imageSource: null, shape: shapeValue, titleInImage, feedColumns }),
     pattern_no: patternNo,
     created_by: actorId,
   }

@@ -652,3 +652,209 @@ export function decideFeedCardValues(input: DecideFeedCardValuesInput): DecidedF
     warnings,
   }
 }
+
+// ── 운영 묶음(에이전트)의 새 칸 읽기 (티켓 20261121_1530, 상위 20261120_2026 6회차-1) ──────────
+
+/**
+ * 묶음 항목의 `resource`에 싣는 새 칸 키 14개. 저장 칸 15개에서 `feed_seed`를 뺀 것이다 — 시드는 에이전트가 정하지 않고
+ * 등록 때 시스템이 정한다(6회차-2). `resource`에 DB 칸과 같은 이름의 평평한 키로 싣는다.
+ */
+export const FEED_CARD_BUNDLE_KEYS = FEED_CARD_COLUMN_KEYS.filter(
+  (key): key is Exclude<FeedCardColumnKey, 'feed_seed'> => key !== 'feed_seed',
+)
+
+export type FeedCardBundleKey = (typeof FEED_CARD_BUNDLE_KEYS)[number]
+
+/** 묶음이 등록 때 싣는 새 칸. 14개 키가 모두 있고, 적지 않은 칸은 `null`(«자동»)이다. */
+export type FeedCardBundleColumns = Omit<FeedCardColumns, 'feed_seed'>
+
+/** `resource`에 새 칸 키가 하나라도 있는가(값이 `null`이어도 «적은 것»으로 본다 — 검증은 `null`을 «자동»으로 읽는다). */
+export function hasFeedCardBundleKeys(resource: Readonly<Record<string, unknown>>): boolean {
+  return FEED_CARD_BUNDLE_KEYS.some((key) => key in resource)
+}
+
+/**
+ * `resource.feed_type`을 적었는가. `null`·없음·빈 문자열은 «적지 않음»이다(옛 `shape` 필수 조건을 풀어 주는 기준).
+ * 허용 값 밖의 값은 적은 것으로 본다 — 그 오류는 새 칸 검증이 따로 알린다.
+ */
+export function isFeedTypeWritten(resource: Readonly<Record<string, unknown>> | null | undefined): boolean {
+  const value = resource?.feed_type
+  if (value === null || value === undefined) return false
+  return !(typeof value === 'string' && value.trim().length === 0)
+}
+
+/** 오류·경고가 가리키는 `resource` 키와 문장. 문장은 `validateFeedCardColumns`의 문장 그대로다. */
+export interface FeedCardBundleIssue {
+  key: FeedCardBundleKey
+  message: string
+}
+
+export interface FeedCardBundleCheck {
+  errors: FeedCardBundleIssue[]
+  warnings: FeedCardBundleIssue[]
+}
+
+/**
+ * 문장이 어느 칸 때문에 나왔는지 찾는 시험 묶음. 칸 하나씩(유형을 곁들여) 따로 돌려 «문장 → 키»를 찾고,
+ * 여러 칸이 얽힌 문장(색 조합 경고)은 색 세 칸을 함께 돌려 찾는다. 도장 자리는 도장 사용 여부와 함께 돌린다.
+ * 앞의 묶음이 먼저 문장을 차지한다.
+ */
+const BUNDLE_PROBES: ReadonlyArray<{ attribute: FeedCardBundleKey; keys: readonly FeedCardBundleKey[] }> = [
+  { attribute: 'feed_type', keys: [] },
+  { attribute: 'box_shape', keys: ['box_shape'] },
+  { attribute: 'box_kind', keys: ['box_kind'] },
+  { attribute: 'bg_color_key', keys: ['bg_color_key'] },
+  { attribute: 'chip_color_key', keys: ['chip_color_key'] },
+  { attribute: 'box_color_key', keys: ['box_color_key'] },
+  { attribute: 'chips', keys: ['chips'] },
+  { attribute: 'title_chip_words', keys: ['title_chip_words'] },
+  { attribute: 'show_description', keys: ['show_description'] },
+  { attribute: 'stamp_enabled', keys: ['stamp_enabled'] },
+  { attribute: 'stamp_slot', keys: ['stamp_enabled', 'stamp_slot'] },
+  { attribute: 'list_items', keys: ['list_items'] },
+  { attribute: 'list_more_href', keys: ['list_more_href'] },
+  { attribute: 'collection_burst', keys: ['collection_burst'] },
+  { attribute: 'bg_color_key', keys: ['bg_color_key', 'chip_color_key', 'box_color_key'] },
+]
+
+/**
+ * 검증 전에 폼 변환(`buildFeedCardColumns`)과 같은 정규화를 한다: 문자열 칸은 앞뒤 공백을 자르고 빈 문자열은 «자동»(null),
+ * 제목 속 칩 낱말은 낱말마다 자르고 빈 칸은 뗀다. 모양이 다른 값(배열이 아님 등)은 그대로 둬 검증이 알린다.
+ */
+function normalizeBundleValue(key: FeedCardBundleKey, value: unknown): unknown {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length === 0 ? null : trimmed
+  }
+  if (key === 'title_chip_words' && Array.isArray(value)) {
+    return value
+      .map((word: unknown) => (typeof word === 'string' ? word.trim() : word))
+      .filter((word: unknown) => word !== '')
+  }
+  return value
+}
+
+export interface FeedCardBundleOptions {
+  /** 카드 제목(`copy.title` 또는 `resource.title`). 모르면 `null` — 제목 속 칩 낱말 검사를 건너뛴다(제목이 없다는 오류가 따로 난다). */
+  title: string | null
+  /** 연결된 컬렉션 id. 넘기면(`null` 포함) «컬렉션 소개인데 컬렉션이 없음» 경고를 판정하고, 안 넘기면 건너뛴다. */
+  itemBookId?: string | null
+}
+
+/**
+ * 묶음 항목의 `resource`에서 새 칸을 뽑아 검증한다. 새 칸이 하나도 없으면 아무것도 검사하지 않는다.
+ * 오류·경고 판정은 `validateFeedCardColumns` 전체 호출이 정본이고, 각 문장이 어느 키 때문인지는 칸 묶음별 호출로 찾는다
+ * (찾지 못하면 값이 들어 있는 첫 키). 오류는 «저장은 한다» 규칙의 형식 오류로, 경고는 막지 않는 알림으로 쓴다.
+ */
+export function checkFeedCardBundleColumns(
+  resource: Readonly<Record<string, unknown>>,
+  options: FeedCardBundleOptions,
+): FeedCardBundleCheck {
+  const check: FeedCardBundleCheck = { errors: [], warnings: [] }
+  if (!hasFeedCardBundleKeys(resource)) return check
+
+  const picked: FeedCardColumnsInput = {}
+  for (const key of FEED_CARD_BUNDLE_KEYS) {
+    if (!(key in resource)) continue
+    picked[key] = normalizeBundleValue(key, resource[key])
+  }
+  // 제목을 모르면 낱말 검사가 모든 낱말을 틀린 것으로 보므로 건너뛴다.
+  const checked: FeedCardColumnsInput = options.title === null ? { ...picked, title_chip_words: undefined } : picked
+  const validateOptions: FeedCardValidateOptions = { title: options.title ?? '', itemBookId: options.itemBookId }
+  const whole = validateFeedCardColumns(checked, validateOptions)
+
+  const keyOf = new Map<string, FeedCardBundleKey>()
+  for (const probe of BUNDLE_PROBES) {
+    if (probe.keys.length > 0 && !probe.keys.some((key) => key in picked)) continue
+    const sub: FeedCardColumnsInput = {}
+    if ('feed_type' in picked) sub.feed_type = picked.feed_type
+    for (const key of probe.keys) {
+      if (key in picked) sub[key] = checked[key]
+    }
+    const result = validateFeedCardColumns(sub, validateOptions)
+    for (const message of [...result.errors, ...result.warnings]) {
+      if (!keyOf.has(message)) keyOf.set(message, probe.attribute)
+    }
+  }
+  const fallback = FEED_CARD_BUNDLE_KEYS.find((key) => key in picked) ?? 'feed_type'
+  const toIssue = (message: string): FeedCardBundleIssue => ({ key: keyOf.get(message) ?? fallback, message })
+  check.errors = whole.errors.map(toIssue)
+  check.warnings = whole.warnings.map(toIssue)
+  return check
+}
+
+const trimmedOrNull = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length === 0 ? null : trimmed
+}
+
+/**
+ * 검증(`checkFeedCardBundleColumns`)을 통과한 `resource`의 새 칸을 등록 insert 값으로 다듬는다. 14개 키가 모두 있다.
+ * 폼 변환(`buildFeedCardColumns`)과 같은 값 의미를 따른다: 빈 문자열은 `null`, 문구는 trim, 칩 `[]`은 «칩 없음»,
+ * 빈 목록(제목 속 칩 낱말·목록 항목·컬렉션 모션)은 `null`, 도장 자리는 도장을 «사용»(`true`)으로 정했을 때만 둔다.
+ * 검증을 거치지 않은 값을 넘기면 안 된다.
+ */
+export function buildFeedCardBundleColumns(resource: Readonly<Record<string, unknown>>): FeedCardBundleColumns {
+  const read = (key: FeedCardBundleKey): unknown => resource[key]
+
+  const rawChips = read('chips')
+  const chips: TodayChipSpec[] | null = Array.isArray(rawChips)
+    ? rawChips.map((raw: Record<string, unknown>) => {
+        const spec: TodayChipSpec = { kind: raw.kind as TodayChipSpec['kind'] }
+        const source = trimmedOrNull(raw.source)
+        const text = trimmedOrNull(raw.text)
+        const slot = trimmedOrNull(raw.slot)
+        if (spec.kind === 'value' && source) spec.source = source
+        if (spec.kind === 'phrase' && text) spec.text = text
+        if (slot) spec.slot = slot
+        if (typeof raw.tilt === 'number') spec.tilt = raw.tilt as TodayChipSpec['tilt']
+        return spec
+      })
+    : null
+
+  const rawWords = read('title_chip_words')
+  const words = Array.isArray(rawWords)
+    ? rawWords.map((word) => trimmedOrNull(word)).filter((word): word is string => word !== null)
+    : []
+
+  const rawItems = read('list_items')
+  const listItems = Array.isArray(rawItems)
+    ? rawItems.map((raw: Record<string, unknown>): TodayListItem => {
+        const item: TodayListItem = { name: trimmedOrNull(raw.name) ?? '', href: trimmedOrNull(raw.href) ?? '' }
+        const imageUrl = trimmedOrNull(raw.image_url)
+        if (imageUrl) item.image_url = imageUrl
+        return item
+      })
+    : []
+
+  const rawBurst = read('collection_burst')
+  const burst = Array.isArray(rawBurst)
+    ? rawBurst.map((raw: Record<string, unknown>): TodayBurstPoint => {
+        const point: TodayBurstPoint = { x: raw.x as number, y: raw.y as number }
+        if (typeof raw.tilt === 'number') point.tilt = raw.tilt
+        if (typeof raw.size === 'number') point.size = raw.size
+        if (typeof raw.delay_ms === 'number') point.delay_ms = raw.delay_ms
+        return point
+      })
+    : []
+
+  const stampEnabled = typeof read('stamp_enabled') === 'boolean' ? (read('stamp_enabled') as boolean) : null
+  const showDescription = typeof read('show_description') === 'boolean' ? (read('show_description') as boolean) : null
+  return {
+    feed_type: trimmedOrNull(read('feed_type')) as TodayFeedType | null,
+    box_shape: trimmedOrNull(read('box_shape')) as TodayBoxShape | null,
+    box_kind: trimmedOrNull(read('box_kind')) as TodayBoxKind | null,
+    bg_color_key: trimmedOrNull(read('bg_color_key')) as FeedColorKey | null,
+    chip_color_key: trimmedOrNull(read('chip_color_key')) as FeedColorKey | null,
+    box_color_key: trimmedOrNull(read('box_color_key')) as FeedColorKey | null,
+    chips,
+    title_chip_words: words.length > 0 ? words : null,
+    show_description: showDescription,
+    stamp_enabled: stampEnabled,
+    stamp_slot: stampEnabled === true ? trimmedOrNull(read('stamp_slot')) : null,
+    list_items: listItems.length > 0 ? listItems : null,
+    list_more_href: trimmedOrNull(read('list_more_href')),
+    collection_burst: burst.length > 0 ? burst : null,
+  }
+}

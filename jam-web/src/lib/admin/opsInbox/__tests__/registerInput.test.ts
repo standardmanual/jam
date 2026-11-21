@@ -1687,6 +1687,172 @@ describe('withoutLinkedFields · 등록 전 DB 검사용 사본(결정 8)', () =
   })
 })
 
+describe('toTodayCardRegisterInput · 홈피드 개편 새 칸 (티켓 20261121_1530)', () => {
+  const FEED_KEYS = [
+    'feed_type', 'box_shape', 'box_kind', 'bg_color_key', 'chip_color_key', 'box_color_key', 'chips', 'title_chip_words',
+    'show_description', 'stamp_enabled', 'stamp_slot', 'list_items', 'list_more_href', 'collection_burst',
+  ]
+
+  /** 새 칸을 `resource`에 얹은 카드. `shape`는 기본으로 두고, `drop`으로 지울 키를 고른다. */
+  const feedCard = (feed: Raw, drop: string[] = [], over: Raw = {}) => {
+    const original = cardOriginal({ resource: { template_type: 'drop_alert', ...feed }, ...over })
+    for (const key of drop) delete original[key]
+    return toCard(opsItem('home_feed_card', original))
+  }
+
+  it('칸을 안 적은 항목은 페이로드에 새 키가 없다', () => {
+    const { payload, errors, warnings } = toCard(cardItem())
+    expect(errors).toEqual([])
+    expect(warnings).toEqual([])
+    for (const key of [...FEED_KEYS, 'feed_seed']) expect(payload).not.toHaveProperty(key)
+  })
+
+  it('새 칸을 적으면 페이로드에 14개 키가 실리고 적지 않은 칸은 null이다(feed_seed는 없다)', () => {
+    const { payload, errors } = feedCard({ feed_type: 'text_box', box_shape: 'wave', bg_color_key: 'red-soft' })
+    expect(errors).toEqual([])
+    expect(payload).toMatchObject({
+      feed_type: 'text_box',
+      box_shape: 'wave',
+      box_kind: null,
+      bg_color_key: 'red-soft',
+      chip_color_key: null,
+      box_color_key: null,
+      chips: null,
+      title_chip_words: null,
+      show_description: null,
+      stamp_enabled: null,
+      stamp_slot: null,
+      list_items: null,
+      list_more_href: null,
+      collection_burst: null,
+      shape: 'hero',
+    })
+    for (const key of FEED_KEYS) expect(payload).toHaveProperty(key)
+    expect(payload).not.toHaveProperty('feed_seed')
+  })
+
+  it('값 의미: chips [] = 칩 없음, stamp_enabled false = 쓰지 않음, 빈 문자열은 null, 문구는 다듬는다', () => {
+    const none = feedCard({ feed_type: 'text_box', chips: [], stamp_enabled: false, show_description: false, list_more_href: '' })
+    expect(none.errors).toEqual([])
+    expect(none.payload).toMatchObject({ chips: [], stamp_enabled: false, show_description: false, list_more_href: null })
+
+    const custom = feedCard({
+      feed_type: 'hero_box',
+      chips: [{ kind: 'phrase', text: '  새 소식  ', slot: 'image-top-left', tilt: -4 }, { kind: 'value', source: ' mission.reward ' }],
+      title_chip_words: [' 러닝 ', ''],
+      stamp_enabled: true,
+      stamp_slot: ' image-bottom-right ',
+      box_kind: '',
+    })
+    expect(custom.errors).toEqual([])
+    expect(custom.payload).toMatchObject({
+      chips: [{ kind: 'phrase', text: '새 소식', slot: 'image-top-left', tilt: -4 }, { kind: 'value', source: 'mission.reward' }],
+      title_chip_words: ['러닝'],
+      stamp_enabled: true,
+      stamp_slot: 'image-bottom-right',
+      box_kind: null,
+    })
+  })
+
+  it('목록 항목과 컬렉션 모션을 싣는다', () => {
+    const { payload, errors } = feedCard({
+      feed_type: 'gallery_list',
+      list_items: [{ name: ' 한강 ', href: '/drops', image_url: '' }, { name: '서울숲', href: 'https://j-a-m.app/drops', image_url: 'https://example.test/a.webp' }],
+      list_more_href: '/drops',
+    })
+    expect(errors).toEqual([])
+    expect(payload).toMatchObject({
+      list_items: [{ name: '한강', href: '/drops' }, { name: '서울숲', href: 'https://j-a-m.app/drops', image_url: 'https://example.test/a.webp' }],
+      list_more_href: '/drops',
+    })
+    const burst = feedCard({ feed_type: 'collection_intro', collection_burst: [{ x: 0.5, y: -0.5, tilt: 10, size: 70, delay_ms: 100 }] }, [], {})
+    expect(burst.payload).toMatchObject({ collection_burst: [{ x: 0.5, y: -0.5, tilt: 10, size: 70, delay_ms: 100 }] })
+  })
+
+  it('feed_type만 있고 shape가 없으면 shape는 null로 등록된다', () => {
+    const { payload, errors } = feedCard({ feed_type: 'hero_box' }, ['shape'])
+    expect(errors).toEqual([])
+    expect(payload).toMatchObject({ feed_type: 'hero_box', shape: null })
+  })
+
+  it('feed_type도 shape도 없으면 shape 필수 오류다', () => {
+    const { payload, errors } = feedCard({ box_kind: 'text' }, ['shape'])
+    expect(payload).toBeNull()
+    expect(paths(errors)).toEqual(['shape'])
+    expect(errors[0].message).toContain('card.shape: 필수 항목이 없어요')
+    expect(errors[0].message).toContain('resource.feed_type')
+    // 빈 문자열 feed_type은 적지 않은 것으로 본다.
+    expect(paths(feedCard({ feed_type: '' }, ['shape']).errors)).toEqual(['shape'])
+  })
+
+  it('shape가 허용값이 아니면 feed_type이 있어도 오류다', () => {
+    const { payload, errors } = feedCard({ feed_type: 'hero_box' }, [], { shape: 'large_thumbnail' })
+    expect(payload).toBeNull()
+    expect(paths(errors)).toEqual(['shape'])
+  })
+
+  it('shape와 feed_type을 둘 다 적으면 둘 다 저장한다', () => {
+    expect(feedCard({ feed_type: 'text_box' }).payload).toMatchObject({ feed_type: 'text_box', shape: 'hero' })
+  })
+
+  it('잘못된 새 칸 값은 막고 resource 경로가 붙은 해요체 문장이다', () => {
+    const { payload, errors } = feedCard({
+      feed_type: 'gallery_list',
+      chips: [{ kind: 'phrase', text: '새 소식', slot: 'image-top-left' }],
+      title_chip_words: ['서울숲'],
+      list_items: [{ name: '항목', href: 'javascript:alert(1)' }],
+      stamp_enabled: 'yes',
+    })
+    expect(payload).toBeNull()
+    expect(paths(errors)).toEqual(['resource.chips', 'resource.title_chip_words', 'resource.stamp_enabled', 'resource.list_items'])
+    expect(errors.map((error) => error.message)).toEqual([
+      expect.stringMatching(/^card\.chips: 1번째 칩의 자리가 이 카드 유형에서 쓸 수 없는 자리예요/),
+      expect.stringMatching(/^card\.title_chip_words: 제목에 「서울숲」가 그대로 들어 있지 않아요/),
+      expect.stringMatching(/^card\.stamp_enabled: 도장 사용 값이 올바르지 않아요/),
+      expect.stringMatching(/^card\.list_items: 1번째 목록 항목의 주소를 쓸 수 없어요/),
+    ])
+  })
+
+  it('경고는 등록을 막지 않고 warnings에 담긴다(칩 12자 초과·색 규칙)', () => {
+    const { payload, errors, warnings } = feedCard({
+      feed_type: 'hero_box',
+      chips: [{ kind: 'phrase', text: '가나다라마바사아자차카타파하' }],
+      bg_color_key: 'red',
+      chip_color_key: 'red',
+    })
+    expect(errors).toEqual([])
+    expect(payload).not.toBeNull()
+    expect(paths(warnings)).toEqual(['resource.chips', 'resource.bg_color_key'])
+    expect(warnings[1].message).toMatch(/^card\.bg_color_key: 고른 색 조합\(red, red\)이 색 규칙에 걸려요/)
+  })
+
+  it('컬렉션 소개는 연결된 컬렉션이 있으면 «컬렉션 없음» 경고가 없고, 없으면 경고다', () => {
+    const linked = toCard(opsItem('home_feed_card', cardOriginal({ resource: { template_type: 'itembook_milestone', feed_type: 'collection_intro' } })), {
+      item_book_id: UUID_A,
+    })
+    expect(linked.warnings).toEqual([])
+    const unlinked = toCard(opsItem('home_feed_card', cardOriginal({ resource: { template_type: 'itembook_milestone', feed_type: 'collection_intro' } })))
+    expect(unlinked.warnings.map((warning) => warning.message)).toEqual([expect.stringMatching(/^card\.feed_type: 컬렉션 소개인데 컬렉션이/)])
+  })
+
+  it('새 칸 키는 «표에 없는 칸» 경고를 내지 않고, 모르는 이름(오타)과 feed_seed는 경고한다', () => {
+    const known = feedCard({ feed_type: 'text_box', chips: [] })
+    expect(known.warnings).toEqual([])
+    const typo = feedCard({ feed_type: 'text_box', feed_typ: 'text_box', feed_seed: 7 })
+    expect(typo.errors).toEqual([])
+    expect(typo.warnings).toEqual([
+      { path: 'resource.feed_typ', message: 'resource.feed_typ: 표에 없는 칸이라 읽지 않아요.' },
+      { path: 'resource.feed_seed', message: 'resource.feed_seed: 표에 없는 칸이라 읽지 않아요.' },
+    ])
+    expect(typo.payload).not.toHaveProperty('feed_seed')
+  })
+
+  it('수정본(edited)에 적은 새 칸도 읽는다', () => {
+    const item = opsItem('home_feed_card', cardOriginal(), { edited: { resource: { template_type: 'drop_alert', feed_type: 'badge_only' } } })
+    expect(toCard(item).payload).toMatchObject({ feed_type: 'badge_only' })
+  })
+})
+
 describe('모듈 경계', () => {
   it('Supabase·node: 모듈을 가져오지 않는다(DB에 접근하지 않는 순수 모듈)', () => {
     const source = fs.readFileSync(MODULE_FILE, 'utf8')

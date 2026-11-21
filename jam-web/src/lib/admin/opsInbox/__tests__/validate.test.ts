@@ -429,7 +429,7 @@ describe('카드 칸 — shape (티켓 20261001_1152)', () => {
     expect(result.bundle).not.toBeNull()
     expect(result.items).toHaveLength(1)
     expect(result.errors).toEqual([
-      `items[0].shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적어 주세요).`,
+      `items[0].shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적거나 resource.feed_type을 적어 주세요).`,
     ])
     expect(result.items[0].format_errors).toEqual(result.errors)
   })
@@ -1451,5 +1451,145 @@ describe('validateOpsBundle — trends', () => {
     )
     expect(result.errors).toEqual([])
     expect(highlightWarnings(result.warnings)).toEqual([])
+  })
+})
+
+describe('validateOpsBundle — 홈피드 개편 새 칸 (티켓 20261121_1530)', () => {
+  /** 항목 하나를 검증한다. `remove`로 지울 키를 고르고, `over`로 항목 칸을 덮는다. */
+  function feedResult(over: Record<string, unknown>, remove: string[] = []) {
+    const item: Record<string, unknown> = makeItem({ copy: { title: '이번 주말 한강 러닝' }, ...over })
+    for (const key of remove) delete item[key]
+    const result = validateOpsBundle(makeBundle({ items: [item] }))
+    expect(result.fatal).toEqual([])
+    return { ...result, feedWarnings: result.warnings.filter((warning) => warning.includes('.resource.')) }
+  }
+
+  it('새 칸이 없는 옛 항목은 오류도 새 칸 경고도 없다', () => {
+    const result = feedResult({ resource: { template_type: 'drop_alert' } })
+    expect(result.errors).toEqual([])
+    expect(result.feedWarnings).toEqual([])
+    // 옛 경고(image_spec)는 이전과 같다.
+    expect(result.warnings).toEqual([expect.stringMatching(/^items\[0\]\.image_spec:/)])
+  })
+
+  it('feed_type만 있고 shape가 없는 항목은 통과한다', () => {
+    const result = feedResult({ resource: { feed_type: 'hero_box' } }, ['shape'])
+    expect(result.errors).toEqual([])
+    expect(result.feedWarnings).toEqual([])
+  })
+
+  it('feed_type도 shape도 없으면 shape 필수 오류이고 새 유형을 쓸 수 있다고 알린다', () => {
+    const result = feedResult({ resource: { template_type: 'drop_alert' } }, ['shape'])
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요.*resource\.feed_type/)
+    // feed_type이 null이면 없는 것으로 본다.
+    expect(feedResult({ resource: { feed_type: null } }, ['shape']).errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요/)
+  })
+
+  it('shape와 feed_type을 둘 다 적어도 통과한다', () => {
+    expect(feedResult({ resource: { feed_type: 'text_box', box_shape: 'wave' } }).errors).toEqual([])
+  })
+
+  it('허용 값 밖의 유형·색은 운영 항목 경로가 붙은 오류다', () => {
+    const result = feedResult({ resource: { feed_type: 'banner', bg_color_key: 'teal' } })
+    expect(result.errors).toHaveLength(2)
+    expect(result.errors[0]).toMatch(/^items\[0\]\.resource\.feed_type: 카드 유형 값이 올바르지 않아요/)
+    expect(result.errors[1]).toMatch(/^items\[0\]\.resource\.bg_color_key: 배경색 값이 올바르지 않아요/)
+    expect(result.items[0].format_errors).toEqual(result.errors)
+  })
+
+  it('칩 자리가 유형이 허용하지 않는 자리면 오류다', () => {
+    const result = feedResult({
+      resource: { feed_type: 'gallery_list', chips: [{ kind: 'phrase', text: '새 소식', slot: 'image-top-left' }] },
+    })
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatch(/^items\[0\]\.resource\.chips: 1번째 칩의 자리가 이 카드 유형에서 쓸 수 없는 자리예요/)
+  })
+
+  it('칩이 3개 이상이거나 두 칩이 대각선이 아니면 오류다', () => {
+    const three = feedResult({
+      resource: { feed_type: 'hero_box', chips: [{ kind: 'label' }, { kind: 'label' }, { kind: 'label' }] },
+    })
+    expect(three.errors[0]).toMatch(/^items\[0\]\.resource\.chips: 칩은 카드에 2개까지/)
+    const notDiagonal = feedResult({
+      resource: {
+        feed_type: 'hero_box',
+        chips: [
+          { kind: 'phrase', text: '하나', slot: 'image-top-left' },
+          { kind: 'phrase', text: '둘', slot: 'image-top-right' },
+        ],
+      },
+    })
+    expect(notDiagonal.errors[0]).toMatch(/^items\[0\]\.resource\.chips: 칩 두 개는 서로 대각선 자리/)
+  })
+
+  it('제목에 없는 제목 속 칩 낱말은 오류이고, 제목에 있으면 통과한다', () => {
+    const bad = feedResult({ resource: { feed_type: 'text_box', title_chip_words: ['서울숲'] } })
+    expect(bad.errors).toHaveLength(1)
+    expect(bad.errors[0]).toMatch(/^items\[0\]\.resource\.title_chip_words: 제목에 「서울숲」가 그대로 들어 있지 않아요/)
+    expect(feedResult({ resource: { feed_type: 'text_box', title_chip_words: ['한강'] } }).errors).toEqual([])
+    // resource.title만 있어도 제목으로 읽는다.
+    expect(feedResult({ copy: {}, resource: { feed_type: 'text_box', title: '한강 러닝', title_chip_words: ['한강'] } }).errors).toEqual([])
+  })
+
+  it('제목을 알 수 없으면 제목 속 칩 낱말 검사를 건너뛴다', () => {
+    expect(feedResult({ copy: {}, resource: { feed_type: 'text_box', title_chip_words: ['한강'] } }).errors).toEqual([])
+  })
+
+  it('목록 항목은 4개 이상이거나 주소가 안전하지 않으면 오류다', () => {
+    const four = feedResult({
+      resource: {
+        feed_type: 'gallery_list',
+        list_items: [1, 2, 3, 4].map((n) => ({ name: `항목${n}`, href: '/drops' })),
+      },
+    })
+    expect(four.errors[0]).toMatch(/^items\[0\]\.resource\.list_items: 목록 항목은 3개까지/)
+    const unsafe = feedResult({
+      resource: {
+        feed_type: 'gallery_list',
+        list_items: [{ name: '항목', href: 'javascript:alert(1)' }],
+        list_more_href: '//evil.example',
+      },
+    })
+    expect(unsafe.errors).toHaveLength(2)
+    expect(unsafe.errors[0]).toMatch(/^items\[0\]\.resource\.list_items: 1번째 목록 항목의 주소를 쓸 수 없어요/)
+    expect(unsafe.errors[1]).toMatch(/^items\[0\]\.resource\.list_more_href: 대표 페이지 주소를 쓸 수 없어요/)
+  })
+
+  it('도장 자리·컬렉션 모션 범위 밖은 오류다', () => {
+    const stamp = feedResult({ resource: { feed_type: 'badge_only', stamp_enabled: true, stamp_slot: 'image-top-left' } })
+    expect(stamp.errors[0]).toMatch(/^items\[0\]\.resource\.stamp_slot: 도장 자리가 이 카드 유형에서 쓸 수 없는 자리예요/)
+    const burst = feedResult({ resource: { feed_type: 'collection_intro', collection_burst: [{ x: 3, y: 0 }] } })
+    expect(burst.errors[0]).toMatch(/^items\[0\]\.resource\.collection_burst: 1번째 모션 배지의 값이 범위 밖이에요/)
+  })
+
+  it('경고는 오류가 아니라 warnings에만 담기고 저장·승인을 막지 않는다', () => {
+    const result = feedResult({
+      resource: {
+        feed_type: 'hero_box',
+        chips: [{ kind: 'phrase', text: '가나다라마바사아자차카타파하' }],
+        bg_color_key: 'red',
+        chip_color_key: 'red',
+      },
+    })
+    expect(result.errors).toEqual([])
+    expect(result.feedWarnings).toHaveLength(2)
+    expect(result.feedWarnings[0]).toMatch(/^items\[0\]\.resource\.chips: 1번째 칩의 문구가 14자로 길어요/)
+    expect(result.feedWarnings[1]).toMatch(/^items\[0\]\.resource\.bg_color_key: 고른 색 조합\(red, red\)이 색 규칙에 걸려요/)
+    expect(result.items[0].format_errors).toEqual([])
+  })
+
+  it('목록형인데 항목이 없으면 경고, 유형 없이 새 칸만 채우면 경고다', () => {
+    const gallery = feedResult({ resource: { feed_type: 'gallery_list' } })
+    expect(gallery.errors).toEqual([])
+    expect(gallery.feedWarnings[0]).toMatch(/^items\[0\]\.resource\.feed_type: 목록형인데 항목이 없어요/)
+    const noType = feedResult({ resource: { box_kind: 'text' } })
+    expect(noType.errors).toEqual([])
+    expect(noType.feedWarnings[0]).toMatch(/^items\[0\]\.resource\.box_kind: 카드 유형이 비어 있어요/)
+  })
+
+  it('홈피드 카드가 아니면 새 칸 이름이 있어도 보지 않는다', () => {
+    const result = feedResult({ kind: 'mission', resource: { feed_type: 'banner' } })
+    expect(result.errors.filter((e) => e.includes('feed_type'))).toEqual([])
   })
 })

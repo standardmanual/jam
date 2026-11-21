@@ -10,7 +10,8 @@
  *   `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음의 `excluded_items`)만 본다.
  *   종류별 세부 검증은 티켓 20260930_1500이 승인 때 등록 전 검증으로 한다(상위 티켓 가정 12).
  *
- * 카드 칸: 홈피드 카드(`kind`가 `home_feed_card`)는 `shape`·`exposure_tags`가 필수이고(없으면 형식 오류, 저장은 한다),
+ * 카드 칸: 홈피드 카드(`kind`가 `home_feed_card`)는 `shape`·`exposure_tags`가 필수이고(없으면 형식 오류, 저장은 한다;
+ * `resource.feed_type`이 있으면 `shape`는 선택, 티켓 20261121_1530),
  * 다른 종류는 값이 있을 때만 형식을 본다. `tribe_id`·`color_pending`은 선택이다. `tribe_id`가 실제 트라이브인지는
  * 호출한 쪽이 `tribes`를 조회해 `ctx.tribeIds`로 넘길 때만 본다(순수 함수라 DB를 부르지 않는다). 옛 형식 항목(`segment`만 있는
  * 항목)은 받아서 저장하고, 새 칸 오류만 붙는다. 칸을 읽는 쪽은 `fields.ts`다.
@@ -57,6 +58,7 @@ import {
   OPS_PATTERN_SAMPLE_ROLES,
   type OpsPatternKnobKey,
 } from '@/lib/admin/opsPatterns/constants'
+import { checkFeedCardBundleColumns, isFeedTypeWritten } from '@/lib/admin/feedCardFields'
 import { TODAY_EXPOSURE_TAG_OPTIONS } from '@/lib/admin/today-sections'
 import { isTribeTag } from '@/lib/today/exposureTribe'
 import { isUuid } from '@/lib/admin/uuid'
@@ -222,23 +224,46 @@ export function validateExposureTags(value: unknown, path: string): string[] {
 /**
  * 항목의 카드 칸 검사(`shape`·`exposure_tags`·`tribe_id`·`color_pending`). `path`는 `items[2]`다.
  * 홈피드 카드는 `shape`·`exposure_tags`가 필수이고, 다른 종류는 값이 있을 때만 본다. `tribe_id`는 null을 「없음」으로 본다.
+ * `resource.feed_type`이 있으면 `shape`는 선택이다(티켓 20261121_1530). 홈피드 카드의 `resource`에 개편 칸(`feed_type`·`chips` 등)이
+ * 하나라도 있으면 5-1의 `validateFeedCardColumns`로 값을 보고, 오류는 반환값에, 경고는 `warningsOut`에 담는다(막지 않는다).
  */
-export function validateOpsCardFields(raw: Record<string, unknown>, path: string, ctx: OpsValidationContext = {}): string[] {
+export function validateOpsCardFields(
+  raw: Record<string, unknown>,
+  path: string,
+  ctx: OpsValidationContext = {},
+  warningsOut?: string[]
+): string[] {
   const errors: string[] = []
   const isCard = raw.kind === OPS_HOME_FEED_CARD_KIND
+  const resource = raw.resource
+  const resourceRecord =
+    typeof resource === 'object' && resource !== null && !Array.isArray(resource) ? (resource as Record<string, unknown>) : null
 
   if (!isPresent(raw.shape)) {
-    if (isCard) errors.push(`${path}.shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적어 주세요).`)
+    if (isCard && !isFeedTypeWritten(resourceRecord)) {
+      errors.push(
+        `${path}.shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적거나 resource.feed_type을 적어 주세요).`
+      )
+    }
   } else if (!isCardShape(raw.shape)) {
     errors.push(`${path}.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeShort(raw.shape)}). 허용값: ${CARD_SHAPES.join(', ')}`)
   }
 
   // 에이전트 기획은 기사형 카드를 만들지 않는다(사용자 결정 2026-10-31, 티켓 20261031_2049).
-  const resource = raw.resource
-  if (isCard && typeof resource === 'object' && resource !== null && !Array.isArray(resource)) {
-    if ((resource as Record<string, unknown>).template_type === 'editorial_article') {
+  if (isCard && resourceRecord) {
+    if (resourceRecord.template_type === 'editorial_article') {
       errors.push(`${path}.resource.template_type: 기사형 카드(editorial_article)는 기획하지 않아요. 다른 템플릿으로 바꿔 주세요.`)
     }
+
+    // 홈피드 개편 칸(티켓 20261121_1530). 칸이 하나도 없으면 검사가 돌지 않는다.
+    const copy = raw.copy
+    const copyTitle = typeof copy === 'object' && copy !== null && !Array.isArray(copy) ? (copy as Record<string, unknown>).title : undefined
+    const titleValue = typeof copyTitle === 'string' && copyTitle.trim() !== '' ? copyTitle : resourceRecord.title
+    const feedCheck = checkFeedCardBundleColumns(resourceRecord, {
+      title: typeof titleValue === 'string' && titleValue.trim() !== '' ? titleValue.trim() : null,
+    })
+    for (const issue of feedCheck.errors) errors.push(`${path}.resource.${issue.key}: ${issue.message}`)
+    for (const issue of feedCheck.warnings) warningsOut?.push(`${path}.resource.${issue.key}: ${issue.message}`)
   }
 
   if (!isPresent(raw.exposure_tags)) {
@@ -731,13 +756,18 @@ function validateItem(
   }
 
   errors.push(...validateWorldReview(raw.world_review, `${path}.world_review`))
-  errors.push(...validateOpsCardFields(raw, path, ctx))
+  const cardFieldWarnings: string[] = []
+  errors.push(...validateOpsCardFields(raw, path, ctx, cardFieldWarnings))
   errors.push(...validateRationaleFields(raw, path))
   errors.push(...validateOpsPlaceCategory(raw.knobs, path, ctx.poiCategorySlugs))
   if (kind === 'pattern_proposal') errors.push(...validateOpsPatternProposal(raw.resource, path))
 
   // image_spec: 선택 칸이다. 이미지 칸이 있는 종류에서 비어 있거나, 값이 있는데 모양이 틀리면 경고만 낸다(오류 아님).
-  const warnings = isImageKind(kind) || isPresent(raw.image_spec) ? imageSpecWarnings(raw.image_spec, path) : []
+  // 홈피드 개편 칸의 경고(칩 12자 초과·색 규칙 등, 티켓 20261121_1530)도 같은 자리에 더한다.
+  const warnings = [
+    ...(isImageKind(kind) || isPresent(raw.image_spec) ? imageSpecWarnings(raw.image_spec, path) : []),
+    ...cardFieldWarnings,
+  ]
 
   return {
     position,
