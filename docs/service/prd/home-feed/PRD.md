@@ -463,6 +463,8 @@ code:
 
 **구현 위치**(6회차-2, 티켓 20261121_1531, 에이전트 카드의 시드·색 고정): 승인된 `home_feed_card` 항목이 `today_cards`로 등록되는 순간(`jam-web/src/lib/admin/opsInbox/execute/homeFeedCard.ts`의 `create`) `feed_type`이 있으면 비어 있는 `feed_seed`와 세 색 키를 정해 insert 행에 합친다(에이전트가 적은 값은 보존, `feed_type`이 없는 옛 모양 항목은 이전과 똑같다). 어드민 저장 라우트 두 개와 같은 코드를 쓰도록 서버 보조를 공용 모듈 `jam-web/src/lib/admin/feedCardServer.ts`(`serverRandomUint32`·`fetchOverlappingBgUsage`·`completeFeedCardValues`)로 모았고, 두 라우트의 중복 보조 함수는 이 모듈로 바뀌었다(동작 불변). 배경색 빈도는 같은 시기(게시 기간이 겹침)에 노출되는 다른 카드를 DB에서 읽어 세므로 같은 실행에서 앞 항목이 먼저 등록되면 뒤 항목의 빈도에 반영된다. 빈도 조회가 실패해도 등록은 막지 않고(빈 빈도로 정함), 통과하는 색 조합이 없어 기본 조합으로 되돌린 경우는 서버 로그에만 남긴다. 제외 조합 목록은 운영 코드에 연결되지 않아 어드민과 같이 빈 목록이다. 핸들러는 요약창이 끌어오는 순수 모듈 계약에 따라 Supabase 클라이언트를 값으로 가져오지 않고 `create`가 받은 `service`를 넘긴다.
 
+**구현 위치**(6회차-3, 티켓 20261121_1532, 운영툴 기획 미리보기): 운영 항목 미리보기(요약창·운영 묶음 화면·묶음의 홈 미리보기)가 `resource`의 새 칸을 읽어 홈과 같은 새 카드 모습으로 그린다. 행 변환 `jam-web/src/lib/admin/opsInbox/cardPreview.ts`의 `itemToPreviewCard`가 6회차-1의 정규화(`checkFeedCardBundleColumns`·`buildFeedCardBundleColumns`)로 허용 값인 칸만 카드 행에 싣고(`feed_type`이 없거나 모르는 값이면 모두 제외해 옛 7모양 그대로), 시드는 폼 미리보기와 같은 고정 상수 1121(`PREVIEW_FEED_SEED`)이다. `jam-web/src/components/admin/ops/OpsCardPreview.tsx`는 새 유형 미리보기 아래에 5회차-2의 값 안내(`FEED_TYPE_VALUE_NOTES`)와 «색과 칩 자리는 등록할 때 정해져서 홈과 조금 다를 수 있어요» 안내를 보인다. 서비스 홈 컴포넌트·`toCardView`는 바뀌지 않았다.
+
 #### 박스 모양 5가지
 
 박스 모양은 고르는 옵션이다. 같은 모양을 텍스트 박스(세로로 긴 쪽)와 이미지 마스크(가로로 긴 쪽, 이미지를 이 모양으로 잘라 보임)에 모두 쓸 수 있고, 아이템 배지 박스(작은 칸)에도 쓴다. 박스에는 외곽선을 두지 않는다. 박스 경로는 비율에 맞게 변환해 그린다(SVG 경로).
