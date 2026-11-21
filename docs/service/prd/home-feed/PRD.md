@@ -519,15 +519,17 @@ code:
 - **규칙 ⑤ 그림과 배경**: 카드 배경색이 해당 이미지 대표 색(저장된 최대 3개 중 하나라도)과 «색상 차이 30° 미만이고 밝기(L*) 차이 15 미만»이면 그 배경은 자동 배정에서 제외한다.
 - **규칙 ⑥ 그림과 칩**: 이미지 위에 걸치는 칩(`hero_box`·이미지 마스크 `text_box`·`collection_intro`)의 색도 같은 조건이면 제외한다. 배지 유형의 칩은 이미지 위에 걸치지 않아 ⑥을 쓰지 않는다.
 - **안전장치**: 이미지 규칙까지 통과하는 조합이 하나도 없으면 이미지 규칙을 건너뛰고 기존 규칙(①~④)만으로 고른다(결과의 `imageRuleSkipped = true`, 서버 로그에만 남기고 사용자 문구는 없다. 기본 조합 되돌림 `usedFallback`과 구분하며, 건너뛴 뒤에도 조합이 없으면 둘 다 참이다). 대표 색이 `NULL`(아직 안 뽑음)이거나 `[]`(색 없음)이면 이미지 규칙을 쓰지 않는다. 읽을 수 없는 hex는 없는 것으로 본다.
-- **수동 지정**: 사용자가 지정한 색은 덮어쓰지 않고 걸러 내지도 않는다. 규칙에 걸리는 경고는 7-7이 다룬다.
+- **수동 지정**: 사용자가 지정한 색은 덮어쓰지 않고 걸러 내지도 않는다. 규칙에 걸리는 경고는 7-7이 어드민 화면에 보인다(아래 구현 위치 7회차-7).
 - **한계**: 저장된 색은 밝기 높은 순이라 면적 비중을 모른다. 3개를 모두 검사한다(보수적).
 - **홈이 그릴 때는 바뀌지 않는다**: 이 규칙은 등록·저장 때 색을 고정하는 경로만 쓴다. 저장된 색 키가 없는 카드를 홈이 그릴 때 정하는 자동 배정(`resolveFeedLook`)은 이미지 대표 색을 읽지 않는다(홈은 카드 행만 보고 배지 대표 색을 알 수 없다).
 
-**수동 지정**: 어드민에서 유형에 맞는 색을 직접 고른다. 규칙에 걸리는 조합을 고르면 경고만 보이고 막지 않는다(카리나 제안, 사용자 확인 대기). 이미지 위에 놓이는 칩과 이미지를 채운 박스의 경고는 위 이미지 대표 색 규칙을 쓴다(경고 화면은 7-7).
+**수동 지정**: 어드민에서 유형에 맞는 색을 직접 고른다. 규칙에 걸리는 조합을 고르면 경고만 보이고 막지 않는다(카리나 제안, 사용자 확인 대기). 이미지 위에 놓이는 칩과 이미지를 채운 박스의 경고는 위 이미지 대표 색 규칙을 쓴다(경고 화면은 7-7, 아래 구현 위치 7회차-7).
 
 **구현 위치**(4회차-1, 화면 연결은 4-2 이후): 규칙 판정(hex 입력) `jam-web/src/lib/today/feedColorRules.ts`, 자동 배정(색·사용 빈도·제외 조합·기본 조합 되돌림) `jam-web/src/lib/today/feedAssign.ts`의 `assignFeedColors`.
 
 **구현 위치**(7회차-6, 티켓 20261121_1828, 이미지 대표 색을 자동 색 배정에 쓴다): 규칙 함수 `jam-web/src/lib/today/feedColorRules.ts`의 `violatesImageColorRule(candidateHex, imageHexes)`(기존 임계값 `COLOR_RULE_THRESHOLDS`의 두 값을 읽는다, `ColorRuleName`에 `'image'`)와 `isHexColor`, 자동 배정 `feedAssign.ts`의 `assignFeedColors`가 선택 입력 `imageHexes`·`chipOnImage`를 받고 결과에 `imageRuleSkipped`를 담는다(입력을 안 주면 결과가 이전과 같고 그 칸도 없다). 유형 → 이미지 색 선택은 순수 함수 `jam-web/src/lib/today/feedImageColors.ts`의 `imageColorsForCard`다. 서버 읽기는 `jam-web/src/lib/admin/feedCardServer.ts`의 `fetchBadgeBgColors`(`badges`에서 삭제되지 않은 행을 `id in (…)`·칸 `bg_colors`만 한 번 조회, 실패하면 `null`과 서버 로그)·`fetchFeedCardImageColors`(배지 유형일 때만 조회)와 `completeFeedCardValues`의 선택 인자 `imageSource`다. 세 저장 경로가 같은 코드를 쓴다: 어드민 생성 라우트(`app/api/admin/today/route.ts`, 커버 색을 배정보다 먼저 뽑고 검증이 실패하면 뽑지 않는다), 수정 라우트(`[id]/route.ts`, 커버가 바뀌었으면 새로 뽑은 색 — 추출이 실패했으면 낡은 저장 색을 쓰지 않는다 — 안 바뀌었으면 저장된 `cover_colors`), 운영 등록(`lib/admin/opsInbox/execute/homeFeedCard.ts`의 `create`가 커버 색을 먼저 뽑아 배정에 넘긴다). 정책 대시보드(`policiesData.ts`)는 이 임계값이 화면 표시 규칙이지 운영 정책·밸런스 수치가 아니라서 갱신하지 않는다(4회차-4와 같은 판단).
+
+**구현 위치**(7회차-7, 티켓 20261121_1829, 직접 고른 색이 이미지 대표 색과 겹치면 경고한다): `jam-web/src/app/admin/today/FeedCardSection.tsx`의 `feedColorWarnings`가 선택 인자 `imageColors`(`imageColorsForCard`의 결과)를 받아 직접 고른 배경색(규칙 ⑤)·칩 색(규칙 ⑥, `chipOnImage`일 때만)을 `violatesImageColorRule`로 검사하고 이유 문구는 `COLOR_RULE_REASON.image`(`lib/admin/feedCardFields.ts`)를 쓴다. 섹션의 선택 props `coverColors`·`badgeColors`·`coverColorsPending`으로 대표 색을 받는다 — `TodayCardForm.tsx`가 수정 화면의 저장된 `cover_colors`(새 카드이거나 커버 이미지를 바꿨으면 모르는 값이라 넘기지 않고 `coverColorsPending`으로 안내 한 줄만 보인다)와 연결 배지의 `bg_colors`(`badge_ids` 순서)를 넘긴다. 배지 대표 색은 어드민 배지 검색 라우트(`app/api/admin/badges/search/route.ts`)의 `select`와 수정 화면(`today/[id]/edit/page.tsx`)의 배지 조회에 `bg_colors` 한 칸을 더해 얻는다(`BadgeSearchResult.bg_colors`). 경고만 하고 저장은 막지 않으며 «자동»으로 둔 칸과 대표 색을 모르는 경우는 검사하지 않는다. 규칙·수치는 바뀌지 않아 정책 대시보드(`policiesData.ts`)는 갱신하지 않는다. 한계: 수정 화면의 배지 조회는 삭제된 배지를 거르지 않아 첫 배지가 삭제된 카드는 홈이 보는 «첫 배지»와 다를 수 있다.
 
 #### 칩
 
