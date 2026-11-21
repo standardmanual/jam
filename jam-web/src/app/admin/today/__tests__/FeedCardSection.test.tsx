@@ -25,6 +25,7 @@ import FeedCardSection, {
 import { EMPTY_FEED_CARD_FORM_VALUES, type FeedCardFormValues } from '@/lib/admin/feedCardFields'
 import { FEED_CHIP_SLOT_SPECS, FEED_TYPES } from '@/lib/today/feedChipSlots'
 import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
+import { DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
 
 vi.mock('next/navigation', () => ({
@@ -164,7 +165,7 @@ describe('FeedCardSection — 색 견본과 이름', () => {
   it('고른 색은 견본(색 변수)과 한국어 이름이 함께 보이고 견본은 보조 기술이 읽지 않는다', () => {
     const html = render({ feedType: 'hero_box', bgColorKey: 'ref-lime' })
     expect(html).toContain('참조 라임')
-    expect(html).toContain('background-color:var(--feed-ref-lime)')
+    expect(html).toContain('background-color:var(--feed-color-ref-lime, var(--feed-ref-lime))')
     expect(html).toContain('aria-hidden="true"')
   })
 })
@@ -203,6 +204,38 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
     expect(html).toContain('data-testid="feed-color-warnings"')
     expect(html).toContain('두 색이 같아서 구분이 안 돼요')
     expect(render({ feedType: 'hero_box', bgColorKey: 'red-soft', chipColorKey: 'red' })).not.toContain('feed-color-warnings')
+  })
+
+  describe('덮어쓴 팔레트 (티켓 20261121_2145)', () => {
+    // 규칙을 통과하던 조합(연한 레드 배경 + 레드 칩)이 레드를 연한 레드와 같은 hex로 덮어쓰면 걸린다
+    const colors = { bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: '' } as const
+    const overridden = { ...DEFAULT_FEED_PALETTE, red: DEFAULT_FEED_PALETTE['red-soft'] }
+
+    it('palette를 안 주거나 기본 팔레트를 주면 이전과 같다', () => {
+      expect(feedColorWarnings(colors, show)).toEqual([])
+      expect(feedColorWarnings(colors, show, [], undefined, DEFAULT_FEED_PALETTE)).toEqual([])
+    })
+
+    it('palette를 주면 덮어쓴 hex로 판정해 경고한다', () => {
+      const warnings = feedColorWarnings(colors, show, [], undefined, overridden)
+      expect(warnings).toHaveLength(1)
+      expect(warnings[0]).toContain('두 색이 같아서 구분이 안 돼요')
+    })
+
+    it('이미지 색 경고도 덮어쓴 hex로 판정한다', () => {
+      const image = { imageHexes: [DEFAULT_FEED_PALETTE.blue], chipOnImage: false }
+      const only = { bgColorKey: 'green', chipColorKey: '', boxColorKey: '' } as const
+      expect(feedColorWarnings(only, show, [], image)).toEqual([])
+      const warnings = feedColorWarnings(only, show, [], image, { ...DEFAULT_FEED_PALETTE, green: DEFAULT_FEED_PALETTE.blue })
+      expect(warnings).toHaveLength(1)
+      expect(warnings[0]).toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
+    })
+
+    it('섹션이 palette prop으로 경고를 판정한다', () => {
+      const patch = { feedType: 'hero_box', bgColorKey: 'red-soft', chipColorKey: 'red' } as const
+      expect(render(patch)).not.toContain('feed-color-warnings')
+      expect(render(patch, { palette: overridden })).toContain('feed-color-warnings')
+    })
   })
 })
 

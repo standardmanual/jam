@@ -13,6 +13,8 @@ import HomeViewTracker from './HomeViewTracker'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
 import { getTodayCards } from '@/lib/today/cards'
+import { buildFeedPalette } from '@/lib/today/feedColorOverrides'
+import { getFeedColorOverrides } from '@/lib/today/feedColorOverridesServer'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getDisplayName } from '@/lib/utils'
 import {
@@ -91,7 +93,12 @@ export default async function HomePage() {
 
   // ─── 투데이 카드 스택 (Phase 15) ─────────────────────────────────────
   // 프로필을 읽었으면 소속 트라이브(tribe_id)를 넘겨 태그 계산이 users를 다시 읽지 않게 한다. 프로필 조회가 실패했으면 생략(undefined)해 거기서 읽는다.
-  const todayCards = await getTodayCards(userId, userProfile?.created_at, undefined, userProfile ? userProfile.tribe_id : undefined)
+  // 색 덮어쓰기(티켓 20261121_2145): 색이 비어 있는 카드의 자동 배정이 덮어쓴 hex로 계산되도록 팔레트를 함께 읽는다(캐시됨, 실패하면 기본 팔레트).
+  const [todayCards, feedColorOverrides] = await Promise.all([
+    getTodayCards(userId, userProfile?.created_at, undefined, userProfile ? userProfile.tribe_id : undefined),
+    getFeedColorOverrides(),
+  ])
+  const feedPalette = buildFeedPalette(feedColorOverrides)
 
   return (
     <div className="min-h-full text-foreground">
@@ -137,7 +144,7 @@ export default async function HomePage() {
       <TodayStatusStrip left={leftStatus} right={rightStatus} />
 
       {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
-      <TodayCardStack cards={todayCards} currentUserId={userId} />
+      <TodayCardStack cards={todayCards} currentUserId={userId} palette={feedPalette} />
 
       </div>
     </div>

@@ -97,7 +97,7 @@ describe('컬렉션 소개 — 구성', () => {
 
   it('색은 변수만 쓰고(hex 없음) 카드 면에 외곽선이 없다', () => {
     const html = render(collectionView({ bg_color_key: 'blue-soft' }))
-    expect(html).toContain('background-color:var(--jam-blue-soft)')
+    expect(html).toContain('background-color:var(--feed-color-blue-soft, var(--jam-blue-soft))')
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
   })
 

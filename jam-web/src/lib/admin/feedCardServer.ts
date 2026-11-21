@@ -16,6 +16,8 @@ import {
   type DecidedFeedCardValues,
   type DecideFeedCardValuesInput,
 } from '@/lib/admin/feedCardFields'
+import type { FeedPalette } from '@/lib/today/feedAssign'
+import { fetchFeedPalette } from '@/lib/today/feedColorOverridesRead'
 import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
@@ -115,6 +117,8 @@ export async function fetchFeedCardImageColors(
  * `columns.feed_seed`가 있으면 그 값이 색 계산 시드이자 저장 시드다(난수는 뽑지 않는다). 없을 때만 서버 난수로 새로 뽑는다(`random`은 시험이 바꿔 끼운다, 티켓 20261121_2113). 제외 조합은 운영 코드에 연결된 목록이 없어 비워 둔다 —
  * 연결되면 이 한 곳만 바꾸면 어드민과 에이전트 두 경로가 함께 바뀐다.
  * `imageSource`를 주면 이미지 대표 색(커버 색·배지 색)으로 자동 배경·칩을 거른다(티켓 20261121_1828). 주지 않으면 이전과 같다.
+ * 색 규칙은 컬러셋 교체로 덮어쓴 hex로 판정한다(티켓 20261121_2145): `palette`를 주면 그 표를, 안 주면 `feed_color_overrides`를 한 번 읽어 합친다.
+ * 읽기가 실패하면 기본 팔레트로 정하고 서버 로그에만 남긴다(색은 보조 입력이라 저장을 막지 않는다).
  */
 export async function completeFeedCardValues(
   client: ServiceClient,
@@ -123,8 +127,17 @@ export async function completeFeedCardValues(
   random: () => number = serverRandomUint32,
   logLabel?: string,
   imageSource?: FeedCardImageSource,
+  palette?: FeedPalette,
 ): Promise<DecidedFeedCardValues> {
   const overlappingBgUsage = await fetchOverlappingBgUsage(client, period, logLabel)
   const image = imageSource ? await fetchFeedCardImageColors(client, imageSource, logLabel) : undefined
-  return decideFeedCardValues({ columns, seed: columns.feed_seed ?? createFeedSeed(random), overlappingBgUsage, excludedPairs: [], image })
+  const resolvedPalette = palette ?? (await fetchFeedPalette(client, logLabel))
+  return decideFeedCardValues({
+    columns,
+    seed: columns.feed_seed ?? createFeedSeed(random),
+    overlappingBgUsage,
+    excludedPairs: [],
+    image,
+    palette: resolvedPalette,
+  })
 }

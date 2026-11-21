@@ -38,7 +38,7 @@ import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedIm
 import { FEED_COLOR_KEYS, FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
 import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
-import type { ExcludedColorPair } from '@/lib/today/feedAssign'
+import type { ExcludedColorPair, FeedPalette } from '@/lib/today/feedAssign'
 import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
 import type { TodayBoxKind, TodayBoxShape, TodayCardTemplateType } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -176,13 +176,16 @@ const colorName = (key: FeedColorKey): string => FEED_COLOR_LABELS[key]
 /**
  * 고른 색 조합이 규칙에 걸리거나 사용자가 제외한 조합이면 경고 문구를 돌려준다. 막지 않고 알리기만 한다(PRD «수동 지정»).
  * 판정은 `feedColorRules.ts`의 함수다. 두 칸 다 고른 짝만 본다. 보이지 않는 칸(`show`가 거짓)이 낀 짝은 건너뛴다.
+ * `palette`는 컬러셋 교체로 덮어쓴 hex를 합친 표다(티켓 20261121_2145). 안 주면 기본 15색 hex로 판정한다.
  */
 export function feedColorWarnings(
   values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey' | 'boxColorKey'>,
   show: { chip: boolean; box: boolean },
   excludedPairs: readonly ExcludedColorPair[] = [],
   imageColors?: FeedImageColorInput,
+  palette?: FeedPalette,
 ): string[] {
+  const hexOf = (key: FeedColorKey): string => palette?.[key] ?? FEED_COLORS[key].hex
   const warnings: string[] = []
   const pairs: ReadonlyArray<readonly [string, FeedColorKey | '', string, FeedColorKey | '', boolean]> = [
     ['배경색', values.bgColorKey, '칩 색', values.chipColorKey, true],
@@ -198,10 +201,10 @@ export function feedColorWarnings(
       warnings.push(`${head} 제외하기로 한 조합이에요. 저장은 되지만 다른 색을 골라 보세요.`)
       continue
     }
-    const violated = firstViolatedRule(FEED_COLORS[keyA].hex, FEED_COLORS[keyB].hex, { involvesChip })
+    const violated = firstViolatedRule(hexOf(keyA), hexOf(keyB), { involvesChip })
     if (violated) warnings.push(`${head} 색 규칙에 걸려요. ${COLOR_RULE_REASON[violated]}. 저장은 되지만 다른 색을 골라 보세요.`)
   }
-  warnings.push(...imageColorWarnings(values, show, imageColors))
+  warnings.push(...imageColorWarnings(values, show, imageColors, palette))
   return warnings
 }
 
@@ -214,6 +217,7 @@ function imageColorWarnings(
   values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey'>,
   show: { chip: boolean },
   imageColors: FeedImageColorInput | undefined,
+  palette?: FeedPalette,
 ): string[] {
   if (!imageColors || imageColors.imageHexes.length === 0) return []
   const candidates: ReadonlyArray<readonly [string, FeedColorKey | '', boolean]> = [
@@ -223,7 +227,7 @@ function imageColorWarnings(
   const warnings: string[] = []
   for (const [label, key, applies] of candidates) {
     if (!applies || !key) continue
-    if (!violatesImageColorRule(FEED_COLORS[key].hex, imageColors.imageHexes)) continue
+    if (!violatesImageColorRule(palette?.[key] ?? FEED_COLORS[key].hex, imageColors.imageHexes)) continue
     warnings.push(`${label}(${colorName(key)})이 색 규칙에 걸려요. ${COLOR_RULE_REASON.image}. 저장은 되지만 다른 색을 골라 보세요.`)
   }
   return warnings
@@ -288,6 +292,8 @@ export interface FeedCardSectionProps {
   badgeColors?: readonly unknown[]
   /** 커버 대표 색이 저장 전이라 아직 없다(새 카드이거나 커버 이미지를 바꿨다). 커버 색 규칙을 쓰는 유형에서 안내 한 줄을 보인다. */
   coverColorsPending?: boolean
+  /** 색 키 → hex 표(컬러셋 교체로 덮어쓴 값을 합친 것, 티켓 20261121_2145). 색 경고 판정에 쓴다. 생략하면 기본 팔레트다. */
+  palette?: FeedPalette
 }
 
 /** 커버 이미지 대표 색으로 이미지 규칙을 판정하는 유형인가 — 규칙 표(`imageColorsForCard`)를 그대로 읽어 따로 목록을 만들지 않는다. */
@@ -306,6 +312,7 @@ export default function FeedCardSection({
   coverColors,
   badgeColors,
   coverColorsPending,
+  palette,
 }: FeedCardSectionProps) {
   const feedType: FeedType | null = isFeedType(values.feedType) ? values.feedType : null
   const visible = feedType ? feedFieldVisibility(feedType) : null
@@ -318,7 +325,7 @@ export default function FeedCardSection({
     ? imageColorsForCard({ feedType, boxKind: values.boxKind, coverColors, badgeColors })
     : undefined
   const colorWarnings = visible
-    ? feedColorWarnings(values, { chip: visible.chipColor, box: visible.boxColor }, excludedColorPairs, imageColors)
+    ? feedColorWarnings(values, { chip: visible.chipColor, box: visible.boxColor }, excludedColorPairs, imageColors, palette)
     : []
   const showCoverColorsNotice = Boolean(coverColorsPending && feedType && usesCoverColorRule(feedType, values.boxKind))
 

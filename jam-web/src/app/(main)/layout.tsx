@@ -4,6 +4,7 @@ import { ToastProvider } from '@/components/ui/Toast'
 import TabBar from '@/components/ui/TabBar'
 import Footer from '@/components/ui/Footer'
 import BadgeImageWarmup from '@/components/BadgeImageWarmup'
+import FeedColorStyle from '@/components/today/FeedColorStyle'
 import StravaConnectReveal from '@/components/StravaConnectReveal'
 import StravaDuplicateSheet from '@/components/strava/StravaDuplicateSheet'
 import PendingItemsPickerProvider from '@/components/strava/PendingItemsPickerProvider'
@@ -83,6 +84,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   return (
     <ToastProvider>
+      {/* 홈피드 카드 색 덮어쓰기(티켓 20261121_2145) — 덮어쓴 키가 없거나 읽기가 실패하면 아무것도 그리지 않는다. 홈 카드와 개발용 미리보기가 이 레이아웃 아래다 */}
+      <FeedColorStyle />
       <TopNavDataProvider value={{ username, avatarUrl, stravaState, hasUnreadNotifications }}>
         <PendingItemsPickerProvider initialPendingCount={pendingItemsCount}>
           <div

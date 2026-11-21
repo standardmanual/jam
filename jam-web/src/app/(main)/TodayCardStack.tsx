@@ -1,6 +1,7 @@
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import TodayCard from '@/components/today/TodayCard'
 import { toCardView } from '@/lib/today/cardView'
+import type { FeedPalette } from '@/lib/today/feedAssign'
 
 /**
  * 투데이 카드 스택 (홈 화면). 카드 0개면 아무것도 렌더링하지 않는다. 제목 «투데이»·부제 «오늘의 소식»은 그리지 않는다(2026-11-04 사용자 요청, 티켓 20261104_1710).
@@ -13,10 +14,13 @@ import { toCardView } from '@/lib/today/cardView'
 export default function TodayCardStack({
   cards,
   currentUserId,
+  palette,
 }: {
   cards: TodayCardWithHref[]
   /** 랭킹 행형 `list`에서 내 순위 행을 강조하는 데 쓴다(선택 — 없으면 강조 없음) */
   currentUserId?: string
+  /** 색 키 → hex 표(컬러셋 교체, 티켓 20261121_2145). 색이 비어 있는 카드의 자동 배정에 쓴다. 없으면 기본 팔레트다. */
+  palette?: FeedPalette
 }) {
   if (!cards || cards.length === 0) return null
 
@@ -24,7 +28,7 @@ export default function TodayCardStack({
     <section>
       <div className="flex flex-col gap-2">
         {cards.map((card) => (
-          <TodayCard key={card.id} view={toCardView(card, { tracking: true })} currentUserId={currentUserId} />
+          <TodayCard key={card.id} view={toCardView(card, { tracking: true, palette })} currentUserId={currentUserId} />
         ))}
       </div>
     </section>

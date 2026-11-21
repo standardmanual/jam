@@ -426,7 +426,7 @@ code:
 
 ### 개편 규격: 새 카드 유형·박스·색·칩 (1~7회차 구현)
 
-> **상태: 1~7회차 구현 완료, 후속(컬러셋 교체 어드민, 체크인 지점 이미지 선택 후속)이 남았다**(티켓 20261120_2026). 이 절은 사용자가 샘플 아티팩트로 확정한 개편 내용이고, 화면(4회차)·어드민 수동 작성(5회차)·에이전트 묶음과 등록·운영툴 미리보기(6회차)·이미지(글자·로고 없는 프리셋, 대표 색 저장과 색 규칙, 7회차)가 이 규격대로 구현됐다. 위 절들은 옛 7모양 코드의 사실로 남아 있다. 채원의 사전 판정과 사용자 승인(2026-11-20, 추천안대로: 새 색 10개, 강조색 사용처 규칙 개정, 새 칩, 새 컴포넌트 묶음, 서비스 전용 상수, 홈피드 외형 전면 변경과 옛 모양 공존, 수동 지정 경고만·문구 칩 12자, 모션 반복 재생)을 받았다. 게시 중인 카드는 고려하지 않는다(새 디자인의 카드는 새로 만든다). 옛 모양 7가지는 기존 카드가 모두 끝날 때까지 지금 모습 그대로 그리고, 그 뒤 별도 티켓으로 걷어 낸다.
+> **상태: 1~7회차 구현 완료, 후속은 컬러셋 교체(서비스 쪽은 구현 완료, 어드민 화면이 남았다)와 체크인 지점 이미지 선택 후속이다**(티켓 20261120_2026). 이 절은 사용자가 샘플 아티팩트로 확정한 개편 내용이고, 화면(4회차)·어드민 수동 작성(5회차)·에이전트 묶음과 등록·운영툴 미리보기(6회차)·이미지(글자·로고 없는 프리셋, 대표 색 저장과 색 규칙, 7회차)가 이 규격대로 구현됐다. 위 절들은 옛 7모양 코드의 사실로 남아 있다. 채원의 사전 판정과 사용자 승인(2026-11-20, 추천안대로: 새 색 10개, 강조색 사용처 규칙 개정, 새 칩, 새 컴포넌트 묶음, 서비스 전용 상수, 홈피드 외형 전면 변경과 옛 모양 공존, 수동 지정 경고만·문구 칩 12자, 모션 반복 재생)을 받았다. 게시 중인 카드는 고려하지 않는다(새 디자인의 카드는 새로 만든다). 옛 모양 7가지는 기존 카드가 모두 끝날 때까지 지금 모습 그대로 그리고, 그 뒤 별도 티켓으로 걷어 낸다.
 
 **치수 원칙**: 모서리(radius), 안쪽 여백(padding), 간격(space), 글자 크기(text size)는 기존 디자인 시스템 값을 쓰고, 색만 새 값을 쓴다. 디자인 시스템에 맞는 값이 없는 것(기울기, 박스 홈의 크기, 도장 크기, 물결 높낮이, 칩 자리의 오프셋)만 새 값으로 두고 채원의 판정을 받는다.
 
@@ -534,6 +534,18 @@ code:
 **구현 위치**(7회차-7, 티켓 20261121_1829, 직접 고른 색이 이미지 대표 색과 겹치면 경고한다): `jam-web/src/app/admin/today/FeedCardSection.tsx`의 `feedColorWarnings`가 선택 인자 `imageColors`(`imageColorsForCard`의 결과)를 받아 직접 고른 배경색(규칙 ⑤)·칩 색(규칙 ⑥, `chipOnImage`일 때만)을 `violatesImageColorRule`로 검사하고 이유 문구는 `COLOR_RULE_REASON.image`(`lib/admin/feedCardFields.ts`)를 쓴다. 섹션의 선택 props `coverColors`·`badgeColors`·`coverColorsPending`으로 대표 색을 받는다 — `TodayCardForm.tsx`가 수정 화면의 저장된 `cover_colors`(새 카드이거나 커버 이미지를 바꿨으면 모르는 값이라 넘기지 않고 `coverColorsPending`으로 안내 한 줄만 보인다)와 연결 배지의 `bg_colors`(`badge_ids` 순서)를 넘긴다. 배지 대표 색은 어드민 배지 검색 라우트(`app/api/admin/badges/search/route.ts`)의 `select`와 수정 화면(`today/[id]/edit/page.tsx`)의 배지 조회에 `bg_colors` 한 칸을 더해 얻는다(`BadgeSearchResult.bg_colors`). 경고만 하고 저장은 막지 않으며 «자동»으로 둔 칸과 대표 색을 모르는 경우는 검사하지 않는다. 규칙·수치는 바뀌지 않아 정책 대시보드(`policiesData.ts`)는 갱신하지 않는다. 한계: 수정 화면의 배지 조회는 삭제된 배지를 거르지 않아 첫 배지가 삭제된 카드는 홈이 보는 «첫 배지»와 다를 수 있다.
 
 **구현 위치**(5~7회차 코드 정리, 티켓 20261121_2113, 동작 불변): 박스 칸을 보이는 유형 목록(`BOX_FEED_TYPES`·`BOX_KIND_FEED_TYPES`)은 `FeedCardSection.tsx`에서 `jam-web/src/lib/today/feedChipSlots.ts`의 공용 상수로 옮겼고, 홈 컴포넌트가 `FeedBox`를 그리는 유형과 같은지는 시험(`components/today/__tests__/FeedCard.boxTypes.test.tsx`)이 유형 8개를 그려 지킨다. `FeedCardSection.tsx`와 `FeedChipsEditor.tsx`의 순환 가져오기는 공용 조각(`ChoiceField`·`ChoiceOption`·`stampSlotLabel`)을 `jam-web/src/app/admin/today/FeedFieldParts.tsx`로 옮겨 끊었고 `FeedCardSection.tsx`가 같은 이름을 다시 내보낸다. 미리보기 고정 시드는 `jam-web/src/lib/today/feedPreviewSeed.ts`의 `FEED_PREVIEW_SEED` 하나이고 폼(`TodayCardForm.tsx`)과 운영 항목 미리보기(`cardPreview.ts`의 `PREVIEW_FEED_SEED`)가 이것을 가져온다. 등록 때 `feed_seed`가 이미 있는 카드는 그 값이 색 계산 시드이자 저장 시드이고(`completeFeedCardValues`가 난수를 뽑지 않는다), 없을 때만 서버 난수를 뽑는다.
+
+**컬러셋 교체**(후속 1, 티켓 20261121_2145, 서비스 쪽 구현. 어드민에서 색을 바꾸는 화면은 후속 2, 티켓 20261121_2146): 사용자 결정(2026-11-21 «설계대로 진행»)으로 색이 마음에 들지 않으면 어드민에서 바꿀 수 있다. 색 키 15개는 그대로 두고 **키가 가리키는 hex만 덮어쓴다**.
+
+- **덮어쓰는 범위는 홈피드 카드만이다.** 원색 5개(`--jam-red` 등)는 디자인 시스템 전체가 쓰는 토큰이라 건드리지 않는다. 카드 전용 변수 `--feed-color-<키>`를 앞에 두고 기본값으로 기존 변수를 가리킨다(`var(--feed-color-<키>, var(<기존 변수>))`). 덮어쓴 키만 `:root`에 내려가므로 덮어쓰지 않은 키와 디자인 시스템의 다른 곳은 그대로다.
+- **저장**: 표 `feed_color_overrides(color_key, hex, updated_at, updated_by)`(마이그레이션 352). 행이 없으면 기본값이고, 기본값 복원은 행 삭제다. 읽기는 누구나(홈 화면), 쓰기는 `service_role`만이다. 키는 15개 안, 값은 `#rrggbb`만 받는다.
+- **카드의 색 키는 바뀌지 않는다.** 이미 저장된 카드는 키를 그대로 갖고 보이는 색만 바뀐다. 색이 비어 있는 카드(자동)는 홈이 그릴 때 덮어쓴 hex로 규칙을 다시 판정해 색을 정한다(저장된 시드 그대로, 같은 입력은 같은 값).
+- **계산도 같은 팔레트**: 자동 색 배정·색 규칙 경고·이미지 색 경고는 hex를 입력으로 받는다. 덮어쓴 값을 합친 팔레트(`FeedPalette`)를 만들어 넘기고, 규칙 결과는 hex가 바뀌면 다시 계산된다. 팔레트를 안 주면 기본 15색이라 결과는 이전과 같다.
+- **실패해도 기본값**: 표가 없거나 읽기가 실패하면 빈 덮어쓰기(기본값)로 그리고 서버 로그에만 남긴다. 홈 화면이 깨지지 않는다.
+- **바꾸는 시점**: 서버가 표를 짧게 캐시하고(태그 `feed-colors`, 재검증 60초) 어드민이 적용·복원하면 태그를 무효화한다(후속 2가 부른다). 바꾸기 전 미리보기·규칙 재계산·«적용» 확인은 후속 2다.
+- **정책 대시보드**: 색 값은 표시 설정이지 운영 정책·밸런스 수치가 아니어서 `policiesData.ts`는 갱신하지 않는다.
+
+**구현 위치**(후속 1, 티켓 20261121_2145): 순수 함수(정리·팔레트 합치기·CSS 변수 문자열) `jam-web/src/lib/today/feedColorOverrides.ts`, 표 읽기(실패 시 기본값) `feedColorOverridesRead.ts`, 캐시된 서버 읽기와 무효화 `feedColorOverridesServer.ts`(서버 전용), 변수 `<style>`을 내리는 서버 컴포넌트 `jam-web/src/components/today/FeedColorStyle.tsx`(`(main)/layout.tsx`와 `admin/layout.tsx`에 끼워 홈 카드·개발용 미리보기·어드민 미리보기에 적용). 카드 색 변수는 `feedConstants.ts`의 `feedColorVar`. 팔레트 연결: `resolveFeedLook`·`toCardView`의 `palette` 선택 입력(홈 `page.tsx`가 읽어 `TodayCardStack`에 넘긴다), `completeFeedCardValues`·`decideFeedCardValues`(저장 때 색 고정)와 `validateFeedCardColumns`(저장 라우트 두 개가 읽어 넘긴다), 어드민 폼의 `feedColorWarnings`(수정·등록 페이지가 `TodayCardForm`의 `feedPalette`로 내려준다).
 
 #### 칩
 

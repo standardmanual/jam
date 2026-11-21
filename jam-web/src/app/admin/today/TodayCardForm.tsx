@@ -64,6 +64,7 @@ import type { TodayRecipeOption } from '@/lib/admin/todayRecipeOptions'
 import { orphanTribeTags, tribeTagOptions, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
+import type { FeedPalette } from '@/lib/today/feedAssign'
 import { toCardView } from '@/lib/today/cardView'
 import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import TodayCardPreview from './TodayCardPreview'
@@ -115,6 +116,8 @@ interface TodayCardFormProps {
   returnDate: string
   /** 페이지 제목·뒤로 가기 — 섹션 열 위에 둔다(레일은 페이지 맨 위에서 시작, TodayEditorShell 주석) */
   header?: ReactNode
+  /** 색 키 → hex 표(컬러셋 교체로 덮어쓴 값을 합친 것, 티켓 20261121_2145). 색 경고·검증·미리보기의 자동 배정에 쓴다. 생략하면 기본 팔레트다. */
+  feedPalette?: FeedPalette
 }
 
 /** 새 카드(시드가 아직 없는 카드)의 미리보기 전용 고정 시드. 값은 `lib/today/feedPreviewSeed.ts` 한 곳에 있고, 기존 가져오기 경로가 깨지지 않게 다시 내보낸다. */
@@ -151,7 +154,7 @@ const FOCUS_ID = {
   feedType: 'feed-card-type',
 } as const
 
-export default function TodayCardForm({ card, missions, itemBooks, rankingModes, recipes, tribes = [], badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
+export default function TodayCardForm({ card, missions, itemBooks, rankingModes, recipes, tribes = [], badgeLabels, initialDate, returnDate, header, feedPalette }: TodayCardFormProps) {
   const router = useRouter()
   const isEdit = !!card
 
@@ -303,6 +306,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const feedValidation = validateFeedCardColumns(feedColumns, {
     title: title.trim(),
     itemBookId: fields.itemBook ? itemBookId || null : null,
+    palette: feedPalette,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -465,7 +469,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     resolved_ranking: previewRanking,
   }
   // 계측 정보(tracking)를 싣지 않아 트래커·링크가 없다
-  const previewView = toCardView(previewCard)
+  const previewView = toCardView(previewCard, { palette: feedPalette })
 
   // ── 섹션 본문 ─────────────────────────────────────────────────────────
 
@@ -658,6 +662,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         coverColors={coverColorsKnown ? card?.cover_colors : undefined}
         badgeColors={fields.badges ? badgeIds.map((id) => badgeLabelCache.get(id)?.bg_colors) : undefined}
         coverColorsPending={!coverColorsKnown}
+        palette={feedPalette}
       />
     </TodaySectionCard>
   )

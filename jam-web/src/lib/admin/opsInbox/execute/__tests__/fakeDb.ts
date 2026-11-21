@@ -246,6 +246,7 @@ export class FakeDb {
     missions: [],
     item_books: [],
     badges: [],
+    feed_color_overrides: [], // 색 덮어쓰기 표(마이그레이션 352, 티켓 20261121_2145) — 카드 등록 때 자동 배정이 읽는다. 비어 있으면 기본값
     ranking_modes: [],
     // 미션 핸들러(티켓 20261002_1944)가 읽는 표: 되돌림 전 참조 확인(`MISSION_UNDO_REFERENCE_TABLES`)과 조건 지점 존재 확인.
     user_mission_completions: [],

@@ -85,7 +85,7 @@ describe('FeedCard — 공통', () => {
     const html = render(feedView('hero_box', { bg_color_key: 'red-soft' }))
     expect(html).toContain('rounded-2xl')
     expect(html).toContain('p-4')
-    expect(html).toContain('background-color:var(--jam-red-soft)')
+    expect(html).toContain('background-color:var(--feed-color-red-soft, var(--jam-red-soft))')
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
   })
 
@@ -122,10 +122,10 @@ describe('히어로(hero_box)', () => {
   it('이미지가 있으면 이미지가 박스 안에 있고 없으면 색 면 박스만 남는다(자리 표시 없음)', () => {
     const withImage = render(feedView('hero_box', { box_color_key: 'ref-blue' }))
     expect(withImage).toContain('cover.png')
-    expect(withImage).toContain('background-color:var(--feed-ref-blue)')
+    expect(withImage).toContain('background-color:var(--feed-color-ref-blue, var(--feed-ref-blue))')
     const without = render(feedView('hero_box', { box_color_key: 'ref-blue', imageUrl: null }))
     expect(without).not.toContain('<img')
-    expect(without).toContain('background-color:var(--feed-ref-blue)')
+    expect(without).toContain('background-color:var(--feed-color-ref-blue, var(--feed-ref-blue))')
   })
 
   it('칩 개수만큼 칩이 있고 구분 칩은 검정(--foreground 면·--snow 글자)이다', () => {
@@ -297,6 +297,6 @@ describe('전체 배경 이미지(full_image) — 꺼져 있지만 컴포넌트�
   it('이미지가 없으면 카드 배경 색 면이다', () => {
     const html = render(feedView('full_image', { imageUrl: null, bg_color_key: 'green-soft' }))
     expect(html).not.toContain('<img')
-    expect(html).toContain('background-color:var(--jam-green-soft)')
+    expect(html).toContain('background-color:var(--feed-color-green-soft, var(--jam-green-soft))')
   })
 })

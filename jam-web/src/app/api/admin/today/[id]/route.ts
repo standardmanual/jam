@@ -12,6 +12,7 @@ import {
   type FeedCardColumns,
 } from '@/lib/admin/feedCardFields'
 import { fetchFeedCardImageColors, fetchOverlappingBgUsage, serverRandomUint32 } from '@/lib/admin/feedCardServer'
+import { fetchFeedPalette } from '@/lib/today/feedColorOverridesRead'
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
 const READ_ERROR_MESSAGE = '카드 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
@@ -63,7 +64,9 @@ async function decideFeedColumnsForPatch(
   const title = typeof body.title === 'string' ? body.title : (existing.title ?? '')
   const itemBookId = 'item_book_id' in body ? (typeof body.item_book_id === 'string' ? body.item_book_id : null) : existing.item_book_id
   // 본문에 유형이 없으면 저장된 유형으로 검증한다(칩 자리·도장 자리는 유형이 정한다).
-  const checked = validateFeedCardColumns({ feed_type: existing.feed_type, ...columns }, { title, itemBookId })
+  // 컬러셋 교체로 덮어쓴 hex를 합친 팔레트(티켓 20261121_2145) — 색 규칙 경고와 자동 배정이 같은 표를 쓴다. 읽기가 실패하면 기본 팔레트다.
+  const palette = await fetchFeedPalette(supabase, '[today PATCH 색 덮어쓰기 조회 오류]')
+  const checked = validateFeedCardColumns({ feed_type: existing.feed_type, ...columns }, { title, itemBookId, palette })
   const result = { errors: checked.errors, warnings: [...checked.warnings], patch: {} as Record<string, unknown>, omit: [] as string[] }
   if (checked.errors.length > 0) return result
 
@@ -106,6 +109,7 @@ async function decideFeedColumnsForPatch(
     overlappingBgUsage: await fetchOverlappingBgUsage(supabase, { startsAt, endsAt, excludeId: id }, '[today PATCH 배경색 사용 빈도 조회 오류]'),
     excludedPairs: [],
     image,
+    palette,
   })
   if (decided.imageRuleSkipped) console.warn(`[today PATCH 색 자동 배정] 이미지 규칙까지 통과하는 조합이 없어 이미지 규칙 없이 정했어요 (카드 ${id})`)
 

@@ -10,6 +10,9 @@
 import { describe, it, expect } from 'vitest'
 import type { ResolvedBadge, TodayCardWithHref } from '../cards'
 import { toCardView, type FeedCardView } from '../cardView'
+import { buildFeedPalette } from '../feedColorOverrides'
+import { firstViolatedRule } from '../feedColorRules'
+import { DEFAULT_FEED_PALETTE } from '../feedAssign'
 
 const NOW = new Date('2026-11-21T12:00:00+09:00')
 
@@ -208,5 +211,24 @@ describe('toCardView — 개편 카드', () => {
 
   it('칩을 내지 않는 자원(기사)은 칩이 없다', () => {
     expect(feed({ template_type: 'editorial_article', resolved_mission: null }).look.chips).toEqual([])
+  })
+})
+
+describe('toCardView — 색 덮어쓰기 팔레트 (티켓 20261121_2145)', () => {
+  const stored = { feed_type: 'hero_box', feed_seed: 12345, bg_color_key: 'red-soft', box_color_key: 'ref-lime' } as const
+
+  it('palette를 안 주면 기본 팔레트라 결과가 이전과 같다', () => {
+    const baseline = toCardView(makeCard(stored), OPTIONS) as FeedCardView
+    expect((toCardView(makeCard(stored), { ...OPTIONS, palette: DEFAULT_FEED_PALETTE }) as FeedCardView).look).toEqual(baseline.look)
+  })
+
+  it('palette를 주면 색이 비어 있는 칸의 자동 배정이 덮어쓴 hex로 계산된다(저장된 칸은 그대로)', () => {
+    const baseline = toCardView(makeCard(stored), OPTIONS) as FeedCardView
+    const palette = buildFeedPalette({ [baseline.look.colors.chip]: DEFAULT_FEED_PALETTE['red-soft'] })
+    const view = toCardView(makeCard(stored), { ...OPTIONS, palette }) as FeedCardView
+    expect(view.look.colors.bg).toBe('red-soft')
+    expect(view.look.colors.box).toBe('ref-lime')
+    expect(view.look.colors.chip).not.toBe(baseline.look.colors.chip)
+    expect(firstViolatedRule(palette['red-soft'], palette[view.look.colors.chip], { involvesChip: true })).toBeNull()
   })
 })

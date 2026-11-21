@@ -309,3 +309,53 @@ describe('이미지 대표 색 읽기와 자동 배정 (티켓 20261121_1828)', 
     expect(decided.bg_color_key).toBe('red')
   })
 })
+
+describe('색 덮어쓰기 팔레트로 정하기 (티켓 20261121_2145)', () => {
+  const period = { startsAt: STARTS, endsAt: ENDS }
+
+  it('덮어쓰기 행이 없으면 팔레트를 직접 준 것과 같은 값이다(표를 한 번 읽는다)', async () => {
+    const db = dbWith([])
+    const withTable = await completeFeedCardValues(db.service, { bg_color_key: 'red-soft' }, period, () => 11)
+    const explicit = await completeFeedCardValues(
+      dbWith([]).service,
+      { bg_color_key: 'red-soft' },
+      period,
+      () => 11,
+      undefined,
+      undefined,
+      DEFAULT_FEED_PALETTE,
+    )
+    expect(withTable).toEqual(explicit)
+    expect(db.calls.filter((call) => call.table === 'feed_color_overrides')).toHaveLength(1)
+  })
+
+  it('표의 덮어쓴 hex로 규칙을 판정한다 — 고른 배경색과 같은 hex로 덮어쓴 색은 칩으로 고르지 않는다', async () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const baseline = await completeFeedCardValues(dbWith([]).service, { bg_color_key: 'red-soft' }, period, () => seed * 40503)
+      const db = dbWith([])
+      db.tables.feed_color_overrides = [{ color_key: baseline.chip_color_key, hex: DEFAULT_FEED_PALETTE['red-soft'] }]
+      const decided = await completeFeedCardValues(db.service, { bg_color_key: 'red-soft' }, period, () => seed * 40503)
+      expect(decided.bg_color_key).toBe('red-soft')
+      expect(decided.chip_color_key).not.toBe(baseline.chip_color_key)
+    }
+  })
+
+  it('palette를 주면 표를 읽지 않고 그 팔레트를 쓴다', async () => {
+    const baseline = await completeFeedCardValues(dbWith([]).service, { bg_color_key: 'red-soft' }, period, () => 7)
+    const db = dbWith([])
+    const palette = { ...DEFAULT_FEED_PALETTE, [baseline.chip_color_key]: DEFAULT_FEED_PALETTE['red-soft'] }
+    const decided = await completeFeedCardValues(db.service, { bg_color_key: 'red-soft' }, period, () => 7, undefined, undefined, palette)
+    expect(decided.chip_color_key).not.toBe(baseline.chip_color_key)
+    expect(db.calls.filter((call) => call.table === 'feed_color_overrides')).toEqual([])
+  })
+
+  it('표를 읽지 못해도 기본 팔레트로 정하고 서버 로그에 남긴다(저장을 막지 않는다)', async () => {
+    const baseline = await completeFeedCardValues(dbWith([]).service, {}, period, () => 99)
+    errorSpy.mockClear()
+    const db = dbWith([])
+    db.failIf = (call) => call.table === 'feed_color_overrides'
+    const decided = await completeFeedCardValues(db.service, {}, period, () => 99, LOG_LABEL)
+    expect(decided).toEqual(baseline)
+    expect((errorSpy.mock.calls as unknown[][]).some((call) => call[0] === LOG_LABEL)).toBe(true)
+  })
+})

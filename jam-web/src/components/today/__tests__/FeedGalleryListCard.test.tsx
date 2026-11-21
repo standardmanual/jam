@@ -100,7 +100,7 @@ describe('목록형 — 구성', () => {
     const html = render(listView({ box_color_key: 'ref-pink' }))
     expect(count(html, 'aspect-square')).toBe(4) // 항목 3 + 화살표 1
     expect(count(html, 'rounded-xl')).toBeGreaterThanOrEqual(4)
-    expect(count(html, 'background-color:var(--feed-ref-pink)')).toBe(3)
+    expect(count(html, 'background-color:var(--feed-color-ref-pink, var(--feed-ref-pink))')).toBe(3)
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
   })
 

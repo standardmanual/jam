@@ -7,6 +7,7 @@ import { AdminBodyThemeFix } from '@/components/admin/AdminBodyThemeFix'
 import { SidebarInset, SidebarProvider } from '@/components/admin/ui/sidebar'
 import { Toaster } from '@/components/admin/ui/sonner'
 import { hasAdminAccess } from '@/lib/admin/auth'
+import FeedColorStyle from '@/components/today/FeedColorStyle'
 
 // 어드민 서체 — 서비스와 같은 `--font-family-base`(Noto Sans KR, globals.css 최상단의
 // Google Fonts CDN import로 전역 로드됨; 티켓 20261015_2132). shadcn 프리셋(b5Jgcv00m)
@@ -56,6 +57,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       style={{ fontFamily: ADMIN_FONT_FAMILY }}
     >
       <AdminBodyThemeFix />
+      {/* 홈피드 카드 색 덮어쓰기(티켓 20261121_2145) — 어드민 미리보기가 홈과 같은 색으로 그려지게 한다 */}
+      <FeedColorStyle />
 
       <SidebarProvider defaultOpen={sidebarDefaultOpen}>
         <AdminSidebar />

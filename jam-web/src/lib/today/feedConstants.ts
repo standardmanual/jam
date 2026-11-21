@@ -77,11 +77,12 @@ export const FEED_COLORS = {
 
 /**
  * 색 키 → CSS `var(--…)` 문자열. 부품은 색을 이 함수만 거쳐 칠한다(hex를 직접 쓰지 않는다).
- * 개발 뒤 컬러셋을 바꿀 때 어드민(6회차)이 저장한 값을 홈 화면의 CSS 변수로 덮어쓰는 층이 이 함수 뒤에 끼어들 수 있다.
+ * 컬러셋 교체(티켓 20261121_2145): 카드 전용 변수 `--feed-color-<키>`를 먼저 읽고, 덮어쓴 값이 없으면 기존 변수(`--jam-*`·`--feed-ref-*`)를 읽는다.
+ * 덮어쓴 키만 `feedColorOverrideCss`가 `:root`에 내려주므로 디자인 시스템의 다른 곳은 그대로다.
  * 위 15색 표가 «키 → 변수 이름 + 기본 hex»의 순수 데이터라, hex를 입력으로 받는 순수 함수(5회차 자동 제외 규칙)가 그 위에 붙을 수 있다.
  */
 export function feedColorVar(key: FeedColorKey): string {
-  return `var(${FEED_COLORS[key].cssVar})`;
+  return `var(--feed-color-${key}, var(${FEED_COLORS[key].cssVar}))`;
 }
 
 // ── 칩 ────────────────────────────────────────────────────────
