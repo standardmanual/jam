@@ -9,7 +9,7 @@
  * - 규칙 판정은 hex를 입력으로 받는 `feedColorRules.ts`가 하고, 이 파일은 색 키 → hex 표(`palette`)를 인자로 받는다(기본값은 `FEED_COLORS`).
  */
 import { createRng, type BoxSeed } from './boxShape'
-import { passesColorRules } from './feedColorRules'
+import { isHexColor, passesColorRules, violatesImageColorRule } from './feedColorRules'
 import { FEED_COLORS, FEED_TILTS } from './feedConstants'
 import { chipLimitOf, diagonalOf, FEED_CHIP_SLOT_SPECS, MAX_CARD_CHIPS, type FeedType } from './feedChipSlots'
 
@@ -48,6 +48,13 @@ export interface FeedColorAssignInput {
   fixed?: { bg?: string | null; chip?: string | null; box?: string | null }
   /** 같은 시기 노출 카드의 배경색 사용 빈도(색 키 → 장수). 없는 키는 0이다. */
   bgUsage?: Readonly<Record<string, number>>
+  /**
+   * 이 카드 이미지의 대표 색 hex(저장된 최대 3개, 티켓 20261121_1828). 비었거나 없으면 이미지 규칙을 쓰지 않는다.
+   * 있으면 자동으로 고르는 배경 후보는 규칙 ⑤(그림과 배경)를 통과해야 한다. 지정값은 걸러 내지 않는다(경고만, 7-7).
+   */
+  imageHexes?: readonly string[]
+  /** 칩이 이미지 위에 걸치는 유형인가. 참이면 자동으로 고르는 칩 후보도 규칙 ⑥(그림과 칩)을 통과해야 한다. `imageHexes`가 없으면 아무 일도 하지 않는다. */
+  chipOnImage?: boolean
 }
 
 export interface FeedColorAssignOptions {
@@ -63,6 +70,12 @@ export interface FeedColorAssignOptions {
 export interface FeedColorAssignment extends FeedColorTriple {
   /** 통과하는 조합이 없어 안전한 기본 조합으로 되돌렸으면 true. 되돌린 값은 지정값이 아닌 칸에만 들어간다. */
   usedFallback: boolean
+  /**
+   * 이미지 규칙(⑤·⑥)까지 통과하는 조합이 하나도 없어 이미지 규칙을 건너뛰고 기존 규칙(①~④)만으로 정했으면 true.
+   * 이미지 규칙을 쓰지 않았거나 건너뛰지 않았으면 이 칸은 없다(이미지 입력이 없을 때 결과가 예전과 똑같도록). `usedFallback`과 별개다 —
+   * 건너뛴 뒤에도 조합이 없으면 둘 다 true다.
+   */
+  imageRuleSkipped?: boolean
 }
 
 function pairKey(a: string, b: string): string {
@@ -81,6 +94,9 @@ function pickIndex(rng: () => number, length: number): number {
  * 2. 배경이 비어 있으면 조합이 남아 있는 배경 중 «같은 시기에 가장 덜 쓰인 색»을 고르고, 동률이면 시드로 고른다.
  * 3. 그 배경으로 남은 조합에서 칩·박스를 시드로 고른다.
  * 4. 조합이 하나도 없으면 비어 있는 칸만 기본 조합으로 채우고 `usedFallback`을 true로 돌려준다.
+ *
+ * 이미지 대표 색(`imageHexes`, 티켓 20261121_1828)이 있으면 1번에 규칙 ⑤(자동 배경 후보)와 ⑥(`chipOnImage`일 때 자동 칩 후보)를 더한다. 그 조합이
+ * 하나도 없으면 이미지 규칙만 건너뛰고 다시 세며 `imageRuleSkipped`를 true로 남긴다. 이미지 입력이 없으면 결과는 이전과 똑같다.
  */
 export function assignFeedColors(
   input: FeedColorAssignInput,
@@ -113,17 +129,42 @@ export function assignFeedColors(
   const chipOptions = fixedChip ? [fixedChip] : autoKeys
   const boxOptions = fixedBox ? [fixedBox] : autoKeys
 
-  const triples: FeedColorTriple[] = []
-  for (const bg of bgOptions) {
-    for (const chip of chipOptions) {
-      if (!pairOk(bg, chip, true, Boolean(fixedBg && fixedChip))) continue
-      for (const box of boxOptions) {
-        if (!pairOk(chip, box, true, Boolean(fixedChip && fixedBox))) continue
-        if (!pairOk(bg, box, false, Boolean(fixedBg && fixedBox))) continue
-        triples.push({ bg, chip, box })
+  // 이미지 규칙(⑤·⑥)은 자동으로 고르는 후보에만 건다. 지정값은 덮어쓰지 않는다. 읽을 수 없는 대표 색은 없는 것으로 본다.
+  const imageHexes = (input.imageHexes ?? []).filter(isHexColor)
+  const bgFiltered = imageHexes.length > 0 && !fixedBg
+  const chipFiltered = imageHexes.length > 0 && Boolean(input.chipOnImage) && !fixedChip
+  const imageRuleActive = bgFiltered || chipFiltered
+  /** 이 색 키가 이미지에 묻히는가. hex를 모르는 키(표에 없는 값)는 규칙을 건너뛴다. */
+  const buriedMemo = new Map<string, boolean>()
+  const buriedInImage = (key: string): boolean => {
+    const cached = buriedMemo.get(key)
+    if (cached !== undefined) return cached
+    const buried = palette[key] !== undefined && violatesImageColorRule(palette[key], imageHexes)
+    buriedMemo.set(key, buried)
+    return buried
+  }
+
+  const collectTriples = (applyImageRule: boolean): FeedColorTriple[] => {
+    const found: FeedColorTriple[] = []
+    for (const bg of bgOptions) {
+      if (applyImageRule && bgFiltered && buriedInImage(bg)) continue
+      for (const chip of chipOptions) {
+        if (applyImageRule && chipFiltered && buriedInImage(chip)) continue
+        if (!pairOk(bg, chip, true, Boolean(fixedBg && fixedChip))) continue
+        for (const box of boxOptions) {
+          if (!pairOk(chip, box, true, Boolean(fixedChip && fixedBox))) continue
+          if (!pairOk(bg, box, false, Boolean(fixedBg && fixedBox))) continue
+          found.push({ bg, chip, box })
+        }
       }
     }
+    return found
   }
+
+  let triples = collectTriples(true)
+  // 안전장치: 이미지 규칙까지 통과하는 조합이 없으면 이미지 규칙만 건너뛰고 기존 규칙으로 다시 센다.
+  const imageRuleSkipped = imageRuleActive && triples.length === 0
+  if (imageRuleSkipped) triples = collectTriples(false)
 
   if (triples.length === 0) {
     return {
@@ -131,6 +172,7 @@ export function assignFeedColors(
       chip: fixedChip ?? fallback.chip,
       box: fixedBox ?? fallback.box,
       usedFallback: true,
+      ...(imageRuleSkipped ? { imageRuleSkipped: true } : {}),
     }
   }
 
@@ -149,7 +191,7 @@ export function assignFeedColors(
 
   const rest = triples.filter((triple) => triple.bg === bg)
   const picked = rest[pickIndex(rng, rest.length)]
-  return { bg, chip: picked.chip, box: picked.box, usedFallback: false }
+  return { bg, chip: picked.chip, box: picked.box, usedFallback: false, ...(imageRuleSkipped ? { imageRuleSkipped: true } : {}) }
 }
 
 // ── 칩 자리·기울기 ───────────────────────────────────────────

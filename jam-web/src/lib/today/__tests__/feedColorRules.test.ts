@@ -12,6 +12,7 @@ import {
   hexToHsl,
   hexToRgb,
   hueDifference,
+  isHexColor,
   isVividPrimary,
   luminanceRatio,
   passesColorRules,
@@ -19,6 +20,7 @@ import {
   summarizeColorPairs,
   summarizeFeedColors,
   violatesContrastRule,
+  violatesImageColorRule,
   violatesKidsRule,
   violatesLightnessRule,
 } from '../feedColorRules'
@@ -184,5 +186,58 @@ describe('15색 순서쌍 필터', () => {
     const swapped = [...feedColorHexes()]
     swapped[0] = '#101010'
     expect(summarizeColorPairs(swapped)).not.toEqual(summary)
+  })
+})
+
+describe('규칙 ⑤·⑥ 그림과 배경·칩 (티켓 20261121_1828)', () => {
+  // 임계값은 기존 두 값을 읽는다: 색상 차이 30°, 밝기(L*) 차이 15. 아래 hex의 값은 시험이 같이 확인한다.
+  it('새 임계값을 만들지 않는다', () => {
+    expect(COLOR_RULE_THRESHOLDS.closeHueDegrees).toBe(30)
+    expect(COLOR_RULE_THRESHOLDS.minCieLightnessDiff).toBe(15)
+  })
+
+  it('색상 차이 30° 경계: 29.88°는 걸리고 30.12°는 통과한다(밝기 차이는 둘 다 15 미만)', () => {
+    const image = ['#ff0000']
+    expect(hueDifference(hexToHsl('#ff0000').h, hexToHsl('#ff7f00').h)).toBeLessThan(30)
+    expect(hueDifference(hexToHsl('#ff0000').h, hexToHsl('#ff8000').h)).toBeGreaterThan(30)
+    expect(Math.abs(cieLightness('#ff7f00') - cieLightness('#ff0000'))).toBeLessThan(15)
+    expect(Math.abs(cieLightness('#ff8000') - cieLightness('#ff0000'))).toBeLessThan(15)
+    expect(violatesImageColorRule('#ff7f00', image)).toBe(true)
+    expect(violatesImageColorRule('#ff8000', image)).toBe(false)
+  })
+
+  it('밝기(L*) 차이 15 경계: 14.9는 걸리고 15.3은 통과한다(색상 차이는 둘 다 0°)', () => {
+    const image = ['#808080']
+    expect(Math.abs(cieLightness('#a7a7a7') - cieLightness('#808080'))).toBeLessThan(15)
+    expect(Math.abs(cieLightness('#a8a8a8') - cieLightness('#808080'))).toBeGreaterThan(15)
+    expect(violatesImageColorRule('#a7a7a7', image)).toBe(true)
+    expect(violatesImageColorRule('#a8a8a8', image)).toBe(false)
+  })
+
+  it('대표 색 세 개 중 하나라도 걸리면 제외한다', () => {
+    const farBlue = '#0000ff'
+    const farGreen = '#00aa00'
+    expect(violatesImageColorRule('#ff7f00', [farBlue, farGreen, '#ff0000'])).toBe(true)
+    expect(violatesImageColorRule('#ff7f00', [farBlue, farGreen])).toBe(false)
+  })
+
+  it('대표 색이 없으면 걸리지 않고, 읽을 수 없는 대표 색은 건너뛴다', () => {
+    expect(violatesImageColorRule('#ff0000', [])).toBe(false)
+    expect(violatesImageColorRule('#ff0000', ['not-a-color', ''])).toBe(false)
+    expect(violatesImageColorRule('#ff7f00', ['not-a-color', '#ff0000'])).toBe(true)
+  })
+
+  it('같은 색은 걸리고, 순서쌍 판정(firstViolatedRule)은 이미지 규칙을 돌려주지 않는다', () => {
+    expect(violatesImageColorRule('#ff0000', ['#ff0000'])).toBe(true)
+    const names = feedColorHexes().flatMap((a) => feedColorHexes().map((b) => firstViolatedRule(a, b)))
+    expect(names).not.toContain('image')
+  })
+
+  it('isHexColor는 읽을 수 있는 hex만 참이다', () => {
+    expect(isHexColor('#ff1d1d')).toBe(true)
+    expect(isHexColor('FFF')).toBe(true)
+    expect(isHexColor('#ggg')).toBe(false)
+    expect(isHexColor(null)).toBe(false)
+    expect(isHexColor(12)).toBe(false)
   })
 })

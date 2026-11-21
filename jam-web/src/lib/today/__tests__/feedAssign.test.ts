@@ -21,7 +21,7 @@ import {
   MAX_CARD_CHIPS,
   type FeedType,
 } from '../feedChipSlots'
-import { passesColorRules } from '../feedColorRules'
+import { passesColorRules, violatesImageColorRule } from '../feedColorRules'
 import { FEED_COLOR_KEYS, FEED_TILTS } from '../feedConstants'
 
 const hexOf = (key: string) => DEFAULT_FEED_PALETTE[key]
@@ -165,6 +165,104 @@ describe('assignFeedColors', () => {
       if (result.usedFallback) continue
       for (const key of [result.bg, result.chip, result.box]) expect(Object.keys(palette)).toContain(key)
     }
+  })
+})
+
+describe('assignFeedColors — 이미지 대표 색 규칙 ⑤·⑥ (티켓 20261121_1828)', () => {
+  const many = seeds(120)
+  const imageRed = ['#f5442c']
+  const imageMulti = ['#f5442c', '#95c1f7', '#c0dc66']
+
+  it('이미지 입력을 주지 않거나 비워 두면 결과가 예전과 완전히 같다(imageRuleSkipped 칸도 없다)', () => {
+    for (const seed of many) {
+      const base = assignFeedColors({ seed })
+      expect(assignFeedColors({ seed, imageHexes: undefined, chipOnImage: undefined })).toStrictEqual(base)
+      expect(assignFeedColors({ seed, imageHexes: [] })).toStrictEqual(base)
+      expect(assignFeedColors({ seed, imageHexes: [], chipOnImage: true })).toStrictEqual(base)
+      expect(assignFeedColors({ seed, imageHexes: ['not-a-color'] })).toStrictEqual(base)
+      expect(base).not.toHaveProperty('imageRuleSkipped')
+    }
+  })
+
+  it('칩이 이미지 위에 걸리지 않으면 배경만 규칙 ⑤를 통과한다. 칩 후보는 이미지로 거르지 않는다', () => {
+    const chips = new Set<string>()
+    for (const seed of many) {
+      const result = assignFeedColors({ seed, imageHexes: imageMulti, chipOnImage: false })
+      expect(result.imageRuleSkipped).toBeUndefined()
+      expect(violatesImageColorRule(hexOf(result.bg), imageMulti)).toBe(false)
+      expect(triplePasses(result)).toBe(true)
+      chips.add(result.chip)
+    }
+    // 칩을 거르지 않으므로 이미지와 비슷한 칩 색도 나올 수 있다(거르면 나올 수 없다)
+    expect([...chips].some((key) => violatesImageColorRule(hexOf(key), imageMulti))).toBe(true)
+  })
+
+  it('시드 100개 이상: 칩이 이미지 위에 걸리면 배경·칩 모두 규칙 ⑤·⑥과 기존 규칙 ①~④를 통과한다', () => {
+    for (const seed of many) {
+      const result = assignFeedColors({ seed, imageHexes: imageMulti, chipOnImage: true })
+      expect(result.usedFallback).toBe(false)
+      expect(result.imageRuleSkipped).toBeUndefined()
+      expect(violatesImageColorRule(hexOf(result.bg), imageMulti)).toBe(false)
+      expect(violatesImageColorRule(hexOf(result.chip), imageMulti)).toBe(false)
+      expect(triplePasses(result)).toBe(true)
+    }
+  })
+
+  it('같은 입력은 같은 결과다(시드 결정성)', () => {
+    for (const seed of seeds(30)) {
+      const input = { seed, imageHexes: imageRed, chipOnImage: true }
+      expect(assignFeedColors(input)).toStrictEqual(assignFeedColors({ ...input, imageHexes: [...imageRed] }))
+    }
+  })
+
+  it('이미지에 묻히는 색은 자동 배정에서 빠진다(이미지와 같은 색 키가 나오지 않는다)', () => {
+    const imageHex = hexOf('red')
+    for (const seed of many) {
+      const result = assignFeedColors({ seed, imageHexes: [imageHex], chipOnImage: true })
+      expect(result.bg).not.toBe('red')
+      expect(result.chip).not.toBe('red')
+    }
+  })
+
+  it('지정값은 덮어쓰지 않고 걸러 내지도 않는다(경고는 7-7의 몫)', () => {
+    for (const seed of seeds(40)) {
+      const result = assignFeedColors({
+        seed,
+        imageHexes: [hexOf('red')],
+        chipOnImage: true,
+        fixed: { bg: 'red', chip: 'red-soft' },
+      })
+      expect(result.bg).toBe('red')
+      expect(result.chip).toBe('red-soft')
+      expect(result.imageRuleSkipped).toBeUndefined()
+    }
+  })
+
+  it('조합이 하나도 없으면 이미지 규칙만 건너뛰고 기존 규칙으로 정한다(imageRuleSkipped, usedFallback과 구분)', () => {
+    // 모든 자동 후보 색이 이미지 대표 색에 걸리는 경우: 이미지 대표 색을 15색 전부로 준다
+    const everything = Object.values(DEFAULT_FEED_PALETTE)
+    for (const seed of seeds(40)) {
+      const skipped = assignFeedColors({ seed, imageHexes: everything, chipOnImage: true })
+      expect(skipped.imageRuleSkipped).toBe(true)
+      expect(skipped.usedFallback).toBe(false)
+      // 건너뛴 결과는 이미지 입력이 없을 때의 결과와 같은 조합 규칙을 쓴다
+      expect(triplePasses(skipped)).toBe(true)
+    }
+  })
+
+  it('건너뛰고도 조합이 없으면 기본 조합이고 두 표시가 모두 켜진다', () => {
+    const everything = Object.values(DEFAULT_FEED_PALETTE)
+    const everyPair: ExcludedColorPair[] = []
+    for (const a of FEED_COLOR_KEYS) for (const b of FEED_COLOR_KEYS) if (a !== b) everyPair.push([a, b])
+    const result = assignFeedColors({ seed: 'card-1', imageHexes: everything, chipOnImage: true }, { excludedPairs: everyPair })
+    expect(result.usedFallback).toBe(true)
+    expect(result.imageRuleSkipped).toBe(true)
+    expect({ bg: result.bg, chip: result.chip, box: result.box }).toEqual(FEED_FALLBACK_COLORS)
+  })
+
+  it('이미지 대표 색이 있어도 다른 시드는 여전히 다른 값으로 갈린다', () => {
+    const distinct = new Set(seeds(40).map((seed) => JSON.stringify(assignFeedColors({ seed, imageHexes: imageRed, chipOnImage: true }))))
+    expect(distinct.size).toBeGreaterThan(10)
   })
 })
 

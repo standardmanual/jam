@@ -34,6 +34,7 @@ import {
 } from '@/lib/today/feedChipSlots'
 import { firstViolatedRule, type ColorRuleName } from '@/lib/today/feedColorRules'
 import { FEED_BURST, FEED_COLOR_KEYS, FEED_COLORS, FEED_GALLERY, FEED_TILTS } from '@/lib/today/feedConstants'
+import type { FeedImageColorInput } from '@/lib/today/feedImageColors'
 import { checkChipTextLength } from '@/lib/today/feedValueChips'
 import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
 
@@ -320,6 +321,7 @@ export const COLOR_RULE_REASON: Record<ColorRuleName, string> = {
   contrast: '두 색이 너무 비슷하거나 원색끼리 부딪혀요',
   kids: '원색끼리거나 밝은 색끼리 색 차이가 커서 어수선해요',
   lightness: '밝기 차이가 모자라 칩이 묻혀요',
+  image: '이미지의 대표 색과 너무 비슷해서 묻혀요',
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -609,6 +611,8 @@ export interface DecideFeedCardValuesInput {
   overlappingBgUsage?: Readonly<Record<string, number>>
   /** 제외 색 조합. 지금 운영 코드에는 연결된 목록이 없어 비워서 부른다. */
   excludedPairs?: readonly ExcludedColorPair[]
+  /** 이미지 대표 색(규칙 ⑤·⑥, 티켓 20261121_1828). `imageColorsForCard`가 만든 값이다. 없으면 이미지 규칙 없이 정한다. */
+  image?: FeedImageColorInput
 }
 
 export interface DecidedFeedCardValues {
@@ -618,6 +622,8 @@ export interface DecidedFeedCardValues {
   box_color_key: FeedColorKey
   /** 통과하는 색 조합이 없어 기본 조합으로 되돌렸으면 true */
   usedFallback: boolean
+  /** 이미지 규칙까지 통과하는 조합이 없어 이미지 규칙을 건너뛰고 정했으면 true(서버 로그용, 사용자 문구는 없다) */
+  imageRuleSkipped: boolean
   /** 저장은 하되 사용자에게 알릴 문구 */
   warnings: string[]
 }
@@ -637,6 +643,8 @@ export function decideFeedCardValues(input: DecideFeedCardValuesInput): DecidedF
         box: input.columns.box_color_key,
       },
       bgUsage: input.overlappingBgUsage,
+      imageHexes: input.image?.imageHexes,
+      chipOnImage: input.image?.chipOnImage,
     },
     { excludedPairs: input.excludedPairs },
   )
@@ -649,6 +657,7 @@ export function decideFeedCardValues(input: DecideFeedCardValuesInput): DecidedF
     chip_color_key: assigned.chip as FeedColorKey,
     box_color_key: assigned.box as FeedColorKey,
     usedFallback: assigned.usedFallback,
+    imageRuleSkipped: assigned.imageRuleSkipped === true,
     warnings,
   }
 }

@@ -45,6 +45,11 @@ export interface Hsl {
   l: number
 }
 
+/** `#RRGGBB` 또는 `#RGB`(대소문자 무관, `#` 생략 가능)로 읽을 수 있는 문자열인가. */
+export function isHexColor(value: unknown): value is string {
+  return typeof value === 'string' && /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim())
+}
+
 /** `#RRGGBB` 또는 `#RGB`(대소문자 무관) → 0~255 세 값. 읽을 수 없으면 던진다(규칙 입력이 깨진 채 통과하지 않게). */
 export function hexToRgb(hex: string): Rgb {
   const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim())
@@ -143,8 +148,27 @@ export function violatesLightnessRule(hexA: string, hexB: string): boolean {
   return hueDifference(hexToHsl(hexA).h, hexToHsl(hexB).h) < t.complementaryHueDegrees
 }
 
-/** 걸린 규칙의 이름. 규칙을 적용하는 순서 그대로다. */
-export type ColorRuleName = 'same' | 'contrast' | 'kids' | 'lightness'
+/**
+ * 규칙 ⑤ 그림과 배경 · ⑥ 그림과 칩(티켓 20261121_1828, 상위 20261120_2026 7회차-6): 후보 색이 이미지 대표 색과 «색상 차이 30° 미만이고
+ * 밝기(CIE L*) 차이 15 미만»이면 이미지에 묻히므로 참이다. 대표 색은 저장된 최대 3개를 모두 본다(밝기 순 저장이라 면적 비중을 모른다 — 보수적).
+ * 새 임계값을 만들지 않고 기존 두 값(`closeHueDegrees`·`minCieLightnessDiff`)을 읽는다. 읽을 수 없는 대표 색은 건너뛴다(없는 것과 같다).
+ * 규칙 ⑤와 ⑥은 같은 판정이라 함수 하나를 배경 후보와 칩 후보에 각각 쓴다.
+ */
+export function violatesImageColorRule(candidateHex: string, imageHexes: readonly string[]): boolean {
+  const t = COLOR_RULE_THRESHOLDS
+  const candidateHue = hexToHsl(candidateHex).h
+  const candidateL = cieLightness(candidateHex)
+  return imageHexes.some((imageHex) => {
+    if (!isHexColor(imageHex)) return false
+    return (
+      hueDifference(candidateHue, hexToHsl(imageHex).h) < t.closeHueDegrees &&
+      Math.abs(candidateL - cieLightness(imageHex)) < t.minCieLightnessDiff
+    )
+  })
+}
+
+/** 걸린 규칙의 이름. 규칙 ①~④는 적용하는 순서 그대로이고, `image`(⑤·⑥)는 쌍 판정이 아니라 `violatesImageColorRule`이 돌려주는 이름이다. */
+export type ColorRuleName = 'same' | 'contrast' | 'kids' | 'lightness' | 'image'
 
 export interface ColorPairCheckOptions {
   /** 둘 중 하나가 칩이면 true — 규칙 ④(명도)는 칩과 칩이 아닌 것 사이에만 적용한다. 기본 true. */
