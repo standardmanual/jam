@@ -27,6 +27,8 @@ import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import { TODAY_SELECT_ALL_CAP, type TodayListRow } from '@/lib/admin/today-list-query'
 import { exposureTagDisplay, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
+import { TODAY_LAYOUT_OPTIONS } from '@/lib/admin/today-sections'
+import { FEED_TYPE_LABELS } from './FeedCardSection'
 
 interface TodayCardTableProps {
   cards: TodayListRow[]
@@ -71,6 +73,21 @@ function statusOf(c: TodayListRow, now: Date): Status {
   if (ended) return '종료'
   if (!started) return '예약'
   return '노출중'
+}
+
+/** 레이아웃 이름 — 선택지 라벨(«큰 썸네일형 — 커버 이미지 크게»)의 앞부분이다. 모르는 값은 키 그대로 보인다. */
+function layoutName(layoutType: string): string {
+  const label = TODAY_LAYOUT_OPTIONS.find((o) => o.value === layoutType)?.label
+  return label ? label.split(' — ')[0] : layoutType
+}
+
+/**
+ * 「유형」 열 문구(티켓 20261121_1318). 새 유형(`feed_type`)이면 한국어 유형 이름, 없으면 «옛 모양 (레이아웃 이름)»이다.
+ * 모르는 유형 값은 키를 그대로 보인다.
+ */
+export function feedTypeCellText(card: Pick<TodayListRow, 'feed_type' | 'layout_type'>): string {
+  if (card.feed_type) return (FEED_TYPE_LABELS as Readonly<Record<string, string>>)[card.feed_type] ?? card.feed_type
+  return `옛 모양 (${layoutName(card.layout_type)})`
 }
 
 /**
@@ -146,6 +163,15 @@ export function TodayCardTable({ cards, selectedDate, totalCount, tribes = EMPTY
           enableSorting: false,
           meta: { label: '노출형태' },
           cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue()}</span>,
+        }),
+        columnHelper.display({
+          id: 'feedType',
+          header: '유형',
+          enableSorting: false,
+          meta: { label: '유형' },
+          cell: ({ row }) => (
+            <span className="text-xs text-muted-foreground whitespace-nowrap break-keep">{feedTypeCellText(row.original)}</span>
+          ),
         }),
         columnHelper.accessor('exposure_tags', {
           id: 'exposureTags',
