@@ -471,6 +471,8 @@ code:
 
 **구현 위치**(7회차-2, 티켓 20261121_1723, 데이터 변경, 2026-11-21 실행): 카드 이미지 프리셋 4개(홈피드 1:1·16:9·4:5, 미션)의 로고 이미지 층과 글자 층을 빼서 `asset_presets.layers`가 빈 배열이 됐다(마이그레이션 `jam-web/supabase/migrations/350_asset_presets_text_logo_free.sql`, 되돌림 `_down.sql`, 변경 전 층은 백업 표 `asset_presets_layers_backup_20261121`). 롤백되는 드라이런으로 백업 4행·변경 4행·건너뜀 0행을 확인한 뒤 실행했고 실행 직후 읽기 전용 조회로 4개 모두 층 0개·백업 4행을 확인했다. 리본과 «J» 스탬프는 남고 이미 구워진 이미지는 그대로다. 배지·컬렉션 프리셋은 바꾸지 않았다.
 
+**구현 위치**(7회차-3, 티켓 20261121_1724, 카드 커버 이미지의 대표 색 저장): 카드 커버(`cover_image_url`)의 대표 색(원색 최대 3개, 밝기 높은 순 hex)을 새 칸 `today_cards.cover_colors`에 저장한다(마이그레이션 `jam-web/supabase/migrations/351_today_cards_cover_colors.sql`, 되돌림 `_down.sql`). **값을 저장하는 데까지다 — 저장한 색으로 색 배정을 바꾸는 규칙은 정하지 않았고, 홈 컴포넌트·`toCardView`·`feedAssign.ts`는 이 값을 읽지 않는다.** 뽑는 코드는 배지 대표 색과 같은 추출기(`jam-web/src/lib/badgeColorExtract.ts`)이고, 쓰기 헬퍼 `jam-web/src/lib/admin/coverColors.ts`(`coverColorsFields`·`coverColorsFieldsIfChanged`)가 우리 저장소 공개 주소(Supabase Storage)와 `/`로 시작하는 정적 주소만 통과시키고 동영상(MP4·WebM 등)은 건너뛴다(추출기가 http(s) 주소를 가리지 않고 fetch하므로 외부 주소 fetch를 막는 장치). 추출이 실패해도 저장은 성공한다. 커버 주소를 쓰는 네 경로가 같은 쓰기에 색을 담는다: 어드민 카드 생성·수정 라우트(`jam-web/src/app/api/admin/today/route.ts`·`[id]/route.ts`, 수정은 커버 주소가 바뀔 때만), 에셋 제너레이터 적용 라우트의 홈피드(`jam-web/src/app/api/admin/asset-generator/apply/route.ts`), 운영툴 이미지 저장 뒤 예약된 카드의 갱신(`jam-web/src/lib/admin/opsInbox/image.ts`의 `applyItemImage`), 예약 등록 때 새 행 생성(`jam-web/src/lib/admin/opsInbox/execute/homeFeedCard.ts`의 `create`). 마지막 경로의 핸들러 파일은 순수 모듈 계약(서버 모듈을 값으로 가져오지 않는다)이 있어 추출 함수를 직접 가져오지 않고, 실행 뼈대(`run.ts`)가 `create`의 context(`coverColorsFields`)로 넘겨 준다. 주소만 바뀌고 색이 같은 UPDATE에 오지 않으면 DB 트리거(`today_cards_cover_colors_stale_guard`)가 색을 NULL로 비워 낡은 색이 남지 않는다. 기존 카드는 채우지 않았다(NULL은 «아직 안 뽑음»). 에이전트용 등록 스크립트(`register-home-feed-card.mjs`)는 색을 싣지 않아 NULL로 남는다.
+
 #### 박스 모양 5가지
 
 박스 모양은 고르는 옵션이다. 같은 모양을 텍스트 박스(세로로 긴 쪽)와 이미지 마스크(가로로 긴 쪽, 이미지를 이 모양으로 잘라 보임)에 모두 쓸 수 있고, 아이템 배지 박스(작은 칸)에도 쓴다. 박스에는 외곽선을 두지 않는다. 박스 경로는 비율에 맞게 변환해 그린다(SVG 경로).
@@ -571,7 +573,7 @@ code:
 1. 설명 문장 노출은 샘플대로 확정했다. 1회차 후속으로 남은 것: 수동 지정 시 규칙에 걸리는 색의 처리(경고만 할지), 문구 칩 글자 수(12자 제안).
 2. 체크인 지점 이미지의 출처·저장·승인.
 3. 채도를 높일 색(사용자 댓글 대기).
-4. 이미지 위 칩과 이미지를 채운 박스의 색 규칙(이미지 대표 색·밝기 저장이 먼저다).
+4. 이미지 위 칩과 이미지를 채운 박스의 색 규칙. 이미지 대표 색은 저장한다(`cover_colors`, 7회차-3). 색 규칙은 미정이다.
 5. 랭킹·배지 목록의 `list` 모양을 새 목록형으로 대신할지.
 
 ## 7. 이동 목적지
@@ -682,6 +684,7 @@ code:
 | `list_items`·`list_more_href` | JSONB 배열 최대 3개 `{name, href, image_url?}`·텍스트 | 목록형 카드의 항목(항목마다 링크)과 «→» 칸의 대표 페이지 주소 |
 | `collection_burst` | JSONB 배열 최대 4개 `{x, y, tilt?, size?, delay_ms?}` | 컬렉션 소개 카드의 아이템 배지 도착 위치. `x`·`y`는 가운데에서 카드 가장자리까지를 1로 본 −1~1, `size` 68~84px, `delay_ms` 70~210 |
 | `feed_seed` | 0 이상 2^32 미만 정수 | 무작위 값(색·칩 자리·기울기·물결 모양·배지 위치)을 고정하는 시드. 한 번 정하면 바꾸지 않는다 |
+| `cover_colors` | JSONB 배열 최대 3개 `#rrggbb` 문자열 | 커버 이미지의 대표 색(마이그레이션 351, 티켓 20261121_1724). 원색(보정 전), 밝기 높은 순. NULL=아직 안 뽑음, `[]`=색 없음. 커버 주소가 바뀌면 같은 쓰기에서 새로 뽑고, 뽑지 못하면 DB 트리거가 NULL로 비운다. 저장만 하며 색 배정은 읽지 않는다 |
 
 **값을 정하는 시점**(구현: 어드민은 5회차, 에이전트는 6회차): 에이전트가 낸 카드는 운영 항목이 승인되어 `today_cards`에 들어갈 때, 어드민에서 만드는 카드는 저장할 때 정하고 이후에는 바꾸지 않는다. 홈 피드는 유저·날짜마다 순서가 섞여(`sortHomeCards`) 카드의 실제 이웃이 유저마다 달라서, 이웃 카드와 겹치지 않는 배정은 저장된 순서로 보장할 수 없다. 그래서 배경색은 같은 시기에 노출되는 카드들의 사용 빈도가 고르게 퍼지도록 정한다(이웃이 아니라 «같은 기간에 겹치는 카드 집합»을 본다). 사용자가 지정한 값은 자동 배정이 덮어쓰지 않는다.
 
