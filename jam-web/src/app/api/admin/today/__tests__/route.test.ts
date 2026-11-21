@@ -11,7 +11,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { assignFeedColors } from '@/lib/today/feedAssign'
+import { assignFeedColors, DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
+import { violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { POST } from '../route'
 import { PATCH } from '../[id]/route'
 
@@ -24,6 +25,10 @@ const COVER_B = 'https://proj.supabase.co/storage/v1/object/public/assets/today_
 interface FakeState {
   existing: Record<string, unknown> | null
   usageRows: Array<{ bg_color_key: string | null }>
+  /** 배지 대표 색 조회(`badges`)가 돌려줄 행(티켓 20261121_1828) */
+  badgeRows: Array<{ id: string; bg_colors: unknown }>
+  /** 배지 조회에 건 `in` 필터(`열:값들`) */
+  badgeFilters: string[]
   inserts: Array<Record<string, unknown>>
   updates: Array<Record<string, unknown>>
   /** 배경색 사용 빈도 조회에 건 필터(`메서드:열:값`) */
@@ -37,6 +42,8 @@ const state = vi.hoisted(() => ({}) as FakeState)
 function resetState(): void {
   state.existing = null
   state.usageRows = []
+  state.badgeRows = []
+  state.badgeFilters = []
   state.inserts = []
   state.updates = []
   state.usageFilters = []
@@ -45,7 +52,7 @@ function resetState(): void {
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
-    from: () => {
+    from: (table: string) => {
       let mode: 'none' | 'insert' | 'update' | 'select' = 'none'
       let written: Record<string, unknown> = {}
       let selected = ''
@@ -75,6 +82,10 @@ vi.mock('@/lib/supabase/server', () => ({
           }
           return builder
         },
+        in: (column: string, values: unknown[]) => {
+          if (table === 'badges') state.badgeFilters.push(`${column}:${values.join(',')}`)
+          return builder
+        },
         eq: chain('eq'),
         neq: chain('neq'),
         lte: chain('lte'),
@@ -83,7 +94,7 @@ vi.mock('@/lib/supabase/server', () => ({
         single: async () => ({ data: { id: 'card-1', ...(mode === 'update' ? state.existing : {}), ...written }, error: null }),
         maybeSingle: async () => ({ data: state.existing, error: null }),
         // 배경색 사용 빈도 조회는 `await`로 끝난다
-        then: (resolve: (value: unknown) => unknown) => resolve({ data: state.usageRows, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: table === 'badges' ? state.badgeRows : state.usageRows, error: null }),
       })
       return builder
     },
@@ -353,5 +364,109 @@ describe('커버 대표 색 저장 (티켓 20261121_1724)', () => {
     const res = await patch({ cover_image_url: COVER_B })
     expect(res.status).toBe(200)
     expect('cover_colors' in state.updates[0]).toBe(false)
+  })
+})
+
+describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1828)', () => {
+  const hexOf = (key: unknown) => DEFAULT_FEED_PALETTE[String(key)]
+  const HERO = { ...BASE_BODY, feed_type: 'hero_box', bg_color_key: null, chip_color_key: null, box_color_key: null, feed_seed: null }
+  /** 이미지 입력 없이 정한 값(시드 12345) */
+  const plain = assignFeedColors({ seed: 12345 })
+  /** 그 값과 같은 색을 대표 색으로 가진 커버 → 이미지 규칙이 그 색을 피하게 만든다 */
+  const COVER_COLORS = [hexOf(plain.bg), hexOf(plain.chip)]
+
+  it('POST: 커버 대표 색을 뽑아 같은 색으로 배경·칩을 정하고, 그 색을 같은 insert에 담는다', async () => {
+    extractMock.mockResolvedValue(COVER_COLORS)
+    const res = await post({ ...HERO, cover_image_url: COVER_A })
+    expect(res.status).toBe(200)
+    const saved = state.inserts[0]
+    const direct = assignFeedColors({ seed: 12345, imageHexes: COVER_COLORS, chipOnImage: true })
+    expect([saved.bg_color_key, saved.chip_color_key, saved.box_color_key]).toEqual([direct.bg, direct.chip, direct.box])
+    expect(saved.cover_colors).toEqual(COVER_COLORS)
+    expect(violatesImageColorRule(hexOf(saved.bg_color_key), COVER_COLORS)).toBe(false)
+    expect(violatesImageColorRule(hexOf(saved.chip_color_key), COVER_COLORS)).toBe(false)
+    expect([saved.bg_color_key, saved.chip_color_key]).not.toEqual([plain.bg, plain.chip])
+  })
+
+  it('POST: 추출이 실패하면 이미지 규칙 없이 이전과 같은 값으로 저장한다', async () => {
+    extractMock.mockResolvedValue(null)
+    await post({ ...HERO, cover_image_url: COVER_A })
+    const saved = state.inserts[0]
+    expect([saved.bg_color_key, saved.chip_color_key, saved.box_color_key]).toEqual([plain.bg, plain.chip, plain.box])
+  })
+
+  it('POST: 검증이 실패하면(400) 커버 대표 색을 뽑지 않는다', async () => {
+    const res = await post({ ...HERO, feed_type: 'nope', cover_image_url: COVER_A })
+    expect(res.status).toBe(400)
+    expect(extractMock).not.toHaveBeenCalled()
+  })
+
+  it('POST: 배지 소개는 badge_ids의 첫 배지 대표 색을 badges에서 읽어 배경을 거른다', async () => {
+    state.badgeRows = [{ id: 'badge-1', bg_colors: [hexOf(plain.bg)] }]
+    const res = await post({ ...HERO, feed_type: 'badge_intro', badge_ids: ['badge-1'] })
+    expect(res.status).toBe(200)
+    expect(state.badgeFilters).toEqual(['id:badge-1'])
+    const saved = state.inserts[0]
+    const direct = assignFeedColors({ seed: 12345, imageHexes: [hexOf(plain.bg)], chipOnImage: false })
+    expect([saved.bg_color_key, saved.chip_color_key, saved.box_color_key]).toEqual([direct.bg, direct.chip, direct.box])
+    expect(saved.bg_color_key).not.toBe(plain.bg)
+  })
+
+  it('POST: 커버 유형은 badges를 읽지 않는다', async () => {
+    extractMock.mockResolvedValue(COVER_COLORS)
+    await post({ ...HERO, cover_image_url: COVER_A, badge_ids: ['badge-1'] })
+    expect(state.badgeFilters).toEqual([])
+  })
+
+  const EXISTING = {
+    feed_type: 'hero_box',
+    feed_seed: 12345,
+    title: '제목',
+    bg_color_key: 'red-soft',
+    chip_color_key: 'red',
+    box_color_key: 'ref-lime',
+    starts_at: BASE_BODY.starts_at,
+    ends_at: BASE_BODY.ends_at,
+    cover_image_url: COVER_A,
+    cover_colors: COVER_COLORS,
+    box_kind: null,
+    badge_ids: null,
+  }
+  const AUTO_BG = { feed_type: 'hero_box', bg_color_key: null, chip_color_key: 'red', box_color_key: 'ref-lime' }
+
+  it('PATCH: 커버가 그대로면 저장된 커버 대표 색으로 색을 다시 정한다', async () => {
+    state.existing = { ...EXISTING }
+    const res = await patch(AUTO_BG)
+    expect(res.status).toBe(200)
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true })
+    expect(state.updates[0].bg_color_key).toBe(direct.bg)
+    expect(violatesImageColorRule(hexOf(state.updates[0].bg_color_key), COVER_COLORS)).toBe(false)
+  })
+
+  it('PATCH: 커버가 바뀌면 새로 뽑은 대표 색을 쓴다', async () => {
+    state.existing = { ...EXISTING, cover_colors: ['#000000'] }
+    extractMock.mockResolvedValue(COVER_COLORS)
+    await patch({ ...AUTO_BG, cover_image_url: COVER_B })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true })
+    expect(state.updates[0].bg_color_key).toBe(direct.bg)
+    expect(state.updates[0].cover_colors).toEqual(COVER_COLORS)
+  })
+
+  it('PATCH: 커버가 바뀌었는데 추출이 실패하면 낡은 저장 색을 쓰지 않는다(이미지 규칙 없이 정한다)', async () => {
+    state.existing = { ...EXISTING }
+    extractMock.mockResolvedValue(null)
+    await patch({ ...AUTO_BG, cover_image_url: COVER_B })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' } })
+    expect(state.updates[0].bg_color_key).toBe(direct.bg)
+    expect('cover_colors' in state.updates[0]).toBe(false)
+  })
+
+  it('PATCH: 배지 유형은 저장된 badge_ids의 대표 색을 읽는다', async () => {
+    state.existing = { ...EXISTING, feed_type: 'badge_only', badge_ids: ['badge-9'] }
+    state.badgeRows = [{ id: 'badge-9', bg_colors: COVER_COLORS }]
+    await patch({ ...AUTO_BG, feed_type: 'badge_only' })
+    expect(state.badgeFilters).toEqual(['id:badge-9'])
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: false })
+    expect(state.updates[0].bg_color_key).toBe(direct.bg)
   })
 })

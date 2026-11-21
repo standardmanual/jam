@@ -8,7 +8,7 @@
  * - cancel(티켓 20261002_1256 가정 2): 없음·공개됨·기록 있음·삭제 경합·오류 비노출
  * - observe(티켓 20261002_1813 가정 2): 없음·공개 판정(양 끝 포함)·종료·비활성·쓰기 없음·읽기 실패 비노출
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const h = vi.hoisted(() => ({ override: null as null | (() => unknown) }))
 
@@ -24,6 +24,8 @@ vi.mock('@/lib/admin/registerChecks/homeFeed', async (importOriginal) => {
 import { asRegisterChecksClient, RESOURCE_KEY_BY_KIND, type CoverColorsFieldsFn, type ExecuteLinkedIds } from '../handlers'
 import { HOME_FEED_CARD_HANDLER as handler } from '../homeFeedCard'
 import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
+import { DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
+import { violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { DB_SECRET, FakeDb, type Row } from './fakeDb'
 import { LATER, NOW, makeItem } from './fixtures'
 
@@ -481,6 +483,126 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
     if (outcome.ok) return
     expect(outcome.failure.reason).toBe('카드를 만들지 못했어요')
     expect(deletes(db)).toHaveLength(1)
+  })
+})
+
+describe('create — 이미지 대표 색을 자동 색 배정에 쓴다(티켓 20261121_1828)', () => {
+  const feedHero = (resource: Raw = {}) => cardItem({ feed_type: 'hero_box', cover_image_url: COVER, ...resource })
+  const COVER = 'https://cdn.example.com/card.webp'
+  const hexOfKey = (key: unknown) => DEFAULT_FEED_PALETTE[String(key)]
+  /** 배지가 걸린 카드 항목(`badge_spotlight`만 `badge_ids`를 받는다) */
+  const badgeCard = (feedType: string) => cardItem({ template_type: 'badge_spotlight', feed_type: feedType })
+
+  // 시드는 서버 난수라 호출마다 달라진다. 이미지 입력만 바꿨을 때를 비교하려고 난수를 고정한다.
+  beforeEach(() => {
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation(((array: Uint32Array) => {
+      array[0] = 987654321
+      return array
+    }) as typeof crypto.getRandomValues)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  /** 이미지 입력 없이 정했을 때의 배경·칩(같은 카드 ID라 같은 시드다) */
+  async function baseline() {
+    const db = new FakeDb()
+    await handler.create(db.service, prepared(feedHero()), { now: NOW })
+    return db.tables.today_cards[0]
+  }
+
+  it('커버 대표 색이 배경·칩 후보와 비슷하면 그 색을 피해 정한다(규칙 ⑤·⑥), 커버 색은 같은 insert에 싣는다', async () => {
+    const before = await baseline()
+    const cover = [hexOfKey(before.bg_color_key), hexOfKey(before.chip_color_key)]
+    const db = new FakeDb()
+    const extract = vi.fn<CoverColorsFieldsFn>(async () => ({ cover_colors: cover }))
+    const outcome = await handler.create(db.service, prepared(feedHero()), { now: NOW, coverColorsFields: extract })
+
+    expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+    const row = db.tables.today_cards[0]
+    expect(row.cover_colors).toEqual(cover)
+    expect(row.feed_seed).toBe(before.feed_seed)
+    expect(violatesImageColorRule(hexOfKey(row.bg_color_key), cover)).toBe(false)
+    expect(violatesImageColorRule(hexOfKey(row.chip_color_key), cover)).toBe(false)
+    expect([row.bg_color_key, row.chip_color_key]).not.toEqual([before.bg_color_key, before.chip_color_key])
+  })
+
+  it('커버 대표 색이 없으면(추출 함수 없음·실패·[]) 이미지 규칙 없이 이전과 같은 값이다', async () => {
+    const before = await baseline()
+    for (const context of [
+      { now: NOW },
+      { now: NOW, coverColorsFields: async () => ({}) },
+      { now: NOW, coverColorsFields: async () => ({ cover_colors: [] }) },
+    ]) {
+      const db = new FakeDb()
+      await handler.create(db.service, prepared(feedHero()), context)
+      const row = db.tables.today_cards[0]
+      expect([row.bg_color_key, row.chip_color_key, row.box_color_key]).toEqual([before.bg_color_key, before.chip_color_key, before.box_color_key])
+    }
+  })
+
+  it('텍스트 박스는 이미지 마스크일 때만 커버 대표 색을 쓰고, 글자만 있는 박스는 쓰지 않는다', async () => {
+    const createText = async (boxKind: string, cover?: string[]) => {
+      const db = new FakeDb()
+      const context = cover ? { now: NOW, coverColorsFields: async () => ({ cover_colors: cover }) } : { now: NOW }
+      await handler.create(db.service, prepared(cardItem({ feed_type: 'text_box', box_kind: boxKind, cover_image_url: COVER })), context)
+      return db.tables.today_cards[0]
+    }
+    const keysOf = (row: Row) => [row.bg_color_key, row.chip_color_key, row.box_color_key]
+    const before = await createText('image_mask')
+    const cover = [hexOfKey(before.bg_color_key), hexOfKey(before.chip_color_key)]
+
+    expect(keysOf(await createText('text', cover))).toEqual(keysOf(await createText('text')))
+    const masked = await createText('image_mask', cover)
+    expect(keysOf(masked)).not.toEqual(keysOf(before))
+    expect(violatesImageColorRule(hexOfKey(masked.bg_color_key), cover)).toBe(false)
+    expect(violatesImageColorRule(hexOfKey(masked.chip_color_key), cover)).toBe(false)
+  })
+
+  it('배지 소개는 연결된 첫 배지의 대표 색을 badges에서 한 번 읽어 배경을 거른다', async () => {
+    const baseDb = new FakeDb()
+    await handler.create(baseDb.service, prepared(badgeCard('badge_intro'), { badge_ids: [BADGE_ID] }), { now: NOW })
+    const before = baseDb.tables.today_cards[0]
+    // 배지 행이 없으면(삭제됨) 이미지 규칙 없이 이전과 같다
+    expect(baseDb.calls.filter((call) => call.table === 'badges')).toHaveLength(1)
+
+    const colors = [hexOfKey(before.bg_color_key)]
+    const db = new FakeDb()
+    db.tables.badges = [{ id: BADGE_ID, bg_colors: colors }]
+    await handler.create(db.service, prepared(badgeCard('badge_intro'), { badge_ids: [BADGE_ID] }), { now: NOW })
+
+    const reads = db.calls.filter((call) => call.table === 'badges')
+    expect(reads).toHaveLength(1)
+    expect(reads[0].filters).toEqual([['id', [BADGE_ID]]])
+    const row = db.tables.today_cards[0]
+    expect(violatesImageColorRule(hexOfKey(row.bg_color_key), colors)).toBe(false)
+    expect(row.bg_color_key).not.toBe(before.bg_color_key)
+  })
+
+  it('배지 대표 색 조회가 실패해도 등록은 성공하고 이미지 규칙 없이 이전과 같은 값이다. 오류 원문은 응답에 없다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const baseDb = new FakeDb()
+      await handler.create(baseDb.service, prepared(badgeCard('badge_intro'), { badge_ids: [BADGE_ID] }), { now: NOW })
+      const before = baseDb.tables.today_cards[0]
+
+      const db = new FakeDb()
+      db.failIf = (call) => call.table === 'badges'
+      const outcome = await handler.create(db.service, prepared(badgeCard('badge_intro'), { badge_ids: [BADGE_ID] }), { now: NOW })
+      expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+      const row = db.tables.today_cards[0]
+      expect([row.bg_color_key, row.chip_color_key, row.box_color_key]).toEqual([before.bg_color_key, before.chip_color_key, before.box_color_key])
+      expect(errorSpy).toHaveBeenCalled()
+      expect(JSON.stringify(outcome)).not.toContain(DB_SECRET)
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('배지 유형이 아니면 badges를 읽지 않는다', async () => {
+    const db = new FakeDb()
+    await handler.create(db.service, prepared(badgeCard('text_box'), { badge_ids: [BADGE_ID] }), { now: NOW })
+    expect(db.calls.filter((call) => call.table === 'badges')).toEqual([])
   })
 })
 

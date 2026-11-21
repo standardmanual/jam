@@ -3,9 +3,15 @@
  * 서비스 클라이언트는 운영 묶음 실행 시험의 메모리 DB(`FakeDb`)로 대신한다.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { completeFeedCardValues, fetchOverlappingBgUsage, serverRandomUint32 } from '@/lib/admin/feedCardServer'
+import {
+  completeFeedCardValues,
+  fetchBadgeBgColors,
+  fetchFeedCardImageColors,
+  fetchOverlappingBgUsage,
+  serverRandomUint32,
+} from '@/lib/admin/feedCardServer'
 import { DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
-import { firstViolatedRule } from '@/lib/today/feedColorRules'
+import { firstViolatedRule, violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
 import { FakeDb } from '@/lib/admin/opsInbox/execute/__tests__/fakeDb'
 
@@ -172,5 +178,114 @@ describe('completeFeedCardValues — 비어 있는 시드와 색 정하기', () 
     const decided = await completeFeedCardValues(db.service, {}, period, () => 5, LOG_LABEL)
     expect(decided.feed_seed).toBe(5)
     expect(errorSpy).toHaveBeenCalledWith(LOG_LABEL, expect.anything())
+  })
+})
+
+describe('이미지 대표 색 읽기와 자동 배정 (티켓 20261121_1828)', () => {
+  const period = { startsAt: STARTS, endsAt: ENDS }
+  const dbWithBadges = (rows: Array<Record<string, unknown>>): FakeDb => {
+    const db = new FakeDb()
+    db.tables.badges = rows
+    return db
+  }
+
+  it('fetchBadgeBgColors: badges에서 칸 id·bg_colors만 한 번 읽고 badge_ids 순서로 돌려주며, 삭제돼 행이 없는 배지는 뺀다', async () => {
+    const db = dbWithBadges([
+      { id: 'b2', bg_colors: ['#222222'] },
+      { id: 'b1', bg_colors: ['#111111'] },
+      { id: 'b3', bg_colors: null },
+    ])
+    const colors = await fetchBadgeBgColors(db.service, ['b1', 'gone', 'b2', 'b3'])
+    expect(colors).toEqual([['#111111'], ['#222222'], null])
+    expect(db.calls).toHaveLength(1)
+    expect(db.calls[0]).toMatchObject({ table: 'badges', op: 'select', filters: [['id', ['b1', 'gone', 'b2', 'b3']]] })
+  })
+
+  it('fetchBadgeBgColors: id가 없으면 읽지 않고 빈 목록이다. 조회가 실패하면 null이고 서버 로그에 남긴다', async () => {
+    const db = dbWithBadges([{ id: 'b1', bg_colors: ['#111111'] }])
+    expect(await fetchBadgeBgColors(db.service, [])).toEqual([])
+    expect(db.calls).toEqual([])
+    db.failIf = (call) => call.table === 'badges'
+    expect(await fetchBadgeBgColors(db.service, ['b1'], LOG_LABEL)).toBeNull()
+    expect(errorSpy).toHaveBeenCalledWith(LOG_LABEL, expect.anything())
+  })
+
+  it('fetchFeedCardImageColors: 커버 유형은 DB를 읽지 않고 커버 색을 쓴다', async () => {
+    const db = dbWithBadges([])
+    const image = await fetchFeedCardImageColors(db.service, { feedType: 'hero_box', boxKind: null, coverColors: ['#123456'], badgeIds: ['b1'] })
+    expect(image).toEqual({ imageHexes: ['#123456'], chipOnImage: true })
+    expect(db.calls).toEqual([])
+  })
+
+  it('fetchFeedCardImageColors: 배지 유형은 배지 색을 한 번 읽는다(성공)', async () => {
+    const db = dbWithBadges([
+      { id: 'b1', bg_colors: ['#111111', '#222222'] },
+      { id: 'b2', bg_colors: ['#333333'] },
+    ])
+    const image = await fetchFeedCardImageColors(db.service, { feedType: 'drop_pickup', boxKind: null, coverColors: null, badgeIds: ['b1', 'b2'] })
+    expect(image).toEqual({ imageHexes: ['#111111', '#222222', '#333333'], chipOnImage: false })
+    expect(db.calls.filter((call) => call.table === 'badges')).toHaveLength(1)
+  })
+
+  it('fetchFeedCardImageColors: 배지 조회가 실패하면 이미지 규칙 없이(빈 입력) 진행하고 로그를 남긴다', async () => {
+    const db = dbWithBadges([{ id: 'b1', bg_colors: ['#111111'] }])
+    db.failIf = (call) => call.table === 'badges'
+    const image = await fetchFeedCardImageColors(db.service, { feedType: 'badge_intro', boxKind: null, coverColors: null, badgeIds: ['b1'] }, LOG_LABEL)
+    expect(image).toEqual({ imageHexes: [], chipOnImage: false })
+    expect(errorSpy).toHaveBeenCalledWith(LOG_LABEL, expect.anything())
+  })
+
+  it('fetchFeedCardImageColors: 배지 유형이 아니거나 badge_ids가 비어 있으면 badges를 읽지 않는다', async () => {
+    const db = dbWithBadges([{ id: 'b1', bg_colors: ['#111111'] }])
+    await fetchFeedCardImageColors(db.service, { feedType: 'text_box', boxKind: 'image_mask', coverColors: null, badgeIds: ['b1'] })
+    await fetchFeedCardImageColors(db.service, { feedType: 'badge_only', boxKind: null, coverColors: null, badgeIds: [] })
+    await fetchFeedCardImageColors(db.service, { feedType: 'badge_only', boxKind: null, coverColors: null, badgeIds: null })
+    expect(db.calls).toEqual([])
+  })
+
+  it('completeFeedCardValues: imageSource가 없으면 이미지 규칙 없이 이전과 같은 값이다', async () => {
+    const baseline = await completeFeedCardValues(dbWith([]).service, {}, period, () => 321)
+    const withNone = await completeFeedCardValues(dbWith([]).service, {}, period, () => 321, undefined, undefined)
+    expect(withNone).toEqual(baseline)
+    expect(baseline.imageRuleSkipped).toBe(false)
+  })
+
+  it('completeFeedCardValues: 커버 대표 색을 주면 시드 100개에서 배경·칩이 규칙 ⑤·⑥을 통과한다', async () => {
+    const cover = ['#f5442c', '#95c1f7', '#c0dc66']
+    for (let seed = 1; seed <= 100; seed++) {
+      const decided = await completeFeedCardValues(dbWith([]).service, {}, period, () => seed * 40503, undefined, {
+        feedType: 'hero_box',
+        boxKind: null,
+        coverColors: cover,
+        badgeIds: null,
+      })
+      expect(decided.usedFallback).toBe(false)
+      expect(decided.imageRuleSkipped).toBe(false)
+      expect(violatesImageColorRule(DEFAULT_FEED_PALETTE[decided.bg_color_key], cover)).toBe(false)
+      expect(violatesImageColorRule(DEFAULT_FEED_PALETTE[decided.chip_color_key], cover)).toBe(false)
+    }
+  })
+
+  it('completeFeedCardValues: 배지 유형은 배지 대표 색으로 배경만 거른다(배지 행은 한 번만 읽는다)', async () => {
+    const colors = ['#f5442c']
+    const db = dbWithBadges([{ id: 'b1', bg_colors: colors }])
+    const decided = await completeFeedCardValues(db.service, {}, period, () => 77, undefined, {
+      feedType: 'badge_intro',
+      boxKind: null,
+      coverColors: null,
+      badgeIds: ['b1'],
+    })
+    expect(violatesImageColorRule(DEFAULT_FEED_PALETTE[decided.bg_color_key], colors)).toBe(false)
+    expect(db.calls.filter((call) => call.table === 'badges')).toHaveLength(1)
+  })
+
+  it('completeFeedCardValues: 지정한 색은 이미지 색에 걸려도 덮어쓰지 않는다', async () => {
+    const decided = await completeFeedCardValues(dbWith([]).service, { bg_color_key: 'red' }, period, () => 5, undefined, {
+      feedType: 'hero_box',
+      boxKind: null,
+      coverColors: [DEFAULT_FEED_PALETTE.red],
+      badgeIds: null,
+    })
+    expect(decided.bg_color_key).toBe('red')
   })
 })

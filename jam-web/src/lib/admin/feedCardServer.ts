@@ -16,6 +16,7 @@ import {
   type DecidedFeedCardValues,
   type DecideFeedCardValuesInput,
 } from '@/lib/admin/feedCardFields'
+import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -53,10 +54,66 @@ export async function fetchOverlappingBgUsage(
   return countBgUsage((data ?? []) as Array<{ bg_color_key: string | null }>)
 }
 
+/** 자동 배정에 쓸 이미지 대표 색을 고르는 재료(티켓 20261121_1828). 저장 요청이 쓰는 값을 그대로 넘긴다. */
+export interface FeedCardImageSource {
+  feedType: string | null | undefined
+  boxKind: string | null | undefined
+  /** 이 저장이 쓰는 커버 대표 색(`today_cards.cover_colors`). 커버가 바뀌었는데 추출이 실패했으면 낡은 값이 아니라 `null`을 넘긴다. */
+  coverColors: unknown
+  /** 카드가 가리키는 배지 id(`badge_ids`). 배지 유형일 때만 조회한다. */
+  badgeIds: readonly string[] | null | undefined
+}
+
+const BADGE_COLOR_TYPES: readonly string[] = ['badge_intro', 'badge_only', 'drop_pickup']
+
+/**
+ * 배지 대표 색(`badges.bg_colors`)을 `badge_ids` 순서로 읽는다. 삭제돼 행이 없는 배지는 뺀다(홈이 «첫 배지»를 고르는 방식과 같다).
+ * 한 번만 조회하고(칸 `bg_colors`만), 조회가 실패하면 `null`을 돌려주고 서버 로그에 남긴다(호출하는 쪽은 이미지 규칙 없이 진행한다).
+ */
+export async function fetchBadgeBgColors(
+  client: ServiceClient,
+  badgeIds: readonly string[],
+  logLabel = '[홈피드 카드 배지 대표 색 조회 오류]',
+): Promise<unknown[] | null> {
+  const ids = [...new Set(badgeIds.filter((id) => typeof id === 'string' && id !== ''))]
+  if (ids.length === 0) return []
+  const { data, error } = await client.from('badges').select('id, bg_colors').in('id', ids)
+  if (error) {
+    console.error(logLabel, error)
+    return null
+  }
+  const colorsById = new Map<string, unknown>()
+  for (const row of (data ?? []) as Array<{ id: string; bg_colors: unknown }>) colorsById.set(row.id, row.bg_colors)
+  return badgeIds.filter((id) => colorsById.has(id)).map((id) => colorsById.get(id))
+}
+
+/**
+ * 카드 한 장의 이미지 규칙 입력(`imageHexes`·`chipOnImage`)을 만든다. 적용 대상이 아닌 유형은 DB를 읽지 않고, 배지 유형만 배지 대표 색을 한 번 읽는다.
+ * 조회가 실패하면 빈 입력(이미지 규칙 없음)이다 — 색은 보조 입력이라 저장을 막지 않는다.
+ */
+export async function fetchFeedCardImageColors(
+  client: ServiceClient,
+  source: FeedCardImageSource,
+  logLabel?: string,
+): Promise<FeedImageColorInput> {
+  let badgeColors: unknown[] | null = []
+  if (source.feedType && BADGE_COLOR_TYPES.includes(source.feedType) && source.badgeIds && source.badgeIds.length > 0) {
+    badgeColors = await fetchBadgeBgColors(client, source.badgeIds, logLabel)
+    if (badgeColors === null) badgeColors = []
+  }
+  return imageColorsForCard({
+    feedType: source.feedType,
+    boxKind: source.boxKind,
+    coverColors: source.coverColors,
+    badgeColors,
+  })
+}
+
 /**
  * 비어 있는 시드와 색 키를 정한다(저장은 호출하는 쪽이 한다). 지정한 값은 덮어쓰지 않고, 같은 시드·같은 빈도는 같은 값이다.
  * 시드가 비어 있으면 서버 난수로 새로 뽑는다(`random`은 시험이 바꿔 끼운다). 제외 조합은 운영 코드에 연결된 목록이 없어 비워 둔다 —
  * 연결되면 이 한 곳만 바꾸면 어드민과 에이전트 두 경로가 함께 바뀐다.
+ * `imageSource`를 주면 이미지 대표 색(커버 색·배지 색)으로 자동 배경·칩을 거른다(티켓 20261121_1828). 주지 않으면 이전과 같다.
  */
 export async function completeFeedCardValues(
   client: ServiceClient,
@@ -64,7 +121,9 @@ export async function completeFeedCardValues(
   period: FeedCardPeriod,
   random: () => number = serverRandomUint32,
   logLabel?: string,
+  imageSource?: FeedCardImageSource,
 ): Promise<DecidedFeedCardValues> {
   const overlappingBgUsage = await fetchOverlappingBgUsage(client, period, logLabel)
-  return decideFeedCardValues({ columns, seed: createFeedSeed(random), overlappingBgUsage, excludedPairs: [] })
+  const image = imageSource ? await fetchFeedCardImageColors(client, imageSource, logLabel) : undefined
+  return decideFeedCardValues({ columns, seed: createFeedSeed(random), overlappingBgUsage, excludedPairs: [], image })
 }

@@ -8,7 +8,7 @@ import {
   type FeedCardColumns,
 } from '@/lib/admin/feedCardFields'
 import { completeFeedCardValues } from '@/lib/admin/feedCardServer'
-import { coverColorsFields } from '@/lib/admin/coverColors'
+import { coverColorsFields, type CoverColorsFields } from '@/lib/admin/coverColors'
 
 export async function GET() {
   const authError = await requireAdmin()
@@ -37,6 +37,14 @@ export async function POST(req: NextRequest) {
   const safeBody = { ...body }
   delete safeBody.image_source
 
+  // 커버 이미지가 있으면 대표 색을 같은 insert에 담는다(티켓 20261121_1724). 추출이 실패하면 칸을 비워 둔다(NULL=아직 안 뽑음).
+  // 자동 색 배정이 이 대표 색을 쓰므로(티켓 20261121_1828) 배정보다 먼저 뽑는다. 검증이 실패하면 뽑지 않도록 처음 쓰는 곳에서 한 번만 뽑는다.
+  let coverColorsMemo: CoverColorsFields | null = null
+  const getCoverColors = async (): Promise<CoverColorsFields> => {
+    coverColorsMemo ??= await coverColorsFields(typeof safeBody.cover_image_url === 'string' ? safeBody.cover_image_url : null)
+    return coverColorsMemo
+  }
+
   // 개편 칸(마이그레이션 349)이 본문에 있으면 검증하고, 유형이 있는 새 카드는 비어 있는 시드·색 키를 정해 고정한다(티켓 20261121_1315).
   // 개편 칸이 없는 옛 본문은 이전과 똑같이 그대로 저장한다.
   const warnings: string[] = []
@@ -52,13 +60,21 @@ export async function POST(req: NextRequest) {
     warnings.push(...checked.warnings)
 
     if (columns.feed_type) {
+      const cover = await getCoverColors()
       const decided = await completeFeedCardValues(
         supabase,
         columns as Partial<FeedCardColumns>,
         { startsAt: safeBody.starts_at, endsAt: safeBody.ends_at },
         undefined,
         '[today POST 배경색 사용 빈도 조회 오류]',
+        {
+          feedType: columns.feed_type as string,
+          boxKind: typeof columns.box_kind === 'string' ? columns.box_kind : null,
+          coverColors: cover.cover_colors ?? null,
+          badgeIds: Array.isArray(safeBody.badge_ids) ? (safeBody.badge_ids as string[]) : null,
+        },
       )
+      if (decided.imageRuleSkipped) console.warn('[today POST 색 자동 배정] 이미지 규칙까지 통과하는 조합이 없어 이미지 규칙 없이 정했어요')
       safeBody.feed_seed = decided.feed_seed
       safeBody.bg_color_key = decided.bg_color_key
       safeBody.chip_color_key = decided.chip_color_key
@@ -67,8 +83,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 커버 이미지가 있으면 대표 색을 같은 insert에 담는다(티켓 20261121_1724). 추출이 실패하면 칸을 비워 둔다(NULL=아직 안 뽑음).
-  const coverColors = await coverColorsFields(typeof safeBody.cover_image_url === 'string' ? safeBody.cover_image_url : null)
+  const coverColors = await getCoverColors()
   const insertPayload = { ...safeBody, ...coverColors, created_by: admin?.id ?? null }
   const { data, error } = await supabase
     .from('today_cards')

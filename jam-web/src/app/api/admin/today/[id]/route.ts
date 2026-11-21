@@ -11,7 +11,7 @@ import {
   validateFeedCardColumns,
   type FeedCardColumns,
 } from '@/lib/admin/feedCardFields'
-import { fetchOverlappingBgUsage, serverRandomUint32 } from '@/lib/admin/feedCardServer'
+import { fetchFeedCardImageColors, fetchOverlappingBgUsage, serverRandomUint32 } from '@/lib/admin/feedCardServer'
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
 const READ_ERROR_MESSAGE = '카드 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
@@ -22,7 +22,7 @@ const INVALID_BODY_MESSAGE = '요청 형식이 올바르지 않습니다.'
 
 /** 수정 저장이 저장된 카드에서 읽는 칸. 커버 이미지는 제작 경로 초기화, 나머지는 개편 칸 검증·자동 값 고정에 쓴다. */
 const EXISTING_SELECT =
-  'cover_image_url, title, item_book_id, starts_at, ends_at, feed_type, feed_seed, bg_color_key, chip_color_key, box_color_key'
+  'cover_image_url, title, item_book_id, starts_at, ends_at, feed_type, feed_seed, bg_color_key, chip_color_key, box_color_key, box_kind, cover_colors, badge_ids'
 interface ExistingCard {
   cover_image_url: string | null
   title: string | null
@@ -34,7 +34,14 @@ interface ExistingCard {
   bg_color_key: FeedCardColumns['bg_color_key']
   chip_color_key: FeedCardColumns['chip_color_key']
   box_color_key: FeedCardColumns['box_color_key']
+  /** 아래 셋은 자동 색 배정의 이미지 규칙(티켓 20261121_1828)이 읽는다. */
+  box_kind: FeedCardColumns['box_kind']
+  cover_colors: unknown
+  badge_ids: string[] | null
 }
+
+/** 커버 주소 비교용: 비어 있는 값(`null`·빈 글자·글자가 아님)은 모두 같다. 대표 색 헬퍼(`coverColors.ts`)의 «바뀌었나» 판정과 같은 기준이다. */
+const urlKey = (value: unknown): string | null => (typeof value === 'string' && value.trim() !== '' ? value.trim() : null)
 
 const COLOR_KEYS = ['bg_color_key', 'chip_color_key', 'box_color_key'] as const
 
@@ -50,6 +57,7 @@ async function decideFeedColumnsForPatch(
   id: string,
   body: Record<string, unknown>,
   existing: ExistingCard,
+  coverColorsPatch: CoverColorsFields,
 ): Promise<{ errors: string[]; warnings: string[]; patch: Record<string, unknown>; omit: string[] }> {
   const columns = pickFeedCardColumns(body)
   const title = typeof body.title === 'string' ? body.title : (existing.title ?? '')
@@ -78,12 +86,28 @@ async function decideFeedColumnsForPatch(
   }
   const startsAt = typeof body.starts_at === 'string' ? body.starts_at : existing.starts_at
   const endsAt = typeof body.ends_at === 'string' ? body.ends_at : existing.ends_at
+  // 이미지 대표 색(규칙 ⑤·⑥, 티켓 20261121_1828): 커버 색은 이 저장이 쓰는 값이다 — 커버가 바뀌었으면 새로 뽑은 값(추출 실패면 NULL, 낡은 값을 쓰지 않는다),
+  // 안 바뀌었으면 저장된 값. 배지 색은 유형이 배지 그림을 쓸 때만 `badges`에서 한 번 읽는다(조회 실패는 이미지 규칙 없이 진행).
+  const coverChanged = typeof body.cover_image_url !== 'undefined' && urlKey(existing.cover_image_url) !== urlKey(body.cover_image_url)
+  const coverColors = coverColorsPatch.cover_colors ?? (coverChanged ? null : existing.cover_colors)
+  const image = await fetchFeedCardImageColors(
+    supabase,
+    {
+      feedType: String(finalType),
+      boxKind: 'box_kind' in body ? (typeof body.box_kind === 'string' ? body.box_kind : null) : existing.box_kind,
+      coverColors,
+      badgeIds: 'badge_ids' in body ? (Array.isArray(body.badge_ids) ? (body.badge_ids as string[]) : null) : existing.badge_ids,
+    },
+    '[today PATCH 배지 대표 색 조회 오류]',
+  )
   const decided = decideFeedCardValues({
     columns: { ...fixed, feed_seed: seed },
     seed,
     overlappingBgUsage: await fetchOverlappingBgUsage(supabase, { startsAt, endsAt, excludeId: id }, '[today PATCH 배경색 사용 빈도 조회 오류]'),
     excludedPairs: [],
+    image,
   })
+  if (decided.imageRuleSkipped) console.warn(`[today PATCH 색 자동 배정] 이미지 규칙까지 통과하는 조합이 없어 이미지 규칙 없이 정했어요 (카드 ${id})`)
 
   // 처음 정하는 경우, 그리고 유형은 있는데 시드가 비어 있던 카드(색만 자동으로 되돌린 경우)는 쓴 시드를 저장해 홈이 같은 값을 그리게 한다.
   if (firstTime || existing.feed_seed === null) result.patch.feed_seed = decided.feed_seed
@@ -143,7 +167,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const warnings: string[] = []
   if (touchesFeedColumns && existing) {
-    const decision = await decideFeedColumnsForPatch(supabase, id, safeBody, existing)
+    const decision = await decideFeedColumnsForPatch(supabase, id, safeBody, existing, coverColorsPatch)
     if (decision.errors.length > 0) {
       return NextResponse.json({ error: decision.errors.join(' '), errors: decision.errors }, { status: 400 })
     }
