@@ -183,13 +183,9 @@ export function fallbackEmptyTileShape(shape: CardShape, resource: CardResource,
 
 /**
  * 이미지가 제목을 말하는 카드인지(1453 결정 6·12). 저장된 `title_in_image`가 `true`/`false`면 그 값이다.
- * `NULL`(옛 카드)이면 미션 소개 카드이고 커버 주소가 연결 미션의 `image_url`과 같을 때만 `true`, 그 밖은 `false`.
+ * `NULL`(옛 카드)이면 항상 `false` — 제목을 글자로 그린다(티켓 20261121_1726). 예전에는 미션 소개 카드가 미션 대표 이미지를
+ * 커버로 쓰면 `true`였지만, 7회차에 미션 이미지에서 글자를 빼므로 이미지가 제목을 말한다고 볼 수 없다.
  */
-export function resolveTitleInImage(
-  card: Pick<TodayCardRow, 'template_type' | 'cover_image_url'> & { title_in_image?: boolean | null },
-  missionImageUrl?: string | null,
-): boolean {
-  if (typeof card.title_in_image === 'boolean') return card.title_in_image
-  if (card.template_type !== 'mission_spotlight') return false
-  return Boolean(card.cover_image_url) && card.cover_image_url === missionImageUrl
+export function resolveTitleInImage(card: { title_in_image?: boolean | null }): boolean {
+  return typeof card.title_in_image === 'boolean' ? card.title_in_image : false
 }

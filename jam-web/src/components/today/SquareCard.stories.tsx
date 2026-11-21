@@ -352,8 +352,8 @@ export const Description: Story = {
 // ─── 5. 이미지에 제목이 있는 카드 ──────────────────────────────────────────
 
 /**
- * 화면 글자에 제목·요약이 없고 필수 정보가 칩 줄 바로 다음이다. 이미지 alt가 제목이다. 옛 미션 소개 카드는 커버가 연결 미션 이미지와 같으면
- * 「이미지에 제목 있음」으로 본다(결정 12, `resolveTitleInImage`). 이미지가 없으면 판 위에 제목을 그린다.
+ * 화면 글자에 제목·요약이 없고 필수 정보가 칩 줄 바로 다음이다. 이미지 alt가 제목이다. 저장된 `title_in_image`가 true인 카드가 이 모양이다
+ * (`resolveTitleInImage`, 저장값이 없는 옛 카드는 false라 제목을 글자로 그린다 — 티켓 20261121_1726). 이미지가 없으면 판 위에 제목을 그린다.
  */
 export const TitleInImage: Story = {
   name: 'titleInImage — 이미지 있음(alt = 제목, 미션 소개 포함) · 이미지 없음(판 위 제목)',
@@ -361,7 +361,7 @@ export const TitleInImage: Story = {
     <Column width={W360}>
       <Case caption="이미지 있음 — 제목·요약 글자 없음, alt가 제목" view={{ ...MISSION, titleInImage: true }} />
       <Case
-        caption="미션 소개 카드 — 커버가 연결 미션 이미지와 같아 titleInImage(결정 12)"
+        caption="미션 소개 카드 — 저장된 title_in_image가 true인 경우(결정 12)"
         view={{ ...MISSION, titleInImage: true, imageUrl: COVER_TALL }}
       />
       <Case caption="이미지 없음 — 판 위에 아이콘 + 제목(16px bold, 3줄 한도)" view={{ ...MISSION, titleInImage: true, imageUrl: null }} />

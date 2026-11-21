@@ -531,8 +531,10 @@ describe('toCardView — 표시 데이터', () => {
         ...overrides,
       })
 
-    it('옛 미션 소개 카드는 커버가 미션 이미지와 같으면 제목 있음이다', () => {
-      expect(toCardView(missionCard()).titleInImage).toBe(true)
+    // 기대값을 바꾼 시험(티켓 20261121_1726): 예전에는 NULL인 옛 미션 소개 카드가 커버를 미션 이미지와 같게 두면 true였다.
+    // 7회차에 미션 이미지에서 글자를 빼므로 NULL이면 제목을 글자로 그린다(false).
+    it('옛 미션 소개 카드는 커버가 미션 이미지와 같아도 NULL이면 제목을 글자로 그린다', () => {
+      expect(toCardView(missionCard()).titleInImage).toBe(false)
     })
 
     it('저장된 값이 우선이다', () => {
@@ -557,12 +559,14 @@ describe('toCardView — 표시 데이터', () => {
     const missionCard = (overrides: Partial<TodayCardWithHref> = {}) =>
       makeCard({ template_type: 'mission_spotlight', cover_image_url: null, mission_id: 'm1', resolved_mission: MISSION, ...overrides })
 
-    it('커버가 없으면 미션 대표 이미지를 쓰고 이미지가 제목을 말하는 카드다', () => {
-      expect(toCardView(missionCard())).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/mission.png', titleInImage: true })
+    // 기대값을 바꾼 시험(티켓 20261121_1726): 미션 이미지를 커버로 써도 titleInImage를 true로 강제하지 않는다. 저장된 불리언이 있으면 그 값, 없으면 false.
+    it('커버가 없으면 미션 대표 이미지를 쓰고 저장값이 없으면 제목을 글자로 그린다', () => {
+      expect(toCardView(missionCard())).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/mission.png', titleInImage: false })
     })
 
-    it('저장된 title_in_image가 false여도 미션 이미지를 쓰면 true다', () => {
-      expect(toCardView(missionCard({ title_in_image: false })).titleInImage).toBe(true)
+    it('미션 이미지를 쓰더라도 저장된 title_in_image 불리언을 그대로 따른다', () => {
+      expect(toCardView(missionCard({ title_in_image: false })).titleInImage).toBe(false)
+      expect(toCardView(missionCard({ title_in_image: true })).titleInImage).toBe(true)
     })
 
     it('카드 커버가 있으면 커버가 우선이고 이전과 같다', () => {

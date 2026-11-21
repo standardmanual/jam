@@ -235,38 +235,27 @@ describe('isRankingRows — 랭킹이면 행형 (티켓 20261001_2244)', () => {
   })
 })
 
-describe('resolveTitleInImage — 이미지에 제목 있음 (1453 결정 6·12)', () => {
-  const COVER = 'https://cdn.example/mission.png'
-  const mission = (overrides: Partial<Parameters<typeof resolveTitleInImage>[0]> = {}) => ({
-    template_type: 'mission_spotlight' as const,
-    cover_image_url: COVER,
-    title_in_image: null,
-    ...overrides,
-  })
-
+describe('resolveTitleInImage — 이미지에 제목 있음 (1453 결정 6·12, 티켓 20261121_1726)', () => {
   it('저장된 값이 true면 true다', () => {
-    expect(resolveTitleInImage({ template_type: 'badge_spotlight', cover_image_url: null, title_in_image: true })).toBe(true)
+    expect(resolveTitleInImage({ title_in_image: true })).toBe(true)
   })
 
-  it('저장된 값이 false면 연결 미션 이미지와 커버가 같아도 false다(저장값이 우선)', () => {
-    expect(resolveTitleInImage(mission({ title_in_image: false }), COVER)).toBe(false)
+  it('저장된 값이 false면 false다', () => {
+    expect(resolveTitleInImage({ title_in_image: false })).toBe(false)
   })
 
-  it('NULL인 옛 미션 소개 카드는 커버가 연결 미션의 image_url과 같을 때만 true다', () => {
-    expect(resolveTitleInImage(mission(), COVER)).toBe(true)
-    expect(resolveTitleInImage(mission({ title_in_image: undefined }), COVER)).toBe(true)
-    expect(resolveTitleInImage(mission(), 'https://cdn.example/other.png')).toBe(false)
+  // 기대값을 바꾼 시험: 예전에는 «NULL인 옛 미션 소개 카드가 커버를 연결 미션 이미지로 쓰면 true»였다. 7회차에 미션 이미지에서
+  // 글자를 빼므로 이미지가 제목을 말한다고 볼 수 없어, NULL은 어떤 카드든 false(제목을 글자로 그린다)로 바꿨다.
+  it('NULL이거나 없으면(옛 카드) 항상 false다 — 미션 소개 카드가 미션 이미지를 커버로 써도 마찬가지다', () => {
+    expect(resolveTitleInImage({ title_in_image: null })).toBe(false)
+    expect(resolveTitleInImage({})).toBe(false)
+    expect(resolveTitleInImage({ title_in_image: undefined })).toBe(false)
   })
 
-  it('옛 미션 소개 카드라도 연결 미션 이미지가 없거나 커버가 없으면 false다', () => {
-    expect(resolveTitleInImage(mission(), null)).toBe(false)
-    expect(resolveTitleInImage(mission(), undefined)).toBe(false)
-    expect(resolveTitleInImage(mission({ cover_image_url: null }), null)).toBe(false)
-    expect(resolveTitleInImage(mission({ cover_image_url: '' }), '')).toBe(false)
-  })
-
-  it('NULL인 미션 소개가 아닌 옛 카드는 커버가 미션 이미지와 같아 보여도 false다', () => {
-    expect(resolveTitleInImage({ template_type: 'badge_spotlight', cover_image_url: COVER, title_in_image: null }, COVER)).toBe(false)
+  it('카드 행 전체를 넘겨도 커버·템플릿과 무관하게 저장값만 본다', () => {
+    const row = { template_type: 'mission_spotlight' as const, cover_image_url: 'https://cdn.example/mission.png' }
+    expect(resolveTitleInImage({ ...row, title_in_image: null })).toBe(false)
+    expect(resolveTitleInImage({ ...row, title_in_image: true })).toBe(true)
   })
 })
 

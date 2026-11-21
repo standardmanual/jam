@@ -268,7 +268,7 @@ describe('미션 소개 카드의 연결 미션 이미지 (티켓 20261120_1825)
     const linked = linkedMissionOf('c-1', card, [mission('https://x/m.png')])
     const row = itemToPreviewCard(card, undefined, { linkedMission: linked })
     expect(row?.mission_id).toBeNull()
-    expect(previewViewOf(card, undefined, { linkedMission: linked })).toMatchObject({ imageUrl: 'https://x/m.png', titleInImage: true })
+    expect(previewViewOf(card, undefined, { linkedMission: linked })).toMatchObject({ imageUrl: 'https://x/m.png', titleInImage: false })
   })
 
   it('연결이 없거나 미션 이미지가 없으면 이미지 없는 그대로다', () => {

@@ -431,7 +431,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   if (facts.length > 0) base.facts = facts
   if (card.resolved_href) base.href = card.resolved_href
   if (resource === 'article') base.publishedAt = card.starts_at
-  base.titleInImage = resolveTitleInImage(card, mission?.image_url)
+  base.titleInImage = resolveTitleInImage(card)
   if (resource === 'badge' && singleBadge) base.rarity = singleBadge.rarity
   if (options.now) base.now = options.now.toISOString()
   if (options.tracking) {
@@ -513,9 +513,8 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   if (card.layout_type) view.layoutType = card.layout_type
   if (!card.cover_image_url && card.template_type === 'mission_spotlight' && mission?.image_url) {
     // 미션 소개 카드는 카드용 이미지를 따로 만들지 않고 미션 대표 이미지를 커버로 쓴다(티켓 20261120_1825).
-    // 미션 이미지에는 이름·조건이 글자로 들어 있어 저장된 title_in_image와 무관하게 «이미지가 제목을 말하는 카드»다.
+    // 미션 이미지에서 글자를 빼므로(티켓 20261121_1726) 제목 표시는 저장된 title_in_image를 따른다(없으면 글자로 그린다).
     view.imageUrl = mission.image_url
-    view.titleInImage = true
   } else if (!card.cover_image_url && first?.image_url) {
     view.imageUrl = first.image_url
     // 보유 여부와 무관하게 컬러다(티켓 20261118_1523)
