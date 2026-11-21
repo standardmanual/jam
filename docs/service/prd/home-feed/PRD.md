@@ -424,9 +424,9 @@ code:
 
 근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/src/components/today/`(`TodayCard.tsx`·`CardFrame.tsx`·`BriefCard.tsx`·`HeroCard.tsx`·`PosterCard.tsx`·`SquareCard.tsx`·`ListCard.tsx`·`CardBody.tsx`·`CardThumb.tsx`·`CardImageSlot.tsx`·`CardChipRow.tsx`·`resourceIcon.ts`), `jam-web/src/components/ranking/RankingListRow.tsx`, `jam-web/src/app/(main)/TodayCardStack.tsx`, `jam-web/src/lib/itembook/visibility.ts`, `jam-web/src/app/admin/today/TodayCardPreview.tsx`, `jam-web/src/lib/admin/todayPreview.ts`, `jam-web/src/lib/admin/today-calendar.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357·20261001_1458·20261001_1737·20261001_2013·20261001_2104·20261001_2208·20261114_2346(아이콘 이름 교체, 동작 변화 없음)
 
-### 개편 규격: 새 카드 유형·박스·색·칩 (1~6회차 구현, 7회차 이미지 남음)
+### 개편 규격: 새 카드 유형·박스·색·칩 (1~7회차 구현)
 
-> **상태: 1~6회차 구현 완료, 7회차(이미지 규칙)와 후속(컬러셋 교체 어드민)이 남았다**(티켓 20261120_2026). 이 절은 사용자가 샘플 아티팩트로 확정한 개편 내용이고, 화면(4회차)·어드민 수동 작성(5회차)·에이전트 묶음과 등록·운영툴 미리보기(6회차)가 이 규격대로 구현됐다. 위 절들은 옛 7모양 코드의 사실로 남아 있고, 남은 회차가 끝나면 위 절을 이 내용으로 바꾼다. 채원의 사전 판정과 사용자 승인(2026-11-20, 추천안대로: 새 색 10개, 강조색 사용처 규칙 개정, 새 칩, 새 컴포넌트 묶음, 서비스 전용 상수, 홈피드 외형 전면 변경과 옛 모양 공존, 수동 지정 경고만·문구 칩 12자, 모션 반복 재생)을 받았다. 게시 중인 카드는 고려하지 않는다(새 디자인의 카드는 새로 만든다). 옛 모양 7가지는 기존 카드가 모두 끝날 때까지 지금 모습 그대로 그리고, 그 뒤 별도 티켓으로 걷어 낸다.
+> **상태: 1~7회차 구현 완료, 후속(컬러셋 교체 어드민, 체크인 지점 이미지 선택 후속)이 남았다**(티켓 20261120_2026). 이 절은 사용자가 샘플 아티팩트로 확정한 개편 내용이고, 화면(4회차)·어드민 수동 작성(5회차)·에이전트 묶음과 등록·운영툴 미리보기(6회차)·이미지(글자·로고 없는 프리셋, 대표 색 저장과 색 규칙, 7회차)가 이 규격대로 구현됐다. 위 절들은 옛 7모양 코드의 사실로 남아 있다. 채원의 사전 판정과 사용자 승인(2026-11-20, 추천안대로: 새 색 10개, 강조색 사용처 규칙 개정, 새 칩, 새 컴포넌트 묶음, 서비스 전용 상수, 홈피드 외형 전면 변경과 옛 모양 공존, 수동 지정 경고만·문구 칩 12자, 모션 반복 재생)을 받았다. 게시 중인 카드는 고려하지 않는다(새 디자인의 카드는 새로 만든다). 옛 모양 7가지는 기존 카드가 모두 끝날 때까지 지금 모습 그대로 그리고, 그 뒤 별도 티켓으로 걷어 낸다.
 
 **치수 원칙**: 모서리(radius), 안쪽 여백(padding), 간격(space), 글자 크기(text size)는 기존 디자인 시스템 값을 쓰고, 색만 새 값을 쓴다. 디자인 시스템에 맞는 값이 없는 것(기울기, 박스 홈의 크기, 도장 크기, 물결 높낮이, 칩 자리의 오프셋)만 새 값으로 두고 채원의 판정을 받는다.
 
@@ -470,6 +470,8 @@ code:
 **구현 위치**(7회차-5, 티켓 20261121_1726, 미션 이미지에서 글자를 빼는 것에 맞춘 코드): 사용자가 «미션 이미지 글자 제거»를 결정했고(2026-11-21), 미션 프리셋의 로고·글자 층을 비우는 데이터 변경은 7회차-2가 한다. 이 조각은 코드가 글자 없는 미션 이미지를 받아들이고 옛 모양 카드가 제목을 숨기지 않게 한다(DB·`src/types/`·어드민 저장 API는 바뀌지 않았다). ① **옛 모양 제목 판정**: `jam-web/src/lib/today/shape.ts`의 `resolveTitleInImage`는 저장된 `title_in_image` 불리언이 있으면 그 값이고, NULL이면 항상 `false`다(함수는 카드 행의 `title_in_image`만 받는다). `jam-web/src/lib/today/cardView.ts`의 `toCardView`는 커버가 없는 미션 소개 카드가 미션 대표 이미지(`missions.image_url`)를 커버로 써도 `titleInImage`를 `true`로 강제하지 않는다(저장된 불리언이 있으면 그 값, 없으면 `false`라 제목을 글자로 그린다). 이미 구워진 글자 있는 미션 이미지를 커버로 쓰는 옛 카드는 제목이 이미지 글자와 함께 한 번 더 보이는데 «게시 중인 카드는 고려하지 않는다»는 결정에 따라 허용한다. 새 유형 8종은 `titleInImage`를 읽지 않아 영향이 없다. ② **미션 이미지 제작 경로의 값 무시**: 운영툴 브라우저 제작(`jam-web/src/lib/admin/opsInbox/imageRender.client.ts`의 `renderPresetToPngBlob`)과 CLI `renderCardPng`(`jam-web/scripts/asset-generator/renderCard.mjs`)는 프리셋이 홈피드 프리셋 또는 미션 프리셋(`target_type = mission`)이면 «없는 층 번호 무시» 모드(`ignoreMissingKeys`)로 적용한다. 배지·컬렉션 프리셋은 계속 엄격하다. 운영툴 `kind = mission` 항목의 `image_spec.values`에도 «쓰지 않아요» 경고를 낸다(`imageSpec.ts`의 `imageSpecWarnings`, `kind === 'mission'`). 기존 미션 이미지 일괄 적용(`apply-mission-images.mjs`·`applyMissionImagesFlow.mjs`)은 프리셋에 글자 층이 하나도 없으면 없는 번호를 오류로 보지 않고 글자 대비·넘침 검사(`textOverflow.mjs`)를 건너뛰며 «알아둘 점»으로 알린다. 미션 등록(`register-mission.mjs`·`registerMissionBundle.mjs`)은 글자 층이 없는 프리셋의 `image.text`를 막지 않고 알림만 남긴다. 글자 층이 있는 프리셋이면 모두 이전과 똑같이 동작한다. 「이미지 제작 필요」 표시와 미리보기 판정은 `mission` 항목이 이미 이미지 칸(`image_url`)을 가진 종류라 바뀌지 않았다.
 
 **구현 위치**(7회차-2, 티켓 20261121_1723, 데이터 변경, 2026-11-21 실행): 카드 이미지 프리셋 4개(홈피드 1:1·16:9·4:5, 미션)의 로고 이미지 층과 글자 층을 빼서 `asset_presets.layers`가 빈 배열이 됐다(마이그레이션 `jam-web/supabase/migrations/350_asset_presets_text_logo_free.sql`, 되돌림 `_down.sql`, 변경 전 층은 백업 표 `asset_presets_layers_backup_20261121`). 롤백되는 드라이런으로 백업 4행·변경 4행·건너뜀 0행을 확인한 뒤 실행했고 실행 직후 읽기 전용 조회로 4개 모두 층 0개·백업 4행을 확인했다. 리본과 «J» 스탬프는 남고 이미 구워진 이미지는 그대로다. 배지·컬렉션 프리셋은 바꾸지 않았다.
+
+**구현 위치**(7회차-4, 티켓 20261121_1725, 문서): 윤진 정의(`.claude/agents/jam-marketer.md` ⑨ 행)와 `.claude/skills/jam-story/references/marketer-assets.md`의 이미지 안내(홈피드·미션 프리셋은 글자 층이 없어 `image_spec`에 `preset_id`·`bg`·`end`만 내고 `values`는 쓰지 않는다)와 `docs/service/prd/content-automation/PRD.md` §6 편성 규칙 4번(카드 이미지에는 글자·로고 없음, 체크인 지점 이미지는 수동)을 이 규칙에 맞췄다. 실제 클라우드 루틴 프롬프트는 바꾸지 않았다.
 
 **구현 위치**(7회차-3, 티켓 20261121_1724, 카드 커버 이미지의 대표 색 저장): 카드 커버(`cover_image_url`)의 대표 색(원색 최대 3개, 밝기 높은 순 hex)을 새 칸 `today_cards.cover_colors`에 저장한다(마이그레이션 `jam-web/supabase/migrations/351_today_cards_cover_colors.sql`, 되돌림 `_down.sql`). **이 회차는 값을 저장하는 데까지다 — 홈 컴포넌트·`toCardView`는 이 값을 읽지 않는다. 저장한 색으로 색 배정을 거르는 규칙은 7회차-6이 정했다(아래).** 뽑는 코드는 배지 대표 색과 같은 추출기(`jam-web/src/lib/badgeColorExtract.ts`)이고, 쓰기 헬퍼 `jam-web/src/lib/admin/coverColors.ts`(`coverColorsFields`·`coverColorsFieldsIfChanged`)가 우리 저장소 공개 주소(Supabase Storage)와 `/`로 시작하는 정적 주소만 통과시키고 동영상(MP4·WebM 등)은 건너뛴다(추출기가 http(s) 주소를 가리지 않고 fetch하므로 외부 주소 fetch를 막는 장치). 추출이 실패해도 저장은 성공한다. 커버 주소를 쓰는 네 경로가 같은 쓰기에 색을 담는다: 어드민 카드 생성·수정 라우트(`jam-web/src/app/api/admin/today/route.ts`·`[id]/route.ts`, 수정은 커버 주소가 바뀔 때만), 에셋 제너레이터 적용 라우트의 홈피드(`jam-web/src/app/api/admin/asset-generator/apply/route.ts`), 운영툴 이미지 저장 뒤 예약된 카드의 갱신(`jam-web/src/lib/admin/opsInbox/image.ts`의 `applyItemImage`), 예약 등록 때 새 행 생성(`jam-web/src/lib/admin/opsInbox/execute/homeFeedCard.ts`의 `create`). 마지막 경로의 핸들러 파일은 순수 모듈 계약(서버 모듈을 값으로 가져오지 않는다)이 있어 추출 함수를 직접 가져오지 않고, 실행 뼈대(`run.ts`)가 `create`의 context(`coverColorsFields`)로 넘겨 준다. 주소만 바뀌고 색이 같은 UPDATE에 오지 않으면 DB 트리거(`today_cards_cover_colors_stale_guard`)가 색을 NULL로 비워 낡은 색이 남지 않는다. 기존 카드는 채우지 않았다(NULL은 «아직 안 뽑음»). 에이전트용 등록 스크립트(`register-home-feed-card.mjs`)는 색을 싣지 않아 NULL로 남는다.
 
@@ -570,9 +572,9 @@ code:
 
 #### 이미지 규칙
 
-- 배지 이미지를 제외하고 카드에 쓰는 이미지(썸네일, 카드 커버, 미션 대표 이미지 등)에는 텍스트도 로고도 넣지 않는다. 배지 이미지는 지금처럼 이름·값·로고가 들어간다.
+- 배지 이미지를 제외하고 카드에 쓰는 이미지(썸네일, 카드 커버, 미션 대표 이미지 등)에는 텍스트도 로고도 넣지 않는다. 배지 이미지는 지금처럼 이름·값·로고가 들어간다. **구현 상태(7회차, 2026-11-21)**: 카드·미션 이미지 프리셋 4개(홈피드 1:1·16:9·4:5, 미션)의 로고·글자 층을 데이터로 뺐고(마이그레이션 350), 코드는 층이 없는 프리셋을 받아들이며(7-1·7-5), 카드 커버의 대표 색을 저장하고(`cover_colors`, 7-3) 색 규칙 ⑤·⑥으로 자동 배정과 어드민 경고에 쓴다(7-6·7-7). 리본의 «J» 무늬는 남는다(사용자 결정). 윤진 정의와 컨텐츠 자동화 PRD는 7-4가 맞췄다.
 - 카드 안 이미지 박스에는 외곽선을 두지 않는다.
-- 체크인 지점을 보이는 자리에는 아이콘 대신 그 지점의 이미지를 쓴다. 이미지는 에이전트가 웹 검색으로 찾아 넣는 것이 사용자의 구상이고, 쓸 수 있는 출처의 범위와 저장 위치, 승인 절차는 정하지 않았다(티켓 20261120_2026 「아직 정하지 않은 것」).
+- 체크인 지점을 보이는 자리에는 아이콘 대신 그 지점의 이미지를 쓴다. **이미지는 사용자가 수동으로 넣는다**(결정 2026-11-21, 티켓 20261121_1727). 에이전트가 웹에서 찾지 않고 구글 맵·장소 API도 쓰지 않는다(약관상 저장이 안 되고 키·요금이 필요해서 쓰지 않기로 했다). 지금은 목록형 카드 항목의 이미지 칸(`list_items[].image_url`)에 직접 넣으면 되고, 선택 후속(항목 이미지 업로드 버튼, 지점별 이미지 칸 `poi.image_url`)은 사용자가 원할 때 정한다.
 
 #### 구현 때 지킬 점 (채원 판정, 2026-11-20)
 
@@ -588,7 +590,7 @@ code:
 #### 아직 정하지 않은 것
 
 1. 설명 문장 노출은 샘플대로 확정했다. 1회차 후속으로 남은 것: 수동 지정 시 규칙에 걸리는 색의 처리(경고만 할지), 문구 칩 글자 수(12자 제안).
-2. 체크인 지점 이미지의 출처·저장·승인.
+2. ~~체크인 지점 이미지의 출처·저장·승인.~~ 해결(2026-11-21): 사용자가 수동으로 넣는다(위 이미지 규칙). 선택 후속만 남았다.
 3. 채도를 높일 색(사용자 댓글 대기).
 4. ~~이미지 위 칩과 이미지를 채운 박스의 색 규칙.~~ 해결(7회차-6): 이미지 대표 색은 저장하고(`cover_colors`, 7회차-3) 규칙 ⑤·⑥으로 자동 배정에 쓴다(위 «이미지 대표 색 규칙»). 수동 지정 경고 화면은 7-7이다.
 5. 랭킹·배지 목록의 `list` 모양을 새 목록형으로 대신할지.
