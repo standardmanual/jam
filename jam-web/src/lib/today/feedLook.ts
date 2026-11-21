@@ -86,8 +86,8 @@ export function isRenderedFeedType(value: unknown): value is RenderedFeedType {
   return (FEED_RENDERED_TYPES as readonly string[]).includes(value)
 }
 
-/** 유형의 설명 문장 기본 노출(PRD «카드 유형 8가지» 표). 숨기는 유형은 `show_description`과 무관하게 숨긴다. */
-const DESCRIPTION_DEFAULT: Readonly<Record<RenderedFeedType, boolean>> = {
+/** 유형의 설명 문장 기본 노출(PRD «카드 유형 8가지» 표). 숨기는 유형은 `show_description`과 무관하게 숨긴다. 어드민 「카드 모양」 칸이 읽는다(티켓 20261121_1316). */
+export const DESCRIPTION_DEFAULT: Readonly<Record<RenderedFeedType, boolean>> = {
   hero_box: true,
   text_box: false,
   badge_intro: true,

@@ -313,7 +313,8 @@ const BOX_KINDS: readonly TodayBoxKind[] = ['text', 'image_mask']
 const CHIP_KINDS: readonly TodayChipSpec['kind'][] = ['value', 'phrase', 'label']
 const SEED_MAX = 2 ** 32 - 1
 
-const COLOR_RULE_REASON: Record<ColorRuleName, string> = {
+/** 색 규칙 이름 → 경고에 붙는 이유 문구. 작성 화면(`FeedCardSection`)이 같은 문구를 쓴다(티켓 20261121_1316). */
+export const COLOR_RULE_REASON: Record<ColorRuleName, string> = {
   same: '두 색이 같아서 구분이 안 돼요',
   contrast: '두 색이 너무 비슷하거나 원색끼리 부딪혀요',
   kids: '원색끼리거나 밝은 색끼리 색 차이가 커서 어수선해요',

@@ -1,0 +1,508 @@
+'use client'
+
+/**
+ * 투데이 카드 작성·수정 화면의 「카드 모양」 섹션 — 홈피드 개편 5회차-2 (티켓 20261121_1316, 상위 20261120_2026).
+ *
+ * 유형(8개)·박스 모양(5개)과 용도·배경/칩/박스 색(15색)·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 값으로 정한다.
+ * 칸마다 «자동»이 기본이고, 비워 두면 저장할 때 자동 규칙이 정한다(값 의미는 `lib/admin/feedCardFields.ts` 머리 주석).
+ * 칩 문구·목록 항목·컬렉션 모션 칸은 5-3이 만든다.
+ *
+ * 값(`FeedCardFormValues`)과 변경 함수만 props로 받는다. 폼 상태·저장은 `TodayCardForm.tsx`가 맡는다.
+ * 유형별로 어떤 칸이 보이는지는 새 표를 만들지 않고 기존 상수에서 읽는다:
+ * 칩 자리 명세(`feedChipSlots.ts`)·칩 자리 이름→모서리(`feedChipLayout.ts`)·설명 기본 노출(`feedLook.ts`의 `DESCRIPTION_DEFAULT`).
+ * 박스 칸이 있는 유형만은 읽을 상수가 없어(조립 컴포넌트가 박스를 그리는 유형) 아래 `BOX_FEED_TYPES`에 한 곳으로 적었다(PRD «카드 유형 8가지» 표 근거).
+ */
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
+import { Input } from '@/components/admin/ui/input'
+import { FieldLabel, FieldMessage, SegmentedControl, type SegmentOption } from '@/app/admin/badges/BadgeFormControls'
+import { FIELD_GRID_CLASS } from '@/components/admin/today/TodayEditorLayout'
+import {
+  COLOR_RULE_REASON,
+  type FeedCardFormValues,
+  type FeedDescriptionMode,
+  type FeedStampMode,
+} from '@/lib/admin/feedCardFields'
+import { cornerOfSlot, type ChipCorner } from '@/lib/today/feedChipLayout'
+import { chipLimitOf, FEED_CHIP_SLOT_SPECS, FEED_TYPES, isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
+import { firstViolatedRule } from '@/lib/today/feedColorRules'
+import { FEED_COLOR_KEYS, FEED_COLORS, feedColorVar, type FeedColorKey } from '@/lib/today/feedConstants'
+import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
+import { BOX_SHAPES } from '@/lib/today/boxShape'
+import type { ExcludedColorPair } from '@/lib/today/feedAssign'
+import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
+import type { TodayBoxKind, TodayBoxShape } from '@/types/database'
+import { cn } from '@/lib/utils'
+
+// ── 이름 표 ────────────────────────────────────────────────────
+
+/** 유형 이름(PRD «카드 유형 8가지» 표). 키는 `FEED_TYPES`와 같다. */
+export const FEED_TYPE_LABELS: Readonly<Record<FeedType, string>> = {
+  hero_box: '히어로',
+  full_image: '전체 배경 이미지',
+  badge_intro: '배지 소개',
+  badge_only: '배지만',
+  collection_intro: '컬렉션 소개',
+  drop_pickup: '드랍·픽업',
+  text_box: '텍스트',
+  gallery_list: '목록형',
+}
+
+/** 박스 모양 이름(PRD «박스 모양 5가지» 표). */
+export const BOX_SHAPE_LABELS: Readonly<Record<TodayBoxShape, string>> = {
+  round: '둥근 모서리',
+  ticket: '티켓',
+  stamp: '우표',
+  wave: '물결',
+  bump: '돌출',
+}
+
+export const BOX_KIND_LABELS: Readonly<Record<TodayBoxKind, string>> = {
+  text: '글자 박스',
+  image_mask: '이미지 마스크',
+}
+
+/** 색 이름(PRD «색» 표). 키는 `FEED_COLOR_KEYS`와 같다. 스크린리더는 이 이름으로 읽는다. */
+export const FEED_COLOR_LABELS: Readonly<Record<FeedColorKey, string>> = {
+  red: '레드',
+  yellow: '옐로',
+  green: '그린',
+  purple: '퍼플',
+  blue: '블루',
+  'red-soft': '연한 레드',
+  'yellow-soft': '연한 옐로',
+  'green-soft': '연한 그린',
+  'purple-soft': '연한 퍼플',
+  'blue-soft': '연한 블루',
+  'ref-red': '참조 레드',
+  'ref-blue': '참조 블루',
+  'ref-lime': '참조 라임',
+  'ref-pink': '참조 핑크',
+  'ref-yellow': '참조 옐로',
+}
+
+const SLOT_ANCHOR_LABELS: Readonly<Record<string, string>> = {
+  image: '이미지',
+  badge: '배지',
+  'box-row': '박스 줄',
+  box: '박스',
+  art: '그림',
+}
+
+const CORNER_LABELS: Readonly<Record<ChipCorner, string>> = {
+  'top-left': '왼쪽 위',
+  'top-right': '오른쪽 위',
+  'bottom-left': '왼쪽 아래',
+  'bottom-right': '오른쪽 아래',
+}
+
+/** 자리 이름 → 한국어(`box-top-left` → «박스 왼쪽 위»). 모서리 자리가 아니면 이름 그대로다. */
+export function stampSlotLabel(slot: string): string {
+  const corner = cornerOfSlot(slot)
+  if (!corner) return slot
+  const anchor = slot.slice(0, slot.length - corner.length - 1)
+  return `${SLOT_ANCHOR_LABELS[anchor] ?? anchor} ${CORNER_LABELS[corner]}`
+}
+
+// ── 유형별로 보이는 칸 ──────────────────────────────────────────
+
+/** 박스 모양·박스 색을 쓰는 유형(히어로의 이미지 박스, 텍스트의 박스, 드랍·픽업의 박스 줄). 나머지 유형은 박스가 없다. */
+const BOX_FEED_TYPES: readonly FeedType[] = ['hero_box', 'text_box', 'drop_pickup']
+/** 박스 용도(글자 박스·이미지 마스크)를 고르는 유형. 히어로는 늘 이미지 박스, 드랍·픽업은 배지 칸이라 텍스트만 용도를 고른다. */
+const BOX_KIND_FEED_TYPES: readonly FeedType[] = ['text_box']
+
+export interface FeedFieldVisibility {
+  /** 박스 모양 */
+  boxShape: boolean
+  /** 박스 용도 */
+  boxKind: boolean
+  /** 칩 색 — 칩을 둘 수 있는 유형만 */
+  chipColor: boolean
+  /** 박스 색 */
+  boxColor: boolean
+  /** 설명 문장 노출을 고를 수 있는가(보이지 않는 유형은 비활성) */
+  description: boolean
+  /** 도장을 둘 수 있는 자리(없으면 도장 칸이 비활성) */
+  stampSlots: readonly string[]
+}
+
+/** 유형이 쓰는 칸. 유형이 없으면 아무 칸도 쓰지 않는다. */
+export function feedFieldVisibility(feedType: FeedType): FeedFieldVisibility {
+  return {
+    boxShape: BOX_FEED_TYPES.includes(feedType),
+    boxKind: BOX_KIND_FEED_TYPES.includes(feedType),
+    chipColor: chipLimitOf(feedType) > 0,
+    boxColor: BOX_FEED_TYPES.includes(feedType),
+    description: DESCRIPTION_DEFAULT[feedType],
+    stampSlots: FEED_CHIP_SLOT_SPECS[feedType].slots.filter((slot) => cornerOfSlot(slot) !== null),
+  }
+}
+
+// ── 색 경고 ────────────────────────────────────────────────────
+
+const colorName = (key: FeedColorKey): string => FEED_COLOR_LABELS[key]
+
+/**
+ * 고른 색 조합이 규칙에 걸리거나 사용자가 제외한 조합이면 경고 문구를 돌려준다. 막지 않고 알리기만 한다(PRD «수동 지정»).
+ * 판정은 `feedColorRules.ts`의 함수다. 두 칸 다 고른 짝만 본다. 보이지 않는 칸(`show`가 거짓)이 낀 짝은 건너뛴다.
+ */
+export function feedColorWarnings(
+  values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey' | 'boxColorKey'>,
+  show: { chip: boolean; box: boolean },
+  excludedPairs: readonly ExcludedColorPair[] = [],
+): string[] {
+  const warnings: string[] = []
+  const pairs: ReadonlyArray<readonly [string, FeedColorKey | '', string, FeedColorKey | '', boolean]> = [
+    ['배경색', values.bgColorKey, '칩 색', values.chipColorKey, true],
+    ['칩 색', values.chipColorKey, '박스 색', values.boxColorKey, true],
+    ['배경색', values.bgColorKey, '박스 색', values.boxColorKey, false],
+  ]
+  for (const [labelA, keyA, labelB, keyB, involvesChip] of pairs) {
+    if (!keyA || !keyB) continue
+    if ((labelA === '칩 색' || labelB === '칩 색') && !show.chip) continue
+    if ((labelA === '박스 색' || labelB === '박스 색') && !show.box) continue
+    const head = `${labelA} ${colorName(keyA)} · ${labelB} ${colorName(keyB)} 조합이`
+    if (excludedPairs.some(([x, y]) => (x === keyA && y === keyB) || (x === keyB && y === keyA))) {
+      warnings.push(`${head} 제외하기로 한 조합이에요. 저장은 되지만 다른 색을 골라 보세요.`)
+      continue
+    }
+    const violated = firstViolatedRule(FEED_COLORS[keyA].hex, FEED_COLORS[keyB].hex, { involvesChip })
+    if (violated) warnings.push(`${head} 색 규칙에 걸려요. ${COLOR_RULE_REASON[violated]}. 저장은 되지만 다른 색을 골라 보세요.`)
+  }
+  return warnings
+}
+
+/** 제목 속 칩 낱말이 제목에 그대로 들어 있지 않으면 오류 문구를 돌려준다(저장 막힘, `validateFeedCardColumns`와 같은 규칙·문구). */
+export function titleChipWordError(word: string, title: string): string | null {
+  const trimmed = word.trim()
+  if (trimmed.length === 0 || title.includes(trimmed)) return null
+  return `제목에 「${trimmed}」가 그대로 들어 있지 않아요. 제목 속 낱말만 칩으로 만들 수 있으니 제목이나 낱말을 고쳐 주세요.`
+}
+
+// ── 부품 ──────────────────────────────────────────────────────
+
+const AUTO_VALUE = '__auto__'
+const AUTO_HINT = '저장할 때 자동으로 정해져요'
+const TEXT_CLASS = 'break-keep wrap-break-word'
+
+interface ChoiceOption {
+  value: string
+  label: string
+  /** 색 키면 이름 앞에 견본을 그린다 */
+  colorKey?: FeedColorKey
+}
+
+function Swatch({ colorKey }: { colorKey: FeedColorKey }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="mr-2 inline-block size-3.5 shrink-0 rounded-full border border-border align-middle"
+      style={{ backgroundColor: feedColorVar(colorKey) }}
+    />
+  )
+}
+
+/** 자동 + 선택지 하나를 고르는 칸. 빈 값(`''`)이 «자동»이다. */
+function ChoiceField({
+  id,
+  label,
+  value,
+  options,
+  autoLabel = '자동',
+  onChange,
+  themeContainer,
+  help,
+}: {
+  id: string
+  label: string
+  value: string
+  options: readonly ChoiceOption[]
+  autoLabel?: string
+  onChange: (value: string) => void
+  themeContainer?: HTMLElement | null
+  help?: string
+}) {
+  const selected = options.find((o) => o.value === value)
+  const isAuto = !selected
+  const helpId = `${id}-help`
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <FieldLabel htmlFor={id} className={TEXT_CLASS}>
+        {label}
+      </FieldLabel>
+      <Select value={selected ? selected.value : AUTO_VALUE} onValueChange={(v) => onChange(v === AUTO_VALUE ? '' : v)}>
+        <SelectTrigger id={id} aria-describedby={helpId}>
+          <SelectValue>
+            {selected ? (
+              <span className="inline-flex items-center">
+                {selected.colorKey && <Swatch colorKey={selected.colorKey} />}
+                {selected.label}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">{autoLabel}</span>
+            )}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent container={themeContainer ?? undefined}>
+          <SelectItem value={AUTO_VALUE}>{autoLabel}</SelectItem>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              <span className="inline-flex items-center">
+                {o.colorKey && <Swatch colorKey={o.colorKey} />}
+                {o.label}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <FieldMessage id={helpId} className={TEXT_CLASS}>
+        {isAuto ? (help ? `${help} ${AUTO_HINT}` : AUTO_HINT) : help}
+      </FieldMessage>
+    </div>
+  )
+}
+
+const COLOR_OPTIONS: readonly ChoiceOption[] = FEED_COLOR_KEYS.map((key) => ({
+  value: key,
+  label: FEED_COLOR_LABELS[key],
+  colorKey: key,
+}))
+
+const BOX_SHAPE_OPTIONS: readonly ChoiceOption[] = BOX_SHAPES.map((shape) => ({
+  value: shape,
+  label: BOX_SHAPE_LABELS[shape],
+}))
+
+const BOX_KIND_OPTIONS: readonly ChoiceOption[] = (Object.keys(BOX_KIND_LABELS) as TodayBoxKind[]).map((kind) => ({
+  value: kind,
+  label: BOX_KIND_LABELS[kind],
+}))
+
+const TYPE_OPTIONS: readonly ChoiceOption[] = FEED_TYPES.map((type) => ({ value: type, label: FEED_TYPE_LABELS[type] }))
+
+const DESCRIPTION_OPTIONS: readonly SegmentOption<FeedDescriptionMode>[] = [
+  { value: 'auto', label: '자동' },
+  { value: 'show', label: '보임' },
+  { value: 'hide', label: '숨김' },
+]
+
+const STAMP_OPTIONS: readonly SegmentOption<FeedStampMode>[] = [
+  { value: 'auto', label: '자동' },
+  { value: 'off', label: '사용 안 함' },
+  { value: 'on', label: '사용' },
+]
+
+// ── 섹션 ──────────────────────────────────────────────────────
+
+export interface FeedCardSectionProps {
+  values: FeedCardFormValues
+  /** 바꾼 칸만 넘긴다 */
+  onChange: (patch: Partial<FeedCardFormValues>) => void
+  /** 카드 제목. 제목 속 칩 낱말이 제목에 들어 있는지 본다. */
+  title: string
+  /** Radix Select 포털 컨테이너(어드민 테마 스코프) */
+  themeContainer?: HTMLElement | null
+  /** 사용자가 검수표에서 제외한 색 조합. 아직 저장 자리가 없어(6회차) 생략하면 규칙 판정만 한다. */
+  excludedColorPairs?: readonly ExcludedColorPair[]
+}
+
+/** 「카드 모양」 섹션의 안쪽(섹션 카드 껍데기는 `TodayCardForm`이 감싼다). */
+export default function FeedCardSection({ values, onChange, title, themeContainer, excludedColorPairs }: FeedCardSectionProps) {
+  const feedType: FeedType | null = isFeedType(values.feedType) ? values.feedType : null
+  const visible = feedType ? feedFieldVisibility(feedType) : null
+
+  function changeType(next: string) {
+    const patch: Partial<FeedCardFormValues> = { feedType: next as FeedCardFormValues['feedType'] }
+    // 새 유형이 허용하지 않는 도장 자리는 비운다(저장 검증이 막는 값이라서)
+    if (isFeedType(next) && values.stampSlot && !feedFieldVisibility(next).stampSlots.includes(values.stampSlot)) {
+      patch.stampSlot = ''
+    }
+    onChange(patch)
+  }
+
+  const colorWarnings = visible
+    ? feedColorWarnings(values, { chip: visible.chipColor, box: visible.boxColor }, excludedColorPairs)
+    : []
+
+  const words = Array.from({ length: MAX_TITLE_CHIPS }, (_, index) => values.titleChipWords[index] ?? '')
+  function changeWord(index: number, word: string) {
+    onChange({ titleChipWords: words.map((w, i) => (i === index ? word : w)) })
+  }
+
+  const stampSlotOptions: readonly ChoiceOption[] = (visible?.stampSlots ?? []).map((slot) => ({
+    value: slot,
+    label: stampSlotLabel(slot),
+  }))
+
+  return (
+    <div className="@container flex flex-col gap-4">
+      <div className={FIELD_GRID_CLASS}>
+        <ChoiceField
+          id="feed-card-type"
+          label="카드 유형"
+          value={values.feedType}
+          options={TYPE_OPTIONS}
+          autoLabel="옛 모양 그대로 (유형 지정 안 함)"
+          onChange={(v) => changeType(v)}
+          themeContainer={themeContainer}
+          help="유형을 고르면 그 유형이 쓰는 칸만 보여요. 옛 모양으로 되돌려도 적어 둔 값은 남지만 저장하지 않아요."
+        />
+      </div>
+
+      {visible && feedType && (
+        <>
+          <div className={FIELD_GRID_CLASS}>
+            {visible.boxShape && (
+              <ChoiceField
+                id="feed-card-box-shape"
+                label="박스 모양"
+                value={values.boxShape}
+                options={BOX_SHAPE_OPTIONS}
+                onChange={(v) => onChange({ boxShape: v as FeedCardFormValues['boxShape'] })}
+                themeContainer={themeContainer}
+              />
+            )}
+            {visible.boxKind && (
+              <ChoiceField
+                id="feed-card-box-kind"
+                label="박스 용도"
+                value={values.boxKind}
+                options={BOX_KIND_OPTIONS}
+                onChange={(v) => onChange({ boxKind: v as FeedCardFormValues['boxKind'] })}
+                themeContainer={themeContainer}
+              />
+            )}
+            <ChoiceField
+              id="feed-card-bg-color"
+              label="배경색"
+              value={values.bgColorKey}
+              options={COLOR_OPTIONS}
+              onChange={(v) => onChange({ bgColorKey: v as FeedCardFormValues['bgColorKey'] })}
+              themeContainer={themeContainer}
+            />
+            {visible.chipColor && (
+              <ChoiceField
+                id="feed-card-chip-color"
+                label="칩 색"
+                value={values.chipColorKey}
+                options={COLOR_OPTIONS}
+                onChange={(v) => onChange({ chipColorKey: v as FeedCardFormValues['chipColorKey'] })}
+                themeContainer={themeContainer}
+              />
+            )}
+            {visible.boxColor && (
+              <ChoiceField
+                id="feed-card-box-color"
+                label="박스 색"
+                value={values.boxColorKey}
+                options={COLOR_OPTIONS}
+                onChange={(v) => onChange({ boxColorKey: v as FeedCardFormValues['boxColorKey'] })}
+                themeContainer={themeContainer}
+              />
+            )}
+          </div>
+
+          {colorWarnings.length > 0 && (
+            <ul role="status" className="flex flex-col gap-1" data-testid="feed-color-warnings">
+              {colorWarnings.map((warning) => (
+                <li key={warning} className={cn('text-xs text-amber-700', TEXT_CLASS)}>
+                  {warning}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className={FIELD_GRID_CLASS}>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <FieldLabel id="feed-card-description-label" className={TEXT_CLASS}>
+                설명 문장 노출
+              </FieldLabel>
+              <fieldset disabled={!visible.description} className="m-0 min-w-0 border-0 p-0 disabled:opacity-50">
+                <SegmentedControl
+                  label="설명 문장 노출"
+                  value={values.descriptionMode}
+                  options={DESCRIPTION_OPTIONS}
+                  onChange={(mode) => onChange({ descriptionMode: mode })}
+                />
+              </fieldset>
+              <FieldMessage className={TEXT_CLASS}>
+                {!visible.description
+                  ? '이 유형은 설명을 보이지 않아요'
+                  : values.descriptionMode === 'auto'
+                    ? AUTO_HINT
+                    : '고른 값으로 보여요'}
+              </FieldMessage>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <FieldLabel id="feed-card-stamp-label" className={TEXT_CLASS}>
+                도장
+              </FieldLabel>
+              <fieldset disabled={visible.stampSlots.length === 0} className="m-0 min-w-0 border-0 p-0 disabled:opacity-50">
+                <SegmentedControl
+                  label="도장 사용"
+                  value={values.stampMode}
+                  options={STAMP_OPTIONS}
+                  onChange={(mode) => onChange({ stampMode: mode })}
+                />
+              </fieldset>
+              <FieldMessage className={TEXT_CLASS}>
+                {visible.stampSlots.length === 0
+                  ? '이 유형은 도장을 쓰지 않아요'
+                  : values.stampMode === 'auto'
+                    ? AUTO_HINT
+                    : values.stampMode === 'off'
+                      ? '도장 없이 보여요'
+                      : '아래에서 자리를 골라요'}
+              </FieldMessage>
+            </div>
+
+            {visible.stampSlots.length > 0 && values.stampMode === 'on' && (
+              <ChoiceField
+                id="feed-card-stamp-slot"
+                label="도장 자리"
+                value={values.stampSlot}
+                options={stampSlotOptions}
+                onChange={(v) => onChange({ stampSlot: v })}
+                themeContainer={themeContainer}
+              />
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <FieldLabel id="feed-card-title-chip-label" className={TEXT_CLASS}>
+              제목 속 칩 낱말
+            </FieldLabel>
+            <div className={FIELD_GRID_CLASS}>
+              {words.map((word, index) => {
+                const error = titleChipWordError(word, title)
+                const inputId = `feed-card-title-chip-word-${index + 1}`
+                return (
+                  <div key={inputId} className={'flex min-w-0 flex-col gap-1.5'}>
+                    <Input
+                      id={inputId}
+                      value={word}
+                      onChange={(e) => changeWord(index, e.target.value)}
+                      autoComplete="off"
+                      aria-label={`제목 속 칩 낱말 ${index + 1}`}
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? `${inputId}-error` : undefined}
+                      className="aria-invalid:border-destructive"
+                    />
+                    {error && (
+                      <FieldMessage id={`${inputId}-error`} tone="error" className={TEXT_CLASS}>
+                        {error}
+                      </FieldMessage>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <FieldMessage className={TEXT_CLASS}>
+              제목에 그대로 들어 있는 낱말을 최대 {MAX_TITLE_CHIPS}개까지 적어요. 비워 두면 제목이 글자로만 보여요.
+            </FieldMessage>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

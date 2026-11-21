@@ -453,6 +453,8 @@ code:
 
 **구현 위치**(4회차-4, 티켓 20261121_0155): 개발용 미리보기 페이지 `jam-web/src/app/(main)/dev-sample/home-feed-cards/new/page.tsx`(주소 `/dev-sample/home-feed-cards/new`, `noindex`, 옛 7모양 샘플 `/dev-sample/home-feed-cards`는 그대로 둔다)와 가짜 데이터·요약 계산 순수 함수 `jam-web/src/lib/today/feedPreviewData.ts`. 페이지는 서비스 데이터·세션·계측 없이 가짜 데이터를 실제 해석 함수와 카드 컴포넌트에 넣어 유형 8개·박스 5종·칩·도장·설명 숨김·폭 320·자동 배정 120장(규칙 위반·제외 조합 겹침·되돌림 수 요약)·컬렉션 모션을 한 열로 보인다. 값 칩의 미션 조건 값(`resolved_mission.condition_json`)과 배지 달성 기준·레벨(`resolved_badges[].condition_json`·`level`)은 `jam-web/src/lib/today/cards.ts`가 기존 미션·배지 조회에서 선택 칸으로 싣고(새 조회 없음, 값이 없으면 칸이 없다), `cardView.ts`가 새 카드 갈래의 값 칩 입력에 연결한다. 저장된 값 칩은 `mission.condition`·`activity_badge.criteria`·`activity_badge.level` 출처도 읽는다. 해석 함수 `resolveFeedLook`의 선택 입력 `excludedColorPairs`는 미리보기가 검수표 제외 조합 예시를 넣는 자리이고 서비스 홈은 주지 않는다.
 
+**구현 위치**(5회차-2, 티켓 20261121_1316): 어드민 카드 작성·수정 화면의 새 섹션 「카드 모양」은 `jam-web/src/app/admin/today/FeedCardSection.tsx`다(섹션 id `feed`는 `jam-web/src/lib/admin/today-sections.ts`, 폼 상태는 `TodayCardForm.tsx`가 5-1의 `FeedCardFormValues`로 들고 저장 때 `buildFeedCardColumns`의 결과를 보낸다). 유형·박스 모양·박스 용도·배경/칩/박스 색·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 칸마다 «자동»을 기본으로 고른다. **유형을 «옛 모양 그대로»로 비우면 옛 7모양 카드다**: 폼 안의 새 칸 값은 남아 있어 유형을 다시 고르면 살아나지만 저장할 때는 새 칸을 모두 NULL로 보낸다. 규칙에 걸리는 색 조합은 경고만 보이고 저장을 막지 않으며, 제목에 그대로 들어 있지 않은 제목 속 칩 낱말은 저장을 막는다.
+
 #### 박스 모양 5가지
 
 박스 모양은 고르는 옵션이다. 같은 모양을 텍스트 박스(세로로 긴 쪽)와 이미지 마스크(가로로 긴 쪽, 이미지를 이 모양으로 잘라 보임)에 모두 쓸 수 있고, 아이템 배지 박스(작은 칸)에도 쓴다. 박스에는 외곽선을 두지 않는다. 박스 경로는 비율에 맞게 변환해 그린다(SVG 경로).

@@ -66,6 +66,14 @@ import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import { toCardView } from '@/lib/today/cardView'
 import TodayCardPreview from './TodayCardPreview'
+import FeedCardSection, { titleChipWordError } from './FeedCardSection'
+import {
+  buildFeedCardColumns,
+  EMPTY_FEED_CARD_FORM_VALUES,
+  feedCardFormValuesFromRow,
+  validateFeedCardColumns,
+  type FeedCardFormValues,
+} from '@/lib/admin/feedCardFields'
 import type { TodayCardRow, TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'
 import { cn } from '@/lib/utils'
 
@@ -116,6 +124,7 @@ const FOCUS_ID = {
   exposureTags: 'today-card-exposure-tags-group',
   startsAt: 'today-card-starts-at',
   endsAt: 'today-card-ends-at',
+  feedType: 'feed-card-type',
 } as const
 
 export default function TodayCardForm({ card, missions, itemBooks, rankingModes, recipes, tribes = [], badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
@@ -203,6 +212,11 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [endsAt, setEndsAt] = useState(card ? toKstLocalInputValue(card.ends_at) : '')
   const [sortOrder, setSortOrder] = useState(card?.sort_order?.toString() ?? '0')
   const [isActive, setIsActive] = useState(card?.is_active ?? true)
+  // 「카드 모양」 섹션의 값 한 덩어리(티켓 20261121_1316). 수정 화면은 저장된 개편 칸으로 채운다.
+  const [feedValues, setFeedValues] = useState<FeedCardFormValues>(() =>
+    card ? feedCardFormValuesFromRow(card) : EMPTY_FEED_CARD_FORM_VALUES
+  )
+  const patchFeedValues = (patch: Partial<FeedCardFormValues>) => setFeedValues((prev) => ({ ...prev, ...patch }))
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -257,6 +271,16 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     })
   }
 
+  /**
+   * 저장할 개편 칸 묶음. 유형을 «옛 모양 그대로»로 두면 폼 안의 새 칸 값은 보내지 않고 비운다(NULL 저장 — 홈이 옛 모양으로 그린다).
+   * 검증은 서버(`validateFeedCardColumns`)와 같은 함수라 막히는 값은 저장 전에 같은 문구로 알린다.
+   */
+  const feedColumns = buildFeedCardColumns(feedValues.feedType ? feedValues : EMPTY_FEED_CARD_FORM_VALUES)
+  const feedValidation = validateFeedCardColumns(feedColumns, {
+    title: title.trim(),
+    itemBookId: fields.itemBook ? itemBookId || null : null,
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -266,6 +290,14 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
       setShowValidation(true)
       setSaveNotice(`고칠 곳이 ${missing.length}군데 있어요. 첫 번째 항목으로 이동했어요.`)
       focusMissing(missing[0].focusId)
+      return
+    }
+    if (feedValidation.errors.length > 0) {
+      setSaveNotice(null)
+      setError(feedValidation.errors.join(' '))
+      // 제목에 없는 낱말이 원인이면 그 입력으로, 아니면 유형 칸으로 이동한다
+      const badWord = feedValues.titleChipWords.findIndex((word) => titleChipWordError(word, title.trim()) !== null)
+      focusMissing(badWord >= 0 ? `feed-card-title-chip-word-${badWord + 1}` : FOCUS_ID.feedType)
       return
     }
     setSaveNotice(null)
@@ -293,6 +325,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         endsAt,
         sortOrder,
         isActive,
+        feedColumns,
       })
 
       const res = await fetch(isEdit ? `/api/admin/today/${card.id}` : '/api/admin/today', {
@@ -346,6 +379,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     exposureTagCount: exposureTags.length,
     hasStartsAt: Boolean(startsAt),
     hasEndsAt: Boolean(endsAt),
+    feedType: feedValues.feedType || null,
   })
   const sectionHeader = (id: TodaySectionId) => ({
     id,
@@ -577,6 +611,12 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           </span>
         )}
       </div>
+    </TodaySectionCard>
+  )
+
+  const feedSection = (
+    <TodaySectionCard {...sectionHeader('feed')}>
+      <FeedCardSection values={feedValues} onChange={patchFeedValues} title={title.trim()} themeContainer={themeContainer} />
     </TodaySectionCard>
   )
 
@@ -848,6 +888,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const sectionNodes: Record<TodaySectionId, ReactNode> = {
     class: classSection,
     basic: basicSection,
+    feed: feedSection,
     ref: refSection,
     expose: exposeSection,
     period: periodSection,

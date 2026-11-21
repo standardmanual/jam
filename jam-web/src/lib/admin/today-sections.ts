@@ -246,9 +246,10 @@ export const TODAY_CONTENT_TYPE_OPTIONS: readonly { value: string; label: string
 
 // ── 섹션 ─────────────────────────────────────────────────────────────────
 
-export type TodaySectionId = 'class' | 'basic' | 'ref' | 'expose' | 'period'
+export type TodaySectionId = 'class' | 'basic' | 'feed' | 'ref' | 'expose' | 'period'
 
-export const TODAY_SECTION_ORDER: readonly TodaySectionId[] = ['class', 'basic', 'ref', 'expose', 'period']
+/** 「카드 모양」(`feed`)은 기본 정보 다음이다(티켓 20261121_1316, 홈피드 개편 5회차-2) */
+export const TODAY_SECTION_ORDER: readonly TodaySectionId[] = ['class', 'basic', 'feed', 'ref', 'expose', 'period']
 
 /** 섹션 카드의 DOM id — 목차 링크·저장 시 이동이 이 id로 찾아간다 */
 export function todaySectionDomId(id: TodaySectionId): string {
@@ -278,6 +279,8 @@ export function todaySectionTitle(id: TodaySectionId): string {
       return '분류'
     case 'basic':
       return '기본 정보'
+    case 'feed':
+      return '카드 모양'
     case 'ref':
       return '참조 컨텐츠'
     case 'expose':
@@ -293,6 +296,8 @@ export function todaySectionDescription(id: TodaySectionId): string {
       return '템플릿 타입을 고르면 아래 참조 컨텐츠가 그 타입에 맞게 바뀌어요.'
     case 'basic':
       return '홈 화면 카드에 보여줄 제목과 이미지예요.'
+    case 'feed':
+      return '홈에서 카드가 어떤 모습으로 보일지 정해요. 비워 두면 자동으로 정해져요.'
     case 'ref':
       return '템플릿에 필요한 배지 · 미션 · 컬렉션 · 지역 · 본문을 연결해요.'
     case 'expose':
@@ -330,6 +335,8 @@ export interface TodaySectionSnapshot {
   exposureTagCount: number
   hasStartsAt: boolean
   hasEndsAt: boolean
+  /** 「카드 모양」 유형(`feed_type`). 비어 있거나 생략하면 옛 7모양 카드다(티켓 20261121_1316) */
+  feedType?: string | null
 }
 
 export function computeTodaySectionStatuses(s: TodaySectionSnapshot): Record<TodaySectionId, TodaySectionStatus> {
@@ -351,6 +358,7 @@ export function computeTodaySectionStatuses(s: TodaySectionSnapshot): Record<Tod
   return {
     class: { tone: 'ok', text: '완료' },
     basic: basicMissing > 0 ? { tone: 'bad', text: `필수 ${basicMissing}개 남음` } : { tone: 'ok', text: '완료' },
+    feed: s.feedType ? { tone: 'set', text: '유형 지정' } : { tone: 'idle', text: '선택' },
     ref: refCount > 0 ? { tone: 'set', text: `${refCount}개 설정` } : { tone: 'idle', text: '선택' },
     expose: s.exposureTagCount === 0 ? { tone: 'bad', text: '필수 1개 남음' } : { tone: 'ok', text: '완료' },
     period: periodMissing > 0 ? { tone: 'bad', text: `필수 ${periodMissing}개 남음` } : { tone: 'ok', text: '완료' },

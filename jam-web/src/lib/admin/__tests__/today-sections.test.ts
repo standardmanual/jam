@@ -49,23 +49,24 @@ const base: TodaySectionSnapshot = {
 
 describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_alert)만 ref 섹션을 숨긴다', () => {
   it('drop_alert는 참조 컨텐츠 섹션이 없다', () => {
-    expect(visibleTodaySections('drop_alert')).toEqual(['class', 'basic', 'expose', 'period'])
+    expect(visibleTodaySections('drop_alert')).toEqual(['class', 'basic', 'feed', 'expose', 'period'])
   })
   it('recipe_reveal은 레시피 입력 칸이 있어 참조 컨텐츠 섹션을 보인다(티켓 20261006_1218)', () => {
-    expect(visibleTodaySections('recipe_reveal')).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
+    expect(visibleTodaySections('recipe_reveal')).toEqual(['class', 'basic', 'feed', 'ref', 'expose', 'period'])
   })
   it('content_intro는 연결 칸이 없어 참조 컨텐츠 섹션을 숨긴다(설명문·이동 주소는 다른 섹션에 있다, 티켓 20261101_2054)', () => {
-    expect(visibleTodaySections('content_intro')).toEqual(['class', 'basic', 'expose', 'period'])
+    expect(visibleTodaySections('content_intro')).toEqual(['class', 'basic', 'feed', 'expose', 'period'])
   })
-  it('그 외 8개 템플릿은 참조 컨텐츠 섹션을 포함한 5개 섹션을 모두 보인다', () => {
+  it('그 외 8개 템플릿은 참조 컨텐츠 섹션을 포함한 6개 섹션을 모두 보인다', () => {
     for (const t of ALL_TEMPLATES) {
       if (t === 'drop_alert' || t === 'content_intro') continue
-      expect(visibleTodaySections(t)).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
+      expect(visibleTodaySections(t)).toEqual(['class', 'basic', 'feed', 'ref', 'expose', 'period'])
     }
   })
-  it('섹션 순서는 분류 → 기본 정보 → 참조 컨텐츠 → 노출 설정 → 게시 기간·상태다', () => {
+  it('섹션 순서는 분류 → 기본 정보 → 카드 모양 → 참조 컨텐츠 → 노출 설정 → 게시 기간·상태다(티켓 20261121_1316)', () => {
     expect(todaySectionTitle('class')).toBe('분류')
     expect(todaySectionTitle('basic')).toBe('기본 정보')
+    expect(todaySectionTitle('feed')).toBe('카드 모양')
     expect(todaySectionTitle('ref')).toBe('참조 컨텐츠')
     expect(todaySectionTitle('expose')).toBe('노출 설정')
     expect(todaySectionTitle('period')).toBe('게시 기간 · 상태')
@@ -109,7 +110,7 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   it('처음 보는 템플릿 값은 던지지 않고 빈 칸 목록을 돌려준다(어드민 상세·폼이 그 카드 하나 때문에 오류 화면이 되지 않는다)', () => {
     const unknown = 'future_template' as TodayCardTemplateType
     expect(todayTemplateFields(unknown)).toEqual({})
-    expect(visibleTodaySections(unknown)).toEqual(['class', 'basic', 'expose', 'period'])
+    expect(visibleTodaySections(unknown)).toEqual(['class', 'basic', 'feed', 'expose', 'period'])
   })
   it('처음 보는 템플릿 값도 섹션 상태·저장 페이로드를 던지지 않고 만든다(어드민 상세·폼이 쓰는 함수 전부)', () => {
     const unknown = 'future_template' as TodayCardTemplateType
@@ -158,6 +159,21 @@ describe('computeTodaySectionStatuses', () => {
     expect(s.basic).toEqual({ tone: 'ok', text: '완료' })
     expect(s.expose).toEqual({ tone: 'ok', text: '완료' })
     expect(s.period).toEqual({ tone: 'ok', text: '완료' })
+  })
+  it('카드 모양 섹션은 유형이 비어 있으면(옛 카드) «선택», 유형을 지정하면 «유형 지정»이다(티켓 20261121_1316)', () => {
+    expect(computeTodaySectionStatuses(base).feed).toEqual({ tone: 'idle', text: '선택' })
+    expect(computeTodaySectionStatuses({ ...base, feedType: null }).feed).toEqual({ tone: 'idle', text: '선택' })
+    expect(computeTodaySectionStatuses({ ...base, feedType: 'hero_box' }).feed).toEqual({ tone: 'set', text: '유형 지정' })
+  })
+  it('카드 모양 섹션을 더해도 기존 섹션의 상태 결과는 그대로다(티켓 20261121_1316)', () => {
+    const s = computeTodaySectionStatuses({ ...base, feedType: 'hero_box' })
+    expect({ class: s.class, basic: s.basic, ref: s.ref, expose: s.expose, period: s.period }).toEqual({
+      class: { tone: 'ok', text: '완료' },
+      basic: { tone: 'ok', text: '완료' },
+      ref: { tone: 'idle', text: '선택' },
+      expose: { tone: 'ok', text: '완료' },
+      period: { tone: 'ok', text: '완료' },
+    })
   })
   it('제목이 비면 기본 정보가 필수 남음이다', () => {
     expect(computeTodaySectionStatuses({ ...base, title: '  ' }).basic).toEqual({ tone: 'bad', text: '필수 1개 남음' })

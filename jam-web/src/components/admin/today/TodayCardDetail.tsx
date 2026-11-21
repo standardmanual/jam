@@ -136,7 +136,8 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
 
   const fields = todayTemplateFields(card.template_type)
   const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode || fields.recipe)
-  const sections = visibleTodaySections(card.template_type)
+  // 「카드 모양」(`feed`)은 작성·수정 화면 전용이다. 조회 화면의 표시는 5-4가 맡는다(티켓 20261121_1316).
+  const sections = visibleTodaySections(card.template_type).filter((id) => id !== 'feed')
   const statuses = computeTodaySectionStatuses({
     templateType: card.template_type,
     title: card.title,
@@ -256,6 +257,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
   const sectionNodes: Record<TodaySectionId, ReactNode> = {
     class: classSection,
     basic: basicSection,
+    feed: null,
     ref: refSection,
     expose: exposeSection,
     period: periodSection,

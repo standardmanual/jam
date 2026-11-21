@@ -1,0 +1,238 @@
+/**
+ * 「카드 모양」 섹션 (티켓 20261121_1316, 상위 20261120_2026 5회차-2)
+ *
+ * 확인하는 것: 유형별로 보이는 칸, «자동» 기본과 보조 문구, 색 견본·이름, 색 규칙 경고 문구, 제목에 없는 낱말 오류 문구.
+ * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)로 그려진 모양만 본다.
+ *
+ * 실행: cd jam-web && npx vitest run src/app/admin/today/__tests__/FeedCardSection.test.tsx
+ */
+import { describe, it, expect, vi } from 'vitest'
+import { renderToStaticMarkup } from 'react-dom/server'
+import type { ComponentProps } from 'react'
+
+import FeedCardSection, {
+  BOX_KIND_LABELS,
+  BOX_SHAPE_LABELS,
+  FEED_COLOR_LABELS,
+  FEED_TYPE_LABELS,
+  feedColorWarnings,
+  feedFieldVisibility,
+  stampSlotLabel,
+  titleChipWordError,
+} from '../FeedCardSection'
+import { EMPTY_FEED_CARD_FORM_VALUES, type FeedCardFormValues } from '@/lib/admin/feedCardFields'
+import { FEED_CHIP_SLOT_SPECS, FEED_TYPES } from '@/lib/today/feedChipSlots'
+import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
+import { BOX_SHAPES } from '@/lib/today/boxShape'
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+const values = (patch: Partial<FeedCardFormValues> = {}): FeedCardFormValues => ({ ...EMPTY_FEED_CARD_FORM_VALUES, ...patch })
+
+const render = (patch: Partial<FeedCardFormValues> = {}, props: Partial<ComponentProps<typeof FeedCardSection>> = {}): string =>
+  renderToStaticMarkup(<FeedCardSection values={values(patch)} onChange={() => {}} title="핫한 성수동 배지" {...props} />)
+
+describe('이름 표 — 상수와 같은 키를 모두 덮는다', () => {
+  it('유형 8개·박스 모양 5개·색 15개·박스 용도 2개에 한국어 이름이 있다', () => {
+    expect(Object.keys(FEED_TYPE_LABELS).sort()).toEqual([...FEED_TYPES].sort())
+    expect(Object.keys(BOX_SHAPE_LABELS).sort()).toEqual([...BOX_SHAPES].sort())
+    expect(Object.keys(FEED_COLOR_LABELS).sort()).toEqual([...FEED_COLOR_KEYS].sort())
+    expect(Object.keys(BOX_KIND_LABELS).sort()).toEqual(['image_mask', 'text'])
+  })
+  it('도장 자리 이름은 앵커와 모서리를 한국어로 읽는다', () => {
+    expect(stampSlotLabel('image-top-left')).toBe('이미지 왼쪽 위')
+    expect(stampSlotLabel('box-bottom-right')).toBe('박스 오른쪽 아래')
+    expect(stampSlotLabel('box-row-top-right')).toBe('박스 줄 오른쪽 위')
+    expect(stampSlotLabel('art-bottom-left')).toBe('그림 왼쪽 아래')
+    expect(stampSlotLabel('card-top-right')).toBe('card-top-right')
+  })
+})
+
+describe('feedFieldVisibility — 유형이 쓰는 칸', () => {
+  it('박스가 있는 유형은 히어로·텍스트·드랍·픽업이고, 용도는 텍스트만 고른다', () => {
+    const withBox = FEED_TYPES.filter((t) => feedFieldVisibility(t).boxShape)
+    expect(withBox).toEqual(['hero_box', 'drop_pickup', 'text_box'])
+    expect(FEED_TYPES.filter((t) => feedFieldVisibility(t).boxKind)).toEqual(['text_box'])
+    for (const t of FEED_TYPES) expect(feedFieldVisibility(t).boxColor, t).toBe(feedFieldVisibility(t).boxShape)
+  })
+  it('목록형·컬렉션 소개에는 박스 칸이 없다', () => {
+    expect(feedFieldVisibility('gallery_list')).toMatchObject({ boxShape: false, boxKind: false, boxColor: false })
+    expect(feedFieldVisibility('collection_intro')).toMatchObject({ boxShape: false, boxKind: false, boxColor: false })
+  })
+  it('칩 색은 칩을 둘 수 있는 유형만 쓴다(배지만은 칩이 없다)', () => {
+    expect(feedFieldVisibility('badge_only').chipColor).toBe(false)
+    expect(feedFieldVisibility('hero_box').chipColor).toBe(true)
+  })
+  it('설명 문장은 기본 노출이 숨김인 유형(텍스트·배지만·전체 배경 이미지)에서 비활성이다', () => {
+    expect(FEED_TYPES.filter((t) => !feedFieldVisibility(t).description)).toEqual(['full_image', 'badge_only', 'text_box'])
+  })
+  it('도장 자리는 그 유형 칩 자리 중 모서리 자리만이다(목록형·배지만은 없다)', () => {
+    expect(feedFieldVisibility('hero_box').stampSlots).toEqual(FEED_CHIP_SLOT_SPECS.hero_box.slots)
+    expect(feedFieldVisibility('full_image').stampSlots).toEqual(['image-top-left', 'image-top-right', 'image-bottom-right'])
+    expect(feedFieldVisibility('gallery_list').stampSlots).toEqual([])
+    expect(feedFieldVisibility('badge_only').stampSlots).toEqual([])
+  })
+})
+
+describe('FeedCardSection — 유형별로 보이는 칸', () => {
+  it('유형이 «옛 모양 그대로»(기본)면 유형 칸만 보이고 다른 칸은 없다', () => {
+    const html = render()
+    expect(html).toContain('id="feed-card-type"')
+    expect(html).toContain('옛 모양 그대로 (유형 지정 안 함)')
+    for (const id of ['feed-card-bg-color', 'feed-card-chip-color', 'feed-card-box-color', 'feed-card-box-shape', 'feed-card-box-kind']) {
+      expect(html, id).not.toContain(`id="${id}"`)
+    }
+    expect(html).not.toContain('제목 속 칩 낱말')
+  })
+
+  it('히어로는 박스 모양·세 색 칸이 있고 박스 용도 칸은 없다', () => {
+    const html = render({ feedType: 'hero_box' })
+    expect(html).toContain('히어로')
+    for (const id of ['feed-card-box-shape', 'feed-card-bg-color', 'feed-card-chip-color', 'feed-card-box-color']) {
+      expect(html, id).toContain(`id="${id}"`)
+    }
+    expect(html).not.toContain('id="feed-card-box-kind"')
+  })
+
+  it('텍스트는 박스 용도 칸도 있다', () => {
+    const html = render({ feedType: 'text_box' })
+    expect(html).toContain('id="feed-card-box-kind"')
+    expect(html).toContain('id="feed-card-box-shape"')
+  })
+
+  it('목록형·컬렉션 소개는 박스 모양·박스 색·박스 용도 칸이 없고 배경색·칩 색은 있다', () => {
+    for (const feedType of ['gallery_list', 'collection_intro'] as const) {
+      const html = render({ feedType })
+      for (const id of ['feed-card-box-shape', 'feed-card-box-color', 'feed-card-box-kind']) {
+        expect(html, `${feedType} ${id}`).not.toContain(`id="${id}"`)
+      }
+      expect(html, feedType).toContain('id="feed-card-bg-color"')
+      expect(html, feedType).toContain('id="feed-card-chip-color"')
+    }
+  })
+
+  it('배지만은 칩 색 칸이 없고, 설명·도장 칸은 쓰지 않는다는 문구로 비활성이다', () => {
+    const html = render({ feedType: 'badge_only' })
+    expect(html).not.toContain('id="feed-card-chip-color"')
+    expect(html).toContain('이 유형은 설명을 보이지 않아요')
+    expect(html).toContain('이 유형은 도장을 쓰지 않아요')
+    expect(html).toContain('<fieldset disabled=""')
+  })
+
+  it('설명 문장을 보이는 유형(히어로)은 설명 칸이 활성이다', () => {
+    const html = render({ feedType: 'hero_box' })
+    expect(html).not.toContain('이 유형은 설명을 보이지 않아요')
+    expect(html).not.toContain('<fieldset disabled=""')
+  })
+
+  it('도장을 «사용»으로 하면 그 유형이 허용하는 자리 칸이 열리고 고른 자리는 한국어 이름으로 보인다', () => {
+    const html = render({ feedType: 'collection_intro', stampMode: 'on', stampSlot: 'art-top-right' })
+    expect(html).toContain('id="feed-card-stamp-slot"')
+    expect(html).toContain('그림 오른쪽 위')
+    expect(render({ feedType: 'hero_box', stampMode: 'auto' })).not.toContain('id="feed-card-stamp-slot"')
+  })
+
+  it('제목 속 칩 낱말 입력은 2개다', () => {
+    const html = render({ feedType: 'hero_box' })
+    expect(html).toContain('id="feed-card-title-chip-word-1"')
+    expect(html).toContain('id="feed-card-title-chip-word-2"')
+    expect(html).not.toContain('id="feed-card-title-chip-word-3"')
+  })
+})
+
+describe('FeedCardSection — «자동»이 기본이다', () => {
+  it('비워 둔 칸은 «자동»으로 보이고 «저장할 때 자동으로 정해져요»를 보인다', () => {
+    const html = render({ feedType: 'hero_box' })
+    expect(html).toContain('>자동</span>')
+    expect(html).toContain('저장할 때 자동으로 정해져요')
+    expect(html).toContain('aria-checked="true"')
+  })
+
+  it('값을 고른 칸은 «자동»이 아니라 고른 값을 보인다', () => {
+    const html = render({ feedType: 'hero_box', boxShape: 'wave' })
+    expect(html).toContain('물결')
+  })
+})
+
+describe('FeedCardSection — 색 견본과 이름', () => {
+  it('고른 색은 견본(색 변수)과 한국어 이름이 함께 보이고 견본은 보조 기술이 읽지 않는다', () => {
+    const html = render({ feedType: 'hero_box', bgColorKey: 'ref-lime' })
+    expect(html).toContain('참조 라임')
+    expect(html).toContain('background-color:var(--feed-ref-lime)')
+    expect(html).toContain('aria-hidden="true"')
+  })
+})
+
+describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => {
+  const show = { chip: true, box: true }
+
+  it('같은 색 둘은 경고한다(색 이름과 이유가 문구에 있다)', () => {
+    const warnings = feedColorWarnings({ bgColorKey: 'red', chipColorKey: 'red', boxColorKey: '' }, show)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('배경색 레드 · 칩 색 레드 조합이 색 규칙에 걸려요')
+    expect(warnings[0]).toContain('두 색이 같아서 구분이 안 돼요')
+    expect(warnings[0]).toContain('저장은 되지만')
+  })
+
+  it('규칙을 통과하는 조합(안전한 기본 조합)은 경고가 없다', () => {
+    expect(feedColorWarnings({ bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: 'ref-lime' }, show)).toEqual([])
+  })
+
+  it('두 칸을 다 고르지 않았으면 판정하지 않는다', () => {
+    expect(feedColorWarnings({ bgColorKey: 'red', chipColorKey: '', boxColorKey: '' }, show)).toEqual([])
+  })
+
+  it('사용자가 제외한 조합은 순서와 상관없이 경고한다', () => {
+    const colors = { bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: '' } as const
+    expect(feedColorWarnings(colors, show)).toEqual([])
+    expect(feedColorWarnings(colors, show, [['red', 'red-soft']])[0]).toContain('제외하기로 한 조합')
+  })
+
+  it('보이지 않는 칸이 낀 짝은 판정하지 않는다', () => {
+    expect(feedColorWarnings({ bgColorKey: 'red', chipColorKey: 'red', boxColorKey: '' }, { chip: false, box: false })).toEqual([])
+  })
+
+  it('섹션이 경고를 보이고 저장을 막는 오류 문구는 아니다', () => {
+    const html = render({ feedType: 'hero_box', bgColorKey: 'red', chipColorKey: 'red' })
+    expect(html).toContain('data-testid="feed-color-warnings"')
+    expect(html).toContain('두 색이 같아서 구분이 안 돼요')
+    expect(render({ feedType: 'hero_box', bgColorKey: 'red-soft', chipColorKey: 'red' })).not.toContain('feed-color-warnings')
+  })
+})
+
+describe('제목 속 칩 낱말 — 제목에 없으면 오류', () => {
+  it('제목에 그대로 들어 있으면 오류가 없고, 없거나 비어 있으면 낱말만 오류다', () => {
+    expect(titleChipWordError('성수동', '핫한 성수동 배지')).toBeNull()
+    expect(titleChipWordError('  ', '핫한 성수동 배지')).toBeNull()
+    expect(titleChipWordError('', '핫한 성수동 배지')).toBeNull()
+    expect(titleChipWordError('문경', '핫한 성수동 배지')).toBe(
+      '제목에 「문경」가 그대로 들어 있지 않아요. 제목 속 낱말만 칩으로 만들 수 있으니 제목이나 낱말을 고쳐 주세요.',
+    )
+  })
+
+  it('섹션은 제목에 없는 낱말 입력 아래에 오류 문구를 붙이고 입력을 오류 상태로 표시한다', () => {
+    const html = render({ feedType: 'hero_box', titleChipWords: ['성수동', '문경'] })
+    expect(html).toContain('제목에 「문경」가 그대로 들어 있지 않아요')
+    expect(html).not.toContain('제목에 「성수동」가')
+    expect(html).toContain('id="feed-card-title-chip-word-2-error"')
+    expect(html).not.toContain('id="feed-card-title-chip-word-1-error"')
+    expect(html).toContain('aria-invalid="true"')
+  })
+
+  it('낱말을 모두 지우면 오류가 없다', () => {
+    const html = render({ feedType: 'hero_box', titleChipWords: ['', ''] })
+    expect(html).not.toContain('그대로 들어 있지 않아요')
+    expect(html).not.toContain('aria-invalid="true"')
+  })
+})
+
+describe('FeedCardSection — 한국어 줄바꿈', () => {
+  it('새로 만든 안내 문구에 break-keep과 wrap-break-word가 붙는다', () => {
+    const html = render({ feedType: 'hero_box', bgColorKey: 'red', chipColorKey: 'red', titleChipWords: ['문경'] })
+    expect(html).toContain('break-keep wrap-break-word')
+  })
+})
