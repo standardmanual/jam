@@ -1348,7 +1348,7 @@ export interface TodayCardRow {
    *  `resolveShape`(`lib/today/shape.ts`)가 템플릿·레이아웃으로 판정한다. DB 행에는 항상 있지만, 손으로 만드는 값
    *  (시험 데이터·미리보기 초안)이 이 칸 없이도 이 타입에 맞도록 선택으로 둔다. */
   shape?: string | null
-  /** 이미지 안에 제목이 들어 있는지(마이그레이션 206). NULL이면 옛 카드라 `resolveTitleInImage` 규칙으로 판정한다. 선택인 이유는 `shape`와 같다. */
+  /** 이미지 안에 제목이 들어 있는지(마이그레이션 206). NULL이면 항상 `false`(제목을 글자로 그린다, `resolveTitleInImage`). 선택인 이유는 `shape`와 같다. */
   title_in_image?: boolean | null
   /** 운영 항목의 패턴 번호 복사본(마이그레이션 211, 티켓 20261001_2056). NULL이면 패턴 없음이거나 옛 카드다. 선택인 이유는 `shape`와 같다. */
   pattern_no?: string | null
