@@ -1498,6 +1498,27 @@ export type Database = {
         }
         Relationships: []
       }
+      feed_color_overrides: {
+        Row: {
+          color_key: string
+          hex: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          color_key: string
+          hex: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          color_key?: string
+          hex?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           created_at: string
