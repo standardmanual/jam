@@ -10,9 +10,9 @@
  * 값(`FeedCardFormValues`)과 변경 함수만 props로 받는다. 폼 상태·저장은 `TodayCardForm.tsx`가 맡는다.
  * 유형별로 어떤 칸이 보이는지는 새 표를 만들지 않고 기존 상수에서 읽는다:
  * 칩 자리 명세(`feedChipSlots.ts`)·칩 자리 이름→모서리(`feedChipLayout.ts`)·설명 기본 노출(`feedLook.ts`의 `DESCRIPTION_DEFAULT`).
- * 박스 칸이 있는 유형만은 읽을 상수가 없어(조립 컴포넌트가 박스를 그리는 유형) 아래 `BOX_FEED_TYPES`에 한 곳으로 적었다(PRD «카드 유형 8가지» 표 근거).
+ * 박스 칸이 있는 유형은 `feedChipSlots.ts`의 `BOX_FEED_TYPES`·`BOX_KIND_FEED_TYPES`다(홈 컴포넌트와의 일치는 시험이 지킨다, 티켓 20261121_2113).
+ * 공용 조각(`ChoiceField`·`ChoiceOption`·`stampSlotLabel`)은 `FeedFieldParts.tsx`에 있고 아래에서 다시 내보낸다(`FeedChipsEditor.tsx`와의 순환을 끊으려고 옮겼다).
  */
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Input } from '@/components/admin/ui/input'
 import { FieldLabel, FieldMessage, SegmentedControl, type SegmentOption } from '@/app/admin/badges/BadgeFormControls'
 import { FIELD_GRID_CLASS } from '@/components/admin/today/TodayEditorLayout'
@@ -22,11 +22,20 @@ import {
   type FeedDescriptionMode,
   type FeedStampMode,
 } from '@/lib/admin/feedCardFields'
-import { cornerOfSlot, type ChipCorner } from '@/lib/today/feedChipLayout'
-import { chipLimitOf, diagonalOf, FEED_CHIP_SLOT_SPECS, FEED_TYPES, isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
+import { cornerOfSlot } from '@/lib/today/feedChipLayout'
+import {
+  BOX_FEED_TYPES,
+  BOX_KIND_FEED_TYPES,
+  chipLimitOf,
+  diagonalOf,
+  FEED_CHIP_SLOT_SPECS,
+  FEED_TYPES,
+  isFeedType,
+  type FeedType,
+} from '@/lib/today/feedChipSlots'
 import { firstViolatedRule, violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
-import { FEED_COLOR_KEYS, FEED_COLORS, feedColorVar, type FeedColorKey } from '@/lib/today/feedConstants'
+import { FEED_COLOR_KEYS, FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
 import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
 import type { ExcludedColorPair } from '@/lib/today/feedAssign'
@@ -36,6 +45,10 @@ import { cn } from '@/lib/utils'
 import FeedBurstEditor from './FeedBurstEditor'
 import FeedChipsEditor from './FeedChipsEditor'
 import FeedListItemsEditor from './FeedListItemsEditor'
+import { AUTO_HINT, ChoiceField, TEXT_CLASS, stampSlotLabel, type ChoiceOption } from './FeedFieldParts'
+
+// 기존 가져오기 경로(`TodayCardForm`·시험)가 깨지지 않게 공용 조각을 다시 내보낸다.
+export { ChoiceField, stampSlotLabel, type ChoiceOption }
 
 // ── 이름 표 ────────────────────────────────────────────────────
 
@@ -84,35 +97,7 @@ export const FEED_COLOR_LABELS: Readonly<Record<FeedColorKey, string>> = {
   'ref-yellow': '참조 옐로',
 }
 
-const SLOT_ANCHOR_LABELS: Readonly<Record<string, string>> = {
-  image: '이미지',
-  badge: '배지',
-  'box-row': '박스 줄',
-  box: '박스',
-  art: '그림',
-}
-
-const CORNER_LABELS: Readonly<Record<ChipCorner, string>> = {
-  'top-left': '왼쪽 위',
-  'top-right': '오른쪽 위',
-  'bottom-left': '왼쪽 아래',
-  'bottom-right': '오른쪽 아래',
-}
-
-/** 자리 이름 → 한국어(`box-top-left` → «박스 왼쪽 위»). 모서리 자리가 아니면 이름 그대로다. */
-export function stampSlotLabel(slot: string): string {
-  const corner = cornerOfSlot(slot)
-  if (!corner) return slot
-  const anchor = slot.slice(0, slot.length - corner.length - 1)
-  return `${SLOT_ANCHOR_LABELS[anchor] ?? anchor} ${CORNER_LABELS[corner]}`
-}
-
 // ── 유형별로 보이는 칸 ──────────────────────────────────────────
-
-/** 박스 모양·박스 색을 쓰는 유형(히어로의 이미지 박스, 텍스트의 박스, 드랍·픽업의 박스 줄). 나머지 유형은 박스가 없다. */
-const BOX_FEED_TYPES: readonly FeedType[] = ['hero_box', 'text_box', 'drop_pickup']
-/** 박스 용도(글자 박스·이미지 마스크)를 고르는 유형. 히어로는 늘 이미지 박스, 드랍·픽업은 배지 칸이라 텍스트만 용도를 고른다. */
-const BOX_KIND_FEED_TYPES: readonly FeedType[] = ['text_box']
 
 export interface FeedFieldVisibility {
   /** 박스 모양 */
@@ -252,90 +237,6 @@ export function titleChipWordError(word: string, title: string): string | null {
 }
 
 // ── 부품 ──────────────────────────────────────────────────────
-
-const AUTO_VALUE = '__auto__'
-const AUTO_HINT = '저장할 때 자동으로 정해져요'
-const TEXT_CLASS = 'break-keep wrap-break-word'
-
-export interface ChoiceOption {
-  value: string
-  label: string
-  /** 색 키면 이름 앞에 견본을 그린다 */
-  colorKey?: FeedColorKey
-}
-
-function Swatch({ colorKey }: { colorKey: FeedColorKey }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="mr-2 inline-block size-3.5 shrink-0 rounded-full border border-border align-middle"
-      style={{ backgroundColor: feedColorVar(colorKey) }}
-    />
-  )
-}
-
-/** 자동 + 선택지 하나를 고르는 칸. 빈 값(`''`)이 «자동»이다. */
-export function ChoiceField({
-  id,
-  label,
-  value,
-  options,
-  autoLabel = '자동',
-  onChange,
-  themeContainer,
-  help,
-  disabled,
-}: {
-  id: string
-  label: string
-  value: string
-  options: readonly ChoiceOption[]
-  autoLabel?: string
-  onChange: (value: string) => void
-  themeContainer?: HTMLElement | null
-  help?: string
-  /** 고를 수 없는 상태(선택지가 없을 때) */
-  disabled?: boolean
-}) {
-  const selected = options.find((o) => o.value === value)
-  const isAuto = !selected
-  const helpId = `${id}-help`
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <FieldLabel htmlFor={id} className={TEXT_CLASS}>
-        {label}
-      </FieldLabel>
-      <Select value={selected ? selected.value : AUTO_VALUE} onValueChange={(v) => onChange(v === AUTO_VALUE ? '' : v)} disabled={disabled}>
-        <SelectTrigger id={id} aria-describedby={helpId}>
-          <SelectValue>
-            {selected ? (
-              <span className="inline-flex items-center">
-                {selected.colorKey && <Swatch colorKey={selected.colorKey} />}
-                {selected.label}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">{autoLabel}</span>
-            )}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent container={themeContainer ?? undefined}>
-          <SelectItem value={AUTO_VALUE}>{autoLabel}</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              <span className="inline-flex items-center">
-                {o.colorKey && <Swatch colorKey={o.colorKey} />}
-                {o.label}
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <FieldMessage id={helpId} className={TEXT_CLASS}>
-        {isAuto ? (help ? `${help} ${AUTO_HINT}` : AUTO_HINT) : help}
-      </FieldMessage>
-    </div>
-  )
-}
 
 const COLOR_OPTIONS: readonly ChoiceOption[] = FEED_COLOR_KEYS.map((key) => ({
   value: key,

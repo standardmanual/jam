@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { PREVIEW_NAME_UNKNOWN, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
-import { FEED_PREVIEW_SEED } from '@/app/admin/today/TodayCardForm'
+import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import {
   PREVIEW_FEED_SEED,
   PREVIEW_TITLE_PLACEHOLDER,
@@ -359,7 +359,7 @@ describe('itemToPreviewCard — 개편 칸', () => {
     expect(row.stamp_enabled).toBeNull()
   })
 
-  it('고정 시드는 폼 미리보기(5회차-4)의 시드와 같다', () => {
+  it('고정 시드는 폼 미리보기(5회차-4)와 같은 상수 하나를 가져온다', () => {
     expect(PREVIEW_FEED_SEED).toBe(FEED_PREVIEW_SEED)
   })
 

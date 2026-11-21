@@ -29,7 +29,7 @@ import { checkChipTextLength, FEED_VALUE_CHIP_RULES, type ValueChipKind, type Va
 import { resourceOfTemplate } from '@/lib/today/shape'
 import type { TodayCardTemplateType } from '@/types/database'
 import { cn } from '@/lib/utils'
-import { ChoiceField, stampSlotLabel, type ChoiceOption } from './FeedCardSection'
+import { ChoiceField, stampSlotLabel, type ChoiceOption } from './FeedFieldParts'
 
 const TEXT_CLASS = 'break-keep wrap-break-word'
 const AUTO_HINT = '저장할 때 자동으로 정해져요'
