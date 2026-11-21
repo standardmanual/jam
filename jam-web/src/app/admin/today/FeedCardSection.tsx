@@ -137,6 +137,19 @@ export function feedFieldVisibility(feedType: FeedType): FeedFieldVisibility {
   }
 }
 
+/**
+ * 유형을 바꿀 때 폼 값에 함께 적용할 변경. 새 유형이 허용하지 않는 도장 자리는 비우고(저장 검증이 막는 값이라서),
+ * 도장을 둘 수 있는 자리가 아예 없는 유형으로 바꾸면 도장 «사용»을 «자동»으로 되돌린다(막힌 칸에 `stamp_enabled=true`가 남아 저장되지 않게).
+ */
+export function typeChangePatch(values: FeedCardFormValues, next: string): Partial<FeedCardFormValues> {
+  const patch: Partial<FeedCardFormValues> = { feedType: next as FeedCardFormValues['feedType'] }
+  if (!isFeedType(next)) return patch
+  const { stampSlots } = feedFieldVisibility(next)
+  if (values.stampSlot && !stampSlots.includes(values.stampSlot)) patch.stampSlot = ''
+  if (stampSlots.length === 0 && values.stampMode === 'on') patch.stampMode = 'auto'
+  return patch
+}
+
 // ── 색 경고 ────────────────────────────────────────────────────
 
 const colorName = (key: FeedColorKey): string => FEED_COLOR_LABELS[key]
@@ -311,12 +324,7 @@ export default function FeedCardSection({ values, onChange, title, themeContaine
   const visible = feedType ? feedFieldVisibility(feedType) : null
 
   function changeType(next: string) {
-    const patch: Partial<FeedCardFormValues> = { feedType: next as FeedCardFormValues['feedType'] }
-    // 새 유형이 허용하지 않는 도장 자리는 비운다(저장 검증이 막는 값이라서)
-    if (isFeedType(next) && values.stampSlot && !feedFieldVisibility(next).stampSlots.includes(values.stampSlot)) {
-      patch.stampSlot = ''
-    }
-    onChange(patch)
+    onChange(typeChangePatch(values, next))
   }
 
   const colorWarnings = visible

@@ -19,6 +19,7 @@ import FeedCardSection, {
   feedFieldVisibility,
   stampSlotLabel,
   titleChipWordError,
+  typeChangePatch,
 } from '../FeedCardSection'
 import { EMPTY_FEED_CARD_FORM_VALUES, type FeedCardFormValues } from '@/lib/admin/feedCardFields'
 import { FEED_CHIP_SLOT_SPECS, FEED_TYPES } from '@/lib/today/feedChipSlots'
@@ -234,5 +235,26 @@ describe('FeedCardSection — 한국어 줄바꿈', () => {
   it('새로 만든 안내 문구에 break-keep과 wrap-break-word가 붙는다', () => {
     const html = render({ feedType: 'hero_box', bgColorKey: 'red', chipColorKey: 'red', titleChipWords: ['문경'] })
     expect(html).toContain('break-keep wrap-break-word')
+  })
+})
+
+describe('typeChangePatch — 유형을 바꿀 때 막힌 칸의 값을 정리한다', () => {
+  const stampOn: FeedCardFormValues = { ...EMPTY_FEED_CARD_FORM_VALUES, feedType: 'hero_box', stampMode: 'on', stampSlot: 'image-top-right' }
+
+  it('도장을 둘 수 있는 자리가 없는 유형으로 바꾸면 도장 «사용»을 «자동»으로 되돌리고 자리도 비운다', () => {
+    const noStampType = FEED_TYPES.find((type) => feedFieldVisibility(type).stampSlots.length === 0)
+    expect(noStampType).toBeDefined()
+    const patch = typeChangePatch(stampOn, noStampType as string)
+    expect(patch).toMatchObject({ feedType: noStampType, stampMode: 'auto', stampSlot: '' })
+  })
+
+  it('새 유형이 허용하는 자리면 도장 값을 그대로 둔다', () => {
+    const slot = feedFieldVisibility('hero_box').stampSlots[0]
+    const patch = typeChangePatch({ ...stampOn, stampSlot: slot }, 'hero_box')
+    expect(patch).toEqual({ feedType: 'hero_box' })
+  })
+
+  it('«옛 모양 그대로»(빈 값)로 바꾸면 유형만 바꾸고 나머지 값은 남긴다', () => {
+    expect(typeChangePatch(stampOn, '')).toEqual({ feedType: '' })
   })
 })
