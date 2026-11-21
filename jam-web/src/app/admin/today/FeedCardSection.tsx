@@ -141,6 +141,20 @@ export function feedFieldVisibility(feedType: FeedType): FeedFieldVisibility {
 }
 
 /**
+ * 값이 없으면 홈이 옛 모양으로 그리는 유형의 안내(4-3이 정한 «그릴 값이 없는 행은 옛 경로», `cardView.ts`의 `hasFeedValues`와 같은 조건).
+ * 사용자가 값 없이 이 유형을 골라 미리보기가 옛 모양으로 보여도 이유를 알 수 있게 한다. 해당하지 않는 유형은 null이다.
+ */
+export const FEED_TYPE_VALUE_NOTES: Readonly<Partial<Record<FeedType, string>>> = {
+  collection_intro: '컬렉션 소개는 커버 미디어에 대표 그림을 넣어야 새 모습으로 보여요. 비어 있으면 옛 모양으로 보여요.',
+  drop_pickup: '드랍·픽업은 참조 컨텐츠에서 배지를 하나 이상 연결해야 새 모습으로 보여요. 비어 있으면 옛 모양으로 보여요.',
+  gallery_list: '목록형은 항목을 하나 이상 적어야 새 모습으로 보여요. 비어 있으면 옛 모양으로 보여요.',
+}
+
+export function feedTypeValueNote(feedType: FeedType | null): string | null {
+  return feedType ? (FEED_TYPE_VALUE_NOTES[feedType] ?? null) : null
+}
+
+/**
  * 유형을 바꿀 때 폼 값에 함께 적용할 변경. 새 유형이 허용하지 않는 도장 자리는 비우고(저장 검증이 막는 값이라서),
  * 도장을 둘 수 있는 자리가 아예 없는 유형으로 바꾸면 도장 «사용»을 «자동»으로 되돌린다(막힌 칸에 `stamp_enabled=true`가 남아 저장되지 않게).
  */
@@ -379,6 +393,11 @@ export default function FeedCardSection({ values, onChange, title, templateType,
           help="유형을 고르면 그 유형이 쓰는 칸만 보여요. 옛 모양으로 되돌려도 적어 둔 값은 남지만 저장하지 않아요."
         />
       </div>
+      {feedTypeValueNote(feedType) && (
+        <p role="note" className="m-0 text-sm text-muted-foreground break-keep wrap-break-word">
+          {feedTypeValueNote(feedType)}
+        </p>
+      )}
 
       {visible && feedType && (
         <>

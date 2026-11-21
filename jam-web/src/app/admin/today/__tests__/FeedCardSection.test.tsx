@@ -17,6 +17,7 @@ import FeedCardSection, {
   FEED_TYPE_LABELS,
   feedColorWarnings,
   feedFieldVisibility,
+  feedTypeValueNote,
   stampSlotLabel,
   titleChipWordError,
   typeChangePatch,
@@ -256,5 +257,35 @@ describe('typeChangePatch — 유형을 바꿀 때 막힌 칸의 값을 정리�
 
   it('«옛 모양 그대로»(빈 값)로 바꾸면 유형만 바꾸고 나머지 값은 남긴다', () => {
     expect(typeChangePatch(stampOn, '')).toEqual({ feedType: '' })
+  })
+})
+
+describe('feedTypeValueNote — 값이 없으면 옛 모양으로 보이는 유형의 안내', () => {
+  it('컬렉션 소개·드랍·픽업·목록형에만 안내가 있고 이유를 알려 준다', () => {
+    expect(feedTypeValueNote('collection_intro')).toContain('대표 그림')
+    expect(feedTypeValueNote('drop_pickup')).toContain('배지')
+    expect(feedTypeValueNote('gallery_list')).toContain('항목')
+    for (const type of ['hero_box', 'text_box', 'badge_intro', 'badge_only', 'full_image'] as const) {
+      expect(feedTypeValueNote(type)).toBeNull()
+    }
+    expect(feedTypeValueNote(null)).toBeNull()
+  })
+
+  it('안내는 해요체이고 마침표로 끝나는 문장이며 유형을 고르면 섹션에 보인다', () => {
+    for (const type of ['collection_intro', 'drop_pickup', 'gallery_list'] as const) {
+      const note = feedTypeValueNote(type) as string
+      expect(note.endsWith('요.')).toBe(true)
+      const html = renderToStaticMarkup(
+        <FeedCardSection {...({ values: { ...EMPTY_FEED_CARD_FORM_VALUES, feedType: type }, onChange: () => {}, title: '제목' } as ComponentProps<typeof FeedCardSection>)} />,
+      )
+      expect(html).toContain(note)
+    }
+  })
+
+  it('안내가 없는 유형이나 유형을 비운 상태에서는 안내 문단이 없다', () => {
+    const html = renderToStaticMarkup(
+      <FeedCardSection {...({ values: { ...EMPTY_FEED_CARD_FORM_VALUES, feedType: 'hero_box' }, onChange: () => {}, title: '제목' } as ComponentProps<typeof FeedCardSection>)} />,
+    )
+    expect(html).not.toContain('새 모습으로 보여요')
   })
 })
