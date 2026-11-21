@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import TopNav from '@/components/ui/TopNav'
-import { LockIcon, CoinIcon, ArrowDownIcon } from '@/components/ui/icons'
+import { LockIcon, CoinIcon, ArrowDownIcon, CheckBoldIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
@@ -100,7 +100,7 @@ function timeLeft(endsAt: string | null): string {
 }
 
 /* ── 개수 서클 — 연속 일수·활동 횟수의 «나의 진행 상황» (티켓 20261104_2147, 4회차 20261112_1629)
- * 프로그래스바·퍼센트 없이 목표 개수만큼 숫자 서클을 전부 그린다. 끝낸 칸은 --jam-red 채움에 --snow 숫자,
+ * 프로그래스바·퍼센트 없이 목표 개수만큼 서클을 전부 그린다. 끝낸 칸은 --jam-red 채움에 --snow 체크 아이콘(숫자 없음, 티켓 20261121_2011),
  * 남은 칸은 --btn-secondary 채움에 --foreground 숫자이고 테두리는 어느 칸에도 없다(지금 채울 칸 구분 없음).
  * 단위 글자는 마지막 서클과 한 묶음(whitespace-nowrap)이라 줄이 넘치면 함께 내려간다. */
 function CountCircles({ total, done, unit, completed }: { total: number; done: number; unit: string; completed: boolean }) {
@@ -118,7 +118,7 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
           color:      isDone ? 'var(--snow)' : 'var(--foreground)',
         }}
       >
-        {i + 1}
+        {isDone ? <CheckBoldIcon className="w-4 h-4" /> : i + 1}
       </span>
     )
   }

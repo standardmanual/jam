@@ -301,9 +301,11 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
     )
   const circleCount = (card: string) => (card.match(/rounded-full inline-flex|inline-flex items-center justify-center/g) ?? []).length
 
-  it('연속 일수: 목표 개수만큼 서클이 모두 그려지고 단위 «일»이 마지막 서클 뒤에 붙는다', () => {
+  it('연속 일수: 목표 개수만큼 서클이 모두 그려지고(끝낸 칸은 체크, 남은 칸은 숫자) 단위 «일»이 마지막 서클 뒤에 붙는다', () => {
     const card = streak(3)
-    for (let n = 1; n <= 7; n++) expect(card).toContain(`>${n}</span>`)
+    // 끝낸 1~3칸은 체크 아이콘이라 숫자가 없고, 남은 4~7칸만 숫자를 보인다(티켓 20261121_2011)
+    for (let n = 4; n <= 7; n++) expect(card).toContain(`>${n}</span>`)
+    expect((card.match(/w-7 h-7 rounded-full/g) ?? []).length).toBe(7)
     expect(card).not.toContain('>8</span>')
     expect(card.indexOf('>7</span>')).toBeLessThan(card.indexOf('>일</span>'))
     // 마지막 서클과 단위는 한 묶음이라 줄이 넘쳐도 함께 내려간다
@@ -334,6 +336,18 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
     expect(card).not.toContain('border-color')
   })
 
+  it('끝낸 칸은 숫자 대신 체크 아이콘이고, 남은 칸만 숫자를 보인다 (티켓 20261121_2011)', () => {
+    const card = streak(3)
+    // 끝낸 3칸(1·2·3)의 숫자는 없고 4~7만 남는다
+    for (const n of [1, 2, 3]) expect(card).not.toContain(`>${n}</span>`)
+    for (const n of [4, 5, 6, 7]) expect(card).toContain(`>${n}</span>`)
+    // 체크 아이콘은 끝낸 칸 수만큼 그려진다
+    expect((card.match(/<svg/g) ?? []).length).toBe(3)
+    const done = streak(0, { completed: true })
+    expect(done).not.toMatch(/>[1-7]<\/span>/)
+    expect((done.match(/<svg/g) ?? []).length).toBe(7)
+  })
+
   it('서클이 많아도(30일) 모두 그린다', () => {
     const card = streak(12, { days: 30 })
     expect(card).toContain('>30</span>')
@@ -345,8 +359,10 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
     const card = progressCard(
       render(CONDITION_TEXT, { participating: true, missionType: 'activity_count', progressValue: 1, conditionJson: { count: 2 } }),
     )
-    expect(card).toContain('>1</span>')
+    // 끝낸 1회차는 체크 아이콘이고 남은 2회차만 숫자다(티켓 20261121_2011)
+    expect(card).not.toContain('>1</span>')
     expect(card).toContain('>2</span>')
+    expect(card).toContain('<svg')
     expect(card).toContain('>회</span>')
     expect(card).not.toContain('%')
   })
