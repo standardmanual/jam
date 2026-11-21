@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
+import {
+  countBgUsage,
+  createFeedSeed,
+  decideFeedCardValues,
+  hasFeedCardColumns,
+  pickFeedCardColumns,
+  validateFeedCardColumns,
+  type FeedCardColumns,
+} from '@/lib/admin/feedCardFields'
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
 const READ_ERROR_MESSAGE = '카드 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
@@ -9,6 +18,106 @@ const SAVE_ERROR_MESSAGE = '카드를 저장하지 못했어요. 서버에서 �
 const DELETE_ERROR_MESSAGE = '카드를 삭제하지 못했어요. 서버에서 삭제 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
 // 본문이 JSON `null`이면 아래 `body.` 접근이 던져 500이 된다(티켓 20260926_1601). 다른 어드민 라우트의 본문 오류 문구와 같다.
 const INVALID_BODY_MESSAGE = '요청 형식이 올바르지 않습니다.'
+
+/** 수정 저장이 저장된 카드에서 읽는 칸. 커버 이미지는 제작 경로 초기화, 나머지는 개편 칸 검증·자동 값 고정에 쓴다. */
+const EXISTING_SELECT =
+  'cover_image_url, title, item_book_id, starts_at, ends_at, feed_type, feed_seed, bg_color_key, chip_color_key, box_color_key'
+interface ExistingCard {
+  cover_image_url: string | null
+  title: string | null
+  item_book_id: string | null
+  starts_at: string | null
+  ends_at: string | null
+  feed_type: FeedCardColumns['feed_type']
+  feed_seed: number | null
+  bg_color_key: FeedCardColumns['bg_color_key']
+  chip_color_key: FeedCardColumns['chip_color_key']
+  box_color_key: FeedCardColumns['box_color_key']
+}
+
+const COLOR_KEYS = ['bg_color_key', 'chip_color_key', 'box_color_key'] as const
+
+/** 서버 난수(0 이상 2^32 미만 정수). */
+function serverRandomUint32(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0]
+}
+
+/**
+ * 개편 칸 검증과 자동 값 고정(수정 저장). 이미 저장된 값은 다시 정하지 않는다.
+ * - 저장된 `feed_seed`가 있으면 본문이 다른 값을 보내도 바꾸지 않는다(`omit`).
+ * - 예외 ①: 유형이 비어 있던 카드에 처음 유형을 지정하는데 시드가 없으면 시드와 비어 있는 색 키를 한 번 정한다.
+ * - 예외 ②: 본문이 색 키를 `null`(자동)로 보내면 저장된 시드로 그 색만 다시 정한다.
+ * 칩 자리·기울기와 컬렉션 모션 위치는 시드로 홈이 같은 값을 그리므로 저장하지 않는다.
+ */
+async function decideFeedColumnsForPatch(
+  supabase: ReturnType<typeof createServiceClient>,
+  id: string,
+  body: Record<string, unknown>,
+  existing: ExistingCard,
+): Promise<{ errors: string[]; warnings: string[]; patch: Record<string, unknown>; omit: string[] }> {
+  const columns = pickFeedCardColumns(body)
+  const title = typeof body.title === 'string' ? body.title : (existing.title ?? '')
+  const itemBookId = 'item_book_id' in body ? (typeof body.item_book_id === 'string' ? body.item_book_id : null) : existing.item_book_id
+  // 본문에 유형이 없으면 저장된 유형으로 검증한다(칩 자리·도장 자리는 유형이 정한다).
+  const checked = validateFeedCardColumns({ feed_type: existing.feed_type, ...columns }, { title, itemBookId })
+  const result = { errors: checked.errors, warnings: [...checked.warnings], patch: {} as Record<string, unknown>, omit: [] as string[] }
+  if (checked.errors.length > 0) return result
+
+  if (existing.feed_seed !== null && 'feed_seed' in body) result.omit.push('feed_seed')
+
+  const finalType = 'feed_type' in body ? (body.feed_type ?? null) : existing.feed_type
+  if (!finalType) return result
+
+  const firstTime = existing.feed_type === null && existing.feed_seed === null
+  const autoRequested = COLOR_KEYS.filter((key) => key in body && (body[key] === null || body[key] === ''))
+  if (!firstTime && autoRequested.length === 0) return result
+
+  const bodySeed = typeof body.feed_seed === 'number' ? body.feed_seed : null
+  const seed = existing.feed_seed ?? bodySeed ?? createFeedSeed(serverRandomUint32)
+  // 지정값: 본문이 값을 보냈으면 그 값, 본문에 없으면 저장된 값, 본문이 null이면 자동(다시 정한다)
+  const fixed: Partial<Pick<FeedCardColumns, 'bg_color_key' | 'chip_color_key' | 'box_color_key'>> = {}
+  for (const key of COLOR_KEYS) {
+    const value = key in body ? body[key] : existing[key]
+    fixed[key] = (value || null) as FeedCardColumns[typeof key]
+  }
+  const startsAt = typeof body.starts_at === 'string' ? body.starts_at : existing.starts_at
+  const endsAt = typeof body.ends_at === 'string' ? body.ends_at : existing.ends_at
+  const decided = decideFeedCardValues({
+    columns: { ...fixed, feed_seed: seed },
+    seed,
+    overlappingBgUsage: await overlappingBgUsage(supabase, id, startsAt, endsAt),
+    excludedPairs: [],
+  })
+
+  if (firstTime) result.patch.feed_seed = decided.feed_seed
+  for (const key of COLOR_KEYS) {
+    if (firstTime || autoRequested.includes(key)) result.patch[key] = decided[key]
+  }
+  result.warnings.push(...decided.warnings)
+  return result
+}
+
+/** 같은 시기에 노출되는 다른 카드의 배경색 사용 빈도(이 카드는 뺀다). 기간이 비어 있거나 조회가 실패하면 빈 빈도다. */
+async function overlappingBgUsage(
+  supabase: ReturnType<typeof createServiceClient>,
+  id: string,
+  startsAt: string | null,
+  endsAt: string | null,
+): Promise<Record<string, number>> {
+  if (!startsAt || !endsAt) return {}
+  const { data, error } = await supabase
+    .from('today_cards')
+    .select('bg_color_key')
+    .neq('id', id)
+    .lte('starts_at', endsAt)
+    .gte('ends_at', startsAt)
+    .not('bg_color_key', 'is', null)
+  if (error) {
+    console.error('[today PATCH 배경색 사용 빈도 조회 오류]', error)
+    return {}
+  }
+  return countBgUsage((data ?? []) as Array<{ bg_color_key: string | null }>)
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireAdmin()
@@ -24,28 +133,46 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const supabase = createServiceClient()
 
+  // 개편 칸(마이그레이션 349)이 본문에 있으면 저장된 카드와 합쳐 검증한다(티켓 20261121_1315). 없는 옛 본문은 이 단계를 건너뛰고 이전과 똑같이 저장한다.
+  const touchesFeedColumns = hasFeedCardColumns(body)
+
   // 커버 이미지가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940
   // 방침 A). 폼은 매번 전체 필드를 보내므로 기존 값과 비교하고, 본문에 cover_image_url이
-  // 없으면 기존 행을 조회하지 않는다.
+  // 없고 개편 칸도 없으면 기존 행을 조회하지 않는다.
   let imageSourcePatch: { image_source?: null } = {}
-  if (body.cover_image_url !== undefined) {
-    const { data: existing, error: existingError } = await supabase
+  let existing: ExistingCard | null = null
+  if (body.cover_image_url !== undefined || touchesFeedColumns) {
+    const { data: existingRow, error: existingError } = await supabase
       .from('today_cards')
-      .select('cover_image_url')
+      .select(EXISTING_SELECT)
       .eq('id', id)
-      .maybeSingle<{ cover_image_url: string | null }>()
+      .maybeSingle<ExistingCard>()
     if (existingError) {
       console.error('[today PATCH 기존 카드 조회 오류]', existingError)
       return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
     }
-    if (!existing) return NextResponse.json({ error: '카드를 찾을 수 없습니다.' }, { status: 404 })
-    imageSourcePatch = imageSourceReset(existing.cover_image_url, body.cover_image_url)
+    if (!existingRow) return NextResponse.json({ error: '카드를 찾을 수 없습니다.' }, { status: 404 })
+    existing = existingRow
+    if (body.cover_image_url !== undefined) {
+      imageSourcePatch = imageSourceReset(existing.cover_image_url, body.cover_image_url)
+    }
   }
 
   // 제작 경로(image_source)는 본문으로 바꿀 수 없다 — 이미지 변경 시 초기화(위)와 적용 탭·등록
   // 스크립트로만 바뀐다(티켓 20260925_2003 방침 A). 배지·컬렉션·미션 저장 라우트와 같은 규칙이다.
   const safeBody = { ...body }
   delete safeBody.image_source
+
+  const warnings: string[] = []
+  if (touchesFeedColumns && existing) {
+    const decision = await decideFeedColumnsForPatch(supabase, id, safeBody, existing)
+    if (decision.errors.length > 0) {
+      return NextResponse.json({ error: decision.errors.join(' '), errors: decision.errors }, { status: 400 })
+    }
+    Object.assign(safeBody, decision.patch)
+    for (const key of decision.omit) delete safeBody[key]
+    warnings.push(...decision.warnings)
+  }
 
   const { data, error } = await supabase
     .from('today_cards')
@@ -58,7 +185,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     console.error('[today PATCH 저장 오류]', error)
     return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
   }
-  return NextResponse.json(data)
+  return NextResponse.json(warnings.length > 0 ? { ...data, warnings } : data)
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
