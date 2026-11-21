@@ -86,6 +86,7 @@ vi.mock('@/lib/supabase/server', () => ({
           if (table === 'badges') state.badgeFilters.push(`${column}:${values.join(',')}`)
           return builder
         },
+        is: () => builder,
         eq: chain('eq'),
         neq: chain('neq'),
         lte: chain('lte'),

@@ -573,7 +573,7 @@ describe('create — 이미지 대표 색을 자동 색 배정에 쓴다(티켓 
 
     const reads = db.calls.filter((call) => call.table === 'badges')
     expect(reads).toHaveLength(1)
-    expect(reads[0].filters).toEqual([['id', [BADGE_ID]]])
+    expect(reads[0].filters).toEqual([['id', [BADGE_ID]], ['deleted_at', null]])
     const row = db.tables.today_cards[0]
     expect(violatesImageColorRule(hexOfKey(row.bg_color_key), colors)).toBe(false)
     expect(row.bg_color_key).not.toBe(before.bg_color_key)

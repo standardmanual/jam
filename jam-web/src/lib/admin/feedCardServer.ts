@@ -77,7 +77,8 @@ export async function fetchBadgeBgColors(
 ): Promise<unknown[] | null> {
   const ids = [...new Set(badgeIds.filter((id) => typeof id === 'string' && id !== ''))]
   if (ids.length === 0) return []
-  const { data, error } = await client.from('badges').select('id, bg_colors').in('id', ids)
+  // 삭제된 배지는 홈이 그리지 않는다(`fetchBadgesById`도 `deleted_at is null`만 읽는다). 홈의 «첫 배지»와 같게 뺀다.
+  const { data, error } = await client.from('badges').select('id, bg_colors').in('id', ids).is('deleted_at', null)
   if (error) {
     console.error(logLabel, error)
     return null

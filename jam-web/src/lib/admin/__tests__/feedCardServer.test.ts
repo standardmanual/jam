@@ -189,16 +189,17 @@ describe('이미지 대표 색 읽기와 자동 배정 (티켓 20261121_1828)', 
     return db
   }
 
-  it('fetchBadgeBgColors: badges에서 칸 id·bg_colors만 한 번 읽고 badge_ids 순서로 돌려주며, 삭제돼 행이 없는 배지는 뺀다', async () => {
+  it('fetchBadgeBgColors: badges에서 칸 id·bg_colors만 한 번 읽고 badge_ids 순서로 돌려주며, 삭제됐거나 행이 없는 배지는 뺀다', async () => {
     const db = dbWithBadges([
       { id: 'b2', bg_colors: ['#222222'] },
       { id: 'b1', bg_colors: ['#111111'] },
       { id: 'b3', bg_colors: null },
+      { id: 'b4', bg_colors: ['#444444'], deleted_at: '2026-11-01T00:00:00Z' },
     ])
-    const colors = await fetchBadgeBgColors(db.service, ['b1', 'gone', 'b2', 'b3'])
+    const colors = await fetchBadgeBgColors(db.service, ['b1', 'gone', 'b4', 'b2', 'b3'])
     expect(colors).toEqual([['#111111'], ['#222222'], null])
     expect(db.calls).toHaveLength(1)
-    expect(db.calls[0]).toMatchObject({ table: 'badges', op: 'select', filters: [['id', ['b1', 'gone', 'b2', 'b3']]] })
+    expect(db.calls[0]).toMatchObject({ table: 'badges', op: 'select', filters: [['id', ['b1', 'gone', 'b4', 'b2', 'b3']], ['deleted_at', null]] })
   })
 
   it('fetchBadgeBgColors: id가 없으면 읽지 않고 빈 목록이다. 조회가 실패하면 null이고 서버 로그에 남긴다', async () => {
