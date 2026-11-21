@@ -9,6 +9,10 @@
  * - 지정하지 않은 번호는 프리셋에 저장된 값을 그대로 쓴다. 반환의 `applied`(값을 지정한 번호)와 `saved`(저장된 값을
  *   쓴 번호)를 실행 결과에 보여 줘 빠뜨린 값이 눈에 띄게 한다.
  * 잘못된 번호·프리셋에 없는 번호는 한국어 메시지의 Error를 던진다. 파일 I/O는 없다.
+ * 선택 인자 `{ ignoreMissingKeys: true }`(홈피드 카드 이미지 경로 전용, 티켓 20261121_1722)를 주면 프리셋에 없는 번호는
+ * 던지지 않고 무시해 반환의 `ignored`에 담는다(7회차에 카드 프리셋에서 글자·로고 층을 뺐다). 번호 형식 검사는 그대로고,
+ * 값 검사(문자열·이미지 주소 형식)는 실제로 적용하는 번호에만 한다. 이 인자를 주지 않으면 이전과 똑같이 엄격하다.
+ * `src/lib/asset-generator/renderPreset.ts`의 TS 구현과 같은 규칙을 지킨다.
  */
 import path from 'node:path'
 
@@ -60,8 +64,9 @@ export function isImageSourceFormat(value) {
 /**
  * 프리셋 `layers`에 값 맵을 적용한다.
  * 반환: `{ layers, applied, saved }` — `applied`는 값을 지정한 번호, `saved`는 프리셋에 저장된 값을 쓴 번호(둘 다 목록 순서).
+ * `options.ignoreMissingKeys`가 참이면 `ignored`(프리셋에 없어 무시한 번호, 지정한 순서)가 더해진다. 거짓·생략이면 `ignored` 칸이 없다.
  */
-export function applyLayerValues(layers, values) {
+export function applyLayerValues(layers, values, options = {}) {
   const entries = getLayerKeys(layers)
   const keyByIndex = entries.map((entry) => entry.key)
 
@@ -69,12 +74,14 @@ export function applyLayerValues(layers, values) {
   for (const key of requested) assertCanonicalLayerKey(key)
 
   const missing = requested.filter((key) => !keyByIndex.includes(key))
-  if (missing.length > 0) {
+  const ignoreMissingKeys = options.ignoreMissingKeys === true
+  if (missing.length > 0 && !ignoreMissingKeys) {
     const available = [...keyByIndex].sort().join(', ')
     throw new Error(`이 프리셋에 없는 번호예요: ${missing.join(', ')}. 있는 번호: ${available === '' ? '(없음)' : available}`)
   }
 
   for (const key of requested) {
+    if (ignoreMissingKeys && missing.includes(key)) continue
     const value = values[key]
     const { type } = parseLayerKey(key)
     if (typeof value !== 'string') throw new Error(`${key}의 값은 문자열이어야 해요.`)
@@ -95,5 +102,5 @@ export function applyLayerValues(layers, values) {
     return layer.type === 'text' ? { ...layer, content: values[key] } : { ...layer, assetUrl: values[key] }
   })
 
-  return { layers: nextLayers, applied, saved }
+  return ignoreMissingKeys ? { layers: nextLayers, applied, saved, ignored: missing } : { layers: nextLayers, applied, saved }
 }

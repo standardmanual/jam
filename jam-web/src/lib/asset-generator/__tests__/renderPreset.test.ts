@@ -282,3 +282,99 @@ describe('applyLayerValues — applyLayerValues.mjs와 같은 결과', () => {
     expect(getLayerKeys(layers).map((k) => k.key)).toEqual(['text01', 'img01', 'text02']);
   });
 });
+
+describe('applyLayerValues — 없는 번호 무시 모드 (티켓 20261121_1722)', () => {
+  const ignoreOn = { ignoreMissingKeys: true };
+
+  it('기본(인자 없음·false)은 이전처럼 없는 번호를 던지고 결과에 ignored 칸이 없다', () => {
+    expect(() => applyLayerValues(layers, { text09: 'x' })).toThrow('이 프리셋에 없는 번호예요: text09');
+    expect(() => applyLayerValues(layers, { text09: 'x' }, {})).toThrow('이 프리셋에 없는 번호예요: text09');
+    expect(() => applyLayerValues(layers, { text09: 'x' }, { ignoreMissingKeys: false })).toThrow('이 프리셋에 없는 번호예요');
+    expect('ignored' in applyLayerValues(layers, { text01: 'a' })).toBe(false);
+  });
+
+  it('무시 모드는 없는 번호를 던지지 않고 ignored에 지정한 순서로 담는다. 있는 번호는 그대로 적용한다', () => {
+    const result = applyLayerValues(layers, { text02: '둘', text09: 'x', img02: '/abs/a.png', text01: '하나' }, ignoreOn);
+    expect(result.ignored).toEqual(['text09', 'img02']);
+    expect(result.applied).toEqual(['text01', 'text02']);
+    expect(result.saved).toEqual(['img01']);
+    expect((result.layers[0] as TextLayerConfig).content).toBe('하나');
+  });
+
+  it('글자·로고 층이 하나도 없는 프리셋에서는 모든 번호가 ignored이고 층은 그대로다', () => {
+    const result = applyLayerValues([], { text01: '제목', text02: '설명', img01: '/abs/logo.png' }, ignoreOn);
+    expect(result).toEqual({ layers: [], applied: [], saved: [], ignored: ['text01', 'text02', 'img01'] });
+  });
+
+  it('값을 주지 않으면 ignored는 빈 목록이다', () => {
+    expect(applyLayerValues(layers, {}, ignoreOn).ignored).toEqual([]);
+  });
+
+  it('번호 형식 검사는 무시 모드에서도 한다', () => {
+    expect(() => applyLayerValues(layers, { text1: 'x' }, ignoreOn)).toThrow('번호 형식이 올바르지 않아요');
+  });
+
+  it('적용하는 이미지 값은 주소 형식·저장소 밖 주소 검사를 그대로 한다', () => {
+    expect(() => applyLayerValues(layers, { img01: 'relative.png' }, ignoreOn)).toThrow('이미지 파일의 절대 경로');
+    expect(() => applyLayerValues(layers, { img01: '//evil.example/a.png' }, ignoreOn)).toThrow('이미지 파일의 절대 경로');
+    expect(() => applyLayerValues(layers, { text01: 5 as unknown as string }, ignoreOn)).toThrow('문자열이어야 해요');
+  });
+
+  it('무시하는 번호의 값은 검사하지 않는다(적용하지 않는 값이다)', () => {
+    expect(applyLayerValues(layers, { img09: 'relative.png' }, ignoreOn).ignored).toEqual(['img09']);
+  });
+
+  const parityCases: Record<string, string>[] = [{}, { text01: '바뀜' }, { text09: 'x', img01: '/abs/p.png' }, { img07: 'y', text02: 'z' }];
+  it.each(parityCases)('applyLayerValues.mjs와 같은 결과: %j', (values) => {
+    expect(applyLayerValues(layers, values, ignoreOn)).toEqual(applyLayerValuesMjs(layers, values, ignoreOn));
+    expect(applyLayerValues([], values, ignoreOn)).toEqual(applyLayerValuesMjs([], values, ignoreOn));
+  });
+
+  const parityErrors: Record<string, string>[] = [{ text1: 'x' }, { img01: 'relative.png' }, { text01: '' }];
+  it.each(parityErrors)('applyLayerValues.mjs와 같은 오류(또는 같은 통과): %j', (values) => {
+    const run = (fn: () => unknown) => {
+      try {
+        return fn();
+      } catch (e) {
+        return (e as Error).message;
+      }
+    };
+    expect(run(() => applyLayerValues(layers, values, ignoreOn))).toEqual(run(() => applyLayerValuesMjs(layers, values, ignoreOn)));
+  });
+});
+
+describe('renderPresetToCanvas — 글자·로고 층 없는 프리셋 (티켓 20261121_1722)', () => {
+  const input = {
+    preset: { stageRatio: '1:1' as const, layers: [] as OverlayLayerConfig[] },
+    bg: '#112233',
+    end: '#aabbcc',
+    values: { text01: '제목', text02: '설명', img01: '/abs/logo.png' },
+    seed: 7,
+  };
+
+  it('무시 모드면 층이 없어도 리본만 그리고 ignored를 돌려준다. 글꼴·이미지는 부르지 않는다', async () => {
+    const { log, deps } = makeEnv();
+    const result = await renderPresetToCanvas({ ...input, ignoreMissingKeys: true }, deps);
+    expect(result.layers).toEqual({ applied: [], saved: [], ignored: ['text01', 'text02', 'img01'] });
+    expect(log.filter((l) => l.startsWith('font ') || l.startsWith('image '))).toEqual([]);
+    expect(log.length).toBeGreaterThan(5);
+  });
+
+  it('기본 모드는 층이 없으면 이전처럼 던진다', async () => {
+    const { deps } = makeEnv();
+    await expect(renderPresetToCanvas(input, deps)).rejects.toThrow('이 프리셋에 없는 번호예요');
+  });
+
+  it('층이 있는 프리셋은 무시 모드를 켜도 같은 호출 기록이고 layers에 ignored만 더해진다', async () => {
+    const values = { text01: '새 문안', img01: 'https://x.test/new.png' };
+    const a = makeEnv();
+    const b = makeEnv();
+    const strict = await renderPresetToCanvas({ preset: { stageRatio: '1:1', layers }, bg: '#112233', end: '#aabbcc', values, seed: 9 }, a.deps);
+    const lenient = await renderPresetToCanvas(
+      { preset: { stageRatio: '1:1', layers }, bg: '#112233', end: '#aabbcc', values, seed: 9, ignoreMissingKeys: true },
+      b.deps,
+    );
+    expect(b.log).toEqual(a.log);
+    expect(lenient.layers).toEqual({ ...strict.layers, ignored: [] });
+  });
+});

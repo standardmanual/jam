@@ -155,11 +155,16 @@ export interface RenderPresetToPngArgs {
   values?: Record<string, string>
   /** 호출부가 정해 넘긴다 */
   seed: number
+  /** 참이면 프리셋에 없는 레이어 번호를 무시한다(홈피드 카드 이미지 전용, 티켓 20261121_1722). 생략하면 없는 번호는 던진다. */
+  ignoreMissingKeys?: boolean
 }
 
 /** 프리셋·색·문안·시드로 PNG Blob 한 장을 만든다. 어떤 실패든 한국어 메시지의 Error를 던진다. */
 export async function renderPresetToPngBlob(args: RenderPresetToPngArgs, deps: RenderPresetDeps = browserRenderDeps): Promise<Blob> {
   const preset = await fetchPreset(args.presetId)
-  const { canvas } = await renderPresetToCanvas({ preset, bg: args.bg, end: args.end, values: args.values, seed: args.seed }, deps)
+  const { canvas } = await renderPresetToCanvas(
+    { preset, bg: args.bg, end: args.end, values: args.values, seed: args.seed, ...(args.ignoreMissingKeys ? { ignoreMissingKeys: true } : {}) },
+    deps
+  )
   return canvasToBlob(canvas as unknown as HTMLCanvasElement)
 }

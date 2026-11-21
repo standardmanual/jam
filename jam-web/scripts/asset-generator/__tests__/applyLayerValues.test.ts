@@ -95,6 +95,44 @@ describe('applyLayerValues', () => {
   });
 });
 
+describe('applyLayerValues — 없는 번호 무시 모드 (티켓 20261121_1722)', () => {
+  const ignoreOn = { ignoreMissingKeys: true };
+
+  it('기본은 이전처럼 없는 번호를 던지고 ignored 칸이 없다(배지·미션·컬렉션 경로)', () => {
+    expect(() => applyLayerValues(layers, { text09: 'x' })).toThrow('이 프리셋에 없는 번호예요: text09');
+    expect(() => applyLayerValues(layers, { text09: 'x' }, {})).toThrow('이 프리셋에 없는 번호예요: text09');
+    expect(() => applyLayerValues(layers, { text09: 'x' }, { ignoreMissingKeys: false })).toThrow('이 프리셋에 없는 번호예요');
+    expect('ignored' in applyLayerValues(layers, { text01: 'a' })).toBe(false);
+  });
+
+  it('무시 모드는 없는 번호를 ignored에 지정한 순서로 담고 있는 번호는 그대로 적용한다', () => {
+    const result = applyLayerValues(layers, { text02: '둘', text09: 'x', img02: '/abs/a.png', text01: '하나' }, ignoreOn);
+    expect(result.ignored).toEqual(['text09', 'img02']);
+    expect(result.applied).toEqual(['text01', 'text02']);
+    expect(result.saved).toEqual(['img01', 'text03']);
+    expect(result.layers.map(content)).toEqual(['하나', undefined, '둘', 'MISSION']);
+  });
+
+  it('글자·로고 층이 없는 프리셋에서는 모든 번호가 ignored다', () => {
+    expect(applyLayerValues([], { text01: '제목', text02: '설명', img01: '/abs/logo.png' }, ignoreOn)).toEqual({
+      layers: [],
+      applied: [],
+      saved: [],
+      ignored: ['text01', 'text02', 'img01'],
+    });
+  });
+
+  it('번호 형식과 적용하는 값의 검사는 그대로다', () => {
+    expect(() => applyLayerValues(layers, { text1: 'x' }, ignoreOn)).toThrow('번호 형식이 올바르지 않아요');
+    expect(() => applyLayerValues(layers, { img01: 'relative/a.png' }, ignoreOn)).toThrow('절대 경로 또는 http(s) URL');
+    expect(() => applyLayerValues(layers, { text01: 5 as unknown as string }, ignoreOn)).toThrow('문자열이어야 해요');
+  });
+
+  it('무시하는 번호의 값은 검사하지 않는다', () => {
+    expect(applyLayerValues(layers, { img09: 'relative/a.png' }, ignoreOn).ignored).toEqual(['img09']);
+  });
+});
+
 describe('buildLayerValues', () => {
   it('텍스트 번호의 리터럴 \\n을 개행으로 바꾸고 이미지 값은 그대로 둔다', () => {
     expect(buildLayerValues([['text01', '1줄\\n2줄'], ['img01', '/abs/a.png']])).toEqual({ text01: '1줄\n2줄', img01: '/abs/a.png' });

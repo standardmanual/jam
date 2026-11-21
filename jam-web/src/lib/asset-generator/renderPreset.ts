@@ -45,13 +45,16 @@ export interface RenderPresetInput {
   values?: Record<string, string>;
   /** 마스터 시드 — 호출부가 정해 넘긴다 */
   seed: number;
+  /** 참이면 프리셋에 없는 레이어 번호를 무시한다(홈피드 카드 이미지 경로 전용, 티켓 20261121_1722). 생략하면 없는 번호는 던진다. */
+  ignoreMissingKeys?: boolean;
 }
 
 export interface RenderPresetResult {
   canvas: CanvasLike;
   seed: number;
   stage: { w: number; h: number };
-  layers: { applied: string[]; saved: string[] };
+  /** `ignored`는 `ignoreMissingKeys`를 켰을 때만 있다 */
+  layers: { applied: string[]; saved: string[]; ignored?: string[] };
 }
 
 const INVALID_KEY_MESSAGE = '번호 형식이 올바르지 않아요(예: text01)';
@@ -68,23 +71,42 @@ function isImageSourceFormat(value: string): boolean {
   return isSameOriginPath(value) || /^https?:\/\/\S+$/i.test(value);
 }
 
+export interface ApplyLayerValuesOptions {
+  /**
+   * 참이면 프리셋에 없는 번호를 던지지 않고 무시해 결과의 `ignored`에 담는다(홈피드 카드 이미지 경로 전용, 티켓 20261121_1722).
+   * 값 검사(문자열·이미지 주소 형식)는 실제로 적용하는 번호에만 한다. 생략하면 이전과 똑같이 엄격하다.
+   */
+  ignoreMissingKeys?: boolean;
+}
+
+export interface ApplyLayerValuesResult {
+  layers: OverlayLayerConfig[];
+  applied: string[];
+  saved: string[];
+  /** `ignoreMissingKeys`를 켰을 때만 있다 — 프리셋에 없어 무시한 번호(지정한 순서) */
+  ignored?: string[];
+}
+
 /** 프리셋 `layers`에 값 맵을 적용한다(`applyLayerValues.mjs`와 같은 규칙). 원본 배열은 바꾸지 않는다. */
 export function applyLayerValues(
   layers: readonly OverlayLayerConfig[],
   values: Record<string, string>,
-): { layers: OverlayLayerConfig[]; applied: string[]; saved: string[] } {
+  options: ApplyLayerValuesOptions = {},
+): ApplyLayerValuesResult {
   const keyByIndex = getLayerKeys(layers).map((entry) => entry.key);
 
   const requested = Object.keys(values);
   for (const key of requested) assertCanonicalLayerKey(key);
 
   const missing = requested.filter((key) => !keyByIndex.includes(key));
-  if (missing.length > 0) {
+  const ignoreMissingKeys = options.ignoreMissingKeys === true;
+  if (missing.length > 0 && !ignoreMissingKeys) {
     const available = [...keyByIndex].sort().join(', ');
     throw new Error(`이 프리셋에 없는 번호예요: ${missing.join(', ')}. 있는 번호: ${available === '' ? '(없음)' : available}`);
   }
 
   for (const key of requested) {
+    if (ignoreMissingKeys && missing.includes(key)) continue;
     const value: unknown = values[key];
     const parsed = parseLayerKey(key);
     if (typeof value !== 'string') throw new Error(`${key}의 값은 문자열이어야 해요.`);
@@ -105,7 +127,7 @@ export function applyLayerValues(
     return layer.type === 'text' ? { ...layer, content: values[key] } : { ...layer, assetUrl: values[key] };
   });
 
-  return { layers: nextLayers, applied, saved };
+  return ignoreMissingKeys ? { layers: nextLayers, applied, saved, ignored: missing } : { layers: nextLayers, applied, saved };
 }
 
 /** 프리셋·색·값·시드로 스테이지 캔버스 한 장을 그린다(`renderCardPng`와 같은 순서). */
@@ -113,7 +135,12 @@ export async function renderPresetToCanvas(input: RenderPresetInput, deps: Rende
   const { canvasFactory } = deps;
   const { width: stageWidth, height: stageHeight } = resolveStageSize(input.preset.stageRatio);
 
-  const { layers: overlayLayers, applied, saved } = applyLayerValues(input.preset.layers, input.values ?? {});
+  const {
+    layers: overlayLayers,
+    applied,
+    saved,
+    ignored,
+  } = applyLayerValues(input.preset.layers, input.values ?? {}, { ignoreMissingKeys: input.ignoreMissingKeys });
 
   const masterSeed = input.seed;
   const random = deriveRibbonFromSeed(masterSeed);
@@ -207,5 +234,10 @@ export async function renderPresetToCanvas(input: RenderPresetInput, deps: Rende
     }
   }
 
-  return { canvas, seed: masterSeed, stage: { w: stageWidth, h: stageHeight }, layers: { applied, saved } };
+  return {
+    canvas,
+    seed: masterSeed,
+    stage: { w: stageWidth, h: stageHeight },
+    layers: ignored === undefined ? { applied, saved } : { applied, saved, ignored },
+  };
 }
