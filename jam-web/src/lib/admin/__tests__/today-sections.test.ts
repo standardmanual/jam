@@ -17,6 +17,7 @@ import {
 import { resolveArticleCtaTarget } from '../../today/targetHref'
 import { showsDescription } from '../../today/shape'
 import type { TodayCardTemplateType, TodayCardRow } from '@/types/database'
+import { buildFeedCardColumns, EMPTY_FEED_CARD_FORM_VALUES, FEED_CARD_COLUMN_KEYS } from '../feedCardFields'
 
 const ALL_TEMPLATES: TodayCardTemplateType[] = [
   'badge_spotlight',
@@ -244,6 +245,20 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
   it('정렬 순서가 숫자로 안 읽히면 0으로 저장한다', () => {
     expect(buildTodayCardSavePayload({ ...baseValues, sortOrder: '' }).sort_order).toBe(0)
     expect(buildTodayCardSavePayload({ ...baseValues, sortOrder: 'abc' }).sort_order).toBe(0)
+  })
+  it('개편 칸(feedColumns)을 넘기면 15개 칸이 페이로드에 실리고, 기존 필드는 그대로다(티켓 20261121_1315)', () => {
+    const feedColumns = buildFeedCardColumns({ ...EMPTY_FEED_CARD_FORM_VALUES, feedType: 'hero_box', bgColorKey: 'red-soft', feedSeed: '77' })
+    const plain = buildTodayCardSavePayload(baseValues)
+    const withFeed = buildTodayCardSavePayload({ ...baseValues, feedColumns })
+    for (const key of FEED_CARD_COLUMN_KEYS) expect(key in withFeed, key).toBe(true)
+    expect(withFeed).toMatchObject({ feed_type: 'hero_box', bg_color_key: 'red-soft', feed_seed: 77, chips: null, stamp_enabled: null })
+    const rest = Object.fromEntries(Object.entries(withFeed).filter(([key]) => !(FEED_CARD_COLUMN_KEYS as readonly string[]).includes(key)))
+    expect(rest).toEqual(plain)
+    expect(Object.keys(rest)).toEqual(Object.keys(plain))
+  })
+  it('개편 칸을 안 넘기면 페이로드에 개편 칸 키가 없다(옛 호출과 같다)', () => {
+    const p = buildTodayCardSavePayload(baseValues)
+    for (const key of FEED_CARD_COLUMN_KEYS) expect(key in p, key).toBe(false)
   })
   it('badge_spotlight — badges만 쓴다. 나머지 참조 필드는 값이 있어도 null로 비운다', () => {
     const p = buildTodayCardSavePayload({

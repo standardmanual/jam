@@ -10,6 +10,7 @@
  * 순수 함수만 둔다(React·서버 의존 없음) — 유닛 테스트 대상이다.
  */
 import type { TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'
+import type { FeedCardColumns } from './feedCardFields'
 
 // ── 저장 페이로드 ────────────────────────────────────────────────────────
 
@@ -40,6 +41,11 @@ export interface TodayCardFormValues {
   endsAt: string
   sortOrder: string
   isActive: boolean
+  /**
+   * 개편 칸 묶음(티켓 20261121_1315) — 폼이 `feedCardFields.ts`의 `buildFeedCardColumns(폼 값)`으로 만든 결과를 넘긴다. 선택이라 옛 호출은 그대로다.
+   * 이 파일은 `scripts/gen-home-feed-doc.mjs`가 노드로 직접 읽어 `import type`만 쓸 수 있어서, 변환 함수를 값으로 가져오지 않고 결과만 받아 합친다.
+   */
+  feedColumns?: FeedCardColumns
 }
 
 export interface TodayCardSavePayload {
@@ -64,6 +70,22 @@ export interface TodayCardSavePayload {
   ends_at: string
   sort_order: number
   is_active: boolean
+  /** 개편 칸 15개. 폼이 `feedColumns`를 넘겼을 때만 들어 있다(없으면 서버는 옛 호출로 보고 검증하지 않는다) */
+  feed_type?: FeedCardColumns['feed_type']
+  box_shape?: FeedCardColumns['box_shape']
+  box_kind?: FeedCardColumns['box_kind']
+  bg_color_key?: FeedCardColumns['bg_color_key']
+  chip_color_key?: FeedCardColumns['chip_color_key']
+  box_color_key?: FeedCardColumns['box_color_key']
+  chips?: FeedCardColumns['chips']
+  title_chip_words?: FeedCardColumns['title_chip_words']
+  show_description?: FeedCardColumns['show_description']
+  stamp_enabled?: FeedCardColumns['stamp_enabled']
+  stamp_slot?: FeedCardColumns['stamp_slot']
+  list_items?: FeedCardColumns['list_items']
+  list_more_href?: FeedCardColumns['list_more_href']
+  collection_burst?: FeedCardColumns['collection_burst']
+  feed_seed?: FeedCardColumns['feed_seed']
 }
 
 // ── 템플릿 · 노출 형태 옵션 ──────────────────────────────────────────────
@@ -374,5 +396,7 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
     ends_at: new Date(v.endsAt).toISOString(),
     sort_order: Number(v.sortOrder) || 0,
     is_active: v.isActive,
+    // 개편 칸은 폼이 묶음을 넘겼을 때만 싣는다(티켓 20261121_1315). 기존 필드의 값·순서는 바뀌지 않는다.
+    ...(v.feedColumns ?? {}),
   }
 }
