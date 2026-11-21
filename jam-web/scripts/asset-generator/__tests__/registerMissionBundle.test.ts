@@ -76,6 +76,39 @@ describe('validateMissionBundle — 통과', () => {
   });
 });
 
+describe('validateMissionBundle — 글자 층이 없는 프리셋의 image.text (티켓 20261121_1726)', () => {
+  const TEXT_WARNING = 'image.text: 이 프리셋에는 글자 층이 없어서 이 값은 이미지에 쓰이지 않아요. 그대로 기록만 해요.';
+  const run = (presetLayerKeys?: string[], mutate?: (raw: RawBundle) => void) => {
+    const raw = validRaw();
+    mutate?.(raw);
+    return validateMissionBundle(raw, { bundleFile, presetLayerKeys });
+  };
+
+  it('프리셋에 글자 층이 없으면 등록은 막지 않고 알림 한 줄을 남긴다', () => {
+    for (const keys of [[], ['img01']]) {
+      const { errors, warnings, bundle } = run(keys);
+      expect(errors).toEqual([]);
+      expect(warnings).toEqual([TEXT_WARNING]);
+      expect(bundle.image.text).toBe('예시 미션');
+    }
+  });
+
+  it('프리셋에 글자 층이 있으면 이전과 똑같이 알림이 없다', () => {
+    expect(run(['text01', 'text02', 'text03', 'img01']).warnings).toEqual([]);
+  });
+
+  it('레이어 번호를 모르면(undefined) 이전과 똑같이 알림이 없다', () => {
+    expect(run(undefined).warnings).toEqual([]);
+  });
+
+  it('image.text가 없으면 글자 층이 없어도 알림이 없고, 문자열이 아니면 이전처럼 오류다', () => {
+    expect(run([], (raw) => { delete raw.image.text; }).warnings).toEqual([]);
+    const bad = run([], (raw) => { raw.image.text = 5; });
+    expect(bad.errors).toEqual(['image.text: 문자열이어야 해요.']);
+    expect(bad.warnings).toEqual([]);
+  });
+});
+
 describe('validateMissionBundle — 구조·필수·문자열', () => {
   it('필수 항목이 없으면 항목마다 사유를 모두 알린다', () => {
     const raw = validRaw();

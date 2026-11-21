@@ -229,9 +229,11 @@ export async function undoMissionRegistration({ supabase, record, dryRun }) {
  * - 그 외: 검증 → DB 검사 → 업로드 → insert → 기록 파일. supabase가 없으면 실행하지 않는다.
  *
  * 인자: `args`(parseRegisterArgs 결과), `supabase`(서비스 키 클라이언트, dry-run에서는 null 가능 — DB 검사를
- * 건너뛴다), `convertToWebp`·`randomUUID`·`now`(`registerMission`과 같다), `out`(`{ log, error }`).
+ * 건너뛴다), `convertToWebp`·`randomUUID`·`now`(`registerMission`과 같다), `out`(`{ log, error }`),
+ * `readPresetLayerKeys`(선택, `registerHomeFeedFlow.mjs`의 `createPresetLayerKeysReader`가 만든 함수 — 프리셋 id → 레이어 번호 목록. 주면 글자 층이 없는 프리셋의
+ * `image.text`를 «알아둘 점»으로 알린다. 생략하면 지금처럼 검사한다, 티켓 20261121_1726).
  */
-export async function runMissionRegister({ args, supabase, convertToWebp, randomUUID, now, out }) {
+export async function runMissionRegister({ args, supabase, convertToWebp, randomUUID, now, out, readPresetLayerKeys = /** @type {any} */ (undefined) }) {
   const bundleFile = args.bundle
   const recordDir = args.recordDir ?? path.dirname(bundleFile)
 
@@ -243,7 +245,10 @@ export async function runMissionRegister({ args, supabase, convertToWebp, random
     return 1
   }
 
-  const { errors: bundleErrors, warnings, bundle } = validateMissionBundle(raw, { bundleFile })
+  // 프리셋 레이어 번호는 읽기 함수를 받았을 때만 읽는다(기존 호출은 읽지 않고 지금처럼 검사한다, 티켓 20261121_1726).
+  const presetId = raw?.image?.preset_id
+  const presetLayerKeys = readPresetLayerKeys && typeof presetId === 'string' && presetId !== '' ? await readPresetLayerKeys(presetId) : undefined
+  const { errors: bundleErrors, warnings, bundle } = validateMissionBundle(raw, { bundleFile, presetLayerKeys })
   const errors = [...bundleErrors]
   const previousRecordError = findPreviousRecordError(recordDir)
   if (previousRecordError) errors.push(previousRecordError)

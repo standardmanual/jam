@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { convertBadgeImageToWebp } from '../../../src/lib/admin/badgeImageWebp';
 import { MISSION_UNDO_OPERATING_SETTING_TABLES } from '../../../src/lib/admin/registerChecks/references';
 import { parseRegisterArgs } from '../registerArgs.mjs';
@@ -338,6 +338,29 @@ describe('runMissionDbChecks', () => {
     await runMissionDbChecks({ supabase: stub.supabase, mission: { ...mission, mission_type: 'item_collect', condition_json: { badge_id: badgeId } } });
     expect(stub.entries.length).toBeGreaterThan(0);
     expect(stub.entries.every((e) => e.op === 'select')).toBe(true);
+  });
+});
+
+describe('runMissionRegister — 글자 층이 없는 프리셋 (티켓 20261121_1726)', () => {
+  it('readPresetLayerKeys가 글자 층 없는 목록을 돌려주면 dry-run 요약에 알림이 나오고 종료 코드는 0이다', async () => {
+    const stub = createStub();
+    const { out, logs, errors } = createOut();
+    const readPresetLayerKeys = vi.fn(async () => ['img01']);
+    const code = await runMissionRegister({ args: registerArgs(['--dry-run']), supabase: stub.supabase, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out, readPresetLayerKeys });
+    expect(code).toBe(0);
+    expect(errors).toEqual([]);
+    expect(readPresetLayerKeys).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111');
+    expect(logs.join('\n')).toContain('image.text: 이 프리셋에는 글자 층이 없어서 이 값은 이미지에 쓰이지 않아요');
+  });
+
+  it('글자 층이 있는 목록이거나 읽지 못해 undefined면 알림이 없다(이전과 같다)', async () => {
+    for (const keys of [['text01', 'text02'], undefined]) {
+      const stub = createStub();
+      const { out, logs } = createOut();
+      const code = await runMissionRegister({ args: registerArgs(['--dry-run']), supabase: stub.supabase, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out, readPresetLayerKeys: async () => keys });
+      expect(code).toBe(0);
+      expect(logs.join('\n')).not.toContain('글자 층이 없어서');
+    }
   });
 });
 

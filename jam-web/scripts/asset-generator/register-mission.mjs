@@ -63,10 +63,20 @@ async function main() {
   const supabase = supabaseUrl && serviceKey ? createClient(supabaseUrl, serviceKey) : null
 
   const out = { log: (text) => console.log(text), error: (text) => console.error(text) }
+  // 글자 층이 없는 미션 프리셋(7회차, 티켓 20261121_1726)의 image.text를 알리려고 프리셋 레이어 번호를 읽는 함수. 서비스 키가 있을 때만 만든다.
+  const { createPresetLayerKeysReader } = args.mode === 'undo' || !supabase ? {} : await importWithAliasHint(() => import('./registerHomeFeedFlow.mjs'))
   const exitCode =
     args.mode === 'undo'
       ? await runMissionUndo({ args, supabase, out })
-      : await runMissionRegister({ args, supabase, convertToWebp: convertBadgeImageToWebp, randomUUID, now: () => Date.now(), out })
+      : await runMissionRegister({
+          args,
+          supabase,
+          convertToWebp: convertBadgeImageToWebp,
+          randomUUID,
+          now: () => Date.now(),
+          out,
+          ...(createPresetLayerKeysReader ? { readPresetLayerKeys: createPresetLayerKeysReader(supabase) } : {}),
+        })
   // process.exit()으로 끊지 않고 종료 코드만 남긴다 — 파이프로 이어진 표준 출력이 잘리지 않게 하려는 것이다.
   process.exitCode = exitCode
 }

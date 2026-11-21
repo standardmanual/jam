@@ -53,6 +53,15 @@ describe('createTextOverflowDetector', () => {
     expect(await run([imageLayer])).toBe(false);
   });
 
+  it('글자 층이 없는 프리셋은 값을 줘도 검사를 건너뛰고 넘치지 않는 것으로 본다 (티켓 20261121_1726)', async () => {
+    expect(await run([], { text01: '아주아주아주아주아주아주아주아주 긴 글자를 줘도', text02: '그려지지 않는다' })).toBe(false);
+    expect(await run([imageLayer], { text01: '글자' })).toBe(false);
+  });
+
+  it('글자 층이 있는 프리셋은 이전과 같이 값을 적용해 검사한다', async () => {
+    expect(await run([textLayer()], { text01: '아주아주아주아주아주아주아주아주아주아주 긴 글자' })).toBe(true);
+  });
+
   it('프리셋에 없는 번호를 주면 오류다', async () => {
     await expect(run([textLayer()], { text05: 'x' })).rejects.toThrow('이 프리셋에 없는 번호예요');
   });

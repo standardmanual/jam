@@ -15,12 +15,14 @@ const RIGHT_MARGIN_RATIO = 0.03
 
 /**
  * 텍스트 레이어만 빈 캔버스에 그려 오른쪽 여백(가로 3%)에 불투명 픽셀이 닿는지 본다.
- * 리본·이미지 레이어는 그리지 않아 글자 위치만 알파로 남는다.
+ * 리본·이미지 레이어는 그리지 않아 글자 위치만 알파로 남는다. 글자 층이 하나도 없는 프리셋이면 그리지 않고 false(넘침 없음)를 돌려준다.
  */
 export function createTextOverflowDetector(loadPreset) {
   const loadFont = createServerFontLoader()
   return async ({ presetId, values }) => {
     const preset = await loadPreset(presetId)
+    // 글자 층이 없는 프리셋(미션 이미지는 7회차에 글자를 뺀다, 티켓 20261121_1726)은 그릴 글자가 없어 검사를 건너뛴다. 층이 있으면 이전과 같다.
+    if (!preset.layers.some((layer) => layer.type === 'text')) return false
     const { width, height } = resolveStageSize(preset.stageRatio)
     const canvas = serverCanvasFactory(width, height)
     const ctx = getServerContext(canvas)

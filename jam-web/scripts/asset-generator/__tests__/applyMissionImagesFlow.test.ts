@@ -13,6 +13,8 @@ import {
   RESOLVED_FILE_NAME,
   checkPlanContrast,
   checkPlanValues,
+  describePresetWithoutText,
+  hasNoTextLayer,
   matchMissionsToPlan,
   parseApplyMissionImagesArgs,
   runApply,
@@ -290,8 +292,11 @@ describe('checkPlanContrast', () => {
     expect(errors[0]).toContain('4.5:1 미만');
   });
 
-  it('텍스트 레이어가 하나도 없으면 오류다', () => {
-    expect(checkPlanContrast([{ type: 'image' }], items)[0]).toContain('텍스트 레이어가 없어요');
+  // 기대값을 바꾼 시험(티켓 20261121_1726): 예전에는 텍스트 레이어가 없으면 «글자 대비를 확인할 수 없어요» 오류였다.
+  // 7회차에 미션 프리셋에서 글자를 빼므로 흰 글자가 올라가지 않는 프리셋은 대비를 건너뛴다(알아둘 점은 describePresetWithoutText가 알린다).
+  it('텍스트 레이어가 하나도 없으면 대비를 볼 글자가 없어 오류 없이 건너뛴다', () => {
+    expect(checkPlanContrast([{ type: 'image' }], items)).toEqual([]);
+    expect(checkPlanContrast([], items)).toEqual([]);
   });
 
   it('텍스트 색이 #rrggbb가 아니면 읽지 못한다는 오류다', () => {
@@ -324,6 +329,64 @@ describe('checkPlanValues', () => {
     const present = path.join(workDir, 'a.png');
     fs.writeFileSync(present, 'x');
     expect(checkPlanValues(layers, [item({ img01: present })])).toEqual([]);
+  });
+});
+
+describe('글자 층이 없는 프리셋 (티켓 20261121_1726)', () => {
+  const item = (values: Record<string, string>) => ({ title: '가 미션', values, bg: '#E8C39E', end: '#B98A5B', expectCount: 1 });
+  const textLayers = [
+    { id: 'a', type: 'text', color: '#111111' },
+    { id: 'b', type: 'image', assetUrl: 'https://x.test/saved.png' },
+  ];
+
+  it('hasNoTextLayer는 텍스트 층이 하나도 없을 때만 참이다', () => {
+    expect(hasNoTextLayer([])).toBe(true);
+    expect(hasNoTextLayer([{ type: 'image' }])).toBe(true);
+    expect(hasNoTextLayer(textLayers)).toBe(false);
+  });
+
+  it('checkPlanValues는 없는 번호를 오류로 보지 않고, 무시한 이미지 번호의 원본 파일도 확인하지 않는다', () => {
+    const missing = path.join(workDir, 'none.png');
+    expect(checkPlanValues([], [item({ text01: '조건', text02: '이름', img01: missing })])).toEqual([]);
+    expect(checkPlanValues([{ id: 'b', type: 'image', assetUrl: 'https://x.test/saved.png' }], [item({ text01: '조건' })])).toEqual([]);
+  });
+
+  it('번호 형식이 틀리면 글자 층이 없어도 오류다', () => {
+    expect(checkPlanValues([], [item({ text1: '조건' })])[0]).toContain('번호 형식이 올바르지 않아요');
+  });
+
+  it('글자 층이 있는 프리셋은 이전처럼 없는 번호를 오류로 본다(엄격)', () => {
+    expect(checkPlanValues(textLayers, [item({ text05: '없음' })])[0]).toContain('이 프리셋에 없는 번호예요: text05');
+  });
+
+  it('describePresetWithoutText는 글자 층이 없을 때만 안내와 쓰지 않은 번호를 항목별로 담는다', () => {
+    expect(describePresetWithoutText(textLayers, [item({ text01: '조건' })])).toEqual([]);
+    expect(describePresetWithoutText([], [item({ text02: '이름', text01: '조건' }), { ...item({}), title: '나 미션' }])).toEqual([
+      '프리셋에 글자 층이 없어서 글자 대비·오른쪽 여백 넘침은 확인하지 않아요. 미션 이미지에는 글자와 로고를 넣지 않아요.',
+      '가 미션: text01·text02 값은 이미지에 쓰지 않았어요.',
+    ]);
+  });
+
+  it('runPreview는 글자 층이 없는 프리셋이어도 성공하고 알아둘 점을 보인다', async () => {
+    const stub = createStub();
+    const { deps, renderCalls } = previewDeps({ loadPreset: async () => ({ layers: [] }) });
+    const { out, logs, errors } = createOut();
+
+    expect(await runPreview({ args: previewArgs(), supabase: stub.supabase, out, deps })).toBe(0);
+    expect(errors).toEqual([]);
+    expect(renderCalls).toHaveLength(3);
+    const text = logs.join('\n');
+    expect(text).toContain('이미지 3장');
+    expect(text).toContain('알아둘 점: 프리셋에 글자 층이 없어서 글자 대비·오른쪽 여백 넘침은 확인하지 않아요');
+    expect(text).toContain('알아둘 점: 가 미션: text01·text02 값은 이미지에 쓰지 않았어요.');
+  });
+
+  it('runPreview는 글자 층이 있는 프리셋이면 이전처럼 동작하고 글자 층 없음 안내를 내지 않는다', async () => {
+    const stub = createStub();
+    const { deps } = previewDeps();
+    const { out, logs } = createOut();
+    expect(await runPreview({ args: previewArgs(), supabase: stub.supabase, out, deps })).toBe(0);
+    expect(logs.join('\n')).not.toContain('글자 층이 없어서');
   });
 });
 

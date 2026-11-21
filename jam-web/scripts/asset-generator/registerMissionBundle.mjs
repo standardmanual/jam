@@ -115,7 +115,7 @@ function inspectPngFile(absPath) {
   return { bytes }
 }
 
-function validateImage(errors, image, bundleFile) {
+function validateImage(errors, image, bundleFile, { presetLayerKeys, warnings = [] } = {}) {
   const prefix = 'image.'
   if (!isPlainObject(image)) {
     errors.push('image: 객체여야 해요.')
@@ -156,6 +156,9 @@ function validateImage(errors, image, bundleFile) {
   }
   if (isPresent(image.text) && typeof image.text !== 'string') {
     errors.push('image.text: 문자열이어야 해요.')
+  } else if (isPresent(image.text) && Array.isArray(presetLayerKeys) && !presetLayerKeys.some((key) => key.startsWith('text'))) {
+    // 미션 프리셋은 7회차에 글자 층을 뺀다(티켓 20261121_1726). 그려지지 않은 글자는 등록을 막지 않고 알린다 — 값은 기록으로만 남는다.
+    warnings.push('image.text: 이 프리셋에는 글자 층이 없어서 이 값은 이미지에 쓰이지 않아요. 그대로 기록만 해요.')
   }
 
   return { absPath, bytes }
@@ -168,12 +171,14 @@ function validateImage(errors, image, bundleFile) {
  * 막지는 않고, dry-run 요약에서 보여 준다).
  *
  * 인자: `raw`는 JSON.parse 결과, `bundleFile`은 bundle.json 절대경로(이미지 상대경로의 기준)다.
+ * `presetLayerKeys`(선택)는 `image.preset_id` 프리셋의 레이어 번호 목록이다. 알면(배열) 글자 층이 없는 프리셋의 `image.text`는 `warnings`로 알린다(등록은 막지 않는다).
+ * 모르면 지금처럼 검사한다(티켓 20261121_1726).
  * 반환: `{ errors, warnings, bundle }` — 오류가 없으면 `bundle`에 정규화된 묶음이 담기고
  * (`bundle.image.abs_path` 이미지 절대경로·`bundle.image.bytes` 원본 크기가 추가된다), 있으면 null이다.
  * (이 파일은 JSDoc 타입 주석을 쓰지 않는다 — TS 테스트가 이 .mjs를 import할 때 추론이 좁아져 호출이
  * 막히는 것을 피한다.)
  */
-export function validateMissionBundle(raw, { bundleFile }) {
+export function validateMissionBundle(raw, { bundleFile, presetLayerKeys = /** @type {any} */ (undefined) }) {
   const errors = []
   const warnings = []
   if (!isPlainObject(raw)) {
@@ -209,7 +214,7 @@ export function validateMissionBundle(raw, { bundleFile }) {
 
   if (isPresent(raw.world_review)) validateWorldReview(errors, raw.world_review)
   if (isPresent(raw.mission)) validateMission(errors, warnings, raw.mission)
-  const imageInfo = isPresent(raw.image) ? validateImage(errors, raw.image, bundleFile) : { absPath: null, bytes: null }
+  const imageInfo = isPresent(raw.image) ? validateImage(errors, raw.image, bundleFile, { presetLayerKeys, warnings }) : { absPath: null, bytes: null }
 
   if (errors.length > 0) return { errors, warnings, bundle: null }
 

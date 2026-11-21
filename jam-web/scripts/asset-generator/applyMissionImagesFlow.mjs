@@ -19,6 +19,8 @@
  * 미션마다 시드를 따로 뽑는다(같은 제목이어도 이미지는 다르다). 계획 항목 형식은
  * `{ "match": { "title": "…" }, "values": { "text01": "…", "text02": "…" }, "bg": "#RRGGBB", "end": "#RRGGBB", "expectCount": N }`이고,
  * `values`의 번호는 어드민 화면과 같은 레이어 번호다(`applyLayerValues.mjs`). 번호가 프리셋에 없거나 값이 비어 있으면 검증 오류다.
+ * 단 프리셋에 글자(텍스트) 층이 하나도 없으면(7회차에 미션 이미지에서 글자를 뺀다, 티켓 20261121_1726) 없는 번호를 오류로 보지 않고 무시하며
+ * 글자 대비·넘침 검사를 건너뛰고 「알아둘 점」으로 알린다. 글자 층이 있는 프리셋은 이전과 똑같이 엄격하다.
  * 값을 지정하지 않은 번호(예: 미션 프리셋의 고정 라벨 MISSION)는 프리셋에 저장된 값 그대로다. `resolved.json`에는 미션별로
  * 적용한 `values`를 기록한다.
  */
@@ -165,14 +167,13 @@ export function validatePlan(raw) {
 
 /**
  * 프리셋 텍스트 레이어 색과 배경색·끝색의 대비가 4.5:1 이상인지 본다. 반환: 오류 문자열 배열.
- * 텍스트 레이어가 하나도 없으면 대비를 볼 대상이 없어 오류다.
+ * 텍스트 레이어가 하나도 없으면(글자를 뺀 미션 프리셋, 7회차, 티켓 20261121_1726) 흰 글자가 올라가지 않으니 대비를 볼 대상이 없어 오류 없이 건너뛴다.
+ * 건너뛴 사실은 `describePresetWithoutText`가 «알아둘 점»으로 알린다. 텍스트 레이어가 있으면 이전과 같다.
  */
 export function checkPlanContrast(presetLayers, items) {
   const errors = []
   const textLayers = presetLayers.filter((layer) => layer.type === 'text')
-  if (textLayers.length === 0) {
-    return ['프리셋에 텍스트 레이어가 없어요. 글자 대비를 확인할 수 없어요.']
-  }
+  if (textLayers.length === 0) return []
   const textColors = [...new Set(textLayers.map((layer) => layer.color))]
   for (const color of textColors) {
     try {
@@ -196,20 +197,43 @@ export function checkPlanContrast(presetLayers, items) {
   return errors
 }
 
+/** 프리셋에 글자(텍스트) 층이 하나도 없는가. 7회차에 미션 이미지에서 글자를 빼므로(티켓 20261121_1726) 이 프리셋은 `values`를 그리지 않는다. */
+export function hasNoTextLayer(presetLayers) {
+  return !presetLayers.some((layer) => layer.type === 'text')
+}
+
+/**
+ * 글자 층이 없는 프리셋을 썼을 때 «알아둘 점»으로 보여 줄 문장 목록을 만든다(막지 않는다, 티켓 20261121_1726).
+ * 프리셋에 글자 층이 있으면 빈 배열이다. 없으면 글자 대비·넘침 검사를 건너뛴다는 안내와, 항목별로 쓰지 않은 `values` 번호를 담는다.
+ */
+export function describePresetWithoutText(presetLayers, items) {
+  if (!hasNoTextLayer(presetLayers)) return []
+  const lines = ['프리셋에 글자 층이 없어서 글자 대비·오른쪽 여백 넘침은 확인하지 않아요. 미션 이미지에는 글자와 로고를 넣지 않아요.']
+  for (const item of items) {
+    const keys = Object.keys(item.values)
+    if (keys.length > 0) lines.push(`${item.title}: ${keys.sort().join('·')} 값은 이미지에 쓰지 않았어요.`)
+  }
+  return lines
+}
+
 /**
  * 계획 항목의 `values` 번호가 프리셋에 실제로 있는지, 이미지 번호의 원본 파일이 있는지 본다. 반환: 오류 문자열 배열.
  * 번호 검사는 `applyLayerValues`와 같다(없는 번호면 프리셋의 번호 목록을 담는다). 이미지 원본이 URL이면 존재 확인은 건너뛴다.
+ * 프리셋에 글자 층이 없으면(`hasNoTextLayer`) 없는 번호를 오류로 보지 않고 무시한다 — 무시한 번호의 이미지 원본 확인도 건너뛴다(티켓 20261121_1726).
  */
 export function checkPlanValues(presetLayers, items) {
   const errors = []
+  const ignoreMissingKeys = hasNoTextLayer(presetLayers)
   for (const item of items) {
+    let ignored = []
     try {
-      applyLayerValues(presetLayers, item.values)
+      ignored = applyLayerValues(presetLayers, item.values, ignoreMissingKeys ? { ignoreMissingKeys } : {}).ignored ?? []
     } catch (e) {
       errors.push(`${item.title}: ${errorMessage(e)}`)
       continue
     }
     for (const [key, value] of Object.entries(item.values)) {
+      if (ignored.includes(key)) continue
       if (key.startsWith('img') && path.isAbsolute(value) && !(fs.existsSync(value) && fs.statSync(value).isFile())) {
         errors.push(`${item.title}: ${key}의 이미지 파일을 찾을 수 없어요: ${value}`)
       }
@@ -294,6 +318,7 @@ export async function runPreview({ args, supabase, out, deps }) {
     if (allErrors.length > 0) return reportPlanErrors(out, allErrors)
 
     out.log(`검증 통과: 제목 ${plan.items.length}종, 미션 ${matched.targets.length}건. 이미지를 만들어요.`)
+    const textFreeNotices = describePresetWithoutText(preset.layers, plan.items)
 
     fs.mkdirSync(outDir, { recursive: true })
     const items = []
@@ -344,7 +369,7 @@ export async function runPreview({ args, supabase, out, deps }) {
       `- 미션별 값: ${path.join(outDir, RESOLVED_FILE_NAME)}`,
       'DB·저장소에는 아무것도 쓰지 않았어요.',
     ]
-    for (const warning of [...matched.warnings, ...overflowWarnings]) lines.push(`- 알아둘 점: ${warning}`)
+    for (const warning of [...textFreeNotices, ...matched.warnings, ...overflowWarnings]) lines.push(`- 알아둘 점: ${warning}`)
     out.log(lines.join('\n'))
     return 0
   } catch (e) {
