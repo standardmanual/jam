@@ -5,7 +5,7 @@
  *
  * 유형(8개)·박스 모양(5개)과 용도·배경/칩/박스 색(15색)·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 값으로 정한다.
  * 칸마다 «자동»이 기본이고, 비워 두면 저장할 때 자동 규칙이 정한다(값 의미는 `lib/admin/feedCardFields.ts` 머리 주석).
- * 칩 문구·목록 항목·컬렉션 모션 칸은 5-3이 만든다.
+ * 칩·목록 항목·컬렉션 모션 입력 칸은 5-3(티켓 20261121_1317)이 만든 `FeedChipsEditor`·`FeedListItemsEditor`·`FeedBurstEditor`가 맡고, 이 섹션은 유형에 맞는 것만 렌더한다.
  *
  * 값(`FeedCardFormValues`)과 변경 함수만 props로 받는다. 폼 상태·저장은 `TodayCardForm.tsx`가 맡는다.
  * 유형별로 어떤 칸이 보이는지는 새 표를 만들지 않고 기존 상수에서 읽는다:
@@ -23,15 +23,18 @@ import {
   type FeedStampMode,
 } from '@/lib/admin/feedCardFields'
 import { cornerOfSlot, type ChipCorner } from '@/lib/today/feedChipLayout'
-import { chipLimitOf, FEED_CHIP_SLOT_SPECS, FEED_TYPES, isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
+import { chipLimitOf, diagonalOf, FEED_CHIP_SLOT_SPECS, FEED_TYPES, isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
 import { firstViolatedRule } from '@/lib/today/feedColorRules'
 import { FEED_COLOR_KEYS, FEED_COLORS, feedColorVar, type FeedColorKey } from '@/lib/today/feedConstants'
 import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
 import type { ExcludedColorPair } from '@/lib/today/feedAssign'
 import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
-import type { TodayBoxKind, TodayBoxShape } from '@/types/database'
+import type { TodayBoxKind, TodayBoxShape, TodayCardTemplateType } from '@/types/database'
 import { cn } from '@/lib/utils'
+import FeedBurstEditor from './FeedBurstEditor'
+import FeedChipsEditor from './FeedChipsEditor'
+import FeedListItemsEditor from './FeedListItemsEditor'
 
 // ── 이름 표 ────────────────────────────────────────────────────
 
@@ -147,6 +150,22 @@ export function typeChangePatch(values: FeedCardFormValues, next: string): Parti
   const { stampSlots } = feedFieldVisibility(next)
   if (values.stampSlot && !stampSlots.includes(values.stampSlot)) patch.stampSlot = ''
   if (stampSlots.length === 0 && values.stampMode === 'on') patch.stampMode = 'auto'
+  // 5-3: 새 유형이 놓을 수 없는 칩 자리는 «자동»으로 되돌리고, 칩 개수 한도를 넘는 칩은 뒤에서부터 덜어낸다(저장 검증이 막는 값이라서).
+  if (values.chips.length > 0) {
+    const spec = FEED_CHIP_SLOT_SPECS[next]
+    const kept = values.chips.slice(0, chipLimitOf(next))
+    const fixed = kept.map((chip) => (chip.slot && !spec.slots.includes(chip.slot) ? { ...chip, slot: '' } : chip))
+    const second = fixed[1]
+    // 두 칩이 새 유형에서 대각선 짝이 아니면 두 번째 칩의 자리를 «자동»으로 풀어 둔다.
+    if (second && fixed[0].slot && second.slot && diagonalOf(next, fixed[0].slot) !== second.slot) fixed[1] = { ...second, slot: '' }
+    if (kept.length !== values.chips.length || fixed.some((chip, i) => chip !== values.chips[i])) patch.chips = fixed
+  }
+  // 목록 항목·컬렉션 모션 값은 그 유형만 쓰므로 다른 유형으로 바꾸면 비운다(숨은 칸 값이 저장되지 않게).
+  if (next !== 'gallery_list' && (values.listItems.length > 0 || values.listMoreHref)) {
+    patch.listItems = []
+    patch.listMoreHref = ''
+  }
+  if (next !== 'collection_intro' && values.collectionBurst.length > 0) patch.collectionBurst = []
   return patch
 }
 
@@ -197,7 +216,7 @@ const AUTO_VALUE = '__auto__'
 const AUTO_HINT = '저장할 때 자동으로 정해져요'
 const TEXT_CLASS = 'break-keep wrap-break-word'
 
-interface ChoiceOption {
+export interface ChoiceOption {
   value: string
   label: string
   /** 색 키면 이름 앞에 견본을 그린다 */
@@ -215,7 +234,7 @@ function Swatch({ colorKey }: { colorKey: FeedColorKey }) {
 }
 
 /** 자동 + 선택지 하나를 고르는 칸. 빈 값(`''`)이 «자동»이다. */
-function ChoiceField({
+export function ChoiceField({
   id,
   label,
   value,
@@ -224,6 +243,7 @@ function ChoiceField({
   onChange,
   themeContainer,
   help,
+  disabled,
 }: {
   id: string
   label: string
@@ -233,6 +253,8 @@ function ChoiceField({
   onChange: (value: string) => void
   themeContainer?: HTMLElement | null
   help?: string
+  /** 고를 수 없는 상태(선택지가 없을 때) */
+  disabled?: boolean
 }) {
   const selected = options.find((o) => o.value === value)
   const isAuto = !selected
@@ -242,7 +264,7 @@ function ChoiceField({
       <FieldLabel htmlFor={id} className={TEXT_CLASS}>
         {label}
       </FieldLabel>
-      <Select value={selected ? selected.value : AUTO_VALUE} onValueChange={(v) => onChange(v === AUTO_VALUE ? '' : v)}>
+      <Select value={selected ? selected.value : AUTO_VALUE} onValueChange={(v) => onChange(v === AUTO_VALUE ? '' : v)} disabled={disabled}>
         <SelectTrigger id={id} aria-describedby={helpId}>
           <SelectValue>
             {selected ? (
@@ -312,6 +334,8 @@ export interface FeedCardSectionProps {
   onChange: (patch: Partial<FeedCardFormValues>) => void
   /** 카드 제목. 제목 속 칩 낱말이 제목에 들어 있는지 본다. */
   title: string
+  /** 카드 템플릿. 값 칩의 출처를 카드 템플릿에 맞는 것만 보여 준다(생략하면 전부). */
+  templateType?: TodayCardTemplateType
   /** Radix Select 포털 컨테이너(어드민 테마 스코프) */
   themeContainer?: HTMLElement | null
   /** 사용자가 검수표에서 제외한 색 조합. 아직 저장 자리가 없어(6회차) 생략하면 규칙 판정만 한다. */
@@ -319,7 +343,7 @@ export interface FeedCardSectionProps {
 }
 
 /** 「카드 모양」 섹션의 안쪽(섹션 카드 껍데기는 `TodayCardForm`이 감싼다). */
-export default function FeedCardSection({ values, onChange, title, themeContainer, excludedColorPairs }: FeedCardSectionProps) {
+export default function FeedCardSection({ values, onChange, title, templateType, themeContainer, excludedColorPairs }: FeedCardSectionProps) {
   const feedType: FeedType | null = isFeedType(values.feedType) ? values.feedType : null
   const visible = feedType ? feedFieldVisibility(feedType) : null
 
@@ -509,6 +533,23 @@ export default function FeedCardSection({ values, onChange, title, themeContaine
               제목에 그대로 들어 있는 낱말을 최대 {MAX_TITLE_CHIPS}개까지 적어요. 비워 두면 제목이 글자로만 보여요.
             </FieldMessage>
           </div>
+
+          {chipLimitOf(feedType) > 0 && (
+            <FeedChipsEditor
+              feedType={feedType}
+              templateType={templateType}
+              mode={values.chipsMode}
+              chips={values.chips}
+              onChange={onChange}
+              themeContainer={themeContainer}
+            />
+          )}
+          {feedType === 'gallery_list' && (
+            <FeedListItemsEditor items={values.listItems} moreHref={values.listMoreHref} onChange={onChange} />
+          )}
+          {feedType === 'collection_intro' && (
+            <FeedBurstEditor rows={values.collectionBurst} seed={values.feedSeed} onChange={onChange} />
+          )}
         </>
       )}
     </div>

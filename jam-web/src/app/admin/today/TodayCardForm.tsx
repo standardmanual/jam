@@ -616,7 +616,13 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
 
   const feedSection = (
     <TodaySectionCard {...sectionHeader('feed')}>
-      <FeedCardSection values={feedValues} onChange={patchFeedValues} title={title.trim()} themeContainer={themeContainer} />
+      <FeedCardSection
+        values={feedValues}
+        onChange={patchFeedValues}
+        title={title.trim()}
+        templateType={templateType}
+        themeContainer={themeContainer}
+      />
     </TodaySectionCard>
   )
 

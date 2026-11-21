@@ -256,7 +256,8 @@ export function buildFeedCardColumns(values: FeedCardFormValues): FeedCardColumn
   const burst = values.collectionBurst
     .filter((row) => !(isBlank(row.x) && isBlank(row.y) && isBlank(row.tilt) && isBlank(row.size) && isBlank(row.delayMs)))
     .map((row): TodayBurstPoint => {
-      const point: TodayBurstPoint = { x: Number(row.x), y: Number(row.y) }
+      // 위치 칸이 빈 행은 0이 아니라 숫자가 아닌 값(NaN)으로 만들어 검증이 막는다(`Number('')`는 0이라 조용히 가운데로 저장되기 때문, 티켓 20261121_1317).
+      const point: TodayBurstPoint = { x: optionalNumber(row.x) ?? Number.NaN, y: optionalNumber(row.y) ?? Number.NaN }
       const tilt = optionalNumber(row.tilt)
       const size = optionalNumber(row.size)
       const delay = optionalNumber(row.delayMs)
@@ -302,7 +303,7 @@ export interface FeedCardValidateOptions {
 }
 
 /** 컬렉션 모션 배지의 값 범위. x·y는 PRD 「컬렉션 모션」, 크기는 `FEED_BURST.badgeSize`, 기울기·지연은 PRD 칸 표다. */
-const BURST_RANGE = {
+export const BURST_RANGE = {
   xy: { min: -1, max: 1 },
   tilt: { min: -45, max: 45 },
   size: FEED_BURST.badgeSize,
