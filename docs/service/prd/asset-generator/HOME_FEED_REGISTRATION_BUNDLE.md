@@ -23,6 +23,8 @@ code:
 
 # 홈피드 카드 등록 묶음(bundle.json)과 등록 스크립트
 
+> **개편 카드 칸은 이 경로가 받지 않는다**(티켓 20261121_1533). 등록 스크립트의 카드 행은 옛 모양 카드로, 개편 칸(`feed_type`·박스·색·칩 등)은 모두 `NULL`로 들어간다. 새 유형 카드는 운영툴 묶음 경로(`resource.feed_type` 등, 정본 [`ops-tool/PRD.md`](../ops-tool/PRD.md) §8.4)로 낸다.
+
 > **상태: draft.** 실제 등록(DB·저장소 쓰기)은 컨펌된 묶음마다 메인 세션이 실행하고, 첫 실행 결과가 나오면
 > `active`로 올린다. 이 문서는 [PRD](PRD.md) §8 자동 경로의 «등록 묶음 → 등록» 구간 중 **홈피드 카드(`today_cards`)** 만 정의한다.
 > 배지는 [REGISTRATION_BUNDLE.md](REGISTRATION_BUNDLE.md), 미션은 [MISSION_REGISTRATION_BUNDLE.md](MISSION_REGISTRATION_BUNDLE.md),

@@ -424,9 +424,9 @@ code:
 
 근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/src/components/today/`(`TodayCard.tsx`·`CardFrame.tsx`·`BriefCard.tsx`·`HeroCard.tsx`·`PosterCard.tsx`·`SquareCard.tsx`·`ListCard.tsx`·`CardBody.tsx`·`CardThumb.tsx`·`CardImageSlot.tsx`·`CardChipRow.tsx`·`resourceIcon.ts`), `jam-web/src/components/ranking/RankingListRow.tsx`, `jam-web/src/app/(main)/TodayCardStack.tsx`, `jam-web/src/lib/itembook/visibility.ts`, `jam-web/src/app/admin/today/TodayCardPreview.tsx`, `jam-web/src/lib/admin/todayPreview.ts`, `jam-web/src/lib/admin/today-calendar.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357·20261001_1458·20261001_1737·20261001_2013·20261001_2104·20261001_2208·20261114_2346(아이콘 이름 교체, 동작 변화 없음)
 
-### 개편 규격: 새 카드 유형·박스·색·칩 (구현 전)
+### 개편 규격: 새 카드 유형·박스·색·칩 (1~6회차 구현, 7회차 이미지 남음)
 
-> **상태: 구현 전 규격이다**(2026-11-20, 티켓 20261120_2026의 1회차). 위 절들은 지금 코드의 사실이고, 이 절은 사용자가 샘플 아티팩트로 확정한 개편 내용이다. 구현이 끝나면 위 절을 이 내용으로 바꾸고 이 절의 「구현 전」 표시를 지운다. 채원의 사전 판정과 사용자 승인(2026-11-20, 추천안대로: 새 색 10개, 강조색 사용처 규칙 개정, 새 칩, 새 컴포넌트 묶음, 서비스 전용 상수, 홈피드 외형 전면 변경과 옛 모양 공존, 수동 지정 경고만·문구 칩 12자, 모션 반복 재생)을 받았다. 게시 중인 카드는 고려하지 않는다(새 디자인의 카드는 새로 만든다). 옛 모양 7가지는 기존 카드가 모두 끝날 때까지 지금 모습 그대로 그리고, 그 뒤 별도 티켓으로 걷어 낸다.
+> **상태: 1~6회차 구현 완료, 7회차(이미지 규칙)와 후속(컬러셋 교체 어드민)이 남았다**(티켓 20261120_2026). 이 절은 사용자가 샘플 아티팩트로 확정한 개편 내용이고, 화면(4회차)·어드민 수동 작성(5회차)·에이전트 묶음과 등록·운영툴 미리보기(6회차)가 이 규격대로 구현됐다. 위 절들은 옛 7모양 코드의 사실로 남아 있고, 남은 회차가 끝나면 위 절을 이 내용으로 바꾼다. 채원의 사전 판정과 사용자 승인(2026-11-20, 추천안대로: 새 색 10개, 강조색 사용처 규칙 개정, 새 칩, 새 컴포넌트 묶음, 서비스 전용 상수, 홈피드 외형 전면 변경과 옛 모양 공존, 수동 지정 경고만·문구 칩 12자, 모션 반복 재생)을 받았다. 게시 중인 카드는 고려하지 않는다(새 디자인의 카드는 새로 만든다). 옛 모양 7가지는 기존 카드가 모두 끝날 때까지 지금 모습 그대로 그리고, 그 뒤 별도 티켓으로 걷어 낸다.
 
 **치수 원칙**: 모서리(radius), 안쪽 여백(padding), 간격(space), 글자 크기(text size)는 기존 디자인 시스템 값을 쓰고, 색만 새 값을 쓴다. 디자인 시스템에 맞는 값이 없는 것(기울기, 박스 홈의 크기, 도장 크기, 물결 높낮이, 칩 자리의 오프셋)만 새 값으로 두고 채원의 판정을 받는다.
 
