@@ -55,6 +55,12 @@ function sortRows(rows: Row[], { col, ascending }: { col: string; ascending: boo
     .map(({ row }) => row)
 }
 
+/** 날짜 문자열끼리는 시각으로, 숫자끼리는 값으로 비교한다. 종류가 다르거나 칸이 비었으면 걸리지 않는다. */
+function compareCell(cell: unknown, bound: string | number, test: (cell: number, bound: number) => boolean): boolean {
+  if (typeof cell === 'string' && typeof bound === 'string') return test(Date.parse(cell), Date.parse(bound))
+  return typeof cell === 'number' && typeof bound === 'number' && test(cell, bound)
+}
+
 class FakeQuery implements PromiseLike<Result> {
   private mode: FakeCall['op'] = 'select'
   private payload: Row | Row[] = {}
@@ -111,6 +117,29 @@ class FakeQuery implements PromiseLike<Result> {
       },
     ])
     this.log.push([`${col} >`, val])
+    return this
+  }
+  /** `neq(col, val)`: 칸이 val이 아닌 행. 로그에는 칸 이름 뒤에 ` !=`를 붙인다(홈피드 카드 배경색 사용 빈도 조회, 티켓 20261121_1531). */
+  neq(col: string, val: unknown) {
+    this.filters.push([col, (row) => row[col] !== val])
+    this.log.push([`${col} !=`, val])
+    return this
+  }
+  /** `lte(col, val)`·`gte(col, val)`: 날짜 문자열끼리는 시각으로 비교한다. 로그에는 칸 이름 뒤에 ` <=`·` >=`를 붙인다. */
+  lte(col: string, val: string | number) {
+    this.filters.push([col, (row) => compareCell(row[col], val, (cell, bound) => cell <= bound)])
+    this.log.push([`${col} <=`, val])
+    return this
+  }
+  gte(col: string, val: string | number) {
+    this.filters.push([col, (row) => compareCell(row[col], val, (cell, bound) => cell >= bound)])
+    this.log.push([`${col} >=`, val])
+    return this
+  }
+  /** `not(col, 'is', null)`: 칸에 값이 있는 행(이 형태만 받는다). */
+  not(col: string, operator: 'is', val: null) {
+    this.filters.push([col, (row) => (row[col] ?? null) !== val])
+    this.log.push([`${col} not ${operator}`, val])
     return this
   }
   /** `contains(col, [값…])`: 배열 칸이 모든 값을 들고 있는 행. 칸이 배열이 아니면 걸리지 않는다. */

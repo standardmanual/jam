@@ -3,7 +3,6 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 import {
-  countBgUsage,
   createFeedSeed,
   decideFeedCardValues,
   hasFeedCardColumns,
@@ -11,6 +10,7 @@ import {
   validateFeedCardColumns,
   type FeedCardColumns,
 } from '@/lib/admin/feedCardFields'
+import { fetchOverlappingBgUsage, serverRandomUint32 } from '@/lib/admin/feedCardServer'
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
 const READ_ERROR_MESSAGE = '카드 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
@@ -36,11 +36,6 @@ interface ExistingCard {
 }
 
 const COLOR_KEYS = ['bg_color_key', 'chip_color_key', 'box_color_key'] as const
-
-/** 서버 난수(0 이상 2^32 미만 정수). */
-function serverRandomUint32(): number {
-  return crypto.getRandomValues(new Uint32Array(1))[0]
-}
 
 /**
  * 개편 칸 검증과 자동 값 고정(수정 저장). 이미 저장된 값은 다시 정하지 않는다.
@@ -85,7 +80,7 @@ async function decideFeedColumnsForPatch(
   const decided = decideFeedCardValues({
     columns: { ...fixed, feed_seed: seed },
     seed,
-    overlappingBgUsage: await overlappingBgUsage(supabase, id, startsAt, endsAt),
+    overlappingBgUsage: await fetchOverlappingBgUsage(supabase, { startsAt, endsAt, excludeId: id }, '[today PATCH 배경색 사용 빈도 조회 오류]'),
     excludedPairs: [],
   })
 
@@ -96,28 +91,6 @@ async function decideFeedColumnsForPatch(
   }
   result.warnings.push(...decided.warnings)
   return result
-}
-
-/** 같은 시기에 노출되는 다른 카드의 배경색 사용 빈도(이 카드는 뺀다). 기간이 비어 있거나 조회가 실패하면 빈 빈도다. */
-async function overlappingBgUsage(
-  supabase: ReturnType<typeof createServiceClient>,
-  id: string,
-  startsAt: string | null,
-  endsAt: string | null,
-): Promise<Record<string, number>> {
-  if (!startsAt || !endsAt) return {}
-  const { data, error } = await supabase
-    .from('today_cards')
-    .select('bg_color_key')
-    .neq('id', id)
-    .lte('starts_at', endsAt)
-    .gte('ends_at', startsAt)
-    .not('bg_color_key', 'is', null)
-  if (error) {
-    console.error('[today PATCH 배경색 사용 빈도 조회 오류]', error)
-    return {}
-  }
-  return countBgUsage((data ?? []) as Array<{ bg_color_key: string | null }>)
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

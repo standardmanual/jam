@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin, getAdminUser } from '@/lib/admin/auth'
 import {
-  countBgUsage,
-  createFeedSeed,
-  decideFeedCardValues,
   hasFeedCardColumns,
   pickFeedCardColumns,
   validateFeedCardColumns,
   type FeedCardColumns,
 } from '@/lib/admin/feedCardFields'
+import { completeFeedCardValues } from '@/lib/admin/feedCardServer'
 
 export async function GET() {
   const authError = await requireAdmin()
@@ -23,34 +21,6 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
-}
-
-/** 서버 난수(0 이상 2^32 미만 정수). 시험할 수 있도록 `createFeedSeed`가 공급 함수로 받는다. */
-function serverRandomUint32(): number {
-  return crypto.getRandomValues(new Uint32Array(1))[0]
-}
-
-/**
- * 같은 시기에 노출되는 카드의 배경색 사용 빈도. 게시 기간(`starts_at`~`ends_at`)이 겹치고 `bg_color_key`가 있는 카드를 센다.
- * 기간이 비어 있거나 조회가 실패하면 빈 빈도로 정한다(빈도는 배경색을 고르게 퍼뜨리는 보조 입력이라 저장을 막지 않는다).
- */
-async function overlappingBgUsage(
-  supabase: ReturnType<typeof createServiceClient>,
-  startsAt: unknown,
-  endsAt: unknown,
-): Promise<Record<string, number>> {
-  if (typeof startsAt !== 'string' || typeof endsAt !== 'string') return {}
-  const { data, error } = await supabase
-    .from('today_cards')
-    .select('bg_color_key')
-    .lte('starts_at', endsAt)
-    .gte('ends_at', startsAt)
-    .not('bg_color_key', 'is', null)
-  if (error) {
-    console.error('[today POST 배경색 사용 빈도 조회 오류]', error)
-    return {}
-  }
-  return countBgUsage((data ?? []) as Array<{ bg_color_key: string | null }>)
 }
 
 export async function POST(req: NextRequest) {
@@ -81,13 +51,13 @@ export async function POST(req: NextRequest) {
     warnings.push(...checked.warnings)
 
     if (columns.feed_type) {
-      const usage = await overlappingBgUsage(supabase, safeBody.starts_at, safeBody.ends_at)
-      const decided = decideFeedCardValues({
-        columns: columns as Partial<FeedCardColumns>,
-        seed: createFeedSeed(serverRandomUint32),
-        overlappingBgUsage: usage,
-        excludedPairs: [],
-      })
+      const decided = await completeFeedCardValues(
+        supabase,
+        columns as Partial<FeedCardColumns>,
+        { startsAt: safeBody.starts_at, endsAt: safeBody.ends_at },
+        undefined,
+        '[today POST 배경색 사용 빈도 조회 오류]',
+      )
       safeBody.feed_seed = decided.feed_seed
       safeBody.bg_color_key = decided.bg_color_key
       safeBody.chip_color_key = decided.chip_color_key
