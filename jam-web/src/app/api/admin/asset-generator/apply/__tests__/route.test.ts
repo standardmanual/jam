@@ -60,6 +60,9 @@ vi.mock('@/lib/admin/badgeBgColors', () => ({
   badgeBgColorsFields: bgColorsMock,
   badgeBgColorsFieldsIfChanged: vi.fn(async () => ({})),
 }))
+// 카드 커버 대표 색도 같은 이유로 막는다(티켓 20261121_1724). 추출·주소 규칙은 coverColors.test.ts가 본다.
+const coverColorsMock = vi.hoisted(() => vi.fn<(url: string | null) => Promise<{ cover_colors?: string[] }>>(async () => ({})))
+vi.mock('@/lib/admin/coverColors', () => ({ coverColorsFields: coverColorsMock }))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({ from: fromMock, storage: { from: storageFromMock } }),
 }))
@@ -87,6 +90,8 @@ beforeEach(() => {
   updatePayloads.length = 0
   bgColorsMock.mockReset()
   bgColorsMock.mockResolvedValue({})
+  coverColorsMock.mockReset()
+  coverColorsMock.mockResolvedValue({})
   fromCalls.length = 0
   tableBuilder = makeTableBuilder()
   fromMock.mockReset().mockImplementation((table: string) => {
@@ -275,6 +280,38 @@ describe('POST /api/admin/asset-generator/apply', () => {
 
     const body = await res.json()
     expect(body.name).toBe('테스트 카드')
+  })
+
+  it('홈피드: 커버 대표 색을 같은 update에 담고, 추출이 비면 cover_colors를 담지 않는다(티켓 20261121_1724)', async () => {
+    lookupResult = { data: { id: HOME_FEED_ID, title: '테스트 카드' }, error: null }
+    coverColorsMock.mockResolvedValue({ cover_colors: ['#3366ff', '#ffaa00'] })
+    const form = new FormData()
+    form.append('targetType', 'home_feed')
+    form.append('targetId', HOME_FEED_ID)
+    form.append('image', await makeSmallPngFile())
+    expect((await POST(postReq(form))).status).toBe(200)
+    expect(updatePayloads[0].cover_colors).toEqual(['#3366ff', '#ffaa00'])
+    expect(coverColorsMock).toHaveBeenCalledWith(updatePayloads[0].cover_image_url)
+    expect(bgColorsMock).not.toHaveBeenCalled()
+
+    updatePayloads.length = 0
+    coverColorsMock.mockResolvedValue({})
+    const form2 = new FormData()
+    form2.append('targetType', 'home_feed')
+    form2.append('targetId', HOME_FEED_ID)
+    form2.append('image', await makeSmallPngFile())
+    expect((await POST(postReq(form2))).status).toBe(200)
+    expect('cover_colors' in updatePayloads[0]).toBe(false)
+  })
+
+  it('배지: 카드 커버 대표 색은 뽑지 않는다', async () => {
+    const form = new FormData()
+    form.append('targetType', 'badge')
+    form.append('targetId', BADGE_ID)
+    form.append('image', await makeSmallPngFile())
+    expect((await POST(postReq(form))).status).toBe(200)
+    expect(coverColorsMock).not.toHaveBeenCalled()
+    expect('cover_colors' in updatePayloads[0]).toBe(false)
   })
 
   // 실패 경로(티켓 20260926_0202) — DB·Storage는 위 스텁이고 실제 조회·업로드는 하지 않는다.

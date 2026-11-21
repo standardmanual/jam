@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { badgeBgColorsFields } from '@/lib/admin/badgeBgColors'
+import { coverColorsFields } from '@/lib/admin/coverColors'
 import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 import { convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
 
@@ -241,8 +242,10 @@ export async function POST(req: NextRequest) {
 
   // 배지는 이미지 대표색을 같은 update에 담는다(티켓 20261119_1652). 다른 콘텐츠 유형은 칸이 없다.
   const bgColorsFields = config.table === 'badges' ? await badgeBgColorsFields(webpUrl) : {}
+  // 홈피드 카드는 커버 대표 색을 같은 update에 담는다(티켓 20261121_1724). 칸 이름이 `cover_colors`다.
+  const coverColorsPatch = config.table === 'today_cards' ? await coverColorsFields(webpUrl) : {}
   const { error: updateErr } = await table
-    .update({ [config.imageUrlColumn]: webpUrl, image_source: 'admin-generator', ...bgColorsFields })
+    .update({ [config.imageUrlColumn]: webpUrl, image_source: 'admin-generator', ...bgColorsFields, ...coverColorsPatch })
     .eq('id', targetId)
   if (updateErr) {
     return NextResponse.json(
