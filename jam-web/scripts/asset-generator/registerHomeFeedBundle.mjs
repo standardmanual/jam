@@ -243,7 +243,7 @@ function validateImage(errors, image, bundleFile, { presetLayerKeys, warnings } 
  * (이 파일은 JSDoc 타입 주석을 쓰지 않는다 — TS 테스트가 이 .mjs를 import할 때 추론이 좁아져 호출이
  * 막히는 것을 피한다.)
  */
-export function validateHomeFeedBundle(raw, { bundleFile, presetLayerKeys }) {
+export function validateHomeFeedBundle(raw, { bundleFile, presetLayerKeys = /** @type {any} */ (undefined) }) {
   const errors = []
   const warnings = []
   if (!isPlainObject(raw)) {

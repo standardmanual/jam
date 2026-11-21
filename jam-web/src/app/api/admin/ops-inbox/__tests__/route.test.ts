@@ -376,7 +376,8 @@ describe('POST /api/admin/ops-inbox', () => {
     })
 
     it('모양이 맞는 image_spec은 경고 없이 받는다', async () => {
-      const ok = makeItem({ image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' } } })
+      // 카드 이미지에는 글자·로고를 넣지 않으므로(티켓 20261121_1722) 카드 항목의 «맞는» 지시에는 values가 없다
+      const ok = makeItem({ image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' } })
       const res = await submit(makeBundle({ items: [ok] }))
       expect(res.status).toBe(201)
       expect((await res.json()).warnings).toEqual([])

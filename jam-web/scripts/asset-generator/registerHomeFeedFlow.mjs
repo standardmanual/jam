@@ -251,7 +251,7 @@ export async function undoHomeFeedRegistration({ supabase, record, dryRun }) {
  * `readPresetLayerKeys`(선택, `createPresetLayerKeysReader`가 만든 함수 — 프리셋 id → 레이어 번호 목록. 주면 글자 층이 없는 프리셋의 `image.text`·`image.subtext`를
  * 글자 수 검사에서 빼고 알림으로 남긴다. 생략하면 지금처럼 검사한다, 티켓 20261121_1722).
  */
-export async function runHomeFeedRegister({ args, supabase, convertToWebp, randomUUID, now, out, readPresetLayerKeys }) {
+export async function runHomeFeedRegister({ args, supabase, convertToWebp, randomUUID, now, out, readPresetLayerKeys = /** @type {any} */ (undefined) }) {
   const bundleFile = args.bundle
   const recordDir = args.recordDir ?? path.dirname(bundleFile)
 
