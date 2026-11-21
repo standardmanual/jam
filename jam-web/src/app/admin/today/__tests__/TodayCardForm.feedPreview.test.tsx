@@ -144,6 +144,27 @@ describe('TodayCardForm — 미리보기 한계 접이식과 수정 화면 안�
     expect(FEED_PREVIEW_LIMITS[2]).toContain('저장하면 홈에서 컬렉션 배지가 보여요')
   })
 
+  it('수정 화면이 저장된 커버 대표 색을 이미지 규칙 경고에 쓰고, 새 카드는 경고 없이 안내 한 줄만 보인다(티켓 20261121_1829)', () => {
+    const saved = cardOf({ feed_type: 'hero_box', bg_color_key: 'red', cover_colors: ['#FF1D1D'] } as Partial<TodayCardRow>)
+    const edited = renderToStaticMarkup(<TodayCardForm {...props} card={saved} />)
+    expect(edited).toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
+    expect(edited).not.toContain('feed-cover-colors-notice')
+    // 대표 색을 모르는 저장 카드(아직 안 뽑음)는 경고도 안내도 없다.
+    const unknown = renderToStaticMarkup(<TodayCardForm {...props} card={cardOf({ feed_type: 'hero_box', bg_color_key: 'red' })} />)
+    expect(unknown).not.toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
+    expect(unknown).not.toContain('feed-cover-colors-notice')
+  })
+
+  it('수정 화면에서 배지 소개의 연결 배지 대표 색(bg_colors)으로 경고한다', () => {
+    const badge = { id: 'b1', name: '배지', rarity: 'common', type: 'item', point_reward: 0, bg_colors: ['#FF1D1D'] }
+    const card = cardOf({ template_type: 'badge_spotlight', feed_type: 'badge_intro', bg_color_key: 'red', badge_ids: ['b1'] } as Partial<TodayCardRow>)
+    const html = renderToStaticMarkup(<TodayCardForm {...props} card={card} badgeLabels={[badge]} />)
+    expect(html).toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
+    expect(renderToStaticMarkup(<TodayCardForm {...props} card={card} badgeLabels={[{ ...badge, bg_colors: null }]} />)).not.toContain(
+      '이미지의 대표 색과 너무 비슷해서 묻혀요',
+    )
+  })
+
   it('저장된 새 유형 카드를 수정하면 자동 값 안내가 보인다', () => {
     const html = renderToStaticMarkup(<TodayCardForm {...props} card={cardOf({ feed_type: 'hero_box', feed_seed: 77 })} />)
     expect(html).toContain('저장할 때 자동으로 정해진 값은 그대로 보여요')

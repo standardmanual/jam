@@ -24,7 +24,8 @@ import {
 } from '@/lib/admin/feedCardFields'
 import { cornerOfSlot, type ChipCorner } from '@/lib/today/feedChipLayout'
 import { chipLimitOf, diagonalOf, FEED_CHIP_SLOT_SPECS, FEED_TYPES, isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
-import { firstViolatedRule } from '@/lib/today/feedColorRules'
+import { firstViolatedRule, violatesImageColorRule } from '@/lib/today/feedColorRules'
+import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
 import { FEED_COLOR_KEYS, FEED_COLORS, feedColorVar, type FeedColorKey } from '@/lib/today/feedConstants'
 import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
@@ -195,6 +196,7 @@ export function feedColorWarnings(
   values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey' | 'boxColorKey'>,
   show: { chip: boolean; box: boolean },
   excludedPairs: readonly ExcludedColorPair[] = [],
+  imageColors?: FeedImageColorInput,
 ): string[] {
   const warnings: string[] = []
   const pairs: ReadonlyArray<readonly [string, FeedColorKey | '', string, FeedColorKey | '', boolean]> = [
@@ -213,6 +215,31 @@ export function feedColorWarnings(
     }
     const violated = firstViolatedRule(FEED_COLORS[keyA].hex, FEED_COLORS[keyB].hex, { involvesChip })
     if (violated) warnings.push(`${head} 색 규칙에 걸려요. ${COLOR_RULE_REASON[violated]}. 저장은 되지만 다른 색을 골라 보세요.`)
+  }
+  warnings.push(...imageColorWarnings(values, show, imageColors))
+  return warnings
+}
+
+/**
+ * 직접 고른 배경색(규칙 ⑤)·칩 색(규칙 ⑥)이 이미지 대표 색과 겹치면 경고 문구를 돌려준다(티켓 20261121_1829, 상위 20261120_2026 7회차-7).
+ * 이미지 대표 색을 아는 경우(`imageHexes`가 비어 있지 않을 때)만 본다 — 알 수 없으면 조용히 건너뛴다. 칩은 이미지 위에 걸치는 유형(`chipOnImage`)일 때만 본다.
+ * 비워 둔 «자동» 칸은 검사하지 않는다(자동은 저장할 때 이미지 규칙을 지켜서 정한다). 판정은 `violatesImageColorRule`이고 이유 문구는 `COLOR_RULE_REASON.image`다.
+ */
+function imageColorWarnings(
+  values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey'>,
+  show: { chip: boolean },
+  imageColors: FeedImageColorInput | undefined,
+): string[] {
+  if (!imageColors || imageColors.imageHexes.length === 0) return []
+  const candidates: ReadonlyArray<readonly [string, FeedColorKey | '', boolean]> = [
+    ['배경색', values.bgColorKey, true],
+    ['칩 색', values.chipColorKey, show.chip && imageColors.chipOnImage],
+  ]
+  const warnings: string[] = []
+  for (const [label, key, applies] of candidates) {
+    if (!applies || !key) continue
+    if (!violatesImageColorRule(FEED_COLORS[key].hex, imageColors.imageHexes)) continue
+    warnings.push(`${label}(${colorName(key)})이 색 규칙에 걸려요. ${COLOR_RULE_REASON.image}. 저장은 되지만 다른 색을 골라 보세요.`)
   }
   return warnings
 }
@@ -354,10 +381,31 @@ export interface FeedCardSectionProps {
   themeContainer?: HTMLElement | null
   /** 사용자가 검수표에서 제외한 색 조합. 아직 저장 자리가 없어(6회차) 생략하면 규칙 판정만 한다. */
   excludedColorPairs?: readonly ExcludedColorPair[]
+  /** 카드의 저장된 커버 대표 색(`today_cards.cover_colors`). 모르면(새 카드·커버를 바꾼 뒤·아직 안 뽑음) 생략한다 — 그러면 이미지 규칙 경고를 하지 않는다. */
+  coverColors?: unknown
+  /** 카드가 가리키는 배지들의 대표 색(`badges.bg_colors`), `badge_ids` 순서 그대로. 모르는 배지는 `undefined`로 둔다. 생략하면 배지 색을 모르는 것이다. */
+  badgeColors?: readonly unknown[]
+  /** 커버 대표 색이 저장 전이라 아직 없다(새 카드이거나 커버 이미지를 바꿨다). 커버 색 규칙을 쓰는 유형에서 안내 한 줄을 보인다. */
+  coverColorsPending?: boolean
+}
+
+/** 커버 이미지 대표 색으로 이미지 규칙을 판정하는 유형인가 — 규칙 표(`imageColorsForCard`)를 그대로 읽어 따로 목록을 만들지 않는다. */
+function usesCoverColorRule(feedType: FeedType, boxKind: string): boolean {
+  return imageColorsForCard({ feedType, boxKind, coverColors: ['#000000'], badgeColors: [] }).imageHexes.length > 0
 }
 
 /** 「카드 모양」 섹션의 안쪽(섹션 카드 껍데기는 `TodayCardForm`이 감싼다). */
-export default function FeedCardSection({ values, onChange, title, templateType, themeContainer, excludedColorPairs }: FeedCardSectionProps) {
+export default function FeedCardSection({
+  values,
+  onChange,
+  title,
+  templateType,
+  themeContainer,
+  excludedColorPairs,
+  coverColors,
+  badgeColors,
+  coverColorsPending,
+}: FeedCardSectionProps) {
   const feedType: FeedType | null = isFeedType(values.feedType) ? values.feedType : null
   const visible = feedType ? feedFieldVisibility(feedType) : null
 
@@ -365,9 +413,13 @@ export default function FeedCardSection({ values, onChange, title, templateType,
     onChange(typeChangePatch(values, next))
   }
 
+  const imageColors = feedType
+    ? imageColorsForCard({ feedType, boxKind: values.boxKind, coverColors, badgeColors })
+    : undefined
   const colorWarnings = visible
-    ? feedColorWarnings(values, { chip: visible.chipColor, box: visible.boxColor }, excludedColorPairs)
+    ? feedColorWarnings(values, { chip: visible.chipColor, box: visible.boxColor }, excludedColorPairs, imageColors)
     : []
+  const showCoverColorsNotice = Boolean(coverColorsPending && feedType && usesCoverColorRule(feedType, values.boxKind))
 
   const words = Array.from({ length: MAX_TITLE_CHIPS }, (_, index) => values.titleChipWords[index] ?? '')
   function changeWord(index: number, word: string) {
@@ -460,6 +512,12 @@ export default function FeedCardSection({ values, onChange, title, templateType,
                 </li>
               ))}
             </ul>
+          )}
+
+          {showCoverColorsNotice && (
+            <p role="note" className="m-0 text-xs text-muted-foreground break-keep wrap-break-word" data-testid="feed-cover-colors-notice">
+              커버 이미지를 저장하면 색이 겹치는지 알려 드려요.
+            </p>
           )}
 
           <div className={FIELD_GRID_CLASS}>

@@ -206,6 +206,98 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
   })
 })
 
+describe('이미지 대표 색 규칙 경고 — 직접 고른 색만, 대표 색을 아는 경우만 (티켓 20261121_1829)', () => {
+  const show = { chip: true, box: true }
+  // red(#FF1D1D)와 같은 색상·밝기라 걸리고, blue(#0695EC)는 색상이 달라 통과한다.
+  const redImage = { imageHexes: ['#FF1D1D'], chipOnImage: true }
+  const none = { bgColorKey: '', chipColorKey: '', boxColorKey: '' } as const
+
+  it('직접 고른 배경색이 이미지 대표 색과 겹치면 경고한다(이유 문구는 COLOR_RULE_REASON.image)', () => {
+    const warnings = feedColorWarnings({ ...none, bgColorKey: 'red' }, show, [], redImage)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('배경색(레드)이 색 규칙에 걸려요')
+    expect(warnings[0]).toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
+    expect(warnings[0]).toContain('저장은 되지만')
+  })
+
+  it('겹치지 않는 색은 경고가 없다', () => {
+    expect(feedColorWarnings({ ...none, bgColorKey: 'blue' }, show, [], redImage)).toEqual([])
+    expect(feedColorWarnings({ ...none, chipColorKey: 'blue' }, show, [], redImage)).toEqual([])
+  })
+
+  it('«자동»으로 둔 칸은 검사하지 않는다', () => {
+    expect(feedColorWarnings(none, show, [], redImage)).toEqual([])
+  })
+
+  it('칩 색은 칩이 이미지 위에 걸치는 유형(chipOnImage)일 때만 본다', () => {
+    const colors = { ...none, chipColorKey: 'red' } as const
+    expect(feedColorWarnings(colors, show, [], redImage)[0]).toContain('칩 색(레드)이 색 규칙에 걸려요')
+    expect(feedColorWarnings(colors, show, [], { ...redImage, chipOnImage: false })).toEqual([])
+    expect(feedColorWarnings(colors, { chip: false, box: true }, [], redImage)).toEqual([])
+  })
+
+  it('배경색은 chipOnImage와 상관없이 본다', () => {
+    expect(feedColorWarnings({ ...none, bgColorKey: 'red' }, show, [], { ...redImage, chipOnImage: false })).toHaveLength(1)
+  })
+
+  it('이미지 대표 색을 모르면(없음·빈 목록) 경고하지 않는다', () => {
+    const colors = { ...none, bgColorKey: 'red', chipColorKey: 'red' } as const
+    expect(feedColorWarnings({ ...colors, chipColorKey: '' }, show)).toEqual([])
+    expect(feedColorWarnings({ ...colors, chipColorKey: '' }, show, [], { imageHexes: [], chipOnImage: false })).toEqual([])
+  })
+
+  it('색 쌍 규칙 경고와 함께 나온다', () => {
+    const warnings = feedColorWarnings({ ...none, bgColorKey: 'red', chipColorKey: 'red' }, show, [], redImage)
+    expect(warnings).toHaveLength(3)
+    expect(warnings[0]).toContain('두 색이 같아서 구분이 안 돼요')
+  })
+
+  describe('섹션', () => {
+    it('커버 색을 아는 히어로 카드에서 직접 고른 배경색이 겹치면 경고가 보인다', () => {
+      const html = render({ feedType: 'hero_box', bgColorKey: 'red' }, { coverColors: ['#FF1D1D'] })
+      expect(html).toContain('data-testid="feed-color-warnings"')
+      expect(html).toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
+    })
+
+    it('커버 색이 없거나 읽을 수 없으면 경고가 없다', () => {
+      expect(render({ feedType: 'hero_box', bgColorKey: 'red' })).not.toContain('feed-color-warnings')
+      expect(render({ feedType: 'hero_box', bgColorKey: 'red' }, { coverColors: null })).not.toContain('feed-color-warnings')
+      expect(render({ feedType: 'hero_box', bgColorKey: 'red' }, { coverColors: [] })).not.toContain('feed-color-warnings')
+    })
+
+    it('커버 색 규칙을 쓰지 않는 유형(전체 배경 이미지·글자 박스)은 대표 색이 있어도 경고가 없다', () => {
+      expect(render({ feedType: 'full_image', bgColorKey: 'red' }, { coverColors: ['#FF1D1D'] })).not.toContain('feed-color-warnings')
+      expect(render({ feedType: 'text_box', boxKind: 'text', bgColorKey: 'red' }, { coverColors: ['#FF1D1D'] })).not.toContain(
+        'feed-color-warnings',
+      )
+    })
+
+    it('텍스트 박스의 이미지 마스크는 커버 색 규칙을 쓴다', () => {
+      const html = render({ feedType: 'text_box', boxKind: 'image_mask', bgColorKey: 'red' }, { coverColors: ['#FF1D1D'] })
+      expect(html).toContain('feed-color-warnings')
+    })
+
+    it('배지 소개는 첫 배지의 색을 쓰고, 칩 색은 이미지 규칙으로 보지 않는다', () => {
+      const html = render({ feedType: 'badge_intro', bgColorKey: 'red', chipColorKey: 'red' }, { badgeColors: [['#FF1D1D'], ['#0695EC']] })
+      expect(html).toContain('배경색(레드)')
+      expect(html).not.toContain('칩 색(레드)이 색 규칙에 걸려요. 이미지의')
+      // 첫 배지의 색을 모르면(undefined) 두 번째 배지로 건너뛰지 않고 경고하지 않는다.
+      expect(render({ feedType: 'badge_intro', bgColorKey: 'red' }, { badgeColors: [undefined, ['#FF1D1D']] })).not.toContain(
+        'feed-color-warnings',
+      )
+    })
+
+    it('커버 색이 저장 전이면 커버 색 규칙 유형에서만 안내 한 줄을 보인다', () => {
+      const note = 'data-testid="feed-cover-colors-notice"'
+      expect(render({ feedType: 'hero_box' }, { coverColorsPending: true })).toContain(note)
+      expect(render({ feedType: 'hero_box' }, { coverColorsPending: true })).toContain('커버 이미지를 저장하면 색이 겹치는지 알려 드려요')
+      expect(render({ feedType: 'hero_box' })).not.toContain(note)
+      expect(render({ feedType: 'badge_intro' }, { coverColorsPending: true })).not.toContain(note)
+      expect(render({ feedType: 'text_box', boxKind: 'text' }, { coverColorsPending: true })).not.toContain(note)
+    })
+  })
+})
+
 describe('제목 속 칩 낱말 — 제목에 없으면 오류', () => {
   it('제목에 그대로 들어 있으면 오류가 없고, 없거나 비어 있으면 낱말만 오류다', () => {
     expect(titleChipWordError('성수동', '핫한 성수동 배지')).toBeNull()

@@ -638,6 +638,9 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     </TodaySectionCard>
   )
 
+  // 저장된 커버 대표 색은 «저장된 커버»의 색이다. 새 카드이거나 폼에서 커버 이미지를 바꿨으면 아직 모르는 값이라 이미지 규칙 경고를 하지 않는다(티켓 20261121_1829).
+  const coverColorsKnown = isEdit && coverImageUrl.trim() === (card?.cover_image_url ?? '').trim()
+
   const feedSection = (
     <TodaySectionCard {...sectionHeader('feed')}>
       {isEdit && card?.feed_type && (
@@ -651,6 +654,9 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         title={title.trim()}
         templateType={templateType}
         themeContainer={themeContainer}
+        coverColors={coverColorsKnown ? card?.cover_colors : undefined}
+        badgeColors={fields.badges ? badgeIds.map((id) => badgeLabelCache.get(id)?.bg_colors) : undefined}
+        coverColorsPending={!coverColorsKnown}
       />
     </TodaySectionCard>
   )

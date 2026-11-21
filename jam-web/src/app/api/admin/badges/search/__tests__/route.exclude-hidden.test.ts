@@ -87,6 +87,12 @@ describe('GET /api/admin/badges/search — excludeHidden', () => {
     expect((await res.json()).badges).toEqual([{ id: 'b2', name: '비밀 장갑', is_hidden: false, always_locked: true }])
   })
 
+  it('응답에 bg_colors를 싣는다(투데이 카드 폼의 이미지 대표 색 경고, 티켓 20261121_1829)', async () => {
+    await search('query=러너')
+
+    expect(state.selected).toContain('bg_colors')
+  })
+
   it('응답에 is_hidden을 싣는다', async () => {
     const res = await search('query=러너')
 

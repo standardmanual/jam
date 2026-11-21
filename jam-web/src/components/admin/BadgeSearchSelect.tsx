@@ -24,6 +24,9 @@ export interface BadgeSearchResult {
   /** «잠김으로 만든 아이템 배지» 여부(`badges.always_locked`). /api/admin/badges/search가 내려준다.
    *  미션 양식의 보상 배지 칩이 읽기 전용으로 표시한다(티켓 20261019_1318) */
   always_locked?: boolean
+  /** 배지 이미지의 대표 색(`badges.bg_colors`, 밝기 순 최대 3개). /api/admin/badges/search와 투데이 카드 수정 화면이 내려준다.
+   *  투데이 카드 폼이 직접 고른 색이 배지 그림과 겹치는지 경고하는 데 쓴다(티켓 20261121_1829). 모르면 없다. */
+  bg_colors?: string[] | null
 }
 
 interface BadgeSearchSelectProps {

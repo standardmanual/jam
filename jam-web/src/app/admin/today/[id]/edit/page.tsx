@@ -40,7 +40,7 @@ export default async function EditTodayCardPage({ params, searchParams }: EditTo
   const badgeIds = card.badge_ids ?? []
   const { data: badgeLabelsRaw } =
     badgeIds.length > 0
-      ? await supabase.from('badges').select('id, name, rarity, type, point_reward, admin_category, image_url').in('id', badgeIds)
+      ? await supabase.from('badges').select('id, name, rarity, type, point_reward, admin_category, image_url, bg_colors').in('id', badgeIds)
       : { data: [] as BadgeSearchResult[] }
   const badgeLabels = (badgeLabelsRaw ?? []) as BadgeSearchResult[]
 
