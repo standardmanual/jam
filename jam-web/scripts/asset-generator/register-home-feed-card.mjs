@@ -54,7 +54,7 @@ async function importWithAliasHint(load) {
 async function main() {
   const args = parseRegisterArgs(process.argv.slice(2))
 
-  const { runHomeFeedRegister, runHomeFeedUndo } = await importWithAliasHint(() => import('./registerHomeFeedFlow.mjs'))
+  const { createPresetLayerKeysReader, runHomeFeedRegister, runHomeFeedUndo } = await importWithAliasHint(() => import('./registerHomeFeedFlow.mjs'))
   const { convertBadgeImageToWebp } = await importWithAliasHint(() => import('../../src/lib/admin/badgeImageWebp'))
 
   const env = loadEnv()
@@ -66,7 +66,16 @@ async function main() {
   const exitCode =
     args.mode === 'undo'
       ? await runHomeFeedUndo({ args, supabase, out })
-      : await runHomeFeedRegister({ args, supabase, convertToWebp: convertBadgeImageToWebp, randomUUID, now: () => Date.now(), out })
+      : await runHomeFeedRegister({
+          args,
+          supabase,
+          convertToWebp: convertBadgeImageToWebp,
+          randomUUID,
+          now: () => Date.now(),
+          out,
+          // 글자 층이 없는 홈피드 프리셋의 image.text·image.subtext는 글자 수를 검사하지 않고 알림만 남긴다(키가 있을 때만 프리셋을 읽는다).
+          ...(supabase ? { readPresetLayerKeys: createPresetLayerKeysReader(supabase) } : {}),
+        })
   // process.exit()으로 끊지 않고 종료 코드만 남긴다 — 파이프로 이어진 표준 출력이 잘리지 않게 하려는 것이다.
   process.exitCode = exitCode
 }

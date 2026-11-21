@@ -18,6 +18,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { getLayerKeys } from '../../src/lib/asset-generator/layerKeys'
 import { runHomeFeedDbChecks as runHomeFeedDbChecksImpl } from '../../src/lib/admin/registerChecks/homeFeed'
 import {
   HOME_FEED_UNDO_REFERENCE_TABLES as UNDO_REFERENCE_TABLES,
@@ -68,6 +69,23 @@ export function homeFeedStoragePathsFor(cardId) {
  */
 export async function runHomeFeedDbChecks({ supabase, payload }) {
   return runHomeFeedDbChecksImpl({ supabase, payload })
+}
+
+/**
+ * 프리셋이 가진 레이어 번호 목록(`['text01', 'img01', …]`)을 읽는 함수를 만든다(읽기 전용, 티켓 20261121_1722). 실행 스크립트(`register-home-feed-card.mjs`)가
+ * 서비스 키 클라이언트로 만들어 `runHomeFeedRegister`에 넘긴다. 글자 층이 없는 홈피드 프리셋의 `image.text`·`image.subtext`를 글자 수 검사에서 빼려는 것이다.
+ * 읽지 못하면 `undefined`를 돌려줘 지금처럼 검사한다 — 이 조회가 실패해도 등록 흐름은 막히지 않는다.
+ */
+export function createPresetLayerKeysReader(supabase) {
+  return async (presetId) => {
+    try {
+      const { data, error } = await supabase.from('asset_presets').select('layers').eq('id', presetId).maybeSingle()
+      if (error || !data || !Array.isArray(data.layers)) return undefined
+      return getLayerKeys(data.layers).map((entry) => entry.key)
+    } catch {
+      return undefined
+    }
+  }
 }
 
 async function uploadFile(storage, filePath, buffer, contentType, label) {
@@ -229,9 +247,11 @@ export async function undoHomeFeedRegistration({ supabase, record, dryRun }) {
  * - 그 외: 검증 → DB 검사 → 업로드 → insert → 기록 파일. supabase가 없으면 실행하지 않는다.
  *
  * 인자: `args`(parseRegisterArgs 결과), `supabase`(서비스 키 클라이언트, dry-run에서는 null 가능 — DB 검사를
- * 건너뛴다), `convertToWebp`·`randomUUID`·`now`(`registerHomeFeedCard`와 같다), `out`(`{ log, error }`).
+ * 건너뛴다), `convertToWebp`·`randomUUID`·`now`(`registerHomeFeedCard`와 같다), `out`(`{ log, error }`),
+ * `readPresetLayerKeys`(선택, `createPresetLayerKeysReader`가 만든 함수 — 프리셋 id → 레이어 번호 목록. 주면 글자 층이 없는 프리셋의 `image.text`·`image.subtext`를
+ * 글자 수 검사에서 빼고 알림으로 남긴다. 생략하면 지금처럼 검사한다, 티켓 20261121_1722).
  */
-export async function runHomeFeedRegister({ args, supabase, convertToWebp, randomUUID, now, out }) {
+export async function runHomeFeedRegister({ args, supabase, convertToWebp, randomUUID, now, out, readPresetLayerKeys }) {
   const bundleFile = args.bundle
   const recordDir = args.recordDir ?? path.dirname(bundleFile)
 
@@ -243,7 +263,10 @@ export async function runHomeFeedRegister({ args, supabase, convertToWebp, rando
     return 1
   }
 
-  const { errors: bundleErrors, bundle } = validateHomeFeedBundle(raw, { bundleFile })
+  // 프리셋 레이어 번호는 읽기 함수를 받았을 때만 읽는다(원샷 dry-run·기존 호출은 읽지 않고 지금처럼 검사한다).
+  const presetId = raw?.image?.preset_id
+  const presetLayerKeys = readPresetLayerKeys && typeof presetId === 'string' && presetId !== '' ? await readPresetLayerKeys(presetId) : undefined
+  const { errors: bundleErrors, warnings = [], bundle } = validateHomeFeedBundle(raw, { bundleFile, presetLayerKeys })
   const errors = [...bundleErrors]
   const previousRecordError = findPreviousRecordError(recordDir)
   if (previousRecordError) errors.push(previousRecordError)
@@ -275,7 +298,7 @@ export async function runHomeFeedRegister({ args, supabase, convertToWebp, rando
   }
 
   if (args.dryRun) {
-    out.log(formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks, webp, recordDir }))
+    out.log(formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks, webp, recordDir, warnings }))
     return errors.length === 0 ? 0 : 1
   }
 
@@ -309,6 +332,7 @@ export async function runHomeFeedRegister({ args, supabase, convertToWebp, rando
         `- SQL 기록: ${sqlPath}`,
         `- 다음: SQL 기록을 jam-web/supabase/migrations/${homeFeedMigrationFileName(bundle.bundle_id)} 로 옮겨 커밋해요.`,
         `- 되돌리기: cd jam-web && npx tsx scripts/asset-generator/register-home-feed-card.mjs --undo ${recordPath}`,
+        ...warnings.map((warning) => `- 알림: ${warning}`),
       ].join('\n')
     )
     return 0

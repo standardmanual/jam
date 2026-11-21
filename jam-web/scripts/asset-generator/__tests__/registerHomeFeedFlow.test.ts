@@ -13,6 +13,7 @@ import { parseRegisterArgs } from '../registerArgs.mjs';
 import { buildTodayCardInsertPayload, readBundleFile, validateHomeFeedBundle } from '../registerHomeFeedBundle.mjs';
 import {
   UNDO_REFERENCE_TABLES,
+  createPresetLayerKeysReader,
   findHomeFeedRecordUndoError,
   homeFeedStoragePathsFor,
   registerHomeFeedCard,
@@ -444,6 +445,66 @@ describe('runHomeFeedRegister — --dry-run', () => {
     const code = await runHomeFeedRegister({ args: registerArgs(['--dry-run']), supabase: null, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
     expect(code).toBe(1);
     expect(logs.join('\n')).toContain('이미 등록한 묶음으로 보여요');
+  });
+});
+
+describe('runHomeFeedRegister — 글자 층이 없는 프리셋 (티켓 20261121_1722)', () => {
+  const longTitle = '가나다라마바사아자차카타';
+  const run = (readPresetLayerKeys?: (presetId: string) => Promise<string[] | undefined>) => {
+    const { out, logs, errors } = createOut();
+    return runHomeFeedRegister({
+      args: registerArgs(['--dry-run']),
+      supabase: null,
+      convertToWebp: fakeWebp,
+      randomUUID: fixedUuid,
+      now: fixedNow,
+      out,
+      ...(readPresetLayerKeys ? { readPresetLayerKeys } : {}),
+    }).then((code) => ({ code, logs, errors }));
+  };
+
+  it('프리셋에 글자 층이 없으면 글자 수가 넘어도 통과하고 [알림]에 남긴다', async () => {
+    editBundle((raw) => (raw.image.text = longTitle));
+    const seen: string[] = [];
+    const { code, logs } = await run(async (presetId) => {
+      seen.push(presetId);
+      return ['img01'];
+    });
+    const text = logs.join('\n');
+    expect(code).toBe(0);
+    expect(text).toContain('결과: 통과');
+    expect(text).toContain('[알림]');
+    expect(text).toContain('image.text: 이 프리셋에는 text01 글자 층이 없어서');
+    expect(seen).toHaveLength(1);
+  });
+
+  it('프리셋에 글자 층이 있으면 지금처럼 글자 수 오류로 막는다', async () => {
+    editBundle((raw) => (raw.image.text = longTitle));
+    const { code, logs } = await run(async () => ['text01', 'text02', 'img01']);
+    expect(code).toBe(1);
+    expect(logs.join('\n')).toContain('image.text: 홈피드 프리셋 글자 수 가이드를 넘어요');
+    expect(logs.join('\n')).not.toContain('[알림]');
+  });
+
+  it('읽기 함수를 주지 않거나 프리셋을 읽지 못하면(undefined) 지금처럼 검사한다', async () => {
+    editBundle((raw) => (raw.image.text = longTitle));
+    expect((await run()).code).toBe(1);
+    expect((await run(async () => undefined)).code).toBe(1);
+  });
+
+  it('createPresetLayerKeysReader: 프리셋의 레이어 번호 목록을 돌려주고 못 읽으면 undefined다', async () => {
+    const layers = [{ type: 'text' }, { type: 'image' }, { type: 'text' }];
+    const stub = (result: unknown) => ({
+      from: (table: string) => {
+        expect(table).toBe('asset_presets');
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => result }) }) };
+      },
+    });
+    expect(await createPresetLayerKeysReader(stub({ data: { layers }, error: null }))('p1')).toEqual(['text01', 'img01', 'text02']);
+    expect(await createPresetLayerKeysReader(stub({ data: { layers: [] }, error: null }))('p1')).toEqual([]);
+    expect(await createPresetLayerKeysReader(stub({ data: null, error: null }))('p1')).toBeUndefined();
+    expect(await createPresetLayerKeysReader(stub({ data: null, error: { message: 'x' } }))('p1')).toBeUndefined();
+    expect(await createPresetLayerKeysReader({ from: () => { throw new Error('boom'); } })('p1')).toBeUndefined();
   });
 });
 

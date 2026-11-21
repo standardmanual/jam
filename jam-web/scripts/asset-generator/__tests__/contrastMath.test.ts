@@ -2,7 +2,7 @@
  * 홈피드 카드 색 대비 계산 검증 (티켓 20260926_1544)
  */
 import { describe, expect, it } from 'vitest';
-import { contrastRatio, judgeWhiteText, parseContrastArgs, parseHexColor } from '../contrastMath.mjs';
+import { CONTRAST_SKIPPED_RESULT, contrastRatio, judgeWhiteText, parseContrastArgs, parseHexColor } from '../contrastMath.mjs';
 
 describe('judgeWhiteText', () => {
   it('지난 시험 실행의 값을 소수 둘째 자리까지 재현한다', () => {
@@ -61,5 +61,23 @@ describe('parseContrastArgs', () => {
   it('알 수 없는 인자와 값 없는 토큰을 거절한다', () => {
     expect(() => parseContrastArgs(['--bg', '#8a5a2e', '--end', '#3d2812', '--foo', '1'])).toThrow('알 수 없는 인자예요: --foo');
     expect(() => parseContrastArgs(['#8a5a2e'])).toThrow('인자 형식이 올바르지 않아요');
+  });
+});
+
+describe('parseContrastArgs --no-text (티켓 20261121_1722)', () => {
+  it('글자 층이 없는 프리셋이면 --no-text로 계산을 건너뛴다고 알린다(없으면 noText 칸이 없다)', () => {
+    expect(parseContrastArgs(['--bg', '#8a5a2e', '--end', '#3d2812', '--no-text'])).toEqual({ bg: '#8a5a2e', end: '#3d2812', noText: true });
+    expect(parseContrastArgs(['--no-text', '--bg', '#8a5a2e', '--end', '#3d2812'])).toEqual({ bg: '#8a5a2e', end: '#3d2812', noText: true });
+    expect(parseContrastArgs(['--bg', '#8a5a2e', '--end', '#3d2812'])).not.toHaveProperty('noText');
+  });
+
+  it('--no-text여도 색 인자 검사는 그대로다', () => {
+    expect(() => parseContrastArgs(['--no-text'])).toThrow('다음 인자가 필요해요: --bg, --end');
+    expect(() => parseContrastArgs(['--bg', 'red', '--end', '#3d2812', '--no-text'])).toThrow('#rrggbb 형식');
+  });
+
+  it('건너뜀 결과는 실패가 아니라 skipped 표시다', () => {
+    expect(CONTRAST_SKIPPED_RESULT.skipped).toBe(true);
+    expect(CONTRAST_SKIPPED_RESULT.reason).toContain('글자 층이 없는');
   });
 });

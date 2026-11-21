@@ -51,15 +51,21 @@ export function judgeWhiteText(hex) {
 }
 
 /**
- * CLI 인자(`--bg <hex> --end <hex>`)를 파싱한다. 둘 다 필수이고 형식이 다르면 한국어 Error를 던진다.
+ * CLI 인자(`--bg <hex> --end <hex> [--no-text]`)를 파싱한다. `--no-text`가 있으면 결과에 `noText: true`가 더해진다(없으면 그 칸이 없다). 둘 다 필수이고 형식이 다르면 한국어 Error를 던진다.
  * 알 수 없는 인자는 오타를 걸러내려고 거절한다.
  */
 export function parseContrastArgs(argv) {
   const flags = {}
+  let noText = false
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]
     if (!token.startsWith('--')) throw new Error(`인자 형식이 올바르지 않아요: ${token}`)
     const key = token.slice(2)
+    // 값 없는 스위치: 글자 층이 없는 프리셋(홈피드 카드 이미지, 7회차)이면 흰 글자 대비 계산을 건너뛴다(티켓 20261121_1722)
+    if (key === 'no-text') {
+      noText = true
+      continue
+    }
     if (key !== 'bg' && key !== 'end') throw new Error(`알 수 없는 인자예요: --${key}`)
     flags[key] = argv[i + 1]
     i++
@@ -68,5 +74,11 @@ export function parseContrastArgs(argv) {
   if (missing.length > 0) throw new Error(`다음 인자가 필요해요: ${missing.map((key) => `--${key}`).join(', ')}`)
   parseHexColor(flags.bg)
   parseHexColor(flags.end)
-  return { bg: flags.bg, end: flags.end }
+  return noText ? { bg: flags.bg, end: flags.end, noText } : { bg: flags.bg, end: flags.end }
+}
+
+/** 글자 층이 없는 프리셋에서 대비 계산을 건너뛸 때 찍는 한 줄 JSON의 내용. 실패가 아니다. */
+export const CONTRAST_SKIPPED_RESULT = {
+  skipped: true,
+  reason: '글자 층이 없는 카드 이미지라 흰 글자 대비 계산을 건너뛰어요.',
 }

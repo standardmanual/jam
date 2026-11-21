@@ -253,6 +253,47 @@ describe('makeHomeFeedCard', () => {
     expect(bundle.image).not.toHaveProperty('subtext');
   });
 
+  it('프리셋에 글자 층이 없어 text01·text02가 무시되면 묶음에 image.text·subtext를 적지 않고 warnings로 알린다 (티켓 20261121_1722)', async () => {
+    const dir = path.join(tmpRoot, 'no-text-layers');
+    const layers = { applied: [], saved: [], ignored: ['text01', 'text02'] };
+    const { deps } = stubDeps({
+      renderPng: async (renderArgs: Record<string, unknown>) => ({ buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1024, h: 1024 }, presetSource: 'admin-api', layers }),
+    });
+    const { exitCode, output } = await makeHomeFeedCard({ args: parseMakeCardArgs(baseArgv(dir)), deps });
+    expect(exitCode).toBe(0);
+    expect(output.layers).toEqual(layers);
+    expect(output.warnings).toEqual(['이 프리셋에는 text01·text02 층이 없어서 그 값은 쓰지 않았어요. 카드 이미지에는 글자와 로고를 넣지 않아요.']);
+    const bundle = JSON.parse(fs.readFileSync(path.join(dir, 'bundle.json'), 'utf8'));
+    expect(bundle.image).not.toHaveProperty('text');
+    expect(bundle.image).not.toHaveProperty('subtext');
+  });
+
+  it('text02만 무시되면 image.text는 그대로 적고 subtext만 뺀다', async () => {
+    const dir = path.join(tmpRoot, 'text01-only-layer');
+    const layers = { applied: ['text01'], saved: [], ignored: ['text02'] };
+    const { deps } = stubDeps({
+      renderPng: async (renderArgs: Record<string, unknown>) => ({ buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1024, h: 1024 }, presetSource: 'admin-api', layers }),
+    });
+    const { output } = await makeHomeFeedCard({ args: parseMakeCardArgs(baseArgv(dir)), deps });
+    const bundle = JSON.parse(fs.readFileSync(path.join(dir, 'bundle.json'), 'utf8'));
+    expect(bundle.image.text).toBe('예시 카드');
+    expect(bundle.image).not.toHaveProperty('subtext');
+    expect(output.warnings).toHaveLength(1);
+  });
+
+  it('무시한 번호가 없으면(글자 층이 있는 프리셋) 이전과 같이 기록하고 warnings 칸이 없다', async () => {
+    const dir = path.join(tmpRoot, 'with-text-layers');
+    const { deps } = stubDeps({
+      renderPng: async (renderArgs: Record<string, unknown>) => ({
+        buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1024, h: 1024 }, presetSource: 'admin-api', layers: { applied: ['text01', 'text02'], saved: [], ignored: [] },
+      }),
+    });
+    const { output } = await makeHomeFeedCard({ args: parseMakeCardArgs(baseArgv(dir)), deps });
+    expect(output).not.toHaveProperty('warnings');
+    const bundle = JSON.parse(fs.readFileSync(path.join(dir, 'bundle.json'), 'utf8'));
+    expect(bundle.image).toMatchObject({ text: '예시 카드', subtext: '짧은 설명' });
+  });
+
   it('--seed와 --meta의 bundle_id·author를 우선한다', async () => {
     const dir = path.join(tmpRoot, 'folder-name');
     const { deps } = stubDeps();

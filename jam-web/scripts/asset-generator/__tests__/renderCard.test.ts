@@ -40,12 +40,12 @@ const textLayer = (id: string, font = { family: 'Noto Sans KR', weight: 700 }) =
   xPct: 50, yPct: 20, rotationDeg: 0, opacityPct: 100,
 });
 
-const apiPreset = (layers: unknown[], stageRatio = '1:1') => ({
-  id: 'p1', name: '테스트', targetType: 'badge', stageRatio, layers, createdBy: 'u', createdAt: 'a', updatedAt: 'b',
+const apiPreset = (layers: unknown[], stageRatio = '1:1', targetType = 'badge') => ({
+  id: 'p1', name: '테스트', targetType, stageRatio, layers, createdBy: 'u', createdAt: 'a', updatedAt: 'b',
 });
 
-function adminDeps(layers: unknown[], stageRatio = '1:1') {
-  const fetchImpl = vi.fn<(url: string, init?: unknown) => Promise<unknown>>(async () => ({ ok: true, status: 200, json: async () => ({ preset: apiPreset(layers, stageRatio) }) }));
+function adminDeps(layers: unknown[], stageRatio = '1:1', targetType = 'badge') {
+  const fetchImpl = vi.fn<(url: string, init?: unknown) => Promise<unknown>>(async () => ({ ok: true, status: 200, json: async () => ({ preset: apiPreset(layers, stageRatio, targetType) }) }));
   return { env: ADMIN_ENV, fetchImpl };
 }
 
@@ -176,5 +176,27 @@ describe('renderCardPng 실제 캔버스 결과', () => {
   it('불러올 수 없는 저장 이미지는 레이어 원본 오류로 멈춘다', async () => {
     const layers = [imageLayer('i1', 'data:image/png;base64,AAAA')];
     await expect(renderCardPng(ARGS, adminDeps(layers))).rejects.toThrow('프리셋 이미지 레이어 원본을 불러오지 못했어요');
+  });
+});
+
+describe('renderCardPng 글자·로고 층 없는 홈피드 프리셋 (티켓 20261121_1722)', () => {
+  const values = { text01: '제목', text02: '설명', img01: '/abs/logo.png' };
+
+  it('홈피드 프리셋에 층이 없으면 값을 무시하고 layers.ignored로 알린다', async () => {
+    loadFontStub.mockClear();
+    const result = await renderCardPng({ ...ARGS, values }, adminDeps([], '1:1', 'home_feed'));
+    expect(result.layers).toEqual({ applied: [], saved: [], ignored: ['text01', 'text02', 'img01'] });
+    expect(result.buffer.subarray(1, 4).toString()).toBe('PNG');
+    expect(loadFontStub).not.toHaveBeenCalled();
+  });
+
+  it('홈피드 프리셋에 글자 층이 있으면 이전처럼 값을 적용한다(ignored는 빈 목록)', async () => {
+    const layers = [textLayer('t1', { family: 'system-ui', weight: 400 }), textLayer('t2', { family: 'system-ui', weight: 400 })];
+    const result = await renderCardPng({ ...ARGS, values: { text01: '제목' } }, adminDeps(layers, '1:1', 'home_feed'));
+    expect(result.layers).toEqual({ applied: ['text01'], saved: ['text02'], ignored: [] });
+  });
+
+  it.each(['badge', 'mission', 'collection'])('%s 프리셋은 이전처럼 없는 번호면 오류다', async (targetType) => {
+    await expect(renderCardPng({ ...ARGS, values }, adminDeps([], '1:1', targetType))).rejects.toThrow('이 프리셋에 없는 번호예요: text01, text02, img01');
   });
 });

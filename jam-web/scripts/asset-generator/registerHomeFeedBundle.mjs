@@ -135,7 +135,24 @@ function inspectPngFile(absPath) {
   return { bytes }
 }
 
-function validateImage(errors, image, bundleFile) {
+/**
+ * 글자 수 검사를 건너뛸 값을 정한다(티켓 20261121_1722). 프리셋의 레이어 번호 목록(`presetLayerKeys`)을 알고 그 프리셋에 글자 층이 없으면 —
+ * 홈피드 프리셋은 7회차에 글자·로고 층을 뺐다 — 그 값은 이미지에 그려지지 않으므로 무시하고 알림만 남긴다. 목록을 모르면(null·undefined) 지금처럼 검사한다.
+ * 반환: 건너뛸 필드 이름 `Set`('text'·'subtext').
+ */
+function textFieldsToIgnore(image, presetLayerKeys, warnings) {
+  const ignored = new Set()
+  if (!Array.isArray(presetLayerKeys)) return ignored
+  for (const [field, layerKey] of [['text', 'text01'], ['subtext', 'text02']]) {
+    if (isPresent(image[field]) && !presetLayerKeys.includes(layerKey)) {
+      ignored.add(field)
+      warnings.push(`image.${field}: 이 프리셋에는 ${layerKey} 글자 층이 없어서 이 값은 이미지에 쓰이지 않아요. 글자 수는 검사하지 않고 그대로 기록만 해요.`)
+    }
+  }
+  return ignored
+}
+
+function validateImage(errors, image, bundleFile, { presetLayerKeys, warnings } = {}) {
   const prefix = 'image.'
   if (!isPlainObject(image)) {
     errors.push('image: 객체여야 해요.')
@@ -174,9 +191,10 @@ function validateImage(errors, image, bundleFile) {
       errors.push(`image.${key}: #rrggbb 형식이어야 해요(받은 값: ${describeValue(value)}).`)
     }
   }
+  const ignoredText = textFieldsToIgnore(image, presetLayerKeys, warnings ?? [])
   if (isPresent(image.text) && typeof image.text !== 'string') {
     errors.push('image.text: 문자열이어야 해요.')
-  } else if (isPresent(image.text)) {
+  } else if (isPresent(image.text) && !ignoredText.has('text')) {
     // 홈피드 프리셋 글자 수 가이드(asset-generator/PRD.md §8) — 제목은 줄바꿈 없이 한 줄, 공백 포함 11자 이하.
     const lines = splitDisplayLines(image.text)
     if (lines.length > 1) {
@@ -189,7 +207,7 @@ function validateImage(errors, image, bundleFile) {
   }
   if (isPresent(image.subtext) && typeof image.subtext !== 'string') {
     errors.push('image.subtext: 문자열이어야 해요.')
-  } else if (isPresent(image.subtext)) {
+  } else if (isPresent(image.subtext) && !ignoredText.has('subtext')) {
     // 홈피드 프리셋 글자 수 가이드(asset-generator/PRD.md §8) — 1줄이면 22자, 2줄이면 줄마다 15자, 3줄 이상은 거절.
     const lines = splitDisplayLines(image.subtext)
     if (lines.length === 1) {
@@ -218,15 +236,18 @@ function validateImage(errors, image, bundleFile) {
  * 모아 `errors`로 돌려준다.
  *
  * 인자: `raw`는 JSON.parse 결과, `bundleFile`은 bundle.json 절대경로(이미지 상대경로의 기준)다.
- * 반환: `{ errors, bundle }` — 오류가 없으면 `bundle`에 정규화된 묶음이 담기고
+ * `presetLayerKeys`(선택)는 `image.preset_id` 프리셋의 레이어 번호 목록이다. 알면(배열) 글자 층(`text01`·`text02`)이 없는 프리셋의 `image.text`·`image.subtext`는
+ * 글자 수를 검사하지 않고 `warnings`로 알린다. 모르면 지금처럼 검사한다(티켓 20261121_1722).
+ * 반환: `{ errors, warnings, bundle }` — 오류가 없으면 `bundle`에 정규화된 묶음이 담기고
  * (`bundle.image.abs_path` 이미지 절대경로·`bundle.image.bytes` 원본 크기가 추가된다), 있으면 null이다.
  * (이 파일은 JSDoc 타입 주석을 쓰지 않는다 — TS 테스트가 이 .mjs를 import할 때 추론이 좁아져 호출이
  * 막히는 것을 피한다.)
  */
-export function validateHomeFeedBundle(raw, { bundleFile }) {
+export function validateHomeFeedBundle(raw, { bundleFile, presetLayerKeys }) {
   const errors = []
+  const warnings = []
   if (!isPlainObject(raw)) {
-    return { errors: ['묶음 파일의 최상위는 객체여야 해요.'], bundle: null }
+    return { errors: ['묶음 파일의 최상위는 객체여야 해요.'], warnings, bundle: null }
   }
 
   const unknown = unknownKeys(raw, BUNDLE_TOP_REQUIRED)
@@ -254,12 +275,13 @@ export function validateHomeFeedBundle(raw, { bundleFile }) {
 
   if (isPresent(raw.world_review)) validateWorldReview(errors, raw.world_review)
   if (isPresent(raw.card)) validateCard(errors, raw.card)
-  const imageInfo = isPresent(raw.image) ? validateImage(errors, raw.image, bundleFile) : { absPath: null, bytes: null }
+  const imageInfo = isPresent(raw.image) ? validateImage(errors, raw.image, bundleFile, { presetLayerKeys, warnings }) : { absPath: null, bytes: null }
 
-  if (errors.length > 0) return { errors, bundle: null }
+  if (errors.length > 0) return { errors, warnings, bundle: null }
 
   return {
     errors,
+    warnings,
     bundle: {
       ...raw,
       image: { ...raw.image, abs_path: imageInfo.absPath, bytes: imageInfo.bytes },

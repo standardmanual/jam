@@ -138,8 +138,9 @@ function undoCommand(recordPath) {
  * `--dry-run` 결과를 컨펌 자료로 읽을 수 있는 한국어 요약으로 만든다.
  * - `errors`: 고쳐야 할 사유 전체(묶음 검증 + 등록 기록 중복 + DB 읽기 검사 실패). 비어 있으면 통과다.
  * - `bundle`이 null이면(묶음 검증 실패) 사유만 보여 준다.
+ * - `warnings`(선택)가 있으면 «[알림]» 절로 보여 준다(막지 않는다).
  */
-export function formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks, webp = /** @type {any} */ (undefined), recordDir }) {
+export function formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks, webp = /** @type {any} */ (undefined), recordDir, warnings = [] }) {
   const lines = []
   // DB 읽기 검사를 건너뛴 요약(서비스 키 없음)은 중복·존재 검사가 빠진 결과라, 첫 줄에서 «통과»만 읽히지 않게 함께 적는다(배지판과 같은 표기).
   const dbChecksSkipped = dbChecks.some((check) => check.status === '건너뜀')
@@ -158,6 +159,12 @@ export function formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks,
   if (errors.length > 0) {
     lines.push('', '[고쳐야 할 점]')
     for (const reason of errors) lines.push(`- ${reason}`)
+  }
+
+  // 막지 않는 알림(예: 글자 층이 없는 프리셋의 image.text, 티켓 20261121_1722). 없으면 이 절을 그리지 않는다.
+  if (warnings.length > 0) {
+    lines.push('', '[알림]')
+    for (const warning of warnings) lines.push(`- ${warning}`)
   }
 
   if (bundle) {

@@ -10,22 +10,28 @@
  * node scripts/asset-generator/contrast.mjs --bg "#8a5a2e" --end "#3d2812"
  * → {"bg":{"color":"#8a5a2e","ratio":5.86,"large":true,"normal":true},"end":{"color":"#3d2812","ratio":13.9,"large":true,"normal":true},"pass":{"large":true,"normal":true}}
  * ```
+ * 글자 층이 없는 프리셋(홈피드 카드 이미지)이면 `--no-text`를 붙인다: 계산하지 않고 `{"skipped":true,"reason":"…"}`를 찍고 종료 코드 0으로 끝낸다.
  * `pass`는 두 색이 모두 통과해야 true다. 계산 결과가 기준 미달이어도 종료 코드는 0이다(판정은 출력을 읽는
  * 쪽이 한다). 인자 누락·색 형식 오류는 한국어 메시지를 stderr에 찍고 종료 코드 1로 끝난다.
  */
-import { judgeWhiteText, parseContrastArgs } from './contrastMath.mjs'
+import { CONTRAST_SKIPPED_RESULT, judgeWhiteText, parseContrastArgs } from './contrastMath.mjs'
 
 try {
-  const { bg, end } = parseContrastArgs(process.argv.slice(2))
-  const bgResult = judgeWhiteText(bg)
-  const endResult = judgeWhiteText(end)
-  console.log(
-    JSON.stringify({
-      bg: bgResult,
-      end: endResult,
-      pass: { large: bgResult.large && endResult.large, normal: bgResult.normal && endResult.normal },
-    })
-  )
+  const { bg, end, noText } = parseContrastArgs(process.argv.slice(2))
+  if (noText) {
+    // 글자 층이 없는 프리셋(홈피드 카드 이미지, 7회차)은 흰 글자가 올라가지 않으니 계산하지 않고 성공으로 끝낸다(티켓 20261121_1722).
+    console.log(JSON.stringify(CONTRAST_SKIPPED_RESULT))
+  } else {
+    const bgResult = judgeWhiteText(bg)
+    const endResult = judgeWhiteText(end)
+    console.log(
+      JSON.stringify({
+        bg: bgResult,
+        end: endResult,
+        pass: { large: bgResult.large && endResult.large, normal: bgResult.normal && endResult.normal },
+      })
+    )
+  }
 } catch (e) {
   console.error(e instanceof Error ? e.message : String(e))
   process.exit(1)

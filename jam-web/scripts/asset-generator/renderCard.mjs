@@ -29,8 +29,8 @@ import { fetchPresetFromAdminApi, normalizePreset, pickPresetSource, resolveEnv 
 /**
  * 프리셋·색·텍스트·시드로 PNG 한 장을 그려 돌려준다.
  * 인자: `{ preset(프리셋 id), bg, end, values?, seed? }` — 의미는 `renderArgs.mjs`의 `parseRenderArgs` 결과와 같다(`values`는 레이어 번호 값 맵).
- * 반환: `{ buffer(PNG), seed(마스터 시드), stage: { w, h }, presetSource('admin-api' | 'service-role'), layers: { applied, saved } }`
- * — `layers`는 값을 지정한 번호와 프리셋에 저장된 값을 쓴 번호 목록이다.
+ * 반환: `{ buffer(PNG), seed(마스터 시드), stage: { w, h }, presetSource('admin-api' | 'service-role'), layers: { applied, saved, ignored? } }`
+ * — `layers`는 값을 지정한 번호와 프리셋에 저장된 값을 쓴 번호 목록이다. 홈피드 프리셋이면 프리셋에 없어 무시한 번호 목록 `ignored`가 더해진다.
  * 어떤 오류든 한국어 메시지의 Error를 던진다(기본 글꼴로 조용히 대체하지 않는다).
  */
 export async function renderCardPng(args, deps = {}) {
@@ -64,7 +64,10 @@ export async function renderCardPng(args, deps = {}) {
 
   // 레이어 값 적용: `--text01`·`--img01`처럼 어드민 화면과 같은 번호로 지정한 값을 넣는다. 지정하지 않은 번호는
   // 프리셋에 저장된 값을 그대로 쓴다. 규칙·오류 처리는 applyLayerValues.mjs 상단 주석 참고.
-  const { layers: overlayLayers, applied, saved } = applyLayerValues(preset.layers, args.values ?? {})
+  // 홈피드 프리셋(`target_type = home_feed`, 카드 이미지)은 7회차에 글자·로고 층을 뺐다. 값(`--text01` 등)이 가리키는 층이 없어도 던지지 않고
+  // 무시해 `layers.ignored`로 알린다(티켓 20261121_1722). 배지·미션·컬렉션 프리셋은 이전처럼 엄격하다(없는 번호면 오류).
+  const ignoreMissingKeys = preset.targetType === 'home_feed'
+  const { layers: overlayLayers, applied, saved, ignored } = applyLayerValues(preset.layers, args.values ?? {}, ignoreMissingKeys ? { ignoreMissingKeys } : {})
   const layerKeys = getLayerKeys(overlayLayers).map((entry) => entry.key)
 
   const masterSeed = args.seed ?? generateRandomSeed()
@@ -167,6 +170,6 @@ export async function renderCardPng(args, deps = {}) {
     seed: masterSeed,
     stage: { w: stageWidth, h: stageHeight },
     presetSource: picked.source,
-    layers: { applied, saved },
+    layers: ignored === undefined ? { applied, saved } : { applied, saved, ignored },
   }
 }

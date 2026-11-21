@@ -535,6 +535,66 @@ describe('validateHomeFeedBundle — 이미지', () => {
     expect(errorsFor((raw) => (raw.image.text = '한 줄\\n둘째 줄')).join('\n')).toContain('image.text: 제목은 줄바꿈 없이 한 줄이어야 해요');
   });
 
+  describe('프리셋의 글자 층 유무 (티켓 20261121_1722)', () => {
+    const tooLongTitle = '가나다라마바사아자차카타';
+    const tooLongSubtext = '가나다라마바사아자차카타파하가나다라마바사아자';
+    const check = (mutate: (raw: RawBundle) => void, presetLayerKeys?: string[] | null) => {
+      const raw = validRaw();
+      mutate(raw);
+      return validateHomeFeedBundle(raw, { bundleFile, presetLayerKeys });
+    };
+
+    it('글자 층이 없는 프리셋이면 글자 수가 넘어도 오류가 아니고 알림으로 남긴다', () => {
+      const { errors, warnings, bundle } = check((raw) => {
+        raw.image.text = tooLongTitle;
+        raw.image.subtext = `${tooLongSubtext}\n둘째\n셋째`;
+      }, ['img01']);
+      expect(errors).toEqual([]);
+      expect(bundle).not.toBeNull();
+      expect(warnings).toEqual([
+        expect.stringContaining('image.text: 이 프리셋에는 text01 글자 층이 없어서'),
+        expect.stringContaining('image.subtext: 이 프리셋에는 text02 글자 층이 없어서'),
+      ]);
+    });
+
+    it('글자 층이 있는 프리셋이면 지금과 똑같이 검사한다', () => {
+      const { errors, warnings } = check((raw) => (raw.image.text = tooLongTitle), ['text01', 'text02', 'img01']);
+      expect(errors.join('\n')).toContain('image.text: 홈피드 프리셋 글자 수 가이드를 넘어요');
+      expect(warnings).toEqual([]);
+    });
+
+    it('프리셋 번호를 모르면(생략·null) 지금처럼 검사하고 알림이 없다', () => {
+      for (const keys of [undefined, null]) {
+        const { errors, warnings } = check((raw) => (raw.image.subtext = tooLongSubtext), keys);
+        expect(errors.join('\n')).toContain('image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요');
+        expect(warnings).toEqual([]);
+      }
+    });
+
+    it('text01만 있는 프리셋이면 subtext만 검사에서 빠진다', () => {
+      const { errors, warnings } = check((raw) => {
+        raw.image.text = tooLongTitle;
+        raw.image.subtext = tooLongSubtext;
+      }, ['text01']);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('image.text:');
+      expect(warnings).toEqual([expect.stringContaining('image.subtext:')]);
+    });
+
+    it('글자 칸이 비어 있으면 알림도 없다', () => {
+      const { errors, warnings } = check((raw) => {
+        delete raw.image.text;
+        delete raw.image.subtext;
+      }, ['img01']);
+      expect(errors).toEqual([]);
+      expect(warnings).toEqual([]);
+    });
+
+    it('글자 칸이 문자열이 아니면 층이 없어도 형식 오류다', () => {
+      expect(check((raw) => (raw.image.text = 123), ['img01']).errors.join('\n')).toContain('image.text: 문자열이어야 해요');
+    });
+  });
+
   // visibleLength가 `.length`가 아니라 `[...s].length`를 쓰는 이유(서로게이트 쌍 보정)를 검증한다.
   // 이모지(😀, U+1F600)는 `.length`로는 2, `[...s].length`로는 1로 센다 — `.length`를 썼다면
   // hangul10 + 😀(11자)이 12자로 잘못 계산되어 거절됐을 입력이다.

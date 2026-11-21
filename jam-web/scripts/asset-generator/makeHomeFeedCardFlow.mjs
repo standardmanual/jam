@@ -55,7 +55,7 @@ export function extractDryRunFacts(logText, errorText = '') {
  * - `deps.renderPng(renderArgs)`: `{ buffer, seed, stage, presetSource }`를 돌려주는 렌더러(`renderCardPng`와 같은 계약).
  * - `deps.runDryRun(bundleFile)`: 등록 흐름의 `--dry-run`을 실행해 `{ exitCode, log, error }`를 돌려준다.
  * - `deps.now()`: 현재 시각(ms). `created_at` 기본값에 쓴다.
- * 반환: `{ exitCode, output }` — `output`은 표준 출력에 한 줄 JSON으로 찍을 객체다. 렌더가 실패하면 그 Error를 그대로 던진다.
+ * 반환: `{ exitCode, output }` — `output`은 표준 출력에 한 줄 JSON으로 찍을 객체다(프리셋에 없어 무시한 글자 번호가 있으면 `warnings` 문장 목록이 더해진다). 렌더가 실패하면 그 Error를 그대로 던진다.
  * 이미 등록한 묶음 폴더(`registration-record.json`이 있음)는 이미지를 덮어쓰지 않도록 렌더 전에 거절한다.
  */
 export async function makeHomeFeedCard({ args, deps }) {
@@ -69,6 +69,14 @@ export async function makeHomeFeedCard({ args, deps }) {
 
   const rendered = await deps.renderPng({ preset: args.preset, bg: args.bg, end: args.end, values: args.values, seed })
 
+  // 홈피드 프리셋에서 글자·로고 층을 뺀 뒤(7회차, 티켓 20261121_1722)에는 렌더러가 없는 번호를 무시하고 `layers.ignored`로 알린다.
+  // 그려지지 않은 글자는 묶음에 기록하지 않는다(기록하면 글자 수 검사에 걸리고 이미지와도 어긋난다). 층이 있는 프리셋은 이전과 같다.
+  const ignored = rendered.layers?.ignored ?? []
+  const warnings =
+    ignored.length > 0
+      ? [`이 프리셋에는 ${ignored.join('·')} 층이 없어서 그 값은 쓰지 않았어요. 카드 이미지에는 글자와 로고를 넣지 않아요.`]
+      : []
+
   const image = {
     path: IMAGE_FILE_NAME,
     seed: rendered.seed,
@@ -76,8 +84,8 @@ export async function makeHomeFeedCard({ args, deps }) {
     bg_color: args.bg,
     end_color: args.end,
     // 기록 필드 이름은 예전 그대로다: `text` = --text01 값, `subtext` = --text02 값(등록 묶음 형식은 바꾸지 않는다).
-    ...(args.values.text01 === undefined ? {} : { text: args.values.text01 }),
-    ...(args.values.text02 === undefined ? {} : { subtext: args.values.text02 }),
+    ...(args.values.text01 === undefined || ignored.includes('text01') ? {} : { text: args.values.text01 }),
+    ...(args.values.text02 === undefined || ignored.includes('text02') ? {} : { subtext: args.values.text02 }),
   }
   const bundle = {
     bundle_id: bundleId,
@@ -111,6 +119,7 @@ export async function makeHomeFeedCard({ args, deps }) {
       presetSource: rendered.presetSource,
       stage: rendered.stage,
       layers: rendered.layers,
+      ...(warnings.length > 0 ? { warnings } : {}),
       dryRun: {
         exitCode: dryRun.exitCode,
         result: facts.result,
