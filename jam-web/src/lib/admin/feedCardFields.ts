@@ -19,7 +19,7 @@ import type {
   TodayFeedType,
   TodayListItem,
 } from '@/types/database'
-import { isSafeListHref } from '@/components/today/feed/FeedGalleryListCard'
+import { isSafeListHref } from '@/lib/today/listHref'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
 import { assignFeedColors, type ExcludedColorPair } from '@/lib/today/feedAssign'
 import {

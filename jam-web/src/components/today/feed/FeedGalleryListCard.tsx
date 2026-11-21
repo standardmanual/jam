@@ -4,6 +4,7 @@ import SafeImage from '@/components/SafeImage'
 import type { FeedCardView, FeedCardViewListItem } from '@/lib/today/cardView'
 import { FEED_CARD_MIN_HEIGHT, FEED_GALLERY, feedColorVar } from '@/lib/today/feedConstants'
 import { d, t } from '@/lib/i18n'
+import { isSafeListHref } from '@/lib/today/listHref'
 import FeedChip from '../FeedChip'
 import { FeedCardShell, FeedTextBlock } from './FeedCardParts'
 
@@ -27,15 +28,8 @@ const LINK_CLASS =
 const NAME_CLASS = 'line-clamp-2 text-center text-xs font-bold text-foreground break-keep wrap-break-word'
 const TILE_CLASS = 'relative flex aspect-square items-center justify-center overflow-hidden rounded-xl'
 
-/**
- * 링크로 그려도 안전한 주소인가: 내부 경로(`/`로 시작하고 `//`·`/\`로 시작하지 않는 값) 또는 `https://`로 시작하는 값.
- * `javascript:`·`http:`·`//host`(프로토콜 상대)·`/\host`·빈 값·공백이 낀 값은 거짓이다.
- */
-export function isSafeListHref(href: string | null | undefined): href is string {
-  if (typeof href !== 'string' || href.length === 0 || /\s/.test(href)) return false
-  if (href.startsWith('/')) return !href.startsWith('//') && !href.startsWith('/\\')
-  return /^https:\/\//i.test(href)
-}
+/** 주소 안전 규칙은 순수 파일(`lib/today/listHref.ts`)로 옮겼다. 기존 가져오기가 깨지지 않게 같은 이름으로 다시 내보낸다(티켓 20261121_1530). */
+export { isSafeListHref }
 
 /** 칸 하나: 링크로 그릴 수 있으면(`href`) `Link`, 아니면 같은 모양의 `div`. */
 function Cell({ href, label, children }: { href?: string; label?: string; children: ReactNode }) {
