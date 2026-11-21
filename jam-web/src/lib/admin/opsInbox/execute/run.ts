@@ -22,6 +22,7 @@
  * - 결정 기록은 insert만 하고 뒤에 `slack_result` 열만 채운다(`notifyExecution`). 제출 원본(`original`)은 건드리지 않는다.
  */
 import type { Json } from '@/types/database.generated'
+import { coverColorsFields } from '@/lib/admin/coverColors'
 import { isUuid } from '@/lib/admin/uuid'
 import { MAX_DECISION_REASON_CHARS, MAX_ITEMS, OPS_DECISION_ACTION_EXECUTE, OPS_DECISION_ACTION_FAIL } from '@/lib/admin/opsInbox/constants'
 import { removeOpsImageFiles } from '@/lib/admin/opsInbox/image'
@@ -429,7 +430,7 @@ async function runGroup(ctx: RunContext, group: PrecheckGroup): Promise<GroupRes
         const written = await writeCreatedResource(ctx, item, handler.resourceKey, plannedId)
         if (written) return failGroup(ctx, items, created, item.id, written)
       }
-      const made = await guarded<ExecuteOutcome<{ id: string }>>(() => handler.create(ctx.service, prepared.value, { now: ctx.now }), asFailedOutcome)
+      const made = await guarded<ExecuteOutcome<{ id: string }>>(() => handler.create(ctx.service, prepared.value, { now: ctx.now, coverColorsFields }), asFailedOutcome)
       if (!made.ok) return failGroup(ctx, items, created, item.id, made.failure)
 
       const resourceId = made.value.id

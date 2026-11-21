@@ -53,6 +53,9 @@ export function isExecutableKind(kind: string | null | undefined): kind is Execu
 
 // ── 핸들러 인터페이스 ───────────────────────────────────────────────────────────────────────────
 
+/** 커버 이미지 주소 → 저장할 `cover_colors` 필드 조각. 실패하면 빈 객체다(`lib/admin/coverColors.ts`의 `coverColorsFields`와 같은 모양). */
+export type CoverColorsFieldsFn = (imageUrl: string | null | undefined) => Promise<{ cover_colors?: string[] }>
+
 /** 서버에서 쓰는 service-role 클라이언트. `create`·`undo`·`cancel`이 쓴다. */
 export type ExecuteServiceClient = ReturnType<typeof createServiceClient>
 
@@ -162,8 +165,16 @@ export interface ExecuteHandler<P = unknown> {
   ): ExecuteOutcome<ExecutePrepared<P>>
   /** 등록 전 DB 검사(참조 ID 존재·중복). 통과하면 `null`. `now`는 `prepare`와 같은 값이다. */
   check(client: RegisterChecksClient, prepared: ExecutePrepared<P>, context: { now: Date }): Promise<ExecuteFailure | null>
-  /** 자원을 만들고 그 ID를 돌려준다. `now`는 `prepare`와 같은 값이다. */
-  create(service: ExecuteServiceClient, prepared: ExecutePrepared<P>, context: { now: Date }): Promise<ExecuteOutcome<{ id: string }>>
+  /**
+   * 자원을 만들고 그 ID를 돌려준다. `now`는 `prepare`와 같은 값이다.
+   * `coverColorsFields`는 커버 이미지 주소에서 대표 색을 뽑는 서버 함수(`lib/admin/coverColors.ts`)다. 핸들러 파일은 순수 모듈 계약(번들 경계) 때문에 서버 모듈을 가져올 수 없어
+   * 실행 뼈대가 넘겨 준다(티켓 20261121_1724). 홈피드 카드 핸들러만 읽고, 없으면 색 없이 만든다.
+   */
+  create(
+    service: ExecuteServiceClient,
+    prepared: ExecutePrepared<P>,
+    context: { now: Date; coverColorsFields?: CoverColorsFieldsFn }
+  ): Promise<ExecuteOutcome<{ id: string }>>
   /** 이번 실행이 만든 자원을 지운다(지우기 전 참조 확인 포함). 지웠으면 `null`. */
   undo(service: ExecuteServiceClient, resourceId: string): Promise<ExecuteFailure | null>
   /**

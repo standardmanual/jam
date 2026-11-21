@@ -29,6 +29,7 @@ import { endError, endNotPublished, endResourceNow } from './endColumn'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient } from './handlers'
 import type {
   CancelResult,
+  CoverColorsFieldsFn,
   EndResult,
   ExecuteFailure,
   ExecuteHandler,
@@ -119,6 +120,20 @@ async function withFeedValues(
   }
 }
 
+/**
+ * 커버 이미지가 있으면 대표 색을 insert 행에 더할 조각을 만든다(티켓 20261121_1724). 추출 함수는 실행 뼈대가 넘겨 준다(서버 모듈을 값으로 가져오지 않는다는 계약).
+ * 함수가 없거나 이미지가 없거나 추출이 실패·예외면 빈 조각이다 — 색은 장식이라 등록을 막지 않는다(칸은 NULL=아직 안 뽑음).
+ */
+async function coverColorsOf(imageUrl: string | null | undefined, extract: CoverColorsFieldsFn | undefined): Promise<{ cover_colors?: string[] }> {
+  if (!extract || !imageUrl) return {}
+  try {
+    return await extract(imageUrl)
+  } catch (err) {
+    console.error(`[home_feed_card 커버 대표 색 추출 오류] 색 없이 등록해요`, messageOf(err))
+    return {}
+  }
+}
+
 export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = {
   kind: 'home_feed_card',
   resourceKey: RESOURCE_KEY_BY_KIND.home_feed_card,
@@ -150,8 +165,11 @@ export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = 
     return { reason: reasonOfCheck(result.checks.find((check) => check.status === '실패')), detail: result.errors.join(' / ') }
   },
 
-  async create(service: ExecuteServiceClient, prepared): Promise<ExecuteOutcome<{ id: string }>> {
-    const inserted = await service.from('today_cards').insert(await withFeedValues(service, prepared))
+  async create(service: ExecuteServiceClient, prepared, context): Promise<ExecuteOutcome<{ id: string }>> {
+    const base = await withFeedValues(service, prepared)
+    const colors = await coverColorsOf(prepared.payload.cover_image_url, context?.coverColorsFields)
+    const row = colors.cover_colors === undefined ? base : { ...base, ...colors }
+    const inserted = await service.from('today_cards').insert(row)
     if (!inserted.error) return { ok: true, value: { id: prepared.id } }
 
     // 오류 응답인데 행이 생긴 경우에 대비해 같은 ID로 한 번 지운다. 결과는 detail에만 적는다.

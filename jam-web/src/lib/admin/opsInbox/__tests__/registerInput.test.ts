@@ -683,8 +683,11 @@ describe('toTodayCardRegisterInput · 페이로드(결정 1·2)', () => {
       'show_description', 'stamp_enabled', 'stamp_slot', 'list_items', 'list_more_href', 'collection_burst', 'feed_seed',
     ]
     expect(feedRedesignPending.every((c) => columns.includes(c))).toBe(true)
+    // 마이그레이션 351(티켓 20261121_1724)의 cover_colors는 변환 결과가 아니라 등록 실행(`create`)이 이미지 주소에서 뽑아 insert 직전에 더한다.
+    const addedAtCreate = ['cover_colors']
+    expect(addedAtCreate.every((c) => columns.includes(c))).toBe(true)
     expect(Object.keys(full().payload ?? {}).sort()).toEqual(
-      columns.filter((c) => c !== 'created_at' && !feedRedesignPending.includes(c)).sort()
+      columns.filter((c) => c !== 'created_at' && !feedRedesignPending.includes(c) && !addedAtCreate.includes(c)).sort()
     )
   })
 })

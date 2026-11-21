@@ -85,6 +85,8 @@ interface Recorder {
   created: Record<string, string>
   /** 핸들러가 받은 현재 시각(티켓 20261002_2221 가정 4). 부른 순서대로 단계 이름과 함께 쌓는다. */
   nows: Array<{ step: 'prepare' | 'check' | 'create'; now: Date }>
+  /** `create`가 받은 context의 `coverColorsFields` 종류(티켓 20261121_1724). */
+  coverColorsFieldsTypes: string[]
 }
 
 function makeHandler(kind: ExecutableKind, rec: Recorder, options: Record<string, HandlerOptions>): ExecuteHandler {
@@ -112,9 +114,10 @@ function makeHandler(kind: ExecutableKind, rec: Recorder, options: Record<string
       if (optionsOf(key).throwOn === 'check') throw new Error(DB_SECRET)
       return optionsOf(key).failCheck ?? null
     },
-    create: async (_service, prepared, { now }) => {
+    create: async (_service, prepared, { now, coverColorsFields }) => {
       const key = prepared.item.item_key as string
       rec.events.push(`create:${key}`)
+      rec.coverColorsFieldsTypes.push(typeof coverColorsFields)
       rec.nows.push({ step: 'create', now })
       if (optionsOf(key).throwOn === 'create') throw new Error(DB_SECRET)
       const failure = optionsOf(key).failCreate
@@ -146,7 +149,7 @@ function setup(specs: ItemSpec[], options: Record<string, HandlerOptions> = {}, 
   const db = new FakeDb()
   db.tables.ops_bundles = [{ id: B, is_sample: false, ...bundle }]
   db.tables.ops_bundle_items = specs.map((spec) => ({ ...makeItem(spec), bundle_id: B }))
-  const rec: Recorder = { events: [], linked: {}, pointed: {}, created: {}, nows: [] }
+  const rec: Recorder = { events: [], linked: {}, pointed: {}, created: {}, nows: [], coverColorsFieldsTypes: [] }
   const handlers: ExecuteHandlerRegistry = Object.fromEntries(ALL_KINDS.map((kind) => [kind, makeHandler(kind, rec, options)]))
   const run = (itemIds: unknown) => executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR }, { handlers, now: () => NOW })
   return { db, rec, handlers, run }
@@ -425,6 +428,12 @@ describe('선점', () => {
     ok(await run([ID.badge, ID.recipe]))
 
     for (const entries of rec.pointed.badge) expect(entries).toEqual([{ kind: 'collection_launch', field: 'reward_badge_id' }])
+  })
+
+  it('create는 커버 대표 색 추출 함수(coverColorsFields)를 context로 받는다(티켓 20261121_1724)', async () => {
+    const { rec, run } = setup([{ id: ID.solo, key: 'solo', kind: 'mission' }])
+    ok(await run([ID.solo]))
+    expect(rec.coverColorsFieldsTypes).toEqual(['function'])
   })
 
   it('핸들러는 prepare·check·create 모두에서 이번 실행의 현재 시각을 받는다(티켓 20261002_2221 가정 4)', async () => {

@@ -307,6 +307,60 @@ describe('create — 정한 ID로 만든다', () => {
   })
 })
 
+describe('create — 커버 이미지의 대표 색 저장(티켓 20261121_1724)', () => {
+  const COVER = 'https://cdn.example.com/card.webp'
+
+  it('실행 뼈대가 넘긴 추출 함수의 결과를 insert 행에 싣고, 추출 함수는 커버 주소로 부른다', async () => {
+    const db = new FakeDb()
+    const extract = vi.fn(async (_url: string | null | undefined) => ({ cover_colors: ['#ff8800', '#2244aa'] }))
+    const outcome = await handler.create(db.service, prepared(cardItem({ cover_image_url: COVER })), { now: NOW, coverColorsFields: extract })
+    expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+    expect(extract).toHaveBeenCalledWith(COVER)
+    expect(db.tables.today_cards[0]).toMatchObject({ id: CARD_ID, cover_image_url: COVER, cover_colors: ['#ff8800', '#2244aa'] })
+  })
+
+  it('색이 없는 이미지([])도 «뽑았는데 없음»으로 싣는다', async () => {
+    const db = new FakeDb()
+    await handler.create(db.service, prepared(cardItem({ cover_image_url: COVER })), { now: NOW, coverColorsFields: async () => ({ cover_colors: [] }) })
+    expect(db.tables.today_cards[0].cover_colors).toEqual([])
+  })
+
+  it('추출이 빈 결과(실패·동영상·저장소 밖)면 cover_colors 없이 만든다', async () => {
+    const db = new FakeDb()
+    const outcome = await handler.create(db.service, prepared(cardItem({ cover_image_url: COVER })), { now: NOW, coverColorsFields: async () => ({}) })
+    expect(outcome.ok).toBe(true)
+    expect('cover_colors' in db.tables.today_cards[0]).toBe(false)
+  })
+
+  it('추출이 던져도 등록은 성공하고 cover_colors는 싣지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = new FakeDb()
+    const outcome = await handler.create(db.service, prepared(cardItem({ cover_image_url: COVER })), {
+      now: NOW,
+      coverColorsFields: async () => {
+        throw new Error('boom')
+      },
+    })
+    expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+    expect('cover_colors' in db.tables.today_cards[0]).toBe(false)
+    errorSpy.mockRestore()
+  })
+
+  it('커버 이미지가 없으면 추출 함수를 부르지 않는다', async () => {
+    const db = new FakeDb()
+    const extract = vi.fn(async (_url: string | null | undefined) => ({ cover_colors: ['#ff8800'] }))
+    await handler.create(db.service, prepared(), { now: NOW, coverColorsFields: extract })
+    expect(extract).not.toHaveBeenCalled()
+    expect('cover_colors' in db.tables.today_cards[0]).toBe(false)
+  })
+
+  it('추출 함수를 넘기지 않으면(옛 호출) 색 없이 만든다', async () => {
+    const db = new FakeDb()
+    await handler.create(db.service, prepared(cardItem({ cover_image_url: COVER })), { now: NOW })
+    expect('cover_colors' in db.tables.today_cards[0]).toBe(false)
+  })
+})
+
 describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티켓 20261121_1531)', () => {
   const COLOR_KEYS = ['bg_color_key', 'chip_color_key', 'box_color_key'] as const
   const FEED_COLORS: readonly string[] = FEED_COLOR_KEYS
