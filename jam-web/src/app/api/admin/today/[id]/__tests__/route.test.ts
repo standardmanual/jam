@@ -44,6 +44,8 @@ const fakeClient = {
 }
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => fakeClient }))
+// 커버 대표 색 추출(sharp·fetch)은 이 시험의 관심사가 아니라 막아 둔다(티켓 20261121_1724). 저장 동작은 ../../__tests__/route.test.ts가 본다.
+vi.mock('@/lib/badgeColorExtract', () => ({ extractBadgeColors: async () => null }))
 vi.mock('@/lib/admin/auth', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/admin/auth')>()),
   requireAdmin: async () => null,

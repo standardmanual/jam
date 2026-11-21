@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
+import { coverColorsFieldsIfChanged, type CoverColorsFields } from '@/lib/admin/coverColors'
 import {
   createFeedSeed,
   decideFeedCardValues,
@@ -114,6 +115,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 방침 A). 폼은 매번 전체 필드를 보내므로 기존 값과 비교하고, 본문에 cover_image_url이
   // 없고 개편 칸도 없으면 기존 행을 조회하지 않는다.
   let imageSourcePatch: { image_source?: null } = {}
+  // 커버 대표 색도 같은 시점에 같은 쓰기에 담는다(티켓 20261121_1724). 추출이 실패하면 빈 조각이고, 주소만 바뀐 UPDATE는 DB 트리거가 낡은 색을 비운다.
+  let coverColorsPatch: CoverColorsFields = {}
   let existing: ExistingCard | null = null
   if (body.cover_image_url !== undefined || touchesFeedColumns) {
     const { data: existingRow, error: existingError } = await supabase
@@ -129,6 +132,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     existing = existingRow
     if (body.cover_image_url !== undefined) {
       imageSourcePatch = imageSourceReset(existing.cover_image_url, body.cover_image_url)
+      coverColorsPatch = await coverColorsFieldsIfChanged(existing.cover_image_url, body.cover_image_url)
     }
   }
 
@@ -150,7 +154,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { data, error } = await supabase
     .from('today_cards')
-    .update({ ...safeBody, ...imageSourcePatch } as never)
+    .update({ ...safeBody, ...imageSourcePatch, ...coverColorsPatch } as never)
     .eq('id', id)
     .select()
     .single()

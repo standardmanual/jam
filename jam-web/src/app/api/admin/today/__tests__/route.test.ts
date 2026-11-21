@@ -15,6 +15,12 @@ import { assignFeedColors } from '@/lib/today/feedAssign'
 import { POST } from '../route'
 import { PATCH } from '../[id]/route'
 
+// 커버 대표 색 추출(sharp·fetch)은 모의로 대신한다(티켓 20261121_1724). 저장소 주소 판정 등 헬퍼 규칙은 coverColors.test.ts가 본다.
+const extractMock = vi.hoisted(() => vi.fn<(url: string) => Promise<string[] | null>>())
+vi.mock('@/lib/badgeColorExtract', () => ({ extractBadgeColors: (url: string) => extractMock(url) }))
+const COVER_A = 'https://proj.supabase.co/storage/v1/object/public/assets/today_cards/a.webp'
+const COVER_B = 'https://proj.supabase.co/storage/v1/object/public/assets/today_cards/b.webp'
+
 interface FakeState {
   existing: Record<string, unknown> | null
   usageRows: Array<{ bg_color_key: string | null }>
@@ -107,6 +113,8 @@ const COLOR_KEYS = ['bg_color_key', 'chip_color_key', 'box_color_key'] as const
 
 beforeEach(() => {
   resetState()
+  extractMock.mockReset()
+  vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://proj.supabase.co')
   vi.spyOn(console, 'error').mockImplementation(() => {})
   // 서버 난수를 고정한다(같은 입력은 같은 값이라는 결론을 확인하려고)
   vi.spyOn(crypto, 'getRandomValues').mockImplementation(((array: Uint32Array) => {
@@ -116,6 +124,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('POST /api/admin/today — 검증', () => {
@@ -291,5 +300,58 @@ describe('PATCH /api/admin/today/[id]', () => {
     const saved = state.updates[0]
     for (const key of COLOR_KEYS) expect(saved[key], key).toBeNull()
     expect(saved.feed_type).toBeNull()
+  })
+})
+
+describe('커버 대표 색 저장 (티켓 20261121_1724)', () => {
+  it('POST: 커버 이미지가 있으면 대표 색을 같은 insert에 담는다', async () => {
+    extractMock.mockResolvedValue(['#ff8800', '#2244aa'])
+    const res = await post({ ...BASE_BODY, cover_image_url: COVER_A })
+    expect(res.status).toBe(200)
+    expect(extractMock).toHaveBeenCalledWith(COVER_A)
+    expect(state.inserts[0]).toMatchObject({ cover_image_url: COVER_A, cover_colors: ['#ff8800', '#2244aa'] })
+  })
+
+  it('POST: 추출이 실패해도 저장은 성공하고 cover_colors를 싣지 않는다', async () => {
+    extractMock.mockResolvedValue(null)
+    const res = await post({ ...BASE_BODY, cover_image_url: COVER_A })
+    expect(res.status).toBe(200)
+    expect('cover_colors' in state.inserts[0]).toBe(false)
+  })
+
+  it('POST: 커버 이미지가 없으면 추출하지 않는다', async () => {
+    await post({ ...BASE_BODY })
+    expect(extractMock).not.toHaveBeenCalled()
+    expect('cover_colors' in state.inserts[0]).toBe(false)
+  })
+
+  it('PATCH: 커버 주소가 바뀌면 대표 색을 같은 update에 담는다', async () => {
+    state.existing = { cover_image_url: COVER_A, title: '제목' }
+    extractMock.mockResolvedValue(['#00aa55'])
+    const res = await patch({ cover_image_url: COVER_B })
+    expect(res.status).toBe(200)
+    expect(extractMock).toHaveBeenCalledWith(COVER_B)
+    expect(state.updates[0]).toMatchObject({ cover_image_url: COVER_B, cover_colors: ['#00aa55'], image_source: null })
+  })
+
+  it('PATCH: 커버 주소가 그대로면 추출하지 않고 cover_colors를 건드리지 않는다', async () => {
+    state.existing = { cover_image_url: COVER_A, title: '제목' }
+    await patch({ cover_image_url: COVER_A, title: '새 제목' })
+    expect(extractMock).not.toHaveBeenCalled()
+    expect('cover_colors' in state.updates[0]).toBe(false)
+  })
+
+  it('PATCH: 본문에 커버 주소가 없으면 추출하지 않는다', async () => {
+    await patch({ title: '새 제목' })
+    expect(extractMock).not.toHaveBeenCalled()
+    expect('cover_colors' in state.updates[0]).toBe(false)
+  })
+
+  it('PATCH: 바뀐 주소의 추출이 실패해도 저장은 성공하고 cover_colors를 싣지 않는다(트리거가 NULL로 비운다)', async () => {
+    state.existing = { cover_image_url: COVER_A, title: '제목' }
+    extractMock.mockRejectedValue(new Error('boom'))
+    const res = await patch({ cover_image_url: COVER_B })
+    expect(res.status).toBe(200)
+    expect('cover_colors' in state.updates[0]).toBe(false)
   })
 })

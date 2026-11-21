@@ -8,6 +8,7 @@ import {
   type FeedCardColumns,
 } from '@/lib/admin/feedCardFields'
 import { completeFeedCardValues } from '@/lib/admin/feedCardServer'
+import { coverColorsFields } from '@/lib/admin/coverColors'
 
 export async function GET() {
   const authError = await requireAdmin()
@@ -66,7 +67,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const insertPayload = { ...safeBody, created_by: admin?.id ?? null }
+  // 커버 이미지가 있으면 대표 색을 같은 insert에 담는다(티켓 20261121_1724). 추출이 실패하면 칸을 비워 둔다(NULL=아직 안 뽑음).
+  const coverColors = await coverColorsFields(typeof safeBody.cover_image_url === 'string' ? safeBody.cover_image_url : null)
+  const insertPayload = { ...safeBody, ...coverColors, created_by: admin?.id ?? null }
   const { data, error } = await supabase
     .from('today_cards')
     .insert(insertPayload)
