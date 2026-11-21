@@ -6,7 +6,7 @@ import { Switch } from '@/components/admin/ui/switch'
 import TodayCardPreview, { type PreviewCardAnnotation } from '@/app/admin/today/TodayCardPreview'
 import { formatKstDateLabel, previewBaseTime } from '@/lib/admin/today-calendar'
 import { toCardView, type CardView } from '@/lib/today/cardView'
-import { previewRenderArgs } from '@/lib/admin/opsInbox/imageSpec'
+import { previewRenderArgs, viewUsesFeedCoverImage } from '@/lib/admin/opsInbox/imageSpec'
 import { isImageShape } from '@/lib/today/shape'
 import { cn } from '@/lib/utils'
 import { OpsRationaleChips } from '../board/OpsRationaleChip'
@@ -94,7 +94,10 @@ export function withDraftImages(views: readonly CardView[], day: DayPreview, dra
   return views.map((view, index) => {
     const entry = day.entries[index]
     const url = entry && entry.source === 'pending' ? drafts.get(entry.id)?.url : null
-    return url && isImageShape(view.shape) && 'imageUrl' in view && !view.imageUrl ? { ...view, imageUrl: url } : view
+    if (!url) return view
+    // 옛 모양은 이미지가 비어 있을 때만, 개편 유형(커버 이미지를 쓰는 유형)은 저장된 커버가 없는 카드에만 그려진 이미지가 요청되므로 그대로 넣는다(티켓 20261121_1722)
+    if (isImageShape(view.shape) && 'imageUrl' in view && !view.imageUrl) return { ...view, imageUrl: url }
+    return viewUsesFeedCoverImage(view) ? { ...view, imageUrl: url } : view
   })
 }
 

@@ -7,6 +7,8 @@
 import { asRecord, itemField, type ViewableItem } from './itemView'
 import type { RenderPresetToPngArgs } from './imageRender.client'
 import { parseLayerKey } from '@/lib/asset-generator/layerKeys'
+import type { CardView } from '@/lib/today/cardView'
+import { feedTypeUsesCoverImage } from '@/lib/today/feedConstants'
 import { getAllowedAssetHost, isAllowedAssetUrl, stripUrlControlChars } from '@/lib/asset-generator/presetValidate'
 
 /** 이미지 칸이 있는 종류 네 개와 항목 `resource`의 이미지 칸 이름. 카드는 `cover_image_url`, 미션·배지·컬렉션은 `image_url`이다. */
@@ -44,6 +46,14 @@ export function hasResourceImage(item: ViewableItem & { kind: string | null }): 
 export function usesMissionImage(item: ViewableItem & { kind: string | null }): boolean {
   if (item.kind !== 'home_feed_card') return false
   return asRecord(itemField(item, 'resource'))?.template_type === 'mission_spotlight'
+}
+
+/**
+ * 미리보기 카드가 커버 이미지를 쓰는 개편 유형인가(티켓 20261121_1722). 옛 7모양 갈래(`shape`)와 개편 갈래(`feedType`)를 모두 받아 개편 갈래일 때만 `feedTypeUsesCoverImage`로 판정한다.
+ * 승인 전 미리보기가 «저장된 이미지 없음 → 미리 그리기»를 정할 때 옛 모양의 `isImageShape`와 나란히 쓴다.
+ */
+export function viewUsesFeedCoverImage(view: CardView): boolean {
+  return 'feedType' in view && feedTypeUsesCoverImage(view.feedType, view.look.boxKind)
 }
 
 export interface ImageSpec {
@@ -144,7 +154,12 @@ export function previewRenderArgs(spec: ImageSpec | null, itemId: string): Previ
  * `image_spec` 원값의 경고 문장. 값이 없거나 비어 있으면 「비어 있어요」 한 줄, 있으면 모양이 틀린 칸마다 한 줄이다.
  * 오류가 아니라 경고다 — 호출부가 `errors`에 넣지 않는다.
  */
-export function imageSpecWarnings(spec: unknown, path: string, allowedHost: string | null = getAllowedAssetHost()): string[] {
+export function imageSpecWarnings(
+  spec: unknown,
+  path: string,
+  allowedHost: string | null = getAllowedAssetHost(),
+  kind?: string | null,
+): string[] {
   const label = `${path}.image_spec`
   if (spec === undefined || spec === null) return [`${label}: 비어 있어요. 이미지 지시가 없으면 이미지를 자동으로 만들지 않아요.`]
   const record = asRecord(spec)
@@ -169,6 +184,13 @@ export function imageSpecWarnings(spec: unknown, path: string, allowedHost: stri
           warnings.push(`${label}.values.${k}: JAM! 저장소의 이미지 주소가 아니에요. 보안상 이 값은 이미지에 쓰이지 않아요. 저장소에 올린 이미지 주소나 / 로 시작하는 경로를 적어 주세요.`)
         }
       }
+    }
+  }
+  // 홈피드 카드 이미지에는 글자·로고를 넣지 않는다(7회차, 티켓 20261121_1722). `values`가 있어도 막지 않고 알린다. 다른 종류는 이전과 같다.
+  if (kind === 'home_feed_card') {
+    const values = asRecord(record.values)
+    if (values && Object.keys(values).length > 0) {
+      warnings.push(`${label}.values: 카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.`)
     }
   }
   if (record.preset_id === undefined || record.preset_id === null) {

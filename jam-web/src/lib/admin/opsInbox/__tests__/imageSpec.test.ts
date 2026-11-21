@@ -20,7 +20,9 @@ import {
   readImageSpec,
   stableImageSeed,
   usesMissionImage,
+  viewUsesFeedCoverImage,
 } from '../imageSpec'
+import type { CardView } from '@/lib/today/cardView'
 
 describe('종류별 이미지 칸', () => {
   it('카드는 cover_image_url, 미션·배지·컬렉션은 image_url, 그 밖은 null이다', () => {
@@ -234,5 +236,52 @@ describe('usesMissionImage (티켓 20261120_1825)', () => {
   it('종류가 카드가 아니면 템플릿 값이 같아도 false다', () => {
     expect(usesMissionImage(item('mission', 'mission_spotlight'))).toBe(false)
     expect(usesMissionImage(item(null, 'mission_spotlight'))).toBe(false)
+  })
+})
+
+describe('imageSpecWarnings — 홈피드 카드의 values (티켓 20261121_1722)', () => {
+  const base = { preset_id: 'p1', bg: '#111111', end: '#222222' }
+  const NOTICE = 'items[0].image_spec.values: 카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.'
+
+  it('카드 항목의 values가 비어 있지 않으면 경고 한 줄을 더한다(막지 않는다)', () => {
+    expect(imageSpecWarnings({ ...base, values: { text01: '제목', img01: '/images/a.png' } }, 'items[0]', null, 'home_feed_card')).toEqual([NOTICE])
+  })
+
+  it('values가 없거나 비어 있으면 경고하지 않는다', () => {
+    expect(imageSpecWarnings(base, 'items[0]', null, 'home_feed_card')).toEqual([])
+    expect(imageSpecWarnings({ ...base, values: {} }, 'items[0]', null, 'home_feed_card')).toEqual([])
+    expect(imageSpecWarnings({ ...base, values: null }, 'items[0]', null, 'home_feed_card')).toEqual([])
+  })
+
+  it('종류가 다르거나 종류를 모르면 이전과 똑같다(미션·배지·컬렉션의 values는 경고하지 않는다)', () => {
+    const spec = { ...base, values: { text01: '제목' } }
+    for (const kind of ['mission', 'jam_badge', 'collection_launch', undefined, null]) {
+      expect(imageSpecWarnings(spec, 'items[0]', null, kind), String(kind)).toEqual([])
+    }
+    expect(imageSpecWarnings(spec, 'items[0]')).toEqual([])
+  })
+
+  it('다른 경고와 함께 나온다(색이 없으면 색 경고도 낸다)', () => {
+    const warnings = imageSpecWarnings({ preset_id: 'p1', values: { text01: '제목' } }, 'items[0]', null, 'home_feed_card')
+    expect(warnings).toHaveLength(2)
+    expect(warnings[0]).toBe(NOTICE)
+    expect(warnings[1]).toContain('image_spec.bg·end: 없어요')
+  })
+})
+
+describe('viewUsesFeedCoverImage (티켓 20261121_1722)', () => {
+  const feed = (feedType: string, boxKind: string) => ({ feedType, imageUrl: null, look: { boxKind } }) as unknown as CardView
+  const old = (shape: string) => ({ shape, imageUrl: null }) as unknown as CardView
+
+  it('커버 이미지를 쓰는 개편 유형이면 참이다', () => {
+    expect(viewUsesFeedCoverImage(feed('hero_box', 'text'))).toBe(true)
+    expect(viewUsesFeedCoverImage(feed('collection_intro', 'text'))).toBe(true)
+    expect(viewUsesFeedCoverImage(feed('text_box', 'image_mask'))).toBe(true)
+  })
+
+  it('글자 박스·이미지를 만들지 않는 유형·옛 7모양 갈래는 거짓이다', () => {
+    expect(viewUsesFeedCoverImage(feed('text_box', 'text'))).toBe(false)
+    expect(viewUsesFeedCoverImage(feed('badge_intro', 'image_mask'))).toBe(false)
+    expect(viewUsesFeedCoverImage(old('hero'))).toBe(false)
   })
 })

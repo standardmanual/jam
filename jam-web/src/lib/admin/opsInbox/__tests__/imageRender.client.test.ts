@@ -5,6 +5,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@/app/admin/badges/bakePreviewToBlob', () => ({ canvasToBlob: async () => new Blob(['png']) }))
+
 import { brandLetterJSvgMarkup, fetchPreset, renderPresetToPngBlob, withTimeout } from '../imageRender.client'
 
 afterEach(() => {
@@ -101,6 +104,41 @@ describe('renderPresetToPngBlob', () => {
     await expect(renderPresetToPngBlob({ presetId: 'p', bg: '#000000', end: '#ffffff', seed: 1 }, deps)).rejects.toThrow(
       '폰트 시간 초과'
     )
+  })
+})
+
+describe('renderPresetToPngBlob — 프리셋 종류별 없는 번호 처리 (티켓 20261121_1722)', () => {
+  const canvas = {
+    width: 1,
+    height: 1,
+    getContext: () =>
+      new Proxy({} as Record<string, unknown>, {
+        get: (target, prop: string) =>
+          prop === 'createLinearGradient' || prop === 'createRadialGradient' ? () => ({ addColorStop: () => {} }) : (target[prop] ?? (() => {})),
+        set: (target, prop: string, value) => {
+          target[prop] = value
+          return true
+        },
+      }),
+  }
+  const deps = {
+    canvasFactory: () => canvas as never,
+    imageLoader: async () => canvas as never,
+    fontLoader: async () => {},
+    loadBase: async () => canvas as never,
+  }
+  const args = { presetId: 'p', bg: '#000000', end: '#ffffff', seed: 1, values: { text01: '제목', img01: '/abs/logo.png' } }
+  const stubPreset = (targetType: string) =>
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ preset: { id: 'p', stageRatio: '1:1', targetType, layers: [] } }), { status: 200 })))
+
+  it('홈피드 프리셋은 글자·로고 층이 없어도 values를 무시하고 PNG를 만든다', async () => {
+    stubPreset('home_feed')
+    await expect(renderPresetToPngBlob(args, deps)).resolves.toBeInstanceOf(Blob)
+  })
+
+  it.each(['badge', 'mission', 'collection'])('%s 프리셋은 이전처럼 없는 번호면 던진다', async (targetType) => {
+    stubPreset(targetType)
+    await expect(renderPresetToPngBlob(args, deps)).rejects.toThrow('이 프리셋에 없는 번호예요')
   })
 })
 

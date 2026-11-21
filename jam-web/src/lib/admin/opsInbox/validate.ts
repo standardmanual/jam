@@ -765,7 +765,7 @@ function validateItem(
   // image_spec: 선택 칸이다. 이미지 칸이 있는 종류에서 비어 있거나, 값이 있는데 모양이 틀리면 경고만 낸다(오류 아님).
   // 홈피드 개편 칸의 경고(칩 12자 초과·색 규칙 등, 티켓 20261121_1530)도 같은 자리에 더한다.
   const warnings = [
-    ...(isImageKind(kind) || isPresent(raw.image_spec) ? imageSpecWarnings(raw.image_spec, path) : []),
+    ...(isImageKind(kind) || isPresent(raw.image_spec) ? imageSpecWarnings(raw.image_spec, path, undefined, kind) : []),
     ...cardFieldWarnings,
   ]
 

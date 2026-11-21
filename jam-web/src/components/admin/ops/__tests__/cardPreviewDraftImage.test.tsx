@@ -138,3 +138,38 @@ describe('OpsCardPreview 승인 전 이미지 바로 그리기', () => {
     expect(post).not.toHaveBeenCalled()
   })
 })
+
+describe('OpsCardPreview 개편 유형의 승인 전 이미지 바로 그리기 (티켓 20261121_1722)', () => {
+  /** 옛 `shape` 없이 `resource.feed_type`만 있는 개편 카드 항목 */
+  const feedCard = (resource: Record<string, unknown>, over: { status?: string; image_spec?: unknown } = {}) =>
+    card({ status: over.status, original: { shape: undefined, resource, ...('image_spec' in over ? { image_spec: over.image_spec } : {}) } })
+
+  it('hero_box는 커버 이미지가 없으면 요청하고 그려진 주소를 이미지 칸에 넣는다', () => {
+    snapshot = new Map([['item-1', { status: 'ready', url: 'blob:http://localhost/feed', tempColor: false }]])
+    const out = html(<OpsCardPreview item={feedCard({ feed_type: 'hero_box' })} />)
+    expect(lastRequests()).toHaveLength(1)
+    expect(lastRequests()[0]).toMatchObject({ id: 'item-1', args: { presetId: 'p1', seed: stableImageSeed('item-1') } })
+    expect(out).toContain('blob:http://localhost/feed')
+    expect(out).toContain(PREVIEW_IMAGE_DRAWN_TEXT)
+  })
+
+  it('text_box는 이미지 마스크일 때만 요청한다', () => {
+    html(<OpsCardPreview item={feedCard({ feed_type: 'text_box', box_kind: 'image_mask' })} />)
+    expect(lastRequests()).toHaveLength(1)
+    html(<OpsCardPreview item={feedCard({ feed_type: 'text_box', box_kind: 'text' })} />)
+    expect(lastRequests()).toEqual([])
+  })
+
+  it('커버 이미지가 이미 있거나 이미지를 만들지 않는 유형이면 요청하지 않는다', () => {
+    html(<OpsCardPreview item={feedCard({ feed_type: 'hero_box', cover_image_url: 'https://example.com/a.png' })} />)
+    expect(lastRequests()).toEqual([])
+    html(<OpsCardPreview item={feedCard({ feed_type: 'badge_only' })} />)
+    expect(lastRequests()).toEqual([])
+  })
+
+  it('제작 대상 상태(승인됨)면 요청하지 않고 「이미지 제작 필요」를 보인다', () => {
+    const out = html(<OpsCardPreview item={feedCard({ feed_type: 'hero_box' }, { status: 'approved' })} />)
+    expect(lastRequests()).toEqual([])
+    expect(out).toContain(PREVIEW_IMAGE_NEEDED_TEXT)
+  })
+})

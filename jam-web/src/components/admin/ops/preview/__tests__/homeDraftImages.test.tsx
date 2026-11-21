@@ -87,3 +87,46 @@ describe('withDraftImages', () => {
     expect(post).not.toHaveBeenCalled()
   })
 })
+
+describe('개편 유형 (티켓 20261121_1722)', () => {
+  const feedPending = (id: string, columns: Record<string, unknown>): PreviewEntry => {
+    const base = pending(id, [], 'brief')
+    return { ...base, card: makeCard(id, { feed_seed: 7, ...columns } as never), imageSpec: SPEC }
+  }
+  const day = makeDay('2026-10-07', [
+    feedPending('f-hero', { feed_type: 'hero_box' }),
+    feedPending('f-mask', { feed_type: 'text_box', box_kind: 'image_mask' }),
+    feedPending('f-text', { feed_type: 'text_box', box_kind: 'text' }),
+    feedPending('f-badge', { feed_type: 'badge_only' }),
+  ])
+  const views = day.entries.map((e) => toCardView(e.card, { now: new Date('2026-10-07T00:00:00Z') }))
+  const ready = (url: string) => ({ status: 'ready' as const, url, tempColor: false })
+
+  it('커버가 없는 승인 전 개편 카드는 유형과 상관없이 그리기를 요청한다(요청은 저장된 커버 유무로만 거른다)', () => {
+    expect(draftImageRequestsFor(day).map((r) => r.id)).toEqual(['f-hero', 'f-mask', 'f-text', 'f-badge'])
+  })
+
+  it('커버 이미지를 쓰는 유형(히어로·이미지 마스크 텍스트 박스)에만 그려진 주소를 넣는다', () => {
+    const drafts: DraftImageSnapshot = new Map([
+      ['f-hero', ready('blob:hero')],
+      ['f-mask', ready('blob:mask')],
+      ['f-text', ready('blob:text')],
+      ['f-badge', ready('blob:badge')],
+    ])
+    const out = withDraftImages(views, day, drafts) as { imageUrl?: string | null }[]
+    expect(out[0].imageUrl).toBe('blob:hero')
+    expect(out[1].imageUrl).toBe('blob:mask')
+    expect(out[2].imageUrl).not.toBe('blob:text')
+    expect(out[3].imageUrl).not.toBe('blob:badge')
+  })
+
+  it('그리는 중이거나 실패한 개편 카드는 그대로다', () => {
+    const drafts: DraftImageSnapshot = new Map([
+      ['f-hero', { status: 'failed', url: null, tempColor: false }],
+      ['f-mask', { status: 'rendering', url: null, tempColor: false }],
+    ])
+    const out = withDraftImages(views, day, drafts)
+    expect(out[0]).toBe(views[0])
+    expect(out[1]).toBe(views[1])
+  })
+})

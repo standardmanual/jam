@@ -1162,13 +1162,26 @@ describe('패턴 제안 내용 칸 — resource.pattern (티켓 20261007_1746)',
 })
 
 describe('image_spec 경고 (티켓 20261007_1030)', () => {
-  const SPEC = { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' } }
+  // 카드 이미지에는 글자·로고를 넣지 않으므로(티켓 20261121_1722) 카드 항목의 «맞는» 지시에는 values가 없다
+  const SPEC = { preset_id: 'p1', bg: '#111111', end: '#222222' }
 
   it('모양이 맞는 image_spec은 오류도 경고도 없다', () => {
     const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: SPEC })] }))
     expect(result.errors).toEqual([])
     expect(result.warnings).toEqual([])
     expect(result.items[0].warnings).toEqual([])
+  })
+
+  it('카드 항목의 image_spec.values는 오류 없이 «쓰지 않아요» 경고만 낸다 (티켓 20261121_1722)', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: { ...SPEC, values: { text01: '제목' } } })] }))
+    expect(result.errors).toEqual([])
+    expect(result.items[0].format_errors).toEqual([])
+    expect(result.warnings).toEqual(['items[0].image_spec.values: 카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.'])
+  })
+
+  it('카드가 아닌 종류(미션)의 image_spec.values는 경고하지 않는다 (티켓 20261121_1722)', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind: 'mission', image_spec: { ...SPEC, values: { text01: '제목' } } })] }))
+    expect(result.warnings.filter((warning) => warning.includes('image_spec.values'))).toEqual([])
   })
 
   it('image_spec이 없는 기존 형태는 오류 없이 경고만 낸다', () => {
