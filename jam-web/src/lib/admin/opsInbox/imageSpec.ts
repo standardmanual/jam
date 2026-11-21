@@ -186,11 +186,13 @@ export function imageSpecWarnings(
       }
     }
   }
-  // 홈피드 카드 이미지에는 글자·로고를 넣지 않는다(7회차, 티켓 20261121_1722). `values`가 있어도 막지 않고 알린다. 다른 종류는 이전과 같다.
-  if (kind === 'home_feed_card') {
+  // 홈피드 카드·미션 이미지에는 글자·로고를 넣지 않는다(7회차, 티켓 20261121_1722·20261121_1726). `values`가 있어도 막지 않고 알린다.
+  // 배지·컬렉션 종류는 이전과 같다.
+  if (kind === 'home_feed_card' || kind === 'mission') {
     const values = asRecord(record.values)
     if (values && Object.keys(values).length > 0) {
-      warnings.push(`${label}.values: 카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.`)
+      const subject = kind === 'mission' ? '미션' : '카드'
+      warnings.push(`${label}.values: ${subject} 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.`)
     }
   }
   if (record.preset_id === undefined || record.preset_id === null) {

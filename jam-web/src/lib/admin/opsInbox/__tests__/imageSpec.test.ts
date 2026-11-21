@@ -239,7 +239,7 @@ describe('usesMissionImage (티켓 20261120_1825)', () => {
   })
 })
 
-describe('imageSpecWarnings — 홈피드 카드의 values (티켓 20261121_1722)', () => {
+describe('imageSpecWarnings — 홈피드 카드·미션의 values (티켓 20261121_1722·20261121_1726)', () => {
   const base = { preset_id: 'p1', bg: '#111111', end: '#222222' }
   const NOTICE = 'items[0].image_spec.values: 카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.'
 
@@ -253,9 +253,16 @@ describe('imageSpecWarnings — 홈피드 카드의 values (티켓 20261121_1722
     expect(imageSpecWarnings({ ...base, values: null }, 'items[0]', null, 'home_feed_card')).toEqual([])
   })
 
-  it('종류가 다르거나 종류를 모르면 이전과 똑같다(미션·배지·컬렉션의 values는 경고하지 않는다)', () => {
+  it('미션 항목의 values가 비어 있지 않으면 «미션 이미지» 문구로 경고 한 줄을 더한다(막지 않는다)', () => {
+    const notice = 'items[0].image_spec.values: 미션 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.'
+    expect(imageSpecWarnings({ ...base, values: { text01: '조건', text02: '이름' } }, 'items[0]', null, 'mission')).toEqual([notice])
+    expect(imageSpecWarnings(base, 'items[0]', null, 'mission')).toEqual([])
+    expect(imageSpecWarnings({ ...base, values: {} }, 'items[0]', null, 'mission')).toEqual([])
+  })
+
+  it('배지·컬렉션이거나 종류를 모르면 이전과 똑같다(values를 경고하지 않는다)', () => {
     const spec = { ...base, values: { text01: '제목' } }
-    for (const kind of ['mission', 'jam_badge', 'collection_launch', undefined, null]) {
+    for (const kind of ['jam_badge', 'collection_launch', undefined, null]) {
       expect(imageSpecWarnings(spec, 'items[0]', null, kind), String(kind)).toEqual([])
     }
     expect(imageSpecWarnings(spec, 'items[0]')).toEqual([])

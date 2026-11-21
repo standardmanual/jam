@@ -1179,9 +1179,18 @@ describe('image_spec 경고 (티켓 20261007_1030)', () => {
     expect(result.warnings).toEqual(['items[0].image_spec.values: 카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.'])
   })
 
-  it('카드가 아닌 종류(미션)의 image_spec.values는 경고하지 않는다 (티켓 20261121_1722)', () => {
+  it('미션 항목의 image_spec.values도 오류 없이 «쓰지 않아요» 경고만 낸다 (티켓 20261121_1726)', () => {
     const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind: 'mission', image_spec: { ...SPEC, values: { text01: '제목' } } })] }))
-    expect(result.warnings.filter((warning) => warning.includes('image_spec.values'))).toEqual([])
+    expect(result.warnings.filter((warning) => warning.includes('image_spec.values'))).toEqual([
+      'items[0].image_spec.values: 미션 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.',
+    ])
+  })
+
+  it('배지·컬렉션 종류의 image_spec.values는 경고하지 않는다 (티켓 20261121_1722)', () => {
+    for (const kind of ['jam_badge', 'collection_launch']) {
+      const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind, image_spec: { ...SPEC, values: { text01: '제목' } } })] }))
+      expect(result.warnings.filter((warning) => warning.includes('image_spec.values')), kind).toEqual([])
+    }
   })
 
   it('image_spec이 없는 기존 형태는 오류 없이 경고만 낸다', () => {

@@ -107,14 +107,18 @@ describe('renderPresetToPngBlob', () => {
   })
 })
 
-describe('renderPresetToPngBlob — 프리셋 종류별 없는 번호 처리 (티켓 20261121_1722)', () => {
+describe('renderPresetToPngBlob — 프리셋 종류별 없는 번호 처리 (티켓 20261121_1722·20261121_1726)', () => {
   const canvas = {
     width: 1,
     height: 1,
     getContext: () =>
       new Proxy({} as Record<string, unknown>, {
         get: (target, prop: string) =>
-          prop === 'createLinearGradient' || prop === 'createRadialGradient' ? () => ({ addColorStop: () => {} }) : (target[prop] ?? (() => {})),
+          prop === 'createLinearGradient' || prop === 'createRadialGradient'
+            ? () => ({ addColorStop: () => {} })
+            : prop === 'measureText'
+              ? () => ({ width: 1 })
+              : (target[prop] ?? (() => {})),
         set: (target, prop: string, value) => {
           target[prop] = value
           return true
@@ -128,17 +132,42 @@ describe('renderPresetToPngBlob — 프리셋 종류별 없는 번호 처리 (�
     loadBase: async () => canvas as never,
   }
   const args = { presetId: 'p', bg: '#000000', end: '#ffffff', seed: 1, values: { text01: '제목', img01: '/abs/logo.png' } }
-  const stubPreset = (targetType: string) =>
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ preset: { id: 'p', stageRatio: '1:1', targetType, layers: [] } }), { status: 200 })))
+  const textLayer = {
+    type: 'text',
+    id: 'a',
+    content: 'x',
+    font: { family: 'Noto Sans KR', weight: 700 },
+    sizePct: 10,
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    align: 'center',
+    color: '#fff',
+    xPct: 50,
+    yPct: 50,
+    rotationDeg: 0,
+    opacityPct: 100,
+  }
+  const stubPreset = (targetType: string, layers: unknown[] = []) =>
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ preset: { id: 'p', stageRatio: '1:1', targetType, layers } }), { status: 200 })))
 
-  it('홈피드 프리셋은 글자·로고 층이 없어도 values를 무시하고 PNG를 만든다', async () => {
-    stubPreset('home_feed')
+  it.each(['home_feed', 'mission'])('%s 프리셋은 글자·로고 층이 없어도 values를 무시하고 PNG를 만든다 (미션은 티켓 20261121_1726)', async (targetType) => {
+    stubPreset(targetType)
     await expect(renderPresetToPngBlob(args, deps)).resolves.toBeInstanceOf(Blob)
   })
 
-  it.each(['badge', 'mission', 'collection'])('%s 프리셋은 이전처럼 없는 번호면 던진다', async (targetType) => {
+  it.each(['home_feed', 'mission'])('%s 프리셋에 글자 층이 있으면 그 번호의 값은 이전처럼 적용하고 없는 번호만 무시한다', async (targetType) => {
+    stubPreset(targetType, [textLayer])
+    await expect(renderPresetToPngBlob({ ...args, values: { text01: '제목', img01: '/abs/logo.png' } }, deps)).resolves.toBeInstanceOf(Blob)
+  })
+
+  it.each(['badge', 'collection'])('%s 프리셋은 이전처럼 없는 번호면 던진다', async (targetType) => {
     stubPreset(targetType)
     await expect(renderPresetToPngBlob(args, deps)).rejects.toThrow('이 프리셋에 없는 번호예요')
+  })
+
+  it('미션 프리셋도 층이 있는데 번호 형식이 틀리면 이전처럼 던진다', async () => {
+    stubPreset('mission', [textLayer])
+    await expect(renderPresetToPngBlob({ ...args, values: { text1: 'x' } }, deps)).rejects.toThrow('번호 형식이 올바르지 않아요')
   })
 })
 
