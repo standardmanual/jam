@@ -112,7 +112,7 @@ export async function fetchFeedCardImageColors(
 
 /**
  * 비어 있는 시드와 색 키를 정한다(저장은 호출하는 쪽이 한다). 지정한 값은 덮어쓰지 않고, 같은 시드·같은 빈도는 같은 값이다.
- * 시드가 비어 있으면 서버 난수로 새로 뽑는다(`random`은 시험이 바꿔 끼운다). 제외 조합은 운영 코드에 연결된 목록이 없어 비워 둔다 —
+ * `columns.feed_seed`가 있으면 그 값이 색 계산 시드이자 저장 시드다(난수는 뽑지 않는다). 없을 때만 서버 난수로 새로 뽑는다(`random`은 시험이 바꿔 끼운다, 티켓 20261121_2113). 제외 조합은 운영 코드에 연결된 목록이 없어 비워 둔다 —
  * 연결되면 이 한 곳만 바꾸면 어드민과 에이전트 두 경로가 함께 바뀐다.
  * `imageSource`를 주면 이미지 대표 색(커버 색·배지 색)으로 자동 배경·칩을 거른다(티켓 20261121_1828). 주지 않으면 이전과 같다.
  */
@@ -126,5 +126,5 @@ export async function completeFeedCardValues(
 ): Promise<DecidedFeedCardValues> {
   const overlappingBgUsage = await fetchOverlappingBgUsage(client, period, logLabel)
   const image = imageSource ? await fetchFeedCardImageColors(client, imageSource, logLabel) : undefined
-  return decideFeedCardValues({ columns, seed: createFeedSeed(random), overlappingBgUsage, excludedPairs: [], image })
+  return decideFeedCardValues({ columns, seed: columns.feed_seed ?? createFeedSeed(random), overlappingBgUsage, excludedPairs: [], image })
 }

@@ -120,6 +120,25 @@ describe('completeFeedCardValues — 비어 있는 시드와 색 정하기', () 
     expect(FEED_COLOR_KEYS).toContain(decided.box_color_key) // 비어 있던 칸만 정한다
   })
 
+  it('feed_seed가 있으면 그 값이 색 계산 시드다: 난수를 뽑지 않고, 같은 값을 난수로 뽑았을 때와 같은 색·같은 저장 시드가 된다', async () => {
+    const random = vi.fn(() => 999)
+    const given = await completeFeedCardValues(dbWith([]).service, { feed_seed: 424242 }, period, random)
+    const drawn = await completeFeedCardValues(dbWith([]).service, {}, period, () => 424242)
+    expect(random).not.toHaveBeenCalled()
+    expect(given).toEqual(drawn)
+    expect(given.feed_seed).toBe(424242)
+    // 다른 난수가 들어와도 지정한 시드의 결과다
+    const other = await completeFeedCardValues(dbWith([]).service, { feed_seed: 424242 }, period, () => 1)
+    expect(other).toEqual(given)
+  })
+
+  it('feed_seed가 없으면 지금처럼 난수를 한 번 뽑아 시드로 쓴다', async () => {
+    const random = vi.fn(() => 5150)
+    const decided = await completeFeedCardValues(dbWith([]).service, { feed_seed: null }, period, random)
+    expect(random).toHaveBeenCalledTimes(1)
+    expect(decided.feed_seed).toBe(5150)
+  })
+
   it('같은 시드·같은 빈도는 같은 값이다', async () => {
     const rows = [{ id: 'a', bg_color_key: 'red', starts_at: STARTS, ends_at: ENDS }]
     const first = await completeFeedCardValues(dbWith(rows).service, {}, period, () => 777)
