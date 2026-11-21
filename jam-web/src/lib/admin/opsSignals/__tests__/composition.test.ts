@@ -250,6 +250,46 @@ describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
     expect(needsImageProduction({ status: 'approved', original: noImage('hero'), edited: { shape: 'list' } })).toBe(false)
   })
 
+  describe('개편 카드 유형(resource.feed_type, 티켓 20261121_1722)', () => {
+    const feedItem = (status: string, resource: Record<string, unknown>) =>
+      ({ status, original: { resource }, edited: null }) as Parameters<typeof needsImageProduction>[0]
+
+    it('hero_box·collection_intro는 이미지가 없으면 참이다(모양 칸이 없어도)', () => {
+      for (const feedType of ['hero_box', 'collection_intro']) {
+        expect(needsImageProduction(feedItem('approved', { feed_type: feedType })), feedType).toBe(true)
+      }
+    })
+
+    it('text_box는 box_kind가 image_mask일 때만 참이다', () => {
+      expect(needsImageProduction(feedItem('approved', { feed_type: 'text_box', box_kind: 'image_mask' }))).toBe(true)
+      expect(needsImageProduction(feedItem('approved', { feed_type: 'text_box', box_kind: 'text' }))).toBe(false)
+      expect(needsImageProduction(feedItem('approved', { feed_type: 'text_box' }))).toBe(false)
+    })
+
+    it('이미지를 만들지 않는 유형과 모르는 값은 거짓이다', () => {
+      for (const feedType of ['badge_intro', 'badge_only', 'drop_pickup', 'gallery_list', 'full_image', 'mystery', null]) {
+        expect(needsImageProduction(feedItem('approved', { feed_type: feedType })), String(feedType)).toBe(false)
+      }
+    })
+
+    it('커버 이미지가 있으면 거짓이고, 승인 이후 상태가 아니면 표시하지 않는다', () => {
+      expect(needsImageProduction(feedItem('approved', { feed_type: 'hero_box', cover_image_url: 'https://x.test/a.png' }))).toBe(false)
+      expect(needsImageProduction(feedItem('arrived', { feed_type: 'hero_box' }))).toBe(false)
+      expect(needsImageProduction(feedItem('live', { feed_type: 'hero_box' }))).toBe(false)
+    })
+
+    it('수정본의 resource가 원본보다 먼저다', () => {
+      const item = { status: 'approved', original: { resource: { feed_type: 'badge_only' } }, edited: { resource: { feed_type: 'hero_box' } } }
+      expect(needsImageProduction(item as Parameters<typeof needsImageProduction>[0])).toBe(true)
+    })
+
+    it('구성의 운영 묶음 카드에도 같은 값이 실린다', () => {
+      const item = makeItem({ status: 'approved', original: { resource: { feed_type: 'hero_box' } } })
+      const [day] = compose({ bundles: [makeBundle([item])] })
+      expect(day.cards[0].needsImageProduction).toBe(true)
+    })
+  })
+
   it('구성의 운영 묶음 카드에도 같은 값이 실린다', () => {
     const item = makeItem({ status: 'approved', original: noImage('poster') })
     const [day] = compose({ bundles: [makeBundle([item])] })

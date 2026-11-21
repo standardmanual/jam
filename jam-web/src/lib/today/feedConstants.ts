@@ -242,3 +242,19 @@ export const FEED_DROP_PICKUP = { rowHeight: 184, badgeSize: 80, columns: 3, gap
  * 칩(`card-top-right`)은 제목 위 칩 줄의 오른쪽 끝에 놓는다(절대 위치가 아니라 제목을 가리지 않는다. 샘플에는 목록형 칩이 없어 이 배치는 4회차 화면 실측 뒤 정했다).
  */
 export const FEED_GALLERY = { maxItems: 3, arrowIconSize: 32 } as const;
+
+// ── 카드 커버 이미지를 쓰는 유형 (티켓 20261121_1722, 상위 20261120_2026 7회차-1) ──────────────
+
+/**
+ * 이 유형이 카드의 커버 이미지(`cover_image_url`)를 쓰는가. 운영툴이 «이미지 제작 필요»를 띄우고 승인 전 미리보기가 이미지를 미리 그릴지 정하는 기준이다.
+ * - `hero_box`: 항상(히어로 이미지).
+ * - `text_box`: 박스 용도(`boxKind`)가 `image_mask`일 때만(이미지를 박스 모양으로 자른 마스크). 글자 박스(`text`)는 이미지가 없다.
+ * - `collection_intro`: 항상(컬렉션 대표 그림, 커버가 필수다).
+ * - `full_image`는 홈에서 꺼져 있어(`FEED_FULL_IMAGE_ENABLED`) 포함하지 않는다. `badge_intro`·`badge_only`·`drop_pickup`·`gallery_list`는 커버 이미지를 만들지 않는다.
+ * 모르는 값(null·undefined·다른 문자열)이면 거짓이다. 순수 함수라 서버·브라우저 어디서나 쓴다.
+ */
+export function feedTypeUsesCoverImage(feedType: unknown, boxKind?: unknown): boolean {
+  if (feedType === 'hero_box' || feedType === 'collection_intro') return true;
+  if (feedType === 'text_box') return boxKind === 'image_mask';
+  return false;
+}

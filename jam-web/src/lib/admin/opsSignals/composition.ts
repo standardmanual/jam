@@ -32,6 +32,7 @@ import {
 import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { kindLabel, kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { kstDayBoundsIso, shiftDateStr, todayKstDateString } from '@/lib/admin/today-calendar'
+import { feedTypeUsesCoverImage } from '@/lib/today/feedConstants'
 import { isImageShape, type CardShape } from '@/lib/today/shape'
 
 // ── 입력 ─────────────────────────────────────────────────────────────────────────────────────────
@@ -138,10 +139,15 @@ export function hasItemImage(item: ViewableItem): boolean {
 /**
  * 「이미지 제작 필요」 표시(A8, 신호가 아니라 표시만 한다). 승인됨·준비중·예약됨 항목(승인 직후 자동 제작이 끝나지 않았거나 실패한 것)의 모양이 이미지가 있는
  * 모양(`hero`·`poster`·`square`)인데 이미지가 없으면 참이다. 모양을 읽을 수 없으면(「모름」) 거짓이다.
+ * 개편 카드(`resource.feed_type`)는 모양 대신 유형으로 본다(티켓 20261121_1722): 커버 이미지를 쓰는 유형(`feedTypeUsesCoverImage`)이면 이미지가 없을 때 참이다.
+ * 모양과 유형이 모두 있으면 둘 중 하나라도 이미지가 필요하다고 하면 참이다. `feed_type`이 모르는 값이면 유형 쪽은 거짓이다.
  */
 export function needsImageProduction(item: ViewableItem & { status: string }): boolean {
   if (!OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)) return false
-  return isImageShape(readOpsItemShape(item)) && !hasItemImage(item)
+  if (hasItemImage(item)) return false
+  if (isImageShape(readOpsItemShape(item))) return true
+  const resource = asRecord(itemField(item, 'resource'))
+  return feedTypeUsesCoverImage(resource?.feed_type, resource?.box_kind)
 }
 
 /** 운영 묶음 카드 정렬 값: `resource.sort_order`(카드 테이블 칸 이름과 같다). 숫자가 아니면 null(A9). */

@@ -10,7 +10,8 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { FEED_BOX, FEED_CHIP_OFFSET, FEED_COLORS, FEED_COLOR_KEYS, FEED_TILTS, feedColorVar } from '../feedConstants'
+import { FEED_BOX, FEED_CHIP_OFFSET, FEED_COLORS, FEED_COLOR_KEYS, FEED_TILTS, feedColorVar, feedTypeUsesCoverImage } from '../feedConstants'
+import { FEED_TYPES } from '../feedChipSlots'
 
 const colorsCss = readFileSync(path.resolve(process.cwd(), 'design-system/tokens/colors.css'), 'utf8')
 
@@ -75,5 +76,39 @@ describe('박스·칩 자리 상수', () => {
   it('칩 자리 오프셋은 양수다', () => {
     expect(FEED_CHIP_OFFSET.x).toBeGreaterThan(0)
     expect(FEED_CHIP_OFFSET.y).toBeGreaterThan(0)
+  })
+})
+
+describe('feedTypeUsesCoverImage (티켓 20261121_1722)', () => {
+  it('hero_box와 collection_intro는 박스 용도와 상관없이 커버 이미지를 쓴다', () => {
+    for (const boxKind of [undefined, null, 'text', 'image_mask']) {
+      expect(feedTypeUsesCoverImage('hero_box', boxKind)).toBe(true)
+      expect(feedTypeUsesCoverImage('collection_intro', boxKind)).toBe(true)
+    }
+  })
+
+  it('text_box는 image_mask일 때만 쓴다', () => {
+    expect(feedTypeUsesCoverImage('text_box', 'image_mask')).toBe(true)
+    expect(feedTypeUsesCoverImage('text_box', 'text')).toBe(false)
+    expect(feedTypeUsesCoverImage('text_box', null)).toBe(false)
+    expect(feedTypeUsesCoverImage('text_box')).toBe(false)
+  })
+
+  it('full_image·badge_intro·badge_only·drop_pickup·gallery_list는 쓰지 않는다', () => {
+    for (const feedType of ['full_image', 'badge_intro', 'badge_only', 'drop_pickup', 'gallery_list']) {
+      expect(feedTypeUsesCoverImage(feedType, 'image_mask')).toBe(false)
+    }
+  })
+
+  it('모르는 값이면 거짓이다', () => {
+    for (const feedType of [null, undefined, '', 'unknown', 'HERO_BOX', 1]) {
+      expect(feedTypeUsesCoverImage(feedType, 'image_mask')).toBe(false)
+    }
+  })
+
+  it('유형 8개 전부를 판정한다(새 유형이 생기면 이 표를 함께 고친다)', () => {
+    expect(FEED_TYPES).toHaveLength(8)
+    const used = FEED_TYPES.filter((feedType) => feedTypeUsesCoverImage(feedType, 'image_mask'))
+    expect([...used].sort()).toEqual(['collection_intro', 'hero_box', 'text_box'])
   })
 })
