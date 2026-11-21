@@ -394,6 +394,19 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
     expect(Number.isInteger(row.feed_seed)).toBe(true)
   })
 
+  it('페이로드에 feed_seed가 있으면 그 값이 저장 시드이자 색 계산 시드다: 같은 시드는 몇 번을 등록해도 같은 색이다', async () => {
+    const colorsOf = async () => {
+      const db = new FakeDb()
+      const value = prepared(feedItem())
+      await handler.create(db.service, { ...value, payload: { ...value.payload, feed_seed: 20261121 } }, { now: NOW })
+      const row = db.tables.today_cards[0]
+      return { seed: row.feed_seed, bg: row.bg_color_key, chip: row.chip_color_key, box: row.box_color_key }
+    }
+    const first = await colorsOf()
+    expect(first.seed).toBe(20261121)
+    for (let i = 0; i < 5; i += 1) expect(await colorsOf()).toEqual(first)
+  })
+
   it('같은 시기에 노출되는 다른 카드의 배경색은 덜 쓰이게 피하고, 자기 자신은 빈도에서 뺀다', async () => {
     const db = new FakeDb()
     // 'green'을 뺀 모든 색이 같은 시기에 한 번씩 쓰이고 있다. 같은 ID의 옛 행(재시도 흔적)이 'green'을 쓰고 있어도 세지 않는다.
