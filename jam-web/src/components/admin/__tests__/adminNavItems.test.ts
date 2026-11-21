@@ -51,15 +51,22 @@ describe('NAV_GROUPS (티켓 20261022_2035: 그룹 단순화 6종 및 메뉴명 
     expect(NAV_GROUPS.map((g) => g.label)).toEqual(['라이브', '유저', '콘텐츠', '밸런스', '디자인', '시스템'])
   })
 
-  it('라이브 그룹은 맨 위에 있고 운영플랜·일정표·투데이·트렌드 레이더·패턴을 담는다', () => {
+  it('라이브 그룹은 맨 위에 있고 운영플랜·일정표·투데이·홈피드 컬러셋(티켓 20261121_2146)·트렌드 레이더·패턴을 담는다', () => {
     expect(NAV_GROUPS[0].id).toBe('live')
     expect(NAV_GROUPS[0].items.map((i) => [i.href, i.label])).toEqual([
       ['/admin/ops-inbox', '운영플랜'],
       ['/admin/ops-schedule', '일정표'],
       ['/admin/today', '투데이'],
+      ['/admin/feed-colors', '홈피드 컬러셋'],
       ['/admin/ops-trends', '트렌드 레이더'],
       ['/admin/ops-patterns', '패턴'],
     ])
+  })
+
+  it('홈피드 컬러셋 경로에서는 자기 자신만 활성이고 투데이는 아니다(티켓 20261121_2146)', () => {
+    expect(mostSpecificActiveItem('/admin/feed-colors')?.label).toBe('홈피드 컬러셋')
+    expect(mostSpecificActiveItem('/admin/today')?.label).toBe('투데이')
+    expect(activeNavGroupId('/admin/feed-colors')).toBe('live')
   })
 
   it('기획 상세 경로에서도 운영플랜이 활성이다', () => {
