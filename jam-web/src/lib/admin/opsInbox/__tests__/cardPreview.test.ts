@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { PREVIEW_NAME_UNKNOWN, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
-import { PREVIEW_TITLE_PLACEHOLDER, bundleBadgeNamesOf, itemToPreviewCard, linkedMissionOf, previewOf, previewViewOf, type PreviewItem } from '@/lib/admin/opsInbox/cardPreview'
+import { FEED_PREVIEW_SEED } from '@/app/admin/today/TodayCardForm'
+import {
+  PREVIEW_FEED_SEED,
+  PREVIEW_TITLE_PLACEHOLDER,
+  bundleBadgeNamesOf,
+  itemToPreviewCard,
+  linkedMissionOf,
+  previewFeedTypeOf,
+  previewOf,
+  previewViewOf,
+  type PreviewItem,
+} from '@/lib/admin/opsInbox/cardPreview'
 
 const NOW = new Date('2026-10-06T00:00:00.000Z')
 
@@ -277,5 +288,142 @@ describe('미션 소개 카드의 연결 미션 이미지 (티켓 20261120_1825)
     const reverse = { ...mission('https://x/m.png'), original: { links: ['c-1'], resource: {} } as never }
     expect(linkedMissionOf('c-1', noLinks, [reverse])?.kind).toBe('mission')
     expect(linkedMissionOf('c-1', card, [{ ...mission(null), kind: 'jam_badge' }])).toBeNull()
+  })
+})
+
+// ── 개편 칸 읽기 (티켓 20261121_1532, 상위 20261120_2026 6회차-3) ──────────
+
+describe('itemToPreviewCard — 개편 칸', () => {
+  const NEW_KEYS = [
+    'feed_type',
+    'box_shape',
+    'box_kind',
+    'bg_color_key',
+    'chip_color_key',
+    'box_color_key',
+    'chips',
+    'title_chip_words',
+    'show_description',
+    'stamp_enabled',
+    'stamp_slot',
+    'list_items',
+    'list_more_href',
+    'collection_burst',
+    'feed_seed',
+  ]
+  const feedCard = (resource: Record<string, unknown>, title = '우산 챙겨 달리기'): PreviewItem =>
+    card({
+      starts_at: '2026-10-07T00:00:00.000Z',
+      ends_at: '2026-10-08T00:00:00.000Z',
+      copy: { title, description: '비 오는 날의 달리기' },
+      resource: { template_type: 'editorial_article', cover_image_url: 'https://example.com/a.png', ...resource },
+    })
+
+  it('feed_type이 없으면 새 칸 키가 하나도 없다(옛 항목 결과 그대로)', () => {
+    const row = itemToPreviewCard(card(FULL), undefined, { now: NOW })!
+    for (const key of NEW_KEYS) expect(key in row).toBe(false)
+    const withoutType = itemToPreviewCard(feedCard({ bg_color_key: 'red' }), undefined, { now: NOW })!
+    for (const key of NEW_KEYS) expect(key in withoutType).toBe(false)
+    const emptyType = itemToPreviewCard(feedCard({ feed_type: '  ', bg_color_key: 'red' }), undefined, { now: NOW })!
+    for (const key of NEW_KEYS) expect(key in emptyType).toBe(false)
+  })
+
+  it('모르는 feed_type이면 새 칸을 하나도 싣지 않는다', () => {
+    const row = itemToPreviewCard(feedCard({ feed_type: 'banner_box', bg_color_key: 'red' }), undefined, { now: NOW })!
+    for (const key of NEW_KEYS) expect(key in row).toBe(false)
+  })
+
+  it('새 칸을 행의 같은 이름 칸에 싣고 고정 시드를 쓴다', () => {
+    const row = itemToPreviewCard(
+      feedCard({
+        feed_type: 'hero_box',
+        box_shape: 'wave',
+        bg_color_key: 'red',
+        chip_color_key: 'yellow',
+        box_color_key: 'blue',
+        chips: [{ kind: 'phrase', text: '이번 주', slot: 'image-top-left', tilt: -8 }],
+        title_chip_words: ['달리기'],
+        show_description: true,
+      }),
+      undefined,
+      { now: NOW },
+    )!
+    expect(row.feed_type).toBe('hero_box')
+    expect(row.bg_color_key).toBe('red')
+    expect(row.chip_color_key).toBe('yellow')
+    expect(row.box_color_key).toBe('blue')
+    expect(row.chips).toEqual([{ kind: 'phrase', text: '이번 주', slot: 'image-top-left', tilt: -8 }])
+    expect(row.title_chip_words).toEqual(['달리기'])
+    expect(row.show_description).toBe(true)
+    expect(row.feed_seed).toBe(PREVIEW_FEED_SEED)
+    expect(row.stamp_enabled).toBeNull()
+  })
+
+  it('고정 시드는 폼 미리보기(5회차-4)의 시드와 같다', () => {
+    expect(PREVIEW_FEED_SEED).toBe(FEED_PREVIEW_SEED)
+  })
+
+  it('허용 값이 아닌 칸은 싣지 않고 나머지는 그린다', () => {
+    const row = itemToPreviewCard(feedCard({ feed_type: 'hero_box', bg_color_key: 'magenta', chip_color_key: 'yellow' }), undefined, { now: NOW })!
+    expect(row.feed_type).toBe('hero_box')
+    expect(row.bg_color_key).toBeNull()
+    expect(row.chip_color_key).toBe('yellow')
+  })
+
+  it('모양이 틀린 값(칩이 배열이 아님·원소가 null)도 던지지 않고 그 칸만 뺀다', () => {
+    const notArray = itemToPreviewCard(feedCard({ feed_type: 'hero_box', chips: 'x', box_shape: 'wave' }), undefined, { now: NOW })!
+    expect(notArray.chips).toBeNull()
+    expect(notArray.box_shape).toBe('wave')
+    const nullItem = itemToPreviewCard(feedCard({ feed_type: 'hero_box', chips: [null] }), undefined, { now: NOW })!
+    expect(nullItem.chips).toBeNull()
+  })
+
+  it('제목에 없는 제목 속 칩 낱말은 싣지 않는다', () => {
+    const row = itemToPreviewCard(feedCard({ feed_type: 'hero_box', title_chip_words: ['없는낱말'] }), undefined, { now: NOW })!
+    expect(row.title_chip_words).toBeNull()
+  })
+
+  it('같은 항목은 언제 열어도 같은 결과다', () => {
+    const item = feedCard({ feed_type: 'text_box', bg_color_key: 'green' })
+    const a = itemToPreviewCard(item, undefined, { now: NOW })
+    const b = itemToPreviewCard(item, undefined, { now: new Date('2026-11-01T00:00:00.000Z') })
+    expect({ ...a, created_at: '' }).toEqual({ ...b, created_at: '' })
+  })
+
+  it('초안으로 바꾼 제목이 제목 속 칩 낱말 검사에 바로 반영된다', () => {
+    const item = feedCard({ feed_type: 'hero_box', title_chip_words: ['달리기'] })
+    expect(itemToPreviewCard(item, { 'copy.title': '새 제목' }, { now: NOW })!.title_chip_words).toBeNull()
+    expect(itemToPreviewCard(item, { 'copy.title': '비 오는 날 달리기' }, { now: NOW })!.title_chip_words).toEqual(['달리기'])
+  })
+
+  it('toCardView가 새 유형·색·칩·제목 칩을 그린다', () => {
+    const view = previewViewOf(
+      feedCard({
+        feed_type: 'hero_box',
+        bg_color_key: 'red',
+        chip_color_key: 'yellow',
+        box_color_key: 'blue',
+        chips: [{ kind: 'phrase', text: '이번 주', slot: 'image-top-left', tilt: -8 }],
+        title_chip_words: ['달리기'],
+      }),
+      undefined,
+      { now: NOW },
+    ) as { feedType?: string; look?: { colors: { bg: string; chip: string; box: string }; chips: { text: string }[]; titleChips: { words: string[] } } }
+    expect(view.feedType).toBe('hero_box')
+    expect(view.look?.colors).toEqual({ bg: 'red', chip: 'yellow', box: 'blue' })
+    expect(view.look?.chips.map((chip) => chip.text)).toEqual(['이번 주'])
+    expect(view.look?.titleChips.words).toEqual(['달리기'])
+  })
+
+  it('값이 없으면 옛 경로로 간다(컬렉션 소개에 커버가 없음)', () => {
+    const view = previewViewOf(feedCard({ feed_type: 'collection_intro', cover_image_url: '' }), undefined, { now: NOW }) as { feedType?: string }
+    expect(view.feedType).toBeUndefined()
+  })
+
+  it('previewFeedTypeOf: 새 유형만 유형을 돌려주고 옛 항목·다른 종류는 null이다', () => {
+    expect(previewFeedTypeOf(feedCard({ feed_type: 'gallery_list' }))).toBe('gallery_list')
+    expect(previewFeedTypeOf(card(FULL))).toBeNull()
+    expect(previewFeedTypeOf(feedCard({ feed_type: 'nope' }))).toBeNull()
+    expect(previewFeedTypeOf(card(FULL, null, 'mission'))).toBeNull()
   })
 })

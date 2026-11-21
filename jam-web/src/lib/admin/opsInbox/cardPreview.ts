@@ -3,8 +3,14 @@
  *
  * 저장 전 초안(`draft.values`)까지 덮은 항목에서 카드 칸을 관대하게 읽어 `toCardView`에 넘긴다. 없는 칸은 비우고, 제목이 비면
  * 「(제목 미입력)」이다. 홈피드 카드의 연결된 미션·배지·컬렉션은 읽지 않는다. 레시피·드랍은 서버가 읽어 내린 이름 맵을 받아 그린다(티켓 20261007_1401). 계측 정보(`tracking`)를
- * 싣지 않아 그리는 쪽이 트래커와 링크를 그리지 않는다. 카드(홈피드 카드)가 아닌 종류는 null이다.
+ * 싣지 않아 그리는 쪽이 트래커와 링크를 그리지 않는다. `resource`에 개편 칸(`feed_type` 등, 6회차-1)이 있으면 홈과 같은 새 카드 칸으로 싣는다(티켓 20261121_1532). 카드(홈피드 카드)가 아닌 종류는 null이다.
  */
+import {
+  FEED_CARD_BUNDLE_KEYS,
+  buildFeedCardBundleColumns,
+  checkFeedCardBundleColumns,
+  isFeedTypeWritten,
+} from '@/lib/admin/feedCardFields'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { OPS_FIELD_UNKNOWN, isOpsHomeFeedCard, readOpsItemExposureTags, readOpsItemShape } from '@/lib/admin/opsInbox/fields'
 import { asRecord, itemField, linksOf, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
@@ -13,7 +19,7 @@ import { EMPTY_PREVIEW_NAMES, PREVIEW_NAME_UNKNOWN, type OpsPreviewBadge, type O
 import { toCardView, type CardView } from '@/lib/today/cardView'
 import type { ResolvedMission, TodayCardWithHref } from '@/lib/today/cards'
 import { resolveTargetHref } from '@/lib/today/targetHref'
-import type { BadgeRarity, TodayCardLayoutType, TodayCardRow, TodayCardTemplateType } from '@/types/database'
+import type { BadgeRarity, TodayCardLayoutType, TodayCardRow, TodayCardTemplateType, TodayFeedType } from '@/types/database'
 
 export const PREVIEW_TITLE_PLACEHOLDER = '(제목 미입력)'
 
@@ -47,6 +53,61 @@ export interface PreviewOptions {
    * 커버로 그린다(홈 화면과 같은 규칙). 값은 표시용이다 — 카드의 `mission_id`는 null로 둔다.
    */
   linkedMission?: PreviewItem | null
+}
+
+/**
+ * 운영 항목에는 `feed_seed`가 없어(등록 때 시스템이 정한다, 6회차-2) 미리보기는 고정 시드를 쓴다. 같은 항목은 언제 열어도 같은 미리보기다.
+ * 값은 5회차-4 폼 미리보기의 `FEED_PREVIEW_SEED`(`app/admin/today/TodayCardForm.tsx`)와 같다. 그 파일은 클라이언트 컴포넌트라 이 순수 파일이 읽을 수 없어
+ * 값을 한 번 더 적고, 두 값이 같은지는 시험이 지킨다.
+ */
+export const PREVIEW_FEED_SEED = 1121
+
+/**
+ * 항목 `resource`의 새 칸을 미리보기 카드 행에 실을 값으로 읽는다(티켓 20261121_1532, 상위 20261120_2026 6회차-3).
+ * 검증(6-1)의 정규화를 그대로 쓰고, 허용 값이 아닌 칸은 싣지 않는다(미리보기는 검증이 아니라 그리는 도구다 — 오류 문장은 검증이 알린다).
+ * `feed_type`을 적지 않았거나 허용 값이 아니면 새 칸을 하나도 싣지 않는다(옛 7모양 미리보기 그대로). 항목에 시드가 없어 고정 시드를 싣는다.
+ */
+function previewFeedFields(resource: Readonly<Record<string, unknown>>, title: string | null): Partial<TodayCardRow> {
+  if (!isFeedTypeWritten(resource)) return {}
+  const rest: Record<string, unknown> = {}
+  for (const key of FEED_CARD_BUNDLE_KEYS) {
+    if (key in resource) rest[key] = resource[key]
+  }
+  // 오류가 가리키는 칸을 떼고 다시 검사한다. 한 번 떼어서 끝나지 않으면(여러 칸이 얽힌 경우) 몇 번 더 돌고, 그래도 남으면 새 칸을 싣지 않는다.
+  for (let round = 0; round < 4; round += 1) {
+    const { errors } = checkFeedCardBundleColumns(rest, { title })
+    if (errors.length === 0) {
+      const columns = buildFeedCardBundleColumns(rest)
+      return columns.feed_type ? { ...columns, feed_seed: PREVIEW_FEED_SEED } : {}
+    }
+    if (errors.some(({ key }) => key === 'feed_type')) return {}
+    let removed = false
+    for (const { key } of errors) {
+      if (key in rest) {
+        delete rest[key]
+        removed = true
+      }
+    }
+    if (!removed) return {}
+  }
+  return {}
+}
+
+/** 미리보기에 실리는 개편 카드 유형. 새 칸을 싣지 않는 항목(옛 7모양)은 null이다. 안내 줄이 새 유형 항목에만 나오게 하는 기준이다. */
+export function previewFeedTypeOf(item: PreviewItem, draftValues?: Readonly<Record<string, unknown>>): TodayFeedType | null {
+  if (!isOpsHomeFeedCard(item.kind)) return null
+  const merged = draftValues ? applyDraftToItem(item, draftValues) : item
+  const resource = asRecord(itemField(merged, 'resource')) ?? {}
+  const copy = asRecord(itemField(merged, 'copy')) ?? {}
+  return previewFeedFields(resource, titleOf(copy, resource)).feed_type ?? null
+}
+
+function titleOf(copy: Record<string, unknown>, resource: Record<string, unknown>): string | null {
+  for (const group of [copy, resource]) {
+    const value = group.title
+    if (typeof value === 'string' && value.trim() !== '') return value.trim()
+  }
+  return null
 }
 
 function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -110,6 +171,7 @@ export function itemToPreviewCard(
     image_source: null,
     shape: shape === OPS_FIELD_UNKNOWN ? null : shape,
     title_in_image: typeof titleInImage === 'boolean' ? titleInImage : null,
+    ...previewFeedFields(resource, titleOf(copy, resource)),
   }
   const resolvedMission = row.template_type === 'mission_spotlight' ? previewMissionOf(options.linkedMission, now) : null
   return { ...row, resolved_href: resolveTargetHref(row), resolved_badges: [], resolved_ranking: null, ...(resolvedMission ? { resolved_mission: resolvedMission } : {}) }

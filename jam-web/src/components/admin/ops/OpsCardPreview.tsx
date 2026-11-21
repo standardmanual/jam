@@ -17,7 +17,8 @@ import TodayCardPreview from '@/app/admin/today/TodayCardPreview'
 import { previewOf } from '@/lib/admin/opsInbox/cardPreview'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { entriesOf, itemField } from '@/lib/admin/opsInbox/itemView'
-import { bundleBadgeNamesOf, linkedMissionOf } from '@/lib/admin/opsInbox/cardPreview'
+import { bundleBadgeNamesOf, linkedMissionOf, previewFeedTypeOf } from '@/lib/admin/opsInbox/cardPreview'
+import { feedTypeValueNote } from '@/app/admin/today/FeedCardSection'
 import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
@@ -36,6 +37,8 @@ export const PREVIEW_IMAGE_DRAWN_TEXT = '승인하면 이 이미지로 만들어
 export const PREVIEW_IMAGE_TEMP_COLOR_TEXT = '색이 정해지지 않아 임시 색으로 보여요'
 /** 미션 소개 카드는 카드 이미지를 만들지 않고 연결된 미션의 대표 이미지를 커버로 쓴다(티켓 20261120_1825). */
 export const PREVIEW_IMAGE_MISSION_TEXT = '미션 대표 이미지를 써요'
+/** 개편 카드(새 유형) 미리보기 아래 안내: 비어 있는 색·칩 자리는 등록할 때 정해진다(티켓 20261121_1532). */
+export const PREVIEW_FEED_AUTO_TEXT = '색과 칩 자리는 등록할 때 정해져서 홈과 조금 다를 수 있어요'
 
 export interface OpsCardPreviewProps {
   item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'> & { status?: string; itemKey?: string | null }
@@ -68,6 +71,10 @@ export function OpsCardPreview({ item, draft, making = false, previewNames, bund
 
   if (!preview) return <p className="text-sm text-muted-foreground">{PREVIEW_NOT_CARD_TEXT}</p>
 
+  // 개편 카드(새 유형) 항목에만 안내 두 줄을 보인다. 값이 있어야 새 모습인 유형의 안내는 어드민 폼과 같은 문구다(5회차-2).
+  const feedType = preview.type === 'card' ? previewFeedTypeOf(item, draft) : null
+  const feedValueNote = feedTypeValueNote(feedType)
+
   const draftState = drawn ? drafts.get(item.id) : undefined
   const view = preview.type === 'card' && draftState?.url ? { ...preview.view, imageUrl: draftState.url } : null
   const colors = entriesOf(itemField(merged, 'colors')) ?? []
@@ -94,6 +101,8 @@ export function OpsCardPreview({ item, draft, making = false, previewNames, bund
   return (
     <div className="space-y-2">
       {preview.type === 'card' ? <TodayCardPreview views={[view ?? preview.view]} /> : <OpsKindPreview preview={preview} />}
+      {feedValueNote && <p className="text-xs text-muted-foreground break-keep wrap-break-word">{feedValueNote}</p>}
+      {feedType && <p className="text-xs text-muted-foreground break-keep wrap-break-word">{PREVIEW_FEED_AUTO_TEXT}</p>}
       {usesMission && preview.type === 'card' && 'imageUrl' in preview.view && !preview.view.imageUrl && (
         <p className="text-xs text-muted-foreground break-keep wrap-break-word">{PREVIEW_IMAGE_MISSION_TEXT}</p>
       )}

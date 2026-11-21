@@ -3,12 +3,14 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactElement } from 'react'
 import {
   OpsCardPreview,
+  PREVIEW_FEED_AUTO_TEXT,
   PREVIEW_IMAGE_MAKING_TEXT,
   PREVIEW_IMAGE_MISSION_TEXT,
   PREVIEW_IMAGE_NEEDED_TEXT,
   PREVIEW_IMAGE_PENDING_TEXT,
   PREVIEW_NOT_CARD_TEXT,
 } from '../OpsCardPreview'
+import { feedTypeValueNote } from '@/app/admin/today/FeedCardSection'
 
 const html = (node: ReactElement) => renderToStaticMarkup(node).replace(/<!-- -->/g, '')
 
@@ -140,5 +142,40 @@ describe('OpsCardPreview', () => {
         }
       }
     })
+  })
+})
+
+describe('OpsCardPreview — 개편 카드 안내 (티켓 20261121_1532)', () => {
+  const feedItem = (resource: Record<string, unknown>) =>
+    item({ ...BASE, shape: undefined, resource: { template_type: 'editorial_article', cover_image_url: 'https://example.com/a.png', ...resource } })
+
+  it('새 유형 항목에는 «색과 칩 자리» 안내가 보이고 한 줄 줄바꿈 클래스가 붙는다', () => {
+    expect(PREVIEW_FEED_AUTO_TEXT).toBe('색과 칩 자리는 등록할 때 정해져서 홈과 조금 다를 수 있어요')
+    const out = html(<OpsCardPreview item={feedItem({ feed_type: 'hero_box' })} />)
+    expect(out).toContain(PREVIEW_FEED_AUTO_TEXT)
+    expect(out).toMatch(/class="[^"]*break-keep wrap-break-word[^"]*">색과 칩 자리는/)
+  })
+
+  it('값이 있어야 새 모습인 유형에는 어드민 폼과 같은 안내가 더 보인다', () => {
+    for (const type of ['collection_intro', 'drop_pickup', 'gallery_list'] as const) {
+      const out = html(<OpsCardPreview item={feedItem({ feed_type: type })} />)
+      expect(out).toContain(feedTypeValueNote(type) as string)
+      expect(out).toContain(PREVIEW_FEED_AUTO_TEXT)
+    }
+    const hero = html(<OpsCardPreview item={feedItem({ feed_type: 'hero_box' })} />)
+    expect(hero).not.toContain('새 모습으로 보여요')
+  })
+
+  it('새 칸이 없거나 모르는 유형인 항목에는 안내가 없다', () => {
+    for (const original of [BASE, feedItem({ feed_type: 'nope' }).original as Record<string, unknown>]) {
+      const out = html(<OpsCardPreview item={item(original)} />)
+      expect(out).not.toContain(PREVIEW_FEED_AUTO_TEXT)
+      expect(out).not.toContain('새 모습으로 보여요')
+    }
+  })
+
+  it('카드가 아닌 종류에는 안내가 없다', () => {
+    const out = html(<OpsCardPreview item={item({ ...BASE, resource: { feed_type: 'hero_box' } }, 'mission')} />)
+    expect(out).not.toContain(PREVIEW_FEED_AUTO_TEXT)
   })
 })
