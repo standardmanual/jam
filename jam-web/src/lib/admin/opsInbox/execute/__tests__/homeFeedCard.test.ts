@@ -398,7 +398,7 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
     const colorsOf = async () => {
       const db = new FakeDb()
       const value = prepared(feedItem())
-      await handler.create(db.service, { ...value, payload: { ...value.payload, feed_seed: 20261121 } }, { now: NOW })
+      await handler.create(db.service, { ...value, payload: Object.assign({}, value.payload, { feed_seed: 20261121 }) }, { now: NOW })
       const row = db.tables.today_cards[0]
       return { seed: row.feed_seed, bg: row.bg_color_key, chip: row.chip_color_key, box: row.box_color_key }
     }
