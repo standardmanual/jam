@@ -8,7 +8,7 @@
  * 응답·결정 기록·슬랙에 나가는 `reason`은 아래 고정 문장뿐이다. DB 오류 원문·기존 카드 ID·칼럼 이름은 `detail`(서버 로그)에만 둔다.
  * 단, 형식 오류는 변환 오류 문장(운영 항목에 붙은 오류)의 첫 문장을 그대로 싣는다.
  *
- * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 실행 뼈대는 돌려준 ID가 정한 ID와 같으면 `created_resource`를 다시 쓰지 않는다.
+ * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 유형이 있는 카드는 비어 있는 시드·색을 등록 때 정해 함께 넣는다(`withFeedValues`, 티켓 20261121_1531). 실행 뼈대는 돌려준 ID가 정한 ID와 같으면 `created_resource`를 다시 쓰지 않는다.
  * - `undo`는 노출·열람 기록을 확인한 뒤 ID로 지운다. 되돌림은 방금 만든 카드만 지우므로 공개 전 여부는 보지 않는다.
  * - `cancel`(티켓 20261002_1256, ④-b)은 예약된 카드를 공개 전에 지운다: 행을 다시 읽어 공개 시각이 지났으면 막고, 노출·열람 기록을 확인한 뒤,
  *   지울 때도 공개 시각 조건(`starts_at > now`)을 함께 건다(읽은 뒤 공개 시각이 지나는 경합).
@@ -18,6 +18,7 @@
  * - `observe`(티켓 20261002_1813, ⑦-a)는 상태 맞추기가 카드의 지금 상태를 읽는다: 행이 없으면 `missing`, 있으면 `is_active`·`starts_at`·`ends_at`으로
  *   유저 화면의 공개 판정(`lib/today/cards.ts`와 같다: 켜져 있고 `starts_at <= now <= ends_at`, 양 끝 포함)과 종료 여부를 돌려준다. 읽지 못하면 `error`다.
  */
+import { completeFeedCardValues } from '@/lib/admin/feedCardServer'
 import { toTodayCardRegisterInput, withoutLinkedFields } from '@/lib/admin/opsInbox/registerInput'
 import type { TodayCardRegisterPayload } from '@/lib/admin/opsInbox/registerInput'
 import { runHomeFeedDbChecks } from '@/lib/admin/registerChecks/homeFeed'
@@ -83,6 +84,41 @@ function reasonOfCheck(check: RegisterCheck | undefined): string {
   return REASON_BY_CHECK_LABEL[check.label] ?? HOME_FEED_CARD_MESSAGES.checkFailed
 }
 
+/**
+ * 유형(`feed_type`)이 있는 카드는 비어 있는 `feed_seed`·`bg_color_key`·`chip_color_key`·`box_color_key`를 등록 때 정해 insert 행에 합친다(티켓 20261121_1531).
+ * 에이전트가 적은 값은 보존한다. 유형이 없으면(옛 모양 카드) 페이로드를 그대로 돌려준다. 정하지 못해도 등록은 막지 않는다:
+ * 기본 조합으로 되돌린 경우와 값을 정하다 던진 경우는 서버 로그에만 남기고(응답·슬랙 문구는 그대로), 던졌으면 값 없이 등록한다(홈이 카드 ID 해시로 그린다).
+ * `feedCardServer.ts`는 Supabase 클라이언트를 값으로 가져오지 않는다(받은 `service`를 쓴다) — 이 파일의 순수 모듈 계약을 지킨다.
+ */
+async function withFeedValues(
+  service: ExecuteServiceClient,
+  prepared: ExecutePrepared<TodayCardRegisterPayload>,
+): Promise<TodayCardRegisterPayload & { feed_seed?: number | null }> {
+  // 묶음 변환은 시드를 싣지 않는다(에이전트가 정하지 않는다). 시드 칸은 여기서만 더한다.
+  const payload: TodayCardRegisterPayload & { feed_seed?: number | null } = prepared.payload
+  if (!payload.feed_type) return payload
+  try {
+    const decided = await completeFeedCardValues(
+      service,
+      payload,
+      { startsAt: payload.starts_at, endsAt: payload.ends_at, excludeId: prepared.id },
+      undefined,
+      '[home_feed_card 배경색 사용 빈도 조회 오류]',
+    )
+    if (decided.usedFallback) console.warn(`[home_feed_card 색 자동 배정] 통과하는 조합이 없어 기본 조합으로 등록했어요 (카드 ${prepared.id})`)
+    return {
+      ...payload,
+      feed_seed: payload.feed_seed ?? decided.feed_seed,
+      bg_color_key: payload.bg_color_key ?? decided.bg_color_key,
+      chip_color_key: payload.chip_color_key ?? decided.chip_color_key,
+      box_color_key: payload.box_color_key ?? decided.box_color_key,
+    }
+  } catch (err) {
+    console.error(`[home_feed_card 시드·색 자동 배정 오류] 값 없이 등록해요 (카드 ${prepared.id})`, messageOf(err))
+    return payload
+  }
+}
+
 export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = {
   kind: 'home_feed_card',
   resourceKey: RESOURCE_KEY_BY_KIND.home_feed_card,
@@ -115,7 +151,7 @@ export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = 
   },
 
   async create(service: ExecuteServiceClient, prepared): Promise<ExecuteOutcome<{ id: string }>> {
-    const inserted = await service.from('today_cards').insert(prepared.payload)
+    const inserted = await service.from('today_cards').insert(await withFeedValues(service, prepared))
     if (!inserted.error) return { ok: true, value: { id: prepared.id } }
 
     // 오류 응답인데 행이 생긴 경우에 대비해 같은 ID로 한 번 지운다. 결과는 detail에만 적는다.

@@ -23,6 +23,7 @@ vi.mock('@/lib/admin/registerChecks/homeFeed', async (importOriginal) => {
 
 import { asRegisterChecksClient, RESOURCE_KEY_BY_KIND, type ExecuteLinkedIds } from '../handlers'
 import { HOME_FEED_CARD_HANDLER as handler } from '../homeFeedCard'
+import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
 import { DB_SECRET, FakeDb, type Row } from './fakeDb'
 import { LATER, NOW, makeItem } from './fixtures'
 
@@ -302,6 +303,129 @@ describe('create — 정한 ID로 만든다', () => {
     expect(outcome.failure.reason).toBe('카드를 만들지 못했어요')
     expect(outcome.failure.detail).toContain('정리 delete 실패')
     expect(outcome.failure.detail).toContain(DB_SECRET)
+    expect(deletes(db)).toHaveLength(1)
+  })
+})
+
+describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티켓 20261121_1531)', () => {
+  const COLOR_KEYS = ['bg_color_key', 'chip_color_key', 'box_color_key'] as const
+  const FEED_COLORS: readonly string[] = FEED_COLOR_KEYS
+  const feedItem = (resource: Raw = {}) => cardItem({ feed_type: 'text_box', ...resource })
+
+  it('유형이 있으면 비어 있는 시드와 세 색 키를 채워 insert하고 응답은 그대로다', async () => {
+    const db = new FakeDb()
+    const value = prepared(feedItem())
+    const outcome = await handler.create(db.service, value, { now: NOW })
+
+    expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+    const row = db.tables.today_cards[0]
+    expect(Number.isInteger(row.feed_seed)).toBe(true)
+    for (const key of COLOR_KEYS) expect(FEED_COLORS).toContain(row[key])
+    expect(row).toMatchObject({ id: CARD_ID, feed_type: 'text_box', title: '가을 아침 러닝' })
+    // 변환 결과(페이로드)는 바꾸지 않고 새 객체로 합쳐 넣는다.
+    expect(value.payload).not.toHaveProperty('feed_seed')
+    expect(value.payload.bg_color_key).toBeNull()
+  })
+
+  it('에이전트가 적은 색은 보존하고 비어 있는 칸만 정한다', async () => {
+    const db = new FakeDb()
+    await handler.create(db.service, prepared(feedItem({ bg_color_key: 'yellow', chip_color_key: 'purple' })), { now: NOW })
+
+    const row = db.tables.today_cards[0]
+    expect(row.bg_color_key).toBe('yellow')
+    expect(row.chip_color_key).toBe('purple')
+    expect(FEED_COLORS).toContain(row.box_color_key)
+    expect(Number.isInteger(row.feed_seed)).toBe(true)
+  })
+
+  it('같은 시기에 노출되는 다른 카드의 배경색은 덜 쓰이게 피하고, 자기 자신은 빈도에서 뺀다', async () => {
+    const db = new FakeDb()
+    // 'green'을 뺀 모든 색이 같은 시기에 한 번씩 쓰이고 있다. 같은 ID의 옛 행(재시도 흔적)이 'green'을 쓰고 있어도 세지 않는다.
+    db.tables.today_cards = [
+      ...FEED_COLOR_KEYS.filter((key) => key !== 'green').map((key, index) => ({ id: uid(100 + index), bg_color_key: key, starts_at: STARTS_AT, ends_at: ENDS_AT })),
+      { id: CARD_ID, bg_color_key: 'green', starts_at: STARTS_AT, ends_at: ENDS_AT },
+    ]
+    await handler.create(db.service, prepared(feedItem()), { now: NOW })
+
+    const inserted = db.tables.today_cards[db.tables.today_cards.length - 1]
+    expect(inserted).toMatchObject({ id: CARD_ID, feed_type: 'text_box', bg_color_key: 'green' })
+    const usageRead = db.calls.find((call) => call.op === 'select')
+    expect(usageRead?.filters[0]).toEqual(['id !=', CARD_ID])
+  })
+
+  it('유형이 없는 항목은 이전과 똑같다: insert 페이로드가 그대로이고 시드·색 키를 더하지 않으며 DB를 읽지 않는다', async () => {
+    const db = new FakeDb()
+    const value = prepared(cardItem())
+    await handler.create(db.service, value, { now: NOW })
+
+    const inserts = db.calls.filter((call) => call.op === 'insert')
+    expect(inserts).toHaveLength(1)
+    expect(inserts[0].payload).toBe(value.payload)
+    expect(Object.keys(inserts[0].payload as Raw).sort()).toEqual(Object.keys(value.payload).sort())
+    expect(inserts[0].payload).not.toHaveProperty('feed_seed')
+    expect(db.calls.filter((call) => call.op === 'select')).toEqual([])
+  })
+
+  it('빈도 조회가 실패해도 등록은 성공하고 시드·색을 채운다. 오류 원문은 응답에 없다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const db = new FakeDb()
+      db.failIf = (call) => call.table === 'today_cards' && call.op === 'select'
+      const outcome = await handler.create(db.service, prepared(feedItem()), { now: NOW })
+
+      expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+      const row = db.tables.today_cards[0]
+      expect(Number.isInteger(row.feed_seed)).toBe(true)
+      for (const key of COLOR_KEYS) expect(FEED_COLORS).toContain(row[key])
+      expect(JSON.stringify(outcome)).not.toContain(DB_SECRET)
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('빈도 조회가 예외를 던져도 등록은 성공하고(값 없이) 서버 로그에만 남긴다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const db = new FakeDb()
+      db.beforeRun = (call) => {
+        if (call.op === 'select') throw new Error(DB_SECRET)
+      }
+      const outcome = await handler.create(db.service, prepared(feedItem()), { now: NOW })
+
+      expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+      expect(db.tables.today_cards[0]).not.toHaveProperty('feed_seed')
+      expect(JSON.stringify(outcome)).not.toContain(DB_SECRET)
+      expect(errorSpy).toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('기본 조합으로 되돌려도 등록은 막지 않고 서버 로그에만 남긴다', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const db = new FakeDb()
+      // 배경 red와 칩 blue-soft를 지정하면 맞는 박스 색이 없어 기본 조합으로 되돌린다.
+      const outcome = await handler.create(db.service, prepared(feedItem({ bg_color_key: 'red', chip_color_key: 'blue-soft' })), { now: NOW })
+
+      expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+      expect(db.tables.today_cards[0]).toMatchObject({ bg_color_key: 'red', chip_color_key: 'blue-soft' })
+      expect(FEED_COLORS).toContain(db.tables.today_cards[0].box_color_key)
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(String(warnSpy.mock.calls[0][0])).toContain(CARD_ID)
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('insert가 실패하면 이전과 같은 사유로 정리 delete를 한 번 시도한다', async () => {
+    const db = new FakeDb()
+    db.failIf = (call) => call.op === 'insert'
+    const outcome = await handler.create(db.service, prepared(feedItem()), { now: NOW })
+
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) return
+    expect(outcome.failure.reason).toBe('카드를 만들지 못했어요')
     expect(deletes(db)).toHaveLength(1)
   })
 })
