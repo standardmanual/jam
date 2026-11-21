@@ -3882,6 +3882,7 @@ export type Database = {
           chips: Json | null
           collection_burst: Json | null
           content_type_id: string | null
+          cover_colors: Json | null
           cover_image_url: string | null
           created_at: string
           created_by: string | null
@@ -3926,6 +3927,7 @@ export type Database = {
           chips?: Json | null
           collection_burst?: Json | null
           content_type_id?: string | null
+          cover_colors?: Json | null
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
@@ -3970,6 +3972,7 @@ export type Database = {
           chips?: Json | null
           collection_burst?: Json | null
           content_type_id?: string | null
+          cover_colors?: Json | null
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null

@@ -1383,6 +1383,8 @@ export interface TodayCardRow {
   collection_burst?: TodayBurstPoint[] | null
   /** 무작위 값을 고정하는 시드(0 이상 2^32 미만 정수). 한 번 정하면 바꾸지 않는다. */
   feed_seed?: number | null
+  /** 커버 이미지 대표색 원색 최대 3개(밝기 높은 순 `#rrggbb`). NULL=아직 안 뽑음, []=색 없음. 커버 주소만 바뀌면 트리거가 비운다(마이그레이션 351). */
+  cover_colors?: string[] | null
 }
 
 /** 개편 카드 유형 8가지(DB CHECK `today_cards_feed_type_check`, 마이그레이션 349). */
