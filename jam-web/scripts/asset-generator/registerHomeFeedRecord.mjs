@@ -10,7 +10,7 @@
  * 홈피드 등록 경로 이중화). 이 스크립트가 만든 카드는 등록 기록·SQL 머리·행의 `image_source = 'agent-generator'`로
  * 구분된다(seed SQL 등록 카드는 NULL).
  */
-import { TODAY_LAYOUT_OPTIONS, TODAY_TEMPLATE_OPTIONS } from '../../src/lib/admin/today-sections'
+import { TODAY_TEMPLATE_OPTIONS } from '../../src/lib/admin/today-sections'
 import { CONTROL_OR_LINE_BREAK } from './registerBundle.mjs'
 import { AGENT_IMAGE_SOURCE } from './registerHomeFeedBundle.mjs'
 import { RECORD_FILE_NAME, SQL_FILE_NAME, formatKst, sqlLiteral, toKstIso } from './registerRecord.mjs'
@@ -68,7 +68,6 @@ export function buildHomeFeedRegistrationRecord({ bundle, cardId, payload, bucke
       id: cardId,
       title: payload.title,
       template_type: payload.template_type,
-      layout_type: payload.layout_type,
       starts_at: payload.starts_at,
       ends_at: payload.ends_at,
       is_active: payload.is_active,
@@ -189,7 +188,6 @@ export function formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks,
       `- 부제: ${payload.subtitle ?? '없음'}`,
       `- 설명문: ${payload.description ?? '없음'}`,
       `- 템플릿: ${labelOf(TODAY_TEMPLATE_OPTIONS, payload.template_type)}`,
-      `- 노출 형태: ${labelOf(TODAY_LAYOUT_OPTIONS, payload.layout_type)}`,
       `- 컨텐츠 유형: ${payload.content_type_id ?? '없음'}`,
       `- 기간: ${formatKst(payload.starts_at)} ~ ${formatKst(payload.ends_at)}`,
       `- 노출 조건 태그: ${list(payload.exposure_tags)}`,

@@ -50,8 +50,8 @@ function cardItem(resource: Raw = {}, original: Raw = {}, copy: Raw = {}) {
   return makeItem({
     key: 'card',
     kind: 'home_feed_card',
-    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 아침 러닝', ...copy }, ...original },
-    resource: { template_type: 'drop_alert', ...resource },
+    original: { exposure_tags: ['all'], copy: { title: '가을 아침 러닝', ...copy }, ...original },
+    resource: { template_type: 'drop_alert', feed_type: 'hero_box', ...resource },
   })
 }
 
@@ -59,6 +59,15 @@ function prepared(item = cardItem(), linkedIds: ExecuteLinkedIds = {}) {
   const outcome = handler.prepare(item, { id: CARD_ID, actorId: ACTOR, linkedIds, now: NOW })
   if (!outcome.ok) throw new Error(`prepare 실패: ${outcome.failure.reason}`)
   return outcome.value
+}
+
+/**
+ * 개편 칸을 비운 변환 결과. 운영 묶음 변환은 유형이 필수라 이 모양이 나오지 않지만(티켓 20261122_1153), 등록 실행의 «유형이 없으면 그대로 넣는다» 갈래는
+ * 변환 결과의 `feed_type`이 비어 있을 때를 그대로 지킨다.
+ */
+function preparedWithoutFeedType(item = cardItem()) {
+  const value = prepared(item)
+  return { ...value, payload: { ...value.payload, feed_type: null } }
 }
 
 const checkOf = (db: FakeDb, item = cardItem(), linkedIds: ExecuteLinkedIds = {}) => handler.check(asRegisterChecksClient(db.service), prepared(item, linkedIds), { now: NOW })
@@ -85,7 +94,7 @@ describe('prepare', () => {
       id: CARD_ID,
       title: '가을 아침 러닝',
       template_type: 'drop_alert',
-      shape: 'hero',
+      feed_type: 'hero_box',
       exposure_tags: ['all'],
       starts_at: STARTS_AT,
       ends_at: ENDS_AT,
@@ -117,16 +126,16 @@ describe('prepare', () => {
   })
 
   it('형식 오류가 하나면 「카드 형식이 맞지 않아요: {오류 문장}」이고 DB 오류 원문은 없다', () => {
-    const outcome = handler.prepare(cardItem({}, { shape: undefined }), { id: CARD_ID, actorId: ACTOR, linkedIds: {}, now: NOW })
+    const outcome = handler.prepare(cardItem({ feed_type: undefined }), { id: CARD_ID, actorId: ACTOR, linkedIds: {}, now: NOW })
     expect(outcome.ok).toBe(false)
     if (outcome.ok) return
-    expect(outcome.failure.reason).toMatch(/^카드 형식이 맞지 않아요: card\.shape: /)
+    expect(outcome.failure.reason).toMatch(/^카드 형식이 맞지 않아요: card\.feed_type: /)
     expect(outcome.failure.reason).not.toMatch(/외 \d+건/)
-    expect(outcome.failure.detail).toContain('shape')
+    expect(outcome.failure.detail).toContain('feed_type')
   })
 
   it('형식 오류가 둘 이상이면 첫 문장만 싣고 끝에 「 (외 N건)」을 붙인다', () => {
-    const outcome = handler.prepare(cardItem({ template_type: 'nope' }, { shape: undefined }, { title: '' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {}, now: NOW })
+    const outcome = handler.prepare(cardItem({ template_type: 'nope', feed_type: undefined }, {}, { title: '' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {}, now: NOW })
     expect(outcome.ok).toBe(false)
     if (outcome.ok) return
     const errors = outcome.failure.detail?.split(' / ') ?? []
@@ -253,7 +262,7 @@ describe('check — 가정 3 표의 고정 문장', () => {
 describe('create — 정한 ID로 만든다', () => {
   it('insert 페이로드의 id는 prepared.id이고 같은 ID를 돌려준다', async () => {
     const db = new FakeDb()
-    const value = prepared(cardItem({ cover_image_url: 'https://cdn.example.com/card.webp' }, { pattern_no: 'P07' }))
+    const value = preparedWithoutFeedType(cardItem({ cover_image_url: 'https://cdn.example.com/card.webp' }, { pattern_no: 'P07' }))
     const outcome = await handler.create(db.service, value, { now: NOW })
 
     expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
@@ -422,9 +431,9 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
     expect(usageRead?.filters[0]).toEqual(['id !=', CARD_ID])
   })
 
-  it('유형이 없는 항목은 이전과 똑같다: insert 페이로드가 그대로이고 시드·색 키를 더하지 않으며 DB를 읽지 않는다', async () => {
+  it('유형이 비어 있는 변환 결과는 이전과 똑같다: insert 페이로드가 그대로이고 시드·색 키를 더하지 않으며 DB를 읽지 않는다', async () => {
     const db = new FakeDb()
-    const value = prepared(cardItem())
+    const value = preparedWithoutFeedType()
     await handler.create(db.service, value, { now: NOW })
 
     const inserts = db.calls.filter((call) => call.op === 'insert')

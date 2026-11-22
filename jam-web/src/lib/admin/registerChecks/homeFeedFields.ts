@@ -22,16 +22,14 @@ import { isTribeTag } from '@/lib/today/exposureTribe'
 import { DESCRIPTION_TEMPLATES } from '@/lib/today/shape'
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import { collectCopyErrors } from './copyRules'
-import type { TodayCardLayoutType, TodayCardRow, TodayCardTemplateType } from '@/types/database'
+import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
 import type { FeedCardBundleColumns } from '@/lib/admin/feedCardFields'
 import type { Json } from '@/types/database.generated'
 import {
-  SUGGESTED_LAYOUT_FOR,
   TODAY_CONTENT_TYPE_OPTIONS,
   TODAY_DESCRIPTION_MAX_LENGTH,
   TODAY_EXPOSURE_TAG_OPTIONS,
   TODAY_FIELDS_FOR,
-  TODAY_LAYOUT_OPTIONS,
   TODAY_TEMPLATE_OPTIONS,
 } from '@/lib/admin/today-sections'
 import type { TodayTemplateFields } from '@/lib/admin/today-sections'
@@ -51,6 +49,7 @@ import {
 import type { PlainObject } from './bundleRules'
 
 export const CARD_REQUIRED_FIELDS = ['title', 'template_type', 'starts_at', 'ends_at', 'exposure_tags']
+// `layout_type`은 홈이 더는 읽지 않아 값을 보지 않고 등록 값에 싣지 않는다. 옛 묶음이 적어 와도 막지 않으려고 받아서 무시한다(티켓 20261122_1153).
 export const CARD_OPTIONAL_FIELDS = [
   'layout_type',
   'subtitle',
@@ -70,7 +69,6 @@ export const CARD_OPTIONAL_FIELDS = [
 
 /** 허용값 목록 — 전부 `today-sections.ts` 상수에서 뽑는다(직접 적지 않는다). */
 export const TEMPLATE_TYPES = TODAY_TEMPLATE_OPTIONS.map((o) => o.value)
-export const LAYOUT_TYPES = TODAY_LAYOUT_OPTIONS.map((o) => o.value)
 export const EXPOSURE_TAGS = TODAY_EXPOSURE_TAG_OPTIONS.map((o) => o.value)
 export const CONTENT_TYPE_IDS = TODAY_CONTENT_TYPE_OPTIONS.map((o) => o.value)
 
@@ -194,31 +192,16 @@ export function validateCard(errors: string[], input: unknown): void {
 
   // 허용값 포함 검사용 — 값이 어떤 타입이든 들어오므로 문자열 목록으로 넓혀서 쓴다.
   const templateTypes: readonly string[] = TEMPLATE_TYPES
-  const layoutTypes: readonly string[] = LAYOUT_TYPES
   const exposureTags: readonly string[] = EXPOSURE_TAGS
   const contentTypeIds: readonly string[] = CONTENT_TYPE_IDS
 
-  // 분류 — 템플릿·노출 형태는 어드민 폼 선택지와 같은 목록이다.
+  // 분류 — 템플릿은 어드민 폼 선택지와 같은 목록이다. 노출 형태(`layout_type`)는 받아도 보지 않는다.
   let templateType: TodayCardTemplateType | null = null
   if (isPresent(card.template_type)) {
     if (typeof card.template_type !== 'string' || !templateTypes.includes(card.template_type)) {
       errors.push(`card.template_type: ${TEMPLATE_TYPES.join(' · ')} 중 하나여야 해요(받은 값: ${describeValue(card.template_type)}).`)
     } else {
       templateType = card.template_type as TodayCardTemplateType
-    }
-  }
-  const layoutTypeOk = !isPresent(card.layout_type) || (typeof card.layout_type === 'string' && layoutTypes.includes(card.layout_type))
-  if (!layoutTypeOk) {
-    errors.push(`card.layout_type: ${LAYOUT_TYPES.join(' · ')} 중 하나여야 해요(받은 값: ${describeValue(card.layout_type)}).`)
-  }
-
-  // 미션 카드 규칙(2026-09-26 사용자 결정, content-automation/PRD.md §8) — mission_spotlight는 항상 large_thumbnail이다.
-  if (templateType !== null && layoutTypeOk && templateType === 'mission_spotlight') {
-    const finalLayout = card.layout_type ?? SUGGESTED_LAYOUT_FOR.mission_spotlight
-    if (finalLayout !== 'large_thumbnail') {
-      errors.push(
-        `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: ${describeValue(finalLayout)}).`
-      )
     }
   }
 
@@ -330,7 +313,6 @@ export function validateCard(errors: string[], input: unknown): void {
 /** 페이로드가 읽는 카드 필드(검사를 통과한 묶음의 `card`). */
 export interface HomeFeedCardInput {
   template_type: TodayCardTemplateType
-  layout_type?: TodayCardLayoutType | null
   title: string
   subtitle?: string | null
   description?: string | null
@@ -364,8 +346,6 @@ export interface HomeFeedPayloadOptions {
   coverImageUrl: string | null
   /** 생략하면 `agent-generator`. 값을 주면(null 포함) 그대로 넣는다. */
   imageSource?: string | null
-  /** 생략하면 null(옛 렌더러로 그리는 기존 카드와 같은 값). */
-  shape?: string | null
   /** 생략하면 null. */
   titleInImage?: boolean | null
   /**
@@ -384,20 +364,18 @@ export interface HomeFeedPayloadOptions {
  *   `image_url`이 아니라 `cover_image_url`이다.
  * - `image_source`: 기본은 `agent-generator`(묶음 값은 받지 않는다). 기존 seed SQL 등록 카드는 NULL이라 이 값으로 구분된다.
  *   서버가 다른 출처를 남기려면 `imageSource`로 넘긴다.
- * `layout_type`을 생략하면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`)이다.
+ * `layout_type`·`shape`는 싣지 않는다 — 홈이 더는 읽지 않으니 DB 기본값(`layout_type`은 `large_thumbnail`, `shape`는 NULL)에 맡긴다(티켓 20261122_1153).
  * `created_by`·`created_at`은 넣지 않는다(스크립트에는 어드민 계정이 없어 NULL, 시각은 DB 기본값).
- * `shape`·`title_in_image`(마이그레이션 206)는 등록 묶음에 아직 칸이 없어 기본 NULL로 넣는다 — NULL은 옛 렌더러로
- * 그리는 기존 카드와 같은 값이다(티켓 20260930_1453 c1). 서버가 값을 정해 두었다면 `shape`·`titleInImage`로 넘긴다.
+ * `title_in_image`(마이그레이션 206)는 등록 묶음에 아직 칸이 없어 기본 NULL로 넣는다(티켓 20260930_1453 c1). 서버가 값을 정해 두었다면 `titleInImage`로 넘긴다.
  * 키 집합은 생성 타입의 today_cards Insert와 같다(`pattern_no`는 없다). 홈피드 개편 칸은 `feedColumns`를 줄 때만 더한다.
  */
 export function buildTodayCardInsertPayload(
   card: HomeFeedCardInput,
-  { id, coverImageUrl, imageSource = AGENT_IMAGE_SOURCE, shape = null, titleInImage = null, feedColumns = null }: HomeFeedPayloadOptions
+  { id, coverImageUrl, imageSource = AGENT_IMAGE_SOURCE, titleInImage = null, feedColumns = null }: HomeFeedPayloadOptions
 ) {
   return {
     id,
     template_type: card.template_type,
-    layout_type: card.layout_type ?? SUGGESTED_LAYOUT_FOR[card.template_type],
     title: card.title.trim(),
     subtitle: card.subtitle?.trim() || null,
     description: card.description?.trim() || null,
@@ -417,7 +395,6 @@ export function buildTodayCardInsertPayload(
     sort_order: card.sort_order ?? 0,
     is_active: card.is_active ?? true,
     image_source: imageSource,
-    shape,
     title_in_image: titleInImage,
     ...((feedColumns ?? {}) as unknown as Partial<FeedInsertColumns>),
   }

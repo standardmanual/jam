@@ -4,7 +4,7 @@
  * - fatal(400): 객체가 아님, bundle_id·author 없음이나 길이 초과, is_sample이 불리언이 아님, items가 배열이 아님, 항목 60개 초과
  * - 저장되는 형식 오류: 종류 허용값, 시각(형식·순서), 연결 키 실재, item_key 중복, user_experience 유무, week 표기, world_review
  * - world_review 규칙은 registerHomeFeedBundle.mjs와 같은 입력에 같은 문장을 낸다(대조)
- * - 카드 칸(티켓 20261001_1152): shape·exposure_tags(홈피드 카드는 필수)·tribe_id·color_pending, 묶음의 excluded_items,
+ * - 카드 칸(티켓 20261001_1152): resource.feed_type(20261122_1153부터)·exposure_tags(홈피드 카드는 필수)·tribe_id·color_pending, 묶음의 excluded_items,
  *   옛 형식 항목(segment만)은 fatal 없이 받고 새 칸 오류만 붙는다. exposure_tags는 등록 스크립트와 같은 입력에 같은 문장이다.
  * - 패턴 번호·지점 카테고리(티켓 20261007_1745): pattern_no 형식(P01)과 사전 실재, knobs.place_category(문자열 배열·실재), 형식이 틀린 번호는 열 NULL
  * - 패턴 제안 내용 칸(티켓 20261007_1746): kind가 pattern_proposal일 때만 resource.pattern을 본다(필수 칸·손잡이 5종·선택 칸 형식), 저장은 막지 않는다
@@ -36,7 +36,7 @@ function makeItem(overrides: Record<string, unknown> = {}) {
   return {
     item_key: 'card-1',
     kind: 'home_feed_card',
-    shape: 'hero',
+    resource: { feed_type: 'hero_box' },
     exposure_tags: ['all'],
     pattern_no: 'P07',
     starts_at: '2026-10-05T09:00:00+09:00',
@@ -415,56 +415,61 @@ describe('revalidateOpsItem — 수정 뒤 다시 검사 (티켓 20260930_1818)'
   })
 })
 
-describe('카드 칸 — shape (티켓 20261001_1152)', () => {
-  function shapeResult(itemOverrides: Record<string, unknown>, removeKeys: string[] = []) {
+describe('카드 칸 — resource.feed_type 필수와 옛 shape·layout_type 경고 (티켓 20261001_1152, 20261122_1153)', () => {
+  function cardResult(itemOverrides: Record<string, unknown>, removeKeys: string[] = []) {
     const item: Record<string, unknown> = makeItem(itemOverrides)
     for (const key of removeKeys) delete item[key]
     const result = validateOpsBundle(makeBundle({ items: [item] }))
     expect(result.fatal).toEqual([])
-    return result
+    return { ...result, retiredWarnings: result.warnings.filter((warning) => /\.(shape|layout_type): /.test(warning)) }
   }
 
-  it('홈피드 카드에 shape가 없으면 필수 오류이고 항목은 저장 대상으로 남는다(fatal이 아니다)', () => {
-    const result = shapeResult({}, ['shape'])
+  it('홈피드 카드에 resource.feed_type이 없으면 형식 오류이고 항목은 저장 대상으로 남는다(fatal이 아니다)', () => {
+    const result = cardResult({}, ['resource'])
     expect(result.bundle).not.toBeNull()
     expect(result.items).toHaveLength(1)
-    expect(result.errors).toEqual([
-      `items[0].shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적거나 resource.feed_type을 적어 주세요).`,
-    ])
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatch(/^items\[0\]\.resource\.feed_type: 필수 항목이 없어요\. .*hero_box/)
     expect(result.items[0].format_errors).toEqual(result.errors)
   })
 
-  it('shape가 null이어도 없는 것으로 본다', () => {
-    expect(shapeResult({ shape: null }).errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요/)
+  it('feed_type이 null·빈 문자열이거나 resource에 다른 칸만 있어도 없는 것으로 본다', () => {
+    for (const resource of [{ feed_type: null }, { feed_type: '  ' }, { template_type: 'drop_alert' }]) {
+      expect(cardResult({ resource }).errors[0], JSON.stringify(resource)).toMatch(/^items\[0\]\.resource\.feed_type: 필수 항목이 없어요/)
+    }
   })
 
-  it.each([...CARD_SHAPES])('모양 %s는 통과한다', (shape) => {
-    expect(shapeResult({ shape }).errors).toEqual([])
+  it('shape가 없는 항목은 feed_type만 있으면 통과하고 경고도 없다', () => {
+    const result = cardResult({})
+    expect(result.errors).toEqual([])
+    expect(result.retiredWarnings).toEqual([])
   })
 
-  it.each([
-    ['허용값 밖', 'banner', '"banner"'],
-    ['대문자', 'Hero', '"Hero"'],
-    ['옛 layout 값', 'large_thumbnail', '"large_thumbnail"'],
-    ['숫자', 3, '3'],
-    ['빈 문자열', '', '""'],
-  ])('shape가 %s이면 허용값을 안내한다', (_label, shape, shown) => {
-    expect(shapeResult({ shape }).errors).toEqual([
-      `items[0].shape: 허용되지 않는 카드 모양이에요(받은 값: ${shown}). 허용값: ${CARD_SHAPES.join(', ')}`,
+  it.each(['hero', 'banner', 'Hero', 3, ''])('항목에 shape(%j)가 있으면 오류가 아니라 «쓰지 않아요» 경고다', (shape) => {
+    const result = cardResult({ shape })
+    expect(result.errors).toEqual([])
+    expect(result.retiredWarnings).toEqual([expect.stringMatching(/^items\[0\]\.shape: 이제 쓰지 않아요\..*저장하지 않아요/)])
+  })
+
+  it('resource.shape·resource.layout_type이 있어도 오류가 아니라 경고다', () => {
+    const result = cardResult({ resource: { feed_type: 'text_box', shape: 'hero', layout_type: 'banner' } })
+    expect(result.errors).toEqual([])
+    expect(result.retiredWarnings).toEqual([
+      expect.stringMatching(/^items\[0\]\.resource\.shape: 이제 쓰지 않아요/),
+      expect.stringMatching(/^items\[0\]\.resource\.layout_type: 이제 쓰지 않아요/),
     ])
   })
 
-  it('카드가 아닌 종류는 shape가 없어도 오류가 없고, 있으면 형식을 본다', () => {
-    expect(shapeResult({ kind: 'mission' }, ['shape']).errors).toEqual([])
-    expect(shapeResult({ kind: 'mission', shape: 'list' }).errors).toEqual([])
-    expect(shapeResult({ kind: 'mission', shape: 'banner' }).errors[0]).toMatch(
-      /^items\[0\]\.shape: 허용되지 않는 카드 모양이에요/
-    )
+  it('카드가 아닌 종류는 feed_type이 없어도 오류가 없다', () => {
+    expect(cardResult({ kind: 'mission' }, ['resource']).errors).toEqual([])
+    expect(cardResult({ kind: 'mission', shape: 'list' }).errors).toEqual([])
   })
 })
 
 describe('카드 칸 — 기사형 카드 제외 (티켓 20261031_2049)', () => {
-  const articleResult = (item: Record<string, unknown>) => validateOpsBundle(makeBundle({ items: [makeItem(item)] }))
+  // 유형(feed_type)은 필수라 항목마다 기본 유형을 깔고 템플릿 칸만 바꿔 본다.
+  const articleResult = (item: Record<string, unknown>) =>
+    validateOpsBundle(makeBundle({ items: [makeItem({ ...item, resource: { feed_type: 'hero_box', ...(item.resource as object | undefined) } })] }))
 
   it('홈피드 카드의 템플릿이 editorial_article이면 형식 오류다', () => {
     const result = articleResult({ resource: { template_type: 'editorial_article' } })
@@ -689,10 +694,10 @@ describe('묶음의 excluded_items (티켓 20261001_1152)', () => {
 
   it('묶음 오류는 항목 오류보다 앞에 놓인다', () => {
     const result = validateOpsBundle(
-      makeBundle({ excluded_items: [{ item_key: 'x' }], items: [makeItem({ shape: 'banner' })] })
+      makeBundle({ excluded_items: [{ item_key: 'x' }], items: [makeItem({ exposure_tags: [] })] })
     )
     expect(result.errors[0]).toMatch(/^excluded_items\[0\]\.reason/)
-    expect(result.errors[1]).toMatch(/^items\[0\]\.shape/)
+    expect(result.errors[1]).toMatch(/^items\[0\]\.exposure_tags/)
   })
 
   it('validateExcludedItems는 경로를 바꿔 부를 수 있다', () => {
@@ -701,16 +706,16 @@ describe('묶음의 excluded_items (티켓 20261001_1152)', () => {
 })
 
 describe('옛 형식 항목(segment만) 받기 (티켓 20261001_1152)', () => {
-  it('fatal 없이 받고 shape·exposure_tags 오류만 붙는다(segment는 검사하지 않고 원본에 남는다)', () => {
+  it('fatal 없이 받고 feed_type·exposure_tags 오류만 붙는다(segment는 검사하지 않고 원본에 남는다)', () => {
     const legacy = makeItem({ segment: 'new_user' }) as Record<string, unknown>
-    delete legacy.shape
+    delete legacy.resource
     delete legacy.exposure_tags
     const result = validateOpsBundle(makeBundle({ items: [legacy] }))
 
     expect(result.fatal).toEqual([])
     expect(result.items).toHaveLength(1)
     expect(result.errors).toHaveLength(2)
-    expect(result.errors[0]).toMatch(/^items\[0\]\.shape: /)
+    expect(result.errors[0]).toMatch(/^items\[0\]\.resource\.feed_type: /)
     expect(result.errors[1]).toMatch(/^items\[0\]\.exposure_tags: /)
     expect(result.items[0].original).toEqual(legacy)
   })
@@ -726,8 +731,8 @@ describe('revalidateOpsItem — 카드 칸 (티켓 20261001_1152)', () => {
   const keys = [{ position: 0, itemKey: 'card-1' }]
   const ctx = { tribeIds: new Set([TRIBE_A]) }
 
-  it('제출 때와 같은 문장을 낸다(shape·exposure_tags·tribe_id)', () => {
-    const raw = makeItem({ shape: 'banner', exposure_tags: [], tribe_id: TRIBE_MISSING })
+  it('제출 때와 같은 문장을 낸다(feed_type·exposure_tags·tribe_id)', () => {
+    const raw = makeItem({ resource: {}, exposure_tags: [], tribe_id: TRIBE_MISSING })
     const submitted = validateOpsBundle(makeBundle({ items: [raw] }), ctx)
     const revalidated = revalidateOpsItem(raw, 0, keys, ctx)
 
@@ -1136,7 +1141,7 @@ describe('패턴 제안 내용 칸 — resource.pattern (티켓 20261007_1746)',
   it('다른 종류(와 종류가 틀린 항목)의 resource.pattern은 보지 않는다', () => {
     for (const kind of [...OPS_ITEM_KINDS.filter((k) => k !== 'pattern_proposal'), 'nope']) {
       const errors = errorsOf(makeItem({ kind, resource: { pattern: 'text' } }))
-      expect(errors.filter((e) => e.includes('resource'))).toEqual([])
+      expect(errors.filter((e) => e.includes('resource.pattern'))).toEqual([])
     }
   })
 
@@ -1486,29 +1491,29 @@ describe('validateOpsBundle — 홈피드 개편 새 칸 (티켓 20261121_1530)'
     return { ...result, feedWarnings: result.warnings.filter((warning) => warning.includes('.resource.')) }
   }
 
-  it('새 칸이 없는 옛 항목은 오류도 새 칸 경고도 없다', () => {
-    const result = feedResult({ resource: { template_type: 'drop_alert' } })
+  it('유형 외에 새 칸이 없는 항목은 오류도 새 칸 경고도 없다', () => {
+    const result = feedResult({ resource: { template_type: 'drop_alert', feed_type: 'text_box' } })
     expect(result.errors).toEqual([])
     expect(result.feedWarnings).toEqual([])
     // 옛 경고(image_spec)는 이전과 같다.
     expect(result.warnings).toEqual([expect.stringMatching(/^items\[0\]\.image_spec:/)])
   })
 
-  it('feed_type만 있고 shape가 없는 항목은 통과한다', () => {
-    const result = feedResult({ resource: { feed_type: 'hero_box' } }, ['shape'])
+  it('feed_type만 있는 항목은 통과한다', () => {
+    const result = feedResult({ resource: { feed_type: 'hero_box' } })
     expect(result.errors).toEqual([])
     expect(result.feedWarnings).toEqual([])
   })
 
-  it('feed_type도 shape도 없으면 shape 필수 오류이고 새 유형을 쓸 수 있다고 알린다', () => {
-    const result = feedResult({ resource: { template_type: 'drop_alert' } }, ['shape'])
+  it('feed_type이 없으면 형식 오류이고 쓸 수 있는 유형을 알린다', () => {
+    const result = feedResult({ resource: { template_type: 'drop_alert' } })
     expect(result.errors).toHaveLength(1)
-    expect(result.errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요.*resource\.feed_type/)
+    expect(result.errors[0]).toMatch(/^items\[0\]\.resource\.feed_type: 필수 항목이 없어요\..*text_box/)
     // feed_type이 null이면 없는 것으로 본다.
-    expect(feedResult({ resource: { feed_type: null } }, ['shape']).errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요/)
+    expect(feedResult({ resource: { feed_type: null } }).errors[0]).toMatch(/^items\[0\]\.resource\.feed_type: 필수 항목이 없어요/)
   })
 
-  it('shape와 feed_type을 둘 다 적어도 통과한다', () => {
+  it('box_shape(박스 모양)를 feed_type과 함께 적어도 통과한다', () => {
     expect(feedResult({ resource: { feed_type: 'text_box', box_shape: 'wave' } }).errors).toEqual([])
   })
 
@@ -1605,8 +1610,9 @@ describe('validateOpsBundle — 홈피드 개편 새 칸 (티켓 20261121_1530)'
     const gallery = feedResult({ resource: { feed_type: 'gallery_list' } })
     expect(gallery.errors).toEqual([])
     expect(gallery.feedWarnings[0]).toMatch(/^items\[0\]\.resource\.feed_type: 목록형인데 항목이 없어요/)
+    // 유형이 없으면 필수 오류가 나고, 다른 새 칸이 채워져 있다는 경고도 함께 붙는다.
     const noType = feedResult({ resource: { box_kind: 'text' } })
-    expect(noType.errors).toEqual([])
+    expect(noType.errors).toEqual([expect.stringMatching(/^items\[0\]\.resource\.feed_type: 필수 항목이 없어요/)])
     expect(noType.feedWarnings[0]).toMatch(/^items\[0\]\.resource\.box_kind: 카드 유형이 비어 있어요/)
   })
 

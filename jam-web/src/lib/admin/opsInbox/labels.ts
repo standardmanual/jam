@@ -103,6 +103,7 @@ const FORMAT_ERROR_PATH_LABELS: Record<string, string> = {
   colors: '색',
   items: '항목 목록',
   shape: '카드 모양',
+  feed_type: '카드 유형',
   exposure_tags: '노출 대상',
   tribe_id: '트라이브',
   color_pending: '색 대기',

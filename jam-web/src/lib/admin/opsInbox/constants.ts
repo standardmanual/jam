@@ -65,7 +65,7 @@ export const OPS_ITEM_KINDS = [
 
 export type OpsItemKind = (typeof OPS_ITEM_KINDS)[number]
 
-/** 카드 모양(`shape`)·노출 대상(`exposure_tags`)이 필수인 항목 종류(티켓 20261001_1152). */
+/** 카드 유형(`resource.feed_type`)·노출 대상(`exposure_tags`)이 필수인 항목 종류(티켓 20261001_1152, 유형 필수는 20261122_1153). */
 export const OPS_HOME_FEED_CARD_KIND: OpsItemKind = 'home_feed_card'
 
 /** 뺀 항목(`excluded_items`)의 `stage` 허용값. 뺀 단계: 세계관 검수 · 밸런스 점검(티켓 20261001_1152). */

@@ -7,11 +7,11 @@
  * - `errors`: 받아서 저장하고 응답으로 돌려주는 「형식 오류」다. 「경로: 사유」 문자열(해요체)이고,
  *   항목별 오류는 그 항목의 `format_errors`에도 같은 문장으로 담는다. 공통 필드(종류 허용값, 시각,
  *   연결 키 실재, `item_key` 중복, `user_experience` 유무, `week` 표기, `world_review` 규칙)와 카드 칸(티켓 20261001_1152:
- *   `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음의 `excluded_items`)만 본다.
+ *   `resource.feed_type`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음의 `excluded_items`)만 본다.
  *   종류별 세부 검증은 티켓 20260930_1500이 승인 때 등록 전 검증으로 한다(상위 티켓 가정 12).
  *
- * 카드 칸: 홈피드 카드(`kind`가 `home_feed_card`)는 `shape`·`exposure_tags`가 필수이고(없으면 형식 오류, 저장은 한다;
- * `resource.feed_type`이 있으면 `shape`는 선택, 티켓 20261121_1530),
+ * 카드 칸: 홈피드 카드(`kind`가 `home_feed_card`)는 `resource.feed_type`·`exposure_tags`가 필수이고(없으면 형식 오류, 저장은 한다;
+ * 옛 `shape`·`resource.layout_type`은 오류가 아니라 «쓰지 않아요» 경고, 티켓 20261122_1153),
  * 다른 종류는 값이 있을 때만 형식을 본다. `tribe_id`·`color_pending`은 선택이다. `tribe_id`가 실제 트라이브인지는
  * 호출한 쪽이 `tribes`를 조회해 `ctx.tribeIds`로 넘길 때만 본다(순수 함수라 DB를 부르지 않는다). 옛 형식 항목(`segment`만 있는
  * 항목)은 받아서 저장하고, 새 칸 오류만 붙는다. 칸을 읽는 쪽은 `fields.ts`다.
@@ -63,6 +63,7 @@ import { TODAY_EXPOSURE_TAG_OPTIONS } from '@/lib/admin/today-sections'
 import { isTribeTag } from '@/lib/today/exposureTribe'
 import { isUuid } from '@/lib/admin/uuid'
 import { CARD_SHAPES, isCardShape } from '@/lib/today/shape'
+import { FEED_TYPES } from '@/lib/today/feedChipSlots'
 
 // 신원 값의 길이 상한(티켓 20260930_2100). 넘으면 유일 인덱스 행 크기 제한에 걸려 500이 나므로 400으로 먼저 거절한다.
 const MAX_BUNDLE_ID_LENGTH = 200
@@ -222,9 +223,9 @@ export function validateExposureTags(value: unknown, path: string): string[] {
 }
 
 /**
- * 항목의 카드 칸 검사(`shape`·`exposure_tags`·`tribe_id`·`color_pending`). `path`는 `items[2]`다.
- * 홈피드 카드는 `shape`·`exposure_tags`가 필수이고, 다른 종류는 값이 있을 때만 본다. `tribe_id`는 null을 「없음」으로 본다.
- * `resource.feed_type`이 있으면 `shape`는 선택이다(티켓 20261121_1530). 홈피드 카드의 `resource`에 개편 칸(`feed_type`·`chips` 등)이
+ * 항목의 카드 칸 검사(`resource.feed_type`·`exposure_tags`·`tribe_id`·`color_pending`). `path`는 `items[2]`다.
+ * 홈피드 카드는 `resource.feed_type`·`exposure_tags`가 필수이고, 다른 종류는 값이 있을 때만 본다. `tribe_id`는 null을 「없음」으로 본다.
+ * 홈피드 카드가 옛 `shape`·`resource.layout_type`을 적어 오면 오류가 아니라 경고다(읽지 않고 저장하지 않는다, 티켓 20261122_1153). 홈피드 카드의 `resource`에 개편 칸(`feed_type`·`chips` 등)이
  * 하나라도 있으면 5-1의 `validateFeedCardColumns`로 값을 보고, 오류는 반환값에, 경고는 `warningsOut`에 담는다(막지 않는다).
  */
 export function validateOpsCardFields(
@@ -239,14 +240,20 @@ export function validateOpsCardFields(
   const resourceRecord =
     typeof resource === 'object' && resource !== null && !Array.isArray(resource) ? (resource as Record<string, unknown>) : null
 
-  if (!isPresent(raw.shape)) {
-    if (isCard && !isFeedTypeWritten(resourceRecord)) {
+  if (isCard) {
+    if (!isFeedTypeWritten(resourceRecord)) {
       errors.push(
-        `${path}.shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적거나 resource.feed_type을 적어 주세요).`
+        `${path}.resource.feed_type: 필수 항목이 없어요. 홈은 카드를 유형으로 그려서 유형이 없으면 등록할 수 없어요. ${FEED_TYPES.join(', ')} 중 하나를 적어 주세요.`
       )
     }
-  } else if (!isCardShape(raw.shape)) {
-    errors.push(`${path}.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeShort(raw.shape)}). 허용값: ${CARD_SHAPES.join(', ')}`)
+    if (isPresent(raw.shape)) {
+      warningsOut?.push(`${path}.shape: 이제 쓰지 않아요. 카드 모양 대신 resource.feed_type으로 정하니 이 값은 무시하고 저장하지 않아요.`)
+    }
+    for (const key of ['shape', 'layout_type']) {
+      if (resourceRecord && key in resourceRecord) {
+        warningsOut?.push(`${path}.resource.${key}: 이제 쓰지 않아요. 이 값은 무시하고 저장하지 않아요.`)
+      }
+    }
   }
 
   // 에이전트 기획은 기사형 카드를 만들지 않는다(사용자 결정 2026-10-31, 티켓 20261031_2049).

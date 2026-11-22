@@ -10,12 +10,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Json } from '@/types/database.generated'
-import { SUGGESTED_LAYOUT_FOR } from '@/lib/admin/today-sections'
+import { FEED_CARD_BUNDLE_KEYS } from '@/lib/admin/feedCardFields'
 import { buildMissionInsertPayload } from '@/lib/admin/registerChecks/missionFields'
 import type { MissionInput } from '@/lib/admin/registerChecks/missionFields'
 import { buildTodayCardInsertPayload } from '@/lib/admin/registerChecks/homeFeedFields'
 import type { HomeFeedCardInput } from '@/lib/admin/registerChecks/homeFeedFields'
-import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH } from '@/lib/today/shape'
 import { buildBadgeInsertPayload } from '@/lib/admin/badge-insert-payload'
 import {
   toCollectionLaunchRegisterInput,
@@ -58,15 +57,23 @@ function opsItem(
   }
 }
 
-/** 검사를 통과하는 카드 항목. 칸은 `over`로 덮는다. */
+/**
+ * 검사를 통과하는 카드 항목. 칸은 `over`로 덮는다. 카드 유형(`resource.feed_type`)은 필수라서 `resource`를 통째로 덮어도
+ * 기본 유형(`hero_box`)이 남는다 — 유형을 바꾸거나 빼려면 `resource.feed_type`을 직접 적는다(`undefined`면 뺀다, 티켓 20261122_1153).
+ */
 function cardOriginal(over: Raw = {}): Raw {
+  const given = 'resource' in over ? over.resource : { template_type: 'drop_alert' }
+  let resource: unknown = given
+  if (typeof given === 'object' && given !== null && !Array.isArray(given)) {
+    resource = { feed_type: 'hero_box', ...given }
+    if ((resource as Raw).feed_type === undefined) delete (resource as Raw).feed_type
+  }
   return {
     starts_at: '2026-10-06T09:00:00+09:00',
-    shape: 'hero',
     exposure_tags: ['all'],
     copy: { title: '가을 아침 러닝' },
-    resource: { template_type: 'drop_alert' },
     ...over,
+    resource,
   }
 }
 
@@ -165,14 +172,16 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
     expect(result.payload).toMatchObject({
       id: CARD_ID,
       template_type: 'drop_alert',
-      layout_type: SUGGESTED_LAYOUT_FOR.drop_alert,
+      feed_type: 'hero_box',
       title: '가을 아침 러닝',
       exposure_tags: ['all'],
       starts_at: '2026-10-06T00:00:00.000Z',
-      shape: 'hero',
       is_active: true,
       sort_order: 0,
     })
+    // 옛 노출 형태·모양은 싣지 않는다(DB 기본값에 맡긴다, 티켓 20261122_1153)
+    expect(result.payload).not.toHaveProperty('layout_type')
+    expect(result.payload).not.toHaveProperty('shape')
   })
 
   it('수정본에 값이 있으면 수정본을 먼저 읽는다', () => {
@@ -181,21 +190,20 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
         {},
         {
           edited: {
-            shape: 'brief',
             copy: { title: '고친 제목', subtitle: '고친 부제' },
-            resource: { template_type: 'drop_alert', sort_order: 3 },
+            resource: { template_type: 'drop_alert', feed_type: 'text_box', sort_order: 3 },
           },
         }
       )
     )
     expect(result.errors).toEqual([])
-    expect(result.payload).toMatchObject({ shape: 'brief', title: '고친 제목', subtitle: '고친 부제', sort_order: 3 })
+    expect(result.payload).toMatchObject({ feed_type: 'text_box', title: '고친 제목', subtitle: '고친 부제', sort_order: 3 })
   })
 
   it('수정본은 값이 있는 칸만 덮는다 — copy를 고쳤어도 수정본에 없는 공통 칸은 제출 원본에서 읽는다', () => {
     const result = toCard(cardItem({}, { edited: { copy: { title: '고친 제목' } } }))
     expect(result.errors).toEqual([])
-    expect(result.payload).toMatchObject({ title: '고친 제목', template_type: 'drop_alert', shape: 'hero' })
+    expect(result.payload).toMatchObject({ title: '고친 제목', template_type: 'drop_alert', feed_type: 'hero_box' })
   })
 
   it('공통 칸이 먼저다 — resource에 같은 칸이 있으면 공통 칸을 쓰고 경고한다', () => {
@@ -203,7 +211,6 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
       cardItem({
         resource: {
           template_type: 'drop_alert',
-          shape: 'poster',
           exposure_tags: ['weather_rain'],
           starts_at: '2027-01-01T00:00:00+09:00',
           ends_at: '2027-01-02T00:00:00+09:00',
@@ -212,9 +219,9 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
       })
     )
     expect(result.errors).toEqual([])
-    expect(result.payload).toMatchObject({ shape: 'hero', exposure_tags: ['all'], starts_at: '2026-10-06T00:00:00.000Z', pattern_no: null })
+    expect(result.payload).toMatchObject({ exposure_tags: ['all'], starts_at: '2026-10-06T00:00:00.000Z', pattern_no: null })
     expect(paths(result.warnings).sort()).toEqual(
-      ['resource.ends_at', 'resource.exposure_tags', 'resource.pattern_no', 'resource.shape', 'resource.starts_at'].sort()
+      ['resource.ends_at', 'resource.exposure_tags', 'resource.pattern_no', 'resource.starts_at'].sort()
     )
   })
 
@@ -271,13 +278,12 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
     expect(paths(result.errors)).toEqual(expect.arrayContaining(['copy', 'resource']))
   })
 
-  it('resource 칸(layout_type·content_type_id·target_href·sort_order 등)을 payload에 싣는다', () => {
+  it('resource 칸(content_type_id·target_href·sort_order 등)을 payload에 싣는다', () => {
     const result = toCard(
       cardItem({
         copy: { title: '미션 카드', subtitle: '부제' },
         resource: {
           template_type: 'mission_spotlight',
-          layout_type: 'large_thumbnail',
           mission_id: UUID_A,
           content_type_id: 'T01',
           target_href: '/missions/abc',
@@ -288,7 +294,6 @@ describe('toTodayCardRegisterInput · 읽는 자리', () => {
     expect(result.errors).toEqual([])
     expect(result.payload).toMatchObject({
       template_type: 'mission_spotlight',
-      layout_type: 'large_thumbnail',
       mission_id: UUID_A,
       content_type_id: 'T01',
       target_href: '/missions/abc',
@@ -392,32 +397,13 @@ describe('toTodayCardRegisterInput · pattern_no(결정 5)', () => {
   })
 })
 
-describe('toTodayCardRegisterInput · 제목 글자 수 경고(G15)', () => {
-  it('제목 상한 상수는 CARD_SHAPES의 모양을 모두 갖는다', () => {
-    expect(Object.keys(CARD_TITLE_MAX_LENGTH).sort()).toEqual([...CARD_SHAPES].sort())
-    expect(CARD_TITLE_MAX_LENGTH).toEqual({ hero: 22, poster: 18, square: 22, brief: 28, list: 22, dome: 22, ticket: 22 })
-  })
-
-  for (const shape of CARD_SHAPES) {
-    const max = CARD_TITLE_MAX_LENGTH[shape]
-
-    it(`${shape}: ${max}자는 경고가 없고 ${max + 1}자는 경고만 한다(오류 아님)`, () => {
-      const atLimit = toCard(cardItem({ shape, copy: { title: '가'.repeat(max) } }))
-      expect(atLimit.errors).toEqual([])
-      expect(atLimit.warnings).toEqual([])
-
-      const over = toCard(cardItem({ shape, copy: { title: '가'.repeat(max + 1) } }))
-      expect(over.errors).toEqual([])
-      expect(over.payload).not.toBeNull()
-      expect(paths(over.warnings)).toEqual(['copy.title'])
-      expect(over.warnings[0].message).toContain(`${max}자`)
-    })
-  }
-
-  it('앞뒤 공백은 세지 않고, 이모지는 한 글자로 센다', () => {
-    expect(toCard(cardItem({ copy: { title: ` ${'가'.repeat(22)} ` } })).warnings).toEqual([])
-    expect(toCard(cardItem({ copy: { title: '😀'.repeat(22) } })).warnings).toEqual([])
-    expect(paths(toCard(cardItem({ copy: { title: '😀'.repeat(23) } })).warnings)).toEqual(['copy.title'])
+describe('toTodayCardRegisterInput · 제목 글자 수 경고(G15) 삭제', () => {
+  it('제목이 길어도 모양별 글자 수 경고를 하지 않는다 — 모양 기준이라 걷었다(티켓 20261122_1153)', () => {
+    for (const length of [22, 23, 40]) {
+      const result = toCard(cardItem({ copy: { title: '가'.repeat(length) } }))
+      expect(result.errors).toEqual([])
+      expect(result.warnings).toEqual([])
+    }
   })
 })
 
@@ -557,15 +543,29 @@ describe('toTodayCardRegisterInput · 검사 문장의 경로 매핑(결정 7)',
     expect(missing.errors).toEqual([{ path: 'exposure_tags', message: 'card.exposure_tags: 필수 항목이 없어요.' }])
   })
 
-  it('shape가 없거나 허용값이 아니면 shape 오류다', () => {
-    const missing = toCard(cardItem({ shape: undefined }))
+  it('resource.feed_type이 없으면 오류다(현상 → 원인 → 해결책), 값이 틀려도 오류다', () => {
+    const missing = toCard(cardItem({ resource: { template_type: 'drop_alert', feed_type: undefined } }))
     expect(missing.payload).toBeNull()
-    expect(paths(missing.errors)).toEqual(['shape'])
-    expect(missing.errors[0].message).toContain('card.shape: 필수 항목이 없어요')
+    expect(paths(missing.errors)).toEqual(['resource.feed_type'])
+    expect(missing.errors[0].message).toContain('card.feed_type: 필수 항목이 없어요')
+    expect(missing.errors[0].message).toContain('유형이 없으면 등록할 수 없어요')
+    expect(missing.errors[0].message).toContain('중 하나를 적어 주세요')
 
-    const wrong = toCard(cardItem({ shape: 'large_thumbnail' }))
-    expect(paths(wrong.errors)).toEqual(['shape'])
-    expect(wrong.errors[0].message).toContain('card.shape: 허용되지 않는 카드 모양이에요')
+    const wrong = toCard(cardItem({ resource: { template_type: 'drop_alert', feed_type: 'banner' } }))
+    expect(wrong.payload).toBeNull()
+    expect(paths(wrong.errors)).toEqual(['resource.feed_type'])
+  })
+
+  it('옛 shape·resource.shape·resource.layout_type은 오류가 아니라 «쓰지 않아요» 경고이고 payload에 싣지 않는다', () => {
+    const result = toCard(
+      cardItem({ shape: 'hero', resource: { template_type: 'drop_alert', shape: 'poster', layout_type: 'banner' } })
+    )
+    expect(result.errors).toEqual([])
+    expect(paths(result.warnings).sort()).toEqual(['resource.layout_type', 'resource.shape', 'shape'])
+    for (const warning of result.warnings) expect(warning.message).toContain('이제 쓰지 않아요')
+    expect(result.payload).not.toBeNull()
+    expect(result.payload).not.toHaveProperty('shape')
+    expect(result.payload).not.toHaveProperty('layout_type')
   })
 
   it('설명문은 60자까지 통과하고 61자부터 copy.description 오류다', () => {
@@ -597,11 +597,11 @@ describe('toTodayCardRegisterInput · 검사 문장의 경로 매핑(결정 7)',
     const result = toCard(
       cardItem({
         copy: { title: '두\n줄' },
-        resource: { template_type: 'mission_spotlight', layout_type: 'banner', mission_id: 'not-a-uuid', sort_order: 1.5 },
+        resource: { template_type: 'mission_spotlight', mission_id: 'not-a-uuid', sort_order: 1.5 },
       })
     )
     expect(result.payload).toBeNull()
-    expect(paths(result.errors).sort()).toEqual(['copy.title', 'resource.layout_type', 'resource.mission_id', 'resource.sort_order'])
+    expect(paths(result.errors).sort()).toEqual(['copy.title', 'resource.mission_id', 'resource.sort_order'])
   })
 
   it('이미지가 없어도 오류가 아니다(이미지는 보지 않는다)', () => {
@@ -647,7 +647,6 @@ describe('toTodayCardRegisterInput · 페이로드(결정 1·2)', () => {
       created_by: ACTOR_ID,
       cover_image_url: 'https://example.test/cards/cover.webp?v=1',
       title_in_image: true,
-      shape: 'hero',
       pattern_no: 'P03',
     })
   })
@@ -667,7 +666,8 @@ describe('toTodayCardRegisterInput · 페이로드(결정 1·2)', () => {
     }
     const scriptKeys = Object.keys(buildTodayCardInsertPayload(scriptCard, { id: CARD_ID, coverImageUrl: null }))
     const { payload } = full()
-    expect(Object.keys(payload ?? {}).sort()).toEqual([...scriptKeys, 'pattern_no', 'created_by'].sort())
+    // 카드 유형이 필수라 개편 칸 14개(`feed_seed` 제외)가 늘 실린다(티켓 20261122_1153).
+    expect(Object.keys(payload ?? {}).sort()).toEqual([...scriptKeys, ...FEED_CARD_BUNDLE_KEYS, 'pattern_no', 'created_by'].sort())
   })
 
   it('생성 타입 컬럼 대조: today_cards Insert 컬럼 중 DB 기본값에 맡기는 created_at을 뺀 전부를 채운다', () => {
@@ -676,12 +676,9 @@ describe('toTodayCardRegisterInput · 페이로드(결정 1·2)', () => {
     const insert = table.slice(table.indexOf('Insert: {'), table.indexOf('Update: {'))
     const columns = [...insert.matchAll(/^\s+(\w+)\??:/gm)].map((m) => m[1])
     expect(columns.length).toBeGreaterThan(15)
-    // 마이그레이션 349(티켓 20261120_2149)가 더한 홈피드 개편 칸 15개는 NULL이 «자동 규칙이 정한다»는 뜻이고
-    // 등록 묶음이 아직 채우지 않는다. 에이전트 자동 회차(상위 티켓 20261120_2026의 6회차)가 payload에 채울 때 이 제외를 지운다.
-    const feedRedesignPending = [
-      'feed_type', 'box_shape', 'box_kind', 'bg_color_key', 'chip_color_key', 'box_color_key', 'chips', 'title_chip_words',
-      'show_description', 'stamp_enabled', 'stamp_slot', 'list_items', 'list_more_href', 'collection_burst', 'feed_seed',
-    ]
+    // 홈피드 개편 칸 중 `feed_seed`는 등록 실행이 정해 insert 직전에 더한다. 나머지 14개는 카드 유형이 필수라 변환 결과에 늘 실린다.
+    // 옛 노출 형태(`layout_type`)·모양(`shape`)은 싣지 않는다(DB 기본값, 티켓 20261122_1153).
+    const feedRedesignPending = ['feed_seed', 'layout_type', 'shape']
     expect(feedRedesignPending.every((c) => columns.includes(c))).toBe(true)
     // 마이그레이션 351(티켓 20261121_1724)의 cover_colors는 변환 결과가 아니라 등록 실행(`create`)이 이미지 주소에서 뽑아 insert 직전에 더한다.
     const addedAtCreate = ['cover_colors']
@@ -1696,18 +1693,20 @@ describe('toTodayCardRegisterInput · 홈피드 개편 새 칸 (티켓 20261121_
     'show_description', 'stamp_enabled', 'stamp_slot', 'list_items', 'list_more_href', 'collection_burst',
   ]
 
-  /** 새 칸을 `resource`에 얹은 카드. `shape`는 기본으로 두고, `drop`으로 지울 키를 고른다. */
+  /** 새 칸을 `resource`에 얹은 카드. 유형이 기본(`hero_box`)으로 깔리니 `feed_type`을 적거나 `undefined`로 빼고, `drop`으로 지울 키를 고른다. */
   const feedCard = (feed: Raw, drop: string[] = [], over: Raw = {}) => {
     const original = cardOriginal({ resource: { template_type: 'drop_alert', ...feed }, ...over })
     for (const key of drop) delete original[key]
     return toCard(opsItem('home_feed_card', original))
   }
 
-  it('칸을 안 적은 항목은 페이로드에 새 키가 없다', () => {
+  it('유형만 적은 항목은 유형 외 새 칸이 null로 실리고 feed_seed는 없다(유형이 필수다, 티켓 20261122_1153)', () => {
     const { payload, errors, warnings } = toCard(cardItem())
     expect(errors).toEqual([])
     expect(warnings).toEqual([])
-    for (const key of [...FEED_KEYS, 'feed_seed']) expect(payload).not.toHaveProperty(key)
+    for (const key of FEED_KEYS) expect(payload).toHaveProperty(key)
+    expect(payload).toMatchObject({ feed_type: 'hero_box', box_shape: null, chips: null, list_items: null })
+    expect(payload).not.toHaveProperty('feed_seed')
   })
 
   it('새 칸을 적으면 페이로드에 14개 키가 실리고 적지 않은 칸은 null이다(feed_seed는 없다)', () => {
@@ -1728,8 +1727,8 @@ describe('toTodayCardRegisterInput · 홈피드 개편 새 칸 (티켓 20261121_
       list_items: null,
       list_more_href: null,
       collection_burst: null,
-      shape: 'hero',
     })
+    expect(payload).not.toHaveProperty('shape')
     for (const key of FEED_KEYS) expect(payload).toHaveProperty(key)
     expect(payload).not.toHaveProperty('feed_seed')
   })
@@ -1772,30 +1771,21 @@ describe('toTodayCardRegisterInput · 홈피드 개편 새 칸 (티켓 20261121_
     expect(burst.payload).toMatchObject({ collection_burst: [{ x: 0.5, y: -0.5, tilt: 10, size: 70, delay_ms: 100 }] })
   })
 
-  it('feed_type만 있고 shape가 없으면 shape는 null로 등록된다', () => {
-    const { payload, errors } = feedCard({ feed_type: 'hero_box' }, ['shape'])
-    expect(errors).toEqual([])
-    expect(payload).toMatchObject({ feed_type: 'hero_box', shape: null })
-  })
-
-  it('feed_type도 shape도 없으면 shape 필수 오류다', () => {
-    const { payload, errors } = feedCard({ box_kind: 'text' }, ['shape'])
+  it('feed_type이 없으면 feed_type 필수 오류다(다른 새 칸만 적어도 마찬가지)', () => {
+    const { payload, errors } = feedCard({ feed_type: undefined, box_kind: 'text' })
     expect(payload).toBeNull()
-    expect(paths(errors)).toEqual(['shape'])
-    expect(errors[0].message).toContain('card.shape: 필수 항목이 없어요')
-    expect(errors[0].message).toContain('resource.feed_type')
+    expect(paths(errors)).toEqual(['resource.feed_type'])
+    expect(errors[0].message).toContain('card.feed_type: 필수 항목이 없어요')
     // 빈 문자열 feed_type은 적지 않은 것으로 본다.
-    expect(paths(feedCard({ feed_type: '' }, ['shape']).errors)).toEqual(['shape'])
+    expect(paths(feedCard({ feed_type: '' }).errors)).toContain('resource.feed_type')
   })
 
-  it('shape가 허용값이 아니면 feed_type이 있어도 오류다', () => {
-    const { payload, errors } = feedCard({ feed_type: 'hero_box' }, [], { shape: 'large_thumbnail' })
-    expect(payload).toBeNull()
-    expect(paths(errors)).toEqual(['shape'])
-  })
-
-  it('shape와 feed_type을 둘 다 적으면 둘 다 저장한다', () => {
-    expect(feedCard({ feed_type: 'text_box' }).payload).toMatchObject({ feed_type: 'text_box', shape: 'hero' })
+  it('shape를 적어도 오류가 아니고 payload에는 shape가 없다(경고만)', () => {
+    const { payload, errors, warnings } = feedCard({ feed_type: 'hero_box' }, [], { shape: 'large_thumbnail' })
+    expect(errors).toEqual([])
+    expect(paths(warnings)).toEqual(['shape'])
+    expect(payload).toMatchObject({ feed_type: 'hero_box' })
+    expect(payload).not.toHaveProperty('shape')
   })
 
   it('잘못된 새 칸 값은 막고 resource 경로가 붙은 해요체 문장이다', () => {

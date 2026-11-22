@@ -40,7 +40,6 @@ function sampleBundle(): SampleBundle {
       title: "이번 주 롱런's 챌린지",
       subtitle: '30km에 도전해 보세요',
       template_type: 'progress_nudge',
-      layout_type: 'shortcut',
       badge_ids: [BADGE_ID],
       mission_id: MISSION_ID,
       content_type_id: 'T07',
@@ -109,7 +108,6 @@ describe('buildHomeFeedRegistrationRecord', () => {
         id: CARD_ID,
         title: "이번 주 롱런's 챌린지",
         template_type: 'progress_nudge',
-        layout_type: 'shortcut',
         is_active: true,
         image_source: 'agent-generator',
       },
@@ -203,7 +201,7 @@ describe('formatHomeFeedDryRunSummary', () => {
     expect(text).toContain('- 윈터 검수: 거침');
     expect(text).toContain("- 제목: 이번 주 롱런's 챌린지");
     expect(text).toContain('- 템플릿: 진행 알림 (progress_nudge)');
-    expect(text).toContain('- 노출 형태: 바로가기형 — 이미지 없는 짧은 CTA');
+    expect(text).not.toContain('노출 형태');
     expect(text).toContain('- 컨텐츠 유형: T07');
     expect(text).toContain('- 기간: 2026-10-05 00:00:00 KST ~ 2026-10-12 00:00:00 KST');
     expect(text).toContain('- 노출 조건 태그: all, has_participating_mission');

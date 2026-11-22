@@ -71,7 +71,6 @@ describe('홈피드 카드 — 상수 재수출과 검사 결과', () => {
       'CARD_REQUIRED_FIELDS',
       'CARD_OPTIONAL_FIELDS',
       'TEMPLATE_TYPES',
-      'LAYOUT_TYPES',
       'EXPOSURE_TAGS',
       'CONTENT_TYPE_IDS',
       'TEMPLATE_FIELD_KEY',
@@ -105,14 +104,14 @@ describe('홈피드 카드 — 상수 재수출과 검사 결과', () => {
     ['객체가 아님(문자열)', 'text'],
     ['빈 객체', {}],
     ['모르는 필드와 잘못된 분류', { ...exampleCard(), pattern_no: 1, template_type: 'nope', layout_type: 'nope' }],
-    ['미션 카드가 큰 썸네일이 아님', { ...exampleCard(), template_type: 'mission_spotlight', mission_id: UUID_A, layout_type: 'banner', body_markdown: undefined }],
+    ['미션 카드에 큰 썸네일이 아닌 layout_type을 적어도 통과(무시, 티켓 20261122_1153)', { ...exampleCard(), template_type: 'mission_spotlight', mission_id: UUID_A, layout_type: 'banner', body_markdown: undefined }],
     ['템플릿이 쓰지 않는 필드', { ...exampleCard(), badge_ids: [UUID_A] }],
     ['참조 형식과 중복', { ...exampleCard(), template_type: 'progress_nudge', layout_type: undefined, badge_ids: [UUID_A, UUID_A.toUpperCase()], mission_id: 'x' }],
     ['잘못된 태그·기간·정렬', { ...exampleCard(), exposure_tags: ['all', 'all', 'zzz'], starts_at: '2099-01-08T00:00:00+09:00', ends_at: '2099-01-01T00:00:00+09:00', sort_order: 1.5, is_active: 'yes' }],
     ['줄바꿈이 섞인 제목과 긴 설명', { ...exampleCard(), title: '두\n줄', description: 'ㅇ'.repeat(41), target_href: '//evil.test' }],
   ]
 
-  const PASSING_CARDS = new Set(['예시 카드', '값을 많이 채운 미션 카드', '설명문을 그리는 컨텐츠 소개 카드'])
+  const PASSING_CARDS = new Set(['예시 카드', '값을 많이 채운 미션 카드', '설명문을 그리는 컨텐츠 소개 카드', '미션 카드에 큰 썸네일이 아닌 layout_type을 적어도 통과(무시, 티켓 20261122_1153)'])
 
   it.each(cards)('%s: 묶음 검사가 내는 카드 오류와 validateCard의 오류가 같다', (name, card) => {
     const direct: string[] = []
@@ -142,7 +141,6 @@ describe('홈피드 카드 페이로드', () => {
   const EXPECTED_KEYS = [
     'id',
     'template_type',
-    'layout_type',
     'title',
     'subtitle',
     'description',
@@ -162,7 +160,6 @@ describe('홈피드 카드 페이로드', () => {
     'sort_order',
     'is_active',
     'image_source',
-    'shape',
     'title_in_image',
   ]
 
@@ -174,10 +171,11 @@ describe('홈피드 카드 페이로드', () => {
     expect(viaScript).toEqual(viaTs)
   })
 
-  it('선택 인자를 주지 않으면 옮기기 전 값이다(image_source는 agent-generator, shape·title_in_image는 null)', () => {
+  it('선택 인자를 주지 않으면 옮기기 전 값이다(image_source는 agent-generator, title_in_image는 null)', () => {
     const payload = homeFeedFields.buildTodayCardInsertPayload(card(), { id: CARD_ID, coverImageUrl: COVER_URL })
     expect(payload.image_source).toBe('agent-generator')
-    expect(payload.shape).toBeNull()
+    expect(payload).not.toHaveProperty('shape')
+    expect(payload).not.toHaveProperty('layout_type')
     expect(payload.title_in_image).toBeNull()
     expect(payload.title).toBe('제목')
     expect(payload.cover_image_url).toBe(COVER_URL)
@@ -191,22 +189,19 @@ describe('홈피드 카드 페이로드', () => {
       id: CARD_ID,
       coverImageUrl: COVER_URL,
       imageSource: null,
-      shape: 'hero',
       titleInImage: true,
     })
     expect(custom.image_source).toBeNull()
-    expect(custom.shape).toBe('hero')
     expect(custom.title_in_image).toBe(true)
-    expect({ ...custom, image_source: base.image_source, shape: base.shape, title_in_image: base.title_in_image }).toEqual(base)
+    expect({ ...custom, image_source: base.image_source, title_in_image: base.title_in_image }).toEqual(base)
 
     const other = homeFeedFields.buildTodayCardInsertPayload(card(), { id: CARD_ID, coverImageUrl: COVER_URL, imageSource: 'ops-tool', titleInImage: false })
     expect(other.image_source).toBe('ops-tool')
-    expect(other.shape).toBeNull()
     expect(other.title_in_image).toBe(false)
   })
 
   it('키 집합이 그대로다(pattern_no 없음)', () => {
-    for (const options of [{}, { imageSource: null, shape: 'hero', titleInImage: true }]) {
+    for (const options of [{}, { imageSource: null, titleInImage: true }]) {
       const keys = Object.keys(homeFeedFields.buildTodayCardInsertPayload(card(), { id: CARD_ID, coverImageUrl: COVER_URL, ...options }))
       expect(keys).toEqual(EXPECTED_KEYS)
       expect(keys).not.toContain('pattern_no')
