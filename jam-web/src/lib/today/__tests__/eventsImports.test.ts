@@ -4,7 +4,7 @@
  * `events.ts`(이벤트 API가 쓴다)가 화면 모듈 `cardView.ts`를 값으로 가져오면 `@/lib/i18n`의 한국어 사전이 이벤트 API 번들에 함께 실린다.
  * 번들러를 돌리지 않고 소스의 import 그래프(타입만 가져오는 줄은 컴파일 때 사라지므로 뺀다)로 고정한다:
  * ① `events.ts`가 `cardView.ts`를 값으로 가져오지 않는다 ② `events.ts`가 값으로 닿는 파일 어디에도 `cardView.ts`·사전(`lib/i18n`)이 없다
- * ③ 순수 판정 파일 `shape.ts`는 값으로 아무것도 가져오지 않는다(events.ts는 더는 쓰지 않는다 — 남은 상수는 8-4가 정리한다).
+ * ③ 순수 판정 파일 `shape.ts`는 값으로 아무것도 가져오지 않는다(events.ts는 더는 쓰지 않는다. 옛 모양 상수는 8-4, 티켓 20261122_1328에서 지웠다).
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/eventsImports.test.ts
  */
