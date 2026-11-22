@@ -65,7 +65,7 @@ export const PREVIEW_FEED_SEED = FEED_PREVIEW_SEED
 /**
  * 항목 `resource`의 새 칸을 미리보기 카드 행에 실을 값으로 읽는다(티켓 20261121_1532, 상위 20261120_2026 6회차-3).
  * 검증(6-1)의 정규화를 그대로 쓰고, 허용 값이 아닌 칸은 싣지 않는다(미리보기는 검증이 아니라 그리는 도구다 — 오류 문장은 검증이 알린다).
- * `feed_type`을 적지 않았거나 허용 값이 아니면 새 칸을 하나도 싣지 않는다(옛 7모양 미리보기 그대로). 항목에 시드가 없어 고정 시드를 싣는다.
+ * `feed_type`을 적지 않았거나 허용 값이 아니면 새 칸을 하나도 싣지 않는다(홈과 같이 텍스트 박스로 그려진다). 항목에 시드가 없어 고정 시드를 싣는다.
  */
 function previewFeedFields(resource: Readonly<Record<string, unknown>>, title: string | null): Partial<TodayCardRow> {
   if (!isFeedTypeWritten(resource)) return {}
