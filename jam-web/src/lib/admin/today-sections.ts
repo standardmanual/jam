@@ -9,7 +9,7 @@
  *
  * 순수 함수만 둔다(React·서버 의존 없음) — 유닛 테스트 대상이다.
  */
-import type { TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'
+import type { TodayCardTemplateType } from '@/types/database'
 import type { FeedCardColumns } from './feedCardFields'
 
 // ── 저장 페이로드 ────────────────────────────────────────────────────────
@@ -99,35 +99,6 @@ export const TODAY_TEMPLATE_OPTIONS: readonly { value: TodayCardTemplateType; la
   { value: 'recipe_reveal', label: '레시피 공개 (recipe_reveal)' },
   { value: 'content_intro', label: '컨텐츠 소개 (content_intro)' },
 ]
-
-// 아래 두 상수(`TODAY_LAYOUT_OPTIONS`·`SUGGESTED_LAYOUT_FOR`)는 어드민 화면·API·운영 묶음 검증이 더는 쓰지 않는다(티켓 20261122_1153).
-// 홈피드 PRD 생성 구간(`scripts/gen-home-feed-doc.mjs`)과 등록 기록(`registerHomeFeedRecord.mjs`)이 아직 읽어서 남겨 둔다 — 8-4에서 함께 정리한다.
-export const TODAY_LAYOUT_OPTIONS: readonly { value: TodayCardLayoutType; label: string }[] = [
-  { value: 'large_thumbnail', label: '큰 썸네일형 — 커버 이미지 크게' },
-  { value: 'dome', label: '아치 돔형 — 상단이 둥근 포스터/히어로' },
-  { value: 'ticket', label: '티켓형 — 상하 노치가 파인 티켓' },
-  { value: 'badge_gallery', label: '배지목록형 — 배지 갤러리/리스트' },
-  { value: 'shortcut', label: '바로가기형 — 이미지 없는 짧은 CTA' },
-  { value: 'banner', label: '배너형 — 가로 띠 배너' },
-  { value: 'ranking_list', label: '순위 리스트형 — 랭킹보드 목록(포디엄 없음)' },
-  { value: 'other', label: '기타 — 기본형' },
-]
-
-/** 템플릿을 고르면 처음엔 이 레이아웃을 기본 선택해둠(추천값일 뿐, 어드민이 자유롭게 바꿀 수 있음) */
-export const SUGGESTED_LAYOUT_FOR: Record<TodayCardTemplateType, TodayCardLayoutType> = {
-  badge_spotlight: 'large_thumbnail',
-  progress_nudge: 'shortcut',
-  mission_spotlight: 'large_thumbnail',
-  itembook_milestone: 'banner',
-  location_trend: 'badge_gallery',
-  drop_alert: 'shortcut',
-  editorial_article: 'large_thumbnail',
-  ranking_board: 'ranking_list',
-  // 재료 타일을 그리는 목록 모양(`list`)이 기본이다(홈피드 PRD 자원 표). 공개 예고를 `poster`로 그릴지는 카드의 모양(`shape`)이 정한다
-  recipe_reveal: 'badge_gallery',
-  // 미션·배지·컬렉션에 연결하지 않는 소개 카드라 짧은 바로가기 모양이 기본이다(티켓 20261101_2054)
-  content_intro: 'shortcut',
-}
 
 /**
  * 게재용 설명문(`today_cards.description`) 길이 상한 — 공백 포함 60자, 줄바꿈 불가(티켓 20260929_1335, 60자 상향은 티켓 20261101_1945).

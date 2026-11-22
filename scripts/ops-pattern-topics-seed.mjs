@@ -23,8 +23,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 export const SOURCE_PATH = 'scripts/data/ops-pattern-topics.json'
 export const SEED_PATH = 'jam-web/supabase/migrations/312_ops_patterns_topic_seed.sql'
 
-/** 카드 모양 허용 목록. `jam-web/src/lib/today/shape.ts`의 `CARD_SHAPES`와 같다. */
-export const CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
+/** 운영 패턴 원고의 «카드 모양» 허용 목록(옛 모양 이름 7개). 홈 화면의 모양 상수가 아니라 원고 검증용이다(티켓 20261122_1328에서 화면 쪽 상수를 지웠다). */
+export const PATTERN_CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
 export const ANGLE_TYPES = ['소개', '유도', '미션', '큐레이션', '현황', '회고', '이야기']
 export const NEED_KEYS = ['places', 'place-stats', 'badges', 'item-paths', 'trends', 'kpi']
 export const MIN_ANGLES = 10
@@ -49,7 +49,7 @@ export function validateTopics(doc) {
     }
     if (!Array.isArray(t.menus) || t.menus.length === 0) errors.push(`${at}: menus가 비어 있다`)
     for (const n of t.needs ?? []) if (!NEED_KEYS.includes(n)) errors.push(`${at}: needs ${n}은 허용 목록 밖이다`)
-    for (const s of t.cardShapes ?? []) if (!CARD_SHAPES.includes(s.shape)) errors.push(`${at}: 카드 모양 ${s.shape}은 허용 목록 밖이다`)
+    for (const s of t.cardShapes ?? []) if (!PATTERN_CARD_SHAPES.includes(s.shape)) errors.push(`${at}: 카드 모양 ${s.shape}은 허용 목록 밖이다`)
     const angles = t.angles ?? []
     if (angles.length < MIN_ANGLES) errors.push(`${at}: 각도가 ${angles.length}개다(${MIN_ANGLES}개 이상이어야 한다)`)
     angles.forEach((a, j) => {

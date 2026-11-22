@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminRead } from '@/lib/admin/auth'
 import { comparePatternNo } from '@/lib/admin/opsPatterns/read'
 import { aggregateTodayCardEvents, type TodayCardEventType } from '@/lib/today/events'
+import { FEED_TYPES } from '@/lib/today/feedChipSlots'
 
 const DEFAULT_RANGE_DAYS = 7
 
 type EventCounts = Record<TodayCardEventType, number>
+
+/**
+ * `byShape` 행의 종류(티켓 20261122_1328). 응답 키 이름 `byShape`·`shape`는 소비 코드 호환 때문에 그대로 두고, 값이 새 유형 이름인지 옛 모양 이름인지 표시한다.
+ * 새 유형 8가지 이름이면 `feed_type`, 값이 없던 기록(`unknown`)이면 `unknown`, 그 밖(옛 7모양 이름 `hero`·`brief` 등 8회차-1 이전 기록)이면 `legacy`다.
+ */
+type ShapeKind = 'feed_type' | 'legacy' | 'unknown'
+
+function shapeKindOf(shape: string): ShapeKind {
+  if (shape === 'unknown') return 'unknown'
+  return (FEED_TYPES as readonly string[]).includes(shape) ? 'feed_type' : 'legacy'
+}
 
 /** 열람률 = 열람(click) / 노출(impression). 노출이 0이면 나눌 수 없어 null. */
 function clickThroughRateOf(counts: EventCounts): number | null {
@@ -32,6 +44,7 @@ function resolveRange(searchParams: URLSearchParams): { from: string; to: string
  * 없이 자동화 읽기 토큰(`x-admin-read-token`)으로도 조회할 수 있게 `requireAdminRead`를 쓴다
  * (kpi/weekly/route.ts와 동일 패턴). 응답에는 유형 ID×이벤트 건수와 유형별 열람률만 담는다 —
  * 원천(`today_card_events`, 마이그레이션 183)에 애초에 개인 식별 컬럼이 없다.
+ * `byShape`의 각 행은 `kind`(`feed_type`·`legacy`·`unknown`)를 더해 새 유형 이름과 옛 모양 이름을 구분한다(값 계산·정렬은 그대로).
  * `byPattern`은 기록 시점 카드의 패턴 번호별 노출·열람·열람률이다(마이그레이션 211, 티켓 20261008_1059). 키 이름과 `patternNo: null`
  * 처리는 결정 기록 API의 `byPattern`과 같다 — 패턴 없는 기록(직접 만든 카드·옛 기록)은 `patternNo: null` 한 줄로 묶고 맨 끝에 둔다.
  */
@@ -79,7 +92,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => a.contentTypeId.localeCompare(b.contentTypeId))
 
     const byShape = Array.from(byShapeCounts.entries())
-      .map(([shape, counts]) => ({ shape, ...counts, clickThroughRate: clickThroughRateOf(counts) }))
+      .map(([shape, counts]) => ({ shape, kind: shapeKindOf(shape), ...counts, clickThroughRate: clickThroughRateOf(counts) }))
       .sort((a, b) => a.shape.localeCompare(b.shape))
 
     const byPattern = Array.from(byPatternCounts.entries())

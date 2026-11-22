@@ -36,8 +36,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 export const SOURCE_PATH = 'docs/service/content/OPS_PATTERNS.md'
 export const SEED_PATH = 'jam-web/supabase/migrations/212_ops_patterns_seed.sql'
 
-/** 카드 모양 허용 목록. `jam-web/src/lib/today/shape.ts`의 `CARD_SHAPES`와 같아야 한다(테스트가 비교한다). */
-export const CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
+/** 운영 패턴 원고의 «카드 모양» 허용 목록(옛 모양 이름 7개). 홈 화면의 모양 상수가 아니라 원고 검증용이다(티켓 20261122_1328에서 화면 쪽 상수를 지웠다). */
+export const PATTERN_CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
 /** 원고가 담아야 하는 개수(티켓 20261007_1633 멈춤 조건 1~4). */
 export const EXPECTED = { patterns: 18, samples: 63, tasteSignals: 43, commonRules: 7 }
 /** 초기 입력에서 쉬는 중으로 두는 패턴과 이유(PRD §10.1). 나머지는 모두 사용 중이다. */
@@ -108,7 +108,7 @@ function parseCardShapes(value, problems, pn) {
   if (value.startsWith('없음')) return []
   const shapes = []
   const push = (shape, note) => {
-    if (!CARD_SHAPES.includes(shape)) problems.push(`[멈춤 9] ${pn} 카드 모양 「${shape}」은 허용 밖이다(${CARD_SHAPES.join('·')})`)
+    if (!PATTERN_CARD_SHAPES.includes(shape)) problems.push(`[멈춤 9] ${pn} 카드 모양 「${shape}」은 허용 밖이다(${PATTERN_CARD_SHAPES.join('·')})`)
     shapes.push({ shape, note })
   }
   for (const piece of splitTopLevel(value)) {

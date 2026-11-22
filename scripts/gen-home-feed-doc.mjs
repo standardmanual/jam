@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // gen-home-feed-doc — docs/service/prd/home-feed/PRD.md의 생성 구간(노출 태그·템플릿·컨텐츠
-// 유형·레이아웃·카드 모양 목록·옛 값 → 새 모양 대응표·이동 목적지 표)을 코드 상수·순수 함수에서 만든다 (티켓 20260927_2036, 20261001_2244).
+// 유형·카드 유형 목록·이동 목적지 표)을 코드 상수·순수 함수에서 만든다 (티켓 20260927_2036, 20261001_2244, 옛 7모양 표는 20261122_1328에서 걷고 카드 유형 표로 바꿨다).
 //
 // 배경: 홈피드 기능 정의가 여러 문서에 흩어져 있고 코드가 바뀌어도 문서가 따라오지 않아
 // 여러 건이 낡았다. 표 부분은 손으로 옮겨 적지 않고 원천(today-sections.ts·targetHref.ts)에서
@@ -12,9 +12,8 @@
 // 머지 커밋은 pre-commit을 거치지 않는다(이 저장소에 pre-merge-commit 훅 없음, 2026-09-27
 // .githooks/ 확인) — staging으로 머지될 때는 이 스크립트가 돌지 않는다.
 //
-// today-sections.ts·targetHref.ts·shape.ts는 Node의 .ts 직접 import(타입 제거)로 읽는다. 세 파일이
+// today-sections.ts·targetHref.ts·feedChipSlots.ts·feedTypeLabels.ts는 Node의 .ts 직접 import(타입 제거)로 읽는다. 네 파일이
 // `import type`만 쓰기 때문에 가능하다(값 import가 섞이면 이 방식이 깨진다, 확인 2026-09-27).
-// shape.ts는 사전·서버 모듈을 값으로 가져오지 않는 순수 파일이다(티켓 20261001_2244).
 // 타입 제거는 Node 22.18 이상에서 플래그 없이 동작한다(실측 v22.22.2, CI는
 // .github/workflows/verify.yml 기준 Node 24).
 //
@@ -31,15 +30,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 export const DOC_PATH = 'docs/service/prd/home-feed/PRD.md'
 export const TODAY_SECTIONS_PATH = 'jam-web/src/lib/admin/today-sections.ts'
 export const TARGET_HREF_PATH = 'jam-web/src/lib/today/targetHref.ts'
-export const SHAPE_PATH = 'jam-web/src/lib/today/shape.ts'
+export const FEED_CHIP_SLOTS_PATH = 'jam-web/src/lib/today/feedChipSlots.ts'
+export const FEED_TYPE_LABELS_PATH = 'jam-web/src/lib/admin/feedTypeLabels.ts'
 
 const BLOCK_ORDER = [
   'exposure-tags',
   'templates',
   'content-types',
-  'layouts',
-  'card-shapes',
-  'legacy-shape-map',
+  'feed-types',
   'destinations',
 ]
 
@@ -98,15 +96,13 @@ const FIELD_LABELS = {
 }
 
 export function genTemplates(sections) {
-  const { TODAY_TEMPLATE_OPTIONS, SUGGESTED_LAYOUT_FOR, TODAY_LAYOUT_OPTIONS, TODAY_FIELDS_FOR } = sections
-  const layoutLabel = (value) => TODAY_LAYOUT_OPTIONS.find((o) => o.value === value)?.label ?? value
-  const rows = ['| 값 | 라벨 | 추천 레이아웃 | 입력 필드 |', '|---|---|---|---|']
+  const { TODAY_TEMPLATE_OPTIONS, TODAY_FIELDS_FOR } = sections
+  const rows = ['| 값 | 라벨 | 입력 필드 |', '|---|---|---|']
   for (const { value, label } of TODAY_TEMPLATE_OPTIONS) {
-    const suggested = layoutLabel(SUGGESTED_LAYOUT_FOR[value])
     const used = Object.entries(TODAY_FIELDS_FOR[value] ?? {})
       .filter(([, on]) => on)
       .map(([key]) => FIELD_LABELS[key] ?? key)
-    rows.push(`| \`${value}\` | ${label} | ${suggested} | ${used.length > 0 ? used.join('·') : '없음'} |`)
+    rows.push(`| \`${value}\` | ${label} | ${used.length > 0 ? used.join('·') : '없음'} |`)
   }
   return rows.join('\n')
 }
@@ -120,76 +116,16 @@ export function genContentTypes(sections) {
   return rows.join('\n')
 }
 
-// ── 생성 ④ 레이아웃 ────────────────────────────────────────────────────────
-export function genLayouts(sections) {
-  const rows = ['| 값 | 라벨 |', '|---|---|']
-  for (const { value, label } of sections.TODAY_LAYOUT_OPTIONS) {
-    rows.push(`| \`${value}\` | ${label} |`)
+// ── 생성 ④ 카드 유형 (티켓 20261122_1328) ─────────────────────────────────────
+// 유형 값은 `FEED_TYPES`(`today_cards.feed_type`이 받는 값), 이름은 운영자가 보는 `FEED_TYPE_LABELS`다. 옛 7모양 표(모양 목록·옛 값 → 새 모양 대응표)와
+// 레이아웃 표는 홈이 옛 모양을 그리지 않게 되어(티켓 20261122_1100) 걷었다.
+export function genFeedTypes(feedChipSlotsMod, feedTypeLabelsMod) {
+  const { FEED_TYPES } = feedChipSlotsMod
+  const { FEED_TYPE_LABELS } = feedTypeLabelsMod
+  const rows = ['| 값 | 이름 |', '|---|---|']
+  for (const value of FEED_TYPES) {
+    rows.push(`| \`${value}\` | ${FEED_TYPE_LABELS[value] ?? value} |`)
   }
-  return rows.join('\n')
-}
-
-// ── 생성 ④-1 카드 모양 목록 (티켓 20261001_2244) ──────────────────────────────
-// 모양 값은 `CARD_SHAPES`(마이그레이션 206 today_cards_shape_check와 같은 목록), 이미지가 있는 모양은 `isImageShape`(이미지 제작 필요 신호의 단일 원천)다.
-export function genCardShapes(shapeMod) {
-  const { CARD_SHAPES, isImageShape } = shapeMod
-  const rows = ['| 값 | 이미지 |', '|---|---|']
-  for (const value of CARD_SHAPES) {
-    rows.push(`| \`${value}\` | ${isImageShape(value) ? '있음 (이미지 제작 필요)' : '없음'} |`)
-  }
-  return rows.join('\n')
-}
-
-// ── 생성 ④-2 옛 값 → 새 모양 대응표 (티켓 20261001_2244) ───────────────────────
-// `shape`가 없는 옛 카드의 모양을 `resolveShape`에 대표 입력(`fakeCard`)을 넣어 돌려 만든다 — 사람이 표를 따로 쓰지 않는다. 입력 조건은 이 함수가 정하고(예외 행 포함),
-// 결과 칸만 코드가 채운다. `list`는 타일형·행형(`isRankingRows`)을 가르고, 타일이 0개인 타일형은 `fallbackEmptyTileShape`가 `brief`로 바꾼다.
-const COVER = '{cover}'
-const LAYOUT_CASES = {
-  large_thumbnail: [
-    ['커버 있음', { cover_image_url: COVER }],
-    ['미션 소개 카드(`mission_spotlight`)', { template_type: 'mission_spotlight', cover_image_url: COVER }],
-    ['커버 없음 · 배지가 걸려 있음(배지 그림이 있는지는 보지 않는다)', { badge_ids: ['{id}'] }],
-    ['커버 없음 · 배지 없음', {}],
-  ],
-  badge_gallery: [
-    ['배지가 1개 이상', { badge_ids: ['{id}'] }],
-    ['배지가 0개(타일이 없다)', {}],
-  ],
-  shortcut: [['입력과 무관', {}]],
-  banner: [
-    ['커버 있음', { cover_image_url: COVER }],
-    ['커버 없음', {}],
-  ],
-  other: [['입력과 무관', {}]],
-  ranking_list: [['랭킹보드(`ranking_board`)', { template_type: 'ranking_board' }]],
-}
-
-export function genLegacyShapeMap(shapeMod, sections) {
-  const { resolveShape, resourceOfTemplate, fallbackEmptyTileShape, isRankingRows } = shapeMod
-  const labelOf = (value) => (sections.TODAY_LAYOUT_OPTIONS.find((o) => o.value === value)?.label ?? value).split(' — ')[0]
-
-  const shapeOf = (card) => {
-    const resource = resourceOfTemplate(card.template_type)
-    const shape = fallbackEmptyTileShape(resolveShape(card), resource, card.badge_ids.length)
-    if (shape !== 'list') return `\`${shape}\``
-    return isRankingRows(resource) ? '`list` 행형' : '`list` 타일형'
-  }
-
-  const rows = ['| 옛 레이아웃 | 조건 | 새 모양 |', '|---|---|---|']
-  const add = (layout, condition, fields) => {
-    const card = fakeCard({ layout_type: layout, ...fields })
-    rows.push(`| \`${layout}\` (${labelOf(layout)}) | ${condition} | ${shapeOf(card)} |`)
-  }
-  for (const { value: layout } of sections.TODAY_LAYOUT_OPTIONS) {
-    for (const [condition, fields] of LAYOUT_CASES[layout] ?? [['입력과 무관', {}]]) add(layout, condition, fields)
-  }
-
-  // 레이아웃과 상관없는 예외 — 기사·저장된 모양·알 수 없는 값
-  const other = (label, card) => rows.push(`| 모든 레이아웃 | ${label} | ${shapeOf(card)} |`)
-  other('기사(`editorial_article`)는 레이아웃과 상관없이', fakeCard({ template_type: 'editorial_article', layout_type: 'shortcut' }))
-  other('저장된 `shape`가 모양 값이면 옛 값과 상관없이 그 값(예: `poster`)', fakeCard({ shape: 'poster', layout_type: 'shortcut' }))
-  other('목록에 없는 레이아웃 값은 큰 썸네일형으로 본다', fakeCard({ layout_type: '{unknown}', cover_image_url: COVER }))
-
   return rows.join('\n')
 }
 
@@ -330,7 +266,7 @@ function runStagedCheck(repo, docFile) {
   console.error('  홈피드 코드로 판정된 파일:')
   for (const f of hits) console.error(`    - ${f}`)
   console.error(`  고칠 문서: ${DOC_PATH}`)
-  console.error('  4·5·6·7절 표(노출 태그·템플릿·레이아웃·이동 목적지)가 바뀌었다면:')
+  console.error('  4·5·6·7절 표(노출 태그·템플릿·카드 유형·이동 목적지)가 바뀌었다면:')
   console.error('    node scripts/gen-home-feed-doc.mjs')
   console.error('  그 외 서술이 바뀌었다면 해당 절을 직접 고쳐서 함께 스테이지하세요.')
   console.error('  동작이 바뀌지 않은 변경(리팩터링 등)이면 JAM_SKIP_DOCLINT=1로 우회하고')
@@ -352,12 +288,13 @@ async function loadCodeModules(repo) {
   // package.json" 경고를 stderr에 직접 찍는다(실측: process.on('warning', ...)로 잡히지 않고
   // 로더가 별도로 출력한다). jam-web/package.json에 "type": "module"을 추가하는 것은 이
   // 티켓의 범위 밖이라 억제하지 않는다 — 종료 코드에는 영향 없는 경고성 출력이다.
-  const [sections, targetHref, shape] = await Promise.all([
+  const [sections, targetHref, feedChipSlots, feedTypeLabels] = await Promise.all([
     import(pathToFileURL(path.join(repo, TODAY_SECTIONS_PATH)).href),
     import(pathToFileURL(path.join(repo, TARGET_HREF_PATH)).href),
-    import(pathToFileURL(path.join(repo, SHAPE_PATH)).href),
+    import(pathToFileURL(path.join(repo, FEED_CHIP_SLOTS_PATH)).href),
+    import(pathToFileURL(path.join(repo, FEED_TYPE_LABELS_PATH)).href),
   ])
-  return { sections, targetHref, shape }
+  return { sections, targetHref, feedChipSlots, feedTypeLabels }
 }
 
 async function runGenerate(repo, docFile, checkOnly) {
@@ -366,14 +303,12 @@ async function runGenerate(repo, docFile, checkOnly) {
     process.exit(2)
   }
 
-  const { sections, targetHref, shape } = await loadCodeModules(repo)
+  const { sections, targetHref, feedChipSlots, feedTypeLabels } = await loadCodeModules(repo)
   const blocks = {
     'exposure-tags': genExposureTags(sections),
     templates: genTemplates(sections),
     'content-types': genContentTypes(sections),
-    layouts: genLayouts(sections),
-    'card-shapes': genCardShapes(shape),
-    'legacy-shape-map': genLegacyShapeMap(shape, sections),
+    'feed-types': genFeedTypes(feedChipSlots, feedTypeLabels),
     destinations: genDestinations(targetHref),
   }
 
@@ -407,7 +342,7 @@ async function runGenerate(repo, docFile, checkOnly) {
       process.exit(0)
     }
     console.error('')
-    console.error(`${DOC_PATH}의 생성 구간이 today-sections.ts·targetHref.ts·shape.ts와 다릅니다.`)
+    console.error(`${DOC_PATH}의 생성 구간이 today-sections.ts·targetHref.ts·feedChipSlots.ts·feedTypeLabels.ts와 다릅니다.`)
     console.error('  표를 손으로 고치지 말고 아래를 실행하세요:')
     console.error('')
     console.error('    node scripts/gen-home-feed-doc.mjs')

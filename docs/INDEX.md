@@ -31,7 +31,7 @@ status: active
 - [PRD.md](service/prd/badge-share/PRD.md) — 배지 상세 페이지에서 배지를 이미지로 만들어 공유하거나 기기에 저장하는 기능의 플로우와 플랫폼별 동작을 정의한 PRD다.
 - [PRD.md](service/prd/chapter/PRD.md) — 챕터가 생기는 흐름, 오름 처리, 프로필이 쓸 읽기 함수와 응답 모양(점수 숫자 비노출), 프로필 챕터 줄과 소식 화면의 규칙(오름 축하 카드는 없다), 어드민 유저 상세 챕터 구역의 규칙을 코드 기준으로 정의한 PRD다. 챕터는 트라이브와 상관없이 숫자로만 표기한다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
-- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
+- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 유형·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -93,7 +93,7 @@ status: active
 - [ITEMBOOK_REPLACEMENT_MAP.md](service/content/ITEMBOOK_REPLACEMENT_MAP.md) — JAM 2.0 묶음 7의 7-6에서 옛 아이템 배지 행 396개를 새 아이템 396개로 덮어쓸 짝짓기 표다. 컬렉션마다 옛 배지 이름, 짝 근거, 보유·장착 수를 보인다.
 - [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차, 등급별 보상 입력 규칙을 컨텐츠 입력자용으로 정리한 문서다.
 - [TRIBES.md](service/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
-- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
+- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 유형·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -278,7 +278,7 @@ status: active
 - [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [MISSION_REGISTRATION_BUNDLE.md](service/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 미션 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
-- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
+- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 유형·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
 
 **JAM 2.0 (plan/jam2)**
@@ -317,7 +317,7 @@ status: active
 
 **현재 서비스 (service)**
 
-- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
+- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 유형·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 - [OBJECT_MODEL.md](service/prd/ranking-board/OBJECT_MODEL.md) — 미션에서 분리된 독립 랭킹 엔티티 `ranking_modes`의 대상·지표 필드와 정렬 지표 규칙을 정리한 랭킹 객체 모델이다.
 
 **JAM 2.0 (plan/jam2)**
@@ -348,7 +348,7 @@ status: active
 - [PRD.md](service/prd/admin-boards/PRD.md) — 어드민을 운영·생태계·개발배포 세 축의 상황판으로 다시 짜는 스펙이다. 흐름·상태·내 결정을 한눈에 보이게 하는 화면과 필요한 데이터를 정한다.
 - [HOME_FEED_REGISTRATION_BUNDLE.md](service/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 홈피드 카드 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 - [PRD.md](service/prd/content-automation/PRD.md) — JAM 2.0 홈피드 카드·미션·드랍 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·운영툴승인·실행·학습)과 주간 운영 묶음 제출의 스펙 정본이다.
-- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
+- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 유형·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
 
 **JAM 2.0 (plan/jam2)**
@@ -1099,7 +1099,7 @@ status: active
 
 ### docs/service/prd/home-feed/
 
-- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
+- [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 유형·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 
 ### docs/service/prd/inventory/
 

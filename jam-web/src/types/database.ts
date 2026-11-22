@@ -1344,8 +1344,8 @@ export interface TodayCardRow {
   /** 게재용 설명문(마이그레이션 197, 티켓 20260929_1335). 60자 이하·줄바꿈 없음, 부제 아래에 표시한다.
    *  editorial_article은 쓰지 않고 poster·포스터형 dome은 화면에 그리지 않는다. NULL·공백이면 표시 없음. */
   description: string | null
-  /** 카드 모양(마이그레이션 206, 티켓 20261001_1203). hero·poster·square·brief·list 중 하나, NULL이면 옛 카드라
-   *  `resolveShape`(`lib/today/shape.ts`)가 템플릿·레이아웃으로 판정한다. DB 행에는 항상 있지만, 손으로 만드는 값
+  /** 옛 카드 모양(마이그레이션 206, 티켓 20261001_1203). 쓰지 않는 칸이다(2026-11-22) — 홈은 `feed_type`으로 그리고 값이 없으면 텍스트 박스로 그린다.
+   *  옛 카드의 값(hero·poster·square·brief·list·dome·ticket)은 보관만 한다. DB 행에는 항상 있지만, 손으로 만드는 값
    *  (시험 데이터·미리보기 초안)이 이 칸 없이도 이 타입에 맞도록 선택으로 둔다. */
   shape?: string | null
   /** 이미지 안에 제목이 들어 있는지(마이그레이션 206). NULL이면 항상 `false`(제목을 글자로 그린다, `resolveTitleInImage`). 선택인 이유는 `shape`와 같다. */
@@ -1357,7 +1357,7 @@ export interface TodayCardRow {
   // ── 홈피드 카드 개편 칸 15개(마이그레이션 349, 티켓 20261120_2149 · 규격 PRD home-feed §6 「개편 규격」) ──
   // 전부 선택(NULL 허용)이다. NULL은 «자동 규칙이 정한다»(제목 칩 낱말·도장은 «없음»)는 뜻이라 옛 카드와 손으로 만든
   // 시험 데이터는 이 칸들 없이도 이 타입에 맞는다. 자동 배정 코드는 아직 없다(자동 규칙 5회차).
-  /** 개편 카드 유형 키. 옛 7모양 `shape`와 별도다. NULL이면 옛 모양 카드이거나 자동. */
+  /** 개편 카드 유형 키(홈이 그리는 값). 옛 7모양 `shape`와 별도다. NULL이거나 모르는 값이면 홈이 텍스트 박스로 그린다. */
   feed_type?: TodayFeedType | null
   /** 박스 모양. 텍스트 박스와 이미지 마스크 양쪽에 쓴다. NULL이면 자동. */
   box_shape?: TodayBoxShape | null
