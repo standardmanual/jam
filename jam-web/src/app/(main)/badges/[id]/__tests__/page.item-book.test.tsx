@@ -109,6 +109,8 @@ function findAll(node: ReactNode, name: string, out: ReactElement<Record<string,
   const element = node as ReactElement<Record<string, unknown>>
   if (typeof element.type === 'function' && element.type.name === name) out.push(element)
   findAll(element.props.children as ReactNode, name, out)
+  // 티켓 틀(BadgeTicket)은 사진·아래·본문을 children이 아닌 props로 받는다(티켓 20261122_1222)
+  for (const slot of ['photo', 'afterPhoto', 'body']) findAll(element.props[slot] as ReactNode, name, out)
   return out
 }
 

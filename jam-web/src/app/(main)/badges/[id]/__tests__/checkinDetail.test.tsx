@@ -19,7 +19,7 @@ vi.mock('@/components/ui/BottomSheet', () => ({ default: () => null }))
 import BadgeHeroSection from '@/components/BadgeHeroSection'
 import PoiEarnHistory from '../PoiEarnHistory'
 import VisitCountChip from '@/components/ui/VisitCountChip'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 
 const BADGE = {
   image_url: null,
@@ -84,10 +84,8 @@ describe('체크인 상세의 획득 조건 카드와 안내 문구', () => {
     expect(Object.keys(d.badges)).not.toContain('conditionCheckinBody')
   })
 
-  it('하단 안내는 두 문장으로 줄었고 반경 값은 그대로 들어간다', () => {
-    const text = t(d.badges.checkinSafetyNotice, { radius: '50' })
-
-    expect(text).toBe('표시된 위치 50m 안을 지나기만 해도 체크인돼요. 가기 어려운 곳이면 알려 주세요.')
-    expect(text).not.toMatch(/위험한|굳이|도와드릴게요|까다로운/)
+  it('하단 안내 문단(checkinSafetyNotice)을 그리지 않고 사전에서도 지운다(티켓 20261122_1222)', () => {
+    expect(checkinBranch).not.toContain('checkinSafetyNotice')
+    expect(Object.keys(d.badges)).not.toContain('checkinSafetyNotice')
   })
 })
