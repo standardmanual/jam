@@ -21,8 +21,9 @@ import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeC
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
-import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
-import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
+import { getBadgeBackgroundAnimation } from '@/lib/badgeBackgroundTheme'
+import BadgeTicket from './BadgeTicket'
+import { formatTicketDate, pickTicketColor } from '@/lib/badgeTicket/ticketColor'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { excludeHiddenUnearned, isHiddenUnearned } from '@/lib/badge-engine/hiddenBadges'
 
@@ -112,80 +113,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // (티켓 20261018_1815 3회). 조회 주체(`?u=` 대상 또는 나)가 받았으면 다른 배지처럼 보인다.
   if (isHiddenUnearned(badgeRow, new Set(earned ? [badgeRow.id] : []))) notFound()
 
-  // [20260819_011] 배경은 아래 고정 배경 레이어 한 곳에서만 그린다. TopNav에 배경을 한 번 더
-  // 주입하면(20260818_003 동작) 헤더 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
-  // 배율로 잘려 경계에 이음매가 보였다. 배경이 있는 배지에서는 TopNav를 투명하게 두어 아래
-  // 고정 레이어가 그대로 비쳐 보이게 하고, 배경이 없으면 기존과 동일하게 --background를
-  // 유지한다(회귀 방지).
-  const themedBackground = hasBadgeBackgroundTheme(badgeRow)
-  // [20260901_1944] 이미지 카드 "안"에서 실행하는 블롭 애니메이션. 전체 배경 레이어와 렌더링
-  // 지점이 다르며, 애니메이션이 켜져 있으면 위 두 함수가 전체 레이어를 비운다(우선순위 규칙은
-  // badgeBackgroundTheme.ts 한 곳에서 결정).
+  // [20261122_1222] 전체 화면 배경 테마 레이어는 그리지 않는다(티켓 틀로 대체). 이미지 카드 «안» 블롭 애니메이션만 남긴다
+  // (우선순위 규칙은 badgeBackgroundTheme.ts 한 곳). 히어로에는 themedBackground 끔을 넘겨 오라 배경이 나오게 한다.
   const badgeCardAnimation = getBadgeBackgroundAnimation(badgeRow)
-  const topNavStyle: React.CSSProperties = { background: themedBackground ? 'transparent' : undefined }
 
-  // 뷰포트 전체(헤더 아래~본문~푸터)를 덮는 고정 배경 레이어 — [20260818_002 스코프 수정]
-  // (main)/layout.tsx의 main(비-positioned, bg-background 불투명)보다 위, TopNav(sticky, z-30)보다는
-  // 아래 z-index로 배치해 배경이 자동으로 비쳐 보이게 한다.
-  // [20260819_011] 배경을 실제로 그리는 유일한 지점이다 — TopNav와 Hero 카드는 배경을 그리지
-  // 않고 투명 처리만 하므로, 같은 이미지가 서로 다른 배율로 여러 번 잘려 이음매가 생기지 않는다.
-  // pointerEvents: 'none' — 순수 시각 배경 레이어이므로 클릭/탭 이벤트를 가로채지 않고 아래
-  // 콘텐츠(링크·버튼)로 그대로 통과시킨다. (게이트 리뷰에서 발견된 클릭 차단 회귀 수정)
-  // [20260818_004 버그 수정] inset:0은 뷰포트 전체 폭을 덮어 (main)/layout.tsx의
-  // max-w-[430px] mx-auto 앱 컬럼(TopNav와 동일 폭) 바깥(데스크톱 검은 여백)까지 배경색이
-  // 새어나갔다. left:50% + translateX(-50%) + maxWidth:430px로 앱 컬럼과 동일한 폭·중앙정렬로
-  // 제한하되, fixed 특성(스크롤에 안 끌려감)은 그대로 유지한다.
-  // [20260819_012] 애니메이션 배경은 어드민에서 구운 반복 MP4를 이 레이어 안에서 재생한다.
-  // - 유저단에는 WebGL을 로드하지 않는다는 전체 설계 원칙 유지 — <video>로 재생만 한다.
-  // - iOS 자동재생 4종 세트(autoPlay·muted·loop·playsInline)는 하나라도 빠지면 재생되지 않는다.
-  // - poster에는 같은 시점에 구운 정지 PNG를 쓴다. CSS 배경 이미지(getBadgeBackgroundStyle)도
-  //   그대로 유지되므로 영상 로드 전/실패 시, 그리고 타일 상한을 넘는 초장신 페이지 최하단까지
-  //   같은 정지 이미지가 이어져 보인다.
-  // - [20260819_017 버그 수정] 영상은 430×860(정사각 타일 2장)으로 구워져 있는데 <video>는
-  //   background-repeat처럼 타일링할 수 없어, 예전에는 <video> 하나만 얹어 레이어 상단 860px
-  //   까지만 애니메이션이 보이고 그보다 긴 페이지의 아래쪽은 정지 이미지가 그대로 노출됐다.
-  //   BadgeBackgroundVideoTiles가 같은 영상을 세로로 필요한 만큼(콘텐츠 실제 높이 기준, 상한
-  //   있음) 반복 배치해 페이지 전체를 덮는다.
-  // - prefers-reduced-motion: reduce 대응은 globals.css의 .badge-background-video 규칙에서
-  //   display:none으로 처리한다(그 경우 아래 CSS 배경 poster가 그대로 보인다).
-  //   같은 이유로 display:block도 인라인이 아니라 그 클래스에 둔다.
-  // - pointerEvents:'none'은 레이어와 영상 양쪽에 유지한다(클릭 차단 회귀 방지).
-  // [20260901_1944] 카드 안 블롭 애니메이션이 켜져 있으면 이 레이어는 CSS·영상 모두 비어야 한다.
-  // 그 판단은 getBadgeBackgroundStyle / getBadgeBackgroundVideoUrl 두 함수가 모두 담당하므로
-  // 여기서는 별도 분기를 두지 않는다 — 호출부가 우선순위를 각자 해석하지 않는다는 원칙.
-  const badgeBackgroundVideoUrl = getBadgeBackgroundVideoUrl(badgeRow)
-  const badgeBackgroundLayer = (
-    <div
-      aria-hidden="true"
-      style={{
-        position: 'fixed',
-        top: 0,
-        bottom: 0,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '100%',
-        maxWidth: '430px',
-        zIndex: 0,
-        pointerEvents: 'none',
-        overflow: 'hidden',
-        ...getBadgeBackgroundStyle(badgeRow),
-      }}
-    >
-      {badgeBackgroundVideoUrl && (
-        <BadgeBackgroundVideoTiles
-          src={badgeBackgroundVideoUrl}
-          poster={badgeRow.background_image_url}
-        />
-      )}
-    </div>
-  )
-
-  // 본문 콘텐츠(hero/info/action-section, Footer)는 위 고정 배경 레이어(z-index:0, positioned)보다
-  // 페인트 순서상 앞서도록 각 섹션에 relative z-10을 부여한다(BadgeHeroSection·Footer 컴포넌트
-  // 내부, 아래 info/action-section div에 개별 적용) — [20260818_003, 20260818_002 잔여 이슈 수정].
-  // 실제 배경색/배경 이미지가 채워진 상태에서 흰 텍스트 가독성을 보정하기 위한 최소한의 텍스트
-  // 그림자. 둘 다 없으면 기존과 동일(그림자 없음)하다. (20260819_008 — background_image_url 추가)
-  const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
+  // 티켓색은 서버가 요청마다 고른다(원색 5개, 이미지 색과 겹치면 제외). 클라이언트에서 칠하지 않는다.
+  const ticketColor = pickTicketColor(badgeRow.bg_colors ?? [])
+  // 페이지 범위 --background 덮어쓰기(크림). TopNav·절취선 홈이 이 값을 따른다.
+  const pageStyle = { '--background': '#F1E9D6' } as React.CSSProperties
+  const shareWrapStyle: React.CSSProperties = { padding: '24px 16px calc(32px + env(safe-area-inset-bottom))' }
 
   // Phase 16: checkin 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let checkinEarns: (UserCheckinBadgeEarnRow & { poi: PoiRow | null })[] = []
@@ -366,95 +302,92 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       : null
 
     return (
-      <div className="min-h-full text-foreground" style={themedTextStyle}>
-        {badgeBackgroundLayer}
+      <div className="min-h-full text-foreground bg-background" style={pageStyle}>
         <TopNav
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
-          headerStyle={topNavStyle}
         />
 
-        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
+        <BadgeTicket
+          color={ticketColor}
+          kindLabel={d.badges.ticketKindItem}
+          dateText={formatTicketDate(activeItem?.obtained_at)}
+          photo={<BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} themedBackground={false} />}
+          afterPhoto={
+            /* 대표 개체 일련번호 — 본인 뷰 + 현재 보유 중인 개체가 있을 때만 노출한다(height=50, 20260903_1423). */
+            isOwnBadge && representativeSerial ? (
+              <div className="relative z-10 flex justify-center px-4 pt-0 pb-6">
+                <ItemSerialCode code={representativeSerial} height={50} />
+              </div>
+            ) : null
+          }
+          body={
+            <>
+              {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
+              {(isOwnBadge || !hasEarned) && (
+                <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
+                  {isOwnBadge && allItemInventory.length > 0 && (
+                    // activeItemId — 히어로에 일련번호가 크게 표시된 개체를 그대로 넘긴다(20260907_2059 보완).
+                    <ItemEarnHistory
+                      activeItemId={activeItem?.id ?? null}
+                      items={allItemInventory.map(item => ({
+                        id: item.id,
+                        serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
+                        obtained_at: item.obtained_at,
+                        expires_at: item.expires_at,
+                      }))}
+                    />
+                  )}
 
-        {/* 대표 개체 일련번호 — 타이틀 텍스트 없이 컴포넌트만 배치(dev-sample/item-badge-serial
-            샘플에서 검증된 height=50 재사용, 20260903_1423). 본인 뷰 + 현재 보유 중인 개체가
-            있을 때만 노출한다. */}
-        {isOwnBadge && representativeSerial && (
-          <div className="relative z-10 flex justify-center px-4 pt-3 pb-[32px]">
-            <ItemSerialCode code={representativeSerial} height={50} />
-          </div>
-        )}
+                  {!hasEarned && (
+                    <Card className="text-center">
+                      <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
+                    </Card>
+                  )}
+                </div>
+              )}
 
-        {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링.
-            위 위쪽 간격은 앞 블록이 만든다: 히어로 카드의 pb-5(20px, 다른 화면의 카드 사이 간격)와, 일련번호가 있으면
-            ItemSerialCode 블록의 pt-3·pb-[32px]다. 그래서 여기에는 위쪽 여백을 더하지 않는다(2026-11-09 사용자 지시, 이전에는
-            일련번호가 없을 때 pt-[32px]가 히어로의 pb-[32px]와 겹쳐 64px였다). */}
-        {(isOwnBadge || !hasEarned) && (
-          <div
-            className="relative z-10 flex flex-col gap-5 px-4 pb-3"
-          >
-            {isOwnBadge && allItemInventory.length > 0 && (
-              // activeItemId — 위 히어로에 일련번호가 크게 표시된 개체를 그대로 넘긴다.
-              // 넘기지 않으면 이력 첫 카드가 항상 최신 획득분(obtained_at DESC 첫 행)을 그려서
-              // 히어로와 서로 다른 개체를 가리킨다(20260907_2059 보완).
-              <ItemEarnHistory
-                activeItemId={activeItem?.id ?? null}
-                items={allItemInventory.map(item => ({
-                  id: item.id,
-                  serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
-                  obtained_at: item.obtained_at,
-                  expires_at: item.expires_at,
-                }))}
-              />
-            )}
+              {/* desc-section — 컬렉션 링크 또는 만료 임박 안내가 있을 때만 렌더링 */}
+              {(itemBook || expiring) && (
+                <div className="relative z-10 flex flex-col gap-5 px-4 pt-3 pb-6">
+                  {/* 속한 컬렉션 링크 */}
+                  {itemBook && (
+                    <ListRow
+                      href={`/collections/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                      leadShape="tile"
+                      lead={
+                        /* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드다. next/image에 직접 넘기면
+                           미등록 호스트 하나로 배지 상세 화면 전체가 500이 되므로 SafeImage로 렌더한다
+                           (20260824_005). 폴백은 이미지가 없을 때 MagicBookIcon. */
+                        <SafeImage
+                          src={itemBook.image_url}
+                          alt=""
+                          width={48}
+                          height={48}
+                          fallback={<MagicBookIcon className="w-5 h-5 text-muted" />}
+                        />
+                      }
+                      title={itemBook.name}
+                      chevron
+                    />
+                  )}
 
-            {!hasEarned && (
-              <Card className="text-center">
-                <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-              </Card>
-            )}
-          </div>
-        )}
+                  {/* 만료 임박 안내 */}
+                  {expiring && (
+                    <Card>
+                      <p className="text-base text-foreground">{d.inventory.expiringSoonTitle}</p>
+                      <p className="text-xs text-[var(--muted)] mt-0.5">{d.inventory.expiringSoonBody}</p>
+                    </Card>
+                  )}
+                </div>
+              )}
+            </>
+          }
+        />
 
-        {/* desc-section — 컬렉션 링크 또는 만료 임박 안내가 있을 때만 렌더링 */}
-        {(itemBook || expiring) && (
-          <div className="relative z-10 flex flex-col gap-5 px-4 pt-3 pb-6">
-            {/* 속한 컬렉션 링크 */}
-            {itemBook && (
-              <ListRow
-                href={`/collections/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
-                leadShape="tile"
-                lead={
-                  /* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드다. next/image에 직접 넘기면
-                     미등록 호스트 하나로 배지 상세 화면 전체가 500이 되므로 SafeImage로 렌더한다
-                     (20260824_005). 폴백은 이미지가 없을 때 MagicBookIcon — lead 박스(48px)는 ListRow가 주므로
-                     아이콘만 넘겨 박스가 이중이 되지 않고 행 정렬도 무너지지 않는다. */
-                  <SafeImage
-                    src={itemBook.image_url}
-                    alt=""
-                    width={48}
-                    height={48}
-                    fallback={<MagicBookIcon className="w-5 h-5 text-muted" />}
-                  />
-                }
-                title={itemBook.name}
-                chevron
-              />
-            )}
-
-            {/* 만료 임박 안내 */}
-            {expiring && (
-              <Card>
-                <p className="text-base text-foreground">{d.inventory.expiringSoonTitle}</p>
-                <p className="text-xs text-[var(--muted)] mt-0.5">{d.inventory.expiringSoonBody}</p>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시: 상단 공유 아이콘을 여기로 옮김). 본인이 획득한 배지에서만 보인다(미획득·타인 배지에는 두지 않는다) */}
+        {/* 공유하기 — 티켓 밖 하단. 본인이 획득한 배지에서만 보인다(미획득·타인 배지에는 두지 않는다) */}
         {isOwnBadge && hasEarned && (
-          <div className="relative z-10 px-4 pt-2 pb-6">
+          <div style={shareWrapStyle}>
             <BadgeShareButton
               badgeId={id}
               badgeType="item"
@@ -471,60 +404,67 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 3: 체크인 배지 ==========
   if (badgeRow.type === 'checkin') {
     return (
-      <div className="min-h-full text-foreground" style={themedTextStyle}>
-        {badgeBackgroundLayer}
+      <div className="min-h-full text-foreground bg-background" style={pageStyle}>
         <TopNav
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
-          headerStyle={topNavStyle}
         />
 
-        {/* 방문 횟수 칩 — 아이템 배지의 등급 칩과 같은 자리(카드 안 이름 바로 위)에 «×N»을 둔다. 2회 이상일 때만 그린다(2026-11-09 사용자 지시) */}
-        <BadgeHeroSection
-          badge={badgeRow}
-          hasEarned={hasEarned}
-          backgroundAnimation={badgeCardAnimation}
-          chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined}
+        <BadgeTicket
+          color={ticketColor}
+          kindLabel={d.badges.ticketKindCheckin}
+          dateText={formatTicketDate(checkinEarns[0]?.earned_at)}
+          /* 방문 횟수 칩 — 아이템 배지의 등급 칩과 같은 자리(카드 안 이름 바로 위)에 «×N»을 둔다. 2회 이상일 때만 그린다(2026-11-09 사용자 지시) */
+          photo={
+            <BadgeHeroSection
+              badge={badgeRow}
+              hasEarned={hasEarned}
+              backgroundAnimation={badgeCardAnimation}
+              themedBackground={false}
+              chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined}
+            />
+          }
+          body={
+            <>
+              {/* info-section — 체크인 배지는 «획득 조건» 카드를 두지 않는다(2026-11-09 사용자 지시) */}
+              <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
+                {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
+                <PoiEarnHistory poiEarns={checkinEarns.map((e) => ({
+                  id: e.id,
+                  earned_at: e.earned_at,
+                  triggered_by_activity_name: e.triggered_by_activity_name ?? null,
+                  triggered_by_distance_km: e.triggered_by_distance_km ?? null,
+                  triggered_by_activity_date: e.triggered_by_activity_date ?? null,
+                  triggered_by_strava_id: e.triggered_by_strava_id ?? null,
+                }))} />
+              </div>
+
+              {/* action-section */}
+              <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
+                {badgeRow.patch_available && (
+                  <a
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+                  >
+                    {d.badges.physicalPatchButton} ↗
+                  </a>
+                )}
+
+                {!hasEarned && (
+                  <Card className="text-center">
+                    <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
+                  </Card>
+                )}
+              </div>
+            </>
+          }
         />
 
-        {/* info-section — 체크인 배지는 «획득 조건» 카드를 두지 않는다(2026-11-09 사용자 지시) */}
-        <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
-          {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-          <PoiEarnHistory poiEarns={checkinEarns.map((e) => ({
-            id: e.id,
-            earned_at: e.earned_at,
-            triggered_by_activity_name: e.triggered_by_activity_name ?? null,
-            triggered_by_distance_km: e.triggered_by_distance_km ?? null,
-            triggered_by_activity_date: e.triggered_by_activity_date ?? null,
-            triggered_by_strava_id: e.triggered_by_strava_id ?? null,
-          }))} />
-        </div>
-
-        {/* action-section */}
-        <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
-          {badgeRow.patch_available && (
-            <a
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
-            >
-              {d.badges.physicalPatchButton} ↗
-            </a>
-          )}
-
-          {!hasEarned && (
-            <Card className="text-center">
-              <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-            </Card>
-          )}
-
-          <p className="text-center text-base text-[var(--muted)] px-4">
-            {t(d.badges.checkinSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
-          </p>
-
-          {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시) */}
-          {isOwnBadge && hasEarned && (
+        {/* 공유하기 — 티켓 밖 하단 */}
+        {isOwnBadge && hasEarned && (
+          <div style={shareWrapStyle}>
             <BadgeShareButton
               badgeId={id}
               badgeType="checkin"
@@ -532,135 +472,142 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               badgeName={badgeRow.name}
               hasEarned={hasEarned}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     )
   }
 
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-full text-foreground" style={themedTextStyle}>
-      {badgeBackgroundLayer}
+    <div className="min-h-full text-foreground bg-background" style={pageStyle}>
       <TopNav
         title={d.common.back}
         backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
-        headerStyle={topNavStyle}
       />
 
-      <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
-
-      {/* info-section */}
-      <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
-        {/* 획득 조건 다크 카드 */}
-        <BadgeConditionCard
-          text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name, badgeRow.id)}
-          spec={formatBadgeConditionSpec(badgeRow.condition_json)}
-        />
-
-        {/* 선행 배지 조건 */}
-        {prereqStatus.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <p className="text-base font-bold text-foreground">{d.badges.prerequisiteTitle}</p>
-            <div className="grid grid-cols-3 gap-2">
-              {prereqStatus.map((p) => (
-                <BadgeGridCard
-                  key={p.id}
-                  name={p.name}
-                  imageUrl={p.image_url}
-                  bgColors={p.bg_colors}
-                  rarity={p.rarity as BadgeRarity}
-                  href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
-                  earned={p.owned}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 포인트 보상 — 미션 상세의 포인트 보상 행과 같은 모양이다(2026-11-09 사용자 지시): tint 행 + 서클 lead + «N 포인트».
-            획득 전후로 문구를 가르지 않는다. «지급했다»·«드렸다» 같은 표현을 쓰지 않고 값만 보인다. */}
-        {badgeRow.point_reward > 0 && (
-          <ListRow
-            tone="tint"
-            leadShape="round"
-            lead={
-              <span className="w-full h-full flex items-center justify-center" style={{ background: 'var(--accent)' }}>
-                <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
-              </span>
-            }
-            title={tPoint(d.badges.pointRewardLine, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
-          />
-        )}
-      </div>
-
-      {/* action-section */}
-      <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
-        {/* 실물 패치 버튼 */}
-        {badgeRow.patch_available && (
-          <a
-            href="#"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
-          >
-            {d.badges.physicalPatchButton} ↗
-          </a>
-        )}
-
-        {/* 획득 정보 (획득한 경우) */}
-        {earned && (
-          <Card>
-            <p className="text-base font-bold text-foreground mb-1">{d.badges.earnInfoTitle}</p>
-            <div className="flex flex-col -mb-3">
-              <ListRow
-                tone="flat"
-                titleVariant="label"
-                titleLines={0}
-                title={d.badges.earnedAt}
-                value={<LocalDate iso={earned.earned_at} stamp stampBreak />}
-                valueNoWrap
+      <BadgeTicket
+        color={ticketColor}
+        kindLabel={d.badges.ticketKindActivity}
+        dateText={formatTicketDate(earned?.earned_at)}
+        photo={<BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} themedBackground={false} />}
+        body={
+          <>
+            {/* info-section */}
+            <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
+              {/* 획득 조건 다크 카드 */}
+              <BadgeConditionCard
+                text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name, badgeRow.id)}
+                spec={formatBadgeConditionSpec(badgeRow.condition_json)}
               />
-              {earned.triggered_by_activity_name && (
-                <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={earned.triggered_by_activity_name} />
+
+              {/* 선행 배지 조건 */}
+              {prereqStatus.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <p className="text-base font-bold text-foreground">{d.badges.prerequisiteTitle}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {prereqStatus.map((p) => (
+                      <BadgeGridCard
+                        key={p.id}
+                        name={p.name}
+                        imageUrl={p.image_url}
+                        bgColors={p.bg_colors}
+                        rarity={p.rarity as BadgeRarity}
+                        href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                        earned={p.owned}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
-              {earned.triggered_by_distance_km && (
+
+              {/* 포인트 보상 — 미션 상세의 포인트 보상 행과 같은 모양이다(2026-11-09 사용자 지시): tint 행 + 서클 lead + «N 포인트».
+                  획득 전후로 문구를 가르지 않는다. «지급했다»·«드렸다» 같은 표현을 쓰지 않고 값만 보인다. */}
+              {badgeRow.point_reward > 0 && (
                 <ListRow
-                  tone="flat"
-                  titleVariant="label"
-                  titleLines={0}
-                  title={d.badges.triggerDistance}
-                  value={t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}
-                />
-              )}
-              {earned.triggered_by_activity_date && (
-                <ListRow
-                  tone="flat"
-                  titleVariant="label"
-                  titleLines={0}
-                  title={d.badges.triggerDate}
-                  value={<LocalDate iso={earned.triggered_by_activity_date} stamp stampBreak />}
-                  valueNoWrap
+                  tone="tint"
+                  leadShape="round"
+                  lead={
+                    <span className="w-full h-full flex items-center justify-center" style={{ background: 'var(--accent)' }}>
+                      <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
+                    </span>
+                  }
+                  title={tPoint(d.badges.pointRewardLine, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
                 />
               )}
             </div>
-            {earned.triggered_by_strava_id && (
-              <div className="mt-3">
-                <StravaLink stravaId={earned.triggered_by_strava_id} />
-              </div>
-            )}
-          </Card>
-        )}
 
-        {/* 미획득 안내 */}
-        {!hasEarned && (
-          <Card className="text-center">
-            <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-          </Card>
-        )}
+            {/* action-section */}
+            <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
+              {/* 실물 패치 버튼 */}
+              {badgeRow.patch_available && (
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+                >
+                  {d.badges.physicalPatchButton} ↗
+                </a>
+              )}
 
-        {/* 공유하기 — 콘텐츠 맨 끝(2026-11-10 사용자 지시) */}
-        {isOwnBadge && hasEarned && (
+              {/* 획득 정보 (획득한 경우) */}
+              {earned && (
+                <Card>
+                  <div className="flex flex-col -mb-3">
+                    <ListRow
+                      tone="flat"
+                      titleVariant="label"
+                      titleLines={0}
+                      title={d.badges.earnedAt}
+                      value={<LocalDate iso={earned.earned_at} stamp stampBreak />}
+                      valueNoWrap
+                    />
+                    {earned.triggered_by_activity_name && (
+                      <ListRow tone="flat" titleVariant="label" titleLines={0} title={d.badges.triggerActivity} value={earned.triggered_by_activity_name} />
+                    )}
+                    {earned.triggered_by_distance_km && (
+                      <ListRow
+                        tone="flat"
+                        titleVariant="label"
+                        titleLines={0}
+                        title={d.badges.triggerDistance}
+                        value={t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}
+                      />
+                    )}
+                    {earned.triggered_by_activity_date && (
+                      <ListRow
+                        tone="flat"
+                        titleVariant="label"
+                        titleLines={0}
+                        title={d.badges.triggerDate}
+                        value={<LocalDate iso={earned.triggered_by_activity_date} stamp stampBreak />}
+                        valueNoWrap
+                      />
+                    )}
+                  </div>
+                  {earned.triggered_by_strava_id && (
+                    <div className="mt-3">
+                      <StravaLink stravaId={earned.triggered_by_strava_id} />
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* 미획득 안내 */}
+              {!hasEarned && (
+                <Card className="text-center">
+                  <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
+                </Card>
+              )}
+            </div>
+          </>
+        }
+      />
+
+      {/* 공유하기 — 티켓 밖 하단 */}
+      {isOwnBadge && hasEarned && (
+        <div style={shareWrapStyle}>
           <BadgeShareButton
             badgeId={id}
             badgeType="activity"
@@ -668,8 +615,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             badgeName={badgeRow.name}
             hasEarned={hasEarned}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

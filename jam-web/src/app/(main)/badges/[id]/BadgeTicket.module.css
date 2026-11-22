@@ -1,0 +1,138 @@
+/*
+ * 배지 상세 티켓 틀 (티켓 20261122_1222). 서버 렌더 HTML과 이 CSS 모듈만으로 첫 화면부터 그린다 — 클라이언트 JS로 색·모양을 정하지 않는다.
+ * 티켓색은 서버가 인라인으로 넣는 --ticket(= var(--jam-*)), --ticket-end(끝색 문자열)다.
+ * 절취선과 홈은 var(--background)로 칠해 페이지 크림과 자동으로 같은 색이 된다(구멍처럼 보이게).
+ */
+
+.ticket {
+  margin: 4px 16px 0;
+  position: relative;
+  /* 티켓 범위 토큰 덮어쓰기 — :root에는 쓰지 않는다. color-mix 미지원 브라우저는 기존 토큰 그대로다 */
+  --muted: rgba(23, 23, 23, 0.8);
+  --border: rgba(23, 23, 23, 0.12);
+}
+
+@supports (color: color-mix(in srgb, red, white)) {
+  .ticket {
+    --card-bg: color-mix(in srgb, var(--ticket) 70%, #fff);
+    --surface: color-mix(in srgb, var(--ticket) 70%, #fff);
+    --background-secondary: color-mix(in srgb, var(--ticket) 45%, #fff);
+  }
+}
+
+/* 머리: 티켓색 단색, 윗모서리 직각 */
+.head {
+  background: var(--ticket);
+  padding: 20px 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* 높이는 오른쪽 글자 묶음의 실제 글자 높이와 같은 44.5px. 색은 .jam-logo-mark가 본문색으로 칠한다 */
+.logo {
+  height: 44.5px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+  color: #171717;
+  min-width: 0;
+}
+
+.kind {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 900;
+  font-size: 34px;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+
+.date {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+}
+
+/* 절취선: 높이 0인 줄. 홈 삼각형과 점선이 이 줄을 가운데로 삼아 위아래로 걸친다 */
+.tear {
+  position: relative;
+  height: 0;
+  z-index: 2;
+}
+
+.tear::before,
+.tear::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  width: 20px;
+  height: 40px;
+  background: var(--background);
+}
+
+/* 직선 삼각 홈: 깊이 20px, 높이 40px (45°) */
+.tear::before {
+  left: 0;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.tear::after {
+  right: 0;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+}
+
+/* 점선: 지름 4px 점, 10px 간격, 좌우 26px 안쪽 */
+.dots {
+  position: absolute;
+  top: -2px;
+  left: 26px;
+  right: 26px;
+  height: 4px;
+  background: radial-gradient(circle at 2px 2px, var(--background) 2px, transparent 2.5px) 0 0 / 14px 4px repeat-x;
+}
+
+/* 아래 블록: 사진 구간부터 티켓 끝까지 한 덩어리 */
+.body {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-top: 20px;
+  border-radius: 0 0 12px 12px;
+  /* 끝색을 못 읽는 브라우저는 단색으로 둔다 */
+  background: var(--ticket);
+}
+
+@supports (color: oklch(from red l c h)) {
+  .body {
+    background-image: linear-gradient(180deg, var(--ticket) 0%, var(--ticket-end) 100%);
+  }
+}
+
+/* 그레인: 내용 아래 층의 정적 레이어. 화면 고정 배치는 쓰지 않는다 */
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0.55;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+.cards {
+  padding-top: 24px;
+}
