@@ -260,7 +260,7 @@ describe('맞물린 값', () => {
     expect(thresholdInterlockErrors({ minLiveCards: 5, maxLiveCards: 5 })).toEqual({})
   })
 
-  it('같은 모양 연속 일수가 기간보다 크면 기간 칸과 그 칸에 오류다(기간 5·연속 6)', () => {
+  it('같은 카드 유형 연속 일수가 기간보다 크면 기간 칸과 그 칸에 오류다(기간 5·연속 6)', () => {
     expect(thresholdInterlockErrors({ monotonyWindowDays: 5, monotonySameShapeDays: 6, monotonySamePatternCount: 3 })).toEqual({
       monotonySameShapeDays: '되돌아보는 기간(5일)보다 클 수 없어요',
       monotonyWindowDays: '되돌아보는 기간은 6일보다 짧을 수 없어요',
@@ -480,9 +480,9 @@ describe('결과 문장 9개(채원 확정 문구, 기본값 기준)', () => {
     expect(sentence('no_new_content')).toBe('그날 새로 게재를 시작하는 홈피드 카드가 1장보다 적으면 알려요')
     expect(sentence('approval_deadline')).toBe('공개 시각 48시간 전까지 승인하지 않았거나 예약 등록하지 않은 항목이 있으면 알려요')
     expect(sentence('overlap')).toBe(
-      '같은 날 이미지가 있는 모양의 카드가 3장 이상이거나, 이미지가 없는 모양의 카드가 1장보다 적거나, 신규 유저에게 보이는 카드가 3장보다 많으면 알려요'
+      '같은 날 이미지가 있는 카드 유형의 카드가 3장 이상이거나, 이미지가 없는 카드 유형의 카드가 1장보다 적거나, 신규 유저에게 보이는 카드가 3장보다 많으면 알려요'
     )
-    expect(sentence('monotony')).toBe('최근 7일의 대표 카드에서 같은 패턴·트라이브가 3번 이상 나오거나 같은 모양이 3일 연속 대표이면 알려요')
+    expect(sentence('monotony')).toBe('최근 7일의 대표 카드에서 같은 패턴·트라이브가 3번 이상 나오거나 같은 카드 유형이 3일 연속 대표이면 알려요')
     expect(sentence('action_spike')).toBe('최근 7일 합계가 직전 4주 주평균의 2배 이상이고 지표별 최소 건수 이상이면 알려요')
   })
 

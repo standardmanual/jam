@@ -22,7 +22,7 @@ import { fetchMissionsById, type TodayCardWithHref } from '@/lib/today/cards'
 import { isMissionExposed, type MissionExposureInput } from '@/lib/missions/visibility'
 import { cardIsLiveDuring, cardMatchesTags, sortHomeCards } from '@/lib/today/cardSelection'
 import { isClosedToViewerTribe, virtualExposureTags, type VirtualViewer } from '@/lib/today/virtualViewer'
-import { resolveShape } from '@/lib/today/shape'
+import { resolveFeedType, usableListItems } from '@/lib/today/feedType'
 import { specialDayTags, type SpecialDayTag } from '@/lib/inputs/special-days-config'
 import type { WeatherKind } from '@/lib/inputs/weather'
 import { kstDayBoundsIso, previewBaseTime, shiftDateStr } from '@/lib/admin/today-calendar'
@@ -75,7 +75,7 @@ export interface DayPreview {
   date: string
   /** 그날 홈 순서. `entries.length`가 그날 카드 수다 */
   entries: PreviewEntry[]
-  /** 카드 모양(`resolveShape`)별 개수. `entries`에서 센다 */
+  /** 카드 유형(`resolveFeedType`, 홈이 그리는 유형)별 개수. `entries`에서 센다. 키 이름은 화면 쪽 호환을 위해 `shapeCounts` 그대로다 */
   shapeCounts: Record<string, number>
   /** 승인 전 카드 수 */
   pendingCount: number
@@ -235,8 +235,13 @@ async function loadPendingItems(supabase: ReturnType<typeof createServiceClient>
 function countShapes(entries: readonly PreviewEntry[]): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const { card } of entries) {
-    const shape = resolveShape(card)
-    counts[shape] = (counts[shape] ?? 0) + 1
+    // 홈이 카드를 그리는 규칙(`toCardView`)과 같다: 그릴 값이 없는 유형은 텍스트 박스로 센다.
+    const feedType = resolveFeedType(card.feed_type, {
+      hasCover: Boolean(card.cover_image_url),
+      itemBadgeCount: card.resolved_badges?.length ?? 0,
+      listItemCount: card.feed_type === 'gallery_list' ? usableListItems(card.list_items).length : 0,
+    })
+    counts[feedType] = (counts[feedType] ?? 0) + 1
   }
   return counts
 }

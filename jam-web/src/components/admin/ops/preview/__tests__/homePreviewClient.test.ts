@@ -8,6 +8,7 @@
  * 실행: cd jam-web && npx vitest run src/components/admin/ops/preview/__tests__/homePreviewClient.test.ts
  */
 import { describe, expect, it, vi } from 'vitest'
+import { FEED_TYPES } from '@/lib/today/feedChipSlots'
 import {
   DEFAULT_CONDITIONS,
   buildHomePreviewQuery,
@@ -15,6 +16,7 @@ import {
   fetchHomePreview,
   missingStoredInputs,
   shapeSegments,
+  SHAPE_STYLES,
   type HomePreviewConditions,
 } from '../homePreviewClient'
 import { live, makeDay } from './fixtures'
@@ -92,12 +94,25 @@ describe('표시 값', () => {
     expect(dayCellLabel('2026-12-31')).toEqual({ weekday: '목', monthDay: '12/31' })
   })
 
-  it('shapeSegments: 모양 순서대로 개수가 있는 것만 낸다', () => {
-    const segments = shapeSegments({ brief: 1, hero: 2, square: 0 })
-    expect(segments.map((s) => [s.shape, s.count])).toEqual([
-      ['hero', 2],
-      ['brief', 1],
+  it('shapeSegments: 새 카드 유형 8가지 순서대로 개수가 있는 것만 낸다', () => {
+    const segments = shapeSegments({ text_box: 1, hero_box: 2, badge_only: 0 })
+    expect(segments.map((s) => [s.shape, s.count, s.label])).toEqual([
+      ['hero_box', 2, '히어로'],
+      ['text_box', 1, '텍스트'],
     ])
+  })
+
+  it('shapeSegments: 표에 없는 키(옛 응답의 모양 이름)도 던지지 않고 키 이름 그대로 뒤에 묶는다', () => {
+    const segments = shapeSegments({ hero: 1, hero_box: 1 })
+    expect(segments.map((s) => [s.shape, s.label])).toEqual([
+      ['hero_box', '히어로'],
+      ['hero', 'hero'],
+    ])
+  })
+
+  it('SHAPE_STYLES는 새 8유형 키이고 막대 색이 서로 다르다', () => {
+    expect(Object.keys(SHAPE_STYLES).sort()).toEqual([...FEED_TYPES].sort())
+    expect(new Set(Object.values(SHAPE_STYLES).map((style) => style.barClass)).size).toBe(FEED_TYPES.length)
   })
 
   it('missingStoredInputs: 저장된 값을 쓰기로 했는데 그날 저장된 값이 없는 항목만 알린다', () => {

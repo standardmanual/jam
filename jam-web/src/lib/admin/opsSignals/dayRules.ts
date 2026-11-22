@@ -5,7 +5,7 @@
  * 규칙을 돌린다. 날짜 구성 신호는 승인 전 항목도 센다(가정 15 — 반려·취소·실패만 뺀다).
  *
  * 항목 하나에 걸리는 문제(색 대기·문안 빈 항목·이미지 빈 항목)는 여러 날에 걸치는 카드가 날마다 되풀이되지 않도록 검사 날짜 가운데
- * 처음 걸치는 날에 한 번만 낸다. 단조로운 흐름도 같은 값(패턴·트라이브·모양 연속)은 한 번만 낸다.
+ * 처음 걸치는 날에 한 번만 낸다. 단조로운 흐름도 같은 값(패턴·트라이브·카드 유형 연속)은 한 번만 낸다.
  */
 import { makeSignalResult, formatSignalDay, sortSignalResults, type OpsSignalResult } from '@/lib/admin/opsSignals/catalog'
 import {
@@ -16,7 +16,7 @@ import {
 } from '@/lib/admin/opsSignals/composition'
 import type { OpsSignalThresholdValues } from '@/lib/admin/opsSignals/thresholds'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
-import { isImageShape } from '@/lib/today/shape'
+import { feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
 
 export interface DayRuleContext {
   /** 검사 날짜와 그 앞 `monotonyWindowDays - 1`일의 구성(날짜 오름차순). */
@@ -110,12 +110,12 @@ function evaluateEmptyContent(ctx: DayRuleContext, days: ReadonlyMap<string, Day
       results.push(makeSignalResult(`${label}에 모두에게 보이는 카드가 없어요.`, { date, isSample: sampleOf(day.cards) }))
     }
 
-    // 이미지가 없는 모양으로 편성된 대표 카드
+    // 이미지를 쓰지 않는 카드 유형으로 편성된 대표 카드
     const representative = day.representative
-    if (representative && representative.shape !== 'unknown' && !isImageShape(representative.shape)) {
+    if (representative && representative.feedType !== 'unknown' && !representative.usesCoverImage) {
       results.push(
         makeSignalResult(
-          `${label}의 대표 카드 「${cardName(representative)}」의 모양(${representative.shape})에는 이미지가 없어요. 대표 카드는 이미지가 있는 모양이어야 해요.`,
+          `${label}의 대표 카드 「${cardName(representative)}」의 카드 유형(${feedTypeDisplayName(representative.feedType)})에는 이미지가 없어요. 대표 카드는 이미지가 있는 카드 유형이어야 해요.`,
           {
             date,
             bundleId: representative.bundleId,
@@ -189,21 +189,21 @@ function evaluateOverlap(ctx: DayRuleContext, days: ReadonlyMap<string, DayCompo
       results.push(makeSignalResult(`${label}에 같은 트라이브의 항목이 ${list.length}건 겹쳐요.`, { date, isSample: sampleOf(list) }))
     }
 
-    // 모양 개수: 그날 보이는 홈피드 카드 전부로 센다. 모양을 모르는 카드는 세지 않는다.
-    const imageShaped = day.cards.filter((card) => isImageShape(card.shape))
-    const nonImageShaped = day.cards.filter((card) => card.shape !== 'unknown' && !isImageShape(card.shape))
+    // 카드 유형 개수: 그날 보이는 홈피드 카드 전부로 센다. 유형을 모르는 카드는 세지 않는다. «이미지가 있는 유형»은 커버 이미지를 쓰는 유형(`feedTypeUsesCoverImage`)이다.
+    const imageShaped = day.cards.filter((card) => card.usesCoverImage)
+    const nonImageShaped = day.cards.filter((card) => card.feedType !== 'unknown' && !card.usesCoverImage)
     const knownShapeCount = imageShaped.length + nonImageShaped.length
     if (imageShaped.length >= thresholds.overlapImageShapeCards) {
       results.push(
         makeSignalResult(
-          `${label}에 이미지가 있는 모양의 카드가 ${imageShaped.length}장이에요. 큰 카드가 줄지어 서면 하루 홈이 단조로울 수 있어요.`,
+          `${label}에 이미지가 있는 카드 유형의 카드가 ${imageShaped.length}장이에요. 큰 카드가 줄지어 서면 하루 홈이 단조로울 수 있어요.`,
           { date, isSample: sampleOf(imageShaped) }
         )
       )
     }
     if (knownShapeCount > 0 && nonImageShaped.length < thresholds.minNonImageShapeCards) {
       results.push(
-        makeSignalResult(`${label}에 이미지가 없는 모양의 카드가 없어요. 큰 카드 사이에 작은 카드가 끼는 것이 좋아요.`, {
+        makeSignalResult(`${label}에 이미지가 없는 카드 유형의 카드가 없어요. 큰 카드 사이에 작은 카드가 끼는 것이 좋아요.`, {
           date,
           isSample: sampleOf(day.cards),
         })
@@ -226,24 +226,24 @@ function evaluateOverlap(ctx: DayRuleContext, days: ReadonlyMap<string, DayCompo
 
 // ── 단조로운 흐름 ────────────────────────────────────────────────────────────────────────────────
 
-interface ShapeRun {
-  shape: string
+interface FeedTypeRun {
+  feedType: string
   dates: string[]
 }
 
-/** 대표 카드의 모양이 같은 날이 이어지는 구간(하루 이상)을 날짜 순서대로 모은다. 모양을 모르거나 대표가 없는 날은 구간을 끊는다. */
-function buildShapeRuns(compositions: readonly DayComposition[]): ShapeRun[] {
-  const runs: ShapeRun[] = []
-  let current: ShapeRun | null = null
+/** 대표 카드의 카드 유형이 같은 날이 이어지는 구간(하루 이상)을 날짜 순서대로 모은다. 유형을 모르거나 대표가 없는 날은 구간을 끊는다. */
+function buildFeedTypeRuns(compositions: readonly DayComposition[]): FeedTypeRun[] {
+  const runs: FeedTypeRun[] = []
+  let current: FeedTypeRun | null = null
   for (const day of compositions) {
-    const shape = day.representative?.shape
-    const known = shape !== undefined && shape !== 'unknown'
-    const continues = current !== null && known && current.shape === shape && shiftDateStr(current.dates[current.dates.length - 1], 1) === day.date
+    const feedType = day.representative?.feedType
+    const known = feedType !== undefined && feedType !== 'unknown'
+    const continues = current !== null && known && current.feedType === feedType && shiftDateStr(current.dates[current.dates.length - 1], 1) === day.date
     if (continues && current) {
       current.dates.push(day.date)
       continue
     }
-    current = known ? { shape, dates: [day.date] } : null
+    current = known ? { feedType, dates: [day.date] } : null
     if (current) runs.push(current)
   }
   return runs
@@ -254,8 +254,8 @@ function evaluateMonotony(ctx: DayRuleContext, days: ReadonlyMap<string, DayComp
   const windowDays = thresholds.monotonyWindowDays
   const results: OpsSignalResult[] = []
   const reportedValues = new Set<string>()
-  const runs = buildShapeRuns(ctx.compositions)
-  const reportedRuns = new Set<ShapeRun>()
+  const runs = buildFeedTypeRuns(ctx.compositions)
+  const reportedRuns = new Set<FeedTypeRun>()
 
   for (const date of ctx.scanDates) {
     const windowStart = shiftDateStr(date, -(windowDays - 1))
@@ -288,7 +288,7 @@ function evaluateMonotony(ctx: DayRuleContext, days: ReadonlyMap<string, DayComp
       )
     }
 
-    // 같은 모양이 연속으로 대표
+    // 같은 카드 유형이 연속으로 대표
     for (const run of runs) {
       if (reportedRuns.has(run) || run.dates.length < thresholds.monotonySameShapeDays) continue
       const inWindow = run.dates.filter((runDate) => runDate >= windowStart && runDate <= date).length
@@ -297,7 +297,7 @@ function evaluateMonotony(ctx: DayRuleContext, days: ReadonlyMap<string, DayComp
       const reps = run.dates.map((runDate) => days.get(runDate)?.representative).filter((rep): rep is CompositionCard => !!rep)
       results.push(
         makeSignalResult(
-          `같은 모양(${run.shape})이 ${run.dates.length}일 연속 대표 카드예요. (${formatSignalDay(run.dates[0])}~${formatSignalDay(run.dates[run.dates.length - 1])})`,
+          `같은 카드 유형(${feedTypeDisplayName(run.feedType)})이 ${run.dates.length}일 연속 대표 카드예요. (${formatSignalDay(run.dates[0])}~${formatSignalDay(run.dates[run.dates.length - 1])})`,
           { date, isSample: sampleOf(reps) }
         )
       )

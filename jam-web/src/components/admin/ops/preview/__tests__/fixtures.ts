@@ -36,19 +36,19 @@ export function makeCard(id: string, overrides: Partial<TodayCardWithHref> = {})
   }
 }
 
-export function live(id: string, shape = 'hero'): PreviewEntry {
-  return { source: 'live', id, card: makeCard(id, { shape } as Partial<TodayCardWithHref>), rationale: [] }
+export function live(id: string, feedType = 'hero_box'): PreviewEntry {
+  return { source: 'live', id, card: makeCard(id, { feed_type: feedType } as Partial<TodayCardWithHref>), rationale: [] }
 }
 
-export function pending(id: string, rationale: PreviewEntry['rationale'] = [], shape = 'brief'): PreviewEntry {
-  return { source: 'pending', id, card: makeCard(id, { shape } as Partial<TodayCardWithHref>), rationale }
+export function pending(id: string, rationale: PreviewEntry['rationale'] = [], feedType = 'text_box'): PreviewEntry {
+  return { source: 'pending', id, card: makeCard(id, { feed_type: feedType } as Partial<TodayCardWithHref>), rationale }
 }
 
 export function makeDay(date: string, entries: PreviewEntry[], inputs: Partial<DayPreview['inputs']> = {}): DayPreview {
   const shapeCounts: Record<string, number> = {}
   for (const { card } of entries) {
-    const shape = (card as { shape?: string }).shape ?? 'hero'
-    shapeCounts[shape] = (shapeCounts[shape] ?? 0) + 1
+    const feedType = (card as { feed_type?: string | null }).feed_type ?? 'text_box'
+    shapeCounts[feedType] = (shapeCounts[feedType] ?? 0) + 1
   }
   return {
     date,
@@ -65,7 +65,7 @@ export function makeWeek(): DayPreview[] {
   return dates.map((date, index) =>
     makeDay(
       date,
-      Array.from({ length: index }, (_, i) => (i === index - 1 && index >= 3 ? pending(`${date}-p${i}`) : live(`${date}-l${i}`, i % 2 === 0 ? 'hero' : 'square'))),
+      Array.from({ length: index }, (_, i) => (i === index - 1 && index >= 3 ? pending(`${date}-p${i}`) : live(`${date}-l${i}`, i % 2 === 0 ? 'hero_box' : 'badge_intro'))),
     ),
   )
 }

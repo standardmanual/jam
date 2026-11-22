@@ -22,7 +22,8 @@ import type { BalanceLine } from '@/lib/admin/opsInbox/balance/view'
 import type { OpsRoutineStageRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import { rewardBadgeCountOf } from '@/lib/combine/gradeMode'
-import { isCardShape } from '@/lib/today/shape'
+import { feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
+import { isFeedType } from '@/lib/today/feedChipSlots'
 
 // ── 핵심 값 ──────────────────────────────────────────────────────────────
 
@@ -107,14 +108,14 @@ function rewardText(item: KeyValueItem, resource: Record<string, unknown>, names
   return text || null
 }
 
-/** 서랍 「핵심 값」 줄. 순서는 공개 기간 → 대상 → 모양 → 조건 → 보상이다. 읽을 수 없는 칸은 줄을 그리지 않는다. */
+/** 서랍 「핵심 값」 줄. 순서는 공개 기간 → 대상 → 카드 유형 → 조건 → 보상이다. 읽을 수 없는 칸은 줄을 그리지 않는다. */
 export function keyValuesOf(item: KeyValueItem, names?: OpsPreviewNames): KeyValueRow[] {
   const resource = asRecord(itemField(item, 'resource')) ?? {}
-  const shape = itemField(item, 'shape')
+  const feedType = resource.feed_type
   const rows: Array<[string, string | null]> = [
     ['공개 기간', periodText(item.startsAt, item.endsAt)],
     ['대상', targetText(item)],
-    ['모양', isCardShape(shape) ? shape : null],
+    ['카드 유형', isFeedType(feedType) ? feedTypeDisplayName(feedType) : null],
     ['조건', conditionText(item, resource)],
     ['보상', rewardText(item, resource, names)],
   ]

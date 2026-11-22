@@ -354,7 +354,7 @@ export const INTERLOCKED_THRESHOLD_KEYS: readonly OpsSignalThresholdKey[] = [
 /**
  * 맞물린 값의 확인(칸 하나씩이 아니라 함께 봐야 하는 것). 관련 칸 모두에 오류를 낸다.
  * - 최소 장수 ≤ 최대 장수
- * - 같은 패턴 횟수·같은 모양 연속 일수 ≤ 되돌아보는 기간
+ * - 같은 패턴 횟수·같은 카드 유형 연속 일수 ≤ 되돌아보는 기간
  * 값이 없는 칸(`undefined`)은 견주지 않는다.
  */
 export function thresholdInterlockErrors(
@@ -597,9 +597,9 @@ export function signalResultSentence(card: SignalCardSpec, records: SignalRecord
     case 'approval_deadline':
       return `공개 시각 ${v('approvalDeadlineHours')}시간 전까지 승인하지 않았거나 예약 등록하지 않은 항목이 있으면 알려요`
     case 'overlap':
-      return `같은 날 이미지가 있는 모양의 카드가 ${v('overlapImageShapeCards')}장 이상이거나, 이미지가 없는 모양의 카드가 ${v('minNonImageShapeCards')}장보다 적거나, 신규 유저에게 보이는 카드가 ${v('maxNewUserCards')}장보다 많으면 알려요`
+      return `같은 날 이미지가 있는 카드 유형의 카드가 ${v('overlapImageShapeCards')}장 이상이거나, 이미지가 없는 카드 유형의 카드가 ${v('minNonImageShapeCards')}장보다 적거나, 신규 유저에게 보이는 카드가 ${v('maxNewUserCards')}장보다 많으면 알려요`
     case 'monotony':
-      return `최근 ${v('monotonyWindowDays')}일의 대표 카드에서 같은 패턴·트라이브가 ${v('monotonySamePatternCount')}번 이상 나오거나 같은 모양이 ${v('monotonySameShapeDays')}일 연속 대표이면 알려요`
+      return `최근 ${v('monotonyWindowDays')}일의 대표 카드에서 같은 패턴·트라이브가 ${v('monotonySamePatternCount')}번 이상 나오거나 같은 카드 유형이 ${v('monotonySameShapeDays')}일 연속 대표이면 알려요`
     case 'action_spike':
       return `최근 7일 합계가 직전 ${v('actionSpikeBaselineWeeks')}주 주평균의 ${v('actionSpikeMultiplier')}배 이상이고 지표별 최소 건수 이상이면 알려요`
     default:

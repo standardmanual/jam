@@ -22,7 +22,7 @@
  * 형식 오류만 남긴다. 형식이 틀린 `pattern_no`는 항목의 `pattern_no` 열을 비워(null) 저장한다(제출 원본에는 그대로 남는다).
  *
  * 패턴 제안 내용 칸(티켓 20261007_1746): `kind`가 `pattern_proposal`인 항목만 `resource.pattern`을 본다(패턴 한 행과 같은 모양, `validateOpsPatternProposal`).
- * 이름·작동 원리·유저가 겪는 것·손잡이 5종(`knobs`)이 필수이고, 메뉴·샘플·카드 모양·주의점은 선택이다. 정의되지 않은 키는 오류가 아니다(읽기 쪽이 버린다).
+ * 이름·작동 원리·유저가 겪는 것·손잡이 5종(`knobs`)이 필수이고, 메뉴·샘플·카드 유형·주의점은 선택이다. 정의되지 않은 키는 오류가 아니다(읽기 쪽이 버린다).
  * 틀려도 저장·승인은 막지 않고 형식 오류만 남긴다. 읽는 쪽은 `fields.ts`의 `readOpsPatternProposal`이다. 사전의 기존 이름과 겹치는지는 보지 않는다.
  *
  * 기획 제목·이유·단계 기록·트렌드(티켓 20261026_2021, 어드민 상황판 PRD §5): 모두 선택이다. 묶음의 `title`·`trends[]`·`routine_run.stages[]`
@@ -62,8 +62,7 @@ import { checkFeedCardBundleColumns, isFeedTypeWritten } from '@/lib/admin/feedC
 import { TODAY_EXPOSURE_TAG_OPTIONS } from '@/lib/admin/today-sections'
 import { isTribeTag } from '@/lib/today/exposureTribe'
 import { isUuid } from '@/lib/admin/uuid'
-import { CARD_SHAPES, isCardShape } from '@/lib/today/shape'
-import { FEED_TYPES } from '@/lib/today/feedChipSlots'
+import { FEED_TYPES, isFeedType } from '@/lib/today/feedChipSlots'
 
 // 신원 값의 길이 상한(티켓 20260930_2100). 넘으면 유일 인덱스 행 크기 제한에 걸려 500이 나므로 400으로 먼저 거절한다.
 const MAX_BUNDLE_ID_LENGTH = 200
@@ -403,9 +402,9 @@ function validatePatternCardShape(entry: unknown, at: string): string[] {
   if (!isPlainObject(entry)) return [`${at}: 객체여야 해요(받은 값: ${describeShort(entry)}).`]
   const errors: string[] = []
   if (!isPresent(entry.shape)) {
-    errors.push(`${at}.shape: 필수 항목이 없어요(허용값: ${CARD_SHAPES.join(', ')}).`)
-  } else if (!isCardShape(entry.shape)) {
-    errors.push(`${at}.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeShort(entry.shape)}). 허용값: ${CARD_SHAPES.join(', ')}`)
+    errors.push(`${at}.shape: 필수 항목이 없어요(허용값: ${FEED_TYPES.join(', ')}).`)
+  } else if (!isFeedType(entry.shape)) {
+    errors.push(`${at}.shape: 허용되지 않는 카드 유형이에요(받은 값: ${describeShort(entry.shape)}). 허용값: ${FEED_TYPES.join(', ')}`)
   }
   if (isPresent(entry.note) && typeof entry.note !== 'string') {
     errors.push(`${at}.note: 문자열이어야 해요(받은 값: ${describeShort(entry.note)}).`)

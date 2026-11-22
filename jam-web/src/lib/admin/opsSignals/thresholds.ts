@@ -125,7 +125,7 @@ export const OPS_SIGNAL_THRESHOLDS = {
     '장',
     false,
     'overlap',
-    '이미지가 있는 모양의 카드가 이만큼 이상이면 뜬다',
+    '이미지가 있는 카드 유형의 카드가 이만큼 이상이면 뜬다',
     '07 4.2, 1502 가정 5'
   ),
   minNonImageShapeCards: entry<number>(
@@ -133,7 +133,7 @@ export const OPS_SIGNAL_THRESHOLDS = {
     '장',
     false,
     'overlap',
-    '이미지가 없는 모양의 카드 최소 장수(0장이면 뜬다)',
+    '이미지가 없는 카드 유형의 카드 최소 장수(0장이면 뜬다)',
     '07 4.2, 1502 가정 5'
   ),
   maxNewUserCards: entry<number>(3, '장', false, 'overlap', '신규 유저에게 보이는 카드가 이보다 많으면 뜬다', '07 4.2, 1502 가정 5'),
@@ -152,7 +152,7 @@ export const OPS_SIGNAL_THRESHOLDS = {
     '일',
     false,
     'monotony',
-    '같은 모양이 이만큼 이상 연속 대표이면 뜬다',
+    '같은 카드 유형이 이만큼 이상 연속 대표이면 뜬다',
     'PRD §5.1, 1502 가정 4'
   ),
   // 행동 횟수 급증

@@ -21,7 +21,6 @@ function card(original: Record<string, unknown>, edited: Record<string, unknown>
 }
 
 const FULL = {
-  shape: 'hero',
   starts_at: '2026-10-07T00:00:00.000Z',
   ends_at: '2026-10-08T00:00:00.000Z',
   exposure_tags: ['all'],
@@ -54,7 +53,7 @@ describe('itemToPreviewCard', () => {
     expect(row.title).toBe('우산 챙겨 달리기')
     expect(row.subtitle).toBe('비 오는 날')
     expect(row.cover_image_url).toBe('https://example.com/a.png')
-    expect(row.shape).toBe('hero')
+    expect(row.shape).toBeNull()
     expect(row.exposure_tags).toEqual(['all'])
     expect(row.mission_id).toBeNull()
     expect(row.badge_ids).toEqual([])
@@ -79,9 +78,19 @@ describe('itemToPreviewCard', () => {
     expect(row.starts_at).toBe(NOW.toISOString())
   })
 
-  it('모양이 「모름」이어도 던지지 않고 유형은 텍스트 박스다(옛 7모양 갈래는 지웠다, 티켓 20261122_1101)', () => {
-    const view = previewViewOf(card({ shape: '이상한값', copy: { title: 'a' } }), undefined, { now: NOW })!
+  it('카드 유형이 「모름」이어도 던지지 않고 유형은 텍스트 박스다(옛 7모양 갈래는 지웠다, 티켓 20261122_1101)', () => {
+    const view = previewViewOf(card({ shape: '이상한값', copy: { title: 'a' }, resource: { feed_type: '이상한값' } }), undefined, { now: NOW })!
     expect(view.feedType).toBe('text_box')
+  })
+
+  it('옛 shape·resource.layout_type은 읽지 않는다: 행에는 기본 레이아웃만 채운다(티켓 20261122_1239)', () => {
+    const row = itemToPreviewCard(
+      card({ shape: 'hero', copy: { title: 'a' }, resource: { layout_type: 'banner', shape: 'poster' } }),
+      undefined,
+      { now: NOW }
+    )!
+    expect(row.shape).toBeNull()
+    expect(row.layout_type).toBe('large_thumbnail')
   })
 
   it('카드가 아닌 종류는 null이다', () => {

@@ -4,6 +4,7 @@
  * 저장 전 초안(`draft.values`)까지 덮은 항목에서 카드 칸을 관대하게 읽어 `toCardView`에 넘긴다. 없는 칸은 비우고, 제목이 비면
  * 「(제목 미입력)」이다. 홈피드 카드의 연결된 미션·배지·컬렉션은 읽지 않는다. 레시피·드랍은 서버가 읽어 내린 이름 맵을 받아 그린다(티켓 20261007_1401). 계측 정보(`tracking`)를
  * 싣지 않아 그리는 쪽이 트래커와 링크를 그리지 않는다. `resource`에 개편 칸(`feed_type` 등, 6회차-1)이 있으면 홈과 같은 새 카드 칸으로 싣는다(티켓 20261121_1532). 카드(홈피드 카드)가 아닌 종류는 null이다.
+ * 옛 `shape`·`resource.layout_type`은 읽지 않는다(홈이 새 유형만 그린다, 티켓 20261122_1239).
  */
 import {
   FEED_CARD_BUNDLE_KEYS,
@@ -12,7 +13,7 @@ import {
   isFeedTypeWritten,
 } from '@/lib/admin/feedCardFields'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
-import { OPS_FIELD_UNKNOWN, isOpsHomeFeedCard, readOpsItemExposureTags, readOpsItemShape } from '@/lib/admin/opsInbox/fields'
+import { OPS_FIELD_UNKNOWN, isOpsHomeFeedCard, readOpsItemExposureTags } from '@/lib/admin/opsInbox/fields'
 import { asRecord, itemField, linksOf, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { formatScheduleAt } from '@/lib/ambient-drop/scheduleView'
 import { EMPTY_PREVIEW_NAMES, PREVIEW_NAME_UNKNOWN, type OpsPreviewBadge, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
@@ -20,7 +21,7 @@ import { toCardView, type CardView } from '@/lib/today/cardView'
 import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import type { ResolvedMission, TodayCardWithHref } from '@/lib/today/cards'
 import { resolveTargetHref } from '@/lib/today/targetHref'
-import type { BadgeRarity, TodayCardLayoutType, TodayCardRow, TodayCardTemplateType, TodayFeedType } from '@/types/database'
+import type { BadgeRarity, TodayCardRow, TodayCardTemplateType, TodayFeedType } from '@/types/database'
 
 export const PREVIEW_TITLE_PLACEHOLDER = '(제목 미입력)'
 
@@ -36,7 +37,6 @@ const TEMPLATE_TYPES: readonly TodayCardTemplateType[] = [
   'recipe_reveal',
   'content_intro',
 ]
-const LAYOUT_TYPES: readonly TodayCardLayoutType[] = ['large_thumbnail', 'badge_gallery', 'shortcut', 'banner', 'other', 'ranking_list']
 
 export interface PreviewItem extends ViewableItem {
   id?: string
@@ -93,7 +93,7 @@ function previewFeedFields(resource: Readonly<Record<string, unknown>>, title: s
   return {}
 }
 
-/** 미리보기에 실리는 개편 카드 유형. 새 칸을 싣지 않는 항목(옛 7모양)은 null이다. 안내 줄이 새 유형 항목에만 나오게 하는 기준이다. */
+/** 미리보기에 실리는 개편 카드 유형. 유형 칸이 없거나 모르는 값이면 null이다. 안내 줄이 유형이 정해진 항목에만 나오게 하는 기준이다. */
 export function previewFeedTypeOf(item: PreviewItem, draftValues?: Readonly<Record<string, unknown>>): TodayFeedType | null {
   if (!isOpsHomeFeedCard(item.kind)) return null
   const merged = draftValues ? applyDraftToItem(item, draftValues) : item
@@ -141,13 +141,13 @@ export function itemToPreviewCard(
     return ''
   }
 
-  const shape = readOpsItemShape(merged)
   const tags = readOpsItemExposureTags(merged)
   const titleInImage = resource.title_in_image
   const row: TodayCardRow = {
     id: item.id ?? 'preview',
     template_type: pick(resource.template_type, TEMPLATE_TYPES, 'editorial_article'),
-    layout_type: pick(resource.layout_type, LAYOUT_TYPES, 'large_thumbnail'),
+    // 홈이 읽지 않는 옛 칸이라 묶음의 `resource.layout_type`은 읽지 않는다(티켓 20261122_1239). 행 타입이 요구하는 기본값만 채운다.
+    layout_type: 'large_thumbnail',
     title: text('title') || PREVIEW_TITLE_PLACEHOLDER,
     subtitle: text('subtitle') || null,
     description: text('description') || null,
@@ -169,7 +169,7 @@ export function itemToPreviewCard(
     created_at: now.toISOString(),
     created_by: null,
     image_source: null,
-    shape: shape === OPS_FIELD_UNKNOWN ? null : shape,
+    shape: null,
     title_in_image: typeof titleInImage === 'boolean' ? titleInImage : null,
     ...previewFeedFields(resource, titleOf(copy, resource)),
   }

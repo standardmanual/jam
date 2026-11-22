@@ -2,10 +2,10 @@
  * 운영 묶음 항목의 칸 읽기 (티켓 20261001_1152)
  *
  * 지키는 것:
- * - 칸마다 정상·없음·형식 틀림 값(`shape`·`exposure_tags`: 없어도 틀려도 「모름」, `tribe_id`: 없으면 null, `color_pending`: 없으면 false,
+ * - 칸마다 정상·없음·형식 틀림 값(`resource.feed_type`·`exposure_tags`: 없어도 틀려도 「모름」, `tribe_id`: 없으면 null, `color_pending`: 없으면 false,
  *   `excluded_items`: 없으면 [])
  * - 수정본이 있으면 수정본을 먼저 읽는다(`color_pending: false` 덮어쓰기 포함)
- * - 칸이 없는 기존 시험 묶음(항목 3개, `segment`만 있음)은 모양·대상 「모름」, 트라이브 null, 색 대기 false, 뺀 항목 [],
+ * - 칸이 없는 기존 시험 묶음(항목 3개, `segment`만 있음)은 카드 유형·대상 「모름」, 트라이브 null, 색 대기 false, 뺀 항목 [],
  *   패턴 번호 `P-07`은 「모름」(티켓 20261007_1745), 지점 카테고리 null
  * - 패턴 번호(없으면 null, 형식이 틀리면 「모름」)·지점 카테고리(`knobs`나 키가 없으면 null, 문자열 배열이 아니면 「모름」, 티켓 20261007_1745)
  * - 패턴 제안 내용 칸(티켓 20261007_1746): 다른 종류는 null, 형식이 틀리면 「모름」, 맞으면 객체(공백 제거·기본값·모르는 키 버림)
@@ -22,7 +22,7 @@ import {
   readOpsItemExposureTags,
   readOpsItemPatternNo,
   readOpsItemPlaceCategories,
-  readOpsItemShape,
+  readOpsItemFeedType,
   readOpsItemTribeId,
   readOpsPatternProposal,
 } from '../fields'
@@ -42,32 +42,44 @@ function item(original: Record<string, unknown>, edited: Record<string, unknown>
   return { original: original as Json, edited: edited as Json | null }
 }
 
-describe('readOpsItemShape', () => {
-  it.each(['hero', 'poster', 'square', 'brief', 'list'])('허용값 %s는 그대로 읽는다', (shape) => {
-    expect(readOpsItemShape(item({ shape }))).toBe(shape)
-  })
+describe('readOpsItemFeedType', () => {
+  const withType = (feedType: unknown, extra: Record<string, unknown> = {}) => item({ resource: { feed_type: feedType }, ...extra })
+
+  it.each(['hero_box', 'full_image', 'badge_intro', 'badge_only', 'collection_intro', 'drop_pickup', 'text_box', 'gallery_list'])(
+    '허용 8가지 %s는 그대로 읽는다',
+    (feedType) => {
+      expect(readOpsItemFeedType(withType(feedType))).toBe(feedType)
+    }
+  )
 
   it.each([
-    ['없음', {}],
-    ['null', { shape: null }],
-    ['허용값 밖', { shape: 'banner' }],
-    ['대문자', { shape: 'Hero' }],
-    ['옛 layout 값', { shape: 'large_thumbnail' }],
-    ['숫자', { shape: 1 }],
-    ['배열', { shape: ['hero'] }],
-  ])('%s이면 「모름」이다', (_label, original) => {
-    expect(readOpsItemShape(item(original))).toBe(OPS_FIELD_UNKNOWN)
+    ['없음', item({})],
+    ['resource만 있고 유형 없음', item({ resource: {} })],
+    ['null', withType(null)],
+    ['허용값 밖', withType('banner')],
+    ['옛 모양 이름', withType('hero')],
+    ['대문자', withType('Hero_box')],
+    ['숫자', withType(1)],
+    ['배열', withType(['hero_box'])],
+    ['resource가 객체가 아님', item({ resource: 'hero_box' })],
+  ])('%s이면 「모름」이다', (_label, target) => {
+    expect(readOpsItemFeedType(target)).toBe(OPS_FIELD_UNKNOWN)
   })
 
-  it('수정본이 있으면 수정본을 먼저 읽고, 수정본이 null이면 원본을 따른다', () => {
-    expect(readOpsItemShape(item({ shape: 'hero' }, { shape: 'list' }))).toBe('list')
-    expect(readOpsItemShape(item({ shape: 'hero' }, { shape: null }))).toBe('hero')
-    expect(readOpsItemShape(item({}, { shape: 'poster' }))).toBe('poster')
+  it('옛 shape 칸은 읽지 않는다(항목 공통 칸이든 resource.shape든)', () => {
+    expect(readOpsItemFeedType(item({ shape: 'hero' }))).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsItemFeedType(item({ resource: { shape: 'hero', layout_type: 'large_thumbnail' } }))).toBe(OPS_FIELD_UNKNOWN)
+  })
+
+  it('수정본의 resource가 있으면 수정본을 먼저 읽고, 수정본이 null이면 원본을 따른다', () => {
+    expect(readOpsItemFeedType(item({ resource: { feed_type: 'hero_box' } }, { resource: { feed_type: 'gallery_list' } }))).toBe('gallery_list')
+    expect(readOpsItemFeedType(item({ resource: { feed_type: 'hero_box' } }, { resource: null }))).toBe('hero_box')
+    expect(readOpsItemFeedType(item({}, { resource: { feed_type: 'text_box' } }))).toBe('text_box')
   })
 
   it('원본이 객체가 아니어도(감싼 값) 죽지 않고 「모름」이다', () => {
-    expect(readOpsItemShape({ original: { value: 5 }, edited: null })).toBe(OPS_FIELD_UNKNOWN)
-    expect(readOpsItemShape({ original: [] as Json, edited: null })).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsItemFeedType({ original: { value: 5 }, edited: null })).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsItemFeedType({ original: [] as Json, edited: null })).toBe(OPS_FIELD_UNKNOWN)
   })
 })
 
@@ -275,9 +287,9 @@ describe('기존 시험 묶음 고정 사례 (항목 3개, segment만 있음)', 
   ]
   const legacyBundleRaw: Json = { bundle_id: 'sample-legacy', author: '윤진', items: legacyItems.map((i) => i.original) }
 
-  it('모양·대상·패턴 번호(P-07)는 「모름」, 트라이브·지점 카테고리는 없음, 색 대기는 아님이다', () => {
+  it('카드 유형·대상·패턴 번호(P-07)는 「모름」, 트라이브·지점 카테고리는 없음, 색 대기는 아님이다', () => {
     for (const legacy of legacyItems) {
-      expect(readOpsItemShape(legacy)).toBe(OPS_FIELD_UNKNOWN)
+      expect(readOpsItemFeedType(legacy)).toBe(OPS_FIELD_UNKNOWN)
       expect(readOpsItemExposureTags(legacy)).toBe(OPS_FIELD_UNKNOWN)
       expect(readOpsItemPatternNo(legacy)).toBe(OPS_FIELD_UNKNOWN)
       expect(readOpsItemTribeId(legacy)).toBeNull()
@@ -351,7 +363,7 @@ describe('readOpsPatternProposal (티켓 20261007_1746)', () => {
         { no: 3, name: ' 도장 ', role: 'main', impl: ' 구현 ', extra: 1 },
         { no: 9, name: '새벽', role: 'related' },
       ],
-      card_shapes: [{ shape: 'hero', note: ' 큰 카드 ', extra: 1 }, { shape: 'list' }],
+      card_shapes: [{ shape: 'hero_box', note: ' 큰 카드 ', extra: 1 }, { shape: 'gallery_list' }],
       pitfalls: ' 주의 ',
       knobs: {
         condition: { open: ' a ', closed: ' b ', extra: 1 },
@@ -373,8 +385,8 @@ describe('readOpsPatternProposal (티켓 20261007_1746)', () => {
         { no: 9, name: '새벽', role: 'related', impl: '' },
       ],
       cardShapes: [
-        { shape: 'hero', note: '큰 카드' },
-        { shape: 'list', note: '' },
+        { shape: 'hero_box', note: '큰 카드' },
+        { shape: 'gallery_list', note: '' },
       ],
       knobs: {
         condition: { open: 'a', closed: 'b' },
@@ -425,10 +437,11 @@ describe('readOpsPatternProposal (티켓 20261007_1746)', () => {
     ['samples role 틀림', { ...PATTERN, samples: [{ no: 1, name: 'a', role: 'sub', impl: '' }] }],
     ['samples impl 숫자', { ...PATTERN, samples: [{ no: 1, name: 'a', role: 'main', impl: 3 }] }],
     ['samples 객체', { ...PATTERN, samples: {} }],
-    ['card_shapes 정상', { ...PATTERN, card_shapes: [{ shape: 'square', note: '' }] }],
-    ['card_shapes shape 틀림', { ...PATTERN, card_shapes: [{ shape: 'Square', note: '' }] }],
-    ['card_shapes note 숫자', { ...PATTERN, card_shapes: [{ shape: 'list', note: 1 }] }],
-    ['card_shapes 문자열 원소', { ...PATTERN, card_shapes: ['list'] }],
+    ['card_shapes 정상', { ...PATTERN, card_shapes: [{ shape: 'text_box', note: '' }] }],
+    ['card_shapes 옛 모양 이름', { ...PATTERN, card_shapes: [{ shape: 'square', note: '' }] }],
+    ['card_shapes shape 틀림', { ...PATTERN, card_shapes: [{ shape: 'Text_box', note: '' }] }],
+    ['card_shapes note 숫자', { ...PATTERN, card_shapes: [{ shape: 'gallery_list', note: 1 }] }],
+    ['card_shapes 문자열 원소', { ...PATTERN, card_shapes: ['gallery_list'] }],
     ['pitfalls 빈 문자열', { ...PATTERN, pitfalls: '' }],
     ['pitfalls 배열', { ...PATTERN, pitfalls: ['a'] }],
     ['pattern 없음', undefined],
@@ -480,7 +493,7 @@ describe('계약: 검증이 오류를 내지 않는 값 = 읽기 함수가 「�
     return validateOpsBundle(bundle).items[0].format_errors
   }
 
-  // `shape`는 이 계약에서 뺐다 — 검증이 더는 값을 보지 않는다(경고만, 티켓 20261122_1153). 읽기 함수(`readOpsItemShape`)는 8-3이 정리한다.
+  // `shape`는 이 계약에서 뺐다 — 검증이 더는 값을 보지 않는다(경고만, 티켓 20261122_1153). 읽기 함수는 `readOpsItemFeedType`이다(8-3, 티켓 20261122_1239).
 
   const tagValues: unknown[] = [['all'], ['new_user'], ['all', 'new_user'], [], 'all', ['bogus'], ['all', 'all'], ['all', 5], {}, 5]
   it.each(tagValues.map((value) => [JSON.stringify(value), value]))('exposure_tags %s', (_label, value) => {

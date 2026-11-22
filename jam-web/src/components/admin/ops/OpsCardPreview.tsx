@@ -23,7 +23,6 @@ import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { OPS_IMAGE_PRODUCTION_STATUSES } from '@/lib/admin/opsSignals/composition'
-import { isImageShape } from '@/lib/today/shape'
 import { hasResourceImage, previewRenderArgs, readImageSpec, usesMissionImage, viewUsesFeedCoverImage } from '@/lib/admin/opsInbox/imageSpec'
 import { useDraftImagePreview, type DraftImageRequest } from './useDraftImagePreview'
 
@@ -63,11 +62,10 @@ export function OpsCardPreview({ item, draft, making = false, previewNames, bund
   const usesMission = usesMissionImage({ ...merged, kind: item.kind })
 
   // 승인 전 홈피드 카드: 저장된 이미지가 없고 지시(`preset_id`)가 있을 때만 그린다. 그 밖에는 요청이 비어 렌더를 부르지 않는다.
-  // 옛 7모양은 화면에 그릴 이미지가 없을 때, 개편 유형(히어로·이미지 마스크 텍스트 박스·컬렉션 소개, 티켓 20261121_1722)은 항목에 커버 이미지가 없을 때다
-  // (개편 히어로는 화면에서 배지 그림으로 대신 그려질 수 있어 항목의 커버 칸을 본다).
-  const oldShapeMissing = preview?.type === 'card' && isImageShape(preview.view.shape) && 'imageUrl' in preview.view && !preview.view.imageUrl
+  // 커버 이미지를 쓰는 유형(히어로·이미지 마스크 텍스트 박스·컬렉션 소개, 티켓 20261121_1722)은 항목에 커버 이미지가 없을 때다
+  // (히어로는 화면에서 배지 그림으로 대신 그려질 수 있어 항목의 커버 칸을 본다).
   const feedCoverMissing = preview?.type === 'card' && viewUsesFeedCoverImage(preview.view) && !hasResourceImage({ ...merged, kind: item.kind })
-  const storedMissing = !usesMission && (oldShapeMissing || feedCoverMissing)
+  const storedMissing = !usesMission && feedCoverMissing
   const beforeProduction = !item.status || !OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)
   const drawn = storedMissing && beforeProduction ? previewRenderArgs(readImageSpec(merged), item.id) : null
   const requests: DraftImageRequest[] = drawn ? [{ id: item.id, args: drawn.args, tempColor: drawn.tempColor }] : []
