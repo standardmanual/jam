@@ -122,6 +122,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   const ticketColor = pickTicketColor(badgeRow.bg_colors ?? [])
   // 페이지 바탕은 다른 화면과 같은 기본 --background다(크림 덮어쓰기는 2026-11-22 사용자 지시로 걷었다, 티켓 20261122_1424). 절취선 점·홈도 이 값을 따른다.
   const shareWrapStyle: React.CSSProperties = { padding: '24px 16px calc(32px + env(safe-area-inset-bottom))' }
+  // 공유 버튼이 없을 때(미획득·타인 배지)도 티켓과 푸터 사이에 버튼 아래와 같은 여백을 둔다(티켓 20261122_1442, 사용자 지적)
+  const noShareSpacerStyle: React.CSSProperties = { paddingBottom: 'calc(32px + env(safe-area-inset-bottom))' }
 
   // Phase 16: checkin 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let checkinEarns: (UserCheckinBadgeEarnRow & { poi: PoiRow | null })[] = []
@@ -390,7 +392,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         />
 
         {/* 공유하기 — 티켓 밖 하단. 본인이 획득한 배지에서만 보인다(미획득·타인 배지에는 두지 않는다) */}
-        {isOwnBadge && hasEarned && (
+        {isOwnBadge && hasEarned ? (
           <div style={shareWrapStyle}>
             <BadgeShareButton
               badgeId={id}
@@ -400,6 +402,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               hasEarned={hasEarned}
             />
           </div>
+        ) : (
+          <div aria-hidden="true" style={noShareSpacerStyle} />
         )}
       </div>
     )
@@ -460,7 +464,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         />
 
         {/* 공유하기 — 티켓 밖 하단 */}
-        {isOwnBadge && hasEarned && (
+        {isOwnBadge && hasEarned ? (
           <div style={shareWrapStyle}>
             <BadgeShareButton
               badgeId={id}
@@ -470,6 +474,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               hasEarned={hasEarned}
             />
           </div>
+        ) : (
+          <div aria-hidden="true" style={noShareSpacerStyle} />
         )}
       </div>
     )
@@ -606,7 +612,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       />
 
       {/* 공유하기 — 티켓 밖 하단 */}
-      {isOwnBadge && hasEarned && (
+      {isOwnBadge && hasEarned ? (
         <div style={shareWrapStyle}>
           <BadgeShareButton
             badgeId={id}
@@ -616,6 +622,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             hasEarned={hasEarned}
           />
         </div>
+      ) : (
+        <div aria-hidden="true" style={noShareSpacerStyle} />
       )}
     </div>
   )

@@ -17,7 +17,8 @@ describe('배지 상세의 공유 버튼 위치', () => {
   })
 
   it('3타입 모두 본인이 획득한 배지일 때만 맨 끝에 공유 버튼을 그린다', () => {
-    const blocks = [...page.matchAll(/\{isOwnBadge && hasEarned && \(\s*(?:<div[^>]*>\s*)?<BadgeShareButton[\s\S]*?badgeType="(item|checkin|activity)"/g)]
+    // 버튼이 없을 때 여백 칸을 그리도록 삼항식이 됐다(티켓 20261122_1442). 버튼 쪽 조건은 그대로 «본인 + 획득»이다
+    const blocks = [...page.matchAll(/\{isOwnBadge && hasEarned (?:&&|\?) \(\s*(?:<div[^>]*>\s*)?<BadgeShareButton[\s\S]*?badgeType="(item|checkin|activity)"/g)]
     expect(blocks.map((m) => m[1]).sort()).toEqual(['activity', 'checkin', 'item'])
     expect(page.match(/<BadgeShareButton/g)).toHaveLength(3)
   })

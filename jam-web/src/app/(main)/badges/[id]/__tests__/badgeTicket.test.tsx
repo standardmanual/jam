@@ -65,5 +65,7 @@ describe('배지 상세 page 세 변형', () => {
     // 페이지 바탕은 다른 화면과 같은 기본값이다(덮어쓰지 않는다, 티켓 20261122_1424)
     expect(page).not.toContain("'--background':")
     expect(page.match(/공유하기 — 티켓 밖/g)).toHaveLength(3)
+    // 공유 버튼이 없을 때도 티켓과 푸터 사이 여백을 둔다(정의 1 + 세 변형 3, 티켓 20261122_1442)
+    expect(page.match(/noShareSpacerStyle/g)).toHaveLength(4)
   })
 })
