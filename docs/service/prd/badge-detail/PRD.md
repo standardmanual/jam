@@ -27,8 +27,8 @@ related:
 
 티켓색 단색, 윗모서리 직각. 안쪽 여백 `20px 20px 24px`, 가로 배치(`space-between`, gap 12px).
 
-- 왼쪽: `.jam-logo-mark`, 높이 44.5px.
-- 오른쪽(우측 정렬, 세로 gap 6px): 종류 글자 `ITEM`·`CHECK IN`·`ACTIVITY`(Noto Sans KR 900, 34px) + 날짜 `YYYY.MM.DD`(한국 시각, Geist Mono 12px). 날짜는 아이템=대표 개체 획득일, 체크인=마지막 방문일, 액티비티=획득일. 미획득이면 날짜 줄이 없다.
+- 왼쪽: `.jam-logo-mark`, 높이는 종류 글자 한 줄의 실제 글자 높이와 같은 17.73px, 윗선도 종류 글자 윗선과 맞춘다(`margin-top` 3.73px). 2026-11-22 사용자 지시로 로고와 종류 글자를 둘 다 70%로 줄였다(이전: 로고 44.5px = 종류+날짜 묶음 높이, 종류 34px, 티켓 20261122_1404).
+- 오른쪽(우측 정렬, 세로 gap 6px): 종류 글자 `ITEM`·`CHECK IN`·`ACTIVITY`(Noto Sans KR 900, 23.8px) + 날짜 `YYYY.MM.DD`(한국 시각, Geist Mono 12px). 날짜는 아이템=대표 개체 획득일, 체크인=마지막 방문일, 액티비티=획득일. 미획득이면 날짜 줄이 없다.
 
 ## 4. 절취선
 
