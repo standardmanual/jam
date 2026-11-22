@@ -9,6 +9,8 @@ import FeedColorsEditor from './FeedColorsEditor'
  *
  * 서버가 저장된 덮어쓰기와 «노출 기간이 아직 끝나지 않은 카드»의 색 키 조합을 읽어 편집기에 넘긴다. 쓰기는 이 화면이 하지 않는다
  * (`PUT /api/admin/feed-colors`). 덮어쓰기는 캐시 없이 표에서 바로 읽는다 — 어드민이 «저장돼 있는 값»을 늘 정확히 봐야 해서다.
+ *
+ * 레이아웃: 큰 화면에서는 헤더(높이 3.5rem)를 뺀 화면 높이를 이 화면이 채우고, 안의 «색 설정»과 «미리보기»가 각자 스크롤한다(문서 스크롤 없음).
  */
 export default async function AdminFeedColorsPage() {
   const supabase = createServiceClient()
@@ -33,13 +35,8 @@ export default async function AdminFeedColorsPage() {
   }))
 
   return (
-    <div className="w-full space-y-6 p-4 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold">홈피드 컬러셋</h1>
-        <p className="mt-1 text-sm text-muted-foreground break-keep wrap-break-word">
-          홈피드 카드에 쓰는 15색의 값을 바꿔요. 적용하기 전에는 아무것도 저장되지 않아요.
-        </p>
-      </div>
+    <div className="flex w-full flex-col gap-4 p-4 md:p-6 lg:h-[calc(100svh-3.5rem)]">
+      <h1 className="text-lg font-bold">홈피드 컬러셋</h1>
       <FeedColorsEditor savedOverrides={overrides} cards={cards} />
     </div>
   )
