@@ -27,7 +27,7 @@ const mutate = (md, from, to) => {
 }
 
 /** 작은 원고 조각: 패턴 한 건의 본문. 칸 매핑만 확인하므로 개수 검사는 하지 않는다. */
-const pattern = ({ no, name, menus = '믹스, 알림(40)', samples, impl, shapes = '`list`', taste = '  - 첫 신호: 이유 하나 (추정)' }) =>
+const pattern = ({ no, name, menus = '믹스, 알림(40)', samples, impl, shapes = '`gallery_list`', taste = '  - 첫 신호: 이유 하나 (추정)' }) =>
   [
     `### ${no} ${name}`,
     '',
@@ -62,7 +62,7 @@ const mini = [
     menus: '믹스, 동기화 화면(46), 알림(가, 나)',
     impl: '3 지금 가능, 7 O13(조건, 옵션), 보조 46 O10(표시)',
     samples: '주 3 이름 셋, 7 이름 일곱 / 보조 장치 46 끝 카드 / 걸침 60 별 따는 날',
-    shapes: '`list`(레시피 타일, 빈 칸), `brief`, 기사로 쓸 때는 `hero`, 이어지는 모양(미션 `square`, 레시피 `list`)',
+    shapes: '`gallery_list`(레시피 타일, 빈 칸), `text_box`, 기사로 쓸 때는 `hero_box`, 이어지는 모양(미션 `hero_box`, 레시피 `gallery_list`)',
     taste: ['  - 게릴라 알림(70): 이유: 콜론 포함 (추정)', '  - 둘째 신호: 이유 둘 (추정)'].join('\n'),
   }),
   pattern({
@@ -118,11 +118,11 @@ test('칸 매핑: 샘플 역할 순서와 구현 글(걸침은 소속 패턴 글
 test('칸 매핑: 카드 모양 (가)(나)(다)와 「없음」', () => {
   const { patterns } = parseOpsPatterns(mini)
   assert.deepEqual(patterns.find((p) => p.pattern_no === 'P01').card_shapes, [
-    { shape: 'list', note: '레시피 타일, 빈 칸' },
-    { shape: 'brief', note: '' },
-    { shape: 'hero', note: '기사로 쓸 때는 `hero`' },
-    { shape: 'square', note: '이어지는 모양(미션 `square`, 레시피 `list`)' },
-    { shape: 'list', note: '이어지는 모양(미션 `square`, 레시피 `list`)' },
+    { shape: 'gallery_list', note: '레시피 타일, 빈 칸' },
+    { shape: 'text_box', note: '' },
+    { shape: 'hero_box', note: '기사로 쓸 때는 `hero_box`' },
+    { shape: 'hero_box', note: '이어지는 모양(미션 `hero_box`, 레시피 `gallery_list`)' },
+    { shape: 'gallery_list', note: '이어지는 모양(미션 `hero_box`, 레시피 `gallery_list`)' },
   ])
   assert.deepEqual(patterns.find((p) => p.pattern_no === 'P14').card_shapes, [])
 })
@@ -181,8 +181,8 @@ test('실제 원고: P07·P06·P14·걸침 구현', () => {
   const { patterns } = parseOpsPatterns(real)
   const by = (no) => patterns.find((p) => p.pattern_no === no)
   assert.deepEqual(by('P07').card_shapes, [
-    { shape: 'brief', note: '드랍·예보' },
-    { shape: 'dome', note: '힌트나 목격담을 이미지로 알릴 때, 문을 여는 아치 구도' },
+    { shape: 'drop_pickup', note: '드랍·예보' },
+    { shape: 'hero_box', note: '힌트나 목격담을 이미지로 알릴 때, 문을 여는 아치 구도' },
   ])
   assert.deepEqual(by('P06').card_shapes, [])
   assert.deepEqual(patterns.filter((p) => p.status === 'paused').map((p) => [p.pattern_no, p.pause_reason]), [['P14', '필요한 기능 O12·O14 대기']])
@@ -262,7 +262,7 @@ test('멈춤 8: 부록 A의 소속이 본문과 다르거나 걸침 번호가 63
 })
 
 test('멈춤 9: 허용 밖 카드 모양', () => {
-  const md = mutate(real, '`list`(레시피 재료 타일과 비어 있는 열쇠 칸)', '`grid`(레시피 재료 타일과 비어 있는 열쇠 칸)')
+  const md = mutate(real, '`gallery_list`(레시피 재료 타일과 비어 있는 열쇠 칸)', '`grid`(레시피 재료 타일과 비어 있는 열쇠 칸)')
   assert.match(validateOpsPatterns(parseOpsPatterns(md), md).join('\n'), /\[멈춤 9\] P01 카드 모양 「grid」은 허용 밖이다/)
 })
 

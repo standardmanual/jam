@@ -23,19 +23,19 @@
       ],
       "cardShapes": [
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "장소 큐레이션(3곳)"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "체크인 미션"
         },
         {
-          "shape": "hero",
+          "shape": "hero_box",
           "note": "대표 장소 한 곳"
         },
         {
-          "shape": "brief",
+          "shape": "text_box",
           "note": "현황 소식"
         }
       ],
@@ -116,15 +116,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "brief",
+          "shape": "drop_pickup",
           "note": "드랍 소식·예보"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "놓인 장소 목록"
         },
         {
-          "shape": "poster",
+          "shape": "hero_box",
           "note": "이번 주 찾을 한 칸"
         }
       ],
@@ -203,15 +203,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지 1개"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "단계 배지 여러 개"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "미션"
         }
       ],
@@ -290,15 +290,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "hero",
+          "shape": "collection_intro",
           "note": "컬렉션 한 개"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "얻는 길"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "채우기 미션"
         }
       ],
@@ -372,15 +372,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "레시피 재료 타일"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "믹스 미션"
         },
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지 1개"
         }
       ],
@@ -453,11 +453,11 @@
       ],
       "cardShapes": [
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지·챕터 소식"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "활동 미션"
         }
       ],
@@ -532,15 +532,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "poster",
+          "shape": "hero_box",
           "note": "트라이브 이야기"
         },
         {
-          "shape": "hero",
+          "shape": "collection_intro",
           "note": "컬렉션"
         },
         {
-          "shape": "ticket",
+          "shape": "hero_box",
           "note": "회차 카드"
         }
       ],
@@ -613,11 +613,11 @@
       ],
       "cardShapes": [
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지 1개"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "포인트 보상 미션"
         }
       ],
@@ -692,15 +692,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "걷기 미션"
         },
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지"
         },
         {
-          "shape": "hero",
+          "shape": "hero_box",
           "note": "코스"
         }
       ],
@@ -775,15 +775,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "러닝 미션"
         },
         {
-          "shape": "hero",
+          "shape": "hero_box",
           "note": "코스"
         },
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지"
         }
       ],
@@ -858,11 +858,11 @@
       ],
       "cardShapes": [
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "트레일 미션"
         },
         {
-          "shape": "hero",
+          "shape": "hero_box",
           "note": "코스"
         }
       ],
@@ -937,11 +937,11 @@
       ],
       "cardShapes": [
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "라이딩 미션"
         },
         {
-          "shape": "hero",
+          "shape": "hero_box",
           "note": "코스"
         }
       ],
@@ -1014,11 +1014,11 @@
       ],
       "cardShapes": [
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "미션"
         },
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지"
         }
       ],
@@ -1093,15 +1093,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "등산 미션"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "산 큐레이션"
         },
         {
-          "shape": "hero",
+          "shape": "hero_box",
           "note": "대표 산 한 곳"
         }
       ],
@@ -1177,19 +1177,19 @@
       ],
       "cardShapes": [
         {
-          "shape": "hero",
+          "shape": "hero_box",
           "note": "대표 카드"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "장소 큐레이션"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "체크인 미션"
         },
         {
-          "shape": "brief",
+          "shape": "drop_pickup",
           "note": "드랍 소식"
         }
       ],
@@ -1264,11 +1264,11 @@
       ],
       "cardShapes": [
         {
-          "shape": "ticket",
+          "shape": "hero_box",
           "note": "코스 이용권"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "코스 미션"
         }
       ],
@@ -1342,15 +1342,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "hero",
+          "shape": "collection_intro",
           "note": "컬렉션"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "레시피"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "완성 미션"
         }
       ],
@@ -1425,15 +1425,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "poster",
+          "shape": "hero_box",
           "note": "이야기"
         },
         {
-          "shape": "hero",
+          "shape": "collection_intro",
           "note": "컬렉션"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "트라이브 미션"
         }
       ],
@@ -1509,15 +1509,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "dome",
+          "shape": "hero_box",
           "note": "계절 이미지"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "장소 큐레이션"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "계절 미션"
         }
       ],
@@ -1592,11 +1592,11 @@
       ],
       "cardShapes": [
         {
-          "shape": "brief",
+          "shape": "badge_intro",
           "note": "배지"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "가벼운 미션"
         }
       ],
@@ -1671,15 +1671,15 @@
       ],
       "cardShapes": [
         {
-          "shape": "brief",
+          "shape": "drop_pickup",
           "note": "드랍 소식"
         },
         {
-          "shape": "list",
+          "shape": "gallery_list",
           "note": "컬렉션 칸"
         },
         {
-          "shape": "square",
+          "shape": "hero_box",
           "note": "픽업 미션"
         }
       ],

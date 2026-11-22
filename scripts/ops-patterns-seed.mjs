@@ -26,6 +26,9 @@
 //   - **상태:**                     → 담지 않는다(승인 이력). 상태 칸은 P14만 paused(PAUSED_AT_SEED), 나머지 active, origin은 모두 seed.
 //
 // ── 멈춤 조건 1~9는 validateOpsPatterns에 있다. 하나라도 걸리면 SQL을 쓰지 않고 어긋난 패턴 번호와 항목을 출력한다. ──
+//
+// ⚠️ 2026-11-22: 카드 모양 값은 새 카드 유형 이름(hero_box 등)으로 바꿨다(티켓 20261122_1100, DB는 마이그레이션 354). 이미 적용한 시드 SQL(212)은
+//    옛 이름 그대로 두는 옛 마이그레이션이라, --check는 card_shapes 값만 어긋난다고 알린다(의도된 차이이고 검증 스크립트·CI에는 걸려 있지 않다).
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -36,8 +39,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 export const SOURCE_PATH = 'docs/service/content/OPS_PATTERNS.md'
 export const SEED_PATH = 'jam-web/supabase/migrations/212_ops_patterns_seed.sql'
 
-/** 운영 패턴 원고의 «카드 모양» 허용 목록(옛 모양 이름 7개). 홈 화면의 모양 상수가 아니라 원고 검증용이다(티켓 20261122_1328에서 화면 쪽 상수를 지웠다). */
-export const PATTERN_CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
+/** 운영 패턴 원고의 «카드 유형» 허용 목록(새 카드 유형 이름 8개, `jam-web/src/lib/today/feedChipSlots.ts`의 `FEED_TYPES`와 같다). 원고 검증용이라 서비스 코드를 가져오지 않고 적어 둔다. DB 칸 이름은 옛 그대로 `card_shapes`다(티켓 20261122_1100, 값은 마이그레이션 354가 새 이름으로 옮겼다). */
+export const PATTERN_CARD_SHAPES = ['hero_box', 'full_image', 'badge_intro', 'badge_only', 'collection_intro', 'drop_pickup', 'text_box', 'gallery_list']
 /** 원고가 담아야 하는 개수(티켓 20261007_1633 멈춤 조건 1~4). */
 export const EXPECTED = { patterns: 18, samples: 63, tasteSignals: 43, commonRules: 7 }
 /** 초기 입력에서 쉬는 중으로 두는 패턴과 이유(PRD §10.1). 나머지는 모두 사용 중이다. */

@@ -14,6 +14,9 @@
 //
 // 멈춤 조건: 번호가 P19부터 이어지지 않음 · topic 중복 · 카드 모양이 허용 목록 밖 · 각도 종류가 허용 목록 밖 · 각도가 10개 미만
 //   · needs가 허용 목록 밖 · 비어 있는 칸.
+//
+// ⚠️ 2026-11-22: 카드 모양 값은 새 카드 유형 이름(hero_box 등)으로 바꿨다(티켓 20261122_1100, DB는 마이그레이션 354). 이미 적용한 시드 SQL(312)은
+//    옛 이름 그대로 두는 옛 마이그레이션이라, --check는 card_shapes 값만 어긋난다고 알린다(의도된 차이이고 검증 스크립트·CI에는 걸려 있지 않다).
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -23,8 +26,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 export const SOURCE_PATH = 'scripts/data/ops-pattern-topics.json'
 export const SEED_PATH = 'jam-web/supabase/migrations/312_ops_patterns_topic_seed.sql'
 
-/** 운영 패턴 원고의 «카드 모양» 허용 목록(옛 모양 이름 7개). 홈 화면의 모양 상수가 아니라 원고 검증용이다(티켓 20261122_1328에서 화면 쪽 상수를 지웠다). */
-export const PATTERN_CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
+/** 운영 패턴 원고의 «카드 유형» 허용 목록(새 카드 유형 이름 8개, `jam-web/src/lib/today/feedChipSlots.ts`의 `FEED_TYPES`와 같다). 원고 검증용이라 서비스 코드를 가져오지 않고 적어 둔다. DB 칸 이름은 옛 그대로 `card_shapes`다(티켓 20261122_1100, 값은 마이그레이션 354가 새 이름으로 옮겼다). */
+export const PATTERN_CARD_SHAPES = ['hero_box', 'full_image', 'badge_intro', 'badge_only', 'collection_intro', 'drop_pickup', 'text_box', 'gallery_list']
 export const ANGLE_TYPES = ['소개', '유도', '미션', '큐레이션', '현황', '회고', '이야기']
 export const NEED_KEYS = ['places', 'place-stats', 'badges', 'item-paths', 'trends', 'kpi']
 export const MIN_ANGLES = 10
