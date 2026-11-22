@@ -259,8 +259,11 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
     : `<span style="font-size:13px;line-height:1;color:var(--muted);">?</span>`
 
   const badge = `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`
-  // 라벨 텍스트 — 줌 배율과 무관하게 고정 크기(14px, 70%)로 유지. 말줄임 없이 전체 텍스트 표시
-  const label = `<div style="margin-top:2px;max-width:100%;padding:2px 6px;border-radius:8px;background:color-mix(in srgb, var(--base-black) 65%, transparent);color:var(--snow);font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
+  // 라벨 텍스트 — 줌 배율과 무관하게 고정 크기(14px, 70%)로 유지. 말줄임 없이 전체 텍스트 표시.
+  // 상자 폭은 글자 길이를 따른다(width:max-content). max-width:100%(마커 콘텐츠 폭 72px)로 묶으면 긴 이름이
+  // nowrap 글자만 상자 밖으로 삐져나와 배경이 이름 뒤를 다 못 채웠다(티켓 20261122_1910). 콘텐츠 열이 flex 가운데 정렬이라
+  // 상자가 72px보다 넓어져도 양쪽으로 똑같이 늘어나 서클 중심 좌표(anchor.x)는 그대로다.
+  const label = `<div style="margin-top:2px;width:max-content;max-width:none;flex-shrink:0;padding:2px 6px;border-radius:8px;background:color-mix(in srgb, var(--base-black) 65%, transparent);color:var(--snow);font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
 
   return `<div style="width:${BADGE_MARKER_CONTENT_WIDTH}px;display:flex;flex-direction:column;align-items:center;">${badge}${label}</div>`
 }
