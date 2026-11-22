@@ -98,8 +98,8 @@ describe('모양별 집계(byShape)', () => {
       { contentTypeId: 'T02', cardShape: 'brief', event: 'click', count: 1 },
     ])
     expect(byShape).toEqual([
-      { shape: 'brief', impression: 0, click: 1, followup: 0, clickThroughRate: null },
-      { shape: 'hero', impression: 10, click: 2, followup: 0, clickThroughRate: 0.2 },
+      { shape: 'brief', kind: 'legacy', impression: 0, click: 1, followup: 0, clickThroughRate: null },
+      { shape: 'hero', kind: 'legacy', impression: 10, click: 2, followup: 0, clickThroughRate: 0.2 },
     ])
   })
 
@@ -111,9 +111,33 @@ describe('모양별 집계(byShape)', () => {
       { contentTypeId: 'T01', cardShape: 'poster', event: 'impression', count: 1 },
     ])
     expect(byShape).toEqual([
-      { shape: 'poster', impression: 1, click: 0, followup: 0, clickThroughRate: 0 },
-      { shape: 'unknown', impression: 5, click: 1, followup: 0, clickThroughRate: 0.2 },
+      { shape: 'poster', kind: 'legacy', impression: 1, click: 0, followup: 0, clickThroughRate: 0 },
+      { shape: 'unknown', kind: 'unknown', impression: 5, click: 1, followup: 0, clickThroughRate: 0.2 },
     ])
+  })
+
+  it('각 행에 kind가 붙는다 — 새 유형 8가지 이름은 feed_type, 값이 없으면 unknown, 그 밖(옛 모양 이름)은 legacy (티켓 20261122_1328)', async () => {
+    const { byShape } = await bodyOf([
+      { contentTypeId: 'T01', cardShape: 'hero_box', event: 'impression', count: 4 },
+      { contentTypeId: 'T01', cardShape: 'gallery_list', event: 'impression', count: 1 },
+      { contentTypeId: 'T01', cardShape: 'hero', event: 'impression', count: 3 },
+      { contentTypeId: 'T01', cardShape: null, event: 'impression', count: 2 },
+    ])
+    expect(byShape.map((row: { shape: string; kind: string }) => [row.shape, row.kind])).toEqual([
+      ['gallery_list', 'feed_type'],
+      ['hero', 'legacy'],
+      ['hero_box', 'feed_type'],
+      ['unknown', 'unknown'],
+    ])
+  })
+
+  it('옛 모양 이름 7개는 모두 legacy, 새 유형 8개는 모두 feed_type이다', async () => {
+    const legacy = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
+    const feedTypes = ['hero_box', 'full_image', 'badge_intro', 'badge_only', 'collection_intro', 'drop_pickup', 'text_box', 'gallery_list']
+    const { byShape } = await bodyOf([...legacy, ...feedTypes].map((cardShape) => ({ contentTypeId: 'T01', cardShape, event: 'impression', count: 1 })))
+    const kindOf = new Map(byShape.map((row: { shape: string; kind: string }) => [row.shape, row.kind]))
+    for (const name of legacy) expect(kindOf.get(name), name).toBe('legacy')
+    for (const name of feedTypes) expect(kindOf.get(name), name).toBe('feed_type')
   })
 
   it('기록이 없으면 빈 배열이다', async () => {
@@ -182,7 +206,7 @@ describe('패턴별 집계(byPattern, 티켓 20261008_1059)', () => {
     expect(Object.keys(body).sort()).toEqual(['byPattern', 'byShape', 'range', 'types'])
     expect(body.range).toEqual(DEFAULT_RANGE)
     expect(body.types).toEqual([{ contentTypeId: 'T02', impression: 4, click: 1, followup: 0, clickThroughRate: 0.25 }])
-    expect(body.byShape).toEqual([{ shape: 'hero', impression: 4, click: 1, followup: 0, clickThroughRate: 0.25 }])
+    expect(body.byShape).toEqual([{ shape: 'hero', kind: 'legacy', impression: 4, click: 1, followup: 0, clickThroughRate: 0.25 }])
   })
 
   it('패턴 번호가 없는 옛 기록만 있어도 types·byShape는 이전과 같은 값이다', async () => {
@@ -191,7 +215,7 @@ describe('패턴별 집계(byPattern, 티켓 20261008_1059)', () => {
       { contentTypeId: 'T01', cardShape: null, event: 'click', count: 1 },
     ])
     expect(body.types).toEqual([{ contentTypeId: 'T01', impression: 2, click: 1, followup: 0, clickThroughRate: 0.5 }])
-    expect(body.byShape).toEqual([{ shape: 'unknown', impression: 2, click: 1, followup: 0, clickThroughRate: 0.5 }])
+    expect(body.byShape).toEqual([{ shape: 'unknown', kind: 'unknown', impression: 2, click: 1, followup: 0, clickThroughRate: 0.5 }])
     expect(body.byPattern).toEqual([{ patternNo: null, impression: 2, click: 1, followup: 0, clickThroughRate: 0.5 }])
   })
 })

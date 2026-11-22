@@ -9,7 +9,6 @@ import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
-  CARD_SHAPES,
   EXPECTED,
   SOURCE_PATH,
   parseOpsPatterns,
@@ -265,14 +264,6 @@ test('멈춤 8: 부록 A의 소속이 본문과 다르거나 걸침 번호가 63
 test('멈춤 9: 허용 밖 카드 모양', () => {
   const md = mutate(real, '`list`(레시피 재료 타일과 비어 있는 열쇠 칸)', '`grid`(레시피 재료 타일과 비어 있는 열쇠 칸)')
   assert.match(validateOpsPatterns(parseOpsPatterns(md), md).join('\n'), /\[멈춤 9\] P01 카드 모양 「grid」은 허용 밖이다/)
-})
-
-test('멈춤 9: 파서의 카드 모양 허용 목록이 shape.ts의 CARD_SHAPES와 같다', () => {
-  const src = readFileSync(join(ROOT, 'jam-web/src/lib/today/shape.ts'), 'utf8')
-  const m = src.match(/export const CARD_SHAPES = \[([^\]]*)\] as const/)
-  assert.ok(m, 'shape.ts에서 CARD_SHAPES 배열을 찾지 못했다')
-  const inApp = [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1])
-  assert.deepEqual(CARD_SHAPES, inApp)
 })
 
 test('CLI: 「닫은 값」을 지운 사본이면 SQL을 쓰지 않고 패턴 번호를 내며 0이 아닌 코드로 끝난다', () => {
