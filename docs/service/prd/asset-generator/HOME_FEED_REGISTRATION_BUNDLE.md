@@ -132,7 +132,7 @@ code:
 `title`·`template_type`·`starts_at`·`ends_at`)에 어드민 폼의 필수 검사(노출 조건 태그 1개 이상, `TodayCardForm.tsx`의 `collectMissing`)를
 더한 것이다. 어드민 생성 API(`api/admin/today/route.ts` POST)는 본문을 검증 없이 insert하므로 **API에는 재사용할 검증 함수가 없다.**
 규칙의 원천은 폼·`lib/admin/today-sections.ts` 상수·DB CHECK 제약이고, 허용값 목록은 그 상수에서 뽑는다(테스트가 DB CHECK
-마이그레이션 158(노출 형태)·183(컨텐츠 유형)·310(템플릿)과 대조한다). 이 규칙을 코드로 옮긴 원본은 `jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`다(`bundleRules.ts`의 보조 함수를 쓴다).
+마이그레이션 183(컨텐츠 유형)·310(템플릿)과 대조한다). 이 규칙을 코드로 옮긴 원본은 `jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`다(`bundleRules.ts`의 보조 함수를 쓴다).
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
@@ -141,7 +141,7 @@ code:
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다. 저장할 때 UTC ISO로 바꾼다(폼과 같다) |
 | `ends_at` | 필수 | ISO 8601 | 시간대가 붙어야 하고 `starts_at`보다 뒤여야 한다 |
 | `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값 또는 소속 트라이브 태그 `tribe_<트라이브 ID>`(`tribe_` + 소문자 UUID)만, 중복 없이 |
-| `layout_type` | 선택 | 문자열 | `large_thumbnail`·`badge_gallery`·`shortcut`·`banner`·`other`·`ranking_list` 중 하나(`TODAY_LAYOUT_OPTIONS`, DB CHECK). 없으면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`). **`mission_spotlight`는 최종 레이아웃(입력값 또는 생략 시 추천값)이 항상 `large_thumbnail`이어야 한다**(2026-09-26 사용자 결정, `content-automation/PRD.md` §8 미션 카드 규칙 — 대표 이미지가 있는 미션 소개 카드는 커버 이미지가 필수다). `SUGGESTED_LAYOUT_FOR.mission_spotlight`도 `large_thumbnail`이다 |
+| `layout_type` | 선택 | 문자열 | **쓰지 않는다**(티켓 20261122_1153). 홈이 더는 읽지 않아 값을 검사하지 않고 등록 값에도 싣지 않는다(DB 기본값 `large_thumbnail`). 옛 묶음이 적어 와도 막지 않으려고 받아서 무시하며, 새 묶음에는 적지 않는다. 미션 소개 카드(`mission_spotlight`)의 «항상 `large_thumbnail`» 검사도 없앴다 |
 | `subtitle` | 선택 | 문자열 | 한 줄. 줄바꿈·제어 문자 거절. 카피 규칙(`copyRules.ts`)에 걸리면 거절: 「~하세요」(「해 주세요」 제외)·「도장」·500m·「장소/POI/지점/방문 배지」·「발견」·「찾아서」·「이웃」을 쓰면 거절. 없으면 null |
 | `description` | 선택 | 문자열 | 게재용 설명문. 한 줄(줄바꿈·제어 문자 거절), 앞뒤 공백을 자른 뒤 공백 포함 60자 이하(`TODAY_DESCRIPTION_MAX_LENGTH`, 어드민 폼 `maxLength`와 같은 상수). 공백뿐이면 거절. 홈 화면이 설명 문단을 그리는 `badge_spotlight`·`content_intro`에서만 쓸 수 있고, 나머지 템플릿(미션·드랍·기사·랭킹·컬렉션 소식·진행 알림·지역 트렌드·레시피 공개)에 적으면 거절한다(보이지 않는 문구를 등록하지 않게, 사용자 결정 2026-11-09, 티켓 20261109_1519. 목록의 단일 원천은 `jam-web/src/lib/today/shape.ts`의 `DESCRIPTION_TEMPLATES`). 없으면 null. `--dry-run` 요약의 「설명문」 줄로 확인한다(티켓 20260929_1335). 제목·부제와 같은 카피 규칙에 더해 느낌표(`!`)와 문장 끝의 「획득」·「보상」도 거절한다(티켓 20261103_1236). 미션을 가리키는 카드(`mission_spotlight`)는 설명문이 화면에 보이지 않아 설명문을 적지 않는다(티켓 20261109_1519). 미션을 소개하는 `content_intro`의 설명문은 보상과 조건 수량을 쓰지 않고 이 미션을 하고 싶게 만드는 장면 한 줄을 쓴다(사용자 결정 2026-11-04, 티켓 20261104_2314). 이 장면 규칙은 사람이 지키고 등록 검사는 걸지 않는다(검사는 문자열만 보므로 소개 대상이 미션인지 가려낼 수 없다) |
 | `badge_ids` | 선택 | UUID 배열 | 같은 id를 두 번 넣을 수 없다. 삭제되지 않은 배지가 실제로 있는지 DB를 읽어 확인한다. 없으면 `[]` |
@@ -216,14 +216,13 @@ code:
 | 필수 항목 누락 | `card.title: 필수 항목이 없어요.` |
 | 작성자·제목·부제·지역·검수 사유에 줄바꿈·제어 문자 | `card.title: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).` (`author`·`card.subtitle`·`card.region_label`·`world_review.reason`도 같은 문장) |
 | 세계관 내용이 있는데 검수 안 함 | `world_review.winter_reviewed: 세계관과 닿는 카드(world_related=true)는 윈터 검수를 거쳐야 해서 true여야 해요.` |
-| 허용값 밖 템플릿·노출 형태·컨텐츠 유형 | `card.template_type: badge_spotlight · … 중 하나여야 해요(받은 값: "weekly_recap").` |
+| 허용값 밖 템플릿·컨텐츠 유형 | `card.template_type: badge_spotlight · … 중 하나여야 해요(받은 값: "weekly_recap").` |
 | 노출 태그 없음·허용 밖 태그 | `card.exposure_tags: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).` · `card.exposure_tags: 허용하지 않는 태그예요 — "sunny". 허용 태그: …` |
 | 설명문이 60자를 넘음 | `card.description: 공백 포함 60자 이하여야 해요(받은 값: 61자).` (줄바꿈이면 `card.description: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).`, 설명 문단을 그리지 않는 템플릿이면 `card.description: mission_spotlight 템플릿은 이 필드를 쓰지 않아요(홈은 badge_spotlight·content_intro에서만 설명 문단을 그려요). 묶음에서 빼 주세요.`) |
 | 카피 규칙에 걸리는 문구 | `card.title: 제목이 조건을 요약한 말처럼 읽혀요. 「지하철 역에서 만나는 행운」처럼 장면이나 기대가 보이게 써 주세요(UX 라이팅 가이드라인 §2.6).` · `card.description: 설명에는 느낌표를 쓰지 않아요. …` · `card.title: 권유 자리에 「~하세요」를 쓰지 않아요. 같이 해 보자는 말투로 「~해 봐요」라고 써 주세요…` · `card.description: 문장을 「획득」·「보상」으로 끊지 않아요. 「10포인트를 획득해요」처럼 문장으로 맺어 주세요.` (규칙 목록의 단일 원천은 `jam-web/src/lib/admin/registerChecks/copyRules.ts`) |
 | 템플릿이 쓰지 않는 참조 | `card.mission_id: drop_alert 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.` |
 | 필요한 참조 없음 | `card.mission_id: mission_spotlight 템플릿은 이 참조가 있어야 카드가 의미가 있어요.` |
 | 목록 화면으로 이어짐 | `card.target_href: 이 카드는 목록 화면(/badges)으로 이어져요. 목록 화면이 아니라 소개한 컨텐츠의 상세 화면(예: /badges/{배지 id})으로 보내 주세요. 숨은 아이템 배지나 드랍을 알리는 카드라면 /drops로 보내 주세요.` |
-| mission_spotlight인데 최종 레이아웃이 large_thumbnail이 아님 | `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: "shortcut").` |
 | 기간 순서 | `card.starts_at: ends_at보다 앞이어야 해요.` |
 | 이동 경로 형식 | `card.target_href: 앱 안 경로(/로 시작, 예: /missions/…)이거나 https 주소여야 해요(받은 값: "missions").` |
 | 이미지 없음·PNG 아님 | `image.path: 이미지 파일을 찾을 수 없어요: <절대경로>` · `image.path: PNG 파일이 아니에요: <절대경로>` |
@@ -253,7 +252,6 @@ code:
     "title": "[TEST] 예시 주간 홈피드 카드",
     "subtitle": "묶음 형식을 확인하는 예시예요",
     "template_type": "editorial_article",
-    "layout_type": "large_thumbnail",
     "body_markdown": "묶음 형식을 확인하려고 만든 예시 카드입니다.\n\n실제로 등록하지 않습니다.",
     "content_type_id": "T12",
     "exposure_tags": ["all"],
@@ -325,7 +323,7 @@ node scripts/asset-generator/contrast.mjs --bg "#8a5a2e" --end "#3d2812"   # 흰
 ### `--dry-run`
 
 묶음을 검증하고 컨펌 자료를 한국어로 출력한다: 묶음(작성자·작성 시각 KST·컬러 근거), 세계관 검수(있음/없음·윈터 검수 여부·사유),
-카드(제목·부제·템플릿·노출 형태·컨텐츠 유형·기간·노출 태그·참조·설명문·본문 글자 수·이동 경로·정렬·활성 여부), 이미지(경로·크기·프리셋·시드·색·
+카드(제목·부제·템플릿·컨텐츠 유형·기간·노출 태그·참조·설명문·본문 글자 수·이동 경로·정렬·활성 여부), 이미지(경로·크기·프리셋·시드·색·
 텍스트·WebP 변환 결과), DB 읽기 검사, 등록 예정 내용, 되돌림 SQL 미리보기. 종료 코드는 통과 0, 실패 1이다.
 
 - **쓰기를 하지 않는다.** 업로드·insert·삭제·기록 파일 생성 없이 메모리에서 WebP 변환만 해 본다.
@@ -351,7 +349,7 @@ node scripts/asset-generator/contrast.mjs --bg "#8a5a2e" --end "#3d2812"   # 흰
 등록하면 묶음 폴더(또는 `--record-dir`)에 두 파일이 생긴다. 기존 기록은 덮어쓰지 않는다. 형식은 배지·미션 등록과 같은 방식이다
 ([REGISTRATION_BUNDLE.md](REGISTRATION_BUNDLE.md) §7).
 
-**`registration-record.json`** — 카드 id·제목·템플릿·노출 형태·기간·활성 여부, **등록 경로 표지 `card.image_source`**, 세계관 검수 기록
+**`registration-record.json`** — 카드 id·제목·템플릿·기간·활성 여부, **등록 경로 표지 `card.image_source`**, 세계관 검수 기록
 (`world_review`), 저장소 경로 2개(`storage.png_path`·`storage.webp_path`), 이미지 URL(`urls.cover_image_url`), 시드·프리셋·색·텍스트, 작성자,
 등록 시각(KST, `+09:00`), 컬러 근거 링크, 묶음 요약 한 줄(`summary`).
 
