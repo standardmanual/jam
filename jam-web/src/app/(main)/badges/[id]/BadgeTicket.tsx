@@ -10,7 +10,7 @@ import styles from './BadgeTicket.module.css'
  * 모양·그라데이션·토큰 덮어쓰기는 CSS 모듈이 그린다(내용 먼저·티켓 나중 깜빡임 방지).
  *
  * 구성: 머리(로고·종류·날짜) → 절취선 1 → 아래 블록[사진 → afterPhoto → 절취선 2 → body].
- * 페이지 크림 `--background`는 호출부 루트가 덮어쓴다. 절취선·홈은 그 값을 그대로 받는다.
+ * 페이지 바탕은 다른 화면과 같은 기본 `--background`다(덮어쓰지 않는다). 절취선·홈은 그 값을 그대로 받는다.
  */
 interface BadgeTicketProps {
   color: TicketColor

@@ -120,8 +120,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // 티켓색은 서버가 요청마다 고른다(원색 5개, 이미지 색과 겹치면 제외). 클라이언트에서 칠하지 않는다.
   const ticketColor = pickTicketColor(badgeRow.bg_colors ?? [])
-  // 페이지 범위 --background 덮어쓰기(크림). TopNav·절취선 홈이 이 값을 따른다.
-  const pageStyle = { '--background': '#F1E9D6' } as React.CSSProperties
+  // 페이지 바탕은 다른 화면과 같은 기본 --background다(크림 덮어쓰기는 2026-11-22 사용자 지시로 걷었다, 티켓 20261122_1424). 절취선 점·홈도 이 값을 따른다.
   const shareWrapStyle: React.CSSProperties = { padding: '24px 16px calc(32px + env(safe-area-inset-bottom))' }
 
   // Phase 16: checkin 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
@@ -303,7 +302,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       : null
 
     return (
-      <div className="min-h-dvh text-foreground bg-background" style={pageStyle}>
+      <div className="min-h-dvh text-foreground bg-background">
         <TopNav
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
@@ -409,7 +408,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 3: 체크인 배지 ==========
   if (badgeRow.type === 'checkin') {
     return (
-      <div className="min-h-dvh text-foreground bg-background" style={pageStyle}>
+      <div className="min-h-dvh text-foreground bg-background">
         <TopNav
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
@@ -478,7 +477,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-dvh text-foreground bg-background" style={pageStyle}>
+    <div className="min-h-dvh text-foreground bg-background">
       <TopNav
         title={d.common.back}
         backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}

@@ -62,7 +62,8 @@ describe('배지 상세 page 세 변형', () => {
 
   it('세 변형 모두 BadgeTicket을 쓰고 공유 버튼은 티켓 밖에 둔다', () => {
     expect(page.match(/<BadgeTicket$/gm)).toHaveLength(3)
-    expect(page).toContain("'--background': '#F1E9D6'")
+    // 페이지 바탕은 다른 화면과 같은 기본값이다(덮어쓰지 않는다, 티켓 20261122_1424)
+    expect(page).not.toContain("'--background':")
     expect(page.match(/공유하기 — 티켓 밖/g)).toHaveLength(3)
   })
 })
