@@ -6,12 +6,13 @@
  * §9 "개인 식별자는 저장하지 않는다", 결정 4-6). content_type_id는 기록 시점 카드의 값을
  * 그대로 복제해 저장한다 — 카드가 나중에 유형을 바꾸거나 삭제돼도 이벤트의 유형 귀속이
  * 흔들리지 않는다(마이그레이션 183 COMMENT). card_shape(그려진 모양, 마이그레이션 206)도 같은 방식으로
- * 기록 시점 값을 복제한다(티켓 20261001_1431). 카드의 패턴 번호(pattern_no, 마이그레이션 211)도 같은 방식이다(티켓 20261008_1059).
+ * 기록 시점 값을 복제한다(티켓 20261001_1431). 값은 새 유형 이름(`hero_box` 등)이다(티켓 20261122_1101) — 이전 기록의 옛 모양 이름은 그대로 남는다. 카드의 패턴 번호(pattern_no, 마이그레이션 211)도 같은 방식이다(티켓 20261008_1059).
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import { recipeReleaseState } from '@/lib/combine/visibility'
-// 화면 모듈(`cardView.ts`)은 한국어 사전을 가져와 이벤트 API 번들이 무거워진다 — 순수 판정만 `shape.ts`에서 가져온다(티켓 20261001_2244).
-import { drawnShape, fallbackEmptyTileShape, resourceOfTemplate, type CardShape, type ShapeCardInput } from './shape'
+import type { TodayListItem } from '@/types/database'
+// 화면 모듈(`cardView.ts`)은 한국어 사전을 가져와 이벤트 API 번들이 무거워진다 — 화면과 같은 유형 판정(순수 파일 `feedType.ts`)만 가져온다(티켓 20261001_2244, 20261122_1101).
+import { resolveFeedType, usableListItems } from './feedType'
+import type { RenderedFeedType } from './feedLook'
 
 export const TODAY_CARD_EVENT_TYPES = ['impression', 'click', 'followup'] as const
 export type TodayCardEventType = (typeof TODAY_CARD_EVENT_TYPES)[number]
@@ -58,10 +59,9 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
 export interface ExposableCard {
   content_type_id: string | null
   /**
-   * 그 카드가 지금 화면에 그려지는 모양. `shape`가 저장되지 않은 옛 카드도 전환 상수(`LEGACY_SHAPE_CUTOVER`)가 켜져 있어 옛 값 대응표(`resolveShape`)의
-   * 모양이다. 상수를 끄면 그런 카드는 `null`이다.
+   * 그 카드가 지금 화면에 그려지는 유형(새 유형 이름). `feed_type`이 비었거나 모르는 값이거나 그릴 값이 없으면 화면과 같이 `text_box`다(`feedType.ts`).
    */
-  card_shape: CardShape | null
+  card_shape: RenderedFeedType
   /** 카드의 패턴 번호 복사본(마이그레이션 211). NULL이면 패턴이 없는 카드다(직접 만든 카드·옛 카드). 형식은 다시 검사하지 않는다. */
   pattern_no: string | null
 }
@@ -71,15 +71,17 @@ export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: f
 /**
  * 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111).
  * 통과하면 조회한 카드 행을 돌려줘 `recordTodayCardEvent`가 `today_cards`를 다시 조회하지 않게 한다(티켓 20260924_0139).
- * 그려진 모양 판정에 필요한 칸(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)과 패턴 번호(`pattern_no`)도 같은 조회에서 읽는다(티켓 20261001_1431·20261008_1059).
- * 레시피 공개 카드는 타일 수를 레시피의 공개 상태로 정하므로 `recipe_id`도 함께 읽고, 그 카드에 한해 레시피 행을 한 번 더 읽는다(티켓 20261006_1218).
- * 다만 타일 수가 모양 판정에 쓰이는 카드(모양이 `list`로 정해진 타일형)에 한한다 — 모양이 null이거나 `list`가 아니면 레시피를 읽지 않는다(티켓 20261006_1344).
+ * 그려진 유형 판정에 필요한 칸(`feed_type`·`cover_image_url`·`badge_ids`·`list_items`)과 패턴 번호(`pattern_no`)도 같은 조회에서 읽는다(티켓 20261001_1431·20261008_1059·20261122_1101).
+ *
+ * 유형은 화면(`toCardView`)과 같은 함수(`resolveFeedType`)에 같은 카드 행의 값을 넣어 정한다. 드랍·픽업의 배지 수만 화면은 조회된 배지(삭제된 배지 제외),
+ * 여기는 카드 행의 `badge_ids` 개수다 — 배지를 다시 조회하지 않기 위해서다. 그래서 `badge_ids`가 전부 삭제된 배지인 드랍·픽업 카드만
+ * 화면은 `text_box`, 기록은 `drop_pickup`으로 갈린다(허용 차이, 홈피드 PRD §9).
  */
 export async function assertCardExposable(cardId: string, now: Date): Promise<CardExposureValidation> {
   const supabase = createServiceClient()
   const { data: card, error } = await supabase
     .from('today_cards')
-    .select('is_active, starts_at, ends_at, content_type_id, shape, template_type, layout_type, cover_image_url, badge_ids, recipe_id, pattern_no')
+    .select('is_active, starts_at, ends_at, content_type_id, feed_type, cover_image_url, badge_ids, list_items, pattern_no')
     .eq('id', cardId)
     .maybeSingle()
 
@@ -94,64 +96,18 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
   if (nowMs < new Date(card.starts_at).getTime() || nowMs > new Date(card.ends_at).getTime()) {
     return { ok: false, error: '노출 기간이 아닌 카드입니다.' }
   }
-  // 생성 타입은 template_type·layout_type을 string으로 읽어 모양 판정 입력 타입으로 좁혀 넘긴다(DB CHECK가 값을 보장한다).
-  const shapeInput = card as ShapeCardInput & { recipe_id: string | null }
   return {
     ok: true,
     card: {
       content_type_id: card.content_type_id,
-      card_shape: await resolveDrawnShape(supabase, shapeInput, now),
+      card_shape: resolveFeedType(card.feed_type, {
+        hasCover: Boolean(card.cover_image_url),
+        itemBadgeCount: card.badge_ids?.length ?? 0,
+        listItemCount: card.feed_type === 'gallery_list' ? usableListItems(card.list_items as TodayListItem[] | null).length : 0,
+      }),
       pattern_no: card.pattern_no ?? null,
     },
   }
-}
-
-/**
- * 카드가 그릴 타일 수. 레시피 공개 카드는 타일이 카드의 배지(`badge_ids`)가 아니라 레시피의 슬롯에서 나온다(`toCardView`) — 레시피가 공개 중이면
- * 슬롯 타일이 있고(1 이상), 공개 전·끝남·레시피 없음·조회 실패는 0이다. 개수는 정확히 셀 필요가 없다: `fallbackEmptyTileShape`가 0인지만 가른다.
- * 그 밖의 카드는 카드 행의 `badge_ids` 개수다. 레시피를 읽지 못해도 이벤트 기록은 막지 않는다(그 카드는 `brief`로 기록된다).
- */
-async function drawnTileCount(
-  supabase: ReturnType<typeof createServiceClient>,
-  card: ShapeCardInput & { recipe_id: string | null },
-  now: Date,
-): Promise<number> {
-  if (resourceOfTemplate(card.template_type) !== 'recipe') return card.badge_ids?.length ?? 0
-  if (!card.recipe_id) return 0
-
-  const { data, error } = await supabase
-    .from('combination_recipes')
-    .select('valid_from, valid_until')
-    .eq('id', card.recipe_id)
-    .maybeSingle()
-  if (error) {
-    console.error('[today/events] 레시피 공개 상태 조회 오류:', error.message)
-    return 0
-  }
-  return data && recipeReleaseState(data, now) === 'released' ? 1 : 0
-}
-
-/**
- * 화면(`toCardView`)이 그리는 모양과 같은 값을 정한다. 저장된 `shape` → (전환 상수가 켜졌을 때만) 옛 값 판정은 `drawnShape`,
- * 「타일이 0개인 타일형 list는 brief」는 `toCardView`와 같은 함수(`fallbackEmptyTileShape`)를 쓴다.
- * 같은 카드 행이면 두 경로가 같은 입력(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 판정한다 —
- * 커버 없는 옛 큰 카드의 `square` 승격은 배지 그림 유무가 아니라 `badge_ids` 유무로 정한다(`shape.ts`).
- * 타일 수(`drawnTileCount`)는 모양을 먼저 정한 뒤 판정에 쓰일 때만 센다 — 모양이 null이거나, 타일 수가 0이어도 모양이 바뀌지 않는 모양(`list`가 아니거나 랭킹 행형)이면
- * 레시피 행을 읽지 않는다(티켓 20261006_1344). 그 판정은 `fallbackEmptyTileShape`를 타일 수 0으로 불러 모양이 그대로인지 보는 것이라, 함수의 조건을 여기에 다시 적지 않는다.
- * 타일 수는 화면이 읽은 배지 수(삭제된 배지 제외) 대신 카드 행의 `badge_ids` 개수(레시피 공개 카드는 레시피의 공개 상태)로
- * 갈음한다 — 배지를 다시 조회하지 않기 위해서다. 그래서 `badge_ids`가 전부 삭제된 배지인 타일형 `list`, 후보 배지가 전부 삭제된 공개 뒤 레시피 공개 카드만
- * 화면은 `brief`, 기록은 `list`로 갈린다(허용 차이, 홈피드 PRD §9).
- */
-async function resolveDrawnShape(
-  supabase: ReturnType<typeof createServiceClient>,
-  card: ShapeCardInput & { recipe_id: string | null },
-  now: Date,
-): Promise<CardShape | null> {
-  const shape = drawnShape(card)
-  if (!shape) return null
-  const resource = resourceOfTemplate(card.template_type)
-  if (fallbackEmptyTileShape(shape, resource, 0) === shape) return shape
-  return fallbackEmptyTileShape(shape, resource, await drawnTileCount(supabase, card, now))
 }
 
 export type RateLimitResult = { ok: true } | { ok: false }
@@ -217,7 +173,7 @@ export async function recordTodayCardEvent(
 
 export interface TodayCardEventAggregateRow {
   contentTypeId: string | null
-  /** 기록 시점에 그려진 모양. NULL이면 모양 도입 전 기록이거나 전환 전 옛 카드다. */
+  /** 기록 시점에 그려진 모양. 새 유형 이름(`hero_box` 등)이다. 옛 모양 이름(`hero`·`list` 등)은 이 변경 전 기록이고, NULL이면 모양 도입 전 기록이다. */
   cardShape: string | null
   /** 기록 시점 카드의 패턴 번호. NULL이면 패턴 없는 카드(직접 만든 카드)이거나 패턴 열 도입 전 기록이다(마이그레이션 211). */
   patternNo: string | null

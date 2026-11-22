@@ -144,7 +144,7 @@ export default async function HomePage() {
       <TodayStatusStrip left={leftStatus} right={rightStatus} />
 
       {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
-      <TodayCardStack cards={todayCards} currentUserId={userId} palette={feedPalette} />
+      <TodayCardStack cards={todayCards} palette={feedPalette} />
 
       </div>
     </div>

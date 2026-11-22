@@ -1,85 +1,12 @@
 import type { CardView } from '@/lib/today/cardView'
-import { isRankingRows, type CardShape } from '@/lib/today/shape'
-import BriefCard from './BriefCard'
-import CardFrame from './CardFrame'
-import DomeCard from './DomeCard'
-import HeroCard from './HeroCard'
-import ListCard from './ListCard'
-import PosterCard from './PosterCard'
-import SquareCard from './SquareCard'
-import TicketCard from './TicketCard'
 import FeedCard from './feed/FeedCard'
 
 /**
- * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 티켓 20261022_2225에서 dome, ticket 추가).
- */
-export const RENDERED_SHAPES = ['brief', 'hero', 'poster', 'square', 'list', 'dome', 'ticket'] as const satisfies readonly CardShape[]
-
-export type RenderedShape = (typeof RENDERED_SHAPES)[number]
-
-/** 새 틀이 그리는 모양인지. */
-export function isRenderedShape(shape: unknown): shape is RenderedShape {
-  return typeof shape === 'string' && (RENDERED_SHAPES as readonly string[]).includes(shape)
-}
-
-/**
- * 표시 데이터(`CardView`)를 받아 `shape`로 모양 컴포넌트를 고르고 카드 틀(`CardFrame`)로 감싼다.
- * 목록(`RENDERED_SHAPES`)에 없는 모양을 받으면 `null`을 반환한다 — 모르는 값이 직접 만든 표시 데이터(Story·어드민 미리보기 1501)로 올 때만 생길 수 있다.
+ * 표시 데이터(`CardView`)를 새 유형 카드(`FeedCard`)로 그린다 (티켓 20261122_1101, 상위 20261122_1100 8회차-1).
  *
- * `currentUserId`는 랭킹 행형 `list`에서 내 순위 행을 강조하는 값이라 `list`에만 넘긴다. 표시 데이터(`CardView`)에는 넣지 않는다 — 표시 데이터는 유저 정보 없이
- * 그려져야 한다(확정 설계 8절). 값이 없거나 계측 정보(`tracking`)가 없으면(미리보기) 강조가 없다.
- * 랭킹 행형은 순위 행마다 자기 프로필 링크가 있어 카드 전체 링크를 걸지 않는다(`link={false}`, 노출만 기록한다). 「랭킹이면 행형」 판정은 `isRankingRows` 하나이고
- * `ListCard`가 어느 갈래를 그릴지도 같은 함수로 정한다 — 한쪽만 바뀌어 앵커가 겹치거나 카드 전체 링크가 빠지는 일이 없게 한다(티켓 20261001_2244).
+ * 옛 7모양 분기와 `RENDERED_SHAPES`는 지웠다. `view`는 늘 새 유형이다 — `toCardView`가 `feed_type`이 비었거나 모르는 값이면 텍스트 박스(`text_box`)로 만들어 돌려준다.
+ * 카드 틀(`CardFrame`: 링크·계측)은 `FeedCard`가 건다.
  */
-export default function TodayCard({ view, currentUserId }: { view: CardView; currentUserId?: string }) {
-  // 개편 카드(티켓 20261121_0041): `feedType` 갈래는 `FeedCard`가 그린다. 아래 옛 모양 분기는 그대로다.
-  if ('feedType' in view) return <FeedCard view={view} />
-  if (!isRenderedShape(view.shape)) return null
-
-  switch (view.shape) {
-    case 'brief':
-      return (
-        <CardFrame view={view}>
-          <BriefCard view={view} />
-        </CardFrame>
-      )
-    case 'hero':
-      return (
-        <CardFrame view={view}>
-          <HeroCard view={view} />
-        </CardFrame>
-      )
-    case 'poster':
-      return (
-        <CardFrame view={view}>
-          <PosterCard view={view} />
-        </CardFrame>
-      )
-    case 'square':
-      return (
-        <CardFrame view={view}>
-          <SquareCard view={view} />
-        </CardFrame>
-      )
-    case 'list':
-      return (
-        <CardFrame view={view} link={!isRankingRows(view.resource)}>
-          <ListCard view={view} currentUserId={currentUserId} />
-        </CardFrame>
-      )
-    case 'dome':
-      return (
-        <CardFrame view={view}>
-          <DomeCard view={view} />
-        </CardFrame>
-      )
-    case 'ticket':
-      return (
-        <CardFrame view={view}>
-          <TicketCard view={view} />
-        </CardFrame>
-      )
-    default:
-      return null
-  }
+export default function TodayCard({ view }: { view: CardView }) {
+  return <FeedCard view={view} />
 }

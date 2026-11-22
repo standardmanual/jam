@@ -56,7 +56,7 @@ function dropView({ badges = BADGES, description, tracking, ...stored }: Options
   if (description && look.showDescription) view.description = description
   if (tracking) {
     view.href = '/drops'
-    view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'drop_alert', shape: 'hero' }
+    view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'drop_alert', feedType: view.feedType }
   }
   return view
 }

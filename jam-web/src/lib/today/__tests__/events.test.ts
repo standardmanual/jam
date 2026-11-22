@@ -7,9 +7,8 @@
  * 2. `recordTodayCardEvent` — 카드의 content_type_id를 조회해 함께 insert하고,
  *    insert 페이로드에 유저 식별자 키(user_id 등)가 전혀 없다
  * 3. `aggregateTodayCardEvents` — 유형 ID×모양×패턴×이벤트별 건수 집계 형태
- * 4. 그려진 모양(`card_shape`, 티켓 20261001_1431) — 모양 판정 칸을 카드 조회 한 번에 읽고, 기록에 복사한다.
- *    레시피 공개 카드는 `recipe_id`로 레시피의 공개 상태를 읽어 타일 수를 정한다(티켓 20261006_1218)
- *    타일 수가 모양 판정에 쓰이지 않는 카드(모양이 null·`list`가 아닌 모양)는 레시피를 읽지 않는다(티켓 20261006_1344)
+ * 4. 그려진 모양(`card_shape`, 티켓 20261001_1431) — 유형 판정 칸을 카드 조회 한 번에 읽고 새 유형 이름으로 기록에 복사한다(티켓 20261122_1101).
+ *    `feed_type`이 비었거나 모르는 값이면 `text_box`, 그릴 값이 없는 컬렉션 소개·드랍·픽업·목록형도 `text_box`다. 레시피는 더 읽지 않는다
  * 5. 패턴 번호(`pattern_no`, 마이그레이션 211, 티켓 20261008_1059) — 카드 조회 한 번에 함께 읽어 기록에 그대로 복사하고, 집계는 패턴별로 가른다
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/events.test.ts
@@ -25,18 +24,13 @@ const fixtures = vi.hoisted(() => ({
       is_active?: boolean
       starts_at?: string
       ends_at?: string
-      shape?: string | null
-      template_type?: string
-      layout_type?: string
+      feed_type?: string | null
       cover_image_url?: string | null
       badge_ids?: string[]
-      recipe_id?: string | null
+      list_items?: { name: string; href: string }[] | null
       pattern_no?: string | null
     } | undefined
   >,
-  recipesById: {} as Record<string, { valid_from: string | null; valid_until: string | null } | undefined>,
-  recipeQueryCount: 0,
-  recipeError: null as { message: string } | null,
   insertedPayloads: [] as Record<string, unknown>[],
   eventRows: [] as { content_type_id: string | null; event: string; card_shape?: string | null; pattern_no?: string | null }[],
   selectedColumns: [] as { table: string; columns: string }[],
@@ -64,11 +58,6 @@ function mockSupabase() {
       return builder
     }
     builder.maybeSingle = () => {
-      if (table === 'combination_recipes') {
-        fixtures.recipeQueryCount++
-        if (fixtures.recipeError) return Promise.resolve({ data: null, error: fixtures.recipeError })
-        return Promise.resolve({ data: fixtures.recipesById[state.eq?.val as string] ?? null, error: null })
-      }
       if (table !== 'today_cards') return Promise.resolve({ data: null, error: null })
       fixtures.cardQueryCount++
       if (fixtures.cardError) return Promise.resolve({ data: null, error: fixtures.cardError })
@@ -92,14 +81,8 @@ function mockSupabase() {
 }
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
-// `LEGACY_SHAPE_CUTOVER`가 켜져 있어 실제 `drawnShape`는 null을 돌려주지 않는다 — 모양이 null로 정해지는 경우(전환 상수 꺼짐)는 한 번만 null로 바꿔 시험한다.
-vi.mock('../shape', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../shape')>()
-  return { ...actual, drawnShape: vi.fn(actual.drawnShape) }
-})
 
 import { parseTodayCardEventInput, recordTodayCardEvent, aggregateTodayCardEvents, assertCardExposable, checkRateLimit, getRateLimitKeyCount } from '../events'
-import { LEGACY_SHAPE_CUTOVER, drawnShape } from '../shape'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
 
@@ -148,33 +131,33 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: null })
+    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05', card_shape: 'hero_box', pattern_no: null })
 
     expect(result.ok).toBe(true)
     expect(fixtures.insertedPayloads).toHaveLength(1)
     expect(fixtures.insertedPayloads[0]).toEqual({
       card_id: VALID_UUID,
       content_type_id: 'T05',
-      card_shape: 'hero',
+      card_shape: 'hero_box',
       pattern_no: null,
       event: 'impression',
       followup_action: null,
     })
   })
 
-  it('그려진 모양이 없는 카드(옛 카드)는 card_shape를 null로 insert한다', async () => {
+  it('그려진 유형(새 유형 이름)을 card_shape로 insert한다(티켓 20261122_1101)', async () => {
     fixtures.insertedPayloads.length = 0
 
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: null, pattern_no: null })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'text_box', pattern_no: null })
 
-    expect(fixtures.insertedPayloads[0]).toMatchObject({ card_shape: null })
+    expect(fixtures.insertedPayloads[0]).toMatchObject({ card_shape: 'text_box' })
   })
 
   it('카드의 패턴 번호를 그대로 복사해 insert하고, 없는 카드는 null을 insert한다(티켓 20261008_1059)', async () => {
     fixtures.insertedPayloads.length = 0
 
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P12' })
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: null })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05', card_shape: 'hero_box', pattern_no: 'P12' })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'hero_box', pattern_no: null })
 
     expect(fixtures.insertedPayloads[0]).toMatchObject({ pattern_no: 'P12' })
     expect(fixtures.insertedPayloads[1]).toMatchObject({ pattern_no: null })
@@ -184,7 +167,7 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P12' })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'hero_box', pattern_no: 'P12' })
 
     const keys = Object.keys(fixtures.insertedPayloads[0])
     for (const forbidden of ['user_id', 'userId', 'user', 'email', 'nickname']) {
@@ -332,9 +315,7 @@ describe('assertCardExposable — 패턴 번호(pattern_no) 복사(티켓 202610
     starts_at: '2026-09-01T00:00:00Z',
     ends_at: '2026-10-01T00:00:00Z',
     content_type_id: 'T05',
-    shape: 'hero',
-    template_type: 'badge_spotlight',
-    layout_type: 'large_thumbnail',
+    feed_type: 'hero_box',
     cover_image_url: null,
     badge_ids: [],
   }
@@ -377,7 +358,7 @@ describe('assertCardExposable — 패턴 번호(pattern_no) 복사(티켓 202610
   })
 })
 
-describe('assertCardExposable — 그려진 모양(card_shape) 판정', () => {
+describe('assertCardExposable — 그려진 모양(card_shape)은 새 유형 이름이다(티켓 20261122_1101)', () => {
   const SHAPE_UUID = '55555555-5555-4555-8555-555555555555'
   const now = new Date('2026-09-24T00:00:00Z')
   type CardFixture = NonNullable<(typeof fixtures.cardsById)[string]>
@@ -386,18 +367,17 @@ describe('assertCardExposable — 그려진 모양(card_shape) 판정', () => {
     starts_at: '2026-09-01T00:00:00Z',
     ends_at: '2026-10-01T00:00:00Z',
     content_type_id: 'T05',
-    shape: null,
-    template_type: 'badge_spotlight',
-    layout_type: 'large_thumbnail',
+    feed_type: 'hero_box',
     cover_image_url: null,
     badge_ids: [],
+    list_items: null,
   }
   const exposeWith = async (patch: Partial<CardFixture>) => {
     fixtures.cardsById[SHAPE_UUID] = { ...baseCard, ...patch }
     return assertCardExposable(SHAPE_UUID, now)
   }
 
-  it('카드를 한 번 조회하면서 모양 판정에 필요한 칸을 함께 select한다', async () => {
+  it('카드를 한 번 조회하면서 유형 판정에 필요한 칸을 함께 select하고 옛 모양·레시피 칸은 읽지 않는다', async () => {
     fixtures.cardsById[SHAPE_UUID] = { ...baseCard }
     fixtures.selectedColumns.length = 0
     fixtures.cardQueryCount = 0
@@ -407,149 +387,55 @@ describe('assertCardExposable — 그려진 모양(card_shape) 판정', () => {
     const cardSelects = fixtures.selectedColumns.filter((s) => s.table === 'today_cards')
     expect(cardSelects).toHaveLength(1)
     expect(fixtures.cardQueryCount).toBe(1)
+    expect(fixtures.selectedColumns.filter((s) => s.table !== 'today_cards')).toEqual([])
     const columns = cardSelects[0].columns.split(',').map((c) => c.trim())
-    for (const required of ['shape', 'template_type', 'layout_type', 'cover_image_url', 'badge_ids', 'recipe_id']) {
-      expect(columns).toContain(required)
+    for (const required of ['feed_type', 'cover_image_url', 'badge_ids', 'list_items']) expect(columns).toContain(required)
+    for (const legacy of ['shape', 'template_type', 'layout_type', 'recipe_id']) expect(columns).not.toContain(legacy)
+  })
+
+  it('지금 그릴 수 있는 유형은 그 이름 그대로 돌려준다', async () => {
+    for (const feed_type of ['hero_box', 'text_box', 'badge_intro', 'badge_only'] as const) {
+      const result = await exposeWith({ feed_type })
+      expect(result.ok && result.card.card_shape).toBe(feed_type)
     }
   })
 
-  it('shape가 저장된 카드는 그 모양을 그려진 모양으로 돌려준다', async () => {
-    for (const shape of ['hero', 'poster', 'square', 'brief'] as const) {
-      const result = await exposeWith({ shape })
-      expect(result.ok && result.card.card_shape).toBe(shape)
+  it.each([
+    ['NULL', null],
+    ['칸이 없음', undefined],
+    ['모르는 값', 'future_type'],
+    ['꺼져 있는 full_image', 'full_image'],
+  ])('feed_type이 %s이면 화면처럼 text_box다', async (_label, feed_type) => {
+    const result = await exposeWith({ feed_type })
+    expect(result.ok && result.card.card_shape).toBe('text_box')
+  })
+
+  it('컬렉션 소개는 커버가 있어야 collection_intro, 없으면 text_box다', async () => {
+    const withCover = await exposeWith({ feed_type: 'collection_intro', cover_image_url: 'https://cdn.example/c.png' })
+    expect(withCover.ok && withCover.card.card_shape).toBe('collection_intro')
+    const without = await exposeWith({ feed_type: 'collection_intro', cover_image_url: null })
+    expect(without.ok && without.card.card_shape).toBe('text_box')
+  })
+
+  it('드랍·픽업은 배지가 있어야 drop_pickup, 0개면 text_box다', async () => {
+    const withBadges = await exposeWith({ feed_type: 'drop_pickup', badge_ids: ['b1'] })
+    expect(withBadges.ok && withBadges.card.card_shape).toBe('drop_pickup')
+    const empty = await exposeWith({ feed_type: 'drop_pickup', badge_ids: [] })
+    expect(empty.ok && empty.card.card_shape).toBe('text_box')
+  })
+
+  it('목록형은 이름·주소가 있는 항목이 하나라도 있어야 gallery_list, 없으면 text_box다', async () => {
+    const withItems = await exposeWith({ feed_type: 'gallery_list', list_items: [{ name: '산', href: '/drops' }] })
+    expect(withItems.ok && withItems.card.card_shape).toBe('gallery_list')
+    for (const list_items of [null, [], [{ name: '', href: '' }]]) {
+      const lacking = await exposeWith({ feed_type: 'gallery_list', list_items })
+      expect(lacking.ok && lacking.card.card_shape).toBe('text_box')
     }
   })
 
-  it('shape가 없는 옛 카드는 전환 뒤(LEGACY_SHAPE_CUTOVER=true) 옛 값 대응표의 모양으로 기록한다(티켓 20261001_2244)', async () => {
-    expect(LEGACY_SHAPE_CUTOVER).toBe(true)
-    const result = await exposeWith({ shape: null, layout_type: 'large_thumbnail' })
-    expect(result.ok && result.card.card_shape).toBe('hero')
-  })
-
-  it('저장된 shape가 모양 값이 아니면 옛 카드로 보고 옛 값 대응표로 정한다', async () => {
-    const result = await exposeWith({ shape: 'large_thumbnail' })
-    expect(result.ok && result.card.card_shape).toBe('hero')
-  })
-
-  it('타일형 list는 배지가 있으면 list, 0개면 화면처럼 brief다', async () => {
-    const withBadges = await exposeWith({ shape: 'list', template_type: 'badge_spotlight', badge_ids: ['b1', 'b2'] })
-    expect(withBadges.ok && withBadges.card.card_shape).toBe('list')
-
-    const empty = await exposeWith({ shape: 'list', template_type: 'badge_spotlight', badge_ids: [] })
-    expect(empty.ok && empty.card.card_shape).toBe('brief')
-  })
-
-  it('랭킹 행형 list는 배지가 0개여도 list다', async () => {
-    const result = await exposeWith({ shape: 'list', template_type: 'ranking_board', badge_ids: [] })
-    expect(result.ok && result.card.card_shape).toBe('list')
-  })
-
-  it('노출 검증을 통과하지 못한 카드는 모양을 돌려주지 않는다', async () => {
-    const result = await exposeWith({ shape: 'hero', is_active: false })
+  it('노출 검증을 통과하지 못한 카드는 유형을 돌려주지 않는다', async () => {
+    const result = await exposeWith({ is_active: false })
     expect(result.ok).toBe(false)
-  })
-
-  describe('레시피 공개 카드 — 타일 수를 레시피의 공개 상태로 정한다(티켓 20261006_1218)', () => {
-    const RECIPE_ID = '66666666-6666-4666-8666-666666666666'
-    const recipeCard: Partial<CardFixture> = { shape: 'list', template_type: 'recipe_reveal', layout_type: 'badge_gallery', badge_ids: [], recipe_id: RECIPE_ID }
-    const withRecipe = async (recipe: { valid_from: string | null; valid_until: string | null } | undefined, patch: Partial<CardFixture> = {}) => {
-      fixtures.recipesById = recipe ? { [RECIPE_ID]: recipe } : {}
-      fixtures.recipeQueryCount = 0
-      fixtures.cardQueryCount = 0
-      return exposeWith({ ...recipeCard, ...patch })
-    }
-    // now = 2026-09-24T00:00Z
-    const RELEASED = { valid_from: '2026-09-01T00:00:00Z', valid_until: null }
-
-    afterEach(() => {
-      fixtures.recipesById = {}
-      fixtures.recipeError = null
-    })
-
-    it('레시피가 공개 중이면 list로 기록한다(badge_ids가 비어 있어도)', async () => {
-      const result = await withRecipe(RELEASED)
-      expect(result.ok && result.card.card_shape).toBe('list')
-      expect(fixtures.cardQueryCount).toBe(1)
-      expect(fixtures.recipeQueryCount).toBe(1)
-    })
-
-    it('공개 시각이 비어 있으면 처음부터 공개이므로 list다', async () => {
-      const result = await withRecipe({ valid_from: null, valid_until: null })
-      expect(result.ok && result.card.card_shape).toBe('list')
-    })
-
-    it('공개 전(valid_from이 미래)이면 brief다', async () => {
-      const result = await withRecipe({ valid_from: '2026-10-12T00:00:00Z', valid_until: null })
-      expect(result.ok && result.card.card_shape).toBe('brief')
-    })
-
-    it('종료된 레시피(valid_until이 지났다)와 읽을 수 없는 공개 시각은 brief다', async () => {
-      const ended = await withRecipe({ valid_from: '2026-08-01T00:00:00Z', valid_until: '2026-09-10T00:00:00Z' })
-      expect(ended.ok && ended.card.card_shape).toBe('brief')
-      const unreadable = await withRecipe({ valid_from: 'not-a-date', valid_until: null })
-      expect(unreadable.ok && unreadable.card.card_shape).toBe('brief')
-    })
-
-    it('레시피 행이 없으면(지워졌다) brief다', async () => {
-      const result = await withRecipe(undefined)
-      expect(result.ok && result.card.card_shape).toBe('brief')
-    })
-
-    it('recipe_id가 비어 있으면 레시피를 읽지 않고 brief다', async () => {
-      const result = await withRecipe(RELEASED, { recipe_id: null })
-      expect(result.ok && result.card.card_shape).toBe('brief')
-      expect(fixtures.recipeQueryCount).toBe(0)
-    })
-
-    it('레시피 공개 카드가 아니면 recipe_id가 있어도 레시피를 읽지 않고 badge_ids 개수로 정한다', async () => {
-      const result = await withRecipe(RELEASED, { template_type: 'badge_spotlight', badge_ids: ['b1'] })
-      expect(result.ok && result.card.card_shape).toBe('list')
-      expect(fixtures.recipeQueryCount).toBe(0)
-    })
-
-    it('저장된 모양이 brief·poster면 레시피 상태와 무관하게 그 모양이다', async () => {
-      for (const shape of ['brief', 'poster'] as const) {
-        const result = await withRecipe(RELEASED, { shape })
-        expect(result.ok && result.card.card_shape).toBe(shape)
-      }
-    })
-
-    it('모양이 null로 정해지는 카드(shape가 없고 전환 상수가 꺼짐)는 레시피를 읽지 않고 기록 모양 null로 끝낸다(티켓 20261006_1344)', async () => {
-      vi.mocked(drawnShape).mockReturnValueOnce(null)
-      const result = await withRecipe(RELEASED, { shape: null })
-      expect(result.ok && result.card.card_shape).toBeNull()
-      expect(fixtures.recipeQueryCount).toBe(0)
-    })
-
-    it('저장된 모양이 list가 아니면 타일 수가 쓰이지 않으므로 레시피를 읽지 않는다(티켓 20261006_1344)', async () => {
-      for (const shape of ['hero', 'poster', 'square', 'brief'] as const) {
-        const result = await withRecipe(RELEASED, { shape })
-        expect(result.ok && result.card.card_shape).toBe(shape)
-        expect(fixtures.recipeQueryCount).toBe(0)
-      }
-    })
-
-    it('저장된 모양이 list면 타일 수가 쓰이므로 레시피를 읽는다(티켓 20261006_1344)', async () => {
-      const result = await withRecipe(RELEASED, { shape: 'list' })
-      expect(result.ok && result.card.card_shape).toBe('list')
-      expect(fixtures.recipeQueryCount).toBe(1)
-    })
-
-    it('레시피를 읽지 못해도 이벤트 기록은 막히지 않는다 — 그 카드는 brief로 기록하고 오류는 로그에만 남긴다', async () => {
-      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      fixtures.recipeError = { message: 'connection refused: secret-host' }
-      const result = await withRecipe(RELEASED)
-      expect(result.ok && result.card.card_shape).toBe('brief')
-      expect(JSON.stringify(result)).not.toContain('secret-host')
-      expect(spy).toHaveBeenCalled()
-      spy.mockRestore()
-    })
-
-    it('노출 검증을 통과하지 못한 카드는 레시피를 읽지 않는다', async () => {
-      const result = await withRecipe(RELEASED, { is_active: false })
-      expect(result.ok).toBe(false)
-      expect(fixtures.recipeQueryCount).toBe(0)
-    })
   })
 })
 

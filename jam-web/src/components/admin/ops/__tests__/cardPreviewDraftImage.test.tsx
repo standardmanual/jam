@@ -41,7 +41,7 @@ function card(over: { original?: Record<string, unknown>; status?: string } = {}
     id: 'item-1',
     kind: 'home_feed_card',
     status: over.status ?? 'reviewing',
-    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '우산 챙겨 달리기' }, image_spec: SPEC, ...over.original } as never,
+    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '우산 챙겨 달리기' }, image_spec: SPEC, resource: { feed_type: 'hero_box' }, ...over.original } as never,
     edited: null,
   }
 }
@@ -66,7 +66,7 @@ describe('OpsCardPreview 승인 전 이미지 바로 그리기', () => {
   })
 
   it('저장된 이미지가 있으면 요청이 비고, 그 이미지를 그대로 보인다', () => {
-    const out = html(<OpsCardPreview item={card({ original: { resource: { cover_image_url: 'https://example.com/a.png' } } })} />)
+    const out = html(<OpsCardPreview item={card({ original: { resource: { feed_type: 'hero_box', cover_image_url: 'https://example.com/a.png' } } })} />)
     expect(lastRequests()).toEqual([])
     expect(out).not.toContain(PREVIEW_IMAGE_DRAWING_TEXT)
     expect(out).not.toContain(PREVIEW_IMAGE_DRAWN_TEXT)

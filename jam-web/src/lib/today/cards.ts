@@ -196,39 +196,29 @@ export async function getTodayCards(
   // 20260825_028: 미션 소개 카드도 미션 목록과 같은 노출 규칙을 따른다 —
   // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
   const spotlightFiltered = await filterMissionSpotlightCards(userId, allCards, missionsById)
-  // 랭킹모드는 아래 트라이브 거름과 순위 계산이 함께 쓰므로 한 번만 읽어 둘에 나눠 준다(티켓 20261019_1445 4회, 예전에는 같은 행을 두 번 읽었다).
+  // 랭킹모드는 아래 트라이브 거름이 읽는다(순위 계산은 하지 않는다, 아래 주석).
   const rankingModes = await fetchRankingModesById(supabase, rankingModeIdsOf(spotlightFiltered))
   // 티켓 20261019_1400: 트라이브 제한 미션의 랭킹 보드 카드는 대상이 아닌 트라이브 유저에게 내리지 않는다(5-1 규칙과 같다).
   const filteredCards = await filterRankingBoardCardsByTribe(userId, spotlightFiltered, rankingModes)
   // 티켓 20261102_1720: 새 카드(24시간 이내)를 앞에 두고 나머지는 유저·KST 날짜 씨앗으로 하루 단위로 섞는다.
   const cards = sortHomeCards(filteredCards, { seed: `${userId}:${kstDateString(now)}`, now })
-  // 레시피 공개 카드의 레시피는 공개 뒤 재료 타일의 후보 배지 id를 알아야 배지 조회에 합칠 수 있어서 배지 조회보다 먼저 읽는다.
-  // 레시피 공개 카드가 없으면 아무것도 읽지 않는다.
-  const recipesById = await fetchRecipesById(supabase, recipeIdsToResolve(cards), now)
-  const [badgesById, rankingByModeId, collectionsById] = await Promise.all([
-    fetchBadgesById(supabase, [...cards.flatMap((c) => c.badge_ids ?? []), ...recipeCandidateBadgeIds(recipesById)], userId),
-    // 보는 사람 id를 내려 이용 정지 중인 본인을 본인 화면의 순위에는 남긴다(티켓 20261019_1400).
-    fetchRankingBoardData(supabase, cards, userId, rankingModes),
+  // 랭킹 보드·레시피 공개 카드는 홈이 더 내지 않는다(티켓 20261122_1101, 상위 20261122_1100) — 순위·레시피 해석은 하지 않는다.
+  // 랭킹 모드는 위 트라이브 거름이 읽을 뿐이고, 어드민 미리보기(`lib/admin/todayPreview.ts`)는 아래 export 함수로 따로 읽는다.
+  const [badgesById, collectionsById] = await Promise.all([
+    fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []), userId),
     fetchCollectionsById(supabase, collectionIdsToResolve(cards), nowIso),
   ])
 
   return cards.map((card) => {
-    const ranking = card.ranking_mode_id ? rankingByModeId.get(card.ranking_mode_id) : undefined
     const mission = card.mission_id ? missionsById.get(card.mission_id) : undefined
     return {
       ...card,
-      resolved_href: resolveTargetHref(
-        card,
-        ranking?.mode.target_type === 'mission_participants'
-          ? { rankingModeTargetMissionId: ranking.mode.target_mission_id }
-          : {}
-      ),
+      resolved_href: resolveTargetHref(card),
       resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
-      resolved_ranking: ranking?.result ?? null,
+      resolved_ranking: null,
       resolved_mission:
         mission && resourceNeedsMission(card) ? toResolvedMission(mission) : null,
       resolved_collection: card.item_book_id ? (collectionsById.get(card.item_book_id) ?? null) : null,
-      resolved_recipe: resourceNeedsRecipe(card) ? toResolvedRecipe(recipesById.get(card.recipe_id as string), badgesById) : null,
     }
   })
 }

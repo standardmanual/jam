@@ -62,7 +62,7 @@ function collectionView(options: Options = {}): FeedCardView {
   if (description && look.showDescription) view.description = description
   if (tracking) {
     view.href = '/collections/book-1'
-    view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'itembook_milestone', shape: 'hero' }
+    view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'itembook_milestone', feedType: view.feedType }
   }
   return view
 }

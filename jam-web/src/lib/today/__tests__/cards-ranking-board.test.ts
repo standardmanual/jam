@@ -4,8 +4,9 @@
  * 확인하는 것:
  * 1. 트라이브 제한 미션을 가리키는 랭킹 보드 카드는 대상 트라이브가 아닌 유저에게 내려가지 않는다. 대상 트라이브 유저·허용 트라이브가 없는
  *    공통 미션·수동 지정 유저 카드는 그대로다. 접근을 읽지 못하면 미션 랭킹 보드 카드를 내린다(fail-closed).
- * 2. 보는 사람 id가 순위 계산(`computeRankingModeResult`)까지 내려간다 — 이용 정지 중인 본인을 본인 화면에 남기는 데 쓴다.
- * 3. `ranking_modes`는 홈 한 번 로드에서 한 번만 읽는다 — 트라이브 거름과 순위 계산이 같은 행을 나눠 쓴다 (티켓 20261019_1445 4회).
+ * 2. 홈 조회는 순위를 계산하지 않는다(`computeRankingModeResult` 호출 없음, `resolved_ranking`은 null) — 홈이 랭킹 보드를 더 그리지 않는다(티켓 20261122_1101).
+ *    어드민 미리보기가 쓰는 `fetchRankingBoardData`(보는 사람 id 전달 포함, 티켓 20261019_1400)는 그대로이고 아래에서 직접 시험한다.
+ * 3. `ranking_modes`는 홈 한 번 로드에서 한 번만 읽는다 — 이제 읽는 곳은 트라이브 거름뿐이다 (티켓 20261019_1445 4회).
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cards-ranking-board.test.ts
  */
@@ -153,13 +154,13 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
     expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual'])
   })
 
-  it('내린 카드의 순위는 계산하지도 않는다', async () => {
+  it('내린 카드뿐 아니라 남은 카드의 순위도 계산하지 않는다(홈이 랭킹을 해석하지 않는다, 티켓 20261122_1101)', async () => {
     seedBoards()
     fx.userTribeId = 't-other'
 
     await getCardsById('viewer', null, NOW)
 
-    expect(fx.rankingCalls.map(([modeId]) => modeId).sort()).toEqual(['mode-common', 'mode-manual'])
+    expect(fx.rankingCalls).toEqual([])
   })
 
   it('트라이브가 아직 없는 유저(온보딩 전)도 제한 미션 카드는 받지 못한다', async () => {
@@ -220,22 +221,23 @@ describe('getTodayCards — 트라이브 제한 미션의 랭킹 보드 카드 (
   })
 })
 
-describe('getTodayCards — 보는 사람 id를 순위 계산까지 내려보낸다 (티켓 20261019_1400)', () => {
-  it('computeRankingModeResult가 viewerUserId를 받는다', async () => {
+describe('getTodayCards — 홈 조회는 순위를 계산하지 않는다 (티켓 20261122_1101, 이전: 보는 사람 id를 순위 계산까지 내려보냄 20261019_1400)', () => {
+  it('트라이브 거름을 통과한 카드도 computeRankingModeResult를 부르지 않고 resolved_ranking은 null이다', async () => {
     seedBoards()
     fx.userTribeId = 't-allowed'
 
-    await getCardsById('viewer', null, NOW)
+    const cards = await getCardsById('viewer', null, NOW)
 
-    expect(fx.rankingCalls).toHaveLength(3)
-    for (const [, options] of fx.rankingCalls) expect(options).toEqual({ viewerUserId: 'viewer' })
+    expect(cards).toHaveLength(3)
+    expect(fx.rankingCalls).toEqual([])
+    expect(cards.every((c) => c.resolved_ranking === null)).toBe(true)
   })
 })
 
-describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 20261019_1445 4회)', () => {
+describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 20261019_1445 4회, 이제 읽는 곳은 트라이브 거름뿐)', () => {
   const rankingModeReads = () => fx.reads.filter((table) => table === 'ranking_modes').length
 
-  it('트라이브 거름과 순위 계산이 함께 쓰는데도 ranking_modes를 한 번만 읽는다', async () => {
+  it('ranking_modes를 트라이브 거름이 한 번만 읽는다', async () => {
     seedBoards()
     fx.userTribeId = 't-allowed'
 
@@ -244,7 +246,7 @@ describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 2026101
     expect(rankingModeReads()).toBe(1)
   })
 
-  it('거름 뒤 남은 카드의 순위만 계산한다 — 읽는 횟수를 줄여도 결과는 같다', async () => {
+  it('거름 뒤 남은 카드가 그대로 내려간다 — 순위는 계산하지 않는다', async () => {
     seedBoards()
     fx.userTribeId = 't-other'
 
@@ -252,8 +254,7 @@ describe('getTodayCards — 랭킹모드는 한 번만 읽는다 (티켓 2026101
 
     expect(rankingModeReads()).toBe(1)
     expect(cards.map((c) => c.id)).toEqual(['card-common', 'card-manual'])
-    expect(fx.rankingCalls.map(([modeId]) => modeId).sort()).toEqual(['mode-common', 'mode-manual'])
-    expect(cards.find((c) => c.id === 'card-common')?.resolved_href).toContain('m-common')
+    expect(fx.rankingCalls).toEqual([])
   })
 
   it('랭킹 보드 카드가 없으면 ranking_modes를 읽지 않는다', async () => {

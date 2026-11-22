@@ -276,12 +276,12 @@ describe('resolvePreviewCards — 표시 데이터용 자원 값', () => {
     expect(toCardView(card, { now: NOW })).not.toHaveProperty('imageDimmed')
   })
 
-  it('옛 layout_type 카드(shape NULL)도 표시 데이터로 바꾸면 새 모양이 된다', async () => {
+  it('옛 layout_type 카드(feed_type NULL)도 표시 데이터로 바꾸면 텍스트 박스가 된다(티켓 20261122_1101)', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a', layout_type: 'shortcut' })]
 
     const [card] = await getAdminTodayPreviewCards(TODAY, NOW)
 
-    expect(toCardView(card, { now: NOW }).shape).toBe('brief')
+    expect(toCardView(card, { now: NOW }).feedType).toBe('text_box')
   })
 
   it('미션·컬렉션 조회가 실패해도 카드는 사라지지 않고 그 자원 값만 null이다', async () => {
@@ -332,8 +332,8 @@ describe('resolvePreviewCards — 레시피 공개 카드의 레시피 값 (티�
         { id: 'b1', name: '배지 b1', image_url: 'https://cdn.example/b1.png', rarity: 'rare' },
       ],
     })
-    // 표시 데이터는 홈과 같은 모양(타일이 있는 list)으로 그린다
-    expect(toCardView(card, { now: NOW }).shape).toBe('list')
+    // 표시 데이터는 홈과 같은 유형으로 그린다(홈은 레시피 타일 카드를 더 내지 않아 텍스트 박스, 티켓 20261122_1101)
+    expect(toCardView(card, { now: NOW }).feedType).toBe('text_box')
   })
 
   it('공개 전 레시피는 재료 수와 공개 시각만 싣고 후보 배지는 읽지 않는다', async () => {
@@ -343,7 +343,7 @@ describe('resolvePreviewCards — 레시피 공개 카드의 레시피 값 (티�
 
     expect(card.resolved_recipe).toEqual({ state: 'scheduled', ingredient_count: 2, release_at: RELEASE_AT })
     expect(fx.reads).not.toContain('badges')
-    expect(toCardView(card, { now: NOW }).shape).toBe('brief')
+    expect(toCardView(card, { now: NOW }).feedType).toBe('text_box')
   })
 
   it('공개 판정은 미리보기 기준 시각을 쓴다 — 공개일 뒤 날짜를 고르면 같은 카드가 공개 뒤 값이다', async () => {
