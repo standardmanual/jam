@@ -13,7 +13,8 @@ import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import ItemEarnHistory from './ItemEarnHistory'
-import BadgeHeroSection from '@/components/BadgeHeroSection'
+import TicketPhoto from './TicketPhoto'
+import TicketTitleBoxes from './TicketTitleBoxes'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeConditionCard from './BadgeConditionCard'
 import VisitCountChip from '@/components/ui/VisitCountChip'
@@ -312,14 +313,17 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           color={ticketColor}
           kindLabel={d.badges.ticketKindItem}
           dateText={formatTicketDate(activeItem?.obtained_at)}
-          photo={<BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} themedBackground={false} />}
+          photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />}
           afterPhoto={
-            /* 대표 개체 일련번호 — 본인 뷰 + 현재 보유 중인 개체가 있을 때만 노출한다(height=50, 20260903_1423). */
-            isOwnBadge && representativeSerial ? (
-              <div className="relative z-10 flex justify-center px-4 pt-0 pb-6">
-                <ItemSerialCode code={representativeSerial} height={50} />
-              </div>
-            ) : null
+            <>
+              <TicketTitleBoxes badge={badgeRow} />
+              {/* 대표 개체 일련번호 — 본인 뷰 + 현재 보유 중인 개체가 있을 때만, 글자 상자 아래에 노출한다(height=50, 20260903_1423). */}
+              {isOwnBadge && representativeSerial ? (
+                <div className="relative z-10 flex justify-center px-4 pt-0 pb-6">
+                  <ItemSerialCode code={representativeSerial} height={50} />
+                </div>
+              ) : null}
+            </>
           }
           body={
             <>
@@ -329,6 +333,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   {isOwnBadge && allItemInventory.length > 0 && (
                     // activeItemId — 히어로에 일련번호가 크게 표시된 개체를 그대로 넘긴다(20260907_2059 보완).
                     <ItemEarnHistory
+                      hideTitle
                       activeItemId={activeItem?.id ?? null}
                       items={allItemInventory.map(item => ({
                         id: item.id,
@@ -415,21 +420,14 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           kindLabel={d.badges.ticketKindCheckin}
           dateText={formatTicketDate(checkinEarns[0]?.earned_at)}
           /* 방문 횟수 칩 — 아이템 배지의 등급 칩과 같은 자리(카드 안 이름 바로 위)에 «×N»을 둔다. 2회 이상일 때만 그린다(2026-11-09 사용자 지시) */
-          photo={
-            <BadgeHeroSection
-              badge={badgeRow}
-              hasEarned={hasEarned}
-              backgroundAnimation={badgeCardAnimation}
-              themedBackground={false}
-              chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined}
-            />
-          }
+          photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />}
+          afterPhoto={<TicketTitleBoxes badge={badgeRow} chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined} />}
           body={
             <>
               {/* info-section — 체크인 배지는 «획득 조건» 카드를 두지 않는다(2026-11-09 사용자 지시) */}
               <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
                 {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-                <PoiEarnHistory poiEarns={checkinEarns.map((e) => ({
+                <PoiEarnHistory hideTitle poiEarns={checkinEarns.map((e) => ({
                   id: e.id,
                   earned_at: e.earned_at,
                   triggered_by_activity_name: e.triggered_by_activity_name ?? null,
@@ -490,13 +488,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         color={ticketColor}
         kindLabel={d.badges.ticketKindActivity}
         dateText={formatTicketDate(earned?.earned_at)}
-        photo={<BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} themedBackground={false} />}
+        photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />}
+        afterPhoto={<TicketTitleBoxes badge={badgeRow} />}
         body={
           <>
             {/* info-section */}
             <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
               {/* 획득 조건 다크 카드 */}
               <BadgeConditionCard
+                hideTitle
                 text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name, badgeRow.id)}
                 spec={formatBadgeConditionSpec(badgeRow.condition_json)}
               />

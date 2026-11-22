@@ -29,12 +29,14 @@ interface BadgeConditionCardProps {
    * 어드민 미리보기. (체크인 배지 상세는 2026-11-09부터 이 카드를 두지 않는다.)
    */
   spec?: string | null
+  /** 제목을 시각적으로 숨긴다(스크린리더에는 남김). 배지 상세 티켓 전용, 기본은 보임 — 티켓 20261122_1223 */
+  hideTitle?: boolean
 }
 
-export default function BadgeConditionCard({ text, spec }: BadgeConditionCardProps) {
+export default function BadgeConditionCard({ text, spec, hideTitle = false }: BadgeConditionCardProps) {
   return (
     <Card className="flex flex-col gap-2">
-      <p className="text-base font-bold text-foreground">{d.badges.conditionTitle}</p>
+      <p className={`text-base font-bold text-foreground${hideTitle ? ' sr-only' : ''}`}>{d.badges.conditionTitle}</p>
       {spec ? (
         /* 카드에 이 줄뿐이라 굵기를 주지 않는다 — 대비할 문장이 없으면 볼드가 근거를 잃는다.
            길어지면 줄바꿈한다. 조건이 잘리면 안 되므로 말줄임(truncate)을 쓰지 않는다. */

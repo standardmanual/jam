@@ -450,8 +450,6 @@ export const ko = {
 
     notEarnedTitle: '아직 획득하지 못한 배지예요',
 
-    /** 체크인 배지 상세 하단 안내(2026-11-09 사용자 지시로 줄임). `{radius}`는 체크인 반경(m) */
-
     filterActivityAll: '전체',
     filterRarityAll: '전체',
     filterCheckinCategoryAll: '전체',

@@ -147,7 +147,7 @@ describe('배지 상세 — 잠긴 개체의 가림', () => {
 
     expect(findAll(page, 'ItemSerialCode')).toHaveLength(0)
     expect(findAll(page, 'ItemEarnHistory')).toHaveLength(0)
-    const hero = findAll(page, 'BadgeHeroSection')
+    const hero = findAll(page, 'TicketPhoto')
     expect(hero[0].props.hasEarned).toBe(false)
   })
 
@@ -157,7 +157,7 @@ describe('배지 상세 — 잠긴 개체의 가림', () => {
     const page = await call({ item: OPEN_ID })
 
     expect(findAll(page, 'ItemSerialCode')[0].props.code).toBe('ABCD000007')
-    expect(findAll(page, 'BadgeHeroSection')[0].props.hasEarned).toBe(true)
+    expect(findAll(page, 'TicketPhoto')[0].props.hasEarned).toBe(true)
   })
 
   it('잠겼다가 열린 개체(locked false)는 ?item으로 지목해도 리다이렉트하지 않는다', async () => {

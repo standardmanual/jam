@@ -45,8 +45,11 @@ function ItemCardContent({ entry, inSheet = false }: { entry: ItemEarnEntry; inS
 export default function ItemEarnHistory({
   items,
   activeItemId = null,
+  hideTitle = false,
 }: {
   items: ItemEarnEntry[]
+  /** 제목을 시각적으로 숨긴다(스크린리더에는 남김). 배지 상세 티켓 전용, 기본은 보임 — 티켓 20261122_1223 */
+  hideTitle?: boolean
   /**
    * 화면 위쪽 히어로에 일련번호가 크게 표시된 **바로 그 개체**의 id(`?item`으로 지목됐거나
    * 폴백으로 선정된 대표 개체). 이력 첫 카드는 이 개체의 획득일·만료일을 그린다.
@@ -69,7 +72,7 @@ export default function ItemEarnHistory({
   return (
     <div className="flex flex-col gap-3">
       {/* 제목만 둔다 — 오른쪽의 «총 N회»는 걷었고 제목은 다른 배지 상세와 같은 «획득 정보»다(2026-11-09 사용자 지시) */}
-      <p className="text-[15px] font-bold text-foreground">{d.badges.earnInfoTitle}</p>
+      <p className={`text-[15px] font-bold text-foreground${hideTitle ? ' sr-only' : ''}`}>{d.badges.earnInfoTitle}</p>
 
       {/* 히어로에 일련번호가 표시된 개체의 이력 — 카드 형식 */}
       <Card>
