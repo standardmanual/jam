@@ -1,7 +1,7 @@
 /**
  * 홈피드 컬러셋 편집기 서버 렌더 (티켓 20261121_2146)
  *
- * 확인하는 것: 15행(이름·기본값·저장된 값), 저장된 덮어쓰기가 있는 행의 «바뀜» 없음(저장된 값 = 편집 값), 미리보기 컨테이너에만 변수가 걸림,
+ * 확인하는 것: 15행(이름·hex 칸, 기본값·저장된 값은 «기본값» 버튼 설명에), 저장된 덮어쓰기가 있는 행의 «바뀜» 없음(저장된 값 = 편집 값), 미리보기 컨테이너에만 변수가 걸림,
  * 규칙 재계산 문구, 영향받는 카드 목록, 잘못된 hex 오류 문구. 저장소에 jsdom이 없어(`environment: 'node'`) `renderToStaticMarkup`으로 확인한다.
  * 클릭·입력 동작(바뀜 표시·오류 문구 갱신·확인 대화상자)은 순수 함수 시험(`feedColorImpact.test.ts`)과 이 파일의 초기 렌더로 나눠 지킨다.
  *
@@ -35,7 +35,7 @@ describe('FeedColorsEditor 초기 렌더', () => {
     expect((out.match(/data-color-key="/g) ?? []).length).toBe(15)
     for (const key of FEED_COLOR_KEYS) expect(out).toContain(FEED_COLOR_LABELS[key])
     expect(out).toContain('#ff1d1d')
-    expect(out).toContain('기본값 사용 중')
+    expect(out).toContain('저장된 값 없음')
   })
 
   it('바꾼 것이 없으면 «바뀜» 표시도 없고 적용 버튼이 비활성이다', () => {
@@ -47,9 +47,22 @@ describe('FeedColorsEditor 초기 렌더', () => {
 
   it('저장된 값이 있는 행은 저장된 hex를 보이고, 되돌리기 버튼이 활성이다', () => {
     const out = html({ savedOverrides: { red: '#aabbcc' } })
-    expect(out).toContain('#aabbcc')
+    expect(out).toContain('저장된 값 #aabbcc')
     expect(out).toMatch(/<button[^>]*>전체 기본값으로 되돌리기<\/button>/)
     expect(out).not.toMatch(/<button[^>]*disabled=""[^>]*>전체 기본값으로 되돌리기<\/button>/)
+  })
+
+  it('색 설정과 미리보기가 따로 스크롤되는 두 칸이다', () => {
+    const out = html()
+    const settings = out.match(/<section aria-label="색 설정" data-pane="settings" class="([^"]*)"/)
+    const preview = out.match(/<section aria-label="미리보기" data-pane="preview" class="([^"]*)"/)
+    expect(settings![1]).toContain('lg:overflow-y-auto')
+    expect(preview![1]).toContain('lg:overflow-y-auto')
+    // 색 줄은 설정 칸 안에, 미리보기·규칙·영향 카드는 미리보기 칸 안에 있다
+    const split = out.indexOf('data-pane="preview"')
+    expect(out.slice(0, split)).toContain('data-color-key="red"')
+    expect(out.slice(split)).toContain('data-feed-color-preview')
+    expect(out.slice(split)).not.toContain('data-color-key=')
   })
 
   it('색 선택기와 hex 글자 칸이 행마다 있고 네이티브 select는 쓰지 않는다', () => {

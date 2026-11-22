@@ -12,9 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/admin/ui/alert-dialog'
-import { Badge } from '@/components/admin/ui/badge'
 import { Button } from '@/components/admin/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { Input } from '@/components/admin/ui/input'
 import { requestJson } from '@/components/admin/data-table/admin-fetch'
 import { useAdminPortalContainer } from '@/components/admin/data-table/use-admin-portal-container'
@@ -108,6 +106,10 @@ export interface ColorRowProps {
   onChange: (value: string) => void
 }
 
+/**
+ * 색 한 줄: 이름 · 색 선택기 · hex 칸 · «기본값» 버튼. 기본값과 저장된 값은 줄 안에 따로 적지 않고 버튼 설명(`title`)에 둔다.
+ * 편집 값이 저장된 값과 다르면 줄 왼쪽에 굵은 선(`data-changed`)이 서고, 편집 값이 기본값과 다를 때만 «기본값» 버튼이 켜진다.
+ */
 export function ColorRow({ colorKey, draft, savedHex, changed, disabled, onChange }: ColorRowProps) {
   const name = FEED_COLOR_LABELS[colorKey]
   const valid = isOverrideHex(draft)
@@ -118,45 +120,19 @@ export function ColorRow({ colorKey, draft, savedHex, changed, disabled, onChang
     <li
       data-color-key={colorKey}
       data-changed={changed ? '' : undefined}
-      className={`flex flex-col gap-3 rounded-md border p-3 ${changed ? 'border-primary bg-muted' : 'border-border'}`}
+      className={`flex flex-col gap-1 border-l-2 py-1.5 pl-3 ${changed ? 'border-primary' : 'border-transparent'}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Swatch hex={valid ? draft : (savedHex ?? defaultHex)} label={`${name} 편집 중인 색`} />
-        <label htmlFor={inputId} className={`text-sm font-medium ${TEXT}`}>
+      <div className="flex items-center gap-2">
+        <label htmlFor={inputId} className={`min-w-0 flex-1 text-sm ${TEXT}`}>
           {name}
         </label>
-        {changed && <Badge variant="secondary">바뀜</Badge>}
-      </div>
-      <dl className={`grid grid-cols-2 gap-2 text-xs text-muted-foreground ${TEXT}`}>
-        <div className="flex flex-col gap-1">
-          <dt>기본값</dt>
-          <dd className="flex items-center gap-1">
-            <Swatch hex={defaultHex} />
-            <code>{defaultHex}</code>
-          </dd>
-        </div>
-        <div className="flex flex-col gap-1">
-          <dt>저장된 값</dt>
-          <dd className="flex items-center gap-1">
-            {savedHex ? (
-              <>
-                <Swatch hex={savedHex} />
-                <code>{savedHex}</code>
-              </>
-            ) : (
-              <span>기본값 사용 중</span>
-            )}
-          </dd>
-        </div>
-      </dl>
-      <div className="flex flex-wrap items-center gap-2">
         <input
           type="color"
           aria-label={`${name} 색 선택`}
           value={valid ? lower(draft) : (savedHex ?? defaultHex)}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
-          className="h-10 w-12 cursor-pointer rounded-md border border-border bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-50"
+          className="size-8 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <Input
           id={inputId}
@@ -167,12 +143,21 @@ export function ColorRow({ colorKey, draft, savedHex, changed, disabled, onChang
           aria-invalid={!valid}
           aria-describedby={valid ? undefined : errorId}
           onChange={(event) => onChange(event.target.value)}
-          className="w-32 font-mono"
+          className="h-8 w-24 font-mono text-xs"
         />
-        <Button type="button" variant="outline" size="sm" disabled={disabled || draft === defaultHex} onClick={() => onChange(defaultHex)}>
-          기본값으로
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          title={`기본값 ${defaultHex}${savedHex ? ` · 저장된 값 ${savedHex}` : ' · 저장된 값 없음'}`}
+          disabled={disabled || draft === defaultHex}
+          onClick={() => onChange(defaultHex)}
+          className="h-8 px-2 text-xs"
+        >
+          기본값
         </Button>
       </div>
+      {changed && <span className="sr-only">바뀜</span>}
       {!valid && (
         <p id={errorId} role="alert" className={`text-xs text-destructive ${TEXT}`}>
           {HEX_ERROR}
@@ -333,12 +318,12 @@ export default function FeedColorsEditor({
   const dialogImpacted = isReset ? resetImpact.total : impact.total
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" disabled={!canApply} onClick={() => setConfirm('apply')}>
+        <Button type="button" size="sm" disabled={!canApply} onClick={() => setConfirm('apply')}>
           적용
         </Button>
-        <Button type="button" variant="outline" disabled={!canReset} onClick={() => setConfirm('reset')}>
+        <Button type="button" size="sm" variant="outline" disabled={!canReset} onClick={() => setConfirm('reset')}>
           전체 기본값으로 되돌리기
         </Button>
         <p role="status" className={`text-sm text-muted-foreground ${TEXT}`}>
@@ -350,87 +335,61 @@ export default function FeedColorsEditor({
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className={`text-balance ${TEXT}`}>색 15개</CardTitle>
-            <CardDescription className={TEXT}>
-              색 선택기나 글자 칸으로 값을 바꿔요. 바꾼 줄은 «바뀜»으로 표시돼요.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="flex flex-col gap-3">
-              {FEED_COLOR_KEYS.map((key) => (
-                <ColorRow
-                  key={key}
-                  colorKey={key}
-                  draft={drafts[key]}
-                  savedHex={saved[key] ?? null}
-                  changed={changedKeys.includes(key)}
-                  disabled={pending}
-                  onChange={(value) => setDraft(key, value)}
-                />
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+      {/* 큰 화면에서는 두 칸이 높이를 나눠 갖고 각자 스크롤한다. 좁은 화면에서는 위아래로 쌓여 문서가 스크롤된다. */}
+      <div className="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+        <section aria-label="색 설정" data-pane="settings" className="lg:min-h-0 lg:overflow-y-auto lg:pr-2">
+          <ul className="flex flex-col">
+            {FEED_COLOR_KEYS.map((key) => (
+              <ColorRow
+                key={key}
+                colorKey={key}
+                draft={drafts[key]}
+                savedHex={saved[key] ?? null}
+                changed={changedKeys.includes(key)}
+                disabled={pending}
+                onChange={(value) => setDraft(key, value)}
+              />
+            ))}
+          </ul>
+        </section>
 
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className={`text-balance ${TEXT}`}>미리보기</CardTitle>
-              <CardDescription className={TEXT}>
-                편집 중인 색으로 그린 홈피드 샘플 카드예요. 이 화면 안에서만 바뀌고 저장되지 않아요.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div data-feed-color-preview="" style={previewVars}>
-                <TodayCardPreview views={PREVIEW_VIEWS} />
-              </div>
-            </CardContent>
-          </Card>
+        <section aria-label="미리보기" data-pane="preview" className="flex flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold">미리보기</h2>
+            <p className={`text-xs text-muted-foreground ${TEXT}`}>편집 중인 색으로 그린 샘플 카드예요. 저장되지 않아요.</p>
+            <div data-feed-color-preview="" style={previewVars}>
+              <TodayCardPreview views={PREVIEW_VIEWS} />
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className={`text-balance ${TEXT}`}>색 규칙 다시 계산</CardTitle>
-              <CardDescription className={TEXT}>
-                15색의 서로 다른 짝이 자동 색 배정의 규칙(대비·어수선함·밝기 차이)을 통과하는 개수예요.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <p data-rule-summary="" className={`text-sm font-medium ${TEXT}`}>
-                통과하는 조합 {comparison.edited.remaining}개 (지금 {comparison.current.remaining}개)
-              </p>
-              <p className={`text-xs text-muted-foreground ${TEXT}`}>
-                전체 {comparison.edited.total}개 중 대비 {comparison.edited.excludedByContrast}개 · 어수선함{' '}
-                {comparison.edited.excludedByKids}개 · 밝기 차이 {comparison.edited.excludedByLightness}개가 빠져요.
-              </p>
-              {comparison.decreased && (
-                <Alert variant="warning">
-                  <AlertTitle className={TEXT}>통과하는 조합이 {-comparison.delta}개 줄어요</AlertTitle>
-                  <AlertDescription className={`text-sm ${TEXT}`}>
-                    자동 색 배정이 고를 수 있는 조합이 줄어요. 적용은 할 수 있지만 색을 한 번 더 살펴봐 주세요.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold">색 규칙 다시 계산</h2>
+            <p data-rule-summary="" className={`text-sm ${TEXT}`}>
+              통과하는 조합 {comparison.edited.remaining}개 (지금 {comparison.current.remaining}개)
+            </p>
+            <p className={`text-xs text-muted-foreground ${TEXT}`}>
+              전체 {comparison.edited.total}개 중 대비 {comparison.edited.excludedByContrast}개 · 어수선함{' '}
+              {comparison.edited.excludedByKids}개 · 밝기 차이 {comparison.edited.excludedByLightness}개가 빠져요.
+            </p>
+            {comparison.decreased && (
+              <Alert variant="warning">
+                <AlertTitle className={TEXT}>통과하는 조합이 {-comparison.delta}개 줄어요</AlertTitle>
+                <AlertDescription className={`text-sm ${TEXT}`}>
+                  자동 색 배정이 고를 수 있는 조합이 줄어요. 적용은 할 수 있지만 색을 한 번 더 살펴봐 주세요.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className={`text-balance ${TEXT}`}>
-                새로 규칙에 걸리는 카드 {impact.total}장
-              </CardTitle>
-              <CardDescription className={TEXT}>
-                노출 기간이 아직 끝나지 않은 카드 가운데, 지금은 규칙을 통과하는데 편집 중인 색으로는 걸리는 카드예요. 카드에 저장된 색 이름은 바뀌지 않고
-                보이는 색만 바뀌어요. 위에서 {IMPACT_CARD_LIMIT}장까지 보여요.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ImpactCardList cards={impact} />
-            </CardContent>
-          </Card>
-        </div>
+          <div className="flex flex-col gap-2">
+            <h2 className={`text-sm font-semibold ${TEXT}`}>새로 규칙에 걸리는 카드 {impact.total}장</h2>
+            <p className={`text-xs text-muted-foreground ${TEXT}`}>
+              노출 기간이 아직 끝나지 않은 카드 가운데, 지금은 규칙을 통과하는데 편집 중인 색으로는 걸리는 카드예요. 카드에 저장된 색 이름은 바뀌지 않고
+              보이는 색만 바뀌어요. 위에서 {IMPACT_CARD_LIMIT}장까지 보여요.
+            </p>
+            <ImpactCardList cards={impact} />
+          </div>
+        </section>
       </div>
 
       <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && closeDialog()}>
