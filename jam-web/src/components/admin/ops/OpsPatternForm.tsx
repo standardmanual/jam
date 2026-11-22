@@ -52,7 +52,7 @@ import { createdToastText, submitPatternForm, type PatternFormTarget } from './p
  * 패턴 만들기·고치기 폼 (티켓 20261008_1617, 상위 20260930_1503 ⑩a-2, 채원 판정 「⑩a 만들기·고치기·상태」). `/admin/ops-patterns/new`와
  * `/admin/ops-patterns/[patternNo]/edit`가 같은 폼을 쓴다. 칸 부품은 `OpsPatternFormParts`, 요청과 응답 가르기는 `patternSubmit.ts`다.
  *
- * - 6구역(기본 / 메뉴와 카드 모양 / 손잡이 / 샘플 / 샘플 각도 / 주의점) + 레일(목차 · 저장·바뀐 칸·안내·취소). 번호·출처·상태는 폼에 없다(머리 글자로만).
+ * - 6구역(기본 / 메뉴와 카드 유형 / 손잡이 / 샘플 / 샘플 각도 / 주의점) + 레일(목차 · 저장·바뀐 칸·안내·취소). 번호·출처·상태는 폼에 없다(머리 글자로만).
  * - 저장은 고친 칸이 있을 때만 켜진다. 확인창 없이 저장한다. 검사는 서버와 같은 `validateOpsPatternInput`이고, 한 번 저장을 눌러 본 뒤에는 고치는 대로 다시 검사한다.
  * - 고치기에서 409면 입력을 남기고 경고 + [최신 내용 불러오기]를 보인다. 누르면 「입력한 내용이 사라져요」 확인 뒤 `router.refresh()`로 다시 읽는다.
  *   페이지가 `key={updatedAt}`을 주므로 새 값이 오면 폼이 새로 시작한다. 만들기의 409는 불러올 값이 없어 경고만 보이고 다시 저장하면 된다.
@@ -63,7 +63,7 @@ export const PATTERN_FORM_NAMESPACE = 'pattern-form'
 
 export const PATTERN_FORM_SECTIONS: ReadonlyArray<{ id: PatternFormSectionId; label: string; description: string }> = [
   { id: 'basic', label: '기본', description: '패턴의 이름과 작동 원리, 유저가 겪는 것을 적어요' },
-  { id: 'menus', label: '메뉴와 카드 모양', description: '이 패턴이 쓰는 메뉴와 카드 모양이에요' },
+  { id: 'menus', label: '메뉴와 카드 유형', description: '이 패턴이 쓰는 메뉴와 카드 유형이에요' },
   { id: 'knobs', label: '손잡이', description: '운영 묶음에서 바꿀 수 있는 값과 닫아 둔 값이에요' },
   { id: 'samples', label: '샘플', description: '이 패턴을 보여 주는 예시예요' },
   { id: 'angles', label: '샘플 각도', description: '이 주제로 낼 수 있는 컨텐츠 예시예요. 닫힌 목록이 아니에요' },

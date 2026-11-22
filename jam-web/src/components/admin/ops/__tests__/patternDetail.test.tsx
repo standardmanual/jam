@@ -5,7 +5,7 @@
  *
  * 지키는 것:
  * - 머리: 되돌아가기 링크·`P03 이름`·상태 칩·출처 글자(칩 아님)·쉬는 이유(쉬는 중만, 비었으면 「적지 않았어요」)
- * - 요약·손잡이·샘플·주의점: 값이 보이고, 깨진 JSONB는 칸마다 「적지 않았어요」·「역할 모름」·「목록에 없는 모양」으로 화면이 유지된다
+ * - 요약·손잡이·샘플·주의점: 값이 보이고, 깨진 JSONB는 칸마다 「적지 않았어요」·「역할 모름」·「옛 모양 이름(그대로 보관)」으로 화면이 유지된다
  * - 취향 신호: 0건 문구, 추정/확정 칩, 확정일(KST), 근거 반려 기록 글자(링크 없음)
  * - 사용 이력: 요약 줄·줄(시각·종류·이름·상태 칩)·줄이 받은 기획함 항목으로 가는 링크·쪽 이동·빈 상태·실패(요약 「–」 + 안내)
  * - 결과 구역은 글자만(링크 없음), 레일에 목차·마지막 수정·만든 날이 있고 수정한 사람은 없다, actions 자리가 없으면 쓰기 버튼이 없고, 있으면 [수정하기](고치기 링크)와 [상태 바꾸기 ▾]가 머리 아래에 놓인다
@@ -62,7 +62,7 @@ function pattern(overrides: Partial<OpsPatternRecord> = {}): OpsPatternRecord {
       { no: 2, name: '둘째 샘플', role: 'aux', impl: '보조 장치' },
       { no: 1, name: '첫째 샘플', role: 'main', impl: '본체' },
     ],
-    cardShapes: [{ shape: 'hero', note: '큰 사진' }],
+    cardShapes: [{ shape: 'hero_box', note: '큰 사진' }],
     knobs: KNOBS,
     pitfalls: '첫 줄\n둘째 줄',
     status: 'active',
@@ -131,9 +131,9 @@ describe('머리의 쓰기 버튼', () => {
 })
 
 describe('요약·손잡이·샘플·주의점', () => {
-  it('요약: 작동 원리·유저가 겪는 것·메뉴(쉼표)·카드 모양과 메모', () => {
+  it('요약: 작동 원리·유저가 겪는 것·메뉴(쉼표)·카드 유형과 메모', () => {
     const out = flat(<OpsPatternSummarySection pattern={pattern()} />)
-    for (const text of ['작동 원리', '비가 오면 카페에서 쓰는 배지를 연다', '유저가 겪는 것', '쓰는 메뉴', '홈피드, 탐색', '카드 모양', 'hero', '큰 사진']) {
+    for (const text of ['작동 원리', '비가 오면 카페에서 쓰는 배지를 연다', '유저가 겪는 것', '쓰는 메뉴', '홈피드, 탐색', '카드 유형', '히어로', '큰 사진']) {
       expect(out).toContain(text)
     }
   })
@@ -181,9 +181,12 @@ describe('요약·손잡이·샘플·주의점', () => {
     expect(notArray).not.toContain('<table')
   })
 
-  it('카드 모양이 목록에 없으면 「목록에 없는 모양」이다', () => {
-    const out = flat(<OpsPatternSummarySection pattern={pattern({ cardShapes: [{ shape: 'banner', note: '' }] as never })} />)
-    expect(out).toContain('목록에 없는 모양')
+  it('카드 유형이 새 8유형에 없으면(옛 모양 이름) 오류 없이 「옛 모양 이름(그대로 보관)」과 받은 글자로 보인다', () => {
+    const out = flat(<OpsPatternSummarySection pattern={pattern({ cardShapes: [{ shape: 'poster', note: '큰 사진' }] as never })} />)
+    expect(out).toContain('옛 모양 이름(그대로 보관)')
+    expect(out).toContain('poster')
+    expect(out).toContain('큰 사진')
+    expect(out).not.toContain('목록에 없는 모양')
   })
 
   it('주의점은 줄바꿈을 지키고(whitespace-pre-wrap) 비면 「적지 않았어요」다', () => {
