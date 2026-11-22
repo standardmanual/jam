@@ -37,7 +37,7 @@ export default function TicketTitleBoxes({ badge, chipExtra }: TicketTitleBoxesP
       </div>
       {lines.length > 0 && (
         <div className={styles.titleDesc}>
-          <p className="text-base text-muted break-keep wrap-break-word text-balance">
+          <p className="text-base text-foreground break-keep wrap-break-word text-balance">
             {lines.map((line, index) => (
               <React.Fragment key={index}>
                 {index > 0 && ' '}

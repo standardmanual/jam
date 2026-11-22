@@ -25,22 +25,24 @@
 /* 머리: 티켓색 단색, 윗모서리 직각 */
 .head {
   background: var(--ticket);
-  padding: calc(20px * var(--s, 1)) calc(20px * var(--s, 1)) calc(24px * var(--s, 1));
+  padding: calc(20 * var(--u)) calc(20 * var(--u)) calc(24 * var(--u));
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: calc(12px * var(--s, 1));
+  gap: calc(12 * var(--u));
 }
 
-/* 390px 미만: 머리 전체를 같은 비율로 줄인다(CSS만). --s는 폭/390px, 390px 이상은 1이라 값이 그대로다 */
+/* 390px 미만: 머리 전체를 같은 비율로 줄인다(CSS만).
+   --u는 «줄어드는 1px»이다. 티켓 폭(100vw - 좌우 16px×2)을 390px 화면의 티켓 폭 358로 나눈 길이라 390px 이상에서는 정확히 1px이고,
+   그보다 좁으면 티켓 폭에 비례해 작아진다. 크기는 calc(N * var(--u))로 쓴다(숫자×길이라 길이÷길이 나눗셈 없이 모든 브라우저에서 계산된다) */
 .head {
-  --s: min(1, calc(100vw / 390));
+  --u: min(1px, calc((100vw - 32px) / 358));
 }
 
 /* 높이는 오른쪽 글자 묶음의 실제 글자 높이와 같은 44.5px. 색은 .jam-logo-mark가 본문색으로 칠한다 */
 .logo {
-  height: calc(44.5px * var(--s, 1));
-  margin-top: calc(4px * var(--s, 1));
+  height: calc(44.5 * var(--u));
+  margin-top: calc(4 * var(--u));
   flex-shrink: 0;
 }
 
@@ -48,7 +50,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: calc(6px * var(--s, 1));
+  gap: calc(6 * var(--u));
   text-align: right;
   color: #171717;
   min-width: 0;
@@ -57,7 +59,7 @@
 .kind {
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 900;
-  font-size: calc(34px * var(--s, 1));
+  font-size: calc(34 * var(--u));
   line-height: 0.92;
   letter-spacing: -0.035em;
   white-space: nowrap;
@@ -65,8 +67,8 @@
 
 .date {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: calc(12px * var(--s, 1));
-  line-height: calc(16px * var(--s, 1));
+  font-size: calc(12 * var(--u));
+  line-height: calc(16 * var(--u));
   letter-spacing: 0.08em;
 }
 
