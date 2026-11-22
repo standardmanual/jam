@@ -68,6 +68,7 @@ export function ChoiceField({
   themeContainer,
   help,
   disabled,
+  required,
 }: {
   id: string
   label: string
@@ -79,6 +80,8 @@ export function ChoiceField({
   help?: string
   /** 고를 수 없는 상태(선택지가 없을 때) */
   disabled?: boolean
+  /** 비워 둘 수 없는 칸. «자동» 선택지를 두지 않는다(값이 선택지에 없을 때만 «자동» 문구가 자리표시로 보인다) */
+  required?: boolean
 }) {
   const selected = options.find((o) => o.value === value)
   const isAuto = !selected
@@ -102,7 +105,7 @@ export function ChoiceField({
           </SelectValue>
         </SelectTrigger>
         <SelectContent container={themeContainer ?? undefined}>
-          <SelectItem value={AUTO_VALUE}>{autoLabel}</SelectItem>
+          {!required && <SelectItem value={AUTO_VALUE}>{autoLabel}</SelectItem>}
           {options.map((o) => (
             <SelectItem key={o.value} value={o.value}>
               <span className="inline-flex items-center">

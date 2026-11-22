@@ -4,7 +4,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   TODAY_FIELDS_FOR,
-  SUGGESTED_LAYOUT_FOR,
   TODAY_CONTENT_TYPE_OPTIONS,
   computeTodaySectionStatuses,
   todayTemplateFields,
@@ -104,9 +103,6 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   it('content_intro는 설명문·이동 주소 칸만 열린다 — 배지·미션·컬렉션·지역·랭킹·레시피 칸이 없다(티켓 20261101_2054)', () => {
     expect(todayTemplateFields('content_intro')).toEqual({ description: true, targetHref: true })
   })
-  it('content_intro를 고르면 추천 노출 형태는 shortcut이다', () => {
-    expect(SUGGESTED_LAYOUT_FOR.content_intro).toBe('shortcut')
-  })
   it('처음 보는 템플릿 값은 던지지 않고 빈 칸 목록을 돌려준다(어드민 상세·폼이 그 카드 하나 때문에 오류 화면이 되지 않는다)', () => {
     const unknown = 'future_template' as TodayCardTemplateType
     expect(todayTemplateFields(unknown)).toEqual({})
@@ -119,7 +115,6 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
     // 모르는 템플릿은 어떤 참조 칸도 받지 않으므로 저장할 때 참조 값이 비워진다(설명문은 지우지 않는다)
     const payload = buildTodayCardSavePayload({
       templateType: unknown,
-      layoutType: 'other',
       title: '제목',
       subtitle: '',
       description: '설명문',
@@ -215,7 +210,6 @@ describe('computeTodaySectionStatuses', () => {
 describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayCardList.tsx의 handleSave와 동일 로직)', () => {
   const baseValues: TodayCardFormValues = {
     templateType: 'badge_spotlight',
-    layoutType: 'large_thumbnail',
     title: '  핫한 성수동  ',
     subtitle: '',
     description: '',
@@ -241,6 +235,13 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     expect(p.title).toBe('핫한 성수동')
     expect(p.subtitle).toBeNull()
     expect(p.cover_image_url).toBeNull()
+  })
+  it('노출 형태(layout_type)·옛 모양(shape)은 페이로드에 싣지 않는다 — DB 기본값에 맡긴다(티켓 20261122_1153)', () => {
+    for (const t of ALL_TEMPLATES) {
+      const p = buildTodayCardSavePayload({ ...baseValues, templateType: t }) as unknown as Record<string, unknown>
+      expect('layout_type' in p, t).toBe(false)
+      expect('shape' in p, t).toBe(false)
+    }
   })
   it('설명문은 trim하고 빈 값·공백뿐이면 null로 저장한다(티켓 20260929_1335)', () => {
     expect(buildTodayCardSavePayload({ ...baseValues, description: '  성수동 신규 배지  ' }).description).toBe('성수동 신규 배지')

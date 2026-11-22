@@ -64,6 +64,15 @@ export const FEED_TYPE_LABELS: Readonly<Record<FeedType, string>> = {
   gallery_list: '목록형',
 }
 
+/** 유형이 비어 있는 옛 데이터를 홈이 그리는 유형 — 목록·상세에서도 같은 이름으로 보인다(티켓 20261122_1153). */
+export const FEED_TYPE_FALLBACK_TEXT = '텍스트 박스(기본)'
+
+/** 카드 유형을 운영자에게 보이는 이름으로. 비어 있으면 «텍스트 박스(기본)», 모르는 유형 값은 키를 그대로 보인다. */
+export function feedTypeDisplayName(feedType: string | null | undefined): string {
+  if (!feedType) return FEED_TYPE_FALLBACK_TEXT
+  return (FEED_TYPE_LABELS as Readonly<Record<string, string>>)[feedType] ?? feedType
+}
+
 /** 박스 모양 이름(PRD «박스 모양 5가지» 표). */
 export const BOX_SHAPE_LABELS: Readonly<Record<TodayBoxShape, string>> = {
   round: '둥근 모서리',
@@ -127,13 +136,13 @@ export function feedFieldVisibility(feedType: FeedType): FeedFieldVisibility {
 }
 
 /**
- * 값이 없으면 홈이 옛 모양으로 그리는 유형의 안내(4-3이 정한 «그릴 값이 없는 행은 옛 경로», `cardView.ts`의 `hasFeedValues`와 같은 조건).
- * 사용자가 값 없이 이 유형을 골라 미리보기가 옛 모양으로 보여도 이유를 알 수 있게 한다. 해당하지 않는 유형은 null이다.
+ * 값이 없으면 홈이 텍스트 박스로 그리는 유형의 안내(`lib/today/feedType.ts`의 `resolveFeedType`과 같은 조건).
+ * 사용자가 값 없이 이 유형을 골라 미리보기가 텍스트 박스로 보여도 이유를 알 수 있게 한다. 해당하지 않는 유형은 null이다.
  */
 export const FEED_TYPE_VALUE_NOTES: Readonly<Partial<Record<FeedType, string>>> = {
-  collection_intro: '컬렉션 소개는 커버 미디어에 대표 그림을 넣어야 새 모습으로 보여요. 비어 있으면 옛 모양으로 보여요.',
-  drop_pickup: '드랍·픽업은 참조 컨텐츠에서 배지를 하나 이상 연결해야 새 모습으로 보여요. 비어 있으면 옛 모양으로 보여요.',
-  gallery_list: '목록형은 항목을 하나 이상 적어야 새 모습으로 보여요. 비어 있으면 옛 모양으로 보여요.',
+  collection_intro: '컬렉션 소개는 커버 미디어에 대표 그림을 넣어야 새 모습으로 보여요. 비어 있으면 텍스트 박스로 보여요.',
+  drop_pickup: '드랍·픽업은 참조 컨텐츠에서 배지를 하나 이상 연결해야 새 모습으로 보여요. 비어 있으면 텍스트 박스로 보여요.',
+  gallery_list: '목록형은 항목을 하나 이상 적어야 새 모습으로 보여요. 비어 있으면 텍스트 박스로 보여요.',
 }
 
 export function feedTypeValueNote(feedType: FeedType | null): string | null {
@@ -347,10 +356,11 @@ export default function FeedCardSection({
           label="카드 유형"
           value={values.feedType}
           options={TYPE_OPTIONS}
-          autoLabel="옛 모양 그대로 (유형 지정 안 함)"
+          autoLabel="유형을 골라 주세요"
+          required
           onChange={(v) => changeType(v)}
           themeContainer={themeContainer}
-          help="유형을 고르면 그 유형이 쓰는 칸만 보여요. 옛 모양으로 되돌려도 적어 둔 값은 남지만 저장하지 않아요."
+          help="유형을 고르면 그 유형이 쓰는 칸만 보여요."
         />
       </div>
       {feedTypeValueNote(feedType) && (

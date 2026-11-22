@@ -99,7 +99,7 @@ const ROUTES: RouteCase[] = [
     load: () => import('../today/export/route'),
     empty: '내보낼 카드를 선택해 주세요.',
     filePrefix: 'today',
-    headers: ['ID', '제목', '템플릿', '노출형태', '노출조건', '시작', '종료', '노출 순서', '상태'],
+    headers: ['ID', '제목', '템플릿', '카드유형', '노출조건', '시작', '종료', '노출 순서', '상태'],
     chunkedTable: 'today_cards',
   },
   {

@@ -172,6 +172,14 @@ export const EMPTY_FEED_CARD_FORM_VALUES: FeedCardFormValues = {
   feedSeed: '',
 }
 
+/** 새 카드의 기본 카드 유형이고, 유형이 비어 있던 옛 카드의 수정 화면이 보여 주는 유형이다(홈이 비어 있는 유형을 그리는 유형과 같다, 티켓 20261122_1153). */
+export const DEFAULT_FEED_TYPE: TodayFeedType = 'text_box'
+
+/** 폼 값의 카드 유형이 비어 있으면 기본 유형을 채운다. 유형 선택에는 «지정 안 함»이 없어서 폼 상태는 늘 유형을 갖는다. */
+export function withDefaultFeedType(values: FeedCardFormValues): FeedCardFormValues {
+  return values.feedType ? values : { ...values, feedType: DEFAULT_FEED_TYPE }
+}
+
 /** `feedCardFormValuesFromRow`가 읽는 칸. 저장된 행에서 개편 칸만 쓴다(없는 칸은 `undefined`여도 된다). */
 export type FeedCardRowFields = Partial<{
   [K in FeedCardColumnKey]: FeedCardColumns[K] | undefined
@@ -553,13 +561,13 @@ export function validateFeedCardColumns(
   }
 
   if (feedType === 'gallery_list' && listItemCount === 0) {
-    warnings.push('목록형인데 항목이 없어요. 홈에서 옛 모양으로 그려지니 항목을 1개 이상 추가해 주세요.')
+    warnings.push('목록형인데 항목이 없어요. 홈에서 텍스트 박스로 그려지니 항목을 1개 이상 추가해 주세요.')
   }
   if (feedType === 'collection_intro' && options.itemBookId !== undefined && !options.itemBookId) {
     warnings.push('컬렉션 소개인데 컬렉션이 연결돼 있지 않아요. 참조 컨텐츠에서 컬렉션을 골라 주세요.')
   }
   if (isNullish(rawType) && hasFilledFeedColumn(columns, burstCount)) {
-    warnings.push('카드 유형이 비어 있어요. 유형이 없으면 홈에서 옛 모양으로 그려 다른 새 칸 값이 쓰이지 않으니 유형을 골라 주세요.')
+    warnings.push('카드 유형이 비어 있어요. 유형이 없으면 홈에서 텍스트 박스로 그려 다른 새 칸 값이 쓰이지 않으니 유형을 골라 주세요.')
   }
 
   return { errors, warnings }

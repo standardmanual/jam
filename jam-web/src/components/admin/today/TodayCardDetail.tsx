@@ -32,7 +32,6 @@ import {
 } from '@/components/admin/today/TodayEditorLayout'
 import {
   TODAY_TEMPLATE_OPTIONS,
-  TODAY_LAYOUT_OPTIONS,
   TODAY_EXPOSURE_TAG_OPTIONS,
   TODAY_CONTENT_TYPE_OPTIONS,
   todayTemplateFields,
@@ -42,6 +41,7 @@ import {
   computeTodaySectionStatuses,
   type TodaySectionId,
 } from '@/lib/admin/today-sections'
+import { feedTypeDisplayName } from '@/app/admin/today/FeedCardSection'
 // 순수 함수라 서버 전용 의존이 없는 targetHref.ts에서 가져온다(TodayCardForm.tsx와 동일 이유
 // — `@/lib/today/cards`를 값으로 import하면 next/headers까지 클라이언트 번들에 딸려 들어간다).
 import { resolveTargetHref } from '@/lib/today/targetHref'
@@ -78,9 +78,6 @@ function Empty({ children = '없음' }: { children?: ReactNode }) {
 
 function templateLabel(value: string): string {
   return TODAY_TEMPLATE_OPTIONS.find((t) => t.value === value)?.label ?? value
-}
-function layoutLabel(value: string): string {
-  return TODAY_LAYOUT_OPTIONS.find((t) => t.value === value)?.label ?? value
 }
 function exposureTagLabel(value: string): string {
   return TODAY_EXPOSURE_TAG_OPTIONS.find((t) => t.value === value)?.label ?? value
@@ -163,7 +160,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
     <TodaySectionCard {...sectionHeader('class')}>
       <ReadOnlyGrid>
         <ReadOnlyItem label="템플릿 타입">{templateLabel(card.template_type)}</ReadOnlyItem>
-        <ReadOnlyItem label="노출 형태">{layoutLabel(card.layout_type)}</ReadOnlyItem>
+        <ReadOnlyItem label="카드 유형">{feedTypeDisplayName(card.feed_type)}</ReadOnlyItem>
         <ReadOnlyItem label="유형 ID">{card.content_type_id ? contentTypeLabel(card.content_type_id) : <Empty />}</ReadOnlyItem>
       </ReadOnlyGrid>
     </TodaySectionCard>

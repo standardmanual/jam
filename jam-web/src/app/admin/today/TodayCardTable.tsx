@@ -27,8 +27,7 @@ import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import { TODAY_SELECT_ALL_CAP, type TodayListRow } from '@/lib/admin/today-list-query'
 import { exposureTagDisplay, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
-import { TODAY_LAYOUT_OPTIONS } from '@/lib/admin/today-sections'
-import { FEED_TYPE_LABELS } from './FeedCardSection'
+import { feedTypeDisplayName } from './FeedCardSection'
 
 interface TodayCardTableProps {
   cards: TodayListRow[]
@@ -75,19 +74,12 @@ function statusOf(c: TodayListRow, now: Date): Status {
   return '노출중'
 }
 
-/** 레이아웃 이름 — 선택지 라벨(«큰 썸네일형 — 커버 이미지 크게»)의 앞부분이다. 모르는 값은 키 그대로 보인다. */
-function layoutName(layoutType: string): string {
-  const label = TODAY_LAYOUT_OPTIONS.find((o) => o.value === layoutType)?.label
-  return label ? label.split(' — ')[0] : layoutType
-}
-
 /**
- * 「유형」 열 문구(티켓 20261121_1318). 새 유형(`feed_type`)이면 한국어 유형 이름, 없으면 «옛 모양 (레이아웃 이름)»이다.
- * 모르는 유형 값은 키를 그대로 보인다.
+ * 「유형」 열 문구(티켓 20261121_1318, 옛 모양 갈래 삭제는 20261122_1153). 새 유형(`feed_type`)이면 한국어 유형 이름이고,
+ * 유형이 비어 있는 옛 데이터는 홈이 텍스트 박스로 그리므로 «텍스트 박스(기본)»이다. 모르는 유형 값은 키를 그대로 보인다.
  */
-export function feedTypeCellText(card: Pick<TodayListRow, 'feed_type' | 'layout_type'>): string {
-  if (card.feed_type) return (FEED_TYPE_LABELS as Readonly<Record<string, string>>)[card.feed_type] ?? card.feed_type
-  return `옛 모양 (${layoutName(card.layout_type)})`
+export function feedTypeCellText(card: Pick<TodayListRow, 'feed_type'>): string {
+  return feedTypeDisplayName(card.feed_type)
 }
 
 /**
@@ -155,13 +147,6 @@ export function TodayCardTable({ cards, selectedDate, totalCount, tribes = EMPTY
           header: '템플릿',
           enableSorting: false,
           meta: { label: '템플릿' },
-          cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue()}</span>,
-        }),
-        columnHelper.accessor('layout_type', {
-          id: 'layout',
-          header: '노출형태',
-          enableSorting: false,
-          meta: { label: '노출형태' },
           cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue()}</span>,
         }),
         columnHelper.display({

@@ -17,7 +17,6 @@ import type { FeedCardColumns } from './feedCardFields'
 /** 폼 필드 값 — `TodayCardForm.tsx`의 state를 그대로 옮겨 담는다(문자열 state 그대로, trim 전) */
 export interface TodayCardFormValues {
   templateType: TodayCardTemplateType
-  layoutType: TodayCardLayoutType
   title: string
   subtitle: string
   /** 게재용 설명문(티켓 20260929_1335) — editorial_article은 쓰지 않는다 */
@@ -50,8 +49,6 @@ export interface TodayCardFormValues {
 
 export interface TodayCardSavePayload {
   template_type: TodayCardTemplateType
-  layout_type: TodayCardLayoutType
-  shape?: string | null
   title: string
   subtitle: string | null
   description: string | null
@@ -103,6 +100,8 @@ export const TODAY_TEMPLATE_OPTIONS: readonly { value: TodayCardTemplateType; la
   { value: 'content_intro', label: '컨텐츠 소개 (content_intro)' },
 ]
 
+// 아래 두 상수(`TODAY_LAYOUT_OPTIONS`·`SUGGESTED_LAYOUT_FOR`)는 어드민 화면·API·운영 묶음 검증이 더는 쓰지 않는다(티켓 20261122_1153).
+// 홈피드 PRD 생성 구간(`scripts/gen-home-feed-doc.mjs`)과 등록 기록(`registerHomeFeedRecord.mjs`)이 아직 읽어서 남겨 둔다 — 8-4에서 함께 정리한다.
 export const TODAY_LAYOUT_OPTIONS: readonly { value: TodayCardLayoutType; label: string }[] = [
   { value: 'large_thumbnail', label: '큰 썸네일형 — 커버 이미지 크게' },
   { value: 'dome', label: '아치 돔형 — 상단이 둥근 포스터/히어로' },
@@ -379,8 +378,6 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
   const fields = todayTemplateFields(v.templateType)
   return {
     template_type: v.templateType,
-    layout_type: v.layoutType,
-    shape: v.layoutType === 'dome' ? 'dome' : v.layoutType === 'ticket' ? 'ticket' : null,
     title: v.title.trim(),
     subtitle: v.subtitle.trim() || null,
     // 설명문은 템플릿이 쓰지 않아도 비우지 않는다 — 폼이 읽어 온 저장 값을 그대로 돌려준다(보이지 않을 뿐이다, 티켓 20261109_1519).

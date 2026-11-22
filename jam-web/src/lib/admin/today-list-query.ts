@@ -16,14 +16,13 @@ import { UNKNOWN_IMAGE_SOURCE_FILTER } from './contentImageSource'
 
 /** 목록 표에 실제로 쓰는 컬럼만 select — 상세·폼 전용 컬럼(본문·참조 등)은 넣지 않는다 */
 export const TODAY_LIST_COLUMNS =
-  'id, title, template_type, layout_type, exposure_tags, starts_at, ends_at, sort_order, is_active, created_at, image_source, feed_type'
+  'id, title, template_type, exposure_tags, starts_at, ends_at, sort_order, is_active, created_at, image_source, feed_type'
 
 export type TodayListRow = Pick<
   TodayCardRow,
   | 'id'
   | 'title'
   | 'template_type'
-  | 'layout_type'
   | 'exposure_tags'
   | 'starts_at'
   | 'ends_at'

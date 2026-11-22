@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     { header: 'ID', value: (r) => r.id },
     { header: '제목', value: (r) => r.title },
     { header: '템플릿', value: (r) => TEMPLATE_LABEL.get(r.template_type) ?? r.template_type },
-    { header: '노출형태', value: (r) => r.layout_type },
+    { header: '카드유형', value: (r) => r.feed_type ?? null },
     { header: '노출조건', value: (r) => (r.exposure_tags.length ? r.exposure_tags.join('/') : null) },
     { header: '시작', value: (r) => formatKstYmdHm(r.starts_at) },
     { header: '종료', value: (r) => formatKstYmdHm(r.ends_at) },

@@ -1,7 +1,7 @@
 /**
  * 투데이 카드 표 「유형」 열 문구 (티켓 20261121_1318)
  *
- * 확인하는 것: 새 유형이면 한국어 유형 이름, 없으면 «옛 모양 (레이아웃 이름)», 모르는 값은 키 그대로.
+ * 확인하는 것: 새 유형이면 한국어 유형 이름, 없으면 «텍스트 박스(기본)», 모르는 값은 키 그대로(티켓 20261122_1153).
  *
  * 실행: cd jam-web && npx vitest run src/app/admin/today/__tests__/TodayCardTable.feedType.test.tsx
  */
@@ -15,32 +15,29 @@ vi.mock('next/navigation', () => ({
 
 import { feedTypeCellText } from '../TodayCardTable'
 import { FEED_TYPE_LABELS } from '../FeedCardSection'
-import { TODAY_LAYOUT_OPTIONS } from '@/lib/admin/today-sections'
 import { FEED_TYPES } from '@/lib/today/feedChipSlots'
 import { TODAY_LIST_COLUMNS } from '@/lib/admin/today-list-query'
 
 describe('feedTypeCellText', () => {
   it('새 유형 8개는 한국어 유형 이름이다', () => {
     for (const type of FEED_TYPES) {
-      expect(feedTypeCellText({ feed_type: type, layout_type: 'large_thumbnail' })).toBe(FEED_TYPE_LABELS[type])
+      expect(feedTypeCellText({ feed_type: type })).toBe(FEED_TYPE_LABELS[type])
     }
-    expect(feedTypeCellText({ feed_type: 'gallery_list', layout_type: 'other' })).toBe('목록형')
+    expect(feedTypeCellText({ feed_type: 'gallery_list' })).toBe('목록형')
   })
 
-  it('유형이 없으면 «옛 모양 (레이아웃 이름)»이다', () => {
-    expect(feedTypeCellText({ feed_type: null, layout_type: 'large_thumbnail' })).toBe('옛 모양 (큰 썸네일형)')
-    expect(feedTypeCellText({ layout_type: 'banner' })).toBe('옛 모양 (배너형)')
-    for (const option of TODAY_LAYOUT_OPTIONS) {
-      expect(feedTypeCellText({ feed_type: null, layout_type: option.value })).toBe(`옛 모양 (${option.label.split(' — ')[0]})`)
-    }
+  it('유형이 없는 옛 데이터는 «텍스트 박스(기본)»이다 — 홈이 텍스트 박스로 그린다', () => {
+    expect(feedTypeCellText({ feed_type: null })).toBe('텍스트 박스(기본)')
+    expect(feedTypeCellText({})).toBe('텍스트 박스(기본)')
   })
 
   it('모르는 값은 키를 그대로 보인다', () => {
-    expect(feedTypeCellText({ feed_type: 'future_type' as never, layout_type: 'large_thumbnail' })).toBe('future_type')
-    expect(feedTypeCellText({ feed_type: null, layout_type: 'mystery' as never })).toBe('옛 모양 (mystery)')
+    expect(feedTypeCellText({ feed_type: 'future_type' as never })).toBe('future_type')
   })
 
-  it('표 조회가 feed_type을 싣는다', () => {
-    expect(TODAY_LIST_COLUMNS.split(', ')).toContain('feed_type')
+  it('표 조회가 feed_type을 싣고 노출 형태(layout_type)는 싣지 않는다', () => {
+    const columns = TODAY_LIST_COLUMNS.split(', ')
+    expect(columns).toContain('feed_type')
+    expect(columns).not.toContain('layout_type')
   })
 })

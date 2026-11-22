@@ -42,10 +42,8 @@ import {
 } from '@/components/admin/today/TodayEditorLayout'
 import {
   TODAY_TEMPLATE_OPTIONS,
-  TODAY_LAYOUT_OPTIONS,
   TODAY_EXPOSURE_TAG_OPTIONS,
   TODAY_CONTENT_TYPE_OPTIONS,
-  SUGGESTED_LAYOUT_FOR,
   TODAY_DESCRIPTION_MAX_LENGTH,
   todayTemplateFields,
   visibleTodaySections,
@@ -75,9 +73,10 @@ import {
   EMPTY_FEED_CARD_FORM_VALUES,
   feedCardFormValuesFromRow,
   validateFeedCardColumns,
+  withDefaultFeedType,
   type FeedCardFormValues,
 } from '@/lib/admin/feedCardFields'
-import type { TodayCardRow, TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'
+import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
 import { cn } from '@/lib/utils'
 
 interface MissionOption {
@@ -125,7 +124,7 @@ export { FEED_PREVIEW_SEED }
 
 /**
  * 폼의 개편 칸을 미리보기 카드 행에 실을 값으로 바꾼다(티켓 20261121_1318).
- * 유형이 «옛 모양 그대로»(빈 값)이면 아무 칸도 싣지 않아 옛 7모양 미리보기 그대로다. «자동»인 칸은 `NULL`로 싣고,
+ * 유형이 비어 있으면(폼 상태에서는 생기지 않는다) 아무 칸도 싣지 않아 홈과 같이 텍스트 박스로 그려진다. «자동»인 칸은 `NULL`로 싣고,
  * 저장된 시드(수정 화면)가 없으면 고정 시드를 쓴다.
  */
 export function feedPreviewFields(values: FeedCardFormValues): Partial<TodayCardRow> {
@@ -166,7 +165,6 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   )
 
   const [templateType, setTemplateType] = useState<TodayCardTemplateType>(card?.template_type ?? 'badge_spotlight')
-  const [layoutType, setLayoutType] = useState<TodayCardLayoutType>(card?.layout_type ?? SUGGESTED_LAYOUT_FOR.badge_spotlight)
   const [title, setTitle] = useState(card?.title ?? '')
   const [subtitle, setSubtitle] = useState(card?.subtitle ?? '')
   const [description, setDescription] = useState(card?.description ?? '')
@@ -241,7 +239,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [isActive, setIsActive] = useState(card?.is_active ?? true)
   // 「카드 모양」 섹션의 값 한 덩어리(티켓 20261121_1316). 수정 화면은 저장된 개편 칸으로 채운다.
   const [feedValues, setFeedValues] = useState<FeedCardFormValues>(() =>
-    card ? feedCardFormValuesFromRow(card) : EMPTY_FEED_CARD_FORM_VALUES
+    withDefaultFeedType(card ? feedCardFormValuesFromRow(card) : EMPTY_FEED_CARD_FORM_VALUES)
   )
   const patchFeedValues = (patch: Partial<FeedCardFormValues>) => setFeedValues((prev) => ({ ...prev, ...patch }))
 
@@ -255,11 +253,6 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const fields = todayTemplateFields(templateType)
   const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode || fields.recipe)
   const selectedBadgeChips = badgeIds.map((id) => badgeLabelCache.get(id)).filter((b): b is BadgeSearchResult => !!b)
-
-  function changeTemplateType(next: TodayCardTemplateType) {
-    setTemplateType(next)
-    setLayoutType(SUGGESTED_LAYOUT_FOR[next])
-  }
 
   function addBadge(b: BadgeSearchResult) {
     setBadgeIds((prev) => (prev.includes(b.id) ? prev : [...prev, b.id]))
@@ -299,10 +292,10 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   }
 
   /**
-   * 저장할 개편 칸 묶음. 유형을 «옛 모양 그대로»로 두면 폼 안의 새 칸 값은 보내지 않고 비운다(NULL 저장 — 홈이 옛 모양으로 그린다).
+   * 저장할 개편 칸 묶음. 카드 유형은 늘 하나가 골라져 있다(새 카드는 텍스트 박스, 유형이 비어 있던 옛 카드도 수정 화면에서 텍스트 박스로 보이고 저장하면 채워진다).
    * 검증은 서버(`validateFeedCardColumns`)와 같은 함수라 막히는 값은 저장 전에 같은 문구로 알린다.
    */
-  const feedColumns = buildFeedCardColumns(feedValues.feedType ? feedValues : EMPTY_FEED_CARD_FORM_VALUES)
+  const feedColumns = buildFeedCardColumns(feedValues)
   const feedValidation = validateFeedCardColumns(feedColumns, {
     title: title.trim(),
     itemBookId: fields.itemBook ? itemBookId || null : null,
@@ -334,7 +327,6 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     try {
       const body = buildTodayCardSavePayload({
         templateType,
-        layoutType,
         title,
         subtitle,
         description,
@@ -428,8 +420,9 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const previewCardBase: TodayCardRow = {
     id: card?.id ?? 'preview',
     template_type: templateType,
-    layout_type: layoutType,
-    shape: layoutType === 'dome' ? 'dome' : layoutType === 'ticket' ? 'ticket' : null,
+    // 노출 형태·옛 모양 칸은 폼이 더는 고르지 않는다. 미리보기는 DB 기본값(`large_thumbnail`)과 NULL로 둔다(티켓 20261122_1153).
+    layout_type: 'large_thumbnail',
+    shape: null,
     title: title.trim() || '(제목 미입력)',
     subtitle: subtitle.trim() || null,
     description: description.trim() || null,
@@ -479,7 +472,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         <div className={FIELD_GRID_CLASS}>
           <div className="flex min-w-0 flex-col gap-1.5">
             <FieldLabel htmlFor="today-card-template">템플릿 타입</FieldLabel>
-            <Select value={templateType} onValueChange={(v) => changeTemplateType(v as TodayCardTemplateType)}>
+            <Select value={templateType} onValueChange={(v) => setTemplateType(v as TodayCardTemplateType)}>
               <SelectTrigger id="today-card-template" aria-describedby="today-card-template-help">
                 <SelectValue />
               </SelectTrigger>
@@ -492,23 +485,6 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
               </SelectContent>
             </Select>
             <FieldMessage id="today-card-template-help">콘텐츠 종류예요. 아래 참조 컨텐츠가 여기에 맞춰 바뀌어요.</FieldMessage>
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <FieldLabel htmlFor="today-card-layout">노출 형태</FieldLabel>
-            <Select value={layoutType} onValueChange={(v) => setLayoutType(v as TodayCardLayoutType)}>
-              <SelectTrigger id="today-card-layout" aria-describedby="today-card-layout-help">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent container={themeContainer ?? undefined}>
-                {TODAY_LAYOUT_OPTIONS.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldMessage id="today-card-layout-help">화면에 보여줄 모양이에요.</FieldMessage>
           </div>
 
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -581,7 +557,6 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           <FieldMessage id="today-card-description-help">
             {description.length}/{TODAY_DESCRIPTION_MAX_LENGTH}
           </FieldMessage>
-          {layoutType === 'shortcut' && <FieldMessage>바로가기형은 화면에 보이지 않아요</FieldMessage>}
           <FieldMessage>배지 소개·컨텐츠 소개 카드에서만 홈에 보여요. 다른 유형으로 바꾸면 이 칸이 숨겨지고 적은 문구는 지우지 않아요.</FieldMessage>
         </div>
       )}
