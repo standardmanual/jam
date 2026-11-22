@@ -1,4 +1,4 @@
--- 353: 기존 홈 카드 121장 전부에 새 카드 유형(feed_type)·시드·색을 채운다 (자료 변환, 티켓 20261120_2026 후속 «전체 변경»)
+-- 355: 기존 홈 카드 121장 전부에 새 카드 유형(feed_type)·시드·색을 채운다 (자료 변환, 티켓 20261120_2026 후속 «전체 변경»)
 --
 -- 규칙(유형): 배지가 걸린 카드 → badge_intro, 커버 이미지가 있는 카드 → hero_box, 나머지 → text_box.
 -- 컬렉션 소개·드랍·픽업·배지만·목록형은 카드마다 재료(아이템 배지·목록 항목)가 필요해 자동으로 정하지 않는다.
@@ -7,7 +7,7 @@
 -- 안전장치: feed_type이 비어 있는 카드만 바꾼다(이미 새 유형인 카드는 건드리지 않는다). 원래 값은 백업 표에 담는다.
 --
 -- ⚠️ 공용 단일 DB다. 실행하면 즉시 프로덕션 DB에 반영된다. 프로덕션 앱(main)은 이 칸을 읽지 않아 지금 화면은 그대로이고,
---    이후 main에 홈피드 개편을 배포하는 순간 이 카드들이 새 모양으로 바뀐다. 되돌림: 353_today_cards_feed_convert_all_down.sql
+--    이후 main에 홈피드 개편을 배포하는 순간 이 카드들이 새 모양으로 바뀐다. 되돌림: 355_today_cards_feed_convert_all_down.sql
 
 BEGIN;
 
@@ -17,7 +17,7 @@ FROM public.today_cards
 WHERE feed_type IS NULL;
 
 ALTER TABLE public.today_cards_feed_backup_20261122 ENABLE ROW LEVEL SECURITY;
-COMMENT ON TABLE public.today_cards_feed_backup_20261122 IS '353 전체 변환 전 값(티켓 20261120_2026 후속). 화면 확인 뒤 삭제해도 된다. 접근 정책 없음(service_role만)';
+COMMENT ON TABLE public.today_cards_feed_backup_20261122 IS '355 전체 변환 전 값(티켓 20261120_2026 후속). 화면 확인 뒤 삭제해도 된다. 접근 정책 없음(service_role만)';
 
 WITH v(id, feed_type, feed_seed, bg_color_key, chip_color_key, box_color_key) AS (
 VALUES
