@@ -16,7 +16,7 @@ import { d, t } from '@/lib/i18n'
  * 행 골격은 서비스 사본 `ListRow`(`@/components/ui/ListRow`)다(티켓 20261107_1947, 목록 행 4단계 3-5배치).
  * `ProgressBar`는 MODULAR 원본(`@ds/components/feedback/ProgressBar`)을 그대로 쓴다.
  *
- * **`'use client'`가 없다**(티켓 20261001_2104). 이 파일은 훅이 없고 안쪽 `ListRow`에는 문자열·JSX만 넘긴다. 홈 `ListCard`는 서버 컴포넌트라
+ * **`'use client'`가 없다**(티켓 20261001_2104). 이 파일은 훅이 없고 안쪽 `ListRow`에는 문자열·JSX만 넘긴다. 옛 홈 `ListCard`(서버 컴포넌트, 티켓 20261122_1101에서 지웠다)가 쓰던 때와 같은 이유로
  * 이 컴포넌트가 클라이언트 경계면 `formatValue` 함수 prop을 서버에서 클라이언트로 넘기게 되어 렌더 때 「Functions cannot be passed directly to Client Components」로
  * 실패한다(`tsc`·lint·`renderToStaticMarkup` 테스트에는 안 잡힌다). 지시어가 없으면 서버에서는 `formatValue`가 서버 안에서 호출되고, `MissionStatusClient`(클라이언트)에서는
  * 그대로 클라이언트 번들로 동작한다. 훅·이벤트 핸들러를 넣게 되면 지시어를 되살리고 `formatValue`를 함수 prop이 아닌 값으로 바꿔야 한다.
@@ -73,7 +73,7 @@ function MeCircle() {
 
 /**
  * 순위 목록의 행 하나 — 순위 번호(indicator)·48 원형 아바타(lead)·이름·내 행 «나» 칩(titleSuffix)·진행 바(meta)·값(value)을 그린다(1·2·3위 강조 포디엄 없음).
- * 이 행은 늘 흰 카드(홈 `ListCard`, 미션 현황의 순위 카드) 안에 들어가므로 면은 `tone="tint"`(--background-secondary, 테두리 없음)다 —
+ * 이 행은 늘 흰 카드(미션 현황의 순위 카드) 안에 들어가므로 면은 `tone="tint"`(--background-secondary, 테두리 없음)다 —
  * 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133). 행 사이에는 호출부가 간격(gap 8)을 둔다.
  *
  * 내 행은 크기·색이 아니라 이름 옆 «나» 표식 하나로 알린다(색 강조 한 곳 규칙, 티켓 20261107_1947 사용자 승인). 기본은 «나» 칩이고, `meMarker="circle"`이면 레드 원이다.

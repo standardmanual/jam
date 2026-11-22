@@ -79,9 +79,9 @@ describe('itemToPreviewCard', () => {
     expect(row.starts_at).toBe(NOW.toISOString())
   })
 
-  it('모양이 「모름」이면 shape를 비워 resolveShape에 맡긴다', () => {
+  it('모양이 「모름」이어도 던지지 않고 유형은 텍스트 박스다(옛 7모양 갈래는 지웠다, 티켓 20261122_1101)', () => {
     const view = previewViewOf(card({ shape: '이상한값', copy: { title: 'a' } }), undefined, { now: NOW })!
-    expect(['hero', 'poster', 'square', 'brief', 'list']).toContain(view.shape)
+    expect(view.feedType).toBe('text_box')
   })
 
   it('카드가 아닌 종류는 null이다', () => {
@@ -94,7 +94,7 @@ describe('previewViewOf', () => {
   it('표시 데이터에 계측 정보가 없다', () => {
     const view = previewViewOf(card(FULL), undefined, { now: NOW })!
     expect(view.title).toBe('우산 챙겨 달리기')
-    expect(view.shape).toBe('hero')
+    expect(view.feedType).toBe('text_box')
     expect(view.tracking).toBeUndefined()
   })
 })
@@ -415,9 +415,9 @@ describe('itemToPreviewCard — 개편 칸', () => {
     expect(view.look?.titleChips.words).toEqual(['달리기'])
   })
 
-  it('값이 없으면 옛 경로로 간다(컬렉션 소개에 커버가 없음)', () => {
+  it('값이 없으면 텍스트 박스로 그린다(컬렉션 소개에 커버가 없음)', () => {
     const view = previewViewOf(feedCard({ feed_type: 'collection_intro', cover_image_url: '' }), undefined, { now: NOW }) as { feedType?: string }
-    expect(view.feedType).toBeUndefined()
+    expect(view.feedType).toBe('text_box')
   })
 
   it('previewFeedTypeOf: 새 유형만 유형을 돌려주고 옛 항목·다른 종류는 null이다', () => {

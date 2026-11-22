@@ -99,8 +99,8 @@ describe('feedPreviewFields — 폼 값을 미리보기 행에 싣는 값으로'
 })
 
 describe('미리보기 표시 데이터(toCardView)', () => {
-  it('유형을 비우면 새 갈래가 아니라 옛 모양 표시 데이터다', () => {
-    expect('feedType' in viewOf({})).toBe(false)
+  it('유형을 비우면 텍스트 박스 표시 데이터다(옛 모양 갈래는 지웠다, 티켓 20261122_1101)', () => {
+    expect((viewOf({}) as { feedType?: string }).feedType).toBe('text_box')
   })
 
   it('새 유형을 고르면 그 유형의 표시 데이터가 된다', () => {

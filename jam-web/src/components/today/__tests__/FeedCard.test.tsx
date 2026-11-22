@@ -55,7 +55,7 @@ function feedView(feedType: RenderedFeedType, options: Options = {}): FeedCardVi
   if (badgeImageUrl) view.badgeImageUrl = badgeImageUrl
   if (badgeName) view.badgeName = badgeName
   if (href) view.href = href
-  if (tracking) view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'mission_spotlight', shape: 'hero' }
+  if (tracking) view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'mission_spotlight', feedType }
   return view
 }
 

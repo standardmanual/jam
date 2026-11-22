@@ -28,8 +28,6 @@ const FILES = [
   'components/NavigationLoader.tsx',
   'components/inventory/InventoryGrid.tsx',
   'components/inventory/ItemCandidateRow.tsx',
-  'components/today/CardChipRow.tsx',
-  'components/today/PosterCard.tsx',
   'components/ui/BadgeGridCard.tsx',
   'components/ui/SlidingTabs.tsx',
   'components/transitions.css',
@@ -41,7 +39,6 @@ const FILES = [
   'components/BadgeRevealOverlay.tsx',
   'components/inventory/ItemCandidateSheet.tsx',
   'components/today/ArticleView.tsx',
-  'components/today/CardImageSlot.tsx',
   'app/(main)/collections/[id]/SlotGrid.tsx',
   'app/(main)/combine/CombineClient.tsx',
   'app/(main)/drops/DropsClient.tsx',
@@ -56,11 +53,6 @@ const LITERAL_COLOR =
 
 /** 사유가 있는 예외 — 파일 경로와 줄 내용으로 가린다(줄 번호는 바뀌므로 쓰지 않는다) */
 const ALLOWED: { file: string; line: RegExp; reason: string }[] = [
-  {
-    file: 'components/today/PosterCard.tsx',
-    line: /from-black\/70 via-black\/30/,
-    reason: '옛 BannerCard의 클래스 이름을 인용한 설명 주석 — 코드가 아니다',
-  },
   {
     file: 'components/transitions.css',
     line: /mask-image: linear-gradient\(to bottom, transparent 0%, #000 22%/,

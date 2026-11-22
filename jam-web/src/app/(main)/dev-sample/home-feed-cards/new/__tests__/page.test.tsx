@@ -10,7 +10,7 @@
  * 실행: cd jam-web && npx vitest run "src/app/(main)/dev-sample/home-feed-cards/new/__tests__/page.test.tsx"
  */
 import { describe, it, expect, vi } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 
@@ -95,9 +95,9 @@ describe('홈피드 새 카드 미리보기 페이지', () => {
     expect(html).not.toMatch(/#[0-9a-fA-F]{6}/)
   })
 
-  it('옛 7모양 샘플 페이지와 별개 파일이다(옛 페이지를 가져오지 않는다)', () => {
+  it('옛 7모양 샘플 페이지는 지웠고 이 페이지가 옛 페이지를 가져오지 않는다(티켓 20261122_1101)', () => {
     const source = readFileSync(path.resolve(__dirname, '../page.tsx'), 'utf-8')
     expect(source).not.toMatch(/from '\.\.\/page'/)
-    expect(readFileSync(path.resolve(__dirname, '../../page.tsx'), 'utf-8')).toContain('HomeFeedCardsSamplePage')
+    expect(existsSync(path.resolve(__dirname, '../../page.tsx'))).toBe(false)
   })
 })

@@ -6,19 +6,15 @@ import type { FeedPalette } from '@/lib/today/feedAssign'
 /**
  * 투데이 카드 스택 (홈 화면). 카드 0개면 아무것도 렌더링하지 않는다. 제목 «투데이»·부제 «오늘의 소식»은 그리지 않는다(2026-11-04 사용자 요청, 티켓 20261104_1710).
  *
- * 모든 카드를 표시 데이터(`toCardView`, 계측 정보 `tracking` 포함)로 바꿔 새 틀(`TodayCard`)로 그린다. 모양은 `resolveShape`가 정한다 —
- * 저장된 `shape`가 있으면 그 값이고, 없는 옛 카드는 `layout_type` 대응표로 정한다(티켓 20261001_2244, 1453 조각 b7이 옛 렌더러를 지웠다).
+ * 모든 카드를 표시 데이터(`toCardView`, 계측 정보 `tracking` 포함)로 바꿔 `TodayCard`로 그린다. 유형은 `feed_type`이 정하고, 비었거나 모르는 값이면 텍스트 박스다
+ * (티켓 20261122_1101, 옛 7모양 제거).
  * 카드를 누르면 이동하는 곳(`resolved_href`, 기사는 `/today/[id]`)과 노출·클릭 계측은 카드 틀(`CardFrame`)이 맡는다.
- * 랭킹 행형은 순위 행마다 자기 링크(유저 프로필)가 있어 카드 전체 링크가 없다(`TodayCard`).
  */
 export default function TodayCardStack({
   cards,
-  currentUserId,
   palette,
 }: {
   cards: TodayCardWithHref[]
-  /** 랭킹 행형 `list`에서 내 순위 행을 강조하는 데 쓴다(선택 — 없으면 강조 없음) */
-  currentUserId?: string
   /** 색 키 → hex 표(컬러셋 교체, 티켓 20261121_2145). 색이 비어 있는 카드의 자동 배정에 쓴다. 없으면 기본 팔레트다. */
   palette?: FeedPalette
 }) {
@@ -28,7 +24,7 @@ export default function TodayCardStack({
     <section>
       <div className="flex flex-col gap-2">
         {cards.map((card) => (
-          <TodayCard key={card.id} view={toCardView(card, { tracking: true, palette })} currentUserId={currentUserId} />
+          <TodayCard key={card.id} view={toCardView(card, { tracking: true, palette })} />
         ))}
       </div>
     </section>

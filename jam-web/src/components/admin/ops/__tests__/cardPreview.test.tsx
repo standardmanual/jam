@@ -64,7 +64,7 @@ describe('OpsCardPreview', () => {
   })
 
   it('이미지형 카드에 이미지가 없으면 「이미지는 색이 정해지면 만들어요」를 보인다', () => {
-    const noImage = { ...BASE, resource: { template_type: 'editorial_article' } }
+    const noImage = { ...BASE, resource: { feed_type: 'hero_box', template_type: 'editorial_article' } }
     expect(html(<OpsCardPreview item={item(noImage)} />)).toContain(PREVIEW_IMAGE_PENDING_TEXT)
     expect(PREVIEW_IMAGE_PENDING_TEXT).toBe('이미지는 색이 정해지면 만들어요')
     expect(html(<OpsCardPreview item={item(BASE)} />)).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
@@ -79,7 +79,7 @@ describe('OpsCardPreview', () => {
   })
 
   it('도착·검토중 항목의 이미지를 만드는 중이면 「이미지를 만드는 중이에요」를 보인다(색이 있는 카드·미션 모두)', () => {
-    const noImage = { ...BASE, resource: { template_type: 'editorial_article' }, image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' } }
+    const noImage = { ...BASE, resource: { feed_type: 'hero_box', template_type: 'editorial_article' }, image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' } }
     for (const status of ['arrived', 'reviewing']) {
       const card = html(<OpsCardPreview item={{ ...item(noImage), status }} making />)
       expect(card).toContain(PREVIEW_IMAGE_MAKING_TEXT)
@@ -91,7 +91,7 @@ describe('OpsCardPreview', () => {
   })
 
   it('승인됨·준비중이면 「이미지 제작 필요」, 도착·검토중이면 색이 정해지면 만든다는 안내를 보인다', () => {
-    const noImage = { ...BASE, resource: { template_type: 'editorial_article' } }
+    const noImage = { ...BASE, resource: { feed_type: 'hero_box', template_type: 'editorial_article' } }
     for (const status of ['approved', 'preparing']) {
       const out = html(<OpsCardPreview item={{ ...item(noImage), status }} />)
       expect(out).toContain(PREVIEW_IMAGE_NEEDED_TEXT)
@@ -108,7 +108,7 @@ describe('OpsCardPreview', () => {
     const MISSION_IMAGE = 'https://example.com/mission-image.png'
     const missionCard = {
       ...BASE,
-      resource: { template_type: 'mission_spotlight' },
+      resource: { feed_type: 'hero_box', template_type: 'mission_spotlight' },
       links: ['mission-1'],
       image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' },
     }

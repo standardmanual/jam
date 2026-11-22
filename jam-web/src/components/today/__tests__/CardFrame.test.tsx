@@ -38,15 +38,17 @@ vi.mock('@/components/today/TodayCardTracker', () => ({
 }))
 
 import CardFrame, { CardLink } from '../CardFrame'
-import type { BriefCardView } from '@/lib/today/cardView'
+import type { FeedCardView } from '@/lib/today/cardView'
+import type { FeedLook } from '@/lib/today/feedLook'
 
-const TRACKING = { cardId: 'card-1', contentTypeId: 'T05', templateType: 'drop_alert', shape: 'brief' } as const
+const TRACKING = { cardId: 'card-1', contentTypeId: 'T05', templateType: 'drop_alert', feedType: 'text_box' } as const
 
-function makeView(overrides: Partial<BriefCardView> = {}): BriefCardView {
-  return { shape: 'brief', resource: 'drop', title: '한강 번개 드랍', ...overrides }
+/** 틀은 `tracking`·`href`만 읽으므로 그릴 값(`look`)은 비워 둔다. */
+function makeView(overrides: Partial<FeedCardView> = {}): FeedCardView {
+  return { feedType: 'text_box', resource: 'drop', title: '한강 번개 드랍', imageUrl: null, look: {} as FeedLook, ...overrides }
 }
 
-const render = (view: BriefCardView, link?: boolean) =>
+const render = (view: FeedCardView, link?: boolean) =>
   renderToStaticMarkup(
     <CardFrame view={view} link={link}>
       <p>안쪽 모양</p>
@@ -78,7 +80,7 @@ describe('CardFrame — tracking과 href가 모두 있으면 트래커 안에 �
     expect(html).toContain('data-tracker="card-1"')
     expect(html).toContain('data-content-type="T05"')
     expect(html).toContain('data-template="drop_alert"')
-    expect(html).toContain('data-shape="brief"')
+    expect(html).toContain('data-shape="text_box"')
   })
 
   it('링크는 트래커 안쪽에 있고 안쪽 모양을 감싼다', () => {
@@ -140,7 +142,7 @@ describe('CardFrame — link={false}는 카드 전체 링크를 걸지 않고 �
     expect(html).toContain('data-track-click="false"')
     expect(html).toContain('data-content-type="T05"')
     expect(html).toContain('data-template="drop_alert"')
-    expect(html).toContain('data-shape="brief"')
+    expect(html).toContain('data-shape="text_box"')
   })
 
   it('안쪽 모양을 그대로 감싼다', () => {

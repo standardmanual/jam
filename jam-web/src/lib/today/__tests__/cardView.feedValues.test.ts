@@ -2,7 +2,7 @@
  * 새 카드 갈래의 값 칩 입력 연결 (티켓 20261121_0155, 상위 20261120_2026 4회차-4)
  *
  * 확인하는 것: ① 미션 조건 값(`resolved_mission.condition_json`)과 배지 달성 기준·레벨(`resolved_badges[0].condition_json`·`level`)이 새 갈래의 칩 문구로 나온다,
- * ② 값이 없으면 그 칩만 없다(구분 칩은 그대로), ③ 저장된 칩(`source`)이 새 출처 키를 읽는다, ④ 옛 갈래(`feed_type` NULL)의 출력은 새 값이 실려 있어도 한 글자도 바뀌지 않는다.
+ * ② 값이 없으면 그 칩만 없다(구분 칩은 그대로), ③ 저장된 칩(`source`)이 새 출처 키를 읽는다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardView.feedValues.test.ts
  */
@@ -122,21 +122,5 @@ describe('액티비티 배지 달성 기준·레벨 값 칩', () => {
       ],
     })
     expect(texts(view)).toEqual(['고도 700m', 'Lv.3'])
-  })
-})
-
-describe('옛 갈래는 새 값이 실려 있어도 바뀌지 않는다', () => {
-  it('`feed_type`이 NULL인 카드의 출력이 값 칩 입력 유무와 무관하게 같다', () => {
-    const plain = toCardView(makeCard({ feed_type: null }), { now: NOW, tracking: true })
-    const withValues = toCardView(
-      makeCard({
-        feed_type: null,
-        resolved_mission: { ...MISSION, condition_json: { distance_km: 8 } },
-        resolved_badges: [badge({ condition_json: { elevation_gain_m: 700 }, level: 2 })],
-      }),
-      { now: NOW, tracking: true },
-    )
-    // 필수 정보 줄·모양·제목은 같다(배지 그림이 커버를 대신하지 않는 카드라 이미지도 같다)
-    expect(withValues).toEqual(plain)
   })
 })

@@ -72,7 +72,7 @@ function listView({ items = ITEMS, moreHref = '/drops', description, tracking, t
   if (tracking) {
     // 카드 전체 링크용 주소가 있어도 목록형은 쓰지 않는다
     view.href = '/drops'
-    view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'drop_alert', shape: 'hero' }
+    view.tracking = { cardId: 'card-1', contentTypeId: null, templateType: 'drop_alert', feedType: view.feedType }
   }
   return view
 }
@@ -209,7 +209,7 @@ describe('목록형 — 링크와 계측의 분리', () => {
       imageUrl: null,
       look: hero,
       href: '/missions/m1',
-      tracking: { cardId: 'card-1', contentTypeId: null, templateType: 'mission_spotlight', shape: 'hero' },
+      tracking: { cardId: 'card-1', contentTypeId: null, templateType: 'mission_spotlight', feedType: 'hero_box' },
     }
     const html = render(view)
     expect(anchors(html)).toHaveLength(1)

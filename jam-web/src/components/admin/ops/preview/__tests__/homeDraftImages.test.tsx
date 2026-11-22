@@ -28,7 +28,7 @@ const SPEC = { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: 
 
 function pendingWith(id: string, imageSpec: PreviewEntry['imageSpec'], cover: string | null = null, shape = 'hero'): PreviewEntry {
   const base = pending(id, [], shape)
-  return { ...base, card: makeCard(id, { shape, cover_image_url: cover } as never), imageSpec }
+  return { ...base, card: makeCard(id, { shape, feed_type: 'hero_box', cover_image_url: cover } as never), imageSpec }
 }
 
 describe('draftImageRequestsFor', () => {
@@ -63,7 +63,7 @@ describe('withDraftImages', () => {
   it('그려진 주소는 해당 카드의 이미지 칸에 넣고, 저장된 이미지와 아직 그리는 중인 카드는 그대로 둔다', () => {
     const drafts: DraftImageSnapshot = new Map([
       ['p-draw', { status: 'ready', url: 'blob:draw', tempColor: false }],
-      ['p-stored', { status: 'ready', url: 'blob:stored', tempColor: false }],
+      // 저장된 이미지가 있는 카드는 그리기 요청이 없어 그려진 주소도 없다(`draftImageRequestsFor`) — 개편 유형은 그려진 주소를 그대로 넣으므로 표에 없어야 그대로 남는다(티켓 20261122_1101)
       ['p-wait', { status: 'rendering', url: null, tempColor: false }],
     ])
     const out = withDraftImages(views, day, drafts) as { imageUrl: string | null }[]

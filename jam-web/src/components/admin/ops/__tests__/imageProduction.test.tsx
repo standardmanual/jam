@@ -26,7 +26,7 @@ function makeItem(over: Partial<OpsItemRecord> = {}, original: Record<string, un
     startsAt: '2026-10-06T09:00:00+09:00',
     endsAt: null,
     status: 'approved',
-    original: { shape: 'hero', copy: { title: '제목' }, image_spec: SPEC, ...original },
+    original: { shape: 'hero', copy: { title: '제목' }, image_spec: SPEC, resource: { feed_type: 'hero_box' }, ...original },
     edited: null,
     formatErrors: [],
     updatedAt: '2026-10-01T00:00:00Z',
@@ -55,7 +55,7 @@ describe('OpsImageProduction', () => {
   })
 
   it('이미지가 있으면 [이미지 다시 만들기]', () => {
-    const out = html(makeItem({}, { resource: { cover_image_url: 'https://x/y.png' } }))
+    const out = html(makeItem({}, { resource: { feed_type: 'hero_box', cover_image_url: 'https://x/y.png' } }))
     expect(out).toContain(IMAGE_REMAKE_LABEL)
     expect(out).not.toContain(`>${IMAGE_MAKE_LABEL}<`)
   })

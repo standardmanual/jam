@@ -1,8 +1,8 @@
 /**
  * `toCardView`의 개편 카드 분기 (티켓 20261121_0041, 상위 20261120_2026 4회차-2)
  *
- * 확인하는 것: ① `feed_type`이 NULL인 기존 카드·4-3 유형·모르는 값·꺼진 `full_image`는 새 칸이 있어도 옛 `CardView`와 같은 출력(기존 카드 회귀 방지),
- * ② 다섯 유형은 `FeedCardView`(feedType·look·이미지·배지), ③ 계측 `tracking.shape`는 옛 값이고 `tracking.feedType`이 새 갈래에만 있으며 GA 파라미터는 바꾸지 않는다,
+ * 확인하는 것: ① `feed_type`이 NULL·모르는 값·꺼진 `full_image`이거나 4-3 유형의 그릴 값이 없으면 텍스트 박스(티켓 20261122_1101에서 옛 7모양 갈래를 지웠다),
+ * ② 지금 그릴 수 있는 유형은 `FeedCardView`(feedType·look·이미지·배지), ③ 계측 `tracking.feedType`이 그려진 유형이다,
  * ④ 값 칩의 입력이 `TodayCardWithHref`가 이미 싣는 값뿐이다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardView.feed.test.ts
@@ -78,40 +78,31 @@ const NEW_COLUMNS: Partial<TodayCardWithHref> = {
 
 const OPTIONS = { now: NOW, tracking: true } as const
 
-describe('toCardView — 기존 카드는 한 글자도 바뀌지 않는다', () => {
-  const legacy = toCardView(makeCard(), OPTIONS)
-
-  it('feed_type이 NULL이면 새 칸이 채워져 있어도 옛 출력 그대로다', () => {
-    expect(toCardView(makeCard({ ...NEW_COLUMNS, feed_type: null }), OPTIONS)).toEqual(legacy)
-    expect(toCardView(makeCard({ ...NEW_COLUMNS, feed_type: undefined }), OPTIONS)).toEqual(legacy)
+describe('toCardView — feed_type이 비었거나 모르는 값이면 텍스트 박스다 (티켓 20261122_1101)', () => {
+  it.each<[string, TodayCardWithHref['feed_type'] | undefined]>([
+    ['NULL', null],
+    ['칸 자체가 없는 행', undefined],
+    ['모르는 값', 'future_type' as never],
+    ['꺼져 있는 full_image', 'full_image'],
+  ])('feed_type이 %s이면 text_box다(옛 모양 shape가 저장돼 있어도 무시한다)', (_label, feedType) => {
+    const view = toCardView(makeCard({ ...NEW_COLUMNS, feed_type: feedType }), OPTIONS)
+    expect(view.feedType).toBe('text_box')
+    expect(view.shape).toBeUndefined()
+    expect(view.look).toBeDefined()
+    expect(view.tracking?.feedType).toBe('text_box')
   })
 
-  it('새 칸이 모두 없는 행도 같다(feed_type 칸 자체가 없는 행)', () => {
-    expect(toCardView(makeCard(), OPTIONS)).toEqual(legacy)
-    expect(legacy).not.toHaveProperty('feedType')
-    expect(legacy).not.toHaveProperty('look')
-  })
-
-  // 4-3 유형(티켓 20261121_0115)은 그릴 값이 있으면 새 갈래다. 값이 부족한 행은 옛 경로 — 자세한 경우는 cardView.feed3.test.ts
+  // 4-3 유형(티켓 20261121_0115)은 그릴 값이 부족한 행을 텍스트 박스로 그린다 — 화면이 비지 않는다. 자세한 경우는 cardView.feed3.test.ts
   it.each<[TodayCardWithHref['feed_type'], Partial<TodayCardWithHref>]>([
     ['collection_intro', { cover_image_url: null }],
     ['drop_pickup', { resolved_badges: [] }],
     ['gallery_list', { list_items: [] }],
-  ])('4-3 유형 %s는 그릴 값이 없으면 옛 경로가 그린다', (feedType, lacking) => {
-    const lackingLegacy = toCardView(makeCard({ ...lacking }), OPTIONS)
-    expect(toCardView(makeCard({ ...NEW_COLUMNS, ...lacking, feed_type: feedType }), OPTIONS)).toEqual(lackingLegacy)
+  ])('4-3 유형 %s는 그릴 값이 없으면 text_box다', (feedType, lacking) => {
+    expect(toCardView(makeCard({ ...NEW_COLUMNS, ...lacking, feed_type: feedType }), OPTIONS).feedType).toBe('text_box')
   })
 
-  it('모르는 feed_type 값도 옛 경로다', () => {
-    expect(toCardView(makeCard({ ...NEW_COLUMNS, feed_type: 'future_type' as never }), OPTIONS)).toEqual(legacy)
-  })
-
-  it('full_image는 꺼져 있는 동안 옛 경로다', () => {
-    expect(toCardView(makeCard({ ...NEW_COLUMNS, feed_type: 'full_image' }), OPTIONS)).toEqual(legacy)
-  })
-
-  it('옛 설명 규칙(배지 소개·컨텐츠 소개만)은 그대로다: 미션 소개 카드의 설명은 싣지 않는다', () => {
-    expect(legacy.description).toBeUndefined()
+  it('옛 설명 규칙(배지 소개·컨텐츠 소개만)은 쓰지 않는다: 텍스트 박스는 설명을 싣지 않는다', () => {
+    expect(toCardView(makeCard({ feed_type: null }), OPTIONS).description).toBeUndefined()
   })
 })
 
@@ -145,25 +136,15 @@ describe('toCardView — 개편 카드', () => {
     expect(feed({})).toEqual(feed({}))
   })
 
-  it('계측: tracking.feedType이 있고 tracking.shape는 행의 옛 모양 값이다(GA 파라미터 불변)', () => {
+  it('계측: tracking.feedType이 그려진 유형이고 tracking 자체는 옵션이 켜졌을 때만 있다', () => {
     const view = feed({ shape: 'poster' })
     expect(view.tracking).toEqual({
       cardId: 'card-1',
       contentTypeId: 'T05',
       templateType: 'mission_spotlight',
-      shape: 'poster',
       feedType: 'hero_box',
     })
     expect(toCardView(makeCard({ feed_type: 'hero_box' })).tracking).toBeUndefined()
-  })
-
-  it('계측: 옛 갈래(feed_type NULL·4-3 유형·꺼진 full_image)의 tracking에는 feedType이 생기지 않는다', () => {
-    for (const feedType of [null, 'unknown_type', 'full_image'] as const) {
-      const view = toCardView(makeCard({ feed_type: feedType as never, shape: 'poster' }), OPTIONS)
-      expect(view.tracking).toBeDefined()
-      expect(view.tracking).not.toHaveProperty('feedType')
-      expect(view.tracking?.shape).toBe('poster')
-    }
   })
 
   it('이미지는 커버 → 미션 대표 이미지(미션 소개) → 첫 배지 그림 순서다', () => {

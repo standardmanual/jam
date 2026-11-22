@@ -1,10 +1,10 @@
 /**
- * 계측 모듈의 화면 모듈 의존 (티켓 20261001_2244, 상위 20260930_1453 조각 b7)
+ * 계측 모듈의 화면 모듈 의존 (티켓 20261001_2244, 상위 20260930_1453 조각 b7. 순수 판정 파일이 `feedType.ts`로 바뀜: 티켓 20261122_1101)
  *
  * `events.ts`(이벤트 API가 쓴다)가 화면 모듈 `cardView.ts`를 값으로 가져오면 `@/lib/i18n`의 한국어 사전이 이벤트 API 번들에 함께 실린다.
  * 번들러를 돌리지 않고 소스의 import 그래프(타입만 가져오는 줄은 컴파일 때 사라지므로 뺀다)로 고정한다:
  * ① `events.ts`가 `cardView.ts`를 값으로 가져오지 않는다 ② `events.ts`가 값으로 닿는 파일 어디에도 `cardView.ts`·사전(`lib/i18n`)이 없다
- * ③ 두 쪽이 함께 쓰는 순수 판정 파일 `shape.ts`는 값으로 아무것도 가져오지 않는다.
+ * ③ 순수 판정 파일 `shape.ts`는 값으로 아무것도 가져오지 않는다(events.ts는 더는 쓰지 않는다 — 남은 상수는 8-4가 정리한다).
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/eventsImports.test.ts
  */
@@ -68,9 +68,9 @@ const SHAPE = path.join(SRC, 'lib/today/shape.ts')
 const CARD_VIEW = path.join(SRC, 'lib/today/cardView.ts')
 
 describe('이벤트 API 번들에 화면 모듈·한국어 사전이 실리지 않는다', () => {
-  it('import 그래프 읽기 자체가 동작한다(events.ts는 shape.ts를 값으로 가져온다)', () => {
-    expect(valueImportSpecs(EVENTS)).toContain('./shape')
-    expect([...valueClosure(EVENTS)].map(rel)).toContain('lib/today/shape.ts')
+  it('import 그래프 읽기 자체가 동작한다(events.ts는 화면과 같은 유형 판정 feedType.ts를 값으로 가져온다, 티켓 20261122_1101)', () => {
+    expect(valueImportSpecs(EVENTS)).toContain('./feedType')
+    expect([...valueClosure(EVENTS)].map(rel)).toContain('lib/today/feedType.ts')
   })
 
   it('거울 시험: cardView.ts는 사전(lib/i18n)에 값으로 닿는다 — 아래 단언이 의미가 있다', () => {

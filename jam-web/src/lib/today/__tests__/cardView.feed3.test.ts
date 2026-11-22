@@ -1,8 +1,8 @@
 /**
  * `toCardView`의 4회차-3 분기: 컬렉션 소개·드랍·픽업·목록형 (티켓 20261121_0115, 상위 20261120_2026)
  *
- * 확인하는 것: ① 값이 부족한 행(컬렉션 대표 그림 없음·배지 0개·항목 0개)은 옛 경로 — 옛 `CardView`와 같은 출력 ② 값이 있으면 `FeedCardView`에 세 유형의 값이 실린다
- * ③ 기존 카드(`feed_type` NULL)와 4-2 유형의 출력에는 새 값이 번지지 않는다 ④ 목록 항목은 앞 3개·이름·주소가 있는 것만, 대표 페이지 주소는 선택 ⑤ 계측 `tracking.feedType`.
+ * 확인하는 것: ① 값이 부족한 행(컬렉션 대표 그림 없음·배지 0개·항목 0개)은 텍스트 박스(티켓 20261122_1101) ② 값이 있으면 `FeedCardView`에 세 유형의 값이 실린다
+ * ③ `feed_type` NULL 카드와 4-2 유형의 출력에는 새 값이 번지지 않는다 ④ 목록 항목은 앞 3개·이름·주소가 있는 것만, 대표 페이지 주소는 선택 ⑤ 계측 `tracking.feedType`.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardView.feed3.test.ts
  */
@@ -77,11 +77,11 @@ describe('컬렉션 소개', () => {
     expect(view.tracking?.feedType).toBe('collection_intro')
   })
 
-  it('대표 그림이 없으면 첫 배지 그림으로 대신하지 않고 옛 경로로 보낸다', () => {
+  it('대표 그림이 없으면 첫 배지 그림으로 대신하지 않고 텍스트 박스로 그린다', () => {
     const lacking = { cover_image_url: null, resolved_badges: [badge('x')] }
     const view = toCardView(makeCard({ ...lacking, feed_type: 'collection_intro' }), OPTIONS)
-    expect(view).toEqual(toCardView(makeCard(lacking), OPTIONS))
-    expect(view).not.toHaveProperty('feedType')
+    expect(view.feedType).toBe('text_box')
+    expect(view).not.toHaveProperty('collectionName')
   })
 
   it('아이템 배지 그림이 없으면 배지 값 없이 대표 그림만 싣는다', () => {
@@ -123,10 +123,10 @@ describe('드랍·픽업', () => {
     expect(feed({ feed_type: 'drop_pickup', resolved_badges: [badge('a'), badge('b')] }).itemBadges).toHaveLength(2)
   })
 
-  it('배지가 0개면 옛 경로로 보낸다', () => {
+  it('배지가 0개면 텍스트 박스로 그린다', () => {
     const view = toCardView(makeCard({ feed_type: 'drop_pickup', template_type: 'drop_alert', resolved_badges: [] }), OPTIONS)
-    expect(view).toEqual(toCardView(makeCard({ template_type: 'drop_alert', resolved_badges: [] }), OPTIONS))
-    expect(view).not.toHaveProperty('feedType')
+    expect(view.feedType).toBe('text_box')
+    expect(view).not.toHaveProperty('itemBadges')
   })
 })
 
@@ -162,11 +162,12 @@ describe('목록형', () => {
     expect(feed({ feed_type: 'gallery_list', list_items: items }).listMoreHref).toBeUndefined()
   })
 
-  it('항목이 0개(또는 NULL)면 옛 경로로 보낸다', () => {
-    const legacy = toCardView(makeCard(), OPTIONS)
-    expect(toCardView(makeCard({ feed_type: 'gallery_list', list_items: [] }), OPTIONS)).toEqual(legacy)
-    expect(toCardView(makeCard({ feed_type: 'gallery_list', list_items: null }), OPTIONS)).toEqual(legacy)
-    expect(toCardView(makeCard({ feed_type: 'gallery_list', list_items: [{ name: '', href: '' }] }), OPTIONS)).toEqual(legacy)
+  it('항목이 0개(또는 NULL)면 텍스트 박스로 그린다', () => {
+    for (const list_items of [[], null, [{ name: '', href: '' }]]) {
+      const view = toCardView(makeCard({ feed_type: 'gallery_list', list_items }), OPTIONS)
+      expect(view.feedType).toBe('text_box')
+      expect(view).not.toHaveProperty('listItems')
+    }
   })
 
   it('카드 전체 링크용 href(resolved_href)는 그대로 싣는다(그리는 쪽이 목록형에서는 쓰지 않는다)', () => {
@@ -174,7 +175,7 @@ describe('목록형', () => {
   })
 })
 
-describe('기존 카드와 4-2 유형은 새 값이 번지지 않는다', () => {
+describe('feed_type이 비었으면 텍스트 박스이고 4-2 유형에는 새 값이 번지지 않는다', () => {
   const NEW_VALUES: Partial<TodayCardWithHref> = {
     list_items: [{ name: '산', href: '/a' }],
     list_more_href: '/b',
@@ -182,9 +183,10 @@ describe('기존 카드와 4-2 유형은 새 값이 번지지 않는다', () => 
     resolved_badges: [badge('a')],
   }
 
-  it('feed_type이 NULL이면 새 칸이 있어도 옛 출력 그대로다', () => {
-    const plain = toCardView(makeCard({ resolved_badges: [badge('a')] }), OPTIONS)
-    expect(toCardView(makeCard({ ...NEW_VALUES, feed_type: null }), OPTIONS)).toEqual(plain)
+  it('feed_type이 NULL이면 새 칸이 있어도 텍스트 박스이고 새 유형의 값이 실리지 않는다', () => {
+    const view = toCardView(makeCard({ ...NEW_VALUES, feed_type: null }), OPTIONS)
+    expect(view.feedType).toBe('text_box')
+    for (const key of ['collectionBadges', 'collectionName', 'itemBadges', 'listItems', 'listMoreHref']) expect(view).not.toHaveProperty(key)
   })
 
   it('4-2 유형에는 세 유형의 값이 실리지 않고 burst도 없다', () => {

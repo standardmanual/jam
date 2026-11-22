@@ -10,9 +10,9 @@ import type { CardView } from '@/lib/today/cardView'
  * - `tracking`이 있으면 `TodayCardTracker`로 감싸 노출·클릭을 기록한다.
  * - `tracking`과 `href`가 모두 있으면 그 안에 `Link`를 둔다. 눌림은 이 `Link` 하나에만 붙는다(안쪽 면에도 붙이면 두 번 줄어든다).
  * - `tracking`이 없으면(운영툴 미리보기) 트래커·링크·눌림이 모두 없다 — 링크 없는 카드에는 `.jam-press`를 붙이지 않는다.
- * - `link={false}`(티켓 20261001_2104, 랭킹 행형 `list`)면 `tracking`이 있어도 `Link`와 `.jam-press`를 걸지 않고 트래커만 `trackClick={false}`로 감싼다(노출만 기록한다).
- *   행형은 순위 행마다 자기 프로필 링크가 있어 카드 전체를 링크로 감싸면 앵커 안에 앵커가 생기고, 카드 단위 클릭은 의미가 없다. 트래커·GA 값 연결이 두 곳으로
- *   갈라지지 않게 틀을 따로 만들지 않고 이 옵션 하나로 갈랐다. 모양은 계속 모른다 — 어느 모양이 `link={false}`인지는 호출부(`TodayCard`)가 정한다.
+ * - `link={false}`(티켓 20261001_2104, 지금은 목록형 `gallery_list`)면 `tracking`이 있어도 `Link`와 `.jam-press`를 걸지 않고 트래커만 `trackClick={false}`로 감싼다(노출만 기록한다).
+ *   목록형은 항목마다 자기 링크가 있어 카드 전체를 링크로 감싸면 앵커 안에 앵커가 생기고, 카드 단위 클릭은 의미가 없다. 트래커·GA 값 연결이 두 곳으로
+ *   갈라지지 않게 틀을 따로 만들지 않고 이 옵션 하나로 갈랐다. 모양은 계속 모른다 — 어느 유형이 `link={false}`인지는 호출부(`FeedCard`)가 정한다.
  * - `link={false}`와 `trackLinkClicks`를 함께 주면(티켓 20261121_0115, 목록형) 카드 전체 링크는 없지만 카드 안의 링크(항목·화살표) 클릭은 카드 클릭으로 기록한다.
  *   링크가 아닌 자리(제목·빈 곳)의 클릭은 세지 않는다. 이 옵션을 생략한 기존 모든 카드의 동작은 그대로다.
  *
@@ -57,7 +57,7 @@ export default function CardFrame({
       cardId={tracking.cardId}
       contentTypeId={tracking.contentTypeId}
       templateType={tracking.templateType}
-      shape={tracking.shape}
+      shape={tracking.feedType}
       trackClick={link || trackLinkClicks}
       clickOnLinksOnly={!link && trackLinkClicks}
     >

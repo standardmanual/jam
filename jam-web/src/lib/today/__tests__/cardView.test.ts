@@ -5,20 +5,18 @@
  * 1. `buildFacts` — 자원별 필수 정보를 최대 2줄로 만들고, 값이 없는 줄은 생략한다.
  *    남은 시간 경계(7일·24시간)와 KST 날짜 경계를 시각 값으로 고정한다.
  * 2. `toCardView` — 카드 ID·활성 여부·노출 기간·정렬 순서 없이 표시 데이터를 만들고,
- *    계측 정보(`tracking`)는 요청했을 때만 싣는다. 타일 0개 타일형은 `brief`가 된다.
+ *    계측 정보(`tracking`)는 요청했을 때만 싣는다. 옛 7모양 갈래는 지웠다(티켓 20261122_1101) — 유형별 갈래는 `cardView.feed*.test.ts`가 맡는다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardView.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import type { TodayCardWithHref, ResolvedBadge, ResolvedRecipe } from '../cards'
+import type { TodayCardWithHref, ResolvedBadge } from '../cards'
 import {
   CARD_RESOURCES,
   buildFacts,
-  fallbackEmptyTileShape,
   formatKstMonthDay,
   resourceOfTemplate,
   toCardView,
-  type CardView,
   type CardResource,
 } from '../cardView'
 
@@ -320,33 +318,7 @@ function makeCard(overrides: Partial<TodayCardWithHref> = {}): TodayCardWithHref
   }
 }
 
-describe('fallbackEmptyTileShape — 타일이 0개인 타일형 list는 brief (계측과 화면이 함께 쓰는 규칙)', () => {
-  it('타일형 list는 타일이 0개일 때만 brief로 바꾼다', () => {
-    expect(fallbackEmptyTileShape('list', 'badge', 0)).toBe('brief')
-    expect(fallbackEmptyTileShape('list', 'badge', 1)).toBe('list')
-  })
-
-  it('랭킹 행형 list는 타일이 0개여도 그대로 둔다', () => {
-    expect(fallbackEmptyTileShape('list', 'ranking', 0)).toBe('list')
-  })
-
-  it('list가 아닌 모양은 타일 수와 상관없이 그대로 둔다', () => {
-    for (const shape of ['hero', 'poster', 'square', 'brief'] as const) {
-      expect(fallbackEmptyTileShape(shape, 'badge', 0)).toBe(shape)
-    }
-  })
-})
-
 describe('toCardView — 표시 데이터', () => {
-  it('손으로 만든 최소 표시 데이터가 타입에 맞는다(카드 ID·활성 여부·노출 기간·정렬 순서 없이)', () => {
-    // 운영툴 미리보기가 승인 전 초안으로 만드는 값 — 컴파일되는 것이 확인이다
-    const hero: CardView = { shape: 'hero', resource: 'mission', title: '초안', imageUrl: null }
-    const brief: CardView = { shape: 'brief', resource: 'drop', title: '초안' }
-    const tiles: CardView = { shape: 'list', resource: 'badge', title: '초안', tiles: [{ name: '배지', imageUrl: null }] }
-    expect([hero.shape, brief.shape, tiles.shape]).toEqual(['hero', 'brief', 'list'])
-    expect(hero.tracking).toBeUndefined()
-  })
-
   it('카드 ID·활성 여부·노출 기간·정렬 순서·노출 태그를 표시 데이터에 싣지 않는다', () => {
     const view = toCardView(makeCard({ template_type: 'editorial_article', layout_type: 'large_thumbnail' }), { tracking: true })
     const keys = Object.keys(view)
@@ -357,55 +329,50 @@ describe('toCardView — 표시 데이터', () => {
     expect(view.tracking?.cardId).toBe('card-1')
   })
 
+  it('옛 7모양 갈래가 없다: 모양별 필드(shape·tiles·ranking·thumbnailUrl)가 표시 데이터에 없고 유형(feedType)이 늘 있다', () => {
+    for (const feedType of [null, 'hero_box', 'badge_intro', 'bogus'] as const) {
+      const view = toCardView(makeCard({ feed_type: feedType as never, shape: 'list', layout_type: 'ranking_list', template_type: 'ranking_board' }))
+      expect(view.feedType).toBeDefined()
+      for (const key of ['shape', 'tiles', 'ranking', 'thumbnailUrl', 'layoutType']) expect(Object.keys(view)).not.toContain(key)
+    }
+  })
+
   it('계측 정보는 요청할 때만 싣는다(기본은 없다 — 미리보기가 계측을 남기지 않는다)', () => {
     expect(toCardView(makeCard()).tracking).toBeUndefined()
     expect(toCardView(makeCard(), {}).tracking).toBeUndefined()
     expect(toCardView(makeCard(), { tracking: false }).tracking).toBeUndefined()
   })
 
-  it('계측 정보는 카드 ID·유형 ID·템플릿·그려진 모양을 하나로 묶는다', () => {
-    const view = toCardView(makeCard({ shape: 'poster' }), { tracking: true })
-    expect(view.tracking).toEqual({ cardId: 'card-1', contentTypeId: 'T05', templateType: 'badge_spotlight', shape: 'poster' })
-    expect(toCardView(makeCard({ template_type: 'drop_alert', shape: 'brief' }), { tracking: true }).tracking?.templateType).toBe('drop_alert')
+  it('계측 정보는 카드 ID·유형 ID·템플릿·그려진 유형을 하나로 묶는다', () => {
+    const view = toCardView(makeCard({ feed_type: 'badge_intro' }), { tracking: true })
+    expect(view.tracking).toEqual({ cardId: 'card-1', contentTypeId: 'T05', templateType: 'badge_spotlight', feedType: 'badge_intro' })
+    expect(toCardView(makeCard({ template_type: 'drop_alert' }), { tracking: true }).tracking?.templateType).toBe('drop_alert')
     expect(toCardView(makeCard({ content_type_id: null }), { tracking: true }).tracking?.contentTypeId).toBeNull()
+    // feed_type이 비었으면 그려진 유형은 텍스트 박스다
+    expect(toCardView(makeCard(), { tracking: true }).tracking?.feedType).toBe('text_box')
   })
 
-  it('기본 필드: 제목·부제·설명문·링크·라벨. 비었거나 공백뿐인 값은 싣지 않는다', () => {
-    const view = toCardView(makeCard({ subtitle: ' 부제 ', description: '설명문', resolved_href: '/badges/b1' }))
-    expect(view).toMatchObject({ title: '제목', subtitle: '부제', description: '설명문', href: '/badges/b1', label: '배지' })
-    const bare = toCardView(makeCard({ subtitle: '  ', description: '', resolved_href: '' }))
+  it('기본 필드: 제목·부제·링크·라벨. 비었거나 공백뿐인 값은 싣지 않는다', () => {
+    const view = toCardView(makeCard({ subtitle: ' 부제 ', resolved_href: '/badges/b1' }))
+    expect(view).toMatchObject({ title: '제목', subtitle: '부제', href: '/badges/b1', label: '배지' })
+    const bare = toCardView(makeCard({ subtitle: '  ', resolved_href: '' }))
     expect(bare.subtitle).toBeUndefined()
-    expect(bare.description).toBeUndefined()
     expect(bare.href).toBeUndefined()
   })
 
-  describe('설명 문단은 배지 소개·컨텐츠 소개에서만 싣는다(티켓 20261109_1458)', () => {
-    it.each(['badge_spotlight', 'content_intro'] as const)('%s: description 값을 싣는다', (template) => {
-      expect(toCardView(makeCard({ template_type: template, description: '설명문' })).description).toBe('설명문')
+  describe('설명 문단은 유형이 정한다(옛 «배지 소개·컨텐츠 소개만» 규칙은 지웠다)', () => {
+    it('히어로는 설명을 싣고, 설명이 없거나 공백뿐이면 싣지 않는다', () => {
+      expect(toCardView(makeCard({ feed_type: 'hero_box', description: '설명문' })).description).toBe('설명문')
+      expect(toCardView(makeCard({ feed_type: 'hero_box', description: '  ' })).description).toBeUndefined()
     })
 
-    it.each([
-      'mission_spotlight',
-      'drop_alert',
-      'editorial_article',
-      'ranking_board',
-      'itembook_milestone',
-      'progress_nudge',
-      'location_trend',
-      'recipe_reveal',
-    ] as const)('%s: description 값이 있어도 싣지 않는다', (template) => {
-      const view = toCardView(makeCard({ template_type: template, description: '설명문' }))
-      expect(view.description).toBeUndefined()
-      expect(Object.keys(view)).not.toContain('description')
+    it('feed_type이 비어 텍스트 박스가 되면 설명 값이 있어도 싣지 않는다', () => {
+      for (const template of ['badge_spotlight', 'content_intro', 'drop_alert'] as const) {
+        const view = toCardView(makeCard({ template_type: template, description: '설명문' }))
+        expect(view.description).toBeUndefined()
+        expect(Object.keys(view)).not.toContain('description')
+      }
     })
-
-    it.each(['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket'] as const)(
-      '%s: 모양과 무관하게 같은 판정이다',
-      (shape) => {
-        expect(toCardView(makeCard({ template_type: 'drop_alert', shape, description: '설명문' })).description).toBeUndefined()
-        expect(toCardView(makeCard({ template_type: 'badge_spotlight', shape, description: '설명문' })).description).toBe('설명문')
-      },
-    )
   })
 
   it('기준 시각을 넘기면 표시 데이터에 남기고, 안 넘기면 없다', () => {
@@ -413,182 +380,40 @@ describe('toCardView — 표시 데이터', () => {
     expect(toCardView(makeCard()).now).toBeUndefined()
   })
 
-  describe('모양', () => {
-    it('저장된 shape가 있으면 그 모양이다(옛 layout과 상관없이)', () => {
-      expect(toCardView(makeCard({ shape: 'poster', layout_type: 'shortcut' })).shape).toBe('poster')
-    })
-
-    it('shape가 없으면 전환 상수와 상관없이 옛 값을 새 모양으로 바꾼다(미리보기는 늘 새 모양)', () => {
-      expect(toCardView(makeCard({ layout_type: 'shortcut' })).shape).toBe('brief')
-      expect(toCardView(makeCard({ layout_type: 'banner' })).shape).toBe('poster')
-      expect(toCardView(makeCard({ layout_type: 'large_thumbnail' })).shape).toBe('hero')
-    })
-
-    it('타일이 0개인 타일형 list는 brief다(저장된 list도, 옛 badge_gallery도)', () => {
-      const fromLegacy = toCardView(makeCard({ layout_type: 'badge_gallery', resolved_badges: [] }), { tracking: true })
-      expect(fromLegacy.shape).toBe('brief')
-      expect(toCardView(makeCard({ shape: 'list', resolved_badges: [] })).shape).toBe('brief')
-      // 그려진 모양을 기록하므로 계측 정보도 brief다
-      expect(fromLegacy.tracking?.shape).toBe('brief')
-    })
-
-    it('타일이 있는 타일형 list는 타일을 싣는다(희귀도·보유 여부 포함)', () => {
-      const view = toCardView(
-        makeCard({
-          layout_type: 'badge_gallery',
-          resolved_badges: [badge('a'), badge('b', { earned: false, rarity: null, image_url: null })],
-        }),
-      )
-      expect(view.shape).toBe('list')
-      if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view.tiles).toEqual([
-        { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare' },
-        { name: '배지 b', imageUrl: null, rarity: null },
-      ])
-      expect(view.ranking).toBeUndefined()
-    })
-
-    it('랭킹 행형 list는 타일이 없어도 brief가 되지 않고 순위를 싣는다', () => {
-      const ranking = { entries: [], totalParticipants: 0, metricType: 'mission_progress', missionType: null, conditionFieldKey: null } as never
-      const view = toCardView(
-        makeCard({ template_type: 'ranking_board', layout_type: 'ranking_list', resolved_ranking: ranking, resolved_badges: [] }),
-      )
-      expect(view.shape).toBe('list')
-      if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view.resource).toBe('ranking')
-      expect(view.tiles).toEqual([])
-      expect(view.ranking).toBe(ranking)
-    })
-
-    it('순위를 읽지 못한 랭킹 카드도 행형 list이고 ranking은 null이다', () => {
-      const view = toCardView(makeCard({ template_type: 'ranking_board', layout_type: 'ranking_list', resolved_ranking: null }))
-      expect(view.shape).toBe('list')
-      if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view.ranking).toBeNull()
-    })
-  })
-
   describe('이미지', () => {
-    it('이미지 모양은 커버 주소를 imageUrl로 싣는다', () => {
-      const view = toCardView(makeCard())
-      expect(view).toMatchObject({ shape: 'hero', imageUrl: 'https://cdn.example/cover.png' })
+    it('커버 주소를 imageUrl로 싣는다', () => {
+      expect(toCardView(makeCard({ cover_image_url: 'https://cdn.example/c.png' })).imageUrl).toBe('https://cdn.example/c.png')
     })
 
-    it('커버가 없으면 첫 배지 그림을 쓰고, 유저가 그 배지를 갖지 않았어도 imageDimmed가 없다(티켓 20261118_1523)', () => {
-      const unowned = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: false })] }))
-      expect(unowned).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
-      expect(unowned).not.toHaveProperty('imageDimmed')
-      const owned = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: true })] }))
-      expect(owned).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
-      expect(owned).not.toHaveProperty('imageDimmed')
+    it('커버가 없으면 첫 배지 그림을 쓴다(보유 여부와 무관하게 컬러다, 티켓 20261118_1523)', () => {
+      const view = toCardView(makeCard({ cover_image_url: null, resolved_badges: [badge('a', { earned: false })] }))
+      expect(view.imageUrl).toBe('https://cdn.example/a.png')
+      expect(Object.keys(view)).not.toContain('imageDimmed')
     })
 
-    it('보유 여부를 모르면(earned 없음, 유저 정보가 없는 미리보기) 승격한 배지 그림은 컬러다 (티켓 20261001_2208)', () => {
-      const view = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: undefined })] }))
-      expect(view).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
-      expect(view).not.toHaveProperty('imageDimmed')
+    it('커버도 배지 그림도 없으면 imageUrl은 null이다', () => {
+      expect(toCardView(makeCard({ cover_image_url: null })).imageUrl).toBeNull()
     })
 
-    it('커버가 없고 그림 없는 배지가 걸려 있으면 square이고 imageUrl은 null이다(이미지 칸에 자리 표시, 티켓 20261001_2244)', () => {
-      // 기록 모양(`events.ts`)이 badge_ids 유무로 정하는 것과 같다 — 배지 그림이 없다는 이유로 화면만 hero가 되지 않는다.
-      const view = toCardView(
-        makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { image_url: null })] }),
-      )
-      expect(view).toMatchObject({ shape: 'square', imageUrl: null })
-      expect(view).not.toHaveProperty('imageDimmed')
-    })
-
-    it('배지가 전부 삭제돼도 badge_ids가 남아 있으면 square이고 imageUrl은 null이다', () => {
-      const view = toCardView(makeCard({ cover_image_url: null, badge_ids: ['gone'], resolved_badges: [] }))
-      expect(view).toMatchObject({ shape: 'square', imageUrl: null })
-    })
-
-    it('커버도 배지 그림도 없으면 imageUrl은 null이다(이미지 칸은 그리는 쪽이 유지한다)', () => {
-      const view = toCardView(makeCard({ cover_image_url: null, resolved_badges: [] }))
-      expect(view).toMatchObject({ shape: 'hero', imageUrl: null })
-    })
-
-    it('어드민이 올린 커버는 배지 그림으로 바뀌지 않고 흑백도 아니다', () => {
-      const view = toCardView(makeCard({ resolved_badges: [badge('a', { earned: false })] }))
-      expect(view).toMatchObject({ imageUrl: 'https://cdn.example/cover.png' })
-      expect(view).not.toHaveProperty('imageDimmed')
+    it('미션 소개 카드는 커버가 없으면 미션 대표 이미지를 쓰고, 카드 커버가 있으면 커버가 우선이다(티켓 20261120_1825)', () => {
+      const mission = { starts_at: '2026-10-01T00:00:00+09:00', ends_at: null, reward_points: 0, reward_badge_count: 0, image_url: 'https://cdn.example/m.png' }
+      const base = { template_type: 'mission_spotlight' as const, mission_id: 'm1', resolved_mission: mission }
+      expect(toCardView(makeCard({ ...base, cover_image_url: null })).imageUrl).toBe('https://cdn.example/m.png')
+      expect(toCardView(makeCard({ ...base, cover_image_url: 'https://cdn.example/c.png' })).imageUrl).toBe('https://cdn.example/c.png')
+      expect(toCardView(makeCard({ template_type: 'badge_spotlight', resolved_mission: mission, cover_image_url: null })).imageUrl).toBeNull()
     })
   })
 
   describe('이미지에 제목 있음', () => {
-    const missionCard = (overrides: Partial<TodayCardWithHref> = {}) =>
-      makeCard({
-        template_type: 'mission_spotlight',
-        cover_image_url: 'https://cdn.example/mission.png',
-        mission_id: 'm1',
-        resolved_mission: {
-          starts_at: '2026-10-12T00:00:00+09:00',
-          ends_at: '2026-11-08T23:59:59+09:00',
-          reward_points: 300,
-          reward_badge_count: 1,
-          image_url: 'https://cdn.example/mission.png',
-        },
-        ...overrides,
-      })
-
-    // 기대값을 바꾼 시험(티켓 20261121_1726): 예전에는 NULL인 옛 미션 소개 카드가 커버를 미션 이미지와 같게 두면 true였다.
-    // 7회차에 미션 이미지에서 글자를 빼므로 NULL이면 제목을 글자로 그린다(false).
-    it('옛 미션 소개 카드는 커버가 미션 이미지와 같아도 NULL이면 제목을 글자로 그린다', () => {
-      expect(toCardView(missionCard()).titleInImage).toBe(false)
-    })
-
-    it('저장된 값이 우선이다', () => {
-      expect(toCardView(missionCard({ title_in_image: false })).titleInImage).toBe(false)
+    it('저장된 값이 우선이고, NULL이면 글자로 그린다(false)', () => {
       expect(toCardView(makeCard({ title_in_image: true })).titleInImage).toBe(true)
-    })
-
-    it('커버가 미션 이미지와 다르거나 미션 소개가 아니면 false다', () => {
-      expect(toCardView(missionCard({ cover_image_url: 'https://cdn.example/other.png' })).titleInImage).toBe(false)
-      expect(toCardView(makeCard()).titleInImage).toBe(false)
-    })
-  })
-
-  describe('미션 소개 카드의 미션 대표 이미지 대체 (티켓 20261120_1825)', () => {
-    const MISSION = {
-      starts_at: '2026-10-12T00:00:00+09:00',
-      ends_at: '2026-11-08T23:59:59+09:00',
-      reward_points: 300,
-      reward_badge_count: 1,
-      image_url: 'https://cdn.example/mission.png',
-    }
-    const missionCard = (overrides: Partial<TodayCardWithHref> = {}) =>
-      makeCard({ template_type: 'mission_spotlight', cover_image_url: null, mission_id: 'm1', resolved_mission: MISSION, ...overrides })
-
-    // 기대값을 바꾼 시험(티켓 20261121_1726): 미션 이미지를 커버로 써도 titleInImage를 true로 강제하지 않는다. 저장된 불리언이 있으면 그 값, 없으면 false.
-    it('커버가 없으면 미션 대표 이미지를 쓰고 저장값이 없으면 제목을 글자로 그린다', () => {
-      expect(toCardView(missionCard())).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/mission.png', titleInImage: false })
-    })
-
-    it('미션 이미지를 쓰더라도 저장된 title_in_image 불리언을 그대로 따른다', () => {
-      expect(toCardView(missionCard({ title_in_image: false })).titleInImage).toBe(false)
-      expect(toCardView(missionCard({ title_in_image: true })).titleInImage).toBe(true)
-    })
-
-    it('카드 커버가 있으면 커버가 우선이고 이전과 같다', () => {
-      const view = toCardView(missionCard({ cover_image_url: 'https://cdn.example/cover.png', title_in_image: false }))
-      expect(view).toMatchObject({ imageUrl: 'https://cdn.example/cover.png', titleInImage: false })
-    })
-
-    it('커버도 미션 이미지도 없으면 imageUrl은 null이다', () => {
-      const view = toCardView(missionCard({ resolved_mission: { ...MISSION, image_url: null } }))
-      expect(view).toMatchObject({ imageUrl: null, titleInImage: false })
-      expect(toCardView(missionCard({ resolved_mission: null }))).toMatchObject({ imageUrl: null })
-    })
-
-    it('미션 소개가 아닌 카드는 미션 이미지를 쓰지 않는다', () => {
-      const view = toCardView(makeCard({ cover_image_url: null, resolved_mission: MISSION, resolved_badges: [badge('a')] }))
-      expect(view).toMatchObject({ imageUrl: 'https://cdn.example/a.png' })
-      expect(view.titleInImage).toBe(false)
+      expect(toCardView(makeCard({ title_in_image: false })).titleInImage).toBe(false)
+      expect(toCardView(makeCard({ title_in_image: null })).titleInImage).toBe(false)
     })
   })
 
   describe('자원별 필수 정보와 부가 값', () => {
-    it('옛 미션 소개 카드: square, 기간·보상 줄', () => {
+    it('미션 소개 카드: 기간·보상 줄', () => {
       const view = toCardView(
         makeCard({
           template_type: 'mission_spotlight',
@@ -603,11 +428,7 @@ describe('toCardView — 표시 데이터', () => {
         }),
         { now: NOW },
       )
-      expect(view).toMatchObject({
-        shape: 'square',
-        resource: 'mission',
-        facts: ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'],
-      })
+      expect(view).toMatchObject({ resource: 'mission', facts: ['10월 12일 ~ 11월 8일', '300 포인트 · 배지 1개'] })
     })
 
     it('미션을 찾지 못한 미션 카드는 필수 정보 줄이 없다', () => {
@@ -632,12 +453,12 @@ describe('toCardView — 표시 데이터', () => {
         }),
         { now: NOW },
       )
-      expect(view).toMatchObject({ shape: 'brief', resource: 'auto', facts: ['상시'] })
+      expect(view).toMatchObject({ resource: 'auto', facts: ['상시'] })
     })
 
     it('드랍 카드: 필수 정보 지역 줄과 칩 줄 지역 핀', () => {
       const view = toCardView(makeCard({ template_type: 'drop_alert', layout_type: 'shortcut', region_label: '한강공원' }))
-      expect(view).toMatchObject({ shape: 'brief', resource: 'drop', facts: ['한강공원'], regionLabel: '한강공원' })
+      expect(view).toMatchObject({ resource: 'drop', facts: ['한강공원'], regionLabel: '한강공원' })
     })
 
     it('컬렉션 카드: 이름과 아이템 수', () => {
@@ -651,9 +472,9 @@ describe('toCardView — 표시 데이터', () => {
       expect(view).toMatchObject({ resource: 'collection', facts: ['한강 컬렉션', '아이템 12개'] })
     })
 
-    it('기사 카드: hero, 게재일은 publishedAt으로 따로 두고 필수 정보 줄은 없다', () => {
+    it('기사 카드: 게재일은 publishedAt으로 따로 두고 필수 정보 줄은 없다', () => {
       const view = toCardView(makeCard({ template_type: 'editorial_article', layout_type: 'other', starts_at: '2026-10-03T09:00:00+09:00' }))
-      expect(view).toMatchObject({ shape: 'hero', resource: 'article', publishedAt: '2026-10-03T09:00:00+09:00' })
+      expect(view).toMatchObject({ resource: 'article', publishedAt: '2026-10-03T09:00:00+09:00' })
       expect(view.facts).toBeUndefined()
     })
 
@@ -674,307 +495,69 @@ describe('toCardView — 표시 데이터', () => {
       expect(view.rarity).toBeNull()
     })
   })
-
-  describe('brief 썸네일 (64px 칸, 티켓 20261001_1458)', () => {
-    const briefBadgeCard = (badges: ResolvedBadge[], overrides: Partial<TodayCardWithHref> = {}) =>
-      makeCard({ layout_type: 'shortcut', cover_image_url: null, resolved_badges: badges, ...overrides })
-
-    it('JAM! 배지가 하나이고 그림이 있으면 그 그림이 썸네일이다(보유한 배지는 컬러)', () => {
-      const view = toCardView(briefBadgeCard([badge('a', { earned: true })]))
-      expect(view).toMatchObject({ shape: 'brief', thumbnailUrl: 'https://cdn.example/a.png' })
-      expect(view).not.toHaveProperty('thumbnailDimmed')
-    })
-
-    it('유저가 갖지 않은 배지여도 thumbnailDimmed가 없다(티켓 20261118_1523)', () => {
-      const view = toCardView(briefBadgeCard([badge('a', { earned: false })]))
-      expect(view).toMatchObject({ thumbnailUrl: 'https://cdn.example/a.png' })
-      expect(view).not.toHaveProperty('thumbnailDimmed')
-    })
-
-    it('보유 여부를 모르면(earned 없음, 유저 정보가 없는 미리보기) 썸네일은 컬러다 (티켓 20261001_2208)', () => {
-      const view = toCardView(briefBadgeCard([badge('a', { earned: undefined })]))
-      expect(view).toMatchObject({ shape: 'brief', thumbnailUrl: 'https://cdn.example/a.png' })
-      expect(view).not.toHaveProperty('thumbnailDimmed')
-    })
-
-    it('배지 그림이 없으면(null·빈 값) 썸네일 키가 없다 — 그리는 쪽이 자원 아이콘을 그린다', () => {
-      expect(toCardView(briefBadgeCard([badge('a', { image_url: null })]))).not.toHaveProperty('thumbnailUrl')
-      expect(toCardView(briefBadgeCard([badge('a', { image_url: '' })]))).not.toHaveProperty('thumbnailUrl')
-    })
-
-    it('배지가 여러 개이면 썸네일이 없다(여러 개는 list가 맞다)', () => {
-      const view = toCardView(briefBadgeCard([badge('a'), badge('b')], { shape: 'brief' }))
-      expect(view.shape).toBe('brief')
-      expect(view).not.toHaveProperty('thumbnailUrl')
-    })
-
-    it('커버와 미션 이미지는 썸네일로 쓰지 않는다', () => {
-      const cover = toCardView(makeCard({ layout_type: 'shortcut', cover_image_url: 'https://cdn.example/cover.png' }))
-      expect(cover.shape).toBe('brief')
-      expect(cover).not.toHaveProperty('thumbnailUrl')
-      const mission = toCardView(
-        makeCard({
-          template_type: 'mission_spotlight',
-          layout_type: 'shortcut',
-          mission_id: 'm1',
-          cover_image_url: null,
-          resolved_mission: {
-            starts_at: '2026-10-01T00:00:00+09:00',
-            ends_at: null,
-            reward_points: null,
-            reward_badge_count: 0,
-            image_url: 'https://cdn.example/mission.png',
-          },
-        }),
-      )
-      expect(mission.shape).toBe('brief')
-      expect(mission).not.toHaveProperty('thumbnailUrl')
-    })
-
-    it('JAM! 배지 자원이 아니면 배지가 하나 걸려 있어도 썸네일이 없다', () => {
-      const view = toCardView(briefBadgeCard([badge('a')], { template_type: 'drop_alert' }))
-      expect(view).toMatchObject({ shape: 'brief', resource: 'drop' })
-      expect(view).not.toHaveProperty('thumbnailUrl')
-    })
-
-    it('이미지 모양에는 thumbnailUrl이 없다(imageUrl과 섞이지 않는다)', () => {
-      const view = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a')] }))
-      expect(view.shape).toBe('square')
-      expect(view).not.toHaveProperty('thumbnailUrl')
-    })
-  })
 })
 
 describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', () => {
   const TEMPLATES = [
-    'mission_spotlight',
-    'drop_alert',
     'badge_spotlight',
+    'progress_nudge',
+    'mission_spotlight',
+    'itembook_milestone',
+    'location_trend',
+    'drop_alert',
     'editorial_article',
     'ranking_board',
-    'itembook_milestone',
-    'progress_nudge',
-    'location_trend',
     'recipe_reveal',
     'content_intro',
   ] as const
 
   it.each(TEMPLATES)('%s: 계측 정보(tracking)가 없어도 카드의 템플릿을 늘 싣는다', (templateType) => {
     const view = toCardView(makeCard({ template_type: templateType }))
-    expect(view.template).toBe(templateType)
     expect(view.tracking).toBeUndefined()
-  })
-
-  it('계측 정보를 싣는 홈 표시 데이터도 같은 값이다(tracking.templateType과 별개로 실린다)', () => {
-    const view = toCardView(makeCard({ template_type: 'location_trend' }), { tracking: true })
-    expect(view.template).toBe('location_trend')
-    expect(view.tracking?.templateType).toBe('location_trend')
+    expect(view.template).toBe(templateType)
   })
 
   it('진행 알림과 지역 트렌드는 같은 자원(auto)이지만 템플릿으로 구분된다', () => {
-    const nudge = toCardView(makeCard({ template_type: 'progress_nudge', region_label: '성수동' }))
-    const trend = toCardView(makeCard({ template_type: 'location_trend', region_label: '성수동' }))
-    expect(nudge.resource).toBe('auto')
-    expect(trend.resource).toBe('auto')
-    expect(nudge.template).not.toBe(trend.template)
+    const nudge = toCardView(makeCard({ template_type: 'progress_nudge' }))
+    const trend = toCardView(makeCard({ template_type: 'location_trend' }))
+    expect([nudge.resource, trend.resource]).toEqual(['auto', 'auto'])
+    expect([nudge.template, trend.template]).toEqual(['progress_nudge', 'location_trend'])
   })
 })
 
-describe('toCardView — 컨텐츠 소개 카드 (티켓 20261101_2054)', () => {
-  const introCard = (overrides: Partial<TodayCardWithHref> = {}) =>
-    makeCard({
-      template_type: 'content_intro',
-      layout_type: 'shortcut',
-      title: '이번 주 소식',
-      description: '설명문 한 줄',
-      target_href: '/missions',
-      resolved_href: '/missions',
-      ...overrides,
-    })
-
-  it.each(['hero', 'poster', 'square', 'brief', 'dome', 'ticket'] as const)(
-    '%s: 칩 줄 라벨은 「소개」이고 자원 줄(facts)이 비어 있다',
-    (shape) => {
-      const view = toCardView(introCard({ shape }), { now: NOW })
-      expect(view.shape).toBe(shape)
-      expect(view.resource).toBe('auto')
-      expect(view.template).toBe('content_intro')
-      expect(view.label).toBe('소개')
-      expect(view.facts).toBeUndefined()
-      expect(view.href).toBe('/missions')
-    },
-  )
-
-  it('게재일(publishedAt)이 붙지 않는다 — 기사 자원이 아니다', () => {
-    expect(toCardView(introCard({ shape: 'hero' }), { now: NOW }).publishedAt).toBeUndefined()
-  })
-})
-
-describe('toCardView — 레시피 공개 카드 (티켓 20261006_1217)', () => {
-  const recipeCard = (overrides: Partial<TodayCardWithHref> = {}) =>
-    makeCard({
-      template_type: 'recipe_reveal',
-      layout_type: 'badge_gallery',
-      title: '새 레시피가 공개돼요',
-      cover_image_url: null,
-      resolved_href: '/combine',
-      ...overrides,
-    })
-
-  const scheduled: ResolvedRecipe = { state: 'scheduled', ingredient_count: 4, release_at: '2026-10-12T18:00:00+09:00' }
-  const released = (tiles: ResolvedBadge[], overrides: Partial<Extract<ResolvedRecipe, { state: 'released' }>> = {}): ResolvedRecipe => ({
-    state: 'released',
-    ingredient_count: tiles.length,
-    reward_points: 300,
-    reward_badge_count: 1,
-    tiles,
-    ...overrides,
+describe('toCardView — 홈이 더 내지 않는 자원(랭킹 보드·레시피 공개)도 던지지 않고 텍스트 박스로 그린다 (티켓 20261122_1101)', () => {
+  it('랭킹 보드 카드: 순위 값이 있어도 싣지 않고 제목만 그린다', () => {
+    const view = toCardView(
+      makeCard({
+        template_type: 'ranking_board',
+        layout_type: 'ranking_list',
+        resolved_ranking: { metricType: 'mission_progress', missionType: null, conditionFieldKey: null, totalParticipants: 0, entries: [] },
+      }),
+    )
+    expect(view).toMatchObject({ feedType: 'text_box', resource: 'ranking', title: '제목' })
+    expect(Object.keys(view)).not.toContain('ranking')
   })
 
-  describe('공개 전', () => {
-    it('list로 저장된 카드도 타일이 0개라 brief로 그려지고, 「재료 N개」·「공개 M월 D일」 두 줄과 칩 줄 라벨이 있다', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: scheduled }), { tracking: true, now: NOW })
-      expect(view).toMatchObject({
-        shape: 'brief',
-        resource: 'recipe',
-        template: 'recipe_reveal',
-        label: '레시피 공개',
-        title: '새 레시피가 공개돼요',
-        facts: ['재료 4개', '공개 10월 12일'],
-        href: '/combine',
-      })
-      // 그려진 모양을 기록하므로 계측 정보도 brief다
-      expect(view.tracking?.shape).toBe('brief')
-    })
-
-    it('옛 값(layout badge_gallery)만 있는 카드도 brief다', () => {
-      expect(toCardView(recipeCard({ resolved_recipe: scheduled }), { now: NOW }).shape).toBe('brief')
-    })
-
-    it('표시 데이터에 레시피 이름·슬롯 후보·보상 값이 없다 — 객체 키 단위로 확인한다(사용자 결정 Q3)', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: scheduled }), { tracking: true, now: NOW })
-      expect(Object.keys(view).sort()).toEqual(
-        ['facts', 'href', 'label', 'now', 'resource', 'shape', 'template', 'title', 'titleInImage', 'tracking'].sort(),
-      )
-      // 타일·썸네일·희귀도 같은 배지 값도, 보상·이름 같은 레시피 값도 어느 깊이에도 없다
-      const json = JSON.stringify(view)
-      for (const forbidden of ['tiles', 'thumbnailUrl', 'rarity', 'reward', 'candidates', 'allowed_badge_ids', 'name']) {
-        expect(json).not.toContain(forbidden)
-      }
-      expect(view.facts?.join(' ')).not.toContain('보상')
-    })
-
-    it('운영자가 poster를 골랐으면 같은 두 줄이 이미지 모양의 정보 줄로 보인다(타일은 없다)', () => {
-      const view = toCardView(recipeCard({ shape: 'poster', cover_image_url: 'https://cdn.example/teaser.png', resolved_recipe: scheduled }), { now: NOW })
-      expect(view).toMatchObject({
-        shape: 'poster',
-        imageUrl: 'https://cdn.example/teaser.png',
-        facts: ['재료 4개', '공개 10월 12일'],
-      })
-      expect(view).not.toHaveProperty('tiles')
-    })
-
-    it('커버가 없는 poster는 imageUrl이 null이라 자리 표시(플라스크 아이콘)를 그린다', () => {
-      expect(toCardView(recipeCard({ shape: 'poster', resolved_recipe: scheduled }), { now: NOW })).toMatchObject({
-        shape: 'poster',
-        imageUrl: null,
-      })
-    })
-
-    it('공개 시각을 읽을 수 없으면 공개일 줄만 생략한다', () => {
-      const view = toCardView(recipeCard({ resolved_recipe: { ...scheduled, release_at: 'not-a-date' } }), { now: NOW })
-      expect(view.facts).toEqual(['재료 4개'])
-    })
+  it('레시피 공개 카드: 공개 전이면 「재료 N개」·「공개 M월 D일」 정보 줄을 만들고, 레시피 값이 없으면 줄 없이 그린다', () => {
+    const scheduled = { state: 'scheduled', ingredient_count: 3, release_at: '2026-10-12T00:00:00+09:00' } as const
+    const withRecipe = toCardView(makeCard({ template_type: 'recipe_reveal', resolved_recipe: scheduled }), { now: NOW })
+    expect(withRecipe).toMatchObject({ feedType: 'text_box', resource: 'recipe', facts: ['재료 3개', '공개 10월 12일'] })
+    for (const resolved_recipe of [null, undefined]) {
+      const bare = toCardView(makeCard({ template_type: 'recipe_reveal', resolved_recipe }), { now: NOW })
+      expect(bare.feedType).toBe('text_box')
+      expect(bare.facts).toBeUndefined()
+    }
   })
 
-  describe('공개 뒤', () => {
-    const tiles = [badge('a'), badge('b', { earned: false }), badge('c', { image_url: null }), badge('d', { earned: false })]
-
-    it('list로 그려지고 슬롯 수만큼 타일이 있다 — 정보 줄은 「재료 N개」·「보상 …」이다', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released(tiles) }), { tracking: true, now: NOW })
-      expect(view.shape).toBe('list')
-      if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view).toMatchObject({ resource: 'recipe', label: '레시피 공개', facts: ['재료 4개', '300 포인트 · 배지 1개'], href: '/combine' })
-      expect(view.tiles).toEqual([
-        { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare' },
-        { name: '배지 b', imageUrl: 'https://cdn.example/b.png', rarity: 'rare' },
-        { name: '배지 c', imageUrl: null, rarity: 'rare' },
-        { name: '배지 d', imageUrl: 'https://cdn.example/d.png', rarity: 'rare' },
-      ])
-      expect(view.tracking?.shape).toBe('list')
-    })
-
-    it('타일을 자르지 않는다 — 슬롯 최대 10개가 모두 타일이다', () => {
-      const ten = Array.from({ length: 10 }, (_, i) => badge(`t${i}`))
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released(ten) }), { now: NOW })
-      if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view.tiles).toHaveLength(10)
-      expect(view.facts?.[0]).toBe('재료 10개')
-    })
-
-    it('카드에 걸린 배지(resolved_badges)는 타일이 아니다 — 타일은 레시피 슬롯에서만 나온다', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_badges: [badge('x')], resolved_recipe: released([badge('a')]) }), { now: NOW })
-      if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view.tiles.map((t) => t.name)).toEqual(['배지 a'])
-    })
-
-    it('보상이 0이면 보상 줄만 생략한다', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released(tiles, { reward_points: 0, reward_badge_count: 0 }) }), { now: NOW })
-      expect(view.facts).toEqual(['재료 4개'])
-    })
-
-    it('타일은 보유 여부를 싣지 않는다(홈피드 그림은 늘 컬러, 티켓 20261118_1523)', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released([badge('a', { earned: false })]) }), { now: NOW })
-      if (view.shape !== 'list') throw new Error('list여야 한다')
-      expect(view.tiles[0]).not.toHaveProperty('earned')
-    })
-
-    it('후보가 전부 삭제돼 타일이 하나도 없으면 brief다(재료 수는 슬롯 수 그대로)', () => {
-      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released([], { ingredient_count: 3 }) }), { now: NOW })
-      expect(view.shape).toBe('brief')
-      expect(view.facts).toEqual(['재료 3개', '300 포인트 · 배지 1개'])
-    })
-
-    it.each(['poster', 'hero', 'square'] as const)('%s: 타일 줄 없이 정보 줄만 「재료 N개」·「보상 …」이다', (shape) => {
-      const view = toCardView(recipeCard({ shape, cover_image_url: 'https://cdn.example/c.png', resolved_recipe: released(tiles) }), { now: NOW })
-      expect(view).toMatchObject({ shape, facts: ['재료 4개', '300 포인트 · 배지 1개'] })
-      expect(view).not.toHaveProperty('tiles')
-    })
+  it('레시피 값은 레시피 공개 카드만 읽는다 — 다른 카드에 실어도 줄에 번지지 않는다', () => {
+    const scheduled = { state: 'scheduled', ingredient_count: 3, release_at: '2026-10-12T00:00:00+09:00' } as const
+    expect(toCardView(makeCard({ template_type: 'badge_spotlight', resolved_recipe: scheduled }), { now: NOW }).facts).toBeUndefined()
   })
 
-  describe('레시피 줄이 없는 카드(recipe_id 없음·레시피 없음·끝남·조회 실패)', () => {
-    it.each([['null', null], ['undefined', undefined]])('resolved_recipe가 %s이면 정보 줄 없이 brief다', (_label, value) => {
-      const card = recipeCard({ shape: 'list', resolved_recipe: value })
-      const view = toCardView(card, { tracking: true, now: NOW })
-      expect(view.shape).toBe('brief')
-      expect(view.facts).toBeUndefined()
-      expect(view).toMatchObject({ label: '레시피 공개', title: '새 레시피가 공개돼요' })
-      expect(view.tracking?.shape).toBe('brief')
-    })
-
-    it('poster도 정보 줄 없이 그려진다', () => {
-      const view = toCardView(recipeCard({ shape: 'poster', cover_image_url: 'https://cdn.example/c.png' }), { now: NOW })
-      expect(view).toMatchObject({ shape: 'poster' })
-      expect(view.facts).toBeUndefined()
-    })
-  })
-
-  it('레시피 값은 레시피 공개 카드만 읽는다 — 다른 카드에 실어도 줄·타일에 번지지 않는다', () => {
-    const view = toCardView(makeCard({ template_type: 'badge_spotlight', layout_type: 'badge_gallery', resolved_recipe: released([badge('a')]) }), { now: NOW })
-    expect(view.shape).toBe('brief')
+  it('처음 보는 템플릿 값(안전망)도 던지지 않고 텍스트 박스로 그린다 — 자원·라벨·정보 줄 없이 제목은 그대로다', () => {
+    const view = toCardView(makeCard({ template_type: 'future_template' as never, title: '새 소식' }))
+    expect(view).toMatchObject({ feedType: 'text_box', title: '새 소식' })
     expect(view.facts).toBeUndefined()
-  })
-
-  describe('처음 보는 템플릿 값 (안전망)', () => {
-    it('던지지 않고 그려진다 — 자원·라벨·정보 줄 없이 brief이고 제목은 그대로다', () => {
-      const card = makeCard({ template_type: 'future_template' as never, layout_type: 'badge_gallery', title: '미래 카드' })
-      let view!: CardView
-      expect(() => {
-        view = toCardView(card, { tracking: true })
-      }).not.toThrow()
-      expect(view).toMatchObject({ shape: 'brief', title: '미래 카드', template: 'future_template' })
-      expect(view.label).toBeUndefined()
-      expect(view.facts).toBeUndefined()
-    })
+    expect(view.label).toBeUndefined()
   })
 })

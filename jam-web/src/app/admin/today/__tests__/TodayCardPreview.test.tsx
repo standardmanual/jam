@@ -2,7 +2,7 @@
  * 어드민 투데이 미리보기 목록 (티켓 20261001_2208, 상위 20260930_1453 조각 b6)
  *
  * 확인하는 것:
- * 1. 옛 `layout_type` 카드(`shape` NULL)가 표시 데이터(`toCardView`)를 거쳐 다섯 모양 모두 새 틀로 그려진다.
+ * 1. 옛 `layout_type` 카드(`feed_type` NULL)가 표시 데이터(`toCardView`)를 거쳐 텍스트 박스로 그려진다(옛 7모양 갈래는 지웠다, 티켓 20261122_1101).
  * 2. 출력에 트래커·링크·`jam-press`가 없다 — 미리보기가 노출·클릭 수치에 섞이지 않고 눌러도 이동하지 않는다
  *    (티켓 20260930_1645 `TodayCardStack.preview.test.tsx`의 「미리보기는 계측과 이동을 모두 끈다」를 새 경로 기준으로 옮긴 것).
  * 3. 기기 폭 전환 값(360·430)이 카드 폭 328px·398px를 만든다.
@@ -79,7 +79,7 @@ function unknownOwnershipBadge(id: string): ResolvedBadge {
   return { id, name: `배지 ${id}`, image_url: `https://cdn.example/${id}.png`, rarity: 'rare' }
 }
 
-/** 저장된 `shape` 없이 옛 `layout_type`만 가진 카드 — 대응표(`resolveShape`)로 다섯 모양이 모두 나온다 */
+/** `feed_type` 없이 옛 `layout_type`만 가진 카드 — 모두 텍스트 박스로 그려진다 */
 const LEGACY_CARDS: { shape: string; card: TodayCardWithHref }[] = [
   { shape: 'hero', card: makeCard({ id: 'hero', title: '히어로 카드', layout_type: 'large_thumbnail' }) },
   { shape: 'poster', card: makeCard({ id: 'poster', title: '포스터 카드', layout_type: 'banner' }) },
@@ -121,13 +121,12 @@ const LEGACY_CARDS: { shape: string; card: TodayCardWithHref }[] = [
 const previewViews = (cards: TodayCardWithHref[]) => cards.map((card) => toCardView(card, { now: NOW }))
 
 describe('TodayCardPreview — 옛 카드도 새 틀로 그린다', () => {
-  it('shape가 NULL인 옛 layout_type 카드가 대응표대로 다섯 모양이 된다', () => {
+  it('feed_type이 NULL인 옛 layout_type 카드가 모두 텍스트 박스가 된다', () => {
     const views = previewViews(LEGACY_CARDS.map((c) => c.card))
-    expect(views.map((v) => v.shape)).toEqual(LEGACY_CARDS.map((c) => c.shape))
-    expect(new Set(views.map((v) => v.shape))).toEqual(new Set(['hero', 'poster', 'square', 'brief', 'list']))
+    expect(views.map((v) => v.feedType)).toEqual(LEGACY_CARDS.map(() => 'text_box'))
   })
 
-  it('다섯 모양 모두 제목을 그린다', () => {
+  it('옛 카드 모두 제목을 그린다', () => {
     const html = renderToStaticMarkup(<TodayCardPreview views={previewViews(LEGACY_CARDS.map((c) => c.card))} />)
     for (const { card } of LEGACY_CARDS) expect(html).toContain(card.title)
   })
@@ -153,11 +152,11 @@ describe('TodayCardPreview — 계측과 이동을 모두 끈다', () => {
     expect(html).not.toContain('jam-press')
   })
 
-  it('랭킹 행형은 순위를 그대로 그리되 순위 행에 프로필 링크가 없다', () => {
+  it('랭킹 보드 카드는 순위 행 없이 제목만 그리고 링크가 없다(홈이 랭킹 보드를 더 그리지 않는다)', () => {
     const ranking = LEGACY_CARDS.find((c) => c.card.id === 'ranking')!.card
     const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([ranking])} />)
-    expect(html).toContain('김잼')
-    expect(html).toContain('이잼')
+    expect(html).toContain('이번 주 러너 순위')
+    expect(html).not.toContain('김잼')
     expect(html.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('href=')
   })
 
@@ -212,21 +211,20 @@ describe('TodayCardPreview — 칸 폭에 맞춘 축소', () => {
 })
 
 describe('TodayCardPreview — 유저 정보가 없는 미리보기는 배지 그림이 컬러다', () => {
-  it('보유 여부를 모르는(earned 없음) 배지는 승격 이미지·썸네일·타일 모두 흑백이 아니다', () => {
+  it('보유 여부를 모르는(earned 없음) 배지는 승격 이미지·배지 그림 모두 흑백이 아니다', () => {
     const promoted = makeCard({
       id: 'promoted',
-      layout_type: 'large_thumbnail',
+      feed_type: 'hero_box',
       cover_image_url: null,
       resolved_badges: [unknownOwnershipBadge('a')],
     })
     const thumb = makeCard({
       id: 'thumb',
-      layout_type: 'shortcut',
+      feed_type: 'badge_intro',
       cover_image_url: null,
       resolved_badges: [unknownOwnershipBadge('b')],
     })
-    const tiles = LEGACY_CARDS.find((c) => c.card.id === 'list')!.card
-    const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([promoted, thumb, tiles])} />)
+    const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([promoted, thumb])} />)
     expect(html).toContain('https://cdn.example/a.png')
     expect(html).toContain('https://cdn.example/b.png')
     expect(html).not.toContain('grayscale')
@@ -234,8 +232,8 @@ describe('TodayCardPreview — 유저 정보가 없는 미리보기는 배지 �
 
   it('보유하지 않은 배지(earned: false)여도 승격 이미지·썸네일이 흑백이 아니다(티켓 20261118_1523)', () => {
     const owned = (id: string): ResolvedBadge => ({ ...unknownOwnershipBadge(id), earned: false })
-    const promoted = makeCard({ id: 'promoted', cover_image_url: null, resolved_badges: [owned('a')] })
-    const thumb = makeCard({ id: 'thumb', layout_type: 'shortcut', cover_image_url: null, resolved_badges: [owned('b')] })
+    const promoted = makeCard({ id: 'promoted', feed_type: 'hero_box', cover_image_url: null, resolved_badges: [owned('a')] })
+    const thumb = makeCard({ id: 'thumb', feed_type: 'badge_intro', cover_image_url: null, resolved_badges: [owned('b')] })
     const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([promoted, thumb])} />)
     expect(html).not.toContain('grayscale')
   })

@@ -108,7 +108,7 @@ export function feedView(feedType: RenderedFeedType, options: StoryCardOptions =
   if (listMoreHref) view.listMoreHref = listMoreHref
   if (linked) {
     view.href = '/drops'
-    view.tracking = { cardId: 'story-card', contentTypeId: null, templateType: 'drop_alert', shape: 'hero' }
+    view.tracking = { cardId: 'story-card', contentTypeId: null, templateType: 'drop_alert', feedType }
   }
   return view
 }
