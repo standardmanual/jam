@@ -61,18 +61,19 @@ code:
 
 ### 1.1 이미지가 필요한 카드 (티켓 20260926_1207)
 
-묶음의 `image`는 필수(§3.1)라 **이미지가 필요한 신규 카드만** 묶음으로 만든다. 판별 기준은 코드로 확인한 아래 사실이다(2026-09-26).
+묶음의 `image`는 필수(§3.1)라 **이미지가 필요한 신규 카드만** 묶음으로 만든다. 판별 기준은 카드 유형(`resource.feed_type`)이다 — 홈이 새 유형만 그리게 되어(8회차, 티켓 20261122_1101·1239) 옛 «노출 형태(`layout_type`)» 표를 이 표로 바꿨다. 판정은 `jam-web/src/lib/today/feedConstants.ts`의 `feedTypeUsesCoverImage`다.
 
-| 노출 형태(`layout`) | 커버 이미지(`cover_image_url`) | 근거 |
+| 카드 유형(`feed_type`) | 커버 이미지(`cover_image_url`) | 근거 |
 |---|---|---|
-| `large_thumbnail` | 쓴다 | 새 틀이 `hero`로 그리고(미션 소개 카드·커버 없는 배지 카드는 `square`) `toCardView`(`cardView.ts`)가 `cover_image_url`을 이미지 칸에 싣는다(옛 렌더러는 티켓 20261001_2244가 지웠다) |
-| `banner` | 쓴다 | `poster`로 그리고 같은 `toCardView`가 `cover_image_url`을 싣는다(커버가 없으면 `brief`라 이미지 칸이 없다) |
-| 에디토리얼 기사 상세 | 쓴다(상단 커버) | `today/[cardId]/page.tsx`가 `card.cover_image_url`을 상단에 그린다(37~39행) |
-| `shortcut` | 없다 | `today-sections.ts`가 「이미지 없는 짧은 CTA」로 정의한다(78행) |
-| `badge_gallery`·`other`·`ranking_list` | 쓰지 않는다 | `list`(타일형·행형)와 `brief`는 이미지 칸이 없다 — `toCardView`가 `imageUrl`을 `hero`·`poster`·`square`에만 싣는다 |
+| `hero_box` | 쓴다 | 히어로 이미지 칸이 커버를 그린다(커버가 없으면 배지 그림으로 대신 그려질 수 있지만 운영툴은 «이미지 제작 필요»로 본다) |
+| `text_box`이고 `box_kind`가 `image_mask` | 쓴다 | 이미지를 박스 모양으로 자른 마스크다 |
+| `text_box`(그 밖의 박스 용도, 글자 박스 `text`) | 없다 | 글자 박스는 이미지가 없다 |
+| `collection_intro` | 쓴다 | 컬렉션 대표 그림이고 커버가 필수다(없으면 홈이 텍스트 박스로 내려 그린다) |
+| `badge_intro`·`badge_only`·`drop_pickup`·`gallery_list` | 쓰지 않는다 | 커버 이미지가 아니라 배지 그림·항목 타일을 그린다 |
+| `full_image` | 쓰지 않는다 | 홈에서 꺼져 있다(`FEED_FULL_IMAGE_ENABLED`) |
 
 - 이미지가 필요 없는 카드는 묶음 없이 `content-automation/PRD.md` §8-2의 시드 SQL 경로로 등록한다. 주간 리포트 표에는 「이미지 없음(사유)」로 적는다.
-- **요일별 큰 카드·미션 카드 규칙(2026-09-26, PRD §8이 정본)**: 「전원 카드」는 매일 `large_thumbnail`이라 이미지가 필요하다. 미션을 소개하는 카드는 `missions.image_url`을 커버로 재사용하므로 묶음을 만들지 않는다(묶음의 `image`는 새로 만든 이미지 전용).
+- **요일별 큰 카드·미션 카드 규칙(2026-09-26, PRD §8이 정본)**: 「전원 카드」는 매일 이미지가 있는 카드 유형(`hero_box` 등)이라 이미지가 필요하다. 미션을 소개하는 카드는 `missions.image_url`을 커버로 재사용하므로 묶음을 만들지 않는다(묶음의 `image`는 새로 만든 이미지 전용).
 - 주간 리포트에서 이미지가 필요한 카드는 「이미지: 승인 뒤 세션에서 만든다」로 적는다(예약 실행은 이미지를 만들지 않는다, 티켓 20260930_1519). 세션에서 만들 수 없었던 카드는 「이미지 준비 대기(사유)」다(임의 색·자리표시 이미지로 채우지 않는다).
 
 ## 2. 묶음 폴더
