@@ -9,11 +9,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SUGGESTED_LAYOUT_FOR, TODAY_DESCRIPTION_MAX_LENGTH, TODAY_FIELDS_FOR } from '../../../src/lib/admin/today-sections';
+import { TODAY_DESCRIPTION_MAX_LENGTH, TODAY_FIELDS_FOR } from '../../../src/lib/admin/today-sections';
 import {
   CONTENT_TYPE_IDS,
   EXPOSURE_TAGS,
-  LAYOUT_TYPES,
   REQUIRED_REFERENCE_FIELDS,
   TEMPLATE_FIELD_KEY,
   TEMPLATE_TYPES,
@@ -177,10 +176,6 @@ describe('허용값 목록 — today-sections.ts·DB CHECK와 갈라지지 않�
     expect([...TEMPLATE_TYPES].sort()).toEqual(checkValues('310_today_cards_content_intro.sql', 'today_cards_template_type_check').sort());
   });
 
-  it('노출 형태 목록은 today_cards_layout_type_check(마이그레이션 286, dome·ticket을 더한 최신 정의)와 같다', () => {
-    expect([...LAYOUT_TYPES].sort()).toEqual(checkValues('286_today_cards_add_dome_ticket_shapes.sql', 'today_cards_layout_type_check').sort());
-  });
-
   it('컨텐츠 유형 목록은 today_cards_content_type_id_check(마이그레이션 183)와 같다', () => {
     expect([...CONTENT_TYPE_IDS].sort()).toEqual(checkValues('183_today_card_type_and_events.sql', 'today_cards_content_type_id_check').sort());
   });
@@ -294,15 +289,13 @@ describe('validateHomeFeedBundle — 세계관 검수', () => {
 });
 
 describe('validateHomeFeedBundle — 카드 규칙(허용값·템플릿·기간)', () => {
-  it('템플릿·노출 형태·컨텐츠 유형은 허용 목록 밖이면 거절한다', () => {
+  it('템플릿·컨텐츠 유형은 허용 목록 밖이면 거절한다', () => {
     const errors = errorsFor((raw) => {
       raw.card.template_type = 'weekly_recap';
-      raw.card.layout_type = 'giant';
       raw.card.content_type_id = 'T18';
     });
     expect(errors.join('\n')).toContain('card.template_type: badge_spotlight · ');
     expect(errors.join('\n')).toContain('(받은 값: "weekly_recap")');
-    expect(errors.join('\n')).toContain('card.layout_type: large_thumbnail · ');
     expect(errors.join('\n')).toContain('card.content_type_id: T01~T17 중 하나여야 해요(받은 값: "T18")');
   });
 
@@ -373,23 +366,19 @@ describe('validateHomeFeedBundle — 카드 규칙(허용값·템플릿·기간)
     expect(errorsFor((raw) => delete raw.card.body_markdown)).toContain('card.body_markdown: editorial_article 템플릿은 이 참조가 있어야 카드가 의미가 있어요.');
   });
 
-  it('mission_spotlight는 항상 large_thumbnail이어야 한다(2026-09-26 미션 카드 규칙)', () => {
-    const errors = errorsFor((raw) => {
-      raw.card.template_type = 'mission_spotlight';
-      raw.card.layout_type = 'shortcut';
-      raw.card.mission_id = MISSION_ID;
-    });
-    expect(errors.join('\n')).toContain('card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요');
-
-    // 레이아웃을 생략하면 추천값(large_thumbnail)으로 정해져서 통과한다.
-    expect(
-      errorsFor((raw) => {
+  it('layout_type은 값이 무엇이든 오류가 아니고 등록 값에도 실리지 않는다(홈이 더는 읽지 않는다, 티켓 20261122_1153)', () => {
+    for (const layout of ['shortcut', 'giant', 'banner']) {
+      const mutate = (raw: RawBundle) => {
         raw.card.template_type = 'mission_spotlight';
-        delete raw.card.layout_type;
+        raw.card.layout_type = layout;
         raw.card.mission_id = MISSION_ID;
         raw.card.body_markdown = undefined;
-      })
-    ).toEqual([]);
+      };
+      expect(errorsFor(mutate), layout).toEqual([]);
+      const raw = validRaw();
+      mutate(raw);
+      expect(buildTodayCardInsertPayload(raw.card, { id: 'card-id', coverImageUrl: 'u' }), layout).not.toHaveProperty('layout_type');
+    }
   });
 
   it('참조 필드의 UUID·배열 형식을 확인한다', () => {
@@ -719,7 +708,6 @@ describe('buildTodayCardInsertPayload', () => {
     const payload = payloadOf();
     expect(payload).toMatchObject({
       template_type: 'editorial_article',
-      layout_type: 'large_thumbnail',
       title: '[TEST] 예시 주간 홈피드 카드',
       subtitle: '묶음 형식을 확인하는 예시예요',
       badge_ids: [],
@@ -761,7 +749,7 @@ describe('buildTodayCardInsertPayload', () => {
     expect(payloadOf().description).toBeNull();
   });
 
-  it('생략한 값은 기본값이다: 노출 형태는 템플릿 추천값, 정렬 0, 활성 true, 나머지 null·[]', () => {
+  it('생략한 값은 기본값이다: 정렬 0, 활성 true, 나머지 null·[]. 노출 형태·옛 모양은 싣지 않는다(DB 기본값)', () => {
     const payload = payloadOf((raw) => {
       raw.card = {
         title: '  드랍 알림  ',
@@ -773,7 +761,6 @@ describe('buildTodayCardInsertPayload', () => {
     });
     expect(payload).toMatchObject({
       title: '드랍 알림',
-      layout_type: SUGGESTED_LAYOUT_FOR.drop_alert,
       subtitle: null,
       description: null,
       body_markdown: null,
@@ -782,6 +769,8 @@ describe('buildTodayCardInsertPayload', () => {
       is_active: true,
       badge_ids: [],
     });
+    expect(payload).not.toHaveProperty('layout_type');
+    expect(payload).not.toHaveProperty('shape');
   });
 
   it('생성 타입 컬럼 대조: today_cards Insert 컬럼 중 DB 기본값에 맡기는 created_at·created_by와 아직 쓰지 않는 pattern_no·홈피드 개편 새 칸 15개를 뺀 전부를 채운다', () => {
@@ -812,7 +801,8 @@ describe('buildTodayCardInsertPayload', () => {
       'title_chip_words',
     ];
     // 마이그레이션 351(티켓 20261121_1724)의 cover_colors도 이 스크립트는 싣지 않는다(NULL=아직 안 뽑음, 일괄 계산 대상).
-    const notFilled = ['created_at', 'created_by', 'pattern_no', 'cover_colors', ...NEW_COLUMNS_NOT_FILLED_YET];
+    // layout_type·shape(티켓 20261122_1153)는 홈이 더는 읽지 않아 싣지 않는다(DB 기본값).
+    const notFilled = ['created_at', 'created_by', 'pattern_no', 'cover_colors', 'layout_type', 'shape', ...NEW_COLUMNS_NOT_FILLED_YET];
     const expected = columns.filter((c) => !notFilled.includes(c)).sort();
     expect(Object.keys(payloadOf()).sort()).toEqual(expected);
   });

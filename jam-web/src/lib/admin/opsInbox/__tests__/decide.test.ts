@@ -204,7 +204,7 @@ function makeOriginal(overrides: Record<string, unknown> = {}) {
   return {
     item_key: 'card-1',
     kind: 'home_feed_card',
-    shape: 'hero',
+    resource: { feed_type: 'hero_box' },
     exposure_tags: ['all'],
     user_experience: '비 오는 월요일 아침에 카드를 만나요',
     starts_at: '2026-10-05T09:00:00+09:00',
@@ -778,7 +778,7 @@ describe('직접 수정', () => {
   })
 
   describe('카드 칸 다시 검사 (티켓 20261001_1152)', () => {
-    const SHAPE_ERROR_START = 'items[0].shape: 필수 항목이 없어요'
+    const SHAPE_ERROR_START = 'items[0].resource.feed_type: 필수 항목이 없어요'
     const TAGS_ERROR_START = 'items[0].exposure_tags: 필수 항목이 없어요'
     const MISSING_TRIBE_ERROR = `items[0].tribe_id: 없는 트라이브예요(받은 값: "${TRIBE_MISSING}"). 트라이브 ID를 확인해 주세요.`
 
@@ -791,7 +791,7 @@ describe('직접 수정', () => {
 
     it('옛 형식 항목(segment만)을 고치면 저장되고 새 칸 오류가 붙지만 막지 않는다', async () => {
       const legacy = makeOriginal({ segment: 'new_user' }) as Record<string, unknown>
-      delete legacy.shape
+      delete legacy.resource
       delete legacy.exposure_tags
       seedWith(legacy)
 
@@ -804,7 +804,7 @@ describe('직접 수정', () => {
       // 묶음 오류 목록에도 그 항목의 새 결과가 들어간다
       const bundle = h.state.tables.ops_bundles.find((row) => row.id === B)
       expect(bundle?.format_errors).toEqual(item(I1).format_errors)
-      // 대상(segment)을 고쳐도 막지 않는다(shape·exposure_tags는 이 화면에서 고치는 칸이 아니다)
+      // 대상(segment)을 고쳐도 막지 않는다(feed_type·exposure_tags는 이 화면에서 고치는 칸이 아니다)
       expect((await editNow({ segment: 'all' })).ok).toBe(true)
     })
 

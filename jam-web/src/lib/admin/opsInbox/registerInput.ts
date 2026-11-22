@@ -16,7 +16,7 @@
  *
  * 결과는 `{ payload, errors, warnings, linkFields }`다. 오류가 하나라도 있으면 `payload`는 null이다.
  * - 오류·경고 한 건은 `{ path, message }`다. `message`는 검사 문장 그대로(`card.title: …`)이고 `path`는 운영 항목 경로
- *   (`copy.title`·`resource.template_type`·`starts_at`·`shape` 등)다. 화면 표기는 ⑤가 정한다(결정 7).
+ *   (`copy.title`·`resource.template_type`·`starts_at`·`exposure_tags` 등)다. 화면 표기는 ⑤가 정한다(결정 7).
  * - `linkFields`: 연결 그룹(§8.3)이 채운 칸 이름(`mission_id`·`badge_ids`·`item_book_id`·`recipe_id`·`reward_badge_ids`·`reward_badge_id`)이다.
  *   등록 전 DB 검사에는 `withoutLinkedFields`로 그 칸을 뺀 사본을 넘긴다. 같은 실행에서 만들어질 ID라 존재 확인을 건너뛴다
  *   (생성 순서가 존재를 보장한다, 결정 8).
@@ -43,13 +43,13 @@ import { OPS_HOME_FEED_CARD_KIND } from '@/lib/admin/opsInbox/constants'
 import { OPS_PATTERN_NO_PATTERN } from '@/lib/admin/opsPatterns/constants'
 import { kstDayBoundsIso } from '@/lib/admin/today-calendar'
 import { isUuid } from '@/lib/admin/uuid'
-import { describeValue, isIsoDateTime, isPresent, visibleLength } from '@/lib/admin/registerChecks/bundleRules'
+import { describeValue, isIsoDateTime, isPresent } from '@/lib/admin/registerChecks/bundleRules'
 import { buildTodayCardInsertPayload, validateCard } from '@/lib/admin/registerChecks/homeFeedFields'
 import type { HomeFeedCardInput } from '@/lib/admin/registerChecks/homeFeedFields'
 import { buildMissionInsertPayload, validateMission } from '@/lib/admin/registerChecks/missionFields'
 import type { MissionInput } from '@/lib/admin/registerChecks/missionFields'
 import type { RecipePayloadInput } from '@/lib/combine/recipe-payload'
-import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH, isCardShape } from '@/lib/today/shape'
+import { FEED_TYPES } from '@/lib/today/feedChipSlots'
 
 /** 변환이 읽는 운영 항목. `ViewableItem`(제출 원본·수정본)에 행 칸을 더했다. */
 export interface OpsRegisterItem extends ViewableItem {
@@ -60,7 +60,7 @@ export interface OpsRegisterItem extends ViewableItem {
 }
 
 export interface RegisterInputIssue {
-  /** 운영 항목 경로. `copy.title`·`resource.template_type`·`starts_at`·`shape` 등. */
+  /** 운영 항목 경로. `copy.title`·`resource.template_type`·`starts_at`·`exposure_tags` 등. */
   path: string
   /** 검사 문장 그대로(`card.title: …`). */
   message: string
@@ -137,11 +137,12 @@ export type DropScheduleRegisterPayload = Partial<Record<'scheduled_at' | 'title
 
 // ── 읽을 칸 목록(PRD §8.4 표) ────────────────────────────────────────────────────────────────
 
-const CARD_COMMON_KEYS = ['starts_at', 'ends_at', 'shape', 'exposure_tags', 'pattern_no']
+const CARD_COMMON_KEYS = ['starts_at', 'ends_at', 'exposure_tags', 'pattern_no']
+/** 이제 읽지 않는 옛 칸. 적혀 있으면 «쓰지 않아요» 경고를 하고 등록 값에 싣지 않는다(티켓 20261122_1153). `shape`는 항목 공통 칸이나 `resource`에, `layout_type`은 `resource`에 적혀 온다. */
+const CARD_RETIRED_KEYS = ['shape', 'layout_type']
 const CARD_COPY_KEYS = ['title', 'subtitle', 'description', 'body_markdown', 'region_label']
 const CARD_RESOURCE_KEYS = [
   'template_type',
-  'layout_type',
   'title_in_image',
   'cover_image_url',
   'badge_ids',
@@ -327,7 +328,7 @@ function fillLinkedId(
 
 /**
  * `home_feed_card` 항목을 `today_cards` insert 값으로 바꾼다(PRD §8.4 카드 행).
- * - 공통 칸: `starts_at`(필수)·`ends_at`(없으면 공개한 날의 끝, 결정 6)·`shape`(필수, `resource.feed_type`이 있으면 선택)·`exposure_tags`(필수)·`pattern_no`(결정 5).
+ * - 공통 칸: `starts_at`(필수)·`ends_at`(없으면 공개한 날의 끝, 결정 6)·`exposure_tags`(필수)·`pattern_no`(결정 5).
  * - 홈피드 개편 칸 14개는 `resource`의 평평한 키다(PRD §8.4). 있으면 5-1의 검증(오류는 막고 경고는 알린다)을 거쳐 페이로드에 실리고, 없으면 페이로드에 새 키가 없다.
  * - 글자 칸 `title`·`subtitle`·`description`·`body_markdown`·`region_label`은 `copy` 먼저, 없으면 `resource`.
  * - 나머지는 `resource`. `image_source`는 null(결정 1), `created_by`는 `actorId`(결정 2), `is_active`는 true.
@@ -348,7 +349,8 @@ export function toTodayCardRegisterInput(
   const copy = readGroup(item, 'copy', errors)
   const resource = readGroup(item, 'resource', errors)
   warnUnreadKeys(warnings, 'copy', copy, CARD_COPY_KEYS, CARD_COMMON_KEYS, CARD_TOOL_KEYS)
-  warnUnreadKeys(warnings, 'resource', resource, [...CARD_RESOURCE_KEYS, ...CARD_COPY_KEYS], CARD_COMMON_KEYS, CARD_TOOL_KEYS)
+  // 옛 칸은 아래에서 따로 경고하므로 «표에 없는 칸» 경고에서는 뺀다.
+  warnUnreadKeys(warnings, 'resource', resource, [...CARD_RESOURCE_KEYS, ...CARD_COPY_KEYS, ...CARD_RETIRED_KEYS], CARD_COMMON_KEYS, CARD_TOOL_KEYS)
 
   // CLI 모양 card 객체. 검사(`validateCard`)가 읽는 칸만 담는다(`cover_image_url`·`title_in_image`는 CLI 검사 칸이 아니다).
   const card: Record<string, unknown> = {}
@@ -359,7 +361,7 @@ export function toTodayCardRegisterInput(
     paths[key] = read.path
     if (read.value !== undefined) card[key] = read.value
   }
-  for (const key of ['template_type', 'layout_type', 'ranking_mode_id', 'content_type_id', 'target_href', 'sort_order']) {
+  for (const key of ['template_type', 'ranking_mode_id', 'content_type_id', 'target_href', 'sort_order']) {
     if (isPresent(resource[key])) card[key] = resource[key]
   }
 
@@ -376,17 +378,20 @@ export function toTodayCardRegisterInput(
   const exposureTags = itemField(item, 'exposure_tags')
   if (isPresent(exposureTags)) card.exposure_tags = exposureTags
 
-  // `resource.feed_type`이 있으면 `shape`는 선택이다(없으면 NULL로 등록, 티켓 20261121_1530).
-  const shape = itemField(item, 'shape')
-  if (!isPresent(shape)) {
-    if (!isFeedTypeWritten(resource)) {
-      errors.push({
-        path: 'shape',
-        message: `card.shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적거나 resource.feed_type을 적어 주세요).`,
-      })
+  // 카드 유형은 필수다 — 홈이 카드를 유형으로 그린다. 옛 칸(`shape`·`layout_type`)은 읽지 않으니 값이 있으면 경고만 한다.
+  if (!isFeedTypeWritten(resource)) {
+    errors.push({
+      path: 'resource.feed_type',
+      message: `card.feed_type: 필수 항목이 없어요. 홈은 카드를 유형으로 그려서 유형이 없으면 등록할 수 없어요. resource.feed_type에 ${FEED_TYPES.join(', ')} 중 하나를 적어 주세요.`,
+    })
+  }
+  if (isPresent(itemField(item, 'shape'))) {
+    warnings.push({ path: 'shape', message: 'card.shape: 이제 쓰지 않아요. 카드 모양 대신 resource.feed_type으로 정하니 이 값은 무시하고 저장하지 않아요.' })
+  }
+  for (const key of CARD_RETIRED_KEYS) {
+    if (key in resource) {
+      warnings.push({ path: `resource.${key}`, message: `card.${key}: 이제 쓰지 않아요. 이 값은 무시하고 저장하지 않아요.` })
     }
-  } else if (!isCardShape(shape)) {
-    errors.push({ path: 'shape', message: `card.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeValue(shape)}). 허용값: ${CARD_SHAPES.join(', ')}` })
   }
 
   // 연결 칸(§8.3).
@@ -432,15 +437,6 @@ export function toTodayCardRegisterInput(
     errors.push(toIssue(sentence, 'card', pathOf))
   }
 
-  // G15: 제목 글자 수가 모양별 상한을 넘으면 경고만 한다.
-  if (isCardShape(shape) && typeof card.title === 'string') {
-    const length = visibleLength(card.title.trim())
-    const max = CARD_TITLE_MAX_LENGTH[shape]
-    if (length > max) {
-      warnings.push({ path: pathOf('title'), message: `card.title: ${shape} 모양의 제목은 ${max}자 이하가 좋아요(받은 값: ${length}자).` })
-    }
-  }
-
   // 홈피드 개편 칸(티켓 20261121_1530): 칸이 하나라도 있으면 5-1의 검증을 거치고, 통과한 값을 insert 페이로드로 넘긴다.
   // 칸이 없으면 검사도 페이로드 인자도 없어 이전과 결과가 같다. 컬렉션 연결은 위에서 `card.item_book_id`로 채워져 있다.
   let feedColumns: FeedCardBundleColumns | null = null
@@ -457,13 +453,11 @@ export function toTodayCardRegisterInput(
     if (feedCheck.errors.length === 0) feedColumns = buildFeedCardBundleColumns(resource)
   }
 
-  // 모양이 틀렸거나(허용값 밖), 모양도 유형도 없으면 오류가 이미 쌓였다. 유형이 있고 모양이 없으면 NULL로 등록한다.
-  const shapeValue = isCardShape(shape) ? shape : null
-  if (errors.length > 0 || (shapeValue === null && feedColumns?.feed_type == null)) return { payload: null, errors, warnings, linkFields }
+  if (errors.length > 0) return { payload: null, errors, warnings, linkFields }
 
   // `validateCard`를 통과했으므로 필수 칸이 있고 형식이 맞다.
   const payload: TodayCardRegisterPayload = {
-    ...buildTodayCardInsertPayload(card as unknown as HomeFeedCardInput, { id, coverImageUrl, imageSource: null, shape: shapeValue, titleInImage, feedColumns }),
+    ...buildTodayCardInsertPayload(card as unknown as HomeFeedCardInput, { id, coverImageUrl, imageSource: null, titleInImage, feedColumns }),
     pattern_no: patternNo,
     created_by: actorId,
   }

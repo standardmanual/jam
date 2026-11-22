@@ -618,13 +618,13 @@ describe('runHomeFeedRegister — 실제 등록', () => {
 
   it('허용값을 어긴 묶음은 DB를 읽기 전에 멈추고 등록되지 않는다', async () => {
     editBundle((raw) => {
-      raw.card.layout_type = 'giant';
+      raw.card.template_type = 'giant';
     });
     const stub = createStub();
     const { out, errors } = createOut();
     const code = await runHomeFeedRegister({ args: registerArgs(), supabase: stub.supabase, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
     expect(code).toBe(1);
-    expect(errors.join('\n')).toContain('card.layout_type:');
+    expect(errors.join('\n')).toContain('card.template_type:');
     expect(stub.events).toEqual([]);
     expect(fs.existsSync(path.join(workDir, 'registration-record.json'))).toBe(false);
   });

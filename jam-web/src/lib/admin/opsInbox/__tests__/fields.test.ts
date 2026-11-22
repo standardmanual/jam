@@ -469,7 +469,7 @@ describe('계약: 검증이 오류를 내지 않는 값 = 읽기 함수가 「�
         {
           item_key: 'card-1',
           kind: 'home_feed_card',
-          shape: 'hero',
+          resource: { feed_type: 'hero_box' },
           exposure_tags: ['all'],
           user_experience: '카드를 봐요',
           world_review: REVIEW,
@@ -480,11 +480,7 @@ describe('계약: 검증이 오류를 내지 않는 값 = 읽기 함수가 「�
     return validateOpsBundle(bundle).items[0].format_errors
   }
 
-  const shapeValues: unknown[] = ['hero', 'poster', 'square', 'brief', 'list', 'banner', 'Hero', 'large_thumbnail', '', 3, ['hero'], {}]
-  it.each(shapeValues.map((value) => [JSON.stringify(value), value]))('shape %s', (_label, value) => {
-    const valid = validationErrors('shape', value).length === 0
-    expect(readOpsItemShape(item({ shape: value })) !== OPS_FIELD_UNKNOWN).toBe(valid)
-  })
+  // `shape`는 이 계약에서 뺐다 — 검증이 더는 값을 보지 않는다(경고만, 티켓 20261122_1153). 읽기 함수(`readOpsItemShape`)는 8-3이 정리한다.
 
   const tagValues: unknown[] = [['all'], ['new_user'], ['all', 'new_user'], [], 'all', ['bogus'], ['all', 'all'], ['all', 5], {}, 5]
   it.each(tagValues.map((value) => [JSON.stringify(value), value]))('exposure_tags %s', (_label, value) => {

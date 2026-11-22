@@ -165,6 +165,7 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
 
   it('카드 칸 이름표(티켓 20261001_1152): 카드 모양·노출 대상·트라이브·색 대기', () => {
     expect(formatErrorPathLabel('items[0].shape')).toBe('카드 모양')
+    expect(formatErrorPathLabel('items[0].resource.feed_type')).toBe('카드 유형')
     expect(formatErrorPathLabel('items[0].exposure_tags')).toBe('노출 대상')
     expect(formatErrorPathLabel('items[0].tribe_id')).toBe('트라이브')
     expect(formatErrorPathLabel('items[0].color_pending')).toBe('색 대기')
@@ -310,7 +311,6 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
           ends_at: 'y',
           links: ['nope'],
           world_review: { world_related: 'yes', winter_reviewed: 'no', reason: 3, extra: 1 },
-          shape: 'banner',
           exposure_tags: 'all',
           tribe_id: 'ranger',
           color_pending: 'yes',
@@ -320,7 +320,7 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
     })
     expect(result.errors.length).toBeGreaterThan(8)
     expect(result.errors.filter((message) => message.startsWith('excluded_items'))).toHaveLength(5)
-    for (const key of ['shape', 'exposure_tags', 'tribe_id', 'color_pending', 'knobs.place_category']) {
+    for (const key of ['exposure_tags', 'tribe_id', 'color_pending', 'knobs.place_category']) {
       expect(result.errors.some((message) => message.startsWith(`items[1].${key}:`)), key).toBe(true)
     }
     for (const message of result.errors) {

@@ -188,7 +188,7 @@ function makeItem(overrides: Record<string, unknown> = {}) {
   return {
     item_key: 'card-1',
     kind: 'home_feed_card',
-    shape: 'hero',
+    resource: { feed_type: 'hero_box' },
     exposure_tags: ['all'],
     pattern_no: 'P07',
     starts_at: '2026-10-05T09:00:00+09:00',
@@ -674,7 +674,7 @@ describe('POST /api/admin/ops-inbox', () => {
   describe('카드 칸 (티켓 20261001_1152)', () => {
     it('옛 형식 묶음(segment만 있는 항목)은 201이고 오류 문장을 돌려주며 segment를 원본에 보존한다', async () => {
       const legacy = { ...makeItem(), segment: 'new_user' } as Record<string, unknown>
-      delete legacy.shape
+      delete legacy.resource
       delete legacy.exposure_tags
       const body = makeBundle({ items: [legacy] })
       const res = await submit(body)
@@ -682,7 +682,7 @@ describe('POST /api/admin/ops-inbox', () => {
       expect(res.status).toBe(201)
       const json = await res.json()
       expect(json.format_errors).toHaveLength(2)
-      expect(json.format_errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요/)
+      expect(json.format_errors[0]).toMatch(/^items\[0\]\.resource\.feed_type: 필수 항목이 없어요/)
       expect(json.format_errors[1]).toMatch(/^items\[0\]\.exposure_tags: 필수 항목이 없어요/)
       expect(h.state.tables.ops_bundle_items[0].format_errors).toEqual(json.format_errors)
       expect(h.state.tables.ops_bundle_items[0].original).toMatchObject({ segment: 'new_user' })

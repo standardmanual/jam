@@ -988,8 +988,8 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
     id: ID.card,
     key: 'card',
     kind: 'home_feed_card',
-    original: { shape: 'hero', exposure_tags: ['all'], pattern_no: 'P07', copy: { title: '가을 아침 러닝' } },
-    resource: { template_type: 'drop_alert', cover_image_url: 'https://cdn.example.com/card.webp' },
+    original: { exposure_tags: ['all'], pattern_no: 'P07', copy: { title: '가을 아침 러닝' } },
+    resource: { feed_type: 'hero_box', template_type: 'drop_alert', cover_image_url: 'https://cdn.example.com/card.webp' },
     ...over,
   })
 
@@ -1007,7 +1007,7 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
     expect(row).toMatchObject({
       title: '가을 아침 러닝',
       template_type: 'drop_alert',
-      shape: 'hero',
+      feed_type: 'hero_box',
       starts_at: '2026-10-10T00:00:00.000Z',
       ends_at: '2026-10-10T14:59:59.999Z',
       pattern_no: 'P07',
@@ -1034,14 +1034,14 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
   })
 
   it('시험 묶음도 등록 전 검사에서 걸리면 실패한다', async () => {
-    const { db, run } = setupReal([card({ resource: { template_type: 'mission_spotlight', mission_id: MISSING_MISSION } })], { is_sample: true })
+    const { db, run } = setupReal([card({ resource: { template_type: 'mission_spotlight', feed_type: 'hero_box', mission_id: MISSING_MISSION } })], { is_sample: true })
     const result = ok(await run([ID.card]))
     expect(result.body.failed).toEqual([{ id: ID.card, reason: '연결한 미션을 찾을 수 없어요' }])
     expect(db.tables.today_cards).toEqual([])
   })
 
   it('연결한 미션이 없으면 고정 사유로 실패하고 만든 행이 없다. 칼럼 이름·ID는 어디에도 나오지 않는다', async () => {
-    const { db, run } = setupReal([card({ resource: { template_type: 'mission_spotlight', mission_id: MISSING_MISSION } })])
+    const { db, run } = setupReal([card({ resource: { template_type: 'mission_spotlight', feed_type: 'hero_box', mission_id: MISSING_MISSION } })])
     const result = ok(await run([ID.card]))
 
     expect(result.body.scheduled).toEqual([])
@@ -1080,11 +1080,11 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
   })
 
   it('형식 오류는 변환 오류의 첫 문장으로 실패하고 만든 행이 없다', async () => {
-    const { db, run } = setupReal([card({ original: { exposure_tags: ['all'], copy: { title: '가을 아침 러닝' } } })]) // shape 없음
+    const { db, run } = setupReal([card({ resource: { template_type: 'drop_alert' } })]) // feed_type 없음
     const result = ok(await run([ID.card]))
 
     expect(result.body.failed).toHaveLength(1)
-    expect(result.body.failed[0].reason).toMatch(/^카드 형식이 맞지 않아요: card\.shape: /)
+    expect(result.body.failed[0].reason).toMatch(/^카드 형식이 맞지 않아요: card\.feed_type: /)
     expect(db.tables.today_cards).toEqual([])
     expect(statusOf(db, ID.card)).toBe('failed')
   })
@@ -1136,8 +1136,8 @@ describe('실제 레지스트리: 미션 핸들러와 카드↔미션 연결 (�
     key: 'card',
     kind: 'home_feed_card',
     links: ['mission'],
-    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '주말 러닝 카드' } },
-    resource: { template_type: 'mission_spotlight' },
+    original: { exposure_tags: ['all'], copy: { title: '주말 러닝 카드' } },
+    resource: { feed_type: 'hero_box', template_type: 'mission_spotlight' },
     ...over,
   })
   const mission = (over: Partial<ItemSpec> = {}): ItemSpec => ({
@@ -1366,8 +1366,8 @@ describe('실제 레지스트리: 레시피 핸들러 (티켓 20261002_2221)', (
     key: 'card',
     kind: 'home_feed_card',
     links: ['recipe'],
-    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 믹스 카드' } },
-    resource: { template_type: 'recipe_reveal' },
+    original: { exposure_tags: ['all'], copy: { title: '가을 믹스 카드' } },
+    resource: { feed_type: 'hero_box', template_type: 'recipe_reveal' },
     ...over,
   })
   /** 슬롯 후보 두 개(`item` 배지에 컬렉션을 붙일 수 있다)와 보상 배지가 있는 DB를 만든다. */
@@ -1561,19 +1561,19 @@ describe('실제 레지스트리: 레시피 핸들러 (티켓 20261002_2221)', (
 
   it('카드가 이미 있는 레시피를 resource.recipe_id로 직접 가리키고 연결이 없으면 그 ID로 저장한다. 존재하지 않으면 고정 사유로 실패한다', async () => {
     const EXISTING_RECIPE = uid(30)
-    const direct = setup([card({ links: [], resource: { template_type: 'recipe_reveal', recipe_id: EXISTING_RECIPE } })])
+    const direct = setup([card({ links: [], resource: { template_type: 'recipe_reveal', feed_type: 'hero_box', recipe_id: EXISTING_RECIPE } })])
     direct.db.tables.combination_recipes = [{ id: EXISTING_RECIPE, valid_from: '2026-10-10T00:00:00.000Z', valid_until: null }]
     ok(await direct.run([ID.card]))
     expect(direct.db.tables.today_cards[0].recipe_id).toBe(EXISTING_RECIPE)
 
-    const missing = setup([card({ links: [], resource: { template_type: 'recipe_reveal', recipe_id: EXISTING_RECIPE } })])
+    const missing = setup([card({ links: [], resource: { template_type: 'recipe_reveal', feed_type: 'hero_box', recipe_id: EXISTING_RECIPE } })])
     const result = ok(await missing.run([ID.card]))
     expect(result.body.failed).toEqual([{ id: ID.card, reason: '연결한 레시피를 찾을 수 없어요' }])
     expect(missing.db.tables.today_cards).toEqual([])
   })
 
   it('연결과 resource.recipe_id가 둘 다 있으면 못 하는 항목이라 아무것도 만들지 않는다', async () => {
-    const { db, run } = setup([card({ resource: { template_type: 'recipe_reveal', recipe_id: uid(30) } }), recipe()])
+    const { db, run } = setup([card({ resource: { template_type: 'recipe_reveal', feed_type: 'hero_box', recipe_id: uid(30) } }), recipe()])
     const failure = bad(await run([ID.card, ID.recipe]))
 
     expect(failure.status).toBe(409)
@@ -1677,8 +1677,8 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
     key: 'card',
     kind: 'home_feed_card',
     links: ['drop'],
-    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 드랍 카드' } },
-    resource: { template_type: 'drop_alert' },
+    original: { exposure_tags: ['all'], copy: { title: '가을 드랍 카드' } },
+    resource: { feed_type: 'hero_box', template_type: 'drop_alert' },
     ...over,
   })
   const writes = (db: FakeDb, table: string, op: FakeCall['op']) => db.calls.filter((call) => call.table === table && call.op === op)
@@ -2056,8 +2056,8 @@ describe('실제 레지스트리: 컬렉션 핸들러 (티켓 20261004_2039)', (
     key: 'card',
     kind: 'home_feed_card',
     links: ['collection'],
-    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 컬렉션 카드' } },
-    resource: { template_type: 'itembook_milestone' },
+    original: { exposure_tags: ['all'], copy: { title: '가을 컬렉션 카드' } },
+    resource: { feed_type: 'hero_box', template_type: 'itembook_milestone' },
     ...over,
   })
   /** 컬렉션의 완성 보상으로 가리키는 JAM! 배지. 발급 조건은 비어 있다(컬렉션 완성이 발급 경로다). */
@@ -2427,8 +2427,8 @@ describe('실제 레지스트리: JAM! 배지 핸들러 (티켓 20261004_1756)',
     key: 'card',
     kind: 'home_feed_card',
     links: ['badge'],
-    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '첫 믹스 배지 카드' } },
-    resource: { template_type: 'badge_spotlight' },
+    original: { exposure_tags: ['all'], copy: { title: '첫 믹스 배지 카드' } },
+    resource: { feed_type: 'hero_box', template_type: 'badge_spotlight' },
     ...over,
   })
   /** 배지와 같은 그룹에 묶는 레시피. 공개 시각은 행의 `LATER`다. */
