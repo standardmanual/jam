@@ -37,7 +37,7 @@ const RECORD = {
     { no: 1, name: '첫째 샘플', role: 'main', impl: '본체' },
     { no: 2, name: '둘째 샘플', role: 'aux', impl: '' },
   ],
-  cardShapes: [{ shape: 'hero', note: '큰 사진' }],
+  cardShapes: [{ shape: 'hero_box', note: '큰 사진' }],
   knobs: {
     condition: { open: '비 오는 날', closed: '평일 낮' },
     place: { open: '카페', closed: '병원' },
@@ -57,7 +57,7 @@ describe('만들기 폼', () => {
     const positions = PATTERN_FORM_SECTIONS.map((section) => out.indexOf(`id="pattern-form-section-${section.id}"`))
     expect(positions.every((position) => position > 0)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
-    expect(PATTERN_FORM_SECTIONS.map((section) => section.label)).toEqual(['기본', '메뉴와 카드 모양', '손잡이', '샘플', '샘플 각도', '주의점'])
+    expect(PATTERN_FORM_SECTIONS.map((section) => section.label)).toEqual(['기본', '메뉴와 카드 유형', '손잡이', '샘플', '샘플 각도', '주의점'])
     for (const section of PATTERN_FORM_SECTIONS) expect(out).toContain(`href="#pattern-form-section-${section.id}"`)
   })
 
@@ -93,14 +93,14 @@ describe('만들기 폼', () => {
     expect(out).not.toContain('pattern-field-origin')
   })
 
-  it('손잡이 5종과 샘플·카드 모양 더하기 버튼이 있다', () => {
+  it('손잡이 5종과 샘플·카드 유형 더하기 버튼이 있다', () => {
     for (const label of ['조건', '장소', '시간', '보상', '트라이브']) expect(out).toContain(`>${label}</p>`)
     expect(out).toContain('열 수 있는 값')
     expect(out).toContain('닫은 값')
     expect(out).toContain('>규칙<')
     expect(out).toContain('>예시<')
     expect(out).toContain('샘플 더하기')
-    expect(out).toContain('카드 모양 더하기')
+    expect(out).toContain('카드 유형 더하기')
     expect(out).toContain('aria-label="쓰는 메뉴 이름"')
   })
 })
@@ -173,8 +173,8 @@ describe('칸 오류', () => {
     expect(trigger).toContain('aria-describedby="pattern-field-samples-2-role-error"')
   })
 
-  it('카드 모양 오류와 손잡이 오류도 자기 칸 아래에 붙는다', () => {
-    const shapes = flat(<CardShapeRows rows={[{ shape: '', note: '' }]} errors={{ 'cardShapes.0.shape': '카드 모양은 hero 중에서 골라 주세요.' }} onChange={() => {}} />)
+  it('카드 유형 오류와 손잡이 오류도 자기 칸 아래에 붙는다', () => {
+    const shapes = flat(<CardShapeRows rows={[{ shape: '', note: '' }]} errors={{ 'cardShapes.0.shape': '카드 유형은 히어로 중에서 골라 주세요.' }} onChange={() => {}} />)
     expect(shapes).toContain('id="pattern-field-cardShapes-0-shape-error"')
     const knobs = flat(
       <KnobGroups

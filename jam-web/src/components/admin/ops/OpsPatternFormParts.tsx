@@ -25,7 +25,8 @@ import {
 } from '@/lib/admin/opsPatterns/constants'
 import { fieldDomId, type PatternDraft, type PatternDraftAngle, type PatternDraftCardShape, type PatternDraftSample } from '@/lib/admin/opsPatterns/formDraft'
 import type { OpsPatternFieldErrors } from '@/lib/admin/opsPatterns/input'
-import { CARD_SHAPES, isCardShape } from '@/lib/today/shape'
+import { feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
+import { FEED_TYPES, isFeedType } from '@/lib/today/feedChipSlots'
 import { cn } from '@/lib/utils'
 
 /**
@@ -33,7 +34,7 @@ import { cn } from '@/lib/utils'
  *
  * - 칸 id는 `fieldDomId(경로)`(`pattern-field-samples-2-role`)이고 오류 문장은 `${id}-error`다. 입력 칸은 `aria-invalid`·`aria-describedby`로 오류에 이어진다.
  * - 글자 수는 상한의 80%부터 보이고(`name` 60자면 48자부터), 넘으면 붉게 바뀐다. 상한을 넘겨도 입력은 막지 않고 검사가 문장으로 알린다.
- * - 줄 목록(카드 모양·샘플)은 「더하기」「지우기」 버튼이 있고, 메뉴는 칩이다. 줄에는 안정 키가 없어 순서(index)를 키로 쓴다(입력 칸이 모두 제어 입력이라 문제없다).
+ * - 줄 목록(카드 유형·샘플)은 「더하기」「지우기」 버튼이 있고, 메뉴는 칩이다. 줄에는 안정 키가 없어 순서(index)를 키로 쓴다(입력 칸이 모두 제어 입력이라 문제없다).
  */
 
 const { nameMax, longTextMax, menuMax, menusMaxCount, samplesMaxCount, cardShapeNoteMax, topicMax, anglesMaxCount, angleTitleMax, angleNoteMax } = OPS_PATTERN_LIMITS
@@ -48,7 +49,7 @@ export const MENU_LIMIT_NOTE = `메뉴는 ${menusMaxCount}개까지 넣을 수 �
 export const SAMPLES_LIMIT_NOTE = `샘플은 ${samplesMaxCount}개까지 넣을 수 있어요`
 export const ANGLES_LIMIT_NOTE = `샘플 각도는 ${anglesMaxCount}개까지 넣을 수 있어요`
 export const ANGLE_ADD_LABEL = '샘플 각도 더하기'
-export const CARD_SHAPE_ADD_LABEL = '카드 모양 더하기'
+export const CARD_SHAPE_ADD_LABEL = '카드 유형 더하기'
 export const SAMPLE_ADD_LABEL = '샘플 더하기'
 export const ROW_REMOVE_LABEL = '지우기'
 export const SELECT_PLACEHOLDER = '골라 주세요'
@@ -181,7 +182,8 @@ export function PatternSelect<T extends string>({ path, label, value, options, o
 
 const SAMPLE_ROLE_OPTIONS = OPS_PATTERN_SAMPLE_ROLES.map((role) => ({ value: role, label: OPS_PATTERN_SAMPLE_ROLE_LABELS[role] }))
 const ANGLE_TYPE_OPTIONS = OPS_PATTERN_ANGLE_TYPES.map((type) => ({ value: type, label: type }))
-const CARD_SHAPE_OPTIONS = CARD_SHAPES.map((shape) => ({ value: shape, label: shape }))
+/** 새 카드 유형 8가지(어드민 카드 폼과 같은 이름). 옛 모양 이름은 선택지에 없다(티켓 20261122_1239). */
+const CARD_SHAPE_OPTIONS = FEED_TYPES.map((type) => ({ value: type, label: feedTypeDisplayName(type) }))
 
 // ── 쓰는 메뉴 (칩) ───────────────────────────────────────────────────────────────────────────────
 
@@ -286,7 +288,7 @@ function RowFrame({ title, onRemove, children }: { title: string; onRemove: () =
   )
 }
 
-// ── 카드 모양 ───────────────────────────────────────────────────────────────────────────────────
+// ── 카드 유형 ───────────────────────────────────────────────────────────────────────────────────
 
 interface CardShapeRowsProps {
   rows: PatternDraftCardShape[]
@@ -294,25 +296,25 @@ interface CardShapeRowsProps {
   onChange: (rows: PatternDraftCardShape[]) => void
 }
 
-/** 카드 모양 줄: 모양을 고르고 메모를 적는다. 줄 수에 상한은 없다. */
+/** 카드 유형 줄: 유형을 고르고 메모를 적는다. 줄 수에 상한은 없다. 옛 모양 이름이 저장된 줄은 빈 선택으로 열려 다시 고르게 한다. */
 export function CardShapeRows({ rows, errors, onChange }: CardShapeRowsProps) {
   const update = (index: number, patch: Partial<PatternDraftCardShape>) => onChange(rows.map((row, at) => (at === index ? { ...row, ...patch } : row)))
   return (
     <div className="min-w-0 space-y-3">
-      <p className="text-sm font-medium">카드 모양</p>
+      <p className="text-sm font-medium break-keep wrap-break-word">카드 유형</p>
       {rows.length > 0 && (
         <ul className="space-y-3">
           {rows.map((row, index) => (
-            <RowFrame key={index} title={`카드 모양 ${index + 1}`} onRemove={() => onChange(rows.filter((_, at) => at !== index))}>
+            <RowFrame key={index} title={`카드 유형 ${index + 1}`} onRemove={() => onChange(rows.filter((_, at) => at !== index))}>
               <div className="grid grid-cols-1 gap-3 @sm:grid-cols-[10rem_minmax(0,1fr)]">
                 <PatternSelect
                   path={`cardShapes.${index}.shape`}
-                  label="모양"
+                  label="유형"
                   required
                   value={row.shape}
                   options={CARD_SHAPE_OPTIONS}
                   error={errors[`cardShapes.${index}.shape`]}
-                  onChange={(shape) => update(index, { shape: isCardShape(shape) ? shape : '' })}
+                  onChange={(shape) => update(index, { shape: isFeedType(shape) ? shape : '' })}
                 />
                 <TextField
                   path={`cardShapes.${index}.note`}

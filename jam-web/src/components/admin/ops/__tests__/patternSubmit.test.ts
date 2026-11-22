@@ -19,7 +19,7 @@ const RECORD = {
   userExperience: '비 오는 날 알림을 받는다',
   menus: ['홈피드'],
   samples: [{ no: 1, name: '첫째 샘플', role: 'main', impl: '본체' }],
-  cardShapes: [{ shape: 'hero', note: '큰 사진' }],
+  cardShapes: [{ shape: 'hero_box', note: '큰 사진' }],
   knobs: {
     condition: { open: '비', closed: '' },
     place: { open: '', closed: '' },

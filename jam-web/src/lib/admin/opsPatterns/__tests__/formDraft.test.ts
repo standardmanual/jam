@@ -28,7 +28,7 @@ const RECORD = {
     { no: 1, name: '첫째 샘플', role: 'main', impl: '본체' },
     { no: 2, name: '둘째 샘플', role: 'aux', impl: '' },
   ],
-  cardShapes: [{ shape: 'hero', note: '큰 사진' }],
+  cardShapes: [{ shape: 'hero_box', note: '큰 사진' }],
   knobs: {
     condition: { open: '비 오는 날', closed: '평일 낮' },
     place: { open: '카페', closed: '병원' },
@@ -81,6 +81,18 @@ describe('draftFromRecord · inputFromDraft', () => {
     expect(draft.knobs.condition).toEqual(['', ''])
   })
 
+  it('옛 모양 이름이 저장된 카드 유형 줄은 빈 선택으로 열려 다시 고르게 한다(티켓 20261122_1239)', () => {
+    const draft = draftFromRecord({ ...RECORD, cardShapes: [{ shape: 'hero', note: '큰 사진' }, { shape: 'gallery_list', note: '' }] } as never)
+    expect(draft.cardShapes).toEqual([
+      { shape: '', note: '큰 사진' },
+      { shape: 'gallery_list', note: '' },
+    ])
+    // 고르지 않은 줄은 저장 전에 «카드 유형을 골라 주세요» 오류로 막힌다
+    const checked = validateOpsPatternInput(inputFromDraft({ ...draft, name: '이름', principle: '원리', userExperience: '경험' }))
+    expect(checked.ok).toBe(false)
+    if (!checked.ok) expect(Object.keys(checked.fieldErrors)).toEqual(['cardShapes.0.shape'])
+  })
+
   it('배열이 아닌 samples·cardShapes는 빈 목록이 된다', () => {
     const draft = draftFromRecord({ ...RECORD, samples: { no: 1 }, cardShapes: 'x', knobs: null } as never)
     expect(draft.samples).toEqual([])
@@ -88,7 +100,7 @@ describe('draftFromRecord · inputFromDraft', () => {
     expect(draft.knobs.tribe).toEqual(['', ''])
   })
 
-  it('고르지 않은 역할·모양과 비어 있거나 숫자가 아닌 번호는 검사가 칸별 문장으로 막는다', () => {
+  it('고르지 않은 역할·카드 유형과 비어 있거나 숫자가 아닌 번호는 검사가 칸별 문장으로 막는다', () => {
     const draft = emptyDraft()
     draft.name = '이름'
     draft.principle = '원리'
@@ -146,11 +158,11 @@ describe('changedFields', () => {
     expect(changedFields(base, draft)).toEqual(['샘플'])
   })
 
-  it('샘플 줄을 더하거나 카드 모양을 바꾸면 각각 한 칸으로 센다', () => {
+  it('샘플 줄을 더하거나 카드 유형을 바꾸면 각각 한 칸으로 센다', () => {
     const draft = clone(base)
     draft.samples.push({ no: '3', name: '', role: '', impl: '' })
-    draft.cardShapes[0].shape = 'poster'
-    expect(changedFields(base, draft)).toEqual(['카드 모양', '샘플'])
+    draft.cardShapes[0].shape = 'text_box'
+    expect(changedFields(base, draft)).toEqual(['카드 유형', '샘플'])
   })
 
   it('손잡이 두 칸이 모두 바뀌어도 그 손잡이는 한 칸으로 센다', () => {

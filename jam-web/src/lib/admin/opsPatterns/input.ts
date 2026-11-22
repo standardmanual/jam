@@ -4,7 +4,8 @@
  * 서버 의존(`read.ts` 런타임, 서비스 클라이언트)이 없는 순수 파일이라 저장 API(`write.ts`)와 화면의 폼(`OpsPatternForm`)이 같은 검사를 쓴다.
  * 동작은 옮기기 전과 같다 — `write.ts`가 이 파일의 이름을 다시 내보낸다.
  */
-import { CARD_SHAPES, isCardShape, type CardShape } from '@/lib/today/shape'
+import { feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
+import { FEED_TYPES, isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
 import {
   OPS_PATTERN_ANGLE_NEEDS,
   OPS_PATTERN_ANGLE_TYPES,
@@ -28,7 +29,8 @@ export interface OpsPatternInputSample {
 }
 
 export interface OpsPatternInputCardShape {
-  shape: CardShape
+  /** 카드 유형(`FEED_TYPES` 8가지). DB 칸 이름(`card_shapes`)·JSON 키(`shape`)는 호환을 위해 그대로다(티켓 20261122_1239). */
+  shape: FeedType
   note: string
 }
 
@@ -120,7 +122,7 @@ function readRequiredText(value: unknown, path: string, label: string, max: numb
 
 /**
  * 패턴 내용 검사(티켓 20261008_1545 D2). 통과하면 앞뒤 공백을 뗀 정규 모양(`OpsPatternInput`)을 돌려주고, 아니면 칸별 한국어 문장을 돌려준다.
- * 필수는 이름·작동 원리·유저가 겪는 것 세 칸이다. 메뉴·샘플·카드 모양·손잡이·주의점은 비워 둘 수 있고 손잡이 칸은 빈 문자열도 받는다.
+ * 필수는 이름·작동 원리·유저가 겪는 것 세 칸이다. 메뉴·샘플·카드 유형·손잡이·주의점은 비워 둘 수 있고 손잡이 칸은 빈 문자열도 받는다.
  */
 export function validateOpsPatternInput(raw: unknown): { ok: true; value: OpsPatternInput } | { ok: false; fieldErrors: OpsPatternFieldErrors } {
   const errors: OpsPatternFieldErrors = {}
@@ -178,21 +180,21 @@ export function validateOpsPatternInput(raw: unknown): { ok: true; value: OpsPat
     }
   }
 
-  // 카드 모양
+  // 카드 유형(옛 모양 이름은 허용값이 아니라 오류다 — 저장된 옛 값은 폼에서 빈 선택으로 열려 다시 고르게 한다)
   const cardShapes: OpsPatternInputCardShape[] = []
   if (raw.cardShapes !== undefined && raw.cardShapes !== null) {
-    if (!Array.isArray(raw.cardShapes)) errors.cardShapes = '카드 모양은 목록으로 보내 주세요.'
+    if (!Array.isArray(raw.cardShapes)) errors.cardShapes = '카드 유형은 목록으로 보내 주세요.'
     else {
       raw.cardShapes.forEach((entry, index) => {
         const at = `cardShapes.${index}`
         if (!isRecord(entry)) {
-          errors[at] = '카드 모양 내용을 확인해 주세요.'
+          errors[at] = '카드 유형 내용을 확인해 주세요.'
           return
         }
-        const shapeOk = isCardShape(entry.shape)
-        if (!shapeOk) errors[`${at}.shape`] = `카드 모양은 ${CARD_SHAPES.join('·')} 중에서 골라 주세요.`
-        const note = readOptionalText(entry.note, `${at}.note`, '카드 모양 메모', cardShapeNoteMax, errors)
-        if (shapeOk) cardShapes.push({ shape: entry.shape as CardShape, note })
+        const shapeOk = isFeedType(entry.shape)
+        if (!shapeOk) errors[`${at}.shape`] = `카드 유형은 ${FEED_TYPES.map(feedTypeDisplayName).join('·')} 중에서 골라 주세요.`
+        const note = readOptionalText(entry.note, `${at}.note`, '카드 유형 메모', cardShapeNoteMax, errors)
+        if (shapeOk) cardShapes.push({ shape: entry.shape as FeedType, note })
       })
     }
   }

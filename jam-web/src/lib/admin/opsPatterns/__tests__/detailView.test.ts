@@ -2,7 +2,7 @@
  * 패턴 상세 화면의 보기 계산 (티켓 20261008_1435, 상위 20260930_1503 ⑨b)
  *
  * - 머리: 출처 글자(모르는 값은 「출처 확인 필요」), 쉬는 이유, KST 서식
- * - JSONB 깨짐: 샘플·카드 모양·손잡이를 칸 단위로 읽어 칸마다 「적지 않았어요」·「역할 모름」·「목록에 없는 모양」, 배열이 아니면 `null`
+ * - JSONB 깨짐: 샘플·카드 모양·손잡이를 칸 단위로 읽어 칸마다 「적지 않았어요」·「역할 모름」·「옛 모양 이름(그대로 보관)」, 배열이 아니면 `null`
  * - 취향 신호: 이 패턴 것만, 확정일(KST), 근거 결정 표시
  * - 사용 이력: 시험·반려·취소·실패·승인 전·`pattern_proposal`·다른 패턴·시각 없음 제외, 최신순, 10건/쪽, 틀린 `usagePage`는 1쪽,
  *   **같은 입력에서 이력 중 최근 28일 건수 = `countOpsPatternUsage`의 `uses`, 이력 첫 줄 시각 = `lastUsedAt`**
@@ -138,15 +138,22 @@ describe('샘플', () => {
   })
 })
 
-describe('카드 모양', () => {
-  it('목록의 모양은 그대로, 밖의 모양은 「목록에 없는 모양」, 비었으면 「적지 않았어요」다', () => {
-    const lines = readCardShapeLines([{ shape: 'hero', note: ' 큰 사진 ' }, { shape: 'banner', note: '' }, { note: '메모' }, 7])
+describe('카드 유형', () => {
+  it('새 유형은 유형 이름, 밖의 값(옛 모양 이름)은 「옛 모양 이름(그대로 보관)」과 받은 글자, 비었으면 「적지 않았어요」다', () => {
+    const lines = readCardShapeLines([{ shape: 'hero_box', note: ' 큰 사진 ' }, { shape: 'banner', note: '' }, { note: '메모' }, 7])
     expect(lines).toEqual([
-      { shape: 'hero', note: '큰 사진' },
-      { shape: CARD_SHAPE_UNKNOWN_TEXT, note: PATTERN_FIELD_MISSING_TEXT },
-      { shape: PATTERN_FIELD_MISSING_TEXT, note: '메모' },
-      { shape: PATTERN_FIELD_MISSING_TEXT, note: PATTERN_FIELD_MISSING_TEXT },
+      { shape: '히어로', legacyName: null, note: '큰 사진' },
+      { shape: CARD_SHAPE_UNKNOWN_TEXT, legacyName: 'banner', note: PATTERN_FIELD_MISSING_TEXT },
+      { shape: PATTERN_FIELD_MISSING_TEXT, legacyName: null, note: '메모' },
+      { shape: PATTERN_FIELD_MISSING_TEXT, legacyName: null, note: PATTERN_FIELD_MISSING_TEXT },
     ])
+  })
+
+  it('저장된 39개 패턴의 옛 모양 이름 7가지는 오류 없이 「옛 모양 이름(그대로 보관)」으로 읽는다', () => {
+    const legacy = ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']
+    const lines = readCardShapeLines(legacy.map((shape) => ({ shape, note: '' })))
+    expect(lines?.map((line) => [line.shape, line.legacyName])).toEqual(legacy.map((name) => [CARD_SHAPE_UNKNOWN_TEXT, name]))
+    expect(CARD_SHAPE_UNKNOWN_TEXT).toBe('옛 모양 이름(그대로 보관)')
   })
 
   it('배열이 아니면 null이다', () => {

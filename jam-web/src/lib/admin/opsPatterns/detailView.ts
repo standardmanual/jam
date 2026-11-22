@@ -1,13 +1,14 @@
 /**
  * 패턴 상세 화면(S5 상세)의 보기 계산 (티켓 20261008_1435, 상위 20260930_1503 ⑨b, 채원 판정 「⑨ 상세」). 순수 함수만 둔다 — 읽기는 페이지가 맡는다.
  *
- * - `samples`·`cardShapes`·`knobs`는 DB의 JSONB라 모양을 믿지 않는다. **칸 단위로** 읽어, 깨진 칸은 「적지 않았어요」·「역할 모름」·「목록에 없는 모양」으로 남기고
+ * - `samples`·`cardShapes`·`knobs`는 DB의 JSONB라 모양을 믿지 않는다. **칸 단위로** 읽어, 깨진 칸은 「적지 않았어요」·「역할 모름」·「옛 모양 이름(그대로 보관)」으로 남기고
  *   화면은 유지한다. 깨진 값을 0이나 빈 목록으로 바꿔 숨기지 않는다(배열이 아닌 `samples`·`cardShapes`는 `null` = 그 구역 전체가 「적지 않았어요」).
  * - 사용 이력의 줄은 목록·조합 뽑기가 세는 것과 **같은 판정**(`countableUsedAt`)으로 고른다 — 시험 묶음·승인 전 상태·`pattern_proposal`·사용 시각 없음은 줄이 되지 않는다.
  *   요약 숫자(최근 4주·마지막 사용)는 같은 세기 함수(`countOpsPatternUsage`)가 만들고 여기서는 글자로만 바꾼다.
  * - 시각은 모두 KST다.
  */
-import { CARD_SHAPES } from '@/lib/today/shape'
+import { feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
+import { isFeedType } from '@/lib/today/feedChipSlots'
 import { describeBundleItem } from '@/lib/admin/opsSignals/composition'
 import { OPS_FIELD_UNKNOWN, readOpsItemPatternNo } from '@/lib/admin/opsInbox/fields'
 import { asRecord } from '@/lib/admin/opsInbox/itemView'
@@ -29,7 +30,8 @@ import type { OpsTasteSignalRecord } from './read'
 
 export const PATTERN_FIELD_MISSING_TEXT = '적지 않았어요'
 export const SAMPLE_ROLE_UNKNOWN_TEXT = '역할 모름'
-export const CARD_SHAPE_UNKNOWN_TEXT = '목록에 없는 모양'
+/** 새 8유형에 없는 값(8회차-3 전에 저장된 옛 모양 이름)의 표시. 값은 지우지 않고 그대로 보관한다(티켓 20261122_1239). */
+export const CARD_SHAPE_UNKNOWN_TEXT = '옛 모양 이름(그대로 보관)'
 export const ANGLE_TYPE_UNKNOWN_TEXT = '종류 모름'
 export const PATTERN_ORIGIN_UNKNOWN_TEXT = '출처 확인 필요'
 export const PATTERN_DETAIL_MISSING_TEXT = '–'
@@ -111,24 +113,28 @@ export function readSampleLines(samples: unknown): SampleLine[] | null {
   return lines.sort((a, b) => (a.no === null ? 1 : 0) - (b.no === null ? 1 : 0) || (a.no ?? 0) - (b.no ?? 0))
 }
 
-// ── 카드 모양 ────────────────────────────────────────────────────────────────────────────────────
+// ── 카드 유형 ────────────────────────────────────────────────────────────────────────────────────
 
 export interface CardShapeLine {
+  /** 새 유형이면 유형 이름(「히어로」), 옛 모양 이름이면 「옛 모양 이름(그대로 보관)」, 비었으면 「적지 않았어요」. */
   shape: string
+  /** 옛 모양 이름이 저장돼 있을 때 그 값(그대로 보관 중인 글자). 아니면 `null`. */
+  legacyName: string | null
   note: string
 }
 
-/** 카드 모양 목록. `cardShapes`가 배열이 아니면 `null`. 목록(`CARD_SHAPES`) 밖의 모양은 「목록에 없는 모양」, 비었으면 「적지 않았어요」다. */
+/**
+ * 카드 유형 목록(DB 칸 이름은 `card_shapes` 그대로). `cardShapes`가 배열이 아니면 `null`.
+ * 새 8유형(`FEED_TYPES`) 밖의 값(옛 모양 이름)은 오류 없이 「옛 모양 이름(그대로 보관)」과 받은 글자로 보이고, 비었으면 「적지 않았어요」다.
+ */
 export function readCardShapeLines(cardShapes: unknown): CardShapeLine[] | null {
   if (!Array.isArray(cardShapes)) return null
   return cardShapes.map((entry): CardShapeLine => {
     const record = asRecord(entry)
     const shape = textOf(record?.shape)
-    const known = (CARD_SHAPES as readonly string[]).includes(shape)
-    return {
-      shape: shape === '' ? PATTERN_FIELD_MISSING_TEXT : known ? shape : CARD_SHAPE_UNKNOWN_TEXT,
-      note: orMissing(record?.note),
-    }
+    if (shape === '') return { shape: PATTERN_FIELD_MISSING_TEXT, legacyName: null, note: orMissing(record?.note) }
+    if (isFeedType(shape)) return { shape: feedTypeDisplayName(shape), legacyName: null, note: orMissing(record?.note) }
+    return { shape: CARD_SHAPE_UNKNOWN_TEXT, legacyName: shape, note: orMissing(record?.note) }
   })
 }
 

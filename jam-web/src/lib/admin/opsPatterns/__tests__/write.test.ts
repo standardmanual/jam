@@ -2,7 +2,7 @@
  * 운영 패턴 쓰기 (티켓 20261008_1545, 상위 20260930_1503 ⑩a-1) — `write.ts`
  *
  * 서비스 클라이언트는 메모리 DB(`fakePatternDb.ts`)로 바꾼다. 확인하는 것:
- * - 검사: 필수 3칸, 길이 상한, 메뉴·샘플 개수, 샘플 번호 중복·역할, 카드 모양, 손잡이 칸은 선택, 알 수 없는 키 버림, 앞뒤 공백 뗌
+ * - 검사: 필수 3칸, 길이 상한, 메뉴·샘플 개수, 샘플 번호 중복·역할, 카드 유형, 손잡이 칸은 선택, 알 수 없는 키 버림, 앞뒤 공백 뗌
  * - 지금 시드 P01~P18(원고 파서 출력)이 모두 검사를 통과한다
  * - 번호: P18 → P19, P99 → P100, 빈 사전 → P01
  * - 만들기: 출처·상태·번호, 번호 충돌과 제안 항목 충돌은 각각 409, 응답에 관리자 ID 없음
@@ -45,7 +45,7 @@ function validInput(extra: Record<string, unknown> = {}) {
       { no: 3, name: '샘플 셋', role: 'main', impl: '지금 가능' },
       { no: 5, name: '샘플 다섯', role: 'related' },
     ],
-    cardShapes: [{ shape: 'hero', note: '큰 카드' }, { shape: 'list' }],
+    cardShapes: [{ shape: 'hero_box', note: '큰 카드' }, { shape: 'gallery_list' }],
     knobs: { condition: { open: '열린', closed: '닫은' }, tribe: { rule: '규칙', example: '예시' } },
     pitfalls: '주의',
     ...extra,
@@ -74,7 +74,7 @@ describe('validateOpsPatternInput', () => {
     expect(checked.value.name).toBe('새 패턴')
     expect(checked.value.menus).toEqual(['홈피드', '미션'])
     expect(checked.value.samples[1]).toEqual({ no: 5, name: '샘플 다섯', role: 'related', impl: '' })
-    expect(checked.value.cardShapes).toEqual([{ shape: 'hero', note: '큰 카드' }, { shape: 'list', note: '' }])
+    expect(checked.value.cardShapes).toEqual([{ shape: 'hero_box', note: '큰 카드' }, { shape: 'gallery_list', note: '' }])
     expect(checked.value.knobs).toEqual({
       condition: { open: '열린', closed: '닫은' },
       place: { open: '', closed: '' },
@@ -84,7 +84,7 @@ describe('validateOpsPatternInput', () => {
     })
   })
 
-  it('필수 3칸만 있어도 통과한다(메뉴·샘플·카드 모양·손잡이·주의점은 선택)', () => {
+  it('필수 3칸만 있어도 통과한다(메뉴·샘플·카드 유형·손잡이·주의점은 선택)', () => {
     const checked = validateOpsPatternInput({ name: '이름', principle: '원리', userExperience: '경험' })
     if (!checked.ok) throw new Error(JSON.stringify(checked.fieldErrors))
     expect(checked.value).toMatchObject({ menus: [], samples: [], cardShapes: [], pitfalls: '' })
@@ -165,15 +165,24 @@ describe('validateOpsPatternInput', () => {
     }
   })
 
-  it('카드 모양: CARD_SHAPES 5개만, 메모는 선택이고 200자까지', () => {
-    for (const shape of ['hero', 'poster', 'square', 'brief', 'list']) {
+  it('카드 유형: 새 8유형만, 메모는 선택이고 200자까지', () => {
+    for (const shape of ['hero_box', 'full_image', 'badge_intro', 'badge_only', 'collection_intro', 'drop_pickup', 'text_box', 'gallery_list']) {
       expect(validateOpsPatternInput(validInput({ cardShapes: [{ shape }] })).ok).toBe(true)
     }
     const errors = fieldErrorsOf(
-      validInput({ cardShapes: [{ shape: 'large_thumbnail' }, { shape: 'hero', note: '가'.repeat(201) }, { shape: 'Hero' }, '카드'] })
+      validInput({ cardShapes: [{ shape: 'large_thumbnail' }, { shape: 'hero_box', note: '가'.repeat(201) }, { shape: 'Hero_box' }, '카드'] })
     )
     expect(Object.keys(errors).sort()).toEqual(['cardShapes.0.shape', 'cardShapes.1.note', 'cardShapes.2.shape', 'cardShapes.3'])
-    expect(validateOpsPatternInput(validInput({ cardShapes: [{ shape: 'hero', note: '가'.repeat(200) }] })).ok).toBe(true)
+    expect(validateOpsPatternInput(validInput({ cardShapes: [{ shape: 'hero_box', note: '가'.repeat(200) }] })).ok).toBe(true)
+  })
+
+  it('옛 모양 이름(hero·poster·square·brief·list·dome·ticket)은 허용값 오류다(저장된 옛 값은 폼에서 다시 고르게 한다, 티켓 20261122_1239)', () => {
+    for (const legacy of ['hero', 'poster', 'square', 'brief', 'list', 'dome', 'ticket']) {
+      const errors = fieldErrorsOf(validInput({ cardShapes: [{ shape: legacy }] }))
+      expect(Object.keys(errors), legacy).toEqual(['cardShapes.0.shape'])
+      expect(errors['cardShapes.0.shape']).toContain('카드 유형은')
+      expect(errors['cardShapes.0.shape']).toContain('히어로')
+    }
   })
 
   it('손잡이 칸은 빈 문자열을 받고, 문자열이 아니면 칸별 오류다', () => {
@@ -289,7 +298,7 @@ describe('validateOpsPatternInput: 주제와 샘플 각도 (티켓 20261102_1600
 })
 
 describe('시드 P01~P18', () => {
-  it('원고 파서가 만든 18개 패턴이 모두 검사를 통과한다', async () => {
+  it('원고 파서가 만든 18개 패턴은 카드 유형 칸(옛 모양 이름) 외에는 모두 검사를 통과한다', async () => {
     const { readFileSync } = await import('node:fs')
     const root = new URL('../../../../../../', import.meta.url)
     const parser = (await import(/* @vite-ignore */ new URL('scripts/ops-patterns-seed.mjs', root).href)) as {
@@ -313,7 +322,9 @@ describe('시드 P01~P18', () => {
         knobs: pattern.knobs,
         pitfalls: pattern.pitfalls,
       })
-      expect(checked.ok ? null : { no: pattern.pattern_no, errors: checked.fieldErrors }).toBeNull()
+      // 원고(`OPS_PATTERNS.md`)와 저장된 패턴 값은 옛 모양 이름 그대로다. 새 유형으로 옮기는 일은 8-3 밖이라(티켓 20261122_1239 후속 범위) 이 칸의 오류만 허용한다.
+      const otherErrors = checked.ok ? {} : Object.fromEntries(Object.entries(checked.fieldErrors).filter(([path]) => !/^cardShapes\.\d+\.shape$/.test(path)))
+      expect({ no: pattern.pattern_no, errors: otherErrors }).toEqual({ no: pattern.pattern_no, errors: {} })
     }
   })
 })

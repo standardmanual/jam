@@ -4,10 +4,10 @@
  * - 폼이 들고 있는 값(`PatternDraft`)은 입력칸에 그대로 묶이도록 전부 문자열이다(샘플 번호도 글자). 저장할 때 `inputFromDraft`가 검사용 입력으로 바꾸고,
  *   검사는 서버와 같은 `validateOpsPatternInput`(`input.ts`)이 한다.
  * - `draftFromRecord`는 DB의 JSONB(`samples`·`cardShapes`·`knobs`)를 믿지 않고 칸 단위로 읽는다. 깨진 칸은 빈 칸이 된다(저장하면 그 칸이 새 값으로 바뀐다).
- * - `changedFields`는 앞뒤 공백만 다른 칸은 바뀐 칸으로 세지 않는다(서버도 앞뒤 공백을 떼고 저장한다). 샘플·카드 모양·메뉴는 줄 순서가 바뀌어도 바뀐 칸이다.
+ * - `changedFields`는 앞뒤 공백만 다른 칸은 바뀐 칸으로 세지 않는다(서버도 앞뒤 공백을 떼고 저장한다). 샘플·카드 유형·메뉴는 줄 순서가 바뀌어도 바뀐 칸이다.
  */
 import { OPS_PATTERN_KNOB_LABELS } from '@/lib/admin/opsInbox/labels'
-import { isCardShape, type CardShape } from '@/lib/today/shape'
+import { isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
 import {
   OPS_PATTERN_ANGLE_NEEDS,
   OPS_PATTERN_ANGLE_TYPES,
@@ -32,8 +32,8 @@ export interface PatternDraftSample {
 }
 
 export interface PatternDraftCardShape {
-  /** 아직 고르지 않았으면 빈 글자. */
-  shape: CardShape | ''
+  /** 아직 고르지 않았으면 빈 글자. 옛 모양 이름이 저장돼 있어도 빈 글자로 열려 다시 고르게 한다(티켓 20261122_1239). */
+  shape: FeedType | ''
   note: string
 }
 
@@ -97,7 +97,7 @@ export function draftFromRecord(
 
   const cardShapes = (Array.isArray(record.cardShapes) ? record.cardShapes : []).map((entry): PatternDraftCardShape => {
     const item = isRecord(entry) ? entry : {}
-    return { shape: isCardShape(item.shape) ? item.shape : '', note: text(item.note) }
+    return { shape: isFeedType(item.shape) ? item.shape : '', note: text(item.note) }
   })
 
   const angles = (Array.isArray(record.angles) ? record.angles : []).map((entry): PatternDraftAngle => {
@@ -132,7 +132,7 @@ export function draftFromRecord(
 // ── 초안 → 검사용 입력 ──────────────────────────────────────────────────────────────────────────
 
 /**
- * 폼 값을 `validateOpsPatternInput`이 받는 입력으로 바꾼다. 검사 전의 값이라 `unknown`으로 돌려준다 — 고르지 않은 역할·모양은 빈 글자로 남아
+ * 폼 값을 `validateOpsPatternInput`이 받는 입력으로 바꾼다. 검사 전의 값이라 `unknown`으로 돌려준다 — 고르지 않은 역할·카드 유형은 빈 글자로 남아
  * 검사가 「골라 주세요」 문장을 낸다. 샘플 번호는 숫자 글자만 숫자로 바꾸고, 비었으면 없는 것으로, 그 밖의 글자는 그대로 둬 검사가 막게 한다.
  */
 export function inputFromDraft(draft: PatternDraft): unknown {
@@ -166,7 +166,7 @@ export const FIELD_LABEL = {
   principle: '작동 원리',
   userExperience: '유저가 겪는 것',
   menus: '쓰는 메뉴',
-  cardShapes: '카드 모양',
+  cardShapes: '카드 유형',
   samples: '샘플',
   angles: '샘플 각도',
   pitfalls: '주의점',

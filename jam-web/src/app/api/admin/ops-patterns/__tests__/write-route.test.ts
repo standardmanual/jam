@@ -41,7 +41,7 @@ function content(extra: Record<string, unknown> = {}) {
     userExperience: '유저가 겪는 것',
     menus: ['홈피드'],
     samples: [{ no: 3, name: '샘플', role: 'main', impl: '지금 가능' }],
-    cardShapes: [{ shape: 'hero', note: '' }],
+    cardShapes: [{ shape: 'hero_box', note: '' }],
     knobs: {},
     pitfalls: '',
     ...extra,

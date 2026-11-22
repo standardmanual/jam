@@ -28,7 +28,7 @@ import { OpsTasteSignalList } from './OpsTasteSignalEditor'
  * 패턴 상세(S5 상세)의 표시 부품 (티켓 20261008_1435, 상위 20260930_1503 ⑨b, 채원 판정 「⑨ 상세」). 훅이 없는 표시 전용 부품이다 — 읽기는 페이지가 맡는다.
  *
  * 구역 순서 = 목차 순서: 요약 · 손잡이 · 샘플 · 샘플 각도 · 주의점 · 취향 신호 · 사용 이력 · 결과. 사용 이력은 `OpsPatternUsage`가 그린다.
- * JSONB(`samples`·`cardShapes`·`knobs`)가 깨져도 화면이 유지되고 칸마다 「적지 않았어요」·「역할 모름」·「목록에 없는 모양」으로 보인다(해석은 `detailView.ts`).
+ * JSONB(`samples`·`cardShapes`·`knobs`)가 깨져도 화면이 유지되고 칸마다 「적지 않았어요」·「역할 모름」·「옛 모양 이름(그대로 보관)」으로 보인다(해석은 `detailView.ts`).
  * 사람이 쓴 글(이름·원리·이유·메모)은 텍스트 노드로만 그린다. 쓰기 버튼([수정하기]·[상태 바꾸기 ▾])은 머리의 `actions` 자리에 `OpsPatternDetailActions`가 들어간다(티켓 20261008_1617 ⑩a-2).
  * 수정한 사람은 어디에도 보이지 않는다.
  */
@@ -156,14 +156,15 @@ export function OpsPatternSummarySection({ pattern }: { pattern: Pick<OpsPattern
         <ReadOnlyItem label="쓰는 메뉴" span={3}>
           {menus.length > 0 ? menus.join(', ') : <MissingText />}
         </ReadOnlyItem>
-        <ReadOnlyItem label="카드 모양" span={3}>
+        <ReadOnlyItem label="카드 유형" span={3}>
           {shapes === null || shapes.length === 0 ? (
             <MissingText />
           ) : (
             <ul className="space-y-1">
               {shapes.map((line, index) => (
                 <li key={index} className="break-words">
-                  <span className="font-medium">{line.shape}</span>
+                  <span className="font-medium break-keep wrap-break-word">{line.shape}</span>
+                  {line.legacyName ? <span className="text-muted-foreground break-keep wrap-break-word"> · {line.legacyName}</span> : null}
                   <span className="text-muted-foreground"> · {line.note}</span>
                 </li>
               ))}
