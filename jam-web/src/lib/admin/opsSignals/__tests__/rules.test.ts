@@ -74,10 +74,10 @@ function dropDay(cards: SignalCardInput[], date: string, drop: (card: SignalCard
   return cards.filter((card) => !(card.startsAt === dayStart(date) && drop(card)))
 }
 
-/** 날짜별 대표 카드(sortOrder 0)의 모양을 정한다. */
-function withRepShapes(cards: SignalCardInput[], shapes: Record<string, SignalCardInput['shape']>): SignalCardInput[] {
+/** 날짜별 대표 카드(sortOrder 0)의 카드 유형을 정한다. */
+function withRepShapes(cards: SignalCardInput[], shapes: Record<string, SignalCardInput['feedType']>): SignalCardInput[] {
   return cards.map((card) =>
-    card.sortOrder === 0 && shapes[card.startsAt.slice(0, 10)] ? { ...card, shape: shapes[card.startsAt.slice(0, 10)] } : card
+    card.sortOrder === 0 && shapes[card.startsAt.slice(0, 10)] ? { ...card, feedType: shapes[card.startsAt.slice(0, 10)] } : card
   )
 }
 
@@ -240,7 +240,7 @@ const ROWS: Row[] = [
       input: {
         cards: [
           ...base(),
-          ...[3, 4, 5].map((n) => makeDayCard('2026-10-02', { sortOrder: n, shape: 'brief', exposureTags: ['strava_stale_14d'] })),
+          ...[3, 4, 5].map((n) => makeDayCard('2026-10-02', { sortOrder: n, feedType: 'text_box', exposureTags: ['strava_stale_14d'] })),
         ],
       },
     }),
@@ -248,7 +248,7 @@ const ROWS: Row[] = [
       input: {
         cards: [
           ...base(),
-          ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, shape: 'brief', exposureTags: ['strava_stale_14d'] })),
+          ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, feedType: 'text_box', exposureTags: ['strava_stale_14d'] })),
         ],
       },
     }),
@@ -276,18 +276,18 @@ const ROWS: Row[] = [
   {
     key: 'empty_content',
     condition: '제목이 빈 실제 카드',
-    raised: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, shape: 'brief', title: '  ', exposureTags: ['x'] })] } }),
-    clear: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, shape: 'brief', title: '제목', exposureTags: ['x'] })] } }),
+    raised: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, feedType: 'text_box', title: '  ', exposureTags: ['x'] })] } }),
+    clear: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, feedType: 'text_box', title: '제목', exposureTags: ['x'] })] } }),
   },
   {
     key: 'empty_content',
-    condition: '모양이 저장된 실제 카드가 이미지 모양인데 커버가 없다',
-    raised: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, shape: 'hero', hasCover: false, exposureTags: ['x'] })] } }),
-    clear: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, shape: 'hero', hasCover: true, exposureTags: ['x'] })] } }),
+    condition: '커버 이미지를 쓰는 카드 유형(히어로)의 실제 카드인데 커버가 없다',
+    raised: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, feedType: 'hero_box', hasCover: false, exposureTags: ['x'] })] } }),
+    clear: () => ({ input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, feedType: 'hero_box', hasCover: true, exposureTags: ['x'] })] } }),
   },
   {
     key: 'empty_content',
-    condition: '예약·게재 중인 운영 묶음 카드가 이미지 모양인데 이미지가 없다(승인 전은 「이미지 제작 필요」 표시뿐)',
+    condition: '예약·게재 중인 운영 묶음 카드가 커버 이미지를 쓰는 카드 유형인데 이미지가 없다(승인 전은 「이미지 제작 필요」 표시뿐)',
     raised: () => ({ input: { bundles: [makeBundle([homeItem('2026-10-02', NO_IMAGE, { status: 'scheduled' })])] } }),
     clear: () => ({ input: { bundles: [makeBundle([homeItem('2026-10-02', NO_IMAGE, { status: 'approved' })])] } }),
   },
@@ -299,9 +299,9 @@ const ROWS: Row[] = [
   },
   {
     key: 'empty_content',
-    condition: '이미지가 없는 모양(brief)이 대표 카드인 날',
-    raised: () => ({ input: { cards: withRepShapes(base(), { '2026-10-02': 'brief' }) } }),
-    clear: () => ({ input: { cards: withRepShapes(base(), { '2026-10-02': 'poster' }) } }),
+    condition: '이미지가 없는 카드 유형(텍스트)이 대표 카드인 날',
+    raised: () => ({ input: { cards: withRepShapes(base(), { '2026-10-02': 'text_box' }) } }),
+    clear: () => ({ input: { cards: withRepShapes(base(), { '2026-10-02': 'collection_intro' }) } }),
   },
   {
     key: 'empty_content',
@@ -397,17 +397,17 @@ const ROWS: Row[] = [
   // ── 겹침 (A6·A7)
   {
     key: 'overlap',
-    condition: '이미지가 있는 모양의 카드가 3장',
+    condition: '이미지가 있는 카드 유형의 카드가 3장',
     raised: () => ({
-      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, shape: 'hero', exposureTags: ['x'] }))] },
+      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, feedType: 'hero_box', exposureTags: ['x'] }))] },
     }),
     clear: () => ({
-      input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, shape: 'hero', exposureTags: ['x'] })] },
+      input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, feedType: 'hero_box', exposureTags: ['x'] })] },
     }),
   },
   {
     key: 'overlap',
-    condition: '모양을 아는 카드 가운데 이미지가 없는 모양이 0장',
+    condition: '카드 유형을 아는 카드 가운데 이미지가 없는 카드 유형이 0장',
     raised: () => ({ input: { cards: dropDay(base(), '2026-10-02', (card) => card.sortOrder !== 0) } }),
     clear: () => ({ input: { cards: dropDay(base(), '2026-10-02', (card) => card.sortOrder === 2) } }),
   },
@@ -415,20 +415,20 @@ const ROWS: Row[] = [
     key: 'overlap',
     condition: '신규 유저에게 보이는 카드가 4장(3장 초과)',
     raised: () => ({
-      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, shape: 'brief', exposureTags: ['new_user'] }))] },
+      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, feedType: 'text_box', exposureTags: ['new_user'] }))] },
     }),
     clear: () => ({
-      input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, shape: 'brief', exposureTags: ['new_user'] })] },
+      input: { cards: [...base(), makeDayCard('2026-10-02', { sortOrder: 3, feedType: 'text_box', exposureTags: ['new_user'] })] },
     }),
   },
   {
     key: 'overlap',
     condition: '시간대 태그(time_*)도 신규 유저에게 보이는 카드로 센다',
     raised: () => ({
-      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, shape: 'brief', exposureTags: ['time_morning'] }))] },
+      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, feedType: 'text_box', exposureTags: ['time_morning'] }))] },
     }),
     clear: () => ({
-      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, shape: 'brief', exposureTags: ['weather_rain'] }))] },
+      input: { cards: [...base(), ...[3, 4].map((n) => makeDayCard('2026-10-02', { sortOrder: n, feedType: 'text_box', exposureTags: ['weather_rain'] }))] },
     }),
   },
   {
@@ -438,8 +438,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
           ]),
         ],
       },
@@ -448,8 +448,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P2' }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P2' }),
           ]),
         ],
       },
@@ -462,8 +462,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'], tribe_id: TRIBE_ID }),
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'], tribe_id: TRIBE_ID }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'], tribe_id: TRIBE_ID }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'], tribe_id: TRIBE_ID }),
           ]),
         ],
       },
@@ -472,8 +472,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'], tribe_id: TRIBE_ID }),
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'], tribe_id: TRIBE_ID }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }),
           ]),
         ],
       },
@@ -486,8 +486,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
           ]),
         ],
       },
@@ -496,8 +496,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
-            homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1', startsAt: kst('2026-10-01', '09:00') }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+            homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1', startsAt: kst('2026-10-01', '09:00') }),
           ]),
         ],
       },
@@ -506,19 +506,19 @@ const ROWS: Row[] = [
   // ── 단조로운 흐름
   {
     key: 'monotony',
-    condition: '같은 모양이 3일 연속 대표 카드',
-    raised: () => ({ input: { cards: withRepShapes(base(), { '2026-10-01': 'hero', '2026-10-02': 'hero', '2026-10-03': 'hero' }) } }),
-    clear: () => ({ input: { cards: withRepShapes(base(), { '2026-10-01': 'hero', '2026-10-02': 'hero', '2026-10-03': 'poster' }) } }),
+    condition: '같은 카드 유형이 3일 연속 대표 카드',
+    raised: () => ({ input: { cards: withRepShapes(base(), { '2026-10-01': 'hero_box', '2026-10-02': 'hero_box', '2026-10-03': 'hero_box' }) } }),
+    clear: () => ({ input: { cards: withRepShapes(base(), { '2026-10-01': 'hero_box', '2026-10-02': 'hero_box', '2026-10-03': 'collection_intro' }) } }),
   },
   {
     key: 'monotony',
     condition: '3일이 이어지지 않으면(하루 건너뜀) 연속이 아니다',
-    raised: () => ({ input: { cards: withRepShapes(base(), { '2026-10-01': 'poster', '2026-10-02': 'poster', '2026-10-03': 'poster' }) } }),
+    raised: () => ({ input: { cards: withRepShapes(base(), { '2026-10-01': 'collection_intro', '2026-10-02': 'collection_intro', '2026-10-03': 'collection_intro' }) } }),
     clear: () => ({
       input: {
         cards: withRepShapes(
           dropDay(base(), '2026-10-02', (card) => card.exposureTags.includes('all')),
-          { '2026-10-01': 'poster', '2026-10-03': 'poster', '2026-10-04': 'poster' }
+          { '2026-10-01': 'collection_intro', '2026-10-03': 'collection_intro', '2026-10-04': 'collection_intro' }
         ),
       },
     }),
@@ -530,9 +530,9 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-01', { shape: 'poster', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
-            homeItem('2026-10-02', { shape: 'hero', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
-            homeItem('2026-10-03', { shape: 'poster', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
+            homeItem('2026-10-01', { feed_type: 'collection_intro', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
+            homeItem('2026-10-02', { feed_type: 'hero_box', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
+            homeItem('2026-10-03', { feed_type: 'collection_intro', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
           ]),
         ],
       },
@@ -541,8 +541,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-01', { shape: 'poster', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
-            homeItem('2026-10-02', { shape: 'hero', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
+            homeItem('2026-10-01', { feed_type: 'collection_intro', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
+            homeItem('2026-10-02', { feed_type: 'hero_box', resource: { sort_order: -1, cover_image_url: 'x' } }, { patternNo: 'P7' }),
           ]),
         ],
       },
@@ -555,9 +555,9 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-01', { shape: 'poster', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
-            homeItem('2026-10-02', { shape: 'hero', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
-            homeItem('2026-10-03', { shape: 'poster', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
+            homeItem('2026-10-01', { feed_type: 'collection_intro', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
+            homeItem('2026-10-02', { feed_type: 'hero_box', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
+            homeItem('2026-10-03', { feed_type: 'collection_intro', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
           ]),
         ],
       },
@@ -566,8 +566,8 @@ const ROWS: Row[] = [
       input: {
         bundles: [
           makeBundle([
-            homeItem('2026-10-01', { shape: 'poster', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
-            homeItem('2026-10-02', { shape: 'hero', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
+            homeItem('2026-10-01', { feed_type: 'collection_intro', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
+            homeItem('2026-10-02', { feed_type: 'hero_box', tribe_id: TRIBE_ID, resource: { sort_order: -1, cover_image_url: 'x' } }),
           ]),
         ],
       },
@@ -914,8 +914,8 @@ describe('신호 결과의 모양', () => {
         input: {
           bundles: [
             makeBundle([
-              homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
-              homeItem('2026-10-02', { shape: 'brief', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+              homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
+              homeItem('2026-10-02', { feed_type: 'text_box', exposure_tags: ['x'] }, { patternNo: 'P1' }),
             ]),
           ],
         },
@@ -927,11 +927,11 @@ describe('신호 결과의 모양', () => {
 
   it('단조로운 흐름은 같은 값을 한 번만 알린다(검사 날짜가 여러 날이어도)', () => {
     const result = outcome(
-      { input: { cards: withRepShapes(base(), { '2026-10-01': 'hero', '2026-10-02': 'hero', '2026-10-03': 'hero', '2026-10-04': 'hero' }) } },
+      { input: { cards: withRepShapes(base(), { '2026-10-01': 'hero_box', '2026-10-02': 'hero_box', '2026-10-03': 'hero_box', '2026-10-04': 'hero_box' }) } },
       'monotony'
     )
     expect(result.results.map((entry) => entry.message)).toEqual([
-      '같은 모양(hero)이 4일 연속 대표 카드예요. (10월 1일(목)~10월 4일(일))',
+      '같은 카드 유형(히어로)이 4일 연속 대표 카드예요. (10월 1일(목)~10월 4일(일))',
     ])
     // 날짜는 연속이 3일째가 되는 검사 날짜다(10/1·10/2·10/3 → 10/3).
     expect(result.results[0].date).toBe('2026-10-03')

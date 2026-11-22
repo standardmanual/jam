@@ -3,7 +3,7 @@
  *
  * 서비스 클라이언트는 메모리 안의 가짜 DB로 바꾼다(실 DB에 접속하지 않는다). 지키는 것:
  * - **select 계열만 부르고 insert·update·upsert·delete를 부르지 않는다**
- * - 카드 행을 그대로 `resolveShape`에 넘겨 옛 카드의 모양을 채운다(커버 없이 배지가 걸린 옛 large_thumbnail은 square)
+ * - 카드 행의 `feed_type`·`box_kind`를 읽어 `resolveFeedType`으로 카드 유형을 채운다(옛 shape·layout_type은 읽지 않는다, 티켓 20261122_1239)
  * - 1000행을 넘어도 끝까지 받는다
  * - 제출 원본(`raw`)은 끝나지 않은 묶음의 것만 따로 받는다
  * - 행동 건수는 행을 가져오지 않고(`head`) 센다
@@ -200,9 +200,8 @@ function cardRow(id: string, over: Record<string, unknown> = {}) {
     ends_at: dayEnd('2026-10-01'),
     is_active: true,
     sort_order: 0,
-    shape: null,
-    template_type: 'badge_spotlight',
-    layout_type: 'large_thumbnail',
+    feed_type: 'hero_box',
+    box_kind: null,
     cover_image_url: 'https://example.com/cover.png',
     badge_ids: [],
     exposure_tags: ['all'],
@@ -427,52 +426,59 @@ describe('loadDayCompositions — 기간을 받는 날짜 구성(티켓 20261006
   })
 })
 
-describe('loadOpsSignals — 카드와 resolveShape', () => {
-  async function shapesOf(rows: Array<Record<string, unknown>>): Promise<Record<string, string>> {
+describe('loadOpsSignals — 카드와 카드 유형(resolveFeedType)', () => {
+  async function typesOf(rows: Array<Record<string, unknown>>): Promise<Record<string, string>> {
     h.state.tables.today_cards = rows
     const result = await loadOpsSignals({ now: NOW })
     const day = result.compositions.find((entry) => entry.date === '2026-10-01')
-    return Object.fromEntries((day?.cards ?? []).map((card) => [card.id, card.shape]))
+    return Object.fromEntries((day?.cards ?? []).map((card) => [card.id, card.feedType]))
   }
 
-  it('카드 행을 그대로 resolveShape에 넘겨 옛 카드의 모양을 채운다', async () => {
-    const shapes = await shapesOf([
-      // 모양이 저장된 카드는 그 값 그대로
-      cardRow('stored', { shape: 'poster' }),
-      // 커버가 없고 배지가 걸린 옛 large_thumbnail은 첫 배지 그림이 커버로 올라가던 카드라 square
-      cardRow('badge-promoted', { cover_image_url: null, badge_ids: ['b-1'] }),
-      // 커버가 있는 옛 large_thumbnail은 hero
-      cardRow('legacy-hero'),
-      // 기사는 레이아웃과 상관없이 hero
-      cardRow('article', { template_type: 'editorial_article', layout_type: 'shortcut', cover_image_url: null }),
-      // 배너는 커버가 있으면 poster, 없으면 brief
-      cardRow('banner', { layout_type: 'banner' }),
-      cardRow('banner-no-cover', { layout_type: 'banner', cover_image_url: null }),
-      // 배지목록·순위·바로가기
-      cardRow('gallery', { layout_type: 'badge_gallery' }),
-      cardRow('shortcut', { layout_type: 'shortcut' }),
+  it('카드 행의 feed_type을 읽어 유형을 채운다. 비었거나 모르는 값은 텍스트 박스다', async () => {
+    const types = await typesOf([
+      cardRow('hero', { feed_type: 'hero_box' }),
+      cardRow('intro', { feed_type: 'collection_intro' }),
+      cardRow('list', { feed_type: 'gallery_list' }),
+      cardRow('empty', { feed_type: null }),
+      cardRow('old-name', { feed_type: 'poster' }),
     ])
-    expect(shapes).toEqual({
-      stored: 'poster',
-      'badge-promoted': 'square',
-      'legacy-hero': 'hero',
-      article: 'hero',
-      banner: 'poster',
-      'banner-no-cover': 'brief',
-      gallery: 'list',
-      shortcut: 'brief',
-    })
+    expect(types).toEqual({ hero: 'hero_box', intro: 'collection_intro', list: 'gallery_list', empty: 'text_box', 'old-name': 'text_box' })
   })
 
-  it('옛 카드는 이미지가 없어도 「이미지가 빈 항목」이 아니고 모양이 저장된 카드는 커버가 없으면 그렇다(A8)', async () => {
+  it('신호에는 그릴 값이 없다고 내려가지 않는다: 커버 없는 컬렉션 소개도 컬렉션 소개로 남아 「이미지가 빈 항목」이 된다', async () => {
+    const types = await typesOf([
+      cardRow('intro-no-cover', { feed_type: 'collection_intro', cover_image_url: null }),
+      cardRow('drop-no-badge', { feed_type: 'drop_pickup', badge_ids: [] }),
+    ])
+    expect(types).toEqual({ 'intro-no-cover': 'collection_intro', 'drop-no-badge': 'drop_pickup' })
+  })
+
+  it('옛 shape·layout_type 칸은 읽지 않는다(select 열에 없다)', async () => {
+    h.state.tables.today_cards = [cardRow('a', { feed_type: 'hero_box' })]
+    await loadOpsSignals({ now: NOW })
+    const select = h.state.selects.find((entry) => entry.table === 'today_cards')
+    expect(select?.columns).toContain('feed_type')
+    expect(select?.columns).toContain('box_kind')
+    expect(select?.columns).not.toMatch(/\bshape\b/)
+    expect(select?.columns).not.toContain('layout_type')
+  })
+
+  it('hero_box 카드는 커버가 없으면 「이미지가 빈 항목」이고, 텍스트 박스는 커버가 없어도 아니다(box_kind가 image_mask면 그렇다)', async () => {
     h.state.tables.today_cards = [
-      cardRow('legacy-no-cover', { cover_image_url: null }),
-      cardRow('stored-no-cover', { shape: 'hero', cover_image_url: null }),
+      cardRow('hero-no-cover', { feed_type: 'hero_box', cover_image_url: null }),
+      cardRow('hero-cover', { feed_type: 'hero_box' }),
+      cardRow('text-no-cover', { feed_type: 'text_box', box_kind: 'text', cover_image_url: null }),
+      cardRow('mask-no-cover', { feed_type: 'text_box', box_kind: 'image_mask', cover_image_url: null }),
+      cardRow('empty-type-no-cover', { feed_type: null, cover_image_url: null }),
     ]
     const result = await loadOpsSignals({ now: NOW })
     const cards = result.compositions.find((entry) => entry.date === '2026-10-01')?.cards ?? []
-    expect(cards.find((card) => card.id === 'legacy-no-cover')?.imageMissing).toBe(false)
-    expect(cards.find((card) => card.id === 'stored-no-cover')?.imageMissing).toBe(true)
+    const missing = (id: string) => cards.find((card) => card.id === id)?.imageMissing
+    expect(missing('hero-no-cover')).toBe(true)
+    expect(missing('hero-cover')).toBe(false)
+    expect(missing('text-no-cover')).toBe(false)
+    expect(missing('mask-no-cover')).toBe(true)
+    expect(missing('empty-type-no-cover')).toBe(false)
   })
 
   it('활성 카드만, 검사 범위(앞 6일~다음 주 일요일)에 걸치는 카드만 읽는다', async () => {
@@ -563,19 +569,19 @@ describe('loadOpsSignals — 운영 묶음', () => {
     expect(signal(result, 'execution_failed').results).toHaveLength(1_150)
   })
 
-  it('운영 묶음 홈피드 카드는 제출 원본의 칸(모양·노출 대상)을 읽어 날짜 구성에 들어간다', async () => {
+  it('운영 묶음 홈피드 카드는 제출 원본의 칸(카드 유형·노출 대상)을 읽어 날짜 구성에 들어간다', async () => {
     h.state.tables.ops_bundles = [bundleRow('b1')]
     h.state.tables.ops_bundle_items = [
       itemRow('i1', 'b1', {
         kind: 'home_feed_card',
         starts_at: dayStart('2026-10-02'),
         ends_at: dayEnd('2026-10-02'),
-        original: cardOriginal({ shape: 'poster' }),
+        original: cardOriginal({ feed_type: 'collection_intro' }),
       }),
     ]
     const result = await loadOpsSignals({ now: NOW })
     const card = result.compositions.find((entry) => entry.date === '2026-10-02')?.cards[0]
-    expect(card).toMatchObject({ source: 'bundle', id: 'i1', shape: 'poster', exposureTags: ['all'] })
+    expect(card).toMatchObject({ source: 'bundle', id: 'i1', feedType: 'collection_intro', exposureTags: ['all'] })
   })
 })
 

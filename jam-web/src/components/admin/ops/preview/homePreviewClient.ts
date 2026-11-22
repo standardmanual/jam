@@ -8,7 +8,8 @@ import type { DayPreview } from '@/lib/admin/homePreview/load'
 import type { TimeOfDayTag } from '@/lib/today/exposure'
 import type { WeatherKind } from '@/lib/inputs/weather'
 import type { SpecialDayTag } from '@/lib/inputs/special-days-config'
-import type { CardShape } from '@/lib/today/shape'
+import { FEED_TYPE_LABELS } from '@/lib/admin/feedTypeLabels'
+import type { FeedType } from '@/lib/today/feedChipSlots'
 
 export type { DayPreview, PreviewEntry } from '@/lib/admin/homePreview/load'
 
@@ -36,15 +37,19 @@ export const SPECIAL_OPTIONS: readonly { value: SpecialDayTag; label: string }[]
   { value: 'anniversary_today', label: '기념일' },
 ]
 
-/** 카드 모양 이름과 막대의 회색 농도(모양마다 달라 범례 없이 `title` 툴팁으로 읽는다) */
-export const SHAPE_STYLES: Record<CardShape, { label: string; barClass: string }> = {
-  hero: { label: '히어로', barClass: 'bg-neutral-200' },
-  poster: { label: '포스터', barClass: 'bg-neutral-300' },
-  square: { label: '정사각', barClass: 'bg-neutral-400' },
-  brief: { label: '간단', barClass: 'bg-neutral-500' },
-  list: { label: '목록', barClass: 'bg-neutral-600' },
-  dome: { label: '돔', barClass: 'bg-neutral-700' },
-  ticket: { label: '티켓', barClass: 'bg-neutral-800' },
+/**
+ * 카드 유형 이름과 막대의 회색 농도(유형마다 달라 범례 없이 `title` 툴팁으로 읽는다). 키는 새 8유형이고(티켓 20261122_1239) 이름은 어드민 카드 폼과 같은 `FEED_TYPE_LABELS`다.
+ * 순서는 막대 조각의 순서다: 커버 이미지를 쓰는 유형이 앞(연한 쪽), 이미지 없는 유형이 뒤(진한 쪽).
+ */
+export const SHAPE_STYLES: Record<FeedType, { label: string; barClass: string }> = {
+  hero_box: { label: FEED_TYPE_LABELS.hero_box, barClass: 'bg-neutral-200' },
+  collection_intro: { label: FEED_TYPE_LABELS.collection_intro, barClass: 'bg-neutral-300' },
+  full_image: { label: FEED_TYPE_LABELS.full_image, barClass: 'bg-neutral-400' },
+  text_box: { label: FEED_TYPE_LABELS.text_box, barClass: 'bg-neutral-500' },
+  badge_intro: { label: FEED_TYPE_LABELS.badge_intro, barClass: 'bg-neutral-600' },
+  badge_only: { label: FEED_TYPE_LABELS.badge_only, barClass: 'bg-neutral-700' },
+  drop_pickup: { label: FEED_TYPE_LABELS.drop_pickup, barClass: 'bg-neutral-800' },
+  gallery_list: { label: FEED_TYPE_LABELS.gallery_list, barClass: 'bg-neutral-900' },
 }
 
 export const STORED_LABEL = '저장된 값'
@@ -120,9 +125,9 @@ export function dayCellLabel(date: string): { weekday: string; monthDay: string 
   return { weekday: WEEKDAYS[dt.getUTCDay()], monthDay: `${m}/${d}` }
 }
 
-/** 칸 막대의 조각: 모양 순서대로(`SHAPE_STYLES` 키 순서), 개수가 0보다 큰 모양만 */
+/** 칸 막대의 조각: 유형 순서대로(`SHAPE_STYLES` 키 순서), 개수가 0보다 큰 유형만. 표에 없는 유형(옛 응답)은 키 이름 그대로 뒤에 묶는다 */
 export function shapeSegments(shapeCounts: Record<string, number>): { shape: string; count: number; label: string; barClass: string }[] {
-  const known = (Object.keys(SHAPE_STYLES) as CardShape[]).filter((shape) => (shapeCounts[shape] ?? 0) > 0)
+  const known = (Object.keys(SHAPE_STYLES) as FeedType[]).filter((shape) => (shapeCounts[shape] ?? 0) > 0)
   const unknown = Object.keys(shapeCounts).filter((shape) => !(shape in SHAPE_STYLES) && shapeCounts[shape] > 0)
   return [
     ...known.map((shape) => ({ shape, count: shapeCounts[shape], ...SHAPE_STYLES[shape] })),

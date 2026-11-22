@@ -163,13 +163,13 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
     expect(formatErrorPathLabel('items')).toBe('항목 목록')
   })
 
-  it('카드 칸 이름표(티켓 20261001_1152): 카드 모양·노출 대상·트라이브·색 대기', () => {
-    expect(formatErrorPathLabel('items[0].shape')).toBe('카드 모양')
+  it('카드 칸 이름표(티켓 20261001_1152): 옛 카드 모양·카드 유형·노출 대상·트라이브·색 대기', () => {
+    expect(formatErrorPathLabel('items[0].shape')).toBe('옛 카드 모양')
     expect(formatErrorPathLabel('items[0].resource.feed_type')).toBe('카드 유형')
     expect(formatErrorPathLabel('items[0].exposure_tags')).toBe('노출 대상')
     expect(formatErrorPathLabel('items[0].tribe_id')).toBe('트라이브')
     expect(formatErrorPathLabel('items[0].color_pending')).toBe('색 대기')
-    expect(parseFormatErrorPath('items[2].shape')).toEqual({ itemPosition: 2, label: '카드 모양' })
+    expect(parseFormatErrorPath('items[2].shape')).toEqual({ itemPosition: 2, label: '옛 카드 모양' })
   })
 
   it('패턴 번호·장소 카테고리 이름표(티켓 20261007_1745)', () => {
@@ -192,9 +192,9 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
     expect(labelOf('.samples[2].name')).toBe('제안 패턴 샘플 이름')
     expect(labelOf('.samples[2].role')).toBe('제안 패턴 샘플 역할')
     expect(labelOf('.samples[2].impl')).toBe('제안 패턴 샘플 구현')
-    expect(labelOf('.card_shapes')).toBe('제안 패턴 카드 모양')
-    expect(labelOf('.card_shapes[1].shape')).toBe('제안 패턴 카드 모양')
-    expect(labelOf('.card_shapes[1].note')).toBe('제안 패턴 카드 모양 설명')
+    expect(labelOf('.card_shapes')).toBe('제안 패턴 카드 유형')
+    expect(labelOf('.card_shapes[1].shape')).toBe('제안 패턴 카드 유형')
+    expect(labelOf('.card_shapes[1].note')).toBe('제안 패턴 카드 유형 설명')
     expect(labelOf('.knobs')).toBe('제안 패턴 손잡이')
     expect(labelOf('.knobs.place')).toBe('제안 패턴 손잡이(장소)')
     expect(labelOf('.knobs.condition.open')).toBe('제안 패턴 손잡이(조건) 연 값')

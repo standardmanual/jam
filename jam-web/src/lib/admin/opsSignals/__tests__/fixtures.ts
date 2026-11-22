@@ -25,7 +25,7 @@ export function dayEnd(date: string): string {
 
 let seq = 0
 
-/** 실제 카드 한 장. 기본은 2026-10-01 하루짜리 전원 대상 `hero` 카드다. */
+/** 실제 카드 한 장. 기본은 2026-10-01 하루짜리 전원 대상 히어로(`hero_box`) 카드다. */
 export function makeCard(over: Partial<SignalCardInput> = {}): SignalCardInput {
   seq += 1
   return {
@@ -35,8 +35,8 @@ export function makeCard(over: Partial<SignalCardInput> = {}): SignalCardInput {
     endsAt: dayEnd('2026-10-01'),
     isActive: true,
     sortOrder: 0,
-    shape: 'hero',
-    shapeStored: true,
+    feedType: 'hero_box',
+    boxKind: null,
     exposureTags: ['all'],
     hasCover: true,
     ...over,
@@ -48,14 +48,20 @@ export function makeDayCard(date: string, over: Partial<SignalCardInput> = {}): 
   return makeCard({ startsAt: dayStart(date), endsAt: dayEnd(date), ...over })
 }
 
-/** 홈피드 카드 항목의 제출 원본. 기본은 전원 대상 `hero`에 문안·이미지가 다 있다. */
+/**
+ * 홈피드 카드 항목의 제출 원본. 기본은 전원 대상 히어로(`hero_box`)에 문안·이미지가 다 있다.
+ * 시험 편의로 최상위 `feed_type`을 주면 `resource.feed_type`으로 옮긴다. `resource`를 주면 그것으로 통째로 바뀐다(커버 없음) — 유형만 기본값이 붙는다.
+ */
 export function cardOriginal(over: Record<string, Json> = {}): Json {
+  const { feed_type: feedType = 'hero_box', resource, ...rest } = over
   return {
-    shape: 'hero',
     exposure_tags: ['all'],
     copy: { title: '운영 카드' },
-    resource: { cover_image_url: 'https://example.com/cover.png' },
-    ...over,
+    ...rest,
+    resource:
+      resource === undefined
+        ? { feed_type: feedType, cover_image_url: 'https://example.com/cover.png' }
+        : { feed_type: feedType, ...(resource as Record<string, Json>) },
   }
 }
 
@@ -95,7 +101,7 @@ export function makeBundle(items: SignalBundleItemInput[] = [], over: Partial<Si
 }
 
 /**
- * 모든 날짜에 카드가 3장씩 있는 「아무 신호도 걸리지 않는」 기준 구성. 대표 카드의 모양을 날마다 바꿔 단조로운 흐름에도
+ * 모든 날짜에 카드가 3장씩 있는 「아무 신호도 걸리지 않는」 기준 구성. 대표 카드의 카드 유형을 날마다 바꿔 단조로운 흐름에도
  * 걸리지 않는다. 시험은 여기서 한 가지 조건만 바꿔 신호가 뜨는지 본다.
  */
 export function healthyCards(fromDate: string, toDate: string): SignalCardInput[] {
@@ -103,9 +109,9 @@ export function healthyCards(fromDate: string, toDate: string): SignalCardInput[
   let index = 0
   for (let date = fromDate; date <= toDate; date = shiftDateStr(date, 1)) {
     cards.push(
-      makeDayCard(date, { sortOrder: 0, shape: index % 2 === 0 ? 'hero' : 'poster', exposureTags: ['all'] }),
-      makeDayCard(date, { sortOrder: 1, shape: 'brief', exposureTags: ['all'] }),
-      makeDayCard(date, { sortOrder: 2, shape: 'list', exposureTags: ['has_participating_mission'] })
+      makeDayCard(date, { sortOrder: 0, feedType: index % 2 === 0 ? 'hero_box' : 'collection_intro', exposureTags: ['all'] }),
+      makeDayCard(date, { sortOrder: 1, feedType: 'text_box', exposureTags: ['all'] }),
+      makeDayCard(date, { sortOrder: 2, feedType: 'gallery_list', exposureTags: ['has_participating_mission'] })
     )
     index += 1
   }

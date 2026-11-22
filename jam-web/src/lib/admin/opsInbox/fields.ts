@@ -6,7 +6,7 @@
  * (「모름」)으로 돌려준다. 수정본(`edited`)이 있으면 그 값을 먼저 읽는다(`itemView.itemField`).
  *
  * 값이 없을 때와 형식이 틀릴 때 읽는 값은 칸마다 정해져 있다(`docs/service/prd/ops-tool/PRD.md` §3.1).
- * - `shape`·`exposure_tags`: 없어도 틀려도 「모름」(필수 칸이라 없는 것도 정보가 없는 것이다)
+ * - `resource.feed_type`·`exposure_tags`: 없어도 틀려도 「모름」(필수 칸이라 없는 것도 정보가 없는 것이다)
  * - `tribe_id`: 없으면 `null`, 틀리면 「모름」
  * - `color_pending`: 없으면 `false`, 틀리면 「모름」
  * - `pattern_no`: 없으면 `null`, 형식(`P01`)이 틀리면 「모름」(티켓 20261007_1745. 사전에 있는 번호인지는 여기서 보지 않는다)
@@ -36,7 +36,7 @@ import {
   type OpsPatternSampleRole,
 } from '@/lib/admin/opsPatterns/constants'
 import { isUuid } from '@/lib/admin/uuid'
-import { isCardShape, type CardShape } from '@/lib/today/shape'
+import { isFeedType, type FeedType } from '@/lib/today/feedChipSlots'
 
 /** 「모름」 — 칸이 없거나 형식이 틀려 읽을 수 없는 값. */
 export const OPS_FIELD_UNKNOWN = 'unknown' as const
@@ -59,9 +59,9 @@ export interface OpsPatternProposalSample {
   impl: string
 }
 
-/** 패턴 제안이 쓰는 카드 모양 하나. `note`는 빈 값일 수 있다. */
+/** 패턴 제안이 쓰는 카드 유형 하나(JSON 키 이름은 DB 호환을 위해 `shape` 그대로). `note`는 빈 값일 수 있다. */
 export interface OpsPatternProposalCardShape {
-  shape: CardShape
+  shape: FeedType
   note: string
 }
 
@@ -86,15 +86,15 @@ export interface OpsPatternProposal {
   pitfalls: string
 }
 
-/** 홈피드 카드 종류인지(카드 모양·노출 대상이 필수인 종류). */
+/** 홈피드 카드 종류인지(카드 유형·노출 대상이 필수인 종류). */
 export function isOpsHomeFeedCard(kind: unknown): boolean {
   return kind === OPS_HOME_FEED_CARD_KIND
 }
 
-/** 카드 모양. 허용값이면 그 값, 없거나 틀리면 「모름」. */
-export function readOpsItemShape(item: ViewableItem): CardShape | OpsFieldUnknown {
-  const value = itemField(item, 'shape')
-  return isCardShape(value) ? value : OPS_FIELD_UNKNOWN
+/** 카드 유형(`resource.feed_type`, 티켓 20261122_1239). 허용 8가지면 그 값, 없거나 틀리면 「모름」. 옛 `shape`·`layout_type`은 읽지 않는다. */
+export function readOpsItemFeedType(item: ViewableItem): FeedType | OpsFieldUnknown {
+  const value = asRecord(itemField(item, 'resource'))?.feed_type
+  return isFeedType(value) ? value : OPS_FIELD_UNKNOWN
 }
 
 /** 노출 대상 태그. 형식이 맞으면 태그 배열, 없거나 틀리면 「모름」. */
@@ -156,7 +156,7 @@ export function readBundleExcludedItems(raw: Json | null | undefined): OpsExclud
 /**
  * 패턴 제안 항목의 내용(`resource.pattern`). `kind`가 `pattern_proposal`이 아니면 `null`이다. 종류가 맞으면 `validateOpsPatternProposal`을
  * 그대로 돌려 오류가 하나라도 있으면 「모름」, 없으면 객체다 — 그래서 「검사 통과 = 모름이 아님」이 늘 성립한다. 문자열은 앞뒤 공백을 떼고,
- * 없는 선택 칸은 사전 기본값(`menus`·`samples`·`cardShapes`는 `[]`, `pitfalls`는 `''`, 샘플 `impl`·카드 모양 `note`는 `''`)으로 읽는다.
+ * 없는 선택 칸은 사전 기본값(`menus`·`samples`·`cardShapes`는 `[]`, `pitfalls`는 `''`, 샘플 `impl`·카드 유형 `note`는 `''`)으로 읽는다.
  * 정의되지 않은 키는 버린다.
  */
 export function readOpsPatternProposal(item: ViewableItem): OpsPatternProposal | null | OpsFieldUnknown {
@@ -187,7 +187,7 @@ export function readOpsPatternProposal(item: ViewableItem): OpsPatternProposal |
       impl: typeof sample.impl === 'string' ? sample.impl.trim() : '',
     })),
     cardShapes: list(pattern.card_shapes).map((entry) => ({
-      shape: entry.shape as CardShape,
+      shape: entry.shape as FeedType,
       note: typeof entry.note === 'string' ? entry.note.trim() : '',
     })),
     knobs: readKnobs,

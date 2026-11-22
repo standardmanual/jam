@@ -42,18 +42,18 @@ describe('periodText', () => {
 })
 
 describe('keyValuesOf', () => {
-  it('홈피드 카드: 공개 기간·대상(노출 태그)·모양만 읽고 조건·보상 줄은 없다', () => {
+  it('홈피드 카드: 공개 기간·대상(노출 태그)·카드 유형만 읽고 조건·보상 줄은 없다', () => {
     const rows = keyValuesOf(
       item({
         startsAt: '2026-12-30T09:00:00+09:00',
         endsAt: '2026-12-30T10:00:00+09:00',
-        original: { exposure_tags: ['all', 'new_user'], shape: 'hero', resource: { reward_points: 50 } },
+        original: { exposure_tags: ['all', 'new_user'], shape: 'hero', resource: { feed_type: 'hero_box', reward_points: 50 } },
       })
     )
     expect(rows).toEqual([
       { label: '공개 기간', value: '12/30(수) 09:00 ~ 10:00' },
       { label: '대상', value: 'all · new_user' },
-      { label: '모양', value: 'hero' },
+      { label: '카드 유형', value: '히어로' },
     ])
   })
 
@@ -121,10 +121,10 @@ describe('keyValuesOf', () => {
     expect(rowsOf({ original: { exposure_tags: ['all'] }, edited: { exposure_tags: ['new_user'] } })['대상']).toBe('new_user')
   })
 
-  it('없는 칸은 줄을 그리지 않고, 모양이 틀린 값에도 죽지 않는다', () => {
+  it('없는 칸은 줄을 그리지 않고, 카드 유형이 틀린 값에도 죽지 않는다(옛 shape 칸은 읽지 않는다)', () => {
     expect(keyValuesOf(item())).toEqual([])
     expect(keyValuesOf(item({ kind: null, original: 5 }))).toEqual([])
-    expect(rowsOf({ original: { shape: 'unknown-shape', exposure_tags: 'all', resource: 7 } })).toEqual({})
+    expect(rowsOf({ original: { shape: 'hero', exposure_tags: 'all', resource: 7 } })).toEqual({})
     expect(rowsOf({ kind: 'mission', original: { resource: { reward_points: '50' } } })).toEqual({})
   })
 })

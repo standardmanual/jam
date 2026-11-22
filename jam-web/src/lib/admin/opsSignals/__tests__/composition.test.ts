@@ -51,15 +51,21 @@ describe('buildDayCompositions — 실제 카드의 하루 겹침', () => {
     expect(day.cards.find((card) => card.id === ongoing.id)?.startsOnDay).toBe(false)
   })
 
-  it('옛 카드(모양 칸이 빈 카드)는 이미지가 없어도 「이미지가 빈 항목」이 아니다(A8)', () => {
-    const legacy = makeCard({ shapeStored: false, shape: 'hero', hasCover: false })
-    const stored = makeCard({ shapeStored: true, shape: 'hero', hasCover: false })
-    const storedBrief = makeCard({ shapeStored: true, shape: 'brief', hasCover: false })
-    const [day] = compose({ cards: [legacy, stored, storedBrief] })
+  it('커버가 필요한 카드 유형(히어로·컬렉션 소개·이미지 마스크 텍스트 박스)만 커버가 없으면 「이미지가 빈 항목」이다(A8, 티켓 20261122_1239)', () => {
+    const hero = makeCard({ feedType: 'hero_box', hasCover: false })
+    const heroWithCover = makeCard({ feedType: 'hero_box', hasCover: true })
+    const intro = makeCard({ feedType: 'collection_intro', hasCover: false })
+    const maskedText = makeCard({ feedType: 'text_box', boxKind: 'image_mask', hasCover: false })
+    const plainText = makeCard({ feedType: 'text_box', boxKind: 'text', hasCover: false })
+    const list = makeCard({ feedType: 'gallery_list', hasCover: false })
+    const [day] = compose({ cards: [hero, heroWithCover, intro, maskedText, plainText, list] })
     const byId = (id: string) => day.cards.find((card) => card.id === id) as CompositionCard
-    expect(byId(legacy.id).imageMissing).toBe(false)
-    expect(byId(stored.id).imageMissing).toBe(true)
-    expect(byId(storedBrief.id).imageMissing).toBe(false)
+    expect(byId(hero.id)).toMatchObject({ imageMissing: true, usesCoverImage: true })
+    expect(byId(heroWithCover.id)).toMatchObject({ imageMissing: false, usesCoverImage: true })
+    expect(byId(intro.id).imageMissing).toBe(true)
+    expect(byId(maskedText.id).imageMissing).toBe(true)
+    expect(byId(plainText.id)).toMatchObject({ imageMissing: false, usesCoverImage: false })
+    expect(byId(list.id).imageMissing).toBe(false)
   })
 
   it('실제 카드의 문안은 제목이 비어 있으면 빈 것이다(A5)', () => {
@@ -112,22 +118,26 @@ describe('buildDayCompositions — 운영 묶음 항목', () => {
     expect(day.cards[0].isSample).toBe(true)
   })
 
-  it('수정본이 있으면 수정본의 칸을 읽는다(모양·노출 대상)', () => {
-    const item = makeItem({ original: cardOriginal({ shape: 'brief' }), edited: { shape: 'poster', exposure_tags: ['new_user'] } })
+  it('수정본이 있으면 수정본의 칸을 읽는다(카드 유형·노출 대상)', () => {
+    const item = makeItem({
+      original: cardOriginal({ feed_type: 'text_box' }),
+      edited: { resource: { feed_type: 'collection_intro' }, exposure_tags: ['new_user'] },
+    })
     const [day] = compose({ bundles: [makeBundle([item])] })
-    expect(day.cards[0].shape).toBe('poster')
+    expect(day.cards[0].feedType).toBe('collection_intro')
     expect(day.cards[0].exposureTags).toEqual(['new_user'])
   })
 
-  it('칸이 틀리면 「모름」으로 읽는다(모양·노출 대상·트라이브)', () => {
-    const item = makeItem({ original: { shape: 'large_thumbnail', exposure_tags: 'all', tribe_id: 'abc' } })
+  it('칸이 틀리면 「모름」으로 읽는다(카드 유형·노출 대상·트라이브). 옛 shape 칸은 읽지 않는다', () => {
+    const item = makeItem({ original: { shape: 'hero', resource: { feed_type: 'large_thumbnail' }, exposure_tags: 'all', tribe_id: 'abc' } })
     const [day] = compose({ bundles: [makeBundle([item])] })
-    expect(day.cards[0].shape).toBe('unknown')
+    expect(day.cards[0].feedType).toBe('unknown')
+    expect(day.cards[0].usesCoverImage).toBe(false)
     expect(day.cards[0].exposureTags).toBe('unknown')
     expect(day.cards[0].tribeId).toBe('unknown')
   })
 
-  it('이미지 모양인 예약·게재 항목에 이미지가 없으면 「이미지가 빈 항목」이고 승인 전이면 아니다(A8)', () => {
+  it('커버 이미지를 쓰는 유형인 예약·게재 항목에 이미지가 없으면 「이미지가 빈 항목」이고 승인 전이면 아니다(A8)', () => {
     const noImage = cardOriginal({ resource: {} })
     const items = ['arrived', 'approved', 'scheduled', 'live'].map((status) => makeItem({ status, original: noImage }))
     const [day] = compose({ bundles: [makeBundle(items)] })
@@ -165,7 +175,7 @@ describe('pickRepresentative — 대표 카드(가정 16, A9)', () => {
   })
 
   it('전원 대상 카드가 없으면 대표가 없다. 노출 대상을 모르는 카드도 대표가 될 수 없다', () => {
-    const unknownTags = bundleCard({ original: { shape: 'hero', exposure_tags: 'all' } })
+    const unknownTags = bundleCard({ original: { resource: { feed_type: 'hero_box' }, exposure_tags: 'all' } })
     expect(unknownTags.exposureTags).toBe('unknown')
     expect(pick([realCard({ exposureTags: ['new_user'] }), unknownTags])).toBeNull()
     expect(pick([])).toBeNull()
@@ -211,12 +221,12 @@ describe('pickRepresentative — 대표 카드(가정 16, A9)', () => {
 })
 
 describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
-  const noImage = (shape: string) => cardOriginal({ shape, resource: {} })
+  const noImage = (feedType: string) => cardOriginal({ feed_type: feedType, resource: {} })
 
-  it('승인됨·준비중·예약됨 이미지 모양 항목에 이미지가 없으면 참이다', () => {
+  it('승인됨·준비중·예약됨 커버 이미지 유형 항목에 이미지가 없으면 참이다', () => {
     for (const status of ['approved', 'preparing', 'scheduled']) {
-      for (const shape of ['hero', 'poster', 'square']) {
-        expect(needsImageProduction({ status, original: noImage(shape), edited: null }), `${status}/${shape}`).toBe(true)
+      for (const feedType of ['hero_box', 'collection_intro']) {
+        expect(needsImageProduction({ status, original: noImage(feedType), edited: null }), `${status}/${feedType}`).toBe(true)
       }
     }
   })
@@ -228,33 +238,34 @@ describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
     ).toBe(true)
   })
 
-  it('이미지가 없는 모양(brief·list)은 거짓이다', () => {
-    for (const shape of ['brief', 'list']) {
-      expect(needsImageProduction({ status: 'approved', original: noImage(shape), edited: null })).toBe(false)
+  it('이미지가 없는 카드 유형(텍스트·목록형)은 거짓이다', () => {
+    for (const feedType of ['text_box', 'gallery_list']) {
+      expect(needsImageProduction({ status: 'approved', original: noImage(feedType), edited: null })).toBe(false)
     }
   })
 
   it('도착·검토중, 게재·종료와 멈춘 상태는 표시하지 않는다', () => {
     for (const status of ['arrived', 'reviewing', 'live', 'ended', 'rejected', 'cancelled', 'failed']) {
-      expect(needsImageProduction({ status, original: noImage('hero'), edited: null }), status).toBe(false)
+      expect(needsImageProduction({ status, original: noImage('hero_box'), edited: null }), status).toBe(false)
     }
   })
 
-  it('모양을 읽을 수 없으면(칸이 없거나 틀림) 거짓이다', () => {
+  it('카드 유형을 읽을 수 없으면(칸이 없거나 틀림) 거짓이다. 옛 shape 칸은 읽지 않는다', () => {
     expect(needsImageProduction({ status: 'approved', original: { resource: {} }, edited: null })).toBe(false)
-    expect(needsImageProduction({ status: 'approved', original: { shape: 'large_thumbnail' }, edited: null })).toBe(false)
+    expect(needsImageProduction({ status: 'approved', original: { resource: { feed_type: 'large_thumbnail' } }, edited: null })).toBe(false)
+    expect(needsImageProduction({ status: 'approved', original: { shape: 'hero', resource: {} }, edited: null })).toBe(false)
   })
 
-  it('수정본의 모양이 제출 원본보다 먼저다', () => {
-    expect(needsImageProduction({ status: 'approved', original: noImage('brief'), edited: { shape: 'hero' } })).toBe(true)
-    expect(needsImageProduction({ status: 'approved', original: noImage('hero'), edited: { shape: 'list' } })).toBe(false)
+  it('수정본의 카드 유형이 제출 원본보다 먼저다', () => {
+    expect(needsImageProduction({ status: 'approved', original: noImage('text_box'), edited: { resource: { feed_type: 'hero_box' } } })).toBe(true)
+    expect(needsImageProduction({ status: 'approved', original: noImage('hero_box'), edited: { resource: { feed_type: 'gallery_list' } } })).toBe(false)
   })
 
   describe('개편 카드 유형(resource.feed_type, 티켓 20261121_1722)', () => {
     const feedItem = (status: string, resource: Record<string, unknown>) =>
       ({ status, original: { resource }, edited: null }) as Parameters<typeof needsImageProduction>[0]
 
-    it('hero_box·collection_intro는 이미지가 없으면 참이다(모양 칸이 없어도)', () => {
+    it('hero_box·collection_intro는 이미지가 없으면 참이다', () => {
       for (const feedType of ['hero_box', 'collection_intro']) {
         expect(needsImageProduction(feedItem('approved', { feed_type: feedType })), feedType).toBe(true)
       }
@@ -291,7 +302,7 @@ describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
   })
 
   it('구성의 운영 묶음 카드에도 같은 값이 실린다', () => {
-    const item = makeItem({ status: 'approved', original: noImage('poster') })
+    const item = makeItem({ status: 'approved', original: noImage('collection_intro') })
     const [day] = compose({ bundles: [makeBundle([item])] })
     expect(day.cards[0].needsImageProduction).toBe(true)
     expect(day.cards[0].imageMissing).toBe(false)
@@ -429,14 +440,14 @@ describe('buildDayCompositions — 실제 카드·운영 항목 합치기(티켓
     expect(day.cards[0].resourceId).toBe(CARD_ID)
   })
 
-  it('합친 칸의 값: 키·상태·시험·묶음 연결은 운영 항목, 제목·모양·노출 대상·커버·정렬은 실제 카드 값이다(가정 1)', () => {
+  it('합친 칸의 값: 키·상태·시험·묶음 연결은 운영 항목, 제목·카드 유형·노출 대상·커버·정렬은 실제 카드 값이다(가정 1)', () => {
     const item = cardItem({
       position: 3,
       patternNo: 'P-07',
-      original: cardOriginal({ shape: 'brief', exposure_tags: ['new_user'], copy: { title: '항목 제목' }, resource: { sort_order: 9 } }),
+      original: cardOriginal({ feed_type: 'text_box', exposure_tags: ['new_user'], copy: { title: '항목 제목' }, resource: { sort_order: 9 } }),
     })
     const bundle = makeBundle([item], { isSample: true, receivedAt: kst('2026-09-30', '08:00') })
-    const card = realCard({ shape: 'poster', exposureTags: ['all'], sortOrder: 2, hasCover: false, title: '실제 제목' })
+    const card = realCard({ feedType: 'collection_intro', exposureTags: ['all'], sortOrder: 2, hasCover: false, title: '실제 제목' })
     const [day] = compose({ cards: [card], bundles: [bundle] })
     const merged = day.cards[0]
     // 운영 항목 값
@@ -449,7 +460,7 @@ describe('buildDayCompositions — 실제 카드·운영 항목 합치기(티켓
     expect(merged.submittedAtMs).toBe(Date.parse(kst('2026-09-30', '08:00')))
     // 실제 카드 값
     expect(merged.title).toBe('실제 제목')
-    expect(merged.shape).toBe('poster')
+    expect(merged.feedType).toBe('collection_intro')
     expect(merged.exposureTags).toEqual(['all'])
     expect(merged.sortOrder).toBe(2)
     expect(merged.imageMissing).toBe(true) // 커버가 없다

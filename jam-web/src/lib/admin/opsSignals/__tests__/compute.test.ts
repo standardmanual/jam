@@ -101,12 +101,12 @@ describe('시험 묶음 — 기본은 제외, 포함하면 「시험」 표식',
   })
 
   it('시험 카드 때문에 뜬 날짜 신호에는 시험 표식이 붙고, 기본에서는 아예 뜨지 않는다', () => {
-    // 10/2에 이미지가 있는 모양 카드가 기준 1장 + 시험 묶음 2장 = 3장
+    // 10/2에 이미지가 있는 카드 유형 카드가 기준 1장 + 시험 묶음 2장 = 3장
     const items = [3, 4].map(() =>
       makeItem({
         startsAt: dayStart('2026-10-02'),
         endsAt: dayEnd('2026-10-02'),
-        original: cardOriginal({ shape: 'hero', exposure_tags: ['x'] }),
+        original: cardOriginal({ feed_type: 'hero_box', exposure_tags: ['x'] }),
       })
     )
     const sample = makeBundle(items, { isSample: true })

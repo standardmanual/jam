@@ -49,8 +49,8 @@ export function usesMissionImage(item: ViewableItem & { kind: string | null }): 
 }
 
 /**
- * 미리보기 카드가 커버 이미지를 쓰는 개편 유형인가(티켓 20261121_1722). 옛 7모양 갈래(`shape`)와 개편 갈래(`feedType`)를 모두 받아 개편 갈래일 때만 `feedTypeUsesCoverImage`로 판정한다.
- * 승인 전 미리보기가 «저장된 이미지 없음 → 미리 그리기»를 정할 때 옛 모양의 `isImageShape`와 나란히 쓴다.
+ * 미리보기 카드가 커버 이미지를 쓰는 유형인가(티켓 20261121_1722). `feedTypeUsesCoverImage`로 판정한다.
+ * 승인 전 미리보기가 «저장된 이미지 없음 → 미리 그리기»를 정할 때 쓴다(옛 7모양 갈래는 8-3에서 걷었다, 티켓 20261122_1239).
  */
 export function viewUsesFeedCoverImage(view: CardView): boolean {
   return 'feedType' in view && feedTypeUsesCoverImage(view.feedType, view.look.boxKind)

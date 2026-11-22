@@ -6,8 +6,8 @@
  *
  * 읽는 것:
  * - `today_cards`: 검사 범위(오늘부터 다음 주 일요일까지)와 앞 6일에 걸치는 활성 카드. 실제 카드의 모양은 카드 행을 그대로
- *   `resolveShape`(`lib/today/shape.ts`)에 넘겨 채운다 — 옛 카드의 옛→새 모양 대응은 거기가 원본이다. 신호 계산에는 지금 화면에
- *   그려질 모양(`drawnShape`)이 아니라 이 판정값을 쓴다.
+ *   `feed_type`·`box_kind` 칸을 읽어 `resolveFeedType`(`lib/today/feedType.ts`)으로 유형을 정한다(티켓 20261122_1239). 신호 계산에는 «무엇이 올라가기로 했는가»가
+ *   중요하므로 그릴 값(커버·배지·목록 항목)이 있다고 보고 정한다 — 커버가 없는 컬렉션 소개는 텍스트 박스로 내려가지 않고 «이미지가 빈 항목»이 된다.
  * - `missions`: 같은 범위에 걸치는 미션(일정표용 구성에만 쓰이고 어떤 신호도 기대지 않는다).
  * - `ops_bundles`·`ops_bundle_items`: 묶음과 항목. 제출 원본(`raw`, 최대 1MB)은 뺀 항목을 읽는 데만 쓰이므로 끝나지 않은 묶음의
  *   것만, 묶음 몇 개씩 따로 받는다(받은 기획함 목록이 원본을 가져오지 않는 것과 같은 이유).
@@ -34,7 +34,7 @@ import type { Json } from '@/types/database.generated'
 import { computeBundleStatus, tabOfBundleStage } from '@/lib/admin/opsInbox/bundleStatus'
 import { mondayOfWeek } from '@/lib/admin/cronSchedule'
 import { kstDayBoundsIso, shiftDateStr, todayKstDateString } from '@/lib/admin/today-calendar'
-import { isCardShape, resolveShape, type ShapeCardInput } from '@/lib/today/shape'
+import { resolveFeedType } from '@/lib/today/feedType'
 import { ACTION_METRIC_KEYS, ACTION_RECENT_DAYS, type ActionCounts, type ActionMetricKey } from '@/lib/admin/opsSignals/actionSpike'
 import {
   computeOpsSignals,
@@ -120,16 +120,15 @@ interface CardRow {
   ends_at: string
   is_active: boolean
   sort_order: number
-  shape: string | null
-  template_type: string
-  layout_type: string
+  feed_type: string | null
+  box_kind: string | null
   cover_image_url: string | null
   badge_ids: string[]
   exposure_tags: string[]
 }
 
 const CARD_COLUMNS =
-  'id, title, starts_at, ends_at, is_active, sort_order, shape, template_type, layout_type, cover_image_url, badge_ids, exposure_tags'
+  'id, title, starts_at, ends_at, is_active, sort_order, feed_type, box_kind, cover_image_url, badge_ids, exposure_tags'
 
 function toCardInput(row: CardRow): SignalCardInput {
   return {
@@ -139,9 +138,9 @@ function toCardInput(row: CardRow): SignalCardInput {
     endsAt: row.ends_at,
     isActive: row.is_active,
     sortOrder: row.sort_order,
-    // 카드 행을 그대로 넘긴다: 저장된 모양 → 기사 → 옛 레이아웃 순으로 정하고, 커버가 없고 배지가 걸린 옛 카드는 `square`다.
-    shape: resolveShape(row as unknown as ShapeCardInput),
-    shapeStored: isCardShape(row.shape),
+    // `feed_type`이 비었거나 모르는 값이면 텍스트 박스다. 그릴 값이 없어 내려가는 규칙(`resolveFeedType`의 값 조건)은 신호에서는 적용하지 않는다(위 머리말).
+    feedType: resolveFeedType(row.feed_type, { hasCover: true, itemBadgeCount: 1, listItemCount: 1 }),
+    boxKind: row.box_kind,
     exposureTags: row.exposure_tags ?? [],
     hasCover: (row.cover_image_url ?? '').trim() !== '',
   }

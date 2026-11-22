@@ -2,8 +2,8 @@
  * 날짜별 구성 (티켓 20261001_1155, 순수 함수 — DB·네트워크 접근 없음).
  *
  * 하루에 무엇이 올라가는지를 모은다: 실제 카드(`today_cards`)·실제 미션(`missions`)·운영 묶음 항목(`ops_bundle_items`).
- * 신호 규칙(`dayRules.ts`)이 이 구성을 읽고, 일정표(②·③)도 같은 구성을 쓴다. 입력의 카드 모양은 조회 함수(`load.ts`)가
- * `resolveShape`로 채워서 넘긴다 — 옛 카드의 모양 대응은 여기서 새로 만들지 않는다.
+ * 신호 규칙(`dayRules.ts`)이 이 구성을 읽고, 일정표(②·③)도 같은 구성을 쓴다. 입력의 카드 유형은 조회 함수(`load.ts`)가
+ * `resolveFeedType`으로 채워서 넘긴다 — 유형 판정은 여기서 새로 만들지 않는다.
  *
  * 규칙(상위 티켓 20260930_1502 가정과 티켓 20261001_1155 착수 가정 A5~A9):
  * - 하루 겹침은 `/admin/today`·`weeklyCards.ts`의 `overlapsDay`와 같다: 시작 ≤ 그날 끝, 끝 ≥ 그날 시작(KST 하루).
@@ -14,7 +14,7 @@
  * - 카드 칸은 `opsInbox/fields.ts`의 읽기 함수로만 읽는다. 「모름」은 `OPS_FIELD_UNKNOWN`이다.
  * - 운영툴이 만든 실제 카드·미션은 그 운영 항목과 **한 칸으로 합친다**(티켓 20261006_1339, 운영툴 PRD §5·§8.5). 세는 항목의
  *   `created_resource`(`RESOURCE_KEY_BY_KIND`: 홈피드 카드는 `today_card_id`, 미션은 `mission_id`)가 가리키는 활성 실제 카드·미션을
- *   따로 세지 않고 그 항목의 칸이 대신한다. 합친 칸의 값은 키·상태·시험·묶음 연결·트라이브·패턴·색 대기는 운영 항목, 날짜 겹침·제목·모양·
+ *   따로 세지 않고 그 항목의 칸이 대신한다. 합친 칸의 값은 키·상태·시험·묶음 연결·트라이브·패턴·색 대기는 운영 항목, 날짜 겹침·제목·카드 유형·
  *   노출 대상·커버·정렬은 실제 카드(미션은 제목·기간)다. 멈춘 항목(반려·취소·실패)은 세지 않으므로 합치지 않고 실제 카드는 그대로 센다.
  *   ID는 소문자로 비교한다. 같은 자원을 가리키는 항목이 둘이면 먼저 나온 항목만 합친다.
  */
@@ -25,7 +25,7 @@ import { RESOURCE_KEY_BY_KIND } from '@/lib/admin/opsInbox/execute/handlers'
 import {
   readOpsItemColorPending,
   readOpsItemExposureTags,
-  readOpsItemShape,
+  readOpsItemFeedType,
   readOpsItemTribeId,
   type OpsFieldUnknown,
 } from '@/lib/admin/opsInbox/fields'
@@ -33,11 +33,12 @@ import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/ite
 import { kindLabel, kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { kstDayBoundsIso, shiftDateStr, todayKstDateString } from '@/lib/admin/today-calendar'
 import { feedTypeUsesCoverImage } from '@/lib/today/feedConstants'
-import { isImageShape, type CardShape } from '@/lib/today/shape'
+import type { FeedType } from '@/lib/today/feedChipSlots'
+import type { RenderedFeedType } from '@/lib/today/feedLook'
 
 // ── 입력 ─────────────────────────────────────────────────────────────────────────────────────────
 
-/** 실제 카드(`today_cards`) 한 장. 모양은 조회 함수가 `resolveShape`로 채운다. */
+/** 실제 카드(`today_cards`) 한 장. 카드 유형은 조회 함수가 `resolveFeedType`으로 채운다. */
 export interface SignalCardInput {
   id: string
   title: string
@@ -45,10 +46,10 @@ export interface SignalCardInput {
   endsAt: string
   isActive: boolean
   sortOrder: number
-  /** `resolveShape` 판정값(저장된 모양이 있으면 그 값, 옛 카드는 옛→새 대응값). */
-  shape: CardShape
-  /** 저장된 `shape` 값이 있었는지. 옛 카드(모양 칸이 빈 카드)는 `false`다. */
-  shapeStored: boolean
+  /** `resolveFeedType` 판정값(`feed_type`이 비었거나 모르는 값이면 텍스트 박스). */
+  feedType: RenderedFeedType
+  /** 박스 용도(`box_kind`). 텍스트 박스가 이미지를 쓰는지(`image_mask`) 가르는 값이다. */
+  boxKind: string | null
   exposureTags: string[]
   /** 커버 이미지 주소가 있는지. */
   hasCover: boolean
@@ -137,15 +138,18 @@ export function hasItemImage(item: ViewableItem): boolean {
 }
 
 /**
- * 「이미지 제작 필요」 표시(A8, 신호가 아니라 표시만 한다). 승인됨·준비중·예약됨 항목(승인 직후 자동 제작이 끝나지 않았거나 실패한 것)의 모양이 이미지가 있는
- * 모양(`hero`·`poster`·`square`)인데 이미지가 없으면 참이다. 모양을 읽을 수 없으면(「모름」) 거짓이다.
- * 개편 카드(`resource.feed_type`)는 모양 대신 유형으로 본다(티켓 20261121_1722): 커버 이미지를 쓰는 유형(`feedTypeUsesCoverImage`)이면 이미지가 없을 때 참이다.
- * 모양과 유형이 모두 있으면 둘 중 하나라도 이미지가 필요하다고 하면 참이다. `feed_type`이 모르는 값이면 유형 쪽은 거짓이다.
+ * 「이미지 제작 필요」 표시(A8, 신호가 아니라 표시만 한다). 승인됨·준비중·예약됨 항목(승인 직후 자동 제작이 끝나지 않았거나 실패한 것)의 카드 유형이
+ * 커버 이미지를 쓰는 유형(`feedTypeUsesCoverImage`: 히어로·컬렉션 소개, 박스 용도가 이미지인 텍스트 박스)인데 이미지가 없으면 참이다.
+ * 유형(`resource.feed_type`)을 읽을 수 없으면(「모름」) 거짓이다(티켓 20261122_1239: 옛 `shape` 읽기를 걷었다).
  */
 export function needsImageProduction(item: ViewableItem & { status: string }): boolean {
   if (!OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)) return false
   if (hasItemImage(item)) return false
-  if (isImageShape(readOpsItemShape(item))) return true
+  return itemUsesCoverImage(item)
+}
+
+/** 운영 묶음 항목의 카드 유형이 커버 이미지를 쓰는가(`feedTypeUsesCoverImage`). 유형을 읽을 수 없으면 거짓이다. */
+function itemUsesCoverImage(item: ViewableItem): boolean {
   const resource = asRecord(itemField(item, 'resource'))
   return feedTypeUsesCoverImage(resource?.feed_type, resource?.box_kind)
 }
@@ -196,7 +200,10 @@ export interface CompositionCard {
   endsAt: string | null
   /** 이 구성의 날짜에 새로 게재를 시작하는 카드인가. */
   startsOnDay: boolean
-  shape: CardShape | OpsFieldUnknown
+  /** 카드 유형. 운영 묶음 카드는 `resource.feed_type`을 읽고, 읽을 수 없으면 「모름」이다. */
+  feedType: FeedType | OpsFieldUnknown
+  /** 이 유형(과 박스 용도)이 커버 이미지를 쓰는가(`feedTypeUsesCoverImage`). 유형이 「모름」이면 거짓이다. */
+  usesCoverImage: boolean
   exposureTags: string[] | OpsFieldUnknown
   /** 운영 묶음 카드만 값이 있다(실제 카드에는 트라이브 칸이 없어 null). */
   tribeId: string | null | OpsFieldUnknown
@@ -204,7 +211,7 @@ export interface CompositionCard {
   patternNo: string | null
   colorPending: boolean | OpsFieldUnknown
   hasCopy: boolean
-  /** 「이미지가 빈 항목」: 이미지 모양인데 이미지가 없고, 승인 전이 아니다(A8). */
+  /** 「이미지가 빈 항목」: 커버 이미지를 쓰는 유형인데 이미지가 없고, 승인 전이 아니다(A8). */
   imageMissing: boolean
   /** 「이미지 제작 필요」 표시(A8). 운영 묶음 카드만 참이 될 수 있다. */
   needsImageProduction: boolean
@@ -327,8 +334,9 @@ function buildBundleCard(
   date: string
 ): CompositionCard {
   const status = item.status
-  const shape = readOpsItemShape(item)
-  const imageEmpty = isImageShape(shape) && !hasItemImage(item)
+  const feedType = readOpsItemFeedType(item)
+  const usesCoverImage = itemUsesCoverImage(item)
+  const imageEmpty = usesCoverImage && !hasItemImage(item)
   return {
     key: `bundle:${item.id}`,
     source: 'bundle',
@@ -340,7 +348,8 @@ function buildBundleCard(
     startsAt: item.startsAt as string,
     endsAt: period.singleDay ? null : item.endsAt,
     startsOnDay: kstDateKey(item.startsAt) === date,
-    shape,
+    feedType,
+    usesCoverImage,
     exposureTags: readOpsItemExposureTags(item),
     tribeId: readOpsItemTribeId(item),
     patternNo: item.patternNo,
@@ -367,14 +376,15 @@ function buildRealCard(card: SignalCardInput, date: string): CompositionCard {
     startsAt: card.startsAt,
     endsAt: card.endsAt,
     startsOnDay: kstDateKey(card.startsAt) === date,
-    shape: card.shape,
+    feedType: card.feedType,
+    usesCoverImage: feedTypeUsesCoverImage(card.feedType, card.boxKind),
     exposureTags: card.exposureTags,
     tribeId: null,
     patternNo: null,
     colorPending: false,
     hasCopy: card.title.trim() !== '',
-    // 모양이 저장된 카드만 본다. 옛 카드는 `resolveShape`가 커버 유무를 이미 반영해 모양을 정했다(A8).
-    imageMissing: card.shapeStored && isImageShape(card.shape) && !card.hasCover,
+    // 커버가 있어야 하는 유형인데 커버가 없으면 «이미지가 빈 항목»이다(A8).
+    imageMissing: feedTypeUsesCoverImage(card.feedType, card.boxKind) && !card.hasCover,
     needsImageProduction: false,
     sortOrder: card.sortOrder,
     status: null,
@@ -417,7 +427,7 @@ export function readMergeResourceId(item: Pick<SignalBundleItemInput, 'kind' | '
   return id === '' ? null : id
 }
 
-/** 실제 카드와 합친 운영 항목 칸. 키·상태·시험·묶음 연결·트라이브·패턴·색 대기는 항목, 제목·기간·모양·노출 대상·커버·정렬은 실제 카드 값이다. */
+/** 실제 카드와 합친 운영 항목 칸. 키·상태·시험·묶음 연결·트라이브·패턴·색 대기는 항목, 제목·기간·카드 유형·노출 대상·커버·정렬은 실제 카드 값이다. */
 function buildMergedCard(
   bundle: SignalBundleInput,
   item: SignalBundleItemInput,
@@ -435,13 +445,14 @@ function buildMergedCard(
     startsAt: card.startsAt,
     endsAt: card.endsAt,
     startsOnDay: kstDateKey(card.startsAt) === date,
-    shape: card.shape,
+    feedType: card.feedType,
+    usesCoverImage: feedTypeUsesCoverImage(card.feedType, card.boxKind),
     exposureTags: card.exposureTags,
     tribeId: readOpsItemTribeId(item),
     patternNo: item.patternNo,
     colorPending: readOpsItemColorPending(item),
     hasCopy: card.title.trim() !== '',
-    imageMissing: card.shapeStored && isImageShape(card.shape) && !card.hasCover,
+    imageMissing: feedTypeUsesCoverImage(card.feedType, card.boxKind) && !card.hasCover,
     needsImageProduction: needsImageProduction(item),
     sortOrder: card.sortOrder,
     status: item.status,

@@ -103,7 +103,7 @@ function cardRow(id: string, overrides: Row = {}): Row {
     content_type_id: null,
     image_source: null,
     description: null,
-    shape: 'hero',
+    feed_type: 'hero_box',
     ...overrides,
   }
 }
@@ -117,8 +117,7 @@ function pendingRow(id: string, overrides: Row = {}): Row {
     position: 0,
     original: {
       copy: { title: `승인 전 ${id}` },
-      resource: { template_type: 'editorial_article', layout_type: 'large_thumbnail', sort_order: 0 },
-      shape: 'brief',
+      resource: { template_type: 'editorial_article', feed_type: 'text_box', sort_order: 0 },
       exposure_tags: ['all'],
       starts_at: '2026-10-05T00:00:00+09:00',
       ends_at: '2026-10-11T23:59:59+09:00',
@@ -381,12 +380,12 @@ describe('loadHomePreview — 승인 전 카드', () => {
   })
 })
 
-describe('loadHomePreview — 카드 수와 모양', () => {
-  it('날마다 entries.length가 카드 수이고 모양별 개수의 합과 같다', async () => {
+describe('loadHomePreview — 카드 수와 카드 유형', () => {
+  it('날마다 entries.length가 카드 수이고 유형별 개수의 합과 같다', async () => {
     fx.tables.today_cards = [
-      cardRow('h1', { shape: 'hero' }),
-      cardRow('h2', { shape: 'hero' }),
-      cardRow('s1', { shape: 'square', starts_at: '2026-10-06T00:00:00+09:00' }),
+      cardRow('h1', { feed_type: 'hero_box' }),
+      cardRow('h2', { feed_type: 'hero_box' }),
+      cardRow('s1', { feed_type: 'text_box', starts_at: '2026-10-06T00:00:00+09:00' }),
     ]
     fx.tables.ops_bundle_items = [pendingRow('p')]
     const { days } = await loadHomePreview({ fromDate: '2026-10-05', days: 2, viewer: VIEWER, bundleId: BUNDLE, now: NOW })
@@ -395,9 +394,23 @@ describe('loadHomePreview — 카드 수와 모양', () => {
       const total = Object.values(day.shapeCounts).reduce((sum, n) => sum + n, 0)
       expect(total).toBe(day.entries.length)
     }
-    expect(days[0].shapeCounts).toEqual({ hero: 2, brief: 1 })
-    expect(days[1].shapeCounts).toEqual({ hero: 2, square: 1, brief: 1 })
+    expect(days[0].shapeCounts).toEqual({ hero_box: 2, text_box: 1 })
+    expect(days[1].shapeCounts).toEqual({ hero_box: 2, text_box: 2 })
     expect(days[1].entries).toHaveLength(4)
+  })
+
+  it('홈이 그리는 유형으로 센다: 그릴 값이 없는 유형과 비었거나 모르는 값은 텍스트 박스다(티켓 20261122_1239)', async () => {
+    fx.tables.today_cards = [
+      cardRow('intro', { feed_type: 'collection_intro', cover_image_url: 'https://example.com/c.png' }),
+      cardRow('intro-no-cover', { feed_type: 'collection_intro', cover_image_url: null }),
+      cardRow('list-empty', { feed_type: 'gallery_list', list_items: [] }),
+      cardRow('list', { feed_type: 'gallery_list', list_items: [{ name: '가', href: '/a' }] }),
+      cardRow('empty', { feed_type: null }),
+      cardRow('old-name', { feed_type: 'poster' }),
+    ]
+    fx.tables.ops_bundle_items = []
+    const { days } = await loadHomePreview({ fromDate: '2026-10-05', days: 1, viewer: VIEWER, now: NOW })
+    expect(days[0].shapeCounts).toEqual({ collection_intro: 1, gallery_list: 1, text_box: 4 })
   })
 })
 

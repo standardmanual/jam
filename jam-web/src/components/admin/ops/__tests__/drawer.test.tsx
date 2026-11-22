@@ -40,7 +40,7 @@ function makeItem(over: Partial<OpsItemRecord> = {}): OpsItemRecord {
       user_experience: '비 오는 월요일 아침, 홈에서 카드를 만나요',
       copy: { title: '우산 챙겨 달리기' },
       exposure_tags: ['all'],
-      shape: 'hero',
+      resource: { feed_type: 'hero_box' },
       highlight: true,
       rationale: [
         { kind: 'trend', label: '비 오는 날 러닝', note: '비 오는 날 러닝 검색이 늘었어요', source_id: 3 },
@@ -144,15 +144,15 @@ describe('항목 서랍 — 왜 이 기획?', () => {
 })
 
 describe('항목 서랍 — 핵심 값', () => {
-  it('공개 기간은 한 줄(같은 날이면 끝 시각만)이고 대상·모양이 한 칸에 한 줄이다', () => {
+  it('공개 기간은 한 줄(같은 날이면 끝 시각만)이고 대상·카드 유형이 한 칸에 한 줄이다', () => {
     const out = flat(<OpsItemDetail item={makeItem()} {...base} />)
     const section = out.slice(out.indexOf('aria-label="핵심 값"'), out.indexOf('aria-label="검수 결과"'))
     expect(section).toContain('<dl')
     expect(section).toContain('12/30(수) 09:00 ~ 10:00')
     expect(section).toContain('>대상<')
     expect(section).toContain('>all<')
-    expect(section).toContain('>모양<')
-    expect(section).toContain('>hero<')
+    expect(section).toContain('>카드 유형<')
+    expect(section).toContain('>히어로<')
     // 이 종류에 없는 칸의 줄은 그리지 않는다
     expect(section).not.toContain('>조건<')
     expect(section).not.toContain('>보상<')

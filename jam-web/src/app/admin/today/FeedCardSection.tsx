@@ -22,6 +22,7 @@ import {
   type FeedDescriptionMode,
   type FeedStampMode,
 } from '@/lib/admin/feedCardFields'
+import { FEED_TYPE_LABELS, FEED_TYPE_FALLBACK_TEXT, feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
 import { cornerOfSlot } from '@/lib/today/feedChipLayout'
 import {
   BOX_FEED_TYPES,
@@ -52,26 +53,8 @@ export { ChoiceField, stampSlotLabel, type ChoiceOption }
 
 // ── 이름 표 ────────────────────────────────────────────────────
 
-/** 유형 이름(PRD «카드 유형 8가지» 표). 키는 `FEED_TYPES`와 같다. */
-export const FEED_TYPE_LABELS: Readonly<Record<FeedType, string>> = {
-  hero_box: '히어로',
-  full_image: '전체 배경 이미지',
-  badge_intro: '배지 소개',
-  badge_only: '배지만',
-  collection_intro: '컬렉션 소개',
-  drop_pickup: '드랍·픽업',
-  text_box: '텍스트',
-  gallery_list: '목록형',
-}
-
-/** 유형이 비어 있는 옛 데이터를 홈이 그리는 유형 — 목록·상세에서도 같은 이름으로 보인다(티켓 20261122_1153). */
-export const FEED_TYPE_FALLBACK_TEXT = '텍스트 박스(기본)'
-
-/** 카드 유형을 운영자에게 보이는 이름으로. 비어 있으면 «텍스트 박스(기본)», 모르는 유형 값은 키를 그대로 보인다. */
-export function feedTypeDisplayName(feedType: string | null | undefined): string {
-  if (!feedType) return FEED_TYPE_FALLBACK_TEXT
-  return (FEED_TYPE_LABELS as Readonly<Record<string, string>>)[feedType] ?? feedType
-}
+// 유형 이름 표는 서버 모듈도 쓰도록 순수 파일(`lib/admin/feedTypeLabels.ts`)로 옮겼다(티켓 20261122_1239). 기존 가져오기 경로를 위해 다시 내보낸다.
+export { FEED_TYPE_LABELS, FEED_TYPE_FALLBACK_TEXT, feedTypeDisplayName }
 
 /** 박스 모양 이름(PRD «박스 모양 5가지» 표). */
 export const BOX_SHAPE_LABELS: Readonly<Record<TodayBoxShape, string>> = {
