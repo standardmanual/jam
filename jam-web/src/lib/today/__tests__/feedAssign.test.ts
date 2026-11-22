@@ -159,7 +159,7 @@ describe('assignFeedColors', () => {
   })
 
   it('hex 표를 바꿔 넣으면 그 표 안에서 배정한다(색 키 표에 묶여 있지 않다)', () => {
-    const palette = { ink: '#101010', paper: '#F4F4F4', mint: '#34ef5a', rose: '#E57FBB' }
+    const palette = { ink: '#101010', paper: '#F4F4F4', mint: '#59C02B', rose: '#E57FBB' }
     for (const seed of seeds(20)) {
       const result = assignFeedColors({ seed }, { palette, fallback: { bg: 'paper', chip: 'ink', box: 'mint' } })
       if (result.usedFallback) continue

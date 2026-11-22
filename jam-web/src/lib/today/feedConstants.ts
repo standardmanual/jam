@@ -57,8 +57,8 @@ export interface FeedColor {
 export const FEED_COLORS = {
   // 원색 5개 — 기존 강조색(새로 만들지 않는다)
   red: { cssVar: '--jam-red', hex: '#FF1D1D' },
-  yellow: { cssVar: '--jam-yellow', hex: '#FEC100' },
-  green: { cssVar: '--jam-green', hex: '#34ef5a' },
+  yellow: { cssVar: '--jam-yellow', hex: '#F9FD69' },
+  green: { cssVar: '--jam-green', hex: '#59C02B' },
   purple: { cssVar: '--jam-purple', hex: '#BA8AF7' },
   blue: { cssVar: '--jam-blue', hex: '#0695EC' },
   // 연한 색 5개 — 신규

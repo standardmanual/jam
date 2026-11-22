@@ -95,14 +95,14 @@ describe('규칙별 경계값', () => {
     // 빨강(0°)과 파랑(203°)은 둘 다 원색이고 색상 차이가 157°다
     expect(violatesContrastRule('#FF1D1D', '#0695EC')).toBe(true)
     // 빨강(0°)과 노랑(46°)은 둘 다 원색이지만 색상 차이가 90° 이하라 이 갈래에는 걸리지 않는다
-    expect(hueDifference(hexToHsl('#FF1D1D').h, hexToHsl('#FEC100').h)).toBeLessThanOrEqual(90)
-    expect(violatesContrastRule('#FF1D1D', '#FEC100')).toBe(false)
+    expect(hueDifference(hexToHsl('#FF1D1D').h, hexToHsl('#F9FD69').h)).toBeLessThanOrEqual(90)
+    expect(violatesContrastRule('#FF1D1D', '#F9FD69')).toBe(false)
   })
 
   it('③ 채도 높은 원색 둘의 조합은 키즈 규칙으로 제외한다', () => {
-    // 빨강·노랑은 대비 규칙을 통과하지만 둘 다 원색이라 키즈 규칙에 걸린다
-    expect(violatesKidsRule('#FF1D1D', '#FEC100')).toBe(true)
-    expect(firstViolatedRule('#FF1D1D', '#FEC100')).toBe('kids')
+    // 퍼플·노랑은 대비 규칙을 통과하지만 둘 다 원색이라 키즈 규칙에 걸린다(노랑이 연노랑 #F9FD69로 바뀌며 빨강·노랑은 더 이상 걸리지 않는다)
+    expect(violatesKidsRule('#BA8AF7', '#F9FD69')).toBe(true)
+    expect(firstViolatedRule('#BA8AF7', '#F9FD69')).toBe('kids')
   })
 
   it('③ 명도 0.7 초과 밝은 색 둘이 색상 차이 40도를 넘으면 제외한다', () => {
@@ -151,15 +151,15 @@ describe('15색 순서쌍 필터', () => {
     expect(feedColorHexes()).toHaveLength(15)
   })
 
-  // 정답 대조: PRD §6이 적은 2026-11-20 샘플 계산값(210 → 대비 50, 키즈 36, 명도 50 제외 → 74 남음).
+  // 정답 대조: PRD §6이 적은 2026-11-20 샘플 계산값(210 → 대비 50, 키즈 36, 명도 50 제외 → 74 남음. 2026-11-22 노랑·초록 값 교체로 대비 40, 키즈 42, 명도 42 제외 → 86 남음).
   // 구현 결과가 이 값과 어긋나면 임계값을 바꿔 맞추지 않고 어긋난 규칙과 원인을 티켓의 «주요 의사결정»에 적는다.
-  it('210가지 순서쌍에서 대비 50·키즈 36·명도 50이 빠져 74가지가 남는다 (PRD 값과 같다)', () => {
+  it('210가지 순서쌍에서 대비 40·키즈 42·명도 42가 빠져 86가지가 남는다 (PRD 값과 같다)', () => {
     expect(summary.total).toBe(210)
-    expect(summary.excludedByContrast).toBe(50)
-    expect(summary.excludedByKids).toBe(36)
-    expect(summary.excludedByLightness).toBe(50)
-    expect(summary.remaining).toBe(74)
-    expect(summary.remainingPairs).toHaveLength(74)
+    expect(summary.excludedByContrast).toBe(40)
+    expect(summary.excludedByKids).toBe(42)
+    expect(summary.excludedByLightness).toBe(42)
+    expect(summary.remaining).toBe(86)
+    expect(summary.remainingPairs).toHaveLength(86)
     expect(summary.excludedByContrast + summary.excludedByKids + summary.excludedByLightness + summary.remaining).toBe(
       summary.total,
     )

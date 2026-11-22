@@ -145,6 +145,13 @@ function ColorsPage() {
         <TagChip token="--jam-blue" note="사용처 미지정" />
       </Section>
 
+      <Section title="보조 4개 (사용처 한정, 소비 코드는 하위 티켓)">
+        <TagChip token="--jam-pink" note="홈피드 카드 바탕·박스·칩·분류 스티커와 배지 상세 티켓" />
+        <TagChip token="--jam-sky" note="홈피드 카드 바탕·박스·칩·분류 스티커와 배지 상세 티켓" />
+        <TagChip token="--jam-green-deep" note="짙은 초록 바탕 카드와 박스 전용 · 위 글자는 --snow(대비 약 4.59:1)" />
+        <TagChip token="--jam-chip-white" note="값 칩 전용 · 일반 흰색은 --snow" />
+      </Section>
+
       <Section title="홈피드 카드 전용 10색 (Card·Button·상태색에는 쓰지 않는다)">
         <TagChip token="--jam-red-soft" note="연한 색 · 원색 --jam-red와 짝" />
         <TagChip token="--jam-yellow-soft" note="연한 색 · 원색 --jam-yellow와 짝" />

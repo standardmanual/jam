@@ -43,9 +43,9 @@ describe('normalizeOverrides', () => {
         { color_key: 'white', hex: '#ffffff' },
         { color_key: 'red', hex: 'not-a-color' },
         { color_key: 'green', hex: '#abc' },
-        { color_key: 'yellow', hex: '#fec100' },
+        { color_key: 'yellow', hex: '#f9fd69' },
       ]),
-    ).toEqual({ yellow: '#fec100' })
+    ).toEqual({ yellow: '#f9fd69' })
   })
 
   it('배열이나 객체가 아니거나 행이 깨진 입력은 빈 덮어쓰기다', () => {

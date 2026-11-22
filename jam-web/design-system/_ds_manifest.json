@@ -1033,13 +1033,13 @@
     },
     {
       "name": "--jam-yellow",
-      "value": "#FEC100",
+      "value": "#F9FD69",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--jam-green",
-      "value": "#34ef5a",
+      "value": "#59C02B",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -1052,6 +1052,30 @@
     {
       "name": "--jam-blue",
       "value": "#0695EC",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-pink",
+      "value": "#F372C1",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-sky",
+      "value": "#51CDF5",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-green-deep",
+      "value": "#3D851E",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--jam-chip-white",
+      "value": "#FFFFFF",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },

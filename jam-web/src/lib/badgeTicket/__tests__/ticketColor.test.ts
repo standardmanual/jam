@@ -17,7 +17,7 @@ describe('pickTicketColor', () => {
   })
 
   it('5개가 모두 빠져도 5개 중 하나를 돌려준다', () => {
-    const all = ['#FF1D1D', '#FEC100', '#34EF5A', '#BA8AF7', '#0695EC']
+    const all = ['#FF1D1D', '#F9FD69', '#59C02B', '#BA8AF7', '#0695EC']
     const picked = pickTicketColor(all, () => 0.5)
     expect(TICKET_COLOR_KEYS).toContain(picked.key)
   })
@@ -35,9 +35,9 @@ describe('pickTicketColor', () => {
 })
 
 describe('isYellowHue·ticketEndColor', () => {
-  it('#FEC100은 노랑, 나머지 원색은 아니다', () => {
-    expect(isYellowHue('#FEC100')).toBe(true)
-    for (const hex of ['#FF1D1D', '#34EF5A', '#BA8AF7', '#0695EC']) expect(isYellowHue(hex)).toBe(false)
+  it('#F9FD69은 노랑, 나머지 원색은 아니다', () => {
+    expect(isYellowHue('#F9FD69')).toBe(true)
+    for (const hex of ['#FF1D1D', '#59C02B', '#BA8AF7', '#0695EC']) expect(isYellowHue(hex)).toBe(false)
   })
 
   it('일반 끝색은 명도 -0.08·채도 ×1.2', () => {
