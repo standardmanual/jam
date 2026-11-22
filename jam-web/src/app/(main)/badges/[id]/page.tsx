@@ -303,7 +303,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       : null
 
     return (
-      <div className="min-h-full text-foreground bg-background" style={pageStyle}>
+      <div className="min-h-dvh text-foreground bg-background" style={pageStyle}>
         <TopNav
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
@@ -409,7 +409,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 3: 체크인 배지 ==========
   if (badgeRow.type === 'checkin') {
     return (
-      <div className="min-h-full text-foreground bg-background" style={pageStyle}>
+      <div className="min-h-dvh text-foreground bg-background" style={pageStyle}>
         <TopNav
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
@@ -478,7 +478,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-full text-foreground bg-background" style={pageStyle}>
+    <div className="min-h-dvh text-foreground bg-background" style={pageStyle}>
       <TopNav
         title={d.common.back}
         backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
@@ -554,7 +554,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               {/* 획득 정보 (획득한 경우) */}
               {earned && (
                 <Card>
-                  <div className="flex flex-col -mb-3">
+                  {/* 제목(«획득 정보»)을 뺀 뒤로 행 묶음이 카드 위아래 가운데에 오도록 위아래 모두 행 여백만큼 당긴다(티켓 20261122_1416) */}
+                  <div className="flex flex-col -my-3">
                     <ListRow
                       tone="flat"
                       titleVariant="label"

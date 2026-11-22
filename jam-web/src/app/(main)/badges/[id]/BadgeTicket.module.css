@@ -92,14 +92,18 @@
   background: var(--background);
 }
 
-/* 직선 삼각 홈: 깊이 20px, 높이 40px (45°) */
+/* 직선 삼각 홈: 깊이 20px, 높이 40px (45°).
+   삼각형을 티켓 바깥으로 1px 더 내민다(폭 21px, 꼭짓점은 그대로 가장자리에서 20px). 바깥 변이 티켓 가장자리와 같은 줄이면
+   그 줄의 픽셀이 반만 덮여 티켓색 1px 선이 남는다(티켓 20261122_1416, 사용자 지적). 내민 1px은 페이지 배경과 같은 색이라 보이지 않는다 */
 .tear::before {
-  left: 0;
+  left: -1px;
+  width: 21px;
   clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 
 .tear::after {
-  right: 0;
+  right: -1px;
+  width: 21px;
   clip-path: polygon(100% 0, 0 50%, 100% 100%);
 }
 
