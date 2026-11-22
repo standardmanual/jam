@@ -82,10 +82,11 @@ describe('feedFieldVisibility — 유형이 쓰는 칸', () => {
 })
 
 describe('FeedCardSection — 유형별로 보이는 칸', () => {
-  it('유형이 «옛 모양 그대로»(기본)면 유형 칸만 보이고 다른 칸은 없다', () => {
+  it('유형이 비어 있으면(폼 상태에서는 생기지 않는다) 유형 칸만 보이고 «옛 모양 그대로»는 없으며 다른 칸도 없다', () => {
     const html = render()
     expect(html).toContain('id="feed-card-type"')
-    expect(html).toContain('옛 모양 그대로 (유형 지정 안 함)')
+    expect(html).toContain('유형을 골라 주세요')
+    expect(html).not.toContain('옛 모양')
     for (const id of ['feed-card-bg-color', 'feed-card-chip-color', 'feed-card-box-color', 'feed-card-box-shape', 'feed-card-box-kind']) {
       expect(html, id).not.toContain(`id="${id}"`)
     }
@@ -379,13 +380,9 @@ describe('typeChangePatch — 유형을 바꿀 때 막힌 칸의 값을 정리�
     const patch = typeChangePatch({ ...stampOn, stampSlot: slot }, 'hero_box')
     expect(patch).toEqual({ feedType: 'hero_box' })
   })
-
-  it('«옛 모양 그대로»(빈 값)로 바꾸면 유형만 바꾸고 나머지 값은 남긴다', () => {
-    expect(typeChangePatch(stampOn, '')).toEqual({ feedType: '' })
-  })
 })
 
-describe('feedTypeValueNote — 값이 없으면 옛 모양으로 보이는 유형의 안내', () => {
+describe('feedTypeValueNote — 값이 없으면 텍스트 박스로 보이는 유형의 안내', () => {
   it('컬렉션 소개·드랍·픽업·목록형에만 안내가 있고 이유를 알려 준다', () => {
     expect(feedTypeValueNote('collection_intro')).toContain('대표 그림')
     expect(feedTypeValueNote('drop_pickup')).toContain('배지')
@@ -404,6 +401,8 @@ describe('feedTypeValueNote — 값이 없으면 옛 모양으로 보이는 유�
         <FeedCardSection {...({ values: { ...EMPTY_FEED_CARD_FORM_VALUES, feedType: type }, onChange: () => {}, title: '제목' } as ComponentProps<typeof FeedCardSection>)} />,
       )
       expect(html).toContain(note)
+      expect(note).toContain('텍스트 박스로 보여요')
+      expect(note).not.toContain('옛 모양')
     }
   })
 

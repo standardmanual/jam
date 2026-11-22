@@ -336,7 +336,7 @@ code:
 
 ### 레이아웃(운영 입력값)
 
-레이아웃 값·라벨(`TODAY_LAYOUT_OPTIONS`)이다. 어드민 폼과 주간 편성 시드가 지금도 이 값을 입력하고, 화면은 옛 값 → 새 모양 대응표(아래 「카드 모양 판정」)로 모양을 정한다.
+레이아웃 값·라벨(`TODAY_LAYOUT_OPTIONS`)이다. **어드민 폼과 운영 묶음은 더는 이 값을 입력하지 않는다**(8회차-2, 티켓 20261122_1153 — 새 카드는 DB 기본값 `large_thumbnail`이고 홈은 읽지 않는다). 아래 표는 이 문서의 이력과 생성 구간이 읽는 상수 목록이다.
 
 <!-- BEGIN generated: layouts -->
 | 값 | 라벨 |
@@ -555,6 +555,8 @@ code:
 
 
 **구현 위치**(8회차-1, 티켓 20261122_1101, 서비스 홈의 옛 7모양 제거): 홈이 새 유형만 그린다. `jam-web/src/components/today/TodayCard.tsx`는 `FeedCard`만 부른다(옛 분기·`RENDERED_SHAPES`·`isRenderedShape`와 `currentUserId` 인자 삭제). 옛 7모양 컴포넌트 7개와 그 부품(`CardBody`·`CardThumb`·`CardImageSlot`·`CardChipRow`·`resourceIcon`, 가져오는 곳이 이 옛 컴포넌트들뿐이라 함께 삭제), 옛 모양 Story(`ImageShapes.stories.tsx` 포함)·시험, 옛 샘플 페이지 `(main)/dev-sample/home-feed-cards/page.tsx`를 지웠다. `ArticleView`·`RankingListRow`(미션 현황이 쓴다)·`CardFrame`은 그대로다. 유형 판정은 순수 파일 `jam-web/src/lib/today/feedType.ts`의 `resolveFeedType` 하나다: `feed_type`이 비었거나 모르는 값(꺼진 `full_image` 포함)이면 `text_box`, 컬렉션 소개는 커버가 없을 때·드랍·픽업은 배지가 0개일 때·목록형은 그릴 수 있는 항목이 0개일 때도 `text_box`다. `toCardView`(`cardView.ts`)는 옛 갈래(모양별 필드·타일·랭킹 행·레시피 타일)를 지우고 `FeedCardView` 하나만 만들며 계측 정보에는 `feedType`이 늘 실린다(`tracking.shape`는 없다). 홈 조회 `getTodayCards`(`cards.ts`)는 랭킹 순위(`resolved_ranking`은 null)와 레시피(`resolved_recipe`는 싣지 않는다)를 해석하지 않는다 — 어드민 날짜 미리보기(`lib/admin/todayPreview.ts`)가 같은 함수(`fetchRankingBoardData`·`fetchRecipesById` 등)를 쓰므로 함수와 타입은 남겼고 8-2~8-3이 정리한다. 계측 `today_card_events.card_shape`는 같은 판정 함수로 정한 새 유형 이름을 기록하고(`events.ts`, 카드 조회에 `feed_type`·`list_items`를 더하고 `shape`·`template_type`·`layout_type`·`recipe_id`·레시피 읽기를 뺐다), 이전 기록의 옛 모양 이름은 그대로 남는다. 기록 유형 = 화면 유형 시험은 `shapeParity.test.ts`다. 한 칸의 허용 차이: `badge_ids`가 전부 삭제된 배지인 드랍·픽업 카드는 화면이 `text_box`, 기록은 `drop_pickup`이다(§9). 이 조각은 `shape.ts`의 상수·판정(`CARD_SHAPES`·`resolveShape`·`drawnShape`·`LEGACY_SHAPE_CUTOVER`)과 어드민·운영툴·DB·`src/types/`를 건드리지 않는다.
+
+**구현 위치**(8회차-2, 티켓 20261122_1153, 어드민의 옛 모양·레이아웃 선택 제거): 어드민 카드 폼(`TodayCardForm.tsx`)에서 「노출 형태」 선택(`layoutType`)과 템플릿별 추천 연동을 지웠고, 카드 유형 선택(`FeedCardSection.tsx`)에서 «옛 모양 그대로»(빈 값)를 없앴다. 유형은 필수이고 새 카드의 기본은 `text_box`(`feedCardFields.ts`의 `DEFAULT_FEED_TYPE`·`withDefaultFeedType`)이며, 유형이 비어 있던 옛 카드는 수정 화면에서 `text_box`로 보이고 저장하면 채워진다. 저장 본문(`buildTodayCardSavePayload`)은 `layout_type`·`shape`를 싣지 않는다(새 카드는 DB 기본값 `large_thumbnail`·NULL). 목록 표는 「노출형태」 열이 없고 「유형」 열은 유형이 비어 있으면 «텍스트 박스(기본)»을 보이며, 상세는 「카드 유형」, 내보내기는 `카드유형`(`feed_type`) 열이다. 운영 묶음은 `resource.feed_type`이 필수이고 옛 `shape`·`layout_type`은 «이제 쓰지 않아요» 경고만 붙으며 등록 값에 싣지 않는다(`validate.ts`·`registerInput.ts`·`homeFeedFields.ts`). 제목 글자 수 경고(모양별 상한)는 걷었다. `TODAY_LAYOUT_OPTIONS`·`SUGGESTED_LAYOUT_FOR`는 이 문서의 생성 구간 스크립트(`scripts/gen-home-feed-doc.mjs`)와 등록 기록 스크립트가 아직 읽어서 남겨 두었고, 8-4가 정리한다. 운영 패턴의 `card_shapes`와 신호 엔진·운영 미리보기는 8-3이다.
 
 #### 칩
 
