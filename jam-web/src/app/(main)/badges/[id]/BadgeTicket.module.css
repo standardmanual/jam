@@ -10,6 +10,8 @@
   /* 티켓 범위 토큰 덮어쓰기 — :root에는 쓰지 않는다. color-mix 미지원 브라우저는 기존 토큰 그대로다 */
   --muted: rgba(23, 23, 23, 0.8);
   --border: rgba(23, 23, 23, 0.12);
+  /* 포인트 글자색을 본문색으로 — 연한 티켓색 위 대비 확보. 티켓 밖의 :root 값(#ff4400)은 그대로다 */
+  --point-text: var(--foreground);
 }
 
 @supports (color: color-mix(in srgb, red, white)) {
@@ -23,17 +25,22 @@
 /* 머리: 티켓색 단색, 윗모서리 직각 */
 .head {
   background: var(--ticket);
-  padding: 20px 20px 24px;
+  padding: calc(20px * var(--s, 1)) calc(20px * var(--s, 1)) calc(24px * var(--s, 1));
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  gap: calc(12px * var(--s, 1));
+}
+
+/* 390px 미만: 머리 전체를 같은 비율로 줄인다(CSS만). --s는 폭/390px, 390px 이상은 1이라 값이 그대로다 */
+.head {
+  --s: min(1, calc(100vw / 390));
 }
 
 /* 높이는 오른쪽 글자 묶음의 실제 글자 높이와 같은 44.5px. 색은 .jam-logo-mark가 본문색으로 칠한다 */
 .logo {
-  height: 44.5px;
-  margin-top: 4px;
+  height: calc(44.5px * var(--s, 1));
+  margin-top: calc(4px * var(--s, 1));
   flex-shrink: 0;
 }
 
@@ -41,7 +48,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: calc(6px * var(--s, 1));
   text-align: right;
   color: #171717;
   min-width: 0;
@@ -50,7 +57,7 @@
 .kind {
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 900;
-  font-size: 34px;
+  font-size: calc(34px * var(--s, 1));
   line-height: 0.92;
   letter-spacing: -0.035em;
   white-space: nowrap;
@@ -58,8 +65,8 @@
 
 .date {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: calc(12px * var(--s, 1));
+  line-height: calc(16px * var(--s, 1));
   letter-spacing: 0.08em;
 }
 
@@ -135,4 +142,26 @@
 
 .cards {
   padding-top: 24px;
+}
+
+/* 글자 상자: 사진 아래 2px 테두리 두 칸. 직각·배경 투명·가운데 정렬(티켓 20261122_1223 확정 규격) */
+.titleBox {
+  position: relative;
+  z-index: 10;
+  margin: 0 16px 24px;
+  border: 2px solid #171717;
+  text-align: center;
+}
+
+.titleTop {
+  padding: 20px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.titleDesc {
+  padding: 14px 16px 16px;
+  border-top: 2px solid #171717;
 }

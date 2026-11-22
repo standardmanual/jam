@@ -57,6 +57,9 @@ related:
 | 내용 | 위치 |
 |---|---|
 | 티켓 틀 | `jam-web/src/app/(main)/badges/[id]/BadgeTicket.tsx`, `BadgeTicket.module.css` |
+| 사진 박스(배경+이미지만) | `jam-web/src/app/(main)/badges/[id]/TicketPhoto.tsx` |
+| 글자 상자(칩·이름 / 설명, 2px 테두리 두 칸) | `jam-web/src/app/(main)/badges/[id]/TicketTitleBoxes.tsx`, `BadgeTicket.module.css`의 `.titleBox` |
+| 부품 제목 숨김(`hideTitle`, sr-only) | `PoiEarnHistory.tsx`·`ItemEarnHistory.tsx`·`BadgeConditionCard.tsx` — 배지 상세만 켠다 |
 | 색 선택·끝색·날짜 | `jam-web/src/lib/badgeTicket/ticketColor.ts` |
 | 세 변형 조립 | `jam-web/src/app/(main)/badges/[id]/page.tsx` |
 | 종류 글자 | `jam-web/src/lib/i18n/ko.ts`의 `badges.ticketKind*` |

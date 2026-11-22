@@ -46,7 +46,14 @@ describe('배지 상세 page 세 변형', () => {
     expect(page).not.toContain('badgeBackgroundLayer')
     expect(page).not.toContain('themedTextStyle')
     expect(page).not.toContain('topNavStyle')
-    expect(page.match(/themedBackground=\{false\}/g)).toHaveLength(3)
+    expect(page.match(/<TicketPhoto /g)).toHaveLength(3)
+  })
+
+  it('세 변형 모두 글자 상자를 쓰고 세 부품의 제목을 숨긴다', () => {
+    expect(page.match(/<TicketTitleBoxes /g)).toHaveLength(3)
+    expect(page).toMatch(/<ItemEarnHistory\s+hideTitle/)
+    expect(page).toContain('<PoiEarnHistory hideTitle')
+    expect(page).toMatch(/<BadgeConditionCard\s+hideTitle/)
   })
 
   it('액티비티 획득 정보 카드에 제목을 그리지 않는다', () => {
