@@ -31,8 +31,11 @@ import {
   RETRY_LABEL,
   annotationsFor,
   HomePreviewPanelView,
+  previewViewsFor,
   type HomePreviewPanelViewProps,
 } from '../HomePreviewPanel'
+import { previewBaseTime } from '@/lib/admin/today-calendar'
+import { toCardView, toCardViews } from '@/lib/today/cardView'
 import { DEFAULT_CONDITIONS } from '../homePreviewClient'
 import { live, makeDay, makeWeek, pending } from './fixtures'
 
@@ -188,5 +191,36 @@ describe('HomePreviewPanelView — 승인 전 카드와 기획 이유', () => {
       { pending: true, chips: true },
       { pending: true, chips: false },
     ])
+  })
+})
+
+describe('previewViewsFor — 홈과 같은 칩 계획', () => {
+  /** 같은 카드 모양을 8장 이어 놓아 이웃 규칙(연속 한도·앞 카드 배치 금지)이 걸리는 날 */
+  const crowded = makeDay(
+    '2026-10-07',
+    Array.from({ length: 8 }, (_, i) => live(`crowd-${i}`, i % 2 === 0 ? 'hero_box' : 'badge_intro')),
+  )
+
+  it('같은 카드 배열에서 홈이 쓰는 toCardViews와 같은 chipPlan을 낸다', () => {
+    const cards = crowded.entries.map((entry) => entry.card)
+    const home = toCardViews(cards, { now: previewBaseTime(crowded.date) })
+    const preview = previewViewsFor(crowded)
+    expect(preview.map((v) => v.look.chipPlan)).toEqual(home.map((v) => v.look.chipPlan))
+    expect(preview.every((v) => v.look.chipPlan)).toBe(true)
+  })
+
+  it('순서는 entries 그대로이고 view 수가 같다', () => {
+    const views = previewViewsFor(crowded)
+    expect(views.map((v) => v.title)).toEqual(crowded.entries.map((e) => e.card.title))
+  })
+
+  it('카드 하나씩 만들던 옛 방식(toCardView)은 chipPlan이 없고, 이 함수는 배열 전체의 계획을 싣는다', () => {
+    const now = previewBaseTime(crowded.date)
+    expect(toCardView(crowded.entries[0].card, { now }).look.chipPlan).toBeUndefined()
+    expect(previewViewsFor(crowded)[0].look.chipPlan).toBeDefined()
+  })
+
+  it('카드가 0장이면 빈 배열이다', () => {
+    expect(previewViewsFor(makeDay('2026-10-05', []))).toEqual([])
   })
 })

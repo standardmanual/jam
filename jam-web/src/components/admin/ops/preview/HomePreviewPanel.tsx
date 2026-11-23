@@ -5,7 +5,7 @@ import { Button } from '@/components/admin/ui/button'
 import { Switch } from '@/components/admin/ui/switch'
 import TodayCardPreview, { type PreviewCardAnnotation } from '@/app/admin/today/TodayCardPreview'
 import { formatKstDateLabel, previewBaseTime } from '@/lib/admin/today-calendar'
-import { toCardView, type CardView } from '@/lib/today/cardView'
+import { toCardViews, type CardView } from '@/lib/today/cardView'
 import { previewRenderArgs, viewUsesFeedCoverImage } from '@/lib/admin/opsInbox/imageSpec'
 import { cn } from '@/lib/utils'
 import { OpsRationaleChips } from '../board/OpsRationaleChip'
@@ -32,7 +32,7 @@ import {
  *
  * 조건이나 시작 날짜가 바뀌면 API를 한 번 부르고, 이전 요청은 `AbortController`로 취소한다. 7일치가 한 번에 오므로 칸을 눌러 날을
  * 바꾸는 것은 다시 부르지 않는다. 실패는 한 줄 오류와 「다시 불러오기」다(빈 목록으로 보이지 않는다).
- * 카드는 계측 정보 없이 서비스 카드(`TodayCard`)로 그린다. 승인 전 카드는 점선과 「승인 전」, 「기획 이유 보기」를 켜면 이유 칩이 카드 위에 올라온다.
+ * 카드는 계측 정보 없이 서비스 카드(`TodayCard`)로 그리고, 표시 데이터는 홈과 같은 `toCardViews`로 한 배열을 만들어 칩 배치도 홈과 같은 규칙(연속 한도·앞 카드 배치 금지)을 따른다(티켓 20261122_2228 R7). 승인 전 카드는 점선과 「승인 전」, 「기획 이유 보기」를 켜면 이유 칩이 카드 위에 올라온다.
  *
  * 부품은 상태·요청을 맡는 `HomePreviewPanel`과 값을 받아 그리기만 하는 `HomePreviewPanelView`로 나뉜다(jsdom이 없어 그림은 서버 렌더로 시험한다).
  */
@@ -99,6 +99,17 @@ export function withDraftImages(views: readonly CardView[], day: DayPreview, dra
   })
 }
 
+/**
+ * 선택한 날의 카드 배열을 표시 데이터로 만든다. 홈과 같은 진입점(`toCardViews`)이라 카드 순서(`sortHomeCards`가 만든 순서) 그대로 배열 전체를
+ * 한 번 훑어 칩 배치(`chipPlan`: 같은 값 연속 한도·앞 카드 배치 금지)를 정한다. 카드가 없으면 빈 배열이다(티켓 20261122_2228 R7).
+ */
+export function previewViewsFor(day: DayPreview): CardView[] {
+  return toCardViews(
+    day.entries.map((entry) => entry.card),
+    { now: previewBaseTime(day.date) },
+  )
+}
+
 export function HomePreviewPanelView({
   fromDate,
   onFromDateChange,
@@ -117,11 +128,7 @@ export function HomePreviewPanelView({
 }: HomePreviewPanelViewProps) {
   const day = days.find((d) => d.date === selectedDate) ?? days[0]
 
-  const views = useMemo(() => {
-    if (!day) return []
-    const now = previewBaseTime(day.date)
-    return day.entries.map((entry) => toCardView(entry.card, { now }))
-  }, [day])
+  const views = useMemo(() => (day ? previewViewsFor(day) : []), [day])
   const requests = useMemo(() => draftImageRequestsFor(day), [day])
   const drafts = useDraftImagePreview(requests)
   const shownViews = useMemo(() => (day ? withDraftImages(views, day, drafts) : views), [views, day, drafts])
