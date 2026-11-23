@@ -12,7 +12,7 @@
  *   1 기울기 3° → 2 스티커 80% → 3 스티커를 검정 알약 분류 칩으로 → 4 값 칩을 작게 → 5 분류 칩 빼기. 칩이 하나뿐이면 1~3 뒤에 그 칩만 작게(6) 한다.
  *   고정한 자리는 물러서기에서도 옮기지 않는다(자리 이동은 단계가 아니다).
  * - 목록형(`gallery_list`)은 제목 위 흐름 줄이라 이 계산 대상이 아니다(`flow: true`, 결정 6). 칩이 없는 카드(`[]`)는 빈 계획이다.
- * - 계획은 폭 288·358 두 카드에서 모두 겹치지 않아야 맞는 것으로 본다(서버는 실제 폭을 모른다, `PLAN_WIDTHS`).
+ * - 계획은 폭 343 카드(아이폰 최소 화면 375의 카드 폭)에서 겹치지 않아야 맞는 것으로 본다(서버는 실제 폭을 모른다, `PLAN_WIDTHS`).
  */
 import { createRng, type BoxSeed } from './boxShape'
 import type { ChipCorner } from './feedChipLayout'
@@ -84,6 +84,11 @@ export interface ChipPlanInput {
   extraAvoid?: readonly Rect[]
   /** 맞춰 볼 카드 폭들(기본 `PLAN_WIDTHS`) */
   widths?: readonly number[]
+  /**
+   * 스티커 여부를 시드가 아니라 호출한 쪽이 정한다(R5의 «같은 꼴 3연속 금지»가 쓴다). 생략하면 `auto`(시드, 분류 칩의 절반 정도).
+   * `sticker`는 첫 분류 칩을 스티커로, `pill`은 모두 알약으로 한다. 난수 소비는 `auto`와 같아 다른 값(자리·기울기·글자·짝)은 모드와 무관하게 같다.
+   */
+  stickerMode?: 'auto' | 'sticker' | 'pill'
 }
 
 /** `CategorySticker`에 그대로 넘기는 인자. 색 짝은 R5가 카드 바탕·앞 스티커와 겹치지 않게 바꿀 수 있다. */
@@ -341,7 +346,10 @@ function baseWorks(input: ChipPlanInput, rng: () => number): PlanWork[] {
   let stickers = 0
   return input.chips.slice(0, 2).map((draft, index) => {
     let presentation: PlanWork['presentation'] = 'pill'
-    if (draft.kind === 'label' && rng() < STICKER_SHARE && stickers < MAX_STICKERS_PER_CARD) {
+    const seedWantsSticker = draft.kind === 'label' && rng() < STICKER_SHARE
+    const mode = input.stickerMode ?? 'auto'
+    const wantsSticker = mode === 'auto' ? seedWantsSticker : mode === 'sticker' && draft.kind === 'label'
+    if (wantsSticker && stickers < MAX_STICKERS_PER_CARD) {
       presentation = 'sticker'
       stickers += 1
     }

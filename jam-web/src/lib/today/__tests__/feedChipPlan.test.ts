@@ -6,7 +6,7 @@
  * 칩 없는 카드 빈 계획, 목록형 흐름 줄, 후보 목록·서명 안정성, 7개 유형에서 글자·안전 구역을 가리지 않음.
  *
  * 물러서기 시험은 «전체 폭 추가 금지 띠»(`extraAvoid`)로 위쪽 빈 높이를 정확히 좁혀 단계마다 필요한 높이를 만든다.
- * 히어로(그림 없음)의 카드 높이는 폭 288·358 모두 360이라 띠의 높이가 같다.
+ * 히어로(그림 없음)의 카드 높이는 폭 288·343·358 모두 360이라 띠의 높이가 같다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/feedChipPlan.test.ts
  */
@@ -127,7 +127,7 @@ describe('두 칩의 규칙', () => {
     }
   })
 
-  it('두 칩은 같은 줄에 서지 않는다(폭 288·358)', () => {
+  it('두 칩은 같은 줄에 서지 않는다(폭 343)', () => {
     for (const type of CHIP_GEOMETRY_TYPES) {
       if (type === 'gallery_list') continue
       for (const seed of seeds) {
@@ -179,7 +179,7 @@ describe('두 칩의 규칙', () => {
       const plan = planCardChips(inputOf('hero_box', seed, [value('Lv.1'), label('ITEM', 'sm')]))
       for (const chip of plan.chips) {
         expect(chip.inset.x).toBeLessThanOrEqual(6)
-        expect(chip.inset.x * 288 / 100).toBeGreaterThanOrEqual(-6)
+        expect(chip.inset.x * 343 / 100).toBeGreaterThanOrEqual(-6)
         if (!chip.lowered) {
           expect(chip.inset.y).toBeLessThanOrEqual(5)
           expect(chip.inset.y * 360 / 100).toBeGreaterThanOrEqual(-6)
@@ -439,6 +439,10 @@ describe('물러서기 도달(히어로, 위쪽 빈 높이를 좁힌 시험)', (
 })
 
 describe('가리지 않기(7개 유형, 시드 표본)', () => {
+  it('계획 폭은 아이폰 최소 화면 375의 카드 폭 343 하나다', () => {
+    expect([...PLAN_WIDTHS]).toEqual([343])
+  })
+
   const chipSets: Array<(seed: number) => ChipPlanDraft[]> = [
     (seed) => [label(['ACTIVITY', 'ITEM', 'MISSION', 'CHECK IN', 'COLLECTION'][seed % 5])],
     (seed) => [value(['2일 남음', 'Lv.1', '누적 3일'][seed % 3]), label(['ACTIVITY', 'ITEM', 'MISSION'][seed % 3], 'sm')],
@@ -446,7 +450,7 @@ describe('가리지 않기(7개 유형, 시드 표본)', () => {
 
   for (const type of CHIP_GEOMETRY_TYPES) {
     if (type === 'gallery_list') continue
-    it(`${type}: 칩·스티커가 글자·안전 구역·도장·퍼진 배지와 겹치지 않는다(폭 288·358)`, () => {
+    it(`${type}: 칩·스티커가 글자·안전 구역·도장·퍼진 배지와 겹치지 않는다(폭 343)`, () => {
       const burst = [
         { x: -0.75, y: -0.35, size: 76 },
         { x: 0.72, y: -0.4, size: 72 },
@@ -465,7 +469,7 @@ describe('가리지 않기(7개 유형, 시드 표본)', () => {
         })
         const plan = planCardChips(input)
         expect(plan.fit).toBe(true)
-        for (const width of PLAN_WIDTHS) {
+        for (const width of [343]) {
           const geometry = cardGeometryOf({ ...input, feedType: type as ChipGeometryType, width })
           for (const rect of chipRectsOf(plan, input, width)) expect(overlapWithAll(rect, geometry.avoid)).toBe(0)
         }

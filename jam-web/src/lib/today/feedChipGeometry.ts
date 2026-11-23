@@ -74,8 +74,11 @@ export const ART_SAFE_RATIO = { x: 0.5, y: 0.5 } as const
 export const AVOID_PAD = 4
 /** 두 칩 사이 여유 px(같은 줄 판정과 겹침에 쓴다). */
 export const CHIP_GAP = 6
-/** 계획이 맞춰 보는 카드 폭들(px): 폭 320 화면의 카드와 390 화면의 카드. 서버는 실제 폭을 모르므로 둘 다 겹치지 않아야 한다. */
-export const PLAN_WIDTHS = [288, 358] as const
+/**
+ * 계획이 맞춰 보는 카드 폭들(px): 아이폰 최소 화면 375의 카드 폭 343 하나다. 서버는 실제 폭을 모르지만, 343에서 겹치지 않으면 더 넓은 화면은 모두 안전하다
+ * (칩 폭은 고정 px이고 안쪽 한도는 카드 비율이라 넓어질수록 여유가 늘어난다). 구형 320 화면(카드 폭 288)은 맞춰 보지 않는다(티켓 20261122_2228 결정, 카리나 2026-11-23).
+ */
+export const PLAN_WIDTHS = [343] as const
 /** 기울기 상한(deg): `FEED_CORNER_TILT_RANGE.max`. 보수적 경계 상자는 이 각도로 잰다. */
 const WORST_TILT = 12
 
