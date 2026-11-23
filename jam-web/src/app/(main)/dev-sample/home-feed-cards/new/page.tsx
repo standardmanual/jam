@@ -11,6 +11,7 @@ import {
   buildMotion,
   buildStateMatrix,
   buildTypeSamples,
+  formatChipSummary,
   type PreviewCell,
 } from '@/lib/today/feedPreviewData'
 
@@ -173,7 +174,7 @@ export default function HomeFeedNewCardsPreviewPage() {
         <Section
           id="auto"
           title={`자동 배정 ${PREVIEW_AUTO_COUNT}장`}
-          note="시드가 서로 다른 카드를 유형 8개에 돌려 가며 색과 칩을 자동으로 정했어요."
+          note="시드가 서로 다른 카드를 유형 8개에 돌려 가며 색과 칩을 자동으로 정했어요. 칩 배치는 120장을 한 배열로 계산한 값이고, 위쪽 유형별 샘플은 앞 카드가 없는 기준이에요."
         >
           <table className="w-full border-collapse text-sm">
             <caption className="sr-only">자동 배정 요약</caption>
@@ -195,6 +196,9 @@ export default function HomeFeedNewCardsPreviewPage() {
               ))}
             </tbody>
           </table>
+          <p className={NOTE} data-summary="칩 배치">
+            {formatChipSummary(summary.chips)}
+          </p>
           <div className="flex flex-col gap-1">
             <p className={CAPTION}>제외 조합 예시(검수표에서 제외한 값으로 넣었어요)</p>
             <ul className="flex flex-col gap-1 text-sm">

@@ -46,7 +46,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import Page, { metadata } from '../page'
-import { PREVIEW_AUTO_COUNT } from '@/lib/today/feedPreviewData'
+import { PREVIEW_AUTO_COUNT, buildAutoAssignment, formatChipSummary } from '@/lib/today/feedPreviewData'
 
 describe('홈피드 새 카드 미리보기 페이지', () => {
   const html = renderToStaticMarkup(<Page />)
@@ -80,6 +80,12 @@ describe('홈피드 새 카드 미리보기 페이지', () => {
     // 카드 120장이 모두 그려진다(이름표 «001 ·»부터 «120 ·»까지)
     expect(html).toContain('001 · ')
     expect(html).toContain('120 · ')
+  })
+
+  it('자동 배정 요약 아래에 칩 배치 요약이 한 줄로 있고 위반 수가 계산값과 같다', () => {
+    const line = /data-summary="칩 배치">([^<]*)</.exec(html)?.[1]
+    expect(line).toBe(formatChipSummary(buildAutoAssignment().summary.chips))
+    expect(line).toMatch(/^칩 배치: 스티커 \d+장 · 알약 \d+장 · 물러서기 0단계 \d+장 \/ 1~2단계 \d+장 \/ 3~6단계 \d+장 · 연속·앞 카드 규칙 위반 \d+$/)
   })
 
   it('컬렉션 모션 구역에 모인·퍼진 상태와 스크롤 재생 카드가 있다', () => {

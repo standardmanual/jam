@@ -15,7 +15,7 @@ import type { TodayCardTemplateType, TodayListItem } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import { withTicketColorQuery } from '@/lib/badgeTicket/ticketColor'
-import { chainInputOf, planFeedChips } from './feedChipChain'
+import { chainInputOf, planFeedChipsDetailed, type ChainStep } from './feedChipChain'
 import { resolveFeedLook, type FeedLook, type RenderedFeedType } from './feedLook'
 import { resolveFeedType, usableListItems } from './feedType'
 import type { FeedValueChipSource } from './feedValueChips'
@@ -417,12 +417,21 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
 }
 
 /**
+ * 표시 데이터 배열에 칩 배치 계획(`look.chipPlan`)을 싣는다. 배열을 피드 순서로 한 번 훑는 `planFeedChipsDetailed`의 결과이고, `steps`에는 카드마다 남은 규칙 위반이 있다.
+ * `toCardViews`가 쓰는 마지막 단계라, 카드 행(`TodayCardWithHref`) 없이 표시 데이터를 직접 만드는 개발용 미리보기도 같은 계산을 쓴다(티켓 20261122_2228 R7).
+ * 입력 view는 바꾸지 않고, 결과 수·순서는 입력과 같다.
+ */
+export function attachChipPlans<V extends FeedCardView>(views: readonly V[]): { views: V[]; steps: ChainStep[] } {
+  const steps = planFeedChipsDetailed(views.map(chainInputOf))
+  return { views: views.map((view, index) => ({ ...view, look: { ...view.look, chipPlan: steps[index].plan } })), steps }
+}
+
+/**
  * 피드 순서로 늘어놓은 카드들을 표시 데이터로 바꾼다. 카드마다 `toCardView`로 view를 만든 뒤, 칩 배치(`planFeedChips`)를 배열 전체에서 한 번 훑어 `view.look.chipPlan`에 싣는다.
  * 이웃 규칙(같은 값 연속 2장 한도·앞 카드와 같은 배치 금지·같은 꼴 3연속 금지)은 피드 순서를 알아야 지킬 수 있어서 홈처럼 순서가 정해진 배열은 이 함수로 만든다.
- * view 수·순서는 입력과 같다. 단건(어드민 폼·미리보기)은 `toCardViews([card])[0]`으로 «앞 카드 없음»과 같은 계획을 받는다. 그리기는 아직 `look.chips`를 쓴다(티켓 20261122_2228 R5, 그리기 연결은 R6).
+ * 어드민 «홈 미리보기»도 홈과 같은 순서의 배열을 이 함수로 만든다(티켓 20261122_2228 R7).
+ * view 수·순서는 입력과 같다. 단건(어드민 폼·미리보기)은 `toCardViews([card])[0]`으로 «앞 카드 없음»과 같은 계획을 받는다.
  */
 export function toCardViews(cards: readonly TodayCardWithHref[], options: ToCardViewOptions = {}): CardView[] {
-  const views = cards.map((card) => toCardView(card, options))
-  const plans = planFeedChips(views.map(chainInputOf))
-  return views.map((view, index) => ({ ...view, look: { ...view.look, chipPlan: plans[index] } }))
+  return attachChipPlans(cards.map((card) => toCardView(card, options))).views
 }

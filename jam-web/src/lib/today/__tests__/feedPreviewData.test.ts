@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest'
 import { BOX_SHAPES } from '../boxShape'
 import { FEED_RENDERED_TYPES } from '../feedLook'
 import { splitTitleByWords } from '../titleChips'
+import { chainInputOf, planFeedChips, planFeedChipsDetailed, type ChainStep } from '../feedChipChain'
 import { chipLimitOf, FEED_CHIP_SLOT_SPECS } from '../feedChipSlots'
 import { FEED_COLOR_KEYS } from '../feedConstants'
 import {
@@ -24,7 +25,9 @@ import {
   buildMotion,
   buildStateMatrix,
   buildTypeSamples,
+  formatChipSummary,
   previewTitleWords,
+  summarizeChipSteps,
   previewView,
   type PreviewCell,
 } from '../feedPreviewData'
@@ -75,10 +78,24 @@ describe('자동 배정 120장', () => {
 
   it('같은 입력은 같은 결과다', () => {
     expect(buildAutoAssignment()).toEqual(buildAutoAssignment())
-    expect(buildAutoAssignment(30)).toEqual({
-      cards: cards.slice(0, 30),
-      summary: { ...summary, cardCount: 30 },
-    })
+    // 앞에서 뒤로만 흐르는 계산이라 앞 30장은 120장을 만든 결과의 앞 30장과 같다(칩 요약만 장수에 따라 다르다)
+    const first30 = buildAutoAssignment(30)
+    expect(first30.cards).toEqual(cards.slice(0, 30))
+    expect({ ...first30.summary, chips: null }).toEqual({ ...summary, cardCount: 30, chips: null })
+  })
+
+  it('120장 모두 한 배열의 계획(look.chipPlan)을 싣고 홈이 쓰는 planFeedChips와 같다', () => {
+    expect(cards.every((card) => card.view.look.chipPlan)).toBe(true)
+    const plans = planFeedChips(cards.map((card) => chainInputOf(card.view)))
+    expect(cards.map((card) => card.view.look.chipPlan)).toEqual(plans)
+  })
+
+  it('칩 요약의 위반 수는 planFeedChipsDetailed가 돌려주는 위반 목록의 합이다', () => {
+    const steps = planFeedChipsDetailed(cards.map((card) => chainInputOf(card.view)))
+    expect(summary.chips.violationCount).toBe(steps.reduce((sum, step) => sum + step.violations.length, 0))
+    // 카드를 한 장씩 따로 계산하면 앞 카드가 없어 위반이 0이다 — 한 배열로 훑을 때만 이웃 규칙이 걸린다
+    const alone = cards.map((card) => planFeedChipsDetailed([chainInputOf(card.view)])[0].violations.length)
+    expect(alone.every((count) => count === 0)).toBe(true)
   })
 
   it('제외 조합 예시는 규칙에서 나올 수 있는 쌍이라, 제외하지 않으면 실제로 겹치는 카드가 나온다', () => {
@@ -189,5 +206,40 @@ describe('구역별 가짜 데이터', () => {
     expect(buildTypeSamples()).toEqual(buildTypeSamples())
     expect(buildStateMatrix()).toEqual(buildStateMatrix())
     expect(buildBoxMatrix()).toEqual(buildBoxMatrix())
+  })
+})
+
+describe('칩 배치 요약', () => {
+  const { chips } = buildAutoAssignment().summary
+
+  it('스티커·알약 수가 계획의 칩과 맞고 물러서기 단계별 장수의 합은 칩 있는 카드 수다', () => {
+    const { cards } = buildAutoAssignment()
+    const plans = cards.map((card) => card.view.look.chipPlan)
+    const all = plans.flatMap((plan) => plan?.chips ?? [])
+    expect(chips.stickerCount).toBe(all.filter((chip) => chip.presentation === 'sticker').length)
+    expect(chips.pillCount).toBe(all.filter((chip) => chip.presentation === 'pill').length)
+    expect(chips.backoff.none + chips.backoff.light + chips.backoff.heavy).toBe(plans.filter((plan) => plan && plan.chips.length > 0).length)
+  })
+
+  it('한 줄 문장이 일곱 수치를 « · »로 이어 보이고, 0이어도 항목을 숨기지 않는다', () => {
+    const zero = formatChipSummary({ stickerCount: 0, pillCount: 0, backoff: { none: 0, light: 0, heavy: 0 }, violationCount: 0 })
+    expect(zero).toBe('칩 배치: 스티커 0장 · 알약 0장 · 물러서기 0단계 0장 / 1~2단계 0장 / 3~6단계 0장 · 연속·앞 카드 규칙 위반 0')
+    const some = formatChipSummary({ stickerCount: 21, pillCount: 202, backoff: { none: 5, light: 2, heavy: 3 }, violationCount: 2 })
+    expect(some).toContain('스티커 21장 · 알약 202장')
+    expect(some).toContain('물러서기 0단계 5장 / 1~2단계 2장 / 3~6단계 3장')
+    expect(some.endsWith('연속·앞 카드 규칙 위반 2')).toBe(true)
+  })
+
+  it('위반이 있는 계획은 위반 수에 더해지고, 칩 없는 계획은 단계에 세지 않는다', () => {
+    const plan = (backoff: number, ...presentations: Array<'pill' | 'sticker'>) =>
+      ({ backoff, chips: presentations.map((presentation) => ({ presentation })) }) as unknown as ChainStep['plan']
+    const steps: ChainStep[] = [
+      { plan: plan(0, 'sticker', 'pill'), violations: [] },
+      { plan: plan(2, 'pill'), violations: ['shape', 'form'] },
+      { plan: plan(5, 'pill'), violations: ['signature'] },
+      { plan: plan(0), violations: [] },
+    ]
+    expect(summarizeChipSteps(steps)).toEqual({ stickerCount: 1, pillCount: 3, backoff: { none: 1, light: 1, heavy: 1 }, violationCount: 3 })
+    expect(summarizeChipSteps([])).toEqual({ stickerCount: 0, pillCount: 0, backoff: { none: 0, light: 0, heavy: 0 }, violationCount: 0 })
   })
 })

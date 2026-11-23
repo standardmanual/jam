@@ -8,11 +8,14 @@
  * - 이미지는 저장소에 이미 있는 정적 자산(`public/dev-sample`·`public/badges/sample`)이거나 비어 있다(색 면). 외부 주소를 쓰지 않는다.
  * - 자동 배정 구역: 서로 다른 시드 120장을 `resolveFeedLook`(칩·색 NULL)으로 배정하고, 통합 팔레트의 배제 표(`chipExclusionRule`)로 규칙 위반을 센다(티켓 20261122_2224 회차 4·5).
  *   사용자가 검수표에서 제외한 조합 «예시»(`PREVIEW_EXCLUDED_PAIRS`)를 입력으로 넣어 제외 조합과 겹치는 카드가 없는지도 센다. 실제 제외 목록은 6회차가 저장한다.
+ * - 칩 배치: 자동 배정 120장은 홈과 같은 진입점(`attachChipPlans`, `toCardViews`의 마지막 단계)으로 한 배열을 훑어 `look.chipPlan`을 싣는다(티켓 20261122_2228 R7).
+ *   유형별 샘플 구간은 샘플마다 «앞 카드 없음»이라 `chipPlan`을 싣지 않고 그리는 쪽이 즉석 계산한다.
  */
 import type { TodayChipSpec } from '@/types/database'
-import type { FeedCardView, FeedCardViewBadge, FeedCardViewListItem } from './cardView'
+import { attachChipPlans, type FeedCardView, type FeedCardViewBadge, type FeedCardViewListItem } from './cardView'
 import { BOX_SHAPES, type BoxShape } from './boxShape'
 import { assignFeedColors, type ExcludedColorPair } from './feedAssign'
+import type { ChainStep } from './feedChipChain'
 import { chipLimitOf, FEED_CHIP_SLOT_SPECS } from './feedChipSlots'
 import { chipExclusionRule, type ColorRuleName } from './feedColorRules'
 import type { FeedColorKey } from './feedConstants'
@@ -379,6 +382,42 @@ export interface PreviewAutoCard {
   usedFallback: boolean
 }
 
+/** 자동 배정 구간의 칩 배치 요약(120장을 한 배열로 훑은 계획 기준) */
+export interface PreviewChipSummary {
+  /** 계획에 든 스티커 수 */
+  stickerCount: number
+  /** 계획에 든 알약 수 */
+  pillCount: number
+  /** 물러서기 단계별 카드 수: 물러서지 않음(0단계) · 가볍게(1~2단계: 기울기·스티커 80%) · 크게(3단계 이상) */
+  backoff: { none: number; light: number; heavy: number }
+  /** 피드 순서 규칙(`ChainViolation`)을 어긴 건수 */
+  violationCount: number
+}
+
+/** 배열 계획의 카드별 결과(`ChainStep`)를 요약한다. 칩이 없는 카드(`[]`·목록형)는 물러서기 단계에 세지 않는다. */
+export function summarizeChipSteps(steps: readonly ChainStep[]): PreviewChipSummary {
+  const summary: PreviewChipSummary = { stickerCount: 0, pillCount: 0, backoff: { none: 0, light: 0, heavy: 0 }, violationCount: 0 }
+  for (const { plan, violations } of steps) {
+    summary.violationCount += violations.length
+    if (plan.chips.length === 0) continue
+    for (const chip of plan.chips) {
+      if (chip.presentation === 'sticker') summary.stickerCount += 1
+      else summary.pillCount += 1
+    }
+    if (plan.backoff === 0) summary.backoff.none += 1
+    else if (plan.backoff <= 2) summary.backoff.light += 1
+    else summary.backoff.heavy += 1
+  }
+  return summary
+}
+
+/** 칩 배치 요약을 한 줄 문장으로 만든다. 값이 0이어도 항목을 숨기지 않는다. */
+export function formatChipSummary(chips: PreviewChipSummary): string {
+  const { backoff } = chips
+  const retreat = `물러서기 0단계 ${backoff.none}장 / 1~2단계 ${backoff.light}장 / 3~6단계 ${backoff.heavy}장`
+  return `칩 배치: 스티커 ${chips.stickerCount}장 · 알약 ${chips.pillCount}장 · ${retreat} · 연속·앞 카드 규칙 위반 ${chips.violationCount}`
+}
+
 export interface PreviewAssignSummary {
   cardCount: number
   /** 규칙 ①~④에 걸린 색 쌍이 하나라도 있는 카드 수 */
@@ -389,6 +428,8 @@ export interface PreviewAssignSummary {
   fallbackCount: number
   /** 입력으로 넣은 제외 조합(색 키 쌍) */
   excludedPairs: readonly ExcludedColorPair[]
+  /** 칩 배치 요약 */
+  chips: PreviewChipSummary
 }
 
 export interface PreviewAssignment {
@@ -439,7 +480,7 @@ export function buildAutoAssignment(
   excludedPairs: readonly ExcludedColorPair[] = PREVIEW_EXCLUDED_PAIRS,
 ): PreviewAssignment {
   const excludedKeys = new Set(excludedPairs.map(([a, b]) => pairKey(a, b)))
-  const cards: PreviewAutoCard[] = Array.from({ length: Math.max(0, Math.floor(count)) }, (_, index) => {
+  const built = Array.from({ length: Math.max(0, Math.floor(count)) }, (_, index) => {
     const feedType = FEED_RENDERED_TYPES[index % FEED_RENDERED_TYPES.length]
     const seed = index + 1
     const base = BASES[feedType].options
@@ -465,6 +506,9 @@ export function buildAutoAssignment(
     const { usedFallback } = assignFeedColors({ seed: view.look.seed }, { excludedPairs })
     return { number: seed, feedType, seed, view, violatedRules, overlapsExcluded, usedFallback }
   })
+  // 120장을 한 배열로 훑어 칩 배치 계획을 싣는다 — 홈(`toCardViews`)과 같은 계산이다
+  const { views, steps } = attachChipPlans(built.map((card) => card.view))
+  const cards: PreviewAutoCard[] = built.map((card, index) => ({ ...card, view: views[index] }))
   return {
     cards,
     summary: {
@@ -473,6 +517,7 @@ export function buildAutoAssignment(
       excludedOverlapCount: cards.filter((card) => card.overlapsExcluded).length,
       fallbackCount: cards.filter((card) => card.usedFallback).length,
       excludedPairs,
+      chips: summarizeChipSteps(steps),
     },
   }
 }
