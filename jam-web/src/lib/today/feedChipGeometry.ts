@@ -87,6 +87,9 @@ export const PLAN_WIDTHS = [343] as const
  * 가로는 기존 모서리 한도(바깥 6px ~ 안쪽 6%)를 그대로 쓴다. 이 자리는 드랍·픽업에만 있다(다른 유형의 후보는 그대로다).
  * 화면은 모서리 `top-right`에 세로 오프셋을 크게 준 위치로 그린다(`plannedChipPositionOf`가 그대로 읽는다).
  */
+/** 드랍·픽업 제목 줄 폭 보정 계수: 공백까지 한 글자 폭으로 센 추정을 실제 글자 폭에 가깝게 줄인다(공백이 줄마다 1~2개인 한국어 제목 기준). */
+export const TITLE_WIDTH_CORRECTION = 0.8
+
 export const TITLE_EDGE = { centerBand: { min: 0.62, max: 0.78 }, maxTitleRatio: 0.6, corner: 'top-right' } as const satisfies {
   centerBand: { min: number; max: number }
   maxTitleRatio: number
@@ -192,7 +195,7 @@ export interface CardGeometry {
   avoid: Rect[]
   /** 이 중 글자 영역(테스트·진단용). */
   textRects: Rect[]
-  /** 드랍·픽업만: 제목 글자가 카드 폭의 60% 이하라 «제목 옆 가장자리» 칩 자리를 쓸 수 있는가. 다른 유형은 늘 false. */
+  /** 드랍·픽업만: 제목 글자(보정한 추정 폭)가 카드 폭의 60% 이하라 «제목 옆 가장자리» 칩 자리를 쓸 수 있는가. 다른 유형은 늘 false. */
   titleEdgeOpen: boolean
 }
 
@@ -327,12 +330,15 @@ export function cardGeometryOf(input: CardGeometryInput): CardGeometry {
     // `textRects`는 다른 유형처럼 글자 묶음 전체 하나(진단용)다.
     const block = textBlockOf(input, w)
     const title = textBlockOf(input, w, false)
+    // 글자 길이 추정(`textBlockOf`)은 공백도 한 글자 폭으로 세어 제목 줄 폭이 실제보다 25~35% 넓게 나온다(폭 343에서 «내겐 남는 것이» 추정 235px, 실측 175px).
+    // «제목 옆 가장자리» 칩이 제목 오른쪽 빈 곳에 들어가려면 이 과대 추정을 걷어야 해서, 드랍·픽업의 제목 줄 폭만 TITLE_WIDTH_CORRECTION을 곱해 쓴다(다른 유형은 그대로다).
+    const titleWidth = Math.ceil(title.maxWidth * TITLE_WIDTH_CORRECTION)
     const desc = descriptionBlockOf(input, w)
     const top = height - PAD - block.height
     textRects.push(pad({ l: PAD, t: top, r: PAD + block.maxWidth, b: height - PAD }, AVOID_PAD))
-    avoid.push(pad({ l: PAD, t: top, r: PAD + title.maxWidth, b: top + title.height }, AVOID_PAD))
+    avoid.push(pad({ l: PAD, t: top, r: PAD + titleWidth, b: top + title.height }, AVOID_PAD))
     if (desc) avoid.push(pad({ l: PAD, t: top + title.height + TEXT_GAP, r: PAD + desc.maxWidth, b: height - PAD }, AVOID_PAD))
-    titleEdgeOpen = title.maxWidth <= w * TITLE_EDGE.maxTitleRatio
+    titleEdgeOpen = titleWidth <= w * TITLE_EDGE.maxTitleRatio
   } else if (type === 'hero_box' || type === 'badge_intro' || type === 'collection_intro') {
     const block = textBlockOf(input, w)
     addText({ l: PAD, t: height - PAD - block.height, r: PAD + block.maxWidth, b: height - PAD })

@@ -158,8 +158,14 @@ describe('두 칩의 규칙', () => {
         const [a, b] = plan.chips
         expect(a.corner.startsWith('top')).toBe(true)
         expect(b.corner.startsWith('top')).toBe(true)
-        expect(a.corner).not.toBe(b.corner)
         const lowered = plan.chips.filter((chip) => chip.lowered)
+        // 드랍·픽업은 둘째 칩이 «제목 옆 가장자리»에 놓일 수 있다(내려 앉지 않고, 첫 칩과 같은 쪽일 수 있다). 다른 유형은 늘 내려 앉는다.
+        if (plan.chips.some((chip) => chip.edge)) {
+          expect(type).toBe('drop_pickup')
+          expect(lowered).toHaveLength(0)
+          continue
+        }
+        expect(a.corner).not.toBe(b.corner)
         expect(lowered).toHaveLength(1)
         expect(lowered[0].inset.y).toBeGreaterThanOrEqual(12)
         expect(lowered[0].inset.y).toBeLessThanOrEqual(22)

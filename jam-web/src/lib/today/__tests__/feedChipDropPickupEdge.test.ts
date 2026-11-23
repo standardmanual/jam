@@ -125,8 +125,8 @@ describe('«제목 옆 가장자리» 칩의 자리', () => {
     expect(seen).toBeGreaterThan(500)
   })
 
-  it('제목 글자가 카드 폭의 60%를 넘으면 이 자리를 후보에서 뺀다', () => {
-    const wide = dropInput(1, 3, 358, { titleLines: [8, 8] })
+  it('제목 글자(보정한 추정 폭)가 카드 폭의 60%를 넘으면 이 자리를 후보에서 뺀다', () => {
+    const wide = dropInput(1, 3, 358, { titleLines: [10, 10] })
     expect(cardGeometryOf({ ...wide, feedType: 'drop_pickup' as ChipGeometryType, width: 358 }).titleEdgeOpen).toBe(false)
     for (const plan of chipPlanCandidates(wide)) expect(plan.chips.some((chip) => chip.edge)).toBe(false)
     const narrow = dropInput(1, 3, 358)

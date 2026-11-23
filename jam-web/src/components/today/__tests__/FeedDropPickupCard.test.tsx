@@ -200,7 +200,7 @@ describe('드랍·픽업 — 칩·링크·설명', () => {
       const [first, second] = plan.chips
       expect(first.corner).not.toBe(second.corner)
       expect(Math.sign(first.tilt)).toBe(-Math.sign(second.tilt))
-      if (first.corner.startsWith(second.corner.slice(0, 3))) expect(first.lowered || second.lowered).toBe(true)
+      if (first.corner.startsWith(second.corner.slice(0, 3))) expect(first.lowered || second.lowered || first.edge || second.edge).toBeTruthy() // 둘째가 내려 앉거나 «제목 옆 가장자리»에 놓인다
     }
   })
 

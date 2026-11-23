@@ -12,7 +12,7 @@
  *   1 기울기 3° → 2 스티커 80% → 3 스티커를 검정 알약 분류 칩으로 → 4 값 칩을 작게 → 5 분류 칩 빼기. 칩이 하나뿐이면 1~3 뒤에 그 칩만 작게(6) 한다.
  *   고정한 자리는 물러서기에서도 옮기지 않는다(자리 이동은 단계가 아니다).
  * - 드랍·픽업만 «제목 옆 가장자리» 자리(`TITLE_EDGE`)가 후보에 더해진다: 한 칩은 위쪽 모서리, 다른 칩은 카드 오른쪽 가장자리의 제목 줄 높이(칩 가운데가 카드 높이의 62~78%).
- *   제목 글자가 카드 폭의 60%를 넘으면 빠지고, 어드민이 자리를 정한 칩이 있으면 쓰지 않는다. 다른 유형의 후보는 그대로다.
+ *   제목 글자(보정한 추정 폭)가 카드 폭의 60%를 넘으면 빠지고, 어드민이 자리를 정한 칩이 있으면 쓰지 않는다. 다른 유형의 후보는 그대로다.
  * - 목록형(`gallery_list`)은 제목 위 흐름 줄이라 이 계산 대상이 아니다(`flow: true`, 결정 6). 칩이 없는 카드(`[]`)는 빈 계획이다.
  * - 계획은 폭 343 카드(아이폰 최소 화면 375의 카드 폭)에서 겹치지 않아야 맞는 것으로 본다(서버는 실제 폭을 모른다, `PLAN_WIDTHS`).
  */
@@ -462,7 +462,7 @@ export function chipPlanCandidates(input: ChipPlanInput): ChipPlan[] {
 
   // 조합: 자리 배치 × 첫 칩의 기울기 방향(둘째는 반대). 어드민이 정한 기울기가 있으면 그 방향을 따른다.
   const combos: Array<{ arrangement: Arrangement; sign: 1 | -1 }> = []
-  // «제목 옆 가장자리» 자리는 제목 글자가 카드 폭의 60% 이하인 계획 폭에서만 쓴다(하나라도 넘으면 뺀다)
+  // «제목 옆 가장자리» 자리는 제목 글자(보정한 추정 폭)가 카드 폭의 60% 이하인 계획 폭에서만 쓴다(하나라도 넘으면 뺀다)
   const titleEdgeOpen = geoms.every(({ geometry }) => geometry.titleEdgeOpen)
   for (const arrangement of arrangementsOf(type, works, titleEdgeOpen)) {
     const signs: Array<1 | -1> = works[0].mag > 0 ? [works[0].sign] : works[1] && works[1].mag > 0 ? [works[1].sign === 1 ? -1 : 1] : [1, -1]
