@@ -152,19 +152,6 @@ function ColorsPage() {
         <TagChip token="--jam-chip-white" note="값 칩 전용 · 일반 흰색은 --snow" />
       </Section>
 
-      <Section title="홈피드 카드 전용 10색 (Card·Button·상태색에는 쓰지 않는다)">
-        <TagChip token="--jam-red-soft" note="연한 색 · 원색 --jam-red와 짝" />
-        <TagChip token="--jam-yellow-soft" note="연한 색 · 원색 --jam-yellow와 짝" />
-        <TagChip token="--jam-green-soft" note="연한 색 · 원색 --jam-green과 짝" />
-        <TagChip token="--jam-purple-soft" note="연한 색 · 원색 --jam-purple과 짝" />
-        <TagChip token="--jam-blue-soft" note="연한 색 · 원색 --jam-blue와 짝" />
-        <TagChip token="--feed-ref-red" note="참조 색" />
-        <TagChip token="--feed-ref-blue" note="참조 색" />
-        <TagChip token="--feed-ref-lime" note="참조 색" />
-        <TagChip token="--feed-ref-pink" note="참조 색" />
-        <TagChip token="--feed-ref-yellow" note="참조 색" />
-      </Section>
-
       <Section title="Semantic — Border & Overlay">
         <Swatch token="--border" desc="카드·구분선 테두리" />
         <Swatch token="--field-border" desc="입력창 테두리" />
