@@ -23,6 +23,7 @@ import type { BundleBadgeInput } from '@/lib/admin/recipe-grade-bundles'
 import { resourceOfTemplate } from './cardView'
 import type { MissionConditionValues } from './feedValueChips'
 import { sortHomeCards } from './cardSelection'
+import { COLLECTION_BURST_BADGE_LIMIT, pickCollectionItemBadges, type CollectionItemBadgeRow } from './collectionBurstBadges'
 import { kstDateString } from '@/lib/notifications/kst'
 /**
  * 순수 함수라 서버 전용 의존이 없는 `targetHref.ts`로 옮겼다(티켓 20260911_1454) — 이 파일
@@ -97,8 +98,7 @@ export interface ResolvedCollection {
   item_badges?: { name: string; image_url: string }[]
 }
 
-/** 컬렉션 소개 카드가 쓰는 아이템 배지 그림의 최대 개수(둘레로 퍼지는 자리 수와 같다). */
-export const COLLECTION_BURST_BADGE_LIMIT = 4
+export { COLLECTION_BURST_BADGE_LIMIT }
 
 /**
  * 레시피 공개 카드(`recipe_reveal`)의 표시 데이터에 필요한 레시피 값 (티켓 20261006_1217, 1500 ⑫ 사용자 결정 Q3).
@@ -498,39 +498,11 @@ export async function fetchCollectionsById(
   return map
 }
 
-interface CollectionItemBadgeRow {
-  id: string
-  item_book_id: string | null
-  type?: string
-  name: string | null
-  image_url?: string | null
-}
-
-/**
- * 컬렉션마다 아이템 배지(`type` item) 그림을 최대 `COLLECTION_BURST_BADGE_LIMIT`개 고른다. 그림이 없는 배지와 이름이 같은 배지(등급형 컬렉션의 다른 등급)는 건너뛴다.
- * 조회 결과의 순서는 정해져 있지 않으므로 이름·id 순으로 정렬해 같은 컬렉션이 늘 같은 배지를 고르게 한다.
- */
+/** 컬렉션마다 아이템 배지 그림을 고른다. 선택 규칙은 어드민 서버와 같도록 `collectionBurstBadges.ts`에 있다. */
 function collectionItemBadgeImages(rows: CollectionItemBadgeRow[]): Map<string, { name: string; image_url: string }[]> {
-  const byBook = new Map<string, { name: string; image_url: string; id: string }[]>()
-  for (const row of rows) {
-    const imageUrl = row.image_url?.trim()
-    // 체크인 배지도 컬렉션 완성 판정의 분모라 같이 읽히지만 퍼지는 것은 아이템 배지만이다
-    if (row.type !== 'item' || !row.item_book_id || !row.name || !imageUrl) continue
-    const list = byBook.get(row.item_book_id) ?? []
-    list.push({ id: row.id, name: row.name, image_url: imageUrl })
-    byBook.set(row.item_book_id, list)
-  }
   const result = new Map<string, { name: string; image_url: string }[]>()
-  for (const [bookId, list] of byBook) {
-    const seen = new Set<string>()
-    const picked: { name: string; image_url: string }[] = []
-    for (const item of list.sort((a, b) => a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id))) {
-      if (seen.has(item.name)) continue
-      seen.add(item.name)
-      picked.push({ name: item.name, image_url: item.image_url })
-      if (picked.length >= COLLECTION_BURST_BADGE_LIMIT) break
-    }
-    result.set(bookId, picked)
+  for (const [bookId, picked] of pickCollectionItemBadges(rows)) {
+    result.set(bookId, picked.map(({ name, image_url }) => ({ name, image_url })))
   }
   return result
 }

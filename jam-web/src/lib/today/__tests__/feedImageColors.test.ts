@@ -88,3 +88,41 @@ describe('imageColorsForCard — 대표 색이 없을 때와 값 정리', () => 
     expect(imageColorsForCard({ feedType: 'hero_box', boxKind: null, coverColors: '#111111', badgeColors: [] })).toEqual(NONE)
   })
 })
+
+describe('imageColorsForCard — 컬렉션 소개는 커버 색에 아이템 배지 4개 색을 더한다 (티켓 20261122_2224 7회차)', () => {
+  const base = { feedType: 'collection_intro', boxKind: null, coverColors: COVER, badgeColors: [] as unknown[] }
+
+  it('커버 색 뒤에 아이템 배지의 대표 색이 합쳐진다', () => {
+    expect(imageColorsForCard({ ...base, collectionBadgeColors: [BADGE_A, BADGE_B] })).toEqual({
+      imageHexes: [...COVER, ...BADGE_A, ...BADGE_B],
+      chipOnImage: true,
+    })
+  })
+
+  it('아이템 배지는 4개까지만 본다', () => {
+    const fifth = ['#eeeeee']
+    expect(imageColorsForCard({ ...base, collectionBadgeColors: [BADGE_A, BADGE_B, BADGE_C, BADGE_D, fifth] }).imageHexes).toEqual([
+      ...COVER,
+      ...BADGE_A,
+      ...BADGE_B,
+      ...BADGE_C,
+      ...BADGE_D,
+    ])
+  })
+
+  it('대표 색이 없는 배지(null·빈 목록·읽을 수 없는 값)는 건너뛴다(고른 4개 안에서 색만 빠진다)', () => {
+    expect(imageColorsForCard({ ...base, collectionBadgeColors: [null, BADGE_B, [], 'red'] }).imageHexes).toEqual([...COVER, ...BADGE_B])
+  })
+
+  it('그림 색 입력(아이템 배지 색)이 없으면 결과가 예전과 같다(커버 색만)', () => {
+    const before = { imageHexes: COVER, chipOnImage: true }
+    expect(imageColorsForCard(base)).toEqual(before)
+    expect(imageColorsForCard({ ...base, collectionBadgeColors: null })).toEqual(before)
+    expect(imageColorsForCard({ ...base, collectionBadgeColors: [] })).toEqual(before)
+    expect(imageColorsForCard({ ...base, collectionBadgeColors: [null, []] })).toEqual(before)
+  })
+
+  it('컬렉션 소개가 아닌 유형은 컬렉션 배지 색을 보지 않는다', () => {
+    expect(imageColorsForCard({ ...base, feedType: 'hero_box', collectionBadgeColors: [BADGE_A] })).toEqual({ imageHexes: COVER, chipOnImage: true })
+  })
+})

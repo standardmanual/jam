@@ -44,6 +44,7 @@ import {
   FEED_FULL_IMAGE_ENABLED,
   FEED_MOTION,
   FEED_TILTS,
+  resolveBoxKind,
   type FeedColorKey,
   type FeedTilt,
 } from './feedConstants'
@@ -386,11 +387,16 @@ export function resolveFeedLook({ card, feedType, valueSource, now, excludedColo
   const seed: number = typeof card.feed_seed === 'number' ? card.feed_seed : hashSeed(card.id)
   const seedKey: BoxSeed = seed
 
-  // 색 — 지정한 칸은 보존하고 NULL 칸만 자동 규칙이 채운다
+  // 박스 용도 — NULL이면 유형 기본. 색 배정(글자가 들어가는 박스인지)에도 같은 값을 쓴다
+  const boxKind: TodayBoxKind = resolveBoxKind(feedType, card.box_kind)
+
+  // 색 — 지정한 칸은 보존하고 NULL 칸만 자동 규칙이 채운다. 앞 카드 정보가 없어 `recentBgKeys`는 빈 목록이다(저장값이 없는 카드의 폴백 경로).
   const assigned = assignFeedColors(
     {
       seed: seedKey,
       fixed: { bg: fixedKey(card.bg_color_key), chip: fixedKey(card.chip_color_key), box: fixedKey(card.box_color_key) },
+      recentBgKeys: [],
+      boxHasText: boxKind !== 'image_mask',
     },
     { ...(excludedColorPairs ? { excludedPairs: excludedColorPairs } : {}), ...(palette ? { palette } : {}) },
   )
@@ -450,9 +456,8 @@ export function resolveFeedLook({ card, feedType, valueSource, now, excludedColo
     if (slot) stamp = { slot, color: colors.chip }
   }
 
-  // 박스 — 모양은 NULL이면 5종 중 시드로 고른다(박스를 끄는 선택지는 없다). 용도는 NULL이면 유형 기본
+  // 박스 — 모양은 NULL이면 5종 중 시드로 고른다(박스를 끄는 선택지는 없다). 용도는 위에서 정했다
   const boxShape = card.box_shape ?? pick(createRng(`${seed}:box-shape`), BOX_SHAPES_ALL)
-  const boxKind: TodayBoxKind = card.box_kind ?? (feedType === 'hero_box' ? 'image_mask' : 'text')
 
   const look: FeedLook = { seed, colors, chips, titleChips, showDescription, stamp, boxShape, boxKind }
   if (feedType === 'collection_intro') look.burst = resolveCollectionBurst(card.collection_burst, seed)

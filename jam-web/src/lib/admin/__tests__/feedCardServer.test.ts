@@ -7,12 +7,14 @@ import {
   completeFeedCardValues,
   fetchBadgeBgColors,
   fetchFeedCardImageColors,
-  fetchOverlappingBgUsage,
+  fetchCollectionBadgeColors,
+  fetchRecentBgKeys,
+  FEED_RECENT_BG_LIMIT,
   serverRandomUint32,
 } from '@/lib/admin/feedCardServer'
 import { DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
 import { chipExclusionRule, violatesImageColorRule } from '@/lib/today/feedColorRules'
-import { boxAllowedFor, FEED_COLOR_KEYS, FEED_COLOR_USAGE } from '@/lib/today/feedConstants'
+import { boxAllowedFor, FEED_COLOR_KEYS, FEED_COLOR_USAGE, FEED_DEEP_GREEN_KEY } from '@/lib/today/feedConstants'
 import { FakeDb } from '@/lib/admin/opsInbox/execute/__tests__/fakeDb'
 
 const STARTS = '2026-12-01T00:00:00.000Z'
@@ -46,22 +48,24 @@ describe('serverRandomUint32', () => {
   })
 })
 
-describe('fetchOverlappingBgUsage — 같은 시기 노출 카드의 배경색 빈도', () => {
-  it('기간이 겹치고 배경색이 있는 카드만 센다', async () => {
+describe('fetchRecentBgKeys — 같은 시기 노출 카드의 바탕 키(등록 순서, 최근 12장)', () => {
+  const at = (n: number) => `2026-11-${String(n).padStart(2, '0')}T00:00:00.000Z`
+
+  it('기간이 겹치고 바탕이 있는 카드만, 등록 순서(created_at 오름차순)로 돌려준다 — 가장 최근 카드가 마지막이다', async () => {
     const db = dbWith([
-      { id: 'a', bg_color_key: 'red', starts_at: '2026-11-30T00:00:00.000Z', ends_at: '2026-12-02T00:00:00.000Z' }, // 앞쪽이 겹침
-      { id: 'b', bg_color_key: 'red', starts_at: '2026-12-03T00:00:00.000Z', ends_at: '2026-12-04T00:00:00.000Z' }, // 안쪽
-      { id: 'c', bg_color_key: 'blue', starts_at: '2026-12-06T00:00:00.000Z', ends_at: '2026-12-20T00:00:00.000Z' }, // 뒤쪽이 겹침
-      { id: 'd', bg_color_key: 'green', starts_at: '2026-11-01T00:00:00.000Z', ends_at: '2026-11-30T23:59:59.000Z' }, // 앞서 끝남
-      { id: 'e', bg_color_key: 'purple', starts_at: '2026-12-08T00:00:00.000Z', ends_at: '2026-12-09T00:00:00.000Z' }, // 뒤에 시작
-      { id: 'f', bg_color_key: null, starts_at: '2026-12-02T00:00:00.000Z', ends_at: '2026-12-03T00:00:00.000Z' }, // 색 없음
+      { id: 'c', bg_color_key: 'blue', created_at: at(3), starts_at: '2026-12-06T00:00:00.000Z', ends_at: '2026-12-20T00:00:00.000Z' }, // 뒤쪽이 겹침
+      { id: 'a', bg_color_key: 'red', created_at: at(1), starts_at: '2026-11-30T00:00:00.000Z', ends_at: '2026-12-02T00:00:00.000Z' }, // 앞쪽이 겹침
+      { id: 'b', bg_color_key: 'green', created_at: at(2), starts_at: '2026-12-03T00:00:00.000Z', ends_at: '2026-12-04T00:00:00.000Z' }, // 안쪽
+      { id: 'd', bg_color_key: 'purple', created_at: at(4), starts_at: '2026-11-01T00:00:00.000Z', ends_at: '2026-11-30T23:59:59.000Z' }, // 앞서 끝남
+      { id: 'e', bg_color_key: 'yellow', created_at: at(5), starts_at: '2026-12-08T00:00:00.000Z', ends_at: '2026-12-09T00:00:00.000Z' }, // 뒤에 시작
+      { id: 'f', bg_color_key: null, created_at: at(6), starts_at: '2026-12-02T00:00:00.000Z', ends_at: '2026-12-03T00:00:00.000Z' }, // 바탕 없음
     ])
-    expect(await fetchOverlappingBgUsage(db.service, { startsAt: STARTS, endsAt: ENDS })).toEqual({ red: 2, blue: 1 })
+    expect(await fetchRecentBgKeys(db.service, { startsAt: STARTS, endsAt: ENDS })).toEqual(['red', 'green', 'blue'])
   })
 
-  it('기간 필터를 starts_at <= 끝, ends_at >= 시작으로 걸고 색 없는 행을 뺀다', async () => {
+  it('기간 필터를 starts_at <= 끝, ends_at >= 시작으로 걸고 바탕 없는 행을 뺀다', async () => {
     const db = dbWith([])
-    await fetchOverlappingBgUsage(db.service, { startsAt: STARTS, endsAt: ENDS })
+    await fetchRecentBgKeys(db.service, { startsAt: STARTS, endsAt: ENDS })
     expect(db.calls).toHaveLength(1)
     expect(db.calls[0].filters).toEqual([
       ['starts_at <=', ENDS],
@@ -70,29 +74,44 @@ describe('fetchOverlappingBgUsage — 같은 시기 노출 카드의 배경색 �
     ])
   })
 
-  it('excludeId가 있으면 그 카드는 세지 않고, 없으면 id 조건을 걸지 않는다', async () => {
+  it(`가장 최근 ${FEED_RECENT_BG_LIMIT}장만 가져오고(오래된 카드가 잘린다) 등록 순서는 그대로다`, async () => {
+    expect(FEED_RECENT_BG_LIMIT).toBe(12)
+    const rows = Array.from({ length: 15 }, (_, index) => ({
+      id: `card-${index + 1}`,
+      bg_color_key: `k${index + 1}`,
+      created_at: at(index + 1),
+      starts_at: STARTS,
+      ends_at: ENDS,
+    }))
+    const keys = await fetchRecentBgKeys(dbWith(rows).service, { startsAt: STARTS, endsAt: ENDS })
+    expect(keys).toHaveLength(12)
+    expect(keys[0]).toBe('k4')
+    expect(keys[11]).toBe('k15')
+  })
+
+  it('excludeId가 있으면 그 카드는 빼고, 없으면 id 조건을 걸지 않는다', async () => {
     const db = dbWith([
-      { id: 'self', bg_color_key: 'red', starts_at: STARTS, ends_at: ENDS },
-      { id: 'other', bg_color_key: 'red', starts_at: STARTS, ends_at: ENDS },
+      { id: 'self', bg_color_key: 'red', created_at: at(1), starts_at: STARTS, ends_at: ENDS },
+      { id: 'other', bg_color_key: 'blue', created_at: at(2), starts_at: STARTS, ends_at: ENDS },
     ])
-    expect(await fetchOverlappingBgUsage(db.service, { startsAt: STARTS, endsAt: ENDS, excludeId: 'self' })).toEqual({ red: 1 })
+    expect(await fetchRecentBgKeys(db.service, { startsAt: STARTS, endsAt: ENDS, excludeId: 'self' })).toEqual(['blue'])
     expect(db.calls[0].filters[0]).toEqual(['id !=', 'self'])
-    expect(await fetchOverlappingBgUsage(db.service, { startsAt: STARTS, endsAt: ENDS })).toEqual({ red: 2 })
+    expect(await fetchRecentBgKeys(db.service, { startsAt: STARTS, endsAt: ENDS })).toEqual(['red', 'blue'])
     expect(db.calls[1].filters.some(([name]) => name === 'id !=')).toBe(false)
   })
 
-  it('기간이 비어 있으면(null·없음·글자 아님) DB를 읽지 않고 빈 빈도다', async () => {
+  it('기간이 비어 있으면(null·없음·글자 아님) DB를 읽지 않고 빈 목록이다', async () => {
     const db = dbWith([{ id: 'a', bg_color_key: 'red', starts_at: STARTS, ends_at: ENDS }])
-    expect(await fetchOverlappingBgUsage(db.service, { startsAt: null, endsAt: ENDS })).toEqual({})
-    expect(await fetchOverlappingBgUsage(db.service, { startsAt: STARTS, endsAt: undefined })).toEqual({})
-    expect(await fetchOverlappingBgUsage(db.service, { startsAt: 123, endsAt: ENDS })).toEqual({})
+    expect(await fetchRecentBgKeys(db.service, { startsAt: null, endsAt: ENDS })).toEqual([])
+    expect(await fetchRecentBgKeys(db.service, { startsAt: STARTS, endsAt: undefined })).toEqual([])
+    expect(await fetchRecentBgKeys(db.service, { startsAt: 123, endsAt: ENDS })).toEqual([])
     expect(db.calls).toEqual([])
   })
 
-  it('조회가 실패하면 빈 빈도이고 오류는 지정한 머리말로 서버 로그에만 남는다', async () => {
+  it('조회가 실패하면 빈 목록이고 오류는 지정한 머리말로 서버 로그에만 남는다', async () => {
     const db = dbWith([{ id: 'a', bg_color_key: 'red', starts_at: STARTS, ends_at: ENDS }])
     db.failIf = (call) => call.op === 'select'
-    expect(await fetchOverlappingBgUsage(db.service, { startsAt: STARTS, endsAt: ENDS }, LOG_LABEL)).toEqual({})
+    expect(await fetchRecentBgKeys(db.service, { startsAt: STARTS, endsAt: ENDS }, LOG_LABEL)).toEqual([])
     expect(errorSpy).toHaveBeenCalledTimes(1)
     expect(errorSpy.mock.calls[0][0]).toBe(LOG_LABEL)
   })
@@ -139,24 +158,44 @@ describe('completeFeedCardValues — 비어 있는 시드와 색 정하기', () 
     expect(decided.feed_seed).toBe(5150)
   })
 
-  it('같은 시드·같은 빈도는 같은 값이다', async () => {
+  it('같은 시드·같은 앞 카드 목록은 같은 값이다', async () => {
     const rows = [{ id: 'a', bg_color_key: 'red', starts_at: STARTS, ends_at: ENDS }]
     const first = await completeFeedCardValues(dbWith(rows).service, {}, period, () => 777)
     const second = await completeFeedCardValues(dbWith(rows).service, {}, period, () => 777)
     expect(second).toEqual(first)
   })
 
-  it('같은 시기 사용 빈도는 아직 배정에 쓰이지 않는다(통합 팔레트 규칙은 앞 카드 목록을 읽고, 서버가 그 목록을 채우는 일은 6회차다)', async () => {
-    const rows = FEED_COLOR_KEYS.filter((key) => key !== 'green').map((key, index) => ({
+  it('같은 시기 카드의 바탕이 등록 순서로 배정에 들어가, 짙은 초록이 없던 앞 카드 5장 뒤 6번째 카드는 반드시 짙은 초록 바탕이다', async () => {
+    const keys = ['yellow', 'pink', 'sky', 'green', 'yellow']
+    const rows = keys.map((key, index) => ({
       id: `used-${index}`,
       bg_color_key: key,
+      created_at: `2026-11-0${index + 1}T00:00:00.000Z`,
       starts_at: STARTS,
       ends_at: ENDS,
     }))
-    for (const seed of [1, 2, 3, 4, 5]) {
-      const withRows = await completeFeedCardValues(dbWith(rows).service, {}, period, () => seed)
-      const withoutRows = await completeFeedCardValues(dbWith([]).service, {}, period, () => seed)
-      expect(withRows).toEqual(withoutRows)
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const decided = await completeFeedCardValues(dbWith(rows).service, {}, period, () => seed * 40503)
+      expect(decided.bg_color_key, `seed ${seed}`).toBe(FEED_DEEP_GREEN_KEY)
+      expect(decided.box_color_key).not.toBe(FEED_DEEP_GREEN_KEY)
+    }
+  })
+
+  it('이어 붙이면 6번째 카드에 짙은 초록이 나오고 바탕은 바로 앞 카드와 같지 않다(서버 경로로 한 장씩 저장)', async () => {
+    const rows: Array<Record<string, unknown>> = []
+    let previous: string | null = null
+    let sinceDeep = 0
+    for (let index = 0; index < 40; index += 1) {
+      const decided = await completeFeedCardValues(dbWith(rows).service, {}, period, () => (index + 1) * 40503)
+      if (previous !== null) expect(decided.bg_color_key, `카드 ${index}`).not.toBe(previous)
+      if (decided.bg_color_key === FEED_DEEP_GREEN_KEY) sinceDeep = 0
+      else {
+        sinceDeep += 1
+        // 짙은 초록 뒤 6번째 카드까지 오는 동안(사이 5장) 한 번은 나와야 한다 — 6장 연속 다른 바탕이면 어긴 것이다
+        expect(sinceDeep, `카드 ${index}`).toBeLessThanOrEqual(5)
+      }
+      previous = decided.bg_color_key
+      rows.push({ id: `c${index}`, bg_color_key: decided.bg_color_key, created_at: new Date(Date.UTC(2026, 10, 1, 0, index)).toISOString(), starts_at: STARTS, ends_at: ENDS })
     }
   })
 
@@ -189,7 +228,7 @@ describe('completeFeedCardValues — 비어 있는 시드와 색 정하기', () 
     }
   })
 
-  it('빈도 조회가 실패해도 정한다(빈 빈도)', async () => {
+  it('앞 카드 조회가 실패해도 정한다(빈 목록)', async () => {
     const db = dbWith([{ id: 'a', bg_color_key: 'red', starts_at: STARTS, ends_at: ENDS }])
     db.failIf = (call) => call.op === 'select'
     const decided = await completeFeedCardValues(db.service, {}, period, () => 5, LOG_LABEL)
@@ -259,6 +298,98 @@ describe('이미지 대표 색 읽기와 자동 배정 (티켓 20261121_1828)', 
     await fetchFeedCardImageColors(db.service, { feedType: 'badge_only', boxKind: null, coverColors: null, badgeIds: [] })
     await fetchFeedCardImageColors(db.service, { feedType: 'badge_only', boxKind: null, coverColors: null, badgeIds: null })
     expect(db.calls).toEqual([])
+  })
+
+  const badgeRow = (id: string, name: string, colors: unknown, extra: Record<string, unknown> = {}) => ({
+    id,
+    item_book_id: 'book-1',
+    type: 'item',
+    name,
+    image_url: `https://example.test/${id}.webp`,
+    bg_colors: colors,
+    ...extra,
+  })
+
+  it('fetchCollectionBadgeColors: 홈과 같은 규칙(이름·id 순, 그림 있는 아이템 배지, 같은 이름은 하나, 최대 4개)으로 고른 배지의 대표 색을 그 순서로 돌려준다', async () => {
+    const db = dbWithBadges([
+      badgeRow('b6', '여섯', ['#666666']),
+      badgeRow('b1', '가', ['#111111']),
+      badgeRow('b2', '나', ['#222222']),
+      badgeRow('b2x', '나', ['#2a2a2a']), // 같은 이름(다른 등급)은 건너뛴다
+      badgeRow('b3', '다', ['#333333']),
+      badgeRow('b4', '라', ['#444444']),
+      badgeRow('b5', '마', ['#555555']), // 5번째라 잘린다
+      badgeRow('bn', '그림없음', ['#999999'], { image_url: null }),
+      badgeRow('bc', '체크인', ['#888888'], { type: 'checkin' }),
+      badgeRow('bd', '삭제됨', ['#777777'], { deleted_at: '2026-11-01T00:00:00Z' }),
+      badgeRow('bo', '다른컬렉션', ['#abcdef'], { item_book_id: 'book-2' }),
+    ])
+    const first = await fetchCollectionBadgeColors(db.service, 'book-1')
+    expect(first).toEqual([['#111111'], ['#222222'], ['#333333'], ['#444444']])
+    // 같은 컬렉션은 늘 같은 4개를 본다
+    expect(await fetchCollectionBadgeColors(db.service, 'book-1')).toEqual(first)
+    expect(db.calls[0]).toMatchObject({ table: 'badges', op: 'select', filters: [['item_book_id', 'book-1'], ['deleted_at', null]] })
+  })
+
+  it('fetchCollectionBadgeColors: 조회가 실패하면 null이고 서버 로그에 남긴다', async () => {
+    const db = dbWithBadges([badgeRow('b1', '가', ['#111111'])])
+    db.failIf = (call) => call.table === 'badges'
+    expect(await fetchCollectionBadgeColors(db.service, 'book-1', LOG_LABEL)).toBeNull()
+    expect(errorSpy).toHaveBeenCalledWith(LOG_LABEL, expect.anything())
+  })
+
+  it('fetchFeedCardImageColors: 컬렉션 소개는 커버 색에 아이템 배지 4개 색을 합치고, 대표 색이 비어 있는 배지는 건너뛴다', async () => {
+    const db = dbWithBadges([
+      badgeRow('b1', '가', ['#111111', '#121212']),
+      badgeRow('b2', '나', null),
+      badgeRow('b3', '다', []),
+      badgeRow('b4', '라', ['#444444']),
+      badgeRow('b5', '마', ['#555555']),
+    ])
+    const image = await fetchFeedCardImageColors(db.service, {
+      feedType: 'collection_intro',
+      boxKind: null,
+      coverColors: ['#abcdef'],
+      badgeIds: null,
+      itemBookId: 'book-1',
+    })
+    expect(image).toEqual({ imageHexes: ['#abcdef', '#111111', '#121212', '#444444'], chipOnImage: true })
+  })
+
+  it('fetchFeedCardImageColors: 컬렉션 소개라도 item_book_id가 없거나 다른 유형이면 배지를 읽지 않는다(커버 색만, 예전과 같다)', async () => {
+    const db = dbWithBadges([badgeRow('b1', '가', ['#111111'])])
+    const noBook = await fetchFeedCardImageColors(db.service, { feedType: 'collection_intro', boxKind: null, coverColors: ['#abcdef'], badgeIds: null })
+    expect(noBook).toEqual({ imageHexes: ['#abcdef'], chipOnImage: true })
+    const hero = await fetchFeedCardImageColors(db.service, { feedType: 'hero_box', boxKind: null, coverColors: ['#abcdef'], badgeIds: null, itemBookId: 'book-1' })
+    expect(hero).toEqual({ imageHexes: ['#abcdef'], chipOnImage: true })
+    expect(db.calls).toEqual([])
+  })
+
+  it('fetchFeedCardImageColors: 컬렉션 배지 조회가 실패하면 없는 것으로 보고 커버 색만 쓴다', async () => {
+    const db = dbWithBadges([badgeRow('b1', '가', ['#111111'])])
+    db.failIf = (call) => call.table === 'badges'
+    const image = await fetchFeedCardImageColors(
+      db.service,
+      { feedType: 'collection_intro', boxKind: null, coverColors: ['#abcdef'], badgeIds: null, itemBookId: 'book-1' },
+      LOG_LABEL,
+    )
+    expect(image).toEqual({ imageHexes: ['#abcdef'], chipOnImage: true })
+    expect(errorSpy).toHaveBeenCalledWith(LOG_LABEL, expect.anything())
+  })
+
+  it('completeFeedCardValues: 컬렉션 소개는 아이템 배지 색에 걸리는 배경을 거른다', async () => {
+    const red = DEFAULT_FEED_PALETTE.red
+    const db = dbWithBadges([badgeRow('b1', '가', [red])])
+    for (let seed = 1; seed <= 60; seed++) {
+      const decided = await completeFeedCardValues(db.service, {}, period, () => seed * 40503, undefined, {
+        feedType: 'collection_intro',
+        boxKind: null,
+        coverColors: ['#abcdef'],
+        badgeIds: null,
+        itemBookId: 'book-1',
+      })
+      expect(violatesImageColorRule(DEFAULT_FEED_PALETTE[decided.bg_color_key], [red])).toBe(false)
+    }
   })
 
   it('completeFeedCardValues: imageSource가 없으면 이미지 규칙 없이 이전과 같은 값이다', async () => {

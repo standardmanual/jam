@@ -33,7 +33,7 @@ import {
   type FeedType,
 } from '@/lib/today/feedChipSlots'
 import { firstViolatedRule, type ColorRuleName } from '@/lib/today/feedColorRules'
-import { FEED_BURST, FEED_COLOR_KEYS, FEED_COLORS, FEED_GALLERY, FEED_TILTS } from '@/lib/today/feedConstants'
+import { boxHasTextFor, FEED_BURST, FEED_COLOR_KEYS, FEED_COLORS, FEED_GALLERY, FEED_TILTS } from '@/lib/today/feedConstants'
 import type { FeedImageColorInput } from '@/lib/today/feedImageColors'
 import { checkChipTextLength } from '@/lib/today/feedValueChips'
 import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
@@ -603,23 +603,16 @@ export function createFeedSeed(randomUint32: () => number): number {
   return Math.trunc(randomUint32()) >>> 0
 }
 
-/** 같은 시기에 노출되는 카드들의 배경색 사용 빈도(색 키 → 장수). 색 키가 없는 카드는 세지 않는다. */
-export function countBgUsage(rows: ReadonlyArray<{ bg_color_key?: string | null }>): Record<string, number> {
-  const usage: Record<string, number> = {}
-  for (const row of rows) {
-    const key = row.bg_color_key
-    if (key) usage[key] = (usage[key] ?? 0) + 1
-  }
-  return usage
-}
-
 export interface DecideFeedCardValuesInput {
   /** 사용자가 지정한 값. 색 키가 `null`·없음이면 자동으로 정하고, `feed_seed`가 있으면 그 값을 시드로 쓴다. */
-  columns: Partial<Pick<FeedCardColumns, 'feed_seed' | 'bg_color_key' | 'chip_color_key' | 'box_color_key'>>
+  columns: Partial<Pick<FeedCardColumns, 'feed_seed' | 'bg_color_key' | 'chip_color_key' | 'box_color_key' | 'feed_type' | 'box_kind'>>
   /** 시드가 비어 있을 때 쓸 값. 저장돼 있는 시드가 있으면 그 값, 새 카드면 `createFeedSeed`로 뽑은 값이다. */
   seed: number
-  /** 같은 시기 노출 카드의 배경색 사용 빈도(`countBgUsage`) */
-  overlappingBgUsage?: Readonly<Record<string, number>>
+  /**
+   * 같은 시기 노출 카드의 바탕 키를 등록 순서(`created_at` 오름차순)로 늘어놓은 목록. 가장 최근 카드가 마지막이다(티켓 20261122_2224 6회차).
+   * 바로 앞 카드와 같은 바탕을 피하고 짙은 초록 바탕의 리듬을 세는 데 쓴다. 없으면 빈 목록이다.
+   */
+  recentBgKeys?: readonly string[]
   /** 제외 색 조합. 지금 운영 코드에는 연결된 목록이 없어 비워서 부른다. */
   excludedPairs?: readonly ExcludedColorPair[]
   /** 이미지 대표 색(규칙 ⑤·⑥, 티켓 20261121_1828). `imageColorsForCard`가 만든 값이다. 없으면 이미지 규칙 없이 정한다. */
@@ -655,7 +648,9 @@ export function decideFeedCardValues(input: DecideFeedCardValuesInput): DecidedF
         chip: input.columns.chip_color_key,
         box: input.columns.box_color_key,
       },
-      bgUsage: input.overlappingBgUsage,
+      recentBgKeys: input.recentBgKeys ?? [],
+      // 글자가 들어가는 박스인지는 카드 유형·박스 용도로 정한다(사진만 들어가는 이미지 마스크는 거짓)
+      boxHasText: boxHasTextFor(input.columns.feed_type, input.columns.box_kind),
       imageHexes: input.image?.imageHexes,
       chipOnImage: input.image?.chipOnImage,
     },

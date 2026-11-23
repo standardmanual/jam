@@ -637,6 +637,44 @@ describe('create — 이미지 대표 색을 자동 색 배정에 쓴다(티켓 
     }
   })
 
+  it('컬렉션 소개는 연결된 컬렉션의 아이템 배지 색도 보고(item_book_id를 넘긴다), 배지 행이 없으면 이전과 같다', async () => {
+    const collectionCard = () => cardItem({ template_type: 'itembook_milestone', feed_type: 'collection_intro' })
+    const baseDb = new FakeDb()
+    await handler.create(baseDb.service, prepared(collectionCard(), { item_book_id: BOOK_ID }), { now: NOW })
+    const before = baseDb.tables.today_cards[0]
+    expect(baseDb.calls.filter((call) => call.table === 'badges')).toHaveLength(1)
+
+    const colors = [hexOfKey(before.bg_color_key)]
+    const db = new FakeDb()
+    db.tables.badges = [
+      { id: BADGE_ID, item_book_id: BOOK_ID, type: 'item', name: '아이템', image_url: 'https://cdn.example.com/b.webp', bg_colors: colors, deleted_at: null },
+    ]
+    await handler.create(db.service, prepared(collectionCard(), { item_book_id: BOOK_ID }), { now: NOW })
+
+    const reads = db.calls.filter((call) => call.table === 'badges')
+    expect(reads).toHaveLength(1)
+    expect(reads[0].filters).toEqual([['item_book_id', BOOK_ID], ['deleted_at', null]])
+    const row = db.tables.today_cards[0]
+    expect(violatesImageColorRule(hexOfKey(row.bg_color_key), colors)).toBe(false)
+    expect(row.bg_color_key).not.toBe(before.bg_color_key)
+  })
+
+  it('같은 시기 카드의 바탕이 등록 순서로 배정에 들어가 짙은 초록이 없던 5장 뒤 6번째 카드는 짙은 초록 바탕이다', async () => {
+    const db = new FakeDb()
+    db.tables.today_cards = ['yellow', 'pink', 'sky', 'green', 'yellow'].map((key, index) => ({
+      id: uid(100 + index),
+      bg_color_key: key,
+      created_at: `2026-10-0${index + 1}T00:00:00.000Z`,
+      starts_at: STARTS_AT,
+      ends_at: ENDS_AT,
+    }))
+    await handler.create(db.service, prepared(feedHero()), { now: NOW })
+    const row = db.tables.today_cards.find((card) => card.id === CARD_ID)
+    expect(row?.bg_color_key).toBe('green-deep')
+    // 이미지 마스크(히어로)는 박스에 글자가 없어 짙은 초록 박스도 쓸 수 있다 — 어떤 박스든 규칙의 조합 안이다
+    expect(FEED_COLOR_USAGE.box as readonly string[]).toContain(row?.box_color_key)
+  })
+
   it('배지 유형이 아니면 badges를 읽지 않는다', async () => {
     const db = new FakeDb()
     await handler.create(db.service, prepared(badgeCard('text_box'), { badge_ids: [BADGE_ID] }), { now: NOW })

@@ -105,9 +105,10 @@ async function withFeedValues(
       payload,
       { startsAt: payload.starts_at, endsAt: payload.ends_at, excludeId: prepared.id },
       undefined,
-      '[home_feed_card 배경색 사용 빈도 조회 오류]',
+      '[home_feed_card 앞 카드 바탕 조회 오류]',
       // 이미지 대표 색(규칙 ⑤·⑥, 티켓 20261121_1828): 이 등록이 같은 insert에 싣는 커버 색과 연결된 배지의 대표 색을 쓴다. 색이 없으면 이미지 규칙은 건너뛴다.
-      { feedType: payload.feed_type, boxKind: payload.box_kind, coverColors: coverColors ?? null, badgeIds: payload.badge_ids },
+      // 컬렉션 소개는 연결된 컬렉션의 아이템 배지 4개 색도 본다(티켓 20261122_2224 7회차).
+      { feedType: payload.feed_type, boxKind: payload.box_kind, coverColors: coverColors ?? null, badgeIds: payload.badge_ids, itemBookId: payload.item_book_id },
     )
     if (decided.usedFallback) console.warn(`[home_feed_card 색 자동 배정] 통과하는 조합이 없어 기본 조합으로 등록했어요 (카드 ${prepared.id})`)
     if (decided.imageRuleSkipped) console.warn(`[home_feed_card 색 자동 배정] 이미지 규칙까지 통과하는 조합이 없어 이미지 규칙 없이 정했어요 (카드 ${prepared.id})`)

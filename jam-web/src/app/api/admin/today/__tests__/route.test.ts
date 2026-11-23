@@ -92,6 +92,8 @@ vi.mock('@/lib/supabase/server', () => ({
         lte: chain('lte'),
         gte: chain('gte'),
         not: chain('not'),
+        order: chain('order'),
+        limit: chain('limit'),
         single: async () => ({ data: { id: 'card-1', ...(mode === 'update' ? state.existing : {}), ...written }, error: null }),
         maybeSingle: async () => ({ data: state.existing, error: null }),
         // 배경색 사용 빈도 조회는 `await`로 끝난다
@@ -170,13 +172,14 @@ describe('POST /api/admin/today — 검증', () => {
 
 describe('POST /api/admin/today — 새 카드 자동 값 고정', () => {
   it('유형이 있으면 시드와 비어 있는 색 키를 채워 저장하고, 같은 시드·빈도는 같은 값이다', async () => {
-    state.usageRows = [{ bg_color_key: 'red' }, { bg_color_key: 'red' }, { bg_color_key: 'blue' }, { bg_color_key: null }]
+    // DB는 최근 카드부터 돌려준다(created_at 내림차순). 서버가 뒤집어 등록 순서로 배정에 넘긴다.
+    state.usageRows = [{ bg_color_key: 'blue' }, { bg_color_key: 'red' }, { bg_color_key: null }, { bg_color_key: 'red' }]
     const body = { ...BASE_BODY, feed_type: 'hero_box', bg_color_key: null, chip_color_key: null, box_color_key: null, feed_seed: null }
     const res = await post(body)
     expect(res.status).toBe(200)
     const saved = state.inserts[0]
     expect(saved.feed_seed).toBe(12345)
-    const direct = assignFeedColors({ seed: 12345, bgUsage: { red: 2, blue: 1 } })
+    const direct = assignFeedColors({ seed: 12345, recentBgKeys: ['red', 'red', 'blue'], boxHasText: false })
     expect([saved.bg_color_key, saved.chip_color_key, saved.box_color_key]).toEqual([direct.bg, direct.chip, direct.box])
     // 칩 자리·기울기·모션 위치는 저장하지 않는다
     expect(saved.chips).toBeUndefined()
@@ -184,6 +187,9 @@ describe('POST /api/admin/today — 새 카드 자동 값 고정', () => {
     // 게시 기간이 겹치는 카드를 센다
     expect(state.usageFilters).toContain(`lte:starts_at:${BASE_BODY.ends_at}`)
     expect(state.usageFilters).toContain(`gte:ends_at:${BASE_BODY.starts_at}`)
+    // 최근 12장까지 등록 순서로 가져온다
+    expect(state.usageFilters.some((f) => f.startsWith('order:created_at:'))).toBe(true)
+    expect(state.usageFilters).toContain('limit:12:undefined')
 
     // 같은 입력으로 한 번 더 저장하면 같은 값이다
     await post(body)
@@ -276,7 +282,7 @@ describe('PATCH /api/admin/today/[id]', () => {
     const saved = state.updates[0]
     // 홈은 저장된 시드로 같은 값을 그리므로 색을 정하는 데 쓴 시드가 저장돼야 어긋나지 않는다
     expect(saved.feed_seed).toBe(12345)
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, bgUsage: {} })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, recentBgKeys: [], boxHasText: false })
     expect(saved.bg_color_key).toBe(direct.bg)
   })
 
@@ -288,9 +294,9 @@ describe('PATCH /api/admin/today/[id]', () => {
     const saved = state.updates[0]
     expect(saved.feed_seed).toBe(12345)
     expect(saved.chip_color_key).toBe('blue')
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'blue' }, bgUsage: { red: 1 } })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'blue' }, recentBgKeys: ['red'], boxHasText: false })
     expect([saved.bg_color_key, saved.box_color_key]).toEqual([direct.bg, direct.box])
-    // 자기 자신은 빈도에서 뺀다
+    // 자기 자신은 앞 카드 목록에서 뺀다
     expect(state.usageFilters).toContain('neq:id:card-1')
   })
 
@@ -299,7 +305,7 @@ describe('PATCH /api/admin/today/[id]', () => {
     const res = await patch({ feed_type: 'hero_box', feed_seed: 5, bg_color_key: null, chip_color_key: 'red', box_color_key: 'ref-lime' })
     expect(res.status).toBe(200)
     const saved = state.updates[0]
-    const direct = assignFeedColors({ seed: 5, fixed: { chip: 'red', box: 'ref-lime' } })
+    const direct = assignFeedColors({ seed: 5, fixed: { chip: 'red', box: 'ref-lime' }, boxHasText: false })
     expect(saved.bg_color_key).toBe(direct.bg)
     expect('feed_seed' in saved).toBe(false)
     expect(saved.chip_color_key).toBe('red')
@@ -372,7 +378,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
   const hexOf = (key: unknown) => DEFAULT_FEED_PALETTE[String(key)]
   const HERO = { ...BASE_BODY, feed_type: 'hero_box', bg_color_key: null, chip_color_key: null, box_color_key: null, feed_seed: null }
   /** 이미지 입력 없이 정한 값(시드 12345) */
-  const plain = assignFeedColors({ seed: 12345 })
+  const plain = assignFeedColors({ seed: 12345, boxHasText: false })
   /** 그 값과 같은 색을 대표 색으로 가진 커버 → 이미지 규칙이 그 색을 피하게 만든다 */
   const COVER_COLORS = [hexOf(plain.bg), hexOf(plain.chip)]
 
@@ -381,7 +387,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     const res = await post({ ...HERO, cover_image_url: COVER_A })
     expect(res.status).toBe(200)
     const saved = state.inserts[0]
-    const direct = assignFeedColors({ seed: 12345, imageHexes: COVER_COLORS, chipOnImage: true })
+    const direct = assignFeedColors({ seed: 12345, imageHexes: COVER_COLORS, chipOnImage: true, boxHasText: false })
     expect([saved.bg_color_key, saved.chip_color_key, saved.box_color_key]).toEqual([direct.bg, direct.chip, direct.box])
     expect(saved.cover_colors).toEqual(COVER_COLORS)
     expect(violatesImageColorRule(hexOf(saved.bg_color_key), COVER_COLORS)).toBe(false)
@@ -408,7 +414,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     expect(res.status).toBe(200)
     expect(state.badgeFilters).toEqual(['id:badge-1'])
     const saved = state.inserts[0]
-    const direct = assignFeedColors({ seed: 12345, imageHexes: [hexOf(plain.bg)], chipOnImage: false })
+    const direct = assignFeedColors({ seed: 12345, imageHexes: [hexOf(plain.bg)], chipOnImage: false, boxHasText: false })
     expect([saved.bg_color_key, saved.chip_color_key, saved.box_color_key]).toEqual([direct.bg, direct.chip, direct.box])
     expect(saved.bg_color_key).not.toBe(plain.bg)
   })
@@ -439,7 +445,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     state.existing = { ...EXISTING }
     const res = await patch(AUTO_BG)
     expect(res.status).toBe(200)
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
     expect(violatesImageColorRule(hexOf(state.updates[0].bg_color_key), COVER_COLORS)).toBe(false)
   })
@@ -448,7 +454,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     state.existing = { ...EXISTING, cover_colors: ['#000000'] }
     extractMock.mockResolvedValue(COVER_COLORS)
     await patch({ ...AUTO_BG, cover_image_url: COVER_B })
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
     expect(state.updates[0].cover_colors).toEqual(COVER_COLORS)
   })
@@ -457,7 +463,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     state.existing = { ...EXISTING }
     extractMock.mockResolvedValue(null)
     await patch({ ...AUTO_BG, cover_image_url: COVER_B })
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' } })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
     expect('cover_colors' in state.updates[0]).toBe(false)
   })
@@ -467,7 +473,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     state.badgeRows = [{ id: 'badge-9', bg_colors: COVER_COLORS }]
     await patch({ ...AUTO_BG, feed_type: 'badge_only' })
     expect(state.badgeFilters).toEqual(['id:badge-9'])
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: false })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: false, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
   })
 })

@@ -11,7 +11,7 @@ import {
   validateFeedCardColumns,
   type FeedCardColumns,
 } from '@/lib/admin/feedCardFields'
-import { fetchFeedCardImageColors, fetchOverlappingBgUsage, serverRandomUint32 } from '@/lib/admin/feedCardServer'
+import { fetchFeedCardImageColors, fetchRecentBgKeys, serverRandomUint32 } from '@/lib/admin/feedCardServer'
 import { fetchFeedPalette } from '@/lib/today/feedColorOverridesRead'
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
@@ -93,20 +93,22 @@ async function decideFeedColumnsForPatch(
   // 안 바뀌었으면 저장된 값. 배지 색은 유형이 배지 그림을 쓸 때만 `badges`에서 한 번 읽는다(조회 실패는 이미지 규칙 없이 진행).
   const coverChanged = typeof body.cover_image_url !== 'undefined' && urlKey(existing.cover_image_url) !== urlKey(body.cover_image_url)
   const coverColors = coverColorsPatch.cover_colors ?? (coverChanged ? null : existing.cover_colors)
+  const boxKind = 'box_kind' in body ? (typeof body.box_kind === 'string' ? body.box_kind : null) : existing.box_kind
   const image = await fetchFeedCardImageColors(
     supabase,
     {
       feedType: String(finalType),
-      boxKind: 'box_kind' in body ? (typeof body.box_kind === 'string' ? body.box_kind : null) : existing.box_kind,
+      boxKind,
       coverColors,
       badgeIds: 'badge_ids' in body ? (Array.isArray(body.badge_ids) ? (body.badge_ids as string[]) : null) : existing.badge_ids,
+      itemBookId,
     },
     '[today PATCH 배지 대표 색 조회 오류]',
   )
   const decided = decideFeedCardValues({
-    columns: { ...fixed, feed_seed: seed },
+    columns: { ...fixed, feed_seed: seed, feed_type: String(finalType) as FeedCardColumns['feed_type'], box_kind: boxKind as FeedCardColumns['box_kind'] },
     seed,
-    overlappingBgUsage: await fetchOverlappingBgUsage(supabase, { startsAt, endsAt, excludeId: id }, '[today PATCH 배경색 사용 빈도 조회 오류]'),
+    recentBgKeys: await fetchRecentBgKeys(supabase, { startsAt, endsAt, excludeId: id }, '[today PATCH 앞 카드 바탕 조회 오류]'),
     excludedPairs: [],
     image,
     palette,
