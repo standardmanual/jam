@@ -363,6 +363,9 @@ describe('배지만(badge_only)', () => {
   it('칩이 저장돼 있어도 그리지 않고 제목 속 칩만 쓴다', () => {
     const noChips = render(feedView('badge_only', { ...base, chips: TWO_CHIPS }))
     expect(count(noChips, 'rounded-full')).toBe(0)
+    expect(count(noChips, 'role="img"')).toBe(0)
+    // 칩 자리가 없는 유형이라 계획이 비어 칩 층 자체를 그리지 않는다
+    expect(noChips).not.toContain('data-chip-plan')
     const titleChip = render(feedView('badge_only', { ...base, title: '해가 짧아진 저녁의 한 바퀴', title_chip_words: ['저녁'] }))
     expect(count(titleChip, 'rounded-full')).toBe(1)
   })
