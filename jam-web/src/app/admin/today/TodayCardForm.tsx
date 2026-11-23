@@ -62,7 +62,7 @@ import type { TodayRecipeOption } from '@/lib/admin/todayRecipeOptions'
 import { orphanTribeTags, tribeTagOptions, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
-import { toCardView } from '@/lib/today/cardView'
+import { toCardViews } from '@/lib/today/cardView'
 import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import TodayCardPreview from './TodayCardPreview'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/admin/ui/accordion'
@@ -409,7 +409,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const startsAtInvalid = missingKeys.has('startsAt')
   const endsAtInvalid = missingKeys.has('endsAt')
 
-  // 지금 폼 값으로 만든 카드 하나를 표시 데이터(toCardView)로 바꿔 홈과 같은 새 틀(TodayCard)로 그린다
+  // 지금 폼 값으로 만든 카드 하나를 표시 데이터(toCardViews)로 바꿔 홈과 같은 새 틀(TodayCard)로 그린다
   // (User Story 4, 티켓 20261001_2208). 날짜 미리보기 모달(TodayPreviewModal.tsx)과 달리 저장 없이
   // 실시간으로 갱신된다. 폼은 미션·컬렉션 값을 따로 읽지 않아 resolved_mission·resolved_collection이 없다 —
   // 미션 기간·보상, 컬렉션 이름·아이템 수 줄은 생략되고 폼이 가진 값(지역, 배지 이름)만 필수 정보로 보인다.
@@ -458,7 +458,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     resolved_ranking: previewRanking,
   }
   // 계측 정보(tracking)를 싣지 않아 트래커·링크가 없다
-  const previewView = toCardView(previewCard)
+  const [previewView] = toCardViews([previewCard]) // 앞 카드 없는 한 장
 
   // ── 섹션 본문 ─────────────────────────────────────────────────────────
 

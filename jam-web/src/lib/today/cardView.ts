@@ -15,6 +15,7 @@ import type { TodayCardTemplateType, TodayListItem } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import { withTicketColorQuery } from '@/lib/badgeTicket/ticketColor'
+import { chainInputOf, planFeedChips } from './feedChipChain'
 import { resolveFeedLook, type FeedLook, type RenderedFeedType } from './feedLook'
 import { resolveFeedType, usableListItems } from './feedType'
 import type { FeedValueChipSource } from './feedValueChips'
@@ -413,4 +414,15 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   const feedDescription = look.showDescription ? nonBlank(card.description) : null
   if (feedDescription) feedView.description = feedDescription
   return feedView
+}
+
+/**
+ * 피드 순서로 늘어놓은 카드들을 표시 데이터로 바꾼다. 카드마다 `toCardView`로 view를 만든 뒤, 칩 배치(`planFeedChips`)를 배열 전체에서 한 번 훑어 `view.look.chipPlan`에 싣는다.
+ * 이웃 규칙(같은 값 연속 2장 한도·앞 카드와 같은 배치 금지·같은 꼴 3연속 금지)은 피드 순서를 알아야 지킬 수 있어서 홈처럼 순서가 정해진 배열은 이 함수로 만든다.
+ * view 수·순서는 입력과 같다. 단건(어드민 폼·미리보기)은 `toCardViews([card])[0]`으로 «앞 카드 없음»과 같은 계획을 받는다. 그리기는 아직 `look.chips`를 쓴다(티켓 20261122_2228 R5, 그리기 연결은 R6).
+ */
+export function toCardViews(cards: readonly TodayCardWithHref[], options: ToCardViewOptions = {}): CardView[] {
+  const views = cards.map((card) => toCardView(card, options))
+  const plans = planFeedChips(views.map(chainInputOf))
+  return views.map((view, index) => ({ ...view, look: { ...view.look, chipPlan: plans[index] } }))
 }

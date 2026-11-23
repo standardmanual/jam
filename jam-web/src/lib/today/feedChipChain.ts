@@ -203,7 +203,7 @@ export function chainInputOf(view: FeedCardView): ChainCardInput {
     kind: chip.kind === 'label' ? 'label' : 'value',
     text: chip.text,
     size: chip.size,
-    ...(chip.fixed ? { fixed: { corner: chip.fixed.corner, tilt: chip.fixed.tilt } } : {}),
+    ...(chip.fixed ? { fixed: { corner: chip.fixed.slot ? cornerOfSlot(chip.fixed.slot) : null, tilt: chip.fixed.tilt } } : {}),
   }))
   const description = view.description ?? ''
   const itemBadgeCount = view.itemBadges?.length ?? 0

@@ -1,7 +1,7 @@
 /**
  * 운영 항목 → 카드 미리보기 표시 데이터 (티켓 20261006_1802, 순수 함수).
  *
- * 저장 전 초안(`draft.values`)까지 덮은 항목에서 카드 칸을 관대하게 읽어 `toCardView`에 넘긴다. 없는 칸은 비우고, 제목이 비면
+ * 저장 전 초안(`draft.values`)까지 덮은 항목에서 카드 칸을 관대하게 읽어 `toCardViews`에 넘긴다. 없는 칸은 비우고, 제목이 비면
  * 「(제목 미입력)」이다. 홈피드 카드의 연결된 미션·배지·컬렉션은 읽지 않는다. 레시피·드랍은 서버가 읽어 내린 이름 맵을 받아 그린다(티켓 20261007_1401). 계측 정보(`tracking`)를
  * 싣지 않아 그리는 쪽이 트래커와 링크를 그리지 않는다. `resource`에 개편 칸(`feed_type` 등, 6회차-1)이 있으면 홈과 같은 새 카드 칸으로 싣는다(티켓 20261121_1532). 카드(홈피드 카드)가 아닌 종류는 null이다.
  * 옛 `shape`·`resource.layout_type`은 읽지 않는다(홈이 새 유형만 그린다, 티켓 20261122_1239).
@@ -17,7 +17,7 @@ import { OPS_FIELD_UNKNOWN, isOpsHomeFeedCard, readOpsItemExposureTags } from '@
 import { asRecord, itemField, linksOf, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { formatScheduleAt } from '@/lib/ambient-drop/scheduleView'
 import { EMPTY_PREVIEW_NAMES, PREVIEW_NAME_UNKNOWN, type OpsPreviewBadge, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
-import { toCardView, type CardView } from '@/lib/today/cardView'
+import { toCardViews, type CardView } from '@/lib/today/cardView'
 import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import type { ResolvedMission, TodayCardWithHref } from '@/lib/today/cards'
 import { resolveTargetHref } from '@/lib/today/targetHref'
@@ -222,7 +222,7 @@ export function previewViewOf(
   options: PreviewOptions = {}
 ): CardView | null {
   const card = itemToPreviewCard(item, draftValues, options)
-  return card ? toCardView(card, { now: options.now }) : null
+  return card ? toCardViews([card], { now: options.now })[0] : null // 앞 카드 없는 한 장
 }
 
 /** 레시피 슬롯 한 칸. 후보는 이름을 못 읽으면 폴백 문구가 들어간다. */

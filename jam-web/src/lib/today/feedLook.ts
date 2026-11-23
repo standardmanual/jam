@@ -29,6 +29,7 @@
  */
 import type { TodayBoxKind, TodayBoxShape, TodayBurstPoint, TodayChipSpec } from '@/types/database'
 import { createRng, hashSeed, type BoxSeed } from './boxShape'
+import type { ChipPlan } from './feedChipPlan'
 import {
   assignChipPlacement,
   assignFeedColors,
@@ -114,6 +115,8 @@ export interface FeedLookChip {
   size: 'lg' | 'sm'
   slot: string
   tilt: FeedTilt
+  /** 어드민이 칩에 직접 정한 자리·기울기(저장값). 둘 다 비어 있으면 이 칸이 없다. 배열 연쇄(`feedChipChain.ts`)가 «존중할 값»으로 읽는다(티켓 20261122_2228 R5). */
+  fixed?: { slot: string | null; tilt: FeedTilt | null }
 }
 
 export interface FeedLookStamp {
@@ -144,6 +147,11 @@ export interface FeedLook {
   boxKind: TodayBoxKind
   /** 컬렉션 소개만 있다. 아이템 배지 4개 자리(`FEED_BURST.count`). 그리는 쪽이 배지 수만큼 앞에서 쓴다. */
   burst?: FeedBurstPlacement[]
+  /**
+   * 피드 순서를 반영한 칩 배치 계획. 카드 배열을 순서대로 훑는 `toCardViews`만 채운다(단건 `toCardView`는 비워 둔다, R5).
+   * 그리기는 아직 `chips`를 쓰고, 이 계획을 읽는 것은 R6이다.
+   */
+  chipPlan?: ChipPlan
 }
 
 /** 해석이 읽는 카드 값. 카드 행(`TodayCardRow`)과 서버 조회 결과(`TodayCardWithHref`)가 모두 맞는다. */
@@ -270,6 +278,13 @@ function draftChips(
   if (!divider) return valueDrafts(values.slice(0, MAX_CARD_CHIPS))
   const dividerDraft: ChipDraft = { kind: 'label', text: divider, fixed: {} }
   return values.length > 0 ? [...valueDrafts(values.slice(0, 1)), dividerDraft] : [dividerDraft]
+}
+
+/** 어드민이 정한 자리·기울기가 하나라도 있으면 `fixed` 칸으로 돌려준다(허용되지 않는 자리·여섯 값이 아닌 기울기는 없는 것으로 본다). */
+function fixedOf(draft: ChipDraft, feedType: RenderedFeedType): Pick<FeedLookChip, 'fixed'> {
+  const slot = draft.fixed.slot && isAllowedSlot(feedType, draft.fixed.slot) ? draft.fixed.slot : null
+  const tilt = isTilt(draft.fixed.tilt) ? draft.fixed.tilt : null
+  return slot || tilt !== null ? { fixed: { slot, tilt } } : {}
 }
 
 // ── 컬렉션 배지 배치 ─────────────────────────────────────────
@@ -433,6 +448,7 @@ export function resolveFeedLook({ card, feedType, valueSource, now, excludedColo
     size: index === 0 || feedType === 'drop_pickup' ? 'lg' : 'sm',
     slot: placements[index].slot,
     tilt: isTilt(placements[index].tilt) ? placements[index].tilt : FEED_TILTS[0],
+    ...fixedOf(draft, feedType),
   }))
 
   // 제목 속 칩 — 낱말 최대 2개, 색은 카드의 칩 색, 기울기는 시드로(둘째는 첫째와 다르게)
