@@ -82,10 +82,10 @@ describe('FeedCard — 공통', () => {
   })
 
   it('카드 면은 rounded-2xl·p-4이고 배경은 색 변수다(hex 없음, 외곽선 없음)', () => {
-    const html = render(feedView('hero_box', { bg_color_key: 'red-soft' }))
+    const html = render(feedView('hero_box', { bg_color_key: 'red' }))
     expect(html).toContain('rounded-2xl')
     expect(html).toContain('p-4')
-    expect(html).toContain('background-color:var(--feed-color-red-soft, var(--jam-red-soft))')
+    expect(html).toContain('background-color:var(--feed-color-red, var(--jam-red))')
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
   })
 
@@ -120,12 +120,12 @@ describe('히어로(hero_box)', () => {
   })
 
   it('이미지가 있으면 이미지가 박스 안에 있고 없으면 색 면 박스만 남는다(자리 표시 없음)', () => {
-    const withImage = render(feedView('hero_box', { box_color_key: 'ref-blue' }))
+    const withImage = render(feedView('hero_box', { box_color_key: 'blue' }))
     expect(withImage).toContain('cover.png')
-    expect(withImage).toContain('background-color:var(--feed-color-ref-blue, var(--feed-ref-blue))')
-    const without = render(feedView('hero_box', { box_color_key: 'ref-blue', imageUrl: null }))
+    expect(withImage).toContain('background-color:var(--feed-color-blue, var(--jam-blue))')
+    const without = render(feedView('hero_box', { box_color_key: 'blue', imageUrl: null }))
     expect(without).not.toContain('<img')
-    expect(without).toContain('background-color:var(--feed-color-ref-blue, var(--feed-ref-blue))')
+    expect(without).toContain('background-color:var(--feed-color-blue, var(--jam-blue))')
   })
 
   it('칩 개수만큼 칩이 있고 구분 칩은 검정(--foreground 면·--snow 글자)이다', () => {
@@ -329,8 +329,8 @@ describe('전체 배경 이미지(full_image) — 꺼져 있지만 컴포넌트�
   })
 
   it('이미지가 없으면 카드 배경 색 면이다', () => {
-    const html = render(feedView('full_image', { imageUrl: null, bg_color_key: 'green-soft' }))
+    const html = render(feedView('full_image', { imageUrl: null, bg_color_key: 'green' }))
     expect(html).not.toContain('<img')
-    expect(html).toContain('background-color:var(--feed-color-green-soft, var(--jam-green-soft))')
+    expect(html).toContain('background-color:var(--feed-color-green, var(--jam-green))')
   })
 })

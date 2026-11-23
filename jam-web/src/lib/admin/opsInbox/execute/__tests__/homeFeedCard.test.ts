@@ -497,13 +497,13 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
   it('기본 조합으로 되돌려도 등록은 막지 않고 서버 로그에만 남긴다', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     // 통합 팔레트 규칙은 등록 경로에서 조합이 비는 입력을 만들 수 없어, 배정이 기본 조합을 돌려주는 상황을 바꿔 끼운다.
-    h.colorAssign = () => ({ bg: 'red', chip: 'blue-soft', box: 'yellow', usedFallback: true })
+    h.colorAssign = () => ({ bg: 'red', chip: 'blue', box: 'yellow', usedFallback: true })
     try {
       const db = new FakeDb()
-      const outcome = await handler.create(db.service, prepared(feedItem({ bg_color_key: 'red', chip_color_key: 'blue-soft' })), { now: NOW })
+      const outcome = await handler.create(db.service, prepared(feedItem({ bg_color_key: 'red', chip_color_key: 'blue' })), { now: NOW })
 
       expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
-      expect(db.tables.today_cards[0]).toMatchObject({ bg_color_key: 'red', chip_color_key: 'blue-soft', box_color_key: 'yellow' })
+      expect(db.tables.today_cards[0]).toMatchObject({ bg_color_key: 'red', chip_color_key: 'blue', box_color_key: 'yellow' })
       expect(warnSpy).toHaveBeenCalledTimes(1)
       expect(String(warnSpy.mock.calls[0][0])).toContain(CARD_ID)
     } finally {

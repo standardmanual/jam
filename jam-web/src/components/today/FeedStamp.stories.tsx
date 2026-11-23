@@ -57,8 +57,8 @@ export const OverImage: Story = {
     <div className="relative h-[180px] w-[320px] overflow-hidden rounded-xl">
       {/* eslint-disable-next-line @next/next/no-img-element -- Story의 data: SVG 가짜 이미지라 최적화 대상이 아니다 */}
       <img src={fakeImage()} alt="" className="h-full w-full object-cover" />
-      <FeedStamp color="ref-lime" className="absolute right-4 top-4" />
-      <FeedStamp color="ref-pink" className="absolute bottom-4 left-4" />
+      <FeedStamp color="green" className="absolute right-4 top-4" />
+      <FeedStamp color="pink" className="absolute bottom-4 left-4" />
       <FeedStamp color="yellow" className="absolute bottom-4 right-4" />
     </div>
   ),

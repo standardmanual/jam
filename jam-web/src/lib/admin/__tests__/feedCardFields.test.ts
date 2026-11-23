@@ -104,9 +104,9 @@ describe('feedCardFormValuesFromRow — 저장 행에서 폼 값 되살리기', 
     feedType: 'gallery_list',
     boxShape: 'wave',
     boxKind: 'image_mask',
-    bgColorKey: 'red-soft',
+    bgColorKey: 'sky',
     chipColorKey: 'red',
-    boxColorKey: 'ref-lime',
+    boxColorKey: 'yellow',
     chipsMode: 'custom',
     chips: [{ kind: 'phrase', source: '', text: '이번 주', slot: 'card-top-right', tilt: '6' }],
     titleChipWords: ['문경새재'],
@@ -155,7 +155,7 @@ describe('validateFeedCardColumns — errors(저장을 막는다)', () => {
     expect(hasError({ bg_color_key: 'black' }, '배경색')).toBe(true)
     expect(hasError({ chip_color_key: '#ff0000' }, '칩 색')).toBe(true)
     expect(hasError({ box_color_key: 'teal' }, '박스 색')).toBe(true)
-    expect(check({ feed_type: 'hero_box', box_shape: 'wave', box_kind: 'image_mask', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime' }).errors).toEqual([])
+    expect(check({ feed_type: 'hero_box', box_shape: 'wave', box_kind: 'image_mask', bg_color_key: 'sky', chip_color_key: 'red', box_color_key: 'yellow' }).errors).toEqual([])
   })
 
   it('칩은 2개까지이고 3개부터 막는다', () => {

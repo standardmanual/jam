@@ -32,9 +32,9 @@ describe('FeedColorStyle', () => {
   })
 
   it('덮어쓴 키만 :root의 카드 전용 변수로 내린다', async () => {
-    h.overrides = { 'red-soft': '#ff0000', 'ref-lime': '#00ff00' }
+    h.overrides = { 'red': '#ff0000', 'green': '#00ff00' }
     const html = await render()
-    expect(html).toContain(':root{--feed-color-red-soft:#ff0000;--feed-color-ref-lime:#00ff00}')
+    expect(html).toContain(':root{--feed-color-red:#ff0000;--feed-color-green:#00ff00}')
     expect(html.startsWith('<style')).toBe(true)
     expect(html).not.toContain('--feed-color-blue')
   })

@@ -164,9 +164,9 @@ describe('FeedCardSection — «자동»이 기본이다', () => {
 
 describe('FeedCardSection — 색 견본과 이름', () => {
   it('고른 색은 견본(색 변수)과 한국어 이름이 함께 보이고 견본은 보조 기술이 읽지 않는다', () => {
-    const html = render({ feedType: 'hero_box', bgColorKey: 'ref-lime' })
-    expect(html).toContain('참조 라임')
-    expect(html).toContain('background-color:var(--feed-color-ref-lime, var(--feed-ref-lime))')
+    const html = render({ feedType: 'hero_box', bgColorKey: 'green' })
+    expect(html).toContain('그린')
+    expect(html).toContain('background-color:var(--feed-color-green, var(--jam-green))')
     expect(html).toContain('aria-hidden="true"')
   })
 })
@@ -250,7 +250,7 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
   })
 
   describe('덮어쓴 팔레트 (티켓 20261121_2145) — 색 조합 경고는 키 기반이라 hex를 읽지 않고 이미지 경고만 읽는다', () => {
-    const overridden = { ...DEFAULT_FEED_PALETTE, red: DEFAULT_FEED_PALETTE['red-soft'] }
+    const overridden = { ...DEFAULT_FEED_PALETTE, red: DEFAULT_FEED_PALETTE.pink }
 
     it('palette를 줘도 키 기반 색 조합 경고는 그대로다', () => {
       const colors = { bgColorKey: 'yellow', chipColorKey: 'pink', boxColorKey: '' } as const

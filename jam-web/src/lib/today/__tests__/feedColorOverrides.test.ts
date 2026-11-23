@@ -96,15 +96,15 @@ describe('feedColorOverrideCss', () => {
   })
 
   it('덮어쓴 키만 :root 변수로 내리고 디자인 시스템 토큰(--jam-*)은 건드리지 않는다', () => {
-    const css = feedColorOverrideCss({ 'red-soft': '#FF0000', 'ref-lime': '#00ff00' })
-    expect(css).toBe(':root{--feed-color-red-soft:#ff0000;--feed-color-ref-lime:#00ff00}')
+    const css = feedColorOverrideCss({ red: '#FF0000', green: '#00ff00' })
+    expect(css).toBe(':root{--feed-color-red:#ff0000;--feed-color-green:#00ff00}')
     expect(css).not.toContain('--jam-')
     expect(css).not.toContain('blue')
   })
 
-  it('키는 색 키 15개 순서로 나온다', () => {
-    const css = feedColorOverrideCss({ 'ref-yellow': '#111111', red: '#222222' })
-    expect(css.indexOf('--feed-color-red:')).toBeLessThan(css.indexOf('--feed-color-ref-yellow:'))
+  it('키는 색 키 목록 순서로 나온다', () => {
+    const css = feedColorOverrideCss({ yellow: '#111111', red: '#222222' })
+    expect(css.indexOf('--feed-color-red:')).toBeLessThan(css.indexOf('--feed-color-yellow:'))
   })
 
   it('CSS 주입이 불가능하다 — 값·키에 다른 문자가 들어와도 출력에 나오지 않는다', () => {
@@ -128,8 +128,8 @@ describe('feedColorOverrideCss', () => {
 describe('feedColorVar 폴백', () => {
   it('카드 전용 변수를 먼저 읽고 없으면 기존 변수를 읽는다', () => {
     expect(feedColorVar('red')).toBe('var(--feed-color-red, var(--jam-red))')
-    expect(feedColorVar('red-soft')).toBe('var(--feed-color-red-soft, var(--jam-red-soft))')
-    expect(feedColorVar('ref-lime')).toBe('var(--feed-color-ref-lime, var(--feed-ref-lime))')
+    expect(feedColorVar('pink')).toBe('var(--feed-color-pink, var(--jam-pink))')
+    expect(feedColorVar('white')).toBe('var(--feed-color-white, var(--jam-chip-white))')
   })
 })
 
@@ -222,11 +222,11 @@ describe('resolveFeedLook의 palette', () => {
 
   it('색이 비어 있는 카드의 자동 배정은 팔레트를 덮어써도 달라지지 않는다(그림 색을 읽지 않는 경로, 저장된 키는 그대로)', () => {
     for (let n = 1; n <= 30; n++) {
-      const stored = { id: `card-look-${n}`, feed_type: 'hero_box' as const, bg_color_key: 'red-soft', box_color_key: 'ref-lime' }
+      const stored = { id: `card-look-${n}`, feed_type: 'hero_box' as const, bg_color_key: 'sky', box_color_key: 'yellow' }
       const before = resolveFeedLook({ card: stored, feedType: 'hero_box', valueSource: null, now: NOW })
-      expect(before.colors.bg).toBe('red-soft')
-      expect(before.colors.box).toBe('ref-lime')
-      const palette = buildFeedPalette({ [before.colors.chip as FeedColorKey]: DEFAULT_FEED_PALETTE['red-soft'] })
+      expect(before.colors.bg).toBe('sky')
+      expect(before.colors.box).toBe('yellow')
+      const palette = buildFeedPalette({ [before.colors.chip as FeedColorKey]: DEFAULT_FEED_PALETTE.pink })
       const after = resolveFeedLook({ card: stored, feedType: 'hero_box', valueSource: null, now: NOW, palette })
       expect(after.colors).toEqual(before.colors)
     }

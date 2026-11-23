@@ -264,11 +264,11 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     expect(buildTodayCardSavePayload({ ...baseValues, sortOrder: 'abc' }).sort_order).toBe(0)
   })
   it('개편 칸(feedColumns)을 넘기면 15개 칸이 페이로드에 실리고, 기존 필드는 그대로다(티켓 20261121_1315)', () => {
-    const feedColumns = buildFeedCardColumns({ ...EMPTY_FEED_CARD_FORM_VALUES, feedType: 'hero_box', bgColorKey: 'red-soft', feedSeed: '77' })
+    const feedColumns = buildFeedCardColumns({ ...EMPTY_FEED_CARD_FORM_VALUES, feedType: 'hero_box', bgColorKey: 'red', feedSeed: '77' })
     const plain = buildTodayCardSavePayload(baseValues)
     const withFeed = buildTodayCardSavePayload({ ...baseValues, feedColumns })
     for (const key of FEED_CARD_COLUMN_KEYS) expect(key in withFeed, key).toBe(true)
-    expect(withFeed).toMatchObject({ feed_type: 'hero_box', bg_color_key: 'red-soft', feed_seed: 77, chips: null, stamp_enabled: null })
+    expect(withFeed).toMatchObject({ feed_type: 'hero_box', bg_color_key: 'red', feed_seed: 77, chips: null, stamp_enabled: null })
     const rest = Object.fromEntries(Object.entries(withFeed).filter(([key]) => !(FEED_CARD_COLUMN_KEYS as readonly string[]).includes(key)))
     expect(rest).toEqual(plain)
     expect(Object.keys(rest)).toEqual(Object.keys(plain))

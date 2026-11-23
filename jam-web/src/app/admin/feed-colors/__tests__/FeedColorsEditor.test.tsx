@@ -77,7 +77,7 @@ describe('FeedColorsEditor 초기 렌더', () => {
     const preview = out.match(/<div data-feed-color-preview="" style="([^"]*)"/)
     expect(preview).not.toBeNull()
     expect(preview![1]).toContain('--feed-color-red:#aabbcc')
-    expect(preview![1]).toContain('--feed-color-ref-yellow:')
+    expect(preview![1]).toContain('--feed-color-yellow:')
     expect(out).not.toContain(':root')
     expect(out).not.toContain('<style')
   })
@@ -96,9 +96,9 @@ describe('FeedColorsEditor 초기 렌더', () => {
 
   it('저장된 값으로 새로 걸리는 카드는 없다(저장 값 = 편집 값이라 변화가 없다)', () => {
     const cards: FeedColorCardInput[] = [
-      { id: 'c1', title: '낙엽 카드', feedType: 'hero_box', bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: 'ref-lime' },
+      { id: 'c1', title: '낙엽 카드', feedType: 'hero_box', bgColorKey: 'yellow', chipColorKey: 'red', boxColorKey: 'green' },
     ]
-    const out = html({ savedOverrides: { red: '#ff9b9b' }, cards })
+    const out = html({ savedOverrides: { red: '#f9fc6a' }, cards })
     expect(out).toContain('새로 규칙에 걸리는 카드 0장')
     expect(out).not.toContain('낙엽 카드')
   })
@@ -127,12 +127,12 @@ describe('ColorRow', () => {
 
 describe('ImpactCardList', () => {
   const current = buildFeedPalette({})
-  const edited = buildFeedPalette({ red: '#ff9b9b' })
+  const edited = buildFeedPalette({ red: '#f9fc6a' })
   const card = (id: string): FeedColorCardInput => ({
     id,
     title: `낙엽 카드 ${id}`,
     feedType: 'hero_box',
-    bgColorKey: 'red-soft',
+    bgColorKey: 'yellow',
     chipColorKey: 'red',
     boxColorKey: null,
   })
@@ -140,9 +140,9 @@ describe('ImpactCardList', () => {
   it('새로 걸리는 카드의 제목·걸린 규칙·바뀐 색을 보인다', () => {
     const out = renderToStaticMarkup(<ImpactCardList cards={findNewlyViolatedCards(current, edited, [card('a')])} />)
     expect(out).toContain('낙엽 카드 a')
-    expect(out).toContain('배경색 연한 레드 · 칩 색 레드 조합이')
+    expect(out).toContain('배경색 옐로 · 칩 색 레드 조합이')
     expect(out).toContain('규칙에 걸려요')
-    expect(out).toContain('#ff1d1d → #ff9b9b')
+    expect(out).toContain('#ff1d1d → #f9fc6a')
     expect(out).not.toContain('외 ')
   })
 

@@ -132,15 +132,15 @@ describe('PUT 검증', () => {
 
 describe('PUT 저장', () => {
   it('hex는 소문자로 upsert하고 updated_by에 관리자 id를 남기고 태그를 무효화한다', async () => {
-    const res = await put({ overrides: { red: '#AABBCC', 'ref-lime': '#112233' } })
+    const res = await put({ overrides: { red: '#AABBCC', 'green': '#112233' } })
     expect(res.status).toBe(200)
     expect(state.upserts).toHaveLength(1)
     expect(state.upserts[0]).toEqual([
       expect.objectContaining({ color_key: 'red', hex: '#aabbcc', updated_by: 'admin-1' }),
-      expect.objectContaining({ color_key: 'ref-lime', hex: '#112233', updated_by: 'admin-1' }),
+      expect.objectContaining({ color_key: 'green', hex: '#112233', updated_by: 'admin-1' }),
     ])
     expect(state.invalidated).toBe(1)
-    expect((await res.json()).overrides).toEqual({ red: '#aabbcc', 'ref-lime': '#112233' })
+    expect((await res.json()).overrides).toEqual({ red: '#aabbcc', 'green': '#112233' })
   })
 
   it('null이면 그 키의 행을 지운다(기본값 복원)', async () => {

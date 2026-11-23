@@ -73,9 +73,9 @@ describe('feedPreviewFields — 폼 값을 미리보기 행에 싣는 값으로'
 
   it('지정한 값은 그대로 싣는다', () => {
     const fields = feedPreviewFields(
-      values({ feedType: 'text_box', bgColorKey: 'ref-blue', chipsMode: 'none', stampMode: 'on', stampSlot: 'top-left', titleChipWords: ['성수동'] }),
+      values({ feedType: 'text_box', bgColorKey: 'blue', chipsMode: 'none', stampMode: 'on', stampSlot: 'top-left', titleChipWords: ['성수동'] }),
     )
-    expect(fields.bg_color_key).toBe('ref-blue')
+    expect(fields.bg_color_key).toBe('blue')
     expect(fields.chips).toEqual([])
     expect(fields.stamp_enabled).toBe(true)
     expect(fields.stamp_slot).toBe('top-left')
@@ -110,8 +110,8 @@ describe('미리보기 표시 데이터(toCardView)', () => {
   })
 
   it('지정한 배경색이 그릴 값에 반영된다', () => {
-    const view = viewOf({ feedType: 'hero_box', bgColorKey: 'ref-pink' }) as unknown as { look: { colors: { bg: string } } }
-    expect(view.look.colors.bg).toBe('ref-pink')
+    const view = viewOf({ feedType: 'hero_box', bgColorKey: 'pink' }) as unknown as { look: { colors: { bg: string } } }
+    expect(view.look.colors.bg).toBe('pink')
   })
 
   it('«칩 없음»이면 칩이 없고 «직접»의 문구 칩은 그대로 보인다', () => {

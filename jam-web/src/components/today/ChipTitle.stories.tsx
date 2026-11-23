@@ -42,14 +42,14 @@ export const WithChips: Story = {
   render: () => (
     <>
       <Case caption="낱말 1개">
-        <ChipTitle title="이번 주말 문경에서 달려요" words={['문경']} size="sm" colors={['ref-lime']} className={TITLE_CLASS} />
+        <ChipTitle title="이번 주말 문경에서 달려요" words={['문경']} size="sm" colors={['green']} className={TITLE_CLASS} />
       </Case>
       <Case caption="낱말 2개 — 색이 낱말마다 다르다">
         <ChipTitle
           title="문경새재 걷고 완주 배지 받기"
           words={['문경새재', '완주']}
           size="sm"
-          colors={['ref-blue', 'ref-pink']}
+          colors={['blue', 'pink']}
           tilts={[-6, 6]}
           className={TITLE_CLASS}
         />
@@ -97,7 +97,7 @@ export const LongTitle: Story = {
         title="성수동 골목을 천천히 걸으며 숨은 가게를 찾아보는 주말 탐험"
         words={['성수동', '탐험']}
         size="sm"
-        colors={['ref-yellow', 'ref-red']}
+        colors={['yellow', 'red']}
         className={TITLE_CLASS}
       />
     </Case>

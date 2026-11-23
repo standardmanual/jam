@@ -229,7 +229,7 @@ const BASES: Readonly<Record<RenderedFeedType, PreviewBase>> = {
       listItems: PREVIEW_LIST_ITEMS,
       listMoreHref: '/drops',
       valueSource: null,
-      box_color_key: 'yellow-soft',
+      box_color_key: 'yellow',
       feed_seed: 3,
     },
     titleWords: ['요즘', '많은'],

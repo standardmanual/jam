@@ -33,7 +33,7 @@ const base: StoryCardOptions = {
   listMoreHref: '/drops',
   valueSource: null,
   chips: [],
-  box_color_key: 'yellow-soft',
+  box_color_key: 'yellow',
   feed_seed: 3,
 }
 

@@ -1710,13 +1710,13 @@ describe('toTodayCardRegisterInput · 홈피드 개편 새 칸 (티켓 20261121_
   })
 
   it('새 칸을 적으면 페이로드에 14개 키가 실리고 적지 않은 칸은 null이다(feed_seed는 없다)', () => {
-    const { payload, errors } = feedCard({ feed_type: 'text_box', box_shape: 'wave', bg_color_key: 'red-soft' })
+    const { payload, errors } = feedCard({ feed_type: 'text_box', box_shape: 'wave', bg_color_key: 'red' })
     expect(errors).toEqual([])
     expect(payload).toMatchObject({
       feed_type: 'text_box',
       box_shape: 'wave',
       box_kind: null,
-      bg_color_key: 'red-soft',
+      bg_color_key: 'red',
       chip_color_key: null,
       box_color_key: null,
       chips: null,

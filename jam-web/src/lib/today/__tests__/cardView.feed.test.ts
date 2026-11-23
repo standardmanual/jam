@@ -64,9 +64,9 @@ function makeCard(overrides: Partial<TodayCardWithHref> = {}): TodayCardWithHref
 const NEW_COLUMNS: Partial<TodayCardWithHref> = {
   box_shape: 'wave',
   box_kind: 'image_mask',
-  bg_color_key: 'red-soft',
+  bg_color_key: 'sky',
   chip_color_key: 'red',
-  box_color_key: 'ref-lime',
+  box_color_key: 'yellow',
   chips: [{ kind: 'phrase', text: '문구' }],
   title_chip_words: ['걷는'],
   show_description: false,
@@ -121,7 +121,7 @@ describe('toCardView — 개편 카드', () => {
 
   it('새 칸은 look에 반영된다(지정한 값 보존)', () => {
     const { look } = feed({ ...NEW_COLUMNS })
-    expect(look.colors).toEqual({ bg: 'red-soft', chip: 'red', box: 'ref-lime' })
+    expect(look.colors).toEqual({ bg: 'sky', chip: 'red', box: 'yellow' })
     expect(look.seed).toBe(42)
     expect(look.boxShape).toBe('wave')
     expect(look.boxKind).toBe('image_mask')
@@ -195,7 +195,7 @@ describe('toCardView — 개편 카드', () => {
 })
 
 describe('toCardView — 색 덮어쓰기 팔레트 (티켓 20261121_2145)', () => {
-  const stored = { feed_type: 'hero_box', feed_seed: 12345, bg_color_key: 'red-soft', box_color_key: 'ref-lime' } as const
+  const stored = { feed_type: 'hero_box', feed_seed: 12345, bg_color_key: 'sky', box_color_key: 'yellow' } as const
 
   it('palette를 안 주면 기본 팔레트라 결과가 이전과 같다', () => {
     const baseline = toCardView(makeCard(stored), OPTIONS) as FeedCardView
@@ -204,10 +204,10 @@ describe('toCardView — 색 덮어쓰기 팔레트 (티켓 20261121_2145)', () 
 
   it('palette를 줘도 저장된 칸은 그대로이고, 그림 색을 읽지 않는 자동 배정은 달라지지 않는다(통합 팔레트 규칙은 그림 색 규칙에서만 hex를 읽는다)', () => {
     const baseline = toCardView(makeCard(stored), OPTIONS) as FeedCardView
-    const palette = buildFeedPalette({ [baseline.look.colors.chip]: DEFAULT_FEED_PALETTE['red-soft'] })
+    const palette = buildFeedPalette({ [baseline.look.colors.chip]: DEFAULT_FEED_PALETTE.pink })
     const view = toCardView(makeCard(stored), { ...OPTIONS, palette }) as FeedCardView
-    expect(view.look.colors.bg).toBe('red-soft')
-    expect(view.look.colors.box).toBe('ref-lime')
+    expect(view.look.colors.bg).toBe('sky')
+    expect(view.look.colors.box).toBe('yellow')
     expect(view.look.colors.chip).toBe(baseline.look.colors.chip)
   })
 })

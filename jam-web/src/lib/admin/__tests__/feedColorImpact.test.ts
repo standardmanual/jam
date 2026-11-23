@@ -19,20 +19,20 @@ const card = (overrides: Partial<FeedColorCardInput> = {}): FeedColorCardInput =
   id: 'c1',
   title: '카드',
   feedType: 'hero_box',
-  bgColorKey: 'red-soft',
+  bgColorKey: 'yellow',
   chipColorKey: 'red',
-  boxColorKey: 'ref-lime',
+  boxColorKey: 'green',
   ...overrides,
 })
 
-/** 연한 레드(#ff9a9a)와 거의 같은 값으로 바꾼 레드 → 배경 연한 레드·칩 레드 조합이 새로 걸린다 */
-const NEAR_SOFT_RED = '#ff9b9b'
-const edited = buildFeedPalette({ red: NEAR_SOFT_RED })
+/** 옐로(#f9fd69)와 거의 같은 값으로 바꾼 레드 → 배경 옐로·칩 레드 조합이 새로 걸린다 */
+const NEAR_YELLOW_RED = '#f9fc6a'
+const edited = buildFeedPalette({ red: NEAR_YELLOW_RED })
 
 describe('전제: 시험 값이 실제로 «지금은 통과, 편집하면 걸림»이다', () => {
-  it('기본 팔레트에서 배경 연한 레드·칩 레드는 통과하고 편집 팔레트에서는 걸린다', () => {
-    expect(firstViolatedRule(DEFAULT_FEED_PALETTE['red-soft'], DEFAULT_FEED_PALETTE.red, { involvesChip: true })).toBeNull()
-    expect(firstViolatedRule(edited['red-soft'], edited.red, { involvesChip: true })).not.toBeNull()
+  it('기본 팔레트에서 배경 옐로·칩 레드는 통과하고 편집 팔레트에서는 걸린다', () => {
+    expect(firstViolatedRule(DEFAULT_FEED_PALETTE.yellow, DEFAULT_FEED_PALETTE.red, { involvesChip: true })).toBeNull()
+    expect(firstViolatedRule(edited.yellow, edited.red, { involvesChip: true })).not.toBeNull()
   })
 })
 
@@ -64,7 +64,7 @@ describe('comparePalettes', () => {
   it('통과 조합이 줄어드는 편집은 decreased이고 delta는 음수다', () => {
     const current = buildFeedPalette({})
     // 여러 색을 한 값 근처로 몰아 통과 조합을 줄인다
-    const palette = buildEditedPalette(current, { red: '#ff9b9b', 'ref-red': '#ff9c9c', 'red-soft': '#ff9a9a' })
+    const palette = buildEditedPalette(current, { red: '#ff9b9b', yellow: '#ff9c9c', purple: '#ff9a9a' })
     const result = comparePalettes(current, palette)
     expect(result.edited.remaining).toBeLessThan(result.current.remaining)
     expect(result.decreased).toBe(true)
@@ -81,8 +81,8 @@ describe('findNewlyViolatedCards', () => {
     expect(result.hidden).toBe(0)
     const [impacted] = result.cards
     expect(impacted.id).toBe('c1')
-    expect(impacted.violations[0]).toMatchObject({ slots: ['bg', 'chip'], keys: ['red-soft', 'red'] })
-    expect(impacted.changedColors).toEqual([{ slot: 'chip', key: 'red', before: current.red.toLowerCase(), after: NEAR_SOFT_RED }])
+    expect(impacted.violations[0]).toMatchObject({ slots: ['bg', 'chip'], keys: ['yellow', 'red'] })
+    expect(impacted.changedColors).toEqual([{ slot: 'chip', key: 'red', before: current.red.toLowerCase(), after: NEAR_YELLOW_RED }])
   })
 
   it('원래 걸리던 조합은 이번 변경 탓이 아니라서 제외한다', () => {
@@ -96,18 +96,18 @@ describe('findNewlyViolatedCards', () => {
   })
 
   it('자동 배정으로 저장된 키 조합도 같은 방식으로 본다(저장된 키를 그대로 읽는다)', () => {
-    const auto = card({ id: 'auto', title: '자동 배정 카드', bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: null })
+    const auto = card({ id: 'auto', title: '자동 배정 카드', bgColorKey: 'yellow', chipColorKey: 'red', boxColorKey: null })
     expect(findNewlyViolatedCards(current, edited, [auto]).cards.map((c) => c.id)).toEqual(['auto'])
   })
 
-  it('새 모양 유형이 아니거나 모르는 색 키(흰색 등)인 카드는 건너뛴다', () => {
+  it('새 모양 유형이 아니거나 모르는 색 키인 카드는 건너뛴다', () => {
     const old = card({ id: 'old', feedType: null })
-    const white = card({ id: 'white', bgColorKey: 'white', chipColorKey: 'red', boxColorKey: null })
-    expect(findNewlyViolatedCards(current, edited, [old, white]).total).toBe(0)
+    const unknownKey = card({ id: 'unknown', bgColorKey: 'not-a-color', chipColorKey: 'red', boxColorKey: null })
+    expect(findNewlyViolatedCards(current, edited, [old, unknownKey]).total).toBe(0)
   })
 
   it('박스 칸이 없는 유형은 저장된 박스 키가 남아 있어도 박스가 낀 짝을 보지 않는다', () => {
-    const noBox = card({ id: 'nb', feedType: 'badge_intro', bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: 'red' })
+    const noBox = card({ id: 'nb', feedType: 'badge_intro', bgColorKey: 'yellow', chipColorKey: 'red', boxColorKey: 'red' })
     const result = findNewlyViolatedCards(current, edited, [noBox])
     expect(result.total).toBe(1)
     expect(result.cards[0].violations.every((v) => !v.slots.includes('box'))).toBe(true)

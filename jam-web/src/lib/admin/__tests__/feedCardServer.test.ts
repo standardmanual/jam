@@ -444,10 +444,10 @@ describe('색 덮어쓰기 팔레트로 정하기 (티켓 20261121_2145)', () =>
 
   it('덮어쓰기 행이 없으면 팔레트를 직접 준 것과 같은 값이다(표를 한 번 읽는다)', async () => {
     const db = dbWith([])
-    const withTable = await completeFeedCardValues(db.service, { bg_color_key: 'red-soft' }, period, () => 11)
+    const withTable = await completeFeedCardValues(db.service, { bg_color_key: 'red' }, period, () => 11)
     const explicit = await completeFeedCardValues(
       dbWith([]).service,
-      { bg_color_key: 'red-soft' },
+      { bg_color_key: 'red' },
       period,
       () => 11,
       undefined,

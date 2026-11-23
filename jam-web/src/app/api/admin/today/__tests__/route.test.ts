@@ -197,11 +197,11 @@ describe('POST /api/admin/today — 새 카드 자동 값 고정', () => {
   })
 
   it('사용자가 고른 색과 시드는 덮어쓰지 않는다', async () => {
-    const res = await post({ ...BASE_BODY, feed_type: 'text_box', bg_color_key: 'ref-pink', chip_color_key: null, box_color_key: null, feed_seed: 777 })
+    const res = await post({ ...BASE_BODY, feed_type: 'text_box', bg_color_key: 'pink', chip_color_key: null, box_color_key: null, feed_seed: 777 })
     expect(res.status).toBe(200)
     const saved = state.inserts[0]
     expect(saved.feed_seed).toBe(777)
-    expect(saved.bg_color_key).toBe('ref-pink')
+    expect(saved.bg_color_key).toBe('pink')
     expect(typeof saved.chip_color_key).toBe('string')
     expect(typeof saved.box_color_key).toBe('string')
   })
@@ -258,31 +258,31 @@ describe('PATCH /api/admin/today/[id]', () => {
   })
 
   it('이미 저장된 시드와 색은 다시 정하지 않는다(다른 시드를 보내도 바꾸지 않는다)', async () => {
-    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime', starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
-    const res = await patch({ feed_type: 'hero_box', feed_seed: 999, bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime', show_description: false })
+    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'sky', chip_color_key: 'red', box_color_key: 'yellow', starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
+    const res = await patch({ feed_type: 'hero_box', feed_seed: 999, bg_color_key: 'sky', chip_color_key: 'red', box_color_key: 'yellow', show_description: false })
     expect(res.status).toBe(200)
     const saved = state.updates[0]
     expect('feed_seed' in saved).toBe(false)
-    expect(saved).toMatchObject({ bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime', show_description: false })
+    expect(saved).toMatchObject({ bg_color_key: 'sky', chip_color_key: 'red', box_color_key: 'yellow', show_description: false })
     // 다시 정하지 않으니 사용 빈도도 조회하지 않는다
     expect(state.usageFilters).toHaveLength(0)
   })
 
   it('사용자가 색을 직접 바꾸면 그 값을 저장한다', async () => {
-    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime' }
-    await patch({ feed_type: 'hero_box', bg_color_key: 'blue-soft' })
-    expect(state.updates[0].bg_color_key).toBe('blue-soft')
+    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'sky', chip_color_key: 'red', box_color_key: 'yellow' }
+    await patch({ feed_type: 'hero_box', bg_color_key: 'blue' })
+    expect(state.updates[0].bg_color_key).toBe('blue')
     expect(state.usageFilters).toHaveLength(0)
   })
 
   it('유형은 있는데 시드가 비어 있는 카드의 색을 자동으로 되돌리면 쓴 시드를 함께 저장한다', async () => {
-    state.existing = { feed_type: 'hero_box', feed_seed: null, title: '제목', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime', starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
+    state.existing = { feed_type: 'hero_box', feed_seed: null, title: '제목', bg_color_key: 'sky', chip_color_key: 'red', box_color_key: 'yellow', starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
     const res = await patch({ feed_type: 'hero_box', bg_color_key: null })
     expect(res.status).toBe(200)
     const saved = state.updates[0]
     // 홈은 저장된 시드로 같은 값을 그리므로 색을 정하는 데 쓴 시드가 저장돼야 어긋나지 않는다
     expect(saved.feed_seed).toBe(12345)
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, recentBgKeys: [], boxHasText: false })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'yellow' }, recentBgKeys: [], boxHasText: false })
     expect(saved.bg_color_key).toBe(direct.bg)
   })
 
@@ -301,19 +301,19 @@ describe('PATCH /api/admin/today/[id]', () => {
   })
 
   it('색을 자동(NULL)으로 되돌려 보내면 저장된 시드로 그 색만 다시 정한다', async () => {
-    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime', starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
-    const res = await patch({ feed_type: 'hero_box', feed_seed: 5, bg_color_key: null, chip_color_key: 'red', box_color_key: 'ref-lime' })
+    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'sky', chip_color_key: 'red', box_color_key: 'yellow', starts_at: BASE_BODY.starts_at, ends_at: BASE_BODY.ends_at }
+    const res = await patch({ feed_type: 'hero_box', feed_seed: 5, bg_color_key: null, chip_color_key: 'red', box_color_key: 'yellow' })
     expect(res.status).toBe(200)
     const saved = state.updates[0]
-    const direct = assignFeedColors({ seed: 5, fixed: { chip: 'red', box: 'ref-lime' }, boxHasText: false })
+    const direct = assignFeedColors({ seed: 5, fixed: { chip: 'red', box: 'yellow' }, boxHasText: false })
     expect(saved.bg_color_key).toBe(direct.bg)
     expect('feed_seed' in saved).toBe(false)
     expect(saved.chip_color_key).toBe('red')
-    expect(saved.box_color_key).toBe('ref-lime')
+    expect(saved.box_color_key).toBe('yellow')
   })
 
   it('유형을 비우는 저장은 시드·색을 새로 정하지 않는다', async () => {
-    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'red-soft', chip_color_key: null, box_color_key: null }
+    state.existing = { feed_type: 'hero_box', feed_seed: 5, title: '제목', bg_color_key: 'sky', chip_color_key: null, box_color_key: null }
     await patch({ feed_type: null, bg_color_key: null, chip_color_key: null, box_color_key: null })
     const saved = state.updates[0]
     for (const key of COLOR_KEYS) expect(saved[key], key).toBeNull()
@@ -429,9 +429,9 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     feed_type: 'hero_box',
     feed_seed: 12345,
     title: '제목',
-    bg_color_key: 'red-soft',
+    bg_color_key: 'sky',
     chip_color_key: 'red',
-    box_color_key: 'ref-lime',
+    box_color_key: 'yellow',
     starts_at: BASE_BODY.starts_at,
     ends_at: BASE_BODY.ends_at,
     cover_image_url: COVER_A,
@@ -439,13 +439,13 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     box_kind: null,
     badge_ids: null,
   }
-  const AUTO_BG = { feed_type: 'hero_box', bg_color_key: null, chip_color_key: 'red', box_color_key: 'ref-lime' }
+  const AUTO_BG = { feed_type: 'hero_box', bg_color_key: null, chip_color_key: 'red', box_color_key: 'yellow' }
 
   it('PATCH: 커버가 그대로면 저장된 커버 대표 색으로 색을 다시 정한다', async () => {
     state.existing = { ...EXISTING }
     const res = await patch(AUTO_BG)
     expect(res.status).toBe(200)
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true, boxHasText: false })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'yellow' }, imageHexes: COVER_COLORS, chipOnImage: true, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
     expect(violatesImageColorRule(hexOf(state.updates[0].bg_color_key), COVER_COLORS)).toBe(false)
   })
@@ -454,7 +454,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     state.existing = { ...EXISTING, cover_colors: ['#000000'] }
     extractMock.mockResolvedValue(COVER_COLORS)
     await patch({ ...AUTO_BG, cover_image_url: COVER_B })
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: true, boxHasText: false })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'yellow' }, imageHexes: COVER_COLORS, chipOnImage: true, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
     expect(state.updates[0].cover_colors).toEqual(COVER_COLORS)
   })
@@ -463,7 +463,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     state.existing = { ...EXISTING }
     extractMock.mockResolvedValue(null)
     await patch({ ...AUTO_BG, cover_image_url: COVER_B })
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, boxHasText: false })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'yellow' }, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
     expect('cover_colors' in state.updates[0]).toBe(false)
   })
@@ -473,7 +473,7 @@ describe('이미지 대표 색을 자동 색 배정에 쓴다 (티켓 20261121_1
     state.badgeRows = [{ id: 'badge-9', bg_colors: COVER_COLORS }]
     await patch({ ...AUTO_BG, feed_type: 'badge_only' })
     expect(state.badgeFilters).toEqual(['id:badge-9'])
-    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'ref-lime' }, imageHexes: COVER_COLORS, chipOnImage: false, boxHasText: false })
+    const direct = assignFeedColors({ seed: 12345, fixed: { chip: 'red', box: 'yellow' }, imageHexes: COVER_COLORS, chipOnImage: false, boxHasText: false })
     expect(state.updates[0].bg_color_key).toBe(direct.bg)
   })
 })

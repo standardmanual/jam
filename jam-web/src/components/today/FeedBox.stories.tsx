@@ -85,7 +85,7 @@ export const ShapesByOrientation: Story = {
               return (
                 <div key={shape} className="flex flex-col gap-2">
                   <Label>{SHAPE_NAME[shape]}</Label>
-                  <FeedBox shape={shape} orientation={orientation} color="ref-blue" seed="card-42" className="shrink-0">
+                  <FeedBox shape={shape} orientation={orientation} color="blue" seed="card-42" className="shrink-0">
                     <div style={{ width: size.width, height: size.height }} />
                   </FeedBox>
                 </div>
@@ -106,7 +106,7 @@ export const WaveSeeds: Story = {
       {(['card-1', 'card-1', 'card-2', undefined] as const).map((seed, index) => (
         <div key={index} className="flex flex-col gap-2">
           <Label>{seed === undefined ? '시드 없음 → 라운드' : `시드 ${seed}${index === 1 ? ' (위와 같다)' : ''}`}</Label>
-          <FeedBox shape="wave" orientation="image" color="ref-pink" seed={seed}>
+          <FeedBox shape="wave" orientation="image" color="pink" seed={seed}>
             <div style={{ width: 240, height: 135 }} />
           </FeedBox>
         </div>
@@ -128,7 +128,7 @@ export const BumpOuterMargin: Story = {
               {orientation === 'image' ? '이미지 마스크: 양쪽 52px' : '아이템 배지 박스: 위·아래 28px'} (여백 {top}/{right}/{bottom}/{left})
             </Label>
             <div className="outline-1 outline-dashed outline-muted">
-              <FeedBox shape="bump" orientation={orientation} color="ref-yellow">
+              <FeedBox shape="bump" orientation={orientation} color="yellow">
                 <div
                   style={{
                     width: orientation === 'image' ? 240 : 84,
@@ -155,7 +155,7 @@ export const ImageMaskWithSiblingChip: Story = {
     <div className="flex flex-col gap-10">
       {(['round', 'ticket', 'stamp', 'wave'] as const).map((shape) => (
         <div key={shape} className="relative w-[320px] max-w-full">
-          <FeedBox shape={shape} orientation="image" color="ref-lime" seed="card-7" className="aspect-video w-full overflow-hidden">
+          <FeedBox shape={shape} orientation="image" color="green" seed="card-7" className="aspect-video w-full overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element -- Story의 data: SVG 가짜 이미지라 최적화 대상이 아니다 */}
             <img src={fakeImage(640, 360)} alt="" className="h-full w-full object-cover" />
           </FeedBox>

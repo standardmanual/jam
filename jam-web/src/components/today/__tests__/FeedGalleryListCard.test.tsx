@@ -97,10 +97,10 @@ describe('목록형 — 구성', () => {
   })
 
   it('항목 칸은 정사각(aspect-square)·모서리 12(rounded-xl)·면 색은 박스 색 키이고 hex가 없다', () => {
-    const html = render(listView({ box_color_key: 'ref-pink' }))
+    const html = render(listView({ box_color_key: 'pink' }))
     expect(count(html, 'aspect-square')).toBe(4) // 항목 3 + 화살표 1
     expect(count(html, 'rounded-xl')).toBeGreaterThanOrEqual(4)
-    expect(count(html, 'background-color:var(--feed-color-ref-pink, var(--feed-ref-pink))')).toBe(3)
+    expect(count(html, 'background-color:var(--feed-color-pink, var(--jam-pink))')).toBe(3)
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
   })
 

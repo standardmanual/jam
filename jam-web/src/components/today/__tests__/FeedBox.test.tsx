@@ -15,7 +15,7 @@ import { FEED_COLOR_KEYS, feedColorVar } from '@/lib/today/feedConstants'
 
 const render = (shape: BoxShape, orientation: BoxOrientation, extra: Partial<Parameters<typeof FeedBox>[0]> = {}) =>
   renderToStaticMarkup(
-    <FeedBox shape={shape} orientation={orientation} color="ref-blue" seed="card-1" {...extra}>
+    <FeedBox shape={shape} orientation={orientation} color="blue" seed="card-1" {...extra}>
       내용
     </FeedBox>,
   )

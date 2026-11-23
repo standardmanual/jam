@@ -75,8 +75,8 @@ describe('resolveFeedLook — 색', () => {
   })
 
   it('지정한 색 칸은 그대로 보존하고 NULL 칸만 채운다', () => {
-    const { colors } = look('hero_box', { bg_color_key: 'purple-soft', chip_color_key: 'green' })
-    expect(colors.bg).toBe('purple-soft')
+    const { colors } = look('hero_box', { bg_color_key: 'purple', chip_color_key: 'green' })
+    expect(colors.bg).toBe('purple')
     expect(colors.chip).toBe('green')
     expect(FEED_COLOR_KEYS).toContain(colors.box)
   })
@@ -157,9 +157,9 @@ describe('resolveFeedLook — 칩', () => {
 
   it('드랍·픽업의 자동 칩은 «드랍»(색 칩)·«픽업»(검정 칩) 두 문구 칩이고 둘 다 큰 칩이다(값 출처와 무관)', () => {
     for (const source of [{ resource: 'drop_pickup' } as FeedValueChipSource, MISSION, null]) {
-      const chips = look('drop_pickup', { chip_color_key: 'ref-lime' }, source).chips
+      const chips = look('drop_pickup', { chip_color_key: 'green' }, source).chips
       expect(chips.map((chip) => [chip.kind, chip.text, chip.color, chip.size])).toEqual([
-        ['phrase', '드랍', 'ref-lime', 'lg'],
+        ['phrase', '드랍', 'green', 'lg'],
         ['label', '픽업', 'black', 'lg'],
       ])
     }

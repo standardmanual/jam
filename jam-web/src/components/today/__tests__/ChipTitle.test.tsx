@@ -42,10 +42,10 @@ describe('ChipTitle — 칩 있음', () => {
 
   it('칩 색은 낱말마다 받고(색 키 → var) 없으면 기본 색을 쓴다', () => {
     const html = renderToStaticMarkup(
-      <ChipTitle title="문경 달리기 완주" words={['문경', '완주']} colors={['blue']} defaultColor="ref-pink" />,
+      <ChipTitle title="문경 달리기 완주" words={['문경', '완주']} colors={['blue']} defaultColor="pink" />,
     )
     expect(html).toContain(`background-color:${feedColorVar('blue')}`)
-    expect(html).toContain(`background-color:${feedColorVar('ref-pink')}`)
+    expect(html).toContain(`background-color:${feedColorVar('pink')}`)
   })
 
   it('칩 크기를 고른다: 큰 칩 40px·작은 칩 32px', () => {

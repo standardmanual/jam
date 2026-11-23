@@ -60,14 +60,14 @@ export const Tilts: Story = {
     <>
       <Row caption="큰 칩">
         {FEED_TILTS.map((tilt) => (
-          <FeedChip key={tilt} size="lg" color="ref-lime" tilt={tilt}>
+          <FeedChip key={tilt} size="lg" color="green" tilt={tilt}>
             {tilt}도
           </FeedChip>
         ))}
       </Row>
       <Row caption="작은 칩">
         {FEED_TILTS.map((tilt) => (
-          <FeedChip key={tilt} size="sm" color="ref-lime" tilt={tilt}>
+          <FeedChip key={tilt} size="sm" color="green" tilt={tilt}>
             {tilt}도
           </FeedChip>
         ))}
@@ -104,10 +104,10 @@ export const LongText: Story = {
   name: '한 줄 긴 글자 — 12자',
   render: () => (
     <Row caption="12자(줄바꿈 없음)">
-      <FeedChip size="lg" color="ref-blue" tilt={6}>
+      <FeedChip size="lg" color="blue" tilt={6}>
         열두글자짜리문구칩이에요
       </FeedChip>
-      <FeedChip size="sm" color="ref-pink" tilt={-6}>
+      <FeedChip size="sm" color="pink" tilt={-6}>
         열두글자짜리문구칩이에요
       </FeedChip>
     </Row>

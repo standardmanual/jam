@@ -239,7 +239,7 @@ describe('assignFeedColors — 지정값·제외 목록·기본 조합', () => {
 
   it('지정한 값은 덮어쓰지 않는다(일부만 지정해도, 규칙에 걸리는 조합을 지정해도, 옛 키를 지정해도)', () => {
     for (const seed of many.slice(0, 100)) {
-      expect(assignFeedColors({ seed, fixed: { chip: 'red', box: 'ref-lime' } })).toMatchObject({ chip: 'red', box: 'ref-lime', usedFallback: false })
+      expect(assignFeedColors({ seed, fixed: { chip: 'red', box: 'yellow' } })).toMatchObject({ chip: 'red', box: 'yellow', usedFallback: false })
       expect(assignFeedColors({ seed, fixed: { bg: 'red-soft' } }).bg).toBe('red-soft')
       expect(assignFeedColors({ seed, fixed: { bg: 'red', chip: 'red', box: 'red' } })).toStrictEqual({ bg: 'red', chip: 'red', box: 'red', usedFallback: false })
     }
@@ -378,10 +378,10 @@ describe('assignFeedColors — 이미지 대표 색 규칙 ⑤·⑥ (티켓 2026
         seed,
         imageHexes: [hexOf('red')],
         chipOnImage: true,
-        fixed: { bg: 'red', chip: 'red-soft' },
+        fixed: { bg: 'red', chip: 'pink' },
       })
       expect(result.bg).toBe('red')
-      expect(result.chip).toBe('red-soft')
+      expect(result.chip).toBe('pink')
       expect(result.imageRuleSkipped).toBeUndefined()
     }
   })

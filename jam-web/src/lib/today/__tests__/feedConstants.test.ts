@@ -197,7 +197,7 @@ describe('feedTextOnBg', () => {
   })
 
   it('다른 바탕·비어 있는 값은 검정(--foreground)이다', () => {
-    for (const key of ['yellow', 'green', 'pink', 'sky', 'red-soft']) expect(feedTextOnBg(key)).toBe('var(--foreground)')
+    for (const key of ['yellow', 'green', 'pink', 'sky', 'purple']) expect(feedTextOnBg(key)).toBe('var(--foreground)')
     expect(feedTextOnBg(null)).toBe('var(--foreground)')
     expect(feedTextOnBg(undefined)).toBe('var(--foreground)')
   })
@@ -213,7 +213,7 @@ describe('boxAllowedFor', () => {
     for (const key of ['yellow', 'green', 'pink', 'sky']) expect(boxAllowedFor(key, true)).toBe(true)
   })
 
-  it('박스 표에 없는 색(빨강·보라·흰색·옛 키)은 쓰지 못한다', () => {
-    for (const key of ['red', 'purple', 'white', 'blue', 'red-soft']) expect(boxAllowedFor(key, false)).toBe(false)
+  it('박스 표에 없는 색(빨강·보라·흰색·파랑·모르는 키)은 쓰지 못한다', () => {
+    for (const key of ['red', 'purple', 'white', 'blue', 'not-a-color']) expect(boxAllowedFor(key, false)).toBe(false)
   })
 })
