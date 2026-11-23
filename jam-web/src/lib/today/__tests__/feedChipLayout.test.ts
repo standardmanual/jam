@@ -12,11 +12,14 @@ import {
   chipPositionOf,
   cornerOfSlot,
   limitChipsForType,
+  plannedChipPositionOf,
   stampPositionOf,
   stampTiltOf,
 } from '../feedChipLayout'
 import { FEED_CHIP_SLOT_SPECS, FEED_TYPES } from '../feedChipSlots'
 import { FEED_CHIP_INSET, FEED_CHIP_OFFSET, FEED_STAMP_INSET } from '../feedConstants'
+import { cardGeometryOf, cornerRect, tiltedBounds, type ChipGeometryType } from '../feedChipGeometry'
+import { planCardChips, type PlannedChip } from '../feedChipPlan'
 
 describe('cornerOfSlot', () => {
   it('자리 이름의 끝에서 모서리를 읽는다', () => {
@@ -107,5 +110,91 @@ describe('limitChipsForType', () => {
 
   it('모든 유형이 한도를 갖는다', () => {
     for (const feedType of FEED_TYPES) expect(limitChipsForType(feedType, ['a', 'b', 'c']).length).toBeLessThanOrEqual(2)
+  })
+})
+
+describe('plannedChipPositionOf — 계획 → CSS 위치(티켓 20261122_2228 R6)', () => {
+  const chip = (overrides: Partial<PlannedChip> = {}): PlannedChip => ({
+    index: 0,
+    kind: 'label',
+    presentation: 'pill',
+    text: 'ITEM',
+    corner: 'top-left',
+    inset: { x: 2.5, y: -1 },
+    lowered: false,
+    tilt: 6,
+    size: 'lg',
+    scale: 1,
+    black: true,
+    sticker: null,
+    box: { w: 100, h: 52 },
+    ...overrides,
+  })
+
+  it('왼쪽 위 모서리는 left·top이고 가운데 맞춤(-50%)으로 칩 자기 크기의 반을 되돌린다', () => {
+    const css = plannedChipPositionOf(chip())
+    expect(css.left).toMatch(/^calc\(2\.5% \+ [\d.]+px\)$/)
+    expect(css.top).toMatch(/^calc\(-1% \+ [\d.]+px\)$/)
+    expect(css.right).toBeUndefined()
+    expect(css.bottom).toBeUndefined()
+    expect(css.transform).toBe('translate(-50%, -50%)')
+  })
+
+  it('오른쪽 아래 모서리는 right·bottom이고 +50%로 되돌린다', () => {
+    const css = plannedChipPositionOf(chip({ corner: 'bottom-right' }))
+    expect(css.right).toBeDefined()
+    expect(css.bottom).toBeDefined()
+    expect(css.left).toBeUndefined()
+    expect(css.top).toBeUndefined()
+    expect(css.transform).toBe('translate(50%, 50%)')
+  })
+
+  it('가운데 지점은 기울어진 경계 상자의 반만큼 안쪽이다(기울기 부호와 무관)', () => {
+    const plus = plannedChipPositionOf(chip({ tilt: 9 }))
+    const minus = plannedChipPositionOf(chip({ tilt: -9 }))
+    expect(plus).toEqual(minus)
+    const half = tiltedBounds(100, 52, 9).w / 2
+    expect(plus.left).toBe(`calc(2.5% + ${Math.round(half * 10) / 10}px)`)
+  })
+
+  it('계획 좌표와 같다: CSS가 가리키는 칩 경계 상자 = cornerRect (7개 유형·시드 여럿, 폭 343)', () => {
+    const width = 343
+    const types: ChipGeometryType[] = ['hero_box', 'badge_intro', 'text_box', 'drop_pickup', 'collection_intro', 'badge_only']
+    const parse = (value: string) => {
+      const match = /^calc\((-?[\d.]+)% \+ (-?[\d.]+)px\)$/.exec(value)
+      return { pct: Number(match![1]), px: Number(match![2]) }
+    }
+    for (const feedType of types) {
+      for (let seed = 1; seed <= 20; seed += 1) {
+        const input = {
+          feedType,
+          seed,
+          chips: [
+            { kind: 'label' as const, text: 'ITEM', size: 'lg' as const },
+            { kind: 'value' as const, text: '3일 남음', size: 'sm' as const },
+          ],
+          titleLines: [10],
+          descriptionLength: 20,
+          descriptionVisible: true,
+          hasImage: true,
+        }
+        const plan = planCardChips(input)
+        const { height } = cardGeometryOf({ ...input, width })
+        for (const planned of plan.chips) {
+          const css = plannedChipPositionOf(planned)
+          const b = tiltedBounds(planned.box.w, planned.box.h, planned.tilt)
+          const expected = cornerRect(planned.corner, b.w, b.h, { x: planned.inset.x / 100, y: planned.inset.y / 100 }, width, height)
+          const x = parse((css.left ?? css.right) as string)
+          const y = parse((css.top ?? css.bottom) as string)
+          const centerX = (x.pct / 100) * width + x.px
+          const centerY = (y.pct / 100) * height + y.px
+          // 왼쪽·위는 가장자리에서 재고, 오른쪽·아래는 반대쪽 가장자리에서 잰다
+          const l = css.left !== undefined ? centerX - b.w / 2 : width - centerX - b.w / 2
+          const t = css.top !== undefined ? centerY - b.h / 2 : height - centerY - b.h / 2
+          expect(l).toBeCloseTo(expected.l, 0)
+          expect(t).toBeCloseTo(expected.t, 0)
+        }
+      }
+    }
   })
 })

@@ -1,7 +1,17 @@
 import type { CSSProperties, ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
+import { CategorySticker } from '@ds/components/cards/CategorySticker'
 import type { FeedCardView } from '@/lib/today/cardView'
-import { chipPositionOf, stampPositionOf, stampTiltOf, type ChipAnchorMode, type ChipPosition } from '@/lib/today/feedChipLayout'
+import { chainInputOf, planFeedChips } from '@/lib/today/feedChipChain'
+import {
+  chipPositionOf,
+  plannedChipPositionOf,
+  stampPositionOf,
+  stampTiltOf,
+  type ChipAnchorMode,
+  type ChipPosition,
+} from '@/lib/today/feedChipLayout'
+import type { ChipPlan, PlannedChip } from '@/lib/today/feedChipPlan'
 import {
   FEED_BADGE_SIZE,
   FEED_CARD_ROOT_ATTR,
@@ -143,6 +153,47 @@ export function FeedChipLayer({
         )
       })}
     </>
+  )
+}
+
+/** 계획된 칩 하나. 스티커는 `CategorySticker`, 알약은 코너 변형 `FeedChip`이다. 값 칩 색은 저장된 칩 색(`look.colors.chip`, `chip_color_key`), 분류 알약은 계획이 정한 검정이다. */
+function PlannedChipView({ chip, view }: { chip: PlannedChip; view: FeedCardView }) {
+  if (chip.presentation === 'sticker' && chip.sticker) {
+    const { shape, pair, letter, seed, label } = chip.sticker
+    // 크기 prop이 없는 부품이라 기울기·배율은 바깥 `span`의 transform으로 준다(배율을 width·height로 주면 viewBox 기하가 어긋난다)
+    return (
+      <span className="block" style={{ transform: `rotate(${chip.tilt}deg) scale(${chip.scale})` }}>
+        <CategorySticker shape={shape} pair={pair} letter={letter} seed={seed} label={label} />
+      </span>
+    )
+  }
+  return (
+    <FeedChip variant="corner" size={chip.size} color={chip.black ? 'black' : view.look.colors.chip} tilt={chip.tilt}>
+      {chip.text}
+    </FeedChip>
+  )
+}
+
+/**
+ * 칩 계획 층 — 카드 셸의 직계 자식으로 놓아 `look.chipPlan`(R5)이 정한 대로 칩·스티커를 그린다(티켓 20261122_2228 R6).
+ * 알약은 `FeedChip variant="corner"`, 스티커는 `CategorySticker`다. 위치는 카드(`relative` 부모) 기준 `%`와 계획의 바깥 6px 한도 안 px로 쓰고(`plannedChipPositionOf`) DOM을 재지 않는다.
+ * 계획이 안전 구역(글자·그림·도장)을 이미 피했으므로 여기서 위치를 보정하지 않는다. 기울기 부호·배율은 계획 값 그대로다.
+ *
+ * - 층은 `pointer-events-none`이다(카드 전체가 링크라 칩이 터치를 가로채지 않는다). 칩·스티커는 장식이 아니라서 `aria-hidden`은 걸지 않는다(스티커는 `role="img"`+분류 문구).
+ * - `view.look.chipPlan`이 없으면(`toCardViews`가 아닌 단건 경로: 스토리·미리보기) 앞 카드 없음 계획을 즉석에서 만든다. 칩이 없는 카드(`[]`)와 흐름 줄 카드(목록형)는 아무것도 그리지 않는다.
+ * - 도장(`FeedStampLayer`)은 앵커 안의 모서리 슬롯을 그대로 쓰고, 계획이 도장 자리를 피한다.
+ */
+export function FeedChipPlanLayer({ view }: { view: FeedCardView }) {
+  const plan: ChipPlan | undefined = view.look.chipPlan ?? planFeedChips([chainInputOf(view)])[0]
+  if (!plan || plan.flow || plan.chips.length === 0) return null
+  return (
+    <div data-chip-plan="" className="pointer-events-none absolute inset-0 z-10">
+      {plan.chips.map((chip) => (
+        <span key={chip.index} className="absolute flex w-max" style={plannedChipPositionOf(chip)}>
+          <PlannedChipView chip={chip} view={view} />
+        </span>
+      ))}
+    </div>
   )
 }
 

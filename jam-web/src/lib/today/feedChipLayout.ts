@@ -11,6 +11,8 @@
  */
 import { FEED_CHIP_INSET, FEED_CHIP_OFFSET, FEED_STAMP_INSET } from './feedConstants'
 import { chipLimitOf, isAllowedSlot, type FeedType } from './feedChipSlots'
+import { tiltedBounds } from './feedChipGeometry'
+import type { PlannedChip } from './feedChipPlan'
 
 export type ChipCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 export type ChipAnchorMode = 'overhang' | 'inset'
@@ -56,6 +58,33 @@ export function chipPositionOf(feedType: FeedType, slot: string, mode: ChipAncho
   return mode === 'overhang'
     ? place(corner, -FEED_CHIP_OFFSET.x, -FEED_CHIP_OFFSET.y)
     : place(corner, FEED_CHIP_INSET, FEED_CHIP_INSET)
+}
+
+/** 계획된 칩 하나의 CSS 위치. 카드(`relative` 부모) 기준이다. 모서리가 가리키는 두 값(`left`|`right`, `top`|`bottom`)과 가운데 맞춤 `transform`뿐이다. */
+export interface PlannedChipCss {
+  left?: string
+  right?: string
+  top?: string
+  bottom?: string
+  transform: string
+}
+
+/**
+ * 계획(`PlannedChip`) → 카드 기준 CSS 위치 (티켓 20261122_2228 R6). DOM 실측 없이 «카드 비율(%) + 고정 px»로만 쓴다(서버 컴포넌트).
+ * 계획의 `inset`은 «기울어진 칩의 바깥 끝이 카드 가장자리에서 떨어진 정도(% of 카드 폭·높이, 음수는 카드 밖)»다. 기울어진 경계 상자의 반(`tiltedBounds`)만큼 더한 지점이 칩 가운데이므로,
+ * 그 지점에 `left|right`·`top|bottom`을 두고 `translate(∓50%)`로 칩 자기 크기의 반만큼 되돌려 가운데를 맞춘다. 실제 칩 폭이 추정(`box`)과 달라도 가운데가 어긋나지 않는다.
+ * 기울기·배율은 부호·값을 그대로 쓰는 호출부가 칩 안쪽에서 건다(여기서 평준화하지 않는다).
+ */
+export function plannedChipPositionOf(chip: PlannedChip): PlannedChipCss {
+  const bounds = tiltedBounds(chip.box.w, chip.box.h, chip.tilt)
+  const left = chip.corner.endsWith('left')
+  const top = chip.corner.startsWith('top')
+  const along = (percent: number, half: number) => `calc(${percent}% + ${Math.round(half * 10) / 10}px)`
+  return {
+    [left ? 'left' : 'right']: along(chip.inset.x, bounds.w / 2),
+    [top ? 'top' : 'bottom']: along(chip.inset.y, bounds.h / 2),
+    transform: `translate(${left ? '-50%' : '50%'}, ${top ? '-50%' : '50%'})`,
+  }
 }
 
 /** 도장의 위치. 자리 모서리에서 안쪽으로 `FEED_STAMP_INSET`만큼 들어온다(도장 가운데 구멍으로 뒤의 이미지가 보인다). */
