@@ -8,7 +8,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import type { ResolvedBadge, TodayCardWithHref } from '../cards'
-import { toCardView, type FeedCardView } from '../cardView'
+import { FEED_ITEM_BADGE_LIMIT, toCardView, type FeedCardView } from '../cardView'
+import { FEED_DROP_PICKUP } from '../feedConstants'
 
 const NOW = new Date('2026-11-21T12:00:00+09:00')
 const OPTIONS = { now: NOW, tracking: true } as const
@@ -106,21 +107,29 @@ describe('컬렉션 소개', () => {
 })
 
 describe('드랍·픽업', () => {
-  const badges = [badge('a'), badge('b', { image_url: null }), badge('c'), badge('d')]
+  const badges = [badge('a'), badge('b', { image_url: null }), badge('c'), badge('d'), badge('e'), badge('f')]
 
-  it('카드에 걸린 배지의 앞 3개를 싣는다(그림 없는 배지도 이름과 함께)', () => {
+  it('배지 한도는 5개이고 원천은 FEED_DROP_PICKUP.max다', () => {
+    expect(FEED_ITEM_BADGE_LIMIT).toBe(5)
+    expect(FEED_ITEM_BADGE_LIMIT).toBe(FEED_DROP_PICKUP.max)
+  })
+
+  it('카드에 걸린 배지의 앞 5개를 싣는다(그림 없는 배지도 이름과 함께, 여섯째부터는 버린다)', () => {
     const view = feed({ feed_type: 'drop_pickup', template_type: 'drop_alert', resolved_badges: badges })
     expect(view.feedType).toBe('drop_pickup')
     expect(view.itemBadges).toEqual([
       { name: '배지 a', imageUrl: 'https://cdn.example/a.png' },
       { name: '배지 b', imageUrl: null },
       { name: '배지 c', imageUrl: 'https://cdn.example/c.png' },
+      { name: '배지 d', imageUrl: 'https://cdn.example/d.png' },
+      { name: '배지 e', imageUrl: 'https://cdn.example/e.png' },
     ])
   })
 
-  it('배지가 1~2개여도 있는 만큼 싣는다', () => {
-    expect(feed({ feed_type: 'drop_pickup', resolved_badges: [badge('a')] }).itemBadges).toHaveLength(1)
-    expect(feed({ feed_type: 'drop_pickup', resolved_badges: [badge('a'), badge('b')] }).itemBadges).toHaveLength(2)
+  it('배지가 1~4개여도 있는 만큼 싣는다', () => {
+    for (let n = 1; n <= 4; n += 1) {
+      expect(feed({ feed_type: 'drop_pickup', resolved_badges: badges.slice(0, n) }).itemBadges).toHaveLength(n)
+    }
   })
 
   it('배지가 0개면 텍스트 박스로 그린다', () => {

@@ -15,6 +15,7 @@ import type { TodayCardTemplateType, TodayListItem } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import { withTicketColorQuery } from '@/lib/badgeTicket/ticketColor'
+import { FEED_DROP_PICKUP } from './feedConstants'
 import { chainInputOf, planFeedChipsDetailed, type ChainStep } from './feedChipChain'
 import { resolveFeedLook, type FeedLook, type RenderedFeedType } from './feedLook'
 import { resolveFeedType, usableListItems } from './feedType'
@@ -255,8 +256,8 @@ export interface FeedCardViewListItem {
   imageUrl: string | null
 }
 
-/** 드랍·픽업이 박스에 담는 배지의 최대 개수. */
-export const FEED_ITEM_BADGE_LIMIT = 3
+/** 드랍·픽업이 그리는 배지의 최대 개수. 원천은 `FEED_DROP_PICKUP.max`(5)다. */
+export const FEED_ITEM_BADGE_LIMIT = FEED_DROP_PICKUP.max
 
 export type CardView = FeedCardView
 

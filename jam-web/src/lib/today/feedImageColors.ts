@@ -8,7 +8,7 @@
  *   컬렉션 소개는 대표 그림 뒤로 퍼지는 아이템 배지(최대 `COLLECTION_BURST_BADGE_LIMIT`개)의 대표 색도 함께 본다(티켓 20261122_2224 7회차).
  *   이 셋은 칩이 이미지 위에 걸치므로 `chipOnImage`도 참이다(규칙 ⑥).
  * - 배지 그림이 배경 위에 놓이는 유형: 배지 소개(`badge_intro`)·배지만(`badge_only`) → 카드가 가리키는 첫 배지의 대표 색,
- *   드랍·픽업(`drop_pickup`) → 아이템 배지(최대 3개)의 대표 색 전부. 칩은 이미지 위에 걸치지 않는다.
+ *   드랍·픽업(`drop_pickup`) → 아이템 배지(최대 5개)의 대표 색 전부. 칩은 이미지 위에 걸치지 않는다.
  * - 그 밖(글자만 있는 텍스트 박스, 목록형, 전체 배경 이미지)은 적용하지 않는다.
  *
  * 대표 색이 `NULL`(아직 안 뽑음)이거나 `[]`(색 없음)이면 빈 목록이다. 읽을 수 없는 hex는 걸러 낸다.
@@ -78,7 +78,7 @@ export function imageColorsForCard(input: ImageColorsForCardInput): FeedImageCol
       hexes = badges.length > 0 ? validHexes(badges[0]) : []
       break
     case 'drop_pickup':
-      hexes = badges.slice(0, FEED_DROP_PICKUP.columns).flatMap(validHexes)
+      hexes = badges.slice(0, FEED_DROP_PICKUP.max).flatMap(validHexes)
       break
     default:
       return NONE

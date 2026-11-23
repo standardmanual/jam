@@ -74,6 +74,9 @@ export const PREVIEW_ITEM_BADGES: readonly FeedCardViewBadge[] = [
   { name: '압정 한 줌', imageUrl: '/badges/sample/s005.png' },
 ]
 
+/** 드랍·픽업 견본 배지: 그림 있는 5종(배지 한도 5, 티켓 20261122_2229). 컬렉션 소개의 4종과 같은 그림에 하나를 더한다. */
+const PREVIEW_DROP_BADGES: readonly FeedCardViewBadge[] = [...PREVIEW_ITEM_BADGES, { name: '손때 묻은 열쇠', imageUrl: '/badges/sample/s006.png' }]
+
 /** 목록형 항목 샘플. 그림이 없는 항목(색 면)도 하나 둔다. */
 export const PREVIEW_LIST_ITEMS: readonly FeedCardViewListItem[] = [
   { name: '산', href: '/drops?place=mountain', imageUrl: COVER_SQUARE },
@@ -217,7 +220,7 @@ const BASES: Readonly<Record<RenderedFeedType, PreviewBase>> = {
       title: '내겐 남는 것이\n누군가의 새것',
       description: '남는 아이템 배지는 드랍하고, 필요한 건 픽업해 봐요.',
       imageUrl: null,
-      itemBadges: PREVIEW_ITEM_BADGES.slice(0, 3),
+      itemBadges: PREVIEW_DROP_BADGES,
       valueSource: { resource: 'drop_pickup' },
       box_shape: 'round',
       feed_seed: 5,

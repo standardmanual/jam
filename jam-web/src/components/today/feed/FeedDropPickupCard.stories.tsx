@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { BOX_SHAPES } from '@/lib/today/boxShape'
 import FeedDropPickupCard from './FeedDropPickupCard'
 import { CARD_WIDTH_320, CardBox, Cell, ITEM_BADGES, Row, feedView, type StoryCardOptions } from './feedStoryFixtures'
 
 /**
- * 드랍·픽업(`drop_pickup`) 상태 행렬 (티켓 20261121_0115, 상위 20261120_2026 4회차-3). 서비스 전용(홈피드 한정).
- * 위에 아이템 배지 3개를 박스에 담아 한 줄(영역 높이 184, 칸 간격 8, 칸마다 배지 80×80을 가운데에), 아래에 제목과 설명. 샘플 카드 높이 360.
- * 박스 모양은 5종 중 하나를 아이템 방향으로 그린다. 칩은 «DROP»·«PICKUP» 분류 칩 두 개가 카드 모서리에 계획(`look.chipPlan`)대로 놓인다(스티커는 한 개뿐이고 둘째는 검정 알약, 칩을 못 놓으면 계획이 둘째를 뺀다).
+ * 드랍·픽업(`drop_pickup`) 상태 행렬 (티켓 20261122_2229, 상위 20261122_2217 §7). 서비스 전용(홈피드 한정).
+ * 박스 없이 아이템 배지 1~5개를 크게 겹치고 기울여 흩뿌리고, 아래에 제목과 설명. 배지 수가 배치 틀(`FEED_DROP_PICKUP_FRAMES`)을 정해 같은 수면 늘 같은 모양이다. 카드 최소 높이 400.
+ * 6개 이상이면 앞 5개만 그린다. 그림이 없는 배지는 같은 상자·기울기 안에서 이름 글자로 대신한다.
+ * 칩은 «DROP»·«PICKUP» 분류 칩 두 개가 카드 모서리에 계획(`look.chipPlan`)대로 놓인다(스티커는 한 개뿐이고 둘째는 검정 알약, 칩을 못 놓으면 계획이 둘째를 뺀다).
  * 칩이 저장되지 않은 카드는 이 두 칩이 자동으로 붙고, 저장된 chips가 있으면 그것을 따른다.
  */
 const meta: Meta<typeof FeedDropPickupCard> = {
@@ -24,7 +24,6 @@ const base: StoryCardOptions = {
   imageUrl: null,
   itemBadges: ITEM_BADGES.slice(0, 3),
   valueSource: { resource: 'drop_pickup' },
-  box_shape: 'round',
   feed_seed: 5,
 }
 
@@ -39,26 +38,11 @@ export const Sample: Story = {
   ),
 }
 
-export const BoxShapes: Story = {
-  name: '박스 모양 5종(아이템 방향)',
-  render: () => (
-    <Row>
-      {BOX_SHAPES.map((shape) => (
-        <Cell key={shape} label={shape}>
-          <CardBox>
-            <FeedDropPickupCard view={view({ box_shape: shape })} />
-          </CardBox>
-        </Cell>
-      ))}
-    </Row>
-  ),
-}
-
 export const BadgeCounts: Story = {
-  name: '배지 1·2·3개',
+  name: '배지 1·2·3·4·5개(배치 틀)',
   render: () => (
     <Row>
-      {[1, 2, 3].map((count) => (
+      {[1, 2, 3, 4, 5].map((count) => (
         <Cell key={count} label={`배지 ${count}개`}>
           <CardBox>
             <FeedDropPickupCard view={view({ itemBadges: ITEM_BADGES.slice(0, count) })} />
@@ -75,6 +59,41 @@ export const NoImages: Story = {
     <CardBox>
       <FeedDropPickupCard view={view({ itemBadges: ITEM_BADGES.slice(0, 3).map((badge) => ({ ...badge, imageUrl: null })) })} />
     </CardBox>
+  ),
+}
+
+export const MixedImages: Story = {
+  name: '이미지 없는 배지가 섞임(5개 중 2개)',
+  render: () => (
+    <CardBox>
+      <FeedDropPickupCard
+        view={view({ itemBadges: ITEM_BADGES.map((badge, index) => (index === 1 || index === 3 ? { ...badge, imageUrl: null } : badge)) })}
+      />
+    </CardBox>
+  ),
+}
+
+export const OverLimit: Story = {
+  name: '배지 6개 이상(앞 5개만 그림)',
+  render: () => (
+    <CardBox>
+      <FeedDropPickupCard view={view({ itemBadges: [...ITEM_BADGES, { name: '여섯째 배지', imageUrl: '/badges/sample/s007.png' }] })} />
+    </CardBox>
+  ),
+}
+
+export const BackgroundVariants: Story = {
+  name: '바탕색 변형(밝은 바탕·짙은 초록, 배지 4개)',
+  render: () => (
+    <Row>
+      {(['yellow', 'pink', 'sky', 'green', 'green-deep'] as const).map((bg) => (
+        <Cell key={bg} label={bg}>
+          <CardBox>
+            <FeedDropPickupCard view={view({ itemBadges: ITEM_BADGES.slice(0, 4), bg_color_key: bg })} />
+          </CardBox>
+        </Cell>
+      ))}
+    </Row>
   ),
 }
 
@@ -147,10 +166,10 @@ export const DescriptionHidden: Story = {
 }
 
 export const Narrow320: Story = {
-  name: '폭 320 화면(카드 288, 칸 폭 80)',
+  name: '폭 320 화면(카드 288, 배지 5개)',
   render: () => (
     <CardBox width={CARD_WIDTH_320}>
-      <FeedDropPickupCard view={view({ box_shape: 'bump' })} />
+      <FeedDropPickupCard view={view({ itemBadges: ITEM_BADGES })} />
     </CardBox>
   ),
 }

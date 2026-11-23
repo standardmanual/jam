@@ -238,9 +238,9 @@ export const FEED_CARD_MIN_HEIGHT = {
   badge_intro: 384,
   badge_only: 332,
   full_image: 358,
-  // 4회차-3(티켓 20261121_0115): 컬렉션 소개 416, 드랍·픽업 360, 목록형은 «260 이상»이라 항목 이름 줄이 늘면 늘어난다
+  // 4회차-3(티켓 20261121_0115): 컬렉션 소개 416, 드랍·픽업 360(티켓 20261122_2229에서 400: 시안 높이), 목록형은 «260 이상»이라 항목 이름 줄이 늘면 늘어난다
   collection_intro: 416,
-  drop_pickup: 360,
+  drop_pickup: 400,
   gallery_list: 260,
 } as const;
 
@@ -331,10 +331,61 @@ export const FEED_BURST_SAMPLE = [
 export const FEED_CARD_ROOT_ATTR = 'data-feed-card-root';
 
 /**
- * 드랍·픽업(`drop_pickup`): 박스 줄 높이 184(샘플), 칸 간격 8(`gap-2`), 칸마다 배지 80×80을 가운데에 둔다. 칸 수는 3이다.
- * 칩 «DROP»·«PICKUP»(큰 칩 두 개)은 카드 모서리에 칩 계획대로 놓인다(`FeedChipPlanLayer`, 박스 줄 자리 이름 `box-row-*`는 어드민이 정한 자리를 읽을 때만 쓴다).
+ * 드랍·픽업(`drop_pickup`): 박스 없이 배지 그림을 크게 겹치고 기울여 흩뿌린다(티켓 20261122_2229, 상위 20261122_2217 §7). 서비스 전용 상수이고 디자인 토큰이 아니다.
+ * 배지 영역의 기준 크기는 326×248(카드 폭 358 − 안 여백 32)이고, 틀(`FEED_DROP_PICKUP_FRAMES`)의 중심 %·한 변 px는 이 기준에서 읽은 값이다. 배지는 최대 5개다.
+ * 칩 «DROP»·«PICKUP»(분류 칩 두 개)은 카드 모서리에 칩 계획대로 놓인다(`FeedChipPlanLayer`).
  */
-export const FEED_DROP_PICKUP = { rowHeight: 184, badgeSize: 80, columns: 3, gap: 8 } as const;
+export const FEED_DROP_PICKUP = { refWidth: 326, refHeight: 248, max: 5 } as const;
+
+/** 배지 한 장의 자리: x·y는 배지 영역 폭·높이 대비 중심 %, size는 기준 폭 326에서 한 변 px, tilt는 도(음수 = 반시계). */
+export interface DropPickupFrameItem {
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
+  readonly tilt: number;
+}
+
+/**
+ * 배지 수(1~5)별 배치 틀(시안 `docs/assets/prototypes/drop-pickup-a5/board-a5.jpg`에서 읽은 값, ±8px 오차). 배열 순서가 곧 카드에 걸린 배지 순서이자 앞뒤 순서다(뒤 항목이 위).
+ * 무작위가 아니라 배지 수가 틀을 정한다. 값은 «보기 좋게» 임의로 바꾸지 않고 시안과 대조해 판정을 다시 받는다.
+ * 왼쪽 위·오른쪽 위 모서리와 제목 옆 자리는 칩 자리라 비워 둔다.
+ */
+export const FEED_DROP_PICKUP_FRAMES: Readonly<Record<1 | 2 | 3 | 4 | 5, readonly DropPickupFrameItem[]>> = {
+  1: [{ x: 48, y: 42, size: 176, tilt: -4 }],
+  2: [
+    { x: 24, y: 31, size: 124, tilt: -8 },
+    { x: 66, y: 58, size: 152, tilt: -8 },
+  ],
+  3: [
+    { x: 16, y: 28, size: 100, tilt: -8 },
+    { x: 67, y: 26, size: 124, tilt: 6 },
+    { x: 46, y: 70, size: 124, tilt: -8 },
+  ],
+  4: [
+    { x: 31, y: 24, size: 112, tilt: -4 },
+    { x: 72, y: 28, size: 132, tilt: -5 },
+    { x: 20, y: 61, size: 120, tilt: -8 },
+    { x: 75, y: 64, size: 112, tilt: -3 },
+  ],
+  5: [
+    { x: 14, y: 33, size: 88, tilt: -6 },
+    { x: 43, y: 22, size: 100, tilt: -6 },
+    { x: 82, y: 36, size: 108, tilt: 8 },
+    { x: 25, y: 65, size: 112, tilt: -5 },
+    { x: 70, y: 62, size: 124, tilt: -6 },
+  ],
+};
+
+/** 배지 수에 맞는 틀. 0개 이하는 빈 목록, 5개를 넘으면 5개 틀이다. */
+export function dropPickupFrameOf(count: number): readonly DropPickupFrameItem[] {
+  if (count < 1) return [];
+  return FEED_DROP_PICKUP_FRAMES[Math.min(count, FEED_DROP_PICKUP.max) as 1 | 2 | 3 | 4 | 5];
+}
+
+/** 카드 폭에 맞는 배지 영역 높이(px). 폭이 줄면 영역·배지가 같은 비율로 줄어 틀 모양이 유지된다. 영역 폭은 카드 폭 − 32다. */
+export function dropPickupAreaHeightOf(cardWidth: number): number {
+  return Math.round(((cardWidth - 32) * FEED_DROP_PICKUP.refHeight) / FEED_DROP_PICKUP.refWidth);
+}
 
 /**
  * 목록형(`gallery_list`): 칸 4개(`grid-cols-4`, 칸 간격 8)·항목은 최대 3개, 화살표 아이콘 32px(샘플).
