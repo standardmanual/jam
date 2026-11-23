@@ -30,6 +30,7 @@ vi.mock('@/components/today/TodayCardTracker', () => ({
 import FeedCard from '../feed/FeedCard'
 import TodayCard from '../TodayCard'
 import type { FeedCardView } from '@/lib/today/cardView'
+import { chainInputOf, planFeedChips } from '@/lib/today/feedChipChain'
 import { FEED_CARD_MIN_HEIGHT, FEED_FULL_IMAGE_SCRIM, FEED_PHOTO_TEXT_SCRIM } from '@/lib/today/feedConstants'
 import { resolveFeedLook, type FeedLookCard, type RenderedFeedType } from '@/lib/today/feedLook'
 import type { FeedValueChipSource } from '@/lib/today/feedValueChips'
@@ -61,6 +62,10 @@ function feedView(feedType: RenderedFeedType, options: Options = {}): FeedCardVi
 
 const render = (view: FeedCardView) => renderToStaticMarkup(<FeedCard view={view} />)
 const count = (html: string, needle: string) => html.split(needle).length - 1
+/** 칩 층이 그린 칩 수: 알약(`rounded-full`)과 스티커(`role="img"`)의 합. 제목 속 칩도 알약이라 제목 속 칩이 없는 카드에서 쓴다. */
+const chipCount = (html: string) => count(html, 'rounded-full') + count(html, 'role="img"')
+/** 이 view의 칩 계획(`toCardViews`가 없는 단건 경로는 «앞 카드 없음» 계획이다) */
+const planOf = (view: FeedCardView) => view.look.chipPlan ?? planFeedChips([chainInputOf(view)])[0]
 
 const TWO_CHIPS = [
   { kind: 'phrase' as const, text: '이번 주 미션' },
@@ -128,23 +133,36 @@ describe('히어로(hero_box)', () => {
     expect(without).toContain('background-color:var(--jam-blue)')
   })
 
-  it('칩 개수만큼 칩이 있고 구분 칩은 검정(--foreground 면·--snow 글자)이다', () => {
-    expect(count(render(feedView('hero_box', { chips: [] })), 'rounded-full')).toBe(0)
-    expect(count(render(feedView('hero_box', { chips: [TWO_CHIPS[0]] })), 'rounded-full')).toBe(1)
-    const two = render(feedView('hero_box', { chips: TWO_CHIPS }))
-    expect(count(two, 'rounded-full')).toBe(2)
-    expect(two).toContain('이번 주 미션')
-    // 저장된 한글 구분 문구(아이템 배지)는 영어 분류 문구로 보인다
-    expect(two).toContain('>ITEM<')
-    expect(two).not.toContain('아이템 배지')
-    expect(two).toContain('background-color:var(--foreground)')
-    expect(two).toContain('text-snow')
+  it('칩은 계획대로 그려진다: 칩 수는 계획의 칩 수이고 분류 칩은 영어 문구의 스티커 또는 검정 알약이다', () => {
+    expect(chipCount(render(feedView('hero_box', { chips: [] })))).toBe(0)
+    expect(chipCount(render(feedView('hero_box', { chips: [TWO_CHIPS[0]] })))).toBe(1)
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const view = feedView('hero_box', { chips: TWO_CHIPS, feed_seed: seed })
+      const html = render(view)
+      const plan = planOf(view)
+      expect(chipCount(html)).toBe(plan.chips.length)
+      // 저장된 한글 구분 문구(아이템 배지)는 영어 분류 문구로 보인다
+      expect(html).not.toContain('아이템 배지')
+      const label = plan.chips.find((chip) => chip.kind === 'label')
+      if (label?.presentation === 'sticker') expect(html).toContain('aria-label="ITEM"')
+      if (label?.presentation === 'pill') {
+        expect(html).toContain('>ITEM<')
+        expect(html).toContain('background-color:var(--foreground)')
+        expect(html).toContain('text-snow')
+      }
+      if (plan.chips.some((chip) => chip.kind === 'value')) expect(html).toContain('이번 주 미션')
+    }
   })
 
-  it('칩은 앵커 모서리에 걸친다(가로 12·세로 16)', () => {
+  it('칩 층은 이미지 박스가 아니라 카드 모서리 기준이다: 카드 직계 층에서 %·px 위치로 놓이고 옛 걸침(-16px·-12px)이 없다', () => {
     const html = render(feedView('hero_box', { chips: [{ kind: 'phrase', text: '칩', slot: 'image-top-left' }] }))
-    expect(html).toContain('top:-16px')
-    expect(html).toContain('left:-12px')
+    expect(html).toContain('data-chip-plan')
+    expect(html).toContain('pointer-events-none absolute inset-0 z-10')
+    expect(html).toMatch(/(?:left|right):calc\(-?[\d.]+% \+ [\d.]+px\)/)
+    expect(html).not.toContain('top:-16px')
+    expect(html).not.toContain('left:-12px')
+    // 칩 층은 제목·설명 뒤, 카드 셸의 마지막 자식이다
+    expect(html.indexOf('data-chip-plan')).toBeGreaterThan(html.indexOf('<h3'))
   })
 
   it('제목 속 칩: 낱말이 칩으로 감싸지고 제목 글자는 그대로 읽힌다(0·1·2개)', () => {
