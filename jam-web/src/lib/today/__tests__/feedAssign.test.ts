@@ -22,7 +22,7 @@ import {
   type FeedType,
 } from '../feedChipSlots'
 import { passesColorRules, violatesImageColorRule } from '../feedColorRules'
-import { FEED_COLOR_KEYS, FEED_TILTS } from '../feedConstants'
+import { FEED_COLOR_KEYS, FEED_NEW_COLOR_KEYS, FEED_TILTS } from '../feedConstants'
 
 const hexOf = (key: string) => DEFAULT_FEED_PALETTE[key]
 
@@ -70,6 +70,7 @@ describe('assignFeedColors', () => {
       expect(triplePasses(result)).toBe(true)
       expect(isExcluded(result, excluded)).toBe(false)
       expect([result.bg, result.chip, result.box]).not.toContain('white')
+      for (const key of FEED_NEW_COLOR_KEYS) expect([result.bg, result.chip, result.box]).not.toContain(key)
       for (const key of [result.bg, result.chip, result.box]) expect(FEED_COLOR_KEYS).toContain(key)
     }
   })

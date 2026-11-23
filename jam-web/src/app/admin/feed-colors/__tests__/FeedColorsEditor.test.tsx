@@ -68,7 +68,7 @@ describe('FeedColorsEditor 초기 렌더', () => {
   it('색 선택기와 hex 글자 칸이 행마다 있고 네이티브 select는 쓰지 않는다', () => {
     const out = html()
     expect((out.match(/type="color"/g) ?? []).length).toBe(FEED_COLOR_KEYS.length)
-    expect((out.match(/id="feed-color-[a-z-]+-hex"/g) ?? []).length).toBe(15)
+    expect((out.match(/id="feed-color-[a-z-]+-hex"/g) ?? []).length).toBe(FEED_COLOR_KEYS.length)
     expect(out).not.toContain('<select')
   })
 
