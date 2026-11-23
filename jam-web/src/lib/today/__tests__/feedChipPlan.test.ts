@@ -59,7 +59,7 @@ describe('결정성', () => {
     const first = chipPlanCandidates(input).map(signatureOf)
     const second = chipPlanCandidates(input).map(signatureOf)
     expect(first).toEqual(second)
-    for (const signature of first) expect(signature).toMatch(/^[LV][ps][pw]?:[a-z-]+~?:[+-][abc](\|[LV][ps][pw]?:[a-z-]+~?:[+-][abc])?$/)
+    for (const signature of first) expect(signature).toMatch(/^[LV][ps][pw]?:[a-z-]+[~^]?:[+-][abc](\|[LV][ps][pw]?:[a-z-]+[~^]?:[+-][abc])?$/)
   })
 })
 
